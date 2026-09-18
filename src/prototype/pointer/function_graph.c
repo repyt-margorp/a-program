@@ -49,6 +49,15 @@ struct graph_continuation {
 	struct graph_continuation *next;
 };
 
+/* Suspended helper inspection, not another source/result cache. */
+struct helper_cursor {
+	struct pg_graph temporary;
+	const struct pg_evidence *function, *environment, *body;
+	struct graph_continuation *arguments;
+	size_t count, forces;
+	enum { HELPER_ARGUMENTS, HELPER_SOURCE, HELPER_BODY, HELPER_MATCH, HELPER_READY } phase;
+};
+
 struct pg_function_graph_state {
 	struct pg_graph temporary;
 	struct pg_typing *typing;
@@ -73,6 +82,7 @@ struct pg_function_graph_state {
 	struct graph_case *building, **build_tail;
 	struct graph_call *waiting;
 	struct pg_typed_query *view;
+	struct helper_cursor helper;
 	size_t leaf_count;
 	const struct pg_evidence *formation, *declaration;
 	const struct pg_data_schema *schema;
@@ -220,6 +230,16 @@ static int structural_computation_view(struct pg_function_graph_state *s,
 	return 0;
 }
 
+static int construction_origin(struct pg_function_graph_state *s,
+	const struct pg_evidence **proof, const struct pg_evidence **environment)
+{
+	struct pg_typed_query *origin = pg_construction_origin_request(s->typing, *proof);
+	if (!pg_typed_query_advance(origin, 1)) { s->view = origin; return 1; }
+	*environment = pg_construction_origin_environment(origin);
+	*proof = pg_typed_query_result(origin);
+	return *proof ? 0 : -1;
+}
+
 static int computation_view(struct pg_function_graph_state *s,
 	const struct pg_evidence *proof, enum pg_evidence_rule *rule,
 	const struct pg_evidence **left, const struct pg_evidence **right)
@@ -227,11 +247,9 @@ static int computation_view(struct pg_function_graph_state *s,
 	const struct pg_occurrence *subject = pg_evidence_subject(proof);
 	int status = structural_computation_view(s, proof, rule, left, right);
 	if (status >= 0) return status;
-	struct pg_typed_query *origin = pg_construction_origin_request(s->typing, proof);
-	if (!pg_typed_query_advance(origin, 1)) { s->view = origin; return 1; }
-	const struct pg_evidence *map = pg_construction_origin_environment(origin);
-	proof = pg_typed_query_result(origin);
-	if (!proof) return -1;
+	const struct pg_evidence *map;
+	status = construction_origin(s, &proof, &map);
+	if (status) return status;
 	*rule = pg_evidence_rule(proof);
 	if (*rule == PG_MATCH_ELIM || *rule == PG_INDUCTION_ELIM) {
 		*left = map ? pg_prove_elimination_reindex(s->typing, map, proof) : proof;
@@ -405,99 +423,106 @@ static int helper_call(struct pg_function_graph_state *s, struct graph_case *pla
 	const struct pg_term *content;
 	enum pg_totality totality;
 	if (!pg_pure_computation_type_view(pg_evidence_classifier(computation), &totality, &content)) return 0;
-	struct pg_graph temporary = {0};
-	struct graph_continuation *arguments = NULL;
-	const struct pg_evidence *function = computation, *environment = NULL;
-	size_t count = 0, forces = 0;
+	struct helper_cursor *h = &s->helper;
+	if (!h->function) h->function = computation;
 	int result = 0;
-	for (;;) {
-		function = pg_prove_construction_origin(s->typing, function, &environment);
-		if (!function) goto done;
-		enum pg_evidence_rule rule = pg_evidence_rule(function);
+	while (h->phase == HELPER_ARGUMENTS) {
+		int status = construction_origin(s, &h->function, &h->environment);
+		if (status) { result = status > 0 ? 2 : 0; goto done; }
+		enum pg_evidence_rule rule = pg_evidence_rule(h->function);
 		if (rule == PG_APP_ELIM) {
-			struct graph_continuation *item = pg_alloc(&temporary, sizeof(*item));
-			if (!item || count == SIZE_MAX / sizeof(const struct pg_evidence *)) { result = -1; goto done; }
-			item->argument = pg_evidence_premise(function, 1);
-			if (environment) item->argument = map_value(s, environment, item->argument);
-			item->next = arguments; arguments = item; ++count;
-			function = pg_evidence_premise(function, 0);
-			if (environment) function = map_value(s, environment, function);
+			struct graph_continuation *item = pg_alloc(&h->temporary, sizeof(*item));
+			if (!item || h->count == SIZE_MAX / sizeof(const struct pg_evidence *)) { result = -1; goto done; }
+			item->argument = pg_evidence_premise(h->function, 1);
+			if (h->environment) item->argument = map_value(s, h->environment, item->argument);
+			item->next = h->arguments; h->arguments = item; ++h->count;
+			h->function = pg_evidence_premise(h->function, 0);
+			if (h->environment) h->function = map_value(s, h->environment, h->function);
 			continue;
 		}
-		if (rule == PG_FORCE_ELIM || rule == PG_THUNK_COMPUTATION) ++forces;
-		else if (rule == PG_THUNK_INTRO && forces) --forces;
-		else break;
-		function = pg_evidence_premise(function, 0);
-		if (environment) function = map_value(s, environment, function);
+		if (rule == PG_FORCE_ELIM || rule == PG_THUNK_COMPUTATION) ++h->forces;
+		else if (rule == PG_THUNK_INTRO && h->forces) --h->forces;
+		else { h->phase = HELPER_SOURCE; break; }
+		h->function = pg_evidence_premise(h->function, 0);
+		if (h->environment) h->function = map_value(s, h->environment, h->function);
 	}
-	if (!count) goto done;
-	if (forces == 1 && pg_evidence_rule(function) == PG_VARIABLE) {
-		const struct pg_evidence *current = environment ? map_value(s, environment, function) : function;
+	if (!h->count) goto done;
+	if (h->phase == HELPER_SOURCE && h->forces == 1 && pg_evidence_rule(h->function) == PG_VARIABLE) {
+		const struct pg_evidence *current = h->environment ? map_value(s, h->environment, h->function) : h->function;
 		if (!current) goto done;
 		if (hypothesis_position(s, plan, pg_evidence_subject(current)->core) != plan->hypothesis_count) goto done;
 		const struct pg_evidence *concrete = pg_function_graph_source(s->typing, current);
 		if (concrete) {
 			const struct pg_evidence *context = pg_evidence_premise(pg_evidence_premise(pg_evidence_premise(concrete, 0), 0), 0);
-			environment = pg_prove_substitution_projection(s->typing, context, plan->context);
-			if (!environment) goto done;
-			function = concrete;
-		} else function = parameter_source(s, function);
-		if (!function) goto done;
+			h->environment = pg_prove_substitution_projection(s->typing, context, plan->context);
+			if (!h->environment) goto done;
+			h->function = concrete;
+		} else h->function = parameter_source(s, h->function);
+		if (!h->function) goto done;
 		/* The eta graph of an opaque parameter is its leaf, not a request
 		 * for another graph of that same parameter. */
-		if (pg_evidence_subject(function) == pg_evidence_subject(s->source_function)) goto done;
-	} else {
-		if (forces || pg_evidence_rule(function) != PG_LAMBDA_INTRO) goto done;
-		const struct pg_evidence *body = function;
+		if (pg_evidence_subject(h->function) == pg_evidence_subject(s->source_function)) goto done;
+		h->phase = HELPER_READY;
+	} else if (h->phase == HELPER_SOURCE) {
+		if (h->forces || pg_evidence_rule(h->function) != PG_LAMBDA_INTRO) goto done;
+		h->body = h->function;
+		h->phase = HELPER_BODY;
+	}
+	if (h->phase == HELPER_BODY) {
 		for (;;) {
 			const struct pg_evidence *body_environment;
-			body = pg_prove_construction_origin(s->typing, body, &body_environment);
-			if (!body) goto done;
-			if (pg_evidence_rule(body) == PG_LAMBDA_INTRO) body = pg_evidence_premise(body, 1);
-			else if (pg_evidence_rule(body) == PG_APP_ELIM) body = pg_evidence_premise(body, 0);
-			else if (pg_evidence_rule(body) == PG_FORCE_ELIM || pg_evidence_rule(body) == PG_THUNK_COMPUTATION ||
-				pg_evidence_rule(body) == PG_THUNK_INTRO) body = pg_evidence_premise(body, 0);
+			int status = construction_origin(s, &h->body, &body_environment);
+			if (status) { result = status > 0 ? 2 : 0; goto done; }
+			if (pg_evidence_rule(h->body) == PG_LAMBDA_INTRO) h->body = pg_evidence_premise(h->body, 1);
+			else if (pg_evidence_rule(h->body) == PG_APP_ELIM) h->body = pg_evidence_premise(h->body, 0);
+			else if (pg_evidence_rule(h->body) == PG_FORCE_ELIM || pg_evidence_rule(h->body) == PG_THUNK_COMPUTATION ||
+				pg_evidence_rule(h->body) == PG_THUNK_INTRO) h->body = pg_evidence_premise(h->body, 0);
 			else break;
 		}
-		switch (pg_evidence_rule(body)) {
+		switch (pg_evidence_rule(h->body)) {
 		case PG_MATCH_ELIM: {
 			/* A split may refine local graph inputs, but must not replace
 			 * the fixed parameter telescope. Retain this call when its
 			 * discriminant belongs to that telescope. */
-			body = environment ? map_value(s, environment, function) : function;
-			body = projection(s, plan->context, body);
-			for (const struct graph_continuation *a = arguments; body && a; a = a->next)
-				body = pg_prove_application_body(s->typing, body,
+			h->body = h->environment ? map_value(s, h->environment, h->function) : h->function;
+			h->body = projection(s, plan->context, h->body);
+			for (const struct graph_continuation *a = h->arguments; h->body && a; a = a->next)
+				h->body = pg_prove_application_body(s->typing, h->body,
 					projection(s, plan->context, a->argument));
-			enum pg_evidence_rule rule;
-			const struct pg_evidence *elimination, *unused;
-			if (!body) goto done;
-			int view = computation_view(s, body, &rule, &elimination, &unused);
-			if (view > 0) { result = 2; goto done; }
-			if (view < 0) goto done;
-			if (rule != PG_MATCH_ELIM) goto done;
-			const struct pg_evidence *input = pg_evidence_premise(elimination, 3);
-			const struct pg_term *term = pg_evidence_subject(input)->core;
-			if (term->kind != PG_REFERENCE || !pg_context_lookup(pg_evidence_context(s->context), term->as.reference)) goto done;
+			if (!h->body) goto done;
+			h->phase = HELPER_MATCH;
 			break;
 		}
-		case PG_INDUCTION_ELIM: break;
+		case PG_INDUCTION_ELIM: h->phase = HELPER_READY; break;
 		default: goto done;
 		}
 	}
-	if (pg_evidence_subject(function) == pg_evidence_subject(s->source_function)) { result = -1; goto done; }
+	if (h->phase == HELPER_MATCH) {
+		enum pg_evidence_rule rule;
+		const struct pg_evidence *elimination, *unused;
+		int view = computation_view(s, h->body, &rule, &elimination, &unused);
+		if (view > 0) { result = 2; goto done; }
+		if (view < 0 || rule != PG_MATCH_ELIM) goto done;
+		const struct pg_evidence *input = pg_evidence_premise(elimination, 3);
+		const struct pg_term *term = pg_evidence_subject(input)->core;
+		if (term->kind != PG_REFERENCE || !pg_context_lookup(pg_evidence_context(s->context), term->as.reference)) goto done;
+	}
+	if (pg_evidence_subject(h->function) == pg_evidence_subject(s->source_function)) { result = -1; goto done; }
 	struct graph_call *call = pg_alloc(&s->temporary, sizeof(*call));
 	if (!call) { result = -1; goto done; }
 	*call = (struct graph_call){.field = SIZE_MAX, .hypothesis = SIZE_MAX,
-		.helper_source = function, .helper_environment = environment, .helper_arity = count};
-	call->helper_arguments = pg_alloc(&s->temporary, count * sizeof(*call->helper_arguments));
+		.helper_source = h->function, .helper_environment = h->environment, .helper_arity = h->count};
+	call->helper_arguments = pg_alloc(&s->temporary, h->count * sizeof(*call->helper_arguments));
 	if (!call->helper_arguments) { result = -1; goto done; }
-	for (size_t i = 0; i < count; ++i, arguments = arguments->next)
-		call->helper_arguments[i] = arguments->argument;
+	for (size_t i = 0; i < h->count; ++i, h->arguments = h->arguments->next)
+		call->helper_arguments[i] = h->arguments->argument;
 	s->waiting = call;
 	result = 1;
 done:
-	pg_graph_destroy(&temporary);
+	if (result != 2) {
+		pg_graph_destroy(&h->temporary);
+		*h = (struct helper_cursor){0};
+	}
 	return result;
 }
 
@@ -1721,6 +1746,7 @@ const struct pg_evidence *pg_function_graph_packet(const struct pg_function_grap
 void pg_function_graph_destroy(struct pg_function_graph_work *work)
 {
 	if (!work || !work->state) return;
+	pg_graph_destroy(&work->state->helper.temporary);
 	pg_graph_destroy(&work->state->temporary);
 	free(work->state);
 	work->state = NULL;

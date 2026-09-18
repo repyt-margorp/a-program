@@ -2201,3 +2201,51 @@ R0; the whole-refactor net-negative requirement is not satisfied.
 Surface and Issue29/PR30 publication milestones remain complete. This checkpoint
 does not publish the four local implementation commits or close the remaining
 refactoring gates. No implementation or test files changed during verification.
+
+### 2026-09-19: Resume helper inspection without rebuilding its prefix
+
+- [x] Add a projected-application/Fold regression in `graded_function_graph`:
+  each graph step advances the selected origin query by at most one step.
+  It fails before repair (exit 134) and passes afterward. Simpler initial test
+  drafts did not exercise a multi-step helper origin and were replaced.
+- [x] Share the one-step construction-origin adapter with computation views.
+  Preserve the helper's local cursor/arguments while the shared query waits;
+  do not add a result cache, semantic descriptor, proof authority or wire tag.
+- [x] Debug program runner; optimized full `check-acceptance`; sanitizer program
+  runner: all exit 0. Compatibility 63/63 and all four sorting proofs pass.
+- [ ] Publish with a substantial epoch; A3/A4/A5 and the reduction gate remain
+  open. This is not a speedup or a constant-cost guarantee for every graph step.
+
+Commands use the existing pointer Makefile with `-j2`: debug build
+`/tmp/a-program-authority-helper-origin`, strict C11/O0/g, targets `program_test`
+and `pointer-check`; optimized build `/tmp/a-program-authority-source-sites-opt`,
+strict C11/O2, target `check-acceptance`; sanitizer build
+`/tmp/a-program-authority-source-sites-asan`, the existing O1 ASan/UBSan flags,
+target `program_test`. Run the latter with
+`ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1`.
+Final logs use `/tmp/a-program-authority-helper-cursor-{program,opt,asan}.log`.
+Earlier `helper-origin-*` logs describe the withdrawn retry-from-start draft.
+
+Five alternating fresh-process O0/g samples compare `dd9cabc` against the final
+cursor implementation, with 1,000,000 steps and per-version zero-step images.
+No concurrent build/test ran during timing. Raw samples:
+`/tmp/a-program-authority-helper-cursor-matrix.log`.
+
+| Input | Source median seconds before/after | Image median seconds before/after | Source steps before/after |
+|---|---|---|---|
+| Vec-append | .014570 / .015171 | .014631 / .016515 | 19935 / 19935 |
+| length | .014837 / .013021 | .014120 / .012328 | 9694 / 9702 |
+| function-field | .021709 / .023063 | .022522 / .021820 | 12809 / 12883 |
+| QuickSort-property | .332658 / .334174 | .333060 / .332589 | 146809 / 147083 |
+
+All 80 solves exited 0. Small timings are noisy; do not infer a speedup.
+Function-field and QuickSort retain exactly the preceding Core/occurrence/proof,
+Context and synthesis-job counts. Extra steps expose previously synchronous
+query work. GDB helper allocation logs show 29 direct allocations before/after,
+despite 39 pending resumptions; no repeated argument-prefix allocation.
+Logs: `/tmp/a-program-authority-helper-cursor-{before,after}-allocs.log` and
+`/tmp/a-program-authority-helper-cursor-{function_field,quicksort}-counts.log`.
+
+Implementation: `function_graph.c` +91/-65 (net +26). Tests: `program.c` +25/-0.
+Documentation is separate. Cumulative implementation/header net is +1,444
+from R76 and +3,860 from R0; net-negative completion is not established.

@@ -1200,8 +1200,8 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   afterward. Accepted conclusions and alternate derivations are unchanged.
   This is a scheduling correction, not evidence of faster normalization.
 
-  Remaining synchronous consumers include `function_graph.c`'s `helper_call`
-  origin traversal and `pg_function_graph_source`. They use the same shared queries, so their
+  At that checkpoint, synchronous consumers included `function_graph.c`'s
+  `helper_call` origin traversal and `pg_function_graph_source`. They use the same shared queries, so their
   existence alone does not establish duplicate traversal or a second authority.
   Audit their surrounding graph-work budget before changing them; preserve
   pending/unsupported distinction, helper ownership and checked context maps.
@@ -1211,6 +1211,24 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   14 `helper_call` entries, 13 distinct state/plan/context/input keys, no
   pending (`2`) return; Solve completes in 24,959 steps. This does not justify
   adding a helper-resumption cache. Wider budgeting analysis is still needed.
+- [x] Follow-up: reproduce unbounded origin-query draining during helper
+  inspection with a projected application inside a Fold. The permanent
+  `graded_function_graph` regression fails before repair: advancing the graph
+  once advances its origin query more than once. Both helper-origin walks now
+  use the same one-step adapter as `computation_view`, borrowing `s->view`.
+  A private continuation cursor retains only the walk position and argument
+  list across suspension; it is neither an interned semantic object nor a new
+  proof/result authority. Normal completion and graph destruction release it.
+  The first draft retried the entire helper walk after waiting; it was not
+  committed. Final helper-call fixture: 14 -> 53 entries (39 pending resumes),
+  but direct helper allocations remain 29, with the same 8 non-helper and 6
+  helper outcomes. The cursor resumes after the processed prefix, rather than
+  reconstructing arguments. This changes scheduling, not totality rules.
+  `pg_function_graph_source`, application-body checking and other synchronous
+  kernel consumers remain outside this local bound. It does not complete A4.
+  Strict-debug program tests, optimized full acceptance (63/63 and four
+  universal sorting proof suites), and ASan/UBSan program tests pass. See the
+  priority plan's helper-cursor checkpoint for commands and measurements.
 - [x] Audit genuine function specialization separately from projection.
   `pg_function_graph_source` must substitute captured inputs and lift under
   the mapped Lambda's capture-avoiding binder. `function_graph_aliases` now

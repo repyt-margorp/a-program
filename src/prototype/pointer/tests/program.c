@@ -375,6 +375,31 @@ static void graded_function_graph(struct pg_program *p, const struct pg_evidence
 	const struct pg_evidence *scope = pg_evidence_premise(pg_evidence_premise(function, 0), 0);
 	const struct pg_evidence *value = pg_prove_return_value(&p->typing, pg_evidence_premise(function, 1));
 	assert(value);
+	/* Helper inspection must yield while its shared origin query is pending. */
+	const struct pg_evidence *application = pg_prove_application(&p->typing,
+		pg_prove_projection(&p->typing, scope, function), value);
+	const struct pg_evidence *helper_scope = pg_prove_context_extension(&p->typing,
+		scope, pg_binder(&p->graph), pg_prove_classifier(&p->typing, scope, value));
+	application = pg_prove_projection(&p->typing, helper_scope, application);
+	const struct pg_evidence *sequence = pg_prove_fold(&p->typing, application,
+		pg_prove_projection(&p->typing, helper_scope, function));
+	const struct pg_evidence *applied = pg_prove_lambda(&p->typing,
+		pg_prove_pi(&p->typing, helper_scope, pg_prove_classifier(&p->typing, helper_scope, sequence)), sequence);
+	assert(applied);
+	struct pg_function_graph_work helper;
+	assert(!pg_function_graph_init(&helper, &p->typing, &p->evaluation, applied));
+	struct pg_typed_query *origin = pg_construction_origin_request(&p->typing, application);
+	uint64_t origin_steps = pg_typed_query_steps(origin);
+	assert(!origin_steps);
+	for (size_t turns = 0;; ++turns) {
+		enum pg_function_graph_status status = pg_function_graph_advance(&helper, 1);
+		assert(pg_typed_query_steps(origin) - origin_steps <= 1);
+		origin_steps = pg_typed_query_steps(origin);
+		if (status != PG_FUNCTION_GRAPH_PENDING) { assert(status == PG_FUNCTION_GRAPH_DONE); break; }
+		assert(turns < 100000);
+	}
+	assert(origin_steps && pg_typed_query_result(origin));
+	pg_function_graph_destroy(&helper);
 	for (enum pg_totality grade = PG_TOTALITY_UNSPECIFIED; grade <= PG_TOTALITY_TOTAL; ++grade) {
 		const struct pg_evidence *body = pg_prove_return_contract(&p->typing, grade, value);
 		const struct pg_evidence *type = pg_prove_classifier(&p->typing, scope, body);
