@@ -2094,3 +2094,31 @@ Implementation/headers +80/-14; tests +65/-1. Documentation accounting is
 separate at publication. Cumulative implementation/header net is +1,427 from
 R76 (`3a3bf550`) and +3,843 from R0 (`4657cc6`): the reduction gate is not met.
 Remaining A3/A4/A5 work is not closed by this local correction.
+
+### 2026-09-19: Match export as an ordered origin subset (local)
+
+- [x] Delete the separate writer Match DAG and second allocation projection.
+  Keep its first projection in a temporary ordered list; wire IDs follow the
+  existing origin order. No new persistent state or format/version change.
+- [x] Add nested-Match coverage to the existing origin test: three inert
+  resaves, exact restored allocation checks, alpha-equivalence and normal forms.
+  The original single-Match pointer-equality/invalid-input checks remain.
+- [x] Final strict-debug source script, full optimized `check-acceptance`,
+  ASan/UBSan source and image scripts: all exit 0. Flags match the preceding
+  entry. Logs: `/tmp/a-program-authority-match-origin-stream-final-*`.
+- [ ] Publish with a substantial refactoring epoch, not this small deletion.
+
+IF8 retained QuickSort bytes match `5a853e0` exactly. Match-allocation queries
+fall 14 -> 7; selected arena usage falls 896 bytes plus removal of a 512-byte
+bucket table and 16,384 bytes of reserved arena. No elapsed-speedup claim.
+Normalized export results/steps match the preceding full run; compatibility
+63/63 and all universal sorting proof tests pass. The new nested test's first
+draft incorrectly assumed exact regenerated Core identity and only two solved
+candidates; both assumptions fail on the previous writer too. The parent A3
+entry explains the corrected assertions and the still-unproven reuse bound.
+
+Per-file diff from `5a853e0`: `source_io.c` +33/-27 (net +6),
+`tests/source_io.c` +23/-7 (net +16). Documentation is accounted separately.
+Cumulative implementation/header changes: R76 +2,584/-1,151 (net +1,433),
+R0 +7,529/-3,680 (net +3,849). The net-negative gate and remaining A3/A4/A5
+requirements are still open; neither local commit completes R.

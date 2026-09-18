@@ -794,10 +794,29 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   This change adds 106/deletes 64 implementation/header lines (net +42),
   tests +51/-2. Cumulative source is still +1,361 versus R76 and +3,777 versus
   R0. Output-sensitive lexical discovery and the net-negative gate remain
-  open. Match allocation projection is still performed separately during
-  discovery and encoding; it was inspected but not silently replaced with
-  another permanent cache in this epoch.
+  open. This epoch left duplicate Match allocation projection during discovery
+  and encoding; the later ordered-origin change below removes it without a
+  permanent cache.
 
+- [x] 2026-09-19: collect each selected Match allocation once. Delete the
+  separate Match DAG and the second reconstruction pass/array. Match wire IDs
+  are the ordered subset of origin IDs; a writer-local list retains the first
+  projection until encoding. No new solver state, semantic authority or format.
+  Retained IF8/main: allocation queries 14 -> 7; output is byte-identical to
+  `5a853e0`. Rules arena used bytes 180,352 -> 179,904; the removed Match arena
+  used 448/reserved 16,384 bytes, plus a 512-byte bucket table. These are
+  selected stores, not peak RSS or elapsed-time measurements.
+  The nested-Match regression checks three inert resaves, restored allocation
+  identity after Solve, alpha-equivalence and equal normal forms. Its initial
+  exact-Core assumption also failed on `5a853e0`: nested context actions can
+  freshen generated binders. Likewise two retained origins become three
+  construction candidates during synthesis. The new case states these separate
+  counts; the original one-Match exact-pointer gate is unchanged. This does not
+  prove optimal retained-reduction reuse for freshly generated nested binders.
+  Strict debug source tests and optimized full acceptance pass; normalized
+  exports/steps are unchanged. Final affected sanitizer results and publication
+  status are recorded in the priority plan. Implementation +33/-27 (net +6),
+  tests +23/-7; overall reduction and broad A3-A5 gates remain open.
 - [x] Register explicit Lambda/Pi binders in the same immutable address store
   as automatic bindings; delete their duplicate job-origin enumeration and
   writer scope-recovery path. Exact binder/conflict and inert-resave checks

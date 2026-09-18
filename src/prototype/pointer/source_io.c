@@ -173,15 +173,22 @@ struct source_member {
 	struct pg_constructor_allocation allocation;
 };
 
+struct source_match {
+	struct source_match *next;
+	const struct pg_match_allocation *input;
+};
+
 struct origin_collection {
 	const struct pg_synthesis *synthesis;
-	struct pg_dag *scopes, *syntax, *rules, *origins, *producers, *allocations, *bindings, *matches, *declarations;
+	struct pg_dag *scopes, *syntax, *rules, *origins, *producers, *allocations, *bindings, *declarations;
 	struct pg_dag objects, terms, contexts;
 	struct pg_index candidates;
 	struct pg_declaration_io *codec;
 	const struct pg_dag_node *last_scope, *last_producer, *last_syntax, *last_object;
 	struct source_member *members;
 	size_t member_count;
+	struct source_match *matches, **match_tail;
+	size_t match_count, match_context_count;
 };
 
 static int index_scope_origin(void *owner, struct pg_synthesis_job *job);
@@ -394,7 +401,14 @@ static int collect_origin(void *owner, struct pg_synthesis_job *job)
 	}
 	if (syntax->kind == PG_SYNTAX_ELIMINATION) {
 		const struct pg_match_allocation *input = pg_synthesis_match_allocation(job, &c->rules->storage);
-		if (!input || pg_dag_add(c->matches, job)) return -1;
+		if (!input || c->match_count == SIZE_MAX || SIZE_MAX - c->match_context_count < 2 ||
+			input->induction.count > (SIZE_MAX - c->match_context_count - 2) / 2) return -1;
+		struct source_match *match = pg_alloc(&c->rules->storage, sizeof(*match));
+		if (!match) return -1;
+		match->input = input;
+		*c->match_tail = match; c->match_tail = &match->next;
+		++c->match_count;
+		c->match_context_count += 2 + 2 * input->induction.count;
 		const struct pg_induction_allocation *a = &input->induction;
 		if (collect_allocation(c, input->prefix, input->motive, a->self)) return -1;
 		if (pg_dag_add(&c->terms, pg_reference(&c->rules->storage, a->recursion)) ||
@@ -470,19 +484,20 @@ int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 {
 	if (!file || !synthesis || (count && !roots)) return -1;
 	struct pg_dag scopes = {0}, syntax = {0}, rules = {0}, origins = {0}, producers = {0}, allocations = {0};
-	struct pg_dag bindings = {0}, matches = {0}, declarations = {0};
+	struct pg_dag bindings = {0}, declarations = {0};
 	struct pg_effect_inference effects = {0};
 	struct pg_declaration_io codec = {0};
 	struct origin_collection collection = {.synthesis = synthesis, .scopes = &scopes,
 		.syntax = &syntax, .rules = &rules, .origins = &origins, .producers = &producers,
-		.allocations = &allocations, .bindings = &bindings, .matches = &matches,
+		.allocations = &allocations, .bindings = &bindings,
 		.declarations = &declarations, .codec = &codec};
+	collection.match_tail = &collection.matches;
 	int status = -1;
 	/* Callbacks only inspect synthesis; no solver entry is invoked. */
 	if (pg_dag_init(&scopes, child, &synthesis) || pg_dag_init(&syntax, pg_syntax_child, NULL)
 		|| pg_dag_init(&producers, producer_child, &synthesis)
 		|| pg_dag_init(&rules, NULL, NULL) || pg_dag_init(&origins, NULL, NULL) || pg_dag_init(&allocations, NULL, NULL)
-		|| pg_dag_init(&bindings, NULL, NULL) || pg_dag_init(&matches, NULL, NULL)
+		|| pg_dag_init(&bindings, NULL, NULL)
 		|| pg_dag_init(&declarations, NULL, NULL)
 		|| pg_graph_init(&rules.storage)
 		|| pg_dag_init(&collection.objects, NULL, NULL) || pg_index_init(&collection.candidates)
@@ -498,17 +513,6 @@ int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 	const struct pg_derivation_input *const *derivations;
 	if (pg_synthesis_export_rule_closure(synthesis, &rules, &rules.storage, &effects, 1,
 		retain_dependencies, &collection, &derivations)) goto done;
-	if (matches.count > SIZE_MAX / (3 * sizeof(void *))) goto done;
-	const struct pg_match_allocation **match_inputs = pg_alloc(&rules.storage, matches.count * sizeof(*match_inputs));
-	if (!match_inputs) goto done;
-	size_t match_context_count = 0;
-	for (const struct pg_dag_node *node = matches.first; node; node = node->next) {
-		const struct pg_match_allocation *input = pg_synthesis_match_allocation(node->key, &rules.storage);
-		if (!input || SIZE_MAX - match_context_count < 2 ||
-			input->induction.count > (SIZE_MAX - match_context_count - 2) / 2) goto done;
-		match_inputs[node->id - 1] = input;
-		match_context_count += 2 + 2 * input->induction.count;
-	}
 	if (collection.member_count > SIZE_MAX - allocations.count) goto done;
 	size_t allocation_count = allocations.count + collection.member_count;
 	if (allocation_count > SIZE_MAX / (2 * sizeof(void *))) goto done;
@@ -528,12 +532,12 @@ int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 		if (extra > SIZE_MAX - reference_count || input->scope_count > SIZE_MAX - reference_count - extra) goto done;
 		reference_count += input->scope_count + extra;
 	}
-	if (matches.count > (SIZE_MAX - reference_count) / 3) goto done;
-	reference_count += 3 * matches.count;
+	if (collection.match_count > (SIZE_MAX - reference_count) / 3) goto done;
+	reference_count += 3 * collection.match_count;
 	if (declarations.count > SIZE_MAX - reference_count) goto done;
 	reference_count += declarations.count;
-	if (reference_count > SIZE_MAX / sizeof(void *) || match_context_count > SIZE_MAX - 2 * allocation_count) goto done;
-	size_t context_count = 2 * allocation_count + match_context_count;
+	if (reference_count > SIZE_MAX / sizeof(void *) || collection.match_context_count > SIZE_MAX - 2 * allocation_count) goto done;
+	size_t context_count = 2 * allocation_count + collection.match_context_count;
 	if (context_count > SIZE_MAX / sizeof(void *)) goto done;
 	const struct pg_context **contexts = pg_alloc(&rules.storage, context_count * sizeof(*contexts));
 	const struct pg_term **references = pg_alloc(&rules.storage, reference_count * sizeof(*references));
@@ -565,8 +569,8 @@ int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 		if (input->constructor) references[slot++] = pg_reference(&rules.storage, input->constructor);
 	}
 	size_t context_slot = 2 * allocation_count;
-	for (size_t i = 0; i < matches.count; ++i) {
-		const struct pg_match_allocation *input = match_inputs[i];
+	for (const struct source_match *match = collection.matches; match; match = match->next) {
+		const struct pg_match_allocation *input = match->input;
 		const struct pg_induction_allocation *a = &input->induction;
 		contexts[context_slot++] = input->prefix;
 		contexts[context_slot++] = input->motive;
@@ -643,12 +647,14 @@ int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 				|| pg_wire_write_u64(file, id(&producers, producer))) goto done;
 		}
 	}
+	size_t match_id = 0;
+	/* Match records are the ordered subset of origins, not another intern table. */
 	for (const struct pg_dag_node *node = origins.first; node; node = node->next) {
 		const struct pg_source_scope *scope;
 		const struct pg_syntax *term;
 		if (pg_synthesis_source_input(synthesis, node->key, &scope, &term)) goto done;
 		uint64_t allocation = term->kind == PG_SYNTAX_QUALIFIED ? id(&allocations, node->key)
-			: term->kind == PG_SYNTAX_ELIMINATION ? id(&matches, node->key)
+			: term->kind == PG_SYNTAX_ELIMINATION ? ++match_id
 			: id(&declarations, pg_synthesis_allocation_object(synthesis, node->key));
 		if (pg_wire_write_u64(file, id(&scopes, scope)) || pg_wire_write_u64(file, id(&syntax, term))
 			|| pg_wire_write_u64(file, allocation)) goto done;
@@ -664,9 +670,9 @@ int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 		if (pg_wire_write_u64(file, id(&syntax, input->syntax)) || pg_wire_write_u64(file, input->scope_count)
 			|| pg_wire_write_u64(file, input->slot)) goto done;
 	}
-	if (pg_wire_write_u64(file, matches.count)) goto done;
-	for (size_t i = 0; i < matches.count; ++i)
-		if (pg_wire_write_u64(file, match_inputs[i]->induction.count)) goto done;
+	if (pg_wire_write_u64(file, collection.match_count)) goto done;
+	for (const struct source_match *match = collection.matches; match; match = match->next)
+		if (pg_wire_write_u64(file, match->input->induction.count)) goto done;
 	if (pg_wire_write_u64(file, declarations.count)) goto done;
 	if (pg_wire_write_u64(file, payload.metadata_count)) goto done;
 	for (size_t i = 0; i < payload.metadata_count; ++i)
@@ -681,7 +687,7 @@ done:
 	pg_index_destroy(&collection.candidates); pg_dag_destroy(&collection.terms); pg_dag_destroy(&collection.objects);
 	pg_declaration_io_destroy(&codec);
 	pg_effect_inference_destroy(&effects); pg_dag_destroy(&rules); pg_dag_destroy(&origins);
-	pg_dag_destroy(&bindings); pg_dag_destroy(&matches); pg_dag_destroy(&declarations);
+	pg_dag_destroy(&bindings); pg_dag_destroy(&declarations);
 	pg_dag_destroy(&syntax); pg_dag_destroy(&scopes); pg_dag_destroy(&producers); pg_dag_destroy(&allocations);
 	return status;
 }

@@ -1840,10 +1840,8 @@ static void match_motive_authority(void)
 	puts("source Match: saved allocation does not impose its motive on independent synthesis");
 }
 
-static void match_origins(void)
+static void match_origins_case(const char *text, size_t saved_origins, size_t solved_origins)
 {
-	match_motive_authority();
-	const char *text = "{{ Nat:=@{zero:*;succ:*->*;}; r:=&{(\\n:Nat=>n @zero=>Nat.zero @succ k=>Nat.succ *k) (Nat.succ Nat.zero);}; }}.r";
 	struct pg_program *p = retained_program(text);
 	for (unsigned round = 0; round < 3; ++round) {
 		FILE *file = tmpfile();
@@ -1851,7 +1849,7 @@ static void match_origins(void)
 		size_t jobs = p->synthesis.jobs.count, proofs = p->typing.proofs.count;
 		assert(file && !pg_sources_write_retained(file, &p->synthesis, 1, &p->root, p->retained_reductions));
 		assert(p->synthesis.steps == steps && p->synthesis.jobs.count == jobs && p->typing.proofs.count == proofs);
-		invalid_match_allocations(file);
+		if (saved_origins == 1) invalid_match_allocations(file);
 		pg_program_destroy(p);
 		rewind(file);
 		size_t count;
@@ -1860,17 +1858,35 @@ static void match_origins(void)
 		assert(p && count == 1 && !p->synthesis.steps && !pg_synthesis_result(p->root));
 		assert(!fclose(file));
 		struct match_origin_check check = {p, 0, 0};
-		assert(!pg_synthesis_visit_source_allocations(&p->synthesis, check_match_origin, &check) && check.count == 1);
+		assert(!pg_synthesis_visit_source_allocations(&p->synthesis, check_match_origin, &check) && check.count == saved_origins);
 	}
 	while (p->synthesis.ready) {
 		assert(p->synthesis.steps < 10000);
 		pg_synthesis_advance(&p->synthesis, 1);
 	}
 	const struct pg_evidence *forced = pg_prove_force(&p->typing, pg_synthesis_result(p->root));
-	assert(forced && pg_evidence_subject(forced)->core == pg_reduction_source(p->retained_reductions->roots[0]));
+	assert(forced);
+	const struct pg_term *core = pg_evidence_subject(forced)->core;
+	const struct pg_reduction_certificate *saved = p->retained_reductions->roots[0];
+	assert(pg_alpha_equal(core, pg_reduction_source(saved)) == 1);
+	/* Preserve the original exact-identity gate. Nested reindexing may freshen
+	 * generated binders, but source allocations and computation must agree. */
+	if (saved_origins == 1) assert(core == pg_reduction_source(saved));
+	struct pg_nf_job *normal = pg_nf_request(&p->evaluation, &pg_pure_policy, core);
+	assert(normal && pg_nf_advance(normal, 10000) == PG_NF_DONE);
+	assert(pg_alpha_equal(pg_nf_result(normal), pg_reduction_target(saved)) == 1);
 	struct match_origin_check check = {p, 0, 1};
-	assert(!pg_synthesis_visit_source_allocations(&p->synthesis, check_match_origin, &check) && check.count == 1);
+	assert(!pg_synthesis_visit_source_allocations(&p->synthesis, check_match_origin, &check) && check.count == solved_origins);
 	pg_program_destroy(p);
+}
+
+static void match_origins(void)
+{
+	match_motive_authority();
+	match_origins_case("{{ Nat:=@{zero:*;succ:*->*;}; r:=&{(\\n:Nat=>n @zero=>Nat.zero @succ k=>Nat.succ *k) (Nat.succ Nat.zero);}; }}.r", 1, 1);
+	/* Two retained Matches; synthesis also checks a preliminary nested motive. */
+	match_origins_case("{{ Nat:=@{zero:*;succ:*->*;}; r:=&{(\\n:Nat=>n @zero=>Nat.zero @succ k=>"
+		"(\\m:Nat=>m @zero=>Nat.zero @succ j=>Nat.succ *j) (Nat.succ *k)) (Nat.succ Nat.zero);}; }}.r", 2, 3);
 	puts("source Match origin: unsolved resaves preserve induction binders and clause allocations; ordinary source checking passed");
 }
 
