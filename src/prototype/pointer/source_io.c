@@ -340,11 +340,7 @@ static int index_origin(struct origin_collection *c, const void *key)
 	if (id(c->origins, job)) return 0;
 	const struct pg_object *object = pg_synthesis_allocation_object(c->synthesis, job);
 	if (!object) return 0;
-	if (index_origin_reference(c, object, collect_origin, job)) return -1;
-	/* Computation endpoints may retain only the layout, not the type family. */
-	const struct pg_data_declaration *declaration = pg_data_declaration_view(object);
-	return declaration ? index_origin_reference(c,
-		pg_data_matcher(pg_data_declaration_layout(declaration)), collect_origin, job) : 0;
+	return index_origin_reference(c, object, collect_origin, job);
 }
 
 static int index_scope_origin(void *owner, struct pg_synthesis_job *job)
@@ -354,9 +350,13 @@ static int index_scope_origin(void *owner, struct pg_synthesis_job *job)
 	const struct pg_syntax *syntax;
 	if (pg_synthesis_source_input(c->synthesis, job, &scope, &syntax)) return -1;
 	const struct pg_dag_node *node = pg_dag_find(c->syntax, syntax);
-	if (node && c->last_syntax && node->id <= c->last_syntax->id) return index_origin(c, job);
+	/* Nominal/Match references arrive from their reached allocation object.
+	 * Members still wait for their result binder after lexical discovery. */
+	int (*resume)(struct origin_collection *, const void *) =
+		syntax->kind == PG_SYNTAX_QUALIFIED ? index_origin : collect_origin;
+	if (node && c->last_syntax && node->id <= c->last_syntax->id) return resume(c, job);
 	/* Keep allocation discovery in syntax-frontier order, including inert saves. */
-	return index_origin_reference(c, syntax, index_origin, job);
+	return index_origin_reference(c, syntax, resume, job);
 }
 
 static int index_binding(void *owner, const struct pg_source_binding *input)
@@ -381,6 +381,7 @@ struct source_reference_batch {
 static int append_source_reference(void *owner, struct pg_synthesis_job *job)
 {
 	struct source_reference_batch *batch = owner;
+	if (id(batch->collection->origins, job)) return 0;
 	const struct pg_source_scope *scope;
 	const struct pg_syntax *syntax;
 	if (pg_synthesis_source_input(batch->collection->synthesis, job, &scope, &syntax)) return -1;

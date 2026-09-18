@@ -36,6 +36,10 @@ struct source_reference_entry {
 static int register_source_reference(struct pg_synthesis *synthesis, const void *key,
 	struct pg_synthesis_job *job, const struct pg_source_binding *binding)
 {
+	for (struct pg_index_entry *p = pg_index_candidates(&synthesis->source_references, (uintptr_t)key); p; p = p->next) {
+		const struct source_reference_entry *entry = (const void *)p;
+		if (entry->key == key && entry->job == job && entry->binding == binding) return 0;
+	}
 	struct source_reference_entry *entry = pg_alloc(synthesis->typing->graph, sizeof(*entry));
 	if (!entry) return -1;
 	entry->key = key; entry->job = job; entry->binding = binding;
@@ -573,7 +577,11 @@ int pg_synthesis_visit_source_allocations(const struct pg_synthesis *synthesis,
 	for (size_t i = 0; i < synthesis->source_references.capacity; ++i)
 		for (struct pg_index_entry *entry = synthesis->source_references.buckets[i]; entry; entry = entry->next) {
 			const struct source_reference_entry *input = (const void *)entry;
-			if (input->job && pg_synthesis_allocation_object(synthesis, input->job) && visit(owner, input->job)) return -1;
+			if (!input->job) continue;
+			const struct pg_object *object = pg_synthesis_allocation_object(synthesis, input->job);
+			if (!object) continue;
+			if (input->job->syntax->kind != PG_SYNTAX_QUALIFIED && input->key != object) continue;
+			if (visit(owner, input->job)) return -1;
 		}
 	return 0;
 }
@@ -726,25 +734,14 @@ static struct pg_synthesis_job *request_role(struct pg_synthesis *synthesis,
 {
 	if (!scope || scope->owner != synthesis->owner_key || !syntax) return NULL;
 	struct pg_synthesis_job *job = request_job(synthesis, role, scope, syntax);
-	if (job && !job->syntax && role == EXPRESSION_JOB) {
-		switch (syntax->kind) {
-		case PG_SYNTAX_QUALIFIED: case PG_SYNTAX_ELIMINATION: case PG_SYNTAX_DECLARATION:
-		{
-			/* A member use needs its lexical binder. Nominal/Match erasure may
-			 * retain only a layout, so those origins still cross binder scopes. */
-			const struct pg_source_scope *root = scope;
-			while (root->parent) {
-				if (syntax->kind == PG_SYNTAX_QUALIFIED && root->binder) break;
-				if (!root->binder && !root->definitions &&
-					!(root->effect_owner && root->effect_owner->scope == root)) break;
-				root = root->parent;
-			}
-			const void *key = syntax->kind == PG_SYNTAX_QUALIFIED && root->binder ? (const void *)root->binder : root;
-			if (register_source_reference(synthesis, key, job, NULL)) return NULL;
-			break;
+	if (job && !job->syntax && role == EXPRESSION_JOB && syntax->kind == PG_SYNTAX_QUALIFIED) {
+		const struct pg_source_scope *root = scope;
+		while (root->parent && !root->binder) {
+			if (!root->definitions && !(root->effect_owner && root->effect_owner->scope == root)) break;
+			root = root->parent;
 		}
-		default: break;
-		}
+		const void *key = root->binder ? (const void *)root->binder : root;
+		if (register_source_reference(synthesis, key, job, NULL)) return NULL;
 	}
 	if (job) { job->scope = scope; job->syntax = syntax; }
 	return job;
@@ -951,7 +948,9 @@ struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
 	return request_role(synthesis, scope, syntax, EXPRESSION_JOB);
 }
 
-static struct pg_synthesis_job *attach_nominal(struct pg_synthesis_job *job,
+static int register_source_allocation(struct pg_synthesis *synthesis, struct pg_synthesis_job *job);
+
+static struct pg_synthesis_job *attach_nominal(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
 	const struct pg_data_declaration *allocation)
 {
 	if (!job || !allocation) return job;
@@ -959,7 +958,7 @@ static struct pg_synthesis_job *attach_nominal(struct pg_synthesis_job *job,
 	if (job->left || job->domain)
 		return job->schema && pg_data_schema_declaration(job->schema) == allocation ? job : NULL;
 	job->nominal_input = allocation;
-	return job;
+	return register_source_allocation(synthesis, job) ? NULL : job;
 }
 
 struct pg_synthesis_job *pg_synthesis_declaration_at(struct pg_synthesis *synthesis,
@@ -967,7 +966,7 @@ struct pg_synthesis_job *pg_synthesis_declaration_at(struct pg_synthesis *synthe
 	const struct pg_data_declaration *allocation)
 {
 	if (!syntax || syntax->kind != PG_SYNTAX_DECLARATION) return NULL;
-	return attach_nominal(pg_synthesis_request(synthesis, scope, syntax), allocation);
+	return attach_nominal(synthesis, pg_synthesis_request(synthesis, scope, syntax), allocation);
 }
 
 int pg_synthesis_member_allocation(const struct pg_synthesis *synthesis,
@@ -1004,6 +1003,20 @@ const struct pg_object *pg_synthesis_allocation_object(const struct pg_synthesis
 	return declaration ? pg_data_declaration_family(declaration) : NULL;
 }
 
+/* Address discovery does not wait for imported evidence to be accepted.
+ * Erased computations can retain only a declaration's matcher, not its type. */
+static int register_source_allocation(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	if (job->role != EXPRESSION_JOB) return 0;
+	if (job->syntax->kind != PG_SYNTAX_DECLARATION && job->syntax->kind != PG_SYNTAX_ELIMINATION) return 0;
+	const struct pg_object *object = pg_synthesis_allocation_object(synthesis, job);
+	if (!object) return 0;
+	if (register_source_reference(synthesis, object, job, NULL)) return -1;
+	const struct pg_data_declaration *declaration = pg_data_declaration_view(object);
+	return declaration ? register_source_reference(synthesis,
+		pg_data_matcher(pg_data_declaration_layout(declaration)), job, NULL) : 0;
+}
+
 struct pg_synthesis_job *pg_synthesis_restore_elimination(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
 	const struct pg_match_allocation *allocation)
@@ -1036,7 +1049,7 @@ struct pg_synthesis_job *pg_synthesis_restore_elimination(struct pg_synthesis *s
 	}
 	saved->induction.clauses = clauses;
 	job->match_allocation = saved;
-	return job;
+	return register_source_allocation(synthesis, job) ? NULL : job;
 }
 
 struct pg_synthesis_job *pg_synthesis_telescope(struct pg_synthesis *synthesis,
@@ -1811,7 +1824,7 @@ struct pg_synthesis_job *pg_synthesis_data_schema_at(struct pg_synthesis *synthe
 	const struct pg_data_declaration *allocation)
 {
 	if (!declaration || declaration->kind != PG_SYNTAX_DECLARATION) return NULL;
-	return attach_nominal(request_role(synthesis, parameters, declaration, DATA_SCHEMA_JOB), allocation);
+	return attach_nominal(synthesis, request_role(synthesis, parameters, declaration, DATA_SCHEMA_JOB), allocation);
 }
 
 const struct pg_data_schema *pg_synthesis_schema_result(const struct pg_synthesis_job *job)
@@ -2299,6 +2312,7 @@ static void finish(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
 		}
 	}
 	job->status = status;
+	if (register_source_allocation(synthesis, job)) job->status = PG_SYNTHESIS_ERROR;
 	wake(synthesis, job, 0);
 }
 

@@ -83,13 +83,12 @@ const struct pg_source_binding *pg_synthesis_source_binding(struct pg_synthesis 
 	const struct pg_source_binding *input);
 int pg_synthesis_visit_source_bindings(const struct pg_synthesis *synthesis,
 	int (*visit)(void *, const struct pg_source_binding *), void *owner);
-/* key is an exact lexical root scope or binder pointer. Member uses stop at the
- * nearest binder or named scope; declaration/Match uses cross transparent
- * binder/definition/handler extensions because erased layouts can omit binders.
- * Visit selected scopes, their parents and reached binders. Syntax/site and
- * exact lexical ancestry checks remain the caller's responsibility.
- * Job callbacks receive candidates, including unprepared producers: the caller
- * checks syntax reachability before reading allocation availability there.
+/* key is a lexical root, binder, declaration family or erased matcher.
+ * Members use their nearest binder/named scope. Declarations and Matches use
+ * their allocated addresses, including unaccepted imported inputs.
+ * Visit selected scopes, their parents and reached objects. Syntax/site and
+ * exact lexical ancestry checks remain the caller's responsibility; an address
+ * alone does not select every source use sharing it.
  * Optional callbacks select source jobs and/or lexical binding addresses.
  * No Solve, acceptance, copied allocation or completion-index update occurs. */
 int pg_synthesis_visit_source_references(const struct pg_synthesis *synthesis, const void *key,

@@ -3085,3 +3085,67 @@ both operations manipulate Contexts. Remaining map-restriction/query loops
 must preserve partial binder allocation before becoming resumable. A3, the
 rest of A4, A5 and parent R2-R5 remain open. This local increment is not pushed
 alone; group it with the next substantive verified refactoring epoch.
+
+### 2026-09-19: Discover nominal allocations by their existing addresses
+
+- [x] Remove declaration/Match registration under the nearest opaque lexical
+  scope. Index their actual family/erased-matcher/induction addresses in the
+  existing source-reference store, including imported allocations before Solve.
+  Exact `(key, producer, binding)` registration is idempotent; it retains no
+  copied result, acceptance flag or second allocation authority.
+- [x] Keep syntax and exact lexical ancestry filtering. Delete the nominal
+  writer's second object-wait phase; skip already collected origins before
+  sorting a reference batch. Qualified members retain their binder boundary.
+  Global diagnostic enumeration still reports each producer once, not once
+  per family/matcher reference.
+- [x] Test direct Match lookup before/after Solve and repeated inert resaves;
+  family and erased-matcher lookup; 128 unused transparent declaration scopes;
+  and 128 unrelated names explicitly borrowing the selected nominal object.
+  The latter must not survive as extra declarations in the selected image.
+  The direct-lookup regression fails against archived `81287c7` (exit 134).
+- [x] Full optimized acceptance/evaluation-image gate exits 0, compatibility
+  63/63. All 2,460 export records, including steps, match the preceding scoped
+  query run. Strict-debug source/image/program checks pass.
+- [x] ASan/UBSan source/image/program gates exit 0 with leak detection and
+  halt-on-error enabled. Logs use the same prefix with `asan-source`,
+  `asan-image` and `asan-program`. Earlier scoped-query core/IADT/synthesis
+  sanitizer coverage is recorded above; this is not a full ASan acceptance run.
+- [ ] Commit and publish this grouped epoch with `81287c7`, then verify remote
+  Main/rewrite revisions. Both fetched tips are `4a60149`, ancestors of HEAD.
+
+Retained IF8/main diagnostic: origin references dispatched 148 -> 139; batches
+25 -> 40; largest temporary batch remains 1,024 bytes. Thus this removes broad
+lexical discovery, not all overhead or every candidate inspection. When many
+distinct source uses borrow one reached address, each remains a candidate for
+the lexical filter; this does not close A3's strict output-bound question.
+
+Freshly compiling IF8 with the two versions produces different record order.
+Both the preceding version's image and the new image resave byte-for-byte
+under the new binary with `--load --steps 0 --retain-reductions` (exit 3 means
+pending; no Solve). The existing two-resave and both-reader-mode gates pass.
+No wire-format change or evidence acceptance during writing was introduced.
+
+Evidence prefix `/tmp/a-program-authority-nominal-frontier-`: `source-final`,
+`image`, `program`, `opt-gate`, `before-test`, `{before,after}-batches` and
+`{before,after}-resave` logs. The first `parameter-origins` manual invocation
+used a nonexistent CLI mode and failed its argument assertion; the supported
+`source_io.sh` write mode executes that test and passes.
+
+Combined delta from published `4a60149`, before documentation:
+
+| File under `src/prototype/pointer/` | Added | Deleted | Net |
+| --- | ---: | ---: | ---: |
+| `evidence.c` | 74 | 39 | +35 |
+| `source_io.c` | 8 | 7 | +1 |
+| `synthesis.c` | 39 | 32 | +7 |
+| `synthesis.h` | 6 | 7 | -1 |
+| `tests/iadt.c` | 20 | 2 | +18 |
+| `tests/source_io.c` | 65 | 0 | +65 |
+
+Implementation/header +127/-85 (net +42); tests +85/-2 (net +83).
+Cumulative implementation/headers: R76 +3,046/-1,489 (net +1,557);
+R0 +7,921/-3,948 (net +3,973). Documentation is counted separately.
+This epoch does not meet the cumulative net-negative gate or complete A3-A5
+and parent R2-R5. Remaining synchronous map restriction must retain its partial
+images rather than restart them, and the original-baseline performance/code
+reduction review is still required.

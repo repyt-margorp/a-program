@@ -827,6 +827,17 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 - [ ] Preserve selected-root reachability without scanning unrelated source
   scopes or collecting all syntax-free aliases. Do not repeat the withdrawn
   broad `collect_origin` experiment.
+  Latest follow-up (2026-09-19): declaration/Match references now use their
+  actual family/matcher/induction addresses, registered idempotently when the
+  allocation becomes available, including unaccepted imported inputs. Remove
+  their opaque-root grouping and redundant writer object-wait phase; keep
+  exact syntax and lexical ancestry checks. An additional 128 pending sibling
+  declarations no longer enlarge the selected lexical candidate set. Another
+  128 unselected names explicitly borrowing the same declaration are excluded
+  from saved origins. Such shared-address uses are still inspected; this is
+  not a strict retained-output bound. Full checks, unchanged image resaves and
+  publication status are recorded in the priority plan. Other A3-A5 gates stay
+  open; no extra semantic owner or allocation cache was introduced.
   Remaining bound: transparent lexical descendants within one selected root
   remain candidates. Do not claim cost strictly proportional to retained output.
   The member-only binder-frontier trial reduced callbacks (132 -> 4), but

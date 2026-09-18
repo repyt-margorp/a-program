@@ -1657,6 +1657,40 @@ static void induction_scope_inputs(struct pg_program *p, const struct pg_evidenc
 	}
 }
 
+struct allocation_lookup {
+	struct pg_synthesis_job *job;
+	size_t count;
+};
+
+static int find_allocation_reference(void *owner, struct pg_synthesis_job *job)
+{
+	struct allocation_lookup *lookup = owner;
+	if (!lookup->job || lookup->job == job) ++lookup->count;
+	return 0;
+}
+
+static void check_allocation_reference(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *job, const struct pg_object *object)
+{
+	struct allocation_lookup lookup = {job, 0};
+	size_t references = synthesis->source_references.count;
+	assert(!pg_synthesis_visit_source_references(synthesis, object, find_allocation_reference, NULL, &lookup));
+	assert(lookup.count == 1 && synthesis->source_references.count == references);
+}
+
+static size_t lexical_allocation_candidates(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *scope)
+{
+	struct allocation_lookup lookup = {0};
+	for (; scope;) {
+		assert(!pg_synthesis_visit_source_references(synthesis, scope, find_allocation_reference, NULL, &lookup));
+		struct pg_source_environment input;
+		assert(!pg_synthesis_environment_input(synthesis, scope, &input));
+		scope = input.parent;
+	}
+	return lookup.count;
+}
+
 static int check_match_origin(void *owner, struct pg_synthesis_job *job)
 {
 	struct match_origin_check *check = owner;
@@ -1668,6 +1702,7 @@ static int check_match_origin(void *owner, struct pg_synthesis_job *job)
 	struct pg_graph storage = {0};
 	const struct pg_match_allocation *allocation = pg_synthesis_match_allocation(job, &storage);
 	assert(allocation);
+	check_allocation_reference(&p->synthesis, job, allocation->induction.self);
 	if (!check->solved) {
 		assert(!pg_synthesis_result(job));
 		assert(pg_synthesis_restore_elimination(&p->synthesis, scope, syntax, allocation) == job);
@@ -2585,6 +2620,36 @@ static void parameter_origins(void)
 	struct pg_synthesis_job *declaration = NULL;
 	assert(!pg_synthesis_visit_source_allocations(&p->synthesis, find_declaration, &declaration));
 	assert(declaration && pg_synthesis_result(declaration));
+	const struct pg_object *family = pg_synthesis_allocation_object(&p->synthesis, declaration);
+	check_allocation_reference(&p->synthesis, declaration, family);
+	check_allocation_reference(&p->synthesis, declaration,
+		pg_data_matcher(pg_data_declaration_layout(pg_data_declaration_view(family))));
+	const struct pg_source_scope *scope;
+	const struct pg_syntax *syntax;
+	assert(!pg_synthesis_source_input(&p->synthesis, declaration, &scope, &syntax));
+	size_t candidates = lexical_allocation_candidates(&p->synthesis, scope);
+	for (size_t i = 0; i < 128; ++i) {
+		const char *unused = "unused:=\\hidden:missing=>@;";
+		struct pg_parser parser;
+		struct pg_definition definition;
+		pg_parser_init(&parser, &p->graph, unused, strlen(unused));
+		assert(pg_parser_next(&parser, &definition) == 1);
+		struct pg_synthesis_job *binding = pg_synthesis_binding(&p->synthesis, scope, definition.expression);
+		struct pg_synthesis_job *unselected = pg_synthesis_request(&p->synthesis,
+			pg_synthesis_binding_scope(binding), syntax);
+		assert(unselected && !pg_synthesis_allocation_object(&p->synthesis, unselected));
+		/* A reached allocation does not select an unrelated named scope,
+		 * even if that scope explicitly borrows the very same declaration. */
+		const struct pg_source_scope *sibling = pg_synthesis_name(&p->synthesis, scope,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "unused", .length = 6},
+			pg_prove_universe(&p->typing, pg_prove_empty_context(&p->typing), i));
+		struct pg_synthesis_job *alias = pg_synthesis_declaration_at(&p->synthesis,
+			sibling, syntax, pg_data_declaration_view(family));
+		assert(alias && !pg_synthesis_result(alias));
+		assert(pg_synthesis_allocation_object(&p->synthesis, alias) == family);
+	}
+	assert(lexical_allocation_candidates(&p->synthesis, scope) == candidates);
+	check_allocation_reference(&p->synthesis, declaration, family);
 	struct pg_synthesis_job *selected[] = {p->root,
 		pg_synthesis_evidence(&p->synthesis, pg_synthesis_result(declaration))};
 	struct pg_synthesis_job *const *roots = selected;
