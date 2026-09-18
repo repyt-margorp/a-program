@@ -36,10 +36,8 @@ struct source_reference_entry {
 static int register_source_reference(struct pg_synthesis *synthesis, const void *key,
 	struct pg_synthesis_job *job, const struct pg_source_binding *binding)
 {
-	for (struct pg_index_entry *p = pg_index_candidates(&synthesis->source_references, (uintptr_t)key); p; p = p->next) {
-		const struct source_reference_entry *entry = (const void *)p;
-		if (entry->key == key && entry->job == job && entry->binding == binding) return 0;
-	}
+	/* The owning request publishes each edge once. Distinct lexical uses of
+	 * one address are not duplicate requests to search through here. */
 	struct source_reference_entry *entry = pg_alloc(synthesis->typing->graph, sizeof(*entry));
 	if (!entry) return -1;
 	entry->key = key; entry->job = job; entry->binding = binding;
@@ -2311,8 +2309,11 @@ static void finish(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
 			pg_synthesis_effect_inference(synthesis, &owner->effects);
 		}
 	}
+	int first_finish = job->status == PG_SYNTHESIS_PENDING;
 	job->status = status;
-	if (register_source_allocation(synthesis, job)) job->status = PG_SYNTHESIS_ERROR;
+	/* Imported allocations were registered when attached, before Solve. */
+	if (first_finish && !job->nominal_input && !job->match_allocation)
+		if (register_source_allocation(synthesis, job)) job->status = PG_SYNTHESIS_ERROR;
 	wake(synthesis, job, 0);
 }
 

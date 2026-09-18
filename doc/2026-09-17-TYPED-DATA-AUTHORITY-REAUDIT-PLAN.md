@@ -838,6 +838,16 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   not a strict retained-output bound. Full checks, unchanged image resaves and
   publication status are recorded in the priority plan. Other A3-A5 gates stay
   open; no extra semantic owner or allocation cache was introduced.
+  Registration follow-up: input owners now publish each reverse-reference edge
+  once. Imported declaration/Match inputs publish at attachment; fresh inputs
+  publish at their first finish. Qualified requests and binding interning
+  already have one-shot construction paths. Delete the per-object duplicate
+  scan rather than add another index or registered-state field. A source-image
+  fixture previously performed 16,589 comparisons for 433 registrations, of
+  which only two were redundant imported-input finish calls. The new path
+  performs 431 registrations and no duplicate scan, preserving identical
+  image bytes. Full gate/publication status is in the priority plan. This
+  removes quadratic insertion work, not the remaining lexical selection bound.
   Remaining bound: transparent lexical descendants within one selected root
   remain candidates. Do not claim cost strictly proportional to retained output.
   The member-only binder-frontier trial reduced callbacks (132 -> 4), but

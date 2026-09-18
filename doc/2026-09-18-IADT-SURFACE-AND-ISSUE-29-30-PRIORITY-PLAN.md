@@ -3233,7 +3233,8 @@ and IH formation still check different obligations and are not merged.
 - [x] Strict `-O0 -g` synthesis/IADT suites.
 - [x] ASan/UBSan synthesis, IADT, program and complete `source_io.sh` suites.
 - [x] ASan/UBSan complete `image_cli.sh` suite; all listed gates exit 0.
-- [ ] Group with the next substantial verified epoch before Main publication.
+- [x] Group with the checked-map/input-registration reuse epoch below rather
+  than publish this helper change alone.
 
 Builds/logs: `/tmp/a-program-authority-ih-map-{opt,debug,asan}` and
 `/tmp/a-program-authority-ih-map-*.log`. Optimized gate command:
@@ -3261,3 +3262,55 @@ Per-file delta: `evidence.c` +1/-2, `synthesis.c` +4/-11 (implementation net -8)
 R76 +3,119/-1,550 (net +1,569), R0 +7,956/-3,971 (net +3,985).
 Documentation is separate. A3's candidate bound, remaining A4 consumers,
 final A5 gates and the cumulative net-negative requirement remain open.
+
+### 2026-09-19: One-shot source reference registration (local)
+
+Baseline: local `1293e50`, after the checked IH scope-map reuse change.
+Source references distinguish lexical uses even when their allocation pointer
+is shared. That distinction remains necessary; allocation reachability alone
+cannot select a lexical origin. However, registration need not search all
+earlier uses of that allocation to rediscover its own request.
+
+`register_source_reference` now inserts directly. Its callers publish once:
+binding/request interning publishes new nodes, imported nominal/Match inputs
+publish on first attachment, and fresh allocations publish on first finish.
+`finish` uses the existing pending/attached state to avoid re-registering
+imported or already finished inputs. No persistent flag, cache or index is added.
+Repeated source requests and attachment still return the existing owner.
+
+- [x] Remove the duplicate scan and imported-input finish registrations.
+- [x] Extend the 128-sibling declaration test with repeated-attachment checks.
+  Existing tests check exactly one reference before and after image restoration.
+- [x] Strict `-O0 -g` synthesis and full `source_io.sh` pass.
+- [x] Optimized full acceptance: 63/63 compatibility and all four sorting
+  proof suites. All 2,460 exported comparison records, including Solve steps,
+  match `1293e50` after temporary-path normalization.
+- [x] ASan/UBSan synthesis, program, full `source_io.sh` and `image_cli.sh`.
+  All gates exit 0; leak detection and halt-on-error are enabled. Flags match
+  the previous checkpoint. This is not the full parent sanitizer gate.
+- [x] Group with `1293e50` as the checked-map/input-registration reuse epoch.
+  Verify publication gates and remote baseline `32940ea` on Main/rewrite;
+  publish both branches atomically without force. Remote Git state records
+  publication, not this pre-push checklist. A3-A5 remain open.
+
+GDB on `source_io_test write` before/after: 433 -> 431 registration calls;
+16,589 duplicate-key comparisons -> deleted loop. The old scan found only two
+duplicates, both allocation re-registration. Role/binding calls stay 18/151;
+allocation calls decrease 264 -> 262. Both processes exit 0 and their source
+images compare byte-for-byte equal. This is a work-count result, not a timing
+or retained-output complexity claim. Logs/builds use
+`/tmp/a-program-authority-reference-{audit,once}*`.
+
+Local code delta: `synthesis.c` +6/-5, `tests/source_io.c` +4/-0. This adds one
+implementation line while deleting the quadratic search; documents are separate.
+The grouped epoch includes the preceding -8 implementation lines. Do not
+equate this small reduction with the parent's cumulative net-negative gate.
+
+Grouped delta from published `32940ea`: `evidence.c` +1/-2, `synthesis.c`
++10/-16, `tests/synthesis.c` +13/-0, `tests/source_io.c` +4/-0.
+Implementation/header net -7; tests +17; documentation is separate.
+Cumulative implementation/header totals remain R76 +3,120/-1,550 (net +1,570),
+R0 +7,954/-3,968 (net +3,986). The original reduction gate is still unsatisfied.
+QuickSort retains exactly the semantic table/work counts measured at `1293e50`;
+see `...-graph-counts.log`. Neither this count result nor the registration
+comparison count establishes a general elapsed-time improvement.

@@ -2647,6 +2647,10 @@ static void parameter_origins(void)
 			sibling, syntax, pg_data_declaration_view(family));
 		assert(alias && !pg_synthesis_result(alias));
 		assert(pg_synthesis_allocation_object(&p->synthesis, alias) == family);
+		size_t references = p->synthesis.source_references.count;
+		assert(pg_synthesis_declaration_at(&p->synthesis, sibling, syntax,
+			pg_data_declaration_view(family)) == alias);
+		assert(p->synthesis.source_references.count == references);
 	}
 	assert(lexical_allocation_candidates(&p->synthesis, scope) == candidates);
 	check_allocation_reference(&p->synthesis, declaration, family);
