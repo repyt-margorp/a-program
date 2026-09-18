@@ -1187,6 +1187,15 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 - [ ] Report concrete deleted paths. Move remaining synchronous query loops to
   existing scheduling only where necessary for the same work contract; do not
   turn this repair into another scheduler framework.
+- [x] 2026-09-19: once an inductive query resolves its nominal formation,
+  resume Context transport from that existing evidence in `work->value`.
+  Remove repeated nominal lookup and structural-subject recovery at each
+  transport step. No new field, index, acceptance rule or wire format. Pending
+  queries still expose no completed instance. Function-field testing reduces
+  successful lookups from 501 to 113 for the same 113 queries (maximum per
+  query 10 -> 1), with identical proof/structure counts and Solve steps.
+  Full O2 acceptance and focused sanitizer checks pass; see the priority plan.
+  This does not resolve A3's lexical candidate bound or complete A4/A5.
 - [x] 2026-09-19: share checked Pi-telescope application between IH formation,
   induction field bodies, original graph hypotheses and callable-parameter eta
   expansion (`pg_prove_call_telescope`). Delete four local traversal bodies;

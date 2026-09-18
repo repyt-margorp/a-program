@@ -1631,7 +1631,9 @@ static int typed_inductive_step(struct pg_typed_query *work)
 	struct typed_inductive *state = work->inductive;
 	if (!state) return -1;
 	const struct pg_occurrence *subject = work->current;
-	const struct pg_evidence *formation = pg_prove_structural_subject(typing, subject);
+	const struct pg_evidence *formation = work->value;
+	if (formation) goto instantiate;
+	formation = pg_prove_structural_subject(typing, subject);
 	if (!formation) return -1;
 	/* Scope traversal belongs to selection work even when there is no
 	 * selected component. Nominal resolution only consumes its scoped head. */
@@ -1684,6 +1686,9 @@ static int typed_inductive_step(struct pg_typed_query *work)
 		goto advanced;
 	}
 	work->current = pg_evidence_subject(formation);
+	/* The nominal declaration is fixed; remaining steps transport its Context. */
+	work->value = formation;
+instantiate:
 	if (!work->environment) {
 		const struct pg_evidence *context = formation->premises[0]->premises[0];
 		work->environment = pg_prove_substitution_projection(typing, context, context);

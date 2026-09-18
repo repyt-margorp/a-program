@@ -1877,8 +1877,10 @@ static void schema_positivity(void)
 		assert(work && !pg_typed_query_advance(work, 0));
 		assert(!pg_typed_query_advance(work, 32) && !pg_inductive_query_result(work));
 		int status = 0;
-		for (size_t calls = 0; !status && calls < 100; ++calls)
+		for (size_t calls = 0; !status && calls < 100; ++calls) {
+			assert(!pg_inductive_query_result(work));
 			status = pg_typed_query_advance(work, 1);
+		}
 		assert(status == 1);
 		struct pg_inductive_instance expected = *pg_inductive_query_result(work);
 		assert(expected.formation == nat && expected.schema == nat_schema);

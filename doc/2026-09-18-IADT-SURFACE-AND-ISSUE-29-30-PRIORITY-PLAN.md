@@ -2645,3 +2645,34 @@ final additions cover host literals and selected computation-block termination.
 Delta from `ba8a628`: `synthesis.c` +73/-78 (net -5), `tests/synthesis.c` +2/-1
 (net +1). Cumulative implementation/headers: R76 +2,837/-1,418 (net +1,419);
 R0 +7,736/-3,901 (net +3,835). The overall reduction gate remains unsatisfied.
+
+### 2026-09-19: Resume nominal Context transport without rediscovery
+
+- [x] Reuse the inductive query's existing value slot after nominal resolution;
+  retain ordinary Context transport, index checks and final publication guard.
+- [x] Assert that each pending step in the 32-scope IADT regression exposes no
+  instance. Existing alternate-proof, foreign-owner and chunk-size tests remain.
+- [x] Debug IADT, full O2 acceptance, ASan/UBSan IADT and source-image script pass.
+- [ ] Publish with a substantial grouped epoch, not as an isolated optimization.
+
+Against `c3889bb`, GDB on `function-graph-function-field.p` records nominal
+lookups 667 -> 279, successful lookups 501 -> 113 across the same 113 queries,
+and maximum successful lookups per query 10 -> 1. Structural-subject calls
+decrease 5,613 -> 5,225. Query transitions remain 969; Solve remains 12,883
+steps. Terms/proofs/occurrences/Contexts/maps/jobs remain respectively
+5,143/9,371/6,717/658/2,657/4,111. No wall-time or memory improvement is claimed.
+
+Logs: `/tmp/a-program-authority-nominal-resumption-{before,after}.log`,
+`...-debug-iadt.log`, `...-opt.log`, `...-asan-{iadt,source}.log`; successful
+lookup counts: `/tmp/a-program-authority-nominal-success-{before,after}.log`.
+Build with the pointer Makefile: debug `-O0 -g`, full `check-acceptance` `-O2`,
+and sanitizers `-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer
+-fno-pie -no-pie`, all with `-std=c11 -Wall -Wextra -Werror`.
+Sanitizers use `ASAN_OPTIONS=detect_leaks=1:halt_on_error=1` and
+`UBSAN_OPTIONS=halt_on_error=1`. All final commands exit 0. All 2,460 normalized
+export-result records, including steps, match the preceding completed O2 run.
+
+Delta: `evidence.c` +6/-1 (net +5), `tests/iadt.c` +3/-1 (net +2).
+A3's transparent-scope candidate scan, remaining A4/A5 work and the cumulative
+net-negative gate remain open. No extra lexical index or scope-by-syntax join
+was added: an erased allocation pointer does not identify its lexical use.
