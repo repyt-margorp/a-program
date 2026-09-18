@@ -1047,6 +1047,23 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 - [ ] Report concrete deleted paths. Move remaining synchronous query loops to
   existing scheduling only where necessary for the same work contract; do not
   turn this repair into another scheduler framework.
+- [x] 2026-09-19: `family_function_step` now advances the existing interned
+  construction-origin query by one step and requeues itself when pending.
+  Remove its call to the synchronous completion wrapper; no new job, cached
+  answer or authority is introduced. `source_telescopes` checks the query's
+  step delta during each one-step Solve call for ordinary and normalized
+  partial-family quotation. It fails before this change (exit 134) and passes
+  afterward. Accepted conclusions and alternate derivations are unchanged.
+  This is a scheduling correction, not evidence of faster normalization.
+
+  Remaining synchronous consumers include `function_graph.c`'s
+  `structural_computation_view`, `computation_view`, `helper_call` and
+  `pg_function_graph_source`. They use the same shared queries, so their
+  existence alone does not establish duplicate traversal or a second authority.
+  Audit their surrounding graph-work budget before changing them; preserve
+  pending/unsupported distinction, helper ownership and checked context maps.
+  Synchronous public kernel wrappers remain valid APIs. This change does not
+  establish a global constant-work bound for every Solve transition.
 - [x] Delete the unused application Context-pair API, getter and associated
   count/prefix branches. Retain address-conflict, nested-scope, inferred-arity
   and malformed-image coverage through the actual address interface.

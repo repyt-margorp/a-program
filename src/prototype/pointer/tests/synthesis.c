@@ -4953,7 +4953,17 @@ static void source_telescopes(struct pg_typing *typing)
 	for (size_t i = 0; i < 2; ++i) {
 		const struct pg_source_scope *named = pg_synthesis_name(&synthesis, root,
 			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "F", .length = 1}, families[i]);
-		quoted[i] = complete(&synthesis, request(&synthesis, named, "f:=&F;"), PG_SYNTHESIS_DONE);
+		struct pg_typed_query *origin = pg_construction_origin_request(typing, families[i]);
+		assert(origin);
+		struct pg_synthesis_job *quotation = request(&synthesis, named, "f:=&F;");
+		while (pg_synthesis_status(quotation) == PG_SYNTHESIS_PENDING) {
+			uint64_t steps = pg_typed_query_steps(origin);
+			assert(synthesis.ready && synthesis.steps < 100000);
+			pg_synthesis_advance(&synthesis, 1);
+			assert(pg_typed_query_steps(origin) <= steps + 1);
+		}
+		quoted[i] = pg_synthesis_result(quotation);
+		assert(pg_synthesis_status(quotation) == PG_SYNTHESIS_DONE);
 		assert(pg_evidence_judgement(quoted[i]) == PG_JUDGEMENT_VALUE);
 	}
 	same_judgement(quoted[0], quoted[1]);

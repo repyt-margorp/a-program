@@ -6849,9 +6849,10 @@ static void family_function_step(struct pg_synthesis *synthesis, struct pg_synth
 	if (canonical != job) { forward_proof(synthesis, job, canonical); return; }
 	if (job->value_job) { forward_proof(synthesis, job, job->value_job); return; }
 	if (!job->left) {
-		const struct pg_evidence *environment = NULL;
-		const struct pg_evidence *construction = pg_prove_construction_origin(synthesis->typing,
-			proof, &environment);
+		struct pg_typed_query *origin = pg_construction_origin_request(synthesis->typing, proof);
+		if (!pg_typed_query_advance(origin, 1)) { enqueue(synthesis, job); return; }
+		const struct pg_evidence *construction = pg_typed_query_result(origin);
+		const struct pg_evidence *environment = pg_construction_origin_environment(origin);
 		const struct pg_occurrence *subject = construction ? pg_evidence_subject(construction) : NULL;
 		if (subject && subject->core->kind == PG_LAMBDA) {
 			const struct pg_evidence *context = pg_evidence_premise(construction, 0);

@@ -1868,3 +1868,26 @@ Per-file implementation: `source_io.c` +5/-10 (net -5); tests: `source_io.c`
 (net +3,707). The parent net-negative gate and remaining A3/A4/A5 work are
 still open. Keep this small verified correction for the next substantial
 source-traversal publication; do not relabel it as completion of R.
+
+### 2026-09-19: Family quotation respects incremental origin work
+
+- [x] Reproduce synchronous origin work escaping the one-step source adapter.
+- [x] Use the existing budgeted query in `family_function_step`, without adding
+  job roles, state fields, proof rules or another cache.
+- [x] Strict debug `synthesis_test`, full optimized `check-acceptance`, and
+  ASan/UBSan `synthesis_test` plus complete `source_io.sh` pass (exit 0).
+- [ ] Publish with the next substantial authority-refactoring milestone.
+
+Baseline: `6a781cc`. `source_telescopes`' new per-step assertion fails on the
+old implementation (exit 134), then passes with the adapter change. Logs:
+`/tmp/a-program-authority-family-query-{before,after,acceptance,asan-synthesis,asan-source}.log`.
+Build flags match the preceding entry. Normalized `export results:` including
+Solve steps are identical to the preceding acceptance run; compatibility is
+63/63 and the universal QuickSort tests pass. No wall-time improvement claimed.
+
+Per-file counts: `synthesis.c` +4/-3 (net +1); `tests/synthesis.c` +11/-1
+(net +10). The two unpublished corrections together reduce implementation by
+four lines, but R76-to-current implementation/header growth remains +1,292.
+A3/A4/A5 and the parent net-negative gate remain open. The parent A4 entry
+identifies remaining synchronous graph consumers without calling shared,
+interned requests duplicate semantic authorities.
