@@ -1017,6 +1017,15 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 
 ### A4. Audit remaining structural consumers and remove duplication
 
+- [x] 2026-09-19: unify source rule selection and preparation readiness in
+  `source_rule`. Notification and structure consumers inspect the same existing
+  producer, with no retained view or new scheduler state. Waiting consumers
+  reuse that rule instead of reading it again. Function-field inspection calls
+  fall 9,385 -> 8,997 with all measured structural counts and Solve steps
+  unchanged. Full O2 acceptance and affected debug/sanitizer gates pass; see the
+  priority plan for logs, the corrected test fixture and publication status.
+  This deletes two independent dispatch paths, not the pending/accepted
+  distinction. A3-A5 and the cumulative reduction gate remain open.
 - [x] Remove `context_binders` and `substitution_state`'s copied scope array
   and length. Constructor binding registration streams the original parameter
   Context through the same address cursor as source scopes and imported arrays.

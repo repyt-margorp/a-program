@@ -2607,3 +2607,41 @@ halt-on-error; flags are unchanged from the preceding publication. Logs/builds
 use `/tmp/a-program-authority-index-mask-{opt,debug,asan}`. No source/test edits
 occurred during these gates. Local delta: `graph.c` +1/-1, `graph.h` +1/-0,
 `tests/core.c` +4/-1. No Main push for this micro-optimization; A3-A5 stay open.
+
+### 2026-09-19: Unify source preparation inspection (local)
+
+`prepared_source_rule` and `source_preparing` independently dispatch on the
+same producer roles and syntax to choose the rule and its readiness. Replace
+them with one read-only projection returning the existing rule and optionally
+its preparation state. No retained descriptor, scheduler state or new authority.
+Preserve the distinction between no rule yet and a ready namespace/non-rule
+producer, post-check independence, and notification timing. Inspecting only
+the rule must not perform additional name lookups.
+
+- [x] Consolidate the dispatch, including application stages and block tails.
+- [x] Extend pending/accepted body-kind checks; retain direct producer
+  subscription, idle queue, effect-cycle and namespace tests.
+- [x] Run debug synthesis, full optimized acceptance and affected sanitizers;
+  compare normalized results/steps and report implementation/test LOC.
+- [ ] Group with a substantial epoch; this does not close A3-A5 or R2-R5.
+
+The same projection now supplies the rule directly to waiting consumers;
+remove their second read after preparation. On the function-field fixture,
+old `source_preparing`/`prepared_source_rule` calls total 8,814 + 571; new
+`source_rule` calls total 8,997. Terms/proofs/occurrences/Contexts/maps/jobs
+remain 5,143/9,371/6,717/658/2,657/4,111, with 12,883 Solve steps. This is a
+read-count reduction, not a measured wall-time speedup. GDB reports:
+`/tmp/a-program-authority-source-rule-{baseline,final}-state.log`.
+
+Final debug synthesis, full O2 acceptance, ASan/UBSan synthesis and source-image
+scripts, 4,240 handler snapshots and 1,118 module snapshots exit 0. O2 retains
+63/63 compatibility; all 2,460 normalized export-result records and steps match
+the index-mask baseline. Logs use `authority-source-rule-single-read-*` under
+`/tmp/a-program-`; sanitizer flags/options are unchanged. A draft test placed a
+definitions block on an assignment RHS, rejected by both the baseline parser
+and this version. Remove that invalid fixture, not its parser rejection; the
+final additions cover host literals and selected computation-block termination.
+
+Delta from `ba8a628`: `synthesis.c` +73/-78 (net -5), `tests/synthesis.c` +2/-1
+(net +1). Cumulative implementation/headers: R76 +2,837/-1,418 (net +1,419);
+R0 +7,736/-3,901 (net +3,835). The overall reduction gate remains unsatisfied.

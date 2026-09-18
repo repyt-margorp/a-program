@@ -150,7 +150,8 @@ static void accepted_structures(struct pg_typing *typing)
 static void source_body_kinds(struct pg_typing *typing)
 {
 	const char *sources[] = {"v := @;", "v := \\x : @ => x;",
-		"v := &(\\x : @ => x);", "v := { x := @; x; };"};
+		"v := &(\\x : @ => x);", "v := { x := @; x; };",
+		"v := #1;", "v := #\"body\";", "v := { x := @; missing; }.x;"};
 	struct pg_whnf_work work;
 	struct pg_synthesis synthesis;
 	assert(!pg_whnf_work_init(&work, typing->graph));
