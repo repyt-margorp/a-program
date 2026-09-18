@@ -2065,7 +2065,7 @@ and `rewrite/pointer-core-hott` both verified at that revision. Documentation
 through that implementation commit is +422/-1, separate from source/test counts
 above. This follow-up only records publication and checks the grouped entries.
 
-### 2026-09-19: Lexically bounded source-origin discovery (local)
+### 2026-09-19: Lexically bounded source-origin discovery
 
 - [x] Replace global syntax-keyed allocation lookup with existing lexical-root
   keys; retain exact syntax, binder and scope reachability checks.
@@ -2075,7 +2075,7 @@ above. This follow-up only records publication and checks the grouped entries.
   two byte-identical inert retained QuickSort resaves without Solve.
 - [x] Strict debug source checks; full optimized `check-acceptance`;
   source/image ASan/UBSan checks (all exit 0).
-- [ ] Group publication with the next substantial refactor epoch.
+- [x] Group publication with the source-transport/query-resumption epoch below.
 
 The parent A3 entry records rejected draft behavior, exact work/space counts
 and remaining bounds. No semantic, source syntax or image-format change.
@@ -2099,7 +2099,7 @@ separate at publication. Cumulative implementation/header net is +1,427 from
 R76 (`3a3bf550`) and +3,843 from R0 (`4657cc6`): the reduction gate is not met.
 Remaining A3/A4/A5 work is not closed by this local correction.
 
-### 2026-09-19: Match export as an ordered origin subset (local)
+### 2026-09-19: Match export as an ordered origin subset
 
 - [x] Delete the separate writer Match DAG and second allocation projection.
   Keep its first projection in a temporary ordered list; wire IDs follow the
@@ -2110,7 +2110,7 @@ Remaining A3/A4/A5 work is not closed by this local correction.
 - [x] Final strict-debug source script, full optimized `check-acceptance`,
   ASan/UBSan source and image scripts: all exit 0. Flags match the preceding
   entry. Logs: `/tmp/a-program-authority-match-origin-stream-final-*`.
-- [ ] Publish with a substantial refactoring epoch, not this small deletion.
+- [x] Publish with the source-transport/query-resumption epoch below.
 
 IF8 retained QuickSort bytes match `5a853e0` exactly. Match-allocation queries
 fall 14 -> 7; selected arena usage falls 896 bytes plus removal of a 512-byte
@@ -2135,7 +2135,7 @@ requirements are still open; neither local commit completes R.
 - [x] Strict debug Core; full optimized acceptance; ASan/UBSan Core and complete
   source-image runner: exit 0. Compatibility 63/63 and all four universal sort
   proof suites pass. Normalized exported results and steps match `fa13cb7`.
-- [ ] Publish with the next substantial epoch; this is not final A3-A5 acceptance.
+- [x] Publish with the grouped epoch below; this is not final A3-A5 acceptance.
 
 Commands use `make -f src/prototype/pointer/Makefile -j2`, with debug build
 `/tmp/a-program-authority-context-extend` and flags
@@ -2172,7 +2172,7 @@ from R76 and +3,849 from R0. No code-reduction gate is claimed complete.
   pre-refactor writer (lambda, family, append, index-alias, function-field,
   nominal, nullary, application, constructor, match, fold).
 - [x] ASan/UBSan source, normalization and complete image CLI checks: exit 0.
-- [ ] Group publication with a substantial epoch. The lexical candidate bound
+- [x] Group publication with the epoch below. The lexical candidate bound
   and A3-A5 remain open.
 
 Existing permanent tests cover the changed cases: `normalization_requests`
@@ -2213,7 +2213,7 @@ refactoring gates. No implementation or test files changed during verification.
   do not add a result cache, semantic descriptor, proof authority or wire tag.
 - [x] Debug program runner; optimized full `check-acceptance`; sanitizer program
   runner: all exit 0. Compatibility 63/63 and all four sorting proofs pass.
-- [ ] Publish with a substantial epoch; A3/A4/A5 and the reduction gate remain
+- [x] Publish with the epoch below; A3/A4/A5 and the reduction gate remain
   open. This is not a speedup or a constant-cost guarantee for every graph step.
 
 Commands use the existing pointer Makefile with `-j2`: debug build
@@ -2270,7 +2270,7 @@ rule, structural equality policy or image format changes.
   runtime-error diagnostics. Syntax inventory independently matches 158 entries.
 - [x] Normalized exported results, including steps, agree with `fcd9d25`'s
   optimized run. Cancellation coverage changes tests only.
-- [ ] Commit, atomically publish to Main/rewrite, and verify remote revisions.
+- [x] Commit, atomically publish to Main/rewrite, and verify remote revisions.
 
 Commands: `make -f src/prototype/pointer/Makefile -j2 check-acceptance`, with
 `BUILD=/tmp/a-program-authority-helper-origin` and strict C11/O0/g;
@@ -2300,3 +2300,11 @@ Documentation is separate. Overall cleanup is not complete: A3's transparent
 descendant candidate bound, A4's remaining consumer audit, final performance
 regressions and the net-negative requirement remain open. The preceding timing
 checkpoint still describes this implementation; this is not a speedup claim.
+
+Published atomically without force from `a0cbc2e` to
+`f8e71f1311203ea0e772de1dfa0d5a10558c187b`; both remote Main and
+`rewrite/pointer-core-hott` were checked at that revision. This supersedes
+the preceding local-only checkpoint descriptions for the grouped commits.
+Documentation at that publication: authority plan +153/-9; priority plan
++240/-0. Overall epoch +817/-214, net +603, including documentation and tests.
+These counts exclude this documentation-only publication follow-up.
