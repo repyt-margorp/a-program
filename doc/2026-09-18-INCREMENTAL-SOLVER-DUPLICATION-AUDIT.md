@@ -210,7 +210,7 @@ change was needed. These are fixture measurements, not a general speed claim.
 - [x] Unify registration and remove the superseded origin path.
 - [x] Debug synthesis/source-image suites and bidirectional image compatibility.
 - [x] Full optimized acceptance and affected ASan/UBSan tests.
-- [ ] Verify publication to both remote tips.
+- [x] Verify publication to both remote tips (`54b12df`).
 
 Final strict `-O2 check-acceptance` exited 0 (63/63 compatibility). Its export
 results match the previous epoch after normalizing temporary paths/step counts

@@ -1645,7 +1645,12 @@ documentation +61/-0. This publication record changes documentation only.
   compatibility with the preceding image writer/reader.
 - [x] Full optimized acceptance (63/63 compatibility), ASan/UBSan synthesis,
   source images, nested handlers and handler save boundaries.
-- [ ] Publish and verify both remote tips.
+- [x] Publish and verify both remote tips (`54b12df`).
 
 See the [binding-origin audit](2026-09-18-INCREMENTAL-SOLVER-DUPLICATION-AUDIT.md#one-lexical-binding-origin-after-abeedc6).
 Implementation/header net -13, tests +23. Global origin traversal remains open.
+
+Published as `54b12df71c66e7dc5214e2e02900871b33bd8950`, atomically
+fast-forwarding Main and `rewrite/pointer-core-hott` from `abeedc6`; both
+remote tips verified. Commit totals: implementation/header +16/-29,
+tests +23/-0, documentation +84/-0. This publication record is documentation only.
