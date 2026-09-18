@@ -2551,6 +2551,6 @@ five-change publication group, not the remaining parent refactor obligations.
 Published atomically without force from `4b4fba7` to
 `a093e54d1ca8d32d7d8e80509ab820e818cc1ec3`; `git ls-remote` confirmed both
 Main and `rewrite/pointer-core-hott` at that revision. Documentation at
-publication: authority plan +44/-0; priority plan +243/-4. Implementation and
+publication: authority plan +44/-0; priority plan +239/-0. Implementation and
 test totals are unchanged from the table above. This publication-record update
 only checks the grouped entries and records the verified remote revisions.
