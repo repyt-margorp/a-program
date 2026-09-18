@@ -375,6 +375,38 @@ static void graded_function_graph(struct pg_program *p, const struct pg_evidence
 	const struct pg_evidence *scope = pg_evidence_premise(pg_evidence_premise(function, 0), 0);
 	const struct pg_evidence *value = pg_prove_return_value(&p->typing, pg_evidence_premise(function, 1));
 	assert(value);
+	/* Head exposure must not complete an entire typed beta query in one turn.
+	 * Cancel at each boundary; its shared query remains resumable independently. */
+	for (size_t limit = 0;; ++limit) {
+		assert(limit < 1000);
+		const struct pg_evidence *inner = pg_prove_context_extension(&p->typing, scope,
+			pg_binder(&p->graph), pg_prove_classifier(&p->typing, scope, value));
+		const struct pg_evidence *callee = pg_prove_projection(&p->typing, inner, function);
+		const struct pg_evidence *input = pg_prove_variable(&p->typing, inner, pg_evidence_context(inner)->binder);
+		const struct pg_evidence *call = pg_prove_application(&p->typing, callee, input);
+		const struct pg_evidence *lambda = pg_prove_abstract(&p->typing, scope, inner, call);
+		struct pg_function_graph_work work;
+		assert(lambda && !pg_function_graph_init(&work, &p->typing, &p->evaluation, lambda));
+		struct pg_typed_query *body = pg_application_body_request(&p->typing, callee, input);
+		uint64_t steps = pg_typed_query_steps(body);
+		assert(body && !steps);
+		enum pg_function_graph_status status = PG_FUNCTION_GRAPH_PENDING;
+		for (size_t turns = 0; turns < limit && status == PG_FUNCTION_GRAPH_PENDING; ++turns) {
+			status = pg_function_graph_advance(&work, 1);
+			assert(pg_typed_query_steps(body) - steps <= 1);
+			steps = pg_typed_query_steps(body);
+		}
+		pg_function_graph_destroy(&work);
+		assert(!work.state);
+		while (!pg_typed_query_advance(body, chunk)) assert(pg_typed_query_steps(body) < 100000);
+		assert(pg_typed_query_result(body));
+		assert(pg_evidence_subject(pg_typed_query_result(body))->core ==
+			pg_evidence_subject(pg_prove_return(&p->typing, input))->core);
+		if (status != PG_FUNCTION_GRAPH_PENDING) {
+			assert(status == PG_FUNCTION_GRAPH_DONE && steps);
+			break;
+		}
+	}
 	/* Helper inspection must yield while its shared origin query is pending. */
 	const struct pg_evidence *application = pg_prove_application(&p->typing,
 		pg_prove_projection(&p->typing, scope, function), value);

@@ -1187,6 +1187,16 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 - [ ] Report concrete deleted paths. Move remaining synchronous query loops to
   existing scheduling only where necessary for the same work contract; do not
   turn this repair into another scheduler framework.
+- [x] 2026-09-19: `function_graph.c:prepare_head` no longer completes typed
+  beta queries through the synchronous application-body adapter. Its three
+  call sites use the existing shared query and `s->view` resumption slot;
+  input/origin/head queries share the same wait helper. No new job or state
+  field. The cancellation regression fails on the previous implementation
+  (two query transitions in one graph turn) and passes after the change.
+  Other synchronous kernel subchecks, case planning and witness construction
+  are not claimed bounded by this change. Full O2 acceptance and focused
+  sanitizers pass; query work/structure counts remain unchanged in the measured
+  exposed-Match case. Outer scheduling now counts six additional turns there.
 - [x] 2026-09-19: once an inductive query resolves its nominal formation,
   resume Context transport from that existing evidence in `work->value`.
   Remove repeated nominal lookup and structural-subject recovery at each

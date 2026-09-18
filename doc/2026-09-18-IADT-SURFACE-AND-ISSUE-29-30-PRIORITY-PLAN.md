@@ -2676,3 +2676,32 @@ Delta: `evidence.c` +6/-1 (net +5), `tests/iadt.c` +3/-1 (net +2).
 A3's transparent-scope candidate scan, remaining A4/A5 work and the cumulative
 net-negative gate remain open. No extra lexical index or scope-by-syntax join
 was added: an erased allocation pointer does not identify its lexical use.
+
+### 2026-09-19: Yield shared beta work during graph-head preparation
+
+- [x] Replace three synchronous application-body calls in `prepare_head` with
+  the existing typed query and graph worker's `view` slot. Share waiting with
+  its input/origin readers; no new job kind, cache, field or artifact format.
+- [x] Add fresh-scope cancellation at every preparation boundary, assert at
+  most one beta-query transition per graph turn, and resume the same query
+  after destroying the graph worker. Check its actual Return result.
+- [x] Debug program tests, full O2 acceptance, ASan/UBSan program tests and
+  complete source-image script exit 0, using the preceding checkpoint's flags.
+- [ ] Publish with a substantial grouped refactoring epoch; A3-A5 remain open.
+
+The new regression fails on `6114ebc`: cancellation limit 3 observes two query
+transitions in one turn. The fixed version passes for outer chunks 1/64.
+All 2,460 normalized export-result records agree when scheduling counts are
+compared separately: 2,096 are unchanged; 364 increase by 1, 6, 7, 10, 14 or
+19 steps. No records disappear. On `function-graph-exposed-match.p`, GDB shows
+the same 10,882 typed-query transitions and the same Terms/proofs/occurrences/
+Contexts/maps/queries/jobs: 3,464/7,006/4,866/464/1,971/1,166/4,009. Outer Solve
+turns change 11,674 -> 11,680 because previously hidden progress now yields.
+This is a progress-control correction, not a measured speedup or a bound on
+every synchronous kernel suboperation.
+
+Logs: `/tmp/a-program-authority-head-yield-{before,debug}-program.log`,
+`...-before-bound.log`, `...-{before,after}-counts.log`, `...-opt.log`, and
+`...-asan-{program,source}.log`. Implementation: `function_graph.c` +23/-6
+(net +17); tests: `tests/program.c` +32/-0. The cumulative reduction gate is
+still unmet. The source-writer lexical candidate scan is unchanged.

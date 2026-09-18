@@ -188,6 +188,23 @@ static int signature(struct pg_function_graph_state *s)
 	return s->indices ? 0 : -1;
 }
 
+static int await_view(struct pg_function_graph_state *s, struct pg_typed_query *view)
+{
+	if (pg_typed_query_advance(view, 1)) return 0;
+	s->view = view;
+	return 1;
+}
+
+static int application_body(struct pg_function_graph_state *s,
+	const struct pg_evidence *function, const struct pg_evidence *argument,
+	const struct pg_evidence **body)
+{
+	struct pg_typed_query *view = pg_application_body_request(s->typing, function, argument);
+	if (await_view(s, view)) return 1;
+	*body = pg_typed_query_result(view);
+	return 0;
+}
+
 /* Zero is ready, one is pending, minus one has no supported structural view. */
 static int structural_computation_view(struct pg_function_graph_state *s,
 	const struct pg_evidence *proof, enum pg_evidence_rule *rule,
@@ -218,7 +235,7 @@ static int structural_computation_view(struct pg_function_graph_state *s,
 	const struct pg_evidence *children[2] = {NULL, NULL};
 	for (size_t i = 0; i < count; ++i) {
 		struct pg_typed_query *input = pg_typed_input_request(s->typing, proof, i);
-		if (!pg_typed_query_advance(input, 1)) { s->view = input; return 1; }
+		if (await_view(s, input)) return 1;
 		children[i] = pg_typed_query_result(input);
 		if (!children[i]) return -1;
 		const struct pg_occurrence *child = pg_evidence_subject(children[i]);
@@ -234,7 +251,7 @@ static int construction_origin(struct pg_function_graph_state *s,
 	const struct pg_evidence **proof, const struct pg_evidence **environment)
 {
 	struct pg_typed_query *origin = pg_construction_origin_request(s->typing, *proof);
-	if (!pg_typed_query_advance(origin, 1)) { s->view = origin; return 1; }
+	if (await_view(s, origin)) return 1;
 	*environment = pg_construction_origin_environment(origin);
 	*proof = pg_typed_query_result(origin);
 	return *proof ? 0 : -1;
@@ -1186,7 +1203,7 @@ static int prepare_head(struct pg_function_graph_state *s)
 	const struct pg_evidence *left, *right, *body = NULL;
 	enum pg_evidence_rule rule;
 	if (s->head_arguments) {
-		body = pg_prove_application_body(s->typing, s->body, s->head_arguments->argument);
+		if (application_body(s, s->body, s->head_arguments->argument, &body)) return 1;
 		if (body) {
 			s->head_arguments = s->head_arguments->next;
 			s->body = body;
@@ -1201,7 +1218,7 @@ static int prepare_head(struct pg_function_graph_state *s)
 		s->body = left;
 		return 0;
 	case PG_APP_ELIM:
-		body = pg_prove_application_body(s->typing, left, right);
+		if (application_body(s, left, right, &body)) return 1;
 		if (!body) {
 			struct graph_continuation *argument = pg_alloc(&s->temporary, sizeof(*argument));
 			if (!argument) { s->status = PG_FUNCTION_GRAPH_ERROR; return 1; }
@@ -1211,7 +1228,7 @@ static int prepare_head(struct pg_function_graph_state *s)
 		}
 		break;
 	case PG_FOLD_ELIM:
-		body = pg_prove_application_body(s->typing, right, pg_prove_return_value(s->typing, left));
+		if (application_body(s, right, pg_prove_return_value(s->typing, left), &body)) return 1;
 		break;
 	case PG_FORCE_ELIM:
 		view = computation_view(s, left, &rule, &left, &right);
@@ -1265,7 +1282,7 @@ enum pg_function_graph_status pg_function_graph_advance(struct pg_function_graph
 	while (s->status == PG_FUNCTION_GRAPH_PENDING && budget--) {
 		/* Resume shared work before rediscovering the enclosing call/view. */
 		if (s->view) {
-			if (!pg_typed_query_advance(s->view, 1)) continue;
+			if (await_view(s, s->view)) continue;
 			s->view = NULL;
 		}
 		if (!s->ready) {
