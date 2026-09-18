@@ -1681,7 +1681,7 @@ documentation +70/-0. This publication record changes documentation only.
 - [x] Replace tautological reader/operand assertions with registry/typed-Lambda
   agreement throughout the source-image boundary test. Keep semantic checks.
 - [x] Run affected debug and sanitizer tests and full optimized acceptance.
-- [ ] Publish this completed epoch and verify both remote tips.
+- [x] Publish this completed epoch and verify both remote tips (`59b38e9`).
 
 No source-image format, proof rule, handler semantics or source syntax changes.
 The broader pending-construction and output-sensitive export audit remains open.
@@ -1700,3 +1700,8 @@ Per-file changes: `synthesis.c` +0/-10; `synthesis.h` +2/-0;
 Cumulative implementation/header delta is +2,264/-1,025 (net +1,239) from
 R76 `3a3bf550`, and +7,222/-3,567 (net +3,655) from R0 `4657cc6`.
 The overall source-reduction gate remains unmet.
+
+Published as `59b38e9cc950202d4d8d47cbb7009b6b0759b514`, atomically
+fast-forwarding Main and `rewrite/pointer-core-hott` from `ee54b8c`; both
+remote tips verified. Commit totals: implementation/header +2/-10, tests
++21/-8, documentation +47/-9. This publication record is documentation only.
