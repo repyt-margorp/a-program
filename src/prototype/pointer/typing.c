@@ -417,24 +417,25 @@ const struct pg_context_map *pg_context_map_projection(struct pg_typing *typing,
 	return pg_index_insert(&typing->context_projections, &entry->index, hash) ? NULL : map;
 }
 
-static const struct pg_context_map *context_map_lift_at(struct pg_typing *typing,
+/* Extend the same structural map for pairing and lifting. Only a changed
+ * destination projects the prefix; this does not certify any image. */
+static const struct pg_context_map *context_map_extend(struct pg_typing *typing,
 	const struct pg_context_map *map, const struct pg_context *extension,
-	const struct pg_object *binder, const struct pg_term *type, const struct pg_context *indices)
+	const struct pg_occurrence *image)
 {
+	if (!map || !extension || extension->parent != map->source || !image) return NULL;
 	if (map->count >= SIZE_MAX / sizeof(const struct pg_occurrence *)) return NULL;
-	const struct pg_context *destination = pg_context_intern(typing, &(struct pg_context){
-		.parent = map->destination, .binder = binder, .declared_type = type,
-		.judgement = extension->judgement, .indices = indices});
-	if (!destination) return NULL;
-	const struct pg_context_map *projection = pg_context_map_projection(typing, map->destination, destination);
-	if (!projection) return NULL;
+	const struct pg_context_map *projection = NULL;
+	if (map->destination != image->context) {
+		projection = pg_context_map_projection(typing, map->destination, image->context);
+		if (!projection) return NULL;
+	}
 	const struct pg_occurrence **images = malloc((map->count + 1) * sizeof(*images));
 	if (!images) return NULL;
 	for (size_t i = 0; i < map->count; ++i)
-		images[i] = pg_occurrence_projection(typing, projection, map->images[i]);
-	images[map->count] = pg_occurrence(typing, extension->judgement, destination,
-		pg_reference(typing->graph, binder), type, NULL, 0, NULL);
-	const struct pg_context_map *result = pg_context_map(typing, extension, destination, map->count + 1, images);
+		images[i] = projection ? pg_occurrence_projection(typing, projection, map->images[i]) : map->images[i];
+	images[map->count] = image;
+	const struct pg_context_map *result = pg_context_map(typing, extension, image->context, map->count + 1, images);
 	free(images);
 	return result;
 }
@@ -521,7 +522,13 @@ static enum pg_substitution_status context_lift_step(struct pg_context_lift *wor
 	const struct pg_term *type = pg_substitution_result(work->substitution);
 	const struct pg_context *indices = work->count ? work->indices_map->destination : NULL;
 	if (indices) type = pg_context_signature(typing->graph, work->map->destination, indices, type);
-	work->result = context_map_lift_at(typing, work->map, work->extension, work->binder, type, indices);
+	const struct pg_context *destination = pg_context_intern(typing, &(struct pg_context){
+		.parent = work->map->destination, .binder = work->binder, .declared_type = type,
+		.judgement = work->extension->judgement, .indices = indices});
+	if (!destination) return PG_SUBSTITUTION_ERROR;
+	const struct pg_occurrence *image = pg_occurrence(typing, work->extension->judgement, destination,
+		pg_reference(typing->graph, work->binder), type, NULL, 0, NULL);
+	work->result = context_map_extend(typing, work->map, work->extension, image);
 	return work->result ? PG_SUBSTITUTION_DONE : PG_SUBSTITUTION_ERROR;
 }
 
@@ -671,15 +678,8 @@ struct pg_occurrence_action *pg_occurrence_instantiate_request(struct pg_typing 
 	if (body->context->parent != argument->context) return NULL;
 	const struct pg_context_map *prefix = pg_context_map_projection(typing,
 		argument->context, argument->context);
-	if (!prefix || prefix->count >= SIZE_MAX / sizeof(const struct pg_occurrence *)) return NULL;
-	const struct pg_occurrence **images = malloc((prefix->count + 1) * sizeof(*images));
-	if (!images) return NULL;
-	memcpy(images, prefix->images, prefix->count * sizeof(*images));
-	images[prefix->count] = argument;
-	const struct pg_context_map *map = pg_context_map(typing, body->context,
-		argument->context, prefix->count + 1, images);
-	free(images);
-	return pg_occurrence_action_request(typing, map, body);
+	return pg_occurrence_action_request(typing,
+		context_map_extend(typing, prefix, body->context, argument), body);
 }
 
 static enum pg_substitution_status occurrence_action_step(struct pg_occurrence_action *work)

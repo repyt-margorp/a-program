@@ -1795,6 +1795,16 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(body_map->destination->parent == mapped_lambda->context);
 	assert(body_map->destination->judgement == PG_JUDGEMENT_VALUE);
 	assert(body_map->destination->declared_type == pg_reference(graph, b));
+	/* Lifting is the projected prefix followed by the fresh variable image. */
+	const struct pg_context_map *body_projection = pg_context_map_projection(&typing,
+		function_map->destination, body_map->destination);
+	const struct pg_occurrence **lift_occurrences = pg_alloc(graph, body_map->count * sizeof(*lift_occurrences));
+	assert(lift_occurrences && body_map->count == function_map->count + 1);
+	for (size_t i = 0; i < function_map->count; ++i)
+		lift_occurrences[i] = pg_occurrence_projection(&typing, body_projection, function_map->images[i]);
+	lift_occurrences[function_map->count] = pg_occurrence(&typing, PG_JUDGEMENT_VALUE, body_map->destination,
+		pg_reference(graph, body_map->destination->binder), body_map->destination->declared_type, NULL, 0, NULL);
+	assert(pg_context_map(&typing, body_map->source, body_map->destination, body_map->count, lift_occurrences) == body_map);
 	struct pg_occurrence_action *body_action = pg_occurrence_action_request(&typing, body_map, pg_evidence_subject(returned));
 	while (pg_occurrence_action_advance(body_action, 1) == PG_SUBSTITUTION_PENDING) {}
 	const struct pg_occurrence *mapped_body = pg_occurrence_action_result(body_action);
@@ -1870,6 +1880,17 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(instantiation && pg_occurrence_action_advance(instantiation, 0) == PG_SUBSTITUTION_PENDING);
 	while (pg_occurrence_action_advance(instantiation, 1) == PG_SUBSTITUTION_PENDING) {}
 	assert(pg_occurrence_action_result(instantiation));
+	assert(typing.proofs.count == input_proofs);
+	/* Instantiation extends the identity prefix, with no extra projection. */
+	const struct pg_context_map *identity_prefix = pg_context_map_projection(&typing,
+		typed_codomain->context->parent, typed_codomain->context->parent);
+	const struct pg_occurrence **pair_images = pg_alloc(graph, (identity_prefix->count + 1) * sizeof(*pair_images));
+	assert(pair_images);
+	for (size_t i = 0; i < identity_prefix->count; ++i) pair_images[i] = identity_prefix->images[i];
+	pair_images[identity_prefix->count] = pg_evidence_subject(destination_y);
+	const struct pg_context_map *pair_map = pg_context_map(&typing, typed_codomain->context,
+		identity_prefix->destination, identity_prefix->count + 1, pair_images);
+	assert(pair_map && pg_occurrence_action_request(&typing, pair_map, typed_codomain) == instantiation);
 	assert(typing.proofs.count == input_proofs);
 	assert(!pg_occurrence_instantiate_request(&typing, typed_codomain, pg_evidence_subject(source_x)));
 	const struct pg_evidence *applied_codomain = pg_prove_pi_codomain(&typing, mapped_pi, destination_y);

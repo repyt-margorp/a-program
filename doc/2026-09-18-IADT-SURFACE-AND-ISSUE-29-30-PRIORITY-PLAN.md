@@ -517,6 +517,10 @@ specific failing requirement proves a narrowly scoped prerequisite necessary.
 
 ### Publication policy (user decision, 2026-09-18)
 
+Reconfirmed on 2026-09-19: Surface, #29/#30 improvements, and substantial
+refactoring epochs are separate Main publication milestones. Local commits
+are not publication gates; incomplete or failing work stays unpublished.
+
 Publish coherent milestones rather than wait for the whole refactor:
 
 1. IADT surface: after I1-I4 and their regression gates pass, update the README,
@@ -2122,3 +2126,36 @@ Per-file diff from `5a853e0`: `source_io.c` +33/-27 (net +6),
 Cumulative implementation/header changes: R76 +2,584/-1,151 (net +1,433),
 R0 +7,529/-3,680 (net +3,849). The net-negative gate and remaining A3/A4/A5
 requirements are still open; neither local commit completes R.
+
+### 2026-09-19: Shared structural Context-map extension
+
+- [x] Replace separate lift/instantiation image-array construction with one
+  private structural helper. Preserve image checking and alternative proof DAGs.
+- [x] Add canonical-map/request identity and no-proof-allocation regressions.
+- [x] Strict debug Core; full optimized acceptance; ASan/UBSan Core and complete
+  source-image runner: exit 0. Compatibility 63/63 and all four universal sort
+  proof suites pass. Normalized exported results and steps match `fa13cb7`.
+- [ ] Publish with the next substantial epoch; this is not final A3-A5 acceptance.
+
+Commands use `make -f src/prototype/pointer/Makefile -j2`, with debug build
+`/tmp/a-program-authority-context-extend` and flags
+`-std=c11 -Wall -Wextra -Werror -O0 -g` (target `core_test`), optimized build
+`/tmp/a-program-authority-source-sites-opt` and `-O2` (target `check-acceptance`).
+Sanitizer build `/tmp/a-program-authority-source-sites-asan` uses
+`-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined
+-fno-omit-frame-pointer -fno-pie -no-pie`; run `core_test` and
+`bash src/prototype/pointer/tests/source_io.sh <build>/source_io_test` with
+`ASAN_OPTIONS=detect_leaks=1:halt_on_error=1`, `UBSAN_OPTIONS=halt_on_error=1`.
+Logs: `/tmp/a-program-authority-context-extend-{core,opt,asan-core,asan-source}.log`.
+The initial added test reused a local name and failed compilation; the name
+was corrected and all listed tests rerun against freshly built binaries.
+
+GDB on `function-graph-function-field.p --steps 1000000` records unchanged
+Solve steps (12,809), map interning calls (4,021), projection requests (2,081),
+instantiation requests (156), and all other recorded consumer counts. This
+consolidates code, not computation or elapsed time. Count log:
+`/tmp/a-program-authority-context-extend-counts.log`.
+
+Delta from `fa13cb7`: `typing.c` +22/-22 (net 0), `tests/core.c` +21/-0.
+Documentation is separate. Implementation/header net changes remain +1,433
+from R76 and +3,849 from R0. No code-reduction gate is claimed complete.

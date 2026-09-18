@@ -1166,6 +1166,19 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 - [ ] Report concrete deleted paths. Move remaining synchronous query loops to
   existing scheduling only where necessary for the same work contract; do not
   turn this repair into another scheduler framework.
+- [x] 2026-09-19: share structural Context-map extension between lifting and
+  occurrence instantiation (`typing.c:context_map_extend`). Delete the separate
+  instantiation image-array construction. Destination extension projects the
+  prefix; ordinary pairing retains it. No new tag, cache, proof or authority.
+  Direct tuple construction interns to the same lift map and instantiation
+  request; the regression also checks that structural work creates no proofs.
+  Keep `map_lift_prefix`: imported unchecked descriptors need independent
+  validation, not a producer-history shortcut. Supplied alternative derivations
+  also prevent replacing checked projection with an arbitrary cached proof.
+  Optimized full acceptance and affected sanitizer tests pass (priority-plan
+  record below). The measured function-field fixture retains 12,809 Solve
+  steps and all nine recorded consumer counts; no speedup is claimed.
+  Implementation +22/-22, tests +21/-0. A3-A5 and net-negative gates remain open.
 - [x] 2026-09-19: `family_function_step` now advances the existing interned
   construction-origin query by one step and requeues itself when pending.
   Remove its call to the synchronous completion wrapper; no new job, cached
