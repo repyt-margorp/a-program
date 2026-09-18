@@ -1891,3 +1891,27 @@ four lines, but R76-to-current implementation/header growth remains +1,292.
 A3/A4/A5 and the parent net-negative gate remain open. The parent A4 entry
 identifies remaining synchronous graph consumers without calling shared,
 interned requests duplicate semantic authorities.
+
+### 2026-09-19: Specialization reuse and remaining representation cost
+
+- [x] Verify capture-avoiding function specialization shares the existing typed
+  body and context lift, including 100 repeated requests at chunks 1/64.
+- [x] Strict debug and ASan/UBSan `program_test`, full optimized
+  `check-acceptance`: exit 0. Compatibility remains 63/63; universal QuickSort
+  and image cases pass. Normalized `export results:` including step counts
+  exactly match the preceding family-query acceptance run.
+- [x] Repeat the R0/current source and zero-work-image diagnostic matrix.
+- [ ] Publish with a substantial refactoring epoch, not this test-only audit.
+
+The re-audit plan's A4/A5 entries record the rejected extra specialization API,
+the regression's exact reuse checks, timings and node counts. Implementation
+is unchanged (`555b13d`); `tests/program.c` adds 35 lines. Verification logs:
+`/tmp/a-program-authority-specialized-view-{debug-verified,asan,acceptance}.log`.
+Build flags and sanitizer environment match the preceding entry.
+
+R0/current median QuickSort source time is .859/.326 seconds, but length is
+.0093/.0122 and function-field .0121/.0213. The latter's typed subjects grow
+4524 -> 6717, proofs 7927 -> 9371. These are investigation inputs, not grounds
+for merging differently typed uses or dropping certificates. A3 scope
+enumeration, A4's remaining consumers, full final A5 gates and cumulative
+net-negative implementation/header LOC remain open.

@@ -484,6 +484,41 @@ static void function_graph_aliases(struct pg_program *p,
 	for (size_t i = 0; i < 100; ++i)
 		assert(pg_function_graph_source(typing, projected) == raw);
 	assert(typing->proofs.count == proofs && typing->occurrences.count == subjects);
+	/* Specialization is not projection: replace a captured variable and
+	 * deliberately collide with the Lambda binder in the destination. */
+	const struct pg_object *binder = pg_binder(&p->graph);
+	const struct pg_evidence *domain = pg_prove_pi_domain(typing, pi);
+	const struct pg_evidence *inner = pg_prove_context_extension(typing, scope, binder,
+		pg_prove_projection(typing, scope, domain));
+	const struct pg_evidence *captured = pg_prove_variable(typing, scope, pg_evidence_context(scope)->binder);
+	const struct pg_evidence *constant = pg_prove_abstract(typing, scope, inner,
+		pg_prove_return(typing, pg_prove_projection(typing, inner, captured)));
+	const struct pg_evidence *destination = pg_prove_context_extension(typing, outer, binder, domain);
+	const struct pg_evidence *image = pg_prove_variable(typing, destination, binder);
+	const struct pg_evidence *map = pg_prove_substitution_pair(typing,
+		pg_prove_substitution_projection(typing, outer, destination), scope, image);
+	const struct pg_evidence *mapped = pg_prove_reindex(typing, map, constant);
+	assert(mapped && pg_evidence_subject(mapped)->core->kind == PG_LAMBDA);
+	assert(pg_evidence_subject(mapped)->core->as.lambda.binder != binder);
+	struct pg_typed_query *input = pg_typed_input_request(typing, mapped, 0);
+	while (!pg_typed_query_advance(input, chunk)) assert(pg_typed_query_steps(input) < 100000);
+	const struct pg_evidence *specialized = pg_function_graph_source(typing, mapped);
+	assert(specialized && pg_evidence_subject(specialized)->core == pg_evidence_subject(mapped)->core);
+	assert(pg_evidence_subject(pg_evidence_premise(specialized, 1)) ==
+		pg_evidence_subject(pg_typed_query_result(input)));
+	struct pg_context_lift *lift = pg_context_lift_request(typing, pg_evidence_context_map(map),
+		pg_evidence_context(inner), pg_evidence_subject(mapped)->core->as.lambda.binder);
+	assert(pg_context_lift_result(lift));
+	proofs = typing->proofs.count; subjects = typing->occurrences.count;
+	uint64_t input_steps = pg_typed_query_steps(input), lift_steps = pg_context_lift_steps(lift);
+	size_t maps = typing->context_maps.count, lifts = typing->context_lifts.count;
+	for (size_t i = 0; i < 100; ++i)
+		assert(pg_function_graph_source(typing, mapped) == specialized);
+	assert(typing->proofs.count == proofs && typing->occurrences.count == subjects);
+	assert(typing->context_maps.count == maps && typing->context_lifts.count == lifts);
+	assert(pg_typed_query_steps(input) == input_steps && pg_context_lift_steps(lift) == lift_steps);
+	const struct pg_evidence *applied = pg_prove_application_body(typing, specialized, image);
+	assert(applied && pg_evidence_subject(applied)->core == pg_evidence_subject(pg_prove_return(typing, image))->core);
 	const struct pg_source_scope *names = pg_synthesis_name(&p->synthesis, p->scope,
 		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "original", .length = 8}, raw);
 	names = pg_synthesis_name(&p->synthesis, names,

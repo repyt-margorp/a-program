@@ -1064,6 +1064,18 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   pending/unsupported distinction, helper ownership and checked context maps.
   Synchronous public kernel wrappers remain valid APIs. This change does not
   establish a global constant-work bound for every Solve transition.
+- [x] Audit genuine function specialization separately from projection.
+  `pg_function_graph_source` must substitute captured inputs and lift under
+  the mapped Lambda's capture-avoiding binder. `function_graph_aliases` now
+  deliberately collides the destination binder with that Lambda binder:
+  typed input exposure and graph-source specialization return the same typed
+  body. One hundred repeated lookups add no proofs, occurrences, context maps
+  or lifts, and advance neither the existing input query nor the lift.
+  Applying the specialized function returns the substituted captured value.
+  Both chunk sizes (1/64) pass. Reject the proposed extra Context-evidence
+  accessor/reconstruction path: this case already shares the context action;
+  removing it as "duplicate reindexing" would erase genuine specialization.
+  This audit does not establish bounded first-query work in graph generation.
 - [x] Delete the unused application Context-pair API, getter and associated
   count/prefix branches. Retain address-conflict, nested-scope, inferred-arity
   and malformed-image coverage through the actual address interface.
@@ -1247,6 +1259,59 @@ The metadata version also passes `synthesis_test` and all 12 focused source
 selectors under ASan/UBSan in `/tmp/a-program-authority-metadata-sanitize`.
 
 ### A5. Acceptance and publication
+
+#### 2026-09-19 diagnostic comparison (not final acceptance)
+
+Compare retained R0 `4657cc6` and implementation `555b13d`, strict C11/O0/g,
+five alternating-order fresh processes per input/version. Timings are medians
+in seconds, measured with `perf_counter`; RSS uses per-child `wait4`. Use the
+parent R24/R73 commands/fixtures, plus `function-graph-function-field.p`.
+Each image is saved at zero steps by its own version and loaded in a fresh
+process. Source/load limits are 1,000,000 steps; every measured solve exits 0.
+Raw samples: `/tmp/a-program-authority-specialized-view-matrix.log`.
+
+| Input | Source seconds R0/current | Zero-work image seconds R0/current | Source steps R0/current |
+|---|---|---|---|
+| 01_bool | .001505 / .001248 | n/a | 520 / 444 |
+| 02_nat | .001058 / .001030 | n/a | 307 / 290 |
+| 03_main | .001224 / .001401 | n/a | 520 / 444 |
+| 04_match | .001747 / .001979 | n/a | 1302 / 1173 |
+| 05_bool_to_nat | .001650 / .001936 | n/a | 946 / 852 |
+| 06_pred | .001397 / .001627 | n/a | 811 / 752 |
+| 07_add | .002300 / .002583 | n/a | 1844 / 1697 |
+| 09_list_induction | .003230 / .004035 | n/a | 3536 / 3121 |
+| Vec-append | .014534 / .016437 | .014167 / .017544 | 22765 / 19935 |
+| dependent-Sigma | .003282 / .004029 | .003289 / .004883 | 4048 / 3703 |
+| generated-length | .009311 / .012194 | .008991 / .013635 | 10950 / 9569 |
+| function-field | .012120 / .021305 | .013106 / .022298 | 12906 / 11993 |
+| QuickSort-property | .859307 / .325888 | .847670 / .337093 | 149501 / 126685 |
+
+Image steps in table order: 23074/20240, 4357/4008, 11259/9874,
+13215/12298, 149810/126990. QuickSort RSS ranges are 224968-225716 /
+89572-90732 KiB (source), 225428-226292 / 90324-90940 KiB (image).
+Small-case RSS is dominated by the measurement parent's inherited high-water
+mark (12040-12404 KiB), so it cannot establish equal allocation costs.
+
+Separate GDB counts at `pg_program_destroy`, source inputs above:
+
+| Input | Core terms R0/current | Typed subjects R0/current | Proofs R0/current |
+|---|---|---|---|
+| Vec-append | 6301 / 10618 | 2737 / 2803 | 6505 / 3843 |
+| dependent-Sigma | 614 / 897 | 475 / 657 | 741 / 908 |
+| generated-length | 1829 / 2031 | 2249 / 3574 | 3856 / 4941 |
+| function-field | 4472 / 5143 | 4524 / 6717 | 7927 / 9371 |
+| QuickSort-property | 168628 / 135287 | 435774 / 82230 | 588033 / 93439 |
+
+QuickSort's earlier time/memory regression is absent on this input; that does
+not waive the smaller-case regressions. In this ABI, occurrence headers grew
+32 -> 112 bytes, evidence headers shrank 72 -> 64, and source-job headers
+488 -> 456. These sizes/counts locate representation-cost review, not proof
+that any required typed distinction can be deleted. Next inspect first-time
+typed input/context actions in length and function-field, alongside A3's
+remaining same-syntax scope enumeration. Do not add another specialization
+cache: the preceding A4 regression already demonstrates reuse.
+
+#### Outstanding acceptance gates
 
 - [ ] Run the regression matrix below and the parent's full debug, optimized
   and ASan/UBSan acceptance gates without ignoring failures.
