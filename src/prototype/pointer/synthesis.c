@@ -9149,6 +9149,8 @@ error:
 static int source_has_identity(struct pg_synthesis *synthesis, const struct pg_source_scope *scope)
 {
 	for (; scope; scope = scope->parent) {
+		while (scope->parent && scope->context_job == scope->parent->context_job)
+			scope = scope->parent;
 		const struct pg_evidence *context = source_context(scope);
 		if (!context || pg_evidence_rule(context) != PG_CONTEXT_EXTEND) continue;
 		if (pg_identity_formation(synthesis->typing, pg_evidence_premise(context, 1))) return 1;

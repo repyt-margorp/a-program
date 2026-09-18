@@ -3289,6 +3289,16 @@ static void named_transport(struct pg_typing *typing)
 		pg_prove_variable(typing, context, bindings[2]), pg_prove_variable(typing, context, bindings[4]),
 		pg_prove_variable(typing, context, bindings[5]));
 	assert(domain == pg_evidence_subject(selected_type)->core);
+	/* Names do not add Context extensions. Crossing many shadowing names must
+	 * preserve the outer Identity assumptions and distinct relation witnesses. */
+	const struct pg_evidence *alias = pg_prove_variable(typing, context, bindings[4]);
+	size_t queries = typing->typed_queries.count;
+	for (size_t i = 0; i < 128; ++i) {
+		scope = pg_synthesis_name(&synthesis, scope,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "unused", .length = 6}, alias);
+		assert(scope);
+	}
+	assert(typing->typed_queries.count == queries);
 	complete(&synthesis, request(&synthesis, scope,
 		"main := \\p : instance A B r x y => p :: instance A B s x y;"), PG_SYNTHESIS_REJECTED);
 	complete(&synthesis, request(&synthesis, scope,

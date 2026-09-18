@@ -2869,3 +2869,26 @@ Local delta from `192f4b9`: `function_graph.c` +15/-6; `tests/program.c` +61/-0.
 Cumulative implementation/header deltas are R76 +2892/-1441 (net +1451),
 R0 +7790/-3923 (net +3867). Documentation is separate. The overall reduction
 gate remains unmet; Main is deliberately not advanced for this single helper.
+
+### 2026-09-19: Skip repeated Identity inspection across lexical names (local)
+
+- [x] In `source_has_identity`, skip adjacent scopes with the identical
+  `context_job` pointer before inspecting its Context extension. Lexical scopes
+  remain distinct; no new cache, result authority or serialization rule is added.
+- [x] Extend the named-transport regression with 128 shadowing names. Existing
+  checks still distinguish relation witnesses and reject invalid transport.
+- [x] Strict debug and ASan/UBSan synthesis tests pass, with leak detection and
+  halt-on-error enabled for the sanitizer run.
+- [x] Optimized `check-acceptance check-eval-io` passes. All 2,460 normalized
+  export records, including steps, match the preceding helper-application run.
+- [ ] Include in a substantial tested refactoring epoch; do not push this
+  isolated cleanup to Main. A3/A4/A5 and the overall reduction gate remain open.
+
+For the imported QuickSort-property fixture, GDB records 725 calls before and
+after. Identity checks decrease from 6,910 to 5,943; adjacent repeated Context
+checks decrease from 967 to zero. Solve remains 147,103 steps. No wall-clock
+speedup is claimed. Delta: `synthesis.c` +2/-0, `tests/synthesis.c` +10/-0;
+documentation is separate. This does not address source-origin reachability.
+
+Evidence: `/tmp/a-program-authority-identity-scope-{before,after}.log`,
+`...-synthesis.log`, `...-asan-synthesis.log`, and `...-opt.log`.
