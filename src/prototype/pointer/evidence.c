@@ -600,17 +600,6 @@ static const struct pg_evidence *scope_map_step(struct pg_typing *typing,
 		conclusion_first(typing, PG_JUDGEMENT_CONTEXT, frame->restriction->context), map);
 }
 
-static const struct pg_evidence *scope_image(struct pg_typing *typing,
-	const struct pg_evidence *value, const struct scope_frame *frames)
-{
-	for (; value && frames; frames = frames->next) {
-		if (frames->map) value = pg_prove_reindex(typing, pg_prove_context_map(typing, frames->map), value);
-		else value = rebase_image(typing,
-			conclusion_first(typing, PG_JUDGEMENT_CONTEXT, frames->restriction->context), value);
-	}
-	return value;
-}
-
 static const struct pg_evidence *variable_frame(struct pg_typing *typing,
 	const struct pg_evidence *variable, const struct scope_frame **frames)
 {
@@ -652,7 +641,7 @@ struct typed_query_wait {
 
 enum typed_query_kind { TYPED_BODY, TYPED_INPUT, TYPED_HEAD, TYPED_ELIMINATION, TYPED_ORIGIN, TYPED_CLASSIFIER, TYPED_REBASE, TYPED_INDUCTIVE, TYPED_SELECTION, TYPED_PHASE };
 enum typed_query_resume { TYPED_RESUME_NONE, TYPED_RESUME_BODY, TYPED_RESUME_INPUT, TYPED_RESUME_PHASE,
-	TYPED_RESUME_SELECTION, TYPED_RESUME_SELECTED_INPUT };
+	TYPED_RESUME_SELECTION, TYPED_RESUME_SELECTED_INPUT, TYPED_RESUME_SCOPE_IMAGE };
 
 struct typed_elimination {
 	const struct pg_evidence *branch;
@@ -679,6 +668,9 @@ struct typed_rebase {
 struct typed_inductive {
 	const struct scope_frame *frames;
 	struct inductive_argument *arguments;
+	const struct pg_evidence *instance, *prefix;
+	const struct pg_evidence **values;
+	size_t count, next;
 	struct pg_inductive_instance result;
 };
 
@@ -746,6 +738,30 @@ struct pg_typed_query {
 	int input_resumed;
 	int status;
 };
+
+/* Borrow immutable scope frames; only this query's cursor/value advances.
+ * Restriction is ordinary shared query work, not a nested unbounded solve. */
+static int scope_image_step(struct pg_typed_query *work,
+	const struct pg_evidence **value, const struct scope_frame **frames)
+{
+	if (work->dependency) {
+		*value = pg_typed_query_result(work->dependency);
+		work->dependency = NULL;
+		*frames = (*frames)->next;
+		return *value ? 0 : -1;
+	}
+	if (!*frames) return 1;
+	struct pg_typing *typing = work->typing;
+	const struct scope_frame *frame = *frames;
+	if (frame->map) {
+		*value = pg_prove_reindex(typing, pg_prove_context_map(typing, frame->map), *value);
+		*frames = frame->next;
+		return *value ? 0 : -1;
+	}
+	work->dependency = pg_rebase_request(typing,
+		conclusion_first(typing, PG_JUDGEMENT_CONTEXT, frame->restriction->context), *value);
+	return work->dependency ? 0 : -1;
+}
 
 static int typed_body_match(struct pg_typed_query *work);
 static int typed_input_step(struct pg_typed_query *work);
@@ -1699,32 +1715,37 @@ instantiate:
 		state->frames = state->frames->next;
 		return work->environment ? 0 : -1;
 	}
-	if (pg_evidence_context(work->environment) != work->source->context) return -1;
-	const struct pg_evidence *instance = pg_prove_reindex(typing, work->environment, formation);
-	const struct pg_evidence *indices = NULL;
-	if (state->arguments) {
-		if (!instance || pg_evidence_judgement(instance) != PG_JUDGEMENT_TYPE_FAMILY) return -1;
-		const struct pg_data_schema *schema = formation->certificate;
-		const struct pg_evidence *self = formation->premises[0];
-		const struct pg_evidence *prefix = pg_prove_substitution_pair(typing, work->environment, self, instance);
-		if (!prefix) return -1;
-		size_t count = 0;
-		for (struct inductive_argument *a = state->arguments; a; a = a->next) ++count;
-		if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) return -1;
-		const struct pg_evidence **values = pg_alloc(typing->graph, count * sizeof(*values));
-		if (!values) return -1;
-		size_t i = 0;
-		/* Index arguments cross precisely the wrappers outside their own
-		 * application, not the parameter substitutions inside its callee. */
-		for (struct inductive_argument *a = state->arguments; a; a = a->next) {
-			const struct pg_evidence *value = scope_image(typing, a->value, a->frames);
-			if (!value) return -1;
-			values[i++] = value;
-			instance = pg_prove_family_application(typing, instance, value);
-			if (!instance) return -1;
+	if (!state->instance) {
+		if (pg_evidence_context(work->environment) != work->source->context) return -1;
+		state->instance = pg_prove_reindex(typing, work->environment, formation);
+		if (!state->instance) return -1;
+		if (state->arguments) {
+			if (pg_evidence_judgement(state->instance) != PG_JUDGEMENT_TYPE_FAMILY) return -1;
+			state->prefix = pg_prove_substitution_pair(typing, work->environment, formation->premises[0], state->instance);
+			if (!state->prefix) return -1;
+			for (struct inductive_argument *a = state->arguments; a; a = a->next) ++state->count;
+			if (state->count > SIZE_MAX / sizeof(*state->values)) return -1;
+			state->values = pg_alloc(typing->graph, state->count * sizeof(*state->values));
+			if (!state->values) return -1;
 		}
-		const struct pg_data_signature *signature = pg_data_signature(typing, self, pg_data_schema_indices(schema));
-		indices = pg_data_signature_instance(typing, signature, prefix, count, values);
+	}
+	if (state->arguments) {
+		/* Index arguments cross precisely their own outer wrappers, not
+		 * the parameter substitutions inside the callee. Retain each prefix. */
+		struct inductive_argument *a = state->arguments;
+		int status = scope_image_step(work, &a->value, &a->frames);
+		if (status <= 0) return status;
+		state->values[state->next++] = a->value;
+		state->instance = pg_prove_family_application(typing, state->instance, a->value);
+		if (!state->instance) return -1;
+		state->arguments = a->next;
+		return 0;
+	}
+	const struct pg_evidence *instance = state->instance, *indices = NULL;
+	if (state->count) {
+		const struct pg_data_signature *signature = pg_data_signature(typing, formation->premises[0],
+			pg_data_schema_indices(formation->certificate));
+		indices = pg_data_signature_instance(typing, signature, state->prefix, state->count, state->values);
 		if (!indices || pg_evidence_judgement(instance) != PG_JUDGEMENT_VALUE_TYPE) return -1;
 	}
 	if (!instance || pg_alpha_equal(pg_evidence_subject(instance)->core, work->source->core) != 1) return -1;
@@ -3783,6 +3804,14 @@ static int typed_input_step(struct pg_typed_query *work)
 {
 	struct pg_typing *typing = work->typing;
 	const struct pg_occurrence *source = work->source;
+	if (work->resume == TYPED_RESUME_SCOPE_IMAGE) {
+		struct typed_selection *state = work->selection;
+		int status = scope_image_step(work, &state->body, &state->cursor);
+		if (status <= 0) return status < 0 ? 1 : 0;
+		work->value = state->body;
+		work->resume = TYPED_RESUME_NONE;
+		return 0;
+	}
 	if (work->value) {
 		if (!work->input_resumed) {
 			int status = work->reduction ? typed_field_step(work) : 1;
@@ -3869,8 +3898,14 @@ static int typed_input_step(struct pg_typed_query *work)
 			int status = selection_lift_step(typing, state);
 			if (status <= 0) return status;
 		}
-		work->value = state->body ? state->body : scope_image(typing, input, state->frames.first);
-		return work->value ? 0 : 1;
+		if (state->body) work->value = state->body;
+		else {
+			state->body = input;
+			state->cursor = state->frames.first;
+			work->dependency = NULL;
+			work->resume = TYPED_RESUME_SCOPE_IMAGE;
+		}
+		return 0;
 	}
 	if (work->resume == TYPED_RESUME_PHASE) {
 		work->current = pg_evidence_subject(input);

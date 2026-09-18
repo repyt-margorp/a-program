@@ -1214,6 +1214,14 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 - [ ] Report concrete deleted paths. Move remaining synchronous query loops to
   existing scheduling only where necessary for the same work contract; do not
   turn this repair into another scheduler framework.
+- [x] 2026-09-19: replace `scope_image`'s synchronous frame loop with one shared
+  step used by selected-input and nominal-index queries. Restriction waits on
+  the existing rebase query; the owning query retains its cursor and checked
+  application prefix. Delete Identity constructor transport's duplicate
+  parameter-rebase loop in favor of `pg_prove_substitution_rebase`. Full O2
+  acceptance and focused debug/sanitizer tests pass; the priority plan records
+  the old-code failure, timing and LOC. This is local work for the next epoch,
+  not A4 completion: map restriction and other synchronous kernel checks remain.
 - [x] 2026-09-19: helper Match inspection no longer finishes its argument-spine
   beta queries synchronously. Reuse `application_body` and the graph owner's
   shared-query wait slot; retain the next argument in the existing helper

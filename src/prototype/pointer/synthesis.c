@@ -7995,14 +7995,7 @@ static struct pg_synthesis_job *index_constructor_candidate(struct pg_synthesis 
 	const struct pg_evidence *extended = constructor_transport_context(typing, base, &boundary,
 		state->endpoints[0], state->endpoints[1], &left, &right);
 	if (!extended || !pg_inductive_instance(typing, pg_evidence_premise(extended, 1), &instance)) goto done;
-	size_t parameter_count = pg_evidence_premise_count(instance.parameters) - 2;
-	if (parameter_count > SIZE_MAX / sizeof(const struct pg_evidence *)) goto done;
-	const struct pg_evidence **parameters = pg_alloc(&temporary, parameter_count * sizeof(*parameters));
-	if (parameter_count && !parameters) goto done;
-	for (size_t i = 0; i < parameter_count; ++i)
-		parameters[i] = index_rebase(typing, base_context, pg_evidence_premise(instance.parameters, i + 2));
-	const struct pg_evidence *parameter_map = pg_prove_substitution(typing,
-		pg_evidence_premise(instance.parameters, 0), base_context, parameter_count, parameters);
+	const struct pg_evidence *parameter_map = pg_prove_substitution_rebase(typing, base_context, instance.parameters);
 	if (!parameter_map) goto done;
 	const struct pg_data_layout *layout = pg_data_schema_layout(instance.schema);
 	size_t branch_count = pg_data_constructor_count(instance.schema);

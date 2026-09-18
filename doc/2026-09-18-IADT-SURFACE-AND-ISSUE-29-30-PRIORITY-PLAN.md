@@ -3036,3 +3036,52 @@ for fast-forward ancestry beforehand and confirmed with `git ls-remote`
 afterward. Through that implementation commit, documentation adds 34 lines in
 the authority plan and 249 lines in this priority plan; these are separate from
 implementation and test counts. This follow-up records publication only.
+
+### 2026-09-19: Resume scoped inputs and index images (local)
+
+- [x] Delete `evidence.c:scope_image`'s synchronous scope traversal. Selected
+  inputs and nominal index arguments use the same `scope_image_step` and the
+  existing typed-query dependency mechanism. Immutable frames are borrowed;
+  each owner retains its cursor/value rather than rebuilding earlier work.
+- [x] Retain the partially instantiated family and index images while nominal
+  queries yield. No new query kind, scheduler, logical rule or wire format.
+- [x] Replace `index_constructor_candidate`'s private parameter-image allocation
+  and rebase loop with the existing checked substitution-rebase API.
+- [x] Extend `tests/iadt.c:index_paths`: restricting a 64-constructor index must
+  not finish a nested rebase query inside one selected-input transition.
+  The unchanged per-turn assertion failed on pre-change implementation
+  `4a60149` (exit 134), and passes now. Completed requests reuse the same query
+  without additional proofs, queries or transitions.
+- [x] Strict O0/g core, IADT and synthesis tests; full O2 `check-acceptance
+  check-eval-io`; ASan/UBSan core, IADT and synthesis with leak detection and
+  halt-on-error all exit 0. Compatibility is 63/63. All 2,460 normalized export
+  result records match the previous epoch after removing scheduling counts.
+  Logs: `/tmp/a-program-authority-scoped-query-{opt,asan-core,asan-iadt,asan-synthesis}.log`.
+
+QuickSort property diagnostics retain exactly 135,290 Core terms, 82,230 typed
+subjects, 93,435 proofs, 4,389 Contexts, 15,764 maps, 9,925 typed queries and
+34,874 synthesis jobs. Summed query counters change 336,649 -> 341,847; outer
+Solve steps 142,031 -> 142,087. These counters are not CPU time. Resume fields
+and wait frames have a storage cost; unchanged object counts do not prove
+unchanged memory use. This does not bound all synchronous kernel subchecks.
+
+Strict-debug fresh-process timing: 12 alternating pairs, discard the first two,
+median seconds before/after: Vec append .01617/.01451; length .01218/.01214;
+function-field .02096/.01975; QuickSort property .32621/.32028. Every run exits
+0. No concurrent build/test ran during measurement. This small sample is not
+a general speedup claim or the final R0 performance gate. Raw samples and GDB
+counts: `/tmp/a-program-authority-scoped-query-{benchmark,before-counts,after-counts}.log`.
+
+Delta from `4a60149`: `evidence.c` +74/-39; `synthesis.c` +1/-8;
+`tests/iadt.c` +20/-2. Implementation net +28; tests net +18. Documentation is
+separate. The whole-plan net-negative requirement remains unmet.
+Cumulative implementation/headers: R76 +3,029/-1,486 (net +1,543);
+R0 +7,901/-3,942 (net +3,959). Neither reduction gate is waived.
+
+Not merged conceptually: `index_transport_scope` drops selected binders while
+retaining later independent declarations; it is not an ordinary projection.
+Constructor boundary telescope lifting also cannot be removed just because
+both operations manipulate Contexts. Remaining map-restriction/query loops
+must preserve partial binder allocation before becoming resumable. A3, the
+rest of A4, A5 and parent R2-R5 remain open. This local increment is not pushed
+alone; group it with the next substantive verified refactoring epoch.

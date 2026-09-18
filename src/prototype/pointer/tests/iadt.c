@@ -1310,8 +1310,26 @@ static void index_paths(struct pg_typing *typing,
 	}
 	const struct pg_evidence *large_type = pg_prove_return_type(typing,
 		pg_prove_family_application(typing, pg_prove_projection(typing, unused, family), large_value));
-	const struct pg_evidence *smaller = pg_prove_return_content(typing,
-		pg_prove_pi_constant_codomain(typing, pg_prove_pi(typing, unused, large_type)));
+	const struct pg_evidence *constant = pg_prove_pi_constant_codomain(typing,
+		pg_prove_pi(typing, unused, large_type));
+	struct pg_typed_query *rebase = pg_rebase_request(typing, fields, large_value);
+	struct pg_typed_query *selected = pg_typed_input_request(typing, constant, 0);
+	assert(selected && rebase && !pg_typed_query_steps(rebase));
+	int status = 0;
+	for (size_t calls = 0; !status && calls < 10000; ++calls) {
+		uint64_t before = pg_typed_query_steps(rebase);
+		status = pg_typed_query_advance(selected, 1);
+		assert(pg_typed_query_steps(rebase) - before <= 1);
+	}
+	assert(status == 1 && pg_typed_query_steps(selected) > 64 && pg_typed_query_steps(rebase));
+	assert(pg_evidence_subject(pg_typed_query_result(rebase))->core == pg_evidence_subject(small_value)->core);
+	size_t proof_count = typing->proofs.count, query_count = typing->typed_queries.count;
+	uint64_t completed_steps = pg_typed_query_steps(selected);
+	assert(pg_typed_input_request(typing, constant, 0) == selected);
+	assert(pg_typed_query_advance(selected, 64) == 1);
+	assert(pg_typed_query_steps(selected) == completed_steps);
+	assert(typing->proofs.count == proof_count && typing->typed_queries.count == query_count);
+	const struct pg_evidence *smaller = pg_prove_return_content(typing, constant);
 	struct pg_inductive_instance recovered, again;
 	assert(smaller && pg_inductive_instance(typing, smaller, &recovered));
 	assert(recovered.schema == schema);
