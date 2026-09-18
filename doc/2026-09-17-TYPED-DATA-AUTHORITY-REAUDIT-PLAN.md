@@ -829,6 +829,11 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   broad `collect_origin` experiment.
   Remaining bound: transparent lexical descendants within one selected root
   remain candidates. Do not claim cost strictly proportional to retained output.
+  Follow-up audit: indexing solely by the erased allocation object is not a
+  substitute for lexical reachability. `member_use_origins` has 128 unselected
+  named uses sharing the exact same allocation binder. A scope-by-syntax join
+  would instead introduce a selected-scope/selected-syntax cross product; it
+  has not been adopted as an output-sensitive solution. Keep this item open.
   On 2026-09-19, allocation references became keyed by their nearest opaque
   lexical scope, not globally by syntax. Binder/definition/handler extensions
   are transparent only for grouping; exact syntax and ancestry checks remain.
@@ -1166,6 +1171,13 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 - [ ] Report concrete deleted paths. Move remaining synchronous query loops to
   existing scheduling only where necessary for the same work contract; do not
   turn this repair into another scheduler framework.
+- [x] 2026-09-19: unify the source writer's producer classification. Dependency
+  enumeration, collection and wire encoding now read one stack-local projection
+  of the original synthesis inputs. Delete their independent classification
+  cascades; no persistent descriptor, extra index, Core tag or acceptance path.
+  The six-word wire record and dependency order are unchanged. Source tests,
+  full optimized acceptance and eleven byte-identical retained-image comparisons
+  pass. This removes 15 implementation lines, not the unresolved scope scan.
 - [x] 2026-09-19: share structural Context-map extension between lifting and
   occurrence instantiation (`typing.c:context_map_extend`). Delete the separate
   instantiation image-array construction. Destination extension projects the
@@ -1195,6 +1207,10 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   pending/unsupported distinction, helper ownership and checked context maps.
   Synchronous public kernel wrappers remain valid APIs. This change does not
   establish a global constant-work bound for every Solve transition.
+  Follow-up GDB check on `function-graph-helper-call.p` at 1,000,000 fuel:
+  14 `helper_call` entries, 13 distinct state/plan/context/input keys, no
+  pending (`2`) return; Solve completes in 24,959 steps. This does not justify
+  adding a helper-resumption cache. Wider budgeting analysis is still needed.
 - [x] Audit genuine function specialization separately from projection.
   `pg_function_graph_source` must substitute captured inputs and lift under
   the mapped Lambda's capture-avoiding binder. `function_graph_aliases` now

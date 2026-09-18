@@ -2159,3 +2159,31 @@ consolidates code, not computation or elapsed time. Count log:
 Delta from `fa13cb7`: `typing.c` +22/-22 (net 0), `tests/core.c` +21/-0.
 Documentation is separate. Implementation/header net changes remain +1,433
 from R76 and +3,849 from R0. No code-reduction gate is claimed complete.
+
+### 2026-09-19: One producer projection for source transport
+
+- [x] Unify producer classification across dependency enumeration, input
+  collection and encoding. Keep a stack-local read-only view; do not cache
+  results or change source-image modes, logical rules or acceptance.
+- [x] Strict debug source runner and normalization tests; optimized full
+  `check-acceptance`: exit 0, compatibility 63/63 and four universal sort proofs.
+  Exported results and Solve counts match `5231d51`'s full run.
+- [x] Eleven `retained-write` fixtures produce byte-identical images to the
+  pre-refactor writer (lambda, family, append, index-alias, function-field,
+  nominal, nullary, application, constructor, match, fold).
+- [x] ASan/UBSan source, normalization and complete image CLI checks: exit 0.
+- [ ] Group publication with a substantial epoch. The lexical candidate bound
+  and A3-A5 remain open.
+
+Existing permanent tests cover the changed cases: `normalization_requests`
+checks four WHNF/NF/force modes and invalid Contexts at pending/settled states;
+`annotation_sources` and source/image runners retain independent failing checks,
+constructor/operation wrappers, definitions and inert resaves. No tests were
+removed or weakened. Debug build `/tmp/a-program-authority-producer-view` uses
+`-std=c11 -Wall -Wextra -Werror -O0 -g`. Optimized/sanitizer builds, commands and
+flags are the same as the preceding entry. Logs use prefix
+`/tmp/a-program-authority-producer-view-`.
+
+`source_io.c`: +54/-69, net -15; tests unchanged. Documentation is separate.
+Cumulative implementation/header net remains +1,418 from R76 and +3,834 from
+R0; the whole-refactor net-negative requirement is not satisfied.

@@ -63,13 +63,40 @@ static int allocation_input(const struct pg_synthesis *synthesis, const struct p
 	return 0;
 }
 
-static int source_input(const struct pg_synthesis *synthesis, const struct pg_synthesis_job *job,
-	const struct pg_source_scope **scope, const struct pg_syntax **syntax, const struct pg_syntax **definitions)
+/* Borrow the producer's transport inputs. This is neither a retained snapshot
+ * nor a result of checking; collection and encoding use the same projection. */
+struct producer_input {
+	const struct pg_source_scope *scope;
+	const struct pg_syntax *syntax, *definitions;
+	struct pg_synthesis_job *operands[2];
+	const struct pg_synthesis_job *rule;
+	struct callable_input callable;
+	size_t arity;
+	unsigned mode;
+};
+
+static struct producer_input producer_input(const struct pg_synthesis *synthesis,
+	const struct pg_synthesis_job *job)
 {
-	*definitions = NULL;
-	*scope = NULL; *syntax = NULL;
-	if (!pg_synthesis_source_input(synthesis, job, scope, syntax)) return 0;
-	return pg_synthesis_definition_input(synthesis, job, scope, definitions, syntax);
+	struct producer_input input = {0};
+	input.arity = 2;
+	enum pg_reduction_kind kind;
+	int force;
+	if (!callable_input(synthesis, job, &input.callable)) {
+		input.operands[0] = input.callable.left;
+		input.operands[1] = input.callable.right;
+		input.mode = input.callable.operation ? 6 : 5;
+	} else if (!pg_synthesis_normalization_input(synthesis, job,
+		&input.operands[0], &input.operands[1], &kind, &force)) {
+		input.mode = (kind == PG_REDUCTION_NF ? 2 : 1) + (force ? 2 : 0);
+	} else if (pg_synthesis_source_expect_input(synthesis, job,
+		&input.scope, &input.operands[0], &input.operands[1])) {
+		input.arity = 0;
+		if (pg_synthesis_source_input(synthesis, job, &input.scope, &input.syntax) &&
+			pg_synthesis_definition_input(synthesis, job, &input.scope, &input.definitions, &input.syntax))
+			input.rule = job;
+	}
+	return input;
 }
 
 static int environment(const struct pg_synthesis *synthesis, const struct pg_source_scope *scope,
@@ -135,26 +162,14 @@ static int child(void *owner, const void *key, size_t index, const void **result
 static int producer_child(void *owner, const void *key, size_t index, const void **result)
 {
 	const struct pg_synthesis *const *synthesis = owner;
-	const struct pg_source_scope *scope;
-	struct pg_synthesis_job *term, *type;
-	struct callable_input callable;
-	enum pg_reduction_kind kind;
-	if (!callable_input(*synthesis, key, &callable)) {
-		if (index >= 2) return 0;
-		*result = index ? callable.right : callable.left;
-		return 1;
-	}
-	if (!pg_synthesis_normalization_input(*synthesis, key, &term, &type, &kind, NULL)) {
-		if (index >= 2) return 0;
-		*result = index ? type : term;
-		return 1;
-	}
-	if (!pg_synthesis_source_expect_input(*synthesis, key, &scope, &term, &type)) {
-		if (index >= 2) return 0;
-		*result = index ? type : term;
+	struct producer_input input = producer_input(*synthesis, key);
+	if (input.arity) {
+		if (index >= input.arity) return 0;
+		*result = input.operands[index];
 		return 1;
 	}
 	const struct pg_syntax_item *item;
+	struct pg_synthesis_job *term;
 	if (pg_synthesis_definition_entry(key, index, &item, &term) != 1) return 0;
 	*result = term;
 	return term ? 1 : 2;
@@ -219,31 +234,21 @@ static int collect_inputs(struct origin_collection *c)
 		const struct pg_dag_node *scope_node = c->last_scope ? c->last_scope->next : c->scopes->first;
 		if (!producer && !scope_node) return 0;
 		for (; producer; c->last_producer = producer, producer = producer->next) {
-			const struct pg_source_scope *scope;
-			const struct pg_syntax *term, *definitions;
-			struct pg_synthesis_job *left, *right;
-			struct callable_input callable;
-			enum pg_reduction_kind kind;
-			if (!callable_input(c->synthesis, producer->key, &callable)) {
+			struct producer_input input = producer_input(c->synthesis, producer->key);
+			if (input.callable.reference) {
 				if (pg_dag_add(c->allocations, producer->key)) return -1;
-				if (collect_allocation(c, callable.prefix, callable.fields, callable.reference)) return -1;
-				continue;
+				if (collect_allocation(c, input.callable.prefix, input.callable.fields, input.callable.reference)) return -1;
 			}
-			if (!pg_synthesis_normalization_input(c->synthesis, producer->key, &left, &right, &kind, NULL))
-				continue;
-			if (!pg_synthesis_source_expect_input(c->synthesis, producer->key, &scope, &left, &right)) {
-				if (pg_dag_add(c->scopes, scope)) return -1;
-			} else if (source_input(c->synthesis, producer->key, &scope, &term, &definitions)) {
-				if (pg_dag_add(c->rules, producer->key)) return -1;
-			} else {
-				if (pg_dag_add(c->scopes, scope) || pg_dag_add(c->syntax, term)) return -1;
-				if (definitions && pg_dag_add(c->syntax, definitions)) return -1;
+			if (input.scope && pg_dag_add(c->scopes, input.scope)) return -1;
+			if (input.rule && pg_dag_add(c->rules, input.rule)) return -1;
+			if (input.syntax) {
+				if (pg_dag_add(c->syntax, input.syntax)) return -1;
+				if (input.definitions && pg_dag_add(c->syntax, input.definitions)) return -1;
 				const struct pg_context *prefix, *fields;
 				if (!pg_synthesis_member_allocation(c->synthesis, producer->key, &prefix, &fields) && fields != prefix)
 					if (collect_member_use(c, (void *)producer->key, prefix, fields)) return -1;
-				if (!pg_synthesis_source_input(c->synthesis, producer->key, &scope, &term)
-					&& pg_syntax_constructors(term)) {
-					for (size_t i = 0; i < pg_syntax_constructors(term)->item_count; ++i) {
+				if (!input.definitions && pg_syntax_constructors(input.syntax)) {
+					for (size_t i = 0; i < pg_syntax_constructors(input.syntax)->item_count; ++i) {
 						struct pg_constructor_allocation allocation;
 						int available = pg_synthesis_declaration_member_input(c->synthesis, producer->key, i, &allocation);
 						if (available < 0) return -1;
@@ -610,32 +615,12 @@ int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 	}
 	for (size_t i = 0; i < count; ++i) if (pg_wire_write_u64(file, id(&producers, roots[i]))) goto done;
 	for (const struct pg_dag_node *node = producers.first; node; node = node->next) {
-		const struct pg_source_scope *scope;
-		const struct pg_syntax *term, *definitions;
-		struct pg_synthesis_job *left, *right;
-		uint64_t words[6] = {0};
-		enum pg_reduction_kind kind;
-		int force;
-		struct callable_input callable;
-		if (!callable_input(synthesis, node->key, &callable)) {
-			words[1] = callable.operation ? 6 : 5; words[2] = id(&allocations, node->key); words[3] = callable.allocated;
-			words[4] = id(&producers, callable.left); words[5] = id(&producers, callable.right);
-		} else if (!pg_synthesis_normalization_input(synthesis, node->key, &left, &right, &kind, &force)) {
-			/* No scope: syntax slot carries the request mode, not an AST ID. */
-			words[1] = kind == PG_REDUCTION_NF ? 2 : 1;
-			if (force) words[1] += 2;
-			words[4] = id(&producers, left); words[5] = id(&producers, right);
-		} else if (!pg_synthesis_source_expect_input(synthesis, node->key, &scope, &left, &right)) {
-			words[0] = id(&scopes, scope);
-			words[4] = id(&producers, left); words[5] = id(&producers, right);
-		} else {
-			if (source_input(synthesis, node->key, &scope, &term, &definitions)) {
-				words[3] = id(&rules, node->key);
-			} else {
-				words[0] = id(&scopes, scope); words[1] = id(&syntax, term);
-				words[2] = id(&syntax, definitions);
-			}
-		}
+		struct producer_input input = producer_input(synthesis, node->key);
+		/* Without syntax, its wire slot carries the existing request mode. */
+		uint64_t words[] = {id(&scopes, input.scope), input.syntax ? id(&syntax, input.syntax) : input.mode,
+			input.callable.reference ? id(&allocations, node->key) : id(&syntax, input.definitions),
+			input.callable.reference ? (uint64_t)input.callable.allocated : id(&rules, input.rule),
+			id(&producers, input.operands[0]), id(&producers, input.operands[1])};
 		for (size_t i = 0; i < 6; ++i) if (pg_wire_write_u64(file, words[i])) goto done;
 	}
 	for (const struct pg_dag_node *node = producers.first; node; node = node->next) {
