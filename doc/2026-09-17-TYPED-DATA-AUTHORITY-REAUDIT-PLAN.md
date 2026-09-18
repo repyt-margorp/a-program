@@ -1492,6 +1492,48 @@ cache: the preceding A4 regression already demonstrates reuse.
 
 #### Outstanding acceptance gates
 
+Latest checkpoint: implementation `dd9cabc` (2026-09-19). Full strict-debug,
+optimized and ASan/UBSan `check-acceptance` have now all exited 0, including
+63/63 source compatibility. Debug/sanitizer logs are
+`/tmp/a-program-authority-dd9cabc-{debug,asan}.log`; optimized log is
+`/tmp/a-program-authority-producer-view-opt.log`. The full sanitizer invocation
+used the preceding O1 sanitizer flags with default sanitizer runtime options;
+its log contains no sanitizer/runtime-error diagnostic. This updates the
+verification evidence, not final A3-A5 completion or publication readiness.
+
+Fresh R0/current measurements use the same strict O0/g flags, five alternating
+fresh processes, 1,000,000 steps and each version's zero-step source image.
+No other acceptance build/run was active during timing. R0's archived compiler
+sources and Makefile were hash-checked against `4657cc6` before building.
+Raw samples: `/tmp/a-program-authority-dd9cabc-matrix.log`.
+
+| Input | Source seconds R0/dd9cabc | Image seconds R0/dd9cabc | Source steps R0/dd9cabc |
+|---|---|---|---|
+| Vec-append | .016832 / .015360 | .013012 / .015754 | 22765 / 19935 |
+| generated-length | .009076 / .012957 | .009770 / .013249 | 10950 / 9694 |
+| function-field | .013694 / .018438 | .014927 / .020247 | 12906 / 12809 |
+| QuickSort-property | .890519 / .326503 | .878080 / .342570 | 149501 / 146809 |
+
+Image steps are respectively 23074/20240, 11259/9999, 13215/13114 and
+149810/147114. All 80 timed solves exited 0. Source QuickSort peak RSS ranges
+are 224972-225336 / 90192-91096 KiB; image ranges are 225232-226080 /
+90480-90948 KiB. Small-input RSS remains dominated by inherited parent
+high-water marks and is not useful allocation evidence. Separate GDB counts
+confirm the earlier table's Core/occurrence/proof counts for all four inputs
+are unchanged at this checkpoint. Length/function-field still regress against
+R0 despite fewer Solve steps; QuickSort improvement does not waive them.
+These are diagnostic measurements, not performance thresholds or O2 claims.
+
+Context-map audit: `evidence.c:map_lift_prefix` cannot simply be skipped for
+already checked destinations. Imported descriptors need the same structural
+lift admission without producer history; supplied alternative prefix proofs
+and wrong-classifier rejection must remain intact. On function-field, 566
+distinct maps cause 793 callbacks: 222 unchecked-destination initial calls
+and 222 resumptions, plus 344 checked-destination initial calls and five
+resumptions. Revisit counts alone do not establish duplicate checking.
+No new cache or removed validation follows from this measurement. Log:
+`/tmp/a-program-authority-map-validation-profile.log`.
+
 - [ ] Run the regression matrix below and the parent's full debug, optimized
   and ASan/UBSan acceptance gates without ignoring failures.
 - [ ] Compare baseline/final timing, work and allocations on append, function-

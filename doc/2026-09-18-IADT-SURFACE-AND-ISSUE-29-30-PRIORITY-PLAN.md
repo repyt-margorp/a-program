@@ -2187,3 +2187,17 @@ flags are the same as the preceding entry. Logs use prefix
 `source_io.c`: +54/-69, net -15; tests unchanged. Documentation is separate.
 Cumulative implementation/header net remains +1,418 from R76 and +3,834 from
 R0; the whole-refactor net-negative requirement is not satisfied.
+
+### 2026-09-19: Grouped-epoch verification checkpoint
+
+- [x] Full debug and ASan/UBSan acceptance at `dd9cabc`, supplementing the
+  already passed optimized full gate: all exit 0; source compatibility 63/63.
+- [x] Repeat the R0/current append, length, function-field and imported QuickSort
+  source/image timing and allocation comparison. See parent A5 for exact
+  commands, results and remaining small-input regressions.
+- [ ] Complete the remaining A3/A4 cleanup and A5 requirements; publish only a
+  substantial tested epoch, not each local helper consolidation.
+
+Surface and Issue29/PR30 publication milestones remain complete. This checkpoint
+does not publish the four local implementation commits or close the remaining
+refactoring gates. No implementation or test files changed during verification.
