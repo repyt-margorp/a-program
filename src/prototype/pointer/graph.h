@@ -11,6 +11,7 @@ struct pg_index_entry {
 };
 struct pg_index {
 	struct pg_index_entry **buckets;
+	/* Initialized capacity is a power of two, preserved by growth. */
 	size_t capacity;
 	size_t count;
 };

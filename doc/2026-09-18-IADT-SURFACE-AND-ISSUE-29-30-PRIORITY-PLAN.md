@@ -2554,3 +2554,56 @@ Main and `rewrite/pointer-core-hott` at that revision. Documentation at
 publication: authority plan +44/-0; priority plan +239/-0. Implementation and
 test totals are unchanged from the table above. This publication-record update
 only checks the grouped entries and records the verified remote revisions.
+
+### 2026-09-19: Profile the remaining small-input overhead (local)
+
+Current `cbf81fe` was profiled with C11/O2/g/pg on 100 fresh function-field
+source solves. Gprof records 6,820,400 index insertions and 10,864,400 candidate
+lookups across those processes; only 0.48 seconds were sampled, so percentage
+rankings are diagnostic, not reliable wall-time estimates. Reports:
+`/tmp/a-program-authority-current-profile-function-field.{log,gprof}`.
+
+- [x] Inspect all index-capacity writers: initialized capacity is 64 and growth
+  doubles it with overflow checking. No other prototype code sets an index
+  capacity. Replace remainder division with the equivalent mask after the
+  unchanged hash avalanche. No key, equality, collision or bucket ordering changes.
+- [x] Extend existing aligned-key/collision/rehash test with capacity-invariant
+  checks through growth. Do not introduce another index or benchmark framework.
+- [x] Measure baseline/current in alternating fresh processes without profiling
+  instrumentation or concurrent acceptance builds; report noise and limitations.
+- [x] Run full optimized and affected debug/sanitizer gates and record counts.
+- [ ] Include with a substantial refactor publication, not as an isolated epoch.
+
+This is shared-index cost removal within A5, not completion of A3/A4 or the
+small-input regression comparison against R0. It does not justify dropping
+validation or interning WHNF-equivalent terms.
+
+Uninstrumented O2 source solves, 30 samples per version/input after two warm-up
+pairs, alternating order, no concurrent acceptance build/run during timing:
+
+| Input | Baseline/current median seconds | Solve steps (both) |
+|---|---|---:|
+| Vec append | .010829 / .010898 | 19935 |
+| generated length | .009541 / .009140 | 9702 |
+| function field | .014412 / .013496 | 12883 |
+| imported QuickSort property | .211442 / .211201 | 147083 |
+
+These are fresh-process wall times including launch/loading, not CPU-isolated
+measurements. The first partial run also had an insignificant reverse difference
+for length. Do not claim a general speedup or closure of the R0 regression.
+The valid matrix is `/tmp/a-program-authority-index-mask-timing-final.jsonl`;
+all 256 processes exit 0 with identical per-input stdout. Two preliminary
+harness attempts omitted the Vec provider and then the legacy intrinsic option
+needed by QuickSort's provider; they are not implementation failures or valid
+timing matrices. The corrected commands supply each original provider with
+`--imports` and `--legacy-intrinsic-dot`, without rewriting fixture syntax.
+
+Full optimized `check-acceptance` exited 0, including 63/63 compatibility. All
+2,460 sorted export-result records match the preceding publication gate after
+normalizing temporary directory names; step counts are preserved. Debug Core
+and ASan/UBSan Core, derivation/source image scripts, handler-boundaries and
+prepared-module checks also exited 0. Sanitizers used leak detection and
+halt-on-error; flags are unchanged from the preceding publication. Logs/builds
+use `/tmp/a-program-authority-index-mask-{opt,debug,asan}`. No source/test edits
+occurred during these gates. Local delta: `graph.c` +1/-1, `graph.h` +1/-0,
+`tests/core.c` +4/-1. No Main push for this micro-optimization; A3-A5 stay open.

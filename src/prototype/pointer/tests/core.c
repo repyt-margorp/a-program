@@ -76,8 +76,10 @@ static void index_distribution_test(void)
 	struct pg_index index;
 	struct pg_index_entry entries[1024];
 	assert(pg_index_init(&index) == 0);
-	for (size_t i = 0; i < 1024; ++i)
+	for (size_t i = 0; i < 1024; ++i) {
 		assert(pg_index_insert(&index, &entries[i], ((uint64_t)i << 32) | 32) == 0);
+		assert(index.capacity && !(index.capacity & (index.capacity - 1)));
+	}
 	size_t occupied = 0, longest = 0;
 	for (size_t i = 0; i < index.capacity; ++i) {
 		size_t length = 0;
@@ -90,6 +92,7 @@ static void index_distribution_test(void)
 	struct pg_index_entry collisions[2];
 	for (size_t i = 0; i < 2; ++i)
 		assert(pg_index_insert(&index, &collisions[i], 32) == 0);
+	assert(index.capacity == 2048);
 	size_t same_hash = 0;
 	for (struct pg_index_entry *p = pg_index_candidates(&index, 32); p; p = p->next)
 		if (p->hash == 32) ++same_hash;

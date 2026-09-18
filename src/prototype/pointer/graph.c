@@ -307,7 +307,7 @@ static size_t index_bucket(uint64_t hash, size_t capacity)
 	hash ^= hash >> 33;
 	hash *= UINT64_C(0xc4ceb9fe1a85ec53);
 	hash ^= hash >> 33;
-	return hash % capacity;
+	return hash & (capacity - 1);
 }
 
 struct pg_index_entry *pg_index_candidates(const struct pg_index *index, uint64_t hash)
