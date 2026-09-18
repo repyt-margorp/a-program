@@ -2572,7 +2572,7 @@ rankings are diagnostic, not reliable wall-time estimates. Reports:
 - [x] Measure baseline/current in alternating fresh processes without profiling
   instrumentation or concurrent acceptance builds; report noise and limitations.
 - [x] Run full optimized and affected debug/sanitizer gates and record counts.
-- [ ] Include with a substantial refactor publication, not as an isolated epoch.
+- [x] Included in the grouped `5f9cd1f` publication, not an isolated epoch.
 
 This is shared-index cost removal within A5, not completion of A3/A4 or the
 small-input regression comparison against R0. It does not justify dropping
@@ -2623,7 +2623,7 @@ the rule must not perform additional name lookups.
   subscription, idle queue, effect-cycle and namespace tests.
 - [x] Run debug synthesis, full optimized acceptance and affected sanitizers;
   compare normalized results/steps and report implementation/test LOC.
-- [ ] Group with a substantial epoch; this does not close A3-A5 or R2-R5.
+- [x] Grouped in `5f9cd1f`; this does not close A3-A5 or R2-R5.
 
 The same projection now supplies the rule directly to waiting consumers;
 remove their second read after preparation. On the function-field fixture,
@@ -2653,7 +2653,7 @@ R0 +7,736/-3,901 (net +3,835). The overall reduction gate remains unsatisfied.
 - [x] Assert that each pending step in the 32-scope IADT regression exposes no
   instance. Existing alternate-proof, foreign-owner and chunk-size tests remain.
 - [x] Debug IADT, full O2 acceptance, ASan/UBSan IADT and source-image script pass.
-- [ ] Publish with a substantial grouped epoch, not as an isolated optimization.
+- [x] Published in `5f9cd1f` with the shared-query/ownership epoch.
 
 Against `c3889bb`, GDB on `function-graph-function-field.p` records nominal
 lookups 667 -> 279, successful lookups 501 -> 113 across the same 113 queries,
@@ -2687,7 +2687,7 @@ was added: an erased allocation pointer does not identify its lexical use.
   after destroying the graph worker. Check its actual Return result.
 - [x] Debug program tests, full O2 acceptance, ASan/UBSan program tests and
   complete source-image script exit 0, using the preceding checkpoint's flags.
-- [ ] Publish with a substantial grouped refactoring epoch; A3-A5 remain open.
+- [x] Published in grouped refactoring epoch `5f9cd1f`; A3-A5 remain open.
 
 The new regression fails on `6114ebc`: cancellation limit 3 observes two query
 transitions in one turn. The fixed version passes for outer chunks 1/64.
@@ -2726,7 +2726,7 @@ still unmet. The source-writer lexical candidate scan is unchanged.
   Core/proof/occurrence/Context/map/query/job counts and 16,998 query transitions,
   12,883 Solve steps are unchanged. This is not a peak-memory or speed claim.
 - [x] Full ASan/UBSan acceptance and the before/after timing check complete.
-- [ ] Publish with the pending shared-query/ownership epoch, not individually.
+- [x] Published with the shared-query/ownership epoch in `5f9cd1f`.
 
 No new proof rule, query kind, result cache or image format. The optional arena
 pointer replaces the old retained-root pointer; it describes storage lifetime,
@@ -2771,3 +2771,11 @@ Cumulative implementation/header totals: R76 +2,883/-1,441 (net +1,442),
 R0 +7,781/-3,923 (net +3,858). These increases do not satisfy the reduction
 gate. The grouped milestone verifies ownership/resumption cleanup, not overall
 refactor completion. Documentation deltas are separate from all totals above.
+
+Publication: atomic push from `cbf81fe` through implementation `5f9cd1f` to
+`main` and `rewrite/pointer-core-hott` succeeded. `git ls-remote` confirmed both
+at `5f9cd1ff829193434e8303d5235081b722df31a4`. This follow-up records publication
+only; the tested implementation is unchanged. No final acceptance gate is waived.
+
+Documentation-only delta from `cbf81fe`: authority plan +36/-0; priority plan
++225/-0 (including this publication record). Neither is implementation code.
