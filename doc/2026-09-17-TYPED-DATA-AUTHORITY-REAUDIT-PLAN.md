@@ -1510,7 +1510,14 @@ cache: the preceding A4 regression already demonstrates reuse.
 
 #### Outstanding acceptance gates
 
-Latest checkpoint: implementation `dd9cabc` (2026-09-19). Full strict-debug,
+The priority plan's source-transport/query-resumption epoch records fresh full
+debug/O2/ASan+UBSan gates after `fcd9d25`, plus cancellation at each helper step
+and successful shared-query continuation after owner destruction. These gates
+all pass; they authorize that grouped epoch, not final A0-A5 completion. The
+remaining lexical bound, consumer audit, performance regressions and overall
+code-reduction requirement below are unchanged.
+
+Earlier checkpoint: implementation `dd9cabc` (2026-09-19). Full strict-debug,
 optimized and ASan/UBSan `check-acceptance` have now all exited 0, including
 63/63 source compatibility. Debug/sanitizer logs are
 `/tmp/a-program-authority-dd9cabc-{debug,asan}.log`; optimized log is

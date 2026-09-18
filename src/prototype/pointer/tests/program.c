@@ -378,28 +378,38 @@ static void graded_function_graph(struct pg_program *p, const struct pg_evidence
 	/* Helper inspection must yield while its shared origin query is pending. */
 	const struct pg_evidence *application = pg_prove_application(&p->typing,
 		pg_prove_projection(&p->typing, scope, function), value);
-	const struct pg_evidence *helper_scope = pg_prove_context_extension(&p->typing,
-		scope, pg_binder(&p->graph), pg_prove_classifier(&p->typing, scope, value));
-	application = pg_prove_projection(&p->typing, helper_scope, application);
-	const struct pg_evidence *sequence = pg_prove_fold(&p->typing, application,
-		pg_prove_projection(&p->typing, helper_scope, function));
-	const struct pg_evidence *applied = pg_prove_lambda(&p->typing,
-		pg_prove_pi(&p->typing, helper_scope, pg_prove_classifier(&p->typing, helper_scope, sequence)), sequence);
-	assert(applied);
-	struct pg_function_graph_work helper;
-	assert(!pg_function_graph_init(&helper, &p->typing, &p->evaluation, applied));
-	struct pg_typed_query *origin = pg_construction_origin_request(&p->typing, application);
-	uint64_t origin_steps = pg_typed_query_steps(origin);
-	assert(!origin_steps);
-	for (size_t turns = 0;; ++turns) {
-		enum pg_function_graph_status status = pg_function_graph_advance(&helper, 1);
-		assert(pg_typed_query_steps(origin) - origin_steps <= 1);
-		origin_steps = pg_typed_query_steps(origin);
-		if (status != PG_FUNCTION_GRAPH_PENDING) { assert(status == PG_FUNCTION_GRAPH_DONE); break; }
-		assert(turns < 100000);
+	/* Fresh mapped inputs exercise cancellation at each position, even though
+	 * previously completed shared queries remain available in the typing store. */
+	for (size_t limit = 0;; ++limit) {
+		assert(limit < 1000);
+		const struct pg_evidence *helper_scope = pg_prove_context_extension(&p->typing,
+			scope, pg_binder(&p->graph), pg_prove_classifier(&p->typing, scope, value));
+		const struct pg_evidence *projected = pg_prove_projection(&p->typing, helper_scope, application);
+		const struct pg_evidence *sequence = pg_prove_fold(&p->typing, projected,
+			pg_prove_projection(&p->typing, helper_scope, function));
+		const struct pg_evidence *applied = pg_prove_lambda(&p->typing,
+			pg_prove_pi(&p->typing, helper_scope, pg_prove_classifier(&p->typing, helper_scope, sequence)), sequence);
+		assert(applied);
+		struct pg_function_graph_work helper;
+		assert(!pg_function_graph_init(&helper, &p->typing, &p->evaluation, applied));
+		struct pg_typed_query *origin = pg_construction_origin_request(&p->typing, projected);
+		uint64_t origin_steps = pg_typed_query_steps(origin);
+		assert(!origin_steps);
+		enum pg_function_graph_status status = PG_FUNCTION_GRAPH_PENDING;
+		for (size_t turns = 0; turns < limit && status == PG_FUNCTION_GRAPH_PENDING; ++turns) {
+			status = pg_function_graph_advance(&helper, 1);
+			assert(pg_typed_query_steps(origin) - origin_steps <= 1);
+			origin_steps = pg_typed_query_steps(origin);
+		}
+		pg_function_graph_destroy(&helper);
+		assert(!helper.state);
+		while (!pg_typed_query_advance(origin, chunk)) assert(pg_typed_query_steps(origin) < 100000);
+		assert(pg_typed_query_result(origin));
+		if (status != PG_FUNCTION_GRAPH_PENDING) {
+			assert(status == PG_FUNCTION_GRAPH_DONE && origin_steps && pg_typed_query_result(origin));
+			break;
+		}
 	}
-	assert(origin_steps && pg_typed_query_result(origin));
-	pg_function_graph_destroy(&helper);
 	for (enum pg_totality grade = PG_TOTALITY_UNSPECIFIED; grade <= PG_TOTALITY_TOTAL; ++grade) {
 		const struct pg_evidence *body = pg_prove_return_contract(&p->typing, grade, value);
 		const struct pg_evidence *type = pg_prove_classifier(&p->typing, scope, body);

@@ -2249,3 +2249,54 @@ Logs: `/tmp/a-program-authority-helper-cursor-{before,after}-allocs.log` and
 Implementation: `function_graph.c` +91/-65 (net +26). Tests: `program.c` +25/-0.
 Documentation is separate. Cumulative implementation/header net is +1,444
 from R76 and +3,860 from R0; net-negative completion is not established.
+
+### 2026-09-19: Source transport and query-resumption publication gate
+
+This epoch groups `5a853e0`, `fa13cb7`, `5231d51`, `dd9cabc`, `fcd9d25`
+and their verification records, relative to published Main `a0cbc2e`.
+It bounds named-scope origin discovery, removes duplicate Match transport and
+producer classification, shares structural map extension, and suspends helper
+inspection without rebuilding its argument prefix. No source syntax, kernel
+rule, structural equality policy or image format changes.
+
+- [x] Extend the helper regression to cancel at every step up to completion
+  using fresh mapped inputs. Resume the shared origin query after destroying
+  the graph work that borrowed it. The destroyed graph handle retains no state.
+  GDB confirms four destructions with a nonempty helper argument list, not
+  merely cancellation before allocation. Sanitizer leak checking passes.
+- [x] Full strict-debug, optimized and ASan/UBSan `check-acceptance`, all exit 0.
+  Each passes compatibility 63/63, four universal sorting proof suites, source
+  image modes and existing positive/negative boundary tests. No sanitizer or
+  runtime-error diagnostics. Syntax inventory independently matches 158 entries.
+- [x] Normalized exported results, including steps, agree with `fcd9d25`'s
+  optimized run. Cancellation coverage changes tests only.
+- [ ] Commit, atomically publish to Main/rewrite, and verify remote revisions.
+
+Commands: `make -f src/prototype/pointer/Makefile -j2 check-acceptance`, with
+`BUILD=/tmp/a-program-authority-helper-origin` and strict C11/O0/g;
+`BUILD=/tmp/a-program-authority-source-sites-opt` and strict C11/O2;
+`BUILD=/tmp/a-program-authority-source-sites-asan` and strict C11/O1/g,
+`-fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie`.
+The entire sanitizer make invocation inherits
+`ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1`.
+Logs: `/tmp/a-program-authority-resumption-epoch-{debug,opt,asan}.log`;
+cancellation inspection: `/tmp/a-program-authority-helper-cancel-phases.log`.
+No source/test edits occurred during these final gates.
+
+| File under `src/prototype/pointer/` | Added | Deleted | Net |
+|---|---:|---:|---:|
+| function_graph.c | 91 | 65 | +26 |
+| source_io.c | 152 | 108 | +44 |
+| synthesis.c | 11 | 1 | +10 |
+| synthesis.h | 4 | 1 | +3 |
+| typing.c | 22 | 22 | 0 |
+| tests/core.c | 21 | 0 | +21 |
+| tests/image_cli.sh | 14 | 0 | +14 |
+| tests/program.c | 35 | 0 | +35 |
+| tests/source_io.c | 74 | 8 | +66 |
+
+Implementation/headers: +280/-197 (net +83); tests: +144/-8 (net +136).
+Documentation is separate. Overall cleanup is not complete: A3's transparent
+descendant candidate bound, A4's remaining consumer audit, final performance
+regressions and the net-negative requirement remain open. The preceding timing
+checkpoint still describes this implementation; this is not a speedup claim.
