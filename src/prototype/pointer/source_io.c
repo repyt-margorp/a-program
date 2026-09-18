@@ -203,7 +203,7 @@ struct origin_collection {
 	struct source_member *members;
 	size_t member_count;
 	struct source_match *matches, **match_tail;
-	size_t match_count, match_context_count;
+	size_t match_count, match_context_count, binding_reference_count;
 };
 
 static int index_scope_origin(void *owner, struct pg_synthesis_job *job);
@@ -267,6 +267,9 @@ static int collect_inputs(struct origin_collection *c)
 		for (; scope_node; c->last_scope = scope_node, scope_node = scope_node->next) {
 			struct environment input;
 			if (environment(c->synthesis, scope_node->key, &input)) return -1;
+			size_t references = input.kind == HANDLER_BINDING ? 3 : input.kind == BINDING;
+			if (references > SIZE_MAX - c->binding_reference_count) return -1;
+			c->binding_reference_count += references;
 			if (collect_candidates(c, scope_node->key)) return -1;
 			if (pg_synthesis_visit_source_references(c->synthesis, scope_node->key, index_scope_origin, NULL, c)) return -1;
 			if (input.syntax && pg_dag_add(c->syntax, input.syntax)) return -1;
@@ -362,8 +365,13 @@ static int index_binding(void *owner, const struct pg_source_binding *input)
 
 static int collect_binding(struct origin_collection *c, const struct pg_source_binding *input)
 {
+	if (id(c->bindings, input)) return 0;
 	if (input->syntax && !id(c->syntax, input->syntax)) return 0;
+	size_t extra = input->constructor ? 2 : 1;
+	if (extra > SIZE_MAX - c->binding_reference_count ||
+		input->scope_count > SIZE_MAX - c->binding_reference_count - extra) return -1;
 	if (pg_dag_add(c->bindings, input)) return -1;
+	c->binding_reference_count += input->scope_count + extra;
 	if (input->constructor && pg_dag_add(&c->terms, pg_reference(&c->rules->storage, input->constructor))) return -1;
 	if (pg_dag_add(&c->terms, pg_reference(&c->rules->storage, input->binder))) return -1;
 	for (size_t i = 0; i < input->scope_count; ++i)
@@ -521,22 +529,8 @@ int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 	if (collection.member_count > SIZE_MAX - allocations.count) goto done;
 	size_t allocation_count = allocations.count + collection.member_count;
 	if (allocation_count > SIZE_MAX / (2 * sizeof(void *))) goto done;
-	size_t binding_reference_count = 0;
-	for (const struct pg_dag_node *node = scopes.first; node; node = node->next) {
-		struct environment input;
-		if (environment(synthesis, node->key, &input)) goto done;
-		size_t extra = input.kind == HANDLER_BINDING ? 3 : input.kind == BINDING;
-		if (extra > SIZE_MAX - binding_reference_count) goto done;
-		binding_reference_count += extra;
-	}
-	if (binding_reference_count > SIZE_MAX - allocation_count) goto done;
-	size_t reference_count = allocation_count + binding_reference_count;
-	for (const struct pg_dag_node *node = bindings.first; node; node = node->next) {
-		const struct pg_source_binding *input = node->key;
-		size_t extra = input->constructor ? 2 : 1;
-		if (extra > SIZE_MAX - reference_count || input->scope_count > SIZE_MAX - reference_count - extra) goto done;
-		reference_count += input->scope_count + extra;
-	}
+	if (collection.binding_reference_count > SIZE_MAX - allocation_count) goto done;
+	size_t reference_count = allocation_count + collection.binding_reference_count;
 	if (collection.match_count > (SIZE_MAX - reference_count) / 3) goto done;
 	reference_count += 3 * collection.match_count;
 	if (declarations.count > SIZE_MAX - reference_count) goto done;
@@ -589,6 +583,7 @@ int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 	}
 	for (const struct pg_dag_node *node = declarations.first; node; node = node->next)
 		references[slot++] = pg_reference(&rules.storage, node->key);
+	if (slot != reference_count || context_slot != context_count) goto done;
 	struct pg_derivation_payload payload;
 	if (pg_contexts_pack(&rules.storage, context_count, contexts, reference_count, references,
 		&payload.metadata_count, &payload.metadata, &payload.count, &payload.terms)) goto done;

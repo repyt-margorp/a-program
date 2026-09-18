@@ -2308,3 +2308,31 @@ the preceding local-only checkpoint descriptions for the grouped commits.
 Documentation at that publication: authority plan +153/-9; priority plan
 +240/-0. Overall epoch +817/-214, net +603, including documentation and tests.
 These counts exclude this documentation-only publication follow-up.
+
+### 2026-09-19: Count source payloads at collection (local)
+
+- [x] Remove the separate scope and binding payload-count traversals. Accumulate
+  slot counts when the existing source frontier first reaches each input;
+  skip already collected bindings through the existing DAG. Verify emitted
+  context/reference counts. No new index, solver state, format or Core rule.
+- [x] Extend source-binding tests with repeated roots across unsolved, partially
+  solved, accepted and rejected annotations, including two inert resaves.
+- [x] Strict-debug `source_io.sh`; optimized full `check-acceptance`: exit 0,
+  compatibility 63/63 and all four universal sorting proof suites pass.
+  Normalized exported results, including steps, match the preceding epoch.
+- [x] Eleven retained fixtures: old/new writers resaving the same input produce
+  byte-identical output. The original fresh Match image changes four ID bytes
+  on its first resave with the old binary too; this comparison does not claim
+  fresh-write/resave byte identity for that baseline case.
+- [x] ASan/UBSan source-image and Handler-boundary suites: exit 0 with explicit
+  leak detection and halt-on-error options; 4,240 Handler snapshots preserve
+  status/effects. This is affected-suite sanitizer coverage, not a new full run.
+- [ ] Include this local change in the next substantial publication epoch.
+
+Against `4b4fba7`, implementation `source_io.c`: +12/-17 (net -5); test
+`tests/source_io.c`: +6/-3 (net +3). GDB on retained function-field writing:
+`environment` calls 126 -> 105; `pg_synthesis_binding_input` calls 21 -> 18.
+This removes work; no wall-time speedup is claimed. Logs and temporary images
+use `/tmp/a-program-authority-payload-count-*`; debug build uses the same
+prefix, O2 uses `authority-source-sites-opt`. These local results do not close
+the broader A3/A4 audit or the cumulative net-negative gate.

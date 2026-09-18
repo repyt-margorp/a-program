@@ -1171,6 +1171,14 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 - [ ] Report concrete deleted paths. Move remaining synchronous query loops to
   existing scheduling only where necessary for the same work contract; do not
   turn this repair into another scheduler framework.
+- [x] Count binding payload slots during first source collection; delete the
+  separate scope-count and binding-count passes in `source_io.c`. Repeated
+  binding discovery stops at the existing writer-local DAG. The counter is
+  temporary wire sizing, not a solver answer or persistent authority. Keep
+  raw derivation export copies: its API promises transport-input ownership in
+  the caller's storage; merely borrowing those inputs would weaken that contract.
+  Optimized full acceptance and controlled old/new resaves pass; the priority
+  plan records the focused sanitizer gate and measurements. A3/A4 stay open.
 - [x] 2026-09-19: unify the source writer's producer classification. Dependency
   enumeration, collection and wire encoding now read one stack-local projection
   of the original synthesis inputs. Delete their independent classification

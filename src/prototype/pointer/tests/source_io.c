@@ -773,19 +773,22 @@ static void source_binding_annotations(void)
 				pg_synthesis_binding_scope(binding), definition.expression->right);
 			assert(body);
 			pg_synthesis_advance(&p->synthesis, progress == 2 ? 1000 : progress);
-			struct pg_synthesis_job *const *roots = &body;
+			/* Repeated roots share the lexical binding and its payload slots. */
+			struct pg_synthesis_job *selected[] = {body, body};
+			struct pg_synthesis_job *const *roots = selected;
 			for (size_t round = 0; round < 2; ++round) {
 				FILE *file = tmpfile();
 				uint64_t steps = p->synthesis.steps;
 				size_t proofs = p->typing.proofs.count;
-				assert(file && !pg_sources_write(file, &p->synthesis, 1, roots));
+				assert(file && !pg_sources_write(file, &p->synthesis, 2, roots));
 				assert(p->synthesis.steps == steps && p->typing.proofs.count == proofs);
 				invalid_binding_rule(file);
 				pg_program_destroy(p);
 				rewind(file);
 				size_t count;
 				p = pg_sources_read(file, 10000, &count, &roots);
-				assert(p && count == 1 && !p->synthesis.steps && !pg_synthesis_result(roots[0]));
+				assert(p && count == 2 && roots[0] == roots[1]);
+				assert(!p->synthesis.steps && !pg_synthesis_result(roots[0]));
 				assert(!fclose(file));
 			}
 			while (p->synthesis.ready) {
