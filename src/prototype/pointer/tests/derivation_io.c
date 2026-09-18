@@ -1,4 +1,5 @@
 #include "derivation_io.h"
+#include "context_payload.h"
 #include "effect_inference.h"
 #include "graph_io.h"
 #include "computation.h"
@@ -1045,6 +1046,38 @@ static void pending_effect_proofs(FILE *file, struct pg_typing *typing,
 	pg_effect_inference_destroy(&effects);
 }
 
+static void direct_input_dependencies(const struct pg_derivation_input *input,
+	const struct pg_graph_codec *codec, void *owner)
+{
+	struct pg_dag contexts, terms, direct, packed;
+	struct pg_graph storage = {0};
+	assert(!pg_graph_init(&storage));
+	assert(!pg_dag_init(&contexts, pg_context_dependency, NULL));
+	assert(!pg_dag_init(&direct, NULL, NULL) && !pg_dag_init(&packed, NULL, NULL));
+	assert(!pg_graph_dependencies_init(&terms, &direct, codec, owner));
+	assert(!pg_derivation_input_collect(&terms, &contexts, input));
+	size_t nc = contexts.count, nt = terms.count, no = direct.count;
+	for (unsigned i = 0; i < 128; ++i) {
+		assert(!pg_derivation_input_collect(&terms, &contexts, input));
+		assert(contexts.count == nc && terms.count == nt && direct.count == no);
+	}
+	struct pg_derivation_payload payload;
+	assert(!pg_derivation_input_terms(&storage, input, &payload));
+	for (size_t i = 0; i < payload.count; ++i)
+		if (payload.terms[i]) assert(!pg_graph_collect_objects(&packed, 1, &payload.terms[i], codec, owner));
+	assert(direct.count == packed.count);
+	for (const struct pg_dag_node *node = packed.first; node; node = node->next)
+		assert(pg_dag_find(&direct, node->key));
+	if (input->parameters.induction) {
+		struct pg_derivation_input invalid = *input;
+		invalid.rule = PG_MATCH_ELIM;
+		assert(pg_derivation_input_collect(&terms, &contexts, &invalid) == -1);
+	}
+	pg_graph_destroy(&storage);
+	pg_dag_destroy(&terms); pg_dag_destroy(&contexts);
+	pg_dag_destroy(&direct); pg_dag_destroy(&packed);
+}
+
 static FILE *producer_snapshot(struct pg_synthesis *synthesis, size_t count,
 	struct pg_synthesis_job **jobs, struct pg_graph *graph)
 {
@@ -1055,6 +1088,8 @@ static FILE *producer_snapshot(struct pg_synthesis *synthesis, size_t count,
 	uint64_t steps = synthesis->steps;
 	size_t proofs = synthesis->typing->proofs.count, requests = synthesis->jobs.count;
 	assert(!pg_synthesis_export_rules(synthesis, count, jobs, &storage, &effects, 0, &inputs));
+	for (size_t i = 0; i < count; ++i)
+		direct_input_dependencies(inputs[i], &pg_builtin_graph_codec, graph);
 	struct pg_dag objects = {0};
 	assert(!pg_dag_init(&objects, NULL, NULL));
 	assert(!pg_derivation_inputs_collect_objects(&objects, count, inputs, &effects, &pg_builtin_graph_codec, graph));
@@ -1338,6 +1373,8 @@ static void nominal_proofs(FILE *file, struct pg_typing *typing,
 		assert(inputs[2]->parameters.constructor == pg_data_constructor(layout, 1));
 		const struct pg_induction_allocation *allocation = inputs[5]->parameters.induction;
 		assert(allocation && allocation->count == 2 && !inputs[4]->parameters.induction);
+		for (size_t i = 0; i < count; ++i)
+			direct_input_dependencies(inputs[i], &pg_declaration_graph_codec, &io);
 		struct pg_dag objects = {0};
 		assert(!pg_dag_init(&objects, NULL, NULL));
 		assert(!pg_derivation_inputs_collect_objects(&objects, count, inputs, NULL, &pg_declaration_graph_codec, &io));

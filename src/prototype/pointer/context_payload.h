@@ -2,8 +2,14 @@
 #define A_PROGRAM_POINTER_CONTEXT_PAYLOAD_H
 #include "typing.h"
 
+struct pg_dag;
+
 /* Parent/index edges for a pg_dag transport traversal; no formation evidence. */
 int pg_context_dependency(void *unused, const void *key, size_t index, const void **child);
+/* Incrementally add binder/type edges for newly reached Contexts. contexts
+ * uses pg_context_dependency; terms owns reference wrappers. No wire arrays. */
+int pg_context_collect(struct pg_dag *terms, struct pg_dag *contexts,
+	const struct pg_context *context);
 
 /* Temporary relocation data, never context formation evidence. Metadata is
  * node count, selected count, (parent ID, binder judgement, indices ID) triples,

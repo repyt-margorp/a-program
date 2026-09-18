@@ -748,6 +748,56 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 
 ### A3. Transport the same structure
 
+- [x] Current epoch: dependency discovery must not construct disposable wire
+  payloads. Share the fixed derivation parameter projection between encoding
+  and collection, and collect Context binder/type edges through one temporary
+  DAG across source allocations and derivations. Remove intermediate payload
+  arrays and the second root-array traversal in derivation object collection.
+  Keep wire numbering/encoding separate; preserve exact saved bytes where the
+  format is unchanged. Verify direct collection against packed dependencies,
+  shared Context prefixes, invalid inputs, inert resave, existing acceptance
+  and sanitizer tests. This does not finish scope-sensitive origin selection
+  or waive the parent's cumulative source-reduction gate.
+
+  Implemented with a shared fixed-parameter projection, `pg_context_collect`
+  and `pg_derivation_input_collect`. The source writer and derivation object
+  collector use the same direct edges. The latter no longer allocates a second
+  array of roots for another graph traversal. Context binder/type validation
+  is shared with the encoder; no proof acceptance, new persistent cache or
+  wire-format change is introduced. Tests compare packed/direct object sets,
+  128 repeated collections, family index dependencies and malformed inputs.
+
+  Against `8d77ce0`, retained IF8 QuickSort saving calls
+  `pg_derivation_input_terms <- retain_dependencies` 697 -> 0; the 697 actual
+  writer calls remain. Context edge callbacks stay 689. Saved files are
+  byte-identical. Immediately before `pg_retained_write`, used bytes in the
+  rules/term-dependency/context-dependency arenas total 500,352 -> 446,240;
+  reserved bytes total 524,288 -> 491,520. These are selected arena snapshots,
+  not peak RSS. Seven alternating debug runs give median source+save wall
+  times 0.0821/0.0771 seconds; another run gave 0.0737/0.0755. Do not infer a
+  reliable speedup from this small noisy fixture.
+
+  Independently compiling the function-field fixture produced different wire
+  ordering even with the same old binary. That is not a regression test for
+  stable nominal allocation. Loading the same retained image and resaving
+  with `--load --steps 0 --retain-reductions` is byte-identical to the original
+  with both binaries (exit 3: pending, no Solve). Without `--retain-reductions`,
+  both correctly select the other save mode; do not compare its bytes to the
+  retained-mode input.
+
+  Strict debug Source/Derivation/Graph scripts, full optimized acceptance
+  (63/63 compatibility and all universal sort proofs), and the same three
+  ASan/UBSan scripts pass. Normalized `export results:` records including
+  step counts match the preceding full run. Evidence logs use
+  `/tmp/a-program-authority-direct-dependencies-*`; debug binaries use the
+  same prefix, optimized/sanitizer builds reuse `authority-source-sites-*`.
+  This change adds 106/deletes 64 implementation/header lines (net +42),
+  tests +51/-2. Cumulative source is still +1,361 versus R76 and +3,777 versus
+  R0. Output-sensitive lexical discovery and the net-negative gate remain
+  open. Match allocation projection is still performed separately during
+  discovery and encoding; it was inspected but not silently replaced with
+  another permanent cache in this epoch.
+
 - [x] Register explicit Lambda/Pi binders in the same immutable address store
   as automatic bindings; delete their duplicate job-origin enumeration and
   writer scope-recovery path. Exact binder/conflict and inert-resave checks

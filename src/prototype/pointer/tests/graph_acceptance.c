@@ -124,14 +124,26 @@ static void write_graph(FILE *file, struct pg_graph *graph)
 		.parent = cb, .binder = x, .declared_type = pg_pi(graph, u, k, u),
 		.judgement = PG_JUDGEMENT_TYPE_FAMILY, .indices = index});
 	const struct pg_context *contexts[] = {ca, cb, xa, xb, NULL, xa, xf, index, family, family};
-	struct pg_dag dependencies;
+	struct pg_dag dependencies, dependency_terms;
 	assert(!pg_dag_init(&dependencies, pg_context_dependency, NULL));
+	assert(!pg_dag_init(&dependency_terms, NULL, NULL));
+	assert(!pg_graph_init(&dependency_terms.storage));
 	size_t terms_before = graph->terms.count;
 	for (unsigned i = 0; i < 128; ++i)
-		assert(!pg_dag_add(&dependencies, family) && !pg_dag_add(&dependencies, xa));
+		assert(!pg_context_collect(&dependency_terms, &dependencies, family) &&
+			!pg_context_collect(&dependency_terms, &dependencies, xa));
 	assert(dependencies.count == 5 && dependencies.first->key == ca && dependencies.last->key == xa);
 	assert(pg_dag_find(&dependencies, index)->id < pg_dag_find(&dependencies, family)->id);
+	for (const struct pg_dag_node *node = dependencies.first; node; node = node->next) {
+		const struct pg_context *context = node->key;
+		assert(pg_dag_find(&dependency_terms, pg_reference(&dependency_terms.storage, context->binder)));
+		assert(pg_dag_find(&dependency_terms, context->declared_type));
+	}
 	assert(graph->terms.count == terms_before && !typing.proofs.count);
+	struct pg_context invalid = *family;
+	invalid.judgement = PG_JUDGEMENT_COMPUTATION;
+	assert(pg_context_collect(&dependency_terms, &dependencies, &invalid) == -1);
+	pg_dag_destroy(&dependency_terms);
 	pg_dag_destroy(&dependencies);
 	assert(pg_contexts_write(file, 10, contexts, 5, roots, name, graph) == 0);
 	context_boundaries(&typing, roots[0]);

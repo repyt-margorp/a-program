@@ -17,13 +17,17 @@ struct pg_derivation_payload {
  * declaration, constructor, constant, followed by induction context/binder roots.
  * Optional fixed slots are NULL. Context metadata uses context_payload.h.
  * Arrays/reference wrappers belong to scratch; input objects are borrowed.
- * This does not check an inference rule
- * or accept evidence. Shared by transport and dependency selection. */
+ * This does not check an inference rule or accept evidence. */
 int pg_derivation_input_terms(struct pg_graph *scratch,
 	const struct pg_derivation_input *input,
 	struct pg_derivation_payload *payload);
+/* Direct dependencies, sharing the fixed parameter projection with packing.
+ * Contexts use pg_context_dependency and are visited once across inputs.
+ * Both DAGs are temporary; discard partial output on failure. No Solve. */
+int pg_derivation_input_collect(struct pg_dag *terms, struct pg_dag *contexts,
+	const struct pg_derivation_input *input);
 /* Collect the object dependency closure of an unaccepted premise DAG and its
- * effect definitions. Uses the same parameter packing and descriptor traversal
+ * effect definitions. Uses the same parameter projection and descriptor traversal
  * as writing. objects is an initialized leaf DAG; partial output on error must
  * not be used. No Solve, proof acceptance or temporary file is involved. */
 int pg_derivation_inputs_collect_objects(struct pg_dag *objects, size_t count,

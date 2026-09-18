@@ -11,6 +11,29 @@ int pg_context_dependency(void *unused, const void *key, size_t index, const voi
 	return 1;
 }
 
+static int context_terms(struct pg_graph *storage, const struct pg_context *context,
+	const struct pg_term **terms)
+{
+	if (!context->binder || context->binder->kind != PG_BINDER || !context->declared_type) return -1;
+	if (context->judgement != PG_JUDGEMENT_VALUE && context->judgement != PG_JUDGEMENT_TYPE_FAMILY) return -1;
+	terms[0] = pg_reference(storage, context->binder);
+	terms[1] = context->declared_type;
+	return terms[0] ? 0 : -1;
+}
+
+int pg_context_collect(struct pg_dag *terms, struct pg_dag *contexts,
+	const struct pg_context *context)
+{
+	const struct pg_dag_node *last = contexts->last;
+	if (context && pg_dag_add(contexts, context)) return -1;
+	for (const struct pg_dag_node *node = last ? last->next : contexts->first; node; node = node->next) {
+		const struct pg_term *roots[2];
+		if (context_terms(&terms->storage, node->key, roots)) return -1;
+		if (pg_dag_add(terms, roots[0]) || pg_dag_add(terms, roots[1])) return -1;
+	}
+	return 0;
+}
+
 int pg_contexts_pack(struct pg_graph *storage, size_t count,
 	const struct pg_context *const *contexts, size_t term_count,
 	const struct pg_term *const *terms, size_t *metadata_count,
@@ -33,14 +56,10 @@ int pg_contexts_pack(struct pg_graph *storage, size_t count,
 		const struct pg_context *context = r->key;
 		const struct pg_dag_node *prefix = pg_dag_find(&dag, context->parent);
 		const struct pg_dag_node *indices = pg_dag_find(&dag, context->indices);
-		if (!context->binder || context->binder->kind != PG_BINDER || !context->declared_type) goto done;
-		if (context->judgement != PG_JUDGEMENT_VALUE && context->judgement != PG_JUDGEMENT_TYPE_FAMILY) goto done;
+		if (context_terms(storage, context, &output[2 * (r->id - 1)])) goto done;
 		ids[2 + 3 * (r->id - 1)] = prefix ? prefix->id : 0;
 		ids[3 + 3 * (r->id - 1)] = context->judgement;
 		ids[4 + 3 * (r->id - 1)] = indices ? indices->id : 0;
-		output[2 * (r->id - 1)] = pg_reference(storage, context->binder);
-		output[2 * (r->id - 1) + 1] = context->declared_type;
-		if (!output[2 * (r->id - 1)]) goto done;
 	}
 	for (size_t i = 0; i < count; ++i) {
 		const struct pg_dag_node *r = pg_dag_find(&dag, contexts[i]);

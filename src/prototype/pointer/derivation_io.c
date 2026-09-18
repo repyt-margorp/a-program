@@ -37,27 +37,10 @@ static int term_reference(FILE *file, const struct pg_term *term,
 	return pg_wire_write_u64(file, pg_dag_find(terms, term)->id);
 }
 
-int pg_derivation_input_terms(struct pg_graph *scratch,
-	const struct pg_derivation_input *input,
-	struct pg_derivation_payload *payload)
+static int input_terms(struct pg_graph *scratch, const struct pg_derivation_input *input,
+	const struct pg_term **terms)
 {
-	if (!scratch || !input || !payload) return -1;
 	const struct pg_derivation_parameters *p = &input->parameters;
-	struct pg_derivation_payload result = {.count = PG_DERIVATION_TERM_SLOTS};
-	const struct pg_term *const *extra = NULL;
-	size_t extra_count = 0;
-	if (p->induction) {
-		if (input->rule != PG_INDUCTION_ELIM) return -1;
-		const struct pg_induction_allocation *a = p->induction;
-		const struct pg_term *binders[] = {pg_reference(scratch, a->recursion),
-			pg_reference(scratch, a->argument), pg_reference(scratch, a->self)};
-		if (pg_contexts_pack(scratch, a->count, a->clauses, 3, binders,
-			&result.metadata_count, &result.metadata, &extra_count, &extra)) return -1;
-	}
-	if (extra_count > SIZE_MAX / sizeof(void *) - result.count) return -1;
-	result.count += extra_count;
-	const struct pg_term **terms = pg_alloc(scratch, result.count * sizeof(*terms));
-	if (!terms) return -1;
 	const struct pg_object *objects[PG_DERIVATION_TERM_SLOTS] = {
 		p->binder, input->effect_parameter, NULL, NULL, p->operation_label, NULL,
 		p->declaration ? pg_data_declaration_family(p->declaration) : NULL, p->constructor, p->constant
@@ -73,17 +56,63 @@ int pg_derivation_input_terms(struct pg_graph *scratch,
 	terms[2] = input->source; terms[3] = input->target;
 	terms[5] = pg_handler_signature_reference(scratch, p->handler);
 	if (p->handler && !terms[5]) return -1;
-	for (size_t i = 0; i < extra_count; ++i) terms[PG_DERIVATION_TERM_SLOTS + i] = extra[i];
 	/* A reduction target may reference the same binder as a parameter wrapper.
 	 * Canonicalize those wrappers in the payload arena, as image_roots_write does. */
-	for (size_t i = 0; i < result.count; ++i) {
+	for (size_t i = 0; i < PG_DERIVATION_TERM_SLOTS; ++i) {
 		if (!terms[i] || terms[i]->kind != PG_REFERENCE) continue;
 		terms[i] = pg_reference(scratch, terms[i]->as.reference);
 		if (!terms[i]) return -1;
 	}
+	return 0;
+}
+
+int pg_derivation_input_terms(struct pg_graph *scratch,
+	const struct pg_derivation_input *input,
+	struct pg_derivation_payload *payload)
+{
+	if (!scratch || !input || !payload) return -1;
+	struct pg_derivation_payload result = {.count = PG_DERIVATION_TERM_SLOTS};
+	const struct pg_term *const *extra = NULL;
+	size_t extra_count = 0;
+	const struct pg_induction_allocation *a = input->parameters.induction;
+	if (a) {
+		if (input->rule != PG_INDUCTION_ELIM) return -1;
+		const struct pg_term *binders[] = {pg_reference(scratch, a->recursion),
+			pg_reference(scratch, a->argument), pg_reference(scratch, a->self)};
+		if (pg_contexts_pack(scratch, a->count, a->clauses, 3, binders,
+			&result.metadata_count, &result.metadata, &extra_count, &extra)) return -1;
+	}
+	if (extra_count > SIZE_MAX / sizeof(void *) - result.count) return -1;
+	result.count += extra_count;
+	const struct pg_term **terms = pg_alloc(scratch, result.count * sizeof(*terms));
+	if (!terms || input_terms(scratch, input, terms)) return -1;
+	for (size_t i = 0; i < extra_count; ++i) {
+		const struct pg_term *term = extra[i];
+		if (term->kind == PG_REFERENCE) term = pg_reference(scratch, term->as.reference);
+		if (!term) return -1;
+		terms[PG_DERIVATION_TERM_SLOTS + i] = term;
+	}
 	result.terms = terms;
 	*payload = result;
 	return 0;
+}
+
+int pg_derivation_input_collect(struct pg_dag *terms, struct pg_dag *contexts,
+	const struct pg_derivation_input *input)
+{
+	if (!terms || !contexts || !input) return -1;
+	const struct pg_term *roots[PG_DERIVATION_TERM_SLOTS];
+	if (input_terms(&terms->storage, input, roots)) return -1;
+	for (size_t i = 0; i < PG_DERIVATION_TERM_SLOTS; ++i)
+		if (roots[i] && pg_dag_add(terms, roots[i])) return -1;
+	const struct pg_induction_allocation *a = input->parameters.induction;
+	if (!a) return 0;
+	if (input->rule != PG_INDUCTION_ELIM || (a->count && !a->clauses)) return -1;
+	for (size_t i = 0; i < a->count; ++i)
+		if (pg_context_collect(terms, contexts, a->clauses[i])) return -1;
+	return pg_dag_add(terms, pg_reference(&terms->storage, a->recursion)) ||
+		pg_dag_add(terms, pg_reference(&terms->storage, a->argument)) ||
+		pg_dag_add(terms, pg_reference(&terms->storage, a->self)) ? -1 : 0;
 }
 
 int pg_derivation_inputs_collect_objects(struct pg_dag *objects, size_t count,
@@ -91,31 +120,22 @@ int pg_derivation_inputs_collect_objects(struct pg_dag *objects, size_t count,
 	const struct pg_graph_codec *codec, void *owner)
 {
 	if (!objects || (count && !roots)) return -1;
-	struct pg_dag inputs = {0}, terms = {0};
-	struct pg_graph scratch = {0};
+	struct pg_dag inputs = {0}, terms = {0}, contexts = {0};
 	int status = -1;
-	if (pg_dag_init(&inputs, input_premise, NULL) || pg_dag_init(&terms, NULL, NULL)
-		|| pg_graph_init(&scratch)) goto done;
+	if (pg_dag_init(&inputs, input_premise, NULL) || pg_dag_init(&contexts, pg_context_dependency, NULL)
+		|| pg_graph_dependencies_init(&terms, objects, codec, owner)) goto done;
 	for (size_t i = 0; i < count; ++i) if (pg_dag_add(&inputs, roots[i])) goto done;
-	for (const struct pg_dag_node *node = inputs.first; node; node = node->next) {
-		struct pg_derivation_payload payload;
-		if (pg_derivation_input_terms(&scratch, node->key, &payload)) goto done;
-		for (size_t i = 0; i < payload.count; ++i)
-			if (payload.terms[i] && pg_dag_add(&terms, payload.terms[i])) goto done;
-	}
+	for (const struct pg_dag_node *node = inputs.first; node; node = node->next)
+		if (pg_derivation_input_collect(&terms, &contexts, node->key)) goto done;
 	size_t equations, effect_count;
 	const struct pg_term *const *effect_roots;
 	if (work) {
-		if (pg_effect_inference_pack(work, &scratch, &equations, &effect_count, &effect_roots)) goto done;
+		if (pg_effect_inference_pack(work, &terms.storage, &equations, &effect_count, &effect_roots)) goto done;
 		for (size_t i = 0; i < effect_count; ++i) if (pg_dag_add(&terms, effect_roots[i])) goto done;
 	}
-	if (terms.count > SIZE_MAX / sizeof(void *)) goto done;
-	const struct pg_term **term_roots = pg_alloc(&scratch, terms.count * sizeof(*term_roots));
-	if (!term_roots) goto done;
-	for (const struct pg_dag_node *node = terms.first; node; node = node->next) term_roots[node->id - 1] = node->key;
-	status = pg_graph_collect_objects(objects, terms.count, term_roots, codec, owner);
+	status = 0;
 done:
-	pg_graph_destroy(&scratch);
+	pg_dag_destroy(&contexts);
 	pg_dag_destroy(&terms); pg_dag_destroy(&inputs);
 	return status;
 }

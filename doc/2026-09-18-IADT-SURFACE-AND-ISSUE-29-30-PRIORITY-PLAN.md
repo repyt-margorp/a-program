@@ -2001,3 +2001,57 @@ Per-file implementation: `context_payload.c` +2/-2, `context_payload.h` +3/-0,
 `source_io.c` +13/-10 (total net +6); tests: `graph_acceptance.c` +11/-0.
 Cumulative implementation/header deltas: R76 +2,413/-1,094 (net +1,319);
 R0 +7,359/-3,624 (net +3,735). Remaining A3/A4/A5 and net-negative gates stay open.
+
+### 2026-09-19: Shared queries and direct dependency collection publication
+
+This publication groups the seven previously unpublished corrections with the
+direct dependency collector, not one push per small edit. The coherent scope
+is reuse of existing typed requests and immutable dependency structure:
+
+- [x] Remove quadratic candidate insertion; preserve sibling-source isolation.
+- [x] Advance family/graph view queries through existing Solve work, retaining
+  the pending shared query instead of rediscovering its surrounding structure.
+- [x] Verify capture-avoiding specialization reuse; validate Context lifts once
+  and skip repeated Context-length walks on exact map intern hits.
+- [x] Discover shared Context dependencies once. Remove disposable derivation
+  wire payloads from dependency selection and the second root-array traversal.
+- [x] Full optimized acceptance: exit 0, compatibility 63/63, insertion/tree/
+  merge/quick universal proofs pass. Normalized result records including Solve
+  steps match `authority-context-discovery-acceptance.log`.
+- [x] Strict debug and ASan/UBSan Source, Derivation and Graph scripts: exit 0.
+  Repeated direct collection matches packed object dependencies; no new proof
+  acceptance or Solve occurs during discovery. Retained IF8 output is unchanged;
+  function-field inert resave preserves the same input image exactly.
+- [ ] Publish the grouped epoch and verify both remote tips.
+
+The re-audit's A3 entry records exact commands/build flags via the previous
+entries, logs, 697 removed intermediate payload calls, arena savings and the
+non-deterministic fresh-allocation comparison that was not a valid byte-stability
+test. No inference rule, source syntax or image format changes in this epoch.
+
+Per-file counts from remote baseline `605d11b`, before this documentation entry:
+
+| File under `src/prototype/pointer/` | Added | Deleted | Net |
+|---|---:|---:|---:|
+| context_payload.c | 26 | 7 | +19 |
+| context_payload.h | 9 | 0 | +9 |
+| derivation_io.c | 58 | 38 | +20 |
+| derivation_io.h | 7 | 3 | +4 |
+| evidence.c | 0 | 2 | -2 |
+| function_graph.c | 33 | 10 | +23 |
+| source_io.c | 19 | 28 | -9 |
+| synthesis.c | 4 | 3 | +1 |
+| typing.c | 5 | 5 | 0 |
+| **Implementation/headers** | **161** | **96** | **+65** |
+| tests/core.c | 14 | 0 | +14 |
+| tests/derivation_io.c | 37 | 0 | +37 |
+| tests/graph_acceptance.c | 23 | 0 | +23 |
+| tests/program.c | 39 | 0 | +39 |
+| tests/source_io.c | 28 | 0 | +28 |
+| tests/synthesis.c | 11 | 1 | +10 |
+| **Tests** | **152** | **1** | **+151** |
+
+Cumulative implementation/header changes are R76 +2,510/-1,149 (net +1,361),
+R0 +7,455/-3,678 (net +3,777). The overall source-reduction requirement is not
+met. A3's scope-sensitive source selection, A4's remaining structural consumers
+and final A5 acceptance remain open; publishing this epoch does not complete R.

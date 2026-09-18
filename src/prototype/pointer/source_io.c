@@ -179,7 +179,7 @@ struct origin_collection {
 	struct pg_dag objects, terms, contexts;
 	struct pg_index candidates;
 	struct pg_declaration_io *codec;
-	const struct pg_dag_node *last_scope, *last_producer, *last_syntax, *last_object, *last_context;
+	const struct pg_dag_node *last_scope, *last_producer, *last_syntax, *last_object;
 	struct source_member *members;
 	size_t member_count;
 };
@@ -187,14 +187,8 @@ struct origin_collection {
 static int collect_allocation(struct origin_collection *c, const struct pg_context *prefix,
 	const struct pg_context *fields, const struct pg_object *constructor)
 {
-	if (prefix && pg_dag_add(&c->contexts, prefix)) return -1;
-	if (fields && pg_dag_add(&c->contexts, fields)) return -1;
-	for (const struct pg_dag_node *node = c->last_context ? c->last_context->next : c->contexts.first;
-		node; c->last_context = node, node = node->next) {
-		const struct pg_context *context = node->key;
-		if (pg_dag_add(&c->terms, pg_reference(&c->rules->storage, context->binder)) ||
-			pg_dag_add(&c->terms, context->declared_type)) return -1;
-	}
+	if (pg_context_collect(&c->terms, &c->contexts, prefix) ||
+		pg_context_collect(&c->terms, &c->contexts, fields)) return -1;
 	return pg_dag_add(&c->terms, pg_reference(&c->rules->storage, constructor));
 }
 
@@ -406,16 +400,15 @@ static int retain_dependencies(void *owner, const struct pg_derivation_input *in
 	const struct pg_effect_inference *work)
 {
 	struct origin_collection *c = owner;
-	const struct pg_term *const *terms;
-	size_t count, equations;
 	if (input) {
-		struct pg_derivation_payload payload;
-		if (pg_derivation_input_terms(&c->terms.storage, input, &payload)) return -1;
-		terms = payload.terms;
-		count = payload.count;
-	} else if (pg_effect_inference_pack(work, &c->terms.storage, &equations, &count, &terms)) return -1;
-	for (size_t i = 0; i < count; ++i)
-		if (terms[i] && pg_dag_add(&c->terms, terms[i])) return -1;
+		if (pg_derivation_input_collect(&c->terms, &c->contexts, input)) return -1;
+	} else {
+		const struct pg_term *const *terms;
+		size_t count, equations;
+		if (pg_effect_inference_pack(work, &c->terms.storage, &equations, &count, &terms)) return -1;
+		for (size_t i = 0; i < count; ++i)
+			if (terms[i] && pg_dag_add(&c->terms, terms[i])) return -1;
+	}
 	return retain_objects(c);
 }
 
