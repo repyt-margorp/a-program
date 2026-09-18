@@ -2847,8 +2847,8 @@ rewrite both remain `192f4b946f4be68c3ef25f257840dad8b1106b43`.
   compatibility and retained QuickSort resaves. All 2,460 normalized result
   records agree after excluding steps. Step deltas: 2,278 unchanged, 82 +1,
   82 +13 and 18 +21. These are scheduling changes, not equality exceptions.
-- [ ] Include this local change in the next grouped publication, not a Main
-  push for one helper. A3, remaining A4 consumers and final A5 gates stay open.
+- [x] Published in the grouped `3340dde` milestone, not a Main push for one
+  helper. A3, remaining A4 consumers and final A5 gates stay open.
 
 GDB on the imported QuickSort-property fixture: Core terms 135287, proofs
 93435, occurrences 82230, Contexts 4389, Context maps 15764, typed queries 9925,
@@ -2881,8 +2881,8 @@ gate remains unmet; Main is deliberately not advanced for this single helper.
   halt-on-error enabled for the sanitizer run.
 - [x] Optimized `check-acceptance check-eval-io` passes. All 2,460 normalized
   export records, including steps, match the preceding helper-application run.
-- [ ] Include in a substantial tested refactoring epoch; do not push this
-  isolated cleanup to Main. A3/A4/A5 and the overall reduction gate remain open.
+- [x] Included in the tested `3340dde` refactoring epoch, not an isolated
+  cleanup push. A3/A4/A5 and the overall reduction gate remain open.
 
 For the imported QuickSort-property fixture, GDB records 725 calls before and
 after. Identity checks decrease from 6,910 to 5,943; adjacent repeated Context
@@ -2909,8 +2909,8 @@ Evidence: `/tmp/a-program-authority-identity-scope-{before,after}.log`,
   Sanitizers use explicit leak detection and halt-on-error. Compatibility is
   63/63. All 2,460 normalized export records agree with the preceding run after
   excluding steps; existing inert-resave equality gates pass unchanged.
-- [ ] Include in the next substantial publication epoch. This local fix does
-  not complete A3's source reachability, A4's remaining consumer audit or A5.
+- [x] Included in publication epoch `3340dde`. This fix does not complete A3's
+  source reachability, A4's remaining consumer audit or A5.
 
 No global idempotence shortcut, new job/tag/cache, or expected-type input is
 introduced. The generic application API still checks and normalizes its input.
@@ -3006,7 +3006,7 @@ duplicate work without claiming completion of the parent refactor.
 - [x] Debug program/source/image tests, including both previously failing
   boundary regressions and dependent application tests recorded above.
 - [x] Complete affected sanitizer tests with leak/halt-on-error enabled.
-- [ ] Verify remote tips, commit, atomically push Main/rewrite without force,
+- [x] Verify remote tips, commit, atomically push Main/rewrite without force,
   and record the resulting revisions.
 
 Relative to published Main `192f4b9` (implementation, headers and tests):
@@ -3028,3 +3028,11 @@ performance and cumulative net-negative code gates remain open.
 
 Cumulative implementation/headers: R76 (`3a3bf550`) +2,962/-1,447 (net +1,515);
 R0 (`4657cc6`) +7,860/-3,929 (net +3,931). Neither reduction gate is satisfied.
+
+Publication verified: the atomic push advanced both `origin/main` and
+`origin/rewrite/pointer-core-hott` from `192f4b9` to
+`3340ddea736091e3107c16fa96f3da635730844d`. Remote tips were fetched and checked
+for fast-forward ancestry beforehand and confirmed with `git ls-remote`
+afterward. Through that implementation commit, documentation adds 34 lines in
+the authority plan and 249 lines in this priority plan; these are separate from
+implementation and test counts. This follow-up records publication only.
