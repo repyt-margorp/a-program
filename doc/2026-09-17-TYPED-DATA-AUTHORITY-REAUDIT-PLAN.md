@@ -1192,6 +1192,13 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   accepted classifier and cannot replace `accepted_structure`, or vice versa.
   Full optimized acceptance and focused sanitizer tests pass; measurements and
   the corrected test assumption are in the priority plan. A3-A5 remain open.
+- [x] Repair Pi formation's early reuse key: insertion and lookup now both key
+  by exact premises, since those premises determine the output. Alternative
+  premise derivations still yield distinct receipts even for identical typed
+  conclusions. No new cache or authority. The repeated-request Core experiment
+  avoids 208 reconstructions; the existing function-field example does not
+  improve. Full optimized acceptance and affected sanitizer/serialization tests
+  pass; see the priority plan for the controlled experiment and limitations.
 - [x] Count binding payload slots during first source collection; delete the
   separate scope-count and binding-count passes in `source_io.c`. Repeated
   binding discovery stops at the existing writer-local DAG. The counter is

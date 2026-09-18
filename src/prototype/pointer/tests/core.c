@@ -1477,6 +1477,25 @@ static void typed_substitution_test(struct pg_graph *graph)
 	const struct pg_evidence *alternate_b = pg_prove_type_value(&typing,
 		pg_prove_value_type(&typing, destination_b));
 	assert(alternate_b != destination_b && pg_evidence_subject(alternate_b) == pg_evidence_subject(destination_b));
+	/* Pi's output is determined by its exact premises, not by a caller-supplied
+	 * subject. Equal typed conclusions do not identify alternative derivations. */
+	const struct pg_evidence *pi_bodies[] = {
+		pg_prove_return_type(&typing, destination_b), pg_prove_return_type(&typing, alternate_b)};
+	const struct pg_evidence *pis[] = {
+		pg_prove_pi(&typing, destination, pi_bodies[0]), pg_prove_pi(&typing, destination, pi_bodies[1])};
+	assert(pis[0] && pis[1] && pis[0] != pis[1]);
+	assert(pg_evidence_subject(pis[0]) == pg_evidence_subject(pis[1]));
+	size_t pi_proofs = typing.proofs.count, pi_occurrences = typing.occurrences.count;
+	for (size_t repeat = 0; repeat < 100; ++repeat)
+		for (size_t i = 0; i < 2; ++i) {
+			assert(pg_prove_pi(&typing, destination, pi_bodies[i]) == pis[i]);
+			assert(pg_evidence_premise(pis[i], 1) == pi_bodies[i]);
+		}
+	assert(typing.proofs.count == pi_proofs && typing.occurrences.count == pi_occurrences);
+	assert(!pg_prove_pi(&typing, source, pi_bodies[0]));
+	assert(!pg_prove_pi(&typing, destination, destination_b));
+	reconstruct_derivation(&typing, pis[0]);
+	reconstruct_derivation(&typing, pis[1]);
 	const struct pg_evidence *alternate_images[] = {alternate_b, destination_y};
 	size_t map_count = typing.context_maps.count;
 	const struct pg_evidence *alternate = pg_prove_substitution(&typing, source, destination, 2, alternate_images);

@@ -2414,3 +2414,36 @@ Diff against `1dd755c`: `evidence.c` +34/-30, `evidence.h` +10/-0,
 `function_graph.c` +11/-25; implementation/header net 0. Tests +39/-0.
 The reduction is three duplicated algorithms, not a net LOC reduction yet.
 Logs and the new debug binaries use `/tmp/a-program-authority-call-telescope-*`.
+
+### 2026-09-19: Repair the Pi formation lookup key (local)
+
+- [x] Audit early `find_record` calls against their insertion keys. Pi formation
+  searched with a NULL output but inserted with its constructed output, defeating
+  early reuse. Its exact context-extension and codomain premises determine that
+  output. Add `PG_PI_FORM` to the existing derived-output rules; no new cache,
+  evidence authority, inference rule or format is needed.
+- [x] Test two alternative codomain derivations with the same typed conclusion:
+  retain distinct Pi receipts, reuse each exact receipt for 100 repeated requests,
+  preserve premises, reconstruct both, and reject wrong context/category inputs.
+  This protects key semantics; it is not a previously failing semantic test.
+- [x] Strict-debug Core/program tests pass.
+- [x] Optimized full acceptance: compatibility 63/63 and all four universal
+  sorting proof suites pass. Normalized exported results and Solve steps match
+  the preceding call-telescope run exactly.
+- [x] ASan/UBSan Core, IADT, program, callable-parameter, function-field and
+  `derivation_io.sh` pass with explicit leak detection and halt-on-error.
+  This is affected-suite coverage, not a new full sanitizer acceptance run.
+- [ ] Include in a substantial verified epoch before publication to Main.
+
+GDB on the new Core test: 306 Pi requests, 93 `binding_level` calls. A controlled
+debugger run forcing only Pi's `derived_output` result back to the old false
+value has the same 306 requests and 301 `binding_level` calls; both runs pass.
+That function has only the Pi constructor as a caller. The experiment therefore
+isolates 208 avoided reconstructions without adding production counters. On
+`function-graph-function-field.p`, both old and new binaries make 606 Pi requests
+and 606 such calls; Solve remains 13,531 steps for chunks 1 and 64. Do not infer
+a general wall-time improvement from the repeated-request test.
+
+Implementation: `evidence.c` +1/-1 (net 0); test `tests/core.c` +19/-0.
+Logs: `/tmp/a-program-authority-pi-key-*`. Broader A3-A5, lexical enumeration,
+small-case performance and cumulative net-negative implementation remain open.

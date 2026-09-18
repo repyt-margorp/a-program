@@ -145,7 +145,7 @@ const struct pg_handler_signature *pg_handler_signature_view(const struct pg_ter
 static int derived_output(enum pg_evidence_rule rule)
 {
 	switch (rule) {
-	case PG_REINDEX: case PG_CONTEXT_PROJECTION: case PG_APP_ELIM: case PG_PI_CODOMAIN:
+	case PG_REINDEX: case PG_CONTEXT_PROJECTION: case PG_PI_FORM: case PG_APP_ELIM: case PG_PI_CODOMAIN:
 	case PG_FOLD_ELIM: case PG_PI_CONSTANT_CODOMAIN: case PG_EFFECT_SUBSUMPTION: case PG_REQUEST_INTRO:
 	case PG_FAMILY_IDENTITY_FORM: case PG_FAMILY_ACTION:
 	case PG_INDUCTIVE_FORM: case PG_CONSTRUCTOR_INTRO: case PG_MATCH_ELIM: case PG_INDUCTION_ELIM: case PG_TYPE_CASE:
