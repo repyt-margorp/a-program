@@ -83,8 +83,7 @@ struct application_state {
 	struct pg_synthesis_job *constraint;
 	struct constructor_application *constructor;
 	const struct block_frame *frames;
-	size_t scope_count, binding_count;
-	const struct pg_object *const *scope;
+	size_t binding_count;
 };
 struct index_transport_state {
 	const struct pg_evidence *cursor, *path, *endpoints[2];
@@ -1084,24 +1083,29 @@ struct pg_synthesis_job *pg_synthesis_telescope_at(struct pg_synthesis *synthesi
 	return pg_synthesis_telescope(synthesis, scope, syntax);
 }
 
-static int source_scope_binders(struct pg_synthesis *synthesis,
-	const struct pg_source_scope *scope, size_t *count, const struct pg_object *const **output)
+struct binding_cursor {
+	const struct pg_source_scope *source;
+	const struct pg_object *const *binders;
+	size_t count;
+};
+
+/* Read one lexical address from a source scope or an imported array. */
+static int binding_next(struct binding_cursor *cursor, const struct pg_object **binder)
 {
-	*count = 0;
-	for (const struct pg_source_scope *entry = scope; entry; entry = entry->parent)
-		if (entry->binder) ++*count;
-	if (*count > SIZE_MAX / sizeof(**output)) return -1;
-	const struct pg_object **binders = pg_alloc(synthesis->typing->graph, *count * sizeof(*binders));
-	if (!binders) return -1;
-	size_t i = 0;
-	for (const struct pg_source_scope *entry = scope; entry; entry = entry->parent)
-		if (entry->binder) binders[i++] = entry->binder;
-	*output = binders;
-	return 0;
+	if (cursor->count) {
+		*binder = *cursor->binders++;
+		--cursor->count;
+		return 1;
+	}
+	while (cursor->source && !cursor->source->binder) cursor->source = cursor->source->parent;
+	if (!cursor->source) return 0;
+	*binder = cursor->source->binder;
+	cursor->source = cursor->source->parent;
+	return 1;
 }
 
-const struct pg_source_binding *pg_synthesis_source_binding(struct pg_synthesis *synthesis,
-	const struct pg_source_binding *input)
+static const struct pg_source_binding *source_binding_in_scope(struct pg_synthesis *synthesis,
+	const struct pg_source_binding *input, const struct pg_source_scope *source)
 {
 	if (!synthesis || !input) return NULL;
 	if (input->syntax) {
@@ -1129,29 +1133,43 @@ const struct pg_source_binding *pg_synthesis_source_binding(struct pg_synthesis 
 	if (input->scope_count && !input->scope) return NULL;
 	if (input->binder && input->binder->kind != PG_BINDER) return NULL;
 	uint64_t hash = (uintptr_t)input->syntax ^ (uintptr_t)input->constructor ^ input->slot;
-	for (size_t i = 0; i < input->scope_count; ++i) {
-		const struct pg_object *binder = input->scope[i];
+	struct binding_cursor initial = {source, input->scope, input->scope_count}, cursor = initial;
+	const struct pg_object *binder;
+	size_t count = 0;
+	while (binding_next(&cursor, &binder)) {
 		if (!binder || binder->kind != PG_BINDER || binder == input->binder) return NULL;
+		if (++count > (SIZE_MAX - sizeof(struct source_binding)) / sizeof(*input->scope)) return NULL;
 		hash = (hash ^ (uintptr_t)binder) * UINT64_C(1099511628211);
 	}
 	for (struct pg_index_entry *entry = pg_index_candidates(&synthesis->source_bindings, hash); entry; entry = entry->next) {
 		const struct pg_source_binding *found = &((const struct source_binding *)entry)->input;
 		if (entry->hash != hash || found->syntax != input->syntax || found->slot != input->slot) continue;
 		if (found->constructor != input->constructor) continue;
-		if (found->scope_count != input->scope_count) continue;
-		if (input->scope_count && memcmp(found->scope, input->scope, input->scope_count * sizeof(*input->scope))) continue;
+		if (found->scope_count != count) continue;
+		cursor = initial;
+		size_t i = 0;
+		while (binding_next(&cursor, &binder) && found->scope[i] == binder) ++i;
+		if (i != count) continue;
 		return !input->binder || input->binder == found->binder ? found : NULL;
 	}
 	struct source_binding *entry = pg_alloc(synthesis->typing->graph,
-		sizeof(*entry) + input->scope_count * sizeof(*input->scope));
+		sizeof(*entry) + count * sizeof(*input->scope));
 	if (!entry) return NULL;
 	const struct pg_object **scope = (void *)(entry + 1);
-	if (input->scope_count) memcpy(scope, input->scope, input->scope_count * sizeof(*input->scope));
+	cursor = initial;
+	for (size_t i = 0; binding_next(&cursor, &binder); ++i) scope[i] = binder;
 	entry->input = *input;
 	entry->input.scope = scope;
+	entry->input.scope_count = count;
 	if (!entry->input.binder) entry->input.binder = pg_binder(synthesis->typing->graph);
 	if (!entry->input.binder || pg_index_insert(&synthesis->source_bindings, &entry->index, hash)) return NULL;
 	return &entry->input;
+}
+
+const struct pg_source_binding *pg_synthesis_source_binding(struct pg_synthesis *synthesis,
+	const struct pg_source_binding *input)
+{
+	return source_binding_in_scope(synthesis, input, NULL);
 }
 
 static const struct pg_object *source_binder(struct pg_synthesis *synthesis,
@@ -1159,8 +1177,7 @@ static const struct pg_object *source_binder(struct pg_synthesis *synthesis,
 	const struct pg_object *binder)
 {
 	struct pg_source_binding input = {.syntax = syntax, .slot = slot, .binder = binder};
-	if (source_scope_binders(synthesis, scope, &input.scope_count, &input.scope)) return NULL;
-	const struct pg_source_binding *binding = pg_synthesis_source_binding(synthesis, &input);
+	const struct pg_source_binding *binding = source_binding_in_scope(synthesis, &input, scope);
 	return binding ? binding->binder : NULL;
 }
 
@@ -9045,12 +9062,9 @@ static enum pg_synthesis_status application_bind(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *input, int callee)
 {
 	struct application_state *state = job->application;
-	const struct pg_source_binding *binding = pg_synthesis_source_binding(synthesis,
-		&(struct pg_source_binding){job->syntax, state->scope_count, state->binding_count,
-			state->scope, NULL, NULL});
-	if (!binding) return PG_SYNTHESIS_REJECTED;
+	const struct pg_object *binder = source_binder(synthesis, job->scope, job->syntax, state->binding_count, NULL);
+	if (!binder) return PG_SYNTHESIS_REJECTED;
 	++state->binding_count;
-	const struct pg_object *binder = binding->binder;
 	struct pg_synthesis_job *context = pg_synthesis_result_context(synthesis, state->context, input, binder);
 	if (!context) return PG_SYNTHESIS_ERROR;
 	struct pg_synthesis_job *variable = plain_rule(synthesis, PG_VARIABLE, binder, 1, &context);
@@ -9212,7 +9226,6 @@ static int prepare_constructor_spine(struct pg_synthesis *synthesis, struct pg_s
 	}
 	*application = (struct application_state){.context = job->scope->context_job,
 		.callee = callee, .argument = state->arguments[0], .constructor = state};
-	if (source_scope_binders(synthesis, job->scope, &application->scope_count, &application->scope)) goto error;
 	job->application = application;
 	job->left = callee;
 	job->right = state->arguments[0];
@@ -9286,13 +9299,11 @@ static void constructor_application_step(struct pg_synthesis *synthesis,
 			value = plain_rule(synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
 				(struct pg_synthesis_job *[]){state->context, value});
 		} else {
-			const struct pg_source_binding *binding = pg_synthesis_source_binding(synthesis,
-				&(struct pg_source_binding){job->syntax, application->scope_count, application->binding_count,
-					application->scope, NULL, NULL});
-			if (!binding) goto error;
+			const struct pg_object *binder = source_binder(synthesis, job->scope, job->syntax, application->binding_count, NULL);
+			if (!binder) goto error;
 			++application->binding_count;
 			struct pg_synthesis_job *domain = application_domain(synthesis, state->context, state->function);
-			struct pg_synthesis_job *extension = plain_rule(synthesis, PG_CONTEXT_EXTEND, binding->binder, 2,
+			struct pg_synthesis_job *extension = plain_rule(synthesis, PG_CONTEXT_EXTEND, binder, 2,
 				(struct pg_synthesis_job *[]){state->context, domain});
 			if (!extension) goto error;
 			state->scopes[state->count++] = extension;
@@ -9300,7 +9311,7 @@ static void constructor_application_step(struct pg_synthesis *synthesis,
 			state->context = extension;
 			state->function = plain_rule(synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
 				(struct pg_synthesis_job *[]){extension, state->function});
-			value = plain_rule(synthesis, PG_VARIABLE, binding->binder, 1, &extension);
+			value = plain_rule(synthesis, PG_VARIABLE, binder, 1, &extension);
 		}
 		state->function = pg_synthesis_application_jobs(synthesis, state->context, state->function, value);
 		if (!state->function) goto error;
@@ -9347,7 +9358,6 @@ static int prepare_application(struct pg_synthesis *synthesis, struct pg_synthes
 		if (!job->application) goto error;
 		*job->application = (struct application_state){.context = job->scope->context_job,
 			.callee = job->left, .argument = job->right};
-		if (source_scope_binders(synthesis, job->scope, &job->application->scope_count, &job->application->scope)) goto error;
 	}
 	struct application_state *state = job->application;
 	if (state->tail) {

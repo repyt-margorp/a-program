@@ -4773,6 +4773,11 @@ static void source_telescopes(struct pg_typing *typing)
 	const struct pg_source_scope *outer_scope = pg_synthesis_binding_scope(outer);
 	struct pg_synthesis_job *inner = pg_synthesis_binding(&synthesis, outer_scope, reused);
 	assert(inner && pg_synthesis_binding_binder(inner) != pg_synthesis_binding_binder(outer));
+	size_t allocation_count = synthesis.source_bindings.count;
+	const struct pg_source_binding *inner_address = pg_synthesis_source_binding(&synthesis,
+		&(struct pg_source_binding){.syntax = reused, .scope_count = 1, .scope = &allocated->binder});
+	assert(inner_address && inner_address->binder == pg_synthesis_binding_binder(inner));
+	assert(synthesis.source_bindings.count == allocation_count);
 	const struct pg_source_scope *inner_scope = pg_synthesis_binding_scope(inner);
 	const struct pg_evidence *outer_context = complete(&synthesis, outer, PG_SYNTHESIS_DONE);
 	const struct pg_evidence *inner_context = complete(&synthesis, inner, PG_SYNTHESIS_DONE);

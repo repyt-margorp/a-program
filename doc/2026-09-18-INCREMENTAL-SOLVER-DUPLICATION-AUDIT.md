@@ -161,6 +161,62 @@ and the remainder of targets 3-5 still require investigation and implementation.
 
 ## What Was Checked
 
+### Stream Lexical Addresses (after `c911f16`)
+
+Every application previously copied enclosing binders into `application_state`,
+even when it allocated no sequencing/index binder. Other lexical allocations
+first copied the source scope and then copied it again into the canonical
+source-binding record. Both application paths now use the existing lexical
+registration helper. The two application snapshot fields and eager builders
+are removed. A stack-local cursor reads either the immutable source scope or
+an imported address array; only a missing address allocates/copies its record.
+This is not a new persistent scope representation or a polarity/proof cache.
+
+Array and source lookup share the same pointer-order key, validation and
+conflict rules. The nested telescope regression checks that array lookup finds
+the already registered lexical binder without adding a record. Existing
+one/two-binder application, imported address, shadowing and inferred-index
+tests exercise both allocation paths.
+
+Same-input `-O0 -g` comparison against a `git archive c911f16` build, at
+`main.c:395`, `--steps 1000000` (IF8 also uses `--legacy-intrinsic-dot`):
+
+| Quantity | IF8 before / after | length property before / after |
+|---|---:|---:|
+| Arena used bytes | 19,799,584 / 19,762,560 | 4,216,512 / 4,211,040 |
+| Arena capacity bytes | 19,955,712 / 19,922,944 | 4,259,840 / 4,259,840 |
+| Solve transitions | 47,046 / 47,046 | 9,569 / 9,569 |
+| Jobs / source bindings | 15,319 / 344 unchanged | 3,430 / 86 unchanged |
+| Proofs / occurrences / Terms | 23,315 / 19,522 / 11,969 unchanged | 4,941 / 3,574 / 2,031 unchanged |
+
+Arena totals include alignment and exclude index-table allocations. No
+wall-time speedup is claimed. Implementation is +48/-38 (net +10), tests +5;
+the local cursor removes allocation/state but does not reduce source LOC.
+The cumulative reduction gate remains unmet; no exception is granted.
+
+- [x] Remove eager application snapshots and the intermediate lexical array.
+- [x] Debug synthesis, source/array address equivalence and same-input metrics.
+- [x] Full optimized acceptance and affected ASan/UBSan tests.
+- [ ] Publish and verify both remote tips.
+
+Strict `-O2 check-acceptance` exited 0, including compatibility 63/63 and
+QuickSort universal proofs, images and invalid-claim checks. Normalized export
+results match the preceding binding-origin epoch. ASan/UBSan synthesis,
+`source_io.sh`, `handler-nesting` and `handler-boundaries` all exited 0 with
+leak detection and halt-on-error enabled and no diagnostics. Logs:
+`/tmp/a-program-authority-app-scope-acceptance.log` and
+`/tmp/a-program-authority-app-scope-asan-{synthesis,source,handler,boundaries}.log`.
+Sanitizer flags: `-O1 -g -fsanitize=address,undefined
+-fno-omit-frame-pointer -fno-pie -no-pie`, with strict C11 warnings.
+Implementation/header totals: R76 +2,269/-1,022 (net +1,247);
+R0 +7,227/-3,564 (net +3,663). The broad R acceptance gates remain open.
+
+The global source-origin scan remains open. A reverse index populated only
+when a source producer finishes is insufficient: member allocations become
+visible through a completed child before its source parent advances, and
+restored allocations are visible without advancing at all. Any replacement
+must cover those edges, not introduce a second mutable acceptance authority.
+
 ### One Lexical Binding Origin (after `abeedc6`)
 
 `pg_synthesis_binding_at` previously skipped the immutable source-binding
