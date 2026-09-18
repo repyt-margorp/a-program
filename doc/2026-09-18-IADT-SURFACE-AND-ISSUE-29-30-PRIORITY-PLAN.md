@@ -3110,8 +3110,9 @@ alone; group it with the next substantive verified refactoring epoch.
   halt-on-error enabled. Logs use the same prefix with `asan-source`,
   `asan-image` and `asan-program`. Earlier scoped-query core/IADT/synthesis
   sanitizer coverage is recorded above; this is not a full ASan acceptance run.
-- [ ] Commit and publish this grouped epoch with `81287c7`, then verify remote
-  Main/rewrite revisions. Both fetched tips are `4a60149`, ancestors of HEAD.
+- [x] Published this grouped epoch with `81287c7` in implementation commit
+  `6293a791427759edd16f5e01725ec1e3b3db2502`. Both Main and rewrite were advanced
+  atomically from `4a60149`, without force, and verified by `git ls-remote`.
 
 Retained IF8/main diagnostic: origin references dispatched 148 -> 139; batches
 25 -> 40; largest temporary batch remains 1,024 bytes. Thus this removes broad
@@ -3149,3 +3150,5 @@ This epoch does not meet the cumulative net-negative gate or complete A3-A5
 and parent R2-R5. Remaining synchronous map restriction must retain its partial
 images rather than restart them, and the original-baseline performance/code
 reduction review is still required.
+Through implementation `6293a79`, documentation adds 19 lines in the authority
+plan and 113 in this priority plan, separate from implementation/test totals.
