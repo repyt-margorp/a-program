@@ -1879,11 +1879,13 @@ struct member_origin {
 	struct pg_synthesis_job *job;
 	const struct pg_source_scope *scope;
 	const struct pg_syntax *syntax;
+	size_t visited;
 };
 
 static int find_member_origin(void *owner, struct pg_synthesis_job *job)
 {
 	struct member_origin *found = owner;
+	++found->visited;
 	const struct pg_source_scope *scope;
 	const struct pg_syntax *syntax;
 	if (pg_synthesis_source_input(found->synthesis, job, &scope, &syntax)) return 0;
@@ -1891,6 +1893,38 @@ static int find_member_origin(void *owner, struct pg_synthesis_job *job)
 	assert(!found->job);
 	found->job = job; found->scope = scope; found->syntax = syntax;
 	return 0;
+}
+
+static void scoped_member_origins(struct member_origin *found, const struct pg_source_scope *scope)
+{
+	while (scope) {
+		assert(!pg_synthesis_visit_source_references(found->synthesis, scope, find_member_origin, NULL, found));
+		struct pg_source_environment input;
+		assert(!pg_synthesis_environment_input(found->synthesis, scope, &input));
+		scope = input.parent;
+	}
+}
+
+static int find_append_member_origin(void *owner, struct pg_synthesis_job *job)
+{
+	struct member_origin *found = owner;
+	const struct pg_source_scope *scope, *parent;
+	const struct pg_syntax *syntax, *binding;
+	const struct pg_object *binder;
+	if (pg_synthesis_source_input(found->synthesis, job, &scope, &syntax)) return 0;
+	if (syntax->kind != PG_SYNTAX_QUALIFIED || !syntax->right) return 0;
+	struct pg_token name = syntax->right->token;
+	if (name.length != 4 || memcmp(name.text, "cons", 4)) return 0;
+	struct pg_source_environment input;
+	assert(!pg_synthesis_environment_input(found->synthesis, scope, &input));
+	if (!input.binding) return 0;
+	assert(!pg_synthesis_binding_input(found->synthesis, input.binding, &parent, &binding, &binder));
+	name = binding->token;
+	if (name.length != 5 || memcmp(name.text, "right", 5)) return 0;
+	/* Keep the recursive branch's use, not the preliminary no-IH candidate. */
+	assert(!pg_synthesis_environment_input(found->synthesis, parent, &input));
+	if (input.association != PG_SOURCE_HYPOTHESIS) return 0;
+	return find_member_origin(found, job);
 }
 
 static void inferred_constructor_roots(void)
@@ -1969,7 +2003,7 @@ static void member_use_origins(void)
 	assert(pg_synthesis_allocation_object(&p->synthesis, found.job) == binder);
 	struct member_origin indexed = {.synthesis = &p->synthesis};
 	size_t references = p->synthesis.source_references.count;
-	assert(!pg_synthesis_visit_source_references(&p->synthesis, found.syntax, find_member_origin, NULL, &indexed));
+	scoped_member_origins(&indexed, found.scope);
 	assert(indexed.job == found.job && indexed.scope == found.scope);
 	assert(p->synthesis.source_references.count == references);
 	/* Sharing syntax is not sharing a lexical use. Unselected siblings must
@@ -1989,6 +2023,9 @@ static void member_use_origins(void)
 	}
 	uint64_t save_steps = p->synthesis.steps;
 	size_t save_proofs = p->typing.proofs.count;
+	struct member_origin repeated = {.synthesis = &p->synthesis};
+	scoped_member_origins(&repeated, found.scope);
+	assert(repeated.job == found.job && repeated.visited == indexed.visited);
 	assert(!pg_sources_write(after, &p->synthesis, 1, &found.job));
 	assert(p->synthesis.steps == save_steps && p->typing.proofs.count == save_proofs);
 	rewind(before);
@@ -3060,6 +3097,19 @@ static void retained_process(int argc, char **argv)
 
 int main(int argc, char **argv)
 {
+	if (argc == 3 && !strcmp(argv[1], "retained-append-origin")) {
+		FILE *file = fopen(argv[2], "rb");
+		assert(file);
+		size_t count;
+		struct pg_synthesis_job *const *roots;
+		struct pg_program *p = pg_sources_read(file, 1000000, &count, &roots);
+		assert(p && count && !fclose(file) && !p->synthesis.steps);
+		struct member_origin found = {.synthesis = &p->synthesis};
+		assert(!pg_synthesis_visit_source_allocations(&p->synthesis, find_append_member_origin, &found));
+		assert(found.job && !p->synthesis.steps);
+		pg_program_destroy(p);
+		return 0;
+	}
 	if (argc == 3 && (!strcmp(argv[1], "retention-summary") || !strcmp(argv[1], "retention-check"))) {
 		FILE *file = fopen(argv[2], "rb");
 		size_t count;

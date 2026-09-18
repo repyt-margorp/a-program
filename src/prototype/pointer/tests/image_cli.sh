@@ -5,6 +5,20 @@ trap 'rm -rf "$directory"' EXIT
 fixture=$1
 binary=$2
 compare=$3
+# Source-origin discovery order must survive a retained computation snapshot.
+quicksort="$(dirname "${BASH_SOURCE[0]}")/../../tests/fixtures/typing/if8_fuel_free_quicksort_check.p"
+"$binary" --legacy-intrinsic-dot --steps 1000000 --retain-reductions --whnf main \
+	--save "$directory/retained-order.a" "$quicksort" > "$directory/status"
+"$fixture" retained-append-origin "$directory/retained-order.a"
+for round in 1 2; do
+	code=0
+	"$binary" --load --steps 0 --retain-reductions --save "$directory/retained-order-$round.a" \
+		"$directory/retained-order.a" > "$directory/status" || code=$?
+	test "$code" = 3
+	cmp "$directory/retained-order.a" "$directory/retained-order-$round.a"
+	"$fixture" retained-append-origin "$directory/retained-order-$round.a"
+	mv "$directory/retained-order-$round.a" "$directory/retained-order.a"
+done
 "$fixture" nominal-write "$directory/multiple.a"
 code=0
 "$binary" --load --steps 0 --save "$directory/unsolved.a" "$directory/multiple.a" > "$directory/status" || code=$?

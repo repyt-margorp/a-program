@@ -83,7 +83,10 @@ const struct pg_source_binding *pg_synthesis_source_binding(struct pg_synthesis 
 	const struct pg_source_binding *input);
 int pg_synthesis_visit_source_bindings(const struct pg_synthesis *synthesis,
 	int (*visit)(void *, const struct pg_source_binding *), void *owner);
-/* key is an exact syntax or binder pointer. Only the corresponding inputs
+/* key is an exact lexical root scope or binder pointer. Allocations are grouped
+ * through binder/definition/handler extensions, stopping at named scopes.
+ * Visit selected scopes and their parents; syntax/site reachability is separate.
+ * Only the corresponding inputs
  * are inspected; allocation availability is read from the original producer.
  * Optional callbacks select job allocations and/or lexical binding addresses.
  * No Solve, acceptance, copied allocation or completion-index update occurs. */

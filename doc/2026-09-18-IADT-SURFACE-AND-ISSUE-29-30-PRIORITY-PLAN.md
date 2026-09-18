@@ -2060,3 +2060,37 @@ Published atomically without force from `605d11b` to `a9b24b2`; remote Main
 and `rewrite/pointer-core-hott` both verified at that revision. Documentation
 through that implementation commit is +422/-1, separate from source/test counts
 above. This follow-up only records publication and checks the grouped entries.
+
+### 2026-09-19: Lexically bounded source-origin discovery (local)
+
+- [x] Replace global syntax-keyed allocation lookup with existing lexical-root
+  keys; retain exact syntax, binder and scope reachability checks.
+- [x] Keep dispatch in syntax-frontier order and detach event waiter lists
+  before callbacks can grow/rehash the dependency index.
+- [x] Test 128 unrelated scopes, append's recursive constructor origin, and
+  two byte-identical inert retained QuickSort resaves without Solve.
+- [x] Strict debug source checks; full optimized `check-acceptance`;
+  source/image ASan/UBSan checks (all exit 0).
+- [ ] Group publication with the next substantial refactor epoch.
+
+The parent A3 entry records rejected draft behavior, exact work/space counts
+and remaining bounds. No semantic, source syntax or image-format change.
+Optimized flags: `-std=c11 -Wall -Wextra -Werror -O2`; sanitizer flags add
+`-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie`.
+Sanitizers use `detect_leaks=1:halt_on_error=1` and UBSan `halt_on_error=1`.
+Logs: `/tmp/a-program-authority-lexical-roots-final-{acceptance,asan-source,asan-image}.log`.
+Normalized export results, including step counts, match the preceding direct
+dependency collector run. Compatibility remains 63/63.
+
+| File (under `src/prototype/pointer/`) | Added | Deleted | Net |
+|---|---:|---:|---:|
+| `source_io.c` | 65 | 12 | +53 |
+| `synthesis.c` | 11 | 1 | +10 |
+| `synthesis.h` | 4 | 1 | +3 |
+| `tests/image_cli.sh` | 14 | 0 | +14 |
+| `tests/source_io.c` | 51 | 1 | +50 |
+
+Implementation/headers +80/-14; tests +65/-1. Documentation accounting is
+separate at publication. Cumulative implementation/header net is +1,427 from
+R76 (`3a3bf550`) and +3,843 from R0 (`4657cc6`): the reduction gate is not met.
+Remaining A3/A4/A5 work is not closed by this local correction.

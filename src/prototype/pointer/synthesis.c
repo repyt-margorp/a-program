@@ -734,8 +734,18 @@ static struct pg_synthesis_job *request_role(struct pg_synthesis *synthesis,
 	if (job && !job->syntax && role == EXPRESSION_JOB) {
 		switch (syntax->kind) {
 		case PG_SYNTAX_QUALIFIED: case PG_SYNTAX_ELIMINATION: case PG_SYNTAX_DECLARATION:
-			if (register_source_reference(synthesis, syntax, job, NULL)) return NULL;
+		{
+			/* Named scopes delimit independently selected source roots. Transparent
+			 * lexical extensions are checked against selected syntax by the writer. */
+			const struct pg_source_scope *root = scope;
+			while (root->parent) {
+				if (!root->binder && !root->definitions &&
+					!(root->effect_owner && root->effect_owner->scope == root)) break;
+				root = root->parent;
+			}
+			if (register_source_reference(synthesis, root, job, NULL)) return NULL;
 			break;
+		}
 		default: break;
 		}
 	}

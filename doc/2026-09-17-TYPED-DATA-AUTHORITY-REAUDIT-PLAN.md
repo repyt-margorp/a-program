@@ -808,9 +808,38 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 - [ ] Preserve selected-root reachability without scanning unrelated source
   scopes or collecting all syntax-free aliases. Do not repeat the withdrawn
   broad `collect_origin` experiment.
-  Remaining bound: different uses of the same syntax remain candidates for
-  lexical reachability checking. Do not claim cost strictly proportional to
-  retained output without measuring heavily shared syntax in unrelated scopes.
+  Remaining bound: transparent lexical descendants within one selected root
+  remain candidates. Do not claim cost strictly proportional to retained output.
+  On 2026-09-19, allocation references became keyed by their nearest opaque
+  lexical scope, not globally by syntax. Binder/definition/handler extensions
+  are transparent only for grouping; exact syntax and ancestry checks remain.
+  There is one borrowed producer edge, no new persistent cache or completion
+  hook. Selected scopes drain once; syntax/site/scope dependencies use the
+  writer's existing temporary frontier. With 128 unrelated named scopes sharing
+  syntax and binders, selected lookup callback count is unchanged, as is the
+  selected image. This closes that regression, not all lexical complexity.
+
+  Two unpublished drafts were rejected. Immediate scope-order dispatch changed
+  inert-resave ordering; staging through the syntax frontier fixes it. Iterating
+  a hash bucket while callbacks inserted dependencies let rehash rewrite its
+  links and skip append's recursive `(List A).cons` origin. The event index now
+  owns detachable waiter lists, so callback insertion cannot change iteration.
+  The permanent retained-append-origin regression fails on the deficient image
+  and passes on the repaired one, including two byte-identical zero-Solve
+  resaves. It identifies the IH scope, not the preliminary no-IH candidate.
+
+  Retained IF8/main versus `a0cbc2e`: allocation-origin dispatches 85 -> 76,
+  collection callbacks 93 -> 84, environment reads 750 -> 731. All 76 selected
+  origins and the 420,556-byte image are preserved; Solve remains 128,565 steps.
+  Do not claim fresh-image byte identity across versions. Selected arena usage
+  increases 501,344 -> 504,096 bytes (+2,752), capacity stays 557,056; persistent
+  references stay 514. This is a work/isolation improvement, not a memory win.
+  Strict debug source tests, full optimized acceptance and source/image
+  ASan/UBSan tests pass. Logs: `/tmp/a-program-authority-lexical-roots-final-*`;
+  debug source log: `...-waiters-source.log`. Implementation/headers +80/-14
+  (net +66); tests +65/-1. Cumulative implementation remains +1,427 from R76,
+  +3,843 from R0. Publication waits for a substantial epoch; A3-A5 and the
+  parent's net-negative requirement remain open.
   The whole-job/whole-binding searches described below are now removed.
   At `8d4c731`, ordinary IF8 saving inspects 15,319 jobs, indexes 85 source
   origins and 344 binding addresses, but selects none of those candidates.
