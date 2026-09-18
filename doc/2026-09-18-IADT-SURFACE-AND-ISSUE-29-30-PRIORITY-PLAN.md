@@ -1627,7 +1627,12 @@ only and does not change the verified implementation.
   bodies agree. IF8 and length proof work/node counts are unchanged.
 - [x] Full optimized acceptance (63/63 compatibility), ASan/UBSan synthesis
   and complete source-image tests, with leak detection and halt-on-error.
-- [ ] Publish the verified epoch and confirm both remote tips.
+- [x] Publish the verified epoch and confirm both remote tips (`50a7d1f`).
 
 See the [classification audit](2026-09-18-INCREMENTAL-SOLVER-DUPLICATION-AUDIT.md#source-value-kind-from-accepted-judgements-after-9fc2ecd).
 Implementation net -19 lines; tests +31. This does not close the broader R gates.
+
+Published as `50a7d1fe208846cae6d7727d162193f8461e4dd9`, atomically
+fast-forwarding Main and `rewrite/pointer-core-hott` from `9fc2ecd`; both
+remote tips verified. Commit totals: implementation +13/-32, tests +31/-0,
+documentation +61/-0. This publication record changes documentation only.

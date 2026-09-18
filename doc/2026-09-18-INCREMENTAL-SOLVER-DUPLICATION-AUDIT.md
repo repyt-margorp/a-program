@@ -192,7 +192,7 @@ steps, not the number of scheduled steps. No wall-time speedup is claimed.
 - [x] Consolidate classification and add pending/accepted body regressions.
 - [x] Strict debug synthesis and same-input work/node comparison.
 - [x] Full optimized acceptance and affected ASan/UBSan tests.
-- [ ] Publish only after verification; confirm both remote tips.
+- [x] Publish only after verification; confirm both remote tips (`50a7d1f`).
 
 All commands exited 0: strict `-O0 -g` synthesis, strict `-O2`
 `check-acceptance` (63/63 compatibility), and ASan/UBSan synthesis plus the
