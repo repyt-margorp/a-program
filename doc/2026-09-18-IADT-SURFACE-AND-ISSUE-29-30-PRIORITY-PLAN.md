@@ -1663,8 +1663,13 @@ tests +23/-0, documentation +84/-0. This publication record is documentation onl
   and array lookup share the exact binding record.
 - [x] Full optimized acceptance (63/63 compatibility), ASan/UBSan synthesis,
   source images, nested handlers and handler save boundaries.
-- [ ] Publish and verify both remote tips.
+- [x] Publish and verify both remote tips (`1760387`).
 
 See the [address audit](2026-09-18-INCREMENTAL-SOLVER-DUPLICATION-AUDIT.md#stream-lexical-addresses-after-c911f16).
 Implementation +10 lines, tests +5; persistent application state and temporary
 arrays are reduced. This does not meet the cumulative source-reduction gate.
+
+Published as `176038784be54736260f29a49d013d5c1d2ef214`, atomically
+fast-forwarding Main and `rewrite/pointer-core-hott` from `c911f16`; both
+remote tips verified. Commit totals: implementation +48/-38, tests +5/-0,
+documentation +70/-0. This publication record changes documentation only.

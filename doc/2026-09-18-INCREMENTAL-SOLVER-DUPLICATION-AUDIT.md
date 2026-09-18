@@ -197,7 +197,7 @@ The cumulative reduction gate remains unmet; no exception is granted.
 - [x] Remove eager application snapshots and the intermediate lexical array.
 - [x] Debug synthesis, source/array address equivalence and same-input metrics.
 - [x] Full optimized acceptance and affected ASan/UBSan tests.
-- [ ] Publish and verify both remote tips.
+- [x] Publish and verify both remote tips (`1760387`).
 
 Strict `-O2 check-acceptance` exited 0, including compatibility 63/63 and
 QuickSort universal proofs, images and invalid-claim checks. Normalized export
