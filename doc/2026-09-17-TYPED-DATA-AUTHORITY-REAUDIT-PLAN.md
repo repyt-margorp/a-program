@@ -1022,6 +1022,16 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 
 ### A4. Audit remaining structural consumers and remove duplication
 
+- [x] 2026-09-19: source application uses the callee whose classifier it already
+  normalized for Pi inspection. Remove the second call through the generic
+  application builder; share the existing domain job between the application
+  constraint and argument check, then build the ordinary APP rule. The public
+  API still normalizes unchecked inputs. Identity transport keeps its separate
+  checking policy, not a second application construction. A dependent two-call
+  regression checks exact DAG reuse through the public API, at chunks 1/64;
+  it fails on the old implementation. Full O2 acceptance and focused debug and
+  sanitizer tests pass. See the priority plan for counts and local publication
+  status. This is not a global classifier-job idempotence rule or A4 completion.
 - [x] 2026-09-19: unify source rule selection and preparation readiness in
   `source_rule`. Notification and structure consumers inspect the same existing
   producer, with no retained view or new scheduler state. Waiting consumers

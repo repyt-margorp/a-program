@@ -2892,3 +2892,58 @@ documentation is separate. This does not address source-origin reachability.
 
 Evidence: `/tmp/a-program-authority-identity-scope-{before,after}.log`,
 `...-synthesis.log`, `...-asan-synthesis.log`, and `...-opt.log`.
+
+### 2026-09-19: Reuse the inspected application callee (local)
+
+- [x] Remove the source application's second classifier-normalization layer.
+  `prepare_application` already normalizes the callee to inspect its Pi shape;
+  build APP from that producer instead of calling the unchecked-input API again.
+  Share the domain job with its constraint and argument check. Keep Identity
+  transport, constructor inference, CBPV sequencing and post-synthesis checks.
+- [x] Extend dependent application testing at chunks 1/64: after source Solve,
+  constructing each of its two applications through the direct API adds no
+  jobs and returns the existing accepted application. On `f783742` this test
+  fails at the job-count assertion (exit 134); with the change it passes.
+- [x] Strict debug synthesis test, full optimized `check-acceptance
+  check-eval-io`, and ASan/UBSan synthesis plus complete `source_io.sh` pass.
+  Sanitizers use explicit leak detection and halt-on-error. Compatibility is
+  63/63. All 2,460 normalized export records agree with the preceding run after
+  excluding steps; existing inert-resave equality gates pass unchanged.
+- [ ] Include in the next substantial publication epoch. This local fix does
+  not complete A3's source reachability, A4's remaining consumer audit or A5.
+
+No global idempotence shortcut, new job/tag/cache, or expected-type input is
+introduced. The generic application API still checks and normalizes its input.
+`CLASSIFIER_CONSTRAINT_JOB` propagates equations for open result types; it is
+not removed merely because APP also checks the final argument. Structural Pi
+inspection is not acceptance evidence and the ordinary kernel rule still runs.
+
+On the imported QuickSort-property fixture, jobs decrease 37,388 -> 34,874 and
+Solve steps 147,103 -> 142,031. Proofs 93,435, typed occurrences 82,230, Contexts
+4,389, maps 15,764, typed queries 9,925 and query steps 336,649 are unchanged.
+Core terms increase 135,287 -> 135,290; do not claim identical intermediate
+allocation. For `indexed-dependent-environment.p`, jobs decrease 3,202 ->
+3,045 and steps 9,480 -> 9,144; typed queries decrease 581 -> 580. Its other
+measured structure counts are unchanged.
+
+Alternating fresh-process strict-debug comparison, 32 pairs per fixture with
+the first two pairs excluded (seconds, median):
+
+| Input | Before | After |
+| --- | ---: | ---: |
+| Vec append | 0.01555 | 0.01422 |
+| Length proof | 0.01322 | 0.01202 |
+| Function field | 0.02085 | 0.02101 |
+| QuickSort property | 0.32700 | 0.32548 |
+
+These local timings do not establish a universal speedup or close the original
+baseline performance gate. Different tests reuse temporary image basenames;
+sorted export logs establish result multisets, not per-fixture step pairing.
+The work counts above instead use fixed, individually identified inputs.
+
+Evidence prefix `/tmp/a-program-authority-application-owner-`: `build.log`,
+`synthesis.log`, `before-test.log`, `opt.log`, `asan-build.log`,
+`asan-synthesis.log`, `asan-source.log`, `before-counts.log`, `counts.log`,
+`dependent-{before,after}.log`, and `timing.log`.
+Implementation delta: `synthesis.c` +10/-11 (net -1); tests +33/-0, docs separate.
+The cumulative implementation reduction requirement remains unmet.

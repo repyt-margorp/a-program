@@ -2110,6 +2110,39 @@ static void dependent_application_jobs(struct pg_typing *typing)
 		}
 		assert(pg_synthesis_status(second) == PG_SYNTHESIS_DONE);
 		same_judgement(pg_synthesis_result(second), expected);
+		const struct pg_source_scope *scope = pg_synthesis_root(&synthesis);
+		const struct pg_evidence *values[] = {function, type_argument, value_argument};
+		const char *names[] = {"f", "t", "v"};
+		for (size_t i = 0; i < 3; ++i) {
+			scope = pg_synthesis_name(&synthesis, scope,
+				(struct pg_token){.kind = PG_TOKEN_IDENT, .text = names[i], .length = 1}, values[i]);
+			assert(scope);
+		}
+		struct pg_parser parser;
+		struct pg_definition definition;
+		const char *source = "main := (f t) v;";
+		pg_parser_init(&parser, typing->graph, source, strlen(source));
+		assert(pg_parser_next(&parser, &definition) == 1);
+		struct pg_synthesis_job *surface = pg_synthesis_request(&synthesis, scope, definition.expression);
+		for (size_t count = 0; pg_synthesis_status(surface) == PG_SYNTHESIS_PENDING; ++count) {
+			assert(count < 10000);
+			pg_synthesis_advance(&synthesis, chunk);
+		}
+		assert(pg_synthesis_status(surface) == PG_SYNTHESIS_DONE);
+		same_judgement(pg_synthesis_result(surface), expected);
+		/* Surface inspection and the direct API build the same application DAG,
+		 * not an extra classifier-normalization layer for the inspected callee. */
+		for (const struct pg_syntax *call = definition.expression;
+			call->kind == PG_SYNTAX_APPLICATION; call = call->left) {
+			struct pg_synthesis_job *callee = pg_synthesis_request(&synthesis, scope, call->left);
+			struct pg_synthesis_job *argument = pg_synthesis_request(&synthesis, scope, call->right);
+			size_t jobs = synthesis.jobs.count;
+			struct pg_synthesis_job *direct = pg_synthesis_application(&synthesis, empty, callee, argument);
+			assert(direct && synthesis.jobs.count == jobs);
+			assert(pg_synthesis_status(direct) == PG_SYNTHESIS_DONE);
+			same_judgement(pg_synthesis_result(direct), pg_synthesis_result(
+				pg_synthesis_request(&synthesis, scope, call)));
+		}
 		pg_synthesis_destroy(&synthesis);
 		pg_whnf_work_destroy(&work);
 	}

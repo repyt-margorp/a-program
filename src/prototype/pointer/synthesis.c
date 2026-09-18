@@ -9496,23 +9496,22 @@ static int prepare_application(struct pg_synthesis *synthesis, struct pg_synthes
 		enqueue(synthesis, job);
 		return 1;
 	}
+	if (!state->constraint && state->constructor) {
+		constructor_application_step(synthesis, job, callee, argument);
+		return 1;
+	}
+	struct pg_synthesis_job *expected = application_domain(synthesis, state->context, callee);
+	if (!expected) goto error;
 	if (!state->constraint) {
-		if (state->constructor) {
-			constructor_application_step(synthesis, job, callee, argument);
-			return 1;
-		}
-		struct pg_synthesis_job *type = application_domain(synthesis, state->context, callee);
-		state->constraint = type ? request_job(synthesis, CLASSIFIER_CONSTRAINT_JOB, state->argument, type) : NULL;
+		state->constraint = request_job(synthesis, CLASSIFIER_CONSTRAINT_JOB, state->argument, expected);
 		if (!state->constraint) goto error;
 	}
 	if (source_has_identity(synthesis, job->scope)) {
-		struct pg_synthesis_job *expected = application_domain(synthesis, state->context, callee);
-		if (!expected) goto error;
 		const void *inputs[] = {state->context, argument, expected};
 		argument = request_inputs(synthesis, INDEX_TRANSPORT_JOB, 3, inputs);
-		struct pg_synthesis_job *premises[] = {callee, argument};
-		state->tail = plain_rule(synthesis, PG_APP_ELIM, NULL, 2, premises);
-	} else state->tail = pg_synthesis_application_jobs(synthesis, state->context, callee, argument);
+	} else argument = pg_synthesis_expect(synthesis, argument, expected);
+	struct pg_synthesis_job *premises[] = {callee, argument};
+	state->tail = plain_rule(synthesis, PG_APP_ELIM, NULL, 2, premises);
 	if (!state->tail) goto error;
 	enqueue(synthesis, job);
 	return 1;
