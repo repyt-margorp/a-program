@@ -1199,6 +1199,14 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   avoids 208 reconstructions; the existing function-field example does not
   improve. Full optimized acceptance and affected sanitizer/serialization tests
   pass; see the priority plan for the controlled experiment and limitations.
+- [x] Reuse `pg_context_map_projection` in substitution projection introduction;
+  delete the evidence wrapper's separate ancestor/arity and binder traversal.
+  Check each image through the ordinary rules and retain the exact caller's
+  Context receipts. On function-field, Context-extension walks fall 3,550 ->
+  2,306; structural/proof counts are unchanged, but the existing projection
+  index adds 184 entries. This is not a memory reduction. Full optimized and
+  affected sanitizer/serialization tests pass; group publication remains gated
+  by the priority plan. General descriptive-map validation is unchanged.
 - [x] Count binding payload slots during first source collection; delete the
   separate scope-count and binding-count passes in `source_io.c`. Repeated
   binding discovery stops at the existing writer-local DAG. The counter is

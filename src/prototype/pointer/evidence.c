@@ -4279,16 +4279,14 @@ const struct pg_evidence *pg_prove_substitution_projection(struct pg_typing *typ
 	const struct pg_evidence *source, const struct pg_evidence *destination)
 {
 	if (!context_proof(typing, source) || !context_proof(typing, destination)) return NULL;
-	size_t count;
-	if (pg_context_extension_size(pg_evidence_context(destination), pg_evidence_context(source), &count)) return NULL;
-	if (pg_context_extension_size(pg_evidence_context(source), NULL, &count)) return NULL;
-	if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
-	const struct pg_evidence **images = malloc(count * sizeof(*images));
-	if (count && !images) return NULL;
-	const struct pg_context *context = pg_evidence_context(source);
-	for (size_t i = count; i; --i, context = context->parent)
-		images[i - 1] = pg_prove_variable(typing, destination, context->binder);
-	const struct pg_evidence *result = pg_prove_substitution(typing, source, destination, count, images);
+	const struct pg_context_map *map = pg_context_map_projection(typing,
+		pg_evidence_context(source), pg_evidence_context(destination));
+	if (!map || map->count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
+	const struct pg_evidence **images = malloc(map->count * sizeof(*images));
+	if (map->count && !images) return NULL;
+	for (size_t i = map->count; i; --i)
+		images[i - 1] = pg_prove_variable(typing, destination, map->images[i - 1]->core->as.reference);
+	const struct pg_evidence *result = pg_prove_substitution(typing, source, destination, map->count, images);
 	free(images);
 	return result;
 }

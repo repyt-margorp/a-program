@@ -2447,3 +2447,66 @@ a general wall-time improvement from the repeated-request test.
 Implementation: `evidence.c` +1/-1 (net 0); test `tests/core.c` +19/-0.
 Logs: `/tmp/a-program-authority-pi-key-*`. Broader A3-A5, lexical enumeration,
 small-case performance and cumulative net-negative implementation remain open.
+
+### 2026-09-19: Reuse the structural projection in substitution introduction
+
+- [x] Replace the evidence layer's separate ancestor/arity walk and binder
+  enumeration with the existing `pg_context_map_projection` result. Its ordered
+  images supply the binders; ordinary variable and substitution rules still
+  check them. Do not accept descriptive maps or select an arbitrary existing
+  substitution proof in place of the caller's source/destination receipts.
+- [x] Test dependent projections, repeated requests, alternative Context
+  derivations and invalid source/destination pairs. Measure avoided Context
+  traversals separately from allocations and total Solve steps.
+- [x] Run strict-debug Core/program, full optimized acceptance and affected
+  sanitizer/serialization tests. Compatibility 63/63 and all four universal
+  sorting proof suites pass; normalized exported results/Solve steps match the
+  preceding Pi-key run. ASan/UBSan Core, IADT, program, callable-parameter,
+  function-field and `derivation_io.sh` pass with leak detection/halt-on-error.
+- [ ] Group publication with the pending epoch.
+
+This uses the existing structural map interner and projection index, not a new
+cache or proof rule. The proposed deletion is the duplicate projection recipe;
+proof checking remains a distinct responsibility. General map validation and
+lexical source-candidate enumeration are not covered by this change.
+
+Strict-debug Core/program tests pass. The added test uses two distinct receipts
+for each of the same source/destination Contexts, checks exact premise retention,
+shared structural map identity, 100 repeated requests per receipt, no additional
+proofs/maps on repetition, reconstruction, and reversed/unrelated scope rejection.
+Variable-proof construction remains in reverse telescope order as before.
+
+GDB on `function-graph-function-field.p`, chunks 1 and 64 together:
+1,044 projection requests before and after. Context-extension calls beneath
+these requests fall from 3,550 to 2,306; traversed parent links from 4,912 to
+3,952. The old wrapper's 2,088 direct extension calls disappear. Some first-use
+work moves to the common structural factory, so those 2,088 calls are not all
+net savings. Solve stays 13,531 steps per chunk size.
+
+Per-run retained counts are unchanged: 5,634 Core terms, 6,808 typed occurrences,
+9,521 proofs, 667 Contexts, 2,700 Context maps and 4,158 jobs. The existing
+projection index grows from 759 to 943 entries: common factory reuse costs 184
+additional borrowed index entries on this input. No memory or wall-time win is
+claimed. Implementation `evidence.c` +8/-10 (net -2); `tests/core.c` +22/-0.
+Logs and debug binaries: `/tmp/a-program-authority-projection-owner-*`.
+
+### 2026-09-19: Established-input reuse epoch, publication checkpoint
+
+Freeze the implementation after the projection-owner change and verify the
+group, relative to published `4b4fba7`: first-collection payload counts,
+source-origin continuation reuse, one checked call-telescope algorithm, exact
+Pi-premise reuse, and structural projection reuse. The individual changes above
+are not separate publication epochs. This group removes duplicate traversal and
+construction recipes while retaining source inputs, typed structure and exact
+proof premises in their existing owners; it adds no second solver or format.
+
+- [x] Optimized full acceptance on the final implementation.
+- [ ] Strict-debug full acceptance on the same implementation.
+- [ ] ASan/UBSan full acceptance on the same implementation, with leak detection
+  and halt-on-error; do not substitute earlier affected-suite runs.
+- [ ] Record per-file implementation/header, test and documentation deltas.
+- [ ] Recheck remote tips, publish the group to Main/rewrite without force, and
+  verify both remote revisions. Preserve all open parent gates.
+
+A3/A4/A5, output-sensitive lexical enumeration, small-input performance against
+R0 and cumulative net-negative implementation/header LOC remain incomplete.
