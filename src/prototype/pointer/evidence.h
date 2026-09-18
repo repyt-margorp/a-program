@@ -503,6 +503,11 @@ struct pg_typed_query *pg_typed_input_request(struct pg_typing *typing,
  * restriction is not permission to assign removed binders arbitrary values. */
 struct pg_typed_query *pg_rebase_request(struct pg_typing *typing,
 	const struct pg_evidence *context, const struct pg_evidence *source);
+/* Restrict a checked map through the same image queries. The map and target
+ * Context proofs are keys: their explicit Context premises are retained.
+ * Completed images and the final checked map survive budget boundaries. */
+struct pg_typed_query *pg_substitution_rebase_request(struct pg_typing *typing,
+	const struct pg_evidence *context, const struct pg_evidence *map);
 int pg_typed_query_advance(struct pg_typed_query *work, uint64_t budget);
 const struct pg_evidence *pg_typed_query_result(const struct pg_typed_query *work);
 uint64_t pg_typed_query_steps(const struct pg_typed_query *work);

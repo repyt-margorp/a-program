@@ -1225,6 +1225,15 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 - [ ] Report concrete deleted paths. Move remaining synchronous query loops to
   existing scheduling only where necessary for the same work contract; do not
   turn this repair into another scheduler framework.
+- [x] 2026-09-19: remove the synchronous map-image loop and `rebase_image` /
+  `scope_map_step` adapters. Map restriction retains its image prefix in the
+  existing rebase machine; nominal queries wait on that shared query. Explicit
+  map/target-Context proof premises remain distinct, while value-image work
+  stays shared by typed subject. A regression also exposes and fixes resuming
+  a shared consumer before its pending dependency completes, using only APIs
+  present in the previous Main. The priority plan records old-code failure,
+  passing gates and costs. This does not make all kernel subchecks resumable
+  or close A4/A5; implementation/header LOC grows by 20 for this epoch.
 - [x] 2026-09-19: replace `scope_image`'s synchronous frame loop with one shared
   step used by selected-input and nominal-index queries. Restriction waits on
   the existing rebase query; the owning query retains its cursor and checked

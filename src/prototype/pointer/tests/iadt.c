@@ -2094,13 +2094,24 @@ static void schema_positivity(void)
 		assert(query && !pg_typed_query_advance(query, 0));
 		assert(pg_rebase_request(&typing, empty, mapped_successor) == query);
 		assert(!pg_typed_query_steps(query));
-		while (!pg_typed_query_advance(query, 1)) assert(pg_typed_query_steps(query) < 10000);
+		struct pg_typed_query *map_query = pg_substitution_rebase_request(&typing, empty, images);
+		assert(map_query && !pg_typed_query_advance(map_query, 0));
+		assert(pg_substitution_rebase_request(&typing, empty, images) == map_query);
+		assert(!pg_typed_query_steps(map_query));
+		int status = 0;
+		while (!status) {
+			uint64_t steps = pg_typed_query_steps(query);
+			status = pg_typed_query_advance(map_query, 1);
+			assert(pg_typed_query_steps(query) - steps <= 1);
+			assert(pg_typed_query_steps(map_query) < 10000);
+		}
+		assert(status == 1);
 		const struct pg_evidence *identity_map = pg_prove_substitution_projection(&typing, n_context, n_context);
 		const struct pg_evidence *alternative = pg_prove_reindex(&typing, identity_map, mapped_successor);
 		assert(alternative != mapped_successor && pg_evidence_subject(alternative) == pg_evidence_subject(mapped_successor));
 		assert(pg_rebase_request(&typing, empty, alternative) == query);
 		const struct pg_evidence *restricted = pg_prove_substitution_rebase(&typing, empty, images);
-		assert(restricted);
+		assert(restricted && pg_typed_query_result(map_query) == restricted);
 		const struct pg_evidence *actual = pg_substitution_image(&typing, restricted, selected);
 		assert(actual == pg_typed_query_result(query));
 		assert(pg_evidence_subject(actual)->core == pg_evidence_subject(succ)->core);
@@ -2109,10 +2120,35 @@ static void schema_positivity(void)
 		size_t before = typing.proofs.count;
 		uint64_t steps = pg_typed_query_steps(query);
 		size_t queries = typing.typed_queries.count;
+		uint64_t map_steps = pg_typed_query_steps(map_query);
 		for (size_t i = 0; i < 100; ++i)
 			assert(pg_prove_substitution_rebase(&typing, empty, images) == restricted);
 		assert(typing.proofs.count == before && typing.typed_queries.count == queries);
+		assert(pg_typed_query_steps(map_query) == map_steps);
 		assert(pg_typed_query_advance(query, 64) == 1 && pg_typed_query_steps(query) == steps);
+		/* Map requests preserve their explicitly supplied Context premises,
+		 * even when those premises establish the same structural Context. */
+		const struct pg_evidence *other_nat = pg_prove_reindex(&typing,
+			pg_prove_substitution_projection(&typing, empty, empty), nat);
+		const struct pg_evidence *other_selected = pg_prove_context_extension(&typing, empty, selected, other_nat);
+		assert(other_selected != selected_context && pg_evidence_context(other_selected) == pg_evidence_context(selected_context));
+		const struct pg_evidence *other_images = pg_prove_substitution(&typing, other_selected, n_context, 1, &mapped_successor);
+		assert(pg_evidence_context_map(other_images) == pg_evidence_context_map(images));
+		struct pg_typed_query *other_map = pg_substitution_rebase_request(&typing, empty, other_images);
+		assert(other_map && other_map != map_query);
+		while (!pg_typed_query_advance(other_map, 64)) assert(pg_typed_query_steps(other_map) < 10000);
+		const struct pg_evidence *other_result = pg_typed_query_result(other_map);
+		assert(other_result && other_result != restricted);
+		assert(pg_evidence_context_map(other_result) == pg_evidence_context_map(restricted));
+		assert(pg_evidence_premise(other_result, 0) == other_selected);
+		const struct pg_evidence *other_target = pg_prove_context_extension(&typing, empty, n, other_nat);
+		assert(other_target != n_context && pg_evidence_context(other_target) == pg_evidence_context(n_context));
+		const struct pg_evidence *target_result = pg_prove_substitution_rebase(&typing, other_target, images);
+		assert(target_result && pg_evidence_premise(target_result, 1) == other_target);
+		assert(pg_substitution_rebase_request(&typing, other_target, images) !=
+			pg_substitution_rebase_request(&typing, n_context, images));
+		common_rule(&typing, other_result);
+		common_rule(&typing, target_result);
 		struct pg_typed_query *other_context = pg_rebase_request(&typing, z_context, mapped_successor);
 		assert(other_context && other_context != query);
 		while (!pg_typed_query_advance(other_context, 64)) assert(pg_typed_query_steps(other_context) < 10000);
@@ -2121,6 +2157,10 @@ static void schema_positivity(void)
 		assert(!pg_rebase_request(&typing, empty, NULL));
 		assert(!pg_rebase_request(&typing, empty, empty));
 		assert(!pg_rebase_request(&typing, zero, mapped_successor));
+		assert(!pg_substitution_rebase_request(&typing, NULL, images));
+		assert(!pg_substitution_rebase_request(&typing, empty, NULL));
+		assert(!pg_substitution_rebase_request(&typing, empty, mapped_successor));
+		assert(!pg_substitution_rebase_request(&typing, zero, images));
 		const struct pg_evidence *z_value = pg_prove_variable(&typing, z_context, z);
 		const struct pg_evidence *open_successor = pg_prove_constructor(&typing, nat,
 			pg_data_constructor(nat_layout, 1), parameters, 1, &z_value);
@@ -2134,7 +2174,32 @@ static void schema_positivity(void)
 			nested = pg_prove_constructor(&typing, nat, pg_data_constructor(nat_layout, 1), parameters, 1, &nested);
 		struct pg_typed_query *deep = pg_rebase_request(&typing, empty, nested);
 		assert(deep && !pg_typed_query_advance(deep, 1));
-		while (!pg_typed_query_advance(deep, 1)) assert(pg_typed_query_steps(deep) < 10000);
+		const struct pg_evidence *outer_value = pg_prove_constructor(&typing, nat,
+			pg_data_constructor(nat_layout, 1), parameters, 1, &nested);
+		struct pg_typed_query *outer_query = pg_rebase_request(&typing, empty, outer_value);
+		assert(outer_query && !pg_typed_query_advance(outer_query, 1));
+		while (!pg_typed_query_advance(outer_query, 1)) assert(pg_typed_query_steps(outer_query) < 10000);
+		assert(pg_typed_query_result(outer_query));
+		assert(pg_evidence_subject(pg_typed_query_result(outer_query))->core == pg_evidence_subject(outer_value)->core);
+		const struct pg_object *second = pg_binder(&graph);
+		const struct pg_evidence *pair_context = pg_prove_context_extension(&typing, selected_context, second,
+			pg_prove_projection(&typing, selected_context, nat));
+		const struct pg_evidence *pair_images[] = {nested, nested};
+		const struct pg_evidence *pair = pg_prove_substitution(&typing, pair_context, z_context, 2, pair_images);
+		struct pg_typed_query *pair_query = pg_substitution_rebase_request(&typing, empty, pair);
+		assert(pair_query);
+		status = 0;
+		while (!status) {
+			uint64_t steps = pg_typed_query_steps(deep);
+			status = pg_typed_query_advance(pair_query, 1);
+			assert(pg_typed_query_steps(deep) - steps <= 1);
+			assert(pg_typed_query_steps(pair_query) < 10000);
+		}
+		assert(status == 1);
+		const struct pg_evidence *pair_result = pg_typed_query_result(pair_query);
+		assert(pair_result && pg_evidence_premise(pair_result, 2) == pg_typed_query_result(deep));
+		assert(pg_evidence_premise(pair_result, 3) == pg_typed_query_result(deep));
+		common_rule(&typing, pair_result);
 		assert(pg_evidence_subject(pg_typed_query_result(deep))->core == pg_evidence_subject(nested)->core);
 		assert(!pg_evidence_context(pg_typed_query_result(deep)));
 		struct pg_typing foreign;
@@ -2142,6 +2207,8 @@ static void schema_positivity(void)
 		const struct pg_evidence *foreign_empty = pg_prove_empty_context(&foreign);
 		assert(!pg_rebase_request(&foreign, foreign_empty, nested));
 		assert(!pg_rebase_request(&typing, foreign_empty, nested));
+		assert(!pg_substitution_rebase_request(&foreign, foreign_empty, images));
+		assert(!pg_substitution_rebase_request(&typing, foreign_empty, images));
 		assert(!foreign.typed_queries.count);
 		pg_typing_destroy(&foreign);
 		/* Normalization retains a receipt, including through a type/value

@@ -3152,3 +3152,61 @@ images rather than restart them, and the original-baseline performance/code
 reduction review is still required.
 Through implementation `6293a79`, documentation adds 19 lines in the authority
 plan and 113 in this priority plan, separate from implementation/test totals.
+
+### 2026-09-19: Shared map restriction and suspended dependencies
+
+Baseline: published `1bfeeb6`. This is an A4 epoch, not completion of A3-A5.
+
+- [x] Delete the independent map-image loop, `rebase_image` and `scope_map_step`.
+  `pg_substitution_rebase_request` uses the existing typed-query index, rebase
+  state and dependency driver. Nominal restriction now yields instead of
+  synchronously finishing all images. The synchronous public adapter requests
+  the same work; repeated calls do not reconstruct the image array or map.
+- [x] Keep explicit map and target-Context proof inputs in the request key.
+  Value-image queries still share by typed subject/target Context. Tests retain
+  distinct derivations of the same structural map and their exact Context
+  premises. No new Core former, logical rule, artifact format or scheduler.
+  One internal map-rebase work kind distinguishes map results from term results.
+- [x] Fix shared-query resumption: a consumer cannot run while its dependency
+  is pending, even if another caller previously advanced that consumer. The
+  old driver entered `typed_rebase_step` early and cached failure. The existing
+  driver now follows the dependency first; no restart or recovery path is added.
+- [x] Extend IADT tests for budgets 0/1/64, shared images, partial work adopted
+  by another caller, repeated completed requests, distinct Context proofs,
+  unavailable restrictions and foreign/invalid inputs. An existing-API-only
+  regression fails on archived `1bfeeb6` at `pg_typed_query_result(outer_query)`
+  (exit 134), and passes after the fix. Log:
+  `/tmp/a-program-authority-shared-query-before-test.log`.
+- [x] Full O2 `check-acceptance check-eval-io`: exit 0, compatibility 63/63.
+  All 2,460 normalized exported results match the previous epoch; only the
+  twelve `successor.a` records change step counts (+28 each), due to visible
+  query scheduling. A second full run with the final IADT assertion also
+  passes; its 2,460 exported records/steps match the first run exactly.
+- [x] Strict O0/g core/IADT/synthesis and ASan/UBSan core/IADT/synthesis/program,
+  complete `source_io.sh` and `image_cli.sh` pass. Sanitizers use leak detection
+  and halt-on-error; no diagnostic is reported. This is not full sanitizer
+  acceptance. Logs: `/tmp/a-program-authority-map-query-` followed by
+  `opt-gate`, `opt-gate-final`, `opt-iadt`, `debug-{core,iadt,synthesis}` or
+  `asan-{core,iadt,synthesis,program,source,image}` and `.log`.
+
+Diagnostics: QuickSort retains 135,290 Core terms, 82,230 typed subjects,
+93,435 proofs, 4,389 Contexts, 15,764 maps and 34,874 synthesis jobs. Queries
+grow 9,925 -> 9,957 (32 map requests); summed query steps 341,847 -> 341,953;
+outer Solve remains 142,087. Query headers remain 240 bytes, but new requests
+and retained image prefixes consume storage. This is not a memory-reduction
+claim. Counts: `/tmp/a-program-authority-map-query-{before,after}-counts.log`.
+
+Strict-debug timing, 12 alternating fresh-process pairs, first two discarded,
+no concurrent builds/tests: medians before/after in seconds are Vec append
+.01444/.01474, length .01207/.01249, function-field .02192/.02026, QuickSort
+.32841/.32425. Every process exits 0. These noisy samples establish no general
+speedup and do not replace the R0 performance gate. Raw samples:
+`/tmp/a-program-authority-map-query-benchmark.log`.
+
+Per-file delta from baseline: `evidence.c` +60/-45, `evidence.h` +5/-0,
+`tests/iadt.c` +70/-3. Implementation/header net +20; tests net +67.
+Cumulative implementation/header: R76 +3,111/-1,534 (net +1,577), R0
++7,951/-3,958 (net +3,993). Documentation is separate. The cumulative
+net-negative gate remains unmet. General Identity transport, function-graph
+preparation and synchronous kernel checking require further audit; inserting
+waits into code that allocates fresh binders must not restart those prefixes.
