@@ -2,6 +2,9 @@
 #define A_PROGRAM_POINTER_CONTEXT_PAYLOAD_H
 #include "typing.h"
 
+/* Parent/index edges for a pg_dag transport traversal; no formation evidence. */
+int pg_context_dependency(void *unused, const void *key, size_t index, const void **child);
+
 /* Temporary relocation data, never context formation evidence. Metadata is
  * node count, selected count, (parent ID, binder judgement, indices ID) triples,
  * selected IDs. Family index telescopes share the same context DAG.

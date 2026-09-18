@@ -1,7 +1,7 @@
 #include "context_payload.h"
 #include "dag.h"
 
-static int parent(void *unused, const void *key, size_t index, const void **child)
+int pg_context_dependency(void *unused, const void *key, size_t index, const void **child)
 {
 	(void)unused;
 	const struct pg_context *context = key;
@@ -20,7 +20,7 @@ int pg_contexts_pack(struct pg_graph *storage, size_t count,
 	if ((count && !contexts) || (term_count && !terms)) return -1;
 	struct pg_dag dag = {0};
 	int status = -1;
-	if (pg_dag_init(&dag, parent, NULL)) goto done;
+	if (pg_dag_init(&dag, pg_context_dependency, NULL)) goto done;
 	for (size_t i = 0; i < count; ++i) if (contexts[i] && pg_dag_add(&dag, contexts[i])) goto done;
 	size_t n = dag.count;
 	if (count > SIZE_MAX / sizeof(uint64_t) - 2 || n > (SIZE_MAX / sizeof(uint64_t) - 2 - count) / 3) goto done;

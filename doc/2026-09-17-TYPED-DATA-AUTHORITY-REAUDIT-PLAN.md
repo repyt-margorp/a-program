@@ -826,6 +826,27 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   counts, not wall-clock speedup. The linear same-syntax candidate search and
   lexical ancestry checks remain, so the broader A3 bound stays open.
   Logs: `/tmp/a-program-authority-siblings-{baseline,new}-counts.log`.
+- [x] Share Context dependency discovery across selected allocations. Remove
+  `collect_allocation`'s temporary serialization payloads; a writer-local DAG
+  visits each parent/index Context once and adds its binder/type dependencies.
+  The packer uses the same edge iterator. Final serialization still assigns
+  wire IDs in the existing root order and validates the complete payload.
+  This is not formation evidence or a new persistent Context authority.
+  Producer reachability and lexical origin records remain distinct: the latter
+  are a selected allocation subset, not duplicate definitions to discard.
+
+  On the retained IF8 QuickSort/main image, intermediate packing calls fall
+  from 95 to zero, Context edge-iterator calls from 929 to 689; final packing
+  and eight descriptor payload packs remain. Output is byte-identical.
+  At final retained writing, rules-arena used bytes fall 199,392 -> 180,352.
+  The discovery DAG adds 10,176 used arena bytes and 2,048 bucket bytes:
+  these measured stores use 6,816 fewer bytes overall, but reserved capacity
+  increases by 2,048 bytes and the collection stack record by 136 bytes.
+  Do not call this a peak-RSS reduction. Logs use
+  `/tmp/a-program-authority-context-discovery-{before,after}-{counts,memory}.log`.
+  The graph regression checks repeated shared parents and family index edges
+  without allocating Core or evidence. Full verification is in the priority
+  plan. The separate scope-sensitive source-reference bound remains open.
 - [x] Read and resave zero/partial/completed inputs without executing requests
   or promoting saved results into acceptance. Reuse context/occurrence payloads
   where appropriate; do not duplicate their maps in a new alias wire record.

@@ -1,5 +1,7 @@
 #include "graph_io.h"
 #include "context_io.h"
+#include "context_payload.h"
+#include "dag.h"
 #include "evidence.h"
 #include "derivation.h"
 #include "computation.h"
@@ -122,6 +124,15 @@ static void write_graph(FILE *file, struct pg_graph *graph)
 		.parent = cb, .binder = x, .declared_type = pg_pi(graph, u, k, u),
 		.judgement = PG_JUDGEMENT_TYPE_FAMILY, .indices = index});
 	const struct pg_context *contexts[] = {ca, cb, xa, xb, NULL, xa, xf, index, family, family};
+	struct pg_dag dependencies;
+	assert(!pg_dag_init(&dependencies, pg_context_dependency, NULL));
+	size_t terms_before = graph->terms.count;
+	for (unsigned i = 0; i < 128; ++i)
+		assert(!pg_dag_add(&dependencies, family) && !pg_dag_add(&dependencies, xa));
+	assert(dependencies.count == 5 && dependencies.first->key == ca && dependencies.last->key == xa);
+	assert(pg_dag_find(&dependencies, index)->id < pg_dag_find(&dependencies, family)->id);
+	assert(graph->terms.count == terms_before && !typing.proofs.count);
+	pg_dag_destroy(&dependencies);
 	assert(pg_contexts_write(file, 10, contexts, 5, roots, name, graph) == 0);
 	context_boundaries(&typing, roots[0]);
 	pg_typing_destroy(&typing);

@@ -1979,3 +1979,25 @@ the function-field variation remains relevant to the final performance audit.
 implementation/header deltas: R76 +2,396/-1,083 (net +1,313); R0 +7,342/-3,613
 (net +3,729). A3's scope-sensitive discovery, remaining A4 consumers, final A5
 gates and the parent's net-negative requirement remain open.
+
+### 2026-09-19: Discover shared Context dependencies without packing
+
+- [x] Remove intermediate allocation-payload packing from source discovery.
+  Reuse one writer-local Context DAG and the packer's parent/index iterator;
+  retain final wire ordering and structural validation. No image format change.
+- [x] Add shared-parent/family-index traversal coverage (128 repeated additions,
+  five nodes, no Core/evidence allocation). Strict debug complete source and
+  graph-acceptance scripts, full optimized `check-acceptance`, and ASan/UBSan
+  complete source/graph-acceptance/derivation scripts all exit 0.
+- [ ] Publish with the next substantial source/authority-refactoring epoch.
+
+Baseline: `8d0ddc9`; logs: `/tmp/a-program-authority-context-discovery-*.log`.
+Flags/environment match preceding entries. Compatibility is 63/63; normalized
+export results including Solve steps exactly match the previous acceptance run.
+The before/after retained IF8 images are byte-identical (420,556 bytes).
+A3 records removed packing calls and the measured memory tradeoff.
+
+Per-file implementation: `context_payload.c` +2/-2, `context_payload.h` +3/-0,
+`source_io.c` +13/-10 (total net +6); tests: `graph_acceptance.c` +11/-0.
+Cumulative implementation/header deltas: R76 +2,413/-1,094 (net +1,319);
+R0 +7,359/-3,624 (net +3,735). Remaining A3/A4/A5 and net-negative gates stay open.

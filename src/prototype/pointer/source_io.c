@@ -176,10 +176,10 @@ struct source_member {
 struct origin_collection {
 	const struct pg_synthesis *synthesis;
 	struct pg_dag *scopes, *syntax, *rules, *origins, *producers, *allocations, *bindings, *matches, *declarations;
-	struct pg_dag objects, terms;
+	struct pg_dag objects, terms, contexts;
 	struct pg_index candidates;
 	struct pg_declaration_io *codec;
-	const struct pg_dag_node *last_scope, *last_producer, *last_syntax, *last_object;
+	const struct pg_dag_node *last_scope, *last_producer, *last_syntax, *last_object, *last_context;
 	struct source_member *members;
 	size_t member_count;
 };
@@ -187,14 +187,15 @@ struct origin_collection {
 static int collect_allocation(struct origin_collection *c, const struct pg_context *prefix,
 	const struct pg_context *fields, const struct pg_object *constructor)
 {
-	const struct pg_context *contexts[] = {prefix, fields};
-	const struct pg_term *term = pg_reference(&c->rules->storage, constructor);
-	struct pg_derivation_payload payload;
-	if (pg_contexts_pack(&c->rules->storage, 2, contexts, 1, &term,
-		&payload.metadata_count, &payload.metadata, &payload.count, &payload.terms)) return -1;
-	for (size_t i = 0; i < payload.count; ++i)
-		if (pg_dag_add(&c->terms, payload.terms[i])) return -1;
-	return 0;
+	if (prefix && pg_dag_add(&c->contexts, prefix)) return -1;
+	if (fields && pg_dag_add(&c->contexts, fields)) return -1;
+	for (const struct pg_dag_node *node = c->last_context ? c->last_context->next : c->contexts.first;
+		node; c->last_context = node, node = node->next) {
+		const struct pg_context *context = node->key;
+		if (pg_dag_add(&c->terms, pg_reference(&c->rules->storage, context->binder)) ||
+			pg_dag_add(&c->terms, context->declared_type)) return -1;
+	}
+	return pg_dag_add(&c->terms, pg_reference(&c->rules->storage, constructor));
 }
 
 static int collect_member_use(struct origin_collection *c, struct pg_synthesis_job *job,
@@ -439,6 +440,7 @@ int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 		|| pg_dag_init(&declarations, NULL, NULL)
 		|| pg_graph_init(&rules.storage)
 		|| pg_dag_init(&collection.objects, NULL, NULL) || pg_index_init(&collection.candidates)
+		|| pg_dag_init(&collection.contexts, pg_context_dependency, NULL)
 		|| pg_effect_inference_init(&effects, &rules.storage)
 		|| pg_declaration_io_init(&codec, synthesis->typing)) goto done;
 	if (pg_graph_dependencies_init(&collection.terms, &collection.objects, &pg_declaration_graph_codec, &codec)) goto done;
@@ -629,6 +631,7 @@ int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 	status = pg_retained_write(file, rules.count, derivations, &effects, reductions,
 		payload.count, payload.terms, &pg_declaration_graph_codec, &codec);
 done:
+	pg_dag_destroy(&collection.contexts);
 	pg_index_destroy(&collection.candidates); pg_dag_destroy(&collection.terms); pg_dag_destroy(&collection.objects);
 	pg_declaration_io_destroy(&codec);
 	pg_effect_inference_destroy(&effects); pg_dag_destroy(&rules); pg_dag_destroy(&origins);
