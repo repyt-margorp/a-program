@@ -2121,23 +2121,10 @@ const struct pg_evidence *pg_prove_inductive_hypothesis_type(struct pg_typing *t
 			formation, parameters, motive_context, motive, context, field);
 		return pg_prove_thunk_type(typing, at);
 	}
-	const struct pg_evidence *scope = context;
-	const struct pg_evidence *call = pg_prove_force(typing, field);
-	const struct pg_evidence *classifier = pg_prove_classifier(typing, scope, call);
-	const struct pg_term *domain, *codomain;
-	const struct pg_object *binder;
 	if (allocation && !pg_thunk_type_view(allocation, &allocation)) return NULL;
-	while (classifier && pg_pi_view(pg_evidence_subject(classifier)->core, &domain, &binder, &codomain)) {
-		if (allocation) {
-			if (!pg_pi_view(allocation, &domain, &binder, &allocation)) return NULL;
-		} else binder = pg_binder(typing->graph);
-		const struct pg_evidence *argument_type = pg_prove_pi_domain(typing, classifier);
-		scope = pg_prove_context_extension(typing, scope, binder, argument_type);
-		if (!scope) return NULL;
-		call = pg_prove_application(typing, pg_prove_projection(typing, scope, call),
-			pg_prove_variable(typing, scope, binder));
-		classifier = pg_prove_classifier(typing, scope, call);
-	}
+	struct pg_call_telescope telescope;
+	if (pg_prove_call_telescope(typing, context, pg_prove_force(typing, field), allocation, &telescope)) return NULL;
+	const struct pg_evidence *scope = telescope.context, *call = telescope.call, *classifier = telescope.classifier;
 	enum pg_totality field_totality;
 	const struct pg_effect_row *effects;
 	if (!classifier || !pg_computation_type_view(pg_evidence_subject(classifier)->core, &field_totality, &effects, &type)) return NULL;
@@ -2150,7 +2137,7 @@ const struct pg_evidence *pg_prove_inductive_hypothesis_type(struct pg_typing *t
 		goto abstract;
 	}
 	const struct pg_evidence *returned_type = pg_prove_return_content(typing, classifier);
-	binder = pg_binder(typing->graph);
+	const struct pg_object *binder = pg_binder(typing->graph);
 	const struct pg_evidence *returned = pg_prove_context_extension(typing, scope, binder, returned_type);
 	at = pg_prove_inductive_motive_at(typing,
 		formation, parameters, motive_context, motive, returned, pg_prove_variable(typing, returned, binder));
@@ -2713,19 +2700,10 @@ static const struct pg_evidence *induction_field_body(struct pg_typing *typing,
 		pg_graph_destroy(&temporary);
 		return result;
 	}
-	const struct pg_evidence *context = view->parameters->premises[1], *scope = context;
-	const struct pg_evidence *call = pg_prove_force(typing, field);
-	const struct pg_evidence *classifier = pg_prove_classifier(typing, scope, call);
-	const struct pg_term *domain, *codomain;
-	const struct pg_object *binder;
-	while (classifier && pg_pi_view(pg_evidence_subject(classifier)->core, &domain, &binder, &codomain)) {
-		binder = pg_binder(typing->graph);
-		scope = pg_prove_context_extension(typing, scope, binder, pg_prove_pi_domain(typing, classifier));
-		if (!scope) return NULL;
-		call = pg_prove_application(typing, pg_prove_projection(typing, scope, call),
-			pg_prove_variable(typing, scope, binder));
-		classifier = pg_prove_classifier(typing, scope, call);
-	}
+	const struct pg_evidence *context = view->parameters->premises[1];
+	struct pg_call_telescope telescope;
+	if (pg_prove_call_telescope(typing, context, pg_prove_force(typing, field), NULL, &telescope)) return NULL;
+	const struct pg_evidence *scope = telescope.context, *call = telescope.call, *classifier = telescope.classifier;
 	const struct pg_evidence *returned = pg_prove_context_extension(typing, scope,
 		pg_binder(typing->graph), pg_prove_return_content(typing, classifier));
 	if (!returned) return NULL;
@@ -4085,6 +4063,32 @@ const struct pg_evidence *pg_prove_application(struct pg_typing *typing,
 	if (!subject) return NULL;
 	return accept(typing, PG_APP_ELIM,
 		pg_evidence_context(function), subject, 2, premises);
+}
+
+int pg_prove_call_telescope(struct pg_typing *typing,
+	const struct pg_evidence *context, const struct pg_evidence *computation,
+	const struct pg_term *allocation, struct pg_call_telescope *output)
+{
+	if (!output || !pg_evidence_owned_by(computation, typing) ||
+		pg_evidence_judgement(computation) != PG_JUDGEMENT_COMPUTATION) return -1;
+	struct pg_call_telescope view = {context, computation,
+		pg_prove_classifier(typing, context, computation)};
+	const struct pg_term *domain, *codomain;
+	const struct pg_object *binder;
+	while (view.classifier && pg_pi_view(pg_evidence_subject(view.classifier)->core, &domain, &binder, &codomain)) {
+		if (allocation) {
+			if (!pg_pi_view(allocation, &domain, &binder, &allocation)) return -1;
+		} else binder = pg_binder(typing->graph);
+		view.context = pg_prove_context_extension(typing, view.context, binder,
+			pg_prove_pi_domain(typing, view.classifier));
+		if (!view.context) return -1;
+		view.call = pg_prove_application(typing, pg_prove_projection(typing, view.context, view.call),
+			pg_prove_variable(typing, view.context, binder));
+		view.classifier = pg_prove_classifier(typing, view.context, view.call);
+	}
+	if (!view.classifier) return -1;
+	*output = view;
+	return 0;
 }
 
 const struct pg_evidence *pg_prove_conversion(struct pg_typing *typing,

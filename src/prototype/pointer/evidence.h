@@ -461,6 +461,16 @@ const struct pg_evidence *pg_prove_abstract(struct pg_typing *typing,
 	const struct pg_evidence *context, const struct pg_evidence *body);
 const struct pg_evidence *pg_prove_application(struct pg_typing *typing,
 	const struct pg_evidence *function, const struct pg_evidence *argument);
+/* Apply a checked computation to variables in its successive Pi domains.
+ * allocation supplies binder identities only (NULL allocates fresh binders).
+ * Ordinary Context/Pi/APP rules determine every domain and result classifier.
+ * The borrowed output is written only on success; no computation is executed. */
+struct pg_call_telescope {
+	const struct pg_evidence *context, *call, *classifier;
+};
+int pg_prove_call_telescope(struct pg_typing *typing,
+	const struct pg_evidence *context, const struct pg_evidence *computation,
+	const struct pg_term *allocation, struct pg_call_telescope *output);
 /* Shared typed queries, keyed by exact typed subjects and query arguments,
  * not receipt identity. Advances traverse construction and context maps;
  * individual kernel certification operations retain their own cost. No host

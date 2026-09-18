@@ -2373,3 +2373,44 @@ Implementation/header diff: `source_io.c` +29/-38, `synthesis.c` +6/-11,
 `synthesis.h` +3/-3; total net -14. Test `tests/source_io.c` +16/-0.
 Logs/images use `/tmp/a-program-authority-origin-order-*`; `final-counts` and
 `access-final` describe the final implementation, not the rejected draft.
+
+### 2026-09-19: One checked call-telescope algorithm (local)
+
+- [x] Replace four Pi-domain/context/application loops in `evidence.c` and
+  `function_graph.c` with `pg_prove_call_telescope`. Reuse accepted application
+  classifiers, including dependent domains, instead of a second codomain path
+  in callable-parameter eta expansion. No new rule, solver, cache or wire format.
+- [x] Test dependent telescope application against ordinary APP construction,
+  fresh versus retained binders, 100 repeated requests without proof/occurrence
+  growth, zero-argument identity, invalid allocation/context/category, and output
+  preservation on failure. Allocation annotations are deliberately unrelated:
+  only their binder identities may influence construction, never their types.
+- [x] Strict-debug Core/program tests and optimized full acceptance pass:
+  compatibility 63/63 and all four universal sorting proof suites. Normalized
+  exported results including Solve steps match the previous full run exactly.
+- [x] ASan/UBSan Core, IADT, program, callable-parameter, dependent function-field
+  and invalid-callable tests pass with explicit leak detection/halt-on-error.
+  This is affected-suite coverage, not a new full sanitizer acceptance run.
+- [ ] Publish with a substantial verified epoch. Broader A3/A4 and the cumulative
+  net-negative implementation gate are not closed by this consolidation.
+
+The initial new test incorrectly required the generated Context *receipt* to
+equal an independently constructed receipt. Pi-domain formation can supply a
+different derivation of the same Context. The test now checks Context identity,
+the exact application Core/classifier, reconstruction of the derivation, and
+exact receipt reuse for repeated identical requests. Existing tests were not
+weakened; alternative accepted proofs remain retained.
+
+GDB, `function-graph-callable-parameter.p`, both chunk sizes 1 and 64:
+within `parameter_source`, Pi-codomain calls 12 -> 6 and projection calls
+18 -> 12; classifier-query calls 48 -> 54. Each run retains 9,388 Core terms,
+6,306 typed occurrences, 538 contexts and 4,766 jobs; proof records 8,619 ->
+8,613, Solve steps unchanged at 16,294. This deletes redundant work, not
+existing proofs. No wall-time improvement or bounded-per-step guarantee is
+claimed. Baseline is the previously verified `authority-helper-origin` debug
+binary; the two intervening source-writer commits do not change these paths.
+
+Diff against `1dd755c`: `evidence.c` +34/-30, `evidence.h` +10/-0,
+`function_graph.c` +11/-25; implementation/header net 0. Tests +39/-0.
+The reduction is three duplicated algorithms, not a net LOC reduction yet.
+Logs and the new debug binaries use `/tmp/a-program-authority-call-telescope-*`.

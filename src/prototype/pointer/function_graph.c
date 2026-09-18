@@ -397,20 +397,13 @@ static const struct pg_evidence *parameter_source(struct pg_function_graph_state
 {
 	if (pg_evidence_rule(parameter) != PG_VARIABLE) return NULL;
 	struct pg_typing *t = s->typing;
-	const struct pg_evidence *outer = pg_evidence_premise(parameter, 0), *context = outer;
+	const struct pg_evidence *outer = pg_evidence_premise(parameter, 0);
 	const struct pg_evidence *body = pg_prove_force(t, parameter);
-	const struct pg_evidence *type = pg_prove_classifier(t, context, body);
-	const struct pg_term *domain, *codomain;
-	const struct pg_object *binder;
-	while (type && pg_pi_view(pg_evidence_subject(type)->core, &domain, &binder, &codomain)) {
-		context = pg_prove_context_extension(t, context, binder, pg_prove_pi_domain(t, type));
-		if (!context) return NULL;
-		const struct pg_evidence *argument = pg_prove_variable(t, context, binder);
-		body = pg_prove_application(t, projection(s, context, body), argument);
-		type = pg_prove_pi_codomain(t, projection(s, context, type), argument);
-	}
-	if (context == outer || !body || !type) return NULL;
-	return pg_prove_abstract(t, outer, context, body);
+	if (!body) return NULL;
+	struct pg_call_telescope telescope;
+	if (pg_prove_call_telescope(t, outer, body, pg_evidence_classifier(body), &telescope)) return NULL;
+	if (telescope.context == outer) return NULL;
+	return pg_prove_abstract(t, outer, telescope.context, telescope.call);
 }
 
 /* Preserve a helper's complete typed call before beta exposure
@@ -751,19 +744,12 @@ static const struct pg_evidence *original_hypothesis(struct pg_function_graph_st
 {
 	struct pg_typing *t = s->typing;
 	const struct pg_evidence *scope = context, *child = field;
-	const struct pg_term *type, *domain, *codomain;
-	const struct pg_object *binder;
+	const struct pg_term *type;
 	if (pg_thunk_type_view(pg_evidence_classifier(field), &type)) {
-		const struct pg_evidence *call = pg_prove_force(t, field);
-		const struct pg_evidence *classifier = pg_prove_classifier(t, scope, call);
-		while (classifier && pg_pi_view(pg_evidence_subject(classifier)->core, &domain, &binder, &codomain)) {
-			binder = pg_binder(t->graph);
-			scope = pg_prove_context_extension(t, scope, binder, pg_prove_pi_domain(t, classifier));
-			if (!scope) return NULL;
-			call = pg_prove_application(t, projection(s, scope, call), pg_prove_variable(t, scope, binder));
-			classifier = pg_prove_classifier(t, scope, call);
-		}
-		child = pg_prove_total_pure_value(t, call);
+		struct pg_call_telescope telescope;
+		if (pg_prove_call_telescope(t, scope, pg_prove_force(t, field), NULL, &telescope)) return NULL;
+		scope = telescope.context;
+		child = pg_prove_total_pure_value(t, telescope.call);
 	}
 	if (!child) return NULL;
 	const struct pg_evidence *input = argument_substitution(s, scope, child);

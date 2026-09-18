@@ -1178,6 +1178,20 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 - [ ] Report concrete deleted paths. Move remaining synchronous query loops to
   existing scheduling only where necessary for the same work contract; do not
   turn this repair into another scheduler framework.
+- [x] 2026-09-19: share checked Pi-telescope application between IH formation,
+  induction field bodies, original graph hypotheses and callable-parameter eta
+  expansion (`pg_prove_call_telescope`). Delete four local traversal bodies;
+  parameter eta expansion reads the applied term's existing classifier instead
+  of independently projecting/instantiating its former classifier. The output
+  is a stack-local borrowed triple, not a stored descriptor, query or authority.
+  Binder allocation supplies identities only; accepted Pi domains remain the
+  authority. Preserve fresh/retained binder policies and ordinary proof rules.
+  Keep `family_parameter_context` (type-only telescope) and `induction_field_core`
+  (erased Core construction) separate: neither has the computation premise
+  required by this helper. Likewise pending symbolic structure is not an
+  accepted classifier and cannot replace `accepted_structure`, or vice versa.
+  Full optimized acceptance and focused sanitizer tests pass; measurements and
+  the corrected test assumption are in the priority plan. A3-A5 remain open.
 - [x] Count binding payload slots during first source collection; delete the
   separate scope-count and binding-count passes in `source_io.c`. Repeated
   binding discovery stops at the existing writer-local DAG. The counter is

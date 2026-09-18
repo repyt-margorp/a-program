@@ -1237,6 +1237,45 @@ static void dependent_application_test(struct pg_graph *graph)
 	const struct pg_evidence *inner = pg_prove_abstract(&typing, a_context, xc,
 		pg_prove_return(&typing, pg_prove_variable(&typing, xc, inner_x)));
 	const struct pg_evidence *outer = pg_prove_abstract(&typing, empty, a_context, inner);
+	/* Telescope application uses accepted domains, never allocation annotations. */
+	const struct pg_term *allocation = pg_pi(graph, pg_universe(graph, 99), a,
+		pg_pi(graph, pg_universe(graph, 98), inner_x, pg_universe(graph, 97)));
+	struct pg_call_telescope telescope;
+	assert(!pg_prove_call_telescope(&typing, empty, outer, allocation, &telescope));
+	assert(pg_evidence_context(telescope.context) == pg_evidence_context(xc));
+	struct pg_call_telescope retained = telescope;
+	const struct pg_evidence *first_call = pg_prove_application(&typing,
+		pg_prove_projection(&typing, a_context, outer), a_type);
+	const struct pg_evidence *expected_call = pg_prove_application(&typing,
+		pg_prove_projection(&typing, xc, first_call), pg_prove_variable(&typing, xc, inner_x));
+	assert(pg_evidence_subject(telescope.call)->core == pg_evidence_subject(expected_call)->core);
+	assert(pg_evidence_subject(telescope.classifier)->core == pg_evidence_classifier(expected_call));
+	assert(pg_evidence_subject(telescope.classifier)->core == pg_return_type(graph, pg_reference(graph, a)));
+	reconstruct_derivation(&typing, telescope.call);
+	size_t telescope_proofs = typing.proofs.count, telescope_occurrences = typing.occurrences.count;
+	for (size_t i = 0; i < 100; ++i) {
+		assert(!pg_prove_call_telescope(&typing, empty, outer, allocation, &telescope));
+		assert(telescope.call == retained.call && telescope.context == retained.context &&
+			telescope.classifier == retained.classifier);
+	}
+	assert(typing.proofs.count == telescope_proofs && typing.occurrences.count == telescope_occurrences);
+	struct pg_call_telescope fresh;
+	assert(!pg_prove_call_telescope(&typing, empty, outer, NULL, &fresh));
+	const struct pg_context *fresh_scope = pg_evidence_context(fresh.context);
+	assert(fresh_scope->binder != inner_x && fresh_scope->parent->binder != a);
+	assert(fresh_scope->declared_type == pg_reference(graph, fresh_scope->parent->binder));
+	assert(pg_evidence_subject(fresh.classifier)->core == pg_return_type(graph,
+		pg_reference(graph, fresh_scope->parent->binder)));
+	reconstruct_derivation(&typing, fresh.call);
+	/* No Pi leaves the computation alone; failure does not publish half a view. */
+	assert(!pg_prove_call_telescope(&typing, xc, expected_call, NULL, &telescope));
+	assert(telescope.call == expected_call && telescope.context == xc);
+	assert(pg_prove_call_telescope(&typing, empty, outer, pg_universe(graph, 0), &telescope));
+	assert(pg_prove_call_telescope(&typing, a_context, outer, allocation, &telescope));
+	assert(pg_prove_call_telescope(&typing, empty, u1, allocation, &telescope));
+	assert(pg_prove_call_telescope(&typing, empty, outer, allocation, NULL));
+	assert(pg_prove_call_telescope(NULL, empty, outer, allocation, &telescope));
+	assert(telescope.call == expected_call && telescope.context == xc);
 	const struct pg_evidence *sources[] = {pi, outer,
 		pg_prove_force(&typing, pg_prove_thunk(&typing, outer))};
 	struct pg_whnf_work normalization;
