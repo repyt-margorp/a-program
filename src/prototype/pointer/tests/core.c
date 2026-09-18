@@ -1976,6 +1976,15 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(lifted_x && pg_evidence_subject(lifted_x)->core == pg_reference(graph, y));
 	assert(!pg_prove_substitution_lift(&typing, sigma, source_extension, y));
 	assert(!pg_prove_substitution_lift(&typing, sigma, destination, q));
+	/* A completed lift must not admit another scope or an occupied binder. */
+	size_t lift_count = typing.context_lifts.count, lift_proofs = typing.proofs.count;
+	for (size_t i = 0; i < 100; ++i) {
+		assert(pg_prove_substitution_lift(&typing, sigma, source_extension, q) == lifted);
+		assert(!pg_prove_substitution_lift(&typing, sigma, source_extension, y));
+		assert(!pg_prove_substitution_lift(&typing, sigma, destination, q));
+		assert(!pg_prove_substitution_lift(&typing, sigma, source_extension, NULL));
+	}
+	assert(typing.context_lifts.count == lift_count && typing.proofs.count == lift_proofs);
 	/* A descriptive lift is checked by the same rule as an explicit lift. */
 	const struct pg_object *fresh = pg_binder(graph);
 	const struct pg_context_map *raw_lift = pg_context_map_lift(&typing,

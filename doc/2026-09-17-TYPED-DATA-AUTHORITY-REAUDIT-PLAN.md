@@ -1076,6 +1076,17 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   accessor/reconstruction path: this case already shares the context action;
   removing it as "duplicate reindexing" would erase genuine specialization.
   This audit does not establish bounded first-query work in graph generation.
+- [x] Centralize lift-input freshness and parent checks at
+  `pg_context_lift_request`. Its exact interned request reuses the established
+  freshness result; the private builder and checked substitution adapter no
+  longer repeat it. Keep proof ownership/sort checks, destination formation
+  and substitution-pair validation. No new acceptance state or cache.
+  On `function-graph-function-field.p`, GDB counts 1,589 -> 436 lift-related
+  `pg_context_lookup` calls (request: 941 -> 436; builder: 436 -> 0;
+  evidence adapter: 212 -> 0), with 11,993 Solve steps in both versions.
+  The core regression alternates valid reuse with wrong-parent, occupied-binder
+  and null-binder requests without adding lifts/proofs. Validation/publication
+  status is recorded in the priority plan; no elapsed-time improvement claimed.
 - [x] Delete the unused application Context-pair API, getter and associated
   count/prefix branches. Retain address-conflict, nested-scope, inferred-arity
   and malformed-image coverage through the actual address interface.

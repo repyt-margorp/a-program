@@ -1915,3 +1915,24 @@ R0/current median QuickSort source time is .859/.326 seconds, but length is
 for merging differently typed uses or dropping certificates. A3 scope
 enumeration, A4's remaining consumers, full final A5 gates and cumulative
 net-negative implementation/header LOC remain open.
+
+### 2026-09-19: One structural check for shared context lifts
+
+- [x] Centralize lift parent/freshness checks at request creation, retaining
+  proof ownership and logical substitution validation. Remove the private
+  builder/adapter copies and the repeated scope walk on an intern hit.
+- [x] Verify valid reuse interleaved with wrong-parent, occupied-binder and
+  null-binder requests; no extra lift or proof records appear.
+- [x] Strict debug `core_test`, full optimized `check-acceptance`, ASan/UBSan
+  `core_test`, `iadt_test`, `synthesis_test`, `program_test`, complete
+  `source_io.sh`: all exit 0. Flags/environment match preceding entries.
+- [ ] Publish with the next substantial refactoring epoch.
+
+Baseline: `c49901d`. A4 records the exact check ownership and 1,589 -> 436
+scope lookups measured on the same function-field input. Logs use
+`/tmp/a-program-authority-intern-{before-counts,after-counts,core,acceptance,asan-*}.log`.
+Compatibility is 63/63; normalized export results, including Solve steps,
+match the preceding full acceptance log. No general speedup is claimed.
+Per-file implementation: `typing.c` +3/-3, `evidence.c` +0/-2 (net -2);
+`tests/core.c` +9/-0. Cumulative implementation/header delta is still +1,290
+from R76, +3,706 from R0. Broad A3/A4/A5 and net-negative gates remain open.

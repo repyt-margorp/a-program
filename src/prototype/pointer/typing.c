@@ -421,8 +421,6 @@ static const struct pg_context_map *context_map_lift_at(struct pg_typing *typing
 	const struct pg_context_map *map, const struct pg_context *extension,
 	const struct pg_object *binder, const struct pg_term *type, const struct pg_context *indices)
 {
-	if (!map || !extension || extension->parent != map->source) return NULL;
-	if (!binder || binder->kind != PG_BINDER || pg_context_lookup(map->destination, binder)) return NULL;
 	if (map->count >= SIZE_MAX / sizeof(const struct pg_occurrence *)) return NULL;
 	const struct pg_context *destination = pg_context_intern(typing, &(struct pg_context){
 		.parent = map->destination, .binder = binder, .declared_type = type,
@@ -464,7 +462,7 @@ struct pg_context_lift *pg_context_lift_request(struct pg_typing *typing,
 	const struct pg_object *binder)
 {
 	if (!map || !extension || extension->parent != map->source) return NULL;
-	if (!binder || binder->kind != PG_BINDER || pg_context_lookup(map->destination, binder)) return NULL;
+	if (!binder || binder->kind != PG_BINDER) return NULL;
 	uint64_t hash = (uintptr_t)map * UINT64_C(1099511628211);
 	hash = (hash ^ (uintptr_t)extension) * UINT64_C(1099511628211);
 	hash = (hash ^ (uintptr_t)binder) * UINT64_C(1099511628211);
@@ -472,6 +470,8 @@ struct pg_context_lift *pg_context_lift_request(struct pg_typing *typing,
 		struct pg_context_lift *work = (void *)p;
 		if (p->hash == hash && work->map == map && work->extension == extension && work->binder == binder) return work;
 	}
+	/* Immutable inputs: establish freshness once, before publishing the work. */
+	if (pg_context_lookup(map->destination, binder)) return NULL;
 	struct pg_context_lift *work = pg_alloc(typing->graph, sizeof(*work));
 	if (!work) return NULL;
 	work->typing = typing;

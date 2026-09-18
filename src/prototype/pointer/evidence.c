@@ -4578,8 +4578,6 @@ const struct pg_evidence *pg_prove_substitution_lift(struct pg_typing *typing,
 	if (!substitution_proof(typing, substitution)) return NULL;
 	if (!context_proof(typing, source_extension)) return NULL;
 	if (source_extension->rule != PG_CONTEXT_EXTEND && source_extension->rule != PG_CONTEXT_FAMILY_EXTEND) return NULL;
-	if (pg_evidence_context(source_extension)->parent != pg_evidence_context(substitution->premises[0])) return NULL;
-	if (!binder || binder->kind != PG_BINDER || pg_context_lookup(pg_evidence_context(substitution), binder)) return NULL;
 	struct pg_context_lift *work = pg_context_lift_request(typing,
 		pg_evidence_context_map(substitution), pg_evidence_context(source_extension), binder);
 	while (pg_context_lift_advance(work, 1024) == PG_SUBSTITUTION_PENDING) {}
