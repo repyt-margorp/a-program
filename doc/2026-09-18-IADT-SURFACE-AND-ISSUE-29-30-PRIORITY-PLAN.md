@@ -2501,12 +2501,49 @@ construction recipes while retaining source inputs, typed structure and exact
 proof premises in their existing owners; it adds no second solver or format.
 
 - [x] Optimized full acceptance on the final implementation.
-- [ ] Strict-debug full acceptance on the same implementation.
-- [ ] ASan/UBSan full acceptance on the same implementation, with leak detection
-  and halt-on-error; do not substitute earlier affected-suite runs.
-- [ ] Record per-file implementation/header, test and documentation deltas.
+- [x] Strict-debug full acceptance on the same implementation. All normalized
+  exported results and Solve steps match the optimized run exactly.
+- [x] ASan/UBSan full acceptance on the same implementation, with leak detection
+  and halt-on-error. The full make invocation exited 0. All normalized exported
+  results and Solve steps match debug and optimized runs exactly; compatibility
+  63/63 and all four universal sorting proof suites pass.
+- [x] Record per-file implementation/header, test and documentation deltas.
 - [ ] Recheck remote tips, publish the group to Main/rewrite without force, and
   verify both remote revisions. Preserve all open parent gates.
 
 A3/A4/A5, output-sensitive lexical enumeration, small-input performance against
 R0 and cumulative net-negative implementation/header LOC remain incomplete.
+
+Frozen implementation revision: `497452f`. Relative to published `4b4fba7`:
+
+| File under `src/prototype/pointer/` | Added | Deleted | Net |
+|---|---:|---:|---:|
+| evidence.c | 43 | 41 | +2 |
+| evidence.h | 10 | 0 | +10 |
+| function_graph.c | 11 | 25 | -14 |
+| source_io.c | 41 | 55 | -14 |
+| synthesis.c | 6 | 11 | -5 |
+| synthesis.h | 3 | 3 | 0 |
+| Implementation/headers | 114 | 135 | -21 |
+| tests/core.c | 80 | 0 | +80 |
+| tests/source_io.c | 22 | 3 | +19 |
+| Tests | 102 | 3 | +99 |
+
+Documentation through `497452f`, excluding this later accounting/publication
+record: authority plan +44/-0; priority plan +202/-0. No build-rule changes.
+Across the entire refactor, implementation/headers remain +2,780/-1,357 (net
++1,423) from R76 `3a3bf55`, and +7,679/-3,840 (net +3,839) from R0 `4657cc6`.
+The grouped -21 reduction does not satisfy the cumulative reduction gate.
+
+Final verification uses C11 with `-Wall -Wextra -Werror`; debug `-O0 -g`,
+optimized `-O2`, sanitizer `-O1 -g -fsanitize=address,undefined
+-fno-omit-frame-pointer -fno-pie -no-pie`. The entire sanitizer make invocation
+inherits `ASAN_OPTIONS=detect_leaks=1:halt_on_error=1` and
+`UBSAN_OPTIONS=halt_on_error=1`. All use the prototype Makefile's existing
+`check-acceptance` target. Logs: optimized
+`/tmp/a-program-authority-projection-owner-opt.log`, debug/sanitizer
+`/tmp/a-program-authority-established-inputs-{debug,asan}.log`.
+
+All three full acceptance invocations exited 0. There were no source/test edits
+between the frozen revision and these gates. This completes verification of the
+five-change publication group, not the remaining parent refactor obligations.
