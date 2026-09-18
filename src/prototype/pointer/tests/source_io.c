@@ -1967,6 +1967,35 @@ static void member_use_origins(void)
 	assert(!pg_synthesis_member_allocation(&p->synthesis, found.job, &prefix, &fields));
 	const struct pg_object *binder = fields->binder;
 	assert(pg_synthesis_allocation_object(&p->synthesis, found.job) == binder);
+	struct member_origin indexed = {.synthesis = &p->synthesis};
+	size_t references = p->synthesis.source_references.count;
+	assert(!pg_synthesis_visit_source_references(&p->synthesis, found.syntax, find_member_origin, NULL, &indexed));
+	assert(indexed.job == found.job && indexed.scope == found.scope);
+	assert(p->synthesis.source_references.count == references);
+	/* A field Context can retain its binder without a term mentioning the
+	 * constructor. Its allocation address must still survive source-free saves. */
+	const struct pg_evidence *nat = pg_synthesis_result(pg_synthesis_definition(p->root,
+		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "Nat", .length = 3}));
+	struct pg_synthesis_job *context = pg_synthesis_evidence(&p->synthesis,
+		pg_prove_context_extension(&p->typing, pg_prove_empty_context(&p->typing), binder, nat));
+	assert(context);
+	FILE *context_file = tmpfile();
+	assert(context_file && !pg_sources_write(context_file, &p->synthesis, 1, &context));
+	for (unsigned round = 0; round < 2; ++round) {
+		size_t syntax_count, root_count;
+		uint64_t bindings;
+		source_binding_section(context_file, &syntax_count);
+		assert(!syntax_count && !pg_wire_read_u64(context_file, &bindings) && bindings == 1);
+		rewind(context_file);
+		struct pg_synthesis_job *const *context_roots;
+		struct pg_program *loaded = pg_sources_read(context_file, 100000, &root_count, &context_roots);
+		assert(loaded && root_count == 1 && !loaded->synthesis.steps && !fclose(context_file));
+		context_file = tmpfile();
+		assert(context_file && !pg_sources_write(context_file, &loaded->synthesis, root_count, context_roots));
+		assert(!loaded->synthesis.steps);
+		pg_program_destroy(loaded);
+	}
+	assert(!fclose(context_file));
 	/* The same source shape at a new lexical use must check the allocation
 	 * through both atomic preparation and ordinary reference resolution. */
 	struct pg_syntax copies[3] = {*found.syntax, *found.syntax, *found.syntax};

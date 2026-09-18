@@ -179,7 +179,7 @@ struct origin_collection {
 	struct pg_dag objects, terms;
 	struct pg_index candidates;
 	struct pg_declaration_io *codec;
-	const struct pg_dag_node *last_scope, *last_producer;
+	const struct pg_dag_node *last_scope, *last_producer, *last_syntax, *last_object;
 	struct source_member *members;
 	size_t member_count;
 };
@@ -273,40 +273,50 @@ static int collect_inputs(struct origin_collection *c)
 
 struct origin_candidate {
 	struct pg_index_entry index;
-	const struct pg_object *object;
+	const void *key;
 	struct pg_synthesis_job *job;
 	const struct pg_source_binding *binding;
 };
 
-static int index_origin_object(struct origin_collection *c, struct pg_synthesis_job *job,
-	const struct pg_source_binding *binding, const struct pg_object *object)
+static int collect_binding(struct origin_collection *c, const struct pg_source_binding *input);
+static int collect_origin(void *owner, struct pg_synthesis_job *job);
+
+static int index_origin_reference(struct origin_collection *c, struct pg_synthesis_job *job,
+	const struct pg_source_binding *binding, const void *key)
 {
-	if (!object) return -1;
-	uint64_t hash = (uintptr_t)object;
+	if (!key) return -1;
+	uint64_t hash = (uintptr_t)key;
 	for (struct pg_index_entry *entry = pg_index_candidates(&c->candidates, hash); entry; entry = entry->next) {
 		const struct origin_candidate *candidate = (const void *)entry;
-		if (candidate->object == object && candidate->job == job && candidate->binding == binding) return 0;
+		if (candidate->key == key && candidate->job == job && candidate->binding == binding) return 0;
 	}
 	struct origin_candidate *candidate = pg_alloc(&c->objects.storage, sizeof(*candidate));
 	if (!candidate) return -1;
-	candidate->object = object; candidate->job = job; candidate->binding = binding;
-	return pg_index_insert(&c->candidates, &candidate->index, hash);
+	candidate->key = key; candidate->job = job; candidate->binding = binding;
+	if (pg_index_insert(&c->candidates, &candidate->index, hash)) return -1;
+	const struct pg_dag_node *reached = pg_dag_find(&c->objects, key);
+	if (reached && c->last_object && reached->id <= c->last_object->id)
+		return binding ? collect_binding(c, binding) : collect_origin(c, job);
+	return 0;
 }
 
 static int index_origin(void *owner, struct pg_synthesis_job *job)
 {
 	struct origin_collection *c = owner;
 	const struct pg_object *object = pg_synthesis_allocation_object(c->synthesis, job);
-	if (index_origin_object(c, job, NULL, object)) return -1;
+	if (index_origin_reference(c, job, NULL, object)) return -1;
 	/* Computation endpoints may retain only the layout, not the type family. */
 	const struct pg_data_declaration *declaration = pg_data_declaration_view(object);
-	return declaration ? index_origin_object(c, job, NULL,
+	return declaration ? index_origin_reference(c, job, NULL,
 		pg_data_matcher(pg_data_declaration_layout(declaration))) : 0;
 }
 
 static int index_binding(void *owner, const struct pg_source_binding *input)
 {
-	return index_origin_object(owner, NULL, input, input->binder);
+	struct origin_collection *c = owner;
+	if (!input->syntax || id(c->syntax, input->syntax)) return collect_binding(c, input);
+	/* The binder is reached first; wait for its source syntax, not Solve. */
+	return index_origin_reference(c, NULL, input, input->syntax);
 }
 
 static int collect_binding(struct origin_collection *c, const struct pg_source_binding *input)
@@ -365,21 +375,34 @@ static int collect_origin(void *owner, struct pg_synthesis_job *job)
 	return 0;
 }
 
-static int retain_objects(struct origin_collection *c, const struct pg_dag_node *previous)
+static int collect_candidates(struct origin_collection *c, const void *key)
 {
+	for (struct pg_index_entry *entry = pg_index_candidates(&c->candidates, (uintptr_t)key); entry; entry = entry->next) {
+		const struct origin_candidate *candidate = (const void *)entry;
+		if (candidate->key != key) continue;
+		int status = candidate->binding ? collect_binding(c, candidate->binding) : collect_origin(c, candidate->job);
+		if (status) return -1;
+	}
+	return 0;
+}
+
+static int retain_objects(struct origin_collection *c)
+{
+	if (collect_inputs(c)) return -1;
 	for (;;) {
-		for (const struct pg_dag_node *node = previous ? previous->next : c->objects.first; node; node = node->next) {
-			uint64_t hash = (uintptr_t)node->key;
-			for (struct pg_index_entry *entry = pg_index_candidates(&c->candidates, hash); entry; entry = entry->next) {
-				const struct origin_candidate *candidate = (const void *)entry;
-				if (candidate->object != node->key) continue;
-				int status = candidate->binding ? collect_binding(c, candidate->binding) : collect_origin(c, candidate->job);
-				if (status) return -1;
-			}
+		for (const struct pg_dag_node *node = c->last_syntax ? c->last_syntax->next : c->syntax->first;
+			node; c->last_syntax = node, node = node->next) {
+			if (pg_synthesis_visit_source_references(c->synthesis, node->key, index_origin, NULL, c)) return -1;
+			if (collect_candidates(c, node->key)) return -1;
 		}
-		previous = c->objects.last;
+		for (const struct pg_dag_node *node = c->last_object ? c->last_object->next : c->objects.first;
+			node; node = node->next) {
+			c->last_object = node;
+			if (pg_synthesis_visit_source_references(c->synthesis, node->key, NULL, index_binding, c)) return -1;
+			if (collect_candidates(c, node->key)) return -1;
+		}
 		if (collect_inputs(c)) return -1;
-		if (previous == c->objects.last) return 0;
+		if (c->last_object == c->objects.last && c->last_syntax == c->syntax->last) return 0;
 	}
 }
 
@@ -387,7 +410,6 @@ static int retain_dependencies(void *owner, const struct pg_derivation_input *in
 	const struct pg_effect_inference *work)
 {
 	struct origin_collection *c = owner;
-	const struct pg_dag_node *previous = c->objects.last;
 	const struct pg_term *const *terms;
 	size_t count, equations;
 	if (input) {
@@ -398,7 +420,7 @@ static int retain_dependencies(void *owner, const struct pg_derivation_input *in
 	} else if (pg_effect_inference_pack(work, &c->terms.storage, &equations, &count, &terms)) return -1;
 	for (size_t i = 0; i < count; ++i)
 		if (terms[i] && pg_dag_add(&c->terms, terms[i])) return -1;
-	return retain_objects(c, previous);
+	return retain_objects(c);
 }
 
 int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
@@ -426,13 +448,9 @@ int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 		|| pg_declaration_io_init(&codec, synthesis->typing)) goto done;
 	if (pg_graph_dependencies_init(&collection.terms, &collection.objects, &pg_declaration_graph_codec, &codec)) goto done;
 	for (size_t i = 0; i < count; ++i) if (!roots[i] || pg_dag_add(&producers, roots[i])) goto done;
-	if (collect_inputs(&collection)) goto done;
-	if (pg_synthesis_visit_source_allocations(synthesis, index_origin, &collection)) goto done;
-	if (pg_synthesis_visit_source_bindings(synthesis, index_binding, &collection)) goto done;
-	if (retain_objects(&collection, NULL)) goto done;
+	if (retain_objects(&collection)) goto done;
 	if (reductions) {
-		const struct pg_dag_node *previous = collection.objects.last;
-		if (pg_reduction_archive_collect(&collection.terms, reductions) || retain_objects(&collection, previous)) goto done;
+		if (pg_reduction_archive_collect(&collection.terms, reductions) || retain_objects(&collection)) goto done;
 	}
 	const struct pg_derivation_input *const *derivations;
 	if (pg_synthesis_export_rule_closure(synthesis, &rules, &rules.storage, &effects, 1,

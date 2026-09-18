@@ -758,11 +758,10 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 - [ ] Preserve selected-root reachability without scanning unrelated source
   scopes or collecting all syntax-free aliases. Do not repeat the withdrawn
   broad `collect_origin` experiment.
-  Current distinction: `collect_origin` filters lexical reachability, but
-  `pg_synthesis_visit_source_allocations` still scans all jobs and the writer
-  indexes all source bindings before filtering. Correct retained roots do not
-  establish output-sensitive traversal. Measure inspected/retained entries
-  before changing this path; do not add a second mutable allocation authority.
+  Remaining bound: different uses of the same syntax remain candidates for
+  lexical reachability checking. Do not claim cost strictly proportional to
+  retained output without measuring heavily shared syntax in unrelated scopes.
+  The whole-job/whole-binding searches described below are now removed.
   At `8d4c731`, ordinary IF8 saving inspects 15,319 jobs, indexes 85 source
   origins and 344 binding addresses, but selects none of those candidates.
   The initial object closure still contains two prelude binders and two host
@@ -771,6 +770,41 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   inspects 15,402 jobs and the same candidate counts, with 93 origin and 282
   binding callbacks. A correct direct lookup must cover pre-completion child
   allocations and zero-step restored descriptors, not just completed parents.
+- [x] 2026-09-19: replace unconditional source-origin discovery with an index
+  of borrowed input references, registered at source request/address creation.
+  Syntax keys find existing allocation-producing jobs; binder keys find their
+  existing lexical addresses. No result, allocation tuple, acceptance flag or
+  completion callback is stored in the index. Read availability through the
+  original job/view, including completed children and inert restored inputs.
+  `source_io.c` advances its selected syntax/object frontiers and no longer
+  enumerates all jobs or all source bindings. The existing temporary candidate
+  table also retains binder-first/syntax-later edges; no extra solver work runs.
+
+  A rejected first draft indexed constructor bindings by their constructor.
+  `member_use_origins` now retains only a field Context whose type mentions Nat,
+  not Box's constructor. The draft lost its binding address (exit 134); binder
+  reverse lookup preserves the one address and zero syntax through two inert
+  resaves. Constructor-site discovery alone is insufficient. This failure was
+  in the unpublished draft, not evidence of a bug in the preceding release.
+
+  Same-input GDB counters (`f8fb837` archive versus this epoch, `-O0 -g`,
+  IF8 fixture, `--steps 1000000 --legacy-intrinsic-dot`):
+
+  | Save mode | Old job entries inspected | New index bucket candidates inspected | Old/new binding callbacks | Selected origin / binding callbacks (unchanged) |
+  |---|---:|---:|---:|---|
+  | Ordinary `--save` | 15,319 | 1,425 | 344 / 0 | 0 / 0 |
+  | `--retain-reductions --whnf main --save` | 15,402 | 1,584 | 344 / 282 | 93 / 282 |
+
+  Ordinary output is byte-identical; retained files are both 420,556 bytes.
+  Before saving, Solve work is unchanged: 47,046 steps, 15,319 jobs, 23,315
+  proofs, 19,522 occurrences, 11,969 Terms and 344 binding addresses.
+  The 473 reference entries increase graph arena used bytes from 19,755,840
+  to 19,786,112 (+30,272); capacity grows by 32,768 bytes/two blocks. The new
+  512-bucket index additionally uses 4,096 bytes. This is an explicit space/work
+  tradeoff, not a claim of reduced compiler memory or measured elapsed speedup.
+  Logs/builds: `/tmp/a-program-authority-source-sites`, with `-baseline`/`-new`
+  prefixes for `-counts`, `-retained-counts` and `-arena` logs. Full optimized
+  acceptance and affected sanitizers pass; details are in the priority plan.
 - [x] Read and resave zero/partial/completed inputs without executing requests
   or promoting saved results into acceptance. Reuse context/occurrence payloads
   where appropriate; do not duplicate their maps in a new alias wire record.

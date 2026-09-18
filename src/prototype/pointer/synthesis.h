@@ -23,6 +23,8 @@ struct pg_synthesis {
 	/* Source spelling/layout attached to typed subjects; not scheduled work. */
 	struct pg_index source_metadata;
 	struct pg_index source_bindings;
+	/* Borrowed source inputs indexed by syntax or binder, not accepted result. */
+	struct pg_index source_references;
 	struct pg_synthesis_job *ready;
 	struct pg_synthesis_job *ready_tail;
 	uint64_t steps;
@@ -81,6 +83,13 @@ const struct pg_source_binding *pg_synthesis_source_binding(struct pg_synthesis 
 	const struct pg_source_binding *input);
 int pg_synthesis_visit_source_bindings(const struct pg_synthesis *synthesis,
 	int (*visit)(void *, const struct pg_source_binding *), void *owner);
+/* key is an exact syntax or binder pointer. Only the corresponding inputs
+ * are inspected; allocation availability is read from the original producer.
+ * Optional callbacks select job allocations and/or lexical binding addresses.
+ * No Solve, acceptance, copied allocation or completion-index update occurs. */
+int pg_synthesis_visit_source_references(const struct pg_synthesis *synthesis, const void *key,
+	int (*allocation)(void *, struct pg_synthesis_job *),
+	int (*binding)(void *, const struct pg_source_binding *), void *owner);
 /* Nominal allocation input for a source declaration, before preparation.
  * Candidate universe inference still runs. Only the matching candidate uses
  * the stored Self binder/schema; no stored formation evidence is trusted.

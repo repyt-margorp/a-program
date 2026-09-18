@@ -1800,3 +1800,37 @@ Published as `d47f4ee9075b11ea6dbd8b6412be972a88122f35`, atomically
 fast-forwarding Main and `rewrite/pointer-core-hott` from `7c6b8fe`; both
 remote tips verified. Commit totals: implementation/header +13/-15,
 tests +92/-5, documentation +85/-7. This publication record is doc-only.
+
+### 2026-09-19: Selected source-reference discovery
+
+- [x] Delete unconditional all-job/all-binding discovery from source writing.
+- [x] Index borrowed inputs by source syntax or allocated binder; keep all
+  allocation/type/acceptance data at its existing owner.
+- [x] Follow syntax/object frontiers, including late proof/reduction edges.
+- [x] Add source-free constructor-field Context retention and indexed-read
+  regressions; retain the existing selected-root and boundary checks.
+- [x] Measure discovery work and the additional index space against `f8fb837`.
+- [x] Full optimized acceptance and affected debug/sanitizer gates.
+- [ ] Publish the verified epoch and record remote tips.
+
+The parent's A3 entry records the failed constructor-keyed draft, the binder
+reverse-lookup correction, exact work/arena counts and the remaining
+same-syntax/different-scope candidate bound. No wire or kernel rule changes.
+The index contains references only, not a second accepted allocation authority.
+
+Verification uses `/tmp/a-program-authority-source-sites`, `-opt` and `-asan`
+builds. All exit zero: final strict debug `tests/source_io.sh`; full optimized
+`check-acceptance` (`-acceptance.log`), including 63/63 compatibility, universal
+sorting proofs and images; ASan/UBSan `synthesis_test`, full `source_io.sh`,
+`normalization`, `handler-nesting`, and all 4,240 `handler-boundaries` snapshots.
+Flags and sanitizer environment are identical to the preceding epoch. Logs
+use `-source-final.log` and `-asan-{source,synthesis,normalization,nesting,boundaries}.log`.
+Normalized `export results:` records, including Solve steps, exactly match
+the preceding index-alias audit. No implementation/test edits followed them.
+
+Per-file implementation/header: `source_io.c` +49/-31, `synthesis.c` +52/-17,
+`synthesis.h` +9/-0; total +110/-48 (net +62). `tests/source_io.c` +29/-0.
+Cumulative implementation/header changes: R76 `3a3bf550` +2,357/-1,061
+(net +1,296); R0 `4657cc6` +7,316/-3,604 (net +3,712).
+This epoch reduces repeated search, not source size. The net-negative gate,
+remaining A3/A4 audit and final A5 gates remain open; R is not complete.

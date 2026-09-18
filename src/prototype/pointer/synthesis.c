@@ -26,6 +26,44 @@ struct source_binding {
 	struct pg_source_binding input;
 };
 
+struct source_reference_entry {
+	struct pg_index_entry index;
+	const void *key;
+	struct pg_synthesis_job *job;
+	const struct pg_source_binding *binding;
+};
+
+static int register_source_reference(struct pg_synthesis *synthesis, const void *key,
+	struct pg_synthesis_job *job, const struct pg_source_binding *binding)
+{
+	struct source_reference_entry *entry = pg_alloc(synthesis->typing->graph, sizeof(*entry));
+	if (!entry) return -1;
+	entry->key = key; entry->job = job; entry->binding = binding;
+	return pg_index_insert(&synthesis->source_references, &entry->index, (uintptr_t)key);
+}
+
+static int visit_source_reference(const struct pg_synthesis *synthesis, const struct source_reference_entry *entry,
+	int (*allocation)(void *, struct pg_synthesis_job *),
+	int (*binding)(void *, const struct pg_source_binding *), void *owner)
+{
+	if (entry->binding) return binding ? binding(owner, entry->binding) : 0;
+	return allocation && pg_synthesis_allocation_object(synthesis, entry->job)
+		? allocation(owner, entry->job) : 0;
+}
+
+int pg_synthesis_visit_source_references(const struct pg_synthesis *synthesis, const void *key,
+	int (*allocation)(void *, struct pg_synthesis_job *),
+	int (*binding)(void *, const struct pg_source_binding *), void *owner)
+{
+	if (!synthesis || !key) return -1;
+	for (struct pg_index_entry *entry = pg_index_candidates(&synthesis->source_references, (uintptr_t)key);
+		entry; entry = entry->next) {
+		const struct source_reference_entry *input = (const void *)entry;
+		if (input->key == key && visit_source_reference(synthesis, input, allocation, binding, owner)) return -1;
+	}
+	return 0;
+}
+
 struct pg_source_scope {
 	struct pg_index_entry index;
 	const void *owner;
@@ -365,7 +403,7 @@ int pg_synthesis_init(struct pg_synthesis *synthesis, struct pg_typing *typing,
 	synthesis->definition_policy = definition_policy;
 	if (pg_index_init(&synthesis->jobs) != 0) return -1;
 	if (pg_index_init(&synthesis->scopes) == 0 && pg_index_init(&synthesis->source_metadata) == 0
-		&& pg_index_init(&synthesis->source_bindings) == 0) {
+		&& pg_index_init(&synthesis->source_bindings) == 0 && pg_index_init(&synthesis->source_references) == 0) {
 		synthesis->owner_key = pg_alloc(typing->graph, 1);
 		if (synthesis->owner_key) return 0;
 	}
@@ -395,6 +433,7 @@ void pg_synthesis_destroy(struct pg_synthesis *synthesis)
 	pg_index_destroy(&synthesis->scopes);
 	pg_index_destroy(&synthesis->source_metadata);
 	pg_index_destroy(&synthesis->source_bindings);
+	pg_index_destroy(&synthesis->source_references);
 	memset(synthesis, 0, sizeof(*synthesis));
 }
 
@@ -537,22 +576,9 @@ int pg_synthesis_visit_source_allocations(const struct pg_synthesis *synthesis,
 	int (*visit)(void *, struct pg_synthesis_job *), void *owner)
 {
 	if (!synthesis || !visit) return -1;
-	for (size_t i = 0; i < synthesis->jobs.capacity; ++i)
-		for (struct pg_index_entry *entry = synthesis->jobs.buckets[i]; entry; entry = entry->next) {
-			struct pg_synthesis_job *job = (void *)entry;
-			if (job->role == EXPRESSION_JOB && job->syntax->kind == PG_SYNTAX_QUALIFIED) {
-				const struct pg_context *prefix, *fields;
-				if (!pg_synthesis_member_allocation(synthesis, job, &prefix, &fields) && fields != prefix)
-					if (visit(owner, job)) return -1;
-				continue;
-			}
-			if (job->role == EXPRESSION_JOB && job->syntax->kind == PG_SYNTAX_ELIMINATION) {
-				if (source_induction_allocation(job) && visit(owner, job)) return -1;
-				continue;
-			}
-			if (job->role != EXPRESSION_JOB || job->syntax->kind != PG_SYNTAX_DECLARATION) continue;
-			if (!job->nominal_input && !job->schema) continue;
-			if (visit(owner, job)) return -1;
+	for (size_t i = 0; i < synthesis->source_references.capacity; ++i)
+		for (struct pg_index_entry *entry = synthesis->source_references.buckets[i]; entry; entry = entry->next) {
+			if (visit_source_reference(synthesis, (const void *)entry, visit, NULL, owner)) return -1;
 		}
 	return 0;
 }
@@ -705,6 +731,14 @@ static struct pg_synthesis_job *request_role(struct pg_synthesis *synthesis,
 {
 	if (!scope || scope->owner != synthesis->owner_key || !syntax) return NULL;
 	struct pg_synthesis_job *job = request_job(synthesis, role, scope, syntax);
+	if (job && !job->syntax && role == EXPRESSION_JOB) {
+		switch (syntax->kind) {
+		case PG_SYNTAX_QUALIFIED: case PG_SYNTAX_ELIMINATION: case PG_SYNTAX_DECLARATION:
+			if (register_source_reference(synthesis, syntax, job, NULL)) return NULL;
+			break;
+		default: break;
+		}
+	}
 	if (job) { job->scope = scope; job->syntax = syntax; }
 	return job;
 }
@@ -1154,6 +1188,7 @@ static const struct pg_source_binding *source_binding_intern(struct pg_synthesis
 	entry->input.scope_count = count;
 	if (!entry->input.binder) entry->input.binder = pg_binder(synthesis->typing->graph);
 	if (!entry->input.binder || pg_index_insert(&synthesis->source_bindings, &entry->index, hash)) return NULL;
+	if (register_source_reference(synthesis, entry->input.binder, NULL, &entry->input)) return NULL;
 	return &entry->input;
 }
 
