@@ -1811,7 +1811,7 @@ tests +92/-5, documentation +85/-7. This publication record is doc-only.
   regressions; retain the existing selected-root and boundary checks.
 - [x] Measure discovery work and the additional index space against `f8fb837`.
 - [x] Full optimized acceptance and affected debug/sanitizer gates.
-- [ ] Publish the verified epoch and record remote tips.
+- [x] Publish the verified epoch and record remote tips.
 
 The parent's A3 entry records the failed constructor-keyed draft, the binder
 reverse-lookup correction, exact work/arena counts and the remaining
@@ -1834,3 +1834,8 @@ Cumulative implementation/header changes: R76 `3a3bf550` +2,357/-1,061
 (net +1,296); R0 `4657cc6` +7,316/-3,604 (net +3,712).
 This epoch reduces repeated search, not source size. The net-negative gate,
 remaining A3/A4 audit and final A5 gates remain open; R is not complete.
+
+Published as `02df61ced964f5dd23fd1fc9fed899f73f740f37`, atomically
+fast-forwarding Main and `rewrite/pointer-core-hott` from `f8fb837`; both
+remote tips verified. Commit totals: implementation/header +110/-48,
+tests +29/-0, documentation +73/-5. This publication record is doc-only.
