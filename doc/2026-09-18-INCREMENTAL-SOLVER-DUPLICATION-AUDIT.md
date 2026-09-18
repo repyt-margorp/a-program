@@ -9,9 +9,13 @@ Related: [active authority plan](2026-09-17-TYPED-DATA-AUTHORITY-REAUDIT-PLAN.md
 
 ## Conclusion
 
-The principal duplication is **reconstructing pending term/type structure from
-solver recipes**, not two independent App/Lambda evaluators. Remove reconstruction
-paths and repeated orchestration, not logical checking rules. Core computation
+The original audit identified **reconstructing pending term/type structure from
+solver recipes**, not two independent App/Lambda evaluators. The remaining
+pending paths require a narrower review: an unfinished Handler effect equation
+can need structure before its premises are accepted. Such a request is not a
+second acceptance authority simply because the kernel later checks that rule.
+Remove duplicated construction and orchestration where demonstrated, not the
+independent checking or the ability to expose pending structure. Core computation
 must remain separate from typed occurrences and their checked derivations.
 
 This review follows the active `src/prototype/pointer/Makefile` dependency graph.

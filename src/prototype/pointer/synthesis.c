@@ -962,16 +962,6 @@ const struct pg_object *pg_synthesis_allocation_object(const struct pg_synthesis
 	if (job->role == EXPRESSION_JOB && job->syntax->kind == PG_SYNTAX_ELIMINATION) {
 		const struct pg_induction_allocation *allocation = source_induction_allocation(job);
 		if (allocation) return allocation->self;
-		if (handler_syntax(job->syntax) && job->syntax->item_count > 1) {
-			const struct pg_evidence *proof = pg_synthesis_result(job);
-			const struct pg_occurrence *subject = proof ? pg_evidence_subject(proof) : NULL;
-			if (subject) {
-				if (subject->operand_count < 2) return NULL;
-				const struct pg_term *returned = subject->operands[1]->core;
-				return returned->kind == PG_LAMBDA ? returned->as.lambda.binder : NULL;
-			}
-			return NULL;
-		}
 	}
 	const struct pg_data_declaration *declaration = job->nominal_input;
 	if (!declaration && job->schema) declaration = pg_data_schema_declaration(job->schema);

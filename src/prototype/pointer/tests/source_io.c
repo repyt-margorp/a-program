@@ -947,6 +947,25 @@ static int handler_scopes(int mode)
 	return mismatch;
 }
 
+static int handler_return_binding(void *owner, const struct pg_source_binding *input)
+{
+	const struct pg_object **binder = owner;
+	if (input->binder != *binder) return 0;
+	assert(input->syntax && !input->constructor && !input->slot);
+	assert(input->syntax->kind == PG_SYNTAX_CLAUSE && input->syntax->item_count == 1);
+	*binder = NULL;
+	return 0;
+}
+
+static void check_handler_return_binding(struct pg_program *p, struct pg_synthesis_job *job)
+{
+	const struct pg_occurrence *handled = pg_evidence_subject(pg_synthesis_result(job));
+	assert(handled->operand_count >= 2 && handled->operands[1]->core->kind == PG_LAMBDA);
+	const struct pg_object *binder = handled->operands[1]->core->as.lambda.binder;
+	assert(!pg_synthesis_visit_source_bindings(&p->synthesis, handler_return_binding, &binder) && !binder);
+	assert(!pg_synthesis_allocation_object(job));
+}
+
 static void handler_save_boundaries(void)
 {
 	const char *sources[] = {
@@ -1000,9 +1019,7 @@ static void handler_save_boundaries(void)
 			assert(pg_synthesis_status(roots[1]) == PG_SYNTHESIS_DONE);
 			if (expected == PG_SYNTHESIS_DONE) {
 				const struct pg_evidence *proof = pg_synthesis_result(roots[0]), *value = pg_synthesis_result(roots[1]);
-				const struct pg_occurrence *handled = pg_evidence_subject(proof);
-				assert(handled->operand_count >= 2 && handled->operands[1]->core->kind == PG_LAMBDA);
-				assert(pg_synthesis_allocation_object(roots[0]) == handled->operands[1]->core->as.lambda.binder);
+				check_handler_return_binding(loaded, roots[0]);
 				const struct pg_effect_row *effects;
 				const struct pg_term *result;
 				assert(pg_effect_type_view(pg_evidence_classifier(proof), &effects, &result));
@@ -1028,11 +1045,7 @@ static void handler_save_boundaries(void)
 			pg_synthesis_advance(&original->synthesis, 1);
 		}
 		assert(pg_synthesis_status(selected[0]) == (test == 2 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE));
-		if (test != 2) {
-			const struct pg_occurrence *handled = pg_evidence_subject(pg_synthesis_result(selected[0]));
-			assert(handled->operand_count >= 2 && handled->operands[1]->core->kind == PG_LAMBDA);
-			assert(pg_synthesis_allocation_object(selected[0]) == handled->operands[1]->core->as.lambda.binder);
-		}
+		if (test != 2) check_handler_return_binding(original, selected[0]);
 		printf("handler save boundaries: case %zu, %zu snapshots preserve status and effects\n", test, boundary + 1);
 		pg_program_destroy(original);
 	}

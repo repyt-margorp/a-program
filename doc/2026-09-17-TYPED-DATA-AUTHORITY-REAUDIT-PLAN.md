@@ -742,9 +742,14 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   `pg_synthesis_match_allocation` still obtains a fresh completed elimination's
   operand Contexts from its typed occurrence; restored inputs use the explicit
   allocation tuple. This is read-only, not proof replay or source synthesis.
-  Audit whether both access paths are needed before deleting either. Likewise,
-  `pg_synthesis_allocation_object` has a completed Handler return-binder read;
-  it is not the Handler source-binding transport authority.
+  Audit whether both access paths are needed before deleting either.
+- [x] Remove the completed Handler return-binder fallback from
+  `pg_synthesis_allocation_object`: its only clients were test assertions;
+  Handler bindings already use the single lexical source-binding registry.
+  The boundary test now checks that the accepted return Lambda uses that
+  registry's binder, rather than checking a reader against the same operand
+  it reads. Normalization, effects, rejection and two inert resaves remain
+  covered. Verification/publication is tracked in the priority plan below.
 - [x] Replace source Lambda/Pi binding-origin theorems with relocated binder
   references plus their existing source annotation. Remove the restore adapter;
   retain real Context/proof roots and test unchecked/invalid annotations.
@@ -906,9 +911,11 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   available binders/context/induction layout from structural owners, not nested
   theorem shapes. Keep constructor/handler/IADT checks explicit.
   On 2026-09-18, A3 removed the Match origin wait using descriptive transport.
-  Source declaration restoration still waits for a formation theorem before
-  reading its schema fields. Remove that wait only with descriptive transport
-  and ordinary rechecking, retaining independently selected proof obligations.
+  The later declaration epoch also removed the formation-theorem wait, using
+  descriptive transport and ordinary rechecking while retaining independently
+  selected proof obligations. Do not treat this historical dependency as an
+  outstanding implementation path. Remaining fresh Match/member reads must
+  still be classified separately from the removed Handler fallback.
 - [x] Audit `computation_view`'s structural/origin fallback in `function_graph.c`.
   Remove repeated discovery when querying the same effective input; preserve
   the distinction between current reduced head and historical construction.

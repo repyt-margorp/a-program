@@ -1673,3 +1673,30 @@ Published as `176038784be54736260f29a49d013d5c1d2ef214`, atomically
 fast-forwarding Main and `rewrite/pointer-core-hott` from `c911f16`; both
 remote tips verified. Commit totals: implementation +48/-38, tests +5/-0,
 documentation +70/-0. This publication record changes documentation only.
+
+### R: Remove Handler proof-shape allocation fallback
+
+- [x] Delete the unused production fallback; keep Handler return variables in
+  the existing lexical source-binding registry, not another allocation path.
+- [x] Replace tautological reader/operand assertions with registry/typed-Lambda
+  agreement throughout the source-image boundary test. Keep semantic checks.
+- [x] Run affected debug and sanitizer tests and full optimized acceptance.
+- [ ] Publish this completed epoch and verify both remote tips.
+
+No source-image format, proof rule, handler semantics or source syntax changes.
+The broader pending-construction and output-sensitive export audit remains open.
+
+Debug Handler boundaries, full optimized `check-acceptance` (63/63 source
+compatibility and universal QuickSort), and ASan/UBSan full source-image,
+nested-Handler and boundary tests pass. Boundary coverage is 4,240 snapshots.
+Sanitizers enable leak detection and halt-on-error. Logs are
+`/tmp/a-program-authority-handler-binding-{boundaries,acceptance,asan-source,asan-nesting,asan-boundaries}.log`;
+builds use the corresponding base, `-opt` and `-asan` directories. Normalized
+`export results:` records match the preceding address-streaming epoch exactly,
+including Solve steps. No wall-clock speedup is claimed.
+
+Per-file changes: `synthesis.c` +0/-10; `synthesis.h` +2/-0;
+`tests/source_io.c` +21/-8. Implementation/header net -8; tests net +13.
+Cumulative implementation/header delta is +2,264/-1,025 (net +1,239) from
+R76 `3a3bf550`, and +7,222/-3,567 (net +3,655) from R0 `4657cc6`.
+The overall source-reduction gate remains unmet.
