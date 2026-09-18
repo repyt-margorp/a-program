@@ -7407,10 +7407,12 @@ static int await_source_preparation(struct pg_synthesis *synthesis,
 	return 1;
 }
 
-/* Structural polarity from known rules; unknown producers await acceptance. */
-static const struct pg_synthesis_job *polarity_origin(const struct pg_synthesis_job *rule)
+/* 2 is a type used as a value, 1 a value, 0 computation, -1 unknown.
+ * Accepted judgements supersede recipes; pending adapters expose their rule. */
+static int source_value_kind(const struct pg_synthesis_job *producer)
 {
-	for (;;) {
+	const struct pg_synthesis_job *rule = producer;
+	while (!pg_synthesis_result(rule)) {
 		const struct pg_synthesis_job *prepared = prepared_source_rule(rule);
 		if (prepared) { rule = prepared; continue; }
 		if (rule->role == CLASSIFIER_JOB) { rule = rule->inputs[1]; continue; }
@@ -7418,16 +7420,13 @@ static const struct pg_synthesis_job *polarity_origin(const struct pg_synthesis_
 			((const struct pg_derivation_input *)rule->inputs[0])->rule == PG_CONTEXT_PROJECTION) {
 			rule = rule->inputs[4]; continue;
 		}
-		return rule;
+		break;
 	}
-}
-
-static int body_rule_polarity(const struct pg_synthesis_job *rule)
-{
-	rule = polarity_origin(rule);
-	if (rule->result) {
-		enum pg_evidence_judgement judgement = pg_evidence_judgement(rule->result);
-		if (judgement == PG_JUDGEMENT_VALUE || judgement == PG_JUDGEMENT_VALUE_TYPE) return 1;
+	const struct pg_evidence *result = rule->result ? rule->result : producer->result;
+	if (result) {
+		enum pg_evidence_judgement judgement = pg_evidence_judgement(result);
+		if (judgement == PG_JUDGEMENT_VALUE_TYPE) return 2;
+		if (judgement == PG_JUDGEMENT_VALUE) return 1;
 		if (judgement == PG_JUDGEMENT_COMPUTATION) return 0;
 	}
 	if (rule->role == SEQUENCE_JOB || rule->role == BODY_JOB || rule->role == HANDLER_JOB) return 0;
@@ -7442,31 +7441,13 @@ static int body_rule_polarity(const struct pg_synthesis_job *rule)
 	if (rule->role != DERIVATION_JOB) return -1;
 	const struct pg_derivation_input *input = rule->inputs[0];
 	switch (input->rule) {
-	case PG_VARIABLE: case PG_THUNK_INTRO: case PG_VALUE_FROM_TYPE: case PG_UNIVERSE_FORM:
-	case PG_HOST_TYPE_FORM: case PG_HOST_VALUE_INTRO: return 1;
+	case PG_UNIVERSE_FORM: case PG_HOST_TYPE_FORM: return 2;
+	case PG_VARIABLE: case PG_THUNK_INTRO: case PG_VALUE_FROM_TYPE: case PG_HOST_VALUE_INTRO: return 1;
 	case PG_LAMBDA_INTRO: case PG_APP_ELIM: case PG_FORCE_ELIM: case PG_RETURN_INTRO:
 	case PG_FOLD_ELIM: case PG_REQUEST_INTRO: case PG_HANDLER_ELIM: case PG_EFFECT_SUBSUMPTION:
 	case PG_HOST_FUNCTION_INTRO: return 0;
 	default: return -1;
 	}
-}
-
-/* 2 is a type used as a value, 1 a value, 0 computation, -1 unknown. */
-static int source_value_kind(const struct pg_synthesis_job *producer)
-{
-	const struct pg_synthesis_job *rule = polarity_origin(producer);
-	int kind = body_rule_polarity(rule);
-	if (kind == 1 && rule->role == DERIVATION_JOB &&
-		(((const struct pg_derivation_input *)rule->inputs[0])->rule == PG_UNIVERSE_FORM ||
-		 ((const struct pg_derivation_input *)rule->inputs[0])->rule == PG_HOST_TYPE_FORM)) return 2;
-	const struct pg_evidence *result = rule->result ? rule->result : producer->result;
-	if (result) {
-		enum pg_evidence_judgement judgement = pg_evidence_judgement(result);
-		if (judgement == PG_JUDGEMENT_VALUE_TYPE) return 2;
-		if (judgement == PG_JUDGEMENT_VALUE) return 1;
-		if (judgement == PG_JUDGEMENT_COMPUTATION) return 0;
-	}
-	return kind;
 }
 
 static void body_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)

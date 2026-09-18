@@ -147,6 +147,36 @@ static void accepted_structures(struct pg_typing *typing)
 	puts("accepted structure: exact typed projections without premise reconstruction or evaluation");
 }
 
+static void source_body_kinds(struct pg_typing *typing)
+{
+	const char *sources[] = {"v := @;", "v := \\x : @ => x;",
+		"v := &(\\x : @ => x);", "v := { x := @; x; };"};
+	struct pg_whnf_work work;
+	struct pg_synthesis synthesis;
+	assert(!pg_whnf_work_init(&work, typing->graph));
+	assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
+	for (size_t i = 0; i < sizeof(sources) / sizeof(*sources); ++i) {
+		struct pg_synthesis_job *producer = request(&synthesis, pg_synthesis_root(&synthesis), sources[i]);
+		const struct pg_source_scope *scope = pg_synthesis_name_job(&synthesis, pg_synthesis_root(&synthesis),
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "selected", .length = 8}, producer);
+		struct pg_synthesis_job *pending = request(&synthesis, scope, "f := \\unused : @ => selected;");
+		const struct pg_evidence *before = complete(&synthesis, pending, PG_SYNTHESIS_DONE);
+		const struct pg_evidence *proof = pg_synthesis_result(producer);
+		assert(proof);
+		const struct pg_evidence *after = complete(&synthesis,
+			request(&synthesis, scope, "f := \\unused : @ => selected;"), PG_SYNTHESIS_DONE);
+		same_judgement(before, after);
+		const struct pg_term *body = pg_evidence_subject(proof)->core;
+		if (pg_evidence_judgement(proof) != PG_JUDGEMENT_COMPUTATION)
+			body = pg_application(typing->graph, pg_reference(typing->graph, &pg_return_operation), body);
+		const struct pg_term *lambda = pg_evidence_subject(after)->core;
+		assert(lambda->kind == PG_LAMBDA && pg_alpha_equal(lambda->as.lambda.body, body) == 1);
+	}
+	pg_synthesis_destroy(&synthesis);
+	pg_whnf_work_destroy(&work);
+	puts("source body kinds: pending and accepted types, values, raw functions and blocks agree");
+}
+
 static void source_preparation_subscription(struct pg_typing *typing)
 {
 	struct pg_whnf_work work;
@@ -6354,6 +6384,7 @@ int main(void)
 	assert(pg_graph_init(&graph) == 0);
 	assert(pg_typing_init(&typing, &graph) == 0);
 	accepted_structures(&typing);
+	source_body_kinds(&typing);
 	source_preparation_subscription(&typing);
 	sequence_structure_choice(&typing);
 	graded_application(&typing);

@@ -161,6 +161,54 @@ and the remainder of targets 3-5 still require investigation and implementation.
 
 ## What Was Checked
 
+### Source Value Kind from Accepted Judgements (after `9fc2ecd`)
+
+`source_value_kind` called `body_rule_polarity`, which repeated the same
+origin traversal and evidence judgement lookup. It now owns one traversal,
+stopping at an accepted typed result instead of following completed recipes.
+The redundant helpers are deleted. Pending adapters still expose their
+prepared rule; this information is needed to close effect equations before
+acceptance. No polarity cache, new job kind or proof authority was introduced.
+
+This is descriptive classification, not acceptance: BODY still checks its
+operand and Context, and application still checks its actual premises. An
+unknown kind still waits for the producer; a namespace is not a value simply
+because its preparation completed. Type-family preparation remains before
+classification, including the existing pending `F n` regression.
+
+`source_body_kinds` compares pending-name and accepted-name use for a universe,
+a raw Lambda, a quoted Lambda and a computation block. Both schedules must
+give the same judgement and the exact expected Lambda body up to alpha;
+only values/types acquire RETURN. Existing pending-effect tests also pass
+in the strict debug synthesis suite.
+
+Debug comparison with the previous published binary used the same two inputs
+and `main.c:395` counters as the projection audit below. All counts are
+unchanged: IF8 Solve 47,046, actions 7,072, substitutions 5,663, proofs 23,315,
+occurrences 19,522, Terms 11,969; length property 9,569 / 1,431 / 934 /
+4,941 / 3,574 / 2,031 respectively. This removes repeated inspection within
+steps, not the number of scheduled steps. No wall-time speedup is claimed.
+
+- [x] Consolidate classification and add pending/accepted body regressions.
+- [x] Strict debug synthesis and same-input work/node comparison.
+- [x] Full optimized acceptance and affected ASan/UBSan tests.
+- [ ] Publish only after verification; confirm both remote tips.
+
+All commands exited 0: strict `-O0 -g` synthesis, strict `-O2`
+`check-acceptance` (63/63 compatibility), and ASan/UBSan synthesis plus the
+complete `source_io.sh`. Sanitizers used `-O1 -g -fsanitize=address,undefined
+-fno-omit-frame-pointer -fno-pie -no-pie`, leak detection and halt-on-error.
+Logs are `/tmp/a-program-authority-polarity-{synthesis,acceptance,
+asan-synthesis,asan-source}.log`. No sanitizer diagnostics were reported.
+Optimized export-result records match the preceding projection epoch after
+normalizing temporary paths and step counts and sorting execution order.
+
+Implementation: `synthesis.c` +13/-32 (net -19); tests: `tests/synthesis.c`
++31/-0. Documentation is separate. Broader pending-classifier construction,
+source allocation traversal and the cumulative net-negative gate remain open.
+Implementation/header totals: R76 +2,257/-1,007 (net +1,250);
+R0 +7,221/-3,555 (net +3,666). The overall reduction requirement is not met.
+
 ### Shared Projection Action (after `8503fd6`)
 
 Typed input traversal had a private projection shortcut, while callers of the

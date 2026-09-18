@@ -1618,3 +1618,16 @@ fast-forwarding Main and `rewrite/pointer-core-hott` from `8503fd6`; both
 remote tips were verified. Commit totals: implementation +5/-9, tests +12/-1,
 documentation +77/-0; overall +94/-10. This publication record is documentation
 only and does not change the verified implementation.
+
+### R: Single source value-kind classification
+
+- [x] Remove repeated recipe traversal/judgement lookup; prefer accepted typed
+  results while retaining pending effect preparation and independent checks.
+- [x] Debug regression: pending/accepted type, value, raw Lambda and block
+  bodies agree. IF8 and length proof work/node counts are unchanged.
+- [x] Full optimized acceptance (63/63 compatibility), ASan/UBSan synthesis
+  and complete source-image tests, with leak detection and halt-on-error.
+- [ ] Publish the verified epoch and confirm both remote tips.
+
+See the [classification audit](2026-09-18-INCREMENTAL-SOLVER-DUPLICATION-AUDIT.md#source-value-kind-from-accepted-judgements-after-9fc2ecd).
+Implementation net -19 lines; tests +31. This does not close the broader R gates.
