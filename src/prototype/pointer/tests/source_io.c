@@ -862,6 +862,16 @@ static int handler_scopes(int mode)
 			initial[3] = pg_synthesis_evidence(&p->synthesis, pg_synthesis_result(initial[2]));
 		}
 	}
+	if (mode >= 6) {
+		/* Keep a real clause-scope root for malformed binding-record checks;
+		 * unused internal Lambda scopes need not be retained by the writer. */
+		struct pg_synthesis_job *carrier = pg_synthesis_source_handler_carrier(&p->synthesis, scope, definition.expression);
+		struct pg_synthesis_job *clause = pg_synthesis_handler_clause(&p->synthesis, inner,
+			carrier, definition.expression->items[0].expression);
+		const struct pg_source_scope *clause_scope = pg_synthesis_handler_clause_scope(clause);
+		assert(clause_scope);
+		initial[0] = parse(p, clause_scope, "{{x:=req;}}.x");
+	}
 	for (unsigned round = 0; round < 3; ++round) {
 		FILE *file = tmpfile();
 		uint64_t steps = p->synthesis.steps;

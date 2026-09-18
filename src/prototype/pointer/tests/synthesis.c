@@ -4743,6 +4743,13 @@ static void application_allocations(struct pg_synthesis *synthesis,
 	puts("application allocations: inert symbol registration, exact Core reuse, capture/conflict rejection and inferred arity passed");
 }
 
+static int count_nonbinding_origins(void *owner, struct pg_synthesis_job *job)
+{
+	assert(!pg_synthesis_binding_binder(job));
+	++*(size_t *)owner;
+	return 0;
+}
+
 static void source_telescopes(struct pg_typing *typing)
 {
 	struct pg_whnf_work work;
@@ -4794,6 +4801,12 @@ static void source_telescopes(struct pg_typing *typing)
 			assert(reserved && pg_synthesis_binding(&synthesis, root, syntax) == binding);
 			assert(!seed || seed == reserved);
 			assert(pg_synthesis_binding_at(&synthesis, root, syntax, reserved) == binding);
+			size_t allocations = synthesis.source_bindings.count;
+			const struct pg_source_binding *address = pg_synthesis_source_binding(&synthesis,
+				&(struct pg_source_binding){.syntax = syntax, .binder = reserved});
+			assert(address && address->binder == reserved && synthesis.source_bindings.count == allocations);
+			size_t origins = 0;
+			assert(!pg_synthesis_visit_source_allocations(&synthesis, count_nonbinding_origins, &origins) && !origins);
 			const struct pg_object *different = pg_binder(typing->graph);
 			size_t requests = synthesis.jobs.count;
 			assert(!pg_synthesis_binding_at(&synthesis, root, syntax, different));

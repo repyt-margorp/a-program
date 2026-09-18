@@ -161,6 +161,73 @@ and the remainder of targets 3-5 still require investigation and implementation.
 
 ## What Was Checked
 
+### One Lexical Binding Origin (after `abeedc6`)
+
+`pg_synthesis_binding_at` previously skipped the immutable source-binding
+registry when given an explicit binder. Consequently the source writer kept
+a second origin path: enumerate every BINDING_JOB, recover its lexical scope,
+and add it while retaining referenced objects. Automatic bindings were also
+visited by that path, despite already having a source-binding record.
+
+Explicit and automatic Lambda/Pi binding now use the same address registration
+(`syntax`, slot, enclosing binders). An explicit binder must agree with that
+address. The BINDING_JOB visitor branch, allocation-object case, and writer's
+binding-origin fallback are deleted. Legitimately referenced lexical scopes
+still travel through ordinary environment dependencies. Source annotations
+and independently selected proof roots are still rechecked, not trusted.
+
+Existing telescope tests now verify that explicit and automatic allocation
+already registered the exact binder without adding a record on lookup, and
+that Lambda/Pi-only inputs have no second job-based origin. Existing alias,
+shadowing, alternate-proof, rejected-root and inert-resave checks pass.
+
+The first full acceptance run stopped at `invalid_handler_binding`: its
+malformed-image fixture expected an internal Handler scope to be retained
+indirectly by the removed Lambda-origin path. The fixture now explicitly
+selects an expression using the clause's request binder. All four corruption
+checks remain; none was skipped or weakened. Focused nested-handler tests
+then passed with exact source/evidence Core and classifier comparisons.
+
+GDB callback counts for `source_io_test context-scopes` (70 writes):
+
+| Callback | Before | After |
+|---|---:|---:|
+| `index_origin` | 294 | 28 |
+| `index_binding` | 140 | 188 |
+| `collect_origin` | 318 | 56 |
+| `collect_binding` | 136 | 184 |
+
+Candidate callbacks fall from 434 to 216; the extra binding records replace
+the explicit-binder bypass. This does **not** eliminate the scan over all
+jobs/bindings. Initial measurements used the previous ASan binary and the new
+debug binary; the new ASan build then reproduced exactly these counts with
+the same flags as the previous ASan binary. GDB disables leak detection only
+for counting under ptrace; the separate sanitizer tests enable it.
+The existing function-image fixture shrinks from 12,541 to 12,285 bytes.
+Old-reader/new-image and new-reader/old-image checks both pass; no wire version
+change was needed. These are fixture measurements, not a general speed claim.
+
+- [x] Unify registration and remove the superseded origin path.
+- [x] Debug synthesis/source-image suites and bidirectional image compatibility.
+- [x] Full optimized acceptance and affected ASan/UBSan tests.
+- [ ] Verify publication to both remote tips.
+
+Final strict `-O2 check-acceptance` exited 0 (63/63 compatibility). Its export
+results match the previous epoch after normalizing temporary paths/step counts
+and execution order. Strict debug synthesis and source-image tests also pass.
+ASan/UBSan synthesis, `source_io.sh`, `handler-nesting` and `handler-boundaries`
+all exit 0 without diagnostics, with leak detection and halt-on-error enabled.
+Logs: `/tmp/a-program-authority-bindings-acceptance-final.log` and
+`/tmp/a-program-authority-bindings-asan-{synthesis,source,handler,boundaries}.log`.
+The initial failed acceptance log is retained separately, not overwritten.
+
+Implementation/header delta: `source_io.c` +5/-12, `synthesis.c` +8/-15,
+`synthesis.h` +3/-2, total net -13. Tests: `tests/synthesis.c` +13/-0,
+`tests/source_io.c` +10/-0.
+The output-sensitive traversal and broader R completion gates remain open.
+Implementation/header totals: R76 +2,256/-1,019 (net +1,237);
+R0 +7,218/-3,565 (net +3,653). The cumulative reduction gate is still unmet.
+
 ### Source Value Kind from Accepted Judgements (after `9fc2ecd`)
 
 `source_value_kind` called `body_rule_polarity`, which repeated the same

@@ -93,9 +93,10 @@ struct pg_synthesis_job *pg_synthesis_declaration_at(struct pg_synthesis *synthe
 int pg_synthesis_source_input(const struct pg_synthesis *synthesis,
 	const struct pg_synthesis_job *job, const struct pg_source_scope **scope,
 	const struct pg_syntax **syntax);
-/* Read-only enumeration of source declaration, Lambda/Pi and elimination allocations with
+/* Read-only enumeration of source declaration, member and elimination allocations with
  * completed or retained inputs. The visitor selects its source closure and
- * deduplicates shared jobs; unrelated jobs are not implicitly image roots. */
+ * deduplicates shared jobs; unrelated jobs are not implicitly image roots.
+ * Lexical binders use visit_source_bindings, not a second job-based origin. */
 int pg_synthesis_visit_source_allocations(const struct pg_synthesis *synthesis,
 	int (*visit)(void *, struct pg_synthesis_job *), void *owner);
 const struct pg_object *pg_synthesis_allocation_object(const struct pg_synthesis_job *job);

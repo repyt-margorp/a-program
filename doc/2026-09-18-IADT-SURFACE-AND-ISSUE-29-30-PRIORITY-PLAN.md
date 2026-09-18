@@ -1636,3 +1636,16 @@ Published as `50a7d1fe208846cae6d7727d162193f8461e4dd9`, atomically
 fast-forwarding Main and `rewrite/pointer-core-hott` from `9fc2ecd`; both
 remote tips verified. Commit totals: implementation +13/-32, tests +31/-0,
 documentation +61/-0. This publication record changes documentation only.
+
+### R: One lexical binding origin
+
+- [x] Unify explicit/automatic binder registration; delete the writer's
+  duplicate BINDING_JOB origin path, not Context or independent proof checks.
+- [x] Debug synthesis/source-image tests, callback counts and bidirectional
+  compatibility with the preceding image writer/reader.
+- [x] Full optimized acceptance (63/63 compatibility), ASan/UBSan synthesis,
+  source images, nested handlers and handler save boundaries.
+- [ ] Publish and verify both remote tips.
+
+See the [binding-origin audit](2026-09-18-INCREMENTAL-SOLVER-DUPLICATION-AUDIT.md#one-lexical-binding-origin-after-abeedc6).
+Implementation/header net -13, tests +23. Global origin traversal remains open.

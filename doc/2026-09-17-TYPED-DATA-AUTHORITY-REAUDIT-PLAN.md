@@ -712,6 +712,10 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 
 ### A3. Transport the same structure
 
+- [x] Register explicit Lambda/Pi binders in the same immutable address store
+  as automatic bindings; delete their duplicate job-origin enumeration and
+  writer scope-recovery path. Exact binder/conflict and inert-resave checks
+  remain. This is not completion of the output-sensitive traversal item below.
 - [x] Update `source_io.c` environment/producer/origin handling using A1's
   reference contract. Loaded inputs and fresh source reference the same relocated
   lexical allocations; source rechecking remains necessary.

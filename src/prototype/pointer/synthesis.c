@@ -553,10 +553,6 @@ int pg_synthesis_visit_source_allocations(const struct pg_synthesis *synthesis,
 				if (source_induction_allocation(job) && visit(owner, job)) return -1;
 				continue;
 			}
-			if (job->role == BINDING_JOB) {
-				if (visit(owner, job)) return -1;
-				continue;
-			}
 			if (job->role != EXPRESSION_JOB || job->syntax->kind != PG_SYNTAX_DECLARATION) continue;
 			if (!job->nominal_input && !job->schema) continue;
 			if (visit(owner, job)) return -1;
@@ -955,7 +951,6 @@ int pg_synthesis_member_allocation(const struct pg_synthesis *synthesis,
 const struct pg_object *pg_synthesis_allocation_object(const struct pg_synthesis_job *job)
 {
 	if (!job) return NULL;
-	if (job->role == BINDING_JOB) return job->binder;
 	if (job->role == EXPRESSION_JOB && job->syntax->kind == PG_SYNTAX_QUALIFIED) {
 		const struct context_allocation *allocation = job->context_allocation;
 		const struct pg_synthesis_job *scope = job->left && job->left->role == CONSTRUCTOR_VALUE_JOB
@@ -1160,9 +1155,10 @@ const struct pg_source_binding *pg_synthesis_source_binding(struct pg_synthesis 
 }
 
 static const struct pg_object *source_binder(struct pg_synthesis *synthesis,
-	const struct pg_source_scope *scope, const struct pg_syntax *syntax, size_t slot)
+	const struct pg_source_scope *scope, const struct pg_syntax *syntax, size_t slot,
+	const struct pg_object *binder)
 {
-	struct pg_source_binding input = {.syntax = syntax, .slot = slot};
+	struct pg_source_binding input = {.syntax = syntax, .slot = slot, .binder = binder};
 	if (source_scope_binders(synthesis, scope, &input.scope_count, &input.scope)) return NULL;
 	const struct pg_source_binding *binding = pg_synthesis_source_binding(synthesis, &input);
 	return binding ? binding->binder : NULL;
@@ -1193,10 +1189,7 @@ struct pg_synthesis_job *pg_synthesis_binding_at(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *job = request_role(synthesis, scope, syntax, BINDING_JOB);
 	if (!job) return NULL;
 	if (job->binder && binder && job->binder != binder) return NULL;
-	if (!job->binder) {
-		if (binder) job->binder = binder;
-		else job->binder = source_binder(synthesis, scope, syntax, 0);
-	}
+	if (!job->binder) job->binder = source_binder(synthesis, scope, syntax, 0, binder);
 	if (!job->binder) return NULL;
 	if (!job->left) {
 		const struct pg_syntax *domain = syntax->left;
@@ -4765,7 +4758,7 @@ static void handler_return_step(struct pg_synthesis *synthesis, struct pg_synthe
 	if (clause->item_count != 1) goto rejected;
 	if (clause->items[0].operation) goto rejected;
 	if (!job->inner) {
-		if (!job->binder) job->binder = source_binder(synthesis, job->scope, clause, 0);
+		if (!job->binder) job->binder = source_binder(synthesis, job->scope, clause, 0, NULL);
 		if (!job->binder) goto error;
 		struct pg_synthesis_job *context = pg_synthesis_result_context(synthesis,
 			job->scope->context_job, job->left, job->binder);
@@ -5000,9 +4993,9 @@ static void handler_clause_step(struct pg_synthesis *synthesis, struct pg_synthe
 			input = *job->handler_clause;
 			input.operation = operation;
 		} else {
-			input.payload = source_binder(synthesis, job->scope, clause, 0);
-			input.resume = source_binder(synthesis, job->scope, clause, 1);
-			input.response = source_binder(synthesis, job->scope, clause, 2);
+			input.payload = source_binder(synthesis, job->scope, clause, 0, NULL);
+			input.resume = source_binder(synthesis, job->scope, clause, 1, NULL);
+			input.response = source_binder(synthesis, job->scope, clause, 2, NULL);
 		}
 		if (!input.payload || !input.resume || !input.response) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		int status = prepare_handler_clause(synthesis, job, &input);

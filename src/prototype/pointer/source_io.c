@@ -326,11 +326,7 @@ static int collect_origin(void *owner, struct pg_synthesis_job *job)
 	if (id(c->origins, job)) return 0;
 	const struct pg_source_scope *scope;
 	const struct pg_syntax *syntax;
-	const struct pg_object *binder = NULL;
-	if (pg_synthesis_source_input(c->synthesis, job, &scope, &syntax)) {
-		if (pg_synthesis_binding_input(c->synthesis, job, &scope, &syntax, &binder)) return -1;
-		scope = pg_synthesis_binding_scope(job);
-	}
+	if (pg_synthesis_source_input(c->synthesis, job, &scope, &syntax)) return -1;
 	if (!id(c->syntax, syntax)) return 0;
 	/* Only lexical descendants of selected source roots belong to the image. */
 	const struct pg_source_scope *parent = scope;
@@ -346,8 +342,7 @@ static int collect_origin(void *owner, struct pg_synthesis_job *job)
 		parent = input.parent;
 		if (!parent) return 0;
 	}
-	if (pg_dag_add(c->scopes, scope)
-		|| (!binder && (pg_dag_add(c->origins, job) || pg_dag_add(c->producers, job)))) return -1;
+	if (pg_dag_add(c->scopes, scope) || pg_dag_add(c->origins, job) || pg_dag_add(c->producers, job)) return -1;
 	if (syntax->kind == PG_SYNTAX_QUALIFIED) {
 		const struct pg_context *prefix, *fields;
 		if (pg_synthesis_member_allocation(c->synthesis, job, &prefix, &fields)) return -1;
@@ -364,11 +359,9 @@ static int collect_origin(void *owner, struct pg_synthesis_job *job)
 			if (collect_allocation(c, input->branches[i], a->clauses[i], a->self)) return -1;
 		return 0;
 	}
-	if (!binder) {
-		const struct pg_object *family = pg_synthesis_allocation_object(job);
-		if (!pg_data_declaration_view(family) || pg_dag_add(c->declarations, family)
-			|| pg_dag_add(&c->terms, pg_reference(&c->rules->storage, family))) return -1;
-	}
+	const struct pg_object *family = pg_synthesis_allocation_object(job);
+	if (!pg_data_declaration_view(family) || pg_dag_add(c->declarations, family)
+		|| pg_dag_add(&c->terms, pg_reference(&c->rules->storage, family))) return -1;
 	return 0;
 }
 
