@@ -1529,6 +1529,14 @@ selectors under ASan/UBSan in `/tmp/a-program-authority-metadata-sanitize`.
 
 ### A5. Acceptance and publication
 
+Shared substitution ownership follow-up (2026-09-19): the root now belongs to
+the request's input arena from creation through completion. The second retained
+root and result-copy path are removed; scratch readback edges remain disposable.
+Full debug, optimized and ASan/UBSan acceptance and evaluation-image tests pass;
+all 2,460 export records/step counts agree. The priority plan records allocation
+measurements, timing without an established speedup, per-file deltas and grouped
+publication. This does not close A3-A5 or the parent's reduction gate.
+
 #### 2026-09-19 diagnostic comparison (not final acceptance)
 
 Compare retained R0 `4657cc6` and implementation `555b13d`, strict C11/O0/g,

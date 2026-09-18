@@ -341,12 +341,17 @@ static void shared_substitution_images(void)
 		input = substitution_fixture(&graph, &image);
 		request = pg_substitution_request(&shared, input, 1, &image);
 		assert(request);
+		const struct pg_closure *original = pg_substitution_input(request);
+		struct readback_entry *root = request->state->root;
+		assert(request->state->context.pending == root && !request->state->context.temporary.blocks);
 		pg_substitution_advance(request, cut);
+		assert(pg_substitution_input(request) == original && request->state->root == root);
 		assert(pg_substitution_steps(request) == cut);
 		assert(pg_substitution_request(&shared, input, 1, &image) == request);
 		if (cut == steps) {
 			assert(!request->state->context.temporary.blocks);
 			assert(!request->state->context.results.count);
+			assert(!root->left && !root->right && !root->next && !root->cursor);
 		}
 		FILE *file = tmpfile();
 		assert(file && !pg_substitution_write(file, request, NULL, NULL));

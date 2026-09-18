@@ -2705,3 +2705,69 @@ Logs: `/tmp/a-program-authority-head-yield-{before,debug}-program.log`,
 `...-asan-{program,source}.log`. Implementation: `function_graph.c` +23/-6
 (net +17); tests: `tests/program.c` +32/-0. The cumulative reduction gate is
 still unmet. The source-writer lexical candidate scan is unchanged.
+
+### 2026-09-19: One shared substitution input/result root
+
+- [x] Allocate the readback root directly in the shared substitution owner's
+  arena, alongside its input environment. Remove the request's duplicate root
+  and completion-time result transfer. Only temporary traversal edges are
+  cleared at completion; standalone/imported traversals retain their owner.
+- [x] Assert stable root/input addresses at every suspension boundary, no
+  initial scratch arena, and no dangling traversal edges after completion.
+  Existing cancellation, capture, identity-prefix, serialization and resumed
+  computation checks remain. The address regression fails on `62a340a`.
+- [x] Focused debug Core and complete evaluation-image tests pass. Full O2
+  `check-acceptance check-eval-io` exits 0; all 2,460 normalized export records,
+  including steps, match the preceding completed run.
+- [x] Full debug acceptance exits 0 with the same 2,460 exports and step counts.
+  On function-field, all 1,718 shared substitutions formerly allocated scratch
+  storage at initialization; none now do. The 170 empty substitutions finish
+  without it; nonempty traversals may still allocate scratch when advanced.
+  Core/proof/occurrence/Context/map/query/job counts and 16,998 query transitions,
+  12,883 Solve steps are unchanged. This is not a peak-memory or speed claim.
+- [x] Full ASan/UBSan acceptance and the before/after timing check complete.
+- [ ] Publish with the pending shared-query/ownership epoch, not individually.
+
+No new proof rule, query kind, result cache or image format. The optional arena
+pointer replaces the old retained-root pointer; it describes storage lifetime,
+not a second answer. A3's lexical candidate bound, the remaining consumer audit,
+baseline performance comparison and the cumulative net-negative gate stay open.
+
+All three builds ran `check-acceptance check-eval-io`, exit 0, including 63/63
+source compatibility. ASan/UBSan used the preceding CFLAGS with default runtime
+options; no sanitizer/runtime-error diagnostic occurred. Core and the complete
+evaluation-image script additionally pass with explicit leak detection and
+ASan/UBSan halt-on-error. Logs: `/tmp/a-program-authority-single-root-{debug,opt,asan}.log`,
+`...-asan-{core,eval}.log`, `...-{before,after}-{counts,owner}.log`.
+The input arena uses 322,656 -> 317,216 bytes; reserved capacity stays 327,680.
+This is the function-field owner's final snapshot, not process peak RSS.
+
+Strict debug timing against `62a340a`, 32 alternating fresh-process pairs per
+input, first two pairs excluded, no concurrent build/test: median seconds
+before/after are Vec-append .015421/.015170, generated-length .012628/.012811,
+function-field .020069/.020642, QuickSort-property .333207/.335297. Steps agree
+(19935, 9702, 12883, 147090). No elapsed-time improvement is established.
+Raw samples: `/tmp/a-program-authority-single-root-timing.jsonl`.
+
+Grouped delta from the previous Main `cbf81fe` (implementation/test files):
+
+| File under `src/prototype/pointer/` | Added | Deleted | Net |
+|---|---:|---:|---:|
+| eval.c | 18 | 17 | +1 |
+| eval_internal.h | 2 | 2 | 0 |
+| evidence.c | 6 | 1 | +5 |
+| function_graph.c | 23 | 6 | +17 |
+| graph.c | 1 | 1 | 0 |
+| graph.h | 1 | 0 | +1 |
+| synthesis.c | 73 | 78 | -5 |
+| tests/core.c | 4 | 1 | +3 |
+| tests/eval_io.c | 5 | 0 | +5 |
+| tests/iadt.c | 3 | 1 | +2 |
+| tests/program.c | 32 | 0 | +32 |
+| tests/synthesis.c | 2 | 1 | +1 |
+
+Implementation/header total: +124/-105 (net +19); tests: +46/-3 (net +43).
+Cumulative implementation/header totals: R76 +2,883/-1,441 (net +1,442),
+R0 +7,781/-3,923 (net +3,858). These increases do not satisfy the reduction
+gate. The grouped milestone verifies ownership/resumption cleanup, not overall
+refactor completion. Documentation deltas are separate from all totals above.

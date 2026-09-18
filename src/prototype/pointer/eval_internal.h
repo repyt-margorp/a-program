@@ -23,8 +23,8 @@ struct readback_context {
 struct pg_substitution_state {
 	struct readback_context context;
 	struct readback_entry *root;
-	/* Optional store-owned input/result root; completed traversal is disposable. */
-	struct readback_entry *retained_root;
+	/* Optional borrowed owner of the root and input environment. */
+	struct pg_graph *input_storage;
 	enum pg_substitution_status status;
 };
 struct materialization {

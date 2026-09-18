@@ -246,7 +246,8 @@ int pg_readback_index(struct readback_context *context, struct readback_entry *e
 	return pg_index_insert(&context->results, &entry->index, reify_hash(entry->input));
 }
 
-static struct readback_entry *reify_request(struct readback_context *context, struct pg_closure closure)
+static struct readback_entry *reify_request(struct readback_context *context, struct pg_closure closure,
+	struct pg_graph *storage)
 {
 	if (!closure.term) return NULL;
 	/* Environments contain binder substitutions, never semantic references. */
@@ -254,7 +255,7 @@ static struct readback_entry *reify_request(struct readback_context *context, st
 		closure.environment = NULL;
 	struct readback_entry *existing = reify_find(context, closure);
 	if (existing) return existing;
-	struct readback_entry *entry = pg_alloc(&context->temporary, sizeof(*entry));
+	struct readback_entry *entry = pg_alloc(storage ? storage : &context->temporary, sizeof(*entry));
 	if (!entry) return NULL;
 	memset(entry, 0, sizeof(*entry));
 	entry->input = closure;
@@ -304,7 +305,7 @@ static int reify_advance(struct readback_context *context, uint64_t budget)
 			}
 			entry->stage = 1;
 			if (!entry->result) {
-				entry->left = reify_request(context, child);
+				entry->left = reify_request(context, child, NULL);
 				if (!entry->left) return -1;
 				continue;
 			}
@@ -320,7 +321,7 @@ static int reify_advance(struct readback_context *context, uint64_t budget)
 				if (entry->stage == 1) {
 					entry->stage = 2;
 					entry->right = reify_request(context,
-						(struct pg_closure){term->as.application.argument, environment});
+						(struct pg_closure){term->as.application.argument, environment}, NULL);
 					if (!entry->right) return -1;
 					continue;
 				}
@@ -341,7 +342,7 @@ int pg_materialize_step(struct materialization *work, struct pg_graph *graph,
 	if (!work->readback.output) {
 		work->readback.output = graph;
 		if (pg_index_init(&work->readback.results) != 0) return -1;
-		work->entry = reify_request(&work->readback, closure);
+		work->entry = reify_request(&work->readback, closure, NULL);
 		if (!work->entry) return -1;
 		work->remaining = arguments;
 		return 0;
@@ -353,7 +354,7 @@ int pg_materialize_step(struct materialization *work, struct pg_graph *graph,
 	work->partial = work->partial ? pg_application(graph, work->partial, answer) : answer;
 	if (!work->partial) return -1;
 	if (work->remaining) {
-		work->entry = reify_request(&work->readback, work->remaining->value);
+		work->entry = reify_request(&work->readback, work->remaining->value, NULL);
 		if (!work->entry) return -1;
 		work->remaining = work->remaining->next;
 		return 0;
@@ -436,15 +437,17 @@ static int substitution_init(struct pg_substitution *work, struct pg_graph *grap
 	if (!state) return -1;
 	work->state = state;
 	state->context.output = graph;
+	state->input_storage = input_storage;
 	if (pg_index_init(&state->context.results) != 0) goto failure;
-	struct pg_environment *environment = pg_alloc(input_storage ? input_storage : &state->context.temporary,
-		count * sizeof(*environment));
+	struct pg_environment *environment = count ? pg_alloc(input_storage ? input_storage : &state->context.temporary,
+		count * sizeof(*environment)) : NULL;
 	if (count && !environment) goto failure;
 	for (size_t i = 0; i < count; ++i) {
 		environment[i] = (struct pg_environment){bindings[i].binder,
 			{bindings[i].value, NULL}, i ? &environment[i - 1] : NULL};
 	}
-	state->root = reify_request(&state->context, (struct pg_closure){term, count ? &environment[count - 1] : NULL});
+	state->root = reify_request(&state->context,
+		(struct pg_closure){term, count ? &environment[count - 1] : NULL}, input_storage);
 	if (!state->root) goto failure;
 	state->status = state->root->result ? PG_SUBSTITUTION_DONE : PG_SUBSTITUTION_PENDING;
 	return 0;
@@ -476,14 +479,14 @@ enum pg_substitution_status pg_substitution_status(const struct pg_substitution 
 
 static void substitution_finish(struct pg_substitution_state *state)
 {
-	if (!state->retained_root) return;
-	state->retained_root->result = state->root->result;
+	if (!state->input_storage) return;
+	/* The root stays in its input owner; only traversal edges become obsolete. */
+	*state->root = (struct readback_entry){.input = state->root->input, .result = state->root->result};
 	struct pg_graph *graph = state->context.output;
 	uint64_t steps = state->context.steps;
 	pg_readback_destroy(&state->context);
 	state->context.output = graph;
 	state->context.steps = steps;
-	state->root = state->retained_root;
 }
 
 enum pg_substitution_status pg_substitution_advance(struct pg_substitution *work, uint64_t budget)
@@ -527,7 +530,6 @@ const struct pg_term *pg_term_substitute(struct pg_graph *graph,
 struct substitution_request {
 	struct pg_index_entry index;
 	struct pg_substitution work;
-	struct readback_entry retained;
 	size_t count;
 };
 
@@ -563,8 +565,9 @@ struct pg_substitution *pg_substitution_request(struct pg_substitution_work *wor
 	}
 	for (struct pg_index_entry *entry = pg_index_candidates(&work->jobs, hash); entry; entry = entry->next) {
 		struct substitution_request *request = (struct substitution_request *)entry;
-		if (entry->hash != hash || request->retained.input.term != term || request->count != count) continue;
-		const struct pg_environment *image = request->retained.input.environment;
+		const struct pg_closure *input = pg_substitution_input(&request->work);
+		if (entry->hash != hash || input->term != term || request->count != count) continue;
+		const struct pg_environment *image = input->environment;
 		size_t i = count;
 		while (i && image->binder == bindings[i - 1].binder && image->value.term == bindings[i - 1].value) {
 			--i;
@@ -577,8 +580,6 @@ struct pg_substitution *pg_substitution_request(struct pg_substitution_work *wor
 	request->work.state = NULL;
 	request->count = count;
 	if (substitution_init(&request->work, work->graph, term, count, bindings, &work->storage)) return NULL;
-	request->retained = (struct readback_entry){.input = request->work.state->root->input};
-	request->work.state->retained_root = &request->retained;
 	if (pg_substitution_status(&request->work) == PG_SUBSTITUTION_DONE) substitution_finish(request->work.state);
 	if (pg_index_insert(&work->jobs, &request->index, hash)) {
 		pg_substitution_destroy(&request->work);
