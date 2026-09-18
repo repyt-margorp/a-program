@@ -383,6 +383,10 @@ static void graded_function_graph(struct pg_program *p, const struct pg_evidence
 		assert(lambda && pg_evidence_subject(lambda)->core == pg_evidence_subject(function)->core);
 		struct pg_function_graph_work work;
 		assert(!pg_function_graph_init(&work, &p->typing, &p->evaluation, lambda));
+		struct pg_typed_query *input = pg_typed_input_request(&p->typing, body, 0);
+		uint64_t steps = pg_typed_query_steps(input);
+		assert(pg_function_graph_advance(&work, 1) == PG_FUNCTION_GRAPH_PENDING);
+		assert(pg_typed_query_steps(input) - steps <= 1);
 		for (size_t turns = 0; pg_function_graph_witness_advance(&work, chunk) == PG_FUNCTION_GRAPH_PENDING; ++turns)
 			assert(turns < 100000);
 		assert(pg_function_graph_witness_advance(&work, 0) == PG_FUNCTION_GRAPH_DONE);

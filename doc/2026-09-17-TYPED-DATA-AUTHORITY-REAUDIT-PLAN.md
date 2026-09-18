@@ -1056,9 +1056,8 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   afterward. Accepted conclusions and alternate derivations are unchanged.
   This is a scheduling correction, not evidence of faster normalization.
 
-  Remaining synchronous consumers include `function_graph.c`'s
-  `structural_computation_view`, `computation_view`, `helper_call` and
-  `pg_function_graph_source`. They use the same shared queries, so their
+  Remaining synchronous consumers include `function_graph.c`'s `helper_call`
+  origin traversal and `pg_function_graph_source`. They use the same shared queries, so their
   existence alone does not establish duplicate traversal or a second authority.
   Audit their surrounding graph-work budget before changing them; preserve
   pending/unsupported distinction, helper ownership and checked context maps.
@@ -1076,6 +1075,21 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   accessor/reconstruction path: this case already shares the context action;
   removing it as "duplicate reindexing" would erase genuine specialization.
   This audit does not establish bounded first-query work in graph generation.
+- [x] Incremental graph computation views now advance the existing typed input
+  and origin queries rather than drain them. Pending is not an unsupported
+  structure: preparation, case planning and helper inspection wait before
+  normalizing or publishing a call. One borrowed pending-query pointer in the
+  graph execution state resumes that work without rediscovering the enclosing
+  view on every step; no new query kind, result cache or acceptance authority.
+  `graded_function_graph`'s one-step input-query assertion fails before repair.
+  On the function-field fixture, evidence/occurrence/query counts stay
+  9,371/6,717/1,662; Solve transitions change from 11,993 to 12,809 because work
+  previously hidden inside a step is scheduled. View/helper calls are 78/36
+  versus the synchronous baseline's 30/23. The unpublished first draft
+  retried views on every pending transition (846/103) and slowed the QuickSort
+  diagnostic by about 10%; it was replaced, not published. Checked kernel
+  construction and helper-origin walks remain synchronous; this is not a
+  global constant-cost step guarantee. Verification is in the priority plan.
 - [x] Centralize lift-input freshness and parent checks at
   `pg_context_lift_request`. Its exact interned request reuses the established
   freshness result; the private builder and checked substitution adapter no

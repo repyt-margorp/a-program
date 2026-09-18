@@ -1951,3 +1951,31 @@ from R76, +3,706 from R0. Broad A3/A4/A5 and net-negative gates remain open.
 
 Baseline: `923a220`. `typing.c` +2/-2; `tests/core.c` +5/-0.
 Cumulative implementation/header LOC and remaining gates are unchanged.
+
+### 2026-09-19: Suspend shared function-graph input queries
+
+- [x] Replace synchronous input/origin query draining in computation views;
+  distinguish pending from unsupported in preparation, cases and helper calls.
+  Retain the borrowed in-flight query so suspension does not repeatedly inspect
+  the surrounding view. No new worker, semantic cache or acceptance rule.
+- [x] The new `graded_function_graph` budget regression fails on `322026f`
+  (exit 134), then passes. Strict debug `program_test`, full optimized
+  `check-acceptance`, ASan/UBSan program/synthesis, complete `source_io.sh` and
+  complete `sort_insertion.sh` all exit 0 on the final implementation.
+  Compatibility is 63/63; exported results match the preceding acceptance run
+  after excluding the intentionally changed Solve transition counts.
+- [ ] Publish with the next substantial refactoring epoch.
+
+Logs: `/tmp/a-program-authority-graph-view-park-*.log`; flags/environment match
+the preceding entries. The initial unparked draft's additional sanitizer sort
+run was deliberately stopped after its repeated-view regression was measured;
+the final complete run above supersedes it. A4 records before/draft/final call
+counts and unchanged proof/occurrence/query totals. Five alternating strict-debug
+source runs give baseline/final medians: function-field .02190/.02471 seconds;
+QuickSort .33307/.32676 seconds. These short diagnostics are not a speedup claim;
+the function-field variation remains relevant to the final performance audit.
+
+`function_graph.c` +33/-10 (net +23); `tests/program.c` +4/-0. Cumulative
+implementation/header deltas: R76 +2,396/-1,083 (net +1,313); R0 +7,342/-3,613
+(net +3,729). A3's scope-sensitive discovery, remaining A4 consumers, final A5
+gates and the parent's net-negative requirement remain open.

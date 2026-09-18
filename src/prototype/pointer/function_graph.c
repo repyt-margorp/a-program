@@ -72,6 +72,7 @@ struct pg_function_graph_state {
 	struct graph_case *pending, *leaves, **leaf_tail;
 	struct graph_case *building, **build_tail;
 	struct graph_call *waiting;
+	struct pg_typed_query *view;
 	size_t leaf_count;
 	const struct pg_evidence *formation, *declaration;
 	const struct pg_data_schema *schema;
@@ -177,6 +178,7 @@ static int signature(struct pg_function_graph_state *s)
 	return s->indices ? 0 : -1;
 }
 
+/* Zero is ready, one is pending, minus one has no supported structural view. */
 static int structural_computation_view(struct pg_function_graph_state *s,
 	const struct pg_evidence *proof, enum pg_evidence_rule *rule,
 	const struct pg_evidence **left, const struct pg_evidence **right)
@@ -206,7 +208,7 @@ static int structural_computation_view(struct pg_function_graph_state *s,
 	const struct pg_evidence *children[2] = {NULL, NULL};
 	for (size_t i = 0; i < count; ++i) {
 		struct pg_typed_query *input = pg_typed_input_request(s->typing, proof, i);
-		while (!pg_typed_query_advance(input, 1024)) {}
+		if (!pg_typed_query_advance(input, 1)) { s->view = input; return 1; }
 		children[i] = pg_typed_query_result(input);
 		if (!children[i]) return -1;
 		const struct pg_occurrence *child = pg_evidence_subject(children[i]);
@@ -223,9 +225,12 @@ static int computation_view(struct pg_function_graph_state *s,
 	const struct pg_evidence **left, const struct pg_evidence **right)
 {
 	const struct pg_occurrence *subject = pg_evidence_subject(proof);
-	if (!structural_computation_view(s, proof, rule, left, right)) return 0;
-	const struct pg_evidence *map = NULL;
-	proof = pg_prove_construction_origin(s->typing, proof, &map);
+	int status = structural_computation_view(s, proof, rule, left, right);
+	if (status >= 0) return status;
+	struct pg_typed_query *origin = pg_construction_origin_request(s->typing, proof);
+	if (!pg_typed_query_advance(origin, 1)) { s->view = origin; return 1; }
+	const struct pg_evidence *map = pg_construction_origin_environment(origin);
+	proof = pg_typed_query_result(origin);
 	if (!proof) return -1;
 	*rule = pg_evidence_rule(proof);
 	if (*rule == PG_MATCH_ELIM || *rule == PG_INDUCTION_ELIM) {
@@ -392,7 +397,8 @@ static const struct pg_evidence *parameter_source(struct pg_function_graph_state
 
 /* Preserve a helper's complete typed call before beta exposure
  * erases its function boundary. Its graph is requested from the same owner
- * that services public @f and *f requests, not generated afresh at each call. */
+ * that services public @f and *f requests, not generated afresh at each call.
+ * Return 2 while its input view is pending, before publishing a helper call. */
 static int helper_call(struct pg_function_graph_state *s, struct graph_case *plan,
 	const struct pg_evidence *computation)
 {
@@ -465,7 +471,10 @@ static int helper_call(struct pg_function_graph_state *s, struct graph_case *pla
 					projection(s, plan->context, a->argument));
 			enum pg_evidence_rule rule;
 			const struct pg_evidence *elimination, *unused;
-			if (!body || computation_view(s, body, &rule, &elimination, &unused)) goto done;
+			if (!body) goto done;
+			int view = computation_view(s, body, &rule, &elimination, &unused);
+			if (view > 0) { result = 2; goto done; }
+			if (view < 0) goto done;
 			if (rule != PG_MATCH_ELIM) goto done;
 			const struct pg_evidence *input = pg_evidence_premise(elimination, 3);
 			const struct pg_term *term = pg_evidence_subject(input)->core;
@@ -540,6 +549,7 @@ static int plan_step(struct pg_function_graph_state *s, struct graph_case *plan)
 			rest = rest->next;
 		}
 		int helper = helper_call(s, plan, call);
+		if (helper == 2) return 0;
 		if (helper) {
 			if (helper < 0) return -1;
 			plan->computation = call;
@@ -556,7 +566,9 @@ static int plan_step(struct pg_function_graph_state *s, struct graph_case *plan)
 	}
 	const struct pg_evidence *left, *right, *value = NULL;
 	enum pg_evidence_rule rule;
-	if (computation_view(s, plan->computation, &rule, &left, &right)) goto normalize;
+	int view = computation_view(s, plan->computation, &rule, &left, &right);
+	if (view > 0) return 0;
+	if (view < 0) goto normalize;
 	switch (rule) {
 	case PG_FOLD_ELIM: {
 		struct graph_continuation *frame = pg_alloc(&s->temporary, sizeof(*frame));
@@ -582,7 +594,9 @@ static int plan_step(struct pg_function_graph_state *s, struct graph_case *plan)
 		const struct pg_term *core = pg_evidence_subject(left)->core;
 		size_t i = hypothesis_position(s, plan, core);
 		if (i == plan->hypothesis_count) {
-			if (computation_view(s, left, &rule, &left, &right) || rule != PG_THUNK_INTRO) goto normalize;
+			view = computation_view(s, left, &rule, &left, &right);
+			if (view > 0) return 0;
+			if (view < 0 || rule != PG_THUNK_INTRO) goto normalize;
 			plan->computation = left;
 			return 0;
 		}
@@ -1168,7 +1182,9 @@ static int prepare_head(struct pg_function_graph_state *s)
 			return 1;
 		}
 	}
-	if (computation_view(s, s->body, &rule, &left, &right)) return 0;
+	int view = computation_view(s, s->body, &rule, &left, &right);
+	if (view > 0) return 1;
+	if (view < 0) return 0;
 	switch (rule) {
 	case PG_MATCH_ELIM: case PG_INDUCTION_ELIM:
 		s->body = left;
@@ -1187,7 +1203,9 @@ static int prepare_head(struct pg_function_graph_state *s)
 		body = pg_prove_application_body(s->typing, right, pg_prove_return_value(s->typing, left));
 		break;
 	case PG_FORCE_ELIM:
-		if (!computation_view(s, left, &rule, &left, &right) && rule == PG_THUNK_INTRO) body = left;
+		view = computation_view(s, left, &rule, &left, &right);
+		if (view > 0) return 1;
+		if (!view && rule == PG_THUNK_INTRO) body = left;
 		break;
 	default: break;
 	}
@@ -1234,6 +1252,11 @@ enum pg_function_graph_status pg_function_graph_advance(struct pg_function_graph
 	if (!work || !work->state) return PG_FUNCTION_GRAPH_ERROR;
 	struct pg_function_graph_state *s = work->state;
 	while (s->status == PG_FUNCTION_GRAPH_PENDING && budget--) {
+		/* Resume shared work before rediscovering the enclosing call/view. */
+		if (s->view) {
+			if (!pg_typed_query_advance(s->view, 1)) continue;
+			s->view = NULL;
+		}
 		if (!s->ready) {
 			if (!prepare_head(s)) prepare_graph(s);
 			continue;
