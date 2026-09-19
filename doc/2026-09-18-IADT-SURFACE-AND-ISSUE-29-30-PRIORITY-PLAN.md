@@ -5393,7 +5393,7 @@ replace them with every alias sharing an allocation.
 - [x] Affected sanitizer/image checks and isolated timing.
 - [x] Remove sibling-environment enumeration before publishing; see the
   measured counterexample below. Passing existing tests is insufficient.
-- [ ] Publish together with the exact handler environment and Match sequencing
+- [x] Publish together with the exact handler environment and Match sequencing
   corrections as one lexical allocation/provenance epoch, after all gates pass.
 
 Debugger measurement of the actual writer, before/after 128 foreign uses:
@@ -5536,3 +5536,11 @@ The final image and debug handler reruns also exit 0, recorded in
 All 2,460 normalized export/step records still match Main. No source/test edits
 occurred after the verification builds. Prepare one atomic non-force publication
 with `e971051` through `365bb4d`; record the actual resulting commit below.
+
+Published as `09e7ce2dc42b9a08454a02b4f8900d155e5447db` on 2026-09-19.
+The atomic non-force push advanced Main and `rewrite/pointer-core-hott` from
+`7ed0b29`; both remote heads were verified. This is the completed lexical
+allocation/provenance epoch, not completion of A4/A5/R2-R5. No issue status
+changes accompany it. Documentation through that implementation commit:
+parent plan +34/-1; priority plan +390/-0. This publication note is additional
+documentation only; implementation and test totals above are unchanged.
