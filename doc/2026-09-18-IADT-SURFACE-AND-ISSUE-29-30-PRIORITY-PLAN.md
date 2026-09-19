@@ -5608,7 +5608,7 @@ authority is introduced; private progress is discarded on image reconstruction.
   preceding implementation after ignoring scheduling steps and temporary paths.
   Strict debug synthesis/source tests and ASan/UBSan synthesis/source/image
   tests pass. Sanitizers use leak detection and halt-on-error.
-- [ ] Complete the remaining boundary telescope/branch/pattern consumers before
+- [x] Complete boundary telescope preparation and the branch/pattern audit before
   publishing a substantive transport epoch with the accepted-input cleanup.
 
 A debug probe on `indexed-dependent-field-path.p` finds 16 initializations for
@@ -5653,7 +5653,7 @@ The remaining parameter-map rebase also uses its shared budgeted query;
   the preceding checkpoint after removing step counts and temporary paths.
 - [x] ASan/UBSan synthesis, IADT, source and image suites exit 0 with leak
   detection and halt-on-error, including the existing 45 transport image cuts.
-- [ ] Finish the separate branch/pattern consumer audit and group publication
+- [x] Finish the separate branch/pattern consumer audit and group publication
   with the preceding local changes. Overall A4/A5/R2-R5 remain open.
 
 On `indexed-dependent-field-path.p`, the debug probe observes eight boundary
@@ -5713,7 +5713,7 @@ existing checked constructors must be inspected before adding retained state.
   scheduled scope builder, preserving explicit retained allocations and proof
   premises. Retain completed branch construction across suspension; do not
   replay preceding clauses or add a competing accepted-scope registry.
-- [ ] Verify the integrated transport epoch and publish it with the preceding
+- [x] Verify the integrated transport epoch and publish it with the preceding
   three local commits. Neither this audit nor those commits alone closes A4.
 
 No implementation or test edits in this audit. GDB runs exit normally at
@@ -5743,7 +5743,7 @@ Pattern reindex retains its existing receipt lookup; no second cache is added.
   paths. The image suite includes the preceding 45 transport cut/resume cases.
 - [x] Compare fresh O2 builds of `8d9f97e` and the candidate on CPU 2, 31
   alternating pairs, with no other agent build/test running during measurement.
-- [ ] Publish this integrated epoch with `56e3c73`, `b67cdff`, `9532e42` and
+- [x] Publish this integrated epoch with `56e3c73`, `b67cdff`, `9532e42` and
   `8d9f97e`; verify both remote tips. A4/A5 and parent R2-R5 remain open.
 
 QuickSort: 22 transport scope requests use 18 producers, sharing all four
@@ -5771,3 +5771,8 @@ Cumulative implementation/headers: R76 +3,941/-1,922 = +2,019;
 R0 +8,700/-4,265 = +4,435. Neither net-negative gate is met. Remaining
 Match/type-case scope validation is still synchronous and must be audited on
 its own inputs; this epoch does not authorize removing those checks.
+
+Publication: `510a95b98f8fcf445f21a1bc22f9ec7cc03051fd` was atomically
+fast-forwarded to Main and `rewrite/pointer-core-hott` from `b0c58e1`.
+`git ls-remote` confirmed both tips. This publication note changes no tested
+implementation or fixtures; the broader A4/A5/R2-R5 completion gates stay open.
