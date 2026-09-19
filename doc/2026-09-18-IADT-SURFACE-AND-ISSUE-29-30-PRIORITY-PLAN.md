@@ -5391,7 +5391,7 @@ replace them with every alias sharing an allocation.
 - [x] Strict debug source and handler tests, including 4,083 handler snapshots.
 - [x] Full O2 `check-acceptance`; all 2,460 export/step records match Main.
 - [x] Affected sanitizer/image checks and isolated timing.
-- [ ] Remove sibling-environment enumeration before publishing; see the
+- [x] Remove sibling-environment enumeration before publishing; see the
   measured counterexample below. Passing existing tests is insufficient.
 - [ ] Publish together with the exact handler environment and Match sequencing
   corrections as one lexical allocation/provenance epoch, after all gates pass.
@@ -5457,3 +5457,82 @@ Vec append 7.169/6.962; QuickSort 183.526/184.179; length save 6.168/6.131;
 QuickSort save 202.914/203.579. No general speedup is claimed. Documentation
 delta from Main: parent plan +24/-0; this priority plan +311/-0, including this
 accounting entry. No publication is made while the sibling scan remains open.
+
+### A3 paired environment lookup (2026-09-19)
+
+Replace the unfiltered parent-child visitor with exact `(parent, binder)`
+hash lookup in the existing source-reference index. A unary membership entry
+marks binders having source environments; it contains no chosen environment or
+proof. The writer joins reached environments with reached marked binders, once
+per pair. Snapshotting frontier tails prevents callbacks from revisiting newly
+added pairs. Nonmatching children are not enumerated. Explicit binding syntax
+still gates selection; examining a scope does not make it an image root.
+
+The first paired trial queried every reached Core binder. It passed correctness
+checks but regressed inert QuickSort resave from 10.000 to 14.927 ms. Reject that
+loop: the membership index now excludes proof-local/non-source binders before
+the join. A second isolated 101-pair O2 comparison measured 10.109/9.930 ms.
+This is not a claim of linear output-sensitive complexity: expected hash probes
+are `E * B`, where both sets are selected environments/marked source binders,
+not the total source universe. Further selected-graph scaling remains measurable.
+
+- [x] Keep exact lexical keys, immutable origin edges and existing wire format.
+- [x] Extend the permanent bound fixture with 128 unused same-parent binders
+  as well as 128 foreign-parent uses of the same binder/allocation.
+- [x] Debug source suite and optimized full acceptance pass; all 2,460
+  export/step records match Main. Old retained QuickSort resaves byte-identically.
+- [x] Finish sanitizer gates and final isolated timing before publication.
+
+Actual writer counters: the existing sibling fixture keeps environment callbacks
+`4 -> 4` and paired lookups `88 -> 88`; the combined fixture keeps them `5 -> 5`
+and `140 -> 140`. Both preserve source-reference visits and allocation/origin
+callbacks. Profiles use `/tmp/a-program-authority-paired-lookup-` with
+`sibling-profile.log` and `combined-profile.log`. Failed-trial timing is
+`inert-timing.log`; corrected timing is `inert-timing2.log`.
+
+QuickSort property synthesis still takes 34,203 jobs, 166,687 steps and 93,016
+proofs, with unchanged Context/map/action/query counts. Membership adds 514
+index entries and 32,896 used graph bytes versus `365bb4d`; no acceptance data
+is copied. The writer's new binder set is temporary and freed after saving.
+Total source-reference entries are 2,359; graph used bytes 63,980,544, reserved
+64,274,432. Record these costs, rather than describing the index as free.
+
+This completes the two measured unrelated-environment bounds. It does not
+complete A4/A5/R2-R5, repair general fresh-proof reduction reuse, or meet the
+cumulative implementation-line reduction requirement.
+
+Final isolated timing against a fresh strict O2 build of published Main
+`7ed0b29`, CPU 2, 31 alternating pairs (median milliseconds, Main/current):
+Bool .496/.494; add .930/.907; length 5.578/5.798; function-field 9.751/9.666;
+Vec append 7.010/7.059; QuickSort 190.257/191.461; length save 6.325/6.175;
+QuickSort save 205.667/205.763. The separate 101-pair inert retained QuickSort
+resave comparison is 10.206/10.201 ms. No general speedup is claimed; retain
+the length timing variation for future comparisons. Raw logs use the same
+prefix with `final-timing.log` and `final-inert-timing.log`.
+
+Final code delta from Main `7ed0b29`, including the unpublished handler,
+Match sequencing and exact lexical allocation corrections:
+
+| File under `src/prototype/pointer/` | Added | Deleted | Net |
+|---|---:|---:|---:|
+| source_io.c | 56 | 10 | +46 |
+| source_io.h | 1 | 1 | 0 |
+| synthesis.c | 58 | 22 | +36 |
+| synthesis.h | 13 | 7 | +6 |
+| tests/image_cli.sh | 2 | 0 | +2 |
+| tests/source_io.c | 149 | 14 | +135 |
+| tests/source_io.sh | 2 | 1 | +1 |
+
+Implementation/headers +128/-40 = +88; tests +153/-15 = +138. Cumulative
+implementation/header deltas remain positive: R76 `3a3bf55` +3,769/-1,897
+= +1,872; R0 `4657cc6` +8,534/-4,246 = +4,288. Do not count this correctness
+and bounded-discovery epoch as satisfying the cumulative reduction gate.
+Documentation changes are separate from these source totals.
+
+Final gates pass: strict debug source/handler suites, optimized full acceptance,
+and ASan/UBSan source/handler/image suites with leak detection and halt-on-error.
+The final image and debug handler reruns also exit 0, recorded in
+`asan-image-final.log` and `debug-handler-final.log` under the same log prefix.
+All 2,460 normalized export/step records still match Main. No source/test edits
+occurred after the verification builds. Prepare one atomic non-force publication
+with `e971051` through `365bb4d`; record the actual resulting commit below.

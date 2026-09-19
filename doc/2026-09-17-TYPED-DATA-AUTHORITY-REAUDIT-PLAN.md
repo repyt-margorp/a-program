@@ -824,7 +824,7 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 - [x] Update `source_io.c` environment/producer/origin handling using A1's
   reference contract. Loaded inputs and fresh source reference the same relocated
   lexical allocations; source rechecking remains necessary.
-- [ ] Preserve selected-root reachability without scanning unrelated source
+- [x] Preserve selected-root reachability without scanning unrelated source
   scopes or collecting all syntax-free aliases. Do not repeat the withdrawn
   broad `collect_origin` experiment.
   Published in `df53645`: transparent definition/handler scopes use their
@@ -865,6 +865,14 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   dependencies even when specialization erases the original binder; nearest
   binder reachability alone is insufficient. The priority plan records the
   reproducer. Do not weaken the exact retained-reduction/source identity test.
+  Current resolution (2026-09-19): exact environment allocation keys plus
+  `(parent, binder)` lookup preserve retained origins without enumerating
+  foreign-parent uses or unrelated sibling binders. Both 128-environment
+  bounds now pass, with unchanged image bytes and no Save-time Solve.
+  This supersedes the historical open-bound statements above. Selected
+  environment/binder pairs are still joined; do not claim linear complexity
+  or completion of the broader A3-A5 work. Final epoch gates and costs are
+  recorded in the priority plan's paired environment lookup section.
   Previous stage (2026-09-19): declaration/Match references use their
   actual family/matcher/induction addresses, registered idempotently when the
   allocation becomes available, including unaccepted imported inputs. Remove
@@ -1135,8 +1143,9 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   generated proof binders are not subject to an exact source-identity contract;
   retained-input reuse remains a separate measurement. The shared-binder
   lexical bound now passes using exact environments and parent/binder edges;
-  however, unselected sibling environments cause a new parent-edge scan.
-  Remove that growth before publication; the whole A4 audit is not finished.
+  the subsequent paired-key lookup removes sibling enumeration too. See the
+  priority plan's measured costs and publication gates. The whole A4 audit is
+  not finished, and this does not claim linear complexity in selected inputs.
 
 - [x] 2026-09-19: Identity boundary validation reads the immutable declaration
   Context rather than assuming every Context receipt has an ordinary type in

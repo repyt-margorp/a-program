@@ -197,7 +197,7 @@ struct source_match {
 struct origin_collection {
 	const struct pg_synthesis *synthesis;
 	struct pg_dag *scopes, *syntax, *rules, *origins, *producers, *allocations, *bindings, *declarations;
-	struct pg_dag objects, terms, contexts, references;
+	struct pg_dag objects, terms, contexts, references, environment_binders;
 	struct pg_index candidates;
 	struct pg_declaration_io *codec;
 	const struct pg_dag_node *last_scope, *last_producer, *last_syntax, *last_object;
@@ -209,6 +209,7 @@ struct origin_collection {
 
 static int index_scope_origin(void *owner, struct pg_synthesis_job *job);
 static int index_source_references(struct origin_collection *c, const void *key);
+static int index_environment_references(struct origin_collection *c, const void *key);
 static int collect_candidates(struct origin_collection *c, const void *key);
 
 static int collect_allocation(struct origin_collection *c, const struct pg_context *prefix,
@@ -238,7 +239,7 @@ static int collect_inputs(struct origin_collection *c)
 		for (; producer; c->last_producer = producer, producer = producer->next) {
 			struct producer_input input = producer_input(c->synthesis, producer->key);
 			const struct pg_source_scope *local = pg_synthesis_prepared_environment(producer->key);
-			if (local && index_source_references(c, local)) return -1;
+			if (local && index_environment_references(c, local)) return -1;
 			if (input.callable.reference) {
 				if (pg_dag_add(c->allocations, producer->key)) return -1;
 				if (collect_allocation(c, input.callable.prefix, input.callable.fields, input.callable.reference)) return -1;
@@ -275,7 +276,7 @@ static int collect_inputs(struct origin_collection *c)
 			if (references > SIZE_MAX - c->binding_reference_count) return -1;
 			c->binding_reference_count += references;
 			if (collect_candidates(c, scope_node->key)) return -1;
-			if (index_source_references(c, scope_node->key)) return -1;
+			if (index_environment_references(c, scope_node->key)) return -1;
 			if (input.syntax && pg_dag_add(c->syntax, input.syntax)) return -1;
 			if (input.definitions && pg_dag_add(c->syntax, input.definitions)) return -1;
 			if (input.rule && pg_dag_add(c->rules, input.rule)) return -1;
@@ -377,6 +378,7 @@ struct source_reference_batch {
 	struct origin_collection *collection;
 	struct ordered_origin *items;
 	size_t count, capacity;
+	const struct pg_object *environment_binder;
 };
 
 static int append_source_reference(void *owner, struct pg_synthesis_job *job)
@@ -421,26 +423,26 @@ static int index_environment(struct origin_collection *c, const void *key)
 		if (pg_synthesis_binding_input(c->synthesis, input.binding, &parent, &syntax, &binder)) return -1;
 		if (!id(c->syntax, syntax)) return index_origin_reference(c, syntax, index_environment, key);
 	}
-	/* Wait for the object frontier, not just presence in the graph, so inert
-	 * saves retain their existing allocation order. */
-	return index_origin_reference(c, input.binder, index_source_references, key);
+	return index_environment_references(c, key);
 }
 
 static int append_environment_reference(void *owner, const struct pg_source_scope *scope)
 {
+	return index_environment(owner, scope);
+}
+
+static int append_environment_binder(void *owner, const struct pg_object *binder)
+{
 	struct source_reference_batch *batch = owner;
-	return index_environment(batch->collection, scope);
+	batch->environment_binder = binder;
+	return 0;
 }
 
 static int index_source_references(struct origin_collection *c, const void *key)
 {
-	/* Producers and retained scopes can reach the same environment. Reading
-	 * its references once does not itself make that environment a saved root. */
-	if (id(&c->references, key)) return 0;
-	if (pg_dag_add(&c->references, key)) return -1;
 	struct source_reference_batch batch = {.collection = c};
 	int status = pg_synthesis_visit_source_references(c->synthesis, key,
-		append_source_reference, append_binding_reference, append_environment_reference, &batch);
+		append_source_reference, append_binding_reference, append_environment_binder, &batch);
 	if (!status && batch.count) {
 		/* Late binder discovery must not serialize in hash/registration order.
 		 * Unreached syntax is still staged by index_scope_origin. */
@@ -449,7 +451,28 @@ static int index_source_references(struct origin_collection *c, const void *key)
 			status = index_scope_origin(c, batch.items[i].job);
 	}
 	free(batch.items);
+	if (!status && batch.environment_binder) {
+		if (pg_dag_add(&c->environment_binders, batch.environment_binder)) return -1;
+		/* New environments query reached binders themselves; do not revisit
+		 * those pairs if callbacks extend the environment frontier. */
+		const struct pg_dag_node *end = c->references.last;
+		for (const struct pg_dag_node *scope = c->references.first; end && scope && scope->id <= end->id; scope = scope->next)
+			if (pg_synthesis_visit_binding_environments(c->synthesis, scope->key,
+				batch.environment_binder, append_environment_reference, c)) return -1;
+	}
 	return status;
+}
+
+static int index_environment_references(struct origin_collection *c, const void *key)
+{
+	/* Looking up references does not make this environment a saved root. */
+	if (id(&c->references, key)) return 0;
+	if (pg_dag_add(&c->references, key) || index_source_references(c, key)) return -1;
+	const struct pg_dag_node *end = c->environment_binders.last;
+	for (const struct pg_dag_node *node = c->environment_binders.first; end && node && node->id <= end->id; node = node->next)
+		if (pg_synthesis_visit_binding_environments(c->synthesis,
+			key, node->key, append_environment_reference, c)) return -1;
+	return 0;
 }
 
 static int collect_binding(struct origin_collection *c, const void *key)
@@ -592,6 +615,7 @@ int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 		|| pg_dag_init(&declarations, NULL, NULL)
 		|| pg_graph_init(&rules.storage)
 		|| pg_dag_init(&collection.objects, NULL, NULL) || pg_dag_init(&collection.references, NULL, NULL)
+		|| pg_dag_init(&collection.environment_binders, NULL, NULL)
 		|| pg_index_init(&collection.candidates)
 		|| pg_dag_init(&collection.contexts, pg_context_dependency, NULL)
 		|| pg_effect_inference_init(&effects, &rules.storage)
@@ -744,6 +768,7 @@ int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 done:
 	pg_dag_destroy(&collection.contexts);
 	pg_dag_destroy(&collection.references);
+	pg_dag_destroy(&collection.environment_binders);
 	pg_index_destroy(&collection.candidates); pg_dag_destroy(&collection.terms); pg_dag_destroy(&collection.objects);
 	pg_declaration_io_destroy(&codec);
 	pg_effect_inference_destroy(&effects); pg_dag_destroy(&rules); pg_dag_destroy(&origins);

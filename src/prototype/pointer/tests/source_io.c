@@ -1756,8 +1756,10 @@ static int local_environment_origins(int binding)
 	}
 	size_t candidates = lexical_allocation_candidates(&p->synthesis, inner);
 	struct environment_lookup initial = {.selected = inner};
+	struct pg_source_environment inner_input;
+	assert(!pg_synthesis_environment_input(&p->synthesis, inner, &inner_input));
 	if (binding) {
-		assert(!pg_synthesis_visit_source_references(&p->synthesis, scope, NULL, NULL,
+		assert(!pg_synthesis_visit_binding_environments(&p->synthesis, scope, inner_input.binder,
 			find_environment_reference, &initial));
 		assert(initial.matches == 1);
 	}
@@ -1776,11 +1778,22 @@ static int local_environment_origins(int binding)
 			: pg_synthesis_request(&p->synthesis, foreign, definition.expression);
 		assert(other && !pg_synthesis_result(other));
 		if (binding) assert(pg_synthesis_allocation_object(&p->synthesis, other) == fields->binder);
+		if (binding) {
+			struct pg_parser unused_parser;
+			struct pg_definition unused_definition;
+			const char *unused = "unused:=\\hidden:missing=>@;";
+			pg_parser_init(&unused_parser, &p->graph, unused, strlen(unused));
+			assert(pg_parser_next(&unused_parser, &unused_definition) == 1);
+			const struct pg_source_scope *sibling = pg_synthesis_binding_scope(
+				pg_synthesis_binding(&p->synthesis, scope, unused_definition.expression));
+			assert(sibling && sibling != inner);
+			assert(pg_synthesis_member_at(&p->synthesis, sibling, definition.expression, prefix, fields));
+		}
 	}
 	size_t expanded = lexical_allocation_candidates(&p->synthesis, inner);
 	if (binding) {
 		struct environment_lookup repeated = {.selected = inner};
-		assert(!pg_synthesis_visit_source_references(&p->synthesis, scope, NULL, NULL,
+		assert(!pg_synthesis_visit_binding_environments(&p->synthesis, scope, inner_input.binder,
 			find_environment_reference, &repeated));
 		assert(repeated.count == initial.count && repeated.matches == 1);
 	}

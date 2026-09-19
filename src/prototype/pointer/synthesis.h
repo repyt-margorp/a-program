@@ -90,15 +90,17 @@ int pg_synthesis_visit_source_bindings(const struct pg_synthesis *synthesis,
  * Visit selected scopes, their parents and reached objects. Syntax/site and
  * exact lexical ancestry checks remain the caller's responsibility; an address
  * alone does not select every source use sharing it.
- * Scope keys also expose their direct binder environments. Follow these only
- * when their binder (and explicit binding syntax) is reached; do not retain an
- * environment merely because its parent is selected.
- * Optional callbacks select source jobs, binding addresses and environments.
+ * Optional callbacks select source jobs, binding addresses, and binder keys
+ * having environments. The latter is membership only, not a default scope.
  * No Solve, acceptance, copied allocation or completion-index update occurs. */
 int pg_synthesis_visit_source_references(const struct pg_synthesis *synthesis, const void *key,
 	int (*allocation)(void *, struct pg_synthesis_job *),
 	int (*binding)(void *, const struct pg_source_binding *),
-	int (*environment)(void *, const struct pg_source_scope *), void *owner);
+	int (*environment_binder)(void *, const struct pg_object *), void *owner);
+/* Exact parent/binder lookup; unrelated child environments are not visited. */
+int pg_synthesis_visit_binding_environments(const struct pg_synthesis *synthesis,
+	const struct pg_source_scope *parent, const struct pg_object *binder,
+	int (*visit)(void *, const struct pg_source_scope *), void *owner);
 /* Nominal allocation input for a source declaration, before preparation.
  * Candidate universe inference still runs. Only the matching candidate uses
  * the stored Self binder/schema; no stored formation evidence is trusted.
