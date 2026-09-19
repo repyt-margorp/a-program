@@ -126,11 +126,19 @@ struct application_state {
 	const struct block_frame *frames;
 	size_t binding_count;
 };
+struct index_progress {
+	const struct pg_context *field;
+	struct pg_comparison comparison;
+	size_t counts[2];
+	/* 0 starts a candidate; 1/2/3 inspect target/old/new support. */
+	unsigned next;
+};
 struct index_transport_state {
 	const struct pg_evidence *cursor, *path, *endpoints[2];
 	struct pg_synthesis_job *normal[2], *candidates[2], *checks[2];
 	size_t candidate_next;
 	int direct_checked, normalized_checked, constructor_checked;
+	struct index_progress progress;
 };
 struct substitution_entry {
 	const struct pg_evidence *extension;
@@ -428,6 +436,9 @@ void pg_synthesis_destroy(struct pg_synthesis *synthesis)
 			case FUNCTION_GRAPH_JOB: pg_function_graph_destroy(&job->function_graph); break;
 			case FACE_JOB: pg_identity_face_destroy(job->face); break;
 			case FORMATION_JOB: pg_identity_formation_destroy(job->formation); break;
+			case INDEX_TRANSPORT_JOB: case INDEX_RESULT_JOB:
+				if (job->index_transport) pg_comparison_destroy(&job->index_transport->progress.comparison);
+				break;
 			case EFFECT_SUBSTITUTION_JOB:
 				if (job->effect_substitution) free(job->effect_substitution->bindings);
 				break;
@@ -7758,17 +7769,14 @@ static const struct pg_evidence *constructor_transport_context(struct pg_typing 
 		const struct pg_evidence *ls = boundary->left_substitution, *rs = boundary->right_substitution;
 		const struct pg_evidence *source = pg_evidence_premise(ls, 0);
 		size_t arity = pg_evidence_premise_count(ls) - 2, count = boundary->path_count;
-		if (count > arity || arity > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
+		if (count > arity || count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
 		const struct pg_evidence **extensions = malloc(count * sizeof(*extensions));
 		if (count && !extensions) return NULL;
 		for (size_t i = count; i; --i, source = pg_evidence_premise(source, 0))
 			extensions[i - 1] = source;
-		const struct pg_evidence **images = malloc(arity * sizeof(*images));
-		if (arity && !images) { free(extensions); return NULL; }
-		for (size_t i = 0; i < arity - count; ++i)
-			images[i] = index_rebase(typing, context, pg_evidence_premise(ls, i + 2));
-		map = pg_prove_substitution(typing, source, context, arity - count, images);
-		free(images);
+		map = pg_prove_substitution(typing, source, pg_evidence_premise(ls, 1),
+			arity - count, pg_evidence_premises(ls) + 2);
+		map = pg_prove_substitution_rebase(typing, context, map);
 		for (size_t i = 0; map && i < count; ++i) {
 			map = pg_prove_substitution_lift(typing, map, extensions[i], pg_binder(typing->graph));
 			if (!map) break;
@@ -8122,26 +8130,48 @@ done:
 /* Continue through several checked paths only when the classifier loses a
  * dependency that the destination cannot mention. This finite measure prevents
  * left/right transport cycles; failure still explores the other candidates. */
-static int index_transport_progress(const struct pg_synthesis_job *job,
-	const struct pg_evidence *transported)
+static int index_transport_progress(struct pg_synthesis_job *job,
+	const struct pg_evidence *transported, int *progress)
 {
 	const struct pg_synthesis_job *context = job->inputs[0], *argument = job->inputs[1], *target = job->inputs[2];
-	if (!target->result) return 0;
+	*progress = 0;
+	if (!target->result) return 1;
 	const struct pg_term *before = pg_evidence_classifier(argument->result);
 	const struct pg_term *after = pg_evidence_classifier(transported);
-	if (!before || !after) return 0;
-	size_t old_count = 0, new_count = 0;
-	for (const struct pg_context *field = pg_evidence_context(context->result); field; field = field->parent) {
-		int unwanted = job->role == INDEX_RESULT_JOB
-			? !pg_context_lookup(pg_evidence_context(target->result), field->binder)
-			: pg_term_independent(pg_evidence_subject(target->result)->core, field->binder);
-		if (unwanted < 0) return -1;
-		if (!unwanted) continue;
-		int old_free = pg_term_independent(before, field->binder), new_free = pg_term_independent(after, field->binder);
-		if (old_free < 0 || new_free < 0) return -1;
-		old_count += !old_free; new_count += !new_free;
+	if (!before || !after) return 1;
+	struct index_progress *work = &job->index_transport->progress;
+	if (!work->next) {
+		work->field = pg_evidence_context(context->result);
+		work->counts[0] = work->counts[1] = 0;
+		work->next = 1;
 	}
-	return new_count < old_count;
+	if (work->field) {
+		if (work->next == 1 && job->role == INDEX_RESULT_JOB) {
+			work->next = pg_context_lookup(pg_evidence_context(target->result), work->field->binder) ? 4 : 2;
+		} else {
+			const struct pg_term *term = work->next == 1
+				? pg_evidence_subject(target->result)->core : work->next == 2 ? before : after;
+			if (!work->comparison.state && pg_independence_init(&work->comparison,
+				term, work->field->binder)) return -1;
+			enum pg_comparison_status status = pg_comparison_advance(&work->comparison, 1);
+			if (status == PG_COMPARISON_PENDING) return 0;
+			pg_comparison_destroy(&work->comparison);
+			if (status == PG_COMPARISON_ERROR) return -1;
+			if (work->next == 1) work->next = status == PG_COMPARISON_EQUAL ? 2 : 4;
+			else {
+				work->counts[work->next - 2] += status == PG_COMPARISON_DIFFERENT;
+				++work->next;
+			}
+		}
+		if (work->next == 4) {
+			work->field = work->field->parent;
+			work->next = 1;
+		}
+		if (work->field) return 0;
+	}
+	*progress = work->counts[1] < work->counts[0];
+	work->next = 0;
+	return 1;
 }
 
 static void index_transport_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
@@ -8174,8 +8204,10 @@ static void index_transport_step(struct pg_synthesis *synthesis, struct pg_synth
 			if (candidate->status == PG_SYNTHESIS_ERROR) goto error;
 			if (candidate->status == PG_SYNTHESIS_DONE) {
 				if (!state->checks[index]) {
-					int progress = index_transport_progress(job, candidate->result);
-					if (progress < 0) goto error;
+					int progress;
+					int status = index_transport_progress(job, candidate->result, &progress);
+					if (!status) { enqueue(synthesis, job); return; }
+					if (status < 0) goto error;
 					const void *inputs[] = {job->inputs[0], candidate, job->inputs[2]};
 					state->checks[index] = progress ? request_inputs(synthesis, job->role, 3, inputs)
 						: index_transport_check(synthesis, job, candidate);

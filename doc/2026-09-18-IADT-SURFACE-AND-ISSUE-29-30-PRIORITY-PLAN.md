@@ -4987,7 +4987,7 @@ the resulting revision. No A3-A5/R2-R5 completion or new issue closure follows.
 Documentation delta for this epoch: this priority plan +166/-0 lines and
 the parent authority plan +15/-0 lines, excluded from implementation counts.
 
-### A3 selected syntax frontier (unpublished, 2026-09-19)
+### A3 selected syntax frontier (2026-09-19)
 
 The exact-scope-only draft was rejected: it lost 80 QuickSort member origins,
 including the recursive append use checked by `retained-append-origin`.
@@ -5015,8 +5015,8 @@ audit; this does not close A3.
   preceding epoch. There is no new retained store or additional source work.
 - [x] ASan/UBSan source and full image-CLI scripts exit 0, with leak detection
   and halt-on-error enabled. Run isolated O2 timing after all other tests finish.
-- [ ] Group this local correction with a substantial tested epoch before Main
-  publication. It does not close the remaining same-syntax candidate audit.
+- [x] Group this correction with the tested resumable-transport epoch below.
+  It does not close the remaining same-syntax candidate audit.
 
 Final logs use `/tmp/a-program-authority-syntax-frontier-*`: `source.log`,
 `opt.log`, `counts.log` and `{length,field,qsort}-counts.log`. The old failed
@@ -5034,3 +5034,61 @@ Per-file additions/deletions: `source_io.c` +1/-0, `synthesis.c` +2/-4,
 `synthesis.h` +3/-2, `tests/source_io.c` +38/-3. Implementation/header net 0;
 tests net +35. Cumulative implementation deltas remain R76 +1,736 and R0
 +4,152. Documentation is separate; no completion or issue closure follows.
+
+### A4 resumable transport measure (2026-09-19)
+
+Baseline `ce2985c`. Preserve the existing finite decreasing-dependency test;
+do not replace it with a new refinement or acceptance rule. Its structural
+comparison now advances one transition per Solve turn. A private cursor retains
+the Context field, comparison phase and two counts; cancellation frees the live
+comparison. No new job kind, persistent record or proof authority is introduced.
+Constructor boundary prefixes now borrow accepted map images and use the shared
+map-rebase query, deleting their temporary image array and per-image loop.
+
+- [x] Add dependent prefix tests at lengths 0/1/2: zero fuel, shared requests,
+  exact checked map, and rejection when the discarded binder is still required.
+- [x] Save/discard/reload at 15 source-Solve cuts in the dependent-field fixture;
+  all results equal the complete normal form. Debugger inspection confirms live
+  comparisons at five cuts, across result and argument transport phases.
+- [x] Strict-debug synthesis/IADT tests and full optimized `check-acceptance`
+  pass. All 2,460 export result records agree after path/order normalization
+  and removal of step counts, which now include the formerly hidden traversal.
+- [x] Existing retained QuickSort zero-step resave remains byte-identical.
+- [x] ASan/UBSan synthesis, IADT, source-image and full image-CLI tests exit 0
+  with leak detection and halt-on-error enabled; isolated timing is below.
+- [ ] Publish with `ce2985c` as one selected-origin/resumable-transport epoch;
+  leave A3's shared-syntax environment bound, A4's remaining synchronous builders
+  and A5's cumulative/performance gates open.
+
+The initial cut test incorrectly used the source-plus-NF step count to choose
+source-only cuts: its last cut had already completed. Separate those measurements;
+do not relax the required pending status. The first full run failed that test;
+`transport-progress-opt-final.log` is the successful corrected run.
+
+QuickSort property counters, baseline/current: Solve 146,564/166,687;
+jobs 34,200/34,203; map/proof counts each +3; typed queries +6; graph arena
+used +4,416 bytes. Contexts, occurrences, source references and substitution
+arena are unchanged. Length/function-field counters are entirely unchanged.
+The extra prefix proof/map is ordinary checked data, not a copied answer;
+the extra Solve turns account for actual existing comparison work.
+
+Per-file additions/deletions versus Main `0edf180`, including `ce2985c`:
+`source_io.c` +1/-0; `synthesis.c` +58/-28; `synthesis.h` +3/-2;
+`tests/source_io.c` +38/-3; `tests/synthesis.c` +37/-0;
+`tests/image_cli.sh` +17/-0. Implementation/header net +32; tests net +89.
+Cumulative implementation/header deltas: R76 +3,662/-1,894 = +1,768;
+R0 +8,417/-4,233 = +4,184. Neither net-negative requirement is met.
+
+Logs/builds use `/tmp/a-program-authority-transport-progress-`: `opt-final.log`,
+`cuts-final.log`, `{length,field,qsort}-counts.log`, `export-step-diff.log`,
+`asan-source.log` and `asan-image-cli-final.log`. Debug binaries use
+`/tmp/a-program-authority-transport-map-debug`; the comparison baseline is
+`/tmp/a-program-authority-transport-map-before` (debug) / `member-scope-opt` (O2).
+
+Timing (`timing.log`): CPU 2, warmup then 31 alternating pairs, median ms
+baseline/current: Bool .491/.503; add .904/.901; length 5.501/5.419;
+function-field 9.296/9.188; Vec append 6.816/6.747; QuickSort 167.816/167.203;
+length save 5.622/5.592; QuickSort save 169.120/169.260. No general speedup
+is claimed. This isolates the transport change, not A5's cumulative R0 gate.
+The tested epoch is ready for an atomic, non-force Main/rewrite push after
+rechecking both remote heads at `0edf180`; record publication separately.

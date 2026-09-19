@@ -19,6 +19,23 @@ for round in 1 2; do
 	"$fixture" retained-append-origin "$directory/retained-order-$round.a"
 	mv "$directory/retained-order-$round.a" "$directory/retained-order.a"
 done
+# Transport's decreasing-dependency check is suspended work, not evidence.
+# Discard its live comparisons at several cuts, then resume through normal Solve.
+transport="$(dirname "${BASH_SOURCE[0]}")/acceptance/indexed-dependent-field-path.p"
+"$binary" "$transport" > "$directory/transport-solved"
+steps=$(sed -n 's/^done steps=\([0-9][0-9]*\)$/\1/p' "$directory/transport-solved")
+"$binary" --nf dependent "$transport" > "$directory/transport-complete"
+test -n "$steps"
+sed '1d' "$directory/transport-complete" > "$directory/transport-value"
+for cut in {1..15}; do
+	code=0
+	"$binary" --steps "$((steps * cut / 16))" --save "$directory/transport.a" \
+		"$transport" > "$directory/status" || code=$?
+	test "$code" = 3
+	"$binary" --load --nf dependent "$directory/transport.a" > "$directory/transport-resumed"
+	sed '1d' "$directory/transport-resumed" > "$directory/transport-resumed-value"
+	cmp "$directory/transport-value" "$directory/transport-resumed-value"
+done
 "$fixture" nominal-write "$directory/multiple.a"
 code=0
 "$binary" --load --steps 0 --save "$directory/unsolved.a" "$directory/multiple.a" > "$directory/status" || code=$?

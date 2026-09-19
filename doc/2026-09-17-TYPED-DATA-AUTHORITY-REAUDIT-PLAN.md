@@ -1311,6 +1311,15 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 - [ ] Report concrete deleted paths. Move remaining synchronous query loops to
   existing scheduling only where necessary for the same work contract; do not
   turn this repair into another scheduler framework.
+- [x] 2026-09-19: index transport's decreasing-dependency test resumes the
+  existing structural comparison one transition per Solve turn, retaining its
+  field/phase/counts in the existing private transport state. Cancellation frees
+  comparisons; no extra job kind or accepted evidence store is introduced.
+  Constructor boundary prefixes borrow accepted map images and use the shared
+  map-rebase query instead of an allocated per-image reconstruction loop.
+  The priority plan records cut/resume coverage and final publication gates.
+  Context membership lookup and the remaining transport/scope builders are still
+  synchronous; this is neither a wall-clock bound nor completion of A4.
 - [x] Remove path-dependent scope expansion from structural independence
   checks: comparing the same Core under `x -> absent` does not need fresh scope
   entries for unrelated lambdas. Preserve the shared query key and discharge

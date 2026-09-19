@@ -4342,6 +4342,42 @@ static void family_transport(struct pg_typing *typing)
 	pg_whnf_work_destroy(&work);
 }
 
+static void substitution_prefix_rebase(struct pg_typing *typing)
+{
+	const struct pg_evidence *contexts[4] = {pg_prove_empty_context(typing)};
+	const struct pg_object *a = pg_binder(typing->graph);
+	contexts[1] = pg_prove_context_extension(typing, contexts[0], a,
+		pg_prove_universe(typing, contexts[0], 0));
+	for (size_t i = 1; i < 3; ++i)
+		contexts[i + 1] = pg_prove_context_extension(typing, contexts[i], pg_binder(typing->graph),
+			pg_prove_value_type(typing, pg_prove_variable(typing, contexts[i], a)));
+	const struct pg_evidence *full = pg_prove_substitution_projection(typing, contexts[3], contexts[3]);
+	assert(full && pg_evidence_premise_count(full) == 5);
+	for (size_t count = 0; count < 3; ++count) {
+		const struct pg_evidence *prefix = pg_prove_substitution(typing, contexts[count], contexts[3],
+			count, pg_evidence_premises(full) + 2);
+		struct pg_typed_query *query = pg_substitution_rebase_request(typing, contexts[2], prefix);
+		assert(query && !pg_typed_query_result(query));
+		size_t proofs = typing->proofs.count;
+		assert(!pg_typed_query_advance(query, 0) && typing->proofs.count == proofs);
+		unsigned steps = 0;
+		while (!pg_typed_query_advance(query, 1)) assert(++steps < 1000);
+		const struct pg_evidence *result = pg_typed_query_result(query);
+		const struct pg_evidence *expected = pg_prove_substitution_projection(typing, contexts[count], contexts[2]);
+		assert(result && pg_evidence_context_map(result) == pg_evidence_context_map(expected));
+		for (size_t i = 2; i < count + 2; ++i)
+			same_judgement(pg_evidence_premise(result, i), pg_evidence_premise(expected, i));
+		proofs = typing->proofs.count;
+		size_t queries = typing->typed_queries.count;
+		for (size_t i = 0; i < 20; ++i)
+			assert(pg_prove_substitution_rebase(typing, contexts[2], prefix) == result);
+		assert(typing->proofs.count == proofs && typing->typed_queries.count == queries);
+	}
+	/* The discarded image cannot be silently given an arbitrary inhabitant. */
+	assert(!pg_prove_substitution_rebase(typing, contexts[2], full));
+	puts("substitution prefix: dependent images, zero fuel, shared query and omitted-binder rejection passed");
+}
+
 static void source_actions(struct pg_typing *typing)
 {
 	struct pg_whnf_work work;
@@ -6570,6 +6606,7 @@ int main(void)
 	named_identity(&typing);
 	named_transport(&typing);
 	data_cases(&typing);
+	substitution_prefix_rebase(&typing);
 	source_actions(&typing);
 	family_transport(&typing);
 	selected_instances(&typing);
