@@ -1138,6 +1138,15 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 
 ### A4. Audit remaining structural consumers and remove duplication
 
+- [x] 2026-09-19: one source-local dependency transition replaces 110 repeated
+  wait/failure pairs and 17 matching missing-input checks. Rule-specific
+  decisions, pending preparation and exact premises remain separate. Shared
+  and late failure consumers have regression coverage. Final strict debug/O2
+  and affected sanitizer/source/image/Handler gates pass with identical steps
+  and retained counts. Implementation net -115, tests +53; timing is mixed,
+  not a general speedup. See the priority plan for measurements/publication.
+  Pending construction and overall A4/A5/R2-R5 gates remain open.
+
 - [x] 2026-09-19: private Solver storage is selected by its existing immutable
   role, with role-directed cleanup. Derivation checking retains simultaneous
   normalization state; expression slots remain separate within their owner.

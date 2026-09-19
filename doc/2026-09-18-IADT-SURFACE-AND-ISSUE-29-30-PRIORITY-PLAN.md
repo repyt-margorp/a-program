@@ -6350,3 +6350,62 @@ Published on 2026-09-19: `ec31e3a22a00cb9b0344258f51e011ab216dac0a`, including
 `rewrite/pointer-core-hott` from `d76537b`, without force. `git ls-remote`
 confirmed both tips. This following publication-record commit changes only
 documentation; the tested implementation remains unchanged.
+
+### A4 shared dependency transitions (2026-09-19)
+
+Baseline `2a8b788`. Pending structure is still required to close Handler effect
+equations; it cannot simply wait for accepted evidence. During that audit,
+110 sites were found to repeat exactly the same dependency transition:
+subscribe while pending, propagate a terminal failure, otherwise consume the
+result. Centralize that operation in the existing Scheduler, without adding
+state, changing stages/budgets, interpreting payloads or merging theorem rules.
+
+- [x] Replace identical adjacent wait/failure pairs with `await_dependency`;
+  fold in 17 identical missing-dependency error checks. Keep distinct null-input
+  outcomes, preparation-only subscriptions and candidate-search fallbacks.
+- [x] Add shared waiting and late-consumer regression tests for rejected,
+  unsupported and failed dependencies. Existing fairness/chunking/cancellation
+  checks remain mandatory.
+- [x] Strict debug/O2 acceptance, affected ASan/UBSan, source/image and Handler
+  boundary checks; compare results, steps, request counts and retained data.
+- [x] Isolated timing and per-file delta.
+- [ ] Publish only after the epoch's gates.
+
+This removes duplicated control-flow implementation, not necessary logical
+premises or pending structure. The pending-construction audit and the parent's
+overall A4/A5/R2-R5 completion criteria remain open.
+
+Performance correction before publication: the first out-of-line helper passed
+debug/O2 and affected sanitizers, but function-field medians regressed from
+8.034 to 8.644 ms, then 7.748 to 8.912 ms in a second run. Use a source-local
+`static inline` helper, retaining one implementation without forcing compiler-
+specific inlining. Repeat all affected acceptance gates on this final revision.
+Do not retain the initial binary-size reduction as a final-result claim.
+
+Final-source O2 timings against Main `2a8b788`: CPU 2, warmup and 31 alternating
+pairs with no concurrent tests/builds, median milliseconds before/after:
+Bool .473/.464; add .859/.852; length 5.042/4.830; function-field 8.141/8.156;
+Vec append 6.453/6.508; QuickSort 176.322/176.999; Handler 5.513/5.664;
+length save 4.965/5.173; QuickSort save 178.101/179.102. A second 31-pair run
+gave length 4.897/4.743, function-field 8.055/8.134 and length save 5.177/4.979.
+These mixed timings establish neither a general speedup nor the final R0 gate.
+Executable text is 591,919 -> 592,431 bytes (+512); data/BSS are unchanged.
+
+Per-file implementation delta: `synthesis.c` +122/-237 = **-115**. Tests are
+separate: `tests/synthesis.c` +53/-0. No other implementation/header changes.
+Cumulative R0 implementation/header delta is +8,974/-4,634 = **+4,340**;
+the overall net-negative gate remains unmet.
+
+Final-revision verification: full strict O0/g and O2 `check-acceptance` pass;
+all 2,460 normalized export/step records match Main and each other. ASan/UBSan
+synthesis, Source IO, image CLI and all 4,080 Handler save boundaries pass with
+leak/error halting; all 1,218 sanitizer export/step records match Main. Existing
+cancellation tests cover 344 accepted and 254 rejected snapshots. No assertion
+or expected result was relaxed. QuickSort still has 34,286 requests, 151,199
+steps, 74,584 occurrences, 88,019 proofs and 60,722,336 graph-arena used bytes;
+substitution storage and the other captured structural counts are unchanged.
+
+Logs: `/tmp/a-program-authority-dependency-transition-inline-` with
+`{debug,acceptance,objects}.log`, `asan-{synthesis,source,image,handler}.log`,
+`timing.jsonl` and `repeat.jsonl`. Earlier non-inline measurements are retained
+under the same prefix without `inline-`; they are not the published revision.

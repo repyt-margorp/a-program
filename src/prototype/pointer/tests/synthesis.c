@@ -3562,6 +3562,58 @@ static void fair_work(struct pg_typing *typing)
 	pg_whnf_work_destroy(&work);
 }
 
+static void dependency_failures(struct pg_typing *typing)
+{
+	struct pg_whnf_work work;
+	struct pg_synthesis synthesis;
+	struct pg_effect_inference effects;
+	assert(!pg_whnf_work_init(&work, typing->graph));
+	assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
+	assert(!pg_effect_inference_init(&effects, typing->graph));
+	const struct pg_source_scope *scope = pg_synthesis_root(&synthesis);
+	struct pg_synthesis_job *sources[] = {
+		request(&synthesis, scope, "x:=missing;"),
+		program(&synthesis, scope, "import Missing;"),
+		pg_synthesis_effect_inference(&synthesis, &effects)
+	};
+	enum pg_synthesis_status statuses[] = {PG_SYNTHESIS_REJECTED, PG_SYNTHESIS_UNSUPPORTED, PG_SYNTHESIS_ERROR};
+	struct pg_derivation_input first = {.rule = PG_RETURN_INTRO, .count = 1};
+	struct pg_derivation_input second = {.rule = PG_THUNK_INTRO, .count = 1};
+	struct pg_synthesis_job *consumers[3][2];
+	for (size_t i = 0; i < 3; ++i) {
+		consumers[i][0] = pg_synthesis_rule(&synthesis, &first, &sources[i], NULL, NULL);
+		consumers[i][1] = pg_synthesis_rule(&synthesis, &second, &sources[i], NULL, NULL);
+		assert(consumers[i][0] && consumers[i][1]);
+		assert(pg_synthesis_rule(&synthesis, &first, &sources[i], NULL, NULL) == consumers[i][0]);
+	}
+	for (unsigned step = 0; !pg_synthesis_dependency(consumers[2][1]); ++step) {
+		assert(step < 1000);
+		pg_synthesis_advance(&synthesis, 1);
+	}
+	assert(pg_synthesis_dependency(consumers[2][0]) == sources[2]);
+	assert(pg_synthesis_dependency(consumers[2][1]) == sources[2]);
+	effects.failed = 1;
+	assert(pg_synthesis_effect_inference(&synthesis, &effects) == sources[2]);
+	for (size_t i = 0; i < 3; ++i) {
+		for (size_t j = 0; j < 2; ++j) {
+			assert(!complete(&synthesis, consumers[i][j], statuses[i]));
+			assert(!pg_synthesis_dependency(consumers[i][j]));
+		}
+		assert(pg_synthesis_status(sources[i]) == statuses[i]);
+		/* An already failed input has the same outcome as a waiting input. */
+		struct pg_derivation_input later = {.rule = PG_VALUE_FROM_TYPE, .count = 1};
+		assert(!complete(&synthesis, pg_synthesis_rule(&synthesis, &later, &sources[i], NULL, NULL), statuses[i]));
+	}
+	assert(!synthesis.ready);
+	uint64_t steps = synthesis.steps;
+	pg_synthesis_advance(&synthesis, 100);
+	assert(synthesis.steps == steps);
+	pg_synthesis_destroy(&synthesis);
+	pg_effect_inference_destroy(&effects);
+	pg_whnf_work_destroy(&work);
+	puts("dependency failures: shared and late consumers preserve rejection, unsupported and error outcomes");
+}
+
 static void endpoint_jobs(struct pg_typing *typing)
 {
 	const struct pg_evidence *context = pg_prove_empty_context(typing);
@@ -6690,6 +6742,7 @@ int main(void)
 	definition_selections(&typing);
 	retained_module_inputs(&typing);
 	fair_work(&typing);
+	dependency_failures(&typing);
 	endpoint_jobs(&typing);
 	substitution_jobs(&typing);
 	square_template_jobs(&typing);
