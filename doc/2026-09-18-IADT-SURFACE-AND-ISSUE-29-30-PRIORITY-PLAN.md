@@ -8031,7 +8031,7 @@ That commit contains implementation +32/-11, tests +39/-0, docs +129/-0.
 This receipt follows without source/test edits. No remaining context-action,
 consumer-deletion or R0 performance gate is implicitly closed by publication.
 
-### A4 ready structural rules without traversal allocation (2026-09-20, verified)
+### A4 ready structural rules without traversal allocation (2026-09-20, published)
 
 Baseline: `9337804`. The projection-specific construction proposed during this
 review was already withdrawn above; do not repeat it or bypass dependent map
@@ -8089,3 +8089,8 @@ Small-case timing is mixed; do not infer a universal speedup. Implementation
 delta is `evidence.c` +13/-7 = +6, tests `core.c` +20/-0. Cumulative R0
 implementation/header net is +4411. The net-negative and R0 performance gates
 remain open. No source/test edits occurred during any measurement or suite.
+
+Publication: `385b6d52f530f616618189ec06a22ecee10d1980` atomically
+fast-forwards Main and rewrite from `9337804`; both remote refs were verified.
+The commit contains implementation +13/-7, tests +20/-0 and documentation
++67/-0. This documentation receipt follows without source/test changes.
