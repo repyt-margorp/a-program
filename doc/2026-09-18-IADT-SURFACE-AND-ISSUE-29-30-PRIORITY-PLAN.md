@@ -6973,3 +6973,62 @@ text +240 bytes, data/BSS unchanged. Cumulative R0 implementation/header
 Logs: `/tmp/a-program-authority-conclusion-key-` with
 `{build,core,debug,opt,asan,field-counts,qsort-counts}.log` and
 `timing{,-repeat}.jsonl`. Main remains `f8b7851` pending the larger epoch.
+
+### A4 one typed-input advancement path (2026-09-20)
+
+Baseline `5212edf`. A resumed `pg_occurrence_input` already owns the supplied
+child and its remaining context actions. `pg_typed_query` additionally retained
+`input_resumed` and ran a second copy of input advancement/certification. Consume
+the prepared value once, clear its completed dependency, and let the same input
+path advance both initial and resumed work. A resumed input that cannot transport
+its child has no blocked discovery source, so it terminates without rediscovery.
+No new query kind, tag, cache, reconstruction walk or acceptance rule is added.
+
+This and `5212edf` form the typed lookup ownership/retention publication unit:
+remove the duplicated conclusion key and the duplicated resume state/driver,
+preserving proof alternatives and incremental work identity. Verify the combined
+unit against Main `f8b7851` before publishing; whole R2-R5 remains separate.
+
+- [x] Remove `input_resumed` and the duplicate advancement/certification path.
+- [x] Existing scoped normalization, chunked resume and memoization core tests.
+- [x] Add wrong-scope resumed-child termination/no-proof assertions; successful
+  resumed inputs also have no blocked discovery source.
+- [x] Full debug and O2 acceptance; all 2,460 export/step records agree with
+  each other and Main `f8b7851` after temporary-path normalization.
+- [x] Full ASan/UBSan acceptance with leak/error halting; all 2,460 export/step
+  records agree. Handler retains its 4,474 save-boundary checks.
+- [x] Isolated storage/work/timing measurements and per-file LOC.
+- [ ] Publish the verified combined unit atomically to Main and rewrite.
+
+No source/test edits occurred during the gates or measurements. Query size
+drops from 200 to 192 bytes after removing the redundant flag and grouping
+status with resume. Graph-arena used bytes, Main/candidate: function-field
+5,388,448/5,092,384; QuickSort 60,476,928/57,479,424. Combined savings are
+296,064 and 2,997,504 bytes. Jobs, steps, Contexts, occurrences, maps/lifts/
+actions, query/proof counts and substitution storage are unchanged.
+
+O2 CPU-2 medians, 31 alternating pairs, Main/candidate ms: function-field
+7.862/8.270, QuickSort 172.245/172.784, length 4.749/4.748, Handler
+5.383/5.255. Repeat: 8.473/7.662, 165.744/164.409, 4.676/4.687,
+5.358/5.191. The function-field slowdown reverses on repetition; do not claim
+a universal speedup or that the R0 smaller-input regressions are closed.
+
+Combined per-file implementation versus Main: `evidence.c` +27/-35 = **-8**;
+`graph.c` +2/-2 = **0**; `graph.h` +3/-0 = **+3**. Net **-5**;
+`tests/core.c` adds 25 lines separately. Executable text -80 bytes, data/BSS
+unchanged. Cumulative R0 implementation/header +9,098/-4,683 = **+4,415**;
+the whole-refactor net-negative requirement is still unmet.
+
+Follow-up audit, not a selected performance repair: `typed_field_step` walks
+preceding fields when re-instantiating a normalized dependent field. Neither
+the QuickSort nor function-field benchmark enters that prefix loop (only
+ordinal-zero calls: 170 and 6). The IADT test does exercise it: 14 visits over
+six observed blocked-source/field positions. These are visits, not proof of
+duplicated solving: substitution/query results are already shared, and outer
+scope/receipt obligations must be compared before changing the algorithm.
+Do not attribute the benchmark regression to this loop or remove its checks.
+
+Evidence: `/tmp/a-program-authority-input-resume-` with
+`{build,core,debug,opt,asan,field-counts,qsort-counts,field-prefix,qsort-prefix,core-prefix,iadt-prefix}.log`
+and `timing{,-repeat}.jsonl`. This completes the scoped input/index cleanup,
+not R2-R5 or the full active goal.

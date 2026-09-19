@@ -690,6 +690,7 @@ struct pg_typed_query {
 	const void *argument_key;
 	const struct pg_evidence *argument, *environment, *value, *result;
 	enum typed_query_resume resume;
+	int status;
 	struct pg_typed_query *dependency;
 	struct typed_query_wait *waiting;
 	struct pg_occurrence_input *input;
@@ -710,8 +711,6 @@ struct pg_typed_query {
 	size_t ordinal;
 	size_t forces;
 	uint64_t steps;
-	int input_resumed;
-	int status;
 };
 
 /* Borrow immutable scope frames; only this query's cursor/value advances.
@@ -3810,18 +3809,12 @@ static int typed_input_step(struct pg_typed_query *work)
 		return 0;
 	}
 	if (work->value) {
-		if (!work->input_resumed) {
-			int status = work->reduction ? typed_field_step(work) : 1;
-			if (status <= 0) return status;
-			work->input_resumed = 1;
-			work->input = pg_occurrence_input_resume_request(typing, work->input, pg_evidence_subject(work->value));
-			return work->input ? 0 : -1;
-		}
-		enum pg_occurrence_input_status status = pg_occurrence_input_advance(work->input, 1);
-		if (status == PG_INPUT_PENDING) return 0;
-		if (status == PG_INPUT_ERROR) return -1;
-		work->result = pg_prove_structural_subject(typing, pg_occurrence_input_result(work->input));
-		return 1;
+		int status = work->reduction ? typed_field_step(work) : 1;
+		if (status <= 0) return status;
+		work->input = pg_occurrence_input_resume_request(typing, work->input, pg_evidence_subject(work->value));
+		work->value = NULL;
+		work->dependency = NULL;
+		return work->input ? 0 : -1;
 	}
 	if (!work->dependency) {
 		if (!work->input) work->input = pg_occurrence_input_request(typing, source, work->ordinal);

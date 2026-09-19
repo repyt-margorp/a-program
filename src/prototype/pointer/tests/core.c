@@ -604,13 +604,22 @@ static void evidence_test(struct pg_graph *graph)
 				while (pg_occurrence_input_advance(blocked, 1) == PG_INPUT_PENDING) {}
 				assert(pg_occurrence_input_blocked_source(blocked) == pg_evidence_subject(normal));
 				assert(!pg_occurrence_input_resume_request(&typing, blocked, NULL));
+				/* A supplied child exhausts discovery even when its scope cannot
+				 * be transported; do not rediscover the original blocked source. */
+				struct pg_occurrence_input *wrong_scope = pg_occurrence_input_resume_request(&typing,
+					blocked, pg_evidence_subject(u0));
+				assert(pg_occurrence_input_advance(wrong_scope, 1) == PG_INPUT_UNAVAILABLE);
+				assert(!pg_occurrence_input_blocked_source(wrong_scope));
+				assert(!pg_occurrence_input_result(wrong_scope) && typing.proofs.count == proofs);
 				struct pg_occurrence_input *moved_input = pg_occurrence_input_resume_request(&typing,
 					blocked, pg_evidence_subject(input));
 				assert(pg_occurrence_input_advance(moved_input, 0) == PG_INPUT_PENDING);
+				assert(!pg_occurrence_input_blocked_source(moved_input));
 				while (pg_occurrence_input_advance(moved_input, j ? 64 : 1) == PG_INPUT_PENDING)
 					assert(pg_occurrence_input_steps(moved_input) < 100000);
 				const struct pg_occurrence *moved = pg_occurrence_input_result(moved_input);
 				assert(moved && typing.proofs.count == proofs);
+				assert(!pg_occurrence_input_blocked_source(moved_input));
 				struct pg_typed_query *checked_input = pg_typed_input_request(&typing, wrapped[j], 0);
 				assert(checked_input && !pg_typed_query_advance(checked_input, 0));
 				uint64_t steps = 0;
