@@ -4493,12 +4493,8 @@ static void constructor_value_step(struct pg_synthesis *synthesis, struct pg_syn
 	if (job->right->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->right->status); return; }
 	if (!job->value_job) {
 		size_t count = pg_evidence_premise_count(map) - prefix - 3;
-		if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) goto error;
-		const struct pg_evidence **fields = malloc(count * sizeof(*fields));
-		if (count && !fields) goto error;
-		for (size_t i = 0; i < count; ++i) fields[i] = pg_evidence_premise(map, prefix + 3 + i);
+		const struct pg_evidence *const *fields = pg_evidence_premises(map) + prefix + 3;
 		const struct pg_evidence *body = pg_prove_constructor(synthesis->typing, formation, constructor, job->right->result, count, fields);
-		free(fields);
 		if (!body) goto error;
 		if (!count) { job->result = body; finish(synthesis, job, PG_SYNTHESIS_DONE); return; }
 		job->value_job = pg_synthesis_abstract(synthesis, pg_evidence_premise(parameters, 1), context, pg_synthesis_evidence(synthesis, body));
@@ -7247,16 +7243,11 @@ static int family_paths(struct pg_synthesis *synthesis, struct pg_synthesis_job 
 			state->declarations[i - 1] = prefix;
 			prefix = pg_evidence_premise(prefix, 0);
 		}
-		struct pg_graph temporary = {0};
-		const struct pg_evidence **images = pg_alloc(&temporary, state->common * sizeof(*images));
-		if (state->common && !images) { pg_graph_destroy(&temporary); goto error; }
 		for (size_t side = 0; side < 2; ++side) {
 			const struct pg_evidence *map = job->inputs[side];
-			for (size_t i = 0; i < state->common; ++i) images[i] = pg_evidence_premise(map, i + 2);
 			state->maps[side] = pg_prove_substitution(synthesis->typing, prefix,
-				pg_evidence_premise(map, 1), state->common, images);
+				pg_evidence_premise(map, 1), state->common, pg_evidence_premises(map) + 2);
 		}
-		pg_graph_destroy(&temporary);
 		if (!state->maps[0] || !state->maps[1]) goto rejected;
 	}
 	struct family_state *state = job->family;

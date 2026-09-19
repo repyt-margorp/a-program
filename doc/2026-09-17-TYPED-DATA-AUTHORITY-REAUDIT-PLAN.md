@@ -1287,6 +1287,11 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 - [ ] Report concrete deleted paths. Move remaining synchronous query loops to
   existing scheduling only where necessary for the same work contract; do not
   turn this repair into another scheduler framework.
+- [x] 2026-09-19 local cleanup: seven constructor/family/function-graph consumers
+  borrow existing immutable accepted premise slices instead of allocating and
+  copying them. Transformation arrays and negative-test copies remain owned.
+  No new accepted state or reconstruction rule. The priority plan records the
+  exact validation/publication status; this does not close A4 or A5.
 - [x] 2026-09-19 local work: remove synchronous helper-schema application from
   `function_graph.c`. The existing shared query/wait slot now resumes beta;
   one graph-private case cursor retains the current map, call and argument.

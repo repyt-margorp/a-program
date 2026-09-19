@@ -4583,3 +4583,69 @@ acceptance tests and affected debug/sanitizer/image gates have passed. Remote
 Main/rewrite were verified at `0082312`; recheck and publish the tested commit
 atomically without force. Git records the publication result. No issue closure
 or A3-A5/R2-R5 completion follows from this epoch.
+
+### 2026-09-19: borrowed accepted premises (local A4 cleanup)
+
+Baseline: published `193708a`. Seven production consumers copy a contiguous
+slice of immutable accepted premises without changing it: constructor rule
+reconstruction; constructor synthesis; family-path common substitutions;
+function-graph case fields, captured branches, packet arguments and leaf fields.
+Borrow the existing ordered array through `pg_evidence_premises` instead.
+Keep ordinary rule checks and exact derivation identity; the accessor creates
+no conclusion, cache, snapshot, rule or lifetime. Storage remains owned by the
+typing graph. Empty slices are legal only with zero count.
+
+Do not apply this to arrays extended with new results, reindexed images,
+Identity boundary projections, reordered fields, or negative tests that modify
+premises. Those are actual transformations, not redundant copies. In particular
+substitution composition still computes each image using the shared action.
+
+- [x] Remove the seven copy-only allocations and their loops/error paths.
+- [x] Exercise the borrowed view through existing Core derivation reconstruction
+  and IADT source/image/small-budget rule checks; retain mutable negative cases.
+- [x] Run strict debug Core/IADT/source-image, affected ASan/UBSan checks and
+  full optimized acceptance; compare exports, steps and inert retained images.
+- [x] Record final deltas/results below and retain this cleanup locally.
+- [ ] Group Main publication with a substantive completed epoch; do not treat
+  this cleanup as completion of A3-A5/R2-R5.
+
+Composition audit before this edit: QuickSort makes 3,794 composition calls
+across 3,037 exact proof pairs, visiting 18,650 images; repeat pairs account for
+1,195 image visits. Constructed-field transport makes 265 calls across 163 pairs,
+with 168 image visits and 21 repeat visits. Logs:
+`/tmp/a-program-authority-composition-counts-{qsort,transport}.log`.
+These counts do not justify a new persistent composition-result cache or a
+second acceptance authority. The current change removes copied storage instead;
+it makes no speedup or overall code-reduction claim.
+
+Final checks exit 0: debug Core/IADT/source-image; ASan/UBSan Core/IADT,
+synthesis, Identity, source-image and image origins (leak detection and
+halt-on-error); full O2 `check-acceptance`. Logs use prefix
+`/tmp/a-program-authority-premises-`. Initial IADT compilation caught the
+negative test's deliberate premise mutation; its owned copy is retained.
+The first origins script lacked its sibling CLI binary; after building it,
+`asan-origins-final.log` passes. Neither failure is suppressed.
+All 2,460 export records, including steps and multiplicities, equal the
+published baseline after temporary-path/order normalization. Zero-step retained
+QuickSort resave returns pending (3) and is byte-identical to the input image.
+
+| File | Added | Deleted | Net |
+|---|---:|---:|---:|
+| `derivation.c` | 2 | 6 | -4 |
+| `evidence.c` | 1 | 0 | +1 |
+| `evidence.h` | 3 | 0 | +3 |
+| `function_graph.c` | 4 | 12 | -8 |
+| `synthesis.c` | 2 | 11 | -9 |
+| **Implementation/headers** | **12** | **29** | **-17** |
+| `tests/core.c` | 4 | 0 | +4 |
+| `tests/iadt.c` | 1 | 1 | 0 |
+
+Documentation is separate. Cumulative implementation/header delta remains
+R76 +3,571/-1,841 (net +1,730), R0 +8,326/-4,180 (net +4,146).
+The overall net-negative gate is still unmet. CPU-2-pinned O2 timings, 31
+alternating fresh processes per input, medians in milliseconds before/after:
+Bool .491/.504; add .933/.917; length 5.542/5.638; function-field 9.863/9.746;
+Vec append 7.181/6.925; QuickSort 188.980/188.550. Mixed differences establish
+no general speedup; this is not A5's R0 performance matrix. Timing log:
+`/tmp/a-program-authority-premises-timing.log`. No Main push or issue closure
+follows from this local cleanup. A3-A5/R2-R5 remain open.

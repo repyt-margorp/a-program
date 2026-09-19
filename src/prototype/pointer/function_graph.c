@@ -880,9 +880,7 @@ static const struct pg_evidence *case_base(struct pg_function_graph_state *s, st
 	const struct pg_evidence *context = pg_evidence_premise(fields, 1);
 	size_t offset = pg_evidence_premise_count(parameters) + 1;
 	size_t count = pg_evidence_premise_count(fields) - offset;
-	const struct pg_evidence **values = pg_alloc(&s->temporary, count * sizeof(*values));
-	if (count && !values) return NULL;
-	for (size_t i = 0; i < count; ++i) values[i] = pg_evidence_premise(fields, offset + i);
+	const struct pg_evidence *const *values = pg_evidence_premises(fields) + offset;
 	const struct pg_evidence *argument = pg_prove_constructor(t, s->input.formation, constructor,
 		parameters_at(s, context), count, values);
 	const struct pg_evidence **arguments = pg_alloc(&s->temporary, s->arity * sizeof(*arguments));
@@ -1154,9 +1152,7 @@ static int capture_eliminator(struct pg_function_graph_state *s, const struct pg
 	const struct pg_evidence *body = pg_prove_elimination_reindex(t, map, s->body);
 	if (!body) return -1;
 	size_t count = pg_evidence_premise_count(body) - 6;
-	const struct pg_evidence **branches = pg_alloc(&s->temporary, count * sizeof(*branches));
-	if (count && !branches) return -1;
-	for (size_t i = 0; i < count; ++i) branches[i] = pg_evidence_premise(body, i + 5);
+	const struct pg_evidence *const *branches = pg_evidence_premises(body) + 5;
 	const struct pg_evidence *input = pg_prove_variable(t, scope, pg_evidence_context(scope)->binder);
 	if (pg_evidence_rule(body) == PG_INDUCTION_ELIM)
 		body = pg_prove_induction(t, pg_evidence_premise(body, 1),
@@ -1555,9 +1551,7 @@ static const struct pg_evidence *return_packet(struct pg_function_graph_state *s
 	if (n < s->arity + 2) return NULL;
 	const struct pg_evidence *input = pg_evidence_premise(result, n - s->arity - 2), *output = pg_evidence_premise(result, n - 1);
 	const struct pg_evidence *values[] = {output, graph};
-	const struct pg_evidence **arguments = pg_alloc(&s->temporary, s->arity * sizeof(*arguments));
-	if (s->arity && !arguments) return NULL;
-	for (size_t i = 0; i < s->arity; ++i) arguments[i] = pg_evidence_premise(result, n - s->arity - 1 + i);
+	const struct pg_evidence *const *arguments = pg_evidence_premises(result) + n - s->arity - 1;
 	const struct pg_evidence *packet = pg_prove_constructor(t, s->packet, packet_constructor(s),
 		input_substitution(s, context, input, arguments), 2, values);
 	return pg_prove_return_contract(t, s->totality, packet);
@@ -1696,10 +1690,8 @@ static const struct pg_evidence *witness_tree(struct pg_function_graph_state *s,
 			size_t count;
 			if (pg_context_extension_size(pg_evidence_context(pg_evidence_premise(work->schema_map, 0)),
 				pg_evidence_context(s->self), &count)) return NULL;
-			const struct pg_evidence **values = pg_alloc(&s->temporary, count * sizeof(*values));
-			if (count && !values) return NULL;
 			size_t start = pg_evidence_premise_count(work->schema_map) - count;
-			for (size_t i = 0; i < count; ++i) values[i] = pg_evidence_premise(work->schema_map, start + i);
+			const struct pg_evidence *const *values = pg_evidence_premises(work->schema_map) + start;
 			body = return_packet(s, plan->leaf, work->context, count, values);
 		}
 		for (size_t i = plan->call_count - plan->first_call; body && i; --i) {

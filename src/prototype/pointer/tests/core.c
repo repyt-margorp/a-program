@@ -59,6 +59,10 @@ static void reconstruct_derivation(struct pg_typing *typing,
 	struct pg_derivation_parameters parameters;
 	assert(pg_derivation_parameters(source, &parameters) == 0);
 	size_t count = pg_evidence_premise_count(source);
+	const struct pg_evidence *const *borrowed = pg_evidence_premises(source);
+	for (size_t i = 0; i < count; ++i) assert(borrowed[i] == pg_evidence_premise(source, i));
+	assert(pg_prove_derivation(typing, pg_evidence_rule(source), &parameters, count, borrowed) == source);
+	assert(pg_evidence_premises(source) == borrowed);
 	const struct pg_evidence **premises = pg_alloc(typing->graph, (count + 1) * sizeof(*premises));
 	assert(premises);
 	for (size_t i = 0; i < count; ++i) premises[i] = pg_evidence_premise(source, i);

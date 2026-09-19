@@ -32,7 +32,7 @@ static void common_rule(struct pg_typing *typing,
 	assert(premises && input.count);
 	for (size_t i = 0; i < input.count; ++i) premises[i] = pg_evidence_premise(proof, i);
 	size_t proofs = typing->proofs.count, terms = typing->graph->terms.count;
-	assert(pg_prove_derivation(typing, input.rule, &input.parameters, input.count, premises) == proof);
+	assert(pg_prove_derivation(typing, input.rule, &input.parameters, input.count, pg_evidence_premises(proof)) == proof);
 	assert(typing->proofs.count == proofs && typing->graph->terms.count == terms);
 	for (uint64_t chunk = 1; chunk <= 64; chunk *= 64) {
 		struct pg_whnf_work work;

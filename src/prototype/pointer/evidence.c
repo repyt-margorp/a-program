@@ -5405,6 +5405,7 @@ const struct pg_term *pg_evidence_classifier(const struct pg_evidence *evidence)
 	return subject ? subject->classifier : NULL;
 }
 size_t pg_evidence_premise_count(const struct pg_evidence *evidence) { return evidence->premise_count; }
+const struct pg_evidence *const *pg_evidence_premises(const struct pg_evidence *evidence) { return evidence->premises; }
 const struct pg_evidence *pg_evidence_premise(const struct pg_evidence *evidence, size_t index)
 {
 	return index < evidence->premise_count ? evidence->premises[index] : NULL;

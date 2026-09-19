@@ -131,13 +131,9 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 		if (count != 4 || !pg_data_constructor_view(parameters->constructor, &layout, &position, &arity)) return NULL;
 		if (pg_evidence_rule(p[3]) != PG_CONTEXT_SUBSTITUTION) return NULL;
 		size_t retained = pg_evidence_premise_count(p[3]);
-		if (retained < 2 || arity > retained - 2 || arity > SIZE_MAX / sizeof(void *)) return NULL;
-		struct pg_graph temporary = {0};
-		const struct pg_evidence **fields = pg_alloc(&temporary, arity * sizeof(*fields));
-		if (!fields) return NULL;
-		for (size_t i = 0; i < arity; ++i) fields[i] = pg_evidence_premise(p[3], retained - arity + i);
+		if (retained < 2 || arity > retained - 2) return NULL;
+		const struct pg_evidence *const *fields = pg_evidence_premises(p[3]) + retained - arity;
 		result = pg_prove_constructor(typing, p[1], parameters->constructor, p[2], arity, fields);
-		pg_graph_destroy(&temporary);
 		break;
 	}
 	case PG_MATCH_ELIM: case PG_INDUCTION_ELIM:
