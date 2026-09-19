@@ -1138,6 +1138,17 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 
 ### A4. Audit remaining structural consumers and remove duplication
 
+- [x] 2026-09-20: revalidate remaining scan/authority claims at `7834098`.
+  Whole synthesis-table scans are now teardown and rejected-index diagnostics,
+  not ordinary Solve discovery. Known type/Term recipes already share work;
+  pending effect structure remains distinct from acceptance. Current O2
+  synthesis boundary tests pass. Indexed-Context intern probes find no repeated
+  keys on function-field or QuickSort, so no cache or validation bypass is added.
+  Map-call attribution instead identifies proof assembly and lift-prefix
+  recovery as concrete temporary-assembly candidates. Counts, rejected changes
+  and remaining measurements are in the priority plan's structural consumer
+  audit. This corrects the older diagnosis; it does not close A4/A5.
+
 - [x] 2026-09-20: remove the two Solver-private retained premise arrays.
   Imported inputs retain only their preparation cursor; rule checking reads
   the exact child producer results. Temporary kernel-call arrays are freed

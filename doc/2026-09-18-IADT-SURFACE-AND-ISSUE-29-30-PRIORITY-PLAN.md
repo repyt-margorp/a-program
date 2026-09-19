@@ -335,7 +335,9 @@ Checkboxes mean implementation plus the stated verification, not just a design.
   historical, not the current checklist state.
 - [ ] R: Resume the parent duplicate-synthesis/authority refactor after J1-J3.
   The parent's A1-A3 contract audit at `58c9295` distinguishes completed
-  allocation transport from remaining whole-job scans and structural consumers.
+  allocation transport from remaining structural consumers. The September 20
+  follow-up below supersedes its whole-job-scan diagnosis for ordinary Solve:
+  the remaining synthesis scans are teardown and rejected-index diagnostics.
   Do not restart solved alias repairs or equate shared allocation with shared
   acceptance. The publication policy below still applies per completed epoch.
 
@@ -7394,3 +7396,67 @@ Raw timing samples: `/tmp/a-program-conclusion-owner-timing.jsonl`.
 Per-file delta from `db08d5e`: `evidence.c` +19/-29 = -10 implementation lines;
 `tests/core.c` +10/-0. Cumulative R0 implementation/header delta is
 +9142/-4753 = **+4389**, still short of the required net-negative result.
+
+### A4 structural consumer audit: avoid deleting necessary work (2026-09-20)
+
+Revision `7834098`, clean implementation. Re-read source preparation, pending
+Term/type/classifier construction, Context interning and map construction before
+another change. Findings narrow the next implementation; no source change or
+Main publication is justified by this audit alone.
+
+| Suspected duplication | Current evidence and decision |
+| --- | --- |
+| Whole synthesis-job rescans during Solve | Only `pg_synthesis_destroy` and `pg_synthesis_visit_rejected_index_paths` enumerate the table. Eval has teardown scans; reduction snapshots enumerate saved work by design. Do not add another registry to remove these lifecycle/output scans. |
+| Pending type and Term construction | Known type-former requests already share the same job. Accepted structure is read directly; unresolved effect recipes are not acceptance evidence. Keep the distinction, not two semantic authorities. |
+| Context index validation on intern hits | O0/g entry probes find no repeated indexed-Context key on either measured input. Do not reorder validation or add a depth/cache field on this evidence. |
+| Context-map image assembly | Repeated structural keys exist. The next candidate is temporary input assembly, not deletion of image/classifier checking or merging alternative proof premises. |
+
+`tests/synthesis.c:pending_effect_contexts` (the test's output is headed "pending
+contexts") covers shared type/Term requests, unresolved row structure, source
+Lambda/Handler preparation, rejected producers with available structural output,
+and immutable symbolic snapshots versus later accepted classifiers. The current
+O2 synthesis suite exits zero: `/tmp/a-program-structural-consumer-audit.log`.
+Replacing all pending queries with waits for acceptance is not an equivalent
+implementation of that contract.
+
+Read-only GDB entry counts, one million outer steps, ordinary source inputs:
+
+| Input | Context intern calls | With indices | Repeated indexed keys |
+| --- | ---: | ---: | ---: |
+| Function-field | 966 | 6 | 0 |
+| QuickSort | 7773 | 17 | 0 |
+
+QuickSort invokes `pg_context_map` 21497 times with 210324 image slots; 8956
+requests repeat a previously seen exact structural key (102862 slots).
+`context_map_extend` contributes 887 same-destination requests (11368 slots)
+and 3551 changed-destination requests (45873 slots), including 541 repeated
+keys. A repeated structural key is **not** proof of duplicate type checking:
+different accepted premise DAGs can legitimately share that same map.
+Counters include API calls, not only successful allocations. Logs:
+`/tmp/a-program-context-intern-{field,qsort}-before.log` and
+`/tmp/a-program-map-intern-qsort-{before,callers}.log`.
+
+Caller attribution: substitution proof assembly 11520 calls / 5833 repeated
+keys; structural lift-prefix recovery 2768 / 2560; map extension 4438 / 541;
+projection 2771 / 22. `substitution_build` first checks exact proof reuse, so
+its structural-map hit does not justify accepting a new premise DAG without
+dependent image validation. `map_lift_prefix` also supports imported maps and
+unchecked destination scopes; bypassing it because another endpoint proof is
+available would lose its explicit prefix-premise behavior. These are the next
+two concrete assembly paths, not a reason for a global key/authority rewrite.
+
+- [x] Revalidate the alleged whole-job scan against current readers/callers.
+- [x] Rule out indexed-Context validation as a demonstrated repeated hot path.
+- [x] Re-run pending/accepted structure boundary and rejection tests.
+- [x] Attribute repeated map requests to proof assembly, pairing/lifting and
+  projection callers, and inspect the exact-proof short circuit.
+- [ ] Measure temporary array allocations separately from persistent maps and
+  Core substitution bindings, including retained-image inputs. Do not assume
+  the repeated map keys represent the same proof obligations.
+- [ ] Remove demonstrably redundant assembly through the existing map interner,
+  if supported by that attribution. Preserve destination transport, dependent
+  field validation and exact premise ownership; do not add a second map cache
+  or move typed data into Core. Recheck source/image acceptance and timing.
+
+Implementation/header LOC remains **+4389** from R0. No completion, timing
+improvement, or reduction of kernel checks is claimed by these measurements.
