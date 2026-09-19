@@ -725,8 +725,10 @@ static void function_graphs(void)
 		"one:=NatList.cons Nat.zero NatList.nil; successor:=Nat.succ Nat.zero;"
 		"Tree:=@{leaf:*;fork:*->*->*;};"
 		"mirror:=\\t:Tree=>t @leaf=>Tree.leaf @fork l r=>Tree.fork *r *l;"
+		"duplicate:=\\t:Tree=>t @leaf=>Tree.leaf @fork l r=>Tree.fork *l *l;"
 		"leaf:=Tree.leaf; pair:=Tree.fork Tree.leaf Tree.leaf;"
-		"leftTree:=Tree.fork Tree.leaf pair; rightTree:=Tree.fork pair Tree.leaf;";
+		"leftTree:=Tree.fork Tree.leaf pair; rightTree:=Tree.fork pair Tree.leaf;"
+		"duplicateExpected:=Tree.fork pair pair;";
 	for (uint64_t chunk = 1; chunk <= 64; chunk *= 64) {
 		struct pg_program *p = pg_program_create(source, strlen(source), PG_DEFINITION_IMPLICIT_THUNK);
 		assert(p && p->root);
@@ -842,6 +844,28 @@ static void function_graphs(void)
 			struct pg_inductive_instance retained;
 			assert(pg_inductive_instance(&p->typing, formation, &retained) && retained.schema == graph.schema);
 			assert(pg_evidence_owned_by(pg_data_schema_result(retained.schema, pg_data_constructor(layout, 0)), &p->typing));
+		}
+		/* Two calls of one field must retain two ordered outputs, not queue links. */
+		const struct pg_evidence *duplicate = pg_synthesis_result(pg_synthesis_definition(p->root,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "duplicate", .length = 9}));
+		for (size_t invalid = 0; invalid < 2; ++invalid) {
+			struct pg_function_graph_work repeated;
+			assert(!pg_function_graph_init(&repeated, &p->typing, &p->evaluation, duplicate));
+			for (size_t turns = 0; !pg_function_graph_prepared(&repeated); ++turns) {
+				assert(turns < 1000);
+				assert(pg_function_graph_advance(&repeated, 1) == PG_FUNCTION_GRAPH_PENDING);
+			}
+			size_t slots[] = {0, invalid ? 1 : 0};
+			struct pg_function_graph_order order[] = {{0, NULL}, {2, slots}};
+			assert(!pg_function_graph_source_order(&repeated, 2, order));
+			for (size_t turns = 0; pg_function_graph_advance(&repeated, chunk) == PG_FUNCTION_GRAPH_PENDING; ++turns)
+				assert(turns < 100000);
+			if (invalid) {
+				assert(pg_function_graph_advance(&repeated, 0) == PG_FUNCTION_GRAPH_UNSUPPORTED);
+				assert(!pg_function_graph_formation(&repeated));
+			} else graph_witness_result(p, &repeated, export_value(p, "rightTree"),
+				export_value(p, "duplicateExpected"), chunk);
+			pg_function_graph_destroy(&repeated);
 		}
 		const char *dependencies[] = {"tailLength", "length", "identity"};
 		struct pg_function_graph_work works[3];

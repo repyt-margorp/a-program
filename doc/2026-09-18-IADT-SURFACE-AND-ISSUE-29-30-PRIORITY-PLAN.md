@@ -7796,3 +7796,44 @@ Implementation totals +70/-98 = **-28**; tests +88/-1 = **+87**.
 Documentation at `5cea934` is separate: parent plan +73/-2, this plan +525/-2.
 Cumulative R0 implementation/header totals remain +9142/-4772 = **+4370**.
 R2-R5/A4-A5 and the net-negative requirement remain open.
+
+### A4 function-graph consumer audit and withdrawn storage trial (2026-09-20)
+
+Baseline Main `dce599d`. `helper_result_type` repeats argument transport, but
+its preceding relation has a TYPE_FAMILY signature, not a checked computation
+Pi formation. `pg_classifier_request` rejects that judgement and
+`pg_prove_pi_domain` requires COMPUTATION_TYPE. Replacing the reconstruction
+with those APIs would lose its typing premise. No new rule, Core tag or cache
+was added to bypass this limitation; a future shared domain projection needs
+an explicit formation argument for dependent family signatures.
+
+Trial: reverse-prepend field queues to remove their tail array; reuse queue
+link storage for the later layout output (32 -> 24 bytes per call on this
+build); remove the one-use witness argument array. Full O2 acceptance passed,
+with all 2460 export/step records matching Main. Program and source-image
+ASan/UBSan tests passed. The candidate passed these correctness checks, but
+did not establish a performance improvement.
+
+Two isolated CPU-2 O2 runs, 31 alternating pairs, Main/candidate median ms:
+function-field 7.703/7.891 then 7.528/8.215; append 5.975/6.054 then
+5.973/6.012; QuickSort 159.547/158.164 then 158.394/159.182. Removing the union
+alone still gave field 7.647/8.429, append 6.018/5.887, QuickSort
+158.416/158.585. This does not identify the cause of the field slowdown.
+**Withdraw all implementation changes**, not just the union. Stored hashes
+already pass through `graph.c:index_bucket`'s avalanche; adding another hash
+layer is not justified by pointer alignment alone.
+
+- [x] Retain a permanent Program regression: two calls of the same recursive
+  field produce two graph outputs; an order naming an unused field rejects.
+  Exercise chunks 1/64 and the generated witness's concrete result.
+- [x] After withdrawal, fresh strict O2 Program tests pass.
+- [x] After withdrawal, fresh ASan/UBSan Program tests pass with leak detection
+  and halt enabled.
+
+Evidence: `/tmp/a-program-call-layout-{opt,asan-program,asan-source}.log`,
+`/tmp/a-program-call-layout-timing{,-repeat}.jsonl`,
+`/tmp/a-program-call-scratch-timing.jsonl`,
+`/tmp/a-program-call-order-final{,-asan}.log`.
+Final implementation delta is zero; tests/program.c +25/-1 = +24. Overall
+R0 implementation/header net remains +4370. This is a local audit/test commit,
+not a Main publication epoch or completion of A4/A5.
