@@ -1632,6 +1632,17 @@ selectors under ASan/UBSan in `/tmp/a-program-authority-metadata-sanitize`.
 
 ### A5. Acceptance and publication
 
+#### 2026-09-19: Role-exclusive work storage
+
+The priority plan records private typed-query and synthesis-work compaction
+against Main `c0f27b3`. Existing immutable kinds select union storage; accepted
+results, typed occurrences and wire data do not change. Full debug, optimized
+and ASan/UBSan acceptance exit 0; all 2460 export records and steps agree with
+the baseline. Fixed-source graph/work counts are unchanged. QuickSort retained
+arena usage decreases by 1507264 bytes. Publication gates and flags are tracked
+in that entry. This does not resolve A3's lexical-candidate bound,
+A4's remaining synchronous consumers or either cumulative LOC gate.
+
 #### 2026-09-19: Published `5fa8a55` performance audit
 
 R0 `4657cc6` versus published `5fa8a55`, both strict C11/O0/g. Inputs are

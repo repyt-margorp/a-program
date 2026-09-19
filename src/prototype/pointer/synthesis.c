@@ -336,14 +336,17 @@ struct pg_synthesis_job {
 	const struct pg_term *type_structure;
 	struct pg_substitution *structural_substitution;
 	const struct pg_evidence *function;
-	struct pg_conversion comparison;
 	const struct pg_conversion_certificate *certificate;
-	struct pg_occurrence_action *reindex;
-	struct pg_function_graph_work function_graph;
 	const struct pg_inductive_instance *inductive_instance;
-	struct pg_identity_face_work *face;
-	struct pg_identity_formation_work *formation;
-	union { struct pg_whnf_job *whnf; struct pg_nf_job *nf; } normalizing;
+	/* The immutable role selects private work, not the accepted result. */
+	union {
+		struct pg_conversion comparison;
+		struct pg_occurrence_action *reindex;
+		struct pg_function_graph_work function_graph;
+		struct pg_identity_face_work *face;
+		struct pg_identity_formation_work *formation;
+		union { struct pg_whnf_job *whnf; struct pg_nf_job *nf; } normalizing;
+	};
 	struct block_state *block;
 	struct application_state *application;
 	struct index_transport_state *index_transport;
@@ -412,10 +415,13 @@ void pg_synthesis_destroy(struct pg_synthesis *synthesis)
 	for (size_t i = 0; i < synthesis->jobs.capacity; ++i)
 		for (struct pg_index_entry *entry = synthesis->jobs.buckets[i]; entry; entry = entry->next) {
 			struct pg_synthesis_job *job = (struct pg_synthesis_job *)entry;
-			pg_conversion_destroy(&job->comparison);
-			pg_function_graph_destroy(&job->function_graph);
-			pg_identity_face_destroy(job->face);
-			pg_identity_formation_destroy(job->formation);
+			switch (job->role) {
+			case CONVERSION_JOB: pg_conversion_destroy(&job->comparison); break;
+			case FUNCTION_GRAPH_JOB: pg_function_graph_destroy(&job->function_graph); break;
+			case FACE_JOB: pg_identity_face_destroy(job->face); break;
+			case FORMATION_JOB: pg_identity_formation_destroy(job->formation); break;
+			default: break; /* Other work is borrowed from its graph owner. */
+			}
 			if (job->derivation) pg_comparison_destroy(&job->derivation->endpoint);
 			if (job->effect_substitution) {
 				free(job->effect_substitution->bindings);

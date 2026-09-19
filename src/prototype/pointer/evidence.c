@@ -701,13 +701,15 @@ struct pg_typed_query {
 	struct pg_occurrence_input *input;
 	struct pg_context_lift *lift;
 	struct pg_occurrence_action *action;
-	struct typed_elimination *elimination;
-	struct typed_field *field;
-	struct typed_rebase *rebase;
-	struct typed_inductive *inductive;
-	struct typed_selection *selection;
-	struct typed_association *association;
-	struct typed_fold *fold;
+	/* kind is immutable. Input queries can retain both field and selection
+	 * work; body/head queries can retain both association and fold work. */
+	union {
+		struct { struct typed_field *field; struct typed_selection *selection; };
+		struct { struct typed_association *association; struct typed_fold *fold; };
+		struct typed_elimination *elimination;
+		struct typed_rebase *rebase;
+		struct typed_inductive *inductive;
+	};
 	const struct pg_reduction_certificate *reduction;
 	const struct pg_reduction_certificate *input_reduction;
 	enum typed_query_kind kind;

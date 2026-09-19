@@ -3476,3 +3476,75 @@ enumeration: allocation-only lookup still inspects unselected lexical aliases.
 Changing that lookup to syntax-only would instead scan unrelated uses sharing
 syntax. Keep both reachability conditions; neither key alone establishes the
 required bound. No such source-writer change is included in this epoch.
+
+### 2026-09-19: Compact role-exclusive private work
+
+Baseline: Main `c0f27b3`. This is physical work-storage compaction, not another
+answer authority, cache, query kind, proof rule or serialized representation.
+
+- [x] Audit private work against the immutable query kind / synthesis role.
+  Share storage only between mutually exclusive workers. Input queries retain
+  both field and selection pointers; body/head queries retain both association
+  and fold pointers. These pairs must not alias each other internally.
+- [x] Share synthesis storage between conversion, reindex, function graph,
+  Identity face, Identity formation and normalization work. Destroy owned work
+  according to the existing role. Reindex and normalization references are
+  borrowed from their graph owners. Keep certificates and inductive-instance
+  results outside the union: they can coexist with private work.
+- [x] Keep typed occurrences unchanged. Origin, selection and scoped operands
+  can coexist; a raw classifier is also needed before accepted type evidence
+  exists. Compressing these by a guessed exclusion would change admissible
+  input, not merely representation.
+- [x] Full strict debug `check-acceptance` exits 0. Compatibility is 63/63;
+  sorting/proof suites pass. All 2460 export records, including Solve steps
+  and multiplicity, match the preceding published implementation after only
+  temporary-directory normalization.
+- [x] Full optimized `check-acceptance` exits 0 with the same 2460 export
+  records, including steps. Log: `/tmp/a-program-authority-private-storage-opt.log`.
+- [x] Full ASan/UBSan `check-acceptance` exits 0, including existing cancellation,
+  resumption, shared-query and image-boundary tests. Flags: strict C11, O1/g,
+  address/undefined sanitizers, frame pointers, non-PIE; leak detection and
+  halt-on-error enabled. All 2460 export records and steps match the published
+  baseline and both other configurations. No sanitizer diagnostics.
+  Log: `/tmp/a-program-authority-private-storage-asan.log`.
+- [x] Report the final diff and prepare the verified storage epoch for Main.
+  Both remote branches were checked at `c0f27b3`; publish atomically without
+  force. The Git remote records the push outcome, not this pre-push checklist.
+  Original A3-A5 and parent R2-R5 gates remain open.
+
+On this machine, query headers change 240 -> 200 bytes and synthesis job
+headers 456 -> 416 bytes. Allocation alignment means these size differences
+are not a per-object arena-saving formula. GDB measurements use fresh debug
+processes with the same fixed sources and `--steps 1000000`:
+
+| Input | Arena used before | Arena used after | Saved bytes | Solve steps (both) |
+| --- | ---: | ---: | ---: | ---: |
+| length | 4050368 | 3910464 | 139904 | 9094 |
+| function field | 6480864 | 6292576 | 188288 | 12316 |
+| Vec append | 4456352 | 4312000 | 144352 | 19312 |
+| imported QuickSort property | 68808416 | 67301152 | 1507264 | 140790 |
+
+Core Terms, proofs, typed occurrences, Contexts, maps, occurrence actions,
+typed queries and synthesis job counts are identical in every pair. All eight
+processes exit normally. This is retained arena usage, not peak RSS or an
+elapsed-time speedup. Counts: `/tmp/a-program-authority-private-storage-counts.log`.
+Append counts: `/tmp/a-program-authority-private-storage-append-counts.log`.
+The query-only intermediate was also tested and measured separately:
+`/tmp/a-program-authority-query-storage-{debug,counts}.log`.
+Full debug log: `/tmp/a-program-authority-private-storage-debug.log`.
+
+No public layout/API is added just to inspect these private sizes. Existing
+behavioral tests remain the regression contract; the representation audit and
+external allocation measurement complement them rather than replacing them.
+
+Five alternating fresh-process O2 timing samples, following one warm-up per
+binary, give before/after median seconds: length .00777/.00886, function-field
+.01560/.01378, QuickSort .20791/.20875. All outputs and steps agree. No tests
+or builds ran concurrently with this measurement. Small-input spread is large;
+these samples do not establish a speedup (or a general latency improvement).
+Log: `/tmp/a-program-authority-private-storage-timing.log`.
+
+Implementation/header diff from `c0f27b3`: `evidence.c` +9/-7, `synthesis.c`
++16/-10; total +25/-17, net +8. Tests unchanged; documentation is separate.
+Cumulative implementation/header totals: R76 +3146/-1592 (net +1554), R0
++7975/-4005 (net +3970). Memory savings do not satisfy the source-reduction gate.
