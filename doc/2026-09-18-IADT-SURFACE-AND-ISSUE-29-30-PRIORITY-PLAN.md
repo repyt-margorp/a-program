@@ -4028,3 +4028,73 @@ R76 +3,431/-1,729 (net +1,702); R0 +8,218/-4,100 (net +4,118). The required
 net-negative gates are not met. Match/Self lookup, general lexical bounds,
 remaining A4 consumers, final A5 and parent R2-R5 stay open. Do not publish this
 partial A3 increment alone or redefine overall completion around these tests.
+
+### 2026-09-19: Allocation-context discovery epoch
+
+Group the preceding local `e5d1f28`/`6fb1db6` work with the Match extension.
+Scope: declaration, member and Match lexical discovery share one path while
+preserving erased allocation dependencies. This is an A3 increment, not its
+general output-bound result or completion of A4/A5 and parent R2-R5.
+
+- [x] Index Match uses by their lexical scope, as for declarations/members.
+  Family/matcher/Self metadata references existing dependency Contexts, once
+  per exact allocation/Context pair. Do not merge different Contexts, source
+  obligations, motives or proofs. Remove the writer's Match-specific dispatch.
+- [x] Add 128 pending aliases of a saved Match allocation in unrelated named
+  scopes. Reattaching each input creates no index duplicates; selected lexical
+  candidates and saved bytes do not change. Self lookup exposes one Context
+  record, not 128 source jobs. Saving adds neither Solve steps nor proofs.
+  Keep the existing independently synthesized stronger source motive, weaker
+  retained theorem, invalid theorem, chunks 1/64 and two inert resaves.
+- [x] Strict debug `source_io.sh` and full optimized `check-acceptance` pass.
+  Compatibility is 63/63; all 2,460 normalized export records, including steps
+  and multiplicity, match `6fb1db6` and its published baseline comparison.
+- [x] Affected ASan/UBSan `source_io.sh`, `synthesis_test`, `program_test`,
+  `image_origins.sh` and the existing `genericMain one` helper-graph check pass.
+  Leak detection and halt-on-error are enabled. Old retained QuickSort resaves
+  are byte-identical in debug and sanitized builds (pending exit 3, zero steps).
+- [x] Prepare one lexical-allocation discovery publication epoch. Remote Main
+  and rewrite were checked at `ef5e53d`; recheck immediately before an atomic,
+  non-force push. Git records the final commit/publication result. Do not infer
+  broader completion from this milestone or waive either cumulative LOC gate.
+
+The unrelated helper-family shortcut trial is withdrawn. Replacing
+`pg_prove_application_body` plus its family-application fallback with only
+family application made `function-graph-helper-call.p` unsupported: 23,488
+steps versus the unchanged implementation's successful 24,162-step check.
+GDB finds no failed direct family application; `pg_prove_substitution_extend`
+returns NULL in `witness_calls` for genericTail's cons branch. Removing the
+typed beta step alone therefore does not preserve this consumer's contract.
+Do not weaken substitution checking, add an acceptance fallback, or report
+the trial as a completed synchronous-query removal. A4 retains this work.
+
+Verification prefix: `/tmp/a-program-authority-allocation-context-`, using
+`src/prototype/pointer/Makefile`, C11 and `-Wall -Wextra -Werror`. Debug is
+`-O0 -g`, optimized `-O2`, sanitizer `-O1 -g -fsanitize=address,undefined
+-fno-omit-frame-pointer -fno-pie -no-pie`. Logs: `source.log`, `opt.log`,
+`asan-{build,source,synthesis,program,origins,helper,common}.log`, `counts.log`,
+`save-counts.log`, `timing.log`. The separate withdrawn trial logs use
+`/tmp/a-program-authority-helper-family-`; they are not final verification.
+
+Compile Core/proof/Context/map/job counts, typed-query work and Solve steps
+remain unchanged against `6fb1db6` for length, function-field, Vec append and
+QuickSort. Arena used bytes increase by 320/384/128/768 respectively; reserved
+capacity is unchanged. Against published `ef5e53d`, retained QuickSort saving
+changes source callbacks 234 -> 252, scope dispatch 221 -> 234 and origin calls
+142 -> 160; binding calls remain 780. The new Context callback runs 27 times.
+This removes per-alias address discovery, not all redundant Context-prefix
+walks, and is not a claim of fewer visits on every program.
+
+31 alternating optimized source+retained-save pairs, one warmup per binary,
+medians published/current milliseconds: 01_bool .894/.918; 07_add 1.969/1.960;
+length 9.532/8.645; function-field 13.145/13.708; Vec 10.497/10.769;
+QuickSort 206.457/207.177. No concurrent build/test ran during timing. This
+single noisy sample does not establish an overall speedup or satisfy the
+original-baseline A5 performance gate.
+
+Epoch implementation/headers since `ef5e53d`: `source_io.c` +31/-7,
+`synthesis.c` +55/-25, `synthesis.h` +5/-4; total +91/-36, net +55.
+Tests: `source_io.c` +133/-11, `synthesis.c` +14/-0, net +136. Documentation
+is separate. This final Match increment alone is implementation +39/-40,
+net -1. Cumulative implementation remains R76 +3,430/-1,729 (net +1,701),
+R0 +8,217/-4,100 (net +4,117). Neither original net-negative gate is met.

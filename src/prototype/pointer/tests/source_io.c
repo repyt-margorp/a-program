@@ -1703,7 +1703,10 @@ static int check_match_origin(void *owner, struct pg_synthesis_job *job)
 	struct pg_graph storage = {0};
 	const struct pg_match_allocation *allocation = pg_synthesis_match_allocation(job, &storage);
 	assert(allocation);
-	check_allocation_reference(&p->synthesis, job, allocation->induction.self);
+	struct pg_source_environment environment;
+	assert(!pg_synthesis_environment_input(&p->synthesis, scope, &environment));
+	check_allocation_reference(&p->synthesis, job,
+		environment.binder ? (const void *)environment.binder : scope);
 	if (!check->solved) {
 		assert(!pg_synthesis_result(job));
 		assert(pg_synthesis_restore_elimination(&p->synthesis, scope, syntax, allocation) == job);
@@ -1778,6 +1781,16 @@ static int check_match_origin(void *owner, struct pg_synthesis_job *job)
 	}
 	induction_scope_inputs(p, fresh);
 	pg_graph_destroy(&storage);
+	return 0;
+}
+
+static int find_match_context_reference(void *owner, const struct pg_object *object,
+	const struct pg_context *context)
+{
+	struct allocation_lookup *lookup = owner;
+	const struct pg_match_allocation *allocation = pg_synthesis_match_allocation(lookup->job, NULL);
+	assert(allocation && object == allocation->induction.self && context == allocation->prefix);
+	++lookup->count;
 	return 0;
 }
 
@@ -1874,6 +1887,40 @@ static void match_motive_authority(void)
 		saved = pg_synthesis_result(roots[1]);
 		assert(saved && pg_computation_type_view(pg_evidence_classifier(saved), &totality, &effects, &saved_value));
 		assert(totality == PG_TOTALITY_UNSPECIFIED && value == saved_value);
+		if (!scenario) {
+			const struct pg_source_scope *owner = pg_synthesis_binding_scope(binding);
+			size_t candidates = lexical_allocation_candidates(&p->synthesis, owner);
+			assert(candidates);
+			FILE *before = tmpfile(), *after = tmpfile();
+			assert(before && after && !pg_sources_write(before, &p->synthesis, 3, roots));
+			for (size_t i = 0; i < 128; ++i) {
+				const struct pg_source_scope *sibling = pg_synthesis_name(&p->synthesis, owner,
+					(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "unused", .length = 6},
+					pg_prove_universe(&p->typing, empty, i));
+				struct pg_synthesis_job *alias = pg_synthesis_restore_elimination(&p->synthesis,
+					sibling, definition.expression->right, allocation);
+				assert(alias && !pg_synthesis_result(alias));
+				size_t references = p->synthesis.source_references.count;
+				assert(pg_synthesis_restore_elimination(&p->synthesis, sibling,
+					definition.expression->right, allocation) == alias);
+				assert(p->synthesis.source_references.count == references);
+			}
+			assert(lexical_allocation_candidates(&p->synthesis, owner) == candidates);
+			struct allocation_lookup lookup = {job, 0};
+			assert(!pg_synthesis_visit_source_references(&p->synthesis, allocation->induction.self,
+				NULL, NULL, find_match_context_reference, &lookup) && lookup.count == 1);
+			lookup.count = 0;
+			assert(!pg_synthesis_visit_source_references(&p->synthesis, allocation->induction.self,
+				find_allocation_reference, NULL, NULL, &lookup) && !lookup.count);
+			uint64_t steps = p->synthesis.steps;
+			size_t proofs = p->typing.proofs.count;
+			assert(!pg_sources_write(after, &p->synthesis, 3, roots));
+			assert(p->synthesis.steps == steps && p->typing.proofs.count == proofs);
+			rewind(before); rewind(after);
+			int byte;
+			do { byte = fgetc(before); assert(byte == fgetc(after)); } while (byte != EOF);
+			assert(!ferror(before) && !ferror(after) && !fclose(before) && !fclose(after));
+		}
 		pg_program_destroy(p);
 	}
 	puts("source Match: saved allocation does not impose its motive on independent synthesis");
@@ -2616,10 +2663,14 @@ struct declaration_reference {
 	size_t count, total;
 };
 
-static int find_declaration_parameters(void *owner, const struct pg_data_declaration *declaration)
+static int find_declaration_parameters(void *owner, const struct pg_object *object,
+	const struct pg_context *context)
 {
 	struct declaration_reference *lookup = owner;
-	if (declaration == lookup->declaration) ++lookup->count;
+	if (object == pg_data_declaration_family(lookup->declaration)) {
+		assert(context == pg_data_declaration_parameters(lookup->declaration));
+		++lookup->count;
+	}
 	++lookup->total;
 	return 0;
 }

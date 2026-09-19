@@ -26,30 +26,31 @@ struct source_binding {
 	struct pg_source_binding input;
 };
 
-enum source_reference_kind { SOURCE_ALLOCATION, SOURCE_BINDING, DECLARATION_PARAMETERS };
+enum source_reference_kind { SOURCE_ALLOCATION, SOURCE_BINDING, ALLOCATION_CONTEXT };
 
 struct source_reference_entry {
 	struct pg_index_entry index;
 	const void *key;
 	enum source_reference_kind kind;
 	const void *input;
+	const struct pg_context *context;
 };
 
 static int register_source_reference(struct pg_synthesis *synthesis, const void *key,
-	enum source_reference_kind kind, const void *input)
+	enum source_reference_kind kind, const void *input, const struct pg_context *context)
 {
 	/* The owning request publishes each edge once. Distinct lexical uses of
 	 * one address are not duplicate requests to search through here. */
 	struct source_reference_entry *entry = pg_alloc(synthesis->typing->graph, sizeof(*entry));
 	if (!entry) return -1;
-	entry->key = key; entry->kind = kind; entry->input = input;
+	entry->key = key; entry->kind = kind; entry->input = input; entry->context = context;
 	return pg_index_insert(&synthesis->source_references, &entry->index, (uintptr_t)key);
 }
 
 int pg_synthesis_visit_source_references(const struct pg_synthesis *synthesis, const void *key,
 	int (*allocation)(void *, struct pg_synthesis_job *),
 	int (*binding)(void *, const struct pg_source_binding *),
-	int (*parameters)(void *, const struct pg_data_declaration *), void *owner)
+	int (*parameters)(void *, const struct pg_object *, const struct pg_context *), void *owner)
 {
 	if (!synthesis || !key) return -1;
 	for (struct pg_index_entry *entry = pg_index_candidates(&synthesis->source_references, (uintptr_t)key);
@@ -63,8 +64,8 @@ int pg_synthesis_visit_source_references(const struct pg_synthesis *synthesis, c
 		case SOURCE_ALLOCATION:
 			if (allocation && allocation(owner, (void *)input->input)) return -1;
 			break;
-		case DECLARATION_PARAMETERS:
-			if (parameters && parameters(owner, input->input)) return -1;
+		case ALLOCATION_CONTEXT:
+			if (parameters && parameters(owner, input->input, input->context)) return -1;
 			break;
 		}
 	}
@@ -760,7 +761,7 @@ static struct pg_synthesis_job *request_role(struct pg_synthesis *synthesis,
 	if (!scope || scope->owner != synthesis->owner_key || !syntax) return NULL;
 	struct pg_synthesis_job *job = request_job(synthesis, role, scope, syntax);
 	if (job && !job->syntax && role == EXPRESSION_JOB && syntax->kind == PG_SYNTAX_QUALIFIED) {
-		if (register_source_reference(synthesis, source_allocation_key(scope), SOURCE_ALLOCATION, job)) return NULL;
+		if (register_source_reference(synthesis, source_allocation_key(scope), SOURCE_ALLOCATION, job, NULL)) return NULL;
 	}
 	if (job) { job->scope = scope; job->syntax = syntax; }
 	return job;
@@ -1022,19 +1023,19 @@ const struct pg_object *pg_synthesis_allocation_object(const struct pg_synthesis
 	return declaration ? pg_data_declaration_family(declaration) : NULL;
 }
 
-/* A layout can survive after parameter binders are erased from computation.
- * Index the immutable declaration once, independently of its lexical uses. */
-static int register_declaration_parameters(struct pg_synthesis *synthesis,
-	const struct pg_data_declaration *declaration)
+/* Erased computation can retain an allocation without its defining binders.
+ * Index the existing dependency Context, independently of lexical aliases. */
+static int register_allocation_context(struct pg_synthesis *synthesis,
+	const struct pg_object *object, const struct pg_context *context)
 {
-	const struct pg_object *family = pg_data_declaration_family(declaration);
-	for (struct pg_index_entry *e = pg_index_candidates(&synthesis->source_references, (uintptr_t)family); e; e = e->next) {
+	for (struct pg_index_entry *e = pg_index_candidates(&synthesis->source_references, (uintptr_t)object); e; e = e->next) {
 		const struct source_reference_entry *entry = (const void *)e;
-		if (entry->key == family && entry->kind == DECLARATION_PARAMETERS) return 0;
+		if (entry->key == object && entry->kind == ALLOCATION_CONTEXT && entry->context == context) return 0;
 	}
-	if (register_source_reference(synthesis, family, DECLARATION_PARAMETERS, declaration)) return -1;
-	return register_source_reference(synthesis, pg_data_matcher(pg_data_declaration_layout(declaration)),
-		DECLARATION_PARAMETERS, declaration);
+	if (register_source_reference(synthesis, object, ALLOCATION_CONTEXT, object, context)) return -1;
+	const struct pg_data_declaration *declaration = pg_data_declaration_view(object);
+	return declaration ? register_source_reference(synthesis, pg_data_matcher(pg_data_declaration_layout(declaration)),
+		ALLOCATION_CONTEXT, object, context) : 0;
 }
 
 /* Address discovery does not wait for imported evidence to be accepted. */
@@ -1045,9 +1046,10 @@ static int register_source_allocation(struct pg_synthesis *synthesis, struct pg_
 	const struct pg_object *object = pg_synthesis_allocation_object(synthesis, job);
 	if (!object) return 0;
 	const struct pg_data_declaration *declaration = pg_data_declaration_view(object);
-	if (declaration && register_declaration_parameters(synthesis, declaration)) return -1;
-	return register_source_reference(synthesis, declaration ? source_allocation_key(job->scope) : object,
-		SOURCE_ALLOCATION, job);
+	const struct pg_context *context = declaration ? pg_data_declaration_parameters(declaration)
+		: job->match_allocation ? job->match_allocation->prefix : pg_evidence_context(pg_synthesis_result(job));
+	if (register_allocation_context(synthesis, object, context)) return -1;
+	return register_source_reference(synthesis, source_allocation_key(job->scope), SOURCE_ALLOCATION, job, NULL);
 }
 
 struct pg_synthesis_job *pg_synthesis_restore_elimination(struct pg_synthesis *synthesis,
@@ -1241,7 +1243,7 @@ static const struct pg_source_binding *source_binding_intern(struct pg_synthesis
 	entry->input.scope_count = count;
 	if (!entry->input.binder) entry->input.binder = pg_binder(synthesis->typing->graph);
 	if (!entry->input.binder || pg_index_insert(&synthesis->source_bindings, &entry->index, hash)) return NULL;
-	if (register_source_reference(synthesis, entry->input.binder, SOURCE_BINDING, &entry->input)) return NULL;
+	if (register_source_reference(synthesis, entry->input.binder, SOURCE_BINDING, &entry->input, NULL)) return NULL;
 	return &entry->input;
 }
 

@@ -83,8 +83,8 @@ const struct pg_source_binding *pg_synthesis_source_binding(struct pg_synthesis 
 	const struct pg_source_binding *input);
 int pg_synthesis_visit_source_bindings(const struct pg_synthesis *synthesis,
 	int (*visit)(void *, const struct pg_source_binding *), void *owner);
-/* Members/declarations use their nearest binder/named scope; Matches use their
- * allocated Self. Family/matcher keys expose a declaration's parameter Context,
+/* Members/declarations/Matches use their nearest binder/named scope. Reached
+ * allocations (family, matcher or Self) expose their dependency Contexts,
  * not every lexical alias of that allocation, including unaccepted inputs.
  * Visit selected scopes, their parents and reached objects. Syntax/site and
  * exact lexical ancestry checks remain the caller's responsibility; an address
@@ -94,7 +94,7 @@ int pg_synthesis_visit_source_bindings(const struct pg_synthesis *synthesis,
 int pg_synthesis_visit_source_references(const struct pg_synthesis *synthesis, const void *key,
 	int (*allocation)(void *, struct pg_synthesis_job *),
 	int (*binding)(void *, const struct pg_source_binding *),
-	int (*parameters)(void *, const struct pg_data_declaration *), void *owner);
+	int (*parameters)(void *, const struct pg_object *, const struct pg_context *), void *owner);
 /* Nominal allocation input for a source declaration, before preparation.
  * Candidate universe inference still runs. Only the matching candidate uses
  * the stored Self binder/schema; no stored formation evidence is trusted.
