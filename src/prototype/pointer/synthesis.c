@@ -147,10 +147,19 @@ struct index_progress {
 	/* 0 starts a candidate; 1/2/3 inspect target/old/new support. */
 	unsigned next;
 };
+struct transport_scope {
+	const struct pg_evidence *map, *left, *right, *extended;
+	struct pg_typed_query *query;
+	struct pg_context_lift *lift;
+	struct pg_occurrence_action *action;
+	size_t count, next;
+	const struct pg_evidence *extensions[];
+};
 struct index_scope {
 	const struct pg_evidence *prefix, *map, *domain;
 	const struct pg_evidence **values;
 	struct pg_typed_query *query;
+	struct transport_scope *boundary;
 	size_t count, next, value_count;
 	const struct pg_evidence *fields[];
 };
@@ -384,6 +393,7 @@ struct pg_synthesis_job {
 		struct pg_identity_formation_work *formation;
 		union { struct pg_whnf_job *whnf; struct pg_nf_job *nf; } normalizing;
 		struct index_transport_state *index_transport;
+		struct transport_scope *transport_scope;
 		struct substitution_state *substitution;
 		struct family_state *family;
 		struct derivation_input_state *derivation_input;
@@ -7795,56 +7805,86 @@ static void term_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 /* Vary the complete Identity boundary, not only a value in its left fiber.
  * The ordinary lifted telescope retains the outer context used by the result
  * family. Every endpoint image is checked by substitution pairing. */
-static const struct pg_evidence *index_rebase(struct pg_typing *typing,
-	const struct pg_evidence *context, const struct pg_evidence *term)
+static struct transport_scope *transport_scope_start(struct pg_typing *typing,
+	const struct pg_evidence *base, const struct pg_identity_boundary *boundary)
 {
-	struct pg_typed_query *query = pg_rebase_request(typing, context, term);
-	while (!pg_typed_query_advance(query, UINT64_MAX)) {}
-	return pg_typed_query_result(query);
+	if (!base) return NULL;
+	size_t count = boundary->left_substitution ? boundary->path_count : 0;
+	if (count > (SIZE_MAX - sizeof(struct transport_scope)) / sizeof(const struct pg_evidence *)) return NULL;
+	struct transport_scope *work = pg_alloc(typing->graph, sizeof(*work) + count * sizeof(*work->extensions));
+	if (!work) return NULL;
+	const struct pg_evidence *context = pg_evidence_premise(base, 0);
+	work->left = work->right = base;
+	work->count = count;
+	if (boundary->left_substitution) {
+		const struct pg_evidence *ls = boundary->left_substitution;
+		const struct pg_evidence *source = pg_evidence_premise(ls, 0);
+		size_t arity = pg_evidence_premise_count(ls) - 2;
+		if (count > arity) return NULL;
+		for (size_t i = count; i; --i, source = pg_evidence_premise(source, 0))
+			work->extensions[i - 1] = source;
+		const struct pg_evidence *map = pg_prove_substitution(typing, source, pg_evidence_premise(ls, 1),
+			arity - count, pg_evidence_premises(ls) + 2);
+		work->query = pg_substitution_rebase_request(typing, context, map);
+	} else {
+		work->map = pg_prove_substitution_projection(typing, context, context);
+		if (!work->map) return NULL;
+		work->query = pg_rebase_request(typing, context, boundary->family);
+	}
+	return work->query ? work : NULL;
 }
 
-static const struct pg_evidence *constructor_transport_context(struct pg_typing *typing,
-	const struct pg_evidence *base, const struct pg_identity_boundary *boundary,
-	const struct pg_evidence *left_value, const struct pg_evidence *right_value,
-	const struct pg_evidence **left, const struct pg_evidence **right)
+static int transport_scope_advance(struct pg_typing *typing, struct transport_scope *work,
+	const struct pg_identity_boundary *boundary,
+	const struct pg_evidence *left_value, const struct pg_evidence *right_value)
 {
-	const struct pg_evidence *context = pg_evidence_premise(base, 0);
-	const struct pg_evidence *map = pg_prove_substitution_projection(typing, context, context);
-	if (!map) return NULL;
-	*left = *right = base;
-	const struct pg_evidence *type = boundary->family;
-	if (boundary->left_substitution) {
-		const struct pg_evidence *ls = boundary->left_substitution, *rs = boundary->right_substitution;
-		const struct pg_evidence *source = pg_evidence_premise(ls, 0);
-		size_t arity = pg_evidence_premise_count(ls) - 2, count = boundary->path_count;
-		if (count > arity || count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
-		const struct pg_evidence **extensions = malloc(count * sizeof(*extensions));
-		if (count && !extensions) return NULL;
-		for (size_t i = count; i; --i, source = pg_evidence_premise(source, 0))
-			extensions[i - 1] = source;
-		map = pg_prove_substitution(typing, source, pg_evidence_premise(ls, 1),
-			arity - count, pg_evidence_premises(ls) + 2);
-		map = pg_prove_substitution_rebase(typing, context, map);
-		for (size_t i = 0; map && i < count; ++i) {
-			map = pg_prove_substitution_lift(typing, map, extensions[i], pg_binder(typing->graph));
-			if (!map) break;
-			const struct pg_evidence *extension = pg_evidence_premise(map, 1);
-			*left = pg_prove_substitution_pair(typing, *left, extension,
-				pg_evidence_premise(ls, arity - count + i + 2));
-			*right = pg_prove_substitution_pair(typing, *right, extension,
-				pg_evidence_premise(rs, arity - count + i + 2));
-			if (!*left || !*right) { map = NULL; break; }
-		}
-		free(extensions);
-		if (!map) return NULL;
-		type = pg_prove_reindex(typing, map, type);
-	} else type = index_rebase(typing, context, type);
+	if (work->extended) return 1;
+	const struct pg_evidence *type;
+	if (work->query) {
+		int status = pg_typed_query_advance(work->query, 1);
+		if (status <= 0) return status;
+		const struct pg_evidence *result = pg_typed_query_result(work->query);
+		work->query = NULL;
+		if (!result) return -1;
+		if (!boundary->left_substitution) { type = result; goto extend; }
+		work->map = result;
+	}
+	if (work->next < work->count) {
+		const struct pg_evidence *field = work->extensions[work->next];
+		if (!work->lift) work->lift = pg_context_lift_request(typing,
+			pg_evidence_context_map(work->map), pg_evidence_context(field), pg_binder(typing->graph));
+		enum pg_substitution_status status = pg_context_lift_advance(work->lift, 1);
+		if (status == PG_SUBSTITUTION_PENDING) return 0;
+		if (status != PG_SUBSTITUTION_DONE) return -1;
+		const struct pg_context_map *lifted = pg_context_lift_result(work->lift);
+		work->map = pg_prove_substitution_lift(typing, work->map, field, lifted->destination->binder);
+		if (!work->map) return -1;
+		const struct pg_evidence *extension = pg_evidence_premise(work->map, 1);
+		size_t image = pg_evidence_premise_count(boundary->left_substitution) - work->count + work->next;
+		work->left = pg_prove_substitution_pair(typing, work->left, extension,
+			pg_evidence_premise(boundary->left_substitution, image));
+		work->right = pg_prove_substitution_pair(typing, work->right, extension,
+			pg_evidence_premise(boundary->right_substitution, image));
+		if (!work->left || !work->right) return -1;
+		++work->next;
+		work->lift = NULL;
+		return 0;
+	}
+	if (!work->action) work->action = pg_occurrence_action_request(typing,
+		pg_evidence_context_map(work->map), pg_evidence_subject(boundary->family));
+	enum pg_substitution_status status = pg_occurrence_action_advance(work->action, 1);
+	if (status == PG_SUBSTITUTION_PENDING) return 0;
+	if (status != PG_SUBSTITUTION_DONE) return -1;
+	type = pg_prove_reindex(typing, work->map, boundary->family);
+extend:;
 	const struct pg_evidence *extended = pg_prove_context_extension(typing,
-		pg_evidence_premise(map, 1), pg_binder(typing->graph), type);
-	if (!extended) return NULL;
-	*left = pg_prove_substitution_pair(typing, *left, extended, left_value);
-	*right = pg_prove_substitution_pair(typing, *right, extended, right_value);
-	return *left && *right ? extended : NULL;
+		pg_evidence_premise(work->map, 1), pg_binder(typing->graph), type);
+	if (!extended) return -1;
+	work->left = pg_prove_substitution_pair(typing, work->left, extended, left_value);
+	work->right = pg_prove_substitution_pair(typing, work->right, extended, right_value);
+	if (!work->left || !work->right) return -1;
+	work->extended = extended;
+	return 1;
 }
 
 static void constructor_transport_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
@@ -7881,7 +7921,17 @@ static void constructor_transport_step(struct pg_synthesis *synthesis, struct pg
 		if (head->kind != PG_REFERENCE) goto unsupported;
 		constructors[i] = head->as.reference;
 	}
-	/* Construct the transport once its normalization dependencies are ready. */
+	struct pg_identity_boundary boundary;
+	const struct pg_evidence *identity = pg_identity_formation(typing, pg_prove_classifier(typing, context, inputs[3]));
+	if (!pg_identity_boundary_view(identity, &boundary)) goto unsupported;
+	if (!job->transport_scope) job->transport_scope = transport_scope_start(typing,
+		pg_prove_substitution_projection(typing, context, context), &boundary);
+	if (!job->transport_scope) goto unsupported;
+	int status = transport_scope_advance(typing, job->transport_scope, &boundary, inputs[1], inputs[2]);
+	if (!status) { enqueue(synthesis, job); return; }
+	if (status < 0) goto unsupported;
+	const struct pg_evidence *left = job->transport_scope->left, *right = job->transport_scope->right;
+	const struct pg_evidence *extended = job->transport_scope->extended;
 	const struct pg_evidence *field_type = NULL;
 	if (field) {
 		field_type = pg_prove_classifier(typing, context, value);
@@ -7889,14 +7939,6 @@ static void constructor_transport_step(struct pg_synthesis *synthesis, struct pg
 		value = pg_prove_reflexivity(typing, field_type, value);
 		if (!target || !value) goto unsupported;
 	}
-	struct pg_identity_boundary boundary;
-	const struct pg_evidence *identity = pg_identity_formation(typing, pg_prove_classifier(typing, context, inputs[3]));
-	if (!pg_identity_boundary_view(identity, &boundary)) goto unsupported;
-	const struct pg_evidence *left, *right;
-	const struct pg_evidence *base = pg_prove_substitution_projection(typing, context, context);
-	const struct pg_evidence *extended = base ? constructor_transport_context(typing, base, &boundary,
-		inputs[1], inputs[2], &left, &right) : NULL;
-	if (!extended) goto unsupported;
 	const struct pg_evidence *type = pg_evidence_premise(extended, 1);
 	struct pg_inductive_instance instance;
 	if (!pg_inductive_instance(typing, type, &instance)) goto unsupported;
@@ -8156,21 +8198,28 @@ static struct pg_synthesis_job *index_constructor_candidate(struct pg_synthesis 
 	const struct pg_evidence *base = (*slot)->map, *prefix = (*slot)->prefix;
 	const struct pg_evidence *const *values = (*slot)->values;
 	size_t count = (*slot)->value_count;
+	struct pg_identity_boundary boundary;
+	const struct pg_evidence *identity = pg_identity_formation(typing, pg_prove_classifier(typing, context, state->path));
+	if (!pg_identity_boundary_view(identity, &boundary)) return NULL;
+	if (!(*slot)->boundary) (*slot)->boundary = transport_scope_start(typing, base, &boundary);
+	if (!(*slot)->boundary) return NULL;
+	status = transport_scope_advance(typing, (*slot)->boundary, &boundary, state->endpoints[0], state->endpoints[1]);
+	if (!status) { *pending = 1; return NULL; }
+	if (status < 0) return NULL;
+	const struct pg_evidence *extended = (*slot)->boundary->extended;
+	const struct pg_evidence *left = (*slot)->boundary->left, *right = (*slot)->boundary->right;
+	struct pg_inductive_instance instance;
+	if (!pg_inductive_instance(typing, pg_evidence_premise(extended, 1), &instance)) return NULL;
+	const struct pg_evidence *base_context = pg_evidence_premise(base, 0);
+	struct pg_typed_query *parameters = pg_substitution_rebase_request(typing, base_context, instance.parameters);
+	status = pg_typed_query_advance(parameters, 1);
+	if (!status) { *pending = 1; return NULL; }
+	const struct pg_evidence *parameter_map = pg_typed_query_result(parameters);
+	if (!parameter_map) return NULL;
 	struct pg_graph temporary = {0};
 	struct pg_synthesis_job *result = NULL;
 	const struct pg_evidence **extensions = pg_alloc(&temporary, count * sizeof(*extensions));
 	if (count && !extensions) goto done;
-	struct pg_inductive_instance instance;
-	const struct pg_evidence *base_context = pg_evidence_premise(base, 0);
-	struct pg_identity_boundary boundary;
-	const struct pg_evidence *identity = pg_identity_formation(typing, pg_prove_classifier(typing, context, state->path));
-	if (!pg_identity_boundary_view(identity, &boundary)) goto done;
-	const struct pg_evidence *left, *right;
-	const struct pg_evidence *extended = constructor_transport_context(typing, base, &boundary,
-		state->endpoints[0], state->endpoints[1], &left, &right);
-	if (!extended || !pg_inductive_instance(typing, pg_evidence_premise(extended, 1), &instance)) goto done;
-	const struct pg_evidence *parameter_map = pg_prove_substitution_rebase(typing, base_context, instance.parameters);
-	if (!parameter_map) goto done;
 	const struct pg_data_layout *layout = pg_data_schema_layout(instance.schema);
 	size_t branch_count = pg_data_constructor_count(instance.schema);
 	if (branch_count > SIZE_MAX / sizeof(const struct pg_evidence *)) goto done;

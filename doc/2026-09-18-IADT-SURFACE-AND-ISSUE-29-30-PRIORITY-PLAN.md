@@ -5635,3 +5635,57 @@ R0 +8,611/-4,257 = +4,354. Neither net-negative gate is met. This deliberately
 retained continuation state is not duplicate accepted evidence, but its cost
 must remain visible. A4/A5 and parent R2-R5 remain unfinished; no Main push or
 issue closure is claimed for this local checkpoint.
+
+### A4 shared boundary telescope continuation (2026-09-19)
+
+Baseline `b67cdff`. Replace `constructor_transport_context` with one retained
+continuation used by both constructor disjointness/injectivity and index-field
+transport. It advances the existing rebase, Context lift and occurrence-action
+work with budget 1, then constructs ordinary checked maps. Binder allocation
+belongs to the unfinished lift, not each wakeup. Delete `index_rebase` and
+the unused identity-map construction on dependent boundaries. Delay field
+Identity/reflexivity construction until boundary preparation is complete.
+The remaining parameter-map rebase also uses its shared budgeted query;
+`synthesis.c` no longer calls the synchronous map-rebase adapter.
+
+- [x] Strict debug synthesis, IADT and source suites pass.
+- [x] Full strict O2 acceptance exits 0. All 2,460 export records agree with
+  the preceding checkpoint after removing step counts and temporary paths.
+- [x] ASan/UBSan synthesis, IADT, source and image suites exit 0 with leak
+  detection and halt-on-error, including the existing 45 transport image cuts.
+- [ ] Finish the separate branch/pattern consumer audit and group publication
+  with the preceding local changes. Overall A4/A5/R2-R5 remain open.
+
+On `indexed-dependent-field-path.p`, the debug probe observes eight boundary
+initializations, 168 advances, 44 query, 28 lift and 104 occurrence-action
+advances (each direct call budget 1). All 20 boundary binder allocations are
+unique by continuation/field; none repeats across the 148 resumed positions.
+This does not assert that all subordinate proof construction is budgeted.
+QuickSort retains 34,203 jobs and 10,433 queries. Against `b67cdff`, proofs
+decrease 93,016 -> 93,001; occurrences 78,818 -> 78,808; maps 13,543 -> 13,538.
+Graph used bytes fall 63,982,592 -> 63,978,912; reserved/substitution storage
+and Context/lift/action counts stay unchanged. Steps rise 167,112 -> 167,211.
+
+Isolated O2 timing, fresh `b67cdff` build/current, CPU 2, 31 alternating pairs,
+median milliseconds: Bool .499/.500; add .906/.904; length 5.456/5.416;
+function-field 9.219/9.071; Vec append 6.815/6.853; QuickSort 166.263/166.822;
+length save 5.655/5.625; QuickSort save 167.593/168.386. No general speedup is
+claimed. Logs use `/tmp/a-program-authority-boundary-progress-` with suffixes
+`acceptance-final.log`, `debug-{synthesis,iadt,source}-final.log`,
+`asan-{synthesis,iadt,source,image}-final.log`, `profile-final.log`,
+`counts-final.log` and `timing.log`. No source edits followed those builds.
+
+Implementation delta: `synthesis.c` +112/-63 = +49; tests unchanged, relying
+on the preceding cut/resume extension and existing positive/negative IADT
+transport tests. Documentation is separate. Cumulative implementation/headers:
+R76 +3,905/-1,918 = +1,987; R0 +8,665/-4,262 = +4,403. The reduction gates
+are still unmet; this continuation is not a second accepted-evidence store.
+
+Next audit: `pg_prove_pattern_type` has seven synthesis call sites, but the
+QuickSort probe finds 38 calls with 38 distinct `(prefix, pattern, body)` proof
+tuples (`/tmp/a-program-authority-pattern-request-profile.log`). This input
+does not justify a new result cache. Preserve its injective variable-image
+check, fixed prefix, total typed inverse, dependent-field discharge and final
+substitution-back check when considering resumable work. Do not replace that
+partial proof-producing solver with unchecked structural substitution or
+infer redundant computation merely from the number of call sites.

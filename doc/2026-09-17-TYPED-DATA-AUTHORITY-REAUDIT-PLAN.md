@@ -1138,6 +1138,16 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 
 ### A4. Audit remaining structural consumers and remove duplication
 
+- [x] 2026-09-19: share resumable boundary telescope preparation between
+  constructor disjointness/injectivity and constructor-field index transport.
+  Delete `index_rebase` and the synchronous `constructor_transport_context`;
+  reuse existing rebase/lift/occurrence-action work and stable fresh binders.
+  The parameter-map consumer also advances its existing rebase query. There
+  are no `pg_prove_substitution_rebase` calls left in `synthesis.c`. Full O2
+  acceptance and focused debug/sanitizer gates pass. The priority plan records
+  costs and the separate, still-open branch/pattern audit; this is not A4/A5
+  completion or authorization for a standalone Main push.
+
 - [x] 2026-09-19: index-transport scope preparation retains its accepted map,
   field cursor and existing rebase query across Solve turns. Each turn advances
   that query with budget 1; direct and normalized attempts share the prepared
