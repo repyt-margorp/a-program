@@ -83,18 +83,22 @@ const struct pg_source_binding *pg_synthesis_source_binding(struct pg_synthesis 
 	const struct pg_source_binding *input);
 int pg_synthesis_visit_source_bindings(const struct pg_synthesis *synthesis,
 	int (*visit)(void *, const struct pg_source_binding *), void *owner);
-/* Members/declarations/Matches use their own scope/binder.
+/* Members/declarations/Matches use their exact source scope.
  * Prepared local environments are visited through their producer. Reached
  * allocations (family, matcher or Self) expose defining source inputs whose
  * lexical binder belongs to their allocation Context, not unrelated aliases.
  * Visit selected scopes, their parents and reached objects. Syntax/site and
  * exact lexical ancestry checks remain the caller's responsibility; an address
  * alone does not select every source use sharing it.
- * Optional callbacks select source jobs and/or lexical binding addresses.
+ * Scope keys also expose their direct binder environments. Follow these only
+ * when their binder (and explicit binding syntax) is reached; do not retain an
+ * environment merely because its parent is selected.
+ * Optional callbacks select source jobs, binding addresses and environments.
  * No Solve, acceptance, copied allocation or completion-index update occurs. */
 int pg_synthesis_visit_source_references(const struct pg_synthesis *synthesis, const void *key,
 	int (*allocation)(void *, struct pg_synthesis_job *),
-	int (*binding)(void *, const struct pg_source_binding *), void *owner);
+	int (*binding)(void *, const struct pg_source_binding *),
+	int (*environment)(void *, const struct pg_source_scope *), void *owner);
 /* Nominal allocation input for a source declaration, before preparation.
  * Candidate universe inference still runs. Only the matching candidate uses
  * the stored Self binder/schema; no stored formation evidence is trusted.

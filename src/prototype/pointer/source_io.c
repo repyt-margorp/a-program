@@ -410,6 +410,28 @@ static int compare_origin(const void *left, const void *right)
 	return (a->syntax > b->syntax) - (a->syntax < b->syntax);
 }
 
+static int index_environment(struct origin_collection *c, const void *key)
+{
+	struct pg_source_environment input;
+	if (pg_synthesis_environment_input(c->synthesis, key, &input)) return -1;
+	const struct pg_syntax *syntax = NULL;
+	if (input.binding) {
+		const struct pg_source_scope *parent;
+		const struct pg_object *binder;
+		if (pg_synthesis_binding_input(c->synthesis, input.binding, &parent, &syntax, &binder)) return -1;
+		if (!id(c->syntax, syntax)) return index_origin_reference(c, syntax, index_environment, key);
+	}
+	/* Wait for the object frontier, not just presence in the graph, so inert
+	 * saves retain their existing allocation order. */
+	return index_origin_reference(c, input.binder, index_source_references, key);
+}
+
+static int append_environment_reference(void *owner, const struct pg_source_scope *scope)
+{
+	struct source_reference_batch *batch = owner;
+	return index_environment(batch->collection, scope);
+}
+
 static int index_source_references(struct origin_collection *c, const void *key)
 {
 	/* Producers and retained scopes can reach the same environment. Reading
@@ -418,7 +440,7 @@ static int index_source_references(struct origin_collection *c, const void *key)
 	if (pg_dag_add(&c->references, key)) return -1;
 	struct source_reference_batch batch = {.collection = c};
 	int status = pg_synthesis_visit_source_references(c->synthesis, key,
-		append_source_reference, append_binding_reference, &batch);
+		append_source_reference, append_binding_reference, append_environment_reference, &batch);
 	if (!status && batch.count) {
 		/* Late binder discovery must not serialize in hash/registration order.
 		 * Unreached syntax is still staged by index_scope_origin. */

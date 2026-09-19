@@ -26,7 +26,7 @@ struct source_binding {
 	struct pg_source_binding input;
 };
 
-enum source_reference_kind { SOURCE_ALLOCATION, SOURCE_BINDING, ALLOCATION_ORIGIN };
+enum source_reference_kind { SOURCE_ALLOCATION, SOURCE_BINDING, ALLOCATION_ORIGIN, SOURCE_ENVIRONMENT };
 
 struct source_reference_entry {
 	struct pg_index_entry index;
@@ -48,7 +48,8 @@ static int register_source_reference(struct pg_synthesis *synthesis, const void 
 
 int pg_synthesis_visit_source_references(const struct pg_synthesis *synthesis, const void *key,
 	int (*allocation)(void *, struct pg_synthesis_job *),
-	int (*binding)(void *, const struct pg_source_binding *), void *owner)
+	int (*binding)(void *, const struct pg_source_binding *),
+	int (*environment)(void *, const struct pg_source_scope *), void *owner)
 {
 	if (!synthesis || !key) return -1;
 	for (struct pg_index_entry *entry = pg_index_candidates(&synthesis->source_references, (uintptr_t)key);
@@ -56,6 +57,9 @@ int pg_synthesis_visit_source_references(const struct pg_synthesis *synthesis, c
 		const struct source_reference_entry *input = (const void *)entry;
 		if (input->key != key) continue;
 		switch (input->kind) {
+		case SOURCE_ENVIRONMENT:
+			if (environment && environment(owner, input->input)) return -1;
+			break;
 		case SOURCE_BINDING:
 			if (binding && binding(owner, input->input)) return -1;
 			break;
@@ -539,6 +543,8 @@ static const struct pg_source_scope *intern_scope(struct pg_synthesis *synthesis
 	if (!scope) return NULL;
 	*scope = input;
 	scope->owner = synthesis->owner_key;
+	if (scope->binder && scope->parent &&
+		register_source_reference(synthesis, scope->parent, SOURCE_ENVIRONMENT, scope)) return NULL;
 	return pg_index_insert(&synthesis->scopes, &scope->index, hash) == 0 ? scope : NULL;
 }
 
@@ -766,18 +772,13 @@ static struct pg_synthesis_job *request_job(struct pg_synthesis *synthesis,
 	return request_inputs(synthesis, role, 2, inputs);
 }
 
-static const void *source_allocation_key(const struct pg_source_scope *scope)
-{
-	return scope->binder ? (const void *)scope->binder : scope;
-}
-
 static struct pg_synthesis_job *request_role(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax, enum job_role role)
 {
 	if (!scope || scope->owner != synthesis->owner_key || !syntax) return NULL;
 	struct pg_synthesis_job *job = request_job(synthesis, role, scope, syntax);
 	if (job && !job->syntax && role == EXPRESSION_JOB && syntax->kind == PG_SYNTAX_QUALIFIED) {
-		if (register_source_reference(synthesis, source_allocation_key(scope), SOURCE_ALLOCATION, job)) return NULL;
+		if (register_source_reference(synthesis, scope, SOURCE_ALLOCATION, job)) return NULL;
 	}
 	if (job) { job->scope = scope; job->syntax = syntax; }
 	return job;
@@ -1049,11 +1050,10 @@ static int register_source_allocation(struct pg_synthesis *synthesis, struct pg_
 	const struct pg_data_declaration *declaration = pg_data_declaration_view(object);
 	const struct pg_context *context = declaration ? pg_data_declaration_parameters(declaration)
 		: job->match_allocation ? job->match_allocation->prefix : pg_evidence_context(pg_synthesis_result(job));
-	const void *key = source_allocation_key(job->scope);
-	if (register_source_reference(synthesis, key, SOURCE_ALLOCATION, job)) return -1;
+	if (register_source_reference(synthesis, job->scope, SOURCE_ALLOCATION, job)) return -1;
 	/* An erased allocation can retain its defining input, not every later
 	 * alias. Resolve this immutable scope relation once, at registration. */
-	if (key != job->scope->binder) return 0;
+	if (!job->scope->binder) return 0;
 	if (!pg_context_lookup(context, job->scope->binder)) return 0;
 	if (register_source_reference(synthesis, object, ALLOCATION_ORIGIN, job)) return -1;
 	return declaration ? register_source_reference(synthesis,

@@ -1130,10 +1130,13 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 
 ### A4. Audit remaining structural consumers and remove duplication
 
-- [ ] Follow the priority plan's 2026-09-19 retained-input audit: Match sequencing
-  now uses the common source-binding address; generated index-path binders and
-  shared-binder lexical candidate bounds remain open. Neither printed NF nor
-  inert byte equality alone proves reuse of a retained computation input.
+- [ ] Follow the priority plan's corrected 2026-09-19 retained-input audit:
+  Match sequencing uses the common source-binding address. Independently
+  generated proof binders are not subject to an exact source-identity contract;
+  retained-input reuse remains a separate measurement. The shared-binder
+  lexical bound now passes using exact environments and parent/binder edges;
+  however, unselected sibling environments cause a new parent-edge scan.
+  Remove that growth before publication; the whole A4 audit is not finished.
 
 - [x] 2026-09-19: Identity boundary validation reads the immutable declaration
   Context rather than assuming every Context receipt has an ordinary type in

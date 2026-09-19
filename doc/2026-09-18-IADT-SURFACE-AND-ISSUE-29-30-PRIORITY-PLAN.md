@@ -5235,13 +5235,13 @@ Logs use `/tmp/a-program-authority-binder-environment-`: `bound-final.log`,
 
 - [x] Reproduce shared-binder candidate growth without changing source meaning.
 - [x] Reject the key-only repair and the broad direct-origin fallback.
-- [ ] Trace the existing binding declaration and typed/source dependency edges
+- [x] Trace the existing binding declaration and typed/source dependency edges
   that select a lexical environment after specialization. Binder identity alone
   is insufficient; do not replace it with one canonical proof or environment.
-- [ ] Make selection require both the relevant lexical use and allocation
+- [x] Make selection require both the relevant lexical use and allocation
   reachability, preserving existing origin order. Reuse immutable inputs; do not
   add a second acceptance store, global alias scan or normalization fallback.
-- [ ] Pass `binder-environment-bound`, add it to ordinary acceptance, and retain
+- [x] Pass `binder-environment-bound`, add it to ordinary acceptance, and retain
   the Match-alias and old QuickSort byte gates before closing this A3 item.
 
 This audit does not complete A3 or justify a new Main publication. It also does
@@ -5367,3 +5367,93 @@ The strict debug rebuild, `tests/source_io.sh` and `handler-origins` pass;
 `binder-environment-bound` still exits 1 with `2 -> 130`. Source-suite log:
 `/tmp/a-program-authority-source-identity-audit-source.log`. This is a plan
 correction, not another full acceptance run or a completed refactoring epoch.
+
+### A3 lexical allocation edges (2026-09-19)
+
+Baseline `190a5d3`; publication baseline `7ed0b29`. Allocate references under
+the exact source environment, never the shared binder. On first interning of a
+binder environment, index its existing parent edge in `source_references`.
+The writer follows it only after reaching the explicit binding syntax, if any,
+and its binder on the existing object frontier. Merely reaching a parent does
+not save its children. There is no new proof rule, acceptance store, Core node,
+artifact record, Solve call, or global environment scan.
+
+Waiting for the frontier matters: the first trial followed binders already
+present in the graph before their turn and changed inert-save order. The final
+path uses the existing dependency callback, preserving the old QuickSort image
+byte-for-byte. Declaration/Match defining-origin edges remain unchanged; do not
+replace them with every alias sharing an allocation.
+
+- [x] Delete the scope-or-binder key switch and its duplicate test helper.
+- [x] Add the previously failing `binder-environment-bound` to `source_io.sh`.
+  Assert that foreign environments do not add selected-parent child edges,
+  selected allocation candidates, saved bytes, or Save-time Solve/proof work.
+- [x] Strict debug source and handler tests, including 4,083 handler snapshots.
+- [x] Full O2 `check-acceptance`; all 2,460 export/step records match Main.
+- [x] Affected sanitizer/image checks and isolated timing.
+- [ ] Remove sibling-environment enumeration before publishing; see the
+  measured counterexample below. Passing existing tests is insufficient.
+- [ ] Publish together with the exact handler environment and Match sequencing
+  corrections as one lexical allocation/provenance epoch, after all gates pass.
+
+Debugger measurement of the actual writer, before/after 128 foreign uses:
+old `index_scope_origin`/`collect_origin` calls each grow `4 -> 132`; new calls
+stay `4 -> 4`. New environment callbacks stay `7 -> 7`, source-reference index
+visits `66 -> 66`. Thus the bound is not merely hidden by changing a test key.
+QuickSort property synthesis retains 34,203 jobs, 166,687 steps, 93,016 proofs,
+and all Context/map/action/query counts. Parent edges add 516 source references
+and 33,024 used graph-arena bytes; reserved bytes increase 32,768. This measures
+selected arena storage, not peak RSS or a general performance improvement.
+
+Logs: `/tmp/a-program-authority-lexical-edges-{opt,source-final,counts-final}.log`.
+The earlier rejected trial log is `source.log`; the final source suite passes.
+This closes the specific shared-binder candidate bound, not all A3-A5/R2-R5 or
+the cumulative net-negative implementation criterion.
+
+Publication hold: profiling the existing `member_use_origins` fixture exposes
+a cost transfer. With 128 unused Lambda children of the selected parent, the
+new `index_environment` callbacks grow `5 -> 133`. Actual allocation callbacks
+remain `3 -> 3`, origin checks `4 -> 4`, and saved bytes are unchanged. The old
+writer did not enumerate these children. Therefore the direct lexical key is
+correct, but unconditional parent-to-child enumeration is not the completed
+output-sensitive algorithm. Keep this change local; do not call the broader
+reachability requirement solved merely because the foreign-parent case passes.
+
+Next: select the needed child through the retained producer/typed dependency
+and its existing binding address, instead of enumerating all binder children
+of a reached parent. Preserve both dimensions of the counterexample: shared
+syntax/binder under foreign parents and unrelated binders under one selected
+parent. Moving filtering into the visitor callback would hide the count, not
+remove the scan. No first-environment authority or fresh proof reconstruction
+is permitted as a workaround.
+
+Final affected checks all exit 0: strict debug source/handler suites, optimized
+full acceptance, and ASan/UBSan source/handler/image suites with leak detection
+and halt-on-error. Sanitizer logs use the same prefix with
+`asan-{source,handler,image}.log`. No source/test edits occurred during checks.
+The unbounded sibling scan above is measured by debugger callbacks in the
+existing fixture, not treated as a passing negative test.
+
+Epoch delta from Main `7ed0b29` (including unpublished earlier corrections):
+
+| File under `src/prototype/pointer/` | Added | Deleted | Net |
+|---|---:|---:|---:|
+| source_io.c | 24 | 3 | +21 |
+| source_io.h | 1 | 1 | 0 |
+| synthesis.c | 25 | 17 | +8 |
+| synthesis.h | 11 | 7 | +4 |
+| tests/image_cli.sh | 2 | 0 | +2 |
+| tests/source_io.c | 136 | 14 | +122 |
+| tests/source_io.sh | 2 | 1 | +1 |
+
+Implementation/header net +33; tests net +125. Cumulative implementation/header
+R76 +3,711/-1,894 = +1,817; R0 +8,469/-4,236 = +4,233. Neither cumulative code
+reduction gate is met. Documentation is accounted separately at commit.
+
+Timing (`timing.log`): fresh Main `7ed0b29` O2 binary versus candidate, CPU 2,
+31 alternating pairs after validation ended. Median ms: Bool .491/.492;
+add .951/.936; length 5.767/5.626; function-field 9.610/9.749;
+Vec append 7.169/6.962; QuickSort 183.526/184.179; length save 6.168/6.131;
+QuickSort save 202.914/203.579. No general speedup is claimed. Documentation
+delta from Main: parent plan +24/-0; this priority plan +311/-0, including this
+accounting entry. No publication is made while the sibling scan remains open.

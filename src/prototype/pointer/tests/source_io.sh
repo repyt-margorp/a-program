@@ -5,6 +5,7 @@ trap 'rm -rf "$directory"' EXIT
 "$1" context-scopes
 "$1" indexed-families
 "$1" constructor-inputs
+"$1" binder-environment-bound
 "$1" match-origins
 "$1" fold-origins
 "$1" application-origins

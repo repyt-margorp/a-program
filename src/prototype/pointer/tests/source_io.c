@@ -1678,14 +1678,8 @@ static void check_allocation_reference(struct pg_synthesis *synthesis,
 {
 	struct allocation_lookup lookup = {job, 0};
 	size_t references = synthesis->source_references.count;
-	assert(!pg_synthesis_visit_source_references(synthesis, object, find_allocation_reference, NULL, &lookup));
+	assert(!pg_synthesis_visit_source_references(synthesis, object, find_allocation_reference, NULL, NULL, &lookup));
 	assert(lookup.count == 1 && synthesis->source_references.count == references);
-}
-
-static const void *allocation_scope_key(const struct pg_source_environment *input,
-	const struct pg_source_scope *scope)
-{
-	return input->binder ? (const void *)input->binder : scope;
 }
 
 static const struct pg_source_scope *unused_definition_scope(struct pg_synthesis *synthesis,
@@ -1711,10 +1705,23 @@ static size_t lexical_allocation_candidates(struct pg_synthesis *synthesis,
 		struct pg_source_environment input;
 		assert(!pg_synthesis_environment_input(synthesis, scope, &input));
 		assert(!pg_synthesis_visit_source_references(synthesis,
-			allocation_scope_key(&input, scope), find_allocation_reference, NULL, &lookup));
+			scope, find_allocation_reference, NULL, NULL, &lookup));
 		scope = input.parent;
 	}
 	return lookup.count;
+}
+
+struct environment_lookup {
+	const struct pg_source_scope *selected;
+	size_t count, matches;
+};
+
+static int find_environment_reference(void *owner, const struct pg_source_scope *scope)
+{
+	struct environment_lookup *lookup = owner;
+	++lookup->count;
+	lookup->matches += lookup->selected == scope;
+	return 0;
 }
 
 static int local_environment_origins(int binding)
@@ -1748,6 +1755,12 @@ static int local_environment_origins(int binding)
 		assert(!pg_synthesis_member_allocation(&p->synthesis, selected, &prefix, &fields) && fields != prefix);
 	}
 	size_t candidates = lexical_allocation_candidates(&p->synthesis, inner);
+	struct environment_lookup initial = {.selected = inner};
+	if (binding) {
+		assert(!pg_synthesis_visit_source_references(&p->synthesis, scope, NULL, NULL,
+			find_environment_reference, &initial));
+		assert(initial.matches == 1);
+	}
 	FILE *before = tmpfile(), *after = tmpfile();
 	assert(before && after && !pg_sources_write(before, &p->synthesis, 1, &selected));
 	for (unsigned i = 0; i < 128; ++i) {
@@ -1765,6 +1778,12 @@ static int local_environment_origins(int binding)
 		if (binding) assert(pg_synthesis_allocation_object(&p->synthesis, other) == fields->binder);
 	}
 	size_t expanded = lexical_allocation_candidates(&p->synthesis, inner);
+	if (binding) {
+		struct environment_lookup repeated = {.selected = inner};
+		assert(!pg_synthesis_visit_source_references(&p->synthesis, scope, NULL, NULL,
+			find_environment_reference, &repeated));
+		assert(repeated.count == initial.count && repeated.matches == 1);
+	}
 	if (expanded != candidates)
 		fprintf(stderr, "local environment: binding=%d candidates=%zu -> %zu\n", binding, candidates, expanded);
 	size_t jobs = p->synthesis.jobs.count, scopes = p->synthesis.scopes.count, proofs = p->typing.proofs.count;
@@ -1794,7 +1813,7 @@ static int check_match_origin(void *owner, struct pg_synthesis_job *job)
 	struct pg_source_environment environment;
 	assert(!pg_synthesis_environment_input(&p->synthesis, scope, &environment));
 	check_allocation_reference(&p->synthesis, job,
-		allocation_scope_key(&environment, scope));
+		scope);
 	if (!check->solved) {
 		assert(!pg_synthesis_result(job));
 		assert(pg_synthesis_restore_elimination(&p->synthesis, scope, syntax, allocation) == job);
@@ -1990,7 +2009,7 @@ static void match_motive_authority(void)
 			assert(lexical_allocation_candidates(&p->synthesis, owner) == candidates);
 			struct allocation_lookup lookup = {job, 0};
 			assert(!pg_synthesis_visit_source_references(&p->synthesis, allocation->induction.self,
-				find_allocation_reference, NULL, &lookup) && lookup.count == 1);
+				find_allocation_reference, NULL, NULL, &lookup) && lookup.count == 1);
 			uint64_t steps = p->synthesis.steps;
 			size_t proofs = p->typing.proofs.count;
 			assert(!pg_sources_write(after, &p->synthesis, 3, roots));
@@ -2083,7 +2102,7 @@ static void scoped_member_origins(struct member_origin *found, const struct pg_s
 		struct pg_source_environment input;
 		assert(!pg_synthesis_environment_input(found->synthesis, scope, &input));
 		assert(!pg_synthesis_visit_source_references(found->synthesis,
-			allocation_scope_key(&input, scope), find_member_origin, NULL, found));
+			scope, find_member_origin, NULL, NULL, found));
 		scope = input.parent;
 	}
 }
@@ -2771,7 +2790,7 @@ static void check_declaration_origins(struct pg_synthesis *synthesis, const stru
 	for (size_t i = 0; i < 2; ++i) {
 		struct allocation_lookup allocations = {0};
 		assert(!pg_synthesis_visit_source_references(synthesis, keys[i], find_allocation_reference,
-			NULL, &allocations));
+			NULL, NULL, &allocations));
 		assert(allocations.count == (i ? matchers : families));
 		assert(synthesis->source_references.count == references);
 	}
@@ -2794,7 +2813,7 @@ static void parameter_origins(void)
 	assert(!pg_synthesis_source_input(&p->synthesis, declaration, &scope, &syntax));
 	struct pg_source_environment input;
 	assert(!pg_synthesis_environment_input(&p->synthesis, scope, &input) && input.binder);
-	check_allocation_reference(&p->synthesis, declaration, input.binder);
+	check_allocation_reference(&p->synthesis, declaration, scope);
 	size_t candidates = lexical_allocation_candidates(&p->synthesis, scope);
 	assert(candidates);
 	struct pg_synthesis_job *selected[] = {p->root,
