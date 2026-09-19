@@ -3367,3 +3367,48 @@ Final implementation/header delta versus `5fa8a55`: zero. Core regression:
 +47/-0 lines; documentation is separate. Original R76/R0 implementation totals
 remain +1570/+3986 net. No Main publication or A3-A5 completion follows from
 this rejected optimization.
+
+### 2026-09-19: Context declarations, not proof ancestry (local)
+
+Baseline: local `82503d8`, whose implementation is published `5fa8a55`.
+`substitution_build` now checks the judgement and dependent classifier from
+`pg_context.parent/declared_type/judgement`. The accepted source Context and
+its extension count establish this chain before traversal. Remove the
+single-use `binding_judgement` adapter. Retain all supplied proof premises,
+the same structural map and the same classifier substitution/checks. This is
+not the withdrawn weakening normalization and introduces no new cache.
+
+Delete `pg_prove_induction_case` and its declaration. Repository-wide symbol
+search found no caller; the September 9 migration record in the pointer-core
+plan explains its replacement by ordinary scheduled rules. The four-constructor
+Tree source test still covers branches ignoring one or two IH arguments.
+Induction scope formation, branch checking and the underlying rules remain.
+
+- [x] Add a dependent-map regression with two proofs of the same source
+  Context: share the structural map, retain each exact source proof, and
+  reconstruct both derivations. Existing wrong-image, wrong-judgement,
+  empty/prefix-map and family tests remain unchanged.
+- [x] Strict O0/g Core and IADT tests pass.
+- [x] Full O2 `check-acceptance` exits 0: compatibility 63/63 and all four
+  sorting proof suites. All 2460 export records, including Solve steps,
+  match `5fa8a55` after temporary-directory normalization and sorting.
+- [x] ASan/UBSan Core, IADT and full `source_io.sh` exit 0, using O1/g,
+  frame pointers, non-PIE, leak detection and halt-on-error. These are affected
+  component checks, not the parent's full final sanitizer gate.
+
+Logs/builds: `/tmp/a-program-authority-context-declaration-*`.
+Implementation/header delta: `evidence.c` +4/-25, `evidence.h` +0/-8,
+net -29; `tests/core.c` +10/-0; documents separate. No elapsed-time speedup
+is claimed. Group Main publication with a substantive verified epoch.
+Cumulative implementation/header net remains positive: R76 +1541; R0 +3957.
+Neither original reduction gate is satisfied.
+
+Further audit: `pg_prove_abstract`, IH motive abstraction and
+`pg_prove_match_branch_type` need Context *proofs* to construct Pi/lambda
+premises; replacing those walks with bare Context pointers would discard
+requested derivations. Conversely `index_rebase` inside constructor transport
+still drains an existing shared query synchronously. That is a budgeting
+question, not evidence of another answer authority. Its enclosing dependent
+telescope must retain completed images across suspension before moving this
+work into existing scheduling. No extra scheduler or acceptance cache follows
+from this audit. A3-A5 and the original cumulative reduction gates remain open.

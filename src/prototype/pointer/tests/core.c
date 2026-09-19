@@ -1732,6 +1732,16 @@ static void typed_substitution_test(struct pg_graph *graph)
 		pg_prove_type_value(&typing, pg_prove_value_type(&typing, b_type)));
 	assert(other_destination && other_destination != destination);
 	assert(pg_evidence_context(other_destination) == pg_evidence_context(destination));
+	/* Map checking reads declarations, while retaining the supplied proofs. */
+	const struct pg_evidence *reverse_images[] = {projected_a, source_x};
+	const struct pg_evidence *reverse = pg_prove_substitution(&typing, destination, source, 2, reverse_images);
+	const struct pg_evidence *other_reverse = pg_prove_substitution(&typing, other_destination, source, 2, reverse_images);
+	assert(reverse && other_reverse && reverse != other_reverse);
+	assert(pg_evidence_context_map(reverse) == pg_evidence_context_map(other_reverse));
+	assert(pg_evidence_premise(reverse, 0) == destination);
+	assert(pg_evidence_premise(other_reverse, 0) == other_destination);
+	reconstruct_derivation(&typing, reverse);
+	reconstruct_derivation(&typing, other_reverse);
 	const struct pg_evidence *other_extension = pg_prove_context_extension(&typing, other_destination,
 		pg_evidence_context(extended_destination)->binder, pg_evidence_premise(extended_destination, 1));
 	assert(other_extension && other_extension != extended_destination);

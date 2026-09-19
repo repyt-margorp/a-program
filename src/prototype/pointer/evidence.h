@@ -331,14 +331,6 @@ const struct pg_evidence *pg_prove_induction_at(struct pg_typing *typing,
 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
 	size_t count, const struct pg_evidence *const *branches,
 	const struct pg_induction_allocation *allocation);
-/* Weaken an independently synthesized fields-only case function with unused
- * IH arguments. Derived projection/application/abstraction, not resynthesis. */
-const struct pg_evidence *pg_prove_induction_case(struct pg_typing *typing,
-	const struct pg_evidence *formation,
-	const struct pg_object *constructor, const struct pg_evidence *parameters,
-	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
-	const struct pg_evidence *branch);
-
 /* Read-only inputs of an accepted direct Match/induction. All operand/map
  * receipts were registered by its introduction; never reconstruct evidence
  * during inspection. Rejects other rules and foreign evidence. */

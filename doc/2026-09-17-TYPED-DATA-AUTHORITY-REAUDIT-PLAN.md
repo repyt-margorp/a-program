@@ -1055,6 +1055,13 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 
 ### A4. Audit remaining structural consumers and remove duplication
 
+- [x] 2026-09-19: substitution introduction validates against the immutable
+  Context declaration chain, not the Context proof's premise chain. Exact
+  source/destination/image proofs remain premises. Remove the unused
+  `pg_prove_induction_case` synchronous adapter: source branches have used
+  ordinary scheduled projection/application/abstraction since September 9.
+  No induction rule is removed. The priority plan records verification and
+  the remaining synchronous-consumer audit; this does not close A4.
 - [x] 2026-09-19: source application uses the callee whose classifier it already
   normalized for Pi inspection. Remove the second call through the generic
   application builder; share the existing domain job between the application

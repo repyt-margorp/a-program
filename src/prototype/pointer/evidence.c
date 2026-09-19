@@ -2284,22 +2284,6 @@ const struct pg_evidence *pg_prove_induction_scope_at(struct pg_typing *typing,
 		motive_context, motive, allocation, 1);
 }
 
-const struct pg_evidence *pg_prove_induction_case(struct pg_typing *typing,
-	const struct pg_evidence *formation,
-	const struct pg_object *constructor, const struct pg_evidence *parameters,
-	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
-	const struct pg_evidence *branch)
-{
-	const struct pg_evidence *map = pg_prove_induction_scope(typing,
-		formation, constructor, parameters, motive_context, motive);
-	if (!map) return NULL;
-	const struct pg_evidence *context = map->premises[1];
-	const struct pg_evidence *body = pg_prove_projection(typing, context, branch);
-	for (size_t i = parameters->premise_count + 1; body && i < map->premise_count; ++i)
-		body = pg_prove_application(typing, body, map->premises[i]);
-	return pg_prove_abstract(typing, parameters->premises[1], context, body);
-}
-
 static const struct pg_term *induction_field_core(struct pg_graph *graph,
 	const struct pg_term *type, const struct pg_term *ih_type,
 	const struct pg_term *field, const struct pg_object *recursion)
@@ -3222,11 +3206,6 @@ const struct pg_evidence *pg_prove_host_function(struct pg_typing *typing,
 	const struct pg_occurrence *subject = core ? pg_occurrence_typed(typing, PG_JUDGEMENT_COMPUTATION, core, pg_evidence_subject(type), NULL, 0, NULL) : NULL;
 	return subject ? accept(typing, PG_HOST_FUNCTION_INTRO,
 		pg_evidence_context(type), subject, 1, &type) : NULL;
-}
-
-static enum pg_evidence_judgement binding_judgement(const struct pg_evidence *extension)
-{
-	return pg_evidence_context(extension)->judgement;
 }
 
 const struct pg_evidence *pg_prove_family_context_extension(struct pg_typing *typing,
@@ -4289,12 +4268,12 @@ static const struct pg_evidence *substitution_build(struct pg_typing *typing,
 	const struct pg_binding_value *bindings = pg_context_map_bindings(map);
 	/* Every image is available before checking; the declaration chain already
 	 * supplies reverse telescope order without a second scope array. */
-	const struct pg_evidence *scope = source;
-	for (size_t i = count; i; --i, scope = scope->premises[0]) {
+	const struct pg_context *scope = pg_evidence_context(source);
+	for (size_t i = count; i; --i, scope = scope->parent) {
 		const struct pg_evidence *image = images[i - 1];
-		if (pg_evidence_judgement(image) != binding_judgement(scope)) goto done;
+		if (pg_evidence_judgement(image) != scope->judgement) goto done;
 		const struct pg_term *expected = pg_substitution_compute(&typing->substitutions,
-			pg_evidence_context(scope)->declared_type, retained + i - 1, bindings);
+			scope->declared_type, retained + i - 1, bindings);
 		if (!expected) goto done;
 		if (pg_alpha_equal(expected, pg_evidence_subject(image)->classifier) != 1) goto done;
 	}
