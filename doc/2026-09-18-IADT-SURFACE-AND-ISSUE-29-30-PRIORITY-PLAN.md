@@ -3743,3 +3743,88 @@ Combined candidate measurements against Main `8820a47`:
   gate remains unmet. This publication does not close that gate or A3-A5.
   Documentation-only diff: parent authority plan +9/-0; this priority plan
   +113/-0. These lines are excluded from implementation and test counts.
+
+### A4 epoch: shared incremental function-source inspection
+
+Baseline: Main `fdc28e1`. `pg_function_graph_init` still drains construction
+origin/application queries through `pg_function_graph_source` before its first
+budgeted advance. This is an actual synchronous caller, not a second proof
+authority. The public synchronous API remains useful; its traversal must be
+shared with preparation rather than copied into a second implementation.
+
+- [x] Extract one caller-owned source cursor over the existing typed origin/body
+  queries. Keep specialization, capture avoidance and exact map premises.
+  Its synchronous wrapper drains that same cursor; graph preparation resumes
+  it. Do not add another semantic query kind, accepted result cache or Core tag.
+- [x] Initialization records its owned input only. Preparation obtains the
+  outer Lambda and then leading raw Lambda parameters before the existing
+  head/input/parameter phases. Reuse role-exclusive private storage with the
+  later helper cursor; destruction must distinguish these lifetimes.
+- [x] Add a cold projected-source regression: init/zero-budget perform no
+  query transitions, each source-query advance is bounded, cancellation does
+  not invalidate the shared query, and completion agrees with the synchronous
+  source API. Preserve unsupported effectful functions after preparation.
+- [x] Extend the same cursor to surface `@f`/`*f` and concrete-helper source
+  lookup; initialization alone would have left the source caller synchronous.
+  Name resolution occurs once before suspension. Six nested force/thunk
+  wrappers exercise surface inspection with one-step Solve; both graph and
+  witness finish. Cursor ownership is checked before advancing borrowed work.
+- [x] Run focused then full acceptance, compare semantic outputs separately
+  from scheduling counts, measure work/storage/time and cumulative code diff.
+  Prepare this verified coherent epoch for publication. A3's lexical candidate bound and
+  original cumulative reduction gates remain open, not waived by this work.
+
+The focused direct-API regression fails on `fdc28e1`: initialization creates
+10 proofs and 2 queries and advances its cold origin query 3 times. The first
+cursor version creates/advances none there, with the graph-state header still
+584 bytes. The existing pending-helper supply test then exposed an assumption
+that source inspection had already completed: it read the dependency's source
+before checking witness completion. Reverse those checks, keeping the same
+rejection rule. Its initial failure is retained in `failure.log`.
+
+Logs use `/tmp/a-program-authority-source-cursor-`: `before-test.log`,
+`before-state.log`, `after-state.log` and `test.log`. The first full debug run
+(`debug.log`) passes but predates extending the cursor to surface/helper
+callers. `all-callers-test.log` passes those additions; the final combined
+verification below supersedes it. No stronger bound is claimed
+for synchronous checked specialization/constructor rules inside a cursor step.
+
+Final-candidate checks against `fdc28e1`:
+
+- Full debug and O2 acceptance pass (exit 0). Their 2,460 normalized export
+  records agree including steps; baseline semantic exports agree after removing
+  scheduling counts. The controlled `before-surface` build uses the new cursor
+  and tests but retains baseline `synthesis.c`: it fails the six-wrapper
+  one-step assertion. Thus repairing initialization alone is insufficient.
+- Core/proof/occurrence/Context/map/query/action/lift/job counts and typed-query
+  transitions are unchanged on length, function-field, Vec append and QuickSort.
+  Solve turns change by +8/+15/0/+45 as formerly synchronous work is scheduled.
+  Job header remains 368 bytes; function-graph state changes 584 -> 600 bytes.
+  Arena used bytes change by +224/+224/0/+352, respectively; capacities match.
+  Counts are in `all-callers-counts.log` under the preceding log prefix.
+- Implementation/header: `function_graph.c` +99/-68, `function_graph.h` +12/-0,
+  `synthesis.c` +26/-20; total +137/-88, net +49. Tests: `tests/program.c`
+  +44/-2, net +42. Documentation is separate. Cumulative implementation/header
+  from R76 `3a3bf550`: +3326/-1705, net +1621; from R0 `4657cc6`:
+  +8115/-4078, net +4037. Neither cumulative reduction gate is satisfied.
+
+- Final debug/O2/ASan-UBSan full acceptance passes (all exit 0), with 63/63
+  compatibility cases, sort properties and image checks. All three sets of
+  2,460 normalized export records agree including steps. Parallel make output
+  can end with different targets; compare record multisets, not final-line order.
+  No sanitizer diagnostic occurred. Commands use
+  `make -f src/prototype/pointer/Makefile BUILD=/tmp/a-program-authority-source-cursor-{debug,opt,asan} -j2 check-acceptance`
+  with strict C11 warnings/errors and respectively `-O0 -g`, `-O2`, or
+  `-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie`.
+  Sanitizer environment: `ASAN_OPTIONS=detect_leaks=1:halt_on_error=1` and
+  `UBSAN_OPTIONS=halt_on_error=1`. Logs: `all-callers-{debug,opt,asan}.log`.
+- 31 alternating fresh-process O2 samples per binary, one warm-up excluded,
+  no concurrent test/build: median seconds before/after length .00925/.00855,
+  function-field .01440/.01409, Vec append .01054/.00979, QuickSort .21450/.21219.
+  No general speedup claim: typed work is unchanged, and Vec append does not
+  use this change. Full samples: `all-callers-timing.log`.
+- [x] Verify the exact candidate, update parent A4 and prepare one commit for
+  atomic Main/rewrite publication without force. Git remote tips record the
+  publication outcome. This does not close A3-A5 or parent R2-R5.
+  Documentation: parent authority plan +8/-0; this priority plan +85/-0.
+  Excluded from all implementation/header and test totals above.

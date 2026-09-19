@@ -1275,6 +1275,14 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   The combined epoch also reuses the existing private-work union for six
   role-exclusive pointers, retaining concurrent derivation/normalization state.
   Final debug/O2/ASan-UBSan acceptance passes; original A3-A5 gates stay open.
+- [x] Share retained function-source inspection between the synchronous API,
+  budgeted graph preparation, surface `@f`/`*f`, and concrete-helper lookup.
+  One borrowed cursor advances existing origin/body queries; it is neither
+  another result authority nor a new semantic query. Initialization performs
+  no query work. Preserve checked specialization and pending-helper rejection.
+  The priority plan records old-caller regression failures, final acceptance,
+  scheduling/storage costs and publication. This does not bound all checked
+  kernel subrules, normalize projection recipes or close A3-A5.
 - [x] 2026-09-19: share IH scope-map relocation through the existing map-rebase
   query. Remove Solver's per-image projection jobs and substitution-prefix
   reconstruction, and the direct API's extra projection/composition map.

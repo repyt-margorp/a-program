@@ -52,7 +52,8 @@ struct graph_continuation {
 /* Suspended helper inspection, not another source/result cache. */
 struct helper_cursor {
 	struct pg_graph temporary;
-	const struct pg_evidence *function, *environment, *body;
+	const struct pg_evidence *function, *environment;
+	union { const struct pg_evidence *body; struct pg_function_source_cursor source; };
 	struct graph_continuation *arguments, *next_argument;
 	size_t count, forces;
 	enum { HELPER_ARGUMENTS, HELPER_SOURCE, HELPER_BODY, HELPER_APPLY, HELPER_MATCH, HELPER_READY } phase;
@@ -82,7 +83,7 @@ struct pg_function_graph_state {
 	struct graph_case *building, **build_tail;
 	struct graph_call *waiting;
 	struct pg_typed_query *view;
-	struct helper_cursor helper;
+	union { struct pg_function_source_cursor source; struct helper_cursor helper; };
 	size_t leaf_count;
 	const struct pg_evidence *formation, *declaration;
 	const struct pg_data_schema *schema;
@@ -92,7 +93,7 @@ struct pg_function_graph_state {
 	enum pg_function_graph_status witness_status;
 	size_t count, next;
 	int cases, induction;
-	enum { GRAPH_HEAD, GRAPH_INPUT, GRAPH_PARAMETERS, GRAPH_READY } preparation;
+	enum { GRAPH_SOURCE, GRAPH_HEAD, GRAPH_INPUT, GRAPH_PARAMETERS, GRAPH_READY } preparation;
 	uint64_t level;
 	enum pg_totality totality;
 	enum pg_function_graph_status status;
@@ -459,10 +460,15 @@ static int helper_call(struct pg_function_graph_state *s, struct graph_case *pla
 	}
 	if (!h->count) goto done;
 	if (h->phase == HELPER_SOURCE && h->forces == 1 && pg_evidence_rule(h->function) == PG_VARIABLE) {
-		const struct pg_evidence *current = h->environment ? map_value(s, h->environment, h->function) : h->function;
-		if (!current) goto done;
-		if (hypothesis_position(s, plan, pg_evidence_subject(current)->core) != plan->hypothesis_count) goto done;
-		const struct pg_evidence *concrete = pg_function_graph_source(s->typing, current);
+		if (!h->source.function) {
+			const struct pg_evidence *current = h->environment ? map_value(s, h->environment, h->function) : h->function;
+			if (!current) goto done;
+			if (hypothesis_position(s, plan, pg_evidence_subject(current)->core) != plan->hypothesis_count) goto done;
+			h->source.function = current;
+		}
+		int status = pg_function_source_advance(s->typing, &h->source);
+		if (!status) { result = 2; goto done; }
+		const struct pg_evidence *concrete = status > 0 ? h->source.function : NULL;
 		if (concrete) {
 			const struct pg_evidence *context = pg_evidence_premise(pg_evidence_premise(pg_evidence_premise(concrete, 0), 0), 0);
 			h->environment = pg_prove_substitution_projection(s->typing, context, plan->context);
@@ -971,53 +977,67 @@ static int case_branch(struct pg_function_graph_state *s, struct graph_case *pla
 	return 0;
 }
 
+int pg_function_source_advance(struct pg_typing *typing, struct pg_function_source_cursor *source)
+{
+	if (!source || !pg_evidence_owned_by(source->function, typing)) return -1;
+	if (!source->query) source->query = pg_construction_origin_request(typing, source->function);
+	if (!pg_typed_query_advance(source->query, 1)) return 0;
+	const struct pg_evidence *function = pg_typed_query_result(source->query);
+	if (!function) return -1;
+	source->function = function;
+	const struct pg_evidence *environment = pg_construction_origin_environment(source->query);
+	source->query = NULL;
+	if (source->applying) { source->applying = 0; return 0; }
+	enum pg_evidence_rule rule = pg_evidence_rule(function);
+	if (rule == PG_VARIABLE && environment) {
+		const struct pg_term *variable = pg_evidence_subject(function)->core;
+		const struct pg_evidence *image = pg_substitution_image(typing, environment, variable->as.reference);
+		if (!image || pg_evidence_subject(image)->core == variable) return -1;
+		source->function = image;
+		return 0;
+	}
+	if (rule == PG_LAMBDA_INTRO) {
+		if (!environment) return 1;
+		const struct pg_context *scope = pg_evidence_context(function);
+		if (pg_evidence_context_map(environment) == pg_context_map_projection(typing, scope,
+			pg_evidence_context(environment))) return 1;
+		/* Specialization keeps its typed context action. Reuse the mapped
+		 * Core binder, including capture avoidance, rather than freshening
+		 * a different graph source on every request. */
+		const struct pg_evidence *mapped = pg_prove_reindex(typing, environment, function);
+		const struct pg_term *core = mapped ? pg_evidence_subject(mapped)->core : NULL;
+		if (!core || core->kind != PG_LAMBDA) return -1;
+		const struct pg_evidence *extension = pg_evidence_premise(pg_evidence_premise(function, 0), 0);
+		const struct pg_evidence *lifted = pg_prove_substitution_lift(typing, environment, extension, core->as.lambda.binder);
+		const struct pg_evidence *body = pg_prove_reindex(typing, lifted, pg_evidence_premise(function, 1));
+		source->function = pg_prove_abstract(typing, pg_evidence_premise(environment, 1), pg_evidence_premise(lifted, 1), body);
+		return source->function ? 1 : -1;
+	}
+	if (rule == PG_APP_ELIM) {
+		const struct pg_evidence *callee = pg_evidence_premise(function, 0);
+		const struct pg_evidence *argument = pg_evidence_premise(function, 1);
+		if (environment) {
+			callee = pg_prove_reindex(typing, environment, callee);
+			argument = pg_prove_reindex(typing, environment, argument);
+		}
+		source->query = pg_application_body_request(typing, callee, argument);
+		source->applying = 1;
+		return source->query ? 0 : -1;
+	}
+	/* Invert only the introduction just checked from typed construction. */
+	if (rule != PG_THUNK_INTRO && rule != PG_FORCE_ELIM && rule != PG_THUNK_COMPUTATION) return -1;
+	source->function = pg_evidence_premise(function, 0);
+	if (environment) source->function = pg_prove_reindex(typing, environment, source->function);
+	return source->function ? 0 : -1;
+}
+
 const struct pg_evidence *pg_function_graph_source(struct pg_typing *typing,
 	const struct pg_evidence *function)
 {
-	while (function) {
-		const struct pg_evidence *environment = NULL;
-		function = pg_prove_construction_origin(typing, function, &environment);
-		if (!function) return NULL;
-		enum pg_evidence_rule rule = pg_evidence_rule(function);
-		if (rule == PG_VARIABLE && environment) {
-			const struct pg_term *variable = pg_evidence_subject(function)->core;
-			const struct pg_evidence *image = pg_substitution_image(typing, environment, variable->as.reference);
-			if (!image || pg_evidence_subject(image)->core == variable) return NULL;
-			function = image;
-			continue;
-		}
-		if (rule == PG_LAMBDA_INTRO) {
-			if (!environment) return function;
-			const struct pg_context *scope = pg_evidence_context(function);
-			if (pg_evidence_context_map(environment) == pg_context_map_projection(typing, scope,
-				pg_evidence_context(environment))) return function;
-			/* Specialization keeps its typed context action. Reuse the mapped
-			 * Core binder, including capture avoidance, rather than freshening
-			 * a different graph source on every request. */
-			const struct pg_evidence *mapped = pg_prove_reindex(typing, environment, function);
-			const struct pg_term *core = mapped ? pg_evidence_subject(mapped)->core : NULL;
-			if (!core || core->kind != PG_LAMBDA) return NULL;
-			const struct pg_evidence *extension = pg_evidence_premise(pg_evidence_premise(function, 0), 0);
-			const struct pg_evidence *lifted = pg_prove_substitution_lift(typing, environment, extension, core->as.lambda.binder);
-			const struct pg_evidence *body = pg_prove_reindex(typing, lifted, pg_evidence_premise(function, 1));
-			return pg_prove_abstract(typing, pg_evidence_premise(environment, 1), pg_evidence_premise(lifted, 1), body);
-		}
-		if (rule == PG_APP_ELIM) {
-			const struct pg_evidence *callee = pg_evidence_premise(function, 0);
-			const struct pg_evidence *argument = pg_evidence_premise(function, 1);
-			if (environment) {
-				callee = pg_prove_reindex(typing, environment, callee);
-				argument = pg_prove_reindex(typing, environment, argument);
-			}
-			function = pg_prove_application_body(typing, callee, argument);
-			continue;
-		}
-		/* Invert only the introduction just checked from typed construction. */
-		if (rule != PG_THUNK_INTRO && rule != PG_FORCE_ELIM && rule != PG_THUNK_COMPUTATION) return NULL;
-		function = pg_evidence_premise(function, 0);
-		if (environment) function = pg_prove_reindex(typing, environment, function);
-	}
-	return NULL;
+	struct pg_function_source_cursor source = {.function = function};
+	int status;
+	while (!(status = pg_function_source_advance(typing, &source))) {}
+	return status > 0 ? source.function : NULL;
 }
 
 static int prepare_head(struct pg_function_graph_state *s);
@@ -1079,20 +1099,7 @@ int pg_function_graph_init(struct pg_function_graph_work *work,
 	if (!s) return -1;
 	work->state = s;
 	s->typing = typing; s->evaluation = evaluation;
-	function = pg_function_graph_source(typing, function);
-	if (!function) { s->status = PG_FUNCTION_GRAPH_UNSUPPORTED; return 0; }
-	s->source_function = function;
-	s->outer_context = pg_evidence_premise(pg_evidence_premise(pg_evidence_premise(function, 0), 0), 0);
-	for (;;) {
-		const struct pg_evidence *body = pg_evidence_premise(function, 1);
-		const struct pg_term *domain, *codomain;
-		const struct pg_object *binder;
-		if (!pg_pi_view(pg_evidence_classifier(body), &domain, &binder, &codomain)) break;
-		body = pg_function_graph_source(typing, body);
-		if (!body) break;
-		function = body;
-	}
-	function_signature(s, function);
+	s->source.function = function;
 	return 0;
 }
 
@@ -1136,6 +1143,30 @@ static void prepare_graph(struct pg_function_graph_state *s)
 	struct pg_typing *typing = s->typing;
 	const struct pg_evidence *source_function = s->source_function;
 	switch (s->preparation) {
+	case GRAPH_SOURCE: {
+		int status = pg_function_source_advance(typing, &s->source);
+		if (!status) return;
+		if (status > 0) {
+			const struct pg_evidence *function = s->source.function;
+			if (!s->source_function) {
+				s->source_function = function;
+				s->outer_context = pg_evidence_premise(pg_evidence_premise(pg_evidence_premise(function, 0), 0), 0);
+			}
+			s->recursive_function = function;
+			const struct pg_evidence *body = pg_evidence_premise(function, 1);
+			const struct pg_term *domain, *codomain;
+			const struct pg_object *binder;
+			if (pg_pi_view(pg_evidence_classifier(body), &domain, &binder, &codomain)) {
+				s->source = (struct pg_function_source_cursor){.function = body};
+				return;
+			}
+		} else if (!s->source_function) goto unsupported;
+		/* Source queries are graph-owned; later helper work owns a private arena. */
+		s->helper = (struct helper_cursor){0};
+		s->preparation = GRAPH_HEAD;
+		function_signature(s, s->recursive_function);
+		return;
+	}
 	case GRAPH_HEAD: {
 		if (prepare_head(s)) return;
 		enum pg_evidence_rule rule = pg_evidence_rule(s->body);
@@ -1406,8 +1437,8 @@ int pg_function_graph_supply(struct pg_function_graph_work *work, const struct p
 	const struct pg_function_graph_state *d = dependency->state;
 	if (!s->waiting || s->waiting->helper || s == d) return -1;
 	if (s->typing != d->typing) return -1;
-	if (pg_evidence_subject(s->waiting->helper_source) != pg_evidence_subject(d->source_function) ||
-		d->witness_status != PG_FUNCTION_GRAPH_DONE) return -1;
+	if (d->witness_status != PG_FUNCTION_GRAPH_DONE) return -1;
+	if (pg_evidence_subject(s->waiting->helper_source) != pg_evidence_subject(d->source_function)) return -1;
 	s->waiting->helper = dependency;
 	if (d->level > s->level) s->level = d->level;
 	return 0;
@@ -1781,7 +1812,7 @@ const struct pg_evidence *pg_function_graph_packet(const struct pg_function_grap
 void pg_function_graph_destroy(struct pg_function_graph_work *work)
 {
 	if (!work || !work->state) return;
-	pg_graph_destroy(&work->state->helper.temporary);
+	if (work->state->preparation != GRAPH_SOURCE) pg_graph_destroy(&work->state->helper.temporary);
 	pg_graph_destroy(&work->state->temporary);
 	free(work->state);
 	work->state = NULL;

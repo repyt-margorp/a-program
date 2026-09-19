@@ -42,10 +42,22 @@ enum pg_function_graph_status {
 };
 struct pg_function_graph_state;
 struct pg_function_graph_work { struct pg_function_graph_state *state; };
+/* A caller-owned traversal position, borrowing existing typed queries.
+ * Initialize function to an owned input and the other fields to zero.
+ * Advance returns 0 pending, 1 with the retained Lambda in function, or -1
+ * unsupported. Stop on a terminal result; destroying the cursor owns no work. */
+struct pg_function_source_cursor {
+	const struct pg_evidence *function;
+	struct pg_typed_query *query;
+	int applying;
+};
+int pg_function_source_advance(struct pg_typing *typing, struct pg_function_source_cursor *source);
 /* Recover the retained Lambda through typed quotation/forcing and identity
  * context maps. Source identity is its typed subject, not its receipt or Core. */
 const struct pg_evidence *pg_function_graph_source(struct pg_typing *typing,
 	const struct pg_evidence *function);
+/* Record the owned input without advancing typed queries. Source inspection
+ * and signature preparation run through the ordinary budgeted advance. */
 int pg_function_graph_init(struct pg_function_graph_work *work,
 	struct pg_typing *typing,
 	struct pg_whnf_work *evaluation, const struct pg_evidence *function);

@@ -352,6 +352,7 @@ struct pg_synthesis_job {
 		struct derivation_input_state *derivation_input;
 		struct fold_structure_state *fold_structure;
 		struct effect_substitution_state *effect_substitution;
+		struct pg_function_source_cursor *function_source;
 	};
 	struct block_state *block;
 	struct application_state *application;
@@ -3479,26 +3480,31 @@ static void function_witness_step(struct pg_synthesis *synthesis, struct pg_synt
 static void graph_reference_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job, int witness)
 {
 	if (!job->value_job) {
-		struct source_reference reference;
-		struct pg_synthesis_job *dependency = NULL;
-		const struct pg_syntax *name = witness ? job->syntax->right : job->syntax->left;
-		enum pg_synthesis_status status = resolve_reference(synthesis, job->scope, name, &reference, &dependency);
-		if (status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, dependency); return; }
-		if (status != PG_SYNTHESIS_DONE) { finish(synthesis, job, status); return; }
-		if (!witness && reference.binder) {
-			const struct pg_object *binder = associated_binder(job->scope, reference.binder, PG_SOURCE_GRAPH);
-			if (!binder) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
-			job->result = pg_prove_variable(synthesis->typing, source_context(job->scope), binder);
-			finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
-			return;
+		if (!job->function_source) {
+			struct source_reference reference;
+			struct pg_synthesis_job *dependency = NULL;
+			const struct pg_syntax *name = witness ? job->syntax->right : job->syntax->left;
+			enum pg_synthesis_status status = resolve_reference(synthesis, job->scope, name, &reference, &dependency);
+			if (status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, dependency); return; }
+			if (status != PG_SYNTHESIS_DONE) { finish(synthesis, job, status); return; }
+			if (!witness && reference.binder) {
+				const struct pg_object *binder = associated_binder(job->scope, reference.binder, PG_SOURCE_GRAPH);
+				if (!binder) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
+				job->result = pg_prove_variable(synthesis->typing, source_context(job->scope), binder);
+				finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+				return;
+			}
+			if (!reference.producer) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+			if (reference.producer->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, reference.producer); return; }
+			if (reference.producer->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, reference.producer->status); return; }
+			job->function_source = pg_alloc(synthesis->typing->graph, sizeof(*job->function_source));
+			if (!job->function_source) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+			job->function_source->function = reference.producer->result;
 		}
-		if (!reference.producer) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
-		if (reference.producer->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, reference.producer); return; }
-		if (reference.producer->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, reference.producer->status); return; }
-		const struct pg_evidence *function = pg_function_graph_source(synthesis->typing,
-			reference.producer->result);
-		if (!function) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
-		struct pg_synthesis_job *graph = function_graph_request(synthesis, function);
+		int status = pg_function_source_advance(synthesis->typing, job->function_source);
+		if (!status) { enqueue(synthesis, job); return; }
+		if (status < 0) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+		struct pg_synthesis_job *graph = function_graph_request(synthesis, job->function_source->function);
 		if (!graph) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		if (witness) graph = request_job(synthesis, FUNCTION_WITNESS_JOB, graph, NULL);
 		struct pg_synthesis_job *premises[] = {job->scope->context_job, graph};

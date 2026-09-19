@@ -385,19 +385,34 @@ static void graded_function_graph(struct pg_program *p, const struct pg_evidence
 		const struct pg_evidence *input = pg_prove_variable(&p->typing, inner, pg_evidence_context(inner)->binder);
 		const struct pg_evidence *call = pg_prove_application(&p->typing, callee, input);
 		const struct pg_evidence *lambda = pg_prove_abstract(&p->typing, scope, inner, call);
+		const struct pg_evidence *projected_lambda = pg_prove_projection(&p->typing, inner, lambda);
+		struct pg_typed_query *source = pg_construction_origin_request(&p->typing, projected_lambda);
+		assert(source && !pg_typed_query_steps(source));
+		struct pg_function_source_cursor invalid_owner = {.function = projected_lambda, .query = source};
+		assert(pg_function_source_advance(NULL, &invalid_owner) == -1 && !pg_typed_query_steps(source));
+		assert(pg_function_source_advance(&p->typing, NULL) == -1);
+		size_t proofs = p->typing.proofs.count, queries = p->typing.typed_queries.count;
 		struct pg_function_graph_work work;
-		assert(lambda && !pg_function_graph_init(&work, &p->typing, &p->evaluation, lambda));
+		assert(lambda && !pg_function_graph_init(&work, &p->typing, &p->evaluation, projected_lambda));
+		assert(p->typing.proofs.count == proofs && p->typing.typed_queries.count == queries);
+		assert(!pg_typed_query_steps(source));
+		assert(pg_function_graph_advance(&work, 0) == PG_FUNCTION_GRAPH_PENDING);
 		struct pg_typed_query *body = pg_application_body_request(&p->typing, callee, input);
 		uint64_t steps = pg_typed_query_steps(body);
+		uint64_t source_steps = 0;
 		assert(body && !steps);
 		enum pg_function_graph_status status = PG_FUNCTION_GRAPH_PENDING;
 		for (size_t turns = 0; turns < limit && status == PG_FUNCTION_GRAPH_PENDING; ++turns) {
 			status = pg_function_graph_advance(&work, 1);
+			assert(pg_typed_query_steps(source) - source_steps <= 1);
+			source_steps = pg_typed_query_steps(source);
 			assert(pg_typed_query_steps(body) - steps <= 1);
 			steps = pg_typed_query_steps(body);
 		}
 		pg_function_graph_destroy(&work);
 		assert(!work.state);
+		while (!pg_typed_query_advance(source, chunk)) assert(pg_typed_query_steps(source) < 100000);
+		assert(pg_function_graph_source(&p->typing, projected_lambda) == lambda);
 		while (!pg_typed_query_advance(body, chunk)) assert(pg_typed_query_steps(body) < 100000);
 		assert(pg_typed_query_result(body));
 		assert(pg_evidence_subject(pg_typed_query_result(body))->core ==
@@ -502,7 +517,9 @@ static void graded_function_graph(struct pg_program *p, const struct pg_evidence
 		lambda = pg_prove_lambda(&p->typing, pg_prove_pi(&p->typing, scope, type), body);
 		assert(lambda);
 		assert(!pg_function_graph_init(&work, &p->typing, &p->evaluation, lambda));
-		assert(pg_function_graph_advance(&work, chunk) == PG_FUNCTION_GRAPH_UNSUPPORTED);
+		for (size_t turns = 0; pg_function_graph_advance(&work, chunk) == PG_FUNCTION_GRAPH_PENDING; ++turns)
+			assert(turns < 100000 && !pg_function_graph_formation(&work));
+		assert(pg_function_graph_advance(&work, 0) == PG_FUNCTION_GRAPH_UNSUPPORTED);
 		pg_function_graph_destroy(&work);
 	}
 }
@@ -590,6 +607,31 @@ static void function_graph_aliases(struct pg_program *p,
 	assert(pg_typed_query_steps(input) == input_steps && pg_context_lift_steps(lift) == lift_steps);
 	const struct pg_evidence *applied = pg_prove_application_body(typing, specialized, image);
 	assert(applied && pg_evidence_subject(applied)->core == pg_evidence_subject(pg_prove_return(typing, image))->core);
+	/* Surface graph references share the same bounded source inspection. */
+	const struct pg_evidence *wrapped = raw;
+	struct pg_typed_query *origins[6];
+	for (size_t i = 0; i < 6; ++i) {
+		wrapped = pg_prove_force(typing, pg_prove_thunk(typing, wrapped));
+		origins[i] = pg_construction_origin_request(typing, wrapped);
+		assert(origins[i] && !pg_typed_query_steps(origins[i]));
+	}
+	const struct pg_source_scope *delayed = pg_synthesis_name(&p->synthesis, p->scope,
+		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "delayed", .length = 7}, wrapped);
+	const char *inspection = "relation:=@delayed; witness:=*delayed;";
+	struct pg_parser inspection_parser;
+	struct pg_synthesis_job *inspected = pg_program_source(p, delayed, inspection,
+		strlen(inspection), &inspection_parser);
+	assert(inspected);
+	uint64_t previous = 0;
+	for (size_t turn = 0; pg_synthesis_status(inspected) == PG_SYNTHESIS_PENDING; ++turn) {
+		assert(turn < 100000);
+		pg_synthesis_advance(&p->synthesis, 1);
+		uint64_t steps = 0;
+		for (size_t i = 0; i < 6; ++i) steps += pg_typed_query_steps(origins[i]);
+		assert(steps - previous <= 1);
+		previous = steps;
+	}
+	assert(previous == 6 && pg_synthesis_status(inspected) == PG_SYNTHESIS_DONE);
 	const struct pg_source_scope *names = pg_synthesis_name(&p->synthesis, p->scope,
 		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "original", .length = 8}, raw);
 	names = pg_synthesis_name(&p->synthesis, names,
