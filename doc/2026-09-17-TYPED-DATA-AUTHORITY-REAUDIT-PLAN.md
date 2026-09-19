@@ -1138,6 +1138,15 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 
 ### A4. Audit remaining structural consumers and remove duplication
 
+- [x] 2026-09-19: private Solver storage is selected by its existing immutable
+  role, with role-directed cleanup. Derivation checking retains simultaneous
+  normalization state; expression slots remain separate within their owner.
+  Headers shrink 368 -> 336 bytes, saving 1,097,152 retained bytes on QuickSort
+  without changing work or proof counts. Full debug/O2 and affected sanitizer,
+  cancellation and image gates pass. The integrated three-change epoch is
+  implementation net +1, not LOC reduction; see the priority plan for timing.
+  Pending construction, original R0 comparisons and cumulative reduction remain.
+
 - [x] 2026-09-19: rule/substitution/family-action request factories no longer
   allocate a concatenated key before interning. One interner reads their fixed
   prefix and borrowed dependency array and stores new requests in the original

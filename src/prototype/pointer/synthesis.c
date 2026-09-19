@@ -392,7 +392,11 @@ struct pg_synthesis_job {
 		struct pg_function_graph_work function_graph;
 		struct pg_identity_face_work *face;
 		struct pg_identity_formation_work *formation;
-		union { struct pg_whnf_job *whnf; struct pg_nf_job *nf; } normalizing;
+		struct {
+			union { struct pg_whnf_job *whnf; struct pg_nf_job *nf; } normalizing;
+			/* Derivation checking may normalize while retaining its premises. */
+			struct derivation_state *derivation;
+		};
 		struct index_transport_state *index_transport;
 		struct transport_scope *transport_scope;
 		struct substitution_state *substitution;
@@ -400,13 +404,17 @@ struct pg_synthesis_job {
 		struct derivation_input_state *derivation_input;
 		struct fold_structure_state *fold_structure;
 		struct effect_substitution_state *effect_substitution;
-		struct pg_function_source_cursor *function_source;
+		struct {
+			struct pg_function_source_cursor *function_source;
+			struct block_state *block;
+			struct application_state *application;
+			struct match_state *match;
+		};
+		struct definition_state *definitions;
+		struct declaration_state *declaration;
+		struct handler_state *handler;
 	};
-	struct block_state *block;
-	struct application_state *application;
 	const struct block_frame *match_frame;
-	struct definition_state *definitions;
-	struct declaration_state *declaration;
 	const struct pg_data_schema *schema;
 	const struct pg_operation_declaration *operation;
 	const struct pg_data_declaration *nominal_input;
@@ -416,11 +424,8 @@ struct pg_synthesis_job {
 	struct context_allocation *context_allocation;
 	struct pg_constructor_allocation *member_allocations;
 	const struct pg_source_scope *exports;
-	struct match_state *match;
-	struct handler_state *handler;
 	struct pg_handler_clause_input *handler_clause;
 	struct pg_synthesis_job *handler_owner;
-	struct derivation_state *derivation;
 	const void *inputs[];
 };
 
@@ -475,13 +480,24 @@ void pg_synthesis_destroy(struct pg_synthesis *synthesis)
 			case EFFECT_SUBSTITUTION_JOB:
 				if (job->effect_substitution) free(job->effect_substitution->bindings);
 				break;
+			case DERIVATION_JOB:
+				if (job->derivation) pg_comparison_destroy(&job->derivation->endpoint);
+				break;
+			case EXPRESSION_JOB:
+				if (job->block) pg_index_destroy(&job->block->names);
+				break;
+			case HANDLER_JOB:
+				if (job->handler && job->handler->effect_owner == job->handler)
+					pg_effect_inference_destroy(&job->handler->effects);
+				break;
+			case DEFINITION_SCOPE_JOB:
+				if (job->definitions) pg_index_destroy(&job->definitions->names);
+				break;
+			case DATA_SCHEMA_JOB:
+				if (job->declaration) pg_index_destroy(&job->declaration->names);
+				break;
 			default: break; /* Other work is borrowed from its graph owner. */
 			}
-			if (job->derivation) pg_comparison_destroy(&job->derivation->endpoint);
-			if (job->block) pg_index_destroy(&job->block->names);
-			if (job->handler && job->handler->effect_owner == job->handler) pg_effect_inference_destroy(&job->handler->effects);
-			if (job->definitions) pg_index_destroy(&job->definitions->names);
-			if (job->declaration) pg_index_destroy(&job->declaration->names);
 		}
 	pg_index_destroy(&synthesis->jobs);
 	pg_index_destroy(&synthesis->scopes);
@@ -2387,7 +2403,7 @@ static void finish(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
 		if (!origin) status = PG_SYNTHESIS_ERROR;
 		else if (!origin->match) origin->match = job;
 	}
-	if (status > PG_SYNTHESIS_DONE && job->handler && job->handler->effect_owner) {
+	if (status > PG_SYNTHESIS_DONE && job->role == HANDLER_JOB && job->handler && job->handler->effect_owner) {
 		struct handler_state *owner = job->handler->effect_owner;
 		if (!owner->effects.sealed && !owner->failure) {
 			owner->failure = status;
@@ -10182,7 +10198,7 @@ struct pg_synthesis_job *pg_synthesis_definition(const struct pg_synthesis_job *
 	struct pg_token name)
 {
 	if (root && root->right && root->right->role == DEFINITION_SCOPE_JOB) root = root->right;
-	if (!root || !root->definitions || !name.length || !name.text) return NULL;
+	if (!root || root->role != DEFINITION_SCOPE_JOB || !root->definitions || !name.length || !name.text) return NULL;
 	struct block_name *entry = lookup_name(&root->definitions->names, name);
 	return entry ? entry->producer : NULL;
 }

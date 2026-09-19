@@ -6292,3 +6292,55 @@ QuickSort 178.352/177.907; Handler 5.465/5.735; length save 5.025/5.077;
 QuickSort save 179.999/180.659. Raw samples are in
 `/tmp/a-program-authority-constructor-fields-timing.jsonl`. The mixed results
 do not establish a general speedup or discharge the R0 performance audit.
+
+### A4 role-owned Solver storage (2026-09-19)
+
+Baseline `1ef27d8`. Use the existing immutable request role to select private
+work storage, rather than reserving independent pointers for every worker in
+every request. This changes physical ownership, not request identity or the
+accepted Term/occurrence/derivation layers. No new role, cache or wire field.
+
+- [x] Audit all accesses before moving storage: definition registration, schema
+  checking and handlers own disjoint state. Expression work retains separate
+  block/application/Match/function-source slots within its role's storage.
+- [x] Preserve simultaneous derivation premises and normalization state;
+  overlaying those two would corrupt reduction checking.
+- [x] Dispatch resource destruction by the existing role. Restrict handler
+  failure propagation and definition lookup before reading role-owned state.
+- [x] Add cancellation at every Solve boundary for accepted and rejected source
+  programs, and reject definition lookup on ordinary expression producers.
+- [x] Strict debug and optimized acceptance; focused sanitizer tests including
+  pending handler/source/image destruction. Compare semantic outputs and steps.
+- [x] Measure request size, retained memory, counts and isolated performance.
+- [ ] Group with the two pending allocation deletions only after the integrated
+  epoch passes publication gates; parent A4/A5/R2-R5 remain open.
+
+Verified on the unchanged source/test revision: full strict O0/g and O2
+`check-acceptance`; ASan/UBSan synthesis, Source IO, image CLI and all 4,080
+handler save boundaries, with leak/error halting. The new cancellation cases
+exercise 344 accepted-program and 254 rejected-program boundaries. All 2,460
+normalized export/step records match published Main and each other; all 1,218
+sanitizer image records match the preceding build. No test expectation relaxed.
+
+GDB reports request headers 368 -> 336 bytes. QuickSort keeps 34,286 requests,
+151,199 steps, 74,584 occurrences and 88,019 proofs. Graph arena used bytes
+fall 61,819,488 -> 60,722,336, exactly 32 bytes per request; allocated capacity
+falls 62,111,744 -> 60,997,632. Substitution storage is unchanged. This is a
+retained-memory reduction, not elimination of semantic obligations or evidence.
+
+Epoch timing against published Main's strict O2 build: CPU 2, warmup and 31
+alternating pairs, no concurrent tests/builds. Median milliseconds before/after:
+Bool .513/.474; add .901/.863; length 4.901/4.811; function-field 8.470/8.046;
+Vec append 6.630/6.418; QuickSort 193.666/190.172; Handler 5.995/5.767;
+length save 5.011/5.100; QuickSort save 182.448/179.375. The save regression
+is retained here; these local timings do not discharge the R0 comparison gate.
+Logs: `/tmp/a-program-authority-role-storage-` with `debug.log`,
+`acceptance.log`, `asan-{synthesis,source,image,handler}.log`, `objects.log`
+and `timing.jsonl`.
+
+Local implementation: `synthesis.c` +32/-16 = +16; tests +35/-0.
+Combined with `ad3d94c` and `1ef27d8`, epoch versus Main `d76537b`:
+`synthesis.c` +65/-57 = +8; `evidence.c` +7/-14 = -7. Implementation net
+**+1**, not a LOC reduction. Tests separately: `synthesis.c` +40/-1 = +39;
+`iadt.c` +15/-0. Cumulative R0 implementation/header +8,864/-4,409 = +4,455.
+The original net-negative gate and overall A4/A5/R2-R5 remain unfinished.

@@ -109,6 +109,7 @@ static void accepted_structures(struct pg_typing *typing)
 	for (size_t i = 0; i < sizeof(sources) / sizeof(*sources); ++i) {
 		struct pg_synthesis_job *producer = request(&synthesis, pg_synthesis_root(&synthesis), sources[i]);
 		const struct pg_evidence *proof = complete(&synthesis, producer, PG_SYNTHESIS_DONE);
+		assert(!pg_synthesis_definition(producer, (struct pg_token){.text = "v", .length = 1}));
 		while (synthesis.ready) pg_synthesis_advance(&synthesis, 1);
 		const struct pg_occurrence *subject = pg_evidence_subject(proof);
 		enum pg_evidence_judgement kind = pg_evidence_judgement(proof);
@@ -6487,6 +6488,39 @@ static void data_cases(struct pg_typing *typing)
 	puts("case synthesis: independent producers, index motives, post-check evidence and shared scheduling passed");
 }
 
+static void synthesis_cancellation(void)
+{
+	const char *sources[] = {
+		"B:=@{f:*;t:*;}; id:=\\b:B=>b @f=>B.f @t=>B.t; main:={x:=id B.t;x;};",
+		"B:=@{f:*;t:*;}; main:={x:=B.t;x;}::@;"
+	};
+	for (size_t i = 0; i < sizeof(sources) / sizeof(*sources); ++i) {
+		for (uint64_t cutoff = 0;; ++cutoff) {
+			struct pg_graph graph;
+			struct pg_typing typing;
+			struct pg_whnf_work work;
+			struct pg_synthesis synthesis;
+			assert(!pg_graph_init(&graph) && !pg_typing_init(&typing, &graph));
+			assert(!pg_whnf_work_init(&work, &graph));
+			assert(!pg_synthesis_init(&synthesis, &typing, &work, PG_DEFINITION_IMPLICIT_THUNK));
+			struct pg_synthesis_job *root = program(&synthesis, pg_synthesis_root(&synthesis), sources[i]);
+			pg_synthesis_advance(&synthesis, cutoff);
+			int drained = !synthesis.ready;
+			if (drained) assert(pg_synthesis_status(root) == (i ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE));
+			/* Destroy live owners at every transition, not just finished results. */
+			pg_synthesis_destroy(&synthesis);
+			pg_whnf_work_destroy(&work);
+			pg_typing_destroy(&typing);
+			pg_graph_destroy(&graph);
+			assert(cutoff < 10000);
+			if (drained) {
+				printf("synthesis cancellation: case %zu, %llu boundaries\n", i, (unsigned long long)cutoff + 1);
+				break;
+			}
+		}
+	}
+}
+
 static void synthesis_lifetime(struct pg_typing *typing)
 {
 	struct pg_whnf_work work;
@@ -6645,6 +6679,7 @@ int main(void)
 	accepted_context_structure(&typing);
 	application_substitution_sharing(&typing);
 	effect_expectations(&typing);
+	synthesis_cancellation();
 	synthesis_lifetime(&typing);
 	accepted_inputs(&typing);
 	pending_names(&typing);
