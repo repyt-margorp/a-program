@@ -4885,3 +4885,36 @@ published direct-origin epoch after temporary-path/order normalization only.
 Final synthesis regressions also pass in debug and ASan/UBSan. The working tree
 is prepared as one local commit; Main remains at `f3da3c3`, with no independent
 publication for this partial pending-structure correction.
+
+### 2026-09-19: shared compound-term structural assembly
+
+Baseline: local `fa8e1b5`. App, request and zero-clause Fold duplicate the
+Handler structure builder's operand request/wait/forward logic. Consolidate
+that assembly in the existing structural-query implementation. Core builders
+and checked theorem rules remain explicit and unchanged; zero-clause Fold
+allocates no clause state. Preserve existing failure status classification.
+
+- [x] Remove the second operand assembly path; introduce no job, field or index.
+- [x] Fix exact 0/1/2-clause Core expectations in the existing pending-effect
+  tests, including reuse of already requested child structures at chunks 1/64.
+- [x] Run debug/sanitizer synthesis and source-image tests, full optimized
+  acceptance, and compare exports/steps and implementation/test LOC.
+- [x] Record validation and publication scope together with the preceding
+  Lambda dependency correction. Do not equate this with completion of A3-A5.
+
+Validation: full optimized `check-acceptance` exits 0; all 2,460 export records
+(including Solve steps) match the preceding Lambda correction after temporary
+path/order normalization. Debug and ASan/UBSan synthesis and source-image
+runners, and sanitizer `image_origins.sh`, exit 0. Logs use the prefix
+`/tmp/a-program-authority-compound-` with suffixes `opt-final.log`,
+`debug-final.log`, `debug-source.log`, `asan-synthesis.log`, `asan-source.log`
+and `asan-origins.log`. Zero-step QuickSort resave with `--retain-reductions`
+is byte-identical; omitting that option intentionally changes the image policy.
+
+This consolidation: `synthesis.c` +32/-36 (net -4); synthesis tests +11/-0.
+Together with unpublished `fa8e1b5`, relative to Main `f3da3c3`: implementation
++91/-54 (net +37), tests +40/-0; documentation counted separately. Neither
+the cumulative net-negative gate nor A3-A5 is complete. Keep these changes
+local until a substantial completed refactoring epoch; passing this narrow
+cleanup's tests does not alone make it such an epoch. Both remote branches
+still point to `f3da3c3`; no additional Main push is made here.

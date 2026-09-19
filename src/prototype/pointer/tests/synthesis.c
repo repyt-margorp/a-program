@@ -1138,6 +1138,17 @@ static void pending_effect_contexts(struct pg_typing *typing)
 		assert(!complete(&synthesis, multiple_term, PG_SYNTHESIS_DONE));
 		assert(pg_synthesis_type_structure_result(multiple_term) != pg_synthesis_type_structure_result(raw_handler_term));
 		assert(!pg_synthesis_result(multiple_handler));
+		size_t fold_requests = synthesis.jobs.count;
+		const struct pg_term *fold_source = pg_synthesis_type_structure_result(pg_synthesis_term_structure(&synthesis, body));
+		const struct pg_term *fold_return = pg_synthesis_type_structure_result(pg_synthesis_term_structure(&synthesis, raw_return));
+		const struct pg_term *fold_clause = pg_synthesis_type_structure_result(pg_synthesis_term_structure(&synthesis, open_clause));
+		const struct pg_term *sequence_return = pg_synthesis_type_structure_result(pg_synthesis_term_structure(&synthesis, result_function));
+		assert(synthesis.jobs.count == fold_requests);
+		struct pg_operation_clause fold_clauses[] = {
+			{pg_operation_label(pending_op), fold_clause}, {pg_operation_label(second_pending_op), fold_clause}};
+		assert(pg_synthesis_type_structure_result(sequence_term) == pg_computation_fold(typing->graph, fold_source, sequence_return, 0, NULL));
+		assert(pg_synthesis_type_structure_result(raw_handler_term) == pg_computation_fold(typing->graph, fold_source, fold_return, 1, fold_clauses));
+		assert(pg_synthesis_type_structure_result(multiple_term) == pg_computation_fold(typing->graph, fold_source, fold_return, 2, fold_clauses));
 		struct pg_synthesis_job *invalid_handler = pg_synthesis_rule(&synthesis, &raw_handler_input,
 			(struct pg_synthesis_job *[]){body, universe, open_carrier, universe, universe, open_clause}, NULL, NULL);
 		struct pg_synthesis_job *invalid_handler_type = pg_synthesis_classifier_structure(&synthesis, invalid_handler);

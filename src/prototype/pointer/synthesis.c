@@ -7543,31 +7543,35 @@ static void body_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *j
 	forward_proof(synthesis, job, job->value_job);
 }
 
-static void handler_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
+static void compound_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
 	struct pg_synthesis_job *producer, const struct pg_derivation_input *input)
 {
-	size_t count = pg_handler_signature_count(input->parameters.handler);
-	if (!count || count > (SIZE_MAX - 3) / 3 || input->count != 3 + 3 * count) {
+	int handling = input->rule == PG_HANDLER_ELIM;
+	size_t count = handling ? pg_handler_signature_count(input->parameters.handler) : 0;
+	if (handling && (!count || count > (SIZE_MAX - 3) / 3 || input->count != 3 + 3 * count)) {
 		finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
 	}
-	if (!job->fold_structure) {
+	if (count && !job->fold_structure) {
 		if (count > (SIZE_MAX - sizeof(*job->fold_structure)) / sizeof(struct pg_operation_clause)) {
 			finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
 		}
 		job->fold_structure = pg_alloc(synthesis->typing->graph,
 			sizeof(*job->fold_structure) + count * sizeof(struct pg_operation_clause));
 		if (!job->fold_structure) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-		job->left = pg_synthesis_term_structure(synthesis, rule_premise(synthesis, producer, 0));
-		job->right = pg_synthesis_term_structure(synthesis, rule_premise(synthesis, producer, 1));
+	}
+	if (!job->left) {
+		size_t offset = input->rule == PG_REQUEST_INTRO ? 2 : 0;
+		job->left = pg_synthesis_term_structure(synthesis, rule_premise(synthesis, producer, offset));
+		job->right = pg_synthesis_term_structure(synthesis, rule_premise(synthesis, producer, offset + 1));
 	}
 	struct pg_synthesis_job *parts[] = {job->left, job->right};
 	for (size_t i = 0; i < 2; ++i) {
-		if (!parts[i]) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		if (!parts[i]) { finish(synthesis, job, handling ? PG_SYNTHESIS_ERROR : PG_SYNTHESIS_UNSUPPORTED); return; }
 		if (parts[i]->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, parts[i]); return; }
 		if (parts[i]->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, parts[i]->status); return; }
 	}
 	struct fold_structure_state *state = job->fold_structure;
-	if (state->next < count) {
+	if (count && state->next < count) {
 		if (!job->value_job) job->value_job = pg_synthesis_term_structure(synthesis,
 			rule_premise(synthesis, producer, 5 + 3 * state->next));
 		if (!job->value_job) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
@@ -7581,9 +7585,21 @@ static void handler_structure_step(struct pg_synthesis *synthesis, struct pg_syn
 		enqueue(synthesis, job);
 		return;
 	}
-	job->type_structure = pg_computation_fold(synthesis->typing->graph,
-		pg_synthesis_type_structure_result(job->left), pg_synthesis_type_structure_result(job->right), count, state->clauses);
-	finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
+	const struct pg_term *left = pg_synthesis_type_structure_result(job->left);
+	const struct pg_term *right = pg_synthesis_type_structure_result(job->right);
+	switch (input->rule) {
+	case PG_HANDLER_ELIM: case PG_FOLD_ELIM:
+		job->type_structure = pg_computation_fold(synthesis->typing->graph, left, right, count, count ? state->clauses : NULL);
+		break;
+	case PG_REQUEST_INTRO:
+		job->type_structure = pg_computation_request(synthesis->typing->graph, input->parameters.operation_label, left, right);
+		break;
+	default:
+		job->type_structure = pg_application(synthesis->typing->graph, left, right);
+		break;
+	}
+	finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE
+		: handling ? PG_SYNTHESIS_UNSUPPORTED : PG_SYNTHESIS_ERROR);
 }
 
 static void type_rule_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
@@ -7667,7 +7683,11 @@ static void term_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 	const struct pg_object *operation = NULL;
 	if (input) {
 		if (input->rule == PG_LAMBDA_INTRO) { lambda_structure_step(synthesis, job, producer); return; }
-		if (input->rule == PG_HANDLER_ELIM) { handler_structure_step(synthesis, job, producer, input); return; }
+		switch (input->rule) {
+		case PG_APP_ELIM: case PG_FOLD_ELIM: case PG_REQUEST_INTRO: case PG_HANDLER_ELIM:
+			compound_structure_step(synthesis, job, producer, input); return;
+		default: break;
+		}
 		if (input->rule == PG_HOST_TYPE_FORM || input->rule == PG_HOST_VALUE_INTRO || input->rule == PG_HOST_FUNCTION_INTRO) {
 			job->type_structure = pg_reference(synthesis->typing->graph, input->parameters.constant);
 			finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
@@ -7680,30 +7700,6 @@ static void term_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 		}
 		if (type_structure_rule(input->rule)) {
 			type_rule_structure_step(synthesis, job, producer, input);
-			return;
-		}
-		if (input->rule == PG_APP_ELIM
-			|| input->rule == PG_FOLD_ELIM || input->rule == PG_REQUEST_INTRO) {
-			if (!job->left) {
-				size_t offset = input->rule == PG_REQUEST_INTRO ? 2 : 0;
-				job->left = pg_synthesis_term_structure(synthesis, rule_premise(synthesis, producer, offset));
-				job->right = pg_synthesis_term_structure(synthesis, rule_premise(synthesis, producer, offset + 1));
-			}
-			struct pg_synthesis_job *parts[] = {job->left, job->right};
-			for (size_t i = 0; i < 2; ++i) {
-				if (!parts[i]) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
-				if (parts[i]->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, parts[i]); return; }
-				if (parts[i]->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, parts[i]->status); return; }
-			}
-			const struct pg_term *left = pg_synthesis_type_structure_result(job->left);
-			const struct pg_term *right = pg_synthesis_type_structure_result(job->right);
-			if (input->rule == PG_FOLD_ELIM)
-				job->type_structure = pg_computation_fold(synthesis->typing->graph, left, right, 0, NULL);
-			else if (input->rule == PG_REQUEST_INTRO)
-				job->type_structure = pg_computation_request(synthesis->typing->graph,
-					input->parameters.operation_label, left, right);
-			else job->type_structure = pg_application(synthesis->typing->graph, left, right);
-			finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 			return;
 		}
 		if (input->rule == PG_VARIABLE) {
