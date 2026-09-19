@@ -3412,3 +3412,67 @@ question, not evidence of another answer authority. Its enclosing dependent
 telescope must retain completed images across suspension before moving this
 work into existing scheduling. No extra scheduler or acceptance cache follows
 from this audit. A3-A5 and the original cumulative reduction gates remain open.
+
+### 2026-09-19: Preserve unchanged map derivations (local)
+
+Baseline: `b143a53`. An accepted substitution already in the requested exact
+destination Context proof needs no relocation. Previously `TYPED_MAP_REBASE`
+still rebased every image, then constructed a substitution. Image queries are
+keyed by typed subject and can return another derivation of that subject;
+consequently this unnecessary reconstruction could replace the caller's map
+proof. The new Core regression fails on the old implementation at exact map
+result equality (exit 134), not just at a timing or step-count assertion.
+
+- [x] Return the supplied map from the existing query when its destination
+  *proof pointer* is the requested Context proof. Arguments are already
+  ownership/rule checked at request admission. No Core reduction, type equality
+  or first-proof lookup justifies this case; it is an identity operation.
+- [x] Test two maps with identical structural images but different explicit
+  image proofs. Both return themselves, in one step, without image queries or
+  additional proofs. Repeated requests reuse the completed query.
+- [x] Test a different proof of the same destination Context. It must still
+  produce a distinct map receipt with that requested proof as premise; verify
+  its shared structural map and reconstruct the derivation.
+- [x] Strict O0/g Core and IADT tests pass.
+- [x] Full O2 `check-acceptance` exits 0: compatibility 63/63 and four sorting
+  proof suites. All 2460 export records agree with `b143a53` after temporary
+  directory normalization and excluding changed step counts.
+- [x] ASan/UBSan Core, IADT, complete `derivation_io.sh` and `source_io.sh`
+  exit 0. Use O1/g, frame pointers, non-PIE, leak detection and halt-on-error.
+- [x] Group with `82503d8` and `b143a53` as an explicit-map preservation epoch.
+  Publication gates pass and both remote branches were checked at `5fa8a55`;
+  publish Main/rewrite atomically without force. Git remote state records the
+  publication outcome, not this pre-push checklist. A3-A5 remain open.
+
+GDB fixed-source measurements compare the existing `5fa8a55` debug reference
+binary with this change. The intervening `b143a53` declaration-chain cleanup
+preserved all exported results and Solve steps; this table does not claim a
+separate allocation measurement of `b143a53`:
+
+| Input | Typed queries before/after | Solve steps before/after | Arena used before/after |
+| --- | ---: | ---: | ---: |
+| length | 1017 / 1011 | 9104 / 9094 | 4052864 / 4050368 |
+| function field | 1803 / 1772 | 12334 / 12316 | 6492096 / 6480864 |
+| Vec append | 743 / 735 | 19318 / 19312 | 4459552 / 4456352 |
+| QuickSort property | 10467 / 10417 | 140836 / 140790 | 68837792 / 68808416 |
+
+All eight processes exit normally. Core/Context/Solve-job counts are unchanged.
+The first three inputs also retain identical proof/occurrence/map counts.
+QuickSort proofs change 93063 -> 93016, occurrences 82091 -> 82073, maps
+15684 -> 15670 and occurrence actions 28052 -> 28045. These are concrete work
+and allocation results, not an elapsed-time claim or final baseline gate.
+
+Evidence: `/tmp/a-program-authority-rebase-identity-{before,debug-core,debug-iadt,counts}.log`.
+Implementation change: `evidence.c` +5/-0; Core tests +23/-0; documents separate.
+The grouped implementation/header change since Main `5fa8a55` is net -24.
+Per file: `evidence.c` +9/-25, `evidence.h` +0/-8, `tests/core.c` +80/-0.
+The Core total includes the retained explicit-projection regression from the
+withdrawn trial. Cumulative implementation/header totals remain R76
++3124/-1578 (net +1546), R0 +7955/-3993 (net +3962); documents are separate.
+Optimized log: `/tmp/a-program-authority-rebase-identity-opt.log`;
+sanitizer logs: `/tmp/a-program-authority-rebase-identity-asan-{core,iadt,derivation,source}.log`.
+This does not meet the overall net-negative gate or repair source-origin
+enumeration: allocation-only lookup still inspects unselected lexical aliases.
+Changing that lookup to syntax-only would instead scan unrelated uses sharing
+syntax. Keep both reachability conditions; neither key alone establishes the
+required bound. No such source-writer change is included in this epoch.

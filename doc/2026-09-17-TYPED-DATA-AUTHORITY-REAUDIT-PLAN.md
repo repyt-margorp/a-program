@@ -1055,6 +1055,13 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 
 ### A4. Audit remaining structural consumers and remove duplication
 
+- [x] 2026-09-19: an accepted map rebased to its exact destination Context
+  proof returns that same map proof. Previously image rebase could choose
+  another proof of the same typed image and rebuild a different map receipt.
+  Do not generalize this identity case to merely equal Contexts: a distinct
+  destination proof remains an explicit premise of the constructed result.
+  The priority plan records the failing-before provenance regression, work
+  counts and publication gates. No new query/cache/normalization rule is added.
 - [x] 2026-09-19: substitution introduction validates against the immutable
   Context declaration chain, not the Context proof's premise chain. Exact
   source/destination/image proofs remain premises. Remove the unused

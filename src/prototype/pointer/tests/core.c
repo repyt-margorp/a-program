@@ -1553,6 +1553,24 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(typing.context_maps.count == map_count);
 	assert(pg_substitution_image(&typing, sigma, a) == destination_b);
 	assert(pg_substitution_image(&typing, alternate, a) == alternate_b);
+	/* An unchanged destination preserves the requested map derivation, not
+	 * merely the first proof of each image's typed subject. */
+	const struct pg_evidence *unchanged_maps[] = {sigma, alternate};
+	struct pg_typed_query *unchanged_queries[2];
+	size_t unchanged_proofs = typing.proofs.count, unchanged_work = typing.typed_queries.count;
+	for (size_t i = 0; i < 2; ++i) {
+		struct pg_typed_query *query = pg_substitution_rebase_request(&typing, destination, unchanged_maps[i]);
+		unchanged_queries[i] = query;
+		assert(query && !pg_typed_query_advance(query, 0));
+		while (!pg_typed_query_advance(query, 1)) {}
+		assert(pg_typed_query_result(query) == unchanged_maps[i]);
+		assert(pg_substitution_rebase_request(&typing, destination, unchanged_maps[i]) == query);
+	}
+	assert(typing.proofs.count == unchanged_proofs && typing.typed_queries.count == unchanged_work + 2);
+	for (size_t i = 0; i < 2; ++i) {
+		struct pg_typed_query *query = unchanged_queries[i];
+		assert(pg_typed_query_advance(query, 64) == 1 && pg_typed_query_steps(query) == 1);
+	}
 	{
 		size_t proofs = typing.proofs.count, work = typing.substitutions.jobs.count;
 		for (size_t repeat = 0; repeat < 16; ++repeat) {
@@ -1732,6 +1750,11 @@ static void typed_substitution_test(struct pg_graph *graph)
 		pg_prove_type_value(&typing, pg_prove_value_type(&typing, b_type)));
 	assert(other_destination && other_destination != destination);
 	assert(pg_evidence_context(other_destination) == pg_evidence_context(destination));
+	const struct pg_evidence *other_rebase = pg_prove_substitution_rebase(&typing, other_destination, sigma);
+	assert(other_rebase && other_rebase != sigma);
+	assert(pg_evidence_context_map(other_rebase) == pg_evidence_context_map(sigma));
+	assert(pg_evidence_premise(other_rebase, 1) == other_destination);
+	reconstruct_derivation(&typing, other_rebase);
 	/* Map checking reads declarations, while retaining the supplied proofs. */
 	const struct pg_evidence *reverse_images[] = {projected_a, source_x};
 	const struct pg_evidence *reverse = pg_prove_substitution(&typing, destination, source, 2, reverse_images);

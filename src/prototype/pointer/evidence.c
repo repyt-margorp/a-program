@@ -875,6 +875,11 @@ static int typed_rebase_step(struct pg_typed_query *work)
 	struct pg_typing *typing = work->typing;
 	const struct pg_evidence *context = work->argument;
 	int map_query = work->kind == TYPED_MAP_REBASE;
+	/* No relocation: retain this map's exact image and Context derivations. */
+	if (map_query && context == work->source_map->premises[1]) {
+		work->result = work->source_map;
+		return 1;
+	}
 	if (map_query && !work->rebase) {
 		work->rebase = pg_alloc(typing->graph, sizeof(*work->rebase));
 		if (!work->rebase) return -1;
