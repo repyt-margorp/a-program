@@ -4138,3 +4138,66 @@ previously accepted surface program. The positive case keeps the family in
 the unchanged common prefix; it does not establish general family-path rules.
 Implementation: `evidence.c` +8/-10 (net -2); tests: `identity.c` +17/-0;
 documentation is separate. No new persistent structure or wire tag is added.
+
+### 2026-09-19: Shared Match planning through typed iota
+
+Baseline: local `bbe3fb6`, published `89c011f`. Scope: the two synchronous
+elimination-body calls in function-graph planning, not all atomic kernel rules.
+
+- [x] Reproduce the budget violation with a constant Bool Match inside a Fold.
+  On the preceding implementation, `suspended_match_body` fails its query-step
+  delta assertion (exit 134). Fresh programs keep the observed query cold.
+- [x] Use `pg_elimination_body_request` and the graph's existing `await_view`.
+  Split children retain their checked reindexed elimination as the existing
+  computation field. The same ordinary planning path exposes its body later;
+  remove the separate eager loop's body completion. No new state/cursor/cache.
+- [x] Cancel the graph at each progress boundary, then finish the same shared
+  typed query independently. Focused debug `program_test` passes, including
+  existing nested splitting, helpers, graph witnesses and rejection tests.
+- [x] Full optimized acceptance (including 63/63 source compatibility cases
+  and all four sorting/property/image suites), focused debug program checks,
+  and affected ASan/UBSan program, Identity, source/image-origin checks pass.
+  All 2,460 normalized exported results agree with `bbe3fb6`; 608 records have
+  changed Solve step counts. The old retained QuickSort image loads inertly
+  and resaves byte-identically. Group with the verified Identity declaration
+  correction for one A4 consumer epoch; A3-A5 and R2-R5 remain open.
+
+Fixed-source debug counters (published/new): length, function-field and Vec
+append are unchanged, including arena usage and Solve/typed-query work.
+QuickSort Solve steps are 146,388/146,537; typed-query steps 343,194/343,193;
+queries 10,417/10,427; proofs 93,016/93,013; occurrences 82,073/82,070; occurrence
+actions 28,045/28,042. Core, Context, map, lift and synthesis-job counts are
+unchanged. Arena used bytes increase 65,292,512 -> 65,294,208; reserved capacity
+stays 65,617,920. This is scheduling granularity, not a demonstrated speedup.
+Logs/builds use `/tmp/a-program-authority-graph-iota-` with `before.log`,
+`build.log`, `debug.log`, `counts.log`, `opt.log`,
+`export-comparison.log`, `asan-{program,identity,source,origins,common}.log`.
+Sanitizers enable leak detection and halt-on-error; the inert zero-step load
+returns the expected pending exit 3, not an acceptance failure.
+
+The preceding synchronous wrappers already used the same interned query.
+This change removes hidden draining, not a second accepted-answer authority.
+
+Timing used fresh source CLI processes, `--steps 1000000
+--legacy-intrinsic-dot`, stdout discarded, **without image saving**. Two
+31-pair unpinned runs measured function-field medians 13.793/14.472 ms and
+13.008/14.156 ms (published/candidate). Follow-up three-way runs pinned to
+CPU 2, 101 samples per binary, alternating order, gave these medians:
+
+| Input/run | Published `89c011f` ms | Identity-only `bbe3fb6` ms | Candidate ms |
+|---|---:|---:|---:|
+| length / 1 | 5.575 | 5.716 | 5.659 |
+| length / 2 | 5.527 | 5.629 | 5.550 |
+| function-field / 1 | 9.868 | 10.033 | 10.142 |
+| function-field / 2 | 9.875 | 9.917 | 9.793 |
+
+The slowdown is not stable under controlled affinity; this neither proves
+zero overhead nor establishes a speedup. Fixed-source work/allocation counters
+for both small cases are unchanged. Keep the original A5 performance gate
+open. Raw samples: the same prefix with `timing{,-repeat}.log`,
+`three-way.log`, and `pinned{,-repeat}.log`.
+
+Epoch delta from `89c011f`: `evidence.c` +8/-10; `function_graph.c` +4/-3;
+implementation net -1. Tests separately: `identity.c` +17/-0 and `program.c`
++38/-0. Cumulative implementation/header net remains +1,700 from R76 and
++4,116 from R0, so neither overall net-negative gate is satisfied.

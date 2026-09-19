@@ -381,8 +381,7 @@ static int split_case(struct pg_function_graph_state *s, struct graph_case *plan
 			pg_prove_substitution_projection(t, pg_evidence_premise(plan->origin_map, 1), plan->context))
 			: pg_prove_substitution_projection(t, plan->context, plan->context);
 		child->origin_map = pg_prove_substitution_compose(t, child->origin_map, map);
-		child->computation = pg_prove_elimination_body(t,
-			pg_prove_elimination_reindex(t, map, elimination));
+		child->computation = pg_prove_elimination_reindex(t, map, elimination);
 		if (!child->origin_map || !child->computation) return -1;
 		struct graph_continuation **tail = &child->continuations;
 		for (const struct graph_continuation *old = plan->continuations; old; old = old->next) {
@@ -715,7 +714,9 @@ static int plan_step(struct pg_function_graph_state *s, struct graph_case *plan)
 	}
 	case PG_RETURN_INTRO: value = left; break;
 	case PG_MATCH_ELIM: case PG_INDUCTION_ELIM: {
-		const struct pg_evidence *body = pg_prove_elimination_body(t, left);
+		struct pg_typed_query *query = pg_elimination_body_request(t, left);
+		if (await_view(s, query)) return 0;
+		const struct pg_evidence *body = pg_typed_query_result(query);
 		if (!body) {
 			if (pg_evidence_rule(left) == PG_INDUCTION_ELIM) goto normalize;
 			return split_case(s, plan, left);

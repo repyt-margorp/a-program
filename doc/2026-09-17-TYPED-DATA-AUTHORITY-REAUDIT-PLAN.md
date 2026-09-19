@@ -1281,6 +1281,18 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 - [ ] Report concrete deleted paths. Move remaining synchronous query loops to
   existing scheduling only where necessary for the same work contract; do not
   turn this repair into another scheduler framework.
+- [x] 2026-09-19: function-graph Match planning uses the existing typed
+  elimination query and shared wait slot. Splitting stores each checked
+  reindexed elimination in its existing child computation; ordinary child
+  planning advances iota later. Remove both `pg_prove_elimination_body` calls
+  from `function_graph.c`, without another phase, field or answer cache.
+  `suspended_match_body` reproduces multi-step draining before the change and
+  checks one-step progress plus independent resumption after each cancellation.
+  Other checked kernel subrules and helper-schema application remain outside
+  this local bound. Full optimized acceptance and affected debug/sanitizer/image
+  checks pass; exact results and timing limitations are in the priority plan's
+  shared-Match epoch. Existing wrappers already shared the query: this removes
+  synchronous draining, not duplicate proof authority. A4/A5 stay open.
 - [x] 2026-09-19 local work: function-graph preparation no longer drains
   inductive/parameter-map queries in initialization or one graph turn. Existing
   graph scheduling and its shared-query wait slot own this work; a phase replaces

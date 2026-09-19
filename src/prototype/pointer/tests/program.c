@@ -944,6 +944,43 @@ static void suspended_helper_application(void)
 	puts("helper application: typed beta queries yield and survive cancellation at every boundary");
 }
 
+static void suspended_match_body(void)
+{
+	const char *source = "Bool:=@{true:*;false:*;};"
+		"f:=\\x:Bool=>{r:=Bool.true @true=>x @false=>Bool.false;r;};";
+	for (size_t limit = 0;; ++limit) {
+		assert(limit < 1000);
+		struct pg_program *p = pg_program_create(source, strlen(source), PG_DEFINITION_IMPLICIT_THUNK);
+		assert(p && p->root);
+		solve(p, 1);
+		assert(pg_synthesis_status(p->root) == PG_SYNTHESIS_DONE);
+		const struct pg_evidence *function = pg_function_graph_source(&p->typing,
+			pg_synthesis_result(pg_synthesis_definition(p->root,
+				(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "f", .length = 1})));
+		assert(function && pg_evidence_rule(function) == PG_LAMBDA_INTRO);
+		const struct pg_evidence *sequence = pg_evidence_premise(function, 1);
+		assert(pg_evidence_rule(sequence) == PG_FOLD_ELIM);
+		const struct pg_evidence *match = pg_evidence_premise(sequence, 0);
+		assert(pg_evidence_rule(match) == PG_MATCH_ELIM);
+		struct pg_typed_query *query = pg_elimination_body_request(&p->typing, match);
+		assert(query && !pg_typed_query_steps(query));
+		struct pg_function_graph_work work;
+		assert(!pg_function_graph_init(&work, &p->typing, &p->evaluation, function));
+		enum pg_function_graph_status status = PG_FUNCTION_GRAPH_PENDING;
+		for (size_t turn = 0; turn < limit && status == PG_FUNCTION_GRAPH_PENDING; ++turn) {
+			uint64_t steps = pg_typed_query_steps(query);
+			status = pg_function_graph_advance(&work, 1);
+			assert(pg_typed_query_steps(query) - steps <= 1);
+		}
+		pg_function_graph_destroy(&work);
+		while (!pg_typed_query_advance(query, 1)) assert(pg_typed_query_steps(query) < 10000);
+		assert(pg_typed_query_result(query));
+		pg_program_destroy(p);
+		if (status != PG_FUNCTION_GRAPH_PENDING) { assert(status == PG_FUNCTION_GRAPH_DONE); break; }
+	}
+	puts("Match planning: typed iota yields and remains resumable after graph cancellation");
+}
+
 static void suspended_case_scopes(void)
 {
 	const char *source = "Nat:=@{zero:*;succ:*->*;}; Fields:=@{mk:Nat->Nat->Nat->Nat->*;};"
@@ -1088,6 +1125,7 @@ int main(int argc, char **argv)
 	graph_index_preparation();
 	function_graphs();
 	suspended_helper_application();
+	suspended_match_body();
 	suspended_case_scopes();
 	ambiguous_source_calls();
 	application_result_constraints();
