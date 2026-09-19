@@ -2415,3 +2415,15 @@ results/steps. Main comparison includes source and identical pending-image
 inputs, with mixed small-case timing recorded rather than hidden. Implementation
 delta for this group is -28 lines; tests +87. Overall R0 remains +4370, so this
 is an epoch publication gate, not A4/A5 or net-negative completion.
+
+### Reader workspace ownership follow-up
+
+Candidate `8c0a835` groups source, shared Core and Context reader temporary
+tables under read-call ownership, without changing returned-root/semantic-node
+ownership, wire formats or ordinary Solve validation. The priority plan's
+September 20 reader entries record full O0/O2/ASan+UBSan acceptance, matching
+2460 export/step records, allocation measurements and mixed timing results.
+Implementation +48/-34 = +14 versus Main `dce599d`; tests +47/-1 = +46,
+including the preceding call-order regression. Cumulative R0 net +4384 remains
+above the reduction target. This completes the scoped reader epoch, not A4/A5;
+returned-root ownership and the syntax-reader lookup table are unchanged.

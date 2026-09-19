@@ -7906,10 +7906,15 @@ No new lifetime API, schema version, trusted flag or second Solve path.
   nominal label distinction, shared request roots and signature payloads.
 - [x] Graph-only strict O2 full acceptance passes, then repeat after the Context
   changes: both runs' 2460 export/step records match Main `dce599d` exactly.
-- [ ] Final full debug and ASan/UBSan acceptance with leak detection/halt.
-- [ ] Measure retained allocation and identical-image timing versus Main.
-- [ ] Review the combined source/Core/Context reader change and publish only
-  after the reader epoch gates pass. R2-R5/A4-A5 remain open.
+- [x] Final full O1/g ASan/UBSan acceptance with leak detection/halt passes,
+  without sanitizer diagnostics; all 2460 export/step records match O2.
+- [x] Final full O0/g debug acceptance passes; its 2460 export/step records
+  match O2 and ASan/UBSan. Implementation candidate: `8c0a835`.
+- [x] Measure retained allocation and identical-image timing versus Main.
+- [x] Review the combined source/Core/Context reader change and existing API
+  ownership contracts. No source/test edits occurred during verification.
+- [ ] Publish this combined epoch only after the gates above; R2-R5/A4-A5
+  and cumulative net-negative/performance gates remain open.
 
 Current diff from Main: source_io.c +19/-16, graph_io.c +9/-8,
 context_io.c +10/-5, context_payload.c +10/-5: **+48/-34 = +14**.
@@ -7920,3 +7925,25 @@ completion is claimed. This scope does not include changing returned-root
 ownership or eliminating the remaining syntax-reader node lookup allocation.
 Logs: `/tmp/a-program-{graph,reader}-workspace-opt.log`,
 `/tmp/a-program-reader-workspace-asan.log`.
+
+Final evidence at `8c0a835`: full strict O0/g, O2 and O1/g ASan/UBSan suites
+all exit zero. Additional log: `/tmp/a-program-reader-workspace-debug.log`.
+Read-only debugger measurements before Solve, same Main-produced image:
+
+| Input | Arena used bytes Main/candidate | Capacity Main/candidate |
+| --- | ---: | ---: |
+| Function-field | 148640 / 133696 | 163840 / 147456 |
+| Append | 169536 / 153376 | 180224 / 163840 |
+| QuickSort | 890752 / 867552 | 923392 / 890624 |
+
+Context/occurrence/map/proof/job counts remain identical per input. These are
+retained arena bytes, not peak RSS. Logs:
+`/tmp/a-program-reader-workspace-{function-field,append,qsort}-{before,after}.log`.
+
+Two isolated CPU-2 O2 runs, 31 alternating pairs, no concurrent build/test/probe.
+Pending-image load/Solve medians in milliseconds, Main/candidate (first; repeat):
+length 4.867/4.869; 4.730/4.727, function-field 8.387/8.048; 7.816/8.118,
+append 6.048/6.320; 6.119/6.137, QuickSort 164.853/165.145;
+161.119/161.274. Identical Main-generated zero-step RECOMPUTE input per pair.
+Timing is mixed, not a demonstrated speedup; preserve the R0 regression gate.
+Logs: `/tmp/a-program-reader-workspace-image-timing{,-repeat}.jsonl`.
