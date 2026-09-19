@@ -1138,6 +1138,14 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 
 ### A4. Audit remaining structural consumers and remove duplication
 
+- [x] 2026-09-20: delete constructor field-proof staging arrays. Elimination
+  fills its retained arguments directly; refinement factorization consumes
+  fields pairwise through the existing checked typed-input path. Nominal and
+  dependent-field validation remain. Implementation net -13; full O2 and
+  affected debug/sanitizer/image checks pass with unchanged exports/steps.
+  See the priority plan for allocation attribution, mixed timing and local-only
+  publication status. This does not close A4/A5 or the cumulative LOC gate.
+
 - [x] 2026-09-20: family application uses the existing exact-premise proof
   lookup before codomain substitution, as ordinary application already does.
   QuickSort's family-application substitution calls fall 1885 -> 1146 with

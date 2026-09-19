@@ -7690,3 +7690,53 @@ The reduction is in repeated computation, not LOC. Cumulative implementation
 and headers from R0: +9154/-4771 = **+4383**. Retain as local progress using
 the existing proof authority; no Main push, A4/A5 completion or waiver of the
 broader performance/net-negative gates.
+
+### A4 direct constructor-field consumers (2026-09-20)
+
+Baseline `91f2527`. Remove `constructor_structure`'s allocated field-proof
+array: elimination copied it immediately into its retained argument array,
+while refinement factorization only consumed corresponding fields in order.
+The checked constructor view now borrows its existing typed subject. Both
+consumers obtain field evidence through the existing structural-input path;
+there is no new graph, query store, cache or acceptance rule.
+
+Elimination fills its final argument storage directly and retains the original
+IH ordering. Factorization checks one pair of fields at a time. Nominal identity,
+arity, field evidence and final substitution/composition checks remain. Reject
+incompatible heads before constructing their fields; rejection need not create
+every intermediate proof formerly produced by the failed attempt.
+
+The synchronous `pg_prove_*` adapters inspected in this pass already delegate
+to shared query work. Do not remove tests or introduce another scheduler simply
+to lower their line count; this change removes actual temporary assembly.
+
+- [x] Strict debug Core/IADT checks pass for the implementation.
+- [x] Add repeat-factorization regression: exact result reuse with unchanged
+  proof/map/typed-subject counts, alongside existing dependent-field and invalid
+  scrutinee tests.
+- [x] Full strict O2 acceptance passes, including the added regression and image
+  cases. All 2460 export/step records match `91f2527` after temporary-path
+  normalization. Log: `/tmp/a-program-constructor-input-opt.log`.
+- [x] Fresh debug IADT check includes the repeat-factorization regression.
+  ASan/UBSan Core, IADT and `source_io.sh` pass with leak detection/halt enabled.
+  Logs: `/tmp/a-program-constructor-input-debug-confirm.log` and
+  `/tmp/a-program-constructor-input-asan-{core,iadt,source}.log`.
+  This is affected sanitizer coverage, not full sanitizer acceptance.
+- [x] Baseline debug QuickSort attribution: `constructor_structure` succeeds
+  9 times from elimination (3 empty, 25 field slots), and 54 times from
+  factorization (18 empty, 150 slots). Those temporary field arrays are gone;
+  elimination's required retained arguments and factorization's binding index
+  remain. These are arena allocation requests, not 63 independent mallocs.
+  Log: `/tmp/a-program-constructor-array-before-count.log`.
+- [x] Two isolated CPU-2 O2 runs, 31 alternating pairs. Before/after medians
+  in ms: function-field 7.583/8.080 then 7.983/7.756; append 6.007/5.926 then
+  5.784/6.014; QuickSort 159.780/159.219 then 159.902/159.369. Length
+  4.619/4.637, Handler 5.246/5.103; length/QuickSort source-save 4.870/4.789
+  and 160.725/161.320 on the first run. Small-case differences reverse;
+  no general speedup claim. Logs: `/tmp/a-program-constructor-input-timing{,-repeat}.jsonl`.
+
+Delta: `evidence.c` +31/-44 = **-13**; `tests/iadt.c` +6/-0. No public API
+or header change. Cumulative implementation/header delta from R0 is
++9142/-4772 = **+4370**, still not net-negative. Keep this simplification as a
+local commit; no standalone Main push or A4/A5 completion. Broader timing and
+deletion gates remain open.

@@ -1199,6 +1199,12 @@ static void indexed_match(void)
 			pg_evidence_subject(pg_evidence_premise(other_refinement, i))->core) == 1);
 	assert(!pg_prove_refinement_factor(&typing, refinement, parameters, packet));
 	assert(!pg_prove_refinement_factor(&typing, refinement, other_refinement, consumer));
+	size_t factor_proofs = typing.proofs.count, factor_maps = typing.context_maps.count;
+	size_t factor_subjects = typing.occurrences.count;
+	for (size_t i = 0; i < 16; ++i)
+		assert(pg_prove_refinement_factor(&typing, refinement, other_refinement, packet) == factor);
+	assert(typing.proofs.count == factor_proofs && typing.context_maps.count == factor_maps);
+	assert(typing.occurrences.count == factor_subjects);
 	const struct pg_evidence *refined_a = pg_substitution_image(&typing, refinement, a);
 	const struct pg_evidence *refined_packet = pg_substitution_image(&typing, refinement, packet);
 	const struct pg_evidence *refined_consumer = pg_substitution_image(&typing, refinement, consumer);
