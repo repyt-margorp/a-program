@@ -2611,7 +2611,12 @@ static void pending_names(struct pg_typing *typing)
 	const struct pg_evidence *context = pg_prove_context_extension(typing, empty, binder,
 		pg_prove_universe(typing, empty, 0));
 	const struct pg_source_scope *open = pg_synthesis_bind(&synthesis, root, name, binder, context);
+	proofs = typing->proofs.count;
+	size_t occurrences = typing->occurrences.count, maps = typing->context_maps.count;
+	terms = typing->graph->terms.count;
 	const struct pg_source_scope *projected = pg_synthesis_name(&synthesis, open, name, answer);
+	assert(projected && typing->proofs.count == proofs && typing->occurrences.count == occurrences);
+	assert(typing->context_maps.count == maps && typing->graph->terms.count == terms);
 	assert(projected == pg_synthesis_name_job(&synthesis, open, name, pg_synthesis_evidence(&synthesis, answer)));
 	same_judgement(complete(&synthesis, request(&synthesis, projected, "main:=id;"), PG_SYNTHESIS_DONE),
 		pg_prove_projection(typing, context, answer));
@@ -2622,6 +2627,13 @@ static void pending_names(struct pg_typing *typing)
 	const struct pg_evidence *escaped = complete(&synthesis, escaping, PG_SYNTHESIS_DONE);
 	assert(!pg_prove_projection(typing, empty, escaped));
 	assert(!pg_synthesis_name(&synthesis, root, name, escaped));
+	const struct pg_object *sibling_binder = pg_binder(typing->graph);
+	const struct pg_evidence *sibling_context = pg_prove_context_extension(typing, empty, sibling_binder,
+		pg_prove_universe(typing, empty, 0));
+	const struct pg_source_scope *sibling = pg_synthesis_bind(&synthesis, root, name, sibling_binder, sibling_context);
+	proofs = typing->proofs.count;
+	assert(sibling && !pg_synthesis_name(&synthesis, sibling, name, escaped));
+	assert(typing->proofs.count == proofs);
 	scope = pg_synthesis_name_job(&synthesis, root, name, pg_synthesis_evidence(&synthesis, escaped));
 	complete(&synthesis, request(&synthesis, scope, "main:=id;"), PG_SYNTHESIS_REJECTED);
 	struct pg_synthesis_job *not_terms[] = {program(&synthesis, root, "x:=@;"), pg_synthesis_evidence(&synthesis, empty)};

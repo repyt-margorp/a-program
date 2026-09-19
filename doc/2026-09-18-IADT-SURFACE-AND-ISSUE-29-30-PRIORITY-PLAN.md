@@ -5544,3 +5544,49 @@ allocation/provenance epoch, not completion of A4/A5/R2-R5. No issue status
 changes accompany it. Documentation through that implementation commit:
 parent plan +34/-1; priority plan +390/-0. This publication note is additional
 documentation only; implementation and test totals above are unchanged.
+
+### A4 read-only accepted-input validation (2026-09-19)
+
+Baseline `b0c58e1`. `pg_synthesis_name` called `pg_prove_projection` merely
+to decide whether accepted evidence was usable in the parent scope, then
+discarded the projected proof and stored the original producer. Registration
+therefore allocated an unrequested weakening proof/typed occurrence before a
+reference existed. Check the already accepted Context's exact prefix relation
+instead. Ordinary name synthesis still constructs/checks the needed projection;
+this is not erased-Core lookup, acceptance by a name, or structural interning
+of distinct Contexts. Invalid siblings and escaping variables still reject.
+
+Use the existing `typed_input` predicate for same-Context ownership/judgement
+validation in classifier normalization and reflexivity/family action. It now
+reads accepted data rather than calling a proof constructor as a predicate.
+No new semantic owner, cached validity flag, proof rule or work kind is added.
+
+- [x] Add a `pending_names` no-allocation regression. It fails on `b0c58e1`
+  (exit 134) and passes after the repair; the subsequent reference still agrees
+  with explicit projection. Keep same-depth sibling rejection in the same test.
+- [x] Complete full optimized acceptance and affected debug/sanitizer gates;
+  compare exported results/steps and report per-file changes.
+- [ ] Group publication with a substantive verified A4 epoch. This small
+  cleanup alone does not trigger another Main push or complete A4/R2-R5.
+
+The remaining `index_transport_scope` audit found an intentional oldest-first
+dependency check, not just a redundant array. Its `index_rebase` calls still
+drain typed queries synchronously, as does boundary telescope reconstruction.
+Moving that work must preserve the accepted map and candidate failure behavior;
+do not delete dependent-field checks or restart a partially built telescope on
+each Solve turn. Those consumers remain open, separate from this naming repair.
+
+Verification: full strict O2 `check-acceptance` exits 0; its 2,460 normalized
+export/step records match `b0c58e1`'s paired-lookup run exactly. Strict debug and
+ASan/UBSan `synthesis_test` plus `tests/source_io.sh` exit 0. Sanitizers use O1/g,
+frame pointers, non-PIE, leak detection and halt-on-error. Logs are under
+`/tmp/a-program-authority-name-read-`: `before.log` (expected old-code failure),
+`acceptance.log`, `debug-{synthesis,source}.log`, and
+`asan-{synthesis,source}.log`. No source/test edits occurred during final runs.
+
+Per-file code delta from `b0c58e1`: `synthesis.c` +9/-14, `synthesis.h` +2/-0,
+`tests/synthesis.c` +12/-0. Implementation/headers net -3, tests net +12;
+documentation is separate. No wall-clock speedup is claimed. The cumulative
+implementation/header totals remain R76 +3,784/-1,915 = +1,869 and
+R0 +8,536/-4,251 = +4,285; neither reduction gate is met. Keep this verified
+cleanup local pending the next substantive A4 publication epoch.

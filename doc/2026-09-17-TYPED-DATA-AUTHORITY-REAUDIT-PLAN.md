@@ -1138,6 +1138,17 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 
 ### A4. Audit remaining structural consumers and remove duplication
 
+- [x] 2026-09-19: accepted name registration checks the immutable Context prefix
+  without constructing/discarding a weakening proof. Actual references still
+  use ordinary projection. Classifier normalization and reflexivity/family
+  action share the existing read-only accepted-input check. The regression
+  fails before the change and confirms no proof/occurrence/map/Core allocation
+  during registration, while escaping and sibling scopes reject. Full O2
+  acceptance and affected debug/sanitizer suites pass; export/step records are
+  unchanged. See the priority plan's read-only validation entry for counts and
+  local-only publication status. This does not close A4 or the synchronous
+  transport-scope audit below.
+
 - [ ] Follow the priority plan's corrected 2026-09-19 retained-input audit:
   Match sequencing uses the common source-binding address. Independently
   generated proof binders are not subject to an exact source-identity contract;

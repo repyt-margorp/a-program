@@ -487,6 +487,8 @@ int pg_synthesis_export_rule_closure(const struct pg_synthesis *synthesis,
 /* Publish a checked term or formation under an ordinary lexical name. This
  * does not extend the typing context or insert THUNK/RETURN/FORCE. The proof
  * must be available in the parent context (prefix projection is permitted).
+ * Registration checks that prefix without constructing projection evidence;
+ * a reference constructs its required projection during ordinary synthesis.
  * Names borrow their text as other source scopes do. The new scope shadows
  * its parent without modifying it; references share the accepted producer.
  * Serialized results must be checked before reaching this API. */

@@ -1528,7 +1528,10 @@ const struct pg_source_scope *pg_synthesis_name(struct pg_synthesis *synthesis,
 	if (!parent || parent->owner != synthesis->owner_key) return NULL;
 	if (name.kind != PG_TOKEN_IDENT || !name.text || !name.length) return NULL;
 	if (!pg_evidence_owned_by(proof, synthesis->typing) || !pg_evidence_subject(proof)) return NULL;
-	if (!pg_prove_projection(synthesis->typing, source_context(parent), proof)) return NULL;
+	const struct pg_evidence *context = source_context(parent);
+	if (!pg_evidence_owned_by(context, synthesis->typing) || pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT) return NULL;
+	size_t count;
+	if (pg_context_extension_size(pg_evidence_context(context), pg_evidence_context(proof), &count)) return NULL;
 	return pg_synthesis_name_job(synthesis, parent, name, pg_synthesis_evidence(synthesis, proof));
 }
 
@@ -2155,10 +2158,10 @@ struct pg_synthesis_job *pg_synthesis_induction_scope_at(struct pg_synthesis *sy
 static int typed_input(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, const struct pg_evidence *proof)
 {
-	if (!context || !proof) return 0;
+	if (!pg_evidence_owned_by(context, synthesis->typing) || !pg_evidence_owned_by(proof, synthesis->typing)) return 0;
+	if (pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT) return 0;
 	if (!pg_evidence_subject(proof)) return 0;
-	if (pg_evidence_context(context) != pg_evidence_context(proof)) return 0;
-	return pg_prove_projection(synthesis->typing, context, proof) == proof;
+	return pg_evidence_context(context) == pg_evidence_context(proof);
 }
 
 static struct pg_synthesis_job *request_typed(struct pg_synthesis *synthesis,
@@ -2333,17 +2336,12 @@ int pg_synthesis_normalization_input(const struct pg_synthesis *synthesis,
 struct pg_synthesis_job *pg_synthesis_normalize_classifier(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, const struct pg_evidence *proof)
 {
-	if (!proof) return NULL;
+	if (!typed_input(synthesis, context, proof)) return NULL;
 	switch (pg_evidence_judgement(proof)) {
 	case PG_JUDGEMENT_TYPE_FAMILY:
 		/* A pending callee may resolve to a family, not a CBPV computation. */
-		if (!context || pg_evidence_context(context) != pg_evidence_context(proof)) return NULL;
-		if (pg_prove_projection(synthesis->typing, context, proof) != proof) return NULL;
 		return pg_synthesis_evidence(synthesis, proof);
 	case PG_JUDGEMENT_VALUE: case PG_JUDGEMENT_COMPUTATION:
-		if (!pg_evidence_subject(proof)) return NULL;
-		if (!context || pg_evidence_context(context) != pg_evidence_context(proof)) return NULL;
-		if (pg_prove_projection(synthesis->typing, context, proof) != proof) return NULL;
 		return pg_synthesis_normalize_classifier_jobs(synthesis,
 			pg_synthesis_evidence(synthesis, context), pg_synthesis_evidence(synthesis, proof));
 	default: return NULL;
@@ -9874,10 +9872,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		if (!input) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
 		const struct pg_evidence *context = job->inputs[0];
 		if (job->role == FAMILY_ACTION_JOB) context = pg_evidence_premise(context, 0);
-		if (pg_evidence_context(context) != pg_evidence_context(input)) {
-			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
-		}
-		if (pg_prove_projection(synthesis->typing, context, input) != input) {
+		if (!typed_input(synthesis, context, input)) {
 			finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
 		}
 		if (pg_evidence_judgement(input) == PG_JUDGEMENT_VALUE_TYPE) input = value(synthesis, input);
