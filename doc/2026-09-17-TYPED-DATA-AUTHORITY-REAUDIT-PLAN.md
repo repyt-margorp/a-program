@@ -835,7 +835,7 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   dependencies even when specialization erases the original binder; nearest
   binder reachability alone is insufficient. The priority plan records the
   reproducer. Do not weaken the exact retained-reduction/source identity test.
-  Latest follow-up (2026-09-19): declaration/Match references now use their
+  Previous stage (2026-09-19): declaration/Match references use their
   actual family/matcher/induction addresses, registered idempotently when the
   allocation becomes available, including unaccepted imported inputs. Remove
   their opaque-root grouping and redundant writer object-wait phase; keep
@@ -846,6 +846,18 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   not a strict retained-output bound. Full checks, unchanged image resaves and
   publication status are recorded in the priority plan. Other A3-A5 gates stay
   open; no extra semantic owner or allocation cache was introduced.
+  Current local follow-up: declarations now use the member lexical key. The
+  existing reference index separately maps family/matcher to the immutable raw
+  declaration once per nominal family. Its parameter Context recovers only
+  candidates for that exact family, including after specialization erases the
+  original binder. It must not discover unrelated members early: that draft
+  reordered a retained QuickSort image. The corrected implementation preserves
+  the old image byte-for-byte. Repeated shared-declaration aliases and a distinct
+  nominal family sharing its layout do not change selected bytes or candidate
+  count. Match still uses Self references. Parameter-prefix traversal and
+  distinct families sharing one matcher remain part of the open bound; this
+  is not A3 completion. Final checks/costs are in the priority plan's declaration
+  dependency entry; keep this local until a larger verified epoch.
   Registration follow-up: input owners now publish each reverse-reference edge
   once. Imported declaration/Match inputs publish at attachment; fresh inputs
   publish at their first finish. Qualified requests and binding interning

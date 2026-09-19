@@ -3964,3 +3964,67 @@ Builds use `src/prototype/pointer/Makefile`, strict C11 warnings, and prefix
 separate from these final tests. No full new publication gate or performance
 claim is made for this test-only change. Keep it local until a substantial
 verified epoch; A3-A5, parent R2-R5, and both cumulative LOC gates remain open.
+
+### 2026-09-19: declaration dependencies without per-alias address lookup
+
+Baseline: local `e5d1f28`; published implementation `ef5e53d`.
+
+- [x] Recover the preceding entry's erased-parameter dependency from the raw
+  declaration's existing parameter Context. Declaration/member source uses
+  share the nearest-binder/named-scope key. Family and matcher entries reference
+  the raw declaration once per family, not every source alias. No new Core tag,
+  proof, result cache, source reconstruction or acceptance authority is added.
+- [x] Preserve distinct nominal families sharing one erased layout. Extend
+  `parameter_origins` to check exact-family metadata, 128 unrelated aliases,
+  repeated registration, nonempty lexical candidate lookup, identical selected
+  bytes before/after adding aliases, no Solve/proofs during saving, and two inert
+  resaves followed by ordinary checking. Existing constructor-source identity,
+  rejected/retyped members and independent acceptance checks remain unchanged.
+- [x] Reject the broad parameter-discovery draft: it also visited members in
+  the parameter Context, exchanging origins 24/25 (syntax 816 declaration and
+  syntax 400 member) in the common retained QuickSort image. A generic ordering
+  fix is unnecessary: restrict that callback to the exact declaration family.
+  Corrected old-image resave is byte-identical; the draft only stabilized after
+  changing the first saved image and did not meet the unchanged-format gate.
+- [x] Final debug `tests/source_io.sh`; final optimized `check-acceptance`:
+  exit zero, compatibility 63/63, all sort properties/negative claims. All 2,460
+  normalized export results, including steps, equal the published epoch's run.
+- [x] Affected ASan/UBSan `source_io.sh`, `synthesis_test`, `program_test` and
+  `image_origins.sh` pass with leak detection and halt-on-error. An initial
+  origin-script invocation lacked `pointer-check` (exit 127); the completed
+  CLI build and successful rerun supersede it. Sanitized old-image resave also
+  remains byte-identical, with the expected pending exit 3 and zero Solve steps.
+- [x] Finish the affected gates and prepare a local commit. No Main push for
+  this partial A3 increment; the local Git log records its commit identity.
+
+Builds use `src/prototype/pointer/Makefile`, C11 with `-Wall -Wextra -Werror`,
+debug `-O0 -g`, optimized `-O2`, sanitizer `-O1 -g -fsanitize=address,undefined
+-fno-omit-frame-pointer -fno-pie -no-pie`. Final debug/sanitizer prefixes are
+`/tmp/a-program-authority-declaration-filter-{debug,asan}`; the optimized build
+reuses `declaration-parameters-opt`. Final logs use `declaration-filter-` with
+`source.log`, `opt.log`, `asan-source.log`, `asan-synthesis.log`, `asan-program.log`
+and `asan-origins.log`. Earlier `declaration-parameters-*` logs describe the
+superseded broad-discovery draft, not final verification.
+
+Common retained QuickSort save versus `ef5e53d`: source candidate callbacks
+234 -> 241; scope dispatch 221 -> 225; binding callbacks remain 780. The new
+parameter callback runs 26 times. Thus this bounds shared-alias discovery; it
+does not claim every save does less work. Compile steps, typed-query work,
+Core/proof/Context/map counts are unchanged for length, function-field, Vec
+append and imported QuickSort. Arena used bytes increase by 256/320/128/832
+respectively; reserved capacities and job/occurrence/proof sizes are unchanged.
+
+Two sets of 31 alternating optimized source+retained-save pairs (one warmup
+per binary), medians old/new milliseconds: length 9.116/8.859, 8.691/8.720;
+function-field 13.977/15.184, 15.919/14.696; Vec 11.638/11.397, 12.160/12.533;
+QuickSort 213.987/217.961, 214.029/214.649. No robust speedup is established.
+Counters and timings are in `declaration-filter-save-counts.log`,
+`declaration-filter-counts.log`, and `declaration-filter-*-timing*.log`.
+
+Implementation/header diff: `source_io.c` +31/-4, `synthesis.c` +53/-25,
+`synthesis.h` +5/-4, total +89/-33 (net +56). Tests: `source_io.c` +81/-10
+(net +71). Documentation excluded. Cumulative implementation/header totals:
+R76 +3,431/-1,729 (net +1,702); R0 +8,218/-4,100 (net +4,118). The required
+net-negative gates are not met. Match/Self lookup, general lexical bounds,
+remaining A4 consumers, final A5 and parent R2-R5 stay open. Do not publish this
+partial A3 increment alone or redefine overall completion around these tests.

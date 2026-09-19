@@ -1670,11 +1670,11 @@ static int find_allocation_reference(void *owner, struct pg_synthesis_job *job)
 }
 
 static void check_allocation_reference(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *job, const struct pg_object *object)
+	struct pg_synthesis_job *job, const void *object)
 {
 	struct allocation_lookup lookup = {job, 0};
 	size_t references = synthesis->source_references.count;
-	assert(!pg_synthesis_visit_source_references(synthesis, object, find_allocation_reference, NULL, &lookup));
+	assert(!pg_synthesis_visit_source_references(synthesis, object, find_allocation_reference, NULL, NULL, &lookup));
 	assert(lookup.count == 1 && synthesis->source_references.count == references);
 }
 
@@ -1683,9 +1683,10 @@ static size_t lexical_allocation_candidates(struct pg_synthesis *synthesis,
 {
 	struct allocation_lookup lookup = {0};
 	for (; scope;) {
-		assert(!pg_synthesis_visit_source_references(synthesis, scope, find_allocation_reference, NULL, &lookup));
 		struct pg_source_environment input;
 		assert(!pg_synthesis_environment_input(synthesis, scope, &input));
+		assert(!pg_synthesis_visit_source_references(synthesis,
+			input.binder ? (const void *)input.binder : scope, find_allocation_reference, NULL, NULL, &lookup));
 		scope = input.parent;
 	}
 	return lookup.count;
@@ -1953,7 +1954,7 @@ static int find_member_origin(void *owner, struct pg_synthesis_job *job)
 static void scoped_member_origins(struct member_origin *found, const struct pg_source_scope *scope)
 {
 	while (scope) {
-		assert(!pg_synthesis_visit_source_references(found->synthesis, scope, find_member_origin, NULL, found));
+		assert(!pg_synthesis_visit_source_references(found->synthesis, scope, find_member_origin, NULL, NULL, found));
 		struct pg_source_environment input;
 		assert(!pg_synthesis_environment_input(found->synthesis, scope, &input));
 		scope = input.parent;
@@ -2610,6 +2611,38 @@ static int find_declaration(void *owner, struct pg_synthesis_job *job)
 	return 0;
 }
 
+struct declaration_reference {
+	const struct pg_data_declaration *declaration;
+	size_t count, total;
+};
+
+static int find_declaration_parameters(void *owner, const struct pg_data_declaration *declaration)
+{
+	struct declaration_reference *lookup = owner;
+	if (declaration == lookup->declaration) ++lookup->count;
+	++lookup->total;
+	return 0;
+}
+
+static void check_declaration_parameters(struct pg_synthesis *synthesis, const struct pg_object *family,
+	size_t shared_layouts)
+{
+	struct declaration_reference lookup = {.declaration = pg_data_declaration_view(family)};
+	const struct pg_object *keys[] = {family, pg_data_matcher(pg_data_declaration_layout(lookup.declaration))};
+	size_t references = synthesis->source_references.count;
+	for (size_t i = 0; i < 2; ++i) {
+		lookup.count = lookup.total = 0;
+		assert(!pg_synthesis_visit_source_references(synthesis, keys[i], NULL, NULL,
+			find_declaration_parameters, &lookup));
+		assert(lookup.count == 1 && synthesis->source_references.count == references);
+		assert(lookup.total == (i ? shared_layouts : 1));
+		struct allocation_lookup allocations = {0};
+		assert(!pg_synthesis_visit_source_references(synthesis, keys[i], find_allocation_reference,
+			NULL, NULL, &allocations));
+		assert(!allocations.count);
+	}
+}
+
 static void parameter_origins(void)
 {
 	const char *text = "Box:=&(\\A:@=>\\B:@=>@{mk:A->B->*;});";
@@ -2621,13 +2654,31 @@ static void parameter_origins(void)
 	assert(!pg_synthesis_visit_source_allocations(&p->synthesis, find_declaration, &declaration));
 	assert(declaration && pg_synthesis_result(declaration));
 	const struct pg_object *family = pg_synthesis_allocation_object(&p->synthesis, declaration);
-	check_allocation_reference(&p->synthesis, declaration, family);
-	check_allocation_reference(&p->synthesis, declaration,
-		pg_data_matcher(pg_data_declaration_layout(pg_data_declaration_view(family))));
+	check_declaration_parameters(&p->synthesis, family, 1);
 	const struct pg_source_scope *scope;
 	const struct pg_syntax *syntax;
 	assert(!pg_synthesis_source_input(&p->synthesis, declaration, &scope, &syntax));
+	struct pg_source_environment input;
+	assert(!pg_synthesis_environment_input(&p->synthesis, scope, &input) && input.binder);
+	check_allocation_reference(&p->synthesis, declaration, input.binder);
 	size_t candidates = lexical_allocation_candidates(&p->synthesis, scope);
+	assert(candidates);
+	struct pg_synthesis_job *selected[] = {p->root,
+		pg_synthesis_evidence(&p->synthesis, pg_synthesis_result(declaration))};
+	FILE *before = tmpfile(), *after = tmpfile();
+	assert(before && after && !pg_sources_write(before, &p->synthesis, 2, selected));
+	struct pg_graph storage = {0};
+	size_t context_count, term_count;
+	const struct pg_context *const *contexts;
+	const struct pg_term *const *terms;
+	assert(!pg_graph_init(&storage));
+	assert(!pg_data_declaration_pack(pg_data_declaration_view(family), &storage,
+		&context_count, &contexts, &term_count, &terms));
+	const struct pg_data_declaration *other = pg_data_declaration_unpack(&p->graph,
+		context_count, contexts, term_count, terms);
+	assert(other && pg_data_declaration_family(other) != family);
+	assert(pg_data_declaration_layout(other) == pg_data_declaration_layout(pg_data_declaration_view(family)));
+	pg_graph_destroy(&storage);
 	for (size_t i = 0; i < 128; ++i) {
 		const char *unused = "unused:=\\hidden:missing=>@;";
 		struct pg_parser parser;
@@ -2651,11 +2702,31 @@ static void parameter_origins(void)
 		assert(pg_synthesis_declaration_at(&p->synthesis, sibling, syntax,
 			pg_data_declaration_view(family)) == alias);
 		assert(p->synthesis.source_references.count == references);
+		if (!i) {
+			/* One erased layout does not identify a nominal family. */
+			const struct pg_source_scope *foreign = pg_synthesis_name(&p->synthesis, sibling,
+				(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "other", .length = 5},
+				pg_prove_universe(&p->typing, pg_prove_empty_context(&p->typing), 0));
+			struct pg_synthesis_job *distinct = pg_synthesis_declaration_at(&p->synthesis, foreign, syntax, other);
+			assert(distinct && !pg_synthesis_result(distinct));
+			assert(pg_synthesis_allocation_object(&p->synthesis, distinct) == pg_data_declaration_family(other));
+		}
 	}
 	assert(lexical_allocation_candidates(&p->synthesis, scope) == candidates);
-	check_allocation_reference(&p->synthesis, declaration, family);
-	struct pg_synthesis_job *selected[] = {p->root,
-		pg_synthesis_evidence(&p->synthesis, pg_synthesis_result(declaration))};
+	check_declaration_parameters(&p->synthesis, family, 2);
+	check_declaration_parameters(&p->synthesis, pg_data_declaration_family(other), 2);
+	uint64_t steps = p->synthesis.steps;
+	size_t proofs = p->typing.proofs.count;
+	assert(!pg_sources_write(after, &p->synthesis, 2, selected));
+	assert(p->synthesis.steps == steps && p->typing.proofs.count == proofs);
+	rewind(before); rewind(after);
+	int byte;
+	do {
+		byte = fgetc(before);
+		assert(byte == fgetc(after));
+	} while (byte != EOF);
+	assert(!ferror(before) && !ferror(after));
+	assert(!fclose(before) && !fclose(after));
 	struct pg_synthesis_job *const *roots = selected;
 	size_t count = 2;
 	for (size_t round = 0; round < 2; ++round) {

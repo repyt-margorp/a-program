@@ -340,6 +340,9 @@ static int index_origin(struct origin_collection *c, const void *key)
 	if (id(c->origins, job)) return 0;
 	const struct pg_object *object = pg_synthesis_allocation_object(c->synthesis, job);
 	if (!object) return 0;
+	const struct pg_data_declaration *declaration = pg_data_declaration_view(object);
+	if (declaration && index_origin_reference(c,
+		pg_data_matcher(pg_data_declaration_layout(declaration)), collect_origin, job)) return -1;
 	return index_origin_reference(c, object, collect_origin, job);
 }
 
@@ -350,10 +353,10 @@ static int index_scope_origin(void *owner, struct pg_synthesis_job *job)
 	const struct pg_syntax *syntax;
 	if (pg_synthesis_source_input(c->synthesis, job, &scope, &syntax)) return -1;
 	const struct pg_dag_node *node = pg_dag_find(c->syntax, syntax);
-	/* Nominal/Match references arrive from their reached allocation object.
-	 * Members still wait for their result binder after lexical discovery. */
+	/* Match references arrive from their reached Self. Other allocations wait
+	 * for their address after lexical discovery. */
 	int (*resume)(struct origin_collection *, const void *) =
-		syntax->kind == PG_SYNTAX_QUALIFIED ? index_origin : collect_origin;
+		syntax->kind == PG_SYNTAX_ELIMINATION ? collect_origin : index_origin;
 	if (node && c->last_syntax && node->id <= c->last_syntax->id) return resume(c, job);
 	/* Keep allocation discovery in syntax-frontier order, including inert saves. */
 	return index_origin_reference(c, syntax, resume, job);
@@ -403,6 +406,30 @@ static int append_binding_reference(void *owner, const struct pg_source_binding 
 	return index_binding(batch->collection, input);
 }
 
+struct declaration_reference_batch {
+	struct source_reference_batch *batch;
+	const struct pg_object *family;
+};
+
+static int append_declaration_reference(void *owner, struct pg_synthesis_job *job)
+{
+	struct declaration_reference_batch *input = owner;
+	if (pg_synthesis_allocation_object(input->batch->collection->synthesis, job) != input->family) return 0;
+	return append_source_reference(input->batch, job);
+}
+
+static int append_parameter_references(void *owner, const struct pg_data_declaration *declaration)
+{
+	struct source_reference_batch *batch = owner;
+	struct declaration_reference_batch input = {batch, pg_data_declaration_family(declaration)};
+	/* Parameter reachability recovers this declaration, not every source use
+	 * in the same Context. Collect its lexical dependencies after selection. */
+	for (const struct pg_context *context = pg_data_declaration_parameters(declaration); context; context = context->parent)
+		if (pg_synthesis_visit_source_references(batch->collection->synthesis, context->binder,
+			append_declaration_reference, NULL, NULL, &input)) return -1;
+	return 0;
+}
+
 static int compare_origin(const void *left, const void *right)
 {
 	const struct ordered_origin *a = left, *b = right;
@@ -413,7 +440,7 @@ static int index_source_references(struct origin_collection *c, const void *key)
 {
 	struct source_reference_batch batch = {.collection = c};
 	int status = pg_synthesis_visit_source_references(c->synthesis, key,
-		append_source_reference, append_binding_reference, &batch);
+		append_source_reference, append_binding_reference, append_parameter_references, &batch);
 	if (!status && batch.count) {
 		/* Late binder discovery must not serialize in hash/registration order.
 		 * Unreached syntax is still staged by index_scope_origin. */
