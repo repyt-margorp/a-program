@@ -5879,3 +5879,64 @@ Cumulative implementation/headers: R76 +3,966/-1,938 = +2,028;
 R0 +8,721/-4,277 = +4,444. Documentation is separate. The broader reduction
 gate remains unmet. Final kernel elimination still independently validates its
 inputs; this change removes only duplicate source preparation.
+
+### A4 induction allocation epoch (2026-09-19)
+
+Baseline `8592050`, Main `8bd0d8c`. Finish the source-to-kernel scope reuse
+boundary: source induction already checked every field/IH scope before final
+elimination. Supply those exact Contexts through `pg_prove_induction_at`, with
+fresh recursion/argument/Self binders only when no retained allocation was
+supplied. Keep retained allocations unchanged and independently checked.
+Do not attach generated allocation as an imported source input, add another
+scope registry, or make the kernel trust a source acceptance flag. Standalone
+kernel calls may still request fresh allocations.
+
+- [x] Regression: source induction's accepted clause Contexts equal the scope
+  producer results, at chunks 1/64; retained input and invalid variants remain
+  independently checked. Demonstrate failure before implementation.
+- [x] Route final source induction through the existing explicit allocation
+  API; preserve ordinary Match and all motive/IH checks.
+- [x] Verify full optimized acceptance, affected debug/sanitizer/image gates,
+  retained/recompute behavior, baseline timing/work/storage and per-file LOC.
+- [ ] Publish this completed elimination-scope epoch together with `bc3745c`
+  and `8592050`, only after all gates pass. This is not A4/A5/R2-R5 completion
+  or fulfillment of the net-negative implementation requirement.
+
+Verification: the new exact-clause allocation test fails on `8592050` (exit
+134), then passes at chunks 1/64. Strict debug synthesis/IADT/source suites,
+full strict O2 `check-acceptance`, and ASan/UBSan synthesis/IADT/source/image
+checks all pass. Sanitizers use O1/g, non-PIE, frame pointers, leak detection
+and halt-on-error. All 2,460 optimized and 1,218 sanitizer image export records
+match Main after temporary-path/step normalization. The old retained QuickSort
+image (`/tmp/a-program-authority-case-scopes-common.a`) resaves byte-identically
+with zero Solve steps (CLI exit 3, `cmp` exit 0). No source/test edits followed
+the final builds. No new wire format, rule, job kind or scope registry.
+
+QuickSort versus `8592050`: steps/jobs remain 151,199/34,286. Contexts
+4,205 -> 4,090; occurrences 76,408 -> 74,584; maps 12,951 -> 12,541;
+lifts 3,592 -> 3,551; actions 27,603 -> 27,134; queries 10,204 -> 9,987;
+proofs 90,191 -> 88,019. Graph used/reserved bytes:
+62,788,256/63,078,400 -> 61,819,488/62,111,744. Substitution used/reserved:
+11,483,424/11,534,336 -> 11,291,232/11,337,728. Source references remain 2,368.
+Across the three-change epoch, Main's 167,364 steps and 92,998 proofs become
+151,199 steps and 88,019 proofs; jobs remain 34,286.
+
+Strict O2, CPU 2, 31 alternating pairs per comparison, no concurrent builds or
+tests. Median milliseconds (previous/current; Main/current):
+Bool .494/.492; .501/.496. Add .912/.926; .951/.944.
+Length 5.289/5.094; 5.639/5.003. Function-field 9.337/8.778; 9.555/8.953.
+Vec append 6.868/7.004; 7.251/6.664. QuickSort 189.820/185.420;
+194.172/185.504. Length save 5.777/5.741; 6.240/5.743.
+QuickSort save 197.946/195.294; 206.268/198.317. These local measurements
+are not a universal speedup guarantee. Logs use
+`/tmp/a-program-authority-induction-allocation-` with `before.log`,
+`{synthesis,iadt,source}.log`, `acceptance.log`,
+`asan-{synthesis,iadt,source,image}.log`, `inert.log`, `counts.log`, `timing.log`;
+Main comparison: `/tmp/a-program-authority-induction-epoch-timing.log`.
+
+This change: `synthesis.c` +31/-6 = +25; `tests/synthesis.c` +5/-0.
+Epoch versus Main: `evidence.c` +17/-7 = +10; `synthesis.c` +39/-15 = +24;
+`tests/iadt.c` +80/-0; `tests/synthesis.c` +42/-0. Documentation is separate.
+Cumulative implementation/headers: R76 +3,997/-1,944 = +2,053;
+R0 +8,751/-4,282 = +4,469. Reduced graph allocation is not reduced code size;
+the net-negative gate and overall A4/A5/R2-R5 completion remain open.

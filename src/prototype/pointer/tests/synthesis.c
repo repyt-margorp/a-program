@@ -5635,6 +5635,11 @@ static void source_declarations(struct pg_typing *typing)
 					pg_synthesis_evidence(&synthesis, input.motive_context), pg_synthesis_evidence(&synthesis, input.motive))
 				: pg_synthesis_constructor_scope(&synthesis, f, constructor, p);
 			assert(pg_synthesis_status(scope) == PG_SYNTHESIS_DONE);
+			if (i % 2) {
+				const struct pg_induction_allocation *allocation = pg_evidence_induction_allocation(term);
+				assert(allocation && allocation->count == input.count);
+				assert(allocation->clauses[j] == pg_evidence_context(pg_synthesis_result(scope)));
+			}
 			size_t proofs = typing->proofs.count, contexts = typing->contexts.count;
 			assert(pg_prove_match_branch_type(typing, input.formation, constructor, input.parameters,
 				input.motive_context, input.motive, pg_synthesis_result(scope)));

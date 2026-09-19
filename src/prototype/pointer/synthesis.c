@@ -6772,21 +6772,46 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 		return;
 	}
 	if (state->validated < state->count) { match_validate_branch(synthesis, job); return; }
+	const struct pg_induction_allocation *allocation = source_induction_allocation(job);
+	if (allocation && !state->induction) goto rejected;
+	struct pg_induction_allocation generated = {0};
+	const struct pg_context **clauses = NULL;
+	enum pg_synthesis_status elimination_status = PG_SYNTHESIS_UNSUPPORTED;
 	const struct pg_evidence **branches = malloc(state->count * sizeof(*branches));
 	if (!branches) goto error;
 	for (size_t i = 0; i < state->count; ++i) branches[i] = state->branches[i].function;
-	const struct pg_induction_allocation *allocation = source_induction_allocation(job);
-	if (allocation && !state->induction) { free(branches); goto rejected; }
+	if (state->induction && !allocation) {
+		clauses = malloc(state->count * sizeof(*clauses));
+		if (!clauses) { elimination_status = PG_SYNTHESIS_ERROR; goto elimination_done; }
+		for (size_t i = 0; i < state->count; ++i) {
+			struct pg_synthesis_job *scope = match_induction_scope(synthesis, job, i, state->motive_context, state->motive);
+			if (!scope) { elimination_status = PG_SYNTHESIS_ERROR; goto elimination_done; }
+			if (scope->status != PG_SYNTHESIS_DONE) {
+				elimination_status = scope->status;
+				if (scope->status == PG_SYNTHESIS_PENDING) depend(synthesis, job, scope);
+				goto elimination_done;
+			}
+			clauses[i] = pg_evidence_context(scope->result);
+		}
+		/* Field/IH scopes were checked during branch preparation. Only the
+		 * recursive erasure's three private binders still need allocation. */
+		generated = (struct pg_induction_allocation){
+			.recursion = pg_binder(synthesis->typing->graph), .argument = pg_binder(synthesis->typing->graph),
+			.self = pg_binder(synthesis->typing->graph), .count = state->count, .clauses = clauses};
+		allocation = &generated;
+	}
 	job->result = allocation
 		? pg_prove_induction_at(synthesis->typing, state->instance.formation,
 			state->instance.parameters, scrutinee, state->motive_context, state->motive, state->count, branches, allocation)
-		: state->induction
-		? pg_prove_induction(synthesis->typing, state->instance.formation,
-			state->instance.parameters, scrutinee, state->motive_context, state->motive, state->count, branches)
 		: pg_prove_match(synthesis->typing, state->instance.formation,
 			state->instance.parameters, scrutinee, state->motive_context, state->motive, state->count, branches);
+elimination_done:
+	free(clauses);
 	free(branches);
-	if (!job->result) goto unsupported;
+	if (!job->result) {
+		if (elimination_status != PG_SYNTHESIS_PENDING) finish(synthesis, job, elimination_status);
+		return;
+	}
 complete:
 	/* Instantiate the elimination, then close its computed scrutinee. Retain
 	 * one producer chain so suspension cannot skip either operation. */
