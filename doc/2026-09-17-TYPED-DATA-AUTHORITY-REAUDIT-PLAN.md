@@ -2281,6 +2281,9 @@ lifetime correction, not completion of A4/A5 or the net-negative LOC gate.
 The priority plan's September 20 entry makes application/constant-codomain
 structure scans resumable using the existing comparison walker. Accepted typed
 data can preempt unfinished scans; Job size and acceptance rules are unchanged.
-Full debug/O2 and affected sanitizer gates pass. Keep this local until the
-continuation-carrier consumer is audited for the same synchronous scan. Other
-A4 work, final A5 and the cumulative net-negative requirement remain open.
+Full debug/O2 and affected sanitizer gates pass. The continuation-carrier
+consumer now shares this cursor as well; the combined tested epoch is ready
+for publication. Request/Fold dependent-carrier fallback remains with ordinary
+producer checking. The priority plan records the regression, all gates and
+mixed timing results. Other A4 work, final A5 and the cumulative net-negative
+requirement remain open; this epoch adds 31 implementation lines versus Main.

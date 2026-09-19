@@ -6580,3 +6580,76 @@ is in `baseline.log`: the synchronous scan completed within 32 outer steps,
 hiding its larger inner traversal. The strict build and sanitizer flags match the preceding
 epoch. Keep this verified change local until the remaining continuation scan
 forms a coherent publication unit.
+
+### A4 continuation-carrier scan (2026-09-20)
+
+Local baseline `13d7b64`, Main `6e2d3e5`. The preceding turn implemented and
+verified resumable Pi scans; this completes the planned Request/Fold consumer
+part of that publication unit, not the whole authority refactor.
+
+`continuation_effect_structure` still drained `pg_pi_constant_codomain` before
+joining effect rows. Replace it with a step using the same structural comparison
+cursor as Pi application/constant-codomain queries. Successful construction and
+completion are shared; Request and Fold retain their different row seeds and
+grades. A dependent or non-F carrier still waits for ordinary producer checking.
+No new request kind, persistent field, graph tag or serialization format is added.
+
+- [x] Extend the 128-layer regression to Request/Fold: its 64-step pending
+  assertion fails at `13d7b64`, passes after replacing the synchronous call.
+- [x] Check chunks 1/64, cancellation, exact symbolic row joins and delayed
+  rejection of invalid ordinary premises. Dependent continuations publish no
+  provisional constant carrier and propagate the eventual producer rejection.
+- [x] Run the integrated debug/O2, affected sanitizer and image gates.
+- [x] Measure timing, inner work, retained counts and per-file delta against
+  Main, including the preceding Pi change.
+- [ ] Publish the combined verified scan-budget epoch to Main/rewrite.
+
+Scope limit: this removes synchronous scans from these pending Pi structural
+consumers. Other source motive/annotation and kernel convenience functions may
+still drain work; no global scheduling bound or A4/A5 completion is implied.
+
+Final verification: full strict debug/O2 acceptance passes, with all 2,460
+export results matching Main after temporary-path/step normalization. Affected
+ASan/UBSan synthesis, Source IO, image CLI and 5,080 Handler save boundaries
+pass with leak/error halting; all 1,218 sanitizer image results match Main.
+The final regression also fails against the preceding `13d7b64` implementation.
+No source/test edits were made during or after these final builds/checks.
+This is not the parent's final full sanitizer gate.
+
+Separately generated debug/O2 retained-property images still differ by one
+resume step in 14 records, without result differences. On the identical saved
+Pi-epoch image, both builds now take 703,500 steps at chunks 1/64 and prove
+`main == ascending`. Rescheduling changes work counts, not the accepted result.
+
+Combined Main/candidate QuickSort-property counts: requests 34,286/33,759;
+outer steps 151,199/153,988; typed queries 9,987/10,002; proofs 88,019/88,020.
+Occurrences (74,584), Contexts (4,090) and Job bytes (336) are unchanged.
+Graph arena used bytes: 60,722,336/60,494,112; substitution: 11,291,232/11,286,912.
+Independence work: 2,388/2,384 scans, 106,115/80,311 transitions and
+31,298/24,345 tasks. Of 561 candidate structural scans, 521 are preempted by
+accepted structure. Index transport is unchanged; remaining synchronous scans
+still reach 1,250 transitions. This does not measure all compiler work.
+
+Isolated O2 CPU-2 timings, 31 alternating pairs, median ms Main/candidate:
+QuickSort 177.256/173.409, source-save 179.470/173.886, function-field
+7.928/8.552, Handler 5.421/5.603. Repeat: 176.652/172.285,
+178.364/173.907, 7.921/8.824 and 5.400/5.433 respectively. The apparent
+function-field regression was investigated, not omitted: rotating Main/Pi-only/
+combined over 101 samples gives 8.166/8.190/8.206 ms wall and
+7.932/7.961/7.943 ms child CPU with the same legacy flag. Without that flag,
+wall times are 8.078/8.215/8.110 ms. Its graph storage decreases by 19,168 bytes;
+proof/typed-query counts are unchanged and outer steps increase by 170.
+A persistent 8-11% regression was not reproduced; neither a general speedup
+nor the final R0 performance gate is established.
+
+Per-file combined Main delta: `synthesis.c` +50/-19 = **+31**;
+`tests/synthesis.c` +105/-0, separately. Continuation-only delta from `13d7b64`:
+implementation +24/-20 = +4; test +43/-4 = +39. Executable text +432 bytes,
+data/BSS unchanged. Cumulative R0 implementation/header +9,052/-4,665 =
+**+4,387**; the net-negative requirement and whole goal remain open.
+
+Logs: `/tmp/a-program-authority-continuation-scan-` with
+`{debug,acceptance,synthesis-final,baseline-final,counts,work}.log`,
+`asan-{build,synthesis,source,image,handler}.log`, `property-{debug,opt}.log`,
+`timing{,-repeat}.jsonl`, `field-{main,pi,current}-counts.log`,
+`field-timing.jsonl` and `field-legacy-timing.jsonl`.

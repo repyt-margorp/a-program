@@ -8475,19 +8475,6 @@ consume:
 	finish(synthesis, job, context->status == PG_SYNTHESIS_DONE ? PG_SYNTHESIS_UNSUPPORTED : context->status);
 }
 
-static const struct pg_term *continuation_effect_structure(struct pg_synthesis *synthesis,
-	const struct pg_term *type, enum pg_totality totality, const struct pg_term *row)
-{
-	const struct pg_term *following, *result;
-	enum pg_totality next_totality;
-	const struct pg_term *codomain = pg_pi_constant_codomain(type);
-	if (!codomain) return NULL;
-	if (!pg_computation_type_spine_view(codomain, &next_totality, &following, &result)) return NULL;
-	if (next_totality < totality) totality = next_totality;
-	return pg_computation_type_spine(synthesis->typing->graph, totality,
-		pg_effect_join_term(synthesis->typing->graph, row, following), result);
-}
-
 static enum pg_comparison_status structural_independence(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *job, const struct pg_term *term, const struct pg_object *binder)
 {
@@ -8500,6 +8487,27 @@ static enum pg_comparison_status structural_independence(struct pg_synthesis *sy
 	if (status == PG_COMPARISON_PENDING) enqueue(synthesis, job);
 	if (status == PG_COMPARISON_ERROR) finish(synthesis, job, PG_SYNTHESIS_ERROR);
 	return status;
+}
+
+/* Return zero when the provisional continuation has no constant F carrier;
+ * its ordinary producer, rather than this structural query, then decides. */
+static int continuation_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
+	const struct pg_term *type, enum pg_totality totality, const struct pg_term *row)
+{
+	const struct pg_term *domain, *codomain, *following, *result;
+	const struct pg_object *binder;
+	if (!pg_pi_view(type, &domain, &binder, &codomain)) return 0;
+	enum pg_comparison_status scan = structural_independence(synthesis, job, codomain, binder);
+	if (scan == PG_COMPARISON_PENDING || scan == PG_COMPARISON_ERROR) return 1;
+	if (scan != PG_COMPARISON_EQUAL) return 0;
+	enum pg_totality next_totality;
+	if (!pg_computation_type_spine_view(codomain, &next_totality, &following, &result)) return 0;
+	if (next_totality < totality) totality = next_totality;
+	job->type_structure = pg_computation_type_spine(synthesis->typing->graph, totality,
+		pg_effect_join_term(synthesis->typing->graph, row, following), result);
+	if (!job->type_structure) return 0;
+	finish(synthesis, job, PG_SYNTHESIS_DONE);
+	return 1;
 }
 
 static void pi_application_structure_step(struct pg_synthesis *synthesis,
@@ -8596,10 +8604,8 @@ consume:
 			const struct pg_object *label = input->parameters.operation_label;
 			if (!label) goto accepted_classifier;
 			const struct pg_effect_row *row = pg_effect_row(synthesis->typing->graph, 1, &label);
-			job->type_structure = continuation_effect_structure(synthesis, type,
-				PG_TOTALITY_TOTAL, pg_effect_reference(synthesis->typing->graph, row));
-			if (!job->type_structure) goto accepted_classifier;
-			finish(synthesis, job, PG_SYNTHESIS_DONE);
+			if (!continuation_structure_step(synthesis, job, type,
+				PG_TOTALITY_TOTAL, pg_effect_reference(synthesis->typing->graph, row))) goto accepted_classifier;
 			return;
 		}
 		if (input->rule == PG_FOLD_ELIM) {
@@ -8608,9 +8614,7 @@ consume:
 			const struct pg_term *row, *value;
 			enum pg_totality totality;
 			if (!pg_computation_type_spine_view(type, &totality, &row, &value)) goto accepted_classifier;
-			job->type_structure = continuation_effect_structure(synthesis, job->right->type_structure, totality, row);
-			if (!job->type_structure) goto accepted_classifier;
-			finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+			if (!continuation_structure_step(synthesis, job, job->right->type_structure, totality, row)) goto accepted_classifier;
 			return;
 		}
 		if (input->rule == PG_APP_ELIM) {

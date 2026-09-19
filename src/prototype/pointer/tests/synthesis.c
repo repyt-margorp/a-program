@@ -673,17 +673,40 @@ static void pending_pi_scan(struct pg_typing *typing)
 		struct pg_synthesis_job *pi_shape = pg_synthesis_type_structure(&synthesis, pi);
 		complete(&synthesis, pi_shape, PG_SYNTHESIS_DONE);
 		while (synthesis.ready) pg_synthesis_advance(&synthesis, 1);
-		/* Provisional application shape does not accept this invalid raw body. */
+		/* Provisional shapes do not accept the invalid raw Lambda body. */
 		struct pg_synthesis_job *variable = rule_job(&synthesis, PG_VARIABLE, binder, 1, &context);
 		struct pg_synthesis_job *lambda = rule_job(&synthesis, PG_LAMBDA_INTRO, NULL, 2,
 			(struct pg_synthesis_job *[]){pi, variable});
 		struct pg_synthesis_job *application = rule_job(&synthesis, PG_APP_ELIM, NULL, 2,
 			(struct pg_synthesis_job *[]){lambda, variable});
 		struct pg_synthesis_job *constant = rule_job(&synthesis, PG_PI_CONSTANT_CODOMAIN, NULL, 1, &pi);
+		struct pg_synthesis_job *returned = rule_job(&synthesis, PG_RETURN_INTRO, NULL, 1, &variable);
+		struct pg_synthesis_job *fold = rule_job(&synthesis, PG_FOLD_ELIM, NULL, 2,
+			(struct pg_synthesis_job *[]){returned, lambda});
+		const struct pg_evidence *signature = pg_prove_universe(typing, empty, 0);
+		const struct pg_operation_declaration *operation = pg_operation_declaration(typing, signature, signature);
+		struct pg_synthesis_job *signature_job = pg_synthesis_evidence(&synthesis, signature);
+		struct pg_derivation_input requested = {.rule = PG_REQUEST_INTRO, .count = 4,
+			.parameters.operation_label = pg_operation_label(operation)};
+		struct pg_synthesis_job *request = pg_synthesis_rule(&synthesis, &requested,
+			(struct pg_synthesis_job *[]){signature_job, signature_job, variable, lambda}, NULL, NULL);
+		struct pg_synthesis_job *dependent = rule_job(&synthesis, PG_TYPE_FROM_VALUE, NULL, 1, &variable);
+		dependent = pg_synthesis_rule(&synthesis, &formation, &dependent, &effects, equation);
+		struct pg_synthesis_job *dependent_pi = rule_job(&synthesis, PG_PI_FORM, NULL, 2,
+			(struct pg_synthesis_job *[]){context, dependent});
+		struct pg_synthesis_job *dependent_lambda = rule_job(&synthesis, PG_LAMBDA_INTRO, NULL, 2,
+			(struct pg_synthesis_job *[]){dependent_pi, variable});
+		struct pg_synthesis_job *blocked[] = {
+			rule_job(&synthesis, PG_FOLD_ELIM, NULL, 2, (struct pg_synthesis_job *[]){returned, dependent_lambda}),
+			pg_synthesis_rule(&synthesis, &requested,
+				(struct pg_synthesis_job *[]){signature_job, signature_job, variable, dependent_lambda}, NULL, NULL)};
+		struct pg_synthesis_job *blocked_shapes[] = {pg_synthesis_classifier_structure(&synthesis, blocked[0]),
+			pg_synthesis_classifier_structure(&synthesis, blocked[1])};
 		struct pg_synthesis_job *shapes[] = {pg_synthesis_classifier_structure(&synthesis, application),
-			pg_synthesis_type_structure(&synthesis, constant)};
-		pg_synthesis_advance(&synthesis, 32);
-		for (size_t i = 0; i < 2; ++i) assert(pg_synthesis_status(shapes[i]) == PG_SYNTHESIS_PENDING);
+			pg_synthesis_type_structure(&synthesis, constant), pg_synthesis_classifier_structure(&synthesis, fold),
+			pg_synthesis_classifier_structure(&synthesis, request)};
+		pg_synthesis_advance(&synthesis, 64);
+		for (size_t i = 0; i < 4; ++i) assert(pg_synthesis_status(shapes[i]) == PG_SYNTHESIS_PENDING);
 		assert(!pg_synthesis_result(pi) && !pg_synthesis_result(application));
 		if (chunk) {
 			for (size_t steps = 0; synthesis.ready; ++steps) {
@@ -694,11 +717,27 @@ static void pending_pi_scan(struct pg_typing *typing)
 			const struct pg_object *actual_binder;
 			assert(pg_pi_view(pg_synthesis_type_structure_result(pi_shape), &domain, &actual_binder, &expected));
 			for (size_t i = 0; i < 2; ++i) assert(pg_synthesis_type_structure_result(shapes[i]) == expected);
+			const struct pg_term *parameter = pg_reference(typing->graph, pg_effect_equation_parameter(&effects, equation));
+			for (size_t i = 2; i < 4; ++i) {
+				const struct pg_effect_row *seed = i == 2 ? row : pg_effect_row(typing->graph, 1,
+					&requested.parameters.operation_label);
+				const struct pg_term *joined = pg_effect_join_term(typing->graph,
+					pg_effect_reference(typing->graph, seed), parameter);
+				assert(pg_synthesis_type_structure_result(shapes[i]) == pg_effect_type_spine(typing->graph,
+					joined, pg_evidence_subject(large)->core));
+			}
 			assert(!pg_synthesis_result(pi) && !pg_synthesis_result(application));
+			for (size_t i = 0; i < 2; ++i) {
+				assert(pg_synthesis_status(blocked_shapes[i]) == PG_SYNTHESIS_PENDING);
+				assert(!pg_synthesis_type_structure_result(blocked_shapes[i]));
+			}
 			pg_effect_inference_seal(&effects);
 			assert(pg_synthesis_effect_inference(&synthesis, &effects));
 			complete(&synthesis, constant, PG_SYNTHESIS_DONE);
 			complete(&synthesis, application, PG_SYNTHESIS_REJECTED);
+			complete(&synthesis, fold, PG_SYNTHESIS_REJECTED);
+			complete(&synthesis, request, PG_SYNTHESIS_REJECTED);
+			for (size_t i = 0; i < 2; ++i) complete(&synthesis, blocked_shapes[i], PG_SYNTHESIS_REJECTED);
 		}
 		pg_synthesis_destroy(&synthesis);
 		pg_effect_inference_destroy(&effects);
