@@ -7589,6 +7589,62 @@ static void handler_structure_step(struct pg_synthesis *synthesis, struct pg_syn
 static void type_rule_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
 	struct pg_synthesis_job *producer, const struct pg_derivation_input *input);
 
+static const struct pg_object *context_binding(const struct pg_synthesis_job *context)
+{
+	const struct pg_evidence *proof = pg_synthesis_result(context);
+	if (proof) {
+		const struct pg_context *scope = pg_evidence_context(proof);
+		return pg_evidence_judgement(proof) == PG_JUDGEMENT_CONTEXT && scope ? scope->binder : NULL;
+	}
+	if (context->role == BINDING_JOB || context->role == PI_SCOPE_JOB) return context->binder;
+	if (context->role == DERIVATION_JOB) {
+		const struct pg_derivation_input *input = context->inputs[0];
+		if (input->rule == PG_CONTEXT_EXTEND || input->rule == PG_CONTEXT_FAMILY_EXTEND)
+			return input->parameters.binder;
+	}
+	return NULL;
+}
+
+static void lambda_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
+	struct pg_synthesis_job *producer)
+{
+	if (!job->binder) {
+		struct pg_synthesis_job *pi = rule_premise(synthesis, producer, 0);
+		if (!pi) goto unsupported;
+		while (!pg_synthesis_result(pi)) {
+			struct pg_synthesis_job *prepared;
+			if (await_source_preparation(synthesis, job, pi, &prepared)) return;
+			if (!prepared) break;
+			pi = prepared;
+		}
+		const struct pg_evidence *proof = pg_synthesis_result(pi);
+		if (proof) {
+			const struct pg_term *domain, *codomain;
+			if (!pg_evidence_subject(proof) || !pg_pi_view(pg_evidence_subject(proof)->core,
+				&domain, &job->binder, &codomain)) goto unsupported;
+		} else if (pi->role == DERIVATION_JOB &&
+			((const struct pg_derivation_input *)pi->inputs[0])->rule == PG_PI_FORM) {
+			pi = rule_premise(synthesis, pi, 0);
+			if (!pi) goto unsupported;
+			job->binder = context_binding(pi);
+		}
+		if (!job->binder) {
+			if (pi->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, pi); return; }
+			finish(synthesis, job, pi->status == PG_SYNTHESIS_DONE ? PG_SYNTHESIS_UNSUPPORTED : pi->status);
+			return;
+		}
+	}
+	if (!job->left) job->left = pg_synthesis_term_structure(synthesis, rule_premise(synthesis, producer, 1));
+	if (!job->left) goto unsupported;
+	if (job->left->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, job->left); return; }
+	if (job->left->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, job->left->status); return; }
+	job->type_structure = pg_lambda(synthesis->typing->graph, job->binder, job->left->type_structure);
+	finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+	return;
+unsupported:
+	finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED);
+}
+
 static void term_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	struct pg_synthesis_job *producer = (void *)job->inputs[0];
@@ -7610,6 +7666,7 @@ static void term_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 	const struct pg_derivation_input *input = producer->role == DERIVATION_JOB ? producer->inputs[0] : NULL;
 	const struct pg_object *operation = NULL;
 	if (input) {
+		if (input->rule == PG_LAMBDA_INTRO) { lambda_structure_step(synthesis, job, producer); return; }
 		if (input->rule == PG_HANDLER_ELIM) { handler_structure_step(synthesis, job, producer, input); return; }
 		if (input->rule == PG_HOST_TYPE_FORM || input->rule == PG_HOST_VALUE_INTRO || input->rule == PG_HOST_FUNCTION_INTRO) {
 			job->type_structure = pg_reference(synthesis->typing->graph, input->parameters.constant);
@@ -7625,13 +7682,11 @@ static void term_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 			type_rule_structure_step(synthesis, job, producer, input);
 			return;
 		}
-		if (input->rule == PG_LAMBDA_INTRO || input->rule == PG_APP_ELIM
+		if (input->rule == PG_APP_ELIM
 			|| input->rule == PG_FOLD_ELIM || input->rule == PG_REQUEST_INTRO) {
 			if (!job->left) {
 				size_t offset = input->rule == PG_REQUEST_INTRO ? 2 : 0;
-				struct pg_synthesis_job *first = rule_premise(synthesis, producer, offset);
-				job->left = input->rule == PG_LAMBDA_INTRO ? pg_synthesis_type_structure(synthesis, first)
-					: pg_synthesis_term_structure(synthesis, first);
+				job->left = pg_synthesis_term_structure(synthesis, rule_premise(synthesis, producer, offset));
 				job->right = pg_synthesis_term_structure(synthesis, rule_premise(synthesis, producer, offset + 1));
 			}
 			struct pg_synthesis_job *parts[] = {job->left, job->right};
@@ -7642,12 +7697,7 @@ static void term_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 			}
 			const struct pg_term *left = pg_synthesis_type_structure_result(job->left);
 			const struct pg_term *right = pg_synthesis_type_structure_result(job->right);
-			if (input->rule == PG_LAMBDA_INTRO) {
-				const struct pg_term *domain, *codomain;
-				const struct pg_object *binder;
-				if (!pg_pi_view(left, &domain, &binder, &codomain)) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
-				job->type_structure = pg_lambda(synthesis->typing->graph, binder, right);
-			} else if (input->rule == PG_FOLD_ELIM)
+			if (input->rule == PG_FOLD_ELIM)
 				job->type_structure = pg_computation_fold(synthesis->typing->graph, left, right, 0, NULL);
 			else if (input->rule == PG_REQUEST_INTRO)
 				job->type_structure = pg_computation_request(synthesis->typing->graph,
@@ -8457,22 +8507,13 @@ static void type_rule_structure_step(struct pg_synthesis *synthesis, struct pg_s
 	if (input->rule == PG_PI_FORM) {
 		struct pg_synthesis_job *context = rule_premise(synthesis, producer, 0);
 		if (!context) goto unsupported;
-		const struct pg_object *binder = NULL;
+		const struct pg_object *binder = context_binding(context);
 		/* An unfinished context request can expose its declared annotation for
 		 * effect equations. This is structure only, never accepted Pi evidence. */
-		if (context->role == DERIVATION_JOB) {
-			const struct pg_derivation_input *extension = context->inputs[0];
-			if (extension->rule == PG_CONTEXT_EXTEND || extension->rule == PG_CONTEXT_FAMILY_EXTEND)
-				binder = extension->parameters.binder;
-		} else if (context->role == PI_SCOPE_JOB || context->role == BINDING_JOB)
-			binder = context->binder;
 		if (!binder) {
 			if (context->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, context); return; }
 			if (context->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, context->status); return; }
-			if (!context->result || pg_evidence_judgement(context->result) != PG_JUDGEMENT_CONTEXT) goto unsupported;
-			const struct pg_context *scope = pg_evidence_context(context->result);
-			if (!scope) goto unsupported;
-			binder = scope->binder;
+			goto unsupported;
 		}
 		if (!job->left) job->left = request_job(synthesis, DECLARED_TYPE_JOB, context, binder);
 		if (!job->left) goto unsupported;

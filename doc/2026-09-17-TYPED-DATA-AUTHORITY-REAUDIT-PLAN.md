@@ -1304,6 +1304,14 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 - [ ] Report concrete deleted paths. Move remaining synchronous query loops to
   existing scheduling only where necessary for the same work contract; do not
   turn this repair into another scheduler framework.
+- [x] Local Lambda structure correction after `f3da3c3`: read the existing Pi
+  binding address and body, without reconstructing the whole classifier just
+  to find its binder. Share Context/input binding extraction with Pi structure.
+  Opaque producers still wait when they actually determine that address; ordinary
+  Pi/body acceptance remains independent. Pending normalized-codomain and invalid
+  raw-body regressions pass at effect closure. The priority plan records final
+  gates and local publication status. This is not completion of pending
+  classifier reconstruction, A4 or A5.
 - [x] 2026-09-19 local cleanup: seven constructor/family/function-graph consumers
   borrow existing immutable accepted premise slices instead of allocating and
   copying them. Transformation arrays and negative-test copies remain owned.

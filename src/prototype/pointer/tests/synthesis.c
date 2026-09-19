@@ -782,6 +782,27 @@ static void pending_effect_contexts(struct pg_typing *typing)
 			pg_reference(typing->graph, pg_effect_equation_parameter(&effects, equation)),
 			pg_universe(typing->graph, 0));
 		assert(symbolic_pi == pg_pi(typing->graph, pg_thunk_type(typing->graph, symbolic_f), k, symbolic_f));
+		/* Core Lambda construction needs its binding and body, not a completed
+		 * codomain normalization or a successful typing derivation. */
+		struct pg_synthesis_job *opaque_codomain = pg_synthesis_normalize_jobs(&synthesis, context, codomain, PG_REDUCTION_WHNF);
+		struct pg_synthesis_job *opaque_pi = rule_job(&synthesis, PG_PI_FORM, NULL, 2,
+			(struct pg_synthesis_job *[]){context, opaque_codomain});
+		struct pg_synthesis_job *opaque_lambdas[2], *opaque_shapes[2];
+		const struct pg_term *opaque_cores[2];
+		for (size_t i = 0; i < 2; ++i) {
+			opaque_lambdas[i] = rule_job(&synthesis, PG_LAMBDA_INTRO, NULL, 2,
+				(struct pg_synthesis_job *[]){opaque_pi, i ? variable : body});
+			opaque_shapes[i] = pg_synthesis_term_structure(&synthesis, opaque_lambdas[i]);
+			assert(!complete(&synthesis, opaque_shapes[i], PG_SYNTHESIS_DONE));
+			opaque_cores[i] = pg_synthesis_type_structure_result(opaque_shapes[i]);
+			const struct pg_term *argument = pg_reference(typing->graph, k);
+			assert(opaque_cores[i] == pg_lambda(typing->graph, k, i ? argument :
+				pg_application(typing->graph, pg_reference(typing->graph, &pg_force_operation), argument)));
+			assert(!pg_synthesis_result(opaque_lambdas[i]) && !pg_synthesis_result(opaque_pi));
+		}
+		size_t before_opaque_type = synthesis.jobs.count;
+		struct pg_synthesis_job *opaque_type = pg_synthesis_type_structure(&synthesis, opaque_pi);
+		assert(opaque_type && synthesis.jobs.count == before_opaque_type + 1);
 		struct pg_synthesis_job *projected_value = rule_job(&synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
 			(struct pg_synthesis_job *[]){context, variable});
 		struct pg_synthesis_job *projected_term = pg_synthesis_term_structure(&synthesis, projected_value);
@@ -1299,6 +1320,14 @@ static void pending_effect_contexts(struct pg_typing *typing)
 			pg_synthesis_advance(&synthesis, chunk);
 		}
 		assert(pg_synthesis_status(lambda) == PG_SYNTHESIS_DONE);
+		for (size_t i = 0; i < 2; ++i) {
+			const struct pg_evidence *proof = complete(&synthesis, opaque_lambdas[i],
+				i ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE);
+			if (proof) assert(pg_evidence_subject(proof)->core == opaque_cores[i]);
+			assert(pg_synthesis_type_structure_result(opaque_shapes[i]) == opaque_cores[i]);
+		}
+		assert(!complete(&synthesis, opaque_type, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(opaque_type) == pg_evidence_subject(pg_synthesis_result(opaque_pi))->core);
 		const struct pg_evidence *adapted_proof = complete(&synthesis, adapted, PG_SYNTHESIS_DONE);
 		assert(adapted_proof == complete(&synthesis, ordinary_return, PG_SYNTHESIS_DONE));
 		assert(pg_evidence_subject(adapted_proof)->core == pg_synthesis_type_structure_result(adapted_term));

@@ -4820,3 +4820,68 @@ passes. No test input or assertion was changed to pass it.
 All epoch publication gates pass. Prepare the commit and atomic non-force push
 to Main and `rewrite/pointer-core-hott`; the Git remote records its resulting
 revision. Remaining A3-A5/R2-R5 gates above stay open.
+
+### 2026-09-19: Lambda structure without classifier reconstruction
+
+Baseline: published `f3da3c3`. `term_structure_step` currently requests the
+entire Pi structure just to recover a Lambda binder. A known binding and body
+can therefore wait for unrelated codomain normalization. This is a removable
+computation/type dependency, not permission to accept the Lambda without Pi
+formation or body-classifier agreement.
+
+- [x] Reproduce with a pending effect Context and normalized codomain: the
+  new regression cannot finish its Core-only query on the baseline (debug
+  `...-lambda-binding-before.log`, bounded test-driver assertion).
+- [x] Share binding-address extraction with Pi construction. Read the existing
+  Context/input binding, keeping opaque computed Pi inputs dependent on the
+  producer that actually determines that binding. No new Core/job tag or store.
+- [x] Verify the valid Lambda after effect closure and reject a value body
+  under the same Pi; both provisional Core snapshots remain non-evidence.
+- [x] Run affected debug/sanitizer tests and full optimized acceptance; compare
+  result records, work counts and LOC. Publish only with completed epoch gates.
+
+Other pending classifier, transport and synchronous-query paths remain open.
+
+Implementation: one read-only `context_binding` helper replaces Pi's local
+extraction; Lambda uses that same address without requesting Pi structure.
+When a Pi is opaque, its preparation/acceptance must first expose the binding.
+The existing term query retains the binder while its body progresses. There is
+no new request kind, field, proof rule, snapshot store or Core encoding.
+`pg_prove_lambda` still checks Pi formation, body polarity, Context and classifier.
+
+The regression uses the existing pending-effect fixture at chunks 1/64. A
+normalized codomain cannot finish before effect closure, yet both a valid and
+an invalid raw Lambda have constructible Core. A subsequent explicit Pi query
+allocates its first request, proving Lambda did not already request it. Closing
+the equation accepts the valid Lambda with exactly the earlier Core and rejects
+the raw value body; neither provisional snapshot changes into a certificate.
+Source Lambda bodies still receive their ordinary implicit Return elaboration.
+
+Strict debug and ASan/UBSan synthesis tests pass, including the final extra
+no-Pi-request assertion. Complete debug/sanitizer source-image runners and
+sanitizer `image_origins.sh` also pass; zero-work retained QuickSort resave is
+byte-identical to the preceding image. Flags match the direct-origin epoch.
+Logs: `/tmp/a-program-authority-lambda-binding-{debug-final,asan-synthesis-final,
+debug-source,asan-source,asan-origins}.log`.
+
+Fresh length/function-field/imported-QuickSort measurements retain exactly
+9,120 / 12,466 / 146,564 Solve steps, 4,864 / 9,284 / 93,013 proofs and
+3,338 / 6,398 / 78,818 typed occurrences. Context/map/lift/query counts and both
+arena sizes also match the preceding direct-origin measurements. This removes
+an unnecessary dependency in pending structural queries, not a demonstrated
+speed bottleneck in those three completed programs. No wall-time speedup is
+claimed. GDB counts: `...-{length,field,qsort}-after.log`.
+
+Delta from `f3da3c3`: `synthesis.c` +62/-21 (net +41),
+`tests/synthesis.c` +29/-0; documentation separate. Cumulative implementation/
+header totals remain R76 +3,597/-1,863 = +1,734, R0 +8,352/-4,202 = +4,150.
+Neither net-negative gate is met. Keep this limited correction local for the
+next coherent epoch rather than treating it as completion of A3-A5/R2-R5.
+
+Final full optimized `make -C src/prototype/pointer -j2
+BUILD=/tmp/a-program-authority-lambda-binding-opt check-acceptance` passes
+(`...-opt-final.log`). All 2,460 export records, including steps, match the
+published direct-origin epoch after temporary-path/order normalization only.
+Final synthesis regressions also pass in debug and ASan/UBSan. The working tree
+is prepared as one local commit; Main remains at `f3da3c3`, with no independent
+publication for this partial pending-structure correction.
