@@ -1138,6 +1138,13 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 
 ### A4. Audit remaining structural consumers and remove duplication
 
+- [x] 2026-09-20: general substitution assembly uses one temporary allocation
+  for its premise/image arrays, without changing checks or the map interner.
+  Full O2 and affected sanitizer/image checks pass; implementation net -3.
+  The priority plan records reduced allocator calls but increased cumulative
+  requested bytes and a measured append slowdown. This is local work, not a
+  speedup claim, publication epoch, or completion of the remaining A4/A5 gates.
+
 - [x] 2026-09-20: revalidate remaining scan/authority claims at `7834098`.
   Whole synthesis-table scans are now teardown and rejected-index diagnostics,
   not ordinary Solve discovery. Known type/Term recipes already share work;

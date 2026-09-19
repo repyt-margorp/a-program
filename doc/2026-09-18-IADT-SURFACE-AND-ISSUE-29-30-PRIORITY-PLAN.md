@@ -7539,3 +7539,47 @@ remains **+4389** from R0. The cumulative net-negative requirement remains open.
 Next work must target the general map/image assembly path without adding an
 accessor interface or another specialized acceptance path merely to avoid a
 temporary array. Existing structural sharing and premise checks remain intact.
+
+### A4 general substitution scratch ownership (2026-09-20)
+
+Baseline `3db91e4`, implementation `7834098`. In `substitution_build`, keep the
+same ordered premise vector, exact-proof lookup, typed image projection, map
+interner and dependent classifier validation. Allocate the two local arrays in
+one checked-size block and free that block once. No accessor API, specialized
+proof constructor, retained state, new authority or serialization change.
+Structure-pointer types share alignment; the second array starts after the
+complete premise vector. Empty maps still allocate their two Context premises.
+
+Read-only O0 allocation-site probes on the baseline measured premise/image
+malloc calls: function-field 2731/1870, append 1204/809, QuickSort 17054/11520.
+The second call is removed, but the first now reserves image space even on an
+exact-proof hit. Derived cumulative requested bytes before/after are therefore
+130168/138800, 59968/65104 and 2310408/2798608, respectively. These are transient
+allocation traffic, not peak or retained memory. Logs:
+`/tmp/a-program-substitution-scratch-{field,append,qsort}-alloc.log`.
+
+- [x] Strict O2 Core tests, including empty maps, both construction orders,
+  alternative premises, dependent fields, invalid images and scope isolation.
+- [x] Full O2 `check-acceptance`: exit 0; all 2460 export/step records identical
+  to `/tmp/a-program-conclusion-owner-opt-confirm.log` after temporary-path
+  normalization. Log: `/tmp/a-program-substitution-scratch-opt.log`.
+- [x] Affected ASan/UBSan Core, IADT and derivation/source image checks pass
+  with `detect_leaks=1:halt_on_error=1` and `UBSAN_OPTIONS=halt_on_error=1`.
+  Strict O1/g build; logs `/tmp/a-program-substitution-scratch-asan{,-build}.log`.
+  This does not claim full sanitizer acceptance.
+- [x] Two isolated CPU-2 timing runs, 31 alternating O2 pairs each, against
+  `7834098`. Before/after medians in ms: function-field 8.015/7.803 then
+  8.095/8.053; append 5.959/6.178 then 5.860/6.166; QuickSort 160.279/158.621
+  then 158.780/158.721. Length 4.659/4.675 then 4.613/4.566; Handler
+  5.226/5.206 then 5.261/5.261. Source-save length 4.867/4.911 then 4.914/4.992;
+  QuickSort 161.644/160.564 then 160.479/159.855. Append regresses about 4-5%;
+  do not present this as a general speedup or waive the remaining performance
+  gates. Logs: `/tmp/a-program-substitution-scratch-timing{,-repeat}.jsonl`.
+
+Implementation delta: `evidence.c` +4/-7 = **-3**; no header or new test changes.
+Retain this local ownership simplification after the functional and memory
+checks, not as an established speedup or a completed publication epoch. The
+append regression remains an outstanding performance finding; it must be
+rechecked on the eventual combined publication candidate, not silently waived.
+Implementation/header LOC is now **+4386** from R0; the overall net-negative
+gate remains unmet. No Main push or A4/A5 completion follows this change.

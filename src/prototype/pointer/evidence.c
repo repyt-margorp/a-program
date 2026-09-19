@@ -4221,12 +4221,12 @@ static const struct pg_evidence *substitution_build(struct pg_typing *typing,
 	if (pg_context_extension_size(pg_evidence_context(source), base, &suffix) || suffix != count) return NULL;
 	if (count > SIZE_MAX - retained) return NULL;
 	size_t total = retained + count;
-	if (total > SIZE_MAX / sizeof(struct pg_binding_value)) return NULL;
-	if (total > SIZE_MAX / sizeof(const struct pg_evidence *) - 2) return NULL;
+	size_t stride = sizeof(const struct pg_evidence *) + sizeof(const struct pg_occurrence *);
+	if (total > (SIZE_MAX - 2 * sizeof(const struct pg_evidence *)) / stride) return NULL;
 	const struct pg_evidence *result = NULL;
-	const struct pg_occurrence **typed_images = NULL;
-	const struct pg_evidence **premises = malloc((total + 2) * sizeof(*premises));
+	const struct pg_evidence **premises = malloc(total * stride + 2 * sizeof(*premises));
 	if (!premises) goto done;
+	const struct pg_occurrence **typed_images = (void *)(premises + total + 2);
 	premises[0] = source;
 	premises[1] = destination;
 	/* A lifted prefix is the same checked map in a larger destination.
@@ -4245,8 +4245,6 @@ static const struct pg_evidence *substitution_build(struct pg_typing *typing,
 	result = find_record(typing, PG_CONTEXT_SUBSTITUTION,
 		pg_evidence_context(destination), NULL, total + 2, premises, NULL, &hash);
 	if (result) goto done;
-	typed_images = malloc(total * sizeof(*typed_images));
-	if (total && !typed_images) goto done;
 	for (size_t i = 0; i < total; ++i) typed_images[i] = pg_evidence_subject(premises[i + 2]);
 	const struct pg_context_map *map = pg_context_map(typing, pg_evidence_context(source),
 		pg_evidence_context(destination), total, typed_images);
@@ -4266,7 +4264,6 @@ static const struct pg_evidence *substitution_build(struct pg_typing *typing,
 	result = accept_record(typing, PG_CONTEXT_SUBSTITUTION,
 		pg_evidence_context(destination), NULL, total + 2, premises, NULL, map);
 done:
-	free(typed_images);
 	free(premises);
 	return result;
 }
