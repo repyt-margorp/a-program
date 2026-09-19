@@ -7837,3 +7837,55 @@ Evidence: `/tmp/a-program-call-layout-{opt,asan-program,asan-source}.log`,
 Final implementation delta is zero; tests/program.c +25/-1 = +24. Overall
 R0 implementation/header net remains +4370. This is a local audit/test commit,
 not a Main publication epoch or completion of A4/A5.
+
+### A4 source reader workspace ownership (2026-09-20)
+
+Baseline Main `dce599d`, local test checkpoint `c233a51`. Source restoration
+kept wire ID tables and temporary Match descriptors in the Program arena.
+Allocate these in the existing restoration DAG's storage instead; its existing
+success/failure cleanup releases them after read. Keep returned root arrays,
+name bytes, syntax, Terms, Contexts and reconstructed producer inputs Program
+owned. Match restoration copies its descriptors/branch arrays; source binding
+interning copies its scope array. No new authority, API, wire format or Solve
+path. A newly restored Program still starts without accepted Solve results.
+
+- [x] Add immediate read/resave/destroy/read regression to the existing
+  seven-root source fixture, preserving root aliases, names and zero steps.
+  Exercise both Solve chunks 1/64 through the existing runner.
+- [x] Fresh strict O0/g source-image suite passes.
+- [x] Fresh strict O2 full acceptance passes; all 2460 export/step records
+  match Main after temporary-path normalization.
+- [x] Fresh ASan/UBSan source-image suite passes with leak detection/halt.
+- [x] ASan/UBSan image CLI suite, including retained inputs and continued Solve,
+  passes with leak detection/halt and no sanitizer diagnostics.
+- [x] Isolated Main/candidate pending-image timing, with identical inputs;
+  two CPU-2 runs of 31 alternating pairs, no concurrent build/test/probe.
+- [ ] Group with a completed reader-ownership epoch before Main publication;
+  this local change alone is not a publication milestone.
+
+Read-only debugger measurements at Program destruction, before any Solve:
+
+| Main-produced image | Arena used bytes before/after | Capacity before/after |
+| --- | ---: | ---: |
+| Function-field | 148640 / 142400 | 163840 / 147456 |
+| Append | 169536 / 162208 | 180224 / 163840 |
+| QuickSort | 890752 / 869088 | 923392 / 890624 |
+
+Context/occurrence/map/proof/job counts are unchanged in each pair. These
+measure retained graph allocation, not peak RSS or runtime improvement.
+Evidence: `/tmp/a-program-source-workspace-{debug,opt}.log`,
+`/tmp/a-program-source-workspace-asan-{source,image}.log`, and
+`/tmp/a-program-source-workspace-{function-field,append,qsort}-{before,after}.log`.
+Implementation `source_io.c` +19/-16 = +3; test +8/-0. Cumulative R0
+implementation/header net becomes +4373, so the net-negative gate stays open.
+Follow-up audit: `pg_contexts_unpack`'s local `all` lookup table and the context
+reader's metadata also outlive read; returned selection arrays have a different
+ownership contract and must not be freed with those temporary tables.
+
+Pending-image load/Solve median milliseconds, Main/candidate (first; repeat):
+length 4.892/4.856; 4.783/4.789, function-field 9.014/7.874; 8.940/7.930,
+append 6.248/6.213; 6.243/6.229, QuickSort 169.299/168.659;
+159.601/160.865. Inputs are the same Main-produced zero-step RECOMPUTE image
+for each pair. Results are mixed; do not claim a universal speedup or close the
+R0 performance gate. Logs:
+`/tmp/a-program-source-workspace-image-timing{,-repeat}.jsonl`.

@@ -841,16 +841,20 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 	if (!program) return NULL;
 	struct pg_declaration_io codec = {0};
 	struct pg_dag order = {0};
+	struct restore_order dependencies = {0};
 	if (pg_declaration_io_init(&codec, &program->typing)) goto fail;
+	if (pg_dag_init(&order, restore_child, &dependencies)) goto fail;
 	struct pg_graph *graph = &program->graph;
-	struct record *records = pg_alloc(graph, (size_t)n * sizeof(*records));
-	const struct pg_source_scope **scopes = pg_alloc(graph, (size_t)n * sizeof(*scopes));
-	uint64_t *ids = pg_alloc(graph, (size_t)np * 6 * sizeof(*ids));
-	uint64_t *selections = pg_alloc(graph, (size_t)nr * sizeof(*selections));
-	uint64_t *origin_ids = pg_alloc(graph, (size_t)no * 3 * sizeof(*origin_ids));
-	uint64_t *entries = pg_alloc(graph, (size_t)ne * 3 * sizeof(*entries));
+	/* Wire tables live only through restoration; referenced objects and roots do not. */
+	struct pg_graph *scratch = &order.storage;
+	struct record *records = pg_alloc(scratch, (size_t)n * sizeof(*records));
+	const struct pg_source_scope **scopes = pg_alloc(scratch, (size_t)n * sizeof(*scopes));
+	uint64_t *ids = pg_alloc(scratch, (size_t)np * 6 * sizeof(*ids));
+	uint64_t *selections = pg_alloc(scratch, (size_t)nr * sizeof(*selections));
+	uint64_t *origin_ids = pg_alloc(scratch, (size_t)no * 3 * sizeof(*origin_ids));
+	uint64_t *entries = pg_alloc(scratch, (size_t)ne * 3 * sizeof(*entries));
 	struct pg_synthesis_job **jobs = pg_alloc(graph, (size_t)nr * sizeof(*jobs));
-	struct pg_synthesis_job **producers = pg_alloc(graph, (size_t)np * sizeof(*producers));
+	struct pg_synthesis_job **producers = pg_alloc(scratch, (size_t)np * sizeof(*producers));
 	if (!records || !scopes || !ids || !jobs || !origin_ids || !selections || !producers || !entries) goto fail;
 	size_t remaining = limit - (size_t)n - (size_t)nr - 3 * (size_t)no - 6 * (size_t)np - 3 * (size_t)ne;
 	size_t binding_reference_count = 0;
@@ -880,7 +884,7 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 	uint64_t source_binding_count;
 	if (pg_wire_read_u64(file, &source_binding_count) || source_binding_count > limit / 3
 		|| source_binding_count > SIZE_MAX / (3 * sizeof(uint64_t))) goto fail;
-	uint64_t *source_bindings = pg_alloc(graph, 3 * (size_t)source_binding_count * sizeof(*source_bindings));
+	uint64_t *source_bindings = pg_alloc(scratch, 3 * (size_t)source_binding_count * sizeof(*source_bindings));
 	if (!source_bindings) goto fail;
 	size_t source_reference_count = 0;
 	for (size_t i = 0; i < source_binding_count; ++i) {
@@ -893,7 +897,7 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 	}
 	uint64_t match_count;
 	if (pg_wire_read_u64(file, &match_count) || match_count > limit / 3 || match_count > SIZE_MAX / sizeof(void *)) goto fail;
-	struct pg_match_allocation **matches = pg_alloc(graph, (size_t)match_count * sizeof(*matches));
+	struct pg_match_allocation **matches = pg_alloc(scratch, (size_t)match_count * sizeof(*matches));
 	if (!matches) goto fail;
 	size_t match_context_count = 0;
 	for (size_t i = 0; i < match_count; ++i) {
@@ -901,7 +905,7 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 		if (pg_wire_read_u64(file, &branches) || limit - match_context_count < 2 ||
 			branches > (limit - match_context_count - 2) / 2 ||
 			branches > (SIZE_MAX - sizeof(**matches)) / (2 * sizeof(void *))) goto fail;
-		matches[i] = pg_alloc(graph, sizeof(**matches) + 2 * (size_t)branches * sizeof(void *));
+		matches[i] = pg_alloc(scratch, sizeof(**matches) + 2 * (size_t)branches * sizeof(void *));
 		if (!matches[i]) goto fail;
 		matches[i]->induction.count = (size_t)branches;
 		match_context_count += 2 + 2 * (size_t)branches;
@@ -911,12 +915,12 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 	uint64_t metadata_count;
 	if (pg_wire_read_u64(file, &metadata_count) || metadata_count > limit
 		|| metadata_count > SIZE_MAX / sizeof(uint64_t)) goto fail;
-	uint64_t *metadata = pg_alloc(graph, (size_t)metadata_count * sizeof(*metadata));
+	uint64_t *metadata = pg_alloc(scratch, (size_t)metadata_count * sizeof(*metadata));
 	if (!metadata) goto fail;
 	for (size_t i = 0; i < metadata_count; ++i) if (pg_wire_read_u64(file, &metadata[i])) goto fail;
 	uint64_t member_count;
 	if (pg_wire_read_u64(file, &member_count) || member_count > limit || member_count > SIZE_MAX / (2 * sizeof(uint64_t))) goto fail;
-	uint64_t *members = pg_alloc(graph, 2 * (size_t)member_count * sizeof(*members));
+	uint64_t *members = pg_alloc(scratch, 2 * (size_t)member_count * sizeof(*members));
 	if (!members) goto fail;
 	for (size_t i = 0; i < 2 * member_count; ++i) if (pg_wire_read_u64(file, &members[i])) goto fail;
 	size_t nd;
@@ -964,7 +968,7 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 	size_t use_count = allocation_count - (size_t)member_count;
 	size_t source_offset = allocation_count + binding_reference_count;
 	if (source_reference_count > SIZE_MAX / sizeof(void *)) goto fail;
-	const struct pg_object **binding_objects = pg_alloc(graph, source_reference_count * sizeof(*binding_objects));
+	const struct pg_object **binding_objects = pg_alloc(scratch, source_reference_count * sizeof(*binding_objects));
 	if (!binding_objects) goto fail;
 	for (size_t i = 0; i < source_reference_count; ++i) {
 		const struct pg_term *term = references[source_offset + i];
@@ -982,15 +986,14 @@ struct pg_program *pg_sources_read(FILE *file, size_t limit,
 	}
 	if (fgetc(file) != EOF || ferror(file)) goto fail;
 	if (nd > SIZE_MAX / sizeof(void *)) goto fail;
-	struct pg_synthesis_job **rules = pg_alloc(graph, nd * sizeof(*rules));
+	struct pg_synthesis_job **rules = pg_alloc(scratch, nd * sizeof(*rules));
 	if (!rules) goto fail;
 	pg_effect_inference_seal(&program->imported_effects);
 	for (size_t i = 0; i < nd; ++i) {
 		rules[i] = pg_synthesis_derivation_inference(&program->synthesis, derivations[i], &program->imported_effects);
 		if (!rules[i]) goto fail;
 	}
-	struct restore_order dependencies = {records, ids, NULL, (size_t)n, (size_t)np};
-	if (pg_dag_init(&order, restore_child, &dependencies)) goto fail;
+	dependencies = (struct restore_order){records, ids, NULL, (size_t)n, (size_t)np};
 	struct restore_node *nodes = pg_alloc(&order.storage, ((size_t)n + (size_t)np) * sizeof(*nodes));
 	if (!nodes) goto fail;
 	dependencies.nodes = nodes;

@@ -2693,6 +2693,14 @@ static void read_sources(FILE *file, uint64_t chunk)
 	struct pg_program *p = pg_sources_read(file, 10000, &count, &roots);
 	assert(p && count == 7 && p->root == roots[0] && roots[0] == roots[3]);
 	assert(!p->synthesis.steps && !p->parser.reader.input);
+	/* Reading releases its wire workspace; roots and borrowed names must survive. */
+	FILE *resaved = tmpfile();
+	assert(resaved && !pg_sources_write(resaved, &p->synthesis, count, roots));
+	pg_program_destroy(p);
+	rewind(resaved);
+	p = pg_sources_read(resaved, 10000, &count, &roots);
+	assert(p && count == 7 && !fclose(resaved));
+	assert(p->root == roots[0] && roots[0] == roots[3] && !p->synthesis.steps);
 	for (size_t i = 0; i < count; ++i) assert(!pg_synthesis_result(roots[i]));
 	while (p->synthesis.ready) { assert(p->synthesis.steps < 10000); pg_synthesis_advance(&p->synthesis, chunk); }
 	for (size_t i = 0; i < count; ++i)
