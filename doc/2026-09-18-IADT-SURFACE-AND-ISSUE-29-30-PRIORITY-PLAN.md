@@ -6219,7 +6219,7 @@ Remaining A4/A5/R2-R5 and original cumulative reduction gates remain open.
 - [x] Full optimized acceptance and sanitizer source/image checks pass. All
   2,460 optimized and 1,218 sanitizer image export records match baseline,
   including Solve steps. Paired timing is recorded below.
-- [ ] Publish only in a completed coherent refactoring epoch.
+- [x] Published with the verified storage epoch `ec31e3a`.
 
 QuickSort previously allocated 7,492 temporary arenas here (rule 7,184,
 substitution 287, family action 21) for 275,536 requested payload bytes. Those
@@ -6268,7 +6268,7 @@ existing contiguous owner and are not removed by analogy alone.
 - [x] Sanitizer image checks pass; all 1,218 export/step records match the
   baseline. No source/test edits occurred during verification.
 - [x] Isolated O2 timing: CPU 2, warmup and 31 alternating pairs.
-- [ ] Publish only with a coherent completed refactoring epoch.
+- [x] Published with the verified storage epoch `ec31e3a`.
 
 GDB on the baseline counts 94 operand-array allocations for function-field
 (145 fields, 12 nullary cases) and 384 for universal QuickSort (1,159 fields,
@@ -6312,8 +6312,8 @@ accepted Term/occurrence/derivation layers. No new role, cache or wire field.
 - [x] Strict debug and optimized acceptance; focused sanitizer tests including
   pending handler/source/image destruction. Compare semantic outputs and steps.
 - [x] Measure request size, retained memory, counts and isolated performance.
-- [ ] Group with the two pending allocation deletions only after the integrated
-  epoch passes publication gates; parent A4/A5/R2-R5 remain open.
+- [x] Publish with the two allocation deletions after the integrated epoch
+  passes its gates (`ec31e3a`); parent A4/A5/R2-R5 remain open.
 
 Verified on the unchanged source/test revision: full strict O0/g and O2
 `check-acceptance`; ASan/UBSan synthesis, Source IO, image CLI and all 4,080
@@ -6344,3 +6344,9 @@ Combined with `ad3d94c` and `1ef27d8`, epoch versus Main `d76537b`:
 **+1**, not a LOC reduction. Tests separately: `synthesis.c` +40/-1 = +39;
 `iadt.c` +15/-0. Cumulative R0 implementation/header +8,864/-4,409 = +4,455.
 The original net-negative gate and overall A4/A5/R2-R5 remain unfinished.
+
+Published on 2026-09-19: `ec31e3a22a00cb9b0344258f51e011ab216dac0a`, including
+`ad3d94c` and `1ef27d8`, atomically fast-forwarded Main and
+`rewrite/pointer-core-hott` from `d76537b`, without force. `git ls-remote`
+confirmed both tips. This following publication-record commit changes only
+documentation; the tested implementation remains unchanged.
