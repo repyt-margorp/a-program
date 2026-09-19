@@ -5056,7 +5056,7 @@ map-rebase query, deleting their temporary image array and per-image loop.
 - [x] Existing retained QuickSort zero-step resave remains byte-identical.
 - [x] ASan/UBSan synthesis, IADT, source-image and full image-CLI tests exit 0
   with leak detection and halt-on-error enabled; isolated timing is below.
-- [ ] Publish with `ce2985c` as one selected-origin/resumable-transport epoch;
+- [x] Published with `ce2985c` as epoch `df53645` to Main and rewrite;
   leave A3's shared-syntax environment bound, A4's remaining synchronous builders
   and A5's cumulative/performance gates open.
 
@@ -5090,5 +5090,5 @@ baseline/current: Bool .491/.503; add .904/.901; length 5.501/5.419;
 function-field 9.296/9.188; Vec append 6.816/6.747; QuickSort 167.816/167.203;
 length save 5.622/5.592; QuickSort save 169.120/169.260. No general speedup
 is claimed. This isolates the transport change, not A5's cumulative R0 gate.
-The tested epoch is ready for an atomic, non-force Main/rewrite push after
-rechecking both remote heads at `0edf180`; record publication separately.
+Both remote heads were rechecked at `0edf180`; the atomic, non-force push of
+`df53645` succeeded. No issue closure or A3-A5/R2-R5 completion is claimed.

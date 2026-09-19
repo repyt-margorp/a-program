@@ -827,7 +827,7 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 - [ ] Preserve selected-root reachability without scanning unrelated source
   scopes or collecting all syntax-free aliases. Do not repeat the withdrawn
   broad `collect_origin` experiment.
-  Current local correction: transparent definition/handler scopes use their
+  Published in `df53645`: transparent definition/handler scopes use their
   container syntax as the reference key, visited by the writer's existing
   syntax frontier. Other scopes use their own binder/address. This removes the
   parent walk without losing mapped-alias or recursive append origins; 128
