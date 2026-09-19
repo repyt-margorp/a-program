@@ -2245,6 +2245,13 @@ struct pg_synthesis_job *pg_synthesis_identity_formation(struct pg_synthesis *sy
 	return request_inputs(synthesis, FORMATION_JOB, 1, inputs);
 }
 
+static struct pg_synthesis_job *identity_classifier(struct pg_synthesis *synthesis,
+	const struct pg_evidence *context, const struct pg_evidence *term)
+{
+	return pg_synthesis_identity_formation(synthesis, request_job(synthesis,
+		CLASSIFIER_FORMATION_JOB, pg_synthesis_evidence(synthesis, context), pg_synthesis_evidence(synthesis, term)));
+}
+
 struct pg_synthesis_job *pg_synthesis_identity_face_job(struct pg_synthesis *synthesis,
 	const struct pg_evidence *context, struct pg_synthesis_job *formation,
 	const struct pg_dimension_map *face)
@@ -7930,8 +7937,9 @@ static void constructor_transport_step(struct pg_synthesis *synthesis, struct pg
 		constructors[i] = head->as.reference;
 	}
 	struct pg_identity_boundary boundary;
-	const struct pg_evidence *identity = pg_identity_formation(typing, pg_prove_classifier(typing, context, inputs[3]));
-	if (!pg_identity_boundary_view(identity, &boundary)) goto unsupported;
+	struct pg_synthesis_job *identity = identity_classifier(synthesis, context, inputs[3]);
+	if (await_dependency(synthesis, job, identity)) return;
+	if (!pg_identity_boundary_view(identity->result, &boundary)) goto unsupported;
 	if (!job->transport_scope) job->transport_scope = transport_scope_start(typing,
 		pg_prove_substitution_projection(typing, context, context), &boundary);
 	if (!job->transport_scope) goto unsupported;
@@ -8209,8 +8217,10 @@ static struct pg_synthesis_job *index_constructor_candidate(struct pg_synthesis 
 	const struct pg_evidence *const *values = (*slot)->values;
 	size_t count = (*slot)->value_count;
 	struct pg_identity_boundary boundary;
-	const struct pg_evidence *identity = pg_identity_formation(typing, pg_prove_classifier(typing, context, state->path));
-	if (!pg_identity_boundary_view(identity, &boundary)) return NULL;
+	struct pg_synthesis_job *identity = identity_classifier(synthesis, context, state->path);
+	if (!identity) return NULL;
+	if (identity->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, identity); *pending = 1; return NULL; }
+	if (!pg_identity_boundary_view(identity->result, &boundary)) return NULL;
 	if (!(*slot)->boundary) (*slot)->boundary = transport_scope_start(typing, base, &boundary);
 	if (!(*slot)->boundary) return NULL;
 	status = transport_scope_advance(typing, (*slot)->boundary, &boundary, state->endpoints[0], state->endpoints[1]);
@@ -8378,10 +8388,12 @@ static void index_transport_step(struct pg_synthesis *synthesis, struct pg_synth
 	if (!pg_evidence_context(state->cursor)) goto rejected;
 	if (!state->path) {
 		if (pg_evidence_rule(state->cursor) != PG_CONTEXT_EXTEND) goto next_context;
-		const struct pg_evidence *formation = pg_identity_formation(typing,
-			pg_evidence_premise(state->cursor, 1));
+		struct pg_synthesis_job *formation = pg_synthesis_identity_formation(synthesis,
+			pg_synthesis_evidence(synthesis, pg_evidence_premise(state->cursor, 1)));
+		if (!formation) goto error;
+		if (formation->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, formation); return; }
 		struct pg_identity_boundary boundary;
-		if (!pg_identity_boundary_view(formation, &boundary)) goto next_context;
+		if (!pg_identity_boundary_view(formation->result, &boundary)) goto next_context;
 		state->endpoints[0] = pg_prove_projection(typing, context, boundary.left);
 		state->endpoints[1] = pg_prove_projection(typing, context, boundary.right);
 		state->path = pg_prove_variable(typing, context, pg_evidence_context(state->cursor)->binder);
@@ -9395,14 +9407,21 @@ error:
 	finish(synthesis, job, PG_SYNTHESIS_ERROR);
 }
 
-static int source_has_identity(struct pg_synthesis *synthesis, const struct pg_source_scope *scope)
+/* A pending handler still needs a transparent argument check to expose its
+ * effect-bearing term. Only accepted scopes can enable index transport. */
+static int source_has_identity(struct pg_synthesis *synthesis, struct pg_synthesis_job *parent)
 {
-	for (; scope; scope = scope->parent) {
+	for (const struct pg_source_scope *scope = parent->scope; scope; scope = scope->parent) {
 		while (scope->parent && scope->context_job == scope->parent->context_job)
 			scope = scope->parent;
 		const struct pg_evidence *context = source_context(scope);
 		if (!context || pg_evidence_rule(context) != PG_CONTEXT_EXTEND) continue;
-		if (pg_identity_formation(synthesis->typing, pg_evidence_premise(context, 1))) return 1;
+		struct pg_synthesis_job *formation = pg_synthesis_identity_formation(synthesis,
+			pg_synthesis_evidence(synthesis, pg_evidence_premise(context, 1)));
+		if (!formation) { finish(synthesis, parent, PG_SYNTHESIS_ERROR); return -1; }
+		if (formation->status == PG_SYNTHESIS_PENDING) { depend(synthesis, parent, formation); return -1; }
+		if (formation->status == PG_SYNTHESIS_ERROR) { finish(synthesis, parent, PG_SYNTHESIS_ERROR); return -1; }
+		if (formation->result) return 1;
 	}
 	return 0;
 }
@@ -9750,7 +9769,9 @@ static int prepare_application(struct pg_synthesis *synthesis, struct pg_synthes
 		state->constraint = request_job(synthesis, CLASSIFIER_CONSTRAINT_JOB, state->argument, expected);
 		if (!state->constraint) goto error;
 	}
-	if (source_has_identity(synthesis, job->scope)) {
+	int identity = source_has_identity(synthesis, job);
+	if (identity < 0) return 1;
+	if (identity) {
 		const void *inputs[] = {state->context, argument, expected};
 		argument = request_inputs(synthesis, INDEX_TRANSPORT_JOB, 3, inputs);
 	} else argument = pg_synthesis_expect(synthesis, argument, expected);

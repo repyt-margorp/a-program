@@ -7949,3 +7949,78 @@ append 6.048/6.320; 6.119/6.137, QuickSort 164.853/165.145;
 161.119/161.274. Identical Main-generated zero-step RECOMPUTE input per pair.
 Timing is mixed, not a demonstrated speedup; preserve the R0 regression gate.
 Logs: `/tmp/a-program-reader-workspace-image-timing{,-repeat}.jsonl`.
+
+### A4 shared Identity discovery (2026-09-20, verified locally)
+
+Main baseline: `c8ce3c8`. The duplication audit records two withdrawn trials:
+caching projection classification in every Context map (no measured gain), and
+removing application preflight entirely (breaks open-handler term structure).
+Keep the semantic distinction between transparent type checking and an index
+transport that can change the term; remove repeated formation work instead.
+
+- [x] Route application preflight, constructor transport, index-constructor
+  candidates and index-path discovery through existing FORMATION_JOB requests.
+  Classifier extraction uses existing CLASSIFIER_FORMATION_JOB requests. No new
+  work kind, mutable answer store, map flag, Core tag or acceptance rule.
+- [x] Add positive/projected and negative discovery checks: subsequent explicit
+  formation requests find the completed work without new jobs. Keep existing
+  pending-handler tests; a hypothetical always-transport route fails them.
+- [x] Add same-context nonidentity-map and unchecked-identity boundary tests.
+- [x] Verify the new discovery regression fails against Main's synthesis:
+  compiling current tests with `c8ce3c8`'s `synthesis.c` aborts at
+  `named_transport`'s completed-formation assertion. The candidate passes.
+- [x] Run full strict O2, O0/g, and ASan/UBSan acceptance; compare outcomes and
+  source/image resume behavior. Outer step counts can change with scheduling.
+- [x] Measure formation restarts, retained allocation and isolated timings.
+- [ ] Record source/test/doc deltas, review the complete discovery epoch, then
+  publish Main. R2-R5/A4-A5 and the cumulative net-negative gate remain open.
+
+Full strict O2 acceptance passes (`/tmp/a-program-transport-shared-opt.log`).
+All 2460 export outcomes match Main after removing step counts, which change
+because formation is now scheduled. The earlier core-map regressions pass
+against the original implementation too. No implementation change from the
+withdrawn map-property or always-transport trials remains. Baseline regression:
+`/tmp/a-program-identity-discovery-before-result.log` (expected exit 134).
+
+Full O0/g acceptance also passes (`/tmp/a-program-transport-shared-debug.log`),
+with all 2460 export/step records matching O2 exactly. Read-only debugger counts
+at program destruction, after source checking with budget 1000000:
+
+| Input | Formation starts Main/candidate | Arena used bytes | Synthesis jobs |
+| --- | ---: | ---: | ---: |
+| Function-field | 125/37 | 4984032/5003168 | 3773/3825 |
+| QuickSort | 6104/321 | 56587520/56769888 | 33730/34214 |
+
+All candidate formations start once per proof pointer in these runs. Context,
+occurrence, map and accepted-proof counts are unchanged. Function-field has one
+additional typed query; QuickSort's query count is unchanged. Scheduling exposes
+one additional function-field input, rather than changing acceptance. This is a
+work-sharing gain with a small retained-work cost, not yet a wall-time speedup.
+Logs: `/tmp/a-program-formation-starts-{field,qsort}-{before,after}.log`.
+
+Full O1/g ASan/UBSan acceptance with leak detection and halt-on-error passes
+(`/tmp/a-program-transport-shared-asan.log`), without sanitizer diagnostics.
+All 2460 export/step records match the O0/g and O2 runs. No source/test changes
+occurred during these runs. Current implementation delta: `synthesis.c`
++32/-11 = +21; tests separately `tests/core.c` +19 and `tests/synthesis.c` +20.
+The cumulative R0 implementation/header net is +4405, still not net-negative.
+
+Final paired O2 medians in ms, Main/candidate. Each run uses CPU 2, two warmups
+and 31 alternating pairs, with no concurrent build/test/probe. Pending inputs
+are identical zero-step images written by Main, not separately generated files.
+
+| Input | First run | Repeat |
+| --- | ---: | ---: |
+| Length source | 4.349/4.409 | 4.371/4.394 |
+| Function-field source | 7.377/7.455 | 7.430/7.329 |
+| Vec append source | 5.618/5.680 | 5.595/5.667 |
+| QuickSort source | 145.694/144.396 | 143.962/144.532 |
+| Length pending-load | 4.592/4.574 | 4.565/4.549 |
+| Function-field pending-load | 7.711/7.718 | 7.725/7.803 |
+| Vec append pending-load | 5.807/5.727 | 5.843/5.824 |
+| QuickSort pending-load | 146.375/145.354 | 144.699/145.985 |
+
+Timings are close and mixed; no overall speedup is established. Keep this change
+for eliminating synchronous formation restarts and sharing the existing Solve
+work, not for a claimed wall-clock win. The small retained-work cost is explicit
+above. Logs: `/tmp/a-program-identity-discovery-timing{,-repeat}.jsonl`.

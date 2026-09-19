@@ -852,6 +852,38 @@ typed-map operation boundary, keeping proof premises distinct. Do not introduce
 an unchecked `(map pair) -> accepted proof` cache or replace alternate derivations.
 This is repeated traversal, not evidence of competing mutable type solutions.
 
+2026-09-20 measurement at Main `c8ce3c8`: function-field performs 579
+compositions over 450 structural map pairs (899 image visits; 769 across unique
+pairs). QuickSort performs 3779 over 2835 pairs (18673/17042 image visits).
+A separate composition cache would retain mostly single-use pairs; it is not
+justified by these counts alone. Existing image actions remain shared.
+
+Projection classification repeats too: function-field has 3180 requests over
+1259 maps; QuickSort 32103 over 9309. The sum of their widths is 9642/473291,
+versus 3476/91551 for unique maps. These are upper bounds on image scans,
+not actual iterations: context ancestry can reject before the image loop.
+A trial computed the immutable projection property during map interning and
+reused it for identity/projection actions. Two isolated 31-pair O2 comparisons
+against Main, using the same zero-step saved input, gave median ms:
+
+| Input | Main/trial, first | Main/trial, repeat |
+| --- | ---: | ---: |
+| Length | 4.724/4.844 | 4.591/4.907 |
+| Function-field | 8.132/7.928 | 7.767/8.750 |
+| Vec append | 6.109/6.282 | 6.159/5.950 |
+| QuickSort | 159.577/159.510 | 159.822/159.596 |
+
+The trial adds a field to every map without a demonstrated speedup, so it was
+withdrawn. No new map flag/cache remains. Keep the two boundary regressions:
+same-context nonidentity maps must still substitute, and identity-shaped images
+with a false classifier do not become accepted maps. They pass before the
+trial in O0/g and during the trial in O2. Logs:
+`/tmp/a-program-{compose,projection}-{field,qsort}-audit.log`,
+`/tmp/a-program-map-property-timing{,-repeat}.jsonl`.
+This does not close the context-action or performance gates. Next inspect the
+remaining synchronous Identity-formation calls in transport consumers, which
+can restart formation while their surrounding scope work is still pending.
+
 ### 4. Nested synchronous work
 
 Several `evidence.c` wrappers drain existing resumable work with `1024` or
@@ -863,6 +895,21 @@ Incremental callers should depend on the existing request/advance/result
 interfaces. Keep synchronous entry points as thin wrappers where needed; do not
 add another scheduler or duplicate the checked rule implementations. Count inner
 steps as well as outer steps before reporting a performance improvement.
+
+2026-09-20: QuickSort calls synchronous `pg_identity_formation` 6104 times for
+321 proof pointers: `source_has_identity` 5961, `index_constructor_candidate`
+101, `constructor_transport_step` 27, `index_transport_step` 15
+(`/tmp/a-program-identity-call-qsort.log`). The application preflight dominates.
+An attempted removal of that preflight, always using INDEX_TRANSPORT_JOB, passes
+QuickSort but fails `pending_effect_contexts`: the open-handler term query for
+`resume req` cannot complete. EXPECT does not change the subject; transport may
+change it, so its pending term is not transparently available. Keep that semantic
+distinction rather than return a speculative, potentially wrong term.
+Reuse existing FORMATION_JOB requests for accepted declarations and transport
+consumers; do not add a second cache or a classification bit to every Context.
+Positive/negative discovery must share terminal work, while pending effect
+structure remains available. This is a removal of synchronous restart paths,
+not a new Identity rule or proof authority.
 
 ### 5. Source call-layout rediscovery
 

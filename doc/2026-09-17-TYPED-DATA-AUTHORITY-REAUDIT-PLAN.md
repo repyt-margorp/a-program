@@ -1543,6 +1543,13 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 - [ ] Report concrete deleted paths. Move remaining synchronous query loops to
   existing scheduling only where necessary for the same work contract; do not
   turn this repair into another scheduler framework.
+- [x] 2026-09-20: replace all four synchronous Identity-formation callers in
+  source application/index transport with existing shared FORMATION_JOB work.
+  QuickSort formation starts fall from 6104 to 321, with unchanged accepted
+  proof/Context/map counts. Keep pending-handler structure transparent; simply
+  forcing every application through index transport fails that contract.
+  The priority plan records regression, timing and publication gates. This
+  removes these restart paths, not all remaining synchronous kernel wrappers.
 - [x] 2026-09-19: index transport's decreasing-dependency test resumes the
   existing structural comparison one transition per Solve turn, retaining its
   field/phase/counts in the existing private transport state. Cancellation frees

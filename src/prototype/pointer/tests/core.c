@@ -1767,6 +1767,25 @@ static void typed_substitution_test(struct pg_graph *graph)
 	const struct pg_evidence *formation = pg_prove_classifier(&typing, destination, reindexed);
 	assert(formation && pg_evidence_subject(formation)->core == pg_reference(graph, b));
 	const struct pg_evidence *returned = pg_prove_return(&typing, source_x);
+	/* Sharing endpoints does not make a substitution the identity. */
+	const struct pg_context *same_context = pg_evidence_context(source);
+	const struct pg_occurrence *swapped_subjects[] = {pg_evidence_subject(source_x), pg_evidence_subject(projected_a)};
+	const struct pg_context_map *swapped_map = pg_context_map(&typing, same_context, same_context, 2, swapped_subjects);
+	assert(swapped_map && !pg_occurrence_projection(&typing, swapped_map, pg_evidence_subject(returned)));
+	struct pg_occurrence_action *swapped_action = pg_occurrence_action_request(&typing,
+		swapped_map, pg_evidence_subject(returned));
+	while (pg_occurrence_action_advance(swapped_action, 1) == PG_SUBSTITUTION_PENDING) {}
+	const struct pg_occurrence *swapped_result = pg_occurrence_action_result(swapped_action);
+	assert(swapped_result && swapped_result->core != pg_evidence_subject(returned)->core);
+	assert(!pg_prove_context_map(&typing, swapped_map));
+	/* Identity-shaped images with a false classifier are still unchecked. */
+	const struct pg_occurrence *unchecked_images[] = {pg_evidence_subject(projected_a),
+		pg_occurrence_boundary(&typing, pg_evidence_subject(source_x), PG_JUDGEMENT_VALUE, pg_universe(graph, 3))};
+	const struct pg_context_map *unchecked_identity = pg_context_map(&typing,
+		same_context, same_context, 2, unchecked_images);
+	assert(unchecked_identity && pg_occurrence_projection(&typing, unchecked_identity,
+		pg_evidence_subject(returned)) == pg_evidence_subject(returned));
+	assert(!pg_prove_context_map(&typing, unchecked_identity));
 	const struct pg_evidence *reindexed_return = pg_prove_reindex(&typing, sigma, returned);
 	assert(reindexed_return && pg_evidence_classifier(reindexed_return) == pg_return_type(graph, pg_reference(graph, b)));
 	const struct pg_evidence *alternate_return = pg_prove_reindex(&typing, alternate, returned);

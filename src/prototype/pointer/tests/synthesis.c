@@ -3527,11 +3527,13 @@ static void named_transport(struct pg_typing *typing)
 	}
 	const char *names[] = {"A", "B", "r", "s", "x", "y"};
 	const struct pg_evidence *context = empty;
+	const struct pg_evidence *projected_relation = NULL;
 	for (size_t i = 0; i < 6; ++i) {
 		if (i < 3) context = contexts[i + 1];
 		else {
 			const struct pg_evidence *type = i == 3 ? pg_prove_projection(typing, context, relation)
 				: pg_prove_variable(typing, context, bindings[i - 4]);
+			if (i == 3) projected_relation = type;
 			context = pg_prove_context_extension(typing, context, bindings[i], type);
 		}
 		scope = pg_synthesis_bind(&synthesis, scope,
@@ -3559,6 +3561,14 @@ static void named_transport(struct pg_typing *typing)
 			pg_conversion_certificate(&comparison)));
 		pg_conversion_destroy(&comparison);
 	}
+	/* Application discovery must use the same formation work as an explicit
+	 * request, including a projected Identity and repeated callers. */
+	size_t discovery_jobs = synthesis.jobs.count;
+	struct pg_synthesis_job *discovered = pg_synthesis_identity_formation(&synthesis,
+		pg_synthesis_evidence(&synthesis, projected_relation));
+	assert(pg_synthesis_status(discovered) == PG_SYNTHESIS_DONE);
+	assert(synthesis.jobs.count == discovery_jobs);
+	assert(pg_synthesis_result(discovered) == pg_identity_formation(typing, projected_relation));
 	const struct pg_evidence *selected = complete(&synthesis, request(&synthesis, scope,
 		"main := \\p : instance A B r x y => p;"), PG_SYNTHESIS_DONE);
 	const struct pg_term *domain, *codomain;
@@ -7001,6 +7011,16 @@ int main(void)
 	assert(graph.terms.count == reduction_terms && typing.proofs.count == reduction_proofs);
 	const struct pg_source_scope *scope = pg_synthesis_bind(&synthesis, a_scope, x_name, x, x_context);
 	application_allocations(&synthesis, scope, pg_prove_projection(&typing, x_context, typed_reduct), return_x);
+	/* Negative Identity discovery is also shared, not restarted per call. */
+	const struct pg_evidence *ordinary_domains[] = {
+		pg_evidence_premise(a_context, 1), pg_evidence_premise(x_context, 1)};
+	for (size_t i = 0; i < 2; ++i) {
+		size_t jobs = synthesis.jobs.count;
+		struct pg_synthesis_job *discovered = pg_synthesis_identity_formation(&synthesis,
+			pg_synthesis_evidence(&synthesis, ordinary_domains[i]));
+		assert(pg_synthesis_status(discovered) == PG_SYNTHESIS_UNSUPPORTED);
+		assert(!pg_synthesis_result(discovered) && synthesis.jobs.count == jobs);
+	}
 	const struct pg_object *ih = pg_binder(&graph);
 	const struct pg_evidence *ih_type = pg_prove_thunk_type(&typing,
 		pg_prove_classifier(&typing, x_context, return_x));
