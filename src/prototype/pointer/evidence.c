@@ -4216,9 +4216,8 @@ const struct pg_evidence *pg_prove_projection(struct pg_typing *typing,
 	const struct pg_evidence *found = find_record(typing, PG_CONTEXT_PROJECTION,
 		pg_evidence_context(context), NULL, 2, premises, NULL, &hash);
 	if (found) return found;
-	const struct pg_context_map *map = pg_context_map_projection(typing,
-		pg_evidence_context(proof), pg_evidence_context(context));
-	const struct pg_occurrence *subject = pg_occurrence_projection(typing, map, pg_evidence_subject(proof));
+	const struct pg_occurrence *subject = pg_occurrence_weaken(typing,
+		pg_evidence_context(context), pg_evidence_subject(proof));
 	if (!subject) return NULL;
 	return accept(typing, PG_CONTEXT_PROJECTION,
 		pg_evidence_context(context), subject, 2, premises);

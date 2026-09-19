@@ -1337,6 +1337,14 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   two-stage weakening, checks fresh dependent binders and an unchanged nominal
   declaration, and verifies the ordinary derivations. Final tests and retained
   dispatch reasons are tracked in the priority plan. A4/A5 remain incomplete.
+  Follow-up on `ccd0f7b`: ordinary weakening and map extension construct the
+  selected declared variable without first materializing every variable of
+  a projection map. This is the same exact output as explicit projection,
+  not normalization of recipes. Converted/non-variable inputs retain maps;
+  caller-supplied maps and alternate proof premises are unchanged. Fresh
+  QuickSort saves 3,252 occurrences and 2,130 maps, with identical proof,
+  query and Solve counts. Final gates and mixed timing results are recorded
+  in the priority plan; original performance/LOC requirements stay open.
 - [x] 2026-09-19 local work: map admission reuses a checked destination and
   checked prefix through ordinary pairing, without reconstructing a structural
   lift. Unknown destinations still require the existing lifting check. Keep

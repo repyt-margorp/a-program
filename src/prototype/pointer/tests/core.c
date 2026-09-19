@@ -1463,6 +1463,48 @@ static void dependent_application_test(struct pg_graph *graph)
 	puts("dependent application: concrete and open type arguments substitute without executing computations");
 }
 
+static void weakening_inputs(struct pg_graph *graph)
+{
+	struct pg_typing typing;
+	assert(!pg_typing_init(&typing, graph));
+	const struct pg_term *u = pg_universe(graph, 1), *other = pg_universe(graph, 2);
+	const struct pg_object *binder = pg_binder(graph);
+	const struct pg_context *source = pg_context_bind(&typing, NULL, binder, u, PG_JUDGEMENT_VALUE);
+	for (size_t i = 0; i < 32; ++i)
+		source = pg_context_bind(&typing, source, pg_binder(graph), u, PG_JUDGEMENT_VALUE);
+	const struct pg_context *destination = pg_context_bind(&typing, source, pg_binder(graph), u, PG_JUDGEMENT_VALUE);
+	const struct pg_term *reference = pg_reference(graph, binder);
+	const struct pg_occurrence *value = pg_occurrence(&typing, PG_JUDGEMENT_VALUE, source, reference, u, u, 0, NULL);
+	size_t maps = typing.context_maps.count, occurrences = typing.occurrences.count;
+	const struct pg_occurrence *weakened = pg_occurrence_weaken(&typing, destination, value);
+	assert(weakened && weakened->context == destination && weakened->core == reference && !weakened->annotation);
+	assert(typing.context_maps.count == maps && typing.occurrences.count == occurrences + 1);
+	assert(!pg_occurrence_weaken(&typing, NULL, value) && !pg_occurrence_weaken(&typing, destination, NULL));
+	const struct pg_context_map *map = pg_context_map_projection(&typing, source, destination);
+	assert(pg_occurrence_projection(&typing, map, value) == weakened);
+	const struct pg_occurrence *inputs[] = {
+		value,
+		pg_occurrence(&typing, PG_JUDGEMENT_VALUE, source, reference, other, NULL, 0, NULL),
+		pg_occurrence(&typing, PG_JUDGEMENT_VALUE_TYPE, source, reference, u, NULL, 0, NULL),
+		pg_occurrence(&typing, PG_JUDGEMENT_COMPUTATION, source, pg_lambda(graph, pg_binder(graph), reference), u, NULL, 0, NULL)
+	};
+	for (size_t i = 0; i < sizeof(inputs) / sizeof(*inputs); ++i) {
+		assert(pg_occurrence_weaken(&typing, destination, inputs[i]) == pg_occurrence_projection(&typing, map, inputs[i]));
+		const struct pg_context_map *identity = pg_context_map_projection(&typing, source, source);
+		assert(pg_occurrence_weaken(&typing, source, inputs[i]) == pg_occurrence_projection(&typing, identity, inputs[i]));
+	}
+	/* Raw duplicate declarations must not change which map image is selected. */
+	const struct pg_context *duplicate = pg_context_bind(&typing, source, binder, other, PG_JUDGEMENT_VALUE);
+	const struct pg_context *outer = pg_context_bind(&typing, duplicate, pg_binder(graph), u, PG_JUDGEMENT_VALUE);
+	const struct pg_context_map *duplicate_map = pg_context_map_projection(&typing, duplicate, outer);
+	for (size_t i = 0; i < 2; ++i) {
+		const struct pg_occurrence *input = pg_occurrence(&typing, PG_JUDGEMENT_VALUE, duplicate, reference, i ? other : u, NULL, 0, NULL);
+		assert(pg_occurrence_weaken(&typing, outer, input) == pg_occurrence_projection(&typing, duplicate_map, input));
+	}
+	assert(!typing.proofs.count);
+	pg_typing_destroy(&typing);
+}
+
 static void typed_substitution_test(struct pg_graph *graph)
 {
 	struct pg_typing typing;
@@ -5646,6 +5688,7 @@ int main(void)
 	evidence_owner_test(&graph);
 	context_alpha_test(&graph);
 	dependent_application_test(&graph);
+	weakening_inputs(&graph);
 	typed_substitution_test(&graph);
 	family_instance_test(&graph);
 	typed_restriction_test(&graph);

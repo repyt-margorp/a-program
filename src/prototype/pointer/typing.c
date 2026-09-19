@@ -388,6 +388,13 @@ struct context_projection {
 	const struct pg_context_map *map;
 };
 
+static const struct pg_occurrence *context_variable(struct pg_typing *typing,
+	const struct pg_context *destination, const struct pg_context *declaration)
+{
+	return pg_occurrence(typing, declaration->judgement, destination,
+		pg_reference(typing->graph, declaration->binder), declaration->declared_type, NULL, 0, NULL);
+}
+
 const struct pg_context_map *pg_context_map_projection(struct pg_typing *typing,
 	const struct pg_context *source, const struct pg_context *destination)
 {
@@ -406,8 +413,7 @@ const struct pg_context_map *pg_context_map_projection(struct pg_typing *typing,
 	if (count && !images) return NULL;
 	const struct pg_context *scope = source;
 	for (size_t i = count; i; --i, scope = scope->parent)
-		images[i - 1] = pg_occurrence(typing, scope->judgement, destination,
-			pg_reference(typing->graph, scope->binder), scope->declared_type, NULL, 0, NULL);
+		images[i - 1] = context_variable(typing, destination, scope);
 	const struct pg_context_map *map = pg_context_map(typing, source, destination, count, images);
 	free(images);
 	if (!map) return NULL;
@@ -425,15 +431,13 @@ static const struct pg_context_map *context_map_extend(struct pg_typing *typing,
 {
 	if (!map || !extension || extension->parent != map->source || !image) return NULL;
 	if (map->count >= SIZE_MAX / sizeof(const struct pg_occurrence *)) return NULL;
-	const struct pg_context_map *projection = NULL;
-	if (map->destination != image->context) {
-		projection = pg_context_map_projection(typing, map->destination, image->context);
-		if (!projection) return NULL;
-	}
+	size_t count;
+	if (pg_context_extension_size(image->context, map->destination, &count)) return NULL;
 	const struct pg_occurrence **images = malloc((map->count + 1) * sizeof(*images));
 	if (!images) return NULL;
 	for (size_t i = 0; i < map->count; ++i)
-		images[i] = projection ? pg_occurrence_projection(typing, projection, map->images[i]) : map->images[i];
+		images[i] = map->destination == image->context ? map->images[i]
+			: pg_occurrence_weaken(typing, image->context, map->images[i]);
 	images[map->count] = image;
 	const struct pg_context_map *result = pg_context_map(typing, extension, image->context, map->count + 1, images);
 	free(images);
@@ -625,6 +629,24 @@ const struct pg_occurrence *pg_occurrence_projection(struct pg_typing *typing,
 		if (bindings[i].value->as.reference != bindings[i].binder) return NULL;
 	}
 	return action_result(typing, map, source, source->core, source->classifier, source->annotation);
+}
+
+const struct pg_occurrence *pg_occurrence_weaken(struct pg_typing *typing,
+	const struct pg_context *destination, const struct pg_occurrence *source)
+{
+	size_t count;
+	if (!source || pg_context_extension_size(destination, source->context, &count)) return NULL;
+	if (source->core->kind == PG_REFERENCE && source->core->as.reference->kind == PG_BINDER) {
+		const struct pg_context *declaration = NULL;
+		/* Match the map's oldest-first image selection even for raw contexts
+		 * not yet checked for duplicate binder declarations. */
+		for (const struct pg_context *scope = source->context; scope; scope = scope->parent)
+			if (scope->binder == source->core->as.reference) declaration = scope;
+		if (declaration && declaration->judgement == source->judgement && declaration->declared_type == source->classifier)
+			return context_variable(typing, destination, declaration);
+	}
+	return pg_occurrence_projection(typing,
+		pg_context_map_projection(typing, source->context, destination), source);
 }
 
 const struct pg_occurrence *pg_occurrence_unproject(struct pg_typing *typing,

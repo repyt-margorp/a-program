@@ -176,6 +176,10 @@ const struct pg_occurrence *pg_occurrence_mapped(struct pg_typing *typing,
 /* A prefix projection changes scope without scheduling term substitution. */
 const struct pg_occurrence *pg_occurrence_projection(struct pg_typing *typing,
 	const struct pg_context_map *map, const struct pg_occurrence *source);
+/* Build the same prefix projection, materializing a map only when its recipe
+ * is retained by the resulting occurrence. This does not accept a judgement. */
+const struct pg_occurrence *pg_occurrence_weaken(struct pg_typing *typing,
+	const struct pg_context *destination, const struct pg_occurrence *source);
 /* Cancel retained exact weakenings, including declaration-bound variables
  * whose weakening selected the target variable, to a prefix context. This is not general
  * strengthening or a total substitution assigning a removed variable a value.

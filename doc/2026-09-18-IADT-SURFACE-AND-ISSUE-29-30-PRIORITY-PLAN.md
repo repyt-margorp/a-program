@@ -4471,7 +4471,7 @@ a new binding identity, De Bruijn representation, stored index or cache.
 - [x] Strict-debug Core passes.
 - [x] Complete source-image, full optimized and affected sanitizer gates;
   compare exported results and inert image bytes before local commit.
-- [ ] Group this small consolidation with a later substantive epoch, not an
+- [x] Group this small consolidation with the weakening materialization epoch below, not an
   isolated Main push. The broader A3-A5/R2-R5 requirements remain open.
 
 The lookup remains linear and allocation-free. This unifies one algorithm;
@@ -4496,3 +4496,90 @@ pending exit 3) byte-for-byte unchanged. Sanitizer source-image log:
 Main and the remote rewrite branch remain at `0082312`; this verified small
 consolidation is local work pending a substantive publication epoch, consistent
 with the publication policy above. No overall refactoring gate is closed.
+
+### 2026-09-19: Materialize only retained weakening maps
+
+On `ccd0f7b`, instrumented fresh length solving identifies 832 new occurrences
+and 224 maps from `pg_context_map_projection -> context_map_extend`. This is
+construction of all variables of the destination prefix before selecting an
+image, not repeated acceptance of one proof. Raw counts/callers:
+`/tmp/a-program-authority-map-creators-length.log` (normal exit, 9,120 steps).
+
+- [x] Add destination-based weakening which constructs the identical declared
+  variable directly when its judgement and classifier match. Share its variable
+  constructor with explicit projection maps. Preserve oldest-first selection
+  even in unchecked contexts containing duplicate binder pointers.
+- [x] Use it in ordinary weakening proofs and map extension. Do not change
+  explicit-map action, normalize map recipes, discard alternate proofs, or
+  infer acceptance from variable structure. Non-variable/converted inputs
+  retain the existing explicit map. Keep the extension check for empty prefixes.
+- [x] Add Core boundaries comparing exact results with explicit projection:
+  ordinary and annotated variables, different classifier/sort, Lambda,
+  identity, duplicate raw binders, invalid prefix and NULL input. A variable
+  in a 33-binding context must add one occurrence and no full map or proof.
+- [x] Run debug Core/IADT/source-image, optimized acceptance, affected
+  sanitizers and byte-identical inert resaves; inspect all export/step changes.
+- [x] Measure graph/occurrence/map/proof counts and repeated timings against
+  `ccd0f7b`; retain no optimization merely because one small case improves.
+- [x] Record per-file deltas and decide whether this and the preceding lookup
+  consolidation constitute a tested publication epoch. A3-A5/R2-R5 stay open.
+
+Final code limits declaration lookup to `PG_BINDER`: semantic constants cannot
+be Context binders. Initial measurements with unnecessary constant scans were
+mixed; they are not the final timing baseline. No retained structure, cache,
+tag, proof rule or image version is added. Explicit maps still use their own
+images and the requested proof derivation. The new entry point is an allocation
+choice for the existing projection, not a second weakening semantics.
+
+Final tests all exit 0: debug Core/IADT/complete source-image suite; ASan/UBSan
+Core/IADT/complete source-image and `image_origins.sh` with leak detection and
+halt-on-error; full optimized `check-acceptance`. Logs share prefix
+`/tmp/a-program-authority-weaken-final-` (`opt.log`, `debug-*.log`, `asan-*.log`).
+The 2,460 export records equal `ccd0f7b`, including multiplicities and steps,
+after normalizing temporary paths and parallel output order. The old retained
+QuickSort image resaves byte-identically at zero steps (expected pending exit
+3). No implementation/test edits follow these final gates.
+
+Fresh source measurements, same checked definitions before/after:
+
+| Input | Occurrences before/after | Maps before/after | Main arena used bytes before/after | Proofs | Solve steps |
+|---|---:|---:|---:|---:|---:|
+| length | 3540 / 3338 | 1343 / 1231 | 3727936 / 3680224 | 4864 | 9120 |
+| function-field | 6687 / 6398 | 2632 / 2392 | 6070624 / 5992320 | 9284 | 12466 |
+| imported QuickSort | 82070 / 78818 | 15670 / 13540 | 65294208 / 63910080 | 93013 | 146564 |
+
+Proofs, Contexts, lift/action/query counts, substitution-arena bytes and Solve
+steps do not change. Main-arena reduction is 47,712 / 78,304 / 1,384,128 bytes.
+These are directly counted arena allocations, not peak RSS estimates. Logs:
+`/tmp/a-program-authority-weaken-{length,field,qsort}-counts-{before,final}.log`.
+
+Implementation/header changes in this step: `typing.c` +30/-8, `typing.h`
++4/-0, `evidence.c` +2/-3, net **+25**; tests `core.c` +43/-0. Combined with
+`ccd0f7b`, implementation/header delta from published `0082312` is +61/-37,
+net **+24**. Cumulative nets remain **+1,747** from R76 and **+4,163** from R0.
+Memory reduction does not satisfy the outstanding code-reduction requirement.
+
+Two final timing runs, each 31 alternating fresh processes per binary/input,
+pinned to CPU 2, identical O2 flags (milliseconds, before/after medians):
+
+| Input | Run 1 | Run 2 |
+|---|---:|---:|
+| Bool | .493 / .505 | .495 / .493 |
+| add | .913 / .912 | .925 / .936 |
+| length | 5.723 / 5.736 | 5.709 / 5.580 |
+| function-field | 9.771 / 10.063 | 9.829 / 9.848 |
+| Vec append | 7.221 / 7.171 | 7.041 / 6.973 |
+| QuickSort | 206.428 / 205.635 | 205.691 / 205.115 |
+
+Logs: `/tmp/a-program-authority-weaken-final-timing{,-repeat}.log`. Timings
+are mixed; no general speedup is established. The small QuickSort difference
+is not a replacement for A5's R0 source/image/performance matrix. Retain this
+change for verified removal of unused intermediate structures and exact proof
+preservation, not an asserted timing improvement.
+
+Publication scope: the exact-image lookup (`ccd0f7b`) and this weakening
+materialization form one typed-substitution epoch. All existing full optimized
+acceptance tests and affected debug/sanitizer/image gates have passed. Remote
+Main/rewrite were verified at `0082312`; recheck and publish the tested commit
+atomically without force. Git records the publication result. No issue closure
+or A3-A5/R2-R5 completion follows from this epoch.
