@@ -1266,6 +1266,15 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   `pg_occurrence_projection`, `context_map_extend`, `map_lift_work`,
   `substitution_build` and elimination reindexing as one contract. Do not repair
   exact-map disagreements with a new acceptance cache or erased-Core lookup.
+- [x] 2026-09-19 local work: map admission reuses a checked destination and
+  checked prefix through ordinary pairing, without reconstructing a structural
+  lift. Unknown destinations still require the existing lifting check. Keep
+  exact explicit-lift premise sharing: the trial which skipped prefix reuse
+  failed the permanent test and was withdrawn. Full publication gates are
+  tracked in the priority plan; this does not normalize projection recipes.
+  The combined epoch also reuses the existing private-work union for six
+  role-exclusive pointers, retaining concurrent derivation/normalization state.
+  Final debug/O2/ASan-UBSan acceptance passes; original A3-A5 gates stay open.
 - [x] 2026-09-19: share IH scope-map relocation through the existing map-rebase
   query. Remove Solver's per-image projection jobs and substitution-prefix
   reconstruction, and the direct API's extra projection/composition map.

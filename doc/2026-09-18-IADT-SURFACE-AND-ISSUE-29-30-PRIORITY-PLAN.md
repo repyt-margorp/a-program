@@ -3630,3 +3630,116 @@ Implementation/header diff from `f73c26b`: `function_graph.c` +63/-40,
 lines; documentation is separate. Cumulative implementation/header totals:
 R76 +3211/-1633 (net +1578), R0 +8040/-4046 (net +3994).
 This epoch does not meet the cumulative source-reduction gate.
+
+### 2026-09-19: Reuse checked map endpoints without reconstructing a lift
+
+Baseline: Main `8820a47`. `map_dependency` previously tried a structural lift
+even when both endpoint Contexts and the strengthened prefix map were already
+checked. This did not provide another semantic authority, but could allocate
+and finish unnecessary lift work before pairing the same checked prefix.
+
+- [x] Reject the first simplification, which skipped prefix reuse whenever the
+  destination was checked. The existing `family_instance_test` failed: ordinary
+  image checking chose `PG_VARIABLE`, while explicit lifting used
+  `PG_CONTEXT_PROJECTION` for the same typed image. The endpoint Contexts and
+  structural map agreed, but the premise DAGs and resulting receipts differed.
+  Do not weaken that existing sharing test or merge those proof records.
+- [x] Keep the checked prefix and pair it with the known destination directly.
+  Only an unknown destination requires structural lifting and its dependencies.
+  Require the resulting exact map to agree; otherwise check its described
+  images through ordinary substitution. Remove the `map_lift_work` adapter.
+  No new cache, rule, scheduler, tag or map-normalization policy.
+- [x] Extend the existing descriptive-map regression to known and unknown
+  destinations. The known case must not allocate a structural lift; both cases
+  must reuse the exact explicit-lift receipt and reconstruct its derivation.
+  The new known-case assertion fails on the baseline (exit 134); the corrected
+  strict-debug Core suite passes, including nested signatures, raw nested lifts,
+  incompatible images, alternate proofs and wrong destinations.
+- [x] Full strict-debug acceptance passes. All 2460 export records, including
+  steps, equal the preceding Main; compatibility is 63/63 and all sort proof
+  suites pass. Final Core tests also retry a wrong image after its destination
+  becomes checked, and still reject it without another lift. The first test
+  draft used Universe 0 instead of the existing Universe 1; projecting the
+  existing type proof fixes that setup error, not a kernel rejection.
+- [x] Fixed-source work comparison: length, function-field, Vec append and
+  imported QuickSort have identical Core/proof/occurrence/Context/map/lift/query/
+  action/job counts, query transitions, arena usage and Solve steps. The targeted
+  known-destination experiment instead changes new lift work 1 -> 0, retaining
+  exactly four new proof records in both versions. Logs: `counts.log`,
+  `before-state.log`, `after-state.log` under the prefix below.
+- [x] Full strict O2 acceptance passes, including the final negative test;
+  all 2460 export records and steps match debug and Main `8820a47`.
+- [x] Run 31 alternating fresh-process O2 samples per binary after warm-up,
+  with no concurrent build/test. Median seconds before/after: length
+  .00927/.00880, function-field .01462/.01398, Vec append .00984/.01031,
+  QuickSort .20612/.20420. The measured work is unchanged and time varies;
+  these samples do not establish a general speedup. Log: `timing.log`.
+- [x] Complete map-admission-only ASan/UBSan acceptance with leak detection.
+  All 2460 export records and steps match debug. Publish only after the combined
+  epoch below has passed its own final checks and diff report.
+
+Logs: `/tmp/a-program-authority-map-admission-` followed by `trial-test.log`,
+`trial-state.log`, `before-test.log`, `debug-test.log`, `debug.log` and
+`final-core-checked.log`. The test-setup failure is in `final-core.log`.
+The trial is withdrawn, not a changed acceptance rule. Other A3-A5 gates,
+including strict selected-root enumeration and cumulative LOC reduction, remain.
+
+#### Grouped publication: remaining role-exclusive work pointers
+
+Do not publish the map-admission change as a separate small storage epoch.
+Group it with the following audited reuse of the existing private-work union,
+then rerun final acceptance for the combined tree. No new discriminant is needed.
+
+| Work pointer | Existing owning roles |
+| --- | --- |
+| `index_transport` | `INDEX_TRANSPORT_JOB`, `INDEX_RESULT_JOB` |
+| `substitution` | `CONSTRUCTOR_SCOPE_JOB`, `INDUCTION_SCOPE_JOB`, `DATA_RESULT_JOB`, `SUBSTITUTION_JOB` |
+| `family` | `FAMILY_ACTION_JOB` |
+| `derivation_input` | `DERIVATION_INPUT_JOB` |
+| `fold_structure` | `TERM_STRUCTURE_JOB` |
+| `effect_substitution` | `EFFECT_SUBSTITUTION_JOB` |
+
+- [x] Audit writes, cross-job readers and destruction against immutable roles.
+  `pg_synthesis_effect_substitution_result` checks its role before reading.
+  Constructor/induction allocation restoration reads only the relevant scope
+  job. Structural term synthesis and family action do not use the union's
+  other alternatives on the same job.
+- [x] Move these six pointers into the existing union. Dispatch freeing effect
+  substitution's heap bindings by its existing role; other pointed-to state is
+  graph-owned. Retain `derivation` separately: `derivation_step` uses it together
+  with `normalization_receipt`'s `normalizing` pointer. Keep source allocation,
+  accepted result, classifier, proof and diagnostic fields unchanged.
+  Existing `tests/synthesis.c` effect-substitution checks cover shared requests,
+  completed and pending destruction, and foreign-role result rejection. Retain
+  them rather than adding a public layout API solely for this private change.
+- [x] Verify final debug/O2/ASan-UBSan acceptance, unchanged export records and
+  work counts, actual private-header/arena sizes, timing and cumulative LOC.
+- [x] Prepare the combined verified epoch for atomic Main/rewrite publication
+  without force. Verify both remote tips after pushing the enclosing commit;
+  the remote records the publication outcome. Keep remaining A3-A5 gates open.
+
+Combined candidate measurements against Main `8820a47`:
+
+- Debug, O2 and ASan/UBSan full acceptance pass (exit 0), including leak
+  detection, 63/63 compatibility cases and the sorting property suites. All
+  2460 normalized export records, including steps, match Main and all three
+  configurations. Logs use the preceding prefix plus `combined-debug.log`,
+  `combined-opt.log` and `combined-asan.log`. No sanitizer diagnostic occurred.
+- Private job header: 416 -> 368 bytes. Arena used bytes: length
+  3,910,464 -> 3,727,136; function-field 6,292,576 -> 6,069,696; Vec append
+  4,312,000 -> 4,103,808; QuickSort 67,301,152 -> 65,289,952.
+  All recorded Core/proof/occurrence/Context/map/query/action/lift/job counts,
+  Solve steps and query transitions are identical. This is storage reuse,
+  not removal of accepted evidence or an alternate authority.
+- 31 alternating O2 samples per binary, warm-up excluded, no concurrent build:
+  median seconds before/after length .00871/.00899, function-field
+  .01363/.01342, Vec append .01158/.01097, QuickSort .20710/.20685.
+  No general speedup claim. Full samples and GDB counts use the preceding log
+  prefix plus `combined-timing.log` and `combined-counts.log`.
+- Implementation: `evidence.c` +19/-25; `synthesis.c` +9/-9; total -6 lines.
+  Regression tests: `tests/core.c` +33/-21, net +12. Documentation is separate.
+  Cumulative implementation/header diff: R76 `3a3bf550` +3239/-1667,
+  net +1572; R0 `4657cc6` +8040/-4052, net +3988. The original net-negative
+  gate remains unmet. This publication does not close that gate or A3-A5.
+  Documentation-only diff: parent authority plan +9/-0; this priority plan
+  +113/-0. These lines are excluded from implementation and test counts.

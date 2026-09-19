@@ -305,18 +305,6 @@ static const struct pg_context_map *map_lift_prefix(struct pg_typing *typing,
 	return prefix;
 }
 
-static struct pg_context_lift *map_lift_work(struct pg_typing *typing,
-	const struct pg_context_map *map, const struct pg_context_map *prefix)
-{
-	/* A checked destination permits ordinary image checking. Do not require
-	 * strengthening those images merely because the map has a lift shape. */
-	if (conclusion_first(typing, PG_JUDGEMENT_CONTEXT, map->destination) &&
-		!conclusion_first(typing, PG_JUDGEMENT_SUBSTITUTION, prefix)) return NULL;
-	struct pg_context_lift *work = pg_context_lift_request(typing, prefix, map->source, map->destination->binder);
-	while (pg_context_lift_advance(work, 1024) == PG_SUBSTITUTION_PENDING) {}
-	return pg_context_lift_result(work) == map ? work : NULL;
-}
-
 static const struct pg_evidence *lift_destination(struct pg_typing *typing,
 	const struct pg_evidence *source, const struct pg_evidence *prefix, struct pg_context_lift *work)
 {
@@ -344,28 +332,34 @@ static int map_dependency(void *owner, const void *key, size_t index, const void
 	const struct pg_evidence *destination = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, map->destination);
 	if (!source) return -1;
 	const struct pg_context_map *prefix_map = map_lift_prefix(typing, map);
-	struct pg_context_lift *work = prefix_map ? map_lift_work(typing, map, prefix_map) : NULL;
-	const struct pg_evidence *accepted;
-	if (work) {
+	const struct pg_evidence *prefix = prefix_map
+		? conclusion_first(typing, PG_JUDGEMENT_SUBSTITUTION, prefix_map) : NULL;
+	/* Known endpoints need no reconstructed lift. Keep an accepted prefix's
+	 * premises for pairing; otherwise check the described images individually. */
+	if (!destination && prefix_map) {
+		struct pg_context_lift *work = pg_context_lift_request(typing, prefix_map, map->source, map->destination->binder);
+		while (pg_context_lift_advance(work, 1024) == PG_SUBSTITUTION_PENDING) {}
+		if (pg_context_lift_result(work) != map) return -1;
 		if (!index) { *child = prefix_map; return 1; }
-		if (index == 1 && !destination) {
+		if (index == 1) {
 			*child = pg_context_lift_indices(work);
 			if (*child) return 1;
 		}
-		const struct pg_evidence *prefix = conclusion_first(typing, PG_JUDGEMENT_SUBSTITUTION, prefix_map);
 		if (!prefix) return -1;
 		destination = lift_destination(typing, source, prefix, work);
 		if (!destination) return -1;
-		accepted = substitution_pair(typing, prefix, source, destination,
-			pg_prove_variable(typing, destination, map->destination->binder));
-	} else {
-		if (!destination || map->count > SIZE_MAX / sizeof(const struct pg_evidence *)) return -1;
-		const struct pg_evidence **images = malloc(map->count * sizeof(*images));
-		if (map->count && !images) return -1;
-		for (size_t i = 0; i < map->count; ++i) images[i] = pg_prove_structural_subject(typing, map->images[i]);
-		accepted = pg_prove_substitution(typing, source, destination, map->count, images);
-		free(images);
 	}
+	if (destination && prefix) {
+		const struct pg_evidence *accepted = substitution_pair(typing, prefix, source, destination,
+			pg_prove_variable(typing, destination, map->destination->binder));
+		if (pg_evidence_context_map(accepted) == map) return 0;
+	}
+	if (!destination || map->count > SIZE_MAX / sizeof(const struct pg_evidence *)) return -1;
+	const struct pg_evidence **images = malloc(map->count * sizeof(*images));
+	if (map->count && !images) return -1;
+	for (size_t i = 0; i < map->count; ++i) images[i] = pg_prove_structural_subject(typing, map->images[i]);
+	const struct pg_evidence *accepted = pg_prove_substitution(typing, source, destination, map->count, images);
+	free(images);
 	return pg_evidence_context_map(accepted) == map ? 0 : -1;
 }
 
