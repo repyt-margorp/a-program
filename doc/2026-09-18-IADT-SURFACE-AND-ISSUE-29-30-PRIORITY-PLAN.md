@@ -5689,3 +5689,35 @@ check, fixed prefix, total typed inverse, dependent-field discharge and final
 substitution-back check when considering resumable work. Do not replace that
 partial proof-producing solver with unchecked structural substitution or
 infer redundant computation merely from the number of call sites.
+
+### A4 branch/pattern consumer audit (2026-09-19)
+
+Measured strict debug `9532e42` on the same retained QuickSort property input.
+`pattern_index_type` makes 113 reindex requests for 76 distinct exact
+`(substitution, proof)` pairs. All 37 repeats return accepted proofs without
+increasing proof, occurrence, map, typed-query or occurrence-action counts.
+`pg_prove_reindex` already looks up the receipt before requesting its action.
+Do not add a second pattern-image cache for these calls. This measurement does
+not make alpha comparison or the whole pattern solver constant-time.
+
+Constructor scope calls are distinct within `match_validate_branch` (20/20)
+and `constructor_transport_step` (6/6). `index_constructor_candidate` makes
+16 calls for 12 exact `(formation, constructor, parameters)` tuples: the four
+repeats belong to two different consumer jobs, not repeated wakeups of one job.
+The synchronous scope builder allocates fresh field binders on each call.
+`constructor_pattern` also has eight repeated tuples among 51 calls; its
+existing checked constructors must be inspected before adding retained state.
+
+- [x] Distinguish repeated accepted-proof lookup from scope reconstruction.
+- [ ] Examine sharing constructor-scope preparation through the existing
+  scheduled scope builder, preserving explicit retained allocations and proof
+  premises. Retain completed branch construction across suspension; do not
+  replay preceding clauses or add a competing accepted-scope registry.
+- [ ] Verify the integrated transport epoch and publish it with the preceding
+  three local commits. Neither this audit nor those commits alone closes A4.
+
+No implementation or test edits in this audit. GDB runs exit normally at
+167,211 Solve steps. Logs: `/tmp/a-program-authority-pattern-consumer-audit.log`
+and `/tmp/a-program-authority-pattern-scope-duplicates.log`. Existing finite
+pattern inversion and branch proof construction remain synchronous; replacing
+them wholesale is not justified by these measurements.

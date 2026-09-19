@@ -1138,6 +1138,14 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 
 ### A4. Audit remaining structural consumers and remove duplication
 
+- [x] 2026-09-19: distinguish repeated pattern reindex lookups from fresh scope
+  construction. On QuickSort, all 37 repeated reindex requests reuse accepted
+  evidence without new proof/occurrence/map/query/action records. No extra cache
+  is justified. Four constructor-scope requests repeat across distinct index
+  transport consumers and allocate fresh binders; examine existing scheduled
+  scope reuse next, preserving explicit allocation and proof identity. See the
+  priority plan's branch/pattern audit. The transport epoch remains unpublished.
+
 - [x] 2026-09-19: share resumable boundary telescope preparation between
   constructor disjointness/injectivity and constructor-field index transport.
   Delete `index_rebase` and the synchronous `constructor_transport_context`;
