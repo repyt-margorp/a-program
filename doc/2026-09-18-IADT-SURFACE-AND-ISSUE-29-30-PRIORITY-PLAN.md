@@ -8094,3 +8094,132 @@ Publication: `385b6d52f530f616618189ec06a22ecee10d1980` atomically
 fast-forwards Main and rewrite from `9337804`; both remote refs were verified.
 The commit contains implementation +13/-7, tests +20/-0 and documentation
 +67/-0. This documentation receipt follows without source/test changes.
+
+### A4 projection variables from their existing typed map (2026-09-20, local)
+
+Baseline `a72cda3`, implementation `385b6d5`. Re-read pending structural
+consumers first: CLASSIFIER normalizes a classifier, EXPECT preserves a subject
+but checks another classifier, and INDEX_TRANSPORT may change a subject. They
+cannot all forward the same view. Open Handler effect equations still require
+pending structure. No change to those semantics is made in this increment.
+
+Read-only GDB probes at actual array allocation sites, source / zero-step
+source-image load, one million Solve steps:
+
+| Allocation site | QuickSort calls | QuickSort bytes | Function-field calls | Function-field bytes |
+| --- | ---: | ---: | ---: | ---: |
+| Lift-prefix recovery | 2222 / 2222 | 222112 / 222112 | 347 / 347 | 8320 / 8320 |
+| Structural map proof images | 1668 / 1669 | 133832 / 133840 | 299 / 300 | 7088 / 7096 |
+| General substitution premises/images | 16741 / 16742 | 2784528 / 2784560 | 2731 / 2732 | 138800 / 138832 |
+| Projection proof images | 1823 / 1823 | 107496 / 107496 | 441 / 441 | 4408 / 4408 |
+| Composition images | 3466 / 3466 | 144848 / 144848 | 579 / 579 | 7192 / 7192 |
+| Structural projection images | 2771 / 2773 | 174328 / 174336 | 586 / 588 | 10096 / 10104 |
+| Map extension images | 4438 / 4438 | 457928 / 457928 | 521 / 521 | 15512 / 15512 |
+
+These are cumulative requested payload bytes, not peak RSS or retained graph
+storage. Structural map proof image assembly visits each map only once on these
+inputs. Lift-prefix recovery visits 1600 distinct QuickSort input maps and 271
+field input maps. These are input identities, unlike the earlier 2768/2560
+intern-call/repeated-output-key measurement; do not compare them as one metric.
+Logs: `/tmp/a-program-scratch-v2-{qsort,field}-{source,image}.log`. These loads
+contain pending source, not retained reduction roots. A subsequent field
+WHNF/retained-image load succeeds at 12024 steps: general substitution arrays
+2737 calls / 138960 bytes; other sites differ from the pending-image row by at
+most one call. QuickSort's retained-WHNF load rejects (next section), so its
+shorter allocation totals must not be reported as a completed-load saving.
+General substitution arrays are the largest remaining measured
+scratch payload, not evidence that their distinct premise checks are redundant.
+
+Projection proof construction was resolving each binder and interning its typed
+variable again even though `pg_context_map_projection` already supplies it.
+It now constructs the same PG_VARIABLE receipt using that existing image and
+the supplied checked destination proof. Only this constructor-created exact
+projection is used; arbitrary deserialized maps do not enter this shortcut.
+Both Context ownership checks and general substitution validation remain.
+Alternative destination receipts produce different variable premises over the
+same typed images. No new cache, tag, rule, API or image format is introduced.
+
+- [x] Core regression: shared typed images retain exact, distinct destination
+  premises; general/projection construction-order and rejection tests pass.
+- [x] Two isolated O2 timing runs, CPU 2, 31 alternating pairs and warmups.
+- [x] Full optimized acceptance passes; all 2460 normalized export/step records
+  match Main. Log: `/tmp/a-program-projection-images-acceptance.log`.
+- [x] Strict debug/O2 and ASan/UBSan Core tests pass, with leak detection and
+  halt-on-error. Logs: `/tmp/a-program-projection-images-{debug-core,core,asan-core}.log`.
+  This is focused sanitizer coverage, not a full sanitizer acceptance run.
+- [x] QuickSort's `pg_prove_variable` calls from projection fall 13437 -> 0;
+  every other caller's count is unchanged. Logs:
+  `/tmp/a-program-projection-images-variables-{before,after}.log`.
+- [ ] Group with a substantive epoch before Main publication. Do not push this
+  small cleanup alone or treat it as A4/A5/R2-R5 completion.
+
+Median milliseconds Main/candidate, first run; repeat:
+
+| Input | Source | Pending-image load |
+| --- | --- | --- |
+| Length | 4.466/4.708; 4.606/4.500 | 4.591/4.500; 4.554/4.562 |
+| Function-field | 7.679/7.573; 7.335/7.175 | 7.988/7.512; 7.609/8.052 |
+| Append | 5.890/5.883; 5.660/5.523 | 6.153/6.207; 6.155/5.999 |
+| QuickSort | 154.498/154.388; 156.183/154.431 | 157.265/156.693; 156.194/156.587 |
+
+Timings are mixed; no general speedup is established. Logs:
+`/tmp/a-program-projection-images-timing{,-repeat}.jsonl`. Local implementation
+delta: `evidence.c` +3/-1 = +2; tests `core.c` +8/-0. Cumulative R0
+implementation/header delta is +4413; the required reduction remains unmet.
+
+### A3 retained QuickSort reference mismatch (2026-09-20, open)
+
+Additional measurement found a correctness failure outside the existing green
+acceptance suite. It reproduces on Main `a72cda3` and on the local projection
+cleanup, in debug and optimized builds. No Main publication is appropriate.
+
+Reproducer, expecting all four cases to succeed:
+
+```sh
+bash src/prototype/pointer/tests/retained_quicksort.sh /path/to/pointer-check
+```
+
+The script uses the existing IF8 provider and `legacy-quicksort-property.p`.
+All four saves exit zero. Load results with one million Solve steps:
+
+| Save options after successful source Solve | Load result |
+| --- | --- |
+| none | done, 132563 steps |
+| `--retain-reductions` | done, 147020 steps |
+| `--whnf main` | done, 632065 steps |
+| `--whnf main --retain-reductions` | rejected, 122075 steps |
+
+Selecting either saved root of the last image rejects. The standalone regression
+exits **1**; it is not an expected-rejection success test and is not yet in
+`check-acceptance`. The previous 2460-record passing result therefore does not
+establish retained-WHNF correctness for imported QuickSort properties.
+
+Debugger evidence narrows the first differing rejection to `appendCorrect`'s
+Match at `legacy-quicksort-property.p:22`. Both clauses have been selected;
+constructor-scope preparation for ordinal zero fails before branch checking.
+`source_match_branch_context` successfully returns the saved scope. The current
+and saved prefix share the same parent and binder `g`, but `g`'s declared types
+have different application heads and are not alpha-equal. They should refer to
+the same source-generated `@append` family. The cause of this divergence is
+not yet established. Early rejected BODY jobs also occur in the successful
+control; do not misidentify those unused alternatives as this failure's cause.
+
+Logs: `/tmp/a-program-projection-images-retained-quicksort.log`,
+`/tmp/a-program-qsort-retained-{control,reject,match,prefix,prefix-type,heads}.log`.
+Raw retained-load scratch counters are in
+`/tmp/a-program-scratch-v2-{field,qsort}-retained-load.log`.
+
+- [x] Reproduce on unchanged Main; separate source Solve, retention and WHNF.
+- [x] Keep a regression with a success expectation and report its actual failure.
+- [ ] Trace the saved and regenerated function-graph family references through
+  `function_graph_step`, source metadata, and source/retained graph relocation.
+  Identify the first lost or wrongly selected edge before changing storage.
+- [ ] Preserve that edge through the existing allocation/transport mechanism;
+  do not loosen Context equality, intern nominal families by conversion, add a
+  second replay/acceptance path, or silently discard retained computations.
+- [ ] Make the regression pass, include it in ordinary acceptance, and cover
+  inert resaves, both roots and small-budget resumption before publication.
+
+Prioritize this A3 correctness gate over further scratch/cache tuning. It is an
+open requirement of the existing persistence/refactoring scope, not a new feature.
+The regression adds 25 shell lines; it does not change implementation LOC.

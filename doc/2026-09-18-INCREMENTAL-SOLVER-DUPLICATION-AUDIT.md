@@ -969,6 +969,14 @@ from the value or rename `*f` to `@f` while discarding one of the two types.
 
 ## Execution Order and Gates
 
+2026-09-20 local follow-up: the projection-image cleanup passes ordinary O2
+acceptance and focused sanitizers, but an additional retained-WHNF QuickSort
+load rejects on both current Main and the candidate. The priority plan's
+"A3 retained QuickSort reference mismatch" records a failing standalone
+success-expectation test and the mismatched `@append` family head in a saved
+Match prefix. Resolve this persistence gate before further tuning/publication;
+ordinary suite success and inert byte resaves do not cover this case.
+
 2026-09-20 follow-up, published as `385b6d5` from `9337804`: ready structural rule callbacks now
 check their ordinary premises before allocating a traversal DAG. Origin,
 prefix-map and index-map dependencies are yielded only while their receipts

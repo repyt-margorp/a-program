@@ -4296,8 +4296,10 @@ const struct pg_evidence *pg_prove_substitution_projection(struct pg_typing *typ
 	if (!map || map->count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
 	const struct pg_evidence **images = malloc(map->count * sizeof(*images));
 	if (map->count && !images) return NULL;
+	/* Projection construction already selects these exact declarations in the
+	 * checked destination. Reuse their typed variables, not a new name lookup. */
 	for (size_t i = map->count; i; --i)
-		images[i - 1] = pg_prove_variable(typing, destination, map->images[i - 1]->core->as.reference);
+		images[i - 1] = accept(typing, PG_VARIABLE, map->destination, map->images[i - 1], 1, &destination);
 	const struct pg_evidence *result = pg_prove_substitution(typing, source, destination, map->count, images);
 	free(images);
 	return result;

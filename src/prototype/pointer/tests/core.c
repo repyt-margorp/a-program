@@ -1911,6 +1911,14 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(pg_evidence_context_map(other_projection) == pg_evidence_context_map(projection_map));
 	assert(pg_evidence_premise(other_projection, 0) == other_destination);
 	assert(pg_evidence_premise(other_projection, 1) == other_extension);
+	const struct pg_context_map *shared_projection = pg_evidence_context_map(projection_map);
+	for (size_t i = 0; i < shared_projection->count; ++i) {
+		const struct pg_evidence *image = pg_evidence_premise(other_projection, i + 2);
+		assert(pg_evidence_subject(image) == shared_projection->images[i]);
+		assert(pg_evidence_rule(image) == PG_VARIABLE);
+		assert(pg_evidence_premise(image, 0) == other_extension);
+		assert(image != pg_evidence_premise(projection_map, i + 2));
+	}
 	size_t repeated_proofs = typing.proofs.count, repeated_maps = typing.context_maps.count;
 	for (size_t i = 0; i < 100; ++i) {
 		assert(pg_prove_substitution_projection(&typing, destination, extended_destination) == projection_map);
