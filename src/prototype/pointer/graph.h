@@ -25,6 +25,9 @@ struct pg_graph {
 int pg_index_init(struct pg_index *index);
 void pg_index_destroy(struct pg_index *index);
 struct pg_index_entry *pg_index_candidates(const struct pg_index *index, uint64_t hash);
+/* Reserve one insertion in an initialized index without publishing an entry.
+ * Until another insertion, pg_index_insert cannot fail for lack of capacity. */
+int pg_index_prepare_insert(struct pg_index *index);
 int pg_index_insert(struct pg_index *index, struct pg_index_entry *entry, uint64_t hash);
 
 enum pg_term_kind { PG_LAMBDA, PG_APPLICATION, PG_REFERENCE };

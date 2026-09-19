@@ -322,7 +322,7 @@ struct pg_index_entry *pg_index_candidates(const struct pg_index *index, uint64_
 	return index->buckets[index_bucket(hash, index->capacity)];
 }
 
-static int grow_index(struct pg_index *index)
+int pg_index_prepare_insert(struct pg_index *index)
 {
 	if (index->count < index->capacity) return 0;
 	if (index->capacity > SIZE_MAX / 2 / sizeof(*index->buckets)) return -1;
@@ -347,7 +347,7 @@ static int grow_index(struct pg_index *index)
 
 int pg_index_insert(struct pg_index *index, struct pg_index_entry *entry, uint64_t hash)
 {
-	if (grow_index(index) != 0) return -1;
+	if (pg_index_prepare_insert(index) != 0) return -1;
 	size_t bucket = index_bucket(hash, index->capacity);
 	entry->hash = hash;
 	entry->next = index->buckets[bucket];

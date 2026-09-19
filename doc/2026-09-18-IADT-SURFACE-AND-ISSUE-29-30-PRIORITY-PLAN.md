@@ -6918,3 +6918,58 @@ constructor provider plus `import-dependent-constructor.p`,
 `length-output-proof.p`, `function-graph-function-field.p`, and IF8 provider plus
 `legacy-quicksort-property.p`. No historical failures were repaired or tests
 relaxed to make this comparison look favorable.
+
+### A4 accepted-conclusion index borrows its key (2026-09-20)
+
+Baseline implementation `f8b7851`, preceding audit `da49b7c`. Remove the
+duplicated judgement/key from `evidence_conclusion`: its first accepted proof
+already owns the immutable typed conclusion. Keep the first/last alternative
+links and proof identity. This is a lookup index, not a new acceptance store.
+
+Expose the existing index-growth operation as `pg_index_prepare_insert` so
+both indexes can reserve capacity before publishing a proof. No allocation or
+other insertion occurs between reservation and publication; no provisional
+conclusion key is published on failure. Core interning, logical rules, image
+formats and ordinary Solve remain unchanged.
+
+- [x] Remove duplicate key fields and the provisional-key preparation path.
+- [x] Test reservation across table growth, repeated reservation and overflow
+  rejection; test stable first/next alternative order and shared conclusion count.
+- [x] Full strict debug acceptance; all 2,460 export/step records match baseline.
+- [x] Full optimized and ASan/UBSan acceptance, with leak/error halting. All
+  2,460 export/step records match debug and baseline; Handler covers 4,474
+  save boundaries. No source/test edits occurred during any gate or probe.
+- [x] Measure isolated timing/storage and per-file LOC.
+- [ ] Include this verified change in the next completed ownership/retention
+  epoch publication; do not publish it as an arbitrary small intermediate edit.
+
+The reservation overflow test is not malloc-failure injection. Failure safety
+also relies on the explicit no-intervening-insertion contract. No goal, R5 or
+net-negative completion is claimed by this index change.
+
+Keep the two lookup indexes: proof interning keys by rule/premises/certificate
+(some derived conclusions do not exist before that lookup), whereas conclusion
+lookup enumerates alternative derivations of an exact typed subject/context/map.
+Combining those different queries would require reconstructing conclusions or
+scanning proofs; borrowing the immutable conclusion does neither.
+
+Graph arena used bytes, baseline/candidate: function-field 5,388,448/5,142,496;
+QuickSort 60,476,928/57,799,232. The 48-byte conclusion-index record becomes
+32 bytes, saving one 32-byte arena unit per distinct accepted conclusion.
+Jobs, steps, Contexts, occurrences, maps/lifts/actions, queries, proofs and
+substitution arena usage are unchanged in both probes. This is retained arena
+storage, not process peak RSS.
+
+O2, CPU 2, 31 alternating pairs, median ms baseline/candidate: function-field
+8.875/7.715, QuickSort 175.949/175.853, length 4.800/4.752, Handler
+5.501/5.439. Repeat: 8.221/7.950, 173.531/172.428, 4.828/4.694,
+5.674/5.374. All nine measured cases improve in both runs, but the variation
+does not justify a fixed speedup claim or close the broader R0 regressions.
+
+Per-file implementation: `evidence.c` +20/-21 = -1; `graph.c` +2/-2 = 0;
+`graph.h` +3/-0 = +3. Net **+2**; `tests/core.c` +16 separately. Executable
+text +240 bytes, data/BSS unchanged. Cumulative R0 implementation/header
++9,105/-4,683 = **+4,422**: the requested net-negative gate remains unmet.
+Logs: `/tmp/a-program-authority-conclusion-key-` with
+`{build,core,debug,opt,asan,field-counts,qsort-counts}.log` and
+`timing{,-repeat}.jsonl`. Main remains `f8b7851` pending the larger epoch.

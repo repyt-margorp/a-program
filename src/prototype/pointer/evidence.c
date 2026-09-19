@@ -28,8 +28,6 @@ static const struct pg_evidence *formed_classifier(struct pg_typing *typing,
 
 struct evidence_conclusion {
 	struct pg_index_entry index;
-	enum pg_evidence_judgement judgement;
-	const void *key;
 	struct pg_evidence *first, *last;
 };
 
@@ -40,22 +38,14 @@ static struct evidence_conclusion *conclusion_find(const struct pg_typing *typin
 	if (!typing || !typing->evidence_conclusions.capacity) return NULL;
 	for (struct pg_index_entry *p = pg_index_candidates(&typing->evidence_conclusions, hash); p; p = p->next) {
 		struct evidence_conclusion *entry = (void *)p;
-		if (p->hash == hash && entry->judgement == judgement && entry->key == key) return entry;
+		if (p->hash != hash || pg_evidence_judgement(entry->first) != judgement) continue;
+		const struct pg_evidence *proof = entry->first;
+		const void *found = judgement == PG_JUDGEMENT_CONTEXT ? (const void *)proof->conclusion.context
+			: judgement == PG_JUDGEMENT_SUBSTITUTION ? (const void *)proof->conclusion.map
+			: (const void *)proof->conclusion.subject;
+		if (found == key) return entry;
 	}
 	return NULL;
-}
-
-static struct evidence_conclusion *conclusion_prepare(struct pg_typing *typing,
-	enum pg_evidence_judgement judgement, const void *key)
-{
-	struct evidence_conclusion *entry = conclusion_find(typing, judgement, key);
-	if (entry) return entry;
-	entry = pg_alloc(typing->graph, sizeof(*entry));
-	if (!entry) return NULL;
-	entry->judgement = judgement;
-	entry->key = key;
-	uint64_t hash = ((uintptr_t)key ^ judgement) * UINT64_C(1099511628211);
-	return pg_index_insert(&typing->evidence_conclusions, &entry->index, hash) ? NULL : entry;
 }
 
 const struct pg_evidence *pg_evidence_for_subject(const struct pg_typing *typing,
@@ -204,13 +194,18 @@ static const struct pg_evidence *accept_record(struct pg_typing *typing, enum pg
 		subject, count, premises, certificate, &hash);
 	if (existing) return existing;
 	if (count > (SIZE_MAX - sizeof(struct pg_evidence)) / sizeof(*premises)) return NULL;
-	/* Allocate the secondary key before publishing either index entry. An
-	 * empty key after allocation failure contains no accepted derivation. */
+	/* Reserve both indexes before publishing. The conclusion key is borrowed
+	 * from the first accepted proof, never copied into a provisional entry. */
+	if (pg_index_prepare_insert(&typing->proofs)) return NULL;
 	enum pg_evidence_judgement judgement = map ? PG_JUDGEMENT_SUBSTITUTION
 		: subject ? subject->judgement : PG_JUDGEMENT_CONTEXT;
 	const void *key = map ? (const void *)map : subject ? (const void *)subject : (const void *)context;
-	struct evidence_conclusion *conclusion = conclusion_prepare(typing, judgement, key);
-	if (!conclusion) return NULL;
+	struct evidence_conclusion *conclusion = conclusion_find(typing, judgement, key);
+	if (!conclusion) {
+		if (pg_index_prepare_insert(&typing->evidence_conclusions)) return NULL;
+		conclusion = pg_alloc(typing->graph, sizeof(*conclusion));
+		if (!conclusion) return NULL;
+	}
 	size_t size = sizeof(struct pg_evidence) + count * sizeof(*premises);
 	struct pg_evidence *proof = pg_alloc(typing->graph, size);
 	if (!proof) return NULL;
@@ -224,7 +219,11 @@ static const struct pg_evidence *accept_record(struct pg_typing *typing, enum pg
 	for (size_t i = 0; i < count; ++i) proof->premises[i] = premises[i];
 	if (pg_index_insert(&typing->proofs, &proof->index, hash) != 0) return NULL;
 	if (conclusion->last) conclusion->last->next_conclusion = proof;
-	else conclusion->first = proof;
+	else {
+		conclusion->first = proof;
+		uint64_t key_hash = ((uintptr_t)key ^ judgement) * UINT64_C(1099511628211);
+		if (pg_index_insert(&typing->evidence_conclusions, &conclusion->index, key_hash)) return NULL;
+	}
 	conclusion->last = proof;
 	return proof;
 }

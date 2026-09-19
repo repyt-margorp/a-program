@@ -93,6 +93,16 @@ static void index_distribution_test(void)
 	}
 	printf("aligned index: %zu occupied buckets, longest chain %zu\n", occupied, longest);
 	assert(occupied > 512 && longest < 16);
+	assert(index.count == index.capacity);
+	assert(pg_index_prepare_insert(&index) == 0);
+	assert(index.count == 1024 && index.capacity == 2048);
+	struct pg_index_entry **buckets = index.buckets;
+	assert(pg_index_prepare_insert(&index) == 0 && index.buckets == buckets);
+	/* An impossible reservation must not mutate the existing entries. */
+	struct pg_index oversized = index;
+	oversized.count = oversized.capacity = SIZE_MAX / 2 + 1;
+	assert(pg_index_prepare_insert(&oversized) == -1);
+	assert(oversized.buckets == buckets && oversized.count == oversized.capacity);
 	struct pg_index_entry collisions[2];
 	for (size_t i = 0; i < 2; ++i)
 		assert(pg_index_insert(&index, &collisions[i], 32) == 0);
@@ -1699,8 +1709,14 @@ static void typed_substitution_test(struct pg_graph *graph)
 	struct pg_occurrence_action *action = pg_occurrence_action_request(&typing, map, pg_evidence_subject(source_x));
 	assert(action && pg_occurrence_action_result(action) == pg_evidence_subject(destination_y));
 	uint64_t action_steps = pg_occurrence_action_steps(action);
+	const struct pg_evidence *first_receipt = pg_evidence_for_subject(&typing, pg_evidence_subject(reindexed), NULL);
+	size_t conclusion_count = typing.evidence_conclusions.count;
 	const struct pg_evidence *alternative_result = pg_prove_reindex(&typing, alternate, source_x);
 	assert(alternative_result != reindexed && pg_evidence_subject(alternative_result) == pg_evidence_subject(reindexed));
+	assert(typing.evidence_conclusions.count == conclusion_count);
+	assert(pg_evidence_for_subject(&typing, pg_evidence_subject(reindexed), NULL) == first_receipt);
+	assert(pg_evidence_for_subject(&typing, pg_evidence_subject(reindexed), reindexed) == alternative_result);
+	assert(!pg_evidence_for_subject(&typing, pg_evidence_subject(reindexed), alternative_result));
 	struct pg_typed_query *classifier = pg_classifier_request(&typing, destination, reindexed);
 	assert(classifier && pg_classifier_request(&typing, destination, alternative_result) == classifier);
 	while (!pg_typed_query_advance(classifier, 1)) {}
