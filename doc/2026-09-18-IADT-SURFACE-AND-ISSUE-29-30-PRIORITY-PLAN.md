@@ -6812,3 +6812,109 @@ builds, tests or probes.
 Logs: `/tmp/a-program-authority-structural-direct-` with
 `{baseline,core,eval,debug,acceptance,asan,counts,field-counts,work}.log`,
 `timing{,-repeat}.jsonl`, `field-threeway.json`.
+
+### A4/A5 broad R0 reassessment (2026-09-20)
+
+Current implementation is `f8b7851`, R0 is `4657cc6`. All direct C/header
+files in the frozen R0 tree were checked against their Git object hashes,
+then rebuilt with strict C11 warnings in O0/debug and O2. This is an audit,
+not another implementation epoch or completion of the net-negative gate.
+
+- [x] Refresh same-input source and image timings for both builds.
+- [x] Separate baseline image failures from comparable successful executions.
+- [x] Measure retained arenas and structure counts without timing instrumentation.
+- [x] Inspect the smaller-case allocation increase before choosing a redesign.
+- [ ] Attribute remaining smaller-case CPU cost to concrete consumers. Allocation
+  counts alone do not prove which function dominates time.
+- [ ] Review retained typed structure, query work and accepted-conclusion lookup
+  together; remove redundant representation/access paths rather than adding a
+  separate cache or weakening logical checks. Preserve alternative derivations.
+- [ ] After an implementation change, rerun the full publication gates and this
+  matrix. R2/R3/R5 and cumulative implementation reduction remain open.
+
+Timing protocol: CPU 2, no concurrent build/test/probe, 12 alternating pairs
+per comparable case, discard the first two pairs and report medians of ten.
+Both executables receive the same source paths, `--legacy-intrinsic-dot` and
+`--steps 1000000`. Images are produced separately by each version: save at zero
+steps, completed save with recomputation, and completed save with
+`--retain-reductions`. Times include process startup; they are not isolated
+solver CPU timings. Small differences near startup cost are not meaningful.
+
+O2 milliseconds, **R0/current**:
+
+| Input | Source | Zero-step image | Completed, recompute | Completed, retained |
+| --- | ---: | ---: | ---: | ---: |
+| Vec append | 6.256/5.959 | 6.457/6.147 | 6.491/6.224 | baseline fails |
+| Dependent Sigma | 1.184/1.435 | 1.295/1.482 | 1.312/1.486 | baseline fails |
+| Length property | 4.062/4.613 | 4.104/4.926 | 4.231/5.059 | 5.126/4.790 |
+| Function-field graph | 6.111/8.602 | 6.288/8.898 | 6.342/8.806 | baseline fails |
+| QuickSort property | 553.564/186.033 | 556.753/188.285 | 561.055/187.236 | baseline fails |
+
+Examples 01/02/03/04/05/06/07/09 source medians respectively:
+0.476/0.460, 0.443/0.425, 0.465/0.450, 0.667/0.662, 0.589/0.608,
+0.571/0.583, 0.768/0.834, 1.171/1.184 ms. There is no example 08 in
+this fixture set. Debug source medians for append/Sigma/length/function-field/
+QuickSort: 9.881/10.600, 1.729/2.084, 5.989/7.538, 9.543/13.879,
+850.061/287.820 ms. The smaller-case regressions are not confined to O2.
+
+Baseline retained images fail in both builds: append reports `error steps=5944`,
+function-field `error steps=16955`, and Sigma/QuickSort fail input initialization.
+Current exits zero for all these inputs. Do not compare failure latency with
+successful compilation, or treat this as a new current regression. Exit status
+and timing alone also do not prove equivalence of all exported propositions;
+the existing acceptance/export checks remain separate requirements.
+
+Retained source-run counts, **R0/current**, measured at program destruction:
+
+| Input | Jobs | Steps | Graph arena used bytes | Substitution arena used bytes | Occurrences | Proofs |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Append | 3827/3451 | 22765/12554 | 3833120/3842496 | 413984/314592 | 2737/2533 | 6505/3652 |
+| Sigma | 996/981 | 4048/3082 | 815040/870752 | 10688/38720 | 475/604 | 741/858 |
+| Length | 3362/3085 | 10950/8190 | 2898368/3277664 | 102752/257984 | 2249/2894 | 3856/4131 |
+| Function-field | 4006/3773 | 12906/10922 | 4167744/5388448 | 264864/486816 | 4524/5662 | 7927/8155 |
+| QuickSort | 37334/33742 | 149501/133509 | 135989888/60476928 | 50781760/11286912 | 435774/74584 | 588033/88020 |
+
+Fewer Solve transitions are not proof of lower cost. QuickSort benefits greatly
+from shared structure; function-field retains more structure despite fewer jobs.
+Process peak RSS for small fixtures was dominated by the Python runner's inherited
+high-water mark, so it is not used as evidence of allocation growth here.
+
+Concrete representation review:
+
+- `typing.h:pg_occurrence` is 112 bytes versus R0's 32, but R0 also allocates a
+  separate 24-byte occurrence index entry. The current integrated index must
+  not be counted twice. The new classifier/scope/typed construction fields have
+  semantic duties; their absence in R0 does not make them removable now.
+- Function-field's 5662 occurrences comprise 2959 direct, 2276 mapped, 208
+  derived, 209 selected and 10 induction constructions. Only 696 retain `type`,
+  216 retain `annotation`. This suggests inspecting optional metadata layout,
+  not deleting it. The interner forbids induction together with origin/map and
+  selection together with map, but a union must preserve these contracts and
+  all readers; no extra tag/adapter is justified merely by sparse fields.
+- `pg_occurrence_intern` requests 650800 bytes versus R0 `pg_occurrence`'s
+  281424 (including its separate index allocation). `accept_record` decreases
+  from 795384 to 679856, while the new accepted-conclusion index adds 368928.
+  Shared typed queries/actions/maps request 313200/243880/211224 bytes.
+  These are cumulative requested bytes, not arena-aligned live memory.
+- Function-field's occurrence hash buckets have maximum chain length five;
+  the measured growth is not evidence of a pathological interning collision.
+- `evidence.c:evidence_conclusion` repeats judgement/key already described by
+  its first accepted proof, but also maintains stable alternative order and
+  allocation-failure publication behavior. A replacement must preserve both.
+  Attaching acceptance state to erased Core or dropping alternative proofs is
+  not an acceptable memory optimization.
+
+Next implementation selection must address these ownership/access costs as a
+coherent change, not merely reduce struct size while adding more reconstruction
+code. No source/test changes were made during this audit. Implementation/header
+delta remains +9101/-4681 = **+4420** from R0; it is not the required net reduction.
+
+Evidence: `/tmp/a-program-authority-r0-final-{opt,debug}-matrix.jsonl`;
+`/tmp/a-program-authority-{r0,current}-final-{append,sigma,length,field,qsort}-counts.log`;
+`/tmp/a-program-authority-{r0,current}-field-allocations.log` and
+`/tmp/a-program-authority-current-field-shapes.log`. Inputs for the five rows are
+the existing append provider plus `legacy-vec-append-results.p`, dependent
+constructor provider plus `import-dependent-constructor.p`,
+`length-output-proof.p`, `function-graph-function-field.p`, and IF8 provider plus
+`legacy-quicksort-property.p`. No historical failures were repaired or tests
+relaxed to make this comparison look favorable.
