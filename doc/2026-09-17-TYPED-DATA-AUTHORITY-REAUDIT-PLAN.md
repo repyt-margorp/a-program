@@ -841,6 +841,14 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   than 134) and preserves inert saves without Solve. Handler syntax keys and
   shared binder/allocation bounds remain open. See the priority plan for final
   gates, the rejected eager-retention draft and publication status.
+  Verified local follow-up: remove handler syntax keys by borrowing the existing
+  prepared handler environment through the same producer view. The permanent
+  same-handler/128-environment regression fails before this change and passes
+  afterwards without saving foreign scopes or advancing Solve. All source
+  reference registrations then use scope/binder/allocation pointers, so remove
+  the obsolete syntax-key lookup (but retain syntax-dependent origin ordering).
+  Final acceptance passes as recorded in the priority plan. This remains local
+  until a substantive epoch; shared binder/allocation bounds remain open.
   Reaudit on `ef5e53d`: replacing declaration/Match address keys with the
   existing nearest-binder/member keys failed `member_use_origins`. After
   specialization and inert resaves, a constructor reference changed nominal

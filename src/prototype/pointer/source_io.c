@@ -237,7 +237,7 @@ static int collect_inputs(struct origin_collection *c)
 		if (!producer && !scope_node) return 0;
 		for (; producer; c->last_producer = producer, producer = producer->next) {
 			struct producer_input input = producer_input(c->synthesis, producer->key);
-			const struct pg_source_scope *local = pg_synthesis_definition_environment(producer->key);
+			const struct pg_source_scope *local = pg_synthesis_prepared_environment(producer->key);
 			if (local && index_source_references(c, local)) return -1;
 			if (input.callable.reference) {
 				if (pg_dag_add(c->allocations, producer->key)) return -1;
@@ -519,7 +519,6 @@ static int retain_objects(struct origin_collection *c)
 	for (;;) {
 		for (const struct pg_dag_node *node = c->last_syntax ? c->last_syntax->next : c->syntax->first;
 			node; c->last_syntax = node, node = node->next) {
-			if (index_source_references(c, node->key)) return -1;
 			if (collect_candidates(c, node->key)) return -1;
 		}
 		for (const struct pg_dag_node *node = c->last_object ? c->last_object->next : c->objects.first;

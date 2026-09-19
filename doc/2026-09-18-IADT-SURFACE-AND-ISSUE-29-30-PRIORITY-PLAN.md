@@ -5146,3 +5146,56 @@ length save 6.217/6.326; QuickSort save 206.832/206.483. These measurements
 do not establish a general speedup or replace A5's cumulative baseline gate.
 The epoch removes foreign-environment traversal without changing saved bytes,
 accepted evidence or Solve work. Both remote heads were checked at `d40900a`.
+
+### A3 exact handler environments (2026-09-19)
+
+Baseline Main `7ed0b29`. Handler allocation references still used shared syntax
+as their key. The new `handler_environment_origins` test adds 128 independent
+environments using that same handler syntax; selected lexical candidate counts
+grow before the correction. The first test draft incorrectly passed a bare
+expression to the program parser; the corrected reproducer fails the intended
+candidate-bound assertion, not parsing.
+
+Use the actual scope/binder key for every local environment. Generalize the
+existing read-only prepared-environment view to include handler producers,
+without another store, preparation path, proof rule or artifact format. Once
+no reference registration uses a syntax key, its lookup during syntax traversal
+is redundant. Syntax-dependent origin wakeups and ordering must remain.
+
+- [x] Reproduce the candidate-bound failure and correct handler keying.
+- [x] Preserve selected image bytes and job/scope/proof/Solve counts during save.
+- [x] Initial debug source and optimized full acceptance pass; all 2,460 export
+  records, including steps, match Main. Existing retained QuickSort inert save
+  is byte-identical. These results precede the syntax-lookup deletion.
+- [x] Remove obsolete syntax-key reference lookup. Final optimized acceptance
+  passes; 2,460 exports including steps still match Main. Debug source/handler
+  tests and the old retained QuickSort zero-step byte comparison pass.
+- [x] ASan/UBSan source and handler suites pass, including 4,083 handler
+  snapshots across four cases. Final image-CLI sanitizer run exits 0 too.
+- [x] Record affected sanitizers, counters, timing and per-file/cumulative LOC.
+- [x] Keep this verified cleanup local until the next substantive epoch;
+  Main and rewrite remain at `7ed0b29`, verified remotely. No new issue closure
+  or A3-A5/R2-R5 completion is claimed.
+
+Logs use `/tmp/a-program-authority-handler-environment-`. The `before.log`
+failure is expected; `opt.log` and `asan-image.log` are the intermediate runs.
+Shared-binder/allocation reachability bounds and A4/A5 remain open.
+
+After syntax-key lookup removal, debugger snapshots of 31 constructor saves
+show exactly one fewer temporary visited key per syntax node (348 total).
+Retained scope/origin counts are unchanged; these are temporary traversal
+entries, not accepted evidence. Length/function-field/QuickSort counters and
+graph/substitution arena usage exactly match Main. Final logs add `-final`;
+counter logs are `{length,field,qsort}-counts.log`, and the visited-set audit
+is `reference-{before,after}.log`.
+
+Per-file code delta: `source_io.c` +1/-2; `synthesis.c` +9/-5;
+`synthesis.h` +5/-5; `tests/source_io.c` +39/-1. Implementation/header net +3,
+tests net +38. Cumulative implementation/header: R76 +3,680/-1,893 = +1,787;
+R0 +8,437/-4,234 = +4,203. Neither reduction gate is met.
+
+Timing (`timing.log`): CPU 2, warmup plus 31 alternating O2 pairs, median ms
+Main/current: Bool .498/.495; add .918/.920; length 5.826/5.871;
+function-field 9.858/9.813; Vec append 7.137/7.217; QuickSort 205.097/206.495;
+length save 6.389/6.283; QuickSort save 208.830/208.233. No general speedup
+is established. Implementation and tests were unchanged during final runs.

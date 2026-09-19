@@ -621,13 +621,18 @@ int pg_synthesis_definition_input(const struct pg_synthesis *synthesis,
 	return 0;
 }
 
-const struct pg_source_scope *pg_synthesis_definition_environment(const struct pg_synthesis_job *job)
+const struct pg_source_scope *pg_synthesis_prepared_environment(const struct pg_synthesis_job *job)
 {
 	if (!job) return NULL;
 	if (job->role == DEFINITION_JOB) job = job->inputs[0];
-	else if (job->role == EXPRESSION_JOB) job = job->right;
-	return job && job->role == DEFINITION_SCOPE_JOB && job->definitions
-		? job->definitions->scope : NULL;
+	else if (job->role == EXPRESSION_JOB) {
+		const struct pg_synthesis_job *definitions = job->right;
+		job = definitions && definitions->role == DEFINITION_SCOPE_JOB ? definitions : job->value_job;
+	}
+	if (!job) return NULL;
+	if (job->role == DEFINITION_SCOPE_JOB && job->definitions) return job->definitions->scope;
+	if (job->role == HANDLER_JOB && job->handler) return job->handler->scope;
+	return NULL;
 }
 
 int pg_synthesis_environment_input(const struct pg_synthesis *synthesis,
@@ -763,7 +768,6 @@ static struct pg_synthesis_job *request_job(struct pg_synthesis *synthesis,
 
 static const void *source_allocation_key(const struct pg_source_scope *scope)
 {
-	if (scope->effect_owner && scope->effect_owner->scope == scope) return scope->effect_owner->source->syntax;
 	return scope->binder ? (const void *)scope->binder : scope;
 }
 

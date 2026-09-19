@@ -1681,7 +1681,6 @@ static void check_allocation_reference(struct pg_synthesis *synthesis,
 static const void *allocation_scope_key(const struct pg_source_environment *input,
 	const struct pg_source_scope *scope)
 {
-	if (input->handler) return input->handler;
 	return input->binder ? (const void *)input->binder : scope;
 }
 
@@ -1712,6 +1711,44 @@ static size_t lexical_allocation_candidates(struct pg_synthesis *synthesis,
 		scope = input.parent;
 	}
 	return lookup.count;
+}
+
+static void handler_environment_origins(void)
+{
+	const struct pg_source_scope *scope;
+	struct pg_program *p = handler_base(1, &scope);
+	struct pg_parser parser;
+	struct pg_definition definition;
+	const char *text = "h:=(ask d) @ask req k=>k req @#return x=>x;";
+	pg_parser_init(&parser, &p->graph, text, strlen(text));
+	assert(pg_parser_next(&parser, &definition) == 1);
+	const struct pg_source_scope *inner = pg_synthesis_handler_scope(&p->synthesis, scope, definition.expression);
+	const struct pg_syntax *handler = definition.expression;
+	pg_parser_init(&parser, &p->graph, "value:=D.z;", strlen("value:=D.z;"));
+	assert(pg_parser_next(&parser, &definition) == 1);
+	struct pg_synthesis_job *selected = pg_synthesis_request(&p->synthesis, inner, definition.expression);
+	assert(inner && selected);
+	size_t candidates = lexical_allocation_candidates(&p->synthesis, inner);
+	FILE *before = tmpfile(), *after = tmpfile();
+	assert(before && after && !pg_sources_write(before, &p->synthesis, 1, &selected));
+	for (unsigned i = 0; i < 128; ++i) {
+		const struct pg_source_scope *parent = pg_synthesis_name(&p->synthesis, scope,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "unused", .length = 6},
+			pg_prove_universe(&p->typing, pg_prove_empty_context(&p->typing), i));
+		const struct pg_source_scope *foreign = pg_synthesis_handler_scope(&p->synthesis, parent, handler);
+		assert(foreign && foreign != inner && pg_synthesis_request(&p->synthesis, foreign, definition.expression));
+	}
+	assert(lexical_allocation_candidates(&p->synthesis, inner) == candidates);
+	size_t jobs = p->synthesis.jobs.count, scopes = p->synthesis.scopes.count, proofs = p->typing.proofs.count;
+	uint64_t steps = p->synthesis.steps;
+	assert(!pg_sources_write(after, &p->synthesis, 1, &selected));
+	assert(p->synthesis.jobs.count == jobs && p->synthesis.scopes.count == scopes);
+	assert(p->typing.proofs.count == proofs && p->synthesis.steps == steps);
+	rewind(before); rewind(after);
+	int byte;
+	do { byte = fgetc(before); assert(byte == fgetc(after)); } while (byte != EOF);
+	assert(!fclose(before) && !fclose(after));
+	pg_program_destroy(p);
 }
 
 static int check_match_origin(void *owner, struct pg_synthesis_job *job)
@@ -3405,6 +3442,7 @@ int main(int argc, char **argv)
 		return failed | handler_scopes(3);
 	}
 	if (argc == 2 && !strcmp(argv[1], "handler-origins")) {
+		handler_environment_origins();
 		int failed = handler_scopes(4);
 		failed |= handler_scopes(5);
 		return failed;

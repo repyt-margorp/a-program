@@ -83,11 +83,11 @@ const struct pg_source_binding *pg_synthesis_source_binding(struct pg_synthesis 
 	const struct pg_source_binding *input);
 int pg_synthesis_visit_source_bindings(const struct pg_synthesis *synthesis,
 	int (*visit)(void *, const struct pg_source_binding *), void *owner);
-/* Members/declarations/Matches use their own scope/binder, or handler syntax.
- * Prepared definition environments are visited through their producer. Reached
+/* Members/declarations/Matches use their own scope/binder.
+ * Prepared local environments are visited through their producer. Reached
  * allocations (family, matcher or Self) expose defining source inputs whose
  * lexical binder belongs to their allocation Context, not unrelated aliases.
- * Visit selected scopes, their parents, syntax and reached objects. Syntax/site and
+ * Visit selected scopes, their parents and reached objects. Syntax/site and
  * exact lexical ancestry checks remain the caller's responsibility; an address
  * alone does not select every source use sharing it.
  * Optional callbacks select source jobs and/or lexical binding addresses.
@@ -161,8 +161,8 @@ int pg_synthesis_declaration_member_input(const struct pg_synthesis *synthesis,
 int pg_synthesis_definition_input(const struct pg_synthesis *synthesis,
 	const struct pg_synthesis_job *job, const struct pg_source_scope **scope,
 	const struct pg_syntax **definitions, const struct pg_syntax **expression);
-/* Borrow an already prepared definition environment; never prepare or Solve. */
-const struct pg_source_scope *pg_synthesis_definition_environment(const struct pg_synthesis_job *job);
+/* Borrow an already prepared local environment; never prepare or Solve. */
+const struct pg_source_scope *pg_synthesis_prepared_environment(const struct pg_synthesis_job *job);
 /* Reserve the same definition producer before registration. Ordinary
  * registration supplies its lexical scope and activates it. An expression not
  * registered by that block is rejected, not treated as an independent body.
