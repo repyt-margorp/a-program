@@ -1138,6 +1138,14 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 
 ### A4. Audit remaining structural consumers and remove duplication
 
+- [x] 2026-09-20: classify the structural-input proof/subject round trip before
+  changing it. On QuickSort, 183 constructor proof re-lookups hit already
+  accepted conclusions; function-field has none. Completed exposure without
+  a child remains distinct from checking failure (45 QuickSort cases, 11 in
+  IADT). Do not replace the helper with a nullable proof-only result or add a
+  cache on this evidence. The priority plan records all callers, measurements
+  and the remaining admission audit; this does not close A4 or R2-R5.
+
 - [x] 2026-09-19: one source-local dependency transition replaces 110 repeated
   wait/failure pairs and 17 matching missing-input checks. Rule-specific
   decisions, pending preparation and exact premises remain separate. Shared

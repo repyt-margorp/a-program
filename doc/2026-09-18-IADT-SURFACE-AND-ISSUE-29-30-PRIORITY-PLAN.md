@@ -7037,3 +7037,56 @@ Publication: atomic non-force push advanced Main and rewrite from `f8b7851`
 to `066c7374016b07203bd1c4baf16d57d94b59e604`, including `5212edf` and
 the R0 reassessment `da49b7c`. Both remote tips were verified. This following
 publication-record update is documentation only.
+
+### A4 structural input versus repeated proof construction (2026-09-20)
+
+Audited `11fc128`; its pointer implementation/header files are unchanged from
+`066c737`. This is a measured rejection of a proposed cleanup, not a new
+implementation epoch or completion of R2-R5.
+
+- [x] Inspect all nine `structural_input` call sites and the shared query's
+  admission path. Constructor consumers obtain a child subject and then look
+  up its accepted proof. F/U and Pi inversion instead need the subject and the
+  distinction between failed checking and completed exposure with no child.
+- [x] Instrument the existing debug binary and IADT suite without modifying
+  source. All three runs exit zero, with no probe exceptions. Compare non-null
+  query results against the first proof in the exact typed-subject conclusion
+  index; all observed results agree. This observation is not a theorem that
+  alternative derivations can be merged or their explicit premises replaced.
+
+| Workload | Input helper calls | Completed without child | Constructor proof re-lookups |
+|---|---:|---:|---:|
+| Function-field property | 314 | 0 | 0 |
+| Imported QuickSort property | 2174 | 45 | 183 |
+| Existing IADT suite | 4913 | 11 | 268 |
+
+The constructor re-lookups are index hits, not repeated proof construction:
+`prove_structural` returns the accepted conclusion before allocating its
+temporary dependency DAG. QuickSort's 183 hits split into 175 whole-constructor
+inputs and eight individually selected fields. Function-field does not exercise
+this proposed optimization. Do not use it to explain that workload's R0
+regression or introduce another proof-result cache.
+
+The unavailable-child counts also matter: QuickSort has 29 F/U content and 16
+Pi-domain selections with positive status but no child; IADT has nine content
+and two constant-codomain selections. Existing inversion rules can proceed
+from their accepted parent. Replacing this helper with a proof-only nullable
+return would conflate that result with failure unless every consumer retained
+the status contract. No such API churn is justified by these measurements.
+
+A second probe distinguishes accepted-subject lookup from actual structural
+admission. In function-field, the initially unaccepted subjects occur in
+`map_dependency` (324), substitution composition (265), classifier exposure
+(97), and typed input exposure (247). In QuickSort the corresponding counts
+are 4500, 2371, 461 and 1186, plus 17 in elimination instantiation. These are
+requests needing checks, not proven duplicate computations: a mapped subject
+must establish its origin, Context map and exact output subject. The next
+ownership audit must distinguish new scoped inputs, successful reuse and
+repeated unsuccessful admission before deleting any of those checks. Keep
+this audit separate from the already completed map-prefix reuse correction.
+
+Evidence: `/tmp/a-program-authority-structural-input-{field,qsort,iadt}.log`
+and `/tmp/a-program-authority-structural-subject-{field,qsort}.log`. GDB probes
+read the existing index (including its bucket avalanche), never call admission
+functions. Source Solve counts remain 10922 and 133509. No new timing claim,
+full acceptance rerun, source change, or Main publication is made here.
