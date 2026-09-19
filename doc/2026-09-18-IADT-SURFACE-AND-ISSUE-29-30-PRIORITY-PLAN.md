@@ -7335,7 +7335,7 @@ a count of all inner substitution work.
   universal speedup or closure of the R0 smaller-case regression gate.
 - [x] The preceding published O2 `eval_io_test` writes substitution and
   materialization snapshots; the new O2 reader resumes both successfully.
-- [ ] Include this local change in a substantial tested publication epoch;
+- [x] Include this local change in the checked-structural-reuse epoch `d40957c`;
   do not make an isolated micro-optimization Main push.
 
 Evidence: `/tmp/a-program-index-{origins-field,kinds-field,kinds-r0-field,
@@ -7378,7 +7378,7 @@ alternative derivations must not pay for a conclusion index they do not own.
   5.225/5.042 and QuickSort source-save 166.596/167.038. Tiny examples differ
   by less than 1.1%. Mixed timings, including append +2.4%, do not establish
   a general speedup or close the broader R0 performance gate.
-- [ ] Include in a substantial tested epoch; no standalone Main push.
+- [x] Included in checked-structural-reuse epoch `d40957c`; no standalone push.
 
 Read-only debug counters on identical sources, before/after:
 
@@ -7741,7 +7741,7 @@ or header change. Cumulative implementation/header delta from R0 is
 local commit; no standalone Main push or A4/A5 completion. Broader timing and
 deletion gates remain open.
 
-### A4 checked structural reuse publication candidate (2026-09-20)
+### A4 checked structural reuse publication (2026-09-20)
 
 Compare Main `db6445b` with immutable candidate `5cea934`. Group the direct
 substitution image, conclusion-index ownership, substitution scratch storage,
@@ -7758,8 +7758,10 @@ remain separate. No new cache, public API or wire format.
   O2 and O0/g after temporary-path normalization.
 - [x] Isolated CPU-2 O2 comparison with separately built archived Main;
   two runs of 31 alternating pairs, no concurrent build/test/probe.
-- [ ] Publish this group only after remaining acceptance passes; verify both
-  remote refs. Do not mark the overall repair complete.
+- [x] After all acceptance passes, atomically fast-forward Main and rewrite
+  from `db6445b` to `d40957c`; verify both remote refs. This documentation
+  receipt follows without changing implementation/tests. Overall repair remains
+  incomplete.
 
 Median milliseconds, Main/candidate (first run; repeat):
 
