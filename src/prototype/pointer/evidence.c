@@ -1822,24 +1822,17 @@ const struct pg_evidence *pg_prove_constructor(struct pg_typing *typing,
 	uint64_t hash;
 	const struct pg_evidence *existing = find_record(typing, PG_CONSTRUCTOR_INTRO, pg_evidence_context(instance), NULL, 4, premises, constructor, &hash);
 	if (existing) return existing;
-	struct pg_graph temporary = {0};
-	const struct pg_evidence *result = NULL;
-	if (count > SIZE_MAX / sizeof(const struct pg_occurrence *)) return NULL;
-	const struct pg_occurrence **operands = pg_alloc(&temporary, count * sizeof(*operands));
-	if (count && !operands) goto done;
+	/* The checked instance already retains the exact field suffix. */
+	const struct pg_context_map *map = pg_evidence_context_map(instance);
+	const struct pg_occurrence *const *operands = map->images + map->count - count;
 	const struct pg_term *core = pg_reference(typing->graph, constructor);
-	for (size_t i = 0; i < count; ++i) {
-		operands[i] = pg_evidence_subject(fields[i]);
+	for (size_t i = 0; i < count; ++i)
 		core = pg_application(typing->graph, core, operands[i]->core);
-	}
-	if (!core) goto done;
+	if (!core) return NULL;
 	const struct pg_occurrence *subject = pg_occurrence_typed(typing, PG_JUDGEMENT_VALUE, core, pg_evidence_subject(family), NULL, count, operands);
-	if (!subject) goto done;
-	result = accept_record(typing, PG_CONSTRUCTOR_INTRO,
+	if (!subject) return NULL;
+	return accept_record(typing, PG_CONSTRUCTOR_INTRO,
 		pg_evidence_context(instance), subject, 4, premises, constructor, NULL);
-done:
-	pg_graph_destroy(&temporary);
-	return result;
 }
 
 static const struct pg_evidence *lift_scope(struct pg_typing *typing,

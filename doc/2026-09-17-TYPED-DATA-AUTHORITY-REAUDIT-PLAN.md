@@ -1147,6 +1147,13 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   checks pass; implementation net -8. This is local progress for a subsequent
   publication epoch, not completion of pending construction or A5.
 
+- [x] 2026-09-19: constructor occurrence assembly borrows the checked instance
+  map's field suffix instead of projecting proofs into a temporary array.
+  Dependent field checks and exact alternative derivations remain intact.
+  Debug IADT, full O2 acceptance and targeted sanitizer/image checks pass;
+  mixed paired timings are recorded in the priority plan. Implementation -7
+  lines; no new authority or schema. This is local A4 progress, not completion.
+
 - [x] 2026-09-19: structural queries resume their selected dependencies instead
   of rediscovering source preparation. Classifier WHNF, accepted-subject
   priority and symbolic effect snapshots are preserved. QuickSort repeat

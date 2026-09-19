@@ -6246,3 +6246,49 @@ milliseconds baseline/current: Bool .485/.471; add .895/.868; length
 181.908/180.767. Samples: `/tmp/a-program-authority-request-spans-timing.jsonl`.
 The local allocation-path deletion does not establish a general speedup;
 small increases remain visible in this measurement.
+
+### A4 constructor inputs from their checked map (2026-09-19)
+
+Baseline `ad3d94c`. `pg_data_instance` already checks the constructor's dependent
+telescope and retains its ordered field subjects in the resulting Context map.
+`pg_prove_constructor` nevertheless copied the fields from their proofs into a
+second temporary array. Borrow that map's field suffix when interning the
+constructor occurrence; keep the exact instance proof as a premise. Nullary
+constructors use the empty suffix. This adds no cache, tag, checking bypass or
+wire-format change. Other temporary operand arrays do not necessarily have an
+existing contiguous owner and are not removed by analogy alone.
+
+- [x] Remove the duplicate projection, allocation and cleanup path.
+- [x] Check dependent field order and exact agreement with the checked map.
+- [x] Check that different proofs of one field give distinct constructor
+  derivations while sharing the same typed subject.
+- [x] Strict debug IADT tests and full strict O2 `check-acceptance` pass.
+  All 2,460 export records, including Solve steps, match the baseline run.
+- [x] ASan/UBSan IADT and Source IO scripts pass with leak/error halting enabled.
+- [x] Sanitizer image checks pass; all 1,218 export/step records match the
+  baseline. No source/test edits occurred during verification.
+- [x] Isolated O2 timing: CPU 2, warmup and 31 alternating pairs.
+- [ ] Publish only with a coherent completed refactoring epoch.
+
+GDB on the baseline counts 94 operand-array allocations for function-field
+(145 fields, 12 nullary cases) and 384 for universal QuickSort (1,159 fields,
+75 nullary cases). Every one used a separate temporary arena, including the
+zero-length arrays; this path is deleted. These are allocation-traffic counts,
+not peak RSS or elapsed-time gains. Logs use
+`/tmp/a-program-authority-constructor-{before,qsort-before}.log`; verification
+logs use `/tmp/a-program-authority-constructor-fields-*`.
+
+The `objects.log` QuickSort snapshot matches the baseline: 34,286 requests,
+151,199 steps, 74,584 occurrences and 88,019 proofs. Graph/substitution arena
+used bytes remain 61,819,488/11,291,232; no persistent structure was removed.
+
+Implementation: `evidence.c` +7/-14 = -7; `tests/iadt.c` +15/-0. The cumulative
+R0 implementation/header delta remains +8,835/-4,396 = +4,439. This does not
+complete A4/A5/R2-R5 or satisfy the original net-negative gate.
+
+Median milliseconds baseline/current: Bool .481/.492; add .853/.856;
+length 4.835/4.632; function-field 7.963/7.922; Vec append 6.347/6.743;
+QuickSort 178.352/177.907; Handler 5.465/5.735; length save 5.025/5.077;
+QuickSort save 179.999/180.659. Raw samples are in
+`/tmp/a-program-authority-constructor-fields-timing.jsonl`. The mixed results
+do not establish a general speedup or discharge the R0 performance audit.

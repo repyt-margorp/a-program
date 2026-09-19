@@ -1740,6 +1740,12 @@ static void dependent_normalized_fields(struct pg_typing *typing,
 	const struct pg_evidence *fields[] = {type, redex_zero, pg_prove_thunk(typing, pg_prove_return(typing, redex_zero))};
 	const struct pg_evidence *value = pg_prove_constructor(typing, pair, ctor, parameters, 3, fields);
 	assert(value);
+	const struct pg_context_map *field_map = pg_evidence_context_map(pg_evidence_premise(value, 3));
+	assert(field_map && field_map->count >= 3);
+	for (size_t i = 0; i < 3; ++i) {
+		assert(pg_evidence_subject(value)->operands[i] == pg_evidence_subject(fields[i]));
+		assert(pg_evidence_subject(value)->operands[i] == field_map->images[field_map->count - 3 + i]);
+	}
 	struct pg_nf_job *nf = pg_nf_request(&work, &pg_pure_policy, pg_evidence_subject(value)->core);
 	while (pg_nf_advance(nf, chunk) == PG_NF_PENDING) assert(pg_nf_steps(nf) < 10000);
 	const struct pg_evidence *normal = pg_prove_normalization(typing, value, pg_nf_certificate(nf));
@@ -2097,6 +2103,15 @@ static void schema_positivity(void)
 	assert(pg_prove_inductive_type(&typing, nat_schema) == nat);
 	assert(pg_prove_constructor(&typing, nat, pg_data_constructor(nat_layout, 1), identity, 1, &zero) == succ);
 	assert(typing.proofs.count == proofs && graph.terms.count == terms);
+	const struct pg_evidence *alternate_zero = pg_prove_reindex(&typing, identity, zero);
+	assert(alternate_zero && alternate_zero != zero);
+	assert(pg_evidence_subject(alternate_zero) == pg_evidence_subject(zero));
+	const struct pg_evidence *alternate_succ = pg_prove_constructor(&typing, nat,
+		pg_data_constructor(nat_layout, 1), identity, 1, &alternate_zero);
+	assert(alternate_succ && alternate_succ != succ);
+	assert(pg_evidence_subject(alternate_succ) == pg_evidence_subject(succ));
+	const struct pg_evidence *alternate_instance = pg_evidence_premise(alternate_succ, 3);
+	assert(pg_evidence_premise(alternate_instance, pg_evidence_premise_count(alternate_instance) - 1) == alternate_zero);
 	const struct pg_data_schema *other_schema = pg_data_schema(&typing, signature, 2, results);
 	const struct pg_evidence *other = pg_prove_inductive_type(&typing, other_schema);
 	assert(other && pg_evidence_subject(other)->core != pg_evidence_subject(nat)->core);
