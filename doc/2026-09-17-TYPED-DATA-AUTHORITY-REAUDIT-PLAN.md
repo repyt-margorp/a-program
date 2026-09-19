@@ -2006,6 +2006,16 @@ selectors under ASan/UBSan in `/tmp/a-program-authority-metadata-sanitize`.
 
 #### 2026-09-20: Profile before choosing another representation change
 
+Follow-up: the priority plan's "A4 direct substitution images" section records
+entry-count attribution separating proof and conclusion indexing from temporary
+readback. Reuse an environment-free binder image directly rather than allocating
+a terminal child readback and transferring its unchanged Term. Function-field
+loses 1229 temporary records without changing proof/occurrence/request counts.
+Debug Core/image tests and full optimized/ASan/UBSan acceptance pass, including
+old-writer/new-reader substitution and materialization checks. This small local
+change awaits a larger publication epoch; cumulative implementation/header LOC
+is still +4399 versus R0, not completion of the reduction requirement.
+
 The priority plan records a 1000-iteration R0/current function-field profile
 and independent debug entry counts. Optimized gprof attribution is misleading
 for some functions: actual induction entries are six, not the reported thousands.

@@ -322,6 +322,40 @@ static void identity_substitution_image(void)
 	pg_graph_destroy(&graph);
 }
 
+static void direct_substitution_image(void)
+{
+	for (uint64_t cut = 0; cut <= 1; ++cut) {
+		struct pg_graph graph;
+		struct pg_substitution work;
+		assert(!pg_graph_init(&graph));
+		const struct pg_object *x = pg_binder(&graph), *y = pg_binder(&graph);
+		const struct pg_term *variable = pg_reference(&graph, x);
+		const struct pg_term *identity = pg_lambda(&graph, y, pg_reference(&graph, y));
+		struct pg_binding_value image = {x, pg_application(&graph, identity, variable)};
+		assert(!pg_substitution_init(&work, &graph, variable, 1, &image));
+		assert(pg_substitution_advance(&work, cut) == (cut ? PG_SUBSTITUTION_DONE : PG_SUBSTITUTION_PENDING));
+		assert(work.state->context.results.count == 1 && !work.state->root->left);
+		FILE *file = tmpfile();
+		assert(file && !pg_substitution_write(file, &work, NULL, NULL));
+		pg_substitution_destroy(&work);
+		pg_graph_destroy(&graph);
+		assert(!pg_graph_init(&graph));
+		rewind(file);
+		assert(!pg_substitution_read(file, &graph, 100, 100, NULL, NULL, &work));
+		assert(!fclose(file));
+		assert(pg_substitution_steps(&work) == cut);
+		assert(pg_substitution_advance(&work, 1) == PG_SUBSTITUTION_DONE);
+		assert(pg_substitution_steps(&work) == 1);
+		/* The simultaneous image is borrowed, neither substituted again nor reduced. */
+		const struct pg_term *result = pg_substitution_result(&work);
+		assert(result == pg_substitution_input(&work)->environment->value.term);
+		assert(result->kind == PG_APPLICATION && result->as.application.argument == pg_substitution_input(&work)->term);
+		assert(work.state->context.results.count == 1 && !work.state->root->left);
+		pg_substitution_destroy(&work);
+		pg_graph_destroy(&graph);
+	}
+}
+
 static void shared_substitution_images(void)
 {
 	struct pg_graph graph;
@@ -1001,6 +1035,7 @@ int main(int argc, char **argv)
 	beta_resume();
 	substitution_resume();
 	identity_substitution_image();
+	direct_substitution_image();
 	shared_substitution_images();
 	materialization_resume();
 	frame_resume(1);

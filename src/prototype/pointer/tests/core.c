@@ -4284,7 +4284,8 @@ static void substitution_test(struct pg_graph *graph)
 		assert(pg_substitution_advance(&split, 1) == PG_SUBSTITUTION_PENDING);
 		assert(pg_substitution_steps(&split) == i + 1);
 	}
-	assert(pg_substitution_advance(&split, 2) == PG_SUBSTITUTION_DONE);
+	assert(pg_substitution_advance(&split, 1) == PG_SUBSTITUTION_DONE);
+	assert(pg_substitution_steps(&split) == 32);
 	assert(pg_substitution_result(&split) == vy);
 	pg_substitution_destroy(&split);
 	assert(pg_substitution_init(&split, graph, vx, 1, NULL) != 0);

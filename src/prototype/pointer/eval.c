@@ -287,6 +287,7 @@ static int reify_advance(struct readback_context *context, uint64_t budget)
 					continue;
 				}
 				child = entry->cursor->value;
+				if (!child.environment) entry->result = child.term;
 				break;
 			}
 			case PG_APPLICATION:

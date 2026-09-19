@@ -7285,3 +7285,61 @@ Evidence: `/tmp/a-program-authority-profile-{r0,current}-field{,-gprof.txt}`
 `/tmp/a-program-authority-profile-{r0,current}/`, and
 `/tmp/a-program-authority-index-fast-{core.log,timing.jsonl}`. No production
 change remains. Cumulative implementation/header delta remains **+4398**.
+
+### A4 direct substitution images (2026-09-20)
+
+Follow up the CPU attribution audit with O0/g function-entry counters on the
+same function-field fixture. Count actual `pg_index_insert` callers rather than
+optimized gprof edges. R0/current total insertions are 39063/59750. Current
+`accept_record` contributes 15841, but this includes 8155 proof entries and
+7686 conclusion-index entries, versus R0's 7927 proof entries. The extra
+conclusion index is not another proof or evidence of repeated checking.
+
+Readback contributes 11103 insertions: 6107 have environments and 4996 simply
+hold an environment-free Term (4638 references, 318 applications, 40 lambdas).
+These counts identify a concrete removable transfer, not a reason to delete
+all readback state: pending dependencies and resumable roots still need owners.
+
+In `eval.c:reify_advance`, when binder lookup reaches an image whose environment
+is empty, borrow its Term as the result immediately. Previously this created
+or looked up a terminal child readback, then copied the same Term back on the
+next transition. This is simultaneous substitution, not evaluation: do not
+substitute the image again, reduce its application, or invoke an Oracle.
+Images with nonempty environments still use ordinary budgeted readback.
+No new cache, tag, field, wire format or acceptance rule is introduced.
+
+Function-field insertions decrease 59750 -> 58521; terminal readback entries
+decrease 4996 -> 3767. The 1229 removed temporary records each occupy 88 bytes
+in this debug build (108152 requested bytes, **not** peak/live memory).
+Proof, occurrence, comparison, Core interning and Solver-request insertion
+counts are unchanged. Outer Solve steps decrease 10922 -> 10868; they are not
+a count of all inner substitution work.
+
+- [x] Add a single-step lookup assertion after 31 budgeted environment links.
+- [x] Add pending/completed image round trips for an application containing
+  the original variable: preserve the exact simultaneous image, do not beta
+  reduce it, and retain no terminal child task.
+- [x] Strict debug Core and evaluation-image suites, including separate-process
+  restore, pass. Full optimized `check-acceptance` passes; all 2460 export
+  results match the preceding publication after path/step normalization.
+- [x] Full ASan/UBSan `check-acceptance` passes with leak detection and halt
+  on errors. Its 2460 export records match O2 including steps. No source or
+  test edits occurred during either run.
+- [x] Measure 31 alternating O2 process pairs, CPU 2, without concurrent
+  build/test/probe. Medians before/after (ms): length 4.722/4.625, function-field
+  8.401/7.670, append 6.030/6.072, QuickSort 166.428/164.312, Handler
+  5.598/5.433; source-save length 5.098/5.054 and QuickSort 171.329/169.936.
+  Tiny examples differ by less than 1.4%. This supports reduced work, not a
+  universal speedup or closure of the R0 smaller-case regression gate.
+- [x] The preceding published O2 `eval_io_test` writes substitution and
+  materialization snapshots; the new O2 reader resumes both successfully.
+- [ ] Include this local change in a substantial tested publication epoch;
+  do not make an isolated micro-optimization Main push.
+
+Evidence: `/tmp/a-program-index-{origins-field,kinds-field,kinds-r0-field,
+kinds-direct-field}.log`; `/tmp/a-program-direct-substitution-{build,core,
+eval-io,opt,asan}.log` and `...-timing.jsonl`. Cross-version fixtures are
+`/tmp/a-program-direct-{substitution,materialization}-old.a`.
+Implementation delta: `eval.c` +1/-0; tests: `core.c` +2/-1 and `eval_io.c`
++35/-0. Cumulative implementation/header delta is **+4399**: net-negative
+completion and the broader R0 performance requirements remain open.
