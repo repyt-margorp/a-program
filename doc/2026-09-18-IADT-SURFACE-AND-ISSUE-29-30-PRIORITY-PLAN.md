@@ -6940,8 +6940,8 @@ formats and ordinary Solve remain unchanged.
   2,460 export/step records match debug and baseline; Handler covers 4,474
   save boundaries. No source/test edits occurred during any gate or probe.
 - [x] Measure isolated timing/storage and per-file LOC.
-- [ ] Include this verified change in the next completed ownership/retention
-  epoch publication; do not publish it as an arbitrary small intermediate edit.
+- [x] Include this verified change in the ownership/retention epoch published
+  as `066c737`, together with the input advancement consolidation below.
 
 The reservation overflow test is not malloc-failure injection. Failure safety
 also relies on the explicit no-intervening-insertion contract. No goal, R5 or
@@ -6998,7 +6998,7 @@ unit against Main `f8b7851` before publishing; whole R2-R5 remains separate.
 - [x] Full ASan/UBSan acceptance with leak/error halting; all 2,460 export/step
   records agree. Handler retains its 4,474 save-boundary checks.
 - [x] Isolated storage/work/timing measurements and per-file LOC.
-- [ ] Publish the verified combined unit atomically to Main and rewrite.
+- [x] Publish the verified combined unit atomically to Main and rewrite.
 
 No source/test edits occurred during the gates or measurements. Query size
 drops from 200 to 192 bytes after removing the redundant flag and grouping
@@ -7032,3 +7032,8 @@ Evidence: `/tmp/a-program-authority-input-resume-` with
 `{build,core,debug,opt,asan,field-counts,qsort-counts,field-prefix,qsort-prefix,core-prefix,iadt-prefix}.log`
 and `timing{,-repeat}.jsonl`. This completes the scoped input/index cleanup,
 not R2-R5 or the full active goal.
+
+Publication: atomic non-force push advanced Main and rewrite from `f8b7851`
+to `066c7374016b07203bd1c4baf16d57d94b59e604`, including `5212edf` and
+the R0 reassessment `da49b7c`. Both remote tips were verified. This following
+publication-record update is documentation only.
