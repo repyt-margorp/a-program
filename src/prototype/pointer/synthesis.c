@@ -7743,57 +7743,48 @@ static void term_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 		forward_structure(synthesis, job);
 		return;
 	}
-	const struct pg_derivation_input *input = producer->role == DERIVATION_JOB ? producer->inputs[0] : NULL;
+	const struct pg_derivation_input *input = producer->inputs[0];
 	const struct pg_object *operation = NULL;
-	if (input) {
-		if (input->rule == PG_LAMBDA_INTRO) { lambda_structure_step(synthesis, job, producer); return; }
-		switch (input->rule) {
-		case PG_APP_ELIM: case PG_FOLD_ELIM: case PG_REQUEST_INTRO: case PG_HANDLER_ELIM:
-			compound_structure_step(synthesis, job, producer, input); return;
-		default: break;
-		}
-		if (input->rule == PG_HOST_TYPE_FORM || input->rule == PG_HOST_VALUE_INTRO || input->rule == PG_HOST_FUNCTION_INTRO) {
-			job->type_structure = pg_reference(synthesis->typing->graph, input->parameters.constant);
-			finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
-			return;
-		}
-		if (input->rule == PG_UNIVERSE_FORM) {
-			job->type_structure = pg_universe(synthesis->typing->graph, input->parameters.level);
-			finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
-			return;
-		}
+	size_t ordinal = 0;
+	switch (input->rule) {
+	case PG_LAMBDA_INTRO:
+		lambda_structure_step(synthesis, job, producer); return;
+	case PG_APP_ELIM: case PG_FOLD_ELIM: case PG_REQUEST_INTRO: case PG_HANDLER_ELIM:
+		compound_structure_step(synthesis, job, producer, input); return;
+	case PG_HOST_TYPE_FORM: case PG_HOST_VALUE_INTRO: case PG_HOST_FUNCTION_INTRO:
+		job->type_structure = pg_reference(synthesis->typing->graph, input->parameters.constant);
+		goto done;
+	case PG_UNIVERSE_FORM:
+		job->type_structure = pg_universe(synthesis->typing->graph, input->parameters.level);
+		goto done;
+	case PG_VARIABLE:
+		job->type_structure = pg_reference(synthesis->typing->graph, input->parameters.binder);
+		goto done;
+	case PG_RETURN_INTRO: operation = &pg_return_operation; break;
+	case PG_THUNK_INTRO: operation = &pg_thunk_operation; break;
+	case PG_FORCE_ELIM: operation = &pg_force_operation; break;
+	case PG_CONTEXT_PROJECTION: ordinal = 1; break;
+	case PG_VALUE_FROM_TYPE: case PG_EFFECT_SUBSUMPTION: break;
+	default:
 		if (type_structure_rule(input->rule)) {
 			type_rule_structure_step(synthesis, job, producer, input);
 			return;
 		}
-		if (input->rule == PG_VARIABLE) {
-			job->type_structure = pg_reference(synthesis->typing->graph, input->parameters.binder);
-			finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
-			return;
-		}
-		switch (input->rule) {
-		case PG_RETURN_INTRO: operation = &pg_return_operation; break;
-		case PG_THUNK_INTRO: operation = &pg_thunk_operation; break;
-		case PG_FORCE_ELIM: operation = &pg_force_operation; break;
-		default: break;
-		}
-		if (!job->left && input->rule == PG_VALUE_FROM_TYPE)
-			job->left = pg_synthesis_type_structure(synthesis, rule_premise(synthesis, producer, 0));
-		if (!job->left && input->rule == PG_CONTEXT_PROJECTION)
-			job->left = pg_synthesis_term_structure(synthesis, rule_premise(synthesis, producer, 1));
-		if (!job->left && input->rule == PG_EFFECT_SUBSUMPTION)
-			job->left = pg_synthesis_term_structure(synthesis, rule_premise(synthesis, producer, 0));
-		if (!job->left && operation)
-			job->left = pg_synthesis_term_structure(synthesis, rule_premise(synthesis, producer, 0));
+		goto unsupported;
 	}
-	if (job->left) {
-		if (await_dependency(synthesis, job, job->left)) return;
-		const struct pg_term *term = pg_synthesis_type_structure_result(job->left);
-		job->type_structure = operation ? pg_application(synthesis->typing->graph,
-			pg_reference(synthesis->typing->graph, operation), term) : term;
-		finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
-		return;
+	if (!job->left) {
+		struct pg_synthesis_job *premise = rule_premise(synthesis, producer, ordinal);
+		job->left = input->rule == PG_VALUE_FROM_TYPE ? pg_synthesis_type_structure(synthesis, premise)
+			: pg_synthesis_term_structure(synthesis, premise);
 	}
+	if (!job->left) goto unsupported;
+	if (await_dependency(synthesis, job, job->left)) return;
+	const struct pg_term *term = pg_synthesis_type_structure_result(job->left);
+	job->type_structure = operation ? pg_application(synthesis->typing->graph,
+		pg_reference(synthesis->typing->graph, operation), term) : term;
+done:
+	finish(synthesis, job, job->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+	return;
 unsupported:
 	if (producer->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, producer); return; }
 	finish(synthesis, job, producer->status == PG_SYNTHESIS_DONE ? PG_SYNTHESIS_UNSUPPORTED : producer->status);

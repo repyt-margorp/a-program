@@ -1138,6 +1138,16 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 
 ### A4. Audit remaining structural consumers and remove duplication
 
+- [x] 2026-09-20: the admission follow-up finds 933 distinct first-check
+  subjects in function-field and 8535 in QuickSort, not repeated unsuccessful
+  requests. Keep their map/scope validation; no additional cache. Simplify the
+  pending Term dispatcher instead: one immutable-rule selection replaces the
+  dead nullable-rule branch and repeated child-request tests. The `::` boundary
+  regression, strict debug synthesis, full O2 acceptance and affected ASan/UBSan
+  synthesis pass; 2460 export/step records match Main. Implementation -9 lines,
+  tests +8. The priority plan records evidence and local-only publication status.
+  This does not complete pending construction, A4/A5 or the net-negative gate.
+
 - [x] 2026-09-20: classify the structural-input proof/subject round trip before
   changing it. On QuickSort, 183 constructor proof re-lookups hit already
   accepted conclusions; function-field has none. Completed exposure without

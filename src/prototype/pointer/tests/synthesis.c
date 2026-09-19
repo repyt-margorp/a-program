@@ -1475,6 +1475,11 @@ static void pending_effect_contexts(struct pg_typing *typing)
 		assert(!complete(&synthesis, postcheck_type, PG_SYNTHESIS_DONE));
 		assert(pg_synthesis_type_structure_result(postcheck_type) == pg_universe(typing->graph, 0));
 		assert(!pg_synthesis_result(postcheck));
+		struct pg_synthesis_job *postcheck_term = pg_synthesis_term_structure(&synthesis, postcheck);
+		assert(!complete(&synthesis, postcheck_term, PG_SYNTHESIS_DONE));
+		const struct pg_term *postcheck_core = pg_reference(typing->graph, a);
+		assert(pg_synthesis_type_structure_result(postcheck_term) == postcheck_core);
+		assert(!pg_synthesis_result(postcheck) && !pg_synthesis_result(postcheck_term));
 		assert(!pg_synthesis_result(application) && !pg_synthesis_result(argument));
 		struct pg_synthesis_job *late_contribution = pg_synthesis_effect_contribution(&synthesis,
 			&effects, masked, no_effects, derived_carrier);
@@ -1623,6 +1628,9 @@ static void pending_effect_contexts(struct pg_typing *typing)
 		const struct pg_evidence *applied = complete(&synthesis, application, PG_SYNTHESIS_DONE);
 		/* The candidate classifier does not erase a context mismatch. */
 		complete(&synthesis, postcheck, PG_SYNTHESIS_REJECTED);
+		assert(pg_synthesis_term_structure(&synthesis, postcheck) == postcheck_term);
+		assert(pg_synthesis_type_structure_result(postcheck_term) == postcheck_core);
+		assert(!pg_synthesis_result(postcheck_term));
 		assert(pg_evidence_subject(applied)->core == expected_application);
 		const struct pg_evidence *checked = complete(&synthesis, checked_application, PG_SYNTHESIS_DONE);
 		same_judgement(checked, applied);

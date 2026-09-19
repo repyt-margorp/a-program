@@ -7090,3 +7090,57 @@ and `/tmp/a-program-authority-structural-subject-{field,qsort}.log`. GDB probes
 read the existing index (including its bucket avalanche), never call admission
 functions. Source Solve counts remain 10922 and 133509. No new timing claim,
 full acceptance rerun, source change, or Main publication is made here.
+
+### A4 admission accounting and pending Term dispatch (2026-09-20)
+
+Baseline `90a9391` has the same implementation as Main `11fc128`. Continue the
+preceding audit rather than assume that every structural admission is repeated
+work. Function-field has 933 initially unaccepted subjects, all distinct, each
+successfully checked on its first request. QuickSort has 8535 such requests
+for 8535 distinct subjects, all accepted by program destruction. Neither run
+shows repeated unsuccessful admission. This is workload-specific evidence,
+not a global complexity proof or permission to trust unchecked maps.
+
+The initial QuickSort probe installed a return breakpoint per admission and
+was interrupted because debugger overhead dominated. Its partial counts are
+not a complete run. The completed replacement observes entries and checks the
+existing conclusion index at destruction; it does not install return probes
+or call kernel functions. Both completed programs retain their 10922/133509
+Solve counts. Logs: `/tmp/a-program-authority-admission-field.log` and
+`/tmp/a-program-authority-admission-qsort-end.log`; the interrupted diagnostic is
+`/tmp/a-program-authority-admission-qsort.log`. Do not introduce a negative
+admission cache, skip scoped checking, or attribute R0 regressions to this
+unobserved duplication.
+
+The selected code cleanup is instead the pending Term construction dispatcher:
+`term_structure_step` already returns for non-derivation producers, but then
+retests that role and nullable input. It separately scans the same immutable
+rule for constants, type construction, unary operations and projection. Use one
+rule dispatch and one selected-input request, keeping Lambda, APP/Fold/Request/
+Handler and type-former implementations separate. Share terminal publication,
+not theorem validation. No new job, cache, structural tag or wire format.
+
+- [x] Remove the unreachable nullable-rule branch and repeated input selection.
+- [x] Extend the existing chunk-1/64 pending-effects test: a later-rejected `::`
+  check exposes the operand's Core before rejection, but never a proof. Its
+  retained structural result remains the same after rejection.
+- [x] Strict debug `synthesis_test` passes.
+- [x] Complete optimized acceptance and compare export results/steps with Main.
+  All 2460 export records agree after temporary-path normalization, without
+  removing step counts. Compatibility is 63/63; Handler boundaries cover 4474
+  snapshots, and the universal sort/source/image/invalid-claim suites pass.
+- [x] Run affected ASan/UBSan synthesis checks and record the final diff.
+  Strict O1/g with address/undefined sanitizers, frame pointers, non-PIE,
+  `ASAN_OPTIONS=detect_leaks=1:halt_on_error=1` and
+  `UBSAN_OPTIONS=halt_on_error=1`: exit zero. This is the affected synthesis
+  suite, not a new full sanitizer acceptance claim.
+- [ ] Include this local cleanup in a substantial tested publication epoch;
+  do not describe it as complete A4/A5 or R2-R5.
+
+Current implementation diff: `synthesis.c` +35/-44 = **-9**; the existing
+`tests/synthesis.c` adds eight assertions/setup lines separately. R0 cumulative
+implementation/header +9125/-4719 = **+4406**, still not the required reduction.
+Build/log prefix: `/tmp/a-program-authority-term-dispatch` (debug), `-opt`
+(full optimized suite), `-asan` (affected sanitizer suite). No source/test
+edits occurred during any gate. No performance improvement is claimed from
+dispatch consolidation alone. This remains local pending a larger epoch.
