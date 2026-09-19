@@ -1713,21 +1713,36 @@ static size_t lexical_allocation_candidates(struct pg_synthesis *synthesis,
 	return lookup.count;
 }
 
-static void handler_environment_origins(void)
+static int local_environment_origins(int binding)
 {
 	const struct pg_source_scope *scope;
 	struct pg_program *p = handler_base(1, &scope);
+	if (binding) {
+		struct pg_synthesis_job *box = parse(p, scope, "{{Box:=&(\\A:@=>@{mk:A->*;});}}.Box");
+		scope = pg_synthesis_name_job(&p->synthesis, scope,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "Box", .length = 3}, box);
+		assert(scope);
+	}
 	struct pg_parser parser;
 	struct pg_definition definition;
-	const char *text = "h:=(ask d) @ask req k=>k req @#return x=>x;";
+	const char *text = binding ? "f:=\\x:D=>(Box D).mk;" : "h:=(ask d) @ask req k=>k req @#return x=>x;";
 	pg_parser_init(&parser, &p->graph, text, strlen(text));
 	assert(pg_parser_next(&parser, &definition) == 1);
-	const struct pg_source_scope *inner = pg_synthesis_handler_scope(&p->synthesis, scope, definition.expression);
-	const struct pg_syntax *handler = definition.expression;
-	pg_parser_init(&parser, &p->graph, "value:=D.z;", strlen("value:=D.z;"));
+	const struct pg_syntax *syntax = definition.expression;
+	const struct pg_source_scope *inner = binding
+		? pg_synthesis_binding_scope(pg_synthesis_binding(&p->synthesis, scope, syntax))
+		: pg_synthesis_handler_scope(&p->synthesis, scope, syntax);
+	const char *use = binding ? "value:=(Box D).mk;" : "value:=D.z;";
+	pg_parser_init(&parser, &p->graph, use, strlen(use));
 	assert(pg_parser_next(&parser, &definition) == 1);
 	struct pg_synthesis_job *selected = pg_synthesis_request(&p->synthesis, inner, definition.expression);
 	assert(inner && selected);
+	const struct pg_context *prefix = NULL, *fields = NULL;
+	if (binding) {
+		pg_synthesis_advance(&p->synthesis, 10000);
+		assert(pg_synthesis_result(selected));
+		assert(!pg_synthesis_member_allocation(&p->synthesis, selected, &prefix, &fields) && fields != prefix);
+	}
 	size_t candidates = lexical_allocation_candidates(&p->synthesis, inner);
 	FILE *before = tmpfile(), *after = tmpfile();
 	assert(before && after && !pg_sources_write(before, &p->synthesis, 1, &selected));
@@ -1735,10 +1750,19 @@ static void handler_environment_origins(void)
 		const struct pg_source_scope *parent = pg_synthesis_name(&p->synthesis, scope,
 			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "unused", .length = 6},
 			pg_prove_universe(&p->typing, pg_prove_empty_context(&p->typing), i));
-		const struct pg_source_scope *foreign = pg_synthesis_handler_scope(&p->synthesis, parent, handler);
-		assert(foreign && foreign != inner && pg_synthesis_request(&p->synthesis, foreign, definition.expression));
+		const struct pg_source_scope *foreign = binding
+			? pg_synthesis_binding_scope(pg_synthesis_binding(&p->synthesis, parent, syntax))
+			: pg_synthesis_handler_scope(&p->synthesis, parent, syntax);
+		assert(foreign && foreign != inner);
+		struct pg_synthesis_job *other = binding
+			? pg_synthesis_member_at(&p->synthesis, foreign, definition.expression, prefix, fields)
+			: pg_synthesis_request(&p->synthesis, foreign, definition.expression);
+		assert(other && !pg_synthesis_result(other));
+		if (binding) assert(pg_synthesis_allocation_object(&p->synthesis, other) == fields->binder);
 	}
-	assert(lexical_allocation_candidates(&p->synthesis, inner) == candidates);
+	size_t expanded = lexical_allocation_candidates(&p->synthesis, inner);
+	if (expanded != candidates)
+		fprintf(stderr, "local environment: binding=%d candidates=%zu -> %zu\n", binding, candidates, expanded);
 	size_t jobs = p->synthesis.jobs.count, scopes = p->synthesis.scopes.count, proofs = p->typing.proofs.count;
 	uint64_t steps = p->synthesis.steps;
 	assert(!pg_sources_write(after, &p->synthesis, 1, &selected));
@@ -1749,6 +1773,7 @@ static void handler_environment_origins(void)
 	do { byte = fgetc(before); assert(byte == fgetc(after)); } while (byte != EOF);
 	assert(!fclose(before) && !fclose(after));
 	pg_program_destroy(p);
+	return expanded != candidates;
 }
 
 static int check_match_origin(void *owner, struct pg_synthesis_job *job)
@@ -3442,7 +3467,7 @@ int main(int argc, char **argv)
 		return failed | handler_scopes(3);
 	}
 	if (argc == 2 && !strcmp(argv[1], "handler-origins")) {
-		handler_environment_origins();
+		assert(!local_environment_origins(0));
 		int failed = handler_scopes(4);
 		failed |= handler_scopes(5);
 		return failed;
@@ -3451,6 +3476,8 @@ int main(int argc, char **argv)
 		int failed = handler_scopes(6);
 		return failed | handler_scopes(7);
 	}
+	/* Open A3 gate, intentionally separate from the passing acceptance suite. */
+	if (argc == 2 && !strcmp(argv[1], "binder-environment-bound")) return local_environment_origins(1);
 	if (argc == 2 && !strcmp(argv[1], "handler-boundaries")) {
 		handler_save_boundaries();
 		return 0;

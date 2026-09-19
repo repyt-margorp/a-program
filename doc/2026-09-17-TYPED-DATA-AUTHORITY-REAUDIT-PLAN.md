@@ -849,6 +849,14 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   the obsolete syntax-key lookup (but retain syntax-dependent origin ordering).
   Final acceptance passes as recorded in the priority plan. This remains local
   until a substantive epoch; shared binder/allocation bounds remain open.
+  The latter now has an executable failing gate: `source_io_test
+  binder-environment-bound` grows 2 -> 130 candidates for one selected Lambda
+  environment, including a real shared constructor-wrapper allocation.
+  Exact-scope-only and added member-origin trials were withdrawn:
+  the first drops 80 retained QuickSort origins; the latter still fails inert
+  byte equality and the Match alias-isolation test. Do not repeat those key-only
+  substitutions or waive the retained-origin tests. See the priority plan for
+  the next joint lexical/allocation reachability audit and reproducer status.
   Reaudit on `ef5e53d`: replacing declaration/Match address keys with the
   existing nearest-binder/member keys failed `member_use_origins`. After
   specialization and inert resaves, a constructor reference changed nominal

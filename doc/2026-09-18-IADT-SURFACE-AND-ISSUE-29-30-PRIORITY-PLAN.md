@@ -5199,3 +5199,59 @@ Main/current: Bool .498/.495; add .918/.920; length 5.826/5.871;
 function-field 9.858/9.813; Vec append 7.137/7.217; QuickSort 205.097/206.495;
 length save 6.389/6.283; QuickSort save 208.830/208.233. No general speedup
 is established. Implementation and tests were unchanged during final runs.
+
+### A3 shared-binder counterexample (2026-09-19)
+
+Baseline local `e971051`; Main remains `7ed0b29`. Extend the handler environment
+fixture to a Lambda with the same syntax/binder but 128 distinct outer name
+environments. The new standalone command `source_io_test binder-environment-bound`
+exits 1: selected lexical candidates grow from 2 to 130. The selected field
+constructor is synthesized first; pending foreign uses explicitly share its
+allocation. This strengthens the initial nullary-constructor case (1 -> 129):
+delaying registration until an allocation exists cannot resolve it. Image bytes and
+job/scope/proof/Solve counts remain unchanged during saving. This is an
+unresolved traversal-cost gate, not an incorrect accepted typing derivation.
+It is deliberately outside the passing acceptance target until repaired;
+its failure must not be described as a passing negative test.
+
+Rejected trials, all removed from implementation:
+
+1. Key allocations only by exact source scope, retaining existing declaration
+   origin edges: the lexical counterexample passes, but an old retained
+   QuickSort inert resave drops from 140 origins/206 scopes to 60/76.
+2. Add constructor-wrapper origin edges when the scope binder belongs to its
+   parameter Context: 129 origins/173 scopes remain. Eleven qualified uses
+   are still missing; a closed wrapper need not depend on the ambient binder.
+3. Admit those closed wrappers too: counts return to 140/206, but saved bytes
+   still differ and `match_motive_authority` loses alias-isolated byte equality.
+   Equal counts are not proof of correct provenance or stable ordering.
+
+The implementation is restored exactly to `e971051`. Debug source/handler
+suites pass; the old retained QuickSort image again resaves byte-identically
+at zero steps. Only the reproducible open gate and this audit are retained.
+Logs use `/tmp/a-program-authority-binder-environment-`: `bound-final.log`,
+`debug-source-final.log`, `handler-final.log`, `restored.log`, plus failed
+`debug-source-direct.log` and `origins-{before,after}.log` for the withdrawn trial.
+
+- [x] Reproduce shared-binder candidate growth without changing source meaning.
+- [x] Reject the key-only repair and the broad direct-origin fallback.
+- [ ] Trace the existing binding declaration and typed/source dependency edges
+  that select a lexical environment after specialization. Binder identity alone
+  is insufficient; do not replace it with one canonical proof or environment.
+- [ ] Make selection require both the relevant lexical use and allocation
+  reachability, preserving existing origin order. Reuse immutable inputs; do not
+  add a second acceptance store, global alias scan or normalization fallback.
+- [ ] Pass `binder-environment-bound`, add it to ordinary acceptance, and retain
+  the Match-alias and old QuickSort byte gates before closing this A3 item.
+
+This audit does not complete A3 or justify a new Main publication. It also does
+not authorize removing needed source-origin data merely to reduce saved counts.
+
+Final focused checks: debug/O2/ASan+UBSan source and handler suites exit 0;
+the standalone bound gate exits 1 in all three builds with `2 -> 130`, without
+sanitizer diagnostics. No full acceptance rerun or speedup is claimed for this
+test-only audit. Implementation/header delta is zero; `tests/source_io.c`
+adds 37/deletes 10 lines (net +27). The next audit starts with
+`source_binding_intern`, `pg_synthesis_binding_input` and the existing prepared
+environment view, then `collect_inputs`/`collect_origin`; source allocation,
+typed binding and lexical environment must not be collapsed into one identity.
