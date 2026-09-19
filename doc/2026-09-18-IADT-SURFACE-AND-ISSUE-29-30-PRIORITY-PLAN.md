@@ -3351,10 +3351,12 @@ fallback, Core-key lookup or a second normalization cache to conceal this.
   frame pointers, non-PIE, leak detection and halt-on-error. Logs use
   `/tmp/a-program-authority-projection-restored-*`. Full acceptance of the
   withdrawn trial is not a gate for this restored test-only checkpoint.
-- [ ] Before another composition change, audit `context_map_extend`,
+- [x] Before another composition change, audit `context_map_extend`,
   `map_lift_work`, `substitution_build`, structural subject admission and
   elimination reindexing together. Define one representation contract that
   preserves explicit input admission as well as generated-output sharing.
+  Completed by the `a8aa05f` joint audit below. No projection normalization
+  was reintroduced; the generic A3/A4 cleanup and original gates remain open.
 
 Reproductions: `/tmp/a-program-authority-projection-raw-regression.log`
 (explicit-map failure), `/tmp/a-program-authority-projection-direct-iadt.log`
@@ -4259,3 +4261,56 @@ net +1; existing evaluation-image tests +4/-0; documentation separate.
 Cumulative implementation/header net is +1,701 from R76 and +4,117 from R0.
 The overall reduction requirement remains unmet; this change unifies lifetime
 management, not the representations or number of substitution results.
+
+### 2026-09-19: Explicit action recipes and dependent weakening audit
+
+Baseline: local `a8aa05f`. The joint audit resolves the earlier uncertain
+normalization proposal; it does not claim all reconstruction is necessary.
+
+| Path | Current contract and disposition |
+|---|---|
+| `pg_occurrence_projection` / unprojection | Preserve the supplied source/map recipe. Cancellation checks an exact weakening, not only equal erased results. Keep this distinction. |
+| `context_map_extend` / `pg_context_lift_request` | Build maps from typed images, retaining their classifier and dependency edges. Freshening/index lifting is structural work, not proof-history reconstruction. |
+| `substitution_build` | Check dependent suffix declarations against supplied images; preserve their proof premises. An accepted prefix avoids repeating its classifier checks. |
+| `map_dependency` / `structural_dependency` | Admit unaccepted explicit structures through ordinary rules, using the same conclusion index. Returning a different canonical subject is not admission of the requested subject. |
+| `elimination_instance` / mapped input action | Lift the generic motive's indices and scrutinee together, retaining the nominal formation separately. Composing only erased output maps loses this agreement. |
+
+Direct and indirect weakening may have identical Core, classifier and Context
+while carrying different explicit recipes. Interning each exact recipe and
+sharing each exact action is required; identifying these two recipes is not
+part of this repair. A future representation change must preserve admission
+and dependent input access together, rather than weaken either check.
+
+- [x] Extend `tests/iadt.c:indexed_match` with direct and two-stage weakening
+  into the same enlarged Context. Check equal Core/classifier, distinct exact
+  premise chains, and ordinary derivation validation. Run both through the
+  existing chunked motive-opening checks: dependent types, fresh binders,
+  unchanged nominal formation and repeat-query work reuse.
+- [x] Strict-debug IADT test passes on the current implementation.
+- [x] Optimized IADT/full `check-acceptance` and affected ASan/UBSan IADT/Core
+  checks pass, with leak detection and halt-on-error enabled. Strict-debug
+  Core also passes. All 2,460 exported results, including Solve steps, match
+  the preceding `a8aa05f` acceptance run. Logs use
+  `/tmp/a-program-authority-dependent-weakening-` with
+  `{debug,opt}-build.log`, `{debug,opt,asan}.log`,
+  `{debug,asan}-core.log` and `acceptance.log`.
+- [ ] Group publication with a substantive implementation epoch, not this
+  audit. Remote Main/rewrite remain `e6029f0`; no push follows from these tests.
+
+This audit changes no implementation/header lines. `tests/iadt.c` adds 11
+and removes 1 line (net +10); documentation is accounted separately.
+Cumulative implementation/header net remains +1,701 from R76 and +4,117 from
+R0. A3-A5/R2-R5 and the overall reduction requirement remain open.
+
+Other inspected proof reads are not interchangeable with raw Context data:
+`binding_level` reads certified Universe bounds, which `declared_type` alone
+does not store. `typed_field_step` uses a constructor's checked field telescope
+and preceding field reductions to justify a changed dependent classifier.
+Neither is a reason to invent another classifier cache or discard conversion
+premises. This does not certify every evidence consumer as minimal.
+
+A separate measurement found 1,029 empty versus 27,577 nonempty substitution
+initializations for imported QuickSort. Do not add a second trivial-substitution
+engine on this evidence: empty requests are already exact-key shared and this
+count alone does not demonstrate a material bottleneck. No such code change
+was made. Log: `/tmp/a-program-authority-substitution-empty-before.log`.

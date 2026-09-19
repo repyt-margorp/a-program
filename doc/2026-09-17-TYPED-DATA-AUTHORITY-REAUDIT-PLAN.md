@@ -1300,7 +1300,7 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   removed redundant head discovery, unchanged query-work/graph/allocation counts,
   passing debug/O2/ASan-UBSan acceptance, timing comparisons and the verified
   publication boundary. Other synchronous consumers remain open.
-- [ ] Audit weakening composition together with explicit map admission and
+- [x] Audit weakening composition together with explicit map admission and
   dependent elimination transport before normalizing typed scope paths.
   The 2026-09-19 trial was withdrawn: normalizing map application broke
   admission of an explicit nested projection recipe; normalizing only the
@@ -1310,6 +1310,17 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   `pg_occurrence_projection`, `context_map_extend`, `map_lift_work`,
   `substitution_build` and elimination reindexing as one contract. Do not repair
   exact-map disagreements with a new acceptance cache or erased-Core lookup.
+  Reaudit on `a8aa05f`: retain explicit action recipes under the current
+  representation. `context_map_extend` projects the existing typed images;
+  `substitution_build` checks their dependent declarations and retains supplied
+  image proofs; structural admission must produce the requested exact subject.
+  Elimination reindexing obtains its generic motive through the same lifted
+  input action. Merely equal Core/classifier results cannot replace any of
+  those map edges. This closes the joint audit, not a normalization migration.
+  The extended `indexed_match` test opens motives after both direct and
+  two-stage weakening, checks fresh dependent binders and an unchanged nominal
+  declaration, and verifies the ordinary derivations. Final tests and retained
+  dispatch reasons are tracked in the priority plan. A4/A5 remain incomplete.
 - [x] 2026-09-19 local work: map admission reuses a checked destination and
   checked prefix through ordinary pairing, without reconstructing a structural
   lift. Unknown destinations still require the existing lifting check. Keep

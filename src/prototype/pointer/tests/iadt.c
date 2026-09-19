@@ -913,7 +913,17 @@ static void indexed_match(void)
 	/* Opening a mapped motive lifts its indices and scrutinee, but must not
 	 * move the nominal declaration into the elimination's context. */
 	const struct pg_evidence *shadowed = pg_prove_projection(&typing, mc, match);
-	const struct pg_evidence *input_sources[] = {match, mapped_match, shadowed};
+	const struct pg_evidence *outer_context = pg_prove_context_extension(&typing, mc,
+		pg_binder(&graph), pg_prove_universe(&typing, mc, 0));
+	const struct pg_evidence *indirect = pg_prove_projection(&typing, outer_context, shadowed);
+	const struct pg_evidence *direct = pg_prove_projection(&typing, outer_context, match);
+	assert(indirect && direct && indirect != direct);
+	assert(pg_evidence_subject(indirect)->core == pg_evidence_subject(direct)->core);
+	assert(pg_evidence_classifier(indirect) == pg_evidence_classifier(direct));
+	assert(pg_evidence_premise(indirect, 1) == shadowed && pg_evidence_premise(direct, 1) == match);
+	common_rule(&typing, indirect);
+	common_rule(&typing, direct);
+	const struct pg_evidence *input_sources[] = {match, mapped_match, shadowed, indirect, direct};
 	for (size_t i = 0; i < sizeof(input_sources) / sizeof(*input_sources); ++i) {
 		const struct pg_occurrence *source = pg_evidence_subject(input_sources[i]);
 		struct pg_occurrence_input *query = pg_occurrence_input_request(&typing, source, 2);
