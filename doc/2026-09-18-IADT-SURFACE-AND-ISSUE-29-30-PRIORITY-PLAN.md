@@ -6518,9 +6518,9 @@ remains necessary even after a provisional query returns a structure.
   effect closure and rejection of an invalid raw Lambda body.
 - [x] Complete existing acceptance and affected sanitizer/image gates.
 - [x] Measure actual work, retained storage, timing and per-file delta.
-- [ ] Group with the continuation-carrier scan audit before Main publication.
-  `continuation_effect_structure` still calls synchronous
-  `pg_pi_constant_codomain`; do not claim every pending Pi consumer now yields.
+- [x] Group with the continuation-carrier scan audit before Main publication.
+  The remaining `continuation_effect_structure` synchronous call was addressed
+  in the following entry; combined publication is recorded below.
 
 This changes budget granularity, not the independence criterion, reduction or
 interning. Other synchronous consumers, including continuation-carrier probing,
@@ -6602,7 +6602,7 @@ No new request kind, persistent field, graph tag or serialization format is adde
 - [x] Run the integrated debug/O2, affected sanitizer and image gates.
 - [x] Measure timing, inner work, retained counts and per-file delta against
   Main, including the preceding Pi change.
-- [ ] Publish the combined verified scan-budget epoch to Main/rewrite.
+- [x] Publish the combined verified scan-budget epoch to Main/rewrite.
 
 Scope limit: this removes synchronous scans from these pending Pi structural
 consumers. Other source motive/annotation and kernel convenience functions may
@@ -6653,3 +6653,9 @@ Logs: `/tmp/a-program-authority-continuation-scan-` with
 `asan-{build,synthesis,source,image,handler}.log`, `property-{debug,opt}.log`,
 `timing{,-repeat}.jsonl`, `field-{main,pi,current}-counts.log`,
 `field-timing.jsonl` and `field-legacy-timing.jsonl`.
+
+Published on 2026-09-20: `d43848514c308c31120eb23204f78d07825638bc`,
+including preceding Pi commit `13d7b64`. Atomic non-force push advanced both
+remote Main and rewrite from `6e2d3e5`; both tips were verified. Combined
+documentation delta at publication was +169/-0, separate from implementation
+and tests above. This record is a documentation-only follow-up, not goal closure.
