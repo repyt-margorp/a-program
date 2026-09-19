@@ -1296,10 +1296,15 @@ static void pending_effect_contexts(struct pg_typing *typing)
 		struct pg_synthesis_job *application = rule_job(&synthesis, PG_APP_ELIM, NULL, 2,
 			(struct pg_synthesis_job *[]){function, argument});
 		struct pg_synthesis_job *application_type = pg_synthesis_classifier_structure(&synthesis, application);
+		struct pg_synthesis_job *normalized_application = pg_synthesis_normalize_classifier_jobs(&synthesis, b_context, application);
+		struct pg_synthesis_job *normalized_type = pg_synthesis_classifier_structure(&synthesis, normalized_application);
 		assert(!complete(&synthesis, application_type, PG_SYNTHESIS_DONE));
 		const struct pg_term *symbolic_result = pg_effect_type_spine(typing->graph,
 			pg_reference(typing->graph, pg_effect_equation_parameter(&effects, equation)), pg_reference(typing->graph, b));
 		assert(pg_synthesis_type_structure_result(application_type) == symbolic_result);
+		assert(!complete(&synthesis, normalized_type, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(normalized_type) == symbolic_result);
+		assert(!pg_synthesis_result(normalized_application));
 		struct pg_synthesis_job *application_term = pg_synthesis_term_structure(&synthesis, application);
 		assert(!complete(&synthesis, application_term, PG_SYNTHESIS_DONE));
 		const struct pg_term *expected_application = pg_application(typing->graph,

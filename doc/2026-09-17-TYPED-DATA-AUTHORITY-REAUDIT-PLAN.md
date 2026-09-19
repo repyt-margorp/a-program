@@ -1138,6 +1138,16 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 
 ### A4. Audit remaining structural consumers and remove duplication
 
+- [x] 2026-09-19: structural queries resume their selected dependencies instead
+  of rediscovering source preparation. Classifier WHNF, accepted-subject
+  priority and symbolic effect snapshots are preserved. QuickSort repeat
+  inspections after selection fall by 4,879 (classifier, term, declared type),
+  with identical Solve/retained-data counts. Request/Fold also share the
+  existing checked constant-codomain operation without duplicate prechecks.
+  Full debug/O2 acceptance and affected ASan/UBSan/image/handler-boundary tests
+  pass; the priority plan records measurements and epoch publication. This
+  does not close the remaining pending-construction or original A5 gates.
+
 - [x] 2026-09-19: IADT recursive-field classification inspects the application
   head before checking independence. Non-Self heads no longer scan arguments
   and then scan the whole type again. QuickSort comparison transitions fall

@@ -6150,3 +6150,54 @@ Per-file implementation: `evidence.c` +0/-3, `synthesis.c` +14/-15, net -4.
 Tests: `tests/core.c` +2/-0; documentation is separate. Cumulative R76 is
 +4,031/-1,996 = +2,035; R0 is +8,779/-4,328 = +4,451. Overall reduction and
 remaining A4/A5/R2-R5 gates are still unmet.
+
+### Selected structural inputs (baseline `b390a22`, 2026-09-19)
+
+- [x] Resume classifier and declared-type requests through their selected
+  dependency. A term request forwards a selected source adapter directly;
+  derivation producers need no source preparation. No additional state/cache.
+- [x] Preserve accepted-subject priority, classifier WHNF, symbolic effect
+  snapshots, post-check boundaries, and independent rule validation. Add a
+  pending normalized-application classifier regression before effect closure.
+- [x] Debug synthesis and full strict O2 acceptance pass. All 2,460 export
+  records match `b390a22`, including steps. ASan/UBSan synthesis/source pass.
+- [x] Full debug acceptance passes and matches all O2 export records. Sanitizer
+  image checks match all 1,218 baseline records, including steps; all 4,080
+  Handler save/resume boundary snapshots pass. Paired timings are below.
+- [ ] Publish the selected-input/scanning epoch with `d19f2cd`, `abb3f6d`,
+  `748f5ea`, and `b390a22` after verification; do not close A4/A5 or R2-R5.
+
+QuickSort source reinspection after selecting a dependency: classifier
+4,354 -> 0, term 469 -> 0, declared type 56 -> 0. Initial term source inspection
+also falls 442 -> 247 because derivation rules are already available. Other
+initial counts are unchanged. Solve remains 151,199 steps / 34,286 requests;
+Context, occurrence, map, lift, action, query, proof and arena counts match the
+baseline exactly. This does not eliminate initial structural interpretation or
+prove the complete pending-construction audit finished.
+
+Logs: `/tmp/a-program-authority-classifier-resume-` with `synthesis.log`,
+`acceptance.log`, `debug-acceptance.log`, `asan-{synthesis,source,image}.log`,
+`final-counts.log`, and `objects.log`. This increment: `synthesis.c` +33/-30,
+`tests/synthesis.c` +5/-0. Epoch versus Main `c5a584a`: implementation -15 net
+(`evidence.c` +8/-10, `iadt.c` +5/-2, `synthesis.c` +60/-76); tests +21/-0.
+Documentation is separate. The original cumulative net-negative gate remains
+unmet; this local reduction is not overall refactor completion.
+
+O2, CPU 2, 31 alternating pairs, no concurrent test/build: medians in
+milliseconds `b390a22`/current are Bool .483/.489; add .884/.880; length
+4.594/4.716; function-field 8.181/8.602; Vec append 6.607/6.623; QuickSort
+181.009/182.468; Handler 6.007/6.021; length save 4.995/5.129; QuickSort save
+181.177/180.412. Samples: `/tmp/a-program-authority-classifier-resume-timing.jsonl`.
+Reduced rediscovery does not imply a measured general speedup; small-input
+increases remain part of the performance record.
+
+The same paired protocol comparing Main `c5a584a` (the `0137156` implementation)
+with this epoch gives: Bool .493/.487; add .904/.887; length 5.068/4.724;
+function-field 9.052/7.914; Vec append 6.904/6.780; QuickSort 194.920/193.716;
+Handler 6.194/5.897; length save 5.360/5.092; QuickSort save 198.742/195.506.
+Samples: `/tmp/a-program-authority-selected-input-epoch-timing.jsonl`.
+All 2,460 optimized export results match Main after temporary paths and step
+counts are normalized; the Handler scheduling difference described above is
+not hidden by claiming identical epoch-wide steps. Full debug and optimized
+acceptance, focused sanitizer validation and the per-change audits together
+verify this selected-input/scanning epoch, not completion of the whole plan.
