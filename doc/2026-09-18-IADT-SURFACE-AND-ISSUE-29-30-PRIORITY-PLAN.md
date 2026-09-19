@@ -4098,3 +4098,43 @@ Tests: `source_io.c` +133/-11, `synthesis.c` +14/-0, net +136. Documentation
 is separate. This final Match increment alone is implementation +39/-40,
 net -1. Cumulative implementation remains R76 +3,430/-1,729 (net +1,701),
 R0 +8,217/-4,100 (net +4,117). Neither original net-negative gate is met.
+
+### 2026-09-19: Identity boundary declaration authority
+
+Baseline: published `89c011f`. This is a remaining A4 structural consumer,
+not a new Identity rule or a change to the meaning of type-family equality.
+
+- [x] Reproduce the proof-layout assumption in `pg_prove_family_identity_type`.
+  A valid family Context and substitution plus an invalid path reaches
+  `family_action_core` with a Context receipt instead of a type receipt.
+  The new `dependent_families` regression exits 139 before the correction.
+- [x] Read each binding's declared type and parent from the immutable Context.
+  The computational helper takes Core/Context, not a receipt from which to
+  reconstruct them. Exact family, map, endpoint and path proofs stay premises.
+  Do not add rule-specific fallback branches or reject all family Contexts.
+- [x] Focused strict-debug Identity and Core tests pass after the correction.
+  Extend the regression to accept unchanged common family parameters and to
+  assert that rejecting the malformed boundary adds no accepted proof.
+- [x] Full optimized acceptance, final focused debug and affected ASan/UBSan
+  Identity/Core/identity_io/derivation_io checks pass. All 2,460 normalized
+  export records and Solve steps equal published `89c011f`. Keep this local
+  until a substantial verified publication epoch.
+
+The temporary forward-ordered declaration array remains: later path types
+depend on already checked earlier paths. It now borrows Context declarations,
+not heterogeneous proof-premise layouts. Reversing validation merely to remove
+the array would permit inspection of earlier unchecked path inputs.
+Initial reproduction and debug logs: `/tmp/a-program-authority-identity-context-`
+`{before,build,debug-identity,debug-core}.log`. Original A3-A5, parent R2-R5 and
+both cumulative net-negative requirements remain open.
+
+Builds use `src/prototype/pointer/Makefile`, strict C11 warnings, `-O0 -g`,
+`-O2`, and `-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer
+-fno-pie -no-pie`; sanitizer runs enable leak detection and halt-on-error.
+Final logs use the same prefix: `opt.log`, `asan-build.log`,
+`asan-{identity,core,identity-io,derivation-io}.log`, and the debug logs above.
+The reproducer exercises rejection at the checked C API, not failure of a
+previously accepted surface program. The positive case keeps the family in
+the unchanged common prefix; it does not establish general family-path rules.
+Implementation: `evidence.c` +8/-10 (net -2); tests: `identity.c` +17/-0;
+documentation is separate. No new persistent structure or wire tag is added.

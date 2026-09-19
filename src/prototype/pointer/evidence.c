@@ -4353,12 +4353,10 @@ static int substitution_proof(const struct pg_typing *typing, const struct pg_ev
 /* Close the varied suffix before substituting the common prefix. One action
  * then consumes every boundary triple; this is not iterated reflexivity. */
 static const struct pg_term *family_action_core(struct pg_typing *typing,
-	const struct pg_evidence *source, const struct pg_evidence *left,
+	const struct pg_term *abstraction, const struct pg_context *context, const struct pg_evidence *left,
 	const struct pg_evidence *right, size_t common, size_t count,
 	const struct pg_evidence *const *paths)
 {
-	const struct pg_term *abstraction = pg_evidence_subject(source)->core;
-	const struct pg_context *context = pg_evidence_context(source);
 	for (size_t i = 0; i < count; ++i, context = context->parent)
 		abstraction = pg_lambda(typing->graph, context->binder, abstraction);
 	const struct pg_binding_value *bindings = pg_context_map_bindings(left->conclusion.map);
@@ -4402,7 +4400,7 @@ const struct pg_evidence *pg_prove_family_identity_type(struct pg_typing *typing
 	const struct pg_evidence *result = NULL;
 	const struct pg_evidence **premises = pg_alloc(&temporary, (count + 5) * sizeof(*premises));
 	const struct pg_occurrence **operands = pg_alloc(&temporary, (count + 3) * sizeof(*operands));
-	const struct pg_evidence **declarations = pg_alloc(&temporary, count * sizeof(*declarations));
+	const struct pg_context **declarations = pg_alloc(&temporary, count * sizeof(*declarations));
 	if (!premises || !operands || (count && !declarations)) goto done;
 	premises[0] = family;
 	premises[1] = left_substitution;
@@ -4417,13 +4415,13 @@ const struct pg_evidence *pg_prove_family_identity_type(struct pg_typing *typing
 		if (pg_alpha_equal(pg_evidence_subject(left_substitution->premises[i + 2])->core,
 			pg_evidence_subject(right_substitution->premises[i + 2])->core) != 1) goto done;
 	}
-	const struct pg_evidence *declaration = left_substitution->premises[0];
+	const struct pg_context *declaration = pg_evidence_context(left_substitution->premises[0]);
 	for (size_t i = count; i; --i) {
-		declarations[i - 1] = declaration->premises[1];
-		declaration = declaration->premises[0];
+		declarations[i - 1] = declaration;
+		declaration = declaration->parent;
 	}
 	for (size_t i = 0; i < count; ++i) {
-		const struct pg_term *acted = family_action_core(typing, declarations[i],
+		const struct pg_term *acted = family_action_core(typing, declarations[i]->declared_type, declarations[i]->parent,
 			left_substitution, right_substitution, common, i, paths);
 		const struct pg_term *path_type = pg_identity_instance(typing->graph, acted,
 			pg_evidence_subject(left_substitution->premises[common + i + 2])->core,
@@ -4435,7 +4433,7 @@ const struct pg_evidence *pg_prove_family_identity_type(struct pg_typing *typing
 	if (!ltype || !rtype) goto done;
 	if (!endpoint(typing, left, elements, context, pg_evidence_subject(ltype)->core)) goto done;
 	if (!endpoint(typing, right, elements, context, pg_evidence_subject(rtype)->core)) goto done;
-	const struct pg_term *acted = family_action_core(typing, family,
+	const struct pg_term *acted = family_action_core(typing, pg_evidence_subject(family)->core, pg_evidence_context(family),
 		left_substitution, right_substitution, common, count, paths);
 	const struct pg_term *core = pg_identity_instance(typing->graph, acted, pg_evidence_subject(left)->core, pg_evidence_subject(right)->core);
 	if (!core) goto done;
@@ -4479,7 +4477,7 @@ const struct pg_evidence *pg_prove_family_action(struct pg_typing *typing,
 	uint64_t hash;
 	const struct pg_evidence *existing = find_record(typing, PG_FAMILY_ACTION, pg_evidence_context(identity), NULL, 2, premises, NULL, &hash);
 	if (existing) return existing;
-	const struct pg_term *core = family_action_core(typing, term,
+	const struct pg_term *core = family_action_core(typing, pg_evidence_subject(term)->core, pg_evidence_context(term),
 		left_substitution, right_substitution, left_substitution->premise_count - 2 - count, count, paths);
 	if (!core) return NULL;
 	const struct pg_occurrence *operands[] = {pg_evidence_subject(term), pg_evidence_subject(identity)};

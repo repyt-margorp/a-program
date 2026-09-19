@@ -1077,6 +1077,16 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 
 ### A4. Audit remaining structural consumers and remove duplication
 
+- [x] 2026-09-19: Identity boundary validation reads the immutable declaration
+  Context rather than assuming every Context receipt has an ordinary type in
+  premise 1. A family extension puts its index Context there. The new negative
+  `dependent_families` case crashes before this correction (exit 139); after
+  it, the existing boundary check rejects the invalid witness without accepting
+  a proof. Common family parameters remain allowed. `family_action_core` takes
+  the existing Core and Context directly; no new proof tag, fallback, semantic
+  authority or equality rule is added. Forward dependency-check order remains
+  unchanged. See the priority plan for the final verification checkpoint;
+  this correction does not complete the remaining A4 consumer audit.
 - [x] 2026-09-19: an accepted map rebased to its exact destination Context
   proof returns that same map proof. Previously image rebase could choose
   another proof of the same typed image and rebuild a different map receipt.

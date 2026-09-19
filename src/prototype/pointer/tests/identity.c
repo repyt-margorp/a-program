@@ -2290,6 +2290,23 @@ static void dependent_families(struct pg_typing *typing,
 	const struct pg_evidence *vp = pg_prove_family_identity_type(typing, family, ls, rs, 1, &p, x, y);
 	const struct pg_evidence *vq = pg_prove_family_identity_type(typing, family, ls, rs, 1, &q, x, y);
 	assert(vp && vq && vp != vq);
+	/* A family declaration's second premise is its index Context, not a type.
+	 * A malformed boundary must be rejected without interpreting that receipt
+	 * as an ordinary variable declaration. */
+	const struct pg_evidence *family_scope = pg_prove_family_context_extension(typing, empty,
+		pg_binder(typing->graph), source, pg_prove_universe(typing, source, 1));
+	const struct pg_evidence *family_image = pg_prove_family_abstraction(typing, source,
+		pg_prove_universe(typing, source, 0));
+	const struct pg_evidence *family_map = pg_prove_substitution(typing, family_scope, empty, 1, &family_image);
+	const struct pg_evidence *constant = pg_prove_universe(typing, family_scope, 1);
+	const struct pg_evidence *endpoint = pg_prove_type_value(typing, universe);
+	assert(family_scope && family_image && family_map && constant && endpoint);
+	assert(pg_prove_family_identity_type(typing, constant, family_map, family_map,
+		0, NULL, endpoint, endpoint));
+	size_t proofs_before_boundary = typing->proofs.count;
+	assert(!pg_prove_family_identity_type(typing, constant, family_map, family_map,
+		1, &endpoint, endpoint, endpoint));
+	assert(typing->proofs.count == proofs_before_boundary);
 	const struct pg_occurrence *structure = pg_evidence_subject(vp);
 	assert(structure->map_count == 2 && structure->operand_count == 4);
 	assert(pg_occurrence_maps(structure)[0] == pg_evidence_context_map(ls));
