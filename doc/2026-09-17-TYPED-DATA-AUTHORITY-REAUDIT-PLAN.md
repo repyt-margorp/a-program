@@ -883,8 +883,18 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   semantic constructor pointer after inert saves of `&(Box Nat).mk` (not merely
   alpha renaming). The priority plan records the reduced counterexample and
   new cross-process `specialized-constructor` matrix. Replace this discovery
-  only after tracing a precise existing typed constructor-to-declaration edge;
-  deleting it or interning nominal layouts by shape is not a valid optimization.
+  only after tracing a precise allocation dependency; deleting it or interning
+  nominal layouts by shape is not a valid optimization.
+  Subsequent direct-origin implementation preserves matcher discovery without
+  requiring a prepared constructor proof. At source allocation registration,
+  resolve the owning input's lexical binder against its immutable allocation
+  Context once. Replace Context descriptors with direct references to those
+  eligible inputs in the existing index. Delete the writer's Context/candidate
+  join, not its matcher waiters or lexical/syntax checks. Imported inputs use
+  the same path before Solve. Specialized-constructor retention, 128 independent
+  same-matcher families and modified Match roots pass; full O2, affected debug
+  and sanitizer gates pass. The priority plan records measurements/publication.
+  This removes repeated joins, not the remaining same-binder candidate bound.
   The member-only binder-frontier trial reduced callbacks (132 -> 4), but
   failed retained QuickSort inert resave byte equality and was withdrawn.
   Preserving per-key registration order did not repair the failure. Nominal

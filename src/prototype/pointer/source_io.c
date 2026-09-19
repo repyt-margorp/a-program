@@ -402,31 +402,6 @@ static int append_binding_reference(void *owner, const struct pg_source_binding 
 	return index_binding(batch->collection, input);
 }
 
-struct allocation_reference_batch {
-	struct source_reference_batch *batch;
-	const struct pg_object *object;
-};
-
-static int append_allocation_reference(void *owner, struct pg_synthesis_job *job)
-{
-	struct allocation_reference_batch *input = owner;
-	if (pg_synthesis_allocation_object(input->batch->collection->synthesis, job) != input->object) return 0;
-	return append_source_reference(input->batch, job);
-}
-
-static int append_parameter_references(void *owner, const struct pg_object *object,
-	const struct pg_context *context)
-{
-	struct source_reference_batch *batch = owner;
-	struct allocation_reference_batch input = {batch, object};
-	/* Context reachability recovers this allocation, not every source use
-	 * in the same Context. Collect its lexical dependencies after selection. */
-	for (; context; context = context->parent)
-		if (pg_synthesis_visit_source_references(batch->collection->synthesis, context->binder,
-			append_allocation_reference, NULL, NULL, &input)) return -1;
-	return 0;
-}
-
 static int compare_origin(const void *left, const void *right)
 {
 	const struct ordered_origin *a = left, *b = right;
@@ -437,7 +412,7 @@ static int index_source_references(struct origin_collection *c, const void *key)
 {
 	struct source_reference_batch batch = {.collection = c};
 	int status = pg_synthesis_visit_source_references(c->synthesis, key,
-		append_source_reference, append_binding_reference, append_parameter_references, &batch);
+		append_source_reference, append_binding_reference, &batch);
 	if (!status && batch.count) {
 		/* Late binder discovery must not serialize in hash/registration order.
 		 * Unreached syntax is still staged by index_scope_origin. */

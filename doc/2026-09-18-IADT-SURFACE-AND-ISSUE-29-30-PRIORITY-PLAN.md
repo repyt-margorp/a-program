@@ -4681,11 +4681,13 @@ dependency; it is not a rule equating families with the same layout. Evidence:
 - [x] Show the minimal source fails after deleting reverse matcher discovery;
   restore production code and pass the complete debug source-image suite.
 - [x] Run the same matrix under O2 and ASan/UBSan. No test is weakened.
-- [ ] Before replacing the reverse join, trace the existing constructor input's
+- [x] Before replacing the reverse join, trace the existing constructor input's
   formation reference through generic application and qualified-member source
   transport. Establish whether it can retain the precise declaration allocation
   without building a proof solely for discovery. Do not add a new provenance
   cache or merge layouts as a substitute for this edge.
+  Resolved by the direct-origin registration below: the pre-Solve allocation
+  already supplies the Context; no formation evidence is needed for discovery.
 
 Current join counts on `parameter_origins`: before/after 128 unrelated aliases
 and one extra nominal family sharing a matcher, parameter callbacks 2/3,
@@ -4714,3 +4716,107 @@ nominal declaration's parameter/field Contexts, so there is no unique inverse
 from the constructor pointer either. The next design must preserve the precise
 source allocation dependency through this pre-Solve boundary, using an existing
 edge if available; the general matcher reverse scan remains until then.
+
+### 2026-09-19: direct allocation-origin registration
+
+Baseline: `b2bbf33`. Preserve matcher discovery, but resolve the source binding
+relation once when its owning declaration/Match input registers. Store a direct
+reference to that same source job under its family/matcher/Self when its lexical
+binder belongs to its allocation Context. Unrelated named aliases retain their
+ordinary lexical references, not reverse allocation-origin edges. Explicitly
+selected aliases and invalid roots still serialize through the producer graph.
+
+Replace `ALLOCATION_CONTEXT` entries with `ALLOCATION_ORIGIN`, remove the copied
+Context pointer and parameter visitor, and delete the writer's Context-prefix
+scan plus object/candidate join. This changes no Core tag, typed rule, equality,
+acceptance, descriptor or wire format. Raw imported allocations register the
+same edges before Solve. A direct edge selects only a candidate: syntax and
+lexical reachability checks and ordered serialization remain unchanged.
+
+- [x] Implement direct edges using the existing source-reference index; remove
+  `register_allocation_context` and writer parameter/allocation batch callbacks.
+- [x] Pass focused debug source-image tests, including specialized constructors,
+  and byte-identical inert retained QuickSort resave.
+- [x] Extend independent same-matcher declarations to 128 and verify constant
+  candidate counts, unchanged selected bytes, aliases and invalid-root behavior.
+- [x] Verify the full optimized suite, affected debug/sanitizer/image gates;
+  compare exact exports/steps, allocation counts and source/save timings.
+- [x] Record per-file deltas and limitations before deciding publication of this
+  epoch together with the preceding local premise cleanup and provenance tests.
+
+Do not claim every A3 bound is solved: eligible inputs sharing a source binder
+still need syntax/ancestry filtering. Match origins use their own immutable
+prefix, not a union of other uses' Contexts. Required checks include the existing
+retained/modified Match inputs and independent rejected roots; shared Self does
+not authorize choosing a different source occurrence's binding context.
+
+Validation: `make -C src/prototype/pointer -j2
+BUILD=/tmp/a-program-authority-origin-edge-opt check-acceptance` passes. All
+2,460 export records, including result and step count, match the previous
+premise-cleanup full suite after normalizing only temporary paths and order.
+Strict O0 debug and ASan/UBSan core, IADT, synthesis, Identity and complete
+`source_io.sh` pass. Sanitizers use `-O1 -g -fsanitize=address,undefined
+-fno-omit-frame-pointer -fno-pie -no-pie`, leak detection and halt-on-error.
+Logs: `/tmp/a-program-authority-origin-edge-{opt,debug-*,asan-*}.log`.
+Retained QuickSort read/write at zero steps is byte-identical to
+`/tmp/a-program-authority-case-scopes-common.a`; pending remains pending.
+
+Fresh source measurements against published `193708a2` (including the earlier
+premise cleanup in this epoch): source-reference entries fall from 142 to 134
+for length, 192 to 182 for function-field, and 1,332 to 1,326 for imported
+QuickSort. Main-arena used bytes fall by 512, 640 and 384 respectively; reserved
+capacity is unchanged. Proofs, typed occurrences, Contexts, maps, lifts, actions,
+typed queries and substitution storage are unchanged. Solve steps remain
+9,120 / 12,466 / 146,564. Counts: `...-{length,field,qsort}-{before,after}.log`.
+
+O2 timing: CPU 2, one warmup and 31 alternating fresh-process pairs, no concurrent
+tests/builds. Medians in milliseconds, published Main / this epoch:
+
+| Input | Source | Source plus save |
+|---|---:|---:|
+| Bool | .511 / .509 | not measured |
+| add | .947 / .971 | not measured |
+| length | 5.725 / 5.719 | 6.266 / 6.226 |
+| function-field | 9.823 / 9.724 | not measured |
+| Vec append | 6.904 / 7.086 | not measured |
+| imported QuickSort property | 204.321 / 203.736 | 195.228 / 194.741 |
+
+Source and source/save are separate timing blocks, not subtractable component
+costs. Mixed small changes do not establish a general speedup. This is not a
+replacement for the R0 performance gate. Raw samples: `...-timing.log`.
+
+Per-file epoch delta from published `193708a2`, excluding documentation:
+
+| File under `src/prototype/pointer/` | Added | Deleted | Net |
+|---|---:|---:|---:|
+| `derivation.c` | 2 | 6 | -4 |
+| `evidence.c` | 1 | 0 | +1 |
+| `evidence.h` | 3 | 0 | +3 |
+| `function_graph.c` | 4 | 12 | -8 |
+| `source_io.c` | 1 | 26 | -25 |
+| `synthesis.c` | 20 | 40 | -20 |
+| `synthesis.h` | 3 | 4 | -1 |
+| `tests/core.c` | 4 | 0 | +4 |
+| `tests/iadt.c` | 1 | 1 | 0 |
+| `tests/source_io.c` | 28 | 58 | -30 |
+| `tests/source_io.sh` | 1 | 1 | 0 |
+
+Implementation/header total: +34/-88, net **-54**. Tests: +34/-60, net **-26**;
+replaced descriptor-inspection helpers are removed, negative cases retained.
+This direct-origin step alone removes 37 implementation/header lines and 32
+test lines. Cumulative implementation/header totals remain positive:
+R76 `3a3bf550` +3,536/-1,843 = **+1,693**; R0 `4657cc6`
++8,290/-4,181 = **+4,109**. The original reduction gate remains unmet.
+
+Publication scope: immutable premise borrowing (`8ee3826`), the specialized
+constructor regression (`b2bbf33`), and direct allocation-origin registration.
+No Core or artifact format changes. This coherent removal of reconstruction
+and copy-only paths does not complete A3-A5 or parent R2-R5.
+
+The affected ASan/UBSan `image_origins.sh` gate also passes
+(`...-asan-origins-final.log`). Its initial invocation lacked the CLI binary;
+after building that binary with identical sanitizer flags, the complete runner
+passes. No test input or assertion was changed to pass it.
+All epoch publication gates pass. Prepare the commit and atomic non-force push
+to Main and `rewrite/pointer-core-hott`; the Git remote records its resulting
+revision. Remaining A3-A5/R2-R5 gates above stay open.
