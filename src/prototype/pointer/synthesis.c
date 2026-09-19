@@ -393,16 +393,21 @@ struct pg_synthesis_job {
 		struct pg_identity_face_work *face;
 		struct pg_identity_formation_work *formation;
 		struct {
-			union { struct pg_whnf_job *whnf; struct pg_nf_job *nf; } normalizing;
-			/* Derivation checking may normalize while retaining its premises. */
-			struct derivation_state *derivation;
+			union {
+				union { struct pg_whnf_job *whnf; struct pg_nf_job *nf; } normalizing;
+				struct fold_structure_state *fold_structure;
+			};
+			/* Derivation checks retain premises; structural queries retain scans. */
+			union {
+				struct derivation_state *derivation;
+				struct pg_comparison structural_probe;
+			};
 		};
 		struct index_transport_state *index_transport;
 		struct transport_scope *transport_scope;
 		struct substitution_state *substitution;
 		struct family_state *family;
 		struct derivation_input_state *derivation_input;
-		struct fold_structure_state *fold_structure;
 		struct effect_substitution_state *effect_substitution;
 		struct {
 			struct pg_function_source_cursor *function_source;
@@ -471,6 +476,8 @@ void pg_synthesis_destroy(struct pg_synthesis *synthesis)
 			struct pg_synthesis_job *job = (struct pg_synthesis_job *)entry;
 			switch (job->role) {
 			case CONVERSION_JOB: pg_conversion_destroy(&job->comparison); break;
+			case TERM_STRUCTURE_JOB: case CLASSIFIER_STRUCTURE_JOB:
+				pg_comparison_destroy(&job->structural_probe); break;
 			case FUNCTION_GRAPH_JOB: pg_function_graph_destroy(&job->function_graph); break;
 			case FACE_JOB: pg_identity_face_destroy(job->face); break;
 			case FORMATION_JOB: pg_identity_formation_destroy(job->formation); break;
@@ -2398,6 +2405,8 @@ static void wake(struct pg_synthesis *synthesis, struct pg_synthesis_job *job, i
 static void finish(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
 	enum pg_synthesis_status status)
 {
+	if (job->role == TERM_STRUCTURE_JOB || job->role == CLASSIFIER_STRUCTURE_JOB)
+		pg_comparison_destroy(&job->structural_probe);
 	if (status == PG_SYNTHESIS_DONE && job->role == EXPRESSION_JOB && job->match && job->result) {
 		struct source_metadata *origin = register_source_metadata(synthesis, pg_evidence_subject(job->result));
 		if (!origin) status = PG_SYNTHESIS_ERROR;
@@ -8479,6 +8488,20 @@ static const struct pg_term *continuation_effect_structure(struct pg_synthesis *
 		pg_effect_join_term(synthesis->typing->graph, row, following), result);
 }
 
+static enum pg_comparison_status structural_independence(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *job, const struct pg_term *term, const struct pg_object *binder)
+{
+	struct pg_comparison *work = &job->structural_probe;
+	if (!work->state && pg_independence_init(work, term, binder)) {
+		finish(synthesis, job, PG_SYNTHESIS_ERROR);
+		return PG_COMPARISON_ERROR;
+	}
+	enum pg_comparison_status status = pg_comparison_advance(work, 1);
+	if (status == PG_COMPARISON_PENDING) enqueue(synthesis, job);
+	if (status == PG_COMPARISON_ERROR) finish(synthesis, job, PG_SYNTHESIS_ERROR);
+	return status;
+}
+
 static void pi_application_structure_step(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *job, const struct pg_term *type, struct pg_synthesis_job *argument)
 {
@@ -8489,7 +8512,9 @@ static void pi_application_structure_step(struct pg_synthesis *synthesis,
 		if (!job->right) {
 			/* A constant codomain does not wait for argument conversion.
 			 * Once the argument is requested, dependence is already known. */
-			if (pg_term_independent(codomain, binder) == 1) {
+			enum pg_comparison_status scan = structural_independence(synthesis, job, codomain, binder);
+			if (scan == PG_COMPARISON_PENDING || scan == PG_COMPARISON_ERROR) return;
+			if (scan == PG_COMPARISON_EQUAL) {
 				job->type_structure = codomain;
 				finish(synthesis, job, PG_SYNTHESIS_DONE);
 				return;
@@ -8713,7 +8738,9 @@ static void type_rule_structure_step(struct pg_synthesis *synthesis, struct pg_s
 		const struct pg_term *domain;
 		const struct pg_object *binder;
 		if (!pg_pi_view(left, &domain, &binder, &job->type_structure)) goto unsupported;
-		if (pg_term_independent(job->type_structure, binder) != 1) goto unsupported;
+		enum pg_comparison_status scan = structural_independence(synthesis, job, job->type_structure, binder);
+		if (scan == PG_COMPARISON_PENDING || scan == PG_COMPARISON_ERROR) return;
+		if (scan != PG_COMPARISON_EQUAL) goto unsupported;
 		break;
 	}
 	case PG_PI_CODOMAIN:

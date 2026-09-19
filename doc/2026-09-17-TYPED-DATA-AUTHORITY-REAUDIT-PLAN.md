@@ -2275,3 +2275,12 @@ ordinary Solve inputs survive. Debug/O2 acceptance and affected sanitizers pass,
 with unchanged image results and Solve work. Retained QuickSort graph storage
 falls by 122,400 bytes; implementation grows by 16 lines. This is a physical
 lifetime correction, not completion of A4/A5 or the net-negative LOC gate.
+
+### Pending Pi scan budget
+
+The priority plan's September 20 entry makes application/constant-codomain
+structure scans resumable using the existing comparison walker. Accepted typed
+data can preempt unfinished scans; Job size and acceptance rules are unchanged.
+Full debug/O2 and affected sanitizer gates pass. Keep this local until the
+continuation-carrier consumer is audited for the same synchronous scan. Other
+A4 work, final A5 and the cumulative net-negative requirement remain open.

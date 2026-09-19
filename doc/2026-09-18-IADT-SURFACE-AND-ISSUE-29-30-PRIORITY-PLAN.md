@@ -6496,3 +6496,87 @@ from `434b2a0`; both remote tips were verified. Documentation in that commit
 was priority plan +74/-0 and parent plan +9/-0, separate from code/tests above.
 This publication record is documentation only; no issue or whole-goal closure
 is implied.
+
+### A4 pending Pi scan budget (2026-09-20)
+
+Baseline Main `6e2d3e5`. The preceding turn was progress: reader-lifetime
+implementation, regressions, measurements and publication. Continue target 4
+of the Solver audit, not another artifact format or acceptance authority.
+
+Pending Pi application and constant-codomain projections synchronously drain
+`pg_term_independent`. They must still expose structure before Handler effect
+closure, but a large codomain need not be traversed in one outer Solve turn.
+Resume the existing comparison walker once per turn inside the same structural
+query. Reuse the job's role-specific storage; do not add a job kind or cache.
+Constant codomains must not wait for argument evidence. Ordinary rule checking
+remains necessary even after a provisional query returns a structure.
+
+- [x] Reproduce the unbounded transition with a 128-layer pending type:
+  the new 32-step assertion fails on Main and passes after the change.
+- [x] Implement resumable scans and cleanup on completion and cancellation.
+  Focused strict debug synthesis passes, including chunks 1/64, cancellation,
+  effect closure and rejection of an invalid raw Lambda body.
+- [x] Complete existing acceptance and affected sanitizer/image gates.
+- [x] Measure actual work, retained storage, timing and per-file delta.
+- [ ] Group with the continuation-carrier scan audit before Main publication.
+  `continuation_effect_structure` still calls synchronous
+  `pg_pi_constant_codomain`; do not claim every pending Pi consumer now yields.
+
+This changes budget granularity, not the independence criterion, reduction or
+interning. Other synchronous consumers, including continuation-carrier probing,
+remain to be audited; no wall-clock bound or whole A4 completion is claimed.
+
+Final checks: full strict debug and O2 `check-acceptance` pass. All 2,460
+export results match Main after temporary-path and step-count normalization.
+Affected ASan/UBSan synthesis, Source IO, image CLI and 5,125 Handler save
+boundaries pass with leak/error halting; all 1,218 sanitizer image results
+match Main. This is not the parent's final full sanitizer acceptance gate.
+There were no source/test edits after the final builds.
+
+Separately generated retained-property images differ by one resume step between
+debug/O2 (14 export records), not by result. On the same O2-generated image,
+both binaries return `main == ascending` in 703,441 steps, at chunks 1/64.
+Do not report all steps identical or infer a semantic mismatch from separately
+generated work order. Other existing equality and invalid-claim checks remain
+unchanged.
+
+Imported QuickSort property, same source, GDB before/after:
+
+| Quantity | Main | Candidate |
+|---|---:|---:|
+| Outer Solve steps | 151,199 | 153,929 |
+| Requests | 34,286 | 33,763 |
+| Typed queries / proofs | 9,987 / 88,019 | 10,002 / 88,020 |
+| Occurrences / Contexts | 74,584 / 4,090 | 74,584 / 4,090 |
+| Graph arena used bytes | 60,722,336 | 60,497,952 |
+| Substitution arena used bytes | 11,291,232 | 11,286,912 |
+| Job size bytes | 336 | 336 |
+
+Instrumentation at independence initialization/destruction counts 2,388 ->
+2,383 scans, 106,115 -> 84,297 internal transitions and 31,298 -> 25,474 tasks.
+Of 491 candidate structural scans, 451 are discarded while pending because
+accepted typed structure becomes available; they are not restarted. Existing
+index-transport scanning stays 508 queries / 20,129 transitions. The remaining
+synchronous scans still reach 1,250 transitions. These are independence-work
+counters, not all compiler work; extra outer steps expose formerly hidden work.
+
+Isolated O2 timings, CPU 2, warmup and 31 alternating pairs, median ms
+Main/candidate: Bool .467/.462; add .837/.841; length 4.746/4.665;
+function-field 8.513/7.821; Vec append 6.387/6.340; QuickSort 175.795/173.197;
+Handler 5.553/5.620; length save 4.903/4.910; QuickSort save 190.343/182.212.
+The second 31-pair run gives function-field 8.257/8.027, QuickSort
+177.797/175.282, Handler 5.664/5.709 and QuickSort save 177.827/174.369.
+No universal speedup or final R0 performance gate is claimed.
+
+Per-file delta: `synthesis.c` +33/-6 = **+27**; `tests/synthesis.c` +66/-0.
+Executable text +288 bytes; data/BSS unchanged. Cumulative R0 implementation/
+header delta +9,037/-4,654 = **+4,383**: the net-negative gate remains unmet.
+This is bounded-work progress, not a code-size reduction or whole-goal closure.
+
+Logs: `/tmp/a-program-authority-pi-scan-` with `{debug,acceptance}.log`,
+`asan-{build,synthesis,source,image,handler}.log`, `{before,after}-{counts,work}.log`,
+`property-{debug,opt}.log`, and `timing{,-repeat}.jsonl`. Baseline test failure
+is in `baseline.log`: the synchronous scan completed within 32 outer steps,
+hiding its larger inner traversal. The strict build and sanitizer flags match the preceding
+epoch. Keep this verified change local until the remaining continuation scan
+forms a coherent publication unit.

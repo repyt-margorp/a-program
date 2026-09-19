@@ -642,6 +642,71 @@ static void application_substitution_sharing(struct pg_typing *typing)
 	puts("application substitution: provisional shape and checked classifier share exact pending work and binders");
 }
 
+static void pending_pi_scan(struct pg_typing *typing)
+{
+	const struct pg_evidence *empty = pg_prove_empty_context(typing);
+	const struct pg_effect_row *row = pg_effect_row(typing->graph, 0, NULL);
+	const struct pg_evidence *large = pg_prove_universe(typing, empty, 0);
+	for (size_t i = 0; i < 128; ++i)
+		large = pg_prove_thunk_type(typing, pg_prove_computation_type(typing, PG_TOTALITY_TOTAL, row, large));
+	assert(large);
+	for (unsigned chunk = 0; chunk <= 64; chunk = chunk ? 64 * chunk : 1) {
+		struct pg_whnf_work normalization;
+		struct pg_effect_inference effects;
+		struct pg_synthesis synthesis;
+		assert(!pg_whnf_work_init(&normalization, typing->graph));
+		assert(!pg_effect_inference_init(&effects, typing->graph));
+		assert(!pg_synthesis_init(&synthesis, typing, &normalization, PG_DEFINITION_EXPLICIT_THUNK));
+		struct pg_effect_equation *equation = pg_effect_equation(&effects, row);
+		struct pg_synthesis_job *root = pg_synthesis_evidence(&synthesis, empty);
+		struct pg_synthesis_job *universe = rule_job(&synthesis, PG_UNIVERSE_FORM, NULL, 1, &root);
+		const struct pg_object *binder = pg_binder(typing->graph);
+		struct pg_synthesis_job *context = rule_job(&synthesis, PG_CONTEXT_EXTEND, binder, 2,
+			(struct pg_synthesis_job *[]){root, universe});
+		struct pg_synthesis_job *large_job = pg_synthesis_evidence(&synthesis, large);
+		struct pg_derivation_input formation = {.rule = PG_RETURN_TYPE_FORM, .count = 1};
+		struct pg_synthesis_job *carrier = pg_synthesis_rule(&synthesis, &formation, &large_job, &effects, equation);
+		struct pg_synthesis_job *codomain = rule_job(&synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
+			(struct pg_synthesis_job *[]){context, carrier});
+		struct pg_synthesis_job *pi = rule_job(&synthesis, PG_PI_FORM, NULL, 2,
+			(struct pg_synthesis_job *[]){context, codomain});
+		struct pg_synthesis_job *pi_shape = pg_synthesis_type_structure(&synthesis, pi);
+		complete(&synthesis, pi_shape, PG_SYNTHESIS_DONE);
+		while (synthesis.ready) pg_synthesis_advance(&synthesis, 1);
+		/* Provisional application shape does not accept this invalid raw body. */
+		struct pg_synthesis_job *variable = rule_job(&synthesis, PG_VARIABLE, binder, 1, &context);
+		struct pg_synthesis_job *lambda = rule_job(&synthesis, PG_LAMBDA_INTRO, NULL, 2,
+			(struct pg_synthesis_job *[]){pi, variable});
+		struct pg_synthesis_job *application = rule_job(&synthesis, PG_APP_ELIM, NULL, 2,
+			(struct pg_synthesis_job *[]){lambda, variable});
+		struct pg_synthesis_job *constant = rule_job(&synthesis, PG_PI_CONSTANT_CODOMAIN, NULL, 1, &pi);
+		struct pg_synthesis_job *shapes[] = {pg_synthesis_classifier_structure(&synthesis, application),
+			pg_synthesis_type_structure(&synthesis, constant)};
+		pg_synthesis_advance(&synthesis, 32);
+		for (size_t i = 0; i < 2; ++i) assert(pg_synthesis_status(shapes[i]) == PG_SYNTHESIS_PENDING);
+		assert(!pg_synthesis_result(pi) && !pg_synthesis_result(application));
+		if (chunk) {
+			for (size_t steps = 0; synthesis.ready; ++steps) {
+				assert(steps < 10000);
+				pg_synthesis_advance(&synthesis, chunk);
+			}
+			const struct pg_term *domain, *expected;
+			const struct pg_object *actual_binder;
+			assert(pg_pi_view(pg_synthesis_type_structure_result(pi_shape), &domain, &actual_binder, &expected));
+			for (size_t i = 0; i < 2; ++i) assert(pg_synthesis_type_structure_result(shapes[i]) == expected);
+			assert(!pg_synthesis_result(pi) && !pg_synthesis_result(application));
+			pg_effect_inference_seal(&effects);
+			assert(pg_synthesis_effect_inference(&synthesis, &effects));
+			complete(&synthesis, constant, PG_SYNTHESIS_DONE);
+			complete(&synthesis, application, PG_SYNTHESIS_REJECTED);
+		}
+		pg_synthesis_destroy(&synthesis);
+		pg_effect_inference_destroy(&effects);
+		pg_whnf_work_destroy(&normalization);
+	}
+	puts("pending Pi: dependency scans yield, cancel and preserve provisional versus accepted structure");
+}
+
 static void pending_effect_contexts(struct pg_typing *typing)
 {
 	static const struct pg_object_class label_class = {"pending-context-effect"};
@@ -6728,6 +6793,7 @@ int main(void)
 	graded_application(&typing);
 	effect_equations(&typing);
 	pending_effect_contexts(&typing);
+	pending_pi_scan(&typing);
 	accepted_context_structure(&typing);
 	application_substitution_sharing(&typing);
 	effect_expectations(&typing);
