@@ -7889,3 +7889,34 @@ append 6.248/6.213; 6.243/6.229, QuickSort 169.299/168.659;
 for each pair. Results are mixed; do not claim a universal speedup or close the
 R0 performance gate. Logs:
 `/tmp/a-program-source-workspace-image-timing{,-repeat}.jsonl`.
+
+### A4 shared reader workspace follow-up (2026-09-20)
+
+Extend `12369f7`'s source-reader ownership fix through its shared Core and
+Context readers. `graph_io.c` keeps relocation tables, descriptor edge lists
+and temporary payload/scalar arrays in its existing `seen` DAG arena.
+The descriptor API already forbids retaining those input arrays; declaration,
+layout, operation, effect and host restorers consume/copy them. Actual graph
+nodes, external names and returned root arrays retain their existing owner.
+`context_payload.c` releases the local `all` lookup array; `context_io.c`
+releases wire metadata. Returned Context selections and Terms remain alive.
+No new lifetime API, schema version, trusted flag or second Solve path.
+
+- [x] Add a raw operation-graph read/resave/fresh-read regression preserving
+  nominal label distinction, shared request roots and signature payloads.
+- [x] Graph-only strict O2 full acceptance passes, then repeat after the Context
+  changes: both runs' 2460 export/step records match Main `dce599d` exactly.
+- [ ] Final full debug and ASan/UBSan acceptance with leak detection/halt.
+- [ ] Measure retained allocation and identical-image timing versus Main.
+- [ ] Review the combined source/Core/Context reader change and publish only
+  after the reader epoch gates pass. R2-R5/A4-A5 remain open.
+
+Current diff from Main: source_io.c +19/-16, graph_io.c +9/-8,
+context_io.c +10/-5, context_payload.c +10/-5: **+48/-34 = +14**.
+Tests separately: source_io.c +8/-0, graph_acceptance.c +14/-0,
+program.c +25/-1 (the earlier call-order regression). Cumulative R0
+implementation/header totals **+9186/-4802 = +4384**; no code-reduction
+completion is claimed. This scope does not include changing returned-root
+ownership or eliminating the remaining syntax-reader node lookup allocation.
+Logs: `/tmp/a-program-{graph,reader}-workspace-opt.log`,
+`/tmp/a-program-reader-workspace-asan.log`.

@@ -269,6 +269,20 @@ static void operation_graph(FILE *file, struct pg_graph *graph, int writing)
 		const struct pg_term *argument, *continuation;
 		assert(pg_computation_request_view(roots[4], &label, &argument, &continuation));
 		assert(label == a && argument == roots[6]);
+		/* Descriptor owners and returned roots outlive the reader's wire tables. */
+		FILE *resaved = tmpfile();
+		assert(resaved && !pg_graph_write_descriptors(resaved, count, roots, &pg_builtin_graph_codec, graph));
+		rewind(resaved);
+		struct pg_graph copy;
+		assert(!pg_graph_init(&copy));
+		size_t copied_count;
+		const struct pg_term *const *copied;
+		assert(!pg_graph_read_descriptors(resaved, &copy, 1000, 100,
+			&pg_builtin_graph_codec, &copy, &copied_count, &copied));
+		assert(copied_count == count && copied[4] == copied[5] && copied[0] != copied[1]);
+		assert(pg_operation_label_types(copied[0]->as.reference, &payload, &response));
+		assert(payload == copied[6] && response == copied[6] && !fclose(resaved));
+		pg_graph_destroy(&copy);
 		const struct pg_evidence *empty = pg_prove_empty_context(&typing);
 		const struct pg_evidence *u = pg_prove_universe(&typing, empty, 0);
 		assert(pg_operation_declaration_at(&typing, a, u, u));

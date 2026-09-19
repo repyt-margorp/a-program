@@ -338,7 +338,7 @@ static int read_objects(FILE *file, struct pg_graph *graph, size_t count, size_t
 					if (!id) break;
 					if (!*available) return -1;
 					--*available;
-					*next = pg_alloc(graph, sizeof(**next));
+					*next = pg_alloc(&seen->storage, sizeof(**next));
 					if (!*next) return -1;
 					(*next)->value = id;
 					next = &(*next)->next;
@@ -350,7 +350,7 @@ static int read_objects(FILE *file, struct pg_graph *graph, size_t count, size_t
 					if (!item) break;
 					if (item != 1 || !*available) return -1;
 					--*available;
-					*next = pg_alloc(graph, sizeof(**next));
+					*next = pg_alloc(&seen->storage, sizeof(**next));
 					if (!*next || pg_wire_read_u64(file, &(*next)->value)) return -1;
 					next = &(*next)->next;
 					++record->scalar_count;
@@ -373,14 +373,14 @@ static const struct pg_object *restore_object(struct pg_graph *graph, struct obj
 {
 	if (input->object) return input->object;
 	if (!input->name || !codec || !codec->restore) return NULL;
-	const struct pg_term **payload = pg_alloc(graph, input->count * sizeof(*payload));
+	const struct pg_term **payload = pg_alloc(&seen->storage, input->count * sizeof(*payload));
 	if (!payload) return NULL;
 	size_t i = 0;
 	for (const struct payload_edge *edge = input->first; edge; edge = edge->next) {
 		if (edge->value > count) return NULL;
 		payload[i++] = terms[edge->value - 1];
 	}
-	uint64_t *scalars = pg_alloc(graph, input->scalar_count * sizeof(*scalars));
+	uint64_t *scalars = pg_alloc(&seen->storage, input->scalar_count * sizeof(*scalars));
 	if (!scalars) return NULL;
 	i = 0;
 	for (const struct payload_edge *item = input->scalars; item; item = item->next) scalars[i++] = item->value;
@@ -414,13 +414,14 @@ int pg_graph_read_descriptors(FILE *file, struct pg_graph *graph, size_t limit, 
 	if (pg_wire_read_u64(file, &no) || pg_wire_read_u64(file, &nt) || pg_wire_read_u64(file, &nr)) return -1;
 	if (no > limit || nt > limit - no || nr > limit - no - nt) return -1;
 	if (limit > SIZE_MAX / sizeof(struct object_input)) return -1;
-	struct object_input *objects = pg_alloc(graph, (size_t)no * sizeof(*objects));
-	const struct pg_term **terms = pg_alloc(graph, (size_t)nt * sizeof(*terms));
-	const struct pg_term **result = pg_alloc(graph, (size_t)nr * sizeof(*result));
-	if (!objects || !terms || !result) return -1;
 	struct pg_dag seen = {0};
 	int status = -1;
 	if (pg_dag_init(&seen, NULL, NULL)) goto done;
+	/* Relocation and descriptor assembly are borrowed only during this read. */
+	struct object_input *objects = pg_alloc(&seen.storage, (size_t)no * sizeof(*objects));
+	const struct pg_term **terms = pg_alloc(&seen.storage, (size_t)nt * sizeof(*terms));
+	const struct pg_term **result = pg_alloc(graph, (size_t)nr * sizeof(*result));
+	if (!objects || !terms || !result) goto done;
 	size_t available = limit - (size_t)no - (size_t)nt - (size_t)nr;
 	if (read_objects(file, graph, (size_t)no, name_limit, codec, context, (size_t)nt, &available, objects, &seen)) goto done;
 	for (size_t i = 0; i < nt; ++i) {

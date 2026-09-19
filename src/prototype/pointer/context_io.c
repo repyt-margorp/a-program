@@ -1,6 +1,7 @@
 #include "context_io.h"
 #include "context_payload.h"
 #include "wire.h"
+#include <stdlib.h>
 #include <string.h>
 
 static const char magic[8] = "APGCTX\3";
@@ -52,12 +53,16 @@ int pg_contexts_read_descriptors(FILE *file, struct pg_typing *typing,
 	uint64_t nm;
 	if (fread(header, 1, 8, file) != 8 || memcmp(header, magic, 8)) return -1;
 	if (pg_wire_read_u64(file, &nm) || nm < 2 || nm - 2 > limit || nm > SIZE_MAX / sizeof(uint64_t)) return -1;
-	uint64_t *metadata = pg_alloc(typing->graph, (size_t)nm * sizeof(*metadata));
+	uint64_t *metadata = malloc((size_t)nm * sizeof(*metadata));
 	if (!metadata) return -1;
-	for (size_t i = 0; i < nm; ++i) if (pg_wire_read_u64(file, &metadata[i])) return -1;
+	int status = -1;
+	for (size_t i = 0; i < nm; ++i) if (pg_wire_read_u64(file, &metadata[i])) goto done;
 	size_t nr;
 	const struct pg_term *const *roots;
-	if (pg_graph_read_descriptors(file, typing->graph, limit, name_limit, codec, owner, &nr, &roots)) return -1;
-	if (metadata[0] > nr / 2 || nr - 2 * (size_t)metadata[0] > limit - (size_t)(nm - 2)) return -1;
-	return pg_contexts_unpack(typing, (size_t)nm, metadata, nr, roots, count, contexts, term_count, terms);
+	if (pg_graph_read_descriptors(file, typing->graph, limit, name_limit, codec, owner, &nr, &roots)) goto done;
+	if (metadata[0] > nr / 2 || nr - 2 * (size_t)metadata[0] > limit - (size_t)(nm - 2)) goto done;
+	status = pg_contexts_unpack(typing, (size_t)nm, metadata, nr, roots, count, contexts, term_count, terms);
+done:
+	free(metadata);
+	return status;
 }

@@ -1,5 +1,6 @@
 #include "context_payload.h"
 #include "dag.h"
+#include <stdlib.h>
 
 int pg_context_dependency(void *unused, const void *key, size_t index, const void **child)
 {
@@ -94,18 +95,19 @@ int pg_contexts_unpack(struct pg_typing *typing, size_t metadata_count,
 	}
 	for (size_t i = 0; i < nc; ++i) if (metadata[2 + 3 * n + i] > n) return -1;
 	for (size_t i = 0; i < root_count; ++i) if (!roots[i]) return -1;
-	const struct pg_context **all = pg_alloc(typing->graph, (size_t)n * sizeof(*all));
+	const struct pg_context **all = malloc((size_t)(n ? n : 1) * sizeof(*all));
 	const struct pg_context **selected = pg_alloc(typing->graph, (size_t)nc * sizeof(*selected));
-	if (!all || !selected) return -1;
+	int status = -1;
+	if (!all || !selected) goto done;
 	for (size_t i = 0; i < n; ++i) {
 		const struct pg_term *binder = roots[2 * i];
-		if (binder->kind != PG_REFERENCE) return -1;
+		if (binder->kind != PG_REFERENCE) goto done;
 		uint64_t prefix = metadata[2 + 3 * i], indices = metadata[4 + 3 * i];
 		all[i] = pg_context_intern(typing, &(struct pg_context){
 			.parent = prefix ? all[prefix - 1] : NULL, .binder = binder->as.reference,
 			.declared_type = roots[2 * i + 1], .judgement = metadata[3 + 3 * i],
 			.indices = indices ? all[indices - 1] : NULL});
-		if (!all[i]) return -1;
+		if (!all[i]) goto done;
 	}
 	for (size_t i = 0; i < nc; ++i) {
 		uint64_t id = metadata[2 + 3 * n + i];
@@ -114,5 +116,8 @@ int pg_contexts_unpack(struct pg_typing *typing, size_t metadata_count,
 	*count = (size_t)nc; *contexts = selected;
 	*term_count = root_count - 2 * (size_t)n;
 	*terms = roots ? roots + 2 * n : NULL;
-	return 0;
+	status = 0;
+done:
+	free(all);
+	return status;
 }
