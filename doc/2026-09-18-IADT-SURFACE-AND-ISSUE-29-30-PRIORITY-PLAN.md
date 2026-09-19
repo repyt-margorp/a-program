@@ -7460,3 +7460,82 @@ two concrete assembly paths, not a reason for a global key/authority rewrite.
 
 Implementation/header LOC remains **+4389** from R0. No completion, timing
 improvement, or reduction of kernel checks is claimed by these measurements.
+
+### A4 projection substitution construction trials (2026-09-20)
+
+Disposition: both implementation trials below are withdrawn. Keep only the
+general/projection construction-order regression. No implementation epoch or
+Main push is warranted by this investigation.
+
+Baseline `3c2b67d` (implementation `7834098`). First trial: replace the temporary
+typed-image array in `substitution_build` with an immutable indexed callback
+read by the map interner. Boundary tests passed after correcting a NULL test
+accessor, but the API and adapters added 24 implementation/header lines.
+31 alternating O2 pairs on CPU 2 gave median ms: length 4.490/4.577,
+function-field 7.710/8.000, append 5.988/5.917, QuickSort 159.455/159.522;
+length source-save 4.720/4.845 and QuickSort source-save 161.229/160.523.
+Withdraw this trial: fewer temporary arrays did not justify the generic API
+and slower small inputs. No callback API or trial test remains. Evidence:
+`/tmp/a-program-map-view-{core.log,timing.jsonl}`. It did not pass a full
+acceptance gate and was never committed or published.
+
+The second trial simplified the existing projection constructor. Given checked Contexts
+`Gamma` and `Delta` with `Gamma` an exact persistent prefix of `Delta`, the
+map `Gamma <- Delta` selects those same declarations as variables in `Delta`.
+Their dependent classifiers are unchanged by that variable substitution.
+`pg_context_map_projection` verifies the exact prefix relation, and
+`pg_prove_variable` derives each image using the supplied destination proof.
+It assembled the existing `PG_CONTEXT_SUBSTITUTION` receipt directly with the same
+source, destination and image premises, without sending this known projection back
+through general image assembly and identity substitution of every classifier.
+
+This is a derived construction of the existing rule, not acceptance from an
+unchecked shape. Both Context proofs remain owner-checked. Sibling/reversed
+contexts reject, alternative Context receipts remain distinct, and general
+non-projection substitutions retain all their dependent image checks. No new
+term/proof tag, key, cache, format or scheduling path is introduced.
+
+- [x] Trial regression requiring projection construction not to create Core
+  substitution requests: old fails (exit 134); candidate passes. Withdraw this
+  performance-policy assertion with the candidate, not a semantic requirement.
+- [x] Check exact receipt/premise agreement with general substitution
+  introduction in both construction orders, including dependent fields.
+- [x] Strict debug Core suite passes, including alternative receipts,
+  family contexts, imports and invalid scope cases.
+- [x] Candidate full optimized acceptance passes: all 2,460 export/step records
+  equal `/tmp/a-program-conclusion-owner-opt-confirm.log` after temporary-path
+  normalization. Log: `/tmp/a-program-projection-proof-opt.log`.
+- [x] Candidate ASan/UBSan Core, IADT, derivation-io and source-io suites pass,
+  including retained-image checks/recomputation. Leak detection and halt on
+  error enabled. Logs: `/tmp/a-program-projection-proof-asan{,-build}.log`.
+  This is focused sanitizer coverage, not full sanitizer acceptance.
+- [x] Two isolated O2 timing runs, each 31 alternating pairs on CPU 2, against
+  `/tmp/a-program-conclusion-owner-opt/pointer-check` (implementation `7834098`).
+  Median ms before/candidate: length 4.494/4.627 then 4.661/4.708;
+  function-field 7.876/8.113 then 7.606/7.992; append 5.860/5.983 then
+  5.761/5.813; QuickSort 159.816/159.378 then 159.045/159.050;
+  Handler 5.295/5.295 then 5.311/5.440. Source-save length 5.105/4.837 then
+  4.785/4.857; QuickSort 162.254/161.544 then 162.208/162.642. Logs:
+  `/tmp/a-program-projection-proof-timing{,-repeat}.jsonl`.
+- [x] Withdraw the direct-proof construction: repeated function-field slowdown
+  of about 3-5%, mixed other timings and +8 implementation lines do not justify
+  adopting the special construction for modest memory savings. The reason for
+  the slowdown is not established; do not claim a kernel soundness failure.
+- [x] Retained construction-order regression passes against the restored
+  implementation under strict O2. Logs:
+  `/tmp/a-program-projection-order-final-{build,core}.log`. No full acceptance
+  rerun is claimed for this final test-only diff; the full run above tested the
+  withdrawn implementation. No Main publication follows this audit.
+
+Read-only debug counters: function-field substitution-arena used bytes decrease
+486816 -> 485536; QuickSort 11286912 -> 11273344. Graph-arena used bytes,
+proof/occurrence/Context/map/query counts and outer Solve steps are identical
+to the preceding implementation. This avoids redundant work, not semantic
+objects or accepted derivations. Logs: `/tmp/a-program-projection-proof-`
+`{before,build,core,field-counts,qsort-counts}.log`. These savings belong to the
+withdrawn candidate, not the retained implementation. Final implementation
+delta is zero; regression tests +17/-0. Implementation/header LOC therefore
+remains **+4389** from R0. The cumulative net-negative requirement remains open.
+Next work must target the general map/image assembly path without adding an
+accessor interface or another specialized acceptance path merely to avoid a
+temporary array. Existing structural sharing and premise checks remain intact.

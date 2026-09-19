@@ -1901,6 +1901,23 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(!pg_prove_substitution_projection(&typing, extended_destination, destination));
 	assert(!pg_prove_substitution_projection(&typing, source, extended_destination));
 	reconstruct_derivation(&typing, other_projection);
+	/* General introduction and projection agree in either construction order. */
+	for (size_t first = 0; first < 2; ++first) {
+		const struct pg_evidence *target = pg_prove_context_extension(&typing, destination,
+			pg_binder(graph), pg_prove_classifier(&typing, destination, destination_y));
+		const struct pg_evidence *vars[] = {
+			pg_prove_variable(&typing, target, b), pg_prove_variable(&typing, target, y)};
+		const struct pg_evidence *ordinary = first
+			? pg_prove_substitution(&typing, destination, target, 2, vars) : NULL;
+		const struct pg_evidence *projection = pg_prove_substitution_projection(&typing, destination, target);
+		assert(projection);
+		if (!first) ordinary = pg_prove_substitution(&typing, destination, target, 2, vars);
+		assert(projection == ordinary);
+		assert(pg_evidence_premise(projection, 0) == destination);
+		assert(pg_evidence_premise(projection, 1) == target);
+		assert(pg_evidence_premise(projection, 2) == vars[0]);
+		assert(pg_evidence_premise(projection, 3) == vars[1]);
+	}
 	struct pg_occurrence_action *projection_action = pg_occurrence_action_request(&typing,
 		pg_evidence_context_map(projection_map), pg_evidence_subject(reindexed_return));
 	size_t projection_substitutions = typing.substitutions.jobs.count;
