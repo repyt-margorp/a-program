@@ -2266,3 +2266,12 @@ acceptance and affected sanitizer suites pass; source images advance to 62/63.
 This completes that dependency removal, not A0-A5 as a whole. Pending structural
 reconstruction and the net-negative implementation gate remain open. The audit
 includes per-file changes, negative tests and same-input work measurements.
+
+### Reader workspace lifetime epoch
+
+The priority plan records temporary-arena cleanup in Occurrence/Derivation IO.
+Only wire indices and assembly arrays are discarded; owned typed structure and
+ordinary Solve inputs survive. Debug/O2 acceptance and affected sanitizers pass,
+with unchanged image results and Solve work. Retained QuickSort graph storage
+falls by 122,400 bytes; implementation grows by 16 lines. This is a physical
+lifetime correction, not completion of A4/A5 or the net-negative LOC gate.

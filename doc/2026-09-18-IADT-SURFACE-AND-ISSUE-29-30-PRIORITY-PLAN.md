@@ -6415,3 +6415,77 @@ Atomic non-force push advanced Main and `rewrite/pointer-core-hott` together
 from `2a8b788`; both remote tips were verified. The implementation commit's
 documentation deltas were priority plan +59/-0 and parent plan +9/-0,
 separate from code and tests above. This publication-record commit is docs-only.
+
+### A4/R4 reader workspace lifetime (2026-09-19)
+
+Baseline `434b2a0`. Do not merge type-structure and term-structure requests:
+their wrong-kind contracts differ, and existing tests exercise that difference.
+Pending descriptions remain necessary to close Handler effect equations.
+
+The persistence audit found a concrete physical duplication instead. Occurrence
+and derivation readers keep wire-ID tables, record metadata and assembly arrays
+in the same arena as the reconstructed graph, even after their last use. They
+are neither program structure nor retained Solve inputs. Give these local
+tables a temporary arena using the existing allocator; keep returned roots,
+rule inputs, interned occurrences/maps and nominal allocations in their current
+owners. No schema, accepted-state policy, replay path or new store is added.
+
+- [x] Reproduce retained workspace in both readers: a truncated table with
+  4,096 declared records changes the graph arena before constructing an object.
+  Both new regressions fail at `434b2a0` (exit 134), pass after the change,
+  and derive magic from the current writer rather than pinning an old version.
+- [x] Free temporary records on success and every early return; retain all
+  returned arrays and referenced objects. Preserve partial graph/failed effect
+  behavior; this change does not promise transactional rollback on read failure.
+- [x] Verify ordinary and malformed IO, later Solve, exact source/image results,
+  debug/O2 acceptance and affected sanitizers after the workspace is freed.
+- [x] Measure retained memory, counts, timing and per-file deltas.
+- [ ] Publish the verified reader-lifetime epoch. Broad A4/A5 and the original
+  LOC gate remain open.
+
+Final-source checks: strict O0/g and O2 `check-acceptance` pass. All 2,460
+normalized export/step records match Main and each other. ASan/UBSan occurrence,
+derivation, Source IO, image CLI and 4,080 Handler save boundaries pass with
+leak/error halting. All 1,218 sanitizer image export/step records match Main.
+The image run was repeated to recover an explicit successful exit after the
+first process handle expired. No source/test edits followed the final builds.
+
+The lifetime audit checked that `pg_occurrence_intern` copies operand/map arrays
+and induction clause data. `pg_contexts_unpack` returns owned selected contexts
+but a borrowed term tail; the derivation reader copies the three binder object
+references before freeing that tail. Effect inference retains graph-owned
+objects, not the temporary array. These checks do not claim that every reader
+in the repository has discarded all temporary storage.
+
+Same-input retained graph-arena measurements, Main/current (bytes):
+
+| Input and endpoint | Used before/after | Capacity before/after |
+|---|---:|---:|
+| Occurrence fixture, after read | 9,920 / 6,240 | 16,384 / 16,384 |
+| Derivation fixture, after read and ordinary Solve | 358,976 / 337,600 | 376,832 / 344,064 |
+| Retained QuickSort image, root 2 after Solve | 19,694,400 / 19,572,000 | 19,840,928 / 19,713,920 |
+
+Captured structural counts are unchanged. QuickSort still has 16,119 requests,
+151,265 steps, 17,112 occurrences, 21,772 proofs and 1,805,504 substitution-arena
+used bytes. The same image resaves byte-identically at zero Solve steps in both
+binaries. Memory figures are retained arena usage, not process peak RSS.
+
+O2 timing against Main `434b2a0`, CPU 2, warmup and 31 alternating pairs,
+no concurrent tests/builds (median milliseconds, before/after): QuickSort resume
+35.756/35.070; inert resave 4.124/4.051; length source control 4.630/4.839.
+A second 31-pair run gives 35.420/35.501, 4.055/3.979 and 4.784/4.769,
+respectively. Do not claim a general speedup or the final R0 performance gate.
+Executable text is 592,431 -> 592,775 bytes (+344); data/BSS are unchanged.
+
+Per-file implementation delta: `occurrence_io.c` +23/-11 = +12;
+`derivation_io.c` +14/-10 = +4. Total implementation **+16**; tests are separate,
+`tests/occurrence_io.c` and `tests/derivation_io.c` each +22/-0. This removes
+retained workspace, not source lines. Cumulative R0 implementation/header delta
+is +9,009/-4,653 = **+4,356**; the net-negative gate is still unmet.
+
+Logs: `/tmp/a-program-authority-reader-scratch-` with `{debug,acceptance}.log`,
+`asan-{build,occurrence,derivation,source,image-confirm,handler}.log`,
+`{dependency-transition,reader-scratch}-{occurrence,derivation,qsort}-counts.log`
+and `timing{,-repeat}.jsonl`. Build flags are recorded in those build logs;
+sanitizers use `ASAN_OPTIONS=detect_leaks=1:halt_on_error=1` and
+`UBSAN_OPTIONS=halt_on_error=1`.

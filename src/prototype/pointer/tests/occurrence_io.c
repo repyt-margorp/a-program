@@ -293,6 +293,27 @@ static void read_input(FILE *file, struct pg_typing *typing)
 	}
 }
 
+static void discarded_input(struct pg_typing *typing)
+{
+	FILE *header = tmpfile(), *partial = tmpfile();
+	unsigned char magic[8];
+	assert(header && partial && !pg_occurrences_write(header, 0, NULL, NULL, NULL));
+	rewind(header);
+	assert(fread(magic, 1, sizeof(magic), header) == sizeof(magic));
+	assert(fwrite(magic, 1, sizeof(magic), partial) == sizeof(magic));
+	assert(!pg_wire_write_u64(partial, 4096) && !pg_wire_write_u64(partial, 0));
+	struct pg_block *blocks = typing->graph->blocks;
+	for (unsigned i = 0; i < 3; ++i) {
+		rewind(partial);
+		size_t count = 17;
+		const struct pg_occurrence *const *roots = NULL;
+		assert(pg_occurrences_read(partial, typing, 8192, 0, NULL, NULL, &count, &roots) == -1);
+		assert(count == 17 && !roots && !typing->proofs.count);
+		assert(typing->graph->blocks == blocks);
+	}
+	assert(!fclose(header) && !fclose(partial));
+}
+
 int main(int argc, char **argv)
 {
 	assert(argc == 3);
@@ -302,6 +323,7 @@ int main(int argc, char **argv)
 	struct pg_graph graph;
 	struct pg_typing typing;
 	assert(file && pg_graph_init(&graph) == 0 && pg_typing_init(&typing, &graph) == 0);
+	discarded_input(&typing);
 	if (writing) write_input(file, &typing);
 	else read_input(file, &typing);
 	assert(fclose(file) == 0);

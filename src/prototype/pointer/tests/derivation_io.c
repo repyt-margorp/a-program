@@ -1533,6 +1533,27 @@ static void termination_proofs(FILE *file, struct pg_typing *typing,
 	puts("termination: inert derivation input, ordinary Solve and retained target passed");
 }
 
+static void discarded_input(struct pg_typing *typing)
+{
+	FILE *header = tmpfile(), *partial = tmpfile();
+	unsigned char magic[8];
+	assert(header && partial && !pg_derivation_inputs_write(header, 0, NULL, NULL, NULL));
+	rewind(header);
+	assert(fread(magic, 1, sizeof(magic), header) == sizeof(magic));
+	assert(fwrite(magic, 1, sizeof(magic), partial) == sizeof(magic));
+	assert(!pg_wire_write_u64(partial, 4096) && !pg_wire_write_u64(partial, 0));
+	struct pg_block *blocks = typing->graph->blocks;
+	for (unsigned i = 0; i < 3; ++i) {
+		rewind(partial);
+		size_t count = 17;
+		const struct pg_derivation_input *const *roots = NULL;
+		assert(pg_derivations_read(partial, typing, 8192, 0, NULL, NULL, &count, &roots) == -1);
+		assert(count == 17 && !roots && !typing->proofs.count);
+		assert(typing->graph->blocks == blocks);
+	}
+	assert(!fclose(header) && !fclose(partial));
+}
+
 int main(int argc, char **argv)
 {
 	effect_transport(PG_TOTALITY_UNSPECIFIED);
@@ -1554,6 +1575,7 @@ int main(int argc, char **argv)
 	struct pg_graph graph;
 	struct pg_typing typing;
 	assert(file && pg_graph_init(&graph) == 0 && pg_typing_init(&typing, &graph) == 0);
+	discarded_input(&typing);
 	if (termination) termination_proofs(file, &typing, writing, bulk ? 64 : 1);
 	else if (nominal) nominal_proofs(file, &typing, writing, bulk ? 64 : 1);
 	else if (producer) producer_proofs(file, &typing, writing, bulk ? 64 : 1);

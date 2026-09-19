@@ -125,9 +125,9 @@ struct input {
 	uint64_t *operands;
 };
 
-int pg_occurrences_read(FILE *file, struct pg_typing *typing, size_t limit, size_t name_limit,
+static int read_dag(FILE *file, struct pg_typing *typing, size_t limit, size_t name_limit,
 	const struct pg_object *(*resolve)(void *, const char *), void *owner,
-	size_t *count, const struct pg_occurrence *const **roots)
+	size_t *count, const struct pg_occurrence *const **roots, struct pg_graph *scratch)
 {
 	if (!file || !typing || !typing->occurrences.capacity || !count || !roots) return -1;
 	char header[8];
@@ -137,11 +137,10 @@ int pg_occurrences_read(FILE *file, struct pg_typing *typing, size_t limit, size
 	if (n > limit || nr > limit - n || limit > SIZE_MAX / sizeof(struct input)) return -1;
 	if (n > SIZE_MAX / 3) return -1;
 	struct pg_graph *graph = typing->graph;
-	struct input *inputs = pg_alloc(graph, (size_t)n * sizeof(*inputs));
-	uint64_t *ids = pg_alloc(graph, (size_t)nr * sizeof(*ids));
-	const struct pg_occurrence **all = pg_alloc(graph, (size_t)n * sizeof(*all));
-	const struct pg_occurrence **result = pg_alloc(graph, (size_t)nr * sizeof(*result));
-	if (!inputs || !ids || !all || !result) return -1;
+	struct input *inputs = pg_alloc(scratch, (size_t)n * sizeof(*inputs));
+	uint64_t *ids = pg_alloc(scratch, (size_t)nr * sizeof(*ids));
+	const struct pg_occurrence **all = pg_alloc(scratch, (size_t)n * sizeof(*all));
+	if (!inputs || !ids || !all) return -1;
 	size_t available = limit - (size_t)n - (size_t)nr, max_arity = 0, max_maps = 0, context_count = (size_t)n;
 	size_t term_count = 3 * (size_t)n;
 	for (size_t i = 0; i < n; ++i) {
@@ -157,7 +156,7 @@ int pg_occurrences_read(FILE *file, struct pg_typing *typing, size_t limit, size
 		available -= (size_t)arity;
 		inputs[i].count = (size_t)arity;
 		if (arity > max_arity) max_arity = (size_t)arity;
-		inputs[i].operands = pg_alloc(graph, (size_t)arity * sizeof(uint64_t));
+		inputs[i].operands = pg_alloc(scratch, (size_t)arity * sizeof(uint64_t));
 		if (!inputs[i].operands) return -1;
 		for (size_t j = 0; j < arity; ++j) {
 			uint64_t *id = &inputs[i].operands[j];
@@ -169,7 +168,7 @@ int pg_occurrences_read(FILE *file, struct pg_typing *typing, size_t limit, size
 		context_count += (size_t)maps;
 		inputs[i].map_count = (size_t)maps;
 		if (maps > max_maps) max_maps = (size_t)maps;
-		inputs[i].map_sizes = pg_alloc(graph, (size_t)maps * sizeof(size_t));
+		inputs[i].map_sizes = pg_alloc(scratch, (size_t)maps * sizeof(size_t));
 		if (!inputs[i].map_sizes) return -1;
 		size_t structural = (size_t)arity;
 		for (size_t j = 0; j < maps; ++j) {
@@ -205,8 +204,8 @@ int pg_occurrences_read(FILE *file, struct pg_typing *typing, size_t limit, size
 	const struct pg_term *const *terms;
 	if (pg_contexts_read(file, typing, limit, name_limit, resolve, owner, &nc, &contexts, &nt, &terms)) return -1;
 	if (nc != context_count || nt != term_count) return -1;
-	const struct pg_occurrence **operands = pg_alloc(graph, max_arity * sizeof(*operands));
-	const struct pg_context_map **maps = pg_alloc(graph, max_maps * sizeof(*maps));
+	const struct pg_occurrence **operands = pg_alloc(scratch, max_arity * sizeof(*operands));
+	const struct pg_context_map **maps = pg_alloc(scratch, max_maps * sizeof(*maps));
 	if (!operands || !maps) return -1;
 	size_t next_context = (size_t)n, next_term = 3 * (size_t)n;
 	for (size_t i = 0; i < n; ++i) {
@@ -254,8 +253,21 @@ int pg_occurrences_read(FILE *file, struct pg_typing *typing, size_t limit, size
 		all[i] = pg_occurrence_intern(typing, &header, children, maps);
 		if (!all[i]) return -1;
 	}
+	const struct pg_occurrence **result = pg_alloc(graph, (size_t)nr * sizeof(*result));
+	if (!result) return -1;
 	for (size_t i = 0; i < nr; ++i) result[i] = all[ids[i] - 1];
 	*count = (size_t)nr;
 	*roots = result;
 	return 0;
+}
+
+int pg_occurrences_read(FILE *file, struct pg_typing *typing, size_t limit, size_t name_limit,
+	const struct pg_object *(*resolve)(void *, const char *), void *owner,
+	size_t *count, const struct pg_occurrence *const **roots)
+{
+	/* Wire IDs and assembly arrays are not part of the retained typed graph. */
+	struct pg_graph scratch = {0};
+	int status = read_dag(file, typing, limit, name_limit, resolve, owner, count, roots, &scratch);
+	pg_graph_destroy(&scratch);
+	return status;
 }
