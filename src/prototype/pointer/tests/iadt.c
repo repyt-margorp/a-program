@@ -849,6 +849,63 @@ static void indexed_path_motive(struct pg_typing *typing,
 	puts("indexed Match: dependent path motive, branch transport and reflexive application compute through Solve");
 }
 
+static void type_case_capture(void)
+{
+	struct pg_graph graph;
+	struct pg_typing typing;
+	struct pg_whnf_work work;
+	assert(!pg_graph_init(&graph) && !pg_typing_init(&typing, &graph));
+	assert(!pg_whnf_work_init(&work, &graph));
+	const struct pg_evidence *empty = pg_prove_empty_context(&typing);
+	const struct pg_evidence *u = pg_prove_universe(&typing, empty, 0);
+	const struct pg_object *a = pg_binder(&graph), *x = pg_binder(&graph);
+	const struct pg_evidence *ac = pg_prove_context_extension(&typing, empty, a, u);
+	const struct pg_evidence *self = pg_prove_context_extension(&typing, ac, pg_binder(&graph),
+		pg_prove_projection(&typing, ac, u));
+	const struct pg_evidence *first = pg_prove_context_extension(&typing, self, x,
+		pg_prove_variable(&typing, self, a));
+	const struct pg_evidence *second = pg_prove_context_extension(&typing, first, pg_binder(&graph),
+		pg_prove_variable(&typing, first, a));
+	const struct pg_evidence *result = pg_prove_substitution_projection(&typing, self, second);
+	const struct pg_data_schema *schema = pg_data_schema(&typing, pg_data_signature(&typing, self, self), 1, &result);
+	const struct pg_evidence *formation = pg_prove_inductive_type(&typing, schema);
+	assert(formation);
+	/* The parameter image uses the very pointer bound by the first schema
+	 * field. Substitution under the closed telescope must not capture it. */
+	const struct pg_evidence *target = pg_prove_context_extension(&typing, empty, x, u);
+	const struct pg_evidence *fields[2];
+	for (size_t i = 0; i < 2; ++i) {
+		target = pg_prove_context_extension(&typing, target, pg_binder(&graph),
+			pg_prove_variable(&typing, target, x));
+		fields[i] = target;
+	}
+	const struct pg_evidence *image = pg_prove_variable(&typing, target, x);
+	const struct pg_evidence *parameters = pg_prove_substitution(&typing, ac, target, 1, &image);
+	const struct pg_evidence *values[] = {
+		pg_prove_variable(&typing, target, pg_evidence_context(fields[0])->binder),
+		pg_prove_variable(&typing, target, pg_evidence_context(fields[1])->binder)};
+	const struct pg_evidence *value = pg_prove_constructor(&typing, formation,
+		pg_data_constructor(pg_data_schema_layout(schema), 0), parameters, 2, values);
+	const struct pg_evidence *branch_context = target;
+	for (size_t i = 0; i < 2; ++i) {
+		branch_context = pg_prove_context_extension(&typing, branch_context, pg_binder(&graph),
+			pg_prove_variable(&typing, branch_context, x));
+		fields[i] = branch_context;
+	}
+	const struct pg_evidence *branch = pg_prove_value_type(&typing, pg_prove_variable(&typing, branch_context, x));
+	for (size_t i = 2; i; --i) branch = pg_prove_family_abstraction(&typing, fields[i - 1], branch);
+	assert(value && branch);
+	size_t contexts = typing.contexts.count;
+	const struct pg_evidence *selected = pg_prove_type_case(&typing, formation, parameters, value, 1, &branch);
+	assert(selected && contexts == typing.contexts.count);
+	assert(pg_evidence_classifier(selected) == pg_evidence_subject(u)->core);
+	check(&work, pg_evidence_subject(selected)->core, pg_evidence_subject(image)->core);
+	common_rule(&typing, selected);
+	pg_whnf_work_destroy(&work);
+	pg_typing_destroy(&typing);
+	pg_graph_destroy(&graph);
+}
+
 static void indexed_match(void)
 {
 	struct pg_graph graph;
@@ -1050,9 +1107,11 @@ static void indexed_match(void)
 		branch_type = pg_prove_family_abstraction(&typing, scope, branch_type);
 		scope = pg_evidence_premise(scope, 0);
 	}
+	size_t case_contexts = typing.contexts.count;
 	const struct pg_evidence *selected_type = pg_prove_type_case(&typing,
 		formation, parameters, value, 1, &branch_type);
 	assert(selected_type && pg_evidence_judgement(selected_type) == PG_JUDGEMENT_VALUE_TYPE);
+	assert(typing.contexts.count == case_contexts);
 	check(&work, pg_evidence_subject(selected_type)->core, pg_evidence_subject(av)->core);
 	size_t proof_count = typing.proofs.count, term_count = graph.terms.count;
 	assert(pg_prove_type_case(&typing,
@@ -1065,6 +1124,26 @@ static void indexed_match(void)
 	assert(!pg_prove_type_case(&typing, formation, parameters, value, 1, &branch));
 	assert(!pg_prove_type_case(&typing, formation, parameters, xv, 1, &branch_type));
 	assert(!pg_prove_type_case(&typing, formation, parameters, value, 1, &u));
+	/* Same arity is insufficient: the second field depends on the first
+	 * constructor field, not the ambient type variable with a similar name. */
+	for (int wrong = 0; wrong <= 1; ++wrong) {
+		const struct pg_object *local_a = pg_binder(&graph);
+		const struct pg_evidence *local_ac = pg_prove_context_extension(&typing, xc, local_a,
+			pg_prove_projection(&typing, xc, u));
+		const struct pg_evidence *local_xc = pg_prove_context_extension(&typing, local_ac, pg_binder(&graph),
+			pg_prove_variable(&typing, local_ac, wrong ? a : local_a));
+		const struct pg_evidence *high_branch = pg_prove_family_abstraction(&typing, local_ac,
+			pg_prove_family_abstraction(&typing, local_xc, pg_prove_universe(&typing, local_xc, 0)));
+		assert(high_branch);
+		case_contexts = typing.contexts.count;
+		const struct pg_evidence *high = pg_prove_type_case(&typing, formation, parameters, value, 1, &high_branch);
+		assert(typing.contexts.count == case_contexts);
+		if (wrong) assert(!high);
+		else {
+			assert(high && pg_evidence_classifier(high) == pg_evidence_subject(u1)->core);
+			check(&work, pg_evidence_subject(high)->core, pg_evidence_subject(u)->core);
+		}
+	}
 	const struct pg_object *packet = pg_binder(&graph);
 	const struct pg_evidence *packet_context = pg_prove_context_extension(&typing, xc,
 		packet, pg_evidence_premise(value, 0));
@@ -3619,6 +3698,7 @@ int main(void)
 	accessibility_elimination(PG_TOTALITY_UNSPECIFIED);
 	accessibility_elimination(PG_TOTALITY_TOTAL);
 	indexed_match();
+	type_case_capture();
 	schema_positivity();
 	retained_substitution_prefix();
 	struct pg_graph graph;

@@ -3032,6 +3032,10 @@ const struct pg_evidence *pg_prove_type_case(struct pg_typing *typing,
 	if (instance.parameters->premise_count != parameters->premise_count) goto done;
 	for (size_t i = 2; i < parameters->premise_count; ++i)
 		if (pg_alpha_equal(pg_evidence_subject(instance.parameters->premises[i])->core, pg_evidence_subject(parameters->premises[i])->core) != 1) goto done;
+	const struct pg_evidence *self = formation->premises[0];
+	const struct pg_evidence *prefix = prove_data_scope(typing, formation, self, parameters, NULL, 0);
+	if (!prefix) goto done;
+	const struct pg_context_map *map = pg_evidence_context_map(prefix);
 	const struct pg_data_layout *layout = pg_data_schema_layout(schema);
 	struct pg_match_clause *clauses = pg_alloc(&temporary, count * sizeof(*clauses));
 	const struct pg_occurrence **operands = pg_alloc(&temporary, (count + 1) * sizeof(*operands));
@@ -3040,14 +3044,20 @@ const struct pg_evidence *pg_prove_type_case(struct pg_typing *typing,
 	uint64_t level = 0;
 	for (size_t i = 0; i < count; ++i) {
 		const struct pg_object *constructor = pg_data_constructor(layout, i);
-		const struct pg_evidence *map = pg_prove_constructor_scope(typing, formation, constructor, parameters);
-		if (!map) goto done;
-		const struct pg_evidence *branch = pg_prove_projection(typing, map->premises[1], branches[i]);
-		for (size_t j = parameters->premise_count + 1; branch && j < map->premise_count; ++j)
-			branch = pg_prove_family_application(typing, branch, map->premises[j]);
-		if (!branch || pg_evidence_judgement(branch) != PG_JUDGEMENT_VALUE_TYPE) goto done;
+		const struct pg_context *fields = pg_evidence_context(pg_data_schema_fields(schema, constructor));
+		enum pg_evidence_judgement kind = fields == pg_evidence_context(self)
+			? PG_JUDGEMENT_VALUE_TYPE : PG_JUDGEMENT_TYPE_FAMILY;
+		if (pg_evidence_judgement(branches[i]) != kind) goto done;
+		const struct pg_term *signature = pg_evidence_classifier(branches[i]), *domain, *body;
+		const struct pg_object *binder;
+		while (pg_pi_view(signature, &domain, &binder, &body)) signature = body;
 		uint64_t bound;
-		if (!pg_universe_level(pg_evidence_subject(branch)->classifier, &bound)) goto done;
+		if (!pg_universe_level(signature, &bound)) goto done;
+		/* Checking the closed telescope needs no fresh field variables or
+		 * discarded applications of the already accepted branch. */
+		signature = pg_context_signature(typing->graph, pg_evidence_context(self), fields, signature);
+		signature = pg_substitution_compute(&typing->substitutions, signature, map->count, pg_context_map_bindings(map));
+		if (!signature || pg_alpha_equal(signature, pg_evidence_classifier(branches[i])) != 1) goto done;
 		if (bound > level) level = bound;
 		clauses[i] = (struct pg_match_clause){constructor, pg_evidence_subject(branches[i])->core};
 		operands[i + 1] = pg_evidence_subject(branches[i]);

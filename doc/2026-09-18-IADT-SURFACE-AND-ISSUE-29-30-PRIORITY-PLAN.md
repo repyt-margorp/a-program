@@ -5776,3 +5776,58 @@ Publication: `510a95b98f8fcf445f21a1bc22f9ec7cc03051fd` was atomically
 fast-forwarded to Main and `rewrite/pointer-core-hott` from `b0c58e1`.
 `git ls-remote` confirmed both tips. This publication note changes no tested
 implementation or fixtures; the broader A4/A5/R2-R5 completion gates stay open.
+
+### A4 type-case validation work (2026-09-19)
+
+Baseline `8bd0d8c`. Type-case currently projects/applies each accepted branch
+in a fresh constructor scope solely to check its signature. Check that same
+signature against the accepted constructor telescope instead: close its fields
+with the observed result Universe, then substitute the checked parameters/Self.
+Use existing `pg_context_signature`, substitution and alpha comparison; do not
+introduce another scope cache, equality rule or untyped acceptance shortcut.
+Branch ownership, Context, polarity, full arity, dependent domains and result
+Universe must still check. Ordinary Match/induction checking is not changed.
+
+- [x] Remove fresh validation scopes and discarded branch-application proofs.
+- [x] Test no new Contexts on first acceptance, dependent-domain mismatch at
+  the same arity, Universe bounds, neutral/relocated branches and repeat lookup.
+  Also test a parameter image whose free binder is a schema field binder:
+  substitution under the closed telescope must avoid capture.
+- [x] Run debug/O2/sanitizer/image gates and compare work, storage and timing.
+- [x] Record deletion/increase counts below.
+- [ ] Group with the next coherent publication;
+  do not treat this local change as completing A4/A5 or the reduction gates.
+
+Verification: strict debug IADT/synthesis/source checks, full strict O2
+`check-acceptance`, and ASan/UBSan IADT/synthesis/source/image checks pass.
+Sanitizers use O1/g, non-PIE, frame pointers, leak detection and halt-on-error.
+All 2,460 optimized export records and 1,218 sanitizer image export records
+match the preceding epoch after normalizing temporary paths and step counts.
+The first-acceptance no-Context regression fails against the old implementation.
+Implementation and tests were unchanged during final builds/runs.
+
+QuickSort before/after: Contexts 4,387/4,376; occurrences 78,807/78,655;
+maps 13,533/13,511; lifts 3,755/3,744; actions 28,050/28,039;
+proofs 92,998/92,921. Steps 167,364, jobs 34,286 and queries 10,433 are
+unchanged. Graph used bytes 64,016,896/63,975,584; reserved bytes
+64,323,584/64,274,432. Substitution used bytes 11,709,568/11,709,856;
+reserved bytes 11,763,712 unchanged. Capture avoidance may allocate Core
+binders; the claim is fewer discarded validation scopes, not zero allocation.
+
+Timing: existing strict O2 baseline/candidate binaries, CPU 2, two independent
+runs of 31 alternating pairs, with no other agent build/test during measurement.
+Median milliseconds, baseline/candidate (first run; repeat):
+Bool .495/.504; .499/.498. Add .965/.970; .926/.939.
+Length 5.611/5.701; 5.750/5.559. Function-field 9.397/10.056;
+10.112/9.777. Vec append 7.012/7.305; 7.173/7.006.
+QuickSort 190.974/191.392; 204.234/203.968. Length save 6.160/6.100;
+6.052/6.128. QuickSort save 206.542/206.189; 206.955/206.929.
+These mixed measurements do not establish a speedup or a repeatable slowdown.
+Logs: `/tmp/a-program-authority-case-signature-` followed by `acceptance.log`,
+`asan-{iadt,synthesis,source,image}.log`, `counts.log`, `timing.log` and
+`timing-repeat.log`.
+
+Code delta: `evidence.c` +17/-7 = +10; `tests/iadt.c` +80/-0.
+Documentation is separate. Keep this verified cleanup local, pending the next
+substantial epoch. Ordinary Match/induction still needs motive instantiation
+and IH checks; do not replace those with the simpler type-case signature test.
