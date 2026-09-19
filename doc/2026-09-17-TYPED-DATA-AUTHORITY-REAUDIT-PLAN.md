@@ -1138,6 +1138,14 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 
 ### A4. Audit remaining structural consumers and remove duplication
 
+- [x] 2026-09-19: IADT recursive-field classification inspects the application
+  head before checking independence. Non-Self heads no longer scan arguments
+  and then scan the whole type again. QuickSort comparison transitions fall
+  36,013 -> 20,608 with identical Solve and persistent structural counts.
+  Full O2 acceptance and affected debug/ASan/UBSan/image gates pass. See the
+  priority plan for coverage, mixed paired timings and +3 source lines.
+  No cache or new authority; pending construction and A4/A5 remain open.
+
 - [x] 2026-09-19: measure repeated substitution composition before introducing
   a cache. On universal QuickSort, only 1,595 of 18,673 image visits repeat;
   a new persistent pair cache is not justified by this measurement. Instead,

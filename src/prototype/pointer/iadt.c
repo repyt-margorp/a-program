@@ -12,12 +12,15 @@ static int direct_recursion(const struct pg_term *type, const struct pg_object *
 {
 	if (!type || !self || self->kind != PG_BINDER) return -1;
 	const struct pg_term *head = type;
+	while (head->kind == PG_APPLICATION) head = head->as.application.function;
+	if (head->kind != PG_REFERENCE || head->as.reference != self)
+		return pg_term_independent(type, self) == 1 ? 0 : -1;
+	head = type;
 	while (head->kind == PG_APPLICATION) {
 		if (pg_term_independent(head->as.application.argument, self) != 1) return -1;
 		head = head->as.application.function;
 	}
-	if (head->kind == PG_REFERENCE && head->as.reference == self) return 1;
-	return pg_term_independent(type, self) == 1 ? 0 : -1;
+	return 1;
 }
 
 int pg_data_recursive_field(const struct pg_term *type, const struct pg_object *self)

@@ -6059,3 +6059,48 @@ Before-change probes: `/tmp/a-program-authority-compose-current.log` and
 `evidence.c` +8/-7 = +1; `tests/core.c` +3/-0; documentation separate.
 Overall implementation reduction and the remaining structural-consumer audit
 are still unproven. This is verified local work, not a completed Main epoch.
+
+### Recursive-field scan audit (baseline `abb3f6d`, 2026-09-19)
+
+`iadt.c:direct_recursion` checked every application argument for Self
+independence before inspecting the head. For a non-Self head, it then checked
+the entire type again. Inspect the head first: a non-Self application needs
+only the whole-type check; a Self application still checks every index.
+This changes traversal order, not the accepted recursive-field grammar.
+No normalization, cache, rule tag or persistent ownership is added.
+
+- [x] Remove the redundant argument scans for non-Self heads.
+- [x] Extend `positive_fields` for multi-index recursion, nested independent
+  applications, Self-dependent arguments, shadowing and unreduced redexes.
+- [x] Pass strict debug IADT and full strict O2 `check-acceptance`; all 2,460
+  export records match the baseline, including Solve steps.
+- [x] Pass ASan/UBSan IADT, synthesis and source suites (O1/g, non-PIE,
+  leak detection and halt-on-error).
+- [x] Finish sanitizer image validation and paired performance measurements.
+- [ ] Publish only as part of a completed coherent refactoring epoch.
+
+On the unchanged universal QuickSort input, independence calls from this
+helper fall 994 -> 513, and their comparison transitions fall 36,013 -> 20,608.
+Solve stays at 151,199 steps / 34,286 jobs / 88,019 proofs. Context, occurrence,
+map, lift, action and typed-query counts and persistent arena sizes are unchanged.
+The temporary comparison work is distinct from those persistent counts.
+
+The same audit found 495 Pi-application independence calls (352 exact pairs).
+This does not establish that a new per-query scheduler state or cache would
+improve those paths. Pending structure remains necessary for effect equations;
+this change does not finish target 1's construction-sharing audit.
+
+Local logs: `/tmp/a-program-authority-recursive-spine-` with `build.log`,
+`iadt.log`, `acceptance.log`, `asan-build.log`, `asan-{iadt,synthesis,source,image}.log`,
+`counts.log`, `{before,after}-work.log` and `objects.log`. The original call-site
+profile is `/tmp/a-program-authority-independence-audit.log`.
+The sanitizer image run exits 0; all 1,218 export records match the baseline,
+including steps. With no other build/test running, strict O2 on CPU 2 and 31
+alternating pairs gives median milliseconds baseline/current: Bool .482/.480;
+add .916/.919; length 4.573/4.476; function-field 9.113/7.840; Vec append
+6.658/6.555; QuickSort 193.308/191.373; Handler 6.076/6.161; length save
+4.933/5.090; QuickSort save 189.055/186.131. Samples are in the same prefix's
+`timing.log`. These mixed local timings do not establish a general speedup.
+LOC: `iadt.c` +5/-2 = +3; `tests/iadt.c` +9/-0. Cumulative implementation/headers
+are R76 +4,021/-1,982 = +2,039 and R0 +8,771/-4,316 = +4,455. Overall code
+reduction and A4/A5/R2-R5 remain open; do not report this as a smaller codebase.

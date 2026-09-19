@@ -120,6 +120,13 @@ static void positive_fields(void)
 	assert(pg_data_recursive_field(positive, self) == 1);
 	assert(pg_data_recursive_field(pg_thunk_type(&graph, pg_return_type(&graph, fiber)), self) == 1);
 	assert(pg_data_recursive_field(a, self) == 0);
+	const struct pg_term *independent = pg_application(&graph, index, pg_application(&graph, index, a));
+	assert(pg_data_recursive_field(independent, self) == 0);
+	assert(pg_data_recursive_field(pg_application(&graph, recursive, independent), self) == 1);
+	assert(pg_data_recursive_field(pg_application(&graph, independent, recursive), self) == -1);
+	assert(pg_data_recursive_field(pg_application(&graph, fiber, a), self) == 1);
+	assert(pg_data_recursive_field(pg_application(&graph, fiber, recursive), self) == -1);
+	assert(pg_data_recursive_field(pg_lambda(&graph, self, recursive), self) == 0);
 	static const struct pg_object_class label_class = {"test-effect"};
 	static const struct pg_object label = {PG_SEMANTIC_OBJECT, &label_class};
 	const struct pg_object *op = &label;
@@ -141,6 +148,8 @@ static void positive_fields(void)
 	assert(pg_data_field_positive(pg_lambda(&graph, self, recursive), self, 0) == 1);
 	assert(pg_data_field_positive(pg_pi(&graph, a, self, recursive), self, 0) == 1);
 	const struct pg_term *redex = pg_application(&graph, pg_lambda(&graph, x, a), recursive);
+	assert(pg_data_recursive_field(redex, self) == -1);
+	assert(pg_data_recursive_field(pg_application(&graph, pg_lambda(&graph, x, recursive), a), self) == -1);
 	assert(pg_data_field_positive(redex, self, 0) == 0);
 	assert(pg_data_field_positive(a, self, 0) == 1);
 	for (size_t i = 0; i < 10000; ++i)
