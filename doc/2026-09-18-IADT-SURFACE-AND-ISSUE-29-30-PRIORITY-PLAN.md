@@ -7134,8 +7134,8 @@ not theorem validation. No new job, cache, structural tag or wire format.
   `ASAN_OPTIONS=detect_leaks=1:halt_on_error=1` and
   `UBSAN_OPTIONS=halt_on_error=1`: exit zero. This is the affected synthesis
   suite, not a new full sanitizer acceptance claim.
-- [ ] Include this local cleanup in a substantial tested publication epoch;
-  do not describe it as complete A4/A5 or R2-R5.
+- [x] Include this local cleanup in the premise-ownership publication epoch
+  `5a7f6ba`; this is not complete A4/A5 or R2-R5.
 
 Current implementation diff: `synthesis.c` +35/-44 = **-9**; the existing
 `tests/synthesis.c` adds eight assertions/setup lines separately. R0 cumulative
@@ -7175,8 +7175,9 @@ destruction. Remove these snapshots, not the input DAG or accepted proof DAG.
   source-image import cost before publication. Strict O1/g, address/undefined
   sanitizers, frame pointers, non-PIE and leak/error-halting options: exit zero.
   All 2460 export/step records match the optimized baseline as well.
-- [ ] Publish together with the preceding pending Term dispatch cleanup after
-  all gates pass. This does not close A4/A5, R2-R5 or the R0 LOC requirement.
+- [x] Publish together with the preceding pending Term dispatch cleanup after
+  all gates pass. Main and rewrite advanced atomically from `11fc128` to
+  `5a7f6ba`. This does not close A4/A5, R2-R5 or the R0 LOC requirement.
 
 Read-only debug measurements (source inputs, graph arena bytes):
 
