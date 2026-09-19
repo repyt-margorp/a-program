@@ -858,6 +858,12 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   or lexical candidate count; saving does not Solve or create proofs.
   Parameter-prefix traversal and distinct families sharing one matcher remain
   part of the open bound; this is not A3 completion. The priority plan's
+  `21faa54` measurement records 52 prefix steps over 14 allocation/Context
+  pairs in each of fresh and inert retained QuickSort saves. This is repeated
+  work, not evidence of a major runtime bottleneck. Surface parameter absence
+  does not imply an empty allocation Context: a Universe binder can remain.
+  No new index or empty-Context pruning follows from that failed assumption.
+  The priority plan's
   allocation-context epoch groups this with `e5d1f28`/`6fb1db6`, records full
   optimized acceptance, affected sanitizers, costs and publication preparation.
   Registration follow-up: input owners now publish each reverse-reference edge

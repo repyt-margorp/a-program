@@ -4314,3 +4314,41 @@ initializations for imported QuickSort. Do not add a second trivial-substitution
 engine on this evidence: empty requests are already exact-key shared and this
 count alone does not demonstrate a material bottleneck. No such code change
 was made. Log: `/tmp/a-program-authority-substitution-empty-before.log`.
+
+### 2026-09-19: Parameter-origin join measurement
+
+Baseline: `21faa54`. Do not replace the existing allocation/Context join with
+an arbitrary first origin or a new completion cache. A direct allocation-to-job
+index would need to preserve lexical selection and all recorded dependency
+Contexts, including unaccepted imported inputs, not merely the first job's
+scope. The current code does not establish a one-origin invariant.
+
+An attempted empty-Context regression was withdrawn before implementation:
+even the surface declaration `D:=@{z:*;};` retains an internal Universe binder
+in its declaration parameters. Its exported type has an empty Context, but
+that is not the declaration's allocation Context. The test failed at this
+incorrect premise, not at the proposed absence of reverse references. No
+registration change or weakened test remains.
+
+GDB callback counts on the existing strict-debug binary:
+
+| Save | Parameter callbacks | Distinct allocation/Context pairs | Prefix steps | Lexical candidates / matching candidates |
+|---|---:|---:|---:|---:|
+| Existing retained QuickSort image, zero Solve | 27 | 14 | 52 | 25 / 21 |
+| Fresh imported QuickSort property, retained save | 27 | 14 | 52 | 43 / 21 |
+
+Each pair is visited at most twice, through family and matcher reachability.
+The inert save returns pending (exit 3) and is byte-identical to its input;
+the fresh run completes at 146,537 Solve steps. These counts identify repeated
+work but do not establish a material runtime bottleneck or a worst-case bound.
+Do not add another index on this measurement alone. A3 remains open for
+unrelated candidates, shared matchers and parameter-prefix traversal; A4's
+remaining synchronous typed consumers are a separate work item.
+
+Logs: `/tmp/a-program-authority-parameter-audit{,-fresh}.log`; inert input:
+`/tmp/a-program-authority-case-scopes-common.a`; output:
+`/tmp/a-program-authority-parameter-audit-resave.a`. The withdrawn test's
+diagnostic is `/tmp/a-program-authority-empty-parameters-before.log`.
+The restored strict-debug source-image binary passes `nominal-write`;
+logs: `/tmp/a-program-authority-parameter-audit-restored{,-build}.log`.
+This audit changes documentation only and is not a Main publication epoch.
