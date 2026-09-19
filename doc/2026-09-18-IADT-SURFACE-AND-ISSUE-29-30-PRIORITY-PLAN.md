@@ -517,7 +517,7 @@ specific failing requirement proves a narrowly scoped prerequisite necessary.
 
 ### Publication policy (user decision, 2026-09-18)
 
-Reconfirmed on 2026-09-19: Surface, #29/#30 improvements, and substantial
+Reconfirmed on 2026-09-19 and 2026-09-20: Surface, #29/#30 improvements, and substantial
 refactoring epochs are separate Main publication milestones. Local commits
 are not publication gates; incomplete or failing work stays unpublished.
 
@@ -7343,3 +7343,54 @@ eval-io,opt,asan}.log` and `...-timing.jsonl`. Cross-version fixtures are
 Implementation delta: `eval.c` +1/-0; tests: `core.c` +2/-1 and `eval_io.c`
 +35/-0. Cumulative implementation/header delta is **+4399**: net-negative
 completion and the broader R0 performance requirements remain open.
+
+### A4 accepted conclusion index ownership (2026-09-20)
+
+Baseline: local `db08d5e`, after direct substitution-image reuse. The conclusion
+index previously allocated a separate record containing its first and last
+proof pointers. Its first proof already supplies the immutable conclusion key.
+Place that index in an aligned prefix of the first proof's allocation, remove
+the redundant first pointer, and keep the last pointer for constant-time
+alternative append. Alternative proofs retain their original layout and exact
+premise identity. This is physical ownership, not a one-proof-per-conclusion
+policy or a new authority.
+
+Both indexes are reserved before allocation/publication. All derivations remain
+available in their existing order. No Core, typed-subject, kernel rule, API or
+image format changes. Adding the index fields to every proof was rejected:
+alternative derivations must not pay for a conclusion index they do not own.
+
+- [x] Strict debug Core checks, including alternative receipts, pass.
+- [x] Add a regression growing the conclusion index after creating alternative
+  reindex proofs; preserve head, order and exact-proof lookup after rehash.
+- [x] Full optimized acceptance exits zero on a confirmation run. All 2460
+  export records match the preceding local build, including Solve steps.
+  The first run's resumed process handle was unavailable; the confirmation
+  log independently records successful completion on unchanged code/tests.
+- [x] Full ASan/UBSan acceptance exits zero with leak detection and halt on
+  errors. All 2460 export records match O2, including Solve steps.
+- [x] Measure 31 alternating O2 process pairs on CPU 2 without concurrent
+  build/test/probe activity. Baseline is `db08d5e`, not Main. Median ms:
+  length 4.676/4.678, function-field 8.600/8.074, append 5.944/6.089,
+  QuickSort 163.941/163.679, Handler 5.459/5.454, length source-save
+  5.225/5.042 and QuickSort source-save 166.596/167.038. Tiny examples differ
+  by less than 1.1%. Mixed timings, including append +2.4%, do not establish
+  a general speedup or close the broader R0 performance gate.
+- [ ] Include in a substantial tested epoch; no standalone Main push.
+
+Read-only debug counters on identical sources, before/after:
+
+| Input | Graph arena used bytes | Proofs | Conclusion records | Solve steps |
+| --- | ---: | ---: | ---: | ---: |
+| Function-field | 5042208 -> 4984032 | 8155 | 7686 | 10868 |
+| QuickSort | 57065600 -> 56587520 | 88020 | 83678 | 131183 |
+
+Proofs, occurrences, context maps and other indexed object counts are unchanged.
+Substitution-arena storage is unchanged. These are final arena-used bytes, not
+peak RSS. Evidence: `/tmp/a-program-proof-index-{field,qsort}-{before,after}.log`,
+`/tmp/a-program-conclusion-owner-{build,core,opt,opt-confirm,asan}.log`.
+Raw timing samples: `/tmp/a-program-conclusion-owner-timing.jsonl`.
+
+Per-file delta from `db08d5e`: `evidence.c` +19/-29 = -10 implementation lines;
+`tests/core.c` +10/-0. Cumulative R0 implementation/header delta is
++9142/-4753 = **+4389**, still short of the required net-negative result.

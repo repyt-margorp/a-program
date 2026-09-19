@@ -1741,6 +1741,16 @@ static void typed_substitution_test(struct pg_graph *graph)
 		assert(++receipt_count <= typing.proofs.count);
 	}
 	assert(saw_original && saw_alternative);
+	/* Growing both indexes must preserve the first proof and alternative order. */
+	size_t capacity = typing.evidence_conclusions.capacity;
+	const struct pg_evidence *after_alternative = pg_evidence_for_subject(&typing, same_subject, alternative_result);
+	for (size_t level = 0; level <= capacity; ++level)
+		assert(pg_prove_universe(&typing, empty, level));
+	assert(typing.evidence_conclusions.capacity > capacity);
+	assert(pg_evidence_for_subject(&typing, same_subject, NULL) == first_receipt);
+	assert(pg_evidence_for_subject(&typing, same_subject, reindexed) == alternative_result);
+	assert(pg_evidence_for_subject(&typing, same_subject, alternative_result) == after_alternative);
+	assert(pg_prove_reindex(&typing, alternate, source_x) == alternative_result);
 	assert(!pg_evidence_for_subject(&typing, pg_evidence_subject(source_x), reindexed));
 	assert(!pg_evidence_for_subject(&typing, NULL, NULL));
 	assert(pg_occurrence_action_request(&typing, pg_evidence_context_map(alternate), pg_evidence_subject(source_x)) == action);

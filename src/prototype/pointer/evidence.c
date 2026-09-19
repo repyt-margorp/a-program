@@ -27,23 +27,24 @@ static const struct pg_evidence *formed_classifier(struct pg_typing *typing,
 	const struct pg_evidence *term);
 
 struct evidence_conclusion {
-	struct pg_index_entry index;
-	struct pg_evidence *first, *last;
+	/* The first proof follows this prefix in the same allocation. */
+	_Alignas(struct pg_evidence) struct pg_index_entry index;
+	struct pg_evidence *last;
 };
 
-static struct evidence_conclusion *conclusion_find(const struct pg_typing *typing,
+static struct pg_evidence *conclusion_first(const struct pg_typing *typing,
 	enum pg_evidence_judgement judgement, const void *key)
 {
 	uint64_t hash = ((uintptr_t)key ^ judgement) * UINT64_C(1099511628211);
 	if (!typing || !typing->evidence_conclusions.capacity) return NULL;
 	for (struct pg_index_entry *p = pg_index_candidates(&typing->evidence_conclusions, hash); p; p = p->next) {
 		struct evidence_conclusion *entry = (void *)p;
-		if (p->hash != hash || pg_evidence_judgement(entry->first) != judgement) continue;
-		const struct pg_evidence *proof = entry->first;
+		struct pg_evidence *proof = (void *)(entry + 1);
+		if (p->hash != hash || pg_evidence_judgement(proof) != judgement) continue;
 		const void *found = judgement == PG_JUDGEMENT_CONTEXT ? (const void *)proof->conclusion.context
 			: judgement == PG_JUDGEMENT_SUBSTITUTION ? (const void *)proof->conclusion.map
 			: (const void *)proof->conclusion.subject;
-		if (found == key) return entry;
+		if (found == key) return proof;
 	}
 	return NULL;
 }
@@ -56,8 +57,7 @@ const struct pg_evidence *pg_evidence_for_subject(const struct pg_typing *typing
 		if (!pg_evidence_owned_by(after, typing) || pg_evidence_subject(after) != subject) return NULL;
 		return after->next_conclusion;
 	}
-	const struct evidence_conclusion *entry = conclusion_find(typing, subject->judgement, subject);
-	return entry ? entry->first : NULL;
+	return conclusion_first(typing, subject->judgement, subject);
 }
 
 struct pg_operation_declaration {
@@ -193,22 +193,20 @@ static const struct pg_evidence *accept_record(struct pg_typing *typing, enum pg
 	const struct pg_evidence *existing = find_record(typing, rule, context,
 		subject, count, premises, certificate, &hash);
 	if (existing) return existing;
-	if (count > (SIZE_MAX - sizeof(struct pg_evidence)) / sizeof(*premises)) return NULL;
-	/* Reserve both indexes before publishing. The conclusion key is borrowed
-	 * from the first accepted proof, never copied into a provisional entry. */
-	if (pg_index_prepare_insert(&typing->proofs)) return NULL;
 	enum pg_evidence_judgement judgement = map ? PG_JUDGEMENT_SUBSTITUTION
 		: subject ? subject->judgement : PG_JUDGEMENT_CONTEXT;
 	const void *key = map ? (const void *)map : subject ? (const void *)subject : (const void *)context;
-	struct evidence_conclusion *conclusion = conclusion_find(typing, judgement, key);
-	if (!conclusion) {
-		if (pg_index_prepare_insert(&typing->evidence_conclusions)) return NULL;
-		conclusion = pg_alloc(typing->graph, sizeof(*conclusion));
-		if (!conclusion) return NULL;
-	}
-	size_t size = sizeof(struct pg_evidence) + count * sizeof(*premises);
-	struct pg_evidence *proof = pg_alloc(typing->graph, size);
-	if (!proof) return NULL;
+	struct pg_evidence *first = conclusion_first(typing, judgement, key);
+	struct evidence_conclusion *conclusion = first ? (struct evidence_conclusion *)first - 1 : NULL;
+	size_t prefix = conclusion ? 0 : sizeof(*conclusion);
+	if (count > (SIZE_MAX - prefix - sizeof(struct pg_evidence)) / sizeof(*premises)) return NULL;
+	/* Reserve both indexes before allocating their common owner or publishing. */
+	if (pg_index_prepare_insert(&typing->proofs)) return NULL;
+	if (!conclusion && pg_index_prepare_insert(&typing->evidence_conclusions)) return NULL;
+	void *storage = pg_alloc(typing->graph, prefix + sizeof(struct pg_evidence) + count * sizeof(*premises));
+	if (!storage) return NULL;
+	if (!conclusion) conclusion = storage;
+	struct pg_evidence *proof = prefix ? (void *)(conclusion + 1) : storage;
 	proof->owner = typing->owner_key;
 	proof->rule = rule;
 	if (map) proof->conclusion.map = map;
@@ -220,7 +218,6 @@ static const struct pg_evidence *accept_record(struct pg_typing *typing, enum pg
 	if (pg_index_insert(&typing->proofs, &proof->index, hash) != 0) return NULL;
 	if (conclusion->last) conclusion->last->next_conclusion = proof;
 	else {
-		conclusion->first = proof;
 		uint64_t key_hash = ((uintptr_t)key ^ judgement) * UINT64_C(1099511628211);
 		if (pg_index_insert(&typing->evidence_conclusions, &conclusion->index, key_hash)) return NULL;
 	}
@@ -269,13 +266,6 @@ static int context_proof(const struct pg_typing *typing, const struct pg_evidenc
 {
 	if (!pg_evidence_owned_by(proof, typing)) return 0;
 	return pg_evidence_judgement(proof) == PG_JUDGEMENT_CONTEXT;
-}
-
-static const struct pg_evidence *conclusion_first(const struct pg_typing *typing,
-	enum pg_evidence_judgement judgement, const void *key)
-{
-	const struct evidence_conclusion *entry = conclusion_find(typing, judgement, key);
-	return entry ? entry->first : NULL;
 }
 
 static const struct pg_evidence *substitution_pair(struct pg_typing *typing,

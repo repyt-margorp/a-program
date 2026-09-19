@@ -2356,3 +2356,15 @@ legacy comparison stages remain readable. Work falls on the same QuickSort
 input, although requests/storage do not all decrease. Timing varies across
 paired and three-way runs, so final R0 performance and net-negative gates stay
 open. This changes the shared walker, not typing or conversion rules.
+
+### Accepted conclusion storage follow-up
+
+The September 20 priority-plan entry places each conclusion index in the first
+accepted proof's allocation. It removes a redundant first-proof pointer without
+merging alternative derivations, changing typed identity, or adding fields to
+every proof. A rehash regression checks alternative order and exact reuse.
+This local change reduces implementation by ten lines and QuickSort graph-arena
+used storage by 478080 bytes against `db08d5e`; indexed semantic counts and Solve
+steps are unchanged. Verification progress is tracked in the priority plan.
+Do not publish this isolated cleanup as a substantial epoch or treat it as
+completion of the cumulative net-negative requirement.
