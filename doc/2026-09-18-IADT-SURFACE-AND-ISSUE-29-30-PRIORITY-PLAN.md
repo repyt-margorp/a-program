@@ -7950,7 +7950,7 @@ append 6.048/6.320; 6.119/6.137, QuickSort 164.853/165.145;
 Timing is mixed, not a demonstrated speedup; preserve the R0 regression gate.
 Logs: `/tmp/a-program-reader-workspace-image-timing{,-repeat}.jsonl`.
 
-### A4 shared Identity discovery (2026-09-20, verified locally)
+### A4 shared Identity discovery (2026-09-20, published)
 
 Main baseline: `c8ce3c8`. The duplication audit records two withdrawn trials:
 caching projection classification in every Context map (no measured gain), and
@@ -7972,7 +7972,7 @@ transport that can change the term; remove repeated formation work instead.
 - [x] Run full strict O2, O0/g, and ASan/UBSan acceptance; compare outcomes and
   source/image resume behavior. Outer step counts can change with scheduling.
 - [x] Measure formation restarts, retained allocation and isolated timings.
-- [ ] Record source/test/doc deltas, review the complete discovery epoch, then
+- [x] Record source/test/doc deltas, review the complete discovery epoch, then
   publish Main. R2-R5/A4-A5 and the cumulative net-negative gate remain open.
 
 Full strict O2 acceptance passes (`/tmp/a-program-transport-shared-opt.log`).
@@ -8024,3 +8024,9 @@ Timings are close and mixed; no overall speedup is established. Keep this change
 for eliminating synchronous formation restarts and sharing the existing Solve
 work, not for a claimed wall-clock win. The small retained-work cost is explicit
 above. Logs: `/tmp/a-program-identity-discovery-timing{,-repeat}.jsonl`.
+
+Publication: `d2b23f66a2b39ff63e8a67d0bee9a96898eebbd4` atomically
+fast-forwards Main and rewrite from `c8ce3c8`; both remote refs were verified.
+That commit contains implementation +32/-11, tests +39/-0, docs +129/-0.
+This receipt follows without source/test edits. No remaining context-action,
+consumer-deletion or R0 performance gate is implicitly closed by publication.
