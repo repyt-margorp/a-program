@@ -3314,3 +3314,56 @@ R0 +7,954/-3,968 (net +3,986). The original reduction gate is still unsatisfied.
 QuickSort retains exactly the semantic table/work counts measured at `1293e50`;
 see `...-graph-counts.log`. Neither this count result nor the registration
 comparison count establishes a general elapsed-time improvement.
+
+### 2026-09-19: Weakening composition trial withdrawn
+
+Baseline: published `5fa8a55`. Length has 499 projected typed subjects, 149
+with consecutive weakenings (depths up to six). An experimental composition
+reduced length occurrences 3540 -> 3400 and proofs 4864 -> 4579. These are
+withdrawn-trial results, not current implementation improvements.
+
+The first trial normalized `pg_occurrence_projection`. Optimized acceptance
+and focused sanitizer tests passed after adjusting two history-dependent IADT
+scheduling assertions; all 2460 exported results matched the baseline except
+step counts. However, a new explicit-map boundary test then exposed a real
+regression: `pg_prove_structural_subject` could no longer certify an otherwise
+valid, explicitly constructed two-stage projection recipe. Its `PG_REINDEX`
+result had been canonicalized into a different typed subject. Existing tests
+alone therefore did not establish semantic preservation.
+
+A second trial left supplied maps intact and normalized only the ordinary
+projection producer. The explicit-map test passed, but the existing IADT
+`indexed_match` test failed at `refined_match` during elimination reindexing.
+The structural lift and proof construction paths must agree on the same typed
+map images, not merely equal erased Core/classifier results. Local composition
+at just one producer or consumer is insufficient. Do not add an acceptance
+fallback, Core-key lookup or a second normalization cache to conceal this.
+
+- [x] Withdraw both implementations and restore the original IADT scheduling
+  assertions. No new API, tag or normalization rule remains.
+- [x] Retain a focused Core regression: direct/indirect weakening has the same
+  Core/classifier/context but retains independent derivations; explicitly
+  supplied nested maps remain checkable without a previously accepted proof,
+  and noncanonical typed images retain their recipe. Repeated lookups do not
+  allocate more proofs/subjects.
+- [x] Verify the retained regression on the unchanged implementation: strict
+  O0/g Core and IADT pass; O2 Core and ASan/UBSan Core pass. Sanitizers use O1/g,
+  frame pointers, non-PIE, leak detection and halt-on-error. Logs use
+  `/tmp/a-program-authority-projection-restored-*`. Full acceptance of the
+  withdrawn trial is not a gate for this restored test-only checkpoint.
+- [ ] Before another composition change, audit `context_map_extend`,
+  `map_lift_work`, `substitution_build`, structural subject admission and
+  elimination reindexing together. Define one representation contract that
+  preserves explicit input admission as well as generated-output sharing.
+
+Reproductions: `/tmp/a-program-authority-projection-raw-regression.log`
+(explicit-map failure), `/tmp/a-program-authority-projection-direct-iadt.log`
+(dependent Match failure). Trial measurements and preliminary gates use
+`/tmp/a-program-authority-projection-normal-*`; they do not certify the
+subsequently revised trial or the final retained tests. The earlier isolated
+old-code comparison was rebuilt after discarding a header-mismatch build.
+
+Final implementation/header delta versus `5fa8a55`: zero. Core regression:
++47/-0 lines; documentation is separate. Original R76/R0 implementation totals
+remain +1570/+3986 net. No Main publication or A3-A5 completion follows from
+this rejected optimization.

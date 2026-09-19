@@ -1235,6 +1235,16 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 - [ ] Report concrete deleted paths. Move remaining synchronous query loops to
   existing scheduling only where necessary for the same work contract; do not
   turn this repair into another scheduler framework.
+- [ ] Audit weakening composition together with explicit map admission and
+  dependent elimination transport before normalizing typed scope paths.
+  The 2026-09-19 trial was withdrawn: normalizing map application broke
+  admission of an explicit nested projection recipe; normalizing only the
+  ordinary projection producer broke dependent Match reindexing. See the
+  priority plan for reproductions. Keep the new boundary test, not either
+  partial normalization or its altered scheduling assertions. Review
+  `pg_occurrence_projection`, `context_map_extend`, `map_lift_work`,
+  `substitution_build` and elimination reindexing as one contract. Do not repair
+  exact-map disagreements with a new acceptance cache or erased-Core lookup.
 - [x] 2026-09-19: share IH scope-map relocation through the existing map-rebase
   query. Remove Solver's per-image projection jobs and substitution-prefix
   reconstruction, and the direct API's extra projection/composition map.
@@ -1607,6 +1617,66 @@ The metadata version also passes `synthesis_test` and all 12 focused source
 selectors under ASan/UBSan in `/tmp/a-program-authority-metadata-sanitize`.
 
 ### A5. Acceptance and publication
+
+#### 2026-09-19: Published `5fa8a55` performance audit
+
+R0 `4657cc6` versus published `5fa8a55`, both strict C11/O0/g. Inputs are
+unchanged between revisions. Twelve alternating fresh-process pairs per case,
+discarding the first two; medians below include process startup. Each version
+saves its own zero-step image (exit 3), then resumes in a fresh process with
+1,000,000 steps. All 18 source/image cases finish successfully in every run.
+No concurrent build/test ran during timing. These are debug measurements,
+not optimized-performance claims or final retained/recompute acceptance.
+
+| Input | Source seconds R0/current | Zero-step image seconds R0/current |
+|---|---:|---:|
+| 01_bool | .000971 / .000995 | n/a |
+| 02_nat | .000953 / .001007 | n/a |
+| 03_main | .001037 / .001138 | n/a |
+| 04_match | .001712 / .001919 | n/a |
+| 05_bool_to_nat | .001507 / .001649 | n/a |
+| 06_pred | .001440 / .001541 | n/a |
+| 07_add | .002069 / .002615 | n/a |
+| 09_list_induction | .002883 / .003422 | n/a |
+| Vec-append | .013675 / .015894 | .015331 / .016001 |
+| dependent-Sigma | .003145 / .003577 | .003671 / .004113 |
+| generated-length | .009069 / .012415 | .009525 / .012504 |
+| function-field | .014785 / .020587 | .014232 / .020628 |
+| QuickSort-property | .854441 / .326392 | .870301 / .323726 |
+
+QuickSort source peak RSS medians: 225404 -> 88810 KiB; source graph arena
+used bytes: 135989888 -> 68837792. Small-case RSS is dominated by inherited
+measurement-parent high-water marks and is not useful allocation evidence.
+Separate GDB source counts expose regressions despite fewer Solve steps:
+
+| Input | Occurrences R0/current | Proofs R0/current | Graph arena used bytes R0/current |
+|---|---:|---:|---:|
+| length | 2249 / 3540 | 3856 / 4864 | 2898368 / 4052864 |
+| function-field | 4524 / 6687 | 7927 / 9284 | 4167744 / 6492096 |
+
+Length source steps decrease 10950 -> 9104; function-field 12906 -> 12334.
+This does not establish reduced total work. Aggregated gprof call counts from
+100 separate length solves show substitution requests 3011 -> 4807 per solve,
+readback requests 3423 -> 6198, and index insertions 20545 -> 34502.
+Sampling ticks are too sparse for reliable per-function time percentages.
+
+Rejected shortcut: bypassing substitution validation whenever the same map
+has already been checked. GDB observes 1119 map-check entries and 2031 suffix
+classifier checks; only two entries/checks repeat a map that already passed
+this validator. This does not justify another acceptance cache. Next trace
+which producers create the additional distinct scoped subjects/maps, and
+whether their transformations can reuse existing typed structure. Preserve
+alternative premise DAGs, binder identity and dependent classifier checks.
+Likewise, do not delete source annotations just because accepted classifiers
+often encode the same domain: unaccepted inputs retain explicit annotations.
+
+Evidence: `/tmp/a-program-authority-r0-current-{matrix,counts}.log`,
+`/tmp/a-program-authority-r0-current-function-field{,-counts}.log`,
+`/tmp/a-program-length-prof-{r0,current}-20260919.txt`, and
+`/tmp/a-program-authority-map-recheck-length.log`. GDB inferiors exit normally.
+Both profiler binaries were freshly compiled with `-pg`; profiler timings
+are not included in the comparison table. This audit changes no implementation
+or tests and does not close A3-A5, the final sanitizer gate or LOC reduction.
 
 Shared substitution ownership follow-up (2026-09-19): the root now belongs to
 the request's input arena from creation through completion. The second retained

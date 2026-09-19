@@ -1175,6 +1175,53 @@ static void evidence_test(struct pg_graph *graph)
 	assert(!pg_prove_projection(&typing, a_context, x_term));
 	assert(!pg_prove_projection(&typing, z_context, y_term));
 	assert(!pg_prove_projection(&typing, x_context, a_context));
+	/* Equal weakening results do not erase an explicitly supplied map recipe. */
+	const struct pg_evidence *first_weakening = pg_prove_projection(&typing, x_context, identity);
+	const struct pg_evidence *second_weakening = pg_prove_projection(&typing, y_context, first_weakening);
+	const struct pg_evidence *direct_weakening = pg_prove_projection(&typing, y_context, identity);
+	assert(second_weakening && direct_weakening && second_weakening != direct_weakening);
+	assert(pg_evidence_subject(second_weakening)->core == pg_evidence_subject(direct_weakening)->core);
+	assert(pg_evidence_classifier(second_weakening) == pg_evidence_classifier(direct_weakening));
+	assert(pg_evidence_context(second_weakening) == pg_evidence_context(direct_weakening));
+	assert(pg_evidence_premise(second_weakening, 1) == first_weakening);
+	assert(pg_evidence_premise(direct_weakening, 1) == identity);
+	reconstruct_derivation(&typing, second_weakening);
+	reconstruct_derivation(&typing, direct_weakening);
+	size_t shared_subjects = typing.occurrences.count, shared_proofs = typing.proofs.count;
+	for (size_t i = 0; i < 32; ++i) {
+		assert(pg_prove_projection(&typing, y_context, first_weakening) == second_weakening);
+		assert(pg_prove_projection(&typing, y_context, identity) == direct_weakening);
+	}
+	assert(typing.occurrences.count == shared_subjects && typing.proofs.count == shared_proofs);
+	/* A map with noncanonical typed images is not an erased weakening recipe. */
+	const struct pg_context_map *plain_projection = pg_context_map_projection(&typing,
+		pg_evidence_context(x_context), pg_evidence_context(y_context));
+	const struct pg_occurrence *plain_image = plain_projection->images[0];
+	const struct pg_occurrence *different_images[] = {
+		pg_occurrence_derived(&typing, plain_image, plain_image->judgement, plain_image->core, plain_image->classifier),
+		plain_projection->images[1]
+	};
+	const struct pg_context_map *different_projection = pg_context_map(&typing,
+		plain_projection->source, plain_projection->destination, 2, different_images);
+	const struct pg_occurrence *different_weakening = pg_occurrence_projection(&typing,
+		different_projection, pg_evidence_subject(first_weakening));
+	assert(different_weakening && different_weakening != pg_evidence_subject(direct_weakening));
+	assert(different_weakening->origin == pg_evidence_subject(first_weakening));
+	assert(different_weakening->map == different_projection);
+	/* An explicitly supplied map recipe remains independently checkable. */
+	const struct pg_evidence *explicit_context = pg_prove_context_extension(&typing,
+		y_context, pg_binder(graph), a_in_y);
+	const struct pg_context_map *explicit_map = pg_context_map_projection(&typing,
+		pg_evidence_context(x_context), pg_evidence_context(explicit_context));
+	const struct pg_occurrence *first_subject = pg_evidence_subject(first_weakening);
+	const struct pg_occurrence *explicit_weakening = pg_occurrence_mapped(&typing,
+		first_subject->judgement, first_subject->core, first_subject->classifier,
+		first_subject->annotation, first_subject, explicit_map);
+	assert(!pg_evidence_for_subject(&typing, explicit_weakening, NULL));
+	const struct pg_evidence *explicit_proof = pg_prove_structural_subject(&typing, explicit_weakening);
+	assert(explicit_proof && pg_evidence_subject(explicit_proof) == explicit_weakening);
+	assert(pg_evidence_rule(explicit_proof) == PG_REINDEX);
+	reconstruct_derivation(&typing, explicit_proof);
 	const struct pg_evidence *projected_formation = pg_prove_classifier(&typing, y_context, projected_x);
 	assert(projected_formation && pg_evidence_subject(projected_formation)->core == pg_evidence_classifier(projected_x));
 	assert(!pg_prove_classifier(&typing, y_context, x_term));
