@@ -314,6 +314,7 @@ static const struct pg_evidence *lift_destination(struct pg_typing *typing,
 
 static int map_dependency(void *owner, const void *key, size_t index, const void **child)
 {
+	(void)index;
 	struct pg_typing *typing = owner;
 	const struct pg_context_map *map = key;
 	if (conclusion_first(typing, PG_JUDGEMENT_SUBSTITUTION, map)) return 0;
@@ -329,12 +330,11 @@ static int map_dependency(void *owner, const void *key, size_t index, const void
 		struct pg_context_lift *work = pg_context_lift_request(typing, prefix_map, map->source, map->destination->binder);
 		while (pg_context_lift_advance(work, 1024) == PG_SUBSTITUTION_PENDING) {}
 		if (pg_context_lift_result(work) != map) return -1;
-		if (!index) { *child = prefix_map; return 1; }
-		if (index == 1) {
-			*child = pg_context_lift_indices(work);
-			if (*child) return 1;
+		if (!prefix) { *child = prefix_map; return 1; }
+		const struct pg_context_map *indices = pg_context_lift_indices(work);
+		if (indices && !conclusion_first(typing, PG_JUDGEMENT_SUBSTITUTION, indices)) {
+			*child = indices; return 1;
 		}
-		if (!prefix) return -1;
 		destination = lift_destination(typing, source, prefix, work);
 		if (!destination) return -1;
 	}
@@ -359,12 +359,13 @@ static int structural_dependency(void *owner, const void *key, size_t index, con
 	if (pg_evidence_for_subject(typing, subject, NULL)) return 0;
 	const struct pg_evidence *proof = NULL;
 	if (subject->map) {
-		if (!index) { *child = subject->origin; return 1; }
+		const struct pg_evidence *origin = pg_evidence_for_subject(typing, subject->origin, NULL);
+		if (!origin && !index) { *child = subject->origin; return 1; }
 		/* The origin may establish the source scope of this map. Certify it
 		 * before asking the ordinary map rule to check its lifted destination
 		 * and images, rather than requiring those scopes during collection. */
 		proof = pg_prove_reindex(typing, pg_prove_context_map(typing, subject->map),
-			pg_evidence_for_subject(typing, subject->origin, NULL));
+			origin);
 	} else if (subject->core->kind == PG_REFERENCE && subject->core->as.reference->kind == PG_BINDER) {
 		const struct pg_evidence *context = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, subject->context);
 		proof = pg_prove_variable(typing, context, subject->core->as.reference);
@@ -381,6 +382,11 @@ static const struct pg_evidence *prove_structural(struct pg_typing *typing,
 	if (!typing || !key) return NULL;
 	const struct pg_evidence *result = conclusion_first(typing, judgement, key);
 	if (result) return result;
+	/* A ready rule needs no traversal workspace. The same callback performs
+	 * its checks; allocate a DAG only for an outstanding prerequisite. */
+	const void *child;
+	int status = dependency(typing, key, 0, &child);
+	if (status <= 0) return status ? NULL : conclusion_first(typing, judgement, key);
 	struct pg_dag dag = {0};
 	if (pg_dag_init(&dag, dependency, typing)) return NULL;
 	if (!pg_dag_add(&dag, key)) result = conclusion_first(typing, judgement, key);

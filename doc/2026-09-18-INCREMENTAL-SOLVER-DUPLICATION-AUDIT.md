@@ -969,6 +969,14 @@ from the value or rename `*f` to `@f` while discarding one of the two types.
 
 ## Execution Order and Gates
 
+2026-09-20 local follow-up at `9337804`: ready structural rule callbacks now
+check their ordinary premises before allocating a traversal DAG. Origin,
+prefix-map and index-map dependencies are yielded only while their receipts
+are missing. QuickSort's temporary structural DAGs decrease from 11261 to 839,
+with unchanged retained semantic counts and Solve steps. This removes repeated
+traversal setup, not independent kernel checks. The priority plan records tests,
+timing trials and the still-open publication/cumulative gates.
+
 Priority update: the [IADT / issue 29 / PR 30 plan](2026-09-18-IADT-SURFACE-AND-ISSUE-29-30-PRIORITY-PLAN.md)
 now precedes the unchecked broad refactoring items below. Keep the findings and
 existing changes, but do not let this cleanup displace those two user priorities.

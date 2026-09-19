@@ -8030,3 +8030,62 @@ fast-forwards Main and rewrite from `c8ce3c8`; both remote refs were verified.
 That commit contains implementation +32/-11, tests +39/-0, docs +129/-0.
 This receipt follows without source/test edits. No remaining context-action,
 consumer-deletion or R0 performance gate is implicitly closed by publication.
+
+### A4 ready structural rules without traversal allocation (2026-09-20, verified)
+
+Baseline: `9337804`. The projection-specific construction proposed during this
+review was already withdrawn above; do not repeat it or bypass dependent map
+checking. Instead, use the existing structural rule callback before allocating
+its temporary dependency DAG. If its prerequisites are accepted, that callback
+checks the ordinary rule immediately. Mapped subjects only yield an origin
+dependency when its receipt is missing. Map lifting likewise yields only missing
+prefix/index-map receipts, not a fixed cursor sequence over accepted premises.
+Outstanding dependencies still use the same DAG driver; no new cache, proof
+rule, Core tag or serialization path.
+
+- [x] Preserve exact accepted-conclusion lookup and ordinary map/Reindex checks.
+- [x] Test a 16-level unchecked mapped-origin chain, repeated lookup and invalid
+  classifier boundary; the strict debug Core suite passes.
+- [x] Count temporary DAG creation on unchanged source inputs with read-only GDB.
+- [x] Full optimized/debug acceptance passes; all 2460 export/step records match
+  each other and Main. Logs: `/tmp/a-program-ready-structural-frontier-{opt,debug}.log`.
+- [x] Full ASan/UBSan acceptance passes with leak detection and halt-on-error,
+  strict O1/g, frame pointers and non-PIE. All 2460 export/step records match
+  debug/O2, with no sanitizer diagnostic. Log:
+  `/tmp/a-program-ready-structural-frontier-asan.log`.
+- [x] Measure semantic object counts and isolated paired source/image timings.
+- [x] Retain the shared readiness change after all three full suites and the
+  paired measurements below. No cumulative gate is closed by this epoch.
+
+Temporary structural DAG initializations, before/final: function-field 1397/163
+(mapped 609/125, map 464/38, reference 324/0); QuickSort 11261/839
+(mapped 4035/544, map 2726/295, reference 4500/0). Outer steps remain 10948
+and 132330. Pending-image function-field decreases from 1399 to 163, with 11253
+steps unchanged. Logs: `/tmp/a-program-structural-dag-{field,qsort,image}-{before,frontier}.log`.
+This counts eliminated traversal allocation, not reduced typing obligations.
+
+Read-only counts remain identical: QuickSort has 4090 Contexts, 74584 typed
+subjects, 12541 maps, 88020 proofs, 9994 typed queries and 34214 synthesis jobs;
+graph arena used/capacity is 56769888/57049088 bytes. Pending-image function-field
+has 581/5706/2051/8207/1576/3916 respectively, arena 5110016/5144576 bytes.
+Logs: `/tmp/a-program-ready-structural-{qsort,image}-counts-frontier.log`.
+
+Final O2 paired medians in ms, Main/candidate (first; repeat). CPU 2, 31
+alternating pairs after warmup, identical Main-produced zero-step images, no
+concurrent build/test/probe:
+
+| Input | Source | Pending-image load |
+| --- | --- | --- |
+| Length | 4.610/4.396; 4.704/4.524 | 4.828/4.628; 4.800/4.656 |
+| Function-field | 7.792/7.869; 7.672/7.395 | 8.643/7.624; 8.214/7.710 |
+| Append | 5.930/5.922; 5.904/5.837 | 5.979/6.018; 6.067/6.019 |
+| QuickSort | 160.874/155.994; 159.506/156.728 | 160.689/157.401; 159.426/156.315 |
+
+Logs: `/tmp/a-program-ready-structural-frontier-timing{,-repeat}.jsonl`.
+Before the map-dependency correction, the first local trial regressed
+function-field image timing in both runs; that incomplete trial is not the
+retained candidate (`.../a-program-ready-structural-timing{,-repeat}.jsonl`).
+Small-case timing is mixed; do not infer a universal speedup. Implementation
+delta is `evidence.c` +13/-7 = +6, tests `core.c` +20/-0. Cumulative R0
+implementation/header net is +4411. The net-negative and R0 performance gates
+remain open. No source/test edits occurred during any measurement or suite.

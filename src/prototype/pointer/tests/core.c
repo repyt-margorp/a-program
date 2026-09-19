@@ -2508,6 +2508,26 @@ static void typed_substitution_test(struct pg_graph *graph)
 	const struct pg_evidence *records[] = {sigma, paired, moved_pi, moved_upi, content, codomain, function_lift, last_pair};
 	for (size_t i = 0; i < sizeof(records) / sizeof(*records); ++i)
 		reconstruct_derivation(&typing, records[i]);
+	/* Missing mapped origins still need ordered checking, even when most
+	 * structural requests can use already accepted prerequisites directly. */
+	const struct pg_evidence *chain_scope = empty;
+	const struct pg_evidence *chain_root = pg_prove_return(&typing,
+		pg_prove_type_value(&typing, pg_prove_universe(&typing, empty, 0)));
+	const struct pg_occurrence *chain = pg_evidence_subject(chain_root);
+	for (size_t i = 0; i < 16; ++i) {
+		chain_scope = pg_prove_context_extension(&typing, chain_scope, pg_binder(graph),
+			pg_prove_universe(&typing, chain_scope, 0));
+		chain = pg_occurrence_weaken(&typing, pg_evidence_context(chain_scope), chain);
+		assert(chain && !pg_evidence_for_subject(&typing, chain, NULL));
+	}
+	const struct pg_evidence *chain_proof = pg_prove_structural_subject(&typing, chain);
+	assert(chain_proof && pg_evidence_subject(chain_proof) == chain);
+	reconstruct_derivation(&typing, chain_proof);
+	proof_count = typing.proofs.count;
+	assert(pg_prove_structural_subject(&typing, chain) == chain_proof);
+	assert(!pg_prove_structural_subject(&typing, pg_occurrence_boundary(&typing,
+		chain, PG_JUDGEMENT_COMPUTATION, pg_universe(graph, 4))));
+	assert(typing.proofs.count == proof_count);
 	pg_typing_destroy(&typing);
 	puts("typed substitution: dependent declarations, simultaneous images and shared premise DAG passed");
 }
