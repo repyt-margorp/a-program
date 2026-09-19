@@ -381,6 +381,22 @@ static void stored_effect_derivation(struct pg_typing *typing,
 	}
 	assert(pg_synthesis_status(deep_job) == PG_SYNTHESIS_DONE);
 	assert(pg_evidence_subject(pg_synthesis_result(deep_job))->core == pg_universe(typing->graph, 0));
+	/* Shared conclusions must not replace the selected premise derivations. */
+	struct pg_derivation_input *projected_u = stored_rule(graph, PG_CONTEXT_PROJECTION, 2,
+		(const struct pg_derivation_input *[]){extended, u});
+	struct pg_synthesis_job *local_u = pg_synthesis_derivation_inference(&synthesis, inner_u, &restored);
+	struct pg_synthesis_job *weakened_u = pg_synthesis_derivation_inference(&synthesis, projected_u, &restored);
+	struct pg_derivation_input returned = {.rule = PG_RETURN_TYPE_FORM,
+		.count = 1, .parameters.effects = empty};
+	struct pg_synthesis_job *direct = pg_synthesis_rule(&synthesis, &returned, &local_u, NULL, NULL);
+	struct pg_synthesis_job *projected = pg_synthesis_rule(&synthesis, &returned, &weakened_u, NULL, NULL);
+	assert(direct && projected && direct != projected);
+	const struct pg_evidence *direct_proof = complete(&synthesis, direct, PG_SYNTHESIS_DONE);
+	const struct pg_evidence *projected_proof = complete(&synthesis, projected, PG_SYNTHESIS_DONE);
+	same_judgement(direct_proof, projected_proof);
+	assert(direct_proof != projected_proof);
+	assert(pg_evidence_premise(direct_proof, 0) == pg_synthesis_result(local_u));
+	assert(pg_evidence_premise(projected_proof, 0) == pg_synthesis_result(weakened_u));
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&normalization);
 	pg_effect_inference_destroy(&restored);

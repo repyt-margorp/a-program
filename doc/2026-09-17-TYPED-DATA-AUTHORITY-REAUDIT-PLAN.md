@@ -1138,6 +1138,18 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 
 ### A4. Audit remaining structural consumers and remove duplication
 
+- [x] 2026-09-20: remove the two Solver-private retained premise arrays.
+  Imported inputs retain only their preparation cursor; rule checking reads
+  the exact child producer results. Temporary kernel-call arrays are freed
+  synchronously, and checking state fits the existing 336-byte Job union.
+  The extended-Context alternate-proof test preserves premise identity.
+  Debug synthesis and full O2 acceptance pass with identical 2460 export/step
+  records. Graph arena usage falls 50,176 bytes for function-field and 409,216
+  for QuickSort. Full ASan/UBSan acceptance also passes; typed-image imports
+  retain fewer bytes with unchanged Solve/proof counts and mixed small timing
+  changes. Publication is tracked in the priority plan. No proof-rule
+  consolidation or A4/A5 closure is implied.
+
 - [x] 2026-09-20: the admission follow-up finds 933 distinct first-check
   subjects in function-field and 8535 in QuickSort, not repeated unsuccessful
   requests. Keep their map/scope validation; no additional cache. Simplify the

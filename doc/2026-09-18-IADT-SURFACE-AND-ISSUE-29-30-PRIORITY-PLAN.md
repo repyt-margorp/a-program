@@ -7144,3 +7144,75 @@ Build/log prefix: `/tmp/a-program-authority-term-dispatch` (debug), `-opt`
 (full optimized suite), `-asan` (affected sanitizer suite). No source/test
 edits occurred during any gate. No performance improvement is claimed from
 dispatch consolidation alone. This remains local pending a larger epoch.
+
+### A4 premise ownership epoch (2026-09-20)
+
+Baseline `20c5cc2`. Two Solver-private premise snapshots duplicate stable edges:
+`DERIVATION_INPUT_JOB` saves prepared child producers already obtainable from its
+immutable input DAG; `DERIVATION_JOB` saves accepted child results already owned
+by those producers. Both arrays previously remained in the graph arena until
+destruction. Remove these snapshots, not the input DAG or accepted proof DAG.
+
+- [x] Keep the imported-input preparation cursor inline in role-selected work.
+  At final rule construction, retrieve prepared child producers through the
+  existing exact-input interner. This is lookup, not another Solve or proof
+  admission. Child order and the preparation-event schedule remain unchanged.
+- [x] Inline derivation checking progress without enlarging the Job (336 bytes).
+  Read conversion endpoints from the selected child results. Build a temporary
+  premise pointer array only at the synchronous kernel call and free it after
+  the kernel has interned/copied its evidence. No persistent result cache,
+  alternative-proof merging, new public API, rule, or image format.
+- [x] Extend existing stored-effect tests to retain two different derivations
+  of the same judgement: Universe formed in an extended Context versus Universe
+  projected into that Context. Their consumers preserve the selected premise
+  pointers. A projection into the identical Context returns the original proof
+  and is deliberately not used as an alleged distinct-proof counterexample.
+- [x] Strict O0/g synthesis tests and complete O2 acceptance pass. All 2460
+  exported results, including Solve steps, match `20c5cc2` after normalizing
+  temporary paths. Compatibility is 63/63; sort properties, images, pending
+  work, failed inputs and Handler snapshots remain covered by the full suite.
+- [x] Complete full ASan/UBSan acceptance and check the ownership change for
+  source-image import cost before publication. Strict O1/g, address/undefined
+  sanitizers, frame pointers, non-PIE and leak/error-halting options: exit zero.
+  All 2460 export/step records match the optimized baseline as well.
+- [ ] Publish together with the preceding pending Term dispatch cleanup after
+  all gates pass. This does not close A4/A5, R2-R5 or the R0 LOC requirement.
+
+Read-only debug measurements (source inputs, graph arena bytes):
+
+| Input | Before | After | Reduction | Solve steps |
+|---|---:|---:|---:|---:|
+| Function-field | 5092384 | 5042208 | 50176 | 10922 |
+| Imported QuickSort | 57479424 | 57070208 | 409216 | 133509 |
+| Typed function-field image | 983840 | 942272 | 41568 | 4119 |
+| Typed append image | 1474592 | 1420992 | 53600 | 5832 |
+
+Jobs, proofs, typed queries, Contexts and substitution storage are unchanged.
+These are retained arena counts, not peak RSS or all allocator usage. Temporary
+arrays still cost one allocation per final nonempty rule invocation. Imported
+input preparation additionally looks up each prepared child once; measure it
+rather than assume that fewer retained bytes imply less CPU work.
+
+Isolated CPU-2 timing, 31 alternating old/new O2 runs: function-field medians
+8.178 -> 7.843 ms; QuickSort 162.383 -> 162.346 ms. Length/append/Handler show
+small reductions; Bool and source-save differences are below 1%. This is not
+a universal speedup or closure of the earlier R0 performance regressions.
+Logs/builds use `/tmp/a-program-authority-premise-owner` with `-opt`, `-asan`,
+`-{field,qsort}-counts.log` and `-timing.jsonl` suffixes.
+
+Image measurements use the same baseline-produced `retained-write-typed`
+fixtures for both binaries; `retained-check` selects the independent typed
+root, exercising imported derivations, not only source reconstruction. The
+pre-change debug counter binary is Main `11fc128` (same ownership as `20c5cc2`).
+All index counts match. Separate isolated 31-pair O2 timing: function-field
+checked/recompute 1.439/1.457 -> 1.423/1.466 ms; append checked/recompute
+1.943/1.993 -> 1.995/1.979 ms; QuickSort source load 166.737 -> 166.083 ms.
+Append checked import is +2.6% in this run: record the mixed result, not a
+universal performance improvement. Logs: `-import-timing.jsonl` and
+`-{function-field,append}-import-{before,after}.log`. No source/test edits
+occurred during builds, tests or measurements.
+
+Current patch: implementation +31/-39 = **-8**, tests +16. Combined with the
+unpublished dispatch cleanup: implementation +66/-83 = **-17**, tests +24;
+documentation is separate. Cumulative R0 implementation/header +9148/-4750 =
+**+4398**, still failing the required net-negative gate.
