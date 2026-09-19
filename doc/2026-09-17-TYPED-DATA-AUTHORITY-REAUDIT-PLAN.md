@@ -1143,8 +1143,10 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   producer instead of constructing a fresh one. Final kernel elimination
   checks remain. Debug, full O2 and focused sanitizer/image gates pass; the
   priority plan records capture/dependency tests, exact-premise reuse tests,
-  reduced QuickSort work/storage and LOC. These changes remain local pending
-  a substantial epoch; overall A4/A5 and the reduction gates stay open.
+  reduced QuickSort work/storage and LOC. Final source induction also supplies
+  those scopes through the existing checked `_at` API, preserving retained
+  allocations. Published together as epoch `0137156` after full gates;
+  overall A4/A5 and the reduction gates stay open.
 
 - [x] 2026-09-19: both transport branch builders use the existing scheduled
   constructor-scope producer. A retained cursor subscribes to completion before

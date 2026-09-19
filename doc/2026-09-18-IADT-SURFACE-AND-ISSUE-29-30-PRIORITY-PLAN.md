@@ -5795,7 +5795,7 @@ Universe must still check. Ordinary Match/induction checking is not changed.
   substitution under the closed telescope must avoid capture.
 - [x] Run debug/O2/sanitizer/image gates and compare work, storage and timing.
 - [x] Record deletion/increase counts below.
-- [ ] Group with the next coherent publication;
+- [x] Group with the induction allocation epoch (`0137156`);
   do not treat this local change as completing A4/A5 or the reduction gates.
 
 Verification: strict debug IADT/synthesis/source checks, full strict O2
@@ -5845,8 +5845,8 @@ conversion and the final kernel elimination check. No new scope cache or rule.
 - [x] Replace synchronous reconstruction with the existing checked producer.
 - [x] Run debug, full O2 acceptance and affected sanitizer/image checks; compare
   QuickSort work/storage, timing and LOC.
-- [ ] Group publication with a substantial epoch. Keep the pending cleanup local until
-  a substantive epoch is complete; A4/A5 and the reduction gates remain open.
+- [x] Group publication with the induction allocation epoch (`0137156`);
+  A4/A5 and the reduction gates remain open.
 
 The regression initially fails (exit 134) on the old validation path. Match and
 IH cases now pass at chunks 1/64. It uses the actual elimination premises:
@@ -5898,7 +5898,7 @@ kernel calls may still request fresh allocations.
   API; preserve ordinary Match and all motive/IH checks.
 - [x] Verify full optimized acceptance, affected debug/sanitizer/image gates,
   retained/recompute behavior, baseline timing/work/storage and per-file LOC.
-- [ ] Publish this completed elimination-scope epoch together with `bc3745c`
+- [x] Publish this completed elimination-scope epoch together with `bc3745c`
   and `8592050`, only after all gates pass. This is not A4/A5/R2-R5 completion
   or fulfillment of the net-negative implementation requirement.
 
@@ -5940,3 +5940,8 @@ Epoch versus Main: `evidence.c` +17/-7 = +10; `synthesis.c` +39/-15 = +24;
 Cumulative implementation/headers: R76 +3,997/-1,944 = +2,053;
 R0 +8,751/-4,282 = +4,469. Reduced graph allocation is not reduced code size;
 the net-negative gate and overall A4/A5/R2-R5 completion remain open.
+
+Publication: `0137156d77378f24fe7c8aa429133f608ad095c5` was atomically
+fast-forwarded from `8bd0d8c` to Main and `rewrite/pointer-core-hott`, without
+force. Both remote tips were verified. This groups `bc3745c`, `8592050` and
+the induction allocation change; it is not overall refactor completion.
