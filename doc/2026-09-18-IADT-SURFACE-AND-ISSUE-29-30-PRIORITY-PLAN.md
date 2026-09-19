@@ -4448,3 +4448,51 @@ Do not describe this group as completing A3-A5 or parent R2-R5.
 | `tests/program.c` | 47 | 0 | +47 |
 
 All paths are under `src/prototype/pointer/`. Documentation is separate.
+
+### 2026-09-19: Shared binder-to-image lookup
+
+Baseline: published `0082312`. Typed-map image selection, occurrence action
+and substitution-evidence image selection independently scanned the same
+immutable binding array. Replace them with `pg_context_map_lookup`, returning
+a borrowed slot in the existing `map->images` array, or NULL. The slot is not
+a new binding identity, De Bruijn representation, stored index or cache.
+
+- [x] Delete the separate lookup loops in `action_result` and
+  `pg_substitution_image`. Typed consumers dereference the slot; evidence
+  selects the corresponding premise of the requested substitution derivation.
+  Do not search for the first proof of an equal image.
+- [x] Remove the old image-only API and migrate all production/test callers.
+  Preserve NULL/foreign-owner behavior, exact binder pointers and mapped
+  classifier-boundary checks. Image payload tests still compare payloads,
+  not the now-distinct slot addresses.
+- [x] Add a boundary test: two source binders map to the very same typed
+  occurrence, but with distinct supplied proofs. Both proof orders retain
+  their exact premises and pass ordinary derivation validation.
+- [x] Strict-debug Core passes.
+- [x] Complete source-image, full optimized and affected sanitizer gates;
+  compare exported results and inert image bytes before local commit.
+- [ ] Group this small consolidation with a later substantive epoch, not an
+  isolated Main push. The broader A3-A5/R2-R5 requirements remain open.
+
+The lookup remains linear and allocation-free. This unifies one algorithm;
+it does not establish a speedup or the remaining output-sensitive A3 bound.
+Implementation/header delta: `evidence.c` +6/-7, `typing.c` +16/-17,
+`typing.h` +3/-2, net -1. Tests: `core.c` +20/-5, `source_io.c` +6/-6.
+Documentation is separate. Cumulative implementation/header net remains
++1,722 from R76 and +4,138 from R0, so the overall reduction gate is unmet.
+
+Verification: strict-debug Core and the complete `tests/source_io.sh` pass.
+ASan/UBSan Core and complete source-image checks pass with leak detection and
+halt-on-error enabled. Full `check-acceptance` passes at `-O2 -Werror` (exit 0;
+`/tmp/a-program-authority-map-lookup-final-opt.log`). Its 2,460 export records,
+including Solve steps and multiplicities, equal the published `0082312` run
+after normalizing temporary directory names and parallel output order. A
+line-order comparison differed; the record multisets have no missing or extra
+entries. No semantic or step-count difference was hidden by the comparison.
+The existing retained QuickSort image resaves at zero Solve steps (expected
+pending exit 3) byte-for-byte unchanged. Sanitizer source-image log:
+`/tmp/a-program-authority-map-lookup-asan-source.log`.
+
+Main and the remote rewrite branch remain at `0082312`; this verified small
+consolidation is local work pending a substantive publication epoch, consistent
+with the publication policy above. No overall refactoring gate is closed.

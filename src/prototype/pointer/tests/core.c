@@ -1516,17 +1516,32 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(map->destination == pg_evidence_context(destination) && map->count == 2);
 	assert(map->images[0] == pg_evidence_subject(destination_b));
 	assert(map->images[1] == pg_evidence_subject(destination_y));
-	assert(pg_context_map_image(map, a) == map->images[0]);
-	assert(pg_context_map_image(map, x) == map->images[1]);
-	assert(!pg_context_map_image(map, b));
-	assert(!pg_context_map_image(map, NULL));
-	assert(!pg_context_map_image(NULL, a));
+	assert(pg_context_map_lookup(map, a) == &map->images[0]);
+	assert(pg_context_map_lookup(map, x) == &map->images[1]);
+	assert(!pg_context_map_lookup(map, b));
+	assert(!pg_context_map_lookup(map, NULL));
+	assert(!pg_context_map_lookup(NULL, a));
 	const struct pg_binding_value *bindings = pg_context_map_bindings(map);
 	assert(bindings[0].binder == a && bindings[0].value == pg_evidence_subject(destination_b)->core);
 	assert(bindings[1].binder == x && bindings[1].value == pg_evidence_subject(destination_y)->core);
 	const struct pg_evidence *alternate_b = pg_prove_type_value(&typing,
 		pg_prove_value_type(&typing, destination_b));
 	assert(alternate_b != destination_b && pg_evidence_subject(alternate_b) == pg_evidence_subject(destination_b));
+	/* Position, not image equality, selects the supplied derivation. */
+	const struct pg_evidence *parallel = pg_prove_context_extension(&typing, a_scope, x,
+		pg_prove_projection(&typing, a_scope, universe));
+	const struct pg_evidence *equal_images[] = {destination_b, alternate_b};
+	for (size_t reverse = 0; reverse < 2; ++reverse) {
+		const struct pg_evidence *supplied = pg_prove_substitution(&typing, parallel, destination, 2, equal_images);
+		const struct pg_context_map *same = pg_evidence_context_map(supplied);
+		assert(same && same->images[0] == same->images[1]);
+		assert(pg_context_map_lookup(same, a) == &same->images[0]);
+		assert(pg_context_map_lookup(same, x) == &same->images[1]);
+		assert(pg_substitution_image(&typing, supplied, a) == equal_images[0]);
+		assert(pg_substitution_image(&typing, supplied, x) == equal_images[1]);
+		reconstruct_derivation(&typing, supplied);
+		equal_images[0] = alternate_b; equal_images[1] = destination_b;
+	}
 	/* Pi's output is determined by its exact premises, not by a caller-supplied
 	 * subject. Equal typed conclusions do not identify alternative derivations. */
 	const struct pg_evidence *pi_bodies[] = {

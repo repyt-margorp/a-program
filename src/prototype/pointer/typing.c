@@ -338,13 +338,13 @@ const struct pg_binding_value *pg_context_map_bindings(const struct pg_context_m
 	return (const struct pg_binding_value *)(map->images + map->count);
 }
 
-const struct pg_occurrence *pg_context_map_image(const struct pg_context_map *map,
+const struct pg_occurrence *const *pg_context_map_lookup(const struct pg_context_map *map,
 	const struct pg_object *binder)
 {
 	if (!map) return NULL;
 	const struct pg_binding_value *bindings = pg_context_map_bindings(map);
 	for (size_t i = 0; i < map->count; ++i)
-		if (bindings[i].binder == binder) return map->images[i];
+		if (bindings[i].binder == binder) return &map->images[i];
 	return NULL;
 }
 
@@ -594,19 +594,18 @@ static const struct pg_occurrence *action_result(struct pg_typing *typing,
 	const struct pg_context_map *map, const struct pg_occurrence *source,
 	const struct pg_term *core, const struct pg_term *classifier, const struct pg_term *annotation)
 {
-	const struct pg_binding_value *bindings = pg_context_map_bindings(map);
-	if (source->core->kind == PG_REFERENCE) {
-		for (size_t i = 0; i < map->count; ++i) {
-			if (bindings[i].binder != source->core->as.reference) continue;
-			if (map->images[i]->core != core) return NULL;
-			if (map->images[i]->judgement == source->judgement && map->images[i]->classifier == classifier)
-				return map->images[i];
-			/* Keep the checked substitution's recipe when its classifier has
-			 * different binder pointers. A bare boundary loses that premise. */
-			return pg_occurrence_mapped(typing, source->judgement, core, classifier,
-				annotation, source, map);
-		}
+	const struct pg_occurrence *const *slot = source->core->kind == PG_REFERENCE
+		? pg_context_map_lookup(map, source->core->as.reference) : NULL;
+	if (slot) {
+		const struct pg_occurrence *image = *slot;
+		if (image->core != core) return NULL;
+		if (image->judgement == source->judgement && image->classifier == classifier) return image;
+		/* Keep the checked substitution's recipe when its classifier has
+		 * different binder pointers. A bare boundary loses that premise. */
+		return pg_occurrence_mapped(typing, source->judgement, core, classifier,
+			annotation, source, map);
 	}
+	const struct pg_binding_value *bindings = pg_context_map_bindings(map);
 	int identity = map->source == map->destination;
 	for (size_t i = 0; identity && i < map->count; ++i)
 		identity = bindings[i].value->kind == PG_REFERENCE && bindings[i].value->as.reference == bindings[i].binder;
@@ -907,9 +906,9 @@ static enum pg_occurrence_input_status occurrence_input_step(struct pg_occurrenc
 		if (current->map) {
 			const struct pg_term *origin = current->origin->core;
 			if (work->index != SIZE_MAX && origin->kind == PG_REFERENCE && origin->as.reference->kind == PG_BINDER) {
-				const struct pg_occurrence *image = pg_context_map_image(current->map, origin->as.reference);
-				if (image) {
-					work->current = image;
+				const struct pg_occurrence *const *slot = pg_context_map_lookup(current->map, origin->as.reference);
+				if (slot) {
+					work->current = *slot;
 					return PG_INPUT_PENDING;
 				}
 			}
