@@ -5966,7 +5966,7 @@ it adds no structure cache, job kind, proof authority or wire format.
   duplicates, nested registration/sealing, rejected annotations, chunks 1/64.
 - [x] Run full optimized acceptance and affected debug/sanitizer/source/image
   checks; measure lookup work, allocation and LOC against the baseline.
-- [ ] Group this work into a coherent tested refactoring epoch before Main push.
+- [x] Published in the tested selected-input/scanning epoch `21cf3ff`.
   Overall A4/A5/R2-R5 and net-negative gates remain open.
 
 The clause array retains the immutable operation producer, not its name lookup.
@@ -6003,8 +6003,8 @@ Logs: `/tmp/a-program-authority-handler-clauses-` followed by `build.log`,
 Per-file LOC: `synthesis.c` +13/-31 = -18; `tests/synthesis.c` +2/-0;
 documentation is separate. Cumulative implementation/headers are R76
 +4,009/-1,974 = +2,035 and R0 +8,763/-4,312 = +4,451. The net-negative
-requirement is still unmet. This is local verified progress, not Main publication
-or completion of the pending-structure reconstruction audit.
+requirement is still unmet. Publication is recorded below; the pending-structure
+reconstruction audit is not complete.
 
 ### Substitution scratch-storage audit (baseline `d19f2cd`, 2026-09-19)
 
@@ -6028,8 +6028,8 @@ traffic totals, not peak resident memory or persistent graph growth.
   run full optimized acceptance and affected debug/sanitizer/image suites.
 - [x] Measure actual scratch allocation, unchanged semantic work/counts,
   paired timings and per-file LOC.
-- [ ] Include this with the Handler cleanup in the next coherent epoch only
-  after publication gates pass. Neither change finishes A4/A5/R2-R5.
+- [x] Published with the Handler cleanup in epoch `21cf3ff` after its gates
+  passed. Neither change finishes A4/A5/R2-R5.
 
 Verification: strict debug Core, full strict O2 `check-acceptance`, ASan/UBSan
 Core, synthesis, source, image and handler-boundaries all exit 0. Sanitizers use
@@ -6077,7 +6077,7 @@ No normalization, cache, rule tag or persistent ownership is added.
 - [x] Pass ASan/UBSan IADT, synthesis and source suites (O1/g, non-PIE,
   leak detection and halt-on-error).
 - [x] Finish sanitizer image validation and paired performance measurements.
-- [ ] Publish only as part of a completed coherent refactoring epoch.
+- [x] Published as part of the verified epoch `21cf3ff`.
 
 On the unchanged universal QuickSort input, independence calls from this
 helper fall 994 -> 513, and their comparison transitions fall 36,013 -> 20,608.
@@ -6125,7 +6125,7 @@ the remaining dispatch. This clarification does not complete that audit.
 - [x] Final sanitizer image validation completed without reported sanitizer
   errors; all 1,218 export records match the baseline, including steps.
   Finish paired timing as recorded below.
-- [ ] Publish with a completed coherent epoch, not as standalone A4 completion.
+- [x] Published with epoch `21cf3ff`, not as standalone A4 completion.
 
 QuickSort: constant-codomain independence calls 575 -> 432 (392 unique pairs
 in both; repeats 183 -> 40); type-query producer reinspection after input
@@ -6164,7 +6164,7 @@ remaining A4/A5/R2-R5 gates are still unmet.
 - [x] Full debug acceptance passes and matches all O2 export records. Sanitizer
   image checks match all 1,218 baseline records, including steps; all 4,080
   Handler save/resume boundary snapshots pass. Paired timings are below.
-- [ ] Publish the selected-input/scanning epoch with `d19f2cd`, `abb3f6d`,
+- [x] Publish the selected-input/scanning epoch with `d19f2cd`, `abb3f6d`,
   `748f5ea`, and `b390a22` after verification; do not close A4/A5 or R2-R5.
 
 QuickSort source reinspection after selecting a dependency: classifier
@@ -6201,3 +6201,8 @@ counts are normalized; the Handler scheduling difference described above is
 not hidden by claiming identical epoch-wide steps. Full debug and optimized
 acceptance, focused sanitizer validation and the per-change audits together
 verify this selected-input/scanning epoch, not completion of the whole plan.
+
+Publication: `21cf3ff6b7d9b1f97a96f01c423247a5316735e9` was atomically
+fast-forwarded from `c5a584a` to Main and `rewrite/pointer-core-hott`, without
+force; both remote tips were verified. This groups five implementation commits.
+Remaining A4/A5/R2-R5 and original cumulative reduction gates remain open.

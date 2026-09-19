@@ -1163,7 +1163,7 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   with sized arrays, matching existing projection ownership. Full O2 and
   affected sanitizer/image tests pass; semantic counts/steps are unchanged.
   The priority plan records allocation traffic, paired timings and +1 source
-  line. Remaining A4/A5 gates and Main epoch publication stay open.
+  line. Published in epoch `21cf3ff`; remaining A4/A5 gates stay open.
 
 - [x] 2026-09-19: Handler assembly resolves its clauses into the existing array
   once, then shares it between effect collection and rule assembly. Remove the
@@ -1171,7 +1171,7 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   from the body's checked name reference; invalid references still reject.
   Full O2 acceptance and affected debug/sanitizer/source/image tests pass.
   The priority plan records mixed costs and implementation -18 lines. This is
-  local work for the next coherent epoch, not A4/A5 completion or Main push.
+  published epoch `21cf3ff`, not A4/A5 completion.
 
 - [x] 2026-09-19: type-case checks closed dependent signatures without discarded
   field scopes (`bc3745c`); source Match/IH validation reuses its existing scope
