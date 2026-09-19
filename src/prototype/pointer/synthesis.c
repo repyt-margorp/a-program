@@ -10055,8 +10055,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		reference_step(synthesis, job); return;
 	}
 	switch (syntax->kind) {
-	case PG_SYNTAX_LAMBDA: case PG_SYNTAX_PI: case PG_SYNTAX_APPLICATION:
-	case PG_SYNTAX_QUOTE:
+	case PG_SYNTAX_PI: case PG_SYNTAX_APPLICATION:
 		break;
 	case PG_SYNTAX_EXPECT:
 		if (!job->value_job) job->value_job = pg_synthesis_source_expect(synthesis, job->scope, job->left, job->right);
@@ -10067,23 +10066,17 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	}
 	if (await_dependency(synthesis, job, job->left)) return;
 	if (await_dependency(synthesis, job, job->right)) return;
-	const struct pg_evidence *right = job->right->result;
-	switch (syntax->kind) {
-	case PG_SYNTAX_PI: {
-		job->domain = job->left->domain;
-		const struct pg_evidence *codomain = type_input(synthesis, job, source_context(job->inner), right);
-		if (!codomain) return;
-		if (pg_evidence_judgement(codomain) != PG_JUDGEMENT_COMPUTATION_TYPE)
-			codomain = pg_prove_computation_type(synthesis->typing, PG_TOTALITY_TOTAL,
-				pg_effect_row(synthesis->typing->graph, 0, NULL), value_type(synthesis, codomain));
-		job->result = pg_prove_pi(synthesis->typing, source_context(job->inner), codomain);
-		break;
-	}
-	case PG_SYNTAX_APPLICATION:
+	if (syntax->kind == PG_SYNTAX_APPLICATION) {
 		prepare_application(synthesis, job);
 		return;
-	default: break;
 	}
+	job->domain = job->left->domain;
+	const struct pg_evidence *codomain = type_input(synthesis, job, source_context(job->inner), job->right->result);
+	if (!codomain) return;
+	if (pg_evidence_judgement(codomain) != PG_JUDGEMENT_COMPUTATION_TYPE)
+		codomain = pg_prove_computation_type(synthesis->typing, PG_TOTALITY_TOTAL,
+			pg_effect_row(synthesis->typing->graph, 0, NULL), value_type(synthesis, codomain));
+	job->result = pg_prove_pi(synthesis->typing, source_context(job->inner), codomain);
 	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);
 }
 

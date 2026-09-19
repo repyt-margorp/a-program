@@ -2187,8 +2187,12 @@ The priority plan's source-transport/query-resumption epoch records fresh full
 debug/O2/ASan+UBSan gates after `fcd9d25`, plus cancellation at each helper step
 and successful shared-query continuation after owner destruction. These gates
 all pass; they authorize that grouped epoch, not final A0-A5 completion. The
-remaining lexical bound, consumer audit, performance regressions and overall
-code-reduction requirement below are unchanged.
+remaining retained-input reuse review, consumer audit, performance regressions
+and overall code-reduction requirement below are unchanged. The lexical
+enumeration bound itself is now covered by the exact `(parent, binder)` index
+and `binder-environment-bound` in `tests/source_io.sh`: unrelated parents and
+sibling environments do not increase candidates or change saved source images.
+This resolves that specific older gate, not all retained-input work or A4.
 
 Earlier checkpoint: implementation `dd9cabc` (2026-09-19). Full strict-debug,
 optimized and ASan/UBSan `check-acceptance` have now all exited 0, including

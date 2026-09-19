@@ -7583,3 +7583,67 @@ append regression remains an outstanding performance finding; it must be
 rechecked on the eventual combined publication candidate, not silently waived.
 Implementation/header LOC is now **+4386** from R0; the overall net-negative
 gate remains unmet. No Main push or A4/A5 completion follows this change.
+
+### A4 role dispatch and source-phase cleanup (2026-09-20)
+
+Baseline `72dd3d6`. Withdraw the trial conversion of the late Solver role
+dispatcher to a switch. Both source forms already compile to jump tables;
+the trial repeatedly slowed the function-field input. Preserve the existing
+dispatcher, including preparation, scope acceptance and dependency order.
+Remove late Lambda/quotation alternatives: source jobs for both return in the
+earlier preparation phase; other roles return through their own handlers, and
+evidence jobs are born completed rather than queued. Keep the late Application
+path: Self/IH disambiguation can reach it after deferred preparation. Its two
+premise waits and the ordinary Pi construction are unchanged.
+
+This is not an assumed runtime optimization. Before removing the dead source
+alternatives, O2 already compiled the former if-chain into a jump table at the
+same address as the new switch. The partial switch-only experiment changed the
+machine-code body from 12382 to 12391 bytes. Do not interpret source conditional
+count as machine work or claim a new semantic unification from that rewrite.
+
+- [x] Partial dispatcher strict O2 synthesis tests pass.
+- [x] Withdrawn combined trial: full O2 `check-acceptance` passes; all 2460 export/step records match
+  `72dd3d6` after temporary-path normalization. Log:
+  `/tmp/a-program-role-dispatch-final.log`.
+- [x] Withdrawn combined trial: strict debug synthesis and affected ASan/UBSan
+  synthesis, program, source/image and handler-boundary checks pass. Log:
+  `/tmp/a-program-role-dispatch-checked.log`; leak detection and halt enabled.
+- [x] Withdrawn combined trial: 31 alternating isolated O2 pairs on CPU 2
+  reproduce the function-field regression, 7.542/8.194 ms (before/after).
+  The switch-only trial was 7.560/8.228 ms. QuickSort was 159.976/159.280 ms
+  in the combined trial. Logs: `/tmp/a-program-role-dispatch{,-final}-timing.jsonl`.
+- [x] Retained source-tail-only cleanup: fresh full O2 acceptance passes;
+  all 2460 export/step records match `72dd3d6` after temporary-path normalization.
+  Log: `/tmp/a-program-source-tail-final.log`.
+- [x] Retained cleanup: strict debug synthesis and affected ASan/UBSan
+  synthesis, program, source/image, handler-nesting and handler-boundaries
+  pass, with leak detection and halt enabled. Logs:
+  `/tmp/a-program-source-tail-debug.log` and
+  `/tmp/a-program-source-tail-asan-{synthesis,program,source,handler-nesting,handler-boundaries}.log`.
+  This is affected sanitizer coverage, not full sanitizer acceptance.
+- [x] Retained cleanup: 31 alternating isolated O2 pairs on CPU 2, against
+  `72dd3d6`. Medians before/after ms: function-field 7.678/7.813, append
+  5.854/6.040, QuickSort 160.841/159.025, Handler 5.245/5.395. Repeating those
+  four cases gives 7.953/7.660, 5.956/5.806, 160.680/160.953, 5.327/5.304.
+  Small-case differences reverse; there is no established speedup. The earlier
+  repeatable dispatcher regression is not reproduced. Logs:
+  `/tmp/a-program-source-tail-timing{,-repeat}.jsonl`.
+
+Related scratch follow-up: compile the existing repeated-CLI harness against
+the extracted `3db91e4` sources and `72dd3d6`, same strict O2 flags. Eleven
+alternating CPU-2 process pairs, 100 compilations each for append/function-field
+and five for QuickSort, yield per-compilation medians before/after ms:
+append 4.736/4.799, function-field 7.012/6.961, QuickSort 154.816/156.171.
+This reduces startup noise but exercises allocator reuse, so it does not erase
+the fresh-process append regression. Evidence:
+`/tmp/a-program-scratch-repeat-{build.log,timing.jsonl}`. The retained scratch
+change is not established as a speed improvement by either measurement.
+
+Retained `synthesis.c` delta +9/-16 = **-7**; no public API/header or new tests.
+Existing pending Lambda/quotation, late source registration, shared failures,
+Self/IH and source/image cut-resume tests provide the behavioral regression
+matrix. Overall R2-R5/A4-A5 and cumulative net-negative acceptance remain open.
+Implementation/header delta from R0 is +9148/-4769 = **+4379**. Keep this as a
+local commit, not a Main publication epoch; the earlier scratch-change append
+finding and broader performance/deletion gates remain open.
