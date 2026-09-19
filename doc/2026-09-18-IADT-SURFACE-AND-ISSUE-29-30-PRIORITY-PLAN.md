@@ -7860,8 +7860,8 @@ path. A newly restored Program still starts without accepted Solve results.
   passes with leak detection/halt and no sanitizer diagnostics.
 - [x] Isolated Main/candidate pending-image timing, with identical inputs;
   two CPU-2 runs of 31 alternating pairs, no concurrent build/test/probe.
-- [ ] Group with a completed reader-ownership epoch before Main publication;
-  this local change alone is not a publication milestone.
+- [x] Group with the shared Core/Context reader-ownership epoch below before
+  Main publication; this isolated source change was not published alone.
 
 Read-only debugger measurements at Program destruction, before any Solve:
 
@@ -7913,8 +7913,10 @@ No new lifetime API, schema version, trusted flag or second Solve path.
 - [x] Measure retained allocation and identical-image timing versus Main.
 - [x] Review the combined source/Core/Context reader change and existing API
   ownership contracts. No source/test edits occurred during verification.
-- [ ] Publish this combined epoch only after the gates above; R2-R5/A4-A5
-  and cumulative net-negative/performance gates remain open.
+- [x] After the gates above, atomically fast-forward Main and rewrite from
+  `dce599d` to `088f4a0`; verify both remote refs. This documentation receipt
+  follows without source/test changes. R2-R5/A4-A5 and cumulative
+  net-negative/performance gates remain open.
 
 Current diff from Main: source_io.c +19/-16, graph_io.c +9/-8,
 context_io.c +10/-5, context_payload.c +10/-5: **+48/-34 = +14**.
