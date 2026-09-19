@@ -513,6 +513,7 @@ static int retain_objects(struct origin_collection *c)
 	for (;;) {
 		for (const struct pg_dag_node *node = c->last_syntax ? c->last_syntax->next : c->syntax->first;
 			node; c->last_syntax = node, node = node->next) {
+			if (index_source_references(c, node->key)) return -1;
 			if (collect_candidates(c, node->key)) return -1;
 		}
 		for (const struct pg_dag_node *node = c->last_object ? c->last_object->next : c->objects.first;

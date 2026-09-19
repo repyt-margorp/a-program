@@ -83,10 +83,11 @@ const struct pg_source_binding *pg_synthesis_source_binding(struct pg_synthesis 
 	const struct pg_source_binding *input);
 int pg_synthesis_visit_source_bindings(const struct pg_synthesis *synthesis,
 	int (*visit)(void *, const struct pg_source_binding *), void *owner);
-/* Members/declarations/Matches use their nearest binder/named scope. Reached
+/* Members/declarations/Matches use their defining block/handler syntax, own
+ * scope's binder, or named/root scope. Reached
  * allocations (family, matcher or Self) expose defining source inputs whose
  * lexical binder belongs to their allocation Context, not unrelated aliases.
- * Visit selected scopes, their parents and reached objects. Syntax/site and
+ * Visit selected scopes, their parents, syntax and reached objects. Syntax/site and
  * exact lexical ancestry checks remain the caller's responsibility; an address
  * alone does not select every source use sharing it.
  * Optional callbacks select source jobs and/or lexical binding addresses.

@@ -1678,6 +1678,29 @@ static void check_allocation_reference(struct pg_synthesis *synthesis,
 	assert(lookup.count == 1 && synthesis->source_references.count == references);
 }
 
+static const void *allocation_scope_key(const struct pg_source_environment *input,
+	const struct pg_source_scope *scope)
+{
+	if (input->definitions) return input->definitions;
+	if (input->handler) return input->handler;
+	return input->binder ? (const void *)input->binder : scope;
+}
+
+static const struct pg_source_scope *unused_definition_scope(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *parent)
+{
+	const char *text = "{{ ignored:=missing; }}.ignored";
+	struct pg_parser parser;
+	struct pg_definition definition;
+	pg_parser_init(&parser, synthesis->typing->graph, text, strlen(text));
+	assert(pg_parser_next(&parser, &definition) == 1);
+	assert(definition.expression->kind == PG_SYNTAX_QUALIFIED);
+	const struct pg_source_scope *scope = pg_synthesis_definition_scope(synthesis,
+		parent, definition.expression->left);
+	assert(scope && scope != parent);
+	return scope;
+}
+
 static size_t lexical_allocation_candidates(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope)
 {
@@ -1686,7 +1709,7 @@ static size_t lexical_allocation_candidates(struct pg_synthesis *synthesis,
 		struct pg_source_environment input;
 		assert(!pg_synthesis_environment_input(synthesis, scope, &input));
 		assert(!pg_synthesis_visit_source_references(synthesis,
-			input.binder ? (const void *)input.binder : scope, find_allocation_reference, NULL, &lookup));
+			allocation_scope_key(&input, scope), find_allocation_reference, NULL, &lookup));
 		scope = input.parent;
 	}
 	return lookup.count;
@@ -1706,7 +1729,7 @@ static int check_match_origin(void *owner, struct pg_synthesis_job *job)
 	struct pg_source_environment environment;
 	assert(!pg_synthesis_environment_input(&p->synthesis, scope, &environment));
 	check_allocation_reference(&p->synthesis, job,
-		environment.binder ? (const void *)environment.binder : scope);
+		allocation_scope_key(&environment, scope));
 	if (!check->solved) {
 		assert(!pg_synthesis_result(job));
 		assert(pg_synthesis_restore_elimination(&p->synthesis, scope, syntax, allocation) == job);
@@ -1894,6 +1917,10 @@ static void match_motive_authority(void)
 				assert(pg_synthesis_restore_elimination(&p->synthesis, sibling,
 					definition.expression->right, allocation) == alias);
 				assert(p->synthesis.source_references.count == references);
+				const struct pg_source_scope *definitions = unused_definition_scope(&p->synthesis, owner);
+				alias = pg_synthesis_restore_elimination(&p->synthesis,
+					definitions, definition.expression->right, allocation);
+				assert(alias && !pg_synthesis_result(alias));
 			}
 			assert(lexical_allocation_candidates(&p->synthesis, owner) == candidates);
 			struct allocation_lookup lookup = {job, 0};
@@ -1988,9 +2015,10 @@ static int find_member_origin(void *owner, struct pg_synthesis_job *job)
 static void scoped_member_origins(struct member_origin *found, const struct pg_source_scope *scope)
 {
 	while (scope) {
-		assert(!pg_synthesis_visit_source_references(found->synthesis, scope, find_member_origin, NULL, found));
 		struct pg_source_environment input;
 		assert(!pg_synthesis_environment_input(found->synthesis, scope, &input));
+		assert(!pg_synthesis_visit_source_references(found->synthesis,
+			allocation_scope_key(&input, scope), find_member_origin, NULL, found));
 		scope = input.parent;
 	}
 }
@@ -2128,6 +2156,10 @@ static void member_use_origins(void)
 		assert(binding);
 		struct pg_synthesis_job *use = pg_synthesis_member_at(&p->synthesis,
 			pg_synthesis_binding_scope(binding), found.syntax, prefix, fields);
+		assert(use && !pg_synthesis_result(use));
+		assert(pg_synthesis_allocation_object(&p->synthesis, use) == binder);
+		const struct pg_source_scope *definitions = unused_definition_scope(&p->synthesis, found.scope);
+		use = pg_synthesis_member_at(&p->synthesis, definitions, found.syntax, prefix, fields);
 		assert(use && !pg_synthesis_result(use));
 		assert(pg_synthesis_allocation_object(&p->synthesis, use) == binder);
 	}
@@ -2722,6 +2754,9 @@ static void parameter_origins(void)
 		assert(pg_synthesis_declaration_at(&p->synthesis, sibling, syntax,
 			pg_data_declaration_view(family)) == alias);
 		assert(p->synthesis.source_references.count == references);
+		const struct pg_source_scope *definitions = unused_definition_scope(&p->synthesis, scope);
+		alias = pg_synthesis_declaration_at(&p->synthesis, definitions, syntax, pg_data_declaration_view(family));
+		assert(alias && !pg_synthesis_result(alias));
 		/* One erased layout does not identify a nominal family. */
 		const struct pg_source_scope *foreign = pg_synthesis_name(&p->synthesis, sibling,
 			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "other", .length = 5},

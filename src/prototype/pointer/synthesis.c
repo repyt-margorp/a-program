@@ -743,10 +743,8 @@ static struct pg_synthesis_job *request_job(struct pg_synthesis *synthesis,
 
 static const void *source_allocation_key(const struct pg_source_scope *scope)
 {
-	while (scope->parent && !scope->binder) {
-		if (!scope->definitions && !(scope->effect_owner && scope->effect_owner->scope == scope)) break;
-		scope = scope->parent;
-	}
+	if (scope->definitions) return scope->definitions->syntax;
+	if (scope->effect_owner && scope->effect_owner->scope == scope) return scope->effect_owner->source->syntax;
 	return scope->binder ? (const void *)scope->binder : scope;
 }
 

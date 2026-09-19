@@ -4986,3 +4986,51 @@ the resulting revision. No A3-A5/R2-R5 completion or new issue closure follows.
 
 Documentation delta for this epoch: this priority plan +166/-0 lines and
 the parent authority plan +15/-0 lines, excluded from implementation counts.
+
+### A3 selected syntax frontier (unpublished, 2026-09-19)
+
+The exact-scope-only draft was rejected: it lost 80 QuickSort member origins,
+including the recursive append use checked by `retained-append-origin`.
+Keeping binder keys fixed that loss, but exact-scope-only declaration discovery
+still rejected the restored mapped-alias root. Neither test was relaxed.
+The invalid nested-block fixture was corrected to a root selection before
+drawing conclusions from it. Trial logs use `authority-member-scope-*`.
+
+The corrected common rule indexes a definition/handler scope by its existing
+container syntax, a binding scope by its own binder, and other scopes by their
+own address. The writer visits these existing references at the selected syntax
+frontier, as it already does for scopes and objects. Remove the upward scope
+walk; do not reconstruct proofs, add an authority, or identify nominal families.
+Syntax/object/lexical ancestry filters remain necessary. In particular, sharing
+one block syntax across different environments still needs a candidate-bound
+audit; this does not close A3.
+
+- [x] Add 128 unselected definition scopes to each declaration, Match and member
+  regression. Selected callback counts and saved bytes stay fixed, without Solve.
+- [x] Strict-debug source/image tests; complete O2 `check-acceptance` exits 0.
+  All 2,460 export records, including Solve steps, match published `0edf180`.
+- [x] Existing retained QuickSort inert resave is byte-identical. Its 206 scopes,
+  140 origins, 315 producers and 42 rules are preserved, including append.
+- [x] length/function-field/QuickSort work and arena counts exactly match the
+  preceding epoch. There is no new retained store or additional source work.
+- [x] ASan/UBSan source and full image-CLI scripts exit 0, with leak detection
+  and halt-on-error enabled. Run isolated O2 timing after all other tests finish.
+- [ ] Group this local correction with a substantial tested epoch before Main
+  publication. It does not close the remaining same-syntax candidate audit.
+
+Final logs use `/tmp/a-program-authority-syntax-frontier-*`: `source.log`,
+`opt.log`, `counts.log` and `{length,field,qsort}-counts.log`. The old failed
+trial's smaller image and lower replay work are not adopted performance results.
+A4 synchronous consumers, A5 and cumulative net-negative gates remain open.
+
+Timing (`timing.log`): CPU 2, warmup then 31 alternating pairs, median ms for
+published/candidate: Bool .492/.492; add .903/.920; length 5.515/5.733;
+function-field 9.781/9.676; Vec append 6.918/7.124; QuickSort 205.082/204.793;
+length save 6.229/6.225; QuickSort save 206.154/206.229. No general speedup is
+claimed. A3's measured gain is exclusion of the added unselected blocks.
+Sanitizer logs: `asan-source.log`, `asan-image-cli.log` under the final prefix.
+
+Per-file additions/deletions: `source_io.c` +1/-0, `synthesis.c` +2/-4,
+`synthesis.h` +3/-2, `tests/source_io.c` +38/-3. Implementation/header net 0;
+tests net +35. Cumulative implementation deltas remain R76 +1,736 and R0
++4,152. Documentation is separate; no completion or issue closure follows.
