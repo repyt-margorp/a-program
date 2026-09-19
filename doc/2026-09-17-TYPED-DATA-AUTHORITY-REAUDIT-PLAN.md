@@ -1138,6 +1138,14 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 
 ### A4. Audit remaining structural consumers and remove duplication
 
+- [x] 2026-09-20: family application uses the existing exact-premise proof
+  lookup before codomain substitution, as ordinary application already does.
+  QuickSort's family-application substitution calls fall 1885 -> 1146 with
+  unchanged Solve steps/exports. Alternate derivations remain distinct.
+  Full O2 and affected debug/sanitizer/image tests pass. Timing is inconclusive;
+  implementation grows four lines. See the priority plan for measurements.
+  This is local progress, not A4/A5 completion or a Main publication epoch.
+
 - [x] 2026-09-20: general substitution assembly uses one temporary allocation
   for its premise/image arrays, without changing checks or the map interner.
   Full O2 and affected sanitizer/image checks pass; implementation net -3.

@@ -223,6 +223,24 @@ static void scoped_type_families(void)
 	assert(pg_prove_type_value(&typing, fiber));
 	common_rule(&typing, partial);
 	common_rule(&typing, fiber);
+	/* Reuse exact premises, not merely their shared typed conclusions. */
+	const struct pg_evidence *declared = pg_prove_value_type(&typing, pg_prove_variable(&typing, fc, t));
+	const struct pg_evidence *alternate_context = pg_prove_context_extension(&typing, fc, v,
+		pg_prove_type_value(&typing, declared));
+	assert(alternate_context && alternate_context != vc);
+	assert(pg_evidence_context(alternate_context) == pg_evidence_context(vc));
+	const struct pg_evidence *alternate_family = pg_prove_variable(&typing, alternate_context, f);
+	assert(alternate_family != family && pg_evidence_subject(alternate_family) == pg_evidence_subject(family));
+	const struct pg_evidence *alternate_partial = pg_prove_family_application(&typing, alternate_family, type);
+	assert(alternate_partial && alternate_partial != partial);
+	assert(pg_evidence_subject(alternate_partial) == pg_evidence_subject(partial));
+	assert(pg_evidence_premise(alternate_partial, 0) == alternate_family);
+	assert(pg_evidence_premise(partial, 0) == family);
+	assert(pg_prove_family_application(&typing, family, type) == partial);
+	assert(pg_prove_family_application(&typing, alternate_family, type) == alternate_partial);
+	assert(pg_prove_family_application(&typing, partial, value) == fiber);
+	assert(!pg_prove_family_application(&typing, family, value));
+	common_rule(&typing, alternate_partial);
 	const struct pg_evidence *abstracted = pg_prove_family_abstraction(&typing, vc, fiber);
 	assert(abstracted && pg_evidence_subject(abstracted)->core->kind == PG_LAMBDA);
 	common_rule(&typing, abstracted);

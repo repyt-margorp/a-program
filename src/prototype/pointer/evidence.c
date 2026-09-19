@@ -137,7 +137,7 @@ static int derived_output(enum pg_evidence_rule rule)
 	switch (rule) {
 	case PG_REINDEX: case PG_CONTEXT_PROJECTION: case PG_PI_FORM: case PG_APP_ELIM: case PG_PI_CODOMAIN:
 	case PG_FOLD_ELIM: case PG_PI_CONSTANT_CODOMAIN: case PG_EFFECT_SUBSUMPTION: case PG_REQUEST_INTRO:
-	case PG_FAMILY_IDENTITY_FORM: case PG_FAMILY_ACTION:
+	case PG_FAMILY_IDENTITY_FORM: case PG_FAMILY_ACTION: case PG_TYPE_FAMILY_APP:
 	case PG_INDUCTIVE_FORM: case PG_CONSTRUCTOR_INTRO: case PG_MATCH_ELIM: case PG_INDUCTION_ELIM: case PG_TYPE_CASE:
 		return 1;
 	default: return 0;
@@ -3246,6 +3246,11 @@ const struct pg_evidence *pg_prove_family_application(struct pg_typing *typing,
 	if (pg_evidence_judgement(family) != PG_JUDGEMENT_TYPE_FAMILY) return NULL;
 	if (pg_evidence_judgement(index) != PG_JUDGEMENT_VALUE && pg_evidence_judgement(index) != PG_JUDGEMENT_TYPE_FAMILY) return NULL;
 	if (pg_evidence_context(family) != pg_evidence_context(index)) return NULL;
+	const struct pg_evidence *premises[] = {family, index};
+	uint64_t hash;
+	const struct pg_evidence *existing = find_record(typing, PG_TYPE_FAMILY_APP,
+		pg_evidence_context(family), NULL, 2, premises, NULL, &hash);
+	if (existing) return existing;
 	const struct pg_term *domain, *body;
 	const struct pg_object *binder;
 	if (!pg_pi_view(pg_evidence_subject(family)->classifier, &domain, &binder, &body)) return NULL;
@@ -3261,7 +3266,6 @@ const struct pg_evidence *pg_prove_family_application(struct pg_typing *typing,
 	const struct pg_occurrence *operands[] = {pg_evidence_subject(family), pg_evidence_subject(index)};
 	const struct pg_occurrence *subject = pg_occurrence(typing, kind, pg_evidence_context(family), core, classifier, NULL, 2, operands);
 	if (!subject) return NULL;
-	const struct pg_evidence *premises[] = {family, index};
 	return accept(typing, PG_TYPE_FAMILY_APP, pg_evidence_context(family), subject, 2, premises);
 }
 

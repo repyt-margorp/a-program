@@ -7647,3 +7647,46 @@ matrix. Overall R2-R5/A4-A5 and cumulative net-negative acceptance remain open.
 Implementation/header delta from R0 is +9148/-4769 = **+4379**. Keep this as a
 local commit, not a Main publication epoch; the earlier scratch-change append
 finding and broader performance/deletion gates remain open.
+
+### A4 exact-premise family application reuse (2026-09-20)
+
+Baseline `6ea0585`. Unlike `PG_APP_ELIM`, `PG_TYPE_FAMILY_APP` substituted
+its codomain before consulting the existing accepted-proof index. A strict
+debug QuickSort probe records 1885 successful calls, including 739 repeated
+accepted `(family proof, index proof)` pairs, and 1885 codomain substitutions.
+Log: `/tmp/a-program-family-application-before-proof-count.log`.
+
+Use the same `find_record`/`derived_output` contract as ordinary application:
+these immutable premises determine the output. Keep owner, judgement and scope
+checks before lookup, and all domain/substitution checks on a miss. This is not
+a map cache, a merge by Core/typed subject, or a new acceptance authority.
+Distinct premise DAGs still produce distinct evidence for a shared subject.
+
+- [x] Add IADT regression for exact reuse and alternate Context derivations
+  yielding the same family subject; retain each application's exact premise.
+  Check the common rule path at chunks 1/64 and invalid argument rejection.
+  Strict debug IADT test passes.
+- [x] Same debug probe after: 1885 accepted calls, 739 exact accepted hits,
+  **1146** substitutions instead of 1885; Solve remains 131183 steps. Log:
+  `/tmp/a-program-family-application-after-proof-count.log`. These are calls
+  from family application, not total compiler substitutions or evaluator work.
+- [x] Full strict O2 `check-acceptance` passes; all 2460 export/step records
+  match `6ea0585` after temporary-path normalization. Log:
+  `/tmp/a-program-family-application-opt.log`.
+- [x] Strict O1/g ASan/UBSan IADT, `derivation_io.sh` and `source_io.sh` pass
+  with leak detection/halt enabled. Logs:
+  `/tmp/a-program-family-application-asan-{iadt,derivation,source}.log`.
+  This is affected sanitizer coverage, not full sanitizer acceptance.
+- [x] Isolated CPU-2 O2 timing against separately built archived `6ea0585`,
+  31 alternating pairs. Before/after medians in ms: function-field 7.710/8.216,
+  append 6.040/5.870, QuickSort 159.792/161.335. Repeat: 8.511/7.776,
+  5.922/5.985, 160.674/159.822. Differences reverse; no established overall
+  speedup. Length 4.559/4.487, Handler 5.314/5.288; length/QuickSort source-save
+  4.838/4.727 and 161.666/160.091 on the first run. Logs:
+  `/tmp/a-program-family-application-timing{,-repeat}.jsonl`.
+
+Implementation: `evidence.c` +6/-2 = **+4**; tests: `tests/iadt.c` +18/-0.
+The reduction is in repeated computation, not LOC. Cumulative implementation
+and headers from R0: +9154/-4771 = **+4383**. Retain as local progress using
+the existing proof authority; no Main push, A4/A5 completion or waiver of the
+broader performance/net-negative gates.
