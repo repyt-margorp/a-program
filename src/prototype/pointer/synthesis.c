@@ -3899,6 +3899,8 @@ static void sequence_step(struct pg_synthesis *synthesis, struct pg_synthesis_jo
 		}
 	}
 	if (job->value_job && job->value_job != job->right) { forward_proof(synthesis, job, job->value_job); return; }
+	/* A checked Fold supersedes provisional choice, not the Context checks below. */
+	if (!job->value_job && pg_synthesis_result(job->right)) job->value_job = job->right;
 	if (!job->value_job) {
 		struct pg_synthesis_job *shapes[] = {
 			pg_synthesis_classifier_structure(synthesis, job->left),

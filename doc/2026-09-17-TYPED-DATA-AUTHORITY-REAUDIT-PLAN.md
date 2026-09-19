@@ -2287,3 +2287,14 @@ to Main/rewrite at `d438485`. Request/Fold dependent-carrier fallback remains wi
 producer checking. The priority plan records the regression, all gates and
 mixed timing results. Other A4 work, final A5 and the cumulative net-negative
 requirement remain open; this epoch adds 31 implementation lines versus Main.
+
+### Sequence choice and accepted-producer reuse
+
+The September 20 priority-plan follow-up extends the existing resumable walker
+to Sequence selection, then lets its exact accepted Fold producer preempt that
+provisional scan. Context checks and dependent fallback remain unchanged.
+Debug/O2 acceptance and affected sanitizers pass, with unchanged exported results
+and proof/occurrence counts. The combined publication unit adds 32 implementation
+lines versus `2655372`. Measurements retain an approximately 5% function-field
+timing regression as an open follow-up. This is not A4/A5 or net-negative closure;
+the priority plan records the work, storage, test and timing evidence.

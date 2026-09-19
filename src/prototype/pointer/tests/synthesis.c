@@ -655,6 +655,39 @@ static void pending_pi_scan(struct pg_typing *typing)
 	for (size_t i = 0; i < 128; ++i)
 		large = pg_prove_thunk_type(typing, pg_prove_computation_type(typing, PG_TOTALITY_TOTAL, row, large));
 	assert(large);
+	/* A checked Fold already decides the choice, even for a large carrier. */
+	{
+		struct pg_whnf_work normalization;
+		struct pg_synthesis synthesis;
+		assert(!pg_whnf_work_init(&normalization, typing->graph));
+		assert(!pg_synthesis_init(&synthesis, typing, &normalization, PG_DEFINITION_EXPLICIT_THUNK));
+		const struct pg_object *x = pg_binder(typing->graph), *y = pg_binder(typing->graph);
+		const struct pg_evidence *scope = pg_prove_context_extension(typing, empty, x, large);
+		const struct pg_evidence *extended = pg_prove_context_extension(typing, scope, y,
+			pg_prove_projection(typing, scope, large));
+		const struct pg_evidence *body = pg_prove_return(typing, pg_prove_variable(typing, extended, y));
+		const struct pg_evidence *function = pg_prove_lambda(typing,
+			pg_prove_pi(typing, extended, pg_prove_classifier(typing, extended, body)), body);
+		struct pg_synthesis_job *context = pg_synthesis_evidence(&synthesis, scope);
+		struct pg_synthesis_job *input = pg_synthesis_evidence(&synthesis,
+			pg_prove_return(typing, pg_prove_variable(typing, scope, x)));
+		struct pg_synthesis_job *continuation = pg_synthesis_evidence(&synthesis, function);
+		struct pg_synthesis_job *normalized = pg_synthesis_normalize_classifier_jobs(&synthesis, context, input);
+		struct pg_synthesis_job *fold = rule_job(&synthesis, PG_FOLD_ELIM, NULL, 2,
+			(struct pg_synthesis_job *[]){normalized, continuation});
+		assert(fold);
+		const struct pg_evidence *expected = complete(&synthesis, fold, PG_SYNTHESIS_DONE);
+		while (synthesis.ready) pg_synthesis_advance(&synthesis, 1);
+		size_t jobs = synthesis.jobs.count, proofs = typing->proofs.count, occurrences = typing->occurrences.count;
+		struct pg_synthesis_job *sequence = pg_synthesis_sequence(&synthesis, context, input, continuation);
+		pg_synthesis_advance(&synthesis, 1);
+		assert(pg_synthesis_result(sequence) == expected);
+		assert(synthesis.jobs.count == jobs + 1 && typing->proofs.count == proofs && typing->occurrences.count == occurrences);
+		complete(&synthesis, pg_synthesis_sequence(&synthesis,
+			pg_synthesis_evidence(&synthesis, empty), input, continuation), PG_SYNTHESIS_REJECTED);
+		pg_synthesis_destroy(&synthesis);
+		pg_whnf_work_destroy(&normalization);
+	}
 	for (unsigned chunk = 0; chunk <= 64; chunk = chunk ? 64 * chunk : 1) {
 		struct pg_whnf_work normalization;
 		struct pg_effect_inference effects;

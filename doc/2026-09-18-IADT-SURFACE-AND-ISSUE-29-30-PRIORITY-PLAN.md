@@ -6676,7 +6676,7 @@ Neither a provisional shape nor a post-check annotation becomes acceptance.
 - [x] Verify pending effects, dependent fallback, invalid premises and the
   existing acceptance/image/sanitizer gates before publication.
 - [x] Measure work, timing and per-file LOC; keep A4/A5 and R0 gates open.
-- [ ] Before publishing this next epoch, inspect preemption of source-choice
+- [x] Before publishing this next epoch, inspect preemption of source-choice
   scans by the already accepted Fold producer. Ordinary Context checks must
   still run; do not confuse a provisional structure with that accepted proof.
 
@@ -6719,3 +6719,50 @@ Logs: `/tmp/a-program-authority-sequence-scan-` with `baseline.log`,
 `debug.log`, `acceptance-final.log`, `synthesis{,-opt}-final.log`,
 `asan-{synthesis-final,source,image,handler}.log`, `counts.log`,
 `{before,after,test}-work.log` and `timing{,-repeat}.jsonl`.
+
+#### Accepted Fold preemption and publication gate (2026-09-20)
+
+The exact accepted Fold producer now supersedes unfinished Sequence choice.
+All ordinary input-kind and Context checks still run. Rejection is not accepted
+evidence and does not activate this path. No new authority, job kind, field or
+cache is introduced; completion releases the existing comparison cursor.
+
+- [x] Regression fails before the change: an already checked Fold with a
+  128-layer carrier must complete Sequence in one step, returning the identical
+  evidence pointer without new proofs, occurrences or structural requests.
+- [x] A different requested Context is still rejected.
+- [x] Full strict debug/O2 acceptance passes. All 2,460 export results match
+  Main `2655372` after path/step normalization; debug/O2 also agree on steps.
+- [x] Affected ASan/UBSan synthesis, Source IO, image CLI and 5,098 Handler save
+  boundaries pass. All 1,218 image outputs match Main after normalization.
+- [x] Isolated work/storage/timing and per-file LOC measured before publication.
+
+Same QuickSort property: Main / preceding `7d390b5` / final candidate requests
+33,759 / 33,691 / 33,687; steps 153,988 / 160,918 / 155,443; graph arena used
+60,494,112 / 60,459,584 / 60,456,640 bytes. Proofs, occurrences, typed queries,
+Contexts, maps/lifts/actions and substitution storage remain unchanged. Job
+size remains 336 bytes. Sequence independence work drops from the preceding
+candidate's 7,623 transitions / 2,233 tasks to 2,091 / 882. Of its 155 scans,
+125 are discarded before completion after accepted evidence becomes available;
+no comparison remains outstanding. More outer steps than Main expose work
+previously performed synchronously; they are not additional proof obligations.
+
+O2, CPU 2, 31 alternating pairs, median ms Main/final: QuickSort
+171.332/172.401, Handler 5.430/5.398, function-field 7.949/8.376, QuickSort save
+173.681/175.710. Repeat: 173.577/172.892, 5.508/5.575, 8.021/8.425 and
+175.316/175.507. The approximately 5% function-field regression persists in
+these two runs and remains a performance follow-up, not a resolved result.
+No overall speedup or final R0 performance acceptance is claimed.
+
+Combined epoch versus Main: `synthesis.c` +57/-25 = **+32**;
+`tests/synthesis.c` +49/-5 = **+44**, counted separately. Executable text grows
+464 bytes, data/BSS unchanged. R0 implementation/header +9,095/-4,676 =
+**+4,419**. This epoch is ready for the requested tested milestone publication,
+including `7d390b5`; whole A4/A5, the performance follow-up and the cumulative
+net-negative requirement remain open. No source/test edits occurred during
+builds, tests or probes.
+
+Logs: `/tmp/a-program-authority-sequence-accepted-` with
+`{baseline,debug,acceptance,synthesis,counts,work}.log`,
+`asan-{build,synthesis,source,image,handler}.log` and
+`timing{,-repeat}.jsonl`.
