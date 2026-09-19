@@ -3828,3 +3828,91 @@ Final-candidate checks against `fdc28e1`:
   publication outcome. This does not close A3-A5 or parent R2-R5.
   Documentation: parent authority plan +8/-0; this priority plan +85/-0.
   Excluded from all implementation/header and test totals above.
+
+### A4 group: branch preparation and symbolic application
+
+Baseline: `a7cfde6`. A3 reinspection still finds that one nominal address can
+have distinct lexical uses. Object-only deduplication is invalid; an independent
+scope-by-object cross product is not the requested selected-root traversal.
+No source-selection change is adopted in this group, and A3 remains open.
+
+`plan_case` currently allocates every field/IH/remaining-argument scope and
+drains their typed beta queries in one graph turn. Continue the same telescope
+through the existing application-body query and wait slot. Preserve the exact
+field/IH/argument order and checked Context/proof premises.
+
+- [x] Separate descriptive case setup from incremental telescope extension.
+  Retain the next slot and its allocated Context while its query is pending;
+  do not freshen binders again on resumption. Reuse storage with the later leaf
+  number only if their lifetimes are disjoint. No new Core tag or proof rule.
+- [x] Add a multi-field cold-case regression: setup does not construct the
+  telescope wholesale, cancellation is safe at each boundary, and chunk 1/64
+  completion still constructs the ordinary graph witness and expected result.
+- [x] Preserve a returned branch value until its continuation's typed beta
+  query completes. Reuse the existing output field and continuation stack,
+  not a second result cache or synthetic RETURN node used as scheduler state.
+  A leaf is ready only after its continuation stack is empty. Ordinary and
+  stacked APP exposure use the same application query/wait slot.
+- [x] Extend the cold Fold regression to its return continuation: before the
+  repair, one graph turn drains multiple query transitions. Check one-step
+  progression, independent completion after cancellation, and an actually used
+  continuation query at graph completion. Both old-code failures are retained
+  in `/tmp/a-program-authority-case-scopes-{before,return-before}-test.log`.
+- [x] Compare old/new query work, proof/Context allocation and output. Run the
+  focused and full acceptance gates before publication; report source/test/doc
+  LOC separately. Keep the broader A3-A5 and cumulative reduction gates open.
+
+Current measured candidate:
+
+- Focused `program_test`, full strict debug and O2 acceptance pass (exit 0).
+  Both final full logs contain 2,460 matching normalized export records,
+  including scheduling counts. Baseline `a7cfde6` semantic exports match after
+  removing steps. The cold four-field setup and cold Fold-continuation tests
+  each fail before their respective repair. They cover cancellation and actual
+  graph/witness completion, not merely empty-budget no-ops.
+- Graph-state/case/job headers remain 600/264/368 bytes. On length,
+  function-field, Vec append and QuickSort, all Core/proof/occurrence/Context/
+  map/query/action/lift counts and typed-query transitions match the baseline.
+  Solve turns change by +15/+107/0/+5465: beta work is now scheduled.
+  Arena used bytes are unchanged except QuickSort +608; capacities match.
+- QuickSort has one additional `CLASSIFIER_STRUCTURE_JOB` (3,930 -> 3,931);
+  its input is a `PG_CONTEXT_PROJECTION` recipe (410 -> 411 such inputs).
+  Accepted/pending structural inspection remains timing-sensitive in the
+  existing Solver. Do not hide this by skipping projection validation or claim
+  all request sharing complete. All accepted object counts remain unchanged.
+  Further lineage inspection identifies a source definition named `A` as that
+  projection's operand (four -> five structural projection requests).
+- Implementation `function_graph.c`: +49/-24, net +25. Test `tests/program.c`:
+  +51/-1, net +50. Cumulative implementation/header: R76 `3a3bf550`
+  +3375/-1729, net +1646; R0 `4657cc6` +8164/-4102, net +4062. Original
+  net-negative gates remain unmet. Documentation is counted separately.
+
+Logs use `/tmp/a-program-authority-case-scopes-`: `debug.log`, `opt.log`,
+`asan.log`, `counts.log`, `roles.log`, `shape-inputs.log`, `shape-lineage.log`,
+and the two failing-before logs above.
+
+Final publication checks:
+
+- Debug, O2 and ASan/UBSan full acceptance all exit 0; each passes 63/63
+  compatibility cases and the sorting property/image suites. All 2,460
+  normalized export records match across configurations including steps.
+  No sanitizer diagnostic occurs. Command:
+  `make -f src/prototype/pointer/Makefile BUILD=/tmp/a-program-authority-case-scopes-{debug,opt,asan} -j2 check-acceptance`,
+  with strict C11 warnings/errors and respectively `-O0 -g`, `-O2`, or
+  `-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie`.
+  Sanitizer environment is `ASAN_OPTIONS=detect_leaks=1:halt_on_error=1` and
+  `UBSAN_OPTIONS=halt_on_error=1`.
+- Two idle fresh-process O2 comparisons use 31 alternating pairs each, one
+  warm-up excluded; the second reverses starting order. Median seconds
+  before/after in run 1 / run 2: length .00831/.00915 / .00900/.00871;
+  function-field .01363/.01428 / .01410/.01478; Vec append .01023/.00994 /
+  .00956/.01045; QuickSort .21287/.21408 / .20993/.20991. Small-input direction
+  is unstable, including the unaffected Vec control. No general speedup or
+  completed original-baseline performance gate is claimed. Full samples are
+  `timing.log` and `timing-repeat.log` under the preceding prefix.
+- [x] Prepare the tested group for an atomic Main/rewrite push without force;
+  the Git remote records the publication result. Original A3-A5 and parent
+  R2-R5 remain open. This group does not claim constant-time kernel subrules
+  or remove the remaining synchronous schema helper application.
+  Documentation-only diff: parent authority plan +11/-0; priority plan +88/-0.
+  These lines are excluded from implementation/header and test totals.

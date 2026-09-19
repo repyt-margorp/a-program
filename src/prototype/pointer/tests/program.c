@@ -442,18 +442,27 @@ static void graded_function_graph(struct pg_program *p, const struct pg_evidence
 		struct pg_typed_query *origin = pg_construction_origin_request(&p->typing, projected);
 		uint64_t origin_steps = pg_typed_query_steps(origin);
 		assert(!origin_steps);
+		struct pg_typed_query *returned = pg_application_body_request(&p->typing,
+			pg_prove_projection(&p->typing, helper_scope, function),
+			pg_prove_projection(&p->typing, helper_scope, value));
+		uint64_t returned_steps = pg_typed_query_steps(returned);
+		assert(returned && !returned_steps);
 		enum pg_function_graph_status status = PG_FUNCTION_GRAPH_PENDING;
 		for (size_t turns = 0; turns < limit && status == PG_FUNCTION_GRAPH_PENDING; ++turns) {
 			status = pg_function_graph_advance(&helper, 1);
 			assert(pg_typed_query_steps(origin) - origin_steps <= 1);
 			origin_steps = pg_typed_query_steps(origin);
+			assert(pg_typed_query_steps(returned) - returned_steps <= 1);
+			returned_steps = pg_typed_query_steps(returned);
 		}
 		pg_function_graph_destroy(&helper);
 		assert(!helper.state);
 		while (!pg_typed_query_advance(origin, chunk)) assert(pg_typed_query_steps(origin) < 100000);
 		assert(pg_typed_query_result(origin));
+		while (!pg_typed_query_advance(returned, chunk)) assert(pg_typed_query_steps(returned) < 100000);
+		assert(pg_typed_query_result(returned));
 		if (status != PG_FUNCTION_GRAPH_PENDING) {
-			assert(status == PG_FUNCTION_GRAPH_DONE && origin_steps && pg_typed_query_result(origin));
+			assert(status == PG_FUNCTION_GRAPH_DONE && origin_steps && returned_steps && pg_typed_query_result(origin));
 			break;
 		}
 	}
@@ -935,6 +944,46 @@ static void suspended_helper_application(void)
 	puts("helper application: typed beta queries yield and survive cancellation at every boundary");
 }
 
+static void suspended_case_scopes(void)
+{
+	const char *source = "Nat:=@{zero:*;succ:*->*;}; Fields:=@{mk:Nat->Nat->Nat->Nat->*;};"
+		"first:=\\f:Fields=>f @mk a b c d=>a; zero:=Nat.zero;"
+		"sample:=Fields.mk Nat.zero Nat.zero Nat.zero Nat.zero;";
+	for (uint64_t chunk = 1; chunk <= 64; chunk *= 64) {
+		struct pg_program *p = pg_program_create(source, strlen(source), PG_DEFINITION_IMPLICIT_THUNK);
+		assert(p && p->root);
+		solve(p, chunk);
+		assert(pg_synthesis_status(p->root) == PG_SYNTHESIS_DONE);
+		const struct pg_evidence *function = pg_synthesis_result(pg_synthesis_definition(p->root,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "first", .length = 5}));
+		const struct pg_evidence *sample = export_value(p, "sample"), *zero = export_value(p, "zero");
+		for (size_t limit = 0;; ++limit) {
+			assert(limit < 1000);
+			struct pg_function_graph_work work;
+			assert(!pg_function_graph_init(&work, &p->typing, &p->evaluation, function));
+			for (size_t turn = 0; !pg_function_graph_prepared(&work); ++turn) {
+				assert(turn < 1000);
+				assert(pg_function_graph_advance(&work, 1) == PG_FUNCTION_GRAPH_PENDING);
+			}
+			size_t proofs = p->typing.proofs.count, queries = p->typing.typed_queries.count;
+			assert(pg_function_graph_advance(&work, 1) == PG_FUNCTION_GRAPH_PENDING);
+			assert(p->typing.proofs.count == proofs && p->typing.typed_queries.count == queries);
+			enum pg_function_graph_status status = PG_FUNCTION_GRAPH_PENDING;
+			for (size_t turn = 0; turn < limit && status == PG_FUNCTION_GRAPH_PENDING; ++turn)
+				status = pg_function_graph_advance(&work, 1);
+			if (status != PG_FUNCTION_GRAPH_PENDING) {
+				assert(status == PG_FUNCTION_GRAPH_DONE);
+				graph_witness_result(p, &work, sample, zero, chunk);
+			}
+			pg_function_graph_destroy(&work);
+			assert(!work.state);
+			if (status != PG_FUNCTION_GRAPH_PENDING) break;
+		}
+		pg_program_destroy(p);
+	}
+	puts("case telescopes: descriptive setup, incremental scopes and cancellation preserve graph witnesses");
+}
+
 static void ambiguous_source_calls(void)
 {
 	const char *source = "Nat:=@{zero:*;succ:*->*;}; keep:=\\a:Nat=>\\b:Nat=>a;"
@@ -1039,6 +1088,7 @@ int main(int argc, char **argv)
 	graph_index_preparation();
 	function_graphs();
 	suspended_helper_application();
+	suspended_case_scopes();
 	ambiguous_source_calls();
 	application_result_constraints();
 	char source[] = "{{ id := &(\\A:@ => \\x:A => x); id :: (A:@)->A->A; }}.id";

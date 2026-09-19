@@ -28,7 +28,9 @@ struct graph_call_layout {
 
 struct graph_case {
 	size_t field_count, hypothesis_count, call_count;
-	size_t first_call, child_count, leaf;
+	size_t first_call, child_count;
+	/* Telescope preparation finishes before schema construction assigns a leaf. */
+	union { size_t next_scope; size_t leaf; };
 	const struct pg_evidence **scopes;
 	size_t *hypothesis_fields;
 	const struct pg_evidence *context, *computation, *output;
@@ -323,16 +325,27 @@ static int plan_case(struct pg_function_graph_state *s, struct graph_case *plan)
 	plan->context = s->argument_context;
 	plan->constructor = constructor;
 	plan->computation = pg_evidence_premise(s->body, 5 + s->next);
-	for (size_t i = 0; i < count; ++i) {
+	return 0;
+}
+
+static int plan_scope(struct pg_function_graph_state *s, struct graph_case *plan)
+{
+	struct pg_typing *t = s->typing;
+	size_t i = plan->next_scope;
+	if (!plan->scopes[i]) {
 		const struct pg_evidence *pi = pg_prove_classifier(t, plan->context, plan->computation);
 		const struct pg_evidence *domain = pg_prove_pi_domain(t, pi);
-		plan->context = pg_prove_context_extension(t, plan->context, pg_binder(t->graph), domain);
-		if (!plan->context) return -1;
-		plan->scopes[i] = plan->context;
-		const struct pg_evidence *variable = pg_prove_variable(t, plan->context, pg_evidence_context(plan->context)->binder);
-		plan->computation = pg_prove_application_body(t, projection(s, plan->context, plan->computation), variable);
-		if (!plan->computation) return -1;
+		plan->scopes[i] = pg_prove_context_extension(t, plan->context, pg_binder(t->graph), domain);
 	}
+	const struct pg_evidence *context = plan->scopes[i];
+	if (!context) return -1;
+	const struct pg_evidence *variable = pg_prove_variable(t, context, pg_evidence_context(context)->binder);
+	const struct pg_evidence *body;
+	if (application_body(s, projection(s, context, plan->computation), variable, &body)) return 0;
+	if (!body) return -1;
+	plan->context = context;
+	plan->computation = body;
+	++plan->next_scope;
 	return 0;
 }
 
@@ -384,16 +397,10 @@ static int split_case(struct pg_function_graph_state *s, struct graph_case *plan
 	return 0;
 }
 
-static int plan_result(struct pg_function_graph_state *s, struct graph_case *plan,
-	const struct pg_evidence *value)
+static int plan_result(struct graph_case *plan, const struct pg_evidence *value)
 {
-	if (!value) return -1;
-	if (!plan->continuations) { plan->output = value; return 1; }
-	if (!plan->continuations->function) return -1;
-	const struct pg_evidence *continuation = projection(s, plan->context, plan->continuations->function);
-	plan->continuations = plan->continuations->next;
-	plan->computation = pg_prove_application_body(s->typing, continuation, projection(s, plan->context, value));
-	return plan->computation ? 0 : -1;
+	plan->output = value;
+	return value ? 0 : -1;
 }
 
 static size_t hypothesis_position(struct pg_function_graph_state *s,
@@ -564,7 +571,7 @@ static int record_call(struct pg_function_graph_state *s, struct graph_case *pla
 	call->previous = plan->calls;
 	plan->calls = call;
 	++plan->call_count;
-	return plan_result(s, plan, pg_prove_variable(t, plan->context, pg_evidence_context(plan->context)->binder));
+	return plan_result(plan, pg_prove_variable(t, plan->context, pg_evidence_context(plan->context)->binder));
 }
 
 /* Symbolically expose sequencing using retained typing evidence. A recursive
@@ -573,6 +580,18 @@ static int record_call(struct pg_function_graph_state *s, struct graph_case *pla
 static int plan_step(struct pg_function_graph_state *s, struct graph_case *plan)
 {
 	struct pg_typing *t = s->typing;
+	if (plan->output) {
+		const struct graph_continuation *frame = plan->continuations;
+		if (!frame || !frame->function) return -1;
+		const struct pg_evidence *body;
+		if (application_body(s, projection(s, plan->context, frame->function),
+			projection(s, plan->context, plan->output), &body)) return 0;
+		if (!body) return -1;
+		plan->computation = body;
+		plan->continuations = frame->next;
+		plan->output = NULL;
+		return 0;
+	}
 	if (s->waiting) {
 		if (!s->waiting->helper) return 0;
 		struct graph_call *call = s->waiting;
@@ -588,7 +607,7 @@ static int plan_step(struct pg_function_graph_state *s, struct graph_case *plan)
 		plan->normalization = NULL;
 		const struct pg_evidence *value = pg_prove_return_value(t, normalized);
 		if (!value) value = pg_prove_total_pure_value(t, normalized);
-		return plan_result(s, plan, value);
+		return plan_result(plan, value);
 	}
 	if (plan->continuations && plan->continuations->argument) {
 		/* Sequencing can expose a callable with its arguments still on the
@@ -607,8 +626,9 @@ static int plan_step(struct pg_function_graph_state *s, struct graph_case *plan)
 			plan->continuations = rest;
 			return 0;
 		}
-		const struct pg_evidence *body = pg_prove_application_body(t, plan->computation,
-			projection(s, plan->context, plan->continuations->argument));
+		const struct pg_evidence *body;
+		if (application_body(s, plan->computation,
+			projection(s, plan->context, plan->continuations->argument), &body)) return 0;
 		if (body) {
 			plan->continuations = plan->continuations->next;
 			plan->computation = body;
@@ -632,7 +652,8 @@ static int plan_step(struct pg_function_graph_state *s, struct graph_case *plan)
 	case PG_APP_ELIM: {
 		int helper = helper_call(s, plan, plan->computation);
 		if (helper) return helper < 0 ? -1 : 0;
-		const struct pg_evidence *body = pg_prove_application_body(t, left, right);
+		const struct pg_evidence *body;
+		if (application_body(s, left, right, &body)) return 0;
 		if (body) { plan->computation = body; return 0; }
 		struct graph_continuation *frame = pg_alloc(&s->temporary, sizeof(*frame));
 		if (!frame) return -1;
@@ -704,7 +725,7 @@ static int plan_step(struct pg_function_graph_state *s, struct graph_case *plan)
 	}
 	default: return -1;
 	}
-	return plan_result(s, plan, value);
+	return plan_result(plan, value);
 normalize:
 	/* Normalize the saturated call, retaining outer sequencing. A neutral
 	 * result needs the checked TOTAL/empty-row projection above. */
@@ -1393,7 +1414,11 @@ enum pg_function_graph_status pg_function_graph_advance(struct pg_function_graph
 			continue;
 		}
 		struct graph_case *plan = s->pending;
-		if (!plan->output && !plan->discriminant) {
+		if (!plan->parent && s->cases && plan->next_scope < plan->field_count + plan->hypothesis_count + s->arity) {
+			if (plan_scope(s, plan)) { s->status = PG_FUNCTION_GRAPH_UNSUPPORTED; break; }
+			continue;
+		}
+		if (!plan->discriminant && (!plan->output || plan->continuations)) {
 			if (plan_step(s, plan) < 0) { s->status = PG_FUNCTION_GRAPH_UNSUPPORTED; break; }
 			continue;
 		}

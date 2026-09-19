@@ -1283,6 +1283,17 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   The priority plan records old-caller regression failures, final acceptance,
   scheduling/storage costs and publication. This does not bound all checked
   kernel subrules, normalize projection recipes or close A3-A5.
+- [x] Resume branch field/IH/remaining-argument telescopes through the existing
+  application-body query. Keep each checked extension in its existing scope
+  slot while pending; reuse the later leaf-number storage for the next slot.
+  Symbolic APP and Fold continuation application use the same wait slot.
+  The existing branch output holds a returned value until its continuation
+  completes; no synthetic Core node, result cache or new proof rule is added.
+  The priority plan records failing-before cold tests, full gates and costs.
+  `helper_application` in schema construction and checked kernel subrules
+  remain synchronous. Pending-versus-accepted classifier-structure requests
+  also remain an audit item; do not omit projection obligations merely to
+  reduce request counts. A3-A5 are not complete.
 - [x] 2026-09-19: share IH scope-map relocation through the existing map-rebase
   query. Remove Solver's per-image projection jobs and substitution-prefix
   reconstruction, and the direct API's extra projection/composition map.
