@@ -1138,6 +1138,17 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 
 ### A4. Audit remaining structural consumers and remove duplication
 
+- [x] 2026-09-19: index-transport scope preparation retains its accepted map,
+  field cursor and existing rebase query across Solve turns. Each turn advances
+  that query with budget 1; direct and normalized attempts share the prepared
+  scope. Constructor-field attempts retain their selected field values too.
+  The oldest-first dependency checks and candidate rejection rules remain.
+  Full O2 acceptance and focused debug/ASan/UBSan tests pass, including 45
+  transport image cuts. See the priority plan's scope-preparation entry for
+  time/space costs. This is local progress, not the complete transport epoch:
+  `constructor_transport_context`, branch preparation and pattern factoring
+  still contain synchronous work. Keep the broader deletion and A5 gates open.
+
 - [x] 2026-09-19: accepted name registration checks the immutable Context prefix
   without constructing/discarding a weakening proof. Actual references still
   use ordinary projection. Classifier normalization and reflexivity/family

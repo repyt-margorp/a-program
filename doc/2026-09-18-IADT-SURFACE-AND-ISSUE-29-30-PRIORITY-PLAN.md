@@ -5590,3 +5590,48 @@ documentation is separate. No wall-clock speedup is claimed. The cumulative
 implementation/header totals remain R76 +3,784/-1,915 = +1,869 and
 R0 +8,536/-4,251 = +4,285; neither reduction gate is met. Keep this verified
 cleanup local pending the next substantive A4 publication epoch.
+
+### A4 resumable index-transport scope preparation (2026-09-19)
+
+Baseline: local `56e3c73`. Replace the scope builder's unbounded rebase drain
+with retained progress: accepted map, field cursor and the existing typed query.
+The oldest-first dependency check is unchanged. Failed domains are still
+omitted; later independent declarations remain available. Direct/normalized
+attempts share the same prepared scope. Constructor-field attempts retain the
+field values across suspension. No new proof rule, semantic cache or image
+authority is introduced; private progress is discarded on image reconstruction.
+
+- [x] Advance scope rebase queries with budget 1 without restarting preparation.
+- [x] Extend image tests to 15 cuts each for direct, normalized and dependent
+  constructor-field transport. Compare resumed normal forms with complete runs.
+- [x] Full strict O2 acceptance exits 0; all 2,460 export results match the
+  preceding implementation after ignoring scheduling steps and temporary paths.
+  Strict debug synthesis/source tests and ASan/UBSan synthesis/source/image
+  tests pass. Sanitizers use leak detection and halt-on-error.
+- [ ] Complete the remaining boundary telescope/branch/pattern consumers before
+  publishing a substantive transport epoch with the accepted-input cleanup.
+
+A debug probe on `indexed-dependent-field-path.p` finds 16 initializations for
+16 distinct scopes, 251 scope advances and 219 query advances, each budget 1.
+There are 175 same-field resumptions with an unchanged accepted map. This is
+not a bound on every other operation inside a Solve turn. QuickSort keeps
+34,203 jobs, 93,016 proofs, 10,433 queries and unchanged Context/map/action
+counts. Steps increase 166,687 -> 167,112; graph used bytes increase by 2,048
+to 63,982,592, with unchanged reserved bytes and substitution storage.
+
+Isolated strict O2 timing against a fresh `56e3c73` build, CPU 2, 31 alternating
+pairs, median milliseconds before/after: Bool .525/.509; add .925/.928;
+length 5.856/5.693; function-field 9.647/10.046; Vec append 6.896/7.305;
+QuickSort 182.098/183.833; length save 5.904/5.873; QuickSort save
+190.806/192.251. Do not claim a speedup or dismiss the measured increases.
+Logs use `/tmp/a-program-authority-scope-progress-`: `acceptance-final.log`,
+`asan-{synthesis,source,image}.log`, `profile.log`, `counts-{before,after}.log`
+and `timing.log`. No source/test edits occurred during final verification.
+
+Per-file source delta from `56e3c73`: `synthesis.c` +123/-54 (net +69);
+`tests/image_cli.sh` +19/-16 (net +3). Documentation is separate. Cumulative
+implementation/headers remain R76 +3,859/-1,921 = +1,938 and
+R0 +8,611/-4,257 = +4,354. Neither net-negative gate is met. This deliberately
+retained continuation state is not duplicate accepted evidence, but its cost
+must remain visible. A4/A5 and parent R2-R5 remain unfinished; no Main push or
+issue closure is claimed for this local checkpoint.
