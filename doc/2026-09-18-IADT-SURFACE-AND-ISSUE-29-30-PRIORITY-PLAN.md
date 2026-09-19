@@ -6369,7 +6369,7 @@ state, changing stages/budgets, interpreting payloads or merging theorem rules.
 - [x] Strict debug/O2 acceptance, affected ASan/UBSan, source/image and Handler
   boundary checks; compare results, steps, request counts and retained data.
 - [x] Isolated timing and per-file delta.
-- [ ] Publish only after the epoch's gates.
+- [x] Publish only after the epoch's gates (`e83e6c6`).
 
 This removes duplicated control-flow implementation, not necessary logical
 premises or pending structure. The pending-construction audit and the parent's
@@ -6409,3 +6409,9 @@ Logs: `/tmp/a-program-authority-dependency-transition-inline-` with
 `{debug,acceptance,objects}.log`, `asan-{synthesis,source,image,handler}.log`,
 `timing.jsonl` and `repeat.jsonl`. Earlier non-inline measurements are retained
 under the same prefix without `inline-`; they are not the published revision.
+
+Published on 2026-09-19: `e83e6c62a2094834fa240c7d7d8c1f76ee3cdfe3`.
+Atomic non-force push advanced Main and `rewrite/pointer-core-hott` together
+from `2a8b788`; both remote tips were verified. The implementation commit's
+documentation deltas were priority plan +59/-0 and parent plan +9/-0,
+separate from code and tests above. This publication-record commit is docs-only.
