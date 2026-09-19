@@ -6440,7 +6440,7 @@ owners. No schema, accepted-state policy, replay path or new store is added.
 - [x] Verify ordinary and malformed IO, later Solve, exact source/image results,
   debug/O2 acceptance and affected sanitizers after the workspace is freed.
 - [x] Measure retained memory, counts, timing and per-file deltas.
-- [ ] Publish the verified reader-lifetime epoch. Broad A4/A5 and the original
+- [x] Publish the verified reader-lifetime epoch (`66ecf8e`). Broad A4/A5 and the original
   LOC gate remain open.
 
 Final-source checks: strict O0/g and O2 `check-acceptance` pass. All 2,460
@@ -6489,3 +6489,10 @@ Logs: `/tmp/a-program-authority-reader-scratch-` with `{debug,acceptance}.log`,
 and `timing{,-repeat}.jsonl`. Build flags are recorded in those build logs;
 sanitizers use `ASAN_OPTIONS=detect_leaks=1:halt_on_error=1` and
 `UBSAN_OPTIONS=halt_on_error=1`.
+
+Published on 2026-09-19: `66ecf8e85587bb4fadd30d3f8520aa0b3b31bd4a`.
+Atomic non-force push advanced Main and `rewrite/pointer-core-hott` together
+from `434b2a0`; both remote tips were verified. Documentation in that commit
+was priority plan +74/-0 and parent plan +9/-0, separate from code/tests above.
+This publication record is documentation only; no issue or whole-goal closure
+is implied.
