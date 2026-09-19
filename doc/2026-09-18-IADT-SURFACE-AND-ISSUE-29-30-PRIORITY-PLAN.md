@@ -7740,3 +7740,57 @@ or header change. Cumulative implementation/header delta from R0 is
 +9142/-4772 = **+4370**, still not net-negative. Keep this simplification as a
 local commit; no standalone Main push or A4/A5 completion. Broader timing and
 deletion gates remain open.
+
+### A4 checked structural reuse publication candidate (2026-09-20)
+
+Compare Main `db6445b` with immutable candidate `5cea934`. Group the direct
+substitution image, conclusion-index ownership, substitution scratch storage,
+source-tail cleanup, exact-premise family reuse and direct constructor-field
+consumers as one epoch. Removed temporary assembly and repeated computation
+share existing authorities; Core, typed subjects and alternative proof DAGs
+remain separate. No new cache, public API or wire format.
+
+- [x] Review the combined implementation/test diff and `git diff --check`.
+- [x] Fresh full strict O2 and O0/g `check-acceptance` pass. Their 2460
+  export/step records agree exactly after temporary-path normalization.
+- [x] Fresh full O1/g ASan/UBSan acceptance with leak detection and halt enabled
+  exits zero, without sanitizer diagnostics. All 2460 export/step records match
+  O2 and O0/g after temporary-path normalization.
+- [x] Isolated CPU-2 O2 comparison with separately built archived Main;
+  two runs of 31 alternating pairs, no concurrent build/test/probe.
+- [ ] Publish this group only after remaining acceptance passes; verify both
+  remote refs. Do not mark the overall repair complete.
+
+Median milliseconds, Main/candidate (first run; repeat):
+
+| Input | Source | Pending image load |
+| --- | --- | --- |
+| Length | 4.689/4.622; 4.680/4.562 | 5.008/4.839; 4.960/4.736 |
+| Function-field | 7.947/7.737; 7.915/7.688 | 8.143/8.706; 8.280/8.088 |
+| Vec append | 6.197/6.016; 6.094/5.909 | 6.125/6.065; 6.236/6.298 |
+| QuickSort | 162.797/159.271; 163.863/160.206 | 163.937/160.401; 163.690/160.560 |
+
+Images are identical Main-produced, zero-step RECOMPUTE inputs for each pair,
+not evidence of free retained-proof loading. Source-save length is
+4.954/4.959 then 4.927/5.112; QuickSort 164.750/161.819 then 165.215/161.136.
+Handler source is 5.301/5.342 then 5.599/5.422. The earlier scratch-only append
+slowdown is not reproduced by the combined source candidate; image differences
+remain mixed. Do not claim a universal speedup or close the older R0 regression
+gate. Logs: `/tmp/a-program-epoch-5cea-{opt,debug,asan}.log`,
+`/tmp/a-program-epoch-{timing,image-timing}{,-repeat}.jsonl`.
+
+Per-file source/test delta from Main, before this documentation checkpoint:
+
+| File under `src/prototype/pointer/` | Added | Deleted | Net |
+| --- | ---: | ---: | ---: |
+| eval.c | 1 | 0 | +1 |
+| evidence.c | 60 | 82 | -22 |
+| synthesis.c | 9 | 16 | -7 |
+| tests/core.c | 29 | 1 | +28 |
+| tests/eval_io.c | 35 | 0 | +35 |
+| tests/iadt.c | 24 | 0 | +24 |
+
+Implementation totals +70/-98 = **-28**; tests +88/-1 = **+87**.
+Documentation at `5cea934` is separate: parent plan +73/-2, this plan +525/-2.
+Cumulative R0 implementation/header totals remain +9142/-4772 = **+4370**.
+R2-R5/A4-A5 and the net-negative requirement remain open.

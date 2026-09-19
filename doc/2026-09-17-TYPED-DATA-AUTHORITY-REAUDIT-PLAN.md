@@ -2406,3 +2406,12 @@ used storage by 478080 bytes against `db08d5e`; indexed semantic counts and Solv
 steps are unchanged. Verification progress is tracked in the priority plan.
 Do not publish this isolated cleanup as a substantial epoch or treat it as
 completion of the cumulative net-negative requirement.
+
+The priority plan's September 20 checked-structural-reuse checkpoint groups this
+with direct substitution images, exact-premise family reuse, direct constructor
+field consumers and private scratch/source-tail cleanup. Candidate `5cea934`
+passes fresh full O0/g, O2 and ASan/UBSan acceptance with matching 2460 exported
+results/steps. Main comparison includes source and identical pending-image
+inputs, with mixed small-case timing recorded rather than hidden. Implementation
+delta for this group is -28 lines; tests +87. Overall R0 remains +4370, so this
+is an epoch publication gate, not A4/A5 or net-negative completion.
