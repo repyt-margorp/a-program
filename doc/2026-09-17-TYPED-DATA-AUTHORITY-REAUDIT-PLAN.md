@@ -1138,6 +1138,15 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 
 ### A4. Audit remaining structural consumers and remove duplication
 
+- [x] 2026-09-19: both transport branch builders use the existing scheduled
+  constructor-scope producer. A retained cursor subscribes to completion before
+  constructing branch bodies; it does not create another scope authority.
+  Regression checks exact shared binders at chunks 1/64 and fails beforehand.
+  Full O2 acceptance and focused debug/ASan/UBSan source/image gates pass.
+  The priority plan records the integrated epoch, increased scheduling/storage
+  costs, mixed timings and unmet reduction gates. Match/type-case kernel scope
+  validation and overall A4/A5 remain unfinished.
+
 - [x] 2026-09-19: distinguish repeated pattern reindex lookups from fresh scope
   construction. On QuickSort, all 37 repeated reindex requests reuse accepted
   evidence without new proof/occurrence/map/query/action records. No extra cache

@@ -5709,7 +5709,7 @@ The synchronous scope builder allocates fresh field binders on each call.
 existing checked constructors must be inspected before adding retained state.
 
 - [x] Distinguish repeated accepted-proof lookup from scope reconstruction.
-- [ ] Examine sharing constructor-scope preparation through the existing
+- [x] Examine sharing constructor-scope preparation through the existing
   scheduled scope builder, preserving explicit retained allocations and proof
   premises. Retain completed branch construction across suspension; do not
   replay preceding clauses or add a competing accepted-scope registry.
@@ -5721,3 +5721,53 @@ No implementation or test edits in this audit. GDB runs exit normally at
 and `/tmp/a-program-authority-pattern-scope-duplicates.log`. Existing finite
 pattern inversion and branch proof construction remain synchronous; replacing
 them wholesale is not justified by these measurements.
+
+### A4 transport preparation epoch verification (2026-09-19)
+
+Use the existing scheduled constructor-scope producer for both transport branch
+builders. Retain producer references and a readiness cursor in their existing
+private work; subscribe to completion instead of polling or replaying preceding
+branches. Build branch bodies only after their scopes are ready. Explicit
+allocation/proof inputs and kernel formation rules are unchanged. This removes
+two direct synchronous scope-construction paths, not the standalone kernel API.
+Pattern reindex retains its existing receipt lookup; no second cache is added.
+
+- [x] Regression: extract the generated type-case from disjointness/injectivity
+  evidence and check that its constructor scopes are already complete, with
+  the same field binder and no new jobs. Fails on `8d9f97e` (exit 134), passes
+  with this change at chunks 1/64 alongside distinct-path and invalid-input cases.
+- [x] Strict debug IADT, synthesis and source suites; full strict O2
+  `check-acceptance`; ASan/UBSan IADT, synthesis, source and image suites pass.
+  Sanitizers use O1/g, non-PIE, frame pointers, leak detection and halt-on-error.
+  All 2,460 export results agree with `9532e42`, ignoring steps and temporary
+  paths. The image suite includes the preceding 45 transport cut/resume cases.
+- [x] Compare fresh O2 builds of `8d9f97e` and the candidate on CPU 2, 31
+  alternating pairs, with no other agent build/test running during measurement.
+- [ ] Publish this integrated epoch with `56e3c73`, `b67cdff`, `9532e42` and
+  `8d9f97e`; verify both remote tips. A4/A5 and parent R2-R5 remain open.
+
+QuickSort: 22 transport scope requests use 18 producers, sharing all four
+repeated keys. Against `8d9f97e`, Contexts 4,389 -> 4,387; maps 13,538 ->
+13,533; proofs 93,001 -> 92,998; occurrences 78,808 -> 78,807. Jobs rise
+34,203 -> 34,286 and steps 167,211 -> 167,364. Queries remain 10,433.
+Graph used bytes rise 63,978,912 -> 64,016,896; reserved 64,274,432 ->
+64,323,584. Substitution used bytes fall 11,710,144 -> 11,709,568, with
+reserved 11,763,712 unchanged. Shared preparation has a scheduling/storage cost.
+
+Median milliseconds before/after: Bool .527/.521; add .957/1.017;
+length 5.786/5.743; function-field 9.968/9.643; Vec append 7.174/7.395;
+QuickSort 198.813/194.413; length save 6.163/6.205; QuickSort save
+206.446/205.776. These mixed results do not establish a general speedup.
+Logs use `/tmp/a-program-authority-branch-scopes-`: `before.log`,
+`{iadt,synthesis,source}-final.log`, `acceptance.log`,
+`asan-{iadt,synthesis,source,image}.log`, `reuse.log`, `counts.log`, `timing.log`.
+No implementation/test edits followed final verification builds.
+
+This change: `synthesis.c` +50/-18 = +32; `tests/iadt.c` +28/-0.
+Integrated epoch versus Main `b0c58e1`: `synthesis.c` +284/-139 = +145;
+`synthesis.h` +2/-0; `tests/iadt.c` +28/-0; `tests/synthesis.c` +12/-0;
+`tests/image_cli.sh` +19/-16 = +3. Documentation is separate.
+Cumulative implementation/headers: R76 +3,941/-1,922 = +2,019;
+R0 +8,700/-4,265 = +4,435. Neither net-negative gate is met. Remaining
+Match/type-case scope validation is still synchronous and must be audited on
+its own inputs; this epoch does not authorize removing those checks.

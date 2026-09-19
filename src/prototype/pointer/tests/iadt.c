@@ -72,6 +72,32 @@ static void common_rule(struct pg_typing *typing,
 	assert(!pg_prove_derivation(typing, input.rule, &input.parameters, input.count, premises));
 }
 
+static void transport_scopes(struct pg_synthesis *synthesis,
+	const struct pg_evidence *transport)
+{
+	const struct pg_evidence *action = pg_evidence_premise(transport, 1);
+	while (pg_evidence_rule(action) == PG_TYPE_CONVERSION) action = pg_evidence_premise(action, 0);
+	assert(pg_evidence_rule(action) == PG_FAMILY_ACTION);
+	const struct pg_evidence *value = pg_evidence_premise(action, 1);
+	assert(pg_evidence_rule(value) == PG_VALUE_FROM_TYPE);
+	const struct pg_evidence *family = pg_evidence_premise(value, 0);
+	assert(pg_evidence_rule(family) == PG_TYPE_CASE);
+	const struct pg_evidence *formation = pg_evidence_premise(family, 0);
+	struct pg_inductive_instance instance;
+	assert(pg_inductive_instance(synthesis->typing, formation, &instance));
+	size_t jobs = synthesis->jobs.count;
+	for (size_t i = 0; i < pg_data_constructor_count(instance.schema); ++i) {
+		struct pg_synthesis_job *scope = pg_synthesis_constructor_scope(synthesis,
+			pg_synthesis_evidence(synthesis, formation), pg_data_constructor(pg_data_schema_layout(instance.schema), i),
+			pg_synthesis_evidence(synthesis, pg_evidence_premise(family, 1)));
+		assert(scope && pg_synthesis_status(scope) == PG_SYNTHESIS_DONE);
+		const struct pg_context *fields = pg_evidence_context(pg_synthesis_result(scope));
+		const struct pg_term *branch = pg_evidence_subject(pg_evidence_premise(family, i + 3))->core;
+		if (branch->kind == PG_LAMBDA) assert(branch->as.lambda.binder == fields->binder);
+	}
+	assert(synthesis->jobs.count == jobs);
+}
+
 static void positive_fields(void)
 {
 	struct pg_graph graph;
@@ -1476,6 +1502,7 @@ static void index_paths(struct pg_typing *typing,
 					assert(pg_evidence_rule(eliminated) == PG_TYPE_CONVERSION);
 					const struct pg_evidence *transported = pg_evidence_premise(eliminated, 0);
 					assert(pg_evidence_rule(transported) == PG_IDENTITY_TRANSPORT);
+					transport_scopes(&synthesis, transported);
 					common_rule(typing, transported);
 					const struct pg_evidence *closed = pg_prove_abstract(typing, empty, context,
 						pg_prove_return(typing, eliminated));
@@ -1524,6 +1551,7 @@ static void index_paths(struct pg_typing *typing,
 					assert(pg_term_independent(pg_evidence_subject(proof)->core, i ? p : q) == 1);
 					const struct pg_evidence *transported = pg_evidence_premise(proof, 0);
 					assert(pg_evidence_rule(transported) == PG_IDENTITY_TRANSPORT);
+					transport_scopes(&synthesis, transported);
 					common_rule(typing, transported);
 					size_t before = typing->proofs.count, terms = typing->graph->terms.count;
 					assert(derived == pg_synthesis_constructor_field_identity(&synthesis, cj, lj, rj, pj, field, nj, mj));

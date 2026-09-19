@@ -152,7 +152,8 @@ struct transport_scope {
 	struct pg_typed_query *query;
 	struct pg_context_lift *lift;
 	struct pg_occurrence_action *action;
-	size_t count, next;
+	struct pg_synthesis_job **branches;
+	size_t count, next, scoped;
 	const struct pg_evidence *extensions[];
 };
 struct index_scope {
@@ -7887,6 +7888,33 @@ extend:;
 	return 1;
 }
 
+/* Prepare each telescope through the same producer used by source constructors.
+ * Branch bodies are built only after all scopes are ready. */
+static int transport_constructor_scopes(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *parent, struct transport_scope *work, const struct pg_inductive_instance *instance,
+	const struct pg_evidence *parameters)
+{
+	size_t count = pg_data_constructor_count(instance->schema);
+	if (!work->branches) {
+		if (count > SIZE_MAX / sizeof(*work->branches)) return -1;
+		work->branches = pg_alloc(synthesis->typing->graph, count * sizeof(*work->branches));
+		if (count && !work->branches) return -1;
+		for (size_t i = 0; i < count; ++i) {
+			work->branches[i] = pg_synthesis_constructor_scope(synthesis,
+				pg_synthesis_evidence(synthesis, instance->formation),
+				pg_data_constructor(pg_data_schema_layout(instance->schema), i),
+				pg_synthesis_evidence(synthesis, parameters));
+			if (!work->branches[i]) return -1;
+		}
+	}
+	for (; work->scoped < count; ++work->scoped) {
+		struct pg_synthesis_job *branch = work->branches[work->scoped];
+		if (branch->status == PG_SYNTHESIS_PENDING) { depend(synthesis, parent, branch); return 0; }
+		if (branch->status != PG_SYNTHESIS_DONE) return -1;
+	}
+	return 1;
+}
+
 static void constructor_transport_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	if (job->value_job) { forward_proof(synthesis, job, job->value_job); return; }
@@ -7932,13 +7960,6 @@ static void constructor_transport_step(struct pg_synthesis *synthesis, struct pg
 	if (status < 0) goto unsupported;
 	const struct pg_evidence *left = job->transport_scope->left, *right = job->transport_scope->right;
 	const struct pg_evidence *extended = job->transport_scope->extended;
-	const struct pg_evidence *field_type = NULL;
-	if (field) {
-		field_type = pg_prove_classifier(typing, context, value);
-		target = pg_prove_identity_type(typing, field_type, value, target);
-		value = pg_prove_reflexivity(typing, field_type, value);
-		if (!target || !value) goto unsupported;
-	}
 	const struct pg_evidence *type = pg_evidence_premise(extended, 1);
 	struct pg_inductive_instance instance;
 	if (!pg_inductive_instance(typing, type, &instance)) goto unsupported;
@@ -7953,17 +7974,26 @@ static void constructor_transport_step(struct pg_synthesis *synthesis, struct pg
 		while (c != prefix && c->binder != field) c = c->parent;
 		if (c == prefix) goto rejected;
 	}
-	const struct pg_evidence *source = pg_prove_classifier(typing, context, value);
-	if (!source) goto unsupported;
 	const struct pg_evidence *parameters = pg_prove_substitution_compose(typing, instance.parameters,
 		pg_prove_substitution_projection(typing, pg_evidence_premise(extended, 0), extended));
+	status = transport_constructor_scopes(synthesis, job, job->transport_scope, &instance, parameters);
+	if (!status) return;
+	if (status < 0) goto unsupported;
+	const struct pg_evidence *field_type = NULL;
+	if (field) {
+		field_type = pg_prove_classifier(typing, context, value);
+		target = pg_prove_identity_type(typing, field_type, value, target);
+		value = pg_prove_reflexivity(typing, field_type, value);
+		if (!target || !value) goto unsupported;
+	}
+	const struct pg_evidence *source = pg_prove_classifier(typing, context, value);
+	if (!source) goto unsupported;
 	size_t count = pg_data_constructor_count(instance.schema);
 	if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) goto error;
 	const struct pg_evidence **branches = malloc(count * sizeof(*branches));
 	if (!branches) goto error;
 	for (size_t i = 0; i < count; ++i) {
-		const struct pg_evidence *map = pg_prove_constructor_scope(typing, instance.formation,
-			pg_data_constructor(layout, i), parameters);
+		const struct pg_evidence *map = job->transport_scope->branches[i]->result;
 		const struct pg_evidence *fields = map ? pg_evidence_premise(map, 1) : NULL;
 		const struct pg_evidence *branch;
 		if (field && i == positions[0]) {
@@ -8193,7 +8223,7 @@ static struct pg_synthesis_job *index_constructor_candidate(struct pg_synthesis 
 	if (!*slot) *slot = index_constructor_scope(typing, context, value, constructor);
 	if (!*slot) return NULL;
 	int status = index_scope_advance(typing, *slot);
-	if (!status) { *pending = 1; return NULL; }
+	if (!status) { enqueue(synthesis, job); *pending = 1; return NULL; }
 	if (status < 0) return NULL;
 	const struct pg_evidence *base = (*slot)->map, *prefix = (*slot)->prefix;
 	const struct pg_evidence *const *values = (*slot)->values;
@@ -8204,7 +8234,7 @@ static struct pg_synthesis_job *index_constructor_candidate(struct pg_synthesis 
 	if (!(*slot)->boundary) (*slot)->boundary = transport_scope_start(typing, base, &boundary);
 	if (!(*slot)->boundary) return NULL;
 	status = transport_scope_advance(typing, (*slot)->boundary, &boundary, state->endpoints[0], state->endpoints[1]);
-	if (!status) { *pending = 1; return NULL; }
+	if (!status) { enqueue(synthesis, job); *pending = 1; return NULL; }
 	if (status < 0) return NULL;
 	const struct pg_evidence *extended = (*slot)->boundary->extended;
 	const struct pg_evidence *left = (*slot)->boundary->left, *right = (*slot)->boundary->right;
@@ -8213,9 +8243,12 @@ static struct pg_synthesis_job *index_constructor_candidate(struct pg_synthesis 
 	const struct pg_evidence *base_context = pg_evidence_premise(base, 0);
 	struct pg_typed_query *parameters = pg_substitution_rebase_request(typing, base_context, instance.parameters);
 	status = pg_typed_query_advance(parameters, 1);
-	if (!status) { *pending = 1; return NULL; }
+	if (!status) { enqueue(synthesis, job); *pending = 1; return NULL; }
 	const struct pg_evidence *parameter_map = pg_typed_query_result(parameters);
 	if (!parameter_map) return NULL;
+	status = transport_constructor_scopes(synthesis, job, (*slot)->boundary, &instance, parameter_map);
+	if (!status) { *pending = 1; return NULL; }
+	if (status < 0) return NULL;
 	struct pg_graph temporary = {0};
 	struct pg_synthesis_job *result = NULL;
 	const struct pg_evidence **extensions = pg_alloc(&temporary, count * sizeof(*extensions));
@@ -8229,8 +8262,7 @@ static struct pg_synthesis_job *index_constructor_candidate(struct pg_synthesis 
 	const struct pg_evidence *type = pg_prove_classifier(typing, context, argument->result);
 	for (size_t i = 0; i < branch_count; ++i) {
 		const struct pg_object *label = pg_data_constructor(layout, i);
-		const struct pg_evidence *map = pg_prove_constructor_scope(typing, instance.formation, label, parameter_map);
-		if (!map) goto done;
+		const struct pg_evidence *map = (*slot)->boundary->branches[i]->result;
 		const struct pg_evidence *fields = pg_evidence_premise(map, 1), *branch;
 		if (label == constructor) {
 			const struct pg_evidence *scope = fields;
@@ -8433,7 +8465,7 @@ static void index_transport_step(struct pg_synthesis *synthesis, struct pg_synth
 		int pending = 0;
 		state->candidates[i] = index_constructor_candidate(synthesis, job,
 			i ? PG_IDENTITY_RIGHT : PG_IDENTITY_LEFT, &pending);
-		if (pending) { enqueue(synthesis, job); return; }
+		if (pending) return;
 	}
 	state->building = 0;
 	state->candidate_next = 0; state->constructor_checked = 1;
