@@ -1287,6 +1287,16 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 - [ ] Report concrete deleted paths. Move remaining synchronous query loops to
   existing scheduling only where necessary for the same work contract; do not
   turn this repair into another scheduler framework.
+- [x] 2026-09-19 local work: remove synchronous helper-schema application from
+  `function_graph.c`. The existing shared query/wait slot now resumes beta;
+  one graph-private case cursor retains the current map, call and argument.
+  Helper discovery and schema construction reuse a role-exclusive state pointer;
+  no proof/cache authority is added. Two dependent helper calls exercise every
+  cancellation boundary, zero budget and late dependency rejection. Initial
+  full O2 and affected debug/sanitizer/image tests pass; final publication gates,
+  the extra 64 aligned cursor bytes per graph and unchanged 47 query-work steps
+  are recorded in the priority plan. Other synchronous subrules and A3-A5 remain
+  open; this does not assert an overall LOC reduction.
 - [x] 2026-09-19: function-graph Match planning uses the existing typed
   elimination query and shared wait slot. Splitting stores each checked
   reindexed elimination in its existing child computation; ordinary child

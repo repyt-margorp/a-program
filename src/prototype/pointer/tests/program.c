@@ -944,6 +944,52 @@ static void suspended_helper_application(void)
 	puts("helper application: typed beta queries yield and survive cancellation at every boundary");
 }
 
+static void suspended_helper_schema(void)
+{
+	const char *source = "Bool:=@{true:*;false:*;}; Nat:=@{zero:*;succ:*->*;};"
+		"helper:=\\A:@=>\\b:Bool=>\\n:A=>b @true=>n @false=>n;"
+		"f:=\\b:Bool=>\\n:Nat=>{r:=helper Nat b n;s:=helper Nat b r;s;};";
+	for (size_t limit = 0;; ++limit) {
+		assert(limit < 1000);
+		struct pg_program *p = pg_program_create(source, strlen(source), PG_DEFINITION_IMPLICIT_THUNK);
+		assert(p && p->root);
+		solve(p, 1);
+		assert(pg_synthesis_status(p->root) == PG_SYNTHESIS_DONE);
+		const struct pg_evidence *function = pg_synthesis_result(pg_synthesis_definition(p->root,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "f", .length = 1}));
+		struct pg_function_graph_work work, helper = {0};
+		assert(!pg_function_graph_init(&work, &p->typing, &p->evaluation, function));
+		enum pg_function_graph_status status = PG_FUNCTION_GRAPH_PENDING;
+		for (size_t turn = 0; turn < limit && status == PG_FUNCTION_GRAPH_PENDING; ++turn) {
+			status = pg_function_graph_advance(&work, 1);
+			const struct pg_evidence *dependency = pg_function_graph_dependency(&work);
+			if (dependency) {
+				if (!helper.state) {
+					assert(!pg_function_graph_init(&helper, &p->typing, &p->evaluation, dependency));
+					for (size_t steps = 0; pg_function_graph_witness_advance(&helper, 64) == PG_FUNCTION_GRAPH_PENDING; ++steps)
+						assert(steps < 1000 && !pg_function_graph_dependency(&helper));
+				}
+				assert(!pg_function_graph_supply(&work, &helper));
+			}
+		}
+		size_t proofs = p->typing.proofs.count, queries = p->typing.typed_queries.count;
+		assert(pg_function_graph_advance(&work, 0) == status);
+		assert(p->typing.proofs.count == proofs && p->typing.typed_queries.count == queries);
+		if (status != PG_FUNCTION_GRAPH_PENDING) {
+			assert(status == PG_FUNCTION_GRAPH_DONE && helper.state && pg_function_graph_formation(&work));
+			assert(!pg_function_graph_dependency(&work) && pg_function_graph_supply(&work, &helper));
+			for (size_t steps = 0; pg_function_graph_witness_advance(&work, 1) == PG_FUNCTION_GRAPH_PENDING; ++steps)
+				assert(steps < 10000);
+			assert(pg_function_graph_witness(&work));
+		}
+		pg_function_graph_destroy(&work);
+		pg_function_graph_destroy(&helper);
+		pg_program_destroy(p);
+		if (status != PG_FUNCTION_GRAPH_PENDING) break;
+	}
+	puts("helper schema: dependent calls resume, tolerate cancellation, and reject late dependency supply");
+}
+
 static void suspended_match_body(void)
 {
 	const char *source = "Bool:=@{true:*;false:*;};"
@@ -1125,6 +1171,7 @@ int main(int argc, char **argv)
 	graph_index_preparation();
 	function_graphs();
 	suspended_helper_application();
+	suspended_helper_schema();
 	suspended_match_body();
 	suspended_case_scopes();
 	ambiguous_source_calls();

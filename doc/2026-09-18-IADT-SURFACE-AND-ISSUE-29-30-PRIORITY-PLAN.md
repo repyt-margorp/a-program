@@ -4228,8 +4228,9 @@ removal of duplicate proof authority or a new substitution algorithm.
   and program tests pass. All 2,460 exported results and Solve steps match
   `e6029f0`. The old retained QuickSort image resaves byte-identically without
   Solve (expected pending exit 3). Repeat timing is recorded below.
-- [ ] Incorporate this verified local change into a larger publication epoch.
-  Do not publish this ownership change alone or close A3-A5/R2-R5.
+- [x] Incorporate this verified local change into the shared-query
+  lifetime/schema-resumption epoch below, not an isolated ownership push.
+  A3-A5/R2-R5 remain open; the final epoch gates govern publication.
 
 Imported QuickSort: requests 28,606, Solve steps 146,537, proofs 93,013 and
 occurrences 82,070 are unchanged. Each state is 128 bytes. Input arena used
@@ -4352,3 +4353,98 @@ diagnostic is `/tmp/a-program-authority-empty-parameters-before.log`.
 The restored strict-debug source-image binary passes `nominal-write`;
 logs: `/tmp/a-program-authority-parameter-audit-restored{,-build}.log`.
 This audit changes documentation only and is not a Main publication epoch.
+
+### 2026-09-19: Incremental helper-schema application
+
+Baseline: `59e0677`. `helper_application(..., witness=0)` synchronously drains
+typed application-body queries during `case_branch`. Simply returning pending
+would reconstruct the case's fresh binders and maps. Retain that construction
+position, not another query result authority.
+
+- [x] Keep one private case cursor for the current schema construction. Reuse
+  the state pointer occupied by helper discovery, which ends before Self is
+  formed. Dependency lookup/supply must reject the later schema phase.
+- [x] Preserve the current map, Context, call order and helper argument while
+  waiting through the existing `application_body`/shared-query wait slot.
+  Initialize the case and allocate its argument buffer only once. Later calls
+  consume earlier result variables through the same substitution pairing.
+- [x] Separate selecting/reindexing the helper from applying it. Schema beta
+  uses the existing typed query with ordinary family-application fallback;
+  witness application keeps its ordinary APP rule. No new proof rule, Core
+  tag, global scheduler, acceptance cache or image field is introduced.
+- [x] Test cancellation across every graph step for two dependent helper calls,
+  generic parameter application, zero-budget stability, late supply rejection
+  and final witness construction; retain all existing graph/sort tests.
+- [x] Measure old/new query draining and allocation counts; run full optimized
+  acceptance and affected debug, sanitizer and inert-image checks. Report any
+  increased cursor/storage cost and changed scheduling separately from results.
+- [x] Prepare the tested shared-query lifetime/schema-resumption epoch for
+  publication with the preceding local commits. Recheck remote Main/rewrite
+  at `e6029f0` and use a non-force atomic push; Git records its outcome.
+  A3-A5, R2-R5 and the cumulative net-negative requirement remain open.
+
+Initial verification: strict-debug program, full O2 acceptance, ASan/UBSan
+program and `image_origins.sh` pass. The 2,460 exported results match the
+preceding acceptance run after removing step counts; 384 records have changed
+Solve counts. The retained common image still resaves byte-identically at zero
+Solve (pending exit 3). Final reruns also pass after whitespace cleanup and
+an explicit assertion that the cancellation fixture actually supplies a helper.
+GDB confirms two retained helper calls and a parameterized helper Context,
+rather than a fixture which only inlines both calls.
+
+Imported QuickSort measures 20 helper-schema application queries, performing
+47 query steps before and after. Previously a synchronous call advanced up to
+3 steps with an unbounded budget; now each measured advance is at most 1 step,
+including resumption outside `case_branch`. The schema function is entered
+21 -> 41 times; enclosing Solve steps rise 146,537 -> 146,564. This is finer
+scheduling, not reduced query work. Other checked kernel subrules are outside
+this local bound.
+
+Proofs 93,013, occurrences 82,070, Contexts 4,389, maps 15,670, lifts 3,757,
+actions 28,042, queries 10,427 and the main/substitution arena sizes are
+unchanged. The graph state stays 600 bytes. Eight graph-private arenas use
+22,720 -> 23,232 bytes (+512 total, 64 aligned bytes per cursor); their total
+capacity remains 131,072. The cursor is a resumable activation, not another
+classifier, evidence store or query cache.
+
+First CPU-2-pinned 31-pair alternating fresh-process O2 medians (old/new ms):
+Bool .488/.494; add .930/.956; length 5.665/5.694; function-field 9.714/9.970;
+Vec append 7.022/7.153; QuickSort 205.112/205.404. No speedup is claimed.
+The post-test repeat gives Bool .519/.515; add .935/.950; length 5.537/5.710;
+function-field 9.790/9.745; Vec 7.094/7.072; QuickSort 203.822/205.397.
+Small differences vary by workload/run; length is 3.1% slower in the repeat
+and QuickSort 0.8% slower. This is not a speed optimization or a replacement
+for the original A5 baseline matrix.
+
+Logs use `/tmp/a-program-authority-helper-schema-` with `debug.log`,
+`opt.log`, `asan.log`, `asan-origins.log`, `common.log`,
+`query-{before,after,resume}.log`, `counts-{before,after}.log`,
+`private-{before,after}.log` and `timing.log`. The `query-after` probe only
+intercepted the old wrapper's caller, so its zero is not a work count; the
+`query-resume` probe follows the current shared wait path and records all 47.
+Final exact-candidate logs are `publish-opt.log`, `publish-debug.log`,
+`publish-asan.log`, `final-asan-origins.log`, `publish-common.log` and
+`timing-repeat.log`. Final O2 results again match all 2,460 exports, with 384
+changed step records. ASan/UBSan enable leak detection and halt-on-error.
+
+Implementation delta: `function_graph.c` +59/-37 (net +22). Existing program
+tests +47/-0; documentation separate. Cumulative implementation/header net is
++1,723 from R76 and +4,139 from R0. The overall reduction gate remains unmet.
+
+Publication scope is one shared-query lifetime/schema-resumption epoch:
+combine the local substitution-state ownership change (`a8aa05f`), the
+dependent weakening regression (`21faa54`) and this helper-schema migration.
+The intervening `59e0677` is an audit, not an additional implementation change.
+Do not describe this group as completing A3-A5 or parent R2-R5.
+
+| File relative to published Main `e6029f0` | Added | Deleted | Net |
+|---|---:|---:|---:|
+| `eval.c` | 3 | 2 | +1 |
+| `eval_internal.h` | 1 | 1 | 0 |
+| `function_graph.c` | 59 | 37 | +22 |
+| Implementation total | 63 | 40 | +23 |
+| `tests/eval_io.c` | 4 | 0 | +4 |
+| `tests/iadt.c` | 11 | 1 | +10 |
+| `tests/program.c` | 47 | 0 | +47 |
+
+All paths are under `src/prototype/pointer/`. Documentation is separate.
