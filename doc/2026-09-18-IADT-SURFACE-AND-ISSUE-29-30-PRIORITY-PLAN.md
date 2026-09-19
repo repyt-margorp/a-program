@@ -7217,3 +7217,71 @@ Current patch: implementation +31/-39 = **-8**, tests +16. Combined with the
 unpublished dispatch cleanup: implementation +66/-83 = **-17**, tests +24;
 documentation is separate. Cumulative R0 implementation/header +9148/-4750 =
 **+4398**, still failing the required net-negative gate.
+
+### A4/A5 CPU attribution and rejected index split (2026-09-20)
+
+The preceding publication is `db6445b` (implementation `5a7f6ba`). Revisit the
+small-input regression before adding pattern-query caches or more Solver roles.
+All 84 direct C/header files in the frozen R0 tree still match `4657cc6` Git
+objects. Build both trees with strict C11, O2/g and `-pg`. A temporary harness
+under `src/prototype/pointer/.build/authority-profile-main.c` renames/includes
+the unchanged CLI main and repeats it 1000 times, stopping on any nonzero exit.
+Run separately on CPU 2, using `function-graph-function-field.p`, one million
+steps, and no concurrent build/test. Both complete all 1000 iterations; their
+per-iteration Solve counts remain R0 12906/current 10922.
+
+The instrumented flat profile highlights index maintenance: the current
+`pg_index_prepare_insert` receives 14.4% of sampled self time, including growth
+and rehashing. This is **not** 14.4% of uninstrumented compiler wall time.
+Instrumentation, optimized code and library time limit attribution. In
+particular, the optimized gprof call graph reports about 3343 induction calls
+per iteration and 11684 projection calls. Independent O0/g GDB entry counters
+instead measure **6** and **3180**. Do not use the optimized call graph's parent
+or call attribution to claim repeated induction proof construction.
+
+Current one-compilation counters, independently checked at function entry:
+
+| Function | Calls |
+|---|---:|
+| `pg_index_prepare_insert` | 75591 |
+| `pg_index_insert` | 59750 |
+| `pg_occurrence_projection` | 3180 |
+| `pg_prove_pattern_type` | 6 |
+| `pg_prove_induction_at` | 6 |
+
+Pattern inversion still contains synchronous work, but its six calls and this
+profile do not identify it as the cause of this fixture's regression. Do not
+introduce a result cache or new scheduling layer on that assumption. Likewise,
+index insertion counts are not evidence of duplicate semantic objects: accepted
+conclusions and explicit proof alternatives have distinct indexing duties.
+
+Trial: split the shared index's grow/rehash body from its capacity guard. O2
+disassembly confirms that ordinary insertion then inlines the guard and calls
+growth only at capacity, instead of always calling `pg_index_prepare_insert`.
+Existing strict O2 Core tests pass, covering collisions, rehash, reserve without
+publication and overflow without index mutation. The change adds four source
+lines and no data/API changes.
+
+However, 31 alternating old/new uninstrumented O2 process pairs on CPU 2 yield
+mixed small differences: length 4.729 -> 4.839 ms (+2.3%), function-field
+7.924 -> 7.798 ms (-1.6%), append 6.155 -> 6.115 ms (-0.6%), QuickSort
+161.725 -> 160.436 ms (-0.8%), Handler 5.266 -> 5.326 ms (+1.1%). Source-save
+length/QuickSort changes are +0.5%/-0.6%; tiny examples are within 1%.
+**Withdraw the trial**: the evidence does not justify retaining an extra helper
+as the architectural/performance repair. No full acceptance claim is made for
+the withdrawn code; the restored implementation is identical to `db6445b`.
+
+- [x] Establish repeatable CPU sampling and independently validate sensitive
+  call counts; record the misleading attribution rather than acting on it.
+- [x] Test and withdraw the low-level split after mixed normal-build timings.
+- [ ] Attribute upstream typed-structure/index creation costs, distinguishing
+  temporary readback tasks, new semantic structure and accepted lookup hits.
+  Any proposed sharing must preserve exact scope, annotation and proof inputs.
+- [ ] Resolve the broader R0 timing and net-negative gates; this audit does
+  not complete A4/A5 or justify another standalone Main publication.
+
+Evidence: `/tmp/a-program-authority-profile-{r0,current}-field{,-gprof.txt}`
+(CLI logs use `.log`), `...-current-counts.log`, profiler executables/data in
+`/tmp/a-program-authority-profile-{r0,current}/`, and
+`/tmp/a-program-authority-index-fast-{core.log,timing.jsonl}`. No production
+change remains. Cumulative implementation/header delta remains **+4398**.

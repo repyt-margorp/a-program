@@ -2004,6 +2004,17 @@ selectors under ASan/UBSan in `/tmp/a-program-authority-metadata-sanitize`.
 
 ### A5. Acceptance and publication
 
+#### 2026-09-20: Profile before choosing another representation change
+
+The priority plan records a 1000-iteration R0/current function-field profile
+and independent debug entry counts. Optimized gprof attribution is misleading
+for some functions: actual induction entries are six, not the reported thousands.
+No repeated-proof cache or new pattern Solver is justified by that display.
+An index growth/fast-path split passes Core tests but has mixed small normal-build
+timing changes and was withdrawn. Main's implementation is unchanged. Continue
+with upstream typed-structure/index creation attribution, not guard-only edits;
+broader R0 performance and the net-negative gate remain open.
+
 #### 2026-09-19: Role-exclusive work storage
 
 The priority plan records private typed-query and synthesis-work compaction
