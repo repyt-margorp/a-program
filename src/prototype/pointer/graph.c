@@ -166,6 +166,12 @@ static enum pg_comparison_status comparison_step(struct pg_comparison_state *con
 		break;
 	case PG_LAMBDA: {
 		const struct binder_pair *scope = entry->scope;
+		/* Independence compares one term with itself under x -> absent.
+		 * Other binders leave that question unchanged; binding x discharges it.
+		 * Keep the same scope key so shared bodies remain shared work. */
+		if (left == right && scope && !scope->parent && !scope->right) {
+			if (left->as.lambda.binder == scope->left) scope = NULL;
+		} else
 		/* An identical binder needs no map in an already identical scope.
 		 * Under a nonidentity map it must still shadow older pairs. */
 		if (scope || left->as.lambda.binder != right->as.lambda.binder) {

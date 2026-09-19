@@ -4918,3 +4918,71 @@ the cumulative net-negative gate nor A3-A5 is complete. Keep these changes
 local until a substantial completed refactoring epoch; passing this narrow
 cleanup's tests does not alone make it such an epoch. Both remote branches
 still point to `f3da3c3`; no additional Main push is made here.
+
+### 2026-09-19: preserve DAG sharing during independence checks
+
+Baseline: local `363beb7`. A4's synchronous index-transport audit exposed a
+lower-level duplication: `pg_term_independent` uses the structural comparison
+walker with a single `x -> absent` scope. Unrelated lambdas added identity scope
+entries, giving the same shared body a different cache key on every path.
+A linear-size diamond DAG could therefore cause tree-size work. This is not a
+new equality or a reason to intern alpha/WHNF-equivalent Core terms.
+
+For comparison of a term with itself under that single absent binding, preserve
+the scope across other binders; the matching binder discharges the question.
+Other alpha-comparison scopes retain their existing shadowing rules. No new
+query kind, semantic authority, persistent format or global cache is needed.
+
+- [x] Reproduce on the baseline: 32 diamond levels fail to finish within 1,000
+  transitions (`...-independence-before.log`, exit 134 at the new assertion).
+- [x] Share the existing scope key; debug regression completes with exactly
+  97 tasks. Binding the absent variable skips its entire body (one task).
+- [x] Check free/bound occurrences and every save/resume boundary for shared
+  positive/negative DAGs; debug core and comparison/evaluation image tests pass.
+- [x] Run full optimized acceptance and affected sanitizer checks; compare
+  exports, work counts, retained images, timing and per-file LOC.
+- [x] Decide publication of the pending-structure/DAG-sharing epoch only
+  after those gates pass. A3, remaining synchronous transport construction,
+  A5 and the cumulative net-negative requirement remain open.
+
+Logs/builds use `/tmp/a-program-authority-independence-*`. The separate
+`index_transport_scope` algorithm cannot be replaced by ordinary projection:
+it keeps later independent declarations while omitting selected binders. Its
+resumption still needs an explicit retained cursor, not a restarted scan.
+
+Epoch validation: full optimized `check-acceptance` exits 0. All 2,460 export
+records including Solve steps match `363beb7`. Strict-debug core/evaluation
+image tests and ASan/UBSan core, synthesis, Identity, IADT and evaluation image
+tests exit 0 (leak detection and halt-on-error enabled). Retained QuickSort
+zero-step resave is byte-identical. The length/function-field/QuickSort counters
+and arena snapshots exactly match the preceding Lambda audit. Logs are
+`...-opt.log`, `...-asan-{core,synthesis,identity,iadt,eval-io}.log`,
+`...-{length,field,qsort}-counts.log` and `...-timing.log` under the prefix above.
+
+Isolated O2 timing, CPU 2, 31 alternating pairs after warmup, medians in ms
+(published `f3da3c3` / candidate): Bool .489/.484; add .916/.924;
+length 5.857/5.672; function-field 9.763/9.975; Vec append 7.125/7.003;
+QuickSort 188.463/190.954; length save 6.400/6.235;
+QuickSort save 206.312/206.848. This is not a general speedup claim or the
+final R0 gate. The measured improvement is removal of path-expanded work in
+the diamond regression, not fewer accepted proofs or outer Solve steps.
+
+Publication scope: the two preceding local commits plus this DAG-sharing fix
+form one pending-structure/shared-walk epoch. Per-file code delta from Main:
+
+| File (`src/prototype/pointer/`) | Added | Deleted | Net |
+|---|---:|---:|---:|
+| `graph.c` | 6 | 0 | +6 |
+| `synthesis.c` | 91 | 54 | +37 |
+| `tests/core.c` | 18 | 1 | +17 |
+| `tests/eval_io.c` | 9 | 1 | +8 |
+| `tests/synthesis.c` | 40 | 0 | +40 |
+
+Implementation net +43; tests net +65; documentation separate. Cumulative
+implementation/header deltas: R76 +3,630/-1,894 = +1,736; R0 +8,385/-4,233
+= +4,152. Neither net-negative gate is met. Recheck remote Main/rewrite at
+`f3da3c3` and publish the tested epoch atomically without force; Git records
+the resulting revision. No A3-A5/R2-R5 completion or new issue closure follows.
+
+Documentation delta for this epoch: this priority plan +166/-0 lines and
+the parent authority plan +15/-0 lines, excluded from implementation counts.

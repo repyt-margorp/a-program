@@ -186,6 +186,23 @@ static void graph_test(struct pg_graph *graph)
 	assert(pg_term_independent(NULL, x) == -1);
 	assert(pg_term_independent(vx, NULL) == -1);
 	assert(pg_term_independent(vx, opaque) == -1);
+	/* A shared body under unrelated binders is still one independence query,
+	 * not one query per path through the expanded tree. */
+	const struct pg_term *independent_dag = vy;
+	for (size_t i = 0; i < 32; ++i)
+		independent_dag = pg_application(graph,
+			pg_lambda(graph, pg_binder(graph), independent_dag),
+			pg_lambda(graph, pg_binder(graph), independent_dag));
+	struct pg_comparison independent;
+	assert(!pg_independence_init(&independent, independent_dag, x));
+	assert(pg_comparison_advance(&independent, 0) == PG_COMPARISON_PENDING);
+	assert(pg_comparison_advance(&independent, 1000) == PG_COMPARISON_EQUAL);
+	assert(pg_comparison_task_count(&independent) == 97);
+	pg_comparison_destroy(&independent);
+	assert(pg_term_independent(independent_dag, y) == 0);
+	assert(pg_term_independent(pg_lambda(graph, y, independent_dag), y) == 1);
+	assert(pg_term_independent(pg_application(graph,
+		pg_lambda(graph, y, independent_dag), independent_dag), y) == 0);
 	struct pg_comparison split, whole;
 	size_t terms = graph->terms.count;
 	assert(pg_independence_init(&split, left_lambda, x) == 0);
@@ -196,7 +213,7 @@ static void graph_test(struct pg_graph *graph)
 	assert(pg_comparison_status(&split) == PG_COMPARISON_EQUAL);
 	assert(pg_comparison_advance(&whole, UINT64_MAX) == PG_COMPARISON_EQUAL);
 	assert(pg_comparison_steps(&split) == pg_comparison_steps(&whole));
-	assert(pg_comparison_task_count(&split) == 42);
+	assert(pg_comparison_task_count(&split) == 1);
 	assert(graph->terms.count == terms);
 	pg_comparison_destroy(&split);
 	pg_comparison_destroy(&whole);

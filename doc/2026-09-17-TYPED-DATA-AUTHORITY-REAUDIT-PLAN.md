@@ -1304,6 +1304,13 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 - [ ] Report concrete deleted paths. Move remaining synchronous query loops to
   existing scheduling only where necessary for the same work contract; do not
   turn this repair into another scheduler framework.
+- [x] Remove path-dependent scope expansion from structural independence
+  checks: comparing the same Core under `x -> absent` does not need fresh scope
+  entries for unrelated lambdas. Preserve the shared query key and discharge
+  the constraint at a lambda binding x. A 97-node diamond DAG failed the old
+  1,000-transition gate and now visits 97 tasks; shadowing and image-resumption
+  checks pass. No new tag/store or alpha interning. Final regression and epoch
+  publication evidence belongs to the priority plan; this does not finish A4.
 - [x] Local Lambda structure correction after `f3da3c3`: read the existing Pi
   binding address and body, without reconstructing the whole classifier just
   to find its binder. Share Context/input binding extraction with Pi structure.

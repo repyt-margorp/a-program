@@ -384,6 +384,14 @@ static void shared_substitution_images(void)
 static void comparison_fixture(struct pg_graph *graph, struct pg_comparison *work, unsigned mode)
 {
 	const struct pg_object *x = pg_binder(graph), *y = pg_binder(graph);
+	if (mode >= 4) {
+		const struct pg_term *body = pg_reference(graph, mode == 5 ? x : y);
+		for (size_t i = 0; i < 4; ++i)
+			body = pg_application(graph, pg_lambda(graph, pg_binder(graph), body),
+				pg_lambda(graph, pg_binder(graph), body));
+		assert(!pg_independence_init(work, pg_lambda(graph, pg_binder(graph), body), x));
+		return;
+	}
 	const struct pg_term *left = pg_reference(graph, x), *right = pg_reference(graph, mode == 1 ? x : y);
 	for (size_t i = 0; i < 8; ++i) {
 		left = pg_application(graph, left, left);
@@ -493,7 +501,7 @@ static void comparison_boundaries(void)
 
 static void comparison_resume(void)
 {
-	for (unsigned mode = 0; mode < 4; ++mode) {
+	for (unsigned mode = 0; mode < 6; ++mode) {
 		struct pg_graph graph;
 		struct pg_comparison baseline;
 		assert(!pg_graph_init(&graph));
