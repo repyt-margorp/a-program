@@ -4201,3 +4201,61 @@ Epoch delta from `89c011f`: `evidence.c` +8/-10; `function_graph.c` +4/-3;
 implementation net -1. Tests separately: `identity.c` +17/-0 and `program.c`
 +38/-0. Cumulative implementation/header net remains +1,700 from R76 and
 +4,116 from R0, so neither overall net-negative gate is satisfied.
+
+### 2026-09-19: Shared substitution state ownership (local)
+
+Baseline: published `e6029f0`. This is physical ownership consolidation, not
+removal of duplicate proof authority or a new substitution algorithm.
+
+- [x] Measure before selecting a change. Function-field makes only six index
+  prefix checks directly from Context interning; do not present that small
+  lookup-order issue as the principal performance cause. `-O2 -g -pg` profiles
+  of 50 function-field and 10 imported QuickSort source processes instead show
+  substantial substitution/readback/index work. Sampling is too sparse for
+  precise small-input percentage claims; these are not benchmark binaries.
+- [x] Place shared substitution state in the same existing input arena as its
+  request, root and environment. Remove the separate per-request `calloc/free`
+  ownership. The existing `input_storage` pointer determines lifetime; no new
+  ownership tag, cache, proof rule or wire field is added. Standalone and
+  deserialized substitutions still own their state individually. Scratch
+  traversal storage is released on completion or cancellation as before.
+- [x] Focused strict-debug Core and complete evaluation-image runner pass.
+  Extend the existing every-cut shared-image test to check stable state and
+  borrowed ownership before/after progress, and independent restored ownership.
+- [x] Full optimized acceptance and affected ASan/UBSan Core, evaluation-image
+  and program tests pass. All 2,460 exported results and Solve steps match
+  `e6029f0`. The old retained QuickSort image resaves byte-identically without
+  Solve (expected pending exit 3). Repeat timing is recorded below.
+- [ ] Incorporate this verified local change into a larger publication epoch.
+  Do not publish this ownership change alone or close A3-A5/R2-R5.
+
+Imported QuickSort: requests 28,606, Solve steps 146,537, proofs 93,013 and
+occurrences 82,070 are unchanged. Each state is 128 bytes. Input arena used
+bytes move 8,048,576 -> 11,710,144, exactly the 3,661,568 formerly requested
+as separate state allocations. Arena capacity moves 8,093,696 -> 11,763,712
+(494 -> 718 blocks). This is not a 3.66 MB total-memory increase: the old
+separate states must be counted too. Allocator overhead/RSS are not measured.
+
+First 31-pair source timing, strict O2, CPU 2, alternating fresh processes:
+length 5.715/5.698 ms; function-field 9.911/9.813; Vec append 7.275/6.868;
+QuickSort 209.788/205.453. Small controls: Bool .503/.509; add .953/.970.
+These are preliminary medians, not a demonstrated general speedup.
+The same 31-pair protocol repeated after all tests finished gives length
+5.578/5.649 ms; function-field 10.029/9.838; Vec 7.020/7.229; QuickSort
+210.444/205.265; Bool .537/.540; add .970/.980. QuickSort improves about 2%
+in both runs, but the Vec result reverses direction. Do not extrapolate this
+to a general speedup or substitute it for the original A5 baseline matrix.
+Logs/builds: `/tmp/a-program-authority-substitution-owner-` with
+`debug-{build,core,io}.log`, `counts-{before,after}.log`,
+`timing{,-repeat}.log`, `opt.log`, `common.log` and
+`asan-{build,core,io,program}.log`. Strict warnings are enabled; ASan/UBSan uses
+O1/g, non-PIE, frame pointers, leak detection and halt-on-error.
+Earlier profiles use `/tmp/a-program-authority-consumer-profile-`
+`{build,field,quick}.log`; the Context trace is
+`/tmp/a-program-authority-context-intern-before.log`.
+
+Implementation/header delta: `eval.c` +3/-2 and `eval_internal.h` +1/-1,
+net +1; existing evaluation-image tests +4/-0; documentation separate.
+Cumulative implementation/header net is +1,701 from R76 and +4,117 from R0.
+The overall reduction requirement remains unmet; this change unifies lifetime
+management, not the representations or number of substitution results.

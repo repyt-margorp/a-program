@@ -341,10 +341,13 @@ static void shared_substitution_images(void)
 		input = substitution_fixture(&graph, &image);
 		request = pg_substitution_request(&shared, input, 1, &image);
 		assert(request);
+		struct pg_substitution_state *state = request->state;
+		assert(state->input_storage == &shared.storage);
 		const struct pg_closure *original = pg_substitution_input(request);
 		struct readback_entry *root = request->state->root;
 		assert(request->state->context.pending == root && !request->state->context.temporary.blocks);
 		pg_substitution_advance(request, cut);
+		assert(request->state == state && state->input_storage == &shared.storage);
 		assert(pg_substitution_input(request) == original && request->state->root == root);
 		assert(pg_substitution_steps(request) == cut);
 		assert(pg_substitution_request(&shared, input, 1, &image) == request);
@@ -366,6 +369,7 @@ static void shared_substitution_images(void)
 		assert(source->environment && !source->environment->parent);
 		image = (struct pg_binding_value){source->environment->binder, source->environment->value.term};
 		assert(!pg_substitution_init(&baseline, &graph, source->term, 1, &image));
+		assert(!restored.state->input_storage && !baseline.state->input_storage);
 		assert(pg_substitution_advance(&baseline, 10000) == PG_SUBSTITUTION_DONE);
 		assert(pg_substitution_steps(&restored) == cut);
 		assert(pg_substitution_advance(&restored, steps - cut) == PG_SUBSTITUTION_DONE);

@@ -433,7 +433,8 @@ static int substitution_init(struct pg_substitution *work, struct pg_graph *grap
 	const struct pg_term *term, size_t count, const struct pg_binding_value *bindings,
 	struct pg_graph *input_storage)
 {
-	struct pg_substitution_state *state = calloc(1, sizeof(*state));
+	struct pg_substitution_state *state = input_storage ? pg_alloc(input_storage, sizeof(*state))
+		: calloc(1, sizeof(*state));
 	if (!state) return -1;
 	work->state = state;
 	state->context.output = graph;
@@ -468,7 +469,7 @@ void pg_substitution_destroy(struct pg_substitution *work)
 {
 	if (!work->state) return;
 	pg_readback_destroy(&work->state->context);
-	free(work->state);
+	if (!work->state->input_storage) free(work->state);
 	work->state = NULL;
 }
 

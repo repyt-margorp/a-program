@@ -1797,6 +1797,14 @@ all 2,460 export records/step counts agree. The priority plan records allocation
 measurements, timing without an established speedup, per-file deltas and grouped
 publication. This does not close A3-A5 or the parent's reduction gate.
 
+Local follow-up on `e6029f0`: the shared substitution's state still had separate
+heap ownership even though the request/root/environment share one lifetime.
+Move it into the existing input arena, using the existing owner pointer for
+cleanup; keep standalone/restored states individually owned. This removes
+28,606 individual state allocations on imported QuickSort without changing
+request, proof, occurrence or Solve-step counts. The priority plan tracks final
+tests and timing before a larger publication epoch; original gates stay open.
+
 #### 2026-09-19 diagnostic comparison (not final acceptance)
 
 Compare retained R0 `4657cc6` and implementation `555b13d`, strict C11/O0/g,

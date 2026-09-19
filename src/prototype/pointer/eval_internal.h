@@ -23,7 +23,7 @@ struct readback_context {
 struct pg_substitution_state {
 	struct readback_context context;
 	struct readback_entry *root;
-	/* Optional borrowed owner of the root and input environment. */
+	/* Optional borrowed owner of this state, root and input environment. */
 	struct pg_graph *input_storage;
 	enum pg_substitution_status status;
 };
