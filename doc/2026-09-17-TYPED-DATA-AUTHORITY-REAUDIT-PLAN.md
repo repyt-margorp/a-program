@@ -827,6 +827,14 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 - [ ] Preserve selected-root reachability without scanning unrelated source
   scopes or collecting all syntax-free aliases. Do not repeat the withdrawn
   broad `collect_origin` experiment.
+  Reaudit on `ef5e53d`: replacing declaration/Match address keys with the
+  existing nearest-binder/member keys failed `member_use_origins`. After
+  specialization and inert resaves, a constructor reference changed nominal
+  identity (alpha comparison also failed). The trial is withdrawn. The next
+  design must join selected lexical provenance with retained allocation
+  dependencies even when specialization erases the original binder; nearest
+  binder reachability alone is insufficient. The priority plan records the
+  reproducer. Do not weaken the exact retained-reduction/source identity test.
   Latest follow-up (2026-09-19): declaration/Match references now use their
   actual family/matcher/induction addresses, registered idempotently when the
   allocation becomes available, including unaccepted imported inputs. Remove
@@ -1294,6 +1302,13 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   remain synchronous. Pending-versus-accepted classifier-structure requests
   also remain an audit item; do not omit projection obligations merely to
   reduce request counts. A3-A5 are not complete.
+- [x] Audit the proposed classifier-structure projection collapse on `ef5e53d`.
+  A pre-closure symbolic query and a post-acceptance projection need not return
+  the same classifier Term. `pending_effect_contexts` now verifies this for a
+  Lambda at chunks 1/64; unconditional redirection to its operand fails the
+  accepted-classifier assertion. Keep the test, not the trial. This distinguishes
+  immutable snapshots from duplicate acceptance authorities; it does not close
+  all structural sharing or the remaining A3-A5 gates.
 - [x] 2026-09-19: share IH scope-map relocation through the existing map-rebase
   query. Remove Solver's per-image projection jobs and substitution-prefix
   reconstruction, and the direct API's extra projection/composition map.

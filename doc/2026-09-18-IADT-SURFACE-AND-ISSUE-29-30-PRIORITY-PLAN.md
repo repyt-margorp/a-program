@@ -3916,3 +3916,51 @@ Final publication checks:
   or remove the remaining synchronous schema helper application.
   Documentation-only diff: parent authority plan +11/-0; priority plan +88/-0.
   These lines are excluded from implementation/header and test totals.
+
+### 2026-09-19: projection snapshot and lexical-index counterexamples
+
+Baseline: `ef5e53daa507140ad5868999c5b7be6d67dec399`. These are audit results
+for the remaining A3/A4 work, not a completed refactoring epoch.
+
+- [x] Add the classifier counterpart of the existing type-snapshot regression
+  in `tests/synthesis.c:pending_effect_contexts`. Before effect closure, a
+  Lambda classifier contains a symbolic row. After closure, a newly accepted
+  Context projection exposes its checked classifier; the earlier query remains
+  immutable. Applying the effect substitution relates the two structures.
+  Repeated requests share each exact query; neither query is acceptance proof.
+- [x] Test unconditional projection redirection in
+  `pg_synthesis_classifier_structure`: follow `PG_CONTEXT_PROJECTION` premise
+  1 before interning the request. It fails the new accepted-classifier assertion
+  (exit 134, `/tmp/a-program-authority-classifier-collapse-trial.log`). Revert
+  that implementation. The previous epoch's one extra structure job is not, by
+  itself, evidence of duplicate authority. Do not erase this snapshot distinction
+  just to make request counts independent of scheduling.
+- [x] Test a single lexical reference index for member/declaration/Match:
+  use the member's nearest-binder/named-scope key for all three, then wait on
+  family/matcher/self reachability in the writer. This fails existing
+  `source_io_test constructor-inputs`, in `member_use_origins`, after inert
+  resaves of `Box:=&(\A:@=>@{mk:A->*;}); r:=&(Box Nat).mk`.
+  The reconstructed forced source has a different constructor pointer from
+  the retained reduction source; GDB confirms `pg_alpha_equal == 0`, not just
+  fresh bound names. The failed trial is withdrawn, including its changed
+  reference-index tests. Logs/patch: `/tmp/a-program-authority-lexical-allocations-`
+  `source.log`, `core-diff.log`, `trial.patch`.
+- [ ] Next A3 prerequisite: preserve the selected source's dependency on a
+  generative allocation when specialization removes its defining parameter
+  binder from the reached Core. Scope-only lookup loses this dependency;
+  address-only lookup visits unselected aliases. Inspect retained source
+  producer edges and their Context actions together before replacing either.
+  Keep the 128 unrelated shared-allocation cases and exact source/receipt
+  identity through inert resaves. No new allocation authority or name-based
+  equality shortcut is authorized by this audit.
+
+Final retained change: `tests/synthesis.c` +14/-0; implementation/headers
+unchanged. Debug (`-O0 -g`), optimized (`-O2`) and ASan/UBSan (`-O1 -g`, leak
+checking and halt-on-error enabled) `synthesis_test` all exit zero. Final debug
+`tests/source_io.sh` also exits zero after withdrawing the lexical-index trial.
+Builds use `src/prototype/pointer/Makefile`, strict C11 warnings, and prefix
+`/tmp/a-program-authority-classifier-snapshot-`; logs end in `debug.log`,
+`opt.log`, `asan.log`, and `source.log`. The failed trial binaries/logs are
+separate from these final tests. No full new publication gate or performance
+claim is made for this test-only change. Keep it local until a substantial
+verified epoch; A3-A5, parent R2-R5, and both cumulative LOC gates remain open.

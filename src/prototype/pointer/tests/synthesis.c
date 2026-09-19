@@ -847,6 +847,9 @@ static void pending_effect_contexts(struct pg_typing *typing)
 		assert(body_type == pg_synthesis_classifier_structure(&synthesis, body));
 		assert(!complete(&synthesis, body_type, PG_SYNTHESIS_DONE));
 		assert(pg_synthesis_type_structure_result(body_type) == symbolic_f);
+		struct pg_synthesis_job *lambda_classifier = pg_synthesis_classifier_structure(&synthesis, lambda);
+		assert(!complete(&synthesis, lambda_classifier, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(lambda_classifier) == symbolic_pi);
 		struct pg_synthesis_job *continuation = pg_synthesis_lambda_body(&synthesis, context, body);
 		assert(continuation == pg_synthesis_lambda_body(&synthesis, context, body));
 		struct pg_synthesis_job *continuation_type = pg_synthesis_classifier_structure(&synthesis, continuation);
@@ -1478,6 +1481,17 @@ static void pending_effect_contexts(struct pg_typing *typing)
 		assert(pg_alpha_equal(pg_term_substitute(typing->graph, symbolic_pi, 1, &image),
 			pg_synthesis_type_structure_result(late_shape)) == 1);
 		assert(pg_synthesis_type_structure_result(structure) == symbolic_pi);
+		struct pg_synthesis_job *late_lambda = rule_job(&synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
+			(struct pg_synthesis_job *[]){empty, lambda});
+		const struct pg_evidence *projected_lambda = complete(&synthesis, late_lambda, PG_SYNTHESIS_DONE);
+		struct pg_synthesis_job *late_classifier = pg_synthesis_classifier_structure(&synthesis, late_lambda);
+		assert(!complete(&synthesis, late_classifier, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(late_classifier) == pg_evidence_classifier(projected_lambda));
+		assert(pg_synthesis_type_structure_result(lambda_classifier) == symbolic_pi);
+		assert(pg_synthesis_type_structure_result(late_classifier) != symbolic_pi);
+		assert(pg_alpha_equal(pg_term_substitute(typing->graph, symbolic_pi, 1, &image),
+			pg_synthesis_type_structure_result(late_classifier)) == 1);
+		assert(pg_synthesis_classifier_structure(&synthesis, late_lambda) == late_classifier);
 		struct pg_synthesis_job *invalid = rule_job(&synthesis, PG_THUNK_TYPE_FORM, NULL, 1, &universe);
 		struct pg_synthesis_job *invalid_structure = pg_synthesis_type_structure(&synthesis, invalid);
 		assert(!complete(&synthesis, invalid_structure, PG_SYNTHESIS_DONE));
