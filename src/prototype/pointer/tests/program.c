@@ -615,6 +615,56 @@ static void function_graph_aliases(struct pg_program *p,
 	pg_conversion_destroy(&conversion);
 }
 
+static void graph_index_preparation(void)
+{
+	const char *source = "Nat:=@{zero:*;succ:*->*;};"
+		"Vec:=\\A:@=>@\\n:Nat=>{nil:* Nat.zero;cons:(k:Nat)->A->* k->* (Nat.succ k);};"
+		"length:=\\A:@=>\\n:Nat=>\\xs:Vec A n=>xs @nil=>Nat.zero @cons k h t=>Nat.succ *t;";
+	/* Each cutoff has cold graph preparation; completing a previous owner's
+	 * shared query must not hide eager work in the next initialization. */
+	for (size_t limit = 0;; ++limit) {
+		assert(limit < 1000);
+		struct pg_program *p = pg_program_create(source, strlen(source), PG_DEFINITION_IMPLICIT_THUNK);
+		assert(p && p->root);
+		solve(p, 1);
+		assert(pg_synthesis_status(p->root) == PG_SYNTHESIS_DONE);
+		const struct pg_evidence *function = pg_synthesis_result(pg_synthesis_definition(p->root,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "length", .length = 6}));
+		function = pg_function_graph_source(&p->typing, function);
+		const struct pg_evidence *inner = function;
+		while (pg_evidence_rule(pg_evidence_premise(inner, 1)) == PG_LAMBDA_INTRO)
+			inner = pg_evidence_premise(inner, 1);
+		const struct pg_evidence *scope = pg_evidence_premise(pg_evidence_premise(inner, 0), 0);
+		const struct pg_evidence *prefix = pg_evidence_premise(pg_evidence_premise(scope, 0), 0);
+		struct pg_inductive_instance instance;
+		assert(pg_inductive_instance(&p->typing, pg_evidence_premise(scope, 1), &instance));
+		struct pg_typed_query *query = pg_substitution_rebase_request(&p->typing, prefix, instance.parameters);
+		assert(query && !pg_typed_query_steps(query));
+		struct pg_function_graph_work work;
+		assert(!pg_function_graph_init(&work, &p->typing, &p->evaluation, function));
+		assert(!pg_typed_query_steps(query) && !pg_function_graph_prepared(&work));
+		assert(pg_function_graph_advance(&work, 0) == PG_FUNCTION_GRAPH_PENDING);
+		uint64_t steps = 0;
+		for (size_t turn = 0; turn < limit && !pg_function_graph_prepared(&work); ++turn) {
+			assert(pg_function_graph_advance(&work, 1) == PG_FUNCTION_GRAPH_PENDING);
+			assert(pg_typed_query_steps(query) - steps <= 1);
+			steps = pg_typed_query_steps(query);
+		}
+		int prepared = pg_function_graph_prepared(&work);
+		if (prepared) assert(steps && pg_typed_query_advance(query, 0) == 1);
+		assert(!pg_function_graph_formation(&work));
+		pg_function_graph_destroy(&work);
+		assert(!work.state);
+		while (!pg_typed_query_advance(query, 1)) assert(pg_typed_query_steps(query) < 10000);
+		const struct pg_evidence *map = pg_typed_query_result(query);
+		assert(map && pg_evidence_premise(map, 1) == prefix);
+		assert(pg_substitution_rebase_request(&p->typing, prefix, instance.parameters) == query);
+		pg_program_destroy(p);
+		if (prepared) break;
+	}
+	puts("graph preparation: indexed parameters suspend, retain their prefix and survive owner cancellation");
+}
+
 static void function_graphs(void)
 {
 	const char *source = "Nat:=@{zero:*;succ:*->*;}; NatList:=@{nil:*;cons:Nat->*->*;};"
@@ -686,6 +736,14 @@ static void function_graphs(void)
 				for (size_t mode = 0; mode < 3; ++mode) {
 					struct pg_function_graph_work ordered;
 					assert(!pg_function_graph_init(&ordered, &p->typing, &p->evaluation, function));
+					assert(!pg_function_graph_prepared(&ordered));
+					assert(!pg_function_graph_case_input(&ordered));
+					assert(pg_function_graph_advance(&ordered, 0) == PG_FUNCTION_GRAPH_PENDING);
+					assert(!pg_function_graph_prepared(&ordered));
+					for (size_t turns = 0; !pg_function_graph_prepared(&ordered); ++turns) {
+						assert(turns < 1000);
+						assert(pg_function_graph_advance(&ordered, 1) == PG_FUNCTION_GRAPH_PENDING);
+					}
 					size_t slots[] = {1, mode == 2 ? 1 : 0};
 					struct pg_function_graph_order order[] = {{0, NULL}, {mode ? 2 : 1, slots}};
 					assert(pg_function_graph_source_order(&ordered, 1, order));
@@ -936,6 +994,7 @@ int main(int argc, char **argv)
 	result_comparison_checks();
 	pending_normalization();
 	remembered_normalization();
+	graph_index_preparation();
 	function_graphs();
 	suspended_helper_application();
 	ambiguous_source_calls();

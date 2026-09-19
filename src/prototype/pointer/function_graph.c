@@ -91,7 +91,8 @@ struct pg_function_graph_state {
 	size_t witness_next;
 	enum pg_function_graph_status witness_status;
 	size_t count, next;
-	int cases, induction, ready;
+	int cases, induction;
+	enum { GRAPH_HEAD, GRAPH_INPUT, GRAPH_PARAMETERS, GRAPH_READY } preparation;
 	uint64_t level;
 	enum pg_totality totality;
 	enum pg_function_graph_status status;
@@ -1019,7 +1020,7 @@ const struct pg_evidence *pg_function_graph_source(struct pg_typing *typing,
 	return NULL;
 }
 
-static int prepare_graph(struct pg_function_graph_state *s);
+static int prepare_head(struct pg_function_graph_state *s);
 
 static int function_signature(struct pg_function_graph_state *s, const struct pg_evidence *function)
 {
@@ -1091,9 +1092,7 @@ int pg_function_graph_init(struct pg_function_graph_work *work,
 		if (!body) break;
 		function = body;
 	}
-	if (function_signature(s, function)) return 0;
-	if (pg_evidence_rule(s->body) == PG_MATCH_ELIM || pg_evidence_rule(s->body) == PG_INDUCTION_ELIM)
-		return prepare_graph(s);
+	function_signature(s, function);
 	return 0;
 }
 
@@ -1132,27 +1131,38 @@ static int capture_eliminator(struct pg_function_graph_state *s, const struct pg
 	return 0;
 }
 
-static int prepare_graph(struct pg_function_graph_state *s)
+static void prepare_graph(struct pg_function_graph_state *s)
 {
 	struct pg_typing *typing = s->typing;
 	const struct pg_evidence *source_function = s->source_function;
-	enum pg_evidence_rule rule = pg_evidence_rule(s->body);
-	s->cases = rule == PG_MATCH_ELIM || rule == PG_INDUCTION_ELIM;
-	s->induction = rule == PG_INDUCTION_ELIM;
-	s->count = 1;
-	if (!s->cases) {
-		for (const struct graph_continuation *argument = s->head_arguments; argument; argument = argument->next)
-			s->body = pg_prove_application(typing, s->body, argument->argument);
-		if (!s->body) goto unsupported;
-		s->head_arguments = NULL;
+	switch (s->preparation) {
+	case GRAPH_HEAD: {
+		if (prepare_head(s)) return;
+		enum pg_evidence_rule rule = pg_evidence_rule(s->body);
+		s->cases = rule == PG_MATCH_ELIM || rule == PG_INDUCTION_ELIM;
+		s->induction = rule == PG_INDUCTION_ELIM;
+		s->count = 1;
+		if (s->cases) {
+			const struct pg_evidence *scrutinee = pg_evidence_premise(s->body, 3);
+			const struct pg_term *variable = pg_reference(typing->graph, pg_evidence_context(s->argument_context)->binder);
+			if ((s->head_arguments || pg_evidence_subject(scrutinee)->core != variable) &&
+				capture_eliminator(s, scrutinee)) goto unsupported;
+		} else {
+			for (const struct graph_continuation *argument = s->head_arguments; argument; argument = argument->next)
+				s->body = pg_prove_application(typing, s->body, argument->argument);
+			if (!s->body) goto unsupported;
+			s->head_arguments = NULL;
+		}
+		s->preparation = GRAPH_INPUT;
+		return;
 	}
-	if (s->cases) {
-		const struct pg_evidence *scrutinee = pg_evidence_premise(s->body, 3);
-		const struct pg_term *variable = pg_reference(typing->graph, pg_evidence_context(s->argument_context)->binder);
-		if ((s->head_arguments || pg_evidence_subject(scrutinee)->core != variable) &&
-			capture_eliminator(s, scrutinee)) goto unsupported;
-		if (s->captured_input) source_function = s->recursive_function;
-		if (!pg_inductive_instance(typing, s->domain, &s->input)) goto unsupported;
+	case GRAPH_INPUT:
+		if (!s->cases) break;
+		struct pg_typed_query *query = pg_inductive_request(typing, s->domain);
+		if (await_view(s, query)) return;
+		const struct pg_inductive_instance *input = pg_inductive_query_result(query);
+		if (!input) goto unsupported;
+		s->input = *input;
 		if (s->input.formation != pg_evidence_premise(s->body, 1)) goto unsupported;
 		if (s->input.indices) {
 			size_t offset = pg_evidence_premise_count(s->input.parameters) + 1;
@@ -1169,16 +1179,29 @@ static int prepare_graph(struct pg_function_graph_state *s)
 				s->index_arguments[i - 1] = s->context;
 				s->context = pg_evidence_premise(s->context, 0);
 			}
-			s->input.parameters = pg_prove_substitution_rebase(typing, s->context, s->input.parameters);
-			if (!s->input.parameters || !pg_inductive_motive_context_valid(typing,
-				s->input.formation, s->input.parameters, s->argument_context)) goto unsupported;
-			while (source_function && pg_evidence_context(source_function) != pg_evidence_context(s->context))
-				source_function = pg_evidence_rule(pg_evidence_premise(source_function, 1)) == PG_LAMBDA_INTRO
-					? pg_evidence_premise(source_function, 1) : NULL;
-			if (!source_function) goto unsupported;
-			s->recursive_function = source_function;
 		}
 		s->count = pg_data_constructor_count(s->input.schema);
+		break;
+	case GRAPH_PARAMETERS:
+		goto parameters;
+	case GRAPH_READY:
+		return;
+	}
+	s->preparation = GRAPH_PARAMETERS;
+	return;
+parameters:
+	if (s->captured_input) source_function = s->recursive_function;
+	if (s->input.indices) {
+		struct pg_typed_query *query = pg_substitution_rebase_request(typing, s->context, s->input.parameters);
+		if (await_view(s, query)) return;
+		s->input.parameters = pg_typed_query_result(query);
+		if (!s->input.parameters || !pg_inductive_motive_context_valid(typing,
+			s->input.formation, s->input.parameters, s->argument_context)) goto unsupported;
+		while (source_function && pg_evidence_context(source_function) != pg_evidence_context(s->context))
+			source_function = pg_evidence_rule(pg_evidence_premise(source_function, 1)) == PG_LAMBDA_INTRO
+				? pg_evidence_premise(source_function, 1) : NULL;
+		if (!source_function) goto unsupported;
+		s->recursive_function = source_function;
 	}
 	if (s->captured_input) {
 		s->specialization = argument_substitution(s, s->context, s->captured_input);
@@ -1195,14 +1218,13 @@ static int prepare_graph(struct pg_function_graph_state *s)
 	if (graph_universe(s, &s->level)) goto unsupported;
 	s->leaf_tail = &s->leaves;
 	s->build_tail = &s->building;
-	s->ready = 1;
-	return 0;
+	s->preparation = GRAPH_READY;
+	return;
 unsupported:
 	s->status = PG_FUNCTION_GRAPH_UNSUPPORTED;
-	return 0;
+	return;
 error:
 	s->status = PG_FUNCTION_GRAPH_ERROR;
-	return 0;
 }
 
 /* Expose typed beta/quotation/sequencing wrappers one scheduled step at a
@@ -1210,7 +1232,6 @@ error:
 static int prepare_head(struct pg_function_graph_state *s)
 {
 	const struct pg_evidence *left, *right, *body = NULL;
-	enum pg_evidence_rule rule;
 	if (s->head_arguments) {
 		if (application_body(s, s->body, s->head_arguments->argument, &body)) return 1;
 		if (body) {
@@ -1219,6 +1240,8 @@ static int prepare_head(struct pg_function_graph_state *s)
 			return 1;
 		}
 	}
+	enum pg_evidence_rule rule = pg_evidence_rule(s->body);
+	if (rule == PG_MATCH_ELIM || rule == PG_INDUCTION_ELIM) return 0;
 	int view = computation_view(s, s->body, &rule, &left, &right);
 	if (view > 0) return 1;
 	if (view < 0) return 0;
@@ -1258,7 +1281,7 @@ size_t pg_function_graph_trailing_arity(const struct pg_function_graph_work *wor
 
 int pg_function_graph_prepared(const struct pg_function_graph_work *work)
 {
-	return work && work->state && work->state->ready;
+	return work && work->state && work->state->preparation == GRAPH_READY;
 }
 
 int pg_function_graph_source_order(struct pg_function_graph_work *work,
@@ -1266,7 +1289,7 @@ int pg_function_graph_source_order(struct pg_function_graph_work *work,
 {
 	if (!work || !work->state) return -1;
 	struct pg_function_graph_state *s = work->state;
-	if (s->status != PG_FUNCTION_GRAPH_PENDING || !s->ready || s->next) return -1;
+	if (s->status != PG_FUNCTION_GRAPH_PENDING || !pg_function_graph_prepared(work) || s->next) return -1;
 	if (!s->cases || count != s->count || (count && !orders)) return -1;
 	for (size_t i = 0; i < count; ++i) {
 		if (s->plans[i].computation || s->plans[i].source_order) return -1;
@@ -1294,8 +1317,8 @@ enum pg_function_graph_status pg_function_graph_advance(struct pg_function_graph
 			if (await_view(s, s->view)) continue;
 			s->view = NULL;
 		}
-		if (!s->ready) {
-			if (!prepare_head(s)) prepare_graph(s);
+		if (!pg_function_graph_prepared(work)) {
+			prepare_graph(s);
 			continue;
 		}
 		if (s->next == s->count) {
@@ -1367,7 +1390,7 @@ const struct pg_evidence *pg_function_graph_declaration(const struct pg_function
 
 const struct pg_evidence *pg_function_graph_case_input(const struct pg_function_graph_work *work)
 {
-	return work && work->state && work->state->ready ? work->state->input.formation : NULL;
+	return pg_function_graph_prepared(work) ? work->state->input.formation : NULL;
 }
 
 const struct pg_evidence *pg_function_graph_dependency(const struct pg_function_graph_work *work)

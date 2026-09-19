@@ -3548,3 +3548,85 @@ Implementation/header diff from `c0f27b3`: `evidence.c` +9/-7, `synthesis.c`
 +16/-10; total +25/-17, net +8. Tests unchanged; documentation is separate.
 Cumulative implementation/header totals: R76 +3146/-1592 (net +1554), R0
 +7975/-4005 (net +3970). Memory savings do not satisfy the source-reduction gate.
+
+### 2026-09-19: Schedule function-graph input preparation
+
+Baseline: Main `f73c26b`. `pg_function_graph_init` previously called
+`prepare_graph` for a directly retained Match. That synchronously resolved its
+IADT instance and rebased its parameter map before any graph budget was spent.
+For an exposed Match the same work ran inside one later graph turn. These were
+shared queries already, but their caller drained them through synchronous APIs.
+
+- [x] Move preparation to `pg_function_graph_advance`. Replace the existing
+  ready flag with head/input/parameters/ready phases; retain the existing
+  context prefix, index arguments and shared-query wait slot. No new worker
+  allocation, query kind, result cache, proof rule or wire format.
+- [x] Request the existing inductive and map-rebase queries. Resume them through
+  `await_view`, retaining completed preparation instead of reconstructing it.
+  The public readiness/layout contract already requires advancing until ready;
+  tests no longer assume that initialization supplies that readiness.
+- [x] Keep direct accepted Match/induction bodies as known heads. The first
+  draft rediscovered their construction origins and added 2/6/6 queries on
+  length/function-field/QuickSort. Remove that extra discovery at the shared
+  head-inspection entry, after any pending argument application. The draft's
+  full O2 acceptance passed; that is not a reason to keep redundant work.
+- [x] Add a cold indexed-Vec regression at every preparation cutoff. Check no
+  parameter-query progress during initialization or budget zero, at most one
+  query transition per graph turn, no premature graph formation, exact target
+  Context evidence, and independent resumption after destroying the graph owner.
+- [x] Run that regression against archived `f73c26b`: exit 134 at initialization.
+  GDB confirms that the parameter query has already taken 3 steps and the old
+  initializer reports prepared. Current focused strict-debug tests pass.
+- [x] Complete strict debug and O2 acceptance. All 2460 export records match
+  between configurations, including steps. They match the published baseline
+  after excluding scheduling steps. Compatibility remains 63/63 and all four
+  sort proof suites pass. The final tightened cutoff assertion also passes in
+  the rebuilt debug program suite.
+- [x] Complete ASan-UBSan acceptance: strict C11, O1/debug information,
+  address/undefined sanitizers, frame pointers, non-PIE, leak detection and
+  halt-on-error enabled. Exit 0, no sanitizer diagnostics; all 2460 export
+  records and steps match debug/O2, with compatibility 63/63 and four sort
+  proof suites passing. Log: `asan.log` under the prefix below.
+- [x] Compare elapsed time with the published baseline, as recorded below.
+- [x] Prepare the verified epoch for atomic Main/rewrite publication without
+  force. Both remote tips were checked at `f73c26b`; Git records the actual push
+  outcome. A3-A5 and cumulative reduction gates stay open.
+
+The boundary is deliberately narrow: signature recovery, captured-eliminator
+abstraction, case planning and other kernel calls are not made universally
+constant-work by this change. Core/typed layers remain distinct; preparation
+consumes accepted typed inputs and has no authority to accept a pending proof.
+
+Fixed-source debug counts after removing redundant head discovery:
+
+| Input | Solve steps before/after | Typed queries (both) | Arena used (both) |
+| --- | ---: | ---: | ---: |
+| length | 9094 / 9097 | 1011 | 3910464 |
+| function field | 12316 / 12344 | 1772 | 6292576 |
+| Vec append | 19312 / 19312 | 735 | 4312000 |
+| imported QuickSort property | 140790 / 140878 | 10417 | 67301152 |
+
+Core/proof/occurrence/Context/map/action/job counts are also unchanged. Summed
+typed-query transitions are identical: 11129/17871/26903/343194 respectively.
+The graph work header remains 584 bytes. Thus the extra outer Solve turns do
+not represent duplicated query work. These are scheduling/allocation
+measurements, not a speedup claim. Logs use
+`/tmp/a-program-authority-graph-preparation-`: `before-test.log`,
+`before-state.log`, `draft-opt.log`, `draft-counts.log`, `counts.log`,
+`work-counts.log`, `debug.log`, `opt.log`, `final-program.log`.
+Final full gates are tracked above, not implied by the draft.
+
+Five alternating O2 samples were noisy, with a higher function-field median.
+A further 31 alternating fresh-process samples per binary, after warm-up and
+with no concurrent tests/builds, give median seconds before/after:
+length .00916/.00875, function-field .01376/.01439, Vec append .00997/.00994,
+QuickSort .21299/.21374. Function-field ranges are .01007-.02114 and
+.01079-.01930; QuickSort ranges .19997-.23621 and .19702-.24134. These results
+do not establish a speedup or discharge the original performance gates.
+Logs: `timing.log` and `timing-31.log` under the same prefix.
+
+Implementation/header diff from `f73c26b`: `function_graph.c` +63/-40,
+`function_graph.h` +2/-1; total +65/-41, net +24. `tests/program.c` adds 59
+lines; documentation is separate. Cumulative implementation/header totals:
+R76 +3211/-1633 (net +1578), R0 +8040/-4046 (net +3994).
+This epoch does not meet the cumulative source-reduction gate.

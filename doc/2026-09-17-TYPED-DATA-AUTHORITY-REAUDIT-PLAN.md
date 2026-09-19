@@ -1249,6 +1249,13 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 - [ ] Report concrete deleted paths. Move remaining synchronous query loops to
   existing scheduling only where necessary for the same work contract; do not
   turn this repair into another scheduler framework.
+- [x] 2026-09-19 local work: function-graph preparation no longer drains
+  inductive/parameter-map queries in initialization or one graph turn. Existing
+  graph scheduling and its shared-query wait slot own this work; a phase replaces
+  the ready flag. The priority plan records the failing old-code boundary test,
+  removed redundant head discovery, unchanged query-work/graph/allocation counts,
+  passing debug/O2/ASan-UBSan acceptance, timing comparisons and the verified
+  publication boundary. Other synchronous consumers remain open.
 - [ ] Audit weakening composition together with explicit map admission and
   dependent elimination transport before normalizing typed scope paths.
   The 2026-09-19 trial was withdrawn: normalizing map application broke

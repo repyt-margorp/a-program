@@ -63,7 +63,8 @@ int pg_function_graph_source_order(struct pg_function_graph_work *work,
  * source arguments. The count is final only after preparation. */
 size_t pg_function_graph_trailing_arity(const struct pg_function_graph_work *work);
 /* Advance with budget 1 until prepared or terminal before supplying a layout.
- * Preparation exposes wrappers without planning any constructor case. */
+ * Preparation exposes wrappers and resolves the input and parameter map through
+ * shared typed queries, without planning any constructor case. */
 int pg_function_graph_prepared(const struct pg_function_graph_work *work);
 enum pg_function_graph_status pg_function_graph_advance(struct pg_function_graph_work *work, uint64_t budget);
 /* A helper call waits for the same canonical graph/witness requested by @f and *f.
