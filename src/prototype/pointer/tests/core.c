@@ -171,6 +171,7 @@ static void graph_test(struct pg_graph *graph)
 	assert(pg_comparison_init(&shared, shared_left, shared_right, NULL, NULL) == 0);
 	assert(pg_comparison_advance(&shared, 100) == PG_COMPARISON_EQUAL);
 	assert(pg_comparison_task_count(&shared) == 4);
+	assert(pg_comparison_steps(&shared) == 4);
 	pg_comparison_destroy(&shared);
 	/* An identical inner binder masks a nonidentity outer correspondence. */
 	assert(pg_alpha_equal(pg_lambda(graph, x, pg_lambda(graph, x, vx)),
@@ -198,6 +199,9 @@ static void graph_test(struct pg_graph *graph)
 	assert(pg_comparison_advance(&independent, 0) == PG_COMPARISON_PENDING);
 	assert(pg_comparison_advance(&independent, 1000) == PG_COMPARISON_EQUAL);
 	assert(pg_comparison_task_count(&independent) == 97);
+	/* Structural nodes need no synthetic normalization; one extra step walks
+	 * past the unrelated binder at the final free reference. */
+	assert(pg_comparison_steps(&independent) == 98);
 	pg_comparison_destroy(&independent);
 	assert(pg_term_independent(independent_dag, y) == 0);
 	assert(pg_term_independent(pg_lambda(graph, y, independent_dag), y) == 1);

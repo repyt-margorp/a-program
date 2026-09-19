@@ -6766,3 +6766,49 @@ Logs: `/tmp/a-program-authority-sequence-accepted-` with
 `{baseline,debug,acceptance,synthesis,counts,work}.log`,
 `asan-{build,synthesis,source,image,handler}.log` and
 `timing{,-repeat}.jsonl`.
+
+### A4 structural comparison without synthetic normalization (2026-09-20)
+
+Baseline `4243ee5`. A structural comparison has no normalization callback, but
+the shared walker still spent two transitions copying each pair's endpoints
+through normalization stages. Compare the original endpoints directly instead.
+Actual conversion callbacks retain their staged normalization and suspension;
+binder scope, DAG sharing and pointer-exact interning are unchanged. This is
+not an increased per-step traversal budget or a new cache/authority.
+
+- [x] Baseline regression fails: the four-task alpha example must take four
+  transitions, and the 97-task independence DAG takes 98 (one scope-cursor hop).
+- [x] Existing shadowing, non-equality, normalization and cancellation tests pass.
+- [x] Preserve the existing comparison image schema and stage validation.
+  Round-trip legacy no-op stages 0/1; compare from their original endpoints.
+- [x] Full strict debug, O2 and ASan/UBSan `check-acceptance` exit 0.
+  All 2,460 export records agree between builds, including steps; results agree
+  with Main after path/step normalization. Handler covers 4,474 save boundaries.
+- [x] Measure isolated work/storage/timing and per-file changes before publication.
+
+QuickSort property Main/candidate: steps 155,443/133,509; requests
+33,687/33,742; typed queries 10,002/9,994; graph arena used bytes
+60,456,640/60,476,928. Proofs (88,020), occurrences (74,584), Contexts (4,090),
+map/lift/action counts and substitution storage agree. Earlier structural
+completion changes scheduling: fewer steps do not imply fewer requests or
+allocations. Sequence scans use 1,316 transitions instead of 2,091; their task
+count increases 882/1,252 because preemption occurs at a different point.
+All comparisons are released; Job remains 336 bytes.
+
+O2, CPU 2, 31 alternating pairs, median ms Main/candidate: function-field
+8.492/7.984, QuickSort 177.471/176.286, Handler 5.535/5.440 and QuickSort save
+179.450/178.273. Repeat: 8.379/7.858, 176.079/174.017, 5.449/5.355 and
+176.340/174.355. A separate 31-sample rotating comparison of `2655372`,
+`4243ee5`, candidate gives function-field 8.537/8.082/8.131 ms. The earlier
+approximately 5% slowdown is not stable across these runs. Record the variation;
+do not claim a universal speedup or final R0 performance acceptance.
+
+Per-file implementation `graph.c` +6/-5 = **+1**; tests `core.c` +4/-0 and
+`eval_io.c` +15/-0. Executable text -24 bytes, data/BSS unchanged. Cumulative
+R0 implementation/header +9,101/-4,681 = **+4,420**. Whole A4/A5 and the
+net-negative requirement remain open. No source/test edits occurred during
+builds, tests or probes.
+
+Logs: `/tmp/a-program-authority-structural-direct-` with
+`{baseline,core,eval,debug,acceptance,asan,counts,field-counts,work}.log`,
+`timing{,-repeat}.jsonl`, `field-threeway.json`.

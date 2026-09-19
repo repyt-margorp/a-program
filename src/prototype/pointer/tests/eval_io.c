@@ -473,6 +473,21 @@ static void comparison_boundaries(void)
 	pg_comparison_destroy(&work);
 	pg_comparison_destroy(&restored);
 	assert(!fclose(file));
+	/* Earlier writers could suspend structural work in either no-op
+	 * normalization phase. Both remain readable without replaying those phases. */
+	for (unsigned stage = 0; stage < 2; ++stage) {
+		comparison_fixture(&graph, &work, 0);
+		work.state->pending->stage = stage;
+		work.state->pending->normalized[0] = stage ? work.state->pending->left : NULL;
+		file = tmpfile();
+		assert(file && !pg_comparison_write(file, &work, 0, NULL, NULL, NULL));
+		rewind(file);
+		assert(!pg_comparison_read(file, &graph, 10000, 100, NULL, NULL, &restored, &count, &roots));
+		assert(pg_comparison_advance(&restored, 10000) == PG_COMPARISON_EQUAL);
+		pg_comparison_destroy(&work);
+		pg_comparison_destroy(&restored);
+		assert(!fclose(file));
+	}
 	file = tmpfile();
 	assert(file);
 	comparison_fixture(&graph, &work, 0);

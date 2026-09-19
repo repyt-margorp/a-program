@@ -2298,3 +2298,10 @@ and proof/occurrence counts. The combined publication unit adds 32 implementatio
 lines versus `2655372`. Measurements retain an approximately 5% function-field
 timing regression as an open follow-up. This is not A4/A5 or net-negative closure;
 the priority plan records the work, storage, test and timing evidence.
+
+The next priority-plan entry removes two no-op normalization transitions from
+each structural comparison task. Full debug/O2/ASan/UBSan acceptance passes;
+legacy comparison stages remain readable. Work falls on the same QuickSort
+input, although requests/storage do not all decrease. Timing varies across
+paired and three-way runs, so final R0 performance and net-negative gates stay
+open. This changes the shared walker, not typing or conversion rules.

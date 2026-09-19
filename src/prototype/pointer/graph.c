@@ -128,19 +128,20 @@ static enum pg_comparison_status comparison_step(struct pg_comparison_state *con
 		}
 		return PG_COMPARISON_PENDING;
 	}
-	if (entry->stage < 2) {
+	if (entry->stage < 2 && context->normalize) {
 		unsigned side = entry->stage;
 		const struct pg_term *input = side ? entry->right : entry->left;
-		int result = 1;
-		if (context->normalize) result = context->normalize(context->policy, input, &entry->normalized[side]);
-		else entry->normalized[side] = input;
+		int result = context->normalize(context->policy, input, &entry->normalized[side]);
 		if (result < 0) return PG_COMPARISON_ERROR;
 		if (!result) return PG_COMPARISON_PENDING;
 		if (!entry->normalized[side]) return PG_COMPARISON_ERROR;
 		++entry->stage;
 		return PG_COMPARISON_PENDING;
 	}
-	const struct pg_term *left = entry->normalized[0], *right = entry->normalized[1];
+	/* Structural work has no normalization phases, including restored stages 0/1. */
+	entry->stage = 2;
+	const struct pg_term *left = context->normalize ? entry->normalized[0] : entry->left;
+	const struct pg_term *right = context->normalize ? entry->normalized[1] : entry->right;
 	if (left == right && !entry->scope) {
 		context->pending = entry->next;
 		return context->pending ? PG_COMPARISON_PENDING : PG_COMPARISON_EQUAL;
