@@ -781,12 +781,27 @@ preserving effect-equation closure rather than waiting for full acceptance.
 
 ### 1. Pending structural reconstruction
 
-`synthesis.c:7147` (`prepared_source_rule`) and the `term_structure_step`,
-`declared_type_step`, `classifier_structure_step`, and `type_structure_step`
-paths inspect job roles, source stages and derivation rules to rebuild term and
-classifier spines. `evidence.c` later constructs the checked versions. Hash
-interning can share the resulting Core nodes, but does not remove the duplicate
-dispatch and preparation logic.
+The baseline's `prepared_source_rule` has been replaced by shared `source_rule`
+preparation. `term_structure_step`, `declared_type_step`,
+`classifier_structure_step`, and `type_structure_step` still inspect pending
+producers. At `748f5ea`, the following pure construction is already shared with
+checked rules; this part must not be reimplemented behind a new abstraction:
+
+| Construction | Shared implementation / retained distinction |
+|---|---|
+| Lambda / APP | `pg_lambda` / `pg_application`; binding scope and argument typing remain kernel checks |
+| Pi | `pg_pi`; pending declared domain versus accepted Context formation |
+| F / U | `pg_computation_type_spine` / `pg_thunk_type`; symbolic rows versus closed checked rows |
+| Request / Fold | `pg_computation_request` / `pg_computation_fold`; operation signatures, clauses, domains and totality remain checked |
+| Dependent Pi application | `pg_substitution_request` in the existing shared substitution work; no second substitution evaluator |
+
+Accepted queries go through `accepted_structure` and read the typed subject's
+Core/classifier. Pending type formation and term queries share the same producer
+for the recognized formation rules. `pending_effect_contexts` checks this exact
+request sharing and immutable symbolic snapshots; accepted-view and application-
+substitution tests cover direct projections and shared substitution work.
+These facts do not close the entire consumer audit, but supersede the claim
+that all these spines still have independent construction algorithms.
 
 The reason for early structure is real: handler effect equations need the shape
 of a computation before its acceptance is complete. Replacing these paths with
@@ -794,9 +809,12 @@ of a computation before its acceptance is complete. Replacing these paths with
 
 Required direction: let source elaboration retain its descriptive construction
 once. Derive structural queries from that data and share pure spine-building
-functions with checked rules. Start with Return/Thunk/Force/Pi/App, remove their
-job-role reconstruction branches as each replacement lands. Do not create a
-parallel trusted classifier table or treat the description as a proof.
+functions with checked rules. Delete duplicate preparation and rediscovery,
+not the checks distinguishing a provisional description from a valid judgement.
+The table identifies shared builders already in place; remaining changes need
+a concrete duplicated traversal or construction, not merely two callers of an
+interned builder. Do not create a parallel trusted classifier table, an eager
+third typed AST, or treat the description as a proof.
 
 `::` remains a post-check. In particular, the current structural projection of
 an EXPECT job reads its target (`classifier_structure_step`); migration must

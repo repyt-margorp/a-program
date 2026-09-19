@@ -5012,7 +5012,6 @@ const struct pg_evidence *pg_prove_request(struct pg_typing *typing,
 	const struct pg_object *binder;
 	if (!pg_pi_view(pg_evidence_subject(continuation)->classifier, &domain, &binder, &codomain)) return NULL;
 	if (pg_alpha_equal(domain, pg_evidence_subject(declaration->response_type)->core) != 1) return NULL;
-	codomain = pg_pi_constant_codomain(pg_evidence_subject(continuation)->classifier);
 	const struct pg_effect_row *effects;
 	enum pg_totality totality;
 	if (!pg_computation_type_view(codomain, &totality, &effects, &result_type)) return NULL;
@@ -5223,8 +5222,6 @@ const struct pg_evidence *pg_prove_fold(struct pg_typing *typing,
 	if (!pg_computation_type_view(pg_evidence_subject(computation)->classifier, &first_totality, &effects, &value_type)) return NULL;
 	if (!pg_pi_view(pg_evidence_subject(continuation)->classifier, &domain, &binder, &codomain)) return NULL;
 	if (pg_alpha_equal(domain, value_type) != 1) return NULL;
-	codomain = pg_pi_constant_codomain(pg_evidence_subject(continuation)->classifier);
-	if (!codomain) return NULL;
 	const struct pg_evidence *type = pg_prove_pi_constant_codomain(typing, formed_classifier(typing, continuation));
 	if (!type) return NULL;
 	const struct pg_term *result_type;

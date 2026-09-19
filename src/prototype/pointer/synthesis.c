@@ -8682,43 +8682,42 @@ static void type_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 {
 	struct pg_synthesis_job *producer = (void *)job->inputs[0];
 	if (accepted_structure(synthesis, job, producer)) return;
+	if (job->left) goto forward;
 	struct pg_synthesis_job *prepared;
 	if (await_source_preparation(synthesis, job, producer, &prepared)) return;
 	if (producer->role == CLASSIFIER_FORMATION_JOB) {
-		if (!job->left) job->left = pg_synthesis_classifier_structure(synthesis, (void *)producer->inputs[1]);
-		forward_structure(synthesis, job);
-		return;
+		job->left = pg_synthesis_classifier_structure(synthesis, (void *)producer->inputs[1]);
+		goto forward;
 	}
 	if (producer->role == DOMAIN_JOB) {
 		struct pg_synthesis_job *rule;
 		if (await_source_preparation(synthesis, job, producer->left, &rule)) return;
 		if (source_value_kind(producer->left) == 2) {
-			if (!job->left) job->left = pg_synthesis_type_structure(synthesis, producer->left);
-			forward_structure(synthesis, job);
-			return;
+			job->left = pg_synthesis_type_structure(synthesis, producer->left);
+			goto forward;
 		}
 		if (rule && rule->role == DERIVATION_JOB) {
 			const struct pg_derivation_input *domain = rule->inputs[0];
 			if (domain->rule == PG_VARIABLE) {
-				if (!job->left) job->left = pg_synthesis_term_structure(synthesis, rule);
-				forward_structure(synthesis, job);
-				return;
+				job->left = pg_synthesis_term_structure(synthesis, rule);
+				goto forward;
 			}
 		}
 	}
 	if (prepared) {
-		if (!job->left) job->left = pg_synthesis_type_structure(synthesis, prepared);
-		forward_structure(synthesis, job);
-		return;
+		job->left = pg_synthesis_type_structure(synthesis, prepared);
+		goto forward;
 	}
 	const struct pg_derivation_input *input = producer->role == DERIVATION_JOB ? producer->inputs[0] : NULL;
 	if (input && input->rule == PG_CONTEXT_PROJECTION) {
-		if (!job->left) job->left = pg_synthesis_type_structure(synthesis, rule_premise(synthesis, producer, 1));
-		forward_structure(synthesis, job);
-		return;
+		job->left = pg_synthesis_type_structure(synthesis, rule_premise(synthesis, producer, 1));
+		goto forward;
 	}
 	if (producer->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, producer); return; }
 	finish(synthesis, job, producer->status == PG_SYNTHESIS_DONE ? PG_SYNTHESIS_UNSUPPORTED : producer->status);
+	return;
+forward:
+	forward_structure(synthesis, job);
 }
 
 /* Formation and ordinary term queries share this construction. The type view

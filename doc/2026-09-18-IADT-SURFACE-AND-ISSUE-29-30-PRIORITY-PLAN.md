@@ -6104,3 +6104,49 @@ add .916/.919; length 4.573/4.476; function-field 9.113/7.840; Vec append
 LOC: `iadt.c` +5/-2 = +3; `tests/iadt.c` +9/-0. Cumulative implementation/headers
 are R76 +4,021/-1,982 = +2,039 and R0 +8,771/-4,316 = +4,455. Overall code
 reduction and A4/A5/R2-R5 remain open; do not report this as a smaller codebase.
+
+### Continuation checking and type-query resumption (baseline `748f5ea`)
+
+Date: 2026-09-19. The pending-construction audit now lists the pure builders
+already shared by synthesis and acceptance. Retain provisional effect-row
+structure and independent rule checking; do not add a third typed AST to hide
+the remaining dispatch. This clarification does not complete that audit.
+
+- [x] Request/Fold use the existing checked constant-codomain operation instead
+  of first repeating its independence check directly. Domain matching, closed
+  effects, nondependence and totality remain checked. Add a dependent Request
+  rejection beside the existing dependent Fold case.
+- [x] A type-structure query selects its input once and resumes that dependency;
+  accepted typed-subject lookup still takes priority. Share the forwarding
+  tail, preserving allocation-error handling and type-versus-term eligibility.
+- [x] Strict debug Core/synthesis, full strict O2 acceptance, ASan/UBSan
+  Core/synthesis/source pass. All 2,460 O2 export records match the baseline,
+  including steps. Existing pending-effect snapshot/chunk tests pass.
+- [x] Final sanitizer image validation completed without reported sanitizer
+  errors; all 1,218 export records match the baseline, including steps.
+  Finish paired timing as recorded below.
+- [ ] Publish with a completed coherent epoch, not as standalone A4 completion.
+
+QuickSort: constant-codomain independence calls 575 -> 432 (392 unique pairs
+in both; repeats 183 -> 40); type-query producer reinspection after input
+selection 132 -> 0. Solve remains 151,199 steps, with identical job, Context,
+map, occurrence, action, query and proof counts and persistent arena sizes.
+Other structure consumers still have repeat inspections; do not extrapolate
+this narrow resumption change to all producers or claim an overall complexity
+bound. No new work tag, cache, accepted-result table or wire format is added.
+
+Logs use `/tmp/a-program-authority-continuation-proof-`: `core.log`,
+`resume-synthesis.log`, `counts.log`, `resume-counts.log`, `final-objects.log`,
+`final-acceptance.log`, `asan-core.log`, `final-asan-{synthesis,source,image}.log`.
+Before-change reinspection profile: `/tmp/a-program-authority-structure-repeat-audit.log`.
+CPU 2, O2, 31 alternating pairs: median milliseconds baseline/current are Bool
+.489/.487; add .908/.900; length 4.743/4.780; function-field 7.939/8.571;
+Vec append 6.489/6.500; QuickSort 178.060/177.075; Handler 5.823/5.723;
+length save 4.933/4.926; QuickSort save 181.110/181.154. Raw samples:
+`/tmp/a-program-authority-continuation-proof-timing.jsonl`. These mixed local
+measurements do not establish a general speedup; the function-field increase
+remains visible rather than being hidden by the QuickSort result.
+Per-file implementation: `evidence.c` +0/-3, `synthesis.c` +14/-15, net -4.
+Tests: `tests/core.c` +2/-0; documentation is separate. Cumulative R76 is
++4,031/-1,996 = +2,035; R0 is +8,779/-4,328 = +4,451. Overall reduction and
+remaining A4/A5/R2-R5 gates are still unmet.

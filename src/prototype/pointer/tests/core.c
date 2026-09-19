@@ -1437,6 +1437,8 @@ static void dependent_application_test(struct pg_graph *graph)
 	const struct pg_term *redex = pg_application(graph, pg_lambda(graph, pg_binder(graph), constant), pg_reference(graph, a));
 	assert(!pg_pi_constant_codomain(pg_pi(graph, pg_universe(graph, 1), a, redex)));
 	assert(!pg_prove_fold(&typing, pg_prove_return(&typing, argument), function));
+	const struct pg_operation_declaration *dependent_response = pg_operation_declaration(&typing, u1, u1);
+	assert(dependent_response && !pg_prove_request(&typing, dependent_response, argument, function));
 	const struct pg_evidence *app_formation = pg_prove_classifier(&typing, f_context, app);
 	assert(app_formation && pg_evidence_subject(app_formation)->core == pg_evidence_classifier(app));
 	assert(!pg_prove_application(&typing, function, u0));
