@@ -5255,3 +5255,87 @@ adds 37/deletes 10 lines (net +27). The next audit starts with
 `source_binding_intern`, `pg_synthesis_binding_input` and the existing prepared
 environment view, then `collect_inputs`/`collect_origin`; source allocation,
 typed binding and lexical environment must not be collapsed into one identity.
+
+### A3 retained computation inputs (2026-09-19)
+
+Continue from `dd0ea69`. A further rejected candidate grouped allocation
+references at the nearest non-binder source parent. It made the standalone
+binder bound pass, but `member_use_origins` found additional unselected
+transparent children and the old QuickSort resave changed bytes. That trial
+is fully withdrawn: lexical ancestors are not interchangeable source uses.
+
+The next check compares a re-synthesized named computation with the actual
+input pointers in its retained reduction archive. Printed NF equality and
+inert byte equality alone do not establish this property. New diagnostic:
+
+```sh
+source_io_test retained-name-input image.a main
+```
+
+The image must have retained a normalization of that name. The command does
+ordinary Solve and returns nonzero if no retained input is the exact Core;
+alpha matches are diagnostic only, never an interning or acceptance fallback.
+List 09 passes (two exact matches). A freshly saved QuickSort fixture initially
+has zero exact matches and one alpha match. Debugger tracing identifies its
+first difference as the freshly allocated sequencing binder in `match_step`.
+
+Unify this binder with the existing source-binding mechanism (syntax, outer
+binder sequence, slot zero), as already used for Application/Lambda. The source
+binding reader permits slot zero for ordinary Match, not handler syntax. No
+new store, proof rule or wire record is added. `computed-match` is a permanent
+source IO fixture covering typed/untyped roots, inert resaves, re-computation
+and checked NF reuse. With the original implementation it aborts on exact
+input comparison, despite alpha equality; the corrected implementation passes.
+Conflicting binder attachment and nonzero Match slots must still be rejected.
+
+- [x] Locate the first mismatch with a named-input check and a smaller fixture.
+- [x] Replace Match sequencing's fresh allocation with the common source site.
+- [x] Add the smaller fixture to both retained writer modes and List named-input
+  checks to the image CLI suite.
+- [x] Full optimized acceptance and affected debug/sanitizer checks pass.
+  All 2,460 export result lines, including Solve steps, match published Main.
+  Debug/ASan+UBSan source suites and the sanitizer handler/image CLI suites
+  pass; the old QuickSort zero-step resave remains byte-identical.
+- [ ] Resolve QuickSort's remaining generated index-path binder allocation;
+  the named-input diagnostic still fails after this local correction. The next
+  traced difference is `match_index_scope`'s fresh substitution-lift binder.
+  `match_index_context` also allocates path binders directly. Inspect their
+  existing typed Context/allocation edges before adding any retained field.
+- [ ] Resolve the separate shared-binder candidate bound before closing A3.
+
+The older `/tmp/a-program-authority-case-scopes-common.a` has no exact or alpha
+match under this new check even before the repair. Its historical producer
+provenance needs separate analysis; do not claim this patch retroactively
+recovers missing old addresses. Its existing inert-byte gate remains required.
+The new QuickSort diagnostic is an open gate, not an expected-success test.
+No new Main publication or overall A3-A5 completion follows from this entry.
+
+This is an allocation/reuse defect, not evidence of an accepted false typing
+derivation. Logs use `/tmp/a-program-authority-retained-input-`: `opt.log`,
+`debug-source.log`, `asan-source.log`, `asan-handler.log`, `asan-image.log` and
+`before-failure.log`. The original smaller fixture fails with exit 134; the
+new named QuickSort diagnostic remains nonzero, independently of ordinary
+acceptance. Source QuickSort work counts are unchanged: 34,203 jobs, 166,687
+steps and 93,016 proofs. The shared source-address records add three reference
+entries and 512 used arena bytes (reserved capacity unchanged); Context, map,
+typed-query and substitution-arena counts are unchanged too.
+
+Per-file code delta from `dd0ea69`: `synthesis.c` +5/-1; `source_io.h` +1/-1;
+`tests/source_io.c` +38/-0; `tests/source_io.sh` +1/-1;
+`tests/image_cli.sh` +2/-0. Implementation/header net +4, tests net +40.
+Cumulative implementation/header: R76 +3,686/-1,895 = +1,791;
+R0 +8,443/-4,236 = +4,207. Neither cumulative reduction gate is met.
+
+Timing (`timing.log`), CPU 2, warmup and 31 alternating O2 pairs, Main/current
+median ms: Bool .499/.497; add .906/.920; length 5.890/5.793;
+function-field 10.050/9.841; Vec append 6.966/6.987; QuickSort 191.894/191.035;
+length save 6.201/6.148; QuickSort save 198.297/195.142. No general speedup is
+claimed; source/test files were unchanged throughout final verification.
+
+Smaller open index-path reproducer: save `tests/acceptance/indexed-rigid-refutation.p`
+with `pointer-check --nf main --retain-reductions --save image.a`, then run
+`source_io_test retained-name-input image.a main`. It returns 1 with zero exact
+matches, two alpha matches and 7,696 steps (`rigid-{write,check}.log`). Use this
+case before the whole QuickSort when fixing generated index-path addresses.
+Keep this correction local with the preceding handler cleanup until that
+substantive allocation/provenance epoch is complete and verified.

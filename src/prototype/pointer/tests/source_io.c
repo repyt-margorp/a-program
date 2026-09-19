@@ -1528,6 +1528,10 @@ static int check_source_allocation(void *owner, const struct pg_source_binding *
 	struct pg_source_binding conflict = *input;
 	conflict.binder = pg_binder(check->synthesis->typing->graph);
 	assert(!pg_synthesis_source_binding(check->synthesis, &conflict));
+	if (input->syntax && input->syntax->kind == PG_SYNTAX_ELIMINATION) {
+		conflict.slot = 1;
+		assert(!pg_synthesis_source_binding(check->synthesis, &conflict));
+	}
 	if (input->syntax && input->syntax->kind == PG_SYNTAX_CLAUSE) {
 		conflict = *input;
 		conflict.slot = 3;
@@ -3374,6 +3378,8 @@ static void retained_process(int argc, char **argv)
 			text = "{{ Nat:=@{zero:*;}; f:=&(\\x:Nat=>x); r:=&{f (f Nat.zero);}; }}.r";
 		else if (!strcmp(argv[3], "match"))
 			text = "{{ Nat:=@{zero:*;succ:*->*;}; r:=&{(\\n:Nat=>n @zero=>Nat.zero @succ k=>Nat.succ *k) (Nat.succ (Nat.succ Nat.zero));}; }}.r";
+		else if (!strcmp(argv[3], "computed-match"))
+			text = "{{ Nat:=@{zero:*;succ:*->*;}; r:=&{((\\n:Nat=>n) Nat.zero) @zero=>Nat.zero @succ k=>Nat.succ k;}; }}.r";
 		else if (!strcmp(argv[3], "fold"))
 			text = "{{ Nat:=@{zero:*;succ:*->*;}; r:=&((Nat.succ Nat.zero) @#return x=>Nat.succ x); }}.r";
 		else {
@@ -3381,6 +3387,10 @@ static void retained_process(int argc, char **argv)
 			text = "{{ Nat:=@{zero:*;succ:*->*;}; Other:=@{zero:*;succ:*->*;}; id:=&(\\x:Nat=>x); }}.id";
 		}
 		p = retained_program(text);
+		if (!strcmp(argv[3], "computed-match")) {
+			struct binding_check check = {&p->synthesis, 0, PG_SYNTAX_ELIMINATION};
+			assert(!pg_synthesis_visit_source_bindings(&p->synthesis, check_source_allocation, &check) && check.count == 1);
+		}
 		FILE *file = fopen(argv[2], "w+b");
 		struct pg_synthesis_job *selected[] = {p->root,
 			pg_synthesis_evidence(&p->synthesis, pg_synthesis_result(p->root))};
@@ -3413,6 +3423,34 @@ static void retained_process(int argc, char **argv)
 
 int main(int argc, char **argv)
 {
+	/* Audit retained CLI/module images, not only the single-thunk fixtures.
+	 * The named computation must have been normalized before the image was saved. */
+	if (argc == 4 && !strcmp(argv[1], "retained-name-input")) {
+		FILE *file = fopen(argv[2], "rb");
+		size_t count;
+		struct pg_synthesis_job *const *roots;
+		assert(file);
+		struct pg_program *p = pg_sources_read(file, 1000000, &count, &roots);
+		assert(p && count && p->retained_reductions && !fclose(file) && !p->synthesis.steps);
+		struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = argv[3], .length = strlen(argv[3])};
+		struct pg_synthesis_job *selected = pg_program_select_name(p, roots[0], name);
+		assert(selected);
+		pg_synthesis_advance(&p->synthesis, 1000000);
+		const struct pg_evidence *proof = pg_synthesis_result(selected);
+		assert(proof);
+		const struct pg_evidence *forced = pg_prove_force(&p->typing, proof);
+		const struct pg_term *core = pg_evidence_subject(forced ? forced : proof)->core;
+		size_t matches = 0, alpha = 0;
+		for (size_t i = 0; i < p->retained_reductions->count; ++i) {
+			const struct pg_term *saved = pg_reduction_source(p->retained_reductions->roots[i]);
+			matches += saved == core;
+			alpha += pg_alpha_equal(saved, core) == 1;
+		}
+		printf("retained named input: %s exact_matches=%zu alpha_matches=%zu steps=%llu\n", argv[3], matches, alpha,
+			(unsigned long long)p->synthesis.steps);
+		pg_program_destroy(p);
+		return matches == 0;
+	}
 	if (argc == 3 && !strcmp(argv[1], "retained-append-origin")) {
 		FILE *file = fopen(argv[2], "rb");
 		assert(file);

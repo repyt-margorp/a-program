@@ -21,7 +21,7 @@
  * stored contexts supply binder identities, not accepted typing evidence.
  * Source declaration members use the same context payload and reconnect their
  * allocations before publication, including after an unsolved resave.
- * Application, Lambda/Pi and Handler addresses retain syntax, enclosing lexical binders
+ * Application, Lambda/Pi, Match sequencing and Handler addresses retain syntax, enclosing lexical binders
  * and slot, independently of generated names and checking jobs. Their graph
  * objects use the same relocation table; no context proof or type annotation
  * is reconstructed solely to recover a binder. Source typing runs normally.

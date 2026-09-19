@@ -1130,6 +1130,11 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 
 ### A4. Audit remaining structural consumers and remove duplication
 
+- [ ] Follow the priority plan's 2026-09-19 retained-input audit: Match sequencing
+  now uses the common source-binding address; generated index-path binders and
+  shared-binder lexical candidate bounds remain open. Neither printed NF nor
+  inert byte equality alone proves reuse of a retained computation input.
+
 - [x] 2026-09-19: Identity boundary validation reads the immutable declaration
   Context rather than assuming every Context receipt has an ordinary type in
   premise 1. A family extension puts its index Context there. The new negative

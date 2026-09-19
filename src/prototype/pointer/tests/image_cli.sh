@@ -66,12 +66,14 @@ cmp "$directory/source-value" "$directory/image-value"
 sed '1d' "$directory/retained-nf" > "$directory/retained-value"
 cmp "$directory/source-value" "$directory/retained-value"
 "$fixture" retention-check "$directory/retained.a" > "$directory/retained-summary"
+"$fixture" retained-name-input "$directory/retained.a" main
 grep -Eq '^retained=1 reductions=[1-9][0-9]* phases=[0-9]+ steps=0$' "$directory/retained-summary"
 code=0
 "$binary" --load --steps 0 --retain-reductions --save "$directory/retained-resaved.a" "$directory/retained.a" > "$directory/status" || code=$?
 test "$code" = 3
 "$fixture" retention-summary "$directory/retained-resaved.a" > "$directory/resaved-summary"
 cmp "$directory/retained-summary" "$directory/resaved-summary"
+"$fixture" retained-name-input "$directory/retained-resaved.a" main
 "$binary" --load --nf main "$directory/retained-resaved.a" > "$directory/retained-loaded-nf"
 sed '1d' "$directory/retained-loaded-nf" > "$directory/retained-loaded-value"
 cmp "$directory/source-value" "$directory/retained-loaded-value"

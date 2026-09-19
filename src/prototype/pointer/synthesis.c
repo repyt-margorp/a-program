@@ -1200,6 +1200,10 @@ static const struct pg_source_binding *source_binding_intern(struct pg_synthesis
 		if (input->constructor) return NULL;
 		switch (input->syntax->kind) {
 		case PG_SYNTAX_APPLICATION: break;
+		case PG_SYNTAX_ELIMINATION:
+			if (handler_syntax(input->syntax)) return NULL;
+			if (input->slot) return NULL;
+			break;
 		case PG_SYNTAX_LAMBDA:
 		case PG_SYNTAX_PI:
 			if (input->slot) return NULL;
@@ -6430,7 +6434,7 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 				if (!frame) goto error;
 				*frame = (struct block_frame){.input = job->left, .binds = 1,
 					.context = pg_synthesis_result_context(synthesis, job->scope->context_job,
-						job->left, pg_binder(synthesis->typing->graph))};
+						job->left, source_binder(synthesis, job->scope, job->syntax, 0, NULL))};
 				if (!frame->context) goto error;
 				job->match_frame = frame;
 			}
