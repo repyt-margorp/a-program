@@ -3283,6 +3283,8 @@ static void retained_process(int argc, char **argv)
 			text = "{{ Nat:=@{zero:*;succ:*->*;}; Other:=@{zero:*;succ:*->*;}; r:=&{Nat.zero;}; }}.r";
 		else if (!strcmp(argv[3], "constructor"))
 			text = "{{ Nat:=@{zero:*;succ:*->*;}; r:=&{Nat.succ (Nat.succ Nat.zero);}; }}.r";
+		else if (!strcmp(argv[3], "specialized-constructor"))
+			text = "{{ Nat:=@{zero:*;}; Box:=&(\\A:@=>@{mk:A->*;}); r:=&(Box Nat).mk; }}.r";
 		else if (!strcmp(argv[3], "application"))
 			text = "{{ Nat:=@{zero:*;}; f:=&(\\x:Nat=>x); r:=&{f (f Nat.zero);}; }}.r";
 		else if (!strcmp(argv[3], "match"))

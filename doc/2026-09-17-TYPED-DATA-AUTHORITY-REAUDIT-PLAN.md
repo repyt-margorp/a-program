@@ -878,6 +878,13 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   removes quadratic insertion work, not the remaining lexical selection bound.
   Remaining bound: transparent lexical descendants within one selected root
   remain candidates. Do not claim cost strictly proportional to retained output.
+  Reaudit at `8ee3826`: matcher reverse discovery and matcher waiters are both
+  necessary for the current representation. Deleting either changes the
+  semantic constructor pointer after inert saves of `&(Box Nat).mk` (not merely
+  alpha renaming). The priority plan records the reduced counterexample and
+  new cross-process `specialized-constructor` matrix. Replace this discovery
+  only after tracing a precise existing typed constructor-to-declaration edge;
+  deleting it or interning nominal layouts by shape is not a valid optimization.
   The member-only binder-frontier trial reduced callbacks (132 -> 4), but
   failed retained QuickSort inert resave byte equality and was withdrawn.
   Preserving per-key registration order did not repair the failure. Nominal

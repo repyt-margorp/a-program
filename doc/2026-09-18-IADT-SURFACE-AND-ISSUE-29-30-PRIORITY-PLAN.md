@@ -4649,3 +4649,68 @@ Vec append 7.181/6.925; QuickSort 188.980/188.550. Mixed differences establish
 no general speedup; this is not A5's R0 performance matrix. Timing log:
 `/tmp/a-program-authority-premises-timing.log`. No Main push or issue closure
 follows from this local cleanup. A3-A5/R2-R5 remain open.
+
+### 2026-09-19: A3 matcher-origin counterexample
+
+Baseline: `8ee3826`. Do not remove matcher-to-declaration dependency discovery
+merely because a runtime layout does not determine a nominal family. Trial
+removal of both that reverse edge and `index_origin`'s matcher waiter fails
+`member_use_origins`; removing either alone also fails. The exact mismatch is
+a constructor semantic pointer, not just alpha-renamed binders. QuickSort's
+inert retained-image byte comparison and Match-origin tests still pass, so
+those checks alone are insufficient. All trial production edits are withdrawn.
+
+Reduced source (no sibling aliases or deliberately invalid roots needed):
+
+```text
+{{ Nat:=@{zero:*;}; Box:=&(\A:@=>@{mk:A->*;}); r:=&(Box Nat).mk; }}.r
+```
+
+With only the reverse edge removed, write and two inert resaves succeed;
+`retained-recompute` then fails with `alpha_equal=0`, first difference
+`aabafreference`. A generative constructor layout is not reconstructible from
+the specialized wrapper's field Context alone. Its uninstantiated declaration
+must retain its original allocation. Matcher discovery currently recovers that
+dependency; it is not a rule equating families with the same layout. Evidence:
+`/tmp/a-program-authority-nominal-origin-constructor-{2,3}.log`,
+`/tmp/a-program-authority-nominal-origin-difference.log`,
+`/tmp/a-program-origin-minimal-failure.log`.
+
+- [x] Add `specialized-constructor` to the existing cross-process retention
+  matrix, for source-only/source-plus-proof roots and checked reuse/recompute.
+- [x] Show the minimal source fails after deleting reverse matcher discovery;
+  restore production code and pass the complete debug source-image suite.
+- [x] Run the same matrix under O2 and ASan/UBSan. No test is weakened.
+- [ ] Before replacing the reverse join, trace the existing constructor input's
+  formation reference through generic application and qualified-member source
+  transport. Establish whether it can retain the precise declaration allocation
+  without building a proof solely for discovery. Do not add a new provenance
+  cache or merge layouts as a substitute for this edge.
+
+Current join counts on `parameter_origins`: before/after 128 unrelated aliases
+and one extra nominal family sharing a matcher, parameter callbacks 2/3,
+Context-prefix visits 6/9, allocation candidates 2/3; origin attempts remain 4
+and wait requests 4 (two repeated tuples). The 128 aliases themselves do not
+increase this work. The extra family does, identifying the remaining join
+cost rather than justifying deletion of its semantics. Log:
+`/tmp/a-program-origin-join-counts.log`. This audit does not close A3 or trigger
+Main publication; the previous premise cleanup remains local too.
+
+Final complete `source_io.sh` runs pass in strict debug, O2 and ASan/UBSan
+(leak detection and halt-on-error). Logs:
+`/tmp/a-program-authority-nominal-origin-final-{debug,opt,asan}.log`.
+Only tests change: `tests/source_io.c` +2/-0 and `tests/source_io.sh` +1/-1.
+Production/header delta is zero; no fresh full-acceptance claim is made for
+this test-only checkpoint. Production is exactly the previously tested `8ee3826`.
+
+Initial edge trace: `pg_synthesis_constructor_input` exposes formation and
+parameter producers on a prepared constructor wrapper. In contrast,
+`pg_synthesis_member_allocation` can read an imported qualified member before
+Solve solely from its retained `(prefix, end)` Context pair. Its wrapper is
+not yet available. A writer cannot simply demand the former from the latter
+without introducing preparation or retaining proofs solely to recover an
+allocation again. `pg_data_layout` contains constructor arities, not the
+nominal declaration's parameter/field Contexts, so there is no unique inverse
+from the constructor pointer either. The next design must preserve the precise
+source allocation dependency through this pre-Solve boundary, using an existing
+edge if available; the general matcher reverse scan remains until then.
