@@ -5092,3 +5092,57 @@ length save 5.622/5.592; QuickSort save 169.120/169.260. No general speedup
 is claimed. This isolates the transport change, not A5's cumulative R0 gate.
 Both remote heads were rechecked at `0edf180`; the atomic, non-force push of
 `df53645` succeeded. No issue closure or A3-A5/R2-R5 completion is claimed.
+
+### A3 exact definition environments (2026-09-19)
+
+Baseline Main `d40900a`. The same block syntax in 128 unselected environments
+raised source-writer candidate callbacks from 6 to 134, although bytes and Solve
+work stayed unchanged. Syntax identity does not identify a lexical instance.
+
+Use the existing definition environment pointer as the allocation reference key.
+Selected definition producers expose their already prepared environment through
+a read-only view. The writer follows these edges without constructing scopes or
+proofs. Its temporary pointer-keyed visited set prevents repeated enumeration
+when several producers/retained scopes reach the same environment. This set is
+destroyed after writing and is neither serialized data nor checking authority.
+
+The first draft eagerly retained every prepared environment. It passed the
+focused tests and old QuickSort resave but failed `sort_insertion.sh`'s partial
+inert resave: readback preparation added an empty environment. Withdraw that
+behavior, not the test. The final traversal reads the environment's references
+and retains it only when an actual selected origin needs it.
+
+- [x] Add the shared-block/128-environment case to `member_use_origins`, including
+  fixed selected-candidate counts, identical bytes and no job/scope/proof/Solve
+  growth during save. Actual writer callbacks stay 6, measured with GDB.
+- [x] Debug source suite, mapped aliases, recursive append and old retained
+  QuickSort inert resave pass. Insertion-property 0/100-step inert saves agree.
+- [x] Delete the separate allocation-prefix search loop. Only binder keys can
+  match a Context binding; other keys skip that walk. Binder search uses the
+  existing lookup. QuickSort's 3 non-binder visits are removed; 10 binder lookups
+  over 20 fields remain. This small removal is not a general speedup claim.
+- [x] Final optimized acceptance and ASan/UBSan source/image-CLI suites finish
+  successfully. All 2,460 export records match the published epoch, including
+  steps, after temporary-path/order normalization only. No sanitizer diagnostics.
+- [x] Length, function-field and QuickSort work/allocation counters match the
+  published epoch. Measure isolated timing and review the final code diff.
+- [ ] Publish the exact-environment source traversal epoch atomically to Main
+  and rewrite after rechecking both heads. Do not close A3-A5/R2-R5 here.
+
+Per-file code delta: `source_io.c` +10/-2; `synthesis.c` +14/-8;
+`synthesis.h` +4/-2; `tests/source_io.c` +21/-1. Implementation/header net +16,
+tests net +20. Cumulative implementation/header totals: R76 +3,677/-1,893
+= +1,784; R0 +8,437/-4,237 = +4,200. Reduction gates remain unmet.
+
+Final logs use `/tmp/a-program-authority-definition-environment-`, including
+`debug-source-final.log`, `candidates-final.log`, `opt-final.log`,
+`asan-source-final.log`, `asan-image-cli-final.log`, and per-case `*-counts.log`.
+The earlier `opt.log` is the failed eager-retention trial, not a passed gate.
+
+Timing (`timing.log`): CPU 2, warmup plus 31 alternating pairs, median ms
+published/current: Bool .498/.499; add .919/.908; length 5.593/5.692;
+function-field 9.824/9.790; Vec append 7.062/7.050; QuickSort 206.523/205.888;
+length save 6.217/6.326; QuickSort save 206.832/206.483. These measurements
+do not establish a general speedup or replace A5's cumulative baseline gate.
+The epoch removes foreign-environment traversal without changing saved bytes,
+accepted evidence or Solve work. Both remote heads were checked at `d40900a`.

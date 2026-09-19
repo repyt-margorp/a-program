@@ -1681,7 +1681,6 @@ static void check_allocation_reference(struct pg_synthesis *synthesis,
 static const void *allocation_scope_key(const struct pg_source_environment *input,
 	const struct pg_source_scope *scope)
 {
-	if (input->definitions) return input->definitions;
 	if (input->handler) return input->handler;
 	return input->binder ? (const void *)input->binder : scope;
 }
@@ -2166,8 +2165,29 @@ static void member_use_origins(void)
 	struct member_origin bounded = {.synthesis = &p->synthesis};
 	scoped_member_origins(&bounded, found.scope);
 	assert(bounded.job == found.job && bounded.visited == indexed.visited);
+	/* The same container syntax can also be instantiated in other environments.
+	 * Syntax reachability alone must not retain those separate lexical uses. */
+	struct pg_source_environment environment;
+	assert(!pg_synthesis_environment_input(&p->synthesis, found.scope, &environment));
+	assert(environment.definitions);
+	for (unsigned i = 0; i < 128; ++i) {
+		const struct pg_source_scope *sibling = pg_synthesis_name(&p->synthesis, found.scope,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "elsewhere", .length = 9},
+			pg_prove_universe(&p->typing, pg_prove_empty_context(&p->typing), i));
+		const struct pg_source_scope *definitions = pg_synthesis_definition_scope(&p->synthesis,
+			sibling, environment.definitions);
+		struct pg_synthesis_job *use = pg_synthesis_member_at(&p->synthesis, definitions,
+			found.syntax, prefix, fields);
+		assert(use && !pg_synthesis_result(use));
+		assert(pg_synthesis_allocation_object(&p->synthesis, use) == binder);
+	}
+	struct member_origin isolated = {.synthesis = &p->synthesis};
+	scoped_member_origins(&isolated, found.scope);
+	assert(isolated.job == found.job && isolated.visited == indexed.visited);
+	size_t save_jobs = p->synthesis.jobs.count, save_scopes = p->synthesis.scopes.count;
 	assert(!pg_sources_write(after, &p->synthesis, 1, &found.job));
 	assert(p->synthesis.steps == save_steps && p->typing.proofs.count == save_proofs);
+	assert(p->synthesis.jobs.count == save_jobs && p->synthesis.scopes.count == save_scopes);
 	rewind(before);
 	rewind(after);
 	int byte;

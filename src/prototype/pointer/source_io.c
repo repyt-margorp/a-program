@@ -197,7 +197,7 @@ struct source_match {
 struct origin_collection {
 	const struct pg_synthesis *synthesis;
 	struct pg_dag *scopes, *syntax, *rules, *origins, *producers, *allocations, *bindings, *declarations;
-	struct pg_dag objects, terms, contexts;
+	struct pg_dag objects, terms, contexts, references;
 	struct pg_index candidates;
 	struct pg_declaration_io *codec;
 	const struct pg_dag_node *last_scope, *last_producer, *last_syntax, *last_object;
@@ -237,6 +237,8 @@ static int collect_inputs(struct origin_collection *c)
 		if (!producer && !scope_node) return 0;
 		for (; producer; c->last_producer = producer, producer = producer->next) {
 			struct producer_input input = producer_input(c->synthesis, producer->key);
+			const struct pg_source_scope *local = pg_synthesis_definition_environment(producer->key);
+			if (local && index_source_references(c, local)) return -1;
 			if (input.callable.reference) {
 				if (pg_dag_add(c->allocations, producer->key)) return -1;
 				if (collect_allocation(c, input.callable.prefix, input.callable.fields, input.callable.reference)) return -1;
@@ -410,6 +412,10 @@ static int compare_origin(const void *left, const void *right)
 
 static int index_source_references(struct origin_collection *c, const void *key)
 {
+	/* Producers and retained scopes can reach the same environment. Reading
+	 * its references once does not itself make that environment a saved root. */
+	if (id(&c->references, key)) return 0;
+	if (pg_dag_add(&c->references, key)) return -1;
 	struct source_reference_batch batch = {.collection = c};
 	int status = pg_synthesis_visit_source_references(c->synthesis, key,
 		append_source_reference, append_binding_reference, &batch);
@@ -564,7 +570,8 @@ int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 		|| pg_dag_init(&bindings, NULL, NULL)
 		|| pg_dag_init(&declarations, NULL, NULL)
 		|| pg_graph_init(&rules.storage)
-		|| pg_dag_init(&collection.objects, NULL, NULL) || pg_index_init(&collection.candidates)
+		|| pg_dag_init(&collection.objects, NULL, NULL) || pg_dag_init(&collection.references, NULL, NULL)
+		|| pg_index_init(&collection.candidates)
 		|| pg_dag_init(&collection.contexts, pg_context_dependency, NULL)
 		|| pg_effect_inference_init(&effects, &rules.storage)
 		|| pg_declaration_io_init(&codec, synthesis->typing)) goto done;
@@ -715,6 +722,7 @@ int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 		payload.count, payload.terms, &pg_declaration_graph_codec, &codec);
 done:
 	pg_dag_destroy(&collection.contexts);
+	pg_dag_destroy(&collection.references);
 	pg_index_destroy(&collection.candidates); pg_dag_destroy(&collection.terms); pg_dag_destroy(&collection.objects);
 	pg_declaration_io_destroy(&codec);
 	pg_effect_inference_destroy(&effects); pg_dag_destroy(&rules); pg_dag_destroy(&origins);

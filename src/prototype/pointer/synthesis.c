@@ -621,6 +621,15 @@ int pg_synthesis_definition_input(const struct pg_synthesis *synthesis,
 	return 0;
 }
 
+const struct pg_source_scope *pg_synthesis_definition_environment(const struct pg_synthesis_job *job)
+{
+	if (!job) return NULL;
+	if (job->role == DEFINITION_JOB) job = job->inputs[0];
+	else if (job->role == EXPRESSION_JOB) job = job->right;
+	return job && job->role == DEFINITION_SCOPE_JOB && job->definitions
+		? job->definitions->scope : NULL;
+}
+
 int pg_synthesis_environment_input(const struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, struct pg_source_environment *input)
 {
@@ -754,7 +763,6 @@ static struct pg_synthesis_job *request_job(struct pg_synthesis *synthesis,
 
 static const void *source_allocation_key(const struct pg_source_scope *scope)
 {
-	if (scope->definitions) return scope->definitions->syntax;
 	if (scope->effect_owner && scope->effect_owner->scope == scope) return scope->effect_owner->source->syntax;
 	return scope->binder ? (const void *)scope->binder : scope;
 }
@@ -1041,13 +1049,11 @@ static int register_source_allocation(struct pg_synthesis *synthesis, struct pg_
 	if (register_source_reference(synthesis, key, SOURCE_ALLOCATION, job)) return -1;
 	/* An erased allocation can retain its defining input, not every later
 	 * alias. Resolve this immutable scope relation once, at registration. */
-	for (; context; context = context->parent) {
-		if (context->binder != key) continue;
-		if (register_source_reference(synthesis, object, ALLOCATION_ORIGIN, job)) return -1;
-		return declaration ? register_source_reference(synthesis,
-			pg_data_matcher(pg_data_declaration_layout(declaration)), ALLOCATION_ORIGIN, job) : 0;
-	}
-	return 0;
+	if (key != job->scope->binder) return 0;
+	if (!pg_context_lookup(context, job->scope->binder)) return 0;
+	if (register_source_reference(synthesis, object, ALLOCATION_ORIGIN, job)) return -1;
+	return declaration ? register_source_reference(synthesis,
+		pg_data_matcher(pg_data_declaration_layout(declaration)), ALLOCATION_ORIGIN, job) : 0;
 }
 
 struct pg_synthesis_job *pg_synthesis_restore_elimination(struct pg_synthesis *synthesis,

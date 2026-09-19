@@ -834,6 +834,13 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
   unrelated definition scopes leave each tested candidate set/image unchanged.
   Same-syntax/multiple-environment candidate bounds remain open. The priority
   plan records validation and publication status; this is not A3 completion.
+  Current follow-up: definition blocks use their exact environment address,
+  borrowed from selected prepared producers, rather than their shared syntax.
+  The writer visits references once without retaining an empty environment.
+  This excludes 128 same-syntax foreign environments (6 candidate visits rather
+  than 134) and preserves inert saves without Solve. Handler syntax keys and
+  shared binder/allocation bounds remain open. See the priority plan for final
+  gates, the rejected eager-retention draft and publication status.
   Reaudit on `ef5e53d`: replacing declaration/Match address keys with the
   existing nearest-binder/member keys failed `member_use_origins`. After
   specialization and inert resaves, a constructor reference changed nominal
