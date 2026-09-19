@@ -5296,22 +5296,22 @@ Conflicting binder attachment and nonzero Match slots must still be rejected.
   All 2,460 export result lines, including Solve steps, match published Main.
   Debug/ASan+UBSan source suites and the sanitizer handler/image CLI suites
   pass; the old QuickSort zero-step resave remains byte-identical.
-- [ ] Resolve QuickSort's remaining generated index-path binder allocation;
-  the named-input diagnostic still fails after this local correction. The next
-  traced difference is `match_index_scope`'s fresh substitution-lift binder.
-  `match_index_context` also allocates path binders directly. Inspect their
-  existing typed Context/allocation edges before adding any retained field.
+- [x] Classify the remaining named-input mismatch before changing allocation.
+  The index-path/transport mismatch is a separate recomputation/reuse question,
+  not a demonstrated loss of saved source identity; see the correction below.
 - [ ] Resolve the separate shared-binder candidate bound before closing A3.
 
 The older `/tmp/a-program-authority-case-scopes-common.a` has no exact or alpha
 match under this new check even before the repair. Its historical producer
 provenance needs separate analysis; do not claim this patch retroactively
 recovers missing old addresses. Its existing inert-byte gate remains required.
-The new QuickSort diagnostic is an open gate, not an expected-success test.
+The new QuickSort diagnostic measures exact retained-input reuse; it is not a
+new correctness requirement for independently generated proof binders.
 No new Main publication or overall A3-A5 completion follows from this entry.
 
-This is an allocation/reuse defect, not evidence of an accepted false typing
-derivation. Logs use `/tmp/a-program-authority-retained-input-`: `opt.log`,
+The corrected Match sequencing allocation was a source-identity defect, not
+evidence of an accepted false typing derivation. Logs use
+`/tmp/a-program-authority-retained-input-`: `opt.log`,
 `debug-source.log`, `asan-source.log`, `asan-handler.log`, `asan-image.log` and
 `before-failure.log`. The original smaller fixture fails with exit 134; the
 new named QuickSort diagnostic remains nonzero, independently of ordinary
@@ -5332,10 +5332,38 @@ function-field 10.050/9.841; Vec append 6.966/6.987; QuickSort 191.894/191.035;
 length save 6.201/6.148; QuickSort save 198.297/195.142. No general speedup is
 claimed; source/test files were unchanged throughout final verification.
 
-Smaller open index-path reproducer: save `tests/acceptance/indexed-rigid-refutation.p`
+Smaller index-path diagnostic: save `tests/acceptance/indexed-rigid-refutation.p`
 with `pointer-check --nf main --retain-reductions --save image.a`, then run
 `source_io_test retained-name-input image.a main`. It returns 1 with zero exact
 matches, two alpha matches and 7,696 steps (`rigid-{write,check}.log`). Use this
-case before the whole QuickSort when fixing generated index-path addresses.
+case before the whole QuickSort when measuring generated-binder reuse.
 Keep this correction local with the preceding handler cleanup until that
 substantive allocation/provenance epoch is complete and verified.
+
+Audit correction: a trial assigned extra source-binding slots to generic Match
+paths and branch substitution lifts. The diagnostic still failed: rigid Match
+had zero exact/two alpha matches (7,696 steps), QuickSort zero exact/one alpha
+match (153,894 steps). Debugger tracing then reached the fresh variable created
+by `constructor_transport_context`, not a source binder. This is part of a
+generated type-family proof context. Adding source identities there solely to
+make the whole elaborated Core pointer-identical would impose a new contract.
+
+The parent plan already excludes independently fresh reduction allocations
+from its exact source-identity requirement (section 6 and the nested-Match
+audit). The trial is withdrawn, including its relaxed slot validation. Keep
+the original source-allocation, computed-Match, List retained-input and inert
+byte tests unchanged. Alpha equality remains diagnostic, not interning or
+proof acceptance. The old image with no alpha match still requires separate
+provenance analysis; this correction does not explain that result.
+
+Next A3 work remains the shared-binder candidate bound (`2 -> 130`): index
+lexical uses by their actual source environment while preserving the defining
+input of erased allocations. Do not stabilize every generated proof binder,
+invent another evidence authority, or remove needed origins to pass this bound.
+No Main push or A3/A4/A5 completion is implied by this audit correction.
+
+After withdrawing the trial, implementation/tests match `a33d073` exactly.
+The strict debug rebuild, `tests/source_io.sh` and `handler-origins` pass;
+`binder-environment-bound` still exits 1 with `2 -> 130`. Source-suite log:
+`/tmp/a-program-authority-source-identity-audit-source.log`. This is a plan
+correction, not another full acceptance run or a completed refactoring epoch.
