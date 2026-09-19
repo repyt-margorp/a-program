@@ -5945,3 +5945,63 @@ Publication: `0137156d77378f24fe7c8aa429133f608ad095c5` was atomically
 fast-forwarded from `8bd0d8c` to Main and `rewrite/pointer-core-hott`, without
 force. Both remote tips were verified. This groups `bc3745c`, `8592050` and
 the induction allocation change; it is not overall refactor completion.
+
+### Handler construction audit (baseline `c5a584a`, 2026-09-19)
+
+Pending structural views cannot simply wait for accepted evidence: Handler
+effect equations need symbolic carriers before closure. Accepted views already
+read typed occurrences. Source graph slot order and typed call execution order
+also have different contracts; deleting the source walker without call-site
+provenance would discard ordering/shadowing checks. Neither is removed blindly.
+
+A concrete duplicate remains in Handler assembly: operation clauses are scanned
+and resolved before effect collection, then again for final rule construction.
+Use the existing clause array throughout, retaining independent rule checking.
+This deletes the second cursor/scan and the reset/reinterpretation of `count`;
+it adds no structure cache, job kind, proof authority or wire format.
+
+- [x] Resolve each clause once into the existing array; collect effects from
+  those producers and use them in the final handler rule.
+- [x] Check inferred/explicit carriers, return-clause positions, aliases and
+  duplicates, nested registration/sealing, rejected annotations, chunks 1/64.
+- [x] Run full optimized acceptance and affected debug/sanitizer/source/image
+  checks; measure lookup work, allocation and LOC against the baseline.
+- [ ] Group this work into a coherent tested refactoring epoch before Main push.
+  Overall A4/A5/R2-R5 and net-negative gates remain open.
+
+The clause array retains the immutable operation producer, not its name lookup.
+The clause body still checks that lookup, including a rejected annotation or
+scope. An initial trial retained the lookup instead: if it failed after scanning,
+final signature extraction reported ERROR instead of propagating REJECTED. The
+existing `pending_effect_contexts` negative test caught this. Reading the retained
+declaration and keeping the body's ordinary reference obligation removes that
+timing-dependent rediscovery without bypassing acceptance. No test was weakened.
+
+Verification: strict debug synthesis and source suites, full strict O2
+`check-acceptance`, and ASan/UBSan synthesis, source, image, handler-nesting and
+handler-boundaries all exit 0. Sanitizers use O1/g, non-PIE, frame pointers,
+leak detection and halt-on-error. All 2,460 optimized and 1,218 sanitizer image
+export records agree with baseline after path/step normalization. The boundary
+suite checks 4,080 handler snapshots; new tests combine multiple clauses with
+nested handling and re-emission in two clause orders, at chunks 1/64.
+
+On `effect-application.p`, GDB counts before/after: clause producer requests
+20/10, operation-origin traversals 60/40; accepted proofs, Contexts, occurrences,
+maps, actions and queries are unchanged. Requests increase 6,653 -> 6,661
+(six classifier-structure and two type-structure requests), steps
+16,957 -> 17,019, graph used bytes 5,107,264 -> 5,112,704; reserved bytes
+and substitution storage are unchanged. Earlier clause preparation changes
+which pending structural views are needed. This is not a global work reduction.
+CPU 2, strict O2, 31 alternating pairs: median milliseconds baseline/current
+are Handler 6.078/5.948, QuickSort 185.123/188.262, Handler save 6.210/6.212.
+These small mixed changes do not establish a general speedup.
+
+Logs: `/tmp/a-program-authority-handler-clauses-` followed by `build.log`,
+`synthesis.log`, `source.log`, `acceptance.log`, `asan-build.log`,
+`asan-{synthesis,source,image,nesting,boundaries}.log`,
+`{induction-allocation,handler-clauses}-{counts,roles}.log`, and `timing.log`.
+Per-file LOC: `synthesis.c` +13/-31 = -18; `tests/synthesis.c` +2/-0;
+documentation is separate. Cumulative implementation/headers are R76
++4,009/-1,974 = +2,035 and R0 +8,763/-4,312 = +4,451. The net-negative
+requirement is still unmet. This is local verified progress, not Main publication
+or completion of the pending-structure reconstruction audit.

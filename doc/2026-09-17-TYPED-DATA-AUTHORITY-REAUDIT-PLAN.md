@@ -1138,6 +1138,14 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 
 ### A4. Audit remaining structural consumers and remove duplication
 
+- [x] 2026-09-19: Handler assembly resolves its clauses into the existing array
+  once, then shares it between effect collection and rule assembly. Remove the
+  second scan/cursor and count reset. Retain operation descriptors separately
+  from the body's checked name reference; invalid references still reject.
+  Full O2 acceptance and affected debug/sanitizer/source/image tests pass.
+  The priority plan records mixed costs and implementation -18 lines. This is
+  local work for the next coherent epoch, not A4/A5 completion or Main push.
+
 - [x] 2026-09-19: type-case checks closed dependent signatures without discarded
   field scopes (`bc3745c`); source Match/IH validation reuses its existing scope
   producer instead of constructing a fresh one. Final kernel elimination

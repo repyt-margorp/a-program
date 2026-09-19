@@ -309,12 +309,12 @@ struct family_state {
 	size_t count, common, next;
 };
 struct source_handler_clause {
-	struct pg_synthesis_job *reference;
+	const struct pg_synthesis_job *operation;
 	struct pg_synthesis_job *body;
 };
 struct handler_state {
 	struct pg_synthesis_job *source;
-	size_t scanned, next, count;
+	size_t scanned, count;
 	struct pg_effect_inference effects;
 	struct pg_effect_equation *equation;
 	struct pg_synthesis_job *carrier, *collection;
@@ -4976,7 +4976,7 @@ static struct pg_synthesis_job *handler_rule(struct pg_synthesis *synthesis,
 	premises[0] = body; premises[1] = returned; premises[2] = carrier;
 	for (size_t i = 0; i < count; ++i) {
 		struct pg_operation_input signature;
-		if (pg_synthesis_operation_reference_input(synthesis, clauses[i].reference, &signature)) goto done;
+		if (pg_synthesis_operation_input(synthesis, clauses[i].operation, &signature)) goto done;
 		labels[i] = signature.label;
 		premises[3 + 3 * i] = signature.payload;
 		premises[4 + 3 * i] = signature.response;
@@ -5306,17 +5306,22 @@ static void handler_step(struct pg_synthesis *synthesis, struct pg_synthesis_job
 	if (owner && owner->failure) { finish(synthesis, job, owner->failure); return; }
 	if (state->scanned < count) {
 		const struct pg_syntax *clause = job->syntax->items[state->scanned].expression;
-		if (!return_clause(clause) && !carrier) {
+		if (!return_clause(clause)) {
 			struct pg_synthesis_job *operation = pg_synthesis_operation_reference(synthesis,
 				pg_synthesis_request(synthesis, scope, clause->left));
 			if (!operation) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 			struct pg_operation_input signature;
-			if (pg_synthesis_operation_reference_input(synthesis, operation, &signature)) {
+			const struct pg_synthesis_job *origin = operation_reference_origin(operation);
+			if (pg_synthesis_operation_input(synthesis, origin, &signature)) {
 				if (operation->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, operation); return; }
 				finish(synthesis, job, operation->status == PG_SYNTHESIS_DONE ? PG_SYNTHESIS_REJECTED : operation->status);
 				return;
 			}
-			state->labels[state->count++] = signature.label;
+			struct pg_synthesis_job *body = source_handler_clause_job(synthesis, job,
+				carrier ? carrier : state->carrier, clause);
+			if (!body) { finish(synthesis, job, carrier ? PG_SYNTHESIS_ERROR : PG_SYNTHESIS_REJECTED); return; }
+			if (!carrier) state->labels[state->count] = signature.label;
+			state->clauses[state->count++] = (struct source_handler_clause){origin, body};
 		}
 		++state->scanned;
 		enqueue(synthesis, job);
@@ -5329,10 +5334,9 @@ static void handler_step(struct pg_synthesis *synthesis, struct pg_synthesis_job
 			state->handled = pg_effect_row(synthesis->typing->graph, state->count, state->labels);
 			if (!state->handled) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 			if (pg_effect_count(state->handled) != state->count) goto rejected;
-			state->count = 0;
 		}
 		carrier = state->carrier;
-		if (state->collected < count + 2) {
+		if (state->collected < state->count + 2) {
 			if (!state->collection) {
 				struct pg_synthesis_job *body;
 				size_t parameters;
@@ -5341,10 +5345,7 @@ static void handler_step(struct pg_synthesis *synthesis, struct pg_synthesis_job
 					parameters = 0;
 				} else if (state->collected == 1) { body = job->right; parameters = 1; }
 				else {
-					const struct pg_syntax *clause = job->syntax->items[state->collected - 2].expression;
-					if (return_clause(clause)) { ++state->collected; enqueue(synthesis, job); return; }
-					body = source_handler_clause_job(synthesis, job, carrier, clause);
-					if (!body) goto rejected;
+					body = state->clauses[state->collected - 2].body;
 					parameters = 2;
 				}
 				struct pg_synthesis_job *formation = pg_synthesis_constant_result(synthesis, scope->context_job, body, parameters);
@@ -5366,25 +5367,6 @@ static void handler_step(struct pg_synthesis *synthesis, struct pg_synthesis_job
 				if (!pg_synthesis_effect_inference(synthesis, &owner->effects)) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 			}
 		}
-	}
-	if (state->next < count) {
-		const struct pg_syntax *clause = job->syntax->items[state->next].expression;
-		if (!return_clause(clause)) {
-			struct pg_synthesis_job *operation = pg_synthesis_operation_reference(synthesis,
-				pg_synthesis_request(synthesis, scope, clause->left));
-			struct pg_synthesis_job *body = source_handler_clause_job(synthesis, job, carrier, clause);
-			if (!operation || !body) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-			struct pg_operation_input signature;
-			if (pg_synthesis_operation_reference_input(synthesis, operation, &signature)) {
-				if (operation->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, operation); return; }
-				finish(synthesis, job, operation->status == PG_SYNTHESIS_DONE ? PG_SYNTHESIS_REJECTED : operation->status);
-				return;
-			}
-			state->clauses[state->count++] = (struct source_handler_clause){operation, body};
-		}
-		++state->next;
-		enqueue(synthesis, job);
-		return;
 	}
 	if (!job->value_job) job->value_job = handler_rule(synthesis, job->left, job->right,
 		carrier, state->count, state->clauses);
