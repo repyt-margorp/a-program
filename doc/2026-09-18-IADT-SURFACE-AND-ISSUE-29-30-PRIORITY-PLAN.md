@@ -5126,8 +5126,8 @@ and retains it only when an actual selected origin needs it.
   steps, after temporary-path/order normalization only. No sanitizer diagnostics.
 - [x] Length, function-field and QuickSort work/allocation counters match the
   published epoch. Measure isolated timing and review the final code diff.
-- [ ] Publish the exact-environment source traversal epoch atomically to Main
-  and rewrite after rechecking both heads. Do not close A3-A5/R2-R5 here.
+- [x] Published the exact-environment source traversal epoch `b3effd0` atomically
+  to Main and rewrite; both remote heads verified. A3-A5/R2-R5 remain open.
 
 Per-file code delta: `source_io.c` +10/-2; `synthesis.c` +14/-8;
 `synthesis.h` +4/-2; `tests/source_io.c` +21/-1. Implementation/header net +16,
