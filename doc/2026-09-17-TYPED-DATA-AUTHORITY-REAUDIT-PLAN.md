@@ -1138,6 +1138,15 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 
 ### A4. Audit remaining structural consumers and remove duplication
 
+- [x] 2026-09-19: rule/substitution/family-action request factories no longer
+  allocate a concatenated key before interning. One interner reads their fixed
+  prefix and borrowed dependency array and stores new requests in the original
+  flat format. Owner checks, exact ordered dependencies and rule-header keys
+  remain unchanged. QuickSort drops 7,492 temporary key arenas with identical
+  persistent counts and Solve steps. Full O2 and affected debug/sanitizer/image
+  checks pass; implementation net -8. This is local progress for a subsequent
+  publication epoch, not completion of pending construction or A5.
+
 - [x] 2026-09-19: structural queries resume their selected dependencies instead
   of rediscovering source preparation. Classifier WHNF, accepted-subject
   priority and symbolic effect snapshots are preserved. QuickSort repeat

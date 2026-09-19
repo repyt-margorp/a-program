@@ -6206,3 +6206,43 @@ Publication: `21cf3ff6b7d9b1f97a96f01c423247a5316735e9` was atomically
 fast-forwarded from `c5a584a` to Main and `rewrite/pointer-core-hott`, without
 force; both remote tips were verified. This groups five implementation commits.
 Remaining A4/A5/R2-R5 and original cumulative reduction gates remain open.
+
+### Borrowed request keys (baseline `d76537b`, 2026-09-19)
+
+- [x] Remove temporary key arrays/arenas from rule, substitution and family-
+  action requests. The existing interner reads a fixed prefix and a borrowed
+  job array, then allocates flat immutable storage only for a new request.
+  Fixed-input callers use the same interner; no second key table or work tag.
+- [x] Preserve rule-header value keys, ordered dependency identity, owner
+  checks and copied persistent inputs. Add copied-header sharing and reordered
+  substitution rejection assertions. Debug and ASan/UBSan synthesis pass.
+- [x] Full optimized acceptance and sanitizer source/image checks pass. All
+  2,460 optimized and 1,218 sanitizer image export records match baseline,
+  including Solve steps. Paired timing is recorded below.
+- [ ] Publish only in a completed coherent refactoring epoch.
+
+QuickSort previously allocated 7,492 temporary arenas here (rule 7,184,
+substitution 287, family action 21) for 275,536 requested payload bytes. Those
+three allocation/copy/destruction paths are deleted, rather than replaced by
+another scratch allocator. Persistent request count 34,286, Solve steps 151,199,
+and all Context/occurrence/map/lift/action/query/proof and arena measurements
+are unchanged. No peak-memory or general speedup claim follows from scratch
+allocation counts. Evidence-to-job conversion and effect-equation input arrays
+have different element types/transformations and are not blindly cast into this
+borrowed dependency API.
+
+Logs: `/tmp/a-program-authority-request-spans-` with `before.log`, `objects.log`,
+`synthesis.log`, `acceptance.log`, `asan-{synthesis,source,image}.log`.
+Implementation: `synthesis.c` +33/-41 = -8; tests +5/-1 = +4; docs separate.
+This removes concrete request-key reconstruction, not pending type formation
+or independent proof checking. A4/A5/R2-R5 and cumulative reduction remain open.
+The cumulative R0 implementation/header delta is +8,830/-4,384 = +4,446;
+the eight-line local reduction does not satisfy the original net-negative gate.
+
+O2, CPU 2, 31 alternating pairs without concurrent tests/builds, median
+milliseconds baseline/current: Bool .485/.471; add .895/.868; length
+4.640/4.762; function-field 8.078/8.224; Vec append 6.620/6.712; QuickSort
+183.623/184.500; Handler 5.775/5.642; length save 5.092/5.023; QuickSort save
+181.908/180.767. Samples: `/tmp/a-program-authority-request-spans-timing.jsonl`.
+The local allocation-path deletion does not establish a general speedup;
+small increases remain visible in this measurement.

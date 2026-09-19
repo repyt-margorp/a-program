@@ -764,9 +764,20 @@ static void rule_key(const struct pg_derivation_input *input, uint64_t *key)
 	memcpy(key, fields, sizeof(fields));
 }
 
-static struct pg_synthesis_job *request_inputs(struct pg_synthesis *synthesis,
-	enum job_role role, size_t count, const void *const *inputs)
+/* Read the caller's fixed prefix and dependency array without assembling a
+ * temporary key. Stored requests still own one flat immutable input array. */
+static const void *request_operand(size_t prefix, const void *const *inputs,
+	struct pg_synthesis_job *const *jobs, size_t index)
 {
+	return index < prefix ? inputs[index] : jobs[index - prefix];
+}
+
+static struct pg_synthesis_job *request_inputs_with_jobs(struct pg_synthesis *synthesis,
+	enum job_role role, size_t prefix, const void *const *inputs,
+	size_t job_count, struct pg_synthesis_job *const *jobs)
+{
+	if (job_count > SIZE_MAX - prefix) return NULL;
+	size_t count = prefix + job_count;
 	if (count > (SIZE_MAX - sizeof(struct pg_synthesis_job)) / sizeof(*inputs)) return NULL;
 	uint64_t hash = ((unsigned)role ^ count) * UINT64_C(1099511628211);
 	int producer_rule = role == DERIVATION_JOB;
@@ -775,7 +786,8 @@ static struct pg_synthesis_job *request_inputs(struct pg_synthesis *synthesis,
 		rule_key(inputs[0], key);
 		for (size_t i = 0; i < RULE_KEY_FIELDS; ++i) hash = (hash ^ key[i]) * UINT64_C(1099511628211);
 	}
-	for (size_t i = producer_rule; i < count; ++i) hash = (hash ^ (uintptr_t)inputs[i]) * UINT64_C(1099511628211);
+	for (size_t i = producer_rule; i < count; ++i)
+		hash = (hash ^ (uintptr_t)request_operand(prefix, inputs, jobs, i)) * UINT64_C(1099511628211);
 	for (struct pg_index_entry *entry = pg_index_candidates(&synthesis->jobs, hash); entry; entry = entry->next) {
 		if (entry->hash != hash) continue;
 		struct pg_synthesis_job *job = (struct pg_synthesis_job *)entry;
@@ -787,7 +799,7 @@ static struct pg_synthesis_job *request_inputs(struct pg_synthesis *synthesis,
 			if (memcmp(key, candidate, sizeof(key))) continue;
 		}
 		size_t i = producer_rule;
-		while (i < count && job->inputs[i] == inputs[i]) ++i;
+		while (i < count && job->inputs[i] == request_operand(prefix, inputs, jobs, i)) ++i;
 		if (i == count) return job;
 	}
 	struct pg_synthesis_job *job = pg_alloc(synthesis->typing->graph, sizeof(*job) + count * sizeof(*inputs));
@@ -795,7 +807,7 @@ static struct pg_synthesis_job *request_inputs(struct pg_synthesis *synthesis,
 	job->owner = synthesis->owner_key;
 	job->role = role;
 	job->input_count = count;
-	for (size_t i = 0; i < count; ++i) job->inputs[i] = inputs[i];
+	for (size_t i = 0; i < count; ++i) job->inputs[i] = request_operand(prefix, inputs, jobs, i);
 	if (producer_rule) {
 		struct pg_derivation_input *input = pg_alloc(synthesis->typing->graph, sizeof(*input));
 		if (!input) return NULL;
@@ -810,6 +822,12 @@ static struct pg_synthesis_job *request_inputs(struct pg_synthesis *synthesis,
 		enqueue(synthesis, job);
 	}
 	return job;
+}
+
+static struct pg_synthesis_job *request_inputs(struct pg_synthesis *synthesis,
+	enum job_role role, size_t count, const void *const *inputs)
+{
+	return request_inputs_with_jobs(synthesis, role, count, inputs, 0, NULL);
 }
 
 static struct pg_synthesis_job *request_job(struct pg_synthesis *synthesis,
@@ -1530,14 +1548,8 @@ struct pg_synthesis_job *pg_synthesis_rule(struct pg_synthesis *synthesis,
 	}
 	for (size_t i = 0; i < input->count; ++i)
 		if (!premises[i] || premises[i]->owner != synthesis->owner_key) return NULL;
-	struct pg_graph temporary = {0};
-	const void **inputs = pg_alloc(&temporary, (input->count + 3) * sizeof(*inputs));
-	if (!inputs) return NULL;
-	inputs[0] = input; inputs[1] = effects; inputs[2] = equation;
-	for (size_t i = 0; i < input->count; ++i) inputs[i + 3] = premises[i];
-	struct pg_synthesis_job *job = request_inputs(synthesis, DERIVATION_JOB, input->count + 3, inputs);
-	pg_graph_destroy(&temporary);
-	return job;
+	const void *inputs[] = {input, effects, equation};
+	return request_inputs_with_jobs(synthesis, DERIVATION_JOB, 3, inputs, input->count, premises);
 }
 
 const struct pg_source_scope *pg_synthesis_name(struct pg_synthesis *synthesis,
@@ -1636,21 +1648,11 @@ struct pg_synthesis_job *pg_synthesis_family_action_jobs(struct pg_synthesis *sy
 	if (pg_evidence_judgement(right_substitution) != PG_JUDGEMENT_SUBSTITUTION) return NULL;
 	if (count && !paths) return NULL;
 	if (count > SIZE_MAX / sizeof(const void *) - 3) return NULL;
-	struct pg_graph temporary = {0};
-	const void **inputs = pg_alloc(&temporary, (count + 3) * sizeof(*inputs));
-	struct pg_synthesis_job *job = NULL;
-	if (!inputs) goto done;
-	inputs[0] = left_substitution;
-	inputs[1] = right_substitution;
-	inputs[2] = input;
-	for (size_t i = 0; i < count; ++i) {
-		if (!paths[i] || paths[i]->owner != synthesis->owner_key) goto done;
-		inputs[i + 3] = paths[i];
-	}
-	job = request_inputs(synthesis, FAMILY_ACTION_JOB, count + 3, inputs);
+	for (size_t i = 0; i < count; ++i)
+		if (!paths[i] || paths[i]->owner != synthesis->owner_key) return NULL;
+	const void *inputs[] = {left_substitution, right_substitution, input};
+	struct pg_synthesis_job *job = request_inputs_with_jobs(synthesis, FAMILY_ACTION_JOB, 3, inputs, count, paths);
 	if (job) job->left = input;
-done:
-	pg_graph_destroy(&temporary);
 	return job;
 }
 
@@ -2036,20 +2038,10 @@ struct pg_synthesis_job *pg_synthesis_substitution_jobs(struct pg_synthesis *syn
 	if (!destination || destination->owner != synthesis->owner_key) return NULL;
 	if (count && !images) return NULL;
 	if (count > SIZE_MAX / sizeof(const void *) - 2) return NULL;
-	struct pg_graph temporary = {0};
-	const void **inputs = pg_alloc(&temporary, (count + 2) * sizeof(*inputs));
-	struct pg_synthesis_job *result = NULL;
-	if (!inputs) goto done;
-	inputs[0] = source;
-	inputs[1] = destination;
-	for (size_t i = 0; i < count; ++i) {
-		if (!images[i] || images[i]->owner != synthesis->owner_key) goto done;
-		inputs[i + 2] = images[i];
-	}
-	result = request_inputs(synthesis, SUBSTITUTION_JOB, count + 2, inputs);
-done:
-	pg_graph_destroy(&temporary);
-	return result;
+	for (size_t i = 0; i < count; ++i)
+		if (!images[i] || images[i]->owner != synthesis->owner_key) return NULL;
+	const void *inputs[] = {source, destination};
+	return request_inputs_with_jobs(synthesis, SUBSTITUTION_JOB, 2, inputs, count, images);
 }
 
 struct pg_synthesis_job *pg_synthesis_substitution_lift(struct pg_synthesis *synthesis,

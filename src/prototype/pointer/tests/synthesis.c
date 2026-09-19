@@ -3737,7 +3737,9 @@ static void substitution_jobs(struct pg_typing *typing)
 		for (size_t i = 2; i < pg_evidence_premise_count(lifted); ++i)
 			same_judgement(pg_evidence_premise(lifted, i), pg_evidence_premise(direct_lift, i));
 		struct pg_synthesis_job *wrong[] = {images[1], images[0]};
-		complete(&synthesis, pg_synthesis_substitution(&synthesis, source, destination, 2, wrong), PG_SYNTHESIS_REJECTED);
+		struct pg_synthesis_job *wrong_order = pg_synthesis_substitution(&synthesis, source, destination, 2, wrong);
+		assert(wrong_order && wrong_order != job);
+		complete(&synthesis, wrong_order, PG_SYNTHESIS_REJECTED);
 		assert(!pg_synthesis_substitution(&synthesis, source, destination, 1, images));
 		complete(&synthesis, pg_synthesis_substitution_jobs(&synthesis, pg_synthesis_evidence(&synthesis, source),
 			pg_synthesis_evidence(&synthesis, destination), 1, images), PG_SYNTHESIS_REJECTED);
@@ -5276,6 +5278,8 @@ static void source_declarations(struct pg_typing *typing)
 			premises[j] = pg_synthesis_evidence(&rule_synthesis, pg_evidence_premise(type, j));
 		struct pg_synthesis_job *formation = pg_synthesis_rule(&rule_synthesis, &input, premises, NULL, NULL);
 		assert(formation == pg_synthesis_rule(&rule_synthesis, &input, premises, NULL, NULL));
+		struct pg_derivation_input header_copy = input;
+		assert(formation == pg_synthesis_rule(&rule_synthesis, &header_copy, premises, NULL, NULL));
 		assert(!pg_synthesis_result(formation) && typing->proofs.count == proofs);
 		assert(complete(&rule_synthesis, formation, PG_SYNTHESIS_DONE) == type);
 		assert(typing->proofs.count == proofs);
