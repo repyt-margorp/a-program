@@ -5831,3 +5831,51 @@ Code delta: `evidence.c` +17/-7 = +10; `tests/iadt.c` +80/-0.
 Documentation is separate. Keep this verified cleanup local, pending the next
 substantial epoch. Ordinary Match/induction still needs motive instantiation
 and IH checks; do not replace those with the simpler type-case signature test.
+
+### A4 source branch scope reuse (2026-09-19)
+
+Baseline `bc3745c`. `match_validate_branch` reconstructs kernel field/IH scopes
+after source preparation already completed the corresponding producer. Use
+the existing constructor/induction scope request, including retained lexical
+allocations, and wait on that producer if needed. Keep branch-type construction,
+conversion and the final kernel elimination check. No new scope cache or rule.
+
+- [x] Prove the regression: asking for the completed producer's branch signature
+  after source checking must create no new proofs or Contexts (Match and IH).
+- [x] Replace synchronous reconstruction with the existing checked producer.
+- [x] Run debug, full O2 acceptance and affected sanitizer/image checks; compare
+  QuickSort work/storage, timing and LOC.
+- [ ] Group publication with a substantial epoch. Keep the pending cleanup local until
+  a substantive epoch is complete; A4/A5 and the reduction gates remain open.
+
+The regression initially fails (exit 134) on the old validation path. Match and
+IH cases now pass at chunks 1/64. It uses the actual elimination premises:
+the structural view may choose another accepted proof of the same occurrence,
+which is not the same scope request. Do not collapse those proof alternatives.
+Strict debug synthesis/IADT, full strict O2 `check-acceptance`, and ASan/UBSan
+synthesis/IADT/source/image checks pass. Sanitizer settings match the preceding
+entry. All 2,460 optimized exports and 1,218 sanitizer image exports match the
+baseline after temporary-path/step normalization. No source/test edits followed
+final verification builds.
+
+QuickSort baseline/candidate: steps 167,364/151,199; jobs 34,286/34,286;
+Contexts 4,376/4,205; occurrences 78,655/76,408; maps 13,511/12,951;
+lifts 3,744/3,592; actions 28,039/27,603; queries 10,433/10,204;
+proofs 92,921/90,191. Graph used/reserved bytes:
+63,975,584/64,274,432 -> 62,788,256/63,078,400. Substitution used/reserved:
+11,709,856/11,763,712 -> 11,483,424/11,534,336. Source references stay 2,368.
+
+Strict O2 timing, CPU 2, 31 alternating pairs, without concurrent builds/tests:
+baseline/candidate median milliseconds: Bool .502/.504; add .955/.935;
+length 5.724/5.367; function-field 9.752/9.257; Vec append 7.016/6.891;
+QuickSort 191.752/186.644; length save 6.389/6.095;
+QuickSort save 204.804/201.062. These are local measurements, not a general
+speedup guarantee. Logs use `/tmp/a-program-authority-match-scope-` with
+`before.log`, `{synthesis,iadt}.log`, `acceptance.log`,
+`asan-{synthesis,iadt,source,image}.log`, `counts.log` and `timing.log`.
+
+Code: `synthesis.c` +8/-9 = -1; `tests/synthesis.c` +37/-0.
+Cumulative implementation/headers: R76 +3,966/-1,938 = +2,028;
+R0 +8,721/-4,277 = +4,444. Documentation is separate. The broader reduction
+gate remains unmet. Final kernel elimination still independently validates its
+inputs; this change removes only duplicate source preparation.

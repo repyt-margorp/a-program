@@ -6110,16 +6110,15 @@ static void match_validate_branch(struct pg_synthesis *synthesis, struct pg_synt
 	struct match_branch *branch = &state->branches[state->validated];
 	if (!branch->converted) {
 		const struct pg_object *constructor = pg_data_constructor(pg_data_schema_layout(state->instance.schema), state->validated);
-		const struct pg_induction_allocation *allocation = source_induction_allocation(job);
-		const struct pg_evidence *map = allocation
-			? pg_prove_induction_scope_at(synthesis->typing,
-				state->instance.formation, constructor, state->instance.parameters,
-				state->motive_context, state->motive, allocation->clauses[state->validated])
-			: state->induction ? pg_prove_induction_scope(synthesis->typing,
-				state->instance.formation, constructor, state->instance.parameters, state->motive_context, state->motive)
-			: pg_prove_constructor_scope(synthesis->typing, state->instance.formation, constructor, state->instance.parameters);
+		struct pg_synthesis_job *scope = state->induction
+			? match_induction_scope(synthesis, job, state->validated, state->motive_context, state->motive)
+			: pg_synthesis_constructor_scope(synthesis, pg_synthesis_evidence(synthesis, state->instance.formation),
+				constructor, pg_synthesis_evidence(synthesis, state->instance.parameters));
+		if (!scope) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		if (scope->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, scope); return; }
+		if (scope->status != PG_SYNTHESIS_DONE) { finish(synthesis, job, scope->status); return; }
 		const struct pg_evidence *expected = pg_prove_match_branch_type(synthesis->typing,
-			state->instance.formation, constructor, state->instance.parameters, state->motive_context, state->motive, map);
+			state->instance.formation, constructor, state->instance.parameters, state->motive_context, state->motive, scope->result);
 		if (!expected) { finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
 		branch->converted = pg_synthesis_expect(synthesis, pg_synthesis_evidence(synthesis, branch->function),
 			pg_synthesis_evidence(synthesis, expected));

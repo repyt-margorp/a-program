@@ -5604,6 +5604,43 @@ static void source_declarations(struct pg_typing *typing)
 		assert(pg_evidence_subject(result)->core == pg_evidence_subject(zero)->core);
 		assert(pg_evidence_classifier(result) == pg_evidence_subject(nat)->core);
 	}
+	/* Source validation must use the existing checked field/IH scopes, not
+	 * create fresh binders and discard a second branch signature. */
+	const char *scoped_matches[] = {
+		"r:=Nat.zero @zero=>Nat.zero @succ k=>k;",
+		"r:=Nat.zero @zero=>Nat.zero @succ k=>*k;"
+	};
+	for (size_t i = 0; i < 4; ++i) {
+		struct pg_synthesis_job *job = request(&synthesis, named, scoped_matches[i % 2]);
+		for (size_t steps = 0; pg_synthesis_status(job) == PG_SYNTHESIS_PENDING; ++steps) {
+			assert(steps < 10000);
+			pg_synthesis_advance(&synthesis, i < 2 ? 1 : 64);
+		}
+		assert(pg_synthesis_status(job) == PG_SYNTHESIS_DONE);
+		const struct pg_evidence *term = pg_synthesis_result(job);
+		struct pg_elimination_inputs input;
+		assert(!pg_elimination_view(typing, term, &input));
+		/* Reuse this derivation's inputs, not another accepted proof of the
+		 * same occurrence selected by the structural elimination view. */
+		input.motive = pg_evidence_premise(term, 0);
+		input.formation = pg_evidence_premise(term, 1);
+		input.parameters = pg_evidence_premise(term, 2);
+		input.motive_context = pg_evidence_premise(term, 4);
+		for (size_t j = 0; j < input.count; ++j) {
+			const struct pg_object *constructor = pg_data_constructor(nat_layout, j);
+			struct pg_synthesis_job *f = pg_synthesis_evidence(&synthesis, input.formation);
+			struct pg_synthesis_job *p = pg_synthesis_evidence(&synthesis, input.parameters);
+			struct pg_synthesis_job *scope = i % 2
+				? pg_synthesis_induction_scope(&synthesis, f, constructor, p,
+					pg_synthesis_evidence(&synthesis, input.motive_context), pg_synthesis_evidence(&synthesis, input.motive))
+				: pg_synthesis_constructor_scope(&synthesis, f, constructor, p);
+			assert(pg_synthesis_status(scope) == PG_SYNTHESIS_DONE);
+			size_t proofs = typing->proofs.count, contexts = typing->contexts.count;
+			assert(pg_prove_match_branch_type(typing, input.formation, constructor, input.parameters,
+				input.motive_context, input.motive, pg_synthesis_result(scope)));
+			assert(typing->proofs.count == proofs && typing->contexts.count == contexts);
+		}
+	}
 	/* An induction also adapts branches that bind recursive fields but never
 	 * use their IHs. Keep field order and discard only the unused assumptions. */
 	{

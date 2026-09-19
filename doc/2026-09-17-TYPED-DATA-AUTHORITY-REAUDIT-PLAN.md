@@ -1138,6 +1138,14 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 
 ### A4. Audit remaining structural consumers and remove duplication
 
+- [x] 2026-09-19: type-case checks closed dependent signatures without discarded
+  field scopes (`bc3745c`); source Match/IH validation reuses its existing scope
+  producer instead of constructing a fresh one. Final kernel elimination
+  checks remain. Debug, full O2 and focused sanitizer/image gates pass; the
+  priority plan records capture/dependency tests, exact-premise reuse tests,
+  reduced QuickSort work/storage and LOC. These changes remain local pending
+  a substantial epoch; overall A4/A5 and the reduction gates stay open.
+
 - [x] 2026-09-19: both transport branch builders use the existing scheduled
   constructor-scope producer. A retained cursor subscribes to completion before
   constructing branch bodies; it does not create another scope authority.
