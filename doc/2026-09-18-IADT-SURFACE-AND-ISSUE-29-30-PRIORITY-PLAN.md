@@ -6005,3 +6005,57 @@ documentation is separate. Cumulative implementation/headers are R76
 +4,009/-1,974 = +2,035 and R0 +8,763/-4,312 = +4,451. The net-negative
 requirement is still unmet. This is local verified progress, not Main publication
 or completion of the pending-structure reconstruction audit.
+
+### Substitution scratch-storage audit (baseline `d19f2cd`, 2026-09-19)
+
+The current universal QuickSort workload makes 3,779 composition calls for
+2,845 exact proof pairs, visiting 18,673 images, of which 1,595 are repeat visits.
+A persistent pair cache would retain thousands of new requests to avoid only
+8.5% of these image visits; no such cache or new query kind is justified here.
+Existing occurrence actions already share their computed images. Explicit
+source/destination proof choices must not be collapsed by a structural map key.
+
+The concrete storage mismatch is transient: `substitution_build` creates 17,053
+temporary arenas with 2,670,080 used / 279,396,352 reserved bytes cumulatively;
+composition creates 3,779 with 220,896 / 61,915,136 bytes. Each arena reserves
+at least 16KB only to own short-lived pointer arrays. These are allocation
+traffic totals, not peak resident memory or persistent graph growth.
+
+- [x] Replace those two temporary arenas with sized arrays, using the existing
+  projection/map-building ownership pattern. Keep all ordinary rule checks,
+  exact premise choices, structural action sharing and failure cleanup.
+- [x] Check empty/repeated/dependent compositions and existing negative cases;
+  run full optimized acceptance and affected debug/sanitizer/image suites.
+- [x] Measure actual scratch allocation, unchanged semantic work/counts,
+  paired timings and per-file LOC.
+- [ ] Include this with the Handler cleanup in the next coherent epoch only
+  after publication gates pass. Neither change finishes A4/A5/R2-R5.
+
+Verification: strict debug Core, full strict O2 `check-acceptance`, ASan/UBSan
+Core, synthesis, source, image and handler-boundaries all exit 0. Sanitizers use
+O1/g, non-PIE, frame pointers, leak detection and halt-on-error. All 2,460 O2 and
+1,218 sanitizer image export records match `d19f2cd`, including Solve steps.
+The new Core assertions cover empty composition and repeated dependent inputs.
+
+Scratch payload traffic falls from 341,311,488 reserved arena bytes to
+2,459,776 requested array bytes (allocator headers excluded); allocation calls
+increase from 20,832 arena blocks to 32,351 arrays. Both allocated arrays are
+freed on success, an existing-record hit, or rejection. No new persistent work
+or acceptance index is added. QuickSort remains at 151,199 steps / 34,286 jobs /
+88,019 proofs, with identical Context/map/occurrence/action/query counts and
+identical graph/substitution arena totals.
+
+Strict O2, CPU 2, 31 alternating pairs, median milliseconds baseline/current:
+Bool .516/.509; add .937/.911; length 5.181/4.770; function-field 9.054/8.062;
+Vec append 6.800/6.446; QuickSort 184.134/181.638; Handler 6.195/5.982;
+length save 5.273/5.123; QuickSort save 184.073/180.817. These are local timing
+observations, not a proportional runtime or peak-memory claim.
+
+Logs use `/tmp/a-program-authority-map-scratch-` with `build.log`, `core.log`,
+`acceptance.log`, `asan-build.log`, `asan-{core,synthesis,source,image,boundaries}.log`,
+`allocations.log`, `{handler-clauses,map-scratch}-counts.log` and `timing.log`.
+Before-change probes: `/tmp/a-program-authority-compose-current.log` and
+`/tmp/a-program-authority-map-temporary-before.log`. Per-file LOC:
+`evidence.c` +8/-7 = +1; `tests/core.c` +3/-0; documentation separate.
+Overall implementation reduction and the remaining structural-consumer audit
+are still unproven. This is verified local work, not a completed Main epoch.

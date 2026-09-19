@@ -4248,9 +4248,9 @@ static const struct pg_evidence *substitution_build(struct pg_typing *typing,
 	size_t total = retained + count;
 	if (total > SIZE_MAX / sizeof(struct pg_binding_value)) return NULL;
 	if (total > SIZE_MAX / sizeof(const struct pg_evidence *) - 2) return NULL;
-	struct pg_graph temporary = {0};
 	const struct pg_evidence *result = NULL;
-	const struct pg_evidence **premises = pg_alloc(&temporary, (total + 2) * sizeof(*premises));
+	const struct pg_occurrence **typed_images = NULL;
+	const struct pg_evidence **premises = malloc((total + 2) * sizeof(*premises));
 	if (!premises) goto done;
 	premises[0] = source;
 	premises[1] = destination;
@@ -4270,7 +4270,7 @@ static const struct pg_evidence *substitution_build(struct pg_typing *typing,
 	result = find_record(typing, PG_CONTEXT_SUBSTITUTION,
 		pg_evidence_context(destination), NULL, total + 2, premises, NULL, &hash);
 	if (result) goto done;
-	const struct pg_occurrence **typed_images = pg_alloc(&temporary, total * sizeof(*typed_images));
+	typed_images = malloc(total * sizeof(*typed_images));
 	if (total && !typed_images) goto done;
 	for (size_t i = 0; i < total; ++i) typed_images[i] = pg_evidence_subject(premises[i + 2]);
 	const struct pg_context_map *map = pg_context_map(typing, pg_evidence_context(source),
@@ -4291,7 +4291,8 @@ static const struct pg_evidence *substitution_build(struct pg_typing *typing,
 	result = accept_record(typing, PG_CONTEXT_SUBSTITUTION,
 		pg_evidence_context(destination), NULL, total + 2, premises, NULL, map);
 done:
-	pg_graph_destroy(&temporary);
+	free(typed_images);
+	free(premises);
 	return result;
 }
 
@@ -4577,8 +4578,8 @@ const struct pg_evidence *pg_prove_substitution_compose(struct pg_typing *typing
 	if (!substitution_proof(typing, second)) return NULL;
 	if (pg_evidence_context(first) != pg_evidence_context(second->premises[0])) return NULL;
 	size_t count = first->premise_count - 2;
-	struct pg_graph temporary = {0};
-	const struct pg_evidence **images = pg_alloc(&temporary, count * sizeof(*images));
+	if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
+	const struct pg_evidence **images = malloc(count * sizeof(*images));
 	const struct pg_evidence *result = NULL;
 	if (count && !images) goto done;
 	for (size_t i = 0; i < count; ++i) {
@@ -4590,7 +4591,7 @@ const struct pg_evidence *pg_prove_substitution_compose(struct pg_typing *typing
 	}
 	result = pg_prove_substitution(typing, first->premises[0], second->premises[1], count, images);
 done:
-	pg_graph_destroy(&temporary);
+	free(images);
 	return result;
 }
 

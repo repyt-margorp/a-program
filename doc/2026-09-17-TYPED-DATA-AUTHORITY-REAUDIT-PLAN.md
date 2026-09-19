@@ -1138,6 +1138,15 @@ retained-recompute still fail at the same exact binder comparison, exit 134.
 
 ### A4. Audit remaining structural consumers and remove duplication
 
+- [x] 2026-09-19: measure repeated substitution composition before introducing
+  a cache. On universal QuickSort, only 1,595 of 18,673 image visits repeat;
+  a new persistent pair cache is not justified by this measurement. Instead,
+  replace fixed-array temporary arenas in substitution building/composition
+  with sized arrays, matching existing projection ownership. Full O2 and
+  affected sanitizer/image tests pass; semantic counts/steps are unchanged.
+  The priority plan records allocation traffic, paired timings and +1 source
+  line. Remaining A4/A5 gates and Main epoch publication stay open.
+
 - [x] 2026-09-19: Handler assembly resolves its clauses into the existing array
   once, then shares it between effect collection and rule assembly. Remove the
   second scan/cursor and count reset. Retain operation descriptors separately

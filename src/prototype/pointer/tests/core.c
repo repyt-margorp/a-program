@@ -2217,6 +2217,9 @@ static void typed_substitution_test(struct pg_graph *graph)
 	const struct pg_evidence *tau = pg_prove_substitution(&typing, destination, third, 2, second_images);
 	const struct pg_evidence *composite = pg_prove_substitution_compose(&typing, sigma, tau);
 	assert(composite);
+	assert(pg_prove_substitution_compose(&typing, sigma, tau) == composite);
+	const struct pg_evidence *empty_map = pg_prove_substitution(&typing, empty, empty, 0, NULL);
+	assert(empty_map && pg_prove_substitution_compose(&typing, empty_map, empty_map) == empty_map);
 	assert(pg_prove_substitution_compose(&typing,
 		pg_prove_substitution_projection(&typing, source, source), sigma) == sigma);
 	assert(pg_prove_substitution_compose(&typing, sigma,
