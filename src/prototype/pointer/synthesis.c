@@ -476,7 +476,7 @@ void pg_synthesis_destroy(struct pg_synthesis *synthesis)
 			struct pg_synthesis_job *job = (struct pg_synthesis_job *)entry;
 			switch (job->role) {
 			case CONVERSION_JOB: pg_conversion_destroy(&job->comparison); break;
-			case TERM_STRUCTURE_JOB: case CLASSIFIER_STRUCTURE_JOB:
+			case TERM_STRUCTURE_JOB: case CLASSIFIER_STRUCTURE_JOB: case SEQUENCE_JOB:
 				pg_comparison_destroy(&job->structural_probe); break;
 			case FUNCTION_GRAPH_JOB: pg_function_graph_destroy(&job->function_graph); break;
 			case FACE_JOB: pg_identity_face_destroy(job->face); break;
@@ -2405,7 +2405,7 @@ static void wake(struct pg_synthesis *synthesis, struct pg_synthesis_job *job, i
 static void finish(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
 	enum pg_synthesis_status status)
 {
-	if (job->role == TERM_STRUCTURE_JOB || job->role == CLASSIFIER_STRUCTURE_JOB)
+	if (job->role == TERM_STRUCTURE_JOB || job->role == CLASSIFIER_STRUCTURE_JOB || job->role == SEQUENCE_JOB)
 		pg_comparison_destroy(&job->structural_probe);
 	if (status == PG_SYNTHESIS_DONE && job->role == EXPRESSION_JOB && job->match && job->result) {
 		struct source_metadata *origin = register_source_metadata(synthesis, pg_evidence_subject(job->result));
@@ -3794,19 +3794,61 @@ static int source_value_kind(const struct pg_synthesis_job *producer);
 static int await_source_preparation(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *job, struct pg_synthesis_job *producer, struct pg_synthesis_job **rule);
 
-/* Sufficient structural conditions for choosing FOLD before acceptance.
- * Other cases still need checked conversion or finite-return inversion. */
-static int fixed_sequence_fold(const struct pg_term *input, const struct pg_term *continuation)
+static enum pg_comparison_status advance_structural_probe(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *job)
+{
+	enum pg_comparison_status status = pg_comparison_advance(&job->structural_probe, 1);
+	if (status == PG_COMPARISON_PENDING) enqueue(synthesis, job);
+	if (status == PG_COMPARISON_ERROR) finish(synthesis, job, PG_SYNTHESIS_ERROR);
+	return status;
+}
+
+static enum pg_comparison_status structural_independence(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *job, const struct pg_term *term, const struct pg_object *binder)
+{
+	struct pg_comparison *work = &job->structural_probe;
+	if (!work->state && pg_independence_init(work, term, binder)) {
+		finish(synthesis, job, PG_SYNTHESIS_ERROR);
+		return PG_COMPARISON_ERROR;
+	}
+	return advance_structural_probe(synthesis, job);
+}
+
+/* 1 selects FOLD; 0 suspends; -1 leaves conversion/finite-return checking to
+ * the ordinary producers. Completed negative choices are not rescanned. */
+static int fixed_sequence_fold(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
+	const struct pg_term *input, const struct pg_term *continuation)
 {
 	const struct pg_term *row, *value, *domain, *codomain, *following, *result;
 	const struct pg_object *binder;
 	enum pg_totality first, next;
-	if (!pg_computation_type_spine_view(input, &first, &row, &value)) return 0;
-	if (!pg_pi_view(continuation, &domain, &binder, &codomain)) return 0;
-	if (pg_alpha_equal(domain, value) != 1 || pg_term_independent(codomain, binder) != 1) return 0;
+	if (job->stage == 2) return -1;
+	if (!pg_computation_type_spine_view(input, &first, &row, &value)) goto not_fixed;
+	if (!pg_pi_view(continuation, &domain, &binder, &codomain)) goto not_fixed;
+	struct pg_comparison *work = &job->structural_probe;
+	if (!job->stage && domain == value) job->stage = 1;
+	if (!job->stage) {
+		if (!work->state && pg_comparison_init(work, domain, value, NULL, NULL)) {
+			finish(synthesis, job, PG_SYNTHESIS_ERROR); return 0;
+		}
+		enum pg_comparison_status scan = advance_structural_probe(synthesis, job);
+		if (scan == PG_COMPARISON_PENDING || scan == PG_COMPARISON_ERROR) return 0;
+		if (scan != PG_COMPARISON_EQUAL) goto not_fixed;
+		pg_comparison_destroy(work);
+		job->stage = 1;
+		enqueue(synthesis, job); return 0;
+	}
+	enum pg_comparison_status scan = structural_independence(synthesis, job, codomain, binder);
+	if (scan == PG_COMPARISON_PENDING || scan == PG_COMPARISON_ERROR) return 0;
+	pg_comparison_destroy(work);
+	if (scan != PG_COMPARISON_EQUAL) goto not_fixed;
 	if (pg_computation_type_spine_view(codomain, &next, &following, &result)) return 1;
 	const struct pg_effect_row *closed = pg_effect_row_view(row);
-	return first == PG_TOTALITY_TOTAL && closed && !pg_effect_count(closed);
+	if (first == PG_TOTALITY_TOTAL && closed && !pg_effect_count(closed)) return 1;
+not_fixed:
+	pg_comparison_destroy(&job->structural_probe);
+	job->stage = 2;
+	return -1;
 }
 
 /* The compatibility policy quotes functions at value boundaries. Returning
@@ -3866,8 +3908,10 @@ static void sequence_step(struct pg_synthesis *synthesis, struct pg_synthesis_jo
 			if (shapes[i]->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, shapes[i]); return; }
 			if (shapes[i]->status == PG_SYNTHESIS_ERROR) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		}
-		if (fixed_sequence_fold(pg_synthesis_type_structure_result(shapes[0]), pg_synthesis_type_structure_result(shapes[1])))
-			job->value_job = job->right;
+		int choice = fixed_sequence_fold(synthesis, job,
+			pg_synthesis_type_structure_result(shapes[0]), pg_synthesis_type_structure_result(shapes[1]));
+		if (!choice) return;
+		if (choice > 0) job->value_job = job->right;
 	}
 	for (size_t i = 0; i < 3; ++i) {
 		struct pg_synthesis_job *input = (void *)job->inputs[i];
@@ -8473,20 +8517,6 @@ consume:
 	}
 	if (context->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, context); return; }
 	finish(synthesis, job, context->status == PG_SYNTHESIS_DONE ? PG_SYNTHESIS_UNSUPPORTED : context->status);
-}
-
-static enum pg_comparison_status structural_independence(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *job, const struct pg_term *term, const struct pg_object *binder)
-{
-	struct pg_comparison *work = &job->structural_probe;
-	if (!work->state && pg_independence_init(work, term, binder)) {
-		finish(synthesis, job, PG_SYNTHESIS_ERROR);
-		return PG_COMPARISON_ERROR;
-	}
-	enum pg_comparison_status status = pg_comparison_advance(work, 1);
-	if (status == PG_COMPARISON_PENDING) enqueue(synthesis, job);
-	if (status == PG_COMPARISON_ERROR) finish(synthesis, job, PG_SYNTHESIS_ERROR);
-	return status;
 }
 
 /* Return zero when the provisional continuation has no constant F carrier;

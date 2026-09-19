@@ -212,10 +212,15 @@ static void sequence_structure_choice(struct pg_typing *typing)
 	struct pg_synthesis synthesis;
 	assert(!pg_whnf_work_init(&work, typing->graph));
 	assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
-	const char *continuations[] = {"v := \\T : @ => \\x : @ => x;", "v := \\T : @ => \\x : T => x;"};
-	for (size_t i = 0; i < 2; ++i) {
+	const char *continuations[] = {"v := \\T : @ => \\x : @ => x;", "v := \\T : @ => \\x : T => x;",
+		"v := \\f : (Unit -> Unit) => f;"};
+	for (size_t i = 0; i < 3; ++i) {
 		const struct pg_source_scope *scope = pg_synthesis_root(&synthesis);
-		struct pg_synthesis_job *input = request(&synthesis, scope, "v := (\\x : @ => x) (@{unit:*;});");
+		if (i == 2) scope = pg_synthesis_name_job(&synthesis, scope,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "Unit", .length = 4},
+			request(&synthesis, scope, "v := @{unit:*;};"));
+		struct pg_synthesis_job *input = request(&synthesis, scope, i == 2
+			? "v := (\\z : Unit => &(\\x : Unit => x)) Unit.unit;" : "v := (\\x : @ => x) (@{unit:*;});");
 		struct pg_synthesis_job *continuation = request(&synthesis, scope, continuations[i]);
 		struct pg_synthesis_job *context = pg_synthesis_evidence(&synthesis, pg_prove_empty_context(typing));
 		struct pg_synthesis_job *sequence = pg_synthesis_sequence(&synthesis, context, input, continuation);
@@ -224,7 +229,7 @@ static void sequence_structure_choice(struct pg_typing *typing)
 		assert(!complete(&synthesis, term, PG_SYNTHESIS_DONE));
 		assert(!complete(&synthesis, type, PG_SYNTHESIS_DONE));
 		const struct pg_evidence *proof = complete(&synthesis, sequence, PG_SYNTHESIS_DONE);
-		assert(pg_evidence_rule(proof) == (i ? PG_APP_ELIM : PG_FOLD_ELIM));
+		assert(pg_evidence_rule(proof) == (i == 1 ? PG_APP_ELIM : PG_FOLD_ELIM));
 		assert(pg_alpha_equal(pg_synthesis_type_structure_result(term), pg_evidence_subject(proof)->core) == 1);
 		assert(pg_alpha_equal(pg_synthesis_type_structure_result(type), pg_evidence_classifier(proof)) == 1);
 	}
@@ -683,6 +688,8 @@ static void pending_pi_scan(struct pg_typing *typing)
 		struct pg_synthesis_job *returned = rule_job(&synthesis, PG_RETURN_INTRO, NULL, 1, &variable);
 		struct pg_synthesis_job *fold = rule_job(&synthesis, PG_FOLD_ELIM, NULL, 2,
 			(struct pg_synthesis_job *[]){returned, lambda});
+		struct pg_synthesis_job *sequence = pg_synthesis_sequence(&synthesis, context, returned, lambda);
+		struct pg_synthesis_job *sequence_term = pg_synthesis_term_structure(&synthesis, sequence);
 		const struct pg_evidence *signature = pg_prove_universe(typing, empty, 0);
 		const struct pg_operation_declaration *operation = pg_operation_declaration(typing, signature, signature);
 		struct pg_synthesis_job *signature_job = pg_synthesis_evidence(&synthesis, signature);
@@ -705,8 +712,9 @@ static void pending_pi_scan(struct pg_typing *typing)
 		struct pg_synthesis_job *shapes[] = {pg_synthesis_classifier_structure(&synthesis, application),
 			pg_synthesis_type_structure(&synthesis, constant), pg_synthesis_classifier_structure(&synthesis, fold),
 			pg_synthesis_classifier_structure(&synthesis, request)};
-		pg_synthesis_advance(&synthesis, 64);
+		pg_synthesis_advance(&synthesis, 256);
 		for (size_t i = 0; i < 4; ++i) assert(pg_synthesis_status(shapes[i]) == PG_SYNTHESIS_PENDING);
+		assert(pg_synthesis_status(sequence_term) == PG_SYNTHESIS_PENDING);
 		assert(!pg_synthesis_result(pi) && !pg_synthesis_result(application));
 		if (chunk) {
 			for (size_t steps = 0; synthesis.ready; ++steps) {
@@ -727,6 +735,8 @@ static void pending_pi_scan(struct pg_typing *typing)
 					joined, pg_evidence_subject(large)->core));
 			}
 			assert(!pg_synthesis_result(pi) && !pg_synthesis_result(application));
+			assert(pg_synthesis_status(sequence_term) == PG_SYNTHESIS_DONE);
+			assert(!pg_synthesis_result(sequence));
 			for (size_t i = 0; i < 2; ++i) {
 				assert(pg_synthesis_status(blocked_shapes[i]) == PG_SYNTHESIS_PENDING);
 				assert(!pg_synthesis_type_structure_result(blocked_shapes[i]));
@@ -737,6 +747,7 @@ static void pending_pi_scan(struct pg_typing *typing)
 			complete(&synthesis, application, PG_SYNTHESIS_REJECTED);
 			complete(&synthesis, fold, PG_SYNTHESIS_REJECTED);
 			complete(&synthesis, request, PG_SYNTHESIS_REJECTED);
+			complete(&synthesis, sequence, PG_SYNTHESIS_REJECTED);
 			for (size_t i = 0; i < 2; ++i) complete(&synthesis, blocked_shapes[i], PG_SYNTHESIS_REJECTED);
 		}
 		pg_synthesis_destroy(&synthesis);

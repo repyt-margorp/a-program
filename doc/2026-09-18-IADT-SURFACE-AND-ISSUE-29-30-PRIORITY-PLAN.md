@@ -6659,3 +6659,63 @@ including preceding Pi commit `13d7b64`. Atomic non-force push advanced both
 remote Main and rewrite from `6e2d3e5`; both tips were verified. Combined
 documentation delta at publication was +169/-0, separate from implementation
 and tests above. This record is a documentation-only follow-up, not goal closure.
+
+### A4 sequence-choice scan (2026-09-20)
+
+Baseline `2655372`. The preceding turn published the verified Pi/continuation
+epoch. Source `fixed_sequence_fold` still drains alpha comparison and codomain
+independence synchronously before selecting the existing Fold producer. Reuse
+the same comparison cursor in the existing Sequence request; preserve the
+domain criterion, pure-input alternative, dependent fallback and Context checks.
+Neither a provisional shape nor a post-check annotation becomes acceptance.
+
+- [x] Extend the pending-Pi regression to early Sequence subject publication;
+  establish failure on the baseline before implementing resumable choice.
+- [x] Replace the synchronous selection with existing comparison transitions;
+  free pending work on cancellation/completion without adding a store/job kind.
+- [x] Verify pending effects, dependent fallback, invalid premises and the
+  existing acceptance/image/sanitizer gates before publication.
+- [x] Measure work, timing and per-file LOC; keep A4/A5 and R0 gates open.
+- [ ] Before publishing this next epoch, inspect preemption of source-choice
+  scans by the already accepted Fold producer. Ordinary Context checks must
+  still run; do not confuse a provisional structure with that accepted proof.
+
+The 256-step pending regression fails on `2655372` and passes with resumable
+choice, including cancellation and chunks 1/64. Completed negative choices
+are retained in the existing Sequence stage, not rescanned at each wake-up.
+Domain pointer equality keeps its immediate path. An added Unit-function case
+exercises non-pointer-equal alpha comparison: instrumentation records one scan,
+34 transitions and 10 tasks. Core interning remains pointer-exact.
+
+Final implementation passes full strict debug/O2 acceptance and affected
+ASan/UBSan synthesis, Source IO, image CLI and 5,158 Handler save boundaries.
+All 2,460 acceptance outputs agree with Main after path/step normalization;
+debug and O2 also agree including steps. All 1,218 sanitizer image outputs
+agree with Main after normalization. The final additional alpha case was then
+rebuilt/run in synthesis under debug/O2/sanitizers; implementation was unchanged.
+No source/test edits occurred during a build, test or probe.
+
+Same imported QuickSort property, Main/candidate: requests 33,759/33,691;
+outer steps 153,988/160,918; graph arena used bytes 60,494,112/60,459,584.
+Proofs (88,020), typed queries (10,002), occurrences (74,584), Contexts (4,090),
+map/lift/action counts, substitution storage and Job size (336 bytes) agree.
+Within Sequence choice, independence scans drop 207/155, inner transitions
+10,535/7,623 and tasks 3,147/2,233. Both finish with no outstanding comparisons.
+Extra outer steps expose formerly synchronous work, not additional theorems.
+
+Isolated O2, CPU 2, 31 alternating pairs, median ms Main/candidate:
+QuickSort 172.837/173.679; Handler 5.393/5.696; function-field 8.881/7.922;
+QuickSort save 174.176/175.624. Repeat: 165.102/165.892, 5.512/5.661,
+7.774/8.045 and 174.019/174.679 respectively. This is bounded-work and
+repeat-scan progress, not an overall speedup or the final performance gate.
+
+Per-file delta: `synthesis.c` +55/-25 = **+30**;
+`tests/synthesis.c` +16/-5 = +11. Executable text +400 bytes; data/BSS unchanged.
+Cumulative R0 implementation/header +9,093/-4,676 = **+4,417**. Keep this
+tested change local until the accepted-producer preemption review above forms
+the next publication unit. Neither A4/A5 nor the net-negative gate is closed.
+
+Logs: `/tmp/a-program-authority-sequence-scan-` with `baseline.log`,
+`debug.log`, `acceptance-final.log`, `synthesis{,-opt}-final.log`,
+`asan-{synthesis-final,source,image,handler}.log`, `counts.log`,
+`{before,after,test}-work.log` and `timing{,-repeat}.jsonl`.
