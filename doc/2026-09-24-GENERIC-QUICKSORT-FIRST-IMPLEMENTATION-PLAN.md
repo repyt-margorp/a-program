@@ -458,6 +458,39 @@ constructor history. The parallel-provider rewrite, source/image checks and
 A/B resource comparison requested by #34 remain open.
 Optimized `check-acceptance` passed after adding both fixture cases.
 
+#### Typed-conclusion multiplicity audit
+
+The `length-output-proof.p` source fixture is byte-identical in clean R0
+`4657cc6` and clean current `fd89842` worktrees. At `pg_program_destroy`,
+`-O0 -g` builds show 2,249 Occurrences and
+3,856 proofs in R0, versus 2,894 Occurrences and 4,131 proofs now. Grouping
+accepted evidence by `(judgement, Context, Core, classifier)` finds 2,116
+keys with 135 additional distinct Occurrence pointers in R0, versus 2,314
+keys with 390 additional pointers now. This is not a direct allocation delta:
+R0 kept the classifier in Evidence and could reuse one Occurrence under more
+than one classifier; the current Occurrence includes its classifier.
+
+For the completed generic QuickSort input, the current build has 434,502
+Occurrences and 459,006 proofs. Of 395,984 Occurrences referenced by accepted
+proofs, 12,483 are additional pointers in groups with an identical four-field
+key (8,389 such groups). These are upper bounds on candidates for physical
+coalescing, not counts of redundant checks or proofs. A representative length
+group has two accepted `PG_PI_FORM` subjects with the same Application Core
+and classifier but different typed argument Occurrences; those arguments in
+turn have the same four-field key and different structural inputs. Interning
+only by the four-field key would discard an accepted construction recipe and
+its exact premises. The 390 length candidates occupy at most about 44 KiB of
+112-byte base Occurrence records; the generic candidates at most about 1.4
+MiB before variable tails and allocator overhead. Blind coalescing therefore
+does not address R5's source-size gate and has an unproved semantic contract.
+
+Next R2/R3 action: identify an actual repeated *source construction* and its
+checked typed-input owner, then move only a proven duplicate recipe or walk to
+that owner. Keep alternate accepted derivations and source allocation identity
+distinct. Do not add a tuple-keyed accepted-evidence cache or silently select
+one recipe. The contextual map and current typed-conclusion counts alone do
+not establish which structural consumers can be deleted; R2-R5 remain open.
+
 Focused strict-debug Core and source IO passed on the working tree. An
 independent clean detached worktree at `fd89842` passed optimized
 `check-acceptance`, including generic Sorted and retained QuickSort; its
@@ -486,3 +519,4 @@ telescope relocation experiment; none of that experiment entered `fd89842`.
 | 2026-09-24 | R5 audit | Clean R0/current source and zero-image comparisons, interned graph counts and implementation LOC measured above. QuickSort improves sharply; small inputs regress and cumulative implementation grows. | R2-R5 remain open; isolate construction ownership before further deletion. |
 | 2026-09-24 | #33 audit | Renamed Acc positive and wrong-field rejection made permanent; wrong-IH index remains unsupported, not rejected. Full optimized acceptance passed. | Retain termination classifier check and keep #33 open for kernel/adequacy audit. |
 | 2026-09-24 | #34 audit | Derived two-constructor LT lift as an ordinary recursive program; both constructor cases compute. | Standalone lemma only; retain primitive provider lift pending whole-provider comparison. |
+| 2026-09-24 | R2/R3 audit | Clean R0/current debug runs measured accepted typed-conclusion multiplicity on identical length input; clean current generic QuickSort was also measured. PI formation has distinct typed child recipes under the same four-field conclusion key. | Do not collapse by conclusion key; trace source construction ownership before a semantic refactor. R2-R5 remain open. |
