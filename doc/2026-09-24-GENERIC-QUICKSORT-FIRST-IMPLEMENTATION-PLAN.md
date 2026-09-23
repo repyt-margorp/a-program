@@ -283,6 +283,123 @@ Verification on this continuation: optimized `check-acceptance`, focused
 `source_io.sh`, `generic_sorted.sh` in retained mode, and
 `retained_quicksort.sh` passed. No ignored failures.
 
+#### R5 baseline checkpoint after Q3/A3
+
+This is a measurement checkpoint, not an R2-R5 completion claim. A clean
+`4657cc6` worktree and a clean `4aa8073` worktree were built with the same
+`-std=c11 -Wall -Wextra -Werror -O2` flags. The three inputs below are
+byte-identical at both revisions. Source and zero-step `.a` loads each used
+`--steps 1000000`; the zero-step images were created by the respective
+revision. The QuickSort compatibility input also used
+`--legacy-intrinsic-dot` and the same `if8_fuel_free_quicksort_check.p`
+import. All completed checks succeeded; zero-step saves were pending as
+expected. Times are medians of fresh processes, alternated by revision.
+
+| Input | R0/current Solve steps | R0/current source time | R0/current zero-image load time |
+| --- | ---: | ---: | ---: |
+| `length-output-proof.p` | 10,950 / 8,213 | 6.652 / 7.051 ms | 6.956 / 7.402 ms |
+| `function-graph-function-field.p` | 12,906 / 10,948 | 9.937 / 10.654 ms | 9.845 / 11.085 ms |
+| `legacy-quicksort-property.p` | 149,501 / 132,330 | 544.107 / 165.117 ms | 549.588 / 159.525 ms |
+
+The small-input times used five alternating batches of 40 fresh invocations
+per revision/mode; the QuickSort times used seven alternating fresh-process
+samples. The QuickSort source peak RSS medians were 225,396 / 75,092 KiB and
+the image-load medians 225,860 / 75,532 KiB. These observations establish a
+large QuickSort improvement and small-input regressions, not their cause.
+Solve-step reduction is not a time metric. The small cases' roughly 13 MiB
+high-water marks do not resolve allocation differences. Zero-step images grew
+only 24 bytes and completed images 56 bytes at the current revision for each
+input; image size alone does not explain the timing.
+
+Debug builds stopped at `pg_program_destroy` after the same successful
+checks. Counts are live interned graph records, not accepted derivation
+counts or an assertion that every Occurrence is redundant.
+
+| Input | Revision | Core Terms | Typed Occurrences | Proofs |
+| --- | --- | ---: | ---: | ---: |
+| length | `4657cc6` | 1,829 | 2,249 | 3,856 |
+| length | `4aa8073` | 1,691 | 2,894 | 4,131 |
+| function-field | `4657cc6` | 4,472 | 4,524 | 7,927 |
+| function-field | `4aa8073` | 4,670 | 5,662 | 8,155 |
+| QuickSort | `4657cc6` | 168,628 | 435,774 | 588,033 |
+| QuickSort | `4aa8073` | 131,016 | 74,584 | 88,020 |
+
+From `4657cc6` to committed `4aa8073`, implementation/header files under
+`src/prototype/pointer` (excluding tests, docs and build files) changed
+`+9,338/-4,821`, net **+4,517** lines. Largest net growth is in
+`evidence.c` (+1,056), `synthesis.c` (+978), `typing.c` (+921),
+`source_io.c` (+373), and `function_graph.c` (+223). The R5 net-negative
+gate is therefore open. The earlier named recovery walks are largely gone;
+deleting a live proof rule, synchronous test-facing entry or separate Core/
+typed store simply to improve this count would violate the authority and
+soundness contracts.
+
+Next R2-R4 slice: trace the additional small-input Occurrence/Proof creations
+to their exact construction requests, then audit whether any are repeated
+typed actions or genuinely different checked conclusions. Attribute
+`evidence.c`, `synthesis.c` and `typing.c` growth to retained rule checks,
+new features, and superseded construction separately. Delete only a proven
+duplicate construction together with its old owner; preserve one interned
+Core computation and distinct typed uses/derivations. Recheck source and
+image behavior plus small and QuickSort performance after each coherent
+change. If no such deletion materially addresses the +4,517 lines, reopen
+the representation/ownership design as R5 requires rather than relabeling
+the growth as cleanup.
+
+The first allocation-site trace narrows that slice. A nonmutating debug
+breakpoint at the unique `pg_occurrence_intern` insertion, grouped by caller,
+found the following new Occurrences (not request counts):
+
+| Insertion path | length | old QuickSort |
+| --- | ---: | ---: |
+| `context_variable` from `pg_occurrence_weaken` in `context_map_extend` | 327 | 32,084 |
+| `context_variable` from `pg_context_map_projection` in `pg_occurrence_weaken` | 288 | 12,746 |
+| `pg_occurrence_mapped` from `occurrence_action_step` | 670 | 10,655 |
+
+For length, the current typing store also retains 992 Context maps, 269
+projection lookups, 203 lift requests, 1,254 occurrence-action requests and
+891 typed queries. QuickSort retains 12,541 maps, 2,771 projection lookups,
+3,551 lift requests, 27,134 occurrence-action requests and 9,994 typed
+queries. These categories overlap in their construction chains; summing them
+would double-count work. None of these counts proves an unnecessary
+certificate. In particular, `context_map_extend` currently makes every prefix
+image valid in the destination Context, and kernel checks and substitution
+consume those exact images.
+
+The candidate ownership change is therefore **not** to skip a weakening or
+pretend a source-Context occurrence is valid in a destination Context. Audit
+a persistent Context-map extension that stores a checked prefix map plus its
+new image, and derives destination images only when a consumer needs them.
+That requires a simultaneous contract change for direct `map->images[]` and
+`pg_context_map_bindings()` consumers in `evidence.c`, `occurrence_io.c` and
+the substitution path, including proof of the extension and image replay.
+Retaining a flat eager map behind a new wrapper would only add another layer.
+Before implementing, measure how many prefix images are actually demanded
+by those consumers; if almost all are demanded, this representation will not
+improve allocation and should be rejected. Core Term interning and typed
+Context identity remain distinct throughout.
+
+That first demand check rules out a *lazy accessor alone*: 900 of 992 length
+maps and 11,312 of 12,541 QuickSort maps already have a
+`PG_CONTEXT_SUBSTITUTION` proof (902 and 11,520 proof records respectively;
+alternate derivations account for the difference). The current rule checks
+every image. A persistent extension is worth pursuing only if its proof rule
+can derive validity from a checked prefix map and the new image while still
+supporting arbitrary map composition and image readback. Otherwise all images
+will be forced before acceptance, and the extra representation would worsen
+complexity. This is a representation/proof-ownership design task, not a
+permission to weaken validation or classify all 32,084 projections as waste.
+
+The physical proof cost is measurable: length has 902 substitution proofs
+holding 2,537 image-premise slots (largest map 12); old QuickSort has 11,520
+such proofs holding 96,834 slots (largest map 42). Each proof also has its two
+Context premises. Those slots are **not** duplicate logical conclusions: the
+current flat rule records individually checked images and distinct derivations
+remain valid. They do show where a checked prefix-plus-new-image rule could
+remove repeated physical expansion. Any replacement must make composition,
+projection, lookup and image replay derive the same images and preserve
+alternative derivations; changing only the storage layout is insufficient.
+
 ## Change Log
 
 | Date | Stage | Revision and evidence | Status |
@@ -294,3 +411,4 @@ Verification on this continuation: optimized `check-acceptance`, focused
 | 2026-09-24 | Q3 | Saved binder allocation separated from checked declared types; retained generic and old WHNF images, optimized acceptance and generic sanitizer gate pass. | Implementation complete; publication audit pending. |
 | 2026-09-24 | Q4 | Clean-tree acceptance and ASan/UBSan passed at `c2ed4a7`; atomic Main/rewrite fast-forward verified; #31 closed with acceptance evidence. | Generic QuickSort milestone published; authority refactor still open. |
 | 2026-09-24 | A3 | Removed two binder-only allocation checks in favor of the shared saved-allocation shape check; added same-binder/wrong-sort negatives. Optimized acceptance and focused ASan/UBSan gates passed. | First authority cleanup, not A3-A5 completion. |
+| 2026-09-24 | R5 audit | Clean R0/current source and zero-image comparisons, interned graph counts and implementation LOC measured above. QuickSort improves sharply; small inputs regress and cumulative implementation grows. | R2-R5 remain open; isolate construction ownership before further deletion. |
