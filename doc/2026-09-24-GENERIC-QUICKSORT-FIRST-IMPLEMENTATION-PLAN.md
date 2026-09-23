@@ -400,6 +400,16 @@ remove repeated physical expansion. Any replacement must make composition,
 projection, lookup and image replay derive the same images and preserve
 alternative derivations; changing only the storage layout is insufficient.
 
+A debug-build size check gives 112 bytes per typed Occurrence and 8 bytes per
+premise pointer. Even attributing all 32,084 QuickSort extension Occurrences
+and all 96,834 image-premise slots to this path gives roughly 4.4 MiB before
+allocator overhead, versus roughly 75 MiB observed peak RSS. This is not a
+complete allocation profile and does not rule out indirect costs, but it does
+not yet justify introducing a second persistent map representation. Defer that
+rewrite until a checked prefix-map proof rule and a measured end-to-end benefit
+are both available; first trace the small-input construction ownership called
+out above.
+
 #### Context-map lookup boundary (`fd89842`, not a completed Q4 epoch)
 
 `pg_context_map_lookup` no longer returns an address inside `map->images[]`.
@@ -411,6 +421,30 @@ same lookup without requesting a position. No map, evidence, Core or image
 representation was added; no proof rule or acceptance condition changed.
 This removes one dependence on the flat array's pointer layout, but does
 **not** remove the eager maps or their premise slots counted above.
+
+#### #33 termination-boundary checkpoint
+
+`Acc` remains an ordinary source-defined indexed family. The permanent
+`acc-family-parameter.p` fixture now checks induction after renaming the
+family and constructor to `AccessibleFoo`/`accessible_node`; the renamed
+`acc-motive-wrong-field.p` still rejects. A distinct wrong-IH-index fixture,
+`acc-renamed-wrong-ih.p`, is **unsupported**, not rejected, even with a closed
+`Nat.zero` index. Its acceptance test guards against accidental acceptance but
+does not establish the intended negative theorem. Keep #33 open and classify
+this as a solver/elaboration gap until the exact kernel premise path is tested.
+
+`PG_TERMINATION_INTRO` checks a suspended computation's declared `TOTAL`
+classifier; it does not execute the computation. `pg_prove_total_pure_value`
+additionally requires an empty effect row. General Acc induction proves
+properties of an indexed relation but does not itself connect that relation
+to the operational computation classifier. Replacing termination evidence
+therefore requires a checked adequacy bridge, including retained-artifact
+verification; removing the named rule alone would erase an obligation.
+
+Optimized `check-acceptance` passed on the current worktree, including these
+three Acc fixtures, generic Sorted, old QuickSort and retained-WHNF checks.
+This is a test/audit checkpoint, not closure of #33 or Q4; an isolated kernel
+forgery check and a negative IADT/erased-partial adequacy analysis remain.
 
 Focused strict-debug Core and source IO passed on the working tree. An
 independent clean detached worktree at `fd89842` passed optimized
@@ -438,3 +472,4 @@ telescope relocation experiment; none of that experiment entered `fd89842`.
 | 2026-09-24 | Q4 | Clean-tree acceptance and ASan/UBSan passed at `c2ed4a7`; atomic Main/rewrite fast-forward verified; #31 closed with acceptance evidence. | Generic QuickSort milestone published; authority refactor still open. |
 | 2026-09-24 | A3 | Removed two binder-only allocation checks in favor of the shared saved-allocation shape check; added same-binder/wrong-sort negatives. Optimized acceptance and focused ASan/UBSan gates passed. | First authority cleanup, not A3-A5 completion. |
 | 2026-09-24 | R5 audit | Clean R0/current source and zero-image comparisons, interned graph counts and implementation LOC measured above. QuickSort improves sharply; small inputs regress and cumulative implementation grows. | R2-R5 remain open; isolate construction ownership before further deletion. |
+| 2026-09-24 | #33 audit | Renamed Acc positive and wrong-field rejection made permanent; wrong-IH index remains unsupported, not rejected. Full optimized acceptance passed. | Retain termination classifier check and keep #33 open for kernel/adequacy audit. |
