@@ -478,6 +478,19 @@ at the call's index expressions without solving those expressions backwards
 or treating a specialized Lambda as a new graph authority. The parallel
 fixtures remain experimental until this route passes the old graph checks.
 
+Two minimized imported fixtures now run in `tests/generic_sorted.sh`:
+`lt-derived-helper-graph-direct.p` checks, while the otherwise equivalent
+`lt-derived-helper-graph-shifted.p` is expected `unsupported`. The latter
+passes an `LT m (Nat.succ n)` proof to the ordinary `ltLift` function. The
+standalone `@ltLift` graph checks. In the failing request, `helper_call`
+publishes a local Lambda and its checked environment; subsequent source
+advancement abstracts a specialized Lambda, and `GRAPH_INPUT` rejects the
+computed index because it is not the immediately preceding generic binder.
+The expected-unsupported assertion is a regression marker, not acceptance of
+that limitation. Reusing the generic source graph requires retaining the
+source function and its argument substitution through partial application;
+the current local Lambda cannot be treated as that source by term shape alone.
+
 #### Typed-conclusion multiplicity audit
 
 The `length-output-proof.p` source fixture is byte-identical in clean R0

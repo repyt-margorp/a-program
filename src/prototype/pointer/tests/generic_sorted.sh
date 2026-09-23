@@ -45,6 +45,10 @@ for entry in decision-explicit-result:0 decision-explicit-recomputed:0 \
 	decision-explicit-effectful:4; do
 	check_result "${entry#*:}" "$root/acceptance/${entry%:*}.p"
 done
+derived="$root/acceptance/lt-derived-lift.p"
+check_result 0 "$root/acceptance/lt-derived-helper-graph-direct.p" --imports "$derived"
+# Flip this to done when a specialized helper reuses its checked generic graph.
+check_result 4 "$root/acceptance/lt-derived-helper-graph-shifted.p" --imports "$derived"
 proof="$root/acceptance/generic-quick-sorted.p"
 check_result 0 "$proof" --imports "$provider" --save "$directory/complete.a"
 check_result 0 "$directory/complete.a" --load
