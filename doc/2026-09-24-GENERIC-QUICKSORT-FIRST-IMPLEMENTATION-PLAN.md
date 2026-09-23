@@ -400,6 +400,32 @@ remove repeated physical expansion. Any replacement must make composition,
 projection, lookup and image replay derive the same images and preserve
 alternative derivations; changing only the storage layout is insufficient.
 
+#### Context-map lookup boundary (`fd89842`, not a completed Q4 epoch)
+
+`pg_context_map_lookup` no longer returns an address inside `map->images[]`.
+It returns the selected typed image and optionally its oldest-source binder
+position. `pg_substitution_image` uses that position to select the exact
+supplied proof, so two distinct binders with the same image still retain
+different derivations. Variable-frame and occurrence-action consumers use the
+same lookup without requesting a position. No map, evidence, Core or image
+representation was added; no proof rule or acceptance condition changed.
+This removes one dependence on the flat array's pointer layout, but does
+**not** remove the eager maps or their premise slots counted above.
+
+Focused strict-debug Core and source IO passed on the working tree. An
+independent clean detached worktree at `fd89842` passed optimized
+`check-acceptance`, including generic Sorted and retained QuickSort; its
+ASan/UBSan build with leak detection passed Core, source IO and retained
+QuickSort. The pre-existing same-image/two-binder Core test checks both
+positions and both exact `pg_substitution_image` derivations, including reverse
+proof order. A sequential, fresh-process O2 timing check (60 length and 12 old
+QuickSort runs per revision) measured medians of 7.048/7.095 ms and
+164.747/161.399 ms at committed `4aa8073` versus the earlier worktree respectively;
+this small, nonalternating check is only a regression screen, not a speedup
+claim. The lookup commit changed implementation/header lines +22/-20 and
+tests +14/-13. The main worktree still contains a separately uncommitted
+telescope relocation experiment; none of that experiment entered `fd89842`.
+
 ## Change Log
 
 | Date | Stage | Revision and evidence | Status |
