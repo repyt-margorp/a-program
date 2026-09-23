@@ -622,6 +622,120 @@ claim. The lookup commit changed implementation/header lines +22/-20 and
 tests +14/-13. The main worktree still contains a separately uncommitted
 telescope relocation experiment; none of that experiment entered `fd89842`.
 
+### Q4: Canonical projection evidence
+
+The concrete redundant check is in `pg_prove_substitution_projection`: the
+structural projection already selects typed variables from an ancestor
+Context, but the proof builder eagerly materialized every variable proof and
+then invoked general substitution checking over the same declarations.
+
+The replacement keeps the existing map, occurrence and evidence stores:
+
+- Canonical prefix projection is the two-premise form of
+  `PG_CONTEXT_SUBSTITUTION`: checked source and destination Contexts. The
+  structural map must establish that the source is an ancestor of the
+  destination. Identity and the empty prefix are included.
+- Arbitrary substitution still retains source, destination and every supplied
+  image proof. Alternative derivations are not discarded, even when their
+  structural maps coincide with a canonical projection.
+- Map arity and image terms come from `pg_evidence_context_map`, not physical
+  proof-premise positions. `pg_substitution_image_at` obtains the exact supplied
+  image proof, or derives the canonical variable proof on demand using the
+  destination Context premise. Contiguous proof consumers use the same image
+  accessor, borrowing explicit arrays and using temporary storage otherwise.
+- Core, conversion, declaration identity, Context scope and solver acceptance
+  remain unchanged. No additional Core tag, mutable result cache or solver
+  state is introduced. A derived variable proof is interned normally.
+
+This is a proof representation change, not permission to accept arbitrary
+maps without checking their images. Both Context premises remain explicit;
+sibling Contexts and reverse projections are rejected. General and canonical
+proofs share a map but remain different derivations. A 64-variable canonical
+projection now creates one proof before any image is demanded, rather than
+eagerly creating its variable proofs.
+
+The nested derivation format changes from APGDRV14 to APGDRV15. Old derivation
+headers are rejected instead of interpreting previously invalid two-premise
+requests as projections. Enclosing source/retained formats retain their own
+headers; images containing old nested derivations must be regenerated. Loading
+still creates unaccepted requests for ordinary Solve, not trusted acceptance.
+
+- [x] Convert all production image consumers to map arity and indexed images.
+- [x] Preserve alternate Context/image receipts and repeated-request interning.
+- [x] Test canonical/general map agreement, delayed image construction,
+  invalid scopes and index bounds, and omitted-binder rejection.
+- [x] Round-trip both derivations in fresh processes with one-step and bulk
+  Solve; reject the previous derivation header.
+- [x] Optimized full `check-acceptance` on the working tree.
+- [x] Focused ASan/UBSan with leak detection: Core, derivation IO, and generic
+  Sorted including retained reductions.
+- [x] Repeat full acceptance with only this change, excluding the unrelated
+  uncommitted telescope-renaming experiment.
+- [x] Compare clean baseline/current timing and record per-file changes.
+- [x] Publish this completed epoch after the final gates pass. Implementation
+  `ec6a47b` was atomically pushed to Main and the rewrite branch; both remote
+  tips were checked. The parent refactor remains open.
+
+Debug source runs at baseline `fb5109a` versus this implementation show:
+
+| Input | Proofs before/after | Core terms | Typed occurrences | Maps | Solve steps |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `length-output-proof.p` | 4,131 / 4,128 | 1,691 | 2,894 | 992 | 8,213 |
+| Generic QuickSort Sorted with the existing provider | 459,006 / 456,949 | 593,486 | 434,502 | 40,600 | 619,092 |
+
+The last four columns are unchanged. This removes 2,057 proofs on the generic
+case, not the general typed-structure growth recorded above. It does not
+complete R2-R5 or the parent's net-negative source gate. The unrelated Context
+renaming experiment and derived-LT whole-provider fixtures remain outside this
+publication; #32-#34 are not closed by this change.
+
+Clean verification used a detached `fb5109a` worktree with only the staged
+projection patch applied, `-std=c11 -Wall -Wextra -Werror -O2`, and
+`check-acceptance`; it passed without exclusions. The working-tree optimized
+suite also passed. An initial failure in `substitution_prefix_rebase` asserted
+the old physical premise layout; its replacement still checks every image's
+judgement and rejects loss of an in-use binder. Initial mistakes in the new IO
+fixture (a reused C identifier and a sibling rather than extended Context)
+were corrected before the successful whole-suite runs.
+
+Fresh-process timings below used that clean implementation and a separate
+clean `fb5109a` build, with the same inputs and flags. Seven alternating samples
+per revision were measured after warm-up; the small cases used batches of 40
+processes per sample. No build/test job ran concurrently. Values are medians;
+the observed ranges overlap for every case, so these are regression screens,
+not established speedups.
+
+| Source input | Before | After | Before range | After range |
+| --- | ---: | ---: | ---: | ---: |
+| length | 7.370 ms | 7.101 ms | 6.866-7.594 | 6.817-7.622 |
+| function-field graph | 11.021 ms | 10.734 ms | 10.388-11.493 | 10.300-11.123 |
+| old QuickSort property | 168.930 ms | 170.956 ms | 159.605-176.445 | 153.641-175.636 |
+| generic QuickSort Sorted | 1009.298 ms | 997.973 ms | 967.898-1017.002 | 976.732-1022.118 |
+
+Per-file delta for this epoch only, excluding the unrelated dirty files and
+earlier branch commits; paths are relative to `src/prototype/pointer`:
+
+| File | Added | Deleted | Net |
+| --- | ---: | ---: | ---: |
+| `action.c` | 11 | 8 | +3 |
+| `derivation.c` | 9 | 5 | +4 |
+| `derivation_io.c` | 1 | 1 | 0 |
+| `evidence.c` | 128 | 72 | +56 |
+| `evidence.h` | 9 | 1 | +8 |
+| `function_graph.c` | 34 | 26 | +8 |
+| `iadt.c` | 5 | 5 | 0 |
+| `synthesis.c` | 49 | 39 | +10 |
+| **Implementation subtotal** | **246** | **157** | **+89** |
+| `tests/core.c` | 22 | 6 | +16 |
+| `tests/derivation_io.c` | 27 | 5 | +22 |
+| `tests/synthesis.c` | 17 | 16 | +1 |
+| **Test subtotal** | **66** | **27** | **+39** |
+
+The source delta is positive: lazy proof access and representation-independent
+consumers cost code. This epoch is not evidence that the overall refactor has
+met its source-reduction target. Continue R2-R5 separately; do not relax the
+final gate or claim that a small timing difference pays for arbitrary growth.
+
 ## Change Log
 
 | Date | Stage | Revision and evidence | Status |
@@ -640,3 +754,4 @@ telescope relocation experiment; none of that experiment entered `fd89842`.
 | 2026-09-24 | R2/R3 trace | A clean length run traced the representative PI proofs to derivation checking and Match branch typing. Source validation and elimination admission repeat one exact branch-type request, but the existing proof interner reuses it. | Preserve both validation points; look for persistent reconstruction rather than adding a cache or dropping a kernel check. |
 | 2026-09-24 | #33 kernel boundary | The wrong-IH source fixture stops at motive synthesis, so an explicit wrong-index motive was tested directly in the Acc IADT kernel fixture. The ill-indexed IH cannot be applied to the constructor step; full optimized acceptance and focused sanitizer pass. | Kernel negative established for this case; surface elaboration and adequacy remain open. |
 | 2026-09-24 | #34 whole-provider trial | The two-constructor provider checks, but its derived lifting under `@partitionLower` reaches the graph generator's direct-binder-only index gate. The first attempted callee-origin change did not solve it and was removed. | Generalize helper graph instantiation with checked substitution before claiming a whole-provider A/B result; #34 stays open. |
+| 2026-09-24 | Q4 projection evidence | `ec6a47b`: canonical Context projections retain two Context premises and derive variable proofs on demand. Clean optimized acceptance and focused sanitizer gates passed; generic proof count fell by 2,057, with unchanged Core/occurrences/Solve steps. | Published Main/rewrite; timing differences are inconclusive and R2-R5 remain open. |
