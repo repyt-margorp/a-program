@@ -503,6 +503,30 @@ the kernel's branch check is justified. Subsequent R2/R3 work should target a
 structural reconstruction that actually publishes new persistent records, not
 repeat calls that return an already accepted proof.
 
+The remaining synchronous typed-query wrappers in `evidence.c` are likewise
+not separate result authorities: inductive-instance, classifier, input and
+Context-lift requests are interned by the existing typing stores. The
+`schema_result_context` path in `synthesis.c` reconstructs a saved constructor
+telescope through checked alpha transport; it has one production caller and
+must retain its proof when the saved annotation differs. An uncommitted
+renaming/relocation experiment currently has no production caller and is not
+part of this checkpoint. Do not promote it merely to replace a passing path.
+The next implementation slice must show a concrete duplicated persistent
+record or redundant owner before deleting a reconstruction path; otherwise
+R5 requires revisiting the representation/ownership target itself.
+
+For #33, the renamed wrong-IH source fixture exits `unsupported` at 1,143
+steps, before elimination admission: its one recursive branch offers no
+independent result from which `match_recursive_motive_step` can synthesize a
+motive. This status is not a kernel rejection proof. The Acc IADT test now
+constructs an explicit alternative motive at the *outer* subject index. Its
+induction scope and IH are well typed, but the constructor step requires the
+IH at the field index; typed Application rejects that mismatched IH. The
+ordinary field-index motive and branch still check. Optimized full
+`check-acceptance` and focused ASan/UBSan `iadt_test` pass. Keep #33 open:
+source-level rejection and the general totality/graph adequacy bridge remain
+separate obligations.
+
 Focused strict-debug Core and source IO passed on the working tree. An
 independent clean detached worktree at `fd89842` passed optimized
 `check-acceptance`, including generic Sorted and retained QuickSort; its
@@ -533,3 +557,4 @@ telescope relocation experiment; none of that experiment entered `fd89842`.
 | 2026-09-24 | #34 audit | Derived two-constructor LT lift as an ordinary recursive program; both constructor cases compute. | Standalone lemma only; retain primitive provider lift pending whole-provider comparison. |
 | 2026-09-24 | R2/R3 audit | Clean R0/current debug runs measured accepted typed-conclusion multiplicity on identical length input; clean current generic QuickSort was also measured. PI formation has distinct typed child recipes under the same four-field conclusion key. | Do not collapse by conclusion key; trace source construction ownership before a semantic refactor. R2-R5 remain open. |
 | 2026-09-24 | R2/R3 trace | A clean length run traced the representative PI proofs to derivation checking and Match branch typing. Source validation and elimination admission repeat one exact branch-type request, but the existing proof interner reuses it. | Preserve both validation points; look for persistent reconstruction rather than adding a cache or dropping a kernel check. |
+| 2026-09-24 | #33 kernel boundary | The wrong-IH source fixture stops at motive synthesis, so an explicit wrong-index motive was tested directly in the Acc IADT kernel fixture. The ill-indexed IH cannot be applied to the constructor step; full optimized acceptance and focused sanitizer pass. | Kernel negative established for this case; surface elaboration and adequacy remain open. |

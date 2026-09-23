@@ -640,6 +640,21 @@ static void accessibility_elimination(enum pg_totality field_totality)
 	const struct pg_evidence *scope = pg_prove_induction_scope(&typing, acc, constructor, parameters, mc, motive);
 	assert(scope);
 	const struct pg_evidence *branch_context = pg_evidence_premise(scope, 1);
+	/* The recursive IH must follow the constructor's field index, not the
+	 * unrelated index of the scrutinee in the surrounding Context. */
+	const struct pg_evidence *wrong_motive = pg_prove_return_type(&typing,
+		pg_prove_family_application(&typing, pg_prove_variable(&typing, mc, p),
+			pg_prove_variable(&typing, mc, subject)));
+	const struct pg_evidence *wrong_scope = pg_prove_induction_scope(&typing,
+		acc, constructor, parameters, mc, wrong_motive);
+	assert(wrong_scope);
+	const struct pg_evidence *wrong_context = pg_evidence_premise(wrong_scope, 1);
+	const struct pg_evidence *wrong_ih = pg_prove_variable(&typing, wrong_context,
+		pg_evidence_context(wrong_context)->binder);
+	const struct pg_evidence *wrong_at_x = pg_prove_application(&typing,
+		pg_prove_force(&typing, pg_prove_variable(&typing, wrong_context, step)),
+		pg_substitution_image(&typing, wrong_scope, x));
+	assert(wrong_at_x && wrong_ih && !pg_prove_application(&typing, wrong_at_x, wrong_ih));
 	const struct pg_evidence *restored_scope = pg_prove_induction_scope_at(&typing, acc, constructor,
 		parameters, mc, motive, pg_evidence_context(branch_context));
 	assert(restored_scope);
