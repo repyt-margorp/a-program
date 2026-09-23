@@ -134,6 +134,17 @@ int pg_context_extension_size(const struct pg_context *context,
 	return 0;
 }
 
+int pg_context_same_allocation_shape(const struct pg_context *left,
+	const struct pg_context *right)
+{
+	for (; left != right; left = left->parent, right = right->parent) {
+		if (!left || !right || left->binder != right->binder || left->judgement != right->judgement)
+			return 0;
+		if (!pg_context_same_allocation_shape(left->indices, right->indices)) return 0;
+	}
+	return 1;
+}
+
 uint64_t pg_induction_allocation_hash(const struct pg_induction_allocation *allocation)
 {
 	if (!allocation) return 0;

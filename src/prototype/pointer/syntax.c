@@ -51,7 +51,7 @@ static int mark_index_names(struct pg_graph *scratch, const struct pg_syntax *sy
 		struct index_name bound = {.name = name, .parent = names};
 		return mark_index_names(scratch, syntax->right, &bound);
 	}
-	if (syntax->kind == PG_SYNTAX_CLAUSE || syntax->kind == PG_SYNTAX_DEFINITIONS ||
+	if (syntax->kind == PG_SYNTAX_CLAUSE || syntax->kind == PG_SYNTAX_MOTIVE || syntax->kind == PG_SYNTAX_DEFINITIONS ||
 		syntax->kind == PG_SYNTAX_BLOCK) {
 		const struct index_name *scope = names;
 		if (syntax->kind == PG_SYNTAX_CLAUSE && syntax->left &&
@@ -485,10 +485,28 @@ static const struct pg_syntax *elimination(struct pg_parser *parser, const struc
 	struct pg_token opening = parser->reader.token;
 	struct item_buffer clauses = {0};
 	struct item_buffer binders = {0};
-	const struct pg_syntax *result = NULL;
+	const struct pg_syntax *result = NULL, *motive = NULL;
 	while (!parser->error && parser->reader.token.kind == '@') {
 		struct pg_token marker = parser->reader.token;
 		advance(parser);
+		if (parser->reader.token.kind == '(') {
+			if (motive || clauses.count) { error(parser, "motive must precede clauses"); goto done; }
+			advance(parser);
+			binders.count = 0;
+			while (parser->reader.token.kind == PG_TOKEN_IDENT) {
+				struct pg_syntax_item binder = {.name = parser->reader.token};
+				advance(parser);
+				if (append_item(parser, &binders, binder) != 0) goto done;
+			}
+			if (!binders.count || require(parser, PG_TOKEN_LAMBDA_ARROW, "expected '=>' after motive binders")) goto done;
+			const struct pg_syntax *body = expression_mode(parser, 0);
+			if (!body || require(parser, ')', "expected ')' after motive")) goto done;
+			struct pg_syntax *node = item_node(parser, PG_SYNTAX_MOTIVE, marker, &binders);
+			if (!node) goto done;
+			node->right = body;
+			motive = node;
+			continue;
+		}
 		int kind = parser->reader.token.kind;
 		if (kind != PG_TOKEN_IDENT && kind != '#') {
 			error(parser, "expected elimination label");
@@ -534,7 +552,7 @@ static const struct pg_syntax *elimination(struct pg_parser *parser, const struc
 		if (append_item(parser, &clauses, (struct pg_syntax_item){.expression = clause}) != 0) goto done;
 	}
 	struct pg_syntax *match = item_node(parser, PG_SYNTAX_ELIMINATION, opening, &clauses);
-	if (match) match->left = scrutinee;
+	if (match) { match->left = scrutinee; match->right = motive; }
 	result = match;
 done:
 	free(clauses.items);

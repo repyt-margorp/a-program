@@ -287,6 +287,7 @@ struct match_state {
 	const struct pg_evidence *motive;
 	const struct pg_evidence *motive_context, *generic_context;
 	struct pg_synthesis_job *motive_job;
+	struct pg_synthesis_job *explicit_type_job;
 	const struct pg_effect_row *motive_effects;
 	enum pg_totality motive_totality;
 	const struct pg_evidence *generalization, *specialization;
@@ -2130,14 +2131,14 @@ int pg_synthesis_constructor_input(const struct pg_synthesis *synthesis,
 	*input = (struct pg_constructor_input){.formation = (void *)job->inputs[0],
 		.parameters = (void *)job->inputs[2], .constructor = job->inputs[1]};
 	const struct pg_synthesis_job *scope = job->left;
-	if (scope->context_allocation) {
-		input->allocated = 1;
-		input->prefix = scope->context_allocation->prefix;
-		input->fields = scope->context_allocation->end;
-	} else if (scope->status == PG_SYNTHESIS_DONE) {
+	if (scope->status == PG_SYNTHESIS_DONE) {
 		input->allocated = 1;
 		input->prefix = pg_evidence_context_map(input->parameters->result)->destination;
 		input->fields = pg_evidence_context_map(scope->result)->destination;
+	} else if (scope->context_allocation) {
+		input->allocated = 1;
+		input->prefix = scope->context_allocation->prefix;
+		input->fields = scope->context_allocation->end;
 	}
 	return 0;
 }
@@ -3632,7 +3633,7 @@ static enum pg_synthesis_status resolve_source_reference(struct pg_synthesis *sy
 	*dependency = input.parameters;
 	if ((*dependency)->status != PG_SYNTHESIS_DONE) return (*dependency)->status;
 	const struct pg_context *prefix = pg_evidence_context(pg_evidence_premise(input.parameters->result, 1));
-	if (job->context_allocation->prefix != prefix) return PG_SYNTHESIS_REJECTED;
+	if (!pg_context_same_allocation_shape(job->context_allocation->prefix, prefix)) return PG_SYNTHESIS_REJECTED;
 	const struct pg_context *fields = job->context_allocation->end;
 	if (input.allocated) {
 		/* Declaration and use may retain the same binders through different
@@ -3642,11 +3643,12 @@ static enum pg_synthesis_status resolve_source_reference(struct pg_synthesis *sy
 			if (!existing || !fields || existing->binder != fields->binder) return PG_SYNTHESIS_REJECTED;
 			existing = existing->parent; fields = fields->parent;
 		}
-		return existing == input.prefix && fields == prefix && input.prefix == prefix
+		return existing == input.prefix && fields == job->context_allocation->prefix
+			&& pg_context_same_allocation_shape(input.prefix, prefix)
 			? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED;
 	}
 	return pg_synthesis_constructor_scope_at(synthesis, input.formation, input.constructor, input.parameters,
-		prefix, fields) ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED;
+		job->context_allocation->prefix, fields) ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED;
 }
 
 static void reference_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
@@ -5334,6 +5336,7 @@ const struct pg_source_scope *pg_synthesis_restore_handler_binding(struct pg_syn
 
 static void handler_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
+	if (job->syntax->right) { finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
 	struct pg_synthesis_job *carrier = (void *)job->inputs[1];
 	size_t count = job->syntax->item_count;
 	if (prepare_handler(synthesis, job, 0)) { finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
@@ -5453,6 +5456,67 @@ static const struct pg_evidence *match_motive_context(struct pg_synthesis *synth
 		state->generic_context = context;
 	}
 	return state->generic_context;
+}
+
+static void match_explicit_motive_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	struct match_state *state = job->match;
+	const struct pg_syntax *motive = job->syntax->right;
+	const struct pg_evidence *context = source_context(job->inner);
+	const struct pg_evidence *mc = match_motive_context(synthesis, job);
+	if (!mc) goto unsupported;
+	size_t count;
+	if (state->packet) goto rejected;
+	if (state->generalized_count ||
+		pg_context_extension_size(pg_evidence_context(mc), pg_evidence_context(context), &count)) goto unsupported;
+	if (count != motive->item_count) goto rejected;
+	if (!state->explicit_type_job) {
+		const struct pg_evidence **extensions = malloc(count * sizeof(*extensions));
+		if (!extensions) goto error;
+		const struct pg_evidence *extension = mc;
+		for (size_t i = count; i; --i, extension = pg_evidence_premise(extension, 0))
+			extensions[i - 1] = extension;
+		const struct pg_source_scope *scope = job->inner;
+		for (size_t i = 0; scope && i < count; ++i)
+			scope = pg_synthesis_bind(synthesis, scope, motive->items[i].name,
+				pg_evidence_context(extensions[i])->binder, extensions[i]);
+		free(extensions);
+		if (!scope) goto unsupported;
+		struct pg_synthesis_job *term = pg_synthesis_request(synthesis, scope, motive->right);
+		if (!term) goto error;
+		state->explicit_type_job = request_job(synthesis, DOMAIN_JOB, scope, term);
+		if (!state->explicit_type_job) goto error;
+		state->explicit_type_job->scope = scope;
+		state->explicit_type_job->left = term;
+	}
+	if (await_dependency(synthesis, job, state->explicit_type_job)) return;
+	const struct pg_evidence *type = state->explicit_type_job->result;
+	if (!type || pg_evidence_judgement(type) != PG_JUDGEMENT_VALUE_TYPE ||
+		pg_evidence_context(type) != pg_evidence_context(mc)) goto rejected;
+	const struct pg_effect_row *effects = state->motive_effects;
+	if (!effects) effects = pg_effect_row(synthesis->typing->graph, 0, NULL);
+	const struct pg_evidence *candidate = pg_prove_computation_type(synthesis->typing,
+		state->motive_totality, effects, type);
+	if (!candidate) goto unsupported;
+	if (state->path_context) {
+		state->path_result = pg_prove_projection(synthesis->typing, state->path_context, candidate);
+		candidate = state->path_result;
+		for (size_t i = state->path_count; candidate && i; --i)
+			candidate = pg_prove_pi(synthesis->typing, state->path_extensions[i - 1], candidate);
+	}
+	if (!candidate) goto unsupported;
+	state->motive = candidate;
+	state->motive_context = mc;
+	enqueue(synthesis, job);
+	return;
+unsupported:
+	finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED);
+	return;
+rejected:
+	finish(synthesis, job, PG_SYNTHESIS_REJECTED);
+	return;
+error:
+	finish(synthesis, job, PG_SYNTHESIS_ERROR);
 }
 
 static const struct pg_evidence *constructor_pattern(struct pg_synthesis *synthesis,
@@ -6574,9 +6638,11 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 			pg_evidence_context(pg_evidence_premise(state->instance.formation, 0)), &field_count)) goto error;
 		if (job->match_allocation) {
 			const struct pg_context *saved;
-			if (source_match_branch_context(job, ordinal, field_count, &saved) || !pg_synthesis_constructor_scope_at(synthesis,
+			if (source_match_branch_context(job, ordinal, field_count, &saved) ||
+				!pg_synthesis_constructor_scope_at(synthesis,
 				pg_synthesis_evidence(synthesis, state->instance.formation), constructor,
-				pg_synthesis_evidence(synthesis, state->instance.parameters), pg_evidence_context(context), saved)) goto rejected;
+				pg_synthesis_evidence(synthesis, state->instance.parameters),
+				job->match_allocation->prefix, saved)) goto rejected;
 		}
 		struct pg_synthesis_job *scope_job = pg_synthesis_constructor_scope(synthesis,
 			pg_synthesis_evidence(synthesis, state->instance.formation), constructor,
@@ -6655,6 +6721,7 @@ static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *
 	}
 	if (state->has_demands && state->effect_checked < state->count) { match_effects_step(synthesis, job); return; }
 	if (state->demanded < state->count) { match_demand_step(synthesis, job); return; }
+	if (job->syntax->right && !state->motive) { match_explicit_motive_step(synthesis, job); return; }
 	/* A base case alone does not establish a constant recursive motive.
 	 * First use independent result contracts from recursive branches; the
 	 * ordinary branch checks must still validate every resulting equation. */
@@ -7038,7 +7105,8 @@ static void constructor_scope_step(struct pg_synthesis *synthesis, struct pg_syn
 		if (!fields || pg_context_extension_size(pg_evidence_context(fields), pg_evidence_context(self), &count)) goto rejected;
 		if (job->context_allocation) {
 			const struct context_allocation *allocation = job->context_allocation;
-			if (allocation->count != count || allocation->prefix != pg_evidence_context(pg_evidence_premise(parameters, 1))) goto rejected;
+			if (allocation->count != count || !pg_context_same_allocation_shape(allocation->prefix,
+				pg_evidence_context(pg_evidence_premise(parameters, 1)))) goto rejected;
 		}
 		if (count > (SIZE_MAX - sizeof(struct substitution_state)) / sizeof(struct substitution_entry)) goto error;
 		struct substitution_state *state = pg_alloc(synthesis->typing->graph, sizeof(*state) + count * sizeof(*state->entries));

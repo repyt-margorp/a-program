@@ -109,6 +109,9 @@ const struct pg_context *pg_context_lookup(const struct pg_context *context,
  * or a missing output pointer. This inspects structure, not proof validity. */
 int pg_context_extension_size(const struct pg_context *context,
 	const struct pg_context *prefix, size_t *count);
+/* Compare binder allocation without trusting saved declared types. */
+int pg_context_same_allocation_shape(const struct pg_context *left,
+	const struct pg_context *right);
 /* annotation is a declaration supplied by syntax, never a mutable solver
  * answer or an expected-type check. NULL means no explicit annotation. */
 const struct pg_occurrence *pg_occurrence(struct pg_typing *typing,

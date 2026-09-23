@@ -2380,6 +2380,54 @@ static void member_use_origins(void)
 	puts("source member uses: raw allocation resaves, field type synthesis and invalid/late/conflicting scopes passed");
 }
 
+static void member_prefix_recheck(void)
+{
+	const char *text = "{{ Box:=&(\\A:@=>@{mk:A->*;}); r:=&(\\A:@=>(Box A).mk); }}.r";
+	struct pg_program *p = pg_program_create(text, strlen(text), PG_DEFINITION_EXPLICIT_THUNK);
+	assert(p && p->root);
+	pg_synthesis_advance(&p->synthesis, 100000);
+	assert(pg_synthesis_status(p->root) == PG_SYNTHESIS_DONE);
+	struct member_origin found = {.synthesis = &p->synthesis};
+	assert(!pg_synthesis_visit_source_allocations(&p->synthesis, find_member_origin, &found) && found.job);
+	const struct pg_context *prefix, *fields;
+	assert(!pg_synthesis_member_allocation(&p->synthesis, found.job, &prefix, &fields));
+	assert(prefix && fields && fields->parent == prefix);
+	const struct pg_term *other_type = pg_universe(&p->graph, 42);
+	const struct pg_context *other_prefix = pg_context_intern(&p->typing, &(struct pg_context){
+		.parent = prefix->parent, .binder = prefix->binder, .declared_type = other_type,
+		.judgement = prefix->judgement, .indices = prefix->indices});
+	const struct pg_context *other_field = pg_context_intern(&p->typing, &(struct pg_context){
+		.parent = other_prefix, .binder = fields->binder, .declared_type = fields->declared_type,
+		.judgement = fields->judgement, .indices = fields->indices});
+	const struct pg_context *wrong_prefix = pg_context_intern(&p->typing, &(struct pg_context){
+		.parent = prefix->parent, .binder = pg_binder(&p->graph), .declared_type = prefix->declared_type,
+		.judgement = prefix->judgement, .indices = prefix->indices});
+	const struct pg_context *wrong_field = pg_context_intern(&p->typing, &(struct pg_context){
+		.parent = wrong_prefix, .binder = fields->binder, .declared_type = fields->declared_type,
+		.judgement = fields->judgement, .indices = fields->indices});
+	assert(other_type != prefix->declared_type && other_prefix && other_field && wrong_prefix && wrong_field);
+	struct pg_syntax copies[2] = {*found.syntax, *found.syntax};
+	struct pg_synthesis_job *same_binders = pg_synthesis_member_at(&p->synthesis,
+		found.scope, copies, other_prefix, other_field);
+	struct pg_synthesis_job *wrong_binder = pg_synthesis_member_at(&p->synthesis,
+		found.scope, copies + 1, wrong_prefix, wrong_field);
+	assert(same_binders && wrong_binder);
+	struct pg_synthesis_job *selected[] = {same_binders, wrong_binder};
+	FILE *file = tmpfile();
+	assert(file && !pg_sources_write(file, &p->synthesis, 2, selected));
+	pg_program_destroy(p);
+	rewind(file);
+	size_t count;
+	struct pg_synthesis_job *const *roots;
+	p = pg_sources_read(file, 100000, &count, &roots);
+	assert(p && count == 2 && !p->synthesis.steps && !fclose(file));
+	pg_synthesis_advance(&p->synthesis, 100000);
+	assert(pg_synthesis_status(roots[0]) == PG_SYNTHESIS_DONE);
+	assert(pg_synthesis_status(roots[1]) == PG_SYNTHESIS_REJECTED);
+	pg_program_destroy(p);
+	puts("source member prefixes: rederive saved types, preserve binder identity");
+}
+
 static void check_retained_program(struct pg_program *p, struct pg_synthesis_job *root, int reuse)
 {
 	const struct pg_reduction_archive *reductions = p->retained_reductions;
@@ -3531,7 +3579,7 @@ int main(int argc, char **argv)
 	if (argc == 2 && !strcmp(argv[1], "context-scopes")) { context_scopes(); return 0; }
 	if (argc == 2 && !strcmp(argv[1], "indexed-families")) { indexed_family_sources(); return 0; }
 	if (argc == 2 && !strcmp(argv[1], "constructor-inputs")) {
-		constructor_inputs(); member_use_origins(); inferred_constructor_roots(); return 0;
+		constructor_inputs(); member_use_origins(); member_prefix_recheck(); inferred_constructor_roots(); return 0;
 	}
 	if (argc == 2 && !strcmp(argv[1], "match-origins")) { match_origins(); return 0; }
 	if (argc == 2 && !strcmp(argv[1], "fold-origins")) { fold_origins(); return 0; }

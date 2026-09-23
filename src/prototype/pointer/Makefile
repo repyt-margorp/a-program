@@ -7,7 +7,7 @@ SOURCES := $(ROOT)graph.c $(ROOT)dag.c $(ROOT)dimension.c $(ROOT)eval.c $(ROOT)t
 SOURCES += $(ROOT)function_graph.c $(ROOT)host.c $(ROOT)execution.c
 
 .PHONY: check check-examples check-example-results check-open-families check-image-origins check-operation-origins check-handler-origins check-handler-nesting check-prepared-modules check-acceptance check-eval-io check-identity-io
-.PHONY: check-source-compatibility check-host check-execution check-sort-insertion
+.PHONY: check-source-compatibility check-host check-execution check-sort-insertion check-generic-sorted check-generic-retained
 check-examples: $(BUILD)/pointer-check
 	bash $(ROOT)tests/examples_check.sh $(BUILD)/pointer-check $(wildcard $(ROOT)../../../examples/0[1-9]_*.p)
 
@@ -56,7 +56,15 @@ check-handler-nesting: $(BUILD)/source_io_test
 	$(BUILD)/source_io_test handler-nesting
 	$(BUILD)/source_io_test handler-boundaries
 
-check-acceptance: check-host check-execution check check-examples check-example-results check-open-families check-image-origins check-operation-origins check-handler-origins check-handler-nesting check-prepared-modules check-source-compatibility check-sort-insertion
+check-acceptance: check-host check-execution check check-examples check-example-results check-open-families check-image-origins check-operation-origins check-handler-origins check-handler-nesting check-prepared-modules check-source-compatibility check-sort-insertion check-generic-sorted check-generic-retained
+
+check-generic-sorted: $(BUILD)/pointer-check $(BUILD)/syntax_io_test
+	$(BUILD)/syntax_io_test $(ROOT)tests/acceptance/decision-explicit-result.p $(ROOT)tests/acceptance/generic-quick-sorted.p
+	bash $(ROOT)tests/generic_sorted.sh $(BUILD)/pointer-check
+
+check-generic-retained: $(BUILD)/pointer-check
+	bash $(ROOT)tests/generic_sorted.sh $(BUILD)/pointer-check 1
+	bash $(ROOT)tests/retained_quicksort.sh $(BUILD)/pointer-check
 
 check-sort-insertion: $(BUILD)/pointer-check $(BUILD)/program_test
 	bash $(ROOT)tests/sort_insertion.sh $(BUILD)/pointer-check $(BUILD)/program_test

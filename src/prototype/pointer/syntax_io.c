@@ -77,7 +77,11 @@ static int shape(const struct pg_syntax *s)
 		items = 1;
 		break;
 	case PG_SYNTAX_ELIMINATION:
-		if (!left || right || !s->item_count) return 0;
+		if (!left || (right && s->right->kind != PG_SYNTAX_MOTIVE) || !s->item_count) return 0;
+		items = 1;
+		break;
+	case PG_SYNTAX_MOTIVE:
+		if (left || !right || !s->item_count) return 0;
 		items = 1;
 		break;
 	case PG_SYNTAX_CLAUSE:
@@ -91,6 +95,10 @@ static int shape(const struct pg_syntax *s)
 	for (size_t i = 0; i < s->item_count; ++i) {
 		const struct pg_syntax_item *item = &s->items[i];
 		if (item->annotation && s->kind != PG_SYNTAX_BLOCK) return 0;
+		if (s->kind == PG_SYNTAX_MOTIVE) {
+			if (!named(&item->name) || item->operation || item->expression) return 0;
+			continue;
+		}
 		if (s->kind == PG_SYNTAX_CLAUSE) {
 			if (!named(&item->name) || item->operation != selector_mode) return 0;
 			if (!item->operation) { if (item->expression) return 0; }
@@ -161,7 +169,7 @@ int pg_syntax_write(FILE *file, size_t count, const struct pg_syntax *const *roo
 	if (fwrite(magic, 1, 8, file) != 8 || pg_wire_write_u64(file, dag.count) || pg_wire_write_u64(file, count)) goto done;
 	for (const struct pg_dag_node *node = dag.first; node; node = node->next) {
 		const struct pg_syntax *s = node->key;
-		if (s->kind > PG_SYNTAX_IMPORT || s->binder_marker < 0 || s->binder_marker > 127) goto done;
+		if (s->kind > PG_SYNTAX_MOTIVE || s->binder_marker < 0 || s->binder_marker > 127) goto done;
 		if (pg_wire_write_u64(file, s->kind) || write_token(file, &s->token)
 			|| pg_wire_write_u64(file, s->binder_marker) || write_ref(file, &dag, s->left)
 			|| write_ref(file, &dag, s->right) || pg_wire_write_u64(file, s->item_count)) goto done;
@@ -218,7 +226,7 @@ int pg_syntax_read(FILE *file, struct pg_graph *graph, size_t limit,
 	for (size_t i = 0; i < n; ++i) {
 		uint64_t kind, marker, items;
 		struct pg_syntax *s = pg_alloc(graph, sizeof(*s));
-		if (!s || pg_wire_read_u64(file, &kind) || kind > PG_SYNTAX_IMPORT) return -1;
+		if (!s || pg_wire_read_u64(file, &kind) || kind > PG_SYNTAX_MOTIVE) return -1;
 		s->kind = (enum pg_syntax_kind)kind;
 		if (read_token(file, graph, &remaining, &s->token) || pg_wire_read_u64(file, &marker) || marker > 127) return -1;
 		s->binder_marker = (int)marker;

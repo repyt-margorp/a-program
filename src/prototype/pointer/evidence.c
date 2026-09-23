@@ -1839,8 +1839,12 @@ static const struct pg_evidence *lift_scope(struct pg_typing *typing,
 	size_t count;
 	if (pg_context_extension_size(pg_evidence_context(fields), pg_evidence_context(map->premises[0]), &count)) return NULL;
 	if (retained) {
-		size_t supplied;
-		if (pg_context_extension_size(allocation, pg_evidence_context(map->premises[1]), &supplied) || supplied != count) return NULL;
+		const struct pg_context *saved_prefix = allocation;
+		for (size_t i = 0; i < count; ++i) {
+			if (!saved_prefix) return NULL;
+			saved_prefix = saved_prefix->parent;
+		}
+		if (!pg_context_same_allocation_shape(saved_prefix, pg_evidence_context(map->premises[1]))) return NULL;
 	}
 	if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
 	struct pg_graph temporary = {0};
@@ -2224,10 +2228,14 @@ static const struct pg_evidence *prove_induction_scope(struct pg_typing *typing,
 	}
 	const struct pg_context **ih_allocations = NULL;
 	if (retained) {
-		size_t supplied;
-		if (recursive_count > SIZE_MAX - count ||
-			pg_context_extension_size(allocation, pg_evidence_context(parameters->premises[1]), &supplied) ||
-			supplied != count + recursive_count) goto done;
+		if (recursive_count > SIZE_MAX - count) goto done;
+		const struct pg_context *saved_prefix = allocation;
+		for (size_t i = 0; i < count + recursive_count; ++i) {
+			if (!saved_prefix) goto done;
+			saved_prefix = saved_prefix->parent;
+		}
+		if (!pg_context_same_allocation_shape(saved_prefix,
+			pg_evidence_context(parameters->premises[1]))) goto done;
 		ih_allocations = pg_alloc(&temporary, recursive_count * sizeof(*ih_allocations));
 		if (recursive_count && !ih_allocations) goto done;
 		for (size_t i = recursive_count; i; --i, allocation = allocation->parent)
