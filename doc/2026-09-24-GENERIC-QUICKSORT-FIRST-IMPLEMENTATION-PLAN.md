@@ -446,6 +446,18 @@ three Acc fixtures, generic Sorted, old QuickSort and retained-WHNF checks.
 This is a test/audit checkpoint, not closure of #33 or Q4; an isolated kernel
 forgery check and a negative IADT/erased-partial adequacy analysis remain.
 
+#### #34 derived-LT checkpoint
+
+`lt-derived-lift.p` defines `LT` with only `step` and `weakenRight`, then
+derives `ltLift` by ordinary indexed induction. Both the `step` case and a
+recursive `weakenRight` case normalize to the corresponding expected proof
+trees. This confirms that the third constructor is unnecessary for the
+standalone order proposition, not that it can be removed from the frozen
+QuickSort provider: partition and accessibility currently inspect its
+constructor history. The parallel-provider rewrite, source/image checks and
+A/B resource comparison requested by #34 remain open.
+Optimized `check-acceptance` passed after adding both fixture cases.
+
 Focused strict-debug Core and source IO passed on the working tree. An
 independent clean detached worktree at `fd89842` passed optimized
 `check-acceptance`, including generic Sorted and retained QuickSort; its
@@ -473,3 +485,4 @@ telescope relocation experiment; none of that experiment entered `fd89842`.
 | 2026-09-24 | A3 | Removed two binder-only allocation checks in favor of the shared saved-allocation shape check; added same-binder/wrong-sort negatives. Optimized acceptance and focused ASan/UBSan gates passed. | First authority cleanup, not A3-A5 completion. |
 | 2026-09-24 | R5 audit | Clean R0/current source and zero-image comparisons, interned graph counts and implementation LOC measured above. QuickSort improves sharply; small inputs regress and cumulative implementation grows. | R2-R5 remain open; isolate construction ownership before further deletion. |
 | 2026-09-24 | #33 audit | Renamed Acc positive and wrong-field rejection made permanent; wrong-IH index remains unsupported, not rejected. Full optimized acceptance passed. | Retain termination classifier check and keep #33 open for kernel/adequacy audit. |
+| 2026-09-24 | #34 audit | Derived two-constructor LT lift as an ordinary recursive program; both constructor cases compute. | Standalone lemma only; retain primitive provider lift pending whole-provider comparison. |
