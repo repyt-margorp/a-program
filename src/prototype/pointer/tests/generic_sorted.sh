@@ -46,6 +46,7 @@ for entry in decision-explicit-result:0 decision-explicit-recomputed:0 \
 	check_result "${entry#*:}" "$root/acceptance/${entry%:*}.p"
 done
 derived="$root/acceptance/lt-derived-lift.p"
+check_result 0 "$root/acceptance/lt-derived-lift-graph.p" --imports "$derived"
 check_result 0 "$root/acceptance/lt-derived-helper-graph-direct.p" --imports "$derived"
 # Flip this to done when a specialized helper reuses its checked generic graph.
 check_result 4 "$root/acceptance/lt-derived-helper-graph-shifted.p" --imports "$derived"
