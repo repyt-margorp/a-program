@@ -408,12 +408,12 @@ static void source_alias_targets(void)
 		const struct pg_evidence *right = pg_prove_substitution(t, source, destination, 2, images);
 		const struct pg_context_map *lm = pg_evidence_context_map(left), *rm = pg_evidence_context_map(right);
 		assert(lm && rm && lm != rm && lm->source == rm->source && lm->destination == rm->destination);
-		assert(*pg_context_map_lookup(lm, x) != *pg_context_map_lookup(rm, x));
+		assert(pg_context_map_lookup(lm, x, NULL) != pg_context_map_lookup(rm, x, NULL));
 		images[0] = pg_prove_type_value(t, pg_prove_value_type(t, images[0]));
 		images[1] = pg_substitution_image(t, left, x);
 		const struct pg_evidence *alternate = pg_prove_substitution(t, source, destination, 2, images);
 		assert(alternate && alternate != left && pg_evidence_context_map(alternate) == lm);
-		assert(*pg_context_map_lookup(lm, x) == pg_evidence_subject(pg_substitution_image(t, alternate, x)));
+		assert(pg_context_map_lookup(lm, x, NULL) == pg_evidence_subject(pg_substitution_image(t, alternate, x)));
 		const struct pg_source_scope *scope = pg_synthesis_root(&p->synthesis);
 		const struct pg_object *binders[] = {a, y, z};
 		const struct pg_evidence *contexts[] = {ac, yc, destination};
@@ -490,7 +490,7 @@ static void source_alias_targets(void)
 			assert(pg_synthesis_name_job(&p->synthesis, scope, syntax.token, producers[i]) == scopes[i]);
 		for (size_t i = 0; i < 3; ++i) {
 			const struct pg_evidence *result = pg_synthesis_result(uses[i]);
-			assert(result && pg_evidence_subject(result) == *pg_context_map_lookup(i == 2 ? rm : lm, x));
+			assert(result && pg_evidence_subject(result) == pg_context_map_lookup(i == 2 ? rm : lm, x, NULL));
 		}
 		assert(pg_synthesis_status(uses[3]) == PG_SYNTHESIS_REJECTED && !pg_synthesis_result(uses[3]));
 		const struct pg_occurrence *function_subjects[3];
@@ -506,8 +506,8 @@ static void source_alias_targets(void)
 		assert(function_subjects[0]->core != function_subjects[2]->core);
 		assert(pg_synthesis_status(functions[3]) == PG_SYNTHESIS_REJECTED);
 		assert(!pg_synthesis_result(functions[3]));
-		assert(pg_evidence_subject(pg_synthesis_result(shadowed)) == *pg_context_map_lookup(rm, x));
-		assert(pg_evidence_subject(pg_synthesis_result(uses[0])) == *pg_context_map_lookup(lm, x));
+		assert(pg_evidence_subject(pg_synthesis_result(shadowed)) == pg_context_map_lookup(rm, x, NULL));
+		assert(pg_evidence_subject(pg_synthesis_result(uses[0])) == pg_context_map_lookup(lm, x, NULL));
 		const struct pg_evidence *type = pg_prove_variable(t, destination, a);
 		assert(type != images[0] && pg_evidence_subject(type) == pg_evidence_subject(images[0]));
 		const struct pg_evidence *first = scenario & 2 ? images[0] : type;
@@ -591,7 +591,7 @@ static int trace_index_alias(void *owner, struct pg_synthesis_job *job)
 	assert(map && original && original->core->kind == PG_REFERENCE);
 	assert(map->source == original->context);
 	assert(map->destination == pg_evidence_context(image));
-	assert(*pg_context_map_lookup(map, original->core->as.reference) == pg_evidence_subject(image));
+	assert(pg_context_map_lookup(map, original->core->as.reference, NULL) == pg_evidence_subject(image));
 	assert(pg_evidence_subject(image)->core != original->core);
 	size_t jobs = synthesis->jobs.count;
 	trace->application_job = pg_synthesis_request(synthesis, scope, trace->application);

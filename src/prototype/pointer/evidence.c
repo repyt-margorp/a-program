@@ -573,9 +573,8 @@ static const struct pg_evidence *variable_frame(struct pg_typing *typing,
 	*frames = (*frames)->next;
 	const struct pg_object *binder = pg_evidence_subject(variable)->core->as.reference;
 	if (frame->map) {
-		const struct pg_occurrence *const *slot = pg_context_map_lookup(frame->map, binder);
-		if (!slot) return NULL;
-		const struct pg_occurrence *image = *slot;
+		const struct pg_occurrence *image = pg_context_map_lookup(frame->map, binder, NULL);
+		if (!image) return NULL;
 		const struct pg_term *core = image->core;
 		if (core->kind != PG_REFERENCE || core->as.reference->kind != PG_BINDER)
 			return pg_prove_structural_subject(typing, image);
@@ -4284,8 +4283,8 @@ const struct pg_evidence *pg_substitution_image(struct pg_typing *typing,
 	if (!pg_evidence_owned_by(substitution, typing)) return NULL;
 	if (substitution->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
 	const struct pg_context_map *map = substitution->conclusion.map;
-	const struct pg_occurrence *const *slot = pg_context_map_lookup(map, binder);
-	return slot ? substitution->premises[2 + (slot - map->images)] : NULL;
+	size_t index;
+	return pg_context_map_lookup(map, binder, &index) ? substitution->premises[2 + index] : NULL;
 }
 
 const struct pg_evidence *pg_prove_substitution(struct pg_typing *typing,

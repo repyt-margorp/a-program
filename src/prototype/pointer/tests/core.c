@@ -1604,11 +1604,12 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(map->destination == pg_evidence_context(destination) && map->count == 2);
 	assert(map->images[0] == pg_evidence_subject(destination_b));
 	assert(map->images[1] == pg_evidence_subject(destination_y));
-	assert(pg_context_map_lookup(map, a) == &map->images[0]);
-	assert(pg_context_map_lookup(map, x) == &map->images[1]);
-	assert(!pg_context_map_lookup(map, b));
-	assert(!pg_context_map_lookup(map, NULL));
-	assert(!pg_context_map_lookup(NULL, a));
+	size_t position = SIZE_MAX;
+	assert(pg_context_map_lookup(map, a, &position) == map->images[0] && position == 0);
+	assert(pg_context_map_lookup(map, x, &position) == map->images[1] && position == 1);
+	assert(!pg_context_map_lookup(map, b, &position) && position == 1);
+	assert(!pg_context_map_lookup(map, NULL, NULL));
+	assert(!pg_context_map_lookup(NULL, a, NULL));
 	const struct pg_binding_value *bindings = pg_context_map_bindings(map);
 	assert(bindings[0].binder == a && bindings[0].value == pg_evidence_subject(destination_b)->core);
 	assert(bindings[1].binder == x && bindings[1].value == pg_evidence_subject(destination_y)->core);
@@ -1623,8 +1624,8 @@ static void typed_substitution_test(struct pg_graph *graph)
 		const struct pg_evidence *supplied = pg_prove_substitution(&typing, parallel, destination, 2, equal_images);
 		const struct pg_context_map *same = pg_evidence_context_map(supplied);
 		assert(same && same->images[0] == same->images[1]);
-		assert(pg_context_map_lookup(same, a) == &same->images[0]);
-		assert(pg_context_map_lookup(same, x) == &same->images[1]);
+		assert(pg_context_map_lookup(same, a, &position) == same->images[0] && position == 0);
+		assert(pg_context_map_lookup(same, x, &position) == same->images[1] && position == 1);
 		assert(pg_substitution_image(&typing, supplied, a) == equal_images[0]);
 		assert(pg_substitution_image(&typing, supplied, x) == equal_images[1]);
 		reconstruct_derivation(&typing, supplied);

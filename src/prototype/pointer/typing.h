@@ -168,10 +168,10 @@ const struct pg_context_map *pg_context_lift_indices(const struct pg_context_lif
 uint64_t pg_context_lift_steps(const struct pg_context_lift *work);
 /* Immutable erased projection of the typed images, computed at construction. */
 const struct pg_binding_value *pg_context_map_bindings(const struct pg_context_map *map);
-/* Borrowed slot in map->images, or NULL. Equal images can occupy distinct
- * binder positions with different supplied derivations. No new index is built. */
-const struct pg_occurrence *const *pg_context_map_lookup(const struct pg_context_map *map,
-	const struct pg_object *binder);
+/* Return the oldest source image for binder. Optional index identifies its
+ * source-telescope position even when multiple binders have the same image. */
+const struct pg_occurrence *pg_context_map_lookup(const struct pg_context_map *map,
+	const struct pg_object *binder, size_t *index);
 const struct pg_occurrence *pg_occurrence_mapped(struct pg_typing *typing,
 	enum pg_evidence_judgement judgement, const struct pg_term *core,
 	const struct pg_term *classifier, const struct pg_term *annotation,
