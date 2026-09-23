@@ -1,9 +1,10 @@
 # Generic QuickSort First: Implementation and Refactor Resume
 
 Date: 2026-09-24
-Status: Q0-Q3 implementation, optimized acceptance and sanitizer gates complete; Q4 publication pending clean-tree audit
-Current local revision: `0446d4eef364c78b41e07b03e53179ee4f999b18`
+Status: Q0-Q3 complete and published; Q4 authority refactor remains open
+Planning baseline local revision: `0446d4eef364c78b41e07b03e53179ee4f999b18`
 Remote Main at review: `a72cda371109fdbf84d747456ed0aeb09af2391e`
+Published Q3 Main/rewrite revision: `c2ed4a75064792975f2f6637b207c1801b848e8c`
 
 This is the active execution order. The [September 18 priority plan](2026-09-18-IADT-SURFACE-AND-ISSUE-29-30-PRIORITY-PLAN.md)
 records completed Surface and #29/#30 milestones and the detailed refactor
@@ -190,16 +191,62 @@ Verification on the Q3 worktree (zero unexpected failures):
 - `ASAN_OPTIONS=detect_leaks=1 bash src/prototype/pointer/tests/generic_sorted.sh /tmp/a-program-q3san/pointer-check 1`: passed, including partial retained resume and invalid retained rejection, with `-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer`.
 - `ASAN_OPTIONS=detect_leaks=1 bash src/prototype/pointer/tests/retained_quicksort.sh /tmp/a-program-q3san/pointer-check`: passed.
 - `ASAN_OPTIONS=detect_leaks=1 /tmp/a-program-q3san/source_io_test constructor-inputs`: passed, including the binder/type-authority negative test.
-- `git diff --cached --check`: passed. Clean-tree acceptance remains the publication gate.
+- `make -C /tmp/a-program-q3-clean-tree/src/prototype/pointer BUILD=/tmp/a-program-q3-committed-build check-acceptance`: passed from a detached, clean worktree at `c2ed4a7`.
+- Clean-tree ASan/UBSan with leak detection: `generic_sorted.sh` (retained mode), `retained_quicksort.sh`, and `source_io_test constructor-inputs` all passed.
+- `git diff --cached --check`: passed before commit. Remote Main and rewrite heads were verified at `c2ed4a7` after an atomic fast-forward push.
+
+#### Q3 change size
+
+The following is the per-file delta of Q3 code commit `c2ed4a7` against its
+parent, excluding later documentation status updates. Paths without `doc/`
+are relative to `src/prototype/pointer/`.
+
+| File | Added | Deleted | Net |
+| --- | ---: | ---: | ---: |
+| `doc/2026-09-24-GENERIC-QUICKSORT-FIRST-IMPLEMENTATION-PLAN.md` | 224 | 0 | 224 |
+| `Makefile` | 10 | 2 | 8 |
+| `evidence.c` | 14 | 6 | 8 |
+| `syntax.c` | 21 | 3 | 18 |
+| `syntax.h` | 2 | 1 | 1 |
+| `syntax_io.c` | 11 | 3 | 8 |
+| `synthesis.c` | 79 | 11 | 68 |
+| `tests/acceptance/decision-explicit-effectful.p` | 11 | 0 | 11 |
+| `tests/acceptance/decision-explicit-recomputed.p` | 13 | 0 | 13 |
+| `tests/acceptance/decision-explicit-result.p` | 13 | 0 | 13 |
+| `tests/acceptance/decision-explicit-wrong-arity.p` | 13 | 0 | 13 |
+| `tests/acceptance/decision-explicit-wrong-comparator.p` | 13 | 0 | 13 |
+| `tests/acceptance/decision-explicit-wrong-index.p` | 13 | 0 | 13 |
+| `tests/acceptance/decision-explicit-wrong-scope.p` | 13 | 0 | 13 |
+| `tests/acceptance/generic-quick-sorted.p` | 247 | 0 | 247 |
+| `tests/fixtures/generic_sorted/box-fixed-cast.p` | 4 | 0 | 4 |
+| `tests/fixtures/generic_sorted/box-fixed.p` | 5 | 0 | 5 |
+| `tests/fixtures/generic_sorted/comparator-bridge-computed.p` | 100 | 0 | 100 |
+| `tests/fixtures/generic_sorted/comparator-bridge-rejected.p` | 100 | 0 | 100 |
+| `tests/fixtures/generic_sorted/decision-computed.p` | 12 | 0 | 12 |
+| `tests/fixtures/generic_sorted/decision-graph-general.p` | 12 | 0 | 12 |
+| `tests/fixtures/generic_sorted/decision-no-check.p` | 10 | 0 | 10 |
+| `tests/fixtures/generic_sorted/generic-conditional.p` | 224 | 0 | 224 |
+| `tests/fixtures/generic_sorted/generic-quick-original.p` | 245 | 0 | 245 |
+| `tests/fixtures/generic_sorted/generic-quick-projection-outside.p` | 245 | 0 | 245 |
+| `tests/generic_sorted.sh` | 101 | 0 | 101 |
+| `tests/retained_quicksort.sh` | 20 | 0 | 20 |
+| `tests/source_io.c` | 49 | 1 | 48 |
+| `typing.c` | 11 | 0 | 11 |
+| `typing.h` | 3 | 0 | 3 |
+
+Totals: implementation +151/-26 (net +125), tests +1463/-1 (net +1462),
+documentation +224/-0 (net +224). The large test delta includes the exact
+audit fixtures and the complete generic proof, not only harness code.
 
 ### Q4. Publish and resume the authority refactor
 
-- [ ] Once Q0-Q3 pass, make a coherent reviewed commit, fast-forward Main and
+- [x] Once Q0-Q3 pass, make a coherent reviewed commit, fast-forward Main and
   the active rewrite branch, and verify both remote tips. The user authorized
   Main publication at completed milestones; no push follows a passing minimal
   fixture alone. Record per-file added/deleted/net implementation, test and
   documentation lines. Explain #31's result on the Issue; close only when its
-  full acceptance criteria hold.
+  full acceptance criteria hold. Published `c2ed4a7` to both branches; #31
+  was documented and closed after the clean-tree and sanitizer gates passed.
 - [ ] Resume A3-A5 and R2-R5 in the parent authority plan. First re-audit the
   current source and remove duplicate synthesis/temporary work where one
   checked construction can serve both consumers. Keep Core computation and
@@ -222,3 +269,4 @@ Verification on the Q3 worktree (zero unexpected failures):
 | 2026-09-24 | Q3 | Optimized full acceptance passed. Retained-image rejection traced to constructor prefix identity; checked alpha adaptation proved insufficient and was removed. | Open; no Main publication. |
 | 2026-09-24 | Q3 | Temporary call-site tracing identified the saved binder as image readback and the regenerated binder as evaluator readback under a nonempty substitution environment. Tracing removed; focused ordinary gate re-passed and retained gate remains red. | Open; checked materialization/allocation bridge needed. |
 | 2026-09-24 | Q3 | Saved binder allocation separated from checked declared types; retained generic and old WHNF images, optimized acceptance and generic sanitizer gate pass. | Implementation complete; publication audit pending. |
+| 2026-09-24 | Q4 | Clean-tree acceptance and ASan/UBSan passed at `c2ed4a7`; atomic Main/rewrite fast-forward verified; #31 closed with acceptance evidence. | Generic QuickSort milestone published; authority refactor still open. |
