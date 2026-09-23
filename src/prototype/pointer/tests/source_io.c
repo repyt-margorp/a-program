@@ -1345,7 +1345,7 @@ static void declaration_member_images(void)
 
 static void constructor_inputs(void)
 {
-	for (unsigned mode = 0; mode < 5; ++mode) {
+	for (unsigned mode = 0; mode < 6; ++mode) {
 		struct pg_program *p = pg_program_allocate(PG_DEFINITION_EXPLICIT_THUNK);
 		assert(p);
 		struct pg_parser parser;
@@ -1644,6 +1644,13 @@ static void induction_scope_inputs(struct pg_program *p, const struct pg_evidenc
 		if (mode == 2) allocation = fields;
 		if (mode == 3) allocation = pg_context_bind(&p->typing, end, pg_binder(&p->graph), end->declared_type, PG_JUDGEMENT_VALUE);
 		if (mode == 4) prefix = fields->parent;
+		if (mode == 5) {
+			prefix = pg_context_intern(&p->typing, &(struct pg_context){.parent = fields->parent,
+				.binder = fields->binder, .declared_type = fields->declared_type,
+				.judgement = PG_JUDGEMENT_TYPE_FAMILY, .indices = fields->indices});
+			allocation = pg_context_bind(&p->typing, prefix, end->binder,
+				end->declared_type, end->judgement);
+		}
 		assert(pg_synthesis_constructor_scope_at(&restored, f, constructor, ps, fields->parent, fields));
 		struct pg_synthesis_job *job = pg_synthesis_induction_scope_at(&restored, f, constructor, ps, mc, m, prefix, allocation);
 		assert(job && !restored.steps && !pg_synthesis_result(job));
@@ -2405,25 +2412,31 @@ static void member_prefix_recheck(void)
 	const struct pg_context *wrong_field = pg_context_intern(&p->typing, &(struct pg_context){
 		.parent = wrong_prefix, .binder = fields->binder, .declared_type = fields->declared_type,
 		.judgement = fields->judgement, .indices = fields->indices});
-	assert(other_type != prefix->declared_type && other_prefix && other_field && wrong_prefix && wrong_field);
-	struct pg_syntax copies[2] = {*found.syntax, *found.syntax};
+	const struct pg_context *wrong_field_judgement = pg_context_intern(&p->typing, &(struct pg_context){
+		.parent = prefix, .binder = fields->binder, .declared_type = fields->declared_type,
+		.judgement = PG_JUDGEMENT_TYPE_FAMILY, .indices = fields->indices});
+	assert(other_type != prefix->declared_type && other_prefix && other_field && wrong_prefix && wrong_field && wrong_field_judgement);
+	struct pg_syntax copies[3] = {*found.syntax, *found.syntax, *found.syntax};
 	struct pg_synthesis_job *same_binders = pg_synthesis_member_at(&p->synthesis,
 		found.scope, copies, other_prefix, other_field);
 	struct pg_synthesis_job *wrong_binder = pg_synthesis_member_at(&p->synthesis,
 		found.scope, copies + 1, wrong_prefix, wrong_field);
-	assert(same_binders && wrong_binder);
-	struct pg_synthesis_job *selected[] = {same_binders, wrong_binder};
+	struct pg_synthesis_job *wrong_judgement = pg_synthesis_member_at(&p->synthesis,
+		found.scope, copies + 2, prefix, wrong_field_judgement);
+	assert(same_binders && wrong_binder && wrong_judgement);
+	struct pg_synthesis_job *selected[] = {same_binders, wrong_binder, wrong_judgement};
 	FILE *file = tmpfile();
-	assert(file && !pg_sources_write(file, &p->synthesis, 2, selected));
+	assert(file && !pg_sources_write(file, &p->synthesis, 3, selected));
 	pg_program_destroy(p);
 	rewind(file);
 	size_t count;
 	struct pg_synthesis_job *const *roots;
 	p = pg_sources_read(file, 100000, &count, &roots);
-	assert(p && count == 2 && !p->synthesis.steps && !fclose(file));
+	assert(p && count == 3 && !p->synthesis.steps && !fclose(file));
 	pg_synthesis_advance(&p->synthesis, 100000);
 	assert(pg_synthesis_status(roots[0]) == PG_SYNTHESIS_DONE);
 	assert(pg_synthesis_status(roots[1]) == PG_SYNTHESIS_REJECTED);
+	assert(pg_synthesis_status(roots[2]) == PG_SYNTHESIS_REJECTED);
 	pg_program_destroy(p);
 	puts("source member prefixes: rederive saved types, preserve binder identity");
 }

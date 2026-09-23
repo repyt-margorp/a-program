@@ -1213,13 +1213,6 @@ static int context_allocation_at(struct pg_synthesis *synthesis,
 	return 0;
 }
 
-static int same_context_binders(const struct pg_context *left, const struct pg_context *right)
-{
-	for (; left != right; left = left->parent, right = right->parent)
-		if (!left || !right || left->binder != right->binder) return 0;
-	return 1;
-}
-
 struct pg_synthesis_job *pg_synthesis_member_at(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
 	const struct pg_context *prefix, const struct pg_context *fields)
@@ -3638,13 +3631,7 @@ static enum pg_synthesis_status resolve_source_reference(struct pg_synthesis *sy
 	if (input.allocated) {
 		/* Declaration and use may retain the same binders through different
 		 * checked field-type derivations. Only allocation is shared here. */
-		const struct pg_context *existing = input.fields;
-		while (existing != input.prefix && fields != prefix) {
-			if (!existing || !fields || existing->binder != fields->binder) return PG_SYNTHESIS_REJECTED;
-			existing = existing->parent; fields = fields->parent;
-		}
-		return existing == input.prefix && fields == job->context_allocation->prefix
-			&& pg_context_same_allocation_shape(input.prefix, prefix)
+		return pg_context_same_allocation_shape(input.fields, fields)
 			? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED;
 	}
 	return pg_synthesis_constructor_scope_at(synthesis, input.formation, input.constructor, input.parameters,
@@ -7180,7 +7167,7 @@ static void induction_scope_step(struct pg_synthesis *synthesis, struct pg_synth
 	if (await_dependency(synthesis, job, job->left)) return;
 	const struct pg_evidence *map = job->left->result;
 	if (!job->substitution) {
-		if (job->context_allocation && !same_context_binders(job->context_allocation->prefix,
+		if (job->context_allocation && !pg_context_same_allocation_shape(job->context_allocation->prefix,
 			pg_evidence_context(pg_evidence_premise(map, 1)))) goto rejected;
 		job->substitution = pg_alloc(synthesis->typing->graph, sizeof(*job->substitution));
 		if (!job->substitution) goto error;

@@ -260,6 +260,29 @@ audit fixtures and the complete generic proof, not only harness code.
   delta gates open until measured on the finished refactor. A successful #31
   milestone is not completion of that separate work.
 
+#### First A3 continuation
+
+The saved-allocation comparison introduced for Q3 exposed two older,
+binder-only variants in `synthesis.c`. The induction-scope prefix used
+`same_context_binders`; qualified constructor references used a hand-written
+field loop. Both now use the same allocation-shape comparison as the other
+retained scopes. This checks binder, judgement and index allocation, while
+deliberately excluding saved declared types; the ordinary checked scope still
+supplies typing. The nominal constructor owner remains selected by source
+resolution. No new accepted proof or equality rule is introduced.
+
+The regression extends `induction_scope_inputs` with a same-binder/wrong-sort
+prefix, and `member_prefix_recheck` with a same-binder/wrong-sort field in a
+source image. Correct-binder/different-saved-type cases still recheck and pass.
+`synthesis.c` is +2/-15 (net -13); `tests/source_io.c` is +20/-7 (net +13).
+The other A3-A5/R2-R5 authority and performance gates remain open.
+
+Verification on this continuation: optimized `check-acceptance`, focused
+`check-generic-retained` and `check-image-origins` passed. With `-O1 -g
+-fsanitize=address,undefined -fno-omit-frame-pointer` and leak detection,
+`source_io.sh`, `generic_sorted.sh` in retained mode, and
+`retained_quicksort.sh` passed. No ignored failures.
+
 ## Change Log
 
 | Date | Stage | Revision and evidence | Status |
@@ -270,3 +293,4 @@ audit fixtures and the complete generic proof, not only harness code.
 | 2026-09-24 | Q3 | Temporary call-site tracing identified the saved binder as image readback and the regenerated binder as evaluator readback under a nonempty substitution environment. Tracing removed; focused ordinary gate re-passed and retained gate remains red. | Open; checked materialization/allocation bridge needed. |
 | 2026-09-24 | Q3 | Saved binder allocation separated from checked declared types; retained generic and old WHNF images, optimized acceptance and generic sanitizer gate pass. | Implementation complete; publication audit pending. |
 | 2026-09-24 | Q4 | Clean-tree acceptance and ASan/UBSan passed at `c2ed4a7`; atomic Main/rewrite fast-forward verified; #31 closed with acceptance evidence. | Generic QuickSort milestone published; authority refactor still open. |
+| 2026-09-24 | A3 | Removed two binder-only allocation checks in favor of the shared saved-allocation shape check; added same-binder/wrong-sort negatives. Optimized acceptance and focused ASan/UBSan gates passed. | First authority cleanup, not A3-A5 completion. |
