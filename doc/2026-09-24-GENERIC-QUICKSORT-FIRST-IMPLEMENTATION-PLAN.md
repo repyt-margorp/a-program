@@ -458,6 +458,26 @@ constructor history. The parallel-provider rewrite, source/image checks and
 A/B resource comparison requested by #34 remain open.
 Optimized `check-acceptance` passed after adding both fixture cases.
 
+The first parallel-provider trial removes primitive `LT.lift`, uses that
+derived `ltLift` in `partitionLower`/`partitionUpper`, and removes the old
+constructor branches from accessibility. This provider alone checks (56,173
+steps), but its generic Sorted consumer is `unsupported` (410,636 steps).
+The smaller `@partitionLower` request is also `unsupported` (59,415 steps),
+while `@ltLift` itself checks. The isolated distinction is a helper call at
+`ltLift m n p` versus `ltLift m (Nat.succ n) p` inside a Match branch: only
+the latter fails graph construction. At `function_graph.c:1240-1245`, graph
+input preparation requires each index image to be the immediately preceding
+source binder; `Nat.succ n` cannot satisfy that identity. This is an open
+helper-graph specialization boundary, not a counterexample to derived LT or
+permission to drop the indexed-input check. A trial retaining an original
+callee through substitution composition did not fix it: the typed beta result
+had already become a local Lambda with no `pg_occurrence.origin` edge. That
+trial was withdrawn. Before the full
+#34 comparison, retain the generic helper's checked graph and instantiate it
+at the call's index expressions without solving those expressions backwards
+or treating a specialized Lambda as a new graph authority. The parallel
+fixtures remain experimental until this route passes the old graph checks.
+
 #### Typed-conclusion multiplicity audit
 
 The `length-output-proof.p` source fixture is byte-identical in clean R0
@@ -558,3 +578,4 @@ telescope relocation experiment; none of that experiment entered `fd89842`.
 | 2026-09-24 | R2/R3 audit | Clean R0/current debug runs measured accepted typed-conclusion multiplicity on identical length input; clean current generic QuickSort was also measured. PI formation has distinct typed child recipes under the same four-field conclusion key. | Do not collapse by conclusion key; trace source construction ownership before a semantic refactor. R2-R5 remain open. |
 | 2026-09-24 | R2/R3 trace | A clean length run traced the representative PI proofs to derivation checking and Match branch typing. Source validation and elimination admission repeat one exact branch-type request, but the existing proof interner reuses it. | Preserve both validation points; look for persistent reconstruction rather than adding a cache or dropping a kernel check. |
 | 2026-09-24 | #33 kernel boundary | The wrong-IH source fixture stops at motive synthesis, so an explicit wrong-index motive was tested directly in the Acc IADT kernel fixture. The ill-indexed IH cannot be applied to the constructor step; full optimized acceptance and focused sanitizer pass. | Kernel negative established for this case; surface elaboration and adequacy remain open. |
+| 2026-09-24 | #34 whole-provider trial | The two-constructor provider checks, but its derived lifting under `@partitionLower` reaches the graph generator's direct-binder-only index gate. The first attempted callee-origin change did not solve it and was removed. | Generalize helper graph instantiation with checked substitution before claiming a whole-provider A/B result; #34 stays open. |
