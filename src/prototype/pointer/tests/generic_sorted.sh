@@ -3,6 +3,7 @@ set -euo pipefail
 
 binary=$1
 retained=${2:-0}
+compare=${3:-$(dirname "$binary")/program_test}
 root=$(dirname "${BASH_SOURCE[0]}")
 fixtures="$root/fixtures/generic_sorted"
 provider="$root/fixtures/sorted-proof-provider.p"
@@ -48,8 +49,24 @@ done
 derived="$root/acceptance/lt-derived-lift.p"
 check_result 0 "$root/acceptance/lt-derived-lift-graph.p" --imports "$derived"
 check_result 0 "$root/acceptance/lt-derived-helper-graph-direct.p" --imports "$derived"
-# Flip this to done when a specialized helper reuses its checked generic graph.
-check_result 4 "$root/acceptance/lt-derived-helper-graph-shifted.p" --imports "$derived"
+shifted="$root/acceptance/lt-derived-helper-graph-shifted.p"
+check_result 0 "$shifted" --imports "$derived" --save "$directory/helper.a"
+for pair in main:expected proofMain:proofExpected recursiveMain:recursiveExpected recursiveProof:recursiveProofExpected; do
+	"$compare" --equal-image "$directory/helper.a" "${pair%:*}" "${pair#*:}"
+done
+cat "$shifted" "$root/acceptance/lt-derived-helper-graph-shifted-wrong.p" > "$directory/helper-wrong.p"
+check_result 1 "$directory/helper-wrong.p" --imports "$derived"
+for steps in 0 7500; do
+	check_result 3 "$shifted" --imports "$derived" --steps "$steps" --save "$directory/helper-partial.a"
+	check_result 0 "$directory/helper-partial.a" --load
+done
+if [[ $retained == 1 ]]; then
+	check_result 0 "$shifted" --imports "$derived" --save "$directory/helper-retained.a" --retain-reductions
+	"$compare" --equal-image "$directory/helper-retained.a" recursiveProof recursiveProofExpected
+	check_result 3 "$directory/helper-retained.a" --load --steps 0 \
+		--save "$directory/helper-resaved.a" --retain-reductions
+	cmp "$directory/helper-retained.a" "$directory/helper-resaved.a"
+fi
 proof="$root/acceptance/generic-quick-sorted.p"
 check_result 0 "$proof" --imports "$provider" --save "$directory/complete.a"
 check_result 0 "$directory/complete.a" --load

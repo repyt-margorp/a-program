@@ -58,13 +58,14 @@ check-handler-nesting: $(BUILD)/source_io_test
 
 check-acceptance: check-host check-execution check check-examples check-example-results check-open-families check-image-origins check-operation-origins check-handler-origins check-handler-nesting check-prepared-modules check-source-compatibility check-sort-insertion check-generic-sorted check-generic-retained
 
-check-generic-sorted: $(BUILD)/pointer-check $(BUILD)/syntax_io_test
+check-generic-sorted: $(BUILD)/pointer-check $(BUILD)/syntax_io_test $(BUILD)/program_test
 	$(BUILD)/syntax_io_test $(ROOT)tests/acceptance/decision-explicit-result.p $(ROOT)tests/acceptance/generic-quick-sorted.p
 	bash $(ROOT)tests/generic_sorted.sh $(BUILD)/pointer-check
 
-check-generic-retained: $(BUILD)/pointer-check
+check-generic-retained: $(BUILD)/pointer-check $(BUILD)/program_test
 	bash $(ROOT)tests/generic_sorted.sh $(BUILD)/pointer-check 1
 	bash $(ROOT)tests/retained_quicksort.sh $(BUILD)/pointer-check
+	bash $(ROOT)tests/derived_lt.sh $(BUILD)/pointer-check
 
 check-sort-insertion: $(BUILD)/pointer-check $(BUILD)/program_test
 	bash $(ROOT)tests/sort_insertion.sh $(BUILD)/pointer-check $(BUILD)/program_test

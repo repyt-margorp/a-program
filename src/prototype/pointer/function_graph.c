@@ -1237,12 +1237,12 @@ static void prepare_graph(struct pg_function_graph_state *s)
 			if (s->index_count > SIZE_MAX / sizeof(*s->index_arguments)) goto error;
 			s->index_arguments = pg_alloc(&s->temporary, s->index_count * sizeof(*s->index_arguments));
 			if (s->index_count && !s->index_arguments) goto error;
-			/* The source binds generic indices immediately before the selected
-			 * input. Check this telescope; never solve a fixed index backwards. */
+			/* Reuse a generic source telescope. Otherwise abstract the checked
+			 * eliminator and specialize it, never solve a fixed index backwards. */
 			for (size_t i = s->index_count; i; --i) {
-				if (pg_evidence_rule(s->context) != PG_CONTEXT_EXTEND) goto unsupported;
+				if (pg_evidence_rule(s->context) != PG_CONTEXT_EXTEND) goto capture;
 				const struct pg_term *image = pg_evidence_context_map(s->input.indices)->images[offset + i - 1]->core;
-				if (image != pg_reference(typing->graph, pg_evidence_context(s->context)->binder)) goto unsupported;
+				if (image != pg_reference(typing->graph, pg_evidence_context(s->context)->binder)) goto capture;
 				s->index_arguments[i - 1] = s->context;
 				s->context = pg_evidence_premise(s->context, 0);
 			}
@@ -1255,6 +1255,9 @@ static void prepare_graph(struct pg_function_graph_state *s)
 		return;
 	}
 	s->preparation = GRAPH_PARAMETERS;
+	return;
+capture:
+	if (capture_eliminator(s, pg_evidence_premise(s->body, 3))) goto unsupported;
 	return;
 parameters:
 	if (s->captured_input) source_function = s->recursive_function;

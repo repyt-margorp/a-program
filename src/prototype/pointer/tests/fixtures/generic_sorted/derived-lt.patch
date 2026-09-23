@@ -1,0 +1,147 @@
+--- a/provider.p
++++ b/provider.p
+@@ -1,4 +1,4 @@
+-// Foundational list-sorting algorithms for the pointer-core prototype.
++// Parallel QuickSort provider with LT lifting derived by induction.
+ //
+ // Every algorithm takes the same explicit Boolean comparison. `quickSort`
+ // uses Acc evidence to justify recursion on a strictly smaller measured list.
+@@ -59,12 +59,18 @@
+ 	@\left : Nat =>
+ 	@\right : Nat =>
+ 	{
+-		step : (n : Nat) -> * n (Nat.succ n);
+-		weakenRight : (m : Nat) -> (n : Nat) -> * m n ->
++	step : (n : Nat) -> * n (Nat.succ n);
++	weakenRight : (m : Nat) -> (n : Nat) -> * m n ->
+ 			* m (Nat.succ n);
+-		lift : (m : Nat) -> (n : Nat) -> * m n ->
+-			* (Nat.succ m) (Nat.succ n);
+-	};
++};
++
++ltLift := \m : Nat => \n : Nat => \proof : LT m n =>
++	proof @step k => LT.step (Nat.succ k)
++		@weakenRight lower upper prior =>
++			LT.weakenRight (Nat.succ lower) (Nat.succ upper) *prior;
++
++ltLift :: (m : Nat) -> (n : Nat) -> LT m n ->
++	LT (Nat.succ m) (Nat.succ n);
+ 
+ Acc := \A : @ => \R : A -> A -> @ => @\subject : A => {
+ 	acc : (x : A) -> ((y : A) -> R y x -> * y) -> * x;
+@@ -75,8 +81,7 @@
+ 		(Acc Nat LT).acc (Nat.succ current)
+ 			&(\y : Nat => \edge : LT y (Nat.succ current) =>
+ 				edge @step k => proof
+-					@weakenRight m k prior => down m prior
+-					@lift m k prior => *down m prior);
++					@weakenRight m k prior => down m prior);
+ 
+ accessibleSucc :: (n : Nat) -> Acc Nat LT n -> Acc Nat LT (Nat.succ n);
+ 
+@@ -85,8 +90,7 @@
+ 		(Acc Nat LT).acc Nat.zero
+ 				&(\y : Nat => \edge : LT y Nat.zero =>
+ 					edge @step k => Nat.zero
+-						@weakenRight m k prior => Nat.zero
+-						@lift m k prior => Nat.zero)
++						@weakenRight m k prior => Nat.zero)
+ 		@succ k => accessibleSucc k *k;
+ 
+ natAccessible :: (n : Nat) -> Acc Nat LT n;
+@@ -118,7 +122,7 @@
+ 					(Nat.succ lowerSize)
+ 					((SizedList A).cons lowerSize head lower)
+ 					upperSize upper
+-					(LT.lift lowerSize (Nat.succ size) lowerBound)
++					(ltLift lowerSize (Nat.succ size) lowerBound)
+ 					(LT.weakenRight upperSize (Nat.succ size) upperBound);
+ 
+ partitionLower :: (A : @) -> A -> (size : Nat) -> Partition A size ->
+@@ -133,7 +137,7 @@
+ 					(Nat.succ upperSize)
+ 					((SizedList A).cons upperSize head upper)
+ 					(LT.weakenRight lowerSize (Nat.succ size) lowerBound)
+-					(LT.lift upperSize (Nat.succ size) upperBound);
++					(ltLift upperSize (Nat.succ size) upperBound);
+ 
+ partitionUpper :: (A : @) -> A -> (size : Nat) -> Partition A size ->
+ 	Partition A (Nat.succ size);
+--- a/proof.p
++++ b/proof.p
+@@ -5,6 +5,7 @@
+ import Partition;
+ import Acc;
+ import LT;
++import ltLift;
+ import partitionLower;
+ import partitionUpper;
+ import partitionByDecision;
+@@ -120,18 +121,18 @@
+ 	@append A xs ys zs->(All A le R trans le_refl decide) P xs->(All A le R trans le_refl decide) P ys->(All A le R trans le_refl decide) P zs;
+ lower_all := \A:@ => \le:A->A->Bool => \R:A->A->@ => \trans:(x:A)->(y:A)->R x y->(z:A)->R y z->R x z => \le_refl:(x:A)->R x x => \decide:(x:A)->(y:A)->general_decision A R x y (le x y) => \P:A->@ => \h:A => \n:Nat => \input:Partition A n => \output:Partition A (Nat.succ n) =>
+ 	\g:@partitionLower A h n input output => g
+-	@case0 l left r right lb rb => (\ph:P h => \prior:(PartAll A le R trans le_refl decide) P n ((Partition A n).parts l left r right lb rb) =>
++	@case0 l left r right lb rb lifted lifting => (\ph:P h => \prior:(PartAll A le R trans le_refl decide) P n ((Partition A n).parts l left r right lb rb) =>
+ 		((PartAll A le R trans le_refl decide) P (Nat.succ n)).parts (Nat.succ l) ((SizedList A).cons l h left) r right
+-			(LT.lift l (Nat.succ n) lb) (LT.weakenRight r (Nat.succ n) rb)
++			lifted (LT.weakenRight r (Nat.succ n) rb)
+ 			(((SizedAll A le R trans le_refl decide) P).cons l h left ph ((part_left A le R trans le_refl decide) P n l left r right lb rb prior))
+ 			((part_right A le R trans le_refl decide) P n l left r right lb rb prior));
+ lower_all :: (A:@)->(le:A->A->Bool)->(R:A->A->@)->(trans:(x:A)->(y:A)->R x y->(z:A)->R y z->R x z)->(le_refl:(x:A)->R x x)->(decide:(x:A)->(y:A)->general_decision A R x y (le x y))->(P:A->@)->(h:A)->(n:Nat)->(input:Partition A n)->(output:Partition A (Nat.succ n))->
+ 	@partitionLower A h n input output->P h->(PartAll A le R trans le_refl decide) P n input->(PartAll A le R trans le_refl decide) P (Nat.succ n) output;
+ upper_all := \A:@ => \le:A->A->Bool => \R:A->A->@ => \trans:(x:A)->(y:A)->R x y->(z:A)->R y z->R x z => \le_refl:(x:A)->R x x => \decide:(x:A)->(y:A)->general_decision A R x y (le x y) => \P:A->@ => \h:A => \n:Nat => \input:Partition A n => \output:Partition A (Nat.succ n) =>
+ 	\g:@partitionUpper A h n input output => g
+-	@case0 l left r right lb rb => (\ph:P h => \prior:(PartAll A le R trans le_refl decide) P n ((Partition A n).parts l left r right lb rb) =>
++	@case0 l left r right lb rb lifted lifting => (\ph:P h => \prior:(PartAll A le R trans le_refl decide) P n ((Partition A n).parts l left r right lb rb) =>
+ 		((PartAll A le R trans le_refl decide) P (Nat.succ n)).parts l left (Nat.succ r) ((SizedList A).cons r h right)
+-			(LT.weakenRight l (Nat.succ n) lb) (LT.lift r (Nat.succ n) rb)
++			(LT.weakenRight l (Nat.succ n) lb) lifted
+ 			((part_left A le R trans le_refl decide) P n l left r right lb rb prior)
+ 			(((SizedAll A le R trans le_refl decide) P).cons r h right ph ((part_right A le R trans le_refl decide) P n l left r right lb rb prior)));
+ upper_all :: (A:@)->(le:A->A->Bool)->(R:A->A->@)->(trans:(x:A)->(y:A)->R x y->(z:A)->R y z->R x z)->(le_refl:(x:A)->R x x)->(decide:(x:A)->(y:A)->general_decision A R x y (le x y))->(P:A->@)->(h:A)->(n:Nat)->(input:Partition A n)->(output:Partition A (Nat.succ n))->
+@@ -149,17 +150,17 @@
+ 	@case0 => (\prior:(SizedAll A le R trans le_refl decide) P Nat.zero (SizedList A).nil =>
+ 		((PartAll A le R trans le_refl decide) P Nat.zero).parts Nat.zero (SizedList A).nil Nat.zero (SizedList A).nil
+ 			(LT.step Nat.zero) (LT.step Nat.zero) ((SizedAll A le R trans le_refl decide) P).nil ((SizedAll A le R trans le_refl decide) P).nil)
+-	@case1 k h t comparison l left r right lb rb rest =>
++	@case1 k h t comparison l left r right lb rb rest lifted lifting =>
+ 		(\prior:(SizedAll A le R trans le_refl decide) P (Nat.succ k) ((SizedList A).cons k h t) =>
+ 			((PartAll A le R trans le_refl decide) P (Nat.succ k)).parts (Nat.succ l) ((SizedList A).cons l h left) r right
+-				(LT.lift l (Nat.succ k) lb) (LT.weakenRight r (Nat.succ k) rb)
++				lifted (LT.weakenRight r (Nat.succ k) rb)
+ 				(((SizedAll A le R trans le_refl decide) P).cons l h left ((sized_first A le R trans le_refl decide) P k h t prior)
+ 					((part_left A le R trans le_refl decide) P k l left r right lb rb (*rest ((sized_rest A le R trans le_refl decide) P k h t prior))))
+ 				((part_right A le R trans le_refl decide) P k l left r right lb rb (*rest ((sized_rest A le R trans le_refl decide) P k h t prior))))
+-	@case2 k h t comparison l left r right lb rb rest =>
++	@case2 k h t comparison l left r right lb rb rest lifted lifting =>
+ 		(\prior:(SizedAll A le R trans le_refl decide) P (Nat.succ k) ((SizedList A).cons k h t) =>
+ 			((PartAll A le R trans le_refl decide) P (Nat.succ k)).parts l left (Nat.succ r) ((SizedList A).cons r h right)
+-				(LT.weakenRight l (Nat.succ k) lb) (LT.lift r (Nat.succ k) rb)
++				(LT.weakenRight l (Nat.succ k) lb) lifted
+ 				((part_left A le R trans le_refl decide) P k l left r right lb rb (*rest ((sized_rest A le R trans le_refl decide) P k h t prior)))
+ 				(((SizedAll A le R trans le_refl decide) P).cons r h right ((sized_first A le R trans le_refl decide) P k h t prior)
+ 					((part_right A le R trans le_refl decide) P k l left r right lb rb (*rest ((sized_rest A le R trans le_refl decide) P k h t prior)))));
+@@ -184,17 +185,17 @@
+ 	@case0 => ((PartOrdered A le R trans le_refl decide) pivot Nat.zero).parts Nat.zero (SizedList A).nil Nat.zero (SizedList A).nil
+ 		(LT.step Nat.zero) (LT.step Nat.zero)
+ 		((SizedAll A le R trans le_refl decide) (&(\h:A => R h pivot))).nil ((SizedAll A le R trans le_refl decide) (&(\h:A => R pivot h))).nil
+-	@case1 k h t comparison l left r right lb rb rest =>
++	@case1 k h t comparison l left r right lb rb rest lifted lifting =>
+ 		((PartOrdered A le R trans le_refl decide) pivot (Nat.succ k)).parts (Nat.succ l) ((SizedList A).cons l h left) r right
+-			(LT.lift l (Nat.succ k) lb) (LT.weakenRight r (Nat.succ k) rb)
++			lifted (LT.weakenRight r (Nat.succ k) rb)
+ 			(((SizedAll A le R trans le_refl decide) (&(\x:A => R x pivot))).cons l h left
+ 				((comparison @(bound answer self => general_decision A R h bound answer)
+ 					@case0 bound => decide h bound) @yes proof => proof)
+ 				((ordered_left A le R trans le_refl decide) pivot k l left r right lb rb *rest))
+ 			((ordered_right A le R trans le_refl decide) pivot k l left r right lb rb *rest)
+-	@case2 k h t comparison l left r right lb rb rest =>
++	@case2 k h t comparison l left r right lb rb rest lifted lifting =>
+ 		((PartOrdered A le R trans le_refl decide) pivot (Nat.succ k)).parts l left (Nat.succ r) ((SizedList A).cons r h right)
+-			(LT.weakenRight l (Nat.succ k) lb) (LT.lift r (Nat.succ k) rb)
++			(LT.weakenRight l (Nat.succ k) lb) lifted
+ 			((ordered_left A le R trans le_refl decide) pivot k l left r right lb rb *rest)
+ 			(((SizedAll A le R trans le_refl decide) (&(\x:A => R pivot x))).cons r h right
+ 				((comparison @(bound answer self => general_decision A R h bound answer)

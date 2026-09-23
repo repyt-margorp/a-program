@@ -480,7 +480,7 @@ at the call's index expressions without solving those expressions backwards
 or treating a specialized Lambda as a new graph authority. The parallel
 fixtures remain experimental until this route passes the old graph checks.
 
-Two minimized imported fixtures now run in `tests/generic_sorted.sh`:
+At the initial audit, two minimized imported fixtures ran in `tests/generic_sorted.sh`:
 `lt-derived-helper-graph-direct.p` checks, while the otherwise equivalent
 `lt-derived-helper-graph-shifted.p` is expected `unsupported`. The latter
 passes an `LT m (Nat.succ n)` proof to the ordinary `ltLift` function. The
@@ -508,6 +508,78 @@ If source reuse is chosen, retain the checked callee and substitution at the
 earlier partial-application step, outside Core; do not reconstruct them from
 the reduced Lambda's shape. The alternative is a graph rule for an open
 parameter Context, with index instantiation checked against that Context.
+
+#### Checked specialization of a partially applied helper
+
+The repair reuses `capture_eliminator`, which already abstracts a checked
+eliminator over its complete generic index/input telescope. When `GRAPH_INPUT`
+cannot reuse the source's immediately preceding binders, it takes that same
+path instead of rejecting the request. The captured ambient Context remains
+fixed. `pg_prove_inductive_motive_substitution` supplies the actual index
+expressions and input when publishing the graph and its witness.
+
+This is the open-parameter-Context alternative above, not recovery of the
+original named function. No source-name lookup, backwards index solving,
+new evidence rule, graph authority or equality coercion is added. The generated
+generic telescope still passes the existing indexed-input and parameter checks.
+It does not imply that every specialized source Match can be synthesized:
+`function-graph-fixed-index.p` still reports `unsupported`.
+
+- [x] Reuse checked eliminator abstraction for a non-generic input telescope.
+- [x] Change the shifted-helper regression from expected `unsupported` to
+  success. Exercise both the base and recursive `ltLift` cases through actual
+  graph packets and a graph eliminator, comparing their returned proof trees.
+- [x] Reject a consumer claiming the unshifted result type; keep `::` a
+  post-synthesis check. Resume ordinary images saved at 0 and 7,500 steps;
+  compare a retained recursive witness and byte-stable inert resave.
+- [x] Complete clean optimized acceptance and sanitizer verification.
+- [ ] Publish the verified epoch without the unrelated relocation experiment.
+
+The parallel two-constructor provider and complete generic Sorted client now
+check at 623,500 steps in the clean build. The client must bind the new
+helper-result and helper-graph fields and use that result in `PartAll` and
+`PartOrdered`; substituting `ltLift` textually for `LT.lift` while retaining the
+old graph patterns is invalid. There is no additional theorem assumption.
+Their delta is now permanent as `tests/fixtures/generic_sorted/derived-lt.patch`,
+applied without fuzzy matching by `tests/derived_lt.sh` (requires `patch`).
+This avoids maintaining another 554-line provider/client copy. The two earlier
+untracked working copies remain outside the commit. Ordinary and retained
+complete images recheck, and inert resaves are byte-stable. The #34 comparison
+still needs its full output/content-preservation and wrong-evidence matrix,
+partial parallel-provider images and A/B resource measurements. The frozen
+provider is unchanged and #34 remains open. Do not claim a speedup from fewer
+LT constructors or identify the old and new nominal declarations.
+
+Clean verification excluded the pre-existing `evidence`/`iadt` relocation
+experiment. Strict `-O2` full `check-acceptance` passed after adding the
+parallel-provider gate, including 63/63 compatibility. ASan/UBSan with leak
+detection passed `generic_sorted.sh` in retained mode and `derived_lt.sh`,
+built with `-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer
+-fno-pie -no-pie`. Logs are `/tmp/a-program-captured-acceptance-final.log`,
+`/tmp/a-program-captured-sanitize.log` and
+`/tmp/a-program-captured-derived-sanitize.log`.
+
+The frozen generic theorem still takes 619,092 Solve steps; the parallel
+two-constructor version takes 623,500. These are transition counts, not timing
+or memory improvements. Source/image witness comparisons cover the specialized
+helper at chunk sizes 1 and 64, including its recursive branch. The new negative
+test rejects a graph consumer claiming the unshifted fiber.
+
+Per-file epoch delta, relative to `src/prototype/pointer`:
+
+| File | Added | Deleted | Net |
+| --- | ---: | ---: | ---: |
+| `function_graph.c` | 7 | 4 | +3 |
+| `Makefile` | 3 | 2 | +1 |
+| `tests/acceptance/lt-derived-helper-graph-shifted.p` | 23 | 0 | +23 |
+| `tests/acceptance/lt-derived-helper-graph-shifted-wrong.p` | 7 | 0 | +7 |
+| `tests/generic_sorted.sh` | 19 | 2 | +17 |
+| `tests/derived_lt.sh` | 26 | 0 | +26 |
+| `tests/fixtures/generic_sorted/derived-lt.patch` | 147 | 0 | +147 |
+
+Implementation is net +3, test/build data net +221. No new Term tag, checking
+rule, accepted-state owner or persistent format is introduced. This functional
+repair is not completion of A3-A5/R2-R5 or the cumulative LOC-reduction gate.
 
 #### Typed-conclusion multiplicity audit
 
@@ -813,3 +885,4 @@ disposable payload construction, not the parent's outstanding source growth.
 | 2026-09-24 | #34 whole-provider trial | The two-constructor provider checks, but its derived lifting under `@partitionLower` reaches the graph generator's direct-binder-only index gate. The first attempted callee-origin change did not solve it and was removed. | Generalize helper graph instantiation with checked substitution before claiming a whole-provider A/B result; #34 stays open. |
 | 2026-09-24 | Q4 projection evidence | `ec6a47b`: canonical Context projections retain two Context premises and derive variable proofs on demand. Clean optimized acceptance and focused sanitizer gates passed; generic proof count fell by 2,057, with unchanged Core/occurrences/Solve steps. | Published Main/rewrite; timing differences are inconclusive and R2-R5 remain open. |
 | 2026-09-24 | Q4 effect dependency collection | `ef9dce0`: shared direct collection removes dependency-only wire arrays; ordered object comparisons, clean optimized acceptance and focused sanitizer tests pass. Existing Source IO test removes three small arrays; measured QuickSort path is unchanged. | Published Main/rewrite; net implementation +19, not overall refactor completion. |
+| 2026-09-24 | #34 helper specialization | Reuse checked eliminator abstraction and index substitution for captured helper indices. The shifted helper's graph/witness, negative consumer and images pass; the parallel derived-LT provider now admits the complete generic Sorted proof. Clean optimized acceptance and affected ASan/UBSan pass. | Verified, publication pending; library/performance decision and A3-A5/R2-R5 remain open. |
