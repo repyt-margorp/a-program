@@ -467,8 +467,10 @@ while `@ltLift` itself checks. The isolated distinction is a helper call at
 `ltLift m n p` versus `ltLift m (Nat.succ n) p` inside a Match branch: only
 the latter fails graph construction. At `function_graph.c:1240-1245`, graph
 input preparation requires each index image to be the immediately preceding
-source binder; `Nat.succ n` cannot satisfy that identity. This is an open
-helper-graph specialization boundary, not a counterexample to derived LT or
+source binder. The failing image is the *left* index `m`: the computed second
+argument has already caused the first application to expose a Lambda with
+`m` in its ambient Context. The right index still matches its binder. This is
+an open helper-graph specialization boundary, not a counterexample to derived LT or
 permission to drop the indexed-input check. A trial retaining an original
 callee through substitution composition did not fix it: the typed beta result
 had already become a local Lambda with no `pg_occurrence.origin` edge. That
@@ -483,13 +485,21 @@ Two minimized imported fixtures now run in `tests/generic_sorted.sh`:
 `lt-derived-helper-graph-shifted.p` is expected `unsupported`. The latter
 passes an `LT m (Nat.succ n)` proof to the ordinary `ltLift` function. The
 standalone `@ltLift` graph checks. In the failing request, `helper_call`
-publishes a local Lambda and its checked environment; subsequent source
-advancement abstracts a specialized Lambda, and `GRAPH_INPUT` rejects the
-computed index because it is not the immediately preceding generic binder.
+publishes a two-argument Lambda and its checked environment; the direct case
+publishes the full three-argument source. Subsequent source advancement
+abstracts a specialized Lambda, and `GRAPH_INPUT` rejects its captured `m`
+because that index is no longer an immediately preceding source binder.
 The expected-unsupported assertion is a regression marker, not acceptance of
 that limitation. Reusing the generic source graph requires retaining the
 source function and its argument substitution through partial application;
-the current local Lambda cannot be treated as that source by term shape alone.
+alternatively, graph construction must support an open parameter Context with
+checked instantiation. The current local Lambda cannot be treated as the
+closed generic source by term shape alone.
+Closing the entire four-binder ambient Context over that Lambda was tested and
+withdrawn: the three intervening binders still leave captured `m` outside the
+immediately preceding index telescope, and the minimized case remains
+`unsupported`. Blind closure conversion or loosening the binder check is not
+the repair; any exchange must preserve dependent Context order and proof maps.
 
 #### Typed-conclusion multiplicity audit
 
@@ -571,6 +581,12 @@ The typed-input readback path and proof-level lift path both need a scoped
 child, but their checked outputs differ. Any consolidation must prove a shared
 typed-input owner with the same destination Context and accepted premises;
 merging requests merely by their resulting Core would be unsound.
+Proof allocation confirms the same boundary: R0/current length has 603/783
+new `REINDEX`, 549/638 `CONTEXT_PROJECTION`, and 225/281 `CONTEXT_EXTEND`
+proofs. Of the 783 current new `REINDEX` proofs, only 11 have the exact source
+Occurrence as their result; 771 change Context and one changes the subject in
+the same Context. Thus a global identity-reindex shortcut cannot account for
+the growth and would erase explicit map premises from requested derivations.
 
 For #33, the renamed wrong-IH source fixture exits `unsupported` at 1,143
 steps, before elimination admission: its one recursive branch offers no
