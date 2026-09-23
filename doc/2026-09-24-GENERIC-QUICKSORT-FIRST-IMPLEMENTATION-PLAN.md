@@ -888,13 +888,15 @@ not add a second map, a Core tag, or a new acceptance mechanism.
   chains, exact repeated-request reuse and fresh-process image continuation.
 - [x] Run clean optimized/debug/sanitizer acceptance and compare proof count,
   persistent premise edges, image size and time against `4476d7b`.
-- [ ] Publish only if the full suite passes and measurements justify retaining
+- [x] Publish only if the full suite passes and measurements justify retaining
   the representation change; otherwise record why and remove the experiment.
+  `1762fa0` was atomically pushed to Main and the rewrite branch; both remote
+  tips were verified. Parent A3-A5/R2-R5 and #32-#34 remain open.
 
 An explicit all-images derivation and an extension derivation may establish
 the same Context map by different premises. Do not merge their evidence merely
 by map identity or relax retained-premise checks to make deserialization pass.
-This is a physical proof-sharing experiment, not completion of R2-R5 or the
+This is a verified physical proof-sharing epoch, not completion of R2-R5 or the
 cumulative source-reduction gate.
 
 The rule is ordinary weakening followed by telescope extension: a checked
@@ -1031,3 +1033,4 @@ gate. Verified samples: `/tmp/a-program-prefix-proof-benchmark-verified.log`.
 | 2026-09-24 | Q4 projection evidence | `ec6a47b`: canonical Context projections retain two Context premises and derive variable proofs on demand. Clean optimized acceptance and focused sanitizer gates passed; generic proof count fell by 2,057, with unchanged Core/occurrences/Solve steps. | Published Main/rewrite; timing differences are inconclusive and R2-R5 remain open. |
 | 2026-09-24 | Q4 effect dependency collection | `ef9dce0`: shared direct collection removes dependency-only wire arrays; ordered object comparisons, clean optimized acceptance and focused sanitizer tests pass. Existing Source IO test removes three small arrays; measured QuickSort path is unchanged. | Published Main/rewrite; net implementation +19, not overall refactor completion. |
 | 2026-09-24 | #34 helper specialization | `3da9d1b`: reuse checked eliminator abstraction and index substitution for captured helper indices. The shifted helper's graph/witness, negative consumer and images pass; the parallel derived-LT provider now admits the complete generic Sorted proof. Clean optimized acceptance and affected ASan/UBSan pass. | Published Main/rewrite; library/performance decision and A3-A5/R2-R5 remain open. |
+| 2026-09-24 | Q4 substitution proof sharing | `1762fa0`: retain checked prefix dependencies instead of eagerly projecting/copying every prior image. Full debug/O2/ASan+UBSan acceptance passed. Generic proof edges fall from 1,359,398 to 578,678; measured compile median improves about 10.2%. | Published Main/rewrite; APGDRV16 replaces APGDRV15. Net source +26, cumulative reduction gate and remaining authority work stay open. |
