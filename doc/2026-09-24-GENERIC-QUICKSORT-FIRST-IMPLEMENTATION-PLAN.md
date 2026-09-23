@@ -500,6 +500,14 @@ withdrawn: the three intervening binders still leave captured `m` outside the
 immediately preceding index telescope, and the minimized case remains
 `unsupported`. Blind closure conversion or loosening the binder check is not
 the repair; any exchange must preserve dependent Context order and proof maps.
+At the first `helper_call` in the shifted fixture, the checked computation is
+`PG_REINDEX` of an application whose source proof is a local `PG_APP_ELIM`;
+its application head is already a Lambda. The complete three-argument
+`ltLift` source is not recoverable from that local proof's construction origin.
+If source reuse is chosen, retain the checked callee and substitution at the
+earlier partial-application step, outside Core; do not reconstruct them from
+the reduced Lambda's shape. The alternative is a graph rule for an open
+parameter Context, with index instantiation checked against that Context.
 
 #### Typed-conclusion multiplicity audit
 
