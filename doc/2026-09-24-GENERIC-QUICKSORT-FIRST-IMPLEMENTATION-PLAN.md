@@ -491,6 +491,18 @@ distinct. Do not add a tuple-keyed accepted-evidence cache or silently select
 one recipe. The contextual map and current typed-conclusion counts alone do
 not establish which structural consumers can be deleted; R2-R5 remain open.
 
+The first representative is **not** that deletion. In the clean length run,
+two `PG_PI_FORM` proofs with one Core/context/classifier come from different
+codomain proof inputs. One enters through ordinary derivation checking; the
+other enters through Match branch typing. The latter exact
+`(extended_context, codomain)` request occurs again at elimination admission:
+the source-side expected-type check and the trusted rule both ask for it, and
+`find_record` reuses the same proof. `request_role` already interns source jobs
+by `(role, scope, syntax)`. Neither collapsing the two PI subjects nor deleting
+the kernel's branch check is justified. Subsequent R2/R3 work should target a
+structural reconstruction that actually publishes new persistent records, not
+repeat calls that return an already accepted proof.
+
 Focused strict-debug Core and source IO passed on the working tree. An
 independent clean detached worktree at `fd89842` passed optimized
 `check-acceptance`, including generic Sorted and retained QuickSort; its
@@ -520,3 +532,4 @@ telescope relocation experiment; none of that experiment entered `fd89842`.
 | 2026-09-24 | #33 audit | Renamed Acc positive and wrong-field rejection made permanent; wrong-IH index remains unsupported, not rejected. Full optimized acceptance passed. | Retain termination classifier check and keep #33 open for kernel/adequacy audit. |
 | 2026-09-24 | #34 audit | Derived two-constructor LT lift as an ordinary recursive program; both constructor cases compute. | Standalone lemma only; retain primitive provider lift pending whole-provider comparison. |
 | 2026-09-24 | R2/R3 audit | Clean R0/current debug runs measured accepted typed-conclusion multiplicity on identical length input; clean current generic QuickSort was also measured. PI formation has distinct typed child recipes under the same four-field conclusion key. | Do not collapse by conclusion key; trace source construction ownership before a semantic refactor. R2-R5 remain open. |
+| 2026-09-24 | R2/R3 trace | A clean length run traced the representative PI proofs to derivation checking and Match branch typing. Source validation and elimination admission repeat one exact branch-type request, but the existing proof interner reuses it. | Preserve both validation points; look for persistent reconstruction rather than adding a cache or dropping a kernel check. |
