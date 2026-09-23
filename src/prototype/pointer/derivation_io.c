@@ -9,7 +9,7 @@
 
 #include <string.h>
 
-static const char magic[8] = {'A', 'P', 'G', 'D', 'R', 'V', 0, 15};
+static const char magic[8] = {'A', 'P', 'G', 'D', 'R', 'V', 0, 16};
 
 static int premise(void *unused, const void *key, size_t index, const void **child)
 {

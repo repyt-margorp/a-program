@@ -778,8 +778,9 @@ static void retained_substitution_prefix(void)
 	const struct pg_evidence *result = pg_prove_substitution_extend(&typing, prefix, alternate, 0, NULL);
 	assert(result && result != prefix && graph.terms.count == terms);
 	assert(pg_evidence_premise(result, 0) == alternate);
-	assert(pg_prove_substitution(&typing, alternate, contexts[1], 2, images) == result);
-	assert(pg_evidence_premise(result, 2) == images[0] && pg_evidence_premise(result, 3) == images[1]);
+	assert(pg_evidence_context_map(pg_prove_substitution(&typing, alternate, contexts[1], 2, images)) == pg_evidence_context_map(result));
+	assert(pg_evidence_premise(result, 2) == prefix);
+	assert(pg_substitution_image_at(&typing, result, 0) == images[0] && pg_substitution_image_at(&typing, result, 1) == images[1]);
 	pg_typing_destroy(&typing);
 	pg_graph_destroy(&graph);
 }
@@ -836,8 +837,8 @@ static void indexed_path_motive(struct pg_typing *typing,
 	const struct pg_evidence *fc = pg_evidence_premise(fields, 1);
 	const struct pg_object *constructor = pg_data_constructor(pg_data_schema_layout(actual.schema), 0);
 	const struct pg_evidence *values[] = {
-		pg_evidence_premise(fields, pg_evidence_premise_count(fields) - 2),
-		pg_evidence_premise(fields, pg_evidence_premise_count(fields) - 1)
+		pg_substitution_image_at(typing, fields, pg_evidence_context_map(fields)->count - 2),
+		pg_substitution_image_at(typing, fields, pg_evidence_context_map(fields)->count - 1)
 	};
 	const struct pg_evidence *field_parameters = pg_prove_substitution_compose(typing, parameters,
 		pg_prove_substitution_projection(typing, context, fc));
@@ -1209,9 +1210,9 @@ static void indexed_match(void)
 	common_rule(&typing, factor);
 	const struct pg_evidence *composite = pg_prove_substitution_compose(&typing, refinement, factor);
 	assert(composite);
-	for (size_t i = 2; i < pg_evidence_premise_count(composite); ++i)
-		assert(pg_alpha_equal(pg_evidence_subject(pg_evidence_premise(composite, i))->core,
-			pg_evidence_subject(pg_evidence_premise(other_refinement, i))->core) == 1);
+	for (size_t i = 0; i < pg_evidence_context_map(composite)->count; ++i)
+		assert(pg_alpha_equal(pg_evidence_subject(pg_substitution_image_at(&typing, composite, i))->core,
+			pg_evidence_subject(pg_substitution_image_at(&typing, other_refinement, i))->core) == 1);
 	assert(!pg_prove_refinement_factor(&typing, refinement, parameters, packet));
 	assert(!pg_prove_refinement_factor(&typing, refinement, other_refinement, consumer));
 	size_t factor_proofs = typing.proofs.count, factor_maps = typing.context_maps.count;
@@ -1496,8 +1497,8 @@ static void index_paths(struct pg_typing *typing,
 	struct pg_inductive_instance recovered, again;
 	assert(smaller && pg_inductive_instance(typing, smaller, &recovered));
 	assert(recovered.schema == schema);
-	const struct pg_evidence *last = pg_evidence_premise(recovered.indices,
-		pg_evidence_premise_count(recovered.indices) - 1);
+	const struct pg_evidence *last = pg_substitution_image_at(typing, recovered.indices,
+		pg_evidence_context_map(recovered.indices)->count - 1);
 	assert(pg_evidence_context(last) == pg_evidence_context(fields));
 	assert(pg_evidence_subject(last)->core == pg_evidence_subject(small_value)->core);
 	assert(pg_inductive_instance(typing, smaller, &again) && recovered.indices == again.indices);
@@ -1537,7 +1538,7 @@ static void index_paths(struct pg_typing *typing,
 			applied = pg_prove_return_content(typing, applied);
 			assert(applied && pg_inductive_instance(typing, applied, &recovered));
 			assert(recovered.schema == schema && pg_evidence_context(recovered.parameters) == pg_evidence_context(context));
-			last = pg_evidence_premise(recovered.indices, pg_evidence_premise_count(recovered.indices) - 1);
+			last = pg_substitution_image_at(typing, recovered.indices, pg_evidence_context_map(recovered.indices)->count - 1);
 			assert(pg_alpha_equal(pg_evidence_subject(last)->core, pg_evidence_subject(actual)->core) == 1);
 			common_rule(typing, applied);
 			common_rule(typing, last);
@@ -1573,7 +1574,7 @@ static void index_paths(struct pg_typing *typing,
 		parameters = pg_prove_substitution_projection(typing, empty, zc);
 		const struct pg_evidence *fields = pg_prove_constructor_scope(typing, nat, succ, parameters);
 		const struct pg_evidence *fc = pg_evidence_premise(fields, 1);
-		const struct pg_evidence *k = pg_evidence_premise(fields, pg_evidence_premise_count(fields) - 1);
+		const struct pg_evidence *k = pg_substitution_image_at(typing, fields, pg_evidence_context_map(fields)->count - 1);
 		const struct pg_evidence *branch = injection
 			? pg_prove_identity_type(typing, pg_prove_projection(typing, fc, nat),
 				pg_prove_projection(typing, fc, nv), k)
@@ -2150,7 +2151,7 @@ static void schema_positivity(void)
 	assert(alternate_succ && alternate_succ != succ);
 	assert(pg_evidence_subject(alternate_succ) == pg_evidence_subject(succ));
 	const struct pg_evidence *alternate_instance = pg_evidence_premise(alternate_succ, 3);
-	assert(pg_evidence_premise(alternate_instance, pg_evidence_premise_count(alternate_instance) - 1) == alternate_zero);
+	assert(pg_substitution_image_at(&typing, alternate_instance, pg_evidence_context_map(alternate_instance)->count - 1) == alternate_zero);
 	const struct pg_data_schema *other_schema = pg_data_schema(&typing, signature, 2, results);
 	const struct pg_evidence *other = pg_prove_inductive_type(&typing, other_schema);
 	assert(other && pg_evidence_subject(other)->core != pg_evidence_subject(nat)->core);
@@ -2377,8 +2378,8 @@ static void schema_positivity(void)
 		}
 		assert(status == 1);
 		const struct pg_evidence *pair_result = pg_typed_query_result(pair_query);
-		assert(pair_result && pg_evidence_premise(pair_result, 2) == pg_typed_query_result(deep));
-		assert(pg_evidence_premise(pair_result, 3) == pg_typed_query_result(deep));
+		assert(pair_result && pg_substitution_image_at(&typing, pair_result, 0) == pg_typed_query_result(deep));
+		assert(pg_substitution_image_at(&typing, pair_result, 1) == pg_typed_query_result(deep));
 		common_rule(&typing, pair_result);
 		assert(pg_evidence_subject(pg_typed_query_result(deep))->core == pg_evidence_subject(nested)->core);
 		assert(!pg_evidence_context(pg_typed_query_result(deep)));
@@ -3032,7 +3033,7 @@ static void schema_positivity(void)
 		nat, pg_data_constructor(nat_layout, 1), identity, z_context, path_motive);
 	assert(dependent_scope);
 	const struct pg_evidence *dependent_context = pg_evidence_premise(dependent_scope, 1);
-	const struct pg_evidence *recursive_field = pg_evidence_premise(dependent_scope, 3);
+	const struct pg_evidence *recursive_field = pg_substitution_image_at(&typing, dependent_scope, 1);
 	const struct pg_evidence *field_identity = pg_prove_identity_type(&typing,
 		pg_prove_projection(&typing, dependent_context, nat), recursive_field, recursive_field);
 	const struct pg_evidence *dependent_ih = pg_prove_force(&typing,
@@ -3178,14 +3179,14 @@ static void schema_positivity(void)
 	const struct pg_evidence *boxed_type = pg_prove_classifier(&typing, empty, boxed);
 	assert(pg_inductive_instance(&typing, boxed_type, &recovered));
 	assert(recovered.formation == box && recovered.schema == box_schema);
-	assert(pg_evidence_subject(pg_evidence_premise(recovered.parameters, 2))->core == pg_evidence_subject(nat)->core);
+	assert(pg_evidence_subject(pg_substitution_image_at(&typing, recovered.parameters, 0))->core == pg_evidence_subject(nat)->core);
 	const struct pg_evidence *projected_box = pg_prove_projection(&typing, n_context, boxed_type);
 	const struct pg_evidence *substituted_box = pg_prove_reindex(&typing,
 		pg_prove_substitution(&typing, n_context, empty, 1, &zero), projected_box);
 	const struct pg_evidence *coerced_box = pg_prove_value_type(&typing, pg_prove_type_value(&typing, substituted_box));
 	assert(pg_inductive_instance(&typing, coerced_box, &recovered));
 	assert(recovered.formation == box && !pg_evidence_context(recovered.parameters));
-	assert(pg_evidence_subject(pg_evidence_premise(recovered.parameters, 2))->core == pg_evidence_subject(nat)->core);
+	assert(pg_evidence_subject(pg_substitution_image_at(&typing, recovered.parameters, 0))->core == pg_evidence_subject(nat)->core);
 	const struct pg_evidence *reconstructed_box = pg_prove_reindex(&typing, recovered.parameters, recovered.formation);
 	assert(pg_evidence_subject(reconstructed_box)->core == pg_evidence_subject(boxed_type)->core);
 	proofs = typing.proofs.count; terms = graph.terms.count;
@@ -3208,7 +3209,7 @@ static void schema_positivity(void)
 		assert(content && pg_inductive_instance(&typing, content, &recovered));
 		assert(recovered.formation == box && recovered.schema == box_schema);
 		assert(pg_evidence_context(recovered.parameters) == pg_evidence_context(renamed_context));
-		assert(pg_evidence_subject(pg_evidence_premise(recovered.parameters, 2))->core == pg_reference(&graph, renamed));
+		assert(pg_evidence_subject(pg_substitution_image_at(&typing, recovered.parameters, 0))->core == pg_reference(&graph, renamed));
 		assert(!pg_prove_variable(&typing, renamed_context, a));
 	}
 	const struct pg_evidence *box_motive_context = pg_prove_context_extension(&typing, empty, pg_binder(&graph), boxed_type);
@@ -3471,11 +3472,11 @@ static void schemas(struct pg_graph *graph)
 	assert(index_result && pg_evidence_premise(index_result, 0) == indices);
 	assert(pg_evidence_context(index_result) == pg_evidence_context(index_instance));
 	for (size_t n = 0; n < 3; ++n)
-		assert(pg_evidence_subject(pg_evidence_premise(index_result, n + 2))->core
-			== pg_evidence_subject(pg_evidence_premise(index_instance, n + 2))->core);
+		assert(pg_evidence_subject(pg_substitution_image_at(&typing, index_result, n))->core
+			== pg_evidence_subject(pg_substitution_image_at(&typing, index_instance, n))->core);
 	assert(pg_data_result(&typing, indexed, indexed_ctor, instance) == index_result);
 	for (size_t n = 0; n < 2; ++n)
-		assert(pg_evidence_subject(pg_evidence_premise(index_result, n + 3))->core == pg_evidence_subject(values[n])->core);
+		assert(pg_evidence_subject(pg_substitution_image_at(&typing, index_result, n + 1))->core == pg_evidence_subject(values[n])->core);
 	assert(!pg_data_schema(&typing, pg_data_signature(&typing, parameters, indices), 1, results));
 	assert(!pg_data_schema(&typing, pg_data_signature(&typing, parameters, empty), 0, NULL));
 	assert(!pg_data_result(&typing, indexed, indexed_ctor, params));
@@ -3618,7 +3619,11 @@ static void schemas(struct pg_graph *graph)
 	assert(alternate != parameters && pg_evidence_context(alternate) == pg_evidence_context(parameters));
 	assert(pg_data_schema(&typing, pg_data_signature(&typing, alternate, parameters), 3, results));
 	const struct pg_evidence *alternate_params = pg_prove_substitution(&typing, alternate, dest, 1, &av);
-	assert(pg_data_instance(&typing, schema, ctor, alternate_params, 2, values) == instance);
+	const struct pg_evidence *alternate_instance = pg_data_instance(&typing, schema, ctor, alternate_params, 2, values);
+	assert(alternate_instance && alternate_instance != instance);
+	assert(pg_evidence_context_map(alternate_instance) == pg_evidence_context_map(instance));
+	assert(pg_evidence_premise(alternate_instance, 2) == alternate_params);
+	common_rule(&typing, alternate_instance);
 	const struct pg_object *y = pg_binder(graph);
 	const struct pg_evidence *extra = pg_prove_context_extension(&typing, dest, y, at);
 	const struct pg_evidence *ap = pg_prove_variable(&typing, extra, a);
@@ -3640,15 +3645,15 @@ static void schemas(struct pg_graph *graph)
 	assert(pg_data_schema(&typing, pg_data_signature(&typing, parameters, parameters), 1, &boundary_result));
 	const struct pg_evidence *sides[] = {left, right};
 	for (size_t side = 0; side < 2; ++side) {
-		av = pg_evidence_premise(sides[side], 2);
+		av = pg_substitution_image_at(&typing, sides[side], 0);
 		params = pg_prove_substitution(&typing, parameters, boundary, 1, &av);
-		values[0] = pg_evidence_premise(sides[side], 3);
-		values[1] = pg_evidence_premise(sides[side], 4);
-		assert(pg_data_instance(&typing, schema, ctor, params, 2, values) == sides[side]);
+		values[0] = pg_substitution_image_at(&typing, sides[side], 1);
+		values[1] = pg_substitution_image_at(&typing, sides[side], 2);
+		assert(pg_evidence_context_map(pg_data_instance(&typing, schema, ctor, params, 2, values)) == pg_evidence_context_map(sides[side]));
 		index_result = pg_data_result(&typing, indexed, indexed_ctor, sides[side]);
 		assert(index_result);
 		for (size_t n = 0; n < 2; ++n)
-			assert(pg_evidence_subject(pg_evidence_premise(index_result, n + 3))->core == pg_evidence_subject(values[n])->core);
+			assert(pg_evidence_subject(pg_substitution_image_at(&typing, index_result, n + 1))->core == pg_evidence_subject(values[n])->core);
 	}
 	assert(pg_whnf_work_init(&work, graph) == 0);
 	const struct pg_evidence *body_type = pg_prove_classifier(&typing, fields, body);
@@ -3663,8 +3668,8 @@ static void schemas(struct pg_graph *graph)
 	const struct pg_term *endpoints[] = {pg_reference(graph, indexed_ctor), pg_reference(graph, indexed_ctor)};
 	const struct pg_term *constructor_path = pg_identity_action(graph, endpoints[0]);
 	for (size_t n = 0; n < 2; ++n) {
-		const struct pg_term *l = pg_evidence_subject(pg_evidence_premise(left, n + 3))->core;
-		const struct pg_term *r = pg_evidence_subject(pg_evidence_premise(right, n + 3))->core;
+		const struct pg_term *l = pg_evidence_subject(pg_substitution_image_at(&typing, left, n + 1))->core;
+		const struct pg_term *r = pg_evidence_subject(pg_substitution_image_at(&typing, right, n + 1))->core;
 		const struct pg_term *path = pg_evidence_subject(paths[n])->core;
 		acted_branch = boundary_apply(graph, acted_branch, l, r, path);
 		constructor_path = boundary_apply(graph, constructor_path, l, r, path);
@@ -3702,10 +3707,10 @@ static void schemas(struct pg_graph *graph)
 	assert(index_boundary);
 	const struct pg_evidence *map_endpoints[] = {pg_data_result(&typing, indexed, indexed_ctor, left),
 		pg_data_result(&typing, indexed, indexed_ctor, right)};
-	const struct pg_evidence *image_values[7] = {pg_evidence_premise(map_endpoints[0], 2)};
+	const struct pg_evidence *image_values[7] = {pg_substitution_image_at(&typing, map_endpoints[0], 0)};
 	for (size_t n = 0; n < 2; ++n) {
-		image_values[1 + 3 * n] = pg_evidence_premise(map_endpoints[0], n + 3);
-		image_values[2 + 3 * n] = pg_evidence_premise(map_endpoints[1], n + 3);
+		image_values[1 + 3 * n] = pg_substitution_image_at(&typing, map_endpoints[0], n + 1);
+		image_values[2 + 3 * n] = pg_substitution_image_at(&typing, map_endpoints[1], n + 1);
 		image_values[3 + 3 * n] = acted_indices[n];
 	}
 	/* Acting on an image's classifier and substituting into the acted
@@ -3732,14 +3737,14 @@ static void schemas(struct pg_graph *graph)
 		const struct pg_evidence *composite = pg_prove_substitution_compose(&typing, index_sides[side], acted_map);
 		assert(composite);
 		for (size_t n = 0; n < 3; ++n)
-			assert(pg_alpha_equal(pg_evidence_subject(pg_evidence_premise(composite, n + 2))->core,
-				pg_evidence_subject(pg_evidence_premise(map_endpoints[side], n + 2))->core) == 1);
+			assert(pg_alpha_equal(pg_evidence_subject(pg_substitution_image_at(&typing, composite, n))->core,
+				pg_evidence_subject(pg_substitution_image_at(&typing, map_endpoints[side], n))->core) == 1);
 	}
 	assert(pg_identity_substitution_images(&typing, index_map, left, right, 2, paths, 0, NULL) == 0);
 	assert(pg_identity_substitution_images(&typing, index_map, left, left, 0, NULL, 2, again) == 0);
 	for (size_t n = 0; n < 2; ++n)
 		check(&work, pg_evidence_subject(again[n])->core,
-			pg_identity_action(graph, pg_evidence_subject(pg_evidence_premise(map_endpoints[0], n + 3))->core));
+			pg_identity_action(graph, pg_evidence_subject(pg_substitution_image_at(&typing, map_endpoints[0], n + 1))->core));
 	assert(pg_identity_substitution_images(&typing, index_map, left, right, 2, paths, 2, again) == 0);
 	assert(pg_identity_substitution_images(&typing, index_map, left, right, 2, paths, 4, again) == -1);
 	assert(pg_identity_substitution_images(&foreign, index_map, left, right, 2, paths, 2, again) == -1);

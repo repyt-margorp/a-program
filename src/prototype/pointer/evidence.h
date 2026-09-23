@@ -553,7 +553,7 @@ const struct pg_evidence *pg_substitution_image(struct pg_typing *typing,
 /* Zero-based declaration order in the map, independent of proof premises. */
 const struct pg_evidence *pg_substitution_image_at(struct pg_typing *typing,
 	const struct pg_evidence *substitution, size_t index);
-/* Borrow explicit image premises, or derive projection images in scratch.
+/* Borrow explicit image premises, or derive shared prefix images in scratch.
  * The returned array must not outlive either the proof or scratch. */
 const struct pg_evidence *const *pg_substitution_images(struct pg_typing *typing,
 	const struct pg_evidence *substitution, struct pg_graph *scratch);
@@ -562,6 +562,12 @@ const struct pg_context_map *pg_evidence_context_map(const struct pg_evidence *e
 const struct pg_evidence *pg_prove_substitution(struct pg_typing *typing,
 	const struct pg_evidence *source, const struct pg_evidence *destination,
 	size_t count, const struct pg_evidence *const *images);
+/* Extend a checked prefix into a larger source and destination. Only the
+ * suffix is checked anew; prefix receipts are retained as a DAG dependency. */
+const struct pg_evidence *pg_prove_substitution_extension(struct pg_typing *typing,
+	const struct pg_evidence *source, const struct pg_evidence *destination,
+	const struct pg_evidence *prefix, size_t count,
+	const struct pg_evidence *const *images);
 /* Positional variable substitution between equally long telescopes. Every
  * dependent field is checked by the ordinary substitution rule, including
  * fields unused by a subsequent result. Binder identities need not agree. */

@@ -870,6 +870,146 @@ Per-file implementation delta: `effect_inference.c` +25/-0,
 **+32/-13, net +19**. Tests are `tests/derivation_io.c` +63/-0. This removes
 disposable payload construction, not the parent's outstanding source growth.
 
+### Q4: Retain substitution prefixes as proof dependencies
+
+`substitution_build` checked only a new telescope suffix, but still projected
+and copied every old image proof into every extension. The replacement retains
+the accepted prefix plus the new image proofs.
+The structural Context map remains the authority for typed images; this does
+not add a second map, a Core tag, or a new acceptance mechanism.
+
+- [x] Use one checked extension constructor for explicit maps, pairing and
+  lifting. Preserve exact source/destination and supplied proof provenance.
+- [x] Derive old image proofs on demand through the retained prefix DAG,
+  without recursive C traversal or a persistent image-proof cache.
+- [x] Update ordinary derivation checking and the nested wire version together;
+  loaded premises remain unaccepted requests for the same Solve path.
+- [x] Test dependent suffixes, alternate receipts, invalid scopes, long prefix
+  chains, exact repeated-request reuse and fresh-process image continuation.
+- [x] Run clean optimized/debug/sanitizer acceptance and compare proof count,
+  persistent premise edges, image size and time against `4476d7b`.
+- [ ] Publish only if the full suite passes and measurements justify retaining
+  the representation change; otherwise record why and remove the experiment.
+
+An explicit all-images derivation and an extension derivation may establish
+the same Context map by different premises. Do not merge their evidence merely
+by map identity or relax retained-premise checks to make deserialization pass.
+This is a physical proof-sharing experiment, not completion of R2-R5 or the
+cumulative source-reduction gate.
+
+The rule is ordinary weakening followed by telescope extension: a checked
+map `Delta -> Gamma`, projected into `Theta` extending `Delta`, plus checked
+new images in `Theta` gives a map into the extended source telescope. Each new
+image's classifier is still checked against substitution of preceding images.
+Neither a structural map nor a matching erased Core supplies acceptance.
+
+Canonical projections retain `[source, destination]`. Extensions retain
+`[source, destination, prefix, new_images...]`; the prefix is itself checked
+evidence. `pg_prove_substitution_extension` is the common constructor, not a
+new proof tag. Explicit maps start from the empty-source projection. A no-op
+extension reuses its prefix only when both exact Context receipts agree.
+The derivation reader/checker retains exact premises, with nested format
+APGDRV16 replacing APGDRV15; images with the old nested header require
+regeneration. There is no old-format adapter or separate replay authority.
+
+For a chain of single-field extensions, proof-premise storage is now linear
+instead of quadratic. Structural maps still retain flat typed image arrays;
+this does **not** make the entire substitution representation linear. Demand
+for an old image traverses the prefix DAG and builds only the required checked
+projections, using a temporary iterative stack. It does not cache a second
+persistent image-proof array. Tests cover 128 pairings followed by 64 lifts,
+exact alternative receipts and unchanged maps, repeated requests, dependent
+field rejection, image continuation and fresh-process derivation checking.
+
+Clean debug profiling of the generic theorem against `4476d7b`:
+
+| Quantity | Before | After |
+| --- | ---: | ---: |
+| Accepted proofs | 456,949 | 218,967 |
+| Persistent proof-premise edges | 1,359,398 | 578,678 |
+| Context-projection proofs | 282,330 | 12,082 |
+| Context-substitution proofs | 35,089 | 39,159 |
+| Variable proofs | 42,242 | 66,980 |
+| Main graph aligned used bytes | 249,990,336 | 218,070,944 |
+| Core terms | 593,486 | 593,540 |
+| Typed occurrences | 434,502 | 440,476 |
+| Context maps | 40,600 | 44,012 |
+| Source Solve steps | 619,092 | 619,094 |
+
+The counts are not identical outside the removed proof copies: explicit and
+extension derivations retain different dependencies, and typed reconstruction
+may select different valid receipts. Do not claim that all typed construction
+has shrunk, or that fewer proofs alone establishes a speedup. Main-graph bytes
+exclude other arenas, index tables and temporary allocations; peak RSS and
+wall time must be measured separately. Profiling logs/scripts are under
+`/tmp/a-program-prefix-proof-*`.
+
+Full `check-acceptance` passed on the exact staged source in a clean detached
+worktree: strict O0/g, O2, and O1 ASan+UBSan with leak detection. Sanitizer
+binaries were force-rebuilt after the final edit. All three include 63/63
+compatibility, higher Identity, source/derivation continuation, inert resave,
+ordinary/retained generic Sorted and the parallel derived-LT provider. Logs
+end in `debug-verified.log`, `optimized-verified.log`, and
+`sanitize-verified.log`. There are no test exclusions or sanitizer diagnostics.
+The main working tree's Core/IADT tests also pass; its separate unaccepted
+relocation experiment remains unstaged, with its test image accessor adapted.
+
+Initial fixture failures exposed direct reads of the old image-premise
+offsets and assertions that extension and flat introduction had the same
+proof pointer. Tests now check map/image agreement **and** exact prefix
+provenance instead. The ordinary checker still rejects changed/missing
+premises; no acceptance check was removed to make a saved proof pass.
+
+Generic complete source image sizes are 1,368,472 bytes before and after in
+ordinary mode, and 3,219,484 -> 3,209,476 bytes with retained reductions.
+On length, accepted proofs are 4,128 -> 3,832 and main-graph aligned bytes
+3,081,088 -> 3,050,624; Solve stays at 8,213 steps. Neither byte measure is a
+complete process-memory figure.
+
+Per-file changes for this epoch, relative to `4476d7b`:
+
+| File under `src/prototype/pointer/` | Added | Deleted | Net |
+| --- | ---: | ---: | ---: |
+| `derivation.c` | 2 | 1 | +1 |
+| `derivation_io.c` | 1 | 1 | 0 |
+| `evidence.c` | 63 | 44 | +19 |
+| `evidence.h` | 7 | 1 | +6 |
+| **Implementation** | **73** | **47** | **+26** |
+| `tests/core.c` | 58 | 11 | +47 |
+| `tests/derivation_io.c` | 3 | 3 | 0 |
+| `tests/iadt.c` | 40 | 35 | +5 |
+| `tests/identity.c` | 5 | 5 | 0 |
+| `tests/synthesis.c` | 18 | 18 | 0 |
+| **Tests** | **124** | **72** | **+52** |
+
+Cumulative implementation/header delta from R0 `4657cc6`, excluding tests and
+the unstaged experiment, is +9,608/-4,952, net **+4,656**. The parent's
+net-negative source gate remains unmet. This epoch reduces persistent proof
+copying, not source size or all typed-map duplication.
+
+Timing compares clean strict-O2 executables with seven alternating-order
+samples after warm-up, with no acceptance build/test running concurrently.
+Each sample runs 40 fresh processes for small inputs, three for legacy
+QuickSort, and one for generic QuickSort. Both QuickSort inputs use their
+complete providers; all timed processes exit 0. The corrected harness uses
+`perf_counter_ns` and per-child `wait4`; incomplete earlier harness attempts
+(missing system `time` command, then missing legacy provider) are discarded.
+
+| Source compile | Before median (range), ms | After median (range), ms |
+| --- | ---: | ---: |
+| length | 7.216 (6.813-7.376) | 7.252 (6.784-7.628) |
+| function-field | 10.957 (10.602-11.647) | 11.077 (10.808-11.319) |
+| legacy QuickSort property | 173.670 (169.884-178.747) | 160.742 (157.245-166.080) |
+| generic QuickSort Sorted | 1017.619 (1007.682-1040.357) | 913.501 (884.567-934.839) |
+
+Generic compile median improves about 10.2% on this machine, with peak RSS
+median 311,316 -> 276,064 KiB (ranges 311,152-311,536 and 275,828-276,516).
+Legacy QuickSort RSS median is 75,144 -> 70,464 KiB. Small-case ranges overlap
+and their RSS is dominated by inherited harness high-water marks: no speedup
+or memory conclusion is established there. These measure compilation/Solve,
+not sorting execution, and do not discharge the older R0 small-case regression
+gate. Verified samples: `/tmp/a-program-prefix-proof-benchmark-verified.log`.
+
 ## Change Log
 
 | Date | Stage | Revision and evidence | Status |

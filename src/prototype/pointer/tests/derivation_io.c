@@ -524,7 +524,7 @@ static void read_proofs(FILE *file, struct pg_typing *typing, uint64_t chunk)
 	const struct pg_derivation_input *const *roots;
 	assert(pg_derivations_read(file, typing, 1000, 100, resolve, typing->graph, &count, &roots) == 0);
 	assert(count == 29 && roots[0] == roots[2] && roots[0] != roots[1]);
-	assert(roots[27]->count == 2 && roots[28]->count == 4);
+	assert(roots[27]->count == 2 && roots[28]->count == 5);
 	assert(typing->proofs.count == 0);
 	struct pg_whnf_work work;
 	assert(pg_whnf_work_init(&work, typing->graph) == 0);
@@ -1617,7 +1617,7 @@ static void discarded_input(struct pg_typing *typing)
 	assert(header && partial && !pg_derivation_inputs_write(header, 0, NULL, NULL, NULL));
 	rewind(header);
 	assert(fread(magic, 1, sizeof(magic), header) == sizeof(magic));
-	assert(magic[7] == 15);
+	assert(magic[7] == 16);
 	assert(fwrite(magic, 1, sizeof(magic), partial) == sizeof(magic));
 	assert(!pg_wire_write_u64(partial, 4096) && !pg_wire_write_u64(partial, 0));
 	struct pg_block *blocks = typing->graph->blocks;
@@ -1630,7 +1630,7 @@ static void discarded_input(struct pg_typing *typing)
 		assert(typing->graph->blocks == blocks);
 	}
 	/* Old two-premise inputs must not acquire the new projection meaning. */
-	assert(!fseek(header, 7, SEEK_SET) && fputc(14, header) != EOF);
+	assert(!fseek(header, 7, SEEK_SET) && fputc(15, header) != EOF);
 	rewind(header);
 	size_t count = 17;
 	const struct pg_derivation_input *const *roots = NULL;

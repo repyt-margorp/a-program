@@ -171,8 +171,8 @@ static void heterogeneous_pi(struct pg_typing *typing)
 		const struct pg_object *q = pg_binder(graph);
 		const struct pg_evidence *choices = pg_prove_context_extension(typing, context, q,
 			pg_prove_classifier(typing, context, path));
-		const struct pg_evidence *l = pg_prove_projection(typing, choices, pg_evidence_premise(ls, 2));
-		const struct pg_evidence *r = pg_prove_projection(typing, choices, pg_evidence_premise(rs, 2));
+		const struct pg_evidence *l = pg_prove_projection(typing, choices, pg_substitution_image_at(typing, ls, 0));
+		const struct pg_evidence *r = pg_prove_projection(typing, choices, pg_substitution_image_at(typing, rs, 0));
 		const struct pg_evidence *lsub = pg_prove_substitution(typing, source, choices, 1, &l);
 		const struct pg_evidence *rsub = pg_prove_substitution(typing, source, choices, 1, &r);
 		const struct pg_evidence *selected[] = {pg_prove_projection(typing, choices, path),
@@ -1072,7 +1072,7 @@ static void uniform_transport(struct pg_typing *typing)
 		size_t destination = side ? 0 : 1;
 		const struct pg_evidence *edge = convert_to(typing, &work, paths[destination],
 			pg_prove_identity_type(typing, pg_prove_universe(typing, boundary, 0),
-				pg_evidence_premise(left, destination + 2), pg_evidence_premise(right, destination + 2)));
+				pg_substitution_image_at(typing, left, destination), pg_substitution_image_at(typing, right, destination)));
 		const struct pg_evidence *expected = pg_prove_identity_instance(typing, edge,
 			pg_prove_reindex(typing, left, transport), pg_prove_reindex(typing, right, transport));
 		assert(expected);
@@ -1689,8 +1689,8 @@ static void generated_contexts(struct pg_typing *typing)
 	const struct pg_evidence *suffix = pg_identity_context(typing, &dimensions, dependent,
 		1, centers, &left, &right, paths);
 	assert(suffix && pg_evidence_context(suffix)->parent->parent->parent == pg_evidence_context(initial));
-	assert(pg_evidence_subject(pg_evidence_premise(left, 2))->core
-		== pg_evidence_subject(pg_evidence_premise(right, 2))->core);
+	assert(pg_evidence_subject(pg_substitution_image_at(typing, left, 0))->core
+		== pg_evidence_subject(pg_substitution_image_at(typing, right, 0))->core);
 	const struct pg_evidence *ev = pg_prove_variable(typing, dependent, e);
 	action_result(typing, suffix, &work,
 		pg_prove_family_action(typing, pg_prove_projection(typing, dependent, ztype), ev, left, right, 1, paths), paths[0]);

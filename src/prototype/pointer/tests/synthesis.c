@@ -1620,7 +1620,7 @@ static void pending_effect_contexts(struct pg_typing *typing)
 		const struct pg_evidence *map_image = complete(&synthesis, source_variable, PG_SYNTHESIS_DONE);
 		assert(pg_evidence_rule(map_proof) == PG_CONTEXT_SUBSTITUTION);
 		assert(pg_evidence_premise(map_proof, 0) == expected_context && pg_evidence_premise(map_proof, 1) == expected_context);
-		const struct pg_evidence *checked_image = pg_evidence_premise(map_proof, 2);
+		const struct pg_evidence *checked_image = pg_substitution_image_at(typing, map_proof, 0);
 		same_judgement(checked_image, map_image);
 		assert(map_proof == pg_prove_substitution(typing, expected_context, expected_context, 1, &checked_image));
 		assert(map_proof == complete(&synthesis,
@@ -4412,8 +4412,8 @@ static void selected_instances(struct pg_typing *typing)
 	/* Instantiation action exposes the selected R, never replaces it by A/B. */
 	const struct pg_term *expected = pg_identity_action(graph, pg_reference(graph, r));
 	for (size_t i = 0; i < 2; ++i) expected = pg_application(graph,
-		pg_identity_instance(graph, expected, pg_evidence_subject(pg_evidence_premise(ls, i + 5))->core,
-			pg_evidence_subject(pg_evidence_premise(rs, i + 5))->core), pg_evidence_subject(paths[i])->core);
+		pg_identity_instance(graph, expected, pg_evidence_subject(pg_substitution_image_at(typing, ls, i + 3))->core,
+			pg_evidence_subject(pg_substitution_image_at(typing, rs, i + 3))->core), pg_evidence_subject(paths[i])->core);
 	const struct pg_evidence *normalized = normalize(&split, context, acted);
 	/* WHNF can retain beta/action redexes in neutral argument positions. */
 	struct pg_conversion comparison;
@@ -4442,8 +4442,8 @@ static void selected_instances(struct pg_typing *typing)
 		pg_prove_classifier(typing, context, paths[0]));
 	const struct pg_evidence *li[5], *ri[5];
 	for (size_t i = 0; i < 5; ++i) {
-		li[i] = pg_prove_projection(typing, choices, pg_evidence_premise(ls, i + 2));
-		ri[i] = pg_prove_projection(typing, choices, pg_evidence_premise(rs, i + 2));
+		li[i] = pg_prove_projection(typing, choices, pg_substitution_image_at(typing, ls, i));
+		ri[i] = pg_prove_projection(typing, choices, pg_substitution_image_at(typing, rs, i));
 	}
 	const struct pg_evidence *cl = pg_prove_substitution(typing, source, choices, 5, li);
 	const struct pg_evidence *cr = pg_prove_substitution(typing, source, choices, 5, ri);
@@ -6065,8 +6065,8 @@ static void source_schemas(struct pg_typing *typing)
 		assert(pg_context_extension_size(pg_evidence_context(fields), pg_evidence_context(parameter_context), &count) == 0);
 		assert(count == i + 1);
 		const struct pg_evidence *map = pg_data_schema_result(schema, ctor);
-		assert(pg_evidence_premise_count(map) == 4);
-		assert(pg_evidence_subject(pg_evidence_premise(map, 3))->core == pg_reference(typing->graph, pg_evidence_context(fields)->binder));
+		assert(pg_evidence_context_map(map)->count == 2);
+		assert(pg_evidence_subject(pg_substitution_image_at(typing, map, 1))->core == pg_reference(typing->graph, pg_evidence_context(fields)->binder));
 	}
 	terms = typing->graph->terms.count; proofs = typing->proofs.count;
 	uint64_t steps = synthesis.steps;
@@ -6519,8 +6519,8 @@ static void data_cases(struct pg_typing *typing)
 		assert(pg_evidence_rule(map) == PG_CONTEXT_SUBSTITUTION && pg_evidence_context(map) == pg_evidence_context(fields));
 		assert(pg_evidence_premise(map, 0) == indices && pg_evidence_premise(map, 1) == fields);
 		for (size_t j = 0; j < 3; ++j) {
-			same_judgement(pg_evidence_premise(map, j + 2), images[j]);
-			same_judgement(pg_evidence_premise(map, j + 2), pg_evidence_premise(pg_synthesis_result(bulk), j + 2));
+			same_judgement(pg_substitution_image_at(typing, map, j), images[j]);
+			same_judgement(pg_substitution_image_at(typing, map, j), pg_substitution_image_at(typing, pg_synthesis_result(bulk), j));
 		}
 		assert(pg_data_schema(typing, pg_data_signature(typing, parameters, indices), 1, &map));
 		if (!n) {
@@ -6528,7 +6528,7 @@ static void data_cases(struct pg_typing *typing)
 			const struct pg_evidence *shadow_map = complete(&split,
 				pg_synthesis_data_result(&split, shadow, parameters, indices, syntax), PG_SYNTHESIS_DONE);
 			/* Parameter identity comes from its binder, not the shadowed name. */
-			assert(pg_evidence_subject(pg_evidence_premise(shadow_map, 2))->core == pg_reference(graph, a));
+			assert(pg_evidence_subject(pg_substitution_image_at(typing, shadow_map, 0))->core == pg_reference(graph, a));
 		}
 		uint64_t steps = split.steps;
 		assert(pg_synthesis_data_result(&split, scope, parameters, indices, syntax) == result);
@@ -6617,7 +6617,7 @@ static void data_cases(struct pg_typing *typing)
 	proofs = typing->proofs.count;
 	steps = split.steps;
 	for (size_t n = 0; n < 2; ++n) {
-		const struct pg_evidence *image = pg_evidence_premise(result_map, n + 3);
+		const struct pg_evidence *image = pg_substitution_image_at(typing, result_map, n + 1);
 		struct pg_synthesis_job *producer = pg_synthesis_evidence(&split, image);
 		assert(producer && pg_synthesis_result(producer) == image);
 		assert(pg_synthesis_evidence(&split, image) == producer);
@@ -6642,10 +6642,10 @@ static void data_cases(struct pg_typing *typing)
 	pg_synthesis_advance(&split, 1000);
 	assert(split.steps == steps);
 	const struct pg_evidence *endpoints[] = {pg_data_result(typing, schema, ctor, left), pg_data_result(typing, schema, ctor, right)};
-	const struct pg_evidence *values[7] = {pg_evidence_premise(endpoints[0], 2)};
+	const struct pg_evidence *values[7] = {pg_substitution_image_at(typing, endpoints[0], 0)};
 	for (size_t n = 0; n < 2; ++n) {
-		values[1 + 3 * n] = pg_evidence_premise(endpoints[0], n + 3);
-		values[2 + 3 * n] = pg_evidence_premise(endpoints[1], n + 3);
+		values[1 + 3 * n] = pg_substitution_image_at(typing, endpoints[0], n + 1);
+		values[2 + 3 * n] = pg_substitution_image_at(typing, endpoints[1], n + 1);
 		values[3 + 3 * n] = acted_images[n];
 	}
 	const struct pg_evidence *declarations[7], *declaration = target;
@@ -6667,7 +6667,7 @@ static void data_cases(struct pg_typing *typing)
 		pg_synthesis_advance(&whole, 100000);
 		bulk_sigma = pg_synthesis_result(bulk_pair);
 		assert(bulk_sigma);
-		const struct pg_evidence *converted = pg_evidence_premise(sigma, n + 2);
+		const struct pg_evidence *converted = pg_substitution_image_at(typing, sigma, n);
 		assert(pg_evidence_rule(converted) == PG_TYPE_CONVERSION && pg_evidence_premise(converted, 0) == values[n]);
 		assert(sigma == pg_prove_substitution_pair(typing, prefix, declarations[n], converted));
 		steps = split.steps;
@@ -6677,14 +6677,14 @@ static void data_cases(struct pg_typing *typing)
 	}
 	assert(pg_evidence_context(sigma) == pg_evidence_context(bulk_sigma));
 	for (size_t n = 0; n < 7; ++n)
-		same_judgement(pg_evidence_premise(sigma, n + 2), pg_evidence_premise(bulk_sigma, n + 2));
+		same_judgement(pg_substitution_image_at(typing, sigma, n), pg_substitution_image_at(typing, bulk_sigma, n));
 	const struct pg_evidence *projections[] = {index_left, index_right};
 	for (size_t side = 0; side < 2; ++side) {
 		const struct pg_evidence *composite = pg_prove_substitution_compose(typing, projections[side], sigma);
 		assert(composite);
 		for (size_t n = 0; n < 3; ++n)
-			assert(pg_alpha_equal(pg_evidence_subject(pg_evidence_premise(composite, n + 2))->core,
-				pg_evidence_subject(pg_evidence_premise(endpoints[side], n + 2))->core) == 1);
+			assert(pg_alpha_equal(pg_evidence_subject(pg_substitution_image_at(typing, composite, n))->core,
+				pg_evidence_subject(pg_substitution_image_at(typing, endpoints[side], n))->core) == 1);
 	}
 	assert(!pg_synthesis_substitution_pair(&split, sigma, empty, values[0]));
 	assert(!pg_synthesis_substitution_pair(&split, sigma, target, produced));

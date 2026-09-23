@@ -225,7 +225,7 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 	case PG_CONTEXT_SUBSTITUTION:
 		if (count < 2) return NULL;
 		result = count == 2 ? pg_prove_substitution_projection(typing, p[0], p[1])
-			: pg_prove_substitution(typing, p[0], p[1], count - 2, p + 2); break;
+			: pg_prove_substitution_extension(typing, p[0], p[1], p[2], count - 3, p + 3); break;
 	case PG_FAMILY_IDENTITY_FORM:
 		if (count < 5) return NULL;
 		result = pg_prove_family_identity_type(typing, p[0], p[1], p[2], count - 5, p + 3, p[count - 2], p[count - 1]); break;
@@ -242,6 +242,7 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 	switch (rule) {
 	case PG_IDENTITY_TRANSPORT: case PG_REFLEXIVITY:
 	case PG_IDENTITY_LIFT: case PG_FAMILY_ACTION:
+	case PG_CONTEXT_SUBSTITUTION:
 	case PG_REQUEST_INTRO: case PG_HANDLER_ELIM:
 	case PG_CONSTRUCTOR_INTRO: case PG_MATCH_ELIM: case PG_INDUCTION_ELIM: case PG_TYPE_CASE:
 		return retained_premises(typing, result, rule, count, p);

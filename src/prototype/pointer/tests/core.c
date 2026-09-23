@@ -1590,6 +1590,7 @@ static void typed_substitution_test(struct pg_graph *graph)
 	const struct pg_evidence *sigma = pg_prove_substitution(&typing, source, destination, 2, images);
 	assert(sigma && pg_evidence_judgement(sigma) == PG_JUDGEMENT_SUBSTITUTION);
 	assert(pg_prove_substitution(&typing, source, destination, 2, images) == sigma);
+	assert(!pg_prove_substitution(NULL, source, destination, 2, images));
 	size_t correspondence_proofs = typing.proofs.count;
 	assert(pg_prove_telescope_correspondence(&typing, source, destination) == sigma);
 	assert(typing.proofs.count == correspondence_proofs);
@@ -2249,7 +2250,9 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(pg_evidence_judgement(pg_substitution_image(&typing, rebased_function, function_binder)) == PG_JUDGEMENT_VALUE);
 	assert(!pg_prove_substitution_rebase(&typing, empty, function_values));
 	reconstruct_derivation(&typing, rebased_function);
-	assert(pg_prove_substitution_pair(&typing, type_pair, source, destination_y) == sigma);
+	const struct pg_evidence *sigma_pair = pg_prove_substitution_pair(&typing, type_pair, source, destination_y);
+	assert(sigma_pair != sigma && pg_evidence_context_map(sigma_pair) == map);
+	assert(pg_evidence_premise(sigma_pair, 2) == type_pair);
 	assert(!pg_prove_substitution_pair(&typing, closed, source, destination_y));
 	assert(!pg_prove_substitution_pair(&typing, type_pair, source, destination_b));
 	assert(!pg_prove_substitution_pair(&typing, type_pair, source, source_x));
@@ -2323,7 +2326,7 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(pg_prove_substitution_compose(&typing, sigma,
 		pg_prove_substitution_projection(&typing, destination, destination)) == sigma);
 	for (size_t i = 0; i < 2; ++i)
-		assert(pg_evidence_premise(composite, i + 2) == second_images[i]);
+		assert(pg_substitution_image_at(&typing, composite, i) == second_images[i]);
 	assert(!pg_prove_substitution_compose(&typing, tau, sigma));
 	const struct pg_evidence *once = pg_prove_reindex(&typing, composite, returned);
 	const struct pg_evidence *twice = pg_prove_reindex(&typing, tau, reindexed_return);
@@ -2425,9 +2428,11 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(pg_prove_substitution_extend(&typing, sigma, source_extension, 1, &destination_y) == paired);
 	assert(!pg_prove_substitution_extend(&typing, sigma, source_extension, 0, NULL));
 	const struct pg_evidence *lift_images[] = {
-		pg_evidence_premise(lifted, 2), pg_evidence_premise(lifted, 3), pg_evidence_premise(lifted, 4)
+		pg_substitution_image_at(&typing, lifted, 0), pg_substitution_image_at(&typing, lifted, 1),
+		pg_substitution_image_at(&typing, lifted, 2)
 	};
-	assert(pg_prove_substitution(&typing, source_extension, pg_evidence_premise(lifted, 1), 3, lift_images) == lifted);
+	const struct pg_evidence *flat_lift = pg_prove_substitution(&typing, source_extension, pg_evidence_premise(lifted, 1), 3, lift_images);
+	assert(flat_lift != lifted && pg_evidence_context_map(flat_lift) == pg_evidence_context_map(lifted));
 	const struct pg_evidence *fa_instance = pg_prove_reindex(&typing, paired, fa_extended);
 	assert(fa_instance && pg_evidence_judgement(fa_instance) == PG_JUDGEMENT_COMPUTATION_TYPE);
 	assert(pg_evidence_subject(fa_instance)->core == pg_return_type(graph, pg_reference(graph, b)));
@@ -2484,7 +2489,7 @@ static void typed_substitution_test(struct pg_graph *graph)
 	const struct pg_evidence *alternate_lift = pg_prove_substitution_lift(&typing, alternate, function_context, g);
 	assert(alternate_lift && alternate_lift != function_lift);
 	assert(pg_evidence_context_map(alternate_lift) == pg_evidence_context_map(function_lift));
-	assert(pg_evidence_premise(alternate_lift, 2) == pg_prove_projection(&typing,
+	assert(pg_substitution_image_at(&typing, alternate_lift, 0) == pg_prove_projection(&typing,
 		pg_evidence_premise(alternate_lift, 1), alternate_b));
 	assert(pg_evidence_premise(alternate_lift, 2) != pg_evidence_premise(function_lift, 2));
 	reconstruct_derivation(&typing, alternate_lift);
@@ -2494,7 +2499,7 @@ static void typed_substitution_test(struct pg_graph *graph)
 		pg_evidence_context_map(fresh_alternate_lift)) == fresh_alternate_lift);
 	/* A fresh destination must not first publish an unrequested alternative
 	 * assembled from a different prefix proof. */
-	assert(pg_evidence_premise(fresh_alternate_lift, 2) == pg_prove_projection(&typing,
+	assert(pg_substitution_image_at(&typing, fresh_alternate_lift, 0) == pg_prove_projection(&typing,
 		pg_evidence_premise(fresh_alternate_lift, 1), alternate_b));
 	/* Extending an accepted map must not freshen Pi binders in its prefix. */
 	const struct pg_evidence *function_destination = pg_evidence_premise(function_lift, 1);
@@ -2510,15 +2515,16 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(graph->terms.count == prefix_terms);
 	assert(typing.proofs.count == prefix_proofs + 1);
 	const struct pg_evidence *last_images[] = {
-		pg_evidence_premise(function_lift, 2), pg_evidence_premise(function_lift, 3),
-		pg_evidence_premise(function_lift, 4), last_image
+		pg_substitution_image_at(&typing, function_lift, 0), pg_substitution_image_at(&typing, function_lift, 1),
+		pg_substitution_image_at(&typing, function_lift, 2), last_image
 	};
-	assert(pg_prove_substitution(&typing, last_context, function_destination, 4, last_images) == last_pair);
-	assert(pg_evidence_premise(last_pair, 4) == pg_evidence_premise(function_lift, 4));
+	const struct pg_evidence *flat_last = pg_prove_substitution(&typing, last_context, function_destination, 4, last_images);
+	assert(flat_last != last_pair && pg_evidence_context_map(flat_last) == pg_evidence_context_map(last_pair));
+	assert(pg_substitution_image_at(&typing, last_pair, 2) == pg_substitution_image_at(&typing, function_lift, 2));
 	size_t term_count = graph->terms.count;
 	size_t proof_count = typing.proofs.count;
 	for (size_t i = 0; i < 100; ++i) {
-		assert(pg_prove_substitution_pair(&typing, type_pair, source, destination_y) == sigma);
+		assert(pg_prove_substitution_pair(&typing, type_pair, source, destination_y) == sigma_pair);
 		assert(pg_prove_substitution_pair(&typing, sigma, source_extension, destination_y) == paired);
 		assert(pg_prove_reindex(&typing, sigma, source_pi) == moved_pi);
 		assert(pg_prove_reindex(&typing, sigma, source_upi) == moved_upi);
@@ -2529,6 +2535,47 @@ static void typed_substitution_test(struct pg_graph *graph)
 	const struct pg_evidence *records[] = {sigma, paired, moved_pi, moved_upi, content, codomain, function_lift, last_pair};
 	for (size_t i = 0; i < sizeof(records) / sizeof(*records); ++i)
 		reconstruct_derivation(&typing, records[i]);
+	/* Each extension retains one prefix edge, even across long telescopes.
+	 * Lazy image lookup must preserve the supplied alternative receipt. */
+	const struct pg_evidence *dag = alternate, *dag_scope = source;
+	for (size_t i = 0; i < 128; ++i) {
+		dag_scope = pg_prove_context_extension(&typing, dag_scope, pg_binder(graph),
+			pg_prove_projection(&typing, dag_scope, universe));
+		const struct pg_evidence *prefix = dag;
+		size_t before = typing.proofs.count;
+		dag = pg_prove_substitution_pair(&typing, prefix, dag_scope, destination_b);
+		assert(dag && typing.proofs.count == before + 1);
+		assert(pg_evidence_premise_count(dag) == 4 && pg_evidence_premise(dag, 2) == prefix);
+		assert(pg_prove_substitution_pair(&typing, prefix, dag_scope, destination_b) == dag);
+	}
+	assert(pg_substitution_image_at(&typing, dag, 0) == alternate_b);
+	assert(pg_substitution_image_at(&typing, dag, 1) == destination_y);
+	assert(pg_substitution_image_at(&typing, dag, 129) == destination_b);
+	assert(!pg_substitution_image_at(&typing, dag, 130));
+	const struct pg_evidence *destinations[64];
+	for (size_t i = 0; i < 64; ++i) {
+		dag_scope = pg_prove_context_extension(&typing, dag_scope, pg_binder(graph),
+			pg_prove_projection(&typing, dag_scope, universe));
+		const struct pg_evidence *prefix = dag;
+		dag = pg_prove_substitution_lift(&typing, prefix, dag_scope, pg_binder(graph));
+		assert(dag && pg_evidence_premise_count(dag) == 4 && pg_evidence_premise(dag, 2) == prefix);
+		destinations[i] = pg_evidence_premise(dag, 1);
+	}
+	const struct pg_evidence *expected_image = alternate_b;
+	for (size_t i = 0; i < 64; ++i)
+		expected_image = pg_prove_projection(&typing, destinations[i], expected_image);
+	assert(pg_substitution_image_at(&typing, dag, 0) == expected_image);
+	assert(pg_evidence_subject(expected_image) == pg_evidence_context_map(dag)->images[0]);
+	struct pg_graph scratch = {0};
+	const struct pg_evidence *const *dag_images = pg_substitution_images(&typing, dag, &scratch);
+	assert(dag_images && dag_images[0] == expected_image);
+	for (size_t i = 0; i < pg_evidence_context_map(dag)->count; ++i)
+		assert(pg_evidence_subject(dag_images[i]) == pg_evidence_context_map(dag)->images[i]);
+	pg_graph_destroy(&scratch);
+	reconstruct_derivation(&typing, dag);
+	assert(!pg_prove_substitution_extension(&typing, dag_scope, source, dag, 0, NULL));
+	assert(!pg_prove_substitution_extension(&typing, source, destination, source, 0, NULL));
+	assert(!pg_prove_substitution_extension(&typing, source, destination, dag, 0, NULL));
 	/* Missing mapped origins still need ordered checking, even when most
 	 * structural requests can use already accepted prerequisites directly. */
 	const struct pg_evidence *chain_scope = empty;
