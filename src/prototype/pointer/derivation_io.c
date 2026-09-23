@@ -127,12 +127,7 @@ int pg_derivation_inputs_collect_objects(struct pg_dag *objects, size_t count,
 	for (size_t i = 0; i < count; ++i) if (pg_dag_add(&inputs, roots[i])) goto done;
 	for (const struct pg_dag_node *node = inputs.first; node; node = node->next)
 		if (pg_derivation_input_collect(&terms, &contexts, node->key)) goto done;
-	size_t equations, effect_count;
-	const struct pg_term *const *effect_roots;
-	if (work) {
-		if (pg_effect_inference_pack(work, &terms.storage, &equations, &effect_count, &effect_roots)) goto done;
-		for (size_t i = 0; i < effect_count; ++i) if (pg_dag_add(&terms, effect_roots[i])) goto done;
-	}
+	if (work && pg_effect_inference_collect(work, &terms)) goto done;
 	status = 0;
 done:
 	pg_dag_destroy(&contexts);

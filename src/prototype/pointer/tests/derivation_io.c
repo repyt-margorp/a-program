@@ -969,6 +969,68 @@ static void rejected_effect_images(FILE *file)
 	free(bytes);
 }
 
+static void direct_effect_dependencies(struct pg_graph *graph)
+{
+	struct pg_effect_inference work;
+	assert(!pg_effect_inference_init(&work, graph));
+	const struct pg_term *u = pg_universe(graph, 0);
+	const struct pg_object *labels[] = {pg_operation_label_create(graph, u, u), pg_operation_label_create(graph, u, u)};
+	const struct pg_effect_row *empty = pg_effect_row(graph, 0, NULL);
+	const struct pg_effect_row *seed = pg_effect_row(graph, 2, labels);
+	struct pg_effect_equation *target = NULL;
+	for (unsigned phase = 0; phase < 4; ++phase) {
+		if (phase == 1) {
+			struct pg_effect_equation *source = pg_effect_equation(&work, seed);
+			target = pg_effect_equation(&work, empty);
+			assert(!pg_effect_dependency(&work, source, pg_effect_row(graph, 1, labels), target));
+			assert(!pg_effect_dependency(&work, target, empty, source));
+			assert(!pg_effect_contribution(&work, pg_effect_reference(graph, seed), seed, target));
+		} else if (phase == 2) {
+			pg_effect_inference_seal(&work);
+			assert(!pg_effect_inference_advance(&work, 1));
+		} else if (phase == 3) {
+			assert(pg_effect_inference_advance(&work, 100) == 1);
+			assert(pg_effect_count(pg_effect_inference_result(&work, target)) == 1);
+		}
+		struct pg_dag direct, packed, terms;
+		struct pg_graph scratch = {0};
+		assert(!pg_graph_init(&scratch));
+		assert(!pg_dag_init(&direct, NULL, NULL) && !pg_dag_init(&packed, NULL, NULL));
+		assert(!pg_graph_dependencies_init(&terms, &direct, &pg_builtin_graph_codec, graph));
+		struct pg_effect_inference before = work;
+		assert(!pg_effect_inference_collect(&work, &terms));
+		size_t objects = direct.count, nodes = terms.count, wrappers = terms.storage.terms.count;
+		for (unsigned i = 0; i < 128; ++i) assert(!pg_effect_inference_collect(&work, &terms));
+		assert(direct.count == objects && terms.count == nodes && terms.storage.terms.count == wrappers);
+		assert(!memcmp(&before, &work, sizeof(work)));
+		size_t equations, count;
+		const struct pg_term *const *roots;
+		assert(!pg_effect_inference_pack(&work, &scratch, &equations, &count, &roots));
+		assert(equations == (phase ? 3u : 0u) && count == (phase ? 15u : 0u));
+		assert(!pg_graph_collect_objects(&packed, count, roots, &pg_builtin_graph_codec, graph));
+		assert(direct.count == packed.count);
+		const struct pg_dag_node *actual = direct.first;
+		for (const struct pg_dag_node *expected = packed.first; expected; expected = expected->next) {
+			assert(actual && actual->key == expected->key);
+			actual = actual->next;
+		}
+		assert(!actual);
+		assert(pg_effect_inference_collect(NULL, &terms) == -1);
+		assert(pg_effect_inference_collect(&work, NULL) == -1);
+		assert(pg_effect_inference_collect(&work, &(struct pg_dag){0}) == -1);
+		work.failed = 1;
+		assert(pg_effect_inference_collect(&work, &terms) == -1);
+		work.failed = 0;
+		terms.failed = 1;
+		assert(pg_effect_inference_collect(&work, &terms) == -1);
+		pg_dag_destroy(&terms);
+		pg_dag_destroy(&direct);
+		pg_dag_destroy(&packed);
+		pg_graph_destroy(&scratch);
+	}
+	pg_effect_inference_destroy(&work);
+}
+
 static void pending_effect_proofs(FILE *file, struct pg_typing *typing,
 	int writing, uint64_t chunk)
 {
@@ -977,6 +1039,7 @@ static void pending_effect_proofs(FILE *file, struct pg_typing *typing,
 	assert(!pg_effect_inference_init(&effects, graph));
 	const struct pg_effect_row *empty_row = pg_effect_row(graph, 0, NULL);
 	if (writing) {
+		direct_effect_dependencies(graph);
 		const struct pg_term *u = pg_universe(typing->graph, 0);
 		const struct pg_object *labels[] = {pg_operation_label_create(graph, u, u), pg_operation_label_create(graph, u, u)};
 		const struct pg_effect_row *seed = pg_effect_row(graph, 2, labels);

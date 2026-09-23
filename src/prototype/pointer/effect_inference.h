@@ -5,6 +5,7 @@
 
 struct pg_effect_equation;
 struct pg_effect_dependency;
+struct pg_dag;
 struct pg_effect_inference {
 	struct pg_graph arena;
 	struct pg_graph *rows;
@@ -42,6 +43,10 @@ const struct pg_effect_row *pg_effect_equation_seed(const struct pg_effect_infer
 int pg_effect_inference_visit(const struct pg_effect_inference *work, void *context,
 	int (*equation)(void *, const struct pg_effect_equation *, const struct pg_effect_row *),
 	int (*dependency)(void *, const struct pg_effect_equation *, const struct pg_effect_row *, const struct pg_effect_equation *));
+/* Collect roots directly into a dependency DAG with initialized term storage.
+ * No wire payload, queue state or inferred solution is materialized. Descriptor
+ * objects remain borrowed from rows; collection does not advance or seal work. */
+int pg_effect_inference_collect(const struct pg_effect_inference *work, struct pg_dag *terms);
 /* Image root slice: equation pairs (parameter, seed), then dependency triples
  * (source parameter, mask, target parameter). Pack allocates in storage and
  * borrows descriptor objects from rows. Include these roots in the SAME Core

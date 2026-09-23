@@ -583,13 +583,7 @@ static int retain_dependencies(void *owner, const struct pg_derivation_input *in
 	struct origin_collection *c = owner;
 	if (input) {
 		if (pg_derivation_input_collect(&c->terms, &c->contexts, input)) return -1;
-	} else {
-		const struct pg_term *const *terms;
-		size_t count, equations;
-		if (pg_effect_inference_pack(work, &c->terms.storage, &equations, &count, &terms)) return -1;
-		for (size_t i = 0; i < count; ++i)
-			if (terms[i] && pg_dag_add(&c->terms, terms[i])) return -1;
-	}
+	} else if (pg_effect_inference_collect(work, &c->terms)) return -1;
 	return retain_objects(c);
 }
 

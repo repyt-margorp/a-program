@@ -736,6 +736,61 @@ consumers cost code. This epoch is not evidence that the overall refactor has
 met its source-reduction target. Continue R2-R5 separately; do not relax the
 final gate or claim that a small timing difference pays for arbitrary growth.
 
+### Q4: Direct effect-definition dependencies
+
+`retain_dependencies` and `pg_derivation_inputs_collect_objects` still build a
+wire-root array with `pg_effect_inference_pack` merely to discover references.
+Use the existing definition visitor to collect parameter/seed references and
+edge masks directly into the caller's DAG. Endpoint references are already
+visited with equations. Keep actual wire packing, order and format unchanged;
+do not export solver approximations or create another persistent index.
+
+- [x] Replace the two dependency-only packing paths with the shared collector.
+- [x] Compare ordered object sets against the packed representation,
+  including cyclic masked equations, constant-source aliases, empty workers,
+  failed inputs and repeated collection before/after Solve.
+- [x] Run optimized acceptance and focused sanitizer tests; verify inert image
+  resave and record allocation/code deltas without claiming a general speedup.
+- [ ] Publish the verified epoch separately from the unaccepted relocation
+  experiment. R2-R5 and the cumulative source-reduction gate remain open.
+
+Verification used a clean detached `46019c9` worktree with only these five
+implementation/test files changed. Full optimized `check-acceptance` passed,
+including 63/63 compatibility and generic Sorted with retained images.
+ASan/UBSan with leak detection passed Derivation IO, Source IO and generic
+Sorted with retained images. The initial new test omitted initialization of
+its packing scratch graph and crashed in `pack_equation`; that fixture error
+was fixed and the full suite rebuilt/rerun before the successful gate. The
+collector also rejects a DAG without initialized term storage.
+
+The direct/packed object sequence is identical for empty, unsealed, partially
+solved and solved workers. The masked cyclic test includes a disposable
+constant-source alias. Repeating collection 128 times neither grows the
+reference/object sets nor changes the worker's queue/state. Invalid inputs
+are rejected without advancing Solve.
+
+Clean debug profiling against the preceding implementation, whose pointer
+sources were diff-checked against `46019c9`, records:
+
+| Workload | Dependency-only pack calls before/after | Wire pack calls before/after | Removed aligned root-array bytes |
+| --- | ---: | ---: | ---: |
+| `source_io_test write` | 3 / 0 | 12 / 12 | 96 |
+| retained old QuickSort property | 0 / 0 | 1 / 1 | 0 |
+| inferred-index effects, save at 1,000 steps | 0 / 0 | 1 / 1 | 0 |
+
+These bytes count only the removed `effect_pack.roots` allocations rounded
+to the arena's 32-byte unit, not peak RSS. The last two CLI cases did not
+export pending equation workers through this path: do not claim a QuickSort
+or general compiler speedup. All three saved images are byte-identical across
+the two builds. No wire version, typing rule or Core representation changes.
+Logs use `/tmp/a-program-effect-*`; the successful full-suite log ends in
+`clean-acceptance-final.log`.
+
+Per-file implementation delta: `effect_inference.c` +25/-0,
+`effect_inference.h` +5/-0, `derivation_io.c` +1/-6, `source_io.c` +1/-7:
+**+32/-13, net +19**. Tests are `tests/derivation_io.c` +63/-0. This removes
+disposable payload construction, not the parent's outstanding source growth.
+
 ## Change Log
 
 | Date | Stage | Revision and evidence | Status |
@@ -755,3 +810,4 @@ final gate or claim that a small timing difference pays for arbitrary growth.
 | 2026-09-24 | #33 kernel boundary | The wrong-IH source fixture stops at motive synthesis, so an explicit wrong-index motive was tested directly in the Acc IADT kernel fixture. The ill-indexed IH cannot be applied to the constructor step; full optimized acceptance and focused sanitizer pass. | Kernel negative established for this case; surface elaboration and adequacy remain open. |
 | 2026-09-24 | #34 whole-provider trial | The two-constructor provider checks, but its derived lifting under `@partitionLower` reaches the graph generator's direct-binder-only index gate. The first attempted callee-origin change did not solve it and was removed. | Generalize helper graph instantiation with checked substitution before claiming a whole-provider A/B result; #34 stays open. |
 | 2026-09-24 | Q4 projection evidence | `ec6a47b`: canonical Context projections retain two Context premises and derive variable proofs on demand. Clean optimized acceptance and focused sanitizer gates passed; generic proof count fell by 2,057, with unchanged Core/occurrences/Solve steps. | Published Main/rewrite; timing differences are inconclusive and R2-R5 remain open. |
+| 2026-09-24 | Q4 effect dependency collection | Shared direct collection removes dependency-only wire arrays; ordered object comparisons, clean optimized acceptance and focused sanitizer tests pass. Existing Source IO test removes three small arrays; measured QuickSort path is unchanged. | Verified epoch; net implementation +19, not overall refactor completion. |

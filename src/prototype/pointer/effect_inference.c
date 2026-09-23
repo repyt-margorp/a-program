@@ -1,4 +1,5 @@
 #include "effect_inference.h"
+#include "dag.h"
 
 #include <string.h>
 
@@ -138,6 +139,30 @@ const struct pg_object *pg_effect_equation_parameter(const struct pg_effect_infe
 	const struct pg_effect_equation *equation)
 {
 	return equation && equation->owner == work ? equation->parameter : NULL;
+}
+
+static int collect_equation(void *context, const struct pg_effect_equation *equation,
+	const struct pg_effect_row *seed)
+{
+	struct pg_dag *terms = context;
+	if (pg_dag_add(terms, pg_reference(&terms->storage, equation->parameter))) return -1;
+	return pg_dag_add(terms, pg_effect_reference(&terms->storage, seed));
+}
+
+static int collect_dependency(void *context, const struct pg_effect_equation *source,
+	const struct pg_effect_row *mask, const struct pg_effect_equation *target)
+{
+	(void)source;
+	(void)target;
+	struct pg_dag *terms = context;
+	/* Both endpoints were collected with their definitions, before edges. */
+	return pg_dag_add(terms, pg_effect_reference(&terms->storage, mask));
+}
+
+int pg_effect_inference_collect(const struct pg_effect_inference *work, struct pg_dag *terms)
+{
+	if (!work || !terms || !terms->index.capacity || !terms->storage.terms.capacity || terms->failed) return -1;
+	return pg_effect_inference_visit(work, terms, collect_equation, collect_dependency);
 }
 
 struct effect_pack {
