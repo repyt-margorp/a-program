@@ -533,7 +533,9 @@ It does not imply that every specialized source Match can be synthesized:
   post-synthesis check. Resume ordinary images saved at 0 and 7,500 steps;
   compare a retained recursive witness and byte-stable inert resave.
 - [x] Complete clean optimized acceptance and sanitizer verification.
-- [ ] Publish the verified epoch without the unrelated relocation experiment.
+- [x] Publish the verified epoch without the unrelated relocation experiment.
+  `3da9d1b` was atomically pushed to Main and the rewrite branch; both remote
+  tips were verified at that revision.
 
 The parallel two-constructor provider and complete generic Sorted client now
 check at 623,500 steps in the clean build. The client must bind the new
@@ -580,6 +582,9 @@ Per-file epoch delta, relative to `src/prototype/pointer`:
 Implementation is net +3, test/build data net +221. No new Term tag, checking
 rule, accepted-state owner or persistent format is introduced. This functional
 repair is not completion of A3-A5/R2-R5 or the cumulative LOC-reduction gate.
+The publication follow-up adds a two-line fixture-local `.gitattributes` entry:
+unified-diff context prefixes are patch data, so `derived-lt.patch` does not use
+source whitespace lint. Other source/test files retain the normal checks.
 
 #### Typed-conclusion multiplicity audit
 
@@ -885,4 +890,4 @@ disposable payload construction, not the parent's outstanding source growth.
 | 2026-09-24 | #34 whole-provider trial | The two-constructor provider checks, but its derived lifting under `@partitionLower` reaches the graph generator's direct-binder-only index gate. The first attempted callee-origin change did not solve it and was removed. | Generalize helper graph instantiation with checked substitution before claiming a whole-provider A/B result; #34 stays open. |
 | 2026-09-24 | Q4 projection evidence | `ec6a47b`: canonical Context projections retain two Context premises and derive variable proofs on demand. Clean optimized acceptance and focused sanitizer gates passed; generic proof count fell by 2,057, with unchanged Core/occurrences/Solve steps. | Published Main/rewrite; timing differences are inconclusive and R2-R5 remain open. |
 | 2026-09-24 | Q4 effect dependency collection | `ef9dce0`: shared direct collection removes dependency-only wire arrays; ordered object comparisons, clean optimized acceptance and focused sanitizer tests pass. Existing Source IO test removes three small arrays; measured QuickSort path is unchanged. | Published Main/rewrite; net implementation +19, not overall refactor completion. |
-| 2026-09-24 | #34 helper specialization | Reuse checked eliminator abstraction and index substitution for captured helper indices. The shifted helper's graph/witness, negative consumer and images pass; the parallel derived-LT provider now admits the complete generic Sorted proof. Clean optimized acceptance and affected ASan/UBSan pass. | Verified, publication pending; library/performance decision and A3-A5/R2-R5 remain open. |
+| 2026-09-24 | #34 helper specialization | `3da9d1b`: reuse checked eliminator abstraction and index substitution for captured helper indices. The shifted helper's graph/witness, negative consumer and images pass; the parallel derived-LT provider now admits the complete generic Sorted proof. Clean optimized acceptance and affected ASan/UBSan pass. | Published Main/rewrite; library/performance decision and A3-A5/R2-R5 remain open. |
