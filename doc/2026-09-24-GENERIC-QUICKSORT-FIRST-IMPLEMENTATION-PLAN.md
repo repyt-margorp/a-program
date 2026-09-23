@@ -751,8 +751,10 @@ do not export solver approximations or create another persistent index.
   failed inputs and repeated collection before/after Solve.
 - [x] Run optimized acceptance and focused sanitizer tests; verify inert image
   resave and record allocation/code deltas without claiming a general speedup.
-- [ ] Publish the verified epoch separately from the unaccepted relocation
-  experiment. R2-R5 and the cumulative source-reduction gate remain open.
+- [x] Publish the verified epoch separately from the unaccepted relocation
+  experiment. `ef9dce0` was atomically pushed to Main and the rewrite branch;
+  both remote tips were verified. R2-R5 and the cumulative source-reduction
+  gate remain open.
 
 Verification used a clean detached `46019c9` worktree with only these five
 implementation/test files changed. Full optimized `check-acceptance` passed,
@@ -810,4 +812,4 @@ disposable payload construction, not the parent's outstanding source growth.
 | 2026-09-24 | #33 kernel boundary | The wrong-IH source fixture stops at motive synthesis, so an explicit wrong-index motive was tested directly in the Acc IADT kernel fixture. The ill-indexed IH cannot be applied to the constructor step; full optimized acceptance and focused sanitizer pass. | Kernel negative established for this case; surface elaboration and adequacy remain open. |
 | 2026-09-24 | #34 whole-provider trial | The two-constructor provider checks, but its derived lifting under `@partitionLower` reaches the graph generator's direct-binder-only index gate. The first attempted callee-origin change did not solve it and was removed. | Generalize helper graph instantiation with checked substitution before claiming a whole-provider A/B result; #34 stays open. |
 | 2026-09-24 | Q4 projection evidence | `ec6a47b`: canonical Context projections retain two Context premises and derive variable proofs on demand. Clean optimized acceptance and focused sanitizer gates passed; generic proof count fell by 2,057, with unchanged Core/occurrences/Solve steps. | Published Main/rewrite; timing differences are inconclusive and R2-R5 remain open. |
-| 2026-09-24 | Q4 effect dependency collection | Shared direct collection removes dependency-only wire arrays; ordered object comparisons, clean optimized acceptance and focused sanitizer tests pass. Existing Source IO test removes three small arrays; measured QuickSort path is unchanged. | Verified epoch; net implementation +19, not overall refactor completion. |
+| 2026-09-24 | Q4 effect dependency collection | `ef9dce0`: shared direct collection removes dependency-only wire arrays; ordered object comparisons, clean optimized acceptance and focused sanitizer tests pass. Existing Source IO test removes three small arrays; measured QuickSort path is unchanged. | Published Main/rewrite; net implementation +19, not overall refactor completion. |
