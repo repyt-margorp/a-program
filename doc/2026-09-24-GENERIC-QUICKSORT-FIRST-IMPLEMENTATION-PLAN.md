@@ -548,6 +548,30 @@ The next implementation slice must show a concrete duplicated persistent
 record or redundant owner before deleting a reconstruction path; otherwise
 R5 requires revisiting the representation/ownership target itself.
 
+The clean `4657cc6`/`bdfdeff` debug comparison of the same
+`length-output-proof.p` input locates the extra records more narrowly. R0
+finishes in 10,950 Solve steps and current in 8,213. Current creation sites
+include 1,101 mapped Occurrences in `action_result`, 647 Context variables,
+and 184 variables from Context lifting. Current Context creation includes
+184 lifts; R0 creates 119 through substitution lifting. An inspection of all
+1,241 current mapped-Occurrence calls found 929 with unchanged Core/type but
+a *different* destination Context, 265 with changed Core, 44 with changed Core
+and type, two with changed type, and one with changed Core in the same Context.
+There were no calls with identical Context, Core, classifier, annotation and
+judgement. These are request counts, not a proof of indispensable allocation,
+but they rule out a bulk no-op-map deletion as the next R2/R3 change. Trace
+why the additional Context lifts arise before changing the map or Occurrence
+representation; keep the accepted reindex premise even if a physical record
+can later be shared.
+At `bdfdeff`, 111 newly interned lift requests originate in
+`occurrence_input_step`, 17 in structural map dependency checking, and 75
+through the ordinary proof-level lift callers. These are distinct request
+keys; `input_request` already shares exact `(source, index, map, child)` work.
+The typed-input readback path and proof-level lift path both need a scoped
+child, but their checked outputs differ. Any consolidation must prove a shared
+typed-input owner with the same destination Context and accepted premises;
+merging requests merely by their resulting Core would be unsound.
+
 For #33, the renamed wrong-IH source fixture exits `unsupported` at 1,143
 steps, before elimination admission: its one recursive branch offers no
 independent result from which `match_recursive_motive_step` can synthesize a
