@@ -524,13 +524,13 @@ static const struct pg_data_schema *schema_build(struct pg_typing *typing,
 		if (declaration) {
 			const struct pg_data_constructor_input *input = &declaration->constructors[i];
 			if (input->fields != pg_evidence_context(result)) goto done;
-			if (pg_evidence_premise_count(result) != declaration->image_count + 2) goto done;
+			if (pg_evidence_context_map(result)->count != declaration->image_count) goto done;
 			for (size_t j = 0; j < declaration->image_count; ++j)
-				if (input->images[j] != pg_evidence_subject(pg_evidence_premise(result, j + 2))->core) goto done;
+				if (input->images[j] != pg_evidence_context_map(result)->images[j]->core) goto done;
 		}
 		const struct pg_context *parameter = prefix;
 		for (size_t j = parameter_count; j; --j, parameter = parameter->parent) {
-			const struct pg_term *image = pg_evidence_subject(pg_evidence_premise(result, j + 1))->core;
+			const struct pg_term *image = pg_evidence_context_map(result)->images[j - 1]->core;
 			if (image->kind != PG_REFERENCE || image->as.reference != parameter->binder) goto done;
 		}
 	}
@@ -538,10 +538,10 @@ static const struct pg_data_schema *schema_build(struct pg_typing *typing,
 		struct pg_data_constructor_input *inputs = pg_alloc(&temporary, count * sizeof(*inputs));
 		if (!inputs) goto done;
 		for (size_t i = 0; i < count; ++i) {
-			size_t images = pg_evidence_premise_count(results[i]) - 2;
+			size_t images = pg_evidence_context_map(results[i])->count;
 			const struct pg_term **terms = pg_alloc(&temporary, images * sizeof(*terms));
 			if (!terms) goto done;
-			for (size_t j = 0; j < images; ++j) terms[j] = pg_evidence_subject(pg_evidence_premise(results[i], j + 2))->core;
+			for (size_t j = 0; j < images; ++j) terms[j] = pg_evidence_context_map(results[i])->images[j]->core;
 			inputs[i] = (struct pg_data_constructor_input){pg_evidence_context(results[i]), terms};
 		}
 		declaration = pg_data_declaration(typing->graph, prefix, pg_evidence_context(indices), count, inputs);

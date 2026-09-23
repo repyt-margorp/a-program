@@ -550,6 +550,13 @@ const struct pg_evidence *pg_prove_projection(struct pg_typing *typing,
  * rebuilt. An absent binder or a foreign/non-substitution proof returns NULL. */
 const struct pg_evidence *pg_substitution_image(struct pg_typing *typing,
 	const struct pg_evidence *substitution, const struct pg_object *binder);
+/* Zero-based declaration order in the map, independent of proof premises. */
+const struct pg_evidence *pg_substitution_image_at(struct pg_typing *typing,
+	const struct pg_evidence *substitution, size_t index);
+/* Borrow explicit image premises, or derive projection images in scratch.
+ * The returned array must not outlive either the proof or scratch. */
+const struct pg_evidence *const *pg_substitution_images(struct pg_typing *typing,
+	const struct pg_evidence *substitution, struct pg_graph *scratch);
 /* Checked substitution conclusion; distinct derivations may share this map. */
 const struct pg_context_map *pg_evidence_context_map(const struct pg_evidence *evidence);
 const struct pg_evidence *pg_prove_substitution(struct pg_typing *typing,
@@ -567,7 +574,8 @@ const struct pg_evidence *pg_prove_telescope_correspondence(struct pg_typing *ty
 const struct pg_evidence *pg_prove_context_alpha(struct pg_typing *typing,
 	const struct pg_evidence *source, const struct pg_context *target);
 /* Prefix projection destination -> source (identity when contexts coincide).
- * Uses ordinary variable and substitution evidence, without another rule. */
+ * The canonical map is checked from both Context premises; variable proofs
+ * can be derived on demand from the destination Context. */
 const struct pg_evidence *pg_prove_substitution_projection(struct pg_typing *typing,
 	const struct pg_evidence *source, const struct pg_evidence *destination);
 /* Recover the same images in another context through their retained typing

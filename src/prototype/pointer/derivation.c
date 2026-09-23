@@ -130,10 +130,13 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 		size_t position, arity;
 		if (count != 4 || !pg_data_constructor_view(parameters->constructor, &layout, &position, &arity)) return NULL;
 		if (pg_evidence_rule(p[3]) != PG_CONTEXT_SUBSTITUTION) return NULL;
-		size_t retained = pg_evidence_premise_count(p[3]);
-		if (retained < 2 || arity > retained - 2) return NULL;
-		const struct pg_evidence *const *fields = pg_evidence_premises(p[3]) + retained - arity;
-		result = pg_prove_constructor(typing, p[1], parameters->constructor, p[2], arity, fields);
+		size_t retained = pg_evidence_context_map(p[3])->count;
+		if (arity > retained) return NULL;
+		struct pg_graph temporary = {0};
+		const struct pg_evidence *const *images = pg_substitution_images(typing, p[3], &temporary);
+		result = images ? pg_prove_constructor(typing, p[1], parameters->constructor,
+			p[2], arity, images + retained - arity) : NULL;
+		pg_graph_destroy(&temporary);
 		break;
 	}
 	case PG_MATCH_ELIM: case PG_INDUCTION_ELIM:
@@ -221,7 +224,8 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 			pg_evidence_premise(p[1], 1), pg_evidence_premise(p[1], 2), parameters->direction); break;
 	case PG_CONTEXT_SUBSTITUTION:
 		if (count < 2) return NULL;
-		result = pg_prove_substitution(typing, p[0], p[1], count - 2, p + 2); break;
+		result = count == 2 ? pg_prove_substitution_projection(typing, p[0], p[1])
+			: pg_prove_substitution(typing, p[0], p[1], count - 2, p + 2); break;
 	case PG_FAMILY_IDENTITY_FORM:
 		if (count < 5) return NULL;
 		result = pg_prove_family_identity_type(typing, p[0], p[1], p[2], count - 5, p + 3, p[count - 2], p[count - 1]); break;

@@ -875,7 +875,7 @@ static int typed_rebase_step(struct pg_typed_query *work)
 		work->rebase = pg_alloc(typing->graph, sizeof(*work->rebase));
 		if (!work->rebase) return -1;
 		work->rebase->substitution = work->source_map;
-		work->rebase->count = work->source_map->premise_count - 2;
+		work->rebase->count = pg_evidence_context_map(work->source_map)->count;
 	}
 	if (work->resume == TYPED_RESUME_BODY) {
 		const struct pg_evidence *value = pg_typed_query_result(work->dependency);
@@ -957,7 +957,8 @@ static int typed_rebase_step(struct pg_typed_query *work)
 	}
 	if (state->next < state->count) {
 		if (map_query) {
-			work->dependency = pg_rebase_request(typing, context, state->substitution->premises[state->next + 2]);
+			work->dependency = pg_rebase_request(typing, context,
+				pg_substitution_image_at(typing, state->substitution, state->next));
 			return work->dependency ? 0 : -1;
 		}
 		const struct pg_occurrence *input;
@@ -1806,8 +1807,10 @@ const struct pg_evidence *pg_prove_constructor(struct pg_typing *typing,
 	if (pg_evidence_judgement(formation) == PG_JUDGEMENT_TYPE_FAMILY) {
 		const struct pg_evidence *result_map = pg_data_result(typing, schema, constructor, instance);
 		if (!result_map) return NULL;
-		for (size_t i = extended->premise_count; i < result_map->premise_count; ++i) {
-			family = pg_prove_family_application(typing, family, result_map->premises[i]);
+		for (size_t i = pg_evidence_context_map(extended)->count;
+			i < pg_evidence_context_map(result_map)->count; ++i) {
+			family = pg_prove_family_application(typing, family,
+				pg_substitution_image_at(typing, result_map, i));
 			if (!family) return NULL;
 		}
 		if (pg_evidence_judgement(family) != PG_JUDGEMENT_VALUE_TYPE) return NULL;
@@ -1907,8 +1910,10 @@ static const struct pg_evidence *family_in_scope(struct pg_typing *typing,
 {
 	if (!map) return NULL;
 	const struct pg_evidence *family = pg_substitution_image(typing, map, pg_evidence_context(formation->premises[0])->binder);
-	for (size_t i = parameters->premise_count + 1; i < map->premise_count; ++i) {
-		family = pg_prove_family_application(typing, family, map->premises[i]);
+	for (size_t i = pg_evidence_context_map(parameters)->count + 1;
+		i < pg_evidence_context_map(map)->count; ++i) {
+		family = pg_prove_family_application(typing, family,
+			pg_substitution_image_at(typing, map, i));
 		if (!family) return NULL;
 	}
 	return pg_prove_value_type(typing, family);
@@ -1959,13 +1964,19 @@ static const struct pg_evidence *constructor_in_scope(struct pg_typing *typing,
 	const struct pg_evidence *formation, const struct pg_object *constructor,
 	const struct pg_evidence *parameters, const struct pg_evidence *map)
 {
-	size_t prefix = parameters->premise_count - 2;
-	size_t count = map->premise_count - prefix - 3;
+	size_t prefix = pg_evidence_context_map(parameters)->count;
+	size_t total = pg_evidence_context_map(map)->count;
+	if (total <= prefix) return NULL;
+	size_t count = total - prefix - 1;
 	const struct pg_evidence *context = map->premises[1];
+	struct pg_graph temporary = {0};
+	const struct pg_evidence *const *images = pg_substitution_images(typing, map, &temporary);
 	const struct pg_evidence *arguments = pg_prove_substitution(typing,
-		parameters->premises[0], context, prefix, map->premises + 2);
-	return pg_prove_constructor(typing, formation, constructor,
-		arguments, count, map->premises + prefix + 3);
+		parameters->premises[0], context, prefix, images);
+	const struct pg_evidence *result = images ? pg_prove_constructor(typing, formation, constructor,
+		arguments, count, images + prefix + 1) : NULL;
+	pg_graph_destroy(&temporary);
+	return result;
 }
 
 const struct pg_evidence *pg_prove_constructor_function(struct pg_typing *typing,
@@ -2030,10 +2041,15 @@ const struct pg_evidence *pg_prove_inductive_motive_substitution(struct pg_typin
 		struct pg_inductive_instance instance;
 		if (!pg_inductive_instance(typing, type, &instance)) return NULL;
 		if (instance.formation != formation || !instance.indices) return NULL;
-		size_t offset = instance.parameters->premise_count + 1;
-		size_t count = instance.indices->premise_count - offset;
-		prefix = pg_prove_substitution_extend(typing, prefix, source->premises[0],
-			count, instance.indices->premises + offset);
+		size_t offset = pg_evidence_context_map(instance.parameters)->count + 1;
+		size_t total = pg_evidence_context_map(instance.indices)->count;
+		if (total < offset) return NULL;
+		size_t count = total - offset;
+		struct pg_graph temporary = {0};
+		const struct pg_evidence *const *images = pg_substitution_images(typing, instance.indices, &temporary);
+		prefix = images ? pg_prove_substitution_extend(typing, prefix, source->premises[0],
+			count, images + offset) : NULL;
+		pg_graph_destroy(&temporary);
 	}
 	return pg_prove_substitution_pair(typing, prefix, source, value);
 }
@@ -2063,8 +2079,8 @@ const struct pg_evidence *pg_prove_constructor_refinement(struct pg_typing *typi
 	if (pg_evidence_judgement(scrutinee) != PG_JUDGEMENT_VALUE || pg_evidence_context(scrutinee) != pg_evidence_context(context)) return NULL;
 	struct pg_inductive_instance instance;
 	if (!pg_inductive_instance(typing, pg_prove_classifier(typing, context, scrutinee), &instance)) return NULL;
-	size_t first = instance.parameters->premise_count + 1;
-	size_t indices = instance.indices ? instance.indices->premise_count - first : 0;
+	size_t first = pg_evidence_context_map(instance.parameters)->count + 1;
+	size_t indices = instance.indices ? pg_evidence_context_map(instance.indices)->count - first : 0;
 	if (indices >= SIZE_MAX / sizeof(struct refinement_binding)) return NULL;
 	struct pg_graph temporary = {0};
 	struct pg_index replacements;
@@ -2073,7 +2089,8 @@ const struct pg_evidence *pg_prove_constructor_refinement(struct pg_typing *typi
 	struct refinement_binding *bindings = pg_alloc(&temporary, (indices + 1) * sizeof(*bindings));
 	if (!bindings) goto done;
 	for (size_t i = 0; i <= indices; ++i) {
-		const struct pg_term *term = i == indices ? pg_evidence_subject(scrutinee)->core : pg_evidence_subject(instance.indices->premises[first + i])->core;
+		const struct pg_term *term = i == indices ? pg_evidence_subject(scrutinee)->core
+			: pg_evidence_context_map(instance.indices)->images[first + i]->core;
 		if (term->kind != PG_REFERENCE || term->as.reference->kind != PG_BINDER) goto done;
 		const struct pg_object *binder = term->as.reference;
 		if (refinement_find(&replacements, binder)) goto done;
@@ -2099,8 +2116,9 @@ const struct pg_evidence *pg_prove_constructor_refinement(struct pg_typing *typi
 	if (!fields) goto done;
 	const struct pg_evidence *value = constructor_in_scope(typing, instance.formation, constructor, parameters, fields);
 	const struct pg_evidence *fiber = pg_data_result(typing, instance.schema, constructor, fields);
-	if (!value || !fiber || fiber->premise_count != first + indices) goto done;
-	for (size_t i = 0; i < indices; ++i) bindings[i].image = fiber->premises[first + i];
+	if (!value || !fiber || pg_evidence_context_map(fiber)->count != first + indices) goto done;
+	for (size_t i = 0; i < indices; ++i)
+		bindings[i].image = pg_substitution_image_at(typing, fiber, first + i);
 	bindings[indices].image = value;
 	const struct pg_evidence *map = pg_prove_substitution_projection(typing, prefix, fields->premises[1]);
 	for (size_t i = 0; map && i < count; ++i) {
@@ -2210,7 +2228,7 @@ static const struct pg_evidence *prove_induction_scope(struct pg_typing *typing,
 	const struct pg_evidence *fields = pg_data_schema_fields(formation->certificate, constructor);
 	if (!fields) return NULL;
 	const struct pg_object *self = pg_evidence_context(formation->premises[0])->binder;
-	size_t prefix = parameters->premise_count - 2;
+	size_t prefix = pg_evidence_context_map(parameters)->count;
 	size_t count;
 	if (pg_context_extension_size(pg_evidence_context(fields), pg_evidence_context(formation->premises[0]), &count)) return NULL;
 	if (count > SIZE_MAX / sizeof(const struct pg_term *)) return NULL;
@@ -2248,7 +2266,8 @@ static const struct pg_evidence *prove_induction_scope(struct pg_typing *typing,
 	size_t next_ih = 0;
 	for (size_t i = 0; i < count; ++i) {
 		if (!recursive_fields[i]) continue;
-		const struct pg_evidence *field = pg_prove_projection(typing, context, map->premises[prefix + 3 + i]);
+		const struct pg_evidence *field = pg_prove_projection(typing, context,
+			pg_substitution_image_at(typing, map, prefix + 1 + i));
 		const struct pg_context *ih_allocation = retained ? ih_allocations[next_ih++] : NULL;
 		const struct pg_evidence *ih = pg_prove_inductive_hypothesis_type(typing, formation, parameters,
 			motive_context, motive, context, field, ih_allocation ? ih_allocation->declared_type : NULL);
@@ -2319,8 +2338,8 @@ static const struct pg_term *induction_branch_core(struct pg_typing *typing,
 	const struct pg_evidence *map, const struct pg_evidence *branch,
 	const struct pg_object *recursion)
 {
-	size_t offset = parameters->premise_count + 1;
-	size_t count = map->premise_count - offset;
+	size_t offset = pg_evidence_context_map(parameters)->count + 1;
+	size_t count = pg_evidence_context_map(map)->count - offset;
 	struct pg_graph temporary = {0};
 	const struct pg_term **types = pg_alloc(&temporary, count * sizeof(*types));
 	const struct pg_term **ih_types = pg_alloc(&temporary, count * sizeof(*ih_types));
@@ -2341,16 +2360,16 @@ static const struct pg_term *induction_branch_core(struct pg_typing *typing,
 	}
 	const struct pg_term *body = pg_evidence_subject(branch)->core;
 	for (size_t i = 0; i < count; ++i)
-		body = pg_application(typing->graph, body, pg_evidence_subject(map->premises[offset + i])->core);
+		body = pg_application(typing->graph, body, pg_evidence_context_map(map)->images[offset + i]->core);
 	for (size_t i = 0; i < count; ++i) {
 		if (!ih_types[i]) continue;
 		const struct pg_term *call = induction_field_core(typing->graph, types[i], ih_types[i],
-			pg_evidence_subject(map->premises[offset + i])->core, recursion);
+			pg_evidence_context_map(map)->images[offset + i]->core, recursion);
 		if (!call) goto done;
 		body = pg_application(typing->graph, body, call);
 	}
 	for (size_t i = count; i; --i) {
-		const struct pg_term *field = pg_evidence_subject(map->premises[offset + i - 1])->core;
+		const struct pg_term *field = pg_evidence_context_map(map)->images[offset + i - 1]->core;
 		if (field->kind != PG_REFERENCE || field->as.reference->kind != PG_BINDER) goto done;
 		body = pg_lambda(typing->graph, field->as.reference, body);
 	}
@@ -2369,7 +2388,7 @@ const struct pg_evidence *pg_prove_match_branch_type(struct pg_typing *typing,
 	if (!typing) return NULL;
 	if (!pg_evidence_owned_by(parameters, typing) || parameters->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
 	if (!pg_evidence_owned_by(fields, typing) || fields->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
-	if (fields->premise_count <= parameters->premise_count) return NULL;
+	if (pg_evidence_context_map(fields)->count <= pg_evidence_context_map(parameters)->count) return NULL;
 	const struct pg_evidence *context = fields->premises[1];
 	size_t count;
 	if (pg_context_extension_size(pg_evidence_context(context), pg_evidence_context(parameters), &count)) return NULL;
@@ -2800,6 +2819,7 @@ const struct pg_evidence *pg_prove_elimination_body(struct pg_typing *typing,
 static int factor_binding(struct pg_graph *temporary, struct pg_index *index,
 	const struct pg_term *pattern, const struct pg_evidence *image)
 {
+	if (!image) return -1;
 	if (pattern->kind != PG_REFERENCE || pattern->as.reference->kind != PG_BINDER) return 0;
 	struct refinement_binding *binding = refinement_find(index, pattern->as.reference);
 	if (binding) return pg_alpha_equal(pg_evidence_subject(binding->image)->core, pg_evidence_subject(image)->core) == 1 ? 0 : -1;
@@ -2824,8 +2844,10 @@ const struct pg_evidence *pg_prove_refinement_factor(struct pg_typing *typing,
 	if (!constructor_head(typing, pg_substitution_image(typing, refinement, scrutinee), &pattern, NULL) ||
 		!constructor_head(typing, pg_substitution_image(typing, instance, scrutinee), &value, NULL)) goto done;
 	if (pattern.constructor != value.constructor || pattern.formation != value.formation || pattern.count != value.count) goto done;
-	for (size_t i = 2; i < refinement->premise_count; ++i)
-		if (factor_binding(&temporary, &bindings, pg_evidence_subject(refinement->premises[i])->core, instance->premises[i])) goto done;
+	if (pg_evidence_context_map(refinement)->count != pg_evidence_context_map(instance)->count) goto done;
+	for (size_t i = 0; i < pg_evidence_context_map(refinement)->count; ++i)
+		if (factor_binding(&temporary, &bindings, pg_evidence_context_map(refinement)->images[i]->core,
+			pg_substitution_image_at(typing, instance, i))) goto done;
 	for (size_t i = 0; i < pattern.count; ++i) {
 		const struct pg_evidence *field = constructor_input(typing, &pattern, i);
 		const struct pg_evidence *image = constructor_input(typing, &value, i);
@@ -2845,9 +2867,10 @@ const struct pg_evidence *pg_prove_refinement_factor(struct pg_typing *typing,
 	}
 	const struct pg_evidence *map = pg_prove_substitution(typing, refinement->premises[1], instance->premises[1], count, images);
 	const struct pg_evidence *composite = pg_prove_substitution_compose(typing, refinement, map);
-	if (!composite || composite->premise_count != instance->premise_count) goto done;
-	for (size_t i = 2; i < composite->premise_count; ++i)
-		if (pg_alpha_equal(pg_evidence_subject(composite->premises[i])->core, pg_evidence_subject(instance->premises[i])->core) != 1) goto done;
+	if (!composite || pg_evidence_context_map(composite)->count != pg_evidence_context_map(instance)->count) goto done;
+	for (size_t i = 0; i < pg_evidence_context_map(composite)->count; ++i)
+		if (pg_alpha_equal(pg_evidence_context_map(composite)->images[i]->core,
+			pg_evidence_context_map(instance)->images[i]->core) != 1) goto done;
 	result = map;
 done:
 	pg_index_destroy(&bindings);
@@ -2922,9 +2945,10 @@ const struct pg_evidence *pg_prove_refined_match(struct pg_typing *typing,
 		}
 		const struct pg_evidence *rename = pg_prove_telescope_correspondence(typing, expected->premises[1], map->premises[1]);
 		expected = pg_prove_substitution_compose(typing, expected, rename);
-		if (!expected || expected->premise_count != map->premise_count) goto done;
-		for (size_t j = 2; j < map->premise_count; ++j)
-			if (pg_alpha_equal(pg_evidence_subject(expected->premises[j])->core, pg_evidence_subject(map->premises[j])->core) != 1) goto done;
+		if (!expected || pg_evidence_context_map(expected)->count != pg_evidence_context_map(map)->count) goto done;
+		for (size_t j = 0; j < pg_evidence_context_map(map)->count; ++j)
+			if (pg_alpha_equal(pg_evidence_context_map(expected)->images[j]->core,
+				pg_evidence_context_map(map)->images[j]->core) != 1) goto done;
 		const struct pg_evidence *lift = lift_scope(typing,
 			pg_prove_substitution_projection(typing, prefix, context), map->premises[1], NULL, 0);
 		if (!lift) goto done;
@@ -2934,17 +2958,19 @@ const struct pg_evidence *pg_prove_refined_match(struct pg_typing *typing,
 	}
 	struct pg_inductive_instance generic;
 	if (!pg_inductive_instance(typing, mc->premises[1], &generic)) goto done;
-	size_t first = instance.parameters->premise_count + 1;
-	size_t indices = instance.indices ? instance.indices->premise_count - first : 0;
+	size_t first = pg_evidence_context_map(instance.parameters)->count + 1;
+	size_t indices = instance.indices ? pg_evidence_context_map(instance.indices)->count - first : 0;
 	if (indices >= SIZE_MAX / sizeof(struct refinement_binding)) goto done;
 	struct refinement_binding *bindings = pg_alloc(&temporary, (indices + 1) * sizeof(*bindings));
 	if (!bindings) goto done;
 	for (size_t i = 0; i <= indices; ++i) {
-		const struct pg_term *term = i == indices ? pg_evidence_subject(scrutinee)->core : pg_evidence_subject(instance.indices->premises[first + i])->core;
+		const struct pg_term *term = i == indices ? pg_evidence_subject(scrutinee)->core
+			: pg_evidence_context_map(instance.indices)->images[first + i]->core;
 		if (term->kind != PG_REFERENCE || term->as.reference->kind != PG_BINDER) goto done;
 		bindings[i].binder = term->as.reference;
 		bindings[i].image = i == indices ? pg_prove_variable(typing, mc, pg_evidence_context(mc)->binder)
-			: pg_prove_projection(typing, mc, generic.indices->premises[first + i]);
+			: pg_prove_projection(typing, mc,
+				pg_substitution_image_at(typing, generic.indices, first + i));
 		if (!bindings[i].image || refinement_find(&replacements, bindings[i].binder)) goto done;
 		if (pg_index_insert(&replacements, &bindings[i].index, (uintptr_t)bindings[i].binder)) goto done;
 	}
@@ -3010,9 +3036,10 @@ const struct pg_evidence *pg_prove_type_case(struct pg_typing *typing,
 	const struct pg_evidence *type = pg_prove_classifier(typing, parameters->premises[1], scrutinee);
 	struct pg_inductive_instance instance;
 	if (!pg_inductive_instance(typing, type, &instance) || instance.formation != formation) goto done;
-	if (instance.parameters->premise_count != parameters->premise_count) goto done;
-	for (size_t i = 2; i < parameters->premise_count; ++i)
-		if (pg_alpha_equal(pg_evidence_subject(instance.parameters->premises[i])->core, pg_evidence_subject(parameters->premises[i])->core) != 1) goto done;
+	if (pg_evidence_context_map(instance.parameters)->count != pg_evidence_context_map(parameters)->count) goto done;
+	for (size_t i = 0; i < pg_evidence_context_map(parameters)->count; ++i)
+		if (pg_alpha_equal(pg_evidence_context_map(instance.parameters)->images[i]->core,
+			pg_evidence_context_map(parameters)->images[i]->core) != 1) goto done;
 	const struct pg_evidence *self = formation->premises[0];
 	const struct pg_evidence *prefix = prove_data_scope(typing, formation, self, parameters, NULL, 0);
 	if (!prefix) goto done;
@@ -4220,7 +4247,7 @@ static const struct pg_evidence *substitution_build(struct pg_typing *typing,
 	if (!context_proof(typing, source)) return NULL;
 	if (!context_proof(typing, destination)) return NULL;
 	if (count && !images) return NULL;
-	size_t retained = prefix ? prefix->premise_count - 2 : 0, suffix;
+	size_t retained = prefix ? pg_evidence_context_map(prefix)->count : 0, suffix;
 	const struct pg_context *base = prefix ? pg_evidence_context(prefix->premises[0]) : NULL;
 	if (pg_context_extension_size(pg_evidence_context(source), base, &suffix) || suffix != count) return NULL;
 	if (count > SIZE_MAX - retained) return NULL;
@@ -4236,7 +4263,8 @@ static const struct pg_evidence *substitution_build(struct pg_typing *typing,
 	/* A lifted prefix is the same checked map in a larger destination.
 	 * Only the new suffix requires dependent classifier substitution. */
 	for (size_t i = 0; i < retained; ++i) {
-		premises[i + 2] = pg_prove_projection(typing, destination, prefix->premises[i + 2]);
+		premises[i + 2] = pg_prove_projection(typing, destination,
+			pg_substitution_image_at(typing, prefix, i));
 		if (!premises[i + 2]) goto done;
 	}
 	for (size_t i = 0; i < count; ++i) {
@@ -4284,7 +4312,35 @@ const struct pg_evidence *pg_substitution_image(struct pg_typing *typing,
 	if (substitution->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
 	const struct pg_context_map *map = substitution->conclusion.map;
 	size_t index;
-	return pg_context_map_lookup(map, binder, &index) ? substitution->premises[2 + index] : NULL;
+	return pg_context_map_lookup(map, binder, &index)
+		? pg_substitution_image_at(typing, substitution, index) : NULL;
+}
+
+const struct pg_evidence *pg_substitution_image_at(struct pg_typing *typing,
+	const struct pg_evidence *substitution, size_t index)
+{
+	if (!pg_evidence_owned_by(substitution, typing) || substitution->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
+	const struct pg_context_map *map = substitution->conclusion.map;
+	if (index >= map->count) return NULL;
+	if (substitution->premise_count > 2) return substitution->premises[index + 2];
+	return accept(typing, PG_VARIABLE, map->destination, map->images[index],
+		1, &substitution->premises[1]);
+}
+
+const struct pg_evidence *const *pg_substitution_images(struct pg_typing *typing,
+	const struct pg_evidence *substitution, struct pg_graph *scratch)
+{
+	if (!pg_evidence_owned_by(substitution, typing) || substitution->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
+	if (substitution->premise_count > 2 || !substitution->conclusion.map->count) return substitution->premises + 2;
+	size_t count = substitution->conclusion.map->count;
+	if (!scratch || count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
+	const struct pg_evidence **images = pg_alloc(scratch, count * sizeof(*images));
+	if (!images) return NULL;
+	for (size_t i = 0; i < count; ++i) {
+		images[i] = pg_substitution_image_at(typing, substitution, i);
+		if (!images[i]) return NULL;
+	}
+	return images;
 }
 
 const struct pg_evidence *pg_prove_substitution(struct pg_typing *typing,
@@ -4300,16 +4356,13 @@ const struct pg_evidence *pg_prove_substitution_projection(struct pg_typing *typ
 	if (!context_proof(typing, source) || !context_proof(typing, destination)) return NULL;
 	const struct pg_context_map *map = pg_context_map_projection(typing,
 		pg_evidence_context(source), pg_evidence_context(destination));
-	if (!map || map->count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
-	const struct pg_evidence **images = malloc(map->count * sizeof(*images));
-	if (map->count && !images) return NULL;
-	/* Projection construction already selects these exact declarations in the
-	 * checked destination. Reuse their typed variables, not a new name lookup. */
-	for (size_t i = map->count; i; --i)
-		images[i - 1] = accept(typing, PG_VARIABLE, map->destination, map->images[i - 1], 1, &destination);
-	const struct pg_evidence *result = pg_prove_substitution(typing, source, destination, map->count, images);
-	free(images);
-	return result;
+	if (!map) return NULL;
+	const struct pg_evidence *premises[] = {source, destination};
+	uint64_t hash;
+	const struct pg_evidence *found = find_record(typing, PG_CONTEXT_SUBSTITUTION,
+		map->destination, NULL, 2, premises, NULL, &hash);
+	return found ? found : accept_record(typing, PG_CONTEXT_SUBSTITUTION,
+		map->destination, NULL, 2, premises, NULL, map);
 }
 
 const struct pg_evidence *pg_prove_reindex(struct pg_typing *typing,
@@ -4352,8 +4405,8 @@ static const struct pg_term *family_action_core(struct pg_typing *typing,
 	const struct pg_term *result = pg_identity_action(typing->graph, abstraction);
 	for (size_t i = 0; i < count; ++i) {
 		result = pg_identity_instance(typing->graph, result,
-			pg_evidence_subject(left->premises[common + i + 2])->core,
-			pg_evidence_subject(right->premises[common + i + 2])->core);
+			pg_evidence_context_map(left)->images[common + i]->core,
+			pg_evidence_context_map(right)->images[common + i]->core);
 		result = pg_application(typing->graph, result, pg_evidence_subject(paths[i])->core);
 	}
 	return result;
@@ -4378,7 +4431,8 @@ const struct pg_evidence *pg_prove_family_identity_type(struct pg_typing *typing
 	if (pg_evidence_context(right_substitution->premises[0]) != pg_evidence_context(family)) return NULL;
 	const struct pg_context *context = pg_evidence_context(left_substitution);
 	if (pg_evidence_context(right_substitution) != context) return NULL;
-	size_t arity = left_substitution->premise_count - 2;
+	size_t arity = pg_evidence_context_map(left_substitution)->count;
+	if (pg_evidence_context_map(right_substitution)->count != arity) return NULL;
 	if (count > arity) return NULL;
 	if (count && !paths) return NULL;
 	if (count > SIZE_MAX / sizeof(const void *) - 5) return NULL;
@@ -4399,8 +4453,8 @@ const struct pg_evidence *pg_prove_family_identity_type(struct pg_typing *typing
 	result = find_record(typing, PG_FAMILY_IDENTITY_FORM, context, NULL, count + 5, premises, NULL, &hash);
 	if (result) goto done;
 	for (size_t i = 0; i < common; ++i) {
-		if (pg_alpha_equal(pg_evidence_subject(left_substitution->premises[i + 2])->core,
-			pg_evidence_subject(right_substitution->premises[i + 2])->core) != 1) goto done;
+		if (pg_alpha_equal(pg_evidence_context_map(left_substitution)->images[i]->core,
+			pg_evidence_context_map(right_substitution)->images[i]->core) != 1) goto done;
 	}
 	const struct pg_context *declaration = pg_evidence_context(left_substitution->premises[0]);
 	for (size_t i = count; i; --i) {
@@ -4411,8 +4465,8 @@ const struct pg_evidence *pg_prove_family_identity_type(struct pg_typing *typing
 		const struct pg_term *acted = family_action_core(typing, declarations[i]->declared_type, declarations[i]->parent,
 			left_substitution, right_substitution, common, i, paths);
 		const struct pg_term *path_type = pg_identity_instance(typing->graph, acted,
-			pg_evidence_subject(left_substitution->premises[common + i + 2])->core,
-			pg_evidence_subject(right_substitution->premises[common + i + 2])->core);
+			pg_evidence_context_map(left_substitution)->images[common + i]->core,
+			pg_evidence_context_map(right_substitution)->images[common + i]->core);
 		if (!endpoint(typing, paths[i], PG_JUDGEMENT_VALUE, context, path_type)) goto done;
 	}
 	const struct pg_evidence *ltype = pg_prove_reindex(typing, left_substitution, family);
@@ -4465,7 +4519,7 @@ const struct pg_evidence *pg_prove_family_action(struct pg_typing *typing,
 	const struct pg_evidence *existing = find_record(typing, PG_FAMILY_ACTION, pg_evidence_context(identity), NULL, 2, premises, NULL, &hash);
 	if (existing) return existing;
 	const struct pg_term *core = family_action_core(typing, pg_evidence_subject(term)->core, pg_evidence_context(term),
-		left_substitution, right_substitution, left_substitution->premise_count - 2 - count, count, paths);
+		left_substitution, right_substitution, pg_evidence_context_map(left_substitution)->count - count, count, paths);
 	if (!core) return NULL;
 	const struct pg_occurrence *operands[] = {pg_evidence_subject(term), pg_evidence_subject(identity)};
 	const struct pg_occurrence *subject = pg_occurrence_typed(typing, elements,
@@ -4555,7 +4609,7 @@ const struct pg_evidence *pg_prove_substitution_compose(struct pg_typing *typing
 	if (!substitution_proof(typing, first)) return NULL;
 	if (!substitution_proof(typing, second)) return NULL;
 	if (pg_evidence_context(first) != pg_evidence_context(second->premises[0])) return NULL;
-	size_t count = first->premise_count - 2;
+	size_t count = pg_evidence_context_map(first)->count;
 	if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
 	const struct pg_evidence **images = malloc(count * sizeof(*images));
 	const struct pg_evidence *result = NULL;
@@ -4666,14 +4720,15 @@ static const struct pg_evidence *pattern_index_type(struct pg_typing *typing,
 				child = pg_prove_pi_domain(typing, frame->body);
 			} else if (pg_inductive_instance(typing, frame->body, &frame->instance)) {
 				frame->phase = PATTERN_TYPE_ARGUMENTS;
-				frame->parameters = frame->instance.parameters->premise_count - 2;
+				frame->parameters = pg_evidence_context_map(frame->instance.parameters)->count;
 				const struct pg_evidence *map = frame->instance.indices
 					? frame->instance.indices : frame->instance.parameters;
-				frame->count = map->premise_count - 2;
+				frame->count = pg_evidence_context_map(map)->count;
 				if (frame->count > SIZE_MAX / sizeof(*frame->images)) goto fail;
 				frame->images = pg_alloc(&temporary, frame->count * sizeof(*frame->images));
 				if (frame->count && !frame->images) goto fail;
-				for (size_t i = 0; i < frame->count; ++i) frame->images[i] = map->premises[i + 2];
+				for (size_t i = 0; i < frame->count; ++i)
+					frame->images[i] = pg_substitution_image_at(typing, map, i);
 				continue;
 			} else {
 				result = frame->body;
@@ -4729,9 +4784,10 @@ static const struct pg_evidence *pattern_index_type(struct pg_typing *typing,
 			if (i == frame->parameters) continue; /* Rebuild Self from the new parameters. */
 			const struct pg_evidence *selected = NULL;
 			const struct pg_evidence *extension = pattern->premises[0];
-			for (size_t j = pattern->premise_count - 2; pg_evidence_context(extension) != pg_evidence_context(prefix);
+			for (size_t j = pg_evidence_context_map(pattern)->count;
+				pg_evidence_context(extension) != pg_evidence_context(prefix);
 				--j, extension = extension->premises[0]) {
-				const struct pg_evidence *image = pattern->premises[j + 1];
+				const struct pg_evidence *image = pg_substitution_image_at(typing, pattern, j - 1);
 				if (pg_evidence_subject(image)->core->kind == PG_REFERENCE && pg_evidence_subject(image)->core->as.reference->kind == PG_BINDER) continue;
 				image = pg_prove_reindex(typing, inverse, image);
 				if (!image || pg_alpha_equal(pg_evidence_subject(image)->core, pg_evidence_subject(frame->images[i])->core) != 1) continue;
@@ -4781,7 +4837,7 @@ const struct pg_evidence *pg_prove_pattern_type(struct pg_typing *typing,
 	const struct pg_evidence *extension = source;
 	for (size_t i = source_count; i; --i, extension = extension->premises[0]) {
 		if (extension->rule != PG_CONTEXT_EXTEND) goto done;
-		const struct pg_term *image = pg_evidence_subject(pattern->premises[common + i + 1])->core;
+		const struct pg_term *image = pg_evidence_context_map(pattern)->images[common + i - 1]->core;
 		if (image->kind != PG_REFERENCE || image->as.reference->kind != PG_BINDER) continue;
 		if (pattern_variable(&variables, image->as.reference)) goto done;
 		entries[i - 1].image = image->as.reference;
@@ -4790,7 +4846,7 @@ const struct pg_evidence *pg_prove_pattern_type(struct pg_typing *typing,
 	}
 	for (size_t i = common; i; --i, extension = extension->premises[0]) {
 		const struct pg_object *binder = pg_evidence_context(extension)->binder;
-		if (pg_evidence_subject(pattern->premises[i + 1])->core != pg_reference(typing->graph, binder)) goto done;
+		if (pg_evidence_context_map(pattern)->images[i - 1]->core != pg_reference(typing->graph, binder)) goto done;
 		if (pattern_variable(&variables, binder)) goto done;
 	}
 	extension = destination;

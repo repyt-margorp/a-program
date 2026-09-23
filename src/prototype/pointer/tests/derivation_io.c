@@ -336,7 +336,7 @@ static void write_proofs(FILE *file, struct pg_typing *typing)
 	const struct pg_evidence *context = pg_prove_context_extension(typing, ca, b,
 		pg_prove_universe(typing, ca, 0));
 	const struct pg_object *types[] = {a, b};
-	const struct pg_evidence *roots[27];
+	const struct pg_evidence *roots[29];
 	const struct pg_evidence *under_lambda = NULL;
 	for (size_t i = 0; i < 2; ++i) {
 		const struct pg_evidence *domain = pg_prove_variable(typing, context, types[i]);
@@ -487,8 +487,15 @@ static void write_proofs(FILE *file, struct pg_typing *typing)
 	while (!pg_typed_query_advance(query, 1)) assert(pg_typed_query_steps(query) < 10000);
 	roots[26] = pg_typed_query_result(query);
 	assert(roots[26] && pg_evidence_subject(roots[26])->core == u1_core);
-	for (size_t i = 0; i < 27; ++i) assert(roots[i]);
-	assert(pg_derivations_write(file, 27, roots, name, typing->graph) == 0);
+	/* The canonical projection and the explicit variable map have different
+	 * premise DAGs, but share their checked structural conclusion. */
+	roots[27] = pg_prove_substitution_projection(typing, context, mc);
+	const struct pg_evidence *images[] = {
+		pg_prove_variable(typing, mc, a), pg_prove_variable(typing, mc, b)};
+	roots[28] = pg_prove_substitution(typing, context, mc, 2, images);
+	assert(roots[27] != roots[28] && pg_evidence_context_map(roots[27]) == pg_evidence_context_map(roots[28]));
+	for (size_t i = 0; i < 29; ++i) assert(roots[i]);
+	assert(pg_derivations_write(file, 29, roots, name, typing->graph) == 0);
 	pg_conversion_destroy(&conversion);
 	pg_whnf_work_destroy(&work);
 }
@@ -516,13 +523,14 @@ static void read_proofs(FILE *file, struct pg_typing *typing, uint64_t chunk)
 	size_t count;
 	const struct pg_derivation_input *const *roots;
 	assert(pg_derivations_read(file, typing, 1000, 100, resolve, typing->graph, &count, &roots) == 0);
-	assert(count == 27 && roots[0] == roots[2] && roots[0] != roots[1]);
+	assert(count == 29 && roots[0] == roots[2] && roots[0] != roots[1]);
+	assert(roots[27]->count == 2 && roots[28]->count == 4);
 	assert(typing->proofs.count == 0);
 	struct pg_whnf_work work;
 	assert(pg_whnf_work_init(&work, typing->graph) == 0);
 	struct pg_synthesis synthesis;
 	assert(pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
-	struct pg_synthesis_job *jobs[27];
+	struct pg_synthesis_job *jobs[29];
 	for (size_t i = 0; i < count; ++i) {
 		jobs[i] = pg_synthesis_derivation(&synthesis, roots[i]);
 		assert(jobs[i] && pg_synthesis_status(jobs[i]) == PG_SYNTHESIS_PENDING);
@@ -541,6 +549,12 @@ static void read_proofs(FILE *file, struct pg_typing *typing, uint64_t chunk)
 		assert(pg_synthesis_status(jobs[i]) == PG_SYNTHESIS_PENDING && !pg_synthesis_result(jobs[i]));
 	for (size_t step = 0; step < 10000 && synthesis.ready; ++step) pg_synthesis_advance(&synthesis, chunk);
 	for (size_t i = 0; i < count; ++i) assert(pg_synthesis_status(jobs[i]) == PG_SYNTHESIS_DONE);
+	const struct pg_evidence *projection_map = pg_synthesis_result(jobs[27]);
+	const struct pg_evidence *explicit_map = pg_synthesis_result(jobs[28]);
+	assert(projection_map != explicit_map && pg_evidence_context_map(projection_map) == pg_evidence_context_map(explicit_map));
+	assert(pg_evidence_context_map(projection_map)->count == 2);
+	for (size_t i = 0; i < 2; ++i)
+		assert(pg_substitution_image_at(typing, projection_map, i) == pg_substitution_image_at(typing, explicit_map, i));
 	assert(pg_synthesis_status(consumer) == PG_SYNTHESIS_DONE);
 	assert(pg_synthesis_result(consumer) == pg_synthesis_result(jobs[6]));
 	assert(pg_synthesis_status(expect) == PG_SYNTHESIS_REJECTED && !pg_synthesis_result(expect));
@@ -1540,6 +1554,7 @@ static void discarded_input(struct pg_typing *typing)
 	assert(header && partial && !pg_derivation_inputs_write(header, 0, NULL, NULL, NULL));
 	rewind(header);
 	assert(fread(magic, 1, sizeof(magic), header) == sizeof(magic));
+	assert(magic[7] == 15);
 	assert(fwrite(magic, 1, sizeof(magic), partial) == sizeof(magic));
 	assert(!pg_wire_write_u64(partial, 4096) && !pg_wire_write_u64(partial, 0));
 	struct pg_block *blocks = typing->graph->blocks;
@@ -1551,6 +1566,13 @@ static void discarded_input(struct pg_typing *typing)
 		assert(count == 17 && !roots && !typing->proofs.count);
 		assert(typing->graph->blocks == blocks);
 	}
+	/* Old two-premise inputs must not acquire the new projection meaning. */
+	assert(!fseek(header, 7, SEEK_SET) && fputc(14, header) != EOF);
+	rewind(header);
+	size_t count = 17;
+	const struct pg_derivation_input *const *roots = NULL;
+	assert(pg_derivations_read(header, typing, 8192, 0, NULL, NULL, &count, &roots) == -1);
+	assert(count == 17 && !roots && !typing->proofs.count);
 	assert(!fclose(header) && !fclose(partial));
 }
 

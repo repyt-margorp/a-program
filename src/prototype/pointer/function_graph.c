@@ -148,11 +148,11 @@ static const struct pg_evidence *apply_relation(struct pg_function_graph_state *
 	const struct pg_evidence *output)
 {
 	if (!map) return NULL;
-	size_t count = pg_evidence_premise_count(map);
+	size_t count = pg_evidence_context_map(map)->count;
 	size_t inputs = s->index_count + s->arity + 1;
-	if (count < inputs + 2) return NULL;
+	if (count < inputs) return NULL;
 	for (size_t i = count - inputs; relation && i < count; ++i)
-		relation = pg_prove_family_application(s->typing, relation, pg_evidence_premise(map, i));
+		relation = pg_prove_family_application(s->typing, relation, pg_substitution_image_at(s->typing, map, i));
 	return pg_prove_family_application(s->typing, relation, output);
 }
 
@@ -878,9 +878,11 @@ static const struct pg_evidence *case_base(struct pg_function_graph_state *s, st
 	const struct pg_evidence *fields = pg_prove_constructor_scope(t, s->input.formation, constructor, parameters);
 	if (!fields) return NULL;
 	const struct pg_evidence *context = pg_evidence_premise(fields, 1);
-	size_t offset = pg_evidence_premise_count(parameters) + 1;
-	size_t count = pg_evidence_premise_count(fields) - offset;
-	const struct pg_evidence *const *values = pg_evidence_premises(fields) + offset;
+	size_t offset = pg_evidence_context_map(parameters)->count + 1;
+	size_t count = pg_evidence_context_map(fields)->count - offset;
+	const struct pg_evidence *const *images = pg_substitution_images(t, fields, &s->temporary);
+	if (!images) return NULL;
+	const struct pg_evidence *const *values = images + offset;
 	const struct pg_evidence *argument = pg_prove_constructor(t, s->input.formation, constructor,
 		parameters_at(s, context), count, values);
 	const struct pg_evidence **arguments = pg_alloc(&s->temporary, s->arity * sizeof(*arguments));
@@ -1000,9 +1002,9 @@ static int case_branch(struct pg_function_graph_state *s, struct graph_case *pla
 	size_t arity = s->index_count + s->arity + 2;
 	const struct pg_evidence **values = pg_alloc(&s->temporary, arity * sizeof(*values));
 	if (!values || !output) return -1;
-	size_t inputs = pg_evidence_premise_count(plan->schema_input);
+	size_t inputs = pg_evidence_context_map(plan->schema_input)->count;
 	for (size_t i = 0; i < arity - 1; ++i)
-		values[i] = pg_evidence_premise(plan->schema_input, inputs - arity + 1 + i);
+		values[i] = pg_substitution_image_at(t, plan->schema_input, inputs - arity + 1 + i);
 	values[arity - 1] = output;
 	plan->result = pg_prove_substitution_extend(t,
 		pg_prove_substitution_projection(t, s->self, context), s->indices, arity, values);
@@ -1230,8 +1232,8 @@ static void prepare_graph(struct pg_function_graph_state *s)
 		s->input = *input;
 		if (s->input.formation != pg_evidence_premise(s->body, 1)) goto unsupported;
 		if (s->input.indices) {
-			size_t offset = pg_evidence_premise_count(s->input.parameters) + 1;
-			s->index_count = pg_evidence_premise_count(s->input.indices) - offset;
+			size_t offset = pg_evidence_context_map(s->input.parameters)->count + 1;
+			s->index_count = pg_evidence_context_map(s->input.indices)->count - offset;
 			if (s->index_count > SIZE_MAX / sizeof(*s->index_arguments)) goto error;
 			s->index_arguments = pg_alloc(&s->temporary, s->index_count * sizeof(*s->index_arguments));
 			if (s->index_count && !s->index_arguments) goto error;
@@ -1239,7 +1241,7 @@ static void prepare_graph(struct pg_function_graph_state *s)
 			 * input. Check this telescope; never solve a fixed index backwards. */
 			for (size_t i = s->index_count; i; --i) {
 				if (pg_evidence_rule(s->context) != PG_CONTEXT_EXTEND) goto unsupported;
-				const struct pg_term *image = pg_evidence_subject(pg_evidence_premise(s->input.indices, offset + i - 1))->core;
+				const struct pg_term *image = pg_evidence_context_map(s->input.indices)->images[offset + i - 1]->core;
 				if (image != pg_reference(typing->graph, pg_evidence_context(s->context)->binder)) goto unsupported;
 				s->index_arguments[i - 1] = s->context;
 				s->context = pg_evidence_premise(s->context, 0);
@@ -1412,10 +1414,10 @@ enum pg_function_graph_status pg_function_graph_advance(struct pg_function_graph
 			s->declaration = pg_prove_inductive_type(s->typing, s->schema);
 			s->formation = s->declaration;
 			if (s->specialization) {
-				size_t end = pg_evidence_premise_count(s->specialization);
+				size_t end = pg_evidence_context_map(s->specialization)->count;
 				for (size_t i = end - s->index_count - 1 - s->specialized_arity; s->formation && i < end; ++i)
 					s->formation = pg_prove_family_application(s->typing, s->formation,
-						pg_evidence_premise(s->specialization, i));
+						pg_substitution_image_at(s->typing, s->specialization, i));
 			}
 			for (const struct pg_evidence *context = s->context;
 				s->formation && pg_evidence_context(context) != pg_evidence_context(s->outer_context);
@@ -1547,11 +1549,15 @@ static const struct pg_evidence *return_packet(struct pg_function_graph_state *s
 		pg_prove_substitution_projection(t, s->context, context), count, fields);
 	if (!graph) return NULL;
 	const struct pg_evidence *result = pg_data_result(t, s->schema, constructor, pg_evidence_premise(graph, 3));
-	size_t n = pg_evidence_premise_count(result);
+	if (!result) return NULL;
+	size_t n = pg_evidence_context_map(result)->count;
 	if (n < s->arity + 2) return NULL;
-	const struct pg_evidence *input = pg_evidence_premise(result, n - s->arity - 2), *output = pg_evidence_premise(result, n - 1);
+	const struct pg_evidence *input = pg_substitution_image_at(t, result, n - s->arity - 2);
+	const struct pg_evidence *output = pg_substitution_image_at(t, result, n - 1);
 	const struct pg_evidence *values[] = {output, graph};
-	const struct pg_evidence *const *arguments = pg_evidence_premises(result) + n - s->arity - 1;
+	const struct pg_evidence *const *images = pg_substitution_images(t, result, &s->temporary);
+	if (!images) return NULL;
+	const struct pg_evidence *const *arguments = images + n - s->arity - 1;
 	const struct pg_evidence *packet = pg_prove_constructor(t, s->packet, packet_constructor(s),
 		input_substitution(s, context, input, arguments), 2, values);
 	return pg_prove_return_contract(t, s->totality, packet);
@@ -1620,13 +1626,13 @@ static int witness_calls(struct pg_function_graph_state *s, struct witness_branc
 		f->fields = pg_prove_constructor_scope(t, f->formation, f->constructor, f->parameters);
 		if (!f->fields) return -1;
 		context = pg_evidence_premise(f->fields, 1);
-		size_t start = pg_evidence_premise_count(f->parameters) + 1;
-		work->values[2 * entry->slot] = pg_evidence_premise(f->fields, start);
-		work->values[2 * entry->slot + 1] = pg_evidence_premise(f->fields, start + 1);
+		size_t start = pg_evidence_context_map(f->parameters)->count + 1;
+		work->values[2 * entry->slot] = pg_substitution_image_at(t, f->fields, start);
+		work->values[2 * entry->slot + 1] = pg_substitution_image_at(t, f->fields, start + 1);
 		work->source_map = pg_prove_substitution_compose(t, work->source_map,
 			pg_prove_substitution_projection(t, pg_evidence_premise(work->source_map, 1), context));
 		work->source_map = pg_prove_substitution_pair(t, work->source_map, call->result_context,
-			pg_evidence_premise(f->fields, start));
+			pg_substitution_image_at(t, f->fields, start));
 		if (!work->source_map) return -1;
 	}
 	for (size_t i = 0; i < 2 * calls; ++i) work->values[i] = projection(s, context, work->values[i]);
@@ -1690,8 +1696,10 @@ static const struct pg_evidence *witness_tree(struct pg_function_graph_state *s,
 			size_t count;
 			if (pg_context_extension_size(pg_evidence_context(pg_evidence_premise(work->schema_map, 0)),
 				pg_evidence_context(s->self), &count)) return NULL;
-			size_t start = pg_evidence_premise_count(work->schema_map) - count;
-			const struct pg_evidence *const *values = pg_evidence_premises(work->schema_map) + start;
+			size_t start = pg_evidence_context_map(work->schema_map)->count - count;
+			const struct pg_evidence *const *images = pg_substitution_images(t, work->schema_map, &s->temporary);
+			if (!images) return NULL;
+			const struct pg_evidence *const *values = images + start;
 			body = return_packet(s, plan->leaf, work->context, count, values);
 		}
 		for (size_t i = plan->call_count - plan->first_call; body && i; --i) {
@@ -1741,7 +1749,7 @@ static const struct pg_evidence *witness_case(struct pg_function_graph_state *s,
 	size_t count;
 	if (pg_context_extension_size(pg_evidence_context(original),
 		pg_evidence_context(pg_data_schema_parameters(s->input.schema)), &count)) return NULL;
-	size_t offset = pg_evidence_premise_count(parameters) + 1;
+	size_t offset = pg_evidence_context_map(parameters)->count + 1;
 	size_t scope_count;
 	if (pg_context_extension_size(pg_evidence_context(base), pg_evidence_context(s->argument_context), &scope_count)) return NULL;
 	if (scope_count < count) return NULL;
@@ -1754,7 +1762,7 @@ static const struct pg_evidence *witness_case(struct pg_function_graph_state *s,
 	const struct pg_context *scope = pg_evidence_context(base);
 	for (size_t i = ih_count; i; --i, scope = scope->parent)
 		hypotheses[i - 1] = pg_prove_variable(t, base, scope->binder);
-	for (size_t i = 0; i < count; ++i) values[i] = pg_evidence_premise(map, offset + i);
+	for (size_t i = 0; i < count; ++i) values[i] = pg_substitution_image_at(t, map, offset + i);
 	const struct pg_evidence *argument = pg_prove_constructor(t, s->input.formation, constructor,
 		parameters_at(s, base), count, values);
 	if (!argument) return NULL;
@@ -1824,9 +1832,9 @@ enum pg_function_graph_status pg_function_graph_witness_advance(struct pg_functi
 		const struct pg_evidence *context = s->argument_context;
 		if (s->specialization) {
 			body = pg_prove_abstract(s->typing, s->context, context, body);
-			size_t end = pg_evidence_premise_count(s->specialization);
+			size_t end = pg_evidence_context_map(s->specialization)->count;
 			for (size_t i = end - s->index_count - 1 - s->specialized_arity; body && i < end; ++i)
-				body = pg_prove_application(s->typing, body, pg_evidence_premise(s->specialization, i));
+				body = pg_prove_application(s->typing, body, pg_substitution_image_at(s->typing, s->specialization, i));
 			context = s->context;
 		}
 		s->witness = pg_prove_abstract(s->typing, s->outer_context, context, body);

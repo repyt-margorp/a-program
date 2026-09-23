@@ -1913,13 +1913,21 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(pg_evidence_premise(other_projection, 0) == other_destination);
 	assert(pg_evidence_premise(other_projection, 1) == other_extension);
 	const struct pg_context_map *shared_projection = pg_evidence_context_map(projection_map);
+	assert(!pg_substitution_image_at(&typing, projection_map, shared_projection->count));
+	assert(!pg_substitution_image_at(&typing, destination, 0));
+	assert(!pg_substitution_image_at(&typing, NULL, 0));
+	struct pg_graph image_storage = {0};
+	const struct pg_evidence *const *projection_images = pg_substitution_images(&typing, projection_map, &image_storage);
+	assert(projection_images);
 	for (size_t i = 0; i < shared_projection->count; ++i) {
-		const struct pg_evidence *image = pg_evidence_premise(other_projection, i + 2);
+		const struct pg_evidence *image = pg_substitution_image_at(&typing, other_projection, i);
 		assert(pg_evidence_subject(image) == shared_projection->images[i]);
 		assert(pg_evidence_rule(image) == PG_VARIABLE);
 		assert(pg_evidence_premise(image, 0) == other_extension);
-		assert(image != pg_evidence_premise(projection_map, i + 2));
+		assert(image != pg_substitution_image_at(&typing, projection_map, i));
+		assert(projection_images[i] == pg_substitution_image_at(&typing, projection_map, i));
 	}
+	pg_graph_destroy(&image_storage);
 	size_t repeated_proofs = typing.proofs.count, repeated_maps = typing.context_maps.count;
 	for (size_t i = 0; i < 100; ++i) {
 		assert(pg_prove_substitution_projection(&typing, destination, extended_destination) == projection_map);
@@ -1929,7 +1937,7 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(!pg_prove_substitution_projection(&typing, extended_destination, destination));
 	assert(!pg_prove_substitution_projection(&typing, source, extended_destination));
 	reconstruct_derivation(&typing, other_projection);
-	/* General introduction and projection agree in either construction order. */
+	/* General introduction and projection share their map, not their proof. */
 	for (size_t first = 0; first < 2; ++first) {
 		const struct pg_evidence *target = pg_prove_context_extension(&typing, destination,
 			pg_binder(graph), pg_prove_classifier(&typing, destination, destination_y));
@@ -1940,11 +1948,15 @@ static void typed_substitution_test(struct pg_graph *graph)
 		const struct pg_evidence *projection = pg_prove_substitution_projection(&typing, destination, target);
 		assert(projection);
 		if (!first) ordinary = pg_prove_substitution(&typing, destination, target, 2, vars);
-		assert(projection == ordinary);
+		assert(projection != ordinary);
+		assert(pg_evidence_context_map(projection) == pg_evidence_context_map(ordinary));
+		assert(pg_evidence_premise_count(projection) == 2);
 		assert(pg_evidence_premise(projection, 0) == destination);
 		assert(pg_evidence_premise(projection, 1) == target);
-		assert(pg_evidence_premise(projection, 2) == vars[0]);
-		assert(pg_evidence_premise(projection, 3) == vars[1]);
+		assert(pg_substitution_image_at(&typing, projection, 0) == vars[0]);
+		assert(pg_substitution_image_at(&typing, projection, 1) == vars[1]);
+		reconstruct_derivation(&typing, projection);
+		reconstruct_derivation(&typing, ordinary);
 	}
 	struct pg_occurrence_action *projection_action = pg_occurrence_action_request(&typing,
 		pg_evidence_context_map(projection_map), pg_evidence_subject(reindexed_return));
@@ -2633,6 +2645,10 @@ static void family_instance_test(struct pg_graph *graph)
 	size_t checked_count = typing.proofs.count;
 	assert(pg_prove_context_map(&typing, deep_map) == deep_checked && typing.proofs.count == checked_count);
 	const struct pg_evidence *ambient_identity = pg_prove_substitution_projection(&typing, ambient, ambient);
+	assert(ambient_identity && typing.proofs.count == checked_count + 1);
+	/* Reading the canonical map does not eagerly create variable proofs. */
+	assert(pg_evidence_context_map(ambient_identity)->count == 64);
+	for (size_t i = 0; i < 64; ++i) assert(pg_substitution_image_at(&typing, ambient_identity, i));
 	const struct pg_object *extra_binder = pg_binder(graph);
 	const struct pg_evidence *extra_scope = pg_prove_context_extension(&typing, ambient, extra_binder,
 		pg_prove_universe(&typing, ambient, 0));

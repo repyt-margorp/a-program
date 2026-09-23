@@ -3968,9 +3968,9 @@ static void substitution_jobs(struct pg_typing *typing)
 		assert(direct_lift && pg_evidence_premise(lifted, 0) == extension);
 		assert(pg_evidence_premise(lifted, 1) == pg_evidence_premise(direct_lift, 1));
 		assert(pg_evidence_context(lifted)->binder == lift_binder);
-		assert(pg_evidence_premise_count(lifted) == pg_evidence_premise_count(direct_lift));
-		for (size_t i = 2; i < pg_evidence_premise_count(lifted); ++i)
-			same_judgement(pg_evidence_premise(lifted, i), pg_evidence_premise(direct_lift, i));
+		assert(pg_evidence_context_map(lifted)->count == pg_evidence_context_map(direct_lift)->count);
+		for (size_t i = 0; i < pg_evidence_context_map(lifted)->count; ++i)
+			same_judgement(pg_substitution_image_at(typing, lifted, i), pg_substitution_image_at(typing, direct_lift, i));
 		struct pg_synthesis_job *wrong[] = {images[1], images[0]};
 		struct pg_synthesis_job *wrong_order = pg_synthesis_substitution(&synthesis, source, destination, 2, wrong);
 		assert(wrong_order && wrong_order != job);
@@ -4608,10 +4608,12 @@ static void substitution_prefix_rebase(struct pg_typing *typing)
 		contexts[i + 1] = pg_prove_context_extension(typing, contexts[i], pg_binder(typing->graph),
 			pg_prove_value_type(typing, pg_prove_variable(typing, contexts[i], a)));
 	const struct pg_evidence *full = pg_prove_substitution_projection(typing, contexts[3], contexts[3]);
-	assert(full && pg_evidence_premise_count(full) == 5);
+	assert(full && pg_evidence_context_map(full)->count == 3);
+	const struct pg_evidence *images[3];
+	for (size_t i = 0; i < 3; ++i) images[i] = pg_substitution_image_at(typing, full, i);
 	for (size_t count = 0; count < 3; ++count) {
 		const struct pg_evidence *prefix = pg_prove_substitution(typing, contexts[count], contexts[3],
-			count, pg_evidence_premises(full) + 2);
+			count, images);
 		struct pg_typed_query *query = pg_substitution_rebase_request(typing, contexts[2], prefix);
 		assert(query && !pg_typed_query_result(query));
 		size_t proofs = typing->proofs.count;
@@ -4621,8 +4623,8 @@ static void substitution_prefix_rebase(struct pg_typing *typing)
 		const struct pg_evidence *result = pg_typed_query_result(query);
 		const struct pg_evidence *expected = pg_prove_substitution_projection(typing, contexts[count], contexts[2]);
 		assert(result && pg_evidence_context_map(result) == pg_evidence_context_map(expected));
-		for (size_t i = 2; i < count + 2; ++i)
-			same_judgement(pg_evidence_premise(result, i), pg_evidence_premise(expected, i));
+		for (size_t i = 0; i < count; ++i)
+			same_judgement(pg_substitution_image_at(typing, result, i), pg_substitution_image_at(typing, expected, i));
 		proofs = typing->proofs.count;
 		size_t queries = typing->typed_queries.count;
 		for (size_t i = 0; i < 20; ++i)
@@ -5319,8 +5321,8 @@ static void source_telescopes(struct pg_typing *typing)
 	assert(result_job && pg_synthesis_data_result(&synthesis, field_scope, parameter_context, index_context, result) == result_job);
 	const struct pg_evidence *source_map = complete(&synthesis, result_job, PG_SYNTHESIS_DONE);
 	assert(pg_evidence_context(source_map) == pg_evidence_context(map));
-	for (size_t i = 2; i < pg_evidence_premise_count(map); ++i)
-		same_judgement(pg_evidence_premise(source_map, i), pg_evidence_premise(map, i));
+	for (size_t i = 0; i < pg_evidence_context_map(map)->count; ++i)
+		same_judgement(pg_substitution_image_at(typing, source_map, i), pg_substitution_image_at(typing, map, i));
 	const struct pg_data_schema *schema = pg_data_schema(typing, pg_data_signature(typing, parameter_context, index_context), 1, &source_map);
 	assert(schema && pg_data_schema_fields(schema, pg_data_constructor(pg_data_schema_layout(schema), 0)) == field_context);
 	/* Source admission discharges a separately checked Self-family hypothesis;
@@ -5730,9 +5732,9 @@ static void source_declarations(struct pg_typing *typing)
 		const struct pg_evidence *projection = pg_prove_substitution_projection(typing,
 			pg_evidence_premise(field_map, 1), scope_context);
 		const struct pg_evidence *composed = pg_prove_substitution_compose(typing, field_map, projection);
-		assert(composed && pg_evidence_premise_count(composed) == pg_evidence_premise_count(scope_map));
-		for (size_t j = 2; j < pg_evidence_premise_count(scope_map); ++j)
-			same_judgement(pg_evidence_premise(scope_map, j), pg_evidence_premise(composed, j));
+		assert(composed && pg_evidence_context_map(composed)->count == pg_evidence_context_map(scope_map)->count);
+		for (size_t j = 0; j < pg_evidence_context_map(scope_map)->count; ++j)
+			same_judgement(pg_substitution_image_at(typing, scope_map, j), pg_substitution_image_at(typing, composed, j));
 		size_t scope_proofs = typing->proofs.count, scope_queries = typing->typed_queries.count;
 		for (size_t j = 0; j < 20; ++j)
 			assert(pg_prove_substitution_rebase(typing, scope_context, field_map) == scope_map);
@@ -6339,10 +6341,9 @@ static void source_schemas(struct pg_typing *typing)
 			mode < 2 ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);
 		if (mode < 2) {
 			assert(pg_evidence_context(pg_evidence_premise(result, 1)) == saved_fields);
-			assert(pg_evidence_premise_count(result) == pg_evidence_premise_count(saved_map));
-			for (size_t i = 2; i < pg_evidence_premise_count(result); ++i)
-				assert(pg_evidence_subject(pg_evidence_premise(result, i))->core ==
-					pg_evidence_subject(pg_evidence_premise(saved_map, i))->core);
+			assert(pg_evidence_context_map(result)->count == pg_evidence_context_map(saved_map)->count);
+			for (size_t i = 0; i < pg_evidence_context_map(result)->count; ++i)
+				assert(pg_evidence_context_map(result)->images[i]->core == pg_evidence_context_map(saved_map)->images[i]->core);
 		} else assert(!result);
 		const struct pg_evidence *value = complete(&restored, member,
 			mode < 2 ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);

@@ -9,7 +9,7 @@ int pg_identity_substitution_images(struct pg_typing *typing,
 {
 	if (!pg_evidence_owned_by(substitution, typing)) return -1;
 	if (pg_evidence_rule(substitution) != PG_CONTEXT_SUBSTITUTION) return -1;
-	size_t total = pg_evidence_premise_count(substitution) - 2;
+	size_t total = pg_evidence_context_map(substitution)->count;
 	if (image_count > total || (image_count && !images)) return -1;
 	if (image_count > SIZE_MAX / sizeof(*images)) return -1;
 	struct pg_graph temporary = {0};
@@ -18,7 +18,8 @@ int pg_identity_substitution_images(struct pg_typing *typing,
 	if (image_count && !results) goto done;
 	const struct pg_evidence *context = pg_evidence_premise(substitution, 1);
 	for (size_t i = 0; i < image_count; ++i) {
-		const struct pg_evidence *value = pg_evidence_premise(substitution, 2 + total - image_count + i);
+		const struct pg_evidence *value = pg_substitution_image_at(typing, substitution,
+			total - image_count + i);
 		const struct pg_evidence *type = pg_prove_classifier(typing, context, value);
 		results[i] = pg_prove_family_action(typing, type, value, left, right, count, paths);
 		if (!results[i]) goto done;
@@ -602,7 +603,8 @@ const struct pg_evidence *pg_identity_context(struct pg_typing *typing,
 	}
 	const struct pg_evidence *ls = pg_prove_substitution_projection(typing, context, context), *rs = ls;
 	if (!ls) goto done;
-	for (size_t i = 0; i < common; ++i) li[i] = ri[i] = pg_evidence_premise(ls, i + 2);
+	for (size_t i = 0; i < common; ++i)
+		li[i] = ri[i] = pg_substitution_image_at(typing, ls, i);
 	for (size_t i = 0; i < count; ++i) {
 		const struct pg_object *binders[3];
 		if (boundary_binders(dimensions, centers[i], binders) != 0) goto done;
@@ -648,13 +650,14 @@ const struct pg_evidence *pg_identity_substitution_context(struct pg_typing *typ
 	const struct pg_evidence *source = pg_evidence_premise(left, 0);
 	if (pg_evidence_context(source) != pg_evidence_context(pg_evidence_premise(right, 0))) return NULL;
 	if (pg_evidence_context(left) != pg_evidence_context(right)) return NULL;
-	size_t arity = pg_evidence_premise_count(left) - 2;
+	size_t arity = pg_evidence_context_map(left)->count;
+	if (pg_evidence_context_map(right)->count != arity) return NULL;
 	if (count > arity || arity > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
 	if (count && (!binders || !paths)) return NULL;
 	size_t common = arity - count;
 	for (size_t i = 0; i < common; ++i)
-		if (pg_alpha_equal(pg_evidence_subject(pg_evidence_premise(left, i + 2))->core,
-			pg_evidence_subject(pg_evidence_premise(right, i + 2))->core) != 1) return NULL;
+		if (pg_alpha_equal(pg_evidence_context_map(left)->images[i]->core,
+			pg_evidence_context_map(right)->images[i]->core) != 1) return NULL;
 	const struct pg_evidence *context = pg_evidence_premise(left, 1);
 	if (!count) return context;
 	struct pg_graph temporary = {0};
@@ -669,8 +672,8 @@ const struct pg_evidence *pg_identity_substitution_context(struct pg_typing *typ
 		extensions[i - 1] = source;
 	}
 	for (size_t i = 0; i < arity; ++i) {
-		li[i] = pg_evidence_premise(left, i + 2);
-		ri[i] = pg_evidence_premise(right, i + 2);
+		li[i] = pg_substitution_image_at(typing, left, i);
+		ri[i] = pg_substitution_image_at(typing, right, i);
 	}
 	for (size_t i = 0; i < count; ++i) {
 		const struct pg_evidence *prefix = pg_evidence_premise(extensions[i], 0);
