@@ -1,7 +1,7 @@
 # Generic QuickSort First: Implementation and Refactor Resume
 
 Date: 2026-09-24
-Status: Q0-Q3 complete and published; Q4 authority refactor and #34 provider experiment remain open
+Status: Q0-Q3 published; Q4 authority/#32/#33 open; #34 experiment verified, publication pending
 Planning baseline local revision: `0446d4eef364c78b41e07b03e53179ee4f999b18`
 Remote Main at review: `a72cda371109fdbf84d747456ed0aeb09af2391e`
 Published Q3 Main/rewrite revision: `c2ed4a75064792975f2f6637b207c1801b848e8c`
@@ -19,7 +19,7 @@ after the generic QuickSort gate below.
 | [#31](https://github.com/repyt-margorp/a-program/issues/31) | Reproducible synthesis limitation: a dependent Match accepts the recomputed comparator index but fails the result index needed for a general Sorted proof. The Nat theorem still passes. This is the immediate correctness target for the intended proof interface; no kernel soundness failure has been shown. | Repair first and prove the complete generic theorem. |
 | [#32](https://github.com/repyt-margorp/a-program/issues/32) | Proposal to simplify global `*f` syntax; no checked replacement for graph adequacy yet. | Keep the current witness mechanism while fixing #31. Investigate after the refactor resumes. |
 | [#33](https://github.com/repyt-margorp/a-program/issues/33) | Trust-boundary audit of totality rules; a renamed Acc provider checks, but no unsoundness or replacement is established. | Audit with the resumed authority work; retain termination checks pending proof of a replacement. |
-| [#34](https://github.com/repyt-margorp/a-program/issues/34) | Both providers support general Sorted and permutation proofs, concrete witness consumers and partial images. Earlier A/B measurements show mixed costs. | Keep the frozen provider; finish partition-change sensitivity and the library decision. See the Q4 experiment checkpoints below. |
+| [#34](https://github.com/repyt-margorp/a-program/issues/34) | Both providers and partition orders pass general Sorted/permutation, concrete consumers and partial images. Measured costs are mixed; both need the same proof-field reorder. | Keep primitive lift in the frozen provider and retain the verified derived alternative. Experiment complete; publish and close with the Q4 evidence below. |
 
 [PR #35](https://github.com/repyt-margorp/a-program/pull/35) contains the
 documentation-only [generic Sorted audit](https://github.com/repyt-margorp/a-program/blob/docs/audit-generic-sorted-20260924/doc/2026-09-20-GENERAL-SORTED-QUICKSORT-LEAN-AUDIT.md)
@@ -256,6 +256,7 @@ audit fixtures and the complete generic proof, not only harness code.
   generic proof gate. Do not delete global `*f`, termination rules or primitive
   `LT.lift` while #31 depends on their present contracts. Retain open Issues
   until their individual evidence and acceptance criteria justify closure.
+  The #34 experiment now passes all of its gates below; #32/#33 remain open.
 - [ ] Keep the parent's final acceptance, performance and net-negative source
   delta gates open until measured on the finished refactor. A successful #31
   milestone is not completion of that separate work.
@@ -2674,6 +2675,139 @@ synthesis and IADT tests also passed; unrelated edits were neither changed
 nor included in the commit. The implementation commit added 82 plan lines;
 this publication follow-up is documentation only.
 
+### Q4: Partition-Order Sensitivity and LT Decision
+
+Baseline: `1506785`. Re-audit found that accepted structural queries already
+project from typed evidence; provisional structure remains necessary before
+effect closure. No further authority deletion follows from that observation.
+Finish the bounded #34 experiment while retaining the open authority gates.
+
+- [x] Add a tail-first partition variant: bind recursive partition before the
+  comparator, instead of computing the comparator first. Both computations
+  are total and effect-free under this provider's arrow contracts. This is
+  not a general license to reorder computations with effects.
+- [x] Apply the same variant to frozen and derived LT providers without
+  editing the baseline provider. Check the general Sorted/permutation proofs,
+  exact concrete outputs, source and partial images, and wrong-evidence cases.
+  Record any required proof changes instead of assuming graph witnesses are
+  invariant under the source change.
+- [x] Measure compile and witness-consumer steps, timing, graph/proof storage
+  and image sizes. Use matched inputs and distinguish semantic proof
+  dependence from scheduler or source-layout sensitivity.
+- [ ] State whether primitive lift is retained or replaced, without equating
+  distinct proof constructors, then update #34 from the complete evidence.
+
+The unadapted general Sorted proof rejects at 530,039 steps (frozen) and
+536,032 (derived). In each provider, exactly six clause heads in `proof.p` and
+`content.p` move `comparison` from before the partition fields to after `rest`.
+No proof body, theorem assumption or kernel rule changes. The derived variant
+still has its separate `lifted lifting` fields. `derived_lt.sh` now checks all
+four combinations, including rejection of the old field order, universal
+Sorted/permutation, concrete empty/singleton/ordered/reversed/duplicate cases,
+source execution, chunk sizes 1/64, zero/partial/completed ordinary and
+retained images, inert resave identity and wrong-evidence negatives. O2 passed
+every case (`/tmp/a-program-partition-order-opt.log`). The final exact-match
+patch formatting was separately checked to generate byte-identical inputs.
+The preserved contract is the List result and its Sorted/permutation theorems,
+not identity of the reflected `@partition` API or its proof objects. Pure
+evaluation alone does not make that exposed graph shape invariant.
+
+Performance: same compiler, full Sorted/content/Boolean consumer assembly,
+fresh processes, one warmup and seven repetitions in alternating variant
+order, with no concurrent build/test. Each NF measurement includes compilation;
+these are not isolated runtime timings. Median milliseconds:
+
+| Demand | Frozen, original | Frozen, tail-first | Derived, original | Derived, tail-first |
+| --- | ---: | ---: | ---: | ---: |
+| Compile | 1096.857 | 1116.950 | 1171.245 | 1152.487 |
+| Empty Sorted length | 1126.621 | 1133.292 | 1188.249 | 1189.020 |
+| Singleton Sorted length | 1150.431 | 1158.743 | 1212.619 | 1205.508 |
+| Ordered Sorted length | 1165.623 | 1175.519 | 1264.795 | 1261.070 |
+| Reversed Sorted length | 1173.061 | 1195.788 | 1263.327 | 1258.970 |
+| Duplicate Sorted length | 1423.943 | 1406.203 | 1343.716 | 1329.487 |
+| Duplicate witnessed output | 1278.561 | 1272.836 | 1187.930 | 1188.830 |
+| Duplicate content witness | 1425.860 | 1429.668 | 1329.262 | 1339.683 |
+| Duplicate direct output | 1184.858 | 1216.695 | 1169.600 | 1180.754 |
+
+Steps are invariant across repetitions. Compile steps in table order are
+820,427 / 819,976 / 824,974 / 824,531; duplicate Sorted demands are
+4,042,984 / 4,047,345 / 2,737,971 / 2,741,986. Median peak RSS (KiB) is
+301,756 / 301,884 / 313,428 / 313,888 for compile and
+355,032 / 355,532 / 344,080 / 344,800 for duplicate Sorted. Timing ranges for
+compile overlap within each provider: 1077.272-1125.937 vs 1082.196-1145.278,
+and 1105.209-1186.091 vs 1139.518-1174.962 ms. Do not claim a general
+tail-first speedup. The complete timings/steps/RSS are in
+`/tmp/a-program-partition-timing.jsonl`; RSS uses `wait4`, not arena size.
+
+Compile graph/storage counts (main arena only, not process memory):
+
+| Variant | Core | Typed occurrences | Proofs | Premise edges | Maps | Jobs | Arena used bytes |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Frozen, original | 867326 | 518953 | 266721 | 703862 | 55042 | 141982 | 244626896 |
+| Frozen, tail-first | 876716 | 518660 | 266293 | 702813 | 54940 | 141797 | 244916096 |
+| Derived, original | 931318 | 529019 | 270102 | 713700 | 55795 | 141546 | 250166032 |
+| Derived, tail-first | 944534 | 528726 | 269671 | 712641 | 55687 | 141361 | 250652960 |
+
+After duplicate Sorted NF, Core counts are respectively 1653803 / 1663149 /
+1307988 / 1321160; main-arena used bytes are 285475904 / 285762640 /
+269869040 / 270353504. Counter log: `/tmp/a-program-partition-counts.jsonl`.
+One discrete capacity effect matters: frozen direct output has 1,045,662 Core
+nodes originally and 1,055,052 tail-first, crossing the 1,048,576-bucket growth
+threshold. The new table has 2,097,152 buckets, and old/new arrays coexist
+during rehash. Peak RSS rises from 313,552 to 330,320 KiB despite only 289,200
+additional main-arena used bytes. This identifies a capacity jump, not a
+complete attribution of RSS or duplicate typing authority. See
+`/tmp/a-program-partition-direct-counts.log`. Do not adopt tail-first as an
+optimization from this experiment.
+
+| Variant | Zero-step image bytes | Completed ordinary bytes | Completed retained bytes |
+| --- | ---: | ---: | ---: |
+| Frozen, original | 1811125 | 1828753 | 5019036 |
+| Frozen, tail-first | 1811342 | 1828970 | 5019399 |
+| Derived, original | 1808335 | 1826227 | 5021565 |
+| Derived, tail-first | 1808552 | 1826444 | 5021928 |
+
+Image-size log: `/tmp/a-program-partition-images.jsonl`. No cross-provider
+nominal identification or cross-process canonical byte format is assumed.
+
+Decision: retain primitive `lift` in the existing frozen test provider, and
+retain the checked derived provider experiment. LT is an ordinary free IADT:
+it can express an order proposition while its inhabitants still expose their
+constructor history. Those descriptions are not contradictory. Removing a
+constructor neither establishes proof irrelevance nor hides the generated
+function graph's fields. The derived version improves the measured duplicate
+proof consumers but costs more compile storage and often more time on smaller
+demands. Both need the same six field-order repairs here. Thus the experiment
+establishes a valid library alternative, not a kernel defect or a mandatory
+compiler-level replacement. No assumption that all partition changes require
+only this small edit follows. #32's public graph interface and #33's trusted
+termination boundary remain separate open audits.
+
+Focused Debug and ASan/UBSan passed both tail-first providers: full source
+checking, duplicate content-witness NF, 300,000-step retained resume and
+byte-stable inert resave, executed Sorted witnesses, and wrong multiplicity
+rejection from source and retained partial images. Consumers ran at chunks
+1 and 64. Logs: `/tmp/a-program-partition-order-{debug,sanitize}.log`.
+Sanitizers use leak detection and halt-on-error; there were no diagnostics.
+The compiler and C tests are unchanged: all 102 tracked C/H files match the
+preceding verified build source byte-for-byte. Reused O2/Debug/sanitizer
+binaries retain that checkpoint's flags; no validation rule was rebuilt or
+disabled for this experiment.
+
+Full strict O2 `check-acceptance` also passed, including 63/63 compatibility
+and the expanded four-variant script, with no reclassified failures. Log:
+`/tmp/a-program-partition-acceptance.log`. Make's `--assume-old` was applied
+only to the 102 byte-compared C/H inputs to reuse the verified binaries;
+the current worktree's full set of test recipes, scripts and fixtures ran.
+The parent's full three-configuration final gate remains separate: Debug and
+sanitizers were focused on the new paths, not the entire suite in this epoch.
+
+This epoch changes no implementation C/H. `tests/derived_lt.sh` is +13/-3
+(net +10); `tests/fixtures/generic_sorted/partition-tail-first.patch` is
++10/-0. Total tests +23/-3 (net +20); documentation is separate. The cumulative
+implementation delta from R0 remains +9,804/-5,142 (net +4,662), so the parent's
+net-negative source gate remains unmet. A3-A5/R2-R5 are not complete.
+
 ## Change Log
 
 | Date | Stage | Revision and evidence | Status |
@@ -2698,3 +2832,4 @@ this publication follow-up is documentation only.
 | 2026-09-24 | Q4 substitution proof sharing | `1762fa0`: retain checked prefix dependencies instead of eagerly projecting/copying every prior image. Full debug/O2/ASan+UBSan acceptance passed. Generic proof edges fall from 1,359,398 to 578,678; measured compile median improves about 10.2%. | Published Main/rewrite; APGDRV16 replaces APGDRV15. Net source +26, cumulative reduction gate and remaining authority work stay open. |
 | 2026-09-24 | #34 universal content | General permutation theorem and executable consumers for both LT providers; wrong element, multiplicity and output claims reject. Full optimized acceptance and focused Debug/ASan+UBSan pass. | No kernel/provider change; partition sensitivity, library decision and authority refactor remain open. |
 | 2026-09-24 | A4/R5 rule headers | Intern immutable rule parameters, keep exact premise producers, and reuse existing simple-rule builders. Full O2 acceptance, focused Debug/ASan+UBSan and cross-version images pass. | Main-arena used bytes -2,602,160; implementation -19 lines. Not completion of the parent authority audit. |
+| 2026-09-24 | #34 partition sensitivity | Both LT providers pass after the same six graph-field reorderings. Full O2 acceptance and focused Debug/ASan+UBSan pass; seven-run timing, RSS, graph/proof and image measurements recorded above. | Preserve the existing provider and the derived alternative; experiment verified, publication pending. |

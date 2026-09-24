@@ -18,7 +18,8 @@ check_pair() {
 	"$compare" --steps 10000000 --equal-image "$directory/resaved.a" "$1" "$2"
 }
 
-for provider in frozen derived; do
+for variant in frozen derived frozen-tail-first derived-tail-first; do
+	provider=${variant%-tail-first}
 	# No fuzzy matching: source changes must trigger review of the experiment.
 	cp "$root/fixtures/sorted-proof-provider.p" "$directory/provider.p"
 	cp "$root/acceptance/generic-quick-sorted.p" "$directory/proof.p"
@@ -26,9 +27,18 @@ for provider in frozen derived; do
 	if [[ $provider == derived ]]; then
 		patch --batch --silent --fuzz=0 -p1 -d "$directory" < "$root/fixtures/generic_sorted/derived-lt.patch"
 	fi
+	if [[ $variant != "$provider" ]]; then
+		patch --batch --silent --fuzz=0 -p1 -d "$directory" < "$root/fixtures/generic_sorted/partition-tail-first.patch"
+		# The graph records recursive evidence before comparison evidence now.
+		# The old field order must not silently acquire the new meaning.
+		check_status 1 --legacy-intrinsic-dot --imports "$directory/provider.p" "$directory/proof.p"
+		grep -q '^rejected steps=' "$directory/status"
+		sed -E -i 's/^(\t@case[12] k h t) comparison( l left r right lb rb rest)( lifted lifting)? =>$/\1\2 comparison\3 =>/' \
+			"$directory/proof.p" "$directory/content.p"
+	fi
 	cat "$directory/content.p" "$root/fixtures/generic_sorted/boolean-consumer.p" \
 		"$root/fixtures/generic_sorted/boolean-content-consumer.p" >> "$directory/proof.p"
-	printf '%s\n' "LT provider: $provider"
+	printf '%s\n' "LT provider/partition order: $variant"
 	check_status 0 --legacy-intrinsic-dot --imports "$directory/provider.p" \
 		--save "$directory/complete.a" "$directory/proof.p"
 	cp "$directory/complete.a" "$directory/resaved.a"
@@ -76,4 +86,4 @@ for provider in frozen derived; do
 		done
 	done
 done
-printf '%s\n' 'derived LT: both providers, universal Sorted/permutation witnesses, exact outputs, ordinary/retained partial images and invalid evidence passed'
+printf '%s\n' 'derived LT: both providers and partition orders, universal Sorted/permutation witnesses, exact outputs, ordinary/retained partial images and invalid evidence passed'

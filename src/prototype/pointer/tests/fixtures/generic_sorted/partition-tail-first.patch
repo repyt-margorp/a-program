@@ -1,0 +1,10 @@
+--- a/provider.p
++++ b/provider.p
+@@ -156,3 +156,4 @@
+-		@cons tailSize head tail => {
+-			decision := le head pivot;
+-			partitionByDecision A head tailSize decision *tail;
++		@cons tailSize head tail => {
++			partitioned := *tail;
++			decision := le head pivot;
++			partitionByDecision A head tailSize decision partitioned;
