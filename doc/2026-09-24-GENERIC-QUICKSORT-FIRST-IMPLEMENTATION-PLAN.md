@@ -2210,7 +2210,9 @@ cache, rule, job kind or wire format is introduced.
 - [x] Pass full ASan/UBSan acceptance with leak detection and halt-on-error.
 - [x] Measure steps, intern counts and paired source/seed/retained timings;
   record per-file deltas separately from documentation.
-- [ ] Publish the verified epoch to Main/rewrite, preserving unrelated work.
+- [x] Publish the verified epoch to Main/rewrite, preserving unrelated work.
+  `d5d7da5` was atomically pushed to both branches and remote tips verified.
+  The unrelated working-tree diff remains byte-for-byte unchanged.
 
 The first added fixture treated the source application `List Nat` as a value
 type; it actually synthesizes a computation. The corrected fixture obtains
