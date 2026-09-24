@@ -7194,9 +7194,8 @@ static void induction_scope_step(struct pg_synthesis *synthesis, struct pg_synth
 		return;
 	}
 	if (job->context_allocation && job->context_allocation->next != job->context_allocation->count) goto rejected;
-	struct pg_typed_query *query = pg_substitution_rebase_request(synthesis->typing, context, map);
-	if (!pg_typed_query_advance(query, 1)) { enqueue(synthesis, job); return; }
-	job->result = pg_typed_query_result(query);
+	job->result = pg_prove_substitution_extension(synthesis->typing,
+		pg_evidence_premise(map, 0), context, map, 0, NULL);
 	finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
 	return;
 rejected:

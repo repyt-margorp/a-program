@@ -2295,7 +2295,7 @@ static const struct pg_evidence *prove_induction_scope(struct pg_typing *typing,
 		context = pg_prove_context_extension(typing, context, binder, ih);
 		if (!context) goto done;
 	}
-	result = pg_prove_substitution_rebase(typing, context, map);
+	result = pg_prove_substitution_extension(typing, map->premises[0], context, map, 0, NULL);
 done:
 	pg_graph_destroy(&temporary);
 	return result;

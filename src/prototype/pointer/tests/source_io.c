@@ -36,7 +36,9 @@ static void indexed_ih_fiber(struct pg_program *p, const struct pg_evidence *for
 	const struct pg_evidence *scope = pg_prove_induction_scope(&p->typing,
 		formation, next, parameters, mc, motive);
 	assert(scope);
-	const struct pg_evidence *field = pg_evidence_premise(scope, pg_evidence_premise_count(scope) - 1);
+	const struct pg_evidence *field = pg_substitution_image_at(&p->typing,
+		scope, pg_evidence_context_map(scope)->count - 1);
+	assert(field);
 	const struct pg_context *with_ih = pg_evidence_context(pg_evidence_premise(scope, 1));
 	const struct pg_term *expected = pg_thunk_type(&p->graph,
 		pg_computation_type(&p->graph, PG_TOTALITY_TOTAL, pg_effect_row(&p->graph, 0, NULL), pg_evidence_classifier(field)));

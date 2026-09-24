@@ -2289,6 +2289,101 @@ IH allocations. General rebasing can also shrink/reconstruct Contexts and
 must not be deleted based on this extension-only caller. No implementation
 or performance claim for that candidate is included in this epoch.
 
+## IH Context Weakening (2026-09-24)
+
+Baseline: `ce3494c`. The synchronous and pending induction-scope builders
+finish by rebasing the constructor map after adding IH binders. These callers
+only extend its destination; they do not shrink, rename or substitute that
+Context. Use the existing checked zero-suffix substitution extension in both
+callers. It checks the destination extension and retains the original map as
+a premise. With no IH, it returns the original map. IH type formation,
+recursive-field classification and saved-allocation checks remain unchanged.
+General rebase stays available for genuine Context relocation. No new rule,
+cache, solver kind, wire format or Core operation is needed.
+
+- [x] Replace the two reconstruction calls with checked weakening.
+- [x] Test exact map retention for zero, one and two IHs and saved scopes.
+  Keep general rebase/composition tests, comparing typed images rather than
+  requiring these different derivations to have the same proof pointer.
+- [x] Confirm the new prefix-retention test fails on the baseline.
+- [x] Run full debug, O2 and ASan/UBSan acceptance, including dependent Acc,
+  function fields, invalid scopes and ordinary/retained images.
+- [x] Measure graph/work counts and paired source/image timing; report
+  implementation, test and document deltas separately.
+- [ ] Publish the verified epoch, preserving unrelated working-tree changes.
+
+Initial strict debug synthesis/IADT tests pass. Generic Sorted completes in
+603,123 steps, versus 603,561 at baseline. This alone is not a timing result
+or completion of the original A3-A5/R2-R5 gates.
+
+The new IADT assertion fails with baseline `evidence.c` and `synthesis.c`:
+the one-IH scope does not retain its constructor map as a three-premise
+extension. The first full strict debug run FAILS in `source_io.c`'s
+`indexed_ih_fiber` assertion. Compatibility is 63/63 and both LT providers
+pass, but the whole suite has not passed. Diagnose this before publication;
+do not drop or weaken the fiber check. Logs:
+`/tmp/a-program-ih-weakening-before-iadt.log` and
+`/tmp/a-program-ih-weakening-debug-acceptance.log`.
+
+Diagnosis: the fixture treated the last proof premise as the last constructor
+field, assuming a flattened substitution receipt. It now retrieves that field
+through `pg_substitution_image_at`; the same IH classifier equality assertion
+is retained. The corrected `indexed-families` fixture passes with both baseline
+and candidate implementations. The first O2 run, compiled before this fixture
+correction, fails at the same assertion. Preserve both initial logs and rerun
+the complete suites; neither failed run counts as acceptance.
+
+The corrected full debug and O2 suites now exit zero (`*-acceptance-rerun.log`),
+including 63/63 compatibility cases. The combined working tree also passes
+`synthesis_test`, `iadt_test` and `source_io_test indexed-families`; unrelated
+changes are not part of this epoch. Full ASan/UBSan acceptance also exits zero
+with leak detection and halt-on-error enabled, with no sanitizer, runtime-error
+or assertion diagnostics (`/tmp/a-program-ih-weakening-sanitize-acceptance.log`).
+Flags: strict C11, `-O1 -g -fsanitize=address,undefined
+-fno-omit-frame-pointer -fno-pie -no-pie`. Paired timing is recorded below.
+
+Separate debug profiles (baseline/candidate): proofs 205,986 / 205,291,
+typed queries 26,970 / 26,633, main-arena used bytes 210,623,456 / 210,470,592.
+Core 583,740, occurrences 427,853, maps 41,227, structural substitution requests
+92,730, source jobs 101,877 and substitution-storage bytes 25,024,192 are
+unchanged. The underlying map still stores flat images; this is receipt reuse,
+not a claim to eliminate Context traversal or copying generally. Profiles:
+`/tmp/a-program-ih-weakening-before-storage.log` and
+`/tmp/a-program-ih-weakening-storage.log`.
+
+Seven alternating O2 pairs, one warmup, 10,000,000-step limit, no concurrent
+build/test. Small inputs batch 25 fresh processes, compatibility QuickSort
+three and generic Sorted one. All ten seed/retained pairs cross-load both
+ways. Median milliseconds (baseline/candidate):
+
+| Input | Source | Seed image | Retained image |
+| --- | ---: | ---: | ---: |
+| Length output proof | 7.023 / 7.121 | 7.421 / 7.361 | 7.448 / 7.454 |
+| Function-field graph | 10.850 / 10.731 | 11.195 / 10.997 | 11.091 / 11.229 |
+| Vec append | 8.773 / 8.729 | 8.763 / 8.706 | 9.531 / 9.561 |
+| Compatibility QuickSort | 148.408 / 149.149 | 146.906 / 153.071 | 158.147 / 160.734 |
+| Generic Sorted | 840.581 / 820.172 | 842.767 / 840.524 | 877.269 / 850.714 |
+
+Ranges overlap. The generic source median improves about 2.4%, but smaller
+cases have mixed changes, including a 4.2% higher compatibility seed median.
+These samples do not establish a uniform speedup or satisfy the original R0
+performance gate. All samples/ranges: `/tmp/a-program-ih-weakening-timing.log`.
+
+| File under `src/prototype/pointer/` | Added | Deleted | Net |
+| --- | ---: | ---: | ---: |
+| `evidence.c` | 1 | 1 | 0 |
+| `synthesis.c` | 2 | 3 | -1 |
+| `tests/iadt.c` | 10 | 0 | +10 |
+| `tests/source_io.c` | 3 | 1 | +2 |
+| `tests/synthesis.c` | 9 | 3 | +6 |
+
+Implementation net -1; tests net +18. Against R0 `4657cc6`, implementation
+C/H is +9,749/-5,069 (net +4,680), tests +9,743/-2,483 (net +7,260).
+A3-A5/R2-R5 and the cumulative net-negative requirement remain open.
+The remaining rebase callers include actual Context restriction in constructor
+refinement and function-graph generation. Do not replace those by weakening
+without proving their different scope requirements.
+
 ## Change Log
 
 | Date | Stage | Revision and evidence | Status |

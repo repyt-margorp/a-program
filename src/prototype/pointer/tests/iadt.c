@@ -2686,6 +2686,10 @@ static void schema_positivity(void)
 		nat, pg_data_constructor(nat_layout, 1), identity, z_context, nat_motive);
 	assert(induction_scope);
 	const struct pg_evidence *ih_context = pg_evidence_premise(induction_scope, 1);
+	const struct pg_evidence *constructor_map = pg_prove_constructor_scope_at(&typing,
+		nat, pg_data_constructor(nat_layout, 1), identity, pg_evidence_context(ih_context)->parent);
+	assert(pg_evidence_premise_count(induction_scope) == 3);
+	assert(pg_evidence_premise(induction_scope, 2) == constructor_map);
 	const struct pg_evidence *ih = pg_prove_variable(&typing, ih_context, pg_evidence_context(ih_context)->binder);
 	const struct pg_evidence *ih_call = pg_prove_force(&typing, ih);
 	assert(ih_call && pg_evidence_classifier(ih_call) == pg_return_type(&graph, pg_evidence_subject(nat)->core));
@@ -2706,6 +2710,8 @@ static void schema_positivity(void)
 	const struct pg_evidence *base_scope = pg_prove_induction_scope(&typing,
 		nat, pg_data_constructor(nat_layout, 0), identity, z_context, nat_motive);
 	assert(base_scope && !pg_evidence_context(base_scope));
+	assert(base_scope == pg_prove_constructor_scope(&typing,
+		nat, pg_data_constructor(nat_layout, 0), identity));
 	assert(pg_prove_induction_scope_at(&typing, nat,
 		pg_data_constructor(nat_layout, 0), identity, z_context, nat_motive, NULL) == base_scope);
 	{
@@ -2724,6 +2730,10 @@ static void schema_positivity(void)
 		const struct pg_context *allocated = pg_evidence_context(pg_evidence_premise(tree_scope, 1));
 		size_t bindings;
 		assert(!pg_context_extension_size(allocated, NULL, &bindings) && bindings == 4);
+		const struct pg_evidence *tree_fields = pg_prove_constructor_scope_at(&typing,
+			tree, node, identity, allocated->parent->parent);
+		assert(pg_evidence_premise_count(tree_scope) == 3);
+		assert(pg_evidence_premise(tree_scope, 2) == tree_fields);
 		assert(pg_prove_induction_scope_at(&typing, tree, node, identity,
 			tree_context, tree_motive, allocated) == tree_scope);
 		assert(!pg_prove_induction_scope_at(&typing, tree, node, identity,

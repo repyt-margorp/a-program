@@ -5727,17 +5727,23 @@ static void source_declarations(struct pg_typing *typing)
 		assert(ih_count == i);
 		assert(pg_evidence_premise(scope_map, 0) == pg_evidence_premise(field_map, 0));
 		const struct pg_evidence *scope_context = pg_evidence_premise(scope_map, 1);
+		assert(scope_map == pg_prove_substitution_extension(typing,
+			pg_evidence_premise(field_map, 0), scope_context, field_map, 0, NULL));
 		struct pg_typed_query *scope_query = pg_substitution_rebase_request(typing, scope_context, field_map);
-		assert(pg_typed_query_result(scope_query) == scope_map);
+		while (!pg_typed_query_advance(scope_query, 1)) {}
+		const struct pg_evidence *rebased = pg_typed_query_result(scope_query);
+		assert(rebased);
 		const struct pg_evidence *projection = pg_prove_substitution_projection(typing,
 			pg_evidence_premise(field_map, 1), scope_context);
 		const struct pg_evidence *composed = pg_prove_substitution_compose(typing, field_map, projection);
 		assert(composed && pg_evidence_context_map(composed)->count == pg_evidence_context_map(scope_map)->count);
-		for (size_t j = 0; j < pg_evidence_context_map(scope_map)->count; ++j)
+		for (size_t j = 0; j < pg_evidence_context_map(scope_map)->count; ++j) {
 			same_judgement(pg_substitution_image_at(typing, scope_map, j), pg_substitution_image_at(typing, composed, j));
+			same_judgement(pg_substitution_image_at(typing, scope_map, j), pg_substitution_image_at(typing, rebased, j));
+		}
 		size_t scope_proofs = typing->proofs.count, scope_queries = typing->typed_queries.count;
 		for (size_t j = 0; j < 20; ++j)
-			assert(pg_prove_substitution_rebase(typing, scope_context, field_map) == scope_map);
+			assert(pg_prove_substitution_rebase(typing, scope_context, field_map) == rebased);
 		assert(typing->proofs.count == scope_proofs && typing->typed_queries.count == scope_queries);
 		if (i) assert(pg_alpha_equal(pg_evidence_context(pg_evidence_premise(scope_map, 1))->declared_type,
 			pg_evidence_subject(pg_prove_thunk_type(typing, motive))->core) == 1);
