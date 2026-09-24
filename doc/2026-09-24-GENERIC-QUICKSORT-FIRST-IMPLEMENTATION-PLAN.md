@@ -2188,6 +2188,105 @@ restriction/extension can replace those paths without bypassing pending
 Self formation, dependent conversion or saved-allocation checks. Do not add
 a parallel scheduler or a second accepted-result store for this change.
 
+## Constructor Parameter Map Reuse (2026-09-24)
+
+Baseline: `2dec528`. `constructor_scope_step` rebuilt accepted parameter
+images before adding Self; `constructor_value_step` rebuilt them again in the
+field Context. Replace both enumerations with checked substitution extension.
+Self is still a pending reindex premise. Its classifier is the declaration's
+Self classifier by `pg_prove_inductive_type`; the ordinary extension rule
+checks that classifier after parameter substitution. Arbitrary field images
+still use the existing dependent conversion path. Constructor identity,
+allocation validation and the Core/typed boundary are unchanged. No new
+cache, rule, job kind or wire format is introduced.
+
+- [x] Remove both caller-owned parameter image arrays and duplicate synthesis.
+- [x] Test exact parameter-prefix retention for nullary/field-bearing List
+  constructors and stable repeated requests. Old `synthesis.c` fails the new
+  prefix assertion; the candidate passes (`constructor-maps-before.log`).
+- [x] Diagnose the source-image regression without weakening acceptance.
+- [x] Pass full strict C11/debug and O2 acceptance, including inert
+  constructor-input resaves and both QuickSort providers (63/63 compatibility).
+- [x] Pass full ASan/UBSan acceptance with leak detection and halt-on-error.
+- [x] Measure steps, intern counts and paired source/seed/retained timings;
+  record per-file deltas separately from documentation.
+- [ ] Publish the verified epoch to Main/rewrite, preserving unrelated work.
+
+The first added fixture treated the source application `List Nat` as a value
+type; it actually synthesizes a computation. The corrected fixture obtains
+its pure returned value and applies the existing value-to-type rule before
+requesting an inductive instance. No production rule changed for that test.
+
+The initial full debug run exposed a misleading existing source-image test:
+its purported pending `pg_synthesis_substitution(empty, empty, 0)` was DONE
+on the baseline because source constructor synthesis had already executed
+that exact request. After removing duplicate work, it was genuinely PENDING,
+which the source rule exporter does not serialize for arbitrary solver work.
+The fixture now uses the existing serializable two-Context substitution rule
+and asserts PENDING before saving and after three inert resaves. This tests
+the original pending-input intent without warming a cache, running Solve
+during writing, changing expected outcomes or adding a serialization path.
+General pending substitution-worker export remains outside this change.
+The corrected constructor-input fixture passes with old and new `synthesis.c`;
+only the new exact-prefix sharing assertion fails on the old implementation.
+
+Generic Sorted completes in 603,561 steps versus 617,315 at the baseline.
+Debug, O2 and ASan/UBSan full acceptance pass; paired timings are below.
+Logs: `/tmp/a-program-constructor-maps-debug-acceptance-rerun.log` and
+`/tmp/a-program-constructor-maps-opt-acceptance.log`. The initial debug failure
+is retained separately as `constructor-maps-debug-acceptance.log`.
+The original A3-A5/R2-R5 gates are not discharged by this local change.
+
+Generic Sorted baseline/candidate counts: Core 585,390 / 583,740, occurrences
+431,223 / 427,853, proofs 211,956 / 205,986, maps 42,552 / 41,227 and
+substitution requests 92,851 / 92,730. Main-arena used bytes 214,317,376 /
+210,623,456; substitution storage 25,055,168 / 25,024,192. These are separate
+debug counter runs, not elapsed-time measurements. Logs:
+`/tmp/a-program-constructor-maps-storage.log` and the preceding Identity-map
+baseline log. Implementation `synthesis.c` +6/-20 (net -14); tests
+`synthesis.c` +26/-0, `source_io.c` +8/-3 (combined net +31).
+
+Full sanitizer command uses strict C11, `-O1 -g -fsanitize=address,undefined
+-fno-omit-frame-pointer -fno-pie -no-pie`,
+`ASAN_OPTIONS=detect_leaks=1:halt_on_error=1` and
+`UBSAN_OPTIONS=halt_on_error=1`. It exits zero with no sanitizer, runtime-error
+or assertion diagnostics; compatibility is 63/63. Log:
+`/tmp/a-program-constructor-maps-sanitize-acceptance.log`.
+The combined dirty working tree also passes `synthesis_test` and
+`source_io_test constructor-inputs`; its unrelated changes are not included
+in this epoch. Fresh baseline counters match the preceding epoch, recorded
+in `/tmp/a-program-constructor-maps-before-storage.log`.
+
+Against R0 `4657cc6`, implementation C/H is +9,750/-5,069 (net +4,681);
+tests C/H +9,724/-2,482 (net +7,242). This local deletion does not meet the
+original cumulative net-negative requirement.
+
+Seven alternating fresh-process pairs, O2, one warmup, 10,000,000-step limit,
+no concurrent build/test. Small inputs batch 25 processes, old QuickSort three,
+generic Sorted one. All ten seed/retained pairs cross-load both ways.
+Median milliseconds (baseline/candidate):
+
+| Input | Source | Seed image | Retained image |
+| --- | ---: | ---: | ---: |
+| Length output proof | 7.032 / 7.062 | 7.412 / 6.908 | 7.517 / 7.510 |
+| Function-field graph | 10.925 / 10.578 | 11.191 / 10.730 | 11.513 / 10.988 |
+| Vec append | 8.719 / 8.820 | 9.112 / 9.044 | 9.447 / 9.375 |
+| Compatibility QuickSort | 149.807 / 147.383 | 153.591 / 150.179 | 161.352 / 161.262 |
+| Generic Sorted | 845.151 / 828.062 | 861.424 / 844.426 | 859.622 / 849.843 |
+
+Ranges overlap; median changes are mixed for small inputs. The generic source
+median improves about 2.0%, not an established uniform speedup. Keep the original
+R0 performance gate open. All samples/ranges and cross-load outcomes:
+`/tmp/a-program-constructor-maps-timing.log`.
+
+Next audit candidate: the ends of `induction_scope_step` and
+`pg_prove_induction_scope_at` pass their constructor map to general rebasing
+after only extending its destination with IH binders. Check whether ordinary
+checked weakening suffices there, retaining exact image premises and saved
+IH allocations. General rebasing can also shrink/reconstruct Contexts and
+must not be deleted based on this extension-only caller. No implementation
+or performance claim for that candidate is included in this epoch.
+
 ## Change Log
 
 | Date | Stage | Revision and evidence | Status |

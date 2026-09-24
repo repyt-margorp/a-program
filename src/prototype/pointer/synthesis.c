@@ -4575,20 +4575,12 @@ static void constructor_value_step(struct pg_synthesis *synthesis, struct pg_syn
 	}
 	const struct pg_evidence *map = job->left->result, *context = pg_evidence_premise(map, 1);
 	size_t prefix = pg_evidence_context_map(parameters)->count;
-	if (!job->right) {
-		if (prefix > SIZE_MAX / sizeof(struct pg_synthesis_job *)) goto error;
-		struct pg_synthesis_job **images = malloc(prefix * sizeof(*images));
-		if (prefix && !images) goto error;
-		for (size_t i = 0; i < prefix; ++i) images[i] = pg_synthesis_evidence(synthesis, pg_substitution_image_at(synthesis->typing, map, i));
-		job->right = pg_synthesis_substitution(synthesis, pg_evidence_premise(parameters, 0), context, prefix, images);
-		free(images);
-		if (!job->right) goto error;
-	}
-	if (await_dependency(synthesis, job, job->right)) return;
 	if (!job->value_job) {
+		const struct pg_evidence *projected = pg_prove_substitution_extension(synthesis->typing,
+			pg_evidence_premise(parameters, 0), context, parameters, 0, NULL);
 		size_t count = pg_evidence_context_map(map)->count - prefix - 1;
 		const struct pg_evidence *body = pg_prove_constructor_instance(synthesis->typing,
-			formation, constructor, job->right->result, map);
+			formation, constructor, projected, map);
 		if (!body) goto error;
 		if (!count) { job->result = body; finish(synthesis, job, PG_SYNTHESIS_DONE); return; }
 		job->value_job = pg_synthesis_abstract(synthesis, pg_evidence_premise(parameters, 1), context, pg_synthesis_evidence(synthesis, body));
@@ -7105,15 +7097,9 @@ static void constructor_scope_step(struct pg_synthesis *synthesis, struct pg_syn
 		struct pg_derivation_input as_value = {.rule = PG_VALUE_FROM_TYPE, .count = 1};
 		struct pg_synthesis_job *value = pg_evidence_judgement(formation) == PG_JUDGEMENT_TYPE_FAMILY
 			? family : pg_synthesis_rule(synthesis, &as_value, &family, NULL, NULL);
-	size_t prefix = pg_evidence_context_map(parameters)->count;
-		if (prefix >= SIZE_MAX / sizeof(struct pg_synthesis_job *)) goto error;
-		struct pg_synthesis_job **images = malloc((prefix + 1) * sizeof(*images));
-		if (!images) goto error;
-		for (size_t i = 0; i < prefix; ++i) images[i] = pg_synthesis_evidence(synthesis, pg_substitution_image_at(synthesis->typing, parameters, i));
-		images[prefix] = value;
-		job->right = pg_synthesis_substitution_jobs(synthesis, pg_synthesis_evidence(synthesis, self),
-			pg_synthesis_evidence(synthesis, pg_evidence_premise(parameters, 1)), prefix + 1, images);
-		free(images);
+		struct pg_synthesis_job *premises[] = {pg_synthesis_evidence(synthesis, self),
+			pg_synthesis_evidence(synthesis, pg_evidence_premise(parameters, 1)), (void *)job->inputs[1], value};
+		job->right = plain_rule(synthesis, PG_CONTEXT_SUBSTITUTION, NULL, 4, premises);
 		if (!job->right) goto error;
 	}
 	struct substitution_state *state = job->substitution;

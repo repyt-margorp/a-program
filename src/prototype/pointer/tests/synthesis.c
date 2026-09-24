@@ -5996,6 +5996,32 @@ static void source_declarations(struct pg_typing *typing)
 		"r:=\\x:Nat => (List Nat).cons x (List Nat).nil;"), PG_SYNTHESIS_DONE);
 	alias = request(&synthesis, named, "L:=List Nat;");
 	complete(&synthesis, alias, PG_SYNTHESIS_DONE);
+	/* Constructor scope/value synthesis extends the accepted parameter map,
+	 * without reconstructing or reconverting its existing image evidence. */
+	struct pg_inductive_instance list_instance;
+	const struct pg_evidence *list_value = complete(&synthesis,
+		pg_synthesis_return(&synthesis, empty, pg_synthesis_result(alias)), PG_SYNTHESIS_DONE);
+	struct pg_synthesis_job *list_instance_job = pg_synthesis_inductive_instance(&synthesis,
+		pg_synthesis_evidence(&synthesis, pg_prove_value_type(typing, list_value)));
+	complete(&synthesis, list_instance_job, PG_SYNTHESIS_DONE);
+	assert(pg_synthesis_inductive_instance_result(list_instance_job, &list_instance));
+	const struct pg_evidence *list_parameters = list_instance.parameters;
+	for (size_t i = 0; i < 2; ++i) {
+		const struct pg_object *constructor = pg_data_constructor(pg_data_schema_layout(list_instance.schema), i);
+		const struct pg_evidence *map = complete(&synthesis, pg_synthesis_constructor_scope(&synthesis,
+			pg_synthesis_evidence(&synthesis, list_instance.formation), constructor,
+			pg_synthesis_evidence(&synthesis, list_parameters)), PG_SYNTHESIS_DONE);
+		while (pg_evidence_context_map(map)->count > pg_evidence_context_map(list_parameters)->count)
+			map = pg_evidence_premise(map, 2);
+		assert(map == list_parameters);
+		struct pg_synthesis_job *member = pg_synthesis_constructor_value(&synthesis,
+			list_instance.formation, constructor, list_parameters);
+		const struct pg_evidence *result = complete(&synthesis, member, PG_SYNTHESIS_DONE);
+		if (!i) assert(pg_evidence_premise(result, 2) == list_parameters);
+		size_t proofs = typing->proofs.count, jobs = synthesis.jobs.count;
+		assert(complete(&synthesis, member, PG_SYNTHESIS_DONE) == result);
+		assert(typing->proofs.count == proofs && synthesis.jobs.count == jobs);
+	}
 	named = pg_synthesis_name_job(&synthesis, named,
 		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "L", .length = 1}, alias);
 	complete(&synthesis, request(&synthesis, named, "r:=L.nil;"), PG_SYNTHESIS_DONE);

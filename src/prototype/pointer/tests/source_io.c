@@ -1361,10 +1361,14 @@ static void constructor_inputs(void)
 		assert(formation && pg_inductive_instance(&p->typing, formation, &instance));
 		const struct pg_object *constructor = mode == 3 ? pg_binder(&p->graph)
 			: pg_data_constructor(pg_data_schema_layout(instance.schema), mode == 4 ? 0 : 1);
-		/* A distinct pending parameter producer also avoids reusing the member
-		 * eagerly created by source declaration publication. */
+		/* Use a serializable pending rule, not a general substitution request
+		 * accidentally completed by earlier constructor synthesis. */
 		const struct pg_evidence *empty = pg_prove_empty_context(&p->typing);
-		struct pg_synthesis_job *parameters = pg_synthesis_substitution(&p->synthesis, empty, empty, 0, NULL);
+		struct pg_synthesis_job *contexts[] = {pg_synthesis_evidence(&p->synthesis, empty),
+			pg_synthesis_evidence(&p->synthesis, empty)};
+		struct pg_derivation_input projection = {.rule = PG_CONTEXT_SUBSTITUTION, .count = 2};
+		struct pg_synthesis_job *parameters = pg_synthesis_rule(&p->synthesis, &projection, contexts, NULL, NULL);
+		assert(parameters && pg_synthesis_status(parameters) == PG_SYNTHESIS_PENDING);
 		struct pg_synthesis_job *initial[] = {pg_synthesis_constructor_value_jobs(&p->synthesis, family, constructor, parameters)};
 		if (mode == 1) {
 			const struct pg_evidence *map = pg_prove_constructor_scope(&p->typing, formation, constructor, instance.parameters);
@@ -1390,6 +1394,7 @@ static void constructor_inputs(void)
 		}
 		struct pg_constructor_input input;
 		assert(!pg_synthesis_constructor_input(&p->synthesis, roots[0], &input));
+		assert(pg_synthesis_status(input.parameters) == PG_SYNTHESIS_PENDING);
 		assert(input.allocated == (mode == 1 || mode == 2));
 		pg_synthesis_advance(&p->synthesis, 10000);
 		if (mode == 3) {
