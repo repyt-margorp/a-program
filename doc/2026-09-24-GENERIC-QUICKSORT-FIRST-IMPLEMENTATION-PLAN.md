@@ -1931,6 +1931,92 @@ The cumulative implementation/header delta from R0 becomes +9,680/-4,980,
 net +4,700. The parent's net-negative source gate, shared-subproblem ownership
 audit and A3-A5/R2-R5 remain open; no Issue is closed by this change.
 
+### Q4: Checked Prefix Restriction through Substitution Composition
+
+Baseline `60d7edb`. Constructor scope, family Identity paths and transport
+scope each expand all substitution images merely to select the common prefix.
+Use the existing composition of a Context projection and the checked map.
+No new rule, graph tag, cache, source syntax or wire version is needed.
+
+The common composition implementation also has an evidence-loss case: acting
+on fresh projection variables and recovering their structural proofs chooses
+another derivation of an image that already has a supplied receipt. For a
+canonical projection followed by an arbitrary checked map, read exactly the
+requested prefix through `substitution_image_range`. Keep ordinary composition
+for non-projections and the existing direct projection/projection case. Do not
+identify an explicit variable-image derivation with a canonical projection.
+
+- [x] Reproduce the lost alternate image receipt on baseline. The new Core
+  test fails at the composition/expected-prefix equality assertion; after the
+  change, focused Core and IADT tests pass.
+- [x] Remove the three caller-side all-image expansion paths. Preserve the
+  supplied image proofs, including dependent and lifted prefix chains.
+- [x] Complete debug acceptance, including alternate prefix proofs across
+  derivation IO and chunk-1/64 Solve.
+- [x] Complete optimized acceptance.
+- [x] Complete ASan/UBSan acceptance.
+- [x] Measure identical source/seed/retained workloads and report per-file
+  changes before publication. Keep the cumulative R2-R5 gates open.
+- [x] Publish only the tested changes; preserve unrelated local experiments.
+  `bf7f8b2` was atomically pushed to Main and the rewrite branch; both remote
+  tips were verified. The staged files exactly match the isolated tested patch.
+
+The export audit did not establish another Solver authority: its temporary
+input DAG erases local acceptance/certificate pointers for serialization.
+It does not execute Solve. A borrowed writer might avoid some allocations,
+but replacing it now would introduce a new mixed-graph adapter without a
+demonstrated end-to-end benefit. Leave that representation unchanged.
+
+The source generic Sorted count audit compares clean baseline/candidate on
+identical inputs: Solve steps 619,092 / 617,315; Core nodes 593,486 / 585,390;
+occurrences 434,637 / 431,270; proofs 215,602 / 212,058; Context maps
+42,884 / 42,589; substitution requests 94,316 / 92,850. Main arena used bytes
+are 216,356,352 / 214,347,520; substitution arena bytes are
+25,430,592 / 25,054,912. These exclude indexes and other heap overhead and
+do not establish a wall-clock improvement. Logs:
+`/tmp/a-program-checked-prefix-{baseline-storage,storage}.log`.
+
+Per-file delta against `60d7edb`, excluding documentation:
+
+| File under `src/prototype/pointer/` | Added | Deleted | Net |
+| --- | ---: | ---: | ---: |
+| `evidence.c` | 8 | 9 | -1 |
+| `synthesis.c` | 4 | 10 | -6 |
+| `tests/core.c` | 41 | 0 | +41 |
+| `tests/derivation_io.c` | 16 | 5 | +11 |
+
+Implementation: +12/-19, net -7; tests: +57/-5, net +52. Against original
+R0 `4657cc6`, implementation C/H is +9,720/-5,009, net +4,711; C tests are
++9,629/-2,479, net +7,150. The original net-negative gate remains unmet.
+The combined working-tree Core/IADT tests also pass; its unrelated relocation
+experiment remains excluded from the staged implementation.
+
+Full `check-acceptance` passes in strict C11 debug (`-O0 -g`), O2 and
+ASan/UBSan (`-O1 -g`, non-PIE, leak detection and halt-on-error). Logs:
+`/tmp/a-program-checked-prefix-debug-acceptance-final.log` and
+`/tmp/a-program-checked-prefix-{opt,sanitize}-acceptance.log`.
+The earlier debug build log records a new test-variable name collision,
+corrected before the final complete run; it is not the passing log.
+
+Seven alternating fresh-process pairs, one warmup, no competing build/test,
+strict O2 and a 10,000,000-step ceiling. Each entry is baseline/candidate
+median milliseconds; small inputs batch 25 processes, old QuickSort three,
+generic Sorted one. All ten seed/retained image pairs cross-load successfully
+in both directions. Log: `/tmp/a-program-checked-prefix-timing.log`.
+
+| Input | Source | Seed image | Retained image |
+| --- | ---: | ---: | ---: |
+| Length output proof | 7.387 / 7.267 | 7.300 / 7.259 | 7.514 / 7.689 |
+| Function-field graph | 11.027 / 11.446 | 11.068 / 11.421 | 11.326 / 11.447 |
+| Vec append | 8.943 / 8.974 | 9.144 / 8.862 | 9.466 / 9.382 |
+| Compatibility QuickSort | 152.643 / 153.855 | 154.772 / 157.842 | 166.928 / 164.773 |
+| Generic Sorted | 863.773 / 855.522 | 872.503 / 875.838 | 869.052 / 861.725 |
+
+Timing ranges overlap and medians move in both directions. Do not claim a
+uniform speedup or establish the original performance gate from this sample.
+The evidence-preservation repair and removal of three reconstruction paths
+are established independently of wall-clock performance.
+
 ## Change Log
 
 | Date | Stage | Revision and evidence | Status |
