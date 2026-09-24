@@ -1029,7 +1029,7 @@ These are physical input copies, not duplicate typing derivations.
   snapshots, independent store ownership, cancellation and every-cut images.
 - [x] Run full optimized/debug/sanitizer acceptance; compare measured storage,
   source/image behavior and alternating performance samples before publication.
-- [ ] Record per-file LOC and publish only after the gates pass. This slice
+- [x] Record per-file LOC and publish only after the gates pass. This slice
   does not close A3-A5/R2-R5 or its original cumulative reduction requirement.
 
 Request lookup still examines the supplied binding sequence: environment
@@ -1105,6 +1105,10 @@ Evidence: `/tmp/a-program-environment-{optimized,debug,sanitize}.log`,
 `/tmp/a-program-environment-storage-{before,after}.log`,
 `/tmp/a-program-environment-benchmark.{py,log}` and
 `/tmp/a-program-environment-image-cross.{sh,log}`.
+
+Published implementation `37e5b610b5a399cc1af73868480daabd65e42891` atomically
+to Main and `rewrite/pointer-core-hott`; both remote heads were verified.
+No issue was closed. The unrelated dirty work remains outside the commit.
 
 ## Change Log
 
