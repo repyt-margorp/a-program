@@ -22,17 +22,21 @@ for provider in frozen derived; do
 	# No fuzzy matching: source changes must trigger review of the experiment.
 	cp "$root/fixtures/sorted-proof-provider.p" "$directory/provider.p"
 	cp "$root/acceptance/generic-quick-sorted.p" "$directory/proof.p"
+	cp "$root/fixtures/generic_sorted/content-proof.p" "$directory/content.p"
 	if [[ $provider == derived ]]; then
 		patch --batch --silent --fuzz=0 -p1 -d "$directory" < "$root/fixtures/generic_sorted/derived-lt.patch"
 	fi
-	cat "$root/fixtures/generic_sorted/boolean-consumer.p" >> "$directory/proof.p"
+	cat "$directory/content.p" "$root/fixtures/generic_sorted/boolean-consumer.p" \
+		"$root/fixtures/generic_sorted/boolean-content-consumer.p" >> "$directory/proof.p"
 	printf '%s\n' "LT provider: $provider"
 	check_status 0 --legacy-intrinsic-dot --imports "$directory/provider.p" \
 		--save "$directory/complete.a" "$directory/proof.p"
 	cp "$directory/complete.a" "$directory/resaved.a"
 	for pair in empty_length:zero singleton_length:one ordered_length:two reverse_length:two \
 		duplicates_length:four empty_value:nil singleton_value:singleton ordered_value:ordered \
-		reverse_value:ordered duplicates_value:duplicates_expected direct_value:duplicates_expected; do
+		reverse_value:ordered duplicates_value:duplicates_expected direct_value:duplicates_expected \
+		empty_content:nil singleton_content:singleton reverse_content:ordered \
+		duplicates_content:duplicates_expected duplicate_origin:duplicates; do
 		check_pair "${pair%:*}" "${pair#*:}"
 	done
 
@@ -40,7 +44,7 @@ for provider in frozen derived; do
 	# declarations. No nominal family or proof tree crosses between providers.
 	cat "$directory/provider.p" > "$directory/source.p"
 	sed '/^import /d' "$directory/proof.p" >> "$directory/source.p"
-	for pair in duplicates_value:duplicates_expected duplicates_length:four; do
+	for pair in duplicates_value:duplicates_expected duplicates_length:four duplicates_content:duplicates_expected; do
 		"$compare" --legacy-intrinsic-dot --steps 10000000 --equal "$directory/source.p" "${pair%:*}" "${pair#*:}"
 	done
 
@@ -57,6 +61,7 @@ for provider in frozen derived; do
 			cmp "$directory/saved.a" "$directory/resaved.a"
 			check_pair reverse_length two
 			check_pair duplicates_value duplicates_expected
+			check_pair duplicates_content duplicates_expected
 		done
 		for negative in "$root/fixtures/generic_sorted/boolean-wrong-"*.p; do
 			cat "$directory/proof.p" "$negative" > "$directory/invalid.p"
@@ -71,4 +76,4 @@ for provider in frozen derived; do
 		done
 	done
 done
-printf '%s\n' 'derived LT: both providers, universal Sorted consumers, exact outputs, ordinary/retained partial images and invalid evidence passed'
+printf '%s\n' 'derived LT: both providers, universal Sorted/permutation witnesses, exact outputs, ordinary/retained partial images and invalid evidence passed'

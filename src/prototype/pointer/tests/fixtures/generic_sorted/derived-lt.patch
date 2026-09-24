@@ -145,3 +145,17 @@
  			((ordered_left A le R trans le_refl decide) pivot k l left r right lb rb *rest)
  			(((SizedAll A le R trans le_refl decide) (&(\x:A => R pivot x))).cons r h right
  				((comparison @(bound answer self => general_decision A R h bound answer)
+--- a/content.p
++++ b/content.p
+@@ -114,9 +114,9 @@
+ 		representation @nil => (partition_contents A (List A).nil Nat.zero (SizedList A).nil Nat.zero (SizedList A).nil).parts
+ 			(List A).nil (List A).nil (sized_contents A).nil (sized_contents A).nil (permutation A).nil)
+-	@case1 k h t comparison l left r right lb rb rest =>
++	@case1 k h t comparison l left r right lb rb rest lifted lifting =>
+ 		&(partition_lower_content A k h t l left r right *rest)
+-	@case2 k h t comparison l left r right lb rb rest =>
++	@case2 k h t comparison l left r right lb rb rest lifted lifting =>
+ 		&(partition_upper_content A k h t l left r right *rest);
+ partition_content := \A:@ => \le:A->A->Bool => \pivot:A => \n:Nat =>
+ 	\input:SizedList A n => \output:Partition A n => \g:@partition A &le pivot n input output =>
+ 	\original:List A => \representation:sized_contents A n input original =>
