@@ -4307,26 +4307,35 @@ const struct pg_evidence *pg_substitution_image(struct pg_typing *typing,
 		? pg_substitution_image_at(typing, substitution, index) : NULL;
 }
 
-const struct pg_evidence *pg_substitution_image_at(struct pg_typing *typing,
-	const struct pg_evidence *substitution, size_t index)
+/* Walk each retained prefix once for the requested range. Projection receipts
+ * remain ordered from the image's own destination to the outer destination. */
+static int substitution_image_range(struct pg_typing *typing,
+	const struct pg_evidence *substitution, size_t first, size_t count,
+	const struct pg_evidence **images)
 {
-	if (!pg_evidence_owned_by(substitution, typing) || substitution->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
-	const struct pg_context_map *map = substitution->conclusion.map;
-	if (index >= map->count) return NULL;
+	if (!pg_evidence_owned_by(substitution, typing) || substitution->rule != PG_CONTEXT_SUBSTITUTION) return -1;
+	if (first > substitution->conclusion.map->count || count > substitution->conclusion.map->count - first) return -1;
 	struct projection_frame {
 		const struct pg_evidence *destination;
 		struct projection_frame *previous;
 	};
 	struct pg_graph temporary = {0};
 	struct projection_frame *frame = NULL;
-	const struct pg_evidence *result = NULL;
-	while (substitution->premise_count > 2) {
-		const struct pg_evidence *prefix = substitution->premises[2];
-		size_t retained = prefix->conclusion.map->count;
-		if (index >= retained) {
-			result = substitution->premises[3 + index - retained];
-			break;
+	int status = -1;
+	for (size_t end = first + count; end > first;) {
+		const struct pg_evidence *prefix = substitution->premise_count > 2 ? substitution->premises[2] : NULL;
+		size_t retained = prefix ? prefix->conclusion.map->count : 0;
+		for (size_t i = retained > first ? retained : first; i < end; ++i) {
+			const struct pg_evidence *image = prefix ? substitution->premises[3 + i - retained]
+				: accept(typing, PG_VARIABLE, pg_evidence_context(substitution),
+					substitution->conclusion.map->images[i], 1, &substitution->premises[1]);
+			for (struct projection_frame *at = frame; image && at; at = at->previous)
+				image = pg_prove_projection(typing, at->destination, image);
+			if (!image) goto done;
+			images[i - first] = image;
 		}
+		if (retained < end) end = retained;
+		if (end <= first) break;
 		if (pg_evidence_context(substitution) != pg_evidence_context(prefix)) {
 			struct projection_frame *next = pg_alloc(&temporary, sizeof(*next));
 			if (!next) goto done;
@@ -4335,13 +4344,17 @@ const struct pg_evidence *pg_substitution_image_at(struct pg_typing *typing,
 		}
 		substitution = prefix;
 	}
-	if (!result) result = accept(typing, PG_VARIABLE, pg_evidence_context(substitution),
-		substitution->conclusion.map->images[index], 1, &substitution->premises[1]);
-	for (; result && frame; frame = frame->previous)
-		result = pg_prove_projection(typing, frame->destination, result);
+	status = 0;
 done:
 	pg_graph_destroy(&temporary);
-	return result;
+	return status;
+}
+
+const struct pg_evidence *pg_substitution_image_at(struct pg_typing *typing,
+	const struct pg_evidence *substitution, size_t index)
+{
+	const struct pg_evidence *image;
+	return substitution_image_range(typing, substitution, index, 1, &image) ? NULL : image;
 }
 
 const struct pg_evidence *const *pg_substitution_images(struct pg_typing *typing,
@@ -4354,12 +4367,7 @@ const struct pg_evidence *const *pg_substitution_images(struct pg_typing *typing
 	size_t count = substitution->conclusion.map->count;
 	if (!scratch || count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
 	const struct pg_evidence **images = pg_alloc(scratch, count * sizeof(*images));
-	if (!images) return NULL;
-	for (size_t i = 0; i < count; ++i) {
-		images[i] = pg_substitution_image_at(typing, substitution, i);
-		if (!images[i]) return NULL;
-	}
-	return images;
+	return images && !substitution_image_range(typing, substitution, 0, count, images) ? images : NULL;
 }
 
 const struct pg_evidence *pg_prove_substitution(struct pg_typing *typing,
@@ -4739,8 +4747,7 @@ static const struct pg_evidence *pattern_index_type(struct pg_typing *typing,
 				if (frame->count > SIZE_MAX / sizeof(*frame->images)) goto fail;
 				frame->images = pg_alloc(&temporary, frame->count * sizeof(*frame->images));
 				if (frame->count && !frame->images) goto fail;
-				for (size_t i = 0; i < frame->count; ++i)
-					frame->images[i] = pg_substitution_image_at(typing, map, i);
+				if (substitution_image_range(typing, map, 0, frame->count, frame->images)) goto fail;
 				continue;
 			} else {
 				result = frame->body;

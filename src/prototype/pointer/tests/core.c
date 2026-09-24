@@ -2581,6 +2581,14 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(pg_substitution_image_at(&typing, dag, 1) == destination_y);
 	assert(pg_substitution_image_at(&typing, dag, 129) == destination_b);
 	assert(!pg_substitution_image_at(&typing, dag, 130));
+	assert(!pg_substitution_image_at(&typing, dag, SIZE_MAX));
+	struct pg_graph scratch = {0};
+	proof_count = typing.proofs.count;
+	const struct pg_evidence *const *same_scope_images = pg_substitution_images(&typing, dag, &scratch);
+	assert(same_scope_images && same_scope_images[0] == alternate_b && same_scope_images[1] == destination_y);
+	for (size_t i = 2; i < 130; ++i) assert(same_scope_images[i] == destination_b);
+	assert(typing.proofs.count == proof_count);
+	pg_graph_destroy(&scratch);
 	const struct pg_evidence *destinations[64];
 	for (size_t i = 0; i < 64; ++i) {
 		dag_scope = pg_prove_context_extension(&typing, dag_scope, pg_binder(graph),
@@ -2595,11 +2603,14 @@ static void typed_substitution_test(struct pg_graph *graph)
 		expected_image = pg_prove_projection(&typing, destinations[i], expected_image);
 	assert(pg_substitution_image_at(&typing, dag, 0) == expected_image);
 	assert(pg_evidence_subject(expected_image) == pg_evidence_context_map(dag)->images[0]);
-	struct pg_graph scratch = {0};
 	const struct pg_evidence *const *dag_images = pg_substitution_images(&typing, dag, &scratch);
 	assert(dag_images && dag_images[0] == expected_image);
-	for (size_t i = 0; i < pg_evidence_context_map(dag)->count; ++i)
+	proof_count = typing.proofs.count;
+	for (size_t i = 0; i < pg_evidence_context_map(dag)->count; ++i) {
 		assert(pg_evidence_subject(dag_images[i]) == pg_evidence_context_map(dag)->images[i]);
+		assert(dag_images[i] == pg_substitution_image_at(&typing, dag, i));
+	}
+	assert(typing.proofs.count == proof_count);
 	pg_graph_destroy(&scratch);
 	reconstruct_derivation(&typing, dag);
 	assert(!pg_prove_substitution_extension(&typing, dag_scope, source, dag, 0, NULL));

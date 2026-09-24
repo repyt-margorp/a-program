@@ -1219,6 +1219,100 @@ Published `cb704f89af510e4697cf29262ce4d7d96b52dded` atomically to Main and
 `rewrite/pointer-core-hott`; both remote heads verified. No issue was closed.
 Unrelated working-tree experiments remain outside the commit.
 
+## Q4: One Pass over Substitution Images
+
+Baseline: `633bbcd` (2026-09-24). R2-R5 remain open.
+
+The proposed consolidation of the three pending structural-query dispatchers
+was withdrawn: it passed synthesis tests but mostly moved their different
+selectors into a larger dispatcher. It did not remove reconstruction. Shared
+Core builders and the distinction between provisional shape and accepted typed
+data already exist; a second descriptor or another job kind is not justified.
+
+A concrete repeated traversal remains after prefix-proof sharing:
+`pg_substitution_images` calls point lookup for every image, restarting at the
+same prefix root. A chain of n single-image extensions in one destination
+therefore needs quadratic prefix visits to obtain its n already supplied proofs.
+Use one private range traversal for both point and bulk access. Each relevant
+prefix is visited once; required destination projections keep their original
+order and exact proof premises. Their cost is not claimed to disappear.
+Pattern-type inversion uses the same traversal to fill its mutable work array;
+function-graph return packets reuse their already requested complete image view.
+No persistent image cache, new proof rule, wire change or acceptance shortcut.
+
+- [x] Preserve exact alternative receipts through unchanged destinations and
+  64 nested destination lifts; check every bulk image against point lookup.
+  Repeated point reads after bulk access must create no new evidence.
+- [x] Check out-of-range access, including `SIZE_MAX`, and existing Core tests.
+- [x] Finish full debug, optimized and ASan/UBSan acceptance on frozen sources.
+- [x] Compare source, zero-step and retained-image behavior and timings.
+- [ ] Record final source delta and publish the verified increment.
+
+Baseline GDB inspection of the generic Sorted provider/client found 1,415 bulk
+calls, of which 1,195 materialize 9,838 images. Walking their retained chains
+counts 30,754 node visits for old point-by-point access versus 4,849 for one
+range pass. These are structural visit counts, not wall-clock measurements or
+the total cost of projection/evidence checking. Log:
+`/tmp/a-program-image-range-profile-before.log`.
+
+The new debug run confirms exactly 4,849 bulk range-node visits (plus 25,168
+point-access visits and 434 pattern-inversion visits, outside that comparison).
+Generic source compilation is unchanged at 619,092 Solve steps, 593,486 Core
+Terms, 434,502 typed occurrences, 216,679 proofs, 43,378 maps and 94,301 Core
+substitution requests. Main/substitution arena used bytes are unchanged at
+216,497,088 / 25,426,752. These retained-arena figures exclude temporary storage.
+Logs: `/tmp/a-program-image-range-{profile-after,counts}.log`.
+
+The complete debug, optimized and ASan/UBSan acceptance runs passed, including
+63/63 compatibility cases, without sanitizer diagnostics. All 2,481 normalized
+export outcomes match the previous epoch. One parallel-test log line is prefixed by another process's `whnf:`;
+normalization extracts the export record rather than dropping that line.
+Logs: `/tmp/a-program-image-range-debug.log`,
+`/tmp/a-program-image-range-opt-final.log`,
+`/tmp/a-program-image-range-sanitize.log`. All use strict C11 warnings; the
+sanitizer build uses `-O1 -g -fsanitize=address,undefined
+-fno-omit-frame-pointer -fno-pie -no-pie`.
+
+Isolated O2 timing used seven alternating old/new sample pairs after warmup,
+with fresh processes (25 per small-input sample, three for compatibility
+QuickSort, one for generic Sorted). Median milliseconds, old/new:
+
+| Input | Source | Zero-step image | Retained image |
+| --- | ---: | ---: | ---: |
+| Length | 6.810 / 7.325 | 7.420 / 7.355 | 7.540 / 7.569 |
+| Function field | 10.705 / 11.456 | 11.324 / 11.392 | 11.210 / 11.537 |
+| Vec append | 8.920 / 8.796 | 9.103 / 8.945 | 9.481 / 9.435 |
+| Compatibility QuickSort | 157.129 / 161.356 | 161.341 / 158.317 | 166.361 / 171.259 |
+| Generic Sorted | 905.028 / 898.598 | 902.226 / 891.499 | 899.702 / 910.740 |
+
+Because the small source cases appeared slower, repeat source measurements
+with **31** alternating pairs. Old/new medians: Length 7.204/7.045,
+function field 11.174/11.038, Vec append 8.900/8.915, compatibility QuickSort
+154.429/154.790, generic Sorted 872.469/873.821 ms. Ranges overlap and the
+small-case direction reverses. No general wall-time improvement or stable
+regression is established. Generic source peak RSS medians are both 263,444
+KiB in the repeat; small-process RSS includes the runner's inherited high-water.
+Logs: `/tmp/a-program-image-range-benchmark{,-repeat}.log`.
+
+Both revisions read the other revision's five retained images and resave them
+inertly byte-for-byte (`/tmp/a-program-image-range-cross.log`). Zero-step saves
+are identical across revisions. Independently produced retained saves differ
+in bytes, including two saves by the old binary alone, but retain the same
+sizes across revisions. No source/derivation format version is changed.
+
+| File under `src/prototype/pointer/` | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `evidence.c` | 33 | 26 | +7 |
+| `function_graph.c` | 2 | 3 | -1 |
+| `tests/core.c` | 13 | 2 | +11 |
+
+Implementation/header net is **+6**, tests **+11**. Cumulative implementation
+from R0 `4657cc6` is +9,677/-4,980, net **+4,697**; docs/tests are excluded.
+
+The experiment lives in a clean detached worktree; unrelated context-relocation
+experiments remain untouched. Cumulative source reduction is still a required,
+unmet parent gate, not waived by this algorithmic improvement.
+
 ## Change Log
 
 | Date | Stage | Revision and evidence | Status |

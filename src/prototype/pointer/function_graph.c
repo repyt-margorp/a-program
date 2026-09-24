@@ -1555,11 +1555,10 @@ static const struct pg_evidence *return_packet(struct pg_function_graph_state *s
 	if (!result) return NULL;
 	size_t n = pg_evidence_context_map(result)->count;
 	if (n < s->arity + 2) return NULL;
-	const struct pg_evidence *input = pg_substitution_image_at(t, result, n - s->arity - 2);
-	const struct pg_evidence *output = pg_substitution_image_at(t, result, n - 1);
-	const struct pg_evidence *values[] = {output, graph};
 	const struct pg_evidence *const *images = pg_substitution_images(t, result, &s->temporary);
 	if (!images) return NULL;
+	const struct pg_evidence *input = images[n - s->arity - 2];
+	const struct pg_evidence *values[] = {images[n - 1], graph};
 	const struct pg_evidence *const *arguments = images + n - s->arity - 1;
 	const struct pg_evidence *packet = pg_prove_constructor(t, s->packet, packet_constructor(s),
 		input_substitution(s, context, input, arguments), 2, values);
