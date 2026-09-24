@@ -2043,7 +2043,9 @@ the packet's output and graph witness are genuinely new constructor fields.
   dependent fields, captured helper indices and negative graph consumers.
 - [x] Compare counts and paired source/seed/retained timings; record file
   deltas separately from documentation and tests.
-- [ ] Publish the verified epoch to Main/rewrite, excluding unrelated work.
+- [x] Publish the verified epoch to Main/rewrite, excluding unrelated work.
+  `a243419` was atomically pushed to both branches; remote tips were verified.
+  The unrelated working-tree diff is unchanged, and its program unit test passes.
 
 The regression uses the shared test DAG walker; it adds no production hook.
 The old implementation fails in `graph_instance_prefix` (exit 134), logged
