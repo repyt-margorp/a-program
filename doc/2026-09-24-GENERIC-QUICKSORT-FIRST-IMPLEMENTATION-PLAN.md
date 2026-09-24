@@ -1143,7 +1143,7 @@ semantics are not globally redefined to obtain this fix.
 - [x] Finish full debug, optimized and ASan/UBSan acceptance, including retained
   generic QuickSort, effect equations and source compatibility.
 - [x] Record behavior/performance comparison and per-file delta.
-- [ ] Publish this verified increment, leaving the broader refactor open.
+- [x] Publish this verified increment, leaving the broader refactor open.
 
 Audit disposition: do not merge `typed_selection_step` with ordinary occurrence
 input traversal solely because both follow maps. Constant Pi codomain selection
@@ -1214,6 +1214,10 @@ No wire version change. Log: `/tmp/a-program-context-extension-image-cross.log`.
 | `typing.c` | 19 | 15 | +4 |
 | `typing.h` | 7 | 0 | +7 |
 | `tests/core.c` | 29 | 0 | +29 |
+
+Published `cb704f89af510e4697cf29262ce4d7d96b52dded` atomically to Main and
+`rewrite/pointer-core-hott`; both remote heads verified. No issue was closed.
+Unrelated working-tree experiments remain outside the commit.
 
 ## Change Log
 
