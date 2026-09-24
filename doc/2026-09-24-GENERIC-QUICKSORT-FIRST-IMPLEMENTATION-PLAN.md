@@ -1402,6 +1402,78 @@ wrong comparator/descent/output fixtures +4/+3/+3 (no deletions). Total tests
 +127/-17, net +110. Production C/H delta is zero; the parent's cumulative
 implementation reduction gate remains unmet at +4,697 lines from R0.
 
+### Q4: Cross-request Substitution Audit
+
+Baseline: `37a130d`, 2026-09-24. No production change in this audit.
+`eval.c:substitution_environment` interns immutable input environments, but
+`substitution_init` creates a private `readback_context.results` for each root.
+Consequently, two different roots can reconstruct the same exact subclosure.
+This is duplicate computational work, not two authorities for typed evidence.
+
+Diagnostic-only tracing in a detached worktree recorded new `reify_request`
+entries whose nonempty environment is the request's original shared input.
+Keys are exact `(Term pointer, environment pointer)` pairs within one process.
+Semantic references, empty environments and fresh Lambda-local environments
+are excluded; the figures below are **not all readback work**. A second event
+at `substitution_finish` identifies entries for which a previously completed
+top-level request was already available.
+
+| Source input | Recorded entries | Unique pairs | Repeated entries | Previously completed root |
+| --- | ---: | ---: | ---: | ---: |
+| Length output proof | 2,332 | 1,738 | 594 | 117 |
+| Function-field graph | 4,293 | 3,402 | 891 | 147 |
+| Generic Sorted, frozen provider | 474,613 | 300,578 | 174,035 | 72,366 |
+
+The generic repeated entries comprise 108,757 References, 64,508 Applications
+and 770 Lambdas. The existing-root candidates comprise 71,513 References,
+840 Applications and 13 Lambdas. These are entry counts, not saved transitions
+or speedups; neither a global memo table nor a root-result shortcut has been
+implemented or benchmarked. The diagnostic source checks all succeeded.
+
+Two tempting implementations are not justified:
+
+- Retain every private readback entry in a global table. On this build an
+  entry is 88 bytes: even the 300,578 unique pairs in the restricted sample
+  require 26,450,864 bytes before buckets, environments, other subclosures or
+  root progress. The existing complete substitution arena uses 25,426,752
+  bytes on this input. This is a storage lower bound, not an RSS prediction;
+  deleting root bookkeeping could offset some costs, but sharing alone does
+  not establish a memory improvement.
+- Reuse an entire request's intrusive `pending`/`next` chain. Those links
+  describe one traversal, not the dependency DAG. A second demand must not
+  overwrite them or execute unrelated pending roots. Copying that chain into
+  another cache merely introduces another reconstruction mechanism.
+
+The next substitution experiment must replace ownership machinery, not add
+another accepted-result authority or another typed graph:
+
+- [x] Establish exact duplicate subclosures on small and large source inputs.
+- [ ] Separate reusable structural results from a demand's traversal cursor;
+  reuse the existing substitution store rather than adding a parallel cache.
+  Compare retaining only already requested roots with sharing subproblems.
+  Choose by measured work, retained bytes and source delta, not cache-hit count.
+- [ ] Preserve ordered simultaneous substitution, shadowing, capture avoidance
+  and distinct semantic-object/binder identities. Never use WHNF/alpha equality
+  as a structural interning key. Keep typed occurrences and evidence separate.
+- [ ] Check interleaved overlapping roots, cancellation, zero/chunked budgets,
+  saved fresh binders and restore after destroying the original owner. Saving
+  remains inert. Existing `shared_substitution_images` also fixes historical
+  private traversal counts; distinguish those counts from necessary semantics
+  before changing them, and never silently weaken result/scope checks.
+- [ ] Compare source, ordinary/retained images and small-input timings against
+  this baseline, with full debug/O2/sanitizer gates before publication.
+  Reject a candidate that only moves work into persistence or adds a second
+  solver path. The original cumulative source-reduction gate remains open.
+
+Reproduction: strict C11 O2 build, `pointer-check --steps 10000000`, the two
+named acceptance fixtures, and `--legacy-intrinsic-dot --imports
+src/prototype/pointer/tests/fixtures/sorted-proof-provider.p` for
+`tests/acceptance/generic-quick-sorted.p`. Logs are
+`/tmp/a-program-readback-trace-{length,field,generic}.{out,log}`; the tracing-only
+tree is `/tmp/a-program-authority-profile-clean`. Raw pointer traces are not
+portable artifacts and are not committed. No new regression or speedup is
+claimed, no issue is closed, and A3-A5/R2-R5 remain unfinished.
+
 ## Change Log
 
 | Date | Stage | Revision and evidence | Status |
