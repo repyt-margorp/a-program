@@ -2593,6 +2593,8 @@ comparison. Intern these immutable parameters once per synthesis owner, then
 use the ordinary pointer-input key for every request. Premise producers and
 effect equation/worker inputs still distinguish applications. No conclusion,
 acceptance result, additional work role, or DefEq fact enters this table.
+Within one owner, this is a factorization of the original exact key: equality
+of interned headers means equality of all the former header-key fields.
 
 Use the existing `plain_rule` helper for parameterless/binder-only requests;
 keep operation, handler, transport, totality and host parameters explicit.
@@ -2611,7 +2613,7 @@ their premise DAGs are not collapsed. The wire format is unchanged.
   parent's final three-configuration gate is not closed by this local epoch.
 - [x] Measure identical-input graph counts, arena bytes, alternating timings
   and cross-version ordinary/retained images before adopting the trial.
-- [ ] Record per-file/cumulative LOC and publish the verified epoch only.
+- [x] Record per-file/cumulative LOC and publish the verified epoch only.
 
 A3-A5/R2-R5 and the cumulative source-reduction gate remain open. Reducing
 header copies is not a claim that duplicate semantic synthesis is eliminated.
@@ -2664,6 +2666,13 @@ Validation logs: `/tmp/a-program-rule-inputs-opt.log` and
 `/tmp/a-program-rule-inputs-{debug,sanitize}-{synthesis,source-io,generic}.log`.
 All exit zero; ASan/UBSan use leak detection and halt-on-error, with no
 diagnostics. Only O2 ran the complete acceptance suite in this epoch.
+
+Published `b2c8574c6f7dd692c4d1e6528e4a9c09d1ca2c2e` atomically to `main`
+and `rewrite/pointer-core-hott`, with both remote heads verified. The staged
+diff matched the isolated tested tree exactly. Combined-working-tree Core,
+synthesis and IADT tests also passed; unrelated edits were neither changed
+nor included in the commit. The implementation commit added 82 plan lines;
+this publication follow-up is documentation only.
 
 ## Change Log
 
