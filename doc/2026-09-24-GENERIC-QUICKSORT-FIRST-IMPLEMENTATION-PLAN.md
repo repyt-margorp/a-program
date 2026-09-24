@@ -2310,7 +2310,9 @@ cache, solver kind, wire format or Core operation is needed.
   function fields, invalid scopes and ordinary/retained images.
 - [x] Measure graph/work counts and paired source/image timing; report
   implementation, test and document deltas separately.
-- [ ] Publish the verified epoch, preserving unrelated working-tree changes.
+- [x] Publish the verified epoch, preserving unrelated working-tree changes.
+  Implementation `7e3e560` is on Main and the rewrite branch; both remote refs
+  were verified. Unrelated working-tree changes remain unstaged.
 
 Initial strict debug synthesis/IADT tests pass. Generic Sorted completes in
 603,123 steps, versus 603,561 at baseline. This alone is not a timing result
