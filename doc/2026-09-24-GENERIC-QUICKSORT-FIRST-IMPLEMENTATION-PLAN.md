@@ -1514,6 +1514,142 @@ discardable materialization. A replacement must remove existing work/storage,
 not merely add a lookup to each child. Retained-input reuse and the parent's
 net-negative source/performance gates remain open.
 
+#### Cursor ownership experiment: not published
+
+At `f5cf0e4`, a second allocation audit distinguishes all private readback
+entries, not only the original input environment:
+
+| Environment category | Allocated entries | Distinct measured keys |
+| --- | ---: | ---: |
+| Empty | 208,258 | 4,045 |
+| Original interned input | 474,613 | 300,578 |
+| Fresh Lambda-local | 833,606 | 833,606 |
+
+Local keys include their request generation; reused allocator addresses are
+not mistaken for computational reuse. Retaining these current records verbatim
+at 88 bytes would cost 100,164,152 bytes before buckets/environments. This is
+not a lower bound for every sharing algorithm: sharing a Lambda root can also
+avoid constructing some of its local entries. It does rule out blindly moving
+all current private records to compiler-lifetime storage. Diagnostic source:
+`/tmp/a-program-readback-allocation-profile.gdb`; successful output:
+`/tmp/a-program-readback-allocation-profile.log`.
+
+The local experimental branch `experiment/shared-substitution-ownership`,
+commit `e0e6acb`, separates a demand's ancestor stack from readback node links
+and releases the completed shared root's traversal context. Root input/result
+addresses remain stable. It does **not** yet share subproblems between roots.
+For generic Sorted, substitution arena used bytes fall from 25,426,752 to
+19,391,488; Solve steps (619,092), Core/occurrence/proof/map counts and main
+arena used bytes are unchanged. This is not a total-memory measurement.
+
+Seven alternating O2 source-only pairs after warmup give old/new medians in
+milliseconds: length 7.256/6.979, function field 10.962/10.854, append
+8.726/8.663, compatibility QuickSort 154.489/150.076, generic Sorted
+865.060/850.133. All timing ranges overlap. Generic per-process peak RSS
+medians are 263,420/257,588 KiB; small-process RSS is limited by inherited
+runner high-water. Logs: `/tmp/a-program-readback-ownership-timing.log` and
+`/tmp/a-program-readback-ownership-storage.log`. No general speedup is claimed.
+
+- [x] Focused strict debug Core/readback tests and ASan/UBSan Core/readback/
+  generic source checks pass. Corrected a test-version restoration so later
+  malformed-payload tests cannot pass merely by retaining an obsolete header;
+  a final positive reread checks the repaired fixture.
+- [x] Frozen `e0e6acb` passes optimized full `check-acceptance`, including 63/63
+  compatibility cases and both generic Sorted providers. Log:
+  `/tmp/a-program-readback-ownership-opt-acceptance.log`.
+- [x] Frozen `e0e6acb` also passes full ASan/UBSan `check-acceptance`, including
+  63/63 compatibility cases, both providers and ordinary/retained images.
+  No sanitizer diagnostic was reported. Log:
+  `/tmp/a-program-readback-ownership-sanitize-acceptance.log`.
+  Full debug acceptance was not repeated for this unpublished preparation;
+  its focused debug Core/readback checks are recorded above.
+- [ ] Replace private repeated work with actual shared exact-input subproblems;
+  do not publish the ownership preparation alone as completed reuse.
+- [ ] Keep Lambda-local traversal privately owned by its shared Lambda node.
+  Another demand must not retain cursors into a private scope that completion
+  can free. Do not intern by normalization or merge typed evidence.
+- [ ] Validate inert snapshots of only the requested dependency graph, including
+  interleaving, saved fresh binders, cancellation and owner destruction.
+- [ ] Compact retained results and measure actual CPU/storage/source deltas
+  before adoption. The preparatory change is +97/-45 across five C/H/test files,
+  not a reduction or completion of the parent gate.
+
+The trial readback format changes are private to this experiment, not an
+announced artifact compatibility change. Main remains at the verified
+projection-composition implementation; unrelated relocation experiments in
+the main working tree remain untouched.
+
+#### Shared subproblem trial: functional source experiment, not adopted
+
+`experiment/shared-substitution-dag`, commit `aa1710f`, extends the cursor experiment with one
+exact-input result index and privately owned Lambda-body traversal. Root
+demands never borrow cursors into that private body. An interleaved-root test
+fails on `e0e6acb` at the expected shared-child assertion and passes on the
+trial, including capture avoidance, completion by the other root, and later
+zero-work lookup of the completed Lambda. Optimized and ASan/UBSan Core plus
+generic source checks pass. **Pending shared-state serialization is not
+implemented; no full acceptance or artifact compatibility claim applies.**
+
+On generic Sorted, the trial changes:
+
+| Metric | Published baseline | Shared trial |
+| --- | ---: | ---: |
+| Solve steps | 619,092 | 595,855 |
+| Core Terms | 593,486 | 558,603 |
+| Typed occurrences | 434,502 | 434,458 |
+| Proofs | 216,679 | 216,688 |
+| Context maps | 43,378 | 43,378 |
+| Explicit substitution requests | 94,301 | 94,253 |
+| Main arena used bytes | 216,497,088 | 213,981,952 |
+| Substitution arenas used bytes | 25,426,752 | 39,295,648 |
+
+The trial's last figure includes 10,332,256 request/environment bytes plus
+28,963,392 bytes for 301,702 shared 88-byte entries (96-byte arena slots).
+Do not report only the request arena and omit the newly retained result arena.
+Changed exact binder sharing also changes evidence multiplicity; proof counts
+are not identical, although the checked generic theorem still succeeds.
+
+An initial trial slowed generic source compilation from 856.787 to 957.963 ms.
+Removing an unnecessary private-entry scan at teardown improves it, but the
+repeat still regresses from **864.152 to 942.999 ms** (seven alternating O2
+pairs; ranges 855.834-877.916 versus 919.837-956.517). Peak RSS medians grow
+263,408 -> 278,708 KiB. Small-case timing ranges overlap; compatibility
+QuickSort medians are 156.297/160.197 ms. Fewer Solve steps are not a speedup.
+Logs: `/tmp/a-program-shared-substitution-dag-{owner-timing,storage}.log`,
+`/tmp/a-program-shared-substitution-dag-sanitize-{core,generic}.log` and
+`/tmp/a-program-shared-substitution-test-before.log`.
+
+Do not adopt this representation or extend its persistence as-is. A next
+candidate must remove retained traversal metadata and duplicate request-index
+plumbing, not add another lookup to it. Measure a compact result/pending-work
+representation before completing its codec. This is a rejection of this
+representation, not proof that all exact-subproblem sharing is slower. The
+source-only trial adds 68/removes 8 implementation lines and 40 test lines
+on top of `e0e6acb`; it does not satisfy the parent's source-reduction gate.
+Both experiment commits are local and separate from Main. A compact 64-byte
+result slot would save 9,654,464 bytes for these measured entries, but would
+not by itself remove root-request records or establish a speedup. The larger
+index and retained records are measured costs, not a complete attribution of
+the timing regression. Do not repeat the same trial with an additional cache.
+
+Next experiment, before another full publication candidate:
+
+- [ ] Use one exact `(Term, interned environment)` index for both explicit
+  requests and their subproblems. Remove the ordered-array request lookup and
+  separate indexed request record; retain a demand handle only when requested.
+  A diagnostic explicit-request count is not a second result authority.
+- [ ] Keep completed entries compact: input and result remain; traversal
+  children, cursor, fresh binder and private-body owner belong to pending
+  storage that is released/reused on completion. Do not retain every old
+  traversal field merely to make the codec easier.
+- [ ] Reuse the interleaved-root regression, and add pending-owner destruction
+  and zero-budget tests. Only proceed to snapshots if source timings, measured
+  retained bytes and source delta justify the replacement. Snapshot work must
+  preserve lexical sharing and inert resave without copying the whole store.
+
+These are experimental gates, not permission to change typing, conversion,
+accepted evidence or the original A3-A5/R2-R5 completion criteria.
+
 ### Q4: Context-map Representation and Projection Composition
 
 At `53ddaa5`, the generic Sorted input retains 43,378 maps and 631,749
