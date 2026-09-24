@@ -2017,6 +2017,86 @@ uniform speedup or establish the original performance gate from this sample.
 The evidence-preservation repair and removal of three reconstruction paths
 are established independently of wall-clock performance.
 
+### Q4: Preserve Checked Instances in Function-Graph Construction
+
+Baseline `456a7f6`. The earlier constructor-instance epoch left three
+`function_graph.c` consumers on the array API: source case preparation,
+recursive witness case preparation, and the graph constructor inside a
+returned result/witness packet. Each already owns the checked field map.
+Passing it to `pg_prove_constructor_instance` removes the second instance
+assembly. The leaf path also deletes its all-images expansion and suffix
+selection; its destination Context comes from the supplied map.
+
+The ordinary constructor rule still checks schema/telescope identity,
+destination, parameter prefix and Self, and computes dependent result indices.
+This is reuse of checked inputs, not a privileged function-graph rule or a
+new cache. Field arrays needed by other schema/source-map consumers remain;
+the packet's output and graph witness are genuinely new constructor fields.
+
+- [x] Reproduce eager rebuilding with the existing length/mirror graph tests:
+  inspect their ordinary witness derivation DAGs and require recursive graph
+  constructors to retain the checked field prefix. The pre-change graph
+  implementation fails; the candidate passes at chunk sizes 1 and 64.
+- [x] Replace all three already-checked instance consumers. Generic Sorted
+  source checking and the complete program unit test pass.
+- [x] Complete strict debug, O2 and ASan/UBSan acceptance, including images,
+  dependent fields, captured helper indices and negative graph consumers.
+- [x] Compare counts and paired source/seed/retained timings; record file
+  deltas separately from documentation and tests.
+- [ ] Publish the verified epoch to Main/rewrite, excluding unrelated work.
+
+The regression uses the shared test DAG walker; it adds no production hook.
+The old implementation fails in `graph_instance_prefix` (exit 134), logged
+at `/tmp/a-program-graph-instance-before.log`. The initial strict build also
+caught an unused field-count local after deleting its consumer; that local
+was removed before the successful program test and full acceptance runs.
+
+Identical generic Sorted source runs at baseline/candidate both take 617,315
+Solve steps, with 585,390 Core nodes and 92,850 substitution requests.
+Occurrences change 431,270 -> 431,256; proofs 212,058 -> 211,992; Context maps
+42,589 -> 42,548. Main arena used bytes change 214,347,520 -> 214,329,760;
+substitution storage remains 25,054,912. These are internal allocation counts,
+not a wall-clock speed claim. Logs:
+`/tmp/a-program-graph-instance-{baseline-storage,storage}.log`.
+
+Per-file C delta: `function_graph.c` +9/-16, net -7; `tests/program.c`
++33/-0. Documentation is counted separately. The original R0 implementation
+C/H total is still net +4,704; this local deletion does not meet that gate.
+
+Full `check-acceptance` passes in strict C11 debug (`-O0 -g`), O2 and
+ASan/UBSan (`-O1 -g`, non-PIE, leak detection and halt-on-error). Logs:
+`/tmp/a-program-graph-instance-{debug,opt,sanitize}-acceptance.log`.
+All three exit successfully, with no sanitizer/runtime/assertion diagnostic;
+the compatibility matrix remains 63/63 and both LT providers pass.
+
+Seven alternating fresh-process pairs, one warmup, no concurrent build/test,
+O2 and a 10,000,000-step limit. Small cases batch 25 processes, old QuickSort
+three, generic Sorted one. All ten seed/retained image pairs cross-load in
+both directions. Median milliseconds are baseline/candidate:
+
+| Input | Source | Seed image | Retained image |
+| --- | ---: | ---: | ---: |
+| Length output proof | 7.420 / 7.172 | 7.180 / 7.397 | 7.631 / 7.618 |
+| Function-field graph | 10.816 / 11.055 | 10.976 / 11.443 | 11.493 / 11.678 |
+| Vec append | 8.597 / 8.968 | 8.995 / 9.066 | 9.347 / 9.568 |
+| Compatibility QuickSort | 153.100 / 153.051 | 156.772 / 155.722 | 166.073 / 162.112 |
+| Generic Sorted | 843.746 / 844.991 | 858.555 / 875.927 | 855.429 / 871.596 |
+
+Ranges overlap, with mixed median changes; no uniform speedup is established.
+Keep the original performance gate open. Full samples and cross-load results:
+`/tmp/a-program-graph-instance-timing.log`.
+
+This completes these three reconstruction removals only. The original
+A3-A5/R2-R5 performance and net-negative implementation gates remain open.
+
+Next bounded audit: `action.c`'s `pg_identity_context` and
+`pg_identity_substitution_context` retain left/right image arrays alongside
+checked maps, project those arrays at each extension, and rebuild maps from
+them. Test whether existing substitution extension/restriction can replace
+that caller-owned assembly while preserving dependent centers and alternate
+image evidence. This is a candidate, not a proven speedup or permission to
+collapse higher-dimensional proof data. No new cache or work kind is planned.
+
 ## Change Log
 
 | Date | Stage | Revision and evidence | Status |

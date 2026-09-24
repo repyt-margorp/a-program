@@ -4,6 +4,7 @@
 #include "computation.h"
 #include "function_graph.h"
 #include "host.h"
+#include "dag.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -533,6 +534,37 @@ static void graded_function_graph(struct pg_program *p, const struct pg_evidence
 	}
 }
 
+static int proof_child(void *owner, const void *key, size_t index, const void **child)
+{
+	(void)owner;
+	if (index == pg_evidence_premise_count(key)) return 0;
+	*child = pg_evidence_premise(key, index);
+	return 1;
+}
+
+static void graph_instance_prefix(const struct pg_function_graph_work *work)
+{
+	struct pg_dag dag;
+	assert(!pg_dag_init(&dag, proof_child, NULL));
+	assert(!pg_dag_add(&dag, pg_function_graph_witness(work)));
+	size_t found = 0;
+	for (const struct pg_dag_node *node = dag.first; node; node = node->next) {
+		const struct pg_evidence *proof = node->key;
+		if (pg_evidence_rule(proof) != PG_CONSTRUCTOR_INTRO ||
+			pg_evidence_premise(proof, 1) != pg_function_graph_declaration(work)) continue;
+		const struct pg_evidence *instance = pg_evidence_premise(proof, 3);
+		const struct pg_context_map *prefix = pg_evidence_context_map(pg_evidence_premise(instance, 2));
+		/* Recursive graph leaves retain their checked field prefix, rather
+		 * than flattening it and rechecking every field after Self. */
+		if (pg_evidence_subject(proof)->operand_count > 2) {
+			assert(prefix && prefix->count > 1);
+			++found;
+		}
+	}
+	assert(found);
+	pg_dag_destroy(&dag);
+}
+
 static const struct pg_evidence *graph_witness_result(struct pg_program *p,
 	struct pg_function_graph_work *work, const struct pg_evidence *input,
 	const struct pg_evidence *expected, uint64_t chunk)
@@ -839,6 +871,7 @@ static void function_graphs(void)
 			const struct pg_evidence *input = i == 2 ? export_value(p, "leftTree") : i ? one : successor;
 			const struct pg_evidence *expected = i == 2 ? export_value(p, "rightTree") : successor;
 			graph_witness_result(p, &work, input, expected, chunk);
+			if (i) graph_instance_prefix(&work);
 			pg_function_graph_destroy(&work);
 			assert(pg_evidence_owned_by(formation, &p->typing));
 			struct pg_inductive_instance retained;
