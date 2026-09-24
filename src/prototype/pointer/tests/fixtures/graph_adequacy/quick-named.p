@@ -1,0 +1,11 @@
+import Nat;
+import List;
+import natLessOrEqual;
+import quickSort;
+quick_witness := *quickSort;
+copy_result := \xs:List Nat => quick_witness Nat (&natLessOrEqual) xs @output => output;
+copy_result :: (xs:List Nat) -> List Nat;
+one := Nat.succ Nat.zero;
+sample := (List Nat).cons one ((List Nat).cons Nat.zero (List Nat).nil);
+main := copy_result sample;
+expected := (List Nat).cons Nat.zero ((List Nat).cons one (List Nat).nil);

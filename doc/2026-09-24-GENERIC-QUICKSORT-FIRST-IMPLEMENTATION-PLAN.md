@@ -258,6 +258,12 @@ audit fixtures and the complete generic proof, not only harness code.
   until their individual evidence and acceptance criteria justify closure.
   The #33 boundary audit and #34 experiment are published and closed; #32
   remains open. Their historical checkpoints below preserve the earlier state.
+- [x] Complete the bounded global `*f` syntax investigation before the user's
+  requested pause. See [the syntax audit](2026-09-24-GLOBAL-FUNCTION-WITNESS-SYNTAX-AUDIT.md).
+  `length` has a checked ordinary-result graph proof without global `*length`;
+  a named QuickSort witness works, but does not establish ordinary-result
+  adequacy. No grammar/kernel change is adopted. Await the user's interface
+  decision; keep #32 and the remaining authority work open.
 - [ ] Keep the parent's final acceptance, performance and net-negative source
   delta gates open until measured on the finished refactor. A successful #31
   milestone is not completion of that separate work.
