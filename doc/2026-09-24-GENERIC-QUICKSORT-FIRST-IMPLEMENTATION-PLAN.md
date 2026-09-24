@@ -1012,6 +1012,100 @@ or memory conclusion is established there. These measure compilation/Solve,
 not sorting execution, and do not discharge the older R0 small-case regression
 gate. Verified samples: `/tmp/a-program-prefix-proof-benchmark-verified.log`.
 
+### Q4: Share Exact Substitution Input Environments
+
+Baseline: `c94e39c`. Core substitution requests already share exact work, but
+different input terms copy identical ordered binding environments. A read-only
+debug trace of the generic Sorted source records 94,347 requests, 404,784
+allocated environment nodes and only 20,089 distinct `(parent, binder, value)`
+nodes (19,604 environment roots). Each old environment node is 32 bytes.
+These are physical input copies, not duplicate typing derivations.
+
+- [x] Measure input duplication and add a regression that fails before sharing.
+- [x] Intern immutable environment prefixes inside the existing Core
+  substitution store. Keep typed Contexts/evidence separate and exact-pointer
+  request keys; no WHNF/alpha interning or new checking authority.
+- [x] Check simultaneous substitution, ordered shadowing, mutable caller-array
+  snapshots, independent store ownership, cancellation and every-cut images.
+- [x] Run full optimized/debug/sanitizer acceptance; compare measured storage,
+  source/image behavior and alternating performance samples before publication.
+- [ ] Record per-file LOC and publish only after the gates pass. This slice
+  does not close A3-A5/R2-R5 or its original cumulative reduction requirement.
+
+Request lookup still examines the supplied binding sequence: environment
+interning happens only on a new request, not on each hit. The new index owns
+references to immutable input nodes, never results or an alternative proof.
+Standalone and deserialized substitutions retain their existing private input
+ownership; the image format describes environments, not this lookup index.
+
+The new Core regression fails on the baseline (exit 134, distinct environment
+pointers for the same binding sequence). A 64-prefix/two-term test now allocates
+exactly 64 shared environment nodes. The image regression finishes a sibling
+request sharing that environment before saving the other request at every
+cut; loading resumes independently after destruction of the original store.
+
+Final verification: full optimized, debug and ASan/UBSan `check-acceptance`
+all exit zero, each including 63/63 compatibility. No source edit occurred
+after these final builds started. The normalized result/step multisets in the
+optimized export logs match the previous epoch (ignore paths and concurrent
+line ordering). The dirty worktree's separate Core/IADT tests also pass; its
+unaccepted telescope-relocation experiment is not part of this publication.
+The generic input still takes 619,094 Solve steps with 593,540 Core terms,
+440,476 typed occurrences, 218,967 proofs, 44,012 maps and 94,347 substitution
+requests. Main-graph used bytes remain 218,070,944. Substitution-arena aligned
+used bytes decrease from 37,105,920 to 25,438,528; the new environment index
+adds 32,768 pointer buckets (262,144 bytes on this machine). Counts exclude
+transient allocation and are not process RSS. An interned node occupies 48
+bytes before arena alignment, rather than the old unindexed 32-byte node.
+
+Seven alternating O2 sample pairs after warmup, fresh processes, no concurrent
+build/test runs: 25 invocations per small-input sample, three for compatibility
+QuickSort and one for generic Sorted. Times below are median milliseconds per
+process; zero-step and retained images were created by the respective compiler.
+This comparison is against the immediately preceding implementation, not R0.
+
+| Input | Source old/new | Zero-step image old/new | Retained image old/new |
+| --- | ---: | ---: | ---: |
+| length | 7.435 / 7.362 | 7.492 / 7.371 | 7.297 / 7.807 |
+| function-field | 11.018 / 11.250 | 11.118 / 11.392 | 11.647 / 11.391 |
+| Vec append | 9.180 / 9.059 | 9.147 / 8.903 | 9.389 / 9.710 |
+| compatibility QuickSort | 161.697 / 162.138 | 161.628 / 160.961 | 172.138 / 172.920 |
+| generic Sorted | 922.177 / 915.394 | 890.796 / 915.604 | 923.863 / 925.547 |
+
+Timing is mixed: do not claim a general speedup. Generic source ranges are
+906.767-936.522 / 909.165-929.756 ms; zero-image ranges are
+858.379-920.322 / 864.944-948.619 ms. Keep the small-input regressions and the
+original R5 comparison gate visible. Generic source peak RSS medians decrease
+276,140 -> 264,632 KiB; compatibility QuickSort decreases 70,448 -> 66,796 KiB.
+Small-process RSS inherits the Python runner's high-water mark and does not
+resolve the compiler's small allocation differences.
+
+All five zero-step images are byte-identical across revisions. Independently
+written retained images have unchanged sizes but differ in bytes (separate
+baseline runs also differ). Both compilers successfully read the other one's
+retained images and reproduce them byte-for-byte on a zero-step resave.
+Generic retained images remain 3,209,476 bytes. No codec/version change or
+trusted acceptance of saved environments was introduced.
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `eval.c` | 39 | 11 | +28 |
+| `eval.h` | 3 | 0 | +3 |
+| `tests/core.c` | 33 | 0 | +33 |
+| `tests/eval_io.c` | 5 | 0 | +5 |
+
+Implementation/header net is **+31**, tests **+38**, documentation separate.
+Cumulative implementation/header delta from R0 `4657cc6` is +9,647/-4,960,
+net **+4,687**. Input storage is smaller; source code is not. This does not
+satisfy the cumulative net-negative gate or finish the broader authority work.
+
+Evidence: `/tmp/a-program-environment-{optimized,debug,sanitize}.log`,
+`/tmp/a-program-environment-regression-before.log`,
+`/tmp/a-program-substitution-environment-{before,after}.log`,
+`/tmp/a-program-environment-storage-{before,after}.log`,
+`/tmp/a-program-environment-benchmark.{py,log}` and
+`/tmp/a-program-environment-image-cross.{sh,log}`.
+
 ## Change Log
 
 | Date | Stage | Revision and evidence | Status |

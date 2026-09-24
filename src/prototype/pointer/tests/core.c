@@ -4469,6 +4469,23 @@ static void shared_substitution_test(struct pg_graph *graph)
 	const struct pg_term *alpha = pg_lambda(graph, z, body);
 	assert(pg_alpha_equal(term, alpha) == 1);
 	assert(pg_substitution_request(&work, alpha, 1, &image) != first);
+	/* Different term requests share the same immutable input environment,
+	 * without sharing traversal progress or identifying their output terms. */
+	struct pg_substitution *body_work = pg_substitution_request(&work, body, 1, &image);
+	const struct pg_environment *prefix = pg_substitution_input(first)->environment;
+	assert(body_work != first && pg_substitution_input(body_work)->environment == prefix);
+	assert(pg_substitution_input(different)->environment != prefix);
+	assert(pg_substitution_input(other_store)->environment != prefix);
+	assert(pg_substitution_steps(body_work) == 0);
+	struct pg_binding_value shadow[] = {{x, vy}, {x, vx}};
+	struct pg_substitution *shadow_work = pg_substitution_request(&work, vx, 2, shadow);
+	const struct pg_environment *extended = pg_substitution_input(shadow_work)->environment;
+	assert(extended != prefix && extended->parent == prefix);
+	assert(pg_substitution_compute(&work, vx, 2, shadow) == vx);
+	shadow[1].value = vz;
+	assert(extended->value.term == vx);
+	assert(pg_substitution_compute(&work, body, 1, &image) == pg_application(graph, vy, vy));
+	assert(pg_substitution_input(body_work)->environment == prefix);
 	struct pg_binding_value ordered[] = {{x, vy}, {y, vx}}, reversed[] = {{y, vx}, {x, vy}};
 	assert(pg_substitution_request(&work, body, 2, ordered) != pg_substitution_request(&work, body, 2, reversed));
 	struct pg_binding_value identity[] = {{x, vx}, {y, vy}};
@@ -4482,6 +4499,22 @@ static void shared_substitution_test(struct pg_graph *graph)
 	assert(!pg_substitution_request(&work, term, SIZE_MAX, &image));
 	assert(!pg_substitution_request(&work, NULL, 0, NULL));
 	assert(work.jobs.count == requests);
+	/* A growing input DAG retains one node per new binding, not one copied
+	 * telescope per term request. These requests stay pending until teardown. */
+	struct pg_binding_value chain[64];
+	const struct pg_object *chain_binder = pg_binder(graph);
+	const struct pg_environment *tail = NULL;
+	size_t environments = work.environments.count;
+	for (size_t i = 0; i < 64; ++i) {
+		chain[i] = (struct pg_binding_value){chain_binder, vx};
+		struct pg_substitution *left = pg_substitution_request(&work, term, i + 1, chain);
+		struct pg_substitution *right = pg_substitution_request(&work, body, i + 1, chain);
+		const struct pg_environment *current = pg_substitution_input(left)->environment;
+		assert(current->parent == tail && pg_substitution_input(right)->environment == current);
+		assert(work.environments.count == environments + i + 1);
+		assert(!pg_substitution_steps(left) && !pg_substitution_steps(right));
+		tail = current;
+	}
 	/* Cancellation releases pending traversals without invalidating outputs. */
 	pg_substitution_work_destroy(&independent);
 	pg_substitution_work_destroy(&work);

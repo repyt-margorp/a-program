@@ -430,10 +430,33 @@ static int substitution_inputs(const struct pg_term *term, size_t *length,
 	return 0;
 }
 
+struct substitution_environment {
+	struct pg_index_entry index;
+	struct pg_environment environment;
+};
+
+static const struct pg_environment *substitution_environment(struct pg_substitution_work *work,
+	const struct pg_environment *parent, struct pg_binding_value binding)
+{
+	uint64_t hash = ((uintptr_t)parent ^ (uintptr_t)binding.binder) * UINT64_C(1099511628211);
+	hash = (hash ^ (uintptr_t)binding.value) * UINT64_C(1099511628211);
+	for (struct pg_index_entry *entry = pg_index_candidates(&work->environments, hash); entry; entry = entry->next) {
+		if (entry->hash != hash) continue;
+		const struct pg_environment *environment = &((struct substitution_environment *)entry)->environment;
+		if (environment->parent == parent && environment->binder == binding.binder && environment->value.term == binding.value)
+			return environment;
+	}
+	struct substitution_environment *entry = pg_alloc(&work->storage, sizeof(*entry));
+	if (!entry) return NULL;
+	entry->environment = (struct pg_environment){binding.binder, {binding.value, NULL}, parent};
+	return pg_index_insert(&work->environments, &entry->index, hash) ? NULL : &entry->environment;
+}
+
 static int substitution_init(struct pg_substitution *work, struct pg_graph *graph,
 	const struct pg_term *term, size_t count, const struct pg_binding_value *bindings,
-	struct pg_graph *input_storage)
+	struct pg_substitution_work *shared)
 {
+	struct pg_graph *input_storage = shared ? &shared->storage : NULL;
 	struct pg_substitution_state *state = input_storage ? pg_alloc(input_storage, sizeof(*state))
 		: calloc(1, sizeof(*state));
 	if (!state) return -1;
@@ -441,15 +464,20 @@ static int substitution_init(struct pg_substitution *work, struct pg_graph *grap
 	state->context.output = graph;
 	state->input_storage = input_storage;
 	if (pg_index_init(&state->context.results) != 0) goto failure;
-	struct pg_environment *environment = count ? pg_alloc(input_storage ? input_storage : &state->context.temporary,
-		count * sizeof(*environment)) : NULL;
-	if (count && !environment) goto failure;
+	struct pg_environment *owned = !shared && count
+		? pg_alloc(&state->context.temporary, count * sizeof(*owned)) : NULL;
+	if (!shared && count && !owned) goto failure;
+	const struct pg_environment *environment = NULL;
 	for (size_t i = 0; i < count; ++i) {
-		environment[i] = (struct pg_environment){bindings[i].binder,
-			{bindings[i].value, NULL}, i ? &environment[i - 1] : NULL};
+		if (shared) environment = substitution_environment(shared, environment, bindings[i]);
+		else {
+			owned[i] = (struct pg_environment){bindings[i].binder, {bindings[i].value, NULL}, environment};
+			environment = &owned[i];
+		}
+		if (!environment) goto failure;
 	}
 	state->root = reify_request(&state->context,
-		(struct pg_closure){term, count ? &environment[count - 1] : NULL}, input_storage);
+		(struct pg_closure){term, environment}, input_storage);
 	if (!state->root) goto failure;
 	state->status = state->root->result ? PG_SUBSTITUTION_DONE : PG_SUBSTITUTION_PENDING;
 	return 0;
@@ -540,9 +568,8 @@ int pg_substitution_work_init(struct pg_substitution_work *work, struct pg_graph
 	memset(work, 0, sizeof(*work));
 	work->graph = graph;
 	if (!graph) return -1;
-	if (!pg_index_init(&work->jobs)) return 0;
-	pg_index_destroy(&work->jobs);
-	work->graph = NULL;
+	if (!pg_index_init(&work->jobs) && !pg_index_init(&work->environments)) return 0;
+	pg_substitution_work_destroy(work);
 	return -1;
 }
 
@@ -552,6 +579,7 @@ void pg_substitution_work_destroy(struct pg_substitution_work *work)
 		for (struct pg_index_entry *entry = work->jobs.buckets[i]; entry; entry = entry->next)
 			pg_substitution_destroy(&((struct substitution_request *)entry)->work);
 	pg_index_destroy(&work->jobs);
+	pg_index_destroy(&work->environments);
 	pg_graph_destroy(&work->storage);
 	memset(work, 0, sizeof(*work));
 }
@@ -581,7 +609,7 @@ struct pg_substitution *pg_substitution_request(struct pg_substitution_work *wor
 	if (!request) return NULL;
 	request->work.state = NULL;
 	request->count = count;
-	if (substitution_init(&request->work, work->graph, term, count, bindings, &work->storage)) return NULL;
+	if (substitution_init(&request->work, work->graph, term, count, bindings, work)) return NULL;
 	if (pg_substitution_status(&request->work) == PG_SUBSTITUTION_DONE) substitution_finish(request->work.state);
 	if (pg_index_insert(&work->jobs, &request->index, hash)) {
 		pg_substitution_destroy(&request->work);

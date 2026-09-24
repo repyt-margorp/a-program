@@ -124,11 +124,14 @@ const struct pg_term *pg_term_substitute(struct pg_graph *graph,
 /* Exact-input shared substitution work, independent of typing. The store owns
  * requested jobs; callers may advance/read/save them, but must not destroy them.
  * Keys include ordered binder/image pointers, not alpha or conversion equality.
+ * Immutable input environments share exact prefixes across different jobs;
+ * traversal state and completion remain local to each requested term.
  * Inputs and output graph outlive the store; results survive store destruction. */
 struct pg_substitution_work {
 	struct pg_graph *graph;
 	struct pg_graph storage;
 	struct pg_index jobs;
+	struct pg_index environments;
 };
 int pg_substitution_work_init(struct pg_substitution_work *work, struct pg_graph *graph);
 void pg_substitution_work_destroy(struct pg_substitution_work *work);

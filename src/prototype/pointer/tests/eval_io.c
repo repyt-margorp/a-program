@@ -378,6 +378,11 @@ static void shared_substitution_images(void)
 		struct pg_substitution_state *state = request->state;
 		assert(state->input_storage == &shared.storage);
 		const struct pg_closure *original = pg_substitution_input(request);
+		struct pg_substitution *sibling = pg_substitution_request(&shared,
+			pg_reference(&graph, image.binder), 1, &image);
+		assert(sibling != request && pg_substitution_input(sibling)->environment == original->environment);
+		assert(pg_substitution_advance(sibling, 10000) == PG_SUBSTITUTION_DONE);
+		assert(pg_substitution_result(sibling) == image.value && !pg_substitution_steps(request));
 		struct readback_entry *root = request->state->root;
 		assert(request->state->context.pending == root && !request->state->context.temporary.blocks);
 		pg_substitution_advance(request, cut);
