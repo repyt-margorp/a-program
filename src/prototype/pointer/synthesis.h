@@ -19,6 +19,8 @@ struct pg_synthesis {
 	const void *owner_key;
 	struct pg_whnf_work *normalization;
 	struct pg_index jobs;
+	/* Immutable rule parameters, not conclusions or proof acceptance. */
+	struct pg_index rule_inputs;
 	struct pg_index scopes;
 	/* Source spelling/layout attached to typed subjects; not scheduled work. */
 	struct pg_index source_metadata;

@@ -2584,6 +2584,87 @@ were preserved. [The #34 checkpoint](https://github.com/repyt-margorp/a-program/
 records the result and remaining gates. This epoch's plan changes are
 +89/-1 lines, separate from the proof/test totals above.
 
+### A4/R5: Shared Immutable Rule Headers
+
+Baseline: `e30231c`. The generic Sorted source creates 21,197 pending rule
+applications but only 2,558 distinct rule headers. Previously every application
+copied its header, and the generic request interner special-cased header field
+comparison. Intern these immutable parameters once per synthesis owner, then
+use the ordinary pointer-input key for every request. Premise producers and
+effect equation/worker inputs still distinguish applications. No conclusion,
+acceptance result, additional work role, or DefEq fact enters this table.
+
+Use the existing `plain_rule` helper for parameterless/binder-only requests;
+keep operation, handler, transport, totality and host parameters explicit.
+Distinct kernel rules remain distinct. Image export remains keyed by the
+complete application, not its shared header, so alternative derivations and
+their premise DAGs are not collapsed. The wire format is unchanged.
+
+- [x] Implement sharing and remove per-caller boilerplate in an isolated tree.
+- [x] Add permanent checks for shared headers with distinct premises/effect
+  equations, caller-header lifetime and different universe parameters. Export
+  and re-solve alternative derivations of the same judgement without merging
+  their evidence.
+- [x] Run full strict O2 acceptance (including 63/63 compatibility), and the
+  synthesis, `source_io.sh` and `generic_sorted.sh ... 1` tests in Debug.
+- [x] Run the same affected tests in ASan/UBSan after all edits. The broader
+  parent's final three-configuration gate is not closed by this local epoch.
+- [x] Measure identical-input graph counts, arena bytes, alternating timings
+  and cross-version ordinary/retained images before adopting the trial.
+- [ ] Record per-file/cumulative LOC and publish the verified epoch only.
+
+A3-A5/R2-R5 and the cumulative source-reduction gate remain open. Reducing
+header copies is not a claim that duplicate semantic synthesis is eliminated.
+
+Generic Sorted keeps exactly 603,123 Solve steps, 583,740 Core nodes, 427,853
+typed occurrences, 205,291 proofs, 41,227 maps and 101,877 jobs. Main-arena used
+bytes fall from 187,115,776 to 184,513,616 (2,602,160 fewer); reserved bytes
+including block headers fall from 188,551,280 to 185,941,136. The new header
+index has 4,096 pointer buckets (32,768 additional heap bytes). These are
+storage measurements, not total process RSS. GDB logs are
+`/tmp/a-program-rule-inputs-{before,after}-storage.log`.
+
+Seven alternating O2 pairs, one warmup, no concurrent build/test, identical
+source and images: median milliseconds below. Each sample batches 20 fresh
+processes for the first three inputs, three for compatibility QuickSort, one
+for generic Sorted. The compatibility input is the original
+`if8_fuel_free_quicksort_check.p`, not the larger property consumer.
+
+| Input | Source before/after | Seed before/after | Retained before/after |
+| --- | ---: | ---: | ---: |
+| Length output proof | 8.176 / 8.140 | 7.971 / 8.044 | 8.162 / 8.484 |
+| Function-field graph | 11.364 / 11.291 | 11.502 / 11.710 | 11.470 / 11.990 |
+| Vec append with imported provider | 9.411 / 9.503 | 9.703 / 9.395 | 9.785 / 10.036 |
+| Compatibility QuickSort | 29.755 / 29.458 | 29.637 / 28.640 | 30.519 / 31.358 |
+| Generic Sorted | 814.712 / 822.323 | 813.838 / 828.935 | 832.357 / 828.100 |
+
+Ranges overlap, including generic source 773.212-836.115 / 779.830-864.127 ms.
+Several medians regress slightly; do not claim a speedup or zero lookup cost.
+The adoption rationale is less duplicated storage and simpler request keys.
+All measured Solve counts agree between versions, and both binaries check all
+ten old/new seed/retained image pairs. Seeds are byte-identical. Retained
+images have equal sizes but differing bytes, also reproduced between two runs
+of the unchanged baseline: `pg_reduction_archive_snapshot` traverses
+pointer-hashed buckets. Cross-process canonical bytes are not established;
+inert load/resave identity remains covered by the permanent tests. Timing and
+cross-load log: `/tmp/a-program-rule-inputs-timing.log` (RSS was not measured).
+
+| File under `src/prototype/pointer/` | Added | Deleted | Net |
+| --- | ---: | ---: | ---: |
+| `synthesis.c` | 59 | 80 | -21 |
+| `synthesis.h` | 2 | 0 | +2 |
+| `tests/synthesis.c` | 22 | 0 | +22 |
+
+Implementation C/H: +61/-80, net -19; tests: +22/-0. Relative to R0 `4657cc6`,
+implementation C/H remains +9,804/-5,142, net +4,662. Test C/H is separately
++9,802/-2,483; counting all test fixtures/scripts instead gives +13,857/-2,489.
+Documentation is separate from these totals.
+
+Validation logs: `/tmp/a-program-rule-inputs-opt.log` and
+`/tmp/a-program-rule-inputs-{debug,sanitize}-{synthesis,source-io,generic}.log`.
+All exit zero; ASan/UBSan use leak detection and halt-on-error, with no
+diagnostics. Only O2 ran the complete acceptance suite in this epoch.
+
 ## Change Log
 
 | Date | Stage | Revision and evidence | Status |
@@ -2607,3 +2688,4 @@ records the result and remaining gates. This epoch's plan changes are
 | 2026-09-24 | #34 helper specialization | `3da9d1b`: reuse checked eliminator abstraction and index substitution for captured helper indices. The shifted helper's graph/witness, negative consumer and images pass; the parallel derived-LT provider now admits the complete generic Sorted proof. Clean optimized acceptance and affected ASan/UBSan pass. | Published Main/rewrite; library/performance decision and A3-A5/R2-R5 remain open. |
 | 2026-09-24 | Q4 substitution proof sharing | `1762fa0`: retain checked prefix dependencies instead of eagerly projecting/copying every prior image. Full debug/O2/ASan+UBSan acceptance passed. Generic proof edges fall from 1,359,398 to 578,678; measured compile median improves about 10.2%. | Published Main/rewrite; APGDRV16 replaces APGDRV15. Net source +26, cumulative reduction gate and remaining authority work stay open. |
 | 2026-09-24 | #34 universal content | General permutation theorem and executable consumers for both LT providers; wrong element, multiplicity and output claims reject. Full optimized acceptance and focused Debug/ASan+UBSan pass. | No kernel/provider change; partition sensitivity, library decision and authority refactor remain open. |
+| 2026-09-24 | A4/R5 rule headers | Intern immutable rule parameters, keep exact premise producers, and reuse existing simple-rule builders. Full O2 acceptance, focused Debug/ASan+UBSan and cross-version images pass. | Main-arena used bytes -2,602,160; implementation -19 lines. Not completion of the parent authority audit. |

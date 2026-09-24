@@ -389,15 +389,34 @@ static void stored_effect_derivation(struct pg_typing *typing,
 	struct pg_derivation_input returned = {.rule = PG_RETURN_TYPE_FORM,
 		.count = 1, .parameters.effects = empty};
 	struct pg_synthesis_job *direct = pg_synthesis_rule(&synthesis, &returned, &local_u, NULL, NULL);
+	size_t headers = synthesis.rule_inputs.count;
 	struct pg_synthesis_job *projected = pg_synthesis_rule(&synthesis, &returned, &weakened_u, NULL, NULL);
 	assert(direct && projected && direct != projected);
+	assert(synthesis.rule_inputs.count == headers);
 	const struct pg_evidence *direct_proof = complete(&synthesis, direct, PG_SYNTHESIS_DONE);
 	const struct pg_evidence *projected_proof = complete(&synthesis, projected, PG_SYNTHESIS_DONE);
 	same_judgement(direct_proof, projected_proof);
 	assert(direct_proof != projected_proof);
 	assert(pg_evidence_premise(direct_proof, 0) == pg_synthesis_result(local_u));
 	assert(pg_evidence_premise(projected_proof, 0) == pg_synthesis_result(weakened_u));
+	/* Shared headers do not collapse premise DAGs when exported and solved. */
+	struct pg_effect_inference exported_effects;
+	const struct pg_derivation_input *const *exported;
+	assert(!pg_effect_inference_init(&exported_effects, graph));
+	assert(!pg_synthesis_export_rules(&synthesis, 2,
+		(struct pg_synthesis_job *[]){direct, projected}, graph,
+		&exported_effects, 1, &exported));
+	assert(exported[0] != exported[1] && exported[0]->rule == exported[1]->rule);
+	assert(exported[0]->premises[0] != exported[1]->premises[0]);
+	pg_effect_inference_seal(&exported_effects);
+	for (size_t i = 0; i < 2; ++i) {
+		struct pg_synthesis_job *restored_job = pg_synthesis_derivation_inference(&synthesis,
+			exported[i], &exported_effects);
+		assert(complete(&synthesis, restored_job, PG_SYNTHESIS_DONE)
+			== (i ? projected_proof : direct_proof));
+	}
 	pg_synthesis_destroy(&synthesis);
+	pg_effect_inference_destroy(&exported_effects);
 	pg_whnf_work_destroy(&normalization);
 	pg_effect_inference_destroy(&restored);
 }
@@ -499,14 +518,17 @@ static void effect_equations(struct pg_typing *typing)
 		assert(type_job && !pg_synthesis_result(type_job));
 		assert(type_job == pg_synthesis_rule(&synthesis, &type_input, &universe_job, &work, a));
 		struct pg_derivation_input copied_input = type_input;
+		size_t headers = synthesis.rule_inputs.count;
 		assert(type_job == pg_synthesis_rule(&synthesis, &copied_input, &universe_job, &work, a));
 		assert(type_job != pg_synthesis_rule(&synthesis, &copied_input, &universe_job, &work, b));
+		assert(synthesis.rule_inputs.count == headers);
 		/* Caller-owned headers may be reused immediately; producer keys and
 		 * eventual acceptance retain the fields captured at registration. */
 		copied_input = universe_input;
 		copied_input.parameters.level = 1;
 		struct pg_synthesis_job *higher_universe = pg_synthesis_rule(&synthesis, &copied_input, &context_job, NULL, NULL);
 		assert(higher_universe && higher_universe != universe_job);
+		assert(synthesis.rule_inputs.count == headers + 1);
 		copied_input.parameters.level = 2;
 		assert(!pg_synthesis_rule(&synthesis, &type_input, &universe_job, &work, other));
 		assert(!pg_synthesis_rule(&synthesis, &universe_input, &context_job, &work, a));
