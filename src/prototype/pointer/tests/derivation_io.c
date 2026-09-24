@@ -336,7 +336,7 @@ static void write_proofs(FILE *file, struct pg_typing *typing)
 	const struct pg_evidence *context = pg_prove_context_extension(typing, ca, b,
 		pg_prove_universe(typing, ca, 0));
 	const struct pg_object *types[] = {a, b};
-	const struct pg_evidence *roots[29];
+	const struct pg_evidence *roots[31];
 	const struct pg_evidence *under_lambda = NULL;
 	for (size_t i = 0; i < 2; ++i) {
 		const struct pg_evidence *domain = pg_prove_variable(typing, context, types[i]);
@@ -494,8 +494,16 @@ static void write_proofs(FILE *file, struct pg_typing *typing)
 		pg_prove_variable(typing, mc, a), pg_prove_variable(typing, mc, b)};
 	roots[28] = pg_prove_substitution(typing, context, mc, 2, images);
 	assert(roots[27] != roots[28] && pg_evidence_context_map(roots[27]) == pg_evidence_context_map(roots[28]));
-	for (size_t i = 0; i < 29; ++i) assert(roots[i]);
-	assert(pg_derivations_write(file, 29, roots, name, typing->graph) == 0);
+	const struct pg_evidence *prefix_map = pg_prove_substitution_projection(typing, ca, context);
+	const struct pg_evidence *alternate_images[] = {
+		pg_prove_type_value(typing, pg_prove_value_type(typing, images[0])), images[1]};
+	roots[29] = pg_prove_substitution_compose(typing, prefix_map, roots[28]);
+	roots[30] = pg_prove_substitution_compose(typing, prefix_map,
+		pg_prove_substitution(typing, context, mc, 2, alternate_images));
+	assert(pg_substitution_image_at(typing, roots[30], 0) == alternate_images[0]);
+	assert(roots[29] != roots[30] && pg_evidence_context_map(roots[29]) == pg_evidence_context_map(roots[30]));
+	for (size_t i = 0; i < 31; ++i) assert(roots[i]);
+	assert(pg_derivations_write(file, 31, roots, name, typing->graph) == 0);
 	pg_conversion_destroy(&conversion);
 	pg_whnf_work_destroy(&work);
 }
@@ -523,14 +531,14 @@ static void read_proofs(FILE *file, struct pg_typing *typing, uint64_t chunk)
 	size_t count;
 	const struct pg_derivation_input *const *roots;
 	assert(pg_derivations_read(file, typing, 1000, 100, resolve, typing->graph, &count, &roots) == 0);
-	assert(count == 29 && roots[0] == roots[2] && roots[0] != roots[1]);
+	assert(count == 31 && roots[0] == roots[2] && roots[0] != roots[1]);
 	assert(roots[27]->count == 2 && roots[28]->count == 5);
 	assert(typing->proofs.count == 0);
 	struct pg_whnf_work work;
 	assert(pg_whnf_work_init(&work, typing->graph) == 0);
 	struct pg_synthesis synthesis;
 	assert(pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
-	struct pg_synthesis_job *jobs[29];
+	struct pg_synthesis_job *jobs[31];
 	for (size_t i = 0; i < count; ++i) {
 		jobs[i] = pg_synthesis_derivation(&synthesis, roots[i]);
 		assert(jobs[i] && pg_synthesis_status(jobs[i]) == PG_SYNTHESIS_PENDING);
@@ -555,6 +563,9 @@ static void read_proofs(FILE *file, struct pg_typing *typing, uint64_t chunk)
 	assert(pg_evidence_context_map(projection_map)->count == 2);
 	for (size_t i = 0; i < 2; ++i)
 		assert(pg_substitution_image_at(typing, projection_map, i) == pg_substitution_image_at(typing, explicit_map, i));
+	const struct pg_evidence *prefix_map = pg_synthesis_result(jobs[29]), *alternate_prefix = pg_synthesis_result(jobs[30]);
+	assert(prefix_map != alternate_prefix && pg_evidence_context_map(prefix_map) == pg_evidence_context_map(alternate_prefix));
+	assert(pg_substitution_image_at(typing, prefix_map, 0) != pg_substitution_image_at(typing, alternate_prefix, 0));
 	assert(pg_synthesis_status(consumer) == PG_SYNTHESIS_DONE);
 	assert(pg_synthesis_result(consumer) == pg_synthesis_result(jobs[6]));
 	assert(pg_synthesis_status(expect) == PG_SYNTHESIS_REJECTED && !pg_synthesis_result(expect));

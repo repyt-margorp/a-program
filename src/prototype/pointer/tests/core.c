@@ -2384,8 +2384,49 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(explicit_composite && explicit_composite != direct_projection);
 	assert(pg_evidence_context_map(explicit_composite) == pg_evidence_context_map(direct_projection));
 	reconstruct_derivation(&typing, explicit_composite);
+	/* Restriction uses the supplied image receipt, not another derivation of
+	 * the same occurrence found by a structural lookup. */
+	const struct pg_evidence *alternate_prefix = pg_prove_substitution(&typing,
+		a_scope, destination, 1, &alternate_b);
+	assert(alternate_prefix);
+	composition_actions = typing.occurrence_actions.count;
+	composition_proofs = typing.proofs.count;
+	assert(pg_prove_substitution_compose(&typing, inner_projection, alternate) == alternate_prefix);
+	assert(typing.occurrence_actions.count == composition_actions && typing.proofs.count == composition_proofs);
+	assert(pg_substitution_image_at(&typing, alternate_prefix, 0) == alternate_b);
+	reconstruct_derivation(&typing, alternate_prefix);
+	const struct pg_evidence *nested_alternate = pg_prove_substitution_pair(&typing,
+		alternate_prefix, source, destination_y);
+	assert(nested_alternate && pg_evidence_context_map(nested_alternate) == map);
+	assert(pg_prove_substitution_compose(&typing, inner_projection, nested_alternate) == alternate_prefix);
+	assert(pg_prove_substitution_compose(&typing,
+		pg_prove_substitution_projection(&typing, source, source), alternate) == alternate);
+	assert(pg_prove_substitution_compose(&typing,
+		pg_prove_substitution_projection(&typing, empty, source), alternate) == closed);
+	assert(!pg_prove_substitution_compose(&typing, NULL, alternate));
+	assert(!pg_prove_substitution_compose(&typing, inner_projection, NULL));
+	assert(!pg_prove_substitution_compose(&typing, source, alternate));
+	assert(!pg_prove_substitution_compose(&typing, inner_projection, destination));
+	struct pg_typing foreign_typing;
+	assert(!pg_typing_init(&foreign_typing, graph));
+	assert(!pg_prove_substitution_compose(&foreign_typing, inner_projection, alternate));
+	pg_typing_destroy(&foreign_typing);
 	const struct pg_evidence *lifted = pg_prove_substitution_lift(&typing, sigma, source_extension, q);
 	assert(lifted && pg_evidence_context(lifted)->declared_type == pg_reference(graph, b));
+	const struct pg_evidence *lifted_alternate = pg_prove_substitution_lift(&typing, nested_alternate, source_extension, q);
+	const struct pg_evidence *lifted_b = pg_prove_projection(&typing,
+		pg_evidence_premise(lifted_alternate, 1), alternate_b);
+	const struct pg_evidence *lifted_prefix = pg_prove_substitution(&typing, a_scope,
+		pg_evidence_premise(lifted_alternate, 1), 1, &lifted_b);
+	assert(lifted_alternate && lifted_prefix);
+	assert(pg_prove_substitution_compose(&typing, direct_projection, lifted_alternate) == lifted_prefix);
+	composition_actions = typing.occurrence_actions.count;
+	composition_proofs = typing.proofs.count;
+	for (size_t repeat = 0; repeat < 16; ++repeat) {
+		assert(pg_prove_substitution_compose(&typing, inner_projection, alternate) == alternate_prefix);
+		assert(pg_prove_substitution_compose(&typing, direct_projection, lifted_alternate) == lifted_prefix);
+	}
+	assert(typing.occurrence_actions.count == composition_actions && typing.proofs.count == composition_proofs);
 	const struct pg_evidence *source_p = pg_prove_variable(&typing, source_extension, p);
 	const struct pg_evidence *lifted_p = pg_prove_reindex(&typing, lifted, source_p);
 	assert(lifted_p && pg_evidence_subject(lifted_p)->core == pg_reference(graph, q));

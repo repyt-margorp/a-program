@@ -7363,11 +7363,8 @@ static int family_paths(struct pg_synthesis *synthesis, struct pg_synthesis_job 
 		}
 		for (size_t side = 0; side < 2; ++side) {
 			const struct pg_evidence *map = job->inputs[side];
-			struct pg_graph temporary = {0};
-			const struct pg_evidence *const *images = pg_substitution_images(synthesis->typing, map, &temporary);
-			state->maps[side] = pg_prove_substitution(synthesis->typing, prefix,
-				pg_evidence_premise(map, 1), state->common, images);
-			pg_graph_destroy(&temporary);
+			state->maps[side] = pg_prove_substitution_compose(synthesis->typing,
+				pg_prove_substitution_projection(synthesis->typing, prefix, pg_evidence_premise(map, 0)), map);
 		}
 		if (!state->maps[0] || !state->maps[1]) goto rejected;
 	}
@@ -7872,11 +7869,8 @@ static struct transport_scope *transport_scope_start(struct pg_typing *typing,
 		if (count > arity) return NULL;
 		for (size_t i = count; i; --i, source = pg_evidence_premise(source, 0))
 			work->extensions[i - 1] = source;
-		struct pg_graph temporary = {0};
-		const struct pg_evidence *const *images = pg_substitution_images(typing, ls, &temporary);
-		const struct pg_evidence *map = pg_prove_substitution(typing, source, pg_evidence_premise(ls, 1),
-			arity - count, images);
-		pg_graph_destroy(&temporary);
+		const struct pg_evidence *map = pg_prove_substitution_compose(typing,
+			pg_prove_substitution_projection(typing, source, pg_evidence_premise(ls, 0)), ls);
 		work->query = pg_substitution_rebase_request(typing, context, map);
 	} else {
 		work->map = pg_prove_substitution_projection(typing, context, context);

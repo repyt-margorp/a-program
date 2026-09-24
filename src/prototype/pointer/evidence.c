@@ -1994,14 +1994,9 @@ static const struct pg_evidence *constructor_in_scope(struct pg_typing *typing,
 	size_t prefix = pg_evidence_context_map(parameters)->count;
 	size_t total = pg_evidence_context_map(map)->count;
 	if (total <= prefix) return NULL;
-	const struct pg_evidence *context = map->premises[1];
-	struct pg_graph temporary = {0};
-	const struct pg_evidence *const *images = pg_substitution_images(typing, map, &temporary);
-	const struct pg_evidence *arguments = pg_prove_substitution(typing,
-		parameters->premises[0], context, prefix, images);
-	const struct pg_evidence *result = pg_prove_constructor_instance(typing, formation, constructor, arguments, map);
-	pg_graph_destroy(&temporary);
-	return result;
+	const struct pg_evidence *arguments = pg_prove_substitution_compose(typing,
+		pg_prove_substitution_projection(typing, parameters->premises[0], map->premises[0]), map);
+	return pg_prove_constructor_instance(typing, formation, constructor, arguments, map);
 }
 
 const struct pg_evidence *pg_prove_constructor_function(struct pg_typing *typing,
@@ -4676,7 +4671,11 @@ const struct pg_evidence *pg_prove_substitution_compose(struct pg_typing *typing
 	const struct pg_evidence **images = malloc(count * sizeof(*images));
 	const struct pg_evidence *result = NULL;
 	if (count && !images) goto done;
-	for (size_t i = 0; i < count; ++i) {
+	/* Restrict a checked map by reading its retained image receipts. Acting on
+	 * fresh variables would discard alternative proofs of those same images. */
+	if (first->premise_count == 2) {
+		if (substitution_image_range(typing, second, 0, count, images)) goto done;
+	} else for (size_t i = 0; i < count; ++i) {
 		struct pg_occurrence_action *action = pg_occurrence_action_request(typing,
 			pg_evidence_context_map(second), pg_evidence_context_map(first)->images[i]);
 		while (pg_occurrence_action_advance(action, UINT64_MAX) == PG_SUBSTITUTION_PENDING) {}
