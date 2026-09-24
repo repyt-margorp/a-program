@@ -266,6 +266,15 @@ static void graph_test(struct pg_graph *graph)
 static const struct pg_dimension_map *maps[128];
 static size_t map_count;
 
+static size_t free_wait_count(const struct pg_typing *typing)
+{
+	size_t count = 0;
+	for (const struct pg_typing_wait *frame = typing->free_waits; frame; frame = frame->parent) {
+		assert(!frame->work && ++count < 100000);
+	}
+	return count;
+}
+
 static void context_test(struct pg_graph *graph)
 {
 	struct pg_typing typing;
@@ -435,17 +444,36 @@ static void context_test(struct pg_graph *graph)
 		assert(typing.occurrence_inputs.count == requests + 1);
 		/* Finish a shared dependency separately while the outer query waits. */
 		struct pg_occurrence_input *shared = pg_occurrence_input_request(&typing, deep->origin, 0);
-		while (pg_occurrence_input_advance(shared, budget) == PG_INPUT_PENDING) {}
+		if (budget == 1) {
+			while (pg_occurrence_input_advance(shared, budget) == PG_INPUT_PENDING) {}
+		} else {
+			/* The dependency's own suspended stack must also be released when
+			 * the outer caller finishes it. Its frames are not the caller's. */
+			assert(pg_occurrence_input_advance(shared, 1) == PG_INPUT_PENDING);
+		}
 		while (pg_occurrence_input_advance(input, budget) == PG_INPUT_PENDING) {}
 		assert(pg_occurrence_input_result(input) == typed_a);
 		assert(pg_occurrence_input_steps(shared) <= 40002);
-		assert(pg_occurrence_input_steps(input) <= 5);
+		if (budget == 1) assert(pg_occurrence_input_steps(input) <= 5);
+		assert(free_wait_count(&typing) == 10000 + (budget != 1));
+		struct pg_typing_wait *free_waits = typing.free_waits;
+		assert(pg_occurrence_input_advance(shared, 0) == PG_INPUT_READY);
+		assert(typing.free_waits == free_waits);
 		uint64_t steps = pg_occurrence_input_steps(input);
 		requests = typing.occurrence_inputs.count;
 		assert(pg_occurrence_input_request(&typing, deep, 0) == input);
 		assert(pg_occurrence_input_advance(input, 100000) == PG_INPUT_READY);
 		assert(pg_occurrence_input_steps(input) == steps && typing.occurrence_inputs.count == requests);
 	}
+	/* Unavailable selections release the same scratch frames as successes. */
+	size_t free_before = free_wait_count(&typing);
+	deep = pg_occurrence_selected(&typing, parent, 1, NULL, PG_JUDGEMENT_VALUE, vx, a);
+	for (size_t i = 0; i < 32; ++i)
+		deep = pg_occurrence_selected(&typing, deep, 0, NULL, PG_JUDGEMENT_VALUE, vx, a);
+	input = pg_occurrence_input_request(&typing, deep, 0);
+	while (pg_occurrence_input_advance(input, 1) == PG_INPUT_PENDING) {}
+	assert(pg_occurrence_input_advance(input, 0) == PG_INPUT_UNAVAILABLE);
+	assert(!pg_occurrence_input_result(input) && free_wait_count(&typing) == free_before);
 	assert(!typing.proofs.count && !typing.substitutions.jobs.count && typing.occurrence_actions.count == 1);
 	pg_typing_destroy(&typing);
 	puts("typing inputs: persistent contexts and distinct occurrences over shared Core passed");
@@ -2069,13 +2097,17 @@ static void typed_substitution_test(struct pg_graph *graph)
 		assert(origin && inner_origin && !pg_typed_query_advance(origin, 0));
 		assert(!pg_construction_origin_environment(origin));
 		assert(pg_construction_origin_request(&typing, alternate_return) == inner_origin);
+		assert(!pg_typed_query_advance(inner_origin, 1));
 		uint64_t steps = 0;
 		while (!pg_typed_query_advance(origin, 1)) {
 			assert(pg_typed_query_steps(origin) == ++steps);
 			assert(steps < 100);
 		}
 		assert(pg_typed_query_result(origin) == returned);
+		struct pg_typing_wait *free_waits = typing.free_waits;
+		assert(free_wait_count(&typing));
 		assert(pg_typed_query_advance(inner_origin, 0) == 1);
+		assert(typing.free_waits == free_waits);
 		assert(pg_typed_query_result(inner_origin) == returned);
 		assert(pg_evidence_context_map(pg_construction_origin_environment(origin)) == pg_evidence_context_map(extended_map));
 		assert(pg_evidence_context_map(pg_construction_origin_environment(inner_origin)) == map);
@@ -2772,8 +2804,16 @@ static void family_instance_test(struct pg_graph *graph)
 	size_t before_steps = graph->terms.count;
 	assert(nested_work && pg_context_lift_advance(nested_work, 0) == PG_SUBSTITUTION_PENDING);
 	assert(graph->terms.count == before_steps && !pg_context_lift_steps(nested_work));
+	size_t free_before = free_wait_count(&typing);
+	struct pg_context_lift *inner_work = pg_context_lift_request(&typing, prefix_map,
+		pg_evidence_context(family_scope), f);
+	assert(pg_context_lift_advance(inner_work, 1) == PG_SUBSTITUTION_PENDING);
 	while (pg_context_lift_advance(nested_work, 1) == PG_SUBSTITUTION_PENDING)
 		assert(pg_context_lift_steps(nested_work) < 1000);
+	assert(free_wait_count(&typing) == (free_before > 3 ? free_before : 3));
+	struct pg_typing_wait *free_waits = typing.free_waits;
+	assert(pg_context_lift_advance(inner_work, 0) == PG_SUBSTITUTION_DONE);
+	assert(typing.free_waits == free_waits);
 	const struct pg_context_map *nested_lift = pg_context_lift_result(nested_work);
 	assert(nested_lift && typing.proofs.count == evidence_before_lift);
 	const struct pg_context *nested = nested_lift->destination->indices;

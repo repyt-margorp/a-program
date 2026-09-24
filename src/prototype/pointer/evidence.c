@@ -595,11 +595,6 @@ static const struct pg_occurrence *returned_computation(const struct pg_occurren
 		input->core == subject->core->as.application.argument ? input : NULL;
 }
 
-struct typed_query_wait {
-	struct pg_typed_query *work;
-	struct typed_query_wait *parent;
-};
-
 enum typed_query_kind { TYPED_BODY, TYPED_INPUT, TYPED_HEAD, TYPED_ELIMINATION, TYPED_ORIGIN, TYPED_CLASSIFIER, TYPED_REBASE, TYPED_MAP_REBASE, TYPED_INDUCTIVE, TYPED_SELECTION, TYPED_PHASE };
 enum typed_query_resume { TYPED_RESUME_NONE, TYPED_RESUME_BODY, TYPED_RESUME_INPUT, TYPED_RESUME_PHASE,
 	TYPED_RESUME_SELECTION, TYPED_RESUME_SELECTED_INPUT, TYPED_RESUME_SCOPE_IMAGE };
@@ -684,7 +679,7 @@ struct pg_typed_query {
 	enum typed_query_resume resume;
 	int status;
 	struct pg_typed_query *dependency;
-	struct typed_query_wait *waiting;
+	struct pg_typing_wait *waiting;
 	struct pg_occurrence_input *input;
 	struct pg_context_lift *lift;
 	struct pg_occurrence_action *action;
@@ -1417,14 +1412,14 @@ int pg_typed_query_advance(struct pg_typed_query *work, uint64_t budget)
 					pg_prove_structural_subject(current->typing, current->source), NULL);
 		}
 		if (current->status) {
-			if (work->waiting) work->waiting = work->waiting->parent;
+			pg_typing_wait_clear(work->typing, &current->waiting);
+			pg_typing_wait_pop(work->typing, &work->waiting);
 		} else if (current->dependency && !current->dependency->status) {
-			struct typed_query_wait *frame = pg_alloc(work->typing->graph, sizeof(*frame));
-			if (!frame) { work->status = -1; break; }
-			*frame = (struct typed_query_wait){current->dependency, work->waiting};
-			work->waiting = frame;
+			if (pg_typing_wait_push(work->typing, &work->waiting, current->dependency))
+				work->status = -1;
 		}
 	}
+	if (work->status) pg_typing_wait_clear(work->typing, &work->waiting);
 	return work->status;
 }
 

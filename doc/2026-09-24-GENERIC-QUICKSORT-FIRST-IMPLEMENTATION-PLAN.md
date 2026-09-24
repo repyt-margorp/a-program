@@ -1,7 +1,7 @@
 # Generic QuickSort First: Implementation and Refactor Resume
 
 Date: 2026-09-24
-Status: Q0-Q3 published; Q4 authority/#32 open; #33 audit verified; #34 closed
+Status: Q0-Q3 published; Q4 authority/#32 open; #33/#34 closed
 Planning baseline local revision: `0446d4eef364c78b41e07b03e53179ee4f999b18`
 Remote Main at review: `a72cda371109fdbf84d747456ed0aeb09af2391e`
 Published Q3 Main/rewrite revision: `c2ed4a75064792975f2f6637b207c1801b848e8c`
@@ -256,7 +256,8 @@ audit fixtures and the complete generic proof, not only harness code.
   generic proof gate. Do not delete global `*f`, termination rules or primitive
   `LT.lift` while #31 depends on their present contracts. Retain open Issues
   until their individual evidence and acceptance criteria justify closure.
-  The #34 experiment now passes all of its gates below; #32/#33 remain open.
+  The #33 boundary audit and #34 experiment are published and closed; #32
+  remains open. Their historical checkpoints below preserve the earlier state.
 - [ ] Keep the parent's final acceptance, performance and net-negative source
   delta gates open until measured on the finished refactor. A successful #31
   milestone is not completion of that separate work.
@@ -2985,6 +2986,77 @@ Compiler implementation delta is zero in this stage; tests, their existing
 runner registration and documentation constitute this publication epoch.
 A3-A5/R2-R5 and the cumulative net-negative
 implementation gate remain open.
+
+### A4/R5: Reuse Typed Traversal Frames
+
+Baseline: `ac0dd32` (Main). The termination boundary audit is already complete;
+this is scratch-storage consolidation, not a new `Terminates` introduction or
+a convergence theorem. No totality/effect rule or proof authority changes.
+
+`pg_typed_query_advance`, `pg_context_lift_advance` and
+`pg_occurrence_input_advance` allocated the same two-pointer waiting frame on
+every descent, then lost its address on pop until graph destruction. Replace
+the three layouts/allocation paths with one typing-local free list and shared
+push/pop/clear operations. Each caller still owns its traversal path. Do not
+put an intrusive parent link in the shared query: different callers can wait
+on it simultaneously. Completing a shared dependency also releases its own
+previously suspended path, without releasing another caller's frames.
+
+The pool contains no accepted evidence, classifier or answer. Semantic queries
+retain their existing keys, states, rule-specific steps and results. Core
+remains Lambda/Application/Reference. Source/retained image formats do not
+encode these private cursor links and are unchanged. Pool blocks have the
+same graph lifetime as the old frames; typing destruction drops the pool.
+Cleanup is linear in the released path, not a new wall-clock fuel guarantee.
+
+GDB allocation counters and main graph arena snapshots, same inputs:
+
+| Input | Frame allocations before/after | Arena used bytes before/after | Solve steps |
+| --- | ---: | ---: | ---: |
+| `length-output-proof.p` | 379 / 6 | 2,740,656 / 2,734,688 | 8,115 |
+| `function-graph-function-field.p` | 495 / 7 | 4,341,008 / 4,333,200 | 10,707 |
+| Generic Sorted with frozen provider | 13,936 / 32 | 184,513,616 / 184,291,152 | 603,123 |
+
+Terms, Contexts, occurrences, accepted proofs and typed-query counts are
+unchanged on all three inputs. Generic Sorted has 583,740 / 18,265 / 427,853 /
+205,291 / 26,633 respectively. Its 222,464-byte saving is about 0.12% of the
+main arena: this is not a major memory or compilation-speed improvement.
+
+Sequential alternating strict-O2 measurements (11 runs, one warm-up per
+binary/input) give median milliseconds before/after: length 7.08/7.89,
+function-field 10.58/9.77, generic Sorted 799.20/816.43. A separate 21-run
+alternating generic comparison gives 801.20/804.67. These mixed/noisy timings
+do not establish a speedup; the work-count invariants are separate evidence.
+Baseline compiler C/header inputs were compared with Main before binary reuse.
+Logs: `/tmp/a-program-typed-wait-{profile,bench,bench-repeat}.log`.
+
+- [x] Replace the three scratch-frame implementations without a new scheduler.
+- [x] Extend existing Core tests: 10,000 nested selections, chunks 1/64,
+  dependency completion from either caller, zero-budget completed queries,
+  unavailable selections, nested family lifts and typed-origin dependencies.
+  Check recycled frame counts as well as unchanged semantic results/reuse.
+- [x] Full optimized acceptance and focused Debug/ASan/UBSan verification.
+- [x] Cross-build source/retained image and inert-resave verification.
+- [ ] Review and publish the isolated patch to Main, excluding unrelated work.
+
+Full strict-O2 `check-acceptance` passes in 613.176 seconds, including 63/63
+compatibility and all four LT-provider/partition-order combinations. Strict
+Debug and ASan/UBSan Core, `derivation_io.sh` and `source_io.sh` pass (leak and
+undefined-behavior failures enabled). These focused sanitizer checks are not
+a claim that the entire acceptance suite ran under sanitizers.
+
+Cross-build validation ran 240 CLI invocations: both binaries write and read
+length, function-field, generic Sorted and wrong-IH fixtures at 0/100/completed
+steps in ordinary/retained modes. All inert resaves are byte-identical; both
+readers give identical statuses and step counts for each saved input. Separately,
+the two full acceptance logs have the same 325 status names; two retained
+negative cases differ by one step, so full-suite step identity is not claimed.
+Logs: `/tmp/a-program-typed-wait-{acceptance,focused,cross-image}.log`.
+
+Current implementation delta: `evidence.c` +6/-11, `typing.c` +37/-19,
+`typing.h` +11/-0, total +54/-30 (net +24). Core tests +42/-2 (net +40).
+This removes duplicated scratch machinery but does not satisfy the original
+cumulative net-negative implementation gate. A3-A5/R2-R5 and #32 remain open.
 
 ## Change Log
 

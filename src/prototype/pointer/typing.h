@@ -66,6 +66,13 @@ struct pg_context_map {
 	const struct pg_occurrence *images[];
 };
 
+/* Private traversal cursors, never typed structure or evidence. Each stack
+ * owns its frames exclusively; popped frames return to the typing-local pool. */
+struct pg_typing_wait {
+	void *work;
+	struct pg_typing_wait *parent;
+};
+
 struct pg_typing {
 	struct pg_graph *graph;
 	/* Fresh arena-owned identity per initialization, never a reusable address
@@ -88,10 +95,14 @@ struct pg_typing {
 	struct pg_index evidence_conclusions;
 	/* Computation work, not an additional source of typing evidence. */
 	struct pg_substitution_work substitutions;
+	struct pg_typing_wait *free_waits;
 };
 
 int pg_typing_init(struct pg_typing *typing, struct pg_graph *graph);
 void pg_typing_destroy(struct pg_typing *typing);
+int pg_typing_wait_push(struct pg_typing *typing, struct pg_typing_wait **stack, void *work);
+void pg_typing_wait_pop(struct pg_typing *typing, struct pg_typing_wait **stack);
+void pg_typing_wait_clear(struct pg_typing *typing, struct pg_typing_wait **stack);
 /* NULL is the empty context. Binder freshness is a scope-construction duty;
  * this operation records a declaration, not its well-formedness proof. */
 const struct pg_context *pg_context_bind(struct pg_typing *typing,

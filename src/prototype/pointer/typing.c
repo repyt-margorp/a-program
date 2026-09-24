@@ -48,6 +48,31 @@ void pg_typing_destroy(struct pg_typing *typing)
 	memset(typing, 0, sizeof(*typing));
 }
 
+int pg_typing_wait_push(struct pg_typing *typing, struct pg_typing_wait **stack, void *work)
+{
+	struct pg_typing_wait *frame = typing->free_waits;
+	if (frame) typing->free_waits = frame->parent;
+	else frame = pg_alloc(typing->graph, sizeof(*frame));
+	if (!frame) return -1;
+	*frame = (struct pg_typing_wait){work, *stack};
+	*stack = frame;
+	return 0;
+}
+
+void pg_typing_wait_pop(struct pg_typing *typing, struct pg_typing_wait **stack)
+{
+	struct pg_typing_wait *frame = *stack;
+	if (!frame) return;
+	*stack = frame->parent;
+	*frame = (struct pg_typing_wait){NULL, typing->free_waits};
+	typing->free_waits = frame;
+}
+
+void pg_typing_wait_clear(struct pg_typing *typing, struct pg_typing_wait **stack)
+{
+	while (*stack) pg_typing_wait_pop(typing, stack);
+}
+
 static uint64_t context_hash(const struct pg_context *parent,
 	const struct pg_object *binder, const struct pg_term *declared_type)
 {
@@ -462,8 +487,6 @@ const struct pg_context_map *pg_context_map_extend(struct pg_typing *typing,
 	return result;
 }
 
-struct lift_wait { struct pg_context_lift *work; struct lift_wait *parent; };
-
 struct pg_context_lift {
 	struct pg_index_entry index;
 	struct pg_typing *typing;
@@ -475,7 +498,7 @@ struct pg_context_lift {
 	size_t count, next;
 	struct pg_context_lift *child;
 	struct pg_substitution *substitution;
-	struct lift_wait *waiting;
+	struct pg_typing_wait *waiting;
 	enum pg_substitution_status status;
 	uint64_t steps;
 };
@@ -565,14 +588,14 @@ enum pg_substitution_status pg_context_lift_advance(struct pg_context_lift *work
 			current->status = context_lift_step(current);
 		}
 		if (current->status != PG_SUBSTITUTION_PENDING) {
-			if (work->waiting) work->waiting = work->waiting->parent;
+			pg_typing_wait_clear(work->typing, &current->waiting);
+			pg_typing_wait_pop(work->typing, &work->waiting);
 		} else if (current->child && current->child->status == PG_SUBSTITUTION_PENDING) {
-			struct lift_wait *wait = pg_alloc(work->typing->graph, sizeof(*wait));
-			if (!wait) { work->status = PG_SUBSTITUTION_ERROR; break; }
-			*wait = (struct lift_wait){current->child, work->waiting};
-			work->waiting = wait;
+			if (pg_typing_wait_push(work->typing, &work->waiting, current->child))
+				work->status = PG_SUBSTITUTION_ERROR;
 		}
 	}
+	if (work->status != PG_SUBSTITUTION_PENDING) pg_typing_wait_clear(work->typing, &work->waiting);
 	return work->status;
 }
 
@@ -776,11 +799,6 @@ struct input_map {
 	struct input_map *next;
 };
 
-struct input_wait {
-	struct pg_occurrence_input *work;
-	struct input_wait *parent;
-};
-
 struct input_scope {
 	const struct pg_context *context;
 	struct input_scope *next;
@@ -796,7 +814,7 @@ struct pg_occurrence_input {
 	struct pg_occurrence_action *action;
 	struct pg_context_lift *lift;
 	struct pg_occurrence_input *selected;
-	struct input_wait *waiting;
+	struct pg_typing_wait *waiting;
 	struct input_scope *scopes;
 	const struct pg_context_map *effective;
 	uint64_t steps;
@@ -1035,14 +1053,14 @@ enum pg_occurrence_input_status pg_occurrence_input_advance(struct pg_occurrence
 		/* Shared dependencies can also finish through another caller. Resume
 		 * their parent without recursive advancement or restarting the query. */
 		if (current->status != PG_INPUT_PENDING) {
-			if (work->waiting) work->waiting = work->waiting->parent;
+			pg_typing_wait_clear(work->typing, &current->waiting);
+			pg_typing_wait_pop(work->typing, &work->waiting);
 		} else if (current->selected && current->selected->status == PG_INPUT_PENDING) {
-			struct input_wait *frame = pg_alloc(work->typing->graph, sizeof(*frame));
-			if (!frame) { work->status = PG_INPUT_ERROR; break; }
-			*frame = (struct input_wait){current->selected, work->waiting};
-			work->waiting = frame;
+			if (pg_typing_wait_push(work->typing, &work->waiting, current->selected))
+				work->status = PG_INPUT_ERROR;
 		}
 	}
+	if (work->status != PG_INPUT_PENDING) pg_typing_wait_clear(work->typing, &work->waiting);
 	return work->status;
 }
 
