@@ -1742,6 +1742,121 @@ Any replacement must retain alternate proof premises, pending-work budgets,
 Core/typed separation and the original A3-A5/R2-R5 acceptance gates. Those
 gates, including the cumulative net-negative source requirement, remain open.
 
+### Q4: Constructor Introduction from Its Checked Instance
+
+Baseline `ade6190`. `derivation.c:PG_CONSTRUCTOR_INTRO` receives an accepted
+instance map but expands its images and calls `pg_prove_constructor` to build
+the map again. `synthesis.c:constructor_value_step` similarly has a checked
+field-scope map before doing this round trip. The previous field-array cleanup
+removed a different copy, from field proofs to occurrence operands; it did not
+remove these reconstruction paths.
+
+The common introduction rule should consume the supplied checked map. Its
+existence alone is insufficient: a schema's Self variable can denote another
+well-formed type. For parameter substitution `sigma` and field substitution
+`tau`, check the exact constructor/schema field telescope and destination,
+`tau`'s parameter prefix against `sigma`, and `tau(Self)` against the admitted
+family instantiated by `sigma`. Only then derive the result indices using the
+existing schema result map and retain `tau` as the constructor premise. No
+new Core node, equality rule or acceptance table is needed.
+
+- [x] Add a failing-before regression: two accepted derivations of the same
+  instance map must both be usable without replacing the caller's premise.
+- [x] Route array-based source construction and already-checked instance
+  consumers through one constructor introduction implementation. Delete the
+  instance-to-fields-to-instance round trip, not the dependent-field checks.
+- [x] Reject a wrong Self image even if the instance map is independently
+  well-typed; also reject a wrong parameter prefix, telescope, constructor,
+  destination, foreign owner and mismatched result formation. Cover nullary,
+  recursive and dependent/indexed constructors and alternative premises.
+- [x] Check ordinary/retained images, repeat requests, pending budgets, full
+  acceptance and sanitizer gates. Compare counts, timing and per-file deltas
+  before publication. Do not claim a speedup from deleting an array alone.
+
+The failing-before Acc test flattens an accepted substitution proof, verifies
+that both proofs name the same Context map, and supplies the alternate proof
+to `PG_CONSTRUCTOR_INTRO`. Baseline rejects this valid retained premise;
+`pg_prove_constructor_instance` accepts and retains it. The array-based API
+only assembles its checked instance before entering the same introduction
+implementation. Derivation readback, source constructor wrappers and motive
+scope construction consume their existing instances directly.
+
+Kernel boundary tests explicitly construct well-typed wrong-Self and
+wrong-parameter substitutions; these are rejected, as are wrong telescope,
+nominal constructor, destination, owner and result formation. Existing Acc
+coverage checks indexed function fields and dependent motives. Repeated
+direct and chunk-1/64 Solve requests preserve exact evidence and allocate no
+new Core nodes or proof records. The nominal derivation IO fixture retains
+two different proofs of the same constructor occurrence across write/read
+and both Solve budgets. No wire tag or format version changes.
+
+The new parameter-boundary fixture initially used a test helper that only
+constructs one-image maps for a two-binding telescope. That fixture failed
+before reaching the new check; replacing it with the existing identity
+projection corrected the setup. This is not a compiler regression. Keep the
+initial full-run log distinct from the subsequent complete acceptance run.
+
+The source generic Sorted audit has unchanged 619,092 Solve steps and 593,486
+Core nodes. Accepted proofs fall from 216,679 to 215,602 and Context maps from
+43,378 to 42,884; occurrences increase from 434,502 to 434,637. Main arena used
+bytes fall from 216,497,088 to 216,356,352; substitution storage changes from
+25,426,752 to 25,430,592. These are allocation counts, not process memory or a
+speed claim. The profile is `/tmp/a-program-constructor-instance-storage.log`;
+leak checking is disabled only for GDB, not standalone acceptance tests.
+
+This removes the demonstrated reconstruction, not all remaining prefix
+assembly. In particular `constructor_in_scope` still obtains parameter images
+from its map. Q4 and the original cumulative source/performance gates remain
+open; do not add a new cache or equate distinct proof histories to close them.
+
+Full `check-acceptance` passes in strict C11 debug (`-O0 -g`), O2 and
+ASan/UBSan (`-O1 -g`, non-PIE) builds. The final logs are
+`/tmp/a-program-constructor-instance-{debug,sanitize}-acceptance.log` and
+`/tmp/a-program-constructor-instance-opt-acceptance-final.log`; none contains
+sanitizer diagnostics. The earlier O2 log retains the fixture setup failure
+described above and is not the successful final run.
+
+Seven alternating fresh-process pairs, one warmup per version, no concurrent
+build/test, strict O2 and a 10,000,000-step ceiling. Entries below are baseline
+`ade6190` / candidate medians in milliseconds. Small cases batch 25 processes,
+compatibility QuickSort three, generic Sorted one. All ten seed/retained
+image pairs load successfully in both version directions.
+
+| Input | Source | Seed image | Retained image |
+| --- | ---: | ---: | ---: |
+| Length output proof | 7.297 / 7.029 | 7.447 / 7.077 | 7.333 / 7.705 |
+| Function-field graph | 11.092 / 11.034 | 11.009 / 11.450 | 11.416 / 11.485 |
+| Vec append | 8.811 / 8.945 | 9.126 / 9.091 | 9.602 / 9.642 |
+| Compatibility QuickSort | 161.199 / 156.282 | 157.282 / 155.861 | 170.860 / 163.413 |
+| Generic Sorted | 879.883 / 886.692 | 887.676 / 896.321 | 890.326 / 904.459 |
+
+A separate 31-pair generic trial gives source medians 868.128 / 868.315 ms
+and retained-image medians 871.400 / 874.698 ms. Candidate is slower in 16/31
+source pairs and 19/31 retained pairs. Source ranges are 810.045-896.318 /
+812.882-899.281 ms; retained ranges are 834.977-897.240 / 851.850-905.420 ms.
+Do not claim a speedup or proof of zero regression. This is a checked-input
+correctness/ownership repair, not completion of the overall performance gate.
+Logs: `/tmp/a-program-constructor-instance-{timing,repeat-timing}.log`.
+
+Per-file delta against `ade6190`, excluding this document:
+
+| File under `src/prototype/pointer/` | Added | Deleted | Net |
+| --- | ---: | ---: | ---: |
+| `derivation.c` | 1 | 14 | -13 |
+| `evidence.c` | 51 | 22 | +29 |
+| `evidence.h` | 5 | 0 | +5 |
+| `synthesis.c` | 2 | 5 | -3 |
+| `tests/derivation_io.c` | 17 | 5 | +12 |
+| `tests/iadt.c` | 63 | 0 | +63 |
+
+Implementation/headers: +59/-41, net +18; C tests: +80/-5, net +75.
+Against original R0 `4657cc6`, cumulative implementation C/H remains
++9,722/-5,004, net +4,718; C tests are +9,577/-2,479, net +7,098.
+The net-negative source requirement is still unmet. The unrelated dirty
+telescope-relocation experiment and its tests are excluded from this epoch.
+
+Documentation: this plan adds 115 lines and deletes none (net +115).
+
 ### Q4: Context-map Representation and Projection Composition
 
 At `53ddaa5`, the generic Sorted input retains 43,378 maps and 631,749

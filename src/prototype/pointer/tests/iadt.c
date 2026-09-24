@@ -614,6 +614,22 @@ static void accessibility_elimination(enum pg_totality field_totality)
 	assert(pg_evidence_subject(alternative) == pg_evidence_subject(constructor_value));
 	assert(pg_evidence_premise(alternative, 0) == premises[0]);
 	common_rule(&typing, alternative);
+	/* The checked map is an input, not a request to reconstruct its proof. */
+	struct pg_graph scratch = {0};
+	const struct pg_evidence *mapped_fields = premises[3];
+	const struct pg_evidence *const *images = pg_substitution_images(&typing, mapped_fields, &scratch);
+	const struct pg_evidence *flat = pg_prove_substitution(&typing,
+		pg_evidence_premise(mapped_fields, 0), pg_evidence_premise(mapped_fields, 1),
+		pg_evidence_context_map(mapped_fields)->count, images);
+	assert(flat && flat != mapped_fields && pg_evidence_context_map(flat) == pg_evidence_context_map(mapped_fields));
+	premises[3] = flat;
+	const struct pg_evidence *retained_instance = pg_prove_derivation(&typing, PG_CONSTRUCTOR_INTRO, &retained, 4, premises);
+	assert(retained_instance && retained_instance != alternative);
+	assert(pg_evidence_subject(retained_instance) == pg_evidence_subject(alternative));
+	assert(pg_evidence_premise(retained_instance, 3) == flat);
+	common_rule(&typing, retained_instance);
+	pg_graph_destroy(&scratch);
+	premises[3] = mapped_fields;
 	premises[0] = pg_prove_projection(&typing, field_context, universe);
 	assert(!pg_prove_derivation(&typing, PG_CONSTRUCTOR_INTRO, &retained, 4, premises));
 	const struct pg_evidence *constructor_pattern = pg_prove_inductive_motive_substitution(&typing,
@@ -2155,6 +2171,53 @@ static void schema_positivity(void)
 	const struct pg_data_schema *other_schema = pg_data_schema(&typing, signature, 2, results);
 	const struct pg_evidence *other = pg_prove_inductive_type(&typing, other_schema);
 	assert(other && pg_evidence_subject(other)->core != pg_evidence_subject(nat)->core);
+	{
+		const struct pg_object *constructor = pg_data_constructor(nat_layout, 0);
+		const struct pg_evidence *instance = pg_evidence_premise(zero, 3);
+		assert(pg_prove_constructor_instance(&typing, nat, constructor, identity, instance) == zero);
+		assert(!pg_prove_constructor_instance(&typing, nat, constructor, identity, pg_evidence_premise(succ, 3)));
+		assert(!pg_prove_constructor_instance(&typing, other, constructor, identity, instance));
+		const struct pg_evidence *wrong_self = pg_prove_type_value(&typing, other);
+		const struct pg_evidence *wrong = pg_prove_substitution(&typing, parameters, empty, 1, &wrong_self);
+		assert(wrong && !pg_prove_constructor_instance(&typing, nat, constructor, identity, wrong));
+		const struct pg_evidence *destination = pg_prove_context_extension(&typing, empty, pg_binder(&graph), nat);
+		const struct pg_evidence *scoped = pg_prove_constructor(&typing, nat, constructor,
+			pg_prove_substitution_projection(&typing, empty, destination), 0, NULL);
+		assert(scoped && !pg_prove_constructor_instance(&typing, nat, constructor, identity, pg_evidence_premise(scoped, 3)));
+		struct pg_typing foreign;
+		assert(!pg_typing_init(&foreign, &graph));
+		assert(!pg_prove_constructor_instance(&foreign, nat, constructor, identity, instance));
+		pg_typing_destroy(&foreign);
+		assert(!pg_prove_constructor_instance(&typing, nat, constructor, identity, NULL));
+		assert(!pg_prove_constructor_instance(&typing, nat, constructor, identity, zero));
+		assert(!pg_prove_constructor_instance(&typing, nat, constructor, NULL, instance));
+		assert(!pg_prove_constructor_instance(&typing, NULL, constructor, identity, instance));
+	}
+	{
+		/* Even a well-typed map with the right Self can substitute the wrong
+		 * parameter. A nullary constructor isolates the prefix equation. */
+		const struct pg_evidence *parameter = pg_prove_context_extension(&typing, empty, pg_binder(&graph), nat);
+		const struct pg_evidence *scope = pg_prove_context_extension(&typing, parameter, pg_binder(&graph),
+			pg_prove_projection(&typing, parameter, u));
+		const struct pg_evidence *result = pg_prove_substitution_projection(&typing, scope, scope);
+		const struct pg_data_schema *schema = pg_data_schema(&typing,
+			pg_data_signature(&typing, scope, scope), 1, &result);
+		const struct pg_evidence *formation = pg_prove_inductive_type(&typing, schema);
+		const struct pg_object *constructor = pg_data_constructor(pg_data_schema_layout(schema), 0);
+		const struct pg_evidence *arguments = pg_prove_substitution(&typing, parameter, empty, 1, &zero);
+		const struct pg_evidence *value = pg_prove_constructor(&typing, formation, constructor, arguments, 0, NULL);
+		assert(value);
+		const struct pg_evidence *self_image = pg_prove_type_value(&typing, pg_evidence_premise(value, 0));
+		const struct pg_evidence *images[] = {succ, self_image};
+		const struct pg_evidence *wrong = pg_prove_substitution(&typing, scope, empty, 2, images);
+		assert(wrong && !pg_prove_constructor_instance(&typing, formation, constructor, arguments, wrong));
+		images[0] = zero;
+		const struct pg_evidence *flat = pg_prove_substitution(&typing, scope, empty, 2, images);
+		const struct pg_evidence *accepted = pg_prove_constructor_instance(&typing, formation, constructor, arguments, flat);
+		assert(accepted && pg_evidence_premise(accepted, 3) == flat);
+		assert(pg_evidence_subject(accepted) == pg_evidence_subject(value));
+		common_rule(&typing, accepted);
+	}
 	assert(!pg_prove_constructor(&typing, other, pg_data_constructor(nat_layout, 0), identity, 0, NULL));
 	assert(!pg_prove_constructor(&typing, other,
 		pg_data_constructor(pg_data_schema_layout(other_schema), 1), identity, 1, &zero));

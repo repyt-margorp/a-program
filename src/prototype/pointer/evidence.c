@@ -1782,28 +1782,39 @@ int pg_inductive_instance(struct pg_typing *typing, const struct pg_evidence *ty
 	return result != NULL;
 }
 
-const struct pg_evidence *pg_prove_constructor(struct pg_typing *typing,
-	const struct pg_evidence *formation, const struct pg_object *constructor,
-	const struct pg_evidence *parameters, size_t count,
-	const struct pg_evidence *const *fields)
+static const struct pg_evidence *data_family(struct pg_typing *typing,
+	const struct pg_evidence *formation, const struct pg_evidence *parameters)
 {
 	if (!pg_evidence_owned_by(formation, typing) || formation->rule != PG_INDUCTIVE_FORM) return NULL;
 	if (!pg_evidence_owned_by(parameters, typing) || parameters->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
 	if (pg_evidence_context(parameters->premises[0]) != pg_evidence_context(formation)) return NULL;
+	return pg_prove_reindex(typing, parameters, formation);
+}
+
+static const struct pg_evidence *constructor_instance(struct pg_typing *typing,
+	const struct pg_evidence *formation, const struct pg_object *constructor,
+	const struct pg_evidence *parameters, const struct pg_evidence *instance,
+	const struct pg_evidence *family)
+{
+	if (!family || !pg_evidence_owned_by(instance, typing) || instance->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
 	const struct pg_data_schema *schema = formation->certificate;
-	if (!pg_data_schema_fields(schema, constructor)) return NULL;
-	const struct pg_evidence *family = pg_prove_reindex(typing, parameters, formation);
-	const struct pg_evidence *self = pg_evidence_judgement(formation) == PG_JUDGEMENT_TYPE_FAMILY
-		? family : pg_prove_type_value(typing, family);
-	if (!self) return NULL;
-	const struct pg_evidence *extended = pg_prove_substitution_extend(typing, parameters,
-		formation->premises[0], 1, &self);
-	const struct pg_evidence *instance = pg_data_instance(typing, schema, constructor, extended, count, fields);
-	if (!instance) return NULL;
+	const struct pg_evidence *fields = pg_data_schema_fields(schema, constructor);
+	if (!fields) return NULL;
+	const struct pg_context_map *map = pg_evidence_context_map(instance);
+	const struct pg_context_map *parameter_map = pg_evidence_context_map(parameters);
+	if (map->source != pg_evidence_context(fields) || map->destination != parameter_map->destination) return NULL;
+	size_t prefix = parameter_map->count;
+	if (map->count <= prefix) return NULL;
+	/* A well-typed schema instance may still choose another Self or another
+	 * parameter prefix. Check these equations before using its field evidence. */
+	for (size_t i = 0; i < prefix; ++i)
+		if (pg_alpha_equal(map->images[i]->core, parameter_map->images[i]->core) != 1) return NULL;
+	if (pg_alpha_equal(map->images[prefix]->core, pg_evidence_subject(family)->core) != 1) return NULL;
+	size_t count = map->count - prefix - 1;
 	if (pg_evidence_judgement(formation) == PG_JUDGEMENT_TYPE_FAMILY) {
 		const struct pg_evidence *result_map = pg_data_result(typing, schema, constructor, instance);
 		if (!result_map) return NULL;
-		for (size_t i = pg_evidence_context_map(extended)->count;
+		for (size_t i = prefix + 1;
 			i < pg_evidence_context_map(result_map)->count; ++i) {
 			family = pg_prove_family_application(typing, family,
 				pg_substitution_image_at(typing, result_map, i));
@@ -1816,7 +1827,6 @@ const struct pg_evidence *pg_prove_constructor(struct pg_typing *typing,
 	const struct pg_evidence *existing = find_record(typing, PG_CONSTRUCTOR_INTRO, pg_evidence_context(instance), NULL, 4, premises, constructor, &hash);
 	if (existing) return existing;
 	/* The checked instance already retains the exact field suffix. */
-	const struct pg_context_map *map = pg_evidence_context_map(instance);
 	const struct pg_occurrence *const *operands = map->images + map->count - count;
 	const struct pg_term *core = pg_reference(typing->graph, constructor);
 	for (size_t i = 0; i < count; ++i)
@@ -1826,6 +1836,29 @@ const struct pg_evidence *pg_prove_constructor(struct pg_typing *typing,
 	if (!subject) return NULL;
 	return accept_record(typing, PG_CONSTRUCTOR_INTRO,
 		pg_evidence_context(instance), subject, 4, premises, constructor, NULL);
+}
+
+const struct pg_evidence *pg_prove_constructor_instance(struct pg_typing *typing,
+	const struct pg_evidence *formation, const struct pg_object *constructor,
+	const struct pg_evidence *parameters, const struct pg_evidence *instance)
+{
+	return constructor_instance(typing, formation, constructor, parameters, instance,
+		data_family(typing, formation, parameters));
+}
+
+const struct pg_evidence *pg_prove_constructor(struct pg_typing *typing,
+	const struct pg_evidence *formation, const struct pg_object *constructor,
+	const struct pg_evidence *parameters, size_t count,
+	const struct pg_evidence *const *fields)
+{
+	const struct pg_evidence *family = data_family(typing, formation, parameters);
+	if (!family) return NULL;
+	const struct pg_evidence *self = pg_evidence_judgement(formation) == PG_JUDGEMENT_TYPE_FAMILY
+		? family : pg_prove_type_value(typing, family);
+	const struct pg_evidence *extended = pg_prove_substitution_extend(typing, parameters,
+		formation->premises[0], 1, &self);
+	const struct pg_evidence *instance = pg_data_instance(typing, formation->certificate, constructor, extended, count, fields);
+	return constructor_instance(typing, formation, constructor, parameters, instance, family);
 }
 
 static const struct pg_evidence *lift_scope(struct pg_typing *typing,
@@ -1870,10 +1903,8 @@ static const struct pg_evidence *prove_data_scope(struct pg_typing *typing,
 	const struct pg_evidence *fields, const struct pg_evidence *parameters,
 	const struct pg_context *allocation, int retained)
 {
-	if (!pg_evidence_owned_by(formation, typing) || formation->rule != PG_INDUCTIVE_FORM) return NULL;
-	if (!pg_evidence_owned_by(parameters, typing) || parameters->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
-	if (pg_evidence_context(parameters->premises[0]) != pg_evidence_context(formation)) return NULL;
-	const struct pg_evidence *family = pg_prove_reindex(typing, parameters, formation);
+	const struct pg_evidence *family = data_family(typing, formation, parameters);
+	if (!family) return NULL;
 	const struct pg_evidence *self = pg_evidence_judgement(formation) == PG_JUDGEMENT_TYPE_FAMILY
 		? family : pg_prove_type_value(typing, family);
 	if (!self) return NULL;
@@ -1963,14 +1994,12 @@ static const struct pg_evidence *constructor_in_scope(struct pg_typing *typing,
 	size_t prefix = pg_evidence_context_map(parameters)->count;
 	size_t total = pg_evidence_context_map(map)->count;
 	if (total <= prefix) return NULL;
-	size_t count = total - prefix - 1;
 	const struct pg_evidence *context = map->premises[1];
 	struct pg_graph temporary = {0};
 	const struct pg_evidence *const *images = pg_substitution_images(typing, map, &temporary);
 	const struct pg_evidence *arguments = pg_prove_substitution(typing,
 		parameters->premises[0], context, prefix, images);
-	const struct pg_evidence *result = images ? pg_prove_constructor(typing, formation, constructor,
-		arguments, count, images + prefix + 1) : NULL;
+	const struct pg_evidence *result = pg_prove_constructor_instance(typing, formation, constructor, arguments, map);
 	pg_graph_destroy(&temporary);
 	return result;
 }

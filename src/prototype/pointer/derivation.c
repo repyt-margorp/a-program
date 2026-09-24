@@ -125,20 +125,7 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 	RULE(PG_HOST_TYPE_FORM, 1, pg_prove_host_type(typing, p[0], parameters->constant));
 	RULE(PG_HOST_VALUE_INTRO, 1, pg_prove_host_value(typing, p[0], parameters->constant));
 	RULE(PG_HOST_FUNCTION_INTRO, 1, pg_prove_host_function(typing, p[0], parameters->constant));
-	case PG_CONSTRUCTOR_INTRO: {
-		const struct pg_data_layout *layout;
-		size_t position, arity;
-		if (count != 4 || !pg_data_constructor_view(parameters->constructor, &layout, &position, &arity)) return NULL;
-		if (pg_evidence_rule(p[3]) != PG_CONTEXT_SUBSTITUTION) return NULL;
-		size_t retained = pg_evidence_context_map(p[3])->count;
-		if (arity > retained) return NULL;
-		struct pg_graph temporary = {0};
-		const struct pg_evidence *const *images = pg_substitution_images(typing, p[3], &temporary);
-		result = images ? pg_prove_constructor(typing, p[1], parameters->constructor,
-			p[2], arity, images + retained - arity) : NULL;
-		pg_graph_destroy(&temporary);
-		break;
-	}
+	RULE(PG_CONSTRUCTOR_INTRO, 4, pg_prove_constructor_instance(typing, p[1], parameters->constructor, p[2], p[3]));
 	case PG_MATCH_ELIM: case PG_INDUCTION_ELIM:
 		if (count < 6) return NULL;
 		result = rule == PG_MATCH_ELIM

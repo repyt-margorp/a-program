@@ -4587,11 +4587,8 @@ static void constructor_value_step(struct pg_synthesis *synthesis, struct pg_syn
 	if (await_dependency(synthesis, job, job->right)) return;
 	if (!job->value_job) {
 		size_t count = pg_evidence_context_map(map)->count - prefix - 1;
-		struct pg_graph temporary = {0};
-		const struct pg_evidence *const *images = pg_substitution_images(synthesis->typing, map, &temporary);
-		const struct pg_evidence *body = images ? pg_prove_constructor(synthesis->typing,
-			formation, constructor, job->right->result, count, images + prefix + 1) : NULL;
-		pg_graph_destroy(&temporary);
+		const struct pg_evidence *body = pg_prove_constructor_instance(synthesis->typing,
+			formation, constructor, job->right->result, map);
 		if (!body) goto error;
 		if (!count) { job->result = body; finish(synthesis, job, PG_SYNTHESIS_DONE); return; }
 		job->value_job = pg_synthesis_abstract(synthesis, pg_evidence_premise(parameters, 1), context, pg_synthesis_evidence(synthesis, body));

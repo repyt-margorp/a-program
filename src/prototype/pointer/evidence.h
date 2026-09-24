@@ -184,6 +184,11 @@ const struct pg_evidence *pg_prove_constructor(struct pg_typing *typing,
 	const struct pg_evidence *formation, const struct pg_object *constructor,
 	const struct pg_evidence *parameters, size_t count,
 	const struct pg_evidence *const *fields);
+/* Consume the checked field-telescope map directly, retaining its exact proof.
+ * The parameter prefix and Self image must agree with the admitted family. */
+const struct pg_evidence *pg_prove_constructor_instance(struct pg_typing *typing,
+	const struct pg_evidence *formation, const struct pg_object *constructor,
+	const struct pg_evidence *parameters, const struct pg_evidence *instance);
 /* Derived curried constructor computation: Lambda fields. RETURN constructor.
  * Zero fields yields RETURN directly. Uses fresh lexical field binders, not
  * a value-side Pi or a new proof rule. Schedule once per wrapper request. */
