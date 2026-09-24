@@ -2116,7 +2116,9 @@ Core interning, conversion, Identity rules and wire formats are unchanged.
 - [x] Run strict debug, O2 and ASan/UBSan full acceptance.
 - [x] Measure identical Identity workloads and source/seed/retained programs;
   record per-file deltas and distinguish counts from timing claims.
-- [ ] Publish this verified epoch to Main/rewrite, excluding unrelated work.
+- [x] Publish this verified epoch to Main/rewrite, excluding unrelated work.
+  `583eeba` was atomically pushed to both branches; remote tips were verified.
+  The unrelated working-tree diff is unchanged.
 
 The first additional test incorrectly expected identity normalization to
 produce a distinct proof. That API correctly returns its input in this case.
