@@ -2099,6 +2099,93 @@ that caller-owned assembly while preserving dependent centers and alternate
 image evidence. This is a candidate, not a proven speedup or permission to
 collapse higher-dimensional proof data. No new cache or work kind is planned.
 
+## Identity Context Map Reuse (2026-09-24)
+
+Baseline: `22e754e`. Scope: the two Identity Context builders in `action.c`.
+They kept complete left/right image arrays alongside checked substitutions,
+projected those arrays after each Context extension, and rebuilt the maps.
+Use existing checked substitution restriction/extension instead. Retain path
+hypotheses: they are additional dependent Identity data, not duplicate maps.
+Core interning, conversion, Identity rules and wire formats are unchanged.
+
+- [x] Remove the two pairs of caller-owned image arrays. Extend checked maps
+  as each binder is added; project supplied endpoints only when consumed.
+- [x] Preserve dependent centers, fixed prefixes, distinct loop hypotheses,
+  exact supplied image evidence and repeat-request interning in focused tests.
+- [x] Verify the new prefix-sharing regression against the old implementation.
+- [x] Run strict debug, O2 and ASan/UBSan full acceptance.
+- [x] Measure identical Identity workloads and source/seed/retained programs;
+  record per-file deltas and distinguish counts from timing claims.
+- [ ] Publish this verified epoch to Main/rewrite, excluding unrelated work.
+
+The first additional test incorrectly expected identity normalization to
+produce a distinct proof. That API correctly returns its input in this case.
+The fixture now uses the existing value/type round trip to construct an
+alternative derivation of the same typed subject; production normalization
+was not changed. The corrected strict debug Identity test passes.
+With the corrected fixture, old `action.c` fails the retained-prefix assertion
+in `dependent_families` (exit 134); the candidate passes. Log:
+`/tmp/a-program-identity-maps-before.log`.
+
+Identical pre-existing Identity workloads (no added fixture in either binary)
+retain 843,494 Core nodes and 5,515 substitution requests. Baseline/candidate:
+occurrences 39,863 / 39,861, proofs 50,192 / 39,911, maps 5,045 / 4,588,
+main-arena used bytes 79,146,272 / 77,678,912. Substitution storage remains
+1,465,664 bytes; maximum cube conversion steps remain 175,684. Logs:
+`/tmp/a-program-identity-maps-{before,after}-storage.log`.
+
+Generic Sorted has 617,315 Solve steps and 585,390 Core nodes on both builds.
+Occurrences 431,256 / 431,223, proofs 211,992 / 211,956, maps 42,548 / 42,552,
+substitution requests 92,850 / 92,851. Main-arena bytes 214,329,760 /
+214,317,376; substitution storage 25,054,912 / 25,055,168. Thus not every
+intermediate structure decreases. Logs:
+`/tmp/a-program-identity-maps-generic-{before-storage,storage}.log`.
+
+Per-file delta: `action.c` +25/-34 (net -9); `tests/identity.c` +28/-0.
+Documentation is separate. Against R0 `4657cc6`, implementation C/H is
++9,745/-5,050 (net +4,695); tests C/H +9,690/-2,479 (net +7,211).
+
+Full `check-acceptance` passes in strict C11 debug (`-O0 -g`), O2 and
+ASan/UBSan (`-O1 -g`, non-PIE, leak detection and halt-on-error). All three
+exit zero without sanitizer/runtime/assertion diagnostics; compatibility
+remains 63/63 and both LT providers pass. The combined dirty working tree's
+Identity unit test also passes. Logs:
+`/tmp/a-program-identity-maps-{debug,opt,sanitize}-acceptance.log` and
+`/tmp/a-program-identity-maps-worktree-identity.log`.
+
+Seven alternating fresh-process pairs, O2, one warmup, no concurrent build
+or test, 10,000,000-step limit. Small cases batch 25 processes, old QuickSort
+three, generic Sorted one. All ten seed/retained image pairs cross-load in
+both directions. Median milliseconds are baseline/candidate:
+
+| Input | Source | Seed image | Retained image |
+| --- | ---: | ---: | ---: |
+| Length output proof | 7.093 / 7.451 | 7.145 / 7.381 | 7.457 / 7.623 |
+| Function-field graph | 10.683 / 10.848 | 10.907 / 11.254 | 11.367 / 11.427 |
+| Vec append | 8.935 / 8.981 | 9.231 / 8.949 | 9.658 / 9.351 |
+| Compatibility QuickSort | 156.344 / 153.639 | 157.006 / 155.699 | 164.936 / 162.144 |
+| Generic Sorted | 867.427 / 867.316 | 869.548 / 873.802 | 878.556 / 874.528 |
+
+Identical pre-existing Identity tests, nine alternating pairs: median
+495.655 / 484.885 ms; ranges 477.321-504.853 / 473.395-513.428 ms.
+The initial Length source median worsens by about 5%; a separate nine-pair
+follow-up with batches of 50 gives 7.060 / 7.073 ms, ranges 6.754-7.355 /
+6.877-7.453 ms. Keep both measurements; do not infer uniform speedup or
+discharge the original performance gate. Full samples:
+`/tmp/a-program-identity-maps-timing.log` and
+`/tmp/a-program-identity-maps-length-repeat.log`.
+
+This removes caller-side reconstruction, not the underlying Context map's
+flat structural image storage. It does not establish linear-time higher
+Identity construction or complete the original A3-A5/R2-R5 gates.
+
+Next bounded audit: `constructor_value_step` and `constructor_scope_step`
+in `synthesis.c` enumerate already checked parameter maps into image jobs,
+then submit full substitution synthesis. Determine whether checked prefix
+restriction/extension can replace those paths without bypassing pending
+Self formation, dependent conversion or saved-allocation checks. Do not add
+a parallel scheduler or a second accepted-result store for this change.
+
 ## Change Log
 
 | Date | Stage | Revision and evidence | Status |

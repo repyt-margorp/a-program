@@ -564,15 +564,10 @@ const struct pg_evidence *pg_identity_thunk_type(struct pg_typing *typing,
 	return pg_prove_thunk_type(typing, identity);
 }
 
-static void project_boundary(struct pg_typing *typing, const struct pg_evidence *context,
-	size_t count, const struct pg_evidence **left, const struct pg_evidence **right,
-	size_t path_count, const struct pg_evidence **paths)
+static void project_paths(struct pg_typing *typing, const struct pg_evidence *context,
+	size_t count, const struct pg_evidence **paths)
 {
-	for (size_t i = 0; i < count; ++i) {
-		left[i] = pg_prove_projection(typing, context, left[i]);
-		right[i] = pg_prove_projection(typing, context, right[i]);
-	}
-	for (size_t i = 0; i < path_count; ++i) paths[i] = pg_prove_projection(typing, context, paths[i]);
+	for (size_t i = 0; i < count; ++i) paths[i] = pg_prove_projection(typing, context, paths[i]);
 }
 
 const struct pg_evidence *pg_identity_context(struct pg_typing *typing,
@@ -587,15 +582,11 @@ const struct pg_evidence *pg_identity_context(struct pg_typing *typing,
 	size_t arity = 0;
 	for (const struct pg_context *c = pg_evidence_context(source); c; c = c->parent) ++arity;
 	if (count > arity || arity > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
-	size_t common = arity - count;
 	struct pg_graph temporary = {0};
 	const struct pg_evidence **extensions = pg_alloc(&temporary, count * sizeof(*extensions));
 	const struct pg_evidence **centers_proof = pg_alloc(&temporary, count * sizeof(*centers_proof));
-	const struct pg_evidence **li = pg_alloc(&temporary, arity * sizeof(*li));
-	const struct pg_evidence **ri = pg_alloc(&temporary, arity * sizeof(*ri));
 	const struct pg_evidence *result = NULL;
 	if (count && (!extensions || !centers_proof)) goto done;
-	if (arity && (!li || !ri)) goto done;
 	const struct pg_evidence *context = source;
 	for (size_t i = count; i; --i) {
 		extensions[i - 1] = context;
@@ -603,8 +594,6 @@ const struct pg_evidence *pg_identity_context(struct pg_typing *typing,
 	}
 	const struct pg_evidence *ls = pg_prove_substitution_projection(typing, context, context), *rs = ls;
 	if (!ls) goto done;
-	for (size_t i = 0; i < common; ++i)
-		li[i] = ri[i] = pg_substitution_image_at(typing, ls, i);
 	for (size_t i = 0; i < count; ++i) {
 		const struct pg_object *binders[3];
 		if (boundary_binders(dimensions, centers[i], binders) != 0) goto done;
@@ -614,21 +603,21 @@ const struct pg_evidence *pg_identity_context(struct pg_typing *typing,
 		context = pg_prove_context_extension(typing, context, binders[0], lt);
 		context = pg_prove_context_extension(typing, context, binders[1], pg_prove_projection(typing, context, rt));
 		if (!context) goto done;
-		project_boundary(typing, context, common + i, li, ri, i, centers_proof);
+		project_paths(typing, context, i, centers_proof);
 		const struct pg_evidence *prefix = pg_evidence_premise(extensions[i], 0);
-		ls = pg_prove_substitution(typing, prefix, context, common + i, li);
-		rs = pg_prove_substitution(typing, prefix, context, common + i, ri);
+		ls = pg_prove_substitution_extension(typing, prefix, context, ls, 0, NULL);
+		rs = pg_prove_substitution_extension(typing, prefix, context, rs, 0, NULL);
 		const struct pg_evidence *l = pg_prove_variable(typing, context, binders[0]);
 		const struct pg_evidence *r = pg_prove_variable(typing, context, binders[1]);
 		const struct pg_evidence *center_type = pg_prove_family_identity_type(typing, type, ls, rs, i, centers_proof, l, r);
 		context = pg_prove_context_extension(typing, context, binders[2], center_type);
 		if (!context) goto done;
-		project_boundary(typing, context, common + i, li, ri, i, centers_proof);
-		li[common + i] = pg_prove_variable(typing, context, binders[0]);
-		ri[common + i] = pg_prove_variable(typing, context, binders[1]);
+		project_paths(typing, context, i, centers_proof);
+		l = pg_prove_variable(typing, context, binders[0]);
+		r = pg_prove_variable(typing, context, binders[1]);
 		centers_proof[i] = pg_prove_variable(typing, context, binders[2]);
-		ls = pg_prove_substitution(typing, extensions[i], context, common + i + 1, li);
-		rs = pg_prove_substitution(typing, extensions[i], context, common + i + 1, ri);
+		ls = pg_prove_substitution_extension(typing, extensions[i], context, ls, 1, &l);
+		rs = pg_prove_substitution_extension(typing, extensions[i], context, rs, 1, &r);
 		if (!ls || !rs) goto done;
 	}
 	*left = ls;
@@ -664,28 +653,30 @@ const struct pg_evidence *pg_identity_substitution_context(struct pg_typing *typ
 	const struct pg_evidence *result = NULL;
 	const struct pg_evidence **extensions = pg_alloc(&temporary, count * sizeof(*extensions));
 	const struct pg_evidence **centers = pg_alloc(&temporary, count * sizeof(*centers));
-	const struct pg_evidence **li = pg_alloc(&temporary, arity * sizeof(*li));
-	const struct pg_evidence **ri = pg_alloc(&temporary, arity * sizeof(*ri));
-	if (!extensions || !centers || !li || !ri) goto done;
+	if (!extensions || !centers) goto done;
 	for (size_t i = count; i; --i, source = pg_evidence_premise(source, 0)) {
 		if (pg_evidence_rule(source) != PG_CONTEXT_EXTEND) goto done;
 		extensions[i - 1] = source;
 	}
-	for (size_t i = 0; i < arity; ++i) {
-		li[i] = pg_substitution_image_at(typing, left, i);
-		ri[i] = pg_substitution_image_at(typing, right, i);
-	}
+	const struct pg_evidence *prefix = pg_prove_substitution_projection(typing, source, pg_evidence_premise(left, 0));
+	const struct pg_evidence *ls = pg_prove_substitution_compose(typing, prefix, left);
+	const struct pg_evidence *rs = pg_prove_substitution_compose(typing, prefix, right);
 	for (size_t i = 0; i < count; ++i) {
-		const struct pg_evidence *prefix = pg_evidence_premise(extensions[i], 0);
-		const struct pg_evidence *ls = pg_prove_substitution(typing, prefix, context, common + i, li);
-		const struct pg_evidence *rs = pg_prove_substitution(typing, prefix, context, common + i, ri);
+		const struct pg_evidence *l = pg_prove_projection(typing, context, pg_substitution_image_at(typing, left, common + i));
+		const struct pg_evidence *r = pg_prove_projection(typing, context, pg_substitution_image_at(typing, right, common + i));
 		const struct pg_evidence *type = pg_prove_family_identity_type(typing,
-			pg_evidence_premise(extensions[i], 1), ls, rs, i, centers, li[common + i], ri[common + i]);
+			pg_evidence_premise(extensions[i], 1), ls, rs, i, centers, l, r);
 		context = pg_prove_context_extension(typing, context, binders[i], type);
 		if (!context) goto done;
-		project_boundary(typing, context, arity, li, ri, i, centers);
+		project_paths(typing, context, i, centers);
 		centers[i] = pg_prove_variable(typing, context, binders[i]);
 		if (!centers[i]) goto done;
+		if (i + 1 < count) {
+			l = pg_prove_projection(typing, context, l);
+			r = pg_prove_projection(typing, context, r);
+			ls = pg_prove_substitution_extension(typing, extensions[i], context, ls, 1, &l);
+			rs = pg_prove_substitution_extension(typing, extensions[i], context, rs, 1, &r);
+		}
 	}
 	for (size_t i = 0; i < count; ++i) paths[i] = centers[i];
 	result = context;

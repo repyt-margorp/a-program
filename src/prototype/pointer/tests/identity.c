@@ -1647,6 +1647,9 @@ static void generated_contexts(struct pg_typing *typing)
 		for (const struct pg_context *c = pg_evidence_context(target); c; c = c->parent) ++declarations;
 		assert(declarations == 3 * count);
 		assert(pg_evidence_premise(left, 0) == source && pg_evidence_premise(right, 0) == source);
+		/* Keep the checked prefix instead of flattening each full boundary. */
+		assert(pg_evidence_context_map(pg_evidence_premise(left, 2))->count == count - 1);
+		assert(pg_evidence_context_map(pg_evidence_premise(right, 2))->count == count - 1);
 		for (size_t i = 0; i < count; ++i) {
 			assert(pg_evidence_context(paths[i]) == pg_evidence_context(target));
 			assert(pg_evidence_subject(paths[i])->core == pg_reference(typing->graph, &centers[i]->variable));
@@ -2405,6 +2408,31 @@ static void dependent_families(struct pg_typing *typing,
 	assert(!pg_typing_init(&foreign_paths, typing->graph));
 	assert(!pg_identity_substitution_context(&foreign_paths, index_left, index_right, 2, path_binders, again));
 	pg_typing_destroy(&foreign_paths);
+	/* A third dependent center retains the earlier map and its supplied
+	 * image receipt, including an alternative derivation of that image. */
+	const struct pg_evidence *alternate_a = pg_prove_type_value(typing,
+		pg_prove_value_type(typing, a));
+	assert(alternate_a && alternate_a != a && pg_evidence_subject(alternate_a) == pg_evidence_subject(a));
+	const struct pg_evidence *third = pg_prove_context_extension(typing, indices, pg_binder(typing->graph),
+		pg_prove_projection(typing, indices, family));
+	const struct pg_evidence *third_left = pg_prove_substitution_pair(typing,
+		pg_prove_substitution_pair(typing, pg_prove_substitution(typing, source, scope, 1, &alternate_a), indices, x), third, x);
+	const struct pg_evidence *third_right = pg_prove_substitution_pair(typing, index_right, third, y);
+	const struct pg_object *third_binders[] = {path_binders[0], path_binders[1], pg_binder(typing->graph)};
+	const struct pg_evidence *third_paths[3];
+	const struct pg_evidence *third_context = pg_identity_substitution_context(typing,
+		third_left, third_right, 3, third_binders, third_paths);
+	assert(third_context);
+	const struct pg_evidence *third_type = pg_evidence_premise(third_context, 1);
+	for (size_t i = 1; i <= 2; ++i)
+		assert(pg_evidence_context_map(pg_evidence_premise(pg_evidence_premise(third_type, i), 2))->count == 1);
+	const struct pg_evidence *first_context = pg_evidence_premise(pg_evidence_premise(third_context, 0), 0);
+	assert(pg_evidence_premise(pg_evidence_premise(first_context, 1), 3) == alternate_a);
+	path_proofs = typing->proofs.count; path_terms = typing->graph->terms.count;
+	const struct pg_evidence *third_again[3];
+	assert(pg_identity_substitution_context(typing, third_left, third_right, 3, third_binders, third_again) == third_context);
+	for (size_t i = 0; i < 3; ++i) assert(third_again[i] == third_paths[i]);
+	assert(typing->proofs.count == path_proofs && typing->graph->terms.count == path_terms);
 	/* Contextual action of z:Universe retains the selected p, not just A/B. */
 	const struct pg_evidence *zvalue = pg_prove_variable(typing, source, z);
 	const struct pg_evidence *zsort = pg_prove_projection(typing, source, universe);
