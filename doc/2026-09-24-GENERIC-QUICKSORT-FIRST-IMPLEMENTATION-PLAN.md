@@ -1551,7 +1551,10 @@ This is canonical construction reuse, not observational/definitional equality.
 - [x] Compare clean O2 source/image timings without competing builds; all
   source checks and both directions of old/new seed/retained image loads pass.
 - [x] Transfer only the isolated patch, preserving unrelated local work.
-- [ ] Publish the verified patch and audit on Main and the rewrite branch.
+- [x] Publish the verified patch and audit: `6868ef9` was atomically pushed to
+  Main and the rewrite branch; both remote tips were verified. The staged C
+  files exactly match the isolated, tested files. Unrelated local experiments
+  remain outside the publication.
 
 The source measurements limit the benefit: length/function-field/generic
 inputs encounter 54/132/259 projection-pair compositions, all with zero image
