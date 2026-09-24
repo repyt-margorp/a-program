@@ -1246,7 +1246,7 @@ No persistent image cache, new proof rule, wire change or acceptance shortcut.
 - [x] Check out-of-range access, including `SIZE_MAX`, and existing Core tests.
 - [x] Finish full debug, optimized and ASan/UBSan acceptance on frozen sources.
 - [x] Compare source, zero-step and retained-image behavior and timings.
-- [ ] Record final source delta and publish the verified increment.
+- [x] Record final source delta and publish the verified increment.
 
 Baseline GDB inspection of the generic Sorted provider/client found 1,415 bulk
 calls, of which 1,195 materialize 9,838 images. Walking their retained chains
@@ -1312,6 +1312,11 @@ from R0 `4657cc6` is +9,677/-4,980, net **+4,697**; docs/tests are excluded.
 The experiment lives in a clean detached worktree; unrelated context-relocation
 experiments remain untouched. Cumulative source reduction is still a required,
 unmet parent gate, not waived by this algorithmic improvement.
+
+Published `b314646811cbf44c4a272c72d40aa53cb53ce24b` atomically to Main and
+`rewrite/pointer-core-hott`; both remote heads verified. The actual working
+tree, including the excluded experiments, also passed Core and IADT tests
+(`/tmp/a-program-image-range-working-{core,iadt}.log`). No issue was closed.
 
 ## Change Log
 
