@@ -7031,13 +7031,14 @@ static void family_function_step(struct pg_synthesis *synthesis, struct pg_synth
 		const struct pg_evidence *construction = pg_typed_query_result(origin);
 		const struct pg_evidence *environment = pg_construction_origin_environment(origin);
 		const struct pg_occurrence *subject = construction ? pg_evidence_subject(construction) : NULL;
-		if (subject && subject->core->kind == PG_LAMBDA) {
+		/* Nominal family formation may erase to APP without typed operands. */
+		if (subject && subject->operand_count == 1 && subject->core->kind == PG_LAMBDA) {
 			const struct pg_evidence *context = pg_evidence_premise(construction, 0);
 			struct pg_synthesis_job *body = family_function(synthesis,
 				pg_synthesis_evidence(synthesis, pg_prove_structural_subject(synthesis->typing, subject->operands[0])));
 			job->value_job = pg_synthesis_lambda_body(synthesis,
 				pg_synthesis_evidence(synthesis, context), body);
-		} else if (subject && subject->core->kind == PG_APPLICATION) {
+		} else if (subject && subject->operand_count == 2 && subject->core->kind == PG_APPLICATION) {
 			struct pg_typed_query *application = pg_application_body_request(synthesis->typing,
 				pg_prove_structural_subject(synthesis->typing, subject->operands[0]),
 				pg_prove_structural_subject(synthesis->typing, subject->operands[1]));

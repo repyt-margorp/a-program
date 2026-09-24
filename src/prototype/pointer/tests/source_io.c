@@ -189,6 +189,10 @@ static void indexed_family_sources(void)
 		"id:=\\x:quoted Nat.zero=>x; main:=id (D.mk Nat.zero);"
 		"expected:=D.mk Nat.zero; Fiber:=D Nat.zero;");
 	indexed_family_roundtrip("Nat:=@{zero:*;succ:*->*;};"
+		"D:=\\A:@=>@\\i:Nat=>{mk:(k:Nat)->A->* k;}; quoted:=&(D Nat);"
+		"id:=\\x:quoted Nat.zero=>x; main:=id ((D Nat).mk Nat.zero Nat.zero);"
+		"expected:=(D Nat).mk Nat.zero Nat.zero; Fiber:=D Nat Nat.zero;");
+	indexed_family_roundtrip("Nat:=@{zero:*;succ:*->*;};"
 		"D:=\\A:@=>@\\i:Nat=>{mk:(k:Nat)->A->* k;};"
 		"choose:=\\F:@->Nat->@=>F Nat Nat.zero; id:=\\x:choose D=>x;"
 		"chooseOne:=\\F:Nat->@=>F Nat.zero; idOne:=\\x:chooseOne (D Nat)=>x;"

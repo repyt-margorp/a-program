@@ -17,6 +17,36 @@
 #include <stdio.h>
 #include <string.h>
 
+static void arena_test(void)
+{
+	struct pg_graph graph = {0};
+	size_t alignment = _Alignof(max_align_t);
+	unsigned char *first = pg_alloc(&graph, 1), *second = pg_alloc(&graph, 1);
+	assert(first && second && (uintptr_t)second - (uintptr_t)first == alignment);
+	unsigned char *items[1024];
+	const size_t sizes[] = {0, 1, _Alignof(max_align_t) - 1,
+		_Alignof(max_align_t), _Alignof(max_align_t) + 1, 4095, 4096, 65537};
+	for (size_t i = 0; i < 1024; ++i) {
+		size_t size = sizes[i % (sizeof(sizes) / sizeof(*sizes))];
+		items[i] = pg_alloc(&graph, size);
+		assert(items[i] && (uintptr_t)items[i] % alignment == 0);
+		for (size_t j = 0; j < size; ++j) assert(!items[i][j]);
+		memset(items[i], (unsigned char)(i % 255 + 1), size ? size : 1);
+	}
+	struct pg_block *blocks = graph.blocks;
+	assert(!pg_alloc(&graph, SIZE_MAX) && !pg_alloc(&graph, SIZE_MAX - alignment));
+	assert(graph.blocks == blocks);
+	for (size_t i = 0; i < 1024; ++i) {
+		size_t size = sizes[i % (sizeof(sizes) / sizeof(*sizes))];
+		for (size_t j = 0; j < (size ? size : 1); ++j)
+			assert(items[i][j] == (unsigned char)(i % 255 + 1));
+	}
+	assert(pg_alloc(&graph, sizeof(max_align_t)));
+	pg_graph_destroy(&graph);
+	assert(!graph.blocks);
+	puts("arena: aligned, zeroed, nonoverlapping byte storage across block growth");
+}
+
 struct dag_fixture {
 	size_t count;
 	const struct dag_fixture *children[2];
@@ -6003,6 +6033,7 @@ static void continuation_names(void)
 
 int main(void)
 {
+	arena_test();
 	continuation_names();
 	deep_classifier_test();
 	dag_test();

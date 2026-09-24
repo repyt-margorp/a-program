@@ -7,7 +7,7 @@ struct pg_block {
 	struct pg_block *next;
 	size_t used;
 	size_t capacity;
-	max_align_t data[];
+	_Alignas(max_align_t) unsigned char data[];
 };
 
 struct pg_entry {
@@ -17,22 +17,22 @@ struct pg_entry {
 
 void *pg_alloc(struct pg_graph *graph, size_t bytes)
 {
-	size_t alignment = sizeof(max_align_t);
+	size_t alignment = _Alignof(max_align_t);
 	if (bytes > SIZE_MAX - alignment) return NULL;
-	size_t units = (bytes + alignment - 1) / alignment;
-	if (units == 0) units = 1;
+	bytes = (bytes + alignment - 1) / alignment * alignment;
+	if (!bytes) bytes = alignment;
 	struct pg_block *block = graph->blocks;
-	if (!block || units > block->capacity - block->used) {
-		size_t capacity = units > 512 ? units : 512;
-		if (capacity > (SIZE_MAX - sizeof(*block)) / alignment) return NULL;
-		block = calloc(1, sizeof(*block) + capacity * alignment);
+	if (!block || bytes > block->capacity - block->used) {
+		size_t capacity = bytes > 512 * sizeof(max_align_t) ? bytes : 512 * sizeof(max_align_t);
+		if (capacity > SIZE_MAX - sizeof(*block)) return NULL;
+		block = calloc(1, sizeof(*block) + capacity);
 		if (!block) return NULL;
 		block->capacity = capacity;
 		block->next = graph->blocks;
 		graph->blocks = block;
 	}
 	void *result = block->data + block->used;
-	block->used += units;
+	block->used += bytes;
 	return result;
 }
 
