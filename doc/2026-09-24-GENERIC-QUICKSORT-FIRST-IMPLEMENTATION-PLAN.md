@@ -1474,6 +1474,46 @@ tree is `/tmp/a-program-authority-profile-clean`. Raw pointer traces are not
 portable artifacts and are not committed. No new regression or speedup is
 claimed, no issue is closed, and A3-A5/R2-R5 remain unfinished.
 
+#### Completed-root reuse trials: withdrawn
+
+Three executable trials at `d3a6563` tested the smaller reuse option before
+changing the shared work representation. Each passed Core and evaluation-image
+tests; every benchmark source check succeeded. None was adopted:
+
+| Trial | Change | Generic compile median, baseline/trial (ms) |
+| --- | --- | ---: |
+| Canonical request key | Intern the input environment before lookup; replace the ordered-array hash/comparison and stored length with `(Term, environment)` | 864.007 / 883.473 |
+| Completed-root lookup | Let private readback borrow a DONE root from that same request index; no second cache or retained subproblem table | 870.745 / 960.586 |
+| Input-environment-only lookup | Search only the shared input environment, not fresh Lambda-local environments; keep the reuse view on the call stack | 872.196 / 903.104 |
+
+Measurements use seven alternating O2 pairs after warmup, fresh processes,
+25 repeats for length/function-field/append, three for compatibility QuickSort
+and one for generic Sorted. The last trial's small-input medians are
+7.079/7.067, 11.310/10.931 and 8.723/8.875 ms; compatibility QuickSort is
+151.564/155.696 ms. Ranges overlap, so the small differences do not establish
+a stable regression or gain. The unrestricted lookup's generic slowdown is
+clear in this run; the scoped variant still does not justify its extra path.
+
+The scoped trial lowers generic Solve steps 619,092 -> 618,589 but adds 23
+implementation lines. Readback cache probes and much synchronous checking are
+not individual Solve transitions: fewer reported steps are not a speedup.
+Request state stays 128 bytes and request storage remains arena-aligned;
+removing its length field alone does not reduce the allocated slot size.
+
+The trial patch is retained only at
+`/tmp/a-program-substitution-reuse-withdrawn.patch`; the detached worktree was
+returned to its clean baseline. Timing logs are
+`/tmp/a-program-substitution-{key,reuse,bounded}-timing.log`. Focused Core and
+evaluation-image logs use the same prefixes. Full acceptance/sanitizer/image
+consumer gates were not run for these rejected candidates. No production or
+test change is retained, and no Main implementation push is warranted.
+
+Next work must not stack this lookup onto private traversal. The unresolved
+question is ownership of shared subproblems versus per-demand progress and
+discardable materialization. A replacement must remove existing work/storage,
+not merely add a lookup to each child. Retained-input reuse and the parent's
+net-negative source/performance gates remain open.
+
 ## Change Log
 
 | Date | Stage | Revision and evidence | Status |
