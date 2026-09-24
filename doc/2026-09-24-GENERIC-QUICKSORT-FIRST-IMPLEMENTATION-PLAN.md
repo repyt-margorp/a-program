@@ -1,7 +1,7 @@
 # Generic QuickSort First: Implementation and Refactor Resume
 
 Date: 2026-09-24
-Status: Q0-Q3 complete and published; Q4 authority refactor remains open
+Status: Q0-Q3 complete and published; Q4 authority refactor and #34 provider experiment remain open
 Planning baseline local revision: `0446d4eef364c78b41e07b03e53179ee4f999b18`
 Remote Main at review: `a72cda371109fdbf84d747456ed0aeb09af2391e`
 Published Q3 Main/rewrite revision: `c2ed4a75064792975f2f6637b207c1801b848e8c`
@@ -1317,6 +1317,90 @@ Published `b314646811cbf44c4a272c72d40aa53cb53ce24b` atomically to Main and
 `rewrite/pointer-core-hott`; both remote heads verified. The actual working
 tree, including the excluded experiments, also passed Core and IADT tests
 (`/tmp/a-program-image-range-working-{core,iadt}.log`). No issue was closed.
+
+### Q4: Derived LT Provider Consumers
+
+Baseline: `7b43a43`. This continues #34's library experiment, not a kernel
+replacement or completion of A3-A5/R2-R5. The frozen provider stays unchanged;
+the existing exact patch produces the parallel two-constructor provider and
+adapts its helper graph consumers through explicit checked fields.
+
+- [x] Add one shared Bool-order consumer to both complete generic theorems.
+  Its order has `false <= b` and `true <= true`, not an always-inhabited
+  relation. Reflexivity, transitivity and comparator decisions are ordinary
+  checked terms. Explicit Match motives in `bool_decide` select the dependent
+  result family; the trailing `::` remains a post-check.
+- [x] Verify source and image outputs for empty, singleton, ordered, reversed
+  and duplicate-containing inputs. Execute the resulting Sorted proofs by
+  induction to obtain their lengths; do not merely typecheck unused witnesses.
+- [x] Exercise zero-step, partial and completed ordinary/retained images,
+  inert resave, and resumed consumers at Solve chunks 1 and 64.
+- [x] Reject unrelated output claims, wrong-comparator graph evidence and an
+  invalid accessibility descent in source and resumed images.
+- [x] Measure both providers with the same compiler, inputs and budgets;
+  distinguish theorem construction from execution of result/proof consumers.
+- [x] Run optimized full acceptance and focused debug/ASan+UBSan gates;
+  publish only this verified epoch and report the remaining #34 obligations.
+
+Exact expected lists check order and multiplicity for these concrete inputs.
+They are **not** a universal permutation proof. `quick_all` preserves arbitrary
+element predicates, which also does not establish multiplicity. Keep #34 open
+for general content preservation, partition-change sensitivity and the final
+library decision, even if all tests in this subsection pass.
+
+Performance: GCC 14.2.0, strict C11 `-O2`, compiler at `b314646` (unchanged
+through `7b43a43`). Seven alternating fresh-process pairs after one warmup;
+no other agent build/test was running during measurement. Each measurement
+includes source/import Solve and, except `compile`, the requested NF consumer.
+Wall time uses `perf_counter`; per-child maximum RSS uses `wait4`, not the
+cumulative high-water mark of the benchmark runner. Budget: 10,000,000.
+
+| Consumer | Frozen/derived steps | Frozen/derived median ms | Frozen/derived median RSS KiB |
+| --- | ---: | ---: | ---: |
+| Compile | 631,361 / 635,769 | 881.460 / 907.745 | 267,396 / 275,304 |
+| Empty Sorted length | 797,776 / 805,416 | 897.483 / 931.892 | 270,844 / 278,416 |
+| Singleton Sorted length | 1,172,708 / 1,168,668 | 927.000 / 955.946 | 275,776 / 282,640 |
+| Ordered Sorted length | 1,527,469 / 1,443,867 | 951.457 / 972.471 | 281,756 / 287,076 |
+| Reversed Sorted length | 1,547,029 / 1,463,423 | 946.937 / 971.020 | 280,772 / 286,032 |
+| Duplicate Sorted length | 3,853,678 / 2,548,526 | 1,222.361 / 1,073.573 | 336,672 / 307,496 |
+| Duplicate packet output | 1,843,119 / 829,806 | 1,029.502 / 960.159 | 302,456 / 280,364 |
+| Duplicate direct output | 1,221,256 / 771,340 | 945.263 / 945.555 | 282,356 / 278,432 |
+
+The derived provider improves duplicate Sorted execution by 12.2% in this
+end-to-end sample, but compile/small-case medians regress by about 2-4%.
+Duplicate Sorted timing ranges were 1,175.509-1,229.818 versus
+1,055.871-1,097.003 ms. Direct-output timing ranges overlap substantially,
+despite its step reduction. Steps are not uniform-cost machine instructions.
+These results do not justify silently replacing the frozen library.
+
+At compile completion, frozen/derived Core nodes are 601,178/664,767;
+typed occurrences 437,831/447,952; proofs 220,754/225,056. After duplicate
+Sorted NF, Core nodes are 1,387,651/1,041,433 and proofs 220,783/225,085.
+The reduction concerns runtime Core construction, not a deletion of typed
+evidence or identification of the two nominal LT families. Ordinary image
+sizes are 1,431,682/1,428,810 bytes; retained sizes 3,310,750/3,306,023 bytes.
+No format, Core representation, typing rule or default provider changed.
+
+Evidence files: `/tmp/a-program-derived-provider-measure/timing.jsonl`,
+`/tmp/a-program-derived-provider-counts.log` and
+`/tmp/a-program-derived-provider-focused.log`. Focused debug and ASan+UBSan
+checks passed for both providers: retained 300,000-step images, inert resaves,
+resumed duplicate Sorted proof execution at chunks 1/64, and all three source
+negatives. Leak detection and sanitizer halt-on-error were enabled. Compiler
+and C test sources were byte-compared against the preceding verified builds;
+this test-only epoch reuses those binaries rather than rebuilding identical C.
+Optimized full `check-acceptance` also passed, including 63/63 source
+compatibility cases and the new ordinary/retained 0/300,000/completed matrix
+(`/tmp/a-program-derived-provider-acceptance.log`). The tested files were
+frozen in `/tmp/a-program-derived-provider-clean` and byte-compared against
+the staged versions. Existing unpublished relocation experiments remain
+excluded. Published test commit `54d48b642d9a98bcbc7521c51af7f2b554ce9359`
+atomically to Main/rewrite and verified both remote tips. #34 remains open.
+
+Per-file delta: `tests/derived_lt.sh` +65/-17; `boolean-consumer.p` +52/-0;
+wrong comparator/descent/output fixtures +4/+3/+3 (no deletions). Total tests
++127/-17, net +110. Production C/H delta is zero; the parent's cumulative
+implementation reduction gate remains unmet at +4,697 lines from R0.
 
 ## Change Log
 
