@@ -1110,6 +1110,111 @@ Published implementation `37e5b610b5a399cc1af73868480daabd65e42891` atomically
 to Main and `rewrite/pointer-core-hott`; both remote heads were verified.
 No issue was closed. The unrelated dirty work remains outside the commit.
 
+## Q4: One Structural Context-Extension Builder
+
+Baseline: `d800ad8` (2026-09-24). This addresses R2's construction ownership,
+not the remaining general R2-R5 completion criteria.
+
+The structural layer's private `context_map_extend` preserved an existing
+image when its destination did not change. In contrast,
+`pg_prove_substitution_extension` independently rebuilt every prefix image
+through `pg_occurrence_weaken`, even in the same destination. For a variable
+with an explicit classifier-conversion occurrence, that reconstruction could
+replace it with the bare declared variable. The retained image proof still
+concluded the converted occurrence: the proof and its map then disagreed.
+The new regression fails on the baseline at exactly that pointer agreement,
+not at a timing threshold or an unsupported surface program.
+
+Use one `pg_context_map_extend` for structural lifting, scoped instantiation
+and checked substitution extension. It handles the source suffix and optional
+destination weakening; unchanged destinations retain exact typed images.
+The evidence layer supplies its suffix subjects and separately verifies their
+ownership, scope, sort and dependent classifiers. No structural descriptor is
+accepted merely because the builder returned it. Prefix proof DAGs and their
+alternative receipts remain distinct. Ordinary weakening/explicit substitution
+semantics are not globally redefined to obtain this fix.
+
+- [x] Reproduce converted-prefix image/proof disagreement on the old code.
+- [x] Remove the evidence-owned prefix reconstruction loop and use the shared
+  builder; no additional index, cache or proof authority.
+- [x] Check flat/extended agreement, exact image retention, invalid source and
+  destination scopes, zero-suffix identity, and ordinary derivation checking.
+  Structural construction alone publishes no evidence. Existing Core tests pass.
+- [x] Finish full debug, optimized and ASan/UBSan acceptance, including retained
+  generic QuickSort, effect equations and source compatibility.
+- [x] Record behavior/performance comparison and per-file delta.
+- [ ] Publish this verified increment, leaving the broader refactor open.
+
+Audit disposition: do not merge `typed_selection_step` with ordinary occurrence
+input traversal solely because both follow maps. Constant Pi codomain selection
+can remove a binder for which no total substitution image exists; checked
+restriction is not ordinary context action. Likewise, normalized inputs need
+their reduction receipts rather than the original construction's stale children.
+These are required semantic distinctions, not evidence that both traversals
+must retain their present implementation forever.
+
+Implementation/header delta for this patch is +35/-31, net **+4**; tests add
+29 lines, documentation counted separately. This removes a duplicate builder
+and fixes a concrete inconsistency, but does not meet the cumulative reduction
+gate (still net +4,691 from R0). The broader source/typed-query representation
+review and original R0 performance matrix remain open.
+
+All three clean-tree acceptance runs exit zero, each with 63/63 compatibility;
+no sanitizer diagnostic. The 2,481 normalized exported result records agree
+with the preceding optimized run when comparing endpoint names, equality
+outcomes and chunks (paths/order excluded). Some step counts change; they are
+not claimed identical. Separate working-tree Core/IADT tests also pass, without
+promoting the unaccepted telescope-relocation experiment.
+
+The same generic Sorted source on old/new debug binaries gives:
+
+| Measurement | Before | After |
+| --- | ---: | ---: |
+| Solve steps | 619,094 | 619,092 |
+| Core terms | 593,540 | 593,486 |
+| Typed occurrences | 440,476 | 434,502 |
+| Proofs | 218,967 | 216,679 |
+| Context maps | 44,012 | 43,378 |
+| Substitution requests | 94,347 | 94,301 |
+| Main arena used bytes | 218,070,944 | 216,497,088 |
+| Substitution arena used bytes | 25,438,528 | 25,426,752 |
+
+These are GDB counters/aligned arena usage, not timings or total RSS. Evidence:
+`/tmp/a-program-context-extension-{debug,opt,sanitize}.log`,
+`/tmp/a-program-context-extension-counts{,-before}.log` and the working-tree
+`/tmp/a-program-context-extension-working-{core,iadt}.log`.
+
+Seven alternating O2 sample pairs after warmup, fresh processes and no concurrent
+build/test run; reuse the previous epoch's benchmark protocol (25 invocations per
+small-input sample, three for compatibility QuickSort, one for generic Sorted).
+Median milliseconds per invocation, previous implementation versus this patch:
+
+| Input | Source | Zero-step image | Retained image |
+| --- | ---: | ---: | ---: |
+| length | 7.300 / 6.951 | 7.550 / 7.311 | 7.576 / 7.283 |
+| function-field | 11.294 / 11.203 | 11.458 / 11.355 | 11.468 / 11.055 |
+| Vec append | 9.033 / 8.944 | 8.837 / 9.056 | 9.714 / 9.561 |
+| compatibility QuickSort | 159.022 / 157.654 | 160.887 / 160.033 | 170.587 / 165.327 |
+| generic Sorted | 895.142 / 886.377 | 898.351 / 888.128 | 910.771 / 889.598 |
+
+Most medians decrease slightly, but sample ranges overlap; append's zero-image
+median increases. No broad speedup claim or waiver of the original R0 gate.
+Generic source peak RSS medians are 265,148 / 263,472 KiB. Small-input RSS is
+dominated by inherited runner high-water marks. Log:
+`/tmp/a-program-context-extension-benchmark.log`.
+
+All five zero-step images match byte-for-byte. Retained images have unchanged
+sizes; both compilers read the other's images and reproduce them byte-for-byte
+in an inert resave. Independent retained saves are not canonical byte equality.
+No wire version change. Log: `/tmp/a-program-context-extension-image-cross.log`.
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `evidence.c` | 9 | 16 | -7 |
+| `typing.c` | 19 | 15 | +4 |
+| `typing.h` | 7 | 0 | +7 |
+| `tests/core.c` | 29 | 0 | +29 |
+
 ## Change Log
 
 | Date | Stage | Revision and evidence | Status |

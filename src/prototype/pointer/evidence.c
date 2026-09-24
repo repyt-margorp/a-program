@@ -4244,18 +4244,12 @@ const struct pg_evidence *pg_prove_substitution_extension(struct pg_typing *typi
 	if (!context_proof(typing, destination)) return NULL;
 	if (!pg_evidence_owned_by(prefix, typing) || prefix->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
 	if (count && !images) return NULL;
-	size_t retained = pg_evidence_context_map(prefix)->count, suffix;
-	const struct pg_context *base = pg_evidence_context(prefix->premises[0]);
-	if (pg_context_extension_size(pg_evidence_context(source), base, &suffix) || suffix != count) return NULL;
-	if (pg_context_extension_size(pg_evidence_context(destination), pg_evidence_context(prefix), &suffix)) return NULL;
 	if (!count && source == prefix->premises[0] && destination == prefix->premises[1]) return prefix;
-	if (count > SIZE_MAX - retained) return NULL;
-	size_t total = retained + count;
-	if (count > SIZE_MAX / sizeof(const struct pg_evidence *) - 3) return NULL;
+	size_t stride = sizeof(const struct pg_evidence *) + sizeof(const struct pg_occurrence *);
+	if (count > (SIZE_MAX - 3 * sizeof(const struct pg_evidence *)) / stride) return NULL;
 	size_t bytes = (count + 3) * sizeof(const struct pg_evidence *);
-	if (total > (SIZE_MAX - bytes) / sizeof(const struct pg_occurrence *)) return NULL;
 	const struct pg_evidence *result = NULL;
-	const struct pg_evidence **premises = malloc(bytes + total * sizeof(const struct pg_occurrence *));
+	const struct pg_evidence **premises = malloc(bytes + count * sizeof(const struct pg_occurrence *));
 	if (!premises) goto done;
 	const struct pg_occurrence **typed_images = (void *)(premises + count + 3);
 	premises[0] = source;
@@ -4266,19 +4260,18 @@ const struct pg_evidence *pg_prove_substitution_extension(struct pg_typing *typi
 		if (!pg_evidence_owned_by(image, typing)) goto done;
 		if (pg_evidence_context(image) != pg_evidence_context(destination)) goto done;
 		premises[i + 3] = image;
+		typed_images[i] = pg_evidence_subject(image);
 	}
 	uint64_t hash;
 	result = find_record(typing, PG_CONTEXT_SUBSTITUTION,
 		pg_evidence_context(destination), NULL, count + 3, premises, NULL, &hash);
 	if (result) goto done;
-	/* The accepted prefix is a proof dependency, not a copied image list. */
-	for (size_t i = 0; i < retained; ++i)
-		typed_images[i] = pg_occurrence_weaken(typing, pg_evidence_context(destination),
-			pg_evidence_context_map(prefix)->images[i]);
-	for (size_t i = 0; i < count; ++i) typed_images[retained + i] = pg_evidence_subject(images[i]);
-	const struct pg_context_map *map = pg_context_map(typing, pg_evidence_context(source),
-		pg_evidence_context(destination), total, typed_images);
+	/* Structural construction is shared with lifting and scoped instantiation;
+	 * only this layer checks the supplied receipts and dependent classifiers. */
+	const struct pg_context_map *map = pg_context_map_extend(typing, pg_evidence_context_map(prefix),
+		pg_evidence_context(source), pg_evidence_context(destination), count, typed_images);
 	if (!map) goto done;
+	size_t retained = map->count - count;
 	const struct pg_binding_value *bindings = pg_context_map_bindings(map);
 	/* Every image is available before checking; the declaration chain already
 	 * supplies reverse telescope order without a second scope array. */

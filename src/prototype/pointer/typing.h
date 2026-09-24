@@ -152,6 +152,13 @@ const struct pg_context_map *pg_context_map(struct pg_typing *typing,
 	size_t count, const struct pg_occurrence *const *images);
 const struct pg_context_map *pg_context_map_projection(struct pg_typing *typing,
 	const struct pg_context *source, const struct pg_context *destination);
+/* Extend the source telescope by count images. A larger destination weakens
+ * the retained prefix; the same destination preserves its exact occurrences.
+ * This builds descriptive data, not a substitution well-formedness proof. */
+const struct pg_context_map *pg_context_map_extend(struct pg_typing *typing,
+	const struct pg_context_map *map, const struct pg_context *source,
+	const struct pg_context *destination, size_t count,
+	const struct pg_occurrence *const *images);
 /* Lift under the named target binder, including one allocated by Core
  * substitution. This describes scope transport, not context acceptance. */
 const struct pg_context_map *pg_context_map_lift(struct pg_typing *typing,

@@ -2072,6 +2072,35 @@ static void typed_substitution_test(struct pg_graph *graph)
 	/* Telescope instantiation and the flat input API have one authority. */
 	const struct pg_evidence *type_pair = pg_prove_substitution_pair(&typing, closed, a_scope, destination_b);
 	assert(type_pair);
+	/* An unchanged destination preserves the exact typed image, including
+	 * its explicit classifier formation and alternative conversion receipt. */
+	const struct pg_evidence *formed_universe = pg_prove_universe(&typing, destination, 1);
+	const struct pg_term *universe_core = pg_evidence_subject(formed_universe)->core;
+	const struct pg_evidence *converted_b = pg_prove_conversion(&typing, destination_b, formed_universe,
+		pg_conversion_substitution(&typing.substitutions, universe_core, universe_core, universe_core, 0, NULL, NULL));
+	assert(converted_b && pg_evidence_subject(converted_b) != pg_evidence_subject(destination_b));
+	const struct pg_evidence *converted_prefix = pg_prove_substitution_pair(&typing, closed, a_scope, converted_b);
+	const struct pg_evidence *converted_pair = pg_prove_substitution_pair(&typing, converted_prefix, source, destination_y);
+	assert(converted_pair && pg_substitution_image_at(&typing, converted_pair, 0) == converted_b);
+	assert(pg_evidence_context_map(converted_pair)->images[0] == pg_evidence_subject(converted_b));
+	const struct pg_occurrence *next_image = pg_evidence_subject(destination_y);
+	size_t construction_proofs = typing.proofs.count;
+	const struct pg_context_map *converted_map = pg_context_map_extend(&typing,
+		pg_evidence_context_map(converted_prefix), pg_evidence_context(source),
+		pg_evidence_context(destination), 1, &next_image);
+	assert(converted_map == pg_evidence_context_map(converted_pair));
+	assert(typing.proofs.count == construction_proofs);
+	assert(pg_context_map_extend(&typing, converted_map, converted_map->source,
+		converted_map->destination, 0, NULL) == converted_map);
+	assert(!pg_context_map_extend(&typing, converted_map, converted_map->source,
+		pg_evidence_context(b_scope), 0, NULL));
+	assert(!pg_context_map_extend(&typing, converted_map, pg_evidence_context(a_scope),
+		converted_map->destination, 0, NULL));
+	assert(!pg_context_map_extend(&typing, converted_map, converted_map->source,
+		converted_map->destination, 1, NULL));
+	const struct pg_evidence *converted_images[] = {converted_b, destination_y};
+	assert(pg_evidence_context_map(pg_prove_substitution(&typing, source, destination, 2, converted_images)) == converted_map);
+	reconstruct_derivation(&typing, converted_pair);
 	const struct pg_evidence *u0 = pg_prove_universe(&typing, empty, 0);
 	const struct pg_evidence *shifted_type = pg_prove_reindex(&typing, closed, u0);
 	const struct pg_evidence *type_value = pg_prove_type_value(&typing, shifted_type);
