@@ -124,6 +124,8 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/acc-family-parameter.p main expected
 	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/acc-motive-wrong-field.p
 	$(BUILD)/program_test --unsupported $(ROOT)tests/acceptance/acc-renamed-wrong-ih.p
+	$(BUILD)/pointer-check $(ROOT)tests/acceptance/acc-explicit-motive.p
+	$(BUILD)/program_test --reject $(ROOT)tests/acceptance/acc-explicit-wrong-ih.p
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/lt-derived-lift.p main expected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/lt-derived-lift.p recursiveMain recursiveExpected
 	$(BUILD)/program_test --equal $(ROOT)tests/acceptance/termination.p main expected

@@ -1,7 +1,7 @@
 # Generic QuickSort First: Implementation and Refactor Resume
 
 Date: 2026-09-24
-Status: Q0-Q3 published; Q4 authority/#32/#33 open; #34 experiment published and closed
+Status: Q0-Q3 published; Q4 authority/#32 open; #33 audit verified; #34 closed
 Planning baseline local revision: `0446d4eef364c78b41e07b03e53179ee4f999b18`
 Remote Main at review: `a72cda371109fdbf84d747456ed0aeb09af2391e`
 Published Q3 Main/rewrite revision: `c2ed4a75064792975f2f6637b207c1801b848e8c`
@@ -18,7 +18,7 @@ after the generic QuickSort gate below.
 | --- | --- | --- |
 | [#31](https://github.com/repyt-margorp/a-program/issues/31) | Reproducible synthesis limitation: a dependent Match accepts the recomputed comparator index but fails the result index needed for a general Sorted proof. The Nat theorem still passes. This is the immediate correctness target for the intended proof interface; no kernel soundness failure has been shown. | Repair first and prove the complete generic theorem. |
 | [#32](https://github.com/repyt-margorp/a-program/issues/32) | Proposal to simplify global `*f` syntax; no checked replacement for graph adequacy yet. | Keep the current witness mechanism while fixing #31. Investigate after the refactor resumes. |
-| [#33](https://github.com/repyt-margorp/a-program/issues/33) | Trust-boundary audit of totality rules; a renamed Acc provider checks, but no unsoundness or replacement is established. | Audit with the resumed authority work; retain termination checks pending proof of a replacement. |
+| [#33](https://github.com/repyt-margorp/a-program/issues/33) | Checked-contract predicates are independent of Acc induction. Explicit wrong-IH, partial-input and imported-endpoint tests reject; an ordinary IADT contract wrapper and a reject-only native-rule experiment pass. No soundness defect or full predicate replacement is established. | Retain the existing public contract, not a new convergence oracle. Close the audit after publishing its verified tests and disposition below. |
 | [#34](https://github.com/repyt-margorp/a-program/issues/34) | Both providers and partition orders pass general Sorted/permutation, concrete consumers and partial images. Measured costs are mixed; both need the same proof-field reorder. | Closed with the Q4 evidence below. Keep primitive lift in the frozen provider and retain the verified derived alternative. |
 
 [PR #35](https://github.com/repyt-margorp/a-program/pull/35) contains the
@@ -2817,6 +2817,175 @@ this follow-up records publication only.
 Across both commits, documentation is +146/-2 (net +144); tests are +23/-3.
 Total tracked diff is +169/-5 (net +164), with no implementation C/H changes.
 
+### Q4: Termination Boundary and Ordinary IADT Experiment
+
+Date: 2026-09-24. Audited compiler: `e63571e`; isolated worktree
+`/tmp/a-program-termination-boundary`. This stage addresses #33 and critically
+reviews PR #37 at `0525c3a`. The historical PR is not an implemented design.
+
+| Authority | Current contract and consumer |
+| --- | --- |
+| `pg_prove_inductive_type`, `pg_data_field_positive` | Scoped, universe-bounded, syntactically strictly positive declarations. Erased constructor arities alone do not admit a family. |
+| `pg_prove_inductive_hypothesis_type`, `prove_induction_scope`, `prove_data_elimination` | Derive the IH from each checked recursive field and motive; validate branch types, indices and saved binder allocations before erasing recursion to Lambda/Application. |
+| `F(totality, effects, A)` | Checked computation contract. `UNSPECIFIED` means no totality guarantee, not proven divergence. Recursive function-field IHs cannot strengthen their field's guarantee. |
+| `pg_prove_termination_type` | Forms a predicate on a checked suspended computation, including a partial contract or raw Pi. Formation is not introduction. |
+| `pg_prove_termination` | Requires a same-context, same erased suspended endpoint with an already checked `U(F(TOTAL,E,A))` classifier. It runs no evaluator and does not totalize a partial computation. |
+| `pg_prove_total_pure_value` | Requires `TOTAL` **and** an empty effect row directly. It never consumes a `Terminates` witness. Used by synthesis, indexed IHs and function-graph construction. |
+| `derivation_step`, image input | Imported rule parameters/endpoints are obligations. Ordinary rule constructors recompute the conclusion; raw occurrence descriptions and saved endpoints cannot grant totality. |
+
+The two `PG_TERMINATION_*` rules are therefore not a second implementation of
+Acc recursion. They expose a checked-contract marker. There is no current
+eliminator that turns an arbitrary partial computation plus this marker into
+a total one. `TOTAL` with effects is conditional on returning operation
+interpretations; even its termination marker cannot justify pure projection.
+This condition is now tested explicitly in `tests/core.c`.
+
+**Ordinary IADT trial.** `tests/derivation_io.c:termination_encoding` constructs,
+through existing family/constructor/Match rules only, the following schematic
+family at a fixed checked carrier and empty row:
+
+```text
+Evidence_g : U(F(g,{},A)) -> Type
+pack_g     : (m : U(F(g,{},A))) -> Evidence_g m
+unpack_g (pack_g m) = FORCE m : F(g,{},A)
+```
+
+Both `g=TOTAL` and `g=UNSPECIFIED` variants form, introduce, eliminate, serialize
+and Solve after fresh-process import with chunks 1 and 64. The stored premise
+DAG is traversed to assert that neither native termination rule occurs in it.
+The opposite-grade argument is rejected by the same constructor. Only the
+total variant permits total-pure projection after elimination.
+
+This derives a restricted contract wrapper, **not** a finite-convergence
+predicate for arbitrary programs. Merely naming the partial variant
+`Terminates` would not prove termination. It also is not a drop-in replacement
+for the current predicate: the latter forms at arbitrary checked `U` types
+and identifies its target by erased endpoint, whereas the trial has a fixed
+typed index domain and fresh nominal family. A replacement needs an explicit
+typed bridge, not an identification of nominal families or a new acceptance
+bit. Retain the existing surface/kernel contracts: the experiment does not
+justify replacing them with this differently indexed family.
+
+**Boundary coverage and interpretation.**
+
+- Existing `tests/iadt.c:accessibility_elimination` checks arbitrary logical
+  `A/R`, both function-field grades, dependent child motives and wrong-index
+  IH rejection. `positive_fields`/`schema_positivity` reject negative and
+  double-negative Self occurrences and check the universe bound separately.
+- Renamed accessibility source tests remain permanent. The unrelated Bool
+  `Precedes` relation in `acc-concrete-successor.p` checks recursive results,
+  a wrong child index and source/image rejection through `compatibility.sh`.
+  Production `pointer/*.c` and `*.h` contain no `Acc`/`acc` identifier match.
+- New Core tests substitute an erased self-application loop into otherwise
+  genuine total-computation and thunk descriptions; neither has accepted
+  evidence. New imported-rule tests reject partial termination introduction,
+  partial result projection and invented loop source/target endpoints without
+  evaluating the loop. Existing valid proofs remain usable afterward.
+- `acc-renamed-wrong-ih.p` still stops at motive synthesis (`unsupported`),
+  not a demonstrated negative kernel result. Leave that diagnostic unchanged.
+  The new `acc-explicit-motive.p` rebuilds renamed accessibility with an
+  explicit dependent motive, independently of `::` (done, 1,664 steps).
+  `acc-explicit-wrong-ih.p` passes `LT current (succ current)` where the IH
+  requires `LT current current` (rejected, 1,406 steps). Both source outcomes
+  survive ordinary and retained partial-image import/resave.
+
+**Reject-only experiment.** In `/tmp/a-program-no-termination` at the same
+baseline, both `pg_prove_termination_type` and `pg_prove_termination` return
+`NULL` immediately. No rule accepts less evidence. The unchanged native
+predicate fixture rejects at 664 steps; the original sort provider rejects
+at 56,425 steps. Removing only its final unused `quickSortTerminates` helper
+lets the provider check at 55,998 steps. Acc, QuickSort, its graph and the
+general Sorted proof are unchanged. The explicit-motive pair has the same
+1,664/1,406-step outcomes. The full `generic_sorted.sh` runner passes with
+retained images enabled, including its complete theorem, concrete helper
+results, negative consumers and zero/100-step images.
+
+Thus this particular failure is a **surface-library dependency on a public
+predicate**, not a need for that predicate in general IADT induction or graph
+generation. This does not establish that every existing consumer can migrate
+to the restricted IADT wrapper. The reject-only compiler and provider deletion
+remain isolated experiments and are not publication changes.
+
+**Disposition of the historical recommendations.** Retain general induction,
+positivity, typed recursive-field contracts and total-pure projection. None
+is replaced by storing an arbitrary IADT witness. Do not add an Acc-specific
+primitive, a second evaluator/replay path, implicit proof irrelevance, or a
+"ran within fuel, therefore total" flag. Existing pure reduction receipts
+may justify their exact checked endpoints; they are not arbitrary convergence
+axioms. Future unrestricted recursion/minimization needs a partial contract
+and an explicit adequacy/reconstruction design, tracked separately from this
+audit. Neither accessibility of a chosen relation nor observed convergence
+totalizes every recursive program or makes general equality decidable.
+No normalization theorem for the entire higher theory is claimed.
+
+- [x] Code/consumer audit and ordinary IADT wrapper experiment.
+- [x] Direct and imported-rule boundary tests in the existing test runners.
+- [x] Isolated reject-only native-predicate experiment on generic QuickSort.
+- [x] Full strict optimized acceptance and focused Debug/ASan/UBSan checks.
+- [x] Resolve #33's retain/derive/replace question against the actual contract.
+
+**Decision:** `Terminates` remains the existing object-language marker with
+checked-TOTAL introduction. It stores a derived proof, not another mutable
+totality answer or a runtime trace. Public formation, same-endpoint introduction
+and total-pure projection have distinct contracts; only the last can expose a
+pure result for dependent typing. The trusted induction/positivity rules and
+TOTAL propagation remain necessary even if the marker is removed. An ordinary
+IADT wrapper is derivable in the tested fixed-carrier fragment, but supplies
+no replacement for those obligations. No new primitive or acceptance shortcut
+is warranted by this audit.
+
+This resolves the eight investigation items in #33: the authority table covers
+consumers and induction/classifier separation; the IADT/code tests cover IHs
+and positivity; the direct/imported negative tests cover false contracts;
+the wrapper and reject-only experiment cover the requested replacement trial
+and failure classification. The restrictions above address future partial
+recursion and undecidability. Earlier text made a full new convergence bridge
+an audit completion gate; that exceeds #33's request, which expressly does
+not require removing every termination rule. Such a feature needs a separate
+design, not a new unresolved prerequisite for A3-A5.
+
+Publication now targets `main`, which is also the local working branch and
+GitHub default. `rewrite/pointer-core-hott` remains available as history; no
+uncommitted telescope-relocation work is included in this epoch.
+The top README now points to `main`; the old implementation's tag remains
+`old-version/2026-09-14-main` (`63b00eb`).
+
+Verification: strict Debug and focused ASan/UBSan Core/derivation IO passed,
+including leak detection and fresh-process chunks 1/64. Both new source cases
+also passed direct admission and ordinary/retained zero/100-step save/resave
+checks in Debug, O2 and ASan/UBSan (78 invocations). Unsolved resaves were
+byte-identical. The final strict-O2 `check-acceptance` passed (611 seconds):
+63/63 compatibility, general Sorted/content proofs, both LT providers and
+partition orders, and their positive/negative source/image gates.
+Unchanged build inputs were byte-compared before reusing
+the existing binaries; modified C tests were rebuilt. No full sanitizer-suite
+claim is inferred from these focused checks.
+
+Logs: `/tmp/a-program-termination-{debug,sanitize,image}.log`,
+`/tmp/a-program-termination-publication-opt.log`, and
+`/tmp/a-program-no-termination-experiment.log` (experiment only).
+
+Change accounting against `e63571e`, excluding unrelated working changes:
+
+| File | Added | Deleted | Net |
+| --- | ---: | ---: | ---: |
+| `README.md` | 4 | 4 | 0 |
+| This plan | 172 | 2 | +170 |
+| `src/prototype/pointer/Makefile` | 2 | 0 | +2 |
+| `tests/acceptance/acc-explicit-motive.p` | 12 | 0 | +12 |
+| `tests/acceptance/acc-explicit-wrong-ih.p` | 10 | 0 | +10 |
+| `tests/core.c` | 21 | 0 | +21 |
+| `tests/derivation_io.c` | 154 | 10 | +144 |
+| `tests/image_cli.sh` | 2 | 1 | +1 |
+
+Test paths are relative to `src/prototype/pointer/`. Tests add 199/delete 11
+lines (net +188); their build registration adds two lines.
+
+Compiler implementation delta is zero in this stage; tests, their existing
+runner registration and documentation constitute this publication epoch.
+A3-A5/R2-R5 and the cumulative net-negative
+implementation gate remain open.
+
 ## Change Log
 
 | Date | Stage | Revision and evidence | Status |
@@ -2842,3 +3011,4 @@ Total tracked diff is +169/-5 (net +164), with no implementation C/H changes.
 | 2026-09-24 | #34 universal content | General permutation theorem and executable consumers for both LT providers; wrong element, multiplicity and output claims reject. Full optimized acceptance and focused Debug/ASan+UBSan pass. | No kernel/provider change; partition sensitivity, library decision and authority refactor remain open. |
 | 2026-09-24 | A4/R5 rule headers | Intern immutable rule parameters, keep exact premise producers, and reuse existing simple-rule builders. Full O2 acceptance, focused Debug/ASan+UBSan and cross-version images pass. | Main-arena used bytes -2,602,160; implementation -19 lines. Not completion of the parent authority audit. |
 | 2026-09-24 | #34 partition sensitivity | `5a4a228`: both LT providers pass after the same six graph-field reorderings. Full O2 acceptance and focused Debug/ASan+UBSan pass; seven-run timing, RSS, graph/proof and image measurements recorded above. | Published Main/rewrite; #34 closed. Preserve the existing provider and the derived alternative. Authority/#32/#33 remain open. |
+| 2026-09-24 | #33 boundary disposition | Ordinary IADT wrappers preserve either grade; native predicate rejection does not stop generic Sorted after removing its unused helper. Explicit wrong IHs, partial projections and invented endpoints reject. Full O2 and focused Debug/ASan+UBSan pass. | Retain the public checked-contract predicate; audit ready for closure with this Main epoch. No compiler implementation change. #32/A3-A5/R2-R5 remain open. |

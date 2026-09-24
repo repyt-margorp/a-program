@@ -5434,10 +5434,31 @@ static void totality_classifier_test(struct pg_graph *graph)
 	assert(!pg_prove_total_pure_value(&typing, functions[1]));
 	assert(!pg_prove_total_pure_value(&typing, v));
 	assert(!pg_prove_total_pure_value(&typing, NULL));
+	/* A total annotation and even genuine operand/type pointers cannot turn
+	 * an erased self-application into an accepted typed computation. */
+	const struct pg_object *loop = pg_binder(graph);
+	const struct pg_term *reference = pg_reference(graph, loop);
+	const struct pg_term *delta = pg_lambda(graph, loop, pg_application(graph, reference, reference));
+	const struct pg_term *omega = pg_application(graph, delta, delta);
+	for (unsigned i = 0; i < 2; ++i) {
+		const struct pg_evidence *source = i ? pg_prove_thunk(&typing, returned[1]) : returned[1];
+		const struct pg_occurrence *subject = pg_evidence_subject(source);
+		struct pg_occurrence claimed = *subject;
+		claimed.core = i ? pg_application(graph, pg_reference(graph, &pg_thunk_operation), omega) : omega;
+		const struct pg_occurrence *description = pg_occurrence_intern(&typing, &claimed,
+			subject->operands, pg_occurrence_maps(subject));
+		assert(description && !pg_prove_structural_subject(&typing, description));
+		assert(!pg_evidence_for_subject(&typing, description, NULL));
+		assert(pg_prove_structural_subject(&typing, pg_evidence_subject(source)) == source);
+	}
 	const struct pg_effect_row *nonempty = pg_effect_row(graph, 1, (const struct pg_object *[]){&pg_return_operation});
 	const struct pg_evidence *effectful = pg_prove_effect_subsumption(&typing, returned[1],
 		pg_prove_computation_type(&typing, PG_TOTALITY_TOTAL, nonempty, a));
 	assert(effectful && !pg_prove_total_pure_value(&typing, effectful));
+	const struct pg_evidence *suspended_effect = pg_prove_thunk(&typing, effectful);
+	const struct pg_evidence *effect_termination = pg_prove_termination_type(&typing,
+		pg_prove_classifier(&typing, context, suspended_effect), suspended_effect);
+	assert(effect_termination && pg_prove_termination(&typing, effect_termination, suspended_effect));
 	reconstruct_derivation(&typing, pure_value);
 	/* Formation is not a termination proof for an arbitrary suspended input.
 	 * FOLD preserves exactly the contracts assumed in its typed premises. */

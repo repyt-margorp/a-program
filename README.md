@@ -5,16 +5,16 @@ implementation under active development. Compilation and type checking perform
 bounded computation ahead of execution, constructing explicit typing evidence.
 Unfinished computation remains pending; it is not accepted as a proof.
 
-The current implementation is the **pointer-core rewrite** in
+The current implementation is the **pointer core** in
 [`src/prototype/pointer/`](src/prototype/pointer/), on the default branch
-`rewrite/pointer-core-hott`. The directory name reflects the repository's
+`main`. The directory name reflects the repository's
 acceptance policy, not a promise to discard this implementation.
 
-The previous implementation remains on `main` and at the tag
+The previous implementation is preserved at the tag
 [`old-version/2026-09-14-main`](https://github.com/repyt-margorp/a-program/tree/old-version/2026-09-14-main).
 The [previous top-level README](doc/2026-09-14-LEGACY-TOP-LEVEL-README.md) is
 archived unchanged from `e9a131d`, a later legacy snapshot than the frozen
-`main`. For that frozen version, use its
+tagged revision. For that frozen version, use its
 [own README](https://github.com/repyt-margorp/a-program/blob/old-version/2026-09-14-main/README.md).
 Legacy build commands and artifact formats do not describe the pointer rewrite.
 

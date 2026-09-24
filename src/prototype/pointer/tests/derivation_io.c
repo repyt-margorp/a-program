@@ -1562,30 +1562,109 @@ static void nominal_proofs(FILE *file, struct pg_typing *typing,
 	pg_declaration_io_destroy(&io);
 }
 
+/* An ordinary indexed wrapper preserves an existing contract; induction does
+ * not make its suspended field total. No termination rule occurs in this DAG. */
+static const struct pg_evidence *termination_encoding(struct pg_typing *typing,
+	const struct pg_evidence *type, const struct pg_evidence *context,
+	const struct pg_evidence *suspended, const struct pg_evidence *wrong,
+	const struct pg_evidence **decoded)
+{
+	struct pg_graph *graph = typing->graph;
+	const struct pg_evidence *empty = pg_prove_empty_context(typing);
+	const struct pg_object *self = pg_binder(graph), *m = pg_binder(graph), *field = pg_binder(graph);
+	uint64_t level;
+	assert(pg_universe_level(pg_evidence_classifier(type), &level));
+	const struct pg_evidence *domain = pg_prove_context_extension(typing, empty, m, type);
+	const struct pg_evidence *parameters = pg_prove_family_context_extension(typing, empty, self,
+		domain, pg_prove_universe(typing, domain, level));
+	const struct pg_evidence *indices = pg_prove_context_extension(typing, parameters, m,
+		pg_prove_projection(typing, parameters, type));
+	const struct pg_evidence *fields = pg_prove_context_extension(typing, parameters, field,
+		pg_prove_projection(typing, parameters, type));
+	const struct pg_evidence *result = pg_prove_substitution_pair(typing,
+		pg_prove_substitution_projection(typing, parameters, fields), indices,
+		pg_prove_variable(typing, fields, field));
+	const struct pg_data_schema *schema = pg_data_schema(typing,
+		pg_data_signature(typing, parameters, indices), 1, &result);
+	const struct pg_evidence *formation = pg_prove_inductive_type(typing, schema);
+	const struct pg_object *constructor = pg_data_constructor(pg_data_schema_layout(schema), 0);
+	const struct pg_evidence *map = pg_prove_substitution_projection(typing, empty, context);
+	const struct pg_evidence *encoded = pg_prove_constructor(typing, formation, constructor, map, 1, &suspended);
+	assert(encoded && !pg_prove_constructor(typing, formation, constructor, map, 1, &wrong));
+	const struct pg_evidence *fiber = pg_prove_family_application(typing,
+		pg_prove_projection(typing, context, formation), suspended);
+	assert(fiber && pg_evidence_classifier(encoded) == pg_evidence_subject(fiber)->core);
+	const struct pg_evidence *motive_context = pg_prove_inductive_motive_context(typing,
+		formation, map, pg_binder(graph));
+	const struct pg_evidence *motive = pg_prove_projection(typing, motive_context,
+		pg_prove_thunk_content(typing, type));
+	const struct pg_evidence *field_map = pg_prove_constructor_scope(typing, formation, constructor, map);
+	const struct pg_evidence *scope = pg_evidence_premise(field_map, 1);
+	const struct pg_evidence *body = pg_prove_force(typing,
+		pg_substitution_image(typing, field_map, field));
+	const struct pg_evidence *branch = pg_prove_abstract(typing, context, scope, body);
+	*decoded = pg_prove_match(typing, formation, map, encoded, motive_context, motive, 1, &branch);
+	assert(*decoded);
+	return encoded;
+}
+
+static int without_termination(void *owner, const void *key, size_t index, const void **child)
+{
+	(void)owner;
+	const struct pg_derivation_input *input = key;
+	assert(input->rule != PG_TERMINATION_FORM && input->rule != PG_TERMINATION_INTRO);
+	if (index == input->count) return 0;
+	*child = input->premises[index];
+	return 1;
+}
+
 static void termination_proofs(FILE *file, struct pg_typing *typing,
 	int writing, uint64_t chunk)
 {
+	struct pg_declaration_io io;
+	assert(!pg_declaration_io_init(&io, typing));
 	if (writing) {
 		const struct pg_evidence *context = pg_prove_empty_context(typing);
 		const struct pg_evidence *type = pg_prove_universe(typing, context, 0);
-		const struct pg_evidence *f = pg_prove_computation_type(typing,
-			PG_TOTALITY_TOTAL, pg_effect_row(typing->graph, 0, NULL), type);
-		const struct pg_object *m = pg_binder(typing->graph);
-		context = pg_prove_context_extension(typing, context, m, pg_prove_thunk_type(typing, f));
-		const struct pg_evidence *suspended = pg_prove_variable(typing, context, m);
+		const struct pg_evidence *thunks[2], *values[2];
+		const struct pg_object *binders[2];
+		for (unsigned i = 0; i < 2; ++i) {
+			thunks[i] = pg_prove_thunk_type(typing, pg_prove_computation_type(typing,
+				i, pg_effect_row(typing->graph, 0, NULL), type));
+			binders[i] = pg_binder(typing->graph);
+			context = pg_prove_context_extension(typing, context, binders[i],
+				pg_prove_projection(typing, context, thunks[i]));
+		}
+		for (unsigned i = 0; i < 2; ++i) values[i] = pg_prove_variable(typing, context, binders[i]);
+		const struct pg_evidence *suspended = values[1];
 		const struct pg_evidence *formation = pg_prove_termination_type(typing,
 			pg_prove_classifier(typing, context, suspended), suspended);
 		const struct pg_evidence *witness = pg_prove_termination(typing, formation, suspended);
 		const struct pg_evidence *result = pg_prove_total_pure_value(typing,
 			pg_prove_force(typing, suspended));
-		assert(formation && witness && result && !pg_derivations_write(file, 3,
-			(const struct pg_evidence *[]){formation, witness, result}, name, typing->graph));
+		const struct pg_evidence *partial = pg_prove_termination_type(typing,
+			pg_prove_classifier(typing, context, values[0]), values[0]);
+		assert(partial && !pg_prove_termination(typing, partial, values[0]));
+		const struct pg_evidence *decoded[2];
+		const struct pg_evidence *encoded[] = {
+			termination_encoding(typing, thunks[0], context, values[0], values[1], &decoded[0]),
+			termination_encoding(typing, thunks[1], context, values[1], values[0], &decoded[1])};
+		const struct pg_evidence *roots[] = {formation, witness, result, partial, values[0],
+			encoded[0], encoded[1], decoded[0], decoded[1]};
+		assert(formation && witness && result && !pg_derivations_write_descriptors(file, 9,
+			roots, &pg_declaration_graph_codec, &io));
+		pg_declaration_io_destroy(&io);
 		return;
 	}
 	size_t count;
 	const struct pg_derivation_input *const *roots;
-	assert(!pg_derivations_read(file, typing, 1000, 100, resolve, typing->graph, &count, &roots));
-	assert(count == 3 && !typing->proofs.count);
+	assert(!pg_derivations_read_descriptors(file, typing, 4000, 100,
+		&pg_declaration_graph_codec, &io, &count, &roots));
+	assert(count == 9 && !typing->proofs.count);
+	struct pg_dag ordinary = {0};
+	assert(!pg_dag_init(&ordinary, without_termination, NULL));
+	assert(!pg_dag_add(&ordinary, roots[7]) && !pg_dag_add(&ordinary, roots[8]));
+	pg_dag_destroy(&ordinary);
 	struct pg_whnf_work work;
 	struct pg_synthesis synthesis;
 	assert(!pg_whnf_work_init(&work, typing->graph));
@@ -1628,9 +1707,74 @@ static void termination_proofs(FILE *file, struct pg_typing *typing,
 		pg_synthesis_advance(&synthesis, chunk);
 	}
 	assert(pg_synthesis_status(rejected) == PG_SYNTHESIS_REJECTED);
+	/* The same suspended contract survives import. An IADT constructor around
+	 * a partial input supplies no promotion to totality or pure result values. */
+	for (size_t i = 3; i < count; ++i) {
+		struct pg_synthesis_job *job = pg_synthesis_derivation(&synthesis, roots[i]);
+		while (pg_synthesis_status(job) == PG_SYNTHESIS_PENDING) {
+			assert(synthesis.steps < 6000);
+			pg_synthesis_advance(&synthesis, chunk);
+		}
+		assert(pg_synthesis_status(job) == PG_SYNTHESIS_DONE);
+	}
+	for (unsigned i = 0; i < 2; ++i) {
+		const struct pg_evidence *decoded = pg_synthesis_result(pg_synthesis_derivation(&synthesis, roots[7 + i]));
+		const struct pg_evidence *value = pg_prove_total_pure_value(typing, decoded);
+		assert(!!value == i);
+		const struct pg_evidence *suspended = pg_synthesis_result(pg_synthesis_derivation(&synthesis,
+			i ? roots[1]->premises[1] : roots[4]));
+		const struct pg_evidence *direct = pg_prove_force(typing, suspended);
+		assert(pg_evidence_classifier(decoded) == pg_evidence_classifier(direct));
+		struct pg_whnf_job *head = pg_whnf_request(&work, &pg_pure_policy, pg_evidence_subject(decoded)->core);
+		while (pg_whnf_advance(head, chunk) == PG_EVAL_PENDING) assert(pg_whnf_steps(head) < 1000);
+		assert(pg_alpha_equal(pg_whnf_result(head), pg_evidence_subject(direct)->core) == 1);
+	}
+	const struct pg_derivation_input *force = roots[2]->premises[0];
+	struct pg_derivation_input *partial_force = pg_alloc(typing->graph, sizeof(*force) + sizeof(*force->premises));
+	assert(partial_force);
+	*partial_force = *force;
+	partial_force->premises[0] = roots[4];
+	wrong = pg_alloc(typing->graph, sizeof(*wrong) + 2 * sizeof(*wrong->premises));
+	bad_result = pg_alloc(typing->graph, sizeof(*bad_result) + sizeof(*bad_result->premises));
+	assert(wrong && bad_result);
+	*wrong = *roots[1];
+	*bad_result = *roots[2];
+	wrong->premises[0] = roots[3];
+	wrong->premises[1] = roots[4];
+	bad_result->premises[0] = partial_force;
+	for (unsigned i = 0; i < 2; ++i) {
+		rejected = pg_synthesis_derivation(&synthesis, i ? bad_result : wrong);
+		while (pg_synthesis_status(rejected) == PG_SYNTHESIS_PENDING) {
+			assert(synthesis.steps < 6500);
+			pg_synthesis_advance(&synthesis, chunk);
+		}
+		assert(pg_synthesis_status(rejected) == PG_SYNTHESIS_REJECTED && !pg_synthesis_result(rejected));
+	}
+	const struct pg_object *x = pg_binder(typing->graph);
+	const struct pg_term *v = pg_reference(typing->graph, x);
+	const struct pg_term *delta = pg_lambda(typing->graph, x, pg_application(typing->graph, v, v));
+	const struct pg_term *omega = pg_application(typing->graph, delta, delta);
+	const struct pg_evidence *total = pg_synthesis_result(pg_synthesis_derivation(&synthesis, force));
+	/* Stored endpoints are obligations, not a license to substitute an erased
+	 * divergent graph for an accepted total computation. No run of Omega is
+	 * needed: neither an invented source nor target matches this premise. */
+	for (unsigned i = 0; i < 2; ++i) {
+		struct pg_derivation_input *forged = input_rule(typing->graph, PG_PURE_NORMALIZATION, 1, &force);
+		forged->source = i ? pg_evidence_subject(total)->core : omega;
+		forged->target = omega;
+		forged->reduction_kind = PG_REDUCTION_WHNF;
+		rejected = pg_synthesis_derivation(&synthesis, forged);
+		while (pg_synthesis_status(rejected) == PG_SYNTHESIS_PENDING) {
+			assert(synthesis.steps < 7000);
+			pg_synthesis_advance(&synthesis, chunk);
+		}
+		assert(pg_synthesis_status(rejected) == PG_SYNTHESIS_REJECTED && !pg_synthesis_result(rejected));
+		assert(pg_synthesis_result(result) && pg_synthesis_result(witness));
+	}
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&work);
-	puts("termination: inert derivation input, ordinary Solve and retained target passed");
+	pg_declaration_io_destroy(&io);
+	puts("termination: checked contracts, ordinary IADT wrappers, inert import and partial-input rejection passed");
 }
 
 static void discarded_input(struct pg_typing *typing)
