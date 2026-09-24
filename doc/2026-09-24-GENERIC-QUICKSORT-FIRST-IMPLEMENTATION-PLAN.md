@@ -1632,23 +1632,115 @@ not by itself remove root-request records or establish a speedup. The larger
 index and retained records are measured costs, not a complete attribution of
 the timing regression. Do not repeat the same trial with an additional cache.
 
-Next experiment, before another full publication candidate:
+Follow-up experiment (source gates evaluated below; not adopted):
 
-- [ ] Use one exact `(Term, interned environment)` index for both explicit
+- [x] Use one exact `(Term, interned environment)` index for both explicit
   requests and their subproblems. Remove the ordered-array request lookup and
   separate indexed request record; retain a demand handle only when requested.
   A diagnostic explicit-request count is not a second result authority.
-- [ ] Keep completed entries compact: input and result remain; traversal
+- [x] Keep completed entries compact: input and result remain; traversal
   children, cursor, fresh binder and private-body owner belong to pending
   storage that is released/reused on completion. Do not retain every old
   traversal field merely to make the codec easier.
-- [ ] Reuse the interleaved-root regression, and add pending-owner destruction
+- [x] Reuse the interleaved-root regression, and add pending-owner destruction
   and zero-budget tests. Only proceed to snapshots if source timings, measured
   retained bytes and source delta justify the replacement. Snapshot work must
   preserve lexical sharing and inert resave without copying the whole store.
 
 These are experimental gates, not permission to change typing, conversion,
 accepted evidence or the original A3-A5/R2-R5 completion criteria.
+
+#### Compact single-index experiment: not adopted
+
+Local branch `experiment/compact-substitution-dag`, commit `48292b6`, removes
+the separate indexed root-request record and ordered-array lookup. An explicit
+demand is an optional handle on the canonical `(Term, environment)` result.
+Completed entries occupy 64-byte arena slots instead of 96; pending traversal
+fields occupy reusable 64-byte slots. Failure belongs to the shared result,
+not a second status on each demand. A newly requested completed/failed result
+does not allocate a traversal context. This is exact structural reuse, not
+normalization-based interning or an equality rule.
+
+The final source-only trial preserves the preceding shared trial's 595,855
+Solve steps, 558,603 Core nodes, 434,458 occurrences, 216,688 proofs and 43,378
+Context maps. The published baseline uses 619,092 steps. Substitution arenas
+use 23,610,976 bytes (4,300,064 requests/environments plus 19,310,912 shared
+results), versus the baseline's 25,426,752. The shared arena contains 301,702
+result entries and 31 pooled progress slots. Main arena used bytes remain
+213,981,952 versus baseline 216,497,088. These exclude bucket arrays, allocator
+overhead and other heap storage; they are not total process memory.
+
+Strict C11 O2, identical source/imports, 10,000,000-step ceiling, one warmup
+per version, 15 alternating fresh-process pairs, no concurrent build/test:
+
+| Input | Baseline median ms | Trial median ms |
+| --- | ---: | ---: |
+| Length output proof | 7.092 | 7.210 |
+| Function-field graph | 10.908 | 10.768 |
+| Vec append | 8.654 | 8.669 |
+| Compatibility QuickSort | 152.390 | 151.893 |
+| Generic Sorted | 869.128 | 901.693 |
+
+Small samples batch 25 processes, compatibility QuickSort three, generic one.
+Generic timing ranges are 833.978-897.960 and 859.856-928.062 ms; per-child
+peak RSS medians are 263,228 and 262,152 KiB. Small-case timing ranges overlap;
+their RSS is limited by the inherited runner high-water mark. A preceding
+31-pair trial before omitting terminal-result traversal allocation also
+regressed: generic medians 865.790/897.166 ms. The final sample's roughly 3.7%
+regression does not establish a universal slowdown, but neither experiment
+justifies adoption as a speed improvement. Fewer Solve steps are not fewer
+uniform-cost machine instructions.
+
+Focused verification passed: strict O2 Core tests and all five benchmark
+inputs; ASan/UBSan Core and complete generic Sorted source proof, with leak
+detection and halt-on-error enabled. Added cases cover overlapping demands,
+private Lambda ownership, pending-owner destruction, zero budget, reuse of
+progress storage and propagation of a failed child to both demands. Later
+terminal-result requests have no context and consume zero steps.
+
+**Persistence is not complete and full acceptance was not run.** The trial
+rejects shared pending snapshots; its existing evaluator IO test still needs
+the new layout. Its temporary private substitution writer also omits
+disconnected completed cache entries, so retained-work equivalence has not
+been established. None of these omissions is acceptable for publication.
+Do not weaken the codec tests, retain the entire store in each snapshot, or
+present the source checks as artifact validation. Stop codec development for
+this rejected representation rather than adding complexity to rescue it.
+
+Evidence: `/tmp/a-program-compact-substitution-terminal-{timing,storage}.log`,
+`/tmp/a-program-compact-substitution-terminal-core.log`, and
+`/tmp/a-program-compact-substitution-terminal-sanitize-{core,generic}.log`.
+The longer preceding run is
+`/tmp/a-program-compact-substitution-dag-repeat-timing.log`. The storage audit
+disables leak checking only under GDB; standalone sanitizer runs enable it.
+
+Delta against published `f5cf0e4`, including preparatory commits:
+
+| File under `src/prototype/pointer/` | Added | Deleted | Net |
+| --- | ---: | ---: | ---: |
+| `eval.c` | 181 | 111 | +70 |
+| `eval.h` | 4 | 3 | +1 |
+| `eval_internal.h` | 16 | 3 | +13 |
+| `eval_io.c` | 58 | 24 | +34 |
+| `tests/core.c` | 88 | 10 | +78 |
+| `tests/eval_io.c` | 15 | 11 | +4 |
+
+Implementation/headers: +259/-141, net +118. Tests: +103/-21, net +82.
+This is an unpublished experiment, not progress toward the adopted-code
+reduction gate. Main's implementation remains unchanged.
+
+Decision: retain the published private readback implementation for now. The
+cross-request duplicate-work finding is real, but does not by itself prove
+that retaining all subproblem results is the simpler or faster design. The
+single-authority requirement concerns conflicting owners of the same accepted
+fact; it does not require keeping every temporary computational result alive.
+Do not repeat these cache variants without new evidence. Resume the existing
+A4 typed-construction audit: trace exact premise keys from source preparation
+through shared queries to accepted evidence, distinguish recipe inspection
+from executed computation, and remove only demonstrated duplicate paths.
+Any replacement must retain alternate proof premises, pending-work budgets,
+Core/typed separation and the original A3-A5/R2-R5 acceptance gates. Those
+gates, including the cumulative net-negative source requirement, remain open.
 
 ### Q4: Context-map Representation and Projection Composition
 
