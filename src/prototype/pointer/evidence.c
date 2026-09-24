@@ -4639,6 +4639,9 @@ const struct pg_evidence *pg_prove_substitution_compose(struct pg_typing *typing
 	if (!substitution_proof(typing, first)) return NULL;
 	if (!substitution_proof(typing, second)) return NULL;
 	if (pg_evidence_context(first) != pg_evidence_context(second->premises[0])) return NULL;
+	/* Prefix projections compose without substituting their variable images. */
+	if (first->premise_count == 2 && second->premise_count == 2)
+		return pg_prove_substitution_projection(typing, first->premises[0], second->premises[1]);
 	size_t count = pg_evidence_context_map(first)->count;
 	if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
 	const struct pg_evidence **images = malloc(count * sizeof(*images));

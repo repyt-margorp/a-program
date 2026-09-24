@@ -2365,6 +2365,25 @@ static void typed_substitution_test(struct pg_graph *graph)
 	const struct pg_object *p = pg_binder(graph), *q = pg_binder(graph);
 	const struct pg_evidence *a_in_source = pg_prove_variable(&typing, source, a);
 	const struct pg_evidence *source_extension = pg_prove_context_extension(&typing, source, p, a_in_source);
+	const struct pg_evidence *inner_projection = pg_prove_substitution_projection(&typing, a_scope, source);
+	const struct pg_evidence *outer_projection = pg_prove_substitution_projection(&typing, source, source_extension);
+	const struct pg_evidence *direct_projection = pg_prove_substitution_projection(&typing, a_scope, source_extension);
+	assert(inner_projection && outer_projection && direct_projection);
+	size_t composition_actions = typing.occurrence_actions.count, composition_proofs = typing.proofs.count;
+	assert(pg_prove_substitution_compose(&typing, inner_projection, outer_projection) == direct_projection);
+	assert(typing.occurrence_actions.count == composition_actions && typing.proofs.count == composition_proofs);
+	assert(pg_evidence_premise(direct_projection, 0) == a_scope);
+	assert(pg_evidence_premise(direct_projection, 1) == source_extension);
+	reconstruct_derivation(&typing, direct_projection);
+	assert(!pg_prove_substitution_compose(&typing, outer_projection, inner_projection));
+	/* The same image terms do not turn another derivation into a projection. */
+	const struct pg_evidence *explicit_projection = pg_prove_substitution(&typing,
+		a_scope, source, 1, &a_in_source);
+	const struct pg_evidence *explicit_composite = pg_prove_substitution_compose(&typing,
+		explicit_projection, outer_projection);
+	assert(explicit_composite && explicit_composite != direct_projection);
+	assert(pg_evidence_context_map(explicit_composite) == pg_evidence_context_map(direct_projection));
+	reconstruct_derivation(&typing, explicit_composite);
 	const struct pg_evidence *lifted = pg_prove_substitution_lift(&typing, sigma, source_extension, q);
 	assert(lifted && pg_evidence_context(lifted)->declared_type == pg_reference(graph, b));
 	const struct pg_evidence *source_p = pg_prove_variable(&typing, source_extension, p);

@@ -1514,6 +1514,77 @@ discardable materialization. A replacement must remove existing work/storage,
 not merely add a lookup to each child. Retained-input reuse and the parent's
 net-negative source/performance gates remain open.
 
+### Q4: Context-map Representation and Projection Composition
+
+At `53ddaa5`, the generic Sorted input retains 43,378 maps and 631,749
+image slots. An exact-pointer prefix-sharing simulation needs 422,023 prefix
+nodes and 17,353 empty destinations. Current aligned flat allocations total
+17,456,448 bytes; even an optimistic 64-byte prefix / 32-byte empty layout
+needs 27,564,768 bytes, before its erased environments and lookup overhead.
+These are representation counts, not RSS or timings. Do not replace every
+map array with linked prefixes solely on the assumption that sharing saves
+space. The diagnostic is `/tmp/a-program-map-prefix-profile.gdb` and its
+successful input log is `/tmp/a-program-map-prefix-generic.log`.
+
+One independent redundant path is narrower: composition of two accepted
+canonical prefix projections currently rebuilds individual image receipts.
+Their composite is the existing projection between the endpoint Contexts.
+After validating both inputs and their shared boundary, use
+`pg_prove_substitution_projection` directly. This adds no map/evidence tag,
+cache, acceptance rule or artifact format. General substitutions, including
+explicit image derivations with the same structural map, retain their old path.
+This is canonical construction reuse, not observational/definitional equality.
+
+- [x] Add a regression that fails before the change: two nonempty projections
+  must reuse the endpoint projection without adding occurrence actions/proofs.
+  Check its Context premises, derivation reconstruction, reversed-boundary
+  rejection and the distinct explicit-image derivation.
+- [x] Apply and test the isolated implementation in
+  `/tmp/a-program-map-compose-clean`, excluding the unrelated local relocation
+  experiment. Core and IADT tests pass; optimized full acceptance passes.
+- [x] Complete debug and ASan/UBSan full acceptance. All three configurations
+  pass, including 63/63 compatibility cases and both generic Sorted providers.
+  Logs: `/tmp/a-program-map-compose-{debug,opt,sanitize}-acceptance.log`.
+  Sanitizer flags are `-O1 -g -fsanitize=address,undefined
+  -fno-omit-frame-pointer -fno-pie -no-pie`; all builds use C11 and
+  `-Wall -Wextra -Werror`.
+- [x] Compare clean O2 source/image timings without competing builds; all
+  source checks and both directions of old/new seed/retained image loads pass.
+- [x] Transfer only the isolated patch, preserving unrelated local work.
+- [ ] Publish the verified patch and audit on Main and the rewrite branch.
+
+The source measurements limit the benefit: length/function-field/generic
+inputs encounter 54/132/259 projection-pair compositions, all with zero image
+slots; compatibility QuickSort encounters 179 pairs and only three image
+slots. Compatibility QuickSort proofs fall 58,115 -> 58,114 and used main-arena
+space falls 52,641,856 -> 52,641,728 bytes, with other recorded counts unchanged.
+Generic Solve steps, Core/Occurrence/proof/map counts and measured arena usage
+are unchanged. Do not present this as the main compile-time repair or
+extrapolate the regression's saving to ordinary workloads. Count logs use
+`/tmp/a-program-map-compose-count*.log`; storage logs use
+`/tmp/a-program-map-compose-storage*.log`.
+
+Clean O2 comparison uses seven alternating samples after warmup, 25 fresh
+processes per small-input sample, three per compatibility QuickSort sample
+and one per generic sample. Medians below are before/after in milliseconds;
+all sample ranges overlap, so no speedup is established. The baseline source
+is `d3a6563` (identical implementation to `53ddaa5`); logs and the reproducible
+driver are `/tmp/a-program-map-compose-timing.log` and
+`/tmp/a-program-map-compose-benchmark.py`.
+
+| Input | Source | Zero-step image | Retained image |
+| --- | ---: | ---: | ---: |
+| length | 7.159 / 6.992 | 7.407 / 7.281 | 7.823 / 7.551 |
+| function-field | 11.301 / 11.125 | 11.206 / 11.191 | 11.618 / 11.744 |
+| append | 8.860 / 9.039 | 9.137 / 9.088 | 9.563 / 9.329 |
+| compatibility QuickSort | 156.595 / 158.200 | 158.103 / 159.068 | 168.588 / 171.924 |
+| generic Sorted | 893.253 / 888.303 | 874.313 / 895.659 | 910.364 / 907.394 |
+
+Accepted patch delta: `evidence.c` +3/-0; `tests/core.c` +19/-0.
+The cumulative implementation/header delta from R0 becomes +9,680/-4,980,
+net +4,700. The parent's net-negative source gate, shared-subproblem ownership
+audit and A3-A5/R2-R5 remain open; no Issue is closed by this change.
+
 ## Change Log
 
 | Date | Stage | Revision and evidence | Status |
