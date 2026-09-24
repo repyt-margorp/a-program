@@ -2386,6 +2386,117 @@ The remaining rebase callers include actual Context restriction in constructor
 refinement and function-graph generation. Do not replace those by weakening
 without proving their different scope requirements.
 
+### A4/R5 continuation: common arena packing
+
+Baseline: `fad2d51`. Review of pending type/term/classifier structure, accepted
+derivation IO and substitution consumers found no justification for deleting
+their different contracts wholesale. Pending structures are needed before
+effect solving; completed queries read accepted occurrences. Existing tests
+also require immutable pending snapshots and unaccepted structural results
+for invalid derivations. The reviewed rule/codec plumbing is already shared.
+This review does not close the remaining construction-authority audit.
+
+One independent physical duplication is confirmed in `graph.c:pg_alloc`:
+allocation rounds up to `sizeof(max_align_t)`, not its alignment. On this
+machine those are 32 and 16 bytes respectively. Every arena shares that
+unnecessary padding. Replace the flexible `max_align_t` array by an explicitly
+aligned byte array, with `used` and `capacity` measured in bytes. Keep the same
+default block payload size, zero initialization, stable addresses, distinct
+zero-sized allocations, overflow rejection and destruction owner. This adds
+no cache, tag, accepted judgement, normalization rule or serialization field.
+Pointer-key interning and the separate typed layer are unchanged.
+
+- [x] Implement the aligned-byte arena in the isolated worktree.
+- [x] Add a permanent Core fixture for tight alignment-sized packing, zeroed
+  allocations, nonoverlap, zero-sized requests, small/large block transitions,
+  overflow rejection without state mutation, and subsequent successful use.
+  Strict O2 Core passes; the same fixture with the baseline allocator fails
+  specifically at its packing assertion. Baseline alignment was safe, but
+  wasted space; this is not a claim of an old typing or memory-safety bug.
+- [x] Compare identical-input graph counts, arena bytes, fresh-process timing
+  and cross-version source/seed/retained behavior.
+- [x] Run full Debug, O2 and ASan/UBSan acceptance; preserve failure logs.
+- [x] Publish only after those gates pass, with per-file and cumulative LOC.
+
+Keep A3-A5/R2-R5 open. Physical compaction is not removal of repeated synthesis,
+and this change alone cannot meet the cumulative net-negative source gate.
+
+The first full Debug run failed in `synthesis_test/source_telescopes`.
+GDB identifies `family_function_step` reading `operands[1]` from an accepted
+`PG_INDUCTIVE_FORM` occurrence with `operand_count == 0`. A parameterized
+nominal family's erased Core is an APP spine; that does not make its typed
+construction a two-operand family application. The old padding sometimes
+supplied zeros for this invalid read, letting the code fall through by accident.
+Select Lambda/application handling only with the corresponding typed operand
+arity; a nominal formation follows the existing inductive-instance path.
+Do not classify from arbitrary receipt history or introduce another tag.
+The existing partial/normalized family quotation regression now asserts the
+zero-operand APP case explicitly. Add parameterized family quotation to the
+unelaborated/completed source-image roundtrips with one/64-step resume. Keep the failed
+`/tmp/a-program-arena-debug-acceptance.log` and GDB `*-synthesis-crash.log` /
+`*-synthesis-state.log`; rerun acceptance after this repair.
+
+After that repair, full Debug/O2/ASan+UBSan `check-acceptance` pass, including
+63/63 compatibility cases, both LT providers and retained/partial images.
+Builds use strict C11 warnings-as-errors, respectively `-O0 -g`, `-O2`, and
+`-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie`.
+Sanitizers enable leak detection and halt-on-error. No diagnostics occur in
+the successful logs: `/tmp/a-program-arena-debug-acceptance-rerun.log`,
+`*-opt-acceptance.log`, `*-sanitize-acceptance.log`. Focused synthesis and
+indexed family IO pass; the combined working tree also passes Core, synthesis
+and IADT tests. Its unrelated changes are preserved and excluded from publication.
+
+Separate Debug profiles of identical generic Sorted input confirm unchanged
+Solve steps (603,123), Core nodes (583,740), typed occurrences (427,853), proofs
+(205,291), maps (41,227), substitution requests (92,730), typed queries
+(26,633) and source jobs (101,877). Main-arena used bytes decrease
+210,470,592 -> 187,115,776 (11.1%); reserved bytes including block headers
+211,960,512 -> 188,551,280, blocks 12,911 -> 11,485. Substitution-storage used
+bytes decrease 25,024,192 -> 24,702,864; reserved bytes 25,132,896 -> 24,820,992.
+These are arena figures, not total process memory. The profiler derives units
+from the block payload element type, so old element counts are not confused
+with new byte counts. Logs: `/tmp/a-program-arena-before-storage.log` and
+`/tmp/a-program-arena-final-storage.log`.
+
+Seven alternating O2 pairs of the final repaired implementation, one warmup,
+10,000,000-step ceiling, no concurrent build/test; small inputs batch 25
+processes, compatibility QuickSort three, generic Sorted one. Ten seed/retained
+pairs cross-load both ways. Median milliseconds, baseline/candidate:
+
+| Input | Source | Seed image | Retained image |
+| --- | ---: | ---: | ---: |
+| Length output proof | 6.816 / 6.899 | 7.153 / 6.961 | 7.629 / 7.069 |
+| Function-field graph | 10.877 / 10.806 | 10.982 / 10.719 | 11.038 / 11.111 |
+| Vec append | 8.836 / 8.660 | 9.047 / 8.727 | 9.578 / 9.163 |
+| Compatibility QuickSort | 148.878 / 144.752 | 150.856 / 147.478 | 161.188 / 149.544 |
+| Generic Sorted | 844.768 / 835.858 | 858.275 / 832.796 | 849.803 / 837.633 |
+
+Generic source ranges overlap: 827.578-861.358 / 809.439-848.469 ms. Peak RSS
+medians are 256,816 / 233,904 KiB. The final source median improves about 1.1%,
+not the initial pre-repair sample's 5.6%; neither is a universal speed claim.
+Some small cases regress slightly. Keep both `/tmp/a-program-arena-timing.log`
+and `*-final-timing.log`; the table uses only the latter. This does not close
+the original R0 timing or cumulative source-reduction gates.
+
+Code `0b0fb6d` was atomically pushed to Main and the rewrite branch after
+verification; both remote heads were checked. The isolated tested source
+matches that commit exactly. Unrelated working-tree changes were not staged.
+
+| File under `src/prototype/pointer/` | Added | Deleted | Net |
+| --- | ---: | ---: | ---: |
+| `graph.c` | 9 | 9 | 0 |
+| `synthesis.c` | 3 | 2 | +1 |
+| `tests/core.c` | 31 | 0 | +31 |
+| `tests/source_io.c` | 4 | 0 | +4 |
+| `tests/synthesis.c` | 2 | 0 | +2 |
+
+Implementation +12/-11 (net +1); tests +37/-0. Against R0 `4657cc6`,
+implementation C/H is +9,759/-5,078 (net +4,681), tests +9,780/-2,483
+(net +7,297). A3-A5/R2-R5 remain open; do not count physical packing as
+elimination of duplicate semantic authority.
+
+This documentation-only follow-up adds 111 lines to this plan and removes none.
+
 ## Change Log
 
 | Date | Stage | Revision and evidence | Status |
