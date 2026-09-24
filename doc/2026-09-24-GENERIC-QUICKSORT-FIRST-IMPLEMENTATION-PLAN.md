@@ -1,7 +1,7 @@
 # Generic QuickSort First: Implementation and Refactor Resume
 
 Date: 2026-09-24
-Status: Q0-Q3 published; Q4 authority/#32/#33 open; #34 experiment verified, publication pending
+Status: Q0-Q3 published; Q4 authority/#32/#33 open; #34 experiment published and closed
 Planning baseline local revision: `0446d4eef364c78b41e07b03e53179ee4f999b18`
 Remote Main at review: `a72cda371109fdbf84d747456ed0aeb09af2391e`
 Published Q3 Main/rewrite revision: `c2ed4a75064792975f2f6637b207c1801b848e8c`
@@ -19,7 +19,7 @@ after the generic QuickSort gate below.
 | [#31](https://github.com/repyt-margorp/a-program/issues/31) | Reproducible synthesis limitation: a dependent Match accepts the recomputed comparator index but fails the result index needed for a general Sorted proof. The Nat theorem still passes. This is the immediate correctness target for the intended proof interface; no kernel soundness failure has been shown. | Repair first and prove the complete generic theorem. |
 | [#32](https://github.com/repyt-margorp/a-program/issues/32) | Proposal to simplify global `*f` syntax; no checked replacement for graph adequacy yet. | Keep the current witness mechanism while fixing #31. Investigate after the refactor resumes. |
 | [#33](https://github.com/repyt-margorp/a-program/issues/33) | Trust-boundary audit of totality rules; a renamed Acc provider checks, but no unsoundness or replacement is established. | Audit with the resumed authority work; retain termination checks pending proof of a replacement. |
-| [#34](https://github.com/repyt-margorp/a-program/issues/34) | Both providers and partition orders pass general Sorted/permutation, concrete consumers and partial images. Measured costs are mixed; both need the same proof-field reorder. | Keep primitive lift in the frozen provider and retain the verified derived alternative. Experiment complete; publish and close with the Q4 evidence below. |
+| [#34](https://github.com/repyt-margorp/a-program/issues/34) | Both providers and partition orders pass general Sorted/permutation, concrete consumers and partial images. Measured costs are mixed; both need the same proof-field reorder. | Closed with the Q4 evidence below. Keep primitive lift in the frozen provider and retain the verified derived alternative. |
 
 [PR #35](https://github.com/repyt-margorp/a-program/pull/35) contains the
 documentation-only [generic Sorted audit](https://github.com/repyt-margorp/a-program/blob/docs/audit-generic-sorted-20260924/doc/2026-09-20-GENERAL-SORTED-QUICKSORT-LEAN-AUDIT.md)
@@ -2694,7 +2694,7 @@ Finish the bounded #34 experiment while retaining the open authority gates.
 - [x] Measure compile and witness-consumer steps, timing, graph/proof storage
   and image sizes. Use matched inputs and distinguish semantic proof
   dependence from scheduler or source-layout sensitivity.
-- [ ] State whether primitive lift is retained or replaced, without equating
+- [x] State whether primitive lift is retained or replaced, without equating
   distinct proof constructors, then update #34 from the complete evidence.
 
 The unadapted general Sorted proof rejects at 530,039 steps (frozen) and
@@ -2808,6 +2808,15 @@ This epoch changes no implementation C/H. `tests/derived_lt.sh` is +13/-3
 implementation delta from R0 remains +9,804/-5,142 (net +4,662), so the parent's
 net-negative source gate remains unmet. A3-A5/R2-R5 are not complete.
 
+Published `5a4a22841bf64da54a7f4748393752a98a5622e2` atomically to `main`
+and `rewrite/pointer-core-hott`; both remote tips were verified. Unrelated
+tracked working changes remain byte-identical and were excluded. Closed
+[#34 with the evidence and library decision](https://github.com/repyt-margorp/a-program/issues/34#issuecomment-5811664028).
+The implementation checkpoint's documentation delta is +137/-2 lines;
+this follow-up records publication only.
+Across both commits, documentation is +146/-2 (net +144); tests are +23/-3.
+Total tracked diff is +169/-5 (net +164), with no implementation C/H changes.
+
 ## Change Log
 
 | Date | Stage | Revision and evidence | Status |
@@ -2832,4 +2841,4 @@ net-negative source gate remains unmet. A3-A5/R2-R5 are not complete.
 | 2026-09-24 | Q4 substitution proof sharing | `1762fa0`: retain checked prefix dependencies instead of eagerly projecting/copying every prior image. Full debug/O2/ASan+UBSan acceptance passed. Generic proof edges fall from 1,359,398 to 578,678; measured compile median improves about 10.2%. | Published Main/rewrite; APGDRV16 replaces APGDRV15. Net source +26, cumulative reduction gate and remaining authority work stay open. |
 | 2026-09-24 | #34 universal content | General permutation theorem and executable consumers for both LT providers; wrong element, multiplicity and output claims reject. Full optimized acceptance and focused Debug/ASan+UBSan pass. | No kernel/provider change; partition sensitivity, library decision and authority refactor remain open. |
 | 2026-09-24 | A4/R5 rule headers | Intern immutable rule parameters, keep exact premise producers, and reuse existing simple-rule builders. Full O2 acceptance, focused Debug/ASan+UBSan and cross-version images pass. | Main-arena used bytes -2,602,160; implementation -19 lines. Not completion of the parent authority audit. |
-| 2026-09-24 | #34 partition sensitivity | Both LT providers pass after the same six graph-field reorderings. Full O2 acceptance and focused Debug/ASan+UBSan pass; seven-run timing, RSS, graph/proof and image measurements recorded above. | Preserve the existing provider and the derived alternative; experiment verified, publication pending. |
+| 2026-09-24 | #34 partition sensitivity | `5a4a228`: both LT providers pass after the same six graph-field reorderings. Full O2 acceptance and focused Debug/ASan+UBSan pass; seven-run timing, RSS, graph/proof and image measurements recorded above. | Published Main/rewrite; #34 closed. Preserve the existing provider and the derived alternative. Authority/#32/#33 remain open. |
