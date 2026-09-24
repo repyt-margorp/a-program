@@ -2535,7 +2535,7 @@ helper-field bindings to partition graph clauses; the proof body is shared.
 - [x] Run the expanded matrix on source and ordinary/retained images at
   zero, 300,000 and completed steps, including inert resaves and chunks 1/64.
 - [x] Pass full strict optimized acceptance and focused Debug/ASan+UBSan runs.
-- [ ] Publish this isolated epoch and update #34 without closing it.
+- [x] Publish this isolated epoch and update #34 without closing it.
 
 Construction findings: inferred motives need not select the intended family.
 In particular, the empty representation case can synthesize a reflexive
@@ -2576,6 +2576,13 @@ source-reduction result.
 
 Total proof/test changes: +259/-4, net +255. Documentation is counted
 separately; no compiler implementation is added to prove this property.
+
+Published `af7c1869db016d07e67b0a71f071f783aa9055bb` atomically to Main and
+`rewrite/pointer-core-hott`; both remote heads were verified. The staged diff
+was byte-compared with the isolated tested tree, and unrelated local changes
+were preserved. [The #34 checkpoint](https://github.com/repyt-margorp/a-program/issues/34#issuecomment-5810587825)
+records the result and remaining gates. This epoch's plan changes are
++89/-1 lines, separate from the proof/test totals above.
 
 ## Change Log
 
