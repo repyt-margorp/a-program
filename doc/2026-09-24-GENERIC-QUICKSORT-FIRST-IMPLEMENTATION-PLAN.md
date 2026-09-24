@@ -3037,7 +3037,9 @@ Logs: `/tmp/a-program-typed-wait-{profile,bench,bench-repeat}.log`.
   Check recycled frame counts as well as unchanged semantic results/reuse.
 - [x] Full optimized acceptance and focused Debug/ASan/UBSan verification.
 - [x] Cross-build source/retained image and inert-resave verification.
-- [ ] Review and publish the isolated patch to Main, excluding unrelated work.
+- [x] Review and publish the isolated patch to Main, excluding unrelated work.
+  Published `a9b3e66`; remote Main and default HEAD verified. Existing
+  Context/schema relocation changes and derived-provider fixtures stay local.
 
 Full strict-O2 `check-acceptance` passes in 613.176 seconds, including 63/63
 compatibility and all four LT-provider/partition-order combinations. Strict
