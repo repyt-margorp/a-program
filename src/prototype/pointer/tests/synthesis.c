@@ -4199,6 +4199,10 @@ static void substitution_jobs(struct pg_typing *typing)
 		const struct pg_object *lift_binder = pg_binder(typing->graph);
 		struct pg_synthesis_job *lift = pg_synthesis_substitution_lift(&synthesis, map, extension, lift_binder);
 		assert(lift && pg_synthesis_status(lift) == PG_SYNTHESIS_PENDING);
+		assert(lift->role->size == 0);
+		uint64_t before_lift = synthesis.steps;
+		pg_synthesis_advance(&synthesis, 0);
+		assert(synthesis.steps == before_lift && !pg_synthesis_result(lift));
 		assert(lift == pg_synthesis_substitution_lift(&synthesis, map, extension, lift_binder));
 		assert(!pg_synthesis_substitution_lift(&synthesis, map, source, lift_binder));
 		const struct pg_evidence *lifted = complete(&synthesis, lift, PG_SYNTHESIS_DONE);
@@ -6825,6 +6829,7 @@ static void data_cases(struct pg_typing *typing)
 	pg_synthesis_advance(&split, 1);
 	struct pg_synthesis_job *mapping = pg_synthesis_reindex(&split, result_map, motive);
 	assert(mapping && pg_synthesis_dependency(job) == mapping);
+	assert(mapping->role->size == sizeof(struct pg_occurrence_action *));
 	pg_synthesis_advance(&split, 1);
 	assert(pg_synthesis_status(mapping) == PG_SYNTHESIS_PENDING && !pg_synthesis_result(mapping));
 	const struct pg_evidence *checked = complete(&split, job, PG_SYNTHESIS_DONE);
@@ -6933,6 +6938,7 @@ static void data_cases(struct pg_typing *typing)
 		struct pg_synthesis_job *pair = pg_synthesis_substitution_pair(&split, sigma, declarations[n], values[n]);
 		struct pg_synthesis_job *bulk_pair = pg_synthesis_substitution_pair(&whole, bulk_sigma, declarations[n], values[n]);
 		assert(pair && bulk_pair && graph->terms.count == terms && typing->proofs.count == proofs);
+		assert(pair->role->size == sizeof(struct pg_synthesis_job *));
 		assert(pg_synthesis_substitution_pair(&split, sigma, declarations[n], values[n]) == pair);
 		const struct pg_evidence *prefix = sigma;
 		sigma = complete(&split, pair, PG_SYNTHESIS_DONE);
@@ -6942,6 +6948,14 @@ static void data_cases(struct pg_typing *typing)
 		const struct pg_evidence *converted = pg_substitution_image_at(typing, sigma, n);
 		assert(pg_evidence_rule(converted) == PG_TYPE_CONVERSION && pg_evidence_premise(converted, 0) == values[n]);
 		assert(sigma == pg_prove_substitution_pair(typing, prefix, declarations[n], converted));
+		/* Pairing borrows the same post-check as an independent consumer;
+		 * no second conversion or receipt is reconstructed for the image. */
+		struct pg_synthesis_job *domain = pg_synthesis_reindex(&split, prefix,
+			pg_evidence_premise(declarations[n], 1));
+		struct pg_synthesis_job *post_check = pg_synthesis_expect(&split,
+			pg_synthesis_evidence(&split, values[n]), domain);
+		assert(pg_synthesis_status(post_check) == PG_SYNTHESIS_DONE);
+		assert(pg_synthesis_result(post_check) == converted);
 		steps = split.steps;
 		assert(pg_synthesis_substitution_pair(&split, prefix, declarations[n], values[n]) == pair);
 		pg_synthesis_advance(&split, 1000);
@@ -6979,6 +6993,7 @@ static void data_cases(struct pg_typing *typing)
 	assert(action && !pg_occurrence_action_steps(action));
 	struct pg_synthesis_job *unfinished = pg_synthesis_reindex(&split, result_map, suspended_value);
 	assert(unfinished);
+	assert(unfinished->role == mapping->role);
 	for (size_t i = 0; i < 1000 && !pg_occurrence_action_steps(action); ++i)
 		pg_synthesis_advance(&split, 1);
 	assert(pg_occurrence_action_steps(action) == 1 && !pg_occurrence_action_result(action));

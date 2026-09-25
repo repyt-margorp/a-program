@@ -334,7 +334,6 @@ struct source_work {
 	/* The immutable role selects private work, not the accepted result. */
 	union {
 		struct pg_conversion comparison;
-		struct pg_occurrence_action *reindex;
 		struct pg_function_graph_work function_graph;
 		struct pg_identity_face_work *face;
 		struct pg_identity_formation_work *formation;
@@ -377,7 +376,7 @@ struct source_work {
 #define SOURCE_WORK(name) static const struct pg_synthesis_work_class name[1] = {{ \
 	.size = sizeof(struct source_work), .start = source_work_start, .advance = step, .destroy = source_work_destroy, \
 	.completed = source_work_completed, .project = source_work_projection}}
-SOURCE_WORK(LIFT_JOB); SOURCE_WORK(DERIVATION_INPUT_JOB);
+SOURCE_WORK(DERIVATION_INPUT_JOB);
 SOURCE_WORK(INDUCTIVE_INSTANCE_JOB); SOURCE_WORK(INDUCTION_SCOPE_JOB); SOURCE_WORK(CONSTRUCTOR_SCOPE_JOB);
 SOURCE_WORK(DOMAIN_JOB); SOURCE_WORK(TERM_STRUCTURE_JOB); SOURCE_WORK(DECLARED_TYPE_JOB);
 SOURCE_WORK(CLASSIFIER_STRUCTURE_JOB); SOURCE_WORK(TYPE_STRUCTURE_JOB); SOURCE_WORK(EXPRESSION_JOB);
@@ -386,8 +385,8 @@ SOURCE_WORK(NORMALIZATION_JOB); SOURCE_WORK(NF_JOB);
 SOURCE_WORK(RESULT_TYPE_JOB); SOURCE_WORK(CLASSIFIER_CONSTRAINT_JOB); SOURCE_WORK(BINDING_EXPECT_JOB);
 SOURCE_WORK(REFLEXIVITY_JOB); SOURCE_WORK(CLASSIFIER_JOB); SOURCE_WORK(FAMILY_ACTION_JOB);
 SOURCE_WORK(FORMATION_JOB); SOURCE_WORK(FACE_JOB); SOURCE_WORK(EXPECT_JOB); SOURCE_WORK(SOURCE_EXPECT_JOB);
-SOURCE_WORK(INSTANCE_JOB); SOURCE_WORK(CONVERSION_JOB); SOURCE_WORK(DATA_CASE_JOB); SOURCE_WORK(REINDEX_JOB);
-SOURCE_WORK(PAIR_JOB); SOURCE_WORK(SUBSTITUTION_JOB); SOURCE_WORK(BINDING_JOB); SOURCE_WORK(TELESCOPE_JOB);
+SOURCE_WORK(INSTANCE_JOB); SOURCE_WORK(CONVERSION_JOB); SOURCE_WORK(DATA_CASE_JOB);
+SOURCE_WORK(SUBSTITUTION_JOB); SOURCE_WORK(BINDING_JOB); SOURCE_WORK(TELESCOPE_JOB);
 SOURCE_WORK(TELESCOPE_STRUCTURE_JOB); SOURCE_WORK(DATA_RESULT_JOB); SOURCE_WORK(DATA_SCHEMA_JOB);
 SOURCE_WORK(CONSTRUCTOR_JOB); SOURCE_WORK(CONSTRUCTOR_VALUE_JOB); SOURCE_WORK(INDUCTION_BRANCH_JOB);
 SOURCE_WORK(CONSTANT_MOTIVE_JOB); SOURCE_WORK(DERIVATION_JOB);
@@ -1419,25 +1418,6 @@ struct pg_synthesis_job *pg_synthesis_family_action(struct pg_synthesis *synthes
 	return result;
 }
 
-static int reindex_inputs(struct pg_synthesis *synthesis,
-	const struct pg_evidence *substitution, const struct pg_evidence *proof)
-{
-	if (!pg_evidence_owned_by(substitution, synthesis->typing)) return 0;
-	if (!pg_evidence_owned_by(proof, synthesis->typing)) return 0;
-	if (pg_evidence_rule(substitution) != PG_CONTEXT_SUBSTITUTION) return 0;
-	if (!pg_evidence_subject(proof)) return 0;
-	return pg_evidence_context(proof) == pg_evidence_context(pg_evidence_premise(substitution, 0));
-}
-
-struct pg_synthesis_job *pg_synthesis_reindex_jobs(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *substitution, struct pg_synthesis_job *proof)
-{
-	if (!substitution || substitution->owner != synthesis->owner_key) return NULL;
-	if (!proof || proof->owner != synthesis->owner_key) return NULL;
-	const void *inputs[] = {substitution, proof};
-	return pg_synthesis_work_request(synthesis, REINDEX_JOB, 2, inputs);
-}
-
 struct pg_synthesis_job *pg_synthesis_expect(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *term, struct pg_synthesis_job *type)
 {
@@ -1552,34 +1532,6 @@ struct pg_synthesis_job *pg_synthesis_identity_instance(struct pg_synthesis *syn
 	if (!right || right->owner != synthesis->owner_key) return NULL;
 	const void *inputs[] = {context, family, left, right};
 	return pg_synthesis_work_request(synthesis, INSTANCE_JOB, 4, inputs);
-}
-
-struct pg_synthesis_job *pg_synthesis_reindex(struct pg_synthesis *synthesis,
-	const struct pg_evidence *substitution, const struct pg_evidence *proof)
-{
-	if (!reindex_inputs(synthesis, substitution, proof)) return NULL;
-	return pg_synthesis_reindex_jobs(synthesis, pg_synthesis_evidence(synthesis, substitution),
-		pg_synthesis_evidence(synthesis, proof));
-}
-
-struct pg_synthesis_job *pg_synthesis_substitution_pair(struct pg_synthesis *synthesis,
-	const struct pg_evidence *substitution, const struct pg_evidence *extension,
-	const struct pg_evidence *image)
-{
-	if (!pg_evidence_owned_by(substitution, synthesis->typing)) return NULL;
-	if (!pg_evidence_owned_by(extension, synthesis->typing)) return NULL;
-	if (!pg_evidence_owned_by(image, synthesis->typing)) return NULL;
-	if (pg_evidence_rule(substitution) != PG_CONTEXT_SUBSTITUTION) return NULL;
-	if (pg_evidence_rule(extension) == PG_CONTEXT_FAMILY_EXTEND) {
-		const struct pg_evidence *result = pg_prove_substitution_pair(synthesis->typing, substitution, extension, image);
-		return pg_synthesis_evidence(synthesis, result);
-	}
-	if (pg_evidence_rule(extension) != PG_CONTEXT_EXTEND) return NULL;
-	if (pg_evidence_judgement(image) != PG_JUDGEMENT_VALUE) return NULL;
-	if (pg_evidence_context(substitution) != pg_evidence_context(image)) return NULL;
-	if (pg_evidence_context(pg_evidence_premise(substitution, 0)) != pg_evidence_context(extension)->parent) return NULL;
-	const void *inputs[] = {substitution, extension, image};
-	return pg_synthesis_work_request(synthesis, PAIR_JOB, 3, inputs);
 }
 
 struct pg_synthesis_job *pg_synthesis_data_schema(struct pg_synthesis *synthesis,
@@ -1713,19 +1665,6 @@ struct pg_synthesis_job *pg_synthesis_substitution_jobs(struct pg_synthesis *syn
 		if (!images[i] || images[i]->owner != synthesis->owner_key) return NULL;
 	const void *inputs[] = {source, destination};
 	return pg_synthesis_work_request_inputs(synthesis, SUBSTITUTION_JOB, 2, inputs, count, images);
-}
-
-struct pg_synthesis_job *pg_synthesis_substitution_lift(struct pg_synthesis *synthesis,
-	const struct pg_evidence *substitution, const struct pg_evidence *extension,
-	const struct pg_object *binder)
-{
-	if (!pg_evidence_owned_by(substitution, synthesis->typing) || pg_evidence_rule(substitution) != PG_CONTEXT_SUBSTITUTION) return NULL;
-	if (!pg_evidence_owned_by(extension, synthesis->typing)) return NULL;
-	enum pg_evidence_rule rule = pg_evidence_rule(extension);
-	if (rule != PG_CONTEXT_EXTEND && rule != PG_CONTEXT_FAMILY_EXTEND) return NULL;
-	if (!binder || pg_evidence_context(extension)->parent != pg_evidence_context(pg_evidence_premise(substitution, 0))) return NULL;
-	const void *inputs[] = {substitution, extension, binder};
-	return pg_synthesis_work_request(synthesis, LIFT_JOB, 3, inputs);
 }
 
 struct pg_synthesis_job *pg_synthesis_inductive_instance(struct pg_synthesis *synthesis,
@@ -3649,62 +3588,6 @@ static void definitions_step(struct pg_synthesis *synthesis, struct pg_synthesis
 		return;
 	}
 	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_DONE);
-}
-
-static void reindex_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
-{
-	struct source_work *local = source_work(job);
-	if (!local->reindex) {
-		for (size_t i = 0; i < 2; ++i) {
-			struct pg_synthesis_job *input = (struct pg_synthesis_job *)job->inputs[i];
-			if (pg_synthesis_await(synthesis, job, input)) return;
-		}
-		const struct pg_evidence *substitution = ((const struct pg_synthesis_job *)job->inputs[0])->result;
-		const struct pg_evidence *proof = ((const struct pg_synthesis_job *)job->inputs[1])->result;
-		if (!reindex_inputs(synthesis, substitution, proof)) {
-			pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
-		}
-		/* All producer paths converge on the accepted evidence tuple before
-		 * allocating traversal state. Distinct producers may prove the same map. */
-		struct pg_synthesis_job *canonical = pg_synthesis_reindex(synthesis, substitution, proof);
-		if (pg_synthesis_forward(synthesis, job, canonical)) return;
-		local->reindex = pg_occurrence_action_request(synthesis->typing,
-			pg_evidence_context_map(substitution), pg_evidence_subject(proof));
-		if (!local->reindex) {
-			pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
-		}
-	}
-	switch (pg_occurrence_action_advance(local->reindex, 1)) {
-	case PG_SUBSTITUTION_PENDING:
-		pg_synthesis_enqueue(synthesis, job);
-		return;
-	case PG_SUBSTITUTION_ERROR:
-		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR);
-		break;
-	case PG_SUBSTITUTION_DONE:
-		job->result = pg_prove_reindex(synthesis->typing,
-			((const struct pg_synthesis_job *)job->inputs[0])->result,
-			((const struct pg_synthesis_job *)job->inputs[1])->result);
-		pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
-		break;
-	}
-}
-
-static void pair_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
-{
-	struct source_work *local = source_work(job);
-	if (!local->left) {
-		local->checking_term = job->inputs[2];
-		local->left = pg_synthesis_reindex(synthesis, job->inputs[0], pg_evidence_premise(job->inputs[1], 1));
-		depend(synthesis, job, local->left);
-		return;
-	}
-	if (local->left->status != PG_SYNTHESIS_DONE) { pg_synthesis_finish(synthesis, job, local->left->status); return; }
-	local->checking_type = local->left->result;
-	const struct pg_evidence *checked = compare(synthesis, job);
-	if (!checked) return;
-	job->result = pg_prove_substitution_pair(synthesis->typing, job->inputs[0], job->inputs[1], checked);
-	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 }
 
 static void constructor_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
@@ -8763,8 +8646,6 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		pg_synthesis_finish(synthesis, job, status > 0 ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
 		return;
 	}
-	if (job->role == REINDEX_JOB) { reindex_step(synthesis, job); return; }
-	if (job->role == PAIR_JOB) { pair_step(synthesis, job); return; }
 	if (job->role == DATA_CASE_JOB) { data_case_step(synthesis, job); return; }
 	if (job->role == INDUCTION_BRANCH_JOB) { induction_branch_step(synthesis, job); return; }
 	if (job->role == CONSTANT_MOTIVE_JOB) { constant_motive_step(synthesis, job); return; }
@@ -8824,11 +8705,6 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		if (!certificate) return;
 		job->result = pg_prove_normalization(synthesis->typing, local->checking_term, certificate);
 		pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
-		return;
-	}
-	if (job->role == LIFT_JOB) {
-		job->result = pg_prove_substitution_lift(synthesis->typing, job->inputs[0], job->inputs[1], job->inputs[2]);
-		pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);
 		return;
 	}
 	if (job->role == BINDING_JOB) { binding_step(synthesis, job); return; }

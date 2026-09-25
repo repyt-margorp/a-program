@@ -365,6 +365,16 @@ This does not require another object-language tag, a new proof axiom, or a
 new source-replay path. The replacement representation is still a design task,
 not a user-approved schema or a completed migration.
 
+At `f8c1224`, a narrower variable-only repair was also reviewed statically:
+`typing.c:context_variable`, `pg_occurrence_weaken` and `pg_occurrence_unproject`
+construct/cancel variable images from raw declarations. Adding a selected
+formation only in `pg_prove_variable` would therefore make checked variables
+disagree with their map images, or lose that selection during weakening.
+Do not install this partial change or compensate with a fallback proof search.
+Declaration uses, variable images, scope action and image transport must migrate
+together. No Context/variable representation change is included in the
+Context-action synthesis-owner extraction below.
+
 Verification of this review: clean `44587b2` plus the two test additions passes
 the full Core executable under `-O2 -Wall -Wextra -Werror` and ASan/UBSan
 (`-O1`, non-PIE). Implementation/build/wire changes: **0 lines**; tests:
@@ -880,10 +890,30 @@ assumption that both snapshots always have the same pointer. No implementation
 of that shortcut was adopted. A new classifier cache or generic structure-kind
 dispatch was also unnecessary: use the existing queue and narrow owner queries.
 
+Context-action slice, baseline `f8c1224`, 2026-09-26 (agent decision, verified
+below): `synthesis_context.c` owns reindex, checked map pairing and lift.
+The first two keep one borrowed worker/request pointer; lift has no private
+state. They no longer allocate the source-wide union or enter its role dispatch.
+Pairing uses the existing `pg_synthesis_expect` request; its inputs are already
+restricted to values, so this does not introduce effect weakening into map
+checking. Accepted map endpoints are read from the typed map, not premise
+positions. Declaration formation still explicitly comes from the supplied
+extension; it is not guessed from a raw Context or a first matching receipt.
+Keep the same interner, queue, ordinary evidence rules and typed action worker.
+Lift and family pairing remain synchronous at their existing rule boundary;
+this is owner localization/post-check reuse, **not** completion of P4.4.
+
 ### Plan
 
 - [x] Confirm that owner-level semantics are partially separated while synthesis
   remains concentrated; distinguish this task from P4's representation change.
+- [x] Verify the Context-action owner slice (baseline `f8c1224`): move reindex,
+  checked pairing and lift requests out of the source union; pairing must share
+  ordinary value post-checking instead of retaining a separate compare path.
+  Preserve exact typed images, family binders, producer convergence and worker
+  lifetime. Run focused/Debug/sanitizer tests, clean acceptance and paired
+  timings before publication. This does not complete P4's budgeted lift or
+  typed Context-formation representation.
 - [ ] Map private job fields, entry points and cross-owner calls; choose the
   smallest shared interface consistent with P4.2. Keep domain-specific state
   private. Moving the entire job union into a widely included header is not
@@ -911,6 +941,12 @@ dispatch was also unnecessary: use the existing queue and narrow owner queries.
   then IADT/motive work. Place cross-cutting Identity transport deliberately;
   do not duplicate it. CBPV/function preparation must preserve pending cycles.
   Refine this order from the dependency map before code changes.
+  Next IADT boundary observed at `f8c1224`: constructor scope, induction scope,
+  result-map assembly and their saved-allocation readers share source-private
+  state. `substitution_state.map` holds a map in constructor/result work but a
+  Context in induction work. This is role-dependent storage, not evidence of
+  competing authorities. Move each meaning with its owner; do not export this
+  overloaded payload in a shared header or duplicate the shared map algorithm.
 - [x] Verify the Handler-owner slice: distinguish structure preparation from
   acceptance, preserve independent/restored and shared nested effect boundaries,
   registration failure, clause binder identities, repeated requests and source
@@ -1406,6 +1442,42 @@ establish a speedup. In three fresh-process RSS pairs, the last two rows have
 medians 224032 -> 223916 KiB and 174600 -> 174792 KiB respectively. This is not
 a whole-program memory bound. Logs: `/tmp/a-program-typed-map-images-bench.ZQdRJD/`
 and `/tmp/a-program-typed-map-images-memory.log`. Adopt P4.3d; keep P4/P5 open.
+
+Context-action owner verification, 2026-09-26, clean `f8c1224` plus this slice:
+
+- Full `check-acceptance`: exit 0, **1546.382 s** (25m46s), including ordinary
+  QuickSort-result/general Sorted proofs, four LT/partition variants, negative
+  cases, partial/retained images and optional-witness isolation. Synthesis also
+  passes Debug and ASan/UBSan with leak detection. No inherited local trial was
+  included. Logs: `/tmp/a-program-context-owner-{acceptance,debug,asan}.log`.
+- Old/new source-image cross-reading passes both directions for typed and
+  reduction-retained lambda/family/append/function-field images, using both
+  retained checking and recomputation. Evidence: `/tmp/a-program-context-owner-cross.QielOh`.
+- Six paired timings after warmup, reversed order for the last three pairs:
+  generic-sorted script **5.7205 -> 5.7210 s**; single Sorted source
+  **0.8095 -> 0.8020 s**; ordinary-result theorem **0.7250 -> 0.7335 s**.
+  Per-run medians of 100-process batches: explicit-index Vec append
+  **5.605 -> 5.600 ms**, certified-length candidate **6.325 -> 6.200 ms**,
+  function-field induction **3.730 -> 3.640 ms**. No material local timing
+  regression; these small variations are not a speedup claim.
+- Shared post-check scheduling adds steps: Sorted **603582 -> 604432**;
+  ordinary-result **1117652 -> 1118238**. Accepted outputs/statuses agree.
+  Three fresh-process RSS pairs give medians **223504 -> 223372 KiB** and
+  **174984 -> 174948 KiB**, respectively. Evidence:
+  `/tmp/a-program-context-owner-bench.u1pd1s`, `/tmp/a-program-context-owner-memory.log`.
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `synthesis.c` | 3 | 127 | -124 |
+| `synthesis_context.c` | 130 | 0 | +130 |
+| `tests/synthesis.c` | 15 | 0 | +15 |
+| Prototype `Makefile` | 1 | 1 | 0 |
+| Code/tests/build total, excluding this document | 149 | 128 | +21 |
+| This plan document | 72 | 0 | +72 |
+
+Most movement is owner localization, not deleted functionality. Implementation
+alone grows by 6 lines; tests add 15. Adopt this verified slice; P4's typed
+declaration contract/history migration and the remaining P5 owners stay open.
 
 | File under `src/prototype/pointer/` | Added | Deleted | Net |
 | --- | ---: | ---: | ---: |
