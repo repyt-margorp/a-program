@@ -749,7 +749,7 @@ struct pg_synthesis_job *pg_synthesis_substitution_pair(struct pg_synthesis *syn
 	const struct pg_evidence *substitution, const struct pg_evidence *extension,
 	const struct pg_evidence *image);
 /* Build a complete substitution from independently synthesized image jobs in
- * source declaration order. Shares the index-result substitution worker: each
+ * source declaration order. Index-result elaboration uses this same request: each
  * image is post-checked after preceding images determine its dependent type.
  * Requests never supply expected types to producers or publish a partial map. */
 struct pg_synthesis_job *pg_synthesis_substitution(struct pg_synthesis *synthesis,
@@ -762,8 +762,9 @@ struct pg_synthesis_job *pg_synthesis_substitution_jobs(struct pg_synthesis *syn
 	size_t count, struct pg_synthesis_job *const *images);
 /* Lift a checked substitution over a value or family extension through the
  * shared kernel construction. The caller supplies the destination binder;
- * the interned job retains signature-local allocations. This finite structural
- * proof construction currently consumes one scheduling quantum. */
+ * the interned job retains signature-local allocations. Structural lifting
+ * advances one worker step per quantum; final declaration admission still
+ * uses synchronous ordinary checking. */
 struct pg_synthesis_job *pg_synthesis_substitution_lift(struct pg_synthesis *synthesis,
 	const struct pg_evidence *substitution, const struct pg_evidence *extension,
 	const struct pg_object *binder);

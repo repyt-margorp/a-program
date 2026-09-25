@@ -151,15 +151,6 @@ struct index_transport_state {
 	int direct_checked, normalized_checked, constructor_checked;
 	struct index_progress progress;
 };
-struct substitution_entry {
-	const struct pg_evidence *extension;
-	struct pg_synthesis_job *image;
-};
-struct substitution_state {
-	const struct pg_evidence *map;
-	size_t count, next;
-	struct substitution_entry entries[];
-};
 struct constructor_index_path {
 	const struct pg_object *binder;
 	size_t field, index;
@@ -306,11 +297,6 @@ static struct pg_synthesis_projection source_work_projection(const struct pg_syn
  * descriptors replace the global role enum; extracted owners define theirs
  * privately and still use the same request index and dependency queue. */
 enum { APPLICATION_RULE_READY = 6 };
-struct context_allocation {
-	const struct pg_context *prefix, *end;
-	size_t count, next;
-	const struct pg_context *contexts[];
-};
 /* Transitional source-owner state. Extracted owners never allocate or inspect
  * this representation; their descriptors specify only their own state size. */
 struct source_work {
@@ -350,7 +336,6 @@ struct source_work {
 		};
 		struct index_transport_state *index_transport;
 		struct transport_scope *transport_scope;
-		struct substitution_state *substitution;
 		struct family_state *family;
 		size_t derivation_input_next;
 		struct {
@@ -368,7 +353,7 @@ struct source_work {
 	const struct constructor_callable *callable;
 	const struct pg_match_allocation *match_allocation;
 	struct source_case_layout *case_layouts;
-	struct context_allocation *context_allocation;
+	struct pg_source_context_allocation *context_allocation;
 	struct pg_constructor_allocation *member_allocations;
 	const struct pg_source_scope *exports;
 };
@@ -377,7 +362,7 @@ struct source_work {
 	.size = sizeof(struct source_work), .start = source_work_start, .advance = step, .destroy = source_work_destroy, \
 	.completed = source_work_completed, .project = source_work_projection}}
 SOURCE_WORK(DERIVATION_INPUT_JOB);
-SOURCE_WORK(INDUCTIVE_INSTANCE_JOB); SOURCE_WORK(INDUCTION_SCOPE_JOB); SOURCE_WORK(CONSTRUCTOR_SCOPE_JOB);
+SOURCE_WORK(INDUCTIVE_INSTANCE_JOB);
 SOURCE_WORK(DOMAIN_JOB); SOURCE_WORK(TERM_STRUCTURE_JOB); SOURCE_WORK(DECLARED_TYPE_JOB);
 SOURCE_WORK(CLASSIFIER_STRUCTURE_JOB); SOURCE_WORK(TYPE_STRUCTURE_JOB); SOURCE_WORK(EXPRESSION_JOB);
 SOURCE_WORK(DEFINITION_JOB); SOURCE_WORK(DEFINITION_SCOPE_JOB); SOURCE_WORK(EVIDENCE_JOB);
@@ -386,8 +371,8 @@ SOURCE_WORK(RESULT_TYPE_JOB); SOURCE_WORK(CLASSIFIER_CONSTRAINT_JOB); SOURCE_WOR
 SOURCE_WORK(REFLEXIVITY_JOB); SOURCE_WORK(CLASSIFIER_JOB); SOURCE_WORK(FAMILY_ACTION_JOB);
 SOURCE_WORK(FORMATION_JOB); SOURCE_WORK(FACE_JOB); SOURCE_WORK(EXPECT_JOB); SOURCE_WORK(SOURCE_EXPECT_JOB);
 SOURCE_WORK(INSTANCE_JOB); SOURCE_WORK(CONVERSION_JOB); SOURCE_WORK(DATA_CASE_JOB);
-SOURCE_WORK(SUBSTITUTION_JOB); SOURCE_WORK(BINDING_JOB); SOURCE_WORK(TELESCOPE_JOB);
-SOURCE_WORK(TELESCOPE_STRUCTURE_JOB); SOURCE_WORK(DATA_RESULT_JOB); SOURCE_WORK(DATA_SCHEMA_JOB);
+SOURCE_WORK(BINDING_JOB); SOURCE_WORK(TELESCOPE_JOB);
+SOURCE_WORK(TELESCOPE_STRUCTURE_JOB); SOURCE_WORK(DATA_SCHEMA_JOB);
 SOURCE_WORK(CONSTRUCTOR_JOB); SOURCE_WORK(CONSTRUCTOR_VALUE_JOB); SOURCE_WORK(INDUCTION_BRANCH_JOB);
 SOURCE_WORK(CONSTANT_MOTIVE_JOB); SOURCE_WORK(DERIVATION_JOB);
 SOURCE_WORK(SCOPE_CONTEXT_JOB); SOURCE_WORK(FAMILY_FUNCTION_JOB);
@@ -924,15 +909,14 @@ struct pg_synthesis_job *pg_synthesis_telescope_structure(struct pg_synthesis *s
 	return request_role(synthesis, scope, syntax, TELESCOPE_STRUCTURE_JOB);
 }
 
-static int context_allocation_at(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *job, const struct pg_context *prefix,
+int pg_synthesis_context_allocation_at(struct pg_synthesis *synthesis,
+	struct pg_source_context_allocation **slot, const struct pg_context *prefix,
 	const struct pg_context *end, int started)
 {
-	struct source_work *local = source_work(job);
 	size_t count;
 	if (pg_context_extension_size(end, prefix, &count)
-		|| count > (SIZE_MAX - sizeof(struct context_allocation)) / sizeof(void *)) return -1;
-	struct context_allocation *allocation = local->context_allocation;
+		|| count > (SIZE_MAX - sizeof(struct pg_source_context_allocation)) / sizeof(void *)) return -1;
+	struct pg_source_context_allocation *allocation = *slot;
 	if (allocation) {
 		return allocation->prefix == prefix && allocation->end == end ? 0 : -1;
 	} else {
@@ -942,7 +926,7 @@ static int context_allocation_at(struct pg_synthesis *synthesis,
 		allocation->prefix = prefix; allocation->end = end; allocation->count = count;
 		const struct pg_context *context = end;
 		for (size_t i = count; i; --i, context = context->parent) allocation->contexts[i - 1] = context;
-		local->context_allocation = allocation;
+		*slot = allocation;
 	}
 	return 0;
 }
@@ -953,7 +937,8 @@ struct pg_synthesis_job *pg_synthesis_member_at(struct pg_synthesis *synthesis,
 {
 	if (!syntax || syntax->kind != PG_SYNTAX_QUALIFIED || fields == prefix) return NULL;
 	struct pg_synthesis_job *job = pg_synthesis_request(synthesis, scope, syntax);
-	if (!job || context_allocation_at(synthesis, job, prefix, fields, source_work(job)->left != NULL)) return NULL;
+	if (!job || pg_synthesis_context_allocation_at(synthesis, &source_work(job)->context_allocation,
+		prefix, fields, source_work(job)->left != NULL)) return NULL;
 	return job;
 }
 
@@ -962,7 +947,8 @@ struct pg_synthesis_job *pg_synthesis_telescope_at(struct pg_synthesis *synthesi
 	const struct pg_context *prefix, const struct pg_context *end)
 {
 	struct pg_synthesis_job *structure = pg_synthesis_telescope_structure(synthesis, scope, syntax);
-	if (!structure || context_allocation_at(synthesis, structure, prefix, end, source_work(structure)->inner != NULL)) return NULL;
+	if (!structure || pg_synthesis_context_allocation_at(synthesis, &source_work(structure)->context_allocation,
+		prefix, end, source_work(structure)->inner != NULL)) return NULL;
 	return pg_synthesis_telescope(synthesis, scope, syntax);
 }
 
@@ -1066,6 +1052,15 @@ const struct pg_source_binding *pg_synthesis_source_binding(struct pg_synthesis 
 	if (!input) return NULL;
 	return source_binding_intern(synthesis, input,
 		(struct binding_cursor){.binders = input->scope, .count = input->scope_count});
+}
+
+const struct pg_object *pg_synthesis_constructor_binder(struct pg_synthesis *synthesis,
+	const struct pg_context *context, const struct pg_object *constructor, size_t field)
+{
+	const struct pg_source_binding *binding = source_binding_intern(synthesis,
+		&(struct pg_source_binding){.slot = field, .constructor = constructor},
+		(struct binding_cursor){.context = context});
+	return binding ? binding->binder : NULL;
 }
 
 const struct pg_object *pg_synthesis_source_binder(struct pg_synthesis *synthesis,
@@ -1555,21 +1550,6 @@ const struct pg_data_schema *pg_synthesis_schema_result(const struct pg_synthesi
 	return local->schema;
 }
 
-struct pg_synthesis_job *pg_synthesis_data_result(struct pg_synthesis *synthesis,
-	const struct pg_source_scope *fields, const struct pg_evidence *parameters,
-	const struct pg_evidence *indices, const struct pg_syntax *result)
-{
-	if (!fields || fields->owner != synthesis->owner_key || !result) return NULL;
-	if (!pg_evidence_owned_by(parameters, synthesis->typing)) return NULL;
-	if (!pg_evidence_owned_by(indices, synthesis->typing)) return NULL;
-	if (pg_evidence_judgement(parameters) != PG_JUDGEMENT_CONTEXT) return NULL;
-	if (pg_evidence_judgement(indices) != PG_JUDGEMENT_CONTEXT) return NULL;
-	const void *inputs[] = {fields, parameters, indices, result};
-	struct pg_synthesis_job *job = pg_synthesis_work_request(synthesis, DATA_RESULT_JOB, 4, inputs);
-	if (job) { source_work(job)->scope = fields; source_work(job)->syntax = result; }
-	return job;
-}
-
 struct pg_synthesis_job *pg_synthesis_data_case(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *body, const struct pg_data_schema *schema,
 	const struct pg_object *constructor, const struct pg_evidence *motive)
@@ -1638,35 +1618,6 @@ struct pg_synthesis_job *pg_synthesis_constant_motive(struct pg_synthesis *synth
 	return pg_synthesis_work_request(synthesis, CONSTANT_MOTIVE_JOB, 3, inputs);
 }
 
-struct pg_synthesis_job *pg_synthesis_substitution(struct pg_synthesis *synthesis,
-	const struct pg_evidence *source, const struct pg_evidence *destination,
-	size_t count, struct pg_synthesis_job *const *images)
-{
-	if (!pg_evidence_owned_by(source, synthesis->typing)) return NULL;
-	if (!pg_evidence_owned_by(destination, synthesis->typing)) return NULL;
-	if (pg_evidence_judgement(source) != PG_JUDGEMENT_CONTEXT) return NULL;
-	if (pg_evidence_judgement(destination) != PG_JUDGEMENT_CONTEXT) return NULL;
-	size_t arity;
-	if (pg_context_extension_size(pg_evidence_context(source), NULL, &arity) != 0) return NULL;
-	if (arity != count || (count && !images)) return NULL;
-	return pg_synthesis_substitution_jobs(synthesis, pg_synthesis_evidence(synthesis, source),
-		pg_synthesis_evidence(synthesis, destination), count, images);
-}
-
-struct pg_synthesis_job *pg_synthesis_substitution_jobs(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *source, struct pg_synthesis_job *destination,
-	size_t count, struct pg_synthesis_job *const *images)
-{
-	if (!source || source->owner != synthesis->owner_key) return NULL;
-	if (!destination || destination->owner != synthesis->owner_key) return NULL;
-	if (count && !images) return NULL;
-	if (count > SIZE_MAX / sizeof(const void *) - 2) return NULL;
-	for (size_t i = 0; i < count; ++i)
-		if (!images[i] || images[i]->owner != synthesis->owner_key) return NULL;
-	const void *inputs[] = {source, destination};
-	return pg_synthesis_work_request_inputs(synthesis, SUBSTITUTION_JOB, 2, inputs, count, images);
-}
-
 struct pg_synthesis_job *pg_synthesis_inductive_instance(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *type)
 {
@@ -1682,25 +1633,6 @@ int pg_synthesis_inductive_instance_result(const struct pg_synthesis_job *job,
 	if (!output || !job || job->role != INDUCTIVE_INSTANCE_JOB || job->status != PG_SYNTHESIS_DONE) return 0;
 	*output = *local->inductive_instance;
 	return 1;
-}
-
-struct pg_synthesis_job *pg_synthesis_constructor_scope(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *formation, const struct pg_object *constructor,
-	struct pg_synthesis_job *parameters)
-{
-	if (!formation || formation->owner != synthesis->owner_key) return NULL;
-	if (!parameters || parameters->owner != synthesis->owner_key || !constructor) return NULL;
-	const void *inputs[] = {formation, parameters, constructor};
-	return pg_synthesis_work_request(synthesis, CONSTRUCTOR_SCOPE_JOB, 3, inputs);
-}
-
-struct pg_synthesis_job *pg_synthesis_constructor_scope_at(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *formation, const struct pg_object *constructor,
-	struct pg_synthesis_job *parameters, const struct pg_context *prefix, const struct pg_context *end)
-{
-	struct pg_synthesis_job *job = pg_synthesis_constructor_scope(synthesis, formation, constructor, parameters);
-	if (!job || context_allocation_at(synthesis, job, prefix, end, source_work(job)->substitution != NULL)) return NULL;
-	return job;
 }
 
 struct pg_synthesis_job *pg_synthesis_constructor_value_jobs(struct pg_synthesis *synthesis,
@@ -1728,11 +1660,7 @@ int pg_synthesis_constructor_input(const struct pg_synthesis *synthesis,
 		input->allocated = 1;
 		input->prefix = pg_evidence_context_map(input->parameters->result)->destination;
 		input->fields = pg_evidence_context_map(scope->result)->destination;
-	} else if (source_work(scope)->context_allocation) {
-		input->allocated = 1;
-		input->prefix = source_work(scope)->context_allocation->prefix;
-		input->fields = source_work(scope)->context_allocation->end;
-	}
+	} else input->allocated = pg_synthesis_constructor_scope_allocation(scope, &input->prefix, &input->fields);
 	return 0;
 }
 
@@ -1753,29 +1681,6 @@ struct pg_synthesis_job *pg_synthesis_constructor_value_at(struct pg_synthesis *
 		pg_synthesis_evidence(synthesis, parameters), prefix, end);
 	if (!scope) return NULL;
 	return pg_synthesis_constructor_value(synthesis, formation, constructor, parameters);
-}
-
-struct pg_synthesis_job *pg_synthesis_induction_scope(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *formation, const struct pg_object *constructor,
-	struct pg_synthesis_job *parameters, struct pg_synthesis_job *motive_context,
-	struct pg_synthesis_job *motive)
-{
-	struct pg_synthesis_job *producers[] = {formation, parameters, motive_context, motive};
-	for (size_t i = 0; i < 4; ++i)
-		if (!producers[i] || producers[i]->owner != synthesis->owner_key) return NULL;
-	if (!constructor) return NULL;
-	const void *inputs[] = {formation, parameters, motive_context, motive, constructor};
-	return pg_synthesis_work_request(synthesis, INDUCTION_SCOPE_JOB, 5, inputs);
-}
-
-struct pg_synthesis_job *pg_synthesis_induction_scope_at(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *formation, const struct pg_object *constructor,
-	struct pg_synthesis_job *parameters, struct pg_synthesis_job *motive_context,
-	struct pg_synthesis_job *motive, const struct pg_context *fields, const struct pg_context *end)
-{
-	struct pg_synthesis_job *job = pg_synthesis_induction_scope(synthesis, formation, constructor, parameters, motive_context, motive);
-	if (!job || context_allocation_at(synthesis, job, fields, end, source_work(job)->substitution != NULL)) return NULL;
-	return job;
 }
 
 int pg_synthesis_typed_input(struct pg_synthesis *synthesis,
@@ -2204,7 +2109,7 @@ static void telescope_structure_step(struct pg_synthesis *synthesis, struct pg_s
 	}
 	const struct pg_object *binder = NULL;
 	if (local->context_allocation) {
-		struct context_allocation *allocation = local->context_allocation;
+		struct pg_source_context_allocation *allocation = local->context_allocation;
 		if (allocation->next == allocation->count) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
 		binder = allocation->contexts[allocation->next++]->binder;
 	}
@@ -5665,19 +5570,6 @@ error:
 	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR);
 }
 
-static struct substitution_state *substitution_start(struct pg_synthesis *synthesis,
-	const struct pg_evidence *source, const struct pg_evidence *destination, size_t count)
-{
-	if (count > (SIZE_MAX - sizeof(struct substitution_state)) / sizeof(struct substitution_entry)) return NULL;
-	struct substitution_state *state = pg_alloc(synthesis->typing->graph, sizeof(*state) + count * sizeof(*state->entries));
-	if (!state) return NULL;
-	state->count = count;
-	for (size_t i = count; i; --i, source = pg_evidence_premise(source, 0))
-		state->entries[i - 1].extension = source;
-	state->map = pg_prove_substitution(synthesis->typing, source, destination, 0, NULL);
-	return state->map ? state : NULL;
-}
-
 static const struct pg_reduction_certificate *normalization_receipt(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *job, const struct pg_term *input, enum pg_reduction_kind kind);
 
@@ -5829,241 +5721,6 @@ static void family_function_step(struct pg_synthesis *synthesis, struct pg_synth
 	job->result = pg_prove_inductive_family_function(synthesis->typing,
 		instance->formation, instance->parameters);
 	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
-}
-
-static void constructor_scope_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
-{
-	struct source_work *local = source_work(job);
-	if (!local->substitution) {
-		const struct pg_evidence *proofs[2];
-		for (size_t i = 0; i < 2; ++i) {
-			struct pg_synthesis_job *producer = (void *)job->inputs[i];
-			if (pg_synthesis_await(synthesis, job, producer)) return;
-			proofs[i] = producer->result;
-		}
-		const struct pg_evidence *formation = proofs[0], *parameters = proofs[1];
-		if (!formation || !parameters) goto rejected;
-		if (pg_evidence_rule(formation) != PG_INDUCTIVE_FORM || pg_evidence_rule(parameters) != PG_CONTEXT_SUBSTITUTION) goto rejected;
-		if (pg_evidence_context(pg_evidence_premise(parameters, 0)) != pg_evidence_context(formation)) goto rejected;
-		struct pg_synthesis_job *instance_job = pg_synthesis_inductive_instance(synthesis, (void *)job->inputs[0]);
-		if (!instance_job) goto error;
-		if (pg_synthesis_await(synthesis, job, instance_job)) return;
-		struct pg_inductive_instance instance;
-		if (!pg_synthesis_inductive_instance_result(instance_job, &instance)) goto error;
-		const struct pg_evidence *fields = pg_data_schema_fields(instance.schema, job->inputs[2]);
-		const struct pg_evidence *self = pg_evidence_premise(formation, 0);
-		size_t count;
-		if (!fields || pg_context_extension_size(pg_evidence_context(fields), pg_evidence_context(self), &count)) goto rejected;
-		if (local->context_allocation) {
-			const struct context_allocation *allocation = local->context_allocation;
-			if (allocation->count != count || !pg_context_same_allocation_shape(allocation->prefix,
-				pg_evidence_context(pg_evidence_premise(parameters, 1)))) goto rejected;
-		}
-		if (count > (SIZE_MAX - sizeof(struct substitution_state)) / sizeof(struct substitution_entry)) goto error;
-		struct substitution_state *state = pg_alloc(synthesis->typing->graph, sizeof(*state) + count * sizeof(*state->entries));
-		if (!state) goto error;
-		state->count = count;
-		for (size_t i = count; i; --i, fields = pg_evidence_premise(fields, 0)) state->entries[i - 1].extension = fields;
-		local->substitution = state;
-		struct pg_synthesis_job *family = pg_synthesis_reindex_jobs(synthesis, (void *)job->inputs[1], (void *)job->inputs[0]);
-		struct pg_synthesis_job *value = pg_evidence_judgement(formation) == PG_JUDGEMENT_TYPE_FAMILY
-			? family : pg_synthesis_plain_rule(synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &family);
-		struct pg_synthesis_job *premises[] = {pg_synthesis_evidence(synthesis, self),
-			pg_synthesis_evidence(synthesis, pg_evidence_premise(parameters, 1)), (void *)job->inputs[1], value};
-		local->right = pg_synthesis_plain_rule(synthesis, PG_CONTEXT_SUBSTITUTION, NULL, 4, premises);
-		if (!local->right) goto error;
-	}
-	struct substitution_state *state = local->substitution;
-	if (pg_synthesis_await(synthesis, job, local->right)) return;
-	state->map = local->right->result;
-	if (state->next == state->count) {
-		job->result = state->map;
-		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_DONE);
-		return;
-	}
-	const struct pg_object *binder;
-	if (local->context_allocation) binder = local->context_allocation->contexts[state->next]->binder;
-	else {
-		const struct pg_evidence *parameters = pg_synthesis_result(job->inputs[1]);
-		const struct pg_context *scope = pg_evidence_context(pg_evidence_premise(parameters, 1));
-		const struct pg_source_binding *binding = source_binding_intern(synthesis,
-			&(struct pg_source_binding){.slot = state->next, .constructor = job->inputs[2]},
-			(struct binding_cursor){.context = scope});
-		if (!binding) goto rejected;
-		binder = binding->binder;
-	}
-	local->right = pg_synthesis_substitution_lift(synthesis, state->map,
-		state->entries[state->next++].extension, binder);
-	if (!local->right) goto error;
-	depend(synthesis, job, local->right);
-	return;
-rejected:
-	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
-error:
-	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR);
-}
-
-static void induction_scope_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
-{
-	struct source_work *local = source_work(job);
-	const struct pg_evidence *proofs[4];
-	for (size_t i = 0; i < 4; ++i) {
-		struct pg_synthesis_job *producer = (void *)job->inputs[i];
-		if (pg_synthesis_await(synthesis, job, producer)) return;
-		proofs[i] = producer->result;
-		if (!proofs[i]) goto rejected;
-	}
-	const struct pg_evidence *formation = proofs[0], *parameters = proofs[1], *motive_context = proofs[2], *motive = proofs[3];
-	if (!local->left) {
-		if (pg_evidence_rule(motive_context) != PG_CONTEXT_EXTEND) goto rejected;
-		if (pg_evidence_judgement(motive) != PG_JUDGEMENT_COMPUTATION_TYPE) goto rejected;
-		if (pg_evidence_context(motive) != pg_evidence_context(motive_context)) goto rejected;
-		if (!pg_inductive_motive_context_valid(synthesis->typing, formation, parameters, motive_context)) goto rejected;
-		local->left = pg_synthesis_constructor_scope(synthesis, (void *)job->inputs[0], job->inputs[4], (void *)job->inputs[1]);
-		if (!local->left) goto error;
-	}
-	if (pg_synthesis_await(synthesis, job, local->left)) return;
-	const struct pg_evidence *map = local->left->result;
-	if (!local->substitution) {
-		if (local->context_allocation && !pg_context_same_allocation_shape(local->context_allocation->prefix,
-			pg_evidence_context(pg_evidence_premise(map, 1)))) goto rejected;
-		local->substitution = pg_alloc(synthesis->typing->graph, sizeof(*local->substitution));
-		if (!local->substitution) goto error;
-		local->substitution->map = pg_evidence_premise(map, 1);
-	}
-	if (local->right) {
-		if (pg_synthesis_await(synthesis, job, local->right)) return;
-		local->substitution->map = local->right->result;
-		local->right = NULL;
-	}
-	struct substitution_state *state = local->substitution;
-	const struct pg_evidence *context = state->map;
-	const struct substitution_state *fields = source_work(local->left)->substitution;
-	const struct pg_object *self = pg_evidence_context(pg_evidence_premise(formation, 0))->binder;
-	while (state->next < fields->count) {
-		size_t i = state->next++;
-		int recursive = pg_data_recursive_field(pg_evidence_context(fields->entries[i].extension)->declared_type, self);
-		if (!recursive) continue;
-		if (recursive < 0) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
-		const struct pg_evidence *field = pg_prove_projection(synthesis->typing, context,
-			pg_substitution_image_at(synthesis->typing, map, pg_evidence_context_map(parameters)->count + 1 + i));
-		const struct pg_context *retained = NULL;
-		if (local->context_allocation) {
-			struct context_allocation *allocation = local->context_allocation;
-			if (allocation->next == allocation->count) goto rejected;
-			retained = allocation->contexts[allocation->next++];
-		}
-		const struct pg_evidence *ih = pg_prove_inductive_hypothesis_type(synthesis->typing,
-			formation, parameters, motive_context, motive, context, field, retained ? retained->declared_type : NULL);
-		if (!ih) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
-		struct pg_synthesis_job *at_field = pg_synthesis_evidence(synthesis, ih);
-		struct pg_synthesis_job *premises[] = {pg_synthesis_evidence(synthesis, context), at_field};
-		local->right = pg_synthesis_plain_rule(synthesis, PG_CONTEXT_EXTEND,
-			retained ? retained->binder : pg_binder(synthesis->typing->graph), 2, premises);
-		if (!local->right) goto error;
-		depend(synthesis, job, local->right);
-		return;
-	}
-	if (local->context_allocation && local->context_allocation->next != local->context_allocation->count) goto rejected;
-	job->result = pg_prove_substitution_extension(synthesis->typing,
-		pg_evidence_premise(map, 0), context, map, 0, NULL);
-	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
-	return;
-rejected:
-	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
-error:
-	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR);
-}
-
-static enum pg_synthesis_status data_result_start(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
-{
-	struct source_work *local = source_work(job);
-	const struct pg_evidence *parameters = job->inputs[1], *indices = job->inputs[2];
-	const struct pg_context *prefix = pg_evidence_context(parameters);
-	size_t index_count, parameter_count, field_count;
-	if (pg_context_extension_size(pg_evidence_context(indices), prefix, &index_count) != 0) return PG_SYNTHESIS_REJECTED;
-	if (pg_context_extension_size(pg_evidence_context(pg_synthesis_scope_context(local->scope)), prefix, &field_count) != 0) return PG_SYNTHESIS_REJECTED;
-	if (pg_context_extension_size(prefix, NULL, &parameter_count) != 0) return PG_SYNTHESIS_ERROR;
-	const struct pg_syntax *head = local->syntax;
-	size_t arguments = 0;
-	while (head->kind == PG_SYNTAX_APPLICATION) { ++arguments; head = head->left; }
-	if (head->kind != PG_SYNTAX_ATOM || head->token.kind != '*' || arguments != index_count) return PG_SYNTHESIS_REJECTED;
-	if (index_count > SIZE_MAX - parameter_count) return PG_SYNTHESIS_ERROR;
-	size_t count = parameter_count + index_count;
-	struct substitution_state *state = substitution_start(synthesis, indices, pg_synthesis_scope_context(local->scope), count);
-	if (!state) return PG_SYNTHESIS_ERROR;
-	local->substitution = state;
-	head = local->syntax;
-	for (size_t i = count; i; --i) {
-		struct substitution_entry *entry = &state->entries[i - 1];
-		if (i > parameter_count) {
-			entry->image = pg_synthesis_request(synthesis, local->scope, head->right);
-			head = head->left;
-		} else {
-			const struct pg_evidence *image = pg_prove_variable(synthesis->typing,
-				pg_synthesis_scope_context(local->scope), pg_evidence_context(entry->extension)->binder);
-			entry->image = pg_synthesis_evidence(synthesis, image);
-		}
-		if (!entry->image) return PG_SYNTHESIS_ERROR;
-	}
-	return PG_SYNTHESIS_DONE;
-}
-
-static void substitution_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
-{
-	struct source_work *local = source_work(job);
-	if (!local->substitution) {
-		if (job->role == DATA_RESULT_JOB) {
-			enum pg_synthesis_status status = data_result_start(synthesis, job);
-			if (status != PG_SYNTHESIS_DONE) { pg_synthesis_finish(synthesis, job, status); return; }
-		} else {
-			size_t count = job->input_count - 2;
-			const struct pg_evidence *contexts[2];
-			for (size_t i = 0; i < 2; ++i) {
-				struct pg_synthesis_job *producer = (void *)job->inputs[i];
-				if (pg_synthesis_await(synthesis, job, producer)) return;
-				contexts[i] = producer->result;
-				if (!contexts[i] || pg_evidence_judgement(contexts[i]) != PG_JUDGEMENT_CONTEXT) {
-					pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
-				}
-			}
-			size_t arity;
-			if (pg_context_extension_size(pg_evidence_context(contexts[0]), NULL, &arity) || arity != count) {
-				pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
-			}
-			local->substitution = substitution_start(synthesis, contexts[0], contexts[1], count);
-			if (!local->substitution) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-			for (size_t i = 0; i < count; ++i)
-				local->substitution->entries[i].image = (struct pg_synthesis_job *)job->inputs[i + 2];
-		}
-	}
-	struct substitution_state *state = local->substitution;
-	if (local->right) {
-		if (local->right->status != PG_SYNTHESIS_DONE) { pg_synthesis_finish(synthesis, job, local->right->status); return; }
-		state->map = local->right->result;
-		local->left = local->right = NULL;
-		++state->next;
-	}
-	if (state->next == state->count) {
-		job->result = state->map;
-		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_DONE);
-		return;
-	}
-	const struct substitution_entry *entry = &state->entries[state->next];
-	if (!local->left) {
-		local->left = entry->image;
-		depend(synthesis, job, local->left);
-		return;
-	}
-	if (local->left->status != PG_SYNTHESIS_DONE) { pg_synthesis_finish(synthesis, job, local->left->status); return; }
-	const struct pg_evidence *image = local->left->result;
-	if (!image || !pg_evidence_subject(image)) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
-	image = type_input(synthesis, job, pg_evidence_premise(state->map, 1), image);
-	if (!image) return;
-	if (pg_evidence_rule(entry->extension) != PG_CONTEXT_FAMILY_EXTEND) image = value(synthesis, image);
-	if (!image) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
-	local->right = pg_synthesis_substitution_pair(synthesis, state->map, entry->extension, image);
-	depend(synthesis, job, local->right);
 }
 
 static void data_case_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
@@ -8711,13 +8368,10 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	if (job->role == DOMAIN_JOB) { domain_step(synthesis, job); return; }
 	if (job->role == TELESCOPE_JOB) { telescope_step(synthesis, job); return; }
 	if (job->role == TELESCOPE_STRUCTURE_JOB) { telescope_structure_step(synthesis, job); return; }
-	if (job->role == CONSTRUCTOR_SCOPE_JOB) { constructor_scope_step(synthesis, job); return; }
 	if (job->role == FAMILY_FUNCTION_JOB) { family_function_step(synthesis, job); return; }
 	if (job->role == FAMILY_CONTRACT_JOB) { family_contract_step(synthesis, job); return; }
 	if (job->role == FUNCTION_GRAPH_JOB) { function_graph_step(synthesis, job); return; }
 	if (job->role == INDUCTIVE_INSTANCE_JOB) { inductive_instance_step(synthesis, job); return; }
-	if (job->role == INDUCTION_SCOPE_JOB) { induction_scope_step(synthesis, job); return; }
-	if (job->role == DATA_RESULT_JOB || job->role == SUBSTITUTION_JOB) { substitution_step(synthesis, job); return; }
 	if (job->role == DATA_SCHEMA_JOB) { data_schema_step(synthesis, job); return; }
 	if (job->role == CONSTRUCTOR_JOB) { constructor_step(synthesis, job); return; }
 	if (job->role == DEFINITION_JOB) { definition_step(synthesis, job); return; }

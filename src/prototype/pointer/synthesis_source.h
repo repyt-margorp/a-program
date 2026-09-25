@@ -22,6 +22,21 @@ struct pg_source_scope {
 	struct pg_synthesis_job *clause;
 };
 
+/* Restored lexical binder allocation. Each owner keeps its own cursor;
+ * this payload describes source addresses, not a second typed Context. */
+struct pg_source_context_allocation {
+	const struct pg_context *prefix, *end;
+	size_t count, next;
+	const struct pg_context *contexts[];
+};
+int pg_synthesis_context_allocation_at(struct pg_synthesis *,
+	struct pg_source_context_allocation **, const struct pg_context *,
+	const struct pg_context *, int started);
+const struct pg_object *pg_synthesis_constructor_binder(struct pg_synthesis *,
+	const struct pg_context *, const struct pg_object *, size_t);
+int pg_synthesis_constructor_scope_allocation(const struct pg_synthesis_job *,
+	const struct pg_context **, const struct pg_context **);
+
 const struct pg_source_scope *pg_synthesis_intern_scope(struct pg_synthesis *, struct pg_source_scope);
 const struct pg_evidence *pg_synthesis_scope_context(const struct pg_source_scope *);
 int pg_synthesis_scope_wait(struct pg_synthesis *, struct pg_synthesis_job *, const struct pg_source_scope *);

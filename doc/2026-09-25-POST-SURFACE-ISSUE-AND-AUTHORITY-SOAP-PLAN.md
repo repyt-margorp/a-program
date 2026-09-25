@@ -438,9 +438,10 @@ subject accessor would not finish this part of the refactor.
 #### Remaining Work, With Current Evidence
 
 1. **Incremental callers still drain synchronous helpers.**
-   `synthesis.c:step` handles `LIFT_JOB` by calling
-   `pg_prove_substitution_lift`, whose implementation drains
-   `pg_context_lift_advance(..., 1024)` in a loop. Substitution composition
+   Before the IADT-owner slice, `synthesis_context.c:lift_step` called
+   `pg_prove_substitution_lift`, draining structural lifting in one quantum.
+   The slice now advances the existing lift worker once per quantum;
+   final declaration admission still invokes synchronous checking. Composition
    similarly iterates all images and drains occurrence actions with
    `UINT64_MAX`. These helpers are called from synthesis, graph construction
    and Identity action. `pg_synthesis_advance` charges one step per dispatched
@@ -903,6 +904,33 @@ Keep the same interner, queue, ordinary evidence rules and typed action worker.
 Lift and family pairing remain synchronous at their existing rule boundary;
 this is owner localization/post-check reuse, **not** completion of P4.4.
 
+IADT-scope slice, baseline `1e47484`, 2026-09-26 (agent implementation
+decision, verified below): move constructor scope, IH scope and
+index-result elaboration together with their saved-allocation readers.
+Constructor/IH scopes each need 40 bytes here, not the 240-byte source state
+plus an overloaded substitution payload. Constructor fields retain only their
+declarations; IH progress explicitly holds a Context. Allocation attachment and
+lexical binder interning remain single source-owned helpers. Do not expose the
+old all-domain union to the new owner or infer nominal/motive inputs from Core.
+
+Index-result elaboration now calls the existing batch-substitution request.
+Its private state is one pointer; generic substitution owns 40 bytes and an
+array of declaration inputs, reading image producers from immutable request
+operands instead of copying them. The independent caller test finds that
+same completed request and exact result. No new acceptance cache or rule is
+introduced. Structural lift uses the existing worker one step at a time;
+synchronous final admission and direct kernel/Identity callers remain P4.4
+work. Neither that granularity change nor this extraction removes required
+declaration formation history or completes IADT/motive ownership.
+
+Final review caught a dropped source-scope registration dependency in this
+extraction. Restore the original wait/failure propagation before index-result
+assembly, even for zero indices, and reject an unavailable checked Context.
+The regression uses ordinary definition registration, including a duplicate
+name; removing the wait makes it fail. Do not treat an empty result map as
+permission to bypass its source environment. This fixes the unpublished trial,
+not an established defect in `1e47484`.
+
 ### Plan
 
 - [x] Confirm that owner-level semantics are partially separated while synthesis
@@ -941,12 +969,16 @@ this is owner localization/post-check reuse, **not** completion of P4.4.
   then IADT/motive work. Place cross-cutting Identity transport deliberately;
   do not duplicate it. CBPV/function preparation must preserve pending cycles.
   Refine this order from the dependency map before code changes.
-  Next IADT boundary observed at `f8c1224`: constructor scope, induction scope,
-  result-map assembly and their saved-allocation readers share source-private
-  state. `substitution_state.map` holds a map in constructor/result work but a
-  Context in induction work. This is role-dependent storage, not evidence of
-  competing authorities. Move each meaning with its owner; do not export this
-  overloaded payload in a shared header or duplicate the shared map algorithm.
+- [x] Verify the IADT-scope slice against `1e47484`: constructor/IH scope and
+  index-result elaboration move to `synthesis_iadt.c`; batch substitution
+  belongs to `synthesis_context.c`. Remove the overloaded source payload,
+  copied image producers and second index-result assembly state. Reuse the
+  same substitution request, lexical binder interner and allocation attachment.
+  Check cold/restored scopes, rejected motives/types, family fields, zero/single/
+  bulk budgets, cancellation and exact completed-request reuse. Advance the
+  existing lift worker incrementally, without claiming its synchronous final
+  declaration checking is budgeted. Run full acceptance, sanitizers, cross-image
+  reading and paired performance before publication.
 - [x] Verify the Handler-owner slice: distinguish structure preparation from
   acceptance, preserve independent/restored and shared nested effect boundaries,
   registration failure, clause binder identities, repeated requests and source
@@ -1492,3 +1524,62 @@ Source total +59/-76, net -17: implementation/headers -31, tests +14,
 build zero. Documentation delta is reported separately below.
 
 Plan document delta against `3266fa8`: +92/-0, net +92, excluded from source totals.
+
+### IADT Scope Verification
+
+2026-09-26, baseline `1e47484` plus this slice. Full `check-acceptance` exits
+zero in **1551.067 s** (25m51s), including 63/63 source compatibility cases,
+ordinary QuickSort-result/general Sorted proofs, all four LT/partition variants
+and optional-witness isolation/packets. This run preceded the final two-line
+source-registration/Context guard restoration described above. After it,
+strict-O2 and Debug synthesis, ASan/UBSan synthesis and source images (leak
+detection enabled), source-origin/CLI images and the following comparisons
+pass. The final guard regression fails when the wait is removed; the whole
+25-minute suite was not repeated after that local correction. Cancellation
+includes all 1,696 boundaries of the new indexed-Vec/IH example.
+
+Final old/new image checks pass in both directions for six fixtures and two
+retention modes: 24 reader cases, using checked and recompute paths. All 12
+writer fixture/mode pairs are byte-identical. Evidence:
+`/tmp/a-program-iadt-owner-{acceptance,regression-red}.log`,
+`/tmp/a-program-iadt-owner-guard-*.log`,
+`/tmp/a-program-iadt-owner-final-cross.Rxr7P9`.
+
+Final quiet strict-O2 comparison: warmup plus six pairs, reversing order for
+the last three. Small inputs use 100-process batches; table entries are median
+wall seconds per invocation. This measures Solve, not execution alone.
+
+| Workload | Baseline | Candidate |
+| --- | ---: | ---: |
+| `generic_sorted.sh` | 5.721000 | 5.732000 |
+| General Sorted source | 0.808000 | 0.813500 |
+| Ordinary QuickSort-result theorem | 0.742000 | 0.737500 |
+| Explicit-index Vec append | 0.005525 | 0.005510 |
+| Certified-length candidate | 0.003905 | 0.003955 |
+| Function-field induction | 0.003630 | 0.003705 |
+
+Statuses/results agree after excluding step counts and temporary paths.
+Budgeted lift changes Sorted steps **604432 -> 623532** and ordinary-result
+steps **1118238 -> 1123411**. Three fresh-process RSS pairs give medians
+**223840 -> 223064 KiB** and **174824 -> 175260 KiB**, respectively.
+No material local regression is observed; these variations are not a speedup
+or global memory-bound claim. Logs: `/tmp/a-program-iadt-owner-bench.FP1VOl`
+and `/tmp/a-program-iadt-owner-memory.log`.
+
+| File under `src/prototype/pointer/` | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `synthesis.c` | 24 | 370 | -346 |
+| `synthesis_iadt.c` | 278 | 0 | +278 |
+| `synthesis_context.c` | 115 | 1 | +114 |
+| `synthesis_source.h` | 15 | 0 | +15 |
+| `synthesis.h` | 4 | 3 | +1 |
+| `tests/synthesis.c` | 60 | 6 | +54 |
+| `Makefile` | 1 | 1 | 0 |
+| Code/tests/build total | 497 | 381 | +116 |
+
+Implementation/headers grow by 62 lines; tests by 54. Adopt this owner split
+and exact-request reuse, not a claim of net code reduction. Do not replace
+explicit declaration inputs with a new family cache, Context formation pointer
+or exported all-domain union. P4's representation/budgeting work and remaining
+P5 owners stay open. Documentation changes are excluded from the table.
+This plan changes by +100/-9, net +91, against `1e47484`.
