@@ -1,5 +1,6 @@
 #include "synthesis.h"
 #include "synthesis_effect.h"
+#include "synthesis_work.h"
 #include "computation.h"
 #include "identity.h"
 #include "action.h"
@@ -11,6 +12,77 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+
+struct owner_test_state { long double aligned; unsigned starts; };
+
+static void owner_test_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_DONE);
+}
+
+static void owner_test_start(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	struct owner_test_state *state = pg_synthesis_work_state(job, job->role);
+	assert(state && !state->starts && state->aligned == 0);
+	assert((uintptr_t)state % _Alignof(struct owner_test_state) == 0);
+	state->starts = 1;
+	pg_synthesis_enqueue(synthesis, job);
+}
+
+static void owner_test_destroy(struct pg_synthesis_job *job)
+{
+	unsigned *destroyed = (void *)pg_synthesis_work_input(job, 0);
+	++*destroyed;
+}
+
+static void owner_work_storage(struct pg_typing *typing)
+{
+	static const struct pg_synthesis_work_class aligned = {.size = sizeof(struct owner_test_state),
+		.start = owner_test_start, .advance = owner_test_step, .destroy = owner_test_destroy};
+	static const struct pg_synthesis_work_class empty = {.advance = owner_test_step, .destroy = owner_test_destroy};
+	static const struct pg_synthesis_work_class oversized = {.size = SIZE_MAX, .advance = owner_test_step};
+	struct pg_synthesis synthesis;
+	struct pg_whnf_work normalization;
+	assert(!pg_whnf_work_init(&normalization, typing->graph));
+	assert(!pg_synthesis_init(&synthesis, typing, &normalization, PG_DEFINITION_EXPLICIT_THUNK));
+	unsigned destroyed = 0;
+	const void *inputs[] = {&destroyed, typing};
+	struct pg_synthesis_job *jobs[2];
+	for (size_t count = 1; count <= 2; ++count) {
+		struct pg_synthesis_job *job = pg_synthesis_work_request(&synthesis, &aligned, count, inputs);
+		assert(job && pg_synthesis_work_request(&synthesis, &aligned, count, inputs) == job);
+		assert(!pg_synthesis_work_state(job, &empty));
+		assert(pg_synthesis_work_input(job, count - 1) == inputs[count - 1]);
+		assert(!pg_synthesis_work_input(job, count));
+		assert(!pg_synthesis_allocation_object(&synthesis, job));
+		assert(!pg_synthesis_match_allocation(job, typing->graph));
+		assert(!pg_synthesis_definition(job, (struct pg_token){.text = "x", .length = 1}));
+		jobs[count - 1] = job;
+	}
+	assert(jobs[0] != jobs[1]);
+	struct pg_synthesis_job *zero = pg_synthesis_work_request(&synthesis, &empty, 1, inputs);
+	assert(zero && zero != jobs[0] && !pg_synthesis_work_state(zero, &empty));
+	assert(!pg_synthesis_work_request(&synthesis, &oversized, 0, NULL));
+	assert(synthesis.jobs.count == 3);
+	pg_synthesis_advance(&synthesis, 0);
+	assert(!synthesis.steps && pg_synthesis_status(zero) == PG_SYNTHESIS_PENDING);
+	pg_synthesis_advance(&synthesis, 64);
+	assert(synthesis.steps == 3 && !synthesis.ready);
+	assert(pg_synthesis_status(zero) == PG_SYNTHESIS_DONE && !pg_synthesis_result(zero));
+	assert(pg_synthesis_work_request(&synthesis, &aligned, 1, inputs) == jobs[0]);
+	assert(((struct owner_test_state *)pg_synthesis_work_state(jobs[0], &aligned))->starts == 1);
+	pg_synthesis_advance(&synthesis, 64);
+	assert(synthesis.steps == 3 && synthesis.jobs.count == 3);
+	const void *combined[] = {&destroyed, jobs[0]};
+	struct pg_synthesis_job *pending = pg_synthesis_work_request_inputs(&synthesis,
+		&aligned, 1, inputs, 1, jobs);
+	assert(pending == pg_synthesis_work_request(&synthesis, &aligned, 2, combined));
+	assert(pg_synthesis_status(pending) == PG_SYNTHESIS_PENDING);
+	pg_synthesis_destroy(&synthesis);
+	assert(destroyed == 4);
+	pg_whnf_work_destroy(&normalization);
+	printf("owner work: %zu-byte shared header, private alignment, exact reuse and single lifecycle passed\n", sizeof(struct pg_synthesis_job));
+}
 
 static int total_effect_type_view(const struct pg_term *term,
 	const struct pg_effect_row **effects, const struct pg_term **value)
@@ -6980,6 +7052,7 @@ int main(void)
 	struct pg_synthesis synthesis;
 	assert(pg_graph_init(&graph) == 0);
 	assert(pg_typing_init(&typing, &graph) == 0);
+	owner_work_storage(&typing);
 	accepted_structures(&typing);
 	source_body_kinds(&typing);
 	source_preparation_subscription(&typing);
