@@ -154,7 +154,8 @@ static void policy_names(void)
 	assert(!pg_computation_policy_resolve("evaluation/pure/v1"));
 	assert(!pg_computation_policy_resolve("evaluation/pure/v2"));
 	assert(!pg_computation_policy_resolve("evaluation/pure/v3"));
-	assert(pg_computation_policy_resolve("evaluation/pure/v6") == &pg_pure_policy);
+	assert(pg_computation_policy_resolve("evaluation/pure/v7") == &pg_pure_policy);
+	assert(!pg_computation_policy_resolve("evaluation/pure/v6"));
 	assert(!pg_computation_policy_resolve("evaluation/pure/v5"));
 	assert(!pg_computation_policy_resolve("evaluation/pure/v4"));
 	assert(!pg_computation_policy_resolve("computation/fold_work/v1"));

@@ -8,6 +8,7 @@
 #include "classifier.h"
 #include "evidence.h"
 #include "function_graph.h"
+#include "function_witness.h"
 #include "derivation.h"
 #include "computation.h"
 #include "action.h"
@@ -3951,6 +3952,14 @@ static void conversion_test(struct pg_graph *graph)
 	assert(pg_conversion_advance(&conversion, 100) == PG_CONVERSION_EQUAL);
 	assert(pg_whnf_steps(pg_whnf_request(&work, &pg_pure_policy, omega_x)) == 0);
 	pg_conversion_destroy(&conversion);
+	/* Compare a shared neutral callee before unfolding its quoted code, but
+	 * retain normal-order beta when a visible Lambda erases its argument. */
+	const struct pg_term *erase = pg_lambda(graph, x, vy);
+	assert(!pg_conversion_init(&conversion, &work,
+		pg_application(graph, erase, omega_x), pg_application(graph, erase, vx)));
+	assert(pg_conversion_advance(&conversion, 1000) == PG_CONVERSION_EQUAL);
+	assert(pg_whnf_steps(pg_whnf_request(&work, &pg_pure_policy, omega_x)) == 0);
+	pg_conversion_destroy(&conversion);
 	/* A false result index must not normalize a shared recursive domain.
 	 * Both the weak and the stronger comparison preserve rigid congruence. */
 	const struct pg_term *pi_left = pg_pi(graph, omega_x, x, vx);
@@ -5602,6 +5611,16 @@ static void totality_classifier_test(struct pg_graph *graph)
 			assert(!!raw_fold == (i || !j));
 			if (raw_fold) assert(!pg_prove_application_body(&typing, raw_fold,
 				pg_prove_projection(&typing, outer, v)));
+			if (raw_fold) {
+				const struct pg_evidence *call = pg_prove_application(&typing, raw_fold,
+					pg_prove_projection(&typing, outer, v));
+				const struct pg_evidence *result = pg_prove_total_pure_value(&typing, call);
+				assert(!!result == (i && j));
+				if (result) {
+					assert(request_whnf(graph, pg_evidence_subject(result)->core, 1) == pg_evidence_subject(v)->core);
+					reconstruct_derivation(&typing, result);
+				}
+			}
 			/* A literal RETURN is finite even when its declared guarantee was
 			 * weakened. This uses typed inversion, not WHNF or an empty row. */
 			assert(pg_prove_fold(&typing,

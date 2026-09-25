@@ -26,4 +26,8 @@ expected := {
 	Nat.succ Nat.zero;
 };
 
-certified := *length one;
+length_graph := \xs:NatList => xs @(self => @length self (length self))
+	@nil => (@length).nil
+	@cons h t => (@length).cons h t (length t) *t;
+length_graph :: (xs:NatList)->@length xs (length xs);
+certified := length_graph one;

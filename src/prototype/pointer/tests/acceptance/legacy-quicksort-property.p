@@ -12,6 +12,10 @@ import measure;
 import quickSortAcc;
 import quickSort;
 import lessOrEqual;
+import partitionLower;
+import partitionUpper;
+import partitionByDecision;
+import natAccessible;
 
 AppendOf := \A:@ => @\left:List A => @\right:List A => @\output:List A => {
 	nil : (right:List A) -> * (List A).nil right right;
@@ -116,8 +120,81 @@ readRearranged := \A:@ => \n:Nat => \input:SizedList A n => \output:List A => \p
 readContents := \A:@ => \input:List A => \output:List A => \proof:ContentsOf A input output => proof
 	@contents original result size values measurement rearrangement =>
 		readRearranged A size values result rearrangement;
-certified := \le:Nat->Nat->Bool => \xs:List Nat => *quickSort Nat &le xs @output =>
-	readContents Nat xs output (quickSortCorrect Nat &le xs output @output);
+
+appendResult := \A:@ => \xs:List A => xs @(self => (ys:List A)->AppendOf A self ys (append A self ys))
+	@nil => (\ys:List A => (AppendOf A).nil ys)
+	@cons h t => (\ys:List A => (AppendOf A).cons h t ys (append A t ys) (*t ys));
+appendResult :: (A:@)->(xs:List A)->(ys:List A)->AppendOf A xs ys (append A xs ys);
+measurementStep := \A:@ => \h:A => \t:List A => \out:Measured A => out
+	@(self => MeasurementOf A t self->MeasurementOf A ((List A).cons h t)
+		(self @measured n values => (Measured A).measured (Nat.succ n) ((SizedList A).cons n h values)))
+	@measured n values => (\prior:MeasurementOf A t ((Measured A).measured n values) =>
+		(MeasurementOf A).cons h t n values prior);
+measurementResult := \A:@ => \xs:List A => xs @(self => MeasurementOf A self (measure A self))
+	@nil => (MeasurementOf A).nil
+	@cons h t => measurementStep A h t (measure A t) *t;
+measurementResult :: (A:@)->(xs:List A)->MeasurementOf A xs (measure A xs);
+partitionLowerResult := \A:@ => \h:A => \n:Nat => \t:SizedList A n => \parts:Partition A n => parts
+	@(self => PartitionOf A n t self->PartitionOf A (Nat.succ n) ((SizedList A).cons n h t) (partitionLower A h n self))
+	@parts l left u right lb ub => (\prior:PartitionOf A n t ((Partition A n).parts l left u right lb ub) =>
+		(PartitionOf A).lower n h t l left u right lb ub prior
+			(LT.lift l (Nat.succ n) lb) (LT.weakenRight u (Nat.succ n) ub));
+partitionUpperResult := \A:@ => \h:A => \n:Nat => \t:SizedList A n => \parts:Partition A n => parts
+	@(self => PartitionOf A n t self->PartitionOf A (Nat.succ n) ((SizedList A).cons n h t) (partitionUpper A h n self))
+	@parts l left u right lb ub => (\prior:PartitionOf A n t ((Partition A n).parts l left u right lb ub) =>
+		(PartitionOf A).upper n h t l left u right lb ub prior
+			(LT.weakenRight l (Nat.succ n) lb) (LT.lift u (Nat.succ n) ub));
+partitionDecisionResult := \A:@ => \h:A => \n:Nat => \t:SizedList A n => \answer:Bool =>
+	\parts:Partition A n => \prior:PartitionOf A n t parts => answer
+	@(self => PartitionOf A (Nat.succ n) ((SizedList A).cons n h t) (partitionByDecision A h n self parts))
+	@true => partitionLowerResult A h n t parts prior
+	@false => partitionUpperResult A h n t parts prior;
+partitionResult := \A:@ => \le:A->A->Bool => \pivot:A => \n:Nat => \xs:SizedList A n => xs
+	@(size self => PartitionOf A size self (partition A &le pivot size self))
+	@nil => (PartitionOf A).nil (LT.step Nat.zero) (LT.step Nat.zero)
+	@cons k h t => partitionDecisionResult A h k t (le h pivot) (partition A &le pivot k t) *t;
+partitionResult :: (A:@)->(le:A->A->Bool)->(pivot:A)->(n:Nat)->(xs:SizedList A n)->
+	PartitionOf A n xs (partition A &le pivot n xs);
+joinResult := \A:@ => \le:A->A->Bool => \n:Nat => \pivot:A =>
+	\down:(m:Nat)->LT m (Nat.succ n)->Acc Nat LT m => \parts:Partition A n => parts
+	@parts l left u right lb ub => append A (quickSortAcc A &le l (down l lb) left)
+		((List A).cons pivot (quickSortAcc A &le u (down u ub) right));
+joinRearranged := \A:@ => \le:A->A->Bool => \n:Nat => \pivot:A => \tail:SizedList A n =>
+	\down:(m:Nat)->LT m (Nat.succ n)->Acc Nat LT m =>
+	\ih:(m:Nat)->(bound:LT m (Nat.succ n))->(xs:SizedList A m)->Rearranged A m xs (quickSortAcc A &le m (down m bound) xs) =>
+	\parts:Partition A n => parts
+	@(self => PartitionOf A n tail self->Rearranged A (Nat.succ n) ((SizedList A).cons n pivot tail) (joinResult A &le n pivot &down self))
+	@parts l left u right lb ub => (\prior:PartitionOf A n tail ((Partition A n).parts l left u right lb ub) =>
+		(Rearranged A).split n pivot tail l left u right lb ub prior
+			(quickSortAcc A &le l (down l lb) left) (quickSortAcc A &le u (down u ub) right)
+			(append A (quickSortAcc A &le l (down l lb) left) ((List A).cons pivot (quickSortAcc A &le u (down u ub) right)))
+			(ih l lb left) (ih u ub right)
+			(appendResult A (quickSortAcc A &le l (down l lb) left) ((List A).cons pivot (quickSortAcc A &le u (down u ub) right))));
+rearrangedStep := \A:@ => \le:A->A->Bool => \n:Nat => \xs:SizedList A n => xs
+	@(size self => (down:(m:Nat)->LT m size->Acc Nat LT m)->
+		((m:Nat)->(bound:LT m size)->(values:SizedList A m)->Rearranged A m values (quickSortAcc A &le m (down m bound) values))->
+		Rearranged A size self (quickSortAcc A &le size ((Acc Nat LT).acc size &down) self))
+	@nil => (\down:(m:Nat)->LT m Nat.zero->Acc Nat LT m =>
+		\ih:(m:Nat)->(bound:LT m Nat.zero)->(values:SizedList A m)->Rearranged A m values (quickSortAcc A &le m (down m bound) values) =>
+		(Rearranged A).nil)
+	@cons k h t => (\down:(m:Nat)->LT m (Nat.succ k)->Acc Nat LT m =>
+		\ih:(m:Nat)->(bound:LT m (Nat.succ k))->(values:SizedList A m)->Rearranged A m values (quickSortAcc A &le m (down m bound) values) =>
+		joinRearranged A &le k h t &down &ih (partition A &le h k t) (partitionResult A &le h k t));
+rearrangedResult := \A:@ => \le:A->A->Bool => \n:Nat => \access:Acc Nat LT n => access
+	@(size self => (xs:SizedList A size)->Rearranged A size xs (quickSortAcc A &le size self xs))
+	@acc size down => (\xs:SizedList A size => rearrangedStep A &le size xs &down &*down);
+rearrangedResult :: (A:@)->(le:A->A->Bool)->(n:Nat)->(access:Acc Nat LT n)->(xs:SizedList A n)->
+	Rearranged A n xs (quickSortAcc A &le n access xs);
+contentsMeasured := \A:@ => \le:A->A->Bool => \xs:List A => \out:Measured A => out
+	@(self => MeasurementOf A xs self->ContentsOf A xs (self @measured n values => quickSortAcc A &le n (natAccessible n) values))
+	@measured n values => (\measurement:MeasurementOf A xs ((Measured A).measured n values) =>
+		(ContentsOf A).contents xs (quickSortAcc A &le n (natAccessible n) values) n values measurement
+			(rearrangedResult A &le n (natAccessible n) values));
+contentsResult := \A:@ => \le:A->A->Bool => \xs:List A =>
+	contentsMeasured A &le xs (measure A xs) (measurementResult A xs);
+contentsResult :: (A:@)->(le:A->A->Bool)->(xs:List A)->ContentsOf A xs (quickSort A &le xs);
+certified := \le:Nat->Nat->Bool => \xs:List Nat =>
+	readContents Nat xs (quickSort Nat &le xs) (contentsResult Nat &le xs);
 
 one := Nat.succ Nat.zero;
 two := Nat.succ one;

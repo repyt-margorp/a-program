@@ -5,7 +5,6 @@ length := \xs : NatList =>
 graphOutput := \input : NatList => \output : Nat =>
 	\graph : @length input output => output;
 one := NatList.cons Nat.zero NatList.nil;
-bad := {
-	packet := *length one;
-	packet @returned output graph => graphOutput one Nat.zero graph;
-};
+graph := (@length).cons Nat.zero NatList.nil Nat.zero (@length).nil;
+valid := graphOutput one (length one) graph;
+bad := graphOutput one Nat.zero graph;

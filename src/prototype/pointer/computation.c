@@ -322,7 +322,13 @@ static int total_result_match(struct pg_eval *machine, const struct pg_term *ans
 	const struct pg_data_layout *layout = pg_data_layout_view(head->as.reference);
 	if (!layout) return 1;
 	size_t count = pg_data_layout_count(layout);
-	if (supplied != count + 1 || count > SIZE_MAX / sizeof(struct pg_match_clause)) return 1;
+	if (supplied <= count || count > SIZE_MAX / sizeof(struct pg_match_clause)) return 1;
+	size_t trailing = supplied - count - 1;
+	if (trailing > SIZE_MAX / sizeof(const struct pg_term *)) return -1;
+	const struct pg_term **arguments = pg_alloc(&machine->temporary, trailing * sizeof(*arguments));
+	if (trailing && !arguments) return -1;
+	for (size_t i = trailing; i; --i, answer = answer->as.application.function)
+		arguments[i - 1] = answer->as.application.argument;
 	struct pg_match_clause *clauses = pg_alloc(&machine->temporary, count * sizeof(*clauses));
 	if (count && !clauses) return -1;
 	struct pg_graph *graph = machine->output;
@@ -340,6 +346,10 @@ static int total_result_match(struct pg_eval *machine, const struct pg_term *ans
 			binders[j] = pg_binder(graph);
 			body = pg_application(graph, body, pg_reference(graph, binders[j]));
 		}
+		/* A branch may return a function. Its caller's arguments belong
+		 * inside the selected branch, before extracting the final result. */
+		for (size_t j = 0; j < trailing; ++j)
+			body = pg_application(graph, body, arguments[j]);
 		body = pg_application(graph, projection, body);
 		for (size_t j = arity; j; --j) body = pg_lambda(graph, binders[j - 1], body);
 		if (!body) return -1;
@@ -355,14 +365,24 @@ static int total_result_answer(struct pg_eval *machine, const struct pg_term *an
 	const struct pg_term *value = unary_argument(answer, &pg_return_operation);
 	if (value) return pg_eval_enter(machine, (struct pg_closure){value, NULL}, 1);
 	if (answer->kind != PG_APPLICATION) return 1;
-	const struct pg_term *source = unary_argument(answer->as.application.function, &pg_fold_operation);
-	if (!source) return total_result_match(machine, answer);
+	const struct pg_term *head = answer;
+	size_t supplied = 0;
+	while (head->kind == PG_APPLICATION) { ++supplied; head = head->as.application.function; }
+	if (head->kind != PG_REFERENCE || head->as.reference != &pg_fold_operation || supplied < 2)
+		return total_result_match(machine, answer);
+	if (supplied > SIZE_MAX / sizeof(const struct pg_term *)) return -1;
+	const struct pg_term **arguments = pg_alloc(&machine->temporary, supplied * sizeof(*arguments));
+	if (!arguments) return -1;
+	for (size_t i = supplied; i; --i, answer = answer->as.application.function)
+		arguments[i - 1] = answer->as.application.argument;
 	/* q(Fold(M,K)) = q(K(q(M))) belongs to the TOTAL/empty-row result
-	 * projection, not to ordinary Fold. Typing checks q's domain. */
+	 * projection, not to ordinary Fold. Typing checks q's domain. Preserve
+	 * trailing applications when the continuation returns a function. */
 	struct pg_graph *graph = machine->output;
 	const struct pg_term *projection = pg_reference(graph, &pg_total_result_operation);
-	const struct pg_term *argument = pg_application(graph, projection, source);
-	const struct pg_term *call = pg_application(graph, answer->as.application.argument, argument);
+	const struct pg_term *argument = pg_application(graph, projection, arguments[0]);
+	const struct pg_term *call = pg_application(graph, arguments[1], argument);
+	for (size_t i = 2; i < supplied; ++i) call = pg_application(graph, call, arguments[i]);
 	const struct pg_term *result = pg_application(graph, projection, call);
 	return result ? pg_eval_enter(machine, (struct pg_closure){result, NULL}, 1) : -1;
 }
@@ -484,7 +504,7 @@ static const struct {
 	const char *name;
 } portable_policies[] = {
 	{&pg_beta_policy, "evaluation/beta/v1"},
-	{&pg_pure_policy, "evaluation/pure/v6"}
+	{&pg_pure_policy, "evaluation/pure/v7"}
 };
 
 const char *pg_computation_policy_name(const struct pg_eval_policy *policy)

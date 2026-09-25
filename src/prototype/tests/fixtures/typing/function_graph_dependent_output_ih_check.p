@@ -30,11 +30,11 @@ lengthOutputUnary := \input : NatList => \output : Nat =>
 
 one := NatList.cons Nat.zero NatList.nil;
 
-certified := {
-	packet := *length one;
-	packet @returned output graph =>
-		lengthOutputUnary one output graph;
-};
+length_graph := \xs:NatList => xs @(self => @length self (length self))
+	@nil => (@length).nil
+	@cons h t => (@length).cons h t (length t) *t;
+length_graph :: (xs:NatList)->@length xs (length xs);
+certified := lengthOutputUnary one (length one) (length_graph one);
 
 main := length one;
 expected := { Nat.succ Nat.zero; };

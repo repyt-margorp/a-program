@@ -300,3 +300,17 @@ quickSort :: (A : @) -> (A -> A -> Bool) -> List A -> List A;
 
 quickSortTerminates := \A : @ => \le : A -> A -> Bool => \xs : List A =>
 	#.terminates (&(quickSort A &le xs));
+
+// Shared predicates for the graph theorem and the ordinary-result theorem.
+general_all_from := \A:@ => \r:A->A->@ => \head:A => @\xs:List A => {
+	nil:* (List A).nil;
+	cons:(next:A)->(tail:List A)->r head next->* tail->* ((List A).cons next tail);
+};
+general_sorted := \A:@ => \r:A->A->@ => @\xs:List A => {
+	nil:* (List A).nil;
+	cons:(head:A)->(tail:List A)->general_all_from A r head tail->* tail->* ((List A).cons head tail);
+};
+general_decision := \A:@ => \r:A->A->@ => \x:A => \y:A => @\answer:Bool => {
+	yes:r x y->* Bool.true;
+	no:r y x->* Bool.false;
+};

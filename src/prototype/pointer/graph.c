@@ -109,6 +109,12 @@ static int comparison_init(struct pg_comparison *work, const struct pg_term *lef
 	int (*normalize)(void *, const struct pg_term *, const struct pg_term **),
 	const struct pg_object *absent, const struct binder_pair *seed);
 
+static int reference_head(const struct pg_term *term)
+{
+	while (term->kind == PG_APPLICATION) term = term->as.application.function;
+	return term->kind == PG_REFERENCE;
+}
+
 static enum pg_comparison_status comparison_step(struct pg_comparison_state *context)
 {
 	struct alpha_entry *entry = context->pending;
@@ -123,6 +129,27 @@ static enum pg_comparison_status comparison_step(struct pg_comparison_state *con
 		pg_comparison_destroy(&context->structural);
 		entry->structural_checked = 1;
 		if (status == PG_COMPARISON_EQUAL) {
+			context->pending = entry->next;
+			return context->pending ? PG_COMPARISON_PENDING : PG_COMPARISON_EQUAL;
+		}
+		return PG_COMPARISON_PENDING;
+	}
+	/* Try application congruence before unfolding a shared recursive callee.
+	 * Failure is not inequality: beta may still erase a differing argument. */
+	if (context->normalize && entry->stage == 0 && entry->congruence < 2 &&
+		entry->left->kind == PG_APPLICATION && entry->right->kind == PG_APPLICATION &&
+		reference_head(entry->left) && reference_head(entry->right)) {
+		const struct pg_term *left = entry->congruence ? entry->left->as.application.argument : entry->left->as.application.function;
+		const struct pg_term *right = entry->congruence ? entry->right->as.application.argument : entry->right->as.application.function;
+		if (!context->structural.state && comparison_init(&context->structural,
+			left, right, context->policy, entry->congruence ? context->normalize : NULL,
+			NULL, entry->scope)) return PG_COMPARISON_ERROR;
+		enum pg_comparison_status status = pg_comparison_advance(&context->structural, 1);
+		if (status == PG_COMPARISON_PENDING || status == PG_COMPARISON_ERROR) return status;
+		context->structural_tasks += pg_comparison_task_count(&context->structural);
+		pg_comparison_destroy(&context->structural);
+		if (status == PG_COMPARISON_DIFFERENT) entry->congruence = 3;
+		else if (++entry->congruence == 2) {
 			context->pending = entry->next;
 			return context->pending ? PG_COMPARISON_PENDING : PG_COMPARISON_EQUAL;
 		}

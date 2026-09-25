@@ -3,6 +3,10 @@ NatList := @{nil:*; cons:Nat->*->*;};
 length := \xs:NatList => xs
 	@nil => Nat.zero
 	@cons head tail => { tailLength := *tail; Nat.succ tailLength; };
+length_graph := \xs:NatList => xs @(self => @length self (length self))
+	@nil => (@length).nil
+	@cons head tail => (@length).cons head tail (length tail) *tail;
+length_graph :: (xs:NatList)->@length xs (length xs);
 one := NatList.cons Nat.zero NatList.nil;
 two := NatList.cons Nat.zero one;
 inspect := \input:NatList => \output:Nat => \graph:@length input output => graph
@@ -18,8 +22,8 @@ selectGraph := \input:NatList => \output:Nat => \graph:@length input output => g
 selectValue := \input:NatList => \output:Nat => \graph:@length input output => graph
 	@nil => Nat.zero
 	@cons { tailLength := n; } => Nat.succ n;
-main := *length two @ output => inspect two output @output;
-aliasMain := *length two @ output => inspectAlias two output @output;
-graphMain := *length two @ output => selectGraph two output @output;
-valueMain := *length two @ output => selectValue two output @output;
+main := inspect two (length two) (length_graph two);
+aliasMain := inspectAlias two (length two) (length_graph two);
+graphMain := selectGraph two (length two) (length_graph two);
+valueMain := selectValue two (length two) (length_graph two);
 expected := Nat.succ (Nat.succ Nat.zero);

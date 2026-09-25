@@ -33,15 +33,12 @@ mirrorOutputTree := \input : Tree => \output : Tree =>
 
 sample := Tree.fork Tree.leaf (Tree.fork Tree.leaf Tree.leaf);
 
-certified := {
-	packet := *mirror sample;
-	packet @returned output graph => inspect sample output graph;
-};
-
-certifiedOutputTree := {
-	packet := *mirror sample;
-	packet @returned output graph => mirrorOutputTree sample output graph;
-};
+mirror_graph := \tree:Tree => tree @(self => @mirror self (mirror self))
+	@leaf => (@mirror).leaf
+	@fork l r => (@mirror).fork l r (mirror r) *r (mirror l) *l;
+mirror_graph :: (tree:Tree)->@mirror tree (mirror tree);
+certified := inspect sample (mirror sample) (mirror_graph sample);
+certifiedOutputTree := mirrorOutputTree sample (mirror sample) (mirror_graph sample);
 
 main := mirror sample;
 expected := {

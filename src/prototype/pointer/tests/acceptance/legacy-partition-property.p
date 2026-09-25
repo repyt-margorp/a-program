@@ -49,9 +49,32 @@ readPartition := \A:@ => \n:Nat => \input:SizedList A n => \output:Partition A n
 	@lower size head tail l left u right lb ub rest nextLower nextUpper => (List A).cons head *rest
 	@upper size head tail l left u right lb ub rest nextLower nextUpper => (List A).cons head *rest;
 
+import partitionLower;
+import partitionUpper;
+import partitionByDecision;
+partitionLowerResult := \A:@ => \h:A => \n:Nat => \t:SizedList A n => \parts:Partition A n => parts
+	@(self => PartitionOf A n t self->PartitionOf A (Nat.succ n) ((SizedList A).cons n h t) (partitionLower A h n self))
+	@parts l left u right lb ub => (\prior:PartitionOf A n t ((Partition A n).parts l left u right lb ub) =>
+		(PartitionOf A).lower n h t l left u right lb ub prior
+			(LT.lift l (Nat.succ n) lb) (LT.weakenRight u (Nat.succ n) ub));
+partitionUpperResult := \A:@ => \h:A => \n:Nat => \t:SizedList A n => \parts:Partition A n => parts
+	@(self => PartitionOf A n t self->PartitionOf A (Nat.succ n) ((SizedList A).cons n h t) (partitionUpper A h n self))
+	@parts l left u right lb ub => (\prior:PartitionOf A n t ((Partition A n).parts l left u right lb ub) =>
+		(PartitionOf A).upper n h t l left u right lb ub prior
+			(LT.weakenRight l (Nat.succ n) lb) (LT.lift u (Nat.succ n) ub));
+partitionDecisionResult := \A:@ => \h:A => \n:Nat => \t:SizedList A n => \answer:Bool =>
+	\parts:Partition A n => \prior:PartitionOf A n t parts => answer
+	@(self => PartitionOf A (Nat.succ n) ((SizedList A).cons n h t) (partitionByDecision A h n self parts))
+	@true => partitionLowerResult A h n t parts prior
+	@false => partitionUpperResult A h n t parts prior;
+partitionResult := \A:@ => \le:A->A->Bool => \pivot:A => \n:Nat => \xs:SizedList A n => xs
+	@(size self => PartitionOf A size self (partition A &le pivot size self))
+	@nil => (PartitionOf A).nil (LT.step Nat.zero) (LT.step Nat.zero)
+	@cons k h t => partitionDecisionResult A h k t (le h pivot) (partition A &le pivot k t) *t;
+partitionResult :: (A:@)->(le:A->A->Bool)->(pivot:A)->(n:Nat)->(xs:SizedList A n)->
+	PartitionOf A n xs (partition A &le pivot n xs);
 checkPartition := \pivot:Nat => \n:Nat => \input:SizedList Nat n =>
-	*partition Nat &lessOrEqual pivot n input @output =>
-		readPartition Nat n input output (partitionCorrect Nat &lessOrEqual pivot n input output @output);
+	readPartition Nat n input (partition Nat &lessOrEqual pivot n input) (partitionResult Nat &lessOrEqual pivot n input);
 one := Nat.succ Nat.zero;
 two := Nat.succ one;
 three := Nat.succ two;

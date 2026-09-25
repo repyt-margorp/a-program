@@ -5,6 +5,10 @@ pred := \n:Nat => n @zero => Nat.zero @succ k => k;
 twice := \n:Nat => n
 	@zero => pred Nat.zero
 	@succ k => { first:=*k; second:=*k; Nat.succ second; };
+twice_graph := \n:Nat => n @(self => @twice self (twice self))
+	@zero => (@twice).zero
+	@succ k => (@twice).succ k (twice k) *k (twice k) *k;
+twice_graph :: (n:Nat)->@twice n (twice n);
 
 countCalls := \input:Nat => \output:Nat => \graph:@twice input output => graph
 	@zero => Nat.zero
@@ -12,6 +16,10 @@ countCalls := \input:Nat => \output:Nat => \graph:@twice input output => graph
 
 cutoff := \n:Nat => n @zero => Nat.zero
 	@succ k => { selected:=*k; ignored:=*k; }.selected;
+cutoff_graph := \n:Nat => n @(self => @cutoff self (cutoff self))
+	@zero => (@cutoff).zero
+	@succ k => (@cutoff).succ k (cutoff k) *k;
+cutoff_graph :: (n:Nat)->@cutoff n (cutoff n);
 cutDepth := \input:Nat => \output:Nat => \graph:@cutoff input output => graph
 	@zero => Nat.zero
 	@succ k result resultGraph => Nat.succ *resultGraph;
@@ -19,6 +27,10 @@ cutDepth := \input:Nat => \output:Nat => \graph:@cutoff input output => graph
 rightOnly := \tree:Tree => tree
 	@leaf => Tree.leaf
 	@fork left right => *right;
+right_graph := \tree:Tree => tree @(self => @rightOnly self (rightOnly self))
+	@leaf => (@rightOnly).leaf
+	@fork left right => (@rightOnly).fork left right (rightOnly right) *right;
+right_graph :: (tree:Tree)->@rightOnly tree (rightOnly tree);
 
 rightDepth := \input:Tree => \output:Tree => \graph:@rightOnly input output => graph
 	@leaf => Nat.zero
@@ -27,6 +39,10 @@ rightDepth := \input:Tree => \output:Tree => \graph:@rightOnly input output => g
 orderedMirror := \tree:Tree => tree
 	@leaf => Tree.leaf
 	@fork left right => { r:=*right; l:=*left; Tree.fork r l; };
+mirror_graph := \tree:Tree => tree @(self => @orderedMirror self (orderedMirror self))
+	@leaf => (@orderedMirror).leaf
+	@fork left right => (@orderedMirror).fork left right (orderedMirror right) *right (orderedMirror left) *left;
+mirror_graph :: (tree:Tree)->@orderedMirror tree (orderedMirror tree);
 
 inspect := \input:Tree => \output:Tree => \graph:@orderedMirror input output => graph
 	@leaf => output
@@ -42,19 +58,19 @@ certify := \input:Tree => \output:Tree => \graph:@orderedMirror input output => 
 
 two := Nat.succ (Nat.succ Nat.zero);
 sample := Tree.fork Tree.leaf (Tree.fork Tree.leaf Tree.leaf);
-main := { packet:=*twice two; packet @returned output graph => countCalls two output graph; };
+main := countCalls two (twice two) (twice_graph two);
 expected := Nat.succ (Nat.succ two);
-unusedMain := { packet:=*rightOnly sample; packet @returned output graph => rightDepth sample output graph; };
+unusedMain := rightDepth sample (rightOnly sample) (right_graph sample);
 unusedExpected := two;
-orderedMain := { packet:=*orderedMirror sample; packet @returned output graph => inspect sample output graph; };
+orderedMain := inspect sample (orderedMirror sample) (mirror_graph sample);
 orderedExpected := Tree.fork (Tree.fork Tree.leaf Tree.leaf) Tree.leaf;
 originalMain := twice two;
 originalExpected := two;
 originalOrdered := orderedMirror sample;
 originalRight := rightOnly sample;
 leaf := Tree.leaf;
-propertyMain := { packet:=*orderedMirror sample; packet @returned output graph => certify sample output graph; };
+propertyMain := certify sample (orderedMirror sample) (mirror_graph sample);
 propertyExpected := OutputTree.fork (Tree.fork leaf leaf) leaf
 	(OutputTree.fork leaf leaf OutputTree.leaf OutputTree.leaf) OutputTree.leaf;
-cutMain := { packet:=*cutoff two; packet @returned output graph => cutDepth two output graph; };
+cutMain := cutDepth two (cutoff two) (cutoff_graph two);
 cutExpected := two;

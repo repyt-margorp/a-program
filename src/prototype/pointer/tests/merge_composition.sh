@@ -45,6 +45,7 @@ done
 "$checker" --steps 100000 --imports "$source" --save "$directory/graph.a" \
 	"$fixtures/merge-function-graph-request.p"
 "$runtime" --equal-image "$directory/graph.a" main graphExpected
+"$runtime" --packet-image "$directory/graph.a" curriedMerge graphExpected Nat '&lessEqual' left right
 for input in "$source" "$directory/alone.p" "$directory/reordered.p"; do
 	"$checker" --steps 100000 --imports "$input" --save "$directory/captured.a" \
 		"$fixtures/merge-function-graph-captured-request.p"
@@ -57,6 +58,9 @@ for input in "$source" "$directory/alone.p" "$directory/reordered.p"; do
 	"$runtime" --equal-image "$directory/captured.a" mergedMain graphExpected
 	"$runtime" --equal-image "$directory/captured.a" mergedZero emptyExpected
 	"$runtime" --equal-image "$directory/captured.a" mergedTwice mergedTwiceExpected
+	"$runtime" --packet-image "$directory/captured.a" structuralMerge graphExpected Nat '&lessEqual' left right
+	"$runtime" --packet-image "$directory/captured.a" repeatCopy repeatExpected one right
+	"$runtime" --packet-image "$directory/captured.a" repeatMerge graphExpected '&lessEqual' one right
 done
 # Indexed ambient generalization is checked independently of graph extraction.
 indexed="$fixtures/indexed-captured-induction.p"
@@ -85,6 +89,11 @@ for steps in 0 100000; do
 	"$runtime" --equal-image "$directory/indexed-graph.a" pointMain emptyExpected
 	"$runtime" --equal-image "$directory/indexed-graph.a" laterMain laterExpected
 	"$runtime" --equal-image "$directory/indexed-graph.a" laterEmpty emptyExpected
+	"$runtime" --packet-image "$directory/indexed-graph.a" count expected Nat two sample one
+	"$runtime" --packet-image "$directory/indexed-graph.a" select emptyExpected Nat two sample one
+	"$runtime" --packet-image "$directory/indexed-graph.a" copy copyExpected Nat two sample one
+	"$runtime" --packet-image "$directory/indexed-graph.a" repeatCount five two one
+	"$runtime" --packet-image "$directory/indexed-graph.a" selectLater laterExpected Nat two sample one two
 done
 code=0
 "$checker" --steps 100000 --imports "$indexed" \

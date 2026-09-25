@@ -31,7 +31,7 @@
  * fields before later constructor refinements. There is no separate direct
  * result-only graph builder. Saturated calls to retained recursive Lambda
  * definitions request their canonical graph and
- * witness from the owner. Their actual parameters instantiate the result and
+ * formation from the owner. Their actual parameters instantiate the result and
  * relation. Total, pure callable parameters use typed eta graphs; other
  * opaque calls still require evidence sufficient to expose their results.
  * One work object owns one generative declaration; a source producer must
@@ -79,9 +79,10 @@ size_t pg_function_graph_trailing_arity(const struct pg_function_graph_work *wor
  * shared typed queries, without planning any constructor case. */
 int pg_function_graph_prepared(const struct pg_function_graph_work *work);
 enum pg_function_graph_status pg_function_graph_advance(struct pg_function_graph_work *work, uint64_t budget);
-/* A helper call waits for the same canonical graph/witness requested by @f and *f.
+/* A helper call waits for the same canonical graph requested by @f.
  * The supplied work is borrowed and must outlive this work. Pending inputs do
- * not grant evidence; only an owned, completed matching dependency is usable. */
+ * not grant evidence; only an owned, completed matching graph is usable.
+ * Formation does not require or construct a helper witness. */
 const struct pg_evidence *pg_function_graph_dependency(const struct pg_function_graph_work *work);
 int pg_function_graph_supply(struct pg_function_graph_work *work, const struct pg_function_graph_work *dependency);
 /* Leading raw Lambda parameters become ordinary family abstractions. */
@@ -103,14 +104,6 @@ struct pg_function_graph_case_source {
 };
 int pg_function_graph_case_source(const struct pg_function_graph_work *work,
 	size_t index, struct pg_function_graph_case_source *source);
-/* Construct a dependent result packet and its producer by ordinary induction
- * over the same source argument. Shares the generated relation above.
- * Returned packet formation is parameterized by the source input context;
- * its sole constructor stores output and graph evidence. The producer retains
- * the source result's totality grade; graph formation alone is not totality. */
-enum pg_function_graph_status pg_function_graph_witness_advance(struct pg_function_graph_work *work, uint64_t budget);
-const struct pg_evidence *pg_function_graph_witness(const struct pg_function_graph_work *work);
-const struct pg_evidence *pg_function_graph_packet(const struct pg_function_graph_work *work);
 void pg_function_graph_destroy(struct pg_function_graph_work *work);
 
 #endif

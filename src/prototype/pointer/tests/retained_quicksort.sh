@@ -5,15 +5,17 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 directory=$(mktemp -d)
 trap 'rm -rf "$directory"' EXIT
 failed=0
+# Includes execution of the explicit ordinary-result proof, not just sorting.
+steps=5000000
 for mode in solved retained whnf retained-whnf; do
 	options=()
 	case "$mode" in retained|retained-whnf) options+=(--retain-reductions);; esac
 	case "$mode" in whnf|retained-whnf) options+=(--whnf main);; esac
-	"$binary" --steps 1000000 --legacy-intrinsic-dot "${options[@]}" \
+	"$binary" --steps "$steps" --legacy-intrinsic-dot "${options[@]}" \
 		--save "$directory/$mode.a" \
 		--imports "$root/../tests/fixtures/typing/if8_fuel_free_quicksort_check.p" \
 		"$root/tests/acceptance/legacy-quicksort-property.p" > "$directory/save"
-	if "$binary" --steps 1000000 --load "$directory/$mode.a" > "$directory/load"; then
+	if "$binary" --steps "$steps" --load "$directory/$mode.a" > "$directory/load"; then
 		printf '%s: ' "$mode"
 		cat "$directory/load"
 	else
@@ -23,7 +25,7 @@ for mode in solved retained whnf retained-whnf; do
 	fi
 	if [[ $mode == whnf || $mode == retained-whnf ]]; then
 		for root_index in 1 2; do
-			if ! "$binary" --steps 1000000 --load --root "$root_index" \
+			if ! "$binary" --steps "$steps" --load --root "$root_index" \
 				"$directory/$mode.a" > "$directory/root-load"; then
 				printf '%s root %s failed to reload\n' "$mode" "$root_index" >&2
 				cat "$directory/root-load" >&2

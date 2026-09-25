@@ -1,4 +1,5 @@
 // Append to either universal theorem, keeping its nominal provider unchanged.
+import quick_correct_existing;
 bool_order := @\left:Bool => @\right:Bool => {
 	bottom:(b:Bool)->* Bool.false b;
 	top:* Bool.true Bool.true;
@@ -21,13 +22,13 @@ bool_decide := \x:Bool => \y:Bool => x
 		@true => (general_decision Bool &bool_order Bool.true Bool.true).yes bool_order.top);
 bool_decide :: (x:Bool)->(y:Bool)->general_decision Bool &bool_order x y (bool_le x y);
 bool_sorted := general_sorted Bool &bool_order;
-bool_correct := quick_correct Bool &bool_le &bool_order &bool_trans &bool_refl &bool_decide;
+graph_bool_correct := quick_correct Bool &bool_le &bool_order &bool_trans &bool_refl &bool_decide;
+bool_correct := quick_correct_existing Bool &bool_order &bool_le &bool_trans &bool_refl &bool_decide;
 read_bool_sorted := \xs:List Bool => \proof:bool_sorted xs => proof
 	@nil => Nat.zero
 	@cons head tail bound rest => Nat.succ *rest;
-checked_length := \xs:List Bool => *quickSort Bool &bool_le xs @ys =>
-	read_bool_sorted ys (bool_correct xs ys @ys);
-checked_value := \xs:List Bool => *quickSort Bool &bool_le xs @ys => ys;
+checked_length := \xs:List Bool => read_bool_sorted (quickSort Bool &bool_le xs) (bool_correct xs);
+checked_value := \xs:List Bool => quickSort Bool &bool_le xs;
 nil := (List Bool).nil;
 singleton := (List Bool).cons Bool.true nil;
 ordered := (List Bool).cons Bool.false singleton;

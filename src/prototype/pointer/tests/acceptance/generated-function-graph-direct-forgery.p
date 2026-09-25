@@ -4,7 +4,5 @@ consume := \left : Nat => \right : Nat => \output : Nat =>
 	\graph : @first left right output => output;
 zero := Nat.zero;
 one := Nat.succ Nat.zero;
-bad := {
-	packet := *first zero one;
-	packet @returned output graph => consume zero one one graph;
-};
+valid := consume zero one zero ((@first zero).case0 one);
+bad := consume zero one one ((@first zero).case0 one);

@@ -177,6 +177,73 @@ list_sorted :: (tree:Tree Nat)->(xs:List Nat)->@treeToList Nat tree xs->OrderedT
 tree_correct := \xs:List Nat => \ys:List Nat => \g:@treeSort Nat (&natLessOrEqual) xs ys => g
 	@case0 input built construction output traversal => list_sorted built output traversal (build_ordered input built construction);
 tree_correct :: (xs:List Nat)->(ys:List Nat)->@treeSort Nat (&natLessOrEqual) xs ys->Sorted ys;
+
+// Direct preservation connects the same predicates to the ordinary algorithm.
+insert_choice := \v:Nat => \root:Nat => \left:Tree Nat => \right:Tree Nat => \answer:Bool => answer
+	@true => (Tree Nat).node root (treeInsert Nat (&natLessOrEqual) v left) right
+	@false => (Tree Nat).node root left (treeInsert Nat (&natLessOrEqual) v right);
+insert_lower_result := \v:Nat => \tree:Tree Nat => tree
+	@(self => (lo:Nat)->LE lo v->TreeLower lo self->TreeLower lo (treeInsert Nat (&natLessOrEqual) v self))
+	@empty => (\lo:Nat => \lv:LE lo v => \old:TreeLower lo (Tree Nat).empty =>
+		(TreeLower lo).node v (Tree Nat).empty (Tree Nat).empty lv (TreeLower lo).empty (TreeLower lo).empty)
+	@node root left right => (\lo:Nat => \lv:LE lo v => \old:TreeLower lo ((Tree Nat).node root left right) =>
+		(natLessOrEqual v root) @(b => TreeLower lo (insert_choice v root left right b))
+		@true => (TreeLower lo).node root (treeInsert Nat (&natLessOrEqual) v left) right
+			(lower_root lo root left right old) (*left lo lv (lower_left lo root left right old)) (lower_right lo root left right old)
+		@false => (TreeLower lo).node root left (treeInsert Nat (&natLessOrEqual) v right)
+			(lower_root lo root left right old) (lower_left lo root left right old) (*right lo lv (lower_right lo root left right old)));
+insert_lower_result :: (v:Nat)->(tree:Tree Nat)->(lo:Nat)->LE lo v->TreeLower lo tree->
+	TreeLower lo (treeInsert Nat (&natLessOrEqual) v tree);
+insert_upper_result := \v:Nat => \tree:Tree Nat => tree
+	@(self => (hi:Nat)->LE v hi->TreeUpper hi self->TreeUpper hi (treeInsert Nat (&natLessOrEqual) v self))
+	@empty => (\hi:Nat => \vh:LE v hi => \old:TreeUpper hi (Tree Nat).empty =>
+		(TreeUpper hi).node v (Tree Nat).empty (Tree Nat).empty vh (TreeUpper hi).empty (TreeUpper hi).empty)
+	@node root left right => (\hi:Nat => \vh:LE v hi => \old:TreeUpper hi ((Tree Nat).node root left right) =>
+		(natLessOrEqual v root) @(b => TreeUpper hi (insert_choice v root left right b))
+		@true => (TreeUpper hi).node root (treeInsert Nat (&natLessOrEqual) v left) right
+			(upper_root hi root left right old) (*left hi vh (upper_left hi root left right old)) (upper_right hi root left right old)
+		@false => (TreeUpper hi).node root left (treeInsert Nat (&natLessOrEqual) v right)
+			(upper_root hi root left right old) (upper_left hi root left right old) (*right hi vh (upper_right hi root left right old)));
+insert_upper_result :: (v:Nat)->(tree:Tree Nat)->(hi:Nat)->LE v hi->TreeUpper hi tree->
+	TreeUpper hi (treeInsert Nat (&natLessOrEqual) v tree);
+import Decision;
+ordered_result_node := \v:Nat => \root:Nat => \left:Tree Nat => \right:Tree Nat =>
+	\old:OrderedTree ((Tree Nat).node root left right) =>
+	\il:OrderedTree (treeInsert Nat (&natLessOrEqual) v left) =>
+	\ir:OrderedTree (treeInsert Nat (&natLessOrEqual) v right) => \answer:Bool => answer
+	@(b => Decision v root b->OrderedTree (insert_choice v root left right b))
+	@true => (\d:Decision v root Bool.true => OrderedTree.node root (treeInsert Nat (&natLessOrEqual) v left) right
+		(insert_upper_result v left root (yes_order v root d) (ordered_upper root left right old))
+		(ordered_lower root left right old) il (ordered_right root left right old))
+	@false => (\d:Decision v root Bool.false => OrderedTree.node root left (treeInsert Nat (&natLessOrEqual) v right)
+		(ordered_upper root left right old)
+		(insert_lower_result v right root (trans root (Nat.succ root) (le_next root) v (no_order v root d))
+			(ordered_lower root left right old)) (ordered_left root left right old) ir);
+insert_ordered_result := \v:Nat => \tree:Tree Nat => \old:OrderedTree tree => old
+	@(self proof => OrderedTree (treeInsert Nat (&natLessOrEqual) v self))
+	@empty => OrderedTree.node v (Tree Nat).empty (Tree Nat).empty (TreeUpper v).empty (TreeLower v).empty
+		OrderedTree.empty OrderedTree.empty
+	@node root left right upper lower ol ord =>
+		ordered_result_node v root left right (OrderedTree.node root left right upper lower ol ord)
+			*ol *ord (natLessOrEqual v root) (unwrap v root (direct v root));
+insert_ordered_result :: (v:Nat)->(tree:Tree Nat)->OrderedTree tree->OrderedTree (treeInsert Nat (&natLessOrEqual) v tree);
+build_ordered_result := \xs:List Nat => xs @(self => OrderedTree (treeBuild Nat (&natLessOrEqual) self))
+	@nil => OrderedTree.empty
+	@cons h t => insert_ordered_result h (treeBuild Nat (&natLessOrEqual) t) *t;
+append_graph := \xs:List Nat => xs @(self => (ys:List Nat)->@append Nat self ys (append Nat self ys))
+	@nil => (\ys:List Nat => (@append Nat).case0 ys)
+	@cons h t => (\ys:List Nat => (@append Nat).case1 h t ys (append Nat t ys) (*t ys));
+append_graph :: (xs:List Nat)->(ys:List Nat)->@append Nat xs ys (append Nat xs ys);
+traversal_graph := \tree:Tree Nat => tree @(self => @treeToList Nat self (treeToList Nat self))
+	@empty => (@treeToList Nat).case0
+	@node root left right => (@treeToList Nat).case1 root left right
+		(treeToList Nat left) *left (treeToList Nat right) *right
+		(append Nat (treeToList Nat left) ((List Nat).cons root (treeToList Nat right)))
+		(append_graph (treeToList Nat left) ((List Nat).cons root (treeToList Nat right)));
+traversal_graph :: (tree:Tree Nat)->@treeToList Nat tree (treeToList Nat tree);
+tree_result_sorted := \xs:List Nat => list_sorted (treeBuild Nat (&natLessOrEqual) xs)
+	(treeSort Nat (&natLessOrEqual) xs) (traversal_graph (treeBuild Nat (&natLessOrEqual) xs)) (build_ordered_result xs);
+tree_result_sorted :: (xs:List Nat)->Sorted (treeSort Nat (&natLessOrEqual) xs);
 import read_sorted;
 import one;
 import two;
@@ -184,14 +251,14 @@ import three;
 four := Nat.succ three;
 sample := (List Nat).cons two ((List Nat).cons Nat.zero ((List Nat).cons one ((List Nat).cons one (List Nat).nil)));
 expected_value := (List Nat).cons Nat.zero ((List Nat).cons one ((List Nat).cons one ((List Nat).cons two (List Nat).nil)));
-main := *treeSort Nat (&natLessOrEqual) sample @ys => read_sorted ys (tree_correct sample ys @ys);
-empty := *treeSort Nat (&natLessOrEqual) (List Nat).nil @ys => read_sorted ys (tree_correct (List Nat).nil ys @ys);
-singleton := *treeSort Nat (&natLessOrEqual) ((List Nat).cons one (List Nat).nil) @ys =>
-	read_sorted ys (tree_correct ((List Nat).cons one (List Nat).nil) ys @ys);
-already := *treeSort Nat (&natLessOrEqual) expected_value @ys => read_sorted ys (tree_correct expected_value ys @ys);
+main := read_sorted (treeSort Nat (&natLessOrEqual) sample) (tree_result_sorted sample);
+empty := read_sorted (treeSort Nat (&natLessOrEqual) (List Nat).nil) (tree_result_sorted (List Nat).nil);
+singleton := read_sorted (treeSort Nat (&natLessOrEqual) ((List Nat).cons one (List Nat).nil))
+	(tree_result_sorted ((List Nat).cons one (List Nat).nil));
+already := read_sorted (treeSort Nat (&natLessOrEqual) expected_value) (tree_result_sorted expected_value);
 reversed_value := (List Nat).cons two ((List Nat).cons one ((List Nat).cons one ((List Nat).cons Nat.zero (List Nat).nil)));
-reversed := *treeSort Nat (&natLessOrEqual) reversed_value @ys => read_sorted ys (tree_correct reversed_value ys @ys);
-packet_value := *treeSort Nat (&natLessOrEqual) sample @ys => ys;
+reversed := read_sorted (treeSort Nat (&natLessOrEqual) reversed_value) (tree_result_sorted reversed_value);
+packet_value := treeSort Nat (&natLessOrEqual) sample;
 direct_value := treeSort Nat (&natLessOrEqual) sample;
 zero := Nat.zero;
 one_value := Nat.succ zero;

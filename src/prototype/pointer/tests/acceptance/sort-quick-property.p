@@ -189,6 +189,25 @@ quick_sorted :: (n:Nat)->(access:Acc Nat LT n)->(input:SizedList Nat n)->(output
 quick_correct := \xs:List Nat => \output:List Nat => \g:@quickSort Nat (&natLessOrEqual) xs output => g
 	@case0 original n values measurement access accessibility sorted sorting => quick_sorted n access values sorted sorting;
 quick_correct :: (xs:List Nat)->(output:List Nat)->@quickSort Nat (&natLessOrEqual) xs output->Sorted output;
+import general_all_from;
+import general_sorted;
+import general_decision;
+import quick_correct_existing;
+import Decision;
+nat_decision := \x:Nat => \y:Nat => \answer:Bool => \p:Decision x y answer => p
+	@yes a b bound => (general_decision Nat &LE a b).yes bound
+	@no a b bound => (general_decision Nat &LE a b).no (trans b (Nat.succ b) (le_next b) a bound);
+nat_decide := \x:Nat => \y:Nat => nat_decision x y (natLessOrEqual x y) (unwrap x y (direct x y));
+nat_decide :: (x:Nat)->(y:Nat)->general_decision Nat &LE x y (natLessOrEqual x y);
+nat_all_from := \h:Nat => \xs:List Nat => \p:general_all_from Nat &LE h xs => p
+	@nil => (AllFrom h).nil
+	@cons a t bound rest => (AllFrom h).cons a t bound *rest;
+nat_sorted := \xs:List Nat => \p:general_sorted Nat &LE xs => p
+	@nil => Sorted.nil
+	@cons h t bound rest => Sorted.cons h t (nat_all_from h t bound) *rest;
+quick_result_sorted := \xs:List Nat => nat_sorted (quickSort Nat (&natLessOrEqual) xs)
+	(quick_correct_existing Nat &LE (&natLessOrEqual) &trans &le_refl &nat_decide xs);
+quick_result_sorted :: (xs:List Nat)->Sorted (quickSort Nat (&natLessOrEqual) xs);
 import read_sorted;
 import one;
 import two;
@@ -196,14 +215,14 @@ import three;
 four := Nat.succ three;
 sample := (List Nat).cons two ((List Nat).cons Nat.zero ((List Nat).cons one ((List Nat).cons one (List Nat).nil)));
 expected_value := (List Nat).cons Nat.zero ((List Nat).cons one ((List Nat).cons one ((List Nat).cons two (List Nat).nil)));
-main := *quickSort Nat (&natLessOrEqual) sample @ys => read_sorted ys (quick_correct sample ys @ys);
-empty := *quickSort Nat (&natLessOrEqual) (List Nat).nil @ys => read_sorted ys (quick_correct (List Nat).nil ys @ys);
-singleton := *quickSort Nat (&natLessOrEqual) ((List Nat).cons one (List Nat).nil) @ys =>
-	read_sorted ys (quick_correct ((List Nat).cons one (List Nat).nil) ys @ys);
-already := *quickSort Nat (&natLessOrEqual) expected_value @ys => read_sorted ys (quick_correct expected_value ys @ys);
+main := read_sorted (quickSort Nat (&natLessOrEqual) sample) (quick_result_sorted sample);
+empty := read_sorted (quickSort Nat (&natLessOrEqual) (List Nat).nil) (quick_result_sorted (List Nat).nil);
+singleton := read_sorted (quickSort Nat (&natLessOrEqual) ((List Nat).cons one (List Nat).nil))
+	(quick_result_sorted ((List Nat).cons one (List Nat).nil));
+already := read_sorted (quickSort Nat (&natLessOrEqual) expected_value) (quick_result_sorted expected_value);
 reversed_value := (List Nat).cons two ((List Nat).cons one ((List Nat).cons one ((List Nat).cons Nat.zero (List Nat).nil)));
-reversed := *quickSort Nat (&natLessOrEqual) reversed_value @ys => read_sorted ys (quick_correct reversed_value ys @ys);
-packet_value := *quickSort Nat (&natLessOrEqual) sample @ys => ys;
+reversed := read_sorted (quickSort Nat (&natLessOrEqual) reversed_value) (quick_result_sorted reversed_value);
+packet_value := quickSort Nat (&natLessOrEqual) sample;
 direct_value := quickSort Nat (&natLessOrEqual) sample;
 zero := Nat.zero;
 one_value := Nat.succ zero;

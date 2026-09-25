@@ -110,13 +110,13 @@ partition_content_steps := \A:@ => \le:A->A->Bool => \pivot:A => \n:Nat =>
 	\input:SizedList A n => \output:Partition A n => \g:@partition A &le pivot n input output => g
 	@(size source result self => (original:List A)->sized_contents A size source original->
 		partition_result_contents A original size result)
-	@case0 => &(\original:List A => \representation:sized_contents A Nat.zero (SizedList A).nil original =>
+	@case0 => (\original:List A => \representation:sized_contents A Nat.zero (SizedList A).nil original =>
 		representation @nil => (partition_contents A (List A).nil Nat.zero (SizedList A).nil Nat.zero (SizedList A).nil).parts
 			(List A).nil (List A).nil (sized_contents A).nil (sized_contents A).nil (permutation A).nil)
 	@case1 k h t comparison l left r right lb rb rest =>
-		&(partition_lower_content A k h t l left r right *rest)
+		partition_lower_content A k h t l left r right &*rest
 	@case2 k h t comparison l left r right lb rb rest =>
-		&(partition_upper_content A k h t l left r right *rest);
+		partition_upper_content A k h t l left r right &*rest;
 partition_content := \A:@ => \le:A->A->Bool => \pivot:A => \n:Nat =>
 	\input:SizedList A n => \output:Partition A n => \g:@partition A &le pivot n input output =>
 	\original:List A => \representation:sized_contents A n input original =>
@@ -166,14 +166,14 @@ quick_step_content := \A:@ => \k:Nat => \pivot:A => \tail:SizedList A k =>
 quick_sized_content_steps := \A:@ => \le:A->A->Bool => \n:Nat => \access:Acc Nat LT n =>
 	\input:SizedList A n => \output:List A => \g:@quickSortAcc A &le n access input output => g
 	@(size accessible source result self => (original:List A)->sized_contents A size source original->permutation A original result)
-	@case0 down => &(\original:List A => \representation:sized_contents A Nat.zero (SizedList A).nil original =>
+	@case0 down => (\original:List A => \representation:sized_contents A Nat.zero (SizedList A).nil original =>
 		representation @(size input values self => permutation A values (List A).nil)
 			@nil => (permutation A).nil)
 	@case1 k pivot tail down l lower r upper lb rb partitioning left left_graph right right_graph result appending =>
-		&(quick_step_content A k pivot tail l lower r upper
+		quick_step_content A k pivot tail l lower r upper
 			&(partition_content A le pivot k tail ((Partition A k).parts l lower r upper lb rb) partitioning)
 			left right result appending
-			*left_graph *right_graph);
+			&*left_graph &*right_graph;
 quick_sized_content := \A:@ => \le:A->A->Bool => \n:Nat => \access:Acc Nat LT n =>
 	\input:SizedList A n => \output:List A => \g:@quickSortAcc A &le n access input output =>
 	\original:List A => \representation:sized_contents A n input original =>

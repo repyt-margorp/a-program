@@ -9,5 +9,5 @@ read := \x : Input => \y : Nat => \g : @f x y => g
 	@case0 => Nat.zero @case1 => Nat.succ Nat.zero;
 zero := Nat.zero;
 one := Nat.succ zero;
-base := *f Input.case1 @output => read Input.case1 output @output;
-main := *f Input.other @output => read Input.other output @output;
+base := read Input.case1 (f Input.case1) first;
+main := read Input.other (f Input.other) second;

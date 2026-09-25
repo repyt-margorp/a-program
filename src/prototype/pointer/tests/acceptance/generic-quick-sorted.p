@@ -12,18 +12,9 @@ import partition;
 import quickSortAcc;
 import quickSort;
 import append;
-general_all_from := \A:@ => \r:A->A->@ => \head:A => @\xs:List A => {
-	nil:* (List A).nil;
-	cons:(next:A)->(tail:List A)->r head next->* tail->* ((List A).cons next tail);
-};
-general_sorted := \A:@ => \r:A->A->@ => @\xs:List A => {
-	nil:* (List A).nil;
-	cons:(head:A)->(tail:List A)->general_all_from A r head tail->* tail->* ((List A).cons head tail);
-};
-general_decision := \A:@ => \r:A->A->@ => \x:A => \y:A => @\answer:Bool => {
-	yes:r x y->* Bool.true;
-	no:r y x->* Bool.false;
-};
+import general_all_from;
+import general_sorted;
+import general_decision;
 yes_order := \A:@ => \le:A->A->Bool => \R:A->A->@ => \trans:(x:A)->(y:A)->R x y->(z:A)->R y z->R x z => \le_refl:(x:A)->R x x => \decide:(x:A)->(y:A)->general_decision A R x y (le x y) => \x:A => \y:A => \d:general_decision A R x y Bool.true => d @yes p => p;
 no_order := \A:@ => \le:A->A->Bool => \R:A->A->@ => \trans:(x:A)->(y:A)->R x y->(z:A)->R y z->R x z => \le_refl:(x:A)->R x x => \decide:(x:A)->(y:A)->general_decision A R x y (le x y) => \x:A => \y:A => \d:general_decision A R x y Bool.false => d @no p => p;
 all_trans := \A:@ => \le:A->A->Bool => \R:A->A->@ => \trans:(x:A)->(y:A)->R x y->(z:A)->R y z->R x z => \le_refl:(x:A)->R x x => \decide:(x:A)->(y:A)->general_decision A R x y (le x y) => \y:A => \xs:List A => \bound:(general_all_from A R) y xs => bound

@@ -35,8 +35,12 @@ selectGraph := \input : NatList => \output : Nat =>
 			tailLength := recursive;
 		} => @recursive;
 
-package := *length one;
+length_graph := \xs:NatList => xs @(self => @length self (length self))
+	@nil => (@length).nil
+	@cons h t => (@length).cons h t (length t) *t;
+length_graph :: (xs:NatList)->@length xs (length xs);
+package := length_graph one;
 
-directValue := *length one @ output => output;
+directValue := length one;
 
-proof := *length one @ output => inspect one output @output;
+proof := inspect one (length one) (length_graph one);

@@ -34,6 +34,24 @@ correct := \x:Nat => \y:Nat => \answer:Bool => \proof:@natLessOrEqual x y answer
 	@case2 left right answer prior => lift left right answer *prior;
 correct :: (x:Nat)->(y:Nat)->(answer:Bool)->@natLessOrEqual x y answer->Decision x y answer;
 
+comparison_graph := \x:Nat => x @(self => (y:Nat)->@natLessOrEqual self y (natLessOrEqual self y))
+	@zero => (\y:Nat => (@natLessOrEqual).case0 y)
+	@succ left => (\y:Nat => y @(self => @natLessOrEqual (Nat.succ left) self (natLessOrEqual (Nat.succ left) self))
+		@zero => (@natLessOrEqual).case1 left
+		@succ right => (@natLessOrEqual).case2 left right (natLessOrEqual left right) (*left right));
+comparison_graph :: (x:Nat)->(y:Nat)->@natLessOrEqual x y (natLessOrEqual x y);
+insert_graph_step := \v:Nat => \h:Nat => \t:List Nat =>
+	\rest:@insertNat v t (insertNat v t) => \answer:Bool => answer
+	@(b => @natLessOrEqual v h b->@insertNat v ((List Nat).cons h t)
+		(b @true => (List Nat).cons v ((List Nat).cons h t)
+			@false => (List Nat).cons h (insertNat v t)))
+	@true => (\trace:@natLessOrEqual v h Bool.true => (@insertNat v).case1 h t trace)
+	@false => (\trace:@natLessOrEqual v h Bool.false => (@insertNat v).case2 h t trace (insertNat v t) rest);
+insert_graph := \v:Nat => \xs:List Nat => xs @(self => @insertNat v self (insertNat v self))
+	@nil => (@insertNat v).case0
+	@cons h t => insert_graph_step v h t *t (natLessOrEqual v h) (comparison_graph v h);
+insert_graph :: (v:Nat)->(xs:List Nat)->@insertNat v xs (insertNat v xs);
+
 AllFrom := \head:Nat => @\xs:List Nat => {
 	nil:* (List Nat).nil;
 	cons:(next:Nat)->(tail:List Nat)->LE head next->* tail->* ((List Nat).cons next tail);
@@ -109,10 +127,13 @@ sample := (List Nat).cons Nat.zero ((List Nat).cons two (List Nat).nil);
 sorted_sample := Sorted.cons Nat.zero ((List Nat).cons two (List Nat).nil)
 	((AllFrom Nat.zero).cons two (List Nat).nil (LE.zero two) (AllFrom Nat.zero).nil)
 	(Sorted.cons two (List Nat).nil (AllFrom two).nil Sorted.nil);
-main := *insertNat one sample @ys => read_sorted ys ((insert_sorted one sample ys @ys) sorted_sample);
-duplicate := *insertNat two sample @ys => read_sorted ys ((insert_sorted two sample ys @ys) sorted_sample);
-after := *insertNat three sample @ys => read_sorted ys ((insert_sorted three sample ys @ys) sorted_sample);
-empty := *insertNat one (List Nat).nil @ys => read_sorted ys ((insert_sorted one (List Nat).nil ys @ys) Sorted.nil);
-packet_value := *insertNat one sample @ys => ys;
+insert_result_sorted := \v:Nat => \xs:List Nat =>
+	insert_sorted v xs (insertNat v xs) (insert_graph v xs);
+insert_result_sorted :: (v:Nat)->(xs:List Nat)->Sorted xs->Sorted (insertNat v xs);
+main := read_sorted (insertNat one sample) (insert_result_sorted one sample sorted_sample);
+duplicate := read_sorted (insertNat two sample) (insert_result_sorted two sample sorted_sample);
+after := read_sorted (insertNat three sample) (insert_result_sorted three sample sorted_sample);
+empty := read_sorted (insertNat one (List Nat).nil) (insert_result_sorted one (List Nat).nil Sorted.nil);
+packet_value := insertNat one sample;
 direct_value := insertNat one sample;
 expected_value := (List Nat).cons Nat.zero ((List Nat).cons one ((List Nat).cons two (List Nat).nil));

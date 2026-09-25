@@ -61,6 +61,11 @@ sort_correct := \xs:List Nat => \ys:List Nat => \graph:@insertionSort xs ys => g
 	@case0 => Sorted.nil
 	@case1 head tail sorted rest result inserted => generic_sorted head sorted result inserted *rest;
 sort_correct :: (xs:List Nat)->(ys:List Nat)->@insertionSort xs ys->Sorted ys;
+import insert_result_sorted;
+sort_result_sorted := \xs:List Nat => xs @(self => Sorted (insertionSort self))
+	@nil => Sorted.nil
+	@cons head tail => insert_result_sorted head (insertionSort tail) *tail;
+sort_result_sorted :: (xs:List Nat)->Sorted (insertionSort xs);
 import read_sorted;
 import one;
 import two;
@@ -68,12 +73,12 @@ import three;
 four := Nat.succ three;
 sample := (List Nat).cons two ((List Nat).cons Nat.zero ((List Nat).cons one ((List Nat).cons one (List Nat).nil)));
 expected_value := (List Nat).cons Nat.zero ((List Nat).cons one ((List Nat).cons one ((List Nat).cons two (List Nat).nil)));
-main := *insertionSort sample @ys => read_sorted ys (sort_correct sample ys @ys);
-empty := *insertionSort (List Nat).nil @ys => read_sorted ys (sort_correct (List Nat).nil ys @ys);
-singleton := *insertionSort ((List Nat).cons one (List Nat).nil) @ys =>
-	read_sorted ys (sort_correct ((List Nat).cons one (List Nat).nil) ys @ys);
-already := *insertionSort expected_value @ys => read_sorted ys (sort_correct expected_value ys @ys);
-packet_value := *insertionSort sample @ys => ys;
+main := read_sorted (insertionSort sample) (sort_result_sorted sample);
+empty := read_sorted (insertionSort (List Nat).nil) (sort_result_sorted (List Nat).nil);
+singleton := read_sorted (insertionSort ((List Nat).cons one (List Nat).nil))
+	(sort_result_sorted ((List Nat).cons one (List Nat).nil));
+already := read_sorted (insertionSort expected_value) (sort_result_sorted expected_value);
+packet_value := insertionSort sample;
 direct_value := insertionSort sample;
 zero := Nat.zero;
 one_value := Nat.succ zero;

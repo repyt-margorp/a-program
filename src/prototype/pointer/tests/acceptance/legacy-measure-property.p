@@ -22,10 +22,16 @@ measureCorrect :: (A:@) -> (xs:List A) -> (output:Measured A) ->
 readMeasurement := \A:@ => \xs:List A => \output:Measured A => \proof:MeasurementOf A xs output => proof
 	@nil => (List A).nil
 	@cons head tail size values rest => (List A).cons head *rest;
+measure_graph_step := \A:@ => \h:A => \t:List A => \out:Measured A => out
+	@(self => @measure A t self->@measure A ((List A).cons h t)
+		(self @measured n values => (Measured A).measured (Nat.succ n) ((SizedList A).cons n h values)))
+	@measured n values => (\rest:@measure A t ((Measured A).measured n values) => (@measure A).cons h t n values rest);
+measure_graph := \A:@ => \xs:List A => xs @(self => @measure A self (measure A self))
+	@nil => (@measure A).nil
+	@cons h t => measure_graph_step A h t (measure A t) *t;
+measure_graph :: (A:@)->(xs:List A)->@measure A xs (measure A xs);
 one := Nat.succ Nat.zero;
 input := (List Nat).cons one ((List Nat).cons Nat.zero (List Nat).nil);
-main := *measure Nat input @output =>
-	readMeasurement Nat input output (measureCorrect Nat input output @output);
+main := readMeasurement Nat input (measure Nat input) (measureCorrect Nat input (measure Nat input) (measure_graph Nat input));
 empty := (List Nat).nil;
-emptyMain := *measure Nat empty @output =>
-	readMeasurement Nat empty output (measureCorrect Nat empty output @output);
+emptyMain := readMeasurement Nat empty (measure Nat empty) (measureCorrect Nat empty (measure Nat empty) (measure_graph Nat empty));

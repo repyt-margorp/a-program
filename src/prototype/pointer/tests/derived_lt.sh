@@ -15,7 +15,7 @@ check_status() {
 }
 
 check_pair() {
-	"$compare" --steps 10000000 --equal-image "$directory/resaved.a" "$1" "$2"
+	"$compare" --steps 50000000 --equal-image "$directory/resaved.a" "$1" "$2"
 }
 
 for variant in frozen derived frozen-tail-first derived-tail-first; do
@@ -36,7 +36,15 @@ for variant in frozen derived frozen-tail-first derived-tail-first; do
 		sed -E -i 's/^(\t@case[12] k h t) comparison( l left r right lb rb rest)( lifted lifting)? =>$/\1\2 comparison\3 =>/' \
 			"$directory/proof.p" "$directory/content.p"
 	fi
-	cat "$directory/content.p" "$root/fixtures/generic_sorted/boolean-consumer.p" \
+	# The direct theorem shares the provider's nominal predicates. Its private
+	# lemma names stay in the import provider, outside the graph proof's scope.
+	if [[ $provider == derived ]]; then
+		sed '/^import /d; s/LT\.lift /ltLift /g' "$root/acceptance/generic-quick-sorted-result.p" >> "$directory/provider.p"
+	else
+		sed '/^import /d' "$root/acceptance/generic-quick-sorted-result.p" >> "$directory/provider.p"
+	fi
+	cat "$directory/content.p" "$root/fixtures/generic_sorted/content-result-proof.p" \
+		"$root/fixtures/generic_sorted/boolean-consumer.p" \
 		"$root/fixtures/generic_sorted/boolean-content-consumer.p" >> "$directory/proof.p"
 	printf '%s\n' "LT provider/partition order: $variant"
 	check_status 0 --legacy-intrinsic-dot --imports "$directory/provider.p" \
@@ -52,10 +60,11 @@ for variant in frozen derived frozen-tail-first derived-tail-first; do
 
 	# Check source execution as well as imported image consumers with the same
 	# declarations. No nominal family or proof tree crosses between providers.
-	cat "$directory/provider.p" > "$directory/source.p"
-	sed '/^import /d' "$directory/proof.p" >> "$directory/source.p"
+	# Preserve import scoping and exercise source Solve directly, without
+	# serializing first or conflating the two sets of private lemma names.
 	for pair in duplicates_value:duplicates_expected duplicates_length:four duplicates_content:duplicates_expected; do
-		"$compare" --legacy-intrinsic-dot --steps 10000000 --equal "$directory/source.p" "${pair%:*}" "${pair#*:}"
+		"$compare" --legacy-intrinsic-dot --steps 50000000 --equal-imports \
+			"$directory/provider.p" "$directory/proof.p" "${pair%:*}" "${pair#*:}"
 	done
 
 	for mode in ordinary retained; do

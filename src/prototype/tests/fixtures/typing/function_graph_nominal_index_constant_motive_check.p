@@ -47,17 +47,12 @@ constantOneNatUnary ::
 
 one := Two.succ Two.zero;
 
-certified := {
-	packet := *copyTwo one;
-	packet @returned output graph =>
-		constantNatUnary one output graph;
-};
-
-certifiedOne := {
-	packet := *copyOne One.unit;
-	packet @returned output graph =>
-		constantOneNatUnary One.unit output graph;
-};
+copy_graph := \n:Two => n @(self => @copyTwo self (copyTwo self))
+	@zero => (@copyTwo).zero
+	@succ k => (@copyTwo).succ k (copyTwo k) *k;
+copy_graph :: (n:Two)->@copyTwo n (copyTwo n);
+certified := constantNatUnary one (copyTwo one) (copy_graph one);
+certifiedOne := constantOneNatUnary One.unit One.unit (@copyOne).unit;
 
 main := copyTwo one;
 expected := { Two.succ Two.zero; };

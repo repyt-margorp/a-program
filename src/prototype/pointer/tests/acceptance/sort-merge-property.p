@@ -83,6 +83,54 @@ merge_correct := \xs:List Nat => \ys:List Nat => \g:@mergeSort (&natLessOrEqual)
 			(measurement_bound original size values
 				(measure_fits original ((Measured Nat).measured size values) measurement));
 merge_correct :: (xs:List Nat)->(ys:List Nat)->@mergeSort (&natLessOrEqual) xs ys->Sorted ys;
+import insert_result_sorted;
+merge_ordered_result := \xs:List Nat => \ys:List Nat => xs
+	@(self => Sorted ys->Sorted (mergeBy Nat (&natLessOrEqual) self ys))
+	@nil => (\p:Sorted ys => p)
+	@cons h t => (\p:Sorted ys => insert_result_sorted h (mergeBy Nat (&natLessOrEqual) t ys) (*t p));
+merge_ordered_result :: (xs:List Nat)->(ys:List Nat)->Sorted ys->Sorted (mergeBy Nat (&natLessOrEqual) xs ys);
+split_graph_step := \h:Nat => \t:List Nat => \parts:Halves Nat => parts
+	@(self => @splitAlternating Nat t self->@splitAlternating Nat ((List Nat).cons h t)
+		(self @halves l r => (Halves Nat).halves ((List Nat).cons h r) l))
+	@halves l r => (\rest:@splitAlternating Nat t ((Halves Nat).halves l r) =>
+		(@splitAlternating Nat).case1 h t l r rest);
+split_graph := \xs:List Nat => xs @(self => @splitAlternating Nat self (splitAlternating Nat self))
+	@nil => (@splitAlternating Nat).case0
+	@cons h t => split_graph_step h t (splitAlternating Nat t) *t;
+split_graph :: (xs:List Nat)->@splitAlternating Nat xs (splitAlternating Nat xs);
+fuel_result_split := \n:Nat => \h:Nat => \t:List Nat => \bound:Fits (Nat.succ n) ((List Nat).cons h t) =>
+	\ih:(xs:List Nat)->Fits n xs->Sorted (mergeSortFuel (&natLessOrEqual) n xs) => \parts:Halves Nat => parts
+	@(self => @splitAlternating Nat ((List Nat).cons h t) self->Sorted
+		(self @halves l r => mergeBy Nat (&natLessOrEqual)
+			(mergeSortFuel (&natLessOrEqual) n l) (mergeSortFuel (&natLessOrEqual) n r)))
+	@halves l r => (\graph:@splitAlternating Nat ((List Nat).cons h t) ((Halves Nat).halves l r) =>
+		merge_ordered_result (mergeSortFuel (&natLessOrEqual) n l) (mergeSortFuel (&natLessOrEqual) n r)
+			(ih r (right_bounded n h t l r graph bound)));
+fuel_result_sorted := \fuel:Nat => fuel
+	@(n => (xs:List Nat)->Fits n xs->Sorted (mergeSortFuel (&natLessOrEqual) n xs))
+	@zero => (\xs:List Nat => zero_sorted xs)
+	@succ n => (\xs:List Nat => xs
+		@(self => Fits (Nat.succ n) self->Sorted (mergeSortFuel (&natLessOrEqual) (Nat.succ n) self))
+		@nil => (\bound:Fits (Nat.succ n) (List Nat).nil => Sorted.nil)
+		@cons h t => (\bound:Fits (Nat.succ n) ((List Nat).cons h t) =>
+			fuel_result_split n h t bound &*n (splitAlternating Nat ((List Nat).cons h t))
+				(split_graph ((List Nat).cons h t))));
+fuel_result_sorted :: (n:Nat)->(xs:List Nat)->Fits n xs->Sorted (mergeSortFuel (&natLessOrEqual) n xs);
+measure_graph_step := \h:Nat => \t:List Nat => \out:Measured Nat => out
+	@(self => @measure Nat t self->@measure Nat ((List Nat).cons h t)
+		(self @measured n values => (Measured Nat).measured (Nat.succ n) ((SizedList Nat).cons n h values)))
+	@measured n values => (\rest:@measure Nat t ((Measured Nat).measured n values) => (@measure Nat).case1 h t n values rest);
+measure_graph := \xs:List Nat => xs @(self => @measure Nat self (measure Nat self))
+	@nil => (@measure Nat).case0
+	@cons h t => measure_graph_step h t (measure Nat t) *t;
+measure_graph :: (xs:List Nat)->@measure Nat xs (measure Nat xs);
+merge_result_measured := \xs:List Nat => \out:Measured Nat => out
+	@(self => MeasurementFits xs self->Sorted (self @measured n values => mergeSortFuel (&natLessOrEqual) n xs))
+	@measured n values => (\p:MeasurementFits xs ((Measured Nat).measured n values) =>
+		fuel_result_sorted n xs (measurement_bound xs n values p));
+merge_result_sorted := \xs:List Nat => merge_result_measured xs (measure Nat xs)
+	(measure_fits xs (measure Nat xs) (measure_graph xs));
+merge_result_sorted :: (xs:List Nat)->Sorted (mergeSort (&natLessOrEqual) xs);
 import read_sorted;
 import one;
 import two;
@@ -90,14 +138,14 @@ import three;
 four := Nat.succ three;
 sample := (List Nat).cons two ((List Nat).cons Nat.zero ((List Nat).cons one ((List Nat).cons one (List Nat).nil)));
 expected_value := (List Nat).cons Nat.zero ((List Nat).cons one ((List Nat).cons one ((List Nat).cons two (List Nat).nil)));
-main := *mergeSort (&natLessOrEqual) sample @ys => read_sorted ys (merge_correct sample ys @ys);
-empty := *mergeSort (&natLessOrEqual) (List Nat).nil @ys => read_sorted ys (merge_correct (List Nat).nil ys @ys);
-singleton := *mergeSort (&natLessOrEqual) ((List Nat).cons one (List Nat).nil) @ys =>
-	read_sorted ys (merge_correct ((List Nat).cons one (List Nat).nil) ys @ys);
-already := *mergeSort (&natLessOrEqual) expected_value @ys => read_sorted ys (merge_correct expected_value ys @ys);
+main := read_sorted (mergeSort (&natLessOrEqual) sample) (merge_result_sorted sample);
+empty := read_sorted (mergeSort (&natLessOrEqual) (List Nat).nil) (merge_result_sorted (List Nat).nil);
+singleton := read_sorted (mergeSort (&natLessOrEqual) ((List Nat).cons one (List Nat).nil))
+	(merge_result_sorted ((List Nat).cons one (List Nat).nil));
+already := read_sorted (mergeSort (&natLessOrEqual) expected_value) (merge_result_sorted expected_value);
 reversed_value := (List Nat).cons two ((List Nat).cons one ((List Nat).cons one ((List Nat).cons Nat.zero (List Nat).nil)));
-reversed := *mergeSort (&natLessOrEqual) reversed_value @ys => read_sorted ys (merge_correct reversed_value ys @ys);
-packet_value := *mergeSort (&natLessOrEqual) sample @ys => ys;
+reversed := read_sorted (mergeSort (&natLessOrEqual) reversed_value) (merge_result_sorted reversed_value);
+packet_value := mergeSort (&natLessOrEqual) sample;
 direct_value := mergeSort (&natLessOrEqual) sample;
 zero := Nat.zero;
 one_value := Nat.succ zero;

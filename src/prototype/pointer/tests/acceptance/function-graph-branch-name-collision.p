@@ -6,6 +6,16 @@ length := \xs:List => xs @nil => Nat.zero
 		@false => (second @false => Nat.succ *tail @true => Nat.succ *tail)
 		@true => (second @false => Nat.succ *tail @true => Nat.succ *tail));
 relation := @length;
+length_graph := \xs:List => xs @(self => relation self (length self))
+	@nil => relation.case0
+	@cons first second tail => (first @(b => relation (List.cons b second tail) (length (List.cons b second tail)))
+		@false => (second @(b => relation (List.cons Bool.false b tail) (length (List.cons Bool.false b tail)))
+			@false => relation.case1 tail (length tail) *tail
+			@true => relation.case2 tail (length tail) *tail)
+		@true => (second @(b => relation (List.cons Bool.true b tail) (length (List.cons Bool.true b tail)))
+			@false => relation.case3 tail (length tail) *tail
+			@true => relation.case4 tail (length tail) *tail));
+length_graph :: (xs:List)->relation xs (length xs);
 Size := @\xs:List => @\n:Nat => {
 	nil:* List.nil Nat.zero;
 	cons:(first:Bool)->(second:Bool)->(tail:List)->(n:Nat)->* tail n->
@@ -24,5 +34,5 @@ sample := List.cons Bool.false Bool.false
 	(List.cons Bool.false Bool.true
 	(List.cons Bool.true Bool.false
 	(List.cons Bool.true Bool.true List.nil)));
-main := *length sample @output => read sample output (correct sample output @output);
+main := read sample (length sample) (correct sample (length sample) (length_graph sample));
 expected := Nat.succ (Nat.succ (Nat.succ (Nat.succ Nat.zero)));

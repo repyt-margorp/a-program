@@ -108,8 +108,8 @@ done <<'CASES'
 1 ../../pointer/tests/acceptance/generated-function-graph-direct-forgery
 1 ../../pointer/tests/acceptance/indexed-rigid-induction-invalid
 CASES
-# The historical coarse-fallback fixture only requests *first; it makes no
-# false claim. Exact direct-body graph generation admits it. The final case
+# The historical coarse-fallback fixture makes no false claim. Its migrated
+# direct-body graph constructor still admits it. The final case
 # instead demands the wrong result index from that graph and must reject.
 # The original order fixture recursively folds LT at a fixed right index.
 # Its step branch reuses Acc k even when the recursive LT input has another
@@ -325,8 +325,16 @@ for steps in 0 100000; do
 	done
 done
 
-# The original Acc-based function must also produce its own result witness;
-# the output checks are not a proof of general sortedness or preservation.
+# Keep optional packet construction coverage in the internal C client. The
+# ordinary compiler has no accessor or linkage to that producer. These checks
+# are separate from the universal source property proofs below.
+for pair in sample:expected emptyInput:emptyExpected singletonInput:singletonExpected \
+	ascendingInput:ascendingExpected descendingInput:descendingExpected duplicateInput:duplicateExpected; do
+	"${runtime[@]}" --steps 2000000 --packet "$fixtures/typing/if8_fuel_free_quicksort_check.p" \
+		quickSort "${pair#*:}" Nat '&lessOrEqual' "${pair%:*}"
+done
+# The original Acc-based function still runs ordinarily; concrete outputs are
+# not substituted for general sortedness or preservation theorems.
 client="$(dirname "${BASH_SOURCE[0]}")/acceptance/legacy-quicksort-witness.p"
 for steps in 0 1000000; do
 	code=0
@@ -347,7 +355,7 @@ check_property() {
 			--save "$directory/property.a" "$client" > "$directory/status" || code=$?
 		if [ "$steps" -eq 0 ]; then test "$code" -eq 3; else test "$code" -eq 0; fi
 		for pair in "$@"; do
-			"${runtime[@]}" --equal-image "$directory/property.a" "${pair%:*}" "${pair#*:}"
+			"${runtime[@]}" --steps 5000000 --equal-image "$directory/property.a" "${pair%:*}" "${pair#*:}"
 		done
 	done
 }
@@ -355,11 +363,12 @@ check_property() {
 check_wrong_property() {
 	local client=$1 code
 	code=0
-	"${checker[@]}" --steps 1000000 --imports "$fixtures/typing/if8_fuel_free_quicksort_check.p" \
+	# The partition negative takes 1,118,285 steps before its invalid index is rejected.
+	"${checker[@]}" --steps 5000000 --imports "$fixtures/typing/if8_fuel_free_quicksort_check.p" \
 		--save "$directory/wrong-property.a" "$client" > "$directory/status" || code=$?
 	test "$code" -eq 1
 	code=0
-	"${checker[@]}" --steps 1000000 --load "$directory/wrong-property.a" > "$directory/status" || code=$?
+	"${checker[@]}" --steps 5000000 --load "$directory/wrong-property.a" > "$directory/status" || code=$?
 	test "$code" -eq 1
 }
 
@@ -382,7 +391,7 @@ check_property "$client" main:ascending emptyMain:empty singletonMain:singleton 
 "${checker[@]}" --load --steps 1000000 "$directory/retained-property.a"
 for pair in main:ascending emptyMain:empty singletonMain:singleton ascendingMain:ascending \
 	descendingMain:ascending duplicatesMain:duplicatesExpected unorderedMain:mixed; do
-	"${runtime[@]}" --equal-image "$directory/retained-property.a" "${pair%:*}" "${pair#*:}"
+	"${runtime[@]}" --steps 5000000 --equal-image "$directory/retained-property.a" "${pair%:*}" "${pair#*:}"
 done
 # Reuse the full specification, but substitute the right recursive proof where
 # the left is required. No second, drifting copy of the specification is needed.

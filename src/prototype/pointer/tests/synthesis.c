@@ -5818,7 +5818,7 @@ static void source_declarations(struct pg_typing *typing)
 		"r:=Nat.zero @succ k=>(\\k:Nat=>*k);");
 	complete(&synthesis, pg_synthesis_induction_branch(&synthesis, named, nat,
 		pg_data_constructor(nat_layout, 1), nat_instance.parameters, motive_context, motive,
-		NULL, shadow->items[0].expression), PG_SYNTHESIS_UNSUPPORTED);
+		NULL, shadow->items[0].expression), PG_SYNTHESIS_REJECTED);
 	/* The ordinary source path discovers the constant motive before opening
 	 * IH assumptions. No expected type or explicit motive is supplied here. */
 	const char *source_inductions[] = {
@@ -5844,9 +5844,9 @@ static void source_declarations(struct pg_typing *typing)
 		pg_synthesis_return(&synthesis, empty, selected), PG_SYNTHESIS_DONE);
 	assert(pg_evidence_subject(selected_value)->core == pg_evidence_subject(zero)->core);
 	complete(&synthesis, request(&synthesis, named,
-		"r:=\\n:Nat=>n @zero=>(\\m:Nat=>m) @succ k=>(\\k:Nat=>*k);"), PG_SYNTHESIS_UNSUPPORTED);
+		"r:=\\n:Nat=>n @zero=>(\\m:Nat=>m) @succ k=>(\\k:Nat=>*k);"), PG_SYNTHESIS_REJECTED);
 	complete(&synthesis, request(&synthesis, named,
-		"r:=\\n:Nat=>n @zero=>Nat.zero @succ k=>{k:=Nat.zero; *k;};"), PG_SYNTHESIS_UNSUPPORTED);
+		"r:=\\n:Nat=>n @zero=>Nat.zero @succ k=>{k:=Nat.zero; *k;};"), PG_SYNTHESIS_REJECTED);
 	/* Nested Match resolves the field through the accepted Self substitution;
 	 * the first body uses the outer IH, the second shadows it with an inner IH. */
 	const char *nested[] = {

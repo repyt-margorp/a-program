@@ -82,8 +82,9 @@ supplies an expected type to guide synthesis.
 - Effect handlers: `@#return` and operation clauses, without a `perform`
   keyword. Requests, forwarding and resumptions have checked rules.
 - Imports: `import name;`, supplied by `--imports provider.p`.
-- Generated function graphs and witnesses: `@function` and `*function`
-  for the supported fragment, distinct from schema Self and branch IH syntax.
+- Generated function graph types: `@function`. Global `*function` witness
+  access is removed; local recursive IH `*arg` and declaration Self `*` remain.
+  Witness construction is an optional internal module, not a surface accessor.
 
 Uniform parameters and indices are separate in a vector family:
 
@@ -178,7 +179,7 @@ source fixtures and default CLI tests use `#Name`.
 | --- | --- |
 | Indexed induction | Source-defined Acc, recursive/function fields, dependent Vec append and selected captured indexed functions |
 | Dependent synthesis | Constructor-index refinement and branch-proposed motives checked against every induction branch; unchanged `lengthCertified` |
-| Function properties | [Length specification](src/prototype/pointer/tests/acceptance/length-output-proof.p), [QuickSort content preservation](src/prototype/pointer/tests/acceptance/legacy-quicksort-property.p), and [universal QuickSort Sorted proof](src/prototype/pointer/tests/acceptance/sort-quick-property.p) connected to actual execution witnesses |
+| Function properties | [Length at its ordinary result](src/prototype/pointer/tests/fixtures/graph_adequacy/length-direct.p), [general QuickSort Sorted](src/prototype/pointer/tests/acceptance/generic-quick-sorted-result.p) and [permutation](src/prototype/pointer/tests/fixtures/generic_sorted/content-result-proof.p) at its ordinary result, without global function-witness syntax |
 | Higher Identity | Selected typed action, transport and higher-dimensional examples; general coherence remains unfinished |
 | Effects | `#print` requests, multi-clause handlers, forwarding and resumptions; ordered partial applications; explicit `--run` terminal output with split-budget and source/image tests |
 | Host values | `#Int` aliases `#Int32`; distinct `#Int64`; `#Text` stores exact bytes. Literal typing and image round trips, including recursive Text fields |
@@ -196,7 +197,7 @@ Important limitations:
   `#Int32` and reject out-of-range values; `:: #Int64` does not change that
   choice. Text literals do not impose Unicode normalization or decode an
   encoding. Host types do not yet have general Higher Identity rules.
-- Pure evaluation now uses profile `evaluation/pure/v6`. Old v5 retained
+- Pure evaluation now uses profile `evaluation/pure/v7`. Old v5/v6 retained
   evaluation records are rejected, not silently upgraded. Regenerate those
   images from source or save description-only inputs with the older compiler.
 - General dependent motive inference, indexed graph coverage and
@@ -207,12 +208,13 @@ Important limitations:
 - Nested definition-block expressions and general dependent handlers are not
   supported. Tested dependent captures cover ordinary sequential aliases and
   return-only handlers.
-- Execution witnesses alone do not establish sorting correctness. Separate
-  proofs connect the reported algorithms to conventional natural-number order;
-  they do not establish sortedness for arbitrary Boolean comparators, stability,
-  or complexity. The reported merge uses repeated insertion rather than a
-  linear two-front merge. Evaluating the four-element QuickSort proof takes
-  about 3.5 million solver transitions; this is distinct from running the sort.
+- Execution witnesses alone do not establish sorting correctness. The ordinary
+  QuickSort result theorem quantifies over the element type and list, assuming
+  a reflexive/transitive relation and a comparator decision proof. It does not
+  establish sortedness for an unchecked Boolean comparator, stability, or
+  complexity. Current correctness consumers use explicit ordinary proof terms;
+  archived `*f` examples are not supported syntax or passing current tests.
+  The reported merge uses repeated insertion rather than a linear two-front merge.
 
 Detailed contracts and implementation history are in the
 [active plan](doc/2026-09-07-POINTER-CORE-REIMPLEMENTATION-PLAN.md),

@@ -8,21 +8,20 @@ import three;
 import sample;
 
 countGraph := @count;
-countWitness := *count;
-main := *count Nat two sample one @output => output;
-emptyMain := *count Nat Nat.zero (Vec Nat).nil one @output => output;
+main := count Nat two sample one;
+emptyMain := count Nat Nat.zero (Vec Nat).nil one;
 expected := three;
 emptyExpected := one;
 selectGraph := @select;
-selected := *select Nat two sample one @output => output;
+selected := select Nat two sample one;
 
 // Keep the output's actual fiber when specializing the private graph.
 copy := \A : @ => \n : Nat => \xs : Vec A n => \ignored : Nat => xs
 	@nil => (Vec A).nil
 	@cons k head tail => (Vec A).cons k head (*tail ignored);
 copyGraph := @copy;
-copyMain := *copy Nat two sample one @output => output;
-copyEmpty := *copy Nat Nat.zero (Vec Nat).nil one @output => output;
+copyMain := copy Nat two sample one;
+copyEmpty := copy Nat Nat.zero (Vec Nat).nil one;
 copyExpected := sample;
 empty := (Vec Nat).nil;
 
@@ -34,7 +33,7 @@ repeatCount := \fuel : Nat => fuel
 		count Nat two sample previous;
 	});
 repeatGraph := @repeatCount;
-repeated := *repeatCount two one @output => output;
+repeated := repeatCount two one;
 five := Nat.succ (Nat.succ three);
 
 // The second index's type depends on the first; preserve telescope order.
@@ -44,13 +43,13 @@ Point := @\A : @ => \x : A => {
 pointSelect := \A : @ => \x : A => \p : Point A x => \result : Nat => p
 	@point B y => result;
 pointGraph := @pointSelect;
-pointMain := *pointSelect Nat one (Point.point Nat one) one @output => output;
+pointMain := pointSelect Nat one (Point.point Nat one) one;
 
 // Specialize captured arguments, but leave a branch-local raw Pi callable.
 selectLater := \A : @ => \n : Nat => \xs : Vec A n => \start : Nat => xs
 	@nil => (\later : Nat => start)
 	@cons k head tail => (\later : Nat => later);
 laterGraph := @selectLater;
-laterMain := *selectLater Nat two sample one two @output => output;
-laterEmpty := *selectLater Nat Nat.zero (Vec Nat).nil one two @output => output;
+laterMain := selectLater Nat two sample one two;
+laterEmpty := selectLater Nat Nat.zero (Vec Nat).nil one two;
 laterExpected := two;

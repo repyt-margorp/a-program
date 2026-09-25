@@ -16,8 +16,8 @@ two := Nat.succ one;
 input := (List Nat).cons two ((List Nat).cons one (List Nat).nil);
 expected := (List Nat).cons one ((List Nat).cons two (List Nat).nil);
 empty := (List Nat).nil;
-main := *quickSort Nat &lessOrEqual input @output => output;
-emptyMain := *quickSort Nat &lessOrEqual empty @output => output;
+main := quickSort Nat &lessOrEqual input;
+emptyMain := quickSort Nat &lessOrEqual empty;
 
 readGraph := \A:@ => \le:A->A->Bool => \xs:List A => \output:List A => \trace:@quickSort A &le xs output => trace
 	@measured original size values measurement access accessibility sorted sorting => {
@@ -29,5 +29,6 @@ readGraph := \A:@ => \le:A->A->Bool => \xs:List A => \output:List A => \trace:@q
 	};
 readGraph :: (A:@) -> (le:A->A->Bool) -> (xs:List A) -> (output:List A) ->
 	@quickSort A &le xs output -> List A;
-graphMain := *quickSort Nat &lessOrEqual input @output =>
-	readGraph Nat &lessOrEqual input output @output;
+// Packet production is checked through the optional internal API test.
+// The graph consumer above still checks the exact captured field classifiers.
+graphMain := quickSort Nat &lessOrEqual input;

@@ -152,10 +152,10 @@
  			(List A).nil (List A).nil (sized_contents A).nil (sized_contents A).nil (permutation A).nil)
 -	@case1 k h t comparison l left r right lb rb rest =>
 +	@case1 k h t comparison l left r right lb rb rest lifted lifting =>
- 		&(partition_lower_content A k h t l left r right *rest)
+ 		partition_lower_content A k h t l left r right &*rest
 -	@case2 k h t comparison l left r right lb rb rest =>
 +	@case2 k h t comparison l left r right lb rb rest lifted lifting =>
- 		&(partition_upper_content A k h t l left r right *rest);
+ 		partition_upper_content A k h t l left r right &*rest;
  partition_content := \A:@ => \le:A->A->Bool => \pivot:A => \n:Nat =>
  	\input:SizedList A n => \output:Partition A n => \g:@partition A &le pivot n input output =>
  	\original:List A => \representation:sized_contents A n input original =>

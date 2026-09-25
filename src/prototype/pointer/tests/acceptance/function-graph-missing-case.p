@@ -5,5 +5,5 @@ length := \xs:NatList => xs
 	@cons head tail => { tailLength := *tail; Nat.succ tailLength; };
 inspect := \input:NatList => \output:Nat => \graph:@length input output => graph
 	@cons { tailLength; } => Nat.succ tailLength;
-main := *length NatList.nil @output => inspect NatList.nil output @output;
+main := inspect NatList.nil Nat.zero (@length).nil;
 expected := { Nat.zero; };

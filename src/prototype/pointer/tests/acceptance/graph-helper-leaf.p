@@ -9,6 +9,6 @@ read := \x : Nat => \y : Nat => \proof : @f x y => proof
 zero := Nat.zero;
 one := Nat.succ zero;
 two := Nat.succ one;
-base := *f zero @output => read zero output @output;
-middle := *f one @output => read one output @output;
-last := *f two @output => read two output @output;
+base := read zero (f zero) (@f).case0;
+middle := read one (f one) (@f).case1;
+last := read two (f two) ((@f).case2 zero);

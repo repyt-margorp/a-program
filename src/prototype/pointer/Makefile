@@ -5,9 +5,11 @@ BUILD := $(ROOT).build
 SOURCES := $(ROOT)graph.c $(ROOT)dag.c $(ROOT)dimension.c $(ROOT)eval.c $(ROOT)typing.c $(ROOT)conversion.c $(ROOT)classifier.c $(ROOT)effect_inference.c $(ROOT)evidence.c $(ROOT)derivation.c $(ROOT)computation.c $(ROOT)action.c $(ROOT)identity.c $(ROOT)symmetry.c $(ROOT)iadt.c $(ROOT)prelude.c $(ROOT)descriptor_io.c $(ROOT)context_payload.c $(ROOT)declaration_io.c
 
 SOURCES += $(ROOT)function_graph.c $(ROOT)host.c $(ROOT)execution.c
+WITNESS_SOURCE := $(ROOT)function_witness.c
+CLI_SOURCES := $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)program.c $(ROOT)graph_io.c $(ROOT)wire.c $(ROOT)source_io.c $(ROOT)retained_io.c $(ROOT)reduction_io.c $(ROOT)syntax_io.c $(ROOT)derivation_io.c $(ROOT)main.c
 
 .PHONY: check check-examples check-example-results check-open-families check-image-origins check-operation-origins check-handler-origins check-handler-nesting check-prepared-modules check-acceptance check-eval-io check-identity-io
-.PHONY: check-source-compatibility check-host check-execution check-sort-insertion check-generic-sorted check-generic-retained
+.PHONY: check-source-compatibility check-host check-execution check-sort-insertion check-generic-sorted check-generic-retained check-quick-result
 check-examples: $(BUILD)/pointer-check
 	bash $(ROOT)tests/examples_check.sh $(BUILD)/pointer-check $(wildcard $(ROOT)../../../examples/0[1-9]_*.p)
 
@@ -56,7 +58,7 @@ check-handler-nesting: $(BUILD)/source_io_test
 	$(BUILD)/source_io_test handler-nesting
 	$(BUILD)/source_io_test handler-boundaries
 
-check-acceptance: check-host check-execution check check-examples check-example-results check-open-families check-image-origins check-operation-origins check-handler-origins check-handler-nesting check-prepared-modules check-source-compatibility check-sort-insertion check-generic-sorted check-generic-retained
+check-acceptance: check-host check-execution check check-examples check-example-results check-open-families check-image-origins check-operation-origins check-handler-origins check-handler-nesting check-prepared-modules check-source-compatibility check-sort-insertion check-generic-sorted check-generic-retained check-witness-isolation
 
 check-generic-sorted: $(BUILD)/pointer-check $(BUILD)/syntax_io_test $(BUILD)/program_test
 	$(BUILD)/syntax_io_test $(ROOT)tests/acceptance/decision-explicit-result.p $(ROOT)tests/acceptance/generic-quick-sorted.p
@@ -76,7 +78,10 @@ check-eval-io: $(BUILD)/eval_io_test
 check-identity-io: $(BUILD)/identity_io_test
 	bash $(ROOT)tests/identity_io.sh $(BUILD)/identity_io_test
 
-check: check-eval-io check-identity-io
+check: check-eval-io check-identity-io check-quick-result
+
+check-quick-result: $(BUILD)/pointer-check
+	bash $(ROOT)tests/quick_result.sh $(BUILD)/pointer-check
 
 $(BUILD)/identity_io_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)retained_io.c $(ROOT)derivation_io.c $(ROOT)reduction_io.c $(ROOT)machine_io.c $(ROOT)computation_io.c $(ROOT)identity_io.c $(ROOT)comparison_io.c $(ROOT)graph_io.c $(ROOT)eval_io.c $(ROOT)wire.c $(ROOT)tests/identity_io.c
 	@mkdir -p $(BUILD)
@@ -389,9 +394,9 @@ check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test 
 	$(BUILD)/parse_files $(wildcard $(ROOT)../../../examples/0[1-9]_*.p)
 	bash $(ROOT)tests/syntax_inventory.sh $(BUILD)/parse_files
 
-$(BUILD)/core_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)tests/core.c
+$(BUILD)/core_test: $(SOURCES) $(WITNESS_SOURCE) $(wildcard $(ROOT)*.h) $(ROOT)tests/core.c
 	mkdir -p $(BUILD)
-	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)tests/core.c -o $@
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(WITNESS_SOURCE) $(ROOT)tests/core.c -o $@
 
 $(BUILD)/eval_io_test: $(ROOT)graph.c $(ROOT)dag.c $(ROOT)eval.c $(ROOT)symmetry.c $(ROOT)graph_io.c $(ROOT)comparison_io.c $(ROOT)eval_io.c $(ROOT)wire.c $(wildcard $(ROOT)*.h) $(ROOT)tests/eval_io.c
 	mkdir -p $(BUILD)
@@ -409,9 +414,9 @@ $(BUILD)/synthesis_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)reader.c $(ROO
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)tests/synthesis.c -o $@
 
-$(BUILD)/program_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)program.c $(ROOT)source_io.c $(ROOT)retained_io.c $(ROOT)reduction_io.c $(ROOT)derivation_io.c $(ROOT)graph_io.c $(ROOT)syntax_io.c $(ROOT)wire.c $(ROOT)tests/program.c
+$(BUILD)/program_test: $(SOURCES) $(WITNESS_SOURCE) $(wildcard $(ROOT)*.h) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)program.c $(ROOT)source_io.c $(ROOT)retained_io.c $(ROOT)reduction_io.c $(ROOT)derivation_io.c $(ROOT)graph_io.c $(ROOT)syntax_io.c $(ROOT)wire.c $(ROOT)tests/program.c
 	mkdir -p $(BUILD)
-	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)program.c $(ROOT)source_io.c $(ROOT)retained_io.c $(ROOT)reduction_io.c $(ROOT)derivation_io.c $(ROOT)graph_io.c $(ROOT)syntax_io.c $(ROOT)wire.c $(ROOT)tests/program.c -o $@
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(WITNESS_SOURCE) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)program.c $(ROOT)source_io.c $(ROOT)retained_io.c $(ROOT)reduction_io.c $(ROOT)derivation_io.c $(ROOT)graph_io.c $(ROOT)syntax_io.c $(ROOT)wire.c $(ROOT)tests/program.c -o $@
 
 $(BUILD)/seed_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)program.c $(ROOT)seed.c $(ROOT)source_io.c $(ROOT)retained_io.c $(ROOT)reduction_io.c $(ROOT)derivation_io.c $(ROOT)graph_io.c $(ROOT)syntax_io.c $(ROOT)wire.c $(ROOT)tests/seed.c
 	mkdir -p $(BUILD)
@@ -444,9 +449,23 @@ $(BUILD)/derivation_io_test: $(SOURCES) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)s
 .PHONY: pointer-check
 pointer-check: $(BUILD)/pointer-check
 
-$(BUILD)/pointer-check: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)program.c $(ROOT)graph_io.c $(ROOT)wire.c $(ROOT)source_io.c $(ROOT)retained_io.c $(ROOT)reduction_io.c $(ROOT)syntax_io.c $(ROOT)derivation_io.c $(ROOT)main.c
+.PHONY: check-witness-isolation check-witness-packets
+check-acceptance: check-witness-packets
+check-witness-packets: $(BUILD)/program_test
+	bash $(ROOT)tests/function_witness_packets.sh $(BUILD)/program_test
+
+check-witness-isolation: $(BUILD)/pointer-check $(BUILD)/pointer-check-with-witness $(BUILD)/program_test
+	bash $(ROOT)tests/function_witness_isolation.sh $(BUILD)/pointer-check $(BUILD)/pointer-check-with-witness $(BUILD)/program_test
+
+# The ordinary compiler does not link the optional witness construction module.
+$(BUILD)/pointer-check: $(SOURCES) $(wildcard $(ROOT)*.h) $(CLI_SOURCES)
 	mkdir -p $(BUILD)
-	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)reader.c $(ROOT)syntax.c $(ROOT)synthesis.c $(ROOT)program.c $(ROOT)graph_io.c $(ROOT)wire.c $(ROOT)source_io.c $(ROOT)retained_io.c $(ROOT)reduction_io.c $(ROOT)syntax_io.c $(ROOT)derivation_io.c $(ROOT)main.c -o $@
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(CLI_SOURCES) -o $@
+
+# A/B control: linking the optional module must not change source acceptance.
+$(BUILD)/pointer-check-with-witness: $(SOURCES) $(WITNESS_SOURCE) $(wildcard $(ROOT)*.h) $(CLI_SOURCES)
+	mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(WITNESS_SOURCE) $(CLI_SOURCES) -o $@
 
 $(BUILD)/reader_test: $(ROOT)reader.c $(ROOT)reader.h $(ROOT)syntax.c $(ROOT)syntax.h $(ROOT)graph.c $(ROOT)graph.h $(ROOT)tests/reader.c
 	mkdir -p $(BUILD)

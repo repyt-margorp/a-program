@@ -2,6 +2,10 @@ Nat := @{zero : *; succ : * -> *;};
 NatList := @{nil : *; cons : Nat -> * -> *;};
 length := \xs : NatList =>
 	xs @nil => Nat.zero @cons head tail => Nat.succ *tail;
+length_graph := \xs:NatList => xs @(self => @length self (length self))
+	@nil => (@length).nil
+	@cons head tail => (@length).cons head tail (length tail) *tail;
+length_graph :: (xs:NatList)->@length xs (length xs);
 
 Unary := @\value : Nat => {
 	zero : * Nat.zero;
@@ -30,8 +34,5 @@ main := lengthOutputUnary two twoLength twoGraph;
 expected := Unary.succ oneLength (Unary.succ Nat.zero Unary.zero);
 main :: Unary twoLength;
 reorderedMain := reordered two twoLength twoGraph;
-certifiedMain := {
-	packet := *length two;
-	packet @returned output graph => lengthOutputUnary two output graph;
-};
+certifiedMain := lengthOutputUnary two (length two) (length_graph two);
 certifiedMain :: Unary twoLength;

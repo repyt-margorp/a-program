@@ -2,6 +2,14 @@
 
 Date: 2026-09-24
 Status: Q0-Q3 published; Q4 authority/#32 open; #33/#34 closed
+
+Execution-order update (2026-09-25): global `*f` is removed in the current
+uncommitted worktree, and an ordinary-result general Sorted theorem passes
+without the internal producer. The [surface-removal completion plan](2026-09-25-FUNCTION-WITNESS-SURFACE-REMOVAL-COMPLETION-PLAN.md)
+now comes before unrelated authority refactoring. Its full acceptance gate
+is still pending; Q3's published verification below is historical evidence,
+not a green result for the current syntax migration. The earlier #32 advice
+to retain public witness access is superseded by this decision.
 Planning baseline local revision: `0446d4eef364c78b41e07b03e53179ee4f999b18`
 Remote Main at review: `a72cda371109fdbf84d747456ed0aeb09af2391e`
 Published Q3 Main/rewrite revision: `c2ed4a75064792975f2f6637b207c1801b848e8c`

@@ -21,6 +21,9 @@ lengthCorrect :: (A:@)->(n:Nat)->(xs:Vec A n)->(out:Nat)->(@length A n xs out)->
 readProof := \n:Nat => \out:Nat => \p:SameNat n out => p
 	@zero => Nat.zero
 	@succ left right rest => Nat.succ *rest;
-main := *length Nat two sample @output =>
-	readProof two output (lengthCorrect Nat two sample output @output);
+sample_graph := (@length Nat).cons one one ((Vec Nat).cons Nat.zero (Vec Nat).nil) one
+	((@length Nat).cons Nat.zero Nat.zero (Vec Nat).nil Nat.zero (@length Nat).nil);
+sample_graph :: @length Nat two sample (length Nat two sample);
+main := readProof two (length Nat two sample)
+	(lengthCorrect Nat two sample (length Nat two sample) sample_graph);
 expected := two;

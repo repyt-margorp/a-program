@@ -19,6 +19,7 @@ struct alpha_entry {
 	struct alpha_entry *next;
 	unsigned stage;
 	int structural_checked;
+	unsigned congruence;
 };
 
 struct pg_comparison_state {

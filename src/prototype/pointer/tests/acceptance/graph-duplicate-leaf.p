@@ -20,9 +20,9 @@ read := \x : Nat => \y : Nat => \proof : Result x y => proof
 zero := Nat.zero;
 one := Nat.succ zero;
 two := Nat.succ one;
-base := *f zero @output => read zero output (correct zero output @output);
-middle := *f one @output => read one output (correct one output @output);
-last := *f two @output => read two output (correct two output @output);
+base := read zero (f zero) (correct zero (f zero) firstLeaf);
+middle := read one (f one) (correct one (f one) secondLeaf);
+last := read two (f two) (correct two (f two) thirdLeaf);
 firstLeaf := (@f).case0;
 secondLeaf := (@f).case1;
 thirdLeaf := (@f).case2 zero;

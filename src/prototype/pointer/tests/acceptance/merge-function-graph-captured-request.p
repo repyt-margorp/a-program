@@ -9,10 +9,9 @@ import nil;
 import expected;
 
 graph := @structuralMerge;
-witness := *structuralMerge;
-main := *structuralMerge Nat &lessEqual left right @output => output;
+main := structuralMerge Nat &lessEqual left right;
 graphExpected := expected;
-emptyMain := *structuralMerge Nat &lessEqual nil right @output => output;
+emptyMain := structuralMerge Nat &lessEqual nil right;
 emptyExpected := right;
 
 // Isolate captured helper specialization from nested comparison recursion.
@@ -26,8 +25,7 @@ repeatCopy := \fuel : Nat => fuel
 		copyLeft left previous;
 	});
 repeatGraph := @repeatCopy;
-repeatWitness := *repeatCopy;
-repeatMain := *repeatCopy (Nat.succ Nat.zero) right @output => output;
+repeatMain := repeatCopy (Nat.succ Nat.zero) right;
 repeatExpected := copyLeft left right;
 
 // A non-recursive Match with a captured later argument uses the same path.
@@ -35,8 +33,7 @@ choose := \b : Bool => \x : Nat => b
 	@true => x
 	@false => Nat.zero;
 chooseGraph := @choose;
-chooseWitness := *choose;
-chosen := *choose Bool.true (Nat.succ Nat.zero) @output => output;
+chosen := choose Bool.true (Nat.succ Nat.zero);
 one := Nat.succ Nat.zero;
 
 // A captured eliminator may itself return a function from each branch.
@@ -44,17 +41,15 @@ chooseLater := \b : Bool => \x : Nat => b
 	@true => (\y : Nat => x)
 	@false => (\y : Nat => y);
 laterGraph := @chooseLater;
-laterWitness := *chooseLater;
-laterMain := *chooseLater Bool.false Nat.zero one @output => output;
+laterMain := chooseLater Bool.false Nat.zero one;
 
 // Moving n behind v would invalidate v's domain. Keep the environment intact.
 pick := \P : Nat -> @ => \n : Nat => \v : P n => n
 	@zero => v
 	@succ k => *k;
 pickGraph := @pick;
-pickWitness := *pick;
 Family := \n : Nat => n @zero => Nat @succ k => Bool;
-dependentMain := *pick &Family one Bool.true @output => output;
+dependentMain := pick &Family one Bool.true;
 dependentExpected := Bool.true;
 
 // Preserve helper calls exposed through partial application and sequencing.
@@ -65,8 +60,7 @@ repeatMerge := \le : Nat -> Nat -> Bool => \fuel : Nat => fuel
 		structuralMerge Nat le left previous;
 	});
 mergeGraph := @repeatMerge;
-mergeWitness := *repeatMerge;
-mergedMain := *repeatMerge &lessEqual one right @output => output;
-mergedZero := *repeatMerge &lessEqual Nat.zero right @output => output;
-mergedTwice := *repeatMerge &lessEqual (Nat.succ one) right @output => output;
+mergedMain := repeatMerge &lessEqual one right;
+mergedZero := repeatMerge &lessEqual Nat.zero right;
+mergedTwice := repeatMerge &lessEqual (Nat.succ one) right;
 mergedTwiceExpected := structuralMerge Nat &lessEqual left expected;

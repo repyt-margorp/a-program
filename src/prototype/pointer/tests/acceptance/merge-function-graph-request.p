@@ -6,6 +6,5 @@ import left;
 import right;
 import expected;
 graph := @curriedMerge;
-witness := *curriedMerge;
-main := *curriedMerge Nat &lessEqual left right @output => output;
+main := curriedMerge Nat &lessEqual left right;
 graphExpected := expected;

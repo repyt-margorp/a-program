@@ -3,6 +3,7 @@
 #include "derivation.h"
 #include "computation.h"
 #include "function_graph.h"
+#include "function_witness.h"
 #include "host.h"
 #include "dag.h"
 
@@ -203,7 +204,7 @@ static void modules(void)
 static int allow_legacy_intrinsic_dot;
 static uint64_t comparison_steps = 1000000;
 
-static struct pg_program *load_program(const char *path)
+static struct pg_synthesis_job *load_source(struct pg_program *program, const char *path)
 {
 	FILE *file = fopen(path, "rb");
 	assert(file && !fseek(file, 0, SEEK_END));
@@ -212,13 +213,30 @@ static struct pg_program *load_program(const char *path)
 	char *source = malloc((size_t)size + 1);
 	assert(source && fread(source, 1, (size_t)size, file) == (size_t)size);
 	assert(!fclose(file));
+	struct pg_synthesis_job *root = pg_program_source(program, program->scope, source, (size_t)size, &program->parser);
+	free(source);
+	assert(root && !program->parser.error);
+	return root;
+}
+
+static struct pg_program *load_program(const char *path)
+{
 	struct pg_program *program = pg_program_allocate(PG_DEFINITION_IMPLICIT_THUNK);
 	assert(program);
 	program->allow_legacy_intrinsic_dot = allow_legacy_intrinsic_dot;
-	program->root = pg_program_source(program, program->scope, source, (size_t)size, &program->parser);
-	free(source);
-	assert(program && program->root);
+	program->root = load_source(program, path);
 	return program;
+}
+
+static struct pg_program *load_image(const char *path)
+{
+	FILE *file = fopen(path, "rb");
+	assert(file);
+	size_t count;
+	struct pg_synthesis_job *const *roots;
+	struct pg_program *p = pg_sources_read(file, 1000000, &count, &roots);
+	assert(p && count == 1 && !p->synthesis.steps && !fclose(file));
+	return p;
 }
 
 static int equal_results(struct pg_program *p, const char *label,
@@ -259,14 +277,7 @@ static int equal_results(struct pg_program *p, const char *label,
 
 static int equal_exports(const char *path, const char *left, const char *right, uint64_t chunk, int image)
 {
-	if (!image) return equal_results(load_program(path), path, left, right, chunk);
-	FILE *file = fopen(path, "rb");
-	assert(file);
-	size_t count;
-	struct pg_synthesis_job *const *roots;
-	struct pg_program *p = pg_sources_read(file, 1000000, &count, &roots);
-	assert(p && count == 1 && !p->synthesis.steps && !fclose(file));
-	return equal_results(p, path, left, right, chunk);
+	return equal_results(image ? load_image(path) : load_program(path), path, left, right, chunk);
 }
 
 static void result_comparison_checks(void)
@@ -352,13 +363,14 @@ static void execute_example(const char *path, const char *type_name,
 	pg_program_destroy(program);
 }
 
-static const struct pg_evidence *export_value(struct pg_program *p, const char *name)
+static const struct pg_evidence *evaluated_value(struct pg_program *p, struct pg_synthesis_job *subject)
 {
-	struct pg_synthesis_job *job = pg_program_evaluate_name(p, p->root,
-		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = name, .length = strlen(name)}, 1);
+	assert(subject);
+	struct pg_synthesis_job *job = pg_synthesis_evaluate_jobs(&p->synthesis,
+		pg_synthesis_evidence(&p->synthesis, pg_prove_empty_context(&p->typing)), subject, PG_REDUCTION_NF);
 	assert(job);
 	while (pg_synthesis_status(job) == PG_SYNTHESIS_PENDING) {
-		assert(p->synthesis.steps < 100000);
+		assert(p->synthesis.steps < comparison_steps);
 		pg_synthesis_advance(&p->synthesis, 1);
 	}
 	const struct pg_evidence *value = pg_synthesis_result(job);
@@ -366,6 +378,12 @@ static const struct pg_evidence *export_value(struct pg_program *p, const char *
 		value = pg_prove_return_value(&p->typing, value);
 	assert(value);
 	return value;
+}
+
+static const struct pg_evidence *export_value(struct pg_program *p, const char *name)
+{
+	return evaluated_value(p, pg_program_select_name(p, p->root,
+		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = name, .length = strlen(name)}));
 }
 
 static void graded_function_graph(struct pg_program *p, const struct pg_evidence *function,
@@ -565,18 +583,12 @@ static void graph_instance_prefix(const struct pg_function_graph_work *work)
 	pg_dag_destroy(&dag);
 }
 
-static const struct pg_evidence *graph_witness_result(struct pg_program *p,
-	struct pg_function_graph_work *work, const struct pg_evidence *input,
+static const struct pg_evidence *graph_packet_result(struct pg_program *p, const struct pg_evidence *call,
 	const struct pg_evidence *expected, uint64_t chunk)
 {
-	for (size_t turns = 0; pg_function_graph_witness_advance(work, chunk) == PG_FUNCTION_GRAPH_PENDING; ++turns)
-		assert(turns < 100000);
-	assert(pg_function_graph_witness_advance(work, 0) == PG_FUNCTION_GRAPH_DONE);
-	assert(pg_function_graph_packet(work));
-	const struct pg_evidence *call = pg_prove_application(&p->typing, pg_function_graph_witness(work), input);
 	assert(call);
 	struct pg_nf_job *nf = pg_nf_request(&p->evaluation, &pg_pure_policy, pg_evidence_subject(call)->core);
-	for (size_t turns = 0; pg_nf_advance(nf, chunk) == PG_NF_PENDING; ++turns) assert(turns < 100000);
+	while (pg_nf_advance(nf, chunk) == PG_NF_PENDING) assert(pg_nf_steps(nf) < comparison_steps);
 	assert(pg_nf_status(nf) == PG_NF_DONE);
 	const struct pg_evidence *packet = pg_prove_return_value(&p->typing,
 		pg_prove_normalization(&p->typing, call, pg_nf_certificate(nf)));
@@ -585,6 +597,161 @@ static const struct pg_evidence *graph_witness_result(struct pg_program *p,
 	assert(core->kind == PG_APPLICATION && core->as.application.function->kind == PG_APPLICATION);
 	assert(pg_alpha_equal(core->as.application.function->as.application.argument, pg_evidence_subject(expected)->core) == 1);
 	return packet;
+}
+
+static const struct pg_evidence *graph_witness_result(struct pg_program *p,
+	struct pg_function_graph_work *work, const struct pg_evidence *input,
+	const struct pg_evidence *expected, uint64_t chunk)
+{
+	for (size_t turns = 0; pg_function_graph_witness_advance(work, chunk) == PG_FUNCTION_GRAPH_PENDING; ++turns)
+		assert(turns < 100000);
+	assert(pg_function_graph_witness_advance(work, 0) == PG_FUNCTION_GRAPH_DONE);
+	assert(pg_function_graph_packet(work));
+	return graph_packet_result(p, pg_prove_application(&p->typing, pg_function_graph_witness(work), input), expected, chunk);
+}
+
+struct witness_fixture {
+	const struct pg_occurrence *source;
+	struct pg_function_graph_work work;
+	struct witness_fixture *next;
+};
+
+/* Drive only the public internal-generator API. The generator, not this test,
+ * decides which helpers, recursive calls and evidence fields are needed. */
+static struct witness_fixture *produce_witness(struct pg_program *p,
+	struct witness_fixture **fixtures, const struct pg_evidence *function, uint64_t chunk, size_t depth)
+{
+	assert(depth < 100);
+	const struct pg_occurrence *source = pg_evidence_subject(function);
+	for (struct witness_fixture *f = *fixtures; f; f = f->next) {
+		if (f->source != source) continue;
+		assert(pg_function_graph_witness(&f->work));
+		return f;
+	}
+	struct witness_fixture *f = calloc(1, sizeof(*f));
+	assert(f);
+	f->source = source; f->next = *fixtures; *fixtures = f;
+	assert(!pg_function_graph_init(&f->work, &p->typing, &p->evaluation, function));
+	enum pg_function_graph_status status;
+	for (uint64_t turns = 0; (status = pg_function_graph_witness_advance(&f->work, chunk)) == PG_FUNCTION_GRAPH_PENDING; ++turns) {
+		assert(turns < comparison_steps);
+		const struct pg_evidence *required = pg_function_graph_dependency(&f->work);
+		if (!required) continue;
+		struct witness_fixture *helper = produce_witness(p, fixtures, required, chunk, depth + 1);
+		assert(!pg_function_graph_supply(&f->work, &helper->work));
+	}
+	assert(status == PG_FUNCTION_GRAPH_DONE && pg_function_graph_witness(&f->work));
+	return f;
+}
+
+static void packet_fixture(const char *path, const char *name, const char *expected,
+	size_t count, char **arguments, uint64_t chunk, int image)
+{
+	struct pg_program *p = image ? load_image(path) : load_program(path);
+	while (pg_synthesis_status(p->root) == PG_SYNTHESIS_PENDING) {
+		assert(p->synthesis.steps < comparison_steps);
+		pg_synthesis_advance(&p->synthesis, chunk);
+	}
+	assert(pg_synthesis_status(p->root) == PG_SYNTHESIS_DONE);
+	/* Imports are in the client's lexical environment, not its public exports. */
+	const struct pg_source_scope *scope = pg_synthesis_prepared_environment(p->root);
+	struct pg_synthesis_job *subject = pg_synthesis_named_input(&p->synthesis, scope,
+		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = name, .length = strlen(name)});
+	assert(subject);
+	const struct pg_evidence *function = pg_synthesis_result(subject);
+	struct witness_fixture *fixtures = NULL;
+	struct witness_fixture *producer = produce_witness(p, &fixtures, function, chunk, 0);
+	const struct pg_evidence *call = pg_function_graph_witness(&producer->work);
+	for (size_t i = 0; i < count; ++i) {
+		const char *argument = arguments[i];
+		int stored = *argument == '&';
+		if (stored) ++argument;
+		subject = pg_synthesis_named_input(&p->synthesis, scope,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = argument, .length = strlen(argument)});
+		assert(subject);
+		const struct pg_evidence *value = stored ? pg_synthesis_result(subject) : evaluated_value(p, subject);
+		assert(value);
+		if (stored && pg_evidence_judgement(value) == PG_JUDGEMENT_COMPUTATION)
+			value = pg_prove_thunk(&p->typing, value);
+		if (pg_evidence_judgement(value) == PG_JUDGEMENT_VALUE_TYPE) value = pg_prove_type_value(&p->typing, value);
+		call = pg_prove_application(&p->typing, call, value);
+		if (!call) fprintf(stderr, "packet %s: argument %zu (%s) rejected\n", name, i, arguments[i]);
+		assert(call);
+	}
+	/* Observe the checked packet's output without normalizing every suspended
+	 * Acc function stored in its graph evidence. That would test a different
+	 * evaluation demand from the removed output projection. */
+	struct pg_whnf_job *head = pg_whnf_request(&p->evaluation, &pg_pure_policy, pg_evidence_subject(call)->core);
+	while (pg_whnf_advance(head, chunk) == PG_EVAL_PENDING) assert(pg_whnf_steps(head) < comparison_steps);
+	assert(pg_whnf_status(head) == PG_EVAL_WHNF);
+	const struct pg_evidence *packet = pg_prove_return_value(&p->typing,
+		pg_prove_normalization(&p->typing, call, pg_whnf_certificate(head)));
+	assert(packet);
+	const struct pg_term *core = pg_evidence_subject(packet)->core;
+	assert(core->kind == PG_APPLICATION && core->as.application.function->kind == PG_APPLICATION);
+	struct pg_nf_job *output = pg_nf_request(&p->evaluation, &pg_pure_policy, core->as.application.function->as.application.argument);
+	while (pg_nf_advance(output, chunk) == PG_NF_PENDING) assert(pg_nf_steps(output) < comparison_steps);
+	assert(pg_nf_status(output) == PG_NF_DONE);
+	assert(pg_alpha_equal(pg_nf_result(output), pg_evidence_subject(export_value(p, expected))->core) == 1);
+	while (fixtures) {
+		struct witness_fixture *next = fixtures->next;
+		pg_function_graph_destroy(&fixtures->work);
+		free(fixtures); fixtures = next;
+	}
+	printf("internal packet: %s %s output=%s chunk=%llu checked\n", path, name, expected, (unsigned long long)chunk);
+	pg_program_destroy(p);
+}
+
+static void shifted_helper_packets(void)
+{
+	const char *source = "Nat:=@{zero:*;succ:*->*;};"
+		"LT:=@\\m:Nat=>@\\n:Nat=>{step:(k:Nat)->* k (Nat.succ k);"
+		"weakenRight:(l:Nat)->(r:Nat)->* l r->* l (Nat.succ r);};"
+		"ltLift:=\\m:Nat=>\\n:Nat=>\\p:LT m n=>p @step k=>LT.step (Nat.succ k)"
+		"@weakenRight l r prior=>LT.weakenRight (Nat.succ l) (Nat.succ r) *prior;"
+		"Box:=\\A:@=>@{box:A->*;};"
+		"wrap:=\\m:Nat=>\\n:Nat=>\\input:Box (LT m (Nat.succ n))=>input @box p=>"
+		"(Box (LT (Nat.succ m) (Nat.succ (Nat.succ n)))).box (ltLift m (Nat.succ n) p);"
+		"zero:=Nat.zero;one:=Nat.succ zero;two:=Nat.succ one;"
+		"first:=(Box (LT zero one)).box (LT.step zero);"
+		"second:=(Box (LT zero two)).box (LT.weakenRight zero one (LT.step zero));"
+		"expected:=(Box (LT one two)).box (LT.step one);"
+		"recursiveExpected:=(Box (LT one (Nat.succ two))).box (LT.weakenRight one two (LT.step one));";
+	for (uint64_t chunk = 1; chunk <= 64; chunk *= 64) {
+		struct pg_program *p = pg_program_create(source, strlen(source), PG_DEFINITION_IMPLICIT_THUNK);
+		assert(p && p->root);
+		solve(p, chunk);
+		assert(pg_synthesis_status(p->root) == PG_SYNTHESIS_DONE);
+		const struct pg_evidence *function = pg_synthesis_result(pg_synthesis_definition(p->root,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "wrap", .length = 4}));
+		struct pg_function_graph_work work, helper = {0};
+		assert(!pg_function_graph_init(&work, &p->typing, &p->evaluation, function));
+		for (size_t turns = 0; pg_function_graph_advance(&work, chunk) == PG_FUNCTION_GRAPH_PENDING; ++turns) {
+			assert(turns < 100000);
+			const struct pg_evidence *dependency = pg_function_graph_dependency(&work);
+			if (!dependency) continue;
+			assert(!helper.state && !pg_function_graph_init(&helper, &p->typing, &p->evaluation, dependency));
+			for (size_t steps = 0; pg_function_graph_witness_advance(&helper, chunk) == PG_FUNCTION_GRAPH_PENDING; ++steps)
+				assert(steps < 100000 && !pg_function_graph_dependency(&helper));
+			assert(pg_function_graph_witness(&helper));
+			assert(!pg_function_graph_supply(&work, &helper));
+		}
+		assert(pg_function_graph_advance(&work, 0) == PG_FUNCTION_GRAPH_DONE && helper.state);
+		for (size_t turns = 0; pg_function_graph_witness_advance(&work, chunk) == PG_FUNCTION_GRAPH_PENDING; ++turns)
+			assert(turns < 100000);
+		assert(pg_function_graph_witness(&work));
+		const char *inputs[] = {"first", "second"}, *outputs[] = {"expected", "recursiveExpected"};
+		for (size_t i = 0; i < 2; ++i) {
+			const struct pg_evidence *call = pg_prove_application(&p->typing, pg_function_graph_witness(&work), export_value(p, "zero"));
+			call = pg_prove_application(&p->typing, call, export_value(p, i ? "one" : "zero"));
+			call = pg_prove_application(&p->typing, call, export_value(p, inputs[i]));
+			graph_packet_result(p, call, export_value(p, outputs[i]), chunk);
+		}
+		pg_function_graph_destroy(&work);
+		pg_function_graph_destroy(&helper);
+		pg_program_destroy(p);
+	}
+	puts("shifted helper: checked internal packets preserve captured indices and base/recursive LT evidence");
 }
 
 static void function_graph_aliases(struct pg_program *p,
@@ -658,7 +825,7 @@ static void function_graph_aliases(struct pg_program *p,
 	}
 	const struct pg_source_scope *delayed = pg_synthesis_name(&p->synthesis, p->scope,
 		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "delayed", .length = 7}, wrapped);
-	const char *inspection = "relation:=@delayed; witness:=*delayed;";
+	const char *inspection = "relation:=@delayed;";
 	struct pg_parser inspection_parser;
 	struct pg_synthesis_job *inspected = pg_program_source(p, delayed, inspection,
 		strlen(inspection), &inspection_parser);
@@ -673,6 +840,12 @@ static void function_graph_aliases(struct pg_program *p,
 		previous = steps;
 	}
 	assert(previous == 6 && pg_synthesis_status(inspected) == PG_SYNTHESIS_DONE);
+	struct pg_function_graph_work delayed_graph;
+	assert(!pg_function_graph_init(&delayed_graph, typing, &p->evaluation, wrapped));
+	for (size_t turns = 0; pg_function_graph_witness_advance(&delayed_graph, chunk) == PG_FUNCTION_GRAPH_PENDING; ++turns)
+		assert(turns < 100000);
+	assert(pg_function_graph_witness(&delayed_graph));
+	pg_function_graph_destroy(&delayed_graph);
 	const struct pg_source_scope *names = pg_synthesis_name(&p->synthesis, p->scope,
 		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "original", .length = 8}, raw);
 	names = pg_synthesis_name(&p->synthesis, names,
@@ -928,7 +1101,7 @@ static void function_graphs(void)
 		/* A non-recursive helper can end in an opaque host callee. A missing
 		 * construction view is not an induction dependency or a typing failure. */
 		const char *host_helper = "Unit:=@{unit:*;}; helper:=\\x:Unit=>#int_add;"
-			"f:=\\x:Unit=>x @unit=>helper x #1 #2; graph:=@f; proof:=*f; main:=f Unit.unit;";
+			"f:=\\x:Unit=>x @unit=>helper x #1 #2; graph:=@f; input:=Unit.unit; main:=f input;";
 		p = pg_program_create(host_helper, strlen(host_helper), PG_DEFINITION_IMPLICIT_THUNK);
 		assert(p && p->root);
 		solve(p, chunk);
@@ -936,6 +1109,12 @@ static void function_graphs(void)
 		const struct pg_term *answer = pg_evidence_subject(export_value(p, "main"))->core;
 		int64_t integer;
 		assert(answer->kind == PG_REFERENCE && pg_host_integer_view(answer->as.reference, &integer) && integer == 3);
+		struct pg_function_graph_work host_graph;
+		const struct pg_evidence *host_function = pg_synthesis_result(pg_synthesis_definition(p->root,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "f", .length = 1}));
+		assert(!pg_function_graph_init(&host_graph, &p->typing, &p->evaluation, host_function));
+		graph_witness_result(p, &host_graph, export_value(p, "input"), export_value(p, "main"), chunk);
+		pg_function_graph_destroy(&host_graph);
 		pg_program_destroy(p);
 	}
 	puts("function graphs: ordinary indexed schemas and result witnesses preserve identity/length/mirror results");
@@ -1023,8 +1202,9 @@ static void suspended_helper_schema(void)
 			if (dependency) {
 				if (!helper.state) {
 					assert(!pg_function_graph_init(&helper, &p->typing, &p->evaluation, dependency));
-					for (size_t steps = 0; pg_function_graph_witness_advance(&helper, 64) == PG_FUNCTION_GRAPH_PENDING; ++steps)
+					for (size_t steps = 0; pg_function_graph_advance(&helper, 64) == PG_FUNCTION_GRAPH_PENDING; ++steps)
 						assert(steps < 1000 && !pg_function_graph_dependency(&helper));
+					assert(pg_function_graph_formation(&helper) && !pg_function_graph_witness(&helper));
 				}
 				assert(!pg_function_graph_supply(&work, &helper));
 			}
@@ -1034,7 +1214,11 @@ static void suspended_helper_schema(void)
 		assert(p->typing.proofs.count == proofs && p->typing.typed_queries.count == queries);
 		if (status != PG_FUNCTION_GRAPH_PENDING) {
 			assert(status == PG_FUNCTION_GRAPH_DONE && helper.state && pg_function_graph_formation(&work));
+			assert(!pg_function_graph_witness(&helper) && !pg_function_graph_witness(&work));
 			assert(!pg_function_graph_dependency(&work) && pg_function_graph_supply(&work, &helper));
+			for (size_t steps = 0; pg_function_graph_witness_advance(&helper, 1) == PG_FUNCTION_GRAPH_PENDING; ++steps)
+				assert(steps < 10000);
+			assert(pg_function_graph_witness(&helper));
 			for (size_t steps = 0; pg_function_graph_witness_advance(&work, 1) == PG_FUNCTION_GRAPH_PENDING; ++steps)
 				assert(steps < 10000);
 			assert(pg_function_graph_witness(&work));
@@ -1044,7 +1228,7 @@ static void suspended_helper_schema(void)
 		pg_program_destroy(p);
 		if (status != PG_FUNCTION_GRAPH_PENDING) break;
 	}
-	puts("helper schema: dependent calls resume, tolerate cancellation, and reject late dependency supply");
+	puts("helper schema: formation needs no witness; optional production, cancellation and late-supply rejection preserved");
 }
 
 static void suspended_match_body(void)
@@ -1211,6 +1395,26 @@ int main(int argc, char **argv)
 		int failed = equal_exports(argv[2], argv[3], argv[4], 1, image);
 		return equal_exports(argv[2], argv[3], argv[4], 64, image) | failed;
 	}
+	if (argc == 6 && !strcmp(argv[1], "--equal-imports")) {
+		int failed = 0;
+		for (uint64_t chunk = 1; chunk <= 64; chunk *= 64) {
+			struct pg_program *p = load_program(argv[2]);
+			const struct pg_source_scope *exports = pg_program_exports(p, pg_synthesis_root(&p->synthesis), p->root);
+			assert(exports);
+			p->scope = pg_synthesis_import_scope(&p->synthesis, p->scope, exports);
+			assert(p->scope);
+			p->root = load_source(p, argv[3]);
+			assert(!p->synthesis.steps);
+			failed |= equal_results(p, argv[3], argv[4], argv[5], chunk);
+		}
+		return failed;
+	}
+	if (argc >= 6 && (!strcmp(argv[1], "--packet") || !strcmp(argv[1], "--packet-image"))) {
+		int image = !strcmp(argv[1], "--packet-image");
+		packet_fixture(argv[2], argv[3], argv[4], (size_t)argc - 5, argv + 5, 1, image);
+		packet_fixture(argv[2], argv[3], argv[4], (size_t)argc - 5, argv + 5, 64, image);
+		return 0;
+	}
 	if (argc != 1) {
 		assert(argc == 6);
 		char *end;
@@ -1227,6 +1431,7 @@ int main(int argc, char **argv)
 	remembered_normalization();
 	graph_index_preparation();
 	function_graphs();
+	shifted_helper_packets();
 	suspended_helper_application();
 	suspended_helper_schema();
 	suspended_match_body();

@@ -10,6 +10,12 @@ natLessOrEqual := \left:Nat => left
 		@zero => Bool.false
 		@succ rightPredecessor => *leftPredecessor rightPredecessor);
 natLessOrEqual :: Nat->Nat->Bool;
+comparison_graph := \x:Nat => x @(self => (y:Nat)->@natLessOrEqual self y (natLessOrEqual self y))
+	@zero => (\y:Nat => (@natLessOrEqual).case0 y)
+	@succ left => (\y:Nat => y @(self => @natLessOrEqual (Nat.succ left) self (natLessOrEqual (Nat.succ left) self))
+		@zero => (@natLessOrEqual).case1 left
+		@succ right => (@natLessOrEqual).case2 left right (natLessOrEqual left right) (*left right));
+comparison_graph :: (x:Nat)->(y:Nat)->@natLessOrEqual x y (natLessOrEqual x y);
 Decision := @\x:Nat => @\y:Nat => @\answer:Bool => {
 	yes:(a:Nat)->(b:Nat)->LE a b->* a b Bool.true;
 	no:(a:Nat)->(b:Nat)->LE (Nat.succ b) a->* a b Bool.false;
@@ -30,9 +36,9 @@ read := \x:Nat => \y:Nat => \answer:Bool => \proof:Decision x y answer => proof
 zero := Nat.zero;
 one := Nat.succ zero;
 two := Nat.succ one;
-base := *natLessOrEqual zero two @answer => read zero two answer (correct zero two answer @answer);
-greater := *natLessOrEqual two one @answer => read two one answer (correct two one answer @answer);
-smaller := *natLessOrEqual one two @answer => read one two answer (correct one two answer @answer);
-same := *natLessOrEqual two two @answer => read two two answer (correct two two answer @answer);
+base := read zero two (natLessOrEqual zero two) (correct zero two (natLessOrEqual zero two) (comparison_graph zero two));
+greater := read two one (natLessOrEqual two one) (correct two one (natLessOrEqual two one) (comparison_graph two one));
+smaller := read one two (natLessOrEqual one two) (correct one two (natLessOrEqual one two) (comparison_graph one two));
+same := read two two (natLessOrEqual two two) (correct two two (natLessOrEqual two two) (comparison_graph two two));
 trueValue := Bool.true;
 falseValue := Bool.false;
