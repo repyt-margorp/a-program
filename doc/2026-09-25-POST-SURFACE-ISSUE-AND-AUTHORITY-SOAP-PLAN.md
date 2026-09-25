@@ -3,11 +3,12 @@
 Date: 2026-09-25
 Updated: 2026-09-26
 Status: P1-P3 closed; P4 Identity-boundary/Lambda-scope and P5 effect-owner/shared
-work-header slices verified by clean publication-tree acceptance and sanitizers.
+work-header/Handler slices verified by clean publication-tree acceptance and sanitizers.
 Broader P4 typed-proof migration and P5 synthesis modularity remain open.
 Initial review baseline: `40375d734896a456f5ad2827ad8fe0f10ff61517`.
 Verified implementation milestones: `60bde88` (P4), `dcc58ec` (first P5 slice),
-and `84a54e2` (shared work/private state); the latest clean gate covers all three.
+`84a54e2` (shared work/private state), and `c89edb7` (Handler owner);
+the latest clean gate covers all four.
 Inherited implementation edits: Context/IADT relocation changes in
 `evidence.[ch]`, `iadt.[ch]`, two unit tests and two derived-LT files. These
 are excluded from the publication candidate and preserved locally, together
@@ -26,7 +27,7 @@ provide a second execution order. The order below is the agent's proposal.
 | P2 | Reassess the old computation-result report against current contracts | #13 | Closed by user-approved scope decision |
 | P3 | Resolve the remaining MergeSort report against existing regressions | #28 | Verified; closed |
 | P4 | Make typed proof structure authoritative; remove redundant evidence dependency | Existing R2-R5 plans | Identity-boundary and Lambda-scope slices verified; broader migration pending |
-| P5 | Separate synthesis by semantic owner without duplicating shared machinery | User follow-up on synthesis.c | Effect-owner/shared-header slices verified; legacy source state remains |
+| P5 | Separate synthesis by semantic owner without duplicating shared machinery | User follow-up on synthesis.c | Effect-owner/shared-header/Handler slices verified; legacy source state remains |
 
 ## P1. Issue and PR Disposition
 
@@ -546,6 +547,24 @@ Evidence admission and lazy definition activation live in the source start hook,
 not branches in the shared allocator. No second queue or serialized work kind
 was added. Checking rules, object proofs and image formats are unchanged.
 
+Handler slice at `c89edb7`, 2026-09-26: `synthesis_handler.c`
+owns Handler/return-clause/operation-clause states, their effect registration,
+failure propagation, scope restoration and provisional rule inspection. The
+three descriptors leave the central source driver/union. Exact scope/name/binder
+interning stays shared through `synthesis_source.h`; that header exposes lexical
+inputs, not private owner payloads. Nested handlers still share the existing row
+worker until all contributions are registered. No per-handler solver is added.
+The common projection is an ephemeral view of an owner's existing rule,
+preparation state and known value/computation shape, not a cached classifier or
+acceptance flag. Clean acceptance, source images and affected sanitizer tests
+pass. Boundary review found a regression in the
+extraction candidate: source name resolution read private source state from a
+direct Handler producer. The new alias test failed with exit 139 at `880f2bf`;
+`c89edb7` centralizes optional lexical-export access and passes that test both
+before and after effect closure. Other owner-private reads were checked for
+their role/factory preconditions. The superseded candidate's full test run was
+stopped; only the fixed clean tree counts as the publication gate.
+
 Dependency map checked against the current worktree, 2026-09-25:
 
 | Existing path | Shared mechanism to retain | Owner-specific dependency to remove from the driver |
@@ -638,6 +657,17 @@ pointer: its position is derivable from the immutable owner size. Source state
 remains transitional; do not claim that extracting the scheduler completes
 Handler/IADT ownership or Evidence migration.
 
+Handler extraction decision, 2026-09-26: reject requiring accepted classifiers
+at the module boundary; open carriers need provisional structure to close their
+effect equations. Move that inspection with construction instead. Keep lexical
+registration dependencies before Handler steps and one shared binder interner.
+Remove redundant scope/syntax copies from Handler state, reading immutable
+request operands instead. Do not split or duplicate `effect_inference.c`.
+Do not add lexical-export fields to the common header just to preserve an old
+source-state assumption: ordinary Handler producers have no lexical namespace.
+The source owner alone projects its optional exports; normal typed membership
+resolution remains unchanged.
+
 ### Plan
 
 - [x] Confirm that owner-level semantics are partially separated while synthesis
@@ -669,6 +699,11 @@ Handler/IADT ownership or Evidence migration.
   then IADT/motive work. Place cross-cutting Identity transport deliberately;
   do not duplicate it. CBPV/function preparation must preserve pending cycles.
   Refine this order from the dependency map before code changes.
+- [x] Verify the Handler-owner slice: distinguish structure preparation from
+  acceptance, preserve independent/restored and shared nested effect boundaries,
+  registration failure, clause binder identities, repeated requests and source
+  images. Run clean acceptance, affected sanitizers and paired performance;
+  record the surviving Operation/CBPV/IADT ownership work separately.
 - [ ] Move each owner's provisional structural inspection with its typed
   construction/checking interface; the central driver must not keep a second
   domain switch describing the same terms. Adapt to P4's reduced Evidence
@@ -695,6 +730,7 @@ Handler/IADT ownership or Evidence migration.
 | 2026-09-26 | P5 | Four effect requests moved to owner-local state and behavior using the same queue; shared completion uses owner hooks | Targeted, image, Handler, QuickSort and sanitizer checks pass; clean publication candidate excludes inherited trials |
 | 2026-09-26 | P4/P5 publication | Clean `dcc58ec` passes full acceptance and affected sanitizer checks; inherited trials not adopted | Publish the two implementation commits plus this record; broad typed-proof and common-state migrations remain open |
 | 2026-09-26 | P5 shared work | `84a54e2` separates the 80-byte common header from private owner state and moves the original scheduler | Clean full acceptance, affected sanitizers, image cross-reading and paired comparison complete; remaining owner extraction/P4 stay open |
+| 2026-09-26 | P5 Handler owner | `c89edb7` localizes Handler state and pending structure; a direct-alias regression found during extraction is fixed and tested | Clean acceptance, sanitizers, cross-version images and paired timing complete; Operation/CBPV/IADT and broader P4 remain open |
 
 P4.2a verification (fresh, current worktree including the inherited Context/IADT
 edits): optimized `identity_test`, `derivation_io.sh` and `identity_io.sh` pass;
@@ -836,3 +872,53 @@ small regressions. Logs: `/tmp/a-program-owner-work-bench.ymrkIh/`.
 Publish this verified slice; inherited trial edits remain excluded. The next
 implementation still requires owner-by-owner extraction and P4 typed-proof
 work; neither the complete Oracle split nor overall code reduction is achieved.
+
+### Handler Owner Verification
+
+Candidate `c89edb7`, excluding inherited trials. Clean-tree ASan/UBSan synthesis
+and source-image tests pass with the preceding milestone's flags, including
+pending-work cancellation. Handler nesting and all four save-boundary cases
+also pass: 1,365/1,515/705/898 snapshots preserve acceptance/rejection, effect
+rows and binder identity. Ordinary, pending-effect and producer images cross-read
+with `84a54e2` in both directions, at single and bulk budgets. Logs:
+`/tmp/a-program-handler-owner-asan-*.log` and
+`/tmp/a-program-handler-cross.7iFzVi/`. Clean `check-acceptance` exited zero:
+wall 25m24.720s, user 23m30.471s, system 1m53.402s, including rebuilds and early
+sanitizer compilation overlap. This is a verification gate, not a comparative
+runtime measurement. It includes all four LT/partition variants, ordinary-result
+Sorted/permutation proofs, resumed images, negative cases and optional-witness
+isolation/packets. Log:
+`/tmp/a-program-handler-owner-publication-fixed-acceptance.log`.
+
+After the full gate, three alternating paired `generic_sorted.sh` runs against
+`84a54e2` give baseline median 5.840s (5.816-5.889), candidate median 5.787s
+(5.757-5.793), about -0.9%. Test output and reported comparison Solve counts
+match after replacing temporary path names. The small sample does not establish
+a speedup or exclude small regressions. Logs:
+`/tmp/a-program-handler-owner-bench.X7dvJs/`.
+Adopt and publish this verified slice; no extra work engine, classifier authority,
+Core tag or wire format was introduced. The rejected shortcuts and the remaining
+P4/P5 work above stay explicit.
+
+Source delta `2d7ebe8..c89edb7` (documentation excluded):
+
+| File under `src/prototype/pointer/` | Added | Deleted | Net |
+| --- | ---: | ---: | ---: |
+| `synthesis.c` | 312 | 874 | -562 |
+| `synthesis_handler.c` | 626 | 0 | +626 |
+| `synthesis_handler.h` | 14 | 0 | +14 |
+| `synthesis_source.h` | 39 | 0 | +39 |
+| `synthesis_work.c` | 23 | 1 | +22 |
+| `synthesis_work.h` | 11 | 2 | +9 |
+| `tests/synthesis.c` | 25 | 0 | +25 |
+| `Makefile` | 1 | 1 | 0 |
+
+Total +1051/-878, net +173: implementation/headers +148, tests +25, build zero.
+This moves ownership out of the driver, not a net code-reduction milestone.
+The three Handler requests no longer allocate the legacy source union or copy
+immutable lexical inputs. Debug-symbol sizes on this x86-64 build: common header
+80 bytes unchanged; source-private state 264 to 248; return/clause/Handler
+private states 32/40/32 bytes instead of 264 each. These sizes exclude immutable
+operands and separately allocated state, so they are not a peak-memory claim.
+Operation preparation, CBPV adaptation, IADT and
+general typed-proof authority still require their own inspected migrations.
