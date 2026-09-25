@@ -3699,13 +3699,15 @@ const struct pg_evidence *pg_prove_lambda(struct pg_typing *typing,
 	const struct pg_evidence *pi, const struct pg_evidence *body)
 {
 	if (!pg_evidence_owned_by(pi, typing)) return NULL;
-	if (pi->rule != PG_PI_FORM) return NULL;
+	if (pg_evidence_judgement(pi) != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
 	if (!pg_evidence_owned_by(body, typing)) return NULL;
 	if (pg_evidence_judgement(body) != PG_JUDGEMENT_COMPUTATION) return NULL;
 	const struct pg_term *domain, *codomain;
 	const struct pg_object *binder;
 	if (!pg_pi_view(pg_evidence_subject(pi)->core, &domain, &binder, &codomain)) return NULL;
-	if (pg_evidence_context(body) != pg_evidence_context(pi->premises[0])) return NULL;
+	const struct pg_occurrence *input = pg_occurrence_scoped_input(pg_evidence_subject(pi), 1);
+	if (!input || input->context != pg_evidence_context(body)) return NULL;
+	if (pg_alpha_equal(input->context->declared_type, domain) != 1) return NULL;
 	if (pg_alpha_equal(pg_evidence_subject(body)->classifier, codomain) != 1) return NULL;
 	const struct pg_term *term = pg_lambda(typing->graph, binder, pg_evidence_subject(body)->core);
 	if (!term) return NULL;
@@ -5438,30 +5440,6 @@ const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
 }
 
 enum pg_evidence_rule pg_evidence_rule(const struct pg_evidence *evidence) { return evidence->rule; }
-int pg_identity_boundary_view(const struct pg_evidence *formation, struct pg_identity_boundary *output)
-{
-	if (!formation || !output) return 0;
-	struct pg_identity_boundary view = {0};
-	switch (formation->rule) {
-	case PG_IDENTITY_FORM: case PG_IDENTITY_INSTANCE:
-		view.left = formation->premises[1];
-		view.right = formation->premises[2];
-		break;
-	case PG_FAMILY_IDENTITY_FORM:
-		view.path_count = formation->premise_count - 5;
-		view.paths = formation->premises + 3;
-		view.left_substitution = formation->premises[1];
-		view.right_substitution = formation->premises[2];
-		view.left = formation->premises[view.path_count + 3];
-		view.right = formation->premises[view.path_count + 4];
-		break;
-	default: return 0;
-	}
-	view.family = formation->premises[0];
-	*output = view;
-	return 1;
-}
-
 enum pg_evidence_judgement pg_evidence_judgement(const struct pg_evidence *evidence)
 {
 	const struct pg_occurrence *subject = pg_evidence_subject(evidence);

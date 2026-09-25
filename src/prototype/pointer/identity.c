@@ -65,6 +65,24 @@ const struct pg_term *pg_identity_lift(struct pg_graph *graph,
 	return identity_field(graph, family, value, direction, 1);
 }
 
+int pg_identity_field_view(const struct pg_term *term,
+	const struct pg_term **family, const struct pg_term **value,
+	enum pg_identity_direction *direction, int *lift)
+{
+	if (!term || term->kind != PG_APPLICATION) return 0;
+	const struct pg_term *prefix = term->as.application.function;
+	if (prefix->kind != PG_APPLICATION) return 0;
+	const struct pg_term *head = prefix->as.application.function;
+	if (head->kind != PG_REFERENCE) return 0;
+	int index = field_index(head->as.reference);
+	if (index < 0) return 0;
+	if (family) *family = prefix->as.application.argument;
+	if (value) *value = term->as.application.argument;
+	if (direction) *direction = (enum pg_identity_direction)(index % 2);
+	if (lift) *lift = index / 2;
+	return 1;
+}
+
 const struct pg_term *pg_identity_action(struct pg_graph *graph, const struct pg_term *source)
 {
 	return pg_application(graph, pg_reference(graph, &identity_action), source);

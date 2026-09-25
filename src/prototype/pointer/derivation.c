@@ -1,5 +1,6 @@
 #include "derivation.h"
 #include "iadt.h"
+#include "action.h"
 
 int pg_derivation_input_header(const struct pg_evidence *proof, struct pg_derivation_input *input)
 {
@@ -21,19 +22,6 @@ int pg_derivation_input_header(const struct pg_evidence *proof, struct pg_deriva
 	header.parameters.reduction = NULL;
 	*input = header;
 	return 0;
-}
-
-static int transport_direction(const struct pg_evidence *transport,
-	enum pg_identity_direction *direction)
-{
-	if (!transport || pg_evidence_rule(transport) != PG_IDENTITY_TRANSPORT) return -1;
-	const struct pg_evidence *target = pg_evidence_premise(transport, 0);
-	if (!target) return -1;
-	switch (pg_evidence_rule(target)) {
-	case PG_IDENTITY_RIGHT_TYPE: *direction = PG_IDENTITY_RIGHT; return 0;
-	case PG_IDENTITY_LEFT_TYPE: *direction = PG_IDENTITY_LEFT; return 0;
-	default: return -1;
-	}
 }
 
 int pg_derivation_parameters(const struct pg_evidence *evidence,
@@ -73,12 +61,12 @@ int pg_derivation_parameters(const struct pg_evidence *evidence,
 	case PG_UNIVERSE_FORM:
 		if (!pg_universe_level(subject->core, &result.level)) return -1;
 		break;
-	case PG_IDENTITY_TRANSPORT:
-		if (transport_direction(evidence, &result.direction)) return -1;
+	case PG_IDENTITY_TRANSPORT: case PG_IDENTITY_LIFT: {
+		int lift;
+		if (!pg_identity_field_view(subject->core, NULL, NULL, &result.direction, &lift)) return -1;
+		if (lift != (pg_evidence_rule(evidence) == PG_IDENTITY_LIFT)) return -1;
 		break;
-	case PG_IDENTITY_LIFT:
-		if (transport_direction(pg_evidence_premise(evidence, 1), &result.direction)) return -1;
-		break;
+	}
 	case PG_TYPE_CONVERSION: result.conversion = pg_evidence_conversion(evidence); break;
 	case PG_PURE_NORMALIZATION: result.reduction = pg_evidence_normalization(evidence); break;
 	default: break;
@@ -203,8 +191,8 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 	RULE(PG_THUNK_COMPUTATION, 1, pg_prove_thunk_computation(typing, p[0]));
 	case PG_REFLEXIVITY:
 		if (count != 2 || pg_evidence_rule(p[0]) != PG_IDENTITY_FORM) return NULL;
-		if (!pg_identity_boundary_view(p[0], &boundary)) return NULL;
-		result = pg_prove_reflexivity(typing, boundary.family, p[1]); break;
+		if (!pg_identity_boundary_view(pg_evidence_subject(p[0]), &boundary)) return NULL;
+		result = pg_prove_reflexivity(typing, pg_prove_structural_subject(typing, boundary.family), p[1]); break;
 	case PG_IDENTITY_LIFT:
 		if (count != 2 || pg_evidence_rule(p[1]) != PG_IDENTITY_TRANSPORT) return NULL;
 		result = pg_prove_identity_lift(typing,
@@ -218,9 +206,9 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 		result = pg_prove_family_identity_type(typing, p[0], p[1], p[2], count - 5, p + 3, p[count - 2], p[count - 1]); break;
 	case PG_FAMILY_ACTION:
 		if (count != 2 || pg_evidence_rule(p[0]) != PG_FAMILY_IDENTITY_FORM) return NULL;
-		if (!pg_identity_boundary_view(p[0], &boundary)) return NULL;
-		result = pg_prove_family_action(typing, boundary.family, p[1], boundary.left_substitution,
-			boundary.right_substitution, boundary.path_count, boundary.paths); break;
+		if (!pg_identity_boundary_view(pg_evidence_subject(p[0]), &boundary)) return NULL;
+		result = pg_identity_boundary_action(typing, &boundary,
+			pg_prove_structural_subject(typing, boundary.family), p[1]); break;
 	default: return NULL;
 	}
 	/* Rule inputs are requests, including after loading. Ordinary constructors

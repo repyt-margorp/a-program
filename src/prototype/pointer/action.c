@@ -1,6 +1,48 @@
 #include "action.h"
 #include <stdlib.h>
 
+static int boundary_argument(const struct pg_term **core, const struct pg_term *argument)
+{
+	if ((*core)->kind != PG_APPLICATION || (*core)->as.application.argument != argument) return 0;
+	*core = (*core)->as.application.function;
+	return 1;
+}
+
+int pg_identity_boundary_view(const struct pg_occurrence *subject, struct pg_identity_boundary *output)
+{
+	if (!subject || !output || subject->origin) return 0;
+	if (subject->judgement != PG_JUDGEMENT_VALUE_TYPE && subject->judgement != PG_JUDGEMENT_COMPUTATION_TYPE) return 0;
+	if (subject->operand_count < 3) return 0;
+	struct pg_identity_boundary view = {.family = subject->operands[0],
+		.left = subject->operands[subject->operand_count - 2],
+		.right = subject->operands[subject->operand_count - 1]};
+	const struct pg_term *core = subject->core, *source;
+	if (!boundary_argument(&core, view.right->core) || !boundary_argument(&core, view.left->core)) return 0;
+	if (!subject->map_count) {
+		if (subject->operand_count != 3) return 0;
+		if (view.family->judgement == PG_JUDGEMENT_VALUE) {
+			if (core != view.family->core) return 0;
+		} else if (!pg_identity_action_view(core, &source) || source != view.family->core) return 0;
+	} else {
+		if (subject->map_count != 2) return 0;
+		const struct pg_context_map *const *maps = pg_occurrence_maps(subject);
+		view.left_substitution = maps[0];
+		view.right_substitution = maps[1];
+		view.path_count = subject->operand_count - 3;
+		view.paths = subject->operands + 1;
+		if (maps[0]->count != maps[1]->count || view.path_count > maps[0]->count) return 0;
+		size_t common = maps[0]->count - view.path_count;
+		for (size_t i = view.path_count; i; --i) {
+			if (!boundary_argument(&core, view.paths[i - 1]->core)) return 0;
+			if (!boundary_argument(&core, maps[1]->images[common + i - 1]->core)) return 0;
+			if (!boundary_argument(&core, maps[0]->images[common + i - 1]->core)) return 0;
+		}
+		if (!pg_identity_action_view(core, &source)) return 0;
+	}
+	*output = view;
+	return 1;
+}
+
 int pg_identity_substitution_images(struct pg_typing *typing,
 	const struct pg_evidence *substitution,
 	const struct pg_evidence *left, const struct pg_evidence *right,
@@ -99,50 +141,70 @@ static int formation_origin_step(struct pg_typing *typing, struct formation_orig
 	return origin_step(typing, &origin->family, &origin->family_map, &origin->query);
 }
 
-/* Select an already accepted Identity formation of this exact typed subject.
- * Alternative premises remain valid; inspecting a boundary does not rebuild
- * its theorem with whichever child receipts happen to be found first. */
-static const struct pg_evidence *identity_structure(struct pg_typing *typing,
-	const struct pg_occurrence *subject)
-{
-	for (const struct pg_evidence *proof = pg_evidence_for_subject(typing, subject, NULL);
-		proof; proof = pg_evidence_for_subject(typing, subject, proof)) {
-		struct pg_identity_boundary boundary;
-		if (pg_identity_boundary_view(proof, &boundary)) return proof;
-	}
-	return NULL;
-}
-
-static const struct pg_evidence *rebuild_family(struct pg_typing *typing,
+/* Formation and action share the same selected boundary inputs. The optional
+ * map changes that boundary's destination, not its original family scope. */
+static const struct pg_evidence *selected_family(struct pg_typing *typing,
 	const struct pg_evidence *type, const struct pg_identity_boundary *boundary,
-	const struct pg_evidence *map, const struct pg_evidence *left, const struct pg_evidence *right)
+	const struct pg_evidence *map, const struct pg_evidence *left, const struct pg_evidence *right,
+	const struct pg_evidence *term)
 {
-	if (!map) return pg_prove_family_identity_type(typing, type,
-		boundary->left_substitution, boundary->right_substitution,
-		boundary->path_count, boundary->paths, left, right);
 	size_t count = boundary->path_count;
+	if (count > SIZE_MAX / sizeof(const struct pg_evidence *) || (count && !boundary->paths)) return NULL;
 	struct pg_graph temporary = {0};
 	const struct pg_evidence **paths = pg_alloc(&temporary, count * sizeof(*paths));
 	if (count && !paths) { pg_graph_destroy(&temporary); return NULL; }
-	for (size_t i = 0; i < count; ++i) paths[i] = pg_prove_reindex(typing, map, boundary->paths[i]);
-	const struct pg_evidence *ls = pg_prove_substitution_compose(typing, boundary->left_substitution, map);
-	const struct pg_evidence *rs = pg_prove_substitution_compose(typing, boundary->right_substitution, map);
-	const struct pg_evidence *result = pg_prove_family_identity_type(typing, type, ls, rs, count, paths, left, right);
+	for (size_t i = 0; i < count; ++i) {
+		paths[i] = pg_prove_structural_subject(typing, boundary->paths[i]);
+		if (map) paths[i] = pg_prove_reindex(typing, map, paths[i]);
+	}
+	const struct pg_evidence *ls = pg_prove_context_map(typing, boundary->left_substitution);
+	const struct pg_evidence *rs = pg_prove_context_map(typing, boundary->right_substitution);
+	if (map) {
+		ls = pg_prove_substitution_compose(typing, ls, map);
+		rs = pg_prove_substitution_compose(typing, rs, map);
+	}
+	const struct pg_evidence *result = term ? pg_prove_family_action(typing, type, term, ls, rs, count, paths)
+		: pg_prove_family_identity_type(typing, type, ls, rs, count, paths, left, right);
 	pg_graph_destroy(&temporary);
 	return result;
+}
+
+const struct pg_evidence *pg_identity_boundary_type(struct pg_typing *typing,
+	const struct pg_occurrence *subject)
+{
+	struct pg_identity_boundary boundary;
+	if (!pg_identity_boundary_view(subject, &boundary)) return NULL;
+	const struct pg_evidence *accepted = pg_evidence_for_subject(typing, subject, NULL);
+	if (accepted) return accepted;
+	const struct pg_evidence *family = pg_prove_structural_subject(typing, boundary.family);
+	const struct pg_evidence *left = pg_prove_structural_subject(typing, boundary.left);
+	const struct pg_evidence *right = pg_prove_structural_subject(typing, boundary.right);
+	const struct pg_evidence *result;
+	if (boundary.left_substitution) result = selected_family(typing, family, &boundary, NULL, left, right, NULL);
+	else if (boundary.family->judgement == PG_JUDGEMENT_VALUE) result = pg_prove_identity_instance(typing, family, left, right);
+	else result = pg_prove_identity_type(typing, family, left, right);
+	return result && pg_evidence_subject(result) == subject ? result : NULL;
+}
+
+const struct pg_evidence *pg_identity_boundary_action(struct pg_typing *typing,
+	const struct pg_identity_boundary *boundary, const struct pg_evidence *type,
+	const struct pg_evidence *term)
+{
+	if (!boundary || !term) return NULL;
+	return boundary->left_substitution ? selected_family(typing, type, boundary, NULL, NULL, NULL, term)
+		: pg_prove_reflexivity(typing, type, term);
 }
 
 static const struct pg_evidence *formation_from_origin(struct pg_typing *typing,
 	const struct formation_origin *origin)
 {
-	const struct pg_evidence *formation = identity_structure(typing, origin->term), *map = origin->map;
+	const struct pg_evidence *formation = pg_identity_boundary_type(typing, origin->term), *map = origin->map;
 	if (!formation) return NULL;
-	enum pg_evidence_rule rule = pg_evidence_rule(formation);
 	struct pg_identity_boundary boundary;
-	if (!pg_identity_boundary_view(formation, &boundary)) return NULL;
+	if (!pg_identity_boundary_view(pg_evidence_subject(formation), &boundary)) return NULL;
 	/* Retained construction inputs survive classifier conversion; the current
 	 * classifier need not be the one used to build a family action. */
-	if (rule == PG_IDENTITY_INSTANCE) {
+	if (boundary.family->judgement == PG_JUDGEMENT_VALUE) {
 		const struct pg_evidence *family_map = origin->family_map;
 		const struct pg_occurrence *family = origin->family;
 		if (!family) return NULL;
@@ -150,33 +212,33 @@ static const struct pg_evidence *formation_from_origin(struct pg_typing *typing,
 		if (family->operand_count == 1 && pg_identity_action_view(family->core, &source) && source == family->operands[0]->core) {
 			const struct pg_evidence *type = pg_prove_value_type(typing, pg_prove_structural_subject(typing, family->operands[0]));
 			if (family_map) type = pg_prove_reindex(typing, family_map, type);
-			formation = pg_prove_identity_type(typing, type, boundary.left, boundary.right);
-			if (!pg_identity_boundary_view(formation, &boundary)) return NULL;
-			rule = PG_IDENTITY_FORM;
+			formation = pg_prove_identity_type(typing, type,
+				pg_prove_structural_subject(typing, boundary.left), pg_prove_structural_subject(typing, boundary.right));
+			if (!formation || !pg_identity_boundary_view(pg_evidence_subject(formation), &boundary)) return NULL;
 		} else if (family->operand_count == 2 && family->operands[1]->map_count == 2) {
 			struct pg_identity_boundary action;
-			if (!pg_identity_boundary_view(identity_structure(typing, family->operands[1]), &action)) return NULL;
+			if (!pg_identity_boundary_view(family->operands[1], &action)) return NULL;
 			const struct pg_evidence *term = pg_prove_structural_subject(typing, family->operands[0]);
-			const struct pg_evidence *checked = pg_prove_family_action(typing, action.family, term,
-				action.left_substitution, action.right_substitution, action.path_count, action.paths);
+			const struct pg_evidence *checked = pg_identity_boundary_action(typing, &action,
+				pg_prove_structural_subject(typing, action.family), term);
 			if (!checked || pg_alpha_equal(pg_evidence_subject(checked)->core, family->core) != 1) return NULL;
 			const struct pg_evidence *type = pg_prove_value_type(typing, term);
-			formation = rebuild_family(typing, type, &action, family_map, boundary.left, boundary.right);
-			if (!pg_identity_boundary_view(formation, &boundary)) return NULL;
-			rule = PG_FAMILY_IDENTITY_FORM;
+			formation = selected_family(typing, type, &action, family_map,
+				pg_prove_structural_subject(typing, boundary.left), pg_prove_structural_subject(typing, boundary.right), NULL);
+			if (!formation || !pg_identity_boundary_view(pg_evidence_subject(formation), &boundary)) return NULL;
 		}
 	}
 	if (!map) return formation;
-	if (rule != PG_FAMILY_IDENTITY_FORM) {
-		const struct pg_evidence *family = pg_prove_reindex(typing, map, boundary.family);
-		const struct pg_evidence *left = pg_prove_reindex(typing, map, boundary.left);
-		const struct pg_evidence *right = pg_prove_reindex(typing, map, boundary.right);
-		return rule == PG_IDENTITY_FORM ? pg_prove_identity_type(typing, family, left, right)
-			: pg_prove_identity_instance(typing, family, left, right);
+	if (!boundary.left_substitution) {
+		const struct pg_evidence *family = pg_prove_reindex(typing, map, pg_prove_structural_subject(typing, boundary.family));
+		const struct pg_evidence *left = pg_prove_reindex(typing, map, pg_prove_structural_subject(typing, boundary.left));
+		const struct pg_evidence *right = pg_prove_reindex(typing, map, pg_prove_structural_subject(typing, boundary.right));
+		return boundary.family->judgement == PG_JUDGEMENT_VALUE ? pg_prove_identity_instance(typing, family, left, right)
+			: pg_prove_identity_type(typing, family, left, right);
 	}
-	const struct pg_evidence *left = pg_prove_reindex(typing, map, boundary.left);
-	const struct pg_evidence *right = pg_prove_reindex(typing, map, boundary.right);
-	return rebuild_family(typing, boundary.family, &boundary, map, left, right);
+	const struct pg_evidence *left = pg_prove_reindex(typing, map, pg_prove_structural_subject(typing, boundary.left));
+	const struct pg_evidence *right = pg_prove_reindex(typing, map, pg_prove_structural_subject(typing, boundary.right));
+	return selected_family(typing, pg_prove_structural_subject(typing, boundary.family), &boundary, map, left, right, NULL);
 }
 
 struct pg_identity_formation_work {
@@ -287,28 +349,27 @@ static int endpoint_step(struct pg_identity_endpoint_work *work)
 		const struct pg_evidence *formation = formation_from_origin(typing, &work->origin);
 		work->origin = (struct formation_origin){0};
 		struct pg_identity_boundary boundary;
-		if (!pg_identity_boundary_view(formation, &boundary)) return -1;
+		if (!formation || !pg_identity_boundary_view(pg_evidence_subject(formation), &boundary)) return -1;
 		if (!work->depth) {
-			work->result = work->side == PG_IDENTITY_LEFT ? boundary.left : boundary.right;
-			return 0;
+			work->result = pg_prove_structural_subject(typing, work->side == PG_IDENTITY_LEFT ? boundary.left : boundary.right);
+			return work->result ? 0 : -1;
 		}
-		if (pg_evidence_rule(formation) == PG_IDENTITY_INSTANCE) return -1;
+		if (boundary.family->judgement == PG_JUDGEMENT_VALUE) return -1;
 		struct endpoint_frame *frame = pg_alloc(&work->temporary, sizeof(*frame));
 		if (!frame) return -1;
 		*frame = (struct endpoint_frame){work->stack, work->context, boundary};
 		work->stack = frame;
-		if (boundary.left_substitution) work->context = pg_evidence_premise(boundary.left_substitution, 0);
-		work->formation = boundary.family;
+		if (boundary.left_substitution)
+			work->context = pg_evidence_premise(pg_prove_context_map(typing, boundary.left_substitution), 0);
+		work->formation = pg_prove_structural_subject(typing, boundary.family);
+		if (!work->formation) return -1;
 		--work->depth;
 		return 0;
 	}
 	const struct endpoint_frame *frame = work->stack;
 	const struct pg_evidence *type = pg_prove_classifier(typing, work->context, work->result);
 	const struct pg_identity_boundary *boundary = &frame->boundary;
-	work->result = boundary->left_substitution
-		? pg_prove_family_action(typing, type, work->result, boundary->left_substitution,
-			boundary->right_substitution, boundary->path_count, boundary->paths)
-		: pg_prove_reflexivity(typing, type, work->result);
+	work->result = pg_identity_boundary_action(typing, boundary, type, work->result);
 	if (!work->result) return -1;
 	work->context = frame->context;
 	work->stack = frame->previous;
@@ -399,9 +460,10 @@ static int face_step(struct pg_identity_face_work *work)
 		const struct pg_evidence *layer = formation_from_origin(work->typing, &work->origin);
 		work->origin = (struct formation_origin){0};
 		struct pg_identity_boundary boundary;
-		if (!pg_identity_boundary_view(layer, &boundary)) return -1;
+		if (!layer || !pg_identity_boundary_view(pg_evidence_subject(layer), &boundary)) return -1;
 		if (!work->checked) work->formation = layer;
-		work->layer = boundary.family;
+		work->layer = pg_prove_structural_subject(work->typing, boundary.family);
+		if (!work->layer) return -1;
 		++work->checked;
 		return 0;
 	}

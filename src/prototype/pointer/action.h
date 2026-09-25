@@ -4,15 +4,42 @@
 #include "dimension.h"
 #include "evidence.h"
 
+/* Borrowed construction inputs, not a certificate or checker history.
+ * family is a type, or a selected universe identification value. Maps/paths
+ * select a family boundary; path_count is not a cube dimension. */
+struct pg_identity_boundary {
+	const struct pg_occurrence *family, *left, *right;
+	const struct pg_context_map *left_substitution, *right_substitution;
+	size_t path_count;
+	const struct pg_occurrence *const *paths;
+};
+/* Inspect direct typed Identity structure without proof lookup, allocation or
+ * evaluation. Mapped/derived constructions must first expose their origin.
+ * Failure leaves output unchanged; success establishes no typing. */
+int pg_identity_boundary_view(const struct pg_occurrence *subject,
+	struct pg_identity_boundary *output);
+/* Reuse exact accepted typing, or check a direct boundary from its typed
+ * inputs using the ordinary rules. The resulting subject must equal the
+ * supplied construction, not just its erased Core. No parent history is read. */
+const struct pg_evidence *pg_identity_boundary_type(struct pg_typing *typing,
+	const struct pg_occurrence *subject);
+/* Act on a checked term along these typed maps/paths, or reflexively when
+ * there are no maps. This constructs evidence by the ordinary action rule. */
+const struct pg_evidence *pg_identity_boundary_action(struct pg_typing *typing,
+	const struct pg_identity_boundary *boundary, const struct pg_evidence *type,
+	const struct pg_evidence *term);
+
 /* Recover an explicit Identity formation through reindex/projection and
  * accepted pure-normalization and type-as-universe-value premises.
  * The input must be a type formation. Following a universe value without a
  * retained formation does not infer an Identity from its Core syntax. An
- * instance of an explicitly proved refl A recovers ordinary Identity on A
- * from that proof's premise, allowing descent through nested instances.
+ * instance of an explicitly checked refl A recovers ordinary Identity on A
+ * from its typed operand, allowing descent through nested instances.
  * Explicit family action likewise recovers its source type, selected maps and
  * paths. Accepted classifier conversions preserve the term's origin; no
  * arbitrary equality witness is treated as reflexivity or family action.
+ * Direct boundaries use typed inputs; their accepted checking result is
+ * reused without enumerating derivations or reading premise history.
  * Rebuild with the ordinary formation rules and composed substitutions, keeping
  * the selected family and paths. This is not normalization or proof search:
  * unsupported formation/conversion rules return NULL. The rebuilt subject is

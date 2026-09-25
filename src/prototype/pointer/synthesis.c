@@ -7789,7 +7789,8 @@ static struct transport_scope *transport_scope_start(struct pg_typing *typing,
 	work->left = work->right = base;
 	work->count = count;
 	if (boundary->left_substitution) {
-		const struct pg_evidence *ls = boundary->left_substitution;
+		const struct pg_evidence *ls = pg_prove_context_map(typing, boundary->left_substitution);
+		if (!ls) return NULL;
 		const struct pg_evidence *source = pg_evidence_premise(ls, 0);
 		size_t arity = pg_evidence_context_map(ls)->count;
 		if (count > arity) return NULL;
@@ -7801,7 +7802,7 @@ static struct transport_scope *transport_scope_start(struct pg_typing *typing,
 	} else {
 		work->map = pg_prove_substitution_projection(typing, context, context);
 		if (!work->map) return NULL;
-		work->query = pg_rebase_request(typing, context, boundary->family);
+		work->query = pg_rebase_request(typing, context, pg_prove_structural_subject(typing, boundary->family));
 	}
 	return work->query ? work : NULL;
 }
@@ -7832,22 +7833,22 @@ static int transport_scope_advance(struct pg_typing *typing, struct transport_sc
 		work->map = pg_prove_substitution_lift(typing, work->map, field, lifted->destination->binder);
 		if (!work->map) return -1;
 		const struct pg_evidence *extension = pg_evidence_premise(work->map, 1);
-		size_t image = pg_evidence_context_map(boundary->left_substitution)->count - work->count + work->next;
+		size_t image = boundary->left_substitution->count - work->count + work->next;
 		work->left = pg_prove_substitution_pair(typing, work->left, extension,
-			pg_substitution_image_at(typing, boundary->left_substitution, image));
+			pg_prove_structural_subject(typing, boundary->left_substitution->images[image]));
 		work->right = pg_prove_substitution_pair(typing, work->right, extension,
-			pg_substitution_image_at(typing, boundary->right_substitution, image));
+			pg_prove_structural_subject(typing, boundary->right_substitution->images[image]));
 		if (!work->left || !work->right) return -1;
 		++work->next;
 		work->lift = NULL;
 		return 0;
 	}
 	if (!work->action) work->action = pg_occurrence_action_request(typing,
-		pg_evidence_context_map(work->map), pg_evidence_subject(boundary->family));
+		pg_evidence_context_map(work->map), boundary->family);
 	enum pg_substitution_status status = pg_occurrence_action_advance(work->action, 1);
 	if (status == PG_SUBSTITUTION_PENDING) return 0;
 	if (status != PG_SUBSTITUTION_DONE) return -1;
-	type = pg_prove_reindex(typing, work->map, boundary->family);
+	type = pg_prove_reindex(typing, work->map, pg_prove_structural_subject(typing, boundary->family));
 extend:;
 	const struct pg_evidence *extended = pg_prove_context_extension(typing,
 		pg_evidence_premise(work->map, 1), pg_binder(typing->graph), type);
@@ -7921,7 +7922,7 @@ static void constructor_transport_step(struct pg_synthesis *synthesis, struct pg
 	struct pg_identity_boundary boundary;
 	struct pg_synthesis_job *identity = identity_classifier(synthesis, context, inputs[3]);
 	if (await_dependency(synthesis, job, identity)) return;
-	if (!pg_identity_boundary_view(identity->result, &boundary)) goto unsupported;
+	if (!identity->result || !pg_identity_boundary_view(pg_evidence_subject(identity->result), &boundary)) goto unsupported;
 	if (!job->transport_scope) job->transport_scope = transport_scope_start(typing,
 		pg_prove_substitution_projection(typing, context, context), &boundary);
 	if (!job->transport_scope) goto unsupported;
@@ -7986,7 +7987,7 @@ static void constructor_transport_step(struct pg_synthesis *synthesis, struct pg
 	struct pg_synthesis_job **paths = malloc(path_count * sizeof(*paths));
 	if (!paths) goto error;
 	for (size_t i = 0; i < boundary.path_count; ++i)
-		paths[i] = pg_synthesis_evidence(synthesis, pg_prove_projection(typing, context, boundary.paths[i]));
+		paths[i] = pg_synthesis_evidence(synthesis, pg_prove_projection(typing, context, pg_prove_structural_subject(typing, boundary.paths[i])));
 	paths[boundary.path_count] = (void *)job->inputs[3];
 	struct pg_synthesis_job *transport = pg_synthesis_family_transport_jobs(synthesis,
 		pg_synthesis_evidence(synthesis, family), left, right, path_count, paths, pg_synthesis_evidence(synthesis, value), PG_IDENTITY_RIGHT);
@@ -8221,7 +8222,7 @@ static struct pg_synthesis_job *index_constructor_candidate(struct pg_synthesis 
 	struct pg_synthesis_job *identity = identity_classifier(synthesis, context, state->path);
 	if (!identity) return NULL;
 	if (identity->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, identity); *pending = 1; return NULL; }
-	if (!pg_identity_boundary_view(identity->result, &boundary)) return NULL;
+	if (!identity->result || !pg_identity_boundary_view(pg_evidence_subject(identity->result), &boundary)) return NULL;
 	if (!(*slot)->boundary) (*slot)->boundary = transport_scope_start(typing, base, &boundary);
 	if (!(*slot)->boundary) return NULL;
 	status = transport_scope_advance(typing, (*slot)->boundary, &boundary, state->endpoints[0], state->endpoints[1]);
@@ -8279,7 +8280,7 @@ static struct pg_synthesis_job *index_constructor_candidate(struct pg_synthesis 
 	struct pg_synthesis_job **paths = pg_alloc(&temporary, path_count * sizeof(*paths));
 	if (!paths) goto done;
 	for (size_t i = 0; i < boundary.path_count; ++i)
-		paths[i] = pg_synthesis_evidence(synthesis, pg_prove_projection(typing, context, boundary.paths[i]));
+		paths[i] = pg_synthesis_evidence(synthesis, pg_prove_projection(typing, context, pg_prove_structural_subject(typing, boundary.paths[i])));
 	paths[boundary.path_count] = pg_synthesis_evidence(synthesis, state->path);
 	struct pg_synthesis_job *transported = pg_synthesis_family_transport_jobs(synthesis,
 		pg_synthesis_evidence(synthesis, family), left, right, path_count, paths, argument, direction);
@@ -8394,9 +8395,9 @@ static void index_transport_step(struct pg_synthesis *synthesis, struct pg_synth
 		if (!formation) goto error;
 		if (formation->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, formation); return; }
 		struct pg_identity_boundary boundary;
-		if (!pg_identity_boundary_view(formation->result, &boundary)) goto next_context;
-		state->endpoints[0] = pg_prove_projection(typing, context, boundary.left);
-		state->endpoints[1] = pg_prove_projection(typing, context, boundary.right);
+		if (!formation->result || !pg_identity_boundary_view(pg_evidence_subject(formation->result), &boundary)) goto next_context;
+		state->endpoints[0] = pg_prove_projection(typing, context, pg_prove_structural_subject(typing, boundary.left));
+		state->endpoints[1] = pg_prove_projection(typing, context, pg_prove_structural_subject(typing, boundary.right));
 		state->path = pg_prove_variable(typing, context, pg_evidence_context(state->cursor)->binder);
 		if (!state->endpoints[0] || !state->endpoints[1] || !state->path) goto next_context;
 	}

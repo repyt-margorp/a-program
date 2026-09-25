@@ -16,6 +16,11 @@ const struct pg_term *pg_identity_transport(struct pg_graph *graph,
 	const struct pg_term *family, const struct pg_term *value, enum pg_identity_direction direction);
 const struct pg_term *pg_identity_lift(struct pg_graph *graph,
 	const struct pg_term *family, const struct pg_term *value, enum pg_identity_direction direction);
+/* Read an exact transport/lift application without evaluation or Evidence.
+ * Outputs are optional and unchanged on failure. This establishes no typing. */
+int pg_identity_field_view(const struct pg_term *term,
+	const struct pg_term **family, const struct pg_term **value,
+	enum pg_identity_direction *direction, int *lift);
 
 /* Symbolic one-direction reflexive action. Iteration uses the same reference,
  * not a tag per dimension. These constructors do not establish typing or

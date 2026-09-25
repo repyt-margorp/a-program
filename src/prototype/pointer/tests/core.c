@@ -566,6 +566,19 @@ static void evidence_test(struct pg_graph *graph)
 	assert(!pg_prove_thunk(&typing, x_term));
 	const struct pg_evidence *identity = pg_prove_lambda(&typing, pi, returned);
 	assert(identity && pg_evidence_classifier(identity) == pg_evidence_subject(pi)->core);
+	/* The Pi construction, not the route by which it was checked, supplies
+	 * Lambda's binder and body scope. No second scope or term is rebuilt. */
+	const struct pg_evidence *alternate_pi = pg_prove_thunk_content(&typing, pg_prove_thunk_type(&typing, pi));
+	assert(alternate_pi && pg_evidence_rule(alternate_pi) != PG_PI_FORM);
+	assert(pg_evidence_subject(alternate_pi) == pg_evidence_subject(pi));
+	size_t contexts_before = typing.contexts.count, terms_before = graph->terms.count;
+	const struct pg_evidence *alternate_identity = pg_prove_lambda(&typing, alternate_pi, returned);
+	assert(alternate_identity && pg_evidence_subject(alternate_identity) == pg_evidence_subject(identity));
+	assert(typing.contexts.count == contexts_before && graph->terms.count == terms_before);
+	assert(pg_prove_lambda(&typing, alternate_pi, returned) == alternate_identity);
+	assert(!pg_prove_lambda(&typing, alternate_pi, x_term));
+	assert(!pg_prove_lambda(&typing, pg_prove_thunk_type(&typing, pi), returned));
+	assert(!pg_prove_lambda(&typing, fa, returned));
 	assert(!pg_prove_lambda(&typing, pi, x_term));
 	assert(!pg_prove_lambda(&typing, high_pi, returned));
 	assert(!pg_prove_application(&typing, identity, x_term)); /* Different scopes. */
@@ -576,6 +589,7 @@ static void evidence_test(struct pg_graph *graph)
 	const struct pg_evidence *pi_y = pg_prove_pi(&typing, y_context, fa_in_y);
 	const struct pg_evidence *return_y = pg_prove_return(&typing, y_term);
 	const struct pg_evidence *identity_y = pg_prove_lambda(&typing, pi_y, return_y);
+	assert(!pg_prove_lambda(&typing, alternate_pi, return_y));
 	const struct pg_evidence *app = pg_prove_application(&typing, identity_y, x_term);
 	assert(app && pg_evidence_classifier(app) == pg_evidence_classifier(returned));
 	assert(pg_prove_application(&typing, identity_y, x_term) == app);

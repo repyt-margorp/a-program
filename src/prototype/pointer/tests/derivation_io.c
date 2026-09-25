@@ -674,6 +674,7 @@ static void read_proofs(FILE *file, struct pg_typing *typing, uint64_t chunk)
 		assert(pg_evidence_premise(lift, 1) == transport);
 		struct pg_derivation_parameters parameters;
 		assert(!pg_derivation_parameters(transport, &parameters) && parameters.direction == side);
+		assert(!pg_derivation_parameters(lift, &parameters) && parameters.direction == side);
 	}
 	printf("derivation solve: %llu steps\n", (unsigned long long)synthesis.steps);
 	/* Loaded rule requests may simplify; their result remains ordinary evidence. */
