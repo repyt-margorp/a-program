@@ -1,0 +1,177 @@
+#include "occurrence_io.h"
+#include "evidence.h"
+#include "computation.h"
+#include "action.h"
+
+#include <assert.h>
+#include <stdio.h>
+#include <string.h>
+
+static const char *name(void *owner, const struct pg_object *object)
+{
+	(void)owner;
+	static char buffer[96];
+	const char *label = pg_computation_name(object);
+	if (!label) label = pg_identity_name(object);
+	return label ? label : pg_classifier_name(object, buffer, sizeof(buffer));
+}
+
+static const struct pg_object *resolve(void *owner, const char *label)
+{
+	const struct pg_object *object = pg_computation_resolve(label);
+	if (!object) object = pg_identity_resolve(label);
+	return object ? object : pg_classifier_resolve(owner, label);
+}
+
+static void write_inputs(FILE *file, struct pg_typing *typing)
+{
+	struct pg_graph *graph = typing->graph;
+	const struct pg_evidence *empty = pg_prove_empty_context(typing);
+	const struct pg_evidence *u0 = pg_prove_universe(typing, empty, 0);
+	const struct pg_evidence *u1 = pg_prove_universe(typing, empty, 1);
+	const struct pg_evidence *u2 = pg_prove_universe(typing, empty, 2);
+	const struct pg_object *a = pg_binder(graph), *x = pg_binder(graph);
+	const struct pg_evidence *types = pg_prove_context_extension(typing, empty, a, u2);
+	const struct pg_evidence *domain = pg_prove_value_type(typing, pg_prove_variable(typing, types, a));
+	const struct pg_evidence *scope = pg_prove_context_extension(typing, types, x, domain);
+	const struct pg_evidence *body = pg_prove_return(typing, pg_prove_variable(typing, scope, x));
+	const struct pg_evidence *pi = pg_prove_pi(typing, scope, pg_prove_classifier(typing, scope, body));
+	const struct pg_evidence *inner = pg_prove_lambda(typing, pi, body);
+	const struct pg_evidence *outer_pi = pg_prove_pi(typing, types, pi);
+	const struct pg_evidence *function = pg_prove_lambda(typing, outer_pi, inner);
+	const struct pg_evidence *partial = pg_prove_application(typing, function, pg_prove_type_value(typing, u1));
+	const struct pg_evidence *application = pg_prove_application(typing, partial, pg_prove_type_value(typing, u0));
+	const struct pg_evidence *forced = pg_prove_force(typing, pg_prove_thunk(typing, application));
+	const struct pg_evidence *extended = pg_prove_context_extension(typing, empty, pg_binder(graph), u0);
+	const struct pg_evidence *mapped = pg_prove_lambda(typing,
+		pg_prove_pi(typing, extended, pg_prove_projection(typing, extended, outer_pi)),
+		pg_prove_projection(typing, extended, function));
+	const struct pg_evidence *identity = pg_prove_identity_type(typing, outer_pi, function, function);
+	assert(function && application && forced && mapped && identity);
+	const struct pg_evidence *shared[2];
+	for (size_t i = 0; i < 2; ++i) {
+		const struct pg_evidence *local = pg_prove_context_extension(typing, empty, x, i ? u2 : u1);
+		const struct pg_evidence *returned = pg_prove_return(typing, pg_prove_variable(typing, local, x));
+		shared[i] = pg_prove_lambda(typing,
+			pg_prove_pi(typing, local, pg_prove_classifier(typing, local, returned)), returned);
+		assert(shared[i]);
+	}
+	assert(pg_evidence_subject(shared[0])->core == pg_evidence_subject(shared[1])->core);
+	const struct pg_occurrence *roots[] = {pg_evidence_subject(function), pg_evidence_subject(application),
+		pg_evidence_subject(forced), pg_evidence_subject(mapped), pg_evidence_subject(identity),
+		pg_evidence_subject(shared[0]), pg_evidence_subject(shared[1])};
+	assert(!pg_occurrences_write(file, 7, roots, name, NULL));
+}
+
+static void result_allocation(struct pg_typing *typing, const struct pg_occurrence *partial)
+{
+	const struct pg_occurrence *type = partial->type;
+	const struct pg_term *domain, *body;
+	const struct pg_object *binder, *renamed = pg_binder(typing->graph);
+	assert(pg_pi_view(type->core, &domain, &binder, &body));
+	struct pg_binding_value binding = {binder, pg_reference(typing->graph, renamed)};
+	const struct pg_term *alpha = pg_pi(typing->graph, domain, renamed,
+		pg_term_substitute(typing->graph, body, 1, &binding));
+	const struct pg_term *wrong = pg_pi(typing->graph, domain, renamed,
+		pg_return_type(typing->graph, pg_reference(typing->graph, pg_binder(typing->graph))));
+	for (size_t i = 0; i < 4; ++i) {
+		struct pg_occurrence header = *type;
+		header.core = i == 1 ? wrong : alpha;
+		if (i == 2) header.classifier = pg_universe(typing->graph, 17);
+		if (i == 3) header.origin = partial;
+		const struct pg_occurrence *result_type = pg_occurrence_intern(typing, &header, type->operands, NULL);
+		assert(result_type);
+		header = *partial;
+		header.type = result_type;
+		header.classifier = result_type->core;
+		const struct pg_occurrence *result = pg_occurrence_intern(typing, &header, partial->operands, NULL);
+		assert(result);
+		const struct pg_evidence *checked = pg_prove_structural_subject(typing, result);
+		if (!i) {
+			assert(checked && pg_evidence_subject(checked) == result);
+			assert(result != partial && result->core == partial->core);
+			assert(pg_alpha_equal(result->classifier, partial->classifier) == 1);
+		} else {
+			assert(!checked && !pg_evidence_for_subject(typing, result, NULL));
+		}
+	}
+}
+
+static void reject_changes(struct pg_typing *typing, const struct pg_occurrence *subject)
+{
+	struct pg_occurrence header = *subject;
+	header.classifier = pg_universe(typing->graph, 17);
+	header.type = NULL;
+	const struct pg_occurrence *wrong = pg_occurrence_intern(typing, &header, subject->operands, pg_occurrence_maps(subject));
+	assert(wrong && !pg_prove_structural_subject(typing, wrong));
+	assert(!pg_evidence_for_subject(typing, wrong, NULL));
+	header = *subject;
+	header.core = pg_reference(typing->graph, pg_binder(typing->graph));
+	wrong = pg_occurrence_intern(typing, &header, subject->operands, pg_occurrence_maps(subject));
+	assert(wrong && !pg_prove_structural_subject(typing, wrong));
+	assert(!pg_evidence_for_subject(typing, wrong, NULL));
+	header = *subject;
+	header.context = pg_context_bind(typing, NULL, pg_binder(typing->graph),
+		pg_universe(typing->graph, 0), PG_JUDGEMENT_VALUE);
+	header.type = NULL;
+	wrong = pg_occurrence_intern(typing, &header, subject->operands, pg_occurrence_maps(subject));
+	assert(wrong && !pg_prove_structural_subject(typing, wrong));
+	assert(!pg_evidence_for_subject(typing, wrong, NULL));
+}
+
+static void read_inputs(FILE *file, size_t root)
+{
+	struct pg_graph graph;
+	struct pg_typing typing;
+	assert(!pg_graph_init(&graph) && !pg_typing_init(&typing, &graph));
+	size_t count;
+	const struct pg_occurrence *const *roots;
+	rewind(file);
+	assert(!pg_occurrences_read(file, &typing, 10000, 256, resolve, &graph, &count, &roots));
+	assert(count == 7 && !typing.proofs.count);
+	const struct pg_evidence *checked = root == 4
+		? pg_identity_boundary_type(&typing, roots[root])
+		: pg_prove_structural_subject(&typing, roots[root]);
+	assert(checked && pg_evidence_subject(checked) == roots[root]);
+	size_t proofs = typing.proofs.count, terms = graph.terms.count;
+	assert(pg_prove_structural_subject(&typing, roots[root]) == checked);
+	assert(typing.proofs.count == proofs && graph.terms.count == terms);
+	reject_changes(&typing, roots[root]);
+	if (root == 4) {
+		struct pg_identity_boundary boundary;
+		assert(pg_identity_boundary_view(roots[root], &boundary));
+		assert(boundary.left == boundary.right && boundary.left == roots[0]);
+	}
+	if (root == 1) result_allocation(&typing, roots[1]->operands[0]);
+	if (root == 5) {
+		const struct pg_evidence *other = pg_prove_structural_subject(&typing, roots[6]);
+		assert(other && other != checked && pg_evidence_subject(other) == roots[6]);
+		assert(roots[5] != roots[6] && roots[5]->core == roots[6]->core);
+		assert(roots[5]->classifier != roots[6]->classifier);
+	}
+	pg_typing_destroy(&typing);
+	pg_graph_destroy(&graph);
+}
+
+int main(int argc, char **argv)
+{
+	assert(argc == 3);
+	if (!strcmp(argv[1], "write")) {
+		FILE *file = fopen(argv[2], "wb");
+		struct pg_graph graph;
+		struct pg_typing typing;
+		assert(file && !pg_graph_init(&graph) && !pg_typing_init(&typing, &graph));
+		write_inputs(file, &typing);
+		pg_typing_destroy(&typing);
+		pg_graph_destroy(&graph);
+		assert(!fclose(file));
+	} else {
+		assert(!strcmp(argv[1], "read"));
+		FILE *file = fopen(argv[2], "rb");
+		assert(file);
+		for (size_t root = 0; root < 7; ++root) read_inputs(file, root);
+		assert(!fclose(file));
+		puts("typed-only images: dependent Lambda/APP, F/U, context action and Identity boundary checked without old evidence");
+	}
+	return 0;
+}

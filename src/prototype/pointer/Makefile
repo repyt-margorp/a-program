@@ -5,6 +5,7 @@ BUILD := $(ROOT).build
 SOURCES := $(ROOT)graph.c $(ROOT)dag.c $(ROOT)dimension.c $(ROOT)eval.c $(ROOT)typing.c $(ROOT)conversion.c $(ROOT)classifier.c $(ROOT)effect_inference.c $(ROOT)evidence.c $(ROOT)derivation.c $(ROOT)computation.c $(ROOT)action.c $(ROOT)identity.c $(ROOT)symmetry.c $(ROOT)iadt.c $(ROOT)prelude.c $(ROOT)descriptor_io.c $(ROOT)context_payload.c $(ROOT)declaration_io.c
 
 SOURCES += $(ROOT)function_graph.c $(ROOT)host.c $(ROOT)execution.c
+SOURCES += $(ROOT)evidence_function.c $(ROOT)evidence_cbpv.c
 WITNESS_SOURCE := $(ROOT)function_witness.c
 SYNTHESIS_SOURCES := $(ROOT)synthesis.c $(ROOT)synthesis_work.c $(ROOT)synthesis_effect.c $(ROOT)synthesis_handler.c $(ROOT)synthesis_operation.c
 CLI_SOURCES := $(ROOT)reader.c $(ROOT)syntax.c $(SYNTHESIS_SOURCES) $(ROOT)program.c $(ROOT)graph_io.c $(ROOT)wire.c $(ROOT)source_io.c $(ROOT)retained_io.c $(ROOT)reduction_io.c $(ROOT)syntax_io.c $(ROOT)derivation_io.c $(ROOT)main.c
@@ -81,6 +82,12 @@ check-identity-io: $(BUILD)/identity_io_test
 
 check: check-eval-io check-identity-io check-quick-result
 
+check: $(BUILD)/typed_structure_test
+
+$(BUILD)/typed_structure_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)graph_io.c $(ROOT)context_io.c $(ROOT)occurrence_io.c $(ROOT)wire.c $(ROOT)tests/typed_structure.c
+	mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)graph_io.c $(ROOT)context_io.c $(ROOT)occurrence_io.c $(ROOT)wire.c $(ROOT)tests/typed_structure.c -o $@
+
 check-quick-result: $(BUILD)/pointer-check
 	bash $(ROOT)tests/quick_result.sh $(BUILD)/pointer-check
 
@@ -90,6 +97,7 @@ $(BUILD)/identity_io_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)retained_io.
 
 check: $(BUILD)/core_test $(BUILD)/graph_io_test $(BUILD)/graph_acceptance_test $(BUILD)/occurrence_io_test $(BUILD)/derivation_io_test $(BUILD)/syntax_io_test $(BUILD)/source_io_test $(BUILD)/reader_test $(BUILD)/parse_files $(BUILD)/synthesis_test $(BUILD)/identity_test $(BUILD)/iadt_test $(BUILD)/program_test $(BUILD)/seed_test $(BUILD)/pointer-check
 	$(BUILD)/core_test
+	bash $(ROOT)tests/typed_structure.sh $(BUILD)/typed_structure_test
 	$(BUILD)/graph_io_test
 	bash $(ROOT)tests/graph_acceptance.sh $(BUILD)/graph_acceptance_test
 	bash $(ROOT)tests/occurrence_io.sh $(BUILD)/occurrence_io_test

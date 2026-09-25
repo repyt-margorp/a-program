@@ -674,10 +674,13 @@ const struct pg_evidence *pg_prove_data_result_formation(struct pg_typing *typin
  * structure; inspect the typed subject instead. */
 const struct pg_evidence *pg_evidence_for_subject(const struct pg_typing *typing,
 	const struct pg_occurrence *subject, const struct pg_evidence *after);
-/* Reuse an exact accepted subject or certify its structural substitution using
- * ordinary variable/substitution/reindex rules. Descriptive nodes alone never
- * authorize a judgement. Map checking below may establish a lifted destination;
- * normalized construction is not inferred here. NULL means no derivation. */
+/* Check retained typed inputs with ordinary kernel rules, reusing an exact
+ * accepted subject. Direct Universe, ordinary Pi/Lambda/APP and F/U/RETURN/
+ * THUNK/FORCE use their retained children. Pi supplies its binding formation;
+ * other open scopes must be accepted. Maps use the same substitution checker.
+ * Descriptive shape is not acceptance. Normalization, family declarations and
+ * other owner rules are not guessed. NULL includes unavailable prerequisites;
+ * it is not a permanently cached rejection. */
 const struct pg_evidence *pg_prove_structural_subject(struct pg_typing *typing,
 	const struct pg_occurrence *subject);
 /* Check a descriptive map by ordinary substitution rules. The source must be
