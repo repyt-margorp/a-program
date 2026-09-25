@@ -1,7 +1,7 @@
 # Complete Function-Witness Surface Removal
 
 Date: 2026-09-25; updated against the current worktree on the same date.
-Status: implementation and verification complete; Main publication pending.
+Status: complete; implementation `975bd56` published to Main on 2026-09-25.
 Baseline: Main `fc19ff5c0214f0277f02feee77ff9cf03b744524` plus the current,
 uncommitted witness-removal and ordinary-result proof work.
 
@@ -72,17 +72,17 @@ Preserve that distinction throughout the migration.
 All paths in tables are relative to `src/prototype/pointer/`.
 These findings come from the current worktree, not only historical plans.
 
-| Area | Existing work | Remaining work |
+| Area | Implementation | Verification and continuing contract |
 | --- | --- | --- |
 | `synthesis.c:star_application`, `hypothesis_reference`, `graph_reference_step` | Global-star fallback, witness job, and special packet projection metadata removed; scoped IH/Self retained | Preserve rejection and shadowing behavior; do not remove the shared `*` token |
 | `function_graph.c/.h` | Helper graph formation no longer demands helper witness generation | Keep one shared typed source plan and nominal family identity |
 | `function_witness.c/.h`, `function_graph_internal.h` | Packet production separated; internal C callers retained | Keep it optional; no production CLI linkage or eager generation |
-| `Makefile` | Normal CLI omits generator; control CLI links it; `check-quick-result` belongs to `check`; isolation now belongs to `check-acceptance` | Run the complete dependency graph after all consumer migrations |
+| `Makefile` | Normal CLI omits generator; control CLI links it; `check-quick-result` belongs to `check`; isolation now belongs to `check-acceptance` | Complete acceptance dependency graph passed after all consumer migrations |
 | `tests/acceptance/generic-quick-sorted-result.p`, `tests/quick_result.sh` | General ordinary-result theorem, wrong result, motive and image controls pass | Preserve and reuse this proof when migrating consumers |
 | `tests/fixtures/sorted-proof-provider.p`, `generic-quick-sorted.p` | Exact nominal predicates shared through imports | Keep provider variants and assembly scripts consistent |
-| Legacy acceptance and script consumers | Small fixtures, five sorting-property consumers and legacy graph consumers migrated; semantic negative pairs added; complete compatibility target passed | Repeat on isolated publication tree |
-| `tests/fixtures/generic_sorted/content-result-proof.p` | Ordinary-result permutation proof, with no ordering hypothesis; four provider/order variants have a passing recorded run | Repeat as part of the final gate after subsequent fixture/helper changes |
-| `tests/program.c`, `tests/function_witness_packets.sh` | Optional source/image packet client, 75 producer cases, shifted-helper and import-preserving comparisons | Repeat full gate; output equality remains separate from proof-index checks below |
+| Legacy acceptance and script consumers | Small fixtures, five sorting-property consumers and legacy graph consumers migrated; semantic negative pairs added; complete compatibility target passed | Also passed on the isolated publication tree |
+| `tests/fixtures/generic_sorted/content-result-proof.p` | Ordinary-result permutation proof, with no ordering hypothesis; four provider/order variants pass | Repeated successfully in the isolated final gate |
+| `tests/program.c`, `tests/function_witness_packets.sh` | Optional source/image packet client, 75 producer cases, shifted-helper and import-preserving comparisons | Final gate passed; output equality remains separate from proof-index checks below |
 
 Earlier verification: general proof completed in 1,117,652 Solve steps with
 the generator absent; pending/completed/retained image checks and false-result
@@ -389,7 +389,7 @@ Gate: migration remains correct through the same budgeted Solve and image path.
   shortcuts/shared proofs, but never remove assertions to meet a line target.
 - [x] Update the README and active plan status with supported syntax, internal
   API usage and any unresolved limitations. Keep dated audit history intact.
-- [ ] After these gates, commit the reviewed changes and push Main under the
+- [x] After these gates, commit the reviewed changes and push Main under the
   established publication policy. List the exact tested revision and remaining
   unrelated work. Do not publish a claim that the entire suite passed earlier.
 
