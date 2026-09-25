@@ -3,13 +3,13 @@
 Date: 2026-09-25
 Updated: 2026-09-26
 Status: P1-P3 closed; P4 Identity-boundary/Lambda-scope/typed-only function and P5 effect-owner/shared
-work-header/Handler/Operation slices verified by clean publication-tree acceptance and sanitizers.
+work-header/Handler/Operation/CBPV-adapter slices verified by clean publication-tree acceptance and sanitizers.
 Broader P4 typed-proof migration and P5 synthesis modularity remain open.
 Initial review baseline: `40375d734896a456f5ad2827ad8fe0f10ff61517`.
 Verified implementation milestones: `60bde88` (P4), `dcc58ec` (first P5 slice),
 `84a54e2` (shared work/private state), `c89edb7` (Handler owner), and
-`3397e52` (Operation owner), `270c271` (typed-only ordinary functions);
-the latest clean gate covers all six.
+`3397e52` (Operation owner), `270c271` (typed-only ordinary functions), and
+`12a0e1d` (CBPV adapters); the latest clean gate covers these published slices.
 Inherited implementation edits: Context/IADT relocation changes in
 `evidence.[ch]`, `iadt.[ch]`, two unit tests and two derived-LT files. These
 are excluded from the publication candidate and preserved locally, together
@@ -28,7 +28,7 @@ provide a second execution order. The order below is the agent's proposal.
 | P2 | Reassess the old computation-result report against current contracts | #13 | Closed by user-approved scope decision |
 | P3 | Resolve the remaining MergeSort report against existing regressions | #28 | Verified; closed |
 | P4 | Make typed proof structure authoritative; remove redundant evidence dependency | Existing R2-R5 plans | Typed-only ordinary-function slice verified; history removal and broader migration pending |
-| P5 | Separate synthesis by semantic owner without duplicating shared machinery | User follow-up on synthesis.c | Effect-owner/shared-header/Handler/Operation slices verified; legacy source state remains |
+| P5 | Separate synthesis by semantic owner without duplicating shared machinery | User follow-up on synthesis.c | Effect-owner/shared-header/Handler/Operation/CBPV-adapter slices verified; legacy source state remains |
 
 ## P1. Issue and PR Disposition
 
@@ -771,6 +771,34 @@ Context pointer; remove the extra generic allocation array and its copied
 prefix/count/cursor from this owner. Retained allocation supplies identities,
 not trusted field types. Keep P4's general checker migration open.
 
+CBPV adapter extraction, baseline `aa151fe`, 2026-09-26 (agent decision):
+move BODY/SEQUENCE and Return/Thunk-content requests into `synthesis_cbpv.c`.
+These are source/checking adapters, not new Core nodes or another solver.
+
+| Request | Retained inputs | Private progress, replacing 240-byte source state |
+| --- | --- | --- |
+| Body | Producer, optional checked Context | Selected ordinary rule: 8 bytes |
+| Sequence | Context, input, continuation | Normalized input, Fold, selected rule, comparison and stage: 40 bytes |
+| Return/Thunk content | Checked Context and typed input | Current normalization dependency and stage: 16 bytes |
+
+The existing descriptor projection publishes provisional rules, not acceptance.
+Constructor calling-convention discovery borrows Body's existing input edge.
+Use the same work interner, queue, subscriptions, comparison engine and ordinary
+checking rules. Comparison cleanup remains on completion and cancellation.
+Expose existing source-preparation/typed-input helpers through the private
+source interface; do not copy their logic or place CBPV state in the driver.
+Remove the four source descriptors and their central dispatch/projection cases.
+Function/IADT/Identity preparation and rule-shape inspection remain source-owned
+and unfinished. This extraction does not eliminate Evidence history or claim
+net code reduction. Source compatibility fallbacks are moved unchanged, not
+newly justified as a general dependent sequencing rule.
+
+The parallel P4 review did not establish a sufficient family-declaration
+contract. Reject adding one formation pointer to raw Context, or disguising a
+Context certificate as a family variable: the former loses selectable Universe
+bounds; the latter has unresolved scope/image obligations. No such trial is
+included in this slice; P4.2's existing retained-input requirement still applies.
+
 ### Plan
 
 - [x] Confirm that owner-level semantics are partially separated while synthesis
@@ -811,6 +839,15 @@ not trusted field types. Keep P4's general checker migration open.
   aliases and nested references, single/bulk budgets, exact request reuse,
   restored binder identities and wrong signatures; then clean acceptance,
   affected sanitizers, source-image compatibility and paired performance.
+- [x] Verify the CBPV-adapter slice: exact request reuse, owner-sized state,
+  provisional versus checked results, dependent/constant sequencing, wrong
+  Contexts, zero/single/bulk budgets and cancellation. Run clean acceptance,
+  sanitizers, old/new image cross-reading and paired performance. Keep the
+  remaining CBPV rule inspection and ordinary-function extraction open.
+- [ ] Inspect `CLASSIFIER_FORMATION_JOB` with `type_structure_step` and
+  `constructor_callable_origin`: its query progress already belongs to the
+  shared typed-query engine. Move its provisional consumers with the request;
+  do not introduce another classifier cache or extract entry points alone.
 - [ ] Move each owner's provisional structural inspection with its typed
   construction/checking interface; the central driver must not keep a second
   domain switch describing the same terms. Adapt to P4's reduced Evidence
@@ -839,6 +876,7 @@ not trusted field types. Keep P4's general checker migration open.
 | 2026-09-26 | P5 shared work | `84a54e2` separates the 80-byte common header from private owner state and moves the original scheduler | Clean full acceptance, affected sanitizers, image cross-reading and paired comparison complete; remaining owner extraction/P4 stay open |
 | 2026-09-26 | P5 Handler owner | `c89edb7` localizes Handler state and pending structure; a direct-alias regression found during extraction is fixed and tested | Clean acceptance, sanitizers, cross-version images and paired timing complete; Operation/CBPV/IADT and broader P4 remain open |
 | 2026-09-26 | P4.3b | `270c271` checks retained ordinary functions without prior derivations; the shared APP rule validates retained result binders | Clean acceptance, Debug, sanitizers and cross-reading pass; history removal and budgeted checking remain open |
+| 2026-09-26 | P5 | `12a0e1d` localizes four CBPV adapters and replaces their 240-byte private source state with 8/16/40-byte owner state | Clean acceptance, Debug, sanitizers, cross-reading and paired timings pass; broader P4/P5 remain open |
 
 P4.2a verification (fresh, current worktree including the inherited Context/IADT
 edits): optimized `identity_test`, `derivation_io.sh` and `identity_io.sh` pass;
@@ -1112,3 +1150,40 @@ Source delta `f2b112b..270c271`; documentation remains separate:
 Total +358/-19, net +339: implementation/headers +148, tests +183, build +8.
 This is a checking prerequisite, not history removal or net code reduction.
 Plan document: +94/-8 lines, net +86 (separate from source changes).
+
+### CBPV Adapter Verification
+
+Verified `12a0e1d` against `aa151fe`, 2026-09-26; inherited trials excluded:
+
+- Strict-O2, Debug and ASan/UBSan synthesis tests pass, including pending
+  effect/Context cycles, yielding and cancellation. Existing cases now assert
+  smaller owner state, exact repeated requests and borrowed Body input edges.
+- ASan/UBSan source-image suite passes. Old/new binaries cross-read modules,
+  annotations, nominal declarations and all 13 retained source fixtures in
+  both directions; single/bulk reads and checked/recomputed imports agree.
+- General Sorted input has identical old/new outcomes at budgets 0 and 100
+  (`pending`), and completion (`done steps=603582`). The five moved semantic
+  functions are unchanged after normalizing field and shared-helper names.
+- Clean `check-acceptance` passes, exit 0: wall 1555.189s (25m55.189s), user
+  1442.026s, system 112.286s. Includes all four LT/partition combinations and
+  optional witness packets. Log: `/tmp/a-program-cbpv-owner-acceptance.log`.
+
+After acceptance, six paired `generic_sorted.sh` samples use identical inputs
+and strict-O2 builds, with the order reversed for the last three pairs. Baseline
+median 5.813s (5.783-5.838); candidate 5.745s (5.685-5.822), about 1.2% faster
+locally. All normalized output and reported Solve counts match. This is not a
+general speedup claim. Logs: `/tmp/a-program-cbpv-owner-bench.pVWhXv/`.
+
+| File under `src/prototype/pointer/` | Added | Deleted | Net |
+| --- | ---: | ---: | ---: |
+| `synthesis.c` | 46 | 303 | -257 |
+| `synthesis_cbpv.c` | 313 | 0 | +313 |
+| `synthesis_source.h` | 8 | 0 | +8 |
+| `tests/synthesis.c` | 31 | 0 | +31 |
+| `Makefile` | 1 | 1 | 0 |
+
+Total +399/-304, net +95: implementation/headers +64, tests +31, build 0.
+Ten existing functions (236 lines) were moved and adapted; the additional
+lines provide private descriptors/lifecycle/projection interfaces and tests.
+The old dispatch cases and unused `request_typed` helper were removed. This is
+owner/state isolation, not evidence-history removal or net code reduction.
