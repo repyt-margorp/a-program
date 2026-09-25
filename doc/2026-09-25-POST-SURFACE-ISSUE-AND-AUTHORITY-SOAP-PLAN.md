@@ -316,6 +316,17 @@ Current input/consumer inventory (partial P4.2, not a completed checker design):
 | Identity | Family, endpoints, maps and paths, now read in its owner | Direct boundary checking works without parent history; children/maps still need accepted typing. Origin recovery and full recursive typed checking remain unfinished |
 | Conversion / normalization | Origin, new type boundary and reusable computation certificates | These are checked computations, not object Equality proofs. Do not discard validation or infer conversion from equal Core tags |
 
+Reinspection at `6f2b466`, 2026-09-26: `pg_context` retains a raw declared
+classifier and a family telescope, not the typed formation of that declaration.
+`binding_level` and classifier lookup still recover formation from context
+Evidence premises. Ordinary Pi retains a typed domain, but a family-domain Pi
+retains the scoped family variable instead. Therefore reject extending
+`pg_prove_structural_subject` with a Core-tag switch that guesses these missing
+inputs. Before the P4.3 checker migration, specify the owner of ordinary and
+family declaration formation, including Universe bounds and image transport.
+Do not replace old receipts with another copied universal proof payload or
+claim that file extraction makes the typed structure self-sufficient.
+
 Image boundary: `occurrence_io.c` already transports typed operands, maps and
 scopes without accepting proofs; it does not yet replace `derivation_io.c`'s
 premise DAG. `retained_io.c` writes rule inputs, effect equations, optional
@@ -668,6 +679,15 @@ source-state assumption: ordinary Handler producers have no lexical namespace.
 The source owner alone projects its optional exports; normal typed membership
 resolution remains unchanged.
 
+Operation extraction, 2026-09-26 (agent decision): put signature/request
+construction, provisional projection, reference resolution and allocation
+restoration in `synthesis_operation.c`. Source naming exposes only an existing
+lexical-alias edge. Reuse the common work index/queue and ordinary checking
+rules. The fixed two-binder Operation allocation needs only its existing
+Context pointer; remove the extra generic allocation array and its copied
+prefix/count/cursor from this owner. Retained allocation supplies identities,
+not trusted field types. Keep P4's general checker migration open.
+
 ### Plan
 
 - [x] Confirm that owner-level semantics are partially separated while synthesis
@@ -704,6 +724,10 @@ resolution remains unchanged.
   registration failure, clause binder identities, repeated requests and source
   images. Run clean acceptance, affected sanitizers and paired performance;
   record the surviving Operation/CBPV/IADT ownership work separately.
+- [ ] Verify the Operation-owner slice: pending term/classifier projections,
+  aliases and nested references, single/bulk budgets, exact request reuse,
+  restored binder identities and wrong signatures; then clean acceptance,
+  affected sanitizers, source-image compatibility and paired performance.
 - [ ] Move each owner's provisional structural inspection with its typed
   construction/checking interface; the central driver must not keep a second
   domain switch describing the same terms. Adapt to P4's reduced Evidence

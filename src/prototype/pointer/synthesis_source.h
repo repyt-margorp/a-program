@@ -34,6 +34,8 @@ struct pg_synthesis_job *pg_synthesis_plain_rule(struct pg_synthesis *, enum pg_
 	const struct pg_object *, size_t, struct pg_synthesis_job *const *);
 struct pg_synthesis_job *pg_synthesis_rule_premise(struct pg_synthesis *, const struct pg_synthesis_job *, size_t);
 const struct pg_synthesis_job *pg_synthesis_operation_origin(const struct pg_synthesis_job *);
+/* Follow an existing lexical alias edge, without evaluation or acceptance. */
+struct pg_synthesis_job *pg_synthesis_source_origin(const struct pg_synthesis_job *);
 struct pg_synthesis_job *pg_synthesis_body(struct pg_synthesis *, struct pg_synthesis_job *, struct pg_synthesis_job *);
 
 #endif

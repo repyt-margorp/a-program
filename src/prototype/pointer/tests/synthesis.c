@@ -1929,6 +1929,11 @@ static void effect_expectations(struct pg_typing *typing)
 	size_t term_count = typing->graph->terms.count, proof_count = typing->proofs.count;
 	struct pg_synthesis_job *operation_job = pg_synthesis_operation(&synthesis, operation);
 	assert(operation_job && !pg_synthesis_result(operation_job));
+	struct pg_synthesis_projection operation_view = pg_synthesis_work_project(operation_job);
+	assert(operation_view.preparing && !operation_view.rule);
+	uint64_t operation_steps = synthesis.steps;
+	pg_synthesis_advance(&synthesis, 0);
+	assert(synthesis.steps == operation_steps && !pg_synthesis_result(operation_job));
 	struct pg_synthesis_job *operation_reference = pg_synthesis_operation_reference(&synthesis, operation_job);
 	assert(operation_reference && pg_synthesis_operation_declaration(operation_reference) == operation);
 	assert(pg_synthesis_status(operation_reference) == PG_SYNTHESIS_PENDING);
@@ -1943,6 +1948,11 @@ static void effect_expectations(struct pg_typing *typing)
 	assert(!pg_synthesis_result(operation_job));
 	const struct pg_synthesis_job *operation_body = pg_synthesis_dependency(operation_job);
 	assert(operation_body && !pg_synthesis_result(operation_body));
+	operation_view = pg_synthesis_work_project(operation_job);
+	assert(!operation_view.preparing && operation_view.rule == operation_body);
+	struct pg_synthesis_job *operation_term = pg_synthesis_term_structure(&synthesis, operation_job);
+	struct pg_synthesis_job *operation_type = pg_synthesis_classifier_structure(&synthesis, operation_job);
+	assert(operation_term && operation_type);
 	term_count = typing->graph->terms.count;
 	assert(pg_synthesis_operation(&synthesis, operation) == operation_job);
 	assert(pg_synthesis_dependency(operation_job) == operation_body);
@@ -1972,6 +1982,13 @@ static void effect_expectations(struct pg_typing *typing)
 	assert(pg_synthesis_operation(&synthesis, operation) == operation_job);
 	const struct pg_evidence *operation_function = pg_synthesis_result(operation_job);
 	assert(operation_function);
+	complete(&synthesis, operation_term, PG_SYNTHESIS_DONE);
+	complete(&synthesis, operation_type, PG_SYNTHESIS_DONE);
+	assert(pg_synthesis_type_structure_result(operation_term) == pg_evidence_subject(operation_function)->core);
+	assert(pg_synthesis_type_structure_result(operation_type) == pg_evidence_classifier(operation_function));
+	struct pg_operation_input wrong_owner;
+	assert(pg_synthesis_operation_input(&synthesis, operation_term, &wrong_owner));
+	assert(pg_synthesis_operation_input(&synthesis, NULL, &wrong_owner));
 	const struct pg_evidence *source_alias = complete(&synthesis,
 		request(&synthesis, scope, "alias := Op;"), PG_SYNTHESIS_DONE);
 	assert(pg_evidence_subject(source_alias)->core == pg_evidence_subject(operation_function)->core);
@@ -1981,6 +1998,10 @@ static void effect_expectations(struct pg_typing *typing)
 	assert(typing->graph->terms.count == term_count && typing->proofs.count == proof_count);
 	assert(!complete(&synthesis, operation_reference, PG_SYNTHESIS_DONE));
 	assert(pg_synthesis_operation_declaration(operation_reference) == operation);
+	struct pg_synthesis_job *nested_reference = pg_synthesis_operation_reference(&synthesis, operation_reference);
+	assert(pg_synthesis_operation_declaration(nested_reference) == operation);
+	assert(!complete(&synthesis, nested_reference, PG_SYNTHESIS_DONE));
+	assert(pg_synthesis_operation_declaration(nested_reference) == operation);
 	struct pg_operation_input allocation;
 	assert(!pg_synthesis_operation_input(&synthesis, operation_job, &allocation) && allocation.allocation);
 	for (unsigned mode = 0; mode < 3; ++mode) {
@@ -2008,6 +2029,14 @@ static void effect_expectations(struct pg_typing *typing)
 		assert(!restored.steps && !pg_synthesis_operation_declaration(reference));
 		assert(!pg_synthesis_result(signature.payload) && !pg_synthesis_result(signature.response));
 		assert(pg_synthesis_operation_reference_input(&synthesis, reference, &signature));
+		size_t jobs = restored.jobs.count, terms = typing->graph->terms.count, proofs = typing->proofs.count;
+		pg_synthesis_advance(&restored, 0);
+		assert(!restored.steps && restored.jobs.count == jobs);
+		assert(typing->graph->terms.count == terms && typing->proofs.count == proofs);
+		while (pg_synthesis_status(rebuilt) == PG_SYNTHESIS_PENDING) {
+			assert(restored.steps < 10000);
+			pg_synthesis_advance(&restored, mode & 1 ? 64 : 1);
+		}
 		const struct pg_evidence *result = complete(&restored, rebuilt,
 			mode == 2 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE);
 		if (result) assert(pg_evidence_subject(result)->core == pg_evidence_subject(operation_function)->core);
@@ -2021,6 +2050,12 @@ static void effect_expectations(struct pg_typing *typing)
 		const struct pg_context *different = pg_context_bind(typing, end->parent, pg_binder(typing->graph), end->declared_type, PG_JUDGEMENT_VALUE);
 		assert(!pg_synthesis_operation_at(&restored, allocation.label, payload, response, different));
 		assert(!pg_synthesis_operation_jobs(&restored, pg_binder(typing->graph), payload, response));
+		jobs = restored.jobs.count; terms = typing->graph->terms.count; proofs = typing->proofs.count;
+		for (size_t i = 0; i < 16; ++i) {
+			assert(pg_synthesis_operation_jobs(&restored, allocation.label, payload, response) == rebuilt);
+			assert(pg_synthesis_operation_reference(&restored, rebuilt) == reference);
+		}
+		assert(restored.jobs.count == jobs && typing->graph->terms.count == terms && typing->proofs.count == proofs);
 		pg_synthesis_destroy(&restored);
 	}
 	scope = pg_synthesis_name(&synthesis, scope,
