@@ -455,6 +455,8 @@ soundness; preserve all inherited files and edits locally for their author.
   IH and Identity, list each semantic input, its existing typed owner and each
   remaining rule/premise reader. Classify information as object proof structure,
   necessary checking input, reusable computation receipt, or optional history.
+  Include ordinary/family context declaration formation and Universe bounds;
+  the current raw Context payload alone does not retain those typed inputs.
   Specify how a typed construction can be checked without searching for its
   old derivation. Inventory image roots and tests that assume exact premise
   retention; preserve distinct object proofs, not necessarily checker histories.
@@ -724,7 +726,7 @@ not trusted field types. Keep P4's general checker migration open.
   registration failure, clause binder identities, repeated requests and source
   images. Run clean acceptance, affected sanitizers and paired performance;
   record the surviving Operation/CBPV/IADT ownership work separately.
-- [ ] Verify the Operation-owner slice: pending term/classifier projections,
+- [x] Verify the Operation-owner slice: pending term/classifier projections,
   aliases and nested references, single/bulk budgets, exact request reuse,
   restored binder identities and wrong signatures; then clean acceptance,
   affected sanitizers, source-image compatibility and paired performance.
@@ -946,3 +948,39 @@ private states 32/40/32 bytes instead of 264 each. These sizes exclude immutable
 operands and separately allocated state, so they are not a peak-memory claim.
 Operation preparation, CBPV adaptation, IADT and
 general typed-proof authority still require their own inspected migrations.
+
+### Operation Owner Verification
+
+Clean candidate `3397e52`, 2026-09-26, excluding inherited trials:
+`check-acceptance` exits zero (wall 25m55.984s, user 24m0.880s, system 1m54.263s,
+including builds). General ordinary-result QuickSort, all four LT/partition
+variants, negative/image cases and optional-witness isolation/packets pass.
+ASan/UBSan synthesis, source-image, Handler nesting and all four save-boundary
+tests pass with the preceding flags. Snapshot counts remain
+1,365/1,515/705/898. Source, pending-effect, producer and Operation images
+cross-read in both directions with `c89edb7` at budgets 1/64. Logs:
+`/tmp/a-program-operation-owner-{acceptance,asan-*}.log` and
+`/tmp/a-program-operation-cross.ELy19S/`.
+
+After acceptance, three alternating paired `generic_sorted.sh` runs against
+`c89edb7` give baseline median 5.784s (5.706-5.849), candidate median 5.785s
+(5.783-5.798). Normalized output and reported Solve counts match. This sample
+does not establish a speed change. Logs: `/tmp/a-program-operation-bench.NalE2B/`.
+Adopt this slice; P4 and the remaining P5 migrations stay open.
+
+Source delta `6f2b466..3397e52`; documentation is separate:
+
+| File under `src/prototype/pointer/` | Added | Deleted | Net |
+| --- | ---: | ---: | ---: |
+| `synthesis.c` | 4 | 155 | -151 |
+| `synthesis_operation.c` | 190 | 0 | +190 |
+| `synthesis_source.h` | 2 | 0 | +2 |
+| `tests/synthesis.c` | 35 | 0 | +35 |
+| `Makefile` | 1 | 1 | 0 |
+
+Total +232/-156, net +76: implementation/headers +41, tests +35, build zero.
+Most code moved; the Operation's redundant generic allocation array was removed.
+This is not overall code reduction. Debug-symbol sizes on x86-64: shared header
+80 bytes unchanged; source state 248 to 240; Operation/reference private state
+24/16 instead of 248 each, excluding operands and other allocations. No new
+Core tag, checker authority, scheduler or wire format was introduced.
