@@ -2,14 +2,17 @@
 
 Date: 2026-09-25
 Updated: 2026-09-26
-Status: P1-P3 closed; P4 Identity-boundary/Lambda-scope/typed-only function and P5 effect-owner/shared
-work-header/Handler/Operation/CBPV-adapter/function-formation slices verified by clean publication-tree acceptance and sanitizers.
+Status: P1-P3 closed. P4 Identity-boundary/Lambda-scope/typed-only function and
+result-formation reuse slices verified. P5 effect-owner/shared work-header/
+Handler/Operation/CBPV-adapter/function-formation slices verified.
+Verification uses clean publication trees, full acceptance and affected sanitizers.
 Broader P4 typed-proof migration and P5 synthesis modularity remain open.
 Initial review baseline: `40375d734896a456f5ad2827ad8fe0f10ff61517`.
 Verified implementation milestones: `60bde88` (P4), `dcc58ec` (first P5 slice),
 `84a54e2` (shared work/private state), `c89edb7` (Handler owner), and
 `3397e52` (Operation owner), `270c271` (typed-only ordinary functions), and
-`12a0e1d` (CBPV adapters), and `22661f4` (function formation);
+`12a0e1d` (CBPV adapters), `22661f4` (function formation), and
+`c341229` (result-formation history removal);
 the latest clean gate covers these slices.
 Inherited implementation edits: Context/IADT relocation changes in
 `evidence.[ch]`, `iadt.[ch]`, two unit tests and two derived-LT files. These
@@ -28,7 +31,7 @@ provide a second execution order. The order below is the agent's proposal.
 | P1 | Align open reports with published implementation | #32; PRs #20, #35-#38 | Verified; closed |
 | P2 | Reassess the old computation-result report against current contracts | #13 | Closed by user-approved scope decision |
 | P3 | Resolve the remaining MergeSort report against existing regressions | #28 | Verified; closed |
-| P4 | Make typed proof structure authoritative; remove redundant evidence dependency | Existing R2-R5 plans | Typed-only ordinary-function slice verified; history removal and broader migration pending |
+| P4 | Make typed proof structure authoritative; remove redundant evidence dependency | Existing R2-R5 plans | Typed-only functions and result-formation history removal verified; broader migration pending |
 | P5 | Separate synthesis by semantic owner without duplicating shared machinery | User follow-up on synthesis.c | Effect-owner/shared-header/Handler/Operation/CBPV-adapter/function-formation slices verified; legacy source state remains |
 
 ## P1. Issue and PR Disposition
@@ -400,6 +403,12 @@ context map to remain distinct. That is a legacy history-retention contract,
 not two distinct object proof Terms. Review that contract in P4.3; retain the
 test's nominal declaration, IH allocation, zero-fuel and fresh-check assertions.
 
+At `d09120d`, `pg_prove_data_result_formation` additionally clones an accepted
+Constructor/Match/IH receipt solely to replace its result-formation receipt
+with another having the **same exact typed subject**. Both constructor and
+eliminator already retain that subject in `pg_occurrence.type`. This narrower
+duplication is independent of the map/declaration contract above.
+
 Therefore R1 consolidated conclusions, but did **not** remove dependence on
 the derivation graph. Renaming Evidence, splitting its file, or adding another
 subject accessor would not finish this part of the refactor.
@@ -486,6 +495,15 @@ proof Terms must survive; multiple checker derivations of the same typed Term
 need not become different object proofs. Review old blanket premise-retention
 tests against that distinction before changing their expectations.
 
+Agent decision for P4.3c, 2026-09-26: delete result-formation receipt cloning.
+Validate the supplied formation against the resulting typed Term's `type`
+edge, after the ordinary rule has checked its semantic inputs. This preserves
+the exact Context, nominal identity, classifier/Universe and typed structure,
+not merely erased Core equality. No change to DefEq or object Identity is
+involved. Reject a blanket "same conclusion means interchangeable premise"
+policy: Context declaration choices, maps and directional/action rules have
+separate retained-input contracts. Keep those unchanged in this slice.
+
 Core stays erased; required motive, scope, index and Identity-boundary inputs
 belong to typed construction or their existing semantic owner. Do not copy the
 entire Evidence DAG into renamed occurrence fields. Conversion checks and
@@ -553,6 +571,13 @@ soundness; preserve all inherited files and edits locally for their author.
   classifiers, scope, selected origin and Universe bound. The publication
   gates pass. This is a prerequisite, not completion of
   the history-removal or shared budgeted-work requirements below.
+- [x] **P4.3c Result-formation history:** remove receipt cloning done solely
+  to retain an alternative acceptance of the exact same Constructor/Match/IH
+  result type. Check the supplied formation's complete typed occurrence;
+  preserve nominal identity, Context, Universe bounds and other rule inputs.
+  Verify allocation reuse, fresh-process images, old/new cross-reading and
+  existing direct/Solve rejection tests before publication. This does not
+  replace family-declaration inputs or all derivation history.
 - [ ] **P4.3 One end-to-end slice:** start with typed Lambda/APP plus context
   action, then one Identity boundary consumer. Build, check, inspect, serialize
   and load the typed structure through the same Solve mechanism. Remove the
@@ -909,6 +934,7 @@ dispatch was also unnecessary: use the existing queue and narrow owner queries.
 | 2026-09-26 | P4.3b | `270c271` checks retained ordinary functions without prior derivations; the shared APP rule validates retained result binders | Clean acceptance, Debug, sanitizers and cross-reading pass; history removal and budgeted checking remain open |
 | 2026-09-26 | P5 | `12a0e1d` localizes four CBPV adapters and replaces their 240-byte private source state with 8/16/40-byte owner state | Clean acceptance, Debug, sanitizers, cross-reading and paired timings pass; broader P4/P5 remain open |
 | 2026-09-26 | P5 | `22661f4` localizes function formation, Pi scopes and their pending consumers; no extra classifier cache | Clean acceptance, Debug, sanitizers, cross-reading and paired timings pass; broader P4/P5 remain open |
+| 2026-09-26 | P4.3c | `c341229` validates result formation through the typed Term's `type` edge and deletes receipt cloning | Clean acceptance, Debug, sanitizers, legacy alternate-history images and paired timings pass; broader P4/P5 remain open |
 
 P4.2a verification (fresh, current worktree including the inherited Context/IADT
 edits): optimized `identity_test`, `derivation_io.sh` and `identity_io.sh` pass;
@@ -1257,3 +1283,48 @@ documentation excluded. Six construction helpers and two existing work steps
 were moved/adapted, not new typing rules. The source driver's role cases were
 removed; no second work engine, Core tag or image format was introduced.
 This is owner/state isolation, not net code reduction or Evidence-history removal.
+
+### Result Formation Verification
+
+Verified `c341229` against `d09120d`, 2026-09-26; inherited trials excluded.
+Strict-O2, Debug and ASan/UBSan IADT and derivation-image tests pass. The tests
+require exact existing-result reuse without new Evidence/Core allocation and
+reject a changed result type or Context, even with unchanged erased Core.
+Acc is covered with both field-totality contracts; existing wrong schema,
+nominal constructor, arity and IH allocation checks remain in place.
+
+All eight derivation fixture modes cross-read in both directions at budgets
+1/64. The old kernel also builds the updated nominal fixture, which requests
+alternate formations; its additional-history images pass the new checker.
+The new reuse assertion fails on that old kernel as expected, confirming the
+test detects the removed behavior. No wire-format change is involved. Logs:
+`/tmp/a-program-result-formation-{asan,debug}-*.log` and
+`/tmp/a-program-result-formation-cross.TELgXV/`.
+Full `check-acceptance` exits zero: wall 25m46.732s, user 23m54.670s,
+system 1m51.199s, including builds and early overlap with the auxiliary checks.
+All four LT/partition variants and optional-witness packets pass. Log:
+`/tmp/a-program-result-formation-acceptance.log`.
+
+After acceptance, six paired `generic_sorted.sh` runs with a warmup per binary
+and reversed order for the final three pairs give median 5.7735s for the
+baseline (5.671-5.792) and 5.7345s for the candidate (5.672-5.757). Normalized
+output and reported Solve counts match. General Sorted with its required
+provider agrees at budgets 0/100 (pending) and completion (603582 steps).
+No material regression is observed in this local sample; it is not a general
+speedup claim. Logs: `/tmp/a-program-result-formation-bench.mwUVwc/`.
+Adopt this slice; no speculative Context/map canonicalization is included.
+
+| File under `src/prototype/pointer/` | Added | Deleted | Net |
+| --- | ---: | ---: | ---: |
+| `derivation.c` | 15 | 9 | +6 |
+| `derivation.h` | 2 | 0 | +2 |
+| `evidence.c` | 0 | 24 | -24 |
+| `evidence.h` | 0 | 5 | -5 |
+| `tests/derivation_io.c` | 48 | 0 | +48 |
+| `tests/iadt.c` | 6 | 5 | +1 |
+
+Total +71/-43, net +28: implementation/headers -21, tests +49, build zero;
+documentation excluded. One cloning API and its temporary premise-array copy
+are removed. Broader P4/P5 and general history-removal gates remain open.
+
+Plan document: +75/-4, net +71, reported separately from source changes.
