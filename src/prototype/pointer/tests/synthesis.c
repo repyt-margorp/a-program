@@ -1293,8 +1293,12 @@ static void pending_effect_contexts(struct pg_typing *typing)
 		assert(pg_parser_next(&return_parser, &return_definition) == 1);
 		struct pg_synthesis_job *return_clause_job = pg_synthesis_handler_return(&synthesis, scope, body,
 			return_definition.expression->items[0].expression);
+		struct pg_synthesis_projection return_view = pg_synthesis_work_project(return_clause_job);
+		assert(return_view.preparing && !return_view.rule && return_view.value_kind == -1);
 		struct pg_synthesis_job *return_clause_type = pg_synthesis_classifier_structure(&synthesis, return_clause_job);
 		assert(!complete(&synthesis, return_clause_type, PG_SYNTHESIS_DONE));
+		return_view = pg_synthesis_work_project(return_clause_job);
+		assert(!return_view.preparing && return_view.rule && !pg_synthesis_result(return_clause_job));
 		const struct pg_term *return_domain, *return_codomain;
 		const struct pg_object *return_binder;
 		assert(pg_pi_view(pg_synthesis_type_structure_result(return_clause_type),
@@ -1364,11 +1368,19 @@ static void pending_effect_contexts(struct pg_typing *typing)
 		assert(pg_parser_next(&op_parser, &op_definition) == 1);
 		struct pg_synthesis_job *op_clause = pg_synthesis_handler_clause(&synthesis, op_scope,
 			carrier, op_definition.expression->items[0].expression);
+		assert(op_clause->role != return_clause_job->role);
+		assert(pg_synthesis_work_project(op_clause).preparing);
 		/* Request structure immediately, before operation-name preparation. */
 		struct pg_synthesis_job *op_type = pg_synthesis_classifier_structure(&synthesis, op_clause);
 		struct pg_synthesis_job *op_term = pg_synthesis_term_structure(&synthesis, op_clause);
 		assert(!complete(&synthesis, op_type, PG_SYNTHESIS_DONE));
 		assert(!complete(&synthesis, op_term, PG_SYNTHESIS_DONE));
+		struct pg_synthesis_projection clause_view = pg_synthesis_work_project(op_clause);
+		uint64_t projected_steps = synthesis.steps;
+		size_t projected_jobs = synthesis.jobs.count;
+		assert(clause_view.rule && !clause_view.preparing && !pg_synthesis_result(op_clause));
+		assert(pg_synthesis_work_project(op_clause).rule == clause_view.rule);
+		assert(synthesis.steps == projected_steps && synthesis.jobs.count == projected_jobs);
 		struct pg_synthesis_job *open_clause = pg_synthesis_handler_clause(&synthesis, pending_op_scope,
 			open_carrier, op_definition.expression->items[0].expression);
 		struct pg_synthesis_job *open_clause_type = pg_synthesis_classifier_structure(&synthesis, open_clause);
@@ -1384,8 +1396,13 @@ static void pending_effect_contexts(struct pg_typing *typing)
 		assert(pg_parser_next(&explicit_parser, &explicit_definition) == 1);
 		struct pg_synthesis_job *explicit_handler = pg_synthesis_handler(&synthesis, explicit_scope,
 			open_carrier, explicit_definition.expression);
+		assert(explicit_handler->role != op_clause->role);
+		struct pg_synthesis_projection handler_view = pg_synthesis_work_project(explicit_handler);
+		assert(!handler_view.rule && handler_view.preparing && handler_view.value_kind == 0);
 		struct pg_synthesis_job *explicit_term = pg_synthesis_term_structure(&synthesis, explicit_handler);
 		assert(!complete(&synthesis, explicit_term, PG_SYNTHESIS_DONE));
+		handler_view = pg_synthesis_work_project(explicit_handler);
+		assert(handler_view.rule && !handler_view.preparing && !pg_synthesis_result(explicit_handler));
 		assert(!pg_synthesis_result(explicit_handler) && !pg_synthesis_result(open_carrier));
 		struct pg_synthesis_job *raw_return_domain = rule_job(&synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
 			(struct pg_synthesis_job *[]){context, universe});

@@ -4,6 +4,12 @@
 #include "synthesis.h"
 
 struct waiter;
+/* Borrowed view of existing construction, never stored acceptance or a second
+ * classifier. value_kind: -1 unknown, 0 computation, 1 value, 2 value type. */
+struct pg_synthesis_projection {
+	struct pg_synthesis_job *rule;
+	int preparing, value_kind;
+};
 /* Shared scheduling and identity only. Domain state is private to its owner;
  * the result is a borrowed checked value, never a second proof representation. */
 struct pg_synthesis_job {
@@ -31,8 +37,8 @@ struct pg_synthesis_work_class {
 	void (*advance)(struct pg_synthesis *, struct pg_synthesis_job *);
 	void (*destroy)(struct pg_synthesis_job *);
 	void (*completed)(struct pg_synthesis *, struct pg_synthesis_job *, int first);
-	/* Optional publication of provisional structure, before acceptance. */
-	int (*preparing)(const struct pg_synthesis_job *);
+	/* Optional inspection of provisional construction, before acceptance. */
+	struct pg_synthesis_projection (*project)(const struct pg_synthesis_job *);
 };
 
 struct pg_synthesis_job *pg_synthesis_work_request(struct pg_synthesis *synthesis,
@@ -45,6 +51,9 @@ void *pg_synthesis_work_state(const struct pg_synthesis_job *job,
 	const struct pg_synthesis_work_class *kind);
 const void *pg_synthesis_work_input(const struct pg_synthesis_job *job, size_t index);
 size_t pg_synthesis_work_input_count(const struct pg_synthesis_job *job);
+struct pg_synthesis_projection pg_synthesis_work_project(const struct pg_synthesis_job *job);
+int pg_synthesis_forward(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
+	struct pg_synthesis_job *canonical);
 void pg_synthesis_enqueue(struct pg_synthesis *synthesis, struct pg_synthesis_job *job);
 void pg_synthesis_finish(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
 	enum pg_synthesis_status status);

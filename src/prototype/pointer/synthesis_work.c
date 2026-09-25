@@ -99,6 +99,14 @@ size_t pg_synthesis_work_input_count(const struct pg_synthesis_job *job)
 	return job ? job->input_count : 0;
 }
 
+struct pg_synthesis_projection pg_synthesis_work_project(const struct pg_synthesis_job *job)
+{
+	struct pg_synthesis_projection view = {.value_kind = -1};
+	if (job && job->role->project) view = job->role->project(job);
+	if (!job || job->status != PG_SYNTHESIS_PENDING) view.preparing = 0;
+	return view;
+}
+
 static void wake(struct pg_synthesis *synthesis, struct pg_synthesis_job *job, int preparation)
 {
 	struct waiter **link = &job->waiters;
@@ -159,7 +167,7 @@ void pg_synthesis_advance(struct pg_synthesis *synthesis, uint64_t budget)
 		--budget;
 		++synthesis->steps;
 		job->role->advance(synthesis, job);
-		if (job->waiters && (!job->role->preparing || !job->role->preparing(job)))
+		if (job->waiters && !pg_synthesis_work_project(job).preparing)
 			wake(synthesis, job, 1);
 	}
 }
@@ -185,4 +193,18 @@ const struct pg_synthesis_job *pg_synthesis_cycle(const struct pg_synthesis_job 
 		if (!slow || !fast) return NULL;
 	} while (slow != fast);
 	return slow;
+}
+
+/* Forward proof-result jobs only; schema/namespace outputs have other payloads. */
+int pg_synthesis_forward(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
+	struct pg_synthesis_job *canonical)
+{
+	if (!canonical) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return 1; }
+	if (canonical == job) return 0;
+	if (canonical->status == PG_SYNTHESIS_PENDING) pg_synthesis_subscribe(synthesis, job, canonical, 0);
+	else {
+		job->result = canonical->result;
+		pg_synthesis_finish(synthesis, job, canonical->status);
+	}
+	return 1;
 }
