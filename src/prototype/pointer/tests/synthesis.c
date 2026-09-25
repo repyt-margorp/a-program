@@ -1,6 +1,7 @@
 #include "synthesis.h"
 #include "synthesis_effect.h"
 #include "synthesis_work.h"
+#include "synthesis_source.h"
 #include "computation.h"
 #include "identity.h"
 #include "action.h"
@@ -232,6 +233,16 @@ static void source_body_kinds(struct pg_typing *typing)
 	assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
 	for (size_t i = 0; i < sizeof(sources) / sizeof(*sources); ++i) {
 		struct pg_synthesis_job *producer = request(&synthesis, pg_synthesis_root(&synthesis), sources[i]);
+		struct pg_synthesis_job *context = pg_synthesis_evidence(&synthesis, pg_prove_empty_context(typing));
+		struct pg_synthesis_job *body_job = pg_synthesis_body(&synthesis, producer, context);
+		assert(body_job && body_job->role->size < producer->role->size);
+		assert(pg_synthesis_body(&synthesis, producer, context) == body_job);
+		assert(pg_synthesis_body_input(body_job) == producer && !pg_synthesis_body_input(producer));
+		struct pg_synthesis_projection projection = pg_synthesis_work_project(body_job);
+		assert(!projection.rule && projection.preparing && projection.value_kind == 0);
+		uint64_t steps = synthesis.steps;
+		pg_synthesis_advance(&synthesis, 0);
+		assert(synthesis.steps == steps && !pg_synthesis_result(body_job));
 		const struct pg_source_scope *scope = pg_synthesis_name_job(&synthesis, pg_synthesis_root(&synthesis),
 			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "selected", .length = 8}, producer);
 		struct pg_synthesis_job *pending = request(&synthesis, scope, "f := \\unused : @ => selected;");
@@ -246,6 +257,12 @@ static void source_body_kinds(struct pg_typing *typing)
 			body = pg_application(typing->graph, pg_reference(typing->graph, &pg_return_operation), body);
 		const struct pg_term *lambda = pg_evidence_subject(after)->core;
 		assert(lambda->kind == PG_LAMBDA && pg_alpha_equal(lambda->as.lambda.body, body) == 1);
+		const struct pg_evidence *adapted = complete(&synthesis, body_job, PG_SYNTHESIS_DONE);
+		assert(pg_evidence_judgement(adapted) == PG_JUDGEMENT_COMPUTATION);
+		assert(pg_evidence_subject(adapted)->core == body);
+		assert(pg_synthesis_body(&synthesis, producer, context) == body_job);
+		projection = pg_synthesis_work_project(body_job);
+		assert(projection.rule && !projection.preparing && pg_synthesis_result(projection.rule) == adapted);
 	}
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&work);
@@ -297,6 +314,10 @@ static void sequence_structure_choice(struct pg_typing *typing)
 		struct pg_synthesis_job *continuation = request(&synthesis, scope, continuations[i]);
 		struct pg_synthesis_job *context = pg_synthesis_evidence(&synthesis, pg_prove_empty_context(typing));
 		struct pg_synthesis_job *sequence = pg_synthesis_sequence(&synthesis, context, input, continuation);
+		assert(sequence && sequence->role->size < input->role->size);
+		assert(pg_synthesis_sequence(&synthesis, context, input, continuation) == sequence);
+		struct pg_synthesis_projection projection = pg_synthesis_work_project(sequence);
+		assert(!projection.rule && projection.preparing && projection.value_kind == 0);
 		struct pg_synthesis_job *term = pg_synthesis_term_structure(&synthesis, sequence);
 		struct pg_synthesis_job *type = pg_synthesis_classifier_structure(&synthesis, sequence);
 		assert(!complete(&synthesis, term, PG_SYNTHESIS_DONE));
@@ -305,6 +326,14 @@ static void sequence_structure_choice(struct pg_typing *typing)
 		assert(pg_evidence_rule(proof) == (i == 1 ? PG_APP_ELIM : PG_FOLD_ELIM));
 		assert(pg_alpha_equal(pg_synthesis_type_structure_result(term), pg_evidence_subject(proof)->core) == 1);
 		assert(pg_alpha_equal(pg_synthesis_type_structure_result(type), pg_evidence_classifier(proof)) == 1);
+		while (synthesis.ready) pg_synthesis_advance(&synthesis, 64);
+		size_t jobs = synthesis.jobs.count;
+		uint64_t steps = synthesis.steps;
+		assert(pg_synthesis_sequence(&synthesis, context, input, continuation) == sequence);
+		pg_synthesis_advance(&synthesis, 64);
+		assert(synthesis.jobs.count == jobs && synthesis.steps == steps);
+		projection = pg_synthesis_work_project(sequence);
+		assert(projection.rule && !projection.preparing && pg_synthesis_result(projection.rule) == proof);
 	}
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&work);
@@ -7404,6 +7433,7 @@ int main(void)
 	size_t evaluation_jobs = synthesis.jobs.count;
 	struct pg_synthesis_job *shared_return = pg_synthesis_return(&synthesis, x_context, second_application);
 	assert(shared_return && pg_synthesis_status(shared_return) == PG_SYNTHESIS_PENDING);
+	assert(shared_return->role->size < callee_step->role->size && !pg_synthesis_body_input(shared_return));
 	assert(synthesis.jobs.count == evaluation_jobs + 1);
 	assert(pg_synthesis_return(&synthesis, x_context, second_application) == shared_return);
 	uint64_t evaluation_steps = synthesis.steps;
@@ -7521,6 +7551,7 @@ int main(void)
 	assert(pg_evidence_conversion(converted_return));
 	struct pg_synthesis_job *unthunk_job = pg_synthesis_unthunk(&synthesis, x_context, converted_value);
 	assert(unthunk_job && pg_synthesis_status(unthunk_job) == PG_SYNTHESIS_PENDING);
+	assert(unthunk_job->role->size == shared_return->role->size && unthunk_job->role != shared_return->role);
 	const struct pg_evidence *unthunked = complete(&synthesis, unthunk_job, PG_SYNTHESIS_DONE);
 	assert(pg_evidence_rule(unthunked) == PG_THUNK_COMPUTATION);
 	assert(pg_alpha_equal(pg_evidence_subject(unthunked)->core, pg_evidence_subject(computed_domain)->core) == 1);

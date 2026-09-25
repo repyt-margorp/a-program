@@ -37,5 +37,13 @@ const struct pg_synthesis_job *pg_synthesis_operation_origin(const struct pg_syn
 /* Follow an existing lexical alias edge, without evaluation or acceptance. */
 struct pg_synthesis_job *pg_synthesis_source_origin(const struct pg_synthesis_job *);
 struct pg_synthesis_job *pg_synthesis_body(struct pg_synthesis *, struct pg_synthesis_job *, struct pg_synthesis_job *);
+struct pg_synthesis_job *pg_synthesis_body_input(const struct pg_synthesis_job *);
+int pg_synthesis_typed_input(struct pg_synthesis *, const struct pg_evidence *, const struct pg_evidence *);
+int pg_synthesis_source_value_kind(const struct pg_synthesis_job *);
+int pg_synthesis_await_preparation(struct pg_synthesis *, struct pg_synthesis_job *,
+	struct pg_synthesis_job *, struct pg_synthesis_job **);
+enum pg_comparison_status pg_synthesis_probe_advance(struct pg_synthesis *, struct pg_synthesis_job *, struct pg_comparison *);
+enum pg_comparison_status pg_synthesis_independence(struct pg_synthesis *, struct pg_synthesis_job *,
+	struct pg_comparison *, const struct pg_term *, const struct pg_object *);
 
 #endif
