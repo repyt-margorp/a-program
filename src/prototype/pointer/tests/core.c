@@ -1503,6 +1503,24 @@ static void dependent_application_test(struct pg_graph *graph)
 	const struct pg_evidence *exposed_domain = pg_prove_pi_domain(&typing, exposed_pi);
 	assert(exposed_domain && pg_evidence_subject(exposed_domain) == pg_evidence_subject(u1));
 	assert(pg_evidence_rule(exposed_domain) == PG_PI_DOMAIN);
+	/* A raw Context does not select its declaration's Universe bound. Keep
+	 * the supplied formation when constructing Pi, not the first receipt. */
+	const struct pg_object *shared_binder = pg_binder(graph);
+	const struct pg_evidence *narrow_scope = pg_prove_context_extension(&typing, empty, shared_binder, upi);
+	const struct pg_evidence *wide_scope = pg_prove_context_extension(&typing, empty, shared_binder, exposed_upi);
+	assert(narrow_scope && wide_scope && narrow_scope != wide_scope);
+	assert(pg_evidence_context(narrow_scope) == pg_evidence_context(wide_scope));
+	assert(pg_evidence_subject(upi)->core == pg_evidence_subject(exposed_upi)->core);
+	assert(pg_evidence_classifier(upi) != pg_evidence_classifier(exposed_upi));
+	const struct pg_evidence *small_result = pg_prove_return_type(&typing,
+		pg_prove_universe(&typing, narrow_scope, 0));
+	const struct pg_evidence *narrow_pi = pg_prove_pi(&typing, narrow_scope, small_result);
+	const struct pg_evidence *wide_pi = pg_prove_pi(&typing, wide_scope, small_result);
+	assert(narrow_pi && wide_pi);
+	assert(pg_evidence_subject(narrow_pi)->core == pg_evidence_subject(wide_pi)->core);
+	assert(pg_evidence_classifier(narrow_pi) != pg_evidence_classifier(wide_pi));
+	assert(pg_evidence_subject(narrow_pi)->operands[0] == pg_evidence_subject(upi));
+	assert(pg_evidence_subject(wide_pi)->operands[0] == pg_evidence_subject(exposed_upi));
 	reconstruct_derivation(&typing, exposed_pi);
 	reconstruct_derivation(&typing, exposed_domain);
 	size_t input_count = typing.occurrences.count, proof_count = typing.proofs.count;
@@ -6100,6 +6118,38 @@ static void context_alpha_test(struct pg_graph *graph)
 	puts("context alpha: raw annotations require fresh field evidence; nominal/free bindings remain fixed");
 }
 
+static void structural_scope_admission_test(struct pg_graph *graph)
+{
+	struct pg_typing typing;
+	assert(!pg_typing_init(&typing, graph));
+	const struct pg_object *x = pg_binder(graph);
+	const struct pg_term *u0 = pg_universe(graph, 0), *u1 = pg_universe(graph, 1);
+	const struct pg_context *scope = pg_context_bind(&typing, NULL, x, u0, PG_JUDGEMENT_VALUE);
+	const struct pg_occurrence *value = pg_occurrence(&typing, PG_JUDGEMENT_VALUE,
+		scope, pg_reference(graph, x), u0, NULL, 0, NULL);
+	const struct pg_occurrence *wrong = pg_occurrence(&typing, PG_JUDGEMENT_VALUE,
+		scope, value->core, u1, NULL, 0, NULL);
+	assert(value && wrong && !typing.proofs.count);
+	assert(!pg_prove_structural_subject(&typing, value));
+	assert(!pg_prove_structural_subject(&typing, wrong));
+	assert(!typing.proofs.count);
+	const struct pg_evidence *empty = pg_prove_empty_context(&typing);
+	const struct pg_evidence *type = pg_prove_universe(&typing, empty, 0);
+	assert(type && !pg_prove_structural_subject(&typing, value));
+	const struct pg_evidence *checked_scope = pg_prove_context_extension(&typing, empty, x, type);
+	assert(checked_scope && pg_evidence_context(checked_scope) == scope);
+	/* Earlier unavailability is not a permanent negative typing result. */
+	const struct pg_evidence *checked = pg_prove_structural_subject(&typing, value);
+	assert(checked && pg_evidence_subject(checked) == value);
+	size_t proofs = typing.proofs.count;
+	assert(pg_prove_structural_subject(&typing, value) == checked);
+	assert(!pg_prove_structural_subject(&typing, wrong));
+	assert(!pg_evidence_for_subject(&typing, wrong, NULL));
+	assert(typing.proofs.count == proofs);
+	pg_typing_destroy(&typing);
+	puts("typed scope admission: unavailable context is not rejection; classifier checks remain exact");
+}
+
 static void continuation_names(void)
 {
 	const char *names[] = {
@@ -6139,6 +6189,7 @@ int main(void)
 	evidence_test(&graph);
 	evidence_owner_test(&graph);
 	context_alpha_test(&graph);
+	structural_scope_admission_test(&graph);
 	dependent_application_test(&graph);
 	weakening_inputs(&graph);
 	typed_substitution_test(&graph);

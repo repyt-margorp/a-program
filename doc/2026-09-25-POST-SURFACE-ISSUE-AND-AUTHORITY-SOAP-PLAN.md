@@ -3,12 +3,12 @@
 Date: 2026-09-25
 Updated: 2026-09-26
 Status: P1-P3 closed; P4 Identity-boundary/Lambda-scope and P5 effect-owner/shared
-work-header/Handler slices verified by clean publication-tree acceptance and sanitizers.
+work-header/Handler/Operation slices verified by clean publication-tree acceptance and sanitizers.
 Broader P4 typed-proof migration and P5 synthesis modularity remain open.
 Initial review baseline: `40375d734896a456f5ad2827ad8fe0f10ff61517`.
 Verified implementation milestones: `60bde88` (P4), `dcc58ec` (first P5 slice),
-`84a54e2` (shared work/private state), and `c89edb7` (Handler owner);
-the latest clean gate covers all four.
+`84a54e2` (shared work/private state), `c89edb7` (Handler owner), and
+`3397e52` (Operation owner); the latest clean gate covers all five.
 Inherited implementation edits: Context/IADT relocation changes in
 `evidence.[ch]`, `iadt.[ch]`, two unit tests and two derived-LT files. These
 are excluded from the publication candidate and preserved locally, together
@@ -327,6 +327,42 @@ family declaration formation, including Universe bounds and image transport.
 Do not replace old receipts with another copied universal proof payload or
 claim that file extraction makes the typed structure self-sufficient.
 
+Context-contract review at `44587b2`, 2026-09-26 (agent findings):
+
+- `tests/core.c:structural_scope_admission_test` now checks that the same
+  described variable is unavailable before Context admission and accepted
+  afterwards; a wrong classifier remains rejected. These are different reasons
+  for a NULL structural-check result. Existing typed queries instead retain a
+  terminal status. Caching that NULL as permanent failure would be a regression,
+  not a current production bug demonstrated by this review.
+- The dependent-application test now constructs two accepted extensions with
+  the **same raw Context** but different retained declaration formations and
+  Universe upper bounds. Pi formation preserves the supplied domain and its
+  bound. Thus adding a single mutable formation pointer to `pg_context`, taking
+  the first accepted receipt, or including a new formation pointer in its
+  current interning key would not preserve this contract automatically.
+- Family-domain Pi retains a scoped variable, not its telescope formations.
+  A closed ordinary-Pi example alone cannot establish that the generic checker
+  has enough input. `context_payload.c` transports raw declarations only.
+
+Assessment: reject the proposed direct expansion of structural checking into
+permanent subject-keyed typed queries **before** specifying these inputs. No
+such implementation was installed. Also reject a parallel mutable Context
+formation cache and proof-count-based retry invalidation. These would hide the
+missing dependency instead of making the typed construction self-sufficient.
+Keep raw scope identity separate from the particular typed declaration used
+in a formation, just as erased Core and typed occurrences remain separate.
+This does not require another object-language tag, a new proof axiom, or a
+new source-replay path. The replacement representation is still a design task,
+not a user-approved schema or a completed migration.
+
+Verification of this review: clean `44587b2` plus the two test additions passes
+the full Core executable under `-O2 -Wall -Wextra -Werror` and ASan/UBSan
+(`-O1`, non-PIE). Implementation/build/wire changes: **0 lines**; tests:
+**+51/-0**. The full acceptance gate was not rerun for this test/document-only
+checkpoint; the preceding Operation publication gate remains the compiler
+baseline, not a fresh result for this review. P4.2/P4.3 remain unchecked.
+
 Image boundary: `occurrence_io.c` already transports typed operands, maps and
 scopes without accepting proofs; it does not yet replace `derivation_io.c`'s
 premise DAG. `retained_io.c` writes rule inputs, effect equations, optional
@@ -460,6 +496,12 @@ soundness; preserve all inherited files and edits locally for their author.
   Specify how a typed construction can be checked without searching for its
   old derivation. Inventory image roots and tests that assume exact premise
   retention; preserve distinct object proofs, not necessarily checker histories.
+  Next prerequisite, before P4.3 code: specify the retained declaration edge for
+  ordinary binders and the typed telescope/terminal Universe for family binders;
+  preserve the tested raw Context identity and distinguish its formation uses.
+  Trace that edge through variable lookup, Pi bounds, lift and image loading.
+  A checking request must receive those dependencies explicitly, so unavailable
+  input is not cached as a false theorem and no global retry counter is needed.
 - [x] **P4.2a Owner-local Identity metadata:** remove direction recovery from
   Evidence premises. The information already exists in the Term, so this small
   prerequisite can precede the full Lambda/APP migration without changing the
