@@ -245,6 +245,10 @@ proposal to start primarily with synchronous-helper scheduling.
 Latest direction, same date (English paraphrase): proceed while inspecting the
 code, revising the approach where necessary.
 
+Publication instruction, 2026-09-26 (English paraphrase): push coherent verified
+milestones to main. Reject unsuitable implementation trials, record why in
+Markdown, and publish that decision without shipping the rejected code.
+
 ### Objective (Code)
 
 Static review at `40375d7`, with the inherited diff inspected separately.
@@ -409,6 +413,14 @@ with another having the **same exact typed subject**. Both constructor and
 eliminator already retain that subject in `pg_occurrence.type`. This narrower
 duplication is independent of the map/declaration contract above.
 
+At `3266fa8`, `pg_context_map.images` already owns every typed image, including
+weakened prefix images. `substitution_image_range` nevertheless traverses a
+second prefix graph of Evidence and rebuilds projection receipts. The bulk
+accessor additionally returns raw premise arrays for flat maps. Tests currently
+require alternative receipts of identical typed images to remain distinguishable
+through these accessors; they also check genuinely distinct conversion origins,
+scopes and classifiers, which must remain distinguishable.
+
 Therefore R1 consolidated conclusions, but did **not** remove dependence on
 the derivation graph. Renaming Evidence, splitting its file, or adding another
 subject accessor would not finish this part of the refactor.
@@ -504,6 +516,15 @@ involved. Reject a blanket "same conclusion means interchangeable premise"
 policy: Context declaration choices, maps and directional/action rules have
 separate retained-input contracts. Keep those unchanged in this slice.
 
+Agent decision for the following map-image migration, 2026-09-26: image lookup
+must select the typed map entry and use the existing structural checker, not
+select a particular acceptance history. Change the legacy receipt-selection
+tests, not their typed-image/Context/nominal checks. This does not identify
+different typed occurrences merely because their erased Core agrees, and does
+not replace the explicit Context declarations needed to admit a map. Reject
+adding another image cache or retaining two lookup algorithms for flat versus
+extended maps; verify the allocation/performance consequences before adoption.
+
 Core stays erased; required motive, scope, index and Identity-boundary inputs
 belong to typed construction or their existing semantic owner. Do not copy the
 entire Evidence DAG into renamed occurrence fields. Conversion checks and
@@ -578,6 +599,14 @@ soundness; preserve all inherited files and edits locally for their author.
   Verify allocation reuse, fresh-process images, old/new cross-reading and
   existing direct/Solve rejection tests before publication. This does not
   replace family-declaration inputs or all derivation history.
+- [x] **P4.3d Typed map images:** remove prefix-receipt traversal from single
+  and bulk image lookup. The map's exact typed entries are authoritative;
+  reuse/check those entries through the existing structural checker. Test
+  flat/extended/projected maps, equal-image positions, distinct conversion
+  origins, selected Context formations, long prefixes/lifts and no allocation
+  on repeated access. Recheck source/retained images, general Sorted and the
+  common sanitizer/performance gates. Context admission and full map-history
+  removal remain explicit later work, not implicit in this accessor change.
 - [ ] **P4.3 One end-to-end slice:** start with typed Lambda/APP plus context
   action, then one Identity boundary consumer. Build, check, inspect, serialize
   and load the typed structure through the same Solve mechanism. Remove the
@@ -1328,3 +1357,66 @@ documentation excluded. One cloning API and its temporary premise-array copy
 are removed. Broader P4/P5 and general history-removal gates remain open.
 
 Plan document: +75/-4, net +71, reported separately from source changes.
+
+### Typed Map Image Verification
+
+2026-09-26, implemented in `5e967a4` against `3266fa8`: single and bulk substitution image
+access now checks/reuses `pg_context_map.images` through the existing structural
+checker. It no longer walks Evidence prefixes or rebuilds their projection
+receipts. Bulk access consistently requires scratch storage; production callers
+already provide it. No new cache, rule, Core tag or wire format is introduced.
+Context/map admission still retains its explicit premises. This is not the
+completion of P4's typed declaration contract or general history removal.
+
+Tests deliberately stop requiring the particular acceptance receipt originally
+supplied for an identical typed image. This is not object-level proof
+irrelevance: distinct conversion origins, classifiers, scopes and chosen
+Identity paths remain tested. The first full run stopped at the corresponding
+legacy receipt-identity assertion in `tests/identity.c`; only that assertion and
+its explanation were changed, not the adjacent path/coherence checks.
+
+Strict O2 Core/IADT/derivation tests and affected Core/IADT/Identity/derivation
+tests under Debug and ASan/UBSan (leak detection enabled) pass. All eight
+derivation fixture modes cross-read at budgets 1/64 in both directions. The
+baseline reader uses the updated test driver because the older driver requires
+distinct receipts for two roots now allowed to share; the baseline kernel and
+wire reader are unchanged. Logs: `/tmp/a-program-typed-map-images-cross.xrmzKd/`
+and `/tmp/a-program-typed-map-images-{asan,debug}-*.log`.
+Full `check-acceptance` exits zero in 23m52.130s, including the updated test
+driver build and early auxiliary-check overlap. All four LT/partition variants
+and optional-witness separation/packet tests pass. Log:
+`/tmp/a-program-typed-map-images-acceptance-final.log`.
+
+After acceptance, six paired strict-O2 runs per input, with warmup and reversed
+order for the last three pairs, give the following wall-time medians. The script
+includes several checks and image round trips; individual source rows measure
+Solve, not execution alone. Outputs and reported Solve counts agree exactly.
+
+| Workload | Baseline seconds | Candidate seconds |
+| --- | ---: | ---: |
+| `generic_sorted.sh` | 5.738 | 5.716 |
+| `explicit_index_family_append_check.p` | 0.006 | 0.0055 |
+| `function_graph_certified_length_model.p` | 0.0035 | 0.004 |
+| `function-field-induction.p` | 0.004 | 0.004 |
+| `generic-quick-sorted.p` with provider | 0.8115 | 0.811 |
+| `generic-quick-sorted-result.p` with provider | 0.739 | 0.7375 |
+
+No material local regression is observed; millisecond-sized samples do not
+establish a speedup. In three fresh-process RSS pairs, the last two rows have
+medians 224032 -> 223916 KiB and 174600 -> 174792 KiB respectively. This is not
+a whole-program memory bound. Logs: `/tmp/a-program-typed-map-images-bench.ZQdRJD/`
+and `/tmp/a-program-typed-map-images-memory.log`. Adopt P4.3d; keep P4/P5 open.
+
+| File under `src/prototype/pointer/` | Added | Deleted | Net |
+| --- | ---: | ---: | ---: |
+| `evidence.c` | 8 | 40 | -32 |
+| `evidence.h` | 5 | 4 | +1 |
+| `tests/core.c` | 35 | 24 | +11 |
+| `tests/derivation_io.c` | 5 | 4 | +1 |
+| `tests/iadt.c` | 2 | 1 | +1 |
+| `tests/identity.c` | 4 | 3 | +1 |
+
+Source total +59/-76, net -17: implementation/headers -31, tests +14,
+build zero. Documentation delta is reported separately below.
+
+Plan document delta against `3266fa8`: +92/-0, net +92, excluded from source totals.
