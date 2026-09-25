@@ -1,5 +1,9 @@
 # Generic QuickSort First: Implementation and Refactor Resume
 
+Successor (2026-09-25): the [post-surface SOAP plan](2026-09-25-POST-SURFACE-ISSUE-AND-AUTHORITY-SOAP-PLAN.md)
+is the next work list after the published witness-removal milestone. Execution
+order and pending-migration statements below are historical checkpoints.
+
 Date: 2026-09-24
 Status: Q0-Q3 published; Q4 authority/#32 open; #33/#34 closed
 

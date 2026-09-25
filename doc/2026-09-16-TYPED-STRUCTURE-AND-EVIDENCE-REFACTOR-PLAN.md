@@ -5,6 +5,11 @@ Status: replanned after R76; authority correction in progress, acceptance incomp
 Baseline: `1b95e551b6ef315e079120a52b1a878d06ff2d63`, `rewrite/pointer-core-hott`
 Parent: [Pointer Core reimplementation](2026-09-07-POINTER-CORE-REIMPLEMENTATION-PLAN.md)
 
+Current execution list (2026-09-25): [SOAP plan, P4](2026-09-25-POST-SURFACE-ISSUE-AND-AUTHORITY-SOAP-PLAN.md#p4-resume-the-authority-refactor)
+reconciles this plan with `40375d7`. R0/R1 remain completed milestones;
+R2-R5 remain open overall, with numerous published substeps. Use P4 for the
+next work, not unchecked or superseded items in the historical log below.
+
 ## Current Execution Plan (2026-09-17)
 
 Follow [Typed Data Authority Reaudit and Revised Plan](2026-09-17-TYPED-DATA-AUTHORITY-REAUDIT-PLAN.md)

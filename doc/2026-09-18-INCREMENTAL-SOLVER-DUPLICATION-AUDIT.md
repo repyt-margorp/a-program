@@ -4,6 +4,13 @@ Date: 2026-09-18. Baseline: `3a3bf550`, plus the uncommitted typed-data
 refactor and issue #29 fixes. This is an audit and next-step plan, not a claim
 that the cleanup or the parent acceptance gates are complete.
 
+Current reconciliation (2026-09-25): [SOAP plan, P4](2026-09-25-POST-SURFACE-ISSUE-AND-AUTHORITY-SOAP-PLAN.md#p4-resume-the-authority-refactor)
+is the single active work list. The synchronous `source_has_identity` diagnosis
+and global `*f` interface below are historical: formation requests are now
+shared, and the global witness spelling was removed. Remaining synchronous
+helper calls and pending structural queries are assessed against `40375d7`
+in P4; do not restart completed migrations from this audit's older snapshots.
+
 Related: [active authority plan](2026-09-17-TYPED-DATA-AUTHORITY-REAUDIT-PLAN.md),
 [issue #29 findings](2026-09-18-ISSUE-29-GRAPH-EXPORT-AND-INDEX-TRANSPORT.md).
 

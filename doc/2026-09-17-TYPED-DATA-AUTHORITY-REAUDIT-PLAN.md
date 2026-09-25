@@ -1,5 +1,16 @@
 # Typed Data Authority Reaudit and Revised Plan
 
+Current work list (2026-09-25): use the [post-surface SOAP plan](2026-09-25-POST-SURFACE-ISSUE-AND-AUTHORITY-SOAP-PLAN.md).
+It supersedes the execution order below; completed evidence and unmet R2-R5
+criteria remain recorded here. Its proposed sequence distinguishes current
+Issue gaps from historical diagnostics and inherited, unaccepted edits.
+
+Priority update (2026-09-24): follow the [generic QuickSort first plan](2026-09-24-GENERIC-QUICKSORT-FIRST-IMPLEMENTATION-PLAN.md).
+Complete issue #31's generic proof without `partition_spec` and its regression
+gates before resuming the remaining authority refactor. This changes order,
+not the open R2-R5 or final
+acceptance criteria below.
+
 Date: 2026-09-17
 Status: A0 complete; source allocation regressions repaired; A1-A4 partial; final acceptance open
 Inspected HEAD: `3a3bf550b3e882ab650395fd612e0fa2526b45bc` (R76)
