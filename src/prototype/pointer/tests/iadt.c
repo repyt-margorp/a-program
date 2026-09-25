@@ -2168,7 +2168,8 @@ static void schema_positivity(void)
 	assert(alternate_succ && alternate_succ != succ);
 	assert(pg_evidence_subject(alternate_succ) == pg_evidence_subject(succ));
 	const struct pg_evidence *alternate_instance = pg_evidence_premise(alternate_succ, 3);
-	assert(pg_substitution_image_at(&typing, alternate_instance, pg_evidence_context_map(alternate_instance)->count - 1) == alternate_zero);
+	assert(pg_evidence_subject(pg_substitution_image_at(&typing, alternate_instance,
+		pg_evidence_context_map(alternate_instance)->count - 1)) == pg_evidence_subject(alternate_zero));
 	const struct pg_data_schema *other_schema = pg_data_schema(&typing, signature, 2, results);
 	const struct pg_evidence *other = pg_prove_inductive_type(&typing, other_schema);
 	assert(other && pg_evidence_subject(other)->core != pg_evidence_subject(nat)->core);

@@ -2544,8 +2544,8 @@ static void dependent_families(struct pg_typing *typing,
 	assert(!pg_typing_init(&foreign_paths, typing->graph));
 	assert(!pg_identity_substitution_context(&foreign_paths, index_left, index_right, 2, path_binders, again));
 	pg_typing_destroy(&foreign_paths);
-	/* A third dependent center retains the earlier map and its supplied
-	 * image receipt, including an alternative derivation of that image. */
+	/* A third dependent center retains the earlier map and its typed image,
+	 * independently of alternative acceptance histories for that image. */
 	const struct pg_evidence *alternate_a = pg_prove_type_value(typing,
 		pg_prove_value_type(typing, a));
 	assert(alternate_a && alternate_a != a && pg_evidence_subject(alternate_a) == pg_evidence_subject(a));
@@ -2563,7 +2563,8 @@ static void dependent_families(struct pg_typing *typing,
 	for (size_t i = 1; i <= 2; ++i)
 		assert(pg_evidence_context_map(pg_evidence_premise(pg_evidence_premise(third_type, i), 2))->count == 1);
 	const struct pg_evidence *first_context = pg_evidence_premise(pg_evidence_premise(third_context, 0), 0);
-	assert(pg_evidence_premise(pg_evidence_premise(first_context, 1), 3) == alternate_a);
+	assert(pg_evidence_subject(pg_evidence_premise(pg_evidence_premise(first_context, 1), 3)) ==
+		pg_evidence_subject(alternate_a));
 	path_proofs = typing->proofs.count; path_terms = typing->graph->terms.count;
 	const struct pg_evidence *third_again[3];
 	assert(pg_identity_substitution_context(typing, third_left, third_right, 3, third_binders, third_again) == third_context);

@@ -500,8 +500,8 @@ static void write_proofs(FILE *file, struct pg_typing *typing)
 	roots[29] = pg_prove_substitution_compose(typing, prefix_map, roots[28]);
 	roots[30] = pg_prove_substitution_compose(typing, prefix_map,
 		pg_prove_substitution(typing, context, mc, 2, alternate_images));
-	assert(pg_substitution_image_at(typing, roots[30], 0) == alternate_images[0]);
-	assert(roots[29] != roots[30] && pg_evidence_context_map(roots[29]) == pg_evidence_context_map(roots[30]));
+	assert(pg_evidence_subject(pg_substitution_image_at(typing, roots[30], 0)) == pg_evidence_subject(alternate_images[0]));
+	assert(roots[29] == roots[30]);
 	for (size_t i = 0; i < 31; ++i) assert(roots[i]);
 	assert(pg_derivations_write(file, 31, roots, name, typing->graph) == 0);
 	pg_conversion_destroy(&conversion);
@@ -564,8 +564,9 @@ static void read_proofs(FILE *file, struct pg_typing *typing, uint64_t chunk)
 	for (size_t i = 0; i < 2; ++i)
 		assert(pg_substitution_image_at(typing, projection_map, i) == pg_substitution_image_at(typing, explicit_map, i));
 	const struct pg_evidence *prefix_map = pg_synthesis_result(jobs[29]), *alternate_prefix = pg_synthesis_result(jobs[30]);
-	assert(prefix_map != alternate_prefix && pg_evidence_context_map(prefix_map) == pg_evidence_context_map(alternate_prefix));
-	assert(pg_substitution_image_at(typing, prefix_map, 0) != pg_substitution_image_at(typing, alternate_prefix, 0));
+	/* Older images may retain distinct receipts; their typed maps agree. */
+	assert(pg_evidence_context_map(prefix_map) == pg_evidence_context_map(alternate_prefix));
+	assert(pg_substitution_image_at(typing, prefix_map, 0) == pg_substitution_image_at(typing, alternate_prefix, 0));
 	assert(pg_synthesis_status(consumer) == PG_SYNTHESIS_DONE);
 	assert(pg_synthesis_result(consumer) == pg_synthesis_result(jobs[6]));
 	assert(pg_synthesis_status(expect) == PG_SYNTHESIS_REJECTED && !pg_synthesis_result(expect));

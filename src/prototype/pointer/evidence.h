@@ -535,15 +535,16 @@ const struct pg_evidence *pg_prove_projection(struct pg_typing *typing,
  * destination, in declaration order (outermost first). Dependent declaration
  * types are checked after simultaneous substitution of preceding images.
  * This rule admits structural alpha equality, not implicit beta conversion. */
-/* Borrow the accepted image of an exact source binder; no proof or term is
- * rebuilt. An absent binder or a foreign/non-substitution proof returns NULL. */
+/* Read the exact typed image of a source binder through ordinary structural
+ * checking. Reuse accepted subjects; do not reconstruct prefix proof history.
+ * An absent binder or a foreign/non-substitution proof returns NULL. */
 const struct pg_evidence *pg_substitution_image(struct pg_typing *typing,
 	const struct pg_evidence *substitution, const struct pg_object *binder);
 /* Zero-based declaration order in the map, independent of proof premises. */
 const struct pg_evidence *pg_substitution_image_at(struct pg_typing *typing,
 	const struct pg_evidence *substitution, size_t index);
-/* Borrow explicit image premises, or derive shared prefix images in scratch.
- * The returned array must not outlive either the proof or scratch. */
+/* Check the typed map's images in declaration order. The array lives in the
+ * required scratch arena; its entries belong to typing, not receipt history. */
 const struct pg_evidence *const *pg_substitution_images(struct pg_typing *typing,
 	const struct pg_evidence *substitution, struct pg_graph *scratch);
 /* Checked substitution conclusion; distinct derivations may share this map. */
