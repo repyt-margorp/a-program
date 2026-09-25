@@ -1391,10 +1391,28 @@ static void producer_proofs(FILE *file, struct pg_typing *typing,
 	pg_whnf_work_destroy(&normalization);
 }
 
+static const struct pg_evidence *data_formation_request(struct pg_typing *typing,
+	const struct pg_evidence *proof, const struct pg_evidence *formation)
+{
+	struct pg_derivation_parameters parameters;
+	assert(!pg_derivation_parameters(proof, &parameters));
+	enum pg_evidence_rule rule = pg_evidence_rule(proof);
+	assert(rule == PG_CONSTRUCTOR_INTRO || rule == PG_MATCH_ELIM || rule == PG_INDUCTION_ELIM);
+	size_t count = pg_evidence_premise_count(proof);
+	const struct pg_evidence **premises = malloc(count * sizeof(*premises));
+	assert(premises);
+	memcpy(premises, pg_evidence_premises(proof), count * sizeof(*premises));
+	premises[rule == PG_CONSTRUCTOR_INTRO ? 0 : count - 1] = formation;
+	const struct pg_evidence *result = pg_prove_derivation(typing, rule, &parameters, count, premises);
+	free(premises);
+	return result;
+}
+
 static void nominal_proofs(FILE *file, struct pg_typing *typing,
 	int writing, uint64_t chunk)
 {
 	struct pg_graph *graph = typing->graph;
+	const size_t data_roots[] = {2, 4, 5};
 	struct pg_declaration_io io;
 	assert(!pg_declaration_io_init(&io, typing));
 	if (writing) {
@@ -1456,6 +1474,18 @@ static void nominal_proofs(FILE *file, struct pg_typing *typing,
 		assert(pg_evidence_premise(retained, 3) == flat);
 		const struct pg_evidence *roots[] = {
 			formation, zero, succ, formation, match, induction, type_zero, type_succ, retained};
+		/* Old writers retained these alternate receipts. Their images must
+		 * still check, without recreating that redundant parent history. */
+		for (size_t i = 0; i < 3; ++i) {
+			size_t r = data_roots[i];
+			const struct pg_evidence *result_type = pg_evidence_premise(roots[r],
+				i ? pg_evidence_premise_count(roots[r]) - 1 : 0);
+			const struct pg_evidence *alternate = pg_prove_reindex(typing, identity, result_type);
+			assert(alternate && alternate != result_type);
+			assert(pg_evidence_subject(alternate) == pg_evidence_subject(result_type));
+			roots[r] = data_formation_request(typing, roots[r], alternate);
+			assert(roots[r]);
+		}
 		assert(!pg_derivations_write_descriptors(file, 9, roots, &pg_declaration_graph_codec, &io));
 	} else {
 		size_t count;
@@ -1506,6 +1536,24 @@ static void nominal_proofs(FILE *file, struct pg_typing *typing,
 		const struct pg_term *family = pg_evidence_subject(formation)->core;
 		assert(family->as.reference == pg_data_declaration_family(inputs[0]->parameters.declaration));
 		assert(pg_evidence_classifier(pg_synthesis_result(jobs[2])) == family);
+		const struct pg_evidence *empty = pg_prove_empty_context(typing);
+		const struct pg_evidence *identity = pg_prove_substitution_projection(typing, empty, empty);
+		const struct pg_evidence *scope = pg_prove_context_extension(typing, empty, pg_binder(graph), formation);
+		for (size_t i = 0; i < 3; ++i) {
+			const struct pg_evidence *proof = pg_synthesis_result(jobs[data_roots[i]]);
+			const struct pg_evidence *result_type = pg_evidence_premise(proof,
+				i ? pg_evidence_premise_count(proof) - 1 : 0);
+			const struct pg_evidence *alternate = pg_prove_reindex(typing, identity, result_type);
+			assert(alternate != result_type && pg_evidence_subject(alternate) == pg_evidence_subject(result_type));
+			size_t proofs = typing->proofs.count, terms = graph->terms.count;
+			assert(data_formation_request(typing, proof, alternate) == proof);
+			assert(data_formation_request(typing, proof, alternate) == proof);
+			assert(typing->proofs.count == proofs && graph->terms.count == terms);
+			const struct pg_evidence *wrong_scope = pg_prove_projection(typing, scope, result_type);
+			assert(wrong_scope && pg_evidence_subject(wrong_scope)->core == pg_evidence_subject(result_type)->core);
+			assert(!data_formation_request(typing, proof, wrong_scope));
+			assert(!data_formation_request(typing, proof, pg_prove_universe(typing, empty, 0)));
+		}
 		const struct pg_term *succ = pg_evidence_subject(pg_synthesis_result(jobs[2]))->core;
 		assert(succ == pg_application(graph, pg_reference(graph, pg_data_constructor(layout, 1)),
 			pg_evidence_subject(pg_synthesis_result(jobs[1]))->core));

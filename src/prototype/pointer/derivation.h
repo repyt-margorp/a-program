@@ -46,6 +46,8 @@ int pg_derivation_parameters(const struct pg_evidence *evidence,
  * declares a conclusion/export type, the loader must match it before publishing
  * that export. A valid request may canonicalize to an existing proof with a
  * different rule. Serialization retains the resulting evidence, not the request.
+ * Constructor/Match/IH result formations must have the same exact typed
+ * subject; a different receipt for it does not clone the resulting evidence.
  * NULL includes invalid arity/parameters or inconsistent formation choices. */
 const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 	enum pg_evidence_rule rule,

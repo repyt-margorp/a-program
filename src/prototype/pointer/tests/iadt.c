@@ -609,10 +609,10 @@ static void accessibility_elimination(enum pg_totality field_totality)
 	premises[0] = pg_prove_value_type(&typing, pg_prove_type_value(&typing, family));
 	assert(premises[0] != family && pg_evidence_subject(premises[0]) == pg_evidence_subject(family));
 	struct pg_derivation_parameters retained = {.constructor = constructor};
+	size_t before_alternative = typing.proofs.count;
 	const struct pg_evidence *alternative = pg_prove_derivation(&typing, PG_CONSTRUCTOR_INTRO, &retained, 4, premises);
-	assert(alternative && alternative != constructor_value);
-	assert(pg_evidence_subject(alternative) == pg_evidence_subject(constructor_value));
-	assert(pg_evidence_premise(alternative, 0) == premises[0]);
+	assert(alternative == constructor_value && typing.proofs.count == before_alternative);
+	assert(pg_evidence_premise(alternative, 0) == family);
 	common_rule(&typing, alternative);
 	/* The checked map is an input, not a request to reconstruct its proof. */
 	struct pg_graph scratch = {0};
@@ -696,10 +696,11 @@ static void accessibility_elimination(enum pg_totality field_totality)
 	assert(case_premises[6] != output && pg_evidence_subject(case_premises[6]) == pg_evidence_subject(output));
 	struct pg_derivation_parameters case_parameters;
 	assert(!pg_derivation_parameters(elimination, &case_parameters));
+	before_alternative = typing.proofs.count;
 	const struct pg_evidence *case_alternative = pg_prove_derivation(&typing,
 		PG_INDUCTION_ELIM, &case_parameters, 7, case_premises);
-	assert(case_alternative && pg_evidence_premise(case_alternative, 6) == case_premises[6]);
-	assert(pg_evidence_subject(case_alternative) == pg_evidence_subject(elimination));
+	assert(case_alternative == elimination && typing.proofs.count == before_alternative);
+	assert(pg_evidence_premise(case_alternative, 6) == output);
 	common_rule(&typing, case_alternative);
 	const struct pg_evidence *constructor_parameters = pg_prove_substitution_projection(&typing, rc, field_context);
 	const struct pg_evidence *projected = pg_prove_elimination_reindex(&typing,

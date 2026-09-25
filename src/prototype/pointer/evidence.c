@@ -236,30 +236,6 @@ static const struct pg_evidence *accept_with_conversion(struct pg_typing *typing
 	return accept_record(typing, rule, context, subject, count, premises, conversion, NULL);
 }
 
-const struct pg_evidence *pg_prove_data_result_formation(struct pg_typing *typing,
-	const struct pg_evidence *proof, const struct pg_evidence *formation)
-{
-	if (!pg_evidence_owned_by(proof, typing) || !pg_evidence_owned_by(formation, typing)) return NULL;
-	size_t index;
-	switch (proof->rule) {
-	case PG_CONSTRUCTOR_INTRO: index = 0; break;
-	case PG_MATCH_ELIM: case PG_INDUCTION_ELIM: index = proof->premise_count - 1; break;
-	default: return NULL;
-	}
-	if (pg_evidence_subject(formation) != pg_evidence_subject(proof->premises[index])) return NULL;
-	if (formation == proof->premises[index]) return proof;
-	size_t count = proof->premise_count;
-	if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
-	const struct pg_evidence **premises = malloc(count * sizeof(*premises));
-	if (!premises) return NULL;
-	memcpy(premises, proof->premises, count * sizeof(*premises));
-	premises[index] = formation;
-	const struct pg_evidence *result = accept_record(typing, proof->rule, pg_evidence_context(proof),
-		pg_evidence_subject(proof), count, premises, proof->certificate, NULL);
-	free(premises);
-	return result;
-}
-
 static const struct pg_evidence *accept(struct pg_typing *typing, enum pg_evidence_rule rule,
 	const struct pg_context *context, const struct pg_occurrence *subject, size_t count, const struct pg_evidence *const *premises)
 {

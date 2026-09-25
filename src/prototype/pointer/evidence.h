@@ -663,11 +663,6 @@ const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
 enum pg_evidence_judgement pg_evidence_judgement(const struct pg_evidence *evidence);
 /* Storage provenance only; this does not validate a rule-specific premise. */
 int pg_evidence_owned_by(const struct pg_evidence *evidence, const struct pg_typing *typing);
-/* Retain an alternative formation of the exact constructor/Match/IH result
- * classifier. Schema, motive and substitution premises stay fixed. This is not
- * an operation on directional/action premises, even if conclusions coincide. */
-const struct pg_evidence *pg_prove_data_result_formation(struct pg_typing *typing,
-	const struct pg_evidence *proof, const struct pg_evidence *formation);
 /* Enumerate existing receipts for this exact typed subject, in acceptance
  * order. NULL after starts the enumeration. No rule runs and no acceptance is
  * inferred from an erased Core. Receipt selection must not determine semantic
