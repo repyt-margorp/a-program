@@ -2,11 +2,12 @@
 
 Date: 2026-09-25
 Updated: 2026-09-26
-Status: P1-P3 closed; P4 Identity-boundary/Lambda-scope and first P5 effect-owner
-slices verified by clean publication-tree acceptance and targeted sanitizers.
+Status: P1-P3 closed; P4 Identity-boundary/Lambda-scope and P5 effect-owner/shared
+work-header slices verified by clean publication-tree acceptance and sanitizers.
 Broader P4 typed-proof migration and P5 synthesis modularity remain open.
 Initial review baseline: `40375d734896a456f5ad2827ad8fe0f10ff61517`.
-Verified publication milestone: `60bde88` (P4) plus `dcc58ec` (first P5 slice).
+Verified implementation milestones: `60bde88` (P4), `dcc58ec` (first P5 slice),
+and `84a54e2` (shared work/private state); the latest clean gate covers all three.
 Inherited implementation edits: Context/IADT relocation changes in
 `evidence.[ch]`, `iadt.[ch]`, two unit tests and two derived-LT files. These
 are excluded from the publication candidate and preserved locally, together
@@ -25,7 +26,7 @@ provide a second execution order. The order below is the agent's proposal.
 | P2 | Reassess the old computation-result report against current contracts | #13 | Closed by user-approved scope decision |
 | P3 | Resolve the remaining MergeSort report against existing regressions | #28 | Verified; closed |
 | P4 | Make typed proof structure authoritative; remove redundant evidence dependency | Existing R2-R5 plans | Identity-boundary and Lambda-scope slices verified; broader migration pending |
-| P5 | Separate synthesis by semantic owner without duplicating shared machinery | User follow-up on synthesis.c | First effect extraction passes clean acceptance; legacy source state remains |
+| P5 | Separate synthesis by semantic owner without duplicating shared machinery | User follow-up on synthesis.c | Effect-owner/shared-header slices verified; legacy source state remains |
 
 ## P1. Issue and PR Disposition
 
@@ -529,9 +530,21 @@ checking obtain the row worker through an owner accessor. Completion and
 preparation notification now dispatch through descriptors as well. The remaining
 source descriptors still share the legacy driver and wide job union. This is
 an implemented extraction prerequisite, **not** the completed small-header design.
-On this build, GDB reports `sizeof(struct pg_synthesis_job) == 336` before and
-after extraction; migrated effect states have additional small allocations.
-No memory reduction is claimed yet.
+At that milestone, GDB reported `sizeof(struct pg_synthesis_job) == 336`
+before and after extraction; migrated effect states had additional allocations.
+
+Next slice, `84a54e2` after `bf2b4f7`, 2026-09-26: the shared header is
+80 bytes on this build, containing request identity, queue/dependency links,
+status and a borrowed checked result. State, header and immutable operands
+share one aligned arena allocation; the state position follows from its static
+owner size rather than a separately stored pointer. Effect requests no
+longer allocate the source owner's union. The remaining source state is 264
+bytes, still private in `synthesis.c`; this is not an overall-memory-reduction
+claim. `synthesis_work.c` now owns the original interner, scheduling and
+lifetime code, including its preparation notifications. Source-specific eager
+Evidence admission and lazy definition activation live in the source start hook,
+not branches in the shared allocator. No second queue or serialized work kind
+was added. Checking rules, object proofs and image formats are unchanged.
 
 Dependency map checked against the current worktree, 2026-09-25:
 
@@ -618,6 +631,13 @@ refactor: the legacy allocation remains large and aggregate LOC increases.
 Reject moving the universal union into a public header as a shortcut; it would
 publish the same coupling instead of removing it.
 
+Small-header decision, 2026-09-26: retain the original single interner and
+dependency queue, but put them in `synthesis_work.c` and keep all legacy domain
+fields private to `synthesis.c`. Reject the trial's stored private-state
+pointer: its position is derivable from the immutable owner size. Source state
+remains transitional; do not claim that extracting the scheduler completes
+Handler/IADT ownership or Evidence migration.
+
 ### Plan
 
 - [x] Confirm that owner-level semantics are partially separated while synthesis
@@ -638,6 +658,12 @@ publish the same coupling instead of removing it.
   nested handlers, sanitizer cancellation and ordinary-result/generic Sorted
   regressions. Check exact request reuse before and after completion, including
   zero-equation substitution. Record mechanical movement separately from deletion.
+- [x] Verify the small common-header slice: owner-sized aligned storage, one
+  initialization on an interning miss, same prefix/operand keys and shared
+  lifecycle, no source-union access from other owners. Run targeted checks,
+  clean acceptance, affected sanitizers and a paired performance comparison.
+  Source-owner field relocation is mechanical, not deleted typing behavior;
+  generic lifecycle extraction must not introduce source rules into the driver.
 - [ ] After the common contract is clear, extract one owner per reviewable epoch,
   initially handler/effect contribution code around the existing effect worker,
   then IADT/motive work. Place cross-cutting Identity transport deliberately;
@@ -668,6 +694,7 @@ publish the same coupling instead of removing it.
 | 2026-09-25 | P4.2b/P4.3a | Typed Identity boundaries and Lambda scopes no longer depend on parent proof history; input inventory added | Targeted/sanitizer tests and full acceptance pass. Generic checking, image-history removal and P5 remain open |
 | 2026-09-26 | P5 | Four effect requests moved to owner-local state and behavior using the same queue; shared completion uses owner hooks | Targeted, image, Handler, QuickSort and sanitizer checks pass; clean publication candidate excludes inherited trials |
 | 2026-09-26 | P4/P5 publication | Clean `dcc58ec` passes full acceptance and affected sanitizer checks; inherited trials not adopted | Publish the two implementation commits plus this record; broad typed-proof and common-state migrations remain open |
+| 2026-09-26 | P5 shared work | `84a54e2` separates the 80-byte common header from private owner state and moves the original scheduler | Clean full acceptance, affected sanitizers, image cross-reading and paired comparison complete; remaining owner extraction/P4 stay open |
 
 P4.2a verification (fresh, current worktree including the inherited Context/IADT
 edits): optimized `identity_test`, `derivation_io.sh` and `identity_io.sh` pass;
@@ -770,3 +797,42 @@ The same clean tree passes ASan/UBSan `core_test`, `identity_test`,
 These results exclude all inherited trial code and supersede the dirty-tree
 publication caveat above. No parser/Core/wire semantics were intentionally
 changed. P4/P5 overall and the net-code-reduction gate remain open.
+
+P5 common-work slice, `bf2b4f7..84a54e2`, 2026-09-26:
+
+| File under `src/prototype/pointer/` | Added | Deleted | Net |
+| --- | ---: | ---: | ---: |
+| `synthesis.c` | 1435 | 1476 | -41 |
+| `synthesis_work.c` | 188 | 0 | +188 |
+| `synthesis_work.h` | 27 | 2 | +25 |
+| `tests/synthesis.c` | 73 | 0 | +73 |
+| `Makefile` | 1 | 1 | 0 |
+
+Implementation/headers: +1650/-1478, net +172; tests: +73/-0; build: +1/-1.
+The large diff mostly relocates field access into private source state and moves
+the original scheduler, rather than adding or removing typing rules. This is an
+ownership prerequisite, not a code-reduction milestone. Documentation is separate.
+Permanent tests cover aligned/zeroed owner storage, exact key reuse, one start
+hook per request, completion/pending destruction and foreign-owner access.
+
+Clean `84a54e2` passes ASan/UBSan synthesis and source-image tests, with the same
+strict sanitizer flags as the preceding milestone. Ordinary, pending-effect and
+producer images cross-read in both directions with the preceding clean build
+(six writer/reader pairs). These checks preserve the existing ordinary Solve
+path; they do not establish byte-canonical output. Logs:
+`/tmp/a-program-owner-work-asan-{synthesis,source-io}.log`.
+Clean publication-tree `check-acceptance` exited zero: wall 25m56.804s,
+user 24m0.611s, system 1m55.351s, including build. This covers ordinary-result
+QuickSort, all four LT/partition variants, resumed images, wrong-proof rejection
+and optional-witness isolation/packets. Log:
+`/tmp/a-program-owner-work-publication-acceptance.log`. This is a publication
+gate, not a timing comparison with earlier whole-suite runs.
+
+Three alternating paired `tests/generic_sorted.sh` runs after acceptance, using
+the same strict-O2 builds: preceding code median 5.738s (5.657-5.754), candidate
+median 5.786s (5.762-5.850), about +0.8%. Reported comparison Solve counts match
+in all six runs. This small sample does not establish a speedup or rule out
+small regressions. Logs: `/tmp/a-program-owner-work-bench.ymrkIh/`.
+Publish this verified slice; inherited trial edits remain excluded. The next
+implementation still requires owner-by-owner extraction and P4 typed-proof
+work; neither the complete Oracle split nor overall code reduction is achieved.
