@@ -1403,6 +1403,13 @@ static void pending_effect_contexts(struct pg_typing *typing)
 		assert(!complete(&synthesis, explicit_term, PG_SYNTHESIS_DONE));
 		handler_view = pg_synthesis_work_project(explicit_handler);
 		assert(handler_view.rule && !handler_view.preparing && !pg_synthesis_result(explicit_handler));
+		const struct pg_source_scope *handler_alias_scope = pg_synthesis_name_job(&synthesis, explicit_scope,
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "Handled", .length = 7}, explicit_handler);
+		struct pg_synthesis_job *handler_alias = request(&synthesis, handler_alias_scope, "h := Handled;");
+		struct pg_synthesis_job *handler_alias_term = pg_synthesis_term_structure(&synthesis, handler_alias);
+		assert(!complete(&synthesis, handler_alias_term, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(handler_alias_term) == pg_synthesis_type_structure_result(explicit_term));
+		assert(!pg_synthesis_result(handler_alias));
 		assert(!pg_synthesis_result(explicit_handler) && !pg_synthesis_result(open_carrier));
 		struct pg_synthesis_job *raw_return_domain = rule_job(&synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
 			(struct pg_synthesis_job *[]){context, universe});
@@ -1683,6 +1690,7 @@ static void pending_effect_contexts(struct pg_typing *typing)
 		complete(&synthesis, invalid_handler_context, PG_SYNTHESIS_REJECTED);
 		const struct pg_evidence *open_handler_proof = complete(&synthesis, open_handler, PG_SYNTHESIS_DONE);
 		const struct pg_evidence *explicit_proof = complete(&synthesis, explicit_handler, PG_SYNTHESIS_DONE);
+		same_judgement(complete(&synthesis, handler_alias, PG_SYNTHESIS_DONE), explicit_proof);
 		assert(pg_evidence_subject(explicit_proof)->core == pg_synthesis_type_structure_result(explicit_term));
 		assert(explicit_handler == pg_synthesis_handler(&synthesis, explicit_scope, open_carrier, explicit_definition.expression));
 		assert(pg_evidence_subject(open_handler_proof)->core == pg_synthesis_type_structure_result(open_handler_term));

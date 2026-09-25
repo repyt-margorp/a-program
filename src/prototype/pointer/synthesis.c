@@ -404,6 +404,12 @@ static struct source_work *source_work(const struct pg_synthesis_job *job)
 	return job && job->role->advance == step ? pg_synthesis_work_state(job, job->role) : NULL;
 }
 
+static const struct pg_source_scope *source_exports(const struct pg_synthesis_job *job)
+{
+	const struct source_work *local = source_work(job);
+	return local ? local->exports : NULL;
+}
+
 const struct pg_evidence *pg_synthesis_scope_context(const struct pg_source_scope *scope)
 {
 	if (!scope || scope->context_job->status != PG_SYNTHESIS_DONE) return NULL;
@@ -2971,8 +2977,9 @@ static enum pg_synthesis_status resolve_member(struct pg_synthesis *synthesis,
 		struct pg_synthesis_job *producer = reference->producer;
 		*dependency = producer;
 		if (producer->status != PG_SYNTHESIS_DONE) return producer->status;
-		if (source_work(producer)->exports) {
-			*reference = lookup_scope(source_work(producer)->exports, token);
+		const struct pg_source_scope *exports = source_exports(producer);
+		if (exports) {
+			*reference = lookup_scope(exports, token);
 			return PG_SYNTHESIS_DONE;
 		}
 		producer = source_reference_producer(synthesis, producer);
@@ -3384,7 +3391,7 @@ static void reference_step(struct pg_synthesis *synthesis, struct pg_synthesis_j
 		struct pg_synthesis_job *term = source_reference_producer(synthesis, local->left);
 		local->value_job = pg_synthesis_plain_rule(synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
 			(struct pg_synthesis_job *[]){local->scope->context_job, term});
-		local->exports = source_work(local->left)->exports;
+		local->exports = source_exports(local->left);
 		pg_synthesis_forward(synthesis, job, local->value_job);
 		return;
 	}
@@ -3889,7 +3896,7 @@ static void definition_step(struct pg_synthesis *synthesis, struct pg_synthesis_
 		result = pg_prove_thunk(synthesis->typing, result);
 	}
 	job->result = result;
-	local->exports = source_work(local->left)->exports;
+	local->exports = source_exports(local->left);
 	pg_synthesis_finish(synthesis, job, result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
 }
 
@@ -3936,7 +3943,7 @@ static void source_expect_step(struct pg_synthesis *synthesis, struct pg_synthes
 			pg_synthesis_evidence(synthesis, local->checking_term),
 			pg_synthesis_evidence(synthesis, local->checking_type));
 	}
-	local->exports = source_work(local->left)->exports;
+	local->exports = source_exports(local->left);
 	pg_synthesis_forward(synthesis, job, local->value_job);
 	return;
 rejected:
@@ -4029,7 +4036,7 @@ static void definitions_step(struct pg_synthesis *synthesis, struct pg_synthesis
 			return;
 		}
 		job->result = local->value_job->result;
-		local->exports = source_work(local->value_job)->exports;
+		local->exports = source_exports(local->value_job);
 	} else if (state->next < state->count) {
 		local->left = state->entries[state->next++];
 		depend(synthesis, job, local->left);
@@ -8565,7 +8572,7 @@ static int atomic_rule_step(struct pg_synthesis *synthesis, struct pg_synthesis_
 	}
 	if (!qualified && local->syntax->token.kind != PG_TOKEN_IDENT) return 0;
 	if (local->value_job) {
-		if (local->left) local->exports = source_work(local->left)->exports;
+		if (local->left) local->exports = source_exports(local->left);
 		pg_synthesis_forward(synthesis, job, local->value_job); return 1;
 	}
 	if (!local->binder) {
@@ -8581,7 +8588,7 @@ static int atomic_rule_step(struct pg_synthesis *synthesis, struct pg_synthesis_
 				pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return 1;
 			}
 			local->left = reference.producer;
-			local->exports = source_work(reference.producer)->exports;
+			local->exports = source_exports(reference.producer);
 			struct pg_synthesis_job *term = source_reference_producer(synthesis, reference.producer);
 			local->value_job = pg_synthesis_plain_rule(synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
 				(struct pg_synthesis_job *[]){local->scope->context_job, term});
@@ -9391,7 +9398,7 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 		break;
 	case PG_SYNTAX_EXPECT:
 		if (!local->value_job) local->value_job = pg_synthesis_source_expect(synthesis, local->scope, local->left, local->right);
-		if (local->value_job) local->exports = source_work(local->value_job)->exports;
+		if (local->value_job) local->exports = source_exports(local->value_job);
 		pg_synthesis_forward(synthesis, job, local->value_job); return;
 	default:
 		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
