@@ -2,13 +2,14 @@
 
 Date: 2026-09-25
 Updated: 2026-09-26
-Status: P1-P3 closed; P4 Identity-boundary/Lambda-scope and P5 effect-owner/shared
+Status: P1-P3 closed; P4 Identity-boundary/Lambda-scope/typed-only function and P5 effect-owner/shared
 work-header/Handler/Operation slices verified by clean publication-tree acceptance and sanitizers.
 Broader P4 typed-proof migration and P5 synthesis modularity remain open.
 Initial review baseline: `40375d734896a456f5ad2827ad8fe0f10ff61517`.
 Verified implementation milestones: `60bde88` (P4), `dcc58ec` (first P5 slice),
 `84a54e2` (shared work/private state), `c89edb7` (Handler owner), and
-`3397e52` (Operation owner); the latest clean gate covers all five.
+`3397e52` (Operation owner), `270c271` (typed-only ordinary functions);
+the latest clean gate covers all six.
 Inherited implementation edits: Context/IADT relocation changes in
 `evidence.[ch]`, `iadt.[ch]`, two unit tests and two derived-LT files. These
 are excluded from the publication candidate and preserved locally, together
@@ -26,8 +27,8 @@ provide a second execution order. The order below is the agent's proposal.
 | P1 | Align open reports with published implementation | #32; PRs #20, #35-#38 | Verified; closed |
 | P2 | Reassess the old computation-result report against current contracts | #13 | Closed by user-approved scope decision |
 | P3 | Resolve the remaining MergeSort report against existing regressions | #28 | Verified; closed |
-| P4 | Make typed proof structure authoritative; remove redundant evidence dependency | Existing R2-R5 plans | Identity-boundary and Lambda-scope slices verified; broader migration pending |
-| P5 | Separate synthesis by semantic owner without duplicating shared machinery | User follow-up on synthesis.c | Effect-owner/shared-header/Handler slices verified; legacy source state remains |
+| P4 | Make typed proof structure authoritative; remove redundant evidence dependency | Existing R2-R5 plans | Typed-only ordinary-function slice verified; history removal and broader migration pending |
+| P5 | Separate synthesis by semantic owner without duplicating shared machinery | User follow-up on synthesis.c | Effect-owner/shared-header/Handler/Operation slices verified; legacy source state remains |
 
 ## P1. Issue and PR Disposition
 
@@ -309,8 +310,8 @@ Current input/consumer inventory (partial P4.2, not a completed checker design):
 
 | Construction | Retained semantic inputs | Remaining migration |
 | --- | --- | --- |
-| Pi / Lambda | Pi domain/codomain operands, scoped Context and Core binder; Lambda type/body/annotation | Lambda now uses that scope, but initial Pi/context admission and generic structural checking still require migration |
-| APP | Function/argument operands and instantiated result `type` | `formed_classifier` and dependent codomain checking still return Evidence; retain the shared context action, not a new substitution engine |
+| Pi / Lambda | Pi domain/codomain operands, scoped Context and Core binder; Lambda type/body/annotation | Ordinary binders can now establish their scope from the retained domain during structural checking; family declaration inputs remain incomplete |
+| APP | Function/argument operands and instantiated result `type` | One ordinary APP rule constructs or checks the retained result; substitution is shared and only bound-pointer renaming is accepted. `formed_classifier` still returns Evidence |
 | Constructor | Typed field operands and result `type`; nominal declaration lives with IADT | `constructor_instance` still consumes schema/parameter/instance receipts. Audit the declaration link and maps before deleting them; constructor Core alone cannot choose a nominal type |
 | Match / IH | Scrutinee, branches, motive, formation, parameter map and IH allocation are retained | Elimination still checks its rule/schema through Evidence. Preserve motive telescopes and IH binder allocation rather than infer them from erased branch code |
 | Identity | Family, endpoints, maps and paths, now read in its owner | Direct boundary checking works without parent history; children/maps still need accepted typing. Origin recovery and full recursive typed checking remain unfinished |
@@ -362,6 +363,32 @@ the full Core executable under `-O2 -Wall -Wextra -Werror` and ASan/UBSan
 **+51/-0**. The full acceptance gate was not rerun for this test/document-only
 checkpoint; the preceding Operation publication gate remains the compiler
 baseline, not a fresh result for this review. P4.2/P4.3 remain unchecked.
+
+Typed-only checking trial `f2b112b..270c271`, 2026-09-26 (agent decision): permit
+the ordinary-binder slice without a new Context representation. The existing
+structural dependency walk checks the retained Pi domain before entering its
+codomain scope. Function and CBPV checking are owner-local; all acceptance uses
+the ordinary rules. Empty scope has its ordinary introduction. Other open
+scopes still need admitted declarations, and family signatures are not guessed.
+This supersedes neither the missing-input finding nor the rejection of
+permanent negative caching: no new query cache/retry generation was introduced.
+
+The fresh-process test exposed a real reconstruction limitation: substituting
+into a Pi result can allocate bound pointers different from those saved in the
+typed graph. Reconstruct-and-compare-by-pointer rejected the valid dependent
+APP. The shared APP/codomain rules now validate the supplied result allocation:
+the computed classifier must be alpha-equivalent, and the selected origin,
+argument, scope, Universe bound and remaining occurrence fields must match
+exactly. Free/nominal references are not renamed; no Core nodes are interned
+by alpha equality. APP/codomain receipt keys now include the typed conclusion
+instead of discarding it as a premise-determined output. This is checking, not
+expected-type feedback into synthesis.
+
+This slice does **not** yet delete the newly generated checking-history records,
+replace the default derivation image, or make synchronous structural/map checks
+fuel-bounded. Those remain P4.3/P4.4 work, not completed by a passing typed-only
+image test. Family declarations, general normalization boundaries and IADT
+nominal inputs still require their explicit typed contracts.
 
 Image boundary: `occurrence_io.c` already transports typed operands, maps and
 scopes without accepting proofs; it does not yet replace `derivation_io.c`'s
@@ -496,12 +523,15 @@ soundness; preserve all inherited files and edits locally for their author.
   Specify how a typed construction can be checked without searching for its
   old derivation. Inventory image roots and tests that assume exact premise
   retention; preserve distinct object proofs, not necessarily checker histories.
-  Next prerequisite, before P4.3 code: specify the retained declaration edge for
-  ordinary binders and the typed telescope/terminal Universe for family binders;
+  Before replacing Context admission/history in P4.3, specify the retained
+  declaration edge for ordinary binders and the typed telescope/terminal
+  Universe for family binders;
   preserve the tested raw Context identity and distinguish its formation uses.
   Trace that edge through variable lookup, Pi bounds, lift and image loading.
   A checking request must receive those dependencies explicitly, so unavailable
   input is not cached as a false theorem and no global retry counter is needed.
+  The narrower P4.3b slice uses Pi's existing ordinary-domain input; it does not
+  infer missing declarations for arbitrary open Contexts or family binders.
 - [x] **P4.2a Owner-local Identity metadata:** remove direction recovery from
   Evidence premises. The information already exists in the Term, so this small
   prerequisite can precede the full Lambda/APP migration without changing the
@@ -515,6 +545,13 @@ soundness; preserve all inherited files and edits locally for their author.
 - [x] **P4.3a Lambda scope input:** replace the Pi-receipt rule test with its
   retained scoped input. Test alternative acceptance of the same Pi, identical
   typed Lambda output, no new scope/Core allocation, and wrong scope/type cases.
+- [x] **P4.3b Typed-only ordinary-function slice:** check fresh-process images
+  containing dependent Lambda/APP, F/U, context action and an Identity boundary
+  without old derivations. Preserve two typed Lambdas over the same Core and
+  caller-retained alpha-renamed Pi results; reject changed free variables,
+  classifiers, scope, selected origin and Universe bound. The publication
+  gates pass. This is a prerequisite, not completion of
+  the history-removal or shared budgeted-work requirements below.
 - [ ] **P4.3 One end-to-end slice:** start with typed Lambda/APP plus context
   action, then one Identity boundary consumer. Build, check, inspect, serialize
   and load the typed structure through the same Solve mechanism. Remove the
@@ -529,6 +566,8 @@ soundness; preserve all inherited files and edits locally for their author.
   where needed. Check chunks 0/1/64, cancellation, repeated queries and zero/
   partial/complete retained/recompute images in fresh processes. Do not replace
   permanent history with repeated full-source checking or a second scheduler.
+  Recheck the small timing delta below, including APP/codomain reuse, without
+  restoring result-blind interning or adding a parallel acceptance cache.
 - [ ] **P4.5 Acceptance (R5/A5):** focused tests per slice, then full
   `check-acceptance` for each publication milestone and affected Debug/ASan/
   UBSan ownership/context coverage. Compare identical input/compiler flags
@@ -799,6 +838,7 @@ not trusted field types. Keep P4's general checker migration open.
 | 2026-09-26 | P4/P5 publication | Clean `dcc58ec` passes full acceptance and affected sanitizer checks; inherited trials not adopted | Publish the two implementation commits plus this record; broad typed-proof and common-state migrations remain open |
 | 2026-09-26 | P5 shared work | `84a54e2` separates the 80-byte common header from private owner state and moves the original scheduler | Clean full acceptance, affected sanitizers, image cross-reading and paired comparison complete; remaining owner extraction/P4 stay open |
 | 2026-09-26 | P5 Handler owner | `c89edb7` localizes Handler state and pending structure; a direct-alias regression found during extraction is fixed and tested | Clean acceptance, sanitizers, cross-version images and paired timing complete; Operation/CBPV/IADT and broader P4 remain open |
+| 2026-09-26 | P4.3b | `270c271` checks retained ordinary functions without prior derivations; the shared APP rule validates retained result binders | Clean acceptance, Debug, sanitizers and cross-reading pass; history removal and budgeted checking remain open |
 
 P4.2a verification (fresh, current worktree including the inherited Context/IADT
 edits): optimized `identity_test`, `derivation_io.sh` and `identity_io.sh` pass;
@@ -1026,3 +1066,49 @@ This is not overall code reduction. Debug-symbol sizes on x86-64: shared header
 80 bytes unchanged; source state 248 to 240; Operation/reference private state
 24/16 instead of 248 each, excluding operands and other allocations. No new
 Core tag, checker authority, scheduler or wire format was introduced.
+
+### Typed-Only Function Verification
+
+Candidate `270c271` against `f2b112b`, 2026-09-26, excluding inherited trials:
+optimized Core/Identity and fresh-process typed-only tests pass. The latter
+also passes Debug and ASan/UBSan; sanitized Core/Identity pass with the preceding
+non-PIE flags. Core retains 238,032 terms and Identity's maximum comparison is
+180,603 steps. The existing 100-repeat dependent-APP test adds no terms/proofs;
+the new test also checks exact accepted-subject reuse with no allocation.
+Clean `check-acceptance` exits zero: wall 25m36.015s, user 23m43.575s,
+system 1m51.514s, including builds. This covers the four LT/partition variants,
+general Sorted, images and optional-witness isolation/packets. Log:
+`/tmp/a-program-typed-check-acceptance.log`. Paired performance is recorded below.
+
+All eight derivation fixture modes cross-read with the preceding publication
+at budgets 1/64 in both directions. The old and new compiler sources differ
+only by this slice (`3397e52..f2b112b` has no compiler changes). Byte comparison
+is not a general reproducibility test: effect/producer payload bytes differ,
+and repeated effect-fixture writes by the baseline binary itself also differ. Cross-reading,
+ordinary checking and effect results pass; no image-format change was made.
+
+After acceptance, six paired `generic_sorted.sh` samples use the same script,
+inputs and strict-O2 builds, with the order reversed for the last three pairs.
+Baseline median: 5.740s (5.722-5.780); candidate: 5.8005s (5.742-5.909), about
+1.1% slower. Normalized output and reported Solve counts match in every pair.
+This small local difference is recorded, not claimed performance-neutral or
+attributed to a specific helper without profiling. Logs:
+`/tmp/a-program-typed-check-bench.70kJnt/`. Adopt the checked-structure slice;
+P4.4 retains the timing/reuse follow-up, and full P4/P5 remain open.
+
+Source delta `f2b112b..270c271`; documentation remains separate:
+
+| File under `src/prototype/pointer/` | Added | Deleted | Net |
+| --- | ---: | ---: | ---: |
+| `evidence.c` | 70 | 15 | +55 |
+| `evidence.h` | 7 | 4 | +3 |
+| `evidence_function.c` | 36 | 0 | +36 |
+| `evidence_cbpv.c` | 32 | 0 | +32 |
+| `evidence_structure.h` | 22 | 0 | +22 |
+| `tests/typed_structure.c` | 177 | 0 | +177 |
+| `tests/typed_structure.sh` | 6 | 0 | +6 |
+| `Makefile` | 8 | 0 | +8 |
+
+Total +358/-19, net +339: implementation/headers +148, tests +183, build +8.
+This is a checking prerequisite, not history removal or net code reduction.
+Plan document: +94/-8 lines, net +86 (separate from source changes).
