@@ -1,4 +1,5 @@
 #include "synthesis.h"
+#include "synthesis_effect.h"
 #include "computation.h"
 #include "identity.h"
 #include "action.h"
@@ -504,10 +505,17 @@ static void effect_equations(struct pg_typing *typing)
 		assert(!pg_effect_inference_result(&work, a));
 		struct pg_synthesis_job *job = pg_synthesis_effect_inference(&synthesis, &work);
 		assert(job && pg_synthesis_effect_inference(&synthesis, &work) == job);
+		assert(pg_synthesis_effect_worker(job) == &work);
+		assert(!pg_synthesis_effect_worker(NULL));
 		const struct pg_effect_equation *selected[] = {a};
 		struct pg_synthesis_job *materialized = pg_synthesis_effect_substitution(&synthesis, pending_type, &work, 1, selected);
 		assert(materialized && !pg_synthesis_effect_substitution_result(materialized));
+		size_t requests = synthesis.jobs.count;
 		assert(materialized == pg_synthesis_effect_substitution(&synthesis, pending_type, &work, 1, selected));
+		assert(synthesis.jobs.count == requests);
+		assert(!pg_synthesis_effect_worker(materialized));
+		struct pg_synthesis_job *unchanged = pg_synthesis_effect_substitution(&synthesis, value_type, &work, 0, NULL);
+		assert(unchanged && unchanged != materialized);
 		const struct pg_effect_equation *foreign_selected[] = {other};
 		assert(!pg_synthesis_effect_substitution(&synthesis, pending_type, &work, 1, foreign_selected));
 		struct pg_derivation_input universe_input = {.rule = PG_UNIVERSE_FORM, .count = 1};
@@ -542,6 +550,9 @@ static void effect_equations(struct pg_typing *typing)
 		assert(!pg_synthesis_effect_substitution_result(materialized));
 		assert(pg_synthesis_effect_inference(&synthesis, &work) == job);
 		assert(!synthesis.ready);
+		requests = synthesis.jobs.count;
+		assert(unchanged == pg_synthesis_effect_substitution(&synthesis, value_type, &work, 0, NULL));
+		assert(synthesis.jobs.count == requests && !synthesis.ready);
 		/* Graph construction can continue after all consumers have parked. */
 		assert(!pg_effect_contribution(&work, constant_row, rows[7], a));
 		pg_effect_inference_seal(&work);
@@ -573,7 +584,16 @@ static void effect_equations(struct pg_typing *typing)
 		assert(resolved_type == pg_effect_type(typing->graph, rows[seed | 2], value_type));
 		assert(!complete(&synthesis, materialized, PG_SYNTHESIS_DONE));
 		assert(pg_synthesis_effect_substitution_result(materialized) == resolved_type);
+		assert(!complete(&synthesis, unchanged, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_effect_substitution_result(unchanged) == value_type);
 		assert(!pg_synthesis_effect_substitution_result(type_job));
+		assert(!pg_synthesis_effect_worker(type_job));
+		requests = synthesis.jobs.count;
+		uint64_t steps_before = synthesis.steps;
+		assert(pg_synthesis_effect_inference(&synthesis, &work) == job);
+		assert(materialized == pg_synthesis_effect_substitution(&synthesis, pending_type, &work, 1, selected));
+		pg_synthesis_advance(&synthesis, 64);
+		assert(synthesis.jobs.count == requests && synthesis.steps == steps_before);
 		assert(!pg_effect_type_view(pending_type, &closed_row, &result_type));
 		const struct pg_term *large_pending = pending_type;
 		for (size_t i = 0; i < 64; ++i) large_pending = pg_application(typing->graph, value_type, large_pending);
