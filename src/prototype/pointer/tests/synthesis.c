@@ -1179,6 +1179,14 @@ static void pending_effect_contexts(struct pg_typing *typing)
 		struct pg_synthesis_job *lambda_classifier = pg_synthesis_classifier_structure(&synthesis, lambda);
 		assert(!complete(&synthesis, lambda_classifier, PG_SYNTHESIS_DONE));
 		assert(pg_synthesis_type_structure_result(lambda_classifier) == symbolic_pi);
+		struct pg_synthesis_job *callable_formation = pg_synthesis_classifier_formation(&synthesis, empty, lambda);
+		assert(callable_formation && callable_formation->role->size == 0);
+		assert(pg_synthesis_classifier_formation_input(callable_formation) == lambda);
+		assert(!pg_synthesis_classifier_formation_input(lambda));
+		struct pg_synthesis_job *formation_shape = pg_synthesis_type_structure(&synthesis, callable_formation);
+		assert(!complete(&synthesis, formation_shape, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(formation_shape) == symbolic_pi);
+		assert(!pg_synthesis_result(callable_formation));
 		struct pg_synthesis_job *continuation = pg_synthesis_lambda_body(&synthesis, context, body);
 		assert(continuation == pg_synthesis_lambda_body(&synthesis, context, body));
 		struct pg_synthesis_job *continuation_type = pg_synthesis_classifier_structure(&synthesis, continuation);
@@ -1242,6 +1250,9 @@ static void pending_effect_contexts(struct pg_typing *typing)
 		assert(!pg_effect_inference_result(&effects, request_target));
 		const struct pg_object *result_binder = pg_binder(typing->graph);
 		struct pg_synthesis_job *result_context = pg_synthesis_result_context(&synthesis, context, body, result_binder);
+		assert(pg_synthesis_result_context_input(&synthesis, result_context, result_binder) == body);
+		assert(!pg_synthesis_result_context_input(&synthesis, result_context, k));
+		assert(!pg_synthesis_result_context_input(&synthesis, context, k));
 		assert(result_context == pg_synthesis_result_context(&synthesis, context, body, result_binder));
 		struct pg_token result_name = {.kind = PG_TOKEN_IDENT, .text = "result", .length = 6};
 		const struct pg_source_scope *result_scope = pg_synthesis_bind_context(&synthesis, scope,
@@ -1878,6 +1889,18 @@ static void pending_effect_contexts(struct pg_typing *typing)
 		assert(pg_alpha_equal(pg_term_substitute(typing->graph, symbolic_pi, 1, &image),
 			pg_synthesis_type_structure_result(late_classifier)) == 1);
 		assert(pg_synthesis_classifier_structure(&synthesis, late_lambda) == late_classifier);
+		const struct pg_evidence *formation_proof = complete(&synthesis, callable_formation, PG_SYNTHESIS_DONE);
+		assert(callable_formation == pg_synthesis_classifier_formation(&synthesis, empty, lambda));
+		assert(pg_synthesis_type_structure(&synthesis, callable_formation) == formation_shape);
+		assert(pg_synthesis_type_structure_result(formation_shape) == symbolic_pi);
+		struct pg_synthesis_job *late_formation = pg_synthesis_classifier_formation(&synthesis, empty, late_lambda);
+		const struct pg_evidence *late_formation_proof = complete(&synthesis, late_formation, PG_SYNTHESIS_DONE);
+		same_judgement(formation_proof, late_formation_proof);
+		struct pg_synthesis_job *late_formation_shape = pg_synthesis_type_structure(&synthesis, late_formation);
+		assert(!complete(&synthesis, late_formation_shape, PG_SYNTHESIS_DONE));
+		assert(pg_synthesis_type_structure_result(late_formation_shape) == pg_evidence_subject(late_formation_proof)->core);
+		complete(&synthesis, result_context, PG_SYNTHESIS_DONE);
+		assert(pg_synthesis_result_context_input(&synthesis, result_context, result_binder) == body);
 		struct pg_synthesis_job *invalid = rule_job(&synthesis, PG_THUNK_TYPE_FORM, NULL, 1, &universe);
 		struct pg_synthesis_job *invalid_structure = pg_synthesis_type_structure(&synthesis, invalid);
 		assert(!complete(&synthesis, invalid_structure, PG_SYNTHESIS_DONE));
@@ -2597,10 +2620,22 @@ static void constant_telescope_results(struct pg_typing *typing)
 		struct pg_synthesis_job *function = request(&synthesis, root, "f := \\A:@ => \\x:A => @;");
 		if (accepted) complete(&synthesis, function, PG_SYNTHESIS_DONE);
 		struct pg_synthesis_job *result = pg_synthesis_constant_result(&synthesis, context, function, 2);
+		struct pg_synthesis_job *scope = pg_synthesis_rule_premise(&synthesis,
+			pg_synthesis_rule_premise(&synthesis, result, 0), 0);
+		const struct pg_object *scope_binder = pg_synthesis_pi_scope_binder(scope);
+		assert(scope_binder && scope->role->size == 2 * sizeof(void *));
+		assert(!pg_synthesis_pi_scope_binder(function));
+		assert(pg_synthesis_work_project(scope).preparing && !pg_synthesis_work_project(scope).rule);
+		uint64_t steps = synthesis.steps;
+		pg_synthesis_advance(&synthesis, 0);
+		assert(synthesis.steps == steps && !pg_synthesis_result(scope));
 		size_t jobs = synthesis.jobs.count;
 		assert(result == pg_synthesis_constant_result(&synthesis, context, function, 2));
 		assert(synthesis.jobs.count == jobs);
 		const struct pg_evidence *proof = complete(&synthesis, result, PG_SYNTHESIS_DONE);
+		assert(pg_synthesis_pi_scope_binder(scope) == scope_binder);
+		assert(pg_evidence_context(pg_synthesis_result(scope))->binder == scope_binder);
+		assert(!pg_synthesis_work_project(scope).preparing && pg_synthesis_work_project(scope).rule);
 		assert(pg_evidence_judgement(proof) == PG_JUDGEMENT_COMPUTATION_TYPE);
 		const struct pg_term *type = pg_evidence_subject(proof)->core;
 		const struct pg_term *domain, *codomain;

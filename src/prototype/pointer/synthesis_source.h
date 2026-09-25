@@ -33,11 +33,22 @@ const struct pg_source_scope *pg_synthesis_scope_bind(struct pg_synthesis *,
 struct pg_synthesis_job *pg_synthesis_plain_rule(struct pg_synthesis *, enum pg_evidence_rule,
 	const struct pg_object *, size_t, struct pg_synthesis_job *const *);
 struct pg_synthesis_job *pg_synthesis_rule_premise(struct pg_synthesis *, const struct pg_synthesis_job *, size_t);
+const struct pg_derivation_input *pg_synthesis_plain_derivation(const struct pg_synthesis_job *);
 const struct pg_synthesis_job *pg_synthesis_operation_origin(const struct pg_synthesis_job *);
 /* Follow an existing lexical alias edge, without evaluation or acceptance. */
 struct pg_synthesis_job *pg_synthesis_source_origin(const struct pg_synthesis_job *);
 struct pg_synthesis_job *pg_synthesis_body(struct pg_synthesis *, struct pg_synthesis_job *, struct pg_synthesis_job *);
 struct pg_synthesis_job *pg_synthesis_body_input(const struct pg_synthesis_job *);
+struct pg_synthesis_job *pg_synthesis_classifier_formation(struct pg_synthesis *,
+	const struct pg_synthesis_job *, const struct pg_synthesis_job *);
+struct pg_synthesis_job *pg_synthesis_classifier_formation_input(const struct pg_synthesis_job *);
+int pg_synthesis_classifier_formation_structure(struct pg_synthesis *, const struct pg_synthesis_job *,
+	struct pg_synthesis_job **);
+const struct pg_object *pg_synthesis_pi_scope_binder(const struct pg_synthesis_job *);
+struct pg_synthesis_job *pg_synthesis_application_domain(struct pg_synthesis *,
+	struct pg_synthesis_job *, struct pg_synthesis_job *);
+struct pg_synthesis_job *pg_synthesis_result_context_input(struct pg_synthesis *,
+	const struct pg_synthesis_job *, const struct pg_object *);
 int pg_synthesis_typed_input(struct pg_synthesis *, const struct pg_evidence *, const struct pg_evidence *);
 int pg_synthesis_source_value_kind(const struct pg_synthesis_job *);
 int pg_synthesis_await_preparation(struct pg_synthesis *, struct pg_synthesis_job *,

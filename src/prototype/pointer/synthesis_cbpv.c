@@ -2,6 +2,31 @@
 #include "computation.h"
 #include "derivation.h"
 
+struct pg_synthesis_job *pg_synthesis_result_context(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *context, struct pg_synthesis_job *computation,
+	const struct pg_object *binder)
+{
+	if (!context || context->owner != synthesis->owner_key) return NULL;
+	if (!computation || computation->owner != synthesis->owner_key || !binder) return NULL;
+	struct pg_synthesis_job *formation = pg_synthesis_classifier_formation(synthesis, context, computation);
+	if (!formation) return NULL;
+	struct pg_synthesis_job *domain = pg_synthesis_plain_rule(synthesis, PG_RETURN_CONTENT, NULL, 1, &formation);
+	if (!domain) return NULL;
+	struct pg_synthesis_job *premises[] = {context, domain};
+	return pg_synthesis_plain_rule(synthesis, PG_CONTEXT_EXTEND, binder, 2, premises);
+}
+
+struct pg_synthesis_job *pg_synthesis_result_context_input(struct pg_synthesis *synthesis,
+	const struct pg_synthesis_job *context, const struct pg_object *binder)
+{
+	const struct pg_derivation_input *extension = pg_synthesis_plain_derivation(context);
+	if (!extension || extension->rule != PG_CONTEXT_EXTEND || extension->parameters.binder != binder) return NULL;
+	struct pg_synthesis_job *domain = pg_synthesis_rule_premise(synthesis, context, 1);
+	const struct pg_derivation_input *content = pg_synthesis_plain_derivation(domain);
+	if (!content || content->rule != PG_RETURN_CONTENT) return NULL;
+	return pg_synthesis_classifier_formation_input(pg_synthesis_rule_premise(synthesis, domain, 0));
+}
+
 struct contents_work {
 	struct pg_synthesis_job *dependency;
 	unsigned stage;
