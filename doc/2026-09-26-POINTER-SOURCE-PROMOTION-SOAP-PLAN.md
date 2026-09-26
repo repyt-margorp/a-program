@@ -53,7 +53,7 @@ linked by the new default build.
   build entry points from another working directory. Compare representative
   source/image results with the baseline binary.
 - [x] Report rename-aware file/line changes; prepare only the verified layout.
-- [ ] Relocate inherited local edits to their corresponding new paths without
+- [x] Relocate inherited local edits to their corresponding new paths without
   accepting them; verify their content and push main.
 
 ### Verification
@@ -83,6 +83,14 @@ Fresh checks against baseline `2f16bec`, 2026-09-26:
   build, `--nf` and explicit `#print` execution also passed. Addition and indexed
   append NF output matched the baseline.
 
+### Publication
+
+`f8f1dc5` was pushed to `origin/main` and the remote ref verified on 2026-09-26.
+Inherited tracked edits and both untracked fixtures were relocated and compared
+with the pre-move copies/diff; none was committed. Ignored old pointer binaries
+were preserved under `build/pre-promotion-pointer/`. Acceptance wall time:
+1561.677 seconds (26 minutes); no speedup is claimed for a layout-only change.
+
 ### Change Size
 
 Rename-aware comparison against `2f16bec` (Git `--find-renames=10%`): 912
@@ -99,7 +107,7 @@ build entry points, test paths, the generated inventory and documentation:
 | `archive/README.md` | 15 | 0 |
 | `archive/legacy/Makefile` (unchanged old root file) | 9 | 0 |
 | September 25 active SOAP plan | 7 | 0 |
-| This promotion plan | 119 | 0 |
+| This promotion plan | 127 | 0 |
 | `examples/type-infer-and-check/README.md` | 6 | 0 |
 | `src/Makefile` (relocated) | 374 | 360 |
 | `tests/README.md` | 10 | 6 |
@@ -116,4 +124,4 @@ build entry points, test paths, the generated inventory and documentation:
 Excluding documentation, additions/deletions are +730/-688, net +42: +16 in
 build entry points/ignore rules, +26 in shell verification, zero in compiler algorithms or
 test programs. Large changed-line counts mostly reflect relocated path strings,
-not extra logic. Documentation is +195/-30 (net +165); total +925/-718 (net +207).
+not extra logic. Documentation is +203/-30 (net +173); total +933/-718 (net +215).
