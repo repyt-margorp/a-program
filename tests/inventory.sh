@@ -3,6 +3,7 @@ set -eu
 
 # This is an inventory of the frozen implementation, not a passing-test list.
 baseline=5bdecb4
+{
 printf 'category\tname\tsource\tstatus\n'
 git show "$baseline:src/prototype/include/a_program/frontend/ast.h" |
 	awk '/^[ \t]*PROTOTYPE_AST_[A-Z_]+[ ,=]/ {
@@ -27,3 +28,5 @@ git ls-tree -r --name-only "$baseline" |
 		/src\/prototype\/tests\/checks\/.*\.(c|inc)$/ {
 			print "internal_check\t" $0 "\t" $0 "\treview_pending"
 		}'
+} | awk -F '\t' 'BEGIN { OFS = FS }
+	{ sub(/^src\/prototype\//, "archive/legacy/src/prototype/", $3); print }'

@@ -7,6 +7,13 @@ result-formation and typed-map/variable-image slices verified. P5 effect/shared-
 Handler/Operation/CBPV/function/Context/IADT-scope/basic-Identity owners verified.
 Verification uses clean publication trees, full acceptance and affected sanitizers.
 Broader P4 typed-proof migration and P5 synthesis modularity remain open.
+Layout milestone (user-authorized 2026-09-26): see
+[the promotion plan](2026-09-26-POINTER-SOURCE-PROMOTION-SOAP-PLAN.md).
+After promotion, old `src/prototype/pointer/*.c` paths resolve to `src/*.c`,
+its `tests/` suffix resolves to top-level `tests/`, and the remaining legacy
+`src/prototype/` tree resolves under `archive/legacy/`. Historical measurements
+below keep their original revision paths. This is not completion of P4/P5;
+resume their semantic work separately after the unchanged-source layout gate.
 Initial review baseline: `40375d734896a456f5ad2827ad8fe0f10ff61517`.
 Published epochs and their verification are recorded below. The latest
 Identity-owner comparison baseline is `4aecd9c`; its clean gate covers all

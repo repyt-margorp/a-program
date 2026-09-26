@@ -8,7 +8,7 @@ trap 'rm -rf "$directory"' EXIT
 "$1" function-read "$directory/functions.a"
 # A source-only snapshot need not retain every intermediate branch scope.
 binary="$(dirname "$1")/pointer-check"
-example="$(dirname "${BASH_SOURCE[0]}")/../../../../examples/07_add.p"
+example="$(dirname "${BASH_SOURCE[0]}")/../examples/07_add.p"
 "$binary" --nf main --save "$directory/add.a" "$example" > "$directory/source"
 "$binary" --load --nf main "$directory/add.a" > "$directory/restored"
 sed '1d' "$directory/source" > "$directory/source-value"

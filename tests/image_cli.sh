@@ -6,7 +6,7 @@ fixture=$1
 binary=$2
 compare=$3
 # Source-origin discovery order must survive a retained computation snapshot.
-quicksort="$(dirname "${BASH_SOURCE[0]}")/../../tests/fixtures/typing/if8_fuel_free_quicksort_check.p"
+quicksort="$(dirname "${BASH_SOURCE[0]}")/../archive/legacy/src/prototype/tests/fixtures/typing/if8_fuel_free_quicksort_check.p"
 "$binary" --legacy-intrinsic-dot --steps 1000000 --retain-reductions --whnf main \
 	--save "$directory/retained-order.a" "$quicksort" > "$directory/status"
 "$fixture" retained-append-origin "$directory/retained-order.a"
@@ -56,7 +56,7 @@ code=0
 "$binary" --load --root 9 "$directory/multiple.a" > "$directory/status" 2>&1 || code=$?
 test "$code" = 2
 grep -q 'root index out of range: 9 (count 8)' "$directory/status"
-example="$(dirname "${BASH_SOURCE[0]}")/../../../../examples/09_list_induction.p"
+example="$(dirname "${BASH_SOURCE[0]}")/../examples/09_list_induction.p"
 "$binary" --nf main --save "$directory/list.a" "$example" > "$directory/source-nf"
 "$binary" --load --nf main "$directory/list.a" > "$directory/image-nf"
 # Solve scheduling may differ; the fully reduced computation graph must not.
@@ -176,7 +176,7 @@ while read -r fixture names; do
 	input="$(dirname "${BASH_SOURCE[0]}")/$fixture"
 	# Frozen legacy fixtures keep their spelling; new fixtures use the default.
 	options=()
-	case "$fixture" in ../../tests/fixtures/*) options=(--legacy-intrinsic-dot);; esac
+	case "$fixture" in ../archive/legacy/src/prototype/tests/fixtures/*) options=(--legacy-intrinsic-dot);; esac
 	for steps in 0 100 100000; do
 		code=0
 		"$binary" "${options[@]}" --steps "$steps" --save "$directory/generated.a" "$input" > "$directory/status" || code=$?
@@ -236,9 +236,9 @@ acceptance/function-graph-indexed-canonical.p main emptyMain:emptyExpected
 acceptance/function-graph-curried.p main specMain emptySpecMain:right growMain:two chooseMain:two twiceMain:four
 acceptance/termination.p main
 acceptance/acc-explicit-motive.p
-../../tests/fixtures/typing/if8_fuel_free_quicksort_check.p main emptyMain:emptyExpected singletonMain:singletonExpected ascendingMain:ascendingExpected descendingMain:descendingExpected duplicateMain:duplicateExpected
-../../tests/fixtures/typing/insertion_sort_check.p main
-../../tests/fixtures/typing/eager_insertion_check.p main earlyMain:earlyExpected traceEarly:traceEarlyExpected traceRecursive:traceRecursiveExpected
+../archive/legacy/src/prototype/tests/fixtures/typing/if8_fuel_free_quicksort_check.p main emptyMain:emptyExpected singletonMain:singletonExpected ascendingMain:ascendingExpected descendingMain:descendingExpected duplicateMain:duplicateExpected
+../archive/legacy/src/prototype/tests/fixtures/typing/insertion_sort_check.p main
+../archive/legacy/src/prototype/tests/fixtures/typing/eager_insertion_check.p main earlyMain:earlyExpected traceEarly:traceEarlyExpected traceRecursive:traceRecursiveExpected
 acceptance/length-output-proof.p main emptyMain:emptyExpected specMain emptySpecMain:emptyExpected
 acceptance/generated-function-graph.p main certifiedMain aliasMain proofMain directMain directProof shadowMain:baseExpected nestedProof:baseExpected
 acceptance/generated-function-graph-direct.p main certified
@@ -268,7 +268,7 @@ acceptance/indexed-computed-type.p main
 acceptance/nested-index-motive.p main recursiveMain:recursiveExpected
 acceptance/indexed-ih-environment.p
 acceptance/computed-family-member.p main nested:nestedExpected
-../../tests/fixtures/typing/function_graph_dependent_spine_check.p main certified
-../../tests/fixtures/typing/function_graph_two_recursive_calls_check.p main certified
+../archive/legacy/src/prototype/tests/fixtures/typing/function_graph_dependent_spine_check.p main certified
+../archive/legacy/src/prototype/tests/fixtures/typing/function_graph_two_recursive_calls_check.p main certified
 GRAPHS
 printf '%s\n' 'image cli: generated graph source aliases and normal forms survive unfinished/completed resaves'

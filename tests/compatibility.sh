@@ -79,7 +79,7 @@ done <<'CASES'
 0 typing/dependent_pi_surface_check
 0 typing/indexed_branch_rebuild_check
 0 typing/residual_index_equation_negative
-0 ../../../../examples/type-infer-and-check/level2/02_tree
+0 ../../../../../../examples/type-infer-and-check/level2/02_tree
 0 typing/dependent_recursive_comparison_check
 0 typing/insertion_sort_check main expected
 0 typing/eager_insertion_check main expected
@@ -105,8 +105,8 @@ done <<'CASES'
 0 typing/if8_fuel_free_quicksort_check duplicateMain duplicateExpected
 1 negative/function_graph_incompatible_recursive_property
 0 negative/function_graph_coarse_forgery
-1 ../../pointer/tests/acceptance/generated-function-graph-direct-forgery
-1 ../../pointer/tests/acceptance/indexed-rigid-induction-invalid
+1 ../../../../../../tests/acceptance/generated-function-graph-direct-forgery
+1 ../../../../../../tests/acceptance/indexed-rigid-induction-invalid
 CASES
 # The historical coarse-fallback fixture makes no false claim. Its migrated
 # direct-body graph constructor still admits it. The final case
@@ -313,7 +313,7 @@ for steps in 0 100000; do
 		"${runtime[@]}" --equal-image "$directory/rebuild.a" "$name" "${name}Expected"
 	done
 done
-"${runtime[@]}" "$fixtures/../../../../examples/type-infer-and-check/level2/02_tree.p" Nat zero succ 3
+"${runtime[@]}" "$fixtures/../../../../../../examples/type-infer-and-check/level2/02_tree.p" Nat zero succ 3
 client="$(dirname "${BASH_SOURCE[0]}")/acceptance/legacy-comparison-results.p"
 for steps in 0 100000; do
 	code=0

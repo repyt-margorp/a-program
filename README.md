@@ -6,9 +6,10 @@ bounded computation ahead of execution, constructing explicit typing evidence.
 Unfinished computation remains pending; it is not accepted as a proof.
 
 The current implementation is the **pointer core** in
-[`src/prototype/pointer/`](src/prototype/pointer/), on the default branch
-`main`. The directory name reflects the repository's
-acceptance policy, not a promise to discard this implementation.
+[`src/`](src/), on the default branch `main`. It was promoted from
+`src/prototype/pointer/` on September 26, 2026; verification lives in [`tests/`](tests/).
+The previous source tree is preserved under [`archive/legacy/`](archive/legacy/),
+outside the default build.
 
 The previous implementation is preserved at the tag
 [`old-version/2026-09-14-main`](https://github.com/repyt-margorp/a-program/tree/old-version/2026-09-14-main).
@@ -23,14 +24,15 @@ Legacy build commands and artifact formats do not describe the pointer rewrite.
 From the repository root, with a C11 compiler and Make:
 
 ```sh
-make -f src/prototype/pointer/Makefile pointer-check
-src/prototype/pointer/.build/pointer-check examples/05_bool_to_nat.p
-src/prototype/pointer/.build/pointer-check --nf main examples/05_bool_to_nat.p
-src/prototype/pointer/.build/pointer-check --repl examples/07_add.p
-src/prototype/pointer/.build/pointer-check --run raw src/prototype/pointer/tests/acceptance/host-print.p
+make
+build/pointer/pointer-check examples/05_bool_to_nat.p
+build/pointer/pointer-check --nf main examples/05_bool_to_nat.p
+build/pointer/pointer-check --repl examples/07_add.p
+build/pointer/pointer-check --run raw tests/acceptance/host-print.p
 ```
 
-Use this explicit Makefile: plain `make` still selects the legacy build.
+Plain `make` builds the current compiler. `make -f src/Makefile` is equivalent;
+`BUILD=/absolute/path` selects a different output directory.
 `pointer-check` checks source and normalizes pure computations. Only explicit
 `--run NAME` executes unhandled `#print` requests, after module checking.
 Print writes exact Text bytes with no added newline; run diagnostics use stderr.
@@ -109,9 +111,9 @@ such as `(Vec Nat).cons value` retain the source convention; an ordinary
 higher-order parameter keeps its explicitly declared Pi signature.
 
 A declaration's own name is not an implicit recursive alias. See the
-[parser](src/prototype/pointer/syntax.c),
-[source tests](src/prototype/pointer/tests/acceptance/), and
-[compatibility inventory](src/prototype/pointer/tests/compatibility.sh).
+[parser](src/syntax.c),
+[source tests](tests/acceptance/), and
+[compatibility inventory](tests/compatibility.sh).
 Some fixtures deliberately describe invalid or unsupported programs.
 
 ## Implementation Model
@@ -127,7 +129,7 @@ value/computation distinction belongs to typing. Constructors, Identity actions
 and effect operations use semantic-object references and reduction protocols,
 not new Core tags for every feature.
 
-| Area | Sources under `src/prototype/pointer/` |
+| Area | Sources under `src/` |
 | --- | --- |
 | Graph and evaluation | `graph.c`, `eval.c`, `computation.c` |
 | Host contracts and explicit execution | `host.c`, `execution.c` |
@@ -147,8 +149,8 @@ Source can be saved as a `.a` Program image before Solve finishes:
 
 ```sh
 # Exit status 3 means pending, not a completed check.
-src/prototype/pointer/.build/pointer-check --steps 0 --save pending.a examples/07_add.p
-src/prototype/pointer/.build/pointer-check --load --nf main pending.a
+build/pointer/pointer-check --steps 0 --save pending.a examples/07_add.p
+build/pointer/pointer-check --load --nf main pending.a
 ```
 
 Loading uses ordinary Solve, not a separate proof Replay engine. Stored
@@ -179,7 +181,7 @@ source fixtures and default CLI tests use `#Name`.
 | --- | --- |
 | Indexed induction | Source-defined Acc, recursive/function fields, dependent Vec append and selected captured indexed functions |
 | Dependent synthesis | Constructor-index refinement and branch-proposed motives checked against every induction branch; unchanged `lengthCertified` |
-| Function properties | [Length at its ordinary result](src/prototype/pointer/tests/fixtures/graph_adequacy/length-direct.p), [general QuickSort Sorted](src/prototype/pointer/tests/acceptance/generic-quick-sorted-result.p) and [permutation](src/prototype/pointer/tests/fixtures/generic_sorted/content-result-proof.p) at its ordinary result, without global function-witness syntax |
+| Function properties | [Length at its ordinary result](tests/fixtures/graph_adequacy/length-direct.p), [general QuickSort Sorted](tests/acceptance/generic-quick-sorted-result.p) and [permutation](tests/fixtures/generic_sorted/content-result-proof.p) at its ordinary result, without global function-witness syntax |
 | Higher Identity | Selected typed action, transport and higher-dimensional examples; general coherence remains unfinished |
 | Effects | `#print` requests, multi-clause handlers, forwarding and resumptions; ordered partial applications; explicit `--run` terminal output with split-budget and source/image tests |
 | Host values | `#Int` aliases `#Int32`; distinct `#Int64`; `#Text` stores exact bytes. Literal typing and image round trips, including recursive Text fields |
@@ -224,13 +226,13 @@ Detailed contracts and implementation history are in the
 Run the current acceptance suite (Bash is required):
 
 ```sh
-make -f src/prototype/pointer/Makefile check-acceptance
+make check-acceptance
 ```
 
 For a smaller compatibility/result check:
 
 ```sh
-make -f src/prototype/pointer/Makefile check-source-compatibility
+make check-source-compatibility
 ```
 
 Tests cover Core/evidence rules, source behavior, negative cases, images/imports,
@@ -239,12 +241,13 @@ theory.
 
 ## Repository Notes
 
-- `src/prototype/pointer/`: current implementation and tests.
-- Other `src/prototype/` directories: retained previous implementation.
-- `src/handmade/`, other accepted `src/` code and `include/`: separate work,
-  not silently replaced by the rewrite.
+- `src/`: current compiler and its owner-local headers; `src/Makefile` defines its build.
+- `tests/`: current verification, fixtures and compatibility inventory.
+- `archive/legacy/`: previous implementation, build rules and compatibility inputs.
+- `archive/pointer-experiments/`: historical, unadopted pointer trials.
+- `src/handmade/`: user-authored work, unchanged by promotion and not linked by default.
 - `examples/`, `training/`: programs, including historical drafts.
 - `doc/`: dated plans, audits and archives; older documents can be superseded.
 
-Follow [AGENTS.md](AGENTS.md) and [CODING_STYLE.md](CODING_STYLE.md). Changing the
-default branch does not promote AI-written code outside its permitted directory.
+Follow [AGENTS.md](AGENTS.md) and [CODING_STYLE.md](CODING_STYLE.md). This promotion
+was explicitly authorized; new experiments still require separate acceptance.

@@ -20,6 +20,15 @@ The intended contrast is:
 - `src/prototype/`: experimental code, drafts, sketches, alternative designs, and
   AI-agent implementation work that has not been accepted yet.
 
+On 2026-09-26 the user explicitly authorized promotion of the verified pointer
+compiler into `src/`, with its tests in `tests/`. The old implementation is
+archived at `archive/legacy/` and is not part of the default build. Headers stay
+beside their owning C modules; this promotion does not move them into `include/`.
+`src/handmade/` remains user-authored, separate work. Uncommitted trials were not
+accepted as part of promotion. Future code changes still require the task's
+explicit authorization to edit accepted code; new alternatives belong in
+`src/prototype/`, not in the frozen archive.
+
 ## Default Write Boundary for AI Agents
 
 AI agents must write code only under `src/prototype/` unless the user explicitly

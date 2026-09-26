@@ -1,5 +1,11 @@
 # Type Inference and Checking Examples
 
+Historical legacy manifest: the table and commands below describe the old
+compiler, now under `archive/legacy/`. They are not the current pointer compiler's
+acceptance contract. Use root `make check-source-compatibility` and
+[`tests/README.md`](../../tests/README.md) for current verification; use the
+`old-version/2026-09-14-main` checkout for the historical build commands.
+
 This directory is an executable specification of the currently accepted type
 inference and checking boundary. `manifest.tsv` is authoritative. The
 integration runner rejects duplicate entries, missing files, unlisted `.p`

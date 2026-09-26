@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
-root=$(cd "$(dirname "$0")/../../../.." && pwd)
-tests="$root/src/prototype/pointer/tests"
+root=$(cd "$(dirname "$0")/.." && pwd)
+tests="$root/tests"
 runner=${1:?usage: syntax_inventory.sh /path/to/parse_files}
 report=$(mktemp)
 trap 'rm -f "$report"' EXIT

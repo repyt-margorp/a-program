@@ -1,6 +1,7 @@
 a.out
 read_file.out
 /build/
+/archive/legacy/build/
 *.o
 *.swp
 .claude/

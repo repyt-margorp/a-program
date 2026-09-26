@@ -13,7 +13,7 @@ for mode in solved retained whnf retained-whnf; do
 	case "$mode" in whnf|retained-whnf) options+=(--whnf main);; esac
 	"$binary" --steps "$steps" --legacy-intrinsic-dot "${options[@]}" \
 		--save "$directory/$mode.a" \
-		--imports "$root/../tests/fixtures/typing/if8_fuel_free_quicksort_check.p" \
+		--imports "$root/archive/legacy/src/prototype/tests/fixtures/typing/if8_fuel_free_quicksort_check.p" \
 		"$root/tests/acceptance/legacy-quicksort-property.p" > "$directory/save"
 	if "$binary" --steps "$steps" --load "$directory/$mode.a" > "$directory/load"; then
 		printf '%s: ' "$mode"

@@ -21,6 +21,8 @@
 - All code, identifiers, comments, and documentation (including coding guidelines) must be written in English.
 - Files:
   - Headers under `include/` only declare interfaces; no non-trivial inline logic.
+  - The promoted pointer compiler keeps declarative headers beside their owning
+    C modules in `src/`; tests live separately in `tests/`.
   - Source under `src/` implements interfaces.
 - C standard: C11 (`-std=c11`).
 - Warnings: `-Wall -Wextra` clean builds. Treat warnings as errors when stable.

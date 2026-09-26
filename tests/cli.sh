@@ -151,7 +151,7 @@ printf 'a:=#.Int;\n:quit\n' | "$binary" --legacy-intrinsic-dot --repl "$director
 if grep -q -- 'requires --legacy-intrinsic-dot' "$directory/repl-legacy.out"; then exit 1; fi
 # Preserve the all-refuted indexed-Match limitation, including ordinary image
 # reload. The post-check must not be used to guess the missing motive.
-fixture=$(dirname "$0")/../../tests/fixtures/typing/impossible_index_branch_check.p
+fixture=$(dirname "$0")/../archive/legacy/src/prototype/tests/fixtures/typing/impossible_index_branch_check.p
 code=0
 "$binary" --steps 100000 --save "$directory/refuted.a" "$fixture" > "$directory/refuted.out" 2> "$directory/refuted.err" || code=$?
 test "$code" = 3
