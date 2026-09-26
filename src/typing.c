@@ -941,12 +941,16 @@ static int motive_input(const struct pg_occurrence *source, size_t index)
 	return !pg_context_extension_size(source->operands[index]->context, source->context, &count);
 }
 
-/* A family's Pi declaration retains formation inputs in the signature's
- * local scopes. They undergo the same lifted action as other scoped inputs. */
+/* Pi and logical Lambda retain declaration inputs in the family's local
+ * scopes. They undergo the same lifted action as other scoped inputs. */
 static int signature_input(const struct pg_occurrence *source, size_t index)
 {
-	if (source->judgement != PG_JUDGEMENT_COMPUTATION_TYPE || index == 1) return 0;
-	const struct pg_occurrence *body = pg_occurrence_scoped_input(source, 1);
+	size_t body_index;
+	if (source->judgement == PG_JUDGEMENT_COMPUTATION_TYPE) body_index = 1;
+	else if (source->judgement == PG_JUDGEMENT_TYPE_FAMILY) body_index = 0;
+	else return 0;
+	if (index == body_index) return 0;
+	const struct pg_occurrence *body = pg_occurrence_scoped_input(source, body_index);
 	if (!body || body->context->judgement != PG_JUDGEMENT_TYPE_FAMILY) return 0;
 	size_t count;
 	return !pg_context_extension_size(source->operands[index]->context, source->context, &count);

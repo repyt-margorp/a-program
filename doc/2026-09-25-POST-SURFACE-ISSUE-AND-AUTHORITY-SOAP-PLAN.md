@@ -617,7 +617,7 @@ requirement, not a newly attributed user design decision.
 | --- | --- | --- |
 | Ordinary Pi / Lambda / APP | Pi domain formation and scoped codomain; Lambda's Pi and body; APP's function, argument and selected result formation | Admission of a free ambient Context; selected/inverted formation recipes not all supported by the structural checker |
 | Family Pi | Terminal Universe, scoped codomain, then selected index formations in declaration order; descend into nested family signatures before their terminal Universe | Public Context constructors still take checked Context inputs; this does not replace the Context formation API |
-| Logical family abstraction/application | Abstraction body and raw signature; application family and index | `pg_prove_family_abstraction` still omits its selected declaration formation from typed inputs; it is not covered by the family-Pi image slice |
+| Logical family abstraction/application | Verified after `badac54`: body plus the same declaration inputs as Pi; application family and index, with checked result allocation | Arbitrary ambient Context admission and selected/inverted input recipes remain; the new closed-image tests do not remove those dependencies |
 | Variable | Binder pointer, exact raw Context and declared classifier | Declaration formation currently found through Context evidence; bare open variables are not self-contained images |
 | Context action | Exact typed images, source/destination raw Contexts, retained origin; lexical lifts share the existing action mechanism | `map_dependency`, `lift_destination`, `pg_prove_context_alpha` and substitution rules still use Context receipt endpoints/selected declaration premises |
 | Constructor | Nominal constructor in Core, typed fields and exact result `type` | Schema's checked parameter/index/field declarations; `constructor_instance` still needs their admission, not only the erased shape |
@@ -746,6 +746,17 @@ gates below; the earlier green run alone did not establish readiness of this fix
   declaration-proof database or default "first Context proof" selection.
   This is an agent implementation decision, not a new user requirement.
   It addresses the family Pi gap, not arbitrary open-root Context admission.
+- [x] **P4.3i Logical family inputs:** share Pi's declaration-input construction
+  and checking with logical family abstraction, preserving separate kernel
+  rules and the existing Lambda body edge at input 0. Retain exact selected
+  domains and family telescopes, not a new signature type/tag. Check closed,
+  dependent, nested and mapped family graphs after fresh-process loading.
+  Family application must check its computed classifier against the retained
+  bound-pointer allocation and intern by the complete typed result, rather
+  than treating the first receipt for two premises as its only result.
+  Test bad classifiers/free variables, missing declaration inputs, allocation
+  reuse and body elimination; repeat full acceptance, image, sanitizer and
+  performance gates. This is an agent implementation decision within P4.
 - [ ] **P4.3 One end-to-end slice:** start with typed Lambda/APP plus context
   action, then one Identity boundary consumer. Build, check, inspect, serialize
   and load the typed structure through the same Solve mechanism. Remove the
@@ -2050,3 +2061,50 @@ Local evidence: `/tmp/a-program-family-final-{acceptance,profiles,cross}.log`,
 `/tmp/a-program-family-input-baseline-gap.log`,
 `/tmp/a-program-family-scope-gap.log`. Tests, not these local logs, are tracked.
 This plan: **+101/-0**; complete slice: **+407/-75, net +332**; build files unchanged.
+
+Logical family inputs, baseline `badac54`, verified 2026-09-27:
+the same declaration-input builder/checker now serves Pi and logical Lambda,
+without merging their typing rules. Lambda's body remains input 0. Fresh
+checking also exposed independently allocated binders in a family application's
+classifier. The family application rule checks the retained allocation
+against its computed classifier by alpha equality; it does not infer from an
+expected type. `PG_TYPE_FAMILY_APP` no longer interns results by premises alone.
+No new Core/wire tag, signature type, proof database or checking engine is added.
+
+- Full `check-acceptance`: exit 0, wall **1576.838s**, user 1464.439s, system
+  111.016s; compatibility **63/63**, general/ordinary-result Sorted, all derived
+  LT variants and witness isolation/packets pass.
+- Debug/ASan/UBSan Core, Program, IADT, Identity, Synthesis and typed-only
+  checks pass. The fresh-process image test grows from 12 to 18 independent
+  roots, including dependent/partial/nested/mapped logical families. The
+  extended test fails on the baseline. Malformed declarations/classifiers/free
+  variables reject; exact selected bounds, colliding scope reuse, alternative
+  result allocations and body elimination have permanent regressions.
+- **36** source-image pairs, **72** opposite-version loads and **8** graph/
+  derivation reads pass. Ten quiet workloads retain identical outputs/steps;
+  six-pair median changes range **-1.34% to +0.88%**, with overlapping ranges.
+  Family-function Solve is 0.007211s -> 0.007219s; ordinary-result Solve is
+  0.759629s -> 0.766344s. Four additional fixed old-image inputs (ordinary/
+  retained, partial/complete), eight alternating pairs each, retain outputs/
+  steps with median wall changes **-0.49% to +1.42%** (CPU -0.48% to +1.36%).
+  These selected comparisons do not prove universal performance neutrality;
+  whole-gate duration also includes builds and concurrent profile checks.
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `src/evidence.c` | 29 | 16 | +13 |
+| `src/evidence_function.c` | 71 | 42 | +29 |
+| `src/evidence_structure.h` | 5 | 2 | +3 |
+| `src/typing.c` | 8 | 4 | +4 |
+| `tests/core.c` | 18 | 6 | +12 |
+| `tests/typed_structure.c` | 62 | 13 | +49 |
+
+Implementation **+113/-64, net +49**; tests **+80/-19, net +61**. P4's overall
+reduction, open Context inputs, selected/inverted recipes and budgeted checking
+remain incomplete, as does the remaining P5 owner work. Local logs:
+`/tmp/a-program-logical-input-{baseline-gap,acceptance,profiles,cross}.log`,
+`/tmp/a-program-logical-input-acceptance.time`,
+`/tmp/a-program-logical-input-{bench,image-bench}.jsonl`; cross-images:
+`/tmp/a-program-logical-input-cross.DXBMXB/`. The boundary tests are tracked;
+these temporary execution records are not.
+This plan: **+59/-1**; complete slice: **+252/-84, net +168**; build files unchanged.

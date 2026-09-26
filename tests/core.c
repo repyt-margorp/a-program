@@ -2847,6 +2847,15 @@ static void family_instance_test(struct pg_graph *graph)
 	assert(pg_evidence_classifier(family_pi) == pg_universe(graph, 1));
 	assert(pg_evidence_subject(wide_family_pi)->operands[2] == pg_evidence_subject(wide_domain));
 	reconstruct_derivation(&typing, wide_family_pi);
+	const struct pg_evidence *logical = pg_prove_family_abstraction(&typing, family_scope,
+		pg_prove_universe(&typing, family_scope, 0));
+	const struct pg_evidence *wide_logical = pg_prove_family_abstraction(&typing, wide_family,
+		pg_prove_universe(&typing, wide_family, 0));
+	assert(logical && wide_logical && pg_evidence_subject(logical) != pg_evidence_subject(wide_logical));
+	assert(pg_evidence_subject(logical)->core == pg_evidence_subject(wide_logical)->core);
+	assert(pg_evidence_classifier(logical) == pg_evidence_classifier(wide_logical));
+	assert(pg_evidence_subject(wide_logical)->operands[2] == pg_evidence_subject(wide_domain));
+	reconstruct_derivation(&typing, wide_logical);
 	const struct pg_context_map *empty_map = pg_context_map_projection(&typing, NULL, NULL);
 	size_t evidence_before_lift = typing.proofs.count;
 	const struct pg_context_map *lift = pg_context_map_lift(&typing, empty_map, pg_evidence_context(family_scope), g);
@@ -2916,16 +2925,19 @@ static void family_instance_test(struct pg_graph *graph)
 	 * the same lift, including when one is still pending at the collision. */
 	const struct pg_evidence *nested_pi = pg_prove_pi(&typing, outer,
 		pg_prove_return_type(&typing, pg_prove_universe(&typing, outer, 0)));
-	const struct pg_evidence *signature_pis[] = {family_pi, nested_pi};
-	for (size_t variant = 0; variant < 4; ++variant) {
+	const struct pg_evidence *nested_logical = pg_prove_family_abstraction(&typing, outer,
+		pg_prove_universe(&typing, outer, 0));
+	const struct pg_evidence *bindings[] = {family_pi, nested_pi, logical, nested_logical};
+	for (size_t variant = 0; variant < 8; ++variant) {
 		size_t reverse = variant % 2;
-		const struct pg_occurrence *pi_input = pg_evidence_subject(signature_pis[variant / 2]);
+		const struct pg_occurrence *pi_input = pg_evidence_subject(bindings[variant / 2]);
+		size_t body_index = pi_input->judgement == PG_JUDGEMENT_TYPE_FAMILY ? 0 : 1;
 		const struct pg_evidence *target_scope = pg_prove_context_extension(&typing, indices, pg_binder(graph),
 			pg_prove_universe(&typing, indices, 0));
 		const struct pg_context_map *base = pg_context_map_projection(&typing, NULL, pg_evidence_context(target_scope));
 		struct pg_occurrence_input *requests[] = {
-			pg_occurrence_input_mapped_request(&typing, pi_input, 0, base),
-			pg_occurrence_input_mapped_request(&typing, pi_input, 1, base)
+			pg_occurrence_input_mapped_request(&typing, pi_input, 1 - body_index, base),
+			pg_occurrence_input_mapped_request(&typing, pi_input, body_index, base)
 		};
 		size_t before = typing.context_lifts.count;
 		for (size_t step = 0; typing.context_lifts.count == before; ++step) {
@@ -2938,7 +2950,7 @@ static void family_instance_test(struct pg_graph *graph)
 		const struct pg_occurrence *body = pg_occurrence_input_result(requests[1]);
 		assert(terminal && body && terminal->context == body->context->indices);
 		size_t contexts = typing.contexts.count, lifts = typing.context_lifts.count;
-		assert(pg_occurrence_input_mapped_request(&typing, pi_input, 0, base) == requests[0]);
+		assert(pg_occurrence_input_mapped_request(&typing, pi_input, 1 - body_index, base) == requests[0]);
 		assert(pg_occurrence_input_advance(requests[0], 0) == PG_INPUT_READY);
 		assert(typing.contexts.count == contexts && typing.context_lifts.count == lifts);
 	}

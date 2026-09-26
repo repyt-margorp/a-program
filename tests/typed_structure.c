@@ -23,7 +23,7 @@ static const struct pg_object *resolve(void *owner, const char *label)
 	return object ? object : pg_classifier_resolve(owner, label);
 }
 
-static const struct pg_evidence *family_function(struct pg_typing *typing, int nested)
+static const struct pg_evidence *family_function(struct pg_typing *typing, int nested, int logical)
 {
 	struct pg_graph *graph = typing->graph;
 	const struct pg_evidence *empty = pg_prove_empty_context(typing);
@@ -35,6 +35,7 @@ static const struct pg_evidence *family_function(struct pg_typing *typing, int n
 		indices, pg_prove_universe(typing, indices, 0));
 	if (nested) scope = pg_prove_family_context_extension(typing, empty, pg_binder(graph),
 		scope, pg_prove_universe(typing, scope, 0));
+	if (logical) return pg_prove_family_abstraction(typing, scope, pg_prove_universe(typing, scope, 0));
 	const struct pg_evidence *body = pg_prove_return(typing,
 		pg_prove_type_value(typing, pg_prove_universe(typing, scope, 0)));
 	return pg_prove_lambda(typing, pg_prove_pi(typing, scope,
@@ -78,19 +79,30 @@ static void write_inputs(FILE *file, struct pg_typing *typing)
 	const struct pg_evidence *returned = pg_prove_return(typing, pg_prove_type_value(typing, u0));
 	const struct pg_evidence *quoted = pg_prove_thunk(typing, returned);
 	assert(returned && quoted);
-	const struct pg_evidence *family = family_function(typing, 0);
-	const struct pg_evidence *nested = family_function(typing, 1);
+	const struct pg_evidence *family = family_function(typing, 0, 0);
+	const struct pg_evidence *nested = family_function(typing, 1, 0);
 	const struct pg_evidence *family_map = pg_prove_lambda(typing,
 		pg_prove_pi(typing, extended, pg_prove_projection(typing, extended,
 			pg_prove_classifier(typing, empty, nested))),
 		pg_prove_projection(typing, extended, nested));
 	assert(family && nested && family_map);
+	const struct pg_evidence *logical = pg_prove_family_abstraction(typing, types,
+		pg_prove_family_abstraction(typing, scope, pg_prove_value_type(typing, pg_prove_variable(typing, scope, a))));
+	const struct pg_evidence *logical_partial = pg_prove_family_application(typing, logical, pg_prove_type_value(typing, u1));
+	const struct pg_evidence *logical_applied = pg_prove_family_application(typing, logical_partial, pg_prove_type_value(typing, u0));
+	const struct pg_evidence *logical_family = family_function(typing, 0, 1);
+	const struct pg_evidence *logical_nested = family_function(typing, 1, 1);
+	const struct pg_evidence *logical_map = pg_prove_family_abstraction(typing, extended,
+		pg_prove_projection(typing, extended, logical_nested));
+	assert(logical && logical_partial && logical_applied && logical_family && logical_nested && logical_map);
 	const struct pg_occurrence *roots[] = {pg_evidence_subject(function), pg_evidence_subject(application),
 		pg_evidence_subject(forced), pg_evidence_subject(mapped), pg_evidence_subject(identity),
 		pg_evidence_subject(shared[0]), pg_evidence_subject(shared[1]),
 		pg_evidence_subject(returned), pg_evidence_subject(quoted),
-		pg_evidence_subject(family), pg_evidence_subject(nested), pg_evidence_subject(family_map)};
-	assert(!pg_occurrences_write(file, 12, roots, name, NULL));
+		pg_evidence_subject(family), pg_evidence_subject(nested), pg_evidence_subject(family_map),
+		pg_evidence_subject(logical), pg_evidence_subject(logical_partial), pg_evidence_subject(logical_applied),
+		pg_evidence_subject(logical_family), pg_evidence_subject(logical_nested), pg_evidence_subject(logical_map)};
+	assert(!pg_occurrences_write(file, 18, roots, name, NULL));
 }
 
 static void unary_input(struct pg_typing *typing, const struct pg_evidence *parent)
@@ -178,7 +190,7 @@ static void reject_changes(struct pg_typing *typing, const struct pg_occurrence 
 	assert(!pg_evidence_for_subject(typing, wrong, NULL));
 }
 
-static void reject_signature_changes(struct pg_typing *typing, const struct pg_occurrence *pi)
+static void reject_signature_changes(struct pg_typing *typing, const struct pg_occurrence *pi, size_t terminal_index)
 {
 	assert(pi->operand_count == 4);
 	const struct pg_occurrence *inputs[5];
@@ -190,14 +202,49 @@ static void reject_signature_changes(struct pg_typing *typing, const struct pg_o
 		if (variant == 2) { inputs[2] = pi->operands[3]; inputs[3] = pi->operands[2]; }
 		if (variant == 3) {
 			memcpy(inputs, pi->operands, 4 * sizeof(*inputs));
-			struct pg_occurrence terminal = *inputs[0];
+			struct pg_occurrence terminal = *inputs[terminal_index];
 			terminal.context = inputs[3]->context;
-			inputs[0] = pg_occurrence_intern(typing, &terminal, terminal.operand_count ? inputs[0]->operands : NULL, NULL);
-			assert(inputs[0]);
+			inputs[terminal_index] = pg_occurrence_intern(typing, &terminal,
+				terminal.operand_count ? inputs[terminal_index]->operands : NULL, NULL);
+			assert(inputs[terminal_index]);
 		}
 		const struct pg_occurrence *wrong = pg_occurrence_intern(typing, &header, inputs, NULL);
 		assert(wrong && !pg_prove_structural_subject(typing, wrong));
 		assert(!pg_evidence_for_subject(typing, wrong, NULL));
+	}
+}
+
+static void family_result(struct pg_typing *typing, const struct pg_occurrence *subject)
+{
+	const struct pg_evidence *family = pg_evidence_for_subject(typing, subject->operands[0], NULL);
+	const struct pg_evidence *index = pg_evidence_for_subject(typing, subject->operands[1], NULL);
+	assert(family && index);
+	struct pg_typed_query *query = pg_application_body_request(typing, family, index);
+	while (!pg_typed_query_advance(query, 1)) {}
+	assert(pg_typed_query_result(query));
+	const struct pg_term *domain, *body;
+	const struct pg_object *binder, *renamed = pg_binder(typing->graph);
+	if (!pg_pi_view(subject->classifier, &domain, &binder, &body)) return;
+	struct pg_binding_value binding = {binder, pg_reference(typing->graph, renamed)};
+	const struct pg_term *alpha = pg_pi(typing->graph, domain, renamed,
+		pg_term_substitute(typing->graph, body, 1, &binding));
+	for (size_t variant = 0; variant < 3; ++variant) {
+		struct pg_occurrence header = *subject;
+		header.classifier = variant == 1 ? pg_pi(typing->graph, domain, renamed, pg_universe(typing->graph, 17))
+			: variant == 2 ? pg_pi(typing->graph, domain, renamed, pg_reference(typing->graph, pg_binder(typing->graph))) : alpha;
+		const struct pg_occurrence *changed = pg_occurrence_intern(typing, &header, subject->operands, NULL);
+		assert(changed && changed != subject);
+		const struct pg_evidence *checked = pg_prove_structural_subject(typing, changed);
+		if (variant) assert(!checked && !pg_evidence_for_subject(typing, changed, NULL));
+		else {
+			assert(checked && pg_evidence_subject(checked) == changed);
+			const struct pg_evidence *canonical = pg_prove_family_application(typing, family, index);
+			assert(canonical && pg_evidence_subject(canonical) != changed);
+			size_t proofs = typing->proofs.count;
+			assert(pg_prove_structural_subject(typing, changed) == checked);
+			assert(pg_prove_family_application(typing, family, index) == canonical);
+			assert(typing->proofs.count == proofs);
+		}
 	}
 }
 
@@ -210,7 +257,7 @@ static void read_inputs(FILE *file, size_t root)
 	const struct pg_occurrence *const *roots;
 	rewind(file);
 	assert(!pg_occurrences_read(file, &typing, 10000, 256, resolve, &graph, &count, &roots));
-	assert(count == 12 && !typing.proofs.count);
+	assert(count == 18 && !typing.proofs.count);
 	const struct pg_evidence *checked = root == 4
 		? pg_identity_boundary_type(&typing, roots[root])
 		: pg_prove_structural_subject(&typing, roots[root]);
@@ -225,7 +272,9 @@ static void read_inputs(FILE *file, size_t root)
 		assert(boundary.left == boundary.right && boundary.left == roots[0]);
 	}
 	if (root == 1) result_allocation(&typing, roots[1]->operands[0]);
-	if (root == 9) reject_signature_changes(&typing, roots[9]->type);
+	if (root == 9) reject_signature_changes(&typing, roots[9]->type, 0);
+	if (root == 15) reject_signature_changes(&typing, roots[15], 1);
+	if (root == 13 || root == 14) family_result(&typing, roots[root]);
 	if (root == 7 || root == 8) unary_input(&typing, checked);
 	if (root == 5) {
 		const struct pg_evidence *other = pg_prove_structural_subject(&typing, roots[6]);
@@ -253,9 +302,9 @@ int main(int argc, char **argv)
 		assert(!strcmp(argv[1], "read"));
 		FILE *file = fopen(argv[2], "rb");
 		assert(file);
-		for (size_t root = 0; root < 12; ++root) read_inputs(file, root);
+		for (size_t root = 0; root < 18; ++root) read_inputs(file, root);
 		assert(!fclose(file));
-		puts("typed-only images: dependent Lambda/APP, family signatures, F/U, context action and Identity boundary checked without old evidence");
+		puts("typed-only images: dependent Lambda/APP, logical families, family signatures, F/U, context action and Identity boundary checked without old evidence");
 	}
 	return 0;
 }

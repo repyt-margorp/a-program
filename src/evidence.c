@@ -147,7 +147,7 @@ static int derived_output(enum pg_evidence_rule rule)
 	switch (rule) {
 	case PG_REINDEX: case PG_CONTEXT_PROJECTION: case PG_PI_FORM:
 	case PG_FOLD_ELIM: case PG_PI_CONSTANT_CODOMAIN: case PG_EFFECT_SUBSUMPTION: case PG_REQUEST_INTRO:
-	case PG_FAMILY_IDENTITY_FORM: case PG_FAMILY_ACTION: case PG_TYPE_FAMILY_APP:
+	case PG_FAMILY_IDENTITY_FORM: case PG_FAMILY_ACTION:
 	case PG_INDUCTIVE_FORM: case PG_CONSTRUCTOR_INTRO: case PG_MATCH_ELIM: case PG_INDUCTION_ELIM: case PG_TYPE_CASE:
 		return 1;
 	default: return 0;
@@ -1358,7 +1358,7 @@ static int typed_body_step(struct pg_typed_query *work)
 	int fold = typed_fold_start(work);
 	if (fold) return fold < 0 ? -1 : 0;
 	if (core->kind == PG_LAMBDA) {
-		if (!work->argument || work->forces || current->operand_count != 1) return -1;
+		if (!work->argument || work->forces) return -1;
 		const struct pg_occurrence *body = pg_occurrence_scoped_input(current, 0);
 		if (!body) return -1;
 		const struct pg_evidence *extended = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, body->context);
@@ -3289,18 +3289,15 @@ const struct pg_evidence *pg_prove_variable(struct pg_typing *typing,
 		subject, 1, &context);
 }
 
-const struct pg_evidence *pg_prove_family_application(struct pg_typing *typing,
-	const struct pg_evidence *family, const struct pg_evidence *index)
+static const struct pg_evidence *family_application(struct pg_typing *typing,
+	const struct pg_evidence *family, const struct pg_evidence *index,
+	const struct pg_occurrence *retained)
 {
 	if (!pg_evidence_owned_by(family, typing) || !pg_evidence_owned_by(index, typing)) return NULL;
 	if (pg_evidence_judgement(family) != PG_JUDGEMENT_TYPE_FAMILY) return NULL;
 	if (pg_evidence_judgement(index) != PG_JUDGEMENT_VALUE && pg_evidence_judgement(index) != PG_JUDGEMENT_TYPE_FAMILY) return NULL;
 	if (pg_evidence_context(family) != pg_evidence_context(index)) return NULL;
 	const struct pg_evidence *premises[] = {family, index};
-	uint64_t hash;
-	const struct pg_evidence *existing = find_record(typing, PG_TYPE_FAMILY_APP,
-		pg_evidence_context(family), NULL, 2, premises, NULL, &hash);
-	if (existing) return existing;
 	const struct pg_term *domain, *body;
 	const struct pg_object *binder;
 	if (!pg_pi_view(pg_evidence_subject(family)->classifier, &domain, &binder, &body)) return NULL;
@@ -3308,6 +3305,12 @@ const struct pg_evidence *pg_prove_family_application(struct pg_typing *typing,
 	struct pg_binding_value binding = {binder, pg_evidence_subject(index)->core};
 	const struct pg_term *classifier = pg_substitution_compute(&typing->substitutions, body, 1, &binding);
 	if (!classifier) return NULL;
+	/* Loading must preserve an explicit bound-pointer allocation, just as
+	 * ordinary APP does. Check the computed signature; never infer from it. */
+	if (retained) {
+		if (pg_alpha_equal(classifier, retained->classifier) != 1) return NULL;
+		classifier = retained->classifier;
+	}
 	uint64_t level;
 	enum pg_evidence_judgement kind = pg_universe_level(classifier, &level)
 		? PG_JUDGEMENT_VALUE_TYPE : PG_JUDGEMENT_TYPE_FAMILY;
@@ -3316,7 +3319,21 @@ const struct pg_evidence *pg_prove_family_application(struct pg_typing *typing,
 	const struct pg_occurrence *operands[] = {pg_evidence_subject(family), pg_evidence_subject(index)};
 	const struct pg_occurrence *subject = pg_occurrence(typing, kind, pg_evidence_context(family), core, classifier, NULL, 2, operands);
 	if (!subject) return NULL;
+	if (retained && subject != retained) return NULL;
 	return accept(typing, PG_TYPE_FAMILY_APP, pg_evidence_context(family), subject, 2, premises);
+}
+
+const struct pg_evidence *pg_prove_family_application(struct pg_typing *typing,
+	const struct pg_evidence *family, const struct pg_evidence *index)
+{
+	return family_application(typing, family, index, NULL);
+}
+
+const struct pg_evidence *pg_check_family_application(struct pg_typing *typing,
+	const struct pg_evidence *family, const struct pg_evidence *index,
+	const struct pg_occurrence *subject)
+{
+	return subject ? family_application(typing, family, index, subject) : NULL;
 }
 
 const struct pg_evidence *pg_prove_family_abstraction(struct pg_typing *typing,
@@ -3326,16 +3343,11 @@ const struct pg_evidence *pg_prove_family_abstraction(struct pg_typing *typing,
 	if (context->rule != PG_CONTEXT_EXTEND && context->rule != PG_CONTEXT_FAMILY_EXTEND) return NULL;
 	if (!pg_evidence_owned_by(body, typing) || pg_evidence_context(body) != pg_evidence_context(context)) return NULL;
 	if (pg_evidence_judgement(body) != PG_JUDGEMENT_VALUE_TYPE && pg_evidence_judgement(body) != PG_JUDGEMENT_TYPE_FAMILY) return NULL;
-	const struct pg_context *parent = pg_evidence_context(context)->parent;
-	const struct pg_term *signature = pg_pi(typing->graph, pg_evidence_context(context)->declared_type,
-		pg_evidence_context(context)->binder, pg_evidence_subject(body)->classifier);
-	const struct pg_term *core = pg_lambda(typing->graph, pg_evidence_context(context)->binder, pg_evidence_subject(body)->core);
-	if (!signature || !core) return NULL;
-	const struct pg_occurrence *subject = pg_occurrence(typing, PG_JUDGEMENT_TYPE_FAMILY, parent, core, signature, NULL, 1, (const struct pg_occurrence *[]){pg_evidence_subject(body)});
+	const struct pg_occurrence *subject = pg_function_binding(typing, context, pg_evidence_subject(body), PG_JUDGEMENT_TYPE_FAMILY);
 	if (!subject) return NULL;
 	const struct pg_evidence *premises[] = {context, body};
 	return accept(typing, PG_TYPE_FAMILY_ABSTRACT,
-		parent, subject, 2, premises);
+		subject->context, subject, 2, premises);
 }
 
 static const struct pg_evidence *unary_formation(struct pg_typing *typing,
@@ -3594,7 +3606,8 @@ const struct pg_evidence *pg_prove_pi(struct pg_typing *typing,
 	uint64_t hash;
 	const struct pg_evidence *existing = find_record(typing, PG_PI_FORM, scope->parent, NULL, 2, premises, NULL, &hash);
 	if (existing) return existing;
-	const struct pg_occurrence *subject = pg_function_type(typing, extended_context, pg_evidence_subject(codomain));
+	const struct pg_occurrence *subject = pg_function_binding(typing, extended_context,
+		pg_evidence_subject(codomain), PG_JUDGEMENT_COMPUTATION_TYPE);
 	if (!subject) return NULL;
 	return accept(typing, PG_PI_FORM,
 		scope->parent, subject, 2, premises);
