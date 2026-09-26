@@ -461,7 +461,9 @@ static void source_alias_targets(void)
 		const struct pg_context_map *lm = pg_evidence_context_map(left), *rm = pg_evidence_context_map(right);
 		assert(lm && rm && lm != rm && lm->source == rm->source && lm->destination == rm->destination);
 		assert(pg_context_map_lookup(lm, x, NULL) != pg_context_map_lookup(rm, x, NULL));
-		images[0] = pg_prove_type_value(t, pg_prove_value_type(t, images[0]));
+		assert(pg_prove_type_value(t, pg_prove_value_type(t, images[0])) == images[0]);
+		images[0] = pg_prove_reindex(t,
+			pg_prove_substitution_projection(t, destination, destination), images[0]);
 		images[1] = pg_substitution_image(t, left, x);
 		const struct pg_evidence *alternate = pg_prove_substitution(t, source, destination, 2, images);
 		assert(alternate && alternate != left && pg_evidence_context_map(alternate) == lm);
@@ -1913,8 +1915,9 @@ static int check_match_origin(void *owner, struct pg_synthesis_job *job)
 	const struct pg_evidence *fresh = pg_synthesis_result(job);
 	struct pg_elimination_inputs view;
 	assert(!pg_elimination_view(&p->typing, fresh, &view));
-	const struct pg_evidence *motive = pg_prove_thunk_content(&p->typing,
-		pg_prove_thunk_type(&p->typing, view.motive));
+	assert(pg_prove_thunk_content(&p->typing, pg_prove_thunk_type(&p->typing, view.motive)) == view.motive);
+	const struct pg_evidence *motive = pg_prove_reindex(&p->typing,
+		pg_prove_substitution_projection(&p->typing, view.motive_context, view.motive_context), view.motive);
 	assert(motive && motive != view.motive);
 	assert(pg_evidence_subject(motive) == pg_evidence_subject(view.motive));
 	const struct pg_evidence **branches = pg_alloc(&storage, view.count * sizeof(*branches));

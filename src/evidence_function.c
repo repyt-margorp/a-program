@@ -6,6 +6,13 @@ size_t pg_function_proof_inputs(const struct pg_evidence *proof,
 {
 	const struct pg_occurrence *subject = pg_evidence_subject(proof);
 	switch (pg_evidence_rule(proof)) {
+	case PG_PI_DOMAIN: case PG_PI_CONSTANT_CODOMAIN:
+		inputs[0] = subject->origin;
+		return 1;
+	case PG_PI_CODOMAIN:
+		inputs[0] = subject->origin;
+		inputs[1] = subject->operands[0];
+		return 2;
 	case PG_LAMBDA_INTRO:
 		inputs[0] = subject->type;
 		inputs[1] = subject->operands[0];

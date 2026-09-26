@@ -80,7 +80,8 @@ static void transport_scopes(struct pg_synthesis *synthesis,
 	assert(pg_evidence_rule(action) == PG_FAMILY_ACTION);
 	const struct pg_evidence *value = pg_evidence_premise(action, 1);
 	assert(pg_evidence_rule(value) == PG_VALUE_FROM_TYPE);
-	const struct pg_evidence *family = pg_evidence_premise(value, 0);
+	const struct pg_evidence *family = pg_evidence_for_subject(synthesis->typing, pg_evidence_subject(value)->origin, NULL);
+	assert(family && !pg_evidence_premise_count(value));
 	assert(pg_evidence_rule(family) == PG_TYPE_CASE);
 	const struct pg_evidence *formation = pg_evidence_premise(family, 0);
 	struct pg_inductive_instance instance;
@@ -202,7 +203,9 @@ static void scoped_type_families(void)
 	const struct pg_evidence *universe = pg_prove_projection(&typing, xc, u);
 	const struct pg_evidence *fc = pg_prove_family_context_extension(&typing, base, f, xc, universe);
 	assert(fc && pg_evidence_rule(fc) == PG_CONTEXT_FAMILY_EXTEND);
-	const struct pg_evidence *terminal = pg_prove_return_content(&typing, pg_prove_return_type(&typing, universe));
+	assert(pg_prove_return_content(&typing, pg_prove_return_type(&typing, universe)) == universe);
+	const struct pg_evidence *terminal = pg_prove_reindex(&typing,
+		pg_prove_substitution_projection(&typing, xc, xc), universe);
 	assert(terminal != universe && pg_evidence_subject(terminal) == pg_evidence_subject(universe));
 	const struct pg_evidence *family_inputs[] = {base, xc, terminal};
 	const struct pg_derivation_parameters family_parameters = {.binder = f};
@@ -614,7 +617,9 @@ static void accessibility_elimination(enum pg_totality field_totality)
 	const struct pg_evidence *premises[4];
 	for (size_t i = 0; i < 4; ++i) premises[i] = pg_evidence_premise(constructor_value, i);
 	const struct pg_evidence *family = premises[0];
-	premises[0] = pg_prove_value_type(&typing, pg_prove_type_value(&typing, family));
+	assert(pg_prove_value_type(&typing, pg_prove_type_value(&typing, family)) == family);
+	premises[0] = pg_prove_reindex(&typing,
+		pg_prove_substitution_projection(&typing, field_context, field_context), family);
 	assert(premises[0] != family && pg_evidence_subject(premises[0]) == pg_evidence_subject(family));
 	struct pg_derivation_parameters retained = {.constructor = constructor};
 	size_t before_alternative = typing.proofs.count;
@@ -2509,11 +2514,12 @@ static void schema_positivity(void)
 			pg_prove_universe(&typing, z_context, 2));
 		const struct pg_evidence *pi = pg_prove_pi(&typing, z_context, large_result);
 		assert(pg_evidence_classifier(pi) == pg_universe(&graph, 3));
+		assert(pg_prove_thunk_content(&typing, pg_prove_thunk_type(&typing, pi)) == pi);
 		const struct pg_evidence *map = pg_prove_substitution_projection(&typing, empty, n_context);
 		const struct pg_evidence *derived[] = {pi,
 			pg_prove_projection(&typing, n_context, pi),
 			pg_prove_reindex(&typing, map, pi),
-			pg_prove_thunk_content(&typing, pg_prove_thunk_type(&typing, pi))};
+			pg_prove_reindex(&typing, pg_prove_substitution_projection(&typing, empty, empty), pi)};
 		for (size_t i = 0; i < sizeof(derived) / sizeof(*derived); ++i) {
 			const struct pg_evidence *domain = pg_prove_pi_domain(&typing, derived[i]);
 			assert(domain && pg_evidence_classifier(domain) == pg_universe(&graph, 0));

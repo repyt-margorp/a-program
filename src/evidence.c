@@ -147,7 +147,7 @@ static int derived_output(enum pg_evidence_rule rule)
 {
 	switch (rule) {
 	case PG_REINDEX: case PG_CONTEXT_PROJECTION: case PG_PI_FORM:
-	case PG_FOLD_ELIM: case PG_PI_CONSTANT_CODOMAIN: case PG_EFFECT_SUBSUMPTION: case PG_REQUEST_INTRO:
+	case PG_FOLD_ELIM: case PG_EFFECT_SUBSUMPTION: case PG_REQUEST_INTRO:
 	case PG_FAMILY_IDENTITY_FORM: case PG_FAMILY_ACTION:
 	case PG_INDUCTIVE_FORM: case PG_CONSTRUCTOR_INTRO: case PG_MATCH_ELIM: case PG_INDUCTION_ELIM: case PG_TYPE_CASE:
 		return 1;
@@ -260,6 +260,19 @@ static const struct pg_evidence *accept(struct pg_typing *typing, enum pg_eviden
 	const struct pg_context *context, const struct pg_occurrence *subject, size_t count, const struct pg_evidence *const *premises)
 {
 	return accept_with_conversion(typing, rule, context, subject, count, premises, NULL);
+}
+
+/* An inversion either exposes an existing typed child or retains its source
+ * as a selection/boundary recipe. Do not attach an inverse history to a child. */
+static const struct pg_evidence *accept_selection(struct pg_typing *typing,
+	enum pg_evidence_rule rule, const struct pg_evidence *source,
+	const struct pg_occurrence *subject)
+{
+	if (!subject) return NULL;
+	const struct pg_evidence *checked = pg_evidence_for_subject(typing, subject, NULL);
+	if (checked) return checked;
+	if (subject->origin != pg_evidence_subject(source)) return pg_prove_structural_subject(typing, subject);
+	return accept(typing, rule, subject->context, subject, 0, NULL);
 }
 
 static int context_proof(const struct pg_typing *typing, const struct pg_evidence *proof)
@@ -3198,8 +3211,7 @@ const struct pg_evidence *pg_prove_value_type(struct pg_typing *typing, const st
 	if (!pg_universe_level(pg_evidence_subject(value)->classifier, &level)) return NULL;
 	const struct pg_occurrence *subject = pg_occurrence_boundary(typing, pg_evidence_subject(value),
 		PG_JUDGEMENT_VALUE_TYPE, pg_evidence_subject(value)->classifier);
-	return subject ? accept(typing, PG_TYPE_FROM_VALUE,
-		pg_evidence_context(value), subject, 1, &value) : NULL;
+	return accept_selection(typing, PG_TYPE_FROM_VALUE, value, subject);
 }
 
 const struct pg_evidence *pg_prove_type_value(struct pg_typing *typing, const struct pg_evidence *type)
@@ -3208,8 +3220,7 @@ const struct pg_evidence *pg_prove_type_value(struct pg_typing *typing, const st
 	if (pg_evidence_judgement(type) != PG_JUDGEMENT_VALUE_TYPE) return NULL;
 	const struct pg_occurrence *subject = pg_occurrence_boundary(typing, pg_evidence_subject(type),
 		PG_JUDGEMENT_VALUE, pg_evidence_subject(type)->classifier);
-	return subject ? accept(typing, PG_VALUE_FROM_TYPE,
-		pg_evidence_context(type), subject, 1, &type) : NULL;
+	return accept_selection(typing, PG_VALUE_FROM_TYPE, type, subject);
 }
 
 const struct pg_evidence *pg_prove_context_extension(struct pg_typing *typing,
@@ -4985,9 +4996,7 @@ const struct pg_evidence *pg_prove_thunk_content(struct pg_typing *typing,
 	if (!pg_thunk_type_view(pg_evidence_subject(thunk_type)->core, &content)) return NULL;
 	const struct pg_occurrence *subject = content_subject(typing, pg_evidence_subject(thunk_type),
 		content, pg_evidence_subject(thunk_type)->classifier, PG_JUDGEMENT_COMPUTATION_TYPE);
-	if (!subject) return NULL;
-	return accept(typing, PG_THUNK_CONTENT,
-		pg_evidence_context(thunk_type), subject, 1, &thunk_type);
+	return accept_selection(typing, PG_THUNK_CONTENT, thunk_type, subject);
 }
 
 const struct pg_evidence *pg_prove_return_content(struct pg_typing *typing,
@@ -5001,9 +5010,7 @@ const struct pg_evidence *pg_prove_return_content(struct pg_typing *typing,
 	if (!pg_computation_type_view(pg_evidence_subject(return_type)->core, &totality, &effects, &content)) return NULL;
 	const struct pg_occurrence *subject = content_subject(typing, pg_evidence_subject(return_type),
 		content, pg_evidence_subject(return_type)->classifier, PG_JUDGEMENT_VALUE_TYPE);
-	if (!subject) return NULL;
-	return accept(typing, PG_RETURN_CONTENT,
-		pg_evidence_context(return_type), subject, 1, &return_type);
+	return accept_selection(typing, PG_RETURN_CONTENT, return_type, subject);
 }
 
 const struct pg_evidence *pg_prove_pi_constant_codomain(struct pg_typing *typing,
@@ -5011,9 +5018,6 @@ const struct pg_evidence *pg_prove_pi_constant_codomain(struct pg_typing *typing
 {
 	if (!pg_evidence_owned_by(pi, typing)) return NULL;
 	if (pg_evidence_judgement(pi) != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
-	uint64_t hash;
-	const struct pg_evidence *existing = find_record(typing, PG_PI_CONSTANT_CODOMAIN, pg_evidence_context(pi), NULL, 1, &pi, NULL, &hash);
-	if (existing) return existing;
 	const struct pg_term *codomain = pg_pi_constant_codomain(pg_evidence_subject(pi)->core);
 	if (!codomain) return NULL;
 	const struct pg_occurrence *subject;
@@ -5026,9 +5030,7 @@ const struct pg_evidence *pg_prove_pi_constant_codomain(struct pg_typing *typing
 	}
 	if (!subject) subject = pg_occurrence_selected(typing, pg_evidence_subject(pi), 1, NULL,
 		PG_JUDGEMENT_COMPUTATION_TYPE, codomain, pg_evidence_classifier(pi));
-	if (!subject) return NULL;
-	return accept(typing, PG_PI_CONSTANT_CODOMAIN,
-		pg_evidence_context(pi), subject, 1, &pi);
+	return accept_selection(typing, PG_PI_CONSTANT_CODOMAIN, pi, subject);
 }
 
 const struct pg_object *pg_operation_label_create(struct pg_graph *graph,
@@ -5393,9 +5395,7 @@ const struct pg_evidence *pg_prove_pi_domain(struct pg_typing *typing,
 	}
 	subject = pg_occurrence_selected(typing, pg_evidence_subject(pi), 0, NULL,
 		PG_JUDGEMENT_VALUE_TYPE, domain, pg_evidence_classifier(pi));
-	if (!subject) return NULL;
-	return accept(typing, PG_PI_DOMAIN,
-		pg_evidence_context(pi), subject, 1, &pi);
+	return accept_selection(typing, PG_PI_DOMAIN, pi, subject);
 }
 
 static const struct pg_evidence *pi_codomain(struct pg_typing *typing,
@@ -5407,7 +5407,6 @@ static const struct pg_evidence *pi_codomain(struct pg_typing *typing,
 	if (!pg_evidence_owned_by(argument, typing)) return NULL;
 	if (pg_evidence_judgement(argument) != PG_JUDGEMENT_VALUE && pg_evidence_judgement(argument) != PG_JUDGEMENT_TYPE_FAMILY) return NULL;
 	if (pg_evidence_context(pi) != pg_evidence_context(argument)) return NULL;
-	const struct pg_evidence *premises[] = {pi, argument};
 	const struct pg_term *domain, *codomain;
 	const struct pg_object *binder;
 	if (!pg_pi_view(pg_evidence_subject(pi)->core, &domain, &binder, &codomain)) return NULL;
@@ -5422,8 +5421,7 @@ static const struct pg_evidence *pi_codomain(struct pg_typing *typing,
 		pg_evidence_subject(argument), PG_JUDGEMENT_COMPUTATION_TYPE, type, pg_evidence_classifier(pi));
 	if (!subject) return NULL;
 	if (retained && subject != retained) return NULL;
-	return accept(typing, PG_PI_CODOMAIN,
-		pg_evidence_context(pi), subject, 2, premises);
+	return accept_selection(typing, PG_PI_CODOMAIN, pi, subject);
 }
 
 const struct pg_evidence *pg_prove_pi_codomain(struct pg_typing *typing,

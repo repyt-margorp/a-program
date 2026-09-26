@@ -169,6 +169,29 @@ static void write_inputs(FILE *file, struct pg_typing *typing)
 		const struct pg_occurrence *lambda_inputs[] = {subject->type, subject->operands[0]};
 		direct_inputs(typing, direct[i], i < 3 ? 2 : 1, i ? subject->operands : lambda_inputs);
 	}
+	const struct pg_evidence *selections[] = {pg_prove_type_value(typing, u0), domain,
+		constant, content, unquoted, pg_prove_classifier(typing, empty, partial)};
+	const enum pg_evidence_rule selection_rules[] = {PG_VALUE_FROM_TYPE, PG_TYPE_FROM_VALUE,
+		PG_PI_CONSTANT_CODOMAIN, PG_RETURN_CONTENT, PG_THUNK_CONTENT, PG_PI_CODOMAIN};
+	for (size_t i = 0; i < sizeof(selections) / sizeof(*selections); ++i) {
+		assert(selections[i] && pg_evidence_rule(selections[i]) == selection_rules[i]);
+		const struct pg_occurrence *subject = pg_evidence_subject(selections[i]);
+		const struct pg_occurrence *inputs[] = {subject->origin,
+			subject->operand_count ? subject->operands[0] : NULL};
+		direct_inputs(typing, selections[i], i == 5 ? 2 : 1, inputs);
+	}
+	const struct pg_evidence *type_value = pg_prove_type_value(typing, u0);
+	const struct pg_evidence *type_variable = pg_prove_variable(typing, types, a);
+	const struct pg_evidence *returned_type = pg_prove_return_type(typing, u0);
+	const struct pg_evidence *quoted_type = pg_prove_thunk_type(typing, outer_pi);
+	size_t proof_count = typing->proofs.count, occurrence_count = typing->occurrences.count;
+	for (size_t repeat = 0; repeat < 8; ++repeat) {
+		assert(pg_prove_value_type(typing, type_value) == u0);
+		assert(pg_prove_type_value(typing, domain) == type_variable);
+		assert(pg_prove_return_content(typing, returned_type) == u0);
+		assert(pg_prove_thunk_content(typing, quoted_type) == outer_pi);
+	}
+	assert(typing->proofs.count == proof_count && typing->occurrences.count == occurrence_count);
 	const struct pg_occurrence *roots[] = {pg_evidence_subject(function), pg_evidence_subject(application),
 		pg_evidence_subject(forced), pg_evidence_subject(mapped), pg_evidence_subject(identity),
 		pg_evidence_subject(shared[0]), pg_evidence_subject(shared[1]),

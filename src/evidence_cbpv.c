@@ -5,6 +5,9 @@ size_t pg_cbpv_proof_inputs(const struct pg_evidence *proof,
 	const struct pg_occurrence **inputs)
 {
 	switch (pg_evidence_rule(proof)) {
+	case PG_RETURN_CONTENT: case PG_THUNK_CONTENT:
+		inputs[0] = pg_evidence_subject(proof)->origin;
+		return 1;
 	case PG_RETURN_TYPE_FORM: case PG_THUNK_TYPE_FORM:
 	case PG_RETURN_INTRO: case PG_THUNK_INTRO: case PG_FORCE_ELIM:
 	case PG_TOTAL_PURE_VALUE:

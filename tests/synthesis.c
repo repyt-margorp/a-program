@@ -4189,7 +4189,11 @@ static void endpoint_jobs(struct pg_typing *typing)
 		complete(&synthesis, pg_synthesis_identity_face(&synthesis, context, type,
 			pg_dimension_map(&dimensions, 2, 3, reversed)), PG_SYNTHESIS_UNSUPPORTED);
 		const struct pg_evidence *roundtrip = pg_prove_value_type(typing, pg_prove_type_value(typing, type));
-		assert(pg_synthesis_identity_endpoint(&synthesis, context, roundtrip, selector) != job);
+		assert(roundtrip == type && pg_synthesis_identity_endpoint(&synthesis, context, roundtrip, selector) == job);
+		const struct pg_evidence *alternate = pg_prove_reindex(typing,
+			pg_prove_substitution_projection(typing, context, context), type);
+		assert(alternate != type && pg_evidence_subject(alternate) == pg_evidence_subject(type));
+		assert(pg_synthesis_identity_endpoint(&synthesis, context, alternate, selector) != job);
 		assert(!pg_synthesis_identity_endpoint(&synthesis, context, value, selector));
 		assert(!pg_synthesis_identity_endpoint(&synthesis, context, type, pg_dimension_identity(&dimensions, 3)));
 		struct pg_synthesis_job *unsupported = pg_synthesis_identity_endpoint(&synthesis, context,

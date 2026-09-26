@@ -496,7 +496,8 @@ static void write_proofs(FILE *file, struct pg_typing *typing)
 	assert(roots[27] != roots[28] && pg_evidence_context_map(roots[27]) == pg_evidence_context_map(roots[28]));
 	const struct pg_evidence *prefix_map = pg_prove_substitution_projection(typing, ca, context);
 	const struct pg_evidence *alternate_images[] = {
-		pg_prove_type_value(typing, pg_prove_value_type(typing, images[0])), images[1]};
+		pg_prove_reindex(typing, pg_prove_substitution_projection(typing, mc, mc), images[0]), images[1]};
+	assert(alternate_images[0] != images[0] && pg_evidence_subject(alternate_images[0]) == pg_evidence_subject(images[0]));
 	roots[29] = pg_prove_substitution_compose(typing, prefix_map, roots[28]);
 	roots[30] = pg_prove_substitution_compose(typing, prefix_map,
 		pg_prove_substitution(typing, context, mc, 2, alternate_images));

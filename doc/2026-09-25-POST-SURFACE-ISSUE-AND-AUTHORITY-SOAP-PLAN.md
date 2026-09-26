@@ -880,6 +880,16 @@ distinction consistent with the existing reindex worker.
   Agent assessment: Pi/family abstraction still select declaration scopes;
   type/value round trips can erase their input edge. These require their own
   exact input contracts, not blanket history deletion. Broad P4/P5 remain open.
+- [x] **P4.3n Type/value and selected formation history, baseline `08d3dd0`:**
+  remove duplicate inverse receipts for exact type/value round trips and
+  permanent premise arrays for the retained Pi/F/U selection recipes. Read
+  source/argument edges from typed structure; reuse exact checked children.
+  Keep Universe bounds, scoped arguments and ordinary checking rules unchanged.
+  Test fresh typed-only and derivation images, alternate receipts, malformed
+  selections, repeated access and general Sorted; run the common gates and
+  report any cost of replacing input-keyed shortcuts. Agent decision: do not
+  delete Pi/family abstraction history by reconstructing selected declaration
+  scopes during export; that would relocate duplication, not resolve it.
 - [ ] **P4.4 Work reuse and images (R2/R4):** reuse the same typed construction
   and checking requests for accepted and pending consumers, keeping open-handler
   progress and `::` non-feedback. Measure synchronous lift/composition helpers
@@ -2673,3 +2683,56 @@ Local logs: `/tmp/a-program-family-owner-{before,focused,acceptance,debug,asan,c
 `/tmp/a-program-family-owner-acceptance.time`, and `{bench,memory}.jsonl` with
 the same prefix. Permanent tests are tracked; temporary logs are not.
 This plan: **+68/-0**; complete slice: **+434/-179, net +255**.
+
+#### Selection History Verification (2026-09-27)
+
+Baseline `08d3dd0`, clean candidate; inherited trials excluded. Type/value,
+Pi-domain/codomain and F/U-content inversions now reuse exact checked children,
+or retain their source/argument in the existing typed selection recipe. Their
+Evidence records no longer copy premise arrays. Derivation export reads those
+edges without evaluating or admitting dependencies. This removes checking
+history, not object proof distinctions, Universe checks or CBPV rules.
+
+- Full root `check-acceptance`: exit 0, **1529.629s** wall, **1420.320s** user,
+  **108.517s** system; 63/63 compatibility, general/ordinary-result Sorted,
+  all LT variants and optional witness isolation/packets pass.
+- Debug and ASan/UBSan pass for Core, Program, IADT, Identity, synthesis,
+  typed-only/scoped images and source/derivation images.
+- New permanent assertions cover zero stored premises, read-only input export,
+  alternate accepted inputs, and repeated inverse round trips with no new
+  proofs or occurrences. Existing tests now use actual identity-reindex
+  receipts for alternate-history coverage; round trips must reuse the child.
+  Fresh images also check wrong Universe bounds, scope and selection arguments.
+- Cross-reading: **36** source-image pairs, **72** opposite-version loads,
+  **8** occurrence/derivation reads pass; no wire-format change or replay path.
+- Ten workloads, warmup plus six paired samples: medians **-1.62% to +1.40%**,
+  all sample ranges overlap. Sorted **0.843430s -> 0.850114s**, ordinary-result
+  **0.752247s -> 0.754935s**, derived **2.570786s -> 2.550918s**. All measured
+  Solve counts and normalized outputs agree. No speedup claim.
+- Three-pair RSS medians (KiB): length **11324 -> 11324**, Sorted
+  **221780 -> 222024**, ordinary-result **173520 -> 172992**, derived
+  **542632 -> 542048**. These small differences do not establish broad savings.
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `src/derivation.c` | 4 | 0 | +4 |
+| `src/evidence.c` | 21 | 23 | -2 |
+| `src/evidence_cbpv.c` | 3 | 0 | +3 |
+| `src/evidence_function.c` | 7 | 0 | +7 |
+| `src/typing.c` | 2 | 2 | 0 |
+| `tests/core.c` | 16 | 9 | +7 |
+| `tests/derivation_io.c` | 2 | 1 | +1 |
+| `tests/iadt.c` | 10 | 4 | +6 |
+| `tests/identity.c` | 6 | 4 | +2 |
+| `tests/source_io.c` | 6 | 3 | +3 |
+| `tests/synthesis.c` | 5 | 1 | +4 |
+| `tests/typed_structure.c` | 23 | 0 | +23 |
+
+Implementation **+37/-25, net +12**; tests **+68/-22, net +46**; build unchanged.
+Agent decision: adopt the history removal and reuse, not claim source reduction.
+Pi/family selected declaration inputs, other owner histories and budgeted
+structural checking remain P4 work; broad P4/P5 are not complete.
+Logs: `/tmp/a-program-selection-history-{acceptance,debug,asan,cross}.log`,
+`/tmp/a-program-selection-history-acceptance.time`, and `{bench,memory}.jsonl`
+with that prefix. Permanent tests are tracked; temporary logs are not.
+This plan: **+63/-0**; complete slice: **+168/-47, net +121**.

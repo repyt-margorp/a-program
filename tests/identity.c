@@ -1122,8 +1122,9 @@ static void uniform_transport(struct pg_typing *typing)
 		pg_prove_universe(typing, empty, 0));
 	source = pg_prove_context_extension(typing, source, b, pg_prove_universe(typing, source, 0));
 	const struct pg_evidence *universe = pg_prove_universe(typing, source, 0);
-	const struct pg_evidence *alternate = pg_prove_return_content(typing,
-		pg_prove_return_type(typing, universe));
+	assert(pg_prove_return_content(typing, pg_prove_return_type(typing, universe)) == universe);
+	const struct pg_evidence *alternate = pg_prove_reindex(typing,
+		pg_prove_substitution_projection(typing, source, source), universe);
 	assert(alternate && alternate != universe && pg_evidence_subject(alternate) == pg_evidence_subject(universe));
 	const struct pg_evidence *relation = pg_prove_identity_type(typing, alternate,
 		pg_prove_variable(typing, source, a), pg_prove_variable(typing, source, b));
@@ -2546,8 +2547,9 @@ static void dependent_families(struct pg_typing *typing,
 	pg_typing_destroy(&foreign_paths);
 	/* A third dependent center retains the earlier map and its typed image,
 	 * independently of alternative acceptance histories for that image. */
-	const struct pg_evidence *alternate_a = pg_prove_type_value(typing,
-		pg_prove_value_type(typing, a));
+	assert(pg_prove_type_value(typing, pg_prove_value_type(typing, a)) == a);
+	const struct pg_evidence *alternate_a = pg_prove_reindex(typing,
+		pg_prove_substitution_projection(typing, scope, scope), a);
 	assert(alternate_a && alternate_a != a && pg_evidence_subject(alternate_a) == pg_evidence_subject(a));
 	const struct pg_evidence *third = pg_prove_context_extension(typing, indices, pg_binder(typing->graph),
 		pg_prove_projection(typing, indices, family));

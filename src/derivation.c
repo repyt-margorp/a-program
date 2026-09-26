@@ -7,6 +7,10 @@
 static size_t typed_inputs(const struct pg_evidence *proof,
 	const struct pg_occurrence **inputs)
 {
+	if (pg_evidence_rule(proof) == PG_TYPE_FROM_VALUE || pg_evidence_rule(proof) == PG_VALUE_FROM_TYPE) {
+		inputs[0] = pg_evidence_subject(proof)->origin;
+		return 1;
+	}
 	size_t count = pg_function_proof_inputs(proof, inputs);
 	return count ? count : pg_cbpv_proof_inputs(proof, inputs);
 }

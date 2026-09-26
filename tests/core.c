@@ -570,7 +570,9 @@ static void evidence_test(struct pg_graph *graph)
 	assert(identity && pg_evidence_classifier(identity) == pg_evidence_subject(pi)->core);
 	/* The Pi construction, not the route by which it was checked, supplies
 	 * Lambda's binder and body scope. No second scope or term is rebuilt. */
-	const struct pg_evidence *alternate_pi = pg_prove_thunk_content(&typing, pg_prove_thunk_type(&typing, pi));
+	assert(pg_prove_thunk_content(&typing, pg_prove_thunk_type(&typing, pi)) == pi);
+	const struct pg_evidence *alternate_pi = pg_prove_reindex(&typing,
+		pg_prove_substitution_projection(&typing, a_context, a_context), pi);
 	assert(alternate_pi && pg_evidence_rule(alternate_pi) != PG_PI_FORM);
 	assert(pg_evidence_subject(alternate_pi) == pg_evidence_subject(pi));
 	size_t contexts_before = typing.contexts.count, terms_before = graph->terms.count;
@@ -1368,7 +1370,7 @@ static void evidence_test(struct pg_graph *graph)
 	assert(pg_evidence_subject(u0_value)->core == pg_evidence_subject(u0)->core);
 	assert(pg_evidence_subject(u0_value)->judgement == PG_JUDGEMENT_VALUE);
 	const struct pg_evidence *u0_again = pg_prove_value_type(&typing, u0_value);
-	assert(u0_again != u0 && pg_evidence_subject(u0_again) == pg_evidence_subject(u0));
+	assert(u0_again == u0);
 	assert(pg_context_declared_input(&typing, a_context) == u0);
 	const struct pg_evidence *records[] = {empty, u0, a_context, a_type, x_context,
 		fa, ufa, pi, high_pi, x_term, returned, delayed, forced, identity,
@@ -1708,8 +1710,9 @@ static void typed_substitution_test(struct pg_graph *graph)
 	const struct pg_binding_value *bindings = pg_context_map_bindings(map);
 	assert(bindings[0].binder == a && bindings[0].value == pg_evidence_subject(destination_b)->core);
 	assert(bindings[1].binder == x && bindings[1].value == pg_evidence_subject(destination_y)->core);
-	const struct pg_evidence *alternate_b = pg_prove_type_value(&typing,
-		pg_prove_value_type(&typing, destination_b));
+	assert(pg_prove_type_value(&typing, pg_prove_value_type(&typing, destination_b)) == destination_b);
+	const struct pg_evidence *alternate_b = pg_prove_reindex(&typing,
+		pg_prove_substitution_projection(&typing, destination, destination), destination_b);
 	assert(alternate_b != destination_b && pg_evidence_subject(alternate_b) == pg_evidence_subject(destination_b));
 	/* Positions select typed images, not alternative receipts for an image. */
 	const struct pg_evidence *parallel = pg_prove_context_extension(&typing, a_scope, x,
@@ -1989,10 +1992,12 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(other_destination == destination);
 	assert(pg_evidence_context(other_destination) == pg_evidence_context(destination));
 	const struct pg_evidence *selected_type = pg_context_declared_input(&typing, destination);
-	const struct pg_evidence *alternative_type = pg_prove_return_content(&typing,
-		pg_prove_return_type(&typing, selected_type));
-	assert(alternative_type != selected_type);
-	assert(pg_evidence_subject(alternative_type) == pg_evidence_subject(selected_type));
+	assert(pg_prove_return_content(&typing, pg_prove_return_type(&typing, selected_type)) == selected_type);
+	const struct pg_evidence *alternative_type = pg_prove_reindex(&typing,
+		pg_prove_substitution_projection(&typing, b_scope, b_scope), b_type);
+	assert(alternative_type != b_type);
+	assert(pg_evidence_subject(alternative_type) == pg_evidence_subject(b_type));
+	assert(pg_prove_value_type(&typing, alternative_type) == selected_type);
 	const struct pg_evidence *context_inputs[] = {b_scope, alternative_type};
 	const struct pg_derivation_parameters context_parameters = {.binder = y};
 	size_t context_proofs = typing.proofs.count;
@@ -6222,7 +6227,9 @@ static void function_signature_inputs(struct pg_graph *graph)
 		}
 		const struct pg_evidence *pi = pg_prove_pi(&typing, scope, pg_prove_classifier(&typing, scope, body));
 		if (variant & 1) {
-			const struct pg_evidence *alternate = pg_prove_thunk_content(&typing, pg_prove_thunk_type(&typing, pi));
+			assert(pg_prove_thunk_content(&typing, pg_prove_thunk_type(&typing, pi)) == pi);
+			const struct pg_evidence *alternate = pg_prove_reindex(&typing,
+				pg_prove_substitution_projection(&typing, parameters, parameters), pi);
 			assert(alternate && pg_evidence_rule(alternate) != PG_PI_FORM);
 			assert(pg_evidence_subject(alternate) == pg_evidence_subject(pi));
 			pi = alternate;

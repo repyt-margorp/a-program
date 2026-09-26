@@ -330,8 +330,8 @@ const struct pg_occurrence *pg_occurrence_boundary(struct pg_typing *typing,
 {
 	if (!source) return NULL;
 	if (source->judgement == judgement && source->classifier == classifier) return source;
-	/* Type/value round trips retain the original construction. Evidence still
-	 * records both rules; a changed formation is not such a round trip. */
+	/* Type/value round trips retain the original construction. A changed
+	 * formation is not such a round trip. This performs no evidence admission. */
 	const struct pg_occurrence *origin = source->origin;
 	if (origin && !source->map && !source->selection && source->core == origin->core && source->type == origin->type)
 		if (origin->judgement == judgement && origin->classifier == classifier) return origin;
