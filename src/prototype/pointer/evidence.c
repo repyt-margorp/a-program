@@ -4063,6 +4063,8 @@ static const struct pg_evidence *unary_term_content(struct pg_typing *typing,
 		subject = pg_occurrence_intern(typing, &header, subject->operands, pg_occurrence_maps(subject));
 		if (!subject) return NULL;
 	}
+	const struct pg_evidence *checked = pg_evidence_for_subject(typing, subject, NULL);
+	if (checked) return checked;
 	return accept(typing, rule, pg_evidence_context(proof), subject, 1, &proof);
 }
 
@@ -4071,7 +4073,6 @@ const struct pg_evidence *pg_prove_return_value(struct pg_typing *typing,
 {
 	if (!pg_evidence_owned_by(computation, typing)) return NULL;
 	if (pg_evidence_judgement(computation) != PG_JUDGEMENT_COMPUTATION) return NULL;
-	if (computation->rule == PG_RETURN_INTRO) return computation->premises[0];
 	const struct pg_occurrence *child;
 	if (!structural_input(typing, pg_evidence_subject(computation), 0, &child)) return NULL;
 	return unary_term_content(typing, computation, child);
@@ -4082,7 +4083,6 @@ const struct pg_evidence *pg_prove_thunk_computation(struct pg_typing *typing,
 {
 	if (!pg_evidence_owned_by(value, typing)) return NULL;
 	if (pg_evidence_judgement(value) != PG_JUDGEMENT_VALUE) return NULL;
-	if (value->rule == PG_THUNK_INTRO) return value->premises[0];
 	const struct pg_occurrence *child;
 	if (!structural_input(typing, pg_evidence_subject(value), 0, &child)) return NULL;
 	return unary_term_content(typing, value, child);

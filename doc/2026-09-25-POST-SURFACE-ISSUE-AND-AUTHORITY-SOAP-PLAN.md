@@ -645,6 +645,11 @@ soundness; preserve all inherited files and edits locally for their author.
   the reproduced alternate-Context regression and existing nominal/dependent
   image tests; complete acceptance, affected sanitizers and paired timings
   before publication. Do not claim a new typing theorem or Context migration.
+- [x] **P4.3f CBPV content inspection:** replace RETURN/THUNK receipt shortcuts
+  with checked typed-child access; reuse an accepted exact child instead of
+  adding an inverse receipt. Preserve converted boundaries, effects, scopes
+  and object proof Terms. Verify fresh typed-only images, legacy derivation
+  images, full acceptance and paired performance before publication.
 - [ ] **P4.3 One end-to-end slice:** start with typed Lambda/APP plus context
   action, then one Identity boundary consumer. Build, check, inspect, serialize
   and load the typed structure through the same Solve mechanism. Remove the
@@ -1726,3 +1731,56 @@ Per-file source delta: `evidence.c` **+1/-7, net -6**;
 documentation is excluded. Adopt this deletion of a redundant inspection
 path. Context-formation representation and broader P4/P5 remain open.
 Documentation: **+70/-2**, net +68 lines.
+
+CBPV content inspection, 2026-09-26, baseline `173a550` (agent assessment):
+`pg_prove_return_value` and `pg_prove_thunk_computation` currently select direct
+inputs by introduction-rule/premise position. Other routes query typed children
+but add inverse receipts even when the exact child is already accepted. The
+trial uses the existing typed-input query for both routes and reuses checked
+children after validating the canonical head and classifier boundary. Changed
+classifiers still require inversion; nonempty RETURN effects still reject.
+No new fast-path cache, scheduler, tag or wire version is introduced. This is
+checking-history consolidation, not proof irrelevance or equality reflection.
+
+Two tests formerly demanded redundant extraction receipts; they now require
+the exact accepted child. The new typed-only image test checks RETURN and
+THUNK after an alternative conversion history without another receipt. It
+fails on the baseline at `result == child`, not at a typing/soundness check.
+
+Fresh publication checks (inherited worktree trials excluded):
+- Full `check-acceptance`: exit 0; wall **1535.391s**, user 1426.887s, system
+  107.710s. Includes source compatibility **63/63**, ordinary-result QuickSort,
+  all four LT/partition variants and optional-witness isolation/packets.
+- Optimized Core/Synthesis/Identity and typed-only tests pass; Debug covers
+  Core/Synthesis/typed-only. All four pass ASan/UBSan with leak detection.
+- Thirteen fixtures, two retention modes: **104** old/new cross-check/recompute
+  invocations pass. Of 26 image pairs, 24 are byte-identical. Append shrinks
+  44078 -> 42672 bytes (ordinary) and 75422 -> 73184 (typed retention).
+  The ordinary-result theorem also cross-loads at 0/100/complete Solve.
+
+Quiet timings: warmup plus six pairs, reversed final three, 100-process batches
+for small cases. Median seconds below; outputs and source Solve steps agree.
+Append is 2.1% slower; sampled ranges overlap. Do not claim a speedup or exact
+performance neutrality. Three-pair RSS medians (KiB) are 223368 -> 223476 for
+Sorted, 174560 -> 174616 for its result theorem, 546052 -> 545992 for derived LT.
+
+| Workload | `173a550` | Candidate |
+| --- | ---: | ---: |
+| Generic Sorted suite | 5.784387 | 5.796864 |
+| General Sorted source | 0.825115 | 0.824464 |
+| Ordinary-result theorem | 0.745069 | 0.750251 |
+| Derived LT plus content proof | 2.559877 | 2.528485 |
+| Vec append | 0.005416 | 0.005528 |
+| Certified length | 0.003904 | 0.003925 |
+| Function-field induction | 0.003687 | 0.003654 |
+
+Per-file added/removed/net under `src/prototype/pointer/`: `evidence.c` 2/2/0,
+`evidence.h` 2/1/+1, `tests/core.c` 1/1/0, `tests/synthesis.c` 3/2/+1,
+`tests/typed_structure.c` 38/4/+34. Code/tests total **+46/-10, net +36**;
+documentation excluded. Runtime checking-history duplication decreases, but
+this is not source-line reduction. Adopt P4.3f; broader P4/P5 remain open.
+Logs: `/tmp/a-program-unary-input-{acceptance,debug-*,asan-*}.log`,
+`/tmp/a-program-unary-input-{bench,memory}.jsonl`, cross-images in
+`/tmp/a-program-unary-input-cross.tJRPXn/` and
+`/tmp/a-program-unary-input-theorem.E21goA/`.
+Documentation: **+58/-0**, net +58 lines.

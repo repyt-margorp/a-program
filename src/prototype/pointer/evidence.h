@@ -592,7 +592,8 @@ const struct pg_evidence *pg_prove_substitution_extend(struct pg_typing *typing,
 const struct pg_evidence *pg_prove_reindex(struct pg_typing *typing,
 	const struct pg_evidence *substitution, const struct pg_evidence *proof);
 /* Invert accepted RETURN v : F A or THUNK M : U C judgements with canonical
- * heads. Retains the input proof; never executes M or guesses a type from Core.
+ * heads. Reuse the checked typed child, or certify the selected boundary by
+ * inversion; never execute M or guess a type from Core.
  * Symbolic heads must first be normalized with evidence and converted. */
 const struct pg_evidence *pg_prove_return_value(struct pg_typing *typing,
 	const struct pg_evidence *computation);

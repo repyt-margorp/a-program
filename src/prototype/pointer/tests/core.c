@@ -1902,7 +1902,7 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(pg_occurrence_input_steps(input) == input_steps);
 	const struct pg_evidence *extracted = pg_prove_return_value(&typing, reindexed_return);
 	assert(extracted && pg_evidence_subject(extracted) == pg_evidence_subject(destination_y));
-	assert(pg_evidence_premise(extracted, 0) == reindexed_return);
+	assert(extracted == destination_y && typing.proofs.count == input_proofs);
 	/* A lazily mapped input has no receipt until ordinary rules check its map.
 	 * Lookup itself is read-only; invalid boundaries never gain acceptance. */
 	const struct pg_evidence *suspended_return = pg_prove_thunk(&typing, returned);

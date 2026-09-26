@@ -5061,8 +5061,9 @@ static void normalization_jobs(struct pg_typing *typing,
 	const struct pg_evidence *content_value = complete(&split,
 		pg_synthesis_return(&split, context, answer), PG_SYNTHESIS_DONE);
 	same_judgement(content_value, value);
-	assert(pg_evidence_rule(content_value) == PG_RETURN_VALUE);
-	assert(pg_evidence_premise(content_value, 0) == answer);
+	struct pg_typed_query *input = pg_typed_input_request(typing, answer, 0);
+	while (!pg_typed_query_advance(input, 1)) assert(pg_typed_query_steps(input) < 10000);
+	assert(pg_typed_query_result(input) == content_value);
 	assert(!pg_prove_thunk_computation(typing, answer));
 	uint64_t steps = pg_whnf_steps(computation);
 	struct pg_synthesis_job *second = pg_synthesis_normalize(&whole, context, source);
