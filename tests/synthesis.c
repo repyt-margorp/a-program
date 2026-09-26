@@ -2,6 +2,7 @@
 #include "synthesis_effect.h"
 #include "synthesis_work.h"
 #include "synthesis_source.h"
+#include "synthesis_conversion.h"
 #include "computation.h"
 #include "identity.h"
 #include "action.h"
@@ -4554,11 +4555,19 @@ static void shared_conversion_jobs(struct pg_typing *typing)
 		pg_synthesis_evidence(&synthesis, pg_prove_variable(typing, context, x)), type);
 	struct pg_synthesis_job *right = pg_synthesis_expect(&synthesis,
 		pg_synthesis_evidence(&synthesis, pg_prove_variable(typing, context, y)), type);
-	assert(synthesis.jobs.count == before + 5);
+	assert(left->role->size == sizeof(void *) && right->role->size == sizeof(void *));
+	assert(pg_synthesis_expect_target(left) == type && !pg_synthesis_expect_target(type));
+	assert(pg_synthesis_expect_input(left) == pg_synthesis_work_input(left, 0));
+	struct pg_synthesis_job *comparison = pg_synthesis_compare_terms(&synthesis,
+		pg_reference(typing->graph, a), pg_reference(typing->graph, a));
+	assert(comparison && comparison->role->size == 2 * sizeof(void *));
+	assert(!pg_synthesis_comparison_certificate(comparison) && !pg_synthesis_comparison_certificate(left));
+	assert(synthesis.jobs.count == before + 6);
 	const struct pg_evidence *left_result = complete(&synthesis, left, PG_SYNTHESIS_DONE);
 	const struct pg_evidence *right_result = complete(&synthesis, right, PG_SYNTHESIS_DONE);
 	/* Three evidence producers and two typed checks share one Core comparison. */
 	assert(synthesis.jobs.count == before + 6);
+	assert(pg_synthesis_comparison_certificate(comparison));
 	assert(left_result != right_result);
 	assert(pg_evidence_subject(left_result)->core == pg_reference(typing->graph, x));
 	assert(pg_evidence_subject(right_result)->core == pg_reference(typing->graph, y));
@@ -4586,6 +4595,57 @@ static void shared_conversion_jobs(struct pg_typing *typing)
 	assert(synthesis.steps == steps);
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&work);
+}
+
+static void conversion_owner_cancellation(void)
+{
+	for (uint64_t cutoff = 0; ; ++cutoff) {
+		struct pg_graph graph;
+		struct pg_typing typing;
+		struct pg_whnf_work work;
+		struct pg_synthesis first, second;
+		assert(!pg_graph_init(&graph) && !pg_typing_init(&typing, &graph));
+		assert(!pg_whnf_work_init(&work, &graph));
+		assert(!pg_synthesis_init(&first, &typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
+		assert(!pg_synthesis_init(&second, &typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
+		const struct pg_object *x = pg_binder(&graph);
+		const struct pg_term *value = pg_reference(&graph, x);
+		const struct pg_term *identity = pg_lambda(&graph, x, value), *input = value;
+		for (size_t i = 0; i < 16; ++i) input = pg_application(&graph, identity, input);
+		struct pg_whnf_job *reduction = pg_whnf_request(&work, &pg_pure_policy, input);
+		struct pg_synthesis_job *left = pg_synthesis_compare_terms(&first, input, value);
+		struct pg_synthesis_job *right = pg_synthesis_compare_terms(&second, input, value);
+		assert(left && right && !pg_synthesis_comparison_certificate(left));
+		pg_synthesis_advance(&first, cutoff);
+		int done = pg_synthesis_status(left) == PG_SYNTHESIS_DONE;
+		assert(done || pg_synthesis_status(left) == PG_SYNTHESIS_PENDING);
+		assert(!!pg_synthesis_comparison_certificate(left) == done);
+		uint64_t steps = pg_whnf_steps(reduction);
+		/* The comparison owns scratch; the shared reducer outlives its borrower. */
+		pg_synthesis_destroy(&first);
+		assert(pg_whnf_request(&work, &pg_pure_policy, input) == reduction);
+		assert(pg_whnf_steps(reduction) == steps);
+		complete(&second, right, PG_SYNTHESIS_DONE);
+		assert(pg_synthesis_comparison_certificate(right) && !pg_synthesis_result(right));
+		assert(pg_synthesis_compare_terms(&second, input, value) == right);
+		steps = second.steps;
+		pg_synthesis_advance(&second, 64);
+		assert(second.steps == steps);
+		struct pg_synthesis_job *wrong = pg_synthesis_compare_terms(&second,
+			input, pg_reference(&graph, pg_binder(&graph)));
+		complete(&second, wrong, PG_SYNTHESIS_REJECTED);
+		assert(!pg_synthesis_comparison_certificate(wrong));
+		pg_synthesis_destroy(&second);
+		pg_whnf_work_destroy(&work);
+		pg_typing_destroy(&typing);
+		pg_graph_destroy(&graph);
+		assert(cutoff < 10000);
+		if (done) {
+			printf("conversion owner cancellation: %llu boundaries, shared reduction and certificate gating passed\n",
+				(unsigned long long)(cutoff + 1));
+			break;
+		}
+	}
 }
 
 static int arbitrary_policy(struct pg_eval *machine)
@@ -4714,7 +4774,7 @@ static void selected_instances(struct pg_typing *typing)
 	struct pg_synthesis_job *job = pg_synthesis_family_action(&split, producer, ls, rs, 2, paths);
 	struct pg_synthesis_job *other = pg_synthesis_family_action(&whole, other_producer, ls, rs, 2, paths);
 	assert(job && other && pg_synthesis_status(job) == PG_SYNTHESIS_PENDING);
-	assert(job->role->size < producer->role->size);
+	assert(job->role->size <= 8 * sizeof(void *) + 3 * sizeof(size_t));
 	assert(pg_synthesis_family_action(&split, producer, ls, rs, 2, paths) == job);
 	struct pg_synthesis_job *path_jobs[] = {pg_synthesis_evidence(&split, paths[0]), pg_synthesis_evidence(&split, paths[1])};
 	assert(pg_synthesis_family_action_jobs(&split, producer, ls, rs, 2, path_jobs) == job);
@@ -5100,6 +5160,7 @@ static void normalization_jobs(struct pg_typing *typing,
 	assert(pg_synthesis_init(&whole, typing, &work, PG_DEFINITION_IMPLICIT_THUNK) == 0);
 	struct pg_synthesis_job *job = pg_synthesis_normalize(&split, context, source);
 	assert(job && pg_synthesis_normalize(&split, context, source) == job);
+	assert(job->role->size == 2 * sizeof(void *));
 	assert(pg_synthesis_status(job) == PG_SYNTHESIS_PENDING && !pg_synthesis_result(job));
 	struct pg_whnf_job *computation = pg_whnf_request(&work, &pg_pure_policy, pg_evidence_subject(source)->core);
 	assert(!pg_whnf_certificate(computation));
@@ -7250,7 +7311,7 @@ static void identity_owner_cancellation(void)
 		struct pg_synthesis_job *family = pg_synthesis_evidence(&synthesis,
 			pg_prove_projection(&typing, context, universe_path));
 		struct pg_synthesis_job *instance = pg_synthesis_identity_instance(&synthesis, context, family, input, input);
-		assert(instance && instance->role->size < input->role->size);
+		assert(instance && instance->role->size <= 3 * sizeof(void *) + sizeof(size_t));
 		struct pg_synthesis_job *formation = pg_synthesis_identity_formation(&synthesis,
 			pg_synthesis_evidence(&synthesis, type));
 		struct pg_synthesis_job *jobs[] = {
@@ -7501,6 +7562,7 @@ int main(void)
 	cube_application_jobs(&typing, 2);
 	open_eliminator_conversion(&typing);
 	shared_conversion_jobs(&typing);
+	conversion_owner_cancellation();
 	library_levels(&typing);
 	named_identity(&typing);
 	named_transport(&typing);
@@ -7757,7 +7819,7 @@ int main(void)
 	size_t evaluation_jobs = synthesis.jobs.count;
 	struct pg_synthesis_job *shared_return = pg_synthesis_return(&synthesis, x_context, second_application);
 	assert(shared_return && pg_synthesis_status(shared_return) == PG_SYNTHESIS_PENDING);
-	assert(shared_return->role->size < callee_step->role->size && !pg_synthesis_body_input(shared_return));
+	assert(shared_return->role->size == 2 * sizeof(void *) && !pg_synthesis_body_input(shared_return));
 	assert(synthesis.jobs.count == evaluation_jobs + 1);
 	assert(pg_synthesis_return(&synthesis, x_context, second_application) == shared_return);
 	uint64_t evaluation_steps = synthesis.steps;

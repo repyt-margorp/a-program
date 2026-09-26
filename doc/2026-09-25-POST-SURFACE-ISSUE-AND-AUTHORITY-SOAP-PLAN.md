@@ -5,7 +5,7 @@ Updated: 2026-09-27
 Status: P1-P3 closed. P4 Identity-boundary/Lambda-scope/typed-only function,
 result-formation, selected ambient declarations, Context-history removal and typed-map/variable-image slices
 verified. P5 effect/shared-work/
-Handler/Operation/CBPV/function/Context/IADT-scope/transport/basic-Identity owners verified.
+Handler/Operation/CBPV/function/Context/IADT-scope/transport/basic-Identity/conversion owners verified.
 Verification uses clean publication trees, full acceptance and affected sanitizers.
 Broader P4 typed-proof migration and P5 synthesis modularity remain open.
 Layout milestone (user-authorized 2026-09-26): see
@@ -37,7 +37,7 @@ provide a second execution order. The order below is the agent's proposal.
 | P2 | Reassess the old computation-result report against current contracts | #13 | Closed by user-approved scope decision |
 | P3 | Resolve the remaining MergeSort report against existing regressions | #28 | Verified; closed |
 | P4 | Make typed proof structure authoritative; remove redundant evidence dependency | Existing R2-R5 plans | Typed-only functions, result-formation and Context-history removal verified; broader migration pending |
-| P5 | Separate synthesis by semantic owner without duplicating shared machinery | User follow-up on synthesis.c | Effect-owner/shared-header/Handler/Operation/CBPV-adapter/function-formation slices verified; legacy source state remains |
+| P5 | Separate synthesis by semantic owner without duplicating shared machinery | User follow-up on synthesis.c | Effect/shared-header/Handler/Operation/CBPV/function/conversion slices verified; legacy source state remains |
 
 ## P1. Issue and PR Disposition
 
@@ -1204,6 +1204,19 @@ owner localization, not completion of typed-history removal or higher Identity.
 
 - [x] Confirm that owner-level semantics are partially separated while synthesis
   remains concentrated; distinguish this task from P4's representation change.
+- [x] **Conversion/reduction owner, baseline `5958aef`:** move comparison,
+  post-checking, classifier normalization and WHNF/NF requests out of the source
+  driver's universal state. Keep the existing reduction/comparison engines,
+  interner, certificates and checking rules. Read immutable producer results
+  instead of copying them into adapter state. Localize cleanup, request input
+  inspection and shared reduction advancement; pending structure may borrow
+  input edges, never treat a projected annotation as accepted evidence.
+  Preserve directional effect weakening as a post-check, separate from DefEq.
+  Check small owner allocations, pending/cancelled comparisons, shared WHNF/NF,
+  pure-only evaluation, source/image requests and `::` non-feedback, then all
+  publication gates. Report movement separately from actual simplification.
+  Agent decision: this addresses P5 ownership, not P4's remaining history or the
+  measured composition slowdown; do not add a parallel normalization cache.
 - [x] **IADT transport owner, baseline `f3c5a23`:** move constructor disjointness/
   field Identity and index/result transport, including private progress and
   provisional target inspection, out of the source-wide state/dispatch.
@@ -2469,3 +2482,56 @@ Local logs: `/tmp/a-program-composition-{acceptance,debug,asan,cross}.log`,
 `/tmp/a-program-composition-{bench,memory}.jsonl`; cross-images:
 `/tmp/a-program-composition-cross.neNK7U/`. Tests, not temporary logs, are tracked.
 This plan: **+88/-3**; complete slice: **+310/-35, net +275**.
+
+### Conversion Owner Verification
+
+Baseline `5958aef`, verified 2026-09-27 in the clean publication worktree.
+`synthesis_conversion.c` owns comparison, post-checking, classifier normalization
+and WHNF/NF requests. They still use the existing work index/queue and pure
+Core engines. Borrowed immutable producer results replace copied checked inputs;
+comparison cleanup and input inspection no longer access the source-wide union.
+Read-only pending input views confer no acceptance, and effect weakening remains
+directional post-checking, not DefEq. No parser, Core rule or image format changes.
+
+- Full optimized `check-acceptance`: exit 0, **1582.486s** wall, 1469.589s user,
+  111.561s system; compatibility **63/63**, general/ordinary-result Sorted,
+  retained progress and optional witness-isolation checks pass.
+- Debug and ASan/UBSan Core, Program, IADT, Identity, Synthesis, typed-structure
+  and derivation-image tests pass with leak detection. New permanent tests
+  cover comparison cancellation at **56** cold progress boundaries, surviving
+  shared reduction, no pending/rejected certificate, exact request reuse and
+  small allocations. Existing typed-result and effect checks are unchanged.
+- Cross-reading: **36** source-image pairs, **72** opposite-version loads and
+  **8** occurrence/derivation reads pass, including zero/partial/complete saves.
+- Private state falls from **240 bytes** to **8 bytes** for post-checking and
+  **16 bytes** for comparison, classifier normalization and WHNF/NF. The shared
+  header remains 80 bytes; unmigrated source roles still allocate 240 bytes.
+- Ten workloads, warmup plus six counterbalanced pairs: median time changes
+  **-4.75% to +0.27%**; all sample ranges overlap. General Sorted is
+  **0.877234s -> 0.877743s**, ordinary result **0.777754s -> 0.779095s**, derived
+  proof **2.655359s -> 2.662567s**. Results and Solve step counts are identical.
+  These timings do not establish a speedup or resolve P4.4's earlier slowdown.
+- Three-pair peak RSS medians, KiB: length **11220 -> 11220**, Sorted
+  **226152 -> 222084**, ordinary result **175864 -> 173120**, derived
+  **551296 -> 543416**. This measures smaller owner storage, not history removal.
+
+Agent assessment: adopt this bounded ownership change. Five descriptors and
+their state/dispatch leave the central source module without adding a parallel
+solver or normalization cache. Most code is moved; this is not net source
+reduction. Broad P4/P5 and the performance follow-up remain open. Inherited
+Context/IADT relocation trials remain excluded and preserved locally.
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `src/synthesis.c` | 20 | 299 | -279 |
+| `src/synthesis_conversion.c` | 329 | 0 | +329 |
+| `src/synthesis_conversion.h` | 22 | 0 | +22 |
+| `src/Makefile` | 1 | 0 | +1 |
+| `tests/synthesis.c` | 66 | 4 | +62 |
+
+Implementation/build **+372/-299, net +73**; tests **+66/-4, net +62**.
+Local logs: `/tmp/a-program-conversion-owner-{acceptance,debug,asan,cross}.log`,
+`/tmp/a-program-conversion-owner-acceptance.time`, and
+`/tmp/a-program-conversion-owner-{bench,memory}.jsonl`; cross-images:
+`/tmp/a-program-conversion-owner-cross.mUR2xD/`. Permanent tests are tracked;
+temporary logs are not.

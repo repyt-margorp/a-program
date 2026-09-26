@@ -3,6 +3,7 @@
 #include "synthesis_effect.h"
 #include "synthesis_source.h"
 #include "synthesis_handler.h"
+#include "synthesis_conversion.h"
 #include "host.h"
 #include "computation.h"
 #include "iadt.h"
@@ -281,11 +282,10 @@ struct source_work {
 	const struct pg_inductive_instance *inductive_instance;
 	/* The immutable role selects private work, not the accepted result. */
 	union {
-		struct pg_conversion comparison;
 		struct pg_function_graph_work function_graph;
 		struct {
 			union {
-				union { struct pg_whnf_job *whnf; struct pg_nf_job *nf; } normalizing;
+				struct pg_synthesis_reduction normalizing;
 				struct fold_structure_state *fold_structure;
 			};
 			/* Premises remain in immutable inputs; only checking progress is private. */
@@ -323,10 +323,9 @@ SOURCE_WORK(INDUCTIVE_INSTANCE_JOB);
 SOURCE_WORK(DOMAIN_JOB); SOURCE_WORK(TERM_STRUCTURE_JOB); SOURCE_WORK(DECLARED_TYPE_JOB);
 SOURCE_WORK(CLASSIFIER_STRUCTURE_JOB); SOURCE_WORK(TYPE_STRUCTURE_JOB); SOURCE_WORK(EXPRESSION_JOB);
 SOURCE_WORK(DEFINITION_JOB); SOURCE_WORK(DEFINITION_SCOPE_JOB); SOURCE_WORK(EVIDENCE_JOB);
-SOURCE_WORK(NORMALIZATION_JOB); SOURCE_WORK(NF_JOB);
 SOURCE_WORK(RESULT_TYPE_JOB); SOURCE_WORK(CLASSIFIER_CONSTRAINT_JOB); SOURCE_WORK(BINDING_EXPECT_JOB);
-SOURCE_WORK(CLASSIFIER_JOB); SOURCE_WORK(EXPECT_JOB); SOURCE_WORK(SOURCE_EXPECT_JOB);
-SOURCE_WORK(CONVERSION_JOB); SOURCE_WORK(DATA_CASE_JOB);
+SOURCE_WORK(SOURCE_EXPECT_JOB);
+SOURCE_WORK(DATA_CASE_JOB);
 SOURCE_WORK(BINDING_JOB); SOURCE_WORK(TELESCOPE_JOB);
 SOURCE_WORK(TELESCOPE_STRUCTURE_JOB); SOURCE_WORK(DATA_SCHEMA_JOB);
 SOURCE_WORK(CONSTRUCTOR_JOB); SOURCE_WORK(CONSTRUCTOR_VALUE_JOB); SOURCE_WORK(INDUCTION_BRANCH_JOB);
@@ -382,8 +381,7 @@ int pg_synthesis_init(struct pg_synthesis *synthesis, struct pg_typing *typing,
 static void source_work_destroy(struct pg_synthesis_job *job)
 {
 	struct source_work *local = source_work(job);
-	if (job->role == CONVERSION_JOB) pg_conversion_destroy(&local->comparison);
-	else if (job->role == TERM_STRUCTURE_JOB || job->role == CLASSIFIER_STRUCTURE_JOB)
+	if (job->role == TERM_STRUCTURE_JOB || job->role == CLASSIFIER_STRUCTURE_JOB)
 		pg_comparison_destroy(&local->structural_probe);
 	else if (job->role == FUNCTION_GRAPH_JOB) pg_function_graph_destroy(&local->function_graph);
 	else if (job->role == DERIVATION_JOB) pg_comparison_destroy(&local->derivation.endpoint);
@@ -1315,15 +1313,6 @@ const struct pg_source_scope *pg_synthesis_module_namespace(struct pg_synthesis 
 	return publish_namespace(synthesis, parent, name, NULL, module);
 }
 
-struct pg_synthesis_job *pg_synthesis_expect(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *term, struct pg_synthesis_job *type)
-{
-	if (!term || term->owner != synthesis->owner_key) return NULL;
-	if (!type || type->owner != synthesis->owner_key) return NULL;
-	const void *inputs[] = {term, type};
-	return pg_synthesis_work_request(synthesis, EXPECT_JOB, 2, inputs);
-}
-
 static struct pg_synthesis_job *source_expect_request(struct pg_synthesis *synthesis, const struct pg_synthesis_work_class *role,
 	const struct pg_source_scope *scope, struct pg_synthesis_job *term,
 	struct pg_synthesis_job *type)
@@ -1517,82 +1506,6 @@ int pg_synthesis_typed_input(struct pg_synthesis *synthesis,
 	return pg_evidence_context(context) == pg_evidence_context(proof);
 }
 
-struct pg_synthesis_job *pg_synthesis_normalize(struct pg_synthesis *synthesis,
-	const struct pg_evidence *context, const struct pg_evidence *proof)
-{
-	if (!pg_synthesis_typed_input(synthesis, context, proof)) return NULL;
-	return pg_synthesis_normalize_jobs(synthesis, pg_synthesis_evidence(synthesis, context),
-		pg_synthesis_evidence(synthesis, proof), PG_REDUCTION_WHNF);
-}
-
-struct pg_synthesis_job *pg_synthesis_nf(struct pg_synthesis *synthesis,
-	const struct pg_evidence *context, const struct pg_evidence *proof)
-{
-	if (!pg_synthesis_typed_input(synthesis, context, proof)) return NULL;
-	return pg_synthesis_normalize_jobs(synthesis, pg_synthesis_evidence(synthesis, context),
-		pg_synthesis_evidence(synthesis, proof), PG_REDUCTION_NF);
-}
-
-static struct pg_synthesis_job *normalization_request(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *context, struct pg_synthesis_job *proof,
-	enum pg_reduction_kind kind, int force)
-{
-	if (!synthesis || !context || !proof) return NULL;
-	if (context->owner != synthesis->owner_key || proof->owner != synthesis->owner_key) return NULL;
-	if (kind != PG_REDUCTION_WHNF && kind != PG_REDUCTION_NF) return NULL;
-	const void *inputs[] = {context, proof, force ? &pg_force_operation : NULL};
-	return pg_synthesis_work_request(synthesis, kind == PG_REDUCTION_NF ? NF_JOB : NORMALIZATION_JOB, 3, inputs);
-}
-
-struct pg_synthesis_job *pg_synthesis_normalize_jobs(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *context, struct pg_synthesis_job *proof, enum pg_reduction_kind kind)
-{
-	return normalization_request(synthesis, context, proof, kind, 0);
-}
-
-struct pg_synthesis_job *pg_synthesis_evaluate_jobs(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *context, struct pg_synthesis_job *proof, enum pg_reduction_kind kind)
-{
-	return normalization_request(synthesis, context, proof, kind, 1);
-}
-
-int pg_synthesis_normalization_input(const struct pg_synthesis *synthesis,
-	const struct pg_synthesis_job *job, struct pg_synthesis_job **context,
-	struct pg_synthesis_job **proof, enum pg_reduction_kind *kind, int *force)
-{
-	if (!synthesis || !job || !context || !proof || !kind) return -1;
-	if (job->owner != synthesis->owner_key) return -1;
-	if (job->role != NORMALIZATION_JOB && job->role != NF_JOB) return -1;
-	*context = (void *)job->inputs[0];
-	*proof = (void *)job->inputs[1];
-	*kind = job->role == NF_JOB ? PG_REDUCTION_NF : PG_REDUCTION_WHNF;
-	if (force) *force = job->inputs[2] != NULL;
-	return 0;
-}
-
-struct pg_synthesis_job *pg_synthesis_normalize_classifier(struct pg_synthesis *synthesis,
-	const struct pg_evidence *context, const struct pg_evidence *proof)
-{
-	if (!pg_synthesis_typed_input(synthesis, context, proof)) return NULL;
-	switch (pg_evidence_judgement(proof)) {
-	case PG_JUDGEMENT_TYPE_FAMILY:
-		/* A pending callee may resolve to a family, not a CBPV computation. */
-		return pg_synthesis_evidence(synthesis, proof);
-	case PG_JUDGEMENT_VALUE: case PG_JUDGEMENT_COMPUTATION:
-		return pg_synthesis_normalize_classifier_jobs(synthesis,
-			pg_synthesis_evidence(synthesis, context), pg_synthesis_evidence(synthesis, proof));
-	default: return NULL;
-	}
-}
-
-struct pg_synthesis_job *pg_synthesis_normalize_classifier_jobs(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *context, struct pg_synthesis_job *proof)
-{
-	if (!context || context->owner != synthesis->owner_key) return NULL;
-	if (!proof || proof->owner != synthesis->owner_key) return NULL;
-	return request_job(synthesis, CLASSIFIER_JOB, context, proof);
-}
-
 static void source_work_completed(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
 	int first_finish)
 {
@@ -1722,8 +1635,6 @@ static const struct pg_evidence *type_input(struct pg_synthesis *synthesis,
 	local->value_job = NULL;
 	return producer->result;
 }
-
-static const struct pg_evidence *compare(struct pg_synthesis *synthesis, struct pg_synthesis_job *job);
 
 static void domain_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
@@ -1865,33 +1776,6 @@ static void telescope_step(struct pg_synthesis *synthesis, struct pg_synthesis_j
 	if (pg_synthesis_await(synthesis, job, context)) return;
 	job->result = pg_synthesis_scope_context(local->inner);
 	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
-}
-
-static void classifier_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
-{
-	struct source_work *local = source_work(job);
-	if (!local->left) {
-		for (size_t i = 0; i < 2; ++i) {
-			struct pg_synthesis_job *input = (void *)job->inputs[i];
-			if (pg_synthesis_await(synthesis, job, input)) return;
-		}
-		const struct pg_synthesis_job *context = job->inputs[0], *term = job->inputs[1];
-		struct pg_synthesis_job *canonical = pg_synthesis_normalize_classifier(synthesis, context->result, term->result);
-		if (!canonical) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
-		if (pg_synthesis_forward(synthesis, job, canonical)) return;
-		local->checking_term = term->result;
-		if (!local->right) local->right = pg_synthesis_classifier_formation(synthesis, context, term);
-		if (pg_synthesis_await(synthesis, job, local->right)) return;
-		local->left = pg_synthesis_normalize(synthesis, context->result, local->right->result);
-		depend(synthesis, job, local->left);
-		return;
-	}
-	if (local->left->status != PG_SYNTHESIS_DONE) { pg_synthesis_finish(synthesis, job, local->left->status); return; }
-	local->checking_type = local->left->result;
-	if (pg_evidence_classifier(local->checking_term) == pg_evidence_subject(local->checking_type)->core)
-		job->result = local->checking_term;
-	else job->result = compare(synthesis, job);
-	if (job->result) pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_DONE);
 }
 
 static const struct pg_evidence *value(struct pg_synthesis *synthesis, const struct pg_evidence *proof)
@@ -2752,103 +2636,6 @@ static void reference_step(struct pg_synthesis *synthesis, struct pg_synthesis_j
 		if (!job->result) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
 	}
 	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
-}
-
-struct pg_synthesis_job *pg_synthesis_compare_terms(struct pg_synthesis *synthesis,
-	const struct pg_term *left, const struct pg_term *right)
-{
-	return request_job(synthesis, CONVERSION_JOB, left, right);
-}
-
-static void conversion_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
-{
-	struct source_work *local = source_work(job);
-	if (!local->comparison.state) {
-		if (pg_conversion_init(&local->comparison, synthesis->normalization,
-			job->inputs[0], job->inputs[1]) != 0) {
-			pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
-		}
-	}
-	enum pg_conversion_status status = pg_conversion_advance(&local->comparison, 1);
-	if (status == PG_CONVERSION_PENDING) {
-		pg_synthesis_enqueue(synthesis, job);
-		return;
-	}
-	local->certificate = pg_conversion_certificate(&local->comparison);
-	pg_conversion_destroy(&local->comparison);
-	if (status == PG_CONVERSION_DIFFERENT) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
-	pg_synthesis_finish(synthesis, job, status == PG_CONVERSION_EQUAL ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
-}
-
-static const struct pg_evidence *compare(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
-{
-	struct source_work *local = source_work(job);
-	struct pg_synthesis_job *comparison = pg_synthesis_compare_terms(synthesis,
-		pg_evidence_classifier(local->checking_term), pg_evidence_subject(local->checking_type)->core);
-	if (pg_synthesis_await(synthesis, job, comparison)) return NULL;
-	const struct pg_evidence *result = pg_prove_conversion(synthesis->typing,
-		local->checking_term, local->checking_type, source_work(comparison)->certificate);
-	if (!result) pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR);
-	return result;
-}
-
-static const struct pg_evidence *post_check_type(struct pg_synthesis *synthesis,
-	const struct pg_evidence *term, const struct pg_evidence *target)
-{
-	if (pg_evidence_judgement(term) != PG_JUDGEMENT_COMPUTATION) return target;
-	const struct pg_effect_row *source_row, *target_row;
-	const struct pg_term *source_value, *target_value;
-	enum pg_totality source_grade, target_grade;
-	if (!pg_computation_type_view(pg_evidence_classifier(term), &source_grade, &source_row, &source_value)) return target;
-	if (!pg_computation_type_view(pg_evidence_subject(target)->core, &target_grade, &target_row, &target_value)) return target;
-	if (source_row == target_row && source_grade == target_grade) return target;
-	if (source_grade < target_grade) return target;
-	if (pg_effect_subset(source_row, target_row) != 1) return target;
-	/* Compare result types at the source contract before weakening. Conversion
-	 * remains symmetric and does not silently become effect subtyping. */
-	return pg_prove_computation_type(synthesis->typing,
-		source_grade, source_row, pg_prove_return_content(synthesis->typing, target));
-}
-
-static void expect_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
-{
-	struct source_work *local = source_work(job);
-	if (!local->checking_term) {
-		for (size_t i = 0; i < 2; ++i) {
-			struct pg_synthesis_job *input = (struct pg_synthesis_job *)job->inputs[i];
-			if (pg_synthesis_await(synthesis, job, input)) return;
-		}
-		const struct pg_evidence *term = ((const struct pg_synthesis_job *)job->inputs[0])->result;
-		const struct pg_evidence *type = ((const struct pg_synthesis_job *)job->inputs[1])->result;
-		if (!pg_evidence_owned_by(term, synthesis->typing)) goto rejected;
-		if (!pg_evidence_owned_by(type, synthesis->typing)) goto rejected;
-		if (pg_evidence_context(term) != pg_evidence_context(type)) goto rejected;
-		switch (pg_evidence_judgement(term)) {
-		case PG_JUDGEMENT_VALUE:
-			if (pg_evidence_judgement(type) != PG_JUDGEMENT_VALUE_TYPE) goto rejected;
-			break;
-		case PG_JUDGEMENT_COMPUTATION:
-			if (pg_evidence_judgement(type) != PG_JUDGEMENT_COMPUTATION_TYPE) goto rejected;
-			break;
-		default: goto rejected;
-		}
-		struct pg_synthesis_job *canonical = pg_synthesis_expect(synthesis,
-			pg_synthesis_evidence(synthesis, term), pg_synthesis_evidence(synthesis, type));
-		if (pg_synthesis_forward(synthesis, job, canonical)) return;
-		local->checking_term = term;
-		local->checking_type = post_check_type(synthesis, term, type);
-		if (!local->checking_type) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-	}
-	job->result = compare(synthesis, job);
-	const struct pg_evidence *target = ((const struct pg_synthesis_job *)job->inputs[1])->result;
-	if (job->result && local->checking_type != target) {
-		job->result = pg_prove_effect_subsumption(synthesis->typing, job->result, target);
-		if (!job->result) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-	}
-	if (job->result) pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_DONE);
-	return;
-rejected:
-	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED);
 }
 
 enum pg_comparison_status pg_synthesis_probe_advance(struct pg_synthesis *synthesis,
@@ -5238,9 +5025,6 @@ error:
 	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR);
 }
 
-static const struct pg_reduction_certificate *normalization_receipt(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *job, const struct pg_term *input, enum pg_reduction_kind kind);
-
 static void inductive_instance_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	struct source_work *local = source_work(job);
@@ -5262,7 +5046,7 @@ static void inductive_instance_step(struct pg_synthesis *synthesis, struct pg_sy
 		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
 	}
 	/* Retain beta evidence before recovering the nominal declaration. */
-	const struct pg_reduction_certificate *receipt = normalization_receipt(synthesis, job,
+	const struct pg_reduction_certificate *receipt = pg_synthesis_reduction_advance(synthesis, job, &local->normalizing,
 		pg_evidence_subject(type->result)->core, PG_REDUCTION_WHNF);
 	if (!receipt) return;
 	const struct pg_evidence *normalized = pg_prove_normalization(synthesis->typing, type->result, receipt);
@@ -5418,41 +5202,10 @@ static void data_case_step(struct pg_synthesis *synthesis, struct pg_synthesis_j
 	}
 	if (local->right->status != PG_SYNTHESIS_DONE) { pg_synthesis_finish(synthesis, job, local->right->status); return; }
 	local->checking_type = local->right->result;
-	const struct pg_evidence *checked = compare(synthesis, job);
+	const struct pg_evidence *checked = pg_synthesis_convert(synthesis, job, local->checking_term, local->checking_type);
 	if (!checked) return;
 	job->result = pg_data_branch(synthesis->typing, job->inputs[0], job->inputs[1], checked);
 	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
-}
-
-static const struct pg_reduction_certificate *normalization_receipt(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *job, const struct pg_term *input, enum pg_reduction_kind kind)
-{
-	struct source_work *local = source_work(job);
-	const struct pg_reduction_certificate *certificate = NULL;
-	if (kind == PG_REDUCTION_NF || kind == PG_REDUCTION_PREFIX) {
-		if (!local->normalizing.nf) local->normalizing.nf = pg_nf_request(synthesis->normalization, &pg_pure_policy, input);
-		if (!local->normalizing.nf) goto failure;
-		if (kind == PG_REDUCTION_PREFIX) {
-			int status = pg_nf_prefix_certificate(local->normalizing.nf, &certificate);
-			if (status < 0) goto failure;
-			if (status) return certificate;
-		}
-		if (pg_nf_advance(local->normalizing.nf, 1) == PG_NF_ERROR) goto failure;
-		if (kind == PG_REDUCTION_PREFIX) {
-			if (pg_nf_prefix_certificate(local->normalizing.nf, &certificate) < 0) goto failure;
-		} else certificate = pg_nf_certificate(local->normalizing.nf);
-	} else if (kind == PG_REDUCTION_WHNF) {
-		if (!local->normalizing.whnf) local->normalizing.whnf = pg_whnf_request(synthesis->normalization, &pg_pure_policy, input);
-		if (!local->normalizing.whnf || pg_whnf_advance(local->normalizing.whnf, 1) == PG_EVAL_ERROR) {
-			pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return NULL;
-		}
-		certificate = pg_whnf_certificate(local->normalizing.whnf);
-	} else { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return NULL; }
-	if (!certificate) pg_synthesis_enqueue(synthesis, job);
-	return certificate;
-failure:
-	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR);
-	return NULL;
 }
 
 static int derivation_endpoint(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
@@ -5607,7 +5360,7 @@ int pg_synthesis_source_value_kind(const struct pg_synthesis_job *producer)
 	while (!pg_synthesis_result(rule)) {
 		const struct pg_synthesis_job *prepared = source_rule(rule, NULL);
 		if (prepared) { rule = prepared; continue; }
-		if (rule->role == CLASSIFIER_JOB) { rule = rule->inputs[1]; continue; }
+		if (pg_synthesis_classifier_input(rule)) { rule = pg_synthesis_classifier_input(rule); continue; }
 		if (rule->role == DERIVATION_JOB && rule->input_count > 4 &&
 			((const struct pg_derivation_input *)rule->inputs[0])->rule == PG_CONTEXT_PROJECTION) {
 			rule = rule->inputs[4]; continue;
@@ -5770,8 +5523,8 @@ static void term_structure_step(struct pg_synthesis *synthesis, struct pg_synthe
 			struct pg_synthesis_job *prepared;
 			if (pg_synthesis_await_preparation(synthesis, job, producer, &prepared)) return;
 			/* Classifier conversion and post-checking never rewrite the subject. */
-			if (producer->role == CLASSIFIER_JOB || producer->role == EXPECT_JOB)
-				prepared = (void *)producer->inputs[producer->role == CLASSIFIER_JOB ? 1 : 0];
+			if (pg_synthesis_classifier_input(producer)) prepared = pg_synthesis_classifier_input(producer);
+			else if (pg_synthesis_expect_input(producer)) prepared = pg_synthesis_expect_input(producer);
 			if (!prepared) goto unsupported;
 			local->left = pg_synthesis_term_structure(synthesis, prepared);
 		}
@@ -5934,14 +5687,14 @@ static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_
 	if (local->left) goto consume;
 	struct pg_synthesis_job *prepared;
 	if (pg_synthesis_await_preparation(synthesis, job, producer, &prepared)) return;
-	if (producer->role == CLASSIFIER_JOB) {
-		local->left = pg_synthesis_classifier_structure(synthesis, (void *)producer->inputs[1]);
+	if (pg_synthesis_classifier_input(producer)) {
+		local->left = pg_synthesis_classifier_structure(synthesis, pg_synthesis_classifier_input(producer));
 		goto consume;
 	}
 	struct pg_synthesis_job *transport_target = pg_synthesis_index_transport_target(producer);
-	if (producer->role == EXPECT_JOB || transport_target) {
+	if (pg_synthesis_expect_target(producer) || transport_target) {
 		local->left = pg_synthesis_type_structure(synthesis,
-			transport_target ? transport_target : (void *)producer->inputs[1]);
+			transport_target ? transport_target : pg_synthesis_expect_target(producer));
 		goto consume;
 	}
 	if (prepared) {
@@ -5980,8 +5733,8 @@ consume:
 	{
 		if (pg_synthesis_await(synthesis, job, local->left)) return;
 		const struct pg_term *type = pg_synthesis_type_structure_result(local->left);
-		if (producer->role == CLASSIFIER_JOB) {
-			const struct pg_reduction_certificate *receipt = normalization_receipt(synthesis, job, type, PG_REDUCTION_WHNF);
+		if (pg_synthesis_classifier_input(producer)) {
+			const struct pg_reduction_certificate *receipt = pg_synthesis_reduction_advance(synthesis, job, &local->normalizing, type, PG_REDUCTION_WHNF);
 			if (!receipt) return;
 			type = pg_reduction_target(receipt);
 		}
@@ -6433,14 +6186,14 @@ static void derivation_step(struct pg_synthesis *synthesis, struct pg_synthesis_
 			if (converting) {
 				struct pg_synthesis_job *comparison = pg_synthesis_compare_terms(synthesis, actual_source, actual_target);
 				if (pg_synthesis_await(synthesis, job, comparison)) return;
-				local->certificate = source_work(comparison)->certificate;
+				local->certificate = pg_synthesis_comparison_certificate(comparison);
 			} else if (input->reduction_kind == PG_REDUCTION_PREFIX && input->source == input->target) {
 				/* The checked source endpoint already establishes alpha identity.
 				 * A zero-step prefix makes no normality claim and must not run NF. */
 				state->reduction = pg_reduction_identity(synthesis->typing->graph, &pg_pure_policy, input->target);
 				if (!state->reduction) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 			} else {
-				state->reduction = normalization_receipt(synthesis, job, actual_source, input->reduction_kind);
+				state->reduction = pg_synthesis_reduction_advance(synthesis, job, &local->normalizing, actual_source, input->reduction_kind);
 				if (!state->reduction) return;
 			}
 			local->stage = 2;
@@ -6670,7 +6423,7 @@ static void classifier_constraint_step(struct pg_synthesis *synthesis, struct pg
 	if (pg_synthesis_handler_syntax(syntax)) goto done;
 	if (pg_synthesis_await_preparation(synthesis, job, source, NULL)) return;
 	if (syntax->kind == PG_SYNTAX_QUOTE) {
-		if (source_work(source)->right->role != CLASSIFIER_JOB)
+		if (!pg_synthesis_classifier_input(source_work(source)->right))
 			type = pg_synthesis_plain_rule(synthesis, PG_THUNK_CONTENT, NULL, 1, &type);
 		local->left = type ? request_job(synthesis, CLASSIFIER_CONSTRAINT_JOB, source_work(source)->left, type) : NULL;
 	} else if (syntax->kind == PG_SYNTAX_LAMBDA) {
@@ -6727,7 +6480,7 @@ static int source_has_identity(struct pg_synthesis *synthesis, struct pg_synthes
 static struct pg_synthesis_job *constructor_callable_origin(struct pg_synthesis *synthesis, struct pg_synthesis_job *producer)
 {
 	if (!producer) return NULL;
-	if (producer->role == CLASSIFIER_JOB) return (void *)producer->inputs[1];
+	if (pg_synthesis_classifier_input(producer)) return pg_synthesis_classifier_input(producer);
 	struct pg_synthesis_job *body = pg_synthesis_body_input(producer);
 	if (body) return body;
 	if (producer->role == BINDING_EXPECT_JOB) return source_work(producer)->left;
@@ -7145,41 +6898,9 @@ static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 	if (job->role == CLASSIFIER_STRUCTURE_JOB) { classifier_structure_step(synthesis, job); return; }
 	if (job->role == DECLARED_TYPE_JOB) { declared_type_step(synthesis, job); return; }
 	if (job->role == CONSTRUCTOR_VALUE_JOB) { constructor_value_step(synthesis, job); return; }
-	if (job->role == CONVERSION_JOB) { conversion_step(synthesis, job); return; }
-	if (job->role == EXPECT_JOB) { expect_step(synthesis, job); return; }
 	if (job->role == DATA_CASE_JOB) { data_case_step(synthesis, job); return; }
 	if (job->role == INDUCTION_BRANCH_JOB) { induction_branch_step(synthesis, job); return; }
 	if (job->role == CONSTANT_MOTIVE_JOB) { constant_motive_step(synthesis, job); return; }
-	if (job->role == CLASSIFIER_JOB) { classifier_step(synthesis, job); return; }
-	if (job->role == NORMALIZATION_JOB || job->role == NF_JOB) {
-		const struct pg_synthesis_job *context = job->inputs[0], *proof = job->inputs[1];
-		if (!local->stage) {
-			for (size_t i = 0; i < 2; ++i) {
-				struct pg_synthesis_job *premise = (void *)job->inputs[i];
-				if (pg_synthesis_await(synthesis, job, premise)) return;
-			}
-			if (!pg_synthesis_typed_input(synthesis, context->result, proof->result)) {
-				pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
-			}
-			local->checking_term = proof->result;
-			if (job->inputs[2]) {
-				if (pg_evidence_context(context->result)) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
-				const struct pg_term *content;
-				if (pg_evidence_judgement(proof->result) == PG_JUDGEMENT_VALUE &&
-					pg_thunk_type_view(pg_evidence_classifier(proof->result), &content))
-					local->checking_term = pg_prove_force(synthesis->typing, proof->result);
-				if (!local->checking_term) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
-			}
-			local->stage = 1;
-		}
-		const struct pg_term *input = pg_evidence_subject(local->checking_term)->core;
-		const struct pg_reduction_certificate *certificate = normalization_receipt(synthesis, job, input,
-			job->role == NF_JOB ? PG_REDUCTION_NF : PG_REDUCTION_WHNF);
-		if (!certificate) return;
-		job->result = pg_prove_normalization(synthesis->typing, local->checking_term, certificate);
-		pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
-		return;
-	}
 	if (job->role == BINDING_JOB) { binding_step(synthesis, job); return; }
 	if (job->role == DOMAIN_JOB) { domain_step(synthesis, job); return; }
 	if (job->role == TELESCOPE_JOB) { telescope_step(synthesis, job); return; }
