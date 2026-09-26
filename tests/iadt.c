@@ -242,8 +242,8 @@ static void scoped_type_families(void)
 	const struct pg_evidence *alternate_partial = pg_prove_family_application(&typing, alternate_family, type);
 	assert(alternate_partial == partial);
 	assert(pg_evidence_subject(alternate_partial) == pg_evidence_subject(partial));
-	assert(pg_evidence_premise(alternate_partial, 0) == alternate_family);
-	assert(pg_evidence_premise(partial, 0) == family);
+	assert(pg_evidence_subject(alternate_partial)->operands[0] == pg_evidence_subject(alternate_family));
+	assert(pg_evidence_subject(partial)->operands[0] == pg_evidence_subject(family));
 	assert(pg_prove_family_application(&typing, family, type) == partial);
 	assert(pg_prove_family_application(&typing, alternate_family, type) == alternate_partial);
 	assert(pg_prove_family_application(&typing, partial, value) == fiber);
@@ -3374,7 +3374,8 @@ static const struct pg_evidence *checked_case(struct pg_typing *typing,
 	const struct pg_evidence *result = pg_data_case(typing, schema, constructor, motive, body, certificate);
 	assert(result && pg_data_case(typing, schema, constructor, motive, body, certificate) == result);
 	const struct pg_evidence *leaf = result;
-	while (pg_evidence_rule(leaf) == PG_LAMBDA_INTRO) leaf = pg_evidence_premise(leaf, 1);
+	while (pg_evidence_rule(leaf) == PG_LAMBDA_INTRO)
+		leaf = pg_evidence_for_subject(typing, pg_evidence_subject(leaf)->operands[0], NULL);
 	assert(pg_evidence_rule(leaf) == PG_TYPE_CONVERSION);
 	assert(pg_evidence_premise(leaf, 0) == body && pg_evidence_premise(leaf, 1) == target);
 	pg_conversion_destroy(&comparison);
@@ -3637,7 +3638,8 @@ static void schemas(struct pg_graph *graph)
 	const struct pg_evidence *wrong_target = pg_data_branch_motive(&typing, indexed, indexed_ctor, wrong_motive);
 	assert(wrong_target);
 	const struct pg_evidence *checked_body = case_proof;
-	while (pg_evidence_rule(checked_body) == PG_LAMBDA_INTRO) checked_body = pg_evidence_premise(checked_body, 1);
+	while (pg_evidence_rule(checked_body) == PG_LAMBDA_INTRO)
+		checked_body = pg_evidence_for_subject(&typing, pg_evidence_subject(checked_body)->operands[0], NULL);
 	const struct pg_conversion_certificate *valid = pg_evidence_conversion(checked_body);
 	assert(valid && !pg_data_case(&typing, indexed, indexed_ctor, wrong_motive, body, valid));
 	assert(!pg_data_case(&foreign, indexed, indexed_ctor, motive, body, valid));

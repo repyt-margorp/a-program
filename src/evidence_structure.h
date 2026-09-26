@@ -3,6 +3,12 @@
 
 #include "evidence.h"
 
+/* Direct construction rules retain typed inputs instead of premise history.
+ * Fill at most two borrowed edges; zero means this owner does not handle the
+ * rule. These views neither evaluate nor certify their inputs. */
+size_t pg_function_proof_inputs(const struct pg_evidence *, const struct pg_occurrence **);
+size_t pg_cbpv_proof_inputs(const struct pg_evidence *, const struct pg_occurrence **);
+
 /* Owner-local checking in the existing structural dependency walk. Missing
  * input selects one child; a ready owner calls the ordinary kernel rule.
  * No receipt is recovered by searching for another use of the same Core. */

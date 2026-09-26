@@ -1,6 +1,23 @@
 #include "evidence_structure.h"
 #include "scope.h"
 
+size_t pg_function_proof_inputs(const struct pg_evidence *proof,
+	const struct pg_occurrence **inputs)
+{
+	const struct pg_occurrence *subject = pg_evidence_subject(proof);
+	switch (pg_evidence_rule(proof)) {
+	case PG_LAMBDA_INTRO:
+		inputs[0] = subject->type;
+		inputs[1] = subject->operands[0];
+		return 2;
+	case PG_APP_ELIM: case PG_TYPE_FAMILY_APP:
+		inputs[0] = subject->operands[0];
+		inputs[1] = subject->operands[1];
+		return 2;
+	default: return 0;
+	}
+}
+
 const struct pg_evidence *pg_function_selection(struct pg_typing *typing,
 	const struct pg_occurrence *subject, const struct pg_occurrence **child)
 {

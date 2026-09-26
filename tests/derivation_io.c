@@ -425,7 +425,7 @@ static void write_proofs(FILE *file, struct pg_typing *typing)
 	nf = pg_nf_request(&work, &pg_pure_policy, alpha);
 	assert(nf && pg_nf_advance(nf, 10000) == PG_NF_DONE);
 	roots[17] = pg_prove_normalization(typing, under_lambda, pg_nf_certificate(nf));
-	const struct pg_evidence *pi = pg_evidence_premise(under_lambda, 0);
+	const struct pg_evidence *pi = pg_evidence_for_subject(typing, pg_evidence_subject(under_lambda)->type, NULL);
 	const struct pg_term *domain, *body;
 	const struct pg_object *bound;
 	assert(pg_pi_view(pg_evidence_subject(pi)->core, &domain, &bound, &body) && bound == x);
@@ -578,12 +578,12 @@ static void read_proofs(FILE *file, struct pg_typing *typing, uint64_t chunk)
 	const struct pg_evidence *contracted = pg_synthesis_result(family_thunk);
 	assert(pg_evidence_rule(contracted) == PG_TYPE_FAMILY_APP);
 	assert(pg_evidence_judgement(contracted) == PG_JUDGEMENT_TYPE_FAMILY);
-	assert(pg_evidence_judgement(pg_evidence_premise(contracted, 1)) == PG_JUDGEMENT_TYPE_FAMILY);
+	assert(pg_evidence_subject(contracted)->operands[1]->judgement == PG_JUDGEMENT_TYPE_FAMILY);
 	assert(pg_synthesis_status(family_expect) == PG_SYNTHESIS_REJECTED);
 	const struct pg_evidence *family_application = pg_synthesis_result(jobs[13]);
 	assert(pg_evidence_rule(family_application) == PG_TYPE_FAMILY_APP);
 	assert(pg_evidence_subject(pg_synthesis_result(jobs[14]))->core ==
-		pg_evidence_subject(pg_evidence_premise(family_application, 1))->core);
+		pg_evidence_subject(family_application)->operands[1]->core);
 	const struct pg_evidence *lifted = pg_synthesis_result(jobs[15]);
 	assert(pg_evidence_rule(lifted) == PG_CONTEXT_SUBSTITUTION);
 	assert(pg_evidence_judgement(pg_synthesis_result(jobs[16])) == PG_JUDGEMENT_TYPE_FAMILY);

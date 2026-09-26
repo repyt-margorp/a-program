@@ -595,7 +595,7 @@ static void evidence_test(struct pg_graph *graph)
 	const struct pg_evidence *app = pg_prove_application(&typing, identity_y, x_term);
 	assert(app && pg_evidence_classifier(app) == pg_evidence_classifier(returned));
 	assert(pg_prove_application(&typing, identity_y, x_term) == app);
-	assert(pg_evidence_premise(app, 0) == identity_y);
+	assert(pg_evidence_subject(app)->operands[0] == pg_evidence_subject(identity_y));
 	/* Check beta's substitution independently of the evaluator. */
 	const struct pg_evidence *beta_images[] = {a_in_x, x_term, x_term};
 	const struct pg_evidence *substitution = pg_prove_substitution(&typing, y_context, x_context, 3, beta_images);
@@ -1543,7 +1543,7 @@ static void dependent_application_test(struct pg_graph *graph)
 	const struct pg_evidence *app = pg_prove_application(&typing, function, argument);
 	assert(app);
 	assert(pg_evidence_classifier(app) == pg_return_type(graph, pg_universe(graph, 0)));
-	assert(pg_evidence_premise(app, 1) == argument);
+	assert(pg_evidence_subject(app)->operands[1] == pg_evidence_subject(argument));
 	assert(!pg_prove_pi_constant_codomain(&typing, pi));
 	assert(!pg_pi_constant_codomain(pg_evidence_subject(pi)->core));
 	assert(!pg_pi_constant_codomain(NULL));
@@ -1727,13 +1727,15 @@ static void typed_substitution_test(struct pg_graph *graph)
 		reconstruct_derivation(&typing, supplied);
 		equal_images[0] = alternate_b; equal_images[1] = destination_b;
 	}
-	/* Pi's output is determined by its exact premises, not by a caller-supplied
-	 * subject. Equal typed conclusions do not identify alternative derivations. */
+	/* F retains its typed input, not the receipt used to check that input.
+	 * Sharing F also avoids duplicate dependent Pi admissions downstream. */
 	const struct pg_evidence *pi_bodies[] = {
 		pg_prove_return_type(&typing, destination_b), pg_prove_return_type(&typing, alternate_b)};
 	const struct pg_evidence *pis[] = {
 		pg_prove_pi(&typing, destination, pi_bodies[0]), pg_prove_pi(&typing, destination, pi_bodies[1])};
-	assert(pis[0] && pis[1] && pis[0] != pis[1]);
+	assert(pi_bodies[0] && pi_bodies[0] == pi_bodies[1]);
+	assert(!pg_evidence_premise_count(pi_bodies[0]));
+	assert(pis[0] && pis[0] == pis[1]);
 	assert(pg_evidence_subject(pis[0]) == pg_evidence_subject(pis[1]));
 	size_t pi_proofs = typing.proofs.count, pi_occurrences = typing.occurrences.count;
 	for (size_t repeat = 0; repeat < 100; ++repeat)
@@ -5504,7 +5506,8 @@ static void effect_classifier_test(struct pg_graph *graph)
 	assert(pg_evidence_subject(pg_prove_return_content(&typing, formation))->core == u);
 	struct pg_derivation_parameters parameters;
 	assert(!pg_derivation_parameters(formation, &parameters) && parameters.effects == ab);
-	const struct pg_evidence *premises[] = {pg_evidence_premise(formation, 0)};
+	const struct pg_evidence *premises[] = {universe};
+	assert(pg_evidence_subject(formation)->operands[0] == pg_evidence_subject(universe));
 	assert(pg_prove_derivation(&typing, PG_RETURN_TYPE_FORM, &parameters, 1, premises) == formation);
 	parameters.effects = NULL;
 	assert(!pg_prove_derivation(&typing, PG_RETURN_TYPE_FORM, &parameters, 1, premises));
@@ -5729,7 +5732,7 @@ static void totality_classifier_test(struct pg_graph *graph)
 			const struct pg_evidence *constant_body = pg_prove_return_contract(&typing, j,
 				pg_prove_projection(&typing, scope, v));
 			const struct pg_evidence *constant = pg_prove_lambda(&typing,
-				pg_evidence_premise(functions[j], 0), constant_body);
+				pg_evidence_for_subject(&typing, pg_evidence_subject(functions[j])->type, NULL), constant_body);
 			constant = pg_prove_projection(&typing, outer, constant);
 			const struct pg_evidence *constant_fold = pg_prove_fold(&typing, input, constant);
 			struct pg_typed_query *prefix = pg_return_body_request(&typing, constant_fold);

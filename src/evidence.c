@@ -3348,7 +3348,6 @@ static const struct pg_evidence *family_application(struct pg_typing *typing,
 	if (pg_evidence_judgement(family) != PG_JUDGEMENT_TYPE_FAMILY) return NULL;
 	if (pg_evidence_judgement(index) != PG_JUDGEMENT_VALUE && pg_evidence_judgement(index) != PG_JUDGEMENT_TYPE_FAMILY) return NULL;
 	if (pg_evidence_context(family) != pg_evidence_context(index)) return NULL;
-	const struct pg_evidence *premises[] = {family, index};
 	const struct pg_term *domain, *body;
 	const struct pg_object *binder;
 	if (!pg_pi_view(pg_evidence_subject(family)->classifier, &domain, &binder, &body)) return NULL;
@@ -3371,7 +3370,7 @@ static const struct pg_evidence *family_application(struct pg_typing *typing,
 	const struct pg_occurrence *subject = pg_occurrence(typing, kind, pg_evidence_context(family), core, classifier, NULL, 2, operands);
 	if (!subject) return NULL;
 	if (retained && subject != retained) return NULL;
-	return accept(typing, PG_TYPE_FAMILY_APP, pg_evidence_context(family), subject, 2, premises);
+	return accept(typing, PG_TYPE_FAMILY_APP, pg_evidence_context(family), subject, 0, NULL);
 }
 
 const struct pg_evidence *pg_prove_family_application(struct pg_typing *typing,
@@ -3422,7 +3421,7 @@ static const struct pg_evidence *unary_formation(struct pg_typing *typing,
 	const struct pg_occurrence *subject = pg_occurrence(typing, output, pg_evidence_context(argument),
 		term, pg_evidence_subject(argument)->classifier, NULL, 1, (const struct pg_occurrence *[]){pg_evidence_subject(argument)});
 	if (!subject) return NULL;
-	return accept(typing, rule, pg_evidence_context(argument), subject, 1, &argument);
+	return accept(typing, rule, pg_evidence_context(argument), subject, 0, NULL);
 }
 
 const struct pg_evidence *pg_prove_termination_type(struct pg_typing *typing,
@@ -3676,7 +3675,7 @@ static const struct pg_evidence *unary_term(struct pg_typing *typing,
 	const struct pg_occurrence *subject = pg_occurrence_typed(typing, judgement,
 		term, pg_evidence_subject(type), NULL, 1, (const struct pg_occurrence *[]){pg_evidence_subject(argument)});
 	if (!subject) return NULL;
-	return accept(typing, rule, pg_evidence_context(argument), subject, 1, &argument);
+	return accept(typing, rule, pg_evidence_context(argument), subject, 0, NULL);
 }
 
 const struct pg_evidence *pg_prove_return(struct pg_typing *typing,
@@ -3735,9 +3734,8 @@ const struct pg_evidence *pg_prove_lambda(struct pg_typing *typing,
 	if (!term) return NULL;
 	const struct pg_occurrence *subject = pg_occurrence_typed(typing, PG_JUDGEMENT_COMPUTATION, term, pg_evidence_subject(pi), domain, 1, (const struct pg_occurrence *[]){pg_evidence_subject(body)});
 	if (!subject) return NULL;
-	const struct pg_evidence *premises[] = {pi, body};
 	return accept(typing, PG_LAMBDA_INTRO,
-		pg_evidence_context(pi), subject, 2, premises);
+		pg_evidence_context(pi), subject, 0, NULL);
 }
 
 const struct pg_evidence *pg_prove_abstract(struct pg_typing *typing,
@@ -4126,7 +4124,7 @@ const struct pg_evidence *pg_prove_total_pure_value(struct pg_typing *typing,
 	const struct pg_occurrence *subject = pg_occurrence_typed(typing, PG_JUDGEMENT_VALUE, core, pg_evidence_subject(formation), NULL, 1, (const struct pg_occurrence *[]){pg_evidence_subject(computation)});
 	if (!subject) return NULL;
 	return accept(typing, PG_TOTAL_PURE_VALUE,
-		pg_evidence_context(computation), subject, 1, &computation);
+		pg_evidence_context(computation), subject, 0, NULL);
 }
 
 static const struct pg_evidence *application(struct pg_typing *typing,
@@ -4138,7 +4136,6 @@ static const struct pg_evidence *application(struct pg_typing *typing,
 	if (pg_evidence_judgement(function) != PG_JUDGEMENT_COMPUTATION) return NULL;
 	if (pg_evidence_judgement(argument) != PG_JUDGEMENT_VALUE && pg_evidence_judgement(argument) != PG_JUDGEMENT_TYPE_FAMILY) return NULL;
 	if (pg_evidence_context(function) != pg_evidence_context(argument)) return NULL;
-	const struct pg_evidence *premises[] = {function, argument};
 	const struct pg_term *domain, *codomain;
 	const struct pg_object *binder;
 	if (!pg_pi_view(pg_evidence_subject(function)->classifier, &domain, &binder, &codomain)) return NULL;
@@ -4152,7 +4149,7 @@ static const struct pg_evidence *application(struct pg_typing *typing,
 	if (!subject) return NULL;
 	if (retained && subject != retained) return NULL;
 	return accept(typing, PG_APP_ELIM,
-		pg_evidence_context(function), subject, 2, premises);
+		pg_evidence_context(function), subject, 0, NULL);
 }
 
 const struct pg_evidence *pg_prove_application(struct pg_typing *typing,

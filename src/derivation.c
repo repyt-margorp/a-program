@@ -2,11 +2,22 @@
 #include "iadt.h"
 #include "action.h"
 #include "scope.h"
+#include "evidence_structure.h"
+
+static size_t typed_inputs(const struct pg_evidence *proof,
+	const struct pg_occurrence **inputs)
+{
+	size_t count = pg_function_proof_inputs(proof, inputs);
+	return count ? count : pg_cbpv_proof_inputs(proof, inputs);
+}
 
 static size_t input_count(const struct pg_evidence *proof)
 {
 	const struct pg_scope *scope = pg_evidence_scope(proof);
-	return scope ? (scope->indices ? 3 : 2) : pg_evidence_premise_count(proof);
+	if (scope) return scope->indices ? 3 : 2;
+	const struct pg_occurrence *inputs[2];
+	size_t count = typed_inputs(proof, inputs);
+	return count ? count : pg_evidence_premise_count(proof);
 }
 
 int pg_derivation_input_dependency(const struct pg_typing *typing,
@@ -16,7 +27,12 @@ int pg_derivation_input_dependency(const struct pg_typing *typing,
 	if (index >= input_count(proof)) return 0;
 	const struct pg_scope *scope = pg_evidence_scope(proof);
 	const struct pg_evidence *input;
-	if (!scope) input = pg_evidence_premise(proof, index);
+	if (!scope) {
+		const struct pg_occurrence *inputs[2];
+		input = typed_inputs(proof, inputs)
+			? pg_evidence_for_subject(typing, inputs[index], NULL)
+			: pg_evidence_premise(proof, index);
+	}
 	else if (!index) input = pg_context_parent_input(typing, proof);
 	else if (index == 1 && scope->indices) input = pg_context_indices_input(typing, proof);
 	else input = pg_context_declared_input(typing, proof);

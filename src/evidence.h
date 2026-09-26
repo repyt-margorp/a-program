@@ -716,6 +716,9 @@ const struct pg_context *pg_evidence_context(const struct pg_evidence *evidence)
 /* Context formation has no term subject or classifier. */
 const struct pg_occurrence *pg_evidence_subject(const struct pg_evidence *evidence);
 const struct pg_term *pg_evidence_classifier(const struct pg_evidence *evidence);
+/* Physical receipt history only. Context and direct function/CBPV rules keep
+ * their inputs in typed structure, not here. Exporters enumerate checking
+ * inputs with pg_derivation_input_dependency instead of assuming this layout. */
 size_t pg_evidence_premise_count(const struct pg_evidence *evidence);
 /* Borrowed immutable array, in derivation order, valid until graph destruction.
  * Use premise_count for bounds. An empty array must not be dereferenced. */

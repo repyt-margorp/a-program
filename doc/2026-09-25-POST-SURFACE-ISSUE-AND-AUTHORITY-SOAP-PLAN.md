@@ -867,6 +867,19 @@ distinction consistent with the existing reindex worker.
   paired timing/memory and per-file counts before publication.
   Verification against `2a7a8d1`, 2026-09-27: all gates pass as recorded below.
   This is separate from source promotion, not completion of the broader P4.
+- [x] **P4.3m Direct function/CBPV history, baseline `df84a08`:** Lambda,
+  ordinary/family APP, F/U formation, Return/Thunk/Force and total-pure extraction
+  retain their type/operand Terms. Delete their permanent premise arrays and
+  share admission by complete typed construction, not alternative input receipts.
+  Migrate function-graph consumers and exporters to retained typed edges and
+  read-only accepted lookup, with owner-local layouts and no new proof cache,
+  Core tag or wire grammar. Connect total-pure structural checking to its existing
+  kernel rule. Verify fresh images, alternate histories, distinct annotations,
+  invalid inputs, ordinary Solve, full acceptance, sanitizers, interchange and
+  paired performance. All gates pass on 2026-09-27 as recorded below.
+  Agent assessment: Pi/family abstraction still select declaration scopes;
+  type/value round trips can erase their input edge. These require their own
+  exact input contracts, not blanket history deletion. Broad P4/P5 remain open.
 - [ ] **P4.4 Work reuse and images (R2/R4):** reuse the same typed construction
   and checking requests for accepted and pending consumers, keeping open-handler
   progress and `::` non-feedback. Measure synchronous lift/composition helpers
@@ -2535,3 +2548,60 @@ Local logs: `/tmp/a-program-conversion-owner-{acceptance,debug,asan,cross}.log`,
 `/tmp/a-program-conversion-owner-{bench,memory}.jsonl`; cross-images:
 `/tmp/a-program-conversion-owner-cross.mUR2xD/`. Permanent tests are tracked;
 temporary logs are not.
+
+### Direct Function/CBPV History Verification
+
+Baseline `df84a08`, verified 2026-09-27 in the clean publication worktree.
+Nine direct rules no longer store duplicate premise arrays. Their typed Terms
+retain semantic inputs; owner-local read-only views enumerate existing accepted
+inputs for export. Different annotations, scopes and object witnesses remain
+distinct. Function-graph consumers follow typed edges, not old history slots.
+
+- Full optimized `check-acceptance`: exit 0, **1466.827s** wall, 1360.405s user,
+  105.166s system; compatibility **63/63**, general/ordinary-result Sorted,
+  four derived LT variants and witness-isolation/packet checks pass.
+- Debug and ASan/UBSan: Core, Program, IADT, Identity, Synthesis, typed-structure,
+  derivation-image and source-image tests pass, including leak detection.
+  Permanent tests require zero history for all nine rules, read-only input
+  enumeration, alternate-receipt reuse without allocation and foreign rejection.
+  Fresh typed-only images include total-pure extraction and reject partial input.
+- Initial failures exposed old storage assertions in unit/source-image tests;
+  update them to check retained typed inputs, not remove semantic checks. Fresh
+  total-pure checking also lacked dispatch to its existing kernel rule; fixed
+  in the CBPV owner. No new totality assumption was introduced.
+- Cross-reading passes **36** source-image pairs, **72** opposite-version loads
+  and **8** occurrence/derivation reads at zero/partial/complete progress.
+- Ten workloads, warmup plus six counterbalanced pairs: medians change
+  **-1.38% to +1.65%**, all sample ranges overlap; results/steps are identical.
+  Sorted **0.849467s -> 0.841876s**, ordinary result **0.735451s -> 0.738329s**,
+  derived **2.573921s -> 2.549235s**. No speedup claim. Three-pair RSS medians
+  (KiB): length **11148 -> 11148**, Sorted **222528 -> 222356**, ordinary result
+  **173788 -> 173656**, derived **544336 -> 543776**.
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `src/derivation.c` | 18 | 2 | +16 |
+| `src/derivation.h` | 3 | 2 | +1 |
+| `src/evidence.c` | 6 | 9 | -3 |
+| `src/evidence.h` | 3 | 0 | +3 |
+| `src/evidence_cbpv.c` | 16 | 1 | +15 |
+| `src/evidence_function.c` | 17 | 0 | +17 |
+| `src/evidence_structure.h` | 6 | 0 | +6 |
+| `src/function_graph.c` | 20 | 9 | +11 |
+| `tests/core.c` | 10 | 7 | +3 |
+| `tests/derivation_io.c` | 3 | 3 | 0 |
+| `tests/iadt.c` | 6 | 4 | +2 |
+| `tests/program.c` | 18 | 13 | +5 |
+| `tests/source_io.c` | 4 | 3 | +1 |
+| `tests/synthesis.c` | 27 | 17 | +10 |
+| `tests/typed_structure.c` | 62 | 4 | +58 |
+
+Implementation **+89/-23, net +66**; tests **+130/-51, net +79**; build unchanged.
+Agent decision: adopt the storage simplification, not claim overall source
+reduction. Pi/family, map, Identity and IADT histories, budgeted structural
+checking and remaining P5 stay open. Inherited trials remain unpublished.
+Local evidence: `/tmp/a-program-direct-history-{acceptance,debug,asan,cross}.log`,
+`/tmp/a-program-direct-history-acceptance.time`, `{bench,memory}.jsonl` with the
+same prefix; images: `/tmp/a-program-direct-history-cross.q3T1EY/`.
+Tests are tracked; temporary logs are not.
+This plan: **+70/-0**; complete slice: **+289/-74, net +215**.

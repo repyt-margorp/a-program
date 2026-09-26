@@ -36,8 +36,9 @@ struct pg_derivation_input {
 	size_t count;
 	const struct pg_derivation_input *premises[];
 };
-/* Extract checking inputs, not their physical receipt layout. Context inputs
- * come from selected declarations; other rules still retain premise history.
+/* Extract checking inputs, not their physical receipt layout. Context and
+ * direct function/CBPV inputs come from retained typed structure; unmigrated
+ * rules still retain premise history.
  * Receipt endpoints become obligations and no acceptance flag is copied. */
 int pg_derivation_input_header(const struct pg_evidence *proof, struct pg_derivation_input *input);
 /* Read-only dependency enumeration: 1 supplies an already accepted input,

@@ -125,6 +125,14 @@ static int scoped_input(struct pg_function_graph_state *s,
 	return *result ? 0 : -1;
 }
 
+static const struct pg_evidence *direct_input(struct pg_typing *typing,
+	const struct pg_evidence *proof, size_t index)
+{
+	const struct pg_occurrence *subject = pg_evidence_subject(proof);
+	return subject && index < subject->operand_count
+		? pg_evidence_for_subject(typing, subject->operands[index], NULL) : NULL;
+}
+
 /* Zero is ready, one is pending, minus one has no supported structural view. */
 static int structural_computation_view(struct pg_function_graph_state *s,
 	const struct pg_evidence *proof, enum pg_evidence_rule *rule,
@@ -367,17 +375,18 @@ static int helper_call(struct pg_function_graph_state *s, struct graph_case *pla
 		if (rule == PG_APP_ELIM) {
 			struct graph_continuation *item = pg_alloc(&h->temporary, sizeof(*item));
 			if (!item || h->count == SIZE_MAX / sizeof(const struct pg_evidence *)) { result = -1; goto done; }
-			item->argument = pg_evidence_premise(h->function, 1);
+			item->argument = direct_input(s->typing, h->function, 1);
 			if (h->environment) item->argument = pg_function_plan_map_value(s, h->environment, item->argument);
 			item->next = h->arguments; h->arguments = item; ++h->count;
-			h->function = pg_evidence_premise(h->function, 0);
+			h->function = direct_input(s->typing, h->function, 0);
 			if (h->environment) h->function = pg_function_plan_map_value(s, h->environment, h->function);
 			continue;
 		}
 		if (rule == PG_FORCE_ELIM || rule == PG_THUNK_COMPUTATION) ++h->forces;
 		else if (rule == PG_THUNK_INTRO && h->forces) --h->forces;
 		else { h->phase = HELPER_SOURCE; break; }
-		h->function = pg_evidence_premise(h->function, 0);
+		h->function = rule == PG_THUNK_COMPUTATION ? pg_evidence_premise(h->function, 0)
+			: direct_input(s->typing, h->function, 0);
 		if (h->environment) h->function = pg_function_plan_map_value(s, h->environment, h->function);
 	}
 	if (!h->count) goto done;
@@ -415,9 +424,10 @@ static int helper_call(struct pg_function_graph_state *s, struct graph_case *pla
 			if (pg_evidence_rule(h->body) == PG_LAMBDA_INTRO) {
 				int input = scoped_input(s, h->body, 0, &h->body);
 				if (input) { result = input > 0 ? 2 : 0; goto done; }
-			} else if (pg_evidence_rule(h->body) == PG_APP_ELIM) h->body = pg_evidence_premise(h->body, 0);
-			else if (pg_evidence_rule(h->body) == PG_FORCE_ELIM || pg_evidence_rule(h->body) == PG_THUNK_COMPUTATION ||
-				pg_evidence_rule(h->body) == PG_THUNK_INTRO) h->body = pg_evidence_premise(h->body, 0);
+			} else if (pg_evidence_rule(h->body) == PG_THUNK_COMPUTATION) h->body = pg_evidence_premise(h->body, 0);
+			else if (pg_evidence_rule(h->body) == PG_FORCE_ELIM ||
+				pg_evidence_rule(h->body) == PG_APP_ELIM || pg_evidence_rule(h->body) == PG_THUNK_INTRO)
+				h->body = direct_input(s->typing, h->body, 0);
 			else break;
 		}
 		switch (pg_evidence_rule(h->body)) {
@@ -954,8 +964,8 @@ int pg_function_source_advance(struct pg_typing *typing, struct pg_function_sour
 		return source->function ? 1 : -1;
 	}
 	if (rule == PG_APP_ELIM) {
-		const struct pg_evidence *callee = pg_evidence_premise(function, 0);
-		const struct pg_evidence *argument = pg_evidence_premise(function, 1);
+		const struct pg_evidence *callee = direct_input(typing, function, 0);
+		const struct pg_evidence *argument = direct_input(typing, function, 1);
 		if (environment) {
 			callee = pg_prove_reindex(typing, environment, callee);
 			argument = pg_prove_reindex(typing, environment, argument);
@@ -966,7 +976,8 @@ int pg_function_source_advance(struct pg_typing *typing, struct pg_function_sour
 	}
 	/* Invert only the introduction just checked from typed construction. */
 	if (rule != PG_THUNK_INTRO && rule != PG_FORCE_ELIM && rule != PG_THUNK_COMPUTATION) return -1;
-	source->function = pg_evidence_premise(function, 0);
+	source->function = rule == PG_THUNK_COMPUTATION ? pg_evidence_premise(function, 0)
+		: direct_input(typing, function, 0);
 	if (environment) source->function = pg_prove_reindex(typing, environment, source->function);
 	return source->function ? 0 : -1;
 }

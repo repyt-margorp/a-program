@@ -391,8 +391,10 @@ static void graded_function_graph(struct pg_program *p, const struct pg_evidence
 {
 	function = pg_function_graph_source(&p->typing, function);
 	assert(function && pg_evidence_rule(function) == PG_LAMBDA_INTRO);
-	const struct pg_evidence *scope = pg_evidence_premise(pg_evidence_premise(function, 0), 0);
-	const struct pg_evidence *value = pg_prove_return_value(&p->typing, pg_evidence_premise(function, 1));
+	const struct pg_evidence *scope = pg_evidence_premise(pg_evidence_for_subject(&p->typing,
+		pg_evidence_subject(function)->type, NULL), 0);
+	const struct pg_evidence *value = pg_prove_return_value(&p->typing, pg_evidence_for_subject(&p->typing,
+		pg_evidence_subject(function)->operands[0], NULL));
 	assert(value);
 	/* Head exposure must not complete an entire typed beta query in one turn.
 	 * Cancel at each boundary; its shared query remains resumable independently. */
@@ -760,7 +762,7 @@ static void function_graph_aliases(struct pg_program *p,
 	struct pg_typing *typing = &p->typing;
 	const struct pg_evidence *raw = pg_function_graph_source(typing, function);
 	assert(raw && pg_evidence_rule(raw) == PG_LAMBDA_INTRO);
-	const struct pg_evidence *pi = pg_evidence_premise(raw, 0);
+	const struct pg_evidence *pi = pg_evidence_for_subject(typing, pg_evidence_subject(raw)->type, NULL);
 	struct pg_conversion conversion;
 	assert(!pg_conversion_init(&conversion, &p->evaluation, pg_evidence_classifier(raw), pg_evidence_classifier(raw)));
 	assert(pg_conversion_advance(&conversion, 64) == PG_CONVERSION_EQUAL);
@@ -888,9 +890,11 @@ static void graph_index_preparation(void)
 			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "length", .length = 6}));
 		function = pg_function_graph_source(&p->typing, function);
 		const struct pg_evidence *inner = function;
-		while (pg_evidence_rule(pg_evidence_premise(inner, 1)) == PG_LAMBDA_INTRO)
-			inner = pg_evidence_premise(inner, 1);
-		const struct pg_evidence *scope = pg_evidence_premise(pg_evidence_premise(inner, 0), 0);
+		while (pg_evidence_rule(pg_evidence_for_subject(&p->typing,
+			pg_evidence_subject(inner)->operands[0], NULL)) == PG_LAMBDA_INTRO)
+			inner = pg_evidence_for_subject(&p->typing, pg_evidence_subject(inner)->operands[0], NULL);
+		const struct pg_evidence *scope = pg_evidence_premise(pg_evidence_for_subject(&p->typing,
+			pg_evidence_subject(inner)->type, NULL), 0);
 		const struct pg_evidence *prefix = pg_context_parent_input(&p->typing, pg_context_parent_input(&p->typing, scope));
 		struct pg_inductive_instance instance;
 		assert(pg_inductive_instance(&p->typing, pg_context_declared_input(&p->typing, scope), &instance));
@@ -1138,16 +1142,17 @@ static void suspended_helper_application(void)
 			pg_synthesis_result(pg_synthesis_definition(p->root,
 				(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "f", .length = 1})));
 		assert(helper && function);
-		const struct pg_evidence *inner = pg_evidence_premise(function, 1);
-		const struct pg_evidence *context = pg_evidence_premise(pg_evidence_premise(inner, 0), 0);
-		const struct pg_evidence *sequence = pg_evidence_premise(inner, 1);
+		const struct pg_evidence *inner = pg_evidence_for_subject(&p->typing, pg_evidence_subject(function)->operands[0], NULL);
+		const struct pg_evidence *context = pg_evidence_premise(pg_evidence_for_subject(&p->typing,
+			pg_evidence_subject(inner)->type, NULL), 0);
+		const struct pg_evidence *sequence = pg_evidence_for_subject(&p->typing, pg_evidence_subject(inner)->operands[0], NULL);
 		assert(pg_evidence_rule(sequence) == PG_FOLD_ELIM);
 		const struct pg_evidence *call = pg_evidence_premise(sequence, 0);
 		assert(pg_evidence_rule(call) == PG_APP_ELIM);
-		const struct pg_evidence *n = pg_evidence_premise(call, 1);
-		call = pg_evidence_premise(call, 0);
+		const struct pg_evidence *n = pg_evidence_for_subject(&p->typing, pg_evidence_subject(call)->operands[1], NULL);
+		call = pg_evidence_for_subject(&p->typing, pg_evidence_subject(call)->operands[0], NULL);
 		assert(pg_evidence_rule(call) == PG_APP_ELIM);
-		const struct pg_evidence *b = pg_evidence_premise(call, 1);
+		const struct pg_evidence *b = pg_evidence_for_subject(&p->typing, pg_evidence_subject(call)->operands[1], NULL);
 		struct pg_typed_query *queries[2] = {
 			pg_application_body_request(&p->typing, pg_prove_projection(&p->typing, context, helper), b), NULL
 		};
@@ -1245,7 +1250,7 @@ static void suspended_match_body(void)
 			pg_synthesis_result(pg_synthesis_definition(p->root,
 				(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "f", .length = 1})));
 		assert(function && pg_evidence_rule(function) == PG_LAMBDA_INTRO);
-		const struct pg_evidence *sequence = pg_evidence_premise(function, 1);
+		const struct pg_evidence *sequence = pg_evidence_for_subject(&p->typing, pg_evidence_subject(function)->operands[0], NULL);
 		assert(pg_evidence_rule(sequence) == PG_FOLD_ELIM);
 		const struct pg_evidence *match = pg_evidence_premise(sequence, 0);
 		assert(pg_evidence_rule(match) == PG_MATCH_ELIM);

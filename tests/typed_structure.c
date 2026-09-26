@@ -43,6 +43,42 @@ static const struct pg_evidence *family_function(struct pg_typing *typing, int n
 		pg_prove_classifier(typing, scope, body)), body);
 }
 
+static void direct_inputs(struct pg_typing *typing, const struct pg_evidence *proof,
+	size_t count, const struct pg_occurrence *const *expected)
+{
+	assert(proof && !pg_evidence_premise_count(proof) && count <= 2);
+	struct pg_typing foreign;
+	assert(!pg_typing_init(&foreign, typing->graph));
+	size_t proofs = typing->proofs.count, terms = typing->graph->terms.count;
+	size_t occurrences = typing->occurrences.count, queries = typing->typed_queries.count;
+	struct pg_derivation_input input;
+	assert(!pg_derivation_input_header(proof, &input) && input.count == count);
+	const struct pg_evidence *children[2], *unused = NULL;
+	for (size_t i = 0; i < count; ++i) {
+		assert(pg_derivation_input_dependency(typing, proof, i, children + i) == 1);
+		assert(pg_evidence_subject(children[i]) == expected[i]);
+		assert(pg_derivation_input_dependency(&foreign, proof, i, &unused) == -1);
+	}
+	assert(pg_derivation_input_dependency(typing, proof, count, &unused) == 0 && !unused);
+	assert(typing->proofs.count == proofs && typing->graph->terms.count == terms);
+	assert(typing->occurrences.count == occurrences && typing->typed_queries.count == queries);
+	struct pg_derivation_parameters parameters;
+	assert(!pg_derivation_parameters(proof, &parameters));
+	assert(pg_prove_derivation(typing, input.rule, &parameters, count, children) == proof);
+	/* Rechecking an input does not change the retained construction. This is
+	 * receipt sharing, not equality reflection or erasure of object witnesses. */
+	const struct pg_evidence *context = pg_evidence_for_context(typing, pg_evidence_context(children[0]));
+	const struct pg_evidence *identity = pg_prove_substitution_projection(typing, context, context);
+	const struct pg_evidence *alternate = pg_prove_reindex(typing, identity, children[0]);
+	assert(alternate && alternate != children[0] && pg_evidence_subject(alternate) == expected[0]);
+	children[0] = alternate;
+	proofs = typing->proofs.count; occurrences = typing->occurrences.count;
+	for (size_t repeat = 0; repeat < 8; ++repeat)
+		assert(pg_prove_derivation(typing, input.rule, &parameters, count, children) == proof);
+	assert(typing->proofs.count == proofs && typing->occurrences.count == occurrences);
+	pg_typing_destroy(&foreign);
+}
+
 static void write_inputs(FILE *file, struct pg_typing *typing)
 {
 	struct pg_graph *graph = typing->graph;
@@ -120,6 +156,19 @@ static void write_inputs(FILE *file, struct pg_typing *typing)
 	const struct pg_evidence *wide_identity = pg_prove_identity_type(typing, unquoted, function, function);
 	assert(constant && content && unquoted && wide_pi && wide_family);
 	assert(wide_map && family_pi && family_logical && wide_identity);
+	const struct pg_evidence *total = pg_prove_total_pure_value(typing,
+		pg_prove_return_contract(typing, PG_TOTALITY_TOTAL, pg_prove_type_value(typing, u0)));
+	const struct pg_evidence *direct[] = {function, application, logical_applied,
+		closed, pg_prove_thunk_type(typing, outer_pi), returned, quoted, forced, total};
+	const enum pg_evidence_rule rules[] = {PG_LAMBDA_INTRO, PG_APP_ELIM, PG_TYPE_FAMILY_APP,
+		PG_RETURN_TYPE_FORM, PG_THUNK_TYPE_FORM, PG_RETURN_INTRO, PG_THUNK_INTRO,
+		PG_FORCE_ELIM, PG_TOTAL_PURE_VALUE};
+	for (size_t i = 0; i < sizeof(direct) / sizeof(*direct); ++i) {
+		assert(pg_evidence_rule(direct[i]) == rules[i]);
+		const struct pg_occurrence *subject = pg_evidence_subject(direct[i]);
+		const struct pg_occurrence *lambda_inputs[] = {subject->type, subject->operands[0]};
+		direct_inputs(typing, direct[i], i < 3 ? 2 : 1, i ? subject->operands : lambda_inputs);
+	}
 	const struct pg_occurrence *roots[] = {pg_evidence_subject(function), pg_evidence_subject(application),
 		pg_evidence_subject(forced), pg_evidence_subject(mapped), pg_evidence_subject(identity),
 		pg_evidence_subject(shared[0]), pg_evidence_subject(shared[1]),
@@ -130,8 +179,8 @@ static void write_inputs(FILE *file, struct pg_typing *typing)
 		pg_evidence_subject(partial)->type, pg_evidence_subject(constant), pg_evidence_subject(content),
 		pg_evidence_subject(unquoted), pg_evidence_subject(wide_pi), pg_evidence_subject(wide_family),
 		pg_evidence_subject(wide_map), pg_evidence_subject(family_pi), pg_evidence_subject(family_logical),
-		pg_evidence_subject(wide_identity)};
-	assert(!pg_occurrences_write(file, 28, roots, name, NULL));
+		pg_evidence_subject(wide_identity), pg_evidence_subject(total)};
+	assert(!pg_occurrences_write(file, 29, roots, name, NULL));
 }
 
 static void unary_input(struct pg_typing *typing, const struct pg_evidence *parent)
@@ -317,7 +366,7 @@ static void read_inputs(FILE *file, size_t root)
 	const struct pg_occurrence *const *roots;
 	rewind(file);
 	assert(!pg_occurrences_read(file, &typing, 10000, 256, resolve, &graph, &count, &roots));
-	assert(count == 28 && !typing.proofs.count);
+	assert(count == 29 && !typing.proofs.count);
 	const struct pg_evidence *checked = root == 4 || root == 27
 		? pg_identity_boundary_type(&typing, roots[root])
 		: pg_prove_structural_subject(&typing, roots[root]);
@@ -349,6 +398,15 @@ static void read_inputs(FILE *file, size_t root)
 		assert(other && other != checked && pg_evidence_subject(other) == roots[6]);
 		assert(roots[5] != roots[6] && roots[5]->core == roots[6]->core);
 		assert(roots[5]->classifier != roots[6]->classifier);
+	}
+	if (root == 28) {
+		const struct pg_occurrence *partial = roots[7];
+		const struct pg_term *core = pg_application(&graph,
+			pg_reference(&graph, &pg_total_result_operation), partial->core);
+		const struct pg_occurrence *wrong = pg_occurrence_typed(&typing, PG_JUDGEMENT_VALUE,
+			core, roots[root]->type, NULL, 1, &partial);
+		assert(wrong && !pg_prove_structural_subject(&typing, wrong));
+		assert(!pg_evidence_for_subject(&typing, wrong, NULL));
 	}
 	pg_typing_destroy(&typing);
 	pg_graph_destroy(&graph);
@@ -528,7 +586,7 @@ int main(int argc, char **argv)
 		FILE *file = fopen(argv[2], "rb");
 		assert(file);
 		if (!strcmp(argv[1], "read")) {
-			for (size_t root = 0; root < 28; ++root) read_inputs(file, root);
+			for (size_t root = 0; root < 29; ++root) read_inputs(file, root);
 			puts("typed-only images: dependent Lambda/APP, logical families, selected formations, F/U, context action and Identity boundary checked without old evidence");
 		} else {
 			for (size_t root = 0; root < 9; ++root) read_scoped(file, root);

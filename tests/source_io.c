@@ -1637,10 +1637,11 @@ static void induction_scope_inputs(struct pg_program *p, const struct pg_evidenc
 	const struct pg_evidence *motive_context = pg_evidence_premise(proof, 4), *motive = pg_evidence_premise(proof, 0);
 	const struct pg_evidence *branch = before_branch_conversion(pg_evidence_premise(proof, 6));
 	assert(pg_evidence_rule(branch) == PG_LAMBDA_INTRO);
-	const struct pg_context *fields = pg_evidence_context(pg_evidence_premise(pg_evidence_premise(branch, 0), 0));
-	branch = before_branch_conversion(pg_evidence_premise(branch, 1));
+	const struct pg_context *fields = pg_evidence_subject(branch)->operands[0]->context;
+	branch = before_branch_conversion(pg_evidence_for_subject(&p->typing,
+		pg_evidence_subject(branch)->operands[0], NULL));
 	assert(pg_evidence_rule(branch) == PG_LAMBDA_INTRO);
-	const struct pg_context *end = pg_evidence_context(pg_evidence_premise(pg_evidence_premise(branch, 0), 0));
+	const struct pg_context *end = pg_evidence_subject(branch)->operands[0]->context;
 	assert(end->parent == fields);
 	struct pg_inductive_instance instance;
 	assert(pg_inductive_instance(&p->typing, formation, &instance));

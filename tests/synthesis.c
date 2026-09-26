@@ -544,7 +544,7 @@ static void stored_effect_derivation(struct pg_typing *typing,
 	}
 	assert(pg_synthesis_status(deep_job) == PG_SYNTHESIS_DONE);
 	assert(pg_evidence_subject(pg_synthesis_result(deep_job))->core == pg_universe(typing->graph, 0));
-	/* Shared conclusions must not replace the selected premise derivations. */
+	/* Shared Core conclusions must not replace distinct typed input graphs. */
 	struct pg_derivation_input *projected_u = stored_rule(graph, PG_CONTEXT_PROJECTION, 2,
 		(const struct pg_derivation_input *[]){extended, u});
 	struct pg_synthesis_job *local_u = pg_synthesis_derivation_inference(&synthesis, inner_u, &restored);
@@ -560,8 +560,8 @@ static void stored_effect_derivation(struct pg_typing *typing,
 	const struct pg_evidence *projected_proof = complete(&synthesis, projected, PG_SYNTHESIS_DONE);
 	same_judgement(direct_proof, projected_proof);
 	assert(direct_proof != projected_proof);
-	assert(pg_evidence_premise(direct_proof, 0) == pg_synthesis_result(local_u));
-	assert(pg_evidence_premise(projected_proof, 0) == pg_synthesis_result(weakened_u));
+	assert(pg_evidence_subject(direct_proof)->operands[0] == pg_evidence_subject(pg_synthesis_result(local_u)));
+	assert(pg_evidence_subject(projected_proof)->operands[0] == pg_evidence_subject(pg_synthesis_result(weakened_u)));
 	/* Shared headers do not collapse premise DAGs when exported and solved. */
 	struct pg_effect_inference exported_effects;
 	const struct pg_derivation_input *const *exported;
@@ -1891,7 +1891,8 @@ static void pending_effect_contexts(struct pg_typing *typing)
 		const struct pg_evidence *checked = complete(&synthesis, checked_application, PG_SYNTHESIS_DONE);
 		same_judgement(checked, applied);
 		assert(pg_evidence_subject(checked)->core == expected_application);
-		assert(pg_evidence_rule(pg_evidence_premise(checked, 1)) == PG_TYPE_CONVERSION);
+		assert(pg_evidence_rule(pg_evidence_for_subject(typing,
+			pg_evidence_subject(checked)->operands[1], NULL)) == PG_TYPE_CONVERSION);
 		assert(pg_evidence_classifier(applied) == pg_effect_type(typing->graph, row, pg_reference(typing->graph, b)));
 		assert(complete(&synthesis, source_variable, PG_SYNTHESIS_DONE) == pg_synthesis_result(variable));
 		complete(&synthesis, source_lambda, PG_SYNTHESIS_DONE);
@@ -1903,7 +1904,7 @@ static void pending_effect_contexts(struct pg_typing *typing)
 		const struct pg_evidence *quoted = complete(&synthesis, source_quote, PG_SYNTHESIS_DONE);
 		assert(pg_evidence_rule(quoted) == PG_THUNK_INTRO);
 		assert(pg_evidence_classifier(quoted) == pg_thunk_type(typing->graph,
-			pg_evidence_classifier(pg_evidence_premise(quoted, 0))));
+			pg_evidence_subject(quoted)->operands[0]->classifier));
 		same_judgement(complete(&synthesis, request(&synthesis, scope, "v := &k;"), PG_SYNTHESIS_DONE), map_image);
 		const struct pg_source_scope *bad_scope = pg_synthesis_bind_context(&synthesis, root, name,
 			pg_binder(typing->graph), context);
@@ -2240,7 +2241,7 @@ static void effect_expectations(struct pg_typing *typing)
 	assert(clause_function);
 	assert(pg_synthesis_handler_clause_at(&synthesis, scope, carrier_job, operation_clause, &clause_input) == clause_job);
 	assert(pg_evidence_subject(clause_function)->core->as.lambda.binder == req);
-	assert(pg_evidence_subject(pg_evidence_premise(clause_function, 1))->core->as.lambda.binder == resume);
+	assert(pg_evidence_subject(clause_function)->operands[0]->core->as.lambda.binder == resume);
 	/* Matching signature types do not let an imported allocation choose a
 	 * different nominal operation from the one named by source. */
 	const struct pg_operation_declaration *other_operation = pg_operation_declaration(typing,
@@ -3763,7 +3764,7 @@ static void library_levels(struct pg_typing *typing)
 			const struct pg_evidence *proof = exports[i];
 			assert(pg_evidence_owned_by(proof, typing) && !pg_evidence_context(proof));
 			assert(pg_evidence_rule(proof) == PG_LAMBDA_INTRO);
-			const struct pg_evidence *pi = pg_evidence_premise(proof, 0);
+			const struct pg_evidence *pi = pg_evidence_for_subject(typing, pg_evidence_subject(proof)->type, NULL);
 			const struct pg_evidence *domain = pg_prove_pi_domain(typing, pi);
 			uint64_t actual;
 			assert(pg_universe_level(pg_evidence_subject(domain)->core, &actual) && actual == level);
@@ -7024,7 +7025,8 @@ static void data_cases(struct pg_typing *typing)
 	const struct pg_evidence *produced = pg_synthesis_result(body);
 	same_judgement(prior, produced);
 	const struct pg_evidence *leaf = checked;
-	while (pg_evidence_rule(leaf) == PG_LAMBDA_INTRO) leaf = pg_evidence_premise(leaf, 1);
+	while (pg_evidence_rule(leaf) == PG_LAMBDA_INTRO)
+		leaf = pg_evidence_for_subject(typing, pg_evidence_subject(leaf)->operands[0], NULL);
 	assert(pg_evidence_rule(leaf) == PG_TYPE_CONVERSION && pg_evidence_premise(leaf, 0) == pg_synthesis_result(body));
 	assert(pg_evidence_premise(pg_evidence_premise(leaf, 1), 0) == result_map);
 	uint64_t steps = split.steps;
@@ -7733,7 +7735,8 @@ int main(void)
 	const struct pg_evidence *distributed_force = pg_prove_force(&typing, substituted_m);
 	same_judgement(substituted_force, distributed_force);
 	const struct pg_evidence *distributed_application = pg_prove_application(&typing,
-		pg_prove_reindex(&typing, sigma, pg_evidence_premise(second_application, 0)),
+		pg_prove_reindex(&typing, sigma, pg_evidence_for_subject(&typing,
+			pg_evidence_subject(second_application)->operands[0], NULL)),
 		pg_prove_reindex(&typing, sigma, x_value));
 	same_judgement(reindexed_application, distributed_application);
 	const struct pg_evidence *m_fold = pg_prove_fold(&typing, pg_prove_force(&typing, m_value),
@@ -7798,12 +7801,13 @@ int main(void)
 	const struct pg_evidence *other_application = pg_prove_application(&typing, projected_application,
 		pg_prove_reindex(&typing, sigma, x_value));
 	struct pg_synthesis_job *other_step = pg_synthesis_normalize(&synthesis, x_context, other_application);
-	assert(other_step && other_step != outer_step);
+	assert(other_application == outer_application);
+	assert(other_step && other_step == outer_step);
 	pg_synthesis_advance(&synthesis, 1);
 	assert(!pg_synthesis_result(other_step));
 	const struct pg_evidence *outer_reduct = complete(&synthesis, outer_step, PG_SYNTHESIS_DONE);
 	const struct pg_evidence *other_reduct = complete(&synthesis, other_step, PG_SYNTHESIS_DONE);
-	assert(other_reduct != outer_reduct);
+	assert(other_reduct == outer_reduct);
 	assert(pg_evidence_normalization(other_reduct) == pg_evidence_normalization(outer_reduct));
 	same_judgement(other_reduct, outer_reduct);
 	assert(outer_reduct == normalize(&synthesis, x_context, outer_application));
@@ -8013,9 +8017,11 @@ int main(void)
 	const struct pg_evidence *sequenced_higher = complete(&synthesis, request(&synthesis, scope,
 		"main := (\\f : A -> A => f x) { &(\\y : A => y); };"), PG_SYNTHESIS_DONE);
 	assert(pg_evidence_rule(sequenced_higher) == PG_FOLD_ELIM);
-	const struct pg_evidence *sequence_body = pg_evidence_premise(pg_evidence_premise(sequenced_higher, 1), 1);
+	const struct pg_evidence *sequence_body = pg_evidence_for_subject(&typing,
+		pg_evidence_subject(pg_evidence_premise(sequenced_higher, 1))->operands[0], NULL);
 	assert(pg_evidence_rule(sequence_body) == PG_APP_ELIM);
-	assert(pg_evidence_rule(pg_evidence_premise(sequence_body, 1)) == PG_TYPE_CONVERSION);
+	assert(pg_evidence_rule(pg_evidence_for_subject(&typing,
+		pg_evidence_subject(sequence_body)->operands[1], NULL)) == PG_TYPE_CONVERSION);
 	pg_computation_eval_init(&machine, &graph, pg_evidence_subject(sequenced_higher)->core);
 	assert(pg_eval_advance(&machine, 300) == PG_EVAL_WHNF);
 	assert(pg_eval_readback(&machine, &graph) == expected);
@@ -8051,7 +8057,8 @@ int main(void)
 	const struct pg_evidence *higher = complete(&synthesis,
 		request(&synthesis, scope, "main := (\\f : A -> A => f x) &(\\y : A => y);"), PG_SYNTHESIS_DONE);
 	assert(pg_evidence_rule(higher) == PG_APP_ELIM);
-	const struct pg_evidence *converted_argument = pg_evidence_premise(higher, 1);
+	const struct pg_evidence *converted_argument = pg_evidence_for_subject(&typing,
+		pg_evidence_subject(higher)->operands[1], NULL);
 	assert(pg_evidence_rule(converted_argument) == PG_TYPE_CONVERSION);
 	const struct pg_conversion_certificate *conversion = pg_evidence_conversion(converted_argument);
 	assert(conversion && pg_conversion_left(conversion) != pg_conversion_right(conversion));
@@ -8126,12 +8133,15 @@ int main(void)
 		"main := { &(\\y : A => y); } { x; };"), PG_SYNTHESIS_DONE);
 	assert(pg_evidence_rule(ordered) == PG_FOLD_ELIM);
 	assert(pg_evidence_rule(pg_evidence_premise(ordered, 0)) == PG_RETURN_INTRO);
-	const struct pg_evidence *argument_fold = pg_evidence_premise(pg_evidence_premise(ordered, 1), 1);
+	const struct pg_evidence *argument_fold = pg_evidence_for_subject(&typing,
+		pg_evidence_subject(pg_evidence_premise(ordered, 1))->operands[0], NULL);
 	assert(pg_evidence_rule(argument_fold) == PG_FOLD_ELIM);
 	assert(pg_evidence_rule(pg_evidence_premise(argument_fold, 0)) == PG_CONTEXT_PROJECTION);
-	const struct pg_evidence *ordered_app = pg_evidence_premise(pg_evidence_premise(argument_fold, 1), 1);
+	const struct pg_evidence *ordered_app = pg_evidence_for_subject(&typing,
+		pg_evidence_subject(pg_evidence_premise(argument_fold, 1))->operands[0], NULL);
 	assert(pg_evidence_rule(ordered_app) == PG_APP_ELIM);
-	const struct pg_evidence *callee_projection = pg_evidence_premise(ordered_app, 0);
+	const struct pg_evidence *callee_projection = pg_evidence_for_subject(&typing,
+		pg_evidence_subject(ordered_app)->operands[0], NULL);
 	assert(pg_evidence_rule(callee_projection) == PG_CONTEXT_PROJECTION);
 	assert(pg_evidence_rule(pg_evidence_premise(callee_projection, 1)) == PG_FORCE_ELIM);
 	complete(&synthesis, request(&synthesis, scope, "main := { x; } x;"), PG_SYNTHESIS_REJECTED);
