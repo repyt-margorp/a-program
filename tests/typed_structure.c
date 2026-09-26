@@ -2,6 +2,7 @@
 #include "evidence.h"
 #include "computation.h"
 #include "action.h"
+#include "derivation.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -353,6 +354,42 @@ static void read_inputs(FILE *file, size_t root)
 	pg_graph_destroy(&graph);
 }
 
+static void context_inputs(struct pg_typing *typing, const struct pg_evidence *context)
+{
+	struct pg_typing foreign;
+	assert(!pg_typing_init(&foreign, typing->graph));
+	size_t proofs = typing->proofs.count, terms = typing->graph->terms.count;
+	size_t scopes = typing->scopes.count, queries = typing->typed_queries.count;
+	for (;;) {
+		const struct pg_scope *scope = pg_evidence_scope(context);
+		struct pg_derivation_input input;
+		assert(!pg_derivation_input_header(context, &input));
+		assert(!pg_evidence_premise_count(context) && !pg_evidence_premise(context, 0));
+		assert(input.count == (scope ? (scope->indices ? 3 : 2) : 0));
+		const struct pg_evidence *child = NULL;
+		assert(pg_derivation_input_dependency(typing, context, input.count, &child) == 0 && !child);
+		assert(pg_derivation_input_dependency(&foreign, context, 0, &child) == -1 && !child);
+		assert(!pg_context_parent_input(&foreign, context));
+		assert(!pg_context_indices_input(&foreign, context));
+		assert(!pg_context_declared_input(&foreign, context));
+		if (!scope) break;
+		const struct pg_evidence *declared = pg_context_declared_input(typing, context);
+		assert(declared && pg_evidence_subject(declared) == scope->type);
+		assert(pg_derivation_input_dependency(typing, context, input.count - 1, &child) == 1 && child == declared);
+		const struct pg_evidence *indices = pg_context_indices_input(typing, context);
+		assert(scope->indices ? indices && pg_evidence_scope(indices) == scope->indices : !indices);
+		if (indices) assert(pg_derivation_input_dependency(typing, context, 1, &child) == 1 && child == indices);
+		const struct pg_evidence *parent = pg_context_parent_input(typing, context);
+		assert(parent && pg_evidence_scope(parent) == scope->parent);
+		assert(pg_derivation_input_dependency(typing, context, 0, &child) == 1 && child == parent);
+		context = parent;
+	}
+	assert(typing->proofs.count == proofs && typing->graph->terms.count == terms);
+	assert(typing->scopes.count == scopes && typing->typed_queries.count == queries);
+	assert(!foreign.proofs.count);
+	pg_typing_destroy(&foreign);
+}
+
 static void write_scoped(FILE *file, struct pg_typing *typing)
 {
 	struct pg_graph *graph = typing->graph;
@@ -399,6 +436,7 @@ static void write_scoped(FILE *file, struct pg_typing *typing)
 	const struct pg_occurrence *roots[9];
 	for (size_t i = 0; i < 9; ++i) {
 		assert(contexts[i] && proofs[i]);
+		context_inputs(typing, contexts[i]);
 		scopes[i] = pg_evidence_scope(contexts[i]);
 		roots[i] = pg_evidence_subject(proofs[i]);
 	}
@@ -430,6 +468,7 @@ static void read_scoped(FILE *file, size_t root)
 	if (!checked) fprintf(stderr, "scoped root %zu failed\n", root);
 	assert(checked && pg_evidence_subject(checked) == roots[root]);
 	assert(pg_evidence_scope(pg_prove_scope(&typing, scopes[root])) == scopes[root]);
+	context_inputs(&typing, pg_evidence_for_scope(&typing, scopes[root]));
 	size_t proofs = typing.proofs.count, terms = graph.terms.count, inputs = typing.scopes.count;
 	assert(pg_prove_scoped_subject(&typing, scopes[root], roots[root]) == checked);
 	assert(typing.proofs.count == proofs && graph.terms.count == terms && typing.scopes.count == inputs);

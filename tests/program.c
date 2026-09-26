@@ -554,16 +554,16 @@ static void graded_function_graph(struct pg_program *p, const struct pg_evidence
 
 static int proof_child(void *owner, const void *key, size_t index, const void **child)
 {
-	(void)owner;
-	if (index == pg_evidence_premise_count(key)) return 0;
-	*child = pg_evidence_premise(key, index);
-	return 1;
+	const struct pg_evidence *input = NULL;
+	int status = pg_derivation_input_dependency(owner, key, index, &input);
+	*child = input;
+	return status;
 }
 
-static void graph_instance_prefix(const struct pg_function_graph_work *work)
+static void graph_instance_prefix(struct pg_typing *typing, const struct pg_function_graph_work *work)
 {
 	struct pg_dag dag;
-	assert(!pg_dag_init(&dag, proof_child, NULL));
+	assert(!pg_dag_init(&dag, proof_child, typing));
 	assert(!pg_dag_add(&dag, pg_function_graph_witness(work)));
 	size_t found = 0;
 	for (const struct pg_dag_node *node = dag.first; node; node = node->next) {
@@ -772,7 +772,7 @@ static void function_graph_aliases(struct pg_program *p,
 		assert(pg_evidence_subject(pg_function_graph_source(typing, alternate)) == pg_evidence_subject(raw));
 	assert(typing->proofs.count == proofs && typing->occurrences.count == subjects);
 	assert(!pg_function_graph_source(NULL, raw));
-	const struct pg_evidence *outer = pg_evidence_premise(pg_evidence_premise(pi, 0), 0);
+	const struct pg_evidence *outer = pg_context_parent_input(typing, pg_evidence_premise(pi, 0));
 	const struct pg_evidence *scope = pg_prove_context_extension(typing, outer, pg_binder(&p->graph), pg_prove_pi_domain(typing, pi));
 	const struct pg_evidence *projected = pg_prove_projection(typing, scope, raw);
 	assert(projected && pg_function_graph_source(typing, projected) == raw);
@@ -891,9 +891,9 @@ static void graph_index_preparation(void)
 		while (pg_evidence_rule(pg_evidence_premise(inner, 1)) == PG_LAMBDA_INTRO)
 			inner = pg_evidence_premise(inner, 1);
 		const struct pg_evidence *scope = pg_evidence_premise(pg_evidence_premise(inner, 0), 0);
-		const struct pg_evidence *prefix = pg_evidence_premise(pg_evidence_premise(scope, 0), 0);
+		const struct pg_evidence *prefix = pg_context_parent_input(&p->typing, pg_context_parent_input(&p->typing, scope));
 		struct pg_inductive_instance instance;
-		assert(pg_inductive_instance(&p->typing, pg_evidence_premise(scope, 1), &instance));
+		assert(pg_inductive_instance(&p->typing, pg_context_declared_input(&p->typing, scope), &instance));
 		struct pg_typed_query *query = pg_substitution_rebase_request(&p->typing, prefix, instance.parameters);
 		assert(query && !pg_typed_query_steps(query));
 		struct pg_function_graph_work work;
@@ -1044,7 +1044,7 @@ static void function_graphs(void)
 			const struct pg_evidence *input = i == 2 ? export_value(p, "leftTree") : i ? one : successor;
 			const struct pg_evidence *expected = i == 2 ? export_value(p, "rightTree") : successor;
 			graph_witness_result(p, &work, input, expected, chunk);
-			if (i) graph_instance_prefix(&work);
+			if (i) graph_instance_prefix(&p->typing, &work);
 			pg_function_graph_destroy(&work);
 			assert(pg_evidence_owned_by(formation, &p->typing));
 			struct pg_inductive_instance retained;

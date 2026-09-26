@@ -98,7 +98,7 @@ static void effect_transport(enum pg_totality totality)
 		pg_prove_projection(&typings[0], extended, formation));
 	const struct pg_evidence *saved[] = {formation, fold, widened};
 	FILE *file = tmpfile();
-	assert(file && formation && fold && widened && !pg_derivations_write(file, 3, saved, effect_name, &owners[0]));
+	assert(file && formation && fold && widened && !pg_derivations_write(file, &typings[0], 3, saved, effect_name, &owners[0]));
 	rewind(file);
 	size_t count;
 	const struct pg_derivation_input *const *roots;
@@ -317,7 +317,7 @@ static void write_proofs(FILE *file, struct pg_typing *typing)
 		struct pg_derivation_parameters parameters;
 		assert(request && !pg_derivation_parameters(request, &parameters));
 		FILE *unsupported = tmpfile();
-		assert(unsupported && pg_derivations_write(unsupported, 1, &request, name, typing->graph) == -1);
+		assert(unsupported && pg_derivations_write(unsupported, typing, 1, &request, name, typing->graph) == -1);
 		fclose(unsupported);
 		const struct pg_evidence *pure = pg_prove_return(typing, pg_prove_type_value(typing, u));
 		const struct pg_evidence *carrier = pg_prove_classifier(typing, empty, pure);
@@ -328,7 +328,7 @@ static void write_proofs(FILE *file, struct pg_typing *typing)
 		const struct pg_evidence *handled = pg_prove_handler(typing, pure, continuation, carrier, 1, &clause);
 		assert(handled && !pg_derivation_parameters(handled, &parameters) && parameters.handler);
 		unsupported = tmpfile();
-		assert(unsupported && pg_derivations_write(unsupported, 1, &handled, name, typing->graph) == -1);
+		assert(unsupported && pg_derivations_write(unsupported, typing, 1, &handled, name, typing->graph) == -1);
 		fclose(unsupported);
 	}
 	const struct pg_object *a = pg_binder(graph), *b = pg_binder(graph), *x = pg_binder(graph);
@@ -503,7 +503,7 @@ static void write_proofs(FILE *file, struct pg_typing *typing)
 	assert(pg_evidence_subject(pg_substitution_image_at(typing, roots[30], 0)) == pg_evidence_subject(alternate_images[0]));
 	assert(roots[29] == roots[30]);
 	for (size_t i = 0; i < 31; ++i) assert(roots[i]);
-	assert(pg_derivations_write(file, 31, roots, name, typing->graph) == 0);
+	assert(pg_derivations_write(file, typing, 31, roots, name, typing->graph) == 0);
 	pg_conversion_destroy(&conversion);
 	pg_whnf_work_destroy(&work);
 }
@@ -797,7 +797,7 @@ static void operation_proofs(FILE *file, struct pg_typing *typing,
 			roots[5 + i] = pg_typed_query_result(query);
 			assert(roots[5 + i]);
 		}
-		assert(request && handled && !pg_derivations_write_descriptors(file, 7, roots, &pg_builtin_graph_codec, typing->graph));
+		assert(request && handled && !pg_derivations_write_descriptors(file, typing, 7, roots, &pg_builtin_graph_codec, typing->graph));
 		pg_whnf_work_destroy(&work);
 		return;
 	}
@@ -1333,7 +1333,7 @@ static void producer_proofs(FILE *file, struct pg_typing *typing,
 		const struct pg_evidence *declared_type = pg_synthesis_result(declaration);
 		assert(declared_type);
 		FILE *unsupported = tmpfile();
-		assert(unsupported && pg_derivations_write_descriptors(unsupported, 1, &declared_type,
+		assert(unsupported && pg_derivations_write_descriptors(unsupported, typing, 1, &declared_type,
 			&pg_builtin_graph_codec, typing->graph) == -1);
 		assert(!fclose(unsupported));
 		pg_synthesis_destroy(&synthesis);
@@ -1487,7 +1487,7 @@ static void nominal_proofs(FILE *file, struct pg_typing *typing,
 			roots[r] = data_formation_request(typing, roots[r], alternate);
 			assert(roots[r]);
 		}
-		assert(!pg_derivations_write_descriptors(file, 9, roots, &pg_declaration_graph_codec, &io));
+		assert(!pg_derivations_write_descriptors(file, typing, 9, roots, &pg_declaration_graph_codec, &io));
 	} else {
 		size_t count;
 		const struct pg_derivation_input *const *inputs;
@@ -1701,7 +1701,7 @@ static void termination_proofs(FILE *file, struct pg_typing *typing,
 			termination_encoding(typing, thunks[1], context, values[1], values[0], &decoded[1])};
 		const struct pg_evidence *roots[] = {formation, witness, result, partial, values[0],
 			encoded[0], encoded[1], decoded[0], decoded[1]};
-		assert(formation && witness && result && !pg_derivations_write_descriptors(file, 9,
+		assert(formation && witness && result && !pg_derivations_write_descriptors(file, typing, 9,
 			roots, &pg_declaration_graph_codec, &io));
 		pg_declaration_io_destroy(&io);
 		return;

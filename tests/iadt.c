@@ -30,9 +30,9 @@ static void common_rule(struct pg_typing *typing,
 	assert(!pg_derivation_input_header(proof, &input));
 	const struct pg_evidence **premises = pg_alloc(typing->graph, input.count * sizeof(*premises));
 	assert(premises && input.count);
-	for (size_t i = 0; i < input.count; ++i) premises[i] = pg_evidence_premise(proof, i);
+	for (size_t i = 0; i < input.count; ++i) assert(pg_derivation_input_dependency(typing, proof, i, premises + i) == 1);
 	size_t proofs = typing->proofs.count, terms = typing->graph->terms.count;
-	assert(pg_prove_derivation(typing, input.rule, &input.parameters, input.count, pg_evidence_premises(proof)) == proof);
+	assert(pg_prove_derivation(typing, input.rule, &input.parameters, input.count, premises) == proof);
 	assert(typing->proofs.count == proofs && typing->graph->terms.count == terms);
 	for (uint64_t chunk = 1; chunk <= 64; chunk *= 64) {
 		struct pg_whnf_work work;
@@ -808,11 +808,11 @@ static void retained_substitution_prefix(void)
 	const struct pg_evidence *prefix = pg_prove_substitution(&typing, contexts[0], contexts[1], 2, images);
 	assert(prefix);
 	assert(pg_prove_context_extension(&typing,
-		pg_evidence_premise(contexts[0], 0), function_binders[0],
+		pg_context_parent_input(&typing, contexts[0]), function_binders[0],
 		pg_prove_value_type(&typing, pg_prove_type_value(&typing, function_types[0]))) == contexts[0]);
 	const struct pg_evidence *alternate = pg_prove_context_extension(&typing,
-		pg_evidence_premise(contexts[0], 0), function_binders[0],
-		widen_type(&typing, pg_evidence_premise(contexts[0], 0), function_types[0]));
+		pg_context_parent_input(&typing, contexts[0]), function_binders[0],
+		widen_type(&typing, pg_context_parent_input(&typing, contexts[0]), function_types[0]));
 	assert(alternate != contexts[0] && pg_evidence_context(alternate) == pg_evidence_context(contexts[0]));
 	size_t terms = graph.terms.count;
 	const struct pg_evidence *result = pg_prove_substitution_extend(&typing, prefix, alternate, 0, NULL);
@@ -856,7 +856,7 @@ static void indexed_path_motive(struct pg_typing *typing,
 	const struct pg_evidence *context = pg_evidence_premise(parameters, 1);
 	struct pg_inductive_instance actual, generic;
 	assert(pg_inductive_instance(typing, pg_prove_classifier(typing, context, scrutinee), &actual));
-	assert(pg_inductive_instance(typing, pg_evidence_premise(mc, 1), &generic));
+	assert(pg_inductive_instance(typing, pg_context_declared_input(typing, mc), &generic));
 	const struct pg_evidence *projection = pg_prove_substitution_projection(typing, context, mc);
 	const struct pg_evidence *left = pg_prove_substitution_compose(typing, actual.indices, projection);
 	const struct pg_evidence *right = pg_prove_substitution_compose(typing, generic.indices,
@@ -870,8 +870,8 @@ static void indexed_path_motive(struct pg_typing *typing,
 	 * branch field of type A' requires transport, not just substitution. */
 	const struct pg_evidence *motive = pg_prove_return_type(typing,
 		pg_prove_projection(typing, pc, original_type));
-	const struct pg_evidence *extensions[] = {pg_evidence_premise(pc, 0), pc};
-	for (const struct pg_evidence *c = pc; pg_evidence_context(c) != pg_evidence_context(mc); c = pg_evidence_premise(c, 0))
+	const struct pg_evidence *extensions[] = {pg_context_parent_input(typing, pc), pc};
+	for (const struct pg_evidence *c = pc; pg_evidence_context(c) != pg_evidence_context(mc); c = pg_context_parent_input(typing, c))
 		motive = pg_prove_pi(typing, c, motive);
 	assert(motive);
 	const struct pg_evidence *fc = pg_evidence_premise(fields, 1);
@@ -1188,7 +1188,7 @@ static void indexed_match(void)
 	const struct pg_evidence *scope = field_context;
 	while (pg_evidence_context(scope) != pg_evidence_context(xc)) {
 		branch_type = pg_prove_family_abstraction(&typing, scope, branch_type);
-		scope = pg_evidence_premise(scope, 0);
+		scope = pg_context_parent_input(&typing, scope);
 	}
 	size_t case_contexts = typing.contexts.count;
 	const struct pg_evidence *selected_type = pg_prove_type_case(&typing,
@@ -1296,7 +1296,7 @@ static void indexed_match(void)
 	common_rule(&typing, refined_match);
 	/* Match may return a function whose argument depends on the generic
 	 * indices. Specialize the pending argument along with the scrutinee. */
-	const struct pg_evidence *generic_packet = pg_evidence_premise(consumer_mc, 1);
+	const struct pg_evidence *generic_packet = pg_context_declared_input(&typing, consumer_mc);
 	const struct pg_evidence *generic_argument = pg_prove_context_extension(&typing, consumer_mc,
 		pg_binder(&graph), pg_prove_projection(&typing, consumer_mc, generic_packet));
 	const struct pg_evidence *generic_function = pg_prove_pi(&typing, generic_argument,
@@ -3819,11 +3819,11 @@ static void schemas(struct pg_graph *graph)
 	const struct pg_evidence *declarations[7], *declaration = index_boundary;
 	for (size_t n = 7; n; --n) {
 		declarations[n - 1] = declaration;
-		declaration = pg_evidence_premise(declaration, 0);
+		declaration = pg_context_parent_input(&typing, declaration);
 	}
 	const struct pg_evidence *acted_map = pg_prove_substitution(&typing, declaration, boundary, 0, NULL);
 	for (size_t n = 0; n < 7; ++n) {
-		const struct pg_evidence *expected = pg_prove_reindex(&typing, acted_map, pg_evidence_premise(declarations[n], 1));
+		const struct pg_evidence *expected = pg_prove_reindex(&typing, acted_map, pg_context_declared_input(&typing, declarations[n]));
 		assert(expected);
 		struct pg_conversion comparison;
 		assert(pg_conversion_init(&comparison, &work, pg_evidence_classifier(image_values[n]), pg_evidence_subject(expected)->core) == 0);

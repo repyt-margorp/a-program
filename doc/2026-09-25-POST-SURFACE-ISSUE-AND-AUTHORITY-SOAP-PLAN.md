@@ -3,7 +3,7 @@
 Date: 2026-09-25
 Updated: 2026-09-27
 Status: P1-P3 closed. P4 Identity-boundary/Lambda-scope/typed-only function,
-result-formation, selected ambient declarations and typed-map/variable-image slices
+result-formation, selected ambient declarations, Context-history removal and typed-map/variable-image slices
 verified. P5 effect/shared-work/
 Handler/Operation/CBPV/function/Context/IADT-scope/transport/basic-Identity owners verified.
 Verification uses clean publication trees, full acceptance and affected sanitizers.
@@ -36,7 +36,7 @@ provide a second execution order. The order below is the agent's proposal.
 | P1 | Align open reports with published implementation | #32; PRs #20, #35-#38 | Verified; closed |
 | P2 | Reassess the old computation-result report against current contracts | #13 | Closed by user-approved scope decision |
 | P3 | Resolve the remaining MergeSort report against existing regressions | #28 | Verified; closed |
-| P4 | Make typed proof structure authoritative; remove redundant evidence dependency | Existing R2-R5 plans | Typed-only functions and result-formation history removal verified; broader migration pending |
+| P4 | Make typed proof structure authoritative; remove redundant evidence dependency | Existing R2-R5 plans | Typed-only functions, result-formation and Context-history removal verified; broader migration pending |
 | P5 | Separate synthesis by semantic owner without duplicating shared machinery | User follow-up on synthesis.c | Effect-owner/shared-header/Handler/Operation/CBPV-adapter/function-formation slices verified; legacy source state remains |
 
 ## P1. Issue and PR Disposition
@@ -706,6 +706,18 @@ slice still uses synchronous checking; budgeted integration, arbitrary mapped
 origins' ambient declarations, normalization/conversion inputs and complete
 Context-history deletion remain P4 work.
 
+Context-history deletion, baseline `2a7a8d1`, 2026-09-27 (agent decision):
+the selected declaration graph now retains every Context formation input.
+Remove Context receipt premise arrays, not just their inspectors. Semantic
+consumers read the exact selected parent, indices and typed declaration; a
+read-only lookup may borrow their already accepted checks, without evaluating
+or inventing a missing input. Migrate Identity, IADT, function-graph and source
+consumers together. Pending Context rules remain ordinary unaccepted inputs.
+The existing derivation/source exporters must enumerate these semantic inputs
+from the explicit typing store, rather than needing the removed receipt history.
+Keep the existing wire grammar where its meaning is unchanged. This does not
+delete other rules' histories or turn annotation loading into acceptance.
+
 ### Plan
 
 - [x] **P4.0 Static rebaseline:** reconcile actual owners, published epochs,
@@ -831,6 +843,18 @@ Context-history deletion remain P4 work.
   full acceptance, affected sanitizer/debug, image compatibility and paired
   performance gates before publication. Do not claim whole-Context-history
   removal or budgeted structural checking from this prerequisite.
+- [x] **P4.3l Context history removal:** delete permanent Context premise arrays
+  and migrate every semantic Context-parent/type/index reader to selected typed
+  declarations. Share read-only accepted-input lookup and explicit export
+  dependency enumeration; do not reconstruct proofs during save or cache
+  acceptance in declaration data. Check both ordinary/family Contexts, distinct
+  selected bounds, Identity contexts, maps and IADT motives. Update generic
+  derivation/export tests to distinguish semantic dependencies from storage;
+  require Context receipts to have no premise history. Verify fresh scoped
+  images, full acceptance, affected sanitizers, old/new image cross-reading,
+  paired timing/memory and per-file counts before publication.
+  Verification against `2a7a8d1`, 2026-09-27: all gates pass as recorded below.
+  This is separate from source promotion, not completion of the broader P4.
 - [ ] **P4.4 Work reuse and images (R2/R4):** reuse the same typed construction
   and checking requests for accepted and pending consumers, keeping open-handler
   progress and `::` non-feedback. Measure synchronous lift/composition helpers
@@ -2289,3 +2313,74 @@ Local evidence: `/tmp/a-program-scope-input-{acceptance,final,profiles-publish,c
 `/tmp/a-program-scope-input-cross.BhWKdF/`. Boundary tests are tracked; these
 temporary execution records are not.
 This plan: **+111/-3**; complete slice: **+604/-83, net +521**.
+
+### Context History Removal Verification
+
+Baseline `2a7a8d1`, verified 2026-09-27 in the clean publication worktree.
+Context receipts now retain zero premise pointers. Their selected declarations
+are authoritative; semantic readers and exporters borrow accepted checks of
+those exact inputs without allocation or proof reconstruction. Other rules'
+histories remain. Existing compiler image grammars are unchanged.
+
+Agent decisions during verification: preserve rejection of unsupported logical
+family fields, since their terminal Universe alone cannot stand for the entire
+field signature. Replace an Identity test's receipt-prefix assertion with
+checks of its selected maps and endpoints; do not weaken type/path checks.
+
+- Optimized `check-acceptance`: exit 0, wall **1600.803s**, user 1486.774s,
+  system 112.578s. Compatibility **63/63**, general/ordinary-result Sorted,
+  four LT provider/order combinations and optional witness tests pass.
+- Debug and ASan/UBSan Core, Program, IADT, Identity, Synthesis, typed-structure
+  and derivation-image tests pass, with leak detection enabled. Tests enforce
+  empty Context histories, exact input ownership, no read-time allocation,
+  fresh scoped loading, distinct bounds and 1024-declaration prefixes.
+- Cross-reading: **36** source-image pairs, **72** opposite-version loads and
+  **8** occurrence/derivation reads pass, at zero/partial/full saved progress.
+- Ten workloads, warmup plus six counterbalanced pairs (small cases batched
+  100): outputs and source Solve counts agree. Median changes range **-1.71%
+  to +1.88%**, with overlapping sample ranges. General Sorted: **0.850240s ->
+  0.841757s**; ordinary-result theorem: **0.761924s -> 0.769051s**; derived
+  proof: **2.585150s -> 2.604962s**. No general speedup is established.
+- Peak RSS medians over three pairs, KiB: length **12304 -> 12304**, general
+  Sorted **224556 -> 224092**, ordinary result **174456 -> 174508**, derived
+  **547824 -> 547220**. Physical savings are two/three pointers per ordinary/
+  family Context receipt; process-wide RSS is not guaranteed to decrease.
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `src/action.c` | 10 | 10 | 0 |
+| `src/derivation.c` | 24 | 1 | +23 |
+| `src/derivation.h` | 6 | 1 | +5 |
+| `src/derivation_io.c` | 17 | 14 | +3 |
+| `src/derivation_io.h` | 6 | 3 | +3 |
+| `src/evidence.c` | 34 | 34 | 0 |
+| `src/evidence.h` | 8 | 0 | +8 |
+| `src/evidence_scope.c` | 24 | 0 | +24 |
+| `src/function_graph.c` | 6 | 6 | 0 |
+| `src/function_witness.c` | 1 | 1 | 0 |
+| `src/iadt.c` | 12 | 8 | +4 |
+| `src/synthesis.c` | 29 | 27 | +2 |
+| `src/synthesis_context.c` | 2 | 2 | 0 |
+| `src/synthesis_iadt.c` | 19 | 19 | 0 |
+| `src/synthesis_identity.c` | 2 | 2 | 0 |
+| `tests/core.c` | 16 | 14 | +2 |
+| `tests/derivation_io.c` | 8 | 8 | 0 |
+| `tests/iadt.c` | 12 | 12 | 0 |
+| `tests/identity.c` | 33 | 20 | +13 |
+| `tests/program.c` | 10 | 10 | 0 |
+| `tests/source_io.c` | 2 | 2 | 0 |
+| `tests/synthesis.c` | 17 | 17 | 0 |
+| `tests/typed_structure.c` | 39 | 0 | +39 |
+
+Implementation **+200/-128, net +72**; tests **+137/-83, net +54**; build
+unchanged. Storage duplication decreases, but the overall source-reduction
+requirement is still unmet. Shared budgeted structural checking, arbitrary
+mapped origins, conversion inputs, remaining receipt histories and the rest
+of P5 remain open. No inherited relocation trial is included.
+
+Local evidence: `/tmp/a-program-context-history-{acceptance,profiles,cross}.log`,
+`/tmp/a-program-context-history-acceptance.time`,
+`/tmp/a-program-context-history-{bench,memory}.jsonl`; cross-images:
+`/tmp/a-program-context-history-cross.YHNq7k/`. Permanent regression tests are
+tracked; temporary execution logs are not.
+This plan: **+97/-2**; complete slice: **+434/-213, net +221**.

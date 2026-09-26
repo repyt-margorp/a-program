@@ -608,7 +608,7 @@ const struct pg_evidence *pg_identity_family_pi_type(struct pg_typing *typing,
 		pg_prove_application(typing, pg_prove_projection(typing, boundary, right), r));
 	for (size_t i = 0; body && i < 3; ++i) {
 		body = pg_prove_pi(typing, boundary, body);
-		boundary = pg_evidence_premise(boundary, 0);
+		boundary = pg_context_parent_input(typing, boundary);
 	}
 done:
 	pg_graph_destroy(&temporary);
@@ -652,21 +652,21 @@ const struct pg_evidence *pg_identity_context(struct pg_typing *typing,
 	const struct pg_evidence *context = source;
 	for (size_t i = count; i; --i) {
 		extensions[i - 1] = context;
-		context = pg_evidence_premise(context, 0);
+		context = pg_context_parent_input(typing, context);
 	}
 	const struct pg_evidence *ls = pg_prove_substitution_projection(typing, context, context), *rs = ls;
 	if (!ls) goto done;
 	for (size_t i = 0; i < count; ++i) {
 		const struct pg_object *binders[3];
 		if (boundary_binders(dimensions, centers[i], binders) != 0) goto done;
-		const struct pg_evidence *type = pg_evidence_premise(extensions[i], 1);
+		const struct pg_evidence *type = pg_context_declared_input(typing, extensions[i]);
 		const struct pg_evidence *lt = pg_prove_reindex(typing, ls, type);
 		const struct pg_evidence *rt = pg_prove_reindex(typing, rs, type);
 		context = pg_prove_context_extension(typing, context, binders[0], lt);
 		context = pg_prove_context_extension(typing, context, binders[1], pg_prove_projection(typing, context, rt));
 		if (!context) goto done;
 		project_paths(typing, context, i, centers_proof);
-		const struct pg_evidence *prefix = pg_evidence_premise(extensions[i], 0);
+		const struct pg_evidence *prefix = pg_context_parent_input(typing, extensions[i]);
 		ls = pg_prove_substitution_extension(typing, prefix, context, ls, 0, NULL);
 		rs = pg_prove_substitution_extension(typing, prefix, context, rs, 0, NULL);
 		const struct pg_evidence *l = pg_prove_variable(typing, context, binders[0]);
@@ -716,7 +716,7 @@ const struct pg_evidence *pg_identity_substitution_context(struct pg_typing *typ
 	const struct pg_evidence **extensions = pg_alloc(&temporary, count * sizeof(*extensions));
 	const struct pg_evidence **centers = pg_alloc(&temporary, count * sizeof(*centers));
 	if (!extensions || !centers) goto done;
-	for (size_t i = count; i; --i, source = pg_evidence_premise(source, 0)) {
+	for (size_t i = count; i; --i, source = pg_context_parent_input(typing, source)) {
 		if (pg_evidence_rule(source) != PG_CONTEXT_EXTEND) goto done;
 		extensions[i - 1] = source;
 	}
@@ -727,7 +727,7 @@ const struct pg_evidence *pg_identity_substitution_context(struct pg_typing *typ
 		const struct pg_evidence *l = pg_prove_projection(typing, context, pg_substitution_image_at(typing, left, common + i));
 		const struct pg_evidence *r = pg_prove_projection(typing, context, pg_substitution_image_at(typing, right, common + i));
 		const struct pg_evidence *type = pg_prove_family_identity_type(typing,
-			pg_evidence_premise(extensions[i], 1), ls, rs, i, centers, l, r);
+			pg_context_declared_input(typing, extensions[i]), ls, rs, i, centers, l, r);
 		context = pg_prove_context_extension(typing, context, binders[i], type);
 		if (!context) goto done;
 		project_paths(typing, context, i, centers);
@@ -760,7 +760,7 @@ static const struct pg_evidence *cube_action(struct pg_typing *typing,
 	for (size_t i = 0; i < count; ++i) {
 		if (pg_evidence_rule(prefix) != PG_CONTEXT_EXTEND) return NULL;
 		if (!cubes[i] || cubes[i]->dimension != order->source) return NULL;
-		prefix = pg_evidence_premise(prefix, 0);
+		prefix = pg_context_parent_input(typing, prefix);
 	}
 	order = pg_dimension_face(dimensions, order);
 	if (!order) return NULL;
@@ -781,7 +781,7 @@ static const struct pg_evidence *cube_action(struct pg_typing *typing,
 	context = source;
 	for (size_t i = count; i; --i) {
 		extensions[i - 1] = context;
-		context = pg_evidence_premise(context, 0);
+		context = pg_context_parent_input(typing, context);
 	}
 	/* Rename the entire dependent suffix to zero vertices with one checked
 	 * substitution. Later declarations use the preceding renamed images. */
@@ -792,7 +792,7 @@ static const struct pg_evidence *cube_action(struct pg_typing *typing,
 		if (!vertex) { context = NULL; goto done; }
 		const struct pg_evidence *previous = context;
 		context = pg_prove_context_extension(typing, context, &vertex->variable,
-			pg_prove_reindex(typing, map, pg_evidence_premise(extensions[i], 1)));
+			pg_prove_reindex(typing, map, pg_context_declared_input(typing, extensions[i])));
 		if (!context) goto done;
 		map = pg_prove_substitution_compose(typing, map, pg_prove_substitution_projection(typing, previous, context));
 		map = pg_prove_substitution_pair(typing, map, extensions[i], pg_prove_variable(typing, context, &vertex->variable));
@@ -863,7 +863,7 @@ const struct pg_evidence *pg_context_restrict(struct pg_typing *typing,
 	const struct pg_evidence *prefix = source;
 	for (size_t i = count; i; --i) {
 		extensions[i - 1] = prefix;
-		prefix = pg_evidence_premise(prefix, 0);
+		prefix = pg_context_parent_input(typing, prefix);
 	}
 	const struct pg_evidence *empty = pg_prove_empty_context(typing);
 	result = pg_prove_substitution(typing, prefix, empty, 0, NULL);

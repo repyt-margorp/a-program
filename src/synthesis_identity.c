@@ -368,7 +368,7 @@ static int family_paths(struct pg_synthesis *synthesis, struct pg_synthesis_job 
 		const struct pg_evidence *prefix = pg_evidence_premise(left, 0);
 		for (size_t i = count; i; --i) {
 			state->declarations[i - 1] = prefix;
-			prefix = pg_evidence_premise(prefix, 0);
+			prefix = pg_context_parent_input(synthesis->typing, prefix);
 		}
 		for (size_t side = 0; side < 2; ++side) {
 			const struct pg_evidence *map = job->inputs[side];
@@ -387,7 +387,7 @@ static int family_paths(struct pg_synthesis *synthesis, struct pg_synthesis_job 
 		if (pg_evidence_judgement(path) != PG_JUDGEMENT_VALUE) goto rejected;
 		if (pg_evidence_context(path) != pg_evidence_context(left)) goto rejected;
 		const struct pg_evidence *type = pg_prove_family_identity_type(synthesis->typing,
-			pg_evidence_premise(state->declarations[i], 1), state->maps[0], state->maps[1], i, state->paths,
+			pg_context_declared_input(synthesis->typing, state->declarations[i]), state->maps[0], state->maps[1], i, state->paths,
 			pg_substitution_image_at(synthesis->typing, left, state->common + i),
 			pg_substitution_image_at(synthesis->typing, right, state->common + i));
 		if (!type) goto rejected;

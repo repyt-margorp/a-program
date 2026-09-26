@@ -112,7 +112,7 @@ static void data_result_step(struct pg_synthesis *synthesis, struct pg_synthesis
 	if (count && !images) goto error;
 	const struct pg_evidence *extension = indices;
 	head = syntax;
-	for (size_t i = count; i; --i, extension = pg_evidence_premise(extension, 0)) {
+	for (size_t i = count; i; --i, extension = pg_context_parent_input(synthesis->typing, extension)) {
 		if (i > parameter_count) {
 			images[i - 1] = pg_synthesis_request(synthesis, scope, head->right);
 			head = head->left;
@@ -175,7 +175,7 @@ static void constructor_scope_step(struct pg_synthesis *synthesis, struct pg_syn
 		local->fields = pg_alloc(synthesis->typing->graph, count * sizeof(*local->fields));
 		if (count && !local->fields) goto error;
 		local->count = count;
-		for (size_t i = count; i; --i, fields = pg_evidence_premise(fields, 0)) local->fields[i - 1] = fields;
+		for (size_t i = count; i; --i, fields = pg_context_parent_input(synthesis->typing, fields)) local->fields[i - 1] = fields;
 		struct pg_synthesis_job *family = pg_synthesis_reindex_jobs(synthesis, (void *)job->inputs[1], (void *)job->inputs[0]);
 		struct pg_synthesis_job *value = pg_evidence_judgement(formation) == PG_JUDGEMENT_TYPE_FAMILY
 			? family : pg_synthesis_plain_rule(synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &family);
@@ -424,7 +424,7 @@ static struct transport_scope *transport_scope_start(struct pg_typing *typing,
 		const struct pg_evidence *source = pg_evidence_premise(ls, 0);
 		size_t arity = pg_evidence_context_map(ls)->count;
 		if (count > arity) return NULL;
-		for (size_t i = count; i; --i, source = pg_evidence_premise(source, 0))
+		for (size_t i = count; i; --i, source = pg_context_parent_input(typing, source))
 			work->extensions[i - 1] = source;
 		const struct pg_evidence *map = pg_prove_substitution_compose(typing,
 			pg_prove_substitution_projection(typing, source, pg_evidence_premise(ls, 0)), ls);
@@ -562,7 +562,7 @@ static void constructor_transport_step(struct pg_synthesis *synthesis, struct pg
 	if (status < 0) goto unsupported;
 	const struct pg_evidence *left = local->transport_scope->left, *right = local->transport_scope->right;
 	const struct pg_evidence *extended = local->transport_scope->extended;
-	const struct pg_evidence *type = pg_evidence_premise(extended, 1);
+	const struct pg_evidence *type = pg_context_declared_input(typing, extended);
 	struct pg_inductive_instance instance;
 	if (!pg_inductive_instance(typing, type, &instance)) goto unsupported;
 	const struct pg_data_layout *layout = pg_data_schema_layout(instance.schema);
@@ -577,7 +577,7 @@ static void constructor_transport_step(struct pg_synthesis *synthesis, struct pg
 		if (c == prefix) goto rejected;
 	}
 	const struct pg_evidence *parameters = pg_prove_substitution_compose(typing, instance.parameters,
-		pg_prove_substitution_projection(typing, pg_evidence_premise(extended, 0), extended));
+		pg_prove_substitution_projection(typing, pg_context_parent_input(typing, extended), extended));
 	status = transport_constructor_scopes(synthesis, job, local->transport_scope, &instance, parameters);
 	if (!status) return;
 	if (status < 0) goto unsupported;
@@ -605,7 +605,7 @@ static void constructor_transport_step(struct pg_synthesis *synthesis, struct pg
 			branch = image ? pg_prove_identity_type(typing, pg_prove_projection(typing, fields, field_type),
 				pg_prove_projection(typing, fields, inputs[4]), image) : NULL;
 		} else branch = pg_prove_projection(typing, fields, i == positions[0] ? source : target);
-		for (; branch && pg_evidence_context(fields) != pg_evidence_context(extended); fields = pg_evidence_premise(fields, 0))
+		for (; branch && pg_evidence_context(fields) != pg_evidence_context(extended); fields = pg_context_parent_input(typing, fields))
 			branch = pg_prove_family_abstraction(typing, fields, branch);
 		branches[i] = branch;
 	}
@@ -666,7 +666,7 @@ static struct index_scope *index_transport_scope(struct pg_typing *typing,
 	work->count = count;
 	work->map = pg_prove_substitution_projection(typing, prefix, context);
 	const struct pg_evidence *extension = context;
-	for (size_t i = count; i; --i, extension = pg_evidence_premise(extension, 0)) {
+	for (size_t i = count; i; --i, extension = pg_context_parent_input(typing, extension)) {
 		const struct pg_object *binder = pg_evidence_context(extension)->binder;
 		struct pg_index_entry *entry = pg_index_candidates(omitted, (uintptr_t)binder);
 		while (entry && entry->hash != (uintptr_t)binder) entry = entry->next;
@@ -685,7 +685,7 @@ static int index_scope_advance(struct pg_typing *typing, struct index_scope *wor
 	const struct pg_evidence *field = work->fields[work->next];
 	if (field) {
 		const struct pg_evidence *scope = pg_evidence_premise(work->map, 0);
-		if (!work->query) work->query = pg_rebase_request(typing, scope, pg_evidence_premise(field, 1));
+		if (!work->query) work->query = pg_rebase_request(typing, scope, pg_context_declared_input(typing, field));
 		if (!pg_typed_query_advance(work->query, 1)) return 0;
 		const struct pg_evidence *domain = pg_typed_query_result(work->query);
 		work->query = NULL;
@@ -718,9 +718,9 @@ static struct pg_synthesis_job *index_transport_candidate(struct pg_synthesis *s
 	if (!*slot && from->kind == PG_REFERENCE && from->as.reference->kind == PG_BINDER) {
 		const struct pg_evidence *extension = context;
 		while (pg_evidence_context(extension) && pg_evidence_context(extension)->binder != from->as.reference)
-			extension = pg_evidence_premise(extension, 0);
+			extension = pg_context_parent_input(typing, extension);
 		if (!pg_evidence_context(extension) || pg_evidence_rule(extension) != PG_CONTEXT_EXTEND) return NULL;
-		const struct pg_evidence *prefix = pg_evidence_premise(extension, 0);
+		const struct pg_evidence *prefix = pg_context_parent_input(typing, extension);
 		struct pg_index omitted = {0};
 		struct pg_index_entry entry;
 		if (pg_index_init(&omitted)) return NULL;
@@ -729,7 +729,7 @@ static struct pg_synthesis_job *index_transport_candidate(struct pg_synthesis *s
 		}
 		*slot = index_transport_scope(typing, context, prefix, &omitted);
 		pg_index_destroy(&omitted);
-		if (*slot) (*slot)->domain = pg_evidence_premise(extension, 1);
+		if (*slot) (*slot)->domain = pg_context_declared_input(typing, extension);
 	} else if (!*slot) {
 		*slot = index_transport_scope(typing, context, context, NULL);
 		if (*slot) (*slot)->domain = pg_prove_classifier(typing, context, direction == PG_IDENTITY_LEFT ? rv : lv);
@@ -815,7 +815,7 @@ static struct index_scope *index_constructor_scope(struct pg_typing *typing,
 	struct pg_index_entry *entries = pg_alloc(&temporary, count * sizeof(*entries));
 	if (count && (!values || !entries)) goto done;
 	if (pg_index_init(&omitted)) goto done;
-	for (size_t i = count; i; --i, schema_fields = pg_evidence_premise(schema_fields, 0)) {
+	for (size_t i = count; i; --i, schema_fields = pg_context_parent_input(typing, schema_fields)) {
 		values[i - 1] = pg_prove_constructor_field(typing, value, pg_evidence_context(schema_fields)->binder);
 		if (!values[i - 1]) goto done;
 		const struct pg_term *core = pg_evidence_subject(values[i - 1])->core;
@@ -823,11 +823,11 @@ static struct index_scope *index_constructor_scope(struct pg_typing *typing,
 			pg_index_insert(&omitted, &entries[i - 1], (uintptr_t)core->as.reference)) goto done;
 	}
 	const struct pg_evidence *prefix = context;
-	for (const struct pg_evidence *scope = context; pg_evidence_context(scope); scope = pg_evidence_premise(scope, 0)) {
+	for (const struct pg_evidence *scope = context; pg_evidence_context(scope); scope = pg_context_parent_input(typing, scope)) {
 		uintptr_t binder = (uintptr_t)pg_evidence_context(scope)->binder;
 		struct pg_index_entry *entry = pg_index_candidates(&omitted, binder);
 		while (entry && entry->hash != binder) entry = entry->next;
-		if (entry) prefix = pg_evidence_premise(scope, 0);
+		if (entry) prefix = pg_context_parent_input(typing, scope);
 	}
 	result = index_transport_scope(typing, context, prefix, &omitted);
 	if (result) { result->values = values; result->value_count = count; }
@@ -871,7 +871,7 @@ static struct pg_synthesis_job *index_constructor_candidate(struct pg_synthesis 
 	const struct pg_evidence *extended = (*slot)->boundary->extended;
 	const struct pg_evidence *left = (*slot)->boundary->left, *right = (*slot)->boundary->right;
 	struct pg_inductive_instance instance;
-	if (!pg_inductive_instance(typing, pg_evidence_premise(extended, 1), &instance)) return NULL;
+	if (!pg_inductive_instance(typing, pg_context_declared_input(typing, extended), &instance)) return NULL;
 	const struct pg_evidence *base_context = pg_evidence_premise(base, 0);
 	struct pg_typed_query *parameters = pg_substitution_rebase_request(typing, base_context, instance.parameters);
 	status = pg_typed_query_advance(parameters, 1);
@@ -898,7 +898,7 @@ static struct pg_synthesis_job *index_constructor_candidate(struct pg_synthesis 
 		const struct pg_evidence *fields = pg_evidence_premise(map, 1), *branch;
 		if (label == constructor) {
 			const struct pg_evidence *scope = fields;
-			for (size_t j = count; j; --j, scope = pg_evidence_premise(scope, 0)) extensions[j - 1] = scope;
+			for (size_t j = count; j; --j, scope = pg_context_parent_input(typing, scope)) extensions[j - 1] = scope;
 			if (pg_evidence_context(scope) != pg_evidence_context(base_context)) goto done;
 			const struct pg_evidence *pattern = base;
 			for (size_t j = 0; pattern && j < count; ++j)
@@ -906,7 +906,7 @@ static struct pg_synthesis_job *index_constructor_candidate(struct pg_synthesis 
 			branch = pg_prove_pattern_type(typing, prefix, pattern, pg_prove_return_type(typing, type));
 			branch = pg_prove_return_content(typing, branch);
 		} else branch = pg_prove_universe(typing, fields, 0);
-		for (; branch && pg_evidence_context(fields) != pg_evidence_context(base_context); fields = pg_evidence_premise(fields, 0))
+		for (; branch && pg_evidence_context(fields) != pg_evidence_context(base_context); fields = pg_context_parent_input(typing, fields))
 			branch = pg_prove_family_abstraction(typing, fields, branch);
 		branches[i] = pg_prove_projection(typing, extended, branch);
 		if (!branches[i]) goto done;
@@ -1033,7 +1033,7 @@ static void index_transport_step(struct pg_synthesis *synthesis, struct pg_synth
 	if (!state->path) {
 		if (pg_evidence_rule(state->cursor) != PG_CONTEXT_EXTEND) goto next_context;
 		struct pg_synthesis_job *formation = pg_synthesis_identity_formation(synthesis,
-			pg_synthesis_evidence(synthesis, pg_evidence_premise(state->cursor, 1)));
+			pg_synthesis_evidence(synthesis, pg_context_declared_input(synthesis->typing, state->cursor)));
 		if (!formation) goto error;
 		if (formation->status == PG_SYNTHESIS_PENDING) { pg_synthesis_subscribe(synthesis, job, formation, 0); return; }
 		struct pg_identity_boundary boundary;
@@ -1106,7 +1106,7 @@ static void index_transport_step(struct pg_synthesis *synthesis, struct pg_synth
 	state->candidate_next = 0; state->constructor_checked = 1;
 	pg_synthesis_enqueue(synthesis, job); return;
 next_context:
-	state->cursor = pg_evidence_premise(state->cursor, 0);
+	state->cursor = pg_context_parent_input(synthesis->typing, state->cursor);
 	state->path = NULL;
 	state->direct_checked = state->normalized_checked = state->constructor_checked = 0;
 	state->normal[0] = state->normal[1] = NULL;

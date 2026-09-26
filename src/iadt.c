@@ -1,5 +1,6 @@
 #include "iadt.h"
 #include "evidence.h"
+#include "scope.h"
 #include "dag.h"
 
 static const struct pg_object_class constructor_class = {"constructor"};
@@ -591,17 +592,20 @@ const struct pg_evidence *pg_data_schema_parameters(const struct pg_data_schema 
 }
 
 static int schema_fields_check(const struct pg_data_schema *schema,
-	int (*check)(const struct pg_evidence *, void *), void *state)
+	int (*check)(const struct pg_occurrence *, void *), void *state)
 {
 	const struct pg_context *prefix = pg_evidence_context(schema->signature->parameters);
 	struct pg_dag checked;
 	if (pg_dag_init(&checked, NULL, NULL)) return -1;
 	int result = 1;
 	for (size_t i = 0; i < pg_data_constructor_count(schema); ++i) {
-		const struct pg_evidence *fields = pg_evidence_premise(schema->results[i], 1);
-		for (; pg_evidence_context(fields) != prefix; fields = pg_evidence_premise(fields, 0)) {
+		const struct pg_scope *fields = pg_evidence_scope(pg_evidence_premise(schema->results[i], 1));
+		for (; fields && fields->context != prefix; fields = fields->parent) {
 			if (pg_dag_find(&checked, fields)) break;
-			result = check(pg_evidence_premise(fields, 1), state);
+			/* Logical-family fields need checks over their whole signature;
+			 * the terminal Universe alone is not a field formation. */
+			if (fields->indices) { result = -1; goto done; }
+			result = check(fields->type, state);
 			if (result != 1) goto done;
 			if (pg_dag_add(&checked, fields)) { result = -1; goto done; }
 		}
@@ -613,10 +617,10 @@ done:
 
 struct positivity_check { const struct pg_object *self; size_t indices; };
 
-static int field_positive(const struct pg_evidence *formation, void *state)
+static int field_positive(const struct pg_occurrence *formation, void *state)
 {
 	struct positivity_check *check = state;
-	return pg_data_field_positive(pg_evidence_subject(formation)->core, check->self, check->indices);
+	return pg_data_field_positive(formation->core, check->self, check->indices);
 }
 
 int pg_data_schema_positive(const struct pg_data_schema *schema,
@@ -629,10 +633,10 @@ int pg_data_schema_positive(const struct pg_data_schema *schema,
 	return schema_fields_check(schema, field_positive, &check);
 }
 
-static int field_level(const struct pg_evidence *formation, void *state)
+static int field_level(const struct pg_occurrence *formation, void *state)
 {
 	uint64_t *bound = state, current;
-	if (!pg_universe_level(pg_evidence_classifier(formation), &current)) return -1;
+	if (!pg_universe_level(formation->classifier, &current)) return -1;
 	if (current > *bound) *bound = current;
 	return 1;
 }

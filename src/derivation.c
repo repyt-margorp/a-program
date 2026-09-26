@@ -1,13 +1,36 @@
 #include "derivation.h"
 #include "iadt.h"
 #include "action.h"
+#include "scope.h"
+
+static size_t input_count(const struct pg_evidence *proof)
+{
+	const struct pg_scope *scope = pg_evidence_scope(proof);
+	return scope ? (scope->indices ? 3 : 2) : pg_evidence_premise_count(proof);
+}
+
+int pg_derivation_input_dependency(const struct pg_typing *typing,
+	const struct pg_evidence *proof, size_t index, const struct pg_evidence **child)
+{
+	if (!child || !pg_evidence_owned_by(proof, typing)) return -1;
+	if (index >= input_count(proof)) return 0;
+	const struct pg_scope *scope = pg_evidence_scope(proof);
+	const struct pg_evidence *input;
+	if (!scope) input = pg_evidence_premise(proof, index);
+	else if (!index) input = pg_context_parent_input(typing, proof);
+	else if (index == 1 && scope->indices) input = pg_context_indices_input(typing, proof);
+	else input = pg_context_declared_input(typing, proof);
+	if (!input) return -1;
+	*child = input;
+	return 1;
+}
 
 int pg_derivation_input_header(const struct pg_evidence *proof, struct pg_derivation_input *input)
 {
 	if (!proof || !input) return -1;
 	struct pg_derivation_input header = {0};
 	header.rule = pg_evidence_rule(proof);
-	header.count = pg_evidence_premise_count(proof);
+	header.count = input_count(proof);
 	if (pg_derivation_parameters(proof, &header.parameters)) return -1;
 	if (header.parameters.conversion) {
 		header.source = pg_conversion_left(header.parameters.conversion);

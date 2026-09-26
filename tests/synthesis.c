@@ -2318,7 +2318,7 @@ static void effect_expectations(struct pg_typing *typing)
 	const struct pg_source_scope *fetch_scope = pg_synthesis_name(&synthesis, scope,
 		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="Given", .length=5}, quoted_function);
 	fetch_scope = pg_synthesis_bind(&synthesis, fetch_scope,
-		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="req", .length=3}, req, pg_evidence_premise(fetch_context, 0));
+		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="req", .length=3}, req, pg_context_parent_input(typing, fetch_context));
 	fetch_scope = pg_synthesis_bind(&synthesis, fetch_scope,
 		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="k", .length=1}, resume, fetch_context);
 	const struct pg_evidence *fetch_body = complete(&synthesis,
@@ -4320,22 +4320,22 @@ static void square_template_jobs(struct pg_typing *typing)
 		pg_dimension_identity(&dimensions, 2));
 	const struct pg_evidence *opposite = pg_identity_cube_context(typing, &dimensions, source, 1, &cube,
 		pg_dimension_map(&dimensions, 2, 2, axes));
-	const struct pg_evidence *destination = pg_evidence_premise(original, 0);
-	const struct pg_evidence *template = pg_evidence_premise(opposite, 0);
+	const struct pg_evidence *destination = pg_context_parent_input(typing, original);
+	const struct pg_evidence *template = pg_context_parent_input(typing, opposite);
 	const struct pg_evidence *cursor = template;
 	struct pg_synthesis_job *images[8];
-	for (size_t i = 8; i; --i, cursor = pg_evidence_premise(cursor, 0)) {
+	for (size_t i = 8; i; --i, cursor = pg_context_parent_input(typing, cursor)) {
 		const struct pg_binding_face *binding = pg_binding_face_view(pg_evidence_context(cursor)->binder);
 		const struct pg_dimension_map *ordered, *intrinsic;
 		assert(pg_dimension_face_factor(&dimensions, binding->face, &ordered, &intrinsic) == 0);
 		assert(intrinsic == pg_dimension_identity(&dimensions, ordered->source));
 		images[i - 1] = pg_synthesis_identity_face(&synthesis, destination,
-			pg_evidence_premise(original, 1), ordered);
+			pg_context_declared_input(typing, original), ordered);
 		assert(images[i - 1]);
 		assert(!pg_synthesis_result(images[i - 1]));
 	}
 	struct pg_synthesis_job *map_job = pg_synthesis_substitution(&synthesis, template, destination, 8, images);
-	struct pg_synthesis_job *formation = pg_synthesis_evidence(&synthesis, pg_evidence_premise(opposite, 1));
+	struct pg_synthesis_job *formation = pg_synthesis_evidence(&synthesis, pg_context_declared_input(typing, opposite));
 	struct pg_synthesis_job *type_job = pg_synthesis_reindex_jobs(&synthesis, map_job, formation);
 	assert(type_job && pg_synthesis_reindex_jobs(&synthesis, map_job, formation) == type_job);
 	assert(!pg_synthesis_result(map_job) && !pg_synthesis_result(type_job));
@@ -4375,7 +4375,7 @@ static void square_template_jobs(struct pg_typing *typing)
 		PG_SYNTHESIS_DONE) == endpoint);
 	const struct pg_evidence *map = pg_synthesis_result(map_job);
 	assert(map);
-	struct pg_synthesis_job *canonical = pg_synthesis_reindex(&synthesis, map, pg_evidence_premise(opposite, 1));
+	struct pg_synthesis_job *canonical = pg_synthesis_reindex(&synthesis, map, pg_context_declared_input(typing, opposite));
 	assert(pg_synthesis_status(canonical) == PG_SYNTHESIS_DONE);
 	assert(pg_synthesis_result(canonical) == type);
 	complete(&synthesis, pg_synthesis_reindex_jobs(&synthesis, formation, formation), PG_SYNTHESIS_REJECTED);
@@ -4385,7 +4385,7 @@ static void square_template_jobs(struct pg_typing *typing)
 		pg_synthesis_evidence(&synthesis, pg_prove_universe(typing, empty, 0))), PG_SYNTHESIS_UNSUPPORTED);
 	assert(pg_evidence_context(type) == pg_evidence_context(destination));
 	assert(pg_evidence_judgement(type) == PG_JUDGEMENT_VALUE_TYPE);
-	assert(pg_evidence_classifier(type) == pg_evidence_classifier(pg_evidence_premise(original, 1)));
+	assert(pg_evidence_classifier(type) == pg_evidence_classifier(pg_context_declared_input(typing, original)));
 	assert(!pg_context_lookup(pg_evidence_context(destination), pg_evidence_context(opposite)->binder));
 	/* A fully degenerate square supplies all its boundaries without a center
 	 * assumption. Test the transposed classifier independently of a symmetry rule. */
@@ -4399,7 +4399,7 @@ static void square_template_jobs(struct pg_typing *typing)
 		assert(closed_type && closed_value);
 	}
 	cursor = template;
-	for (size_t i = 8; i; --i, cursor = pg_evidence_premise(cursor, 0)) {
+	for (size_t i = 8; i; --i, cursor = pg_context_parent_input(typing, cursor)) {
 		const struct pg_binding_face *binding = pg_binding_face_view(pg_evidence_context(cursor)->binder);
 		const struct pg_dimension_map *ordered, *intrinsic;
 		assert(pg_dimension_face_factor(&dimensions, binding->face, &ordered, &intrinsic) == 0);
@@ -4453,7 +4453,7 @@ static void dependent_cube_substitution(struct pg_typing *typing)
 		size_t count = dimension == 1 ? 6 : 18;
 		struct pg_synthesis_job *images[18];
 		const struct pg_evidence *cursor = target;
-		for (size_t i = count; i; --i, cursor = pg_evidence_premise(cursor, 0)) {
+		for (size_t i = count; i; --i, cursor = pg_context_parent_input(typing, cursor)) {
 			const struct pg_binding_face *binding = pg_binding_face_view(pg_evidence_context(cursor)->binder);
 			const struct pg_dimension_map *ordered, *intrinsic;
 			assert(pg_dimension_face_factor(&dimensions, binding->face, &ordered, &intrinsic) == 0);
@@ -4471,9 +4471,9 @@ static void dependent_cube_substitution(struct pg_typing *typing)
 			assert(pg_evidence_premise(result, 0) == target);
 		} else {
 			const struct pg_evidence *type_cube = target;
-			for (size_t i = 0; i < 9; ++i) type_cube = pg_evidence_premise(type_cube, 0);
+			for (size_t i = 0; i < 9; ++i) type_cube = pg_context_parent_input(typing, type_cube);
 			complete(&synthesis, pg_synthesis_substitution(&synthesis,
-				pg_evidence_premise(type_cube, 0), original, 8, images), PG_SYNTHESIS_DONE);
+				pg_context_parent_input(typing, type_cube), original, 8, images), PG_SYNTHESIS_DONE);
 			complete(&synthesis, pg_synthesis_substitution(&synthesis,
 				type_cube, original, 9, images), PG_SYNTHESIS_REJECTED);
 			complete(&synthesis, map, PG_SYNTHESIS_REJECTED);
@@ -4790,8 +4790,8 @@ static void selected_instances(struct pg_typing *typing)
 	/* The second path's family still mentions the first chosen path, even for
 	 * a constant B. The solver builds the same explicit conversion as below;
 	 * the kernel rule itself still requires the converted premise. */
-	const struct pg_evidence *prefix = pg_evidence_premise(source, 0);
-	const struct pg_evidence *second_type = pg_prove_family_identity_type(typing, pg_evidence_premise(source, 1),
+	const struct pg_evidence *prefix = pg_context_parent_input(typing, source);
+	const struct pg_evidence *second_type = pg_prove_family_identity_type(typing, pg_context_declared_input(typing, source),
 		pg_prove_substitution(typing, prefix, choices, 4, li), pg_prove_substitution(typing, prefix, choices, 4, ri),
 		1, selected, li[4], ri[4]);
 	assert(second_type);
@@ -7051,7 +7051,7 @@ static void data_cases(struct pg_typing *typing)
 	const struct pg_evidence *declarations[7], *declaration = target;
 	for (size_t n = 7; n; --n) {
 		declarations[n - 1] = declaration;
-		declaration = pg_evidence_premise(declaration, 0);
+		declaration = pg_context_parent_input(typing, declaration);
 	}
 	const struct pg_evidence *sigma = pg_prove_substitution(typing, declaration, boundary, 0, NULL);
 	const struct pg_evidence *bulk_sigma = sigma;
@@ -7074,7 +7074,7 @@ static void data_cases(struct pg_typing *typing)
 		/* Pairing borrows the same post-check as an independent consumer;
 		 * no second conversion or receipt is reconstructed for the image. */
 		struct pg_synthesis_job *domain = pg_synthesis_reindex(&split, prefix,
-			pg_evidence_premise(declarations[n], 1));
+			pg_context_declared_input(typing, declarations[n]));
 		struct pg_synthesis_job *post_check = pg_synthesis_expect(&split,
 			pg_synthesis_evidence(&split, values[n]), domain);
 		assert(pg_synthesis_status(post_check) == PG_SYNTHESIS_DONE);
@@ -7493,7 +7493,7 @@ int main(void)
 	application_allocations(&synthesis, scope, pg_prove_projection(&typing, x_context, typed_reduct), return_x);
 	/* Negative Identity discovery is also shared, not restarted per call. */
 	const struct pg_evidence *ordinary_domains[] = {
-		pg_evidence_premise(a_context, 1), pg_evidence_premise(x_context, 1)};
+		pg_context_declared_input(&typing, a_context), pg_context_declared_input(&typing, x_context)};
 	for (size_t i = 0; i < 2; ++i) {
 		size_t jobs = synthesis.jobs.count;
 		struct pg_synthesis_job *discovered = pg_synthesis_identity_formation(&synthesis,

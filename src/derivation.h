@@ -36,9 +36,14 @@ struct pg_derivation_input {
 	size_t count;
 	const struct pg_derivation_input *premises[];
 };
-/* Extract a header only; callers traverse the ordinary premise DAG separately.
+/* Extract checking inputs, not their physical receipt layout. Context inputs
+ * come from selected declarations; other rules still retain premise history.
  * Receipt endpoints become obligations and no acceptance flag is copied. */
 int pg_derivation_input_header(const struct pg_evidence *proof, struct pg_derivation_input *input);
+/* Read-only dependency enumeration: 1 supplies an already accepted input,
+ * 0 is past the end, -1 is unavailable/foreign. Never reconstruct a proof. */
+int pg_derivation_input_dependency(const struct pg_typing *typing,
+	const struct pg_evidence *proof, size_t index, const struct pg_evidence **child);
 int pg_derivation_parameters(const struct pg_evidence *evidence,
 	struct pg_derivation_parameters *parameters);
 /* Reconstruct from accepted premises using only pg_prove_* rules. The returned

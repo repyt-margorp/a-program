@@ -2,6 +2,30 @@
 #include "scope.h"
 #include "dag.h"
 
+const struct pg_evidence *pg_context_parent_input(const struct pg_typing *typing,
+	const struct pg_evidence *context)
+{
+	if (!pg_evidence_owned_by(context, typing)) return NULL;
+	const struct pg_scope *scope = pg_evidence_scope(context);
+	return scope ? pg_evidence_for_scope(typing, scope->parent) : NULL;
+}
+
+const struct pg_evidence *pg_context_indices_input(const struct pg_typing *typing,
+	const struct pg_evidence *context)
+{
+	if (!pg_evidence_owned_by(context, typing)) return NULL;
+	const struct pg_scope *scope = pg_evidence_scope(context);
+	return scope && scope->indices ? pg_evidence_for_scope(typing, scope->indices) : NULL;
+}
+
+const struct pg_evidence *pg_context_declared_input(const struct pg_typing *typing,
+	const struct pg_evidence *context)
+{
+	if (!pg_evidence_owned_by(context, typing)) return NULL;
+	const struct pg_scope *scope = pg_evidence_scope(context);
+	return scope ? pg_evidence_for_subject(typing, scope->type, NULL) : NULL;
+}
+
 static int scope_dependency(void *owner, const void *key, size_t index, const void **child)
 {
 	(void)index;

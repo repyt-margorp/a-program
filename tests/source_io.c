@@ -22,14 +22,14 @@ static struct pg_synthesis_job *parse(struct pg_program *program,
 static void indexed_ih_fiber(struct pg_program *p, const struct pg_evidence *formation)
 {
 	const struct pg_evidence *self = pg_evidence_premise(formation, 0);
-	const struct pg_evidence *context = pg_evidence_premise(self, 0);
+	const struct pg_evidence *context = pg_context_parent_input(&p->typing, self);
 	const struct pg_evidence *parameters = pg_prove_substitution_projection(&p->typing, context, context);
 	const struct pg_evidence *mc = pg_prove_inductive_motive_context(&p->typing,
 		formation, parameters, pg_binder(&p->graph));
 	assert(mc);
 	const struct pg_evidence *motive = pg_prove_computation_type(&p->typing, PG_TOTALITY_TOTAL,
 		pg_effect_row(&p->graph, 0, NULL),
-		pg_prove_projection(&p->typing, mc, pg_evidence_premise(mc, 1)));
+		pg_prove_projection(&p->typing, mc, pg_context_declared_input(&p->typing, mc)));
 	struct pg_inductive_instance instance;
 	assert(motive && pg_inductive_instance(&p->typing, formation, &instance));
 	const struct pg_object *next = pg_data_constructor(pg_data_schema_layout(instance.schema), 1);

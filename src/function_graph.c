@@ -65,11 +65,11 @@ static int graph_universe(struct pg_function_graph_state *s, uint64_t *level)
 		!pg_universe_level(pg_evidence_classifier(s->range), &b)) return -1;
 	*level = a > b ? a : b;
 	for (size_t i = 0; i < s->index_count; ++i) {
-		if (!pg_universe_level(pg_evidence_classifier(pg_evidence_premise(s->index_arguments[i], 1)), &a)) return -1;
+		if (!pg_universe_level(pg_evidence_classifier(pg_context_declared_input(s->typing, s->index_arguments[i])), &a)) return -1;
 		if (a > *level) *level = a;
 	}
 	for (size_t i = 0; i < s->arity; ++i) {
-		if (!pg_universe_level(pg_evidence_classifier(pg_evidence_premise(s->arguments[i], 1)), &a)) return -1;
+		if (!pg_universe_level(pg_evidence_classifier(pg_context_declared_input(s->typing, s->arguments[i])), &a)) return -1;
 		if (a > *level) *level = a;
 	}
 	return 0;
@@ -219,7 +219,7 @@ static int plan_case(struct pg_function_graph_state *s, struct graph_case *plan)
 	if (count > SIZE_MAX / sizeof(*plan->hypothesis_fields)) return -1;
 	plan->hypothesis_fields = pg_alloc(&s->temporary, count * sizeof(*plan->hypothesis_fields));
 	if (count && !plan->hypothesis_fields) return -1;
-	for (size_t i = count; s->induction && i; --i, fields = pg_evidence_premise(fields, 0)) {
+	for (size_t i = count; s->induction && i; --i, fields = pg_context_parent_input(t, fields)) {
 		const struct pg_term *type = pg_evidence_context(fields)->declared_type;
 		int recursive = pg_data_recursive_field(type, parameters->binder);
 		if (recursive < 0) return -1;
@@ -753,7 +753,7 @@ const struct pg_evidence *pg_function_plan_case_source_map(struct pg_function_gr
 	}
 	for (size_t i = 0; map && i < s->arity; ++i) {
 		const struct pg_evidence *source = plan->scopes[count + plan->hypothesis_count + i];
-		context = pg_prove_context_extension(t, context, pg_binder(t->graph), pg_function_plan_map_value(s, map, pg_evidence_premise(source, 1)));
+		context = pg_prove_context_extension(t, context, pg_binder(t->graph), pg_function_plan_map_value(s, map, pg_context_declared_input(t, source)));
 		if (!context) return NULL;
 		arguments[i] = pg_prove_variable(t, context, pg_evidence_context(context)->binder);
 		map = pg_prove_substitution_compose(t, map,
@@ -1174,7 +1174,7 @@ static void prepare_graph(struct pg_function_graph_state *s)
 				const struct pg_term *image = pg_evidence_context_map(s->input.indices)->images[offset + i - 1]->core;
 				if (image != pg_reference(typing->graph, pg_evidence_context(s->context)->binder)) goto capture;
 				s->index_arguments[i - 1] = s->context;
-				s->context = pg_evidence_premise(s->context, 0);
+				s->context = pg_context_parent_input(typing, s->context);
 			}
 		}
 		s->count = pg_data_constructor_count(s->input.schema);
@@ -1357,7 +1357,7 @@ enum pg_function_graph_status pg_function_graph_advance(struct pg_function_graph
 			}
 			for (const struct pg_evidence *context = s->context;
 				s->formation && pg_evidence_context(context) != pg_evidence_context(s->outer_context);
-				context = pg_evidence_premise(context, 0))
+				context = pg_context_parent_input(s->typing, context))
 				s->formation = pg_prove_family_abstraction(s->typing, context, s->formation);
 			s->status = s->formation ? PG_FUNCTION_GRAPH_DONE : PG_FUNCTION_GRAPH_UNSUPPORTED;
 			break;

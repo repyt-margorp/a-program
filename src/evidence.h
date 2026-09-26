@@ -360,6 +360,14 @@ const struct pg_evidence *pg_prove_scope(struct pg_typing *typing,
 	const struct pg_scope *scope);
 const struct pg_evidence *pg_prove_scoped_subject(struct pg_typing *typing,
 	const struct pg_scope *scope, const struct pg_occurrence *subject);
+/* Borrow checks of a Context's selected typed inputs. No inference, allocation
+ * or history traversal; NULL means no such local admitted input. */
+const struct pg_evidence *pg_context_parent_input(const struct pg_typing *typing,
+	const struct pg_evidence *context);
+const struct pg_evidence *pg_context_indices_input(const struct pg_typing *typing,
+	const struct pg_evidence *context);
+const struct pg_evidence *pg_context_declared_input(const struct pg_typing *typing,
+	const struct pg_evidence *context);
 const struct pg_evidence *pg_prove_context_extension(struct pg_typing *typing,
 	const struct pg_evidence *parent, const struct pg_object *binder,
 	const struct pg_evidence *type);

@@ -949,12 +949,12 @@ static void square_transposition_boundary(struct pg_typing *typing)
 	assert(contexts[0] && contexts[1]);
 	/* Instantiate the opposite orientation's boundary template using only the
 	 * original proper faces. Neither context supplies a center inhabitant. */
-	const struct pg_evidence *proper_context = pg_evidence_premise(contexts[0], 0);
-	const struct pg_evidence *original_type = pg_evidence_premise(contexts[0], 1);
+	const struct pg_evidence *proper_context = pg_context_parent_input(typing, contexts[0]);
+	const struct pg_evidence *original_type = pg_context_declared_input(typing, contexts[0]);
 	const struct pg_evidence *opposite_extensions[9], *opposite_cursor = contexts[1];
 	for (size_t i = 9; i; --i) {
 		opposite_extensions[i - 1] = opposite_cursor;
-		opposite_cursor = pg_evidence_premise(opposite_cursor, 0);
+		opposite_cursor = pg_context_parent_input(typing, opposite_cursor);
 	}
 	const struct pg_evidence *boundary_map = pg_prove_substitution(typing, empty, proper_context, 0, NULL);
 	for (size_t i = 0; i < 8; ++i) {
@@ -965,13 +965,13 @@ static void square_transposition_boundary(struct pg_typing *typing)
 		const struct pg_evidence *image = pg_identity_proper_face(typing, proper_context, original_type, ordered);
 		assert(image);
 		const struct pg_evidence *required = pg_prove_reindex(typing, boundary_map,
-			pg_evidence_premise(opposite_extensions[i], 1));
+			pg_context_declared_input(typing, opposite_extensions[i]));
 		image = convert_to(typing, &work, image, required);
 		boundary_map = pg_prove_substitution_pair(typing, boundary_map, opposite_extensions[i], image);
 		assert(boundary_map);
 	}
 	const struct pg_evidence *opposite_type = pg_prove_reindex(typing, boundary_map,
-		pg_evidence_premise(contexts[1], 1));
+		pg_context_declared_input(typing, contexts[1]));
 	assert(opposite_type && pg_evidence_context(opposite_type) == pg_evidence_context(proper_context));
 	assert(pg_evidence_judgement(opposite_type) == pg_evidence_judgement(original_type));
 	assert(pg_evidence_classifier(opposite_type) == pg_evidence_classifier(original_type));
@@ -991,7 +991,7 @@ static void square_transposition_boundary(struct pg_typing *typing)
 			const struct pg_evidence *value = pg_prove_variable(typing, contexts[orientation], &face->variable);
 			assert(value && pg_evidence_subject(value)->core == pg_reference(graph, &face->variable));
 			assert(pg_prove_classifier(typing, contexts[orientation], value));
-			declaration = pg_evidence_premise(declaration, 0);
+			declaration = pg_context_parent_input(typing, declaration);
 		}
 		assert(declaration == empty);
 	}
@@ -1001,7 +1001,7 @@ static void square_transposition_boundary(struct pg_typing *typing)
 	const struct pg_evidence *extensions[9], *cursor = contexts[0];
 	for (size_t i = 9; i; --i) {
 		extensions[i - 1] = cursor;
-		cursor = pg_evidence_premise(cursor, 0);
+		cursor = pg_context_parent_input(typing, cursor);
 	}
 	const struct pg_evidence *map = pg_prove_substitution(typing, empty, contexts[1], 0, NULL);
 	const struct pg_dimension_map *inverse = pg_dimension_inverse(&dimensions, swap);
@@ -1017,7 +1017,7 @@ static void square_transposition_boundary(struct pg_typing *typing)
 		assert(pg_dimension_compose(&dimensions, image->face, intrinsic) == face->face);
 		const struct pg_evidence *value = pg_prove_variable(typing, contexts[1], &image->variable);
 		assert(value);
-		value = convert_to(typing, &work, value, pg_prove_reindex(typing, map, pg_evidence_premise(extensions[i], 1)));
+		value = convert_to(typing, &work, value, pg_prove_reindex(typing, map, pg_context_declared_input(typing, extensions[i])));
 		map = pg_prove_substitution_pair(typing, map, extensions[i], value);
 		assert(map);
 	}
@@ -1026,19 +1026,19 @@ static void square_transposition_boundary(struct pg_typing *typing)
 	assert(pg_dimension_face_factor(&dimensions, inverse, &center_face, &center_orientation) == 0);
 	assert(center_face == pg_dimension_identity(&dimensions, 2));
 	assert(center_orientation == swap);
-	const struct pg_evidence *expected = pg_prove_reindex(typing, map, pg_evidence_premise(extensions[8], 1));
+	const struct pg_evidence *expected = pg_prove_reindex(typing, map, pg_context_declared_input(typing, extensions[8]));
 	assert(center && expected);
 	const struct pg_evidence *recovered = pg_identity_formation(typing, expected);
 	assert(recovered && pg_evidence_rule(recovered) == PG_FAMILY_IDENTITY_FORM);
 	assert(pg_evidence_context(recovered) == pg_evidence_context(expected));
-	assert(pg_evidence_premise(recovered, 0) == pg_evidence_premise(pg_evidence_premise(extensions[8], 1), 0));
+	assert(pg_evidence_premise(recovered, 0) == pg_evidence_premise(pg_context_declared_input(typing, extensions[8]), 0));
 	assert(pg_alpha_equal(pg_evidence_subject(recovered)->core, pg_evidence_subject(expected)->core) == 1);
 	assert(pg_identity_formation(typing, expected) == recovered);
 	for (size_t depth = 0; depth < 2; ++depth) {
 		for (unsigned side = 0; side < 2; ++side) {
 			enum pg_identity_direction direction = side ? PG_IDENTITY_RIGHT : PG_IDENTITY_LEFT;
 			const struct pg_evidence *before = pg_identity_face_endpoint(typing,
-				pg_evidence_premise(map, 0), pg_evidence_premise(extensions[8], 1), depth, direction);
+				pg_evidence_premise(map, 0), pg_context_declared_input(typing, extensions[8]), depth, direction);
 			const struct pg_evidence *after = pg_identity_face_endpoint(typing,
 				contexts[1], expected, depth, direction);
 			assert(action_result(typing, contexts[1], &work, after,
@@ -1048,7 +1048,7 @@ static void square_transposition_boundary(struct pg_typing *typing)
 	const struct pg_evidence *type_value = pg_prove_type_value(typing, expected);
 	assert(type_value && !pg_identity_formation(typing, type_value));
 	assert(pg_identity_formation(typing, pg_prove_value_type(typing, type_value)) == recovered);
-	const struct pg_evidence *source_value = pg_prove_type_value(typing, pg_evidence_premise(extensions[8], 1));
+	const struct pg_evidence *source_value = pg_prove_type_value(typing, pg_context_declared_input(typing, extensions[8]));
 	const struct pg_evidence *mapped_value = pg_prove_reindex(typing, map, source_value);
 	assert(pg_identity_formation(typing, pg_prove_value_type(typing, mapped_value)) == recovered);
 	const struct pg_evidence *extended = pg_prove_context_extension(typing, contexts[1], pg_binder(graph),
@@ -1063,7 +1063,7 @@ static void square_transposition_boundary(struct pg_typing *typing)
 	assert(!pg_identity_formation(typing, pg_prove_universe(typing, empty, 0)));
 	/* Reuse the selected boundary for computation Identity, not a value-side
 	 * encoding or a conversion of its polarity. */
-	const struct pg_evidence *original = pg_evidence_premise(extensions[8], 1);
+	const struct pg_evidence *original = pg_context_declared_input(typing, extensions[8]);
 	struct pg_identity_boundary original_boundary;
 	assert(pg_identity_boundary_view(pg_evidence_subject(original), &original_boundary));
 	for (size_t i = 0; i < original_boundary.path_count; ++i)
@@ -2370,7 +2370,7 @@ static void boundary_context(struct pg_typing *typing,
 	assert(pg_evidence_subject(type)->core == context->declared_type);
 	assert(pg_evidence_classifier(variable) == context->declared_type);
 	const struct pg_evidence *extensions[] = {
-		pg_evidence_premise(pg_evidence_premise(cp, 0), 0), pg_evidence_premise(cp, 0), cp
+		pg_context_parent_input(typing, pg_context_parent_input(typing, cp)), pg_context_parent_input(typing, cp), cp
 	};
 	const struct pg_object *binders[] = {&left->variable, &right->variable, &center->variable};
 	const struct pg_evidence *lifted = substitution;
@@ -2559,11 +2559,24 @@ static void dependent_families(struct pg_typing *typing,
 	const struct pg_evidence *third_context = pg_identity_substitution_context(typing,
 		third_left, third_right, 3, third_binders, third_paths);
 	assert(third_context);
-	const struct pg_evidence *third_type = pg_evidence_premise(third_context, 1);
-	for (size_t i = 1; i <= 2; ++i)
-		assert(pg_evidence_context_map(pg_evidence_premise(pg_evidence_premise(third_type, i), 2))->count == 1);
-	const struct pg_evidence *first_context = pg_evidence_premise(pg_evidence_premise(third_context, 0), 0);
-	assert(pg_evidence_subject(pg_evidence_premise(pg_evidence_premise(first_context, 1), 3)) ==
+	const struct pg_evidence *third_type = pg_context_declared_input(typing, third_context);
+	struct pg_identity_boundary third_boundary;
+	assert(pg_identity_boundary_view(pg_evidence_subject(third_type), &third_boundary));
+	assert(third_boundary.path_count == 2);
+	const struct pg_context_map *third_maps[] = {third_boundary.left_substitution, third_boundary.right_substitution};
+	const struct pg_evidence *third_inputs[] = {third_left, third_right};
+	for (size_t side = 0; side < 2; ++side) {
+		assert(third_maps[side] && third_maps[side]->count == 2);
+		const struct pg_evidence *projection = pg_prove_substitution_projection(typing, scope,
+			pg_context_parent_input(typing, third_context));
+		for (size_t i = 0; i < 2; ++i) {
+			const struct pg_evidence *image = pg_prove_reindex(typing, projection,
+				pg_substitution_image_at(typing, third_inputs[side], i));
+			assert(image && pg_evidence_subject(image) == third_maps[side]->images[i]);
+		}
+	}
+	const struct pg_evidence *first_context = pg_context_parent_input(typing, pg_context_parent_input(typing, third_context));
+	assert(pg_evidence_subject(pg_evidence_premise(pg_context_declared_input(typing, first_context), 3)) ==
 		pg_evidence_subject(alternate_a));
 	path_proofs = typing->proofs.count; path_terms = typing->graph->terms.count;
 	const struct pg_evidence *third_again[3];
@@ -2757,7 +2770,7 @@ static void dependent_families(struct pg_typing *typing,
 		pg_prove_classifier(typing, boundary, pg_prove_variable(typing, boundary, center)));
 	for (size_t i = 0; i < 3; ++i) {
 		output = pg_prove_pi(typing, boundary, output);
-		boundary = pg_evidence_premise(boundary, 0);
+		boundary = pg_context_parent_input(typing, boundary);
 	}
 	assert(output);
 	converts(&work, pg_evidence_subject(acted_pi)->core, pg_evidence_subject(output)->core);

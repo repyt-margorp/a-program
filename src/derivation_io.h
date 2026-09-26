@@ -36,10 +36,13 @@ int pg_derivation_inputs_collect_objects(struct pg_dag *objects, size_t count,
 
 /* Nominal rules require the declaration graph codec (declaration_io.h).
  * Family/constructor parameters share the same Core relocation table as all
- * other terms. Their reconstruction is not evidence of rule validity. */
-int pg_derivations_write(FILE *file, size_t count, const struct pg_evidence *const *roots,
+ * other terms. Their reconstruction is not evidence of rule validity. The
+ * explicit store resolves selected Context inputs without replay or mutation. */
+int pg_derivations_write(FILE *file, const struct pg_typing *typing,
+	size_t count, const struct pg_evidence *const *roots,
 	const char *(*name)(void *, const struct pg_object *), void *owner);
-int pg_derivations_write_descriptors(FILE *file, size_t count, const struct pg_evidence *const *roots,
+int pg_derivations_write_descriptors(FILE *file, const struct pg_typing *typing,
+	size_t count, const struct pg_evidence *const *roots,
 	const struct pg_graph_codec *codec, void *owner);
 /* Save ordinary, possibly invalid/unaccepted rule inputs without running Solve.
  * Same record grammar as accepted derivations; no acceptance flag is stored.

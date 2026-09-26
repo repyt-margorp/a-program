@@ -124,7 +124,7 @@ static void pair_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *j
 	struct pair_work *local = pg_synthesis_work_state(job, PAIR_JOB);
 	if (!local->checked) {
 		struct pg_synthesis_job *type = pg_synthesis_reindex(synthesis,
-			job->inputs[0], pg_evidence_premise(job->inputs[1], 1));
+			job->inputs[0], pg_context_declared_input(synthesis->typing, job->inputs[1]));
 		local->checked = pg_synthesis_expect(synthesis,
 			pg_synthesis_evidence(synthesis, job->inputs[2]), type);
 	}
@@ -181,7 +181,7 @@ static void substitution_step(struct pg_synthesis *synthesis, struct pg_synthesi
 		if (count > SIZE_MAX / sizeof(*local->extensions)) goto error;
 		local->extensions = pg_alloc(synthesis->typing->graph, count * sizeof(*local->extensions));
 		if (count && !local->extensions) goto error;
-		for (size_t i = count; i; --i, source = pg_evidence_premise(source, 0)) local->extensions[i - 1] = source;
+		for (size_t i = count; i; --i, source = pg_context_parent_input(synthesis->typing, source)) local->extensions[i - 1] = source;
 		local->map = pg_prove_substitution(synthesis->typing, source, contexts[1], 0, NULL);
 		if (!local->map) goto error;
 	}

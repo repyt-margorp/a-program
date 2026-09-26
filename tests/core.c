@@ -87,22 +87,24 @@ static void reconstruct_derivation(struct pg_typing *typing,
 	const struct pg_evidence *source)
 {
 	assert(source);
-	struct pg_derivation_parameters parameters;
-	assert(pg_derivation_parameters(source, &parameters) == 0);
-	size_t count = pg_evidence_premise_count(source);
+	struct pg_derivation_input input;
+	assert(pg_derivation_input_header(source, &input) == 0);
+	assert(pg_derivation_parameters(source, &input.parameters) == 0);
+	size_t count = input.count;
 	const struct pg_evidence *const *borrowed = pg_evidence_premises(source);
-	for (size_t i = 0; i < count; ++i) assert(borrowed[i] == pg_evidence_premise(source, i));
-	assert(pg_prove_derivation(typing, pg_evidence_rule(source), &parameters, count, borrowed) == source);
-	assert(pg_evidence_premises(source) == borrowed);
+	for (size_t i = 0; i < pg_evidence_premise_count(source); ++i) assert(borrowed[i] == pg_evidence_premise(source, i));
+	if (pg_evidence_judgement(source) == PG_JUDGEMENT_CONTEXT) assert(!pg_evidence_premise_count(source));
 	const struct pg_evidence **premises = pg_alloc(typing->graph, (count + 1) * sizeof(*premises));
 	assert(premises);
-	for (size_t i = 0; i < count; ++i) premises[i] = pg_evidence_premise(source, i);
-	assert(pg_prove_derivation(typing, pg_evidence_rule(source), &parameters, count, premises) == source);
+	for (size_t i = 0; i < count; ++i) assert(pg_derivation_input_dependency(typing, source, i, premises + i) == 1);
+	assert(pg_derivation_input_dependency(typing, source, count, premises + count) == 0);
+	assert(pg_prove_derivation(typing, input.rule, &input.parameters, count, premises) == source);
+	assert(pg_evidence_premises(source) == borrowed);
 	premises[count] = source;
-	assert(!pg_prove_derivation(typing, pg_evidence_rule(source), &parameters, count + 1, premises));
+	assert(!pg_prove_derivation(typing, input.rule, &input.parameters, count + 1, premises));
 	if (count) {
 		premises[0] = NULL;
-		assert(!pg_prove_derivation(typing, pg_evidence_rule(source), &parameters, count, premises));
+		assert(!pg_prove_derivation(typing, input.rule, &input.parameters, count, premises));
 	}
 }
 
@@ -510,7 +512,7 @@ static void evidence_test(struct pg_graph *graph)
 	const struct pg_object *x = pg_binder(graph);
 	const struct pg_object *y = pg_binder(graph);
 	const struct pg_evidence *a_context = pg_prove_context_extension(&typing, empty, a, u0);
-	assert(a_context && pg_evidence_premise(a_context, 1) == u0);
+	assert(a_context && pg_context_declared_input(&typing, a_context) == u0);
 	const struct pg_evidence *a_type = pg_prove_variable(&typing, a_context, a);
 	assert(a_type && pg_evidence_classifier(a_type) == pg_universe(graph, 0));
 	const struct pg_evidence *x_context = pg_prove_context_extension(&typing, a_context, x, a_type);
@@ -1367,7 +1369,7 @@ static void evidence_test(struct pg_graph *graph)
 	assert(pg_evidence_subject(u0_value)->judgement == PG_JUDGEMENT_VALUE);
 	const struct pg_evidence *u0_again = pg_prove_value_type(&typing, u0_value);
 	assert(u0_again != u0 && pg_evidence_subject(u0_again) == pg_evidence_subject(u0));
-	assert(pg_evidence_premise(a_context, 1) == u0);
+	assert(pg_context_declared_input(&typing, a_context) == u0);
 	const struct pg_evidence *records[] = {empty, u0, a_context, a_type, x_context,
 		fa, ufa, pi, high_pi, x_term, returned, delayed, forced, identity,
 		identity_y, app, converted, projected_x, projected_formation};
@@ -1984,7 +1986,7 @@ static void typed_substitution_test(struct pg_graph *graph)
 		pg_prove_type_value(&typing, pg_prove_value_type(&typing, b_type)));
 	assert(other_destination == destination);
 	assert(pg_evidence_context(other_destination) == pg_evidence_context(destination));
-	const struct pg_evidence *selected_type = pg_evidence_premise(destination, 1);
+	const struct pg_evidence *selected_type = pg_context_declared_input(&typing, destination);
 	const struct pg_evidence *alternative_type = pg_prove_return_content(&typing,
 		pg_prove_return_type(&typing, selected_type));
 	assert(alternative_type != selected_type);
@@ -2010,7 +2012,7 @@ static void typed_substitution_test(struct pg_graph *graph)
 	reconstruct_derivation(&typing, reverse);
 	reconstruct_derivation(&typing, other_reverse);
 	const struct pg_evidence *other_extension = pg_prove_context_extension(&typing, other_destination,
-		pg_evidence_context(extended_destination)->binder, pg_evidence_premise(extended_destination, 1));
+		pg_evidence_context(extended_destination)->binder, pg_context_declared_input(&typing, extended_destination));
 	assert(other_extension == extended_destination);
 	const struct pg_evidence *other_projection = pg_prove_substitution_projection(&typing, other_destination, other_extension);
 	assert(other_projection == projection_map);

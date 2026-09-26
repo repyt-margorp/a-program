@@ -290,7 +290,7 @@ enum pg_function_graph_status pg_function_graph_witness_advance(struct pg_functi
 				const struct pg_evidence *context = pg_evidence_premise(map, 1);
 				s->motive = pg_prove_computation_type(s->typing, s->totality,
 					pg_effect_row(s->typing->graph, 0, NULL), packet_type(s, map));
-				for (size_t i = s->arity; s->motive && i; --i, context = pg_evidence_premise(context, 0))
+				for (size_t i = s->arity; s->motive && i; --i, context = pg_context_parent_input(s->typing, context))
 					s->motive = pg_prove_pi(s->typing, context, s->motive);
 				if (!s->motive) goto unsupported;
 			}

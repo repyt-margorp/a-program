@@ -11,13 +11,13 @@
 
 static const char magic[8] = {'A', 'P', 'G', 'D', 'R', 'V', 0, 16};
 
-static int premise(void *unused, const void *key, size_t index, const void **child)
+static int premise(void *owner, const void *key, size_t index, const void **child)
 {
-	(void)unused;
-	const struct pg_evidence *proof = key;
-	if (index == pg_evidence_premise_count(proof)) return 0;
-	*child = pg_evidence_premise(proof, index);
-	return 1;
+	const struct pg_typing *const *typing = owner;
+	const struct pg_evidence *input = NULL;
+	int status = pg_derivation_input_dependency(*typing, key, index, &input);
+	*child = input;
+	return status;
 }
 
 static int input_premise(void *unused, const void *key, size_t index, const void **child)
@@ -135,14 +135,16 @@ done:
 	return status;
 }
 
-int pg_derivations_write(FILE *file, size_t count, const struct pg_evidence *const *roots,
+int pg_derivations_write(FILE *file, const struct pg_typing *typing,
+	size_t count, const struct pg_evidence *const *roots,
 	const char *(*name)(void *, const struct pg_object *), void *owner)
 {
 	const struct pg_graph_codec codec = {.name = name};
-	return pg_derivations_write_descriptors(file, count, roots, &codec, owner);
+	return pg_derivations_write_descriptors(file, typing, count, roots, &codec, owner);
 }
 
-static int write_dag(FILE *file, size_t count, const struct pg_evidence *const *proofs,
+static int write_dag(FILE *file, const struct pg_typing *typing,
+	size_t count, const struct pg_evidence *const *proofs,
 	const struct pg_derivation_input *const *inputs, const struct pg_effect_inference *work,
 	const struct pg_graph_codec *codec, void *owner)
 {
@@ -151,7 +153,7 @@ static int write_dag(FILE *file, size_t count, const struct pg_evidence *const *
 	struct pg_dag term_roots = {0};
 	struct pg_graph arena = {0};
 	int status = -1;
-	if (pg_dag_init(&dag, inputs ? input_premise : premise, NULL) || pg_dag_init(&term_roots, NULL, NULL)
+	if (pg_dag_init(&dag, inputs ? input_premise : premise, &typing) || pg_dag_init(&term_roots, NULL, NULL)
 		|| pg_graph_init(&arena)) goto done;
 	for (size_t i = 0; i < count; ++i)
 		if (pg_dag_add(&dag, inputs ? (const void *)inputs[i] : proofs[i])) goto done;
@@ -185,7 +187,7 @@ static int write_dag(FILE *file, size_t count, const struct pg_evidence *const *
 		if (pg_wire_write_u64(file, arity)) goto done;
 		for (size_t i = 0; i < arity; ++i) {
 			const void *child;
-			if (dag.child(NULL, node->key, i, &child) != 1) goto done;
+			if (dag.child(dag.context, node->key, i, &child) != 1) goto done;
 			const struct pg_dag_node *p = pg_dag_find(&dag, child);
 			if (!p || pg_wire_write_u64(file, p->id)) goto done;
 		}
@@ -213,10 +215,11 @@ done:
 	return status;
 }
 
-int pg_derivations_write_descriptors(FILE *file, size_t count, const struct pg_evidence *const *roots,
+int pg_derivations_write_descriptors(FILE *file, const struct pg_typing *typing,
+	size_t count, const struct pg_evidence *const *roots,
 	const struct pg_graph_codec *codec, void *owner)
 {
-	return write_dag(file, count, roots, NULL, NULL, codec, owner);
+	return write_dag(file, typing, count, roots, NULL, NULL, codec, owner);
 }
 
 int pg_derivation_inputs_write(FILE *file, size_t count, const struct pg_derivation_input *const *roots,
@@ -229,7 +232,7 @@ int pg_derivation_inputs_write_inference(FILE *file, size_t count,
 	const struct pg_derivation_input *const *roots, const struct pg_effect_inference *work,
 	const struct pg_graph_codec *codec, void *owner)
 {
-	return write_dag(file, count, NULL, roots, work, codec, owner);
+	return write_dag(file, NULL, count, NULL, roots, work, codec, owner);
 }
 
 struct input_record {
