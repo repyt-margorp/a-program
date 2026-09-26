@@ -4,7 +4,7 @@ Date: 2026-09-25
 Updated: 2026-09-26
 Status: P1-P3 closed. P4 Identity-boundary/Lambda-scope/typed-only function,
 result-formation and typed-map/variable-image slices verified. P5 effect/shared-work/
-Handler/Operation/CBPV/function/Context/IADT-scope/basic-Identity owners verified.
+Handler/Operation/CBPV/function/Context/IADT-scope/transport/basic-Identity owners verified.
 Verification uses clean publication trees, full acceptance and affected sanitizers.
 Broader P4 typed-proof migration and P5 synthesis modularity remain open.
 Layout milestone (user-authorized 2026-09-26): see
@@ -1013,6 +1013,21 @@ owner localization, not completion of typed-history removal or higher Identity.
 
 - [x] Confirm that owner-level semantics are partially separated while synthesis
   remains concentrated; distinguish this task from P4's representation change.
+- [x] **IADT transport owner, baseline `f3c5a23`:** move constructor disjointness/
+  field Identity and index/result transport, including private progress and
+  provisional target inspection, out of the source-wide state/dispatch.
+  Keep ordinary Identity action/transport and the same work index/queue.
+  At baseline, `index_transport_candidate` allocates a fresh bound Context and
+  endpoint maps before a conversion that can yield; retain these candidate
+  inputs instead of rebuilding them on resumption. Confirm with a focused
+  pending-case test, not only whole-program timings. Preserve finite progress,
+  exact paths, dependent fields, cancellation, `::` post-checking and rejection.
+  Run focused/Debug/sanitizer, source/image, full acceptance and paired timings;
+  report mechanical movement separately from algorithmic deletion. This does
+  not complete the missing family-declaration contract in P4.2 or move all
+  Match/motive work out of the source owner.
+  Verified below: extraction, retained-candidate regression, full acceptance,
+  Debug/ASan/UBSan, opposite-version images and quiet paired timings pass.
 - [x] Verify the Context-action owner slice (baseline `f8c1224`): move reindex,
   checked pairing and lift requests out of the source union; pairing must share
   ordinary value post-checking instead of retaining a separate compare path.
@@ -1875,3 +1890,62 @@ Evidence: `/tmp/a-program-function-typed-final-{acceptance,profiles,cross}.log`,
 `/tmp/a-program-function-typed-cross.PkLaFp/`. These are local execution records,
 not portable fixtures; the new boundary regressions are in the tracked tests.
 This plan: **+84/-0**; combined implementation/tests/docs: **+244/-40, net +204**.
+
+IADT transport owner, baseline `f3c5a23`, 2026-09-26 (agent implementation decision):
+constructor disjointness/field Identity and index/result transport now live in
+`synthesis_iadt.c`. Their fixed private request state is 32/16 bytes rather than
+the 240-byte source-wide state; the shared header, queue and request index are
+unchanged. Conversion uses the existing common request, not a new worker/cache.
+Candidate Context/endpoint maps and the normalized-index scan position survive
+comparison waits. Waiting subscribes to that comparison instead of polling.
+No Core tags, typing rules, surface syntax or wire format changed.
+
+Fresh clean-candidate verification, inherited local trials excluded:
+- Full `check-acceptance` exits 0: wall **1540.874s**, user 1431.424s, system
+  108.495s; compatibility **63/63**, general Sorted, all four LT/partition
+  variants and optional-witness isolation/packets pass.
+- Optimized/Debug/ASan/UBSan Core, Program, IADT, Identity, Synthesis and
+  typed-only checks pass. A focused regression observes an actual normalized
+  index comparison wait, checks candidate allocation reuse and cancellation,
+  and separately completes normal scheduling. Forcing candidate reconstruction
+  in a temporary mutant makes its Context/proof-count assertion fail.
+- **36** source-image pairs, **72** opposite-version loads and **8** graph/
+  derivation reads pass, including pending and retained forms. This is checked
+  semantic compatibility, not a claim of identical bytes or checkpoint steps.
+
+Quiet timing: warmup plus six paired samples, reversing the last three; small
+cases batch 100 processes. Median seconds per invocation:
+
+| Workload | `f3c5a23` | Candidate |
+| --- | ---: | ---: |
+| Normalized index transport | 0.003214 | 0.003031 |
+| Certified length | 0.008881 | 0.009083 |
+| Partially applied function graph | 0.007895 | 0.008096 |
+| Function-field induction | 0.011250 | 0.010937 |
+| Explicit-index Vec append | 0.005569 | 0.005482 |
+| General Sorted | 0.806301 | 0.822125 |
+| Ordinary-result theorem | 0.741262 | 0.734633 |
+| Derived LT and content proof | 2.516272 | 2.505633 |
+| Certified length plus NF | 0.009143 | 0.009359 |
+
+Normalized-index Solve falls from 4143 to 4091 transitions; sampled time falls
+5.7%, with disjoint sample ranges. Other workloads retain their outputs/steps;
+their timing ranges overlap, including +2.5% for partial application and +2.0%
+for Sorted. Do not claim universal speedup or exact performance neutrality.
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `src/synthesis.c` | 20 | 803 | -783 |
+| `src/synthesis_iadt.c` | 841 | 0 | +841 |
+| `src/synthesis_source.h` | 9 | 0 | +9 |
+| `tests/synthesis.c` | 61 | 0 | +61 |
+
+Implementation **+870/-803, net +67**; tests **+61/-0**. Most changed lines are
+owner movement, not new semantics. This removes repeated candidate allocation
+and central dispatch/state cases, but is not overall source-line reduction.
+P4.2's family-declaration contract and the remaining P4/P5 work stay open.
+Logs: `/tmp/a-program-index-owner-{acceptance,profiles,cross,mutant}.log`,
+`/tmp/a-program-index-owner-acceptance.time`,
+`/tmp/a-program-index-owner-bench.jsonl`; cross-images:
+`/tmp/a-program-index-owner-cross.6bOXh3/`. Logs are local; the regression is tracked.
+This plan: **+75/-1**; complete slice: **+1006/-804, net +202**.

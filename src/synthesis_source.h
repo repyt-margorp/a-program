@@ -71,5 +71,14 @@ int pg_synthesis_await_preparation(struct pg_synthesis *, struct pg_synthesis_jo
 enum pg_comparison_status pg_synthesis_probe_advance(struct pg_synthesis *, struct pg_synthesis_job *, struct pg_comparison *);
 enum pg_comparison_status pg_synthesis_independence(struct pg_synthesis *, struct pg_synthesis_job *,
 	struct pg_comparison *, const struct pg_term *, const struct pg_object *);
+struct pg_synthesis_job *pg_synthesis_compare_terms(struct pg_synthesis *,
+	const struct pg_term *, const struct pg_term *);
+/* IADT-owned checked index transport. The second form discovers a result
+ * independent of the destination's excluded binders; it is not TypeExpect. */
+struct pg_synthesis_job *pg_synthesis_index_transport(struct pg_synthesis *,
+	struct pg_synthesis_job *, struct pg_synthesis_job *, struct pg_synthesis_job *);
+struct pg_synthesis_job *pg_synthesis_index_result(struct pg_synthesis *,
+	struct pg_synthesis_job *, struct pg_synthesis_job *, struct pg_synthesis_job *);
+struct pg_synthesis_job *pg_synthesis_index_transport_target(const struct pg_synthesis_job *);
 
 #endif

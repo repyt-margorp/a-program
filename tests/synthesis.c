@@ -169,6 +169,66 @@ static const struct pg_evidence *normalize(struct pg_synthesis *synthesis,
 	return complete(synthesis, pg_synthesis_normalize(synthesis, context, input), PG_SYNTHESIS_DONE);
 }
 
+static void pending_index_transport(void)
+{
+	const char *source =
+		"Nat := @{zero:*; succ:*->*;}; Bool := @{true:*; false:*;};"
+		"pick := \\b:Bool => b @true => (\\n:Nat => n) @false => (\\n:Nat => Nat.zero);"
+		"Box := @\\n:Nat => {mk:(k:Nat)->* k;};"
+		"Trace := \\f:Bool->Nat->Nat => \\b:Bool => \\n:Nat => @\\result:Nat => {done:* (f b n);};"
+		"value := \\b:Bool => \\n:Nat => Box.mk (pick b n);"
+		"consume := \\p:Box Nat.zero => Nat.zero;"
+		"good := \\b:Bool => \\n:Nat => \\trace:Trace (&pick) b n Nat.zero => trace @done => consume (value b n);"
+		"good :: (b:Bool)->(n:Nat)->Trace (&pick) b n Nat.zero->Nat;";
+	for (unsigned cancel = 0; cancel <= 1; ++cancel) {
+		struct pg_graph graph;
+		struct pg_typing typing;
+		struct pg_whnf_work work;
+		struct pg_synthesis synthesis;
+		assert(!pg_graph_init(&graph) && !pg_typing_init(&typing, &graph));
+		assert(!pg_whnf_work_init(&work, &graph));
+		assert(!pg_synthesis_init(&synthesis, &typing, &work, PG_DEFINITION_IMPLICIT_THUNK));
+		const struct pg_term *unit = pg_universe(&graph, 0);
+		struct pg_synthesis_job *comparison = pg_synthesis_compare_terms(&synthesis, unit, unit);
+		struct pg_synthesis_job *root = program(&synthesis, pg_synthesis_root(&synthesis), source);
+		unsigned waits = 0;
+		while (pg_synthesis_status(root) == PG_SYNTHESIS_PENDING) {
+			assert(synthesis.ready && synthesis.steps < 100000);
+			struct pg_synthesis_job *current = synthesis.ready;
+			pg_synthesis_advance(&synthesis, 1);
+			if (!pg_synthesis_index_transport_target(current)) continue;
+			assert(current->role->size == 2 * sizeof(void *));
+			const struct pg_synthesis_job *dependency = pg_synthesis_dependency(current);
+			if (!dependency || dependency->role != comparison->role) continue;
+			assert(current->status == PG_SYNTHESIS_PENDING);
+			assert(dependency->status == PG_SYNTHESIS_PENDING);
+			/* Reenter while conversion is pending: the candidate's fresh binder,
+			 * Context and endpoint maps must remain the same checked objects.
+			 * Only the abandoned run is probed: synthetic extra subscriptions
+			 * must not be delivered by the normal exactly-once scheduler. */
+			size_t contexts = typing.contexts.count, proofs = typing.proofs.count;
+			size_t terms = graph.terms.count, jobs = synthesis.jobs.count;
+			for (unsigned retry = 0; cancel && retry < 3; ++retry) {
+				current->role->advance(&synthesis, current);
+				assert(pg_synthesis_dependency(current) == dependency);
+				assert(typing.contexts.count == contexts && typing.proofs.count == proofs);
+				assert(graph.terms.count == terms && synthesis.jobs.count == jobs);
+			}
+			++waits;
+			assert(pg_synthesis_index_transport(&synthesis, (void *)current->inputs[0],
+				(void *)current->inputs[1], (void *)current->inputs[2]) == current);
+			if (cancel) break;
+		}
+		assert(waits);
+		assert(pg_synthesis_status(root) == (cancel ? PG_SYNTHESIS_PENDING : PG_SYNTHESIS_DONE));
+		pg_synthesis_destroy(&synthesis);
+		pg_whnf_work_destroy(&work);
+		pg_typing_destroy(&typing);
+		pg_graph_destroy(&graph);
+	}
+	puts("index transport: retained candidate scope/maps, shared comparison wait, reuse and cancellation passed");
+}
+
 static void accepted_structures(struct pg_typing *typing)
 {
 	const char *sources[] = {
@@ -7321,6 +7381,7 @@ int main(void)
 	assert(pg_graph_init(&graph) == 0);
 	assert(pg_typing_init(&typing, &graph) == 0);
 	owner_work_storage(&typing);
+	pending_index_transport();
 	accepted_structures(&typing);
 	source_body_kinds(&typing);
 	source_preparation_subscription(&typing);
