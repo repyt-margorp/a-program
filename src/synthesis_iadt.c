@@ -1,8 +1,72 @@
 #include "synthesis_source.h"
 #include "iadt.h"
 #include "action.h"
+#include "synthesis_conversion.h"
 
 #include <stdlib.h>
+
+struct inductive_instance_work {
+	struct pg_synthesis_reduction normalizing;
+	const struct pg_inductive_instance *instance;
+};
+static void inductive_instance_step(struct pg_synthesis *, struct pg_synthesis_job *);
+static const struct pg_synthesis_work_class INDUCTIVE_INSTANCE_JOB[1] = {{
+	.size = sizeof(struct inductive_instance_work), .advance = inductive_instance_step}};
+
+struct pg_synthesis_job *pg_synthesis_inductive_instance(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *type)
+{
+	if (!type || type->owner != synthesis->owner_key) return NULL;
+	if (type->status == PG_SYNTHESIS_DONE) type = pg_synthesis_evidence(synthesis, type->result);
+	const void *inputs[] = {type};
+	return type ? pg_synthesis_work_request(synthesis, INDUCTIVE_INSTANCE_JOB, 1, inputs) : NULL;
+}
+
+int pg_synthesis_inductive_instance_result(const struct pg_synthesis_job *job,
+	struct pg_inductive_instance *output)
+{
+	const struct inductive_instance_work *local = pg_synthesis_work_state(job, INDUCTIVE_INSTANCE_JOB);
+	if (!output || !job || job->role != INDUCTIVE_INSTANCE_JOB || job->status != PG_SYNTHESIS_DONE) return 0;
+	*output = *local->instance;
+	return 1;
+}
+
+static void inductive_instance_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	struct inductive_instance_work *local = pg_synthesis_work_state(job, INDUCTIVE_INSTANCE_JOB);
+	struct pg_synthesis_job *type = (void *)job->inputs[0];
+	if (pg_synthesis_await(synthesis, job, type)) return;
+	struct pg_synthesis_job *accepted = pg_synthesis_evidence(synthesis, type->result);
+	if (!accepted) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+	if (accepted != type) {
+		struct pg_synthesis_job *canonical = pg_synthesis_inductive_instance(synthesis, accepted);
+		if (!canonical) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+		if (pg_synthesis_await(synthesis, job, canonical)) return;
+		const struct inductive_instance_work *accepted_work = pg_synthesis_work_state(canonical, INDUCTIVE_INSTANCE_JOB);
+		local->instance = accepted_work->instance;
+		job->result = canonical->result;
+		pg_synthesis_finish(synthesis, job, canonical->status);
+		return;
+	}
+	enum pg_evidence_judgement kind = pg_evidence_judgement(type->result);
+	if (kind != PG_JUDGEMENT_VALUE_TYPE && kind != PG_JUDGEMENT_TYPE_FAMILY) {
+		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
+	}
+	/* Retain beta evidence before recovering the nominal declaration. */
+	const struct pg_reduction_certificate *receipt = pg_synthesis_reduction_advance(synthesis, job, &local->normalizing,
+		pg_evidence_subject(type->result)->core, PG_REDUCTION_WHNF);
+	if (!receipt) return;
+	const struct pg_evidence *normalized = pg_prove_normalization(synthesis->typing, type->result, receipt);
+	if (!normalized) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+	struct pg_typed_query *query = pg_inductive_request(synthesis->typing, normalized);
+	int status = pg_typed_query_advance(query, 1);
+	if (!status) { pg_synthesis_enqueue(synthesis, job); return; }
+	if (status < 0) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+	local->instance = pg_inductive_query_result(query);
+	if (!local->instance) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+	job->result = local->instance->parameters;
+	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_DONE);
+}
 
 struct data_result_work { struct pg_synthesis_job *substitution; };
 

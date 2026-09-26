@@ -62,6 +62,10 @@ int pg_synthesis_classifier_formation_structure(struct pg_synthesis *, const str
 const struct pg_object *pg_synthesis_pi_scope_binder(const struct pg_synthesis_job *);
 struct pg_synthesis_job *pg_synthesis_application_domain(struct pg_synthesis *,
 	struct pg_synthesis_job *, struct pg_synthesis_job *);
+/* Checked logical-family/CBPV adapters, never expected-type inference. */
+struct pg_synthesis_job *pg_synthesis_family_contract(struct pg_synthesis *,
+	struct pg_synthesis_job *, struct pg_synthesis_job *);
+struct pg_synthesis_job *pg_synthesis_family_function(struct pg_synthesis *, struct pg_synthesis_job *);
 struct pg_synthesis_job *pg_synthesis_result_context_input(struct pg_synthesis *,
 	const struct pg_synthesis_job *, const struct pg_object *);
 int pg_synthesis_typed_input(struct pg_synthesis *, const struct pg_evidence *, const struct pg_evidence *);

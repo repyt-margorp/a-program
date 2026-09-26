@@ -229,6 +229,52 @@ static void indexed_family_sources(void)
 	puts("indexed source: scoped family formation, recursive constructors and inert resaves use ordinary Solve");
 }
 
+static void family_callable_images(void)
+{
+	const uint64_t budgets[] = {0, 20, 10000};
+	for (size_t i = 0; i < 3; ++i) {
+		struct pg_program *p = pg_program_allocate(PG_DEFINITION_EXPLICIT_THUNK);
+		assert(p);
+		const struct pg_evidence *empty = pg_prove_empty_context(&p->typing);
+		const struct pg_object *binder = pg_binder(&p->graph);
+		const struct pg_evidence *context = pg_prove_context_extension(&p->typing, empty, binder,
+			pg_prove_universe(&p->typing, empty, 1));
+		const struct pg_evidence *family = pg_prove_family_abstraction(&p->typing, context,
+			pg_prove_value_type(&p->typing, pg_prove_variable(&p->typing, context, binder)));
+		const struct pg_source_scope *scope = pg_synthesis_name(&p->synthesis, pg_synthesis_root(&p->synthesis),
+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "F", .length = 1}, family);
+		assert(scope);
+		struct pg_synthesis_job *root = parse(p, scope, "{{ main := &F; }}.main");
+		pg_synthesis_advance(&p->synthesis, budgets[i]);
+		struct pg_synthesis_job *const *roots = &root;
+		size_t count = 1;
+		for (size_t round = 0; round < 2; ++round) {
+			FILE *file = tmpfile();
+			assert(file && !pg_sources_write(file, &p->synthesis, count, roots));
+			pg_program_destroy(p);
+			rewind(file);
+			p = pg_sources_read(file, 10000, &count, &roots);
+			assert(p && count == 1 && !p->synthesis.steps && !pg_synthesis_result(roots[0]));
+			assert(!fclose(file));
+		}
+		while (p->synthesis.ready && p->synthesis.steps < 10000) pg_synthesis_advance(&p->synthesis, i ? 64 : 1);
+		assert(pg_synthesis_status(roots[0]) == PG_SYNTHESIS_DONE);
+		const struct pg_evidence *function = pg_prove_force(&p->typing, pg_synthesis_result(roots[0]));
+		empty = pg_prove_empty_context(&p->typing);
+		const struct pg_evidence *argument = pg_prove_type_value(&p->typing, pg_prove_universe(&p->typing, empty, 0));
+		struct pg_synthesis_job *run = pg_program_normalize(p, pg_prove_application(&p->typing, function, argument), 1);
+		assert(run);
+		while (pg_synthesis_status(run) == PG_SYNTHESIS_PENDING) {
+			assert(p->synthesis.steps < 10000);
+			pg_synthesis_advance(&p->synthesis, 1);
+		}
+		const struct pg_evidence *result = pg_prove_return_value(&p->typing, pg_synthesis_result(run));
+		assert(result && pg_evidence_subject(result)->core == pg_universe(&p->graph, 0));
+		pg_program_destroy(p);
+	}
+	puts("family callable images: unstarted/partial/complete roots restore through ordinary Solve");
+}
+
 static void family_context_scopes(void)
 {
 	for (uint64_t chunk = 1; chunk <= 64; chunk *= 64) {
@@ -3601,7 +3647,7 @@ int main(int argc, char **argv)
 		pg_program_destroy(p);
 		return 0;
 	}
-	if (argc == 2 && !strcmp(argv[1], "context-scopes")) { context_scopes(); return 0; }
+	if (argc == 2 && !strcmp(argv[1], "context-scopes")) { context_scopes(); family_callable_images(); return 0; }
 	if (argc == 2 && !strcmp(argv[1], "indexed-families")) { indexed_family_sources(); return 0; }
 	if (argc == 2 && !strcmp(argv[1], "constructor-inputs")) {
 		constructor_inputs(); member_use_origins(); member_prefix_recheck(); inferred_constructor_roots(); return 0;

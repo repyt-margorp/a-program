@@ -1215,6 +1215,21 @@ owner localization, not completion of typed-history removal or higher Identity.
 
 ### Plan
 
+- [x] **Family adapter/IADT instance owners, baseline `5c064c2`:** move logical
+  family/CBPV adapters into `synthesis_function.c` and nominal instance recovery
+  into `synthesis_iadt.c`. Remove their source-wide payload/dispatch, keeping
+  the existing work interner and typed-query authority. A focused named-family
+  test reproduces a stale unary-Lambda check after declaration inputs were
+  retained. Read the scoped body instead. A projected-family round trip also
+  reproduces collision when a Pi binder is reused in its ambient Context;
+  use the existing request-owned Pi scope and ordinary queued rules uniformly.
+  Preserve effects/totality checks, selected declaration inputs and `::`
+  non-feedback. Verify partial application, projection, interleaved aliases,
+  chunks 0/1/64, cancellation, wrong/foreign contexts and fresh source images;
+  then full acceptance, sanitizers, cross-reading and paired performance. This
+  does not remove family declaration receipts or complete all function/IADT
+  ownership. Agent decision: do not replace these adapters with an unproved
+  coercion from arbitrary computations to logical families.
 - [x] Confirm that owner-level semantics are partially separated while synthesis
   remains concentrated; distinguish this task from P4's representation change.
 - [x] **Conversion/reduction owner, baseline `5958aef`:** move comparison,
@@ -2605,3 +2620,56 @@ Local evidence: `/tmp/a-program-direct-history-{acceptance,debug,asan,cross}.log
 same prefix; images: `/tmp/a-program-direct-history-cross.q3T1EY/`.
 Tests are tracked; temporary logs are not.
 This plan: **+70/-0**; complete slice: **+289/-74, net +215**.
+
+### Family Adapter/IADT Instance Verification
+
+Baseline `5c064c2`, verified 2026-09-27 in the clean publication worktree.
+Three request classes leave the source-wide state/dispatch for their existing
+function/IADT owners. They keep the same work index, queue and typed queries;
+instance results are borrowed from their original authority. Core, surface
+syntax and image format are unchanged.
+
+- Two permanent regressions exposed existing defects: a logical family Lambda
+  was mistaken for nominal data because it now retains declaration inputs;
+  reusing a projected Pi binder could collide with its ambient Context. Read
+  the scoped body and use the existing request-owned Pi scope/ordinary rules.
+  Do not introduce a new coercion or special collision-recovery path.
+- Full optimized `check-acceptance`: exit 0, **1532.428s** wall, 1422.416s user,
+  109.357s system. Compatibility **63/63**, general/ordinary-result Sorted,
+  four derived LT variants, retained images and optional witness checks pass.
+- Debug and ASan/UBSan Core, Program, IADT, Identity, Synthesis, typed-structure,
+  derivation-image and source-image tests pass with leak detection. New tests
+  cover partial/projected families, round trips, shared pending aliases,
+  repeated completed requests without allocation, budgets 0/1/64, cancellation,
+  wrong/foreign Contexts and twice-resaved unstarted/partial/complete roots.
+- Cross-reading passes **36** source-image pairs, **72** opposite-version loads
+  and **8** occurrence/derivation reads. Fresh images use ordinary Solve.
+- The three private states each occupy **16 bytes**, previously **240**.
+  Remaining source-wide state is **232 bytes**; the shared header stays 80.
+- Ten workloads, warmup plus six counterbalanced pairs: median time changes
+  **-1.77% to +2.00%**, with every sample range overlapping. Sorted is
+  **0.840671s -> 0.837953s**, ordinary result **0.738640s -> 0.746930s**, derived
+  **2.574857s -> 2.533670s**. No speedup claim. The queued Pi-scope rules change
+  Solve steps in those cases: **661719 -> 661993**, **1127637 -> 1128412**,
+  **2943132 -> 2944399**; other measured counts and normalized output agree.
+- Three-pair RSS medians, KiB: length **10984 -> 10984**, Sorted
+  **222464 -> 221936**, ordinary result **173240 -> 173156**, derived
+  **543616 -> 542564**. These small differences do not establish broad savings.
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `src/synthesis.c` | 5 | 178 | -173 |
+| `src/synthesis_function.c` | 142 | 0 | +142 |
+| `src/synthesis_iadt.c` | 64 | 0 | +64 |
+| `src/synthesis_source.h` | 4 | 0 | +4 |
+| `tests/source_io.c` | 47 | 1 | +46 |
+| `tests/synthesis.c` | 104 | 0 | +104 |
+
+Implementation **+215/-178, net +37**; tests **+151/-1, net +150**; build unchanged.
+Agent decision: adopt the owner extraction and reproduced fixes, not claim net
+code reduction. Family declaration receipts, budgeted structural checking and
+broader P4/P5 remain open. Inherited trials stay preserved and unpublished.
+Local logs: `/tmp/a-program-family-owner-{before,focused,acceptance,debug,asan,cross}.log`,
+`/tmp/a-program-family-owner-acceptance.time`, and `{bench,memory}.jsonl` with
+the same prefix. Permanent tests are tracked; temporary logs are not.
+This plan: **+68/-0**; complete slice: **+434/-179, net +255**.

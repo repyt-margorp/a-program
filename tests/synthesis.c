@@ -7409,6 +7409,109 @@ static void synthesis_lifetime(struct pg_typing *typing)
 	puts("synthesis lifetime: stale scopes/jobs rejected; retained typing evidence reused");
 }
 
+static void family_reification(struct pg_typing *typing)
+{
+	struct pg_whnf_work work;
+	struct pg_synthesis synthesis;
+	assert(!pg_whnf_work_init(&work, typing->graph));
+	assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_IMPLICIT_THUNK));
+	const struct pg_evidence *empty = pg_prove_empty_context(typing);
+	const struct pg_evidence *u1 = pg_prove_universe(typing, empty, 1);
+	const struct pg_object *binder = pg_binder(typing->graph);
+	const struct pg_evidence *context = pg_prove_context_extension(typing, empty, binder, u1);
+	const struct pg_evidence *family = pg_prove_family_abstraction(typing, context,
+		pg_prove_value_type(typing, pg_prove_variable(typing, context, binder)));
+	assert(family && pg_evidence_subject(family)->operand_count == 2);
+	const struct pg_object *next = pg_binder(typing->graph);
+	const struct pg_evidence *nested_context = pg_prove_context_extension(typing, context, next,
+		pg_prove_projection(typing, context, u1));
+	const struct pg_evidence *nested = pg_prove_family_abstraction(typing, context,
+		pg_prove_family_abstraction(typing, nested_context,
+			pg_prove_value_type(typing, pg_prove_variable(typing, nested_context, next))));
+	const struct pg_evidence *u0 = pg_prove_universe(typing, empty, 0);
+	const struct pg_evidence *partial = pg_prove_family_application(typing, nested, pg_prove_type_value(typing, u0));
+	const struct pg_evidence *projected = pg_prove_projection(typing, context, family);
+	const struct pg_evidence *cases[] = {family, partial, projected};
+	const struct pg_evidence *contexts[] = {empty, empty, context};
+	for (size_t i = 0; i < 3; ++i) {
+		struct pg_synthesis_job *input = pg_synthesis_evidence(&synthesis, cases[i]);
+		struct pg_synthesis_job *adapted = pg_synthesis_family_function(&synthesis, input);
+		assert(adapted && adapted->role->size == 2 * sizeof(void *));
+		assert(adapted == pg_synthesis_family_function(&synthesis, input));
+		uint64_t steps = synthesis.steps;
+		pg_synthesis_advance(&synthesis, 0);
+		assert(steps == synthesis.steps && !pg_synthesis_result(adapted));
+		while (pg_synthesis_status(adapted) == PG_SYNTHESIS_PENDING) {
+			pg_synthesis_advance(&synthesis, i ? 64 : 1);
+			assert(synthesis.steps - steps < 10000);
+		}
+		const struct pg_evidence *function = pg_synthesis_result(adapted);
+		assert(function && pg_evidence_judgement(function) == PG_JUDGEMENT_COMPUTATION);
+		const struct pg_evidence *argument = pg_prove_type_value(typing, pg_prove_projection(typing, contexts[i], u0));
+		const struct pg_evidence *applied = pg_prove_application(typing, function, argument);
+		assert(applied);
+		const struct pg_evidence *result = pg_prove_return_value(typing, normalize(&synthesis, contexts[i], applied));
+		assert(result && pg_evidence_subject(result)->core == pg_universe(typing->graph, 0));
+		struct pg_synthesis_job *context_job = pg_synthesis_evidence(&synthesis, contexts[i]);
+		struct pg_synthesis_job *contract = pg_synthesis_family_contract(&synthesis, context_job, adapted);
+		assert(contract && contract->role->size == 2 * sizeof(void *));
+		const struct pg_evidence *roundtrip = complete(&synthesis, contract, PG_SYNTHESIS_DONE);
+		assert(roundtrip && pg_evidence_judgement(roundtrip) == PG_JUDGEMENT_TYPE_FAMILY);
+		assert(pg_alpha_equal(pg_evidence_classifier(roundtrip), pg_evidence_classifier(cases[i])) == 1);
+		struct pg_synthesis_job *alias = pg_synthesis_plain_rule(&synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
+			(struct pg_synthesis_job *[]){context_job, input});
+		struct pg_synthesis_job *pending = pg_synthesis_family_function(&synthesis, alias);
+		assert(pending && pending == pg_synthesis_family_function(&synthesis, alias));
+		assert(complete(&synthesis, pending, PG_SYNTHESIS_DONE) == function);
+		pg_synthesis_advance(&synthesis, 64);
+		size_t jobs = synthesis.jobs.count, proofs = typing->proofs.count, terms = typing->graph->terms.count;
+		steps = synthesis.steps;
+		assert(pg_synthesis_family_function(&synthesis, input) == adapted);
+		assert(pg_synthesis_family_contract(&synthesis, context_job, adapted) == contract);
+		pg_synthesis_advance(&synthesis, 64);
+		assert(jobs == synthesis.jobs.count && proofs == typing->proofs.count && terms == typing->graph->terms.count);
+		assert(steps == synthesis.steps);
+	}
+	struct pg_synthesis_job *context_job = pg_synthesis_evidence(&synthesis, empty);
+	struct pg_synthesis_job *input = pg_synthesis_evidence(&synthesis, family);
+	assert(complete(&synthesis, pg_synthesis_family_contract(&synthesis, context_job, input), PG_SYNTHESIS_DONE) == family);
+	complete(&synthesis, pg_synthesis_family_contract(&synthesis,
+		pg_synthesis_evidence(&synthesis, context), input), PG_SYNTHESIS_REJECTED);
+	struct pg_synthesis foreign;
+	assert(!pg_synthesis_init(&foreign, typing, &work, PG_DEFINITION_IMPLICIT_THUNK));
+	size_t jobs = foreign.jobs.count;
+	assert(!pg_synthesis_family_function(&foreign, input));
+	assert(!pg_synthesis_family_contract(&foreign, context_job, input));
+	assert(!pg_synthesis_inductive_instance(&foreign, input));
+	assert(jobs == foreign.jobs.count);
+	pg_synthesis_destroy(&foreign);
+	const struct pg_source_scope *scope = pg_synthesis_name(&synthesis, pg_synthesis_root(&synthesis),
+		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "F", .length = 1}, family);
+	assert(scope);
+	const struct pg_evidence *quoted = complete(&synthesis, request(&synthesis, scope, "main := &F;"), PG_SYNTHESIS_DONE);
+	const struct pg_evidence *call = pg_prove_application(typing, pg_prove_force(typing, quoted),
+		pg_prove_type_value(typing, pg_prove_universe(typing, empty, 0)));
+	assert(call);
+	const struct pg_evidence *returned = pg_prove_return_value(typing, normalize(&synthesis, empty, call));
+	assert(returned && pg_evidence_subject(returned)->core == pg_universe(typing->graph, 0));
+	pg_synthesis_destroy(&synthesis);
+	for (uint64_t cutoff = 0; ; ++cutoff) {
+		assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_IMPLICIT_THUNK));
+		struct pg_synthesis_job *adapted = pg_synthesis_family_function(&synthesis,
+			pg_synthesis_evidence(&synthesis, projected));
+		struct pg_synthesis_job *contract = pg_synthesis_family_contract(&synthesis,
+			pg_synthesis_evidence(&synthesis, context), adapted);
+		pg_synthesis_advance(&synthesis, cutoff);
+		int done = pg_synthesis_status(contract) == PG_SYNTHESIS_DONE;
+		assert(done || pg_synthesis_status(contract) == PG_SYNTHESIS_PENDING);
+		pg_synthesis_destroy(&synthesis);
+		assert(cutoff < 1000);
+		if (done) break;
+	}
+	pg_whnf_work_destroy(&work);
+	puts("family reification: retained declaration inputs are not mistaken for nominal data");
+}
+
 static void graded_application(struct pg_typing *typing)
 {
 	struct pg_whnf_work work;
@@ -7532,6 +7635,7 @@ int main(void)
 	source_preparation_subscription(&typing);
 	sequence_structure_choice(&typing);
 	graded_application(&typing);
+	family_reification(&typing);
 	effect_equations(&typing);
 	pending_effect_contexts(&typing);
 	pending_pi_scan(&typing);

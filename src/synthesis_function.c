@@ -1,5 +1,145 @@
 #include "synthesis_source.h"
 
+struct family_work {
+	struct pg_synthesis_job *preparation, *continuation;
+};
+static void family_contract_step(struct pg_synthesis *, struct pg_synthesis_job *);
+static void family_function_step(struct pg_synthesis *, struct pg_synthesis_job *);
+static struct pg_synthesis_job *pi_scope(struct pg_synthesis *, struct pg_synthesis_job *, struct pg_synthesis_job *);
+static const struct pg_synthesis_work_class FAMILY_CONTRACT_JOB[1] = {{
+	.size = sizeof(struct family_work), .advance = family_contract_step}};
+static const struct pg_synthesis_work_class FAMILY_FUNCTION_JOB[1] = {{
+	.size = sizeof(struct family_work), .advance = family_function_step}};
+
+struct pg_synthesis_job *pg_synthesis_family_contract(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *context, struct pg_synthesis_job *input)
+{
+	if (!context || context->owner != synthesis->owner_key) return NULL;
+	if (!input || input->owner != synthesis->owner_key) return NULL;
+	const void *inputs[] = {context, input};
+	return pg_synthesis_work_request(synthesis, FAMILY_CONTRACT_JOB, 2, inputs);
+}
+
+struct pg_synthesis_job *pg_synthesis_family_function(struct pg_synthesis *synthesis, struct pg_synthesis_job *input)
+{
+	if (!input || input->owner != synthesis->owner_key) return NULL;
+	if (input->status == PG_SYNTHESIS_DONE) input = pg_synthesis_evidence(synthesis, input->result);
+	const void *inputs[] = {input};
+	return input ? pg_synthesis_work_request(synthesis, FAMILY_FUNCTION_JOB, 1, inputs) : NULL;
+}
+
+/* Establish a stable family by checking the returned type under its generic
+ * parameters. An empty effect row alone supplies no type or termination proof. */
+static void family_contract_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	struct family_work *local = pg_synthesis_work_state(job, FAMILY_CONTRACT_JOB);
+	struct pg_synthesis_job *context = (void *)job->inputs[0], *input = (void *)job->inputs[1];
+	struct pg_synthesis_job *premises[] = {context, input};
+	for (size_t i = 0; i < 2; ++i) {
+		if (pg_synthesis_await(synthesis, job, premises[i])) return;
+	}
+	const struct pg_evidence *proof = input->result;
+	if (!proof) goto rejected;
+	if (pg_evidence_judgement(context->result) != PG_JUDGEMENT_CONTEXT) goto rejected;
+	if (pg_evidence_context(context->result) != pg_evidence_context(proof)) goto rejected;
+	if (pg_evidence_judgement(proof) == PG_JUDGEMENT_TYPE_FAMILY) {
+		pg_synthesis_forward(synthesis, job, input);
+		return;
+	}
+	if (!local->preparation) {
+		if (pg_evidence_judgement(proof) == PG_JUDGEMENT_VALUE) proof = pg_prove_force(synthesis->typing, proof);
+		if (!proof || pg_evidence_judgement(proof) != PG_JUDGEMENT_COMPUTATION) goto rejected;
+		local->preparation = pg_synthesis_normalize_classifier(synthesis, context->result, proof);
+		if (!local->preparation) goto error;
+	}
+	if (pg_synthesis_await(synthesis, job, local->preparation)) return;
+	proof = local->preparation->result;
+	const struct pg_term *domain, *body;
+	const struct pg_object *binder;
+	if (pg_pi_view(pg_evidence_classifier(proof), &domain, &binder, &body)) {
+		if (!local->continuation) {
+			/* Use the existing request-owned allocation, not a Pi binder which
+			 * may already belong to the ambient Context after projection. */
+			struct pg_synthesis_job *scope_job = pi_scope(synthesis, context,
+				pg_synthesis_classifier_formation(synthesis, context, local->preparation));
+			if (!scope_job) goto error;
+			struct pg_synthesis_job *projected[] = {scope_job, local->preparation};
+			struct pg_synthesis_job *call[] = {
+				pg_synthesis_plain_rule(synthesis, PG_CONTEXT_PROJECTION, NULL, 2, projected),
+				pg_synthesis_plain_rule(synthesis, PG_VARIABLE, pg_synthesis_pi_scope_binder(scope_job), 1, &scope_job)};
+			struct pg_synthesis_job *family = pg_synthesis_family_contract(synthesis, scope_job,
+				pg_synthesis_plain_rule(synthesis, PG_APP_ELIM, NULL, 2, call));
+			struct pg_synthesis_job *arguments[] = {scope_job, family};
+			local->continuation = pg_synthesis_plain_rule(synthesis, PG_TYPE_FAMILY_ABSTRACT, NULL, 2, arguments);
+		}
+		pg_synthesis_forward(synthesis, job, local->continuation);
+		return;
+	}
+	uint64_t level;
+	enum pg_totality totality;
+	if (!pg_pure_computation_type_view(pg_evidence_classifier(proof), &totality, &body) || !pg_universe_level(body, &level)) goto rejected;
+	if (!local->continuation) local->continuation = pg_synthesis_return(synthesis, context->result, proof);
+	if (!local->continuation) goto error;
+	if (pg_synthesis_await(synthesis, job, local->continuation)) return;
+	job->result = pg_prove_value_type(synthesis->typing, local->continuation->result);
+	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);
+	return;
+rejected:
+	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+error:
+	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR);
+}
+
+static void family_function_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	struct family_work *local = pg_synthesis_work_state(job, FAMILY_FUNCTION_JOB);
+	struct pg_synthesis_job *input = (void *)job->inputs[0];
+	if (pg_synthesis_await(synthesis, job, input)) return;
+	const struct pg_evidence *proof = input->result;
+	if (!proof) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+	if (pg_evidence_judgement(proof) != PG_JUDGEMENT_TYPE_FAMILY) { pg_synthesis_forward(synthesis, job, input); return; }
+	struct pg_synthesis_job *canonical = pg_synthesis_family_function(synthesis, input);
+	if (canonical != job) { pg_synthesis_forward(synthesis, job, canonical); return; }
+	if (local->continuation) { pg_synthesis_forward(synthesis, job, local->continuation); return; }
+	if (!local->preparation) {
+		struct pg_typed_query *origin = pg_construction_origin_request(synthesis->typing, proof);
+		if (!pg_typed_query_advance(origin, 1)) { pg_synthesis_enqueue(synthesis, job); return; }
+		const struct pg_evidence *construction = pg_typed_query_result(origin);
+		const struct pg_evidence *environment = pg_construction_origin_environment(origin);
+		const struct pg_occurrence *subject = construction ? pg_evidence_subject(construction) : NULL;
+		/* Nominal family formation may erase to APP without typed operands. */
+		if (subject && subject->core->kind == PG_LAMBDA && pg_occurrence_scoped_input(subject, 0)) {
+			const struct pg_evidence *context = pg_evidence_premise(construction, 0);
+			struct pg_synthesis_job *body = pg_synthesis_family_function(synthesis,
+				pg_synthesis_evidence(synthesis, pg_prove_structural_subject(synthesis->typing, subject->operands[0])));
+			local->continuation = pg_synthesis_lambda_body(synthesis,
+				pg_synthesis_evidence(synthesis, context), body);
+		} else if (subject && subject->operand_count == 2 && subject->core->kind == PG_APPLICATION) {
+			struct pg_typed_query *application = pg_application_body_request(synthesis->typing,
+				pg_prove_structural_subject(synthesis->typing, subject->operands[0]),
+				pg_prove_structural_subject(synthesis->typing, subject->operands[1]));
+			if (!pg_typed_query_advance(application, 1)) { pg_synthesis_enqueue(synthesis, job); return; }
+			const struct pg_evidence *body = pg_typed_query_result(application);
+			if (body) local->continuation = pg_synthesis_family_function(synthesis, pg_synthesis_evidence(synthesis, body));
+		}
+		if (local->continuation) {
+			if (environment) local->continuation = pg_synthesis_reindex_jobs(synthesis,
+				pg_synthesis_evidence(synthesis, environment), local->continuation);
+			pg_synthesis_forward(synthesis, job, local->continuation); return;
+		}
+		local->preparation = pg_synthesis_inductive_instance(synthesis, input);
+		if (!local->preparation) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+	}
+	if (pg_synthesis_await(synthesis, job, local->preparation)) return;
+	struct pg_inductive_instance instance;
+	if (!pg_synthesis_inductive_instance_result(local->preparation, &instance)) {
+		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
+	}
+	job->result = pg_prove_inductive_family_function(synthesis->typing,
+		instance.formation, instance.parameters);
+	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
+}
+
 struct pi_scope_work {
 	const struct pg_object *binder;
 	struct pg_synthesis_job *rule;
@@ -74,6 +214,8 @@ static void pi_scope_start(struct pg_synthesis *synthesis, struct pg_synthesis_j
 static struct pg_synthesis_job *pi_scope(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *context, struct pg_synthesis_job *type)
 {
+	if (!context || context->owner != synthesis->owner_key) return NULL;
+	if (!type || type->owner != synthesis->owner_key) return NULL;
 	const void *inputs[] = {context, type};
 	return pg_synthesis_work_request(synthesis, PI_SCOPE_JOB, 2, inputs);
 }
