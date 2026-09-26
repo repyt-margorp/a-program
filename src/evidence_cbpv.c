@@ -1,6 +1,19 @@
 #include "evidence_structure.h"
 #include "computation.h"
 
+const struct pg_evidence *pg_cbpv_selection(struct pg_typing *typing,
+	const struct pg_occurrence *subject, const struct pg_occurrence **child)
+{
+	if (!subject->origin || subject->selection != 1 || subject->operand_count) return NULL;
+	const struct pg_evidence *parent = pg_structure_input(typing, subject->origin, child);
+	if (!parent) return NULL;
+	if (subject->judgement == PG_JUDGEMENT_COMPUTATION_TYPE)
+		return pg_prove_thunk_content(typing, parent);
+	if (subject->judgement == PG_JUDGEMENT_VALUE_TYPE)
+		return pg_prove_return_content(typing, parent);
+	return NULL;
+}
+
 const struct pg_evidence *pg_cbpv_structure(struct pg_typing *typing,
 	const struct pg_occurrence *subject, const struct pg_occurrence **child)
 {

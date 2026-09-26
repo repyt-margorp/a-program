@@ -95,14 +95,42 @@ static void write_inputs(FILE *file, struct pg_typing *typing)
 	const struct pg_evidence *logical_map = pg_prove_family_abstraction(typing, extended,
 		pg_prove_projection(typing, extended, logical_nested));
 	assert(logical && logical_partial && logical_applied && logical_family && logical_nested && logical_map);
+	const struct pg_evidence *unused = pg_prove_context_extension(typing, empty, pg_binder(graph),
+		pg_prove_universe(typing, empty, 5));
+	const struct pg_evidence *closed = pg_prove_return_type(typing, pg_prove_thunk_type(typing, outer_pi));
+	const struct pg_evidence *wide = pg_prove_pi(typing, unused, pg_prove_projection(typing, unused, closed));
+	const struct pg_evidence *constant = pg_prove_pi_constant_codomain(typing, wide);
+	const struct pg_evidence *content = pg_prove_return_content(typing, constant);
+	const struct pg_evidence *unquoted = pg_prove_thunk_content(typing, content);
+	const struct pg_evidence *wide_scope = pg_prove_context_extension(typing, empty, pg_binder(graph), content);
+	const struct pg_evidence *wide_pi = pg_prove_pi(typing, wide_scope,
+		pg_prove_return_type(typing, pg_prove_universe(typing, wide_scope, 0)));
+	const struct pg_evidence *wide_family = pg_prove_family_abstraction(typing, wide_scope,
+		pg_prove_universe(typing, wide_scope, 0));
+	const struct pg_evidence *wide_map = pg_prove_lambda(typing,
+		pg_prove_pi(typing, extended, pg_prove_projection(typing, extended, unquoted)),
+		pg_prove_projection(typing, extended, function));
+	const struct pg_evidence *family_scope = pg_prove_family_context_extension(typing, empty, pg_binder(graph),
+		wide_scope, pg_prove_universe(typing, wide_scope, 0));
+	const struct pg_evidence *family_pi = pg_prove_pi(typing, family_scope,
+		pg_prove_return_type(typing, pg_prove_universe(typing, family_scope, 0)));
+	const struct pg_evidence *family_logical = pg_prove_family_abstraction(typing, family_scope,
+		pg_prove_universe(typing, family_scope, 0));
+	const struct pg_evidence *wide_identity = pg_prove_identity_type(typing, unquoted, function, function);
+	assert(constant && content && unquoted && wide_pi && wide_family);
+	assert(wide_map && family_pi && family_logical && wide_identity);
 	const struct pg_occurrence *roots[] = {pg_evidence_subject(function), pg_evidence_subject(application),
 		pg_evidence_subject(forced), pg_evidence_subject(mapped), pg_evidence_subject(identity),
 		pg_evidence_subject(shared[0]), pg_evidence_subject(shared[1]),
 		pg_evidence_subject(returned), pg_evidence_subject(quoted),
 		pg_evidence_subject(family), pg_evidence_subject(nested), pg_evidence_subject(family_map),
 		pg_evidence_subject(logical), pg_evidence_subject(logical_partial), pg_evidence_subject(logical_applied),
-		pg_evidence_subject(logical_family), pg_evidence_subject(logical_nested), pg_evidence_subject(logical_map)};
-	assert(!pg_occurrences_write(file, 18, roots, name, NULL));
+		pg_evidence_subject(logical_family), pg_evidence_subject(logical_nested), pg_evidence_subject(logical_map),
+		pg_evidence_subject(partial)->type, pg_evidence_subject(constant), pg_evidence_subject(content),
+		pg_evidence_subject(unquoted), pg_evidence_subject(wide_pi), pg_evidence_subject(wide_family),
+		pg_evidence_subject(wide_map), pg_evidence_subject(family_pi), pg_evidence_subject(family_logical),
+		pg_evidence_subject(wide_identity)};
+	assert(!pg_occurrences_write(file, 28, roots, name, NULL));
 }
 
 static void unary_input(struct pg_typing *typing, const struct pg_evidence *parent)
@@ -186,8 +214,39 @@ static void reject_changes(struct pg_typing *typing, const struct pg_occurrence 
 		pg_universe(typing->graph, 0), PG_JUDGEMENT_VALUE);
 	header.type = NULL;
 	wrong = pg_occurrence_intern(typing, &header, subject->operands, pg_occurrence_maps(subject));
-	assert(wrong && !pg_prove_structural_subject(typing, wrong));
+	/* A selected origin already constrains scope during interning. */
+	assert(!pg_prove_structural_subject(typing, wrong));
 	assert(!pg_evidence_for_subject(typing, wrong, NULL));
+}
+
+static void selected_formation(struct pg_typing *typing, const struct pg_occurrence *subject)
+{
+	assert(subject->selection && subject->origin);
+	for (size_t variant = 0; variant < 3; ++variant) {
+		struct pg_occurrence header = *subject;
+		if (!variant) header.selection = 3;
+		if (variant == 1) header.classifier = pg_universe(typing->graph, 0);
+		if (variant == 2) header.operand_count = subject->operand_count ? 0 : 1;
+		const struct pg_occurrence *argument = subject->origin;
+		const struct pg_occurrence *changed = pg_occurrence_intern(typing, &header,
+			variant == 2 ? &argument : subject->operands, NULL);
+		assert(changed && !pg_prove_structural_subject(typing, changed));
+		assert(!pg_evidence_for_subject(typing, changed, NULL));
+	}
+	if (!subject->operand_count) return;
+	const struct pg_term *domain, *body;
+	const struct pg_object *binder, *renamed = pg_binder(typing->graph);
+	assert(pg_pi_view(subject->core, &domain, &binder, &body));
+	struct pg_binding_value binding = {binder, pg_reference(typing->graph, renamed)};
+	struct pg_occurrence header = *subject;
+	header.core = pg_pi(typing->graph, domain, renamed,
+		pg_term_substitute(typing->graph, body, 1, &binding));
+	const struct pg_occurrence *alpha = pg_occurrence_intern(typing, &header, subject->operands, NULL);
+	const struct pg_evidence *checked = pg_prove_structural_subject(typing, alpha);
+	assert(checked && pg_evidence_subject(checked) == alpha && alpha != subject);
+	size_t proofs = typing->proofs.count, terms = typing->graph->terms.count;
+	assert(pg_prove_structural_subject(typing, alpha) == checked);
+	assert(typing->proofs.count == proofs && typing->graph->terms.count == terms);
 }
 
 static void reject_signature_changes(struct pg_typing *typing, const struct pg_occurrence *pi, size_t terminal_index)
@@ -257,10 +316,12 @@ static void read_inputs(FILE *file, size_t root)
 	const struct pg_occurrence *const *roots;
 	rewind(file);
 	assert(!pg_occurrences_read(file, &typing, 10000, 256, resolve, &graph, &count, &roots));
-	assert(count == 18 && !typing.proofs.count);
-	const struct pg_evidence *checked = root == 4
+	assert(count == 28 && !typing.proofs.count);
+	const struct pg_evidence *checked = root == 4 || root == 27
 		? pg_identity_boundary_type(&typing, roots[root])
 		: pg_prove_structural_subject(&typing, roots[root]);
+	if (!checked || pg_evidence_subject(checked) != roots[root])
+		fprintf(stderr, "typed-only root %zu failed structural checking\n", root);
 	assert(checked && pg_evidence_subject(checked) == roots[root]);
 	size_t proofs = typing.proofs.count, terms = graph.terms.count;
 	assert(pg_prove_structural_subject(&typing, roots[root]) == checked);
@@ -276,6 +337,12 @@ static void read_inputs(FILE *file, size_t root)
 	if (root == 15) reject_signature_changes(&typing, roots[15], 1);
 	if (root == 13 || root == 14) family_result(&typing, roots[root]);
 	if (root == 7 || root == 8) unary_input(&typing, checked);
+	if (root >= 18 && root <= 21) selected_formation(&typing, roots[root]);
+	if (root == 21) {
+		const struct pg_evidence *domain = pg_prove_pi_domain(&typing, checked);
+		assert(domain && pg_evidence_subject(domain) == roots[0]->type->operands[0]);
+		assert(pg_evidence_classifier(domain) != pg_evidence_classifier(checked));
+	}
 	if (root == 5) {
 		const struct pg_evidence *other = pg_prove_structural_subject(&typing, roots[6]);
 		assert(other && other != checked && pg_evidence_subject(other) == roots[6]);
@@ -302,9 +369,9 @@ int main(int argc, char **argv)
 		assert(!strcmp(argv[1], "read"));
 		FILE *file = fopen(argv[2], "rb");
 		assert(file);
-		for (size_t root = 0; root < 18; ++root) read_inputs(file, root);
+		for (size_t root = 0; root < 28; ++root) read_inputs(file, root);
 		assert(!fclose(file));
-		puts("typed-only images: dependent Lambda/APP, logical families, family signatures, F/U, context action and Identity boundary checked without old evidence");
+		puts("typed-only images: dependent Lambda/APP, logical families, selected formations, F/U, context action and Identity boundary checked without old evidence");
 	}
 	return 0;
 }

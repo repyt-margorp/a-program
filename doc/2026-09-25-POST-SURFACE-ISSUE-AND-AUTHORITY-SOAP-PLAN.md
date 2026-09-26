@@ -615,9 +615,9 @@ requirement, not a newly attributed user design decision.
 
 | Construction | Retained semantic/checking input | Remaining history-dependent input |
 | --- | --- | --- |
-| Ordinary Pi / Lambda / APP | Pi domain formation and scoped codomain; Lambda's Pi and body; APP's function, argument and selected result formation | Admission of a free ambient Context; selected/inverted formation recipes not all supported by the structural checker |
+| Ordinary Pi / Lambda / APP | Pi domain formation and scoped codomain; Lambda's Pi and body; APP's function, argument and selected result formation | Admission of a free ambient Context; normalization/conversion recipes still require their checking inputs |
 | Family Pi | Terminal Universe, scoped codomain, then selected index formations in declaration order; descend into nested family signatures before their terminal Universe | Public Context constructors still take checked Context inputs; this does not replace the Context formation API |
-| Logical family abstraction/application | Verified after `badac54`: body plus the same declaration inputs as Pi; application family and index, with checked result allocation | Arbitrary ambient Context admission and selected/inverted input recipes remain; the new closed-image tests do not remove those dependencies |
+| Logical family abstraction/application | Verified after `badac54`: body plus the same declaration inputs as Pi; application family and index, with checked result allocation | Arbitrary ambient Context admission remains; closed-image tests do not remove this dependency |
 | Variable | Binder pointer, exact raw Context and declared classifier | Declaration formation currently found through Context evidence; bare open variables are not self-contained images |
 | Context action | Exact typed images, source/destination raw Contexts, retained origin; lexical lifts share the existing action mechanism | `map_dependency`, `lift_destination`, `pg_prove_context_alpha` and substitution rules still use Context receipt endpoints/selected declaration premises |
 | Constructor | Nominal constructor in Core, typed fields and exact result `type` | Schema's checked parameter/index/field declarations; `constructor_instance` still needs their admission, not only the erased shape |
@@ -659,6 +659,19 @@ and typed-input action use this one allocator. No new queue/cache or alpha
 interning is introduced. Both consumer orders, pending interleaving, nested
 families and repeated-query reuse now pass, as do the repeated publication
 gates below; the earlier green run alone did not establish readiness of this fix.
+
+Reinspection at `4f88198`, 2026-09-27: `content_subject` and constant-codomain
+inversion replaced a selected parent by the exposed child with the parent's
+Universe bound. When those bounds differ, this loses the typed input needed
+to justify the change. A fresh typed-only image of that result fails, although
+the original derivation is accepted. Agent decision: use the existing selection
+edge in precisely that case; keep the direct child when its boundary matches.
+The owner's ordinary inversion rule checks the selected parent and optional
+argument. Reject accepting every numerically larger Universe as a repair:
+that would add a general cumulativity rule, not preserve these constructors.
+No new Context object, Core tag, proof store or source-replay path is introduced.
+This fixes required input retention before the broader open-Context migration;
+it does not make raw free-variable scopes self-certifying.
 
 ### Plan
 
@@ -764,6 +777,16 @@ gates below; the earlier green run alone did not establish readiness of this fix
   that missing old history does not remove the proof Term or its checkability,
   while wrong classifiers, scopes and nominal inputs still reject. Extend to
   Match/IH only after their motives and allocation inputs have explicit owners.
+- [x] **P4.3j Selected formation inputs (baseline `4f88198`):** Pi constant
+  codomain and F/U content inversion can retain a larger Universe bound while
+  dropping the typed parent that justifies it. Retain that parent through the
+  existing selected-input edge, and check selections through the ordinary
+  Pi/F/U rules, including instantiated dependent codomains. Do not add general
+  Universe cumulativity, infer a missing Context, or accept a changed bound
+  from the raw Core alone. Test fresh typed-only roots with no old receipts,
+  alternate bound-pointer allocations, wrong inputs/bounds/scopes and repeated
+  access; run the common publication gates. This prerequisite does not settle
+  arbitrary open-root Context admission or replace the existing Solve queue.
 - [ ] **P4.4 Work reuse and images (R2/R4):** reuse the same typed construction
   and checking requests for accepted and pending consumers, keeping open-handler
   progress and `::` non-feedback. Measure synchronous lift/composition helpers
@@ -2108,3 +2131,53 @@ remain incomplete, as does the remaining P5 owner work. Local logs:
 `/tmp/a-program-logical-input-cross.DXBMXB/`. The boundary tests are tracked;
 these temporary execution records are not.
 This plan: **+59/-1**; complete slice: **+252/-84, net +168**; build files unchanged.
+
+### Selected Formation Verification
+
+Baseline `4f88198`, verified 2026-09-27. Pi/F/U inversion retains its typed
+parent when its Universe bound differs from the exposed child's. Ordinary
+owner rules check the selected input; instantiated codomains reuse the existing
+substitution and validate retained binder allocation by alpha equality. No new
+Core/wire tag, general cumulativity rule or second checking engine is added.
+
+- Fresh typed-only roots **18 -> 28**, each checked with empty Evidence history:
+  instantiated/constant codomains, F/U contents, wider ordinary/family
+  declarations, mapped use and Identity boundary. The baseline separately fails
+  on the instantiated codomain and the constant codomain with a widened bound.
+  Wrong bounds, inputs, scopes and selectors reject; repeated access allocates
+  no new proofs/terms. Core tests retain the exact selected domain bound.
+- Full `check-acceptance` exits 0: wall **1591.334s**, user 1478.086s, system
+  111.852s; compatibility **63/63**, general/ordinary-result Sorted, four LT
+  variants and optional witness isolation/packets pass. Debug and ASan/UBSan
+  Core, Program, IADT, Identity, Synthesis and final typed-only tests pass.
+- **36** source-image pairs, **72** opposite-version loads and **8** graph/
+  derivation reads pass. Source/retained images keep their existing wire format.
+- Ten paired workloads, warmup plus six samples (small cases batched 100):
+  median changes **-1.20% to +1.45%**, all ranges overlap. Partial application:
+  0.008144s -> 0.008047s; general Sorted: 0.842439s -> 0.854695s; ordinary-result
+  theorem: 0.767942s -> 0.777952s; derived proof: 2.584649s -> 2.564373s.
+  Acceptance and sampled NF output agree, but Solve counts increase:
+  partial application **13126 -> 13148**, general Sorted **623477 -> 623591**,
+  ordinary-result **1123320 -> 1123434**, derived **2888214 -> 2888392**.
+  Other sampled counts agree. Do not claim universal speedup or neutrality.
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `src/evidence.c` | 19 | 9 | +10 |
+| `src/evidence_cbpv.c` | 13 | 0 | +13 |
+| `src/evidence_function.c` | 16 | 0 | +16 |
+| `src/evidence_structure.h` | 7 | 0 | +7 |
+| `tests/core.c` | 4 | 3 | +1 |
+| `tests/typed_structure.c` | 74 | 7 | +67 |
+
+Implementation **+55/-9, net +46**; tests **+78/-10, net +68**; build unchanged.
+Open-Context declaration inputs, normalization/conversion checking inputs,
+budgeted structural work and the remaining P5 owner extraction stay open.
+This is not completion of P4 or its overall code-reduction requirement.
+Local evidence: `/tmp/a-program-selected-input-{acceptance,profiles-final,cross}.log`,
+`/tmp/a-program-selected-input-acceptance.time`,
+`/tmp/a-program-selected-input-bench.jsonl`; baseline reproductions:
+`/tmp/a-program-selected-{input,bound}-baseline-gap.log`; cross-images:
+`/tmp/a-program-selected-input-cross.aap7OO/`. Boundary tests are tracked;
+temporary logs are not.
+This plan: **+75/-2**; complete slice: **+208/-21, net +187**.

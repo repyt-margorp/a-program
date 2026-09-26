@@ -1,5 +1,21 @@
 #include "evidence_structure.h"
 
+const struct pg_evidence *pg_function_selection(struct pg_typing *typing,
+	const struct pg_occurrence *subject, const struct pg_occurrence **child)
+{
+	if (!subject->origin || !subject->selection || subject->selection > 2) return NULL;
+	const struct pg_term *domain, *body;
+	const struct pg_object *binder;
+	if (!pg_pi_view(subject->origin->core, &domain, &binder, &body)) return NULL;
+	if (subject->operand_count > 1 || (subject->selection == 1 && subject->operand_count)) return NULL;
+	const struct pg_evidence *pi = pg_structure_input(typing, subject->origin, child);
+	if (!pi) return NULL;
+	if (subject->selection == 1) return pg_prove_pi_domain(typing, pi);
+	if (!subject->operand_count) return pg_prove_pi_constant_codomain(typing, pi);
+	const struct pg_evidence *argument = pg_structure_input(typing, subject->operands[0], child);
+	return argument ? pg_check_pi_codomain(typing, pi, argument, subject) : NULL;
+}
+
 /* A binding retains its body and declared type (a terminal Universe for a
  * family). Further inputs are index formations in telescope order, descending
  * into a nested family before its terminal Universe. Pi keeps its body at 1,

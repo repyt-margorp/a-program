@@ -363,8 +363,11 @@ static int structural_dependency(void *owner, const void *key, size_t index, con
 			: pg_prove_empty_context(typing);
 		if (!context) return -1;
 		uint64_t level;
-		if (subject->origin) {
-			if (subject->selection || subject->core != subject->origin->core) return -1;
+		if (subject->selection) {
+			proof = pg_function_selection(typing, subject, &input);
+			if (!proof && !input) proof = pg_cbpv_selection(typing, subject, &input);
+		} else if (subject->origin) {
+			if (subject->core != subject->origin->core) return -1;
 			const struct pg_evidence *source = pg_structure_input(typing, subject->origin, &input);
 			if (source && subject->judgement == PG_JUDGEMENT_VALUE)
 				proof = pg_prove_type_value(typing, source);
@@ -3972,16 +3975,16 @@ static int structural_input(struct pg_typing *typing, const struct pg_occurrence
 	return status > 0;
 }
 
-/* A selected F/U formation retains its source when context action cannot
- * expose the child directly. Selection is not itself typing acceptance. */
+/* Keep the parent when its selected Universe bound differs from the child's.
+ * A boundary alone would lose the formation justifying that larger bound. */
 static const struct pg_occurrence *content_subject(struct pg_typing *typing,
 	const struct pg_occurrence *source, const struct pg_term *core,
 	const struct pg_term *classifier, enum pg_evidence_judgement judgement)
 {
 	const struct pg_occurrence *child;
 	if (!structural_input(typing, source, 0, &child)) return NULL;
-	if (child && child->context == source->context && child->core == core && child->judgement == judgement)
-		return pg_occurrence_boundary(typing, child, judgement, classifier);
+	if (child && child->context == source->context && child->core == core &&
+		child->judgement == judgement && child->classifier == classifier) return child;
 	return pg_occurrence_selected(typing, source, 0, NULL, judgement, core, classifier);
 }
 
@@ -4935,9 +4938,9 @@ const struct pg_evidence *pg_prove_pi_constant_codomain(struct pg_typing *typing
 	if (subject) {
 		if (subject->judgement != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
 		if (pg_alpha_equal(subject->core, codomain) != 1) return NULL;
-		subject = pg_occurrence_boundary(typing, subject, PG_JUDGEMENT_COMPUTATION_TYPE,
-			pg_evidence_classifier(pi));
-	} else subject = pg_occurrence_selected(typing, pg_evidence_subject(pi), 1, NULL,
+		if (subject->classifier != pg_evidence_classifier(pi)) subject = NULL;
+	}
+	if (!subject) subject = pg_occurrence_selected(typing, pg_evidence_subject(pi), 1, NULL,
 		PG_JUDGEMENT_COMPUTATION_TYPE, codomain, pg_evidence_classifier(pi));
 	if (!subject) return NULL;
 	return accept(typing, PG_PI_CONSTANT_CODOMAIN,
@@ -5343,6 +5346,13 @@ const struct pg_evidence *pg_prove_pi_codomain(struct pg_typing *typing,
 	const struct pg_evidence *pi, const struct pg_evidence *argument)
 {
 	return pi_codomain(typing, pi, argument, NULL);
+}
+
+const struct pg_evidence *pg_check_pi_codomain(struct pg_typing *typing,
+	const struct pg_evidence *pi, const struct pg_evidence *argument,
+	const struct pg_occurrence *subject)
+{
+	return subject ? pi_codomain(typing, pi, argument, subject) : NULL;
 }
 
 struct pg_typed_query *pg_classifier_request(struct pg_typing *typing,

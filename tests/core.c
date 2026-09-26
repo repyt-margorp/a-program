@@ -1496,10 +1496,11 @@ static void dependent_application_test(struct pg_graph *graph)
 	const struct pg_evidence *exposed_upi = pg_prove_return_content(&typing, constant_body);
 	const struct pg_evidence *exposed_pi = pg_prove_thunk_content(&typing, exposed_upi);
 	assert(exposed_pi && pg_evidence_classifier(exposed_pi) == pg_evidence_classifier(wide));
-	assert(pg_evidence_subject(exposed_upi)->origin == pg_evidence_subject(upi));
+	assert(pg_evidence_subject(constant_body)->origin == pg_evidence_subject(wide));
+	assert(pg_evidence_subject(exposed_upi)->origin == pg_evidence_subject(constant_body));
 	assert(!pg_evidence_subject(exposed_upi)->operand_count);
-	assert(pg_evidence_subject(exposed_pi) == pg_occurrence_boundary(&typing, pg_evidence_subject(pi),
-		PG_JUDGEMENT_COMPUTATION_TYPE, pg_evidence_classifier(wide)));
+	assert(pg_evidence_subject(exposed_pi)->origin == pg_evidence_subject(exposed_upi));
+	assert(pg_evidence_subject(exposed_pi)->selection == 1);
 	const struct pg_evidence *exposed_domain = pg_prove_pi_domain(&typing, exposed_pi);
 	assert(exposed_domain && pg_evidence_subject(exposed_domain) == pg_evidence_subject(u1));
 	assert(exposed_domain == u1);
