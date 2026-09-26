@@ -64,6 +64,12 @@ const struct pg_evidence *pg_evidence_for_subject(const struct pg_typing *typing
 	return conclusion_first(typing, subject->judgement, subject);
 }
 
+const struct pg_evidence *pg_evidence_for_context(const struct pg_typing *typing,
+	const struct pg_context *context)
+{
+	return conclusion_first(typing, PG_JUDGEMENT_CONTEXT, context);
+}
+
 struct pg_operation_declaration {
 	struct pg_object_entry base;
 	const struct pg_object *label;
@@ -5333,7 +5339,7 @@ const struct pg_evidence *pg_prove_pi_domain(struct pg_typing *typing,
 		if (!pg_universe_level(pg_evidence_classifier(pi), &bound)) return NULL;
 		if (!pg_universe_level(subject->classifier, &level) || level > bound) return NULL;
 		if (pg_alpha_equal(subject->core, domain) != 1) return NULL;
-		return accept(typing, PG_PI_DOMAIN, subject->context, subject, 1, &pi);
+		return pg_evidence_for_subject(typing, subject, NULL);
 	}
 	subject = pg_occurrence_selected(typing, pg_evidence_subject(pi), 0, NULL,
 		PG_JUDGEMENT_VALUE_TYPE, domain, pg_evidence_classifier(pi));

@@ -1502,7 +1502,7 @@ static void dependent_application_test(struct pg_graph *graph)
 		PG_JUDGEMENT_COMPUTATION_TYPE, pg_evidence_classifier(wide)));
 	const struct pg_evidence *exposed_domain = pg_prove_pi_domain(&typing, exposed_pi);
 	assert(exposed_domain && pg_evidence_subject(exposed_domain) == pg_evidence_subject(u1));
-	assert(pg_evidence_rule(exposed_domain) == PG_PI_DOMAIN);
+	assert(exposed_domain == u1);
 	/* A raw Context does not select its declaration's Universe bound. Keep
 	 * the supplied formation when constructing Pi, not the first receipt. */
 	const struct pg_object *shared_binder = pg_binder(graph);
@@ -6087,6 +6087,76 @@ static void request_typing_test(struct pg_graph *graph)
 	puts("typed effects: signatures, multi-clause handlers, deep resumption, forwarding and effect bounds passed");
 }
 
+static void function_signature_inputs(struct pg_graph *graph)
+{
+	for (size_t variant = 0; variant < 8; ++variant) {
+		struct pg_typing typing;
+		struct pg_whnf_work evaluation;
+		assert(!pg_typing_init(&typing, graph) && !pg_whnf_work_init(&evaluation, graph));
+		const struct pg_evidence *empty = pg_prove_empty_context(&typing);
+		const struct pg_evidence *u0 = pg_prove_universe(&typing, empty, 0);
+		const struct pg_evidence *u1 = pg_prove_universe(&typing, empty, 1);
+		const struct pg_object *a = pg_binder(graph), *x = pg_binder(graph);
+		const struct pg_evidence *parameters = pg_prove_context_extension(&typing, empty, a, u1);
+		const struct pg_evidence *domain = pg_prove_variable(&typing, parameters, a);
+		const struct pg_evidence *scope = pg_prove_context_extension(&typing, parameters, x, domain);
+		const struct pg_evidence *body = pg_prove_return(&typing, pg_prove_variable(&typing, scope, x));
+		if (variant & 4) {
+			const struct pg_evidence *unused = pg_prove_context_extension(&typing, parameters, pg_binder(graph),
+				pg_prove_universe(&typing, parameters, 3));
+			const struct pg_evidence *wide = pg_prove_pi(&typing, unused,
+				pg_prove_projection(&typing, unused, pg_prove_return_type(&typing, domain)));
+			domain = pg_prove_return_content(&typing, pg_prove_pi_constant_codomain(&typing, wide));
+			const struct pg_evidence *selected = pg_prove_context_extension(&typing, parameters, x, domain);
+			assert(selected && selected != scope && pg_evidence_context(selected) == pg_evidence_context(scope));
+			scope = selected;
+		}
+		const struct pg_evidence *pi = pg_prove_pi(&typing, scope, pg_prove_classifier(&typing, scope, body));
+		if (variant & 1) {
+			const struct pg_evidence *alternate = pg_prove_thunk_content(&typing, pg_prove_thunk_type(&typing, pi));
+			assert(alternate && pg_evidence_rule(alternate) != PG_PI_FORM);
+			assert(pg_evidence_subject(alternate) == pg_evidence_subject(pi));
+			pi = alternate;
+		}
+		/* No Lambda with the ordinary Pi receipt was accepted earlier. */
+		const struct pg_evidence *function = pg_prove_lambda(&typing, pi, body);
+		assert(function && pg_evidence_for_subject(&typing, pg_evidence_subject(function), NULL) == function);
+		if (variant & 2) {
+			const struct pg_evidence *argument = pg_prove_type_value(&typing, u0);
+			const struct pg_evidence *map = pg_prove_substitution(&typing, parameters, empty, 1, &argument);
+			function = pg_prove_reindex(&typing, map, function);
+			assert(function);
+		}
+		struct pg_function_graph_work generated;
+		assert(!pg_function_graph_init(&generated, &typing, &evaluation, function));
+		enum pg_function_graph_status status;
+		size_t steps = 0;
+		do {
+			status = pg_function_graph_advance(&generated, 1);
+			assert(++steps < 10000);
+		} while (status == PG_FUNCTION_GRAPH_PENDING);
+		assert(status == PG_FUNCTION_GRAPH_DONE && pg_function_graph_formation(&generated));
+		if (variant & 4) {
+			const struct pg_term *signature = pg_evidence_classifier(pg_function_graph_formation(&generated));
+			const struct pg_term *input, *result;
+			const struct pg_object *binder;
+			while (pg_pi_view(signature, &input, &binder, &result)) signature = result;
+			uint64_t level;
+			assert(pg_universe_level(signature, &level) && level == 4);
+		}
+		const struct pg_evidence *source = pg_function_graph_source(&typing, function);
+		assert(source && pg_evidence_subject(source) == pg_evidence_subject(function));
+		size_t proofs = typing.proofs.count, subjects = typing.occurrences.count;
+		for (size_t i = 0; i < 100; ++i)
+			assert(pg_function_graph_source(&typing, function) == source);
+		assert(typing.proofs.count == proofs && typing.occurrences.count == subjects);
+		pg_function_graph_destroy(&generated);
+		pg_whnf_work_destroy(&evaluation);
+		pg_typing_destroy(&typing);
+	}
+	puts("function graph: retained Pi/body, alternate admission, selected Universe and specialization without Lambda rebuilding");
+}
+
 static void context_alpha_test(struct pg_graph *graph)
 {
 	struct pg_typing typing, foreign;
@@ -6199,6 +6269,7 @@ int main(void)
 	context_test(&graph);
 	evidence_test(&graph);
 	evidence_owner_test(&graph);
+	function_signature_inputs(&graph);
 	context_alpha_test(&graph);
 	structural_scope_admission_test(&graph);
 	dependent_application_test(&graph);

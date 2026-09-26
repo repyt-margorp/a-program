@@ -111,6 +111,20 @@ static int application_body(struct pg_function_graph_state *s,
 	return 0;
 }
 
+static int scoped_input(struct pg_function_graph_state *s,
+	const struct pg_evidence *source, size_t index, const struct pg_evidence **result)
+{
+	const struct pg_occurrence *input = pg_occurrence_scoped_input(pg_evidence_subject(source), index);
+	if (input) {
+		*result = pg_prove_structural_subject(s->typing, input);
+		return *result ? 0 : -1;
+	}
+	struct pg_typed_query *query = pg_typed_input_request(s->typing, source, index);
+	if (await_view(s, query)) return 1;
+	*result = pg_typed_query_result(query);
+	return *result ? 0 : -1;
+}
+
 /* Zero is ready, one is pending, minus one has no supported structural view. */
 static int structural_computation_view(struct pg_function_graph_state *s,
 	const struct pg_evidence *proof, enum pg_evidence_rule *rule,
@@ -378,7 +392,7 @@ static int helper_call(struct pg_function_graph_state *s, struct graph_case *pla
 		if (!status) { result = 2; goto done; }
 		const struct pg_evidence *concrete = status > 0 ? h->source.function : NULL;
 		if (concrete) {
-			const struct pg_evidence *context = pg_evidence_premise(pg_evidence_premise(pg_evidence_premise(concrete, 0), 0), 0);
+			const struct pg_evidence *context = pg_evidence_for_context(s->typing, pg_evidence_context(concrete));
 			h->environment = pg_prove_substitution_projection(s->typing, context, plan->context);
 			if (!h->environment) goto done;
 			h->function = concrete;
@@ -398,8 +412,10 @@ static int helper_call(struct pg_function_graph_state *s, struct graph_case *pla
 			const struct pg_evidence *body_environment;
 			int status = construction_origin(s, &h->body, &body_environment);
 			if (status) { result = status > 0 ? 2 : 0; goto done; }
-			if (pg_evidence_rule(h->body) == PG_LAMBDA_INTRO) h->body = pg_evidence_premise(h->body, 1);
-			else if (pg_evidence_rule(h->body) == PG_APP_ELIM) h->body = pg_evidence_premise(h->body, 0);
+			if (pg_evidence_rule(h->body) == PG_LAMBDA_INTRO) {
+				int input = scoped_input(s, h->body, 0, &h->body);
+				if (input) { result = input > 0 ? 2 : 0; goto done; }
+			} else if (pg_evidence_rule(h->body) == PG_APP_ELIM) h->body = pg_evidence_premise(h->body, 0);
 			else if (pg_evidence_rule(h->body) == PG_FORCE_ELIM || pg_evidence_rule(h->body) == PG_THUNK_COMPUTATION ||
 				pg_evidence_rule(h->body) == PG_THUNK_INTRO) h->body = pg_evidence_premise(h->body, 0);
 			else break;
@@ -932,16 +948,9 @@ int pg_function_source_advance(struct pg_typing *typing, struct pg_function_sour
 		const struct pg_context *scope = pg_evidence_context(function);
 		if (pg_evidence_context_map(environment) == pg_context_map_projection(typing, scope,
 			pg_evidence_context(environment))) return 1;
-		/* Specialization keeps its typed context action. Reuse the mapped
-		 * Core binder, including capture avoidance, rather than freshening
-		 * a different graph source on every request. */
-		const struct pg_evidence *mapped = pg_prove_reindex(typing, environment, function);
-		const struct pg_term *core = mapped ? pg_evidence_subject(mapped)->core : NULL;
-		if (!core || core->kind != PG_LAMBDA) return -1;
-		const struct pg_evidence *extension = pg_evidence_premise(pg_evidence_premise(function, 0), 0);
-		const struct pg_evidence *lifted = pg_prove_substitution_lift(typing, environment, extension, core->as.lambda.binder);
-		const struct pg_evidence *body = pg_prove_reindex(typing, lifted, pg_evidence_premise(function, 1));
-		source->function = pg_prove_abstract(typing, pg_evidence_premise(environment, 1), pg_evidence_premise(lifted, 1), body);
+		/* Preserve the selected type and context action. Scoped-input queries
+		 * already transport the body; do not rebuild a second Lambda. */
+		source->function = pg_prove_reindex(typing, environment, function);
 		return source->function ? 1 : -1;
 	}
 	if (rule == PG_APP_ELIM) {
@@ -976,13 +985,35 @@ static int prepare_head(struct pg_function_graph_state *s);
 static int function_signature(struct pg_function_graph_state *s, const struct pg_evidence *function)
 {
 	struct pg_typing *typing = s->typing;
+	const struct pg_evidence *body, *result;
+	int status = scoped_input(s, function, 0, &body);
+	if (status > 0) return 1;
+	if (status < 0) goto unsupported;
+	s->context = pg_evidence_for_context(typing, pg_evidence_context(function));
+	const struct pg_evidence *pi = pg_prove_classifier(typing, s->context, function);
+	status = scoped_input(s, pi, 1, &result);
+	if (status > 0) return 1;
+	if (status < 0) goto unsupported;
+	const struct pg_context *scope = pg_evidence_context(body);
+	if (!scope || scope->judgement != PG_JUDGEMENT_VALUE) goto unsupported;
+	s->domain = pg_prove_pi_domain(typing, pi);
+	/* Scope admission does not select a Universe bound. The retained Pi
+	 * domain does, including when another formation admitted this Context. */
+	s->argument_context = pg_prove_context_extension(typing, s->context, scope->binder, s->domain);
+	if (!s->argument_context || pg_evidence_context(s->argument_context) != scope) goto unsupported;
+	if (pg_evidence_context(result) != scope) {
+		/* Independent capture-avoiding actions may allocate different Pi
+		 * and Lambda binders. Align only this bound variable, not free names. */
+		const struct pg_context *codomain_scope = pg_evidence_context(result);
+		if (!codomain_scope || codomain_scope->parent != scope->parent) goto unsupported;
+		const struct pg_evidence *map = pg_prove_substitution_pair(typing,
+			pg_prove_substitution_projection(typing, s->context, s->argument_context),
+			pg_evidence_for_context(typing, codomain_scope),
+			pg_prove_variable(typing, s->argument_context, scope->binder));
+		result = pg_prove_reindex(typing, map, result);
+		if (!result) goto unsupported;
+	}
 	s->recursive_function = function;
-	const struct pg_evidence *pi = pg_evidence_premise(function, 0);
-	s->argument_context = pg_evidence_premise(pi, 0);
-	s->context = pg_evidence_premise(s->argument_context, 0);
-	if (pg_evidence_rule(s->argument_context) != PG_CONTEXT_EXTEND) goto unsupported;
-	s->domain = pg_evidence_premise(s->argument_context, 1);
-	const struct pg_evidence *result = pg_evidence_premise(pi, 1);
 	s->result_context = s->argument_context;
 	s->arity = 0;
 	const struct pg_term *result_type = pg_evidence_subject(result)->core, *argument_type, *codomain;
@@ -1007,7 +1038,7 @@ static int function_signature(struct pg_function_graph_state *s, const struct pg
 	if (!result || !pg_pure_computation_type_view(pg_evidence_subject(result)->core, &s->totality, &range)) goto unsupported;
 	s->range = pg_prove_return_content(typing, result);
 	if (!s->range) goto unsupported;
-	s->body = pg_evidence_premise(function, 1);
+	s->body = body;
 	return 0;
 unsupported:
 	s->status = PG_FUNCTION_GRAPH_UNSUPPORTED;
@@ -1060,8 +1091,12 @@ static int capture_eliminator(struct pg_function_graph_state *s, const struct pg
 	if (!function) return -1;
 	s->captured_input = scrutinee;
 	const struct pg_evidence *input_function = function;
-	while (pg_evidence_context(pg_evidence_premise(pg_evidence_premise(input_function, 0), 0)) != pg_evidence_context(scope))
-		input_function = pg_evidence_premise(input_function, 1);
+	for (;;) {
+		const struct pg_evidence *input;
+		if (scoped_input(s, input_function, 0, &input)) return -1;
+		if (pg_evidence_context(input) == pg_evidence_context(scope)) break;
+		input_function = input;
+	}
 	if (function_signature(s, input_function)) return -1;
 	s->recursive_function = function;
 	return 0;
@@ -1070,7 +1105,6 @@ static int capture_eliminator(struct pg_function_graph_state *s, const struct pg
 static void prepare_graph(struct pg_function_graph_state *s)
 {
 	struct pg_typing *typing = s->typing;
-	const struct pg_evidence *source_function = s->source_function;
 	switch (s->preparation) {
 	case GRAPH_SOURCE: {
 		int status = pg_function_source_advance(typing, &s->source);
@@ -1079,10 +1113,13 @@ static void prepare_graph(struct pg_function_graph_state *s)
 			const struct pg_evidence *function = s->source.function;
 			if (!s->source_function) {
 				s->source_function = function;
-				s->outer_context = pg_evidence_premise(pg_evidence_premise(pg_evidence_premise(function, 0), 0), 0);
+				s->outer_context = pg_evidence_for_context(typing, pg_evidence_context(function));
 			}
 			s->recursive_function = function;
-			const struct pg_evidence *body = pg_evidence_premise(function, 1);
+			const struct pg_evidence *body;
+			int input = scoped_input(s, function, 0, &body);
+			if (input > 0) return;
+			if (input < 0) goto unsupported;
 			const struct pg_term *domain, *codomain;
 			const struct pg_object *binder;
 			if (pg_pi_view(pg_evidence_classifier(body), &domain, &binder, &codomain)) {
@@ -1090,10 +1127,10 @@ static void prepare_graph(struct pg_function_graph_state *s)
 				return;
 			}
 		} else if (!s->source_function) goto unsupported;
+		if (function_signature(s, s->recursive_function)) return;
 		/* Source queries are graph-owned; later helper work owns a private arena. */
 		s->helper = (struct helper_cursor){0};
 		s->preparation = GRAPH_HEAD;
-		function_signature(s, s->recursive_function);
 		return;
 	}
 	case GRAPH_HEAD: {
@@ -1147,24 +1184,27 @@ static void prepare_graph(struct pg_function_graph_state *s)
 	case GRAPH_READY:
 		return;
 	}
+	if (s->input.indices && !s->captured_input) s->recursive_function = s->source_function;
 	s->preparation = GRAPH_PARAMETERS;
 	return;
 capture:
 	if (capture_eliminator(s, pg_evidence_premise(s->body, 3))) goto unsupported;
 	return;
 parameters:
-	if (s->captured_input) source_function = s->recursive_function;
 	if (s->input.indices) {
 		struct pg_typed_query *query = pg_substitution_rebase_request(typing, s->context, s->input.parameters);
 		if (await_view(s, query)) return;
 		s->input.parameters = pg_typed_query_result(query);
 		if (!s->input.parameters || !pg_inductive_motive_context_valid(typing,
 			s->input.formation, s->input.parameters, s->argument_context)) goto unsupported;
-		while (source_function && pg_evidence_context(source_function) != pg_evidence_context(s->context))
-			source_function = pg_evidence_rule(pg_evidence_premise(source_function, 1)) == PG_LAMBDA_INTRO
-				? pg_evidence_premise(source_function, 1) : NULL;
-		if (!source_function) goto unsupported;
-		s->recursive_function = source_function;
+		while (pg_evidence_context(s->recursive_function) != pg_evidence_context(s->context)) {
+			const struct pg_evidence *body;
+			int input = scoped_input(s, s->recursive_function, 0, &body);
+			if (input > 0) return;
+			if (input < 0) goto unsupported;
+			if (pg_evidence_subject(body)->core->kind != PG_LAMBDA) goto unsupported;
+			s->recursive_function = body;
+		}
 	}
 	if (s->captured_input) {
 		s->specialization = pg_function_plan_argument_substitution(s, s->context, s->captured_input);

@@ -2515,9 +2515,8 @@ static void schema_positivity(void)
 		size_t before_domain = typing.proofs.count;
 		const struct pg_evidence *inner_domain = pg_prove_pi_domain(&typing, inner);
 		assert(inner_domain && pg_evidence_classifier(inner_domain) == pg_universe(&graph, 0));
-		assert(pg_evidence_rule(inner_domain) == PG_PI_DOMAIN);
-		assert(pg_evidence_premise(inner_domain, 0) == inner);
-		assert(typing.proofs.count == before_domain + 1);
+		assert(inner_domain == nat);
+		assert(typing.proofs.count == before_domain);
 		common_rule(&typing, inner_domain);
 		/* A directly formed inner Pi is not merely a retained projection. */
 		const struct pg_evidence *direct_scope = pg_prove_context_extension(&typing, z_context,

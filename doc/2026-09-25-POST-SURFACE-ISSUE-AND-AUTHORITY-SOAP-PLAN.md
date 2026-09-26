@@ -464,6 +464,27 @@ Therefore R1 consolidated conclusions, but did **not** remove dependence on
 the derivation graph. Renaming Evidence, splitting its file, or adding another
 subject accessor would not finish this part of the refactor.
 
+Function-graph baseline regression, 2026-09-26 (`2f16bec`, with the same C code
+at `7f25362`): accepting the exact same Pi through `THUNK_CONTENT` and
+introducing a Lambda with that receipt makes graph
+preparation report unsupported. The direct Pi case succeeds. Nested premise
+indexing assumes `LAMBDA_INTRO -> PI_FORM -> CONTEXT_EXTEND`; a valid alternative
+Pi receipt violates that assumption. The new regression introduces no earlier
+Lambda whose ordinary receipt could mask the failure.
+
+Agent decision: graph consumers read the retained Lambda body/Pi inputs through
+the existing typed queries. Specialization retains its checked context action
+instead of constructing another Lambda. Independent Pi/Lambda substitutions can
+freshen different bound pointers; an ordinary one-binder substitution connects
+the codomain to the body scope. The indexed Context accessor supplies admission
+only, never the selected Universe bound. Domain inversion keeps its checks but
+reuses an already checked exact child rather than adding a `PI_DOMAIN` receipt.
+Eight direct/specialized, ordinary/alternative-Pi and narrow/wide formation cases
+pass. Parameter traversal retains its existing function cursor across typed-input
+yields rather than revisiting the prefix. The publication gates below pass.
+Missing family-declaration inputs, other derivation consumers and synchronous
+inversion costs remain P4 work.
+
 #### Remaining Work, With Current Evidence
 
 1. **Incremental callers still drain synchronous helpers.**
@@ -657,6 +678,12 @@ soundness; preserve all inherited files and edits locally for their author.
   adding an inverse receipt. Preserve converted boundaries, effects, scopes
   and object proof Terms. Verify fresh typed-only images, legacy derivation
   images, full acceptance and paired performance before publication.
+- [x] **P4.3g Function-graph typed inputs:** remove nested Pi/Lambda premise
+  recovery and specialization's duplicate Lambda construction. Preserve exact
+  selected domain bounds, scope correspondence and shared mapped inputs; retain
+  regressions for alternate Pi admission, captured binders and allocation reuse.
+  Verify full acceptance, image cross-reading, sanitizers and paired timings;
+  revise storage-specific test assertions without weakening their typing checks.
 - [ ] **P4.3 One end-to-end slice:** start with typed Lambda/APP plus context
   action, then one Identity boundary consumer. Build, check, inspect, serialize
   and load the typed structure through the same Solve mechanism. Remove the
@@ -1791,3 +1818,60 @@ Logs: `/tmp/a-program-unary-input-{acceptance,debug-*,asan-*}.log`,
 `/tmp/a-program-unary-input-cross.tJRPXn/` and
 `/tmp/a-program-unary-input-theorem.E21goA/`.
 Documentation: **+58/-0**, net +58 lines.
+
+### Function-Graph Typed-Input Verification
+
+2026-09-26, clean candidate against `7f25362`; inherited Context/IADT trials
+excluded. This adopts P4.3g, not the remaining P4/P5 work. No parser, Core tag,
+wire version, separate scheduler or acceptance cache was added.
+
+- Full `make check-acceptance`: exit 0; wall **1590.654s**, user 1478.643s,
+  system 111.213s. Includes compatibility **63/63**, ordinary-result Sorted,
+  all four LT/partition variants, witness isolation and packets.
+- Debug and ASan/UBSan with leak detection: Core, Program, IADT, Identity,
+  Synthesis and fresh-process typed-only images pass. The eight new graph
+  cases cover alternative Pi admission, specialization and selected bounds;
+  repeated source lookup allocates no new proofs or occurrences.
+- Six source fixtures at 0/100/full fuel, ordinary and retained: **36 image
+  pairs, 72 opposite-version loads** pass. Partial/family function images also
+  check results at chunks 1/64. Occurrence/derivation images pass **8** reads
+  across the two versions. Neither image bytes nor Solve steps are canonical.
+
+Quiet comparison: one warmup plus six pairs, last three reversed, same `-O2`
+build flags. Small cases use 100-process batches; table reports median seconds
+per process. All include source loading; the last also includes NF. Source
+statuses and length NF agree; Solve transition counts change. Sample ranges
+overlap for every case. Partial functions are 2.0% slower by median; no general
+speedup or exact performance neutrality is claimed.
+
+| Workload | `7f25362` | Candidate |
+| --- | ---: | ---: |
+| Certified length | 0.008879 | 0.008805 |
+| Partial function | 0.007875 | 0.008033 |
+| Function-field induction | 0.011067 | 0.010922 |
+| Indexed append | 0.005511 | 0.005509 |
+| General Sorted | 0.802607 | 0.803444 |
+| Ordinary-result theorem | 0.725799 | 0.728126 |
+| Derived LT and content proof | 2.534412 | 2.504927 |
+| Certified length plus NF | 0.009285 | 0.009184 |
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `src/evidence.c` | 7 | 1 | +6 |
+| `src/evidence.h` | 4 | 0 | +4 |
+| `src/function_graph.c` | 72 | 32 | +40 |
+| `tests/core.c` | 72 | 1 | +71 |
+| `tests/iadt.c` | 2 | 3 | -1 |
+| `tests/program.c` | 3 | 3 | 0 |
+
+Implementation **+83/-33, net +50**; tests **+77/-7, net +70**. Duplicate
+Lambda reconstruction and inverse receipts decrease, but source code does not.
+The broad reduction criterion remains open. Selected scopes/bounds require
+explicit checking; retaining a raw Context admission is not enough.
+
+Evidence: `/tmp/a-program-function-typed-final-{acceptance,profiles,cross}.log`,
+`/tmp/a-program-function-typed-final-acceptance.time`,
+`/tmp/a-program-function-typed-bench.jsonl` and cross-images in
+`/tmp/a-program-function-typed-cross.PkLaFp/`. These are local execution records,
+not portable fixtures; the new boundary regressions are in the tracked tests.
+This plan: **+84/-0**; combined implementation/tests/docs: **+244/-40, net +204**.

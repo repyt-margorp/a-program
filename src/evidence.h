@@ -671,6 +671,10 @@ int pg_evidence_owned_by(const struct pg_evidence *evidence, const struct pg_typ
  * structure; inspect the typed subject instead. */
 const struct pg_evidence *pg_evidence_for_subject(const struct pg_typing *typing,
 	const struct pg_occurrence *subject, const struct pg_evidence *after);
+/* Existing admission of this raw scope, not a selected declaration formation
+ * or Universe bound. This does not check or accept an unadmitted Context. */
+const struct pg_evidence *pg_evidence_for_context(const struct pg_typing *typing,
+	const struct pg_context *context);
 /* Check retained typed inputs with ordinary kernel rules, reusing an exact
  * accepted subject. Direct Universe, ordinary Pi/Lambda/APP and F/U/RETURN/
  * THUNK/FORCE use their retained children. Pi supplies its binding formation;

@@ -799,9 +799,9 @@ static void function_graph_aliases(struct pg_program *p,
 	struct pg_typed_query *input = pg_typed_input_request(typing, mapped, 0);
 	while (!pg_typed_query_advance(input, chunk)) assert(pg_typed_query_steps(input) < 100000);
 	const struct pg_evidence *specialized = pg_function_graph_source(typing, mapped);
-	assert(specialized && pg_evidence_subject(specialized)->core == pg_evidence_subject(mapped)->core);
-	assert(pg_evidence_subject(pg_evidence_premise(specialized, 1)) ==
-		pg_evidence_subject(pg_typed_query_result(input)));
+	assert(specialized && pg_evidence_subject(specialized) == pg_evidence_subject(mapped));
+	assert(pg_typed_input_request(typing, specialized, 0) == input);
+	assert(pg_typed_query_result(input));
 	struct pg_context_lift *lift = pg_context_lift_request(typing, pg_evidence_context_map(map),
 		pg_evidence_context(inner), pg_evidence_subject(mapped)->core->as.lambda.binder);
 	assert(pg_context_lift_result(lift));
