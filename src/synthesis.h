@@ -748,6 +748,9 @@ struct pg_synthesis_job *pg_synthesis_permutation_source_face(struct pg_synthesi
 struct pg_synthesis_job *pg_synthesis_substitution_pair(struct pg_synthesis *synthesis,
 	const struct pg_evidence *substitution, const struct pg_evidence *extension,
 	const struct pg_evidence *image);
+/* Borrow the same composition query as the synchronous kernel adapter. */
+struct pg_synthesis_job *pg_synthesis_substitution_compose(struct pg_synthesis *synthesis,
+	const struct pg_evidence *first, const struct pg_evidence *second);
 /* Build a complete substitution from independently synthesized image jobs in
  * source declaration order. Index-result elaboration uses this same request: each
  * image is post-checked after preceding images determine its dependent type.

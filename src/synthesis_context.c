@@ -14,6 +14,7 @@ static void reindex_step(struct pg_synthesis *, struct pg_synthesis_job *);
 static void pair_step(struct pg_synthesis *, struct pg_synthesis_job *);
 static void lift_step(struct pg_synthesis *, struct pg_synthesis_job *);
 static void substitution_step(struct pg_synthesis *, struct pg_synthesis_job *);
+static void composition_step(struct pg_synthesis *, struct pg_synthesis_job *);
 
 static const struct pg_synthesis_work_class REINDEX_JOB[1] = {{
 	.size = sizeof(struct reindex_work), .advance = reindex_step}};
@@ -23,6 +24,24 @@ static const struct pg_synthesis_work_class LIFT_JOB[1] = {{
 	.size = sizeof(struct lift_work), .advance = lift_step}};
 static const struct pg_synthesis_work_class SUBSTITUTION_JOB[1] = {{
 	.size = sizeof(struct substitution_work), .advance = substitution_step}};
+static const struct pg_synthesis_work_class COMPOSITION_JOB[1] = {{.advance = composition_step}};
+
+struct pg_synthesis_job *pg_synthesis_substitution_compose(struct pg_synthesis *synthesis,
+	const struct pg_evidence *first, const struct pg_evidence *second)
+{
+	struct pg_typed_query *query = pg_substitution_compose_request(synthesis->typing, first, second);
+	const void *inputs[] = {query};
+	return query ? pg_synthesis_work_request(synthesis, COMPOSITION_JOB, 1, inputs) : NULL;
+}
+
+static void composition_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	struct pg_typed_query *query = (void *)job->inputs[0];
+	int status = pg_typed_query_advance(query, 1);
+	if (!status) { pg_synthesis_enqueue(synthesis, job); return; }
+	job->result = pg_typed_query_result(query);
+	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+}
 
 static int reindex_inputs(struct pg_synthesis *synthesis,
 	const struct pg_evidence *substitution, const struct pg_evidence *proof)

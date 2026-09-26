@@ -319,16 +319,16 @@ the Pi's scoped codomain input instead of requiring a `PG_PI_FORM` receipt.
 The same Pi accepted through U-content elimination is usable without rebuilding
 its scope. Both changes retain ordinary classifier/scope/owner validation.
 
-Current input/consumer inventory (partial P4.2, not a completed checker design):
+Input/consumer inventory (rechecked at `282d7d1`, partial P4.2):
 
 | Construction | Retained semantic inputs | Remaining migration |
 | --- | --- | --- |
-| Pi / Lambda | Pi domain/codomain operands, scoped Context and Core binder; Lambda type/body/annotation | Ordinary binders can now establish their scope from the retained domain during structural checking; family declaration inputs remain incomplete |
+| Context / Pi / Lambda | Selected `pg_scope` declaration graph; Pi/family binding operands retain selected domain/index formations; Lambda type/body/annotation | Context histories are removed. Function family inputs still flatten the telescope and reconstruct its checking scope; synchronous structural checking is not yet shared Solve work. Arbitrary mapped origins still need explicit source declarations |
 | APP | Function/argument operands and instantiated result `type` | One ordinary APP rule constructs or checks the retained result; substitution is shared and only bound-pointer renaming is accepted. `formed_classifier` still returns Evidence |
 | Constructor | Typed field operands and result `type`; nominal declaration lives with IADT | `constructor_instance` still consumes schema/parameter/instance receipts. Audit the declaration link and maps before deleting them; constructor Core alone cannot choose a nominal type |
 | Match / IH | Scrutinee, branches, motive, formation, parameter map and IH allocation are retained | Elimination still checks its rule/schema through Evidence. Preserve motive telescopes and IH binder allocation rather than infer them from erased branch code |
 | Identity | Family, endpoints, maps and paths, now read in its owner | Direct boundary checking works without parent history; children/maps still need accepted typing. Origin recovery and full recursive typed checking remain unfinished |
-| Conversion / normalization | Origin, new type boundary and reusable computation certificates | These are checked computations, not object Equality proofs. Do not discard validation or infer conversion from equal Core tags |
+| Conversion / normalization | Origin and new type boundary; normalization certificates remain in Evidence | These are checked computations, not object Equality proofs. Retaining an origin alone does not provide the selected reduction certificate. Do not discard validation or infer conversion from equal Core tags |
 
 Reinspection at `6f2b466`, 2026-09-26: `pg_context` retains a raw declared
 classifier and a family telescope, not the typed formation of that declaration.
@@ -718,6 +718,18 @@ from the explicit typing store, rather than needing the removed receipt history.
 Keep the existing wire grammar where its meaning is unchanged. This does not
 delete other rules' histories or turn annotation loading into acceptance.
 
+Composition decision, baseline `282d7d1`, 2026-09-27 (agent): both inputs are
+already checked substitutions, including their endpoint declarations. Reindexing
+an accepted image along the second substitution justifies the composed image;
+rediscovering its introduction from the output shape is unnecessary. The final
+map still uses ordinary dependent substitution checking. Unlike a naked
+unaccepted subject, this request has its required inputs, so sharing terminal
+results does not cache missing Context admission as a permanent rejection.
+The query owns progress; synthesis only borrows it. Neither is object evidence.
+After checked composable inputs have been admitted, a failed internal action
+is an error, not a judgement that the source program is ill-typed. Keep that
+distinction consistent with the existing reindex worker.
+
 ### Plan
 
 - [x] **P4.0 Static rebaseline:** reconcile actual owners, published epochs,
@@ -864,6 +876,21 @@ delete other rules' histories or turn annotation loading into acceptance.
   permanent history with repeated full-source checking or a second scheduler.
   Recheck the small timing delta below, including APP/codomain reuse, without
   restoring result-blind interning or adding a parallel acceptance cache.
+- [x] **P4.4a Shared substitution composition (baseline `282d7d1`):** replace
+  the synchronous composition loop with one existing typed-query request over
+  the two checked maps. Resume occurrence action one transition at a time;
+  use checked reindexing of the original image, not structural reconstruction
+  of its output. Both the synchronous API and synthesis consumers must borrow
+  that worker. Preserve selected endpoint declarations and projection rules.
+  Test chunks 0/1/64, interleaved consumers, invalid/foreign endpoints and
+  repeated completion without allocations or rescanning. Final ordinary map
+  admission still checks the complete telescope; this slice does not claim
+  that every kernel rule is constant-cost. No new scheduler, Core tag, wire
+  format or persistent image-proof array is needed. This is an agent decision
+  within P4.4, not a new user requirement. Run the common publication gates
+  before adoption; measure any added work retention against the baseline.
+  Verified below, 2026-09-27. Adopted for shared resumability with measured
+  time/memory overhead, not as a speedup or completion of P4.4.
 - [ ] **P4.5 Acceptance (R5/A5):** focused tests per slice, then full
   `check-acceptance` for each publication milestone and affected Debug/ASan/
   UBSan ownership/context coverage. Compare identical input/compiler flags
@@ -2384,3 +2411,61 @@ Local evidence: `/tmp/a-program-context-history-{acceptance,profiles,cross}.log`
 `/tmp/a-program-context-history-cross.YHNq7k/`. Permanent regression tests are
 tracked; temporary execution logs are not.
 This plan: **+97/-2**; complete slice: **+434/-213, net +221**.
+
+### Shared Composition Verification
+
+Baseline `282d7d1`, verified 2026-09-27 in the clean publication worktree.
+Composition uses one existing typed query, shared by the synchronous adapter,
+typed-origin/body/rebase consumers and synthesis's Identity-family path.
+Transported images follow from checked reindexing of the original images;
+their output structure is no longer rediscovered. Final admission still uses
+the ordinary dependent-map rule. No new Core tag, wire format or proof store.
+
+- Full optimized `check-acceptance`: exit 0, **1596.891s** wall, 1483.040s user,
+  112.517s system; compatibility **63/63**, general/ordinary-result Sorted and
+  all four LT provider/order variants pass. This run includes the final fix
+  classifying a failed internal composition as ERROR rather than REJECTED.
+- Debug and ASan/UBSan Core, Program, IADT, Identity, Synthesis, typed-structure
+  and derivation-image tests pass, with leak detection. Permanent tests cover
+  0/1/64 budgets, interleaved borrowers, cancellation of one borrower, selected
+  endpoint preservation, invalid/foreign inputs and allocation-free reuse.
+- Cross-reading passes **36** source-image pairs, **72** opposite-version loads
+  and **8** occurrence/derivation reads, with zero/partial/complete progress.
+- Ten workloads, warmup plus six counterbalanced pairs (small cases batched
+  100): timing medians change **-0.32% to +4.42%**. General Sorted is
+  **0.842745s -> 0.879961s**; ordinary-result theorem **0.770983s -> 0.771267s**;
+  derived proof **2.590566s -> 2.669946s**. Derived sample ranges do not overlap:
+  this is a measured slowdown, not evidence of performance neutrality.
+- Results agree; Solve transition counts increase because previously synchronous
+  work is scheduled. General Sorted changes **623591 -> 661719** transitions;
+  a fixed budget can therefore stop earlier. No accepted proof is fabricated
+  on exhaustion. Three-pair peak RSS medians, KiB: length **11052 -> 11052**,
+  Sorted **224372 -> 225948**, ordinary result **174484 -> 175784**, derived
+  **547068 -> 552044**. Shared query retention has a measurable cost.
+
+Agent assessment: adopt this as the requested shared-progress slice, not an
+optimization claim. Repeated identical requests no longer rescan completed
+images, and cancelling one borrower preserves the common computation. P4.4
+remains open: final map admission and several IADT/structural helpers still
+run synchronously; distinct accepted map histories are not yet canonicalized
+to one typed-map request. Investigate the measured scheduling/retention cost
+before claiming the broader performance gate or adding another cache.
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `src/evidence.c` | 92 | 28 | +64 |
+| `src/evidence.h` | 5 | 0 | +5 |
+| `src/synthesis.h` | 3 | 0 | +3 |
+| `src/synthesis_context.c` | 19 | 0 | +19 |
+| `src/synthesis_identity.c` | 8 | 3 | +5 |
+| `tests/core.c` | 12 | 1 | +11 |
+| `tests/synthesis.c` | 83 | 0 | +83 |
+
+Implementation **+127/-31, net +96**; tests **+95/-1, net +94**; build unchanged.
+Source reduction is not achieved. P4.2/P4.3/P4.4/P4.5 and remaining P5 stay open;
+the inherited relocation trial is excluded and preserved locally.
+Local logs: `/tmp/a-program-composition-{acceptance,debug,asan,cross}.log`,
+`/tmp/a-program-composition-acceptance.time`, and
+`/tmp/a-program-composition-{bench,memory}.jsonl`; cross-images:
+`/tmp/a-program-composition-cross.neNK7U/`. Tests, not temporary logs, are tracked.
+This plan: **+88/-3**; complete slice: **+310/-35, net +275**.

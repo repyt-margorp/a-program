@@ -2455,9 +2455,20 @@ static void typed_substitution_test(struct pg_graph *graph)
 		pg_prove_variable(&typing, third, c), pg_prove_variable(&typing, third, z)
 	};
 	const struct pg_evidence *tau = pg_prove_substitution(&typing, destination, third, 2, second_images);
-	const struct pg_evidence *composite = pg_prove_substitution_compose(&typing, sigma, tau);
+	struct pg_typed_query *composition = pg_substitution_compose_request(&typing, sigma, tau);
+	assert(composition && pg_substitution_compose_request(&typing, sigma, tau) == composition);
+	assert(!pg_typed_query_advance(composition, 0) && !pg_typed_query_steps(composition));
+	assert(!pg_typed_query_result(composition));
+	uint64_t composition_steps = 0;
+	while (!pg_typed_query_advance(composition, 1)) {
+		assert(pg_typed_query_steps(composition) == ++composition_steps);
+		assert(composition_steps < 10000);
+	}
+	const struct pg_evidence *composite = pg_typed_query_result(composition);
 	assert(composite);
+	composition_steps = pg_typed_query_steps(composition);
 	assert(pg_prove_substitution_compose(&typing, sigma, tau) == composite);
+	assert(pg_typed_query_advance(composition, 64) == 1 && pg_typed_query_steps(composition) == composition_steps);
 	const struct pg_evidence *empty_map = pg_prove_substitution(&typing, empty, empty, 0, NULL);
 	assert(empty_map && pg_prove_substitution_compose(&typing, empty_map, empty_map) == empty_map);
 	assert(pg_prove_substitution_compose(&typing,

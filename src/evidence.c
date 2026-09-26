@@ -623,9 +623,9 @@ static const struct pg_occurrence *returned_computation(const struct pg_occurren
 		input->core == subject->core->as.application.argument ? input : NULL;
 }
 
-enum typed_query_kind { TYPED_BODY, TYPED_INPUT, TYPED_HEAD, TYPED_ELIMINATION, TYPED_ORIGIN, TYPED_CLASSIFIER, TYPED_REBASE, TYPED_MAP_REBASE, TYPED_INDUCTIVE, TYPED_SELECTION, TYPED_PHASE };
+enum typed_query_kind { TYPED_BODY, TYPED_INPUT, TYPED_HEAD, TYPED_ELIMINATION, TYPED_ORIGIN, TYPED_CLASSIFIER, TYPED_REBASE, TYPED_MAP_REBASE, TYPED_MAP_COMPOSE, TYPED_INDUCTIVE, TYPED_SELECTION, TYPED_PHASE };
 enum typed_query_resume { TYPED_RESUME_NONE, TYPED_RESUME_BODY, TYPED_RESUME_INPUT, TYPED_RESUME_PHASE,
-	TYPED_RESUME_SELECTION, TYPED_RESUME_SELECTED_INPUT, TYPED_RESUME_SCOPE_IMAGE };
+	TYPED_RESUME_SELECTION, TYPED_RESUME_SELECTED_INPUT, TYPED_RESUME_SCOPE_IMAGE, TYPED_RESUME_COMPOSITION };
 
 struct typed_elimination {
 	const struct pg_evidence *branch;
@@ -719,6 +719,7 @@ struct pg_typed_query {
 		struct typed_elimination *elimination;
 		struct typed_rebase *rebase;
 		struct typed_inductive *inductive;
+		size_t composed;
 	};
 	const struct pg_reduction_certificate *reduction;
 	const struct pg_reduction_certificate *input_reduction;
@@ -758,6 +759,7 @@ static int typed_elimination_step(struct pg_typed_query *work);
 static int typed_classifier_step(struct pg_typed_query *work);
 static int typed_inductive_step(struct pg_typed_query *work);
 static int typed_selection_step(struct pg_typed_query *work);
+static int typed_composition_step(struct pg_typed_query *work);
 static const struct pg_evidence *unary_term_content(struct pg_typing *typing,
 	const struct pg_evidence *proof, const struct pg_occurrence *child);
 
@@ -765,7 +767,7 @@ static struct pg_typed_query *typed_query_request(struct pg_typing *typing,
 	const void *source, const struct pg_evidence *argument,
 	enum typed_query_kind kind, size_t ordinal, const void *key)
 {
-	int map = kind == TYPED_MAP_REBASE;
+	int map = kind == TYPED_MAP_REBASE || kind == TYPED_MAP_COMPOSE;
 	const void *value = map ? (const void *)argument : key ? key : argument ? (kind == TYPED_REBASE
 		? (const void *)pg_evidence_context(argument) : (const void *)pg_evidence_subject(argument)) : NULL;
 	uint64_t hash = ((uintptr_t)source * UINT64_C(1099511628211) ^ (uintptr_t)value) * UINT64_C(1099511628211);
@@ -880,8 +882,25 @@ struct pg_typed_query *pg_substitution_rebase_request(struct pg_typing *typing,
 	return typed_query_request(typing, map, context, TYPED_MAP_REBASE, 0, NULL);
 }
 
+static int typed_environment_request(struct pg_typed_query *work,
+	const struct pg_evidence *first, const struct pg_evidence *second)
+{
+	work->dependency = pg_substitution_compose_request(work->typing, first, second);
+	work->resume = TYPED_RESUME_COMPOSITION;
+	return work->dependency ? 0 : -1;
+}
+
+static int typed_environment_resume(struct pg_typed_query *work)
+{
+	work->environment = pg_typed_query_result(work->dependency);
+	work->dependency = NULL;
+	work->resume = TYPED_RESUME_NONE;
+	return work->environment ? 0 : -1;
+}
+
 static int typed_rebase_step(struct pg_typed_query *work)
 {
+	if (work->resume == TYPED_RESUME_COMPOSITION) return typed_environment_resume(work);
 	struct pg_typing *typing = work->typing;
 	const struct pg_evidence *context = work->argument;
 	int map_query = work->kind == TYPED_MAP_REBASE;
@@ -915,10 +934,10 @@ static int typed_rebase_step(struct pg_typed_query *work)
 		if (subject->origin && !subject->selection) {
 			if (subject->map) {
 				const struct pg_evidence *inner = pg_prove_context_map(typing, subject->map);
-				work->environment = work->environment ? pg_prove_substitution_compose(typing, inner, work->environment) : inner;
-				if (!work->environment) return -1;
 				work->current = subject->origin;
-				return 0;
+				if (work->environment) return typed_environment_request(work, inner, work->environment);
+				work->environment = inner;
+				return inner ? 0 : -1;
 			}
 			if (subject->core == subject->origin->core && subject->classifier == subject->origin->classifier) {
 				work->current = subject->origin;
@@ -1008,6 +1027,8 @@ static int typed_rebase_step(struct pg_typed_query *work)
 
 static int typed_origin_step(struct pg_typed_query *work)
 {
+	if (work->resume == TYPED_RESUME_COMPOSITION)
+		return typed_environment_resume(work) ? -1 : 1;
 	const struct pg_occurrence *subject = work->source;
 	if (subject->origin && !subject->selection && (subject->map || subject->judgement == subject->origin->judgement)) {
 		if (!work->dependency) {
@@ -1021,9 +1042,9 @@ static int typed_origin_step(struct pg_typed_query *work)
 		work->environment = pg_construction_origin_environment(work->dependency);
 		if (subject->map) {
 			const struct pg_evidence *step = pg_prove_context_map(work->typing, subject->map);
-			work->environment = work->environment
-				? pg_prove_substitution_compose(work->typing, work->environment, step) : step;
-			if (!work->environment) return -1;
+			if (work->environment) return typed_environment_request(work, work->environment, step);
+			work->environment = step;
+			if (!step) return -1;
 		}
 		return 1;
 	}
@@ -1302,6 +1323,7 @@ static int typed_return_step(struct pg_typed_query *work)
 
 static int typed_body_step(struct pg_typed_query *work)
 {
+	if (work->resume == TYPED_RESUME_COMPOSITION) return typed_environment_resume(work);
 	struct pg_typing *typing = work->typing;
 	const struct pg_occurrence *current = work->current;
 	if (work->kind == TYPED_BODY && !work->argument) return typed_return_step(work);
@@ -1364,8 +1386,10 @@ static int typed_body_step(struct pg_typed_query *work)
 		if (current->selection) return -1;
 		if (current->map) {
 			const struct pg_evidence *step = pg_prove_context_map(typing, current->map);
-			work->environment = work->environment ? pg_prove_substitution_compose(typing, step, work->environment) : step;
-			if (!work->environment) return -1;
+			work->current = current->origin;
+			if (work->environment) return typed_environment_request(work, step, work->environment);
+			work->environment = step;
+			return step ? 0 : -1;
 		} else if (current->judgement != current->origin->judgement) {
 			if (current->judgement != PG_JUDGEMENT_COMPUTATION || current->origin->judgement != PG_JUDGEMENT_VALUE) return -1;
 			++work->forces;
@@ -1431,6 +1455,7 @@ int pg_typed_query_advance(struct pg_typed_query *work, uint64_t budget)
 			case TYPED_ORIGIN: current->status = typed_origin_step(current); break;
 			case TYPED_CLASSIFIER: current->status = typed_classifier_step(current); break;
 			case TYPED_REBASE: case TYPED_MAP_REBASE: current->status = typed_rebase_step(current); break;
+			case TYPED_MAP_COMPOSE: current->status = typed_composition_step(current); break;
 			case TYPED_INDUCTIVE: current->status = typed_inductive_step(current); break;
 			case TYPED_SELECTION: current->status = typed_selection_step(current); break;
 			case TYPED_PHASE: current->status = typed_phase_step(current); break;
@@ -4634,34 +4659,73 @@ fail:
 	return NULL;
 }
 
-const struct pg_evidence *pg_prove_substitution_compose(struct pg_typing *typing,
+struct pg_typed_query *pg_substitution_compose_request(struct pg_typing *typing,
 	const struct pg_evidence *first, const struct pg_evidence *second)
 {
 	if (!substitution_proof(typing, first)) return NULL;
 	if (!substitution_proof(typing, second)) return NULL;
 	if (pg_evidence_context(first) != pg_evidence_context(second->premises[0])) return NULL;
+	return typed_query_request(typing, first, second, TYPED_MAP_COMPOSE, 0, NULL);
+}
+
+static int typed_composition_step(struct pg_typed_query *work)
+{
+	struct pg_typing *typing = work->typing;
+	const struct pg_evidence *first = work->source_map, *second = work->argument;
 	/* Prefix projections compose without substituting their variable images. */
-	if (first->premise_count == 2 && second->premise_count == 2)
-		return pg_prove_substitution_projection(typing, first->premises[0], second->premises[1]);
-	size_t count = pg_evidence_context_map(first)->count;
-	if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
+	if (first->premise_count == 2 && second->premise_count == 2) {
+		work->result = pg_prove_substitution_projection(typing, first->premises[0], second->premises[1]);
+		return work->result ? 1 : -1;
+	}
+	const struct pg_context_map *from = pg_evidence_context_map(first), *to = pg_evidence_context_map(second);
+	size_t count = from->count;
+	if (work->composed < count) {
+		if (first->premise_count == 2) {
+			if (!pg_substitution_image_at(typing, second, work->composed)) return -1;
+		} else {
+			if (!work->action) {
+				work->value = pg_substitution_image_at(typing, first, work->composed);
+				if (!work->value) return -1;
+				work->action = pg_occurrence_action_request(typing, to, from->images[work->composed]);
+			}
+			switch (pg_occurrence_action_advance(work->action, 1)) {
+			case PG_SUBSTITUTION_PENDING: return 0;
+			case PG_SUBSTITUTION_ERROR: return -1;
+			case PG_SUBSTITUTION_DONE: break;
+			}
+			const struct pg_occurrence *image = pg_occurrence_action_result(work->action);
+			/* A checked map acts on a checked image. Do not rediscover its
+			 * construction from the transported output's shape. */
+			const struct pg_evidence *proof = pg_evidence_for_subject(typing, image, NULL);
+			if (!proof) proof = pg_prove_reindex(typing, second, work->value);
+			if (!proof || pg_evidence_subject(proof) != image) return -1;
+			work->action = NULL;
+			work->value = NULL;
+		}
+		++work->composed;
+		return 0;
+	}
+	if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) return -1;
 	const struct pg_evidence **images = malloc(count * sizeof(*images));
-	const struct pg_evidence *result = NULL;
-	if (count && !images) goto done;
-	/* A prefix projection restricts the existing typed image array directly. */
-	if (first->premise_count == 2) {
-		if (substitution_image_range(typing, second, 0, count, images)) goto done;
-	} else for (size_t i = 0; i < count; ++i) {
-		struct pg_occurrence_action *action = pg_occurrence_action_request(typing,
-			pg_evidence_context_map(second), pg_evidence_context_map(first)->images[i]);
-		while (pg_occurrence_action_advance(action, UINT64_MAX) == PG_SUBSTITUTION_PENDING) {}
-		images[i] = pg_prove_structural_subject(typing, pg_occurrence_action_result(action));
+	if (count && !images) return -1;
+	for (size_t i = 0; i < count; ++i) {
+		const struct pg_occurrence *image = first->premise_count == 2 ? to->images[i]
+			: pg_occurrence_action_result(pg_occurrence_action_request(typing, to, from->images[i]));
+		images[i] = pg_evidence_for_subject(typing, image, NULL);
 		if (!images[i]) goto done;
 	}
-	result = pg_prove_substitution(typing, first->premises[0], second->premises[1], count, images);
+	work->result = pg_prove_substitution(typing, first->premises[0], second->premises[1], count, images);
 done:
 	free(images);
-	return result;
+	return work->result ? 1 : -1;
+}
+
+const struct pg_evidence *pg_prove_substitution_compose(struct pg_typing *typing,
+	const struct pg_evidence *first, const struct pg_evidence *second)
+{
+	struct pg_typed_query *work = pg_substitution_compose_request(typing, first, second);
+	while (!pg_typed_query_advance(work, UINT64_MAX)) {}
+	return pg_typed_query_result(work);
 }
 
 const struct pg_evidence *pg_prove_substitution_pair(struct pg_typing *typing,

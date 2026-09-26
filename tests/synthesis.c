@@ -7133,6 +7133,88 @@ static void data_cases(struct pg_typing *typing)
 	puts("case synthesis: independent producers, index motives, post-check evidence and shared scheduling passed");
 }
 
+static void composition_sharing(void)
+{
+	struct pg_graph graph;
+	struct pg_typing typing, foreign;
+	struct pg_whnf_work reduction;
+	struct pg_synthesis first, second;
+	assert(!pg_graph_init(&graph));
+	assert(!pg_typing_init(&typing, &graph));
+	assert(!pg_typing_init(&foreign, &graph));
+	assert(!pg_whnf_work_init(&reduction, &graph));
+	assert(!pg_synthesis_init(&first, &typing, &reduction, PG_DEFINITION_EXPLICIT_THUNK));
+	assert(!pg_synthesis_init(&second, &typing, &reduction, PG_DEFINITION_EXPLICIT_THUNK));
+	const struct pg_evidence *empty = pg_prove_empty_context(&typing);
+	const struct pg_evidence *universe = pg_prove_universe(&typing, empty, 0);
+	const struct pg_evidence *contexts[3], *variables[3];
+	for (size_t i = 0; i < 3; ++i) {
+		const struct pg_object *binder = pg_binder(&graph);
+		contexts[i] = pg_prove_context_extension(&typing, empty, binder, universe);
+		variables[i] = pg_prove_variable(&typing, contexts[i], binder);
+		assert(variables[i]);
+	}
+	const struct pg_evidence *type = pg_prove_value_type(&typing, variables[1]);
+	for (size_t i = 0; i < 24; ++i) type = pg_prove_thunk_type(&typing, pg_prove_return_type(&typing, type));
+	const struct pg_evidence *image = pg_prove_type_value(&typing, type);
+	const struct pg_evidence *sigma = pg_prove_substitution(&typing, contexts[0], contexts[1], 1, &image);
+	const struct pg_evidence *tau = pg_prove_substitution(&typing, contexts[1], contexts[2], 1, &variables[2]);
+	assert(sigma && tau);
+	struct pg_typed_query *query = pg_substitution_compose_request(&typing, sigma, tau);
+	struct pg_occurrence_action *action = pg_occurrence_action_request(&typing,
+		pg_evidence_context_map(tau), pg_evidence_subject(image));
+	assert(query && action);
+	struct pg_synthesis_job *left = pg_synthesis_substitution_compose(&first, sigma, tau);
+	struct pg_synthesis_job *right = pg_synthesis_substitution_compose(&second, sigma, tau);
+	assert(left && right && left != right);
+	assert(!left->role->size && !right->role->size);
+	assert(pg_synthesis_substitution_compose(&first, sigma, tau) == left);
+	pg_synthesis_advance(&first, 0);
+	assert(!first.steps && !pg_typed_query_steps(query) && !pg_occurrence_action_steps(action));
+	for (size_t i = 0; i < 8; ++i) {
+		uint64_t steps = pg_typed_query_steps(query), actions = pg_occurrence_action_steps(action);
+		pg_synthesis_advance(i % 2 ? &first : &second, 1);
+		assert(pg_typed_query_steps(query) == steps + 1);
+		assert(pg_occurrence_action_steps(action) <= actions + 1);
+		assert(!pg_typed_query_result(query) && pg_synthesis_status(left) == PG_SYNTHESIS_PENDING);
+	}
+	/* Cancelling a borrower does not cancel shared typing computation. */
+	pg_synthesis_destroy(&first);
+	assert(pg_substitution_compose_request(&typing, sigma, tau) == query);
+	while (pg_synthesis_status(right) == PG_SYNTHESIS_PENDING) {
+		uint64_t steps = pg_typed_query_steps(query);
+		pg_synthesis_advance(&second, 64);
+		assert(pg_typed_query_steps(query) <= steps + 64 && second.steps < 10000);
+	}
+	const struct pg_evidence *result = pg_synthesis_result(right);
+	assert(result && result == pg_typed_query_result(query));
+	assert(pg_evidence_premise(result, 0) == contexts[0]);
+	assert(pg_evidence_premise(result, 1) == contexts[2]);
+	assert(pg_evidence_context_map(result)->images[0] == pg_occurrence_action_result(action));
+	const struct pg_evidence *transported = pg_substitution_image_at(&typing, result, 0);
+	assert(pg_evidence_rule(transported) == PG_REINDEX);
+	assert(pg_evidence_premise(transported, 0) == tau && pg_evidence_premise(transported, 1) == image);
+	uint64_t steps = pg_typed_query_steps(query), actions = pg_occurrence_action_steps(action);
+	size_t proofs = typing.proofs.count, terms = graph.terms.count, queries = typing.typed_queries.count;
+	for (size_t i = 0; i < 32; ++i) {
+		assert(pg_prove_substitution_compose(&typing, sigma, tau) == result);
+		assert(pg_synthesis_substitution_compose(&second, sigma, tau) == right);
+		pg_synthesis_advance(&second, 64);
+	}
+	assert(pg_typed_query_steps(query) == steps && pg_occurrence_action_steps(action) == actions);
+	assert(typing.proofs.count == proofs && graph.terms.count == terms && typing.typed_queries.count == queries);
+	assert(!pg_substitution_compose_request(&typing, tau, sigma));
+	assert(!pg_substitution_compose_request(&foreign, sigma, tau));
+	assert(!pg_synthesis_substitution_compose(&second, empty, tau));
+	assert(!pg_synthesis_substitution_compose(&second, sigma, NULL));
+	pg_synthesis_destroy(&second);
+	pg_whnf_work_destroy(&reduction);
+	pg_typing_destroy(&foreign);
+	pg_typing_destroy(&typing);
+	pg_graph_destroy(&graph);
+	puts("composition: checked reindexing, shared split budgets, cancellation and completion reuse passed");
+}
+
 static void identity_owner_cancellation(void)
 {
 	for (uint64_t cutoff = 0;; ++cutoff) {
@@ -7395,6 +7477,7 @@ int main(void)
 	effect_expectations(&typing);
 	synthesis_cancellation();
 	identity_owner_cancellation();
+	composition_sharing();
 	synthesis_lifetime(&typing);
 	accepted_inputs(&typing);
 	pending_names(&typing);

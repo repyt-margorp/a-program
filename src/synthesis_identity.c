@@ -14,6 +14,7 @@ struct instance_work {
 };
 struct family_work {
 	struct pg_synthesis_job *classifier, *checked;
+	struct pg_synthesis_job *prefixes[2];
 	const struct pg_evidence *maps[2];
 	const struct pg_evidence **declarations, **paths;
 	size_t count, common, next;
@@ -355,7 +356,7 @@ static int family_paths(struct pg_synthesis *synthesis, struct pg_synthesis_job 
 {
 	struct family_work *state = pg_synthesis_work_state(job, FAMILY_ACTION_JOB);
 	const struct pg_evidence *left = job->inputs[0], *right = job->inputs[1];
-	if (!state->maps[0]) {
+	if (!state->prefixes[0]) {
 		size_t arity = pg_evidence_context_map(left)->count, count = job->input_count - 3;
 		if (count > arity || pg_evidence_context_map(right)->count != arity) goto rejected;
 		if (pg_evidence_context(left) != pg_evidence_context(right)) goto rejected;
@@ -372,10 +373,14 @@ static int family_paths(struct pg_synthesis *synthesis, struct pg_synthesis_job 
 		}
 		for (size_t side = 0; side < 2; ++side) {
 			const struct pg_evidence *map = job->inputs[side];
-			state->maps[side] = pg_prove_substitution_compose(synthesis->typing,
+			state->prefixes[side] = pg_synthesis_substitution_compose(synthesis,
 				pg_prove_substitution_projection(synthesis->typing, prefix, pg_evidence_premise(map, 0)), map);
 		}
-		if (!state->maps[0] || !state->maps[1]) goto rejected;
+	}
+	if (!state->maps[0]) {
+		for (size_t side = 0; side < 2; ++side)
+			if (pg_synthesis_await(synthesis, job, state->prefixes[side])) return 0;
+		for (size_t side = 0; side < 2; ++side) state->maps[side] = state->prefixes[side]->result;
 	}
 	if (state->next == state->count) return 1;
 	size_t i = state->next;

@@ -507,6 +507,11 @@ struct pg_typed_query *pg_rebase_request(struct pg_typing *typing,
  * Completed images and the final checked map survive budget boundaries. */
 struct pg_typed_query *pg_substitution_rebase_request(struct pg_typing *typing,
 	const struct pg_evidence *context, const struct pg_evidence *map);
+/* Compose checked maps through shared occurrence actions. The selected map
+ * receipts retain both endpoint formations. Final map admission still checks
+ * the complete telescope; no private image array survives a transition. */
+struct pg_typed_query *pg_substitution_compose_request(struct pg_typing *typing,
+	const struct pg_evidence *first, const struct pg_evidence *second);
 int pg_typed_query_advance(struct pg_typed_query *work, uint64_t budget);
 const struct pg_evidence *pg_typed_query_result(const struct pg_typed_query *work);
 uint64_t pg_typed_query_steps(const struct pg_typed_query *work);
