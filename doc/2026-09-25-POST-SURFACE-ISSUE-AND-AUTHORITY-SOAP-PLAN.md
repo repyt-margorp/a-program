@@ -3,7 +3,7 @@
 Date: 2026-09-25
 Updated: 2026-09-26
 Status: P1-P3 closed. P4 Identity-boundary/Lambda-scope/typed-only function,
-result-formation and typed-map-image slices verified. P5 effect/shared-work/
+result-formation and typed-map/variable-image slices verified. P5 effect/shared-work/
 Handler/Operation/CBPV/function/Context/IADT-scope/basic-Identity owners verified.
 Verification uses clean publication trees, full acceptance and affected sanitizers.
 Broader P4 typed-proof migration and P5 synthesis modularity remain open.
@@ -372,7 +372,32 @@ Declaration uses, variable images, scope action and image transport must migrate
 together. No Context/variable representation change is included in the
 Context-action synthesis-owner extraction below.
 
-Verification of this review: clean `44587b2` plus the two test additions passes
+Follow-up at `382a0a6`, 2026-09-26 (agent findings): distinguish regularity
+from preservation of a selected formation. `pg_classifier_request` establishes
+that an already synthesized classifier is a type; its contract does not select
+a particular Universe upper bound. In contrast, `pg_prove_pi` must preserve
+the supplied declaration's bound. Thus a first-receipt lookup alone is not
+evidence of an incorrect classifier. Do not add formation metadata to every
+variable or split raw Context identity merely to remove all such lookups.
+
+There is, however, an unnecessary reconstruction in `variable_frame`: a map
+already retains a typed image, but a binder-shaped image is discarded and its
+variable reintroduced through the destination's first Context receipt. The new
+`tests/iadt.c:retained_variable_image` constructs narrow/wide formations of
+the same raw Context, retains only the wide variable introduction, and follows
+it through a mapped F-type. On the baseline, nominal inspection introduces an
+additional narrow-variable receipt before reporting that the open type has no
+known IADT declaration. This is a reproduced duplicate checking path, **not**
+a demonstrated acceptance of an ill-typed term.
+
+Agent implementation decision: consume the exact map image through the existing structural
+checker for every image shape. Keep the separate restriction case: unlike a
+map, it has no stored image. No Context schema, new cache, object proof rule or
+wire change is needed. The focused IADT suite and full publication gates pass
+(recorded below). This does not settle the missing family
+declaration input or complete P4.2/P4.3.
+
+Verification of the earlier review: clean `44587b2` plus its two test additions passes
 the full Core executable under `-O2 -Wall -Wextra -Werror` and ASan/UBSan
 (`-O1`, non-PIE). Implementation/build/wire changes: **0 lines**; tests:
 **+51/-0**. The full acceptance gate was not rerun for this test/document-only
@@ -615,6 +640,11 @@ soundness; preserve all inherited files and edits locally for their author.
   on repeated access. Recheck source/retained images, general Sorted and the
   common sanitizer/performance gates. Context admission and full map-history
   removal remain explicit later work, not implicit in this accessor change.
+- [x] **P4.3e Variable-image inspection:** remove the binder-only reconstruction
+  in nominal lookup; use the exact typed map image as for other images. Keep
+  the reproduced alternate-Context regression and existing nominal/dependent
+  image tests; complete acceptance, affected sanitizers and paired timings
+  before publication. Do not claim a new typing theorem or Context migration.
 - [ ] **P4.3 One end-to-end slice:** start with typed Lambda/APP plus context
   action, then one Identity boundary consumer. Build, check, inspect, serialize
   and load the typed structure through the same Solve mechanism. Remove the
@@ -1658,3 +1688,41 @@ Adopt this verified owner-localization slice. P4's declaration contract/history
 migration and the remaining P5 owners/codec consumers stay open.
 
 Documentation: +84/-9, net +75 lines, excluded from the source totals above.
+
+Variable-image follow-up verification, 2026-09-26, baseline `382a0a6` plus
+this slice (inherited trials excluded):
+
+- The new regression fails on the baseline at its post-inspection receipt
+  assertion and passes after the change. Optimized/Debug IADT and ASan/UBSan
+  IADT/Core checks pass, including leak detection.
+- Full `check-acceptance`: exit 0, wall **1548.342s**, user 1438.850s, system
+  108.604s. Source compatibility is **63/63**; ordinary-result QuickSort, four
+  LT/partition variants and optional-witness isolation/packets pass.
+- Thirteen fixtures in two retention modes give 26 byte-identical old/new
+  image pairs and 52 bidirectional check/recompute cases. The ordinary-result
+  theorem cross-loads at zero, 100 and complete Solve in both directions.
+- Quiet paired measurements: one warmup, six pairs, reversed final three;
+  small cases batch 100 processes. Median seconds follow. Normalized output
+  and reported Solve steps agree. The small differences are not a speedup claim.
+
+| Workload | `382a0a6` | Candidate |
+| --- | ---: | ---: |
+| `generic_sorted.sh` | 5.745215 | 5.736955 |
+| General Sorted source | 0.816259 | 0.804133 |
+| Ordinary QuickSort-result theorem | 0.743240 | 0.741066 |
+| Explicit-index Vec append | 0.005502 | 0.005492 |
+| Certified length | 0.003907 | 0.003934 |
+| Function-field induction | 0.003659 | 0.003659 |
+
+Three fresh-process RSS pairs give medians 223172 -> 222996 KiB (Sorted) and
+174680 -> 174476 KiB (result theorem). Logs are under
+`/tmp/a-program-variable-image-{acceptance,debug,asan-iadt,asan-core}.log`,
+`/tmp/a-program-variable-image-{bench,memory}.jsonl`,
+`/tmp/a-program-variable-image-cross.k40vtf/` and
+`/tmp/a-program-variable-image-theorem-cross.XqphB8/`.
+
+Per-file source delta: `evidence.c` **+1/-7, net -6**;
+`tests/iadt.c` **+49/-0**. Total code/tests **+50/-7, net +43**;
+documentation is excluded. Adopt this deletion of a redundant inspection
+path. Context-formation representation and broader P4/P5 remain open.
+Documentation: **+70/-2**, net +68 lines.

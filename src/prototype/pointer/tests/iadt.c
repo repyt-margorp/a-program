@@ -3833,8 +3833,57 @@ static void schemas(struct pg_graph *graph)
 	puts("data schemas: dependent fields/indices, fixed parameters, composition and selected boundaries passed");
 }
 
+static void retained_variable_image(void)
+{
+	struct pg_graph graph;
+	struct pg_typing typing;
+	assert(!pg_graph_init(&graph));
+	assert(!pg_typing_init(&typing, &graph));
+	const struct pg_evidence *empty = pg_prove_empty_context(&typing);
+	const struct pg_evidence *u = pg_prove_universe(&typing, empty, 0);
+	const struct pg_evidence *unused = pg_prove_context_extension(&typing, empty,
+		pg_binder(&graph), pg_prove_universe(&typing, empty, 3));
+	const struct pg_evidence *wide_pi = pg_prove_pi(&typing, unused,
+		pg_prove_projection(&typing, unused, pg_prove_return_type(&typing, u)));
+	const struct pg_evidence *wide_u = pg_prove_return_content(&typing,
+		pg_prove_pi_constant_codomain(&typing, wide_pi));
+	assert(wide_u && pg_evidence_subject(wide_u)->core == pg_evidence_subject(u)->core);
+	assert(pg_evidence_classifier(wide_u) != pg_evidence_classifier(u));
+	const struct pg_object *target = pg_binder(&graph);
+	const struct pg_evidence *narrow = pg_prove_context_extension(&typing, empty, target, u);
+	const struct pg_evidence *wide = pg_prove_context_extension(&typing, empty, target, wide_u);
+	assert(narrow != wide && pg_evidence_context(narrow) == pg_evidence_context(wide));
+	/* Only the selected declaration has introduced this variable. A map
+	 * already contains that typed image; inspecting it must not introduce
+	 * another variable through the first Context receipt. */
+	const struct pg_evidence *image = pg_prove_variable(&typing, wide, target);
+	const struct pg_object *source = pg_binder(&graph);
+	const struct pg_evidence *scope = pg_prove_context_extension(&typing, empty, source, u);
+	const struct pg_evidence *value = pg_prove_variable(&typing, scope, source);
+	const struct pg_evidence *body = pg_prove_return_type(&typing, pg_prove_value_type(&typing, value));
+	const struct pg_evidence *map = pg_prove_substitution(&typing, scope, wide, 1, &image);
+	const struct pg_evidence *type = pg_prove_return_content(&typing,
+		pg_prove_reindex(&typing, map, body));
+	assert(type && pg_evidence_subject(type)->core == pg_evidence_subject(image)->core);
+	const struct pg_occurrence *selected = pg_evidence_subject(image);
+	assert(pg_evidence_for_subject(&typing, selected, NULL) == image);
+	assert(!pg_evidence_for_subject(&typing, selected, image));
+	struct pg_typed_query *query = pg_inductive_request(&typing, type);
+	assert(query && !pg_typed_query_advance(query, 0));
+	while (!pg_typed_query_advance(query, 1)) assert(pg_typed_query_steps(query) < 100);
+	/* The open family has no nominal declaration. Failure to resolve it
+	 * is not permission to replace its retained image's typing inputs. */
+	assert(!pg_inductive_query_result(query));
+	assert(!pg_evidence_for_subject(&typing, selected, image));
+	assert(pg_inductive_request(&typing, type) == query);
+	pg_typing_destroy(&typing);
+	pg_graph_destroy(&graph);
+	puts("inductive lookup: retained variable image without replacement Context receipt passed");
+}
+
 int main(void)
 {
+	retained_variable_image();
 	positive_fields();
 	scoped_type_families();
 	higher_family_lift();

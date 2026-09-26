@@ -578,13 +578,7 @@ static const struct pg_evidence *variable_frame(struct pg_typing *typing,
 	const struct pg_object *binder = pg_evidence_subject(variable)->core->as.reference;
 	if (frame->map) {
 		const struct pg_occurrence *image = pg_context_map_lookup(frame->map, binder, NULL);
-		if (!image) return NULL;
-		const struct pg_term *core = image->core;
-		if (core->kind != PG_REFERENCE || core->as.reference->kind != PG_BINDER)
-			return pg_prove_structural_subject(typing, image);
-		binder = core->as.reference;
-		return pg_prove_variable(typing,
-			conclusion_first(typing, PG_JUDGEMENT_CONTEXT, frame->map->destination), binder);
+		return pg_prove_structural_subject(typing, image);
 	}
 	return pg_prove_variable(typing,
 		conclusion_first(typing, PG_JUDGEMENT_CONTEXT, frame->restriction->context), binder);
