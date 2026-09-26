@@ -2822,7 +2822,31 @@ static void family_instance_test(struct pg_graph *graph)
 	assert(pg_evidence_judgement(family_variable) == PG_JUDGEMENT_TYPE_FAMILY);
 	const struct pg_evidence *family_pi = pg_prove_pi(&typing, family_scope,
 		pg_prove_return_type(&typing, pg_prove_universe(&typing, family_scope, 0)));
-	assert(family_pi && pg_evidence_subject(family_pi)->operands[0] == pg_evidence_subject(family_variable));
+	assert(family_pi && pg_evidence_subject(family_pi)->operands[0] ==
+		pg_evidence_subject(pg_prove_universe(&typing, indices, 0)));
+	assert(pg_evidence_subject(family_pi)->operand_count == 3);
+	assert(pg_evidence_subject(family_pi)->operands[2] == pg_evidence_subject(u0));
+	/* Same raw telescope, but a deliberately larger selected domain bound.
+	 * The Pi must retain that formation, not the first context admission. */
+	const struct pg_evidence *wide_scope = pg_prove_context_extension(&typing, empty, pg_binder(graph),
+		pg_prove_universe(&typing, empty, 3));
+	const struct pg_evidence *wide_pi = pg_prove_pi(&typing, wide_scope,
+		pg_prove_return_type(&typing, pg_prove_projection(&typing, wide_scope, u0)));
+	const struct pg_evidence *wide_domain = pg_prove_return_content(&typing,
+		pg_prove_pi_constant_codomain(&typing, wide_pi));
+	const struct pg_evidence *wide_indices = pg_prove_context_extension(&typing, empty,
+		pg_evidence_context(indices)->binder, wide_domain);
+	assert(wide_indices != indices && pg_evidence_context(wide_indices) == pg_evidence_context(indices));
+	const struct pg_evidence *wide_family = pg_prove_family_context_extension(&typing, empty, f,
+		wide_indices, pg_prove_universe(&typing, wide_indices, 0));
+	assert(wide_family != family_scope && pg_evidence_context(wide_family) == pg_evidence_context(family_scope));
+	const struct pg_evidence *wide_family_pi = pg_prove_pi(&typing, wide_family,
+		pg_prove_return_type(&typing, pg_prove_universe(&typing, wide_family, 0)));
+	assert(wide_family_pi && pg_evidence_subject(wide_family_pi)->core == pg_evidence_subject(family_pi)->core);
+	assert(pg_evidence_classifier(wide_family_pi) == pg_universe(graph, 4));
+	assert(pg_evidence_classifier(family_pi) == pg_universe(graph, 1));
+	assert(pg_evidence_subject(wide_family_pi)->operands[2] == pg_evidence_subject(wide_domain));
+	reconstruct_derivation(&typing, wide_family_pi);
 	const struct pg_context_map *empty_map = pg_context_map_projection(&typing, NULL, NULL);
 	size_t evidence_before_lift = typing.proofs.count;
 	const struct pg_context_map *lift = pg_context_map_lift(&typing, empty_map, pg_evidence_context(family_scope), g);
@@ -2883,6 +2907,51 @@ static void family_instance_test(struct pg_graph *graph)
 	assert(body_input && body_input->context->parent == pg_evidence_context(indices));
 	assert(typing.proofs.count == evidence_before_lift);
 	assert(pg_prove_structural_subject(&typing, body_input));
+	struct pg_occurrence_input *terminal_input = pg_occurrence_input_mapped_request(&typing,
+		pg_evidence_subject(family_pi), 0, prefix_map);
+	while (pg_occurrence_input_advance(terminal_input, 1) == PG_INPUT_PENDING) {}
+	assert(pg_occurrence_input_result(terminal_input));
+	assert(pg_occurrence_input_result(terminal_input)->context == body_input->context->indices);
+	/* Independent consumers in either order share the allocation chosen by
+	 * the same lift, including when one is still pending at the collision. */
+	const struct pg_evidence *nested_pi = pg_prove_pi(&typing, outer,
+		pg_prove_return_type(&typing, pg_prove_universe(&typing, outer, 0)));
+	const struct pg_evidence *signature_pis[] = {family_pi, nested_pi};
+	for (size_t variant = 0; variant < 4; ++variant) {
+		size_t reverse = variant % 2;
+		const struct pg_occurrence *pi_input = pg_evidence_subject(signature_pis[variant / 2]);
+		const struct pg_evidence *target_scope = pg_prove_context_extension(&typing, indices, pg_binder(graph),
+			pg_prove_universe(&typing, indices, 0));
+		const struct pg_context_map *base = pg_context_map_projection(&typing, NULL, pg_evidence_context(target_scope));
+		struct pg_occurrence_input *requests[] = {
+			pg_occurrence_input_mapped_request(&typing, pi_input, 0, base),
+			pg_occurrence_input_mapped_request(&typing, pi_input, 1, base)
+		};
+		size_t before = typing.context_lifts.count;
+		for (size_t step = 0; typing.context_lifts.count == before; ++step) {
+			assert(step < 32);
+			assert(pg_occurrence_input_advance(requests[reverse], 1) == PG_INPUT_PENDING);
+		}
+		while (pg_occurrence_input_advance(requests[!reverse], 1) == PG_INPUT_PENDING) {}
+		while (pg_occurrence_input_advance(requests[reverse], 1) == PG_INPUT_PENDING) {}
+		const struct pg_occurrence *terminal = pg_occurrence_input_result(requests[0]);
+		const struct pg_occurrence *body = pg_occurrence_input_result(requests[1]);
+		assert(terminal && body && terminal->context == body->context->indices);
+		size_t contexts = typing.contexts.count, lifts = typing.context_lifts.count;
+		assert(pg_occurrence_input_mapped_request(&typing, pi_input, 0, base) == requests[0]);
+		assert(pg_occurrence_input_advance(requests[0], 0) == PG_INPUT_READY);
+		assert(typing.contexts.count == contexts && typing.context_lifts.count == lifts);
+	}
+	for (size_t i = 2; i < pg_evidence_subject(family_pi)->operand_count; ++i) {
+		struct pg_occurrence_input *input = pg_occurrence_input_mapped_request(&typing,
+			pg_evidence_subject(family_pi), i, prefix_map);
+		evidence_before_lift = typing.proofs.count;
+		while (pg_occurrence_input_advance(input, 1) == PG_INPUT_PENDING) {}
+		assert(pg_occurrence_input_result(input));
+		assert(pg_occurrence_input_result(input)->classifier == pg_evidence_subject(family_pi)->operands[i]->classifier);
+		assert(typing.proofs.count == evidence_before_lift);
+		assert(pg_occurrence_input_advance(input, 0) == PG_INPUT_READY);
+	}
 	struct pg_context invalid = *pg_evidence_context(family_scope);
 	invalid.declared_type = pg_pi(graph, pg_evidence_subject(u0)->core, pg_binder(graph), pg_evidence_subject(u0)->core);
 	const struct pg_context *wrong_signature = pg_context_intern(&typing, &invalid);

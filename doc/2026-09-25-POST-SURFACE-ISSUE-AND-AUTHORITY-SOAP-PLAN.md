@@ -607,6 +607,59 @@ LT variants also remain excluded in favor of the script-generated current
 variants. This rejects their inclusion in this milestone, not their logical
 soundness; preserve all inherited files and edits locally for their author.
 
+#### Typed Declaration Contract (2026-09-26)
+
+Inspected at `b0e64e3`; the family-Pi changes below were verified on that
+baseline on 2026-09-27. This is the agent's decomposition of the user's proof-as-typed-Term
+requirement, not a newly attributed user design decision.
+
+| Construction | Retained semantic/checking input | Remaining history-dependent input |
+| --- | --- | --- |
+| Ordinary Pi / Lambda / APP | Pi domain formation and scoped codomain; Lambda's Pi and body; APP's function, argument and selected result formation | Admission of a free ambient Context; selected/inverted formation recipes not all supported by the structural checker |
+| Family Pi | Terminal Universe, scoped codomain, then selected index formations in declaration order; descend into nested family signatures before their terminal Universe | Public Context constructors still take checked Context inputs; this does not replace the Context formation API |
+| Logical family abstraction/application | Abstraction body and raw signature; application family and index | `pg_prove_family_abstraction` still omits its selected declaration formation from typed inputs; it is not covered by the family-Pi image slice |
+| Variable | Binder pointer, exact raw Context and declared classifier | Declaration formation currently found through Context evidence; bare open variables are not self-contained images |
+| Context action | Exact typed images, source/destination raw Contexts, retained origin; lexical lifts share the existing action mechanism | `map_dependency`, `lift_destination`, `pg_prove_context_alpha` and substitution rules still use Context receipt endpoints/selected declaration premises |
+| Constructor | Nominal constructor in Core, typed fields and exact result `type` | Schema's checked parameter/index/field declarations; `constructor_instance` still needs their admission, not only the erased shape |
+| Match / IH | Scrutinee, typed branches, motive, formation input, parameter map and lexical induction allocation | Declaration/branch Context admission and schema validation; not a reason to remove Match/IH checking rules |
+| Identity | Family/endpoints and selected maps in typed inputs; direction in the semantic Term descriptor | Ambient declarations and unsupported input formations; boundary inspection itself no longer requires receipt history |
+
+Raw Context interning describes binder layout and declared Core; it cannot
+choose between two uses with different Universe bounds. Reject attaching a
+"first formation" to it. Also reject introducing a parallel Context-proof DB
+or manufacturing a value-side Pi just to encode a logical family signature.
+
+The family-Pi implementation uses the existing typed occurrence's input edges.
+Input 0 is its terminal Universe formation, input 1 its scoped codomain, and
+later inputs the index-type formations, including nested family terminals.
+This removes the previous dummy family-variable input. Ordinary Pi's domain
+input is unchanged. These are checked typed Terms, not copied Evidence nodes;
+their order is determined by the raw declaration telescope. Rechecking forms
+those declarations using the ordinary kernel rules, then checks the codomain
+and the complete reconstructed Pi occurrence. Missing/extra, mis-scoped or
+wrong-bound data is not accepted by shape alone.
+
+`occurrence_io.c` already saves all those edges and their raw Contexts; no
+Core or wire tag is needed. Mapped inputs use the existing lifted Context
+action. This does not make arbitrary open image roots self-contained: their
+selected ambient declarations must become explicit inputs before history can
+be removed there. Likewise, structural checking currently revisits a checked
+declaration prefix when a child completes; retained budgeted traversal belongs
+to P4.4, not a second acceptance cache. This milestone must not be reported as
+completion of P4.2/P4.3 or removal of Context evidence generally.
+
+Follow-up, 2026-09-27: the initial acceptance gate passed, but a stronger
+allocation test exposed a candidate gap. Reading the mapped family codomain
+and terminal formation separately freshened a colliding index binder twice;
+their raw scopes then differed. The fix belongs to the existing Context-lift
+interner: a default colliding allocation is keyed by map/extension before
+choosing its fresh binder. Noncolliding defaults still share explicit requests;
+explicit caller allocations remain distinct. Both the family telescope worker
+and typed-input action use this one allocator. No new queue/cache or alpha
+interning is introduced. Both consumer orders, pending interleaving, nested
+families and repeated-query reuse now pass, as do the repeated publication
+gates below; the earlier green run alone did not establish readiness of this fix.
+
 ### Plan
 
 - [x] **P4.0 Static rebaseline:** reconcile actual owners, published epochs,
@@ -684,6 +737,15 @@ soundness; preserve all inherited files and edits locally for their author.
   regressions for alternate Pi admission, captured binders and allocation reuse.
   Verify full acceptance, image cross-reading, sanitizers and paired timings;
   revise storage-specific test assertions without weakening their typing checks.
+- [x] **P4.3h Family Pi declaration inputs:** retain the selected signature's
+  index-type formations and terminal Universe as typed Pi inputs, including
+  nested family declarations. Check these through ordinary Context formation
+  rules before checking the codomain. Preserve identical raw Contexts with
+  different formation bounds; test fresh typed-only images, malformed scopes,
+  missing/extra inputs and mapped uses. No new Core tag, value-side Pi,
+  declaration-proof database or default "first Context proof" selection.
+  This is an agent implementation decision, not a new user requirement.
+  It addresses the family Pi gap, not arbitrary open-root Context admission.
 - [ ] **P4.3 One end-to-end slice:** start with typed Lambda/APP plus context
   action, then one Identity boundary consumer. Build, check, inspect, serialize
   and load the typed structure through the same Solve mechanism. Remove the
@@ -1949,3 +2011,42 @@ Logs: `/tmp/a-program-index-owner-{acceptance,profiles,cross,mutant}.log`,
 `/tmp/a-program-index-owner-bench.jsonl`; cross-images:
 `/tmp/a-program-index-owner-cross.6bOXh3/`. Logs are local; the regression is tracked.
 This plan: **+75/-1**; complete slice: **+1006/-804, net +202**.
+
+Family Pi typed inputs, baseline `b0e64e3`, verified 2026-09-27:
+- Full `check-acceptance` exits 0: wall **1428.120s**, user 1323.271s, system
+  104.029s. Source compatibility **63/63**, general/ordinary-result Sorted,
+  all derived LT variants and witness isolation/packets pass.
+- Debug and ASan/UBSan Core, Program, IADT, Identity, Synthesis and typed-only
+  tests pass. The extended typed-only test fails on the baseline; the colliding
+  index allocation test fails before the shared-allocation fix. Both are now
+  permanent regressions, alongside missing/extra/reordered/mis-scoped inputs.
+- **36** source-image pairs, **72** opposite-version loads and **8** graph/
+  derivation reads pass. No Core or wire tag was added.
+- Ten workloads, warmup plus six paired samples (small cases batched 100),
+  retain identical outputs and Solve steps. Median time changes range from
+  -2.4% to +4.2%, with overlapping ranges. Ordinary-result Solve initially
+  changes 0.752584s -> 0.784215s; a 24-pair alternating-order repeat gives
+  **0.761623s -> 0.764559s**, CPU **0.760717s -> 0.763670s** (+0.4%).
+  This does not establish a universal speedup or exact performance neutrality.
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `src/evidence.c` | 1 | 51 | -50 |
+| `src/evidence_function.c` | 143 | 5 | +138 |
+| `src/evidence_structure.h` | 3 | 0 | +3 |
+| `src/typing.c` | 33 | 12 | +21 |
+| `tests/core.c` | 70 | 1 | +69 |
+| `tests/typed_structure.c` | 56 | 6 | +50 |
+
+Implementation **+180/-68, net +112**; tests **+126/-7, net +119**.
+Selected declaration inputs replace a dummy variable and history-based bound
+inspection, but code grows. P4.2/P4.3/P4.4/P4.5 and remaining P5 work stay open;
+this does not satisfy the overall reduction target or remove Context receipts.
+Local evidence: `/tmp/a-program-family-final-{acceptance,profiles,cross}.log`,
+`/tmp/a-program-family-final-acceptance.time`,
+`/tmp/a-program-family-final-bench.jsonl`,
+`/tmp/a-program-family-final-ordinary-repeat.json`; cross-images:
+`/tmp/a-program-family-final-cross.aAtL7y/`. Reproductions:
+`/tmp/a-program-family-input-baseline-gap.log`,
+`/tmp/a-program-family-scope-gap.log`. Tests, not these local logs, are tracked.
+This plan: **+101/-0**; complete slice: **+407/-75, net +332**; build files unchanged.

@@ -3580,41 +3580,6 @@ const struct pg_evidence *pg_prove_thunk_type(struct pg_typing *typing,
 	return unary_formation(typing, computation_type, PG_THUNK_TYPE_FORM, PG_TOTALITY_UNSPECIFIED, NULL);
 }
 
-/* A logical signature has the bound of its telescope and terminal Universe.
- * It is not itself a value type. Walk checked declarations, not raw Pi nodes. */
-static int binding_level(const struct pg_evidence *extension, uint64_t *level)
-{
-	struct level_work { const struct pg_evidence *extension; struct level_work *next; };
-	struct pg_graph temporary = {0};
-	struct level_work first = {extension, NULL}, *work = &first;
-	uint64_t maximum = 0;
-	int status = -1;
-	while (work) {
-		extension = work->extension;
-		work = work->next;
-		uint64_t bound;
-		if (extension->rule == PG_CONTEXT_EXTEND) {
-			if (!pg_universe_level(pg_evidence_subject(extension->premises[1])->classifier, &bound)) goto done;
-		} else if (extension->rule == PG_CONTEXT_FAMILY_EXTEND) {
-			if (!pg_universe_level(pg_evidence_subject(extension->premises[2])->classifier, &bound)) goto done;
-			const struct pg_evidence *indices = extension->premises[1];
-			while (pg_evidence_context(indices) != pg_evidence_context(extension->premises[0])) {
-				struct level_work *next = pg_alloc(&temporary, sizeof(*next));
-				if (!next) goto done;
-				*next = (struct level_work){indices, work};
-				work = next;
-				indices = indices->premises[0];
-			}
-		} else goto done;
-		if (bound > maximum) maximum = bound;
-	}
-	*level = maximum;
-	status = 0;
-done:
-	pg_graph_destroy(&temporary);
-	return status;
-}
-
 const struct pg_evidence *pg_prove_pi(struct pg_typing *typing,
 	const struct pg_evidence *extended_context,
 	const struct pg_evidence *codomain)
@@ -3629,22 +3594,7 @@ const struct pg_evidence *pg_prove_pi(struct pg_typing *typing,
 	uint64_t hash;
 	const struct pg_evidence *existing = find_record(typing, PG_PI_FORM, scope->parent, NULL, 2, premises, NULL, &hash);
 	if (existing) return existing;
-	uint64_t left, right;
-	if (binding_level(extended_context, &left)) return NULL;
-	if (!pg_universe_level(pg_evidence_subject(codomain)->classifier, &right)) return NULL;
-	const struct pg_term *bound = pg_universe(typing->graph, left > right ? left : right);
-	const struct pg_term *term = pg_pi(typing->graph, scope->declared_type,
-		scope->binder, pg_evidence_subject(codomain)->core);
-	if (!bound || !term) return NULL;
-	/* A logical family signature is a binding declaration, not a value type.
-	 * Keep its variable in the extended scope rather than invent a type proof. */
-	const struct pg_occurrence *domain = scope->judgement == PG_JUDGEMENT_VALUE
-		? pg_evidence_subject(extended_context->premises[1])
-		: pg_occurrence(typing, scope->judgement, scope, pg_reference(typing->graph, scope->binder),
-			scope->declared_type, NULL, 0, NULL);
-	if (!domain) return NULL;
-	const struct pg_occurrence *operands[] = {domain, pg_evidence_subject(codomain)};
-	const struct pg_occurrence *subject = pg_occurrence(typing, PG_JUDGEMENT_COMPUTATION_TYPE, scope->parent, term, bound, NULL, 2, operands);
+	const struct pg_occurrence *subject = pg_function_type(typing, extended_context, pg_evidence_subject(codomain));
 	if (!subject) return NULL;
 	return accept(typing, PG_PI_FORM,
 		scope->parent, subject, 2, premises);
