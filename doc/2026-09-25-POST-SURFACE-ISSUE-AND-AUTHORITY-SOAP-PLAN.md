@@ -2,18 +2,15 @@
 
 Date: 2026-09-25
 Updated: 2026-09-26
-Status: P1-P3 closed. P4 Identity-boundary/Lambda-scope/typed-only function and
-result-formation reuse slices verified. P5 effect-owner/shared work-header/
-Handler/Operation/CBPV-adapter/function-formation slices verified.
+Status: P1-P3 closed. P4 Identity-boundary/Lambda-scope/typed-only function,
+result-formation and typed-map-image slices verified. P5 effect/shared-work/
+Handler/Operation/CBPV/function/Context/IADT-scope/basic-Identity owners verified.
 Verification uses clean publication trees, full acceptance and affected sanitizers.
 Broader P4 typed-proof migration and P5 synthesis modularity remain open.
 Initial review baseline: `40375d734896a456f5ad2827ad8fe0f10ff61517`.
-Verified implementation milestones: `60bde88` (P4), `dcc58ec` (first P5 slice),
-`84a54e2` (shared work/private state), `c89edb7` (Handler owner), and
-`3397e52` (Operation owner), `270c271` (typed-only ordinary functions), and
-`12a0e1d` (CBPV adapters), `22661f4` (function formation), and
-`c341229` (result-formation history removal);
-the latest clean gate covers these slices.
+Published epochs and their verification are recorded below. The latest
+Identity-owner comparison baseline is `4aecd9c`; its clean gate covers all
+previous slices without the inherited trials.
 Inherited implementation edits: Context/IADT relocation changes in
 `evidence.[ch]`, `iadt.[ch]`, two unit tests and two derived-LT files. These
 are excluded from the publication candidate and preserved locally, together
@@ -931,6 +928,18 @@ name; removing the wait makes it fail. Do not treat an empty result map as
 permission to bypass its source environment. This fixes the unpublished trial,
 not an established defect in `1e47484`.
 
+Identity-owner slice, baseline `4aecd9c`, 2026-09-26 (agent implementation
+decision, verified below): move formation, face/endpoint selection,
+instantiation, reflexivity and family action/transport requests together into
+`synthesis_identity.c`. Each descriptor allocates only
+its private state. Formation/face cancellation stays with the existing action
+workers. Family paths are values, so their conversion can use the ordinary
+shared post-check without computation-effect widening. Preserve the selected
+paths, source/destination Contexts and exact request inputs; no new Core tag,
+solver, proof cache or wire format. IADT index transport and source Identity
+discovery remain explicit callers, not duplicated implementations. This is
+owner localization, not completion of typed-history removal or higher Identity.
+
 ### Plan
 
 - [x] Confirm that owner-level semantics are partially separated while synthesis
@@ -979,6 +988,12 @@ not an established defect in `1e47484`.
   existing lift worker incrementally, without claiming its synchronous final
   declaration checking is budgeted. Run full acceptance, sanitizers, cross-image
   reading and paired performance before publication.
+- [x] Verify the Identity-owner slice against `4aecd9c`: remove five source
+  descriptors and the family/face/formation payloads; share ordinary path
+  post-checking. Test exact requests, distinct chosen paths, Context rejection,
+  higher faces, zero/single/bulk budgets and cancellation. Run focused checks,
+  full acceptance, affected sanitizers, cross-image and paired performance
+  checks before deciding adoption and publishing this epoch.
 - [x] Verify the Handler-owner slice: distinguish structure preparation from
   acceptance, preserve independent/restored and shared nested effect boundaries,
   registration failure, clause binder identities, repeated requests and source
@@ -1583,3 +1598,63 @@ explicit declaration inputs with a new family cache, Context formation pointer
 or exported all-domain union. P4's representation/budgeting work and remaining
 P5 owners stay open. Documentation changes are excluded from the table.
 This plan changes by +100/-9, net +91, against `1e47484`.
+
+### Identity Owner Verification
+
+2026-09-26, clean `4aecd9c` plus this slice. Full `check-acceptance` exits zero
+in **1553.701 s** (25m54s), including 63/63 compatibility cases, the ordinary
+QuickSort-result theorem, all four LT/partition variants and optional-witness
+isolation/packets. The code was frozen before this full run. Debug and ASan/UBSan
+synthesis pass; sanitized source-image tests pass with leak detection enabled.
+The new cancellation test covers all 60 boundaries of formation, face,
+instantiation, reflexivity and family action. An independent caller finds the
+same completed path post-check with no additional request or accepted result.
+
+All 13 retained fixtures cross-read with the previous binary in both retention
+modes and directions, using checking and recomputation: 52 reader cases and
+26 byte-identical writer pairs. The general QuickSort-result theorem also
+cross-loads in both directions after saving at budgets 0, 100 and 5,000,000.
+Logs: `/tmp/a-program-identity-owner-{acceptance,debug,asan,asan-io}.log`,
+`/tmp/a-program-identity-owner-cross.lvak9v/` and
+`/tmp/a-program-identity-owner-theorem-cross.MNkKOm/`.
+
+After acceptance, strict-O2 paired runs use one warmup and six samples per
+binary, reversing order for the final three pairs. Small workloads use batches
+of 100 processes. Entries are median wall seconds per invocation (Solve, not
+execution alone); normalized outputs agree after excluding step counts/paths.
+
+| Workload | Baseline | Candidate |
+| --- | ---: | ---: |
+| `generic_sorted.sh` | 5.734000 | 5.722500 |
+| General Sorted source | 0.823500 | 0.825500 |
+| Ordinary QuickSort-result theorem | 0.740500 | 0.754000 |
+| Explicit-index Vec append | 0.005585 | 0.005565 |
+| Certified-length candidate | 0.003935 | 0.003985 |
+| Function-field induction | 0.003730 | 0.003725 |
+
+The result-theorem median is 1.8% slower; ranges overlap (0.729-0.764 versus
+0.735-0.780s). No speedup or strict performance-neutrality claim follows from
+this sample. Shared post-check scheduling changes Sorted steps 623532 ->
+623736 and result-theorem steps 1123411 -> 1123535. Three fresh-process RSS
+pairs give medians 223516 -> 223096 KiB and 174788 -> 174368 KiB. Logs:
+`/tmp/a-program-identity-owner-bench.YybAUc/` and
+`/tmp/a-program-identity-owner-memory.log`.
+
+| File under `src/prototype/pointer/` | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `synthesis.c` | 2 | 405 | -403 |
+| `synthesis_identity.c` | 423 | 0 | +423 |
+| `tests/synthesis.c` | 75 | 0 | +75 |
+| `Makefile` | 1 | 1 | 0 |
+| Code/tests/build total | 501 | 406 | +95 |
+
+Implementation grows by 20 lines and tests by 75; this is not net code
+reduction. The source driver falls from 8444 to 8041 lines. Private states are
+8/16/32/8/72 bytes for formation/face/instance/reflexivity/family action, versus
+the former 240-byte source state (plus a separate family payload). The shared
+80-byte header is unchanged. Remove the old classifier adapter and five driver
+branches; retain the same request index, action workers and checking rules.
+Adopt this verified owner-localization slice. P4's declaration contract/history
+migration and the remaining P5 owners/codec consumers stay open.
+
+Documentation: +84/-9, net +75 lines, excluded from the source totals above.

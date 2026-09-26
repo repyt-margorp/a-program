@@ -4058,6 +4058,7 @@ static void endpoint_jobs(struct pg_typing *typing)
 		assert(pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
 		struct pg_synthesis_job *job = pg_synthesis_identity_endpoint(&synthesis, context, type, selector);
 		assert(job && pg_synthesis_identity_endpoint(&synthesis, context, type, selector) == job);
+		assert(job->role->size == 2 * sizeof(void *));
 		assert(pg_synthesis_identity_face(&synthesis, context, type, selector) == job);
 		assert(!pg_synthesis_identity_face(&synthesis, NULL, type, selector));
 		assert(!pg_synthesis_result(job));
@@ -4653,6 +4654,7 @@ static void selected_instances(struct pg_typing *typing)
 	struct pg_synthesis_job *job = pg_synthesis_family_action(&split, producer, ls, rs, 2, paths);
 	struct pg_synthesis_job *other = pg_synthesis_family_action(&whole, other_producer, ls, rs, 2, paths);
 	assert(job && other && pg_synthesis_status(job) == PG_SYNTHESIS_PENDING);
+	assert(job->role->size < producer->role->size);
 	assert(pg_synthesis_family_action(&split, producer, ls, rs, 2, paths) == job);
 	struct pg_synthesis_job *path_jobs[] = {pg_synthesis_evidence(&split, paths[0]), pg_synthesis_evidence(&split, paths[1])};
 	assert(pg_synthesis_family_action_jobs(&split, producer, ls, rs, 2, path_jobs) == job);
@@ -4717,6 +4719,14 @@ static void selected_instances(struct pg_typing *typing)
 	const struct pg_evidence *converted_path = pg_evidence_premise(pg_evidence_premise(automatic, 0), 4);
 	assert(pg_evidence_rule(converted_path) == PG_TYPE_CONVERSION);
 	assert(pg_evidence_premise(converted_path, 0) == selected[1]);
+	/* Family paths use the same post-check request as an independent caller. */
+	size_t requests = split.jobs.count;
+	struct pg_synthesis_job *shared_check = pg_synthesis_expect(&split,
+		pg_synthesis_evidence(&split, selected[1]),
+		pg_synthesis_evidence(&split, pg_evidence_premise(converted_path, 1)));
+	assert(shared_check && split.jobs.count == requests);
+	assert(pg_synthesis_status(shared_check) == PG_SYNTHESIS_DONE);
+	assert(pg_synthesis_result(shared_check) == converted_path);
 	/* The second path's family still mentions the first chosen path, even for
 	 * a constant B. The solver builds the same explicit conversion as below;
 	 * the kernel rule itself still requires the converted premise. */
@@ -4914,6 +4924,7 @@ static void source_actions(struct pg_typing *typing)
 		inputs[i] = pg_synthesis_reflexivity(&split, context, inputs[i - 1]);
 		others[i] = pg_synthesis_reflexivity(&whole, context, others[i - 1]);
 		assert(inputs[i] && others[i]);
+		assert(inputs[i]->role->size == sizeof(void *));
 		assert(pg_synthesis_reflexivity(&split, context, inputs[i - 1]) == inputs[i]);
 		assert(pg_synthesis_status(inputs[i]) == PG_SYNTHESIS_PENDING);
 		assert(!pg_synthesis_result(inputs[i]));
@@ -7061,6 +7072,69 @@ static void data_cases(struct pg_typing *typing)
 	puts("case synthesis: independent producers, index motives, post-check evidence and shared scheduling passed");
 }
 
+static void identity_owner_cancellation(void)
+{
+	for (uint64_t cutoff = 0;; ++cutoff) {
+		struct pg_graph graph;
+		struct pg_typing typing;
+		struct pg_dimensions dimensions;
+		struct pg_whnf_work work;
+		struct pg_synthesis synthesis;
+		assert(!pg_graph_init(&graph) && !pg_typing_init(&typing, &graph));
+		assert(!pg_dimensions_init(&dimensions, &graph));
+		assert(!pg_whnf_work_init(&work, &graph));
+		assert(!pg_synthesis_init(&synthesis, &typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
+		const struct pg_evidence *empty = pg_prove_empty_context(&typing);
+		const struct pg_evidence *universe = pg_prove_universe(&typing, empty, 0);
+		const struct pg_object *x = pg_binder(&graph);
+		const struct pg_evidence *context = pg_prove_context_extension(&typing, empty, x, universe);
+		const struct pg_evidence *value = pg_prove_variable(&typing, context, x);
+		const struct pg_evidence *path = pg_prove_reflexivity(&typing,
+			pg_prove_projection(&typing, context, universe), value);
+		const struct pg_evidence *type = pg_prove_classifier(&typing, context, path);
+		struct pg_coordinate endpoint = {PG_ENDPOINT_ZERO, 0};
+		const struct pg_dimension_map *face = pg_dimension_map(&dimensions, 0, 1, &endpoint);
+		const struct pg_binding_face *center = pg_binding_face(&dimensions,
+			pg_binding_cube(&dimensions, 1), pg_dimension_identity(&dimensions, 1));
+		const struct pg_evidence *left, *right, *selected;
+		const struct pg_evidence *related = pg_identity_context(&typing, &dimensions,
+			context, 1, &center, &left, &right, &selected);
+		assert(related && type && face);
+		struct pg_synthesis_job *input = pg_synthesis_normalize(&synthesis, context, value);
+		struct pg_synthesis_job *chosen = pg_synthesis_normalize(&synthesis, related, selected);
+		const struct pg_evidence *universe_path = pg_prove_reflexivity(&typing,
+			pg_prove_universe(&typing, empty, 1), pg_prove_type_value(&typing, universe));
+		struct pg_synthesis_job *family = pg_synthesis_evidence(&synthesis,
+			pg_prove_projection(&typing, context, universe_path));
+		struct pg_synthesis_job *instance = pg_synthesis_identity_instance(&synthesis, context, family, input, input);
+		assert(instance && instance->role->size < input->role->size);
+		struct pg_synthesis_job *formation = pg_synthesis_identity_formation(&synthesis,
+			pg_synthesis_evidence(&synthesis, type));
+		struct pg_synthesis_job *jobs[] = {
+			formation, pg_synthesis_identity_face_job(&synthesis, context, formation, face),
+			pg_synthesis_reflexivity(&synthesis, context, input),
+			pg_synthesis_family_action_jobs(&synthesis, input, left, right, 1, &chosen), instance
+		};
+		assert(formation->role->size == sizeof(void *));
+		pg_synthesis_advance(&synthesis, cutoff);
+		int drained = !synthesis.ready;
+		for (size_t i = 0; i < sizeof(jobs) / sizeof(*jobs); ++i) {
+			assert(jobs[i]);
+			if (drained) assert(pg_synthesis_status(jobs[i]) == PG_SYNTHESIS_DONE);
+		}
+		pg_synthesis_destroy(&synthesis);
+		pg_whnf_work_destroy(&work);
+		pg_dimensions_destroy(&dimensions);
+		pg_typing_destroy(&typing);
+		pg_graph_destroy(&graph);
+		assert(cutoff < 2000);
+		if (drained) {
+			printf("Identity owner cancellation: %llu boundaries\n", (unsigned long long)cutoff + 1);
+			break;
+		}
+	}
+}
+
 static void synthesis_cancellation(void)
 {
 	const char *sources[] = {
@@ -7258,6 +7332,7 @@ int main(void)
 	application_substitution_sharing(&typing);
 	effect_expectations(&typing);
 	synthesis_cancellation();
+	identity_owner_cancellation();
 	synthesis_lifetime(&typing);
 	accepted_inputs(&typing);
 	pending_names(&typing);
