@@ -2,6 +2,7 @@
 #define A_PROGRAM_POINTER_OCCURRENCE_IO_H
 
 #include "typing.h"
+#include "scope.h"
 #include <stdio.h>
 
 /* APGOCC7 transports descriptive typed inputs, not evidence. Contexts, Core,
@@ -21,5 +22,16 @@ int pg_occurrences_write(FILE *file, size_t count, const struct pg_occurrence *c
 int pg_occurrences_read(FILE *file, struct pg_typing *typing, size_t limit, size_t name_limit,
 	const struct pg_object *(*resolve)(void *, const char *), void *owner,
 	size_t *count, const struct pg_occurrence *const **roots);
+
+/* APGSCP1 pairs each open root with its selected typed declaration scope.
+ * Scope prefixes and formation Terms share the same relocation tables as the
+ * roots. Reading remains inert; check with pg_prove_scoped_subject afterwards.
+ * The unscoped API retains APGOCC7 and does not silently drop a scoped input. */
+int pg_scoped_occurrences_write(FILE *file, size_t count,
+	const struct pg_scope *const *scopes, const struct pg_occurrence *const *roots,
+	const char *(*name)(void *, const struct pg_object *), void *owner);
+int pg_scoped_occurrences_read(FILE *file, struct pg_typing *typing, size_t limit, size_t name_limit,
+	const struct pg_object *(*resolve)(void *, const char *), void *owner,
+	size_t *count, const struct pg_scope *const **scopes, const struct pg_occurrence *const **roots);
 
 #endif

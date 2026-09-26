@@ -1978,21 +1978,32 @@ static void typed_substitution_test(struct pg_graph *graph)
 	assert(typing.proofs.count == before_projection + 1 && typing.occurrence_actions.count == actions);
 	const struct pg_evidence *projection_map = pg_prove_substitution_projection(&typing, destination, extended_destination);
 	assert(pg_evidence_subject(projected)->map == pg_evidence_context_map(projection_map));
-	/* The structural projection is shared, not the caller's Context receipts. */
+	/* Alternative receipts of identical declaration inputs share the Context
+	 * admission and its consumers. Different selected bounds are tested above. */
 	const struct pg_evidence *other_destination = pg_prove_context_extension(&typing, b_scope, y,
 		pg_prove_type_value(&typing, pg_prove_value_type(&typing, b_type)));
-	assert(other_destination && other_destination != destination);
+	assert(other_destination == destination);
 	assert(pg_evidence_context(other_destination) == pg_evidence_context(destination));
+	const struct pg_evidence *selected_type = pg_evidence_premise(destination, 1);
+	const struct pg_evidence *alternative_type = pg_prove_return_content(&typing,
+		pg_prove_return_type(&typing, selected_type));
+	assert(alternative_type != selected_type);
+	assert(pg_evidence_subject(alternative_type) == pg_evidence_subject(selected_type));
+	const struct pg_evidence *context_inputs[] = {b_scope, alternative_type};
+	const struct pg_derivation_parameters context_parameters = {.binder = y};
+	size_t context_proofs = typing.proofs.count;
+	assert(pg_prove_derivation(&typing, PG_CONTEXT_EXTEND, &context_parameters, 2, context_inputs) == destination);
+	assert(typing.proofs.count == context_proofs);
 	const struct pg_evidence *other_rebase = pg_prove_substitution_rebase(&typing, other_destination, sigma);
-	assert(other_rebase && other_rebase != sigma);
+	assert(other_rebase == sigma);
 	assert(pg_evidence_context_map(other_rebase) == pg_evidence_context_map(sigma));
 	assert(pg_evidence_premise(other_rebase, 1) == other_destination);
 	reconstruct_derivation(&typing, other_rebase);
-	/* Map checking reads declarations, while retaining the supplied proofs. */
+	/* Map checking reads the same selected declarations in either direction. */
 	const struct pg_evidence *reverse_images[] = {projected_a, source_x};
 	const struct pg_evidence *reverse = pg_prove_substitution(&typing, destination, source, 2, reverse_images);
 	const struct pg_evidence *other_reverse = pg_prove_substitution(&typing, other_destination, source, 2, reverse_images);
-	assert(reverse && other_reverse && reverse != other_reverse);
+	assert(reverse && reverse == other_reverse);
 	assert(pg_evidence_context_map(reverse) == pg_evidence_context_map(other_reverse));
 	assert(pg_evidence_premise(reverse, 0) == destination);
 	assert(pg_evidence_premise(other_reverse, 0) == other_destination);
@@ -2000,9 +2011,9 @@ static void typed_substitution_test(struct pg_graph *graph)
 	reconstruct_derivation(&typing, other_reverse);
 	const struct pg_evidence *other_extension = pg_prove_context_extension(&typing, other_destination,
 		pg_evidence_context(extended_destination)->binder, pg_evidence_premise(extended_destination, 1));
-	assert(other_extension && other_extension != extended_destination);
+	assert(other_extension == extended_destination);
 	const struct pg_evidence *other_projection = pg_prove_substitution_projection(&typing, other_destination, other_extension);
-	assert(other_projection && other_projection != projection_map);
+	assert(other_projection == projection_map);
 	assert(pg_evidence_context_map(other_projection) == pg_evidence_context_map(projection_map));
 	assert(pg_evidence_premise(other_projection, 0) == other_destination);
 	assert(pg_evidence_premise(other_projection, 1) == other_extension);

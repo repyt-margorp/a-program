@@ -79,6 +79,7 @@ struct pg_typing {
 	 * of this mutable index container. Not a serialized identifier. */
 	const void *owner_key;
 	struct pg_index contexts;
+	struct pg_index scopes;
 	struct pg_index occurrences;
 	struct pg_index context_maps;
 	/* Projection lookup references the same interned maps, not new evidence. */

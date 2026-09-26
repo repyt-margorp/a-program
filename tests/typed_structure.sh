@@ -4,3 +4,5 @@ scratch=$(mktemp -d)
 trap 'rm -rf "$scratch"' EXIT
 "$1" write "$scratch/typed.a"
 "$1" read "$scratch/typed.a"
+"$1" scoped-write "$scratch/scoped.a"
+"$1" scoped-read "$scratch/scoped.a"

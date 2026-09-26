@@ -34,6 +34,7 @@ fail:
 void pg_typing_destroy(struct pg_typing *typing)
 {
 	pg_index_destroy(&typing->contexts);
+	pg_index_destroy(&typing->scopes);
 	pg_index_destroy(&typing->occurrences);
 	pg_index_destroy(&typing->context_maps);
 	pg_index_destroy(&typing->context_projections);

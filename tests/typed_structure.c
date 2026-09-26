@@ -353,25 +353,149 @@ static void read_inputs(FILE *file, size_t root)
 	pg_graph_destroy(&graph);
 }
 
+static void write_scoped(FILE *file, struct pg_typing *typing)
+{
+	struct pg_graph *graph = typing->graph;
+	const struct pg_evidence *empty = pg_prove_empty_context(typing);
+	const struct pg_evidence *u0 = pg_prove_universe(typing, empty, 0);
+	const struct pg_object *a = pg_binder(graph), *x = pg_binder(graph);
+	const struct pg_evidence *types = pg_prove_context_extension(typing, empty, a,
+		pg_prove_universe(typing, empty, 1));
+	const struct pg_evidence *scope = pg_prove_context_extension(typing, types, x,
+		pg_prove_variable(typing, types, a));
+	const struct pg_evidence *value = pg_prove_variable(typing, scope, x);
+	const struct pg_evidence *body = pg_prove_return(typing, value);
+	const struct pg_evidence *pi = pg_prove_pi(typing, scope, pg_prove_classifier(typing, scope, body));
+	const struct pg_evidence *lambda = pg_prove_lambda(typing, pi, body);
+	const struct pg_evidence *family = pg_prove_family_context_extension(typing, empty, pg_binder(graph),
+		scope, pg_prove_universe(typing, scope, 0));
+	const struct pg_evidence *nested = pg_prove_family_context_extension(typing, empty, pg_binder(graph),
+		family, pg_prove_universe(typing, family, 0));
+	const struct pg_evidence *unused = pg_prove_context_extension(typing, empty, pg_binder(graph),
+		pg_prove_universe(typing, empty, 5));
+	const struct pg_evidence *widened = pg_prove_return_content(typing,
+		pg_prove_pi_constant_codomain(typing, pg_prove_pi(typing, unused,
+			pg_prove_return_type(typing, pg_prove_universe(typing, unused, 0)))));
+	const struct pg_object *b = pg_binder(graph);
+	const struct pg_evidence *low = pg_prove_context_extension(typing, empty, b, u0);
+	const struct pg_evidence *high = pg_prove_context_extension(typing, empty, b, widened);
+	const struct pg_evidence *low_value = pg_prove_variable(typing, low, b);
+	const struct pg_evidence *high_value = pg_prove_variable(typing, high, b);
+	assert(pg_evidence_context(low) == pg_evidence_context(high));
+	assert(pg_evidence_subject(low_value) == pg_evidence_subject(high_value));
+	assert(pg_evidence_scope(low) != pg_evidence_scope(high));
+	const struct pg_evidence *extended = pg_prove_context_extension(typing, scope, pg_binder(graph),
+		pg_prove_universe(typing, scope, 0));
+	const struct pg_evidence *deep = empty;
+	for (size_t i = 0; i < 1024; ++i)
+		deep = pg_prove_context_extension(typing, deep, pg_binder(graph), pg_prove_universe(typing, deep, 0));
+	const struct pg_evidence *contexts[] = {scope, types, family, nested, low, high, extended, empty, deep};
+	const struct pg_evidence *proofs[] = {value, lambda,
+		pg_prove_variable(typing, family, pg_evidence_context(family)->binder),
+		pg_prove_variable(typing, nested, pg_evidence_context(nested)->binder), low_value, high_value,
+		pg_prove_projection(typing, extended, body), u0,
+		pg_prove_variable(typing, deep, pg_evidence_context(deep)->binder)};
+	const struct pg_scope *scopes[9];
+	const struct pg_occurrence *roots[9];
+	for (size_t i = 0; i < 9; ++i) {
+		assert(contexts[i] && proofs[i]);
+		scopes[i] = pg_evidence_scope(contexts[i]);
+		roots[i] = pg_evidence_subject(proofs[i]);
+	}
+	assert(!pg_scoped_occurrences_write(file, 9, scopes, roots, name, NULL));
+}
+
+static void read_scoped(FILE *file, size_t root)
+{
+	struct pg_graph graph;
+	struct pg_typing typing;
+	assert(!pg_graph_init(&graph) && !pg_typing_init(&typing, &graph));
+	size_t count = SIZE_MAX;
+	const struct pg_occurrence *const *roots = NULL;
+	const struct pg_scope *const *scopes = NULL;
+	rewind(file);
+	assert(pg_scoped_occurrences_read(file, &typing, 1, 256, resolve, &graph, &count, &scopes, &roots));
+	assert(count == SIZE_MAX && !scopes && !roots && !typing.proofs.count);
+	rewind(file);
+	assert(pg_occurrences_read(file, &typing, 50000, 256, resolve, &graph, &count, &roots));
+	assert(count == SIZE_MAX && !roots);
+	rewind(file);
+	assert(!pg_scoped_occurrences_read(file, &typing, 50000, 256, resolve, &graph, &count, &scopes, &roots));
+	assert(count == 9 && !typing.proofs.count);
+	if (root != 7) {
+		assert(!pg_prove_structural_subject(&typing, roots[root]));
+		assert(!pg_evidence_for_subject(&typing, roots[root], NULL));
+	}
+	const struct pg_evidence *checked = pg_prove_scoped_subject(&typing, scopes[root], roots[root]);
+	if (!checked) fprintf(stderr, "scoped root %zu failed\n", root);
+	assert(checked && pg_evidence_subject(checked) == roots[root]);
+	assert(pg_evidence_scope(pg_prove_scope(&typing, scopes[root])) == scopes[root]);
+	size_t proofs = typing.proofs.count, terms = graph.terms.count, inputs = typing.scopes.count;
+	assert(pg_prove_scoped_subject(&typing, scopes[root], roots[root]) == checked);
+	assert(typing.proofs.count == proofs && graph.terms.count == terms && typing.scopes.count == inputs);
+	assert(!pg_prove_scoped_subject(&typing, scopes[root ? 0 : 1], roots[root]));
+	if (root == 4 || root == 5) {
+		assert(scopes[4] != scopes[5] && scopes[4]->context == scopes[5]->context);
+		assert(roots[4] == roots[5]);
+		for (size_t i = 4; i < 6; ++i) {
+			const struct pg_evidence *scope = pg_prove_scope(&typing, scopes[i]);
+			assert(scope && pg_evidence_scope(scope) == scopes[i]);
+			const struct pg_evidence *pi = pg_prove_pi(&typing, scope,
+				pg_prove_return_type(&typing, pg_prove_universe(&typing, scope, 0)));
+			assert(pi && pg_evidence_classifier(pi) == scopes[i]->type->classifier);
+		}
+	}
+	/* A declaration graph can describe a false formation; it is not accepted.
+	 * Keep the Core/raw Context while changing only its claimed Universe. */
+	if (scopes[root]) {
+		const struct pg_scope *input = scopes[root];
+		struct pg_occurrence header = *input->type;
+		header.classifier = pg_universe(&graph, 9);
+		const struct pg_occurrence *bad_type = pg_occurrence_intern(&typing, &header,
+			input->type->operands, pg_occurrence_maps(input->type));
+		assert(bad_type);
+		const struct pg_scope *bad = pg_scope_intern(&typing, input->context, input->parent, input->indices, bad_type);
+		assert(bad && !pg_prove_scope(&typing, bad));
+		assert(!pg_evidence_for_scope(&typing, bad));
+		assert(!pg_prove_scoped_subject(&typing, bad, roots[root]));
+		if (input->indices) {
+			const struct pg_evidence *other_terminal = pg_prove_universe(&typing,
+				pg_prove_scope(&typing, input->indices), 1);
+			bad = pg_scope_intern(&typing, input->context, input->parent, input->indices,
+				pg_evidence_subject(other_terminal));
+			assert(bad && !pg_prove_scope(&typing, bad));
+			assert(!pg_evidence_for_scope(&typing, bad));
+		}
+	}
+	pg_typing_destroy(&typing);
+	pg_graph_destroy(&graph);
+}
+
 int main(int argc, char **argv)
 {
 	assert(argc == 3);
-	if (!strcmp(argv[1], "write")) {
+	if (!strcmp(argv[1], "write") || !strcmp(argv[1], "scoped-write")) {
 		FILE *file = fopen(argv[2], "wb");
 		struct pg_graph graph;
 		struct pg_typing typing;
 		assert(file && !pg_graph_init(&graph) && !pg_typing_init(&typing, &graph));
-		write_inputs(file, &typing);
+		if (!strcmp(argv[1], "write")) write_inputs(file, &typing);
+		else write_scoped(file, &typing);
 		pg_typing_destroy(&typing);
 		pg_graph_destroy(&graph);
 		assert(!fclose(file));
 	} else {
-		assert(!strcmp(argv[1], "read"));
+		assert(!strcmp(argv[1], "read") || !strcmp(argv[1], "scoped-read"));
 		FILE *file = fopen(argv[2], "rb");
 		assert(file);
-		for (size_t root = 0; root < 28; ++root) read_inputs(file, root);
+		if (!strcmp(argv[1], "read")) {
+			for (size_t root = 0; root < 28; ++root) read_inputs(file, root);
+			puts("typed-only images: dependent Lambda/APP, logical families, selected formations, F/U, context action and Identity boundary checked without old evidence");
+		} else {
+			for (size_t root = 0; root < 9; ++root) read_scoped(file, root);
+			puts("scoped images: open variables/functions/families, selected bounds, projection and 1024 declarations checked without old evidence");
+		}
 		assert(!fclose(file));
-		puts("typed-only images: dependent Lambda/APP, logical families, selected formations, F/U, context action and Identity boundary checked without old evidence");
 	}
 	return 0;
 }

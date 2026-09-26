@@ -20,6 +20,7 @@ SOURCES := $(ROOT)graph.c $(ROOT)dag.c $(ROOT)dimension.c $(ROOT)eval.c $(ROOT)t
 
 SOURCES += $(ROOT)function_graph.c $(ROOT)host.c $(ROOT)execution.c
 SOURCES += $(ROOT)evidence_function.c $(ROOT)evidence_cbpv.c
+SOURCES += $(ROOT)scope.c $(ROOT)evidence_scope.c
 WITNESS_SOURCE := $(ROOT)function_witness.c
 SYNTHESIS_SOURCES := $(ROOT)synthesis.c $(ROOT)synthesis_work.c $(ROOT)synthesis_effect.c $(ROOT)synthesis_handler.c $(ROOT)synthesis_operation.c $(ROOT)synthesis_cbpv.c $(ROOT)synthesis_function.c $(ROOT)synthesis_context.c $(ROOT)synthesis_iadt.c $(ROOT)synthesis_identity.c
 CLI_SOURCES := $(ROOT)reader.c $(ROOT)syntax.c $(SYNTHESIS_SOURCES) $(ROOT)program.c $(ROOT)graph_io.c $(ROOT)wire.c $(ROOT)source_io.c $(ROOT)retained_io.c $(ROOT)reduction_io.c $(ROOT)syntax_io.c $(ROOT)derivation_io.c $(ROOT)main.c
@@ -461,9 +462,9 @@ $(BUILD)/graph_acceptance_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)graph_i
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)graph_io.c $(ROOT)context_io.c $(ROOT)wire.c $(TESTS)/graph_acceptance.c -o $@
 
-$(BUILD)/occurrence_io_test: $(ROOT)graph.c $(ROOT)dag.c $(ROOT)eval.c $(ROOT)typing.c $(ROOT)classifier.c $(ROOT)graph_io.c $(ROOT)context_io.c $(ROOT)context_payload.c $(ROOT)occurrence_io.c $(ROOT)wire.c $(wildcard $(ROOT)*.h) $(TESTS)/occurrence_io.c
+$(BUILD)/occurrence_io_test: $(ROOT)graph.c $(ROOT)dag.c $(ROOT)eval.c $(ROOT)typing.c $(ROOT)scope.c $(ROOT)classifier.c $(ROOT)graph_io.c $(ROOT)context_io.c $(ROOT)context_payload.c $(ROOT)occurrence_io.c $(ROOT)wire.c $(wildcard $(ROOT)*.h) $(TESTS)/occurrence_io.c
 	mkdir -p $(BUILD)
-	$(CC) $(CFLAGS) -I$(ROOT) $(ROOT)graph.c $(ROOT)dag.c $(ROOT)eval.c $(ROOT)typing.c $(ROOT)classifier.c $(ROOT)graph_io.c $(ROOT)context_io.c $(ROOT)context_payload.c $(ROOT)occurrence_io.c $(ROOT)wire.c $(TESTS)/occurrence_io.c -o $@
+	$(CC) $(CFLAGS) -I$(ROOT) $(ROOT)graph.c $(ROOT)dag.c $(ROOT)eval.c $(ROOT)typing.c $(ROOT)scope.c $(ROOT)classifier.c $(ROOT)graph_io.c $(ROOT)context_io.c $(ROOT)context_payload.c $(ROOT)occurrence_io.c $(ROOT)wire.c $(TESTS)/occurrence_io.c -o $@
 
 $(BUILD)/derivation_io_test: $(SOURCES) $(ROOT)reader.c $(ROOT)syntax.c $(SYNTHESIS_SOURCES) $(ROOT)graph_io.c $(ROOT)derivation_io.c $(ROOT)wire.c $(wildcard $(ROOT)*.h) $(TESTS)/derivation_io.c
 	mkdir -p $(BUILD)

@@ -6,6 +6,7 @@
 #include "iadt.h"
 #include "host.h"
 #include "dag.h"
+#include "scope.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -160,19 +161,21 @@ static const void *certificate_key(enum pg_evidence_rule rule, const void *certi
 	return rule == PG_INDUCTIVE_FORM ? pg_data_schema_declaration(certificate) : certificate;
 }
 
-static const struct pg_evidence *find_record(struct pg_typing *typing, enum pg_evidence_rule rule,
+static const struct pg_evidence *find_record(const struct pg_typing *typing, enum pg_evidence_rule rule,
 	const struct pg_context *context, const struct pg_occurrence *subject, size_t count, const struct pg_evidence *const *premises,
 	const void *certificate, uint64_t *hash_out)
 {
 	/* Premises and, for induction, explicit lexical allocation determine these
 	 * outputs. Check before constructing scopes with temporary fresh binders. */
 	const struct pg_induction_allocation *allocation = rule == PG_INDUCTION_ELIM && subject ? subject->induction : NULL;
+	int context_input = rule == PG_CONTEXT_EMPTY || rule == PG_CONTEXT_EXTEND || rule == PG_CONTEXT_FAMILY_EXTEND;
 	if (derived_output(rule)) subject = NULL;
 	uint64_t hash = ((uintptr_t)context ^ (uintptr_t)subject ^ rule) * UINT64_C(1099511628211);
 	if (rule == PG_INDUCTION_ELIM) hash ^= pg_induction_allocation_hash(allocation);
 	const void *key = certificate_key(rule, certificate);
 	hash = (hash ^ (uintptr_t)key) * UINT64_C(1099511628211);
-	for (size_t i = 0; i < count; ++i) hash = (hash ^ (uintptr_t)premises[i]) * UINT64_C(1099511628211);
+	if (!context_input)
+		for (size_t i = 0; i < count; ++i) hash = (hash ^ (uintptr_t)premises[i]) * UINT64_C(1099511628211);
 	*hash_out = hash;
 	for (struct pg_index_entry *candidate = pg_index_candidates(&typing->proofs, hash); candidate; candidate = candidate->next) {
 		if (candidate->hash != hash) continue;
@@ -185,12 +188,23 @@ static const struct pg_evidence *find_record(struct pg_typing *typing, enum pg_e
 			if (pg_evidence_subject(proof) != subject) continue;
 		}
 		if (certificate_key(rule, proof->certificate) != key) continue;
+		if (context_input) return proof;
 		if (proof->premise_count != count) continue;
 		size_t i = 0;
 		while (i < count && proof->premises[i] == premises[i]) ++i;
 		if (i == count) return proof;
 	}
 	return NULL;
+}
+
+const struct pg_evidence *pg_evidence_for_scope(const struct pg_typing *typing,
+	const struct pg_scope *scope)
+{
+	if (!typing || !typing->proofs.capacity) return NULL;
+	enum pg_evidence_rule rule = !scope ? PG_CONTEXT_EMPTY
+		: scope->indices ? PG_CONTEXT_FAMILY_EXTEND : PG_CONTEXT_EXTEND;
+	uint64_t hash;
+	return find_record(typing, rule, scope ? scope->context : NULL, NULL, 0, NULL, scope, &hash);
 }
 
 static const struct pg_evidence *accept_record(struct pg_typing *typing, enum pg_evidence_rule rule,
@@ -282,14 +296,17 @@ static const struct pg_evidence *lift_destination(struct pg_typing *typing,
 	const struct pg_context_map *map = pg_context_lift_result(work);
 	if (!map) return NULL;
 	const struct pg_evidence *destination = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, map->destination);
-	if (!destination && source->rule == PG_CONTEXT_EXTEND) {
+	const struct pg_scope *scope = pg_evidence_scope(source);
+	if (destination || !scope) return destination;
+	const struct pg_evidence *type = pg_prove_structural_subject(typing, scope->type);
+	if (!scope->indices) {
 		destination = pg_prove_context_extension(typing, prefix->premises[1], map->destination->binder,
-			pg_prove_reindex(typing, prefix, source->premises[1]));
-	} else if (!destination && source->rule == PG_CONTEXT_FAMILY_EXTEND) {
+			pg_prove_reindex(typing, prefix, type));
+	} else {
 		const struct pg_evidence *indices = pg_prove_context_map(typing, pg_context_lift_indices(work));
 		if (!indices) return NULL;
 		destination = pg_prove_family_context_extension(typing, prefix->premises[1], map->destination->binder,
-			indices->premises[1], pg_prove_reindex(typing, indices, source->premises[2]));
+			indices->premises[1], pg_prove_reindex(typing, indices, type));
 	}
 	return destination && pg_evidence_context(destination) == map->destination ? destination : NULL;
 }
@@ -3182,8 +3199,11 @@ const struct pg_evidence *pg_prove_context_extension(struct pg_typing *typing,
 	const struct pg_context *context = pg_context_bind(typing, pg_evidence_context(parent), binder,
 		pg_evidence_subject(type)->core, PG_JUDGEMENT_VALUE);
 	if (!context) return NULL;
+	const struct pg_scope *scope = pg_scope_intern(typing, context,
+		pg_evidence_scope(parent), NULL, pg_evidence_subject(type));
+	if (!scope) return NULL;
 	const struct pg_evidence *premises[] = {parent, type};
-	return accept(typing, PG_CONTEXT_EXTEND, context, NULL, 2, premises);
+	return accept_record(typing, PG_CONTEXT_EXTEND, context, NULL, 2, premises, scope, NULL);
 }
 
 const struct pg_evidence *pg_prove_universe(struct pg_typing *typing,
@@ -3273,9 +3293,12 @@ const struct pg_evidence *pg_prove_family_context_extension(struct pg_typing *ty
 		.parent = pg_evidence_context(parent), .binder = binder, .declared_type = signature,
 		.judgement = PG_JUDGEMENT_TYPE_FAMILY, .indices = pg_evidence_context(indices)});
 	if (!context) return NULL;
+	const struct pg_scope *scope = pg_scope_intern(typing, context,
+		pg_evidence_scope(parent), pg_evidence_scope(indices), pg_evidence_subject(universe));
+	if (!scope) return NULL;
 	const struct pg_evidence *premises[] = {parent, indices, universe};
-	return accept(typing, PG_CONTEXT_FAMILY_EXTEND,
-		context, NULL, 3, premises);
+	return accept_record(typing, PG_CONTEXT_FAMILY_EXTEND,
+		context, NULL, 3, premises, scope, NULL);
 }
 
 const struct pg_evidence *pg_prove_variable(struct pg_typing *typing,
@@ -4546,7 +4569,8 @@ const struct pg_evidence *pg_prove_substitution_extend(struct pg_typing *typing,
 }
 
 struct context_alpha_frame {
-	const struct pg_evidence *source, *parent, *indices;
+	const struct pg_scope *source;
+	const struct pg_evidence *parent, *indices;
 	const struct pg_context *target;
 	struct context_alpha_frame *previous;
 	unsigned stage;
@@ -4557,19 +4581,18 @@ const struct pg_evidence *pg_prove_context_alpha(struct pg_typing *typing,
 {
 	if (!context_proof(typing, source)) return NULL;
 	struct pg_graph temporary = {0};
-	struct context_alpha_frame root = {.source = source, .target = target};
+	struct context_alpha_frame root = {.source = pg_evidence_scope(source), .target = target};
 	struct context_alpha_frame *frame = &root;
 	const struct pg_evidence *result = NULL;
 	while (frame) {
-		const struct pg_evidence *input = frame->source;
-		const struct pg_context *from = pg_evidence_context(input), *to = frame->target;
+		const struct pg_scope *input = frame->source;
+		const struct pg_context *from = input ? input->context : NULL, *to = frame->target;
 		if (!frame->stage) {
-			if (from == to) { result = input; frame = frame->previous; continue; }
+			if (from == to) { result = pg_evidence_for_scope(typing, input); frame = frame->previous; continue; }
 			if (!from || !to || from->binder != to->binder || from->judgement != to->judgement) goto fail;
-			if (input->rule != PG_CONTEXT_EXTEND && input->rule != PG_CONTEXT_FAMILY_EXTEND) goto fail;
 			struct context_alpha_frame *parent = pg_alloc(&temporary, sizeof(*parent));
 			if (!parent) goto fail;
-			*parent = (struct context_alpha_frame){.source = input->premises[0],
+			*parent = (struct context_alpha_frame){.source = input->parent,
 				.target = to->parent, .previous = frame};
 			frame->stage = 1;
 			frame = parent;
@@ -4577,19 +4600,19 @@ const struct pg_evidence *pg_prove_context_alpha(struct pg_typing *typing,
 		}
 		if (frame->stage == 1) {
 			frame->parent = result;
-			if (input->rule == PG_CONTEXT_FAMILY_EXTEND) {
+			if (input->indices) {
 				struct context_alpha_frame *indices = pg_alloc(&temporary, sizeof(*indices));
 				if (!indices) goto fail;
-				*indices = (struct context_alpha_frame){.source = input->premises[1],
+				*indices = (struct context_alpha_frame){.source = input->indices,
 					.target = to->indices, .previous = frame};
 				frame->stage = 2;
 				frame = indices;
 				continue;
 			}
 		} else frame->indices = result;
-		const struct pg_evidence *old_scope = input->premises[frame->indices ? 1 : 0];
+		const struct pg_evidence *old_scope = pg_evidence_for_scope(typing, input->indices ? input->indices : input->parent);
 		const struct pg_evidence *new_scope = frame->indices ? frame->indices : frame->parent;
-		const struct pg_evidence *type = input->premises[frame->indices ? 2 : 1];
+		const struct pg_evidence *type = pg_prove_structural_subject(typing, input->type);
 		if (pg_evidence_context(old_scope) != pg_evidence_context(new_scope))
 			type = pg_prove_reindex(typing, pg_prove_telescope_correspondence(typing, old_scope, new_scope), type);
 		if (!type) goto fail;
@@ -5378,10 +5401,11 @@ static int typed_classifier_step(struct pg_typed_query *work)
 	} else if (subject->judgement == PG_JUDGEMENT_VALUE && subject->core->kind == PG_REFERENCE &&
 		subject->core->as.reference->kind == PG_BINDER) {
 		const struct pg_context *declaration = pg_context_lookup(subject->context, subject->core->as.reference);
-		const struct pg_evidence *scope = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, declaration);
-		if (scope && scope->rule == PG_CONTEXT_EXTEND)
+		const struct pg_scope *scope = pg_evidence_scope(conclusion_first(typing, PG_JUDGEMENT_CONTEXT, declaration));
+		if (scope && !scope->indices)
 			work->result = pg_prove_projection(typing,
-				conclusion_first(typing, PG_JUDGEMENT_CONTEXT, subject->context), scope->premises[1]);
+				conclusion_first(typing, PG_JUDGEMENT_CONTEXT, subject->context),
+				pg_prove_structural_subject(typing, scope->type));
 	} else {
 		if (!work->input) work->input = pg_occurrence_type_request(typing, subject);
 		enum pg_occurrence_input_status status = pg_occurrence_input_advance(work->input, 1);
@@ -5412,6 +5436,12 @@ const struct pg_evidence *pg_prove_classifier(struct pg_typing *typing,
 }
 
 enum pg_evidence_rule pg_evidence_rule(const struct pg_evidence *evidence) { return evidence->rule; }
+const struct pg_scope *pg_evidence_scope(const struct pg_evidence *evidence)
+{
+	if (!evidence) return NULL;
+	if (pg_evidence_judgement(evidence) != PG_JUDGEMENT_CONTEXT) return NULL;
+	return evidence->certificate;
+}
 enum pg_evidence_judgement pg_evidence_judgement(const struct pg_evidence *evidence)
 {
 	const struct pg_occurrence *subject = pg_evidence_subject(evidence);

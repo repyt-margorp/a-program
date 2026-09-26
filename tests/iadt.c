@@ -202,6 +202,13 @@ static void scoped_type_families(void)
 	const struct pg_evidence *universe = pg_prove_projection(&typing, xc, u);
 	const struct pg_evidence *fc = pg_prove_family_context_extension(&typing, base, f, xc, universe);
 	assert(fc && pg_evidence_rule(fc) == PG_CONTEXT_FAMILY_EXTEND);
+	const struct pg_evidence *terminal = pg_prove_return_content(&typing, pg_prove_return_type(&typing, universe));
+	assert(terminal != universe && pg_evidence_subject(terminal) == pg_evidence_subject(universe));
+	const struct pg_evidence *family_inputs[] = {base, xc, terminal};
+	const struct pg_derivation_parameters family_parameters = {.binder = f};
+	size_t accepted = typing.proofs.count;
+	assert(pg_prove_derivation(&typing, PG_CONTEXT_FAMILY_EXTEND, &family_parameters, 3, family_inputs) == fc);
+	assert(typing.proofs.count == accepted);
 	common_rule(&typing, fc);
 	assert(!pg_prove_family_context_extension(&typing, base, f, base, pg_prove_projection(&typing, base, u)));
 	assert(!pg_prove_family_context_extension(&typing, base, f, xc, u));
@@ -223,16 +230,17 @@ static void scoped_type_families(void)
 	assert(pg_prove_type_value(&typing, fiber));
 	common_rule(&typing, partial);
 	common_rule(&typing, fiber);
-	/* Reuse exact premises, not merely their shared typed conclusions. */
+	/* Identical selected declarations share Context admission even when their
+	 * formation receipts differ. This also shares the dependent family use. */
 	const struct pg_evidence *declared = pg_prove_value_type(&typing, pg_prove_variable(&typing, fc, t));
 	const struct pg_evidence *alternate_context = pg_prove_context_extension(&typing, fc, v,
 		pg_prove_type_value(&typing, declared));
-	assert(alternate_context && alternate_context != vc);
+	assert(alternate_context == vc);
 	assert(pg_evidence_context(alternate_context) == pg_evidence_context(vc));
 	const struct pg_evidence *alternate_family = pg_prove_variable(&typing, alternate_context, f);
-	assert(alternate_family != family && pg_evidence_subject(alternate_family) == pg_evidence_subject(family));
+	assert(alternate_family == family);
 	const struct pg_evidence *alternate_partial = pg_prove_family_application(&typing, alternate_family, type);
-	assert(alternate_partial && alternate_partial != partial);
+	assert(alternate_partial == partial);
 	assert(pg_evidence_subject(alternate_partial) == pg_evidence_subject(partial));
 	assert(pg_evidence_premise(alternate_partial, 0) == alternate_family);
 	assert(pg_evidence_premise(partial, 0) == family);
@@ -760,6 +768,18 @@ static void accessibility_elimination(enum pg_totality field_totality)
 	puts("Acc: open logical relation, indexed function-field IH and dependent elimination passed");
 }
 
+static const struct pg_evidence *widen_type(struct pg_typing *typing,
+	const struct pg_evidence *context, const struct pg_evidence *type)
+{
+	const struct pg_evidence *unused = pg_prove_context_extension(typing, context, pg_binder(typing->graph),
+		pg_prove_universe(typing, context, 5));
+	const struct pg_evidence *result = pg_prove_return_content(typing, pg_prove_pi_constant_codomain(typing,
+		pg_prove_pi(typing, unused, pg_prove_return_type(typing, pg_prove_projection(typing, unused, type)))));
+	assert(result && pg_evidence_subject(result)->core == pg_evidence_subject(type)->core);
+	assert(pg_evidence_classifier(result) != pg_evidence_classifier(type));
+	return result;
+}
+
 static void retained_substitution_prefix(void)
 {
 	struct pg_graph graph;
@@ -787,9 +807,12 @@ static void retained_substitution_prefix(void)
 	}
 	const struct pg_evidence *prefix = pg_prove_substitution(&typing, contexts[0], contexts[1], 2, images);
 	assert(prefix);
+	assert(pg_prove_context_extension(&typing,
+		pg_evidence_premise(contexts[0], 0), function_binders[0],
+		pg_prove_value_type(&typing, pg_prove_type_value(&typing, function_types[0]))) == contexts[0]);
 	const struct pg_evidence *alternate = pg_prove_context_extension(&typing,
 		pg_evidence_premise(contexts[0], 0), function_binders[0],
-		pg_prove_value_type(&typing, pg_prove_type_value(&typing, function_types[0])));
+		widen_type(&typing, pg_evidence_premise(contexts[0], 0), function_types[0]));
 	assert(alternate != contexts[0] && pg_evidence_context(alternate) == pg_evidence_context(contexts[0]));
 	size_t terms = graph.terms.count;
 	const struct pg_evidence *result = pg_prove_substitution_extend(&typing, prefix, alternate, 0, NULL);
@@ -2372,10 +2395,12 @@ static void schema_positivity(void)
 		assert(typing.proofs.count == before && typing.typed_queries.count == queries);
 		assert(pg_typed_query_steps(map_query) == map_steps);
 		assert(pg_typed_query_advance(query, 64) == 1 && pg_typed_query_steps(query) == steps);
-		/* Map requests preserve their explicitly supplied Context premises,
-		 * even when those premises establish the same structural Context. */
+		/* Receipt-only alternatives share admission. A different selected
+		 * formation bound must remain explicit even over the same raw Context. */
 		const struct pg_evidence *other_nat = pg_prove_reindex(&typing,
 			pg_prove_substitution_projection(&typing, empty, empty), nat);
+		assert(pg_prove_context_extension(&typing, empty, selected, other_nat) == selected_context);
+		other_nat = widen_type(&typing, empty, nat);
 		const struct pg_evidence *other_selected = pg_prove_context_extension(&typing, empty, selected, other_nat);
 		assert(other_selected != selected_context && pg_evidence_context(other_selected) == pg_evidence_context(selected_context));
 		const struct pg_evidence *other_images = pg_prove_substitution(&typing, other_selected, n_context, 1, &mapped_successor);
@@ -3686,10 +3711,12 @@ static void schemas(struct pg_graph *graph)
 		pg_data_constructor(pg_data_schema_layout(unit_schema), 0), empty_sub, 0, NULL) == empty_sub);
 	assert(pg_data_schema(&typing, pg_data_signature(&typing, empty, empty), 0, NULL));
 	assert(!pg_data_schema_layout(NULL) && !pg_data_schema_fields(NULL, ctor));
-	/* Context identity, not a chosen derivation of that context, selects the
-	 * parameter prefix. Both derivations remain available as immutable evidence. */
+	/* Raw Context identity selects the parameter prefix, while a genuinely
+	 * different selected bound remains a distinct declaration input. */
+	assert(pg_prove_context_extension(&typing, empty, a,
+		pg_prove_value_type(&typing, pg_prove_type_value(&typing, u))) == parameters);
 	const struct pg_evidence *alternate = pg_prove_context_extension(&typing, empty, a,
-		pg_prove_value_type(&typing, pg_prove_type_value(&typing, u)));
+		widen_type(&typing, empty, u));
 	assert(alternate != parameters && pg_evidence_context(alternate) == pg_evidence_context(parameters));
 	assert(pg_data_schema(&typing, pg_data_signature(&typing, alternate, parameters), 3, results));
 	const struct pg_evidence *alternate_params = pg_prove_substitution(&typing, alternate, dest, 1, &av);

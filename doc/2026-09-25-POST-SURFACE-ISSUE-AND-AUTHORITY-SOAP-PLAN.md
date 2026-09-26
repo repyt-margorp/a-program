@@ -1,9 +1,10 @@
 # Post-Surface Issues and Authority Refactoring
 
 Date: 2026-09-25
-Updated: 2026-09-26
+Updated: 2026-09-27
 Status: P1-P3 closed. P4 Identity-boundary/Lambda-scope/typed-only function,
-result-formation and typed-map/variable-image slices verified. P5 effect/shared-work/
+result-formation, selected ambient declarations and typed-map/variable-image slices
+verified. P5 effect/shared-work/
 Handler/Operation/CBPV/function/Context/IADT-scope/transport/basic-Identity owners verified.
 Verification uses clean publication trees, full acceptance and affected sanitizers.
 Broader P4 typed-proof migration and P5 synthesis modularity remain open.
@@ -618,7 +619,7 @@ requirement, not a newly attributed user design decision.
 | Ordinary Pi / Lambda / APP | Pi domain formation and scoped codomain; Lambda's Pi and body; APP's function, argument and selected result formation | Admission of a free ambient Context; normalization/conversion recipes still require their checking inputs |
 | Family Pi | Terminal Universe, scoped codomain, then selected index formations in declaration order; descend into nested family signatures before their terminal Universe | Public Context constructors still take checked Context inputs; this does not replace the Context formation API |
 | Logical family abstraction/application | Verified after `badac54`: body plus the same declaration inputs as Pi; application family and index, with checked result allocation | Arbitrary ambient Context admission remains; closed-image tests do not remove this dependency |
-| Variable | Binder pointer, exact raw Context and declared classifier | Declaration formation currently found through Context evidence; bare open variables are not self-contained images |
+| Variable | Binder pointer, exact raw Context and declared classifier; scoped roots separately retain selected ambient declarations in `pg_scope` | Bare open variables remain insufficient without that explicit scope input; other ambient consumers still need migration |
 | Context action | Exact typed images, source/destination raw Contexts, retained origin; lexical lifts share the existing action mechanism | `map_dependency`, `lift_destination`, `pg_prove_context_alpha` and substitution rules still use Context receipt endpoints/selected declaration premises |
 | Constructor | Nominal constructor in Core, typed fields and exact result `type` | Schema's checked parameter/index/field declarations; `constructor_instance` still needs their admission, not only the erased shape |
 | Match / IH | Scrutinee, typed branches, motive, formation input, parameter map and lexical induction allocation | Declaration/branch Context admission and schema validation; not a reason to remove Match/IH checking rules |
@@ -672,6 +673,38 @@ that would add a general cumulativity rule, not preserve these constructors.
 No new Context object, Core tag, proof store or source-replay path is introduced.
 This fixes required input retention before the broader open-Context migration;
 it does not make raw free-variable scopes self-certifying.
+
+Open-Context migration, baseline `d3910c0`, 2026-09-27 (agent implementation
+decision): retain a selected declaration input as `pg_scope`, with the raw
+Context, selected parent, optional family-index scope and declared typed Term.
+This graph contains neither acceptance flags nor rule/premise histories. Its
+interner shares immutable data; acceptance still belongs to the existing
+Evidence store. Variables keep their original raw Context/Core/classifier
+identity. The checking request and scoped image root explicitly select the
+ambient declarations instead of attaching a "first proof" to raw Context.
+
+Context admission is keyed by those complete typed inputs in the existing
+proof index. Alternative receipts of identical formations reuse one admission;
+different Universe bounds or typed origins remain distinct. The ordinary
+Context rules still check the inputs. Existing derivation transport retains
+one valid receipt, not every alternate history. Pi/family input collection,
+Context alpha adaptation, unchecked lift destinations and variable regularity
+now read selected typed declarations rather than recovering their structure
+from premise offsets. Other Context premise consumers remain to migrate.
+Reject the trial Context branch in the derivation adapter: its caller never
+routes Context rules through that helper, and the ordinary constructors already
+check their inputs. Remove it instead of retaining unreachable validation.
+
+The scoped typed-graph envelope `APGSCP1` reuses the existing occurrence and
+raw-Context relocation code. Loading is inert, and ordinary structural checking
+checks declarations before the open root. It does not replace the compiler's
+`.a` format or silently omit scope inputs from `APGOCC7`. Reject changing every
+variable's identity to include a chosen formation: structural substitution
+already constructs the same raw variables independently. Reject a second
+mutable acceptance cache and broadening Universe rules. This explicit-input
+slice still uses synchronous checking; budgeted integration, arbitrary mapped
+origins' ambient declarations, normalization/conversion inputs and complete
+Context-history deletion remain P4 work.
 
 ### Plan
 
@@ -787,6 +820,17 @@ it does not make raw free-variable scopes self-certifying.
   alternate bound-pointer allocations, wrong inputs/bounds/scopes and repeated
   access; run the common publication gates. This prerequisite does not settle
   arbitrary open-root Context admission or replace the existing Solve queue.
+- [x] **P4.3k Selected ambient declarations:** retain ordinary/family declaration
+  inputs independently of Context proof history, without changing raw Context
+  or variable identity. Share Context admission by those exact typed inputs,
+  not alternate formation receipts; preserve different selected bounds. Migrate
+  Pi/family input collection, alpha adaptation, lift destination and regularity
+  inspection. Check inert scoped images in fresh stores, malformed declarations,
+  both bound-selection orders, shared prefixes and repeated access. Update only
+  receipt-storage assertions, retaining wrong-scope/type/nominal checks. Complete
+  full acceptance, affected sanitizer/debug, image compatibility and paired
+  performance gates before publication. Do not claim whole-Context-history
+  removal or budgeted structural checking from this prerequisite.
 - [ ] **P4.4 Work reuse and images (R2/R4):** reuse the same typed construction
   and checking requests for accepted and pending consumers, keeping open-handler
   progress and `::` non-feedback. Measure synchronous lift/composition helpers
@@ -2181,3 +2225,67 @@ Local evidence: `/tmp/a-program-selected-input-{acceptance,profiles-final,cross}
 `/tmp/a-program-selected-input-cross.aap7OO/`. Boundary tests are tracked;
 temporary logs are not.
 This plan: **+75/-2**; complete slice: **+208/-21, net +187**.
+
+### Selected Ambient Declaration Verification
+
+Baseline `d3910c0`, verified 2026-09-27 in the clean publication worktree.
+The inherited relocation trial is not part of this change.
+
+- Fresh stores check **9 scoped roots**, in addition to the existing **28 closed
+  typed-only roots**: dependent variables/functions, nested families, distinct
+  selected bounds over the same variable, projection and 1024 declarations.
+  Reads accept no evidence. Wrong declarations, family signatures and root
+  contexts reject; both bound-selection orders and repeated access are checked.
+  Context receipt-only alternatives now share. Tests that need distinct inputs
+  instead retain genuinely different formation bounds over the same raw Context.
+- Full `check-acceptance`: exit 0, wall **1500.635s**, user 1389.677s, system
+  109.684s. Compatibility **63/63**, general/ordinary-result Sorted, four LT
+  provider/order combinations, witness isolation and packets pass. After the
+  final unreachable adapter branch was deleted, rebuilt optimized, Debug and
+  ASan/UBSan Core, Program, IADT, Identity, Synthesis and typed-only tests pass;
+  optimized occurrence/derivation image tests also pass.
+- Final cross-reading: **36** source-image pairs, **72** opposite-version loads
+  and **8** occurrence/derivation reads pass. Existing compiler image formats
+  are unchanged; `APGSCP1` is the separate scoped typed-input envelope.
+- Ten workloads, warmup plus six paired samples (small cases batched 100):
+  outputs and Solve counts agree. Median wall changes range **-1.16% to +2.50%**,
+  with overlapping sample ranges. General Sorted: 0.838848s -> 0.848377s;
+  ordinary-result theorem: 0.756951s -> 0.773647s; derived proof:
+  2.593975s -> 2.615099s. This is not a speedup or proof of neutrality.
+- Per-process peak RSS medians, three alternating pairs, KiB: length
+  **12512 -> 12512**, general Sorted **223424 -> 224372**, ordinary result
+  **173984 -> 174824**, derived **545972 -> 547876**. The selected descriptor
+  is 48 bytes here, plus its index capacity. Context receipts are still retained;
+  removing their remaining consumers and measuring physical deletion stay open.
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `src/evidence.c` | 53 | 23 | +30 |
+| `src/evidence.h` | 10 | 0 | +10 |
+| `src/evidence_function.c` | 25 | 25 | 0 |
+| `src/evidence_scope.c` | 46 | 0 | +46 |
+| `src/scope.c` | 27 | 0 | +27 |
+| `src/scope.h` | 22 | 0 | +22 |
+| `src/occurrence_io.c` | 107 | 8 | +99 |
+| `src/occurrence_io.h` | 12 | 0 | +12 |
+| `src/typing.c` | 1 | 0 | +1 |
+| `src/typing.h` | 1 | 0 | +1 |
+| `tests/core.c` | 18 | 7 | +11 |
+| `tests/iadt.c` | 37 | 10 | +27 |
+| `tests/typed_structure.c` | 129 | 5 | +124 |
+| `tests/typed_structure.sh` | 2 | 0 | +2 |
+| `src/Makefile` | 3 | 2 | +1 |
+
+Implementation **+304/-56, net +248**; tests **+186/-22, net +164**; build
+**+3/-2, net +1**. P4.2/P4.3/P4.4/P4.5 and remaining P5 work stay open. Selected
+declarations are no longer reconstructed from proof history in the migrated
+consumers, but budgeted checking, arbitrary mapped origins, conversion inputs
+and complete Context-history removal remain. The overall reduction target is
+not met; it must not be silently replaced by this smaller milestone.
+
+Local evidence: `/tmp/a-program-scope-input-{acceptance,final,profiles-publish,cross-publish}.log`,
+`/tmp/a-program-scope-input-acceptance.time`,
+`/tmp/a-program-scope-input-{bench,memory}.jsonl`; cross-images:
+`/tmp/a-program-scope-input-cross.BhWKdF/`. Boundary tests are tracked; these
+temporary execution records are not.
+This plan: **+111/-3**; complete slice: **+604/-83, net +521**.

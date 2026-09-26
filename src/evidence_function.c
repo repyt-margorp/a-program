@@ -1,4 +1,5 @@
 #include "evidence_structure.h"
+#include "scope.h"
 
 const struct pg_evidence *pg_function_selection(struct pg_typing *typing,
 	const struct pg_occurrence *subject, const struct pg_occurrence **child)
@@ -21,16 +22,17 @@ const struct pg_evidence *pg_function_selection(struct pg_typing *typing,
  * into a nested family before its terminal Universe. Pi keeps its body at 1,
  * Lambda at 0. A raw family signature is not treated as a value type. */
 struct declaration_input {
-	const struct pg_evidence *proof;
+	const struct pg_scope *scope;
+	const struct pg_occurrence *type;
 	struct declaration_input *next;
 };
 
 static int push_input(struct pg_graph *scratch, struct declaration_input **stack,
-	const struct pg_evidence *proof)
+	const struct pg_scope *scope, const struct pg_occurrence *type)
 {
 	struct declaration_input *entry = pg_alloc(scratch, sizeof(*entry));
 	if (!entry) return -1;
-	*entry = (struct declaration_input){proof, *stack};
+	*entry = (struct declaration_input){scope, type, *stack};
 	*stack = entry;
 	return 0;
 }
@@ -52,10 +54,11 @@ static const struct pg_occurrence *binding_term(struct pg_typing *typing,
 }
 
 const struct pg_occurrence *pg_function_binding(struct pg_typing *typing,
-	const struct pg_evidence *scope, const struct pg_occurrence *body, enum pg_evidence_judgement judgement)
+	const struct pg_evidence *declaration, const struct pg_occurrence *body, enum pg_evidence_judgement judgement)
 {
-	const struct pg_context *context = pg_evidence_context(scope);
-	if (!context || !body) return NULL;
+	const struct pg_scope *scope = pg_evidence_scope(declaration);
+	if (!scope || !body) return NULL;
+	const struct pg_context *context = scope->context;
 	uint64_t bound = 0;
 	size_t body_index;
 	if (judgement == PG_JUDGEMENT_COMPUTATION_TYPE) {
@@ -63,8 +66,8 @@ const struct pg_occurrence *pg_function_binding(struct pg_typing *typing,
 		body_index = 1;
 	} else if (judgement == PG_JUDGEMENT_TYPE_FAMILY) body_index = 0;
 	else return NULL;
-	if (pg_evidence_rule(scope) == PG_CONTEXT_EXTEND) {
-		const struct pg_occurrence *domain = pg_evidence_subject(pg_evidence_premise(scope, 1));
+	if (!scope->indices) {
+		const struct pg_occurrence *domain = scope->type;
 		uint64_t level;
 		if (!domain || !pg_universe_level(domain->classifier, &level)) return NULL;
 		const struct pg_occurrence *operands[2];
@@ -73,29 +76,26 @@ const struct pg_occurrence *pg_function_binding(struct pg_typing *typing,
 		return binding_term(typing, context, judgement, level > bound ? level : bound, 2, operands);
 	}
 	struct pg_graph scratch = {0};
-	struct declaration_input first = {scope, NULL}, *stack = &first, *inputs = NULL;
+	struct declaration_input first = {scope, NULL, NULL}, *stack = &first, *inputs = NULL;
 	size_t count = 0;
 	const struct pg_occurrence *result = NULL;
 	while (stack) {
-		const struct pg_evidence *proof = stack->proof;
+		const struct pg_scope *input_scope = stack->scope;
+		const struct pg_occurrence *type = stack->type;
 		stack = stack->next;
-		if (pg_evidence_judgement(proof) == PG_JUDGEMENT_CONTEXT) {
-			if (pg_evidence_rule(proof) == PG_CONTEXT_EXTEND) {
-				if (push_input(&scratch, &stack, pg_evidence_premise(proof, 1))) goto done;
-			} else if (pg_evidence_rule(proof) == PG_CONTEXT_FAMILY_EXTEND) {
-				if (push_input(&scratch, &stack, pg_evidence_premise(proof, 2))) goto done;
-				const struct pg_context *parent = pg_evidence_context(proof)->parent;
-				for (const struct pg_evidence *indices = pg_evidence_premise(proof, 1);
-					pg_evidence_context(indices) != parent; indices = pg_evidence_premise(indices, 0)) {
-					if (!indices || push_input(&scratch, &stack, indices)) goto done;
-				}
-			} else goto done;
+		if (input_scope) {
+			if (push_input(&scratch, &stack, NULL, input_scope->type)) goto done;
+			if (input_scope->indices) {
+				for (const struct pg_scope *indices = input_scope->indices;
+					indices && indices->context != input_scope->context->parent; indices = indices->parent)
+					if (push_input(&scratch, &stack, indices, NULL)) goto done;
+			}
 			continue;
 		}
 		uint64_t level;
-		if (!pg_universe_level(pg_evidence_classifier(proof), &level)) goto done;
+		if (!type || !pg_universe_level(type->classifier, &level)) goto done;
 		if (level > bound) bound = level;
-		if (count == SIZE_MAX || push_input(&scratch, &inputs, proof)) goto done;
+		if (count == SIZE_MAX || push_input(&scratch, &inputs, NULL, type)) goto done;
 		++count;
 	}
 	if (!count || count == SIZE_MAX) goto done;
@@ -103,11 +103,11 @@ const struct pg_occurrence *pg_function_binding(struct pg_typing *typing,
 	if (arity > SIZE_MAX / sizeof(const struct pg_occurrence *)) goto done;
 	const struct pg_occurrence **operands = pg_alloc(&scratch, arity * sizeof(*operands));
 	if (!operands) goto done;
-	operands[1 - body_index] = pg_evidence_subject(inputs->proof);
+	operands[1 - body_index] = inputs->type;
 	inputs = inputs->next;
 	operands[body_index] = body;
 	for (size_t i = count - 1; i; --i, inputs = inputs->next)
-		operands[i + 1] = pg_evidence_subject(inputs->proof);
+		operands[i + 1] = inputs->type;
 	result = binding_term(typing, context, judgement, bound, arity, operands);
 done:
 	pg_graph_destroy(&scratch);

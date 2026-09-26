@@ -350,6 +350,16 @@ int pg_elimination_view(const struct pg_typing *typing,
 /* Checked primitive derivations, owned by typing->graph. NULL means a failed
  * premise check or allocation, not a proof of negation. No mutable proof API. */
 const struct pg_evidence *pg_prove_empty_context(struct pg_typing *typing);
+struct pg_scope;
+/* Selected typed declarations, independently of their acceptance history.
+ * NULL scope denotes the empty Context, not an inferred environment. */
+const struct pg_scope *pg_evidence_scope(const struct pg_evidence *evidence);
+const struct pg_evidence *pg_evidence_for_scope(const struct pg_typing *typing,
+	const struct pg_scope *scope);
+const struct pg_evidence *pg_prove_scope(struct pg_typing *typing,
+	const struct pg_scope *scope);
+const struct pg_evidence *pg_prove_scoped_subject(struct pg_typing *typing,
+	const struct pg_scope *scope, const struct pg_occurrence *subject);
 const struct pg_evidence *pg_prove_context_extension(struct pg_typing *typing,
 	const struct pg_evidence *parent, const struct pg_object *binder,
 	const struct pg_evidence *type);
