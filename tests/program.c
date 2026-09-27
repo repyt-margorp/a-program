@@ -391,8 +391,8 @@ static void graded_function_graph(struct pg_program *p, const struct pg_evidence
 {
 	function = pg_function_graph_source(&p->typing, function);
 	assert(function && pg_evidence_rule(function) == PG_LAMBDA_INTRO);
-	const struct pg_evidence *scope = pg_evidence_premise(pg_evidence_for_subject(&p->typing,
-		pg_evidence_subject(function)->type, NULL), 0);
+	const struct pg_evidence *scope = pg_evidence_for_scope(&p->typing,
+		pg_evidence_binding_scope(pg_evidence_for_subject(&p->typing, pg_evidence_subject(function)->type, NULL)));
 	const struct pg_evidence *value = pg_prove_return_value(&p->typing, pg_evidence_for_subject(&p->typing,
 		pg_evidence_subject(function)->operands[0], NULL));
 	assert(value);
@@ -774,7 +774,8 @@ static void function_graph_aliases(struct pg_program *p,
 		assert(pg_evidence_subject(pg_function_graph_source(typing, alternate)) == pg_evidence_subject(raw));
 	assert(typing->proofs.count == proofs && typing->occurrences.count == subjects);
 	assert(!pg_function_graph_source(NULL, raw));
-	const struct pg_evidence *outer = pg_context_parent_input(typing, pg_evidence_premise(pi, 0));
+	const struct pg_evidence *outer = pg_context_parent_input(typing,
+		pg_evidence_for_scope(typing, pg_evidence_binding_scope(pi)));
 	const struct pg_evidence *scope = pg_prove_context_extension(typing, outer, pg_binder(&p->graph), pg_prove_pi_domain(typing, pi));
 	const struct pg_evidence *projected = pg_prove_projection(typing, scope, raw);
 	assert(projected && pg_function_graph_source(typing, projected) == raw);
@@ -893,8 +894,8 @@ static void graph_index_preparation(void)
 		while (pg_evidence_rule(pg_evidence_for_subject(&p->typing,
 			pg_evidence_subject(inner)->operands[0], NULL)) == PG_LAMBDA_INTRO)
 			inner = pg_evidence_for_subject(&p->typing, pg_evidence_subject(inner)->operands[0], NULL);
-		const struct pg_evidence *scope = pg_evidence_premise(pg_evidence_for_subject(&p->typing,
-			pg_evidence_subject(inner)->type, NULL), 0);
+		const struct pg_evidence *scope = pg_evidence_for_scope(&p->typing,
+			pg_evidence_binding_scope(pg_evidence_for_subject(&p->typing, pg_evidence_subject(inner)->type, NULL)));
 		const struct pg_evidence *prefix = pg_context_parent_input(&p->typing, pg_context_parent_input(&p->typing, scope));
 		struct pg_inductive_instance instance;
 		assert(pg_inductive_instance(&p->typing, pg_context_declared_input(&p->typing, scope), &instance));
@@ -1143,8 +1144,8 @@ static void suspended_helper_application(void)
 				(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "f", .length = 1})));
 		assert(helper && function);
 		const struct pg_evidence *inner = pg_evidence_for_subject(&p->typing, pg_evidence_subject(function)->operands[0], NULL);
-		const struct pg_evidence *context = pg_evidence_premise(pg_evidence_for_subject(&p->typing,
-			pg_evidence_subject(inner)->type, NULL), 0);
+		const struct pg_evidence *context = pg_evidence_for_scope(&p->typing,
+			pg_evidence_binding_scope(pg_evidence_for_subject(&p->typing, pg_evidence_subject(inner)->type, NULL)));
 		const struct pg_evidence *sequence = pg_evidence_for_subject(&p->typing, pg_evidence_subject(inner)->operands[0], NULL);
 		assert(pg_evidence_rule(sequence) == PG_FOLD_ELIM);
 		const struct pg_evidence *call = pg_evidence_premise(sequence, 0);

@@ -354,6 +354,9 @@ struct pg_scope;
 /* Selected typed declarations, independently of their acceptance history.
  * NULL scope denotes the empty Context, not an inferred environment. */
 const struct pg_scope *pg_evidence_scope(const struct pg_evidence *evidence);
+/* Pi/family abstraction's selected declaration input, not a Context receipt.
+ * Non-binding rules return NULL. The body's typed edge belongs to subject. */
+const struct pg_scope *pg_evidence_binding_scope(const struct pg_evidence *evidence);
 const struct pg_evidence *pg_evidence_for_scope(const struct pg_typing *typing,
 	const struct pg_scope *scope);
 const struct pg_evidence *pg_prove_scope(struct pg_typing *typing,

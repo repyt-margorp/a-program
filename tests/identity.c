@@ -287,8 +287,8 @@ static void heterogeneous_pi(struct pg_typing *typing)
 		const struct pg_evidence *boundary = NULL, *tail = expanded;
 		for (size_t i = 0; i < 3; ++i) {
 			assert(pg_evidence_rule(tail) == PG_PI_FORM);
-			boundary = pg_evidence_premise(tail, 0);
-			tail = pg_evidence_premise(tail, 1);
+			boundary = pg_evidence_for_scope(typing, pg_evidence_binding_scope(tail));
+			tail = pg_evidence_for_subject(typing, pg_evidence_subject(tail)->operands[1], NULL);
 		}
 		call = pg_prove_projection(typing, boundary, call);
 		for (size_t i = 0; i < 3; ++i)
@@ -2888,7 +2888,7 @@ static void dependent_pi_action(struct pg_typing *typing)
 	const struct pg_evidence *inner = expanded;
 	for (size_t i = 0; i < 3; ++i) {
 		assert(pg_evidence_rule(inner) == PG_PI_FORM);
-		inner = pg_evidence_premise(inner, 1);
+		inner = pg_evidence_for_subject(typing, pg_evidence_subject(inner)->operands[1], NULL);
 	}
 	assert(pg_evidence_rule(inner) == PG_FAMILY_IDENTITY_FORM);
 	assert(pg_evidence_subject(pg_evidence_premise(inner, 3))->core == pg_reference(typing->graph, p));

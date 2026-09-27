@@ -319,7 +319,8 @@ static void family_function_step(struct pg_synthesis *synthesis, struct pg_synth
 		const struct pg_occurrence *subject = construction ? pg_evidence_subject(construction) : NULL;
 		/* Nominal family formation may erase to APP without typed operands. */
 		if (subject && subject->core->kind == PG_LAMBDA && pg_occurrence_scoped_input(subject, 0)) {
-			const struct pg_evidence *context = pg_evidence_premise(construction, 0);
+			const struct pg_scope *selected = pg_evidence_binding_scope(construction);
+			const struct pg_evidence *context = selected ? pg_evidence_for_scope(synthesis->typing, selected) : NULL;
 			struct pg_synthesis_job *body = pg_synthesis_family_function(synthesis,
 				pg_synthesis_evidence(synthesis, pg_prove_structural_subject(synthesis->typing, subject->operands[0])));
 			local->continuation = pg_synthesis_lambda_body(synthesis,

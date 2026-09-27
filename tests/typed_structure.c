@@ -79,6 +79,43 @@ static void direct_inputs(struct pg_typing *typing, const struct pg_evidence *pr
 	pg_typing_destroy(&foreign);
 }
 
+static void binding_inputs(struct pg_typing *typing, const struct pg_evidence *proof)
+{
+	assert(proof && !pg_evidence_premise_count(proof));
+	const struct pg_scope *scope = pg_evidence_binding_scope(proof);
+	assert(scope && !pg_evidence_scope(proof));
+	const struct pg_occurrence *body = pg_evidence_subject(proof)->operands[
+		pg_evidence_rule(proof) == PG_PI_FORM ? 1 : 0];
+	struct pg_typing foreign;
+	assert(!pg_typing_init(&foreign, typing->graph));
+	size_t proofs = typing->proofs.count, terms = typing->graph->terms.count;
+	size_t scopes = typing->scopes.count, queries = typing->typed_queries.count;
+	struct pg_derivation_input input;
+	assert(!pg_derivation_input_header(proof, &input) && input.count == 2);
+	const struct pg_evidence *children[2], *unused = NULL;
+	for (size_t i = 0; i < 2; ++i) {
+		assert(pg_derivation_input_dependency(typing, proof, i, children + i) == 1);
+		assert(pg_derivation_input_dependency(&foreign, proof, i, &unused) == -1 && !unused);
+	}
+	assert(pg_evidence_scope(children[0]) == scope && pg_evidence_subject(children[1]) == body);
+	assert(pg_derivation_input_dependency(typing, proof, 2, &unused) == 0 && !unused);
+	assert(typing->proofs.count == proofs && typing->graph->terms.count == terms);
+	assert(typing->scopes.count == scopes && typing->typed_queries.count == queries);
+	const struct pg_evidence *identity = pg_prove_substitution_projection(typing, children[0], children[0]);
+	const struct pg_evidence *alternate = pg_prove_reindex(typing, identity, children[1]);
+	assert(alternate && alternate != children[1] && pg_evidence_subject(alternate) == body);
+	children[1] = alternate;
+	proofs = typing->proofs.count; terms = typing->graph->terms.count;
+	size_t occurrences = typing->occurrences.count;
+	for (size_t i = 0; i < 8; ++i)
+		assert(pg_prove_derivation(typing, input.rule, &input.parameters, 2, children) == proof);
+	assert(typing->proofs.count == proofs && typing->graph->terms.count == terms);
+	assert(typing->occurrences.count == occurrences && typing->scopes.count == scopes);
+	assert(!pg_evidence_binding_scope(children[0]) && !pg_evidence_binding_scope(NULL));
+	assert(!foreign.proofs.count);
+	pg_typing_destroy(&foreign);
+}
+
 static void write_inputs(FILE *file, struct pg_typing *typing)
 {
 	struct pg_graph *graph = typing->graph;
@@ -156,6 +193,10 @@ static void write_inputs(FILE *file, struct pg_typing *typing)
 	const struct pg_evidence *wide_identity = pg_prove_identity_type(typing, unquoted, function, function);
 	assert(constant && content && unquoted && wide_pi && wide_family);
 	assert(wide_map && family_pi && family_logical && wide_identity);
+	const struct pg_evidence *bindings[] = {pi, outer_pi, logical, logical_family,
+		logical_nested, logical_map, wide_pi, wide_family, family_pi, family_logical};
+	for (size_t i = 0; i < sizeof(bindings) / sizeof(*bindings); ++i)
+		binding_inputs(typing, bindings[i]);
 	const struct pg_evidence *total = pg_prove_total_pure_value(typing,
 		pg_prove_return_contract(typing, PG_TOTALITY_TOTAL, pg_prove_type_value(typing, u0)));
 	const struct pg_evidence *direct[] = {function, application, logical_applied,
@@ -502,6 +543,25 @@ static void write_scoped(FILE *file, struct pg_typing *typing)
 	assert(pg_evidence_context(low) == pg_evidence_context(high));
 	assert(pg_evidence_subject(low_value) == pg_evidence_subject(high_value));
 	assert(pg_evidence_scope(low) != pg_evidence_scope(high));
+	/* Identical local bindings can have differently formed ambient scopes.
+	 * Retain the selected declaration graph, not the first raw Context proof. */
+	const struct pg_evidence *ambient[] = {low, high}, *bindings[2][2];
+	const struct pg_object *local = pg_binder(graph);
+	for (size_t i = 0; i < 2; ++i) {
+		const struct pg_evidence *selected = pg_prove_context_extension(typing, ambient[i], local,
+			pg_prove_universe(typing, ambient[i], 0));
+		const struct pg_evidence *result = pg_prove_universe(typing, selected, 0);
+		bindings[i][0] = pg_prove_pi(typing, selected, pg_prove_return_type(typing, result));
+		bindings[i][1] = pg_prove_family_abstraction(typing, selected, result);
+		for (size_t kind = 0; kind < 2; ++kind) {
+			binding_inputs(typing, bindings[i][kind]);
+			assert(pg_evidence_binding_scope(bindings[i][kind])->parent == pg_evidence_scope(ambient[i]));
+		}
+	}
+	for (size_t kind = 0; kind < 2; ++kind) {
+		assert(bindings[0][kind] != bindings[1][kind]);
+		assert(pg_evidence_subject(bindings[0][kind]) == pg_evidence_subject(bindings[1][kind]));
+	}
 	const struct pg_evidence *extended = pg_prove_context_extension(typing, scope, pg_binder(graph),
 		pg_prove_universe(typing, scope, 0));
 	const struct pg_evidence *deep = empty;

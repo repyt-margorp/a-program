@@ -890,6 +890,18 @@ distinction consistent with the existing reindex worker.
   report any cost of replacing input-keyed shortcuts. Agent decision: do not
   delete Pi/family abstraction history by reconstructing selected declaration
   scopes during export; that would relocate duplication, not resolve it.
+- [x] **P4.3o Pi/family abstraction history (baseline `7c21681`):** replace
+  their two permanent receipt edges with the existing selected `pg_scope`
+  declaration input and typed body. Preserve the selected ambient formation,
+  including when two scopes give the same raw Context and typed binding;
+  do not recover it by choosing the first Context admission. Export borrows
+  already checked semantic inputs without rebuilding scopes. Share acceptance
+  by the complete typed subject and selected scope, not alternate body receipts.
+  Migrate the family-function adapter and affected tests. Check ordinary,
+  dependent and nested-family cases, alternate receipts/bounds, fresh typed and
+  derivation images, and the common publication gates. This removes history,
+  not the remaining flattening of local declaration inputs in typed bindings
+  or the synchronous structural checker; those remain P4 work.
 - [ ] **P4.4 Work reuse and images (R2/R4):** reuse the same typed construction
   and checking requests for accepted and pending consumers, keeping open-handler
   progress and `::` non-feedback. Measure synchronous lift/composition helpers
@@ -1393,6 +1405,7 @@ owner localization, not completion of typed-history removal or higher Identity.
 | 2026-09-26 | P4.3c | `c341229` validates result formation through the typed Term's `type` edge and deletes receipt cloning | Clean acceptance, Debug, sanitizers, legacy alternate-history images and paired timings pass; broader P4/P5 remain open |
 | 2026-09-27 | P5 function structures | Pi/Lambda/APP structural queries use function-owned state and the existing work interner | Full acceptance, Debug/sanitizers, cross-reading and paired measurements pass; broader P4/P5 remain open |
 | 2026-09-27 | P5 CBPV structures | Known CBPV-rule queries use owner-local state; central Fold/carrier interpretation and payload removed | All publication gates below pass; P4/P5 remain open |
+| 2026-09-27 | P4.3o | Pi/family abstraction retain selected declaration inputs and typed bodies, not premise histories | Full acceptance, sanitizers, cross-reading and paired measurements pass; broader P4/P5 remain open |
 
 P4.2a verification (fresh, current worktree including the inherited Context/IADT
 edits): optimized `identity_test`, `derivation_io.sh` and `identity_io.sh` pass;
@@ -2862,3 +2875,56 @@ Logs: `/tmp/a-program-cbpv-structure-{acceptance,debug,asan,cross}.log`,
 with that prefix. Temporary logs are not committed; regression tests are.
 
 This plan: **+60/-0**; complete slice: **+328/-190, net +138**.
+
+### Binding History Removal (2026-09-27)
+
+Baseline `7c21681`; inherited trials excluded. Agent decision: reuse `pg_scope`
+as Pi/family abstraction's selected declaration input, in the existing receipt
+slot. The body is already a typed operand. Remove both receipt edges and key
+admission by the complete typed subject and selected scope. Export borrows
+their accepted inputs without scope reconstruction. No new proof store, Core
+tag, scheduler, checking rule or wire format. This is not deletion of all
+Evidence: other rules and synchronous structural checking remain unfinished.
+
+Permanent tests cover alternate body receipts, ordinary/dependent/nested-family
+bindings, distinct ambient formations over identical raw Contexts and typed
+bindings, foreign ownership, allocation-free dependency reading and repeated
+admission. Existing wrong-scope/type/bound tests remain. GDB confirms a 64-byte
+receipt header with **2 -> 0** retained premises: **80 -> 64 bytes** per affected
+record, excluding the unchanged conclusion-index prefix. Scope graphs were
+already present; this does not add one per receipt.
+
+- Root `check-acceptance` passes: **1516.914s** wall, **1409.164s** user,
+  **107.066s** system; 63/63 compatibility, general/ordinary-result Sorted,
+  four LT/partition variants and optional witness isolation/packets included.
+- Debug and ASan/UBSan pass for Core, Program, IADT, Identity, synthesis,
+  typed-only/scoped, source and derivation images. **36** image pairs,
+  **72** opposite-version loads and **8** graph/derivation reads pass.
+- Ten workloads, warmup plus six paired samples: medians **-2.21% to +1.39%**;
+  all ranges overlap and outputs/Solve counts match. Three-pair RSS medians
+  (KiB): length **11320 -> 11320**, Sorted **221004 -> 220804**, ordinary-result
+  **172592 -> 172280**, derived **540176 -> 540184**. No general speedup or
+  consistent whole-process memory reduction is claimed.
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `src/derivation.c` | 7 | 1 | +6 |
+| `src/evidence.c` | 13 | 10 | +3 |
+| `src/evidence.h` | 3 | 0 | +3 |
+| `src/synthesis_function.c` | 2 | 1 | +1 |
+| `tests/core.c` | 5 | 3 | +2 |
+| `tests/identity.c` | 3 | 3 | 0 |
+| `tests/program.c` | 8 | 7 | +1 |
+| `tests/source_io.c` | 2 | 1 | +1 |
+| `tests/synthesis.c` | 2 | 2 | 0 |
+| `tests/typed_structure.c` | 60 | 0 | +60 |
+
+Implementation **+25/-12, net +13**; tests **+80/-16, net +64**; build unchanged.
+This reduces retained history, not source lines, and does not meet the broad
+reduction gate. Local declaration flattening, explicit ambient checking inputs
+for remaining consumers, other rule histories and shared budgeted checking
+remain P4 work. Logs use `/tmp/a-program-binding-history-` with
+`{acceptance,debug,asan,cross}.log`, `acceptance.time`, `{bench,memory}.jsonl`.
+Temporary logs are not committed; regression tests are.
+
+This plan: **+66/-0**; complete slice: **+171/-28, net +143**.

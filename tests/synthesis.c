@@ -5821,8 +5821,8 @@ static void source_telescopes(struct pg_typing *typing)
 		pg_synthesis_request(&synthesis, root, source), PG_SYNTHESIS_DONE);
 	assert(pg_evidence_judgement(admitted) == PG_JUDGEMENT_TYPE_FAMILY);
 	assert(pg_evidence_rule(admitted) == PG_TYPE_FAMILY_ABSTRACT);
-	assert(pg_evidence_rule(pg_evidence_premise(admitted, 1)) == PG_INDUCTIVE_FORM);
-	const struct pg_occurrence *nominal = pg_evidence_subject(pg_evidence_premise(admitted, 1));
+	const struct pg_occurrence *nominal = pg_evidence_subject(admitted)->operands[0];
+	assert(pg_evidence_rule(pg_evidence_for_subject(typing, nominal, NULL)) == PG_INDUCTIVE_FORM);
 	assert(nominal->core->kind == PG_APPLICATION && nominal->operand_count == 0);
 	/* Quotation uses retained family construction even after beta reduction,
 	 * not the first receipt's rule or its premise offsets. */

@@ -532,8 +532,9 @@ static void evidence_test(struct pg_graph *graph)
 	assert(pi && pg_evidence_judgement(pi) == PG_JUDGEMENT_COMPUTATION_TYPE);
 	assert(pg_evidence_classifier(pi) == pg_universe(graph, 0));
 	assert(pg_prove_pi(&typing, x_context, fa_in_x) == pi);
-	assert(pg_evidence_premise(pi, 0) == x_context);
-	assert(pg_evidence_premise(pi, 1) == fa_in_x);
+	assert(!pg_evidence_premise_count(pi));
+	assert(pg_evidence_binding_scope(pi) == pg_evidence_scope(x_context));
+	assert(pg_evidence_subject(pi)->operands[1] == pg_evidence_subject(fa_in_x));
 	assert(!pg_prove_pi(&typing, x_context, a_in_x));
 	assert(!pg_prove_pi(&typing, x_context, fa));
 	assert(!pg_prove_pi(&typing, empty, fa_in_x));
@@ -1744,7 +1745,8 @@ static void typed_substitution_test(struct pg_graph *graph)
 	for (size_t repeat = 0; repeat < 100; ++repeat)
 		for (size_t i = 0; i < 2; ++i) {
 			assert(pg_prove_pi(&typing, destination, pi_bodies[i]) == pis[i]);
-			assert(pg_evidence_premise(pis[i], 1) == pi_bodies[i]);
+			assert(!pg_evidence_premise_count(pis[i]));
+			assert(pg_evidence_subject(pis[i])->operands[1] == pg_evidence_subject(pi_bodies[i]));
 		}
 	assert(typing.proofs.count == pi_proofs && typing.occurrences.count == pi_occurrences);
 	assert(!pg_prove_pi(&typing, source, pi_bodies[0]));

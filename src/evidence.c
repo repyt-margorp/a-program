@@ -146,7 +146,7 @@ const struct pg_handler_signature *pg_handler_signature_view(const struct pg_ter
 static int derived_output(enum pg_evidence_rule rule)
 {
 	switch (rule) {
-	case PG_REINDEX: case PG_CONTEXT_PROJECTION: case PG_PI_FORM:
+	case PG_REINDEX: case PG_CONTEXT_PROJECTION:
 	case PG_FOLD_ELIM: case PG_EFFECT_SUBSUMPTION: case PG_REQUEST_INTRO:
 	case PG_FAMILY_IDENTITY_FORM: case PG_FAMILY_ACTION:
 	case PG_INDUCTIVE_FORM: case PG_CONSTRUCTOR_INTRO: case PG_MATCH_ELIM: case PG_INDUCTION_ELIM: case PG_TYPE_CASE:
@@ -3406,9 +3406,8 @@ const struct pg_evidence *pg_prove_family_abstraction(struct pg_typing *typing,
 	if (pg_evidence_judgement(body) != PG_JUDGEMENT_VALUE_TYPE && pg_evidence_judgement(body) != PG_JUDGEMENT_TYPE_FAMILY) return NULL;
 	const struct pg_occurrence *subject = pg_function_binding(typing, context, pg_evidence_subject(body), PG_JUDGEMENT_TYPE_FAMILY);
 	if (!subject) return NULL;
-	const struct pg_evidence *premises[] = {context, body};
-	return accept(typing, PG_TYPE_FAMILY_ABSTRACT,
-		subject->context, subject, 2, premises);
+	return accept_record(typing, PG_TYPE_FAMILY_ABSTRACT,
+		subject->context, subject, 0, NULL, pg_evidence_scope(context), NULL);
 }
 
 static const struct pg_evidence *unary_formation(struct pg_typing *typing,
@@ -3663,15 +3662,11 @@ const struct pg_evidence *pg_prove_pi(struct pg_typing *typing,
 	if (!pg_evidence_owned_by(codomain, typing)) return NULL;
 	if (pg_evidence_judgement(codomain) != PG_JUDGEMENT_COMPUTATION_TYPE) return NULL;
 	if (pg_evidence_context(codomain) != scope) return NULL;
-	const struct pg_evidence *premises[] = {extended_context, codomain};
-	uint64_t hash;
-	const struct pg_evidence *existing = find_record(typing, PG_PI_FORM, scope->parent, NULL, 2, premises, NULL, &hash);
-	if (existing) return existing;
 	const struct pg_occurrence *subject = pg_function_binding(typing, extended_context,
 		pg_evidence_subject(codomain), PG_JUDGEMENT_COMPUTATION_TYPE);
 	if (!subject) return NULL;
-	return accept(typing, PG_PI_FORM,
-		scope->parent, subject, 2, premises);
+	return accept_record(typing, PG_PI_FORM,
+		scope->parent, subject, 0, NULL, pg_evidence_scope(extended_context), NULL);
 }
 
 static const struct pg_evidence *unary_term(struct pg_typing *typing,
@@ -5500,6 +5495,14 @@ const struct pg_scope *pg_evidence_scope(const struct pg_evidence *evidence)
 	if (!evidence) return NULL;
 	if (pg_evidence_judgement(evidence) != PG_JUDGEMENT_CONTEXT) return NULL;
 	return evidence->certificate;
+}
+const struct pg_scope *pg_evidence_binding_scope(const struct pg_evidence *evidence)
+{
+	if (!evidence) return NULL;
+	switch (evidence->rule) {
+	case PG_PI_FORM: case PG_TYPE_FAMILY_ABSTRACT: return evidence->certificate;
+	default: return NULL;
+	}
 }
 enum pg_evidence_judgement pg_evidence_judgement(const struct pg_evidence *evidence)
 {

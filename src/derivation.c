@@ -17,6 +17,7 @@ static size_t typed_inputs(const struct pg_evidence *proof,
 
 static size_t input_count(const struct pg_evidence *proof)
 {
+	if (pg_evidence_binding_scope(proof)) return 2;
 	const struct pg_scope *scope = pg_evidence_scope(proof);
 	if (scope) return scope->indices ? 3 : 2;
 	const struct pg_occurrence *inputs[2];
@@ -29,9 +30,14 @@ int pg_derivation_input_dependency(const struct pg_typing *typing,
 {
 	if (!child || !pg_evidence_owned_by(proof, typing)) return -1;
 	if (index >= input_count(proof)) return 0;
+	const struct pg_scope *binding = pg_evidence_binding_scope(proof);
 	const struct pg_scope *scope = pg_evidence_scope(proof);
 	const struct pg_evidence *input;
-	if (!scope) {
+	if (binding) {
+		size_t body = pg_evidence_rule(proof) == PG_PI_FORM ? 1 : 0;
+		input = index ? pg_evidence_for_subject(typing, pg_evidence_subject(proof)->operands[body], NULL)
+			: pg_evidence_for_scope(typing, binding);
+	} else if (!scope) {
 		const struct pg_occurrence *inputs[2];
 		input = typed_inputs(proof, inputs)
 			? pg_evidence_for_subject(typing, inputs[index], NULL)

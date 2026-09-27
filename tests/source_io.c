@@ -92,7 +92,8 @@ static void indexed_family_roundtrip(const char *source)
 		assert(family);
 		assert(pg_evidence_judgement(family) == PG_JUDGEMENT_TYPE_FAMILY);
 		assert(!pg_prove_type_value(&p->typing, family));
-		while (pg_evidence_rule(family) == PG_TYPE_FAMILY_ABSTRACT) family = pg_evidence_premise(family, 1);
+		while (pg_evidence_rule(family) == PG_TYPE_FAMILY_ABSTRACT)
+			family = pg_evidence_for_subject(&p->typing, pg_evidence_subject(family)->operands[0], NULL);
 		assert(pg_evidence_rule(family) == PG_INDUCTIVE_FORM);
 		struct pg_synthesis_job *fiber = pg_synthesis_definition(roots[0],
 			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "Fiber", .length = 5});
