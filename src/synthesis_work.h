@@ -39,6 +39,8 @@ struct pg_synthesis_work_class {
 	void (*completed)(struct pg_synthesis *, struct pg_synthesis_job *, int first);
 	/* Optional inspection of provisional construction, before acceptance. */
 	struct pg_synthesis_projection (*project)(const struct pg_synthesis_job *);
+	/* Borrowed descriptive output of a completed structural query, not proof. */
+	const struct pg_term *(*structure)(const struct pg_synthesis_job *);
 };
 
 struct pg_synthesis_job *pg_synthesis_work_request(struct pg_synthesis *synthesis,

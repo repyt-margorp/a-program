@@ -60,6 +60,12 @@ struct pg_synthesis_job *pg_synthesis_classifier_formation_input(const struct pg
 int pg_synthesis_classifier_formation_structure(struct pg_synthesis *, const struct pg_synthesis_job *,
 	struct pg_synthesis_job **);
 const struct pg_object *pg_synthesis_pi_scope_binder(const struct pg_synthesis_job *);
+const struct pg_object *pg_synthesis_context_binder(const struct pg_synthesis_job *);
+struct pg_synthesis_job *pg_synthesis_declared_type(struct pg_synthesis *,
+	struct pg_synthesis_job *, const struct pg_object *);
+/* Private function-owner query descriptors; no additional request layer. */
+int pg_synthesis_function_type_rule(enum pg_evidence_rule);
+const struct pg_synthesis_work_class *pg_synthesis_function_structure_class(enum pg_evidence_rule, int classifier);
 struct pg_synthesis_job *pg_synthesis_application_domain(struct pg_synthesis *,
 	struct pg_synthesis_job *, struct pg_synthesis_job *);
 /* Checked logical-family/CBPV adapters, never expected-type inference. */

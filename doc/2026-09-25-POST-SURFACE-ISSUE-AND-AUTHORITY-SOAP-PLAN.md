@@ -1346,6 +1346,15 @@ owner localization, not completion of typed-history removal or higher Identity.
   construction/checking interface; the central driver must not keep a second
   domain switch describing the same terms. Adapt to P4's reduced Evidence
   dependency rather than fossilizing the old premise-reader APIs.
+- [x] **Function structural queries, baseline `d3bb50c`:** move Pi formation/
+  selection, Lambda and APP projections into the function owner with private
+  state. Dispatch the existing query directly to that owner, not through a
+  second permanently retained request. Share term/type formation requests,
+  substitution work and scheduling; expose completed descriptive output through
+  a read-only owner hook. Keep lexical binding lookup in the source owner.
+  Provisional effect structures remain necessary and confer no acceptance.
+  Verify pending/accepted cases, dependent and constant codomains, cancellation,
+  exact reuse, images and the common gates; distinguish movement from deletion.
 - [ ] Route retained typed inputs and owner-specific image payloads through the
   same owners. Preserve checked loading and portable identity; do not move the
   universal rule/payload union into a codec. Reuse the shared relocation and
@@ -1373,6 +1382,7 @@ owner localization, not completion of typed-history removal or higher Identity.
 | 2026-09-26 | P5 | `12a0e1d` localizes four CBPV adapters and replaces their 240-byte private source state with 8/16/40-byte owner state | Clean acceptance, Debug, sanitizers, cross-reading and paired timings pass; broader P4/P5 remain open |
 | 2026-09-26 | P5 | `22661f4` localizes function formation, Pi scopes and their pending consumers; no extra classifier cache | Clean acceptance, Debug, sanitizers, cross-reading and paired timings pass; broader P4/P5 remain open |
 | 2026-09-26 | P4.3c | `c341229` validates result formation through the typed Term's `type` edge and deletes receipt cloning | Clean acceptance, Debug, sanitizers, legacy alternate-history images and paired timings pass; broader P4/P5 remain open |
+| 2026-09-27 | P5 function structures | Pi/Lambda/APP structural queries use function-owned state and the existing work interner | Full acceptance, Debug/sanitizers, cross-reading and paired measurements pass; broader P4/P5 remain open |
 
 P4.2a verification (fresh, current worktree including the inherited Context/IADT
 edits): optimized `identity_test`, `derivation_io.sh` and `identity_io.sh` pass;
@@ -2736,3 +2746,59 @@ Logs: `/tmp/a-program-selection-history-{acceptance,debug,asan,cross}.log`,
 `/tmp/a-program-selection-history-acceptance.time`, and `{bench,memory}.jsonl`
 with that prefix. Permanent tests are tracked; temporary logs are not.
 This plan: **+63/-0**; complete slice: **+168/-47, net +121**.
+
+### Function Structural Query Verification (2026-09-27)
+
+Baseline `d3bb50c`, clean candidate; inherited trials excluded. Pi formation/
+selection and Lambda/APP term/classifier queries now belong to
+`synthesis_function.c`. Known rules dispatch directly to that owner's existing
+request, not through an extra retained adapter. A read-only descriptor hook
+exposes the raw result; it confers no acceptance. Queue, substitution engine,
+Core, checking rules and wire formats are unchanged. Lexical declaration lookup
+remains shared with the source owner. Type/term formation queries still share
+one request, and constant codomains do not wait for argument conversion.
+
+Agent assessment: adopt owner-local state, not claim source-code reduction.
+Measured private state is **232 -> 48 bytes** for these queries and
+**232 -> 224 bytes** for remaining source work; the common header stays 80 bytes.
+An initial extraction delayed APP's right structural request until its left
+completed. Reject that unrelated ordering change: request both before waiting,
+as before. The new ordering regression fails that trial; the new locality
+assertion fails the baseline. Both pass the adopted candidate. Provisional
+structure is still not evidence, including when the later typing rule rejects.
+
+- Full root `check-acceptance`: exit 0, **1507.456s** wall, **1400.200s** user,
+  **106.527s** system; 63/63 compatibility, ordinary-result/general Sorted,
+  all four LT/partition variants and optional witness packets/isolation pass.
+- Debug and ASan/UBSan pass for Core, Program, IADT, Identity, synthesis,
+  typed-only/scoped images and source/derivation images. Permanent assertions
+  cover all six function rules, two classifier queries, shared type/term keys,
+  zero fuel, completion reuse, pending cancellation and APP request ordering.
+- Cross-reading: **36** source-image pairs, **72** opposite-version loads and
+  **8** occurrence/derivation reads pass.
+- Ten workloads, warmup plus six paired samples: median changes **-2.38% to
+  +2.14%**, all sample ranges overlap; Solve counts and normalized outputs agree.
+  Sorted **0.841214s -> 0.821199s**, ordinary-result **0.756793s -> 0.760678s**,
+  derived **2.541594s -> 2.556504s**. No general speedup claim.
+- Three-pair RSS medians (KiB): length **11108 -> 11108**, Sorted
+  **222004 -> 220676**, ordinary-result **172824 -> 172336**, derived
+  **541912 -> 539836**. These measurements do not establish whole-system savings.
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `src/synthesis.c` | 35 | 136 | -101 |
+| `src/synthesis_function.c` | 210 | 0 | +210 |
+| `src/synthesis_source.h` | 6 | 0 | +6 |
+| `src/synthesis_work.h` | 2 | 0 | +2 |
+| `tests/synthesis.c` | 44 | 0 | +44 |
+
+Implementation **+253/-136, net +117**; tests **+44/-0**; build unchanged.
+Movement does not satisfy the net-reduction target. Remaining provisional
+CBPV/effect inspection still belongs to the central source state; migrate it
+through the same owner interface next, without conflating structure and proof.
+Pi/family selected-scope retention and budgeted structural checking remain P4
+work. Do not mark the broad P4/P5 criteria complete from this owner slice.
+Logs: `/tmp/a-program-function-structure-{acceptance,debug,asan,cross}.log`,
+`/tmp/a-program-function-structure-acceptance.time`, and `{bench,memory}.jsonl`
+with that prefix. Permanent tests are tracked; temporary logs are not.
+This plan: **+66/-0**; complete slice: **+363/-136, net +227**.

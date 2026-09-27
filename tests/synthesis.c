@@ -80,6 +80,18 @@ static void owner_work_storage(struct pg_typing *typing)
 		&aligned, 1, inputs, 1, jobs);
 	assert(pending == pg_synthesis_work_request(&synthesis, &aligned, 2, combined));
 	assert(pg_synthesis_status(pending) == PG_SYNTHESIS_PENDING);
+	/* Opaque untyped inputs isolate request ordering from source preparation.
+	 * An APP shape requests both children before waiting for either one. */
+	struct pg_derivation_input application = {.rule = PG_APP_ELIM, .count = 2};
+	struct pg_synthesis_job *arguments[] = {zero, jobs[0]};
+	struct pg_synthesis_job *app = pg_synthesis_rule(&synthesis, &application, arguments, NULL, NULL);
+	struct pg_synthesis_job *shape = pg_synthesis_term_structure(&synthesis, app);
+	pg_synthesis_advance(&synthesis, 3);
+	size_t requests = synthesis.jobs.count;
+	assert(pg_synthesis_term_structure(&synthesis, zero));
+	assert(pg_synthesis_term_structure(&synthesis, jobs[0]));
+	assert(synthesis.jobs.count == requests);
+	assert(pg_synthesis_status(shape) == PG_SYNTHESIS_PENDING && !pg_synthesis_result(shape));
 	pg_synthesis_destroy(&synthesis);
 	assert(destroyed == 4);
 	pg_whnf_work_destroy(&normalization);
@@ -965,6 +977,25 @@ static void pending_pi_scan(struct pg_typing *typing)
 		struct pg_synthesis_job *shapes[] = {pg_synthesis_classifier_structure(&synthesis, application),
 			pg_synthesis_type_structure(&synthesis, constant), pg_synthesis_classifier_structure(&synthesis, fold),
 			pg_synthesis_classifier_structure(&synthesis, request)};
+		struct pg_synthesis_job *function_rules[] = {pi, constant, lambda, application,
+			rule_job(&synthesis, PG_PI_DOMAIN, NULL, 1, &pi),
+			rule_job(&synthesis, PG_PI_CODOMAIN, NULL, 2, (struct pg_synthesis_job *[]){pi, variable})};
+		struct pg_synthesis_job *function_shapes[6];
+		for (size_t i = 0; i < 6; ++i) {
+			function_shapes[i] = pg_synthesis_term_structure(&synthesis, function_rules[i]);
+			assert(function_shapes[i] && function_shapes[i]->role->size < function_rules[i]->role->size);
+			assert(pg_synthesis_work_input(function_shapes[i], 0) == function_rules[i]);
+			size_t requests = synthesis.jobs.count;
+			assert(pg_synthesis_term_structure(&synthesis, function_rules[i]) == function_shapes[i]);
+			if (i != 2 && i != 3) assert(pg_synthesis_type_structure(&synthesis, function_rules[i]) == function_shapes[i]);
+			assert(synthesis.jobs.count == requests);
+		}
+		struct pg_synthesis_job *lambda_shape = pg_synthesis_classifier_structure(&synthesis, lambda);
+		assert(lambda_shape->role == shapes[0]->role && lambda_shape->role != function_shapes[2]->role);
+		assert(lambda_shape->role->size < lambda->role->size);
+		uint64_t before = synthesis.steps;
+		pg_synthesis_advance(&synthesis, 0);
+		assert(synthesis.steps == before && !pg_synthesis_type_structure_result(lambda_shape));
 		pg_synthesis_advance(&synthesis, 256);
 		for (size_t i = 0; i < 4; ++i) assert(pg_synthesis_status(shapes[i]) == PG_SYNTHESIS_PENDING);
 		assert(pg_synthesis_status(sequence_term) == PG_SYNTHESIS_PENDING);
@@ -978,6 +1009,19 @@ static void pending_pi_scan(struct pg_typing *typing)
 			const struct pg_object *actual_binder;
 			assert(pg_pi_view(pg_synthesis_type_structure_result(pi_shape), &domain, &actual_binder, &expected));
 			for (size_t i = 0; i < 2; ++i) assert(pg_synthesis_type_structure_result(shapes[i]) == expected);
+			for (size_t i = 0; i < 6; ++i) {
+				assert(pg_synthesis_status(function_shapes[i]) == PG_SYNTHESIS_DONE);
+				assert(!pg_synthesis_result(function_shapes[i]));
+			}
+			assert(pg_synthesis_type_structure_result(lambda_shape) == pg_synthesis_type_structure_result(pi_shape));
+			assert(pg_synthesis_type_structure_result(function_shapes[4]) == domain);
+			assert(pg_synthesis_type_structure_result(function_shapes[5]) == expected);
+			size_t requests = synthesis.jobs.count;
+			before = synthesis.steps;
+			assert(pg_synthesis_classifier_structure(&synthesis, lambda) == lambda_shape);
+			assert(pg_synthesis_classifier_structure(&synthesis, application) == shapes[0]);
+			pg_synthesis_advance(&synthesis, 1000);
+			assert(synthesis.steps == before && synthesis.jobs.count == requests);
 			const struct pg_term *parameter = pg_reference(typing->graph, pg_effect_equation_parameter(&effects, equation));
 			for (size_t i = 2; i < 4; ++i) {
 				const struct pg_effect_row *seed = i == 2 ? row : pg_effect_row(typing->graph, 1,
