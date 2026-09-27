@@ -25,6 +25,11 @@ const struct pg_evidence *pg_function_selection(struct pg_typing *typing,
 /* Retain a checked declaration's formations, not its acceptance history. */
 const struct pg_occurrence *pg_function_binding(struct pg_typing *typing,
 	const struct pg_evidence *scope, const struct pg_occurrence *body, enum pg_evidence_judgement judgement);
+/* Extend a checked map through selected declarations, at an already computed
+ * target allocation. Raw Context identity must not select formation bounds. */
+const struct pg_evidence *pg_check_scope_action(struct pg_typing *typing,
+	const struct pg_evidence *prefix, const struct pg_scope *source,
+	const struct pg_context *target);
 const struct pg_evidence *pg_cbpv_structure(struct pg_typing *typing,
 	const struct pg_occurrence *subject, const struct pg_occurrence **child);
 const struct pg_evidence *pg_cbpv_selection(struct pg_typing *typing,

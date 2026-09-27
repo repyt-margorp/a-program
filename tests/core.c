@@ -2620,7 +2620,12 @@ static void typed_substitution_test(struct pg_graph *graph)
 		assert(described && pg_evidence_context_map(described) == described_map);
 		assert(pg_evidence_context(pg_evidence_premise(described, 1)) == described_scope);
 		if (known) assert(typing.context_lifts.count == before_described_lift);
-		assert(pg_prove_substitution_lift(&typing, sigma, source_extension, described_scope->binder) == described);
+		const struct pg_evidence *selected = pg_prove_substitution_lift(&typing,
+			sigma, source_extension, described_scope->binder);
+		assert(selected && pg_evidence_context_map(selected) == pg_evidence_context_map(described));
+		assert(pg_evidence_subject(pg_context_declared_input(&typing, pg_evidence_premise(selected, 1))) ==
+			pg_evidence_subject(pg_prove_reindex(&typing, sigma, pg_context_declared_input(&typing, source_extension))));
+		if (!known) assert(selected == described);
 		reconstruct_derivation(&typing, described);
 		assert(!pg_prove_context_map(NULL, described_map));
 	}
@@ -2890,6 +2895,37 @@ static void family_instance_test(struct pg_graph *graph)
 	assert(pg_evidence_classifier(logical) == pg_evidence_classifier(wide_logical));
 	assert(pg_evidence_subject(wide_logical)->operands[2] == pg_evidence_subject(wide_domain));
 	reconstruct_derivation(&typing, wide_logical);
+	/* Formation choice is input to lifting, not a property of raw Context
+	 * identity. Exercise both admission orders and nested family indices. */
+	const struct pg_object *nested_binder = pg_binder(graph);
+	const struct pg_evidence *variants[3][2] = {{indices, wide_indices}, {family_scope, wide_family}, {
+		pg_prove_family_context_extension(&typing, empty, nested_binder, family_scope,
+			pg_prove_universe(&typing, family_scope, 0)),
+		pg_prove_family_context_extension(&typing, empty, nested_binder, wide_family,
+			pg_prove_universe(&typing, wide_family, 0))}};
+	const struct pg_evidence *identity_map = pg_prove_substitution_projection(&typing, empty, empty);
+	for (size_t kind = 0; kind < 3; ++kind) for (size_t first = 0; first < 2; ++first) {
+		const struct pg_object *binder = pg_binder(graph);
+		const struct pg_evidence *maps[2], *destinations[2];
+		for (size_t step = 0; step < 2; ++step) {
+			size_t i = first ^ step;
+			maps[i] = pg_prove_substitution_lift(&typing, identity_map, variants[kind][i], binder);
+			assert(maps[i]);
+			destinations[i] = pg_evidence_premise(maps[i], 1);
+			const struct pg_evidence *pi = pg_prove_pi(&typing, destinations[i],
+				pg_prove_return_type(&typing, pg_prove_universe(&typing, destinations[i], 0)));
+			assert(pi && pg_evidence_classifier(pi) == pg_universe(graph, i ? 4 : 1));
+			reconstruct_derivation(&typing, maps[i]);
+		}
+		assert(pg_evidence_context_map(maps[0]) == pg_evidence_context_map(maps[1]));
+		assert(pg_evidence_scope(destinations[0]) != pg_evidence_scope(destinations[1]));
+		size_t proofs = typing.proofs.count, scopes = typing.scopes.count;
+		size_t terms = graph->terms.count, occurrences = typing.occurrences.count;
+		for (size_t i = 0; i < 16; ++i)
+			assert(pg_prove_substitution_lift(&typing, identity_map, variants[kind][i % 2], binder) == maps[i % 2]);
+		assert(typing.proofs.count == proofs && typing.scopes.count == scopes);
+		assert(graph->terms.count == terms && typing.occurrences.count == occurrences);
+	}
 	const struct pg_context_map *empty_map = pg_context_map_projection(&typing, NULL, NULL);
 	size_t evidence_before_lift = typing.proofs.count;
 	const struct pg_context_map *lift = pg_context_map_lift(&typing, empty_map, pg_evidence_context(family_scope), g);
@@ -2905,6 +2941,13 @@ static void family_instance_test(struct pg_graph *graph)
 	assert(pg_evidence_context(checked_lift)->judgement == PG_JUDGEMENT_TYPE_FAMILY);
 	assert(pg_alpha_equal(pg_evidence_context(checked_lift)->declared_type, lift->destination->declared_type) == 1);
 	assert(pg_evidence_context_map(checked_lift) == lift);
+	const struct pg_evidence *checked_wide_lift = pg_prove_substitution_lift(&typing,
+		pg_prove_substitution_projection(&typing, empty, empty), wide_family, g);
+	assert(checked_wide_lift && pg_evidence_context_map(checked_wide_lift) == lift);
+	const struct pg_evidence *lifted_wide_indices = pg_context_indices_input(&typing,
+		pg_evidence_premise(checked_wide_lift, 1));
+	assert(pg_evidence_classifier(pg_context_declared_input(&typing, lifted_wide_indices)) ==
+		pg_evidence_classifier(wide_domain));
 	assert(pg_evidence_context(family_scope)->indices == pg_evidence_context(indices));
 	const struct pg_evidence *outer = pg_prove_family_context_extension(&typing, empty, pg_binder(graph),
 		family_scope, pg_prove_universe(&typing, family_scope, 0));

@@ -688,12 +688,20 @@ static void read_scoped(FILE *file, size_t root)
 	if (root == 4 || root == 5) {
 		assert(scopes[4] != scopes[5] && scopes[4]->context == scopes[5]->context);
 		assert(roots[4] == roots[5]);
-		for (size_t i = 4; i < 6; ++i) {
+		const struct pg_object *binder = pg_binder(&graph);
+		const struct pg_evidence *empty = pg_prove_empty_context(&typing);
+		const struct pg_evidence *identity = pg_prove_substitution_projection(&typing, empty, empty);
+		for (size_t step = 0; step < 2; ++step) {
+			size_t i = 4 + ((root - 4) ^ step);
 			const struct pg_evidence *scope = pg_prove_scope(&typing, scopes[i]);
 			assert(scope && pg_evidence_scope(scope) == scopes[i]);
 			const struct pg_evidence *pi = pg_prove_pi(&typing, scope,
 				pg_prove_return_type(&typing, pg_prove_universe(&typing, scope, 0)));
 			assert(pi && pg_evidence_classifier(pi) == scopes[i]->type->classifier);
+			const struct pg_evidence *lifted = pg_prove_substitution_lift(&typing, identity, scope, binder);
+			assert(lifted);
+			const struct pg_evidence *destination = pg_evidence_premise(lifted, 1);
+			assert(pg_evidence_classifier(pg_context_declared_input(&typing, destination)) == scopes[i]->type->classifier);
 		}
 	}
 	/* A declaration graph can describe a false formation; it is not accepted.

@@ -289,7 +289,7 @@ rediscovering call sites and is not evidence of competing authority.
 
 #### Typed Structure Is Not Yet Self-Sufficient
 
-Object-language witnesses already exist as Terms: `pg_prove_reflexivity`
+At the initial `40375d7` baseline, object-language witnesses already existed as Terms: `pg_prove_reflexivity`
 constructs an Identity action Term with an Identity classifier. Nevertheless,
 each introduction also records a C-side rule and its premise Evidence pointers.
 For example, `pg_prove_lambda` builds a typed occurrence with its Pi type and
@@ -299,7 +299,7 @@ an additional target/family/value premise list. These are distinct logical
 roles, but storing both dependency graphs permanently is an implementation
 choice, not a requirement of proof-as-Term representation.
 
-Consumers at HEAD still require the additional graph:
+Consumers at that initial baseline required the additional graph:
 
 - `action.c:identity_structure` enumerates accepted Evidence for a typed subject
   to obtain its Identity boundary.
@@ -324,15 +324,15 @@ the Pi's scoped codomain input instead of requiring a `PG_PI_FORM` receipt.
 The same Pi accepted through U-content elimination is usable without rebuilding
 its scope. Both changes retain ordinary classifier/scope/owner validation.
 
-Input/consumer inventory (rechecked at `282d7d1`, partial P4.2):
+Input/consumer inventory (rechecked at `bc45613`, partial P4.2):
 
 | Construction | Retained semantic inputs | Remaining migration |
 | --- | --- | --- |
-| Context / Pi / Lambda | Selected `pg_scope` declaration graph; Pi/family binding operands retain selected domain/index formations; Lambda type/body/annotation | Context histories are removed. Function family inputs still flatten the telescope and reconstruct its checking scope; synchronous structural checking is not yet shared Solve work. Arbitrary mapped origins still need explicit source declarations |
+| Context / Pi / Lambda | Selected `pg_scope` declaration graph; Pi/family binding operands retain selected domain/index formations; Lambda type/body/annotation | Context and direct binding histories are removed. Family inputs still flatten the telescope and reconstruct its checking scope; synchronous structural checking is not yet shared Solve work. P4.4b repairs a reproduced loss of selected bounds in lift before this migration |
 | APP | Function/argument operands and instantiated result `type` | One ordinary APP rule constructs or checks the retained result; substitution is shared and only bound-pointer renaming is accepted. `formed_classifier` still returns Evidence |
 | Constructor | Typed field operands and result `type`; nominal declaration lives with IADT | `constructor_instance` still consumes schema/parameter/instance receipts. Audit the declaration link and maps before deleting them; constructor Core alone cannot choose a nominal type |
-| Match / IH | Scrutinee, branches, motive, formation, parameter map and IH allocation are retained | Elimination still checks its rule/schema through Evidence. Preserve motive telescopes and IH binder allocation rather than infer them from erased branch code |
-| Identity | Family, endpoints, maps and paths, now read in its owner | Direct boundary checking works without parent history; children/maps still need accepted typing. Origin recovery and full recursive typed checking remain unfinished |
+| Match / IH | Scrutinee, branches, motive, formation, parameter map and IH allocation are retained | Elimination still checks its rule/schema through Evidence. `pg_elimination_view` selects parameter-map and motive-Context admissions from raw keys; no new bug is proved here, but that is not yet an explicit selected-formation contract. Preserve motive telescopes and IH allocations |
+| Identity | Family, endpoints, maps and paths, now read in its owner | Direct formation/reflexivity/transport/lift histories are removed. Family actions still retain selected maps/formations in Evidence; full recursive typed checking remains unfinished |
 | Conversion / normalization | Origin and new type boundary; normalization certificates remain in Evidence | These are checked computations, not object Equality proofs. Retaining an origin alone does not provide the selected reduction certificate. Do not discard validation or infer conversion from equal Core tags |
 
 Reinspection at `6f2b466`, 2026-09-26: `pg_context` retains a raw declared
@@ -931,6 +931,23 @@ distinction consistent with the existing reindex worker.
   permanent history with repeated full-source checking or a second scheduler.
   Recheck the small timing delta below, including APP/codomain reuse, without
   restoring result-blind interning or adding a parallel acceptance cache.
+- [x] **P4.4b Selected lift declarations (baseline `bc45613`):** before sharing
+  structural checking requests, preserve the selected source declarations in
+  ordinary/family substitution lifts. `lift_destination` currently returns the
+  first raw destination Context admission; its family-index map lookup also
+  loses selected bounds. A new core assertion reproduces loss of a Universe-4
+  index formation after a Universe-1 formation is lifted to the same binder.
+  Agent decision: apply the checked prefix to the retained `pg_scope` tree at
+  the structural lift's existing binder allocation, using ordinary Context/map
+  rules. Remove the first-admission shortcut and duplicate raw index-map
+  reconstruction; do not add a formation cache, retry generation or Core tag.
+  Test both selection orders, ordinary/nested family declarations, dependent
+  indices, prefix choices, repeated allocation reuse and malformed inputs.
+  Verify existing images, general Sorted, full acceptance, Debug/sanitizers and
+  paired performance before adoption. This is a correctness prerequisite, not
+  completion of shared budgeted structural checking or the net-reduction gate.
+  Verified 2026-09-27 below; adopted for correctness with a measured small-case
+  cost, not as a speedup.
 - [x] **P4.4a Shared substitution composition (baseline `282d7d1`):** replace
   the synchronous composition loop with one existing typed-query request over
   the two checked maps. Resume occurrence action one transition at a time;
@@ -3063,3 +3080,49 @@ Implementation **+558/-505, net +53**; tests **+72/-4, net +68**; build net 0.
 ownership/storage change; broad P4/P5 and the net-code-reduction gate stay open.
 Inherited trials remain unpublished. Logs: `/tmp/a-program-derivation-owner-`
 with `{acceptance,debug,asan,cross}.log`, `acceptance.time`, `{bench,memory}.jsonl`.
+
+### Selected Lift Declarations, 2026-09-27
+
+Baseline `bc45613` plus this change. The new family-index assertion fails on
+the baseline: lifting the low formation first makes a subsequent high lift
+return Universe 1 instead of the selected Universe 4. This demonstrates a
+selection-contract bug, not a proof that the kernel admitted a false theorem.
+`pg_check_scope_action` now applies the checked prefix to selected declarations
+and nested index telescopes at the existing target allocation. It uses ordinary
+Context/substitution rules, without another authority, cache or Core tag.
+
+- `make -s BUILD=/tmp/a-program-lift-scope-build check-acceptance` passes:
+  wall 1447.784 s, user 1343.950 s, sys 103.187 s, including rebuilds.
+- Core tests cover ordinary/family/nested-family bounds in both orders,
+  unchanged raw map identity, repeated retained-node reuse and derivation
+  reconstruction. Fresh scoped-image tests also check both bound orders.
+- Debug and ASan/UBSan pass core, IADT, Identity, synthesis, typed-structure
+  and derivation-image tests; no sanitizer errors. Existing rejection tests
+  remain. One receipt-identity assertion was replaced by exact selected-type
+  and raw-map assertions because an already formed destination can legitimately
+  carry another selected formation.
+- 36 ordinary/retained image pairs at 0/100/complete steps pass 72 opposite-
+  version loads. The wire format is unchanged.
+- Eleven paired cases use identical inputs/flags, one warmup, six alternating
+  samples (50 processes per small case), and three RSS samples. All Solve
+  counts and outputs agree. QuickSort generic/direct-result/Local/derived-Strong
+  median changes are +0.80/-0.26/-0.25/+0.39 percent. The largest small-case
+  increase is family-function, 6.992 -> 7.447 ms (+6.51 percent); indexed append
+  is 5.690 -> 5.869 ms. Small-case RSS is unchanged; large-case median RSS
+  changes are below 0.3 percent. Adopt for correctness, not speed.
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `src/evidence.c` | 5 | 22 | -17 |
+| `src/evidence_scope.c` | 69 | 0 | +69 |
+| `src/evidence_structure.h` | 5 | 0 | +5 |
+| `tests/core.c` | 44 | 1 | +43 |
+| `tests/typed_structure.c` | 9 | 1 | +8 |
+| This plan | 69 | 6 | +63 |
+
+Implementation **+79/-22, net +57**; tests **+53/-2, net +51**. The temporary
+declaration walk still runs synchronously; repeated calls add no retained nodes
+but are not zero-work calls. Sharing/budgeting that work and removing remaining
+history are still P4/P5 obligations. No overall code-reduction claim is made.
+Logs: `/tmp/a-program-lift-scope-` with `{acceptance,debug,asan,cross}.log`,
+`acceptance.time`, and `bench.jsonl`. Inherited root-worktree trials are excluded.

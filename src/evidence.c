@@ -308,20 +308,9 @@ static const struct pg_evidence *lift_destination(struct pg_typing *typing,
 {
 	const struct pg_context_map *map = pg_context_lift_result(work);
 	if (!map) return NULL;
-	const struct pg_evidence *destination = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, map->destination);
-	const struct pg_scope *scope = pg_evidence_scope(source);
-	if (destination || !scope) return destination;
-	const struct pg_evidence *type = pg_prove_structural_subject(typing, scope->type);
-	if (!scope->indices) {
-		destination = pg_prove_context_extension(typing, prefix->premises[1], map->destination->binder,
-			pg_prove_reindex(typing, prefix, type));
-	} else {
-		const struct pg_evidence *indices = pg_prove_context_map(typing, pg_context_lift_indices(work));
-		if (!indices) return NULL;
-		destination = pg_prove_family_context_extension(typing, prefix->premises[1], map->destination->binder,
-			indices->premises[1], pg_prove_reindex(typing, indices, type));
-	}
-	return destination && pg_evidence_context(destination) == map->destination ? destination : NULL;
+	const struct pg_evidence *checked = pg_check_scope_action(typing, prefix,
+		pg_evidence_scope(source), map->destination);
+	return checked ? checked->premises[1] : NULL;
 }
 
 static int map_dependency(void *owner, const void *key, size_t index, const void **child)
@@ -343,10 +332,6 @@ static int map_dependency(void *owner, const void *key, size_t index, const void
 		while (pg_context_lift_advance(work, 1024) == PG_SUBSTITUTION_PENDING) {}
 		if (pg_context_lift_result(work) != map) return -1;
 		if (!prefix) { *child = prefix_map; return 1; }
-		const struct pg_context_map *indices = pg_context_lift_indices(work);
-		if (indices && !conclusion_first(typing, PG_JUDGEMENT_SUBSTITUTION, indices)) {
-			*child = indices; return 1;
-		}
 		destination = lift_destination(typing, source, prefix, work);
 		if (!destination) return -1;
 	}
@@ -4746,10 +4731,8 @@ const struct pg_evidence *pg_prove_substitution_lift(struct pg_typing *typing,
 	struct pg_context_lift *work = pg_context_lift_request(typing,
 		pg_evidence_context_map(substitution), pg_evidence_context(source_extension), binder);
 	while (pg_context_lift_advance(work, 1024) == PG_SUBSTITUTION_PENDING) {}
-	const struct pg_evidence *destination = lift_destination(typing, source_extension, substitution, work);
-	if (!destination) return NULL;
-	const struct pg_evidence *image = pg_prove_variable(typing, destination, binder);
-	return pg_prove_substitution_extension(typing, source_extension, destination, substitution, 1, &image);
+	const struct pg_context_map *map = pg_context_lift_result(work);
+	return map ? pg_check_scope_action(typing, substitution, pg_evidence_scope(source_extension), map->destination) : NULL;
 }
 
 struct pattern_variable {
