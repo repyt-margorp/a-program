@@ -340,10 +340,11 @@ actual `List`. The acceptance file now only exercises exported definitions.
 These are checked source view laws, not object Higher Identity, proof irrelevance,
 or an automatic interface for arbitrary containers. No C/header, Core, rule,
 syntax or image-format changes. The generic finite-position permutation bridge
-and common sorting wrappers are still pending. A direct nested-Match
-`permutation_size` trial rejected; its dependent motive/transport remains to be
-established. That failed trial is not published or classified as a compiler bug,
-and does not justify using `::` to repair its motive.
+and common sorting wrappers are still pending. The initial nested-Match
+`permutation_size` trial rejected: its motive mixed a generalized List with a
+fixed captured tail. The later `size_step` trial generalizes both consistently
+and checks. This was a source-proof repair, not grounds for using `::` to supply
+a motive. The subsequent compiler findings are distinguished below.
 
 Fresh verification on the clean candidate: the new focused suite passes in O2,
 Debug and ASan/UBSan with leak checking and halt-on-error. Source/imports, all
@@ -372,6 +373,74 @@ Implementation C/headers: **0**. Source proof library/tests: **+372/-118,
 net +254**; build **+5/-0**. This is library/proof coverage, not compiler growth.
 This plan: **+56/-3, net +53**. Complete checkpoint: **+433/-121,
 net +312**, counting the Vec proof relocation rather than duplicating it.
+
+### Generalized Motives and Shared Comparison, 2026-09-27
+
+Objective (Code), baseline `dd941dd` plus the unpublished candidate:
+
+- A minimal nested Vec Match with an explicit motive reports `unsupported`
+  after 2,384 steps on Main. `match_explicit_motive_step` unconditionally excludes
+  generalized captured declarations. The candidate checks it in 3,127 steps.
+- A 67-node shared Lambda DAG compared under an outer alpha correspondence
+  remains pending after 100,000 steps (16,030 comparison tasks). Unrelated,
+  identical inner binders created distinct scope keys for the shared body.
+  The candidate finishes in 105 steps / 64 tasks without merging Term pointers.
+- The larger separate-fold permutation-action trial still remains pending at
+  30,000,000 steps. Its comparison advances; it is not established to be a
+  scheduler deadlock. This small DAG repair does not solve all comparison costs.
+- The alternative joint-record trial reaches strong normalization, expanding
+  erased recursive code (810,397 NF steps at a 2,000,000-step checking budget).
+  Its first conversion mismatch is not yet explained; neither equality nor
+  inequality of the source obligation is established by that timeout.
+
+Assessment (agent decision): explicit motives must use the same checked
+generalization map as branch bodies. Reuse that map for source aliases, captured
+variables and IH associations, then abstract the captured telescope with the
+existing Pi rule. Explicit motive names shadow ambient aliases. No new typing
+rule, result inference from `::`, equality reflection or image format is added.
+For alpha comparison, keep the existing scope unless an identical binder really
+shadows a nonidentity pair. Scope lookup remains fuel-accounted and serializable.
+
+Plan and verification:
+
+- [x] Add permanent nested-Match tests: general flip/replacement, multiple
+  captures, motive-name shadowing, actual values, incorrect motives/post-checks,
+  assertion-free source, ordinary/retained images and 0/100/1,000-step resume.
+- [x] Add shared-DAG, bound/free and shadowing counterexamples; save/resume at
+  every comparison step, including partially inspected Lambda scopes.
+- [x] Focused O2, Debug and ASan/UBSan suites and Core tests pass locally.
+- [x] Complete the clean full acceptance gate: 1,507.745 seconds, exit 0;
+  source compatibility 63/63. Publish this verified compiler epoch.
+- [ ] Complete F2's generic permutation/action bridge. A source-only joint
+  `reordering` witness trial bundles output size, a Fin bijection and position
+  evidence in one induction. Its complete constructor/induction checks are still
+  pending; it is not an accepted library. The composition projection requires a
+  separately proved pointwise law, not conversion of a neutral Match.
+
+Logs: `/tmp/a-program-generalized-{motive-focused,debug,asan,debug-core,asan-core,
+eval-io,acceptance}.log`. Unverified source experiments remain in the detached
+candidate's `src/prototype/`, outside publication. F2-F5 and broad P4/P5 stay open.
+
+Change accounting against `dd941dd`, excluding unpublished experiments:
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `src/graph.c` | 33 | 17 | +16 |
+| `src/synthesis.c` | 44 | 18 | +26 |
+| `tests/core.c` | 21 | 0 | +21 |
+| `tests/eval_io.c` | 16 | 1 | +15 |
+| `tests/acceptance/generalized-match-motive.p` | 31 | 0 | +31 |
+| `tests/generalized_match_motive.sh` | 44 | 0 | +44 |
+| `src/Makefile` | 6 | 0 | +6 |
+
+Implementation C: **+77/-35, net +42**. Tests: **+112/-1, net +111**.
+Build: **+6/-0**. Non-document total: **+195/-36, net +159**.
+This is a correctness/performance checkpoint, not completion of the authority
+refactor or a net code-reduction claim. The full gate includes the new tests;
+Debug and ASan/UBSan focused suites and Core tests also pass. No new surface
+syntax, proof rule, serialized state field or expected-type synthesis is added.
+This plan: **+73/-4, net +69**. Complete checkpoint: **+268/-40,
+net +228**.
 
 ## F5. Verification and Publication
 

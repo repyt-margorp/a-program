@@ -221,6 +221,27 @@ static void graph_test(struct pg_graph *graph)
 		pg_lambda(graph, y, pg_lambda(graph, x, vx))) == 1);
 	assert(pg_alpha_equal(pg_lambda(graph, x, pg_lambda(graph, z, vx)),
 		pg_lambda(graph, y, pg_lambda(graph, z, vx))) == 0);
+	/* A nonidentity outer map must not expand a shared Lambda DAG into a tree.
+	 * Identical internal binders are unrelated to that map. */
+	const struct pg_term *scope_dag = vz;
+	for (size_t i = 0; i < 32; ++i)
+		scope_dag = pg_application(graph,
+			pg_lambda(graph, pg_binder(graph), scope_dag),
+			pg_lambda(graph, pg_binder(graph), scope_dag));
+	const struct pg_term *scoped_left = pg_lambda(graph, x, pg_application(graph, vx, scope_dag));
+	const struct pg_term *scoped_right = pg_lambda(graph, y, pg_application(graph, vy, scope_dag));
+	assert(!pg_comparison_init(&shared, scoped_left, scoped_right, NULL, NULL));
+	while (pg_comparison_advance(&shared, 1) == PG_COMPARISON_PENDING)
+		assert(pg_comparison_steps(&shared) < 200);
+	assert(pg_comparison_status(&shared) == PG_COMPARISON_EQUAL);
+	assert(pg_comparison_task_count(&shared) == 100);
+	pg_comparison_destroy(&shared);
+	assert(pg_alpha_equal(pg_lambda(graph, z, scoped_left), scoped_right) == 0);
+	/* Shadowing one side must not forget the other side of the outer map. */
+	assert(pg_alpha_equal(pg_lambda(graph, x, pg_lambda(graph, x, vy)),
+		pg_lambda(graph, y, pg_lambda(graph, x, vy))) == 0);
+	assert(pg_alpha_equal(pg_lambda(graph, x, pg_lambda(graph, y, vy)),
+		pg_lambda(graph, y, pg_lambda(graph, y, vy))) == 1);
 	assert(pg_term_independent(vx, x) == 0);
 	assert(pg_term_independent(vy, x) == 1);
 	assert(pg_term_independent(identity, x) == 1);

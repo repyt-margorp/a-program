@@ -2843,6 +2843,8 @@ static const struct pg_evidence *constructor_pattern(struct pg_synthesis *synthe
 static const struct pg_source_scope *generalized_scope(struct pg_synthesis *synthesis,
 	const struct pg_source_scope *original, const struct pg_source_scope *scope,
 	const struct pg_evidence *generalization, const struct pg_evidence *pattern);
+static const struct pg_source_scope *mapped_source_scope(struct pg_synthesis *,
+	const struct pg_source_scope *, const struct pg_source_scope *, const struct pg_evidence *);
 
 static void induction_branch_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
@@ -2984,9 +2986,9 @@ static void match_explicit_motive_step(struct pg_synthesis *synthesis, struct pg
 	const struct pg_evidence *mc = match_motive_context(synthesis, job);
 	if (!mc) goto unsupported;
 	size_t count;
-	if (state->generalized_count ||
-		pg_context_extension_size(pg_evidence_context(mc), pg_evidence_context(context), &count)) goto unsupported;
+	if (pg_context_extension_size(pg_evidence_context(mc), pg_evidence_context(context), &count)) goto unsupported;
 	if (count != motive->item_count) goto rejected;
+	const struct pg_evidence *target = state->generalization ? pg_evidence_premise(state->generalization, 1) : mc;
 	if (!state->explicit_type_job) {
 		const struct pg_evidence **extensions = malloc(count * sizeof(*extensions));
 		if (!extensions) goto error;
@@ -2995,17 +2997,24 @@ static void match_explicit_motive_step(struct pg_synthesis *synthesis, struct pg
 			extensions[i - 1] = extension;
 		const struct pg_source_scope *scope = local->inner;
 		for (size_t i = 0; scope && i < count; ++i)
-			scope = pg_synthesis_bind(synthesis, scope, motive->items[i].name,
+			scope = pg_synthesis_bind(synthesis, scope, state->generalization ? (struct pg_token){0} : motive->items[i].name,
 				pg_evidence_context(extensions[i])->binder, extensions[i]);
+		if (scope && state->generalization) {
+			scope = mapped_source_scope(synthesis, local->inner, scope, state->generalization);
+			/* Explicit motive names shadow transported ambient aliases. */
+			for (size_t i = 0; scope && i < count; ++i)
+				scope = pg_synthesis_name(synthesis, scope, motive->items[i].name,
+					pg_prove_variable(synthesis->typing, target, pg_evidence_context(extensions[i])->binder));
+		}
 		free(extensions);
 		if (!scope) goto unsupported;
 		state->explicit_type_job = pg_synthesis_request(synthesis, scope, motive->right);
 		if (!state->explicit_type_job) goto error;
 	}
 	if (pg_synthesis_await(synthesis, job, state->explicit_type_job)) return;
-	const struct pg_evidence *type = type_input(synthesis, job, mc, state->explicit_type_job->result);
+	const struct pg_evidence *type = type_input(synthesis, job, target, state->explicit_type_job->result);
 	if (!type) return;
-	if (pg_evidence_context(type) != pg_evidence_context(mc)) goto rejected;
+	if (pg_evidence_context(type) != pg_evidence_context(target)) goto rejected;
 	const struct pg_effect_row *effects = state->motive_effects;
 	if (!effects) effects = pg_effect_row(synthesis->typing->graph, 0, NULL);
 	/* A motive describes the branch computation, not a Lambda parameter.
@@ -3018,6 +3027,9 @@ static void match_explicit_motive_step(struct pg_synthesis *synthesis, struct pg
 			state->motive_totality, effects, type);
 	}
 	if (!candidate) goto unsupported;
+	const struct pg_evidence *extension = target;
+	for (size_t i = state->generalized_count; candidate && i; --i, extension = pg_context_parent_input(synthesis->typing, extension))
+		candidate = pg_prove_pi(synthesis->typing, extension, candidate);
 	if (state->path_context) {
 		state->path_result = pg_prove_projection(synthesis->typing, state->path_context, candidate);
 		candidate = state->path_result;
@@ -3857,25 +3869,41 @@ static const struct pg_source_scope *generalized_scope(struct pg_synthesis *synt
 	const struct pg_evidence **extensions = malloc(count * sizeof(*extensions));
 	if (count && !extensions) return NULL;
 	for (size_t i = count; i; --i, extension = pg_context_parent_input(typing, extension)) extensions[i - 1] = extension;
-	for (size_t i = 0; pattern && i < count; ++i) {
+	for (size_t i = 0; pattern && i < count; ++i)
 		pattern = pg_prove_substitution_lift(typing, pattern, extensions[i], pg_binder(typing->graph));
-		if (!pattern) break;
-		const struct pg_evidence *destination = pg_evidence_premise(pattern, 1);
+	free(extensions);
+	const struct pg_evidence *map = pg_prove_substitution_compose(typing, generalization, pattern);
+	return mapped_source_scope(synthesis, original, scope, map);
+}
+
+static const struct pg_source_scope *mapped_source_scope(struct pg_synthesis *synthesis,
+	const struct pg_source_scope *original, const struct pg_source_scope *scope,
+	const struct pg_evidence *map)
+{
+	struct pg_typing *typing = synthesis->typing;
+	if (!map || !scope) return NULL;
+	const struct pg_evidence *extension = pg_evidence_premise(map, 1);
+	size_t count;
+	if (pg_context_extension_size(pg_evidence_context(extension),
+		pg_evidence_context(pg_synthesis_scope_context(scope)), &count)) return NULL;
+	if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
+	const struct pg_evidence **extensions = malloc(count * sizeof(*extensions));
+	if (count && !extensions) return NULL;
+	for (size_t i = count; i; --i, extension = pg_context_parent_input(typing, extension)) extensions[i - 1] = extension;
+	for (size_t i = 0; scope && i < count; ++i) {
+		const struct pg_evidence *destination = extensions[i];
 		const struct pg_source_scope *old = original;
 		for (; old; old = old->parent) {
 			if (!old->binder) continue;
-			const struct pg_evidence *image = pg_substitution_image(typing, generalization, old->binder);
+			const struct pg_evidence *image = pg_substitution_image(typing, map, old->binder);
 			const struct pg_term *term = image ? pg_evidence_subject(image)->core : NULL;
-			if (term && term->kind == PG_REFERENCE && term->as.reference == pg_evidence_context(extensions[i])->binder) break;
+			if (term && term->kind == PG_REFERENCE && term->as.reference == pg_evidence_context(destination)->binder) break;
 		}
 		scope = pg_synthesis_bind(synthesis, scope, old ? old->name : (struct pg_token){0},
 			pg_evidence_context(destination)->binder, destination);
 		if (scope && old && old->associated_binder) {
-			const struct pg_evidence *generic = pg_substitution_image(typing, generalization, old->associated_binder);
-			const struct pg_term *field = generic ? pg_evidence_subject(generic)->core : NULL;
-			const struct pg_evidence *associated = field && field->kind == PG_REFERENCE
-				? pg_substitution_image(typing, pattern, field->as.reference) : NULL;
-			field = associated ? pg_evidence_subject(associated)->core : NULL;
+			const struct pg_evidence *associated = pg_substitution_image(typing, map, old->associated_binder);
+			const struct pg_term *field = associated ? pg_evidence_subject(associated)->core : NULL;
 			if (!field || field->kind != PG_REFERENCE || field->as.reference->kind != PG_BINDER) { scope = NULL; break; }
 			struct pg_source_scope linked = *scope;
 			linked.associated_binder = field->as.reference;
@@ -3885,9 +3913,7 @@ static const struct pg_source_scope *generalized_scope(struct pg_synthesis *synt
 		if (!scope) break;
 	}
 	free(extensions);
-	if (!scope || !pattern) return NULL;
-	const struct pg_evidence *map = pg_prove_substitution_compose(typing, generalization, pattern);
-	if (!map) return NULL;
+	if (!scope) return NULL;
 	/* One checked map governs aliases, copied variables and their IH/graph
 	 * associations. A constructor image is a value, not a conversion axiom. */
 	for (const struct pg_source_scope *old = original; old; old = old->parent) {

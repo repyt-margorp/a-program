@@ -115,6 +115,32 @@ static int reference_head(const struct pg_term *term)
 	return term->kind == PG_REFERENCE;
 }
 
+/* An identical binder changes the map only if it shadows a nonidentity
+ * pair. Keep the existing scope key for shared bodies otherwise. */
+static int comparison_bind(struct pg_comparison_state *context, struct alpha_entry *entry,
+	const struct pg_term *left, const struct pg_term *right, const struct binder_pair **scope)
+{
+	*scope = entry->scope;
+	if (left == right && *scope && !(*scope)->parent && !(*scope)->right) {
+		if (left->as.lambda.binder == (*scope)->left) *scope = NULL;
+		return 1;
+	}
+	if (left->as.lambda.binder == right->as.lambda.binder) {
+		const struct binder_pair *cursor = entry->cursor;
+		if (!cursor) return 1;
+		if (cursor->left != left->as.lambda.binder && cursor->right != left->as.lambda.binder) {
+			entry->cursor = cursor->parent;
+			return 0;
+		}
+		if (cursor->left == cursor->right) return 1;
+	}
+	struct binder_pair *binder = pg_alloc(&context->arena, sizeof(*binder));
+	if (!binder) return -1;
+	*binder = (struct binder_pair){left->as.lambda.binder, right->as.lambda.binder, *scope};
+	*scope = binder;
+	return 1;
+}
+
 static enum pg_comparison_status comparison_step(struct pg_comparison_state *context)
 {
 	struct alpha_entry *entry = context->pending;
@@ -186,31 +212,21 @@ static enum pg_comparison_status comparison_step(struct pg_comparison_state *con
 			}
 		} else if (left->as.reference != right->as.reference) return PG_COMPARISON_DIFFERENT;
 	}
+	const struct binder_pair *scope = entry->scope;
+	if (left->kind == PG_LAMBDA) {
+		int status = comparison_bind(context, entry, left, right, &scope);
+		if (status < 0) return PG_COMPARISON_ERROR;
+		if (!status) return PG_COMPARISON_PENDING;
+	}
 	context->pending = entry->next;
 	switch (left->kind) {
 	case PG_APPLICATION:
 		if (comparison_push(context, left->as.application.argument, right->as.application.argument, entry->scope) != 0) return PG_COMPARISON_ERROR;
 		if (comparison_push(context, left->as.application.function, right->as.application.function, entry->scope) != 0) return PG_COMPARISON_ERROR;
 		break;
-	case PG_LAMBDA: {
-		const struct binder_pair *scope = entry->scope;
-		/* Independence compares one term with itself under x -> absent.
-		 * Other binders leave that question unchanged; binding x discharges it.
-		 * Keep the same scope key so shared bodies remain shared work. */
-		if (left == right && scope && !scope->parent && !scope->right) {
-			if (left->as.lambda.binder == scope->left) scope = NULL;
-		} else
-		/* An identical binder needs no map in an already identical scope.
-		 * Under a nonidentity map it must still shadow older pairs. */
-		if (scope || left->as.lambda.binder != right->as.lambda.binder) {
-			struct binder_pair *binder = pg_alloc(&context->arena, sizeof(*binder));
-			if (!binder) return PG_COMPARISON_ERROR;
-			*binder = (struct binder_pair){left->as.lambda.binder, right->as.lambda.binder, scope};
-			scope = binder;
-		}
+	case PG_LAMBDA:
 		if (comparison_push(context, left->as.lambda.body, right->as.lambda.body, scope) != 0) return PG_COMPARISON_ERROR;
 		break;
-	}
 	case PG_REFERENCE: break;
 	default: return PG_COMPARISON_ERROR;
 	}

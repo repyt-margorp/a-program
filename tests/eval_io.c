@@ -423,6 +423,21 @@ static void shared_substitution_images(void)
 static void comparison_fixture(struct pg_graph *graph, struct pg_comparison *work, unsigned mode)
 {
 	const struct pg_object *x = pg_binder(graph), *y = pg_binder(graph);
+	if (mode >= 6) {
+		const struct pg_object *leaf = mode == 7 ? x : mode == 8 ? x : mode == 9 ? y : pg_binder(graph);
+		const struct pg_term *body = pg_reference(graph, leaf);
+		for (size_t i = 0; i < 4; ++i)
+			body = pg_application(graph, pg_lambda(graph, pg_binder(graph), body),
+				pg_lambda(graph, pg_binder(graph), body));
+		if (mode >= 8) body = pg_lambda(graph, x, body);
+		const struct pg_term *left = body, *right = body;
+		for (size_t i = 0; i < 2; ++i) {
+			left = pg_lambda(graph, pg_binder(graph), left);
+			right = pg_lambda(graph, pg_binder(graph), right);
+		}
+		assert(!pg_comparison_init(work, pg_lambda(graph, x, left), pg_lambda(graph, y, right), NULL, NULL));
+		return;
+	}
 	if (mode >= 4) {
 		const struct pg_term *body = pg_reference(graph, mode == 5 ? x : y);
 		for (size_t i = 0; i < 4; ++i)
@@ -555,7 +570,7 @@ static void comparison_boundaries(void)
 
 static void comparison_resume(void)
 {
-	for (unsigned mode = 0; mode < 6; ++mode) {
+	for (unsigned mode = 0; mode < 10; ++mode) {
 		struct pg_graph graph;
 		struct pg_comparison baseline;
 		assert(!pg_graph_init(&graph));

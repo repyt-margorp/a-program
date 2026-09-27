@@ -125,6 +125,12 @@ check-family-domain-conversion: $(BUILD)/pointer-check $(BUILD)/program_test
 
 .PHONY: check-finite-list-views
 check-acceptance: check-finite-list-views
+
+.PHONY: check-generalized-match-motive
+check-generalized-match-motive: $(BUILD)/pointer-check $(BUILD)/program_test
+	bash $(TESTS)/generalized_match_motive.sh $(BUILD)/pointer-check $(BUILD)/program_test
+
+check-acceptance: check-generalized-match-motive
 check-finite-list-views: $(BUILD)/pointer-check $(BUILD)/program_test
 	bash $(TESTS)/finite_list_views.sh $(BUILD)/pointer-check $(BUILD)/program_test
 
