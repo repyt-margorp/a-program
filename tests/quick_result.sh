@@ -6,6 +6,9 @@ provider="$root/fixtures/sorted-proof-provider.p"
 theorem="$root/acceptance/generic-quick-sorted-result.p"
 directory=$(mktemp -d)
 trap 'rm -rf "$directory"' EXIT
+cat "$provider" > "$directory/provider.p"
+sed '/^import /d' "$root/fixtures/quick-sort-proof-common.p" >> "$directory/provider.p"
+provider="$directory/provider.p"
 
 check() {
 	local expected=$1 label=$2 code=0

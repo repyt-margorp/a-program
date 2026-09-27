@@ -39,11 +39,14 @@ for variant in frozen derived frozen-tail-first derived-tail-first; do
 	# The direct theorem shares the provider's nominal predicates. Its private
 	# lemma names stay in the import provider, outside the graph proof's scope.
 	if [[ $provider == derived ]]; then
-		sed '/^import /d; s/LT\.lift /ltLift /g' "$root/acceptance/generic-quick-sorted-result.p" >> "$directory/provider.p"
+		sed '/^import /d; s/LT\.lift /ltLift /g' "$root/fixtures/quick-sort-proof-common.p" \
+			"$root/acceptance/generic-quick-sorted-result.p" >> "$directory/provider.p"
 	else
-		sed '/^import /d' "$root/acceptance/generic-quick-sorted-result.p" >> "$directory/provider.p"
+		sed '/^import /d' "$root/fixtures/quick-sort-proof-common.p" \
+			"$root/acceptance/generic-quick-sorted-result.p" >> "$directory/provider.p"
 	fi
 	cat "$directory/content.p" "$root/fixtures/generic_sorted/content-result-proof.p" \
+		"$root/fixtures/generic_sorted/boolean-order.p" \
 		"$root/fixtures/generic_sorted/boolean-consumer.p" \
 		"$root/fixtures/generic_sorted/boolean-content-consumer.p" >> "$directory/proof.p"
 	printf '%s\n' "LT provider/partition order: $variant"

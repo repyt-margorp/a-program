@@ -76,7 +76,8 @@ for sort in tree merge quick; do
 		sed -n '/^le_refl :=/p' "$root/acceptance/sort-tree-property.p" >> "$sort_provider"
 		# Share the general ordinary-result theorem, whose helper names have
 		# their own prefix; keep the older Nat graph theorem as a separate test.
-		sed '/^import /d' "$root/acceptance/generic-quick-sorted-result.p" >> "$sort_provider"
+		sed '/^import /d' "$root/fixtures/quick-sort-proof-common.p" \
+			"$root/acceptance/generic-quick-sorted-result.p" >> "$sort_provider"
 		# This also executes the instantiated general proof, not only QuickSort.
 		comparison_steps=50000000
 	fi
