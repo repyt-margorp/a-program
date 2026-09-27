@@ -7,7 +7,8 @@ Issue #39 / PR #40](2026-09-27-LOCAL-STRONG-SORTEDNESS-SOAP-PLAN.md) is complete
 and published. #39 is closed; PR #40 is superseded. Resume P4/P5 from the
 derivation-owner checkpoint; the sorting algorithms and compiler are unchanged.
 Status: P1-P3 closed. P4 Identity-boundary/Lambda-scope/typed-only function,
-result-formation, selected ambient declarations, Context-history removal and typed-map/variable-image slices
+result-formation, selected ambient declarations, Context-history removal,
+typed-map/variable-image and shared typed-input scope slices
 verified. P5 effect/shared-work/
 Handler/Operation/CBPV/function/Context/IADT-scope/transport/basic-Identity/conversion owners verified.
 Verification uses clean publication trees, full acceptance and affected sanitizers.
@@ -324,14 +325,16 @@ the Pi's scoped codomain input instead of requiring a `PG_PI_FORM` receipt.
 The same Pi accepted through U-content elimination is usable without rebuilding
 its scope. Both changes retain ordinary classifier/scope/owner validation.
 
-Input/consumer inventory (rechecked at `bc45613`, partial P4.2):
+Input/consumer inventory (function inputs checked at `bc45613`; IADT rows
+rechecked at `4491c9a`, partial P4.2):
 
 | Construction | Retained semantic inputs | Remaining migration |
 | --- | --- | --- |
 | Context / Pi / Lambda | Selected `pg_scope` declaration graph; Pi/family binding operands retain selected domain/index formations; Lambda type/body/annotation | Context and direct binding histories are removed. Family inputs still flatten the telescope and reconstruct its checking scope; synchronous structural checking is not yet shared Solve work. P4.4b repairs a reproduced loss of selected bounds in lift before this migration |
 | APP | Function/argument operands and instantiated result `type` | One ordinary APP rule constructs or checks the retained result; substitution is shared and only bound-pointer renaming is accepted. `formed_classifier` still returns Evidence |
-| Constructor | Typed field operands and result `type`; nominal declaration lives with IADT | `constructor_instance` still consumes schema/parameter/instance receipts. Audit the declaration link and maps before deleting them; constructor Core alone cannot choose a nominal type |
-| Match / IH | Scrutinee, branches, motive, formation, parameter map and IH allocation are retained | Elimination still checks its rule/schema through Evidence. `pg_elimination_view` selects parameter-map and motive-Context admissions from raw keys; no new bug is proved here, but that is not yet an explicit selected-formation contract. Preserve motive telescopes and IH allocations |
+| IADT formation | `iadt.c:pg_data_declaration` owns nominal allocation, raw parameter/index/field Contexts and result-index terms; `pg_data_schema` owns checked signature/result-map inputs | `evidence.c:pg_prove_inductive_type` creates a zero-operand occurrence and retains selected schema inputs in its certificate/premises. `derivation.c:PG_INDUCTIVE_FORM` consumes these for fresh-process checking. These are necessary checking inputs, not disposable proof history |
+| Constructor | Typed field operands and result `type`; nominal declaration lives with IADT | `evidence.c:constructor_instance` additionally consumes formation, parameter map and instance map, checking the Self image and parameter prefix. `derivation.c` retains its four-input grammar. Move the selected schema/map inputs with their consumers before deleting these edges; erased constructor Core alone cannot recover them |
+| Match / IH | Scrutinee, branches, motive, formation, parameter map and IH allocation are retained | `pg_elimination_view` still selects parameter-map and motive-Context admissions from raw keys. `derivation.c` consumes `branch_count + 6` inputs; `function_graph.c` distinguishes the Match/Induction theorems. `induction_request` keys default lexical allocation by the retained premise tuple: preserve that request identity and distinct explicit allocations when removing history. No new typing bug is proved by this audit |
 | Identity | Family, endpoints, maps and paths, now read in its owner | Direct formation/reflexivity/transport/lift histories are removed. Family actions still retain selected maps/formations in Evidence; full recursive typed checking remains unfinished |
 | Conversion / normalization | Origin and new type boundary; normalization certificates remain in Evidence | These are checked computations, not object Equality proofs. Retaining an origin alone does not provide the selected reduction certificate. Do not discard validation or infer conversion from equal Core tags |
 
@@ -931,6 +934,17 @@ distinction consistent with the existing reindex worker.
   permanent history with repeated full-source checking or a second scheduler.
   Recheck the small timing delta below, including APP/codomain reuse, without
   restoring result-blind interning or adding a parallel acceptance cache.
+- [x] **P4.4d Typed-input scope consumers (baseline `4491c9a`):** replace the
+  remaining selection/input-alignment private lift paths with the checked lift
+  request. Preserve each binder across pauses and advance transported bodies
+  through the existing occurrence-action worker. Certify the action on the
+  accepted child, rather than reconstructing that child's transported typing.
+  Test renamed Pi/Lambda inputs, selected/mapped codomains, shared requests,
+  budgets 0/1/64, repeated completion and unchanged classifiers/Context; run
+  the common publication gates. Agent decision: do not add a checked-reindex
+  scheduler merely to wrap the already shared occurrence action and ordinary
+  admission. Selected ambient inputs and declaration flattening remain the
+  separately documented representation work, not silently solved here.
 - [x] **P4.4c Shared checked scope action (baseline `11f413a`):** replace the
   temporary synchronous selected-scope walk with shared typed queries. Key the
   checked prefix, selected scope and target allocation explicitly; do not encode
@@ -3198,3 +3212,49 @@ Logs: `/tmp/a-program-shared-scope-` with `{acceptance,debug,asan,cross}.log`,
 `acceptance.time`, `bench.jsonl`. Logs are temporary; boundary tests are committed.
 
 This plan: **+72/-0**; complete slice: **+844/-519, net +325**.
+
+### Typed-Input Scope Consumers, 2026-09-27
+
+Baseline `4491c9a`; inherited trials excluded. `selection_lift_step` and
+`typed_input_align` now borrow the checked lift and existing occurrence action.
+Readback alignment certifies reindexing of the accepted input instead of
+structurally rediscovering its transported typing. A fresh binder is allocated
+once per mapped frame, not again after a budget pause. No extra scheduler,
+acceptance cache, Core tag, source syntax or wire grammar is introduced.
+
+- Full `check-acceptance` passed: wall **1465.979 s**, user 1360.970 s, system
+  104.325 s, including builds and overlap with the compatibility run. This is
+  not an isolated timing comparison. General/ordinary-result QuickSort,
+  Local/Strong, derived-LT variants, other sorts and optional packets pass.
+- Core, IADT, Identity, synthesis, typed-structure and derivation-image checks
+  pass in Debug and ASan/UBSan. New tests cover budgets 0/1/64, renamed dependent
+  Pi/Lambda inputs, selected mapped codomains, occupied binders and completed
+  request reuse. The exact selected declaration matters even when raw Contexts
+  coincide. Baseline plus these tests fails the shared-lift assertion; that is
+  evidence of the old duplicate path, not an old incorrect typing theorem.
+- **36** ordinary/retained image pairs at 0/100/complete steps pass **72**
+  opposite-version loads. All earlier object-proof rejection checks remain.
+- Eleven paired workloads, one warmup and six alternating samples (50 processes
+  per small sample): median changes **-4.09% to +2.88%**, all sample ranges
+  overlap. General/direct-result/Local/derived-Strong QuickSort changes are
+  **+1.71/-1.57/+1.75/+1.38%**. No speedup is established. Outputs agree except
+  for counted Solve steps, which now include the budgeted checking transitions.
+  Three-sample peak-RSS medians for those four cases (KiB): **298572->298756**,
+  **178828->178628**, **155232->155600**, **156060->156276**. Small workloads
+  have a measurement-process floor; no whole-session memory saving is claimed.
+
+On measured x86-64 builds, `typed_selection` grows **96->112 bytes**;
+`typed_recipe_query` stays **104 bytes**. Final kernel rules and restriction
+handling are not constant-cost. P4.2/P4.3/P4.4/P4.5, the remaining P5 owners and
+the net-code-reduction gate remain open. The IADT input inventory above was
+rechecked; necessary selected schema/map inputs cannot simply be discarded.
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `src/evidence.c` | 40 | 16 | +24 |
+| `tests/core.c` | 71 | 1 | +70 |
+| This plan | 64 | 4 | +60 |
+
+Logs: `/tmp/a-program-input-scope-` with `{acceptance,debug,asan,cross}.log`,
+`acceptance.time`, `bench.jsonl`. Temporary logs are not committed; boundary
+tests are. No whole-system reduction or full authority-migration claim is made.

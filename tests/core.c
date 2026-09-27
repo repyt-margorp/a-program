@@ -1475,14 +1475,32 @@ static void dependent_application_test(struct pg_graph *graph)
 		while (pg_nf_advance(nf, 1) == PG_NF_PENDING) assert(pg_nf_steps(nf) < 10000);
 		const struct pg_evidence *normal = pg_prove_normalization(&typing, sources[i], pg_nf_certificate(nf));
 		assert(normal);
+		const struct pg_evidence *prefix = pg_prove_substitution_projection(&typing, empty, empty);
+		struct pg_typed_query *lift = pg_substitution_lift_request(&typing, prefix, a_context, renamed);
+		assert(lift && !pg_typed_query_advance(lift, 0) && !pg_typed_query_steps(lift));
 		struct pg_typed_query *query = pg_typed_input_request(&typing, normal, i ? 0 : 1);
-		while (!pg_typed_query_advance(query, 1)) assert(pg_typed_query_steps(query) < 10000);
+		assert(!pg_typed_query_advance(query, 0) && !pg_typed_query_steps(query));
+		uint64_t chunk = i == 1 ? 64 : 1;
+		int status;
+		do {
+			uint64_t before = pg_typed_query_steps(lift);
+			status = pg_typed_query_advance(query, chunk);
+			assert(pg_typed_query_steps(lift) - before <= chunk);
+			assert(pg_typed_query_steps(query) < 10000);
+		} while (!status);
+		assert(status == 1 && pg_typed_query_steps(lift) && pg_typed_query_result(lift));
 		const struct pg_evidence *child = pg_typed_query_result(query);
 		assert(child && pg_evidence_context(child)->parent == pg_evidence_context(empty));
 		assert(pg_evidence_context(child)->binder == renamed && pg_evidence_subject(child)->core == body);
 		const struct pg_term *classifier = pg_substitution_compute(&typing.substitutions,
 			pg_evidence_classifier(original_child), 1, &binding);
 		assert(pg_evidence_classifier(child) == classifier);
+		uint64_t steps = pg_typed_query_steps(lift);
+		size_t proofs = typing.proofs.count, queries = typing.typed_queries.count;
+		assert(pg_typed_query_advance(query, 64) == 1);
+		assert(pg_typed_input_request(&typing, normal, i ? 0 : 1) == query);
+		assert(pg_prove_substitution_lift(&typing, prefix, a_context, renamed) == pg_typed_query_result(lift));
+		assert(pg_typed_query_steps(lift) == steps && typing.proofs.count == proofs && typing.typed_queries.count == queries);
 		reconstruct_derivation(&typing, child);
 	}
 	pg_whnf_work_destroy(&normalization);
@@ -1536,6 +1554,58 @@ static void dependent_application_test(struct pg_graph *graph)
 		assert(pg_prove_pi_domain(&typing, exposed_pi) == exposed_domain);
 	}
 	assert(typing.occurrences.count == input_count && typing.proofs.count == proof_count);
+	/* Selecting a mapped open codomain borrows the same checked lift. */
+	const struct pg_evidence *local_scope = pg_prove_context_extension(&typing, unused, a,
+		pg_prove_universe(&typing, unused, 1));
+	const struct pg_evidence *local_pi = pg_prove_pi(&typing, local_scope,
+		pg_prove_return_type(&typing, pg_prove_variable(&typing, local_scope, a)));
+	const struct pg_evidence *selected_base = pg_prove_pi(&typing, unused, local_pi);
+	const struct pg_evidence *selected_pi = pg_prove_pi_constant_codomain(&typing,
+		pg_prove_projection(&typing, unused, selected_base));
+	assert(selected_pi && pg_evidence_subject(selected_pi)->selection);
+	const struct pg_term *selected_domain, *selected_body;
+	const struct pg_object *selected_binder;
+	assert(selected_pi && pg_pi_view(pg_evidence_subject(selected_pi)->core,
+		&selected_domain, &selected_binder, &selected_body));
+	const struct pg_evidence *selected_prefix = pg_prove_substitution_projection(&typing, empty, unused);
+	const struct pg_evidence *selected_scope = pg_prove_context_extension(&typing, empty, a,
+		pg_prove_pi_domain(&typing, pg_prove_pi_constant_codomain(&typing, selected_base)));
+	assert(selected_scope && pg_evidence_context(selected_scope) == pg_evidence_context(a_context));
+	struct pg_typed_query *selected_lift = pg_substitution_lift_request(&typing,
+		selected_prefix, selected_scope, selected_binder);
+	struct pg_typed_query *selected_query = pg_typed_input_request(&typing, selected_pi, 1);
+	assert(selected_lift && selected_query && !pg_typed_query_advance(selected_query, 0));
+	int selected_status;
+	do {
+		uint64_t before = pg_typed_query_steps(selected_lift);
+		selected_status = pg_typed_query_advance(selected_query, 1);
+		assert(pg_typed_query_steps(selected_lift) - before <= 1);
+		assert(pg_typed_query_steps(selected_query) < 10000);
+	} while (!selected_status);
+	const struct pg_evidence *selected_child = pg_typed_query_result(selected_query);
+	assert(selected_status == 1 && selected_child && pg_typed_query_result(selected_lift));
+	assert(pg_typed_query_steps(selected_lift));
+	assert(pg_evidence_context(selected_child)->binder == selected_binder);
+	assert(pg_evidence_context(selected_child)->parent == pg_evidence_context(unused));
+	assert(pg_evidence_subject(selected_child)->core == selected_body);
+	input_count = typing.occurrences.count; proof_count = typing.proofs.count;
+	uint64_t selected_steps = pg_typed_query_steps(selected_lift);
+	assert(pg_typed_query_advance(selected_query, 64) == 1);
+	assert(pg_typed_query_steps(selected_lift) == selected_steps);
+	assert(typing.occurrences.count == input_count && typing.proofs.count == proof_count);
+	/* An occupied binder needs one fresh allocation, retained across pauses. */
+	selected_pi = pg_prove_pi_constant_codomain(&typing,
+		pg_prove_projection(&typing, a_context, selected_base));
+	assert(selected_pi && pg_pi_view(pg_evidence_subject(selected_pi)->core,
+		&selected_domain, &selected_binder, &selected_body));
+	selected_query = pg_typed_input_request(&typing, selected_pi, 1);
+	while (!pg_typed_query_advance(selected_query, 1))
+		assert(pg_typed_query_steps(selected_query) < 10000);
+	selected_child = pg_typed_query_result(selected_query);
+	assert(selected_child && pg_evidence_context(selected_child)->binder != a);
+	assert(pg_evidence_context(selected_child)->parent == pg_evidence_context(a_context));
+	assert(pg_alpha_equal(pg_lambda(graph, pg_evidence_context(selected_child)->binder,
+		pg_evidence_subject(selected_child)->core), pg_lambda(graph, selected_binder, selected_body)) == 1);
 	const struct pg_object *f = pg_binder(graph);
 	const struct pg_evidence *f_context = pg_prove_context_extension(&typing, empty, f, upi);
 	const struct pg_evidence *function = pg_prove_force(&typing, pg_prove_variable(&typing, f_context, f));

@@ -676,6 +676,8 @@ struct typed_selection {
 	const struct pg_occurrence *child;
 	const struct pg_object *binder;
 	const struct scope_frame *cursor;
+	struct pg_typed_query *lift;
+	struct pg_occurrence_action *action;
 	size_t index;
 };
 
@@ -697,7 +699,7 @@ struct typed_recipe_query {
 	const struct pg_evidence *argument, *environment, *value;
 	enum typed_query_resume resume;
 	struct pg_occurrence_input *input;
-	struct pg_context_lift *lift;
+	struct pg_typed_query *lift;
 	struct pg_occurrence_action *action;
 	union {
 		struct { struct typed_field *field; struct typed_selection *selection; };
@@ -1516,14 +1518,22 @@ static int selection_lift_step(struct pg_typing *typing, struct typed_selection 
 		map = pg_prove_substitution_pair(typing, map, extended, state->argument);
 	} else if (frame) {
 		const struct pg_context *destination = frame->map ? frame->map->destination : frame->restriction->context;
-		const struct pg_object *binder = !frame->next && state->binder ? state->binder
-			: pg_evidence_context(extended)->binder;
-		if (pg_context_lookup(destination, binder)) binder = pg_binder(typing->graph);
 		if (frame->map) {
-			map = pg_prove_substitution_lift(typing, pg_prove_context_map(typing, frame->map), extended, binder);
+			if (!state->lift) {
+				const struct pg_object *binder = !frame->next && state->binder ? state->binder
+					: pg_evidence_context(extended)->binder;
+				if (pg_context_lookup(destination, binder)) binder = pg_binder(typing->graph);
+				state->lift = pg_substitution_lift_request(typing,
+					pg_prove_context_map(typing, frame->map), extended, binder);
+			}
+			int status = pg_typed_query_advance(state->lift, 1);
+			if (status <= 0) return status;
+			map = pg_typed_query_result(state->lift);
 			if (!map) return -1;
-			state->extended = map->premises[1];
 		} else {
+			const struct pg_object *binder = !frame->next && state->binder ? state->binder
+				: pg_evidence_context(extended)->binder;
+			if (pg_context_lookup(destination, binder)) binder = pg_binder(typing->graph);
 			const struct pg_evidence *step = pg_prove_structural_subject(typing, frame->restriction);
 			const struct pg_evidence *context = conclusion_first(typing, PG_JUDGEMENT_CONTEXT, destination);
 			state->extended = pg_prove_context_extension(typing, context, binder, pg_prove_pi_domain(typing, step));
@@ -1533,6 +1543,15 @@ static int selection_lift_step(struct pg_typing *typing, struct typed_selection 
 		}
 	}
 	if (frame || state->argument) {
+		if (map && state->body) {
+			if (!state->action) state->action = pg_occurrence_action_request(typing,
+				pg_evidence_context_map(map), pg_evidence_subject(state->body));
+			switch (pg_occurrence_action_advance(state->action, 1)) {
+			case PG_SUBSTITUTION_PENDING: return 0;
+			case PG_SUBSTITUTION_ERROR: return -1;
+			case PG_SUBSTITUTION_DONE: break;
+			}
+		}
 		struct scope_frame *lifted = scope_frame(typing->graph, pg_evidence_context_map(map), restricted ? pg_evidence_subject(restricted) : NULL, NULL);
 		if (!lifted) return -1;
 		scope_append(&state->lifted, (struct scope_sequence){lifted, lifted});
@@ -1543,6 +1562,9 @@ static int selection_lift_step(struct pg_typing *typing, struct typed_selection 
 			if (!state->body) return -1;
 		}
 	}
+	if (frame && map) state->extended = map->premises[1];
+	state->lift = NULL;
+	state->action = NULL;
 	if (frame) { state->cursor = frame->next; return 0; }
 	state->extended = NULL;
 	state->frames = state->lifted;
@@ -3755,19 +3777,21 @@ static int typed_input_align(struct pg_typed_query *work, const struct pg_eviden
 	}
 	if (child->context->parent != local->current->context) return -1;
 	if (!local->lift) {
-		const struct pg_context_map *identity = pg_context_map_projection(work->typing,
-			child->context->parent, child->context->parent);
-		local->lift = pg_context_lift_request(work->typing, identity, child->context, binder);
+		const struct pg_evidence *scope = pg_evidence_for_context(work->typing, child->context);
+		const struct pg_evidence *parent = pg_context_parent_input(work->typing, scope);
+		const struct pg_evidence *identity = pg_prove_substitution_projection(work->typing, parent, parent);
+		local->lift = pg_substitution_lift_request(work->typing, identity, scope, binder);
 	}
-	enum pg_substitution_status status = pg_context_lift_advance(local->lift, 1);
-	if (status == PG_SUBSTITUTION_PENDING) return 0;
-	if (status == PG_SUBSTITUTION_ERROR) return -1;
+	int checked = pg_typed_query_advance(local->lift, 1);
+	if (checked <= 0) return checked;
+	const struct pg_evidence *map = pg_typed_query_result(local->lift);
+	if (!map) return -1;
 	if (!local->action) local->action = pg_occurrence_action_request(work->typing,
-		pg_context_lift_result(local->lift), child);
-	status = pg_occurrence_action_advance(local->action, 1);
+		pg_evidence_context_map(map), child);
+	enum pg_substitution_status status = pg_occurrence_action_advance(local->action, 1);
 	if (status == PG_SUBSTITUTION_PENDING) return 0;
 	if (status == PG_SUBSTITUTION_ERROR) return -1;
-	local->argument = pg_prove_structural_subject(work->typing, pg_occurrence_action_result(local->action));
+	local->argument = pg_prove_reindex(work->typing, map, input);
 	return local->argument ? 1 : -1;
 }
 
