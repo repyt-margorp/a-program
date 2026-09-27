@@ -376,7 +376,7 @@ net +312**, counting the Vec proof relocation rather than duplicating it.
 
 ### Generalized Motives and Shared Comparison, 2026-09-27
 
-Objective (Code), baseline `dd941dd` plus the unpublished candidate:
+Objective (Code), baseline `dd941dd`, published as `b590dbc`:
 
 - A minimal nested Vec Match with an explicit motive reports `unsupported`
   after 2,384 steps on Main. `match_explicit_motive_step` unconditionally excludes
@@ -441,6 +441,49 @@ Debug and ASan/UBSan focused suites and Core tests also pass. No new surface
 syntax, proof rule, serialized state field or expected-type synthesis is added.
 This plan: **+73/-4, net +69**. Complete checkpoint: **+268/-40,
 net +228**.
+
+### F2 Prerequisite: Constructor Sequencing
+
+**Subjective (User):** preserve independently synthesized terms, `::` as a
+post-check, one typing authority, and ordinary left-to-right effects. Do not
+substitute passing examples for the general Fin action theorem.
+
+**Objective (Code), `b590dbc`:**
+[`indexed_constructor_sequence.p`](../src/prototype/indexed_constructor_sequence.p)
+isolates a pure call whose later proof depends on a computed earlier field.
+It rejects in 3,091 steps, also without its post-check. The nonindexed counterpart
+passes in 3,160 steps. Debugging confirms the checker compares `same A x x`
+with `same A (unbox A b) x`, where `b` is a fresh sequencing variable, not the
+supplied `boxed A x`. `prepare_constructor_spine` collects argument computations;
+`application_bind` abstracts their results before `constructor_application_step`
+checks all fields together. This is not a missing equality axiom or `::` hint.
+
+**Assessment (agent):** index recovery from argument classifiers is valid;
+batching runtime sequencing with it loses a dependent argument's known result.
+Disabling spine collection makes the diagnostic pass (3,240 steps) and the
+List/Vec record identity check pass (773,636), but breaks the valid existing
+`inferred-index-later-recovery.p`. That trial is rejected, not a repair.
+The full reordering proof still rejects after this diagnostic change; the
+remaining source proof must be checked independently. Do not promote the
+30-million-step timeout to a performance-only diagnosis or relax conversion.
+
+**Plan:**
+- [x] Isolate the failure and test the ordinary/Indexed and asserted/unasserted
+  controls. Preserve the small reproducer; do not bless its rejection as correct.
+- [ ] Separate signature-only index recovery from value sequencing. Reuse the
+  ordinary checked curried application/sequence path after specialization,
+  without a second acceptance engine, binding-equality assumptions or eager
+  evaluation of effectful arguments during checking.
+- [ ] Preserve later-field recovery, typed aliases and independently requested
+  partial applications; effectful partial applications must execute their prefix
+  once at the existing point, not under a newly introduced Lambda.
+- [ ] Require the reproducer, wrong proof/nominal/index controls, existing
+  inferred-index effects, ordinary/retained images, and full acceptance to pass
+  before publishing the compiler repair. Then finish F2's actual-value action.
+
+This diagnostic checkpoint changes no accepted implementation or test outcome.
+Against `b590dbc`: this plan **+44/-1**, prototype diagnostic **+13/-0**;
+total **+57/-1, net +56**. Accepted C/headers and permanent tests: **0**.
 
 ## F5. Verification and Publication
 
