@@ -2818,7 +2818,7 @@ static void identity_instance_jobs(struct pg_typing *typing)
 	assert(pg_synthesis_identity_instance(&synthesis, context, producer, l, rr) == instance);
 	const struct pg_evidence *result = complete(&synthesis, instance, PG_SYNTHESIS_DONE);
 	same_judgement(result, expected);
-	assert(pg_evidence_subject(pg_evidence_premise(result, 0))->core == pg_evidence_subject(family)->core);
+	assert(pg_evidence_subject(result)->operands[0]->core == pg_evidence_subject(family)->core);
 	struct pg_synthesis_job *f = pg_synthesis_evidence(&synthesis, pg_synthesis_result(producer));
 	struct pg_synthesis_job *canonical = pg_synthesis_identity_instance(&synthesis, context, f, l, rr);
 	assert(pg_synthesis_status(canonical) == PG_SYNTHESIS_DONE && pg_synthesis_result(canonical) == result);
@@ -5132,7 +5132,7 @@ static void source_actions(struct pg_typing *typing)
 	for (size_t i = 1; i < 5; ++i) {
 		const struct pg_evidence *acted = pg_synthesis_result(inputs[i]);
 		assert(pg_evidence_rule(acted) == PG_REFLEXIVITY);
-		assert(pg_evidence_premise(acted, 1) == pg_synthesis_result(inputs[i - 1]));
+		assert(pg_evidence_subject(acted)->operands[0] == pg_evidence_subject(pg_synthesis_result(inputs[i - 1])));
 		same_judgement(acted, pg_synthesis_result(others[i]));
 		expected = pg_identity_action(typing->graph, expected);
 		const struct pg_evidence *result = complete(&split, pg_synthesis_return(&split, context, acted), PG_SYNTHESIS_DONE);

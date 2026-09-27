@@ -75,7 +75,7 @@ static void common_rule(struct pg_typing *typing,
 static void transport_scopes(struct pg_synthesis *synthesis,
 	const struct pg_evidence *transport)
 {
-	const struct pg_evidence *action = pg_evidence_premise(transport, 1);
+	const struct pg_evidence *action = pg_evidence_for_subject(synthesis->typing, pg_evidence_subject(transport)->operands[0], NULL);
 	while (pg_evidence_rule(action) == PG_TYPE_CONVERSION) action = pg_evidence_premise(action, 0);
 	assert(pg_evidence_rule(action) == PG_FAMILY_ACTION);
 	const struct pg_evidence *value = pg_evidence_premise(action, 1);

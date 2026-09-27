@@ -672,8 +672,8 @@ static void read_proofs(FILE *file, struct pg_typing *typing, uint64_t chunk)
 		const struct pg_evidence *lift = pg_synthesis_result(jobs[8 + 2 * side]);
 		assert(pg_evidence_rule(transport) == PG_IDENTITY_TRANSPORT);
 		assert(pg_evidence_rule(lift) == PG_IDENTITY_LIFT);
-		assert(pg_evidence_premise(transport, 1) == pg_synthesis_result(jobs[6]));
-		assert(pg_evidence_premise(lift, 1) == transport);
+		assert(pg_evidence_subject(transport)->operands[0] == pg_evidence_subject(pg_synthesis_result(jobs[6])));
+		assert(pg_evidence_subject(lift)->type->operands[side == PG_IDENTITY_RIGHT ? 2 : 1] == pg_evidence_subject(transport));
 		struct pg_derivation_parameters parameters;
 		assert(!pg_derivation_parameters(transport, &parameters) && parameters.direction == side);
 		assert(!pg_derivation_parameters(lift, &parameters) && parameters.direction == side);
@@ -741,8 +741,10 @@ static void read_proofs(FILE *file, struct pg_typing *typing, uint64_t chunk)
 	bad = pg_synthesis_derivation(&synthesis, wrong_direction);
 	assert(bad);
 	pg_synthesis_advance(&synthesis, 10000);
-	/* Equal endpoint types do not authorize changing the directional premise. */
-	assert(pg_synthesis_status(bad) == PG_SYNTHESIS_REJECTED && !pg_synthesis_result(bad));
+	/* These endpoints coincide: either receipt proves the required type. The
+	 * requested direction still produces the corresponding transport Term. */
+	assert(pg_synthesis_status(bad) == PG_SYNTHESIS_DONE);
+	assert(pg_synthesis_result(bad) == pg_synthesis_result(jobs[9]));
 	assert(pg_synthesis_result(jobs[0]) == left);
 	pg_synthesis_destroy(&synthesis);
 	pg_whnf_work_destroy(&work);

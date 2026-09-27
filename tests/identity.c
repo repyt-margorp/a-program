@@ -1135,12 +1135,12 @@ static void uniform_transport(struct pg_typing *typing)
 	assert(typing->proofs.count == proofs && typing->occurrences.count == subjects);
 	const struct pg_evidence *other_relation = pg_prove_identity_type(typing, universe,
 		pg_prove_variable(typing, source, a), pg_prove_variable(typing, source, b));
-	assert(other_relation && other_relation != relation);
+	assert(other_relation == relation);
 	assert(pg_evidence_subject(other_relation) == pg_evidence_subject(relation));
 	proofs = typing->proofs.count;
 	assert(pg_identity_formation(typing, other_relation) == relation);
 	assert(typing->proofs.count == proofs);
-	assert(pg_evidence_for_subject(typing, pg_evidence_subject(relation), relation) == other_relation);
+	assert(!pg_evidence_for_subject(typing, pg_evidence_subject(relation), relation));
 	source = pg_prove_context_extension(typing, source, r, relation);
 	const struct pg_evidence *r_value = pg_prove_variable(typing, source, r);
 	const struct pg_evidence *square_type = pg_prove_identity_type(typing,
@@ -1214,8 +1214,8 @@ static void uniform_transport(struct pg_typing *typing)
 			pg_prove_reindex(typing, left, transport), pg_prove_reindex(typing, right, transport));
 		assert(expected);
 		assert(pg_identity_formation(typing, expected) == expected);
-		assert(pg_identity_face_endpoint(typing, boundary, expected, 0, PG_IDENTITY_LEFT)
-			== pg_evidence_premise(expected, 1));
+		assert(pg_evidence_subject(pg_identity_face_endpoint(typing, boundary, expected, 0, PG_IDENTITY_LEFT))
+			== pg_evidence_subject(expected)->operands[1]);
 		assert(!pg_identity_face_endpoint(typing, boundary, expected, 1, PG_IDENTITY_LEFT));
 		assert(pg_identity_formation(typing,
 			pg_prove_value_type(typing, pg_prove_type_value(typing, expected))) == expected);
@@ -2345,7 +2345,8 @@ static void boundary_context(struct pg_typing *typing,
 	const struct pg_evidence *rp = pg_prove_identity_endpoint_type(typing, p, PG_IDENTITY_RIGHT_TYPE);
 	const struct pg_evidence *lq = pg_prove_identity_endpoint_type(typing, q, PG_IDENTITY_LEFT_TYPE);
 	assert(lp && rp && lq && lp != lq);
-	assert(pg_evidence_premise(lp, 0) == p && pg_evidence_premise(lq, 0) == q);
+	assert(pg_evidence_subject(lp)->operands[0] == pg_evidence_subject(p));
+	assert(pg_evidence_subject(lq)->operands[0] == pg_evidence_subject(q));
 	assert(pg_evidence_judgement(lp) == PG_JUDGEMENT_VALUE_TYPE);
 	assert(pg_evidence_subject(lp)->core == pg_evidence_subject(lq)->core);
 	assert(pg_prove_identity_endpoint_type(typing, p, PG_IDENTITY_LEFT_TYPE) == lp);
@@ -3045,7 +3046,8 @@ int main(void)
 	assert(pg_evidence_classifier(rp) == pg_universe(&graph, 0));
 	assert(pg_evidence_subject(rp)->core != pg_evidence_subject(rq)->core);
 	assert(pg_alpha_equal(pg_evidence_subject(rp)->core, pg_evidence_subject(rq)->core) == 0);
-	assert(pg_evidence_premise(rp, 0) == pp && pg_evidence_premise(rq, 0) == qq);
+	assert(pg_evidence_subject(rp)->operands[0] == pg_evidence_subject(pp));
+	assert(pg_evidence_subject(rq)->operands[0] == pg_evidence_subject(qq));
 	assert(pg_prove_identity_instance(&typing, pp, xx, yy) == rp);
 	assert(!pg_prove_identity_instance(&typing, pp, yy, xx));
 	assert(!pg_prove_identity_instance(&typing, xx, xx, yy));
@@ -3134,7 +3136,7 @@ int main(void)
 		assert(pg_identity_view(pg_evidence_classifier(next), &base, &left, &right));
 		assert(base == pg_evidence_classifier(witness));
 		assert(left == pg_evidence_subject(witness)->core && right == left);
-		assert(pg_evidence_premise(next, 1) == witness);
+		assert(pg_evidence_subject(next)->operands[0] == pg_evidence_subject(witness));
 		witness = next;
 	}
 

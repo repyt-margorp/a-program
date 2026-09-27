@@ -174,15 +174,13 @@ const struct pg_evidence *pg_identity_boundary_type(struct pg_typing *typing,
 {
 	struct pg_identity_boundary boundary;
 	if (!pg_identity_boundary_view(subject, &boundary)) return NULL;
+	if (!boundary.left_substitution) return pg_prove_structural_subject(typing, subject);
 	const struct pg_evidence *accepted = pg_evidence_for_subject(typing, subject, NULL);
 	if (accepted) return accepted;
 	const struct pg_evidence *family = pg_prove_structural_subject(typing, boundary.family);
 	const struct pg_evidence *left = pg_prove_structural_subject(typing, boundary.left);
 	const struct pg_evidence *right = pg_prove_structural_subject(typing, boundary.right);
-	const struct pg_evidence *result;
-	if (boundary.left_substitution) result = selected_family(typing, family, &boundary, NULL, left, right, NULL);
-	else if (boundary.family->judgement == PG_JUDGEMENT_VALUE) result = pg_prove_identity_instance(typing, family, left, right);
-	else result = pg_prove_identity_type(typing, family, left, right);
+	const struct pg_evidence *result = selected_family(typing, family, &boundary, NULL, left, right, NULL);
 	return result && pg_evidence_subject(result) == subject ? result : NULL;
 }
 

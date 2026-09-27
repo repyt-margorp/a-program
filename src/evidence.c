@@ -403,12 +403,13 @@ static int structural_dependency(void *owner, const void *key, size_t index, con
 				proof = pg_prove_type_value(typing, source);
 			else if (source && subject->judgement == PG_JUDGEMENT_VALUE_TYPE)
 				proof = pg_prove_value_type(typing, source);
-		} else if (subject->core->kind == PG_REFERENCE && subject->core->as.reference->kind == PG_BINDER) {
+		} else if (!subject->operand_count && subject->core->kind == PG_REFERENCE && subject->core->as.reference->kind == PG_BINDER) {
 			proof = pg_prove_variable(typing, context, subject->core->as.reference);
-		} else if (pg_universe_level(subject->core, &level)) {
+		} else if (!subject->operand_count && pg_universe_level(subject->core, &level)) {
 			proof = pg_prove_universe(typing, context, level);
 		} else {
-			proof = pg_cbpv_structure(typing, subject, &input);
+			proof = pg_identity_structure(typing, subject, &input);
+			if (!proof && !input) proof = pg_cbpv_structure(typing, subject, &input);
 			if (!proof && !input) proof = pg_function_structure(typing, context, subject, &input);
 		}
 		if (input) { *child = input; return 1; }
@@ -3530,9 +3531,8 @@ const struct pg_evidence *pg_prove_identity_type(struct pg_typing *typing,
 	const struct pg_occurrence *operands[] = {pg_evidence_subject(type), pg_evidence_subject(left), pg_evidence_subject(right)};
 	const struct pg_occurrence *subject = pg_occurrence(typing, pg_evidence_judgement(type), pg_evidence_context(type), core, pg_evidence_subject(type)->classifier, NULL, 3, operands);
 	if (!subject) return NULL;
-	const struct pg_evidence *premises[] = {type, left, right};
 	return accept(typing, PG_IDENTITY_FORM, pg_evidence_context(type),
-		subject, 3, premises);
+		subject, 0, NULL);
 }
 
 static int universe_identity(const struct pg_typing *typing,
@@ -3564,7 +3564,7 @@ const struct pg_evidence *pg_prove_identity_endpoint_type(struct pg_typing *typi
 		core, sort, NULL, 1, (const struct pg_occurrence *[]){pg_evidence_subject(family)});
 	if (!subject) return NULL;
 	return accept(typing, side, pg_evidence_context(family),
-		subject, 1, &family);
+		subject, 0, NULL);
 }
 
 const struct pg_evidence *pg_prove_identity_instance(struct pg_typing *typing,
@@ -3584,9 +3584,8 @@ const struct pg_evidence *pg_prove_identity_instance(struct pg_typing *typing,
 	const struct pg_occurrence *operands[] = {pg_evidence_subject(family), pg_evidence_subject(left), pg_evidence_subject(right)};
 	const struct pg_occurrence *subject = pg_occurrence(typing, PG_JUDGEMENT_VALUE_TYPE, pg_evidence_context(family), core, sort, NULL, 3, operands);
 	if (!subject) return NULL;
-	const struct pg_evidence *premises[] = {family, left, right};
 	return accept(typing, PG_IDENTITY_INSTANCE, pg_evidence_context(family),
-		subject, 3, premises);
+		subject, 0, NULL);
 }
 
 const struct pg_evidence *pg_prove_reflexivity(struct pg_typing *typing,
@@ -3598,9 +3597,8 @@ const struct pg_evidence *pg_prove_reflexivity(struct pg_typing *typing,
 	if (!core) return NULL;
 	const struct pg_occurrence *subject = pg_occurrence_typed(typing, pg_evidence_judgement(term), core, pg_evidence_subject(identity), NULL, 1, (const struct pg_occurrence *[]){pg_evidence_subject(term)});
 	if (!subject) return NULL;
-	const struct pg_evidence *premises[] = {identity, term};
 	return accept(typing, PG_REFLEXIVITY, pg_evidence_context(term),
-		subject, 2, premises);
+		subject, 0, NULL);
 }
 
 const struct pg_evidence *pg_prove_identity_transport(struct pg_typing *typing,
@@ -3621,9 +3619,8 @@ const struct pg_evidence *pg_prove_identity_transport(struct pg_typing *typing,
 	const struct pg_occurrence *operands[] = {pg_evidence_subject(family), pg_evidence_subject(value)};
 	const struct pg_occurrence *subject = pg_occurrence_typed(typing, PG_JUDGEMENT_VALUE, core, pg_evidence_subject(target), NULL, 2, operands);
 	if (!subject) return NULL;
-	const struct pg_evidence *premises[] = {target, family, value};
 	return accept(typing, PG_IDENTITY_TRANSPORT, pg_evidence_context(family),
-		subject, 3, premises);
+		subject, 0, NULL);
 }
 
 const struct pg_evidence *pg_prove_identity_lift(struct pg_typing *typing,
@@ -3641,9 +3638,8 @@ const struct pg_evidence *pg_prove_identity_lift(struct pg_typing *typing,
 	const struct pg_occurrence *operands[] = {pg_evidence_subject(family), pg_evidence_subject(value)};
 	const struct pg_occurrence *subject = pg_occurrence_typed(typing, PG_JUDGEMENT_VALUE, core, pg_evidence_subject(type), NULL, 2, operands);
 	if (!subject) return NULL;
-	const struct pg_evidence *premises[] = {type, transport};
 	return accept(typing, PG_IDENTITY_LIFT, pg_evidence_context(family),
-		subject, 2, premises);
+		subject, 0, NULL);
 }
 
 const struct pg_evidence *pg_prove_thunk_type(struct pg_typing *typing,

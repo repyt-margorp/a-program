@@ -902,6 +902,21 @@ distinction consistent with the existing reindex worker.
   derivation images, and the common publication gates. This removes history,
   not the remaining flattening of local declaration inputs in typed bindings
   or the synchronous structural checker; those remain P4 work.
+- [x] **P4.3p Direct Identity history (baseline `68c3600`):** use retained typed
+  inputs for direct Identity formation, instances, endpoint types, reflexivity,
+  transport and lift; remove their duplicate receipt arrays. Localize their
+  structural checking/export inputs in the Identity owner and use ordinary
+  checking rules, without changing Core or wire grammar. Equal typed endpoints
+  may have different checking receipts; distinct endpoints still constrain
+  transport direction. Verify fresh closed/open typed images, computation and
+  higher reflexivity, both directions, altered classifiers/scopes, alternate
+  input receipts and read-only enumeration, then the common publication gates.
+  Derivation export selects existing introduction admissions required by the
+  rule-shaped wire grammar; typed images/checking do not require that history.
+  Do not reconstruct a proof or restore permanent edges to satisfy old readers.
+  Agent assessment: mapped family actions retain selected Context maps and
+  formations; they are not covered by this direct-input migration. No claim of
+  complete higher Identity, shared-budget checking or broad P4/P5 completion.
 - [ ] **P4.4 Work reuse and images (R2/R4):** reuse the same typed construction
   and checking requests for accepted and pending consumers, keeping open-handler
   progress and `::` non-feedback. Measure synchronous lift/composition helpers
@@ -1406,6 +1421,7 @@ owner localization, not completion of typed-history removal or higher Identity.
 | 2026-09-27 | P5 function structures | Pi/Lambda/APP structural queries use function-owned state and the existing work interner | Full acceptance, Debug/sanitizers, cross-reading and paired measurements pass; broader P4/P5 remain open |
 | 2026-09-27 | P5 CBPV structures | Known CBPV-rule queries use owner-local state; central Fold/carrier interpretation and payload removed | All publication gates below pass; P4/P5 remain open |
 | 2026-09-27 | P4.3o | Pi/family abstraction retain selected declaration inputs and typed bodies, not premise histories | Full acceptance, sanitizers, cross-reading and paired measurements pass; broader P4/P5 remain open |
+| 2026-09-27 | P4.3p | Direct Identity retains typed construction, not duplicate input receipts; owner-local structural checking uses ordinary rules | Full acceptance, Debug/sanitizers, cross-reading and paired measurements pass; mapped families and broader P4/P5 remain open |
 
 P4.2a verification (fresh, current worktree including the inherited Context/IADT
 edits): optimized `identity_test`, `derivation_io.sh` and `identity_io.sh` pass;
@@ -2928,3 +2944,65 @@ remain P4 work. Logs use `/tmp/a-program-binding-history-` with
 Temporary logs are not committed; regression tests are.
 
 This plan: **+66/-0**; complete slice: **+171/-28, net +143**.
+
+### Direct Identity History Removal (2026-09-27)
+
+Baseline `68c3600`; inherited trials excluded. Agent decision: direct Identity
+formation/instances, endpoint types, reflexivity, transport and lift retain
+their inputs in typed Terms, not duplicate receipt arrays. `evidence_identity.c`
+owns structural checking and export-input views; ordinary kernel rules remain
+the checking authority. No Core tag, Identity equation or wire grammar added.
+
+Two migration findings: equal typed endpoints were rejected by tests comparing
+left/right receipt rules rather than the required type; those cases now accept,
+with open heterogeneous direction errors permanently tested. An unrestricted
+choice of export receipt also failed the old reader. Reject that export policy:
+borrow the already admitted introductions named by the derivation grammar,
+without reconstructing evidence or retaining duplicate edges. This is a
+read-only selection among receipts for the exact typed input, not a new replay
+engine. Typed images do not require those introduction histories.
+
+Verification:
+- Fresh typed-only checks pass for **40 closed and 15 scoped roots**, including
+  computation/higher reflexivity, both transport/lift directions, and open
+  heterogeneous endpoints. Altered scopes/classifiers/directions are rejected.
+  Alternate receipts share acceptance; input enumeration and repeated checking
+  allocate nothing. GDB confirms the unchanged **64-byte** receipt header:
+  **1-3 -> 0** premise pointers save **8-24 bytes** per affected record,
+  excluding the unchanged conclusion-index prefix.
+- Root `check-acceptance`: **1531.515s** wall, **1422.647s** user, **108.077s**
+  system; 63/63 compatibility, general/ordinary-result Sorted, four LT/partition
+  variants and witness isolation/packets pass. Debug and ASan/UBSan pass for
+  Core, Program, IADT, Identity, synthesis, typed/scoped, source and derivation
+  images. **36** image pairs, **72** opposite-version loads and **8**
+  graph/derivation reads pass.
+- Ten workloads, warmup plus six paired samples: median changes **-1.64% to
+  +3.45%**, all ranges overlap; outputs and Solve counts match. Three-pair RSS
+  medians (KiB): length **11516 -> 11516**, Sorted **220644 -> 220412**,
+  ordinary-result **172272 -> 172080**, derived **539932 -> 540032**.
+  No general speedup or consistent process-memory reduction is claimed.
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `src/Makefile` | 1 | 1 | 0 |
+| `src/action.c` | 2 | 4 | -2 |
+| `src/derivation.c` | 26 | 11 | +15 |
+| `src/evidence.c` | 10 | 14 | -4 |
+| `src/evidence_identity.c` | 112 | 0 | +112 |
+| `src/evidence_structure.h` | 6 | 1 | +5 |
+| `tests/core.c` | 6 | 5 | +1 |
+| `tests/derivation_io.c` | 6 | 4 | +2 |
+| `tests/iadt.c` | 1 | 1 | 0 |
+| `tests/identity.c` | 9 | 7 | +2 |
+| `tests/synthesis.c` | 2 | 2 | 0 |
+| `tests/typed_structure.c` | 93 | 22 | +71 |
+
+Implementation **+156/-30, net +126**; tests **+117/-41, net +76**; build
+**+1/-1**. History storage decreases but source lines increase because typed-only
+checking is now supported. The broad code-reduction gate is not met. Mapped
+family/action histories, local declaration flattening and shared-budgeted
+structural checking remain P4 work; broader P4/P5 are not complete.
+Logs: `/tmp/a-program-identity-history-` with `{acceptance,debug,asan,cross}.log`,
+`acceptance.time`, `{bench,memory}.jsonl`. Logs are temporary; tests are committed.
+
+This plan: **+78/-0**; complete slice: **+352/-72, net +280**.

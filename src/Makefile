@@ -19,7 +19,7 @@ clean:
 SOURCES := $(ROOT)graph.c $(ROOT)dag.c $(ROOT)dimension.c $(ROOT)eval.c $(ROOT)typing.c $(ROOT)conversion.c $(ROOT)classifier.c $(ROOT)effect_inference.c $(ROOT)evidence.c $(ROOT)derivation.c $(ROOT)computation.c $(ROOT)action.c $(ROOT)identity.c $(ROOT)symmetry.c $(ROOT)iadt.c $(ROOT)prelude.c $(ROOT)descriptor_io.c $(ROOT)context_payload.c $(ROOT)declaration_io.c
 
 SOURCES += $(ROOT)function_graph.c $(ROOT)host.c $(ROOT)execution.c
-SOURCES += $(ROOT)evidence_function.c $(ROOT)evidence_cbpv.c
+SOURCES += $(ROOT)evidence_function.c $(ROOT)evidence_cbpv.c $(ROOT)evidence_identity.c
 SOURCES += $(ROOT)scope.c $(ROOT)evidence_scope.c
 WITNESS_SOURCE := $(ROOT)function_witness.c
 SYNTHESIS_SOURCES := $(ROOT)synthesis.c $(ROOT)synthesis_work.c $(ROOT)synthesis_effect.c $(ROOT)synthesis_handler.c $(ROOT)synthesis_operation.c $(ROOT)synthesis_cbpv.c $(ROOT)synthesis_function.c $(ROOT)synthesis_context.c $(ROOT)synthesis_iadt.c $(ROOT)synthesis_identity.c

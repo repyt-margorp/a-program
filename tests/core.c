@@ -3091,21 +3091,22 @@ static void family_instance_test(struct pg_graph *graph)
 	const struct pg_evidence *u2 = pg_prove_universe(&typing, empty, 2);
 	const struct pg_evidence *reflexivity = pg_prove_reflexivity(&typing, u2, pg_prove_type_value(&typing, u1));
 	reconstruct_derivation(&typing, reflexivity);
-	reconstruct_derivation(&typing, pg_evidence_premise(reflexivity, 0));
+	reconstruct_derivation(&typing, pg_evidence_for_subject(&typing, pg_evidence_subject(reflexivity)->type, NULL));
 	for (unsigned side = PG_IDENTITY_RIGHT; side <= PG_IDENTITY_LEFT; ++side) {
 		const struct pg_evidence *transport = pg_prove_identity_transport(&typing, reflexivity, value, side);
 		const struct pg_evidence *lift = pg_prove_identity_lift(&typing, reflexivity, value, side);
 		reconstruct_derivation(&typing, transport);
-		reconstruct_derivation(&typing, pg_evidence_premise(transport, 0));
+		reconstruct_derivation(&typing, pg_evidence_for_subject(&typing, pg_evidence_subject(transport)->type, NULL));
 		reconstruct_derivation(&typing, lift);
-		reconstruct_derivation(&typing, pg_evidence_premise(lift, 0));
+		reconstruct_derivation(&typing, pg_evidence_for_subject(&typing, pg_evidence_subject(lift)->type, NULL));
 		struct pg_derivation_parameters parameters;
 		assert(pg_derivation_parameters(transport, &parameters) == 0);
 		const struct pg_evidence *wrong_target = pg_prove_identity_endpoint_type(&typing,
 			reflexivity, side == PG_IDENTITY_RIGHT ? PG_IDENTITY_LEFT_TYPE : PG_IDENTITY_RIGHT_TYPE);
 		const struct pg_evidence *wrong[] = {wrong_target, reflexivity, value};
-		/* The endpoint types coincide here, but the directional premise does not. */
-		assert(!pg_prove_derivation(&typing, PG_IDENTITY_TRANSPORT, &parameters, 3, wrong));
+		/* Equal typed endpoints need no receipt-specific directional history. */
+		assert(pg_evidence_subject(wrong_target) == pg_evidence_subject(transport)->type);
+		assert(pg_prove_derivation(&typing, PG_IDENTITY_TRANSPORT, &parameters, 3, wrong) == transport);
 	}
 	for (size_t i = 0; i < 2; ++i) {
 		const struct pg_evidence *direct = pg_prove_reindex(&typing, composite, families[i]);

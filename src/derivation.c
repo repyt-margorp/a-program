@@ -12,7 +12,8 @@ static size_t typed_inputs(const struct pg_evidence *proof,
 		return 1;
 	}
 	size_t count = pg_function_proof_inputs(proof, inputs);
-	return count ? count : pg_cbpv_proof_inputs(proof, inputs);
+	if (!count) count = pg_cbpv_proof_inputs(proof, inputs);
+	return count ? count : pg_identity_proof_inputs(proof, inputs);
 }
 
 static size_t input_count(const struct pg_evidence *proof)
@@ -20,7 +21,7 @@ static size_t input_count(const struct pg_evidence *proof)
 	if (pg_evidence_binding_scope(proof)) return 2;
 	const struct pg_scope *scope = pg_evidence_scope(proof);
 	if (scope) return scope->indices ? 3 : 2;
-	const struct pg_occurrence *inputs[2];
+	const struct pg_occurrence *inputs[3];
 	size_t count = typed_inputs(proof, inputs);
 	return count ? count : pg_evidence_premise_count(proof);
 }
@@ -38,10 +39,11 @@ int pg_derivation_input_dependency(const struct pg_typing *typing,
 		input = index ? pg_evidence_for_subject(typing, pg_evidence_subject(proof)->operands[body], NULL)
 			: pg_evidence_for_scope(typing, binding);
 	} else if (!scope) {
-		const struct pg_occurrence *inputs[2];
-		input = typed_inputs(proof, inputs)
-			? pg_evidence_for_subject(typing, inputs[index], NULL)
-			: pg_evidence_premise(proof, index);
+		const struct pg_occurrence *inputs[3];
+		if (typed_inputs(proof, inputs)) {
+			input = pg_evidence_for_subject(typing, inputs[index], NULL);
+			input = pg_identity_export_input(typing, proof, index, input);
+		} else input = pg_evidence_premise(proof, index);
 	}
 	else if (!index) input = pg_context_parent_input(typing, proof);
 	else if (index == 1 && scope->indices) input = pg_context_indices_input(typing, proof);
@@ -129,7 +131,13 @@ int pg_derivation_parameters(const struct pg_evidence *evidence,
 static const struct pg_evidence *checked_premises(const struct pg_evidence *result,
 	enum pg_evidence_rule rule, size_t count, const struct pg_evidence *const *premises)
 {
-	if (!result || pg_evidence_rule(result) != rule || pg_evidence_premise_count(result) != count) return NULL;
+	if (!result || pg_evidence_rule(result) != rule || input_count(result) != count) return NULL;
+	const struct pg_occurrence *inputs[3];
+	if (typed_inputs(result, inputs)) {
+		for (size_t i = 0; i < count; ++i)
+			if (inputs[i] != pg_evidence_subject(premises[i])) return NULL;
+		return result;
+	}
 	size_t formation = count;
 	switch (rule) {
 	case PG_CONSTRUCTOR_INTRO: formation = 0; break;
@@ -245,13 +253,20 @@ const struct pg_evidence *pg_prove_derivation(struct pg_typing *typing,
 	RULE(PG_TOTAL_PURE_VALUE, 1, pg_prove_total_pure_value(typing, p[0]));
 	RULE(PG_THUNK_COMPUTATION, 1, pg_prove_thunk_computation(typing, p[0]));
 	case PG_REFLEXIVITY:
-		if (count != 2 || pg_evidence_rule(p[0]) != PG_IDENTITY_FORM) return NULL;
+		if (count != 2) return NULL;
 		if (!pg_identity_boundary_view(pg_evidence_subject(p[0]), &boundary)) return NULL;
+		if (boundary.left_substitution || boundary.family->judgement == PG_JUDGEMENT_VALUE) return NULL;
 		result = pg_prove_reflexivity(typing, pg_prove_structural_subject(typing, boundary.family), p[1]); break;
-	case PG_IDENTITY_LIFT:
-		if (count != 2 || pg_evidence_rule(p[1]) != PG_IDENTITY_TRANSPORT) return NULL;
+	case PG_IDENTITY_LIFT: {
+		if (count != 2) return NULL;
+		const struct pg_occurrence *transport = pg_evidence_subject(p[1]);
+		int lift;
+		if (!transport || transport->operand_count != 2 ||
+			!pg_identity_field_view(transport->core, NULL, NULL, NULL, &lift) || lift) return NULL;
 		result = pg_prove_identity_lift(typing,
-			pg_evidence_premise(p[1], 1), pg_evidence_premise(p[1], 2), parameters->direction); break;
+			pg_evidence_for_subject(typing, transport->operands[0], NULL),
+			pg_evidence_for_subject(typing, transport->operands[1], NULL), parameters->direction); break;
+	}
 	case PG_CONTEXT_SUBSTITUTION:
 		if (count < 2) return NULL;
 		result = count == 2 ? pg_prove_substitution_projection(typing, p[0], p[1])

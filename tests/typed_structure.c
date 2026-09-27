@@ -46,14 +46,14 @@ static const struct pg_evidence *family_function(struct pg_typing *typing, int n
 static void direct_inputs(struct pg_typing *typing, const struct pg_evidence *proof,
 	size_t count, const struct pg_occurrence *const *expected)
 {
-	assert(proof && !pg_evidence_premise_count(proof) && count <= 2);
+	assert(proof && !pg_evidence_premise_count(proof) && count <= 3);
 	struct pg_typing foreign;
 	assert(!pg_typing_init(&foreign, typing->graph));
 	size_t proofs = typing->proofs.count, terms = typing->graph->terms.count;
 	size_t occurrences = typing->occurrences.count, queries = typing->typed_queries.count;
 	struct pg_derivation_input input;
 	assert(!pg_derivation_input_header(proof, &input) && input.count == count);
-	const struct pg_evidence *children[2], *unused = NULL;
+	const struct pg_evidence *children[3], *unused = NULL;
 	for (size_t i = 0; i < count; ++i) {
 		assert(pg_derivation_input_dependency(typing, proof, i, children + i) == 1);
 		assert(pg_evidence_subject(children[i]) == expected[i]);
@@ -67,11 +67,13 @@ static void direct_inputs(struct pg_typing *typing, const struct pg_evidence *pr
 	assert(pg_prove_derivation(typing, input.rule, &parameters, count, children) == proof);
 	/* Rechecking an input does not change the retained construction. This is
 	 * receipt sharing, not equality reflection or erasure of object witnesses. */
-	const struct pg_evidence *context = pg_evidence_for_context(typing, pg_evidence_context(children[0]));
-	const struct pg_evidence *identity = pg_prove_substitution_projection(typing, context, context);
-	const struct pg_evidence *alternate = pg_prove_reindex(typing, identity, children[0]);
-	assert(alternate && alternate != children[0] && pg_evidence_subject(alternate) == expected[0]);
-	children[0] = alternate;
+	for (size_t i = 0; i < count; ++i) {
+		const struct pg_evidence *context = pg_evidence_for_context(typing, pg_evidence_context(children[i]));
+		const struct pg_evidence *identity = pg_prove_substitution_projection(typing, context, context);
+		const struct pg_evidence *alternate = pg_prove_reindex(typing, identity, children[i]);
+		assert(alternate && alternate != children[i] && pg_evidence_subject(alternate) == expected[i]);
+		children[i] = alternate;
+	}
 	proofs = typing->proofs.count; occurrences = typing->occurrences.count;
 	for (size_t repeat = 0; repeat < 8; ++repeat)
 		assert(pg_prove_derivation(typing, input.rule, &parameters, count, children) == proof);
@@ -233,6 +235,32 @@ static void write_inputs(FILE *file, struct pg_typing *typing)
 		assert(pg_prove_thunk_content(typing, quoted_type) == outer_pi);
 	}
 	assert(typing->proofs.count == proof_count && typing->occurrences.count == occurrence_count);
+	const struct pg_evidence *family_identity = pg_prove_reflexivity(typing, u2, pg_prove_type_value(typing, u1));
+	const struct pg_evidence *value_identity = pg_prove_reflexivity(typing, u1, type_value);
+	const struct pg_evidence *identity_inputs[] = {
+		pg_prove_identity_endpoint_type(typing, family_identity, PG_IDENTITY_LEFT_TYPE),
+		pg_prove_identity_endpoint_type(typing, family_identity, PG_IDENTITY_RIGHT_TYPE),
+		pg_prove_identity_instance(typing, family_identity, type_value, type_value),
+		family_identity, value_identity,
+		pg_prove_reflexivity(typing, outer_pi, function),
+		pg_prove_reflexivity(typing, pg_evidence_for_subject(typing, pg_evidence_subject(value_identity)->type, NULL), value_identity),
+		pg_prove_identity_transport(typing, family_identity, type_value, PG_IDENTITY_RIGHT),
+		pg_prove_identity_transport(typing, family_identity, type_value, PG_IDENTITY_LEFT),
+		pg_prove_identity_lift(typing, family_identity, type_value, PG_IDENTITY_RIGHT),
+		pg_prove_identity_lift(typing, family_identity, type_value, PG_IDENTITY_LEFT)};
+	for (size_t i = 0; i < sizeof(identity_inputs) / sizeof(*identity_inputs); ++i) {
+		const struct pg_evidence *proof = identity_inputs[i];
+		assert(proof);
+		struct pg_derivation_input input;
+		assert(!pg_derivation_input_header(proof, &input) && input.count <= 3);
+		const struct pg_occurrence *expected[3];
+		for (size_t j = 0; j < input.count; ++j) {
+			const struct pg_evidence *child;
+			assert(pg_derivation_input_dependency(typing, proof, j, &child) == 1);
+			expected[j] = pg_evidence_subject(child);
+		}
+		direct_inputs(typing, proof, input.count, expected);
+	}
 	const struct pg_occurrence *roots[] = {pg_evidence_subject(function), pg_evidence_subject(application),
 		pg_evidence_subject(forced), pg_evidence_subject(mapped), pg_evidence_subject(identity),
 		pg_evidence_subject(shared[0]), pg_evidence_subject(shared[1]),
@@ -243,8 +271,14 @@ static void write_inputs(FILE *file, struct pg_typing *typing)
 		pg_evidence_subject(partial)->type, pg_evidence_subject(constant), pg_evidence_subject(content),
 		pg_evidence_subject(unquoted), pg_evidence_subject(wide_pi), pg_evidence_subject(wide_family),
 		pg_evidence_subject(wide_map), pg_evidence_subject(family_pi), pg_evidence_subject(family_logical),
-		pg_evidence_subject(wide_identity), pg_evidence_subject(total)};
-	assert(!pg_occurrences_write(file, 29, roots, name, NULL));
+		pg_evidence_subject(wide_identity), pg_evidence_subject(total),
+		pg_evidence_subject(identity_inputs[0]), pg_evidence_subject(identity_inputs[1]),
+		pg_evidence_subject(identity_inputs[2]), pg_evidence_subject(identity_inputs[3]),
+		pg_evidence_subject(identity_inputs[4]), pg_evidence_subject(identity_inputs[5]),
+		pg_evidence_subject(identity_inputs[6]), pg_evidence_subject(identity_inputs[7]),
+		pg_evidence_subject(identity_inputs[8]), pg_evidence_subject(identity_inputs[9]),
+		pg_evidence_subject(identity_inputs[10])};
+	assert(!pg_occurrences_write(file, 40, roots, name, NULL));
 }
 
 static void unary_input(struct pg_typing *typing, const struct pg_evidence *parent)
@@ -430,10 +464,8 @@ static void read_inputs(FILE *file, size_t root)
 	const struct pg_occurrence *const *roots;
 	rewind(file);
 	assert(!pg_occurrences_read(file, &typing, 10000, 256, resolve, &graph, &count, &roots));
-	assert(count == 29 && !typing.proofs.count);
-	const struct pg_evidence *checked = root == 4 || root == 27
-		? pg_identity_boundary_type(&typing, roots[root])
-		: pg_prove_structural_subject(&typing, roots[root]);
+	assert(count == 40 && !typing.proofs.count);
+	const struct pg_evidence *checked = pg_prove_structural_subject(&typing, roots[root]);
 	if (!checked || pg_evidence_subject(checked) != roots[root])
 		fprintf(stderr, "typed-only root %zu failed structural checking\n", root);
 	assert(checked && pg_evidence_subject(checked) == roots[root]);
@@ -567,21 +599,38 @@ static void write_scoped(FILE *file, struct pg_typing *typing)
 	const struct pg_evidence *deep = empty;
 	for (size_t i = 0; i < 1024; ++i)
 		deep = pg_prove_context_extension(typing, deep, pg_binder(graph), pg_prove_universe(typing, deep, 0));
-	const struct pg_evidence *contexts[] = {scope, types, family, nested, low, high, extended, empty, deep};
+	const struct pg_object *other_type = pg_binder(graph), *relation = pg_binder(graph);
+	const struct pg_evidence *boundary = pg_prove_context_extension(typing, types, other_type,
+		pg_prove_universe(typing, types, 1));
+	const struct pg_evidence *identity_type = pg_prove_identity_type(typing,
+		pg_prove_universe(typing, boundary, 1), pg_prove_variable(typing, boundary, a),
+		pg_prove_variable(typing, boundary, other_type));
+	boundary = pg_prove_context_extension(typing, boundary, relation, identity_type);
+	boundary = pg_prove_context_extension(typing, boundary, x, pg_prove_variable(typing, boundary, a));
+	const struct pg_evidence *r = pg_prove_variable(typing, boundary, relation);
+	const struct pg_evidence *v = pg_prove_variable(typing, boundary, x);
+	const struct pg_evidence *transport = pg_prove_identity_transport(typing, r, v, PG_IDENTITY_RIGHT);
+	const struct pg_evidence *contexts[] = {scope, types, family, nested, low, high, extended, empty, deep,
+		boundary, boundary, boundary, boundary, boundary, boundary};
 	const struct pg_evidence *proofs[] = {value, lambda,
 		pg_prove_variable(typing, family, pg_evidence_context(family)->binder),
 		pg_prove_variable(typing, nested, pg_evidence_context(nested)->binder), low_value, high_value,
 		pg_prove_projection(typing, extended, body), u0,
-		pg_prove_variable(typing, deep, pg_evidence_context(deep)->binder)};
-	const struct pg_scope *scopes[9];
-	const struct pg_occurrence *roots[9];
-	for (size_t i = 0; i < 9; ++i) {
+		pg_prove_variable(typing, deep, pg_evidence_context(deep)->binder),
+		pg_prove_identity_endpoint_type(typing, r, PG_IDENTITY_LEFT_TYPE),
+		pg_prove_identity_endpoint_type(typing, r, PG_IDENTITY_RIGHT_TYPE), transport,
+		pg_prove_identity_lift(typing, r, v, PG_IDENTITY_RIGHT),
+		pg_prove_identity_transport(typing, r, transport, PG_IDENTITY_LEFT),
+		pg_prove_identity_lift(typing, r, transport, PG_IDENTITY_LEFT)};
+	const struct pg_scope *scopes[15];
+	const struct pg_occurrence *roots[15];
+	for (size_t i = 0; i < 15; ++i) {
 		assert(contexts[i] && proofs[i]);
 		context_inputs(typing, contexts[i]);
 		scopes[i] = pg_evidence_scope(contexts[i]);
 		roots[i] = pg_evidence_subject(proofs[i]);
 	}
-	assert(!pg_scoped_occurrences_write(file, 9, scopes, roots, name, NULL));
+	assert(!pg_scoped_occurrences_write(file, 15, scopes, roots, name, NULL));
 }
 
 static void read_scoped(FILE *file, size_t root)
@@ -600,7 +649,7 @@ static void read_scoped(FILE *file, size_t root)
 	assert(count == SIZE_MAX && !roots);
 	rewind(file);
 	assert(!pg_scoped_occurrences_read(file, &typing, 50000, 256, resolve, &graph, &count, &scopes, &roots));
-	assert(count == 9 && !typing.proofs.count);
+	assert(count == 15 && !typing.proofs.count);
 	if (root != 7) {
 		assert(!pg_prove_structural_subject(&typing, roots[root]));
 		assert(!pg_evidence_for_subject(&typing, roots[root], NULL));
@@ -614,6 +663,28 @@ static void read_scoped(FILE *file, size_t root)
 	assert(pg_prove_scoped_subject(&typing, scopes[root], roots[root]) == checked);
 	assert(typing.proofs.count == proofs && graph.terms.count == terms && typing.scopes.count == inputs);
 	assert(!pg_prove_scoped_subject(&typing, scopes[root ? 0 : 1], roots[root]));
+	if (root >= 11) {
+		const struct pg_occurrence *subject = roots[root];
+		const struct pg_term *family, *value;
+		enum pg_identity_direction direction;
+		int lift;
+		assert(pg_identity_field_view(subject->core, &family, &value, &direction, &lift));
+		direction = direction == PG_IDENTITY_RIGHT ? PG_IDENTITY_LEFT : PG_IDENTITY_RIGHT;
+		struct pg_occurrence header = *subject;
+		header.core = lift ? pg_identity_lift(&graph, family, value, direction)
+			: pg_identity_transport(&graph, family, value, direction);
+		const struct pg_occurrence *wrong = pg_occurrence_intern(&typing, &header, subject->operands, NULL);
+		assert(wrong && !pg_prove_structural_subject(&typing, wrong));
+		assert(!pg_evidence_for_subject(&typing, wrong, NULL));
+		reject_changes(&typing, subject);
+		struct pg_derivation_input input;
+		assert(!pg_derivation_input_header(checked, &input));
+		const struct pg_evidence *children[3];
+		for (size_t i = 0; i < input.count; ++i)
+			assert(pg_derivation_input_dependency(&typing, checked, i, children + i) == 1);
+		input.parameters.direction = direction;
+		assert(!pg_prove_derivation(&typing, input.rule, &input.parameters, input.count, children));
+	}
 	if (root == 4 || root == 5) {
 		assert(scopes[4] != scopes[5] && scopes[4]->context == scopes[5]->context);
 		assert(roots[4] == roots[5]);
@@ -669,10 +740,10 @@ int main(int argc, char **argv)
 		FILE *file = fopen(argv[2], "rb");
 		assert(file);
 		if (!strcmp(argv[1], "read")) {
-			for (size_t root = 0; root < 29; ++root) read_inputs(file, root);
+			for (size_t root = 0; root < 40; ++root) read_inputs(file, root);
 			puts("typed-only images: dependent Lambda/APP, logical families, selected formations, F/U, context action and Identity boundary checked without old evidence");
 		} else {
-			for (size_t root = 0; root < 9; ++root) read_scoped(file, root);
+			for (size_t root = 0; root < 15; ++root) read_scoped(file, root);
 			puts("scoped images: open variables/functions/families, selected bounds, projection and 1024 declarations checked without old evidence");
 		}
 		assert(!fclose(file));
