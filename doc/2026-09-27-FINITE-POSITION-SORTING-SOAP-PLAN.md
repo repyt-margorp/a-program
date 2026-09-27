@@ -14,7 +14,7 @@ not evidence that its proposed interfaces already work. Broad P4/P5 remain open.
 | --- | --- | --- |
 | F0 | Import and critically assess #41 / PR #42 | Complete |
 | F1 | Checked finite positions and bijections | Complete |
-| F2 | Lawful List and indexed-container views | Vec lookup/tabulation and pointwise reconstruction checked; List bridge pending |
+| F2 | Lawful List and indexed-container views | List/Vec view laws checked; finite-position permutation bridge pending |
 | F3 | One ordinary-result sorting specification | Pending |
 | F4 | Quick/Merge/Insertion/Bubble and additional backends | Pending |
 | F5 | Permanent rejection, image and regression gates | Pending |
@@ -143,7 +143,7 @@ A debugger confirms both family/application premises are accepted before the
 family rule rejects them. Do not weaken that kernel check into unchecked equality.
 
 The repaired application now supports the open-input theorem in
-`tests/acceptance/finite-vector-lookup.p`: every valid position of an arbitrary
+`tests/fixtures/finite_vectors.p` (initially in the acceptance file): every valid position of an arbitrary
 Vec is related to the result of ordinary `vec_lookup`. Additional open-input
 proofs establish tabulation's entries, uniqueness through arbitrary supplied
 value predicates, and both directions of pointwise reconstruction. Independent
@@ -304,7 +304,7 @@ and stability are not universal requirements.
 - [x] F2: Vec contents, indexed lookup/tabulation, general ordinary-lookup
   coverage, predicate-based uniqueness and bidirectional pointwise reconstruction;
   independently checked shape/index preservation, rejected bound/position and images.
-- [ ] F2: connect these Vec laws to a lawful List view and its same-length
+- [x] F2: connect these Vec laws to a lawful List view and its same-length
   reconstruction. Pointwise Vec laws alone do not establish the List bridge.
 - [ ] F2: connect existing inductive List permutation to finite-position
   bijections and prove the action equation on actual values, including duplicates.
@@ -319,6 +319,59 @@ and stability are not universal requirements.
   tree sort), recording the actual relation assumptions per algorithm.
 - [ ] F4: verify open-input ordinary-result theorems, then closed examples for
   empty/singleton/reversed/already-sorted/duplicate-labelled data.
+
+### List/Vec View Checkpoint, 2026-09-27
+
+Agent implementation decision, baseline `ff85452`: move the existing Vec proofs
+unchanged into `tests/fixtures/finite_vectors.p`, importing the sorting provider's
+actual `List`. The acceptance file now only exercises exported definitions.
+`finite_list_views.p` adds ordinary source IADTs and proof functions:
+
+- `list_vector_view` relates the exact spine and elements of a Vec and List.
+  Both `list_vector` and `vec_contents` have general coverage proofs.
+- `list_size` witnesses exactly `n` elements in a replacement List.
+  `vector_refill` constructs `Vec A n` from that evidence; its contents preserve
+  every explicitly supplied List predicate in both directions, for any accepted
+  size witness. The compiler does not invent the witness from a post-check.
+- List reconstruction preserves List predicates. Rebuilding a Vec from its own
+  contents and its canonical size proof preserves each position's value in both
+  directions, through the earlier `vec_at` proof functions.
+
+These are checked source view laws, not object Higher Identity, proof irrelevance,
+or an automatic interface for arbitrary containers. No C/header, Core, rule,
+syntax or image-format changes. The generic finite-position permutation bridge
+and common sorting wrappers are still pending. A direct nested-Match
+`permutation_size` trial rejected; its dependent motive/transport remains to be
+established. That failed trial is not published or classified as a compiler bug,
+and does not justify using `::` to repair its motive.
+
+Fresh verification on the clean candidate: the new focused suite passes in O2,
+Debug and ASan/UBSan with leak checking and halt-on-error. Source/imports, all
+post-checks removed, ordinary/retained images, budgets 0/100, and invalid-image
+resume are covered. Source checks in 508,407 steps; assertion-free in 363,623;
+ordinary/retained loads in 508,592/534,974. Wrong length, omission, duplication,
+reordering and wrong shape are rejected. Closed examples cover empty, singleton,
+two different values and duplicates; they supplement the open-input proofs.
+The affected general Sorted, ordinary QuickSort-result and Local/Strong targets
+also pass. The complete gate was run for `ff85452`; it is not claimed rerun for
+this source-only checkpoint. Logs: `/tmp/a-program-list-view-` with
+`{focused,debug,asan,sorting}.log`; the relocated family/Vec suite has corresponding
+`family` logs. Step counts measure checking, not sorting runtime complexity.
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `src/Makefile` | 5 | 0 | +5 |
+| `tests/acceptance/finite-list-views.p` | 40 | 0 | +40 |
+| `tests/acceptance/finite-vector-lookup.p` | 3 | 115 | -112 |
+| `tests/family_domain_conversion.sh` | 5 | 3 | +2 |
+| `tests/finite_list_views.sh` | 63 | 0 | +63 |
+| `tests/fixtures/finite_list_views.p` | 144 | 0 | +144 |
+| `tests/fixtures/finite_vectors.p` | 117 | 0 | +117 |
+
+Implementation C/headers: **0**. Source proof library/tests: **+372/-118,
+net +254**; build **+5/-0**. This is library/proof coverage, not compiler growth.
+This plan: **+56/-3, net +53**. Complete checkpoint: **+433/-121,
+net +312**, counting the Vec proof relocation rather than duplicating it.
 
 ## F5. Verification and Publication
 

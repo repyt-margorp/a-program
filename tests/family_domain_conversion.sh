@@ -10,7 +10,7 @@ source="$root/acceptance/family-domain-conversion.p"
 check() {
 	local expected=$1 label=$2 status=0
 	shift 2
-	"$binary" --steps 1000000 "$@" > "$directory/status" || status=$?
+	"$binary" --legacy-intrinsic-dot --steps 1000000 "$@" > "$directory/status" || status=$?
 	printf '%s: ' "$label"
 	cat "$directory/status"
 	[[ $status == "$expected" ]]
@@ -65,14 +65,16 @@ for mode in ordinary retained; do
 	check 1 "$mode-invalid-resume" --load "$directory/wrong.a"
 done
 # The repaired conversion is also needed by a general indexed lookup proof.
-sed '/^import /d' "$root/../examples/02_nat.p" "$root/fixtures/finite_positions.p" > "$directory/fin.p"
+sed '/^import /d' "$root/fixtures/sorted-proof-provider.p" "$root/fixtures/finite_positions.p" \
+	"$root/fixtures/finite_vectors.p" > "$directory/fin.p"
 vector="$root/acceptance/finite-vector-lookup.p"
 check 0 vector-source --imports "$directory/fin.p" --save "$directory/vector.a" "$vector"
 for pair in main:one lookup_first:one lookup_second:zero; do
 	"$compare" --equal-image "$directory/vector.a" "${pair%:*}" "${pair#*:}"
 done
 sed '/ :: /{ :next; /;$/d; N; b next; }' "$vector" > "$directory/vector-independent.p"
-check 0 vector-independent --imports "$directory/fin.p" "$directory/vector-independent.p"
+sed '/ :: /{ :next; /;$/d; N; b next; }' "$directory/fin.p" > "$directory/independent-provider.p"
+check 0 vector-independent --imports "$directory/independent-provider.p" "$directory/vector-independent.p"
 for mode in ordinary retained; do
 	options=()
 	if [[ $mode == retained ]]; then options+=(--retain-reductions); fi

@@ -1,0 +1,40 @@
+import Nat;
+import List;
+import Vec;
+import Fin;
+import vec_contents;
+import vec_lookup;
+import list_length;
+import list_vector;
+import list_vector_view;
+import list_vector_covers;
+import list_roundtrip;
+import list_size;
+import list_sized;
+import vector_refill;
+import vector_rebuild;
+
+zero := Nat.zero;
+one := Nat.succ zero;
+two := Nat.succ one;
+empty := (List Nat).nil;
+singleton := (List Nat).cons one empty;
+sample := (List Nat).cons one ((List Nat).cons zero empty);
+duplicates := (List Nat).cons one singleton;
+vector := list_vector Nat sample;
+contents := vec_contents Nat two vector;
+main := vec_contents Nat two (vector_refill Nat two sample (list_sized Nat sample));
+rebuilt := vector_rebuild Nat two vector;
+rebuilt_contents := vec_contents Nat two rebuilt;
+first := vec_lookup Nat two rebuilt (Fin.zero one);
+second := vec_lookup Nat two rebuilt (Fin.succ (Fin.zero zero));
+empty_roundtrip := vec_contents Nat zero (list_vector Nat empty);
+singleton_roundtrip := vec_contents Nat one (vector_rebuild Nat one (list_vector Nat singleton));
+duplicates_roundtrip := vec_contents Nat two (vector_rebuild Nat two (list_vector Nat duplicates));
+shape := list_length Nat rebuilt_contents;
+view := list_vector_covers Nat sample;
+view :: list_vector_view Nat two vector sample;
+// The general law transfers a property to the actual reconstructed list.
+same_contents := list_roundtrip Nat sample
+	&(\xs:List Nat => list_vector_view Nat two vector xs) view;
+same_contents :: list_vector_view Nat two vector contents;
