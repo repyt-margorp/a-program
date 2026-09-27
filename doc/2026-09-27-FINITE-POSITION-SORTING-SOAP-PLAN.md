@@ -14,7 +14,7 @@ not evidence that its proposed interfaces already work. Broad P4/P5 remain open.
 | --- | --- | --- |
 | F0 | Import and critically assess #41 / PR #42 | Complete |
 | F1 | Checked finite positions and bijections | Complete |
-| F2 | Lawful List and indexed-container views | In progress; application-conversion gap reproduced |
+| F2 | Lawful List and indexed-container views | Vec lookup/tabulation and pointwise reconstruction checked; List bridge pending |
 | F3 | One ordinary-result sorting specification | Pending |
 | F4 | Quick/Merge/Insertion/Bubble and additional backends | Pending |
 | F5 | Permanent rejection, image and regression gates | Pending |
@@ -126,8 +126,9 @@ special cases or extra authorities to make examples pass.
 
 ### Objective (Code)
 
-The standalone diagnostic is
-`src/prototype/family_domain_conversion.p`, excluded from the accepted build.
+The initial standalone diagnostic was
+`src/prototype/family_domain_conversion.p`. Its expanded permanent successor is
+`tests/acceptance/family-domain-conversion.p` (verified publication candidate).
 At `ebe0648`, an ordinary application accepts the synthesized result of
 `shift (Nat.succ k) b`, whose classifier is `Box (pred (Nat.succ k))`, at domain
 `Box k`. The control without the final definition passes in 1,928 steps.
@@ -141,10 +142,12 @@ conversion through `pg_synthesis_expect`. The family path omits that step.
 A debugger confirms both family/application premises are accepted before the
 family rule rejects them. Do not weaken that kernel check into unchecked equality.
 
-Separate temporary Vec trials check lookup, tabulation, tail, and a general
-head-entry theorem about the ordinary lookup result. Full lookup coverage is
-not checked. A wrapper experiment also reaches an implicit-constructor-index
-rejection; it is not established that one conversion fix completes F2.
+The repaired application now supports the open-input theorem in
+`tests/acceptance/finite-vector-lookup.p`: every valid position of an arbitrary
+Vec is related to the result of ordinary `vec_lookup`. Additional open-input
+proofs establish tabulation's entries, uniqueness through arbitrary supplied
+value predicates, and both directions of pointwise reconstruction. Independent
+synthesis and image checks are permanent tests, not just closed examples.
 
 ### Assessment
 
@@ -164,16 +167,112 @@ normalize every entire family telescope as a workaround.
 ### Plan
 
 - [x] Preserve a minimal source diagnostic; distinguish it from an accepted test.
-- [ ] Expose the next domain from the existing typed family declaration and
+- [x] Expose the next domain from the existing typed family declaration and
   scope action; retain the distinction between value and family parameters.
-- [ ] Reuse checked conversion after independent argument synthesis, before
+- [x] Reuse checked conversion after independent argument synthesis, before
   ordinary `PG_TYPE_FAMILY_APP` admission. Keep `::` outside this path.
-- [ ] Verify both directions of reducible classifiers, partial/dependent family
+- [x] Verify both directions of reducible classifiers, partial/dependent family
   applications, family-valued parameters, and wrong bound/nominal/effect rejection.
-- [ ] Recheck the Vec coverage proof; diagnose any remaining index-recovery or
+- [x] Recheck the Vec coverage proof; diagnose any remaining index-recovery or
   motive failures separately instead of claiming this fix solves them all.
-- [ ] Move the repaired diagnostic into permanent source/image/budget tests;
-  run full gates and paired performance checks before publishing compiler changes.
+- [x] Move the repaired diagnostic into permanent source/image/budget tests;
+  include the general Vec lookup theorem and wrong position/bound controls.
+- [x] Run the complete acceptance gate before publishing this compiler epoch.
+
+Verified patch, 2026-09-27, baseline `bc82fc9`: the family parameter query borrows
+checked abstraction/variable/schema scopes, substitutes already supplied
+arguments and uses the existing checked scope lift. It constructs no alternative
+Pi former or acceptance rule. The caller independently synthesizes its argument
+before ordinary conversion. Family-valued arguments keep their existing logical
+signature contract; this patch does not add general family-signature conversion.
+The expanded source, ordinary images and budgeted resume pass focused checks.
+
+Those checks also found an older retained-image defect: the standalone
+`family-index-domain.p` saves successfully on the baseline (1,179 steps) but
+reload rejects (1,394). Reconstructed index declarations are alpha-equal to the
+saved ones, not pointer-identical. The working repair applies existing checked
+Context alpha correspondence to Self/indices and to both endpoints of constructor
+result maps. It neither mutates saved declarations nor accepts their unchecked
+types. The old retained image also loads with the repaired checker (1,482 steps).
+Focused checks, core and IADT tests pass in strict O2, Debug and ASan/UBSan
+builds, with leak checking and halt-on-error. The final complete
+`make -s -f src/Makefile BUILD=/tmp/a-program-family-conversion-build check-acceptance`
+passes: **1,434.749 s** wall, **1,325.008 s** user, **109.238 s** system.
+It includes 63/63 source compatibility, ordinary-result sorting, Local/Strong,
+derived-LT variants, Fin/Vec laws, images and optional witness packets. These
+results apply to the clean publication candidate, not inherited root-worktree
+experiments. Log: `/tmp/a-program-family-conversion-acceptance-final.log`.
+
+A further pre-publication check found that looking up a family variable's
+construction by occurrence discarded its selected Universe bound. The request
+now consumes the supplied formation and transports its selected scope through
+projection/reindex; unit tests distinguish both bounds, directly and after both
+maps. This uses the existing scope/substitution authority, not a second classifier
+store. The first full-gate run was deliberately stopped for this correction and
+is not counted as a pass; the final code passes the fresh complete run above.
+
+Correction to the earlier Vec diagnosis: the final patch rejects the original
+trial earlier than the previously observed constructor failure. The trial's
+`tail_property` mixed a value-type result with a raw computation-Pi type. Making
+both branches return value types, and explicitly annotating their dependent
+Match motive, checks the theorem without another compiler change. The unannotated
+helper remains unsupported; `::` must not invent its motive. A standalone
+constructor-lifting control passes. The permanent theorem bundle checks in
+236,706 steps with the full Fin provider; removing all its post-checks still
+passes (180,264).
+Ordinary/retained images and 100-step resume pass, and the wrong bound and wrong
+position reject. No general constructor-index recovery defect is established by
+this trial, and no temporary `at_type` workaround remains.
+
+The vector laws transport an explicitly supplied `P : A -> @` between values
+at the same position and between original/reconstructed lookup results. This
+does not add object Identity syntax, equality reflection, proof irrelevance or
+an automatic expected-type proof. It specifies the view's pointwise observation;
+a whole-container Higher Identity witness and the List/permutation bridge are
+not claimed. `vec_tabulate : (n:Nat) -> (Fin n -> A) -> Vec A n` preserves the
+index by its independently checked result type.
+
+Paired O2 measurements, six alternating samples after warmup, same inputs and
+flags: length 8.981 -> 8.634 ms, family parameters 7.108 -> 7.221 ms, Fin
+35.507 -> 36.177 ms, general Sorted 1.107 -> 1.100 s, ordinary-result theorem
+0.706 -> 0.698 s (medians; overlapping sample ranges). The general Sorted work
+count is 1,247,803 -> 1,247,827. The initial unconditional-domain-query trial
+increased that case's median by about 12%; it was not adopted. Already alpha-equal
+classifiers need no conversion formation; ordinary admission still verifies the
+operands. Logical-family arguments retain their own existing signature check.
+These are checker measurements, not sorting runtime improvements.
+Evidence: `/tmp/a-program-family-conversion-bench-final.jsonl` and the
+`family-conversion-{focused-vector,debug-focused,asan-focused}` logs. This repair
+adds missing application behavior; it is not a P4/P5 code-reduction milestone.
+
+### F2.1 Change Accounting
+
+Against `bc82fc9`, excluding inherited root-worktree experiments. This is a
+correctness/library checkpoint, not a net compiler-size reduction. Accepted
+implementation C/headers add 249 and remove 3 lines (net +246); tests add 328.
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `src/evidence_function.c` | 197 | 0 | +197 |
+| `src/evidence.h` | 5 | 0 | +5 |
+| `src/synthesis.c` | 9 | 0 | +9 |
+| `src/synthesis_function.c` | 23 | 0 | +23 |
+| `src/synthesis_schema.c` | 13 | 3 | +10 |
+| `src/synthesis_source.h` | 2 | 0 | +2 |
+| `tests/core.c` | 31 | 0 | +31 |
+| `tests/iadt.c` | 41 | 0 | +41 |
+| `tests/acceptance/family-domain-conversion.p` | 28 | 0 | +28 |
+| `tests/acceptance/family-index-domain.p` | 7 | 0 | +7 |
+| `tests/acceptance/finite-vector-lookup.p` | 127 | 0 | +127 |
+| `tests/family_domain_conversion.sh` | 94 | 0 | +94 |
+| `src/Makefile` | 5 | 0 | +5 |
+| Superseded prototype diagnostic | 0 | 10 | -10 |
+
+All non-document changes total **+582/-13, net +569**. The family query reuses
+checked declarations and scope actions; no new term former, proof rule,
+serialized job kind or alternative acceptance engine is introduced.
+This plan adds 117 and removes 15 lines (net +102); the complete checkpoint
+therefore totals **+699/-28, net +671**.
 
 ## F2-F4. Views and Common Sorting Proofs
 
@@ -202,8 +301,11 @@ and stability are not universal requirements.
 
 ### Plan
 
-- [ ] F2: implement finite enumeration/lookup and prove coverage, uniqueness,
-  observation/reconstruction and shape/index preservation for List and Vec.
+- [x] F2: Vec contents, indexed lookup/tabulation, general ordinary-lookup
+  coverage, predicate-based uniqueness and bidirectional pointwise reconstruction;
+  independently checked shape/index preservation, rejected bound/position and images.
+- [ ] F2: connect these Vec laws to a lawful List view and its same-length
+  reconstruction. Pointwise Vec laws alone do not establish the List bridge.
 - [ ] F2: connect existing inductive List permutation to finite-position
   bijections and prove the action equation on actual values, including duplicates.
 - [ ] F3: package an ordinary function with its general Local and permutation

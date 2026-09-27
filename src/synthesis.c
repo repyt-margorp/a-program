@@ -2697,6 +2697,9 @@ static void declaration_step(struct pg_synthesis *synthesis, struct pg_synthesis
 			? pg_prove_family_context_extension(synthesis->typing, pg_synthesis_scope_context(local->scope), local->binder,
 				local->right->result, pg_prove_projection(synthesis->typing, local->right->result, local->domain))
 			: pg_prove_context_extension(synthesis->typing, pg_synthesis_scope_context(local->scope), local->binder, local->domain);
+		if (allocation) self = pg_prove_context_alpha(synthesis->typing, self,
+			pg_data_declaration_parameters(allocation));
+		if (!self) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
 		local->inner = pg_synthesis_bind(synthesis, local->scope, (struct pg_token){.kind = '*'}, local->binder, self);
 		local->left = pg_synthesis_data_schema_at(synthesis, local->inner, local->syntax, allocation);
 		depend(synthesis, job, local->left);
@@ -5272,6 +5275,12 @@ static int prepare_application(struct pg_synthesis *synthesis, struct pg_synthes
 		if (!argument) goto error;
 		if (argument->result && pg_evidence_judgement(argument->result) == PG_JUDGEMENT_VALUE_TYPE)
 			argument = pg_synthesis_plain_rule(synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &argument);
+		if (pg_synthesis_await(synthesis, job, argument)) return 1;
+		/* Alpha-equal classifiers need no conversion formation. The ordinary
+		 * family rule still checks both accepted operands and their scope. */
+		if (pg_alpha_equal(domain, pg_evidence_classifier(argument->result)) != 1 && !logical_family_signature(domain))
+			argument = pg_synthesis_expect(synthesis, argument,
+				pg_synthesis_family_domain(synthesis, state->callee));
 		struct pg_synthesis_job *premises[] = {state->callee, argument};
 		state->tail = pg_synthesis_plain_rule(synthesis, PG_TYPE_FAMILY_APP, NULL, 2, premises);
 		if (!state->tail) goto error;

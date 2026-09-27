@@ -54,6 +54,11 @@ const struct pg_evidence *pg_prove_family_application(struct pg_typing *typing,
  * its dependent signature. No computation-to-type extraction is performed. */
 const struct pg_evidence *pg_prove_family_abstraction(struct pg_typing *typing,
 	const struct pg_evidence *context, const struct pg_evidence *body);
+/* Select the checked declaration of a family's zero-based parameter. Its
+ * parent contains earlier parameters, with actual applications substituted.
+ * This is a scope query, not a value-type interpretation of a logical Pi. */
+struct pg_typed_query *pg_family_parameter_request(struct pg_typing *typing,
+	const struct pg_evidence *family, size_t ordinal);
 /* Nonrecursive elimination into value-type universes. Each branch is a
  * checked type family over exactly its constructor fields (a value type for
  * nullary constructors). Uses ordinary Match Core/iota, not Comp-to-value

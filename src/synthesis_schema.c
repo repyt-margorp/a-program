@@ -100,8 +100,14 @@ static void constructor_step(struct pg_synthesis *synthesis, struct pg_synthesis
  * Keep the saved declaration immutable, and transport the independently
  * synthesized result through a checked variable substitution instead. */
 static const struct pg_evidence *schema_result_context(struct pg_typing *typing,
-	const struct pg_evidence *result, const struct pg_context *target)
+	const struct pg_evidence *result, const struct pg_evidence *indices,
+	const struct pg_context *target)
 {
+	const struct pg_evidence *declared = pg_evidence_premise(result, 0);
+	if (pg_evidence_context(declared) != pg_evidence_context(indices))
+		result = pg_prove_substitution_compose(typing,
+			pg_prove_telescope_correspondence(typing, indices, declared), result);
+	if (!result) return NULL;
 	const struct pg_evidence *source = pg_evidence_premise(result, 1);
 	if (pg_evidence_context(source) == target) return result;
 	return pg_prove_substitution_compose(typing, result,
@@ -241,7 +247,11 @@ static void data_schema_step(struct pg_synthesis *synthesis, struct pg_synthesis
 	}
 	if (local->checked == constructors->item_count) {
 		if (pg_synthesis_await(synthesis, job, local->left)) return;
-		const struct pg_data_signature *signature = pg_data_signature(synthesis->typing, pg_synthesis_scope_context(scope), local->left->result);
+		const struct pg_evidence *indices = local->left->result;
+		if (local->nominal_input) indices = pg_prove_context_alpha(synthesis->typing, indices,
+			pg_data_declaration_indices(local->nominal_input));
+		if (!indices) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
+		const struct pg_data_signature *signature = pg_data_signature(synthesis->typing, pg_synthesis_scope_context(scope), indices);
 		if (!signature) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		struct pg_graph temporary = {0};
 		const struct pg_evidence **results = NULL;
@@ -250,7 +260,7 @@ static void data_schema_step(struct pg_synthesis *synthesis, struct pg_synthesis
 		if (local->checked && !results) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 		for (size_t i = 0; i < local->checked; ++i) {
 			results[i] = local->members[i].producer->result;
-			if (local->nominal_input) results[i] = schema_result_context(synthesis->typing, results[i],
+			if (local->nominal_input) results[i] = schema_result_context(synthesis->typing, results[i], indices,
 				pg_data_declaration_fields(local->nominal_input, i));
 		}
 		local->schema = local->nominal_input

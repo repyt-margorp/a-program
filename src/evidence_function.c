@@ -1,5 +1,202 @@
 #include "evidence_structure.h"
 #include "scope.h"
+#include "typed_query.h"
+#include "iadt.h"
+
+struct parameter_frame {
+	const struct pg_scope *scope;
+	struct parameter_frame *next;
+};
+
+struct family_parameter {
+	const struct pg_evidence *source, *environment, *map;
+	const struct pg_scope *scope;
+	struct parameter_frame *frames;
+	size_t skip;
+	unsigned stage;
+};
+
+static int family_parameter_step(struct pg_typed_query *work);
+static const struct pg_typed_query_class FAMILY_PARAMETER[1] = {{
+	.size = sizeof(struct family_parameter), .input_count = 1, .advance = family_parameter_step}};
+
+struct pg_typed_query *pg_family_parameter_request(struct pg_typing *typing,
+	const struct pg_evidence *family, size_t ordinal)
+{
+	if (!pg_evidence_owned_by(family, typing)) return NULL;
+	if (pg_evidence_judgement(family) != PG_JUDGEMENT_TYPE_FAMILY || ordinal == SIZE_MAX) return NULL;
+	const void *inputs[] = {family};
+	return pg_typed_query_request(typing, FAMILY_PARAMETER, ordinal, inputs, NULL);
+}
+
+static int parameter_telescope(struct pg_typed_query *work,
+	const struct pg_evidence *indices, const struct pg_evidence *prefix)
+{
+	struct family_parameter *local = pg_typed_query_state(work);
+	size_t count;
+	if (!indices || !prefix) return -1;
+	if (pg_context_extension_size(pg_evidence_context(indices), pg_evidence_context(prefix), &count)) return -1;
+	if (work->ordinal >= count) return -1;
+	local->scope = pg_evidence_scope(indices);
+	local->skip = count - work->ordinal - 1;
+	return 0;
+}
+
+static int parameter_select(struct pg_typed_query *work)
+{
+	struct family_parameter *local = pg_typed_query_state(work);
+	struct pg_typing *typing = work->typing;
+	const struct pg_evidence *source = local->source;
+	const struct pg_occurrence *subject = pg_evidence_subject(source);
+	const struct pg_evidence *parent, *prefix;
+	switch (pg_evidence_rule(source)) {
+	case PG_TYPE_FAMILY_ABSTRACT:
+		if (!work->ordinal) local->scope = pg_evidence_binding_scope(source);
+		else work->dependency = pg_family_parameter_request(typing,
+			pg_prove_structural_subject(typing, subject->operands[0]), work->ordinal - 1);
+		break;
+	case PG_TYPE_FAMILY_APP:
+		work->dependency = pg_family_parameter_request(typing,
+			pg_prove_structural_subject(typing, subject->operands[0]), work->ordinal + 1);
+		break;
+	case PG_CONTEXT_PROJECTION: case PG_REINDEX: {
+		const struct pg_evidence *input = pg_evidence_premise(source, 1);
+		local->map = pg_evidence_premise(source, 0);
+		if (pg_evidence_rule(source) == PG_CONTEXT_PROJECTION) {
+			prefix = local->map;
+			while (prefix && pg_evidence_context(prefix) != pg_evidence_context(input))
+				prefix = pg_context_parent_input(typing, prefix);
+			local->map = pg_prove_substitution_projection(typing, prefix, local->map);
+		}
+		if (!local->map) return -1;
+		work->dependency = pg_family_parameter_request(typing, input, work->ordinal);
+		break;
+	}
+	case PG_INDUCTIVE_FORM: {
+		const struct pg_data_schema *schema = pg_evidence_inductive_schema(source);
+		prefix = pg_evidence_premise(source, 0);
+		parent = pg_context_parent_input(typing, prefix);
+		local->map = pg_prove_substitution_pair(typing,
+			pg_prove_substitution_projection(typing, parent, parent), prefix, source);
+		if (!local->map) return -1;
+		return parameter_telescope(work, pg_data_schema_indices(schema), prefix);
+	}
+	case PG_VARIABLE: {
+		const struct pg_evidence *context = pg_evidence_premise(source, 0);
+		const struct pg_scope *scope = pg_evidence_scope(context);
+		while (scope && scope->context->binder != subject->core->as.reference) scope = scope->parent;
+		if (!scope || !scope->indices) return -1;
+		parent = pg_evidence_for_scope(typing, scope->parent);
+		local->map = pg_prove_substitution_projection(typing, parent, context);
+		if (!local->map) return -1;
+		return parameter_telescope(work, pg_evidence_for_scope(typing, scope->indices), parent);
+	}
+	default: return -1;
+	}
+	return local->scope || work->dependency ? 0 : -1;
+}
+
+static int family_parameter_step(struct pg_typed_query *work)
+{
+	struct family_parameter *local = pg_typed_query_state(work);
+	struct pg_typing *typing = work->typing;
+	if (!local->stage) {
+		local->source = work->inputs[0];
+		/* Scope-sensitive inputs retain their selected formation. A search
+		 * by occurrence alone may find another valid Universe bound. */
+		switch (pg_evidence_rule(local->source)) {
+		case PG_VARIABLE: case PG_INDUCTIVE_FORM: case PG_TYPE_FAMILY_ABSTRACT:
+		case PG_TYPE_FAMILY_APP: case PG_CONTEXT_PROJECTION: case PG_REINDEX:
+			local->stage = 2;
+			return parameter_select(work);
+		default: break;
+		}
+		work->dependency = pg_construction_origin_request(typing, work->inputs[0]);
+		local->stage = 1;
+		return work->dependency ? 0 : -1;
+	}
+	if (local->stage == 1) {
+		local->source = pg_typed_query_result(work->dependency);
+		if (!local->source) return -1;
+		local->environment = pg_construction_origin_environment(work->dependency);
+		work->dependency = NULL;
+		local->stage = 2;
+		return parameter_select(work);
+	}
+	if (local->stage == 2) {
+		if (work->dependency) {
+			const struct pg_evidence *scope = pg_typed_query_result(work->dependency);
+			if (!scope) return -1;
+			local->scope = pg_evidence_scope(scope);
+			work->dependency = NULL;
+			if (pg_evidence_rule(local->source) == PG_TYPE_FAMILY_APP) {
+				/* Consume precisely the first parameter. Later declarations are
+				 * transported by the same checked scope action as every map. */
+				const struct pg_occurrence *source = pg_evidence_subject(local->source);
+				const struct pg_scope *first = local->scope;
+				while (first && first->context->parent != source->context) first = first->parent;
+				if (!first) return -1;
+				const struct pg_evidence *parent = pg_evidence_for_scope(typing, first->parent);
+				local->map = pg_prove_substitution_pair(typing,
+					pg_prove_substitution_projection(typing, parent, parent),
+					pg_evidence_for_scope(typing, first),
+					pg_prove_structural_subject(typing, source->operands[1]));
+				if (!local->map) return -1;
+			}
+		}
+		if (local->skip) {
+			local->scope = local->scope->parent;
+			--local->skip;
+			return 0;
+		}
+		if (!local->scope) return -1;
+		if (!local->map) {
+			if (!local->environment) {
+				work->result = pg_evidence_for_scope(typing, local->scope);
+				return work->result ? 1 : -1;
+			}
+			local->map = local->environment;
+		} else if (local->environment) {
+			work->dependency = pg_substitution_compose_request(typing, local->map, local->environment);
+			if (!work->dependency) return -1;
+		}
+		local->stage = 3;
+		return 0;
+	}
+	if (local->stage == 3) {
+		if (work->dependency) {
+			local->map = pg_typed_query_result(work->dependency);
+			work->dependency = NULL;
+			if (!local->map) return -1;
+		}
+		if (local->scope && local->scope->context != pg_evidence_context_map(local->map)->source) {
+			struct parameter_frame *frame = pg_alloc(typing->graph, sizeof(*frame));
+			if (!frame) return -1;
+			*frame = (struct parameter_frame){local->scope, local->frames};
+			local->frames = frame;
+			local->scope = local->scope->parent;
+			return 0;
+		}
+		if ((local->scope ? local->scope->context : NULL) != pg_evidence_context_map(local->map)->source) return -1;
+		local->stage = 4;
+	}
+	if (work->dependency) {
+		local->map = pg_typed_query_result(work->dependency);
+		work->dependency = NULL;
+		if (!local->map) return -1;
+		local->frames = local->frames->next;
+	}
+	if (local->frames) {
+		const struct pg_scope *scope = local->frames->scope;
+		const struct pg_object *binder = scope->context->binder;
+		if (pg_context_lookup(pg_evidence_context(local->map), binder)) binder = pg_binder(typing->graph);
+		work->dependency = pg_substitution_lift_request(typing, local->map,
+			pg_evidence_for_scope(typing, scope), binder);
+		return work->dependency ? 0 : -1;
+	}
+	work->result = pg_evidence_premise(local->map, 1);
+	return work->result ? 1 : -1;
+}
 
 size_t pg_function_proof_inputs(const struct pg_evidence *proof,
 	const struct pg_occurrence **inputs)

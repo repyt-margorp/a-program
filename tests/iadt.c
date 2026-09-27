@@ -188,6 +188,23 @@ static void solved_family_lift(struct pg_typing *typing,
 	}
 }
 
+static const struct pg_evidence *family_parameter(struct pg_typing *typing,
+	const struct pg_evidence *family, size_t ordinal)
+{
+	struct pg_typed_query *work = pg_family_parameter_request(typing, family, ordinal);
+	assert(work);
+	while (!pg_typed_query_advance(work, 1)) assert(pg_typed_query_steps(work) < 10000);
+	const struct pg_evidence *result = pg_typed_query_result(work);
+	assert(result && pg_evidence_judgement(result) == PG_JUDGEMENT_CONTEXT);
+	uint64_t steps = pg_typed_query_steps(work);
+	size_t occurrences = typing->occurrences.count, proofs = typing->proofs.count;
+	assert(pg_family_parameter_request(typing, family, ordinal) == work);
+	assert(pg_typed_query_advance(work, 0) == 1 && pg_typed_query_advance(work, 64) == 1);
+	assert(pg_typed_query_steps(work) == steps);
+	assert(typing->occurrences.count == occurrences && typing->proofs.count == proofs);
+	return result;
+}
+
 static void scoped_type_families(void)
 {
 	struct pg_graph graph;
@@ -231,6 +248,22 @@ static void scoped_type_families(void)
 	assert(pg_evidence_classifier(fiber) == pg_evidence_subject(u)->core);
 	assert(!pg_prove_family_application(&typing, fiber, value));
 	assert(pg_prove_type_value(&typing, fiber));
+	const struct pg_evidence *parameter = family_parameter(&typing, family, 0);
+	assert(pg_evidence_context(parameter)->parent == pg_evidence_context(vc));
+	assert(pg_evidence_context(parameter)->declared_type == pg_evidence_subject(u)->core);
+	parameter = family_parameter(&typing, family, 1);
+	assert(pg_evidence_context(parameter)->parent->parent == pg_evidence_context(vc));
+	assert(pg_evidence_context(parameter)->declared_type ==
+		pg_reference(&graph, pg_evidence_context(parameter)->parent->binder));
+	parameter = family_parameter(&typing, partial, 0);
+	assert(pg_evidence_context(parameter)->parent == pg_evidence_context(vc));
+	assert(pg_evidence_context(parameter)->declared_type == pg_evidence_subject(type)->core);
+	assert(!pg_family_parameter_request(&typing, fiber, 0));
+	assert(!pg_family_parameter_request(&typing, family, SIZE_MAX));
+	struct pg_typed_query *outside = pg_family_parameter_request(&typing, family, 2);
+	assert(outside);
+	while (!pg_typed_query_advance(outside, 1)) {}
+	assert(!pg_typed_query_result(outside));
 	common_rule(&typing, partial);
 	common_rule(&typing, fiber);
 	/* Identical selected declarations share Context admission even when their
@@ -265,6 +298,11 @@ static void scoped_type_families(void)
 	assert(pg_prove_construction_origin(&typing, projected_family, &environment) == abstracted);
 	assert(environment && pg_evidence_context_map(environment)->source == pg_evidence_context(fc));
 	assert(pg_evidence_context_map(environment)->destination == pg_evidence_context(vc));
+	assert(family_parameter(&typing, abstracted, 0) == vc);
+	parameter = family_parameter(&typing, projected_family, 0);
+	assert(pg_evidence_context(parameter)->parent == pg_evidence_context(vc));
+	assert(pg_evidence_context(parameter)->binder != v);
+	assert(pg_evidence_context(parameter)->declared_type == pg_evidence_context(vc)->declared_type);
 	size_t occurrence_count = typing.occurrences.count, proof_count = typing.proofs.count;
 	for (size_t i = 0; i < 100; ++i)
 		assert(pg_prove_construction_origin(&typing, projected_family, &environment) == abstracted);
@@ -294,6 +332,9 @@ static void scoped_type_families(void)
 	const struct pg_evidence *np = pg_prove_family_application(&typing, nf, type);
 	const struct pg_evidence *nt = pg_prove_family_application(&typing, np, value);
 	assert(nt && !pg_inductive_instance(&typing, np, &recovered));
+	parameter = family_parameter(&typing, np, 0);
+	assert(pg_evidence_context(parameter)->parent == pg_evidence_context(vc));
+	assert(pg_evidence_context(parameter)->declared_type == pg_evidence_subject(type)->core);
 	assert(pg_inductive_instance(&typing, nf, &recovered) && !recovered.indices);
 	const struct pg_evidence *outer = pg_prove_context_extension(&typing, vc, pg_binder(&graph), nt);
 	const struct pg_evidence *suspended = pg_prove_thunk_type(&typing,

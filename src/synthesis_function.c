@@ -215,11 +215,34 @@ struct family_work {
 };
 static void family_contract_step(struct pg_synthesis *, struct pg_synthesis_job *);
 static void family_function_step(struct pg_synthesis *, struct pg_synthesis_job *);
+static void family_domain_step(struct pg_synthesis *, struct pg_synthesis_job *);
 static struct pg_synthesis_job *pi_scope(struct pg_synthesis *, struct pg_synthesis_job *, struct pg_synthesis_job *);
 static const struct pg_synthesis_work_class FAMILY_CONTRACT_JOB[1] = {{
 	.size = sizeof(struct family_work), .advance = family_contract_step}};
 static const struct pg_synthesis_work_class FAMILY_FUNCTION_JOB[1] = {{
 	.size = sizeof(struct family_work), .advance = family_function_step}};
+static const struct pg_synthesis_work_class FAMILY_DOMAIN_JOB[1] = {{
+	.advance = family_domain_step}};
+
+struct pg_synthesis_job *pg_synthesis_family_domain(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *family)
+{
+	if (!family || family->owner != synthesis->owner_key) return NULL;
+	const void *inputs[] = {family};
+	return pg_synthesis_work_request(synthesis, FAMILY_DOMAIN_JOB, 1, inputs);
+}
+
+static void family_domain_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+{
+	struct pg_synthesis_job *family = (void *)job->inputs[0];
+	if (pg_synthesis_await(synthesis, job, family)) return;
+	struct pg_typed_query *parameter = pg_family_parameter_request(synthesis->typing, family->result, 0);
+	if (!pg_typed_query_advance(parameter, 1)) { pg_synthesis_enqueue(synthesis, job); return; }
+	const struct pg_evidence *scope = pg_typed_query_result(parameter);
+	if (scope && pg_evidence_rule(scope) == PG_CONTEXT_EXTEND)
+		job->result = pg_context_declared_input(synthesis->typing, scope);
+	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
+}
 
 struct pg_synthesis_job *pg_synthesis_family_contract(struct pg_synthesis *synthesis,
 	struct pg_synthesis_job *context, struct pg_synthesis_job *input)

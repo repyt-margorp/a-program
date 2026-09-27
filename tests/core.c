@@ -2965,6 +2965,37 @@ static void family_instance_test(struct pg_graph *graph)
 	assert(pg_evidence_classifier(logical) == pg_evidence_classifier(wide_logical));
 	assert(pg_evidence_subject(wide_logical)->operands[2] == pg_evidence_subject(wide_domain));
 	reconstruct_derivation(&typing, wide_logical);
+	const struct pg_evidence *logical_variants[] = {logical, wide_logical};
+	const struct pg_evidence *scope_variants[] = {family_scope, wide_family};
+	const struct pg_evidence *parameter_ambient = pg_prove_context_extension(&typing, empty, pg_binder(graph), u0);
+	for (size_t i = 0; i < 2; ++i) {
+		struct pg_typed_query *query = pg_family_parameter_request(&typing, logical_variants[i], 0);
+		assert(query && !pg_typed_query_advance(query, 0));
+		while (!pg_typed_query_advance(query, 1)) assert(pg_typed_query_steps(query) < 10000);
+		assert(pg_typed_query_result(query) == scope_variants[i]);
+		const struct pg_evidence *mapped = pg_prove_projection(&typing, parameter_ambient, logical_variants[i]);
+		query = pg_family_parameter_request(&typing, mapped, 0);
+		while (!pg_typed_query_advance(query, 1)) assert(pg_typed_query_steps(query) < 10000);
+		const struct pg_evidence *selected = pg_typed_query_result(query);
+		assert(selected && pg_evidence_rule(selected) == PG_CONTEXT_FAMILY_EXTEND);
+		const struct pg_evidence *selected_domain = pg_context_declared_input(&typing,
+			pg_context_indices_input(&typing, selected));
+		assert(pg_evidence_classifier(selected_domain) == pg_universe(graph, i ? 4 : 1));
+		const struct pg_evidence *variable = pg_prove_variable(&typing, scope_variants[i], f);
+		const struct pg_evidence *destination = pg_prove_context_extension(&typing,
+			scope_variants[i], pg_binder(graph), pg_prove_universe(&typing, scope_variants[i], 0));
+		const struct pg_evidence *map = pg_prove_substitution_projection(&typing, scope_variants[i], destination);
+		const struct pg_evidence *variable_forms[] = {variable,
+			pg_prove_projection(&typing, destination, variable), pg_prove_reindex(&typing, map, variable)};
+		for (size_t j = 0; j < 3; ++j) {
+			query = pg_family_parameter_request(&typing, variable_forms[j], 0);
+			while (!pg_typed_query_advance(query, 1)) assert(pg_typed_query_steps(query) < 10000);
+			selected = pg_typed_query_result(query);
+			assert(selected);
+			selected_domain = pg_context_declared_input(&typing, selected);
+			assert(pg_evidence_classifier(selected_domain) == pg_universe(graph, i ? 4 : 1));
+		}
+	}
 	/* Formation choice is input to lifting, not a property of raw Context
 	 * identity. Exercise both admission orders and nested family indices. */
 	const struct pg_object *nested_binder = pg_binder(graph);

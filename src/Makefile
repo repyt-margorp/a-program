@@ -118,6 +118,11 @@ check-acceptance: check-finite-positions
 check-finite-positions: $(BUILD)/pointer-check $(BUILD)/program_test
 	bash $(TESTS)/finite_positions.sh $(BUILD)/pointer-check $(BUILD)/program_test
 
+.PHONY: check-family-domain-conversion
+check-acceptance: check-family-domain-conversion
+check-family-domain-conversion: $(BUILD)/pointer-check $(BUILD)/program_test
+	bash $(TESTS)/family_domain_conversion.sh $(BUILD)/pointer-check $(BUILD)/program_test
+
 $(BUILD)/identity_io_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(ROOT)retained_io.c $(ROOT)derivation_io.c $(ROOT)reduction_io.c $(ROOT)machine_io.c $(ROOT)computation_io.c $(ROOT)identity_io.c $(ROOT)comparison_io.c $(ROOT)graph_io.c $(ROOT)eval_io.c $(ROOT)wire.c $(TESTS)/identity_io.c
 	@mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)retained_io.c $(ROOT)derivation_io.c $(ROOT)reduction_io.c $(ROOT)machine_io.c $(ROOT)computation_io.c $(ROOT)identity_io.c $(ROOT)comparison_io.c $(ROOT)graph_io.c $(ROOT)eval_io.c $(ROOT)wire.c $(TESTS)/identity_io.c -o $@
