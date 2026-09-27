@@ -4,13 +4,13 @@ Date: 2026-09-25
 Updated: 2026-09-27
 Priority milestone (user request, 2026-09-27): [Local/Strong Sorted
 Issue #39 / PR #40](2026-09-27-LOCAL-STRONG-SORTEDNESS-SOAP-PLAN.md) is complete
-and published. #39 is closed; PR #40 is superseded. Resume P4/P5 from the
-derivation-owner checkpoint; the sorting algorithms and compiler are unchanged.
+and published. #39 is closed; PR #40 is superseded. Resume P4/P5 from the latest
+verified checkpoint; that sorting milestone changed neither algorithms nor compiler.
 Status: P1-P3 closed. P4 Identity-boundary/Lambda-scope/typed-only function,
 result-formation, selected ambient declarations, Context-history removal,
 typed-map/variable-image and shared typed-input scope slices
 verified. P5 effect/shared-work/
-Handler/Operation/CBPV/function/Context/IADT-scope/transport/basic-Identity/conversion owners verified.
+Handler/Operation/CBPV/function/Context/IADT-scope/transport/basic-Identity/conversion/binding owners verified.
 Verification uses clean publication trees, full acceptance and affected sanitizers.
 Broader P4 typed-proof migration and P5 synthesis modularity remain open.
 Layout milestone (user-authorized 2026-09-26): see
@@ -1303,6 +1303,25 @@ owner localization, not completion of typed-history removal or higher Identity.
 
 ### Plan
 
+- [x] **Binding/telescope owner, baseline `267857a`:** move annotation-domain
+  checking, lexical binding, telescope allocation and their provisional
+  declared-type inspection together out of the universal source payload.
+  Reuse the source binder interner, context rules, shared work queue and
+  conversion workers. Keep one owner of telescope scope/tail progress; checked
+  telescope requests borrow that structure instead of copying its outputs.
+  Preserve early/restored binder identities, registration waits, pending family
+  annotations and source-image environment inspection. Test exact request reuse,
+  budgets 0/1/64, cancellation, invalid/restored inputs and `::` post-checking,
+  then full acceptance, sanitizers, cross-version images and paired performance.
+  Agent decision within P5: localize descriptive queries with construction, not
+  through an extra cached wrapper or another type authority. This does not
+  resolve P4's selected family-declaration representation.
+  Verified below: focused/full acceptance, Debug/sanitizers, interchange and
+  paired measurements pass. The first full run caught an extraction regression: Match's
+  dependent-result discovery still read the old telescope payload. It now uses
+  the existing scope/body accessors, and the permanent ordinary-QuickSort-result
+  regression passes again. This was an unpublished migration error, not a new
+  defect attributed to the baseline. Broader P4/P5 and net code reduction remain open.
 - [x] **CBPV structural-query owner, baseline `54adb9e`:** move provisional
   F/U/Return/Thunk/Force and Fold/Request/Handler inspection into the existing
   CBPV synthesis owner. Share the continuation-carrier scan and Fold construction;
@@ -1484,6 +1503,7 @@ owner localization, not completion of typed-history removal or higher Identity.
 | 2026-09-27 | P4.3o | Pi/family abstraction retain selected declaration inputs and typed bodies, not premise histories | Full acceptance, sanitizers, cross-reading and paired measurements pass; broader P4/P5 remain open |
 | 2026-09-27 | P4.3p | Direct Identity retains typed construction, not duplicate input receipts; owner-local structural checking uses ordinary rules | Full acceptance, Debug/sanitizers, cross-reading and paired measurements pass; mapped families and broader P4/P5 remain open |
 | 2026-09-27 | P5 derivation owner | Input/reference/rule/export state leaves the source union; comparison state is allocated only when needed | All publication gates pass; smaller work allocations, not global code reduction |
+| 2026-09-27 | P5 binding owner | Annotation, binding, telescope and provisional declaration queries share owner-local state and the existing Solve | All gates below pass after fixing a Match accessor migration omission; P4/P5 remain open |
 
 P4.2a verification (fresh, current worktree including the inherited Context/IADT
 edits): optimized `identity_test`, `derivation_io.sh` and `identity_io.sh` pass;
@@ -3258,3 +3278,61 @@ rechecked; necessary selected schema/map inputs cannot simply be discarded.
 Logs: `/tmp/a-program-input-scope-` with `{acceptance,debug,asan,cross}.log`,
 `acceptance.time`, `bench.jsonl`. Temporary logs are not committed; boundary
 tests are. No whole-system reduction or full authority-migration claim is made.
+
+### Binding and Telescope Owner, 2026-09-27
+
+Baseline `267857a`; inherited trials excluded. Agent decision within P5:
+`synthesis_binding.c` owns domain annotations, lexical bindings, telescope
+allocation and pending declared-type inspection. The checked telescope borrows
+the structural request's scope/tail instead of keeping a second cursor/result.
+Domain inspection selects its owner directly in the existing query, with no
+wrapper cache. Binding scope, original annotation and accepted domain are no
+longer copied into the source-wide payload. Existing scope/binder interners,
+normalization, ordinary checking rules and the shared Solve queue remain in use.
+No Core, typing rule, syntax, algorithm or wire-format change is introduced.
+
+- Focused synthesis checks pass, including early/shared/restored binders,
+  pending dependent annotations, exact request reuse, zero-storage checked
+  telescopes, registration failure, cancellation and no premature acceptance.
+- The first full run found a missed private-payload access in Match's dependent
+  result discovery. The existing general QuickSort-result regression caught it;
+  switching both reads to the telescope accessors fixes the unpublished trial.
+- Repeated full `check-acceptance` passes: **1428.442 s** wall, **1326.923 s**
+  user, **100.941 s** system. Includes 63/63 source compatibility, general and
+  ordinary-result Sorted, all four LT/partition variants, Local/Strong,
+  retained images, invalid evidence and optional-witness isolation/packets.
+- Debug and ASan/UBSan, with leak checks and halt-on-error: core, IADT,
+  Identity, synthesis, typed-structure and derivation-image suites pass.
+- **36 image pairs / 72 opposite-version loads** pass against the baseline,
+  ordinary/retained at budgets 0/100/complete. Partial/family output comparisons
+  also agree; no new replay path or serialized job class is needed.
+- Eleven paired inputs, one warm-up and six alternating samples per binary,
+  identical O2 flags: median time changes **-3.82% to +0.56%**; every sample
+  range overlaps. No general speedup claim. Output matches apart from Solve
+  counts; family/append counts increase by 6/1, others decrease by 1-7.
+  General/direct-result/Local/derived-Strong peak-RSS medians (three samples,
+  KiB) are **298868->297408**, **178760->178088**, **155404->154644**,
+  **156064->155512**. Small cases have a measurement-process floor.
+
+On x86-64, the moved requests previously allocated 216 private bytes each;
+binding/structural-telescope now use 24, domain/declaration inspection 16,
+checked telescope 0. The shared 80-byte header and remaining 216-byte source
+payload are unchanged. `synthesis.c` falls **6048->5754 lines**, but combined
+implementation/headers are **+416/-314, net +102**. This is ownership/storage
+consolidation, not total code reduction. Broad P4/P5 remain open.
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `src/synthesis.c` | 20 | 314 | -294 |
+| `src/synthesis_binding.c` | 394 | 0 | +394 |
+| `src/synthesis_source.h` | 2 | 0 | +2 |
+| `src/Makefile` | 1 | 1 | 0 |
+| `tests/synthesis.c` | 36 | 1 | +35 |
+| This plan | 81 | 3 | +78 |
+
+Logs: `/tmp/a-program-binding-owner-{acceptance,debug,asan}.log`,
+`/tmp/a-program-binding-owner-acceptance.time`,
+`/tmp/a-program-binding-owner-bench.jsonl`; interchange results in
+`/tmp/a-program-binding-owner-cross.qquFhq/`. The trial failure remains in
+`/tmp/a-program-binding-owner-trial-failure.log`. Only permanent tests and this
+summary are committed, not the temporary logs or inherited experiments.

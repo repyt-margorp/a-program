@@ -1155,6 +1155,16 @@ static void pending_effect_contexts(struct pg_typing *typing)
 		assert(!complete(&synthesis, bound_x_type, PG_SYNTHESIS_DONE));
 		assert(pg_synthesis_type_structure_result(bound_x_type) == pg_universe(typing->graph, 0));
 		assert(!pg_synthesis_result(bound_x) && !pg_synthesis_result(source_binding));
+		struct pg_synthesis_job *declaration = pg_synthesis_declared_type(&synthesis,
+			source_binding, pg_synthesis_binding_binder(source_binding));
+		assert(declaration && declaration->role->size == 2 * sizeof(void *));
+		assert(pg_synthesis_status(declaration) == PG_SYNTHESIS_DONE);
+		assert(pg_synthesis_type_structure_result(declaration) == pg_universe(typing->graph, 0));
+		assert(!pg_synthesis_result(declaration));
+		size_t queries = synthesis.jobs.count;
+		assert(pg_synthesis_declared_type(&synthesis, source_binding,
+			pg_synthesis_binding_binder(source_binding)) == declaration);
+		assert(synthesis.jobs.count == queries);
 		const char *dependent_source = "v := \\y : x => y;";
 		struct pg_definition dependent_definition;
 		pg_parser_init(&parser, typing->graph, dependent_source, strlen(dependent_source));
@@ -5636,7 +5646,7 @@ static void source_telescopes(struct pg_typing *typing)
 	 * use must shadow, not capture or redeclare the same binder in a context. */
 	const struct pg_syntax *reused = expression_syntax(typing->graph, "f:=\\x:@=>x;");
 	struct pg_synthesis_job *outer = pg_synthesis_binding(&synthesis, root, reused);
-	assert(outer);
+	assert(outer && outer->role->size == 3 * sizeof(void *));
 	struct pg_source_binding address = {.syntax = reused};
 	const struct pg_source_binding *allocated = pg_synthesis_source_binding(&synthesis, &address);
 	assert(allocated && allocated->binder == pg_synthesis_binding_binder(outer));
@@ -5673,6 +5683,10 @@ static void source_telescopes(struct pg_typing *typing)
 				complete(&synthesis, expression, PG_SYNTHESIS_DONE);
 			}
 			struct pg_synthesis_job *job = pg_synthesis_telescope(&synthesis, root, syntax);
+			struct pg_synthesis_job *structure = pg_synthesis_telescope_structure(&synthesis, root, syntax);
+			assert(job && !job->role->size && job->input_count == 1 && job->inputs[0] == structure);
+			assert(structure && structure->role->size == 3 * sizeof(void *));
+			assert(!pg_synthesis_work_state(job, job->role));
 			const struct pg_object *seed = expression_first ? NULL : pg_binder(typing->graph);
 			if (seed) assert(pg_synthesis_binding_at(&synthesis, root, syntax, seed));
 			struct pg_synthesis_job *binding = pg_synthesis_binding(&synthesis, root, syntax);
@@ -5704,6 +5718,15 @@ static void source_telescopes(struct pg_typing *typing)
 			assert(pg_evidence_context(complete(&synthesis, inner_expression, PG_SYNTHESIS_DONE)) == last->parent);
 			const struct pg_source_scope *scope = pg_synthesis_telescope_scope(job);
 			assert(pg_synthesis_telescope_body(job) == syntax->right->right);
+			assert(pg_synthesis_telescope_scope(structure) == scope);
+			assert(pg_synthesis_telescope_body(structure) == pg_synthesis_telescope_body(job));
+			assert(!pg_synthesis_result(structure));
+			size_t saved_jobs = synthesis.jobs.count, saved_proofs = typing->proofs.count;
+			uint64_t saved_steps = synthesis.steps;
+			assert(pg_synthesis_telescope(&synthesis, root, syntax) == job);
+			assert(pg_synthesis_telescope_structure(&synthesis, root, syntax) == structure);
+			assert(synthesis.jobs.count == saved_jobs && typing->proofs.count == saved_proofs);
+			assert(synthesis.steps == saved_steps);
 			const struct pg_evidence *body = complete(&synthesis,
 				pg_synthesis_request(&synthesis, scope, syntax->right->right), PG_SYNTHESIS_DONE);
 			assert(pg_evidence_context(body) == last);
@@ -5820,6 +5843,16 @@ static void source_telescopes(struct pg_typing *typing)
 			root, definitions);
 		struct pg_synthesis_job *waiting = pg_synthesis_data_result(&synthesis, restored,
 			empty, empty, expression_syntax(typing->graph, "f:=*;"));
+		const struct pg_syntax *local = expression_syntax(typing->graph, "f:=\\x:@=>x;");
+		struct pg_synthesis_job *telescope = pg_synthesis_telescope(&synthesis, restored, local);
+		struct pg_synthesis_job *shape = pg_synthesis_telescope_structure(&synthesis, restored, local);
+		while (pg_synthesis_status(shape) == PG_SYNTHESIS_PENDING &&
+			pg_synthesis_dependency(shape) != restored->registration) {
+			assert(synthesis.ready);
+			pg_synthesis_advance(&synthesis, 1);
+		}
+		assert(pg_synthesis_status(shape) == PG_SYNTHESIS_PENDING);
+		assert(!pg_synthesis_telescope_scope(shape) && !pg_synthesis_telescope_scope(telescope));
 		while (pg_synthesis_status(waiting) == PG_SYNTHESIS_PENDING &&
 			pg_synthesis_dependency(waiting) != restored->registration) {
 			assert(synthesis.ready);
@@ -5828,6 +5861,8 @@ static void source_telescopes(struct pg_typing *typing)
 		assert(pg_synthesis_status(waiting) == PG_SYNTHESIS_PENDING);
 		assert(!pg_synthesis_result(waiting));
 		complete(&synthesis, waiting, i ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE);
+		complete(&synthesis, telescope, i ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE);
+		assert(pg_synthesis_status(shape) == (i ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE));
 	}
 	assert(pg_evidence_context(source_map) == pg_evidence_context(map));
 	for (size_t i = 0; i < pg_evidence_context_map(map)->count; ++i)
