@@ -14,7 +14,7 @@ Sources: [#39](https://github.com/repyt-margorp/a-program/issues/39),
 | --- | --- | --- |
 | S1 | Distinguish adjacent and all-pairs certificates | Complete |
 | S2 | Prove Local QuickSort at the ordinary result, then derive Strong | Complete within the stated QuickSort scope |
-| S3 | Verify compatibility, separation, images and cost | Verified; publication pending |
+| S3 | Verify compatibility, separation, images and cost | Complete |
 
 ## S1. Predicate and Conversion Library
 
@@ -162,7 +162,7 @@ separate existing property. The unfolded relation-position counts are
   evidence counts for local, derived-strong and direct-strong proofs. Separate
   shared-provider overhead; make no unmeasured speedup claim.
 - [x] Update README with actual theorem assumptions and test entry point.
-- [ ] Record per-file diff totals, publish the verified epoch to Main, and
+- [x] Record per-file diff totals, publish the verified epoch to Main, and
   report #39/#40 disposition. Documentation submission alone does not close #39.
 
 Completion: checked general theorems at ordinary QuickSort output, explicit
@@ -239,3 +239,13 @@ construction into this implementation. Preserve its original research at the
 linked PR; this shorter active SOAP plan supersedes its implementation checklist.
 Do not adopt silent weakening, proof irrelevance, automatic nominal identity,
 mandatory legacy-name retirement, or an unmeasured quadratic-memory claim.
+
+### Publication
+
+Implementation `ee09f9bb689a8ff6249490e0179046ea77123ed0` was pushed to Main
+and remote HEAD verified. [#39 closed with results](https://github.com/repyt-margorp/a-program/issues/39#issuecomment-5852756576);
+[PR #40 closed as superseded](https://github.com/repyt-margorp/a-program/pull/40#issuecomment-5852758196),
+not merged; its research branch remains. Inherited Context/IADT trials and
+untracked files were restored byte-for-byte and excluded from publication.
+Documentation: README +10/-0; authority plan +5/-0; this plan +251/-0.
+Total epoch including documentation: 881 added, 199 deleted.

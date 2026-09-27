@@ -2,10 +2,10 @@
 
 Date: 2026-09-25
 Updated: 2026-09-27
-Priority override (user request, 2026-09-27): complete [Local/Strong Sorted
-Issue #39 / PR #40](2026-09-27-LOCAL-STRONG-SORTEDNESS-SOAP-PLAN.md) before
-resuming P4/P5. That file owns the new implementation checklist; the completed
-derivation-owner epoch remains the refactoring baseline.
+Priority milestone (user request, 2026-09-27): [Local/Strong Sorted
+Issue #39 / PR #40](2026-09-27-LOCAL-STRONG-SORTEDNESS-SOAP-PLAN.md) is complete
+and published. #39 is closed; PR #40 is superseded. Resume P4/P5 from the
+derivation-owner checkpoint; the sorting algorithms and compiler are unchanged.
 Status: P1-P3 closed. P4 Identity-boundary/Lambda-scope/typed-only function,
 result-formation, selected ambient declarations, Context-history removal and typed-map/variable-image slices
 verified. P5 effect/shared-work/
@@ -37,7 +37,7 @@ provide a second execution order. The order below is the agent's proposal.
 
 | ID | Problem | Issue / PR | Status |
 | --- | --- | --- | --- |
-| S | Add explicit Local/Strong Sorted contracts and ordinary-result proofs | #39 / PR #40 | Priority; linked SOAP plan owns progress |
+| S | Add explicit Local/Strong Sorted contracts and ordinary-result proofs | #39 / PR #40 | Complete; verified Main publication |
 | P1 | Align open reports with published implementation | #32; PRs #20, #35-#38 | Verified; closed |
 | P2 | Reassess the old computation-result report against current contracts | #13 | Closed by user-approved scope decision |
 | P3 | Resolve the remaining MergeSort report against existing regressions | #28 | Verified; closed |
