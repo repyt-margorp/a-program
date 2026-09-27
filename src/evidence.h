@@ -515,6 +515,12 @@ struct pg_typed_query *pg_substitution_rebase_request(struct pg_typing *typing,
  * the complete telescope; no private image array survives a transition. */
 struct pg_typed_query *pg_substitution_compose_request(struct pg_typing *typing,
 	const struct pg_evidence *first, const struct pg_evidence *second);
+/* Lift one selected declaration, including nested family indices, at an
+ * explicit binder allocation. The checked prefix and selected scope remain
+ * query inputs even when their raw Context/map pointers coincide. */
+struct pg_typed_query *pg_substitution_lift_request(struct pg_typing *typing,
+	const struct pg_evidence *prefix, const struct pg_evidence *extension,
+	const struct pg_object *binder);
 int pg_typed_query_advance(struct pg_typed_query *work, uint64_t budget);
 const struct pg_evidence *pg_typed_query_result(const struct pg_typed_query *work);
 uint64_t pg_typed_query_steps(const struct pg_typed_query *work);

@@ -352,7 +352,7 @@ struct index_progress {
 struct transport_scope {
 	const struct pg_evidence *map, *left, *right, *extended;
 	struct pg_typed_query *query;
-	struct pg_context_lift *lift;
+	struct pg_typed_query *lift;
 	struct pg_occurrence_action *action;
 	struct pg_synthesis_job **branches;
 	size_t count, next, scoped;
@@ -518,13 +518,11 @@ static int transport_scope_advance(struct pg_typing *typing, struct transport_sc
 	}
 	if (work->next < work->count) {
 		const struct pg_evidence *field = work->extensions[work->next];
-		if (!work->lift) work->lift = pg_context_lift_request(typing,
-			pg_evidence_context_map(work->map), pg_evidence_context(field), pg_binder(typing->graph));
-		enum pg_substitution_status status = pg_context_lift_advance(work->lift, 1);
-		if (status == PG_SUBSTITUTION_PENDING) return 0;
-		if (status != PG_SUBSTITUTION_DONE) return -1;
-		const struct pg_context_map *lifted = pg_context_lift_result(work->lift);
-		work->map = pg_prove_substitution_lift(typing, work->map, field, lifted->destination->binder);
+		if (!work->lift) work->lift = pg_substitution_lift_request(typing,
+			work->map, field, pg_binder(typing->graph));
+		int status = pg_typed_query_advance(work->lift, 1);
+		if (status <= 0) return status;
+		work->map = pg_typed_query_result(work->lift);
 		if (!work->map) return -1;
 		const struct pg_evidence *extension = pg_evidence_premise(work->map, 1);
 		size_t image = boundary->left_substitution->count - work->count + work->next;

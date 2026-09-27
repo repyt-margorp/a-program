@@ -2907,9 +2907,18 @@ static void family_instance_test(struct pg_graph *graph)
 	for (size_t kind = 0; kind < 3; ++kind) for (size_t first = 0; first < 2; ++first) {
 		const struct pg_object *binder = pg_binder(graph);
 		const struct pg_evidence *maps[2], *destinations[2];
+		struct pg_typed_query *queries[2];
+		for (size_t i = 0; i < 2; ++i) {
+			queries[i] = pg_substitution_lift_request(&typing, identity_map, variants[kind][i], binder);
+			assert(queries[i] && !pg_typed_query_advance(queries[i], 0) && !pg_typed_query_steps(queries[i]));
+		}
+		assert(queries[0] != queries[1]);
 		for (size_t step = 0; step < 2; ++step) {
 			size_t i = first ^ step;
-			maps[i] = pg_prove_substitution_lift(&typing, identity_map, variants[kind][i], binder);
+			if (!step) assert(!pg_typed_query_advance(queries[i ^ 1], 1));
+			while (!pg_typed_query_advance(queries[i], first ? 64 : 1))
+				assert(pg_typed_query_steps(queries[i]) < 1000);
+			maps[i] = pg_typed_query_result(queries[i]);
 			assert(maps[i]);
 			destinations[i] = pg_evidence_premise(maps[i], 1);
 			const struct pg_evidence *pi = pg_prove_pi(&typing, destinations[i],
@@ -2921,10 +2930,14 @@ static void family_instance_test(struct pg_graph *graph)
 		assert(pg_evidence_scope(destinations[0]) != pg_evidence_scope(destinations[1]));
 		size_t proofs = typing.proofs.count, scopes = typing.scopes.count;
 		size_t terms = graph->terms.count, occurrences = typing.occurrences.count;
+		size_t requests = typing.typed_queries.count;
+		uint64_t steps[] = {pg_typed_query_steps(queries[0]), pg_typed_query_steps(queries[1])};
 		for (size_t i = 0; i < 16; ++i)
 			assert(pg_prove_substitution_lift(&typing, identity_map, variants[kind][i % 2], binder) == maps[i % 2]);
 		assert(typing.proofs.count == proofs && typing.scopes.count == scopes);
 		assert(graph->terms.count == terms && typing.occurrences.count == occurrences);
+		assert(typing.typed_queries.count == requests);
+		assert(pg_typed_query_steps(queries[0]) == steps[0] && pg_typed_query_steps(queries[1]) == steps[1]);
 	}
 	const struct pg_context_map *empty_map = pg_context_map_projection(&typing, NULL, NULL);
 	size_t evidence_before_lift = typing.proofs.count;

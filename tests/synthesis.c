@@ -4350,7 +4350,9 @@ static void substitution_jobs(struct pg_typing *typing)
 		const struct pg_object *lift_binder = pg_binder(typing->graph);
 		struct pg_synthesis_job *lift = pg_synthesis_substitution_lift(&synthesis, map, extension, lift_binder);
 		assert(lift && pg_synthesis_status(lift) == PG_SYNTHESIS_PENDING);
-		assert(lift->role->size == sizeof(void *));
+		assert(!lift->role->size);
+		struct pg_typed_query *checked = pg_substitution_lift_request(typing, map, extension, lift_binder);
+		assert(checked && !pg_typed_query_steps(checked));
 		struct pg_context_lift *worker = pg_context_lift_request(typing,
 			pg_evidence_context_map(map), pg_evidence_context(extension), lift_binder);
 		assert(worker && !pg_context_lift_result(worker) && !pg_context_lift_steps(worker));
@@ -4359,12 +4361,18 @@ static void substitution_jobs(struct pg_typing *typing)
 		assert(synthesis.steps == before_lift && !pg_synthesis_result(lift));
 		assert(lift == pg_synthesis_substitution_lift(&synthesis, map, extension, lift_binder));
 		assert(!pg_synthesis_substitution_lift(&synthesis, map, source, lift_binder));
+		int checked_after_allocation = 0;
 		while (pg_synthesis_status(lift) == PG_SYNTHESIS_PENDING) {
 			uint64_t steps = pg_context_lift_steps(worker);
+			uint64_t checked_steps = pg_typed_query_steps(checked);
 			pg_synthesis_advance(&synthesis, 1);
 			assert(pg_context_lift_steps(worker) <= steps + 1);
+			assert(pg_typed_query_steps(checked) <= checked_steps + 1);
+			if (pg_context_lift_result(worker) && !pg_typed_query_result(checked)) checked_after_allocation = 1;
 		}
+		assert(checked_after_allocation);
 		const struct pg_evidence *lifted = pg_synthesis_result(lift);
+		assert(lifted == pg_typed_query_result(checked));
 		assert(lifted && pg_evidence_context_map(lifted) == pg_context_lift_result(worker));
 		if (!split) assert(pg_context_lift_steps(worker) > 1);
 		const struct pg_evidence *direct_lift = pg_prove_substitution_lift(typing, map, extension, lift_binder);
@@ -7362,6 +7370,74 @@ static void composition_sharing(void)
 	puts("composition: checked reindexing, shared split budgets, cancellation and completion reuse passed");
 }
 
+static void lift_sharing(void)
+{
+	struct pg_graph graph;
+	struct pg_typing typing, foreign;
+	struct pg_whnf_work reduction;
+	struct pg_synthesis first, second;
+	assert(!pg_graph_init(&graph) && !pg_typing_init(&typing, &graph));
+	assert(!pg_typing_init(&foreign, &graph) && !pg_whnf_work_init(&reduction, &graph));
+	assert(!pg_synthesis_init(&first, &typing, &reduction, PG_DEFINITION_EXPLICIT_THUNK));
+	assert(!pg_synthesis_init(&second, &typing, &reduction, PG_DEFINITION_EXPLICIT_THUNK));
+	const struct pg_evidence *empty = pg_prove_empty_context(&typing);
+	const struct pg_evidence *universe = pg_prove_universe(&typing, empty, 0);
+	const struct pg_object *a = pg_binder(&graph), *b = pg_binder(&graph), *binder = pg_binder(&graph);
+	const struct pg_evidence *source = pg_prove_context_extension(&typing, empty, a, universe);
+	const struct pg_evidence *destination = pg_prove_context_extension(&typing, empty, b, universe);
+	const struct pg_evidence *image = pg_prove_variable(&typing, destination, b);
+	const struct pg_evidence *prefix = pg_prove_substitution(&typing, source, destination, 1, &image);
+	const struct pg_evidence *type = pg_prove_value_type(&typing, pg_prove_variable(&typing, source, a));
+	for (size_t i = 0; i < 24; ++i) type = pg_prove_thunk_type(&typing, pg_prove_return_type(&typing, type));
+	const struct pg_evidence *indices = pg_prove_context_extension(&typing, source, pg_binder(&graph), type);
+	const struct pg_evidence *extension = pg_prove_family_context_extension(&typing, source, pg_binder(&graph),
+		indices, pg_prove_universe(&typing, indices, 0));
+	struct pg_typed_query *query = pg_substitution_lift_request(&typing, prefix, extension, binder);
+	struct pg_synthesis_job *left = pg_synthesis_substitution_lift(&first, prefix, extension, binder);
+	struct pg_synthesis_job *right = pg_synthesis_substitution_lift(&second, prefix, extension, binder);
+	assert(query && left && right && left != right);
+	assert(!left->role->size && !right->role->size);
+	assert(!pg_typed_query_advance(query, 0) && !pg_typed_query_steps(query));
+	for (size_t i = 0; i < 8; ++i) {
+		uint64_t steps = pg_typed_query_steps(query);
+		pg_synthesis_advance(i % 2 ? &first : &second, 1);
+		assert(pg_typed_query_steps(query) == steps + 1 && !pg_typed_query_result(query));
+	}
+	pg_synthesis_destroy(&first);
+	assert(pg_substitution_lift_request(&typing, prefix, extension, binder) == query);
+	while (pg_synthesis_status(right) == PG_SYNTHESIS_PENDING) {
+		uint64_t steps = pg_typed_query_steps(query);
+		pg_synthesis_advance(&second, 64);
+		assert(pg_typed_query_steps(query) <= steps + 64 && second.steps < 10000);
+	}
+	const struct pg_evidence *result = pg_synthesis_result(right);
+	assert(result && result == pg_typed_query_result(query));
+	assert(pg_evidence_premise(result, 0) == extension);
+	assert(pg_evidence_context(result)->parent == pg_evidence_context(destination));
+	assert(pg_evidence_context(result)->binder == binder);
+	assert(pg_evidence_context(result)->judgement == PG_JUDGEMENT_TYPE_FAMILY);
+	uint64_t steps = pg_typed_query_steps(query);
+	size_t proofs = typing.proofs.count, queries = typing.typed_queries.count;
+	for (size_t i = 0; i < 32; ++i) {
+		assert(pg_prove_substitution_lift(&typing, prefix, extension, binder) == result);
+		assert(pg_synthesis_substitution_lift(&second, prefix, extension, binder) == right);
+		pg_synthesis_advance(&second, 64);
+	}
+	assert(pg_typed_query_steps(query) == steps);
+	assert(typing.proofs.count == proofs && typing.typed_queries.count == queries);
+	assert(!pg_substitution_lift_request(&foreign, prefix, extension, binder));
+	assert(!pg_substitution_lift_request(&typing, prefix, destination, binder));
+	assert(!pg_substitution_lift_request(&typing, prefix, extension, b));
+	assert(!pg_substitution_lift_request(&typing, prefix, extension, NULL));
+	assert(!pg_synthesis_substitution_lift(&second, empty, extension, binder));
+	pg_synthesis_destroy(&second);
+	pg_whnf_work_destroy(&reduction);
+	pg_typing_destroy(&foreign);
+	pg_typing_destroy(&typing);
+	pg_graph_destroy(&graph);
+	puts("lift: selected family action, shared budgets, borrower cancellation and completed reuse passed");
+}
+
 static void identity_owner_cancellation(void)
 {
 	for (uint64_t cutoff = 0;; ++cutoff) {
@@ -7786,6 +7862,7 @@ int main(void)
 	derivation_owner_cancellation();
 	identity_owner_cancellation();
 	composition_sharing();
+	lift_sharing();
 	synthesis_lifetime(&typing);
 	accepted_inputs(&typing);
 	pending_names(&typing);

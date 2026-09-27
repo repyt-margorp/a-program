@@ -2,7 +2,6 @@
 
 struct reindex_work { struct pg_occurrence_action *action; };
 struct pair_work { struct pg_synthesis_job *checked; };
-struct lift_work { struct pg_context_lift *lift; };
 struct substitution_work {
 	const struct pg_evidence *map;
 	const struct pg_evidence **extensions;
@@ -12,29 +11,26 @@ struct substitution_work {
 
 static void reindex_step(struct pg_synthesis *, struct pg_synthesis_job *);
 static void pair_step(struct pg_synthesis *, struct pg_synthesis_job *);
-static void lift_step(struct pg_synthesis *, struct pg_synthesis_job *);
 static void substitution_step(struct pg_synthesis *, struct pg_synthesis_job *);
-static void composition_step(struct pg_synthesis *, struct pg_synthesis_job *);
+static void checked_query_step(struct pg_synthesis *, struct pg_synthesis_job *);
 
 static const struct pg_synthesis_work_class REINDEX_JOB[1] = {{
 	.size = sizeof(struct reindex_work), .advance = reindex_step}};
 static const struct pg_synthesis_work_class PAIR_JOB[1] = {{
 	.size = sizeof(struct pair_work), .advance = pair_step}};
-static const struct pg_synthesis_work_class LIFT_JOB[1] = {{
-	.size = sizeof(struct lift_work), .advance = lift_step}};
 static const struct pg_synthesis_work_class SUBSTITUTION_JOB[1] = {{
 	.size = sizeof(struct substitution_work), .advance = substitution_step}};
-static const struct pg_synthesis_work_class COMPOSITION_JOB[1] = {{.advance = composition_step}};
+static const struct pg_synthesis_work_class CHECKED_QUERY_JOB[1] = {{.advance = checked_query_step}};
 
 struct pg_synthesis_job *pg_synthesis_substitution_compose(struct pg_synthesis *synthesis,
 	const struct pg_evidence *first, const struct pg_evidence *second)
 {
 	struct pg_typed_query *query = pg_substitution_compose_request(synthesis->typing, first, second);
 	const void *inputs[] = {query};
-	return query ? pg_synthesis_work_request(synthesis, COMPOSITION_JOB, 1, inputs) : NULL;
+	return query ? pg_synthesis_work_request(synthesis, CHECKED_QUERY_JOB, 1, inputs) : NULL;
 }
 
-static void composition_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+static void checked_query_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
 {
 	struct pg_typed_query *query = (void *)job->inputs[0];
 	int status = pg_typed_query_advance(query, 1);
@@ -94,13 +90,9 @@ struct pg_synthesis_job *pg_synthesis_substitution_lift(struct pg_synthesis *syn
 	const struct pg_evidence *substitution, const struct pg_evidence *extension,
 	const struct pg_object *binder)
 {
-	if (!pg_evidence_owned_by(substitution, synthesis->typing) || pg_evidence_rule(substitution) != PG_CONTEXT_SUBSTITUTION) return NULL;
-	if (!pg_evidence_owned_by(extension, synthesis->typing)) return NULL;
-	enum pg_evidence_rule rule = pg_evidence_rule(extension);
-	if (rule != PG_CONTEXT_EXTEND && rule != PG_CONTEXT_FAMILY_EXTEND) return NULL;
-	if (!binder || pg_evidence_context(extension)->parent != pg_evidence_context_map(substitution)->source) return NULL;
-	const void *inputs[] = {substitution, extension, binder};
-	return pg_synthesis_work_request(synthesis, LIFT_JOB, 3, inputs);
+	struct pg_typed_query *query = pg_substitution_lift_request(synthesis->typing, substitution, extension, binder);
+	const void *inputs[] = {query};
+	return query ? pg_synthesis_work_request(synthesis, CHECKED_QUERY_JOB, 1, inputs) : NULL;
 }
 
 static void reindex_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
@@ -239,25 +231,4 @@ rejected:
 	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
 error:
 	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR);
-}
-
-static void lift_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
-{
-	struct lift_work *local = pg_synthesis_work_state(job, LIFT_JOB);
-	if (!local->lift) local->lift = pg_context_lift_request(synthesis->typing,
-		pg_evidence_context_map(job->inputs[0]), pg_evidence_context(job->inputs[1]), job->inputs[2]);
-	switch (pg_context_lift_advance(local->lift, 1)) {
-	case PG_SUBSTITUTION_PENDING:
-		pg_synthesis_enqueue(synthesis, job);
-		return;
-	case PG_SUBSTITUTION_ERROR:
-		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED);
-		return;
-	case PG_SUBSTITUTION_DONE:
-		break;
-	}
-	/* Admission borrows this completed lift; it does not restart structural
-	 * substitution. Nested declaration checking still uses the ordinary rule. */
-	job->result = pg_prove_substitution_lift(synthesis->typing, job->inputs[0], job->inputs[1], job->inputs[2]);
-	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);
 }

@@ -931,6 +931,21 @@ distinction consistent with the existing reindex worker.
   permanent history with repeated full-source checking or a second scheduler.
   Recheck the small timing delta below, including APP/codomain reuse, without
   restoring result-blind interning or adding a parallel acceptance cache.
+- [x] **P4.4c Shared checked scope action (baseline `11f413a`):** replace the
+  temporary synchronous selected-scope walk with shared typed queries. Key the
+  checked prefix, selected scope and target allocation explicitly; do not encode
+  a pointer in a numeric ordinal or key acceptance by raw Context alone. Keep
+  query identity/dependency scheduling in one engine and Context progress in
+  its owner. Move composition out of the general recipe-state union as well.
+  Synchronous lift, synthesis and IADT transport must borrow the same checked
+  request, including nested declaration action, without restarting checking.
+  This is an agent implementation decision within P4.4/P5. Ordinary final kernel
+  rules retain their cost; no claim of constant-time transitions or complete
+  structural-checker migration. Verify budget 0/1/64, shared consumers and
+  cancellation, selected Universe bounds, invalid/foreign inputs, fresh images,
+  full acceptance, Debug/sanitizers and paired performance before publication.
+  Verified below, 2026-09-27. Adopt for shared resumable checking, with measured
+  storage/time overhead; broader P4/P5 and their reduction gate remain open.
 - [x] **P4.4b Selected lift declarations (baseline `bc45613`):** before sharing
   structural checking requests, preserve the selected source declarations in
   ordinary/family substitution lifts. `lift_destination` currently returns the
@@ -3126,3 +3141,60 @@ but are not zero-work calls. Sharing/budgeting that work and removing remaining
 history are still P4/P5 obligations. No overall code-reduction claim is made.
 Logs: `/tmp/a-program-lift-scope-` with `{acceptance,debug,asan,cross}.log`,
 `acceptance.time`, and `bench.jsonl`. Inherited root-worktree trials are excluded.
+
+### Shared Checked Scope Action, 2026-09-27
+
+Baseline `11f413a`; inherited trials excluded. Agent decision within P4.4/P5:
+`typed_query.c` owns the existing interner/dependency scheduler, while Context
+action, lift and composition progress live in `evidence_scope.c`. Synchronous
+APIs, synthesis and IADT transport borrow the same checked requests. Results
+reference ordinary kernel admissions; no second authority, queue, Core tag or
+wire state is added. Exact keys retain selected declarations and target
+allocation; unavailable scope admission is not permanently cached as rejection.
+
+- Full `check-acceptance` passed: wall **1458.041 s**, user 1353.689 s, system
+  103.705 s, including builds. General/ordinary-result QuickSort, Local/Strong,
+  derived-LT variants, other sorts and optional witness packets pass.
+- Core, IADT, Identity, synthesis, typed-structure and derivation-image tests
+  pass in Debug and ASan/UBSan. Permanent tests cover budgets 0/1/64, interleaved
+  consumers, cancellation, repeated zero-work completion, ordinary/nested-family
+  selected bounds and invalid/foreign inputs. Completion of allocation no longer
+  means completion of declaration checking.
+- **36** ordinary/retained image pairs at 0/100/complete steps pass **72**
+  opposite-version loads. Wire grammar is unchanged.
+- Eleven paired workloads: one warmup, six alternating samples, 50 processes
+  per small sample. Median changes range **-2.56% to +2.47%**; all sample ranges
+  overlap. Generic/direct-result/Local/derived-Strong QuickSort changes are
+  **+2.20/+2.06/+1.04/+1.27%**. Outputs match apart from Solve step counts:
+  formerly synchronous declaration work is now counted. No speedup is claimed.
+- Three-sample peak-RSS medians for those four cases (KiB): **292356->297972**,
+  **175840->178864**, **153552->155164**, **153952->156184**. Small-case readings
+  have a measurement-process floor. This is added retained progress, not a
+  whole-session memory reduction.
+
+Measured x86-64 common query header: **80 bytes**. Composition allocation
+shrinks **192->120 bytes**; remaining recipe queries grow **192->200 bytes**.
+Checked lift and scope action allocate 112 and 136 bytes; synthesis adapters
+have no private progress. Adopt shared resumability, not a storage optimization.
+The recipe union, synchronous `selection_lift_step`/`typed_input_align`, local
+declaration flattening and structural checker remain work; final kernel rules
+are not constant-cost. Broad P4/P5 and the net-code-reduction gate stay open.
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `src/Makefile` | 1 | 1 | 0 |
+| `src/evidence.c` | 337 | 418 | -81 |
+| `src/evidence.h` | 6 | 0 | +6 |
+| `src/evidence_scope.c` | 212 | 54 | +158 |
+| `src/synthesis_context.c` | 7 | 36 | -29 |
+| `src/synthesis_iadt.c` | 6 | 8 | -2 |
+| `src/typed_query.c` | 79 | 0 | +79 |
+| `src/typed_query.h` | 32 | 0 | +32 |
+| `tests/core.c` | 14 | 1 | +13 |
+| `tests/synthesis.c` | 78 | 1 | +77 |
+
+Implementation **+679/-516, net +163**; tests **+92/-2, net +90**; build net 0.
+Logs: `/tmp/a-program-shared-scope-` with `{acceptance,debug,asan,cross}.log`,
+`acceptance.time`, `bench.jsonl`. Logs are temporary; boundary tests are committed.
+
+This plan: **+72/-0**; complete slice: **+844/-519, net +325**.
