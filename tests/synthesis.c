@@ -1612,6 +1612,31 @@ static void pending_effect_contexts(struct pg_typing *typing)
 		struct pg_synthesis_job *raw_widening_term = pg_synthesis_term_structure(&synthesis, raw_widening);
 		assert(!complete(&synthesis, raw_widening_term, PG_SYNTHESIS_DONE));
 		assert(!pg_synthesis_result(raw_widening));
+		struct pg_synthesis_job *cbpv_rules[] = {carrier, thunk,
+			rule_job(&synthesis, PG_RETURN_CONTENT, NULL, 1, &carrier),
+			rule_job(&synthesis, PG_RETURN_INTRO, NULL, 1, &variable),
+			rule_job(&synthesis, PG_THUNK_INTRO, NULL, 1, &body),
+			body, sequence, request_job, raw_handler, multiple_handler, raw_widening};
+		for (size_t i = 0; i < sizeof(cbpv_rules) / sizeof(*cbpv_rules); ++i) {
+			struct pg_synthesis_job *term = pg_synthesis_term_structure(&synthesis, cbpv_rules[i]);
+			struct pg_synthesis_job *type = i < 3 ? pg_synthesis_type_structure(&synthesis, cbpv_rules[i])
+				: pg_synthesis_classifier_structure(&synthesis, cbpv_rules[i]);
+			assert(term && type && term->role == raw_handler_term->role);
+			assert(term->role->size < cbpv_rules[i]->role->size);
+			assert(type->role->size < cbpv_rules[i]->role->size);
+			assert(i < 3 ? type == term : type->role == raw_handler_type->role);
+			uint64_t steps = synthesis.steps;
+			size_t requests = synthesis.jobs.count;
+			pg_synthesis_advance(&synthesis, 0);
+			assert(pg_synthesis_term_structure(&synthesis, cbpv_rules[i]) == term);
+			assert((i < 3 ? pg_synthesis_type_structure(&synthesis, cbpv_rules[i])
+				: pg_synthesis_classifier_structure(&synthesis, cbpv_rules[i])) == type);
+			assert(synthesis.jobs.count == requests && synthesis.steps == steps);
+			assert(!complete(&synthesis, term, PG_SYNTHESIS_DONE));
+			assert(!complete(&synthesis, type, PG_SYNTHESIS_DONE));
+			assert(!pg_synthesis_result(term) && !pg_synthesis_result(type));
+			assert(!pg_synthesis_result(cbpv_rules[i]));
+		}
 		struct pg_synthesis_job *carrier_bodies[] = {raw_handler, raw_widening};
 		struct pg_synthesis_job *carrier_lambdas[2];
 		for (size_t i = 0; i < 2; ++i) {

@@ -1225,6 +1225,15 @@ owner localization, not completion of typed-history removal or higher Identity.
 
 ### Plan
 
+- [x] **CBPV structural-query owner, baseline `54adb9e`:** move provisional
+  F/U/Return/Thunk/Force and Fold/Request/Handler inspection into the existing
+  CBPV synthesis owner. Share the continuation-carrier scan and Fold construction;
+  remove their source-wide state/branches. Keep the same request keys, ordering,
+  effect-equation identity and ordinary acceptance rules. Agent decision: these
+  queries describe pending input, not new proof evidence. No new scheduler,
+  cache, Core tag or wire format. Verify zero/small fuel, request reuse, pending
+  and rejected producers, multiple clauses and cancellation, then the common
+  acceptance/sanitizer/interchange/performance gates before Main publication.
 - [x] **Family adapter/IADT instance owners, baseline `5c064c2`:** move logical
   family/CBPV adapters into `synthesis_function.c` and nominal instance recovery
   into `synthesis_iadt.c`. Remove their source-wide payload/dispatch, keeping
@@ -1383,6 +1392,7 @@ owner localization, not completion of typed-history removal or higher Identity.
 | 2026-09-26 | P5 | `22661f4` localizes function formation, Pi scopes and their pending consumers; no extra classifier cache | Clean acceptance, Debug, sanitizers, cross-reading and paired timings pass; broader P4/P5 remain open |
 | 2026-09-26 | P4.3c | `c341229` validates result formation through the typed Term's `type` edge and deletes receipt cloning | Clean acceptance, Debug, sanitizers, legacy alternate-history images and paired timings pass; broader P4/P5 remain open |
 | 2026-09-27 | P5 function structures | Pi/Lambda/APP structural queries use function-owned state and the existing work interner | Full acceptance, Debug/sanitizers, cross-reading and paired measurements pass; broader P4/P5 remain open |
+| 2026-09-27 | P5 CBPV structures | Known CBPV-rule queries use owner-local state; central Fold/carrier interpretation and payload removed | All publication gates below pass; P4/P5 remain open |
 
 P4.2a verification (fresh, current worktree including the inherited Context/IADT
 edits): optimized `identity_test`, `derivation_io.sh` and `identity_io.sh` pass;
@@ -2802,3 +2812,53 @@ Logs: `/tmp/a-program-function-structure-{acceptance,debug,asan,cross}.log`,
 `/tmp/a-program-function-structure-acceptance.time`, and `{bench,memory}.jsonl`
 with that prefix. Permanent tests are tracked; temporary logs are not.
 This plan: **+66/-0**; complete slice: **+363/-136, net +227**.
+
+### CBPV Structural Query Verification (2026-09-27)
+
+Baseline `54adb9e`; inherited trials excluded. F/U formation/content,
+Return/Thunk/Force, Fold/Request/Handler and effect-subsumption structural
+queries now use `synthesis_cbpv.c`. Fold construction and the continuation
+carrier helper remain shared. Central source branches and their Fold/comparison
+payloads are removed. Request keys, child-request order, effect parameters,
+ordinary checking, Core and wire formats are unchanged. Raw query output is
+not Evidence; no additional request adapter, scheduler or cache was added.
+
+Agent assessment: adopt owner-local allocation, not claim code or global memory
+reduction. GDB reports **224 -> 48 bytes** of private state for these known-rule
+queries; remaining source state is still 224 bytes and the common header 80.
+The new allocation regression fails on the baseline and passes here. All ten
+rule kinds, including two Handler arities, check exact query reuse, zero fuel,
+shared type/term requests and no premature acceptance. Existing pending-effect,
+rejection, cancellation and split-budget checks also pass.
+
+- Full root `check-acceptance`: exit 0; **1558.712s** wall, **1449.287s** user,
+  **108.617s** system. Compatibility **63/63**, general/ordinary-result Sorted,
+  four LT/partition variants and optional witness packets/isolation pass.
+- Debug and ASan/UBSan pass: Core, Program, IADT, Identity, synthesis,
+  typed-only/scoped, source and derivation images.
+- **36** image pairs, **72** opposite-version loads and **8** typed-graph/
+  derivation reads pass.
+- Ten workloads, six paired samples after warmup: medians **-1.04% to +2.05%**,
+  all sample ranges overlap. Solve counts and normalized outputs match exactly.
+  Sorted **0.841794s -> 0.835200s**, ordinary-result **0.744377s -> 0.746060s**,
+  derived **2.588383s -> 2.561494s**. No general speedup claim.
+- Three-pair RSS medians (KiB): length **10776 -> 10776**, Sorted
+  **220448 -> 220736**, ordinary-result **172448 -> 172356**, derived
+  **539936 -> 540016**. No consistent whole-process saving is established.
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `src/synthesis.c` | 10 | 190 | -180 |
+| `src/synthesis_cbpv.c` | 231 | 0 | +231 |
+| `src/synthesis_source.h` | 2 | 0 | +2 |
+| `tests/synthesis.c` | 25 | 0 | +25 |
+
+Implementation **+243/-190, net +53**; tests **+25/-0**; build unchanged.
+This does not meet the overall reduction gate. Pending lexical/polarity
+inspection, selected Pi/family scopes, other rule histories and budgeted
+structural checking remain open; broad P4/P5 are not complete.
+Logs: `/tmp/a-program-cbpv-structure-{acceptance,debug,asan,cross}.log`,
+`/tmp/a-program-cbpv-structure-acceptance.time`, and `{bench,memory}.jsonl`
+with that prefix. Temporary logs are not committed; regression tests are.
+
+This plan: **+60/-0**; complete slice: **+328/-190, net +138**.
