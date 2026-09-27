@@ -38,6 +38,7 @@ int pg_synthesis_constructor_scope_allocation(const struct pg_synthesis_job *,
 	const struct pg_context **, const struct pg_context **);
 
 const struct pg_source_scope *pg_synthesis_intern_scope(struct pg_synthesis *, struct pg_source_scope);
+int pg_synthesis_register_name(struct pg_synthesis *, struct pg_index *, struct pg_token);
 const struct pg_evidence *pg_synthesis_scope_context(const struct pg_source_scope *);
 int pg_synthesis_scope_wait(struct pg_synthesis *, struct pg_synthesis_job *, const struct pg_source_scope *);
 const struct pg_object *pg_synthesis_source_binder(struct pg_synthesis *,

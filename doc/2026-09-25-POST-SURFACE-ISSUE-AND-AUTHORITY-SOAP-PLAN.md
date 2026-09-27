@@ -4,13 +4,17 @@ Date: 2026-09-25
 Updated: 2026-09-27
 Priority milestone (user request, 2026-09-27): [Local/Strong Sorted
 Issue #39 / PR #40](2026-09-27-LOCAL-STRONG-SORTEDNESS-SOAP-PLAN.md) is complete
-and published. #39 is closed; PR #40 is superseded. Resume P4/P5 from the latest
-verified checkpoint; that sorting milestone changed neither algorithms nor compiler.
+and published. #39 is closed; PR #40 is superseded. That sorting milestone
+changed neither algorithms nor compiler. New user priority, 2026-09-27:
+[#41](https://github.com/repyt-margorp/a-program/issues/41) /
+[PR #42](https://github.com/repyt-margorp/a-program/pull/42), finite-position
+sorting with common proofs for Quick/Merge/Insertion/Bubble and simple additional
+backends, precedes further P4/P5 work after the verified schema-owner checkpoint.
 Status: P1-P3 closed. P4 Identity-boundary/Lambda-scope/typed-only function,
 result-formation, selected ambient declarations, Context-history removal,
 typed-map/variable-image and shared typed-input scope slices
 verified. P5 effect/shared-work/
-Handler/Operation/CBPV/function/Context/IADT-scope/transport/basic-Identity/conversion/binding owners verified.
+Handler/Operation/CBPV/function/Context/IADT-scope/transport/basic-Identity/conversion/binding/schema owners verified.
 Verification uses clean publication trees, full acceptance and affected sanitizers.
 Broader P4 typed-proof migration and P5 synthesis modularity remain open.
 Layout milestone (user-authorized 2026-09-26): see
@@ -1303,6 +1307,25 @@ owner localization, not completion of typed-history removal or higher Identity.
 
 ### Plan
 
+- [x] **Schema owner, baseline `2a67ac3`:** move conditional IADT schema
+  preparation, constructor result telescopes, restored nominal allocation and
+  implicit-index path diagnostics out of the universal source payload. Keep
+  one schema result and borrow it from the declaration's checked result; share
+  name registration, telescope workers and the existing Solve queue. Constructor
+  calling-convention paths stay descriptive and never establish typing. Check
+  pending/invalid indices, duplicate names, restored dependent fields, exact
+  request reuse, small budgets and cancellation, then full acceptance, affected
+  Debug/sanitizers, cross-version images and paired performance before adoption.
+  Agent decision within P5: this removes duplicated representation, not schema
+  formation premises or the remaining Match/motive owner. A preliminary P4.4
+  inspection also finds that raw structural requests can lack ambient formation
+  or an unsupported child's receipt; permanently caching that temporary absence
+  as rejection would be incorrect. Do not replace the synchronous checker with
+  a subject-only negative cache before its complete input contract is specified.
+  Verified below: full acceptance, Debug/sanitizers, interchange and paired
+  measurements pass. An unpublished alias/allocation regression found during
+  review is corrected and covered. Broader P4/P5 remain open.
+
 - [x] **Binding/telescope owner, baseline `267857a`:** move annotation-domain
   checking, lexical binding, telescope allocation and their provisional
   declared-type inspection together out of the universal source payload.
@@ -1504,6 +1527,7 @@ owner localization, not completion of typed-history removal or higher Identity.
 | 2026-09-27 | P4.3p | Direct Identity retains typed construction, not duplicate input receipts; owner-local structural checking uses ordinary rules | Full acceptance, Debug/sanitizers, cross-reading and paired measurements pass; mapped families and broader P4/P5 remain open |
 | 2026-09-27 | P5 derivation owner | Input/reference/rule/export state leaves the source union; comparison state is allocated only when needed | All publication gates pass; smaller work allocations, not global code reduction |
 | 2026-09-27 | P5 binding owner | Annotation, binding, telescope and provisional declaration queries share owner-local state and the existing Solve | All gates below pass after fixing a Match accessor migration omission; P4/P5 remain open |
+| 2026-09-27 | P5 schema owner | Schema preparation and constructor telescopes own compact state; declaration results no longer duplicate schema references | All gates below pass; finish this checkpoint, then prioritize #41/#42 at the user's request |
 
 P4.2a verification (fresh, current worktree including the inherited Context/IADT
 edits): optimized `identity_test`, `derivation_io.sh` and `identity_io.sh` pass;
@@ -3336,3 +3360,52 @@ Logs: `/tmp/a-program-binding-owner-{acceptance,debug,asan}.log`,
 `/tmp/a-program-binding-owner-cross.qquFhq/`. The trial failure remains in
 `/tmp/a-program-binding-owner-trial-failure.log`. Only permanent tests and this
 summary are committed, not the temporary logs or inherited experiments.
+
+### Schema Preparation Owner, 2026-09-27
+
+Baseline `2a67ac3`; inherited trials excluded. `synthesis_schema.c` owns schema
+preparation, constructor result telescopes, restored nominal inputs and implicit
+index paths. It borrows immutable scope/syntax inputs and shares the original
+name registration, telescope workers and Solve queue. Declaration expressions
+read their checked schema result, without a second stored schema pointer.
+Calling-convention paths remain descriptive, not typing authority. No Core,
+typing rule, syntax, sorting algorithm or image format changes.
+
+- Full `check-acceptance` passes: **1598.904 s** wall, **1488.672 s** user,
+  **109.465 s** system. Includes 63/63 compatibility, general and ordinary-result
+  QuickSort, four LT/partition variants, Local/Strong, images and optional packets.
+- Debug and ASan/UBSan with leak checking pass for core, IADT, Identity,
+  synthesis, typed structure and derivation images. Pending destruction,
+  exact request reuse, invalid/restored indices and nominal distinctions pass.
+- **36 image pairs / 72 opposite-version loads** pass at budgets 0/100/complete,
+  ordinary and retained. Partial/family results also match.
+- Eleven paired O2 inputs, one warm-up and six alternating samples: identical
+  outputs **and Solve counts**. Median changes **-1.14% to +2.87%**, with all
+  sample ranges overlapping; no speedup claim. Three-sample median peak RSS
+  (KiB), general/direct-result/Local/derived-Strong:
+  **297280->296772 / 177876->177152 / 154644->154516 / 155336->154896**.
+- Review caught an unpublished extraction error: deriving a nominal allocation
+  from every expression result would also register ordinary aliases as defining
+  declarations. Restricting this lookup to declaration syntax preserves the old
+  contract; a permanent alias regression checks both pending and completed states.
+
+x86-64 private state: schema **216+56->80 bytes**, constructor result **216->16**,
+remaining source payload **216->208**; the shared 80-byte header is unchanged.
+`synthesis.c` falls **5754->5515 lines**. Combined implementation/headers are
+**+309/-252, net +57**: localized ownership and smaller storage, not source-code
+reduction. P4/P5 and the overall reduction gate remain open.
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `src/synthesis.c` | 13 | 252 | -239 |
+| `src/synthesis_schema.c` | 273 | 0 | +273 |
+| `src/synthesis_schema.h` | 22 | 0 | +22 |
+| `src/synthesis_source.h` | 1 | 0 | +1 |
+| `src/Makefile` | 1 | 0 | +1 |
+| `tests/synthesis.c` | 22 | 0 | +22 |
+
+Local logs: `/tmp/a-program-schema-owner-{acceptance,debug,asan,cross}.log`,
+`/tmp/a-program-schema-owner-{acceptance.time,bench.jsonl}`; interchange files:
+`/tmp/a-program-schema-owner-cross.jHcjS6/`. Only permanent tests and this summary
+are committed. Full-gate wall times include differing build work; the paired
+measurements, not those totals, are the compiler performance comparison.
