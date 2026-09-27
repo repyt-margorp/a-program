@@ -3,21 +3,14 @@ set -euo pipefail
 binary=$1
 compare=$2
 mode=${3:-all}
-steps=${SORTING_CHECK_STEPS:-20000000}
+steps=${SORTING_CHECK_STEPS:-40000000}
 case $mode in all|source|lists|quick|insertion) ;; *) printf 'unknown check mode: %s\n' "$mode" >&2; exit 2;; esac
 started=$SECONDS
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-root=$(cd "$here/../../.." && pwd)
 directory=$(mktemp -d)
 trap 'rm -rf "$directory"' EXIT
-fixtures="$root/tests/fixtures"
 provider="$directory/provider.p"
-sed '/^import /d' "$fixtures/sorted-proof-provider.p" "$fixtures/local-strong-sorted.p" \
-	"$fixtures/quick-sort-proof-common.p" "$root/tests/acceptance/generic-quick-local-sorted-result.p" \
-	"$fixtures/finite_positions.p" "$fixtures/finite_vectors.p" "$fixtures/finite_list_views.p" \
-	"$fixtures/generic_sorted/content-proof.p" "$fixtures/generic_sorted/content-result-proof.p" \
-	"$fixtures/finite_permutation_views.p" "$here/common.p" "$here/quick.p" "$here/insertion.p" \
-	"$fixtures/generic_sorted/boolean-order.p" > "$provider"
+bash "$here/provider.sh" "$here/quick.p" "$here/../../../tests/fixtures/generic_sorted/boolean-order.p" > "$provider"
 check() {
 	local expected=$1 label=$2 status=0
 	shift 2

@@ -353,10 +353,15 @@ tests or a claim that F3/F4 are complete):
   ordered and distinct labels sharing a key; image comparison chunks 1 and 64.
 - [x] Reject wrong function domain, dropped contents, incompatible comparator,
   wrong Vec shape and wrong action value; ordinary save/load and partial resume.
-- [ ] Complete normalization of the integrated Quick/Insertion Vec/Fin reports.
-- [ ] Complete retained-image gates within an explicit, justified size policy.
-- [ ] Generalize the existing merge/tree proofs and add BubbleSort; no claim of
-  a conventional two-front merge or arbitrary-element legacy MergeSort yet.
+- [x] Complete normalization of the integrated Insertion Vec/Fin report.
+- [ ] Complete the corresponding Quick report and specialized value-transport tests.
+- [x] Verify retained Insertion observations/resume through the existing reader
+  API with an explicit three-million-record limit; the CLI limit is unchanged.
+- [ ] Resolve the CLI size policy and complete the remaining retained gates.
+- [x] Connect the unchanged Nat-specific legacy MergeSort, with arbitrary
+  relation/comparator, Local/permutation proofs and ordinary List observations.
+- [ ] Complete its Vec/Fin observations; connect Tree and BubbleSort. No claim
+  of conventional two-front merge or arbitrary-element legacy MergeSort yet.
 
 **Assessment of fresh failures:** general/closed source checks finish in about
 13 million solver transitions, and removing assertions takes about 4.7 million.
@@ -380,18 +385,19 @@ declare the retained mode working.
 
 **Next verification work:**
 
-1. Isolate Core evaluation from typed normalization/classifier conversion for
-   `sorting_vector` and `sorting_positions`; measure shared work before choosing
-   a compiler change. Preserve the full-value law, not only a length check.
+1. Minimize the remaining Core demand/readback cost for `sorting_vector` and
+   `sorting_positions` (measurements below). Check closure/environment sharing
+   before choosing a compiler change; do not replace the actual-value law by a
+   length check or introduce sorting-specific evaluation rules.
 2. Separate necessary retained dependencies from optional reduction history;
    assess an explicit reader-limit option and writer diagnostics. Keep the
    current limit validation intact until that decision is justified.
 3. Re-run the prototype `check.sh` gates, including the pending same-domain
    negative, before marking F3 complete or promoting the source fixtures.
-4. For F4, reuse the exact old merge algorithm (currently Nat-specialized,
-   repeated insertion); state its fuel-bound premise. Generalize Tree's existing
-   Nat proof or choose a separately named selection backend. BubbleSort needs
-   an actual source implementation and open-input proof, not a renamed backend.
+4. For F4, finish legacy MergeSort's position/value observations. Generalize
+   Tree's existing Nat proof or choose a separately named selection backend.
+   BubbleSort needs an actual source implementation and open-input proof, not a
+   renamed backend. Preserve the explicit relation assumptions per algorithm.
 
 The commands, scope and known incomplete gates are in
 [`src/prototype/finite_sorting/README.md`](../src/prototype/finite_sorting/README.md).
@@ -405,6 +411,82 @@ gate passes its five rejection checks and ordinary complete/partial-image
 checks, then fails the retained-image load limit. `all` remains unpassed. The
 compiler's full acceptance suite and sanitizer suite were not rerun: there are
 no accepted implementation changes in this prototype checkpoint.
+
+### F3/F4 Verification Follow-Up, 2026-09-28
+
+**Subjective (User):** advance F3/F4 verification; keep `::` strictly a post-check
+and preserve ordinary algorithm results and one implementation authority.
+
+**Objective (Code), `996f523` plus this prototype:**
+
+- Insertion's complete Vec/Fin report passes in **32,348,238** transitions at
+  chunks 1 and 64, including source checking (O2 gate: **23 seconds**). Its Core
+  NF alone takes 19,298,786 transitions; after that cached result, typed NF takes
+  one solver transition. The previous 20-million total budget was insufficient.
+- For `quick_first`, a five-million-Core-step probe samples 77,684 states in the
+  demand/readback phase and 441 elsewhere, creating 1,672,938 further terms.
+  Separate 60-million-step Quick position and Vec probes also remain pending;
+  they are not demonstrated semantic counterexamples or solver deadlocks.
+- Complete retained Insertion results pass at 32,483,133 transitions with a
+  caller-selected **3,000,000-record** bound, using the existing typed comparator.
+  The retained 100-step image, byte-identical zero-step rewrite and resumed
+  Insertion result also pass (combined O2 gate: **46 seconds**). This establishes
+  the bounded reader API, **not** a fix to the CLI's one-million-record default.
+- `merge.p` proves Local and permutation of the exact legacy `mergeSort` call.
+  Local requires directional comparison evidence; Strong adds transitivity via
+  the common wrapper. Internal `merge_fits` is an ordinary source IADT bounding
+  the list length by fuel, derived from the existing `measure_content_result`.
+  Content preservation also holds at zero fuel, where sortedness need not hold.
+- Merge source/post-checks pass in **13,723,977** steps, assertion-free synthesis
+  in **5,240,327**, and the five ordinary List observations in **14,293,931**.
+  Positive labels 1 and 2 share a Boolean key, so the duplicate example checks
+  distinct occurrences without imposing stability. Wrong bounds, comparator
+  evidence and content reject; ordinary images and 0/100-step resume pass.
+  O2, Debug and ASan/UBSan gates pass in **70/128/219 seconds**, with leak checking
+  and halt-on-error enabled for sanitizers. Merge's integrated Vec observation
+  is still pending at 40 million steps; the following Fin-origin gate was not
+  reached. The full compiler acceptance suite is not claimed rerun for these
+  prototype-only source/test additions.
+
+**Assessment (agent):** retain the checked open theorems; do not declare the
+remaining closed observations complete. The first Merge Local proof trial
+reassociated nested neutral Matches and did not finish at 40 million steps.
+The adopted helper takes the original whole split result and explicitly proves
+its right-list fuel bound. It matches the ordinary function's computation,
+without commuting-conversion axioms, altered algorithms or inference from `::`.
+`eval.c` eagerly materializes demanded closures; repeated substitution and binder
+freshening are candidates for investigation, not an established safe repair.
+`probe.c` measures the existing evaluator and is not an acceptance checker.
+`image_compare.c` reuses `tests/program.c` with only an explicit reader bound;
+it neither trusts serialized proofs nor introduces an alternative checker.
+
+**Plan:** retain the unchecked work above as the sole active list. The prototype
+default budget is now 40 million, justified by the completed Insertion check;
+do not keep raising it to conceal the unresolved Quick/Merge readback cost.
+Tree/Bubble and the full `all` gate remain incomplete. No accepted compiler,
+Core/surface rule, image format or default build changes in this epoch.
+Logs: `/tmp/a-program-f3-{insertion-shared-provider,shared-provider-lists,
+retained-api}.log`, `/tmp/a-program-f4-merge-{check,debug,asan,vector}.log`.
+
+Change accounting against `996f523`, excluding documentation and inherited
+root-worktree edits. Accepted compiler/build changes: **0**. All entries are
+under `src/prototype/finite_sorting/`:
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `merge.p` | 158 | 0 | +158 |
+| `merge-cases.p` | 51 | 0 | +51 |
+| `merge-check.sh` | 54 | 0 | +54 |
+| `check.sh` | 2 | 9 | -7 |
+| `provider.sh` | 10 | 0 | +10 |
+| `retained-check.sh` | 28 | 0 | +28 |
+| `image_compare.c` | 29 | 0 | +29 |
+| `probe.c` | 108 | 0 | +108 |
+| `probe.mk` | 11 | 0 | +11 |
+
+Non-document total: **+451/-9, net +442**. Of this, 158 lines are new source
+proofs; the rest are examples, verification, diagnostic and local build code.
+This is added F3/F4 coverage, not a compiler-size reduction claim.
 
 ### List/Vec View Checkpoint, 2026-09-27
 
