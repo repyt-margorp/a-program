@@ -511,6 +511,10 @@ static void stored_effect_derivation(struct pg_typing *typing,
 	size_t proofs = typing->proofs.count;
 	struct pg_synthesis_job *job = pg_synthesis_derivation_inference(&synthesis, pi, &restored);
 	assert(job == pg_synthesis_derivation_inference(&synthesis, pi, &restored));
+	assert(job->role->size <= sizeof(size_t) + sizeof(void *));
+	assert(pg_synthesis_work_project(job).preparing && !pg_synthesis_work_project(job).rule);
+	pg_synthesis_advance(&synthesis, 0);
+	assert(!synthesis.steps && typing->proofs.count == proofs);
 	struct pg_synthesis_job *structure = pg_synthesis_type_structure(&synthesis, job);
 	struct pg_synthesis_job *variable_type = pg_synthesis_classifier_structure(&synthesis,
 		pg_synthesis_derivation_inference(&synthesis, variable, &restored));
@@ -526,6 +530,10 @@ static void stored_effect_derivation(struct pg_typing *typing,
 	assert(pg_synthesis_type_structure_result(structure) == pg_pi(graph, pg_thunk_type(typing->graph, pending), binder, pending));
 	assert(pg_synthesis_type_structure_result(variable_type) == pg_thunk_type(typing->graph, pending));
 	assert(!pg_synthesis_result(job) && !synthesis.ready);
+	struct pg_synthesis_job *prepared = pg_synthesis_work_project(job).rule;
+	assert(prepared && !pg_synthesis_work_project(job).preparing);
+	assert(prepared->role->size <= sizeof(size_t) + sizeof(void *));
+	assert(!pg_synthesis_evidence_input(prepared));
 	assert(pg_synthesis_status(missing) == PG_SYNTHESIS_REJECTED);
 	assert(pg_synthesis_status(conflicting) == PG_SYNTHESIS_REJECTED);
 	size_t jobs = synthesis.jobs.count;
@@ -983,7 +991,7 @@ static void pending_pi_scan(struct pg_typing *typing)
 		struct pg_synthesis_job *function_shapes[6];
 		for (size_t i = 0; i < 6; ++i) {
 			function_shapes[i] = pg_synthesis_term_structure(&synthesis, function_rules[i]);
-			assert(function_shapes[i] && function_shapes[i]->role->size < function_rules[i]->role->size);
+			assert(function_shapes[i] && function_shapes[i]->role->size <= 5 * sizeof(void *) + sizeof(struct pg_comparison));
 			assert(pg_synthesis_work_input(function_shapes[i], 0) == function_rules[i]);
 			size_t requests = synthesis.jobs.count;
 			assert(pg_synthesis_term_structure(&synthesis, function_rules[i]) == function_shapes[i]);
@@ -992,7 +1000,7 @@ static void pending_pi_scan(struct pg_typing *typing)
 		}
 		struct pg_synthesis_job *lambda_shape = pg_synthesis_classifier_structure(&synthesis, lambda);
 		assert(lambda_shape->role == shapes[0]->role && lambda_shape->role != function_shapes[2]->role);
-		assert(lambda_shape->role->size < lambda->role->size);
+		assert(lambda_shape->role->size <= 5 * sizeof(void *) + sizeof(struct pg_comparison));
 		uint64_t before = synthesis.steps;
 		pg_synthesis_advance(&synthesis, 0);
 		assert(synthesis.steps == before && !pg_synthesis_type_structure_result(lambda_shape));
@@ -1622,8 +1630,8 @@ static void pending_effect_contexts(struct pg_typing *typing)
 			struct pg_synthesis_job *type = i < 3 ? pg_synthesis_type_structure(&synthesis, cbpv_rules[i])
 				: pg_synthesis_classifier_structure(&synthesis, cbpv_rules[i]);
 			assert(term && type && term->role == raw_handler_term->role);
-			assert(term->role->size < cbpv_rules[i]->role->size);
-			assert(type->role->size < cbpv_rules[i]->role->size);
+			assert(term->role->size <= 5 * sizeof(void *) + sizeof(struct pg_comparison));
+			assert(type->role->size <= 5 * sizeof(void *) + sizeof(struct pg_comparison));
 			assert(i < 3 ? type == term : type->role == raw_handler_type->role);
 			uint64_t steps = synthesis.steps;
 			size_t requests = synthesis.jobs.count;
@@ -2979,6 +2987,9 @@ static void accepted_inputs(struct pg_typing *typing)
 	struct pg_synthesis_job *first = pg_synthesis_evidence(&synthesis, proofs[0]);
 	struct pg_synthesis_job *second = pg_synthesis_evidence(&synthesis, proofs[1]);
 	assert(first && second && first != second);
+	assert(!first->role->size && !second->role->size);
+	assert(pg_synthesis_evidence_input(first) == proofs[0]);
+	assert(!pg_synthesis_evidence_input(NULL));
 	assert(pg_synthesis_result(first) == proofs[0] && pg_synthesis_result(second) == proofs[1]);
 	assert(pg_synthesis_evidence(&synthesis, proofs[0]) == first);
 	assert(!pg_synthesis_evidence(&synthesis, NULL));
@@ -7414,6 +7425,62 @@ static void identity_owner_cancellation(void)
 	}
 }
 
+static void derivation_owner_cancellation(void)
+{
+	for (uint64_t cutoff = 0;; ++cutoff) {
+		struct pg_graph graph = {0};
+		struct pg_typing typing;
+		struct pg_whnf_work work;
+		struct pg_synthesis synthesis;
+		assert(!pg_graph_init(&graph) && !pg_typing_init(&typing, &graph));
+		assert(!pg_whnf_work_init(&work, &graph));
+		assert(!pg_synthesis_init(&synthesis, &typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
+		const struct pg_derivation_input *context = stored_rule(&graph, PG_CONTEXT_EMPTY, 0, NULL);
+		const struct pg_derivation_input *type = stored_rule(&graph, PG_UNIVERSE_FORM, 1, &context);
+		const struct pg_derivation_input *value = stored_rule(&graph, PG_VALUE_FROM_TYPE, 1, &type);
+		const struct pg_derivation_input *returned = stored_rule(&graph, PG_RETURN_INTRO, 1, &value);
+		const struct pg_derivation_input *thunk = stored_rule(&graph, PG_THUNK_INTRO, 1, &returned);
+		const struct pg_derivation_input *force = stored_rule(&graph, PG_FORCE_ELIM, 1, &thunk);
+		const struct pg_term *result = pg_application(&graph, pg_reference(&graph, &pg_return_operation), pg_universe(&graph, 0));
+		const struct pg_term *source = pg_application(&graph, pg_reference(&graph, &pg_force_operation),
+			pg_application(&graph, pg_reference(&graph, &pg_thunk_operation), result));
+		struct pg_derivation_input *nf = stored_rule(&graph, PG_PURE_NORMALIZATION, 1, &force);
+		nf->source = source; nf->target = result; nf->reduction_kind = PG_REDUCTION_NF;
+		struct pg_derivation_input *target = stored_rule(&graph, PG_UNIVERSE_FORM, 1, &context);
+		target->parameters.level = 1;
+		struct pg_derivation_input *conversion = stored_rule(&graph, PG_TYPE_CONVERSION, 2,
+			(const struct pg_derivation_input *[]){value, target});
+		conversion->source = conversion->target = pg_universe(&graph, 1);
+		struct pg_synthesis_job *jobs[] = {
+			pg_synthesis_derivation(&synthesis, nf), pg_synthesis_derivation(&synthesis, conversion)};
+		assert(!typing.proofs.count && !synthesis.steps);
+		pg_synthesis_advance(&synthesis, cutoff);
+		int drained = !synthesis.ready;
+		if (drained) {
+			for (size_t i = 0; i < 2; ++i) {
+				assert(pg_synthesis_status(jobs[i]) == PG_SYNTHESIS_DONE);
+				assert(pg_synthesis_work_project(jobs[i]).rule);
+			}
+			assert(pg_evidence_subject(pg_synthesis_result(jobs[0]))->core == result);
+			size_t requests = synthesis.jobs.count;
+			assert(pg_synthesis_derivation(&synthesis, nf) == jobs[0]);
+			assert(pg_synthesis_derivation(&synthesis, conversion) == jobs[1]);
+			assert(synthesis.jobs.count == requests);
+		}
+		/* Includes destruction before preparation, while waiting on shared
+		 * premises, and after allocating endpoint/reduction progress. */
+		pg_synthesis_destroy(&synthesis);
+		pg_whnf_work_destroy(&work);
+		pg_typing_destroy(&typing);
+		pg_graph_destroy(&graph);
+		assert(cutoff < 1000);
+		if (drained) {
+			printf("derivation owner cancellation: %llu boundaries\n", (unsigned long long)cutoff + 1);
+			break;
+		}
+	}
+}
+
 static void synthesis_cancellation(void)
 {
 	const char *sources[] = {
@@ -7716,6 +7783,7 @@ int main(void)
 	application_substitution_sharing(&typing);
 	effect_expectations(&typing);
 	synthesis_cancellation();
+	derivation_owner_cancellation();
 	identity_owner_cancellation();
 	composition_sharing();
 	synthesis_lifetime(&typing);

@@ -1313,6 +1313,16 @@ owner localization, not completion of typed-history removal or higher Identity.
   lifetime. Run focused/Debug/sanitizer tests, clean acceptance and paired
   timings before publication. This does not complete P4's budgeted lift or
   typed Context-formation representation.
+- [x] **Derivation owner, baseline `8cc9752`:** move ordinary rule construction,
+  inert derivation input and rule-closure export out of source-wide state.
+  Accepted Evidence references need no private state; ordinary rules and input
+  preparation retain only their own progress. Allocate endpoint comparison and
+  reduction state only for rules which need it. Keep immutable premise edges,
+  exact request keys, preparation wakeups and the existing shared Solve path;
+  do not add another checker, Replay, Core tag or wire format. Check request
+  reuse, small budgets, cancellation, source-name identity and pending/accepted
+  images, then common publication gates. Report moved lines separately from
+  deletion and measure memory/timing before making performance claims.
 - [ ] Map private job fields, entry points and cross-owner calls; choose the
   smallest shared interface consistent with P4.2. Keep domain-specific state
   private. Moving the entire job union into a widely included header is not
@@ -1422,6 +1432,7 @@ owner localization, not completion of typed-history removal or higher Identity.
 | 2026-09-27 | P5 CBPV structures | Known CBPV-rule queries use owner-local state; central Fold/carrier interpretation and payload removed | All publication gates below pass; P4/P5 remain open |
 | 2026-09-27 | P4.3o | Pi/family abstraction retain selected declaration inputs and typed bodies, not premise histories | Full acceptance, sanitizers, cross-reading and paired measurements pass; broader P4/P5 remain open |
 | 2026-09-27 | P4.3p | Direct Identity retains typed construction, not duplicate input receipts; owner-local structural checking uses ordinary rules | Full acceptance, Debug/sanitizers, cross-reading and paired measurements pass; mapped families and broader P4/P5 remain open |
+| 2026-09-27 | P5 derivation owner | Input/reference/rule/export state leaves the source union; comparison state is allocated only when needed | All publication gates pass; smaller work allocations, not global code reduction |
 
 P4.2a verification (fresh, current worktree including the inherited Context/IADT
 edits): optimized `identity_test`, `derivation_io.sh` and `identity_io.sh` pass;
@@ -3006,3 +3017,44 @@ Logs: `/tmp/a-program-identity-history-` with `{acceptance,debug,asan,cross}.log
 `acceptance.time`, `{bench,memory}.jsonl`. Logs are temporary; tests are committed.
 
 This plan: **+78/-0**; complete slice: **+352/-72, net +280**.
+
+### Derivation Owner Verification, 2026-09-27
+
+Baseline `8cc9752`; agent decision within P5. `synthesis_derivation.c` now owns
+rule-header interning, ordinary rules, inert input preparation and closure
+export. The same shared request index/queue and kernel admission remain; no
+new Replay, Core tags, typing equations or wire format. Source-name identity
+still distinguishes pending producers from immutable accepted references.
+
+Measured x86-64 private storage: Evidence reference **224 -> 0 bytes**;
+ordinary rule and inert input **224 -> 16 bytes** each; endpoint-bearing rules
+add a lazily allocated 40-byte state. Remaining source work shrinks **224 ->
+216 bytes**. The common header remains 80 bytes. No duplicate premise array is
+retained. Four tests which assumed rule state must be larger than structural
+query state now check the query's own bound instead; semantic assertions stay.
+
+- Full `check-acceptance`: passed, wall **1518.085 s**; 63/63 compatibility,
+  general/ordinary-result Sorted, LT/partition variants and witness isolation.
+- Eight affected Debug and ASan/UBSan binaries/scripts passed, including all
+  83 cancellation boundaries for shared derivation inputs, conversion and NF.
+- 36 image pairs, 72 opposite-version loads and 8 graph/derivation reads passed.
+- Ten cases, warmup then six alternating pairs: results and Solve steps match.
+  Median changes **-3.72% to +1.71%**, all sample ranges overlap; no speedup claim.
+- Three-pair maximum-RSS medians (KiB): length **11356 -> 11356**; general
+  Sorted **219916 -> 212144**; ordinary result **172300 -> 167124**; derived
+  LT **539984 -> 522816**. This supports reduced work storage, not all-memory
+  or all-workload guarantees.
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `src/synthesis.c` | 26 | 505 | -479 |
+| `src/synthesis_derivation.c` | 531 | 0 | +531 |
+| `src/synthesis_source.h` | 1 | 0 | +1 |
+| `src/Makefile` | 1 | 1 | 0 |
+| `tests/synthesis.c` | 72 | 4 | +68 |
+
+Implementation **+558/-505, net +53**; tests **+72/-4, net +68**; build net 0.
+447 original lines were moved/adapted, not deleted algorithms. Adopt this
+ownership/storage change; broad P4/P5 and the net-code-reduction gate stay open.
+Inherited trials remain unpublished. Logs: `/tmp/a-program-derivation-owner-`
+with `{acceptance,debug,asan,cross}.log`, `acceptance.time`, `{bench,memory}.jsonl`.
