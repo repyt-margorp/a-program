@@ -15,8 +15,8 @@ not evidence that its proposed interfaces already work. Broad P4/P5 remain open.
 | F0 | Import and critically assess #41 / PR #42 | Complete |
 | F1 | Checked finite positions and bijections | Complete |
 | F2 | Lawful List and indexed-container views | Complete for homogeneous List/Vec and the finite-position bridge |
-| F3 | One ordinary-result sorting specification | Pending |
-| F4 | Quick/Merge/Insertion/Bubble and additional backends | Pending |
+| F3 | One ordinary-result sorting specification | Source prototype checked; normalization/image gates incomplete |
+| F4 | Quick/Merge/Insertion/Bubble and additional backends | Quick/Insertion source connections checked; remaining backends pending |
 | F5 | Permanent rejection, image and regression gates | Pending |
 
 ## F0. Scope and Invariants
@@ -320,6 +320,91 @@ and stability are not universal requirements.
   tree sort), recording the actual relation assumptions per algorithm.
 - [ ] F4: verify open-input ordinary-result theorems, then closed examples for
   empty/singleton/reversed/already-sorted/duplicate-labelled data.
+
+### F3/F4 Implementation Checkpoint, 2026-09-28
+
+- **Subjective (User):** continue F3/F4 implementation and verification; `::`
+  remains a post-synthesis assertion, not an inference input.
+- **Objective (Code):** baseline `7160cbe` already proves general Local and
+  permutation properties of ordinary QuickSort. The older insertion/tree/merge
+  acceptance proofs are primarily Nat-specific. The existing merge uses repeated
+  insertion, not a conventional two-front merge.
+- **Assessment:** use a source record containing the ordinary function and its
+  Local/permutation theorems. Derive Strong with transitivity and reuse F2 for
+  position correspondence and List/Vec wrappers. Do not alter an algorithm to
+  fit the interface. New work starts under `src/prototype/finite_sorting/`.
+- **Plan:** verify the common record and laws first, then connect QuickSort and
+  generalize the other backends individually. Check synthesis without `::`,
+  incorrect result/comparator/proof rejection, ordinary outputs and saved/resumed
+  images. Keep unverified backends unchecked; no new Core or proof-rule tags.
+
+Verified prototype work, relative to `7160cbe` (not a promotion into accepted
+tests or a claim that F3/F4 are complete):
+
+- [x] `common.p`: ordinary function plus Local/permutation proof fields;
+  Strong via transitivity; Fin action identity/composition; List/Vec wrappers,
+  reconstruction and actual-value correspondence against the original Vec.
+- [x] `quick.p`: connect the existing ordinary QuickSort theorems.
+- [x] `insertion.p`: prove Local and permutation for the unchanged
+  `insertBy`/`insertionSortBy`. Local needs directional comparator evidence,
+  not transitivity. `chain_head` is a source IADT, not a privileged rule.
+- [x] Independently synthesize after removing all `::` assertions.
+- [x] Ordinary Quick/Insertion List results: empty, singleton, reversed,
+  ordered and distinct labels sharing a key; image comparison chunks 1 and 64.
+- [x] Reject wrong function domain, dropped contents, incompatible comparator,
+  wrong Vec shape and wrong action value; ordinary save/load and partial resume.
+- [ ] Complete normalization of the integrated Quick/Insertion Vec/Fin reports.
+- [ ] Complete retained-image gates within an explicit, justified size policy.
+- [ ] Generalize the existing merge/tree proofs and add BubbleSort; no claim of
+  a conventional two-front merge or arbitrary-element legacy MergeSort yet.
+
+**Assessment of fresh failures:** general/closed source checks finish in about
+13 million solver transitions, and removing assertions takes about 4.7 million.
+This does not establish a sorting complexity bound. The initial test consumer
+unnecessarily evaluated and discarded three proof terms before returning a
+List; it now checks these functions separately. A direct `sorting_run` applies
+the stored function inside its clause, avoiding a returned-function adapter.
+Neither adjustment solves the remaining normalization cost. The Quick report
+still exhausts 100 million transitions, including with chunks 1 and 64; the
+Insertion report exhausts 20 million. These are **uncompleted checks**, not
+counterexamples or passes. Concrete predicate specialization and a same-domain
+wrong-function test are preserved as `stress-value.p` and
+`stress-wrong-function.p`; the latter is not yet a verified rejection.
+
+The fully retained image of the initial checked prototype contains 439,615
+objects, 1,621,025 terms and 20,981 graph roots. The reader rejects this graph at
+its configured 1,000,000-record limit (`graph_io.c`), before graph reconstruction.
+This establishes a size-limit failure, not corruption. Normal RECOMPUTE images
+load and resume. Do not silently raise every limit or omit proof obligations to
+declare the retained mode working.
+
+**Next verification work:**
+
+1. Isolate Core evaluation from typed normalization/classifier conversion for
+   `sorting_vector` and `sorting_positions`; measure shared work before choosing
+   a compiler change. Preserve the full-value law, not only a length check.
+2. Separate necessary retained dependencies from optional reduction history;
+   assess an explicit reader-limit option and writer diagnostics. Keep the
+   current limit validation intact until that decision is justified.
+3. Re-run the prototype `check.sh` gates, including the pending same-domain
+   negative, before marking F3 complete or promoting the source fixtures.
+4. For F4, reuse the exact old merge algorithm (currently Nat-specialized,
+   repeated insertion); state its fuel-bound premise. Generalize Tree's existing
+   Nat proof or choose a separately named selection backend. BubbleSort needs
+   an actual source implementation and open-input proof, not a renamed backend.
+
+The commands, scope and known incomplete gates are in
+[`src/prototype/finite_sorting/README.md`](../src/prototype/finite_sorting/README.md).
+No accepted compiler, algorithm, syntax, build rule or Core authority is changed.
+
+Final checkpoint observations: source plus post-checks completes in **13,043,801**
+steps; without assertions **4,724,416**. Aggregated ordinary List observations
+pass for Quick in **15,170,785** and insertion in **13,253,617** transitions for
+both comparison chunks (combined `lists` gate: **25 seconds**, O2). The `source`
+gate passes its five rejection checks and ordinary complete/partial-image
+checks, then fails the retained-image load limit. `all` remains unpassed. The
+compiler's full acceptance suite and sanitizer suite were not rerun: there are
+no accepted implementation changes in this prototype checkpoint.
 
 ### List/Vec View Checkpoint, 2026-09-27
 
