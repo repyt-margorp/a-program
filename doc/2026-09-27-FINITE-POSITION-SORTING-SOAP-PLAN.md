@@ -14,7 +14,7 @@ not evidence that its proposed interfaces already work. Broad P4/P5 remain open.
 | --- | --- | --- |
 | F0 | Import and critically assess #41 / PR #42 | Complete |
 | F1 | Checked finite positions and bijections | Complete |
-| F2 | Lawful List and indexed-container views | List/Vec view laws checked; finite-position permutation bridge pending |
+| F2 | Lawful List and indexed-container views | Complete for homogeneous List/Vec and the finite-position bridge |
 | F3 | One ordinary-result sorting specification | Pending |
 | F4 | Quick/Merge/Insertion/Bubble and additional backends | Pending |
 | F5 | Permanent rejection, image and regression gates | Pending |
@@ -285,8 +285,9 @@ silently replace their ordinary results with separately generated proof results.
 
 Existing proof providers are under `tests/fixtures/` and source theorems under
 `tests/acceptance/`. `generic_sorted/content-result-proof.p` connects the
-permutation theorem to ordinary QuickSort. No current theorem connects it to a
-Fin permutation or proves a same-shape reconstruction interface.
+permutation theorem to ordinary QuickSort. The F2 checkpoints below now add the
+List/Vec reconstruction laws and the general permutation-to-Fin bridge. Connecting
+these into the common sorting interface remains F3/F4, not a completed claim.
 
 ### Assessment
 
@@ -306,7 +307,7 @@ and stability are not universal requirements.
   independently checked shape/index preservation, rejected bound/position and images.
 - [x] F2: connect these Vec laws to a lawful List view and its same-length
   reconstruction. Pointwise Vec laws alone do not establish the List bridge.
-- [ ] F2: connect existing inductive List permutation to finite-position
+- [x] F2: connect existing inductive List permutation to finite-position
   bijections and prove the action equation on actual values, including duplicates.
 - [ ] F3: package an ordinary function with its general Local and permutation
   proofs; derive Strong separately. Prove action identity/composition pointwise.
@@ -480,7 +481,7 @@ remaining source proof must be checked independently. Do not promote the
 - [x] Require the reproducer, wrong proof/nominal/index controls, existing
   inferred-index effects, ordinary/retained images, and full acceptance to pass
   before publishing the compiler repair.
-- [ ] Then finish F2's actual-value action, including the rebase prerequisite below.
+- [x] Then finish F2's actual-value action, including the rebase prerequisite below.
 
 This diagnostic checkpoint changes no accepted implementation or test outcome.
 Against `b590dbc`: this plan **+44/-1**, prototype diagnostic **+13/-0**;
@@ -518,18 +519,87 @@ recorded as successful checks or mere budget exhaustion.
 equality axiom, a reason to weaken `::`, or established alpha-comparison slowness.
 Rebase the accepted computation and invert its RETURN in the destination scope;
 do not extract a value that points back to the same computation and start again.
-This proposal is being checked in a separate candidate, leaving the constructor
-repair's full-gate inputs unchanged. An arbitrary cycle cutoff is not a repair.
+The constructor repair was verified and published separately as `9a8a567`.
+The next candidate changes only this traversal: transport the computation with
+the pending map, rebase it, then invert its checked RETURN at the destination.
+The existing `image_boundary` checks the result's Core and classifier. There is
+no cycle cutoff, new proof rule, trusted result or alternate evidence store.
 
 **Plan:**
 - [x] Establish the repeated typed-query states and separate them from the open
   theorem, which already checks. Keep F2 incomplete until closed laws also pass.
-- [ ] Minimize the reproducer and implement a structurally progressing query
+- [x] Localize the reproducer and implement a structurally progressing query
   using existing checked reindex/RETURN rules, without a second evidence store.
-- [ ] Check context/classifier preservation, rejection of captured free binders,
+  The acceptance prefix through `certificate` passes on `9a8a567` (1,181,452
+  steps); requesting its size/positions reproduces the cycle. A 15-second
+  external timeout confirms the old binary does not complete that prefix.
+- [x] Check context/classifier preservation, rejection of captured free binders,
   bounded local progress, and ordinary/retained images under split budgets.
-- [ ] Repeat affected Debug/sanitizer tests and the full gate before publishing
+- [x] Repeat affected Debug/sanitizer tests and the full gate before publishing
   a second compiler epoch; then finish the actual-value F2 acceptance suite.
+
+### F2 Actual-Value Bridge Checkpoint, 2026-09-27
+
+Agent implementation decision on `9a8a567` plus the rebase repair:
+`tests/fixtures/finite_permutation_views.p` defines the general source theorem
+`permutation_reordering`. Given `permutation A xs ys` and `list_size A n xs`, it
+constructs a dependent record containing `list_size A n ys`, a bijection on
+`Fin n`, and a `vec_at` witness for every target position and its source value.
+Its map goes **target position to source position**. Nil, keep, swap and compose
+are proved by induction; no list is replaced by a separately computed result.
+`reordering_observe` and its reverse transport an explicit `P : A -> @` between
+the corresponding actual lookup values. This is not a claim of arbitrary Higher
+Identity, proof irrelevance, stability, or a completed common sorting backend.
+
+The endpoints are fixed parameters of this record, not inferred indices. The
+discarded indexed-record trial introduced unnecessary endpoint refinement at
+composition. A generic `reordering_make` function names its ordinary constructor;
+direct namespace selection on a computed parameter remains unsupported and is
+not claimed fixed. Explicit Match motives supply source information; `::` does
+not supply it, as the assertion-free suite verifies.
+
+Focused O2 suite passes in **102.318 seconds**. The imported open library checks
+in **1,155,037 steps**, the closed acceptance in **2,130,184**. The duplicate-value
+example `[2,1,1] -> [1,1,2]` has origin positions `[1,2,0]`, verified after image
+readback at chunks 1 and 64. Wrong length, omitted/duplicated values, wrong value
+transport, wrong origin and duplicated positions reject. Ordinary/retained
+images and 0/100-step resumes pass, including resumed rejection. These are
+checker measurements, not sorting runtime costs. Debug also passes in
+**167.994 seconds**; the small Core suite passes in Debug and ASan/UBSan.
+The sanitizer source suite passes in **307.781 seconds**. The full acceptance
+gate passes in **1,834.057 seconds**, including source compatibility **63/63**,
+Core, identity/evaluation images, general Sorted/permutation, derived-LT,
+Local/Strong and the new Fin checks. The new shell test bounds each command at 120
+seconds: outer synthesis fuel alone cannot interrupt the reproduced local-query
+cycle. The final guarded suite passes in O2 (**111.022 seconds**) and ASan/UBSan
+(**314.086 seconds**); no compiler timeout was added.
+It was installed before the full gate reached this new test, with all compiler
+and other test inputs unchanged.
+Logs: `/tmp/a-program-fin-action-{focused-bounded,debug,asan-bounded,
+asan-core,acceptance}.log`. F3/F4 and broad authority work remain open;
+#41 does not close on this F2 checkpoint.
+
+The small Core test covers context/classifier preservation, captured-binder
+rejection, finite local progress and cache reuse. It does **not** reproduce the
+original three-state cycle by itself: simple returned values retain a direct
+typed child. The permanent composed-permutation source is that regression test;
+do not describe the simpler Core control as a minimized reproduction.
+
+Change accounting for this candidate, against `9a8a567`, excluding inherited
+root edits and unpublished prototype experiments:
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `src/evidence.c` | 9 | 8 | +1 |
+| `src/Makefile` | 5 | 0 | +5 |
+| `tests/core.c` | 49 | 0 | +49 |
+| `tests/fixtures/finite_permutation_views.p` | 238 | 0 | +238 |
+| `tests/acceptance/finite-permutation-views.p` | 82 | 0 | +82 |
+| `tests/finite_permutation_views.sh` | 79 | 0 | +79 |
+
+Compiler C: **+9/-8, net +1**. Source proof library: **+238**; verification
+code/fixtures: **+210**; build: **+5**. Non-document total: **+462/-8, net +454**.
+The library addition is new functionality, not a claim that compiler size fell.
 
 ## F5. Verification and Publication
 

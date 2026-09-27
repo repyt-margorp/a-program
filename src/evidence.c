@@ -942,13 +942,10 @@ static int typed_rebase_step(struct pg_typed_query *work)
 		local->rebase->count = pg_evidence_context_map(typed_map(work))->count;
 	}
 	if (local->resume == TYPED_RESUME_BODY) {
-		const struct pg_evidence *value = pg_typed_query_result(work->dependency);
-		if (local->environment) value = pg_prove_reindex(typing, local->environment, value);
-		local->current = value ? pg_evidence_subject(value) : NULL;
-		local->environment = NULL;
-		work->dependency = NULL;
-		local->resume = TYPED_RESUME_NONE;
-		return local->current ? 0 : -1;
+		const struct pg_evidence *computation = pg_typed_query_result(work->dependency);
+		work->result = image_boundary(typing,
+			unary_term_content(typing, computation, NULL), typed_source(work));
+		return work->result ? 1 : -1;
 	}
 	if (!local->rebase) {
 		const struct pg_occurrence *subject = local->current;
@@ -970,7 +967,11 @@ static int typed_rebase_step(struct pg_typed_query *work)
 				return 0;
 			}
 			if (subject->origin->judgement == PG_JUDGEMENT_COMPUTATION && subject->judgement != PG_JUDGEMENT_COMPUTATION) {
-				work->dependency = pg_return_body_request(typing, pg_prove_structural_subject(typing, subject->origin));
+				/* Transport the checked computation before inverting RETURN.
+				 * Extracting its value first can revisit this same derived node. */
+				const struct pg_evidence *computation = pg_prove_structural_subject(typing, subject->origin);
+				if (local->environment) computation = pg_prove_reindex(typing, local->environment, computation);
+				work->dependency = pg_rebase_request(typing, context, computation);
 				local->resume = TYPED_RESUME_BODY;
 				return work->dependency ? 0 : -1;
 			}

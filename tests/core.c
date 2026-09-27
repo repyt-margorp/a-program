@@ -514,6 +514,54 @@ static const struct pg_evidence *checked_normalize(struct pg_typing *typing,
 	return result;
 }
 
+static void returned_value_rebase_test(struct pg_graph *graph)
+{
+	struct pg_typing typing;
+	struct pg_whnf_work evaluation;
+	assert(!pg_typing_init(&typing, graph));
+	assert(!pg_whnf_work_init(&evaluation, graph));
+	const struct pg_evidence *empty = pg_prove_empty_context(&typing);
+	const struct pg_evidence *u1 = pg_prove_universe(&typing, empty, 1);
+	const struct pg_object *a = pg_binder(graph), *x = pg_binder(graph);
+	const struct pg_evidence *scope = pg_prove_context_extension(&typing, empty, a, u1);
+	const struct pg_evidence *value = pg_prove_thunk(&typing,
+		pg_prove_return(&typing, pg_prove_variable(&typing, scope, a)));
+	const struct pg_evidence *argument = pg_prove_context_extension(&typing, scope, x,
+		pg_prove_classifier(&typing, scope, value));
+	const struct pg_evidence *body = pg_prove_return(&typing, pg_prove_variable(&typing, argument, x));
+	const struct pg_evidence *identity = pg_prove_lambda(&typing,
+		pg_prove_pi(&typing, argument, pg_prove_classifier(&typing, argument, body)), body);
+	const struct pg_evidence *normal = checked_normalize(&typing, &evaluation,
+		pg_prove_fold(&typing, pg_prove_return(&typing, value), identity));
+	const struct pg_evidence *extracted = pg_prove_return_value(&typing, normal);
+	assert(extracted);
+	const struct pg_evidence *destination = pg_prove_context_extension(&typing, empty, pg_binder(graph), u1);
+	const struct pg_evidence *u0 = pg_prove_type_value(&typing, pg_prove_universe(&typing, empty, 0));
+	const struct pg_evidence *images[] = {pg_prove_projection(&typing, destination, u0)};
+	const struct pg_evidence *map = pg_prove_substitution(&typing, scope, destination, 1, images);
+	const struct pg_evidence *mapped = pg_prove_reindex(&typing, map, extracted);
+	assert(mapped);
+	struct pg_typed_query *query = pg_rebase_request(&typing, empty, mapped);
+	while (!pg_typed_query_advance(query, 1)) assert(pg_typed_query_steps(query) < 1000);
+	const struct pg_evidence *result = pg_typed_query_result(query);
+	const struct pg_evidence *expected = pg_prove_thunk(&typing, pg_prove_return(&typing, u0));
+	assert(result && pg_evidence_context(result) == pg_evidence_context(empty));
+	assert(pg_evidence_subject(result)->core == pg_evidence_subject(expected)->core);
+	assert(pg_evidence_classifier(result) == pg_evidence_classifier(expected));
+	reconstruct_derivation(&typing, result);
+	size_t proofs = typing.proofs.count, subjects = typing.occurrences.count;
+	uint64_t steps = pg_typed_query_steps(query);
+	assert(pg_rebase_request(&typing, empty, mapped) == query);
+	assert(pg_typed_query_advance(query, 64) == 1 && pg_typed_query_steps(query) == steps);
+	assert(typing.proofs.count == proofs && typing.occurrences.count == subjects);
+	query = pg_rebase_request(&typing, empty, extracted);
+	while (!pg_typed_query_advance(query, 1)) assert(pg_typed_query_steps(query) < 1000);
+	assert(!pg_typed_query_result(query));
+	pg_whnf_work_destroy(&evaluation);
+	pg_typing_destroy(&typing);
+	puts("returned value rebase: checked computation transport progresses and rejects capture");
+}
+
 static void evidence_test(struct pg_graph *graph)
 {
 	struct pg_typing typing;
@@ -6566,6 +6614,7 @@ int main(void)
 	context_test(&graph);
 	evidence_test(&graph);
 	evidence_owner_test(&graph);
+	returned_value_rebase_test(&graph);
 	function_signature_inputs(&graph);
 	context_alpha_test(&graph);
 	structural_scope_admission_test(&graph);
