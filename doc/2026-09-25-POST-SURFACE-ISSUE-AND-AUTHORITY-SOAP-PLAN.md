@@ -10,6 +10,8 @@ changed neither algorithms nor compiler. New user priority, 2026-09-27:
 [PR #42](https://github.com/repyt-margorp/a-program/pull/42), finite-position
 sorting with common proofs for Quick/Merge/Insertion/Bubble and simple additional
 backends, precedes further P4/P5 work after the verified schema-owner checkpoint.
+The [finite-position sorting plan](2026-09-27-FINITE-POSITION-SORTING-SOAP-PLAN.md)
+is its active work list; PR #42 is merged research, not completed implementation.
 Status: P1-P3 closed. P4 Identity-boundary/Lambda-scope/typed-only function,
 result-formation, selected ambient declarations, Context-history removal,
 typed-map/variable-image and shared typed-input scope slices

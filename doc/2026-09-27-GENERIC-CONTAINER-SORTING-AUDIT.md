@@ -2,6 +2,8 @@
 
 Date: 2026-09-27
 Status: design proposal; existing List prerequisites verified, proposed container interfaces not implemented or checked.
+Execution successor: [Finite-Position Sorting](2026-09-27-FINITE-POSITION-SORTING-SOAP-PLAN.md).
+The checklist below is the original audit proposal, not a second active work list.
 Code baseline: main at `2a67ac3e6387ca30506a8ba81400819eb1831b00` (clean implementation checkout).
 Tracking issue: https://github.com/repyt-margorp/a-program/issues/41
 Related: #39 and #40 (local/strong sortedness foundation); this proposal does not reopen the resolved sortedness distinction.

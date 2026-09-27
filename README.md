@@ -183,6 +183,7 @@ source fixtures and default CLI tests use `#Name`.
 | Dependent synthesis | Constructor-index refinement and branch-proposed motives checked against every induction branch; unchanged `lengthCertified` |
 | Function properties | [Length at its ordinary result](tests/fixtures/graph_adequacy/length-direct.p), [general QuickSort Sorted](tests/acceptance/generic-quick-sorted-result.p) and [permutation](tests/fixtures/generic_sorted/content-result-proof.p) at its ordinary result, without global function-witness syntax |
 | Sortedness contracts | [Local QuickSort](tests/acceptance/generic-quick-local-sorted-result.p) needs directional comparator evidence; [Strong QuickSort](tests/acceptance/generic-quick-strong-sorted-result.p) additionally needs transitivity, not a separate reflexivity argument. The algorithms are unchanged; legacy `general_sorted` remains strong |
+| Finite positions | [Source Fin library](tests/fixtures/finite_positions.p): general bijection identity/inverse/composition, fixed-head lifting and swaps; duplicate labels and three-position cycles tested without new primitives |
 | Higher Identity | Selected typed action, transport and higher-dimensional examples; general coherence remains unfinished |
 | Effects | `#print` requests, multi-clause handlers, forwarding and resumptions; ordered partial applications; explicit `--run` terminal output with split-budget and source/image tests |
 | Host values | `#Int` aliases `#Int32`; distinct `#Int64`; `#Text` stores exact bytes. Literal typing and image round trips, including recursive Text fields |
@@ -200,6 +201,9 @@ Important limitations:
   cyclic comparator, old strong consumers, negative controls and saved images.
   The other existing sort proofs still target their original Nat/LE contract;
   a generic local theorem for every sorting implementation is not claimed.
+  `make check-finite-positions` checks the finite-position algebra and images;
+  [lawful container views and the sorting bridge](doc/2026-09-27-FINITE-POSITION-SORTING-SOAP-PLAN.md)
+  remain unfinished. A position bijection alone is not a sorting theorem.
 
 - The execution backend handles unhandled `#print` only. Other unhandled
   operations report unsupported; runtime sessions are not checkpointed.
