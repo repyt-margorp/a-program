@@ -131,6 +131,11 @@ check-generalized-match-motive: $(BUILD)/pointer-check $(BUILD)/program_test
 	bash $(TESTS)/generalized_match_motive.sh $(BUILD)/pointer-check $(BUILD)/program_test
 
 check-acceptance: check-generalized-match-motive
+.PHONY: check-indexed-constructor-sequencing
+check-indexed-constructor-sequencing: $(BUILD)/pointer-check $(BUILD)/program_test
+	bash $(TESTS)/indexed_constructor_sequencing.sh $(BUILD)/pointer-check $(BUILD)/program_test
+
+check-acceptance: check-indexed-constructor-sequencing
 check-finite-list-views: $(BUILD)/pointer-check $(BUILD)/program_test
 	bash $(TESTS)/finite_list_views.sh $(BUILD)/pointer-check $(BUILD)/program_test
 

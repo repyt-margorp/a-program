@@ -118,6 +118,7 @@ struct application_state {
 	struct pg_synthesis_job *context, *callee, *argument, *tail;
 	struct pg_synthesis_job *constraint;
 	struct constructor_application *constructor;
+	struct constructor_spine *spine;
 	const struct block_frame *frames;
 	size_t binding_count;
 };
@@ -134,7 +135,10 @@ struct constructor_application {
 	struct pg_synthesis_job *context, *function, *instance;
 	struct pg_synthesis_job **scopes;
 	size_t next, count;
-	size_t arity, supplied;
+};
+struct constructor_spine {
+	struct constructor_application specialization;
+	size_t count, next;
 	struct pg_synthesis_job **arguments;
 };
 struct motive_demand {
@@ -5118,10 +5122,10 @@ static int prepare_constructor_spine(struct pg_synthesis *synthesis, struct pg_s
 	if (!source_work(origin)->callable) return 0;
 	if (count > SIZE_MAX / sizeof(struct pg_synthesis_job *)) goto error;
 	struct application_state *application = pg_alloc(synthesis->typing->graph, sizeof(*application));
-	struct constructor_application *state = pg_alloc(synthesis->typing->graph, sizeof(*state));
+	struct constructor_spine *state = pg_alloc(synthesis->typing->graph, sizeof(*state));
 	if (!application || !state) goto error;
-	state->input = source_work(origin)->callable;
-	state->arity = count;
+	state->specialization.input = source_work(origin)->callable;
+	state->count = count;
 	state->arguments = pg_alloc(synthesis->typing->graph, count * sizeof(*state->arguments));
 	if (!state->arguments) goto error;
 	const struct pg_syntax *syntax = local->syntax;
@@ -5130,7 +5134,7 @@ static int prepare_constructor_spine(struct pg_synthesis *synthesis, struct pg_s
 		if (!state->arguments[i - 1]) goto error;
 	}
 	*application = (struct application_state){.context = local->scope->context_job,
-		.callee = callee, .argument = state->arguments[0], .constructor = state};
+		.callee = callee, .argument = state->arguments[0], .spine = state};
 	local->application = application;
 	local->left = callee;
 	local->right = state->arguments[0];
@@ -5141,31 +5145,16 @@ error:
 	return -1;
 }
 
-/* Instantiate recovered indices and abstract the still-unknown ones around
- * this partial application. Neither the argument nor its effects are copied. */
-static void constructor_application_step(struct pg_synthesis *synthesis,
-	struct pg_synthesis_job *job, struct pg_synthesis_job *callee,
-	struct pg_synthesis_job *argument)
+/* Recover only from checked argument classifiers. This does not sequence or
+ * replace their terms; a computation contributes its result type, not a value. */
+static int specialize_constructor(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *job, struct constructor_application *state,
+	struct pg_synthesis_job *callee, size_t argument_count,
+	struct pg_synthesis_job *const *arguments)
 {
 	struct source_work *local = source_work(job);
 	struct application_state *application = local->application;
-	struct constructor_application *state = application->constructor;
 	const struct constructor_callable *input = state->input;
-	if (!state->arity) {
-		state->arity = 1;
-		state->arguments = pg_alloc(synthesis->typing->graph, sizeof(*state->arguments));
-		if (!state->arguments) goto error;
-	}
-	if (state->supplied < state->arity) {
-		state->arguments[state->supplied++] = argument;
-		if (state->supplied < state->arity) {
-			application->argument = pg_synthesis_plain_rule(synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
-				(struct pg_synthesis_job *[]){application->context, state->arguments[state->supplied]});
-			if (!application->argument) goto error;
-			pg_synthesis_enqueue(synthesis, job);
-			return;
-		}
-	}
 	if (!state->function) {
 		state->function = callee;
 		state->context = application->context;
@@ -5173,26 +5162,29 @@ static void constructor_application_step(struct pg_synthesis *synthesis,
 			sizeof(*state->output) + input->count * sizeof(*state->output->indices));
 		state->scopes = pg_alloc(synthesis->typing->graph, input->count * sizeof(*state->scopes));
 		if (!state->output || !state->scopes) goto error;
-		if (state->arity > SIZE_MAX - input->field) goto error;
-		*state->output = (struct constructor_callable){.source = input->source, .field = input->field + state->arity};
+		*state->output = (struct constructor_callable){.source = input->source, .field = input->field};
 	}
 	if (state->next < input->count) {
 		size_t index = input->indices[state->next];
 		const struct constructor_index_path *path = &input->source->indices[index];
 		struct pg_synthesis_job *value;
-		if (path->field >= input->field && path->field - input->field < state->arity) {
+		if (path->field >= input->field && path->field - input->field < argument_count) {
 			if (!state->instance) {
-				struct pg_synthesis_job *input_argument = state->arguments[path->field - input->field];
+				struct pg_synthesis_job *input_argument = arguments[path->field - input->field];
 				input_argument = pg_synthesis_plain_rule(synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
 					(struct pg_synthesis_job *[]){application->context, input_argument});
 				struct pg_synthesis_job *normalized = pg_synthesis_normalize_classifier_jobs(synthesis,
 					application->context, input_argument);
 				struct pg_synthesis_job *type = pg_synthesis_classifier_formation(synthesis,
 					application->context, normalized);
+				if (!type) goto error;
+				if (pg_synthesis_await(synthesis, job, type)) return 0;
+				if (pg_evidence_judgement(type->result) == PG_JUDGEMENT_COMPUTATION_TYPE)
+					type = pg_synthesis_plain_rule(synthesis, PG_RETURN_CONTENT, NULL, 1, &type);
 				state->instance = pg_synthesis_inductive_instance(synthesis, type);
 			}
 			if (!state->instance) goto error;
-			if (state->instance->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, state->instance); return; }
+			if (state->instance->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, state->instance); return 0; }
 			if (state->instance->status != PG_SYNTHESIS_DONE) goto rejected;
 			struct pg_inductive_instance instance;
 			size_t count;
@@ -5224,23 +5216,44 @@ static void constructor_application_step(struct pg_synthesis *synthesis,
 		state->instance = NULL;
 		++state->next;
 		pg_synthesis_enqueue(synthesis, job);
-		return;
+		return 0;
 	}
-	struct pg_synthesis_job *body = state->function;
-	for (size_t i = 0; body && i < state->arity; ++i) {
-		struct pg_synthesis_job *value = pg_synthesis_plain_rule(synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
-			(struct pg_synthesis_job *[]){state->context, state->arguments[i]});
-		body = pg_synthesis_application_jobs(synthesis, state->context, body, value);
-	}
+	return 1;
+rejected:
+	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return 0;
+error:
+	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return 0;
+}
+
+static struct pg_synthesis_job *abstract_constructor_indices(struct pg_synthesis *synthesis,
+	const struct constructor_application *state, struct pg_synthesis_job *body)
+{
 	for (size_t i = state->count; body && i; --i)
 		body = pg_synthesis_lambda_body(synthesis, state->scopes[i - 1], body);
+	return body;
+}
+
+/* One written argument at a time, using the same application/sequence path
+ * as an ordinary callable. Unknown indices remain quantified in a partial use. */
+static void constructor_application_step(struct pg_synthesis *synthesis,
+	struct pg_synthesis_job *job, struct pg_synthesis_job *callee,
+	struct pg_synthesis_job *argument)
+{
+	struct source_work *local = source_work(job);
+	struct application_state *application = local->application;
+	struct constructor_application *state = application->constructor;
+	if (!specialize_constructor(synthesis, job, state, callee, 1, &argument)) return;
+	struct pg_synthesis_job *value = pg_synthesis_plain_rule(synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
+		(struct pg_synthesis_job *[]){state->context, argument});
+	struct pg_synthesis_job *body = pg_synthesis_application_jobs(synthesis, state->context, state->function, value);
+	body = abstract_constructor_indices(synthesis, state, body);
 	if (!body) goto error;
+	if (state->input->field == SIZE_MAX) goto error;
+	state->output->field = state->input->field + 1;
 	application->tail = body;
 	local->callable = state->output->count ? state->output : NULL;
 	pg_synthesis_enqueue(synthesis, job);
 	return;
-rejected:
-	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
 error:
 	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR);
 }
@@ -5273,6 +5286,22 @@ static int prepare_application(struct pg_synthesis *synthesis, struct pg_synthes
 			state->tail = pg_synthesis_sequence(synthesis, pg_synthesis_rule_premise(synthesis, frame->context, 0), frame->input, continuation);
 			if (!state->tail) goto error;
 			state->frames = frame->parent;
+			pg_synthesis_enqueue(synthesis, job);
+			return 1;
+		}
+		if (state->spine && state->spine->next < state->spine->count) {
+			if (state->constraint && pg_synthesis_await(synthesis, job, state->constraint)) return 1;
+			state->callee = state->tail;
+			state->argument = state->spine->arguments[state->spine->next++];
+			state->context = local->scope->context_job;
+			state->tail = NULL;
+			state->constraint = NULL;
+			state->constructor = NULL;
+			if (local->callable) {
+				state->constructor = pg_alloc(synthesis->typing->graph, sizeof(*state->constructor));
+				if (!state->constructor) goto error;
+				state->constructor->input = local->callable;
+			}
 			pg_synthesis_enqueue(synthesis, job);
 			return 1;
 		}
@@ -5334,7 +5363,23 @@ static int prepare_application(struct pg_synthesis *synthesis, struct pg_synthes
 		return 1;
 	}
 	if (!pg_pi_view(type, &domain, &binder, &codomain)) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return 1; }
-	if (!state->constructor) {
+	if (state->spine && !state->spine->next) {
+		struct constructor_spine *spine = state->spine;
+		struct constructor_application *specialization = &spine->specialization;
+		if (!specialize_constructor(synthesis, job, specialization, callee, spine->count, spine->arguments)) return 1;
+		state->callee = abstract_constructor_indices(synthesis, specialization, specialization->function);
+		if (!state->callee) goto error;
+		local->callable = specialization->output->count ? specialization->output : NULL;
+		if (local->callable) {
+			state->constructor = pg_alloc(synthesis->typing->graph, sizeof(*state->constructor));
+			if (!state->constructor) goto error;
+			state->constructor->input = local->callable;
+		}
+		spine->next = 1;
+		pg_synthesis_enqueue(synthesis, job);
+		return 1;
+	}
+	if (!state->constructor && !state->spine) {
 		struct pg_synthesis_job *origin = constructor_callable_source(synthesis, local->left);
 		if (origin && origin->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, origin); return 1; }
 		if (origin && source_work(origin)->callable) {

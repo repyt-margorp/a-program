@@ -470,20 +470,66 @@ remaining source proof must be checked independently. Do not promote the
 **Plan:**
 - [x] Isolate the failure and test the ordinary/Indexed and asserted/unasserted
   controls. Preserve the small reproducer; do not bless its rejection as correct.
-- [ ] Separate signature-only index recovery from value sequencing. Reuse the
+- [x] Separate signature-only index recovery from value sequencing. Reuse the
   ordinary checked curried application/sequence path after specialization,
   without a second acceptance engine, binding-equality assumptions or eager
   evaluation of effectful arguments during checking.
-- [ ] Preserve later-field recovery, typed aliases and independently requested
+- [x] Preserve later-field recovery, typed aliases and independently requested
   partial applications; effectful partial applications must execute their prefix
   once at the existing point, not under a newly introduced Lambda.
-- [ ] Require the reproducer, wrong proof/nominal/index controls, existing
+- [x] Require the reproducer, wrong proof/nominal/index controls, existing
   inferred-index effects, ordinary/retained images, and full acceptance to pass
-  before publishing the compiler repair. Then finish F2's actual-value action.
+  before publishing the compiler repair.
+- [ ] Then finish F2's actual-value action, including the rebase prerequisite below.
 
 This diagnostic checkpoint changes no accepted implementation or test outcome.
 Against `b590dbc`: this plan **+44/-1**, prototype diagnostic **+13/-0**;
 total **+57/-1, net +56**. Accepted C/headers and permanent tests: **0**.
+
+Verified repair on `e68b2f1`: constructor specialization reads independently
+checked argument classifiers; ordinary application then consumes each value in
+order. No additional acceptance rule or expected-type synthesis is introduced.
+Focused O2, Debug and ASan/UBSan tests pass, including later-field recovery,
+multi-index effectful partial calls, wrong proofs, and ordinary/retained image
+resume. The complete acceptance gate passes in **1,657.512 seconds**. Logs:
+`/tmp/a-program-constructor-sequence-{focused,debug,asan,acceptance}.log`.
+The source-level F2 action and the separate rebase repair are not part of this
+compiler checkpoint. Against `e68b2f1`, `src/synthesis.c`: **+86/-41**;
+`src/Makefile`: **+5/-0**; permanent source/shell tests: **+120/-0**.
+Non-document total: **+211/-41, net +170**. No new runtime node, proof rule,
+serialized field or expected-type synthesis is added.
+
+### F2 Prerequisite: Returned-Value Rebase Progress
+
+**Subjective (User):** one typed authority; follow the existing computation and
+its checked structure, rather than recreate or repeatedly solve the same state.
+
+**Objective (Code), `e68b2f1` plus constructor repair:** the open source theorem
+from List permutation to a bijection and its value law checks (1,155,037 steps
+with its provider). The closed three-element composition does not finish.
+Debugging fixes synthesis at step 1,197,635 while `typed_rebase_step` repeats
+three states: derived RETURN value, its reindexed image, and that same value
+with the pending map. More than 16 million local query steps make no progress.
+`structural_input` synchronously drains this query, so the outer synthesis
+budget does not interrupt it. The diagnostic O2/Debug runs were stopped, not
+recorded as successful checks or mere budget exhaustion.
+
+**Assessment (agent):** this is a typed-provenance traversal cycle, not a missing
+equality axiom, a reason to weaken `::`, or established alpha-comparison slowness.
+Rebase the accepted computation and invert its RETURN in the destination scope;
+do not extract a value that points back to the same computation and start again.
+This proposal is being checked in a separate candidate, leaving the constructor
+repair's full-gate inputs unchanged. An arbitrary cycle cutoff is not a repair.
+
+**Plan:**
+- [x] Establish the repeated typed-query states and separate them from the open
+  theorem, which already checks. Keep F2 incomplete until closed laws also pass.
+- [ ] Minimize the reproducer and implement a structurally progressing query
+  using existing checked reindex/RETURN rules, without a second evidence store.
+- [ ] Check context/classifier preservation, rejection of captured free binders,
+  bounded local progress, and ordinary/retained images under split budgets.
+- [ ] Repeat affected Debug/sanitizer tests and the full gate before publishing
+  a second compiler epoch; then finish the actual-value F2 acceptance suite.
 
 ## F5. Verification and Publication
 
