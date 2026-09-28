@@ -111,7 +111,8 @@ The directional counterexample proves `Local actual_result -> empty_type` for
 `[a,c,b]`, with all nine comparator decisions checked. Here both comparisons
 between `b,c` answer false, which the directional contract permits. Independent
 synthesis, actual result comparison and wrong-edge rejection are also checked.
-Tree and Bubble source `check-functions.sh` to share status/image checks.
+All backend gates share status/image checks through `check-functions.sh`;
+callers retain their budgets, optional reader bounds and fixture selection.
 The complete Bubble gate passes on the closed-readback candidate under O2
 (204 s) and ASan/UBSan (553 s, leak checking and halt-on-error enabled).
 The shared Tree runner also passes again (175 s).

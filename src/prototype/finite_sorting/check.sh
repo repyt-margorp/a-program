@@ -13,22 +13,7 @@ directory=$(mktemp -d)
 trap 'rm -rf "$directory"' EXIT
 provider="$directory/provider.p"
 bash "$here/provider.sh" "$here/quick.p" "$here/../../../tests/fixtures/generic_sorted/boolean-order.p" > "$provider"
-check() {
-	local expected=$1 label=$2 status=0
-	shift 2
-	timeout 180 "$binary" --legacy-intrinsic-dot --steps "$steps" "$@" > "$directory/status" || status=$?
-	printf '%s: ' "$label"
-	cat "$directory/status"
-	[[ $status == "$expected" ]]
-	case $expected in
-		0) grep -q '^done steps=' "$directory/status" ;;
-		1) grep -q '^rejected steps=' "$directory/status" ;;
-		3) grep -q '^pending steps=' "$directory/status" ;;
-	esac
-}
-equal() {
-	timeout 180 "$compare" "${image_options[@]}" --steps "$steps" --equal-image "$1" "$2" "$3"
-}
+source "$here/check-functions.sh"
 sed '/^import /d' "$provider" "$here/cases.p" > "$directory/cases.p"
 check 0 general-and-closed --save "$directory/cases.a" "$directory/cases.p"
 if [[ $mode == all || $mode == lists ]]; then

@@ -7,18 +7,7 @@ directory=$(mktemp -d)
 trap 'rm -rf "$directory"' EXIT
 bash "$here/provider.sh" "$here/quick.p" "$here/../../../tests/fixtures/generic_sorted/boolean-order.p" \
 	"$here/cases.p" > "$directory/base.p"
-check() {
-	local expected=$1 label=$2 status=0
-	shift 2
-	timeout 180 "$binary" --legacy-intrinsic-dot --steps "$steps" "$@" > "$directory/status" || status=$?
-	printf '%s: ' "$label"
-	cat "$directory/status"
-	[[ $status == "$expected" ]]
-	case $expected in
-		0) grep -q '^done steps=' "$directory/status" ;;
-		1) grep -q '^rejected steps=' "$directory/status" ;;
-	esac
-}
+source "$here/check-functions.sh"
 sed -n '1,$p' "$directory/base.p" "$here/stress-value.p" > "$directory/positive.p"
 check 0 concrete-values "$directory/positive.p"
 sed '/ :: /{ :next; /;$/d; N; b next; }' "$directory/positive.p" > "$directory/independent.p"

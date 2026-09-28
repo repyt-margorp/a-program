@@ -1,4 +1,4 @@
-# Shared by backend gates; callers own the binaries, budget and temporary directory.
+# Callers own the binaries, budget, temporary directory and comparison image_options.
 check() {
 	local expected=$1 label=$2 status=0
 	shift 2
@@ -6,7 +6,7 @@ check() {
 	printf '%s: ' "$label"
 	cat "$directory/status"
 	if [[ ! -s $directory/status ]]; then printf 'exit=%s\n' "$status"; fi
-	[[ $status == "$expected" ]]
+	[[ $status == "$expected" ]] || return 1
 	case $expected in
 		0) grep -q '^done steps=' "$directory/status" ;;
 		1) grep -q '^rejected steps=' "$directory/status" ;;
@@ -14,5 +14,5 @@ check() {
 	esac
 }
 equal() {
-	timeout 180 "$compare" --image-limit "$limit" --steps "$steps" --equal-image "$@"
+	timeout 180 "$compare" "${image_options[@]}" --steps "$steps" --equal-image "$@"
 }

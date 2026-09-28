@@ -6,6 +6,9 @@ directory=$(mktemp -d)
 trap 'rm -rf "$directory"' EXIT
 steps=100000
 source "$here/../finite_sorting/check-functions.sh"
+# Gate assertions must also fail when called from an if condition.
+if check 2 helper-exit-mismatch "$here/sample.p"; then exit 1; fi
+if (binary=true; check 0 helper-output-mismatch); then exit 1; fi
 check 0 source --save "$directory/full.a" "$here/sample.p"
 "$binary" --help > "$directory/help"
 grep -q -- '--image-limit N' "$directory/help"

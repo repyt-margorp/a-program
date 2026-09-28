@@ -3,7 +3,7 @@ set -euo pipefail
 binary=$1
 compare=$2
 steps=${SORTING_CHECK_STEPS:-40000000}
-limit=${SORTING_IMAGE_LIMIT:-3000000}
+image_options=(--image-limit "${SORTING_IMAGE_LIMIT:-3000000}")
 started=$SECONDS
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 fixtures="$here/../../../tests/fixtures"

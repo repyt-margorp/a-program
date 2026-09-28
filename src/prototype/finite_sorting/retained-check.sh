@@ -5,11 +5,13 @@ compare=$2
 mode=${3:-insertion}
 case $mode in insertion|quick|all) ;; *) exit 2;; esac
 limit=${SORTING_IMAGE_LIMIT:-3000000}
+image_options=(--image-limit "$limit")
 steps=${SORTING_CHECK_STEPS:-40000000}
 started=$SECONDS
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 directory=$(mktemp -d)
 trap 'rm -rf "$directory"' EXIT
+source "$here/check-functions.sh"
 bash "$here/provider.sh" "$here/quick.p" "$here/../../../tests/fixtures/generic_sorted/boolean-order.p" \
 	"$here/cases.p" > "$directory/source.p"
 timeout 180 "$binary" --legacy-intrinsic-dot --steps "$steps" --retain-reductions \
@@ -18,8 +20,7 @@ observe() {
 	local algorithm
 	for algorithm in quick insertion; do
 		[[ $mode == all || $mode == "$algorithm" ]] || continue
-		timeout 180 "$compare" --image-limit "$limit" --steps "$steps" --equal-image \
-			"$1" "${algorithm}_report" "${algorithm}_report_expected"
+		equal "$1" "${algorithm}_report" "${algorithm}_report_expected"
 	done
 }
 observe "$directory/full.a"

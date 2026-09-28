@@ -17,7 +17,7 @@ not evidence that its proposed interfaces already work. Broad P4/P5 remain open.
 | F2 | Lawful List and indexed-container views | Complete for homogeneous List/Vec and the finite-position bridge |
 | F3 | One ordinary-result sorting specification | Prototype source/observations/rejection/resume verified; promotion pending |
 | F4 | Quick/Merge/Insertion/Bubble and additional backends | Five prototype gates passed; Bubble requires explicit transitivity, legacy Merge is Nat-specific insertion-based merge |
-| F5 | Permanent rejection, image and regression gates | Prototype checks added; accepted-build integration pending |
+| F5 | Permanent rejection, image and regression gates | Prototype runners consolidated and verified; accepted-build integration pending |
 
 ## F0. Scope and Invariants
 
@@ -1200,17 +1200,41 @@ Use progress-tracked Markdown and publish tested milestones to Main.
 tests cover ordinary/retained images and budgeted resume. No new image format
 is needed for source library definitions.
 
+Promotion audit at `72621ec`, 2026-09-28: Quick/Insertion, Merge and value gates
+duplicate the shared status checker. The prototype comparator includes the
+existing `tests/program.c` with a bounded-reader substitution; it does not
+implement another typed comparison. Readback tests condition some assertions
+on `PG_SUPPORT_CANDIDATE`, so copying them without that flag would lose coverage.
+
 ### Assessment
 
 Successful examples alone cannot establish view laws or general sorting.
 Small finite checks are boundary tests, not substitutes for open proofs.
 
+Agent decision: share the prototype runners now; adopt the existing comparison
+tool's reader parameter directly upon promotion and remove the include wrapper.
+Do not create another checker, make candidate assertions optional, or preserve
+overlay implementations beside adopted owners. Promotion still needs approval.
+
 ### Plan
 
-- [x] Add a focused permanent target to `check-acceptance`; reuse program/image
+- [x] F1: add a focused permanent target to `check-acceptance`; reuse program/image
   comparison tools instead of adding another checker or proof runner.
-- [ ] Reject omitted/duplicated positions, bad inverses/refill, wrong shape/length,
-  wrong result certificates, and Local-to-Strong without the required assumptions.
+- [x] Audit negative coverage: `tests/finite_positions.sh` checks bad bijections
+  and inverses; `finite_list_views.sh` checks refill order/shape/length;
+  `finite_permutation_views.sh` checks omitted/duplicated positions and values.
+  Prototype backend gates add wrong function/result/comparator and Local-to-Strong
+  controls. Their accepted-build integration remains unchecked below.
+- [x] Share prototype status/comparison helpers without changing budgets, reader
+  bounds, assertions or fixture selection. Explicitly reject exit-code mismatch
+  inside an `if`; two helper controls pass in O2 and ASan/UBSan. Existing top-level calls already
+  failed through `set -e`, so prior gate results are not invalidated.
+- [x] Re-run all five backend gates, large rejected-image and same-domain
+  rejection/resume gates, plus retained API `all`: exit 0. Logs:
+  `/tmp/a-program-f5-{backends,retained,helper,sanitize-helper}.log`.
+- [ ] Obtain promotion approval and perform the owner moves below.
+- [ ] Register F3/F4 and reader-bound gates in accepted `check-acceptance`; run the
+  promoted suite from a clean build and focused ASan/UBSan before closing #41.
 - [x] F1: compare assertion-free and asserted programs; missing source information
   must stay missing. Explicit motives and constructor bounds must pass.
 - [x] F1: check imports, ordinary/retained images and resume from 0/100 steps.
@@ -1221,6 +1245,27 @@ Small finite checks are boundary tests, not substitutes for open proofs.
   nonclaims separately. Do not equate checker steps with algorithm complexity.
 - [x] F1: report evidence and remaining scope on #41; close only when
   its complete implementation criteria are satisfied, not at this milestone.
+
+Promotion map (agent proposal, not yet executed):
+
+| Current prototype | Accepted owner / removal |
+| --- | --- |
+| Readback support and graph/eval patches | `src/support.{c,h}`, `src/graph.{c,h}`, `src/eval.c`; link support in every graph-only build target, not just `SOURCES` |
+| Fold conversion and CLI patches | `src/conversion.c`, `src/main.c`; remove applied patch/overlay/build copies |
+| Readback and conversion C tests | `tests/` test owners; make candidate assertions unconditional and register them in `src/Makefile` |
+| Sorting source proofs, cases and both `stress-*.p` regressions | `tests/fixtures/finite_sorting/`; retain ordinary-result and same-domain negative tests |
+| Sorting runners/provider/shared helper | `tests/finite_sorting/`; update fixture paths once, preserve individual budgets and the five-backend aggregate |
+| `finite_sorting/image_compare.c` | Add explicit reader-bound configuration to `tests/program.c`; delete the macro/include wrapper and its extra binary |
+| Reader-bound runner and fixtures | Accepted `tests/` owners; retain default/explicit, invalid, stdin/root, zero-step and full rejected-image checks |
+| Diagnostic probes and construction benchmark | Remain optional under `src/prototype/`; point at accepted owners, without retaining alternate implementations |
+
+No C/proof-library changes in the helper consolidation. Per-file test-code
+delta against `72621ec`: `check-functions.sh` +3/-3, `check.sh` +1/-16,
+`merge-check.sh` +7/-21, `value-check.sh` +1/-12, `tree-check.sh` +1/-1,
+`bubble-check.sh` +1/-1, `retained-check.sh` +3/-2, `image_limit/check.sh` +3/-0:
+**+20/-56, net -36**, excluding this documentation. Full compiler regression
+passed at `72621ec`; this shell-only change requires the affected gates, not
+an unsupported claim that the entire compiler suite was rerun.
 
 ### Milestone Accounting
 
