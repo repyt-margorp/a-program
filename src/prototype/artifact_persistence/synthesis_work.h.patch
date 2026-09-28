@@ -1,0 +1,11 @@
+--- a/synthesis_work.h
++++ b/synthesis_work.h
+@@ -22,6 +22,8 @@
+ 	struct waiter *waiters;
+ 	struct waiter *dependency;
+ 	const struct pg_evidence *result;
++	/* Imported descriptive input. Never consulted as accepted evidence. */
++	const struct pg_occurrence *imported;
+ 	const void *inputs[];
+ };
+ 

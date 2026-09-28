@@ -1,0 +1,19 @@
+--- a/synthesis.h
++++ b/synthesis.h
+@@ -868,6 +868,16 @@
+ void pg_synthesis_advance(struct pg_synthesis *synthesis, uint64_t budget);
+ enum pg_synthesis_status pg_synthesis_status(const struct pg_synthesis_job *job);
+ const struct pg_evidence *pg_synthesis_result(const struct pg_synthesis_job *job);
++/* Read-only materialized construction, without checking or advancing Solve.
++ * Imported construction and its association to the producer are unaccepted,
++ * even when that producer was once done. Raw Contexts do not select declaration
++ * formation bounds. Consumers needing acceptance must use ordinary checking. */
++int pg_synthesis_materialized(const struct pg_synthesis_job *job,
++	const struct pg_occurrence **root);
++/* Attach a graph-owned input to its exact producer, never by erased Core.
++ * This neither changes status nor supplies an expected type to synthesis. */
++int pg_synthesis_import_materialized(struct pg_synthesis *synthesis,
++	struct pg_synthesis_job *job, const struct pg_occurrence *root);
+ /* Read-only diagnostics for rejected declaration checks in this store, not
+  * a new failure authority or a complete causal explanation of a root status.
+  * Each callback borrows constructor/index tokens and a zero-based written

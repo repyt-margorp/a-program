@@ -4,7 +4,7 @@
 
 1. Typed occurrences cannot use the existing nominal descriptor codec.
 2. Temporary Ref wrappers create duplicate transport records for one object.
-3. Source images still omit materialized typed results and pending continuations.
+3. Source images omit materialized results; continuation/validation reuse is missing.
 
 ## Subjective (User)
 
@@ -42,6 +42,17 @@ On completed Example 09, the retained image is 32,463 bytes with zero duplicate
 Ref records (prior baseline: 32,625 bytes); ordinary output remains 26,374 bytes.
 This removes duplicate encoding, not the unused archive or its generation growth.
 
+The next prototype writes APGSRC64/APGRET3 with available typed results connected
+to existing producer ordinals. Its view borrows `pg_occurrence`; there is no new
+type graph or accepted-result DB. Import preserves descriptive input only, and
+ordinary Solve still checks source/annotations. Selected producer dependencies
+are roots; allocation-only source origins are not additional semantic exports.
+The ordinary Example 09 image is 49,830 bytes, including typed structure, and
+remains byte-identical through three inert and three completed generations.
+Source/derivation suites and focused ASan/UBSan pass on the clean baseline.
+The new test also checks forged inputs and whole-module acceptance. Split-fuel
+resumption remains failing; private continuations are not yet transported.
+
 ## Assessment
 
 Both changes belong to existing transport owners. A second serialized type graph
@@ -60,16 +71,31 @@ must be represented by their existing owners. The active plan tracks this work.
 - [x] Share identical object references in the transport dependency collector.
 - [x] Verify inert nominal/scoped cycles and existing focused transport tests.
 - [x] Verify source/derivation and scoped transport, and focused sanitizers.
+- [x] Prototype materialized source roots, inert views and shared relocation.
 - [ ] Complete semantic roots, residual inputs and progress integration in AP1-AP3.
 - [ ] Run full acceptance/F3/F4, then promote approved pieces and register gates.
 
 ```sh
 bash src/prototype/artifact_persistence/overlay.sh /tmp/a-program-artifact-persistence
 make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artifact-persistence BUILD=/tmp/a-program-artifact-persistence/build check-artifact-transport
+make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artifact-persistence BUILD=/tmp/a-program-artifact-persistence/build check-artifact-semantic
 ```
 
 The generated overlay must be new. It borrows unchanged files and applies the
 tracked patches to copies; only prototype files are edited during this phase.
+
+The strict fuel-partition gate is separate from the currently passing transport
+tests. It fails until saved progress survives reload, including cases where the
+files have identical bytes but different completion states:
+
+```sh
+make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artifact-persistence BUILD=/tmp/a-program-artifact-persistence/build PARTITION_REPORT=/tmp/artifact-fuel-partitions check-artifact-partitions
+```
+
+`PARTITION_REPORT` must not exist; results remain there after a failing gate.
+The target requires size, status, consumed-fuel and exact byte agreement, including
+10+10 versus 20 and zero-fuel partitions. Structural root/frontier comparison is
+still pending; passing this diagnostic alone will not complete AP3.1b.
 
 Candidate implementation delta (patch contents, excluding patch context):
 
@@ -80,8 +106,16 @@ Candidate implementation delta (patch contents, excluding patch context):
 | `graph_io.c` | 12 | 0 |
 | `occurrence_io.c` | 39 | 8 |
 | `occurrence_io.h` | 14 | 0 |
-| Total | 78 | 10 |
+| `retained_io.c` | 94 | 4 |
+| `retained_io.h` | 15 | 0 |
+| `source_io.c` | 26 | 6 |
+| `source_io.h` | 10 | 3 |
+| `synthesis.h` | 10 | 0 |
+| `synthesis_work.c` | 28 | 0 |
+| `synthesis_work.h` | 2 | 0 |
+| Total | 263 | 23 |
 
-Net +68 implementation lines; the new focused test is 250 lines. Overlay/build
-scripts and documentation are separate. This enables shared transport; the
+Net +240 implementation lines; focused tests are separate. Overlay/build
+scripts (including the mechanical link additions) and documentation are separate.
+This enables shared transport and descriptive materialized roots; the
 larger retention deletion is not yet done and is not counted as a reduction.

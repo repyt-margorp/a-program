@@ -1,0 +1,153 @@
+--- a/retained_io.c
++++ b/retained_io.c
+@@ -1,7 +1,10 @@
+ #include "retained_io.h"
+ #include "wire.h"
++#include "occurrence_io.h"
++#include <stdlib.h>
+ 
+ static const char magic[8] = "APGRET\2";
++static const char semantic_magic[8] = "APGRET\3";
+ 
+ struct write_state {
+ 	size_t count;
+@@ -11,15 +14,38 @@
+ 	size_t term_count;
+ 	const struct pg_term *const *terms;
+ 	void *owner;
++	int semantic_format;
++	size_t semantic_count;
++	const struct pg_occurrence *const *semantic;
+ };
+ 
++static int write_semantic(FILE *file, const struct write_state *state,
++	const struct pg_graph_codec *codec)
++{
++	size_t count = state->semantic_count, present = 0;
++	if (count > SIZE_MAX / sizeof(void *)) return -1;
++	const struct pg_occurrence **subjects = malloc((count ? count : 1) * sizeof(*subjects));
++	int status = -1;
++	if (!subjects || pg_wire_write_u64(file, count)) goto done;
++	for (size_t i = 0; i < count; ++i) {
++		const struct pg_occurrence *root = state->semantic[i];
++		if (root) subjects[present++] = root;
++		if (pg_wire_write_u64(file, root ? present : 0)) goto done;
++	}
++	status = pg_occurrences_write_descriptors(file, present, subjects, codec, state->owner);
++done:
++	free(subjects);
++	return status;
++}
++
+ static int write_payload(FILE *file, const struct pg_graph_codec *codec, void *context)
+ {
+ 	const struct write_state *state = context;
+ 	if (pg_wire_write_u64(file, state->reductions != NULL)) return -1;
+ 	if (pg_derivation_inputs_write_inference(file, state->count, state->roots, state->effects, codec, state->owner)) return -1;
+ 	if (state->reductions && pg_reduction_archive_write(file, state->reductions, codec, state->owner)) return -1;
+-	return pg_graph_write_descriptors(file, state->term_count, state->terms, codec, state->owner);
++	if (pg_graph_write_descriptors(file, state->term_count, state->terms, codec, state->owner)) return -1;
++	return state->semantic_format ? write_semantic(file, state, codec) : 0;
+ }
+ 
+ int pg_retained_write(FILE *file, size_t count, const struct pg_derivation_input *const *roots,
+@@ -28,10 +54,24 @@
+ 	const struct pg_graph_codec *codec, void *owner)
+ {
+ 	if ((count && !roots) || (term_count && !terms)) return -1;
+-	struct write_state state = {count, roots, effects, reductions, term_count, terms, owner};
++	struct write_state state = {.count = count, .roots = roots, .effects = effects,
++		.reductions = reductions, .term_count = term_count, .terms = terms, .owner = owner};
+ 	return pg_graph_image_write(file, magic, codec, owner, write_payload, &state);
+ }
+ 
++int pg_retained_write_semantic(FILE *file, size_t count, const struct pg_derivation_input *const *roots,
++	const struct pg_effect_inference *effects, const struct pg_reduction_archive *reductions,
++	size_t term_count, const struct pg_term *const *terms,
++	size_t semantic_count, const struct pg_occurrence *const *semantic,
++	const struct pg_graph_codec *codec, void *owner)
++{
++	if ((count && !roots) || (term_count && !terms) || (semantic_count && !semantic)) return -1;
++	struct write_state state = {.count = count, .roots = roots, .effects = effects,
++		.reductions = reductions, .term_count = term_count, .terms = terms, .owner = owner,
++		.semantic_format = 1, .semantic_count = semantic_count, .semantic = semantic};
++	return pg_graph_image_write(file, semantic_magic, codec, owner, write_payload, &state);
++}
++
+ struct read_state {
+ 	struct pg_typing *typing;
+ 	size_t count;
+@@ -41,8 +81,40 @@
+ 	size_t term_count;
+ 	const struct pg_term *const *terms;
+ 	void *owner;
++	int semantic_format;
++	size_t semantic_count;
++	const struct pg_occurrence **semantic;
+ };
+ 
++static int read_semantic(FILE *file, struct read_state *state, size_t limit,
++	size_t name_limit, const struct pg_graph_codec *codec)
++{
++	uint64_t count;
++	if (pg_wire_read_u64(file, &count) || count > limit || count > SIZE_MAX / sizeof(*state->semantic)
++		|| count > SIZE_MAX / sizeof(uint64_t)) return -1;
++	const struct pg_occurrence **roots = pg_alloc(state->typing->graph, (size_t)count * sizeof(*roots));
++	if (!roots) return -1;
++	uint64_t *ids = malloc((count ? (size_t)count : 1) * sizeof(*ids));
++	if (!ids) return -1;
++	size_t expected = 0, present;
++	const struct pg_occurrence *const *subjects;
++	int status = -1;
++	for (size_t i = 0; i < count; ++i) {
++		if (pg_wire_read_u64(file, &ids[i])) goto done;
++		if (ids[i] && ids[i] != ++expected) goto done;
++	}
++	if (pg_occurrences_read_descriptors(file, state->typing, limit, name_limit,
++		codec, state->owner, &present, &subjects) || present != expected) goto done;
++	for (size_t i = 0; i < count; ++i)
++		if (ids[i]) roots[i] = subjects[ids[i] - 1];
++	state->semantic_count = (size_t)count;
++	state->semantic = roots;
++	status = 0;
++done:
++	free(ids);
++	return status;
++}
++
+ static int read_payload(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+ 	const struct pg_graph_codec *codec, void *context)
+ {
+@@ -54,8 +126,9 @@
+ 		codec, state->owner, &state->count, &state->roots)) return -1;
+ 	if (has_reductions && pg_reduction_records_read(file, graph, limit, name_limit,
+ 		codec, state->owner, &state->reductions)) return -1;
+-	return pg_graph_read_descriptors(file, graph, limit, name_limit, codec, state->owner,
+-		&state->term_count, &state->terms);
++	if (pg_graph_read_descriptors(file, graph, limit, name_limit, codec, state->owner,
++		&state->term_count, &state->terms)) return -1;
++	return state->semantic_format ? read_semantic(file, state, limit, name_limit, codec) : 0;
+ }
+ 
+ int pg_retained_read(FILE *file, struct pg_typing *typing, size_t limit, size_t name_limit,
+@@ -74,3 +147,20 @@
+ 	*terms = state.terms;
+ 	return 0;
+ }
++
++int pg_retained_read_semantic(FILE *file, struct pg_typing *typing, size_t limit, size_t name_limit,
++	struct pg_effect_inference *effects, const struct pg_graph_codec *codec, void *owner,
++	size_t *count, const struct pg_derivation_input *const **roots,
++	const struct pg_reduction_archive **reductions,
++	size_t *term_count, const struct pg_term *const **terms,
++	size_t *semantic_count, const struct pg_occurrence *const **semantic)
++{
++	if (!typing || !count || !roots || !reductions || !term_count || !terms || !semantic_count || !semantic) return -1;
++	struct read_state state = {.typing = typing, .effects = effects, .owner = owner, .semantic_format = 1};
++	if (pg_graph_image_read(file, semantic_magic, typing->graph, limit, name_limit, codec, owner, read_payload, &state)) return -1;
++	*count = state.count; *roots = state.roots;
++	*reductions = state.reductions;
++	*term_count = state.term_count; *terms = state.terms;
++	*semantic_count = state.semantic_count; *semantic = state.semantic;
++	return 0;
++}

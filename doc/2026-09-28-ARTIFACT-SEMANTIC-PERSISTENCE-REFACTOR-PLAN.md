@@ -1,7 +1,7 @@
 # Artifact Semantic Persistence Refactor
 
 Date: 2026-09-28
-Status: in progress; shared transport prototype, not yet promoted.
+Status: in progress; shared transport and materialized-result prototype, not promoted.
 Baseline: `152b59506e915e18a34f6dc8041e981fb2a82888` (PR #45 documents
 imported). Implementation is unchanged from `e716232`; unrelated working-tree
 changes are excluded from this audit.
@@ -145,6 +145,9 @@ continuation is still an AP1.3 task. No restored `DONE` bit will authorize evide
   writer. A new semantic payload needs explicit versioning. APGSRC62/63 may be
   bounded legacy imports with unavailable semantic roots reported explicitly;
   do not claim that old source-only images can expose missing results at zero fuel.
+  Prototype writes APGSRC64/APGRET3 and explicitly reads legacy 62/63. A fresh
+  62 -> 64 zero-fuel migration followed by a byte-identical 64 resave passes.
+  Final migration/legacy-archive removal and full acceptance are still pending.
 
 ## AP2. Shared Transport and Removal
 
@@ -191,7 +194,8 @@ this is not permission to save all evaluator jobs.
   duplication without copying or normalizing the borrowed semantic graph.
   Prototype fixes temporary Ref aliases by their identical object pointer in
   the shared dependency collector. Nominal objects and Lambda/Application nodes
-  remain distinct by pointer. Program-wide semantic/source integration is pending.
+  remain distinct by pointer. The prototype now connects available typed roots
+  to their existing producer ordinals in that same table, without erased-Core lookup.
   Clean-baseline source, derivation, occurrence and scoped-structure tests pass;
   the added test also passes ASan/UBSan. Completed Example 09: retained bytes
   32,625 (prior baseline) -> 32,463, no duplicate Ref records; ordinary 26,374
@@ -199,6 +203,10 @@ this is not permission to save all evaluator jobs.
 - [ ] **AP2.3:** implement an inert semantic-root view plus persistence of the
   available construction and residual inputs. Inspecting an absent result returns
   unavailable, not an implicit Solve request. Keep existing module acceptance rules.
+  Prototype view borrows `pg_occurrence` directly, without another semantic DB.
+  Imported construction is an unaccepted producer input, not a restored result
+  receipt. Ordinary Solve still checks its source independently. Validation-input
+  reuse and suspended-owner continuation remain open; this is not a checkpoint.
 - [ ] **AP2.4:** remove all-store snapshot/previous-generation accumulation and
   dead Program ownership after AP1's consumer inventory. Review `main.c`,
   `program.h`, `source_io.*`, `retained_io.*`, `reduction_io.c`, `eval_internal.h`
@@ -212,6 +220,36 @@ Implementation location before acceptance: `src/prototype/artifact_persistence/`
 Approved changes can later move to their existing artifact/semantic owners.
 The future C implementation is planned under `src/transpile/c/`, separate from
 those owners; no transpiler directory, emitter or target IR is needed in this phase.
+
+#### Prototype Decisions And Checks (2026-09-28)
+
+Compared with `f2f6f69`, new patches modify only existing source, synthesis-work
+and retained-I/O owners. The reader reconnects results by producer ordinal;
+selected roots and their explicit producer dependencies determine retained
+results. Lexical-origin discovery supplies allocation inputs, not more exports.
+The typed DAG's own closure supplies its Terms, Contexts, maps and annotations.
+
+Rejected trial: feeding every materialized object's source backreferences into
+origin discovery retained incidental workers and grew Example 09 by 12,677 bytes
+per completed generation, mostly derivation inputs (18,032 -> 30,224 bytes), not
+duplicate Core nodes. That traversal and its extra collection API were removed.
+Also rejected: treating `pg_evidence_scope(term_proof)` as the term's environment.
+That API selects Context declarations only. Raw Contexts/typed formation edges
+are preserved; no arbitrary Context receipt or Universe bound is inferred.
+
+Fresh clean-baseline O2 source/derivation/transport suites and focused ASan/UBSan
+pass. Read-only consumption uses `typing.h`, not parser/scheduler headers.
+Forged stored construction does not bypass `::`, nor an invalid sibling module
+obligation. Example 09, host and invalid-assertion fuel curves pass ordinary
+zero-fuel rewrites and three completed generations. Example 09 is now 49,830
+bytes (previous source-only 26,374); all those completed/inert saves are identical.
+This is additional reachable typed construction, not a claimed size reduction.
+Fresh-process split-fuel checks still fail: 100+100 yields 25,482 vs 25,838 bytes,
+and 1600+1600 remains pending with 29,546 vs the completed 49,830. Existing private
+continuations and import-validation work must be addressed next, not hidden by
+restoring a trusted completion bit. The optional old reduction archive still
+grows by 444 bytes/generation in this prototype; AP2.4 must remove that ownership.
+Full acceptance/F3/F4 and promotion are open.
 
 ## AP3. Verification and Handoff
 
@@ -241,6 +279,12 @@ not accepted deviations. Logs: `/tmp/a-program-partition-*`.
 At 1600+1600 versus 3200, the ordinary images are even byte-identical (26,374
 bytes), but the single run is done at 3,129 steps while the reloaded split remains
 pending at 3,200. Thus byte equality alone cannot certify preserved Solve progress.
+
+Rechecked against the `f2f6f69` clean-baseline transport overlay on 2026-09-28:
+both failures persist. The prototype `check-artifact-partitions` target now runs
+the strict byte gate as well as size/status/consumed-fuel checks. It deliberately
+fails rather than accepting these cases as expected failures; its reports remain
+available for comparison. This is not yet a production-registered or passing gate.
 
 ### Assessment
 

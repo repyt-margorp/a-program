@@ -1,0 +1,37 @@
+--- a/synthesis_work.c
++++ b/synthesis_work.c
+@@ -179,6 +179,34 @@
+ 	return job->status == PG_SYNTHESIS_DONE ? job->result : NULL;
+ }
+ 
++int pg_synthesis_materialized(const struct pg_synthesis_job *job,
++	const struct pg_occurrence **root)
++{
++	if (!job || !root) return -1;
++	const struct pg_evidence *proof = pg_synthesis_result(job);
++	const struct pg_occurrence *subject = proof ? pg_evidence_subject(proof) : NULL;
++	*root = subject ? subject : job->imported;
++	return *root != NULL;
++}
++
++static int owns_entry(const struct pg_index *index, const struct pg_index_entry *entry)
++{
++	for (const struct pg_index_entry *candidate = pg_index_candidates(index, entry->hash);
++		candidate; candidate = candidate->next)
++		if (candidate == entry) return 1;
++	return 0;
++}
++
++int pg_synthesis_import_materialized(struct pg_synthesis *synthesis,
++	struct pg_synthesis_job *job, const struct pg_occurrence *root)
++{
++	if (!synthesis || !job || job->owner != synthesis->owner_key || !root) return -1;
++	if (!owns_entry(&synthesis->typing->occurrences, &root->index)) return -1;
++	if (job->imported && job->imported != root) return -1;
++	job->imported = root;
++	return 0;
++}
++
+ const struct pg_synthesis_job *pg_synthesis_dependency(const struct pg_synthesis_job *job)
+ {
+ 	return job && job->dependency ? job->dependency->child : NULL;
