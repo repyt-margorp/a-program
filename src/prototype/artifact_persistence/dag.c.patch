@@ -1,0 +1,30 @@
+--- a/dag.c
++++ b/dag.c
+@@ -18,7 +18,7 @@
+ 	return pg_index_init(&dag->index);
+ }
+ 
+-const struct pg_dag_node *pg_dag_find(const struct pg_dag *dag, const void *key)
++static const struct pg_dag_node *find_key(const struct pg_dag *dag, const void *key)
+ {
+ 	if (!key) return NULL;
+ 	for (struct pg_index_entry *p = pg_index_candidates(&dag->index, (uintptr_t)key); p; p = p->next) {
+@@ -28,10 +28,17 @@
+ 	return NULL;
+ }
+ 
++const struct pg_dag_node *pg_dag_find(const struct pg_dag *dag, const void *key)
++{
++	if (key && dag->key) key = dag->key(dag->context, key);
++	return find_key(dag, key);
++}
++
+ static struct record *record(struct pg_dag *dag, const void *key)
+ {
++	if (key && dag->key) key = dag->key(dag->context, key);
+ 	if (!key) return NULL;
+-	const struct pg_dag_node *found = pg_dag_find(dag, key);
++	const struct pg_dag_node *found = find_key(dag, key);
+ 	if (found) return (struct record *)found;
+ 	struct record *r = pg_alloc(&dag->storage, sizeof(*r));
+ 	if (!r) return NULL;

@@ -1,0 +1,13 @@
+--- a/dag.h
++++ b/dag.h
+@@ -21,6 +21,10 @@
+ 	int failed;
+ 	int (*child)(void *, const void *, size_t, const void **);
+ 	void *context;
++	/* Optional stable key projection before lookup/traversal. For transport
++	 * aliases only, never conversion. Returned storage outlives this DAG;
++	 * NULL means failure. Unset preserves exact input-pointer identity. */
++	const void *(*key)(void *, const void *);
+ };
+ int pg_dag_init(struct pg_dag *dag,
+ 	int (*child)(void *, const void *, size_t, const void **), void *context);

@@ -1,7 +1,7 @@
 # Artifact Semantic Persistence Refactor
 
 Date: 2026-09-28
-Status: planning; no production implementation in this update.
+Status: in progress; shared transport prototype, not yet promoted.
 Baseline: `152b59506e915e18a34f6dc8041e981fb2a82888` (PR #45 documents
 imported). Implementation is unchanged from `e716232`; unrelated working-tree
 changes are excluded from this audit.
@@ -97,6 +97,33 @@ The exact API names and extra layers in the supplied document are proposals,
 not mandatory architecture. A read-only view may borrow existing nodes; it need
 not copy them into a second permanent database.
 
+#### Owner Inventory (2026-09-28)
+
+Inspected against `a696276` (`src/` unchanged from `e716232`). This inventories
+the existing image payload and identifies missing progress, not a completed
+checkpoint implementation. Prototype tests also run separately against the
+working tree; unrelated Evidence/IADT changes are not part of this refactor.
+
+| Current owner/data | Consumer and decision |
+| --- | --- |
+| `source_io.c`: definition policy, ordered selections, source scopes, names/imports, syntax DAG | Source reconstruction and name lookup; required for unresolved source. Selection aliases must remain aliases. |
+| Producer DAG: source/rule/definition/operation/normalization inputs, module entry indices | Exact source-to-producer reconnect; retain identity/operands, not another lookup by erased Core. Current producer records have **no materialized typed result** slot. |
+| Source binding addresses, declaration/member/match contexts and lexical references | Preserve generative identities when elaboration continues. These are allocation inputs, not proof that a type or branch is valid. |
+| `occurrence_io.c`: judgement, context, Core, classifier, formation, annotation, origin/map, selection, operands, construction maps, induction allocation | Typed inspection and ordinary kernel rules. Required reachable semantic structure; currently omitted from the Program writer. Descriptor transport is now prototyped. |
+| `context_payload.c` / `declaration_io.c`: telescopes, indices, constructor/result images, nominal descriptors | Shared typed/Core dependency closure; required. Temporary packing arrays and wire ordinals are disposable, not another semantic authority. |
+| `derivation_io.c`: rule parameters and premise DAG; comparison endpoints instead of certificate pointers | Existing source rule reconstruction and ordinary `pg_synthesis_derive`; keep necessary validation inputs. Do not equate an occurrence's existence with accepted evidence. Audit which are reconstructible from the retained occurrence before deleting any. |
+| `effect_inference.c`: parameter/seed pairs and dependency triples | Input equations for handler/classifier inference. Existing exporter requires complete contributions, then reader leaves them unsealed. Partial contribution discovery and converged results need an explicit progress contract. |
+| `program.retained_reductions`; all-store snapshot plus previous archive | CLI writes/reads but does not consume this as a cache. Standalone `pg_reduction_check_*` tests recompute it. Remove this Program retention; keep live evaluation and explicitly needed evidence APIs. |
+| `synthesis_work.c`: ready order, wait edges, private owner state, result; `synthesis.steps` | One charged step dispatches one ready worker. Source import recreates work, not these continuations. Saving only producer recipes cannot preserve this progress. |
+| Typing queries/actions, substitution and conversion; WHNF/NF machines | Called by private synthesis workers. Some have existing inert codecs, others do not. A codec roundtrip alone does not establish provenance or reconnect them to the owner. Still to inventory for AP1.3. |
+| Hash buckets, lookup caches, transport scratch arrays, old archive generations | Rebuild or discard. Neither pointer bucket iteration order nor elapsed history is a semantic root order. |
+
+**Fuel constraint:** the current unit is a scheduler dispatch, not wall time or
+one Core beta step. Preserving exact progress requires its unfinished owner
+continuation (including nested work), not merely a saved total counter. Import
+revalidation must remain explicit and budgeted; how it composes with that
+continuation is still an AP1.3 task. No restored `DONE` bit will authorize evidence.
+
 ### Plan
 
 - [x] **AP1.1:** fetch #43/#44/#45 and import the three PR Markdown files unchanged.
@@ -104,6 +131,8 @@ not copy them into a second permanent database.
   semantic root. Classify as required, recomputable, or dead. Include typed
   queries, effect equations and reduction consumers; do not infer usefulness
   from a serializer roundtrip test alone.
+  Image-payload inventory is above; private pending-owner continuation coverage
+  and the occurrence-versus-rule validation-input analysis are still open.
 - [ ] **AP1.3:** specify one export/root contract using existing occurrences,
   declarations and residual inputs. Demonstrate parse-only, partly materialized,
   completed and rejected examples. Specify how a saved result reconnects to its
@@ -153,10 +182,20 @@ this is not permission to save all evaluator jobs.
 - [ ] **AP2.1:** extend scoped/unscoped occurrence I/O to the existing full
   descriptor codec path. Keep name/resolve APIs as thin adapters only if still
   used. Test nominal declarations and shared binders without source reconstruction.
+  Prototype implementation and targeted O2 tests pass: descriptor APIs delegate
+  to the same occurrence/context codec; legacy name/resolve calls are adapters.
+  Promotion and final acceptance coverage remain open.
 - [ ] **AP2.2:** share root collection and relocation across occurrences,
   contexts, declarations, validation inputs and residual source obligations.
   Reuse `pg_graph_image_*` / `pg_graph_dependencies_init`; fix Ref transport
   duplication without copying or normalizing the borrowed semantic graph.
+  Prototype fixes temporary Ref aliases by their identical object pointer in
+  the shared dependency collector. Nominal objects and Lambda/Application nodes
+  remain distinct by pointer. Program-wide semantic/source integration is pending.
+  Clean-baseline source, derivation, occurrence and scoped-structure tests pass;
+  the added test also passes ASan/UBSan. Completed Example 09: retained bytes
+  32,625 (prior baseline) -> 32,463, no duplicate Ref records; ordinary 26,374
+  unchanged. Fuel-partition resumption still fails; this is not the history fix.
 - [ ] **AP2.3:** implement an inert semantic-root view plus persistence of the
   available construction and residual inputs. Inspecting an absent result returns
   unavailable, not an implicit Solve request. Keep existing module acceptance rules.

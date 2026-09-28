@@ -1,0 +1,108 @@
+--- a/occurrence_io.c
++++ b/occurrence_io.c
+@@ -54,7 +54,7 @@
+ 
+ static int write_dag(FILE *file, size_t count, const struct pg_occurrence *const *roots,
+ 	int scoped, const struct pg_scope *const *scopes,
+-	const char *(*name)(void *, const struct pg_object *), void *owner)
++	const struct pg_graph_codec *codec, void *owner)
+ {
+ 	if (!file || (count && !roots)) return -1;
+ 	struct pg_graph arena = {0};
+@@ -149,7 +149,7 @@
+ 		const struct pg_dag_node *r = pg_dag_find(&dag, roots[i]);
+ 		if (!r || pg_wire_write_u64(file, r->id)) goto done;
+ 	}
+-	status = pg_contexts_write(file, context_count, contexts, term_count, terms, name, owner);
++	status = pg_contexts_write_descriptors(file, context_count, contexts, term_count, terms, codec, owner);
+ done:
+ 	pg_dag_destroy(&scope_dag);
+ 	pg_dag_destroy(&dag);
+@@ -160,14 +160,29 @@
+ int pg_occurrences_write(FILE *file, size_t count, const struct pg_occurrence *const *roots,
+ 	const char *(*name)(void *, const struct pg_object *), void *owner)
+ {
+-	return write_dag(file, count, roots, 0, NULL, name, owner);
++	const struct pg_graph_codec codec = {.name = name};
++	return pg_occurrences_write_descriptors(file, count, roots, &codec, owner);
++}
++
++int pg_occurrences_write_descriptors(FILE *file, size_t count, const struct pg_occurrence *const *roots,
++	const struct pg_graph_codec *codec, void *owner)
++{
++	return write_dag(file, count, roots, 0, NULL, codec, owner);
+ }
+ 
+ int pg_scoped_occurrences_write(FILE *file, size_t count,
+ 	const struct pg_scope *const *scopes, const struct pg_occurrence *const *roots,
+ 	const char *(*name)(void *, const struct pg_object *), void *owner)
+ {
+-	return write_dag(file, count, roots, 1, scopes, name, owner);
++	const struct pg_graph_codec codec = {.name = name};
++	return pg_scoped_occurrences_write_descriptors(file, count, scopes, roots, &codec, owner);
++}
++
++int pg_scoped_occurrences_write_descriptors(FILE *file, size_t count,
++	const struct pg_scope *const *scopes, const struct pg_occurrence *const *roots,
++	const struct pg_graph_codec *codec, void *owner)
++{
++	return write_dag(file, count, roots, 1, scopes, codec, owner);
+ }
+ 
+ struct input {
+@@ -179,7 +194,7 @@
+ };
+ 
+ static int read_dag(FILE *file, struct pg_typing *typing, size_t limit, size_t name_limit,
+-	const struct pg_object *(*resolve)(void *, const char *), void *owner,
++	const struct pg_graph_codec *codec, void *owner,
+ 	size_t *count, const struct pg_scope *const **scopes, const struct pg_occurrence *const **roots, struct pg_graph *scratch)
+ {
+ 	if (!file || !typing || !typing->occurrences.capacity || !count || !roots) return -1;
+@@ -272,7 +287,7 @@
+ 	size_t nc, nt;
+ 	const struct pg_context *const *contexts;
+ 	const struct pg_term *const *terms;
+-	if (pg_contexts_read(file, typing, limit, name_limit, resolve, owner, &nc, &contexts, &nt, &terms)) return -1;
++	if (pg_contexts_read_descriptors(file, typing, limit, name_limit, codec, owner, &nc, &contexts, &nt, &terms)) return -1;
+ 	if (nc != context_count || nt != term_count) return -1;
+ 	const struct pg_occurrence **operands = pg_alloc(scratch, max_arity * sizeof(*operands));
+ 	const struct pg_context_map **maps = pg_alloc(scratch, max_maps * sizeof(*maps));
+@@ -353,9 +368,17 @@
+ 	const struct pg_object *(*resolve)(void *, const char *), void *owner,
+ 	size_t *count, const struct pg_occurrence *const **roots)
+ {
++	const struct pg_graph_codec codec = {.resolve = resolve};
++	return pg_occurrences_read_descriptors(file, typing, limit, name_limit, &codec, owner, count, roots);
++}
++
++int pg_occurrences_read_descriptors(FILE *file, struct pg_typing *typing, size_t limit, size_t name_limit,
++	const struct pg_graph_codec *codec, void *owner,
++	size_t *count, const struct pg_occurrence *const **roots)
++{
+ 	/* Wire IDs and assembly arrays are not part of the retained typed graph. */
+ 	struct pg_graph scratch = {0};
+-	int status = read_dag(file, typing, limit, name_limit, resolve, owner, count, NULL, roots, &scratch);
++	int status = read_dag(file, typing, limit, name_limit, codec, owner, count, NULL, roots, &scratch);
+ 	pg_graph_destroy(&scratch);
+ 	return status;
+ }
+@@ -364,9 +387,17 @@
+ 	const struct pg_object *(*resolve)(void *, const char *), void *owner,
+ 	size_t *count, const struct pg_scope *const **scopes, const struct pg_occurrence *const **roots)
+ {
++	const struct pg_graph_codec codec = {.resolve = resolve};
++	return pg_scoped_occurrences_read_descriptors(file, typing, limit, name_limit, &codec, owner, count, scopes, roots);
++}
++
++int pg_scoped_occurrences_read_descriptors(FILE *file, struct pg_typing *typing, size_t limit, size_t name_limit,
++	const struct pg_graph_codec *codec, void *owner,
++	size_t *count, const struct pg_scope *const **scopes, const struct pg_occurrence *const **roots)
++{
+ 	if (!scopes) return -1;
+ 	struct pg_graph scratch = {0};
+-	int status = read_dag(file, typing, limit, name_limit, resolve, owner, count, scopes, roots, &scratch);
++	int status = read_dag(file, typing, limit, name_limit, codec, owner, count, scopes, roots, &scratch);
+ 	pg_graph_destroy(&scratch);
+ 	return status;
+ }

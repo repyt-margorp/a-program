@@ -1,0 +1,28 @@
+--- a/graph_io.c
++++ b/graph_io.c
+@@ -132,6 +132,17 @@
+ 	}
+ }
+ 
++/* Temporary Ref wrappers from distinct codecs refer to the same object.
++ * Borrow Lambda/Application nodes; only Ref storage needs local ownership. */
++static const void *transport_key(void *owner, const void *key)
++{
++	struct transport *transport = owner;
++	const struct pg_term *term = key;
++	if (term->kind == PG_REFERENCE)
++		return pg_reference(transport->scratch, term->as.reference);
++	return term;
++}
++
+ static int transport_dependency(void *owner, const void *key, size_t index, const void **child)
+ {
+ 	struct transport *transport = owner;
+@@ -160,6 +171,7 @@
+ 	if (!transport) return -1;
+ 	*transport = (struct transport){objects, codec, context, &terms->storage};
+ 	terms->context = transport;
++	terms->key = transport_key;
+ 	return 0;
+ }
+ 
