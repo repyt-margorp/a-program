@@ -16,7 +16,7 @@ not evidence that its proposed interfaces already work. Broad P4/P5 remain open.
 | F1 | Checked finite positions and bijections | Complete |
 | F2 | Lawful List and indexed-container views | Complete for homogeneous List/Vec and the finite-position bridge |
 | F3 | One ordinary-result sorting specification | Source prototype checked; normalization/image gates incomplete |
-| F4 | Quick/Merge/Insertion/Bubble and additional backends | Quick/Insertion source connections checked; remaining backends pending |
+| F4 | Quick/Merge/Insertion/Bubble and additional backends | Quick/Insertion/legacy Merge/Tree connected in prototype; Bubble pending |
 | F5 | Permanent rejection, image and regression gates | Pending |
 
 ## F0. Scope and Invariants
@@ -316,8 +316,8 @@ and stability are not universal requirements.
 - [ ] F4: instantiate QuickSort, InsertionSort, BubbleSort and the existing
   merge fixture. Add a separately named conventional two-front MergeSort if
   required; never silently replace the old algorithm or claim its complexity.
-- [ ] F4: cover a straightforward additional backend (selection or existing
-  tree sort), recording the actual relation assumptions per algorithm.
+- [x] F4 prototype: connect the existing TreeSort, recording relation assumptions;
+  generic source proofs and List/Vec/Fin observations pass. Promotion is separate.
 - [ ] F4: verify open-input ordinary-result theorems, then closed examples for
   empty/singleton/reversed/already-sorted/duplicate-labelled data.
 
@@ -362,7 +362,9 @@ tests or a claim that F3/F4 are complete):
 - [x] Connect the unchanged Nat-specific legacy MergeSort, with arbitrary
   relation/comparator, Local/permutation proofs and ordinary List observations.
 - [x] Complete legacy Merge Vec/Fin observations on the closed-readback candidate.
-- [ ] Connect Tree and BubbleSort. No claim of conventional two-front merge or
+- [x] Connect TreeSort with generic ordinary-result Local/permutation proofs;
+  labelled observations, cyclic relation and bounded saved/resumed images pass.
+- [ ] Connect BubbleSort. No claim of conventional two-front merge or
   arbitrary-element legacy MergeSort yet.
 - [ ] Obtain approval before promoting the verified evaluator prototype into `src/`.
 
@@ -397,9 +399,9 @@ declare the retained mode working.
    current limit validation intact until that decision is justified.
 3. Re-run the prototype `check.sh` gates, including the pending same-domain
    negative, before marking F3 complete or promoting the source fixtures.
-4. For F4, finish legacy MergeSort's position/value observations. Generalize
-   Tree's existing Nat proof or choose a separately named selection backend.
-   BubbleSort needs an actual source implementation and open-input proof, not a
+4. For F4, legacy MergeSort's position observations and generic TreeSort are now
+   verified on the prototype candidate. BubbleSort still needs an actual source
+   implementation and open-input proof, not a
    renamed backend. Preserve the explicit relation assumptions per algorithm.
 
 The commands, scope and known incomplete gates are in
@@ -593,6 +595,53 @@ isolated-build material. Accepted compiler delta: **0**. If promoted as written,
 the actual compiler patch plus support module is **+144/-10, net +134**;
 the 87 stored patch-file lines are not 87 new compiler lines. This epoch makes
 previously pending observations tractable; it is not a code-reduction claim.
+
+### Generic TreeSort Verification, 2026-09-28
+
+**Subjective (User):** continue F3/F4 verification. Preserve the existing sorting
+algorithms and separate Local from Strong; `::` remains only a post-check.
+
+**Objective (Code):** baseline `11efe1d` plus
+`src/prototype/finite_sorting/tree{,-cases,-cycle}.p` and `tree-check.sh`.
+The existing generic `treeInsert`, `treeBuild`, `treeToList`, and `treeSort` are
+unchanged. Source proofs pass on the accepted compiler in **13,294,981** steps,
+or **4,965,391** after removing assertions. On the O2 closed-readback candidate:
+
+| Check | Steps |
+| --- | ---: |
+| Source with labelled cases/value law | 6,460,917 |
+| Same source without assertions | 3,479,842 |
+| List/Vec/Fin report, chunks 1/64 | 6,774,594 |
+| Retained report, explicit 3M reader bound | 6,926,359 |
+| 100-step image resumed, ordinary/retained | 6,774,926 |
+| Cyclic-relation Local proof readback | 6,150,878 |
+
+The complete prototype gate passes in **170 seconds O2 / 464 seconds ASan/UBSan**,
+with leak checking and halt-on-error enabled. It includes wrong comparator,
+content and value rejection and byte-identical zero-step image rewriting.
+The cyclic relation has `a <= b <= c <= a`; TreeSort of `[a,b,c]` yields
+`[b,c,a]`. Its Local certificate computes that result; using it as Strong is
+rejected. This test checks absence of an automatic Local-to-Strong conversion,
+not a general uninhabitance theorem. The first sanitizer attempt lacked the
+bounded comparator executable; the complete rerun passes after building it.
+
+**Assessment:** `tree_all A P` unifies lower/upper bound preservation. Reuse
+existing List concatenation and permutation lemmas for traversal, rather than
+copy the older Nat-specific graph proofs or add privileged rules. Local needs
+directional comparison evidence only; Strong requires transitivity through the
+common wrapper. Only an initially missing pair of parentheses around nested
+surface Matches needed correction; no compiler/type-inference repair was used.
+
+**Plan:** Tree completes the additional-backend prototype item, not all of F4.
+Bubble, the CLI retained-image policy, same-domain negative and promotion
+approval remain open.
+No accepted compiler changes; a broad compiler regression rerun is not claimed
+for this source-only addition. Logs: `/tmp/a-program-tree-{check,sanitize,
+baseline-source,baseline-independent}.log`.
+
+Per-file non-Markdown delta against `11efe1d`: `tree.p` **+110/-0**,
+`tree-cases.p` **+21/-0**, `tree-cycle.p` **+9/-0**, `tree-check.sh` **+60/-0**;
+total **+200/-0**. These are source proofs and verification, not compiler growth.
 
 ### List/Vec View Checkpoint, 2026-09-27
 

@@ -14,13 +14,18 @@ This directory is experimental, not part of the accepted `check-acceptance` gate
   MergeSort. The relation is arbitrary; Local requires directional comparison
   evidence, not transitivity. Its internal fuel bound follows from `measure`.
   This does not generalize the algorithm's element type or replace its merge.
+- `tree.p`: generic Local/permutation proofs for the unchanged `treeSort`.
+  A single `tree_all` predicate handles both bound directions; flattening reuses
+  the existing List proofs. Local does not require transitivity. Strong uses
+  the common wrapper and its explicit transitivity argument.
 - `cases.p`: shared consumers, empty/singleton/reversed/ordered inputs and
   different labels with equal keys. QuickSort and insertion need not be stable
   or return the same order of equal keys. Their expected labels differ.
 - `stress-value.p`, `stress-wrong-function.p`: incomplete conversion diagnostics,
   appended after the provider and cases. They are not passing rejection tests.
 
-Run from the repository root, using matching baseline binaries:
+Run from the repository root, using binaries from the same build. Results below
+distinguish the accepted baseline from the isolated closed-readback candidate:
 
 ```sh
 bash src/prototype/finite_sorting/check.sh BUILD/pointer-check BUILD/program_test lists
@@ -29,10 +34,12 @@ bash src/prototype/finite_sorting/check.sh BUILD/pointer-check BUILD/program_tes
 bash src/prototype/finite_sorting/check.sh BUILD/pointer-check BUILD/program_test insertion
 bash src/prototype/finite_sorting/merge-check.sh BUILD/pointer-check BUILD/program_test lists
 bash src/prototype/finite_sorting/value-check.sh BUILD/pointer-check
+bash src/prototype/finite_sorting/tree-check.sh BUILD/pointer-check BUILD/finite_sort_image_compare
 ```
 
-The omitted mode is `all`, which must pass before claiming completion. `source`
-checks synthesis without assertions, rejection and ordinary/retained images;
+For `check.sh`, the omitted mode is `all`, which must pass before claiming
+completion. `source` checks synthesis without assertions, rejection and
+ordinary/retained images;
 `lists` observes ordinary algorithm outputs; `quick`/`insertion` also evaluate
 Vec rebuilding and labelled Fin origins. Commands have a 180-second deadline
 and a default 40-million-step budget (`SORTING_CHECK_STEPS` can override it).
@@ -45,9 +52,9 @@ negative cases and ordinary-image resume pass. `merge-check.sh ... views` adds
 its Vec/Fin observations. Vec remains pending at 40 million transitions; the
 following Fin-origin gate has not been reached.
 
-Known gaps: full Quick observations remain pending at 100 million steps. Fully
-retained source exceeds the CLI's million-record limit. Therefore `all` is **not
-passing**. Tree/Bubble are not connected, and the same-domain negative and
+Accepted baseline gaps: full Quick observations remain pending at 100 million
+steps. Fully retained source exceeds the CLI's million-record limit. Therefore
+`all` is **not passing**. Bubble is not connected, and the same-domain negative and
 concrete value-transport stress fixtures still need verification.
 
 The [closed-readback prototype](../readback_support/README.md) now completes
@@ -58,6 +65,18 @@ The active plan distinguishes these candidate results from the baseline above.
 `value-check.sh` verifies positive specialization, synthesis without `::`, and
 rejection of wrong labels. The candidate passes all four checks. The retained
 API gate accepts an optional `all` mode to observe both Quick and Insertion.
+
+The Tree source proofs also pass on the accepted baseline (13,294,981 steps;
+4,965,391 without assertions). The closed-readback candidate passes the full
+`tree-check.sh` gate: generic and assertion-free synthesis, labelled List/Vec/Fin
+observations, wrong comparator/content/value rejection, and ordinary/retained
+images with zero/100-step resume. Retained checks use the explicit bounded API,
+not a relaxed CLI default. The existing cyclic relation fixture additionally
+checks Local without transitivity; treating that proof as Strong is rejected.
+This is not a formal uninhabitance proof for every possible Strong term.
+`tree-cases.p` shares the other backends' cases rather than duplicating them.
+The full Tree gate passes in O2 (170 s) and ASan/UBSan (464 s, leak checking and
+halt-on-error enabled). No accepted compiler change is part of this addition.
 
 ## Bounded Image and Cost Diagnostics
 
