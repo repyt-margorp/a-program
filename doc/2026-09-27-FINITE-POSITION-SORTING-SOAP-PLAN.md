@@ -1194,6 +1194,10 @@ The library addition is new functionality, not a claim that compiler size fell.
 
 Use progress-tracked Markdown and publish tested milestones to Main.
 
+2026-09-28 follow-up: the user approved readback promotion after full regression,
+but questioned the reader-limit proposal and requested an image-growth audit.
+Do not bundle that option into the readback approval.
+
 ### Objective (Code)
 
 `src/Makefile:check-acceptance` is the permanent gate. Existing source-image
@@ -1214,7 +1218,12 @@ Small finite checks are boundary tests, not substitutes for open proofs.
 Agent decision: share the prototype runners now; adopt the existing comparison
 tool's reader parameter directly upon promotion and remove the include wrapper.
 Do not create another checker, make candidate assertions optional, or preserve
-overlay implementations beside adopted owners. Promotion still needs approval.
+overlay implementations beside adopted owners. Readback promotion is approved;
+other owner moves are not covered by that approval. The reader option is on hold:
+the [image-growth audit](2026-09-28-RETAINED-IMAGE-GROWTH-AUDIT.md) reproduced
+20.9 -> 37.6 -> 54.2 MB growth across completed load/Solve/save generations.
+Raw reduction history is retained but not consumed as a CLI cache. Resolve that
+contract before treating a raised reader bound as the solution.
 
 ### Plan
 
@@ -1232,7 +1241,10 @@ overlay implementations beside adopted owners. Promotion still needs approval.
 - [x] Re-run all five backend gates, large rejected-image and same-domain
   rejection/resume gates, plus retained API `all`: exit 0. Logs:
   `/tmp/a-program-f5-{backends,retained,helper,sanitize-helper}.log`.
-- [ ] Obtain promotion approval and perform the owner moves below.
+- [x] Obtain user approval for readback promotion after regression.
+- [ ] Perform the readback owner move and rerun its accepted-build regression.
+- [ ] Resolve retained-image growth before reader-option adoption; other owner
+  moves below still require their own approval.
 - [ ] Register F3/F4 and reader-bound gates in accepted `check-acceptance`; run the
   promoted suite from a clean build and focused ASan/UBSan before closing #41.
 - [x] F1: compare assertion-free and asserted programs; missing source information

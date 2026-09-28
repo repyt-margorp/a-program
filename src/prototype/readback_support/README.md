@@ -85,7 +85,10 @@ no accepted code is changed.
   the [conversion-head companion](../conversion_head/README.md) addresses it.
 - [x] Measure construction/storage overhead and reject quadratic prefix copying.
 - [x] Review the final representation and complete its regression gates.
-- [ ] Obtain explicit approval before promoting changes into accepted code.
+- [x] User explicitly approved promotion after regression on 2026-09-28.
+- [ ] Promote to accepted owners and rerun regression. The separate
+  [retained-image audit](../../../doc/2026-09-28-RETAINED-IMAGE-GROWTH-AUDIT.md)
+  does not authorize the image-limit option or a broader substitution shortcut.
 
 Build a generated overlay, leaving accepted source/build files untouched:
 

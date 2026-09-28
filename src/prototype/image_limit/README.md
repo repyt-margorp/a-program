@@ -35,6 +35,11 @@ an unbounded reader. The `.a` format and writer are unchanged.
 
 ## Plan
 
+Adoption is on hold after the user's 2026-09-28 review. The
+[growth audit](../../../doc/2026-09-28-RETAINED-IMAGE-GROWTH-AUDIT.md) shows
+retained history accumulation across completed Solve/save generations, eventually
+exceeding even 3M. The passing tests below do not resolve that ownership issue.
+
 - [x] Isolated CLI patch, composed with the verified readback/conversion candidate.
 - [x] Parsing, default/explicit agreement, insufficient/representation bounds,
   stdin/root/NF/REPL checks and ordinary/retained 0/1/completed-image resume.
