@@ -4,6 +4,8 @@ binary=$1
 compare=$2
 mode=${3:-all}
 steps=${SORTING_CHECK_STEPS:-40000000}
+image_options=()
+if [[ -n ${SORTING_IMAGE_LIMIT:-} ]]; then image_options+=(--image-limit "$SORTING_IMAGE_LIMIT"); fi
 case $mode in all|source|lists|quick|insertion) ;; *) printf 'unknown check mode: %s\n' "$mode" >&2; exit 2;; esac
 started=$SECONDS
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -25,7 +27,7 @@ check() {
 	esac
 }
 equal() {
-	timeout 180 "$compare" --steps "$steps" --equal-image "$1" "$2" "$3"
+	timeout 180 "$compare" "${image_options[@]}" --steps "$steps" --equal-image "$1" "$2" "$3"
 }
 sed '/^import /d' "$provider" "$here/cases.p" > "$directory/cases.p"
 check 0 general-and-closed --save "$directory/cases.a" "$directory/cases.p"
@@ -67,14 +69,14 @@ for storage in ordinary retained; do
 	options=()
 	if [[ $storage == retained ]]; then options+=(--retain-reductions); fi
 	check 0 "$storage-save" "${options[@]}" --save "$directory/full.a" "$directory/cases.p"
-	check 0 "$storage-load" --load "$directory/full.a"
+	check 0 "$storage-load" --load "${image_options[@]}" "$directory/full.a"
 	if [[ $mode == all ]]; then equal "$directory/full.a" main insertion_expected; fi
 	check 3 "$storage-pending" --steps 100 "${options[@]}" --save "$directory/pending.a" "$directory/cases.p"
-	check 3 "$storage-inert" --load --steps 0 "${options[@]}" --save "$directory/copy.a" "$directory/pending.a"
+	check 3 "$storage-inert" --load "${image_options[@]}" --steps 0 "${options[@]}" --save "$directory/copy.a" "$directory/pending.a"
 	cmp "$directory/pending.a" "$directory/copy.a"
-	check 0 "$storage-resume" --load "$directory/copy.a"
+	check 0 "$storage-resume" --load "${image_options[@]}" "$directory/copy.a"
 	if [[ $mode == all ]]; then equal "$directory/copy.a" quick_vector quick_expected; fi
 	check 3 "$storage-invalid-pending" --steps 100 "${options[@]}" --save "$directory/wrong.a" "$directory/wrong-shape.p"
-	check 1 "$storage-invalid-resume" --load "$directory/wrong.a"
+	check 1 "$storage-invalid-resume" --load "${image_options[@]}" "$directory/wrong.a"
 done
 printf 'sorting backend (%s): passed in %s seconds\n' "$mode" "$((SECONDS-started))"

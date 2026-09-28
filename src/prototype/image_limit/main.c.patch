@@ -1,0 +1,62 @@
+--- a/main.c
++++ b/main.c
+@@ -271,8 +271,9 @@
+ {
+ 	uint64_t budget = 100000;
+ 	uint64_t run_budget = 100000;
+ 	uint64_t root_index = 0;
++	uint64_t image_limit = 0;
+ 	enum pg_definition_policy policy = PG_DEFINITION_IMPLICIT_THUNK;
+ 	const char *path = NULL;
+ 	const char *selected = NULL;
+ 	const char *save = NULL;
+@@ -288,4 +289,8 @@
+ 		} else if (!strcmp(argv[i], "--root")) {
+ 			if (root_index || ++i == argc || steps_argument(argv[i], &root_index) || !root_index) goto usage;
++		} else if (!strcmp(argv[i], "--image-limit")) {
++			if (image_limit || ++i == argc) goto usage;
++			if (steps_argument(argv[i], &image_limit)) goto usage;
++			if (!image_limit || image_limit > SIZE_MAX) goto usage;
+ 		} else if (!strcmp(argv[i], "--nf") || !strcmp(argv[i], "--whnf") || !strcmp(argv[i], "--run")) {
+ 			if (selected) goto usage;
+@@ -307,3 +312,3 @@
+ 		else if (!strcmp(argv[i], "--help")) {
+-			puts("usage: pointer-check [--steps N] [--strict-thunks] [--legacy-intrinsic-dot] [--imports FILE.p|--load [--root N]] [--save FILE.a] [--retain-reductions] [--whnf NAME|--nf NAME|--run NAME [--run-steps N]] INPUT|-\n"
++			puts("usage: pointer-check [--steps N] [--strict-thunks] [--legacy-intrinsic-dot] [--imports FILE.p|--load [--root N] [--image-limit N]] [--save FILE.a] [--retain-reductions] [--whnf NAME|--nf NAME|--run NAME [--run-steps N]] INPUT|-\n"
+ 				"Checks with the pointer-core solver; host effects execute only with --run.\n"
+@@ -316,3 +321,4 @@
+ 				"--repl keeps the loaded Program for :solve, :whnf, :nf, :status, :root, :save, :quit.\n"
+-				"--load reads an image (limit 1000000); its stored thunk policy applies.\n"
++				"--load reads an image; its stored thunk policy applies.\n"
++				"--image-limit N sets the positive reader record bound for --load (default 1000000), not a total-memory or Solve bound.\n"
+ 				"--root N selects a loaded root (1-based, default 1); save retains every root.\n"
+@@ -333,8 +339,10 @@
+ 	if (interactive && !strcmp(path, "-")) goto usage;
+ 	if (execute && interactive) goto usage;
+ 	if (run_steps && !execute) goto usage;
+ 	if (retain_reductions && !save && !interactive) goto usage;
++	if (image_limit && !load) goto usage;
++	if (!image_limit) image_limit = 1000000;
+ 	if (!root_index) root_index = 1;
+ 	FILE *file = !strcmp(path, "-") ? stdin : fopen(path, "rb");
+ 	if (!file) { fprintf(stderr, "%s: cannot open input\n", path); return 2; }
+ 	struct pg_program *program;
+@@ -343,3 +351,3 @@
+ 	if (load) {
+-		program = pg_sources_read(file, 1000000, &count, &roots);
++		program = pg_sources_read(file, (size_t)image_limit, &count, &roots);
+ 		if (program && root_index > count) {
+@@ -370,3 +378,7 @@
+ 	if (file != stdin) fclose(file);
+-	if (!program) { fprintf(stderr, "%s: cannot read or initialize input\n", path); return 2; }
++	if (!program) {
++		fprintf(stderr, "%s: cannot read or initialize input\n", path);
++		if (load) fprintf(stderr, "configured image reader limit=%" PRIu64 " (--image-limit N)\n", image_limit);
++		return 2;
++	}
+ 	program->allow_legacy_intrinsic_dot = legacy_intrinsic_dot;
+@@ -409,3 +421,3 @@
+ usage:
+-	fputs("usage: pointer-check [--steps N] [--strict-thunks] [--legacy-intrinsic-dot] [--imports FILE.p|--load [--root N]] [--save FILE.a] [--retain-reductions] [--whnf NAME|--nf NAME|--run NAME [--run-steps N]] INPUT|-\n", stderr);
++	fputs("usage: pointer-check [--steps N] [--strict-thunks] [--legacy-intrinsic-dot] [--imports FILE.p|--load [--root N] [--image-limit N]] [--save FILE.a] [--retain-reductions] [--whnf NAME|--nf NAME|--run NAME [--run-steps N]] INPUT|-\n", stderr);
+ 	return 2;

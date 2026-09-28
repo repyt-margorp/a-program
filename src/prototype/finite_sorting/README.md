@@ -4,6 +4,15 @@ Baseline: `7160cbe`, 2026-09-28. Progress and design provenance belong to
 [F3/F4](../../../doc/2026-09-27-FINITE-POSITION-SORTING-SOAP-PLAN.md).
 This directory is experimental, not part of the accepted `check-acceptance` gate.
 
+Current candidate: [explicit image bound](../image_limit/README.md), based on
+`cf1081e`, passes all five backend gates. Quick/Insertion `all` also passes
+ASan/UBSan. Use the composed candidate's binaries and the explicit bound below;
+the default remains unchanged and retained typing results are not trusted.
+
+```sh
+SORTING_IMAGE_LIMIT=3000000 bash src/prototype/finite_sorting/check.sh BUILD/pointer-check BUILD/finite_sort_image_compare all
+```
+
 - `common.p`: an ordinary sorting function with Local and permutation theorems;
   derived Strong, Fin occurrence correspondence and same-length Vec rebuilding.
 - `quick.p`: connection to the existing ordinary QuickSort, not a proof-result

@@ -15,8 +15,8 @@ not evidence that its proposed interfaces already work. Broad P4/P5 remain open.
 | F0 | Import and critically assess #41 / PR #42 | Complete |
 | F1 | Checked finite positions and bijections | Complete |
 | F2 | Lawful List and indexed-container views | Complete for homogeneous List/Vec and the finite-position bridge |
-| F3 | One ordinary-result sorting specification | Candidate observations/rejection checked; CLI image limit and promotion open |
-| F4 | Quick/Merge/Insertion/Bubble and additional backends | Five prototype backends; Bubble needs stronger assumptions than directional decisions alone |
+| F3 | One ordinary-result sorting specification | Prototype source/observations/rejection/resume verified; promotion pending |
+| F4 | Quick/Merge/Insertion/Bubble and additional backends | Five prototype gates passed; Bubble requires explicit transitivity, legacy Merge is Nat-specific insertion-based merge |
 | F5 | Permanent rejection, image and regression gates | Prototype checks added; accepted-build integration pending |
 
 ## F0. Scope and Invariants
@@ -309,16 +309,16 @@ and stability are not universal requirements.
   reconstruction. Pointwise Vec laws alone do not establish the List bridge.
 - [x] F2: connect existing inductive List permutation to finite-position
   bijections and prove the action equation on actual values, including duplicates.
-- [ ] F3: package an ordinary function with its general Local and permutation
+- [x] F3 prototype: package an ordinary function with its general Local and permutation
   proofs; derive Strong separately. Prove action identity/composition pointwise.
-- [ ] F3: check both sort-to-List and same-shape wrappers against their laws;
+- [x] F3 prototype: check both sort-to-List and same-shape wrappers against their laws;
   document selected traversal rather than claim arbitrary-container support.
-- [ ] F4: instantiate QuickSort, InsertionSort, BubbleSort and the existing
-  merge fixture. Add a separately named conventional two-front MergeSort if
-  required; never silently replace the old algorithm or claim its complexity.
+- [x] F4 prototype: instantiate QuickSort, InsertionSort, BubbleSort and the existing
+  merge fixture. No conventional two-front MergeSort or its complexity is claimed;
+  the existing algorithm is unchanged.
 - [x] F4 prototype: connect the existing TreeSort, recording relation assumptions;
   generic source proofs and List/Vec/Fin observations pass. Promotion is separate.
-- [ ] F4: verify open-input ordinary-result theorems, then closed examples for
+- [x] F4 prototype: verify open-input ordinary-result theorems, then closed examples for
   empty/singleton/reversed/already-sorted/duplicate-labelled data.
 
 ### F3/F4 Implementation Checkpoint, 2026-09-28
@@ -360,7 +360,8 @@ tests or a claim that F3/F4 are complete):
   API with an explicit three-million-record limit; the CLI limit is unchanged.
 - [x] Reject the same-domain wrong-function example on the conversion-head
   candidate, including saved and ordinary/retained partial-image resume.
-- [ ] Resolve the CLI size policy and complete the remaining retained gates.
+- [x] Resolve the prototype CLI size policy and complete the retained gates:
+  explicit `--image-limit 3000000`; unchanged default and proof admission.
 - [x] Connect the unchanged Nat-specific legacy MergeSort, with arbitrary
   relation/comparator, Local/permutation proofs and ordinary List observations.
 - [x] Complete legacy Merge Vec/Fin observations on the closed-readback candidate.
@@ -397,20 +398,19 @@ This establishes a size-limit failure, not corruption. Normal RECOMPUTE images
 load and resume. Do not silently raise every limit or omit proof obligations to
 declare the retained mode working.
 
-**Next verification work:**
+**Next verification/publication work (current):**
 
-1. Minimize the remaining Core demand/readback cost for `sorting_vector` and
-   `sorting_positions` (measurements below). Check closure/environment sharing
-   before choosing a compiler change; do not replace the actual-value law by a
-   length check or introduce sorting-specific evaluation rules.
-2. Separate necessary retained dependencies from optional reduction history;
-   assess an explicit reader-limit option and writer diagnostics. Keep the
-   current limit validation intact until that decision is justified.
-3. Re-run the prototype `check.sh` gates before marking F3 complete or promoting
-   the source fixtures. The conversion-head candidate resolves the same-domain
-   negative and passes full compiler regression; `all` still fails at retained
-   CLI load. This is not a completed F3 milestone.
-4. For F4, retain Bubble's explicit transitivity requirement and its checked
+Candidate verification is complete: five-backend aggregate, full compiler
+regression, and focused ASan/UBSan gates pass. Remaining work:
+
+1. Obtain explicit promotion approval. Move the verified compiler changes and
+   source library/tests into their accepted owners without retaining duplicate
+   implementations. Keep diagnostics separate; do not change the wire format,
+   interning rules or proof admission. Keep inherited user experiments untouched.
+2. Add the five-backend/reader-bound tests to the accepted `check-acceptance`,
+   verify the promoted paths and update #41 with the exact scope before closing
+   it. Do not claim a prototype-only result is the default compiler behavior.
+3. For F4, retain Bubble's explicit transitivity requirement and its checked
    counterexample to the weaker contract. Do not pursue the disproved theorem
    or change the algorithm to make it fit. A weaker sufficient comparator law
    is a separate question, not a completed result.
@@ -844,6 +844,69 @@ Non-Markdown accounting against `ac7d906`, excluding inherited work:
 The patch file includes context; its generated C change is **+19/-1, net +18**.
 Accepted compiler C/header changes remain **0**. This is additional regression
 and diagnostic coverage, not a compiler-size reduction. Markdown is separate.
+
+### F3 Explicit Reader Bound, 2026-09-28
+
+**Subjective (User):** continue F3/F4, keep both ordinary and retained `.a`
+workflows, and do not weaken synthesis or `::` to pass the examples.
+
+**Objective (Code):** baseline `cf1081e`; the CLI fixes an existing reader API
+parameter at one million. The full sorting image is larger. Its ordinary
+source-Solve and typed API load already pass. `src/prototype/image_limit/`
+composes the two verified compiler trials and exposes `--image-limit N`.
+Only the CLI changes; no reader/writer, Core, proof rule or image field changes.
+
+**Assessment (agent):** make the bound explicit per invocation, preserving the
+default and reader validation. Reject zero, invalid/duplicate arguments and use
+without `--load`. Report the configured bound on input failure without claiming
+it is the failure's cause. The bound is not total memory or proof fuel; restored
+inputs still go through source Solve. Silently raising the default, discarding
+retained data and adding a trusted-load path are rejected alternatives.
+
+**Plan:**
+
+- [x] O2/ASan CLI boundaries, default/explicit agreement, stdin/root/NF/REPL,
+  ordinary/retained 0/1/completed-image resume and invalid-post-check rejection.
+- [x] Quick/Insertion `all` passes with an explicit **3,000,000** bound (**151 s**,
+  O2), including full retained load and the formerly pending same-domain case.
+- [x] Full-sized rejected retained image: default bound fails; explicit bound
+  loads, but still rejects at **5,948,767** steps. Zero-step rewrite preserves
+  bytes; subsequent rejection remains unchanged. O2 and ASan/UBSan pass.
+- [x] Quick/Insertion `all` passes ASan/UBSan (**482 s**) with leak checking and
+  halt-on-error; the full compiler suite is not claimed sanitized.
+- [x] Aggregate five-backend gate exits 0. The full-sized rejected-image gate
+  also passes separately in O2/ASan; it was added as an aggregate prerequisite
+  after that aggregate invocation started.
+- [x] Full compiler `check-acceptance` exits 0: 63/63 source compatibility,
+  all four LT/partition variants, Local/Strong, Fin/Vec, images, optional witness
+  isolation and the readback/conversion/CLI prototype tests pass.
+- [ ] Obtain approval, promote the verified compiler/library/tests and add the
+  F5 accepted-build targets. Approval was requested; it is not assumed.
+
+Reproduction commands and the detailed gate list are in the
+[prototype README](../src/prototype/image_limit/README.md). Logs use
+`/tmp/a-program-image-limit-{build,sorting,large,sanitize-cli,sanitize-large,
+sanitize-sorting,backends,acceptance}.log`. The old default still fails on the
+large fixture by policy; the explicit bound is required, like an adequate step
+budget. This prototype milestone alone does not complete the overall goal.
+
+Non-Markdown accounting against `cf1081e`, excluding inherited work:
+
+| Prototype file | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `image_limit/main.c.patch` | 62 | 0 | +62 |
+| `image_limit/overlay.sh` | 8 | 0 | +8 |
+| `image_limit/build.mk` | 21 | 0 | +21 |
+| `image_limit/check.sh` | 45 | 0 | +45 |
+| `image_limit/large-check.sh` | 18 | 0 | +18 |
+| `image_limit/sample.p` | 2 | 0 | +2 |
+| `image_limit/invalid.p` | 2 | 0 | +2 |
+| `finite_sorting/check.sh` | 7 | 5 | +2 |
+| `finite_sorting/check-functions.sh` | 1 | 0 | +1 |
+| **Total** | **166** | **5** | **+161** |
+
+Patch context is included above; the generated CLI C change is **+17/-5, net
++12**. Accepted C/header changes: **0**. Markdown is counted separately.
 
 ### List/Vec View Checkpoint, 2026-09-27
 

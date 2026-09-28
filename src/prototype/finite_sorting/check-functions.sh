@@ -5,6 +5,7 @@ check() {
 	timeout 180 "$binary" --legacy-intrinsic-dot --steps "$steps" "$@" > "$directory/status" || status=$?
 	printf '%s: ' "$label"
 	cat "$directory/status"
+	if [[ ! -s $directory/status ]]; then printf 'exit=%s\n' "$status"; fi
 	[[ $status == "$expected" ]]
 	case $expected in
 		0) grep -q '^done steps=' "$directory/status" ;;
