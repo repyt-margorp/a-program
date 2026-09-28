@@ -1,0 +1,2 @@
+# Unified-diff context prefixes precede source tabs and blank lines.
+*.patch -whitespace

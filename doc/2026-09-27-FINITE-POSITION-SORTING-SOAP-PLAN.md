@@ -354,14 +354,17 @@ tests or a claim that F3/F4 are complete):
 - [x] Reject wrong function domain, dropped contents, incompatible comparator,
   wrong Vec shape and wrong action value; ordinary save/load and partial resume.
 - [x] Complete normalization of the integrated Insertion Vec/Fin report.
-- [ ] Complete the corresponding Quick report and specialized value-transport tests.
+- [x] Complete the corresponding Quick report and specialized value-transport
+  tests on the isolated closed-readback candidate (not yet the accepted compiler).
 - [x] Verify retained Insertion observations/resume through the existing reader
   API with an explicit three-million-record limit; the CLI limit is unchanged.
 - [ ] Resolve the CLI size policy and complete the remaining retained gates.
 - [x] Connect the unchanged Nat-specific legacy MergeSort, with arbitrary
   relation/comparator, Local/permutation proofs and ordinary List observations.
-- [ ] Complete its Vec/Fin observations; connect Tree and BubbleSort. No claim
-  of conventional two-front merge or arbitrary-element legacy MergeSort yet.
+- [x] Complete legacy Merge Vec/Fin observations on the closed-readback candidate.
+- [ ] Connect Tree and BubbleSort. No claim of conventional two-front merge or
+  arbitrary-element legacy MergeSort yet.
+- [ ] Obtain approval before promoting the verified evaluator prototype into `src/`.
 
 **Assessment of fresh failures:** general/closed source checks finish in about
 13 million solver transitions, and removing assertions takes about 4.7 million.
@@ -487,6 +490,109 @@ under `src/prototype/finite_sorting/`:
 Non-document total: **+451/-9, net +442**. Of this, 158 lines are new source
 proofs; the rest are examples, verification, diagnostic and local build code.
 This is added F3/F4 coverage, not a compiler-size reduction claim.
+
+### Closed Readback Verification, 2026-09-28
+
+**Subjective (User):** continue F3/F4 implementation verification. Keep Core
+pointer interning structural, `::` post-synthesis-only, and experimental changes
+under `src/prototype/` until promotion is approved.
+
+**Objective (Code):** candidate `aaba32b` plus
+[`readback_support`](../src/prototype/readback_support/README.md). The overlay
+build leaves accepted source untouched. Immutable free-binder sets are derived
+only on an exact Term intern miss. Materialization can reuse closed syntax;
+normalization and evidence admission still use the existing executors.
+
+| Check | Accepted baseline | Materialization-only prototype |
+| --- | ---: | ---: |
+| F3 source with assertions | 13,043,801 | 5,811,051 |
+| F3 without assertions | 4,724,416 | 3,001,220 |
+| Quick full Vec/Fin report | pending at 100M | 6,608,719 |
+| Insertion full Vec/Fin report | 32,348,238 | 5,990,934 |
+| Merge Vec observation | pending at 40M | 6,562,890 |
+| Merge Fin origins | not reached | 6,595,767 |
+| Concrete value transport | pending at 100M | 6,258,358 |
+| Same-domain wrong function | pending at 20M | pending at 40M |
+
+Counts include synthesis. Completed report comparisons pass with chunks 1/64.
+Merge's complete `views` gate passes, including negative checks, assertion-free
+synthesis, ordinary images and zero/100-step resume. F3 `all` reaches and passes
+ordinary image checks, then fails the unchanged retained-image CLI limit. A
+pending negative is not rejection. These are prototype results, not Main fixes.
+
+**Assessment:** reject the first all-readback shortcut: closed syntax reuse
+breaks the existing Context reindex contract when an inner binder collides with
+the destination Context. Keeping the input closure unchanged is also necessary
+for exact substitution-request lookup. The revised trial applies reuse only to
+evaluation materialization; substitution preserves binder freshening. Both use
+one executor, with an owner-supplied contract rather than a new saved flag or
+proof rule. Core and evaluator I/O tests pass; a mixed closed/open DAG passes
+inert save/resume at all seven candidate step boundaries (baseline: fifty).
+Support-set storage and construction overhead remain a tradeoff to measure.
+
+The follow-up construction benchmark rejected flat support arrays: a
+6,000-binder spine uses 235,520 KiB RSS versus 3,004 KiB at baseline. The revised
+pointer-key trie shares off-path nodes and uses 5,640 KiB on that same input.
+It adds no Term equality or semantic authority. Acceptance/sanitizer results
+from the earlier array build do not certify this representation change; rerun
+the final candidate. Detailed measurements and tests are in its README.
+
+**Plan:** the F3/F4 checklist above remains authoritative and incomplete.
+Complete the general regression/sanitizer gates, explicitly bounded retained
+Quick/Insertion checks, and overhead comparison before proposing promotion.
+The same-domain negative and Tree/Bubble remain open. Detailed rejected trials,
+commands and prototype-only checks are in the linked README. The first broad
+gate stopped because the generated overlay lacked `training/` and `print.p`;
+those fixture links were repaired, not the parser or its expected results.
+
+Focused final-trie checks pass in O2 and ASan/UBSan (leak checking and
+halt-on-error): Core, evaluator I/O, support sets, every-step readback resume,
+Quick/Merge views and concrete value transport. Wrong Quick/Insertion labels
+reject in 6,146,761/5,922,676 steps; removing assertions from the positive value
+test completes in 3,448,529. Bounded retained reports and partial-image resume
+pass for both Quick and Insertion. Cross-build checks also pass: a baseline
+retained image read by the candidate yields the Quick report; a candidate
+retained image read by baseline yields the ordinary Quick List report.
+
+A separate three-run O2 source-only comparison has median wall times
+**5.122 s baseline / 4.592 s candidate**, with identical input and budget on this
+machine. Other regression work was running, so this is not an isolated benchmark
+or a general speed claim; the step-count decrease is much larger than the time
+decrease. The Example 09 count stays 2,824 in both builds.
+
+The final trie candidate's **complete `check-acceptance` exits 0**, including
+source compatibility **63/63**. The separate `check-support` and focused
+ASan/UBSan gates also pass. The broad run takes approximately **24m46s**, including
+build and concurrent verification work; this is not an isolated speed benchmark.
+No accepted compiler changes or promotion are included. Logs are
+`/tmp/a-program-support-acceptance-trie.log` and the `quick`, `merge`, `value-gate`,
+`retained`, `cross-old-new`, `cross-new-old` logs with the same prefix.
+
+Change accounting against `aaba32b`, excluding Markdown and inherited root
+worktree edits. Paths below are relative to `src/prototype/`:
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `finite_sorting/retained-check.sh` | 13 | 5 | +8 |
+| `finite_sorting/stress-value.p` | 1 | 0 | +1 |
+| `finite_sorting/value-check.sh` | 33 | 0 | +33 |
+| `readback_support/.gitattributes` | 2 | 0 | +2 |
+| `readback_support/build.mk` | 21 | 0 | +21 |
+| `readback_support/construction_bench.c` | 42 | 0 | +42 |
+| `readback_support/eval.c.patch` | 54 | 0 | +54 |
+| `readback_support/graph.c.patch` | 14 | 0 | +14 |
+| `readback_support/graph.h.patch` | 19 | 0 | +19 |
+| `readback_support/overlay.sh` | 24 | 0 | +24 |
+| `readback_support/resume_test.c` | 71 | 0 | +71 |
+| `readback_support/support.c` | 115 | 0 | +115 |
+| `readback_support/support.h` | 9 | 0 | +9 |
+| `readback_support/support_test.c` | 116 | 0 | +116 |
+
+Repository non-document delta: **+534/-5, net +529**, primarily verification and
+isolated-build material. Accepted compiler delta: **0**. If promoted as written,
+the actual compiler patch plus support module is **+144/-10, net +134**;
+the 87 stored patch-file lines are not 87 new compiler lines. This epoch makes
+previously pending observations tractable; it is not a code-reduction claim.
 
 ### List/Vec View Checkpoint, 2026-09-27
 

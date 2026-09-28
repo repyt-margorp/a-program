@@ -1,0 +1,54 @@
+--- eval.c
++++ eval.c
+@@ -249,3 +249,3 @@
+ static struct readback_entry *reify_request(struct readback_context *context, struct pg_closure closure,
+-	struct pg_graph *storage)
++	struct pg_graph *storage, int reuse_closed)
+ {
+@@ -265,3 +265,3 @@
+ 	if (pg_index_insert(&context->results, &entry->index, reify_hash(closure)) != 0) return NULL;
+-	if (!closure.environment) entry->result = closure.term;
++	if (!closure.environment || (reuse_closed && pg_term_closed(closure.term))) entry->result = closure.term;
+ 	else {
+@@ -271,3 +271,3 @@
+ 
+-static int reify_advance(struct readback_context *context, uint64_t budget)
++static int reify_advance(struct readback_context *context, uint64_t budget, int reuse_closed)
+ {
+@@ -308,3 +308,3 @@
+ 			if (!entry->result) {
+-				entry->left = reify_request(context, child, NULL);
++				entry->left = reify_request(context, child, NULL, reuse_closed);
+ 				if (!entry->left) return -1;
+@@ -324,3 +324,3 @@
+ 					entry->right = reify_request(context,
+-						(struct pg_closure){term->as.application.argument, environment}, NULL);
++						(struct pg_closure){term->as.application.argument, environment}, NULL, reuse_closed);
+ 					if (!entry->right) return -1;
+@@ -345,3 +345,5 @@
+ 		if (pg_index_init(&work->readback.results) != 0) return -1;
+-		work->entry = reify_request(&work->readback, closure, NULL);
++		/* Evaluation preserves closed syntax. Context substitution below keeps
++		 * its binder-freshening contract, including after image resume. */
++		work->entry = reify_request(&work->readback, closure, NULL, 1);
+ 		if (!work->entry) return -1;
+@@ -351,3 +353,3 @@
+ 	if (work->readback.pending)
+-		return reify_advance(&work->readback, 1) < 0 ? -1 : 0;
++		return reify_advance(&work->readback, 1, 1) < 0 ? -1 : 0;
+ 	const struct pg_term *answer = work->entry->result;
+@@ -357,3 +359,3 @@
+ 	if (work->remaining) {
+-		work->entry = reify_request(&work->readback, work->remaining->value, NULL);
++		work->entry = reify_request(&work->readback, work->remaining->value, NULL, 1);
+ 		if (!work->entry) return -1;
+@@ -479,3 +481,3 @@
+ 	state->root = reify_request(&state->context,
+-		(struct pg_closure){term, environment}, input_storage);
++		(struct pg_closure){term, environment}, input_storage, 0);
+ 	if (!state->root) goto failure;
+@@ -524,3 +526,3 @@
+ 	if (pg_substitution_status(work) != PG_SUBSTITUTION_PENDING) return pg_substitution_status(work);
+-	int status = reify_advance(&work->state->context, budget);
++	int status = reify_advance(&work->state->context, budget, 0);
+ 	if (status < 0) work->state->status = PG_SUBSTITUTION_ERROR;

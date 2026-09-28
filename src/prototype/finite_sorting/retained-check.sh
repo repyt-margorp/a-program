@@ -2,6 +2,8 @@
 set -euo pipefail
 binary=$1
 compare=$2
+mode=${3:-insertion}
+case $mode in insertion|quick|all) ;; *) exit 2;; esac
 limit=${SORTING_IMAGE_LIMIT:-3000000}
 steps=${SORTING_CHECK_STEPS:-40000000}
 started=$SECONDS
@@ -12,8 +14,15 @@ bash "$here/provider.sh" "$here/quick.p" "$here/../../../tests/fixtures/generic_
 	"$here/cases.p" > "$directory/source.p"
 timeout 180 "$binary" --legacy-intrinsic-dot --steps "$steps" --retain-reductions \
 	--save "$directory/full.a" "$directory/source.p"
-timeout 180 "$compare" --image-limit "$limit" --steps "$steps" --equal-image \
-	"$directory/full.a" insertion_report insertion_report_expected
+observe() {
+	local algorithm
+	for algorithm in quick insertion; do
+		[[ $mode == all || $mode == "$algorithm" ]] || continue
+		timeout 180 "$compare" --image-limit "$limit" --steps "$steps" --equal-image \
+			"$1" "${algorithm}_report" "${algorithm}_report_expected"
+	done
+}
+observe "$directory/full.a"
 status=0
 timeout 180 "$binary" --legacy-intrinsic-dot --steps 100 --retain-reductions \
 	--save "$directory/pending.a" "$directory/source.p" || status=$?
@@ -23,6 +32,5 @@ timeout 180 "$binary" --load --steps 0 --retain-reductions \
 	--save "$directory/copy.a" "$directory/pending.a" || status=$?
 [[ $status == 3 ]]
 cmp "$directory/pending.a" "$directory/copy.a"
-timeout 180 "$compare" --image-limit "$limit" --steps "$steps" --equal-image \
-	"$directory/copy.a" insertion_report insertion_report_expected
-printf 'retained API comparison (limit %s): passed in %s seconds\n' "$limit" "$((SECONDS-started))"
+observe "$directory/copy.a"
+printf 'retained API comparison (%s, limit %s): passed in %s seconds\n' "$mode" "$limit" "$((SECONDS-started))"

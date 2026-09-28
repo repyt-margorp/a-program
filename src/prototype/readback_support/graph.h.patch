@@ -1,0 +1,19 @@
+--- graph.h
++++ graph.h
+@@ -7,2 +7,3 @@
+ struct pg_block;
++struct pg_support;
+ struct pg_index_entry {
+@@ -22,2 +23,3 @@
+ 	struct pg_index objects;
++	struct pg_index supports;
+ };
+@@ -51,2 +53,4 @@
+ struct pg_term {
++	/* NULL is unknown (hand-built input); closed sets have a non-NULL pointer. */
++	const struct pg_support *support;
+ 	enum pg_term_kind kind;
+@@ -83,2 +87,3 @@
+ int pg_term_independent(const struct pg_term *term, const struct pg_object *binder);
++int pg_term_closed(const struct pg_term *term);
+ struct pg_comparison_state;

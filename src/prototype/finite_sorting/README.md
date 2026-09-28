@@ -28,6 +28,7 @@ bash src/prototype/finite_sorting/check.sh BUILD/pointer-check BUILD/program_tes
 bash src/prototype/finite_sorting/check.sh BUILD/pointer-check BUILD/program_test quick
 bash src/prototype/finite_sorting/check.sh BUILD/pointer-check BUILD/program_test insertion
 bash src/prototype/finite_sorting/merge-check.sh BUILD/pointer-check BUILD/program_test lists
+bash src/prototype/finite_sorting/value-check.sh BUILD/pointer-check
 ```
 
 The omitted mode is `all`, which must pass before claiming completion. `source`
@@ -48,6 +49,15 @@ Known gaps: full Quick observations remain pending at 100 million steps. Fully
 retained source exceeds the CLI's million-record limit. Therefore `all` is **not
 passing**. Tree/Bubble are not connected, and the same-domain negative and
 concrete value-transport stress fixtures still need verification.
+
+The [closed-readback prototype](../readback_support/README.md) now completes
+Quick and legacy Merge Vec/Fin observations and concrete value transport. This
+is not yet an accepted compiler change. The same-domain wrong-function check
+is still pending at 40M, and the default CLI retained-image limit still fails.
+The active plan distinguishes these candidate results from the baseline above.
+`value-check.sh` verifies positive specialization, synthesis without `::`, and
+rejection of wrong labels. The candidate passes all four checks. The retained
+API gate accepts an optional `all` mode to observe both Quick and Insertion.
 
 ## Bounded Image and Cost Diagnostics
 

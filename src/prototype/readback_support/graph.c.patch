@@ -1,0 +1,14 @@
+--- graph.c
++++ graph.c
+@@ -1,2 +1,3 @@
+ #include "graph_internal.h"
++#include "support.h"
+ 
+@@ -55,2 +56,3 @@
+ 	pg_index_destroy(&graph->objects);
++	pg_index_destroy(&graph->supports);
+ 	memset(graph, 0, sizeof(*graph));
+@@ -432,2 +434,3 @@
+ 	entry->term = *term;
++	if (pg_support_construct(graph, &entry->term)) return NULL;
+ 	if (pg_index_insert(&graph->terms, &entry->index, hash) != 0) return NULL;
