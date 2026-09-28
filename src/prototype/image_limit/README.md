@@ -39,6 +39,11 @@ Adoption is on hold after the user's 2026-09-28 review. The
 [growth audit](../../../doc/2026-09-28-RETAINED-IMAGE-GROWTH-AUDIT.md) shows
 retained history accumulation across completed Solve/save generations, eventually
 exceeding even 3M. The passing tests below do not resolve that ownership issue.
+The [active artifact plan](../../../doc/2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md)
+first specifies required semantic content, then removes unused history. It does
+not build a cache consumer to justify the current archive. Promotion of this
+option is not an F5 requirement; preserve its meaningful input-validation tests
+where applicable during the image migration.
 
 - [x] Isolated CLI patch, composed with the verified readback/conversion candidate.
 - [x] Parsing, default/explicit agreement, insufficient/representation bounds,

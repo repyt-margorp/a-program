@@ -1197,6 +1197,9 @@ Use progress-tracked Markdown and publish tested milestones to Main.
 2026-09-28 follow-up: the user approved readback promotion after full regression,
 but questioned the reader-limit proposal and requested an image-growth audit.
 Do not bundle that option into the readback approval.
+The user subsequently questioned the need to save unused reduction records at
+all and requested a revised problem definition. The persistence cleanup below
+supersedes making archive reuse or a larger reader bound a prerequisite for F5.
 
 ### Objective (Code)
 
@@ -1215,15 +1218,20 @@ on `PG_SUPPORT_CANDIDATE`, so copying them without that flag would lose coverage
 Successful examples alone cannot establish view laws or general sorting.
 Small finite checks are boundary tests, not substitutes for open proofs.
 
-Agent decision: share the prototype runners now; adopt the existing comparison
-tool's reader parameter directly upon promotion and remove the include wrapper.
+Agent decision: share the prototype runners and remove the comparator include
+wrapper when ordinary source images can use the existing comparison tool.
 Do not create another checker, make candidate assertions optional, or preserve
 overlay implementations beside adopted owners. Readback promotion is approved;
 other owner moves are not covered by that approval. The reader option is on hold:
 the [image-growth audit](2026-09-28-RETAINED-IMAGE-GROWTH-AUDIT.md) reproduced
 20.9 -> 37.6 -> 54.2 MB growth across completed load/Solve/save generations.
-Raw reduction history is retained but not consumed as a CLI cache. Resolve that
-contract before treating a raised reader bound as the solution.
+Raw reduction history is retained but not consumed as a CLI cache. The earlier
+R1-R6 removal-only proposal is superseded. The user's subsequent #44/#45 request
+moves the active work to
+[AP1-AP3](2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md): define required
+semantic content and residual inputs, then remove unused history. Merely writing
+ordinary reconstruction inputs does not complete that contract. C emission and
+general recursion remain separate, later work.
 
 ### Plan
 
@@ -1243,9 +1251,9 @@ contract before treating a raised reader bound as the solution.
   `/tmp/a-program-f5-{backends,retained,helper,sanitize-helper}.log`.
 - [x] Obtain user approval for readback promotion after regression.
 - [ ] Perform the readback owner move and rerun its accepted-build regression.
-- [ ] Resolve retained-image growth before reader-option adoption; other owner
-  moves below still require their own approval.
-- [ ] Register F3/F4 and reader-bound gates in accepted `check-acceptance`; run the
+- [ ] Complete semantic persistence AP1-AP3; do not adopt the reader option as the
+  growth fix. Other owner moves below still require their own approval.
+- [ ] Register F3/F4 and source-image lifecycle gates in accepted `check-acceptance`; run the
   promoted suite from a clean build and focused ASan/UBSan before closing #41.
 - [x] F1: compare assertion-free and asserted programs; missing source information
   must stay missing. Explicit motives and constructor bounds must pass.
@@ -1263,12 +1271,12 @@ Promotion map (agent proposal, not yet executed):
 | Current prototype | Accepted owner / removal |
 | --- | --- |
 | Readback support and graph/eval patches | `src/support.{c,h}`, `src/graph.{c,h}`, `src/eval.c`; link support in every graph-only build target, not just `SOURCES` |
-| Fold conversion and CLI patches | `src/conversion.c`, `src/main.c`; remove applied patch/overlay/build copies |
+| Fold conversion patch | `src/conversion.c`; remove the applied patch/overlay/build copies |
 | Readback and conversion C tests | `tests/` test owners; make candidate assertions unconditional and register them in `src/Makefile` |
 | Sorting source proofs, cases and both `stress-*.p` regressions | `tests/fixtures/finite_sorting/`; retain ordinary-result and same-domain negative tests |
 | Sorting runners/provider/shared helper | `tests/finite_sorting/`; update fixture paths once, preserve individual budgets and the five-backend aggregate |
-| `finite_sorting/image_compare.c` | Add explicit reader-bound configuration to `tests/program.c`; delete the macro/include wrapper and its extra binary |
-| Reader-bound runner and fixtures | Accepted `tests/` owners; retain default/explicit, invalid, stdin/root, zero-step and full rejected-image checks |
+| `finite_sorting/image_compare.c` | Use the existing `tests/program.c` comparator for ordinary images; remove the wrapper/extra binary after verification, without making a larger bound a goal |
+| Reader-bound trial and retained-image runners | Do not promote the CLI option for this problem. Preserve invalid, stdin/root, zero-step, repeated-save and rejected-image coverage in the AP2/AP3 semantic-image migration |
 | Diagnostic probes and construction benchmark | Remain optional under `src/prototype/`; point at accepted owners, without retaining alternate implementations |
 
 No C/proof-library changes in the helper consolidation. Per-file test-code

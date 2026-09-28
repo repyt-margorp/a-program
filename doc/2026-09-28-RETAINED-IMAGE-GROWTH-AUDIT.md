@@ -1,19 +1,38 @@
-# Retained Image Growth Audit
+# Image Persistence Growth Audit
+
+Date: 2026-09-28
+Status: measured baseline and prototype test; implementation planning moved to
+[AP1-AP3](2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md).
+Production repair not started.
+Planning baseline: `e716232` on Main; unrelated uncommitted implementation edits
+are excluded. Earlier measurements below retain their original baseline.
 
 ## Problem List
 
-1. Retained images accumulate old and newly reconstructed reductions across Solve/save cycles.
-2. Context substitution constructs far more Terms than the final saved graph needs.
-3. Temporary Ref wrappers duplicate entries in the shared wire table.
-4. Fixed-width syntax metadata makes even RECOMPUTE images much larger than source.
+1. **Primary:** remove unused reduction-history persistence from the source/CLI
+   path; it accumulates data without providing Solve resumption.
+2. **Separate follow-up:** investigate excessive contextual Term construction
+   without conflating required binder freshness with redundant computation.
+3. **Secondary physical cleanup:** eliminate duplicate Ref transport wrappers.
+4. **Deferred:** compact verbose syntax metadata only after ownership is corrected.
 
-## 1. Retained History
+## 1. Unused Persistence
 
 ### Subjective (User)
 
 User paraphrase, 2026-09-28: inspect unnecessary duplication and data growth
 before accepting a larger image-reader allowance. Readback promotion was
 approved after regression; the reader-limit change was not approved.
+
+Latest user paraphrase, same date: question whether these records should be
+saved at all, and why so much data is kept for Solve resumption. The user then
+requested a revised problem definition and Markdown plan. The removal scope
+below is the agent's proposal, not approval to delete arbitrary proofs or change
+image compatibility. No production implementation change is part of this update.
+
+Further user requirement, 2026-09-28: quantify image growth against supplied
+fuel, and always test `--steps 0`. This authorizes adding a prototype measurement
+test; no production persistence change has been implemented.
 
 ### Objective (Code)
 
@@ -73,6 +92,33 @@ image rewrites byte-identically; after one load/Solve/save, its next inert
 rewrite has the same size but differs in bytes. Deterministic re-encoding at
 later generations is therefore an additional open test, not a passed claim.
 
+Fresh quantitative test, 2026-09-28: `fuel_curve.sh` tested a clean `e716232`
+compiler, rebuilt with `-O2 -Wall -Wextra -Werror`, separately from the dirty
+working tree. Fuel samples were 0, 1, 100 and 100000; each source state and each
+of three completed generations received three consecutive zero-step rewrites.
+
+| Input / mode | Bytes after source completion -> three generations | Result |
+| --- | --- | --- |
+| Example 09, ordinary | 26,374 -> 26,374 -> 26,374 -> 26,374 | Pass |
+| Example 09, retained | 32,625 -> 33,069 -> 33,513 -> 33,957 | **Fail: +444 bytes per generation** |
+| `image_audit/host.p`, ordinary / retained | 10,000 / 10,395, unchanged | Pass; no host marker printed |
+| `image_limit/invalid.p`, ordinary / retained | 10,883 / 11,850, unchanged | Pass; explicit expected rejection preserved |
+
+All zero-step rows in these small matrices report zero steps and preserve bytes;
+this does not reproduce or invalidate the large-case inert drift above. Example
+09 uses 2,824 source Solve steps and 3,120 ordinary / 3,136 retained loaded steps.
+The retained test exits nonzero rather than accepting growth as its baseline.
+The separate large combined-prototype ordinary matrix uses fuel 0, 1, 100 and
+10M: completion is 5,811,051 source / 5,811,043 loaded steps, 3,065,779 bytes in
+all completed generations, with every zero-step rewrite byte-identical.
+The same large matrix in retained mode stops at its first completed-image
+zero-step load: exit 2, default reader bound exceeded. It is a failed test, not
+a successful inert rewrite or evidence of a zero-fuel Solve. No bound is raised
+by the test. The earlier large same-size drift measurement used the separately
+documented diagnostic reader allowance.
+Logs, images and input/binary digests are under `/tmp/a-program-fuel-*`.
+These are targeted measurements, not a fresh full compiler regression.
+
 ### Assessment
 
 This is not an infinite evaluator loop or a demonstrated soundness failure.
@@ -82,20 +128,27 @@ the current CLI: records are kept, but are not installed for that purpose.
 Their endpoints also retain lexical origins, derivations and entire syntax
 subgraphs, so a small receipt can keep a large graph alive.
 
+The initial R1-R6 proposal removed unused history and wrote ordinary APGSRC62.
+After the user's #44/#45 follow-up, that is insufficient as the whole repair:
+ordinary reconstruction alone does not preserve all materialized semantic exports.
+
+The [Artifact Semantic Persistence Refactor](2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md)
+is now the single active implementation plan. It first specifies reachable
+semantic content, typed structure and residual inputs, then removes unused
+history without deleting necessary witnesses or live memoization. C-specific
+data stays downstream; C emission and #43 recursion remain out of scope.
+
 ### Plan
 
-- [x] Reproduce growth over multiple completed generations and compare RECOMPUTE.
-- [x] Establish archive ownership and the absence of a CLI cache consumer.
-- [ ] Before promotion of the reader option, choose an explicit snapshot contract:
-  resumable computation state versus deliberately accumulating historical data.
-  Do not advertise the latter as the former.
-- [ ] For resumable state, connect justified results to the existing Solve owner
-  and retain its live dependency closure instead of appending unrelated old and
-  new generations. Preserve imported nominal/binder identities and reject invalid
-  inputs; neither alpha interning nor trusting a serialized status is a shortcut.
-- [ ] Add small and sorting regressions for repeated load/Solve/save, stable
-  retention without new demand, inert re-encoding, and invalid-source rejection.
-  No broad repair or format migration is implemented in this audit.
+- [x] Reproduce growth and distinguish it from same-size inert byte drift.
+- [x] Establish the raw archive's ownership and absence of a CLI cache consumer.
+- [x] Add the prototype fuel/image test, including repeated `--steps 0`.
+- [x] Review #44/#45 and supersede the earlier removal-only R1-R6 ordering.
+- [ ] Complete AP1-AP3 in the linked plan before claiming the artifact repaired.
+
+The quantitative baseline above remains valid. Future completion additionally
+requires preserving already materialized results without further synthesis merely
+to inspect them. The existing CLI test alone does not establish that property.
 
 ## 2. Term Construction
 
@@ -155,9 +208,8 @@ It is worth fixing, but cannot explain the primary size increase.
 ### Plan
 
 - [x] Count literal wire duplicates and construct a two-root reproduction.
-- [ ] Canonicalize Ref transport keys by object identity across roots and children
-  while preserving scratch lifetime; keep nominal objects and scoped binders distinct.
-- [ ] Make the reproduction an accepted regression when that repair is authorized.
+- [ ] Track Ref-key cleanup and its accepted regression under AP2.2/AP3 of the
+  linked plan; preserve scratch lifetime, nominal identity and binder distinctions.
 
 ## 4. Syntax Size
 
