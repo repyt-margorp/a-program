@@ -92,3 +92,29 @@ The retained List matrix correctly **fails**: each completed load/Solve/save add
 also pass with retention enabled. See the linked audit for the larger prototype
 case and the distinction between size growth and same-size byte drift. These
 prototype tests are not yet registered in the accepted regression suite.
+
+## Fuel Partition Regression
+
+`partition_fuel.sh` compares one budget with two chunks, always from the same
+zero-fuel image. It separates in-memory splitting, an intermediate save without
+reload, and a fresh-process reload. Default splits include 10+10 versus 20,
+1+19, 0+20, 20+0, 0+0, 100+100, 1000+1000 and 1600+1600. It records cumulative
+supplied/used steps, status, sizes, size equality and byte equality. Unsupported/failed commands
+and unexpected host output fail. Size, status or consumed-fuel differences fail;
+set `IMAGE_AUDIT_STRICT_BYTES=1` to make byte differences fail too.
+
+```sh
+IMAGE_AUDIT_STRICT_BYTES=1 bash src/prototype/image_audit/partition_fuel.sh build/pointer/pointer-check examples/09_list_induction.p /tmp/partition-ordinary ordinary
+```
+
+Optional trailing `LEFT:RIGHT` pairs replace the defaults. The directory must be
+new. The test does not require completion or execute additional normalization.
+Size/status equality is only a diagnostic proxy, not proof that all saved
+semantic progress agrees; AP3 also requires structural root/frontier comparison.
+Current ordinary Example 09: 10+10 matches 20, but reloaded 100+100 is 25,266 bytes
+against 25,598 for 200. The same in-memory splits match exactly. A size decrease
+is a failure too. Retained mode also exhibits same-size byte differences; these
+observations do not by themselves identify the ordering/allocation cause.
+At 1600+1600 versus 3200 the ordinary files are identical, yet the reloaded split
+is pending and the single run is done. This is also reported, without trusting a
+saved completion flag or claiming that equal bytes prove preserved progress.

@@ -30,6 +30,8 @@ User paraphrases, 2026-09-28:
 - Complete the artifact refactor first. Start C transpilation only after a
   subsequent user instruction. General recursion/loop syntax remains discussion.
 - Include quantitative fuel/image tests, especially `--steps 0`.
+- Follow-up, same date: equal cumulative fuel (for example 10 twice versus 20
+  once) should produce equal-size images; byte-for-byte equality is preferable.
 - Import all three research documents from PR #45 into `doc/`, preserving them.
 
 ### Objective (Code)
@@ -75,7 +77,8 @@ Agent-proposed data contract, to be refined against concrete owners in AP1.2:
 | Unfinished elaboration/verification/effect obligations | Retain their proposition/inputs, context and dependency links; no copied scheduler status as authority |
 | Source/annotation recipes for unmaterialized parts | Keep enough to continue through the existing Solve path; do not drop pending definitions just because no typed root exists yet |
 | Reduction results/certificates | Keep only if a specified reachable consumer needs them; wholesale evaluator snapshots are not semantic exports |
-| Work queues, cursors, hash buckets, every intermediate reduction and old generations | Not required canonical content; reconstruct indexes/work as needed |
+| Hash buckets, redundant indexes and old generations | Reconstruct/discard; not canonical content |
+| Unfinished computation frontier / continuation | Retain or deterministically reconstruct the necessary current state if exact fuel-partition resumption requires it; do not confuse it with all past reductions |
 | C names, layout, ABI, calling conventions, target profiles and generated code | Downstream only; absent from canonical `.a` |
 
 Use existing graph identity and shared relocation. Wire ordinals identify records
@@ -105,6 +108,10 @@ not copy them into a second permanent database.
   declarations and residual inputs. Demonstrate parse-only, partly materialized,
   completed and rejected examples. Specify how a saved result reconnects to its
   exact source producer without rediscovering it by unbounded search.
+  Define the fuel unit and required current continuation so that splitting a
+  budget does not lose charged progress. Inventory queues/cursors individually;
+  their implementation layout is not a wire contract, but blanket deletion of
+  every continuation is not justified by the history-growth finding.
 - [ ] **AP1.4:** choose the version/migration policy before deleting the old
   writer. A new semantic payload needs explicit versioning. APGSRC62/63 may be
   bounded legacy imports with unavailable semantic roots reported explicitly;
@@ -173,6 +180,8 @@ those owners; no transpiler directory, emitter or target IR is needed in this ph
 
 Measure growth versus fuel, with zero-step cases mandatory. Finish this refactor
 before taking up C emission. The user will continue investigating #43 separately.
+The user additionally requests equal-size outputs for equivalent fuel partitions,
+and preferably identical bytes, not merely absence of growth.
 
 ### Objective (Code)
 
@@ -182,6 +191,18 @@ retained growth of 444 bytes per completed generation. The large ordinary
 prototype matrix is stable at 3,065,779 bytes; retained mode hits the default
 reader bound. These are prior targeted results, not tests of the planned format.
 
+Fresh split-budget probe on the same clean `e716232` compiler (implementation
+unchanged at `df250f3`), Example 09, starting every path from the same zero-fuel
+image: 10+10 versus 20 is byte-identical. At 100+100 versus 200, ordinary save/load
+produces **25,266 versus 25,598 bytes** despite both reporting 200 used steps and
+pending status. Splitting in memory, with or without an intermediate save but no
+reload, matches the single run. Retained mode also fails across reload and has
+some same-size byte differences. `partition_fuel.sh` records these as failures,
+not accepted deviations. Logs: `/tmp/a-program-partition-*`.
+At 1600+1600 versus 3200, the ordinary images are even byte-identical (26,374
+bytes), but the single run is done at 3,129 steps while the reloaded split remains
+pending at 3,200. Thus byte equality alone cannot certify preserved Solve progress.
+
 ### Assessment
 
 Size stability alone can hide loss of useful progress. Require both inert
@@ -189,13 +210,45 @@ stability and preservation of already materialized semantic roots. Reading a
 view without Solve is testable now without implementing a C emitter. An unfinished
 export may remain unavailable; a malformed/rejected input must not become accepted.
 
+The desired composition law is `advance(advance(S, a), b) = advance(S, a+b)`;
+the serialized-resume variant inserts save/load between the two advances.
+Fix compiler version, input image, selected roots, policy and requests when
+testing it. Exclude format migration and host execution from this pure gate.
+Current APGSRC62/63 reconstruction does not preserve the full running frontier;
+the equality of supplied or reported fuel therefore does not establish equality
+of progress. A recompute fallback must be reported as such, not counted as passing
+this resume gate. Count any required revalidation explicitly; do not hide its cost
+or trust imported claims merely to make the equation pass.
+In particular, local acceptance after importing an image is not a serialized fact:
+distinguish revalidation work from a lost computation frontier when investigating
+these diagnostics. Do not fix the counter/status mismatch by restoring a trusted
+`done` flag. The intended structural gate concerns saved progress, not that flag.
+
+Minimum gate: same materialized structure/residual frontier and byte count.
+Stronger gate: identical bytes under deterministic serialization, without alpha
+interning or normalization during save. Record both outcomes separately. Fixed
+padding, retained dead records or omitting useful results cannot repair a failure.
+CLI status/step/byte equality alone cannot prove the structural part: the planned
+semantic-root instrumentation remains necessary, even when this prototype passes.
+
 ### Plan
 
 - [x] **AP3.0:** retain the existing quantitative prototype and baseline results.
+- [x] **AP3.0b:** add/run the split-budget CLI probe, with separate size and exact
+  byte verdicts and fresh source/host/invalid-assertion controls. No production fix.
 - [ ] **AP3.1:** extend it for the chosen format: source fuel 0/1/100/completion;
   three same-format zero-step rewrites of each state; partial resume and three
   completed generations, each followed by zero-step rewrites. Require exact byte
   identity at zero, no host output/acceptance, and no prior-history accumulation.
+- [ ] **AP3.1b:** compare 20 with 10+10, 1+19, 0+20 and 20+0, plus 0 versus 0+0;
+  include larger splits at actual construction/evaluation suspension boundaries
+  and after completion. Compare single run, in-memory split, split with an inert
+  save, and split across a fresh-process reload. Record supplied/used cumulative
+  fuel, status, semantic roots/residuals, counts, bytes and digests. Require size
+  and structural agreement; run byte equality as a separately visible stricter
+  gate. Neither smaller files nor equal-sized but changed files count as full
+  equivalence. Compare actual consumed fuel as well as budgets when work finishes
+  early; do not require consuming the unused budget after completion.
 - [ ] **AP3.2:** count semantic roots, unique reachable Terms/objects, typed nodes,
   obligation edges and section bytes in addition to total bytes. Attribute
   positive-fuel growth to newly retained dependencies. Do not impose universal
