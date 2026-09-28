@@ -28,8 +28,9 @@ This directory is experimental, not part of the accepted `check-acceptance` gate
 - `cases.p`: shared consumers, empty/singleton/reversed/ordered inputs and
   different labels with equal keys. QuickSort and insertion need not be stable
   or return the same order of equal keys. Their expected labels differ.
-- `stress-value.p`, `stress-wrong-function.p`: incomplete conversion diagnostics,
-  appended after the provider and cases. They are not passing rejection tests.
+- `stress-value.p`: concrete-value conversion diagnostic, appended after cases.
+- `stress-wrong-function.p`: same-domain negative, now included in `check.sh`;
+  passing rejection requires the conversion-head candidate below.
 
 Run from the repository root, using binaries from the same build. Results below
 distinguish the accepted baseline from the isolated closed-readback candidate:
@@ -69,8 +70,13 @@ unconditional Local theorem: the checked counterexample disproves it.
 The [closed-readback prototype](../readback_support/README.md) now completes
 Quick and legacy Merge Vec/Fin observations and concrete value transport. This
 is not yet an accepted compiler change. The same-domain wrong-function check
-is still pending at 80M (fresh check on 2026-09-28), and the default CLI
-retained-image limit still fails.
+is still pending at 80M with that patch alone. The separate
+[conversion-head candidate](../conversion_head/README.md) rejects it at 5,816,830
+steps and verifies ordinary/retained partial-image resume. The default CLI
+retained-image limit still fails; `all` is not yet passing.
+The combined candidate passes full compiler `check-acceptance`, Quick/Insertion
+observations, Tree/Bubble full gates and legacy Merge's `views` gate. Its fresh
+`all` run passes all earlier checks and stops specifically at retained CLI load.
 The active plan distinguishes these candidate results from the baseline above.
 `value-check.sh` verifies positive specialization, synthesis without `::`, and
 rejection of wrong labels. The candidate passes all four checks. The retained

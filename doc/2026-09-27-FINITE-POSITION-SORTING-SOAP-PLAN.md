@@ -15,9 +15,9 @@ not evidence that its proposed interfaces already work. Broad P4/P5 remain open.
 | F0 | Import and critically assess #41 / PR #42 | Complete |
 | F1 | Checked finite positions and bijections | Complete |
 | F2 | Lawful List and indexed-container views | Complete for homogeneous List/Vec and the finite-position bridge |
-| F3 | One ordinary-result sorting specification | Source prototype checked; normalization/image gates incomplete |
+| F3 | One ordinary-result sorting specification | Candidate observations/rejection checked; CLI image limit and promotion open |
 | F4 | Quick/Merge/Insertion/Bubble and additional backends | Five prototype backends; Bubble needs stronger assumptions than directional decisions alone |
-| F5 | Permanent rejection, image and regression gates | Pending |
+| F5 | Permanent rejection, image and regression gates | Prototype checks added; accepted-build integration pending |
 
 ## F0. Scope and Invariants
 
@@ -358,6 +358,8 @@ tests or a claim that F3/F4 are complete):
   tests on the isolated closed-readback candidate (not yet the accepted compiler).
 - [x] Verify retained Insertion observations/resume through the existing reader
   API with an explicit three-million-record limit; the CLI limit is unchanged.
+- [x] Reject the same-domain wrong-function example on the conversion-head
+  candidate, including saved and ordinary/retained partial-image resume.
 - [ ] Resolve the CLI size policy and complete the remaining retained gates.
 - [x] Connect the unchanged Nat-specific legacy MergeSort, with arbitrary
   relation/comparator, Local/permutation proofs and ordinary List observations.
@@ -369,11 +371,13 @@ tests or a claim that F3/F4 are complete):
 - [x] Audit Bubble's nontransitive Local claim: the source counterexample proves
   directional decisions alone insufficient. Keep its transitive backend
   explicit; a weakest sufficient comparator law is not established.
-- [ ] Finish the remaining F4 acceptance gates and state each backend's scope.
-  No claim of conventional two-front merge or arbitrary-element legacy MergeSort.
+- [x] Verify the five prototype backend gates and state each backend's scope.
+  Promotion is separate; no claim of conventional two-front merge or
+  arbitrary-element legacy MergeSort.
 - [ ] Obtain approval before promoting the verified evaluator prototype into `src/`.
 
-**Assessment of fresh failures:** general/closed source checks finish in about
+**Initial failures (7160cbe; superseded by the candidate checkpoints below):**
+general/closed source checks finish in about
 13 million solver transitions, and removing assertions takes about 4.7 million.
 This does not establish a sorting complexity bound. The initial test consumer
 unnecessarily evaluated and discarded three proof terms before returning a
@@ -402,8 +406,10 @@ declare the retained mode working.
 2. Separate necessary retained dependencies from optional reduction history;
    assess an explicit reader-limit option and writer diagnostics. Keep the
    current limit validation intact until that decision is justified.
-3. Re-run the prototype `check.sh` gates, including the pending same-domain
-   negative, before marking F3 complete or promoting the source fixtures.
+3. Re-run the prototype `check.sh` gates before marking F3 complete or promoting
+   the source fixtures. The conversion-head candidate resolves the same-domain
+   negative and passes full compiler regression; `all` still fails at retained
+   CLI load. This is not a completed F3 milestone.
 4. For F4, retain Bubble's explicit transitivity requirement and its checked
    counterexample to the weaker contract. Do not pursue the disproved theorem
    or change the algorithm to make it fit. A weaker sufficient comparator law
@@ -759,6 +765,85 @@ Non-Markdown accounting for this checkpoint (against `87bb490`):
 
 Accepted compiler C/header changes: **0**. This is source library/proof coverage,
 not a compiler-size reduction. Markdown is excluded from that total.
+
+### F3 Conversion Head Checkpoint, 2026-09-28
+
+**Subjective (User):** continue F3/F4 verification without changing the algorithms,
+Core interning or the assertion-only role of `::`.
+
+**Objective (Code):** baseline `ac7d906` plus the readback candidate. The
+same-domain negative has one remaining comparison, not repeated synthesis.
+At 12M transitions its strong-NF stack reaches 158,580 entries; at 80M it remains
+pending. The WHNF is a Fold over a neutral Match with a neutral-Match lambda
+continuation. The full NF fallback unfolds recursive branch code indefinitely
+instead of recognizing a stable head. `src/prototype/conversion_head/` provides
+the diagnostic, patch and regression gates. No accepted C/header is edited.
+
+**Assessment:** classify under-applied Fold as rigid, and complete Fold only
+when both its source and its lambda continuation body are neutral under the
+existing predicate. This rules out Return/Request dispatch and right-unit eta;
+existing congruence handles the children. Unknown shapes keep the old fallback.
+Treating every Fold as rigid is rejected: a reducible continuation can still
+become the right unit. Tests retain both positive eta cases and divergence.
+This changes comparison strategy, not DefEq equations, solver authority or wire
+format. The original raw-Core reproducer fails its rejection assertion; the
+candidate and the complete existing Core test pass.
+
+**Plan:**
+
+- [x] Source rejection: **5,816,830** steps, including the original same-domain
+  function. `check.sh` now includes that negative; it is not replaced by a
+  wrong-domain example.
+- [x] Saved rejection and ordinary/retained partial resume: **5,817,131** steps,
+  with byte-identical zero-step rewrite. O2/ASan gates: **18/53 s**.
+- [x] Existing Core plus new focused boundary tests pass O2 and ASan/UBSan.
+  The latter check both equal and unequal branch bodies through congruence,
+  without normalizing unrelated recursive branches.
+- [x] Quick/Insertion retained List/Vec/Fin reports pass (**43 s**) at the
+  explicit API bound; concrete-value transport and wrong-label rejection pass.
+- [x] Bubble's full prototype gate passes on this candidate (**212 s**, O2),
+  including the internally proved directional counterexample and image resume.
+- [x] Legacy Merge's full `views` gate passes (**93 s**, O2), including ordinary
+  results, wrong-proof rejection, Vec contents and labelled Fin origins.
+- [x] Tree's full prototype gate passes (**195 s**, O2), including generic source
+  proofs, cyclic relation controls, ordinary/retained observations and resume.
+- [x] Run Quick/Insertion `all` on this candidate: observations, independent
+  synthesis, all negatives and ordinary-image resume pass; the command exits
+  **1** at retained-image CLI load. This is a failed whole gate, not a pass.
+- [x] Full `check-acceptance` exits **0**: **63/63** source compatibility, all
+  four LT/partition variants, ordinary-result theorems, Local/Strong, Fin/Vec,
+  images, optional witnesses and the readback/conversion prototype tests pass.
+  Sanitizer coverage is the focused Core/source suite, not the full gate.
+- [ ] Resolve the CLI reader policy, obtain promotion approval and finish F5.
+
+The next CLI change should expose the existing caller-selected reader bound as
+`--image-limit N`, keeping the default and validating a positive `size_t`-sized
+argument. This is a reader resource parameter, not a proof assertion or a bound
+on total memory. Test insufficient/default/explicit bounds, ordinary/retained
+resume and invalid option rejection. Do not silently discard retained records,
+trust them, or globally increase the default to make this fixture pass.
+
+Logs: `/tmp/a-program-conversion-head-{source,sanitize-source,core,sanitize-core,
+retained,value,all,bubble,merge,tree,acceptance}.log`. Reproduction commands and the exact conservative
+fragment are in the [prototype README](../src/prototype/conversion_head/README.md).
+
+Non-Markdown accounting against `ac7d906`, excluding inherited work:
+
+| Prototype file | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `conversion_head/build.mk` | 16 | 0 | +16 |
+| `conversion_head/conversion.c.patch` | 35 | 0 | +35 |
+| `conversion_head/overlay.sh` | 8 | 0 | +8 |
+| `conversion_head/probe.c` | 90 | 0 | +90 |
+| `conversion_head/source-check.sh` | 23 | 0 | +23 |
+| `conversion_head/test.c` | 95 | 0 | +95 |
+| `finite_sorting/check.sh` | 2 | 0 | +2 |
+| `finite_sorting/stress-wrong-function.p` (comments) | 2 | 2 | 0 |
+| **Total** | **271** | **2** | **+269** |
+
+The patch file includes context; its generated C change is **+19/-1, net +18**.
+Accepted compiler C/header changes remain **0**. This is additional regression
+and diagnostic coverage, not a compiler-size reduction. Markdown is separate.
 
 ### List/Vec View Checkpoint, 2026-09-27
 

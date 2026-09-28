@@ -81,7 +81,8 @@ no accepted code is changed.
 - [x] Verify full and partial retained sorting images with explicit reader bounds.
 - [x] Read baseline retained output with the candidate and candidate retained
   output with baseline; use the existing bounded typed comparator in both.
-- [ ] Resolve the same-domain wrong-function comparison (pending at 40M).
+- [ ] Same-domain comparison is still pending at 80M with this patch alone;
+  the [conversion-head companion](../conversion_head/README.md) addresses it.
 - [x] Measure construction/storage overhead and reject quadratic prefix copying.
 - [x] Review the final representation and complete its regression gates.
 - [ ] Obtain explicit approval before promoting changes into accepted code.

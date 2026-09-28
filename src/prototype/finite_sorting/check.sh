@@ -57,6 +57,8 @@ negative() {
 	check 1 "$name" "$directory/$name.p"
 }
 negative wrong-function-domain 'bad:=(sorting_backend Item &item_order).mk &(\x:Bool=>x) &(sorting_local Item &item_order quick_items) &(sorting_content Item &item_order quick_items);'
+sed -n '1,$p' "$directory/cases.p" "$here/stress-wrong-function.p" > "$directory/wrong-function.p"
+check 1 same-domain-function "$directory/wrong-function.p"
 negative dropped-content 'bad:=(sorting_backend Item &item_order).mk &(\xs:List Item=>empty) &(\xs:List Item=>(general_locally_sorted Item &item_order).nil) &(\xs:List Item=>permutation_refl Item xs);'
 negative wrong-comparator 'bad:=insertion_backend Item &item_order &(\x:Item=>\y:Item=>Bool.true) &item_decide;'
 negative wrong-shape 'bad:=sorting_vector Item &item_order quick_items two vector_input;'

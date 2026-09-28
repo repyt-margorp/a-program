@@ -1,0 +1,35 @@
+--- a/conversion.c
++++ b/conversion.c
+@@ -47,13 +47,31 @@
+ 		term = first;
+ 	}
+ }
+ 
++/* A neutral source cannot become return/request. A lambda whose body is
++ * neutral cannot become the return continuation needed by Fold's right-unit
++ * rule. In this fragment the Fold head survives normalization; its children
++ * can therefore be compared by congruence without normalizing branch code. */
++static int rigid_fold(const struct pg_term *term)
++{
++	if (term->kind != PG_APPLICATION) return 0;
++	const struct pg_term *prefix = term->as.application.function;
++	if (prefix->kind == PG_REFERENCE) return prefix->as.reference == &pg_fold_operation;
++	if (prefix->kind != PG_APPLICATION) return 0;
++	const struct pg_term *head = prefix->as.application.function;
++	if (head->kind != PG_REFERENCE || head->as.reference != &pg_fold_operation) return 0;
++	const struct pg_term *continuation = term->as.application.argument;
++	if (continuation->kind != PG_LAMBDA) return 0;
++	if (!neutral(continuation->as.lambda.body)) return 0;
++	return neutral(prefix->as.application.argument);
++}
++
+ /* Congruence compares children of rigid heads without normalizing unrelated
+  * siblings. Reducible oracle applications still need parent rechecking. */
+ static int rigid_head(const struct pg_term *term)
+ {
+-	if (term->kind == PG_LAMBDA || neutral(term)) return 1;
++	if (term->kind == PG_LAMBDA || neutral(term) || rigid_fold(term)) return 1;
+ 	while (term->kind == PG_APPLICATION) term = term->as.application.function;
+ 	if (term->kind != PG_REFERENCE) return 0;
+ 	const struct pg_object *head = term->as.reference;
+ 	if (head->kind == PG_BINDER) return 1;
