@@ -11,22 +11,7 @@ directory=$(mktemp -d)
 trap 'rm -rf "$directory"' EXIT
 bash "$here/provider.sh" "$here/tree.p" "$here/quick.p" "$fixtures/generic_sorted/boolean-order.p" \
 	"$here/cases.p" "$here/tree-cases.p" > "$directory/source.p"
-check() {
-	local expected=$1 label=$2 status=0
-	shift 2
-	timeout 180 "$binary" --legacy-intrinsic-dot --steps "$steps" "$@" > "$directory/status" || status=$?
-	printf '%s: ' "$label"
-	cat "$directory/status"
-	[[ $status == "$expected" ]]
-	case $expected in
-		0) grep -q '^done steps=' "$directory/status" ;;
-		1) grep -q '^rejected steps=' "$directory/status" ;;
-		3) grep -q '^pending steps=' "$directory/status" ;;
-	esac
-}
-equal() {
-	timeout 180 "$compare" --image-limit "$limit" --steps "$steps" --equal-image "$@"
-}
+source "$here/check-functions.sh"
 check 0 tree-source --save "$directory/source.a" "$directory/source.p"
 sed '/ :: /{ :next; /;$/d; N; b next; }' "$directory/source.p" > "$directory/independent.p"
 check 0 independent-synthesis "$directory/independent.p"

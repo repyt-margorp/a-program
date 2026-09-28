@@ -16,7 +16,7 @@ not evidence that its proposed interfaces already work. Broad P4/P5 remain open.
 | F1 | Checked finite positions and bijections | Complete |
 | F2 | Lawful List and indexed-container views | Complete for homogeneous List/Vec and the finite-position bridge |
 | F3 | One ordinary-result sorting specification | Source prototype checked; normalization/image gates incomplete |
-| F4 | Quick/Merge/Insertion/Bubble and additional backends | Quick/Insertion/legacy Merge/Tree connected in prototype; Bubble pending |
+| F4 | Quick/Merge/Insertion/Bubble and additional backends | Five prototype backends; Bubble needs stronger assumptions than directional decisions alone |
 | F5 | Permanent rejection, image and regression gates | Pending |
 
 ## F0. Scope and Invariants
@@ -364,8 +364,13 @@ tests or a claim that F3/F4 are complete):
 - [x] Complete legacy Merge Vec/Fin observations on the closed-readback candidate.
 - [x] Connect TreeSort with generic ordinary-result Local/permutation proofs;
   labelled observations, cyclic relation and bounded saved/resumed images pass.
-- [ ] Connect BubbleSort. No claim of conventional two-front merge or
-  arbitrary-element legacy MergeSort yet.
+- [x] Implement right-to-left adjacent-pass BubbleSort, prove content preservation
+  for arbitrary comparators, and connect a backend with explicit transitivity.
+- [x] Audit Bubble's nontransitive Local claim: the source counterexample proves
+  directional decisions alone insufficient. Keep its transitive backend
+  explicit; a weakest sufficient comparator law is not established.
+- [ ] Finish the remaining F4 acceptance gates and state each backend's scope.
+  No claim of conventional two-front merge or arbitrary-element legacy MergeSort.
 - [ ] Obtain approval before promoting the verified evaluator prototype into `src/`.
 
 **Assessment of fresh failures:** general/closed source checks finish in about
@@ -399,10 +404,10 @@ declare the retained mode working.
    current limit validation intact until that decision is justified.
 3. Re-run the prototype `check.sh` gates, including the pending same-domain
    negative, before marking F3 complete or promoting the source fixtures.
-4. For F4, legacy MergeSort's position observations and generic TreeSort are now
-   verified on the prototype candidate. BubbleSort still needs an actual source
-   implementation and open-input proof, not a
-   renamed backend. Preserve the explicit relation assumptions per algorithm.
+4. For F4, retain Bubble's explicit transitivity requirement and its checked
+   counterexample to the weaker contract. Do not pursue the disproved theorem
+   or change the algorithm to make it fit. A weaker sufficient comparator law
+   is a separate question, not a completed result.
 
 The commands, scope and known incomplete gates are in
 [`src/prototype/finite_sorting/README.md`](../src/prototype/finite_sorting/README.md).
@@ -642,6 +647,118 @@ baseline-source,baseline-independent}.log`.
 Per-file non-Markdown delta against `11efe1d`: `tree.p` **+110/-0**,
 `tree-cases.p` **+21/-0**, `tree-cycle.p` **+9/-0**, `tree-check.sh` **+60/-0**;
 total **+200/-0**. These are source proofs and verification, not compiler growth.
+
+### BubbleSort Checkpoint, 2026-09-28
+
+**Subjective (User):** implement the named algorithms in the surface language,
+retain one common sorting contract, and distinguish the assumptions for Local
+and Strong. No expected-type inference from `::`.
+
+**Objective (Code):** baseline `87bb490` plus `finite_sorting/bubble*.p` and its
+verification scripts. The algorithm performs a right-to-left adjacent pass,
+fixes its head and recursively sorts the suffix. `SizedList` carries the strictly
+decreasing length; there is no insufficient-fuel fallback. `bubble.p` proves
+general permutation independently of comparator laws. `bubble-order.p` proves
+Strong using directional decisions and transitivity, then supplies Local to
+`bubble_transitive_backend`. The same ordinary function is used in both cases.
+The accepted compiler checks these open proofs in **13,292,264** steps, or
+**4,925,589** without assertions. Candidate source with labelled cases passes
+in **6,485,127**, without assertions in **3,457,271**; its List/Vec/Fin report
+passes in **6,844,141** (chunks 1/64). The complete gate, including the
+counterexample below, passes in **204 s** under O2 and **553 s** under ASan/UBSan
+with leak checking and halt-on-error. The shared Tree runner passes in **175 s**.
+Ordinary/retained images, byte-identical zero-step rewriting and 100-step resume
+pass through the explicitly bounded reader API. Logs:
+`/tmp/a-program-bubble-complete{,-sanitize}.log` and
+`/tmp/a-program-tree-shared-runner.log`.
+
+`bubble-directional-counterexample.p` adds a stronger boundary result. Its
+relation has reflexive edges and `ab, bc, cb, ca`, but no `ac`. Its comparator is:
+
+| `le` | a | b | c |
+| --- | --- | --- | --- |
+| a | true | true | false |
+| b | false | true | false |
+| c | true | false | true |
+
+All nine directional decisions are proved. On `[a,c,b]`, the first pass produces
+`[a,b,c]`, then sorting `[b,c]` produces `[c,b]`: the full result is `[a,c,b]`.
+This is not Local. The source defines an empty ADT and actually constructs:
+
+```text
+bubble_counter_refute :
+  general_locally_sorted bubble_point bubble_relation bubble_counter_result
+  -> bubble_void
+```
+
+An indexed eliminator sends every legitimate relation edge to its allowed
+type; the first Local edge at `a,c` would inhabit the empty type. This is an
+internal refutation, not just a failed witness search or a rejected assertion.
+Accepted baseline checks it in **13,159,863** steps, or **4,803,716** without
+assertions; candidate checks it in **5,901,060**, or **3,070,986** without
+assertions. Saved-image comparisons
+confirm the actual result in **5,902,960** steps for chunks 1/64.
+
+**Assessment:** directional `no` supplies `R y x`, not `not (R x y)`. Hence the
+two false answers for `(b,c)` and `(c,b)` satisfy the existing contract. This
+disproves the proposed unconditional Local theorem for this unchanged Bubble
+algorithm. Explicit transitivity is sufficient; necessity is **not** proved.
+For the separate cycle `a <= b <= c <= a`, `[a,b,c]` remains a valid closed Local
+example, so failure of the minimum invariant alone would not justify this
+conclusion. A bounded tournament search was inadequate: it excluded the
+bidirectional case responsible for the counterexample. The common backend
+continues to require the actual Local proof and is not weakened.
+Reuse `predecessor`, permutation composition and the F2 views. A generic
+predicate-transport lemma over permutation avoids another pass-preservation
+implementation. A first helper motive incorrectly applied a nonempty-only
+function across every length; the corrected helper handles zero explicitly and
+places dependent continuation arguments after Match. This is source proof
+construction, not a checker relaxation. Tree/Bubble now share their exact
+CLI-status/image comparison helpers; no new verifier or kernel rule is added.
+
+Primary references checked on 2026-09-28:
+
+- [Isabelle/HOL Bubblesort](https://isabelle.in.tum.de/library/HOL/HOL-ex/Bubblesort.html):
+  supports the chosen pass schedule and a size-decreasing proof strategy, but
+  works under `linorder`. It does not justify our weaker Local theorem.
+- [Bar-Noy and Naor, SIAM 1990](https://epubs.siam.org/doi/10.1137/0403002):
+  the inspected abstract concerns translating comparison sorts to tournament
+  Hamilton paths. It does not establish correctness of our unchanged program;
+  no theorem from it is admitted into A Program. Full proof correspondence is
+  not claimed from an abstract.
+
+**Plan:**
+
+- [x] Expanded O2/ASan/UBSan gates: internal refutation, assertion-free synthesis,
+  ordinary/retained observations, resume and wrong-edge rejection.
+- [x] Shared Tree runner regression after extracting identical test helpers.
+- [ ] F3's wrong-function comparison, CLI reader policy, promotion and F5
+  integration remain open. No implicit witness, sorting oracle or alternative
+  source-Solve path is introduced by this milestone.
+
+F3 recheck: attaching QuickSort's proofs to same-domain identity remains
+**pending at 80,000,000 steps** on the candidate, not accepted or rejected.
+This does not pass the negative gate. Next work should isolate that conversion
+request and its readback cost, rather than treating further budget increases
+as a fix. Log: `/tmp/a-program-f3-wrong-function-80m.log`.
+
+Non-Markdown accounting for this checkpoint (against `87bb490`):
+
+| Prototype file | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `bubble.p` | 85 | 0 | +85 |
+| `bubble-order.p` | 99 | 0 | +99 |
+| `bubble-cases.p` | 25 | 0 | +25 |
+| `bubble-cycle.p` | 7 | 0 | +7 |
+| `bubble-directional-counterexample.p` | 59 | 0 | +59 |
+| `bubble-check.sh` | 58 | 0 | +58 |
+| `check-functions.sh` | 17 | 0 | +17 |
+| `tree-check.sh` | 1 | 16 | -15 |
+| `stress-wrong-function.p` (comment only) | 2 | 2 | 0 |
+| **Total** | **353** | **18** | **+335** |
+
+Accepted compiler C/header changes: **0**. This is source library/proof coverage,
+not a compiler-size reduction. Markdown is excluded from that total.
 
 ### List/Vec View Checkpoint, 2026-09-27
 

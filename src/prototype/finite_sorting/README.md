@@ -18,6 +18,13 @@ This directory is experimental, not part of the accepted `check-acceptance` gate
   A single `tree_all` predicate handles both bound directions; flattening reuses
   the existing List proofs. Local does not require transitivity. Strong uses
   the common wrapper and its explicit transitivity argument.
+- `bubble.p`: right-to-left adjacent-pass BubbleSort using `SizedList` length
+  decrease, with content preservation for arbitrary comparators. No fuel cutoff.
+- `bubble-order.p`: Strong and a common backend with **explicit transitivity**.
+  The algorithm itself accepts arbitrary comparators.
+- `bubble-directional-counterexample.p`: internally refutes Local for one valid
+  directional comparator and the actual Bubble result. Directional evidence
+  alone is insufficient; transitivity is sufficient, not claimed necessary.
 - `cases.p`: shared consumers, empty/singleton/reversed/ordered inputs and
   different labels with equal keys. QuickSort and insertion need not be stable
   or return the same order of equal keys. Their expected labels differ.
@@ -35,6 +42,7 @@ bash src/prototype/finite_sorting/check.sh BUILD/pointer-check BUILD/program_tes
 bash src/prototype/finite_sorting/merge-check.sh BUILD/pointer-check BUILD/program_test lists
 bash src/prototype/finite_sorting/value-check.sh BUILD/pointer-check
 bash src/prototype/finite_sorting/tree-check.sh BUILD/pointer-check BUILD/finite_sort_image_compare
+bash src/prototype/finite_sorting/bubble-check.sh BUILD/pointer-check BUILD/finite_sort_image_compare
 ```
 
 For `check.sh`, the omitted mode is `all`, which must pass before claiming
@@ -54,13 +62,15 @@ following Fin-origin gate has not been reached.
 
 Accepted baseline gaps: full Quick observations remain pending at 100 million
 steps. Fully retained source exceeds the CLI's million-record limit. Therefore
-`all` is **not passing**. Bubble is not connected, and the same-domain negative and
-concrete value-transport stress fixtures still need verification.
+`all` is **not passing**. The same-domain negative and baseline concrete
+value-transport stress fixtures still need work. Do not pursue Bubble's
+unconditional Local theorem: the checked counterexample disproves it.
 
 The [closed-readback prototype](../readback_support/README.md) now completes
 Quick and legacy Merge Vec/Fin observations and concrete value transport. This
 is not yet an accepted compiler change. The same-domain wrong-function check
-is still pending at 40M, and the default CLI retained-image limit still fails.
+is still pending at 80M (fresh check on 2026-09-28), and the default CLI
+retained-image limit still fails.
 The active plan distinguishes these candidate results from the baseline above.
 `value-check.sh` verifies positive specialization, synthesis without `::`, and
 rejection of wrong labels. The candidate passes all four checks. The retained
@@ -77,6 +87,19 @@ This is not a formal uninhabitance proof for every possible Strong term.
 `tree-cases.p` shares the other backends' cases rather than duplicating them.
 The full Tree gate passes in O2 (170 s) and ASan/UBSan (464 s, leak checking and
 halt-on-error enabled). No accepted compiler change is part of this addition.
+
+Bubble's gate additionally checks a single pass that does **not** sort the full
+input, an incorrect transitivity argument and a mismatched `SizedList` length.
+The cyclic-relation example exercises arbitrary-comparator content and one
+closed Local certificate; it is not a proof of general nontransitive Local.
+The directional counterexample proves `Local actual_result -> empty_type` for
+`[a,c,b]`, with all nine comparator decisions checked. Here both comparisons
+between `b,c` answer false, which the directional contract permits. Independent
+synthesis, actual result comparison and wrong-edge rejection are also checked.
+Tree and Bubble source `check-functions.sh` to share status/image checks.
+The complete Bubble gate passes on the closed-readback candidate under O2
+(204 s) and ASan/UBSan (553 s, leak checking and halt-on-error enabled).
+The shared Tree runner also passes again (175 s).
 
 ## Bounded Image and Cost Diagnostics
 
