@@ -45,6 +45,11 @@ REPL commands include `:status`, `:solve 100000`, `:whnf main`, `:nf main`,
 `:save session.a`, and `:quit`. Source definitions can also be entered.
 The REPL and batch commands use the same Program and Solve mechanisms.
 
+A separate [prototype C backend](src/prototype/c_backend/README.md) compiles
+checked `.a` exports to C functions with a small standalone runtime. It is not
+part of the default build; Identity transport and exact saved-Solve resumption
+remain unsupported/unfinished. See its README for the supported subset and tests.
+
 ## Small Example
 
 ```ap

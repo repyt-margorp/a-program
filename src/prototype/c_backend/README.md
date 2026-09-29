@@ -59,6 +59,8 @@ The ABI requires C11, 8-bit bytes and exact `uint32_t`/`uint64_t`. Arithmetic
 uses unsigned intermediates and masks, avoiding C signed-overflow undefined
 behavior. Text is counted bytes, including NUL; no locale/encoding conversion.
 Unknown host operations remain unhandled unless intercepted by a user Fold.
+Correspondence is checked by differential tests; this is not a machine-checked
+compiler-correctness theorem.
 
 ## Plan
 

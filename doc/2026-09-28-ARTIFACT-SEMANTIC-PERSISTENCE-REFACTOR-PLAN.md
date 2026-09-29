@@ -680,6 +680,12 @@ semantic-root instrumentation remains necessary, even when this prototype passes
   increment has its separate results above; do not inherit an unrun full-suite
   verdict from the previous candidate. Promotion, permanent registration and the
   separate failing partition gate remain open; this is not completion of AP1-AP3.
+  Latest run (2026-09-29): the fixed-limit/input-profile candidate passes full
+  `check-acceptance` (exit 0, about 18m35s including builds, `-j2`). This run
+  includes the pre-existing uncommitted Evidence/IADT changes and their tests;
+  they are not included in the persistence/backend commits. Isolated prototype
+  transport/semantic and C gates also pass without those changes. This result
+  does not change the still-open frontier/trust/partition requirements above.
 
 Handoff: the agreed semantic content survives `.a` roundtrips, reading/inspection
 is inert, unused history no longer accumulates, and existing language behavior
@@ -714,10 +720,11 @@ arithmetic/formatting functions; emission is checked for zero evaluator steps
 and unchanged graph/proof counts. Repeated imports emit identical C and do not
 change input-image digests.
 
-Focused O2 gates also pass against clean `e716232` plus the committed persistence,
+Focused O2 and ASan/UBSan gates also pass against clean `e716232` plus the committed persistence,
 readback and conversion prototypes, without the unrelated Evidence/IADT edits.
-The separate full acceptance run uses the current working-tree candidate; its
-result must be recorded separately when finished.
+The separate full acceptance run passes on the current working-tree candidate,
+including the pre-existing uncommitted Evidence/IADT changes (AP3.6); those
+changes are excluded from this work's commits.
 
 The existing Acc QuickSort source checks in 67,229 steps and image selection in
 67,377 steps. Interpreter execution prints `FFTT` in 18,495 runtime steps. C
@@ -762,15 +769,17 @@ those computations. Preserve this boundary test until AP4.6 is implemented.
   interpreter; test overflow, embedded NUL, higher-order captures, repeated
   thunks, multiple handler clauses, invalid siblings, pending input, unsupported
   Oracles, output failure and unchanged input artifacts. Run sanitizers.
-- [ ] **AP4.5:** document the exact supported subset, fuel/trust limitations,
+- [x] **AP4.5:** document the exact supported subset, fuel/trust limitations,
   generated runtime ownership and per-file line changes. Push verified chunks;
   do not close #44 or mark AP1-AP3 complete from a limited backend milestone.
+  Published: persistence increment `966df23`, first C backend `92704c6`, both on
+  `origin/main`. Neither commit promotes prototype code into accepted `src/`.
 - [ ] **AP4.6:** implement the needed Identity transport/action/lifting target
   equations using exact Oracle contracts, then replace QuickSort's explicit
   rejection gate with actual generated-C differential execution. Include
   non-diagonal and dependent U/Pi cases; no unconditional proof erasure.
 
-Initial backend line delta (new files; no accepted implementation changed):
+Initial backend line delta at `92704c6` (new files; no accepted implementation changed):
 
 | File/group | Added | Removed |
 | --- | ---: | ---: |
