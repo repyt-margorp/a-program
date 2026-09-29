@@ -26,7 +26,11 @@ expect 2 --load --image-limit 1 --steps 0 "$directory/source.a"
 expect 3 --load --image-limit 1000000 --steps 0 --save "$directory/copy.a" - < <(cat "$directory/source.a")
 cmp "$directory/source.a" "$directory/copy.a"
 expect 2 --load --image-limit 1 --steps 0 - < <(cat "$directory/source.a")
-for value in -1 none invalid 18446744073709551616; do
+expect 3 --load --image-limit none --steps 0 --save "$directory/copy.a" "$directory/source.a"
+cmp "$directory/source.a" "$directory/copy.a"
+expect 3 --load --image-limit none --steps 0 --save "$directory/copy.a" - < <(cat "$directory/source.a")
+cmp "$directory/source.a" "$directory/copy.a"
+for value in -1 0 invalid 18446744073709551616; do
 	expect 2 --load --image-limit "$value" --steps 0 "$directory/source.a"
 done
 if [[ $# == 2 ]]; then
@@ -34,6 +38,8 @@ if [[ $# == 2 ]]; then
 	expect 2 --load --steps 0 "$2"
 	expect 3 --load --image-limit 10000000 --steps 0 --save "$directory/large.a" "$2"
 	cmp "$2" "$directory/large.a"
+	expect 3 --load --image-limit none --steps 0 --save "$directory/unlimited.a" "$2"
+	cmp "$2" "$directory/unlimited.a"
 	expect 3 --load --image-limit 10000000 --steps 0 --save "$directory/pipe.a" - < <(cat "$2")
 	cmp "$2" "$directory/pipe.a"
 	expect 3 --load --image-limit 10000000 --steps 0 --save-inputs "$directory/inputs.a" "$2"
@@ -43,4 +49,4 @@ if [[ $# == 2 ]]; then
 	printf 'artifact profiles: retained_bytes=%s inputs_bytes=%s conversion_steps=0\n' \
 		"$(wc -c < "$2")" "$(wc -c < "$directory/inputs.a")"
 fi
-printf 'artifact policy: fixed bounds, inert file/pipe loading, explicit larger allowance passed\n'
+printf 'artifact policy: fixed/unbounded quota, inert file/pipe loading, explicit larger allowance passed\n'

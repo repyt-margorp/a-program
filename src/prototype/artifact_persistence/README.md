@@ -128,9 +128,18 @@ identity: all 4,483 snapshots over its four valid/invalid/forwarding cases pass.
 The user rejected the byte-derived allowance on 2026-09-29. It has been removed.
 `artifact/file.c` now owns atomic publication and file/pipe adaptation; the
 decoder receives a fixed allowance (CLI default 1,000,000, `--image-limit N`
-override). The limit is per-payload record/reference/name units, not a byte,
+override), or explicit `--image-limit none` for no policy quota (`SIZE_MAX`).
+Both compiler and C adapter use one argument parser in `artifact/file.c`.
+Representability, allocation failure and format checks still apply without a
+quota. The limit is per-payload record/reference/name units, not a byte,
 memory or fuel budget. Non-seekable inputs are staged only because relocation
-requires seeks. No unbounded mode or automatic retry is claimed.
+requires seeks. There is no byte-derived allowance or automatic retry.
+The explicit-unbounded follow-up separates actual array allocation checks from
+policy quotas in Core, source, occurrence and derivation readers, using one
+checked wire-array allocator. O2 history/transport/semantic and focused
+ASan/UBSan tests pass. Fixed and unlimited quotas produce identical images,
+including the 32,372,583-byte QuickSort image at step 0. This is a reader-policy
+correction, not compaction or progress-preserving resumption.
 
 `file_policy.sh` checks normal and piped step-0 roundtrips, explicit small-bound
 failure, argument errors, and optionally a large image with a 10,000,000 override.

@@ -48,17 +48,18 @@ done:
 
 int main(int argc, char **argv)
 {
-	uint64_t budget = 1000000, limit = PG_ARTIFACT_DEFAULT_LIMIT;
+	uint64_t budget = 1000000;
+	size_t limit = PG_ARTIFACT_DEFAULT_LIMIT;
 	int index = 1;
 	while (index + 1 < argc) {
-		uint64_t *target;
-		if (!strcmp(argv[index], "--steps")) target = &budget;
-		else if (!strcmp(argv[index], "--image-limit")) target = &limit;
-		else break;
-		if (number(argv[index + 1], target)) goto usage;
+		if (!strcmp(argv[index], "--steps")) {
+			if (number(argv[index + 1], &budget)) goto usage;
+		} else if (!strcmp(argv[index], "--image-limit")) {
+			if (pg_artifact_limit_argument(argv[index + 1], &limit)) goto usage;
+		} else break;
 		index += 2;
 	}
-	if (argc - index != 3 || !limit || limit > SIZE_MAX) goto usage;
+	if (argc - index != 3) goto usage;
 	const char *input = argv[index], *entry = argv[index + 1], *output = argv[index + 2];
 	struct stat source_stat, target_stat;
 	if (!stat(input, &source_stat) && !stat(output, &target_stat)
@@ -70,7 +71,7 @@ int main(int argc, char **argv)
 	if (!file) { perror(input); return 2; }
 	size_t count = 0;
 	struct pg_synthesis_job *const *roots = NULL;
-	struct pg_program *program = pg_artifact_read_file(file, (size_t)limit, &count, &roots);
+	struct pg_program *program = pg_artifact_read_file(file, limit, &count, &roots);
 	fclose(file);
 	if (!program) { fputs("C export: cannot read artifact\n", stderr); return 2; }
 	int status = 2;
@@ -97,6 +98,6 @@ done:
 	pg_program_destroy(program);
 	return status;
 usage:
-	fputs("usage: a-to-c [--steps N] [--image-limit N] INPUT.a ENTRY OUTPUT.c\n", stderr);
+	fputs("usage: a-to-c [--steps N] [--image-limit N|none] INPUT.a ENTRY OUTPUT.c\n", stderr);
 	return 2;
 }

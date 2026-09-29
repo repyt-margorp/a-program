@@ -114,6 +114,32 @@
  	size_t *count, const struct pg_scope *const **scopes, const struct pg_occurrence *const **roots, struct pg_graph *scratch)
  {
  	if (!file || !typing || !typing->occurrences.capacity || !count || !roots) return -1;
+@@ -187,12 +206,12 @@
+ 	uint64_t n, nr;
+ 	if (fread(header, 1, 8, file) != 8 || memcmp(header, scopes ? scoped_magic : magic, 8)) return -1;
+ 	if (pg_wire_read_u64(file, &n) || pg_wire_read_u64(file, &nr)) return -1;
+-	if (n > limit || nr > limit - n || limit > SIZE_MAX / sizeof(struct input)) return -1;
++	if (n > limit || nr > limit - n) return -1;
+ 	if (n > SIZE_MAX / 3) return -1;
+ 	struct pg_graph *graph = typing->graph;
+-	struct input *inputs = pg_alloc(scratch, (size_t)n * sizeof(*inputs));
+-	uint64_t *ids = pg_alloc(scratch, (size_t)nr * sizeof(*ids));
+-	const struct pg_occurrence **all = pg_alloc(scratch, (size_t)n * sizeof(*all));
++	struct input *inputs = pg_wire_array(scratch, n, sizeof(*inputs));
++	uint64_t *ids = pg_wire_array(scratch, nr, sizeof(*ids));
++	const struct pg_occurrence **all = pg_wire_array(scratch, n, sizeof(*all));
+ 	if (!inputs || !ids || !all) return -1;
+ 	size_t available = limit - (size_t)n - (size_t)nr, max_arity = 0, max_maps = 0, context_count = (size_t)n;
+ 	uint64_t ns = 0, *scope_ids = NULL;
+@@ -201,7 +220,7 @@
+ 		available -= 3 * (size_t)ns;
+ 		if (nr > available) return -1;
+ 		available -= (size_t)nr;
+-		scope_ids = pg_alloc(scratch, (3 * (size_t)ns + (size_t)nr) * sizeof(*scope_ids));
++		scope_ids = pg_wire_array(scratch, 3 * ns + nr, sizeof(*scope_ids));
+ 		if (!scope_ids) return -1;
+ 		for (size_t i = 0; i < ns; ++i) {
+ 			if (pg_wire_read_u64(file, &scope_ids[3 * i]) || scope_ids[3 * i] > i) return -1;
 @@ -212,13 +231,14 @@
  			if (pg_wire_read_u64(file, &scope_ids[3 * ns + i]) || scope_ids[3 * ns + i] > ns) return -1;
  		context_count += (size_t)ns;
@@ -130,6 +156,24 @@
  		if (pg_wire_read_u64(file, &arity) || arity > available) return -1;
  		if (pg_wire_read_u64(file, &selection) || selection > SIZE_MAX) return -1;
  		if (selection && !(inputs[i].flags & 8)) return -1;
+@@ -226,7 +246,7 @@
+ 		available -= (size_t)arity;
+ 		inputs[i].count = (size_t)arity;
+ 		if (arity > max_arity) max_arity = (size_t)arity;
+-		inputs[i].operands = pg_alloc(scratch, (size_t)arity * sizeof(uint64_t));
++		inputs[i].operands = pg_wire_array(scratch, arity, sizeof(uint64_t));
+ 		if (!inputs[i].operands) return -1;
+ 		for (size_t j = 0; j < arity; ++j) {
+ 			uint64_t *id = &inputs[i].operands[j];
+@@ -238,7 +258,7 @@
+ 		context_count += (size_t)maps;
+ 		inputs[i].map_count = (size_t)maps;
+ 		if (maps > max_maps) max_maps = (size_t)maps;
+-		inputs[i].map_sizes = pg_alloc(scratch, (size_t)maps * sizeof(size_t));
++		inputs[i].map_sizes = pg_wire_array(scratch, maps, sizeof(size_t));
+ 		if (!inputs[i].map_sizes) return -1;
+ 		size_t structural = (size_t)arity;
+ 		for (size_t j = 0; j < maps; ++j) {
 @@ -263,27 +283,35 @@
  			available -= (size_t)clauses;
  			inputs[i].clause_count = (size_t)clauses;
@@ -151,8 +195,10 @@
 -	if (pg_contexts_read(file, typing, limit, name_limit, resolve, owner, &nc, &contexts, &nt, &terms)) return -1;
 +	if (pg_contexts_read_descriptors(file, typing, limit, name_limit, codec, owner, &nc, &contexts, &nt, &terms)) return -1;
  	if (nc != context_count || nt != term_count) return -1;
- 	const struct pg_occurrence **operands = pg_alloc(scratch, max_arity * sizeof(*operands));
- 	const struct pg_context_map **maps = pg_alloc(scratch, max_maps * sizeof(*maps));
+-	const struct pg_occurrence **operands = pg_alloc(scratch, max_arity * sizeof(*operands));
+-	const struct pg_context_map **maps = pg_alloc(scratch, max_maps * sizeof(*maps));
++	const struct pg_occurrence **operands = pg_wire_array(scratch, max_arity, sizeof(*operands));
++	const struct pg_context_map **maps = pg_wire_array(scratch, max_maps, sizeof(*maps));
  	if (!operands || !maps) return -1;
 -	size_t next_context = (size_t)n + (size_t)ns, next_term = 3 * (size_t)n;
 +	size_t next_context = (size_t)n + (size_t)ns, next_header = 0, next_term = header_terms;
@@ -172,6 +218,22 @@
  			.operand_count = arity, .map_count = inputs[i].map_count};
  		const struct pg_occurrence *const *children = operands;
  		if (inputs[i].flags & 4) {
+@@ -323,12 +351,12 @@
+ 		all[i] = pg_occurrence_intern(typing, &header, children, maps);
+ 		if (!all[i]) return -1;
+ 	}
+-	const struct pg_occurrence **result = pg_alloc(graph, (size_t)nr * sizeof(*result));
++	const struct pg_occurrence **result = pg_wire_array(graph, nr, sizeof(*result));
+ 	if (!result) return -1;
+ 	for (size_t i = 0; i < nr; ++i) result[i] = all[ids[i] - 1];
+ 	if (scopes) {
+-		const struct pg_scope **all_scopes = pg_alloc(scratch, (size_t)ns * sizeof(*all_scopes));
+-		const struct pg_scope **selected = pg_alloc(graph, (size_t)nr * sizeof(*selected));
++		const struct pg_scope **all_scopes = pg_wire_array(scratch, ns, sizeof(*all_scopes));
++		const struct pg_scope **selected = pg_wire_array(graph, nr, sizeof(*selected));
+ 		if (!all_scopes || !selected) return -1;
+ 		for (size_t i = 0; i < ns; ++i) {
+ 			uint64_t parent = scope_ids[3 * i], indices = scope_ids[3 * i + 1];
 @@ -353,9 +381,17 @@
  	const struct pg_object *(*resolve)(void *, const char *), void *owner,
  	size_t *count, const struct pg_occurrence *const **roots)

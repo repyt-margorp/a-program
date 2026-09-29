@@ -26,3 +26,38 @@
  	return 0;
  }
  
+@@ -373,14 +385,14 @@
+ {
+ 	if (input->object) return input->object;
+ 	if (!input->name || !codec || !codec->restore) return NULL;
+-	const struct pg_term **payload = pg_alloc(&seen->storage, input->count * sizeof(*payload));
++	const struct pg_term **payload = pg_wire_array(&seen->storage, input->count, sizeof(*payload));
+ 	if (!payload) return NULL;
+ 	size_t i = 0;
+ 	for (const struct payload_edge *edge = input->first; edge; edge = edge->next) {
+ 		if (edge->value > count) return NULL;
+ 		payload[i++] = terms[edge->value - 1];
+ 	}
+-	uint64_t *scalars = pg_alloc(&seen->storage, input->scalar_count * sizeof(*scalars));
++	uint64_t *scalars = pg_wire_array(&seen->storage, input->scalar_count, sizeof(*scalars));
+ 	if (!scalars) return NULL;
+ 	i = 0;
+ 	for (const struct payload_edge *item = input->scalars; item; item = item->next) scalars[i++] = item->value;
+@@ -413,14 +425,13 @@
+ 	if (fread(header, 1, 8, file) != 8 || memcmp(header, magic, 8)) return -1;
+ 	if (pg_wire_read_u64(file, &no) || pg_wire_read_u64(file, &nt) || pg_wire_read_u64(file, &nr)) return -1;
+ 	if (no > limit || nt > limit - no || nr > limit - no - nt) return -1;
+-	if (limit > SIZE_MAX / sizeof(struct object_input)) return -1;
+ 	struct pg_dag seen = {0};
+ 	int status = -1;
+ 	if (pg_dag_init(&seen, NULL, NULL)) goto done;
+ 	/* Relocation and descriptor assembly are borrowed only during this read. */
+-	struct object_input *objects = pg_alloc(&seen.storage, (size_t)no * sizeof(*objects));
+-	const struct pg_term **terms = pg_alloc(&seen.storage, (size_t)nt * sizeof(*terms));
+-	const struct pg_term **result = pg_alloc(graph, (size_t)nr * sizeof(*result));
++	struct object_input *objects = pg_wire_array(&seen.storage, no, sizeof(*objects));
++	const struct pg_term **terms = pg_wire_array(&seen.storage, nt, sizeof(*terms));
++	const struct pg_term **result = pg_wire_array(graph, nr, sizeof(*result));
+ 	if (!objects || !terms || !result) goto done;
+ 	size_t available = limit - (size_t)no - (size_t)nt - (size_t)nr;
+ 	if (read_objects(file, graph, (size_t)no, name_limit, codec, context, (size_t)nt, &available, objects, &seen)) goto done;

@@ -4,6 +4,22 @@
 #include <string.h>
 #include <unistd.h>
 
+int pg_artifact_limit_argument(const char *argument, size_t *limit)
+{
+	if (!argument || !*argument || !limit) return -1;
+	if (!strcmp(argument, "none")) { *limit = SIZE_MAX; return 0; }
+	size_t value = 0;
+	for (const unsigned char *p = (const unsigned char *)argument; *p; ++p) {
+		if (*p < '0' || *p > '9') return -1;
+		unsigned digit = *p - '0';
+		if (value > (SIZE_MAX - digit) / 10) return -1;
+		value = value * 10 + digit;
+	}
+	if (!value) return -1;
+	*limit = value;
+	return 0;
+}
+
 struct pg_program *pg_artifact_read_file(FILE *file, size_t limit,
 	size_t *count, struct pg_synthesis_job *const **roots)
 {

@@ -143,7 +143,7 @@
  }
  
  struct record {
-@@ -821,9 +885,7 @@
+@@ -821,17 +885,15 @@
  	if (!file || !count || !roots) return NULL;
  	char header[8];
  	uint64_t policy, n, nr, no, np, ne;
@@ -154,7 +154,8 @@
  	if (pg_wire_read_u64(file, &policy) || policy > PG_DEFINITION_EXPLICIT_THUNK) return NULL;
  	if (pg_wire_read_u64(file, &n) || pg_wire_read_u64(file, &nr) || pg_wire_read_u64(file, &no)
  		|| pg_wire_read_u64(file, &np) || pg_wire_read_u64(file, &ne)) return NULL;
-@@ -831,7 +893,7 @@
+-	if (n > limit || nr > limit - n || limit > SIZE_MAX / sizeof(struct record)) return NULL;
++	if (n > limit || nr > limit - n) return NULL;
  	if (no > (limit - n - nr) / 3) return NULL;
  	if (np > (limit - n - nr - 3 * no) / 6) return NULL;
  	if (ne > (limit - n - nr - 3 * no - 6 * np) / 3) return NULL;
@@ -163,6 +164,29 @@
  	if (!program) return NULL;
  	struct pg_declaration_io codec = {0};
  	struct pg_dag order = {0};
+@@ -841,14 +903,14 @@
+ 	struct pg_graph *graph = &program->graph;
+ 	/* Wire tables live only through restoration; referenced objects and roots do not. */
+ 	struct pg_graph *scratch = &order.storage;
+-	struct record *records = pg_alloc(scratch, (size_t)n * sizeof(*records));
+-	const struct pg_source_scope **scopes = pg_alloc(scratch, (size_t)n * sizeof(*scopes));
+-	uint64_t *ids = pg_alloc(scratch, (size_t)np * 6 * sizeof(*ids));
+-	uint64_t *selections = pg_alloc(scratch, (size_t)nr * sizeof(*selections));
+-	uint64_t *origin_ids = pg_alloc(scratch, (size_t)no * 3 * sizeof(*origin_ids));
+-	uint64_t *entries = pg_alloc(scratch, (size_t)ne * 3 * sizeof(*entries));
+-	struct pg_synthesis_job **jobs = pg_alloc(graph, (size_t)nr * sizeof(*jobs));
+-	struct pg_synthesis_job **producers = pg_alloc(scratch, (size_t)np * sizeof(*producers));
++	struct record *records = pg_wire_array(scratch, n, sizeof(*records));
++	const struct pg_source_scope **scopes = pg_wire_array(scratch, n, sizeof(*scopes));
++	uint64_t *ids = pg_wire_array(scratch, np, 6 * sizeof(*ids));
++	uint64_t *selections = pg_wire_array(scratch, nr, sizeof(*selections));
++	uint64_t *origin_ids = pg_wire_array(scratch, no, 3 * sizeof(*origin_ids));
++	uint64_t *entries = pg_wire_array(scratch, ne, 3 * sizeof(*entries));
++	struct pg_synthesis_job **jobs = pg_wire_array(graph, nr, sizeof(*jobs));
++	struct pg_synthesis_job **producers = pg_wire_array(scratch, np, sizeof(*producers));
+ 	if (!records || !scopes || !ids || !jobs || !origin_ids || !selections || !producers || !entries) goto fail;
+ 	size_t remaining = limit - (size_t)n - (size_t)nr - 3 * (size_t)no - 6 * (size_t)np - 3 * (size_t)ne;
+ 	size_t binding_reference_count = 0;
 @@ -921,10 +983,12 @@
  	size_t input_count = 0;
  	const struct pg_term *const *input_terms;
@@ -180,6 +204,15 @@
  	size_t context_count, reference_count;
  	const struct pg_context *const *contexts;
  	const struct pg_term *const *references;
+@@ -988,7 +1052,7 @@
+ 		if (!rules[i]) goto fail;
+ 	}
+ 	dependencies = (struct restore_order){records, ids, NULL, (size_t)n, (size_t)np};
+-	struct restore_node *nodes = pg_alloc(&order.storage, ((size_t)n + (size_t)np) * sizeof(*nodes));
++	struct restore_node *nodes = pg_wire_array(&order.storage, n + np, sizeof(*nodes));
+ 	if (!nodes) goto fail;
+ 	dependencies.nodes = nodes;
+ 	for (size_t i = 0; i < n + np; ++i)
 @@ -1164,6 +1228,8 @@
  			references[slot]->as.reference, contexts[2 * slot], contexts[2 * slot + 1]};
  		if (pg_synthesis_declaration_member_at(&program->synthesis, producers[producer - 1], (size_t)index, &allocation)) goto fail;

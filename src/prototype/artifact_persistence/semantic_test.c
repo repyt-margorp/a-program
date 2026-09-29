@@ -4,6 +4,7 @@
 #include "computation.h"
 #include "retained_io.h"
 #include "declaration_io.h"
+#include "wire.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -221,9 +222,9 @@ static void fixed_limit_and_publication(void)
 			pg_program_destroy(loaded);
 		} else { assert(count == 17 && !roots); low = limit; }
 	}
-	/* A larger fixed allowance must not change the transported graph. */
-	const size_t limits[] = {high, PG_ARTIFACT_DEFAULT_LIMIT};
-	for (size_t i = 0; i < 2; ++i) {
+	/* Policy changes must not change the transported graph or run checks. */
+	const size_t limits[] = {high, PG_ARTIFACT_DEFAULT_LIMIT, SIZE_MAX};
+	for (size_t i = 0; i < sizeof(limits) / sizeof(*limits); ++i) {
 		rewind(file);
 		size_t count;
 		struct pg_synthesis_job *const *roots;
@@ -569,8 +570,35 @@ static void effect_cycles(void)
 	pg_program_destroy(program);
 }
 
+static void limit_arguments(void)
+{
+	struct pg_graph graph;
+	assert(!pg_graph_init(&graph));
+	assert(!pg_wire_array(&graph, UINT64_MAX, sizeof(uint64_t)));
+	assert(!pg_wire_array(&graph, 1, 0));
+	assert(pg_wire_array(&graph, 0, sizeof(uint64_t)));
+	uint64_t *array = pg_wire_array(&graph, 2, sizeof(*array));
+	assert(array && !array[0] && !array[1]);
+	pg_graph_destroy(&graph);
+	size_t limit = 17;
+	assert(!pg_artifact_limit_argument("none", &limit) && limit == SIZE_MAX);
+	assert(!pg_artifact_limit_argument("1000000", &limit) && limit == PG_ARTIFACT_DEFAULT_LIMIT);
+	assert(!pg_artifact_limit_argument("0001", &limit) && limit == 1);
+	char maximum[3 * sizeof(size_t) + 1];
+	assert(snprintf(maximum, sizeof(maximum), "%zu", SIZE_MAX) > 0);
+	assert(!pg_artifact_limit_argument(maximum, &limit) && limit == SIZE_MAX);
+	const char *invalid[] = {NULL, "", "0", "000", "-1", "+1", " 1", "1 ",
+		"1x", "None", "unlimited", "184467440737095516160"};
+	for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
+		limit = 17;
+		assert(pg_artifact_limit_argument(invalid[i], &limit) && limit == 17);
+	}
+	assert(pg_artifact_limit_argument("none", NULL));
+}
+
 int main(void)
 {
+	limit_arguments();
 	cycles(0); cycles(100); cycles(100000);
 	file_extent();
 	fixed_limit_and_publication();

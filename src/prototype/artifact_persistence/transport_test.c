@@ -398,7 +398,7 @@ static void nominal_occurrences(int scoped)
 		initialize(&target);
 		struct image loaded = {.store = &target, .scoped = scoped};
 		rewind(file);
-		assert(!pg_graph_image_read(file, "APGTEST1", &target.graph, 10000, 1000,
+		assert(!pg_graph_image_read(file, "APGTEST1", &target.graph, generation == 1 ? SIZE_MAX : 10000, 1000,
 			&pg_declaration_graph_codec, &target.codec, read_payload, &loaded));
 		check_image(&loaded);
 		FILE *next = tmpfile(); assert(next);

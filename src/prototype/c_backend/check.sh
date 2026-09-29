@@ -49,6 +49,9 @@ for entry in main duplicated forwarded aborted; do compare_entry "$temporary/han
 compare_entry "$temporary/recursion.a" main
 compare_entry "$temporary/recursion.a" nominal
 compare_entry "$temporary/generic.a" main
+cp "$temporary/entry.c" "$temporary/fixed.c"
+expect_status 0 "$backend" --image-limit none "$temporary/generic.a" main "$temporary/entry.c"
+cmp "$temporary/fixed.c" "$temporary/entry.c"
 expect_status 0 "$compiler" --save-inputs "$temporary/recompute.a" "$here/fixtures/generic.p"
 compare_entry "$temporary/recompute.a" main
 
@@ -58,11 +61,15 @@ compare_entry "$temporary/pending.a" main
 cp "$temporary/entry.c" "$temporary/unchanged.c"
 expect_status 3 "$backend" --steps 0 "$temporary/effects.a" main "$temporary/entry.c"
 cmp "$temporary/entry.c" "$temporary/unchanged.c"
+expect_status 3 "$backend" --steps 0 --image-limit none "$temporary/effects.a" main "$temporary/entry.c"
+cmp "$temporary/entry.c" "$temporary/unchanged.c"
 expect_status 4 "$backend" "$temporary/effects.a" function "$temporary/entry.c"
 cmp "$temporary/entry.c" "$temporary/unchanged.c"
 for invalid in invalid invalid-assert; do
 	expect_status 1 "$compiler" --save "$temporary/invalid.a" "$here/fixtures/$invalid.p"
 	expect_status 1 "$backend" "$temporary/invalid.a" main "$temporary/entry.c"
+	cmp "$temporary/entry.c" "$temporary/unchanged.c"
+	expect_status 1 "$backend" --image-limit none "$temporary/invalid.a" main "$temporary/entry.c"
 	cmp "$temporary/entry.c" "$temporary/unchanged.c"
 done
 expect_status 2 "$backend" "$temporary/effects.a" main "$temporary/effects.a"

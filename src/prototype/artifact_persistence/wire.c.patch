@@ -1,0 +1,14 @@
+--- a/wire.c
++++ b/wire.c
+@@ -1,4 +1,11 @@
+ #include "wire.h"
++#include "graph.h"
++
++void *pg_wire_array(struct pg_graph *graph, uint64_t count, size_t element_size)
++{
++	if (!element_size || count > SIZE_MAX / element_size) return NULL;
++	return pg_alloc(graph, (size_t)count * element_size);
++}
+ 
+ int pg_wire_write_u64(FILE *file, uint64_t value)
+ {

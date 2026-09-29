@@ -69,7 +69,7 @@
  	uint64_t budget = 100000;
  	uint64_t run_budget = 100000;
  	uint64_t root_index = 0;
-+	uint64_t image_limit = PG_ARTIFACT_DEFAULT_LIMIT;
++	size_t image_limit = PG_ARTIFACT_DEFAULT_LIMIT;
  	enum pg_definition_policy policy = PG_DEFINITION_IMPLICIT_THUNK;
  	const char *path = NULL;
  	const char *selected = NULL;
@@ -83,7 +83,7 @@
  		if (!strcmp(argv[i], "--steps")) {
  			if (++i == argc || steps_argument(argv[i], &budget) != 0) goto usage;
 +		} else if (!strcmp(argv[i], "--image-limit")) {
-+			if (++i == argc || steps_argument(argv[i], &image_limit) || image_limit > SIZE_MAX) goto usage;
++			if (++i == argc || pg_artifact_limit_argument(argv[i], &image_limit)) goto usage;
  		} else if (!strcmp(argv[i], "--run-steps")) {
  			if (run_steps || ++i == argc || steps_argument(argv[i], &run_budget)) goto usage;
  			run_steps = 1;
@@ -114,7 +114,7 @@
  				"--imports FILE.p supplies exported symbols to explicit source imports.\n"
  				"--repl keeps the loaded Program for :solve, :whnf, :nf, :status, :root, :save, :quit.\n"
 -				"--load reads an image (limit 1000000); its stored thunk policy applies.\n"
-+				"--load uses a fixed decoder allowance (default 1000000); --image-limit N sets it explicitly.\n"
++				"--load uses a fixed decoder allowance (default 1000000); --image-limit N|none sets it explicitly.\n"
 +				"The allowance counts payload records/references/name units, not bytes, RAM or Solve fuel. Stored thunk policy applies.\n"
  				"--root N selects a loaded root (1-based, default 1); save retains every root.\n"
  				"Created WHNF/NF requests append roots without replacing the selected source module.\n"
@@ -140,7 +140,7 @@
  	struct pg_synthesis_job *const *roots = NULL;
  	if (load) {
 -		program = pg_sources_read(file, 1000000, &count, &roots);
-+		program = pg_artifact_read_file(file, (size_t)image_limit, &count, &roots);
++		program = pg_artifact_read_file(file, image_limit, &count, &roots);
  		if (program && root_index > count) {
  			fprintf(stderr, "%s: root index out of range: %" PRIu64 " (count %zu)\n", path, root_index, count);
  			pg_program_destroy(program);

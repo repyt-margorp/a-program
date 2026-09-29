@@ -4,6 +4,10 @@
 
 #define PG_ARTIFACT_DEFAULT_LIMIT 1000000
 
+/* Decimal positive fixed limit, or "none" for SIZE_MAX (representability and
+ * allocation checks still apply). Failure leaves the output unchanged. */
+int pg_artifact_limit_argument(const char *argument, size_t *limit);
+
 /* Explicit fixed decoder allowance, independent of bytes and Solve fuel.
  * Each payload bounds its own record/reference/name units; not a memory cap.
  * Streams are borrowed. Reading never advances Solve or admits evidence.

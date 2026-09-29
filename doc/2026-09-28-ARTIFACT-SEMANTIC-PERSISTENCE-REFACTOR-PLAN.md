@@ -429,10 +429,17 @@ the policy for adoption. In particular, the earlier description of every
 reachable typed dependency as "required" was too strong.
 
 Agent implementation decision within the requested fixed-or-unbounded choice:
-keep a fixed default of 1,000,000 decoder units, expose `--image-limit N`, and
+keep a fixed default of 1,000,000 decoder units, expose `--image-limit N|none`, and
 use the same explicit bound for files and pipes. No size-based retry or inferred
-allowance. Unbounded decoding is not implemented in this increment; SIZE_MAX
-cannot just be passed to codecs whose allocation checks assume a finite bound.
+allowance. The follow-up after `2a11208` implements `none` as `SIZE_MAX`, after
+separating policy quota checks from actual array counts. Four readers previously
+rejected a large quota even for a small file. They now use one checked wire-array
+allocator; count representability and allocation failure remain enforced.
+O2 history/transport/semantic/C gates and focused ASan/UBSan pass, including
+sanitized emitted C. File and pipe step-0 roundtrips remain byte-identical; the
+32,372,583-byte QuickSort image is also unchanged under the unbounded option.
+Invalid modules and zero-fuel C exports remain rejected/pending. This increment
+does not rerun the entire acceptance suite or resolve checkpoint/fuel reuse.
 The limit is per-payload records/references/name units, not bytes, memory or fuel.
 The large sorting tests explicitly select 10,000,000; this is **not compaction**.
 

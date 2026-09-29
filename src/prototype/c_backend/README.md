@@ -82,7 +82,9 @@ cc -std=c11 -O2 -Isrc/prototype/c_backend /tmp/example.c src/prototype/c_backend
 
 The final command prints `-2147483648:-2147483648:1:2147483647`.
 Use a new overlay directory. The adapter accepts `--steps N` and an explicit
-fixed `--image-limit N` (default 1,000,000), independent of file bytes or fuel.
+fixed `--image-limit N` (default 1,000,000), or explicit `--image-limit none`,
+independent of file bytes or fuel. Removing the quota does not confer trust or
+skip format/representability checks. It does not reduce the retained graph.
 Exit codes: 0 emitted, 1 rejected, 2 input/I/O failure, 3 pending, 4 unsupported.
 
 Tests compare standalone output with the interpreter, require deterministic C
