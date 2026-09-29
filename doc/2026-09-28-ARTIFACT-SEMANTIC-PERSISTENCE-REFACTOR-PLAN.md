@@ -547,6 +547,32 @@ still fails at 100+100 and later; results are in
 `/tmp/a-program-source-lifecycle-final-partitions/partitions.tsv`. These focused
 owner gates do not satisfy the whole-source checkpoint completion criterion.
 
+Constructor increment after `44170b8` (2026-09-29, agent implementation decision):
+the pending value owner can borrow/reuse its **completed checked field map**,
+without retaining the completed scope worker. Attachment checks nominal fields,
+parameter context and exact variable images (a constant-field substitution is not
+a namespace callable), creates no Terms/proofs and leaves the value pending.
+Ordinary Solve still checks Self/parameter agreement and constructs the callable.
+This applies before body abstraction starts; provenance and lexical interface
+metadata remain the enclosing owner's responsibilities. It is not raw evidence
+admission or a replacement for unfinished scope/body continuation transport.
+O2/ASan/UBSan pass six fresh-owner, original-Program-destroyed tests: 0/1/2 fields,
+with and without a type parameter. Existing rule checking spends 227/263/299 and
+349/385/421 fuel respectively; continuation then takes exactly 1/16/28, matching
+the original and its Core bytes within one total budget. Inert decode/resave,
+step 0, wrong owners/constructors, constant fields and late rewind are covered.
+Definition/WHNF/semantic, Source I/O, CLI policy, C differential and Acc QuickSort
+also pass; full acceptance was not rerun. Actual incremental C/header: +49/+12,
+no removals; fixture: 239 lines. Normal source import is still unconnected; both
+namespace and full partition gates still fail on this candidate.
+
+Further inspected consumer: `synthesis_iadt.c`'s `induction_scope_step` reads the
+completed constructor worker's private `fields[]` solely to inspect declaration
+field types. Before globally discarding that worker, use a shared schema-owned
+field-order view in both constructor and induction owners; avoid repeated list
+scans or another retained field-type authority. This is an agent assessment,
+not a claim that the consumer has already been refactored.
+
 #### Rejected Read Policy and Retention Audit (2026-09-29)
 
 The user rejected the agent's byte-derived allowance. That prototype and its
@@ -625,6 +651,10 @@ alone. Avoid adding a second parallel type graph or serializing all workers.
 - [ ] Include pending namespace/constructor producers in the live closure;
   pass `check-artifact-namespace-frontier`, then expand other source/typing owners.
   Ordinary `.a` checkpoint integration remains open.
+- [x] Reuse the completed field map before constructor body abstraction, through
+  checked typed inputs; `check-artifact-constructor-checkpoint` tests this boundary.
+- [ ] Remove induction's read of completed scope-worker `fields[]` in favor of
+  the declaration's shared field order, then reconnect namespace continuations.
 - [ ] Replace any confirmed redundant origin/type retention with the existing
   typed owner's shared construction or an explicitly selected recompute policy.
   Gate on open scopes, distinct nominal families, ordinary Sorted results,

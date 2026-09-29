@@ -33,6 +33,14 @@ check-artifact-definition-checkpoint: $(BUILD)/artifact_definition_checkpoint_te
 check-artifact-namespace-frontier: $(BUILD)/artifact_definition_checkpoint_test
 	$(BUILD)/artifact_definition_checkpoint_test --pending-namespace
 
+.PHONY: check-artifact-constructor-checkpoint
+check-artifact-constructor-checkpoint: $(BUILD)/artifact_constructor_checkpoint_test
+	$(BUILD)/artifact_constructor_checkpoint_test
+
+$(BUILD)/artifact_constructor_checkpoint_test: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(wildcard $(ROOT)*.h) $(ARTIFACT_PROTOTYPE)constructor_checkpoint_test.c
+	mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ARTIFACT_PROTOTYPE)constructor_checkpoint_test.c -Wl,--wrap=pg_synthesis_advance -o $@
+
 $(BUILD)/artifact_definition_checkpoint_test: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ROOT)artifact/schedule.c $(wildcard $(ROOT)*.h) $(ARTIFACT_PROTOTYPE)definition_checkpoint_test.c
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ROOT)artifact/schedule.c $(ARTIFACT_PROTOTYPE)definition_checkpoint_test.c -Wl,--wrap=pg_synthesis_advance -o $@

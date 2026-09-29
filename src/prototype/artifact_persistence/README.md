@@ -284,6 +284,7 @@ make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artif
 make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artifact-persistence BUILD=/tmp/a-program-artifact-persistence/build check-artifact-semantic
 make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artifact-persistence BUILD=/tmp/a-program-artifact-persistence/build check-artifact-normalization-checkpoint
 make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artifact-persistence BUILD=/tmp/a-program-artifact-persistence/build check-artifact-definition-checkpoint
+make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artifact-persistence BUILD=/tmp/a-program-artifact-persistence/build check-artifact-constructor-checkpoint
 make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artifact-persistence BUILD=/tmp/a-program-artifact-persistence/build check-artifact-history
 ```
 
@@ -330,6 +331,18 @@ the currently supported owner closure. The source program compiles; no covered
 late checkpoint exists yet. Retain that unfinished namespace work, not just the
 module's current selected result. Default `.a` loading does not use these hooks,
 and the whole-source partition gate below still fails.
+
+The constructor gate separately transports the checked field map through existing
+rule inputs, verifies it using ordinary Solve, then resumes the value owner before
+body abstraction. It does not copy completed worker history or accept raw proof
+flags. O2/ASan/UBSan pass 0/1/2-field cases with and without type parameters:
+validation takes 227/263/299 and 349/385/421 steps; the remaining 1/16/28 steps and
+Core bytes match after destroying the original Program. Inert resave/step 0,
+foreign inputs, constant fields and rewinding started work are checked. Attachment
+itself creates no Terms/proofs. Private unfinished field/body work, source interface
+metadata and ordinary `.a` integration remain open. Induction still reads a finished
+scope worker's field-type array; that dependency must move to the declaration's
+shared field view before its history can be discarded globally.
 
 The strict fuel-partition gate is separate from the currently passing transport
 tests. It fails until saved progress survives reload, including cases where the

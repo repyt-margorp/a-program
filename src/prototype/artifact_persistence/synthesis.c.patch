@@ -1,6 +1,62 @@
 --- a/synthesis.c
 +++ b/synthesis.c
-@@ -1299,12 +1299,15 @@
+@@ -1227,6 +1227,55 @@
+ 	return 0;
+ }
+ 
++int pg_synthesis_constructor_ready_scope(const struct pg_synthesis *synthesis,
++	const struct pg_synthesis_job *job, const struct pg_evidence **scope)
++{
++	if (!synthesis || !job || !scope || job->owner != synthesis->owner_key || job->role != CONSTRUCTOR_VALUE_JOB) return -1;
++	const struct source_work *local = source_work(job);
++	if (job->status != PG_SYNTHESIS_PENDING || local->value_job || local->callable) return 0;
++	if (!local->left || local->left->status != PG_SYNTHESIS_DONE) return 0;
++	*scope = local->left->result;
++	return 1;
++}
++
++struct pg_synthesis_job *pg_synthesis_constructor_from_scope(struct pg_synthesis *synthesis,
++	const struct pg_evidence *formation, const struct pg_object *constructor,
++	const struct pg_evidence *parameters, const struct pg_evidence *scope)
++{
++	if (!synthesis || !constructor) return NULL;
++	struct pg_typing *typing = synthesis->typing;
++	if (!pg_evidence_owned_by(formation, typing) || pg_evidence_rule(formation) != PG_INDUCTIVE_FORM) return NULL;
++	if (!pg_evidence_owned_by(parameters, typing) || pg_evidence_rule(parameters) != PG_CONTEXT_SUBSTITUTION) return NULL;
++	if (!pg_evidence_owned_by(scope, typing) || pg_evidence_rule(scope) != PG_CONTEXT_SUBSTITUTION) return NULL;
++	const struct pg_evidence *fields = pg_data_schema_fields(pg_evidence_inductive_schema(formation), constructor);
++	const struct pg_context_map *map = pg_evidence_context_map(scope), *prefix = pg_evidence_context_map(parameters);
++	if (!fields || map->source != pg_evidence_context(fields) || prefix->source != pg_evidence_context(formation)) return NULL;
++	if (map->count <= prefix->count) return NULL;
++	size_t count = map->count - prefix->count - 1, extensions;
++	if (pg_context_extension_size(map->destination, prefix->destination, &extensions) || extensions != count) return NULL;
++	/* A namespace callable abstracts fresh field variables, not an arbitrary
++	 * well-typed instance (e.g. a constant constructor argument). */
++	const struct pg_context *context = map->destination;
++	for (size_t i = count; i; --i, context = context->parent) {
++		const struct pg_term *image = map->images[prefix->count + i]->core;
++		if (image->kind != PG_REFERENCE || image->as.reference != context->binder) return NULL;
++	}
++	struct pg_synthesis_job *left = pg_synthesis_evidence(synthesis, formation);
++	struct pg_synthesis_job *right = pg_synthesis_evidence(synthesis, parameters);
++	struct pg_synthesis_job *ready = pg_synthesis_evidence(synthesis, scope);
++	if (!left || !right || !ready) return NULL;
++	const void *inputs[] = {left, constructor, right};
++	struct pg_synthesis_job *job = pg_synthesis_work_request(synthesis, CONSTRUCTOR_VALUE_JOB, 3, inputs);
++	if (!job) return NULL;
++	struct source_work *local = source_work(job);
++	if (job->status != PG_SYNTHESIS_PENDING || local->value_job || local->callable) return NULL;
++	if (local->left) return local->left->result == scope ? job : NULL;
++	/* Only reuse checked construction. The normal constructor rule still
++	 * verifies Self/parameter agreement and builds the result during Solve. */
++	local->left = ready;
++	return job;
++}
++
+ struct pg_synthesis_job *pg_synthesis_constructor_value(struct pg_synthesis *synthesis,
+ 	const struct pg_evidence *formation, const struct pg_object *constructor,
+ 	const struct pg_evidence *parameters)
+@@ -1299,12 +1348,15 @@
  	return NULL;
  }
  
@@ -18,7 +74,7 @@
  	struct pg_synthesis_job *registration = definition_registration(synthesis, source_work(root)->scope, syntax);
  	if (!registration) return NULL;
  	source_work(root)->right = registration;
-@@ -1330,7 +1333,7 @@
+@@ -1330,7 +1382,7 @@
  	const struct pg_syntax *syntax = source_work(root)->syntax;
  	if (syntax && syntax->kind == PG_SYNTAX_QUALIFIED) syntax = syntax->left;
  	if (!syntax || syntax->kind != PG_SYNTAX_DEFINITIONS || index >= syntax->item_count) return -1;
@@ -27,7 +83,7 @@
  	if (!registration) return -1;
  	return definition_input(source_work(registration)->definitions, index, producer);
  }
-@@ -2473,6 +2476,113 @@
+@@ -2473,6 +2525,113 @@
  	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED);
  }
  
@@ -141,7 +197,7 @@
  static void definition_scope_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
  	struct source_work *local = source_work(job);
-@@ -2534,6 +2644,80 @@
+@@ -2534,6 +2693,80 @@
  	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_DONE);
  }
  
@@ -222,7 +278,7 @@
  static void definitions_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
  	struct source_work *local = source_work(job);
-@@ -2541,7 +2725,7 @@
+@@ -2541,7 +2774,7 @@
  	int selected = syntax->kind == PG_SYNTAX_QUALIFIED;
  	if (selected) syntax = syntax->left;
  	if (!local->right) {
