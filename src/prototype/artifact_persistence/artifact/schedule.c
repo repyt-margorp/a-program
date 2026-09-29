@@ -86,7 +86,7 @@ static size_t slot(const struct pg_dag *map, const struct pg_synthesis_job *job)
 /* A partial closure must not silently discard another consumer's subscription
  * or runnable work. Marks also bound traversal of an inconsistent linked list. */
 static int inspect(const struct pg_synthesis *synthesis, const struct pg_dag *map,
-	struct pg_synthesis_job *const *jobs, unsigned char *marks, size_t *ready, size_t *waiting)
+	struct pg_synthesis_job *const *jobs, unsigned char *marks, size_t *ready, size_t *waiting, int replacing)
 {
 	*ready = *waiting = 0;
 	memset(marks, 0, map->count);
@@ -103,16 +103,17 @@ static int inspect(const struct pg_synthesis *synthesis, const struct pg_dag *ma
 		const struct pg_synthesis_job *child = jobs[i];
 		for (const struct waiter *w = child->waiters; w; w = w->next) {
 			size_t p = slot(map, w->parent);
-			if (p == SIZE_MAX || marks[p] || w->child != child) return -1;
+			if (p == SIZE_MAX || (marks[p] & 2) || w->child != child) return -1;
+			if (!replacing && marks[p]) return -1;
 			if (w->parent->dependency != w || w->parent->status != PG_SYNTHESIS_PENDING) return -1;
 			if (child->status != PG_SYNTHESIS_PENDING || (unsigned)w->preparation > 1) return -1;
-			marks[p] = 2;
+			marks[p] |= 2;
 			++*waiting;
 		}
 	}
 	for (size_t i = 0; i < map->count; ++i) {
-		if ((jobs[i]->dependency != NULL) != (marks[i] == 2)) return -1;
-		if (marks[i] != 1 && jobs[i]->next) return -1;
+		if ((jobs[i]->dependency != NULL) != ((marks[i] & 2) != 0)) return -1;
+		if (!(marks[i] & 1) && jobs[i]->next) return -1;
 	}
 	return 0;
 }
@@ -126,7 +127,7 @@ int pg_artifact_schedule_write(FILE *file, const struct pg_synthesis *synthesis,
 	if (job_map(&map, synthesis, count, jobs)) goto done;
 	unsigned char *marks = pg_alloc(&map.storage, count);
 	size_t ready, waiting;
-	if (!marks || inspect(synthesis, &map, jobs, marks, &ready, &waiting)) goto done;
+	if (!marks || inspect(synthesis, &map, jobs, marks, &ready, &waiting, 0)) goto done;
 	struct pg_artifact_schedule *state = allocate(&map.storage, count, ready, waiting);
 	if (!state) goto done;
 	size_t q = 0, e = 0;
@@ -153,7 +154,10 @@ int pg_artifact_schedule_attach(struct pg_synthesis *synthesis, const struct pg_
 	if (job_map(&map, synthesis, count, jobs)) goto done;
 	unsigned char *marks = pg_alloc(&map.storage, count);
 	size_t previous_ready, previous_waiting;
-	if (!marks || inspect(synthesis, &map, jobs, marks, &previous_ready, &previous_waiting)) goto done;
+	/* Source recipe reconstruction can subscribe a newly enqueued request
+	 * before its initial dispatch. Replace that unpublished queue as a whole;
+	 * the saved queue remains disjoint from its dependency parents. */
+	if (!marks || inspect(synthesis, &map, jobs, marks, &previous_ready, &previous_waiting, 1)) goto done;
 	for (size_t i = 0; i < state->ready; ++i)
 		if (jobs[state->queue[i]]->status != PG_SYNTHESIS_PENDING) goto done;
 	struct waiter *edges = pg_wire_array(synthesis->typing->graph, state->waiting, sizeof(*edges));

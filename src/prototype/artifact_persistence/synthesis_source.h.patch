@@ -1,0 +1,25 @@
+--- a/synthesis_source.h
++++ b/synthesis_source.h
+@@ -22,6 +22,22 @@
+ 	struct pg_synthesis_job *clause;
+ };
+ 
++/* Borrowed pending registration frontier. Entries keep their original source
++ * recipes; this view contains no evidence, acceptance, or child continuation.
++ * A checkpoint owner must establish provenance and restore child state and
++ * scheduling separately before allowing Solve to advance. */
++struct pg_definition_frontier {
++	size_t count, indexed, activated;
++	struct pg_synthesis_job *const *entries;
++};
++struct pg_synthesis_job *pg_synthesis_prepare_module(struct pg_synthesis *, struct pg_synthesis_job *);
++int pg_synthesis_definition_frontier(const struct pg_synthesis *, const struct pg_synthesis_job *,
++	struct pg_definition_frontier *);
++/* Rebuild only the name index and activation gates on a fresh registration.
++ * Does not advance, accept a result, or restore completed registration. */
++int pg_synthesis_definition_resume(struct pg_synthesis *, struct pg_synthesis_job *,
++	const struct pg_definition_frontier *);
++
+ /* Restored lexical binder allocation. Each owner keeps its own cursor;
+  * this payload describes source addresses, not a second typed Context. */
+ struct pg_source_context_allocation {

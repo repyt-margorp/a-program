@@ -283,6 +283,7 @@ bash src/prototype/artifact_persistence/overlay.sh /tmp/a-program-artifact-persi
 make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artifact-persistence BUILD=/tmp/a-program-artifact-persistence/build check-artifact-transport
 make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artifact-persistence BUILD=/tmp/a-program-artifact-persistence/build check-artifact-semantic
 make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artifact-persistence BUILD=/tmp/a-program-artifact-persistence/build check-artifact-normalization-checkpoint
+make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artifact-persistence BUILD=/tmp/a-program-artifact-persistence/build check-artifact-definition-checkpoint
 make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artifact-persistence BUILD=/tmp/a-program-artifact-persistence/build check-artifact-history
 ```
 
@@ -304,7 +305,22 @@ preparation wakeups through `artifact/schedule.c`. Its inert wire records do not
 import job status, evidence or private owner state. Attachment requires a closed
 owner-supplied mapping and known-origin continuations; decoding alone does not
 authorize attachment. Default source import does not use these APIs. NF and
-source-owner continuations remain unfinished; this is not a whole-source checkpoint gate.
+most source-owner continuations remain unfinished; this is not a whole-source checkpoint gate.
+
+The definition checkpoint gate covers pending registration: exact entry links,
+name indexing and activation position. The owner rebuilds its disposable hash
+index without replaying registration dispatches or importing acceptance. Fresh
+definition bodies receive their lexical scope and activation gate; their later
+private continuation, completed registration and whole-module checking position
+are not restored by this hook. The enclosing owner must establish provenance,
+restore other child owners and attach the saved schedule before advancing Solve.
+The test-only envelope uses existing syntax and schedule codecs; it is not a new
+public `.a` format. It checks 44 real source frontiers (including aliases, shared
+syntax, ADT/function use, invalid siblings/checks and dormant cycles), destroys
+the original Program, then compares remaining dispatches and final source-image
+bytes. A 64-definition registration also checks 1+19/10+10/20+0 against 20.
+Repeated import recipe sharing and duplicate-assignment rejection have separate
+owner-link tests. Default source-image loading still does not use this hook.
 
 The strict fuel-partition gate is separate from the currently passing transport
 tests. It fails until saved progress survives reload, including cases where the

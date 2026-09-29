@@ -485,9 +485,39 @@ to its internal header (+9/-1 there, -7 in `synthesis_work.c`) and permit shared
 WHNF attachment (+3/-1 in `synthesis_conversion.c`, +1 header line). This is
 additional checkpoint functionality, not a claimed code-size reduction.
 
-Next: AP1.2/AP1.3 must connect the source-owned live continuation closure and
-ready/wait order, accounting for provenance and validation under AP1. This
-focused owner gate does not make the whole-source partition failure pass.
+Source-owner increment after `4251885` (2026-09-29): a borrowed definition
+registration frontier retains existing entry links and indexing/activation
+cursors. Its owner validates source identities, rebuilds only the name hash
+index and restores fresh definition scope/activation gates. It does not accept
+evidence, mark registration done, advance Solve, or copy typed data. Repeated
+imports keep the first name's producer; shared definition recipes remain shared.
+Invalid attachments do not publish cursor/index changes. The checkpoint caller
+must establish provenance and restore child continuations and scheduling before
+Solve. Scheduler replacement now tolerates the initial queued/subscribed overlap
+produced by source recipe reconstruction; the saved schedule still rejects it.
+
+Fresh O2/ASan/UBSan tests pass 44 source frontiers: forward names, shared syntax,
+ADT/function use, invalid unselected siblings/`::`, duplicate names, unsupported
+imports and dormant cycles. Each destroys the original Program, preserves
+load/resave and step-0 bytes, then matches remaining dispatches and final source
+image bytes. A 64-definition registration gives identical checkpoint bytes for
+1+19/10+10/20+0 and 20. This is a test-only composition of existing syntax and
+schedule codecs, not a public `.a` checkpoint format. Separate link tests verify
+repeated-import sharing and reject a cursor that skips duplicate assignments.
+Existing 300-boundary WHNF/scheduler tests pass with sanitizers; semantic, Source
+I/O, CLI policy, C differential and checked/trusted Acc QuickSort gates pass.
+Results use clean `e716232` plus prototypes, excluding unrelated Evidence/IADT
+edits. Full acceptance was not rerun. Implementation delta: `synthesis.c`
++103/-4, `synthesis_source.h` +16/-0, `artifact/schedule.c` +11/-7; the focused
+fixture adds 357 lines. This is continuation support, not a code-reduction claim.
+
+Next: AP1.2/AP1.3 must cover advanced definition bodies, completed registration,
+whole-module sibling/check traversal, and the other live source/typing owners,
+then connect the closure to `.a` under AP1's provenance/fuel policy. The normal
+source loader does not use the new hook. Its fresh partition gate still fails
+at 100+100 and later, unchanged; results are in
+`/tmp/a-program-definition-final-partitions/partitions.tsv`. These focused owner
+gates do not satisfy the whole-source checkpoint completion criterion.
 
 #### Rejected Read Policy and Retention Audit (2026-09-29)
 
@@ -558,6 +588,10 @@ alone. Avoid adding a second parallel type graph or serializing all workers.
 - [x] Transport scheduler order/subscriptions separately from acceptance and
   connect it to shared WHNF consumers; check exact resumed dispatches and wakes.
   Source-owned private state and full checkpoint/provenance integration remain open.
+- [x] Restore the pending source-definition registration frontier without
+  replaying registration work; preserve names, activation gates and sharing.
+  `check-artifact-definition-checkpoint` covers this owner, not later body or
+  module-check traversal. Ordinary `.a` checkpoint integration remains open.
 - [ ] Replace any confirmed redundant origin/type retention with the existing
   typed owner's shared construction or an explicitly selected recompute policy.
   Gate on open scopes, distinct nominal families, ordinary Sorted results,
