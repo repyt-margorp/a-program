@@ -281,6 +281,57 @@ static void invalid_registration_progress(void)
 	assert(!fclose(file));
 }
 
+static void reconstructed_definition_bodies(void)
+{
+	const char *sources[] = {"main := #1; main :: #Int;", "main := #1; main :: #Text;"};
+	size_t attached = 0;
+	for (size_t kind = 0; kind < 2; ++kind) {
+		for (uint64_t cut = 0; cut <= 120; ++cut) {
+			struct pg_program *original = pg_program_create(sources[kind], strlen(sources[kind]), PG_DEFINITION_IMPLICIT_THUNK);
+			assert(original && original->root);
+			struct pg_synthesis_job *registration = pg_synthesis_prepare_module(&original->synthesis, original->root);
+			assert(registration);
+			advance(original, cut);
+			struct pg_definition_frontier before, after;
+			assert(!pg_synthesis_definition_frontier(&original->synthesis, registration, &before));
+			FILE *file = save(original, 1, &original->root);
+			size_t count;
+			struct pg_synthesis_job *const *roots;
+			struct pg_program *copy = pg_sources_read(file, PG_ARTIFACT_DEFAULT_LIMIT, &count, &roots);
+			assert(copy && count == 1 && !fclose(file));
+			registration = pg_synthesis_prepare_module(&copy->synthesis, roots[0]);
+			assert(!pg_synthesis_definition_frontier(&copy->synthesis, registration, &after));
+			assert(before.count == after.count);
+			for (size_t i = 0; i < before.count; ++i) {
+				struct pg_synthesis_job *body = NULL;
+				if (pg_synthesis_definition_body(&original->synthesis, before.entries[i], &body) || !body) continue;
+				const struct pg_source_scope *scope;
+				const struct pg_syntax *definitions, *expression;
+				assert(!pg_synthesis_definition_input(&copy->synthesis, after.entries[i], &scope, &definitions, &expression));
+				scope = pg_synthesis_definition_scope(&copy->synthesis, scope, definitions);
+				body = pg_synthesis_request(&copy->synthesis, scope, expression);
+				assert(body && !pg_synthesis_definition_resume_body(&copy->synthesis, after.entries[i], body));
+				++attached;
+			}
+			if (after.complete) {
+				struct pg_module_frontier cursor = {.position = 1, .previous = after.entries[0]};
+				assert(!pg_synthesis_module_resume(&copy->synthesis, roots[0], &cursor));
+			}
+			no_import_preparation(copy);
+			/* Reconstruction queues parents before their newly reserved bodies.
+			 * This is ordinary revalidation, not saved-schedule resumption. */
+			advance(copy, 10000);
+			enum pg_synthesis_status expected = kind ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE;
+			assert(roots[0]->status == expected);
+			assert(!copy->synthesis.ready);
+			pg_program_destroy(copy);
+			pg_program_destroy(original);
+		}
+	}
+	assert(attached);
+	puts("source reconstruction: pending bodies and module entries wait before consuming results; assertions still checked");
+}
+
 static void registration_is_not_context_acceptance(void)
 {
 	struct pg_program *p = pg_program_allocate_empty(PG_DEFINITION_IMPLICIT_THUNK);
@@ -1052,6 +1103,7 @@ int main(void)
 {
 	early_wake();
 	registration_progress();
+	reconstructed_definition_bodies();
 	invalid_registration_progress();
 	registration_is_not_context_acceptance();
 	lexical_module_roots();

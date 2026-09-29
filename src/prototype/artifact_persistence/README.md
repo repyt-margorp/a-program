@@ -63,6 +63,13 @@ entry proof is accepted. Failed items do not advance the committed cursor and
 are rechecked by ordinary Solve. Source-body progress and the schedule are still
 not saved. Multiple selections share the same entry table after inert import.
 
+Definition and module checking now use the common await operation for an
+existing pending child instead of reporting its pending status as completion.
+Reconstructing a body reference/current entry before checking therefore cannot
+strand that parent with an empty ready queue. The 242 positive/negative cut
+regressions cover ordinary revalidation, not a saved checkpoint. No additional
+wire field is adopted; exact owner-state and schedule transport remain open.
+
 The completion byte introduced in APGSRC66 remains descriptive, using the existing
 producer associations and typed graph. It does not restore live `DONE` status,
 accept Kernel evidence, or save typed checking cursors. `artifact/file.c` owns explicit

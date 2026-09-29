@@ -990,6 +990,41 @@ the same 0-120 cut/rejection tests and inert byte-equal cycles; log:
 `/tmp/a-program-artifact-boundary-verified.log`. The full partition test still
 fails as reported above; no full compiler regression rerun is claimed here.
 
+#### Source Dependency Waits (2026-09-29)
+
+**Objective:** following `ea621fe`, an integration regression reconstructs
+pending definition bodies and the current module-entry cursor through existing
+owner APIs, then runs ordinary revalidation. It does not install saved evidence
+or a checkpoint format. The previous implementation strands even the valid
+`main := #1; main :: #Int;` at cut 108: pending root, empty ready queue.
+The invalid `#Text` annotation must also reach rejection instead of stalling.
+
+**Assessment/implementation:** `definition_step` and `definitions_step` called
+`pg_synthesis_finish(..., child->status)` when a child was unfinished. A pending
+status is not a completion: it needs a subscription. Both now use the existing
+`pg_synthesis_await`. The request-creation stages and ordinary completed-child
+paths are unchanged. No new scheduler, acceptance rule, artifact field or
+Transpiler dependency is introduced; implementation delta is +2/-4 lines.
+
+**Verification:** clean accepted `e716232` plus prototype overlays at `ea621fe`
+and this change; unrelated working-tree edits are excluded. Focused O2 and
+ASan/UBSan semantic tests pass, including 242
+valid/invalid reconstruction cuts, no import-time Solve/proof admission, and the
+existing inert byte-equal cycles. Definition and started-constructor-body
+checkpoint gates also pass, preserving their remaining dispatch counts.
+O2 C emission, LinkerScript, native enum and checked/trusted Acc QuickSort
+differentials pass, including input-image immutability. Permanent tests add 52
+C lines; patch-file context changes are not implementation line growth.
+Logs: `/tmp/a-program-pending-parent-{before,after,final,final-asan}.log`.
+Backend log: `/tmp/a-program-pending-parent-c.log`.
+Full O2 `check-acceptance` also exits 0: source compatibility 63/63,
+all four derived-LT/partition-order variants, universal sorting properties,
+Local/Strong Sorted, finite views and optional internal witness packets.
+Log: `/tmp/a-program-pending-parent-acceptance.log`.
+The full public partition test still fails with the same measurements as the
+APGSRC68 baseline; this is not permission to adopt the rejected body-edge wire
+extension. AP1-AP3 closure/schedule/provenance integration remains open.
+
 #### Explicit Recompute Profile (2026-09-29)
 
 Agent implementation within the user's earlier requirement to allow either
