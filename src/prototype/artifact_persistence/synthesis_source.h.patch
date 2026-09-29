@@ -1,24 +1,39 @@
 --- a/synthesis_source.h
 +++ b/synthesis_source.h
-@@ -22,6 +22,22 @@
+@@ -22,6 +22,37 @@
  	struct pg_synthesis_job *clause;
  };
  
-+/* Borrowed pending registration frontier. Entries keep their original source
-+ * recipes; this view contains no evidence, acceptance, or child continuation.
++/* Borrowed registration frontier. Entries keep their original source recipes;
++ * registration completion is name publication, not acceptance of those entries.
 + * A checkpoint owner must establish provenance and restore child state and
 + * scheduling separately before allowing Solve to advance. */
 +struct pg_definition_frontier {
 +	size_t count, indexed, activated;
 +	struct pg_synthesis_job *const *entries;
++	int complete;
 +};
 +struct pg_synthesis_job *pg_synthesis_prepare_module(struct pg_synthesis *, struct pg_synthesis_job *);
 +int pg_synthesis_definition_frontier(const struct pg_synthesis *, const struct pg_synthesis_job *,
 +	struct pg_definition_frontier *);
-+/* Rebuild only the name index and activation gates on a fresh registration.
-+ * Does not advance, accept a result, or restore completed registration. */
++/* Rebuild the name index and activation gates on a fresh registration. A
++ * completed registration additionally needs its already checked context and
++ * complete input table. Never advances or accepts an entry's typed result. */
 +int pg_synthesis_definition_resume(struct pg_synthesis *, struct pg_synthesis_job *,
 +	const struct pg_definition_frontier *);
++
++/* Pending definition bodies and module-check traversal. These borrow/restore
++ * only owner-local edges/cursors. Child work/results must be restored or checked
++ * separately, and the enclosing checkpoint must replace scheduling before Solve.
++ * The module position is its next entry, or 0/1 before/after named selection. */
++struct pg_module_frontier {
++	size_t position;
++	struct pg_synthesis_job *previous;
++};
++int pg_synthesis_definition_body(const struct pg_synthesis *, const struct pg_synthesis_job *, struct pg_synthesis_job **);
++int pg_synthesis_definition_resume_body(struct pg_synthesis *, struct pg_synthesis_job *, struct pg_synthesis_job *);
++int pg_synthesis_module_frontier(const struct pg_synthesis *, const struct pg_synthesis_job *, struct pg_module_frontier *);
++int pg_synthesis_module_resume(struct pg_synthesis *, struct pg_synthesis_job *, const struct pg_module_frontier *);
 +
  /* Restored lexical binder allocation. Each owner keeps its own cursor;
   * this payload describes source addresses, not a second typed Context. */

@@ -27,7 +27,7 @@
  	if (!registration) return -1;
  	return definition_input(source_work(registration)->definitions, index, producer);
  }
-@@ -2473,6 +2476,102 @@
+@@ -2473,6 +2476,113 @@
  	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED);
  }
  
@@ -35,10 +35,12 @@
 +	const struct pg_synthesis_job *registration, struct pg_definition_frontier *view)
 +{
 +	if (!synthesis || !registration || !view || registration->owner != synthesis->owner_key
-+		|| registration->role != DEFINITION_SCOPE_JOB || registration->status != PG_SYNTHESIS_PENDING) return -1;
++		|| registration->role != DEFINITION_SCOPE_JOB) return -1;
++	if (registration->status != PG_SYNTHESIS_PENDING && registration->status != PG_SYNTHESIS_DONE) return -1;
 +	const struct definition_state *state = source_work(registration)->definitions;
-+	if (!state || state->next) return -1;
-+	*view = (struct pg_definition_frontier){state->count, state->indexed, state->activated, state->entries};
++	if (!state) return -1;
++	*view = (struct pg_definition_frontier){.count = state->count, .indexed = state->indexed,
++		.activated = state->activated, .entries = state->entries, .complete = registration->status == PG_SYNTHESIS_DONE};
 +	return 0;
 +}
 +
@@ -47,12 +49,18 @@
 +{
 +	struct pg_definition_frontier current;
 +	if (!view || pg_synthesis_definition_frontier(synthesis, registration, &current)) return -1;
-+	if (current.indexed || current.activated || view->count != current.count) return -1;
++	if (current.indexed || current.activated || current.complete || view->count != current.count) return -1;
 +	if (view->indexed > view->count || view->activated > view->indexed) return -1;
 +	if (view->activated && view->indexed != view->count) return -1;
 +	if (view->count && !view->entries) return -1;
 +	struct source_work *local = source_work(registration);
 +	struct definition_state *state = local->definitions;
++	if ((unsigned)view->complete > 1) return -1;
++	if (view->complete) {
++		if (view->indexed != view->count || view->activated != view->count) return -1;
++		if (!pg_synthesis_scope_context(local->scope)) return -1;
++		if (local->scope->registration && local->scope->registration->status != PG_SYNTHESIS_DONE) return -1;
++	}
 +	struct pg_index names;
 +	if (pg_index_init(&names)) return -1;
 +	/* Validate the transported recipe links, then rebuild a disposable index.
@@ -121,6 +129,9 @@
 +	}
 +	state->indexed = view->indexed;
 +	state->activated = view->activated;
++	/* This is only completed name registration. No evidence or entry result is
++	 * imported, and startup subscriptions are replaced by the checkpoint owner. */
++	if (view->complete) registration->status = PG_SYNTHESIS_DONE;
 +	return 0;
 +fail:
 +	pg_index_destroy(&names);
@@ -130,7 +141,88 @@
  static void definition_scope_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
  	struct source_work *local = source_work(job);
-@@ -2541,7 +2640,7 @@
+@@ -2534,6 +2644,80 @@
+ 	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_DONE);
+ }
+ 
++int pg_synthesis_definition_body(const struct pg_synthesis *synthesis,
++	const struct pg_synthesis_job *definition, struct pg_synthesis_job **body)
++{
++	if (!synthesis || !definition || !body || definition->owner != synthesis->owner_key
++		|| definition->role != DEFINITION_JOB || definition->status != PG_SYNTHESIS_PENDING) return -1;
++	const struct source_work *local = source_work(definition);
++	if (!local->stage) return -1;
++	*body = local->left;
++	return 0;
++}
++
++int pg_synthesis_definition_resume_body(struct pg_synthesis *synthesis,
++	struct pg_synthesis_job *definition, struct pg_synthesis_job *body)
++{
++	struct pg_synthesis_job *previous;
++	if (pg_synthesis_definition_body(synthesis, definition, &previous) || previous) return -1;
++	const struct source_work *local = source_work(definition);
++	if (!body || body->owner != synthesis->owner_key || body->role != EXPRESSION_JOB) return -1;
++	if (body->inputs[0] != local->scope || body->inputs[1] != local->syntax) return -1;
++	source_work(definition)->left = body;
++	return 0;
++}
++
++int pg_synthesis_module_frontier(const struct pg_synthesis *synthesis,
++	const struct pg_synthesis_job *module, struct pg_module_frontier *view)
++{
++	if (!synthesis || !module || !view || module->owner != synthesis->owner_key
++		|| module->role != EXPRESSION_JOB || module->status != PG_SYNTHESIS_PENDING) return -1;
++	const struct source_work *local = source_work(module);
++	const struct pg_syntax *syntax = local->syntax;
++	if (!syntax) return -1;
++	int selected = syntax->kind == PG_SYNTAX_QUALIFIED;
++	if (selected) syntax = syntax->left;
++	if (!syntax || syntax->kind != PG_SYNTAX_DEFINITIONS || !local->right
++		|| local->right->role != DEFINITION_SCOPE_JOB) return -1;
++	*view = (struct pg_module_frontier){selected ? local->stage : source_work(local->right)->definitions->next, local->left};
++	return 0;
++}
++
++int pg_synthesis_module_resume(struct pg_synthesis *synthesis, struct pg_synthesis_job *module,
++	const struct pg_module_frontier *view)
++{
++	struct pg_module_frontier current;
++	if (!view || pg_synthesis_module_frontier(synthesis, module, &current) || current.position) return -1;
++	struct source_work *local = source_work(module);
++	if (local->left != local->right) return -1;
++	struct definition_state *state = source_work(local->right)->definitions;
++	int selected = local->syntax->kind == PG_SYNTAX_QUALIFIED;
++	if (view->position > (selected ? 1 : state->count)) return -1;
++	struct pg_synthesis_job *previous = view->previous, *value = NULL;
++	if (!previous || previous->owner != synthesis->owner_key) return -1;
++	if (!view->position) {
++		if (previous != local->right) return -1;
++	} else {
++		if (local->right->status != PG_SYNTHESIS_DONE) return -1;
++		if (selected) {
++			if (previous->role != EXPRESSION_JOB || previous->inputs[0] != local->scope
++				|| previous->inputs[1] != local->syntax->left) return -1;
++			value = lookup_definition(state, local->syntax->right->token);
++			if (!value) return -1;
++		} else {
++			if (previous != state->entries[view->position - 1]) return -1;
++			/* A cursor cannot hide an unchecked or failed earlier sibling. The
++			 * current entry remains a normal dependency, even if it has failed. */
++			for (size_t i = 0; i + 1 < view->position; ++i)
++				if (!state->entries[i] || state->entries[i]->status != PG_SYNTHESIS_DONE) return -1;
++		}
++	}
++	local->left = previous;
++	if (selected) { local->stage = (unsigned)view->position; local->value_job = value; }
++	else state->next = view->position;
++	return 0;
++}
++
+ static void definitions_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+ {
+ 	struct source_work *local = source_work(job);
+@@ -2541,7 +2725,7 @@
  	int selected = syntax->kind == PG_SYNTAX_QUALIFIED;
  	if (selected) syntax = syntax->left;
  	if (!local->right) {

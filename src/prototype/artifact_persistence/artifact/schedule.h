@@ -16,8 +16,9 @@ struct pg_artifact_schedule;
  * There is no accepted-status import or fuel charge. Failed attachment leaves
  * the old schedule unchanged (unused arena allocations may remain).
  * The enclosing reader must not publish a Program before all payloads validate.
- * Initial recipe reconstruction may leave a request both queued and subscribed;
- * replacement tolerates that transient overlap, but wire snapshots reject it.
+ * Initial reconstruction may leave a request queued and subscribed, or an owner
+ * may complete it before startup dispatch. Replacement tolerates these transient
+ * states; saved ready/wait endpoints must still be disjoint and pending.
  * Dormant jobs remain dormant; other jobs may exist only outside the schedule. */
 int pg_artifact_schedule_write(FILE *, const struct pg_synthesis *, size_t,
 	struct pg_synthesis_job *const *);

@@ -93,7 +93,8 @@ static int inspect(const struct pg_synthesis *synthesis, const struct pg_dag *ma
 	const struct pg_synthesis_job *last = NULL;
 	for (const struct pg_synthesis_job *job = synthesis->ready; job; job = job->next) {
 		size_t i = slot(map, job);
-		if (i == SIZE_MAX || marks[i] || job->status != PG_SYNTHESIS_PENDING) return -1;
+		if (i == SIZE_MAX || marks[i]) return -1;
+		if (!replacing && job->status != PG_SYNTHESIS_PENDING) return -1;
 		marks[i] = 1;
 		++*ready;
 		last = job;
@@ -105,8 +106,8 @@ static int inspect(const struct pg_synthesis *synthesis, const struct pg_dag *ma
 			size_t p = slot(map, w->parent);
 			if (p == SIZE_MAX || (marks[p] & 2) || w->child != child) return -1;
 			if (!replacing && marks[p]) return -1;
-			if (w->parent->dependency != w || w->parent->status != PG_SYNTHESIS_PENDING) return -1;
-			if (child->status != PG_SYNTHESIS_PENDING || (unsigned)w->preparation > 1) return -1;
+			if (w->parent->dependency != w || (unsigned)w->preparation > 1) return -1;
+			if (!replacing && (w->parent->status != PG_SYNTHESIS_PENDING || child->status != PG_SYNTHESIS_PENDING)) return -1;
 			marks[p] |= 2;
 			++*waiting;
 		}
@@ -154,9 +155,9 @@ int pg_artifact_schedule_attach(struct pg_synthesis *synthesis, const struct pg_
 	if (job_map(&map, synthesis, count, jobs)) goto done;
 	unsigned char *marks = pg_alloc(&map.storage, count);
 	size_t previous_ready, previous_waiting;
-	/* Source recipe reconstruction can subscribe a newly enqueued request
-	 * before its initial dispatch. Replace that unpublished queue as a whole;
-	 * the saved queue remains disjoint from its dependency parents. */
+	/* Reconstruction can subscribe a queued request, or owner restoration can
+	 * complete it before startup dispatch. Replace that unpublished queue as a
+	 * whole; saved ready/wait entries must still be disjoint and pending. */
 	if (!marks || inspect(synthesis, &map, jobs, marks, &previous_ready, &previous_waiting, 1)) goto done;
 	for (size_t i = 0; i < state->ready; ++i)
 		if (jobs[state->queue[i]]->status != PG_SYNTHESIS_PENDING) goto done;

@@ -485,16 +485,22 @@ to its internal header (+9/-1 there, -7 in `synthesis_work.c`) and permit shared
 WHNF attachment (+3/-1 in `synthesis_conversion.c`, +1 header line). This is
 additional checkpoint functionality, not a claimed code-size reduction.
 
-Source-owner increment after `4251885` (2026-09-29): a borrowed definition
+Source-owner increments after `4251885` and `21244ae` (2026-09-29): a borrowed definition
 registration frontier retains existing entry links and indexing/activation
 cursors. Its owner validates source identities, rebuilds only the name hash
 index and restores fresh definition scope/activation gates. It does not accept
-evidence, mark registration done, advance Solve, or copy typed data. Repeated
+entry evidence, advance Solve, or copy typed data. Repeated
 imports keep the first name's producer; shared definition recipes remain shared.
 Invalid attachments do not publish cursor/index changes. The checkpoint caller
 must establish provenance and restore child continuations and scheduling before
-Solve. Scheduler replacement now tolerates the initial queued/subscribed overlap
-produced by source recipe reconstruction; the saved schedule still rejects it.
+Solve. Completed name registration additionally requires a fully populated input
+table and an already checked parent context. This completion is not acceptance
+of the module or its entries. Pending definition-body links and module traversal
+positions now have owner-local attachment APIs. They cannot skip an unchecked or
+failed earlier sibling; named selection still waits for the entire module.
+Scheduler replacement tolerates unpublished startup subscriptions to a request
+that an owner has already completed. Saved ready/wait endpoints remain pending
+and disjoint; replacement does not import acceptance.
 
 Fresh O2/ASan/UBSan tests pass 44 source frontiers: forward names, shared syntax,
 ADT/function use, invalid unselected siblings/`::`, duplicate names, unsupported
@@ -509,15 +515,37 @@ I/O, CLI policy, C differential and checked/trusted Acc QuickSort gates pass.
 Results use clean `e716232` plus prototypes, excluding unrelated Evidence/IADT
 edits. Full acceptance was not rerun. Implementation delta: `synthesis.c`
 +103/-4, `synthesis_source.h` +16/-0, `artifact/schedule.c` +11/-7; the focused
-fixture adds 357 lines. This is continuation support, not a code-reduction claim.
+fixture originally added 357 lines. This is continuation support, not a code-reduction claim.
 
-Next: AP1.2/AP1.3 must cover advanced definition bodies, completed registration,
-whole-module sibling/check traversal, and the other live source/typing owners,
-then connect the closure to `.a` under AP1's provenance/fuel policy. The normal
-source loader does not use the new hook. Its fresh partition gate still fails
-at 100+100 and later, unchanged; results are in
-`/tmp/a-program-definition-final-partitions/partitions.tsv`. These focused owner
-gates do not satisfy the whole-source checkpoint completion criterion.
+Current focused verification after `21244ae`: O2 and ASan/UBSan pass the 44
+registration frontiers and 16 later owner frontiers (8 body edges, 22 module
+cursors). The latter explicitly recheck child work through ordinary Solve: 387
+dispatches across the fixtures, charged within each test's total 100,000 budget.
+Remaining continuation dispatches and final bytes then match the original.
+Decode itself stays inert; the test helper's subsequent validation is **not**
+part of loading or evidence imported from saved status. This does not preserve
+arbitrary in-progress child state or prove equal total fuel after strict checks.
+The 1+19/10+10/20+0 equality remains a registration-only, zero-validation test.
+New negative tests reject foreign body owners, incomplete registration completion,
+skipped pending/rejected siblings and terminal endpoints in a saved schedule.
+WHNF/scheduler, semantic, Source I/O, CLI policy, C differential and checked/trusted
+Acc QuickSort gates pass on clean `e716232` plus the prototypes. Full acceptance
+was not rerun. Incremental implementation delta: `synthesis.c` +89/-4,
+`synthesis_source.h` +19/-4, schedule C/header +10/-8; focused tests +247/-14.
+
+Next: AP1.2/AP1.3 must retain namespace producers and the other live child-owner
+continuations, then connect them to `.a` under AP1's provenance/fuel policy.
+`check-artifact-namespace-frontier` currently fails to find a covered late
+boundary for `Nat:=@{zero:*;succ:*->*;}; main:=Nat.zero; main::Nat;`: a published
+constructor callable remains runnable outside the fixture's module/entry closure.
+The program itself compiles. This is missing checkpoint coverage, not an ADT
+typing failure; the producer is not disposable history. Preserve its scope,
+callable/value child and pending abstracted body rather than dropping the queue
+entry. The gate remains a real failure, not an expected-failure pass.
+The normal source loader does not use these hooks. Its fresh partition gate
+still fails at 100+100 and later; results are in
+`/tmp/a-program-source-lifecycle-final-partitions/partitions.tsv`. These focused
+owner gates do not satisfy the whole-source checkpoint completion criterion.
 
 #### Rejected Read Policy and Retention Audit (2026-09-29)
 
@@ -590,8 +618,13 @@ alone. Avoid adding a second parallel type graph or serializing all workers.
   Source-owned private state and full checkpoint/provenance integration remain open.
 - [x] Restore the pending source-definition registration frontier without
   replaying registration work; preserve names, activation gates and sharing.
-  `check-artifact-definition-checkpoint` covers this owner, not later body or
-  module-check traversal. Ordinary `.a` checkpoint integration remains open.
+  `check-artifact-definition-checkpoint` covers this owner and the next item.
+- [x] Restore completed name registration, pending body edges and module-check
+  cursors without accepting child evidence; test charged child verification and
+  rejection of skipped obligations. This is not private child-state restoration.
+- [ ] Include pending namespace/constructor producers in the live closure;
+  pass `check-artifact-namespace-frontier`, then expand other source/typing owners.
+  Ordinary `.a` checkpoint integration remains open.
 - [ ] Replace any confirmed redundant origin/type retention with the existing
   typed owner's shared construction or an explicitly selected recompute policy.
   Gate on open scopes, distinct nominal families, ordinary Sorted results,

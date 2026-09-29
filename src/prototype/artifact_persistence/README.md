@@ -307,20 +307,29 @@ owner-supplied mapping and known-origin continuations; decoding alone does not
 authorize attachment. Default source import does not use these APIs. NF and
 most source-owner continuations remain unfinished; this is not a whole-source checkpoint gate.
 
-The definition checkpoint gate covers pending registration: exact entry links,
-name indexing and activation position. The owner rebuilds its disposable hash
-index without replaying registration dispatches or importing acceptance. Fresh
-definition bodies receive their lexical scope and activation gate; their later
-private continuation, completed registration and whole-module checking position
-are not restored by this hook. The enclosing owner must establish provenance,
-restore other child owners and attach the saved schedule before advancing Solve.
-The test-only envelope uses existing syntax and schedule codecs; it is not a new
-public `.a` format. It checks 44 real source frontiers (including aliases, shared
-syntax, ADT/function use, invalid siblings/checks and dormant cycles), destroys
-the original Program, then compares remaining dispatches and final source-image
-bytes. A 64-definition registration also checks 1+19/10+10/20+0 against 20.
-Repeated import recipe sharing and duplicate-assignment rejection have separate
-owner-link tests. Default source-image loading still does not use this hook.
+The definition checkpoint gate covers entry links, name indexing/activation,
+pending body edges and module-check cursors. Completed name registration requires
+all entries and a checked parent context; it does not accept their typed results.
+The owner rebuilds its disposable hash index without replaying registration.
+Traversal cannot skip pending/failed earlier siblings. The enclosing owner must
+establish provenance, restore other child owners and attach the saved schedule
+before advancing Solve. The test-only envelope uses existing syntax/schedule
+codecs, not a public `.a` format. Original Programs are destroyed before import.
+O2 and ASan/UBSan pass 44 early and 16 later frontiers (8 body edges/22 cursors),
+remaining dispatches and final bytes. Later fixtures explicitly recheck child
+work through Solve, charging 387 dispatches total within each fixture's single
+budget; decoding itself is inert. They do not restore private child progress or
+claim strict revalidation costs no fuel. The 64-definition 1+19/10+10/20+0 versus
+20 test covers registration only, with no validation cost. Wrong owners, skipped
+obligations and terminal saved queue endpoints reject. Source I/O, semantic,
+CLI/C differential and Acc QuickSort also pass; full acceptance was not rerun.
+
+`check-artifact-namespace-frontier` remains a separate failing coverage gate:
+the `Nat.zero` fixture has a published constructor callable still queued outside
+the currently supported owner closure. The source program compiles; no covered
+late checkpoint exists yet. Retain that unfinished namespace work, not just the
+module's current selected result. Default `.a` loading does not use these hooks,
+and the whole-source partition gate below still fails.
 
 The strict fuel-partition gate is separate from the currently passing transport
 tests. It fails until saved progress survives reload, including cases where the

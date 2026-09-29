@@ -457,6 +457,8 @@ static void schedule_boundaries(void)
 	advance(&p->synthesis, 100);
 	assert(trace_count == 5 && !memcmp(trace, expected, sizeof(expected)) && p->synthesis.steps == 5);
 	assert(p->typing.proofs.count == proofs);
+	assert(pg_artifact_schedule_attach(&p->synthesis, schedule, 4, jobs));
+	assert(!p->synthesis.ready && !p->synthesis.ready_tail && p->synthesis.steps == 5);
 	pg_program_destroy(p);
 	puts("scheduler: inert decode, exact preparation/wake order, invalid transport atomicity");
 }
