@@ -218,11 +218,17 @@ A native-only request must not silently become this status-only structural ABI.
 ## Native Scalar Profile
 
 Agent implementation decision for AP6.1/AP6.2: `lower/scalar.c` borrows admitted
-typed exports and translates the supported scalar subset into a temporary C-local
-DAG using the existing iterative `pg_dag` and pointer/environment index. It does
+typed exports and translates the supported scalar subset into temporary C-local
+functions/DAGs using the existing iterative `pg_dag` and pointer/environment index. It does
 not evaluate source terms or change their graph, classifiers, proofs or artifact.
 Source Pi binders become actual C parameters; pure total fixed-width results
 become output values. Aliases of an identical export share its private C function.
+Known callees are shared across call sites by source Lambda, supplied scalar
+widths and free-binder/capture widths, never by runtime argument values or export
+spelling. Only required scalar captures become extra private C parameters.
+Membership uses the existing immutable source support trie; it does not copy a
+source Context or rescan the function body for every capture. Intermediate C
+names are local to actual emitted definitions, not administrative source nodes.
 
 ```text
 aplink 1
@@ -257,15 +263,21 @@ An executable requires a zero-argument selected export and discards its result.
 The receipt records profile/ABI/fallback and implemented transformations;
 `runtime_abi: null` means this profile needs no structural runtime.
 
-Supported initially: scalar constants/parameters, Return, total-result,
-syntactic Force/Thunk, scalar-result zero-clause Fold and syntactically known
-saturated scalar Lambda calls (specialized, not yet reusable private callees).
+Supported: scalar constants/parameters, Return, total-result, syntactic
+Force/Thunk, zero-clause Fold and known scalar Lambda calls. Fold may expose a
+function to subsequent application. Pending operands retain their original
+lexical environment, including through shadowing and nested captures.
+Unapplied/partially applied exports with a first-order scalar Pi classifier
+receive the remaining arguments from C. Saturated private calls are reused,
+not textually inlined at every application.
 The result must have an empty effect row and established totality. Unsupported
-ADT, Text, Identity, effects, higher-order/dynamic calls and function-returning
-Fold reject before publication. For example `mul (add x y) (sub x y)` currently
-rejects because its source lowering contains such a Fold; an explicit scalar
-sequence `{ a := add x y; b := sub x y; mul a b; }` is supported. This is a backend
-limitation, not a source syntax/type restriction. General calls remain AP6.3.
+ADT, Text, Identity, effects and higher-order/dynamic operands reject before
+publication. `mul (add x y) (sub x y)` and the explicit block counterpart are
+both supported. Recursively cyclic native specializations reject; no new
+general recursion semantics is introduced. Effectful arguments cannot be erased
+just because a known callee ignores them. Higher-order public/closure data
+representations remain outside this scalar profile, not restrictions on the
+source language. General native representations remain AP6.3-AP6.5 work.
 
 Native scripts must explicitly request `fallback reject`. There is no automatic
 boxed fallback. Existing scripts select `structural_v1` by default, or explicitly
@@ -277,5 +289,9 @@ two-module C clients, capture/sequencing, alias sharing, null outputs, ABI/profi
 refusal, deterministic C, unchanged `.a` and admission boundaries. Its raw Oracle
 fixture compares 400 integer cases with the existing evaluator and asserts no
 evaluation/substitution steps or source allocation during emission; a 4,096-level
-shared DAG checks iterative traversal and bounded output growth. These raw
+shared DAG checks iterative traversal and bounded output growth. A 96-level
+double-call family emits 97 distinct callees plus its entry, under 100 KB rather
+than exponentially inlining them. Source-level differentials exercise nested
+calls, partial application, function-returning Fold, captures and shadowing.
+Both admission modes produce identical C for the current scalar fixtures. These raw
 fixtures test correspondence, not Kernel admission of arbitrary descriptions.

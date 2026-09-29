@@ -29,7 +29,7 @@ script() {
 }
 
 exports() {
-	for name in add sub mul neg add64 sub64 mul64 neg64 identity ignore composed sequence captured constant computed; do
+	for name in add sub mul neg add64 sub64 mul64 neg64 identity ignore composed nested partial builtin through_fold nested_capture shadowed scoped sequence captured constant computed; do
 		printf 'export %s %s\n' "$name" "$name"
 	done
 	printf 'export add alias\n'
@@ -61,16 +61,21 @@ for product in source object archive executable; do
 	test ! -s "$temporary/out"
 done
 test "$(ar t "$temporary/archive/library.a")" = component.o
-test "$(nm -g --defined-only "$temporary/object/component.o" | wc -l)" = 16
+test "$(nm -g --defined-only "$temporary/object/component.o" | wc -l)" = 23
 test -z "$(nm -u "$temporary/object/component.o")"
-first=$(sed -n '/int ap_export_add(/,+3p' "$temporary/source/component.c" | grep 'return c')
-alias=$(sed -n '/int ap_export_alias(/,+3p' "$temporary/source/component.c" | grep 'return c')
+first=$(sed -n '/int ap_export_add(/,+3p' "$temporary/source/component.c" | grep 'result = c')
+alias=$(sed -n '/int ap_export_alias(/,+3p' "$temporary/source/component.c" | grep 'result = c')
 test "$first" = "$alias"
 expect_status 0 "$backend" --link "$temporary/source.aplink" "$temporary/repeated"
 diff -ru "$temporary/source" "$temporary/repeated"
 expect_status 0 "$backend" --trust-image --steps 0 --link "$temporary/source.aplink" "$temporary/trusted"
 cmp "$temporary/source/component.c" "$temporary/trusted/component.c"
 cmp "$temporary/source/component.h" "$temporary/trusted/component.h"
+"$cc" "${flags[@]}" -I"$temporary/source" "$here/differential.c" "$temporary/source/component.c" -o "$temporary/differential"
+expect_status 0 "$temporary/differential"
+cp "$temporary/out" "$temporary/generated"
+expect_status 0 "$compiler" --imports "$here/fixture.p" --run main "$here/differential.p"
+cmp "$temporary/out" "$temporary/generated"
 
 # Independent components exchange ordinary integers, not interpreter handles.
 { script archive; printf 'export sub other\n'; } > "$temporary/other.aplink"
@@ -80,10 +85,11 @@ expect_status 0 "$backend" --link "$temporary/other.aplink" "$temporary/other"
 expect_status 0 "$temporary/combined"
 
 # Reject unsupported representations without secretly invoking a boxed fallback.
-for name in effect thunk_arg text nested; do
+for name in effect ignored_effect thunk_arg text higher; do
 	{ script source; printf 'export add valid\nexport %s rejected\n' "$name"; } > "$temporary/bad.aplink"
 	expect_status 4 "$backend" --link "$temporary/bad.aplink" "$temporary/bad"
 	test ! -e "$temporary/bad"
+	test ! -s "$temporary/out"
 done
 { script executable; printf 'export add add\nentry add\n'; } > "$temporary/bad.aplink"
 expect_status 4 "$backend" --link "$temporary/bad.aplink" "$temporary/bad"

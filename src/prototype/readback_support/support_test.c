@@ -6,6 +6,8 @@
 #include <stdio.h>
 
 #ifdef PG_SUPPORT_CANDIDATE
+#include "support.h"
+
 static const struct pg_term *subset(struct pg_graph *graph, const struct pg_term *empty,
 	const struct pg_object *const *binders, uint32_t mask)
 {
@@ -36,6 +38,8 @@ static void support_sets(struct pg_graph *graph, const struct pg_term *empty)
 			remaining &= ~(UINT32_C(1) << index);
 			assert(term && pg_term_closed(term) == !remaining);
 			assert(term->support == subset(graph, empty, binders, remaining)->support);
+			for (unsigned k = 0; k < 32; ++k)
+				assert(pg_support_contains(term, binders[k]) == !!(remaining & (UINT32_C(1) << k)));
 		}
 	}
 }
@@ -88,6 +92,8 @@ int main(void)
 	assert(!pg_term_closed(&unknown));
 	const struct pg_term *unknown_lambda = pg_lambda(&graph, z, &unknown);
 	assert(unknown_lambda && !pg_term_closed(unknown_lambda));
+	assert(pg_support_contains(&unknown, z) == 1 && pg_support_contains(&unknown, x) == 0);
+	assert(pg_support_contains(unknown_lambda, z) == -1);
 	const struct pg_object *binders[65];
 	const struct pg_term *many = identity;
 	for (size_t i = 0; i < 65; ++i) {

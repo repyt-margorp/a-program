@@ -2,6 +2,7 @@
 #include "classifier.h"
 #include "computation.h"
 #include "host.h"
+#include "support.h"
 #include <assert.h>
 #include <inttypes.h>
 #include <string.h>
@@ -67,12 +68,43 @@ static void inert(struct pg_typing *t, FILE *source, size_t count, const struct 
 	assert(!fclose(header));
 }
 
+static void shared_calls(struct pg_typing *t)
+{
+	struct pg_graph *g = t->graph;
+	const struct pg_object *x = pg_binder(g);
+	const struct pg_term *vx = pg_reference(g, x), *one = pg_reference(g, pg_host_integer(g, pg_host_type("Int32"), 1));
+	const struct pg_term *previous = pg_lambda(g, x, op(g, &pg_return_operation, vx));
+	assert(pg_support_contains(vx, x) == 1 && pg_support_contains(previous, x) == 0);
+	for (size_t i = 0; i < 96; ++i) {
+		const struct pg_term *left = op(g, &pg_total_result_operation, app(g, previous, vx));
+		const struct pg_term *next = op(g, &pg_total_result_operation, app(g, op(g, pg_host_function(0), vx), one));
+		const struct pg_term *right = op(g, &pg_total_result_operation, app(g, previous, next));
+		previous = pg_lambda(g, x, app(g, op(g, pg_host_function(0), left), right));
+	}
+	const struct pg_term *type = pg_computation_type(g, PG_TOTALITY_TOTAL,
+		pg_effect_row(g, 0, NULL), pg_reference(g, pg_host_type("Int32")));
+	type = pg_pi(g, pg_reference(g, pg_host_type("Int32")), x, type);
+	struct pg_c_export export = {"shared", occurrence(t, previous, type)};
+	FILE *source = tmpfile();
+	assert(source);
+	inert(t, source, 1, &export, 0);
+	assert(ftell(source) < 100000);
+	rewind(source);
+	char line[1024];
+	size_t declarations = 0;
+	while (fgets(line, sizeof(line), source)) if (!strncmp(line, "static uint64_t c", 17)) ++declarations;
+	/* One public entry body plus 97 shared callees, declaration and definition. */
+	assert(declarations == 196);
+	fclose(source);
+}
+
 int main(int argc, char **argv)
 {
 	assert(argc == 2);
 	struct pg_graph g;
 	struct pg_typing t;
 	assert(!pg_graph_init(&g) && !pg_typing_init(&t, &g));
+	shared_calls(&t);
 	struct pg_c_export exports[8];
 	char names[8][16];
 	for (size_t i = 0; i < 8; ++i) {

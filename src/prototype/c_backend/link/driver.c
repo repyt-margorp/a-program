@@ -87,7 +87,7 @@ static int receipt(const char *path, const struct pg_c_link_plan *plan, const ch
 	fputs(plan->lowering == PG_C_STRUCTURAL ? "2" : "null", file);
 	fputs(",\n  \"transformations\": ", file);
 	fputs(plan->lowering == PG_C_STRUCTURAL ? "[\"structural-closures\"]" :
-		"[\"scalar-abi\",\"fixed-width-arithmetic\",\"pure-sequencing\",\"known-lambda-specialization\"]", file);
+		"[\"scalar-abi\",\"fixed-width-arithmetic\",\"pure-sequencing\",\"shared-direct-calls\",\"scalar-capture-lifting\"]", file);
 	fputs(",\n  \"cc\": ", file);
 	json_string(file, cc);
 	fputs(",\n  \"ar\": ", file); json_string(file, ar);

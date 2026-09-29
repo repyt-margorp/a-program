@@ -16,6 +16,12 @@ int main(void)
 		assert(!ap_export_ignore(x, &a) && a == 42);
 		assert(!ap_export_neg(x, &a) && (uint32_t)a == (uint32_t)(UINT64_C(0) - u));
 		assert(!ap_export_captured(x, &a) && (uint32_t)a == (uint32_t)((uint64_t)u + 7));
+		assert(!ap_export_partial(x, &a) && (uint32_t)a == (uint32_t)((uint64_t)u + 7));
+		assert(!ap_export_builtin(x, &a) && (uint32_t)a == (uint32_t)((uint64_t)u + 10));
+		assert(!ap_export_through_fold(x, &a) && (uint32_t)a == (uint32_t)((uint64_t)u + 3));
+		assert(!ap_export_nested_capture(x, &a) && (uint32_t)a == (uint32_t)((uint64_t)u + 12));
+		assert(!ap_export_shadowed(x, &a) && a == 8);
+		assert(!ap_export_scoped(x, &a) && (uint32_t)a == (uint32_t)((uint64_t)u + 5));
 		uint64_t n = (uint32_t)((uint64_t)u + 1);
 		assert(!ap_export_sequence(x, &a) && (uint32_t)a == (uint32_t)(n * n));
 		for (size_t j = 0; j < sizeof(small) / sizeof(*small); ++j) {
@@ -27,6 +33,7 @@ int main(void)
 			assert(!ap_export_mul(x, y, &a) && (uint32_t)a == (uint32_t)((uint64_t)u * v));
 			uint64_t sum = (uint32_t)((uint64_t)u + v), difference = (uint32_t)((uint64_t)u - v);
 			assert(!ap_export_composed(x, y, &a) && (uint32_t)a == (uint32_t)(sum * difference));
+			assert(!ap_export_nested(x, y, &a) && (uint32_t)a == (uint32_t)(sum * difference));
 		}
 	}
 	for (size_t i = 0; i < sizeof(large) / sizeof(*large); ++i) {

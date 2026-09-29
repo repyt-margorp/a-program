@@ -1686,6 +1686,9 @@ when needed; promotion remains a separate approved change.
   requested ABI/profile supports them. Test unused arguments, nested captures,
   shadowing, partial application, delayed failure and effect order. No evaluation
   of user effects during compilation or function replacement by name.
+  Shared scalar callees, lifted scalar captures, function-returning Fold and
+  remaining first-order Pi parameters are now implemented (milestone below).
+  Higher-order/dynamic operands and non-scalar capture representations remain.
 - [ ] **AP6.4:** lower constructor/match control and define nominal
   representation contracts; test length, append and partition before QuickSort.
   Distinguish semantic justification dependencies from residual executable
@@ -1723,7 +1726,7 @@ Term former, classifier, admission path, `.a` field or accepted-code edit.
 Product receipts identify native/structural lowering; only structural products
 include the runtime. See [the executable contract and tests](../src/prototype/c_backend/README.md#native-scalar-profile).
 
-Assessment: do not claim general uncurrying from this subset. Actual lowering
+Historical assessment at `3c0ce77`, superseded for scalar calls below: actual lowering
 of `mul (add x y) (sub x y)` includes a function-returning Fold and rejects;
 the explicit scalar block counterpart succeeds. Retain that rejection test
 until AP6.3 handles negative/function results coherently. Known Lambda calls
@@ -1752,6 +1755,56 @@ Implementation deltas excluding documentation: `lower/scalar.c` +331/-0,
 This adds a native capability rather than removing the reference backend;
 it is not a code-reduction milestone. Unrelated dirty files are excluded.
 
+### Shared Native Calls (2026-09-29)
+
+Objective at `3c0ce77` plus this prototype change: the former scalar inlining
+path is replaced, not retained in parallel. Pending application operands carry
+their original lexical scope through zero-clause Fold. Exported partial/Pi
+expressions receive native parameters from their admitted classifier without
+requiring a syntactic Lambda at the export root. Known Lambda bodies compile
+once per source pointer, supplied widths and free-binder/capture widths;
+callers pass actual scalar captures as private C parameters. The same iterative
+DAG collector orders expressions and callee dependencies. It rejects cycles.
+
+Assessment: this is target-local specialization and scalar capture lifting,
+not source WHNF, a second evaluator or a new typed authority. The read-only
+`pg_support_contains` API on the existing support trie avoids scanning each
+callee body again for each ambient binder. Absent support metadata refuses
+capture analysis rather than treating an open term as closed. C-local variable
+numbers count only emitted definitions; extra administrative source nodes do
+not perturb names. Do not use source nominal IDs as C data representations.
+
+The formerly rejected `mul (add x y) (sub x y)` now works unchanged, as do
+partial applications, nested captures, lexical shadowing and a Fold whose
+continuation returns a function. Source/interpreter and independent native C
+clients exercise them. The shared-call regression builds a 96-level binary-call
+family and requires exactly 97 callee definitions plus one entry, under 100 KB;
+runtime execution of that exponential recurrence is deliberately not the test.
+The 400 integer comparisons, 4,096-level shared DAG and no-evaluation/source
+mutation gates remain. Effectful ignored arguments and higher-order signatures
+reject without executing their effects or publishing a bundle.
+
+Fresh O2 `check-c-scalar`, `check-c-link`, `check-c-backend`,
+`check-c-sorting-boundary` and `check-support` pass; ASan/UBSan `check-c-scalar`
+passes as well. Baseline is clean `e716232` plus the artifact overlays through
+`baabea8`, backend `3c0ce77` and this change, excluding unrelated dirty files.
+Support tests also check membership after union/binder removal against 32-bit
+reference sets and distinguish unknown hand-built metadata from the empty set.
+No full compiler acceptance rerun is claimed for this backend/read-only-query
+change; the preceding full run remains the `baabea8` result.
+
+Per-file non-documentation delta: `lower/scalar.c` +295/-123,
+`lower/scalar.h` +2/-2, `link/driver.c` +1/-1,
+`readback_support/support.c` +14/-0 and `support.h` +3/-0 (implementation
+net +189). Tests: `lower/check.sh` +11/-5, `client.c` +7/-0,
+`fixture.p` +8/-0, `oracle_test.c` +32/-0, `differential.c` +15/-0,
+`differential.p` +15/-0 and `readback_support/support_test.c` +6/-0
+(test net +89). No accepted implementation/build files changed.
+
+AP6.3 remains open for representations outside scalar known calls; AP6.4/AP6.5
+must address ADT/control/container/Acc semantics before native QuickSort is
+claimed. #49 remains open, as do the independent AP1-AP3 checkpoint requirements.
+
 ### Issue Audit (2026-09-29)
 
 | Issue | Decision and remaining reason |
@@ -1759,7 +1812,7 @@ it is not a code-reduction milestone. Unrelated dirty files are excluded.
 | #46 | Closed: initial isolated multi-export C library/executable milestone passes. General native arguments/results and AP5.6 continue in AP6/#49; they are not reported as implemented. |
 | #44 | Keep open: structural C and checked/trusted QuickSort work, but selected-export admissibility beside unresolved obligations and general dependent/higher Identity target coverage remain incomplete (AP4.6/#47). Failed fuel partitioning is separate, not by itself the reason to retain a C issue. |
 | #47 | Keep open: no general checked relevance or partial-artifact admission rule; a link script does not provide either. |
-| #49 | Keep open: PR #50 is a design record; no reusable native profile or ordinary parameter/result ABI is implemented yet. |
+| #49 | Keep open: the scalar native ABI/profile is implemented at `3c0ce77`; general calls, ADT representations and native QuickSort are not. PR #50 remains a design record, not an implemented sorter template. |
 | #41 | Keep open: F1/F2 are accepted and F3/F4 prototypes have passed their gates, but F3/F4 promotion and accepted regression integration remain open in the finite-sorting plan. No new five-backend verification is claimed here. |
 | #43 | Keep open: loop/state/result synthesis and logical boundary choices are still undecided. No evidence that the request is unnecessary or disproved. |
 

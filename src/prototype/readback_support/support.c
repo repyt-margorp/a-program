@@ -113,3 +113,17 @@ int pg_term_closed(const struct pg_term *term)
 	if (term->kind == PG_REFERENCE) return term->as.reference->kind == PG_SEMANTIC_OBJECT;
 	return term->support == &empty;
 }
+
+int pg_support_contains(const struct pg_term *term, const struct pg_object *binder)
+{
+	if (!term || !binder) return -1;
+	if (term->kind == PG_REFERENCE) return term->as.reference == binder && binder->kind == PG_BINDER;
+	const struct pg_support *set = term->support;
+	if (!set) return -1;
+	uintptr_t key = (uintptr_t)binder;
+	while (set != &empty && set->bit) {
+		if (prefix_at(key, set->bit) != set->prefix) return 0;
+		set = key & set->bit ? set->right : set->left;
+	}
+	return set != &empty && set->prefix == key;
+}
