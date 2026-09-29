@@ -435,12 +435,37 @@ The existing source-handler boundary test now compares inert resave bytes, not
 only reconstructed behavior. All 4,483 snapshots across four cases pass (including
 nested calls, an invalid resumption, and a forwarded unhandled operation).
 
-`check-artifact-partitions` still fails across reload: 100+100 produces 25,474
-versus 25,830 bytes; 1600+1600 is pending at 3,200 steps versus done at 3,129
-(31,002 versus 50,472 bytes). In-memory partitions and 10+10 versus 20 pass.
-Next: AP1.2/AP1.3 must connect owner-local unfinished work to ordinary Solve,
-accounting for import validation under the resolved AP1 fuel/trust contract.
-Do not call uncharged recomputation preserved progress.
+Fresh `check-artifact-partitions` after the owner increment below still fails
+across reload: 100+100 produces 25,851 versus 26,094 bytes; 1600+1600 is pending
+at 3,200 steps versus done at 2,942 (31,392 versus 50,508 bytes). In-memory
+partitions and 10+10 versus 20 pass. Completed+0 preserves bytes but does not
+restore accepted status. Measurements: `/tmp/a-program-normalization-owner-partitions/partitions.tsv`.
+Owner-local increment after `8d4206d` (2026-09-29): the prototype connects a
+pending WHNF machine to an unstarted normalization producer, sharing the usual
+input preparation and continuing through ordinary Solve. It creates no second
+evaluator, imported evidence or completed-status override. The internal attach
+API requires caller-established provenance; checked input/key agreement alone
+does **not** validate an imported intermediate machine. Default source loading
+does not call it or gain trust. NF, source stages and scheduler restoration are
+still absent.
+
+Fresh O2 and ASan/UBSan tests cover all 300 pending boundaries of nested calls,
+an unforced Lambda, recursive Match/IH and host addition. Premise inputs and the
+machine share one relocation table. Each test destroys the original Program,
+checks premises using existing rules, then resumes its own known-origin state.
+Remaining Solve fuel and serialized result match uninterrupted execution;
+inert load/resave and step 0 preserve bytes. Foreign owners, wrong inputs/modes,
+unresolved premises, duplicate keys and repeat attachment reject. Revalidation
+cost is measured separately from the remaining normalization dispatches, not
+asserted free. Semantic persistence and CLI file-policy regressions also pass;
+O2 C differential gates and Acc QuickSort pass in checked/trusted modes. Full
+compiler acceptance was not rerun for this increment. These results use clean
+`e716232` plus prototypes, excluding unrelated local Evidence/IADT changes.
+Implementation delta: `synthesis_conversion.c` +44/-11, its header +13/-0.
+
+Next: AP1.2/AP1.3 must connect the source-owned live continuation closure and
+ready/wait order, accounting for provenance and validation under AP1. This
+focused owner gate does not make the whole-source partition failure pass.
 
 #### Rejected Read Policy and Retention Audit (2026-09-29)
 
@@ -504,6 +529,10 @@ alone. Avoid adding a second parallel type graph or serializing all workers.
 - [ ] AP1.2/AP2 continuation: classify retained producer roots by export, pending
   consumer and verification provenance. Record which can be omitted in a
   recompute profile and which a progress-preserving profile actually consumes.
+- [x] Connect the pending WHNF normalization owner to ordinary Solve and test
+  exact remaining dispatches at every boundary of the focused cases above.
+  `check-artifact-normalization-checkpoint` is separate from, and does not
+  replace, the still-failing whole-source partition gate.
 - [ ] Replace any confirmed redundant origin/type retention with the existing
   typed owner's shared construction or an explicitly selected recompute policy.
   Gate on open scopes, distinct nominal families, ordinary Sorted results,

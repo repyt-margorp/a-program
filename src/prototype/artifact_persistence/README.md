@@ -282,6 +282,7 @@ history. Those integrations remain open; loading itself stays descriptive.
 bash src/prototype/artifact_persistence/overlay.sh /tmp/a-program-artifact-persistence
 make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artifact-persistence BUILD=/tmp/a-program-artifact-persistence/build check-artifact-transport
 make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artifact-persistence BUILD=/tmp/a-program-artifact-persistence/build check-artifact-semantic
+make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artifact-persistence BUILD=/tmp/a-program-artifact-persistence/build check-artifact-normalization-checkpoint
 make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artifact-persistence BUILD=/tmp/a-program-artifact-persistence/build check-artifact-history
 ```
 
@@ -295,6 +296,12 @@ not a claim that artifact compaction is complete.
 The generated overlay must be new. It borrows unchanged files and applies the
 tracked patches to copies; tests are copied and patched as well. Only prototype
 files are edited during this phase. `HISTORY_REPORT` must not exist before a run.
+
+The normalization checkpoint gate exercises the owner-local WHNF attachment at
+300 intermediate boundaries, using the existing machine codec, input checks and
+Solve path. It requires known-origin continuations; decoding alone does not
+authorize attachment. Default source import does not use this API. NF and the
+source scheduler remain unfinished; this is not a whole-source checkpoint gate.
 
 The strict fuel-partition gate is separate from the currently passing transport
 tests. It fails until saved progress survives reload, including cases where the

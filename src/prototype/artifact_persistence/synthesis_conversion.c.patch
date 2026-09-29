@@ -1,0 +1,81 @@
+--- a/synthesis_conversion.c
++++ b/synthesis_conversion.c
+@@ -1,6 +1,7 @@
+ #include "synthesis_conversion.h"
+ #include "synthesis_source.h"
+ #include "computation.h"
++#include "eval_internal.h"
+ 
+ struct conversion_work {
+ 	struct pg_conversion comparison;
+@@ -297,27 +298,59 @@
+ 	return NULL;
+ }
+ 
++static const struct pg_evidence *normalization_input(struct pg_synthesis *synthesis,
++	const struct pg_synthesis_job *job)
++{
++	const struct pg_synthesis_job *context = job->inputs[0], *proof = job->inputs[1];
++	if (context->status != PG_SYNTHESIS_DONE || proof->status != PG_SYNTHESIS_DONE) return NULL;
++	if (!pg_synthesis_typed_input(synthesis, context->result, proof->result)) return NULL;
++	if (!job->inputs[2]) return proof->result;
++	if (pg_evidence_context(context->result)) return NULL;
++	const struct pg_term *content;
++	if (pg_evidence_judgement(proof->result) == PG_JUDGEMENT_VALUE &&
++		pg_thunk_type_view(pg_evidence_classifier(proof->result), &content))
++		return pg_prove_force(synthesis->typing, proof->result);
++	return proof->result;
++}
++
++const struct pg_whnf_job *pg_synthesis_normalization_pending(const struct pg_synthesis *synthesis,
++	const struct pg_synthesis_job *job)
++{
++	if (!synthesis || !job || job->owner != synthesis->owner_key) return NULL;
++	if (job->status != PG_SYNTHESIS_PENDING) return NULL;
++	const struct normalization_work *local = pg_synthesis_work_state(job, NORMALIZATION_JOB);
++	if (!local || !local->checking_term || !local->reduction.whnf) return NULL;
++	return pg_whnf_status(local->reduction.whnf) == PG_EVAL_PENDING ? local->reduction.whnf : NULL;
++}
++
++int pg_synthesis_normalization_attach(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
++	struct pg_whnf_job *whnf)
++{
++	if (!synthesis || !job || job->owner != synthesis->owner_key || !whnf) return -1;
++	if (job->status != PG_SYNTHESIS_PENDING || job->dependency) return -1;
++	struct normalization_work *local = pg_synthesis_work_state(job, NORMALIZATION_JOB);
++	if (!local || local->checking_term || local->reduction.whnf) return -1;
++	if (whnf->request.policy != &pg_pure_policy) return -1;
++	const struct pg_evidence *input = normalization_input(synthesis, job);
++	if (!input || pg_evidence_subject(input)->core != whnf->request.input) return -1;
++	if (pg_whnf_job_attach(synthesis->normalization, whnf)) return -1;
++	local->checking_term = input;
++	local->reduction.whnf = whnf;
++	return 0;
++}
++
+ static void normalization_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+ {
+ 	struct normalization_work *local = pg_synthesis_work_state(job, job->role);
+-	const struct pg_synthesis_job *context = job->inputs[0], *proof = job->inputs[1];
+ 	if (!local->checking_term) {
+ 		for (size_t i = 0; i < 2; ++i) {
+ 			struct pg_synthesis_job *premise = (void *)job->inputs[i];
+ 			if (pg_synthesis_await(synthesis, job, premise)) return;
+ 		}
+-		if (!pg_synthesis_typed_input(synthesis, context->result, proof->result)) {
++		local->checking_term = normalization_input(synthesis, job);
++		if (!local->checking_term) {
+ 			pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+ 		}
+-		local->checking_term = proof->result;
+-		if (job->inputs[2]) {
+-			if (pg_evidence_context(context->result)) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
+-			const struct pg_term *content;
+-			if (pg_evidence_judgement(proof->result) == PG_JUDGEMENT_VALUE &&
+-				pg_thunk_type_view(pg_evidence_classifier(proof->result), &content))
+-				local->checking_term = pg_prove_force(synthesis->typing, proof->result);
+-			if (!local->checking_term) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
+-		}
+ 	}
+ 	const struct pg_term *input = pg_evidence_subject(local->checking_term)->core;
+ 	const struct pg_reduction_certificate *certificate = pg_synthesis_reduction_advance(synthesis, job, &local->reduction, input,
