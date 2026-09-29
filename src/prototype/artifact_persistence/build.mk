@@ -23,7 +23,7 @@ check-artifact-semantic: $(BUILD)/artifact_semantic_test
 check-artifact-normalization-checkpoint: $(BUILD)/artifact_normalization_checkpoint_test
 	$(BUILD)/artifact_normalization_checkpoint_test
 
-NORMALIZATION_IO := $(addprefix $(ROOT),machine_io.c computation_io.c identity_io.c comparison_io.c eval_io.c)
+NORMALIZATION_IO := $(addprefix $(ROOT),machine_io.c computation_io.c identity_io.c comparison_io.c eval_io.c artifact/schedule.c)
 $(BUILD)/artifact_normalization_checkpoint_test: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(NORMALIZATION_IO) $(wildcard $(ROOT)*.h) $(ARTIFACT_PROTOTYPE)normalization_checkpoint_test.c
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(NORMALIZATION_IO) $(ARTIFACT_PROTOTYPE)normalization_checkpoint_test.c -Wl,--wrap=pg_synthesis_advance -Wl,--wrap=pg_whnf_advance -o $@

@@ -1,6 +1,6 @@
 --- a/synthesis_conversion.h
 +++ b/synthesis_conversion.h
-@@ -19,4 +19,17 @@
+@@ -19,4 +19,18 @@
  struct pg_synthesis_job *pg_synthesis_expect_input(const struct pg_synthesis_job *);
  struct pg_synthesis_job *pg_synthesis_expect_target(const struct pg_synthesis_job *);
  
@@ -11,6 +11,7 @@
 + * matching its input is not proof that saved intermediate states are correct.
 + * This is not an untrusted-image admission API. It imports no evidence/DONE bit.
 + * Storage must outlive the normalization store, which destroys attached work.
++ * Several request modes may share the exact same pending WHNF in that store.
 + * On success the existing queued request resumes via ordinary Solve dispatch. */
 +const struct pg_whnf_job *pg_synthesis_normalization_pending(const struct pg_synthesis *,
 +	const struct pg_synthesis_job *);

@@ -446,8 +446,7 @@ input preparation and continuing through ordinary Solve. It creates no second
 evaluator, imported evidence or completed-status override. The internal attach
 API requires caller-established provenance; checked input/key agreement alone
 does **not** validate an imported intermediate machine. Default source loading
-does not call it or gain trust. NF, source stages and scheduler restoration are
-still absent.
+does not call it or gain trust. NF and source-owner stages remain absent.
 
 Fresh O2 and ASan/UBSan tests cover all 300 pending boundaries of nested calls,
 an unforced Lambda, recursive Match/IH and host addition. Premise inputs and the
@@ -462,6 +461,29 @@ O2 C differential gates and Acc QuickSort pass in checked/trusted modes. Full
 compiler acceptance was not rerun for this increment. These results use clean
 `e716232` plus prototypes, excluding unrelated local Evidence/IADT changes.
 Implementation delta: `synthesis_conversion.c` +44/-11, its header +13/-0.
+
+Extension after `035209b`: `artifact/schedule.c` transports ready order and
+ordered wait edges, including preparation wakeups, using the enclosing owner's
+job ordinals. Decode is inert; attachment is separate, validates the closed
+mapping, and publishes only after validation. No role/status/evidence import or
+dispatch takes place. Existing scheduler links remain the sole live authority.
+Normalization attachment now permits several owners to share the exact pending
+WHNF instead of copying it or rejecting its second consumer. A five-job fixture
+checks the input premises, restores shared reduction plus ready/wait structure,
+and completes in exactly the uninterrupted run's remaining 77 dispatches.
+O2/ASan/UBSan also pass the existing 300 boundaries, preparation/wake ordering,
+truncated/invalid metadata, failed-attachment atomicity and a dormant wait cycle.
+The `.a` source loader is **not** connected to this partial checkpoint yet:
+it lacks the role-owned source continuation payloads, not just the queue.
+The whole-source partition gate was rerun and still fails at 100+100 and later
+partitions; semantic persistence, CLI file-policy, C differential and Acc
+QuickSort gates pass. Full acceptance has not been rerun for this extension.
+Baseline remains clean `e716232` plus prototypes; unrelated Evidence/IADT
+changes are excluded. The new transport is 184 lines in `artifact/schedule.c`
+and 27 in its header. Existing runtime changes only move the waiter declaration
+to its internal header (+9/-1 there, -7 in `synthesis_work.c`) and permit shared
+WHNF attachment (+3/-1 in `synthesis_conversion.c`, +1 header line). This is
+additional checkpoint functionality, not a claimed code-size reduction.
 
 Next: AP1.2/AP1.3 must connect the source-owned live continuation closure and
 ready/wait order, accounting for provenance and validation under AP1. This
@@ -533,6 +555,9 @@ alone. Avoid adding a second parallel type graph or serializing all workers.
   exact remaining dispatches at every boundary of the focused cases above.
   `check-artifact-normalization-checkpoint` is separate from, and does not
   replace, the still-failing whole-source partition gate.
+- [x] Transport scheduler order/subscriptions separately from acceptance and
+  connect it to shared WHNF consumers; check exact resumed dispatches and wakes.
+  Source-owned private state and full checkpoint/provenance integration remain open.
 - [ ] Replace any confirmed redundant origin/type retention with the existing
   typed owner's shared construction or an explicitly selected recompute policy.
   Gate on open scopes, distinct nominal families, ordinary Sorted results,

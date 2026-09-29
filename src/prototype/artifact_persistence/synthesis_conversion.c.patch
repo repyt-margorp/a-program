@@ -8,7 +8,7 @@
  
  struct conversion_work {
  	struct pg_conversion comparison;
-@@ -297,27 +298,59 @@
+@@ -297,27 +298,61 @@
  	return NULL;
  }
  
@@ -45,9 +45,11 @@
 +	struct normalization_work *local = pg_synthesis_work_state(job, NORMALIZATION_JOB);
 +	if (!local || local->checking_term || local->reduction.whnf) return -1;
 +	if (whnf->request.policy != &pg_pure_policy) return -1;
++	if (whnf->status != PG_EVAL_PENDING || whnf->certificate) return -1;
++	if (whnf->request.work && whnf->request.work != synthesis->normalization) return -1;
 +	const struct pg_evidence *input = normalization_input(synthesis, job);
 +	if (!input || pg_evidence_subject(input)->core != whnf->request.input) return -1;
-+	if (pg_whnf_job_attach(synthesis->normalization, whnf)) return -1;
++	if (!whnf->request.work && pg_whnf_job_attach(synthesis->normalization, whnf)) return -1;
 +	local->checking_term = input;
 +	local->reduction.whnf = whnf;
 +	return 0;

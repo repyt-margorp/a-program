@@ -299,9 +299,12 @@ files are edited during this phase. `HISTORY_REPORT` must not exist before a run
 
 The normalization checkpoint gate exercises the owner-local WHNF attachment at
 300 intermediate boundaries, using the existing machine codec, input checks and
-Solve path. It requires known-origin continuations; decoding alone does not
-authorize attachment. Default source import does not use this API. NF and the
-source scheduler remain unfinished; this is not a whole-source checkpoint gate.
+Solve path. It also restores shared WHNF consumers with ready/wait order and
+preparation wakeups through `artifact/schedule.c`. Its inert wire records do not
+import job status, evidence or private owner state. Attachment requires a closed
+owner-supplied mapping and known-origin continuations; decoding alone does not
+authorize attachment. Default source import does not use these APIs. NF and
+source-owner continuations remain unfinished; this is not a whole-source checkpoint gate.
 
 The strict fuel-partition gate is separate from the currently passing transport
 tests. It fails until saved progress survives reload, including cases where the

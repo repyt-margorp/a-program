@@ -1,6 +1,23 @@
 --- a/synthesis_work.h
 +++ b/synthesis_work.h
-@@ -22,6 +22,9 @@
+@@ -3,7 +3,15 @@
+ 
+ #include "synthesis.h"
+ 
+-struct waiter;
++/* Scheduler edges are shared with artifact transport, not copied into owner
++ * state. The ordered child list determines wake order; dependency is its
++ * reverse link. Domain progress and evidence remain in their existing owners. */
++struct waiter {
++	struct pg_synthesis_job *parent;
++	struct pg_synthesis_job *child;
++	struct waiter *next;
++	int preparation;
++};
+ /* Borrowed view of existing construction, never stored acceptance or a second
+  * classifier. value_kind: -1 unknown, 0 computation, 1 value, 2 value type. */
+ struct pg_synthesis_projection {
+@@ -22,6 +30,9 @@
  	struct waiter *waiters;
  	struct waiter *dependency;
  	const struct pg_evidence *result;

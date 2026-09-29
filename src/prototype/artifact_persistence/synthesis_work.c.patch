@@ -1,6 +1,19 @@
 --- a/synthesis_work.c
 +++ b/synthesis_work.c
-@@ -179,6 +179,51 @@
+@@ -1,12 +1,5 @@
+ #include "synthesis_work.h"
+ 
+-struct waiter {
+-	struct pg_synthesis_job *parent;
+-	struct pg_synthesis_job *child;
+-	struct waiter *next;
+-	int preparation;
+-};
+-
+ void pg_synthesis_work_destroy(struct pg_synthesis *synthesis)
+ {
+ 	for (size_t i = 0; i < synthesis->jobs.capacity; ++i)
+@@ -179,6 +172,51 @@
  	return job->status == PG_SYNTHESIS_DONE ? job->result : NULL;
  }
  
