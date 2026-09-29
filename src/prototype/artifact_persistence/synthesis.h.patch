@@ -1,6 +1,6 @@
 --- a/synthesis.h
 +++ b/synthesis.h
-@@ -868,6 +868,16 @@
+@@ -868,6 +868,23 @@
  void pg_synthesis_advance(struct pg_synthesis *synthesis, uint64_t budget);
  enum pg_synthesis_status pg_synthesis_status(const struct pg_synthesis_job *job);
  const struct pg_evidence *pg_synthesis_result(const struct pg_synthesis_job *job);
@@ -14,6 +14,13 @@
 + * This neither changes status nor supplies an expected type to synthesis. */
 +int pg_synthesis_import_materialized(struct pg_synthesis *synthesis,
 +	struct pg_synthesis_job *job, const struct pg_occurrence *root);
++/* Saved completion is a descriptive assertion, not local acceptance. Preserve
++ * it on inert roundtrips; once checking starts, only local completion is saved.
++ * No scheduler/kernel consumer may use this in place of pg_synthesis_result. */
++int pg_synthesis_saved_complete(const struct pg_synthesis *synthesis,
++	const struct pg_synthesis_job *job);
++int pg_synthesis_import_completion(struct pg_synthesis *synthesis,
++	struct pg_synthesis_job *job);
  /* Read-only diagnostics for rejected declaration checks in this store, not
   * a new failure authority or a complete causal explanation of a root status.
   * Each callback borrows constructor/index tokens and a zero-based written

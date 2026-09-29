@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Updated: 2026-09-29
-Status: in progress; APGSRC65 persistence and first C backend are prototypes,
+Status: in progress; APGSRC66 persistence and first C backend are prototypes,
 not promoted. Exact resumption and trust/fuel integration remain unfinished.
 Baseline: `152b59506e915e18a34f6dc8041e981fb2a82888` (PR #45 documents
 imported). Implementation is unchanged from `e716232`; unrelated working-tree
@@ -220,11 +220,12 @@ those inputs and unfinished owner state can be transported.
   every continuation is not justified by the history-growth finding.
   Completed term evidence alone is not completed source-module evidence:
   `synthesis_derivation.c:258` exports the term's proof, whereas definition
-  registration/activation in `synthesis.c:2479` also checks siblings and `::`.
+  `definitions_step` in `synthesis.c:2535` waits for siblings and `::` after
+  registration/activation (`synthesis.c:2479`) finishes indexing names.
   Any replacement of a source producer must preserve those obligations and its
   namespace/polarity outputs, not forward only a valid selected term's proof.
 - [x] **AP1.4:** current-format-only policy, explicitly requested by the user.
-  Prototype writes/reads APGSRC65/APGRET4, with APGOCC8/APGSCP2 typed payloads.
+  Prototype writes/reads APGSRC66/APGRET4, with APGOCC8/APGSCP2 typed payloads.
   Earlier formats reject and must be rebuilt from source. Remove compatibility
   branches, reserved legacy archive fields, migration APIs/tests and old-version
   build dependencies. Existing seed tests check rejection of every older header.
@@ -745,7 +746,27 @@ closed typed root, not parser nodes or scheduler state. A thin command driver
 loads `.a`, obtains a checked named export through existing Solve, and passes the
 borrowed occurrence downstream. Explicitly report reconstruction fuel: this
 first driver does not pretend to preserve the unfinished solver frontier or to
-implement trusted import. Zero fuel must not emit an unchecked executable.
+implement trusted import. In this initial default path, zero fuel cannot emit.
+
+Increment after `1bc5e18` (2026-09-29, agent implementation decision under AP1's
+explicit user-authorized trust policy): add `--trust-image` at the artifact/C
+adapter boundary. APGSRC66 records one completion byte on each existing producer,
+without creating evidence, restoring scheduler status, or duplicating the typed
+graph. `pg_artifact_trusted_export` requires a completed source module, every
+entry's completion (including imports and assertions), and a saved closed local
+definition. It cannot authorize an isolated result beside unfinished obligations.
+The caller explicitly trusts an **unauthenticated file assertion**; this is not
+strict validation or a hash-provenance scheme. No checking, allocation or source
+elaboration occurs on this path. Inputs-only and incomplete images refuse it.
+There is no failure-to-trust fallback. Default checking remains unchanged.
+
+This bounded increment addresses already-completed downstream consumption, not
+AP1/AP3's missing pending frontier. The API is only available before any Solve;
+inert resaves retain statements, while a save after strict recomputation starts
+reports only local completion. This deliberately conservative temporary policy
+does not solve partial revalidation/resumption or the validation sublimit/history.
+Those remain open, as does authenticated external prior-record reuse. Refusing
+unsupported compiler-wide reuse is preferable to fabricating accepted receipts.
 
 Emit C functions/closures from the structural DAG, with a backend-local runtime
 for the supported Oracles. No embedded source parser, Solver, kernel or `.a`
@@ -792,6 +813,44 @@ those computations. Preserve this boundary test until AP4.6 is implemented.
   QuickSort's rejection boundary still passes; general Identity and actual C
   QuickSort execution remain unfinished. No Kernel, source graph or acceptance
   rule changes, and no claim that a syntactic `Act` alone is always diagonal.
+- [x] **AP4.7:** verify explicit trusted completed-export consumption; publish as
+  its own prototype increment after `1bc5e18`.
+  Keep default checking, zero-step byte identity and no local evidence admission.
+  Test invalid/pending siblings, `::`, imports, inputs-only refusal, old/invalid
+  completion encodings, and differential C execution with effects. No separate
+  replay engine. Report its narrow scope without closing AP1/AP3/#44.
+  Fresh O2: artifact history/transport/semantic, seed and C differential gates
+  pass. ASan/UBSan: semantic, transport, C differential (including emitted C),
+  file policy and QuickSort unsupported-boundary gates pass. Fresh clean
+  `e716232` overlays exclude unrelated working-tree Evidence/IADT changes.
+  `step 0` cycles remain byte-identical; imported statements do not become
+  local proofs. Import-provider failures and forged completion still reject
+  under ordinary checking. Full acceptance was not rerun for this increment;
+  AP3.6's prior result is not reattributed to this version.
+
+AP4.7 source delta relative to `1bc5e18` (actual patched source, not diff-file
+context/header churn; accepted implementation files are unchanged):
+
+| File (prototype overlay unless prefixed) | Added | Removed |
+| --- | ---: | ---: |
+| `synthesis.h` | 7 | 0 |
+| `synthesis_work.h` | 1 | 0 |
+| `synthesis_work.c` | 17 | 0 |
+| `source_io.c` | 17 | 7 |
+| `source_io.h` | 6 | 4 |
+| `artifact/file.c` | 27 | 0 |
+| `artifact/file.h` | 9 | 0 |
+| `c_backend/main.c` | 21 | 3 |
+| `c_backend/emit.h` | 3 | 2 |
+| `semantic_test.c` | 108 | 0 |
+| `tests/source_io.c` | 6 | 2 |
+| `tests/seed.c` | 1 | 1 |
+| `c_backend/check.sh` | 28 | 4 |
+| `c_backend/sorting_check.sh` | 7 | 0 |
+
+Implementation: +108/-16 (net +92). Tests: +150/-7 (net +143).
+Documentation is separate in this plan and the two prototype READMEs. This is
+new explicit policy support, not claimed code compaction or frontier completion.
 
 Initial backend line delta at `92704c6` (new files; no accepted implementation changed):
 

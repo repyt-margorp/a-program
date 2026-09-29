@@ -20,6 +20,33 @@ int pg_artifact_limit_argument(const char *argument, size_t *limit)
 	return 0;
 }
 
+int pg_artifact_trusted_export(const struct pg_program *program,
+	const struct pg_synthesis_job *module, struct pg_token name,
+	const struct pg_occurrence **subject)
+{
+	if (!program || !module || !subject || !name.text || !name.length) return -1;
+	const struct pg_synthesis *synthesis = &program->synthesis;
+	if (synthesis->steps) return 0;
+	const struct pg_source_scope *scope;
+	const struct pg_syntax *syntax;
+	if (pg_synthesis_source_input(synthesis, module, &scope, &syntax)) return 0;
+	if (!syntax || syntax->kind != PG_SYNTAX_DEFINITIONS) return 0;
+	if (!pg_synthesis_saved_complete(synthesis, module)) return 0;
+	const struct pg_occurrence *selected = NULL;
+	for (size_t i = 0; i < syntax->item_count; ++i) {
+		const struct pg_syntax_item *item;
+		struct pg_synthesis_job *entry;
+		if (pg_synthesis_definition_entry(module, i, &item, &entry) != 1) return 0;
+		if (!pg_synthesis_saved_complete(synthesis, entry)) return 0;
+		if (item->operation != PG_TOKEN_ASSIGN) continue;
+		if (item->name.length != name.length || memcmp(item->name.text, name.text, name.length)) continue;
+		if (selected || pg_synthesis_materialized(entry, &selected) != 1) return 0;
+	}
+	if (!selected || selected->context || !selected->core || !selected->classifier) return 0;
+	*subject = selected;
+	return 1;
+}
+
 struct pg_program *pg_artifact_read_file(FILE *file, size_t limit,
 	size_t *count, struct pg_synthesis_job *const **roots)
 {

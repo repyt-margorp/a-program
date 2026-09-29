@@ -6,7 +6,7 @@
  
 -/* Reconstructible source environments and source/definition/rule roots, including pending modules.
 - * APGSRC62 retains source/handler binding symbols and family index telescopes, preserves
-+/* APGSRC65 preserves available typed construction at each producer.
++/* APGSRC66 preserves available typed construction at each producer.
 + * It shares relocation with source/rule inputs and nominal declarations.
 + * Reading exposes descriptive results through pg_synthesis_materialized,
 + * not accepted evidence. Local Solve still checks source and annotations;
@@ -18,7 +18,16 @@
   * already suspended values under surface &, admits checked
   * termination requests, and uses TOTAL source RETURN/arrow contracts with F
   * totality contracts, context-authoritative Pi premises and lexical
-@@ -60,16 +67,18 @@
+@@ -54,22 +61,26 @@
+  * not an allocation-only formation theorem. Source synthesis checks fields
+  * and result images against that immutable declaration; nested alpha renaming
+  * uses fresh field evidence, not acceptance of loaded annotations.
+- * No search state or acceptance flag is retained. Unsupported producer/scope
++ * A descriptive completion byte accompanies each producer, including modules
++ * without expression results. Only explicit artifact trust may rely on it;
++ * it never grants kernel acceptance. No pending cursor is retained. Unsupported producer/scope
+  * kinds fail explicitly instead of being omitted. Source roots are recomputed;
+  * retaining annotation recipes is not a complete CHECKPOINT codec.
   * Streams are borrowed. */
  int pg_sources_write(FILE *file, const struct pg_synthesis *synthesis,
  	size_t count, struct pg_synthesis_job *const *roots);
@@ -28,7 +37,7 @@
 - * Origin selection includes retained endpoints and intermediate phase Terms. */
 -int pg_sources_write_retained(FILE *file, const struct pg_synthesis *synthesis,
 -	size_t count, struct pg_synthesis_job *const *roots, const struct pg_reduction_archive *reductions);
-+/* Same format and writer, but omit materialized producer results. Preserve
++/* Same format and writer, but omit materialized producer results and completion. Preserve
 + * reconstruction inputs/obligations; solving this image restarts computation.
 + * This explicit recompute profile is not a progress-preserving checkpoint. */
 +int pg_sources_write_inputs(FILE *file, const struct pg_synthesis *synthesis,
@@ -40,7 +49,7 @@
   * limit bounds scope/root/name data and syntax data separately. Loading never
 - * advances Solve; on failure, destroys all storage and leaves outputs alone. */
 + * advances Solve; on failure, destroys all storage and leaves outputs alone.
-+ * Only APGSRC65 is accepted. It contains no evaluator-history archive. */
++ * Only APGSRC66 is accepted. It contains no evaluator-history archive. */
  struct pg_program *pg_sources_read(FILE *file, size_t limit,
  	size_t *count, struct pg_synthesis_job *const **roots);
  #endif

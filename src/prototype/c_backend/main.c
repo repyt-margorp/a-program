@@ -50,8 +50,14 @@ int main(int argc, char **argv)
 {
 	uint64_t budget = 1000000;
 	size_t limit = PG_ARTIFACT_DEFAULT_LIMIT;
-	int index = 1;
-	while (index + 1 < argc) {
+	int index = 1, trust_image = 0;
+	while (index < argc) {
+		if (!strcmp(argv[index], "--trust-image")) {
+			trust_image = 1;
+			++index;
+			continue;
+		}
+		if (index + 1 == argc) break;
 		if (!strcmp(argv[index], "--steps")) {
 			if (number(argv[index + 1], &budget)) goto usage;
 		} else if (!strcmp(argv[index], "--image-limit")) {
@@ -77,6 +83,18 @@ int main(int argc, char **argv)
 	int status = 2;
 	if (!count) { fputs("C export: artifact has no root\n", stderr); goto done; }
 	struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = entry, .length = strlen(entry)};
+	if (trust_image) {
+		const struct pg_occurrence *subject;
+		int available = pg_artifact_trusted_export(program, roots[0], name, &subject);
+		if (available != 1) {
+			fputs("C export: no complete saved module/export; trust does not complete pending work\n", stderr);
+			status = available < 0 ? 2 : 3;
+			goto done;
+		}
+		fputs("C export: user-trusted saved completion; no authentication or revalidation; steps=0\n", stderr);
+		status = publish(output, subject);
+		goto done;
+	}
 	struct pg_synthesis_job *selected = pg_program_select_name(program, roots[0], name);
 	if (!selected) { status = 1; goto done; }
 	pg_synthesis_advance(&program->synthesis, budget);
@@ -98,6 +116,6 @@ done:
 	pg_program_destroy(program);
 	return status;
 usage:
-	fputs("usage: a-to-c [--steps N] [--image-limit N|none] INPUT.a ENTRY OUTPUT.c\n", stderr);
+	fputs("usage: a-to-c [--trust-image] [--steps N] [--image-limit N|none] INPUT.a ENTRY OUTPUT.c\n", stderr);
 	return 2;
 }

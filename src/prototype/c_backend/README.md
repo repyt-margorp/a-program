@@ -22,6 +22,10 @@ target ordinals without alpha interning or changes to the input graph.
 selection through existing Solve, then emission and atomic publication. Imported
 typed structure alone grants no acceptance. The adapter reports reconstruction
 fuel and refuses pending/rejected entries, including invalid siblings and `::`.
+With explicit `--trust-image`, the artifact adapter instead borrows a saved local
+definition only when the whole module and every entry have saved completion.
+This is a user-trusted, unauthenticated assertion, not new Kernel evidence.
+It performs no Solve, even with `--steps 0`; it cannot finish partial work.
 
 `runtime.c` supplies target-local closures, lazy pure operands and Oracle
 realizations. Generated executables link only this runtime and the C library,
@@ -50,9 +54,13 @@ Limitations:
   Acc QuickSort has an `identity-field` dependency, so it is **not yet compiled**.
   `check-c-sorting-boundary` confirms valid interpreter output `FFTT`, explicit
   backend rejection and no emitted file. This is not a successful C sort test.
-- The command adapter currently reconstructs/checks via ordinary Solve. It does
-  not implement trusted cache admission, validation sublimits or exact suspended
-  frontier restoration. A `--steps 0` import does not emit unchecked code.
+- Without `--trust-image`, the command adapter reconstructs/checks via ordinary
+  Solve; zero steps cannot emit. Trust mode requires a materialized completed
+  module, not an inputs-only image or an isolated completed definition beside
+  pending/rejected obligations. No fallback from failed checking to trust.
+  Validation sublimits, authenticated hash reuse and exact suspended frontier
+  restoration remain unimplemented. This backend option does not install
+  imported evidence in the compiler or provide compiler-wide trusted reuse.
 - Runtime allocation is invocation-wide; no garbage collection, tail-call
   guarantee, bounded memory or performance claim. C stack/heap resources bound
   execution. The ABI is versioned locally, never written into canonical `.a`.
@@ -85,6 +93,12 @@ Use a new overlay directory. The adapter accepts `--steps N` and an explicit
 fixed `--image-limit N` (default 1,000,000), or explicit `--image-limit none`,
 independent of file bytes or fuel. Removing the quota does not confer trust or
 skip format/representability checks. It does not reduce the retained graph.
+`--trust-image --steps 0` opts out of revalidation, relying on the image author's
+completion statements. Use only when that external trust is justified; a digest
+stored inside the same file does not authenticate it. This option is local to
+artifact admission, not the C emitter, runtime or Kernel. APGSRC66 is required;
+rebuild older images from source. Once any ordinary Solve has begun, the API
+refuses trusted export; a save then reports only locally completed producers.
 Exit codes: 0 emitted, 1 rejected, 2 input/I/O failure, 3 pending, 4 unsupported.
 
 Tests compare standalone output with the interpreter, require deterministic C
@@ -97,3 +111,7 @@ Diagonal tests include kernel-checked Text transports in both directions, a
 lexically captured payload and raw classifier-head correspondence. Lifts,
 unknown families and actions of binders/functions still reject with empty output;
 an unsupported transported payload cannot be erased by the diagonal rule.
+Both trusted and checked exports are compared to interpreter execution, including
+effect order and exactly-once entry forcing. Repeated emission is byte-identical
+within each mode. Across modes a saved thunk and a checked `force` use can emit
+different, behaviorally equivalent C; this does not relax artifact byte checks.

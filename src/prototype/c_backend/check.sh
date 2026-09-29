@@ -20,7 +20,7 @@ expect_status() {
 }
 
 compare_entry() {
-	local image=$1 entry=$2
+	local image=$1 entry=$2 trusted=${3:-1}
 	sha256sum "$image" > "$temporary/before"
 	expect_status 0 "$backend" "$image" "$entry" "$temporary/entry.c"
 	test ! -s "$temporary/out"
@@ -35,6 +35,24 @@ compare_entry() {
 	cp "$temporary/entry.c" "$temporary/first.c"
 	expect_status 0 "$backend" "$image" "$entry" "$temporary/entry.c"
 	cmp "$temporary/first.c" "$temporary/entry.c"
+	if [[ $trusted = 1 ]]; then
+		expect_status 0 "$backend" --steps 0 --trust-image "$image" "$entry" "$temporary/entry.c"
+		grep -q 'user-trusted saved completion.*steps=0' "$temporary/err"
+		test ! -s "$temporary/out"
+		# Saved definitions include their thunk; checked name use inserts force.
+		# Both runners demand it once, but their C need not be byte-identical.
+		"$cc" "${flags[@]}" -I"$here" "$temporary/entry.c" "$here/runtime.c" -o "$temporary/run"
+		expect_status 0 "$temporary/run"
+		cmp "$temporary/out" "$temporary/generated"
+		cp "$temporary/entry.c" "$temporary/trusted.c"
+		expect_status 0 "$backend" --trust-image --image-limit none "$image" "$entry" "$temporary/entry.c"
+		cmp "$temporary/trusted.c" "$temporary/entry.c"
+	else
+		expect_status 3 "$backend" --trust-image "$image" "$entry" "$temporary/entry.c"
+		cmp "$temporary/first.c" "$temporary/entry.c"
+	fi
+	sha256sum "$image" > "$temporary/after"
+	cmp "$temporary/before" "$temporary/after"
 	printf 'C differential: %s/%s passed\n' "$(basename "$image")" "$entry"
 }
 
@@ -49,15 +67,15 @@ for entry in main duplicated forwarded aborted; do compare_entry "$temporary/han
 compare_entry "$temporary/recursion.a" main
 compare_entry "$temporary/recursion.a" nominal
 compare_entry "$temporary/generic.a" main
-cp "$temporary/entry.c" "$temporary/fixed.c"
+cp "$temporary/first.c" "$temporary/fixed.c"
 expect_status 0 "$backend" --image-limit none "$temporary/generic.a" main "$temporary/entry.c"
 cmp "$temporary/fixed.c" "$temporary/entry.c"
 expect_status 0 "$compiler" --save-inputs "$temporary/recompute.a" "$here/fixtures/generic.p"
-compare_entry "$temporary/recompute.a" main
+compare_entry "$temporary/recompute.a" main 0
 
 # C emission has no side effects, even when a delayed computation was retained.
 expect_status 3 "$compiler" --steps 0 --save "$temporary/pending.a" "$here/fixtures/effects.p"
-compare_entry "$temporary/pending.a" main
+compare_entry "$temporary/pending.a" main 0
 cp "$temporary/entry.c" "$temporary/unchanged.c"
 expect_status 3 "$backend" --steps 0 "$temporary/effects.a" main "$temporary/entry.c"
 cmp "$temporary/entry.c" "$temporary/unchanged.c"
@@ -71,7 +89,13 @@ for invalid in invalid invalid-assert; do
 	cmp "$temporary/entry.c" "$temporary/unchanged.c"
 	expect_status 1 "$backend" --image-limit none "$temporary/invalid.a" main "$temporary/entry.c"
 	cmp "$temporary/entry.c" "$temporary/unchanged.c"
+	expect_status 3 "$backend" --trust-image "$temporary/invalid.a" main "$temporary/entry.c"
+	cmp "$temporary/entry.c" "$temporary/unchanged.c"
 done
+expect_status 3 "$backend" --trust-image "$temporary/effects.a" absent "$temporary/entry.c"
+cmp "$temporary/entry.c" "$temporary/unchanged.c"
+expect_status 4 "$backend" --trust-image "$temporary/effects.a" function "$temporary/entry.c"
+cmp "$temporary/entry.c" "$temporary/unchanged.c"
 expect_status 2 "$backend" "$temporary/effects.a" main "$temporary/effects.a"
 expect_status 2 "$backend" --steps -1 "$temporary/effects.a" main "$temporary/entry.c"
 expect_status 2 "$backend" --image-limit 0 "$temporary/effects.a" main "$temporary/entry.c"

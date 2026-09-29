@@ -1,6 +1,6 @@
 --- a/synthesis_work.c
 +++ b/synthesis_work.c
-@@ -179,6 +179,34 @@
+@@ -179,6 +179,51 @@
  	return job->status == PG_SYNTHESIS_DONE ? job->result : NULL;
  }
  
@@ -29,6 +29,23 @@
 +	if (!owns_entry(&synthesis->typing->occurrences, &root->index)) return -1;
 +	if (job->imported && job->imported != root) return -1;
 +	job->imported = root;
++	return 0;
++}
++
++int pg_synthesis_saved_complete(const struct pg_synthesis *synthesis,
++	const struct pg_synthesis_job *job)
++{
++	if (!synthesis || !job || job->owner != synthesis->owner_key) return 0;
++	if (job->status == PG_SYNTHESIS_DONE) return 1;
++	return !synthesis->steps && job->imported_complete;
++}
++
++int pg_synthesis_import_completion(struct pg_synthesis *synthesis,
++	struct pg_synthesis_job *job)
++{
++	if (!synthesis || !job || job->owner != synthesis->owner_key) return -1;
++	if (synthesis->steps) return -1;
++	job->imported_complete = 1;
 +	return 0;
 +}
 +

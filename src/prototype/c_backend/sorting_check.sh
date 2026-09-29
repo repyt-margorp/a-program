@@ -18,6 +18,13 @@ status=0
 test "$status" = 4
 grep -q 'identity-field' "$directory/diagnostic"
 test ! -e "$directory/quick.c"
+status=0
+"$backend" --trust-image --steps 0 --image-limit none "$directory/quick.a" main "$directory/quick.c" \
+	2> "$directory/diagnostic" || status=$?
+test "$status" = 4
+grep -q 'user-trusted saved completion.*steps=0' "$directory/diagnostic"
+grep -q 'identity-field' "$directory/diagnostic"
+test ! -e "$directory/quick.c"
 "$compiler" --steps 5000000 --image-limit 10000000 --run main --load "$directory/quick.a" > "$directory/reference"
 printf 'FFTT' > "$directory/expected"
 cmp "$directory/reference" "$directory/expected"

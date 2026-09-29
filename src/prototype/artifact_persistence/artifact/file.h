@@ -15,6 +15,15 @@ int pg_artifact_limit_argument(const char *argument, size_t *limit);
 struct pg_program *pg_artifact_read_file(FILE *file, size_t limit,
 	size_t *count, struct pg_synthesis_job *const **roots);
 
+/* Explicit trust policy: borrow a saved closed local definition from a complete
+ * source module, only before any Solve. Completion is an unauthenticated file
+ * assertion, NOT freshly checked evidence. No checking, allocation or status
+ * changes. Returns 1 on success, 0 if unavailable, -1 for invalid arguments;
+ * failure leaves subject unchanged. Normal checking does not use this API. */
+int pg_artifact_trusted_export(const struct pg_program *program,
+	const struct pg_synthesis_job *module, struct pg_token name,
+	const struct pg_occurrence **subject);
+
 /* Atomically replace path only after successful serialization and close. */
 enum pg_artifact_contents { PG_ARTIFACT_MATERIALIZED, PG_ARTIFACT_INPUTS };
 int pg_artifact_save_file(const char *path, const struct pg_program *program,

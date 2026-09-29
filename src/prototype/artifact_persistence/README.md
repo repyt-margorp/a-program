@@ -40,7 +40,7 @@ Missing descriptor support and insufficient bounds reject without publishing
 output roots or counts, through both scoped and unscoped descriptor entry points.
 Existing graph, declaration and occurrence transport tests also pass. This is
 not a complete source-image persistence or checkpoint implementation.
-The prototype now writes APGSRC65/APGRET4 with available typed results connected
+The prototype now writes APGSRC66/APGRET4 with available typed results connected
 to existing producer ordinals. Its view borrows `pg_occurrence`; there is no new
 type graph or accepted-result DB. Import preserves descriptive input only, and
 ordinary Solve still checks source/annotations. Selected producer dependencies
@@ -53,6 +53,24 @@ is no migration path or archive field in the semantic payload. Selected Core
 supplies necessary source allocations; default
 constructor fields reuse their existing lexical addresses instead of retaining
 every incidental use-context proof. Structural identity rules are unchanged.
+
+APGSRC66 adds one descriptive completion byte per producer, using the existing
+producer associations and typed graph. It does not restore live `DONE` status,
+accept Kernel evidence, or save private cursors. `artifact/file.c` owns explicit
+trusted export: before any Solve, a completed source module and all its entries
+(including imports and `::`) must have saved completion, and the selected local
+definition must have a closed materialized result. Registration completion alone
+is insufficient. Inputs-only images omit both results and completion. Trust is
+an unauthenticated user choice, not a proof reconstructed from a file flag.
+Ordinary checking ignores it. Inert resaves preserve completion; after any Solve,
+only local completion is written. This conservative interim policy is not exact
+checkpoint resumption or authenticated reuse. The C adapter exposes this choice
+as `--trust-image`; the compiler's ordinary Solve path is unchanged.
+Fresh O2 history/transport/semantic, seed and C differential tests pass on clean
+`e716232` plus the prototypes. ASan/UBSan pass semantic/transport, generated-C
+differentials, file policy and QuickSort's unsupported boundary. Source-format
+tests now skip/check the completion byte before mutating their original payload
+fields; they still exercise the intended invalid source relationships.
 
 Fresh verification of the patches following `5eaf3b7`, applied to clean `e716232`:
 `check-artifact-history`, `check-artifact-transport` and seed tests pass. They

@@ -338,8 +338,10 @@ static void untrusted_input(void)
 	const struct pg_occurrence *forged = pg_evidence_subject(proof);
 	struct pg_program *foreign = pg_program_allocate(PG_DEFINITION_IMPLICIT_THUNK);
 	assert(foreign && pg_synthesis_import_materialized(&foreign->synthesis, program->root, forged));
+	assert(pg_synthesis_import_completion(&foreign->synthesis, program->root));
 	pg_program_destroy(foreign);
 	assert(!pg_synthesis_import_materialized(&program->synthesis, program->root, forged));
+	assert(!pg_synthesis_import_completion(&program->synthesis, program->root));
 	const struct pg_evidence *other = pg_prove_universe(&program->typing,
 		pg_prove_empty_context(&program->typing), 1);
 	assert(other && pg_synthesis_import_materialized(&program->synthesis, program->root, pg_evidence_subject(other)));
@@ -352,6 +354,9 @@ static void untrusted_input(void)
 	assert(program && count == 1 && !program->synthesis.steps && !pg_synthesis_result(roots[0]));
 	const struct pg_occurrence *view;
 	assert(pg_synthesis_materialized(roots[0], &view) == 1 && inspect_semantic_root(view));
+	assert(pg_synthesis_saved_complete(&program->synthesis, roots[0]));
+	struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = "main", .length = 4};
+	assert(!pg_artifact_trusted_export(program, roots[0], name, &view));
 	advance(program, 100000);
 	assert(pg_synthesis_status(roots[0]) == PG_SYNTHESIS_REJECTED);
 	assert(!pg_synthesis_result(roots[0]));
@@ -449,6 +454,9 @@ static void rejected_sibling(void)
 	assert(program && count == 3 && !program->synthesis.steps);
 	const struct pg_occurrence *view;
 	assert(pg_synthesis_materialized(roots[0], &view) == 1 && inspect_semantic_root(view));
+	assert(pg_synthesis_saved_complete(&program->synthesis, roots[0]));
+	assert(!pg_artifact_trusted_export(program, roots[2], name, &view));
+	assert(!pg_artifact_trusted_export(program, roots[0], name, &view));
 	FILE *before = save(program, count, roots);
 	size_t proofs = program->typing.proofs.count, terms = program->graph.terms.count;
 	inspect_semantic_function(view);
@@ -596,9 +604,109 @@ static void limit_arguments(void)
 	assert(pg_artifact_limit_argument("none", NULL));
 }
 
+static void trusted_export(const char *source, int valid, int inputs_only, const char *provider)
+{
+	struct pg_program *program = provider ? pg_program_allocate(PG_DEFINITION_IMPLICIT_THUNK)
+		: pg_program_create(source, strlen(source), PG_DEFINITION_IMPLICIT_THUNK);
+	assert(program);
+	if (provider) {
+		struct pg_parser diagnostic;
+		struct pg_synthesis_job *library = pg_program_source(program, program->scope,
+			provider, strlen(provider), &diagnostic);
+		assert(library && !diagnostic.error);
+		const struct pg_source_scope *exports = pg_program_exports(program, program->scope, library);
+		const struct pg_source_scope *scope = pg_synthesis_import_scope(&program->synthesis, program->scope, exports);
+		program->root = pg_program_source(program, scope, source, strlen(source), &diagnostic);
+		assert(program->root && !diagnostic.error);
+	}
+	assert(program->root);
+	advance(program, 100000);
+	assert((pg_synthesis_status(program->root) == PG_SYNTHESIS_DONE) == valid);
+	FILE *file = tmpfile();
+	assert(file);
+	if (inputs_only) assert(!pg_sources_write_inputs(file, &program->synthesis, 1, &program->root));
+	else assert(!pg_sources_write(file, &program->synthesis, 1, &program->root));
+	pg_program_destroy(program);
+	struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = "main", .length = 4};
+	struct pg_synthesis_job *const *roots;
+	size_t count;
+	for (size_t cycle = 0; cycle < 3; ++cycle) {
+		rewind(file);
+		program = pg_artifact_read_file(file, PG_ARTIFACT_DEFAULT_LIMIT, &count, &roots);
+		assert(program && count == 1 && !program->synthesis.steps);
+		assert(!pg_synthesis_result(roots[0]));
+		size_t terms = program->graph.terms.count, proofs = program->typing.proofs.count;
+		size_t occurrences = program->typing.occurrences.count, jobs = program->synthesis.jobs.count;
+		const struct pg_occurrence *subject = NULL;
+		int expected = valid && !inputs_only;
+		assert(pg_artifact_trusted_export(program, roots[0], name, &subject) == expected);
+		assert((subject != NULL) == expected);
+		assert(pg_artifact_trusted_export(program, roots[0],
+			(struct pg_token){.text = "absent", .length = 6}, &subject) == 0);
+		assert((subject != NULL) == expected);
+		assert(terms == program->graph.terms.count && proofs == program->typing.proofs.count);
+		assert(occurrences == program->typing.occurrences.count && jobs == program->synthesis.jobs.count);
+		assert(!program->synthesis.steps && !pg_synthesis_result(roots[0]));
+		FILE *again = save(program, count, roots);
+		equal_files(file, again);
+		assert(!fclose(file));
+		file = again;
+		/* Explicit recomputation cannot retain a borrowed trust shortcut. */
+		advance(program, 1);
+		assert(!pg_artifact_trusted_export(program, roots[0], name, &subject));
+		assert(!pg_synthesis_saved_complete(&program->synthesis, roots[0]));
+		advance(program, 100000);
+		assert((pg_synthesis_status(roots[0]) == PG_SYNTHESIS_DONE) == valid);
+		pg_program_destroy(program);
+	}
+	assert(!fclose(file));
+}
+
+static void completion_format(void)
+{
+	const char source[] = "main := #0;";
+	struct pg_program *program = pg_program_create(source, sizeof(source) - 1, PG_DEFINITION_IMPLICIT_THUNK);
+	assert(program && program->root);
+	FILE *file = save(program, 1, &program->root);
+	/* Locate the first producer's completion byte through the source header. */
+	assert(!fseek(file, 8, SEEK_SET));
+	uint64_t header[6];
+	for (size_t i = 0; i < 6; ++i) assert(!pg_wire_read_u64(file, &header[i]));
+	assert(header[4]);
+	for (size_t i = 0; i < header[1]; ++i) {
+		uint64_t words[10];
+		for (size_t j = 0; j < 10; ++j) assert(!pg_wire_read_u64(file, &words[j]));
+		assert(!fseek(file, (long)words[6], SEEK_CUR));
+	}
+	assert(!fseek(file, (long)(8 * header[2] + 48), SEEK_CUR));
+	long flag = ftell(file);
+	assert(flag >= 0 && fgetc(file) == 0);
+	assert(!fseek(file, flag, SEEK_SET) && fputc(2, file) != EOF);
+	rewind(file);
+	size_t count = 91;
+	struct pg_synthesis_job *const *roots = NULL;
+	assert(!pg_sources_read(file, PG_ARTIFACT_DEFAULT_LIMIT, &count, &roots));
+	assert(count == 91 && !roots);
+	assert(!fseek(file, flag, SEEK_SET) && fputc(0, file) != EOF);
+	assert(!fseek(file, 6, SEEK_SET) && fputc(65, file) != EOF);
+	rewind(file);
+	assert(!pg_sources_read(file, PG_ARTIFACT_DEFAULT_LIMIT, &count, &roots));
+	assert(count == 91 && !roots);
+	assert(!fclose(file));
+	pg_program_destroy(program);
+}
+
 int main(void)
 {
 	limit_arguments();
+	completion_format();
+	trusted_export("main := #42; main :: #Int;", 1, 0, NULL);
+	trusted_export("main := #42; main :: #Int;", 1, 1, NULL);
+	trusted_export("main := \\x:#Int => x;", 1, 0, NULL);
+	trusted_export("main := #42; main :: #Text;", 0, 0, NULL);
+	trusted_export("main := #42; invalid := #0 :: @;", 0, 0, NULL);
+	trusted_export("import value; main := value;", 1, 0, "value := #42;");
+	trusted_export("import value; main := value;", 0, 0, "value := #42; invalid := #0 :: @;");
 	cycles(0); cycles(100); cycles(100000);
 	file_extent();
 	fixed_limit_and_publication();
