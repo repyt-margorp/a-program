@@ -5,14 +5,34 @@
 #include "computation.h"
 #include "host.h"
 #include "iadt.h"
+#include "identity.h"
 #include "evidence.h"
 #include <inttypes.h>
 #include <string.h>
+
+static const struct pg_term *diagonal_transport(const struct pg_term *term)
+{
+	const struct pg_term *family, *value, *type;
+	int lift;
+	if (!pg_identity_field_view(term, &family, &value, NULL, &lift) || lift) return NULL;
+	if (!pg_identity_action_view(family, &type) || type->kind != PG_REFERENCE) return NULL;
+	const struct pg_object *object = type->as.reference;
+	/* field_answer consumes Act A only after demanding its head. These fixed
+	 * references leave that action neutral. A binder or arbitrary Oracle does
+	 * not: even a syntactic Act can unfold into a non-diagonal family. */
+	if (pg_classifier_rigid(object) || pg_host_type_name(object) || pg_data_declaration_view(object)) return value;
+	return NULL;
+}
 
 static int term_child(void *unused, const void *key, size_t slot, const void **child)
 {
 	(void)unused;
 	const struct pg_term *term = key;
+	const struct pg_term *transported = diagonal_transport(term);
+	if (transported) {
+		if (slot) return 0;
+		*child = transported; return 1;
+	}
 	switch (term->kind) {
 	case PG_LAMBDA:
 		if (slot) return 0;
@@ -183,6 +203,11 @@ int pg_c_emit(FILE *output, const struct pg_occurrence *root, const char **error
 	for (const struct pg_dag_node *node = terms.first; node; node = node->next) {
 		const struct pg_term *term = node->key;
 		fprintf(output, "\nstatic struct ap_value *t%zu(struct ap_runtime *r, const struct ap_env *e)\n{\n\t(void)e;\n", node->id);
+		const struct pg_term *transported = diagonal_transport(term);
+		if (transported) {
+			fprintf(output, "\treturn t%zu(r, e);\n}\n", pg_dag_find(&terms, transported)->id);
+			continue;
+		}
 		switch (term->kind) {
 		case PG_LAMBDA:
 			fprintf(output, "\treturn ap_function(r, %zu, t%zu, e);\n", object_id(&objects, term->as.lambda.binder), pg_dag_find(&terms, term->as.lambda.body)->id);

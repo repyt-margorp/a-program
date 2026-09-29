@@ -778,6 +778,13 @@ those computations. Preserve this boundary test until AP4.6 is implemented.
   equations using exact Oracle contracts, then replace QuickSort's explicit
   rejection gate with actual generated-C differential execution. Include
   non-diagonal and dependent U/Pi cases; no unconditional proof erasure.
+  Increment after `2187d92`: compile diagonal transport only for `Act A` with
+  a known inert reference `A`, in either direction. O2 and ASan/UBSan backend
+  tests pass, including checked Text transports and rejection of lift, variable
+  families/actions and function actions. Unknown payloads are not erased.
+  QuickSort's rejection boundary still passes; general Identity and actual C
+  QuickSort execution remain unfinished. No Kernel, source graph or acceptance
+  rule changes, and no claim that a syntactic `Act` alone is always diagonal.
 
 Initial backend line delta at `92704c6` (new files; no accepted implementation changed):
 

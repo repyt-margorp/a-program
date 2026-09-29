@@ -38,10 +38,14 @@ operation forwarding and repeated resumptions, exact Text bytes, print,
 Int32/Int64 wrapping add/subtract/multiply/negate and signed ASCII formatting,
 structural constructors/Match and the existing Lambda encoding of recursion.
 Rigid classifier/family objects remain distinct neutral tokens, including
-generic runtime type arguments. No Nat compression or general proof erasure.
+generic runtime type arguments. The emitter also realizes the kernel's diagonal
+transport equation in either direction when `Act A` has a known inert reference
+as `A` (host type, rigid classifier or nominal declaration). It follows the
+transported value without modifying the source DAG or evaluating it. This is a
+restricted compilation rule, not Nat compression or general proof erasure.
 
 Limitations:
-- Identity Act/transport/lift and other unknown reachable Oracles reject before
+- Other Identity Act/transport/lift and unknown reachable Oracles reject before
   publishing C, even in a syntactically reachable but unused branch. The existing
   Acc QuickSort has an `identity-field` dependency, so it is **not yet compiled**.
   `check-c-sorting-boundary` confirms valid interpreter output `FFTT`, explicit
@@ -87,3 +91,7 @@ generic List, nominal ADTs, host bounds, NUL, repeated thunks, handlers and outp
 failure. Raw Oracle tests separately check all Int64 operations and two distinct
 operation labels; these descriptive test inputs are not acceptance receipts.
 They assert emission performs no evaluator/substitution steps or graph mutation.
+Diagonal tests include kernel-checked Text transports in both directions, a
+lexically captured payload and raw classifier-head correspondence. Lifts,
+unknown families and actions of binders/functions still reject with empty output;
+an unsupported transported payload cannot be erased by the diagonal rule.

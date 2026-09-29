@@ -3,6 +3,7 @@
 #include "classifier.h"
 #include "evidence.h"
 #include "host.h"
+#include "identity.h"
 #include <assert.h>
 #include <string.h>
 
@@ -55,6 +56,11 @@ static const struct pg_term *pure_result(struct pg_graph *graph, const struct pg
 static void record_result(struct pg_graph *graph, const struct pg_term *term, FILE *expected)
 {
 	const struct pg_term *answer = pure_result(graph, term);
+	struct pg_eval machine;
+	pg_computation_eval_init(&machine, graph, answer);
+	assert(pg_eval_advance(&machine, 100000) == PG_EVAL_WHNF);
+	answer = pg_eval_readback(&machine, graph);
+	pg_eval_destroy(&machine);
 	assert(answer->kind == PG_REFERENCE);
 	const struct pg_object *type;
 	size_t length;
@@ -94,6 +100,49 @@ static const struct pg_term *handlers(struct pg_graph *graph)
 	return pg_computation_fold(graph, body, pg_lambda(graph, z, returned(graph, pg_reference(graph, z))), 2, clauses);
 }
 
+static const struct pg_term *checked_transport(struct pg_typing *typing,
+	enum pg_identity_direction direction)
+{
+	const struct pg_evidence *context = pg_prove_empty_context(typing);
+	const struct pg_evidence *type = pg_prove_host_type(typing, context, pg_host_type("Text"));
+	const struct pg_evidence *universe = pg_prove_universe(typing, context, 0);
+	const struct pg_evidence *family = pg_prove_reflexivity(typing, universe, pg_prove_type_value(typing, type));
+	const struct pg_term *literal = text(typing->graph, direction == PG_IDENTITY_RIGHT ? "right" : "left");
+	const struct pg_evidence *value = pg_prove_host_value(typing, type, literal->as.reference);
+	const struct pg_evidence *transport = pg_prove_identity_transport(typing, family, value, direction);
+	assert(transport);
+	const struct pg_evidence *computation = pg_prove_return(typing, transport);
+	assert(computation);
+	return pg_evidence_subject(computation)->core;
+}
+
+static void unsupported_identity(struct pg_typing *typing, const struct pg_term *classifier)
+{
+	struct pg_graph *graph = typing->graph;
+	const struct pg_term *type = pg_reference(graph, pg_host_type("Text"));
+	const struct pg_term *literal = text(graph, "retained");
+	const struct pg_object *binder = pg_binder(graph);
+	const struct pg_term *variable = pg_reference(graph, binder);
+	const struct pg_term *cases[] = {
+		pg_identity_lift(graph, pg_identity_action(graph, type), literal, PG_IDENTITY_RIGHT),
+		pg_identity_transport(graph, variable, literal, PG_IDENTITY_RIGHT),
+		pg_identity_transport(graph, pg_identity_action(graph, variable), literal, PG_IDENTITY_LEFT),
+		pg_identity_transport(graph, pg_identity_action(graph, pg_lambda(graph, binder, variable)), literal, PG_IDENTITY_RIGHT)
+	};
+	for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i) {
+		const struct pg_occurrence *root = pg_occurrence(typing, PG_JUDGEMENT_COMPUTATION,
+			NULL, returned(graph, cases[i]), classifier, NULL, 0, NULL);
+		FILE *file = tmpfile();
+		const char *error;
+		assert(file);
+		emitting = 1;
+		assert(pg_c_emit(file, root, &error) == -1 && ftell(file) == 0);
+		emitting = 0;
+		assert(strstr(error, "identity"));
+		assert(!fclose(file));
+	}
+}
+
 int main(int argc, char **argv)
 {
 	assert(argc == 3);
@@ -102,7 +151,7 @@ int main(int argc, char **argv)
 	assert(!pg_graph_init(&graph) && !pg_typing_init(&typing, &graph));
 	FILE *output = fopen(argv[1], "w"), *expected = fopen(argv[2], "wb");
 	assert(output && expected);
-	const struct pg_term *parts[9];
+	const struct pg_term *parts[13];
 	parts[0] = handlers(&graph);
 	for (size_t i = 0; i < 8; ++i) {
 		const struct pg_object *function = pg_host_function(i), *domain, *codomain;
@@ -117,10 +166,21 @@ int main(int argc, char **argv)
 		const struct pg_term *format = apply(&graph, pg_reference(&graph, pg_host_function(i < 4 ? 8 : 9)), pg_reference(&graph, x));
 		parts[i + 1] = pg_computation_fold(&graph, call, pg_lambda(&graph, x, format), 0, NULL);
 	}
+	parts[9] = checked_transport(&typing, PG_IDENTITY_RIGHT);
+	parts[10] = checked_transport(&typing, PG_IDENTITY_LEFT);
+	const struct pg_term *family = pg_identity_action(&graph, pg_reference(&graph, pg_host_type("Text")));
+	const struct pg_object *binder = pg_binder(&graph);
+	const struct pg_term *open = pg_identity_transport(&graph, family, pg_reference(&graph, binder), PG_IDENTITY_RIGHT);
+	parts[11] = apply(&graph, pg_lambda(&graph, binder, returned(&graph, open)), text(&graph, "bound"));
+	const struct pg_term *universe = pg_evidence_subject(pg_prove_universe(&typing, pg_prove_empty_context(&typing), 0))->core;
+	/* Raw correspondence at an inert classifier head, independent of typing. */
+	parts[12] = returned(&graph, pg_identity_transport(&graph,
+		pg_identity_action(&graph, universe), text(&graph, "universe"), PG_IDENTITY_LEFT));
+	size_t count = sizeof(parts) / sizeof(*parts);
 	/* Prepending computations reverses their execution order. */
 	const struct pg_term *body = returned(&graph, text(&graph, ""));
-	for (size_t i = 0; i < 9; ++i) body = print_result(&graph, parts[i], body);
-	for (size_t i = 9; i; --i) record_result(&graph, parts[i - 1], expected);
+	for (size_t i = 0; i < count; ++i) body = print_result(&graph, parts[i], body);
+	for (size_t i = count; i; --i) record_result(&graph, parts[i - 1], expected);
 	assert(!fclose(expected));
 	const struct pg_object *print = pg_host_print(&graph);
 	const struct pg_term *classifier = pg_computation_type(&graph, PG_TOTALITY_TOTAL,
@@ -138,12 +198,13 @@ int main(int argc, char **argv)
 	static const struct pg_object_class unknown_class = {"unsupported-test"};
 	static const struct pg_object unknown = {PG_SEMANTIC_OBJECT, &unknown_class};
 	root = pg_occurrence(&typing, PG_JUDGEMENT_COMPUTATION, NULL,
-		returned(&graph, pg_reference(&graph, &unknown)), classifier, NULL, 0, NULL);
+		returned(&graph, pg_identity_transport(&graph, family, pg_reference(&graph, &unknown), PG_IDENTITY_LEFT)), classifier, NULL, 0, NULL);
 	output = tmpfile();
 	assert(output && pg_c_emit(output, root, &error) == -1 && ftell(output) == 0);
 	assert(strstr(error, "unsupported"));
 	fclose(output);
+	unsupported_identity(&typing, classifier);
 	pg_typing_destroy(&typing);
 	pg_graph_destroy(&graph);
-	puts("C Oracle tests: inert emission, unknown rejection, two clauses and all integer operations passed");
+	puts("C Oracle tests: inert emission, diagonal transport, unsupported Identity rejection, two clauses and integer operations passed");
 }
