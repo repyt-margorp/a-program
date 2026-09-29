@@ -4,6 +4,7 @@
 
 1. Produce executable C from `.a` without making C the owner of artifact semantics.
 2. State the support and acceptance boundaries, rather than erase unsupported proofs.
+3. Keep LinkerScript, native products and the public C ABI downstream of `.a`.
 
 ## Subjective (User)
 
@@ -19,7 +20,8 @@ Solve, conversion or normalization. Binder/layout/label identities become local
 target ordinals without alpha interning or changes to the input graph.
 
 `main.c` is a separate adapter: inert image loading, whole-module-checked name
-selection through existing Solve, then emission and atomic publication. Imported
+selection through existing Solve, then emission and atomic publication. Multiple
+exports share that Program and one total validation budget. Imported
 typed structure alone grants no acceptance. The adapter reports reconstruction
 fuel and refuses pending/rejected entries, including invalid siblings and `::`.
 With explicit `--trust-image`, the artifact adapter instead borrows a saved local
@@ -76,7 +78,7 @@ Limitations:
 - Runtime allocation is invocation-wide; no garbage collection, tail-call
   guarantee, bounded memory or performance claim. C stack/heap resources bound
   execution. The ABI is versioned locally, never written into canonical `.a`.
-- Entry selection uses the first image root as a source module. Executable
+- Entry selection uses the first image root as a source module. Exported
   entries must be returning computations or closed values, not unapplied Pi.
 
 The ABI requires C11, 8-bit bytes and exact `uint32_t`/`uint64_t`. Arithmetic
@@ -131,3 +133,77 @@ Both trusted and checked exports are compared to interpreter execution, includin
 effect order and exactly-once entry forcing. Repeated emission is byte-identical
 within each mode. Across modes a saved thunk and a checked `force` use can emit
 different, behaviorally equivalent C; this does not relax artifact byte checks.
+
+## LinkerScript
+
+The agent-selected initial script/ABI contract is versioned separately from
+A Program syntax. One directive per line; blank lines and `#` comments are
+allowed. Tokens may be bare or double-quoted; quoted escapes are `\"` and `\\`
+only. Paths are relative to the script. All five singleton directives below
+are required; `export` is ordered and repeatable. Unknown/duplicate singleton
+directives, unsupported ABI/target versions and duplicate aliases reject.
+
+```text
+aplink 1
+artifact "program.a"
+abi isolated_v1
+target host-c11
+product archive
+export "first" first
+export "second" second
+```
+
+```sh
+/tmp/a-program-c/build/a-to-c --link exports.aplink /tmp/component
+cc -std=c11 -I/tmp/component client.c /tmp/component/library.a -o /tmp/client
+```
+
+The output directory must not exist. It is staged beside the destination and
+published after successful emission and native tools; failures publish nothing.
+Like other CLI outputs, the path requires exclusive ownership during execution.
+Every product contains `component.c`, `component.h`, `runtime.c`, `runtime.h`
+and `link.json`. Product roles, not `.a` suffixes, distinguish the input artifact
+from the native archive:
+
+| Product | Additional files / entry rule |
+| --- | --- |
+| `source` | Optional `entry ALIAS` adds main |
+| `object` | `component.o`, `runtime.o`; no entry; link runtime once across components |
+| `archive` | Objects plus `library.a`; no entry |
+| `executable` | Objects plus `program`; `entry ALIAS` required |
+
+Native products use POSIX `execvp` with explicit argument vectors, no shell.
+`--cc TOOL` and `--ar TOOL` select GCC/Clang-compatible host C11 tools (defaults
+`cc`, `ar`); compilation uses `-std=c11 -O2 -c`. Executables may specify
+`native_script "layout.ld"`; this is actually passed to the GNU/ELF-LLD-compatible
+linker through the compiler driver, not merely listed in the receipt. No generic
+cross-target profile or generated shared-library export map is claimed.
+
+Aliases are `[A-Za-z][A-Za-z0-9_]*`; the C symbol is always `ap_export_ALIAS`,
+avoiding keywords, main, runtime functions and private tN names. The public ABI
+is `int ap_export_ALIAS(void)`: run one closed export, discard its value, return
+0 on success, 2 on runtime/allocation/I/O failure, or 4 on an unsupported demanded
+operation. Every call allocates/destroys its own runtime and jump target.
+Repeated calls repeat effects; failure does not retain that invocation's state.
+No callbacks, boxed values, persistent runtimes or handles cross this ABI, so
+emission-local nominal IDs never participate in cross-component comparisons.
+This is **not** a general Pi/foreign-function interface. Concurrent calls must
+externally coordinate effects such as stdout; signal-handler entry is unsupported.
+`AP_C_ISOLATED_ABI` 1 is checked by public headers, independently of runtime ABI 2.
+
+The script cannot request trust or relax checking. Existing CLI admission flags
+apply to all exports with a single B/R budget; the receipt records its selected
+policy and spent validation, not a proof/authentication of the input file.
+Selected roots share one emitted DAG. The old single-entry command uses this
+same emitter with one export and a main wrapper. No linker metadata is stored
+in `.a`; no kernel, source-language parser or artifact codec was changed.
+
+`check-c-link` tests all four products, shared roots, a multi-export C client,
+two separately emitted libraries (including a nominal ADT), failed-call recovery,
+real native-script section placement, exact/insufficient aggregate budgets,
+invalid scripts, failed native tools, unchanged inputs and header ABI mismatch.
+O2 and ASan/UBSan pass against clean `e716232` plus the artifact overlays at
+`b6bbb0b`. Existing C differentials, Oracle/Identity checks and checked/trusted
+Acc QuickSort also pass. This does not fix the separately failing public
+artifact split-fuel gate. Callable Pi/boxed/flat ABIs, shared semantic identity,
+foreign imports and shared-library visibility remain AP5.6 work.

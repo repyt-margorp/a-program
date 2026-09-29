@@ -8,6 +8,7 @@
 #include "identity.h"
 #include "evidence.h"
 #include <inttypes.h>
+#include <stdlib.h>
 #include <string.h>
 
 static int term_child(void *unused, const void *key, size_t slot, const void **child)
@@ -159,18 +160,73 @@ static int entry_mode(const struct pg_occurrence *root)
 	return pg_computation_type_view(type, &totality, &effects, &content) ? mode : -1;
 }
 
-int pg_c_emit(FILE *output, const struct pg_occurrence *root, const char **error)
+int pg_c_export_alias(const char *name)
+{
+	if (!name || !((*name >= 'a' && *name <= 'z') || (*name >= 'A' && *name <= 'Z'))) return 0;
+	for (++name; *name; ++name) {
+		if (*name >= 'a' && *name <= 'z') continue;
+		if (*name >= 'A' && *name <= 'Z') continue;
+		if (*name >= '0' && *name <= '9') continue;
+		if (*name != '_') return 0;
+	}
+	return 1;
+}
+
+static int compare_alias(const void *left, const void *right)
+{
+	const char *const *a = left, *const *b = right;
+	return strcmp(*a, *b);
+}
+
+int pg_c_export_names(size_t count, const struct pg_c_export *exports)
+{
+	if (!count || !exports || count > SIZE_MAX / sizeof(char *)) return 0;
+	const char **aliases = malloc(count * sizeof(*aliases));
+	if (!aliases) return 0;
+	int valid = 0;
+	for (size_t i = 0; i < count; ++i) {
+		if (!pg_c_export_alias(exports[i].alias)) goto done;
+		aliases[i] = exports[i].alias;
+	}
+	qsort(aliases, count, sizeof(*aliases), compare_alias);
+	for (size_t i = 1; i < count; ++i) if (!strcmp(aliases[i - 1], aliases[i])) goto done;
+	valid = 1;
+done:
+	free(aliases);
+	return valid;
+}
+
+static int valid_exports(size_t count, const struct pg_c_export *exports)
+{
+	if (!pg_c_export_names(count, exports)) return 0;
+	for (size_t i = 0; i < count; ++i) if (entry_mode(exports[i].subject) < 0) return 0;
+	return 1;
+}
+
+int pg_c_emit_header(FILE *output, size_t count, const struct pg_c_export *exports)
+{
+	if (!output || !valid_exports(count, exports)) return -1;
+	fputs("/* A Program isolated-call ABI: no values or handles cross this boundary. */\n"
+		"#ifndef AP_C_ISOLATED_ABI\n#define AP_C_ISOLATED_ABI 1\n"
+		"#elif AP_C_ISOLATED_ABI != 1\n#error incompatible_A_Program_isolated_ABI\n#endif\n"
+		"#ifdef __cplusplus\nextern \"C\" {\n#endif\n", output);
+	for (size_t i = 0; i < count; ++i) fprintf(output, "int ap_export_%s(void);\n", exports[i].alias);
+	fputs("#ifdef __cplusplus\n}\n#endif\n", output);
+	return ferror(output) ? -1 : 0;
+}
+
+int pg_c_emit_exports(FILE *output, size_t count, const struct pg_c_export *exports,
+	size_t entry, const char **error)
 {
 	if (!output || !error) return -1;
-	*error = "expected a closed returning entry";
-	int mode = entry_mode(root);
-	if (mode < 0) return -1;
+	*error = "expected closed returning exports, unique letter-led aliases and a valid entry";
+	if (!valid_exports(count, exports) || (entry != SIZE_MAX && entry >= count)) return -1;
 	struct pg_dag terms, objects;
 	if (pg_dag_init(&terms, term_child, NULL)) return -1;
 	if (pg_dag_init(&objects, NULL, NULL)) { pg_dag_destroy(&terms); return -1; }
 	int result = -1;
 	*error = "cannot collect Core DAG";
-	if (pg_dag_add(&terms, root->core)) goto done;
+	for (size_t i = 0; i < count; ++i) if (pg_dag_add(&terms, exports[i].subject->core)) goto done;
 	/* Validate the complete reachable subset before writing any C. */
 	for (const struct pg_dag_node *node = terms.first; node; node = node->next) {
 		const struct pg_term *term = node->key;
@@ -193,6 +249,7 @@ int pg_c_emit(FILE *output, const struct pg_occurrence *root, const char **error
 		}
 	}
 	fputs("/* A Program C backend: structural closures; acceptance belongs to the caller. */\n#include \"runtime.h\"\n#include <stdlib.h>\n_Static_assert(AP_C_RUNTIME_ABI == 2, \"incompatible A Program C runtime\");\n\n", output);
+	fprintf(output, "/* shared Core terms: %zu; exports: %zu */\n", terms.count, count);
 	for (const struct pg_dag_node *node = terms.first; node; node = node->next)
 		fprintf(output, "static struct ap_value *t%zu(struct ap_runtime *, const struct ap_env *, enum ap_projection);\n", node->id);
 	for (const struct pg_dag_node *node = terms.first; node; node = node->next) {
@@ -254,11 +311,24 @@ int pg_c_emit(FILE *output, const struct pg_occurrence *root, const char **error
 		}
 		fputs("}\n", output);
 	}
-	fprintf(output, "\nint main(void)\n{\n\tstruct ap_runtime *r = calloc(1, sizeof(*r));\n\tif (!r) return 2;\n\tif (!setjmp(r->failure)) ap_run(r, t%zu(r, NULL, AP_VALUE), %d);\n\tint status = r->status;\n\tap_destroy(r);\n\tfree(r);\n\treturn status;\n}\n", pg_dag_find(&terms, root->core)->id, mode);
+	fputs("\nstatic int run_entry(struct ap_value *(*body)(struct ap_runtime *, const struct ap_env *, enum ap_projection), int mode)\n"
+		"{\n\tstruct ap_runtime *r = calloc(1, sizeof(*r));\n\tif (!r) return 2;\n"
+		"\tif (!setjmp(r->failure)) ap_run(r, body(r, NULL, AP_VALUE), mode);\n"
+		"\tint status = r->status;\n\tap_destroy(r);\n\tfree(r);\n\treturn status;\n}\n", output);
+	for (size_t i = 0; i < count; ++i)
+		fprintf(output, "\nint ap_export_%s(void)\n{\n\treturn run_entry(t%zu, %d);\n}\n",
+			exports[i].alias, pg_dag_find(&terms, exports[i].subject->core)->id, entry_mode(exports[i].subject));
+	if (entry != SIZE_MAX) fprintf(output, "\nint main(void)\n{\n\treturn ap_export_%s();\n}\n", exports[entry].alias);
 	*error = "cannot write C output";
 	result = ferror(output) ? -1 : 0;
 done:
 	pg_dag_destroy(&objects);
 	pg_dag_destroy(&terms);
 	return result;
+}
+
+int pg_c_emit(FILE *output, const struct pg_occurrence *root, const char **error)
+{
+	const struct pg_c_export exported = {"entry", root};
+	return pg_c_emit_exports(output, 1, &exported, 0, error);
 }

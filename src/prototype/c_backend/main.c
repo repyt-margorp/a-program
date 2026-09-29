@@ -1,5 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #include "emit.h"
+#include "link/plan.h"
 #include "artifact/file.h"
 #include <errno.h>
 #include <inttypes.h>
@@ -19,7 +20,7 @@ static int number(const char *text, uint64_t *result)
 	return 0;
 }
 
-static int publish(const char *path, const struct pg_occurrence *root)
+static int publish(const char *path, const struct pg_c_link_plan *plan)
 {
 	size_t length = strlen(path);
 	if (length > SIZE_MAX - 12) return 2;
@@ -31,7 +32,7 @@ static int publish(const char *path, const struct pg_occurrence *root)
 	FILE *output = fdopen(fd, "w");
 	if (!output) { close(fd); goto done; }
 	const char *error;
-	if (pg_c_emit(output, root, &error)) {
+	if (pg_c_emit_exports(output, plan->count, plan->exports, plan->entry, &error)) {
 		fprintf(stderr, "C export: cannot lower entry: %s\n", error);
 		status = 4;
 		fclose(output);
@@ -50,7 +51,8 @@ int main(int argc, char **argv)
 {
 	uint64_t budget = 1000000, validation_limit = UINT64_MAX;
 	size_t limit = PG_ARTIFACT_DEFAULT_LIMIT;
-	int index = 1, trust_image = 0;
+	int index = 1, trust_image = 0, tools = 0;
+	const char *script = NULL, *cc = "cc", *ar = "ar";
 	while (index < argc) {
 		if (!strcmp(argv[index], "--trust-image")) {
 			trust_image = 1;
@@ -64,61 +66,95 @@ int main(int argc, char **argv)
 			if (number(argv[index + 1], &validation_limit)) goto usage;
 		} else if (!strcmp(argv[index], "--image-limit")) {
 			if (pg_artifact_limit_argument(argv[index + 1], &limit)) goto usage;
+		} else if (!strcmp(argv[index], "--link")) {
+			if (script) goto usage;
+			script = argv[index + 1];
+		} else if (!strcmp(argv[index], "--cc")) {
+			cc = argv[index + 1];
+			tools = 1;
+		} else if (!strcmp(argv[index], "--ar")) {
+			ar = argv[index + 1];
+			tools = 1;
 		} else break;
 		index += 2;
 	}
-	if (argc - index != 3) goto usage;
-	const char *input = argv[index], *entry = argv[index + 1], *output = argv[index + 2];
+	if (argc - index != (script ? 1 : 3)) goto usage;
+	if (tools && !script) goto usage;
+	struct pg_c_link_plan plan = {.entry = 0, .count = 1};
+	struct pg_c_export single = {"entry", NULL};
+	const char *single_name = script ? NULL : argv[index + 1];
+	const char *output = script ? argv[index] : argv[index + 2];
+	if (script) {
+		plan = (struct pg_c_link_plan){0};
+		size_t line;
+		const char *error;
+		if (pg_c_link_read(&plan, script, &line, &error)) {
+			fprintf(stderr, "%s:%zu: %s\n", script, line, error);
+			pg_c_link_destroy(&plan);
+			return 2;
+		}
+	} else {
+		plan.artifact = argv[index]; plan.names = &single_name; plan.exports = &single;
+	}
+	int status = 2;
+	const char *input = plan.artifact;
 	struct stat source_stat, target_stat;
 	if (!stat(input, &source_stat) && !stat(output, &target_stat)
 		&& source_stat.st_dev == target_stat.st_dev && source_stat.st_ino == target_stat.st_ino) {
 		fputs("C export: output must not replace the input artifact\n", stderr);
-		return 2;
+		goto cleanup;
 	}
 	FILE *file = fopen(input, "rb");
-	if (!file) { perror(input); return 2; }
+	if (!file) { perror(input); goto cleanup; }
 	size_t count = 0;
 	struct pg_synthesis_job *const *roots = NULL;
 	struct pg_program *program = pg_artifact_read_file(file, limit, &count, &roots);
 	fclose(file);
-	if (!program) { fputs("C export: cannot read artifact\n", stderr); return 2; }
-	int status = 2;
+	if (!program) { fputs("C export: cannot read artifact\n", stderr); goto cleanup; }
 	if (!count) { fputs("C export: artifact has no root\n", stderr); goto done; }
-	struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = entry, .length = strlen(entry)};
-	if (trust_image) {
-		const struct pg_occurrence *subject;
-		int available = pg_artifact_trusted_export(program, roots[0], name, &subject);
-		if (available != 1) {
-			fputs("C export: no complete saved module/export; trust does not complete pending work\n", stderr);
-			status = available < 0 ? 2 : 3;
-			goto done;
-		}
-		fputs("C export: user-trusted saved completion; no authentication or revalidation; steps=0\n", stderr);
-		status = publish(output, subject);
-		goto done;
-	}
-	struct pg_synthesis_job *selected = pg_program_select_name(program, roots[0], name);
-	if (!selected) { status = 1; goto done; }
 	uint64_t spent = 0;
-	enum pg_synthesis_status checked = pg_artifact_revalidate(program, selected, budget, validation_limit, &spent);
-	fprintf(stderr, "C export: reconstruction steps=%" PRIu64 " budget=%" PRIu64
-		" validation_limit=%" PRIu64 " remaining=%" PRIu64 "\n", spent, budget, validation_limit, budget - spent);
-	switch (checked) {
-	case PG_SYNTHESIS_PENDING: status = 3; break;
-	case PG_SYNTHESIS_REJECTED: status = 1; break;
-	case PG_SYNTHESIS_UNSUPPORTED: status = 4; break;
-	case PG_SYNTHESIS_ERROR: status = 2; break;
-	case PG_SYNTHESIS_DONE: {
+	for (size_t i = 0; i < plan.count; ++i) {
+		struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = plan.names[i], .length = strlen(plan.names[i])};
+		if (trust_image) {
+			int available = pg_artifact_trusted_export(program, roots[0], name, &plan.exports[i].subject);
+			if (available != 1) {
+				fputs("C export: no complete saved module/export; trust does not complete pending work\n", stderr);
+				status = available < 0 ? 2 : 3;
+				goto checked;
+			}
+			continue;
+		}
+		struct pg_synthesis_job *selected = pg_program_select_name(program, roots[0], name);
+		if (!selected) { status = 1; goto checked; }
+		uint64_t used = 0;
+		enum pg_synthesis_status state = pg_artifact_revalidate(program, selected,
+			budget - spent, validation_limit - spent, &used);
+		spent += used;
+		switch (state) {
+		case PG_SYNTHESIS_PENDING: status = 3; goto checked;
+		case PG_SYNTHESIS_REJECTED: status = 1; goto checked;
+		case PG_SYNTHESIS_UNSUPPORTED: status = 4; goto checked;
+		case PG_SYNTHESIS_ERROR: status = 2; goto checked;
+		case PG_SYNTHESIS_DONE: break;
+		}
 		const struct pg_evidence *proof = pg_synthesis_result(selected);
-		if (!pg_evidence_owned_by(proof, &program->typing)) break;
-		status = publish(output, pg_evidence_subject(proof));
-		break;
+		if (!pg_evidence_owned_by(proof, &program->typing)) goto checked;
+		plan.exports[i].subject = pg_evidence_subject(proof);
 	}
-	}
+	status = script ? pg_c_link_publish(&plan, output, cc, ar, script, trust_image, spent) : publish(output, &plan);
+checked:
+	if (trust_image)
+		fputs("C export: user-trusted saved completion; no authentication or revalidation; steps=0\n", stderr);
+	else fprintf(stderr, "C export: reconstruction steps=%" PRIu64 " budget=%" PRIu64
+		" validation_limit=%" PRIu64 " remaining=%" PRIu64 "\n", spent, budget, validation_limit, budget - spent);
 done:
 	pg_program_destroy(program);
+cleanup:
+	pg_c_link_destroy(&plan);
 	return status;
 usage:
-	fputs("usage: a-to-c [--trust-image] [--steps N] [--revalidate-limit N] [--image-limit N|none] INPUT.a ENTRY OUTPUT.c\n", stderr);
+	fputs("usage: a-to-c [--trust-image] [--steps N] [--revalidate-limit N] [--image-limit N|none]\n"
+		"       INPUT.a ENTRY OUTPUT.c\n"
+		"       --link SCRIPT.aplink [--cc TOOL] [--ar TOOL] NEW_OUTPUT_DIRECTORY\n", stderr);
 	return 2;
 }

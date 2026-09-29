@@ -1274,7 +1274,7 @@ ABI, blanket proof erasure or default acceptance of pending proofs.
 PR [#48](https://github.com/repyt-margorp/a-program/pull/48) merged at `a1a3321`;
 its sole change is the preserved
 [research report](2026-09-29-LINKABLE-COMPILATION-UNITS-AND-TARGET-LINK-MANIFEST-DESIGN.md).
-The following code was inspected at `ea287c2` and is unchanged by that merge:
+Historical inspection at `ea287c2`, unchanged by that merge:
 
 - `c_backend/main.c` reads one artifact and selects one name, using ordinary
   whole-module checking or explicit trusted saved completion. Its atomic output
@@ -1288,9 +1288,8 @@ The following code was inspected at `ea287c2` and is unchanged by that merge:
   #46 is therefore an extension, not an established failure of single-entry C.
   #47 separately concerns relevance and partial-artifact admissibility.
 
-Paths above are under `src/prototype/`. Current uncommitted artifact checkpoint
-work does not implement these facilities. Existing backend tests do not verify
-the proposed ABI or linker. Merging the report closes neither issue.
+Paths above are under `src/prototype/`. Those observations describe the state
+before the implementation below. Merging the report closed neither issue.
 
 ### Assessment
 
@@ -1345,7 +1344,9 @@ prerequisites for script-driven C components.
 
 ### Plan
 
-AP1-AP3 remain unfinished and retain priority. AP5 follows the existing supported
+AP1-AP3 remain unfinished. This independent requested backend increment proceeds
+without making their failed partition gate a prerequisite or calling it repaired.
+AP5 follows the existing supported
 AP4 fragment; it need not wait for every higher Identity equation in AP4.6 or
 for #47. Implement and push each verified increment, initially only under
 `src/prototype/c_backend/`; use `link/` there for script/driver ownership.
@@ -1354,29 +1355,30 @@ the LinkerScript parser in the source parser or artifact codecs.
 
 - [x] **AP5.0:** merge PR #48 intact; inspect #46/#47 against code and record
   adopted/deferred proposals here. This is planning, not linker completion.
-- [ ] **AP5.1:** specify and implement the minimal versioned script parser in
+- [x] **AP5.1:** specify and implement the minimal versioned script parser in
   `link/`, with matching `--link` driver input. Define quoting, paths relative
   to the script, ordered exports, alias validation, product/entry rules and ABI
   version. Initially one artifact/component suffices; reject unsupported imports
   or target fields, never ignore them. Existing CLI shorthand builds the same
   plan rather than maintaining a second emission path.
-- [ ] **AP5.2:** resolve selected names via existing artifact APIs once, retain
+- [x] **AP5.2:** resolve selected names via existing artifact APIs once, retain
   their admission policy, and extend `emit.h/.c` to one shared multi-root DAG.
   Extract unconditional `main`; keep `tN` private. Publish `.c`, `.h` and a
   receipt only after validation; reject conflicting aliases, reserved symbols,
   input/output path aliases and unsupported entry shapes before publication.
-- [ ] **AP5.3:** define/run the first closed-export public ABI with per-call
+- [x] **AP5.3:** define/run the first closed-export public ABI with per-call
   allocation, status and cleanup; preserve the private runtime ABI separately.
   Test repeated calls and failure followed by another call. Do not export
   internal runtime structures or imply persistent/reentrant handles are ready.
-- [ ] **AP5.4:** add source/object/static-library/executable products and an
+- [x] **AP5.4:** add source/object/static-library/executable products and an
   actual native link driver consuming the same plan. Invoke tools with explicit
-  argument vectors. Support target-native script input and generated export
-  controls on the supported platform; test their actual linker effect. Keep
+  argument vectors. Support target-native script input and test its actual
+  linker effect. C-static private functions and prefixed public wrappers control
+  object/archive symbols; shared-library export maps belong to AP5.6. Keep
   native archive `.a` and A Program `.a` distinct by explicit product roles and
   non-overlapping paths, not suffix guessing. Record tool/profile, exports and
   input/script references in the receipt, never as Kernel evidence.
-- [ ] **AP5.5:** run a C client calling at least two script-selected exports;
+- [x] **AP5.5:** run a C client calling at least two script-selected exports;
   compare it and executable mode with interpreter effects/results. Check shared
   dependency reuse, private symbols, no duplicate `main`, deterministic emission,
   invalid scripts/unresolved bindings/tool failure, ABI mismatch and sanitizer
@@ -1396,6 +1398,59 @@ the LinkerScript parser in the source parser or artifact codecs.
   its separate admissibility criteria are implemented. Report implementation,
   test and documentation line deltas separately; do not count a merged report
   as implemented functionality or complete AP1-AP3/#44 from a backend pass.
+
+#### Initial Linker Implementation (2026-09-29)
+
+Agent implementation against `b6bbb0b`: `c_backend/link/plan.c` reads one
+declarative `aplink 1` plan; the existing driver admits its ordered exports from
+one loaded Program under one B/R budget. `emit.c` collects their union once,
+keeps tN functions static, and implements both the old CLI and component output
+through the same emitter. No additional target IR, checker, source syntax,
+artifact field or acceptance rule was added. All changes remain prototypes.
+
+The agent-selected public convention is `ap_export_ALIAS(void)` returning only
+execution status. Prefixing all validated aliases avoids main/C-keyword/runtime
+collisions without maintaining a reserved-symbol list. Every call owns its
+runtime and jump target; it cannot export boxed values, callbacks or persistent
+handles. Values are discarded, not serialized or returned as unowned pointers.
+This permits independent components' local nominal ordinals to overlap without
+comparing or exchanging them. It does **not** supply shared-family interchange.
+
+The source/object/archive/executable driver stages a new output directory;
+existing paths reject. It writes C/header/runtime/JSON receipt and invokes host
+cc/ar with argument vectors where requested. `native_script` is consumed by
+the executable link using `-Xlinker -T`, tested through a real added ELF section.
+Publication occurs only after emission/tools succeed. Toolchain/ABI/admission
+metadata are receipt data, not canonical artifact identity or proof evidence.
+The grammar, product contents, ownership and explicit limitations are in the
+[backend README](../src/prototype/c_backend/README.md#linkerscript).
+
+Fresh O2 and ASan/UBSan gates pass: multi-export client, shared-root reuse,
+deterministic source bundle, two distinct components including a nominal ADT,
+failure then successful invocation, header ABI mismatch, native tool/script
+failure, aggregate fuel exact/one-short/zero-cap checks, invalid siblings and
+pending-trust rejection. Existing 21 C differentials and Oracle/Identity gates
+pass; O2 checked/trusted Acc QuickSort still returns FFTT. Logs:
+`/tmp/a-program-linker-all.log` (including QuickSort), `-final.log` and
+`-final-asan.log` (final driver and expanded link/Oracle gates).
+Emission-only Oracle tests also check unchanged graph/proof counts and zero
+evaluator/substitution calls across multiple roots. Input digests stay unchanged.
+No full compiler acceptance rerun is claimed for this backend-only increment.
+
+Artifact zero-step semantic gates pass; the public partition gate still fails
+with the same values as `b6bbb0b`: 100+100 gives 25,770 versus 26,094 bytes,
+and 1600+1600 is pending versus completion at 2,824 steps. Reports:
+`/tmp/a-program-linker-semantic.log`, `/tmp/a-program-linker/partitions/partitions.tsv`.
+AP1-AP3 and the overall goal remain open. AP5.6 is also unimplemented; the first
+linkable-library milestone is not a general foreign-function ABI.
+
+Implementation delta (excluding tests/docs/build): `emit.c` +76/-6, `emit.h`
++13/-0, `main.c` +74/-38, `link/driver.c` +175/-0, `link/plan.c` +157/-0,
+`link/plan.h` +28/-0: net +479. Tests: `oracle_test.c` +22/-0,
+`link/check.sh` +167/-0, `link/client.c` +30/-0, `link/fixture.p` +5/-0,
+`link/other.p` +2/-0 (net +226). `build.mk` +7/-2 (net +5).
+Documentation is excluded from these counts. No accepted implementation or
+unrelated working-tree changes are included.
 
 ## Research Records
 

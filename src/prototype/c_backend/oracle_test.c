@@ -261,6 +261,23 @@ int main(int argc, char **argv)
 	emitting = 0;
 	assert(!fclose(output));
 	assert(terms == graph.terms.count && objects == graph.objects.count && proofs == typing.proofs.count);
+	struct pg_c_export exports[] = {{"first", root}, {"second", root}};
+	output = tmpfile();
+	assert(output);
+	emitting = 1;
+	assert(!pg_c_emit_exports(output, 2, exports, SIZE_MAX, &error));
+	assert(terms == graph.terms.count && objects == graph.objects.count && proofs == typing.proofs.count);
+	fclose(output);
+	output = tmpfile();
+	assert(output);
+	exports[1].alias = "first";
+	assert(pg_c_emit_exports(output, 2, exports, SIZE_MAX, &error) == -1 && ftell(output) == 0);
+	exports[1].alias = "bad-alias";
+	assert(pg_c_emit_exports(output, 2, exports, SIZE_MAX, &error) == -1 && ftell(output) == 0);
+	exports[1].alias = "second";
+	assert(pg_c_emit_exports(output, 2, exports, 2, &error) == -1 && ftell(output) == 0);
+	fclose(output);
+	emitting = 0;
 	/* An unknown Oracle is not silently erased or turned into a host callback. */
 	static const struct pg_object_class unknown_class = {"unsupported-test"};
 	static const struct pg_object unknown = {PG_SEMANTIC_OBJECT, &unknown_class};
@@ -269,6 +286,11 @@ int main(int argc, char **argv)
 	output = tmpfile();
 	assert(output && pg_c_emit(output, root, &error) == -1 && ftell(output) == 0);
 	assert(strstr(error, "unsupported"));
+	fclose(output);
+	/* Validate every selected root before writing any of the common component. */
+	exports[1].subject = root;
+	output = tmpfile();
+	assert(output && pg_c_emit_exports(output, 2, exports, SIZE_MAX, &error) == -1 && ftell(output) == 0);
 	fclose(output);
 	neutral_boundaries(&typing, classifier, argv[1]);
 	pg_typing_destroy(&typing);
