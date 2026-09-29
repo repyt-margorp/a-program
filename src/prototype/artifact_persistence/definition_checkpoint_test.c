@@ -796,9 +796,9 @@ static void namespace_roundtrip(struct fixture original, struct pg_synthesis_job
 	member = pg_synthesis_constructor_from_scope(s, roots[1]->result,
 		pg_data_constructor(layout, cursor.ordinal), roots[2]->result, roots[3]->result);
 	assert(member && member->status == PG_SYNTHESIS_PENDING);
+	/* The ordinary source reader now restores namespace registration itself. */
 	struct pg_definition_frontier view = f.frontier;
-	view.indexed = view.activated = view.count; view.complete = 1;
-	assert(!pg_synthesis_definition_resume(s, f.registration, &view));
+	assert(view.indexed == view.count && view.activated == view.count && view.complete);
 	/* Recheck completed source entries and lexical constructor metadata through
 	 * their ordinary owners. The retained unfinished member must not advance. */
 	struct pg_synthesis_job **pending = calloc(s->jobs.count, sizeof(*pending));

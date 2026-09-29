@@ -1,5 +1,23 @@
 --- a/source_io.c
 +++ b/source_io.c
+@@ -805,7 +805,7 @@
+ 			assert(!fseek(file, start + 7 * 8, SEEK_SET) && !pg_wire_write_u64(file, 0));
+ 			found = 1;
+ 		}
+-		assert(!fseek(file, start + 80 + (long)words[6], SEEK_SET));
++		assert(!fseek(file, start + 80 + (long)words[6] + (words[0] == 5 ? 24 : 0), SEEK_SET));
+ 	}
+ 	assert(found);
+ }
+@@ -913,7 +913,7 @@
+ 		long position = ftell(file);
+ 		uint64_t record[10];
+ 		for (size_t j = 0; j < 10; ++j) assert(!pg_wire_read_u64(file, &record[j]));
+-		assert(!fseek(file, (long)record[6], SEEK_CUR));
++		assert(!fseek(file, (long)record[6] + (record[0] == 5 ? 24 : 0), SEEK_CUR));
+ 		if (!record[8]) continue;
+ 		const size_t fields[] = {9, 3, 8, 7};
+ 		const uint64_t invalid[] = {2, record[4], 0, 1};
 @@ -1146,10 +1146,17 @@
  				if (!loaded) fprintf(stderr, "handler boundary: read case=%zu step=%zu round=%u\n", test, boundary, round);
  				assert(loaded && count == 2 && !loaded->synthesis.steps);
@@ -31,16 +49,25 @@
  		pg_program_destroy(original);
  	}
  }
-@@ -1268,7 +1275,7 @@
+@@ -1266,9 +1273,9 @@
+ 	for (size_t i = 0; i < header[1]; ++i) {
+ 		uint64_t scope[10];
  		for (size_t j = 0; j < 10; ++j) assert(!pg_wire_read_u64(file, &scope[j]));
- 		assert(!fseek(file, (long)scope[6], SEEK_CUR));
+-		assert(!fseek(file, (long)scope[6], SEEK_CUR));
++		assert(!fseek(file, (long)scope[6] + (scope[0] == 5 ? 24 : 0), SEEK_CUR));
  	}
 -	assert(!fseek(file, (long)(header[2] + 6 * header[4] + 3 * header[5] + 3 * header[3]) * 8, SEEK_CUR));
 +	assert(!fseek(file, (long)(header[2] + 7 * header[4] + 3 * header[5] + 3 * header[3]) * 8 + (long)header[4], SEEK_CUR));
  	struct pg_graph graph = {0};
  	assert(!pg_graph_init(&graph));
  	const struct pg_syntax *const *syntax;
-@@ -1495,8 +1502,10 @@
+@@ -1490,13 +1497,15 @@
+ 	for (size_t i = 0; i < header[1]; ++i) {
+ 		uint64_t scope[10];
+ 		for (size_t j = 0; j < 10; ++j) assert(!pg_wire_read_u64(file, &scope[j]));
+-		assert(!fseek(file, (long)scope[6], SEEK_CUR));
++		assert(!fseek(file, (long)scope[6] + (scope[0] == 5 ? 24 : 0), SEEK_CUR));
+ 	}
  	assert(!fseek(file, (long)(8 * header[2]), SEEK_CUR));
  	for (size_t i = 0; i < header[4]; ++i) {
  		long position = ftell(file);
@@ -230,7 +257,61 @@
  	pg_program_destroy(p);
  	puts("source member uses: raw allocation resaves, field type synthesis and invalid/late/conflicting scopes passed");
  }
-@@ -2505,28 +2501,24 @@
+@@ -2478,55 +2474,62 @@
+ 		.parent = prefix, .binder = fields->binder, .declared_type = fields->declared_type,
+ 		.judgement = PG_JUDGEMENT_TYPE_FAMILY, .indices = fields->indices});
+ 	assert(other_type != prefix->declared_type && other_prefix && other_field && wrong_prefix && wrong_field && wrong_field_judgement);
+-	struct pg_syntax copies[3] = {*found.syntax, *found.syntax, *found.syntax};
++	struct pg_syntax copies[4] = {*found.syntax, *found.syntax, *found.syntax, *found.syntax};
+ 	struct pg_synthesis_job *same_binders = pg_synthesis_member_at(&p->synthesis,
+ 		found.scope, copies, other_prefix, other_field);
+ 	struct pg_synthesis_job *wrong_binder = pg_synthesis_member_at(&p->synthesis,
+ 		found.scope, copies + 1, wrong_prefix, wrong_field);
+ 	struct pg_synthesis_job *wrong_judgement = pg_synthesis_member_at(&p->synthesis,
+ 		found.scope, copies + 2, prefix, wrong_field_judgement);
+-	assert(same_binders && wrong_binder && wrong_judgement);
+-	struct pg_synthesis_job *selected[] = {same_binders, wrong_binder, wrong_judgement};
+-	FILE *file = tmpfile();
+-	assert(file && !pg_sources_write(file, &p->synthesis, 3, selected));
+-	pg_program_destroy(p);
+-	rewind(file);
+-	size_t count;
+-	struct pg_synthesis_job *const *roots;
+-	p = pg_sources_read(file, 100000, &count, &roots);
+-	assert(p && count == 3 && !p->synthesis.steps && !fclose(file));
+-	pg_synthesis_advance(&p->synthesis, 100000);
+-	assert(pg_synthesis_status(roots[0]) == PG_SYNTHESIS_DONE);
+-	assert(pg_synthesis_status(roots[1]) == PG_SYNTHESIS_REJECTED);
+-	assert(pg_synthesis_status(roots[2]) == PG_SYNTHESIS_REJECTED);
++	const struct pg_context *extra = pg_context_bind(&p->typing, fields, pg_binder(&p->graph),
++		fields->declared_type, PG_JUDGEMENT_VALUE);
++	struct pg_synthesis_job *wrong_count = pg_synthesis_member_at(&p->synthesis,
++		found.scope, copies + 3, prefix, extra);
++	assert(same_binders && wrong_binder && wrong_judgement && wrong_count);
++	struct pg_synthesis_job *uses[] = {same_binders, wrong_binder, wrong_judgement, wrong_count};
++	/* Every candidate goes first once. Unchecked uses must not poison the
++	 * shared constructor worker or change acceptance of another use. */
++	for (size_t first = 0; first < 4; ++first) {
++		struct pg_synthesis_job *selected[4];
++		for (size_t i = 0; i < 4; ++i) selected[i] = uses[(first + i) % 4];
++		FILE *file = tmpfile();
++		assert(file && !pg_sources_write(file, &p->synthesis, 4, selected));
++		rewind(file);
++		size_t count;
++		struct pg_synthesis_job *const *roots;
++		struct pg_program *loaded = pg_sources_read(file, 100000, &count, &roots);
++		assert(loaded && count == 4 && !loaded->synthesis.steps && !fclose(file));
++		pg_synthesis_advance(&loaded->synthesis, 100000);
++		for (size_t i = 0; i < 4; ++i) {
++			enum pg_synthesis_status expected = (first + i) % 4 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE;
++			assert(pg_synthesis_status(roots[i]) == expected);
++		}
++		pg_program_destroy(loaded);
++	}
+ 	pg_program_destroy(p);
+-	puts("source member prefixes: rederive saved types, preserve binder identity");
++	puts("source member prefixes: rederive saved types, preserve binders, isolate invalid uses in every root order");
+ }
  
  static void check_retained_program(struct pg_program *p, struct pg_synthesis_job *root, int reuse)
  {
@@ -269,7 +350,7 @@
  		fputs("first exact difference (f=function, a=argument, b=body): ", stderr);
  		for (size_t depth = 0; depth < 128 && left != right; ++depth) {
  			if (left->kind != right->kind) { fputs("node kind", stderr); break; }
-@@ -2542,54 +2534,50 @@
+@@ -2542,54 +2545,50 @@
  		}
  		fputc('\n', stderr);
  	}
@@ -336,7 +417,13 @@
  }
  
  static void normalization_requests(void)
-@@ -3107,8 +3095,10 @@
+@@ -3102,13 +3101,15 @@
+ 	for (size_t i = 0; i < header[1]; ++i) {
+ 		uint64_t scope[10];
+ 		for (size_t j = 0; j < 10; ++j) assert(!pg_wire_read_u64(file, &scope[j]));
+-		assert(!fseek(file, (long)scope[6], SEEK_CUR));
++		assert(!fseek(file, (long)scope[6] + (scope[0] == 5 ? 24 : 0), SEEK_CUR));
+ 	}
  	assert(!fseek(file, (long)header[2] * 8, SEEK_CUR));
  	for (size_t i = 0; i < header[4]; ++i) {
  		long position = ftell(file);
@@ -349,9 +436,21 @@
  		if (!fields[4]) continue;
  		/* Cyclic operand, missing operand, and mixed source/annotation record. */
  		const size_t slots[] = {4, 5, 1};
-@@ -3382,15 +3372,15 @@
+@@ -3141,7 +3142,7 @@
+ 		uint64_t scope[10];
  		for (size_t j = 0; j < 10; ++j) assert(!pg_wire_read_u64(file, &scope[j]));
- 		assert(!fseek(file, (long)scope[6], SEEK_CUR));
+ 		if (scope[0] == 1 && link < 0) { link = position + 7 * 8; original = scope[7]; }
+-		assert(!fseek(file, (long)scope[6], SEEK_CUR));
++		assert(!fseek(file, (long)scope[6] + (scope[0] == 5 ? 24 : 0), SEEK_CUR));
+ 	}
+ 	assert(link >= 0 && header[2] == 8);
+ 	uint64_t consumer;
+@@ -3380,35 +3381,26 @@
+ 	for (size_t i = 0; i < header[1]; ++i) {
+ 		uint64_t scope[10];
+ 		for (size_t j = 0; j < 10; ++j) assert(!pg_wire_read_u64(file, &scope[j]));
+-		assert(!fseek(file, (long)scope[6], SEEK_CUR));
++		assert(!fseek(file, (long)scope[6] + (scope[0] == 5 ? 24 : 0), SEEK_CUR));
  	}
 -	assert(!fseek(file, (long)(header[2] + 6 * header[4]) * 8, SEEK_CUR));
 +	assert(!fseek(file, (long)(header[2] + 7 * header[4]) * 8 + (long)header[4], SEEK_CUR));
@@ -360,15 +459,37 @@
  	for (size_t i = 0; i < 6; ++i) assert(!pg_wire_read_u64(file, &entries[i]));
  	assert(entries[1] == 0 && entries[4] == 1);
 -	/* Invalid owner, source index and cyclic edge fail during reconstruction.
-+	/* Invalid owner, source index and out-of-range edge fail during reconstruction.
- 	 * A well-formed edge to the wrong producer remains unaccepted until Solve. */
+-	 * A well-formed edge to the wrong producer remains unaccepted until Solve. */
++	/* Registration attachment validates source recipe links, not typing. Even
++	 * an in-range edge to the wrong producer must fail before publication. */
  	const size_t slots[] = {3, 4, 5, 5};
 -	const uint64_t values[] = {0, 2, entries[3], entries[2]};
 +	const uint64_t values[] = {0, 2, header[4] + 1, entries[2]};
  	for (size_t i = 0; i < 4; ++i) {
  		long offset = start + (long)slots[i] * 8;
  		assert(!fseek(file, offset, SEEK_SET) && !pg_wire_write_u64(file, values[i]));
-@@ -3558,27 +3548,28 @@
+ 		assert(!fflush(file));
+ 		rewind(file);
+-		size_t count;
+-		struct pg_synthesis_job *const *roots;
++		size_t count = 91;
++		struct pg_synthesis_job *const *roots = NULL;
+ 		struct pg_program *p = pg_sources_read(file, 10000, &count, &roots);
+-		if (i < 3) assert(!p);
+-		else {
+-			assert(p && count == 1 && !p->synthesis.steps && !pg_synthesis_result(p->root));
+-			while (p->synthesis.ready) {
+-				assert(p->synthesis.steps < 10000);
+-				pg_synthesis_advance(&p->synthesis, 1);
+-			}
+-			assert(pg_synthesis_status(p->root) == PG_SYNTHESIS_REJECTED);
+-			pg_program_destroy(p);
+-		}
++		assert(!p && count == 91 && !roots);
+ 		assert(!fseek(file, offset, SEEK_SET) && !pg_wire_write_u64(file, entries[slots[i]]));
+ 		assert(!fflush(file));
+ 	}
+@@ -3558,27 +3550,28 @@
  		struct pg_synthesis_job *selected[] = {p->root,
  			pg_synthesis_evidence(&p->synthesis, pg_synthesis_result(p->root))};
  		count = !strcmp(argv[1], "retained-write-typed") ? 2 : 1;
@@ -401,7 +522,7 @@
  		}
  	}
  	pg_program_destroy(p);
-@@ -3586,66 +3577,51 @@
+@@ -3586,66 +3579,51 @@
  
  int main(int argc, char **argv)
  {

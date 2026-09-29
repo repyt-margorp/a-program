@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Updated: 2026-09-29
-Status: in progress; APGSRC66 persistence and first C backend are prototypes,
+Status: in progress; APGSRC68 persistence and first C backend are prototypes,
 not promoted. Exact resumption and trust/fuel integration remain unfinished.
 Baseline: `152b59506e915e18a34f6dc8041e981fb2a82888` (PR #45 documents
 imported). Implementation is unchanged from `e716232`; unrelated working-tree
@@ -250,7 +250,7 @@ those inputs and unfinished owner state can be transported.
   Any replacement of a source producer must preserve those obligations and its
   namespace/polarity outputs, not forward only a valid selected term's proof.
 - [x] **AP1.4:** current-format-only policy, explicitly requested by the user.
-  Prototype writes/reads APGSRC66/APGRET4, with APGOCC8/APGSCP2 typed payloads.
+  Prototype writes/reads APGSRC68/APGRET4, with APGOCC8/APGSCP2 typed payloads.
   Earlier formats reject and must be rebuilt from source. Remove compatibility
   branches, reserved legacy archive fields, migration APIs/tests and old-version
   build dependencies. Existing seed tests check rejection of every older header.
@@ -499,7 +499,8 @@ imports keep the first name's producer; shared definition recipes remain shared.
 Invalid attachments do not publish cursor/index changes. The checkpoint caller
 must establish provenance and restore child continuations and scheduling before
 Solve. Completed name registration additionally requires a fully populated input
-table and an already checked parent context. This completion is not acceptance
+table and completed outer registration. APGSRC68 removes the former checked
+Context prerequisite from name publication; entries still check it. This is not acceptance
 of the module or its entries. Pending definition-body links and module traversal
 positions now have owner-local attachment APIs. They cannot skip an unchecked or
 failed earlier sibling; named selection still waits for the entire module.
@@ -836,12 +837,45 @@ alone. Avoid adding a second parallel type graph or serializing all workers.
   +3/-1, `synthesis.c` +5/-6, `synthesis.h` +3/-1 (net +33). Tests:
   `semantic_test.c` +43/-1, `tests/source_io.c` +8/-8, `tests/seed.c` +1/-1
   (net +42). Patch-file churn and documentation are counted separately.
-- [ ] Connect registration progress through the retained **lexical namespace**
+- [x] Connect registration progress through the retained **lexical namespace**
   dependencies, not only exported module producers. Reuse existing entry links,
   recipe validation and scope order. Keep proof acceptance separate; no extra
   name/proof authority or silent cursor reset. Test parent-omitted and child-first
   roots, forward names, assertions, aliases and inert bytes before adopting it.
   Do not claim full checkpointing without child continuations and scheduling.
+  **APGSRC68 after `02895e5` (2026-09-29, agent implementation):** retain the
+  existing indexed/activated cursors and name-only completion, 24 bytes per
+  namespace. Rebuild through the existing owner API, parents before children.
+  Advance cursors only after successful publication; failed items re-enter
+  ordinary Solve rather than importing a negative verdict. Name publication
+  no longer requires typed Context acceptance; entry/module checks still do.
+  `registration_progress` covers all 0..120 cuts of forward-name, duplicate,
+  missing-name, invalid annotation and invalid sibling fixtures; it fails on
+  `02895e5`. Parent-omitted/child-first and shared-selection tests remain.
+  Corrupt cursors reject without publication; a completed registration in an
+  invalid Context does not accept its module or entries.
+  Wrong entry recipes now reject during structural attachment, before Solve;
+  the older test requiring successful decode of that malformed edge is updated
+  to require rejection and unchanged output arguments, not weakened acceptance.
+  Example-09 ordinary completion remains 2,824 steps; completed size is
+  50,796 -> 50,820 bytes. The public partition gate still **fails**: 100+100 is
+  26,212 vs 26,390 bytes, and 1600+1600 remains pending vs done. Inert resaves
+  are exact. This preserves registration progress, not the missing whole-source
+  checkpoint, authenticated acceptance or fuel history.
+  Fresh verification (2026-09-29): full O2 `check-acceptance`, artifact history,
+  semantic/prepared-module/constructor ASan/UBSan, owner checkpoints and
+  C differential/Linker/checked-and-trusted Acc QuickSort gates pass. Tests use
+  clean accepted sources plus these prototype overlays, excluding unrelated
+  working-tree Evidence/IADT edits. Logs are
+  `/tmp/a-program-registration-final-{acceptance,history,semantic,asan,asan-source,asan-constructors,checkpoints,c}.log`;
+  the separately failing public partition gate is in `-partitions.log`.
+  Actual implementation delta from `02895e5`: `source_io.c` +30/-2,
+  `source_io.h` +9/-5, `synthesis.c` +24/-13, `synthesis_source.h` +4/-3:
+  **+67/-23, net +44**. Tests: `semantic_test.c` +122/-1,
+  `definition_checkpoint_test.c` +2/-2, `tests/source_io.c` +39/-37,
+  `tests/seed.c` +1/-1: **+164/-41, net +123**. These are applied C deltas;
+  patch-file context churn and documentation are separate.
+  The earlier module-root-only trial below remains rejected.
   **Rejected trial after `239b380` (2026-09-29, agent assessment):** persisting
   `(module producer, indexed, activated)` passed ordinary roundtrips but failed
   when only a child module was exported. Its outer-name assertion still needs
@@ -851,10 +885,18 @@ alone. Avoid adding a second parallel type graph or serializing all workers.
   using the existing source API (not invented nested-block surface syntax).
   That trial codec/format change was withdrawn; it did not replace APGSRC66.
   The subsequent APGSRC67 ownership change above does not adopt its cursors.
-  Next owner contract: collect registration from live lexical scopes, share its
+  Adopted owner contract: collect registration from live lexical scopes, share its
   entry links once, and relocate outer namespaces before local assertions. Do
   not invent a public module root, scan all historical jobs, or drop a charged
   cursor merely because its parent was not an export.
+- [x] Fix the constructor-use ordering dependency exposed by shorter name
+  registration. A pending allocation must not serve as checked field structure.
+  Reject incompatible field counts before sharing an allocation, then await the
+  existing field worker and compare its synthesized result. No new cache or
+  authority. `member_prefix_recheck` now puts each of four good/bad uses first;
+  saved type annotations are rederived, while wrong binders/kinds/counts reject.
+  The uncorrected trial failed the existing good-use assertion. This is a source
+  owner fix, not a weakening of that test or a C-backend special case.
 - [x] Verify the independent FIFO fix exposed by that trial: re-enqueueing a
   still-queued worker must not truncate the ready list. Use its existing
   link/tail, not another flag. `early_wake` reproduces head/middle/tail reuse;
@@ -1007,7 +1049,7 @@ The desired composition law is `advance(advance(S, a), b) = advance(S, a+b)`;
 the serialized-resume variant inserts save/load between the two advances.
 Fix compiler version, input image, selected roots, policy and requests when
 testing it. Exclude format migration and host execution from this pure gate.
-Baseline APGSRC62/63 and prototype APGSRC67 reconstruction do not preserve the full running frontier;
+Baseline APGSRC62/63 and prototype APGSRC68 reconstruction do not preserve the full running frontier;
 the equality of supplied or reported fuel therefore does not establish equality
 of progress. A recompute fallback must be reported as such, not counted as passing
 this resume gate. Count any required revalidation explicitly; do not hide its cost

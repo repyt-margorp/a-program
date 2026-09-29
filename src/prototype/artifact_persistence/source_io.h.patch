@@ -1,18 +1,22 @@
 --- a/source_io.h
 +++ b/source_io.h
-@@ -3,8 +3,17 @@
+@@ -3,8 +3,21 @@
  #include "program.h"
  #include <stdio.h>
  
 -/* Reconstructible source environments and source/definition/rule roots, including pending modules.
 - * APGSRC62 retains source/handler binding symbols and family index telescopes, preserves
-+/* APGSRC67 preserves available typed construction at each producer.
++/* APGSRC68 preserves available typed construction at each producer.
 + * It shares relocation with source/rule inputs and nominal declarations.
 + * Reading exposes descriptive results through pg_synthesis_materialized,
 + * not accepted evidence. Local Solve still checks source and annotations;
-+ * private pending continuations are not yet retained by this prototype.
++ * most pending continuations are not yet retained by this prototype.
 + * Definition entry links belong to their lexical namespace, shared by all
 + * selections, including namespaces without an exported module root.
++ * Each namespace retains committed indexing/activation cursors and name-only
++ * completion. Reading restores these links in lexical order, not typed results.
++ * Failed items are rechecked by Solve; source-body progress and the pending
++ * schedule are not yet restored.
 + * Older formats reject; rebuild them from source.
 + *
 + * Reconstructible source environments and source/definition/rule roots, including pending modules.
@@ -20,8 +24,12 @@
   * already suspended values under surface &, admits checked
   * termination requests, and uses TOTAL source RETURN/arrow contracts with F
   * totality contracts, context-authoritative Pi premises and lexical
-@@ -48,28 +57,37 @@
-  * registration verifies each retained producer before using it.
+@@ -45,31 +58,40 @@
+  * cycles before invoking the ordinary construction factories.
+  * Module entries retain source-item indices and producer references, including
+  * unaccepted annotations, across an unsolved read/write cycle. Ordinary
+- * registration verifies each retained producer before using it.
++ * registration attachment checks each retained producer's source recipe.
   * Reuses immutable syntax, lexical parents, namespaces and import bindings.
   * Rule evidence is stored as unaccepted derivation inputs through the existing
 - * codec, with one Core table for all rule roots. Effect contributions must be
@@ -39,7 +47,7 @@
 - * No search state or acceptance flag is retained. Unsupported producer/scope
 + * A descriptive completion byte accompanies each producer, including modules
 + * without expression results. Only explicit artifact trust may rely on it;
-+ * it never grants kernel acceptance. No pending cursor is retained. Unsupported producer/scope
++ * it never grants kernel acceptance. Unsupported producer/scope
   * kinds fail explicitly instead of being omitted. Source roots are recomputed;
   * retaining annotation recipes is not a complete CHECKPOINT codec.
   * Streams are borrowed. */
@@ -63,7 +71,7 @@
   * limit bounds scope/root/name data and syntax data separately. Loading never
 - * advances Solve; on failure, destroys all storage and leaves outputs alone. */
 + * advances Solve; on failure, destroys all storage and leaves outputs alone.
-+ * Only APGSRC66 is accepted. It contains no evaluator-history archive. */
++ * Only APGSRC68 is accepted. It contains no evaluator-history archive. */
  struct pg_program *pg_sources_read(FILE *file, size_t limit,
  	size_t *count, struct pg_synthesis_job *const **roots);
  #endif

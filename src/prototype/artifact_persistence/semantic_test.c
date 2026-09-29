@@ -191,6 +191,124 @@ static void shared_registration_inputs(void)
 	pg_program_destroy(p);
 }
 
+static void registration_progress(void)
+{
+	const char *sources[] = {
+		"main := later; main :: #Int; later := #42;",
+		"main := #1; main := #2;",
+		"absent :: #Int; main := #1;",
+		"main := #1; main :: #Text;",
+		"{{main := #1; invalid := missing;}}.main"
+	};
+	for (size_t kind = 0; kind < sizeof(sources) / sizeof(*sources); ++kind) {
+		for (uint64_t cut = 0; cut <= 120; ++cut) {
+			struct pg_program *p = pg_program_create(sources[kind], strlen(sources[kind]), PG_DEFINITION_IMPLICIT_THUNK);
+			assert(p && p->root);
+			struct pg_synthesis_job *registration = pg_synthesis_prepare_module(&p->synthesis, p->root);
+			assert(registration);
+			advance(p, cut);
+			struct pg_definition_frontier before, after;
+			assert(!pg_synthesis_definition_frontier(&p->synthesis, registration, &before));
+			FILE *file = save(p, 1, &p->root);
+			advance(p, 10000);
+			enum pg_synthesis_status expected = kind ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE;
+			assert(p->root->status == expected);
+			pg_program_destroy(p);
+			size_t count;
+			struct pg_synthesis_job *const *roots;
+			p = pg_sources_read(file, PG_ARTIFACT_DEFAULT_LIMIT, &count, &roots);
+			assert(p && count == 1);
+			no_import_preparation(p);
+			registration = pg_synthesis_prepare_module(&p->synthesis, roots[0]);
+			assert(!pg_synthesis_definition_frontier(&p->synthesis, registration, &after));
+			assert(before.count == after.count && before.indexed == after.indexed);
+			assert(before.activated == after.activated && before.complete == after.complete);
+			FILE *copy = save(p, count, roots);
+			equal_files(file, copy);
+			assert(!fclose(file) && !fclose(copy));
+			advance(p, 10000);
+			assert(roots[0]->status == expected);
+			pg_program_destroy(p);
+		}
+	}
+	puts("registration progress: committed cursors retained; forward names and failed obligations rechecked");
+}
+
+static void invalid_registration_progress(void)
+{
+	const char source[] = "main := #1; main :: #Int;";
+	struct pg_program *p = pg_program_create(source, sizeof(source) - 1, PG_DEFINITION_IMPLICIT_THUNK);
+	assert(p && p->root);
+	advance(p, 10000);
+	assert(p->root->status == PG_SYNTHESIS_DONE);
+	FILE *file = save(p, 1, &p->root);
+	pg_program_destroy(p);
+	assert(!fseek(file, 16, SEEK_SET));
+	uint64_t scopes;
+	assert(!pg_wire_read_u64(file, &scopes) && !fseek(file, 56, SEEK_SET));
+	int checked = 0;
+	for (size_t i = 0; i < scopes; ++i) {
+		uint64_t w[10];
+		for (size_t j = 0; j < 10; ++j) assert(!pg_wire_read_u64(file, &w[j]));
+		assert(!fseek(file, (long)w[6], SEEK_CUR));
+		if (w[0] != 5) continue;
+		long offset = ftell(file);
+		uint64_t frontier[3];
+		for (size_t j = 0; j < 3; ++j) assert(!pg_wire_read_u64(file, &frontier[j]));
+		assert(frontier[0] == 2 && frontier[1] == 2 && frontier[2] == 1);
+		const uint64_t bad[][3] = {{3, 2, 1}, {1, 2, 1}, {2, 1, 1}, {2, 2, 2}, {UINT64_MAX, 2, 1}};
+		for (size_t trial = 0; trial < sizeof(bad) / sizeof(*bad); ++trial) {
+			assert(!fseek(file, offset, SEEK_SET));
+			for (size_t j = 0; j < 3; ++j) assert(!pg_wire_write_u64(file, bad[trial][j]));
+			rewind(file);
+			size_t count = 91;
+			struct pg_synthesis_job *const *roots = NULL;
+			assert(!pg_sources_read(file, PG_ARTIFACT_DEFAULT_LIMIT, &count, &roots));
+			assert(count == 91 && !roots);
+		}
+		assert(!fseek(file, offset, SEEK_SET));
+		for (size_t j = 0; j < 3; ++j) assert(!pg_wire_write_u64(file, frontier[j]));
+		++checked;
+	}
+	assert(checked == 1);
+	rewind(file);
+	size_t count;
+	struct pg_synthesis_job *const *roots;
+	p = pg_sources_read(file, PG_ARTIFACT_DEFAULT_LIMIT, &count, &roots);
+	assert(p && count == 1);
+	no_import_preparation(p);
+	pg_program_destroy(p);
+	assert(!fclose(file));
+}
+
+static void registration_is_not_context_acceptance(void)
+{
+	struct pg_program *p = pg_program_allocate_empty(PG_DEFINITION_IMPLICIT_THUNK);
+	assert(p);
+	const struct pg_evidence *empty = pg_prove_empty_context(&p->typing);
+	/* A type is not a Context extension. Registration may still publish names,
+	 * but neither the module nor its definitions may bypass this failed input. */
+	struct pg_synthesis_job *invalid = pg_synthesis_evidence(&p->synthesis,
+		pg_prove_universe(&p->typing, empty, 0));
+	const struct pg_source_scope *scope = pg_synthesis_bind_context(&p->synthesis, p->scope,
+		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "x", .length = 1}, pg_binder(&p->graph), invalid);
+	assert(scope && !pg_synthesis_scope_context(scope));
+	const char source[] = "main := @;";
+	struct pg_parser parser;
+	struct pg_synthesis_job *module = pg_program_source(p, scope, source, sizeof(source) - 1, &parser);
+	assert(module && !parser.error);
+	struct pg_synthesis_job *registration = pg_synthesis_prepare_module(&p->synthesis, module);
+	assert(registration);
+	advance(p, 10000);
+	struct pg_definition_frontier frontier;
+	assert(!pg_synthesis_definition_frontier(&p->synthesis, registration, &frontier));
+	assert(frontier.complete && frontier.count == 1);
+	assert(module->status == PG_SYNTHESIS_REJECTED && !pg_synthesis_result(module));
+	assert(frontier.entries[0]->status == PG_SYNTHESIS_REJECTED && !pg_synthesis_result(frontier.entries[0]));
+	assert(!pg_synthesis_scope_context(scope));
+	pg_program_destroy(p);
+}
+
 static struct pg_derivation_input *rule_input(struct pg_graph *g, enum pg_evidence_rule rule,
 	size_t count, const struct pg_derivation_input *const *premises)
 {
@@ -851,7 +969,7 @@ static void completion_format(void)
 	for (size_t i = 0; i < header[1]; ++i) {
 		uint64_t words[10];
 		for (size_t j = 0; j < 10; ++j) assert(!pg_wire_read_u64(file, &words[j]));
-		assert(!fseek(file, (long)words[6], SEEK_CUR));
+		assert(!fseek(file, (long)words[6] + (words[0] == 5 ? 24 : 0), SEEK_CUR));
 	}
 	assert(!fseek(file, (long)(8 * header[2] + 56), SEEK_CUR));
 	long flag = ftell(file);
@@ -933,6 +1051,9 @@ static void revalidation_budget(void)
 int main(void)
 {
 	early_wake();
+	registration_progress();
+	invalid_registration_progress();
+	registration_is_not_context_acceptance();
 	lexical_module_roots();
 	shared_registration_inputs();
 	direct_rule_import();

@@ -40,7 +40,7 @@ Missing descriptor support and insufficient bounds reject without publishing
 output roots or counts, through both scoped and unscoped descriptor entry points.
 Existing graph, declaration and occurrence transport tests also pass. This is
 not a complete source-image persistence or checkpoint implementation.
-The prototype now writes APGSRC67/APGRET4 with available typed results connected
+The prototype now writes APGSRC68/APGRET4 with available typed results connected
 to existing producer ordinals. Its view borrows `pg_occurrence`; there is no new
 type graph or accepted-result DB. Import preserves descriptive input only, and
 ordinary Solve still checks source/annotations. Selected producer dependencies
@@ -54,15 +54,18 @@ supplies necessary source allocations; default
 constructor fields reuse their existing lexical addresses instead of retaining
 every incidental use-context proof. Structural identity rules are unchanged.
 
-APGSRC67 owns definition entry links once per lexical namespace, not once per
+APGSRC68 owns definition entry links once per lexical namespace, not once per
 exported module selection. Producers retain their prepared namespace edge;
-unexported lexical parents need no synthetic public root. This transports
-existing inputs, not name-index cursors, typed acceptance or a saved schedule.
-Multiple selections share the same entry table after inert import.
+unexported lexical parents need no synthetic public root. It also retains the
+existing committed indexing/activation cursors and name-only completion (24
+bytes per namespace). The owner rebuilds the name index in lexical order; no
+entry proof is accepted. Failed items do not advance the committed cursor and
+are rechecked by ordinary Solve. Source-body progress and the schedule are still
+not saved. Multiple selections share the same entry table after inert import.
 
 The completion byte introduced in APGSRC66 remains descriptive, using the existing
 producer associations and typed graph. It does not restore live `DONE` status,
-accept Kernel evidence, or save private cursors. `artifact/file.c` owns explicit
+accept Kernel evidence, or save typed checking cursors. `artifact/file.c` owns explicit
 trusted export: before any Solve, a completed source module and all its entries
 (including imports and `::`) must have saved completion, and the selected local
 definition must have a closed materialized result. Registration completion alone
@@ -330,7 +333,8 @@ most source-owner continuations remain unfinished; this is not a whole-source ch
 
 The definition checkpoint gate covers entry links, name indexing/activation,
 pending body edges and module-check cursors. Completed name registration requires
-all entries and a checked parent context; it does not accept their typed results.
+all entries and completed outer registration; typed Context checking belongs to
+the entries/module, not name publication. A failed Context still rejects both.
 The owner rebuilds its disposable hash index without replaying registration.
 Traversal cannot skip pending/failed earlier siblings. The enclosing owner must
 establish provenance, restore other child owners and attach the saved schedule
