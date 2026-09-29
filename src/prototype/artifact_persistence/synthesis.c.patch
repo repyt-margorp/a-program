@@ -56,7 +56,31 @@
  struct pg_synthesis_job *pg_synthesis_constructor_value(struct pg_synthesis *synthesis,
  	const struct pg_evidence *formation, const struct pg_object *constructor,
  	const struct pg_evidence *parameters)
-@@ -1299,12 +1348,15 @@
+@@ -1239,11 +1288,18 @@
+ 	const struct pg_evidence *formation, const struct pg_object *constructor,
+ 	const struct pg_evidence *parameters, const struct pg_context *prefix, const struct pg_context *end)
+ {
+-	struct pg_synthesis_job *scope = pg_synthesis_constructor_scope_at(synthesis,
+-		pg_synthesis_evidence(synthesis, formation), constructor,
+-		pg_synthesis_evidence(synthesis, parameters), prefix, end);
+-	if (!scope) return NULL;
+-	return pg_synthesis_constructor_value(synthesis, formation, constructor, parameters);
++	struct pg_synthesis_job *job = pg_synthesis_constructor_value(synthesis, formation, constructor, parameters);
++	if (!job) return NULL;
++	const struct pg_synthesis_job *scope = source_work(job)->left;
++	/* A restored checked map already supplies these field addresses. Do not
++	 * create a second field worker merely to attach the same allocation. */
++	if (scope->status == PG_SYNTHESIS_DONE) {
++		const struct pg_context_map *map = pg_evidence_context_map(scope->result);
++		const struct pg_context_map *parameter_map = pg_evidence_context_map(parameters);
++		return map && parameter_map && parameter_map->destination == prefix && map->destination == end ? job : NULL;
++	}
++	return pg_synthesis_constructor_scope_at(synthesis, (void *)job->inputs[0], constructor,
++		(void *)job->inputs[2], prefix, end) ? job : NULL;
+ }
+ 
+ int pg_synthesis_typed_input(struct pg_synthesis *synthesis,
+@@ -1299,12 +1355,15 @@
  	return NULL;
  }
  
@@ -74,7 +98,7 @@
  	struct pg_synthesis_job *registration = definition_registration(synthesis, source_work(root)->scope, syntax);
  	if (!registration) return NULL;
  	source_work(root)->right = registration;
-@@ -1330,7 +1382,7 @@
+@@ -1330,7 +1389,7 @@
  	const struct pg_syntax *syntax = source_work(root)->syntax;
  	if (syntax && syntax->kind == PG_SYNTAX_QUALIFIED) syntax = syntax->left;
  	if (!syntax || syntax->kind != PG_SYNTAX_DEFINITIONS || index >= syntax->item_count) return -1;
@@ -83,7 +107,7 @@
  	if (!registration) return -1;
  	return definition_input(source_work(registration)->definitions, index, producer);
  }
-@@ -2473,6 +2525,113 @@
+@@ -2473,6 +2532,113 @@
  	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED);
  }
  
@@ -197,7 +221,7 @@
  static void definition_scope_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
  	struct source_work *local = source_work(job);
-@@ -2534,6 +2693,80 @@
+@@ -2534,6 +2700,80 @@
  	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_DONE);
  }
  
@@ -278,7 +302,7 @@
  static void definitions_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
  	struct source_work *local = source_work(job);
-@@ -2541,7 +2774,7 @@
+@@ -2541,7 +2781,7 @@
  	int selected = syntax->kind == PG_SYNTAX_QUALIFIED;
  	if (selected) syntax = syntax->left;
  	if (!local->right) {
@@ -287,3 +311,25 @@
  		return;
  	}
  	if (local->left->status != PG_SYNTHESIS_DONE) {
+@@ -2742,16 +2982,12 @@
+ 			pg_synthesis_scope_context(local->scope), pg_synthesis_scope_context(local->scope));
+ 		const struct pg_object *constructor = pg_data_constructor(pg_data_schema_layout(schema), i);
+ 		const struct pg_constructor_allocation *allocation = local->member_allocations ? &local->member_allocations[i] : NULL;
++		struct pg_synthesis_job *member;
+ 		if (allocation && allocation->constructor) {
+-			if (allocation->constructor != constructor ||
+-				!pg_synthesis_constructor_scope_at(synthesis, pg_synthesis_evidence(synthesis, job->result),
+-					constructor, pg_synthesis_evidence(synthesis, parameters), allocation->prefix, allocation->fields)) {
+-				local->exports = NULL;
+-				pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+-			}
+-		}
+-		struct pg_synthesis_job *member = pg_synthesis_constructor_value(synthesis,
+-			job->result, constructor, parameters);
++			member = allocation->constructor == constructor ? pg_synthesis_constructor_value_at(synthesis,
++				job->result, constructor, parameters, allocation->prefix, allocation->fields) : NULL;
++			if (!member) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
++		} else member = pg_synthesis_constructor_value(synthesis, job->result, constructor, parameters);
+ 		local->exports = pg_synthesis_name_job(synthesis, local->exports, constructors->items[i].name, member);
+ 	}
+ 	struct source_metadata *origin = register_source_metadata(synthesis, pg_evidence_subject(job->result));

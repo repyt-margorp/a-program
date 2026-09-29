@@ -5,6 +5,7 @@
 #include "artifact/schedule.h"
 #include "artifact/file.h"
 #include "wire.h"
+#include "iadt.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -540,10 +541,177 @@ static size_t lifecycle(const char *text, enum pg_synthesis_status expected)
 	return 0;
 }
 
+/* Namespace boundary: completed source entries, one published constructor
+ * with a checked field map, and a pending module cursor. The shared source
+ * codec relocates the declaration and map together. This fixture envelope is
+ * not a claim that the CLI restores arbitrary private continuations. */
+static FILE *namespace_save(struct fixture *f, struct pg_synthesis_job *member)
+{
+	struct pg_synthesis *s = &f->program->synthesis;
+	struct pg_constructor_input input;
+	const struct pg_evidence *map;
+	assert(!pg_synthesis_constructor_input(s, member, &input));
+	assert(pg_synthesis_constructor_ready_scope(s, member, &map) == 1);
+	struct pg_synthesis_job *roots[] = {f->program->root, input.formation,
+		input.parameters, pg_synthesis_evidence(s, map)};
+	const struct pg_data_layout *layout = pg_data_schema_layout(pg_evidence_inductive_schema(input.formation->result));
+	size_t ordinal;
+	assert(pg_data_constructor_position(layout, input.constructor, &ordinal));
+	struct pg_module_frontier module;
+	assert(!pg_synthesis_module_frontier(s, f->program->root, &module));
+	FILE *file = tmpfile();
+	assert(file);
+	assert(!pg_wire_write_u64(file, ordinal) && !pg_wire_write_u64(file, module.position));
+	add_job(f, member);
+	assert(!pg_artifact_schedule_write(file, s, f->count, f->jobs));
+	assert(!pg_sources_write(file, s, 4, roots));
+	rewind(file);
+	return file;
+}
+
+/* Only the unpublished startup queue is replaced here. This temporary map
+ * covers every imported job so the scheduler cannot lose a subscription.
+ * It is neither serialized nor used as the semantic root set. */
+static void namespace_validation_queue(struct fixture *f, size_t count, struct pg_synthesis_job *const *targets)
+{
+	struct pg_synthesis *s = &f->program->synthesis;
+	free(f->jobs); f->count = 0;
+	f->jobs = calloc(s->jobs.count + 1, sizeof(*f->jobs));
+	assert(f->jobs);
+	for (size_t i = 0; i < s->jobs.capacity; ++i)
+		for (struct pg_index_entry *entry = s->jobs.buckets[i]; entry; entry = entry->next)
+			add_job(f, (void *)entry);
+	validation_queue(f, count, targets);
+}
+
+static void namespace_validate(struct fixture *f)
+{
+	uint64_t used;
+	solving = 1;
+	pg_artifact_revalidate(f->program, f->program->root, 100000 - f->validation,
+		100000 - f->validation, &used);
+	solving = 0;
+	f->validation += used;
+	assert(!f->program->synthesis.ready && f->program->synthesis.steps == f->validation);
+}
+
+static void namespace_roundtrip(struct fixture original, struct pg_synthesis_job *member)
+{
+	FILE *saved = namespace_save(&original, member);
+	enum pg_synthesis_status status;
+	uint64_t remaining;
+	FILE *expected = complete(&original, &status, &remaining);
+	assert(status == PG_SYNTHESIS_DONE);
+	destroy(&original);
+	size_t count;
+	struct pg_synthesis_job *const *roots;
+	uint64_t ordinal, position;
+	assert(!pg_wire_read_u64(saved, &ordinal) && !pg_wire_read_u64(saved, &position));
+	struct pg_graph wire = {0};
+	const struct pg_artifact_schedule *schedule = pg_artifact_schedule_read(saved, &wire, 100000);
+	struct fixture f = {.program = pg_sources_read(saved, 100000, &count, &roots)};
+	assert(schedule && f.program && count == 4 && fgetc(saved) == EOF);
+	struct pg_synthesis *s = &f.program->synthesis;
+	assert(!s->steps && !pg_synthesis_result(f.program->root));
+	size_t proofs = f.program->typing.proofs.count, terms = f.program->graph.terms.count;
+	for (unsigned zero = 0; zero < 2; ++zero) {
+		FILE *copy = tmpfile();
+		assert(copy);
+		assert(!pg_wire_write_u64(copy, ordinal) && !pg_wire_write_u64(copy, position));
+		assert(!pg_artifact_schedule_save(copy, schedule));
+		assert(!pg_sources_write(copy, s, count, roots));
+		equal_files(saved, copy);
+		assert(!fclose(copy));
+		advance(s, 0);
+		assert(!s->steps && f.program->typing.proofs.count == proofs && f.program->graph.terms.count == terms);
+	}
+	const struct pg_source_scope *scope;
+	assert(!pg_synthesis_source_input(s, f.program->root, &scope, &f.syntax));
+	f.registration = pg_synthesis_prepare_module(s, f.program->root);
+	collect(&f);
+	namespace_validation_queue(&f, 3, &roots[1]);
+	namespace_validate(&f);
+	for (size_t i = 1; i < 4; ++i) assert(roots[i]->status == PG_SYNTHESIS_DONE);
+	const struct pg_data_layout *layout = pg_data_schema_layout(pg_evidence_inductive_schema(roots[1]->result));
+	assert(ordinal < pg_data_layout_count(layout));
+	member = pg_synthesis_constructor_from_scope(s, roots[1]->result,
+		pg_data_constructor(layout, ordinal), roots[2]->result, roots[3]->result);
+	assert(member && member->status == PG_SYNTHESIS_PENDING);
+	struct pg_definition_frontier view = f.frontier;
+	view.indexed = view.activated = view.count; view.complete = 1;
+	assert(!pg_synthesis_definition_resume(s, f.registration, &view));
+	/* Recheck completed source entries and lexical constructor metadata through
+	 * their ordinary owners. The retained unfinished member must not advance. */
+	struct pg_synthesis_job **pending = calloc(s->jobs.count, sizeof(*pending));
+	assert(pending);
+	size_t pending_count = 0;
+	for (size_t i = 0; i < s->jobs.capacity; ++i)
+		for (struct pg_index_entry *e = s->jobs.buckets[i]; e; e = e->next) {
+			struct pg_synthesis_job *job = (void *)e;
+			if (job->status == PG_SYNTHESIS_PENDING && job != f.program->root && job != member)
+				pending[pending_count++] = job;
+		}
+	namespace_validation_queue(&f, pending_count, pending);
+	free(pending);
+	namespace_validate(&f);
+	for (size_t i = 0; i < view.count; ++i) assert(view.entries[i]->status == PG_SYNTHESIS_DONE);
+	assert(member->status == PG_SYNTHESIS_PENDING && !pg_synthesis_result(member));
+	free(f.jobs); f.count = 0; collect(&f); add_job(&f, member);
+	module_resume(&f, f.program->root, position);
+	assert(!pg_artifact_schedule_attach(s, schedule, f.count, f.jobs));
+	FILE *resumed_image = namespace_save(&f, member);
+	equal_files(saved, resumed_image);
+	assert(!fclose(resumed_image));
+	uint64_t resumed;
+	FILE *actual = complete(&f, &status, &resumed);
+	assert(status == PG_SYNTHESIS_DONE && resumed == remaining);
+	equal_files(expected, actual);
+	printf("namespace checkpoint: %llu charged verification + %llu unchanged remaining dispatches, exact image\n",
+		(unsigned long long)f.validation, (unsigned long long)resumed);
+	destroy(&f);
+	pg_graph_destroy(&wire);
+	assert(!fclose(saved) && !fclose(expected) && !fclose(actual));
+}
+
+static void namespace_lifecycle(const char *text)
+{
+	struct fixture f = start(text, 0);
+	struct pg_synthesis *s = &f.program->synthesis;
+	for (size_t cut = 0; cut < 10000 && f.program->root->status == PG_SYNTHESIS_PENDING; ++cut) {
+		struct pg_definition_frontier view;
+		assert(!pg_synthesis_definition_frontier(s, f.registration, &view));
+		int ready = view.complete;
+		for (size_t i = 0; ready && i < view.count; ++i)
+			ready = view.entries[i] && view.entries[i]->status == PG_SYNTHESIS_DONE;
+		struct pg_synthesis_job *member = NULL;
+		for (struct pg_synthesis_job *job = s->ready; ready && job; job = job->next) {
+			if (job == f.program->root) continue;
+			const struct pg_evidence *map;
+			ready = !member && pg_synthesis_constructor_ready_scope(s, job, &map) == 1;
+			member = job;
+		}
+		if (ready && member) {
+			free(f.jobs); f.count = 0; collect(&f);
+			namespace_roundtrip(f, member);
+			return;
+		}
+		advance(s, 1);
+	}
+	destroy(&f);
+	fprintf(stderr, "no covered namespace continuation boundary: %s\n", text);
+	assert(!"no covered namespace continuation boundary");
+}
+
 int main(int argc, char **argv)
 {
 	if (argc == 2 && !strcmp(argv[1], "--pending-namespace")) {
-		lifecycle("Nat:=@{zero:*;succ:*->*;}; main:=Nat.zero; main::Nat;", PG_SYNTHESIS_DONE);
+		namespace_lifecycle("Nat:=@{zero:*;succ:*->*;}; main:=Nat.zero; main::Nat;");
+		return 0;
+	}
+	if (argc == 2 && !strcmp(argv[1], "--advanced-namespace")) {
+		/* The constructor body has already started at this source frontier.
+		 * Keep this as a real failing gate until that owner is transported. */
+		namespace_lifecycle("Nat:=@{succ:*->*;zero:*;}; main:=Nat.zero; main::Nat;");
 		return 0;
 	}
 	assert(argc == 1);

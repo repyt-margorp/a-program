@@ -28,10 +28,15 @@ NORMALIZATION_IO := $(addprefix $(ROOT),machine_io.c computation_io.c identity_i
 check-artifact-definition-checkpoint: $(BUILD)/artifact_definition_checkpoint_test
 	$(BUILD)/artifact_definition_checkpoint_test
 
-# Remains failing until pending namespace producers join the restored closure.
+# Pending namespace member at the checked-field/pre-body continuation boundary.
 .PHONY: check-artifact-namespace-frontier
 check-artifact-namespace-frontier: $(BUILD)/artifact_definition_checkpoint_test
 	$(BUILD)/artifact_definition_checkpoint_test --pending-namespace
+
+# Not an expected-failure pass: advanced constructor bodies remain uncovered.
+.PHONY: check-artifact-namespace-body-frontier
+check-artifact-namespace-body-frontier: $(BUILD)/artifact_definition_checkpoint_test
+	$(BUILD)/artifact_definition_checkpoint_test --advanced-namespace
 
 .PHONY: check-artifact-constructor-checkpoint
 check-artifact-constructor-checkpoint: $(BUILD)/artifact_constructor_checkpoint_test

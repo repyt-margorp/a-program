@@ -175,6 +175,14 @@ static void resume(FILE *file, FILE *expected, uint64_t remaining)
 	struct pg_synthesis_job *job = pg_synthesis_constructor_from_scope(s, formation, constructor, parameters, scope);
 	assert(job && job->status == PG_SYNTHESIS_PENDING && !pg_synthesis_result(job));
 	assert(pg_synthesis_constructor_from_scope(s, formation, constructor, parameters, scope) == job);
+	const struct pg_context_map *fields = pg_evidence_context_map(scope), *prefix = pg_evidence_context_map(parameters);
+	size_t jobs = s->jobs.count;
+	assert(pg_synthesis_constructor_value_at(s, formation, constructor, parameters,
+		prefix->destination, fields->destination) == job);
+	if (fields->destination != prefix->destination)
+		assert(!pg_synthesis_constructor_value_at(s, formation, constructor, parameters,
+			prefix->destination, prefix->destination));
+	assert(s->jobs.count == jobs);
 	assert(s->ready == job && s->ready_tail == job && !job->next);
 	assert(s->steps == validation && c.program->typing.proofs.count == proofs && c.program->graph.terms.count == terms);
 	const struct pg_evidence *borrowed;

@@ -535,13 +535,13 @@ was not rerun. Incremental implementation delta: `synthesis.c` +89/-4,
 
 Next: AP1.2/AP1.3 must retain namespace producers and the other live child-owner
 continuations, then connect them to `.a` under AP1's provenance/fuel policy.
-`check-artifact-namespace-frontier` currently fails to find a covered late
+Before the namespace increment below, `check-artifact-namespace-frontier` failed to find a covered late
 boundary for `Nat:=@{zero:*;succ:*->*;}; main:=Nat.zero; main::Nat;`: a published
 constructor callable remains runnable outside the fixture's module/entry closure.
 The program itself compiles. This is missing checkpoint coverage, not an ADT
 typing failure; the producer is not disposable history. Preserve its scope,
 callable/value child and pending abstracted body rather than dropping the queue
-entry. The gate remains a real failure, not an expected-failure pass.
+entry. The advanced-body gate below still records the remaining coverage gap.
 The normal source loader does not use these hooks. Its fresh partition gate
 still fails at 100+100 and later; results are in
 `/tmp/a-program-source-lifecycle-final-partitions/partitions.tsv`. These focused
@@ -592,6 +592,37 @@ The strict partition gate still fails at 100+100 and later; see
 is reclassified as an expected pass or evidence of full checkpoint completion.
 Actual C/header changes: `iadt.c` +31/-6, `iadt.h` +6/-0,
 `synthesis_iadt.c` +10/-12 (net +29); fixture +28. No accepted source is modified.
+
+Namespace increment after `b15e40a` (2026-09-29, agent implementation decision):
+the source-owner fixture now shares nominal/source relocation with the existing
+checked-map inputs and reconnects a published, unfinished constructor to the
+module cursor and saved queue. No DONE flag grants evidence: ordinary Solve
+rechecks the completed source entries/lexical metadata and map premises first.
+The original Program is destroyed. Inert decode/resave and step 0 are byte-stable;
+after explicit validation, both the partial checkpoint and final `.a` are exact,
+and the remaining 17 dispatches agree. The shared allocation entry point also
+avoids creating a second field worker when the checked map supplies the same
+addresses. This removes 9 redundant validation dispatches in this fixture
+(293 -> 284), not 9 continuation steps or a claimed general speedup.
+O2 and ASan/UBSan pass this namespace boundary, 44 registration/16 module
+frontiers and all six constructor cases. Repeated allocation attachment creates
+no additional jobs; conflicting field addresses reject. Synthesis, IADT,
+semantic image and Source I/O tests also pass on clean `e716232` plus these
+prototypes, excluding unrelated working-tree changes. Logs:
+`/tmp/a-program-namespace-check-final.log`, `/tmp/a-program-namespace-asan.log`.
+C differential/Oracle, checked/trusted standalone Acc QuickSort and CLI policy
+also pass (`/tmp/a-program-namespace-c.log`). List 09 still matches the preceding
+candidate byte-for-byte (50,508 bytes, 2,824 Solve steps).
+The next genuine failing gate is `check-artifact-namespace-body-frontier`:
+declaring `succ` before `zero` reaches an already-started constructor body at
+the module boundary. Body/Classifier/Pi/Lambda work is not yet transported.
+Do not drop those jobs or claim arbitrary source checkpoint support. These
+tests still use a known-origin envelope; the public source loader remains
+recipe-only for progress. The strict full-source partition gate still fails at
+100+100 and later (`/tmp/a-program-namespace-partitions/partitions.tsv`).
+Incremental implementation: `synthesis.c` +17/-14; focused tests +177/-1;
+build targets +6/-1. Full compiler acceptance
+has not been rerun for this small increment; the previous full pass is above.
 
 #### Rejected Read Policy and Retention Audit (2026-09-29)
 
@@ -668,9 +699,11 @@ alone. Avoid adding a second parallel type graph or serializing all workers.
 - [x] Restore completed name registration, pending body edges and module-check
   cursors without accepting child evidence; test charged child verification and
   rejection of skipped obligations. This is not private child-state restoration.
-- [ ] Include pending namespace/constructor producers in the live closure;
-  pass `check-artifact-namespace-frontier`, then expand other source/typing owners.
-  Ordinary `.a` checkpoint integration remains open.
+- [x] Connect the checked-field/pre-body namespace boundary to module restoration;
+  `check-artifact-namespace-frontier` preserves the original queue and final image.
+- [ ] Expand namespace continuation transport to unfinished fields and started
+  bodies; pass the real `check-artifact-namespace-body-frontier` failure, then
+  expand other source/typing owners. Ordinary `.a` checkpoint integration remains open.
 - [x] Reuse the completed field map before constructor body abstraction, through
   checked typed inputs; `check-artifact-constructor-checkpoint` tests this boundary.
 - [x] Remove induction's read of completed scope-worker `fields[]` in favor of
