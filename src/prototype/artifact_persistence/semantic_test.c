@@ -84,6 +84,72 @@ static void no_import_preparation(const struct pg_program *program)
 			assert(!pg_synthesis_derivation_input((const void *)entry));
 }
 
+static void finish_work(struct pg_synthesis *s, struct pg_synthesis_job *job)
+{
+	pg_synthesis_finish(s, job, PG_SYNTHESIS_DONE);
+}
+
+static void early_wake(void)
+{
+	static const struct pg_synthesis_work_class role = {.advance = finish_work};
+	struct pg_program *p = pg_program_allocate_empty(PG_DEFINITION_IMPLICIT_THUNK);
+	assert(p);
+	struct pg_synthesis_job *jobs[3];
+	for (size_t i = 0; i < 3; ++i) {
+		const void *key[] = {&jobs[i]};
+		jobs[i] = pg_synthesis_work_request(&p->synthesis, &role, 1, key);
+		assert(jobs[i]);
+	}
+	pg_synthesis_enqueue(&p->synthesis, jobs[1]);
+	assert(p->synthesis.ready == jobs[0] && jobs[0]->next == jobs[1] && jobs[1]->next == jobs[2]);
+	pg_synthesis_subscribe(&p->synthesis, jobs[1], jobs[0], 0);
+	advance(p, 1);
+	assert(p->synthesis.ready == jobs[1] && jobs[1]->next == jobs[2]);
+	assert(!jobs[1]->dependency && p->synthesis.ready_tail == jobs[2]);
+	pg_synthesis_enqueue(&p->synthesis, jobs[1]);
+	pg_synthesis_enqueue(&p->synthesis, jobs[2]);
+	assert(p->synthesis.ready == jobs[1] && jobs[1]->next == jobs[2] && !jobs[2]->next);
+	advance(p, 100);
+	assert(!p->synthesis.ready && !p->synthesis.ready_tail && p->synthesis.steps == 3);
+	for (size_t i = 0; i < 3; ++i) assert(jobs[i]->status == PG_SYNTHESIS_DONE);
+	pg_program_destroy(p);
+}
+
+static void lexical_module_roots(void)
+{
+	const char source[] = "outer := #42;";
+	const char nested[] = "outer :: #Int; main := outer;";
+	for (size_t selected = 1; selected <= 2; ++selected) {
+		struct pg_program *p = pg_program_create(source, sizeof(source) - 1, PG_DEFINITION_IMPLICIT_THUNK);
+		assert(p && p->root);
+		const struct pg_source_scope *scope;
+		const struct pg_syntax *syntax;
+		assert(!pg_synthesis_source_input(&p->synthesis, p->root, &scope, &syntax));
+		scope = pg_synthesis_definition_scope(&p->synthesis, scope, syntax);
+		struct pg_parser diagnostic;
+		struct pg_synthesis_job *child = pg_program_source(p, scope, nested, sizeof(nested) - 1, &diagnostic);
+		assert(child && !diagnostic.error);
+		advance(p, 100000);
+		assert(child->status == PG_SYNTHESIS_DONE && p->root->status == PG_SYNTHESIS_DONE);
+		/* Lexical obligations survive even without an exported parent module. */
+		struct pg_synthesis_job *initial[] = {child, p->root};
+		FILE *file = save(p, selected, initial);
+		pg_program_destroy(p);
+		size_t count;
+		struct pg_synthesis_job *const *roots;
+		p = pg_sources_read(file, PG_ARTIFACT_DEFAULT_LIMIT, &count, &roots);
+		assert(p && count == selected);
+		no_import_preparation(p);
+		for (size_t i = 0; i < count; ++i) assert(!pg_synthesis_result(roots[i]));
+		FILE *copy = save(p, count, roots);
+		equal_files(file, copy);
+		assert(!fclose(copy) && !fclose(file));
+		advance(p, 100000);
+		for (size_t i = 0; i < count; ++i) assert(roots[i]->status == PG_SYNTHESIS_DONE);
+		pg_program_destroy(p);
+	}
+}
+
 static struct pg_derivation_input *rule_input(struct pg_graph *g, enum pg_evidence_rule rule,
 	size_t count, const struct pg_derivation_input *const *premises)
 {
@@ -825,6 +891,8 @@ static void revalidation_budget(void)
 
 int main(void)
 {
+	early_wake();
+	lexical_module_roots();
 	direct_rule_import();
 	limit_arguments();
 	completion_format();

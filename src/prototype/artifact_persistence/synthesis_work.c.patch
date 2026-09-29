@@ -13,7 +13,17 @@
  void pg_synthesis_work_destroy(struct pg_synthesis *synthesis)
  {
  	for (size_t i = 0; i < synthesis->jobs.capacity; ++i)
-@@ -40,19 +33,16 @@
+@@ -20,6 +13,9 @@
+ 
+ void pg_synthesis_enqueue(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+ {
++	/* Factories can subscribe a request before its initial dispatch. An early
++	 * wake must not splice that still-queued node into the FIFO a second time. */
++	if (job->next || synthesis->ready_tail == job) return;
+ 	job->next = NULL;
+ 	if (synthesis->ready_tail) synthesis->ready_tail->next = job;
+ 	else synthesis->ready = job;
+@@ -40,19 +36,16 @@
  	return (role->size + alignment - 1) / alignment * alignment;
  }
  
@@ -39,7 +49,7 @@
  		struct pg_synthesis_job *job = (struct pg_synthesis_job *)entry;
  		if (job->role != role) continue;
  		if (job->input_count != count) continue;
-@@ -60,6 +50,28 @@
+@@ -60,6 +53,28 @@
  		while (i < count && job->inputs[i] == request_operand(prefix, inputs, jobs, i)) ++i;
  		if (i == count) return job;
  	}
@@ -68,7 +78,7 @@
  	size_t bytes = sizeof(struct pg_synthesis_job) + count * sizeof(*inputs);
  	if (role->size > SIZE_MAX - (_Alignof(struct pg_synthesis_job) - 1)) return NULL;
  	size_t offset = state_extent(role);
-@@ -179,6 +191,51 @@
+@@ -179,6 +194,51 @@
  	return job->status == PG_SYNTHESIS_DONE ? job->result : NULL;
  }
  

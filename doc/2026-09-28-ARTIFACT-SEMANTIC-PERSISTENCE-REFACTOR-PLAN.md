@@ -817,6 +817,38 @@ alone. Avoid adding a second parallel type graph or serializing all workers.
   factories, without per-input preparation wrappers. Retain byte-identical
   step-0 resaves and ordinary rejection; full acceptance passes for this
   prototype revision. This does not waive remaining continuation/provenance work.
+- [ ] Connect registration progress through the retained **lexical namespace**
+  dependencies, not only exported module producers. Reuse existing entry links,
+  recipe validation and scope order. Keep proof acceptance separate; no extra
+  name/proof authority or silent cursor reset. Test parent-omitted and child-first
+  roots, forward names, assertions, aliases and inert bytes before adopting it.
+  Do not claim full checkpointing without child continuations and scheduling.
+  **Rejected trial after `239b380` (2026-09-29, agent assessment):** persisting
+  `(module producer, indexed, activated)` passed ordinary roundtrips but failed
+  when only a child module was exported. Its outer-name assertion still needs
+  the lexical parent's registration, although that parent is not a module root.
+  Restoring parents first fixed export ordering, not this missing dependency.
+  `lexical_module_roots` now preserves both counterexamples as permanent tests,
+  using the existing source API (not invented nested-block surface syntax).
+  The trial codec/format change was withdrawn; APGSRC66 remains current.
+  Next owner contract: collect registration from live lexical scopes, share its
+  entry links once, and relocate outer namespaces before local assertions. Do
+  not invent a public module root, scan all historical jobs, or drop a charged
+  cursor merely because its parent was not an export.
+- [x] Verify the independent FIFO fix exposed by that trial: re-enqueueing a
+  still-queued worker must not truncate the ready list. Use its existing
+  link/tail, not another flag. `early_wake` reproduces head/middle/tail reuse;
+  it fails against `239b380`. Fresh verification (2026-09-29): O2 semantic and
+  full `check-acceptance`, ASan/UBSan semantic, normalization/namespace-body
+  checkpoints, C differential/LinkerScript and checked/trusted Acc QuickSort
+  gates pass. The clean accepted-source snapshot plus the current prototype
+  overlays excludes unrelated working-tree Evidence/IADT edits. Actual source
+  delta from `239b380`: `synthesis_work.c` +3/-0; `semantic_test.c` +68/-0.
+  Patch-file context and documentation are not implementation line changes.
+  Logs: `/tmp/a-program-registration-reviewed-{semantic,asan,acceptance,c,checkpoints}.log`.
+  The public partition gate still **fails**: 100+100 uses 25,770 versus 26,094
+  bytes, and 1600+1600 remains pending versus completion at 2,824 steps.
+  This fix does not implement source-frontier resumption or complete AP1-AP3.
 - [ ] Expand continuation transport to unfinished fields, classifier queries
   lacking a retained structural type, and other source/typing owners. Integrate
   the completed owner interfaces into ordinary `.a` checkpoint transport;
@@ -955,7 +987,7 @@ The desired composition law is `advance(advance(S, a), b) = advance(S, a+b)`;
 the serialized-resume variant inserts save/load between the two advances.
 Fix compiler version, input image, selected roots, policy and requests when
 testing it. Exclude format migration and host execution from this pure gate.
-Baseline APGSRC62/63 and prototype APGSRC65 reconstruction do not preserve the full running frontier;
+Baseline APGSRC62/63 and prototype APGSRC66 reconstruction do not preserve the full running frontier;
 the equality of supplied or reported fuel therefore does not establish equality
 of progress. A recompute fallback must be reported as such, not counted as passing
 this resume gate. Count any required revalidation explicitly; do not hide its cost
