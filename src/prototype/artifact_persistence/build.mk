@@ -33,7 +33,7 @@ check-artifact-definition-checkpoint: $(BUILD)/artifact_definition_checkpoint_te
 check-artifact-namespace-frontier: $(BUILD)/artifact_definition_checkpoint_test
 	$(BUILD)/artifact_definition_checkpoint_test --pending-namespace
 
-# Not an expected-failure pass: advanced constructor bodies remain uncovered.
+# Started abstraction: preserve ordinary Lambda/Pi/body rule cursors and queue.
 .PHONY: check-artifact-namespace-body-frontier
 check-artifact-namespace-body-frontier: $(BUILD)/artifact_definition_checkpoint_test
 	$(BUILD)/artifact_definition_checkpoint_test --advanced-namespace

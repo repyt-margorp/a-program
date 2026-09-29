@@ -2,6 +2,7 @@
 #include "source_io.h"
 #include "syntax_io.h"
 #include "synthesis_source.h"
+#include "derivation.h"
 #include "artifact/schedule.h"
 #include "artifact/file.h"
 #include "wire.h"
@@ -51,8 +52,10 @@ static void collect(struct fixture *f)
 {
 	assert(!pg_synthesis_definition_frontier(&f->program->synthesis, f->registration, &f->frontier));
 	struct pg_module_frontier module;
-	assert(!pg_synthesis_module_frontier(&f->program->synthesis, f->program->root, &module));
-	if (f->syntax->kind == PG_SYNTAX_QUALIFIED && module.position) f->unselected = module.previous;
+	if (f->program->root->status == PG_SYNTHESIS_PENDING) {
+		assert(!pg_synthesis_module_frontier(&f->program->synthesis, f->program->root, &module));
+		if (f->syntax->kind == PG_SYNTAX_QUALIFIED && module.position) f->unselected = module.previous;
+	} else assert(f->program->root->status == PG_SYNTHESIS_DONE && f->syntax->kind == PG_SYNTAX_DEFINITIONS);
 	f->jobs = calloc(3 * f->frontier.count + 3, sizeof(*f->jobs));
 	assert(f->jobs);
 	add_job(f, f->program->root); add_job(f, f->registration);
@@ -503,6 +506,46 @@ static void module_guards(void)
 	puts("module guards: pending/rejected siblings cannot be skipped; foreign body owners reject");
 }
 
+static void adapter_guards(void)
+{
+	struct pg_program *p = pg_program_allocate_empty(PG_DEFINITION_EXPLICIT_THUNK);
+	struct pg_program *other = pg_program_allocate_empty(PG_DEFINITION_EXPLICIT_THUNK);
+	assert(p && other);
+	struct pg_synthesis *s = &p->synthesis;
+	const struct pg_evidence *context = pg_prove_empty_context(&p->typing);
+	const struct pg_evidence *type = pg_prove_universe(&p->typing, context, 0);
+	const struct pg_evidence *value = pg_prove_type_value(&p->typing, type);
+	const struct pg_evidence *computation = pg_prove_return(&p->typing, value);
+	assert(context && type && value && computation);
+	const struct pg_evidence *inputs[] = {type, value, computation};
+	struct pg_synthesis_job *scope = pg_synthesis_evidence(s, context);
+	for (size_t i = 0; i < 3; ++i) {
+		struct pg_synthesis_job *input = pg_synthesis_evidence(s, inputs[i]);
+		struct pg_synthesis_job *body = pg_synthesis_body(s, input, scope);
+		assert(body && !pg_synthesis_body(&other->synthesis, input, scope));
+		assert(pg_synthesis_body_resume(&other->synthesis, body));
+		assert(pg_synthesis_body_resume(s, input));
+		size_t proofs = p->typing.proofs.count, terms = p->graph.terms.count;
+		assert(!pg_synthesis_body_resume(s, body));
+		assert(pg_synthesis_body_resume(s, body));
+		assert(body->status == PG_SYNTHESIS_PENDING && !body->result);
+		assert(!s->steps && p->typing.proofs.count == proofs && p->graph.terms.count == terms);
+		struct pg_synthesis_job *selected = pg_synthesis_work_project(body).rule;
+		assert(selected);
+		if (i == 2) assert(selected == input);
+		else {
+			assert(pg_synthesis_plain_derivation(selected)->rule == PG_RETURN_INTRO);
+			struct pg_synthesis_job *operand = pg_synthesis_rule_premise(s, selected, 0);
+			if (i == 1) assert(operand == input);
+			else assert(pg_synthesis_plain_derivation(operand)->rule == PG_VALUE_FROM_TYPE);
+		}
+	}
+	advance(s, 10000);
+	assert(!s->ready);
+	pg_program_destroy(other); pg_program_destroy(p);
+	puts("body adapters: shared type/value/computation selection; foreign and repeated attachments reject");
+}
+
 static size_t lifecycle(const char *text, enum pg_synthesis_status expected)
 {
 	size_t checked = 0;
@@ -541,30 +584,125 @@ static size_t lifecycle(const char *text, enum pg_synthesis_status expected)
 	return 0;
 }
 
-/* Namespace boundary: completed source entries, one published constructor
- * with a checked field map, and a pending module cursor. The shared source
- * codec relocates the declaration and map together. This fixture envelope is
- * not a claim that the CLI restores arbitrary private continuations. */
+struct body_cursor { uint64_t status, premise, selected; };
+struct namespace_cursor {
+	uint64_t ordinal, position, complete, advanced, count;
+	struct body_cursor *body;
+};
+
+/* These fixtures use the existing abstraction factory's graph, not another
+ * constructor executor. Walk raw Lambda/Pi/body owners, then selected adapters.
+ * General classifier queries with an unfinished typed query are not covered. */
+static const struct pg_evidence *namespace_body(struct fixture *f,
+	struct pg_synthesis_job *body)
+{
+	struct pg_synthesis *s = &f->program->synthesis;
+	size_t first = f->count;
+	while (!pg_synthesis_evidence_input(body)) {
+		const struct pg_derivation_input *rule = pg_synthesis_plain_derivation(body);
+		assert(rule && rule->rule == PG_LAMBDA_INTRO && rule->count == 2);
+		struct pg_synthesis_job *pi = pg_synthesis_rule_premise(s, body, 0);
+		struct pg_synthesis_job *adapter = pg_synthesis_rule_premise(s, body, 1);
+		rule = pg_synthesis_plain_derivation(pi);
+		assert(rule && rule->rule == PG_PI_FORM && rule->count == 2);
+		struct pg_synthesis_job *classifier = pg_synthesis_rule_premise(s, pi, 1);
+		assert(pg_synthesis_classifier_formation_input(classifier) == adapter);
+		/* A pending classifier here either has not started or has a retained
+		 * structural type and finishes in one dispatch, without query progress. */
+		if (classifier->status == PG_SYNTHESIS_PENDING && pg_synthesis_result(adapter))
+			assert(pg_evidence_subject(adapter->result)->type);
+		add_job(f, body); add_job(f, pi); add_job(f, adapter); add_job(f, classifier);
+		body = pg_synthesis_body_input(adapter);
+		assert(body);
+	}
+	size_t end = f->count;
+	for (size_t i = first; i < end; ++i) {
+		struct pg_synthesis_job *input = pg_synthesis_body_input(f->jobs[i]);
+		if (!input) continue;
+		struct pg_synthesis_job *selected = pg_synthesis_work_project(f->jobs[i]).rule;
+		if (selected && selected != input) add_job(f, selected);
+	}
+	const struct pg_evidence *leaf = pg_synthesis_evidence_input(body);
+	assert(pg_evidence_rule(leaf) == PG_CONSTRUCTOR_INTRO);
+	return leaf;
+}
+
+static void namespace_cursor_write(FILE *file, const struct namespace_cursor *c)
+{
+	assert(!pg_wire_write_u64(file, c->ordinal) && !pg_wire_write_u64(file, c->position));
+	assert(!pg_wire_write_u64(file, c->complete));
+	assert(!pg_wire_write_u64(file, c->advanced) && !pg_wire_write_u64(file, c->count));
+	for (size_t i = 0; i < c->count; ++i) {
+		assert(!pg_wire_write_u64(file, c->body[i].status));
+		assert(!pg_wire_write_u64(file, c->body[i].premise));
+		assert(!pg_wire_write_u64(file, c->body[i].selected));
+	}
+}
+
+static struct namespace_cursor namespace_cursor_read(FILE *file)
+{
+	struct namespace_cursor c;
+	assert(!pg_wire_read_u64(file, &c.ordinal) && !pg_wire_read_u64(file, &c.position));
+	assert(!pg_wire_read_u64(file, &c.complete) && c.complete <= 1);
+	assert(!pg_wire_read_u64(file, &c.advanced) && !pg_wire_read_u64(file, &c.count));
+	assert(c.advanced <= 1 && c.count < 10000);
+	c.body = calloc(c.count + 1, sizeof(*c.body));
+	assert(c.body);
+	for (size_t i = 0; i < c.count; ++i) {
+		assert(!pg_wire_read_u64(file, &c.body[i].status));
+		assert(!pg_wire_read_u64(file, &c.body[i].premise));
+		assert(!pg_wire_read_u64(file, &c.body[i].selected));
+	}
+	return c;
+}
+
+/* Namespace boundaries: completed source entries, one unfinished callable,
+ * and a pending module cursor. Shared source I/O relocates the declaration,
+ * maps and checked constructor leaf together. This is a known-origin fixture
+ * envelope, not public CLI transport for arbitrary private continuations. */
 static FILE *namespace_save(struct fixture *f, struct pg_synthesis_job *member)
 {
 	struct pg_synthesis *s = &f->program->synthesis;
 	struct pg_constructor_input input;
 	const struct pg_evidence *map;
 	assert(!pg_synthesis_constructor_input(s, member, &input));
-	assert(pg_synthesis_constructor_ready_scope(s, member, &map) == 1);
+	struct pg_synthesis_job *body;
+	int advanced = pg_synthesis_constructor_body(s, member, &map, &body);
+	assert(advanced >= 0);
+	if (!advanced) assert(pg_synthesis_constructor_ready_scope(s, member, &map) == 1);
+	f->jobs = realloc(f->jobs, (s->jobs.count + f->count + 1) * sizeof(*f->jobs));
+	assert(f->jobs);
+	add_job(f, member);
+	size_t first = f->count;
+	const struct pg_evidence *leaf = advanced ? namespace_body(f, body) : NULL;
 	struct pg_synthesis_job *roots[] = {f->program->root, input.formation,
-		input.parameters, pg_synthesis_evidence(s, map)};
+		input.parameters, pg_synthesis_evidence(s, map), leaf ? pg_synthesis_evidence(s, leaf) : NULL};
 	const struct pg_data_layout *layout = pg_data_schema_layout(pg_evidence_inductive_schema(input.formation->result));
 	size_t ordinal;
 	assert(pg_data_constructor_position(layout, input.constructor, &ordinal));
-	struct pg_module_frontier module;
-	assert(!pg_synthesis_module_frontier(s, f->program->root, &module));
+	struct pg_module_frontier module = {0};
+	int done = f->program->root->status == PG_SYNTHESIS_DONE;
+	if (!done) assert(!pg_synthesis_module_frontier(s, f->program->root, &module));
 	FILE *file = tmpfile();
 	assert(file);
-	assert(!pg_wire_write_u64(file, ordinal) && !pg_wire_write_u64(file, module.position));
-	add_job(f, member);
+	struct namespace_cursor cursor = {.ordinal = ordinal, .position = module.position, .complete = done,
+		.advanced = advanced, .count = f->count - first};
+	cursor.body = calloc(cursor.count + 1, sizeof(*cursor.body));
+	assert(cursor.body);
+	for (size_t i = 0; i < cursor.count; ++i) {
+		struct pg_synthesis_job *job = f->jobs[first + i];
+		cursor.body[i].status = job->status;
+		if (pg_synthesis_plain_derivation(job) && job->status == PG_SYNTHESIS_PENDING) {
+			size_t next;
+			assert(pg_synthesis_rule_frontier(s, job, &next) == 1);
+			cursor.body[i].premise = next;
+		}
+		cursor.body[i].selected = pg_synthesis_body_input(job) && pg_synthesis_work_project(job).rule;
+	}
+	namespace_cursor_write(file, &cursor);
+	free(cursor.body);
 	assert(!pg_artifact_schedule_write(file, s, f->count, f->jobs));
-	assert(!pg_sources_write(file, s, 4, roots));
+	assert(!pg_sources_write(file, s, advanced ? 5 : 4, roots));
 	rewind(file);
 	return file;
 }
@@ -605,19 +743,18 @@ static void namespace_roundtrip(struct fixture original, struct pg_synthesis_job
 	destroy(&original);
 	size_t count;
 	struct pg_synthesis_job *const *roots;
-	uint64_t ordinal, position;
-	assert(!pg_wire_read_u64(saved, &ordinal) && !pg_wire_read_u64(saved, &position));
+	struct namespace_cursor cursor = namespace_cursor_read(saved);
 	struct pg_graph wire = {0};
 	const struct pg_artifact_schedule *schedule = pg_artifact_schedule_read(saved, &wire, 100000);
 	struct fixture f = {.program = pg_sources_read(saved, 100000, &count, &roots)};
-	assert(schedule && f.program && count == 4 && fgetc(saved) == EOF);
+	assert(schedule && f.program && count == 4 + cursor.advanced && fgetc(saved) == EOF);
 	struct pg_synthesis *s = &f.program->synthesis;
 	assert(!s->steps && !pg_synthesis_result(f.program->root));
 	size_t proofs = f.program->typing.proofs.count, terms = f.program->graph.terms.count;
 	for (unsigned zero = 0; zero < 2; ++zero) {
 		FILE *copy = tmpfile();
 		assert(copy);
-		assert(!pg_wire_write_u64(copy, ordinal) && !pg_wire_write_u64(copy, position));
+		namespace_cursor_write(copy, &cursor);
 		assert(!pg_artifact_schedule_save(copy, schedule));
 		assert(!pg_sources_write(copy, s, count, roots));
 		equal_files(saved, copy);
@@ -629,13 +766,13 @@ static void namespace_roundtrip(struct fixture original, struct pg_synthesis_job
 	assert(!pg_synthesis_source_input(s, f.program->root, &scope, &f.syntax));
 	f.registration = pg_synthesis_prepare_module(s, f.program->root);
 	collect(&f);
-	namespace_validation_queue(&f, 3, &roots[1]);
+	namespace_validation_queue(&f, count - 1, &roots[1]);
 	namespace_validate(&f);
-	for (size_t i = 1; i < 4; ++i) assert(roots[i]->status == PG_SYNTHESIS_DONE);
+	for (size_t i = 1; i < count; ++i) assert(roots[i]->status == PG_SYNTHESIS_DONE);
 	const struct pg_data_layout *layout = pg_data_schema_layout(pg_evidence_inductive_schema(roots[1]->result));
-	assert(ordinal < pg_data_layout_count(layout));
+	assert(cursor.ordinal < pg_data_layout_count(layout));
 	member = pg_synthesis_constructor_from_scope(s, roots[1]->result,
-		pg_data_constructor(layout, ordinal), roots[2]->result, roots[3]->result);
+		pg_data_constructor(layout, cursor.ordinal), roots[2]->result, roots[3]->result);
 	assert(member && member->status == PG_SYNTHESIS_PENDING);
 	struct pg_definition_frontier view = f.frontier;
 	view.indexed = view.activated = view.count; view.complete = 1;
@@ -656,9 +793,83 @@ static void namespace_roundtrip(struct fixture original, struct pg_synthesis_job
 	namespace_validate(&f);
 	for (size_t i = 0; i < view.count; ++i) assert(view.entries[i]->status == PG_SYNTHESIS_DONE);
 	assert(member->status == PG_SYNTHESIS_PENDING && !pg_synthesis_result(member));
-	free(f.jobs); f.count = 0; collect(&f); add_job(&f, member);
-	module_resume(&f, f.program->root, position);
+	free(f.jobs); f.count = 0; collect(&f);
+	f.jobs = realloc(f.jobs, (s->jobs.count + 8 * cursor.count + 1) * sizeof(*f.jobs));
+	assert(f.jobs);
+	add_job(&f, member);
+	size_t first = f.count;
+	if (cursor.advanced) {
+		size_t proofs_before = f.program->typing.proofs.count, terms_before = f.program->graph.terms.count;
+		struct pg_program *foreign = pg_program_allocate_empty(PG_DEFINITION_EXPLICIT_THUNK);
+		assert(foreign && pg_synthesis_constructor_resume_body(&foreign->synthesis, member, roots[4]->result));
+		pg_program_destroy(foreign);
+		assert(pg_synthesis_constructor_resume_body(s, member, roots[1]->result));
+		assert(!pg_synthesis_constructor_resume_body(s, member, roots[4]->result));
+		assert(pg_synthesis_constructor_resume_body(s, member, roots[4]->result));
+		assert(f.program->typing.proofs.count == proofs_before && f.program->graph.terms.count == terms_before);
+		struct pg_synthesis_job *body;
+		const struct pg_evidence *map;
+		assert(pg_synthesis_constructor_body(s, member, &map, &body) == 1 && map == roots[3]->result);
+		assert(namespace_body(&f, body) == roots[4]->result);
+		size_t base = f.count;
+		assert(base - first <= cursor.count);
+		for (size_t i = first; i < base; ++i)
+			if (cursor.body[i - first].selected) assert(!pg_synthesis_body_resume(s, f.jobs[i]));
+		for (size_t i = first; i < base; ++i) {
+			if (!pg_synthesis_body_input(f.jobs[i])) continue;
+			struct pg_synthesis_job *rule = pg_synthesis_work_project(f.jobs[i]).rule;
+			if (rule && rule != pg_synthesis_body_input(f.jobs[i])) add_job(&f, rule);
+		}
+		assert(f.count - first == cursor.count);
+		struct pg_synthesis_job **children = malloc(cursor.count * sizeof(*children));
+		assert(children);
+		memcpy(children, f.jobs + first, cursor.count * sizeof(*children));
+		pending = calloc(cursor.count, sizeof(*pending));
+		assert(pending); pending_count = 0;
+		for (size_t i = 0; i < cursor.count; ++i)
+			if (cursor.body[i].status == PG_SYNTHESIS_DONE) pending[pending_count++] = children[i];
+		namespace_validation_queue(&f, pending_count, pending);
+		free(pending);
+		namespace_validate(&f);
+		for (size_t i = 0; i < cursor.count; ++i) {
+			assert(children[i]->status == cursor.body[i].status);
+			const struct pg_derivation_input *rule = pg_synthesis_plain_derivation(children[i]);
+			if (children[i]->status == PG_SYNTHESIS_PENDING && rule) {
+				assert(pg_synthesis_rule_resume(s, children[i], rule->count + 1));
+				for (size_t j = 0; j < rule->count; ++j) {
+					if (pg_synthesis_result(pg_synthesis_rule_premise(s, children[i], j))) continue;
+					assert(pg_synthesis_rule_resume(s, children[i], j + 1));
+					break;
+				}
+				size_t before;
+				assert(pg_synthesis_rule_frontier(s, children[i], &before) == 1 && !before);
+				assert(!pg_synthesis_rule_resume(s, children[i], cursor.body[i].premise));
+				if (cursor.body[i].premise) assert(pg_synthesis_rule_resume(s, children[i], 0));
+			} else assert(pg_synthesis_rule_resume(s, children[i], 0));
+		}
+		free(f.jobs); f.count = 0; collect(&f);
+		f.jobs = realloc(f.jobs, (f.count + cursor.count + 1) * sizeof(*f.jobs));
+		assert(f.jobs); add_job(&f, member);
+		for (size_t i = 0; i < cursor.count; ++i) add_job(&f, children[i]);
+		free(children);
+	}
+	if (cursor.complete) {
+		namespace_validation_queue(&f, 1, &f.program->root);
+		namespace_validate(&f);
+		assert(f.program->root->status == PG_SYNTHESIS_DONE);
+		free(f.jobs); f.count = 0; collect(&f);
+		f.jobs = realloc(f.jobs, (f.count + cursor.count + 1) * sizeof(*f.jobs));
+		assert(f.jobs); add_job(&f, member);
+		if (cursor.advanced) {
+			const struct pg_evidence *map;
+			struct pg_synthesis_job *body;
+			assert(pg_synthesis_constructor_body(s, member, &map, &body) == 1);
+			namespace_body(&f, body);
+		}
+	} else module_resume(&f, f.program->root, cursor.position);
 	assert(!pg_artifact_schedule_attach(s, schedule, f.count, f.jobs));
+	/* Recollect so each save derives its body span from the same owner roots. */
+	free(f.jobs); f.count = 0; collect(&f);
 	FILE *resumed_image = namespace_save(&f, member);
 	equal_files(saved, resumed_image);
 	assert(!fclose(resumed_image));
@@ -669,35 +880,62 @@ static void namespace_roundtrip(struct fixture original, struct pg_synthesis_job
 	printf("namespace checkpoint: %llu charged verification + %llu unchanged remaining dispatches, exact image\n",
 		(unsigned long long)f.validation, (unsigned long long)resumed);
 	destroy(&f);
+	free(cursor.body);
 	pg_graph_destroy(&wire);
 	assert(!fclose(saved) && !fclose(expected) && !fclose(actual));
 }
 
-static void namespace_lifecycle(const char *text)
+static void namespace_lifecycle(const char *text, int advanced)
 {
-	struct fixture f = start(text, 0);
-	struct pg_synthesis *s = &f.program->synthesis;
-	for (size_t cut = 0; cut < 10000 && f.program->root->status == PG_SYNTHESIS_PENDING; ++cut) {
+	size_t checked = 0;
+	for (size_t cut = 0; cut < 10000; ++cut) {
+		struct fixture f = start(text, 0);
+		struct pg_synthesis *s = &f.program->synthesis;
+		advance(s, cut);
+		if (!s->ready) {
+			destroy(&f);
+			assert(checked);
+			printf("namespace lifecycle: %zu %s frontiers\n", checked, advanced ? "started-body" : "pre-body");
+			return;
+		}
 		struct pg_definition_frontier view;
 		assert(!pg_synthesis_definition_frontier(s, f.registration, &view));
 		int ready = view.complete;
 		for (size_t i = 0; ready && i < view.count; ++i)
 			ready = view.entries[i] && view.entries[i]->status == PG_SYNTHESIS_DONE;
 		struct pg_synthesis_job *member = NULL;
-		for (struct pg_synthesis_job *job = s->ready; ready && job; job = job->next) {
-			if (job == f.program->root) continue;
-			const struct pg_evidence *map;
-			ready = !member && pg_synthesis_constructor_ready_scope(s, job, &map) == 1;
-			member = job;
+		struct pg_synthesis_job *body = NULL;
+		for (size_t i = 0; ready && i < s->jobs.capacity; ++i) {
+			for (struct pg_index_entry *e = s->jobs.buckets[i]; e; e = e->next) {
+				struct pg_synthesis_job *job = (void *)e, *child;
+				const struct pg_evidence *map;
+				int available = advanced ? pg_synthesis_constructor_body(s, job, &map, &child)
+					: pg_synthesis_constructor_ready_scope(s, job, &map);
+				if (available != 1) continue;
+				if (member) { ready = 0; break; }
+				member = job;
+				if (advanced) body = child;
+			}
 		}
 		if (ready && member) {
 			free(f.jobs); f.count = 0; collect(&f);
-			namespace_roundtrip(f, member);
-			return;
+			f.jobs = realloc(f.jobs, (f.count + s->jobs.count + 1) * sizeof(*f.jobs));
+			assert(f.jobs); add_job(&f, member);
+			if (body) namespace_body(&f, body);
+			for (struct pg_synthesis_job *job = s->ready; job; job = job->next) {
+				size_t i = 0;
+				while (i < f.count && f.jobs[i] != job) ++i;
+				if (i == f.count) ready = 0;
+			}
+			if (ready) {
+				free(f.jobs); f.count = 0; collect(&f);
+				namespace_roundtrip(f, member);
+				++checked;
+				continue;
+			}
 		}
-		advance(s, 1);
+		destroy(&f);
 	}
-	destroy(&f);
 	fprintf(stderr, "no covered namespace continuation boundary: %s\n", text);
 	assert(!"no covered namespace continuation boundary");
 }
@@ -705,13 +943,13 @@ static void namespace_lifecycle(const char *text)
 int main(int argc, char **argv)
 {
 	if (argc == 2 && !strcmp(argv[1], "--pending-namespace")) {
-		namespace_lifecycle("Nat:=@{zero:*;succ:*->*;}; main:=Nat.zero; main::Nat;");
+		namespace_lifecycle("Nat:=@{zero:*;succ:*->*;}; main:=Nat.zero; main::Nat;", 0);
 		return 0;
 	}
 	if (argc == 2 && !strcmp(argv[1], "--advanced-namespace")) {
-		/* The constructor body has already started at this source frontier.
-		 * Keep this as a real failing gate until that owner is transported. */
-		namespace_lifecycle("Nat:=@{succ:*->*;zero:*;}; main:=Nat.zero; main::Nat;");
+		namespace_lifecycle("Nat:=@{succ:*->*;zero:*;}; main:=Nat.zero; main::Nat;", 1);
+		namespace_lifecycle("Tree:=@{fork:*->*->*;leaf:*;}; main:=Tree.leaf; main::Tree;", 1);
+		namespace_lifecycle("Nat:=@{zero:*;succ:*->*;}; Vec:=@\\n:Nat=>{cons:* n->*(Nat.succ n);nil:* Nat.zero;}; main:=Vec.nil;", 1);
 		return 0;
 	}
 	assert(argc == 1);
@@ -744,6 +982,7 @@ int main(int argc, char **argv)
 	partition_registration();
 	registration_links();
 	module_guards();
+	adapter_guards();
 	size_t late = lifecycle("a:=@; b:=@; main:=@;", PG_SYNTHESIS_DONE);
 	late += lifecycle("{{a:=@; main:=a;}}.main", PG_SYNTHESIS_DONE);
 	late += lifecycle("{{main:=@; bad:=missing;}}.main", PG_SYNTHESIS_REJECTED);

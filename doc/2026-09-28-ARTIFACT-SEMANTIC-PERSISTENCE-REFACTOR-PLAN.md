@@ -613,16 +613,55 @@ prototypes, excluding unrelated working-tree changes. Logs:
 C differential/Oracle, checked/trusted standalone Acc QuickSort and CLI policy
 also pass (`/tmp/a-program-namespace-c.log`). List 09 still matches the preceding
 candidate byte-for-byte (50,508 bytes, 2,824 Solve steps).
-The next genuine failing gate is `check-artifact-namespace-body-frontier`:
+At `331d5f2`, the next failing gate was `check-artifact-namespace-body-frontier`:
 declaring `succ` before `zero` reaches an already-started constructor body at
-the module boundary. Body/Classifier/Pi/Lambda work is not yet transported.
-Do not drop those jobs or claim arbitrary source checkpoint support. These
+the module boundary. Body/Classifier/Pi/Lambda work was not transported. These
 tests still use a known-origin envelope; the public source loader remains
 recipe-only for progress. The strict full-source partition gate still fails at
 100+100 and later (`/tmp/a-program-namespace-partitions/partitions.tsv`).
 Incremental implementation: `synthesis.c` +17/-14; focused tests +177/-1;
 build targets +6/-1. Full compiler acceptance
 has not been rerun for this small increment; the previous full pass is above.
+
+Started-body increment after `331d5f2` (2026-09-29, agent implementation):
+the constructor owner reconnects its checked constructor leaf through the
+existing abstraction factory. Body adapter selection and implicit-index callable
+metadata share the ordinary factories. The derivation owner restores its next
+premise only when every skipped premise is locally checked; active endpoint
+conversion/reduction is explicitly outside this cursor interface. No attachment
+admits a conclusion or runs Solve. Scheduler order remains separately owned.
+
+Fresh O2 and ASan/UBSan pass 70 started-body boundaries (Nat 16, binary Tree 27,
+implicit-index Vec 27), including pending children after module checking has
+finished. Each case destroys the original Program, decodes/resaves inertly,
+checks step-0 byte stability, revalidates retained premises through ordinary
+Solve within one 100,000-step budget, and reproduces the partial checkpoint,
+remaining dispatches and final `.a` byte-for-byte. Foreign attachments,
+out-of-range premise cursors, skipped pending premises and late rewind reject;
+type/value/raw-computation body selection is covered. Six checked-field cases,
+44 registration and 16 source-owner frontiers still pass. Logs:
+`/tmp/a-program-body-focused.log`, `/tmp/a-program-body-asan.log`.
+
+This closes the started-body fixture gate, not arbitrary source checkpointing.
+Unfinished field construction, classifier queries without a retained structural
+type, other source/typing owners, and public checkpoint/history/provenance
+integration remain open. The strict public partition gate still fails at
+100+100 and later (`/tmp/a-program-body-partitions/partitions.tsv`). The fixture
+envelope is not adopted as a public file format. Full acceptance and C regression
+pass independently of that missing public checkpoint gate.
+Semantic image, WHNF/scheduler checkpoint, CLI policy, 21 C differential cases,
+C Oracle and checked/trusted standalone Acc QuickSort pass
+(`/tmp/a-program-body-artifact.log`, `/tmp/a-program-body-policy.log`,
+`/tmp/a-program-body-c.log`). List 09 matches `331d5f2` exactly: 2,824 steps and
+50,508 bytes. Full `check-acceptance` passes, including general Sorted,
+derived-LT providers/partition orders, indexed constructor sequencing, Identity,
+source images and witness isolation (`/tmp/a-program-body-acceptance.log`).
+All checks use clean accepted `e716232` (unchanged through `331d5f2`) plus these
+prototype overlays; unrelated working-tree edits are excluded.
+Actual C/header delta from `331d5f2`: `synthesis.c` +53/-6,
+`synthesis_cbpv.c` +28/-7, `synthesis_derivation.c` +26/-0,
+`synthesis_source.h` +17/-0 (net +111). The extended fixture is +279/-40;
+build-target comments +1/-1. Patch context lines are not implementation growth.
 
 #### Rejected Read Policy and Retention Audit (2026-09-29)
 
@@ -701,9 +740,13 @@ alone. Avoid adding a second parallel type graph or serializing all workers.
   rejection of skipped obligations. This is not private child-state restoration.
 - [x] Connect the checked-field/pre-body namespace boundary to module restoration;
   `check-artifact-namespace-frontier` preserves the original queue and final image.
-- [ ] Expand namespace continuation transport to unfinished fields and started
-  bodies; pass the real `check-artifact-namespace-body-frontier` failure, then
-  expand other source/typing owners. Ordinary `.a` checkpoint integration remains open.
+- [x] Restore started namespace constructor abstractions through the ordinary
+  Body/Classifier/Pi/Lambda workers and premise cursors; pass
+  `check-artifact-namespace-body-frontier`, including implicit-index metadata.
+- [ ] Expand continuation transport to unfinished fields, classifier queries
+  lacking a retained structural type, and other source/typing owners. Integrate
+  the completed owner interfaces into ordinary `.a` checkpoint transport;
+  known-origin fixture envelopes do not satisfy the public partition gate.
 - [x] Reuse the completed field map before constructor body abstraction, through
   checked typed inputs; `check-artifact-constructor-checkpoint` tests this boundary.
 - [x] Remove induction's read of completed scope-worker `fields[]` in favor of

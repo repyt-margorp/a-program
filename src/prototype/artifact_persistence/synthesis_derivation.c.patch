@@ -1,0 +1,35 @@
+--- a/synthesis_derivation.c
++++ b/synthesis_derivation.c
+@@ -202,6 +202,32 @@
+ 	return job && job->role == DERIVATION_JOB ? job->inputs[0] : NULL;
+ }
+ 
++int pg_synthesis_rule_frontier(const struct pg_synthesis *synthesis,
++	const struct pg_synthesis_job *job, size_t *next)
++{
++	if (!synthesis || !job || !next || job->owner != synthesis->owner_key || job->role != DERIVATION_JOB) return -1;
++	const struct derivation_work *local = pg_synthesis_work_state(job, DERIVATION_JOB);
++	if (job->status != PG_SYNTHESIS_PENDING || local->computation) return 0;
++	*next = local->next;
++	return 1;
++}
++
++int pg_synthesis_rule_resume(struct pg_synthesis *synthesis,
++	struct pg_synthesis_job *job, size_t next)
++{
++	size_t previous;
++	if (pg_synthesis_rule_frontier(synthesis, job, &previous) != 1 || previous) return -1;
++	const struct pg_derivation_input *input = job->inputs[0];
++	if (next > input->count) return -1;
++	for (size_t i = 0; i < next; ++i) {
++		const struct pg_synthesis_job *premise = job->inputs[3 + i];
++		if (!pg_evidence_owned_by(pg_synthesis_result(premise), synthesis->typing)) return -1;
++	}
++	struct derivation_work *local = pg_synthesis_work_state(job, DERIVATION_JOB);
++	local->next = next;
++	return 0;
++}
++
+ struct pg_synthesis_job *pg_synthesis_rule_premise(struct pg_synthesis *synthesis,
+ 	const struct pg_synthesis_job *job, size_t index)
+ {

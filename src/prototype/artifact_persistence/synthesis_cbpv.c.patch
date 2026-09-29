@@ -1,0 +1,58 @@
+--- a/synthesis_cbpv.c
++++ b/synthesis_cbpv.c
+@@ -325,6 +325,8 @@
+ struct pg_synthesis_job *pg_synthesis_body(struct pg_synthesis *synthesis,
+ 	struct pg_synthesis_job *input, struct pg_synthesis_job *context)
+ {
++	if (!synthesis || !input || input->owner != synthesis->owner_key) return NULL;
++	if (context && context->owner != synthesis->owner_key) return NULL;
+ 	const void *inputs[] = {input, context};
+ 	return pg_synthesis_work_request(synthesis, BODY_JOB, 2, inputs);
+ }
+@@ -389,6 +391,31 @@
+ 	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
+ }
+ 
++static struct pg_synthesis_job *body_rule(struct pg_synthesis *synthesis,
++	struct pg_synthesis_job *input, int kind)
++{
++	if (kind == 2) input = pg_synthesis_plain_rule(synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &input);
++	if (kind > 0) {
++		struct pg_derivation_input returned = {.rule = PG_RETURN_INTRO,
++			.parameters.totality = PG_TOTALITY_TOTAL, .count = 1};
++		input = pg_synthesis_rule(synthesis, &returned, &input, NULL, NULL);
++	}
++	return input;
++}
++
++int pg_synthesis_body_resume(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
++{
++	if (!synthesis || !job || job->owner != synthesis->owner_key) return -1;
++	struct body_work *local = body_work(job);
++	if (!local || local->rule || job->status != PG_SYNTHESIS_PENDING) return -1;
++	struct pg_synthesis_job *input = (void *)job->inputs[0];
++	if (pg_synthesis_work_project(input).preparing) return -1;
++	int kind = pg_synthesis_source_value_kind(input);
++	if (kind < 0) return -1;
++	local->rule = body_rule(synthesis, input, kind);
++	return local->rule ? 0 : -1;
++}
++
+ static void body_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+ {
+ 	struct body_work *local = body_work(job);
+@@ -401,13 +428,7 @@
+ 			pg_synthesis_finish(synthesis, job, input->status == PG_SYNTHESIS_DONE ? PG_SYNTHESIS_REJECTED : input->status);
+ 			return;
+ 		}
+-		struct pg_synthesis_job *body = input;
+-		if (kind == 2) body = pg_synthesis_plain_rule(synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &body);
+-		if (kind > 0) {
+-			struct pg_derivation_input returned = {.rule = PG_RETURN_INTRO,
+-				.parameters.totality = PG_TOTALITY_TOTAL, .count = 1};
+-			body = pg_synthesis_rule(synthesis, &returned, &body, NULL, NULL);
+-		}
++		struct pg_synthesis_job *body = body_rule(synthesis, input, kind);
+ 		if (!body) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+ 		local->rule = body;
+ 	}

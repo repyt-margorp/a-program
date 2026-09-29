@@ -1,6 +1,6 @@
 --- a/synthesis_source.h
 +++ b/synthesis_source.h
-@@ -22,6 +22,49 @@
+@@ -22,6 +22,56 @@
  	struct pg_synthesis_job *clause;
  };
  
@@ -46,7 +46,37 @@
 +struct pg_synthesis_job *pg_synthesis_constructor_from_scope(struct pg_synthesis *,
 +	const struct pg_evidence *formation, const struct pg_object *constructor,
 +	const struct pg_evidence *parameters, const struct pg_evidence *scope);
++/* Started abstraction uses the existing function/body/rule workers. Restoring
++ * its checked constructor leaf does not run those workers or accept a result.
++ * Restore lexical metadata first and each child's cursor/queue separately. */
++int pg_synthesis_constructor_body(const struct pg_synthesis *, const struct pg_synthesis_job *,
++	const struct pg_evidence **scope, struct pg_synthesis_job **body);
++int pg_synthesis_constructor_resume_body(struct pg_synthesis *, struct pg_synthesis_job *,
++	const struct pg_evidence *leaf);
 +
  /* Restored lexical binder allocation. Each owner keeps its own cursor;
   * this payload describes source addresses, not a second typed Context. */
  struct pg_source_context_allocation {
+@@ -50,12 +100,22 @@
+ 	const struct pg_object *, size_t, struct pg_synthesis_job *const *);
+ struct pg_synthesis_job *pg_synthesis_rule_premise(struct pg_synthesis *, const struct pg_synthesis_job *, size_t);
+ const struct pg_derivation_input *pg_synthesis_plain_derivation(const struct pg_synthesis_job *);
++/* Borrow/restore a rule's premise cursor before endpoint computation starts.
++ * 1 supplies a cursor, 0 needs another state owner, -1 rejects the request.
++ * Resume needs a fresh pending rule and locally checked skipped premises.
++ * It grants no conclusion, runs no Solve and leaves scheduling to its owner.
++ * Effect/comparison/reduction state must be transported separately. */
++int pg_synthesis_rule_frontier(const struct pg_synthesis *, const struct pg_synthesis_job *, size_t *);
++int pg_synthesis_rule_resume(struct pg_synthesis *, struct pg_synthesis_job *, size_t);
+ const struct pg_evidence *pg_synthesis_evidence_input(const struct pg_synthesis_job *);
+ const struct pg_synthesis_job *pg_synthesis_operation_origin(const struct pg_synthesis_job *);
+ /* Follow an existing lexical alias edge, without evaluation or acceptance. */
+ struct pg_synthesis_job *pg_synthesis_source_origin(const struct pg_synthesis_job *);
+ struct pg_synthesis_job *pg_synthesis_body(struct pg_synthesis *, struct pg_synthesis_job *, struct pg_synthesis_job *);
+ struct pg_synthesis_job *pg_synthesis_body_input(const struct pg_synthesis_job *);
++/* Restore only the already-selected adapter. Selection shares the normal body
++ * factory; its child rule still needs its own progress and evidence checking. */
++int pg_synthesis_body_resume(struct pg_synthesis *, struct pg_synthesis_job *);
+ struct pg_synthesis_job *pg_synthesis_classifier_formation(struct pg_synthesis *,
+ 	const struct pg_synthesis_job *, const struct pg_synthesis_job *);
+ struct pg_synthesis_job *pg_synthesis_classifier_formation_input(const struct pg_synthesis_job *);
