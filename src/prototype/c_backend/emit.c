@@ -10,29 +10,10 @@
 #include <inttypes.h>
 #include <string.h>
 
-static const struct pg_term *diagonal_transport(const struct pg_term *term)
-{
-	const struct pg_term *family, *value, *type;
-	int lift;
-	if (!pg_identity_field_view(term, &family, &value, NULL, &lift) || lift) return NULL;
-	if (!pg_identity_action_view(family, &type) || type->kind != PG_REFERENCE) return NULL;
-	const struct pg_object *object = type->as.reference;
-	/* field_answer consumes Act A only after demanding its head. These fixed
-	 * references leave that action neutral. A binder or arbitrary Oracle does
-	 * not: even a syntactic Act can unfold into a non-diagonal family. */
-	if (pg_classifier_rigid(object) || pg_host_type_name(object) || pg_data_declaration_view(object)) return value;
-	return NULL;
-}
-
 static int term_child(void *unused, const void *key, size_t slot, const void **child)
 {
 	(void)unused;
 	const struct pg_term *term = key;
-	const struct pg_term *transported = diagonal_transport(term);
-	if (transported) {
-		if (slot) return 0;
-		*child = transported; return 1;
-	}
 	switch (term->kind) {
 	case PG_LAMBDA:
 		if (slot) return 0;
@@ -56,7 +37,8 @@ static const char *operation_name(enum ap_operation operation)
 	static const char *const names[] = {
 		"AP_RETURN", "AP_THUNK", "AP_FORCE", "AP_TOTAL_RESULT", "AP_FOLD", "AP_REQUEST",
 		"AP_ADD", "AP_SUBTRACT", "AP_MULTIPLY", "AP_NEGATE", "AP_DECIMAL",
-		"AP_CONSTRUCTOR", "AP_MATCH", "AP_LABEL", "AP_ATOM"
+		"AP_CONSTRUCTOR", "AP_MATCH", "AP_LABEL", "AP_ATOM", "AP_ID_ACTION", "AP_ID_FIELD",
+		"AP_F_FAMILY", "AP_U_FAMILY", "AP_PI_FAMILY"
 	};
 	return names[operation];
 }
@@ -79,6 +61,19 @@ static int describe(struct pg_dag *objects, const struct pg_object *object,
 		descriptor->operation = fixed[i].operation;
 		descriptor->arity = fixed[i].arity;
 		return 0;
+	}
+	const char *identity = pg_identity_name(object);
+	if (identity) {
+		static const char *const fields[] = {"kernel/identity/transport-right/v1",
+			"kernel/identity/transport-left/v1", "kernel/identity/lift-right/v1", "kernel/identity/lift-left/v1"};
+		if (!strcmp(identity, "kernel/identity/action/v1")) {
+			descriptor->operation = AP_ID_ACTION; descriptor->arity = 1; return 0;
+		}
+		for (size_t i = 0; i < 4; ++i) {
+			if (strcmp(identity, fields[i])) continue;
+			descriptor->operation = AP_ID_FIELD; descriptor->arity = 2; descriptor->position = i; return 0;
+		}
+		return -1;
 	}
 	static const struct { const char *name; enum ap_operation operation; size_t width, arity; } host[] = {
 		{"host/int32/add/v1", AP_ADD, 4, 2}, {"host/int32/sub/v1", AP_SUBTRACT, 4, 2},
@@ -197,46 +192,60 @@ int pg_c_emit(FILE *output, const struct pg_occurrence *root, const char **error
 			goto done;
 		}
 	}
-	fputs("/* A Program C backend: structural closures; acceptance belongs to the caller. */\n#include \"runtime.h\"\n#include <stdlib.h>\n_Static_assert(AP_C_RUNTIME_ABI == 1, \"incompatible A Program C runtime\");\n\n", output);
+	fputs("/* A Program C backend: structural closures; acceptance belongs to the caller. */\n#include \"runtime.h\"\n#include <stdlib.h>\n_Static_assert(AP_C_RUNTIME_ABI == 2, \"incompatible A Program C runtime\");\n\n", output);
 	for (const struct pg_dag_node *node = terms.first; node; node = node->next)
-		fprintf(output, "static struct ap_value *t%zu(struct ap_runtime *, const struct ap_env *);\n", node->id);
+		fprintf(output, "static struct ap_value *t%zu(struct ap_runtime *, const struct ap_env *, enum ap_projection);\n", node->id);
 	for (const struct pg_dag_node *node = terms.first; node; node = node->next) {
 		const struct pg_term *term = node->key;
-		fprintf(output, "\nstatic struct ap_value *t%zu(struct ap_runtime *r, const struct ap_env *e)\n{\n\t(void)e;\n", node->id);
-		const struct pg_term *transported = diagonal_transport(term);
-		if (transported) {
-			fprintf(output, "\treturn t%zu(r, e);\n}\n", pg_dag_find(&terms, transported)->id);
-			continue;
-		}
+		fprintf(output, "\nstatic struct ap_value *t%zu(struct ap_runtime *r, const struct ap_env *e, enum ap_projection p)\n{\n\t(void)e;\n", node->id);
 		switch (term->kind) {
 		case PG_LAMBDA:
-			fprintf(output, "\treturn ap_function(r, %zu, t%zu, e);\n", object_id(&objects, term->as.lambda.binder), pg_dag_find(&terms, term->as.lambda.body)->id);
+			fprintf(output, "\treturn ap_function(r, %zu, t%zu, e, p);\n", object_id(&objects, term->as.lambda.binder), pg_dag_find(&terms, term->as.lambda.body)->id);
 			break;
-		case PG_APPLICATION:
-			fprintf(output, "\tstruct ap_value *f = t%zu(r, e);\n\treturn ap_apply(r, f, ap_delay(r, t%zu, e));\n", pg_dag_find(&terms, term->as.application.function)->id, pg_dag_find(&terms, term->as.application.argument)->id);
+		case PG_APPLICATION: {
+			const struct pg_term *function = term->as.application.function;
+			size_t f = pg_dag_find(&terms, function)->id, x = pg_dag_find(&terms, term->as.application.argument)->id;
+			const struct pg_term *domain, *codomain, *content;
+			const struct pg_object *binder;
+			enum pg_totality totality;
+			fputs("\tif (p == AP_RELATION) {\n", output);
+			if (pg_thunk_type_view(term, &content))
+				fprintf(output, "\t\treturn ap_family(r, AP_U_FAMILY, ap_delay(r, t%zu, e, p), NULL);\n", pg_dag_find(&terms, content)->id);
+			else if (pg_pure_computation_type_view(term, &totality, &content))
+				fprintf(output, "\t\treturn ap_family(r, AP_F_FAMILY, ap_delay(r, t%zu, e, p), NULL);\n", pg_dag_find(&terms, content)->id);
+			else if (pg_pi_view(term, &domain, &binder, &codomain))
+				fprintf(output, "\t\treturn ap_family(r, AP_PI_FAMILY, ap_delay(r, t%zu, e, p), ap_function(r, %zu, t%zu, e, p));\n",
+					pg_dag_find(&terms, domain)->id, object_id(&objects, binder), pg_dag_find(&terms, codomain)->id);
+			else if (function->kind == PG_REFERENCE && (function->as.reference == &pg_return_operation
+				|| function->as.reference == &pg_thunk_operation || function->as.reference == &pg_force_operation))
+				fprintf(output, "\t\treturn ap_apply(r, t%zu(r, e, AP_VALUE), ap_delay(r, t%zu, e, p));\n", f, x);
+			else
+				fprintf(output, "\t\tstruct ap_value *f = t%zu(r, e, p);\n\t\tf = ap_apply(r, f, ap_delay(r, t%zu, e, AP_LEFT));\n\t\tf = ap_apply(r, f, ap_delay(r, t%zu, e, AP_RIGHT));\n\t\treturn ap_apply(r, f, ap_delay(r, t%zu, e, p));\n", f, x, x, x);
+			fprintf(output, "\t}\n\tstruct ap_value *f = t%zu(r, e, p);\n\treturn ap_apply(r, f, ap_delay(r, t%zu, e, p));\n", f, x);
 			break;
+		}
 		case PG_REFERENCE: {
 			const struct pg_object *object = term->as.reference, *type;
 			size_t count;
 			const unsigned char *bytes;
 			if (object->kind == PG_BINDER) {
-				fprintf(output, "\treturn ap_lookup(r, e, %zu);\n", object_id(&objects, object));
+				fprintf(output, "\treturn ap_lookup(r, e, %zu, p);\n", object_id(&objects, object));
 			} else if (pg_host_literal_view(object, &type, &count, &bytes)) {
 				if (type == pg_host_type("Text")) {
 					fputs("\tstatic const unsigned char bytes[] = {", output);
 					for (size_t i = 0; i < count; ++i) fprintf(output, "0x%02x,", bytes[i]);
-					fprintf(output, "0};\n\treturn ap_text(r, bytes, %zu);\n", count);
+					fprintf(output, "0};\n\tstruct ap_value *v = ap_text(r, bytes, %zu);\n\treturn p == AP_RELATION ? ap_action(r, v) : v;\n", count);
 				} else {
 					uint64_t bits = 0;
 					for (size_t i = 0; i < count; ++i) bits = (bits << 8) | bytes[i];
-					fprintf(output, "\treturn ap_integer(r, UINT64_C(0x%" PRIx64 "), %zu);\n", bits, count);
+					fprintf(output, "\tstruct ap_value *v = ap_integer(r, UINT64_C(0x%" PRIx64 "), %zu);\n\treturn p == AP_RELATION ? ap_action(r, v) : v;\n", bits, count);
 				}
 			} else {
 				const struct ap_descriptor *descriptor = &descriptors[node->id];
 				fputs("\tstatic const size_t labels[] = {", output);
 				for (size_t i = 0; i < descriptor->clause_count; ++i) fprintf(output, "%zu,", descriptor->labels[i]);
 				fputs("0};\n", output);
-				fprintf(output, "\tstatic const struct ap_descriptor d = {%s, %zu, %zu, %zu, %zu, %zu, labels, %d};\n\treturn ap_primitive(r, &d);\n",
+				fprintf(output, "\tstatic const struct ap_descriptor d = {%s, %zu, %zu, %zu, %zu, %zu, labels, %d};\n\tstruct ap_value *v = ap_primitive(r, &d);\n\treturn p == AP_RELATION ? ap_action(r, v) : v;\n",
 					operation_name(descriptor->operation), descriptor->arity, descriptor->width, descriptor->family,
 					descriptor->position, descriptor->clause_count, descriptor->host_print);
 			}
@@ -245,7 +254,7 @@ int pg_c_emit(FILE *output, const struct pg_occurrence *root, const char **error
 		}
 		fputs("}\n", output);
 	}
-	fprintf(output, "\nint main(void)\n{\n\tstruct ap_runtime *r = calloc(1, sizeof(*r));\n\tif (!r) return 2;\n\tif (!setjmp(r->failure)) ap_run(r, t%zu(r, NULL), %d);\n\tint status = r->status;\n\tap_destroy(r);\n\tfree(r);\n\treturn status;\n}\n", pg_dag_find(&terms, root->core)->id, mode);
+	fprintf(output, "\nint main(void)\n{\n\tstruct ap_runtime *r = calloc(1, sizeof(*r));\n\tif (!r) return 2;\n\tif (!setjmp(r->failure)) ap_run(r, t%zu(r, NULL, AP_VALUE), %d);\n\tint status = r->status;\n\tap_destroy(r);\n\tfree(r);\n\treturn status;\n}\n", pg_dag_find(&terms, root->core)->id, mode);
 	*error = "cannot write C output";
 	result = ferror(output) ? -1 : 0;
 done:

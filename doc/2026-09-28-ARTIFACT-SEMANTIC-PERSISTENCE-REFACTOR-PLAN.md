@@ -735,9 +735,10 @@ including the pre-existing uncommitted Evidence/IADT changes (AP3.6); those
 changes are excluded from this work's commits.
 
 The existing Acc QuickSort source checks in 67,229 steps and image selection in
-67,377 steps. Interpreter execution prints `FFTT` in 18,495 runtime steps. C
-emission currently refuses its reachable `identity-field` Oracle. This is an
-explicit unsupported boundary, **not** a successful C QuickSort execution.
+67,377 steps. Interpreter execution prints `FFTT` in 18,495 runtime steps.
+Before the AP4.6 increment below, C emission refused its reachable Identity
+Oracle. At `4e338b1` plus the 2026-09-29 backend changes, the generated standalone
+executable now prints `FFTT` in both checked and explicitly trusted modes.
 
 ### Assessment
 
@@ -782,7 +783,21 @@ normalizing the entire QuickSort at translation time to hide missing runtime
 support. `identity.c:field_answer` has a diagonal transport rule, but the general
 U/Pi transport also transforms inputs/results and lifting. That needs its own
 faithful target realization; the mere presence of checked typing does not erase
-those computations. Preserve this boundary test until AP4.6 is implemented.
+those computations. The former refusal test is now a differential execution
+test; general Identity coverage must still be distinguished from this example.
+
+AP4.6 implementation decision (2026-09-29): generated closures accept a target
+projection mode rather than installing an additional source evaluator or proof
+database. A related binder carries both endpoints and its chosen center;
+ambient captures remain fixed. The runtime follows one-direction Lambda/APP,
+constructor Match, diagonal and scoped U/F/Pi transport equations from
+`identity.c` and `iadt.c`. Conservative endpoint comparison only enables the
+explicit reflexive-action equation. It does not establish typing or reflect
+object equality into conversion. Review caught eager evaluation of transported
+Return payloads; they now stay delayed, with a discard regression fixture.
+Known Identity operations with unsupported demanded shapes fail at runtime;
+unknown Oracle owners still fail emission before publication. This changes the
+backend's support boundary, not the kernel, artifacts or source acceptance.
 
 ### Plan
 
@@ -813,6 +828,22 @@ those computations. Preserve this boundary test until AP4.6 is implemented.
   QuickSort's rejection boundary still passes; general Identity and actual C
   QuickSort execution remain unfinished. No Kernel, source graph or acceptance
   rule changes, and no claim that a syntactic `Act` alone is always diagonal.
+  Update after `4e338b1`: actual C QuickSort works. Raw differential cases cover
+  chosen (not inferred reflexive) centers, Match fields, capture/shadowing,
+  partial actions, constant families ignoring divergence, U/F/Pi maps in both
+  directions, diagonal lifting and lazy discarded payloads. Non-reflexive loops
+  and mismatching endpoints remain neutral in the kernel and refuse C execution.
+  These raw fixtures test Oracle equations, not acceptance of arbitrary triples.
+  **Still open:** general dependent thunk lifting and iterated higher actions;
+  do not infer full Identity support from the sorting gate.
+  Fresh O2 and ASan/UBSan: backend command tests, raw Oracle differentials and
+  standalone QuickSort pass, including sanitizers on the generated executables.
+  Tests use clean `e716232` plus committed overlays and this backend increment,
+  excluding unrelated working-tree Evidence/IADT edits. Emission has zero
+  evaluator/substitution calls and unchanged graph/proof counts; repeated C is
+  deterministic within each admission mode and input artifact hashes are stable.
+  Full compiler acceptance was not rerun because this increment changes only
+  the separate target backend; earlier full-suite results are not reattributed.
 - [x] **AP4.7:** verify explicit trusted completed-export consumption; publish as
   its own prototype increment after `1bc5e18`.
   Keep default checking, zero-step byte identity and no local evidence admission.
@@ -827,6 +858,21 @@ those computations. Preserve this boundary test until AP4.6 is implemented.
   local proofs. Import-provider failures and forged completion still reject
   under ordinary checking. Full acceptance was not rerun for this increment;
   AP3.6's prior result is not reattributed to this version.
+
+AP4.6 backend increment relative to `4e338b1` (documentation excluded):
+
+| File in `src/prototype/c_backend/` | Added | Removed |
+| --- | ---: | ---: |
+| `emit.c` | 45 | 36 |
+| `runtime.c` | 291 | 26 |
+| `runtime.h` | 11 | 5 |
+| `oracle_test.c` | 89 | 22 |
+| `oracle_check.sh` | 9 | 1 |
+| `sorting_check.sh` | 14 | 16 |
+
+Implementation +347/-67 (net +280); tests +112/-39 (net +73).
+Accepted `src/`, the Kernel, artifact format and build remain unchanged.
+This is additional target semantics, not code compaction or finished resumption.
 
 AP4.7 source delta relative to `1bc5e18` (actual patched source, not diff-file
 context/header churn; accepted implementation files are unchanged):

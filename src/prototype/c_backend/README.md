@@ -42,18 +42,25 @@ operation forwarding and repeated resumptions, exact Text bytes, print,
 Int32/Int64 wrapping add/subtract/multiply/negate and signed ASCII formatting,
 structural constructors/Match and the existing Lambda encoding of recursion.
 Rigid classifier/family objects remain distinct neutral tokens, including
-generic runtime type arguments. The emitter also realizes the kernel's diagonal
-transport equation in either direction when `Act A` has a known inert reference
-as `A` (host type, rigid classifier or nominal declaration). It follows the
-transported value without modifying the source DAG or evaluating it. This is a
-restricted compilation rule, not Nat compression or general proof erasure.
+generic runtime type arguments. ABI 2 adds a one-direction action of generated
+closures: binders carry left/right/chosen-center operands, with captured ambient
+values fixed at the closure boundary. Lambda/Application and constructor Match
+actions retain the chosen center. Runtime diagonal reduction requires an actual
+reflexive path and matching endpoints; it is not arbitrary proof erasure.
+Scoped U(F) and U(Pi) transport map suspended computations/functions, including
+contravariant input transport and lifting. Return payloads and call arguments
+remain lazy. No source graph normalization occurs during emission.
 
 Limitations:
-- Other Identity Act/transport/lift and unknown reachable Oracles reject before
-  publishing C, even in a syntactically reachable but unused branch. The existing
-  Acc QuickSort has an `identity-field` dependency, so it is **not yet compiled**.
-  `check-c-sorting-boundary` confirms valid interpreter output `FFTT`, explicit
-  backend rejection and no emitted file. This is not a successful C sort test.
+- Identity support is not complete. General dependent thunk lifting, iterated
+  higher actions and arbitrary U/Pi identity observations are not implemented.
+  Unsupported demanded Identity fields stop the executable with status 4;
+  arbitrary chosen loops and nonmatching endpoints are never erased. Neutral
+  functions can also remain unsupported where the kernel's richer alpha
+  comparison succeeds. Unknown reachable Oracle owners still reject emission
+  before publication, including syntactically reachable unused branches.
+  `check-c-sorting-boundary` now checks actual standalone Acc QuickSort output
+  `FFTT` in both checked and trusted modes, not just an unsupported boundary.
 - Without `--trust-image`, the command adapter reconstructs/checks via ordinary
   Solve; zero steps cannot emit. Trust mode requires a materialized completed
   module, not an inputs-only image or an isolated completed definition beside
@@ -107,10 +114,13 @@ generic List, nominal ADTs, host bounds, NUL, repeated thunks, handlers and outp
 failure. Raw Oracle tests separately check all Int64 operations and two distinct
 operation labels; these descriptive test inputs are not acceptance receipts.
 They assert emission performs no evaluator/substitution steps or graph mutation.
-Diagonal tests include kernel-checked Text transports in both directions, a
-lexically captured payload and raw classifier-head correspondence. Lifts,
-unknown families and actions of binders/functions still reject with empty output;
-an unsupported transported payload cannot be erased by the diagonal rule.
+Identity tests include kernel-checked Text transports, captured and shadowed
+binders, partial actions, chosen Match centers, constant families with unused
+divergent arguments, scoped U/F/Pi maps in both directions, diagonal lifting and
+discarded transported payloads. Raw Oracle fixtures deliberately isolate reduction
+rules; they do not claim well-typedness of arbitrary boundary triples. Negative
+cases remain neutral in the reference evaluator and refuse execution in C.
+An unknown transported payload cannot be erased during emission.
 Both trusted and checked exports are compared to interpreter execution, including
 effect order and exactly-once entry forcing. Repeated emission is byte-identical
 within each mode. Across modes a saved thunk and a checked `force` use can emit

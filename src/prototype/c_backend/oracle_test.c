@@ -4,6 +4,7 @@
 #include "evidence.h"
 #include "host.h"
 #include "identity.h"
+#include "iadt.h"
 #include <assert.h>
 #include <string.h>
 
@@ -116,29 +117,94 @@ static const struct pg_term *checked_transport(struct pg_typing *typing,
 	return pg_evidence_subject(computation)->core;
 }
 
-static void unsupported_identity(struct pg_typing *typing, const struct pg_term *classifier)
+static const struct pg_term *unary(struct pg_graph *graph, const struct pg_object *operation, const struct pg_term *input)
 {
-	struct pg_graph *graph = typing->graph;
-	const struct pg_term *type = pg_reference(graph, pg_host_type("Text"));
-	const struct pg_term *literal = text(graph, "retained");
-	const struct pg_object *binder = pg_binder(graph);
-	const struct pg_term *variable = pg_reference(graph, binder);
-	const struct pg_term *cases[] = {
-		pg_identity_lift(graph, pg_identity_action(graph, type), literal, PG_IDENTITY_RIGHT),
-		pg_identity_transport(graph, variable, literal, PG_IDENTITY_RIGHT),
-		pg_identity_transport(graph, pg_identity_action(graph, variable), literal, PG_IDENTITY_LEFT),
-		pg_identity_transport(graph, pg_identity_action(graph, pg_lambda(graph, binder, variable)), literal, PG_IDENTITY_RIGHT)
-	};
-	for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i) {
-		const struct pg_occurrence *root = pg_occurrence(typing, PG_JUDGEMENT_COMPUTATION,
-			NULL, returned(graph, cases[i]), classifier, NULL, 0, NULL);
-		FILE *file = tmpfile();
+	return apply(graph, pg_reference(graph, operation), input);
+}
+
+static size_t identity_cases(struct pg_graph *g, const struct pg_term **parts)
+{
+	size_t n = 0;
+	const struct pg_object *x = pg_binder(g), *y = pg_binder(g);
+	const struct pg_term *vx = pg_reference(g, x), *vy = pg_reference(g, y);
+	const struct pg_term *a = text(g, "left"), *b = text(g, "right"), *p = text(g, "chosen");
+	const struct pg_term *id = pg_lambda(g, x, vx);
+	parts[n++] = returned(g, pg_identity_apply(g, id, a, b, p));
+	parts[n++] = returned(g, pg_identity_apply(g, pg_lambda(g, x, apply(g, pg_lambda(g, y, vy), vx)), a, b, p));
+	const struct pg_term *partial = pg_identity_apply(g, pg_lambda(g, x, pg_lambda(g, y, vx)), a, b, p);
+	parts[n++] = returned(g, apply(g, pg_identity_instance(g, partial, b, a), text(g, "not-chosen")));
+	partial = pg_identity_apply(g, pg_lambda(g, x, pg_lambda(g, x, vx)), a, b, p);
+	parts[n++] = returned(g, apply(g, pg_identity_instance(g, partial, a, b), p));
+	const struct pg_term *type = pg_reference(g, pg_host_type("Text"));
+	const struct pg_term *captured = pg_identity_apply(g, pg_lambda(g, y, vx), a, b, p);
+	parts[n++] = returned(g, pg_identity_transport(g, apply(g, pg_lambda(g, x, captured), type), a, PG_IDENTITY_RIGHT));
+	const struct pg_term *self = pg_lambda(g, x, apply(g, vx, vx));
+	const struct pg_term *omega = apply(g, self, self);
+	const struct pg_term *constant = pg_identity_apply(g, pg_lambda(g, y, type), omega, omega, omega);
+	parts[n++] = returned(g, pg_identity_transport(g, constant, a, PG_IDENTITY_LEFT));
+	/* Chosen constructor-field paths, not equality of the supplied endpoints,
+	 * determine the Match action's center. These are raw reduction fixtures. */
+	const size_t arities[] = {0, 1};
+	const struct pg_data_layout *layout = pg_data_layout(g, 2, arities);
+	const struct pg_object *zero = pg_data_constructor(layout, 0), *succ = pg_data_constructor(layout, 1);
+	const struct pg_match_clause clauses[] = {{zero, text(g, "zero")}, {succ, id}};
+	const struct pg_term *match = pg_data_match(g, layout, vy, 2, clauses);
+	const struct pg_term *path = apply(g, pg_identity_instance(g,
+		pg_identity_action(g, pg_reference(g, succ)), a, b), p);
+	parts[n++] = returned(g, pg_identity_apply(g, pg_lambda(g, y, match),
+		apply(g, pg_reference(g, succ), a), apply(g, pg_reference(g, succ), b), path));
+	for (unsigned direction = 0; direction < 2; ++direction) {
+		/* Distinct endpoints keep the scoped U/F/Pi map visible. The center
+		 * is an explicit action of Text; this does not assert these raw
+		 * endpoint triples are well typed. Checked source coverage is separate. */
+		const struct pg_term *center = pg_identity_action(g, type);
+		const struct pg_term *uf = pg_thunk_type(g, pg_return_type(g, vx));
+		const struct pg_term *family = pg_identity_apply(g, pg_lambda(g, x, uf), a, b, center);
+		const struct pg_term *quoted = unary(g, &pg_thunk_operation, apply(g, pg_lambda(g, y, returned(g, vy)), p));
+		parts[n++] = unary(g, &pg_force_operation, pg_identity_transport(g, family, quoted, direction));
+		const struct pg_term *pi = pg_pi(g, vx, y, pg_return_type(g, vx));
+		family = pg_identity_apply(g, pg_lambda(g, x, pg_thunk_type(g, pi)), a, b, center);
+		quoted = unary(g, &pg_thunk_operation, pg_lambda(g, y, returned(g, vy)));
+		parts[n++] = apply(g, unary(g, &pg_force_operation, pg_identity_transport(g, family, quoted, direction)), p);
+		const struct pg_term *lift = pg_identity_lift(g, pg_identity_action(g, pg_universe(g, 0)), type, direction);
+		parts[n++] = returned(g, pg_identity_transport(g, lift, p, direction));
+	}
+	/* A Return payload must remain lazy through transport: the subsequent
+	 * Fold discards it without trying to execute an opaque center's field. */
+	const struct pg_term *uf = pg_thunk_type(g, pg_return_type(g, vx));
+	const struct pg_term *family = pg_identity_apply(g, pg_lambda(g, x, uf), a, b, text(g, "opaque"));
+	const struct pg_term *mapped = pg_identity_transport(g, family,
+		unary(g, &pg_thunk_operation, returned(g, p)), PG_IDENTITY_RIGHT);
+	parts[n++] = pg_computation_fold(g, unary(g, &pg_force_operation, mapped), pg_lambda(g, y, returned(g, a)), 0, NULL);
+	return n;
+}
+
+static void neutral_boundaries(struct pg_typing *typing, const struct pg_term *classifier, const char *prefix)
+{
+	struct pg_graph *g = typing->graph;
+	const struct pg_object *x = pg_binder(g);
+	const struct pg_term *a = text(g, "a"), *b = text(g, "b");
+	const struct pg_term *family = pg_lambda(g, x, apply(g, pg_universe(g, 0), pg_reference(g, x)));
+	const struct pg_term *paths[] = {text(g, "chosen-loop"), pg_identity_action(g, b)};
+	for (size_t i = 0; i < 2; ++i) {
+		const struct pg_term *relation = pg_identity_apply(g, family, a, a, paths[i]);
+		const struct pg_term *field = pg_identity_transport(g, relation, text(g, "must-not-erase"), PG_IDENTITY_RIGHT);
+		struct pg_eval machine;
+		pg_computation_eval_init(&machine, g, field);
+		assert(pg_eval_advance(&machine, 100000) == PG_EVAL_WHNF);
+		assert(pg_identity_field_view(pg_eval_readback(&machine, g), NULL, NULL, NULL, NULL));
+		pg_eval_destroy(&machine);
+		const struct pg_term *body = print_result(g, returned(g, field), returned(g, a));
+		const struct pg_occurrence *root = pg_occurrence(typing, PG_JUDGEMENT_COMPUTATION, NULL, body, classifier, NULL, 0, NULL);
+		char path[4096];
+		int length = snprintf(path, sizeof(path), "%s.fail-%zu.c", prefix, i);
+		assert(length > 0 && (size_t)length < sizeof(path));
+		FILE *file = fopen(path, "w");
 		const char *error;
 		assert(file);
 		emitting = 1;
-		assert(pg_c_emit(file, root, &error) == -1 && ftell(file) == 0);
+		assert(!pg_c_emit(file, root, &error));
 		emitting = 0;
-		assert(strstr(error, "identity"));
 		assert(!fclose(file));
 	}
 }
@@ -151,7 +217,7 @@ int main(int argc, char **argv)
 	assert(!pg_graph_init(&graph) && !pg_typing_init(&typing, &graph));
 	FILE *output = fopen(argv[1], "w"), *expected = fopen(argv[2], "wb");
 	assert(output && expected);
-	const struct pg_term *parts[13];
+	const struct pg_term *parts[32];
 	parts[0] = handlers(&graph);
 	for (size_t i = 0; i < 8; ++i) {
 		const struct pg_object *function = pg_host_function(i), *domain, *codomain;
@@ -176,7 +242,8 @@ int main(int argc, char **argv)
 	/* Raw correspondence at an inert classifier head, independent of typing. */
 	parts[12] = returned(&graph, pg_identity_transport(&graph,
 		pg_identity_action(&graph, universe), text(&graph, "universe"), PG_IDENTITY_LEFT));
-	size_t count = sizeof(parts) / sizeof(*parts);
+	size_t count = 13 + identity_cases(&graph, parts + 13);
+	assert(count <= sizeof(parts) / sizeof(*parts));
 	/* Prepending computations reverses their execution order. */
 	const struct pg_term *body = returned(&graph, text(&graph, ""));
 	for (size_t i = 0; i < count; ++i) body = print_result(&graph, parts[i], body);
@@ -203,8 +270,8 @@ int main(int argc, char **argv)
 	assert(output && pg_c_emit(output, root, &error) == -1 && ftell(output) == 0);
 	assert(strstr(error, "unsupported"));
 	fclose(output);
-	unsupported_identity(&typing, classifier);
+	neutral_boundaries(&typing, classifier, argv[1]);
 	pg_typing_destroy(&typing);
 	pg_graph_destroy(&graph);
-	puts("C Oracle tests: inert emission, diagonal transport, unsupported Identity rejection, two clauses and integer operations passed");
+	puts("C Oracle tests: inert emission, chosen Identity actions, scoped U/F/Pi maps, two clauses and integer operations passed");
 }
