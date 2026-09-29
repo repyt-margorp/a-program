@@ -935,6 +935,61 @@ alone. Avoid adding a second parallel type graph or serializing all workers.
   Artifact-local revalidation cap and C adapter integration are implemented;
   source-resume integration, retained history and provenance reuse are pending.
 
+#### Rejected Partial Body Transport (2026-09-29)
+
+**Subjective (User):** `.a` must not accumulate Transpiler/Linker features.
+The same restraint applies to persistence experiments: retaining more objects
+is not progress unless there is a demonstrated A Program consumer.
+The latter sentence is an agent application of the user's constraint.
+
+**Objective (Code):** at `43bbc0a`, a disposable prototype added the pending
+definition-to-body edge to the existing producer table, using the existing
+`pg_synthesis_definition_resume_body` API. It did not change the kernel,
+Transpiler or trust policy. Public partition measurements on
+`examples/09_list_induction.p` gave:
+
+| Measurement | Current APGSRC68 | Rejected body-edge trial |
+| --- | ---: | ---: |
+| Single 2,000 steps, bytes | 31,696 | 32,061 |
+| Reload after 1,000, then 1,000, bytes | 30,573 | 31,011 |
+| Single 3,200 budget | done at 2,824 | done at 2,824 |
+| Reload after 1,600, then 1,600 | pending at 3,200 | pending at 3,200 |
+| Zero-step image, bytes | 25,369 | 25,369 |
+
+The existing `registration_progress` regression also caught a new failure:
+`main := #1; main :: #Text;`, saved after 108 steps, became permanently pending
+after reload (206 new dispatches; empty ready queue), instead of rejected.
+`definition_step` expects an existing child link to have its corresponding wait
+subscription. The trial restored the link but not that scheduling state.
+This is a defect in the attempted partial restoration, not a new finding that
+ordinary `::` checking accepts this program.
+
+**Assessment:** reject the trial. A larger image and an extra pointer are not a
+checkpoint. Do not fix this by trusting stored completion, swallowing the failed
+assertion, or adding a backend-specific path. The owner-level checkpoint tests
+already restore scheduling separately; their success does not establish that an
+isolated owner API is safe to insert into the public loader.
+APGSRC68 remains current; the experimental format is not adopted.
+
+**Plan:** the next AP1-AP3 integration must restore a reachable suspended-owner
+closure and its scheduling invariants together, through the existing shared
+relocation and Solve machinery. Start with one small source fixture across
+every cut, including `::` rejection, rather than adding isolated fields to the
+public format. Preserve exact aliases, inert step-0 cycles, and account for
+validation separately within the user's single total budget. Measure bytes and
+useful progress; unrelated completed workers are not retention roots. The full
+partition gate stays failing/open until its actual obligations are satisfied.
+
+Reproduction: `check-artifact-partitions` with clean accepted `e716232` plus
+the committed prototypes at `43bbc0a`; current and trial TSVs are
+`/tmp/a-program-body-frontier-before/partitions.tsv` and
+`/tmp/a-program-body-link-partitions/partitions.tsv`. Trial semantic failure is
+in `/tmp/a-program-body-link-semantic.log`. No trial implementation is promoted.
+Fresh O2 `check-artifact-semantic` on an unmodified candidate passes, including
+the same 0-120 cut/rejection tests and inert byte-equal cycles; log:
+`/tmp/a-program-artifact-boundary-verified.log`. The full partition test still
+fails as reported above; no full compiler regression rerun is claimed here.
+
 #### Explicit Recompute Profile (2026-09-29)
 
 Agent implementation within the user's earlier requirement to allow either
@@ -1578,6 +1633,16 @@ transpilation is a bad pattern. Transpiler/Linker responsibilities must remain
 downstream. Do not persist target-only representations, ABI decisions, lowering
 analysis or link configuration in `.a`. A missing backend view is not by itself
 a reason to add an artifact field; first derive it from existing semantic data.
+
+Implementation review criterion (agent): every proposed artifact field must name
+an A Program consumer independent of target generation, and explain why existing
+semantic nodes do not suffice. C names, native layouts, capture/liveness analysis,
+ABI and link choices belong to the downstream arena/script/output manifest.
+If a profile cannot lower an existing artifact, diagnose or reject that profile;
+do not mutate the image to make it acceptable. Changing profiles must leave the
+input image unchanged on both successful and rejected requests.
+Rechecked at `43bbc0a`: O2 `check-c-link` and `check-c-enum` pass, including
+the input-image immutability checks (`/tmp/a-program-boundary-link-check.log`).
 
 ### Objective (Code)
 

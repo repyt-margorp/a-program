@@ -16,6 +16,12 @@ Further clarification that day: readable target code is a cultural convention
 but do not extend its semantics or fields for backend/Linker responsibilities.
 Target representations, ABI choices and lowering analysis remain downstream.
 
+Agent implementation criterion: an artifact format change requires an A Program consumer independent of this
+backend. Missing lowering information is first derived from existing semantic
+nodes; temporary target analysis belongs to the backend arena. An unsupported
+profile reports failure, not a request to rewrite or enrich its input image.
+Successful and rejected link requests must leave the input `.a` unchanged.
+
 ## Objective (Code)
 
 The structural profile's `emit.c` reads a borrowed closed `pg_occurrence`, Core DAG and public Oracle
