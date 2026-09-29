@@ -162,6 +162,26 @@ inert load/save must append nothing. At equal useful progress, semantic content
 must agree; total-fuel comparisons additionally report validation spent. The
 existing loss of unfinished work is still a defect, not an accounting difference.
 
+Implementation increment after `6598d76` (2026-09-29, agent decision within
+the resolved budget policy): `artifact/file.c:pg_artifact_revalidate` drives the
+same Solve owner with at most `min(B,R)` dispatches and reports actual spend v.
+It stops at the target's terminal status or an empty ready queue; additional
+work receives at most B-v. Zero fuel calls no worker. There is no imported
+evidence admission, new validation engine or failure-to-trust fallback.
+The C adapter exposes `--revalidate-limit`; its current validation phase includes
+whole-module/entry reconstruction, because exact frontier restoration is still
+missing. The source CLI, saved validation history and hash/provenance reuse are
+not silently claimed implemented by this local policy entry point.
+Fresh verification: O2 and ASan/UBSan semantic/CLI gates pass for B=0, R=0,
+B<R, R<B, explicit trust, invalid limits, foreign-owner rejection, unchanged
+zero-fuel bytes, terminal checks costing zero, and subsequent work charged from
+B-v. Standalone QuickSort still passes in both admission modes (O2). These runs
+use clean `e716232` plus the existing prototypes, excluding unrelated local
+Evidence/IADT edits. Full compiler acceptance was not rerun for this increment.
+Delta, excluding docs: `artifact/file.c` +19/-0, `artifact/file.h` +11/-0,
+`c_backend/main.c` +9/-6; tests `semantic_test.c` +60/-0 and `check.sh` +14/-0.
+AP1/AP2 remain open: a dispatch cap does not supply any missing continuation.
+
 #### Pending Owners (2026-09-29)
 
 Further code inspection against `e716232`, excluding unrelated local edits:
@@ -490,6 +510,8 @@ alone. Avoid adding a second parallel type graph or serializing all workers.
   module siblings/`::`, and step-0 identity; never waive obligations to shrink.
 - [ ] Implement the single-fuel validation sublimit and explicit trust/import
   provenance from AP1. Record history separately; no false checkpoint claim.
+  Artifact-local revalidation cap and C adapter integration are implemented;
+  source-resume integration, retained history and provenance reuse are pending.
 
 #### Explicit Recompute Profile (2026-09-29)
 

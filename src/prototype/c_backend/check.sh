@@ -68,6 +68,18 @@ compare_entry "$temporary/recursion.a" main
 compare_entry "$temporary/recursion.a" nominal
 compare_entry "$temporary/generic.a" main
 cp "$temporary/first.c" "$temporary/fixed.c"
+expect_status 0 "$backend" --revalidate-limit 1000000 "$temporary/generic.a" main "$temporary/entry.c"
+cmp "$temporary/fixed.c" "$temporary/entry.c"
+for limits in '100 0 0' '0 100 0' '7 3 3' '3 7 3'; do
+	read -r total cap spent <<< "$limits"
+	expect_status 3 "$backend" --steps "$total" --revalidate-limit "$cap" "$temporary/generic.a" main "$temporary/entry.c"
+	grep -q "reconstruction steps=$spent budget=$total validation_limit=$cap remaining=$((total-spent))" "$temporary/err"
+	cmp "$temporary/fixed.c" "$temporary/entry.c"
+done
+expect_status 0 "$backend" --trust-image --steps 0 --revalidate-limit 0 "$temporary/generic.a" main "$temporary/entry.c"
+grep -q 'user-trusted saved completion.*steps=0' "$temporary/err"
+# Return to the checked representation before the normal deterministic gate.
+expect_status 0 "$backend" "$temporary/generic.a" main "$temporary/entry.c"
 expect_status 0 "$backend" --image-limit none "$temporary/generic.a" main "$temporary/entry.c"
 cmp "$temporary/fixed.c" "$temporary/entry.c"
 expect_status 0 "$compiler" --save-inputs "$temporary/recompute.a" "$here/fixtures/generic.p"
@@ -98,6 +110,8 @@ expect_status 4 "$backend" --trust-image "$temporary/effects.a" function "$tempo
 cmp "$temporary/entry.c" "$temporary/unchanged.c"
 expect_status 2 "$backend" "$temporary/effects.a" main "$temporary/effects.a"
 expect_status 2 "$backend" --steps -1 "$temporary/effects.a" main "$temporary/entry.c"
+expect_status 2 "$backend" --revalidate-limit -1 "$temporary/effects.a" main "$temporary/entry.c"
+expect_status 2 "$backend" --revalidate-limit 18446744073709551616 "$temporary/effects.a" main "$temporary/entry.c"
 expect_status 2 "$backend" --image-limit 0 "$temporary/effects.a" main "$temporary/entry.c"
 expect_status 2 "$backend" --image-limit 1 "$temporary/effects.a" main "$temporary/entry.c"
 test -z "$(find "$temporary" -name '*.tmp.*' -print)"

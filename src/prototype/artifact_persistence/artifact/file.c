@@ -1,5 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #include "file.h"
+#include "synthesis_work.h"
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -45,6 +46,24 @@ int pg_artifact_trusted_export(const struct pg_program *program,
 	if (!selected || selected->context || !selected->core || !selected->classifier) return 0;
 	*subject = selected;
 	return 1;
+}
+
+enum pg_synthesis_status pg_artifact_revalidate(struct pg_program *program,
+	struct pg_synthesis_job *target, uint64_t total_budget, uint64_t validation_limit,
+	uint64_t *spent)
+{
+	if (!program || !target || !spent) return PG_SYNTHESIS_ERROR;
+	struct pg_synthesis *synthesis = &program->synthesis;
+	if (target->owner != synthesis->owner_key) return PG_SYNTHESIS_ERROR;
+	uint64_t before = synthesis->steps;
+	uint64_t available = total_budget < validation_limit ? total_budget : validation_limit;
+	if (available > UINT64_MAX - before) available = UINT64_MAX - before;
+	while (available && synthesis->ready && pg_synthesis_status(target) == PG_SYNTHESIS_PENDING) {
+		pg_synthesis_advance(synthesis, 1);
+		--available;
+	}
+	*spent = synthesis->steps - before;
+	return pg_synthesis_status(target);
 }
 
 struct pg_program *pg_artifact_read_file(FILE *file, size_t limit,

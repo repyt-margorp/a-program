@@ -696,10 +696,70 @@ static void completion_format(void)
 	pg_program_destroy(program);
 }
 
+static void revalidation_budget(void)
+{
+	const char source[] = "main := #int_add #20 #22;";
+	struct pg_program *program = pg_program_create(source, sizeof(source) - 1, PG_DEFINITION_IMPLICIT_THUNK);
+	assert(program && program->root);
+	advance(program, 100000);
+	assert(pg_synthesis_status(program->root) == PG_SYNTHESIS_DONE);
+	FILE *file = save(program, 1, &program->root);
+	pg_program_destroy(program);
+	const uint64_t budgets[][2] = {{0, 0}, {20, 0}, {0, 20}, {7, 3}, {3, 7}, {7, UINT64_MAX}, {UINT64_MAX, 7}};
+	for (size_t i = 0; i < sizeof(budgets) / sizeof(*budgets); ++i) {
+		rewind(file);
+		size_t count;
+		struct pg_synthesis_job *const *roots;
+		program = pg_artifact_read_file(file, PG_ARTIFACT_DEFAULT_LIMIT, &count, &roots);
+		assert(program && count == 1 && !program->synthesis.steps);
+		uint64_t expected = budgets[i][0] < budgets[i][1] ? budgets[i][0] : budgets[i][1];
+		uint64_t spent = UINT64_MAX;
+		solving = expected != 0;
+		assert(pg_artifact_revalidate(program, roots[0], budgets[i][0], budgets[i][1], &spent) == PG_SYNTHESIS_PENDING);
+		solving = 0;
+		assert(spent == expected && program->synthesis.steps == expected);
+		assert(!pg_synthesis_result(roots[0]));
+		if (!expected) {
+			FILE *copy = save(program, count, roots);
+			equal_files(file, copy);
+			assert(!fclose(copy));
+		}
+		pg_program_destroy(program);
+	}
+	rewind(file);
+	size_t count;
+	struct pg_synthesis_job *const *roots;
+	program = pg_artifact_read_file(file, PG_ARTIFACT_DEFAULT_LIMIT, &count, &roots);
+	assert(program && count == 1);
+	struct pg_program *foreign = pg_program_create(source, sizeof(source) - 1, PG_DEFINITION_IMPLICIT_THUNK);
+	assert(foreign && foreign->root);
+	uint64_t spent = 91;
+	assert(pg_artifact_revalidate(program, foreign->root, 100, 100, &spent) == PG_SYNTHESIS_ERROR);
+	assert(spent == 91 && !program->synthesis.steps && !foreign->synthesis.steps);
+	assert(pg_artifact_revalidate(program, roots[0], 100, 100, NULL) == PG_SYNTHESIS_ERROR);
+	pg_program_destroy(foreign);
+	solving = 1;
+	assert(pg_artifact_revalidate(program, roots[0], 100000, UINT64_MAX, &spent) == PG_SYNTHESIS_DONE);
+	solving = 0;
+	assert(spent && spent < 100000 && spent == program->synthesis.steps);
+	uint64_t validation_spent = spent;
+	/* A completed target costs nothing even if unrelated work is still ready. */
+	assert(pg_artifact_revalidate(program, roots[0], 100000, 100000, &spent) == PG_SYNTHESIS_DONE);
+	assert(!spent && program->synthesis.steps == validation_spent);
+	struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = "main", .length = 4};
+	struct pg_synthesis_job *result = pg_program_evaluate_name(program, roots[0], name, 0);
+	assert(result);
+	advance(program, 100000 - validation_spent);
+	assert(program->synthesis.steps <= 100000 && pg_synthesis_status(result) == PG_SYNTHESIS_DONE);
+	pg_program_destroy(program);
+	assert(!fclose(file));
+}
+
 int main(void)
 {
 	limit_arguments();
 	completion_format();
+	revalidation_budget();
 	trusted_export("main := #42; main :: #Int;", 1, 0, NULL);
 	trusted_export("main := #42; main :: #Int;", 1, 1, NULL);
 	trusted_export("main := \\x:#Int => x;", 1, 0, NULL);

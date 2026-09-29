@@ -245,9 +245,14 @@ unchanged for structural Terms; only the current semantic format is accepted.
 Production adoption still needs complete regression coverage.
 
 The user now permits explicit trust/reuse with one total fuel budget and a
-validation sublimit. This is not an arbitrary trusted status bit or free
-recomputation: provenance and module obligations must survive. Policy belongs
-to artifact I/O. This integration is still pending; current loads are descriptive.
+validation sublimit. `artifact/file.c:pg_artifact_revalidate` bounds ordinary
+Solve by `min(total_budget, validation_limit)`, stops at a terminal target,
+and reports fuel actually used. Subsequent useful work must subtract that cost
+from the same budget. The C adapter uses this through `--revalidate-limit`;
+exhaustion stays pending and never selects trust automatically. The target's
+ordinary kernel result remains the only checked result. This does not restore
+private continuations, reuse unchecked results inside Solve, or persist fuel
+history. Those integrations remain open; loading itself stays descriptive.
 
 ## Plan
 

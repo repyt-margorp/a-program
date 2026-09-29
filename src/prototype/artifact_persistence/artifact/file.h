@@ -24,6 +24,17 @@ int pg_artifact_trusted_export(const struct pg_program *program,
 	const struct pg_synthesis_job *module, struct pg_token name,
 	const struct pg_occurrence **subject);
 
+/* Explicit import revalidation through the ordinary Solve owner. At most
+ * min(total_budget, validation_limit) scheduler steps are charged, stopping at
+ * a terminal target or an empty ready queue. The returned spent amount must be
+ * deducted from total_budget before subsequent useful work; it is NOT a second
+ * allowance. No fallback to trust, imported evidence admission, or hidden work
+ * at budget zero. Invalid arguments leave spent unchanged. This does not restore
+ * missing private continuations or write verification history into an image. */
+enum pg_synthesis_status pg_artifact_revalidate(struct pg_program *program,
+	struct pg_synthesis_job *target, uint64_t total_budget, uint64_t validation_limit,
+	uint64_t *spent);
+
 /* Atomically replace path only after successful serialization and close. */
 enum pg_artifact_contents { PG_ARTIFACT_MATERIALIZED, PG_ARTIFACT_INPUTS };
 int pg_artifact_save_file(const char *path, const struct pg_program *program,

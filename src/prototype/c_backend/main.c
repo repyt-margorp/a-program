@@ -48,7 +48,7 @@ done:
 
 int main(int argc, char **argv)
 {
-	uint64_t budget = 1000000;
+	uint64_t budget = 1000000, validation_limit = UINT64_MAX;
 	size_t limit = PG_ARTIFACT_DEFAULT_LIMIT;
 	int index = 1, trust_image = 0;
 	while (index < argc) {
@@ -60,6 +60,8 @@ int main(int argc, char **argv)
 		if (index + 1 == argc) break;
 		if (!strcmp(argv[index], "--steps")) {
 			if (number(argv[index + 1], &budget)) goto usage;
+		} else if (!strcmp(argv[index], "--revalidate-limit")) {
+			if (number(argv[index + 1], &validation_limit)) goto usage;
 		} else if (!strcmp(argv[index], "--image-limit")) {
 			if (pg_artifact_limit_argument(argv[index + 1], &limit)) goto usage;
 		} else break;
@@ -97,10 +99,11 @@ int main(int argc, char **argv)
 	}
 	struct pg_synthesis_job *selected = pg_program_select_name(program, roots[0], name);
 	if (!selected) { status = 1; goto done; }
-	pg_synthesis_advance(&program->synthesis, budget);
-	fprintf(stderr, "C export: reconstruction steps=%" PRIu64 " budget=%" PRIu64 "\n",
-		program->synthesis.steps, budget);
-	switch (pg_synthesis_status(selected)) {
+	uint64_t spent = 0;
+	enum pg_synthesis_status checked = pg_artifact_revalidate(program, selected, budget, validation_limit, &spent);
+	fprintf(stderr, "C export: reconstruction steps=%" PRIu64 " budget=%" PRIu64
+		" validation_limit=%" PRIu64 " remaining=%" PRIu64 "\n", spent, budget, validation_limit, budget - spent);
+	switch (checked) {
 	case PG_SYNTHESIS_PENDING: status = 3; break;
 	case PG_SYNTHESIS_REJECTED: status = 1; break;
 	case PG_SYNTHESIS_UNSUPPORTED: status = 4; break;
@@ -116,6 +119,6 @@ done:
 	pg_program_destroy(program);
 	return status;
 usage:
-	fputs("usage: a-to-c [--trust-image] [--steps N] [--image-limit N|none] INPUT.a ENTRY OUTPUT.c\n", stderr);
+	fputs("usage: a-to-c [--trust-image] [--steps N] [--revalidate-limit N] [--image-limit N|none] INPUT.a ENTRY OUTPUT.c\n", stderr);
 	return 2;
 }

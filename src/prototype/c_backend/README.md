@@ -65,8 +65,13 @@ Limitations:
   Solve; zero steps cannot emit. Trust mode requires a materialized completed
   module, not an inputs-only image or an isolated completed definition beside
   pending/rejected obligations. No fallback from failed checking to trust.
-  Validation sublimits, authenticated hash reuse and exact suspended frontier
-  restoration remain unimplemented. This backend option does not install
+  `--revalidate-limit R` bounds reconstruction/validation within `--steps B`:
+  spent fuel is at most `min(B,R)`, with unused fuel reported, not added to B.
+  Hitting R returns pending without publishing C or silently trusting the image.
+  This currently bounds the existing whole-module/entry check, not a restored
+  checkpoint. Persisted validation history, compiler-wide resume integration,
+  authenticated hash reuse and exact suspended frontier restoration remain
+  unimplemented. This backend option does not install
   imported evidence in the compiler or provide compiler-wide trusted reuse.
 - Runtime allocation is invocation-wide; no garbage collection, tail-call
   guarantee, bounded memory or performance claim. C stack/heap resources bound
@@ -96,7 +101,8 @@ cc -std=c11 -O2 -Isrc/prototype/c_backend /tmp/example.c src/prototype/c_backend
 ```
 
 The final command prints `-2147483648:-2147483648:1:2147483647`.
-Use a new overlay directory. The adapter accepts `--steps N` and an explicit
+Use a new overlay directory. The adapter accepts `--steps N`, optional
+`--revalidate-limit N` (default unlimited within `--steps`), and an explicit
 fixed `--image-limit N` (default 1,000,000), or explicit `--image-limit none`,
 independent of file bytes or fuel. Removing the quota does not confer trust or
 skip format/representability checks. It does not reduce the retained graph.
