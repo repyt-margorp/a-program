@@ -1,5 +1,8 @@
 #include "occurrence_io.h"
+#include "context_io.h"
 #include "declaration_io.h"
+#include "descriptor_io.h"
+#include "computation.h"
 #include "classifier.h"
 #include "iadt.h"
 #include "dag.h"
@@ -69,6 +72,108 @@ static void reference_aliases(void)
 	pg_graph_destroy(&restored); pg_graph_destroy(&temporary); pg_graph_destroy(&graph);
 }
 
+struct label_codec {
+	struct pg_graph *graph;
+	const struct pg_object *labels[2];
+};
+static const char *label_names[] = {"test/first", "test/second"};
+
+static const char *label_name(void *owner, const struct pg_object *object)
+{
+	const struct label_codec *codec = owner;
+	for (size_t i = 0; i < 2; ++i) if (object == codec->labels[i]) return label_names[i];
+	return pg_builtin_graph_codec.name(codec->graph, object);
+}
+
+static const struct pg_object *label_resolve(void *owner, const char *name)
+{
+	const struct label_codec *codec = owner;
+	for (size_t i = 0; i < 2; ++i) if (!strcmp(name, label_names[i])) return codec->labels[i];
+	return pg_builtin_graph_codec.resolve(codec->graph, name);
+}
+
+static int label_child(void *owner, struct pg_graph *scratch, const struct pg_object *object,
+	size_t index, const struct pg_term **child)
+{
+	const struct label_codec *codec = owner;
+	for (size_t i = 0; i < 2; ++i) if (object == codec->labels[i]) return -2;
+	return pg_builtin_graph_codec.child(codec->graph, scratch, object, index, child);
+}
+
+static int label_scalar(void *owner, const struct pg_object *object, size_t index, uint64_t *value)
+{
+	const struct label_codec *codec = owner;
+	return pg_builtin_graph_codec.scalar(codec->graph, object, index, value);
+}
+
+static const struct pg_object *label_restore(void *owner, struct pg_graph *graph,
+	const char *name, size_t count, const struct pg_term *const *terms, size_t scalar_count, const uint64_t *scalars)
+{
+	const struct label_codec *codec = owner;
+	return pg_builtin_graph_codec.restore(codec->graph, graph, name, count, terms, scalar_count, scalars);
+}
+
+static void relocated_labels(int handler)
+{
+	static const struct pg_object_class label_class = {"test-label"};
+	static const struct pg_object objects[] = {
+		{PG_SEMANTIC_OBJECT, &label_class}, {PG_SEMANTIC_OBJECT, &label_class}
+	};
+	struct pg_graph graph;
+	assert(!pg_graph_init(&graph));
+	struct label_codec owner = {.graph = &graph, .labels = {objects, objects + 1}};
+	struct pg_graph_codec codec = {.name = label_name, .resolve = label_resolve,
+		.child = label_child, .scalar = label_scalar, .restore = label_restore};
+	const struct pg_term *root;
+	if (handler) {
+		struct pg_clause_position positions[] = {{objects, 0}, {objects + 1, 1}};
+		root = pg_reference(&graph, pg_computation_handler_restore(&graph, 2, positions));
+	} else root = pg_effect_reference(&graph, pg_effect_row(&graph, 2, owner.labels));
+	assert(root);
+	FILE *file = tmpfile();
+	assert(file && !pg_graph_write_descriptors(file, 1, &root, &codec, &owner));
+	for (size_t i = 0; i < 4; ++i) {
+		pg_graph_destroy(&graph);
+		assert(!pg_graph_init(&graph));
+		owner.labels[0] = objects + ((i + 1) % 2);
+		owner.labels[1] = objects + (i % 2);
+		rewind(file);
+		size_t count;
+		const struct pg_term *const *roots;
+		assert(!pg_graph_read_descriptors(file, &graph, 100, 100, &codec, &owner, &count, &roots));
+		assert(count == 1);
+		if (handler) {
+			const struct pg_clause_position *positions;
+			size_t clauses;
+			assert(pg_computation_handler_view(roots[0]->as.reference, &clauses, &positions) && clauses == 2);
+			for (size_t j = 0; j < 2; ++j)
+				assert(positions[j].position == j && positions[j].label == owner.labels[j]);
+			struct pg_clause_position reverse[] = {positions[1], positions[0]};
+			assert(pg_computation_handler_restore(&graph, 2, reverse) == roots[0]->as.reference);
+		} else {
+			const struct pg_effect_row *row = pg_effect_row_view(roots[0]);
+			assert(pg_effect_count(row) == 2);
+			for (size_t j = 0; j < 2; ++j) {
+				assert(pg_effect_label(row, j) == owner.labels[j]);
+				assert(pg_effect_contains(row, owner.labels[j]) == 1);
+			}
+			const struct pg_object *reverse[] = {owner.labels[1], owner.labels[0], owner.labels[1]};
+			assert(pg_effect_row(&graph, 3, reverse) == row);
+			const struct pg_effect_row *one = pg_effect_row(&graph, 1, owner.labels);
+			const struct pg_effect_row *two = pg_effect_difference(&graph, row, one);
+			assert(pg_effect_count(two) == 1 && pg_effect_label(two, 0) == owner.labels[1]);
+			assert(pg_effect_union(&graph, two, one) == row);
+		}
+		FILE *again = tmpfile();
+		assert(again && !pg_graph_write_descriptors(again, count, roots, &codec, &owner));
+		equal_files(file, again);
+		assert(!fclose(file));
+		file = again;
+	}
+	assert(!fclose(file));
+	pg_graph_destroy(&graph);
+}
+
 struct store {
 	struct pg_graph graph;
 	struct pg_typing typing;
@@ -87,6 +192,71 @@ static void destroy(struct store *store)
 	pg_declaration_io_destroy(&store->codec);
 	pg_typing_destroy(&store->typing);
 	pg_graph_destroy(&store->graph);
+}
+
+static void sparse_headers(int scoped)
+{
+	struct store source, target;
+	initialize(&source); initialize(&target);
+	const struct pg_term *core = pg_reference(&source.graph, pg_binder(&source.graph));
+	const struct pg_occurrence *root = pg_occurrence(&source.typing, PG_JUDGEMENT_INPUT, NULL, core, NULL, NULL, 0, NULL);
+	const struct pg_scope *scope = NULL;
+	FILE *compact = tmpfile();
+	assert(compact && root);
+	if (scoped) assert(!pg_scoped_occurrences_write(compact, 1, &scope, &root, NULL, NULL));
+	else assert(!pg_occurrences_write(compact, 1, &root, NULL, NULL));
+	rewind(compact);
+	char magic[8];
+	uint64_t word;
+	assert(fread(magic, 1, 8, compact) == 8 && !memcmp(magic, scoped ? "APGSCP2" : "APGOCC8", 8));
+	assert(!pg_wire_read_u64(compact, &word) && word == 1);
+	assert(!pg_wire_read_u64(compact, &word) && word == 1);
+	if (scoped) {
+		assert(!pg_wire_read_u64(compact, &word) && !word);
+		assert(!pg_wire_read_u64(compact, &word) && !word);
+	}
+	assert(fgetc(compact) == 0 && fgetc(compact) == PG_JUDGEMENT_INPUT);
+	for (size_t i = 0; i < 3; ++i) assert(!pg_wire_read_u64(compact, &word) && !word);
+	assert(!pg_wire_read_u64(compact, &word) && word == 1);
+	size_t contexts_count, terms_count;
+	const struct pg_context *const *contexts;
+	const struct pg_term *const *terms;
+	assert(!pg_contexts_read(compact, &target.typing, 100, 0, NULL, NULL,
+		&contexts_count, &contexts, &terms_count, &terms));
+	assert(contexts_count == 1 && !contexts[0] && terms_count == 1);
+	size_t count;
+	const struct pg_scope *const *scopes = NULL;
+	const struct pg_occurrence *const *roots;
+	for (size_t i = 0; i < 3; ++i) {
+		rewind(compact);
+		if (scoped) assert(!pg_scoped_occurrences_read(compact, &target.typing, 100, 0, NULL, NULL, &count, &scopes, &roots));
+		else assert(!pg_occurrences_read(compact, &target.typing, 100, 0, NULL, NULL, &count, &roots));
+		FILE *again = tmpfile();
+		assert(again && count == 1);
+		if (scoped) assert(!pg_scoped_occurrences_write(again, count, scopes, roots, NULL, NULL));
+		else assert(!pg_occurrences_write(again, count, roots, NULL, NULL));
+		equal_files(compact, again);
+		assert(!fclose(compact));
+		compact = again;
+	}
+	/* Only the current typed payload is readable, independently of Program I/O. */
+	const struct pg_occurrence *const *expected_roots = roots;
+	const struct pg_scope *const *expected_scopes = scopes;
+	size_t occurrences = target.typing.occurrences.count, terms_before = target.graph.terms.count;
+	unsigned current = scoped ? '2' : '8';
+	for (unsigned version = '0'; version <= current + 1; ++version) {
+		if (version == current) continue;
+		assert(!fseek(compact, 6, SEEK_SET) && fputc(version, compact) != EOF);
+		rewind(compact);
+		count = 37;
+		int status = scoped
+			? pg_scoped_occurrences_read(compact, &target.typing, 100, 0, NULL, NULL, &count, &scopes, &roots)
+			: pg_occurrences_read(compact, &target.typing, 100, 0, NULL, NULL, &count, &roots);
+		assert(status == -1 && count == 37 && roots == expected_roots && scopes == expected_scopes);
+		assert(target.typing.occurrences.count == occurrences && target.graph.terms.count == terms_before);
+	}
+	assert(!fclose(compact) && !target.typing.proofs.count);
+	destroy(&source); destroy(&target);
 }
 
 struct image {
@@ -243,6 +413,12 @@ static void nominal_occurrences(int scoped)
 int main(void)
 {
 	reference_aliases();
+	relocated_labels(0);
+	puts("effect rows: address reversal preserves enumeration, set operations and saved bytes");
+	relocated_labels(1);
+	puts("handlers: address reversal preserves clause positions, aliases and saved bytes");
+	sparse_headers(0); sparse_headers(1);
+	puts("typed payloads: previous and unknown versions reject without publishing roots");
 	nominal_occurrences(0);
 	nominal_occurrences(1);
 	puts("artifact transport: descriptor sharing, nominal separation and inert byte-stable cycles passed");

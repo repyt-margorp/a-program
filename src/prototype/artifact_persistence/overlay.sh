@@ -14,6 +14,12 @@ for input in "$source"/*.[ch] "$source/Makefile"; do
 		ln -s "$input" "$overlay/src/$name"
 	fi
 done
+cp -a "$here/artifact" "$overlay/src/artifact"
 repo=$(cd "$source/.." && pwd)
-for name in tests examples archive training; do ln -s "$repo/$name" "$overlay/$name"; done
+cp -a "$repo/tests" "$overlay/tests"
+for patch in "$here"/test_patches/*.patch; do
+	[[ -f "$patch" ]] || continue
+	git apply --unsafe-paths --directory="$overlay/tests" "$patch"
+done
+for name in examples archive training; do ln -s "$repo/$name" "$overlay/$name"; done
 ln -s "$repo/print.p" "$repo/Makefile" "$overlay/"

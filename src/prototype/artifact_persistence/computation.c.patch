@@ -1,0 +1,45 @@
+--- a/computation.c
++++ b/computation.c
+@@ -24,6 +24,7 @@
+ 	struct pg_object_entry base;
+ 	size_t count;
+ 	struct pg_clause_position *positions;
++	size_t *lookup;
+ };
+ 
+ static const struct handler_entry *handler_owner(const struct pg_object *object)
+@@ -55,7 +56,7 @@
+ 		const struct handler_entry *entry = handler_owner(&base->object);
+ 		if (!entry || entry->count != count) continue;
+ 		size_t i = 0;
+-		while (i < count && entry->positions[i].label == clauses[entry->positions[i].position].label) ++i;
++		while (i < count && entry->positions[i].label == clauses[i].label) ++i;
+ 		if (i == count) return &base->object;
+ 	}
+ 	struct pg_graph temporary = {0};
+@@ -68,10 +69,14 @@
+ 	struct handler_entry *entry = pg_alloc(graph, sizeof(*entry));
+ 	if (!entry) goto done;
+ 	entry->positions = pg_alloc(graph, count * sizeof(*positions));
+-	if (!entry->positions) goto done;
++	entry->lookup = pg_alloc(graph, count * sizeof(*entry->lookup));
++	if (!entry->positions || !entry->lookup) goto done;
+ 	entry->base.object = (struct pg_object){PG_SEMANTIC_OBJECT, &handler_class};
+ 	entry->count = count;
+-	memcpy(entry->positions, positions, count * sizeof(*positions));
++	for (size_t i = 0; i < count; ++i) {
++		entry->positions[i] = (struct pg_clause_position){clauses[i].label, i};
++		entry->lookup[i] = positions[i].position;
++	}
+ 	if (!pg_index_insert(&graph->objects, &entry->base.index, hash)) result = &entry->base.object;
+ done:
+ 	pg_graph_destroy(&temporary);
+@@ -128,7 +133,7 @@
+ 	size_t low = 0, high = handler->count;
+ 	while (low < high) {
+ 		size_t middle = low + (high - low) / 2;
+-		const struct pg_clause_position *entry = &handler->positions[middle];
++		const struct pg_clause_position *entry = &handler->positions[handler->lookup[middle]];
+ 		if (entry->label == label) return entry->position;
+ 		if ((uintptr_t)entry->label < (uintptr_t)label) low = middle + 1;
+ 		else high = middle;

@@ -1,14 +1,23 @@
 --- a/occurrence_io.h
 +++ b/occurrence_io.h
-@@ -3,6 +3,7 @@
+@@ -3,35 +3,51 @@
  
  #include "typing.h"
  #include "scope.h"
 +#include "graph_io.h"
  #include <stdio.h>
  
- /* APGOCC7 transports descriptive typed inputs, not evidence. Contexts, Core,
-@@ -16,12 +17,19 @@
+-/* APGOCC7 transports descriptive typed inputs, not evidence. Contexts, Core,
++/* APGOCC8 transports descriptive typed inputs, not evidence. Contexts, Core,
+  * classifiers and annotations share relocation tables. Sorts and operand order
+  * and structural maps are retained. Derived origins are distinct from direct
+  * construction inputs. Selected construction maps retain their source scopes
+  * and typed images. Input selection retains its ordinal and optional argument;
+  * neither a selected result nor a lifted child view certifies a judgement.
+  * Recursive elimination retains its binder allocation and
+- * clause scopes through the same relocation tables. Earlier images reject.
++ * clause scopes through the same relocation tables. Optional annotations and
++ * classifiers occupy a reference slot only when present. Earlier images reject.
   * Descriptor naming/resolution obeys graph_io.h's owner contract. */
  int pg_occurrences_write(FILE *file, size_t count, const struct pg_occurrence *const *roots,
  	const char *(*name)(void *, const struct pg_object *), void *owner);
@@ -26,9 +35,13 @@
 +	const struct pg_graph_codec *codec, void *owner,
 +	size_t *count, const struct pg_occurrence *const **roots);
  
- /* APGSCP1 pairs each open root with its selected typed declaration scope.
+-/* APGSCP1 pairs each open root with its selected typed declaration scope.
++/* APGSCP2 pairs each open root with its selected typed declaration scope.
   * Scope prefixes and formation Terms share the same relocation tables as the
-@@ -30,8 +38,14 @@
+  * roots. Reading remains inert; check with pg_prove_scoped_subject afterwards.
+- * The unscoped API retains APGOCC7 and does not silently drop a scoped input. */
++ * Earlier images reject. The unscoped API retains APGOCC8 and does not silently
++ * drop a scoped input. */
  int pg_scoped_occurrences_write(FILE *file, size_t count,
  	const struct pg_scope *const *scopes, const struct pg_occurrence *const *roots,
  	const char *(*name)(void *, const struct pg_object *), void *owner);

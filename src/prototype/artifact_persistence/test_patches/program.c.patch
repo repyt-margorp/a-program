@@ -1,0 +1,41 @@
+--- a/program.c
++++ b/program.c
+@@ -1,5 +1,6 @@
+ #include "program.h"
+ #include "source_io.h"
++#include "artifact/file.h"
+ #include "derivation.h"
+ #include "computation.h"
+ #include "function_graph.h"
+@@ -203,6 +204,7 @@
+ 
+ static int allow_legacy_intrinsic_dot;
+ static uint64_t comparison_steps = 1000000;
++static size_t image_limit = PG_ARTIFACT_DEFAULT_LIMIT;
+ 
+ static struct pg_synthesis_job *load_source(struct pg_program *program, const char *path)
+ {
+@@ -234,7 +236,7 @@
+ 	assert(file);
+ 	size_t count;
+ 	struct pg_synthesis_job *const *roots;
+-	struct pg_program *p = pg_sources_read(file, 1000000, &count, &roots);
++	struct pg_program *p = pg_artifact_read_file(file, image_limit, &count, &roots);
+ 	assert(p && count == 1 && !p->synthesis.steps && !fclose(file));
+ 	return p;
+ }
+@@ -1371,6 +1373,14 @@
+ 
+ int main(int argc, char **argv)
+ {
++	if (argc > 2 && !strcmp(argv[1], "--image-limit")) {
++		char *end;
++		errno = 0;
++		uintmax_t limit = strtoumax(argv[2], &end, 10);
++		if (errno || end == argv[2] || *end || argv[2][0] == '-' || limit > SIZE_MAX) return 2;
++		image_limit = (size_t)limit;
++		argv += 2; argc -= 2;
++	}
+ 	if (argc > 1 && !strcmp(argv[1], "--legacy-intrinsic-dot")) {
+ 		allow_legacy_intrinsic_dot = 1;
+ 		++argv; --argc;

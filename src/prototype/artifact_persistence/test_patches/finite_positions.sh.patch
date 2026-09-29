@@ -1,0 +1,38 @@
+--- a/finite_positions.sh
++++ b/finite_positions.sh
+@@ -61,22 +61,18 @@
+ sed '/bad ::/d' "$directory/no-motive.p" > "$directory/inferred-motive.p"
+ check 0 inferred-motive --imports "$provider" "$directory/inferred-motive.p"
+ 
+-for mode in ordinary retained; do
+-	options=()
+-	if [[ $mode == retained ]]; then options+=(--retain-reductions); fi
+-	check 0 "$mode-complete" --imports "$provider" "${options[@]}" --save "$directory/full.a" "$source"
+-	check 0 "$mode-load" --load "$directory/full.a"
+-	for budget in 0 100; do
+-		check 3 "$mode-pending-$budget" --imports "$provider" --steps "$budget" \
+-			"${options[@]}" --save "$directory/partial.a" "$source"
+-		check 3 "$mode-inert-$budget" --load --steps 0 "${options[@]}" \
+-			--save "$directory/copy.a" "$directory/partial.a"
+-		cmp "$directory/partial.a" "$directory/copy.a"
+-		check 0 "$mode-resume-$budget" --load "$directory/copy.a"
+-		"$compare" --equal-image "$directory/copy.a" main one
+-	done
+-	check 3 "$mode-negative-pending" --imports "$provider" --steps 100 \
+-		"${options[@]}" --save "$directory/wrong.a" "$directory/not-a-bijection.p"
+-	check 1 "$mode-negative-resume" --load "$directory/wrong.a"
++check 0 "semantic-complete" --imports "$provider" --save "$directory/full.a" "$source"
++check 0 "semantic-load" --load "$directory/full.a"
++for budget in 0 100; do
++	check 3 "semantic-pending-$budget" --imports "$provider" --steps "$budget" \
++		--save "$directory/partial.a" "$source"
++	check 3 "semantic-inert-$budget" --load --steps 0 \
++		--save "$directory/copy.a" "$directory/partial.a"
++	cmp "$directory/partial.a" "$directory/copy.a"
++	check 0 "semantic-resume-$budget" --load "$directory/copy.a"
++	"$compare" --equal-image "$directory/copy.a" main one
+ done
++check 3 "semantic-negative-pending" --imports "$provider" --steps 100 \
++	--save "$directory/wrong.a" "$directory/not-a-bijection.p"
++check 1 "semantic-negative-resume" --load "$directory/wrong.a"
+ printf '%s\n' 'finite positions: general inverse/composition proofs, labelled duplicates, assertions and images passed'

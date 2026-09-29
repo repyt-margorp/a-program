@@ -5,7 +5,7 @@ compare=$2
 mode=${3:-lists}
 case $mode in lists|views) ;; *) exit 2;; esac
 steps=${SORTING_CHECK_STEPS:-40000000}
-image_options=()
+image_options=(--image-limit "${SORTING_IMAGE_LIMIT:-10000000}")
 started=$SECONDS
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 directory=$(mktemp -d)

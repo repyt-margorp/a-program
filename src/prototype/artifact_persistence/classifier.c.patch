@@ -1,0 +1,123 @@
+--- a/classifier.c
++++ b/classifier.c
+@@ -29,6 +29,7 @@
+ 	struct pg_object_entry base;
+ 	size_t count;
+ 	const struct pg_object **labels;
++	const struct pg_object **order;
+ };
+ static const struct pg_effect_row empty_effects = {
+ 	.base.object = {PG_SEMANTIC_OBJECT, &effect_row_class}
+@@ -66,8 +67,48 @@
+ 	return a < b ? -1 : a != b;
+ }
+ 
++static size_t effect_position(const struct pg_effect_row *row, const struct pg_object *label)
++{
++	size_t low = 0, high = row->count;
++	while (low < high) {
++		size_t middle = low + (high - low) / 2;
++		if ((uintptr_t)row->labels[middle] < (uintptr_t)label) low = middle + 1;
++		else high = middle;
++	}
++	return low;
++}
++
++struct effect_order {
++	size_t count;
++	const struct pg_object *const *labels;
++};
++
++/* Membership uses sorted pointers. Enumeration retains the first construction
++ * order, so relocating those pointers cannot reorder the semantic payload. */
++static int order_effects(struct pg_graph *graph, struct pg_effect_row *row,
++	size_t count, const struct effect_order *inputs)
++{
++	row->order = pg_alloc(graph, row->count * sizeof(*row->order));
++	if (!row->order) return -1;
++	unsigned char *seen = calloc(row->count, 1);
++	if (!seen) return -1;
++	size_t next = 0;
++	for (size_t i = 0; i < count; ++i)
++		for (size_t j = 0; j < inputs[i].count; ++j) {
++			const struct pg_object *label = inputs[i].labels[j];
++			size_t index = effect_position(row, label);
++			if (index == row->count || row->labels[index] != label) continue;
++			if (seen[index]) continue;
++			seen[index] = 1;
++			row->order[next++] = label;
++		}
++	free(seen);
++	return next == row->count ? 0 : -1;
++}
++
+ static const struct pg_effect_row *intern_effects(struct pg_graph *graph,
+-	size_t count, const struct pg_object *const *labels)
++	size_t count, const struct pg_object *const *labels,
++	size_t input_count, const struct effect_order *inputs)
+ {
+ 	if (!count) return &empty_effects;
+ 	if (!graph->objects.capacity && pg_index_init(&graph->objects)) return NULL;
+@@ -85,6 +126,7 @@
+ 	if (!row->labels) return NULL;
+ 	memcpy(row->labels, labels, count * sizeof(*labels));
+ 	row->count = count;
++	if (order_effects(graph, row, input_count, inputs)) return NULL;
+ 	row->base.object = (struct pg_object){PG_SEMANTIC_OBJECT, &effect_row_class};
+ 	return pg_index_insert(&graph->objects, &row->base.index, hash) ? NULL : row;
+ }
+@@ -104,7 +146,7 @@
+ 	qsort(sorted, count, sizeof(*sorted), compare_effects);
+ 	size_t unique = 1;
+ 	for (size_t i = 1; i < count; ++i) if (sorted[i] != sorted[unique - 1]) sorted[unique++] = sorted[i];
+-	result = intern_effects(graph, unique, sorted);
++	result = intern_effects(graph, unique, sorted, 1, &(struct effect_order){count, labels});
+ done:
+ 	free(sorted);
+ 	return result;
+@@ -131,7 +173,8 @@
+ 	}
+ 	while (i < left->count) labels[count++] = left->labels[i++];
+ 	while (j < right->count) labels[count++] = right->labels[j++];
+-	const struct pg_effect_row *result = intern_effects(graph, count, labels);
++	const struct effect_order inputs[] = {{left->count, left->order}, {right->count, right->order}};
++	const struct pg_effect_row *result = intern_effects(graph, count, labels, 2, inputs);
+ 	free(labels);
+ 	return result;
+ }
+@@ -150,7 +193,8 @@
+ 		if (j == right->count || right->labels[j] != left->labels[i]) labels[count++] = left->labels[i];
+ 		++i;
+ 	}
+-	const struct pg_effect_row *result = intern_effects(graph, count, labels);
++	const struct pg_effect_row *result = intern_effects(graph, count, labels, 1,
++		&(struct effect_order){left->count, left->order});
+ 	free(labels);
+ 	return result;
+ }
+@@ -158,7 +202,7 @@
+ size_t pg_effect_count(const struct pg_effect_row *row) { return row ? row->count : SIZE_MAX; }
+ const struct pg_object *pg_effect_label(const struct pg_effect_row *row, size_t index)
+ {
+-	return row && index < row->count ? row->labels[index] : NULL;
++	return row && index < row->count ? row->order[index] : NULL;
+ }
+ 
+ int pg_effect_subset(const struct pg_effect_row *left, const struct pg_effect_row *right)
+@@ -178,14 +222,8 @@
+ int pg_effect_contains(const struct pg_effect_row *row, const struct pg_object *label)
+ {
+ 	if (!row || !label) return -1;
+-	size_t low = 0, high = row->count;
+-	while (low < high) {
+-		size_t middle = low + (high - low) / 2;
+-		if (row->labels[middle] == label) return 1;
+-		if ((uintptr_t)row->labels[middle] < (uintptr_t)label) low = middle + 1;
+-		else high = middle;
+-	}
+-	return 0;
++	size_t index = effect_position(row, label);
++	return index < row->count && row->labels[index] == label;
+ }
+ 
+ struct universe_entry {

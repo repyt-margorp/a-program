@@ -3,7 +3,7 @@ set -euo pipefail
 binary=$1
 compare=$2
 steps=${SORTING_CHECK_STEPS:-40000000}
-image_options=(--image-limit "${SORTING_IMAGE_LIMIT:-3000000}")
+image_options=(--image-limit "${SORTING_IMAGE_LIMIT:-10000000}")
 started=$SECONDS
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 fixtures="$here/../../../tests/fixtures"
@@ -26,16 +26,11 @@ for bad in \
 	{ sed -n '1,$p' "$directory/source.p"; printf '%s\n' "$bad"; } > "$directory/wrong.p"
 	check 1 rejected "$directory/wrong.p"
 done
-for storage in ordinary retained; do
-	options=()
-	if [[ $storage == retained ]]; then options+=(--retain-reductions); fi
-	check 0 "$storage-save" "${options[@]}" --save "$directory/full.a" "$directory/source.p"
-	equal "$directory/full.a" tree_report tree_report_expected
-	check 3 "$storage-pending" --steps 100 "${options[@]}" --save "$directory/pending.a" "$directory/source.p"
-	check 3 "$storage-inert" --load --steps 0 "${options[@]}" --save "$directory/copy.a" "$directory/pending.a"
-	cmp "$directory/pending.a" "$directory/copy.a"
-	equal "$directory/copy.a" tree_report tree_report_expected
-done
+check 0 semantic-load --load "$directory/source.a"
+check 3 semantic-pending --steps 100 --save "$directory/pending.a" "$directory/source.p"
+check 3 semantic-inert --load --steps 0 --save "$directory/copy.a" "$directory/pending.a"
+cmp "$directory/pending.a" "$directory/copy.a"
+equal "$directory/copy.a" tree_report tree_report_expected
 bash "$here/provider.sh" "$here/tree.p" "$fixtures/sortedness-cycle.p" "$here/tree-cycle.p" > "$directory/cycle.p"
 check 0 nontransitive --save "$directory/cycle.a" "$directory/cycle.p"
 equal "$directory/cycle.a" cycle_tree_result cycle_tree_expected

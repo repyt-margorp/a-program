@@ -1,0 +1,11 @@
+--- a/occurrence_io.c
++++ b/occurrence_io.c
+@@ -135,7 +135,7 @@
+ 	assert(pg_occurrences_read(other, typing, 0, 0, NULL, NULL, &count, &loaded) == 0 && count == 0);
+ 	assert(fclose(other) == 0);
+ 	other = tmpfile();
+-	assert(other && fwrite("APGOCC7", 1, 8, other) == 8);
++	assert(other && fwrite("APGOCC8", 1, 8, other) == 8);
+ 	assert(!pg_wire_write_u64(other, 1) && !pg_wire_write_u64(other, 1));
+ 	assert(fputc(0, other) != EOF && fputc(PG_JUDGEMENT_INPUT, other) != EOF);
+ 	assert(!pg_wire_write_u64(other, 1) && !pg_wire_write_u64(other, 1));

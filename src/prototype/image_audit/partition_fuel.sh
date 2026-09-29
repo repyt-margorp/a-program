@@ -11,14 +11,18 @@ case $mode in ordinary) ;; retained) options+=(--retain-reductions);; *) exit 2;
 strict=${IMAGE_AUDIT_STRICT_BYTES:-0}
 case $strict in 0|1) ;; *) exit 2;; esac
 parts=("$@")
-if (( $# == 0 )); then parts=(0:0 0:20 20:0 10:10 1:19 100:100 1000:1000 1600:1600); fi
+completion=0
+if (( $# == 0 )); then
+	parts=(0:0 0:20 20:0 10:10 1:19 100:100 1000:1000 1600:1600)
+	completion=1
+fi
 for part in "${parts[@]}"; do
 	[[ $part =~ ^(0|[1-9][0-9]{0,14}):(0|[1-9][0-9]{0,14})$ ]] || exit 2
 done
 mkdir "$directory"
 sha256sum "$binary" "$source" > "$directory/inputs.sha256"
 report="$directory/partitions.tsv"
-printf 'partition\tpath\tbudget\tused\tstatus\tbytes\tdelta\tsize_equal\tbyte_equal\n' > "$report"
+printf 'partition\tpath\tbudget\tused\tstatus\tbytes\tdelta\tsize_equal\tbyte_equal\tstatus_equal\tfuel_equal\n' > "$report"
 failed=0
 
 run() {
@@ -62,11 +66,13 @@ run() {
 }
 
 compare() {
-	local path=$1 actual=$2 same_size=no same_bytes=no
+	local path=$1 actual=$2 same_size=no same_bytes=no same_status=no same_fuel=no
 	if [[ $bytes == "$reference_bytes" ]]; then same_size=yes; fi
 	if cmp -s "$image" "$reference"; then same_bytes=yes; fi
-	printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$part" "$path" "$total" "$actual" \
-		"$status" "$bytes" "$((bytes-reference_bytes))" "$same_size" "$same_bytes" >> "$report"
+	if [[ $status == "$reference_status" ]]; then same_status=yes; fi
+	if [[ $actual == "$reference_used" ]]; then same_fuel=yes; fi
+	printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$part" "$path" "$total" "$actual" \
+		"$status" "$bytes" "$((bytes-reference_bytes))" "$same_size" "$same_bytes" "$same_status" "$same_fuel" >> "$report"
 	if [[ $same_size != yes || $status != "$reference_status" || $actual != "$reference_used" ]]; then
 		printf '%s %s: size/status/used-fuel mismatch\n' "$part" "$path" >&2
 		failed=1
@@ -80,6 +86,17 @@ compare() {
 # Every path starts from the same zero-fuel image, not source versus restored input.
 run seed no "$source" '' 0
 seed=$image
+if [[ $completion == 1 ]]; then
+	# Probe a real terminal boundary; do not assume a fixed example step count.
+	terminal_budget=${IMAGE_AUDIT_COMPLETION_BUDGET:-100000}
+	[[ $terminal_budget =~ ^[1-9][0-9]{0,14}$ ]] || exit 2
+	run completion yes "$seed" '' "$terminal_budget"
+	if [[ $status != done && $status != rejected ]]; then
+		printf 'completion probe remains pending; set IMAGE_AUDIT_COMPLETION_BUDGET explicitly\n' >&2
+		exit 1
+	fi
+	parts+=("$used:0" "0:$used")
+fi
 for part in "${parts[@]}"; do
 	left=${part%:*} right=${part#*:} total=$((${part%:*}+${part#*:}))
 	name=${part/:/-}

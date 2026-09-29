@@ -1,0 +1,13 @@
+--- a/computation.h
++++ b/computation.h
+@@ -28,8 +28,8 @@
+ 	const struct pg_term *body;
+ };
+ /* Raw Fold layout, distinct from a typed handler signature. The immutable
+- * array is pointer-sorted for lookup; position identifies the original clause.
+- * Transport preserves labels/positions and rebuilds the destination index. */
++ * array follows clause order; pointer-sorted lookup is a private derived index.
++ * Transport preserves labels/positions and rebuilds only that lookup index. */
+ struct pg_clause_position {
+ 	const struct pg_object *label;
+ 	size_t position;

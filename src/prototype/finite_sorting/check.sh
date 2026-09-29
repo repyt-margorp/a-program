@@ -4,8 +4,7 @@ binary=$1
 compare=$2
 mode=${3:-all}
 steps=${SORTING_CHECK_STEPS:-40000000}
-image_options=()
-if [[ -n ${SORTING_IMAGE_LIMIT:-} ]]; then image_options+=(--image-limit "$SORTING_IMAGE_LIMIT"); fi
+image_options=(--image-limit "${SORTING_IMAGE_LIMIT:-10000000}")
 case $mode in all|source|lists|quick|insertion) ;; *) printf 'unknown check mode: %s\n' "$mode" >&2; exit 2;; esac
 started=$SECONDS
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -50,18 +49,28 @@ negative dropped-content 'bad:=(sorting_backend Item &item_order).mk &(\xs:List 
 negative wrong-comparator 'bad:=insertion_backend Item &item_order &(\x:Item=>\y:Item=>Bool.true) &item_decide;'
 negative wrong-shape 'bad:=sorting_vector Item &item_order quick_items two vector_input;'
 negative wrong-action 'bad:=position_action_compose Item three (position_flip three) (position_identity three) &(sized_lookup Item three duplicates input_size) first &(\v:Item=>same_label zero (item_label v)) (same_label.refl zero);'
-for storage in ordinary retained; do
-	options=()
-	if [[ $storage == retained ]]; then options+=(--retain-reductions); fi
-	check 0 "$storage-save" "${options[@]}" --save "$directory/full.a" "$directory/cases.p"
-	check 0 "$storage-load" --load "${image_options[@]}" "$directory/full.a"
-	if [[ $mode == all ]]; then equal "$directory/full.a" main insertion_expected; fi
-	check 3 "$storage-pending" --steps 100 "${options[@]}" --save "$directory/pending.a" "$directory/cases.p"
-	check 3 "$storage-inert" --load "${image_options[@]}" --steps 0 "${options[@]}" --save "$directory/copy.a" "$directory/pending.a"
-	cmp "$directory/pending.a" "$directory/copy.a"
-	check 0 "$storage-resume" --load "${image_options[@]}" "$directory/copy.a"
-	if [[ $mode == all ]]; then equal "$directory/copy.a" quick_vector quick_expected; fi
-	check 3 "$storage-invalid-pending" --steps 100 "${options[@]}" --save "$directory/wrong.a" "$directory/wrong-shape.p"
-	check 1 "$storage-invalid-resume" --load "${image_options[@]}" "$directory/wrong.a"
-done
+check 0 semantic-load --load "$directory/cases.a"
+check 3 recompute-export --load --steps 0 --save-inputs "$directory/inputs.a" "$directory/cases.a"
+[[ $(wc -c < "$directory/inputs.a") -lt $(wc -c < "$directory/cases.a") ]]
+printf 'artifact profiles: retained_bytes=%s inputs_bytes=%s conversion_steps=0\n' \
+	"$(wc -c < "$directory/cases.a")" "$(wc -c < "$directory/inputs.a")"
+check 3 recompute-inert --load --steps 0 --save "$directory/inputs-copy.a" "$directory/inputs.a"
+cmp "$directory/inputs.a" "$directory/inputs-copy.a"
+check 0 recompute-solve --load "$directory/inputs-copy.a"
+if [[ $mode == all ]]; then equal "$directory/inputs-copy.a" quick_report quick_report_expected; fi
+if [[ $mode == all ]]; then equal "$directory/cases.a" main insertion_expected; fi
+check 3 semantic-pending --steps 100 --save "$directory/pending.a" "$directory/cases.p"
+check 3 semantic-inert --load --steps 0 --save "$directory/copy.a" "$directory/pending.a"
+cmp "$directory/pending.a" "$directory/copy.a"
+check 0 semantic-resume --load "$directory/copy.a"
+if [[ $mode == all ]]; then equal "$directory/copy.a" quick_vector quick_expected; fi
+check 3 semantic-invalid-pending --steps 100 --save "$directory/wrong.a" "$directory/wrong-shape.p"
+check 1 semantic-invalid-resume --load "$directory/wrong.a"
+# A large materialized prefix is descriptive even when the final assertion fails.
+check 1 semantic-invalid-materialized --save "$directory/wrong-full.a" "$directory/wrong-shape.p"
+check 3 semantic-invalid-inert --load --steps 0 --save "$directory/wrong-full-copy.a" "$directory/wrong-full.a"
+cmp "$directory/wrong-full.a" "$directory/wrong-full-copy.a"
+check 1 semantic-invalid-materialized-resume --load "$directory/wrong-full-copy.a"
+check 3 recompute-invalid-export --load --steps 0 --save-inputs "$directory/wrong-inputs.a" "$directory/wrong-full.a"
+check 1 recompute-invalid-solve --load "$directory/wrong-inputs.a"
 printf 'sorting backend (%s): passed in %s seconds\n' "$mode" "$((SECONDS-started))"

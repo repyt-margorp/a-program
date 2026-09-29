@@ -3,7 +3,7 @@ set -euo pipefail
 binary=$1
 compare=$2
 steps=${SORTING_CHECK_STEPS:-40000000}
-image_options=(--image-limit "${SORTING_IMAGE_LIMIT:-3000000}")
+image_options=(--image-limit "${SORTING_IMAGE_LIMIT:-10000000}")
 started=$SECONDS
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 fixtures="$here/../../../tests/fixtures"
@@ -30,18 +30,11 @@ negative wrong-transitivity 'bad:=bubble_transitive_backend Item &item_order &it
 negative wrong-content 'bad:=bubble_content_certificate duplicates :: permutation Item duplicates empty;'
 negative wrong-value 'bad:=sorting_vector_value Item &item_order bubble_items three vector_input first &(\v:Item=>same_label two (item_label v)) (same_label.refl two);'
 negative wrong-size 'bad:=bubble_sort_sized Item &item_le two bubble_input;'
-for storage in ordinary retained; do
-	options=()
-	if [[ $storage == retained ]]; then
-		options+=(--retain-reductions)
-		check 0 retained-save "${options[@]}" --save "$directory/full.a" "$directory/source.p"
-		equal "$directory/full.a" bubble_report bubble_report_expected
-	fi
-	check 3 "$storage-pending" --steps 100 "${options[@]}" --save "$directory/pending.a" "$directory/source.p"
-	check 3 "$storage-inert" --load --steps 0 "${options[@]}" --save "$directory/copy.a" "$directory/pending.a"
-	cmp "$directory/pending.a" "$directory/copy.a"
-	equal "$directory/copy.a" bubble_report bubble_report_expected
-done
+check 0 semantic-load --load "$directory/source.a"
+check 3 semantic-pending --steps 100 --save "$directory/pending.a" "$directory/source.p"
+check 3 semantic-inert --load --steps 0 --save "$directory/copy.a" "$directory/pending.a"
+cmp "$directory/pending.a" "$directory/copy.a"
+equal "$directory/copy.a" bubble_report bubble_report_expected
 bash "$here/provider.sh" "$here/bubble.p" "$fixtures/sortedness-cycle.p" "$here/bubble-cycle.p" > "$directory/cycle.p"
 check 0 nontransitive-example --save "$directory/cycle.a" "$directory/cycle.p"
 equal "$directory/cycle.a" bubble_cycle_result input

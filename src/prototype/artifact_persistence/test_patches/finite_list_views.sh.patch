@@ -1,0 +1,30 @@
+--- a/finite_list_views.sh
++++ b/finite_list_views.sh
+@@ -46,18 +46,14 @@
+ negative duplicated-element 'bad:=list_vector_covers Nat sample :: list_vector_view Nat two vector duplicates;'
+ negative reordered-elements 'bad:=list_vector_covers Nat sample :: list_vector_view Nat two vector ((List Nat).cons Nat.zero ((List Nat).cons one empty));'
+ negative wrong-shape 'bad:=vector_refill Nat two sample (list_sized Nat sample) :: Vec Nat one;'
+-for mode in ordinary retained; do
+-	options=()
+-	if [[ $mode == retained ]]; then options+=(--retain-reductions); fi
+-	check 0 "$mode-save" --imports "$provider" "${options[@]}" --save "$directory/full.a" "$source"
+-	check 0 "$mode-load" --load "$directory/full.a"
+-	for budget in 0 100; do
+-		check 3 "$mode-pending-$budget" --imports "$provider" --steps "$budget" "${options[@]}" \
+-			--save "$directory/partial.a" "$source"
+-		check 0 "$mode-resume-$budget" --load "$directory/partial.a"
+-	done
+-	check 3 "$mode-invalid-pending" --imports "$directory/complete.p" --steps 100 "${options[@]}" \
+-		--save "$directory/wrong.a" "$directory/wrong-length.p"
+-	check 1 "$mode-invalid-resume" --load "$directory/wrong.a"
++check 0 "semantic-save" --imports "$provider" --save "$directory/full.a" "$source"
++check 0 "semantic-load" --load "$directory/full.a"
++for budget in 0 100; do
++	check 3 "semantic-pending-$budget" --imports "$provider" --steps "$budget" \
++		--save "$directory/partial.a" "$source"
++	check 0 "semantic-resume-$budget" --load "$directory/partial.a"
+ done
++check 3 "semantic-invalid-pending" --imports "$directory/complete.p" --steps 100 \
++	--save "$directory/wrong.a" "$directory/wrong-length.p"
++check 1 "semantic-invalid-resume" --load "$directory/wrong.a"
+ printf '%s\n' 'finite List/Vec views: general coverage, refill, roundtrip, assertions and images passed'

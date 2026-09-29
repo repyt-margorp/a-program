@@ -4,18 +4,18 @@
  #include "derivation_io.h"
  #include "computation_io.h"
  
-+/* APGRET3 adds descriptive typed roots to the same Core/object table.
++/* APGRET4 adds descriptive typed roots to the same Core/object table.
 + * Entries are ordered producer outputs; NULL is unavailable. Raw Contexts
-+ * are retained; declaration formation is not guessed from Context identity. */
++ * are retained; declaration formation is not guessed from Context identity.
++ * No reduction archive is represented. Earlier semantic formats reject. */
 +int pg_retained_write_semantic(FILE *file, size_t count, const struct pg_derivation_input *const *roots,
-+	const struct pg_effect_inference *effects, const struct pg_reduction_archive *reductions,
++	const struct pg_effect_inference *effects,
 +	size_t term_count, const struct pg_term *const *terms,
 +	size_t semantic_count, const struct pg_occurrence *const *semantic,
 +	const struct pg_graph_codec *codec, void *owner);
 +int pg_retained_read_semantic(FILE *file, struct pg_typing *typing, size_t limit, size_t name_limit,
 +	struct pg_effect_inference *effects, const struct pg_graph_codec *codec, void *owner,
 +	size_t *count, const struct pg_derivation_input *const **roots,
-+	const struct pg_reduction_archive **reductions,
 +	size_t *term_count, const struct pg_term *const **terms,
 +	size_t *semantic_count, const struct pg_occurrence *const **semantic);
 +
