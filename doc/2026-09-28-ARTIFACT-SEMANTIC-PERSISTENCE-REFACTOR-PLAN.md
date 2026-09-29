@@ -761,6 +761,39 @@ plain rules with source-owned and accepted-evidence premises through one shared
 mapping and explicit provenance policy; replacing such premises by newly
 constructed rule requests changes identity/fuel and is not an acceptable shortcut.
 
+**2026-09-30, mixed-premise increment after `08a3f3b`:**
+
+- **Subjective (User):** preserve A Program's own progress; do not extend `.a`
+  with Transpiler/Linker responsibilities (AP6 boundary remains unchanged).
+- **Objective (Code):** the closed-rule exporter cannot preserve pending source
+  premises and replaces terminal evidence workers with different rule requests.
+  Both change the actual dependency graph used to account for fuel.
+- **Assessment:** keep exact premise-job references. The direct-rule checkpoint
+  now projects borrowed rule headers and mapped edges, instead of exporting and
+  reimporting a reconstructed proof DAG. External jobs belong to their original
+  owner; this payload stores neither their status nor a second continuation.
+  A header-only envelope shares the existing parameter/Core codec and cannot be
+  decoded as a complete proof DAG. Internal metadata is APGDRC3; public APGSRC68,
+  full derivation APGDRV16 and backend formats are unchanged.
+- **Plan/status:** O2/ASan/UBSan pass the previous 281 cuts and 15 mixed-owner
+  cuts with one schedule. Destroy/reload preserves exact dependencies, inert
+  bytes, remaining dispatches and final proof bytes. Distinct producers of the
+  same checked fact remain distinct jobs; completed assertions still require
+  ordinary budgeted checking. Header/full-DAG confusion, duplicate/foreign
+  dependencies, cyclic slot references and missing dependencies reject.
+  Existing definition, normalization/schedule, semantic-image, derivation-I/O
+  and source-I/O gates pass. Full acceptance was not rerun for this codec-only
+  increment; no evaluator or kernel rule changed.
+  This establishes owner composition, **not** public source checkpointing:
+  arbitrary source-private continuations, open effects, started comparison work
+  and provenance-policy integration remain open. Do not close AP1-AP3 from this
+  gate. Logs: `/tmp/a-program-mixed-rule-final{,-asan}.log` and
+  `/tmp/a-program-mixed-rule-{derivation,source}-io.log`.
+  Actual source deltas, excluding patch context: `artifact/derivation.c`
+  +139/-60, its header +18/-4, `derivation_io.c` +31/-11, its header +11/-0
+  (net +124 implementation lines); checkpoint tests +234/-9. This adds supported
+  dependency composition, not a claim of overall code reduction.
+
 #### Rejected Read Policy and Retention Audit (2026-09-29)
 
 The user rejected the agent's byte-derived allowance. That prototype and its

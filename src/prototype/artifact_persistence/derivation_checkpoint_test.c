@@ -14,7 +14,7 @@
  * Source continuation integration remains a separate, non-passing gate. */
 static const char magic[8] = "APGDCT\1";
 static int solving;
-static size_t checked_cuts, direct_cuts, preparation_edges, shared_rules;
+static size_t checked_cuts, direct_cuts, mixed_cuts, preparation_edges, shared_rules;
 
 void __real_pg_synthesis_advance(struct pg_synthesis *, uint64_t);
 void __wrap_pg_synthesis_advance(struct pg_synthesis *s, uint64_t budget)
@@ -82,12 +82,29 @@ static void collect(struct checkpoint *c, struct pg_program *p, struct pg_synthe
 	pg_dag_destroy(&seen);
 }
 
+static int write_inputs(FILE *file, const struct pg_graph_codec *codec, struct checkpoint *c)
+{
+	if (pg_artifact_derivations_are_headers(c->state))
+		return pg_derivation_headers_write(file, c->count, c->inputs, codec, &c->codec);
+	return pg_derivation_inputs_write(file, c->count, c->inputs, codec, &c->codec);
+}
+
+static int read_inputs(FILE *file, size_t limit, size_t names,
+	const struct pg_graph_codec *codec, struct checkpoint *c)
+{
+	if (pg_artifact_derivations_are_headers(c->state))
+		return pg_derivation_headers_read(file, &c->program->typing, limit, names,
+			codec, &c->codec, &c->count, &c->inputs);
+	return pg_derivations_read_descriptors(file, &c->program->typing, limit, names,
+		codec, &c->codec, &c->count, &c->inputs);
+}
+
 static int write_payload(FILE *file, const struct pg_graph_codec *codec, void *owner)
 {
 	struct checkpoint *c = owner;
 	if (pg_artifact_derivations_write(file, c->state)) return -1;
 	if (pg_artifact_schedule_save(file, c->schedule)) return -1;
-	return pg_derivation_inputs_write(file, c->count, c->inputs, codec, &c->codec);
+	return write_inputs(file, codec, c);
 }
 
 static int read_payload(FILE *file, struct pg_graph *graph, size_t limit, size_t names,
@@ -98,8 +115,7 @@ static int read_payload(FILE *file, struct pg_graph *graph, size_t limit, size_t
 	if (!c->state) return -1;
 	c->schedule = pg_artifact_schedule_read(file, graph, limit);
 	if (!c->schedule) return -1;
-	return pg_derivations_read_descriptors(file, &c->program->typing, limit, names,
-		codec, &c->codec, &c->count, &c->inputs);
+	return read_inputs(file, limit, names, codec, c);
 }
 
 static FILE *save(struct checkpoint *c)
@@ -353,7 +369,7 @@ static void codec_boundaries(void)
 	FILE *file = tmpfile();
 	assert(file && !pg_artifact_derivations_write(file, c));
 	long length = ftell(file);
-	assert(length == 80);
+	assert(length == 88);
 	unsigned char *bytes = malloc((size_t)length);
 	assert(bytes);
 	rewind(file);
@@ -363,7 +379,7 @@ static void codec_boundaries(void)
 		assert(!pg_artifact_derivations_read(file, &p->graph, 100));
 		assert(!fclose(file));
 	}
-	const uint64_t invalid[][2] = {{8, 0}, {16, 0}, {24, 0}, {40, 2}, {64, 1}, {72, 1}};
+	const uint64_t invalid[][2] = {{8, 0}, {16, 0}, {24, 0}, {32, 1}, {48, 2}, {72, 1}, {80, 1}};
 	for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
 		file = metadata_copy(bytes, (size_t)length);
 		assert(!fseek(file, (long)invalid[i][0], SEEK_SET) && !pg_wire_write_u64(file, invalid[i][1]));
@@ -442,9 +458,15 @@ static void invalid_completed_assertion(int direct)
 	assert(file && !pg_artifact_derivations_write(file, c));
 	uint64_t jobs_count;
 	assert(!fseek(file, 16, SEEK_SET) && !pg_wire_read_u64(file, &jobs_count));
+	assert(!fseek(file, 40, SEEK_SET));
 	for (size_t i = 0; i < jobs_count; ++i) {
-		assert(!fseek(file, (long)(40 + 16 * i), SEEK_SET));
+		assert(!fseek(file, 8, SEEK_CUR));
 		assert(!pg_wire_write_u64(file, PG_SYNTHESIS_DONE));
+		if (direct) {
+			uint64_t arity;
+			assert(!pg_wire_read_u64(file, &arity));
+			assert(!fseek(file, (long)(8 * arity), SEEK_CUR));
+		}
 	}
 	rewind(file);
 	c = pg_artifact_derivations_read(file, &q->graph, 100);
@@ -476,6 +498,17 @@ static void direct_boundaries(void)
 	bad[1] = pg_synthesis_evidence(&p->synthesis, pg_prove_empty_context(&p->typing));
 	bad[0] = pg_synthesis_plain_rule(&p->synthesis, PG_UNIVERSE_FORM, NULL, 1, &bad[1]);
 	assert(!pg_artifact_derivations_capture(&p->graph, &p->synthesis, 1, bad, &mapping) && !mapping);
+	assert(!pg_artifact_derivations_capture_with_dependencies(&p->graph, &p->synthesis,
+		1, bad, 1, NULL, &mapping));
+	struct pg_synthesis_job *dependencies[] = {bad[1], bad[1]};
+	assert(!pg_artifact_derivations_capture_with_dependencies(&p->graph, &p->synthesis,
+		1, bad, 2, dependencies, &mapping));
+	dependencies[0] = bad[0];
+	assert(!pg_artifact_derivations_capture_with_dependencies(&p->graph, &p->synthesis,
+		1, bad, 1, dependencies, &mapping));
+	dependencies[0] = pg_synthesis_evidence(&other->synthesis, pg_prove_empty_context(&other->typing));
+	assert(!pg_artifact_derivations_capture_with_dependencies(&p->graph, &p->synthesis,
+		1, bad, 1, dependencies, &mapping));
 	const struct pg_artifact_derivations *c = pg_artifact_derivations_capture(&p->graph, &p->synthesis, 1, &root, &mapping);
 	assert(c && pg_artifact_derivations_job_count(c) == 2);
 	size_t count;
@@ -489,11 +522,201 @@ static void direct_boundaries(void)
 	assert(!other->synthesis.steps && other->typing.proofs.count == 1);
 	FILE *file = tmpfile();
 	assert(file && !pg_artifact_derivations_write(file, c));
+	/* Direct dependency slots must precede their consumers. */
+	assert(!fseek(file, 88, SEEK_SET) && !pg_wire_write_u64(file, 1));
+	rewind(file);
+	assert(!pg_artifact_derivations_read(file, &other->graph, 100));
+	assert(!fseek(file, 88, SEEK_SET) && !pg_wire_write_u64(file, 0));
 	assert(!fseek(file, 6, SEEK_SET) && fputc(1, file) != EOF);
 	rewind(file);
 	assert(!pg_artifact_derivations_read(file, &other->graph, 100));
 	assert(!fclose(file));
 	pg_program_destroy(other); pg_program_destroy(p);
+}
+
+static void header_boundaries(void)
+{
+	struct pg_program *p = empty(), *q = empty();
+	struct pg_synthesis_job *evidence = pg_synthesis_evidence(&p->synthesis, pg_prove_empty_context(&p->typing));
+	struct pg_synthesis_job *rule = pg_synthesis_plain_rule(&p->synthesis, PG_UNIVERSE_FORM, NULL, 1, &evidence);
+	/* This borrowed header has no trailing premises[] allocation. */
+	const struct pg_derivation_input *header = pg_synthesis_plain_derivation(rule);
+	const struct pg_derivation_input *headers[] = {header, header};
+	FILE *file = tmpfile();
+	assert(file && !pg_derivation_headers_write(file, 2, headers, NULL, NULL));
+	const struct pg_derivation_input *const *decoded = NULL;
+	size_t count = SIZE_MAX;
+	rewind(file);
+	assert(pg_derivations_read_descriptors(file, &q->typing, 1000, 1000, NULL, NULL, &count, &decoded));
+	assert(count == SIZE_MAX && !decoded);
+	rewind(file);
+	assert(!pg_derivation_headers_read(file, &q->typing, 1000, 1000, NULL, NULL, &count, &decoded));
+	assert(count == 2 && decoded[0] == decoded[1] && decoded[0]->count == 1);
+	assert(decoded[0]->rule == PG_UNIVERSE_FORM);
+	FILE *copy = tmpfile();
+	assert(copy && !pg_derivation_headers_write(copy, count, decoded, NULL, NULL));
+	equal_files(file, copy); assert(!fclose(copy) && !fclose(file));
+	const struct pg_derivation_input *full = input(p, PG_CONTEXT_EMPTY, 0, NULL);
+	file = tmpfile();
+	assert(file && !pg_derivation_inputs_write(file, 1, &full, NULL, NULL));
+	rewind(file); decoded = NULL; count = SIZE_MAX;
+	assert(pg_derivation_headers_read(file, &q->typing, 1000, 1000, NULL, NULL, &count, &decoded));
+	assert(count == SIZE_MAX && !decoded && !q->synthesis.steps);
+	assert(q->typing.proofs.count == 1 && q->synthesis.jobs.count == 1 && !fclose(file));
+	pg_program_destroy(q); pg_program_destroy(p);
+}
+
+/* Two independently restored owners share live premises and one queue. The
+ * pre-existing empty-context evidence is owned by Program, not by either codec. */
+struct mixed_checkpoint {
+	struct checkpoint upstream, downstream;
+};
+
+static void mixed_init(struct mixed_checkpoint *m, struct pg_program *p)
+{
+	*m = (struct mixed_checkpoint){.upstream.program = p, .downstream.program = p};
+	assert(!pg_declaration_io_init(&m->upstream.codec, &p->typing));
+}
+
+static void mixed_collect(struct mixed_checkpoint *m, struct pg_program *p,
+	struct pg_synthesis_job *context, struct pg_synthesis_job *const *roots)
+{
+	mixed_init(m, p);
+	struct checkpoint *a = &m->upstream, *b = &m->downstream;
+	a->state = pg_artifact_derivations_capture(&p->graph, &p->synthesis, 1, &context, &a->jobs);
+	assert(a->state);
+	a->inputs = pg_artifact_derivations_inputs(a->state, &a->count);
+	size_t n = pg_artifact_derivations_job_count(a->state);
+	struct pg_synthesis_job **dependencies = calloc(n + 1, sizeof(*dependencies));
+	assert(dependencies);
+	memcpy(dependencies, a->jobs, n * sizeof(*dependencies));
+	dependencies[n] = pg_synthesis_evidence(&p->synthesis, pg_prove_empty_context(&p->typing));
+	b->state = pg_artifact_derivations_capture_with_dependencies(&p->graph, &p->synthesis,
+		3, roots, n + 1, dependencies, &b->jobs);
+	free(dependencies);
+	assert(b->state);
+	b->inputs = pg_artifact_derivations_inputs(b->state, &b->count);
+	b->schedule = pg_artifact_schedule_capture(&p->graph, &p->synthesis,
+		pg_artifact_derivations_job_count(b->state), b->jobs);
+	assert(b->schedule);
+}
+
+static int mixed_write(FILE *file, const struct pg_graph_codec *codec, void *owner)
+{
+	struct mixed_checkpoint *m = owner;
+	struct checkpoint *a = &m->upstream, *b = &m->downstream;
+	if (pg_artifact_derivations_write(file, a->state) || pg_artifact_derivations_write(file, b->state)) return -1;
+	if (pg_artifact_schedule_save(file, b->schedule) || write_inputs(file, codec, a)) return -1;
+	return pg_derivation_headers_write(file, b->count, b->inputs, codec, &a->codec);
+}
+
+static int mixed_read(FILE *file, struct pg_graph *graph, size_t limit, size_t names,
+	const struct pg_graph_codec *codec, void *owner)
+{
+	struct mixed_checkpoint *m = owner;
+	struct checkpoint *a = &m->upstream, *b = &m->downstream;
+	a->state = pg_artifact_derivations_read(file, graph, limit);
+	b->state = pg_artifact_derivations_read(file, graph, limit);
+	b->schedule = pg_artifact_schedule_read(file, graph, limit);
+	if (!a->state || !b->state || !b->schedule || read_inputs(file, limit, names, codec, a)) return -1;
+	return pg_derivation_headers_read(file, &a->program->typing, limit, names, codec, &a->codec,
+		&b->count, &b->inputs);
+}
+
+static FILE *mixed_save(struct mixed_checkpoint *m)
+{
+	struct pg_program *p = m->upstream.program;
+	size_t proofs = p->typing.proofs.count, jobs = p->synthesis.jobs.count, terms = p->graph.terms.count;
+	FILE *file = tmpfile();
+	assert(file && !pg_graph_image_write(file, magic, &pg_declaration_graph_codec, &m->upstream.codec, mixed_write, m));
+	assert(proofs == p->typing.proofs.count && jobs == p->synthesis.jobs.count && terms == p->graph.terms.count);
+	rewind(file);
+	return file;
+}
+
+static void mixed_restore(struct mixed_checkpoint *m)
+{
+	struct checkpoint *a = &m->upstream, *b = &m->downstream;
+	struct pg_program *p = a->program;
+	struct pg_synthesis *s = &p->synthesis;
+	assert(!pg_artifact_derivations_prepare(s, a->state, a->count, a->inputs, NULL, &a->jobs));
+	size_t n = pg_artifact_derivations_job_count(a->state), count = pg_artifact_derivations_job_count(b->state);
+	struct pg_synthesis_job **dependencies = calloc(n + 1, sizeof(*dependencies));
+	size_t *targets = calloc(count, sizeof(*targets));
+	assert(dependencies && targets);
+	memcpy(dependencies, a->jobs, n * sizeof(*dependencies));
+	dependencies[n] = pg_synthesis_evidence(s, pg_prove_empty_context(&p->typing));
+	assert(pg_artifact_derivations_prepare(s, b->state, b->count, b->inputs, NULL, &b->jobs) && !b->jobs);
+	assert(!pg_artifact_derivations_prepare_with_dependencies(s, b->state, b->count, b->inputs,
+		NULL, n + 1, dependencies, &b->jobs));
+	assert(s->jobs.count == count && !s->steps && p->typing.proofs.count == 1);
+	for (size_t i = 0; i <= n; ++i) assert(b->jobs[i] == dependencies[i]);
+	size_t ready = pg_artifact_derivations_validation(a->state, targets);
+	ready += pg_artifact_derivations_validation(b->state, targets + ready);
+	const struct pg_artifact_schedule *validation = pg_artifact_schedule_ready(&p->graph, count, ready, targets);
+	assert(validation && !pg_artifact_schedule_attach(s, validation, count, b->jobs));
+	struct checkpoint *owners[] = {a, b};
+	solving = 1;
+	for (size_t i = 0; i < 2; ++i) {
+		uint64_t spent;
+		struct checkpoint *c = owners[i];
+		assert(pg_artifact_derivations_revalidate(p, c->state, c->jobs, 1000, 1000, &spent) == PG_SYNTHESIS_DONE);
+		assert(!pg_artifact_derivations_attach(s, c->state, c->jobs));
+	}
+	solving = 0;
+	assert(!pg_artifact_schedule_attach(s, b->schedule, count, b->jobs));
+	free(targets); free(dependencies);
+}
+
+static void mixed(void)
+{
+	for (uint64_t cut = 0;; ++cut) {
+		struct pg_program *p = empty();
+		struct pg_synthesis_job *context = pg_synthesis_derivation(&p->synthesis, input(p, PG_CONTEXT_EMPTY, 0, NULL));
+		struct pg_synthesis_job *evidence = pg_synthesis_evidence(&p->synthesis, pg_prove_empty_context(&p->typing));
+		struct pg_synthesis_job *roots[] = {
+			pg_synthesis_plain_rule(&p->synthesis, PG_UNIVERSE_FORM, NULL, 1, &context),
+			pg_synthesis_plain_rule(&p->synthesis, PG_UNIVERSE_FORM, NULL, 1, &evidence), NULL};
+		struct pg_synthesis_job *value = pg_synthesis_plain_rule(&p->synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &roots[0]);
+		roots[2] = pg_synthesis_plain_rule(&p->synthesis, PG_RETURN_INTRO, NULL, 1, &value);
+		assert(roots[0] != roots[1]);
+		advance(&p->synthesis, cut);
+		struct mixed_checkpoint m;
+		mixed_collect(&m, p, context, roots);
+		FILE *image = mixed_save(&m);
+		uint64_t before = p->synthesis.steps;
+		advance(&p->synthesis, 1000);
+		assert(!p->synthesis.ready && pg_synthesis_result(roots[0]) == pg_synthesis_result(roots[1]));
+		uint64_t remaining = p->synthesis.steps - before;
+		FILE *expected = result(p, roots[2]);
+		pg_declaration_io_destroy(&m.upstream.codec); pg_program_destroy(p);
+		p = empty(); mixed_init(&m, p);
+		assert(!pg_graph_image_read(image, magic, &p->graph, 10000, 10000,
+			&pg_declaration_graph_codec, &m.upstream.codec, mixed_read, &m));
+		assert(!p->synthesis.steps && p->typing.proofs.count == 1 && p->synthesis.jobs.count == 1);
+		FILE *copy = mixed_save(&m);
+		equal_files(image, copy); assert(!fclose(copy));
+		mixed_restore(&m);
+		for (size_t i = 0; i < 3; ++i)
+			roots[i] = pg_artifact_derivations_root(m.downstream.state, m.downstream.jobs, i);
+		assert(roots[0] != roots[1] && roots[0]->inputs[3] != roots[1]->inputs[3]);
+		context = pg_artifact_derivations_root(m.upstream.state, m.upstream.jobs, 0);
+		assert(roots[0]->inputs[3] == context);
+		struct mixed_checkpoint again;
+		mixed_collect(&again, p, context, roots);
+		copy = mixed_save(&again);
+		equal_files(image, copy); assert(!fclose(copy));
+		pg_declaration_io_destroy(&again.upstream.codec);
+		before = p->synthesis.steps;
+		if (remaining) { advance(&p->synthesis, remaining - 1); assert(p->synthesis.ready); }
+		advance(&p->synthesis, remaining ? 1 : 0);
+		assert(!p->synthesis.ready && p->synthesis.steps - before == remaining);
+		copy = result(p, roots[2]); equal_files(expected, copy);
+		assert(!fclose(expected) && !fclose(copy) && !fclose(image));
+		pg_declaration_io_destroy(&m.upstream.codec); pg_program_destroy(p);
+		++mixed_cuts;
+		if (!remaining) break;
+	}
 }
 
 int main(void)
@@ -503,12 +726,14 @@ int main(void)
 	invalid_completed_assertion(0);
 	invalid_completed_assertion(1);
 	direct_boundaries();
+	header_boundaries();
+	mixed();
 	source("main := @;");
 	source("main := \\x : @ => x;");
 	source("main := #int_add;");
 	shared();
 	assert(checked_cuts && direct_cuts && preparation_edges && shared_rules);
-	printf("derivation checkpoint: %zu cuts (%zu direct), %zu preparation edges, %zu shared rules\n",
-		checked_cuts, direct_cuts, preparation_edges, shared_rules);
+	printf("derivation checkpoint: %zu cuts (%zu direct), %zu mixed cuts, %zu preparation edges, %zu shared rules\n",
+		checked_cuts, direct_cuts, mixed_cuts, preparation_edges, shared_rules);
 	return 0;
 }

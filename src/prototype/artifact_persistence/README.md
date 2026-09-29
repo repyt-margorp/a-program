@@ -362,9 +362,9 @@ constructor-body boundaries, including pending children of completed modules.
 Unfinished field/query owners and public `.a` integration remain open; default
 loading does not use these hooks and the whole-source partition gate still fails.
 
-The derivation checkpoint gate now covers 281 boundaries in known-origin rule
-DAGs: 190 lazy imported-input boundaries and 91 direct-rule boundaries, including
-shared canonical rules and preparation subscriptions.
+The derivation checkpoint gate covers 281 boundaries in known-origin rule
+DAGs (190 lazy imported-input and 91 direct-rule boundaries), plus 15 mixed-owner
+boundaries, including shared canonical rules and preparation subscriptions.
 It preserves the premise cursor and prepared-rule edge through the normal
 factory, without reconstructing a second proof system. Exact lookup shares the
 request interner and does not allocate unvisited work. Completed premises are
@@ -379,13 +379,18 @@ across all worker kinds. The owner payload neither duplicates that schedule nor
 admits saved completion flags. Validation queues use the common schedule API.
 O2/ASan/UBSan also reject truncated metadata, miswired mappings and false saved
 completion; aliases and shared prepared rules survive. Source I/O now assembles
-canonical rules directly rather than using lazy-input wrappers. APGDRC2 also
-restores a closed direct-rule DAG through that same factory, without adding
-wrappers or changing its remaining fuel. Both routes share cursor transport and
-yield identical final proof bytes. External source/evidence premises and started
-comparison/reduction state remain unsupported; capture rejects them, without
-substituting fresh requests. The owner codec is not a public source checkpoint;
-APGSRC68 is unchanged.
+canonical rules directly rather than using lazy-input wrappers. APGDRC3 stores
+direct rules as parameter-only headers plus exact premise-job links. Header
+transport reuses the existing parameter/Core codec, but its envelope cannot be
+read as a complete derivation DAG. External premises occupy the mapping prefix;
+their owner restores their state. They are not exported as replacement rules.
+The mixed test composes a lazy-input owner, direct rules and Program's prechecked
+empty-context evidence with one schedule; equal facts do not merge distinct
+producer jobs. Both direct and lazy routes retain their own remaining fuel and
+yield identical final proof bytes. Arbitrary source-private continuations,
+open effects, started comparison/reduction work and provenance-policy integration
+remain unsupported. This owner codec is not a public source checkpoint;
+APGSRC68 and the ordinary full-derivation format are unchanged.
 
 The constructor gate separately transports the checked field map through existing
 rule inputs, verifies it using ordinary Solve, then resumes the value owner before
