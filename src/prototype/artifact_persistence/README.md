@@ -340,9 +340,12 @@ validation takes 227/263/299 and 349/385/421 steps; the remaining 1/16/28 steps 
 Core bytes match after destroying the original Program. Inert resave/step 0,
 foreign inputs, constant fields and rewinding started work are checked. Attachment
 itself creates no Terms/proofs. Private unfinished field/body work, source interface
-metadata and ordinary `.a` integration remain open. Induction still reads a finished
-scope worker's field-type array; that dependency must move to the declaration's
-shared field view before its history can be discarded globally.
+metadata and ordinary `.a` integration remain open. Constructor and induction now
+read field order from the checked schema's immutable pointer view, not completed
+scope-worker history. The view is built once per schema/constructor and is not
+serialized. Bounds, nominal labels and exact dependent prefix order are checked.
+The List example's output remains byte-identical to the previous prototype
+(50,508 bytes, 2,824 steps); this is not the still-failing resume-partition gate.
 
 The strict fuel-partition gate is separate from the currently passing transport
 tests. It fails until saved progress survives reload, including cases where the

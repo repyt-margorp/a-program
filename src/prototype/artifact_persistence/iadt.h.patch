@@ -1,0 +1,15 @@
+--- a/iadt.h
++++ b/iadt.h
+@@ -148,6 +148,12 @@
+ const struct pg_evidence *pg_data_schema_indices(const struct pg_data_schema *schema);
+ const struct pg_evidence *pg_data_schema_fields(const struct pg_data_schema *schema,
+ 	const struct pg_object *constructor);
++/* Constant-time declaration-order field prefix, excluding schema parameters.
++ * The checked schema borrows these existing context proofs once; this view is
++ * neither a second declaration nor solver history, and is not serialized.
++ * Returns NULL for a foreign constructor or an out-of-range index. */
++const struct pg_evidence *pg_data_schema_field(const struct pg_data_schema *schema,
++	const struct pg_object *constructor, size_t index);
+ const struct pg_evidence *pg_data_schema_result(const struct pg_data_schema *schema,
+ 	const struct pg_object *constructor);
+ /* Compose the constructor's result substitution with its checked field

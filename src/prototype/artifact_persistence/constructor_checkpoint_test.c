@@ -81,6 +81,32 @@ static FILE *result_file(struct checkpoint *c, struct pg_synthesis_job *job)
 	return file;
 }
 
+static void field_order(struct pg_program *p, const struct pg_evidence *formation,
+	const struct pg_object *constructor)
+{
+	const struct pg_data_schema *schema = pg_evidence_inductive_schema(formation);
+	const struct pg_context *prefix = pg_evidence_context(pg_data_schema_parameters(schema));
+	const struct pg_evidence *fields = pg_data_schema_fields(schema, constructor);
+	size_t count;
+	assert(!pg_context_extension_size(pg_evidence_context(fields), prefix, &count));
+	const struct pg_data_layout *foreign = pg_data_layout(&p->graph, 1, &count);
+	size_t proofs = p->typing.proofs.count, terms = p->graph.terms.count;
+	assert(!pg_data_schema_field(NULL, constructor, 0));
+	assert(!pg_data_schema_field(schema, NULL, 0));
+	assert(!pg_data_schema_field(schema, pg_data_constructor(foreign, 0), 0));
+	assert(!pg_data_schema_field(schema, constructor, count));
+	assert(!pg_data_schema_field(schema, constructor, SIZE_MAX));
+	for (size_t i = count; i; --i) {
+		const struct pg_evidence *field = pg_data_schema_field(schema, constructor, i - 1);
+		assert(field && pg_evidence_context(field) == pg_evidence_context(fields));
+		for (size_t repeat = 0; repeat < 20; ++repeat)
+			assert(pg_data_schema_field(schema, constructor, i - 1) == field);
+		fields = pg_context_parent_input(&p->typing, fields);
+	}
+	assert(pg_evidence_context(fields) == prefix);
+	assert(p->typing.proofs.count == proofs && p->graph.terms.count == terms);
+}
+
 static void reject_constant_field(struct pg_program *p, const struct pg_evidence *formation,
 	const struct pg_object *constructor, const struct pg_evidence *parameters, const struct pg_evidence *scope)
 {
@@ -135,6 +161,7 @@ static void resume(FILE *file, FILE *expected, uint64_t remaining)
 	const struct pg_data_layout *layout = pg_data_schema_layout(pg_evidence_inductive_schema(formation));
 	assert(c.ordinal < pg_data_layout_count(layout));
 	const struct pg_object *constructor = pg_data_constructor(layout, c.ordinal);
+	field_order(c.program, formation, constructor);
 	size_t proofs = c.program->typing.proofs.count, terms = c.program->graph.terms.count;
 	struct pg_program *foreign = pg_program_allocate_empty(PG_DEFINITION_IMPLICIT_THUNK);
 	assert(foreign && !pg_synthesis_constructor_from_scope(&foreign->synthesis, formation, constructor, parameters, scope));
@@ -198,6 +225,7 @@ static void constructor(const char *text, size_t ordinal)
 	const struct pg_evidence *prefix = pg_context_parent_input(&p->typing, pg_evidence_premise(formation, 0));
 	const struct pg_evidence *parameters = pg_prove_substitution_projection(&p->typing, prefix, prefix);
 	const struct pg_object *label = pg_data_constructor(pg_data_schema_layout(pg_evidence_inductive_schema(formation)), ordinal);
+	field_order(p, formation, label);
 	/* Another ordinary synthesis owner isolates just the field/value work from
 	 * the source module's already completed exported members. */
 	struct pg_synthesis isolated;

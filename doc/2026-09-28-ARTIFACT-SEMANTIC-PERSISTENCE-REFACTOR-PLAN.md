@@ -566,12 +566,32 @@ also pass; full acceptance was not rerun. Actual incremental C/header: +49/+12,
 no removals; fixture: 239 lines. Normal source import is still unconnected; both
 namespace and full partition gates still fail on this candidate.
 
-Further inspected consumer: `synthesis_iadt.c`'s `induction_scope_step` reads the
-completed constructor worker's private `fields[]` solely to inspect declaration
-field types. Before globally discarding that worker, use a shared schema-owned
-field-order view in both constructor and induction owners; avoid repeated list
-scans or another retained field-type authority. This is an agent assessment,
-not a claim that the consumer has already been refactored.
+Further inspected consumer, addressed after `fe9c3d0` (2026-09-29, agent decision):
+`induction_scope_step` read the completed constructor worker's private `fields[]`
+solely to inspect declaration field types. The prototype now indexes existing
+checked context-prefix proofs once per schema/constructor. Constructor and
+induction owners use the same constant-time accessor; the worker's field array
+and count are removed. This is a derived, immutable pointer view, not another
+field/type authority or wire payload. Scope results and unfinished work still
+need transport; this change alone does not connect the full source checkpoint.
+Focused constructor, IADT, Synthesis, semantic image, Source I/O and policy tests
+pass. ASan/UBSan also pass IADT, Synthesis and the six constructor cases, including
+the new order/bounds/foreign-label checks and allocation-free repeated lookup.
+List example 09 produces exactly the same 50,508-byte `.a`
+and 2,824 Solve steps as `fe9c3d0`. General QuickSort with the existing proof
+provider also matches byte-for-byte: 14,777,063 bytes, 679,228 steps. A single
+concurrent-load sample gives before/after peak RSS 268,428/268,776 KiB and elapsed
+1.216/1.230 seconds; no memory/speed improvement is claimed from that sample.
+C differential/Oracle and standalone Acc QuickSort gates pass. Full
+`check-acceptance` passes on clean `e716232` plus these prototypes, including
+both LT providers/partition orders; unrelated working-tree edits are excluded.
+Log: `/tmp/a-program-schema-field-order-acceptance.log`. The source-definition
+checkpoint gate also passes; the namespace frontier still fails at cut 126.
+The strict partition gate still fails at 100+100 and later; see
+`/tmp/a-program-schema-field-order-partitions/partitions.tsv`. Neither failure
+is reclassified as an expected pass or evidence of full checkpoint completion.
+Actual C/header changes: `iadt.c` +31/-6, `iadt.h` +6/-0,
+`synthesis_iadt.c` +10/-12 (net +29); fixture +28. No accepted source is modified.
 
 #### Rejected Read Policy and Retention Audit (2026-09-29)
 
@@ -653,8 +673,8 @@ alone. Avoid adding a second parallel type graph or serializing all workers.
   Ordinary `.a` checkpoint integration remains open.
 - [x] Reuse the completed field map before constructor body abstraction, through
   checked typed inputs; `check-artifact-constructor-checkpoint` tests this boundary.
-- [ ] Remove induction's read of completed scope-worker `fields[]` in favor of
-  the declaration's shared field order, then reconnect namespace continuations.
+- [x] Remove induction's read of completed scope-worker `fields[]` in favor of
+  the checked schema's shared field order; namespace integration remains above.
 - [ ] Replace any confirmed redundant origin/type retention with the existing
   typed owner's shared construction or an explicitly selected recompute policy.
   Gate on open scopes, distinct nominal families, ordinary Sorted results,

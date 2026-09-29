@@ -1,0 +1,61 @@
+--- a/synthesis_iadt.c
++++ b/synthesis_iadt.c
+@@ -72,8 +72,7 @@
+ 
+ struct constructor_scope_work {
+ 	struct pg_source_context_allocation *allocation;
+-	const struct pg_evidence **fields;
+-	size_t count, next;
++	size_t next;
+ 	struct pg_synthesis_job *pending;
+ };
+ struct induction_scope_work {
+@@ -235,11 +234,6 @@
+ 			if (allocation->count != count || !pg_context_same_allocation_shape(allocation->prefix,
+ 				pg_evidence_context_map(parameters)->destination)) goto rejected;
+ 		}
+-		if (count > SIZE_MAX / sizeof(*local->fields)) goto error;
+-		local->fields = pg_alloc(synthesis->typing->graph, count * sizeof(*local->fields));
+-		if (count && !local->fields) goto error;
+-		local->count = count;
+-		for (size_t i = count; i; --i, fields = pg_context_parent_input(synthesis->typing, fields)) local->fields[i - 1] = fields;
+ 		struct pg_synthesis_job *family = pg_synthesis_reindex_jobs(synthesis, (void *)job->inputs[1], (void *)job->inputs[0]);
+ 		struct pg_synthesis_job *value = pg_evidence_judgement(formation) == PG_JUDGEMENT_TYPE_FAMILY
+ 			? family : pg_synthesis_plain_rule(synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &family);
+@@ -250,7 +244,9 @@
+ 	}
+ 	if (pg_synthesis_await(synthesis, job, local->pending)) return;
+ 	const struct pg_evidence *map = local->pending->result;
+-	if (local->next == local->count) {
++	const struct pg_evidence *formation = pg_synthesis_result(job->inputs[0]);
++	const struct pg_evidence *field = pg_data_schema_field(pg_evidence_inductive_schema(formation), job->inputs[2], local->next);
++	if (!field) {
+ 		job->result = map;
+ 		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_DONE);
+ 		return;
+@@ -263,7 +259,8 @@
+ 			pg_evidence_context_map(parameters)->destination, job->inputs[2], local->next);
+ 		if (!binder) goto rejected;
+ 	}
+-	local->pending = pg_synthesis_substitution_lift(synthesis, map, local->fields[local->next++], binder);
++	++local->next;
++	local->pending = pg_synthesis_substitution_lift(synthesis, map, field, binder);
+ 	if (!local->pending) goto error;
+ 	pg_synthesis_subscribe(synthesis, job, local->pending, 0);
+ 	return;
+@@ -305,11 +302,12 @@
+ 		local->pending = NULL;
+ 	}
+ 	const struct pg_evidence *context = local->context;
+-	const struct constructor_scope_work *fields = pg_synthesis_work_state(local->fields, CONSTRUCTOR_SCOPE_JOB);
++	const struct pg_data_schema *schema = pg_evidence_inductive_schema(formation);
+ 	const struct pg_object *self = pg_evidence_context(pg_evidence_premise(formation, 0))->binder;
+-	while (local->next < fields->count) {
++	const struct pg_evidence *declaration;
++	while ((declaration = pg_data_schema_field(schema, job->inputs[4], local->next))) {
+ 		size_t i = local->next++;
+-		int recursive = pg_data_recursive_field(pg_evidence_context(fields->fields[i])->declared_type, self);
++		int recursive = pg_data_recursive_field(pg_evidence_context(declaration)->declared_type, self);
+ 		if (!recursive) continue;
+ 		if (recursive < 0) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+ 		const struct pg_evidence *field = pg_prove_projection(synthesis->typing, context,
