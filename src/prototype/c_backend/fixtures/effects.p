@@ -1,0 +1,16 @@
+second := \x : #Text => \y : #Text => y;
+partial := second (#print #"a");
+main := { f := partial; #print #"between"; f (#print #"b"); };
+unused := { f := partial; #"done"; };
+shared := { f := partial; f (#print #"b"); f (#print #"c"); };
+repeated := { partial; partial; #"done"; };
+quoted := { &{ #print #"hidden"; }; };
+function := \x : #Text => x;
+delayed := &{ #print #"again"; };
+forced_twice := { delayed; delayed; };
+capture := \x : #Text => \y : #Text => x;
+captured := { f := capture #"captured"; #print (f #"ignored"); };
+apply := \f : #Int -> #Text => \x : #Int => f x;
+higher := #print (apply &#int_to_text #42);
+value := #42;
+empty := #print #"";

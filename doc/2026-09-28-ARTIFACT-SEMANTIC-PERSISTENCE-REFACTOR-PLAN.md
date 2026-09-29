@@ -2,7 +2,8 @@
 
 Date: 2026-09-28
 Updated: 2026-09-29
-Status: in progress; APGSRC65 history-retirement prototype, not promoted.
+Status: in progress; APGSRC65 persistence and first C backend are prototypes,
+not promoted. Exact resumption and trust/fuel integration remain unfinished.
 Baseline: `152b59506e915e18a34f6dc8041e981fb2a82888` (PR #45 documents
 imported). Implementation is unchanged from `e716232`; unrelated working-tree
 changes are excluded from this audit.
@@ -702,6 +703,27 @@ an imported occurrence is not accepted evidence. No C emitter exists. Core has
 Lambda/Application/Reference; Oracle owners already expose inert host, CBPV and
 constructor/matcher views. These views need not be copied into an artifact IR.
 
+AP4 implementation after `966df23`: `c_backend/emit.c` consumes the existing
+occurrence/Core/Oracle views. Its command adapter alone imports images and
+requests whole-module checking. Generated executables link only the target
+runtime and libc. O2 and ASan/UBSan differential gates pass for captures, partial
+applications, repeated suspensions, deep handlers, recursive ADTs, generic List,
+host overflow/formatting, NUL, pending/rejected inputs and atomic output.
+The raw Oracle gate covers two distinct operation clauses and all ten host
+arithmetic/formatting functions; emission is checked for zero evaluator steps
+and unchanged graph/proof counts. Repeated imports emit identical C and do not
+change input-image digests.
+
+Focused O2 gates also pass against clean `e716232` plus the committed persistence,
+readback and conversion prototypes, without the unrelated Evidence/IADT edits.
+The separate full acceptance run uses the current working-tree candidate; its
+result must be recorded separately when finished.
+
+The existing Acc QuickSort source checks in 67,229 steps and image selection in
+67,377 steps. Interpreter execution prints `FFTT` in 18,495 runtime steps. C
+emission currently refuses its reachable `identity-field` Oracle. This is an
+explicit unsupported boundary, **not** a successful C QuickSort execution.
+
 ### Assessment
 
 Agent implementation decision: build a separate prototype backend consuming a
@@ -720,21 +742,51 @@ Recognize nominal objects by pointer identity, never source spelling. Unsupporte
 reachable Oracles fail before publishing output. Do not erase proof Terms on
 the assumption that every proof is computationally irrelevant.
 
+Rejected shortcut: treating Identity transport as an unconditional no-op, or
+normalizing the entire QuickSort at translation time to hide missing runtime
+support. `identity.c:field_answer` has a diagonal transport rule, but the general
+U/Pi transport also transforms inputs/results and lifting. That needs its own
+faithful target realization; the mere presence of checked typing does not erase
+those computations. Preserve this boundary test until AP4.6 is implemented.
+
 ### Plan
 
-- [ ] **AP4.1:** add `src/prototype/c_backend/` with emitter, runtime, command
+- [x] **AP4.1:** add `src/prototype/c_backend/` with emitter, runtime, command
   adapter and focused tests; keep accepted build untouched during trial.
-- [ ] **AP4.2:** cover Lambda/Application, Return/Thunk/Force, Fold/request,
+- [x] **AP4.2:** cover Lambda/Application, Return/Thunk/Force, Fold/request,
   host integers/Text/print; retain effect order and delayed execution.
-- [ ] **AP4.3:** add structural constructors and Match, including recursive
+- [x] **AP4.3:** add structural constructors and Match, including recursive
   Lambda encoding, without changing IADT identity or typechecking rules.
-- [ ] **AP4.4:** compile emitted C independently and compare execution to the
+  This is the structural runtime fragment, not all Identity-bearing IADT uses.
+- [x] **AP4.4:** compile emitted C independently and compare execution to the
   interpreter; test overflow, embedded NUL, higher-order captures, repeated
   thunks, multiple handler clauses, invalid siblings, pending input, unsupported
   Oracles, output failure and unchanged input artifacts. Run sanitizers.
 - [ ] **AP4.5:** document the exact supported subset, fuel/trust limitations,
   generated runtime ownership and per-file line changes. Push verified chunks;
   do not close #44 or mark AP1-AP3 complete from a limited backend milestone.
+- [ ] **AP4.6:** implement the needed Identity transport/action/lifting target
+  equations using exact Oracle contracts, then replace QuickSort's explicit
+  rejection gate with actual generated-C differential execution. Include
+  non-diagonal and dependent U/Pi cases; no unconditional proof erasure.
+
+Initial backend line delta (new files; no accepted implementation changed):
+
+| File/group | Added | Removed |
+| --- | ---: | ---: |
+| `c_backend/emit.c` | 230 | 0 |
+| `c_backend/main.c` | 102 | 0 |
+| `c_backend/runtime.c` | 273 | 0 |
+| `c_backend/emit.h` | 10 | 0 |
+| `c_backend/runtime.h` | 42 | 0 |
+| `c_backend/oracle_test.c` | 149 | 0 |
+| `check.sh` / `oracle_check.sh` / `sorting_check.sh` | 85 / 11 / 26 | 0 |
+| `build.mk` | 20 | 0 |
+| Eight `.p` fixtures | 74 | 0 |
+| Backend README | 87 | 0 |
+
+Implementation: +657. Tests/fixtures/build: +365. Backend documentation: +87.
+This is a new backend feature, not a claim of code reduction or completed AP1-AP3.
 
 ## Research Records
 
