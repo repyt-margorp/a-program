@@ -17,6 +17,8 @@ changes are excluded from this audit.
 3. **AP3:** verify zero-fuel stability, preserved meaning and a downstream-only
    consumption boundary; keep unfinished checkpoint work visible.
 4. **AP4:** implement the first downstream C transpiler, now explicitly requested.
+5. **AP5:** add the downstream Linker/LinkerScript requested on 2026-09-29
+   (#46, PR #48); do not change artifact semantics or admission policy (#47).
 
 This is the active implementation plan, superseding R1-R6 in the
 [growth audit](2026-09-28-RETAINED-IMAGE-GROWTH-AUDIT.md). That document retains
@@ -51,6 +53,9 @@ User paraphrases, 2026-09-28:
 - Follow-up, 2026-09-29 (user paraphrase): continue through C transpilation;
   extend this plan as necessary and push independently verified increments.
   This supersedes the earlier instruction to wait for another backend request.
+- Follow-up, same date (user paraphrase): merge the new PR and explicitly add
+  Linker/LinkerScript to `.a`-to-C. These are subordinate transpiler facilities,
+  not A Program language features or reasons to change `.a`. See AP5.
 
 ### Objective (Code)
 
@@ -663,6 +668,43 @@ Actual C/header delta from `331d5f2`: `synthesis.c` +53/-6,
 `synthesis_source.h` +17/-0 (net +111). The extended fixture is +279/-40;
 build-target comments +1/-1. Patch context lines are not implementation growth.
 
+#### Imported Derivation Preparation (2026-09-29)
+
+Inspection at `ea287c2`: the public List-09 seed has 66 workers after 100
+dispatches, 52 still pending: 28 imported derivations, 11 plain rules, 6
+definitions, 2 Body, 2 Classifier, and one each module expression, registration
+and operation wrapper. Recipe-only import loses their queue and preparation
+edges, not merely an output cache. Existing namespace fixtures do not cover
+this public boundary.
+
+Agent implementation: imported derivations now expose their existing premise
+cursor and prepared-rule edge. Restoration uses the normal rule factory after
+checking that each skipped premise is already prepared. It neither admits a
+proof nor restores a checked status. Request lookup and construction share one
+hash-key implementation; inspection does not create unvisited premises. No
+new proof representation, replay engine or accepted-source changes are added.
+
+O2 and ASan/UBSan pass 190 boundaries, including 44 shared-rule observations and
+940 preparation-wait observations. Original Programs are destroyed; shared
+descriptor relocation, inert resave/step 0, exact remaining dispatches and final
+proof bytes are checked. Completed plain rules are revalidated through ordinary
+Solve within a single bounded budget before pending cursors are attached.
+Foreign/late/out-of-range/unprepared attachments reject without queue changes;
+restoring preparation of an invalid rule does not make it accepted. Logs:
+`/tmp/a-program-input-shared.log`, `/tmp/a-program-input-shared-asan.log`.
+
+This remains a known-origin owner fixture, **not public checkpoint transport**.
+The public partition gate still fails at 100+100 and later
+(`/tmp/a-program-input-partitions/partitions.tsv`). The next integration must
+connect owner identities and continuations to the shared source relocation and
+explicit validation/provenance policy; adding more isolated passing fixtures
+alone does not meet AP1.3/AP2.3. Full regression verification is in progress.
+
+Actual C/header delta from `ea287c2`: `synthesis_work.c` +28/-9,
+`synthesis_work.h` +3/-0, `synthesis_derivation.c` +73/-15,
+`synthesis_source.h` +9/-0 (net +89). The new fixture is 416 lines and the build
+target adds 8 lines. Documentation and patch context are excluded.
+
 #### Rejected Read Policy and Retention Audit (2026-09-29)
 
 The user rejected the agent's byte-derived allowance. That prototype and its
@@ -743,6 +785,9 @@ alone. Avoid adding a second parallel type graph or serializing all workers.
 - [x] Restore started namespace constructor abstractions through the ordinary
   Body/Classifier/Pi/Lambda workers and premise cursors; pass
   `check-artifact-namespace-body-frontier`, including implicit-index metadata.
+- [x] Restore imported derivation preparation and its canonical rule edge,
+  preserving shared workers and preparation subscriptions without checking on
+  decode; `check-artifact-derivation-checkpoint` is an owner-level gate only.
 - [ ] Expand continuation transport to unfinished fields, classifier queries
   lacking a retained structural type, and other source/typing owners. Integrate
   the completed owner interfaces into ordinary `.a` checkpoint transport;
@@ -1185,6 +1230,144 @@ Initial backend line delta at `92704c6` (new files; no accepted implementation c
 Implementation: +657. Tests/fixtures/build: +365. Backend documentation: +87.
 This is a new backend feature, not a claim of code reduction or completed AP1-AP3.
 
+## AP5. Downstream Linker and LinkerScript
+
+### Subjective (User)
+
+2026-09-29, English paraphrase: incorporate the new PR, revise this active plan,
+and definitely include a Linker and LinkerScript in `.a`-to-C. Keep them
+subordinate to A Program; they must not alter `.a` or its semantics.
+The user has not approved the research report's illustrative syntax, foreign
+ABI, blanket proof erasure or default acceptance of pending proofs.
+
+### Objective (Code)
+
+PR [#48](https://github.com/repyt-margorp/a-program/pull/48) merged at `a1a3321`;
+its sole change is the preserved
+[research report](2026-09-29-LINKABLE-COMPILATION-UNITS-AND-TARGET-LINK-MANIFEST-DESIGN.md).
+The following code was inspected at `ea287c2` and is unchanged by that merge:
+
+- `c_backend/main.c` reads one artifact and selects one name, using ordinary
+  whole-module checking or explicit trusted saved completion. Its atomic output
+  guard already prevents replacing the input artifact.
+- `c_backend/emit.c:pg_c_emit` collects one Core DAG, assigns emission-local
+  object ordinals, emits private `tN` functions and unconditionally adds `main`.
+  It performs no Solve or normalization. `entry_mode` rejects unapplied Pi.
+- `c_backend/runtime.h` ABI 2 exposes internal allocation and `setjmp` state.
+  It is not a public library ABI; object ordinals are not component identities.
+- There is no LinkerScript reader, multi-export interface or native link driver.
+  #46 is therefore an extension, not an established failure of single-entry C.
+  #47 separately concerns relevance and partial-artifact admissibility.
+
+Paths above are under `src/prototype/`. Current uncommitted artifact checkpoint
+work does not implement these facilities. Existing backend tests do not verify
+the proposed ABI or linker. Merging the report closes neither issue.
+
+### Assessment
+
+Adopt the component/export separation and shared dependency closure from #46.
+Implement one **declarative LinkerScript**, provisionally `.aplink`, as the
+downstream input describing artifact roots, public aliases, product, optional
+entry, target/ABI and target bindings. A parsed script is the link plan; do not
+create separate mutable databases for script, manifest and resolved answers.
+Borrow selected typed occurrences; keep only target-local lookup/closure data.
+
+```text
+unchanged .a + external LinkerScript
+  -> existing artifact admission + named-root selection
+  -> one shared reachable DAG -> private C + public wrappers/header
+  -> target compiler/archiver/linker -> library or executable + link receipt
+```
+
+The dependency is exclusively from transpilation to artifact/semantic APIs.
+No C symbols, section placement, ABI layout, linker flags, link receipts or
+target acceptance state enter canonical `.a`. A script cannot supply typing,
+prove termination, synthesize an Oracle contract or authorize trust. Keep the
+existing explicit admission controls outside script data. Charge validation
+against one invocation budget across all selected roots, not a fresh budget
+per export; share loaded modules and ordinary Solve work.
+
+Distinguish this script from a native GNU/LLD `.ld` layout script and an export
+map. Native files are downstream inputs/products of the target driver. A real
+native link step must consume them where requested; merely listing a filename
+in a receipt is insufficient. Support explicit native-script selection in the
+C driver, with profile validation and clear unsupported diagnostics. Automatic
+embedded memory-layout generation and non-C targets remain later work.
+
+Initial agent proposal: export several already-supported closed returning
+roots through run/status wrappers. Each call owns and destroys its runtime and
+failure boundary; no boxed value, closure or stale `jmp_buf` escapes. This is a
+useful library milestone, not a claimed general function ABI. A named A Program
+export is not necessarily a separate object file. Emit the roots' union once;
+`main` becomes an optional small wrapper calling the same public entry path.
+
+Before permitting boxed calls between independently emitted components, define
+owner-qualified nominal/effect identity and a shared-declaration mapping. Equal
+local ordinals, spellings or structural hashes cannot establish that identity.
+For the initial isolated-call ABI, explicitly reject handle exchange instead of
+silently equating families. Callable Pi/boxed and restricted flat ABIs follow.
+
+Defer #47's general relevance/erasure policy: no naming-based "proof-only"
+classification, pending proof admission, unsafe narrowing or unconditional
+Identity erasure is introduced by linking. Existing supported Identity runtime
+equations remain in use. Also defer a new source-language interface syntax,
+generic multi-target framework and duplicate permanent target IR. These are not
+prerequisites for script-driven C components.
+
+### Plan
+
+AP1-AP3 remain unfinished and retain priority. AP5 follows the existing supported
+AP4 fragment; it need not wait for every higher Identity equation in AP4.6 or
+for #47. Implement and push each verified increment, initially only under
+`src/prototype/c_backend/`; use `link/` there for script/driver ownership.
+Future promotion to `src/transpile/` is a separate approved change. Do not put
+the LinkerScript parser in the source parser or artifact codecs.
+
+- [x] **AP5.0:** merge PR #48 intact; inspect #46/#47 against code and record
+  adopted/deferred proposals here. This is planning, not linker completion.
+- [ ] **AP5.1:** specify and implement the minimal versioned script parser in
+  `link/`, with matching `--link` driver input. Define quoting, paths relative
+  to the script, ordered exports, alias validation, product/entry rules and ABI
+  version. Initially one artifact/component suffices; reject unsupported imports
+  or target fields, never ignore them. Existing CLI shorthand builds the same
+  plan rather than maintaining a second emission path.
+- [ ] **AP5.2:** resolve selected names via existing artifact APIs once, retain
+  their admission policy, and extend `emit.h/.c` to one shared multi-root DAG.
+  Extract unconditional `main`; keep `tN` private. Publish `.c`, `.h` and a
+  receipt only after validation; reject conflicting aliases, reserved symbols,
+  input/output path aliases and unsupported entry shapes before publication.
+- [ ] **AP5.3:** define/run the first closed-export public ABI with per-call
+  allocation, status and cleanup; preserve the private runtime ABI separately.
+  Test repeated calls and failure followed by another call. Do not export
+  internal runtime structures or imply persistent/reentrant handles are ready.
+- [ ] **AP5.4:** add source/object/static-library/executable products and an
+  actual native link driver consuming the same plan. Invoke tools with explicit
+  argument vectors. Support target-native script input and generated export
+  controls on the supported platform; test their actual linker effect. Keep
+  native archive `.a` and A Program `.a` distinct by explicit product roles and
+  non-overlapping paths, not suffix guessing. Record tool/profile, exports and
+  input/script references in the receipt, never as Kernel evidence.
+- [ ] **AP5.5:** run a C client calling at least two script-selected exports;
+  compare it and executable mode with interpreter effects/results. Check shared
+  dependency reuse, private symbols, no duplicate `main`, deterministic emission,
+  invalid scripts/unresolved bindings/tool failure, ABI mismatch and sanitizer
+  lifetimes. Link two isolated components with colliding local ordinals and
+  verify no unintended identity/handle exchange. Check input bytes unchanged
+  after success/failure and zero Solve/graph growth in emission itself. Re-run
+  existing backend, QuickSort and artifact zero-step/partition gates; report
+  still-open partition failures rather than attributing their repair to linking.
+- [ ] **AP5.6:** after the isolated ABI works, specify callable Pi arguments,
+  owned boxed handles, component/shared nominal identity and restricted flat
+  types before enabling them. Test distinct-family collisions and shared-family
+  controls. Foreign symbol bindings require an existing type/effect contract;
+  unresolved bindings may be listed for objects but must resolve for executables.
+  Shared-library visibility and further target profiles follow explicit tests.
+- [ ] **AP5.7:** update #46 with evidence at each increment; close only when its
+  agreed library/admission/identity/lifetime criteria pass. Keep #47 open unless
+  its separate admissibility criteria are implemented. Report implementation,
+  test and documentation line deltas separately; do not count a merged report
+  as implemented functionality or complete AP1-AP3/#44 from a backend pass.
+
 ## Research Records
 
 The following PR #45 files are imported verbatim. Their supplied research remains
@@ -1194,3 +1377,8 @@ bibliography. The decisions above govern this narrower implementation phase.
 - [Artifact/backend audit](2026-09-28-artifact-backend-lowering-audit.md)
 - [General recursion audit](2026-09-27-GENERAL-RECURSION-CBPV-AUDIT.md)
 - [Empty type, abort and divergence](2026-09-28_cbpv_empty_type_abort_divergence.md)
+
+PR #48 is also preserved as supplied research:
+[Linkable components and target link manifest](2026-09-29-LINKABLE-COMPILATION-UNITS-AND-TARGET-LINK-MANIFEST-DESIGN.md).
+AP5 is the active implementation checklist for #46. Its assessment, not the
+report's illustrative ABI/CLI or pending-proof defaults, governs this increment.

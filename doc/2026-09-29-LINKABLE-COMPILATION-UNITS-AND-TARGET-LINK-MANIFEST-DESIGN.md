@@ -5,6 +5,10 @@ Baseline: main at `ea287c2e45d33c6d19f34faca6ab9fd61fc50be5`.
 Status: documentation/design submission; no implementation changes.
 Related: #44 (Artifact-to-C), #46 (components), #47 (relevance/admissibility).
 
+Merged in PR #48 on 2026-09-29. The active implementation checklist for #46 is
+[AP5 in the artifact plan](2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md#ap5-downstream-linker-and-linkerscript).
+The submission proposals below remain a research record, not implementation status.
+
 ## Problem List
 
 1. P1 — Linkable components and target manifests: #46.
