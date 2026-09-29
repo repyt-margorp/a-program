@@ -341,6 +341,14 @@ explicitly rechecked with ordinary Solve before pending cursors are attached.
 O2/ASan/UBSan check inert decode/resave, zero fuel, unchanged remaining dispatches,
 final proof bytes, invalid attachments and invalid rules remaining rejected.
 This fixture is not a public `.a` format or a trust-import implementation.
+Capture, numeric metadata transport, factory preparation and budgeted validation
+now live in `artifact/derivation.[ch]`, not in the fixture. The enclosing artifact
+supplies raw inputs through the shared descriptor codec and owns one schedule
+across all worker kinds. The owner payload neither duplicates that schedule nor
+admits saved completion flags. Validation queues use the common schedule API.
+O2/ASan/UBSan also reject truncated metadata, miswired mappings and false saved
+completion; aliases and shared prepared rules survive. Source I/O is not yet
+connected to this module, so the public partition gate remains failing.
 
 The constructor gate separately transports the checked field map through existing
 rule inputs, verifies it using ordinary Solve, then resumes the value owner before

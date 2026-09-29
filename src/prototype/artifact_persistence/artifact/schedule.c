@@ -119,17 +119,17 @@ static int inspect(const struct pg_synthesis *synthesis, const struct pg_dag *ma
 	return 0;
 }
 
-int pg_artifact_schedule_write(FILE *file, const struct pg_synthesis *synthesis,
+const struct pg_artifact_schedule *pg_artifact_schedule_capture(struct pg_graph *storage, const struct pg_synthesis *synthesis,
 	size_t count, struct pg_synthesis_job *const *jobs)
 {
 	struct pg_dag map;
-	if (!file || pg_dag_init(&map, NULL, NULL)) return -1;
-	int result = -1;
+	if (!storage || pg_dag_init(&map, NULL, NULL)) return NULL;
+	const struct pg_artifact_schedule *result = NULL;
 	if (job_map(&map, synthesis, count, jobs)) goto done;
 	unsigned char *marks = pg_alloc(&map.storage, count);
 	size_t ready, waiting;
 	if (!marks || inspect(synthesis, &map, jobs, marks, &ready, &waiting, 0)) goto done;
-	struct pg_artifact_schedule *state = allocate(&map.storage, count, ready, waiting);
+	struct pg_artifact_schedule *state = allocate(storage, count, ready, waiting);
 	if (!state) goto done;
 	size_t q = 0, e = 0;
 	for (const struct pg_synthesis_job *job = synthesis->ready; job; job = job->next)
@@ -140,10 +140,39 @@ int pg_artifact_schedule_write(FILE *file, const struct pg_synthesis *synthesis,
 			state->edges[e++] = i;
 			state->edges[e++] = (unsigned)w->preparation;
 		}
-	result = pg_artifact_schedule_save(file, state);
+	result = state;
 done:
 	pg_dag_destroy(&map);
 	return result;
+}
+
+int pg_artifact_schedule_write(FILE *file, const struct pg_synthesis *synthesis,
+	size_t count, struct pg_synthesis_job *const *jobs)
+{
+	struct pg_graph storage;
+	if (!file || pg_graph_init(&storage)) return -1;
+	const struct pg_artifact_schedule *state = pg_artifact_schedule_capture(&storage, synthesis, count, jobs);
+	int result = state ? pg_artifact_schedule_save(file, state) : -1;
+	pg_graph_destroy(&storage);
+	return result;
+}
+
+const struct pg_artifact_schedule *pg_artifact_schedule_ready(struct pg_graph *storage,
+	size_t count, size_t ready, const size_t *ordinals)
+{
+	if (!storage || ready > count || (ready && !ordinals)) return NULL;
+	unsigned char *seen = calloc(count ? count : 1, 1);
+	if (!seen) return NULL;
+	struct pg_artifact_schedule *state = NULL;
+	for (size_t i = 0; i < ready; ++i) {
+		if (ordinals[i] >= count || seen[ordinals[i]]) goto done;
+		seen[ordinals[i]] = 1;
+	}
+	state = allocate(storage, count, ready, 0);
+	if (state) for (size_t i = 0; i < ready; ++i) state->queue[i] = ordinals[i];
+done:
+	free(seen);
+	return state;
 }
 
 int pg_artifact_schedule_attach(struct pg_synthesis *synthesis, const struct pg_artifact_schedule *state,

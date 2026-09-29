@@ -716,6 +716,25 @@ Actual C/header delta from `ea287c2`: `synthesis_work.c` +28/-9,
 `synthesis_source.h` +9/-0 (net +89). The new fixture is 416 lines and the build
 target adds 8 lines. Documentation and patch context are excluded.
 
+Follow-up against `aa4a21a`: move capture, numeric metadata transport, ordinary
+factory preparation and budgeted revalidation out of the fixture into
+`artifact/derivation.[ch]`. Raw inputs still use the enclosing shared descriptor
+codec. Reject the intermediate design that put the global scheduler inside each
+owner payload: one enclosing artifact owns the schedule, so derivation metadata
+can compose with other owners. `artifact/schedule.c` now also builds validation
+queues directly; tests no longer manufacture schedule wire bytes for that task.
+O2 and ASan/UBSan pass the 190 derivation boundaries, namespace/definition and
+WHNF/scheduler gates; O2 also passes six constructor checkpoints. New controls
+cover truncated metadata, aliases, miswired mappings, partial owner collections
+and false completion assertions rejected by ordinary Kernel checking. Logs:
+`/tmp/a-program-derivation-codec-verified.log` and `-verified-asan.log`.
+The public partition gate still fails at 100+100 and later
+(`/tmp/a-program-derivation-codec-partitions/partitions.tsv`). Source I/O does
+**not yet call this module**: integrate it with producer identities/shared
+relocation and the other pending owners next, not another private checkpoint
+format. Implementation delta: derivation C/header +237/+53, schedule C +34/-5,
+header +7/-0 (net +326). Tests +198/-158 (net +40); build +2/-2.
+
 #### Rejected Read Policy and Retention Audit (2026-09-29)
 
 The user rejected the agent's byte-derived allowance. That prototype and its

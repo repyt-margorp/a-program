@@ -6,6 +6,13 @@
 
 struct pg_artifact_schedule;
 
+const struct pg_artifact_schedule *pg_artifact_schedule_capture(struct pg_graph *,
+	const struct pg_synthesis *, size_t, struct pg_synthesis_job *const *);
+/* A queue for explicit validation, with no suspended edges. Ordinals index the
+ * same closed job mapping used by attach; duplicates and out-of-range reject. */
+const struct pg_artifact_schedule *pg_artifact_schedule_ready(struct pg_graph *,
+	size_t count, size_t ready, const size_t *ordinals);
+
 /* Scheduler portion of a checkpoint. The enclosing owner supplies the same
  * ordered job mapping on both sides, including every ready/wait endpoint.
  * Job identities, private continuation state and evidence are NOT encoded here

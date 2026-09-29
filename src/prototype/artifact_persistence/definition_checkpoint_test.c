@@ -194,18 +194,17 @@ static void invalid_frontiers(struct fixture *f, struct pg_definition_frontier *
 
 static void validation_queue(struct fixture *f, size_t count, struct pg_synthesis_job *const *targets)
 {
-	FILE *file = tmpfile();
-	assert(file && fwrite("APGSCH\1", 1, 8, file) == 8);
-	assert(!pg_wire_write_u64(file, f->count) && !pg_wire_write_u64(file, count) && !pg_wire_write_u64(file, 0));
+	size_t *ordinals = calloc(count ? count : 1, sizeof(*ordinals));
+	assert(ordinals);
 	for (size_t i = 0; i < count; ++i) {
 		size_t j = 0;
 		while (j < f->count && f->jobs[j] != targets[i]) ++j;
-		assert(j < f->count && !pg_wire_write_u64(file, j));
+		assert(j < f->count);
+		ordinals[i] = j;
 	}
-	rewind(file);
-	const struct pg_artifact_schedule *schedule = pg_artifact_schedule_read(file, &f->program->graph, 100000);
+	const struct pg_artifact_schedule *schedule = pg_artifact_schedule_ready(&f->program->graph, f->count, count, ordinals);
+	free(ordinals);
 	assert(schedule && !pg_artifact_schedule_attach(&f->program->synthesis, schedule, f->count, f->jobs));
-	assert(!fclose(file));
 }
 
 static void validate_children(struct fixture *f, const uint64_t *statuses, const uint64_t *bodies)

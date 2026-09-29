@@ -28,9 +28,9 @@ NORMALIZATION_IO := $(addprefix $(ROOT),machine_io.c computation_io.c identity_i
 check-artifact-derivation-checkpoint: $(BUILD)/artifact_derivation_checkpoint_test
 	$(BUILD)/artifact_derivation_checkpoint_test
 
-$(BUILD)/artifact_derivation_checkpoint_test: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ROOT)artifact/schedule.c $(wildcard $(ROOT)*.h) $(ARTIFACT_PROTOTYPE)derivation_checkpoint_test.c
+$(BUILD)/artifact_derivation_checkpoint_test: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ROOT)artifact/schedule.c $(ROOT)artifact/derivation.c $(wildcard $(ROOT)*.h) $(wildcard $(ROOT)artifact/*.h) $(ARTIFACT_PROTOTYPE)derivation_checkpoint_test.c
 	mkdir -p $(BUILD)
-	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ROOT)artifact/schedule.c $(ARTIFACT_PROTOTYPE)derivation_checkpoint_test.c -Wl,--wrap=pg_synthesis_advance -o $@
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ROOT)artifact/schedule.c $(ROOT)artifact/derivation.c $(ARTIFACT_PROTOTYPE)derivation_checkpoint_test.c -Wl,--wrap=pg_synthesis_advance -o $@
 
 .PHONY: check-artifact-definition-checkpoint
 check-artifact-definition-checkpoint: $(BUILD)/artifact_definition_checkpoint_test
