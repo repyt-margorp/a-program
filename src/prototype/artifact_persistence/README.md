@@ -66,6 +66,19 @@ Ordinary checking ignores it. Inert resaves preserve completion; after any Solve
 only local completion is written. This conservative interim policy is not exact
 checkpoint resumption or authenticated reuse. The C adapter exposes this choice
 as `--trust-image`; the compiler's ordinary Solve path is unchanged.
+The current source importer assembles stored rule DAGs directly through the
+canonical ordinary rule factory in one shared iterative pass. It no longer
+creates a lazy preparation worker for every imported input. Graph relocation
+neither accepts a proof nor runs Solve; all rule checks remain pending. The
+explicit lazy derivation API is unchanged for other callers. This avoids an
+import-only reconstruction layer, but does not preserve unfinished solver
+cursors or the global schedule. The public split-fuel gate still fails.
+Against `75b1f60`, full acceptance, C differentials/QuickSort and O2/ASan/UBSan
+semantic tests pass; the latter cover every 0..200 cut and completion, with
+byte-identical inert resaves. Namespace validation now includes canonical premise
+jobs instead of relying on lazy reconstruction; all 70 body checkpoints retain
+exact remaining dispatches and final bytes. Loaded List-09 seed completion costs
+2,824 instead of 2,942 dispatches, matching fresh source, at the same 50,508 bytes.
 Fresh O2 history/transport/semantic, seed and C differential tests pass on clean
 `e716232` plus the prototypes. ASan/UBSan pass semantic/transport, generated-C
 differentials, file policy and QuickSort's unsupported boundary. Source-format
@@ -347,8 +360,9 @@ supplies raw inputs through the shared descriptor codec and owns one schedule
 across all worker kinds. The owner payload neither duplicates that schedule nor
 admits saved completion flags. Validation queues use the common schedule API.
 O2/ASan/UBSan also reject truncated metadata, miswired mappings and false saved
-completion; aliases and shared prepared rules survive. Source I/O is not yet
-connected to this module, so the public partition gate remains failing.
+completion; aliases and shared prepared rules survive. Source I/O now assembles
+canonical rules directly rather than using these lazy-input wrappers. This
+owner codec remains for explicit lazy requests, not a public source checkpoint.
 
 The constructor gate separately transports the checked field map through existing
 rule inputs, verifies it using ordinary Solve, then resumes the value owner before

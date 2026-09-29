@@ -1,5 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #include "source_io.h"
+#include "synthesis_source.h"
 #include "artifact/file.h"
 #include "computation.h"
 #include "retained_io.h"
@@ -74,6 +75,72 @@ static FILE *save(struct pg_program *program, size_t count, struct pg_synthesis_
 	return file;
 }
 
+static void no_import_preparation(const struct pg_program *program)
+{
+	assert(!program->synthesis.steps && program->typing.proofs.count == 1);
+	const struct pg_index *jobs = &program->synthesis.jobs;
+	for (size_t i = 0; i < jobs->capacity; ++i)
+		for (const struct pg_index_entry *entry = jobs->buckets[i]; entry; entry = entry->next)
+			assert(!pg_synthesis_derivation_input((const void *)entry));
+}
+
+static struct pg_derivation_input *rule_input(struct pg_graph *g, enum pg_evidence_rule rule,
+	size_t count, const struct pg_derivation_input *const *premises)
+{
+	struct pg_derivation_input *input = pg_alloc(g, sizeof(*input) + count * sizeof(*premises));
+	assert(input);
+	input->rule = rule; input->count = count;
+	for (size_t i = 0; i < count; ++i) input->premises[i] = premises[i];
+	return input;
+}
+
+static void direct_rule_import(void)
+{
+	struct pg_program *p = pg_program_allocate_empty(PG_DEFINITION_IMPLICIT_THUNK);
+	assert(p);
+	const struct pg_derivation_input *context = rule_input(&p->graph, PG_CONTEXT_EMPTY, 0, NULL);
+	const struct pg_derivation_input *universe = rule_input(&p->graph, PG_UNIVERSE_FORM, 1, &context);
+	const struct pg_derivation_input *deep = universe;
+	for (size_t i = 0; i < 2048; ++i) {
+		const struct pg_derivation_input *premises[] = {context, deep};
+		deep = rule_input(&p->graph, PG_CONTEXT_PROJECTION, 2, premises);
+	}
+	const struct pg_derivation_input *inputs[] = {deep, context, deep, universe,
+		rule_input(&p->graph, PG_CONTEXT_EMPTY, 0, NULL),
+		rule_input(&p->graph, PG_RETURN_INTRO, 1, &context)};
+	struct pg_synthesis_job *const *jobs = NULL;
+	assert(!pg_synthesis_import_rules(&p->synthesis, 6, inputs, NULL, &jobs));
+	no_import_preparation(p);
+	assert(jobs[0] == jobs[2] && jobs[1] == jobs[4]);
+	assert(jobs[1] == pg_synthesis_rule(&p->synthesis, context, NULL, NULL, NULL));
+	assert(jobs[3] == pg_synthesis_rule(&p->synthesis, universe, &jobs[1], NULL, NULL));
+	assert(p->synthesis.jobs.count == 2052 && !pg_synthesis_result(jobs[0]));
+	advance(p, 0);
+	no_import_preparation(p);
+	advance(p, 100000);
+	assert(pg_synthesis_status(jobs[0]) == PG_SYNTHESIS_DONE);
+	assert(pg_evidence_subject(pg_synthesis_result(jobs[0]))->core == pg_universe(&p->graph, 0));
+	assert(pg_synthesis_status(jobs[5]) == PG_SYNTHESIS_REJECTED && !pg_synthesis_result(jobs[5]));
+	struct pg_synthesis_job *const *again;
+	size_t count = p->synthesis.jobs.count;
+	uint64_t steps = p->synthesis.steps;
+	assert(!pg_synthesis_import_rules(&p->synthesis, 6, inputs, NULL, &again));
+	assert(count == p->synthesis.jobs.count && steps == p->synthesis.steps);
+	for (size_t i = 0; i < 6; ++i) assert(again[i] == jobs[i]);
+	pg_program_destroy(p);
+	p = pg_program_allocate_empty(PG_DEFINITION_IMPLICIT_THUNK);
+	assert(p);
+	context = rule_input(&p->graph, PG_CONTEXT_EMPTY, 0, NULL);
+	struct pg_derivation_input *cycle = rule_input(&p->graph, PG_UNIVERSE_FORM, 1, &context);
+	cycle->premises[0] = cycle;
+	const struct pg_derivation_input *cyclic = cycle;
+	again = NULL;
+	assert(pg_synthesis_import_rules(&p->synthesis, 1, &cyclic, NULL, &again) && !again);
+	no_import_preparation(p);
+	pg_program_destroy(p);
+	puts("direct rule import: shared iterative relocation, no preparation workers or proof admission");
+}
+
 static void cycles(uint64_t budget)
 {
 	const char *source = "Nat := @{zero:*;succ:*->*;}; id := \\x:Nat=>x; main := id Nat.zero;";
@@ -100,6 +167,7 @@ static void cycles(uint64_t budget)
 		pg_program_destroy(program);
 		program = pg_artifact_read_file(file, PG_ARTIFACT_DEFAULT_LIMIT, &count, &roots);
 		assert(program && count == 3 && roots[0] == roots[2]);
+		no_import_preparation(program);
 		assert(!program->synthesis.steps && !pg_synthesis_result(roots[0]));
 		const struct pg_occurrence *view;
 		size_t proofs = program->typing.proofs.count, jobs = program->synthesis.jobs.count;
@@ -757,6 +825,7 @@ static void revalidation_budget(void)
 
 int main(void)
 {
+	direct_rule_import();
 	limit_arguments();
 	completion_format();
 	revalidation_budget();
@@ -767,7 +836,8 @@ int main(void)
 	trusted_export("main := #42; invalid := #0 :: @;", 0, 0, NULL);
 	trusted_export("import value; main := value;", 1, 0, "value := #42;");
 	trusted_export("import value; main := value;", 0, 0, "value := #42; invalid := #0 :: @;");
-	cycles(0); cycles(100); cycles(100000);
+	for (uint64_t cut = 0; cut <= 200; ++cut) cycles(cut);
+	cycles(100000);
 	file_extent();
 	fixed_limit_and_publication();
 	const char *recompute[] = {

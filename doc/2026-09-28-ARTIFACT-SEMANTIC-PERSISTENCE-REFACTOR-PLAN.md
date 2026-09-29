@@ -668,72 +668,67 @@ Actual C/header delta from `331d5f2`: `synthesis.c` +53/-6,
 `synthesis_source.h` +17/-0 (net +111). The extended fixture is +279/-40;
 build-target comments +1/-1. Patch context lines are not implementation growth.
 
-#### Imported Derivation Preparation (2026-09-29)
+#### Rule Relocation and Preparation (2026-09-29)
 
-Inspection at `ea287c2`: the public List-09 seed has 66 workers after 100
-dispatches, 52 still pending: 28 imported derivations, 11 plain rules, 6
-definitions, 2 Body, 2 Classifier, and one each module expression, registration
-and operation wrapper. Recipe-only import loses their queue and preparation
-edges, not merely an output cache. Existing namespace fixtures do not cover
-this public boundary.
+Historical increments `aa4a21a` and `75b1f60` added imported-input cursor/edge
+accessors and the artifact-owned derivation codec. Their 190 known-origin
+boundaries pass O2/ASan/UBSan, including shared rules, charged validation and
+rejection of false completion. They are not public source checkpoints. The
+earlier versions of this plan at those commits retain per-file deltas and logs.
+One enclosing artifact owns its schedule; duplicating it inside each owner
+payload was rejected because it prevents composition with other pending owners.
 
-Agent implementation: imported derivations now expose their existing premise
-cursor and prepared-rule edge. Restoration uses the normal rule factory after
-checking that each skipped premise is already prepared. It neither admits a
-proof nor restores a checked status. Request lookup and construction share one
-hash-key implementation; inspection does not create unvisited premises. No
-new proof representation, replay engine or accepted-source changes are added.
+Inspection at `75b1f60`: source import replaces every saved rule DAG root with a
+lazy `DERIVATION_INPUT_JOB`; those workers later assemble ordinary canonical
+rules. At List-09 seed +100 this produces 28 pending input wrappers, alongside
+11 plain rules and 13 other pending workers. This preparation exists because of
+the import representation, not because rule formation requires type checking.
 
-O2 and ASan/UBSan pass 190 boundaries, including 44 shared-rule observations and
-940 preparation-wait observations. Original Programs are destroyed; shared
-descriptor relocation, inert resave/step 0, exact remaining dispatches and final
-proof bytes are checked. Completed plain rules are revalidated through ordinary
-Solve within a single bounded budget before pending cursors are attached.
-Foreign/late/out-of-range/unprepared attachments reject without queue changes;
-restoring preparation of an invalid rule does not make it accepted. Logs:
-`/tmp/a-program-input-shared.log`, `/tmp/a-program-input-shared-asan.log`.
+Agent revision: `pg_sources_read` now relocates the complete stored DAG directly
+through `pg_synthesis_import_rules` into the existing `pg_synthesis_rule` factory.
+One iterative, shared dependency walk assembles pointers; ordinary Solve still
+checks every rule. No normalization, effect solving, stored-DONE admission or
+new checker runs during loading. The lazy API remains for callers explicitly
+requesting fuel-accounted input expansion, but the public source importer no
+longer creates those wrappers. Do not serialize an unnecessary import-only
+preparation machine merely because its isolated codec was implemented first.
+This is not a change to which judgements are accepted or a claim of free checking.
 
-This remains a known-origin owner fixture, **not public checkpoint transport**.
-The public partition gate still fails at 100+100 and later
-(`/tmp/a-program-input-partitions/partitions.tsv`). The next integration must
-connect owner identities and continuations to the shared source relocation and
-explicit validation/provenance policy; adding more isolated passing fixtures
-alone does not meet AP1.3/AP2.3.
+Verification: source-I/O tests, semantic zero-step cycles, CLI read policy,
+21 C differentials, Oracle tests and checked/trusted standalone Acc QuickSort
+pass. Direct import of a depth-2048 shared DAG creates only canonical rule jobs,
+preserves aliases, produces no evidence, rejects cycles, and leaves an invalid
+RETURN rule for ordinary Kernel rejection. Semantic tests forbid Solve, WHNF,
+substitution and effect solving during load. All 0..200-cut inert cycles plus
+the completed case pass O2 and ASan/UBSan. Full `check-acceptance` exits 0,
+including both LT providers/partition orders, general Sorted/permutation,
+QuickSort/MergeSort image consumers and invalid-evidence controls. Logs:
+`/tmp/a-program-direct-rule-import-acceptance.log`, `-c.log`, `-asan.log`, and
+`/tmp/a-program-direct-rule-reproduced-semantic.log` (fresh patch application).
 
-Fresh full `check-acceptance` passes (exit 0), including both LT providers and
-partition orders, general Sorted/permutation witnesses and invalid-evidence
-controls (`/tmp/a-program-input-acceptance.log`). Semantic/owner checkpoints,
-CLI policy, 21 C differentials, Oracle tests and checked/trusted C Acc QuickSort
-also pass (`/tmp/a-program-input-artifact.log`, `/tmp/a-program-input-policy.log`,
-`/tmp/a-program-input-c.log`). List 09 remains 2,824 steps and 50,508 bytes,
-identical to the prior increment. Candidate: clean accepted `e716232` plus the
-prototype overlays at `ea287c2` and this increment; unrelated working-tree edits
-are excluded. PR #48 and `21d849a` only changed documentation during this run.
-These results do not repair the public partition failure recorded above.
+The namespace fixture initially dropped already-created premise jobs when
+installing its validation queue. Unlike lazy wrappers, canonical requests do
+not recreate missing queue entries. The fixture now selects the validation
+premise closure through the existing DAG walker, preserving its isolation from
+unfinished constructor bodies. Remaining dispatches and final images still
+match at all 70 started-body boundaries (O2/ASan/UBSan). Definition, constructor,
+WHNF/scheduler and explicit lazy-input owner gates also pass. Logs:
+`/tmp/a-program-direct-rule-import-owners-fixed.log`, `-namespace-asan.log`.
 
-Actual C/header delta from `ea287c2`: `synthesis_work.c` +28/-9,
-`synthesis_work.h` +3/-0, `synthesis_derivation.c` +73/-15,
-`synthesis_source.h` +9/-0 (net +89). The new fixture is 416 lines and the build
-target adds 8 lines. Documentation and patch context are excluded.
+List-09 loaded-seed completion decreases from 2,942 to 2,824 dispatches; fresh
+source remains 2,824. Completed output remains 50,508 bytes. Public split-fuel
+comparison still fails at 100+100 and later; terminal+0 retains exact bytes but
+remains unaccepted under strict import. See
+`/tmp/a-program-direct-rule-import-partitions/partitions.tsv`. Next preserve
+canonical rule and source/typing-owner continuations in shared source relocation,
+with the existing schedule and explicit validation/provenance policy. AP1-AP3
+remain open; removing redundant preparation is not exact resume.
 
-Follow-up against `aa4a21a`: move capture, numeric metadata transport, ordinary
-factory preparation and budgeted revalidation out of the fixture into
-`artifact/derivation.[ch]`. Raw inputs still use the enclosing shared descriptor
-codec. Reject the intermediate design that put the global scheduler inside each
-owner payload: one enclosing artifact owns the schedule, so derivation metadata
-can compose with other owners. `artifact/schedule.c` now also builds validation
-queues directly; tests no longer manufacture schedule wire bytes for that task.
-O2 and ASan/UBSan pass the 190 derivation boundaries, namespace/definition and
-WHNF/scheduler gates; O2 also passes six constructor checkpoints. New controls
-cover truncated metadata, aliases, miswired mappings, partial owner collections
-and false completion assertions rejected by ordinary Kernel checking. Logs:
-`/tmp/a-program-derivation-codec-verified.log` and `-verified-asan.log`.
-The public partition gate still fails at 100+100 and later
-(`/tmp/a-program-derivation-codec-partitions/partitions.tsv`). Source I/O does
-**not yet call this module**: integrate it with producer identities/shared
-relocation and the other pending owners next, not another private checkpoint
-format. Implementation delta: derivation C/header +237/+53, schedule C +34/-5,
-header +7/-0 (net +326). Tests +198/-158 (net +40); build +2/-2.
+Delta from `75b1f60`, excluding patch context: `synthesis_derivation.c` +51/-0,
+`synthesis.h` +7/-0, `source_io.c` +2/-7, `source_io.h` +6/-1 (net +58).
+Tests: `semantic_test.c` +71/-1, `definition_checkpoint_test.c` +24/-1
+(net +93). Accepted sources and unrelated working-tree edits are unchanged;
+all candidates use clean `e716232` plus these prototype overlays.
 
 #### Rejected Read Policy and Retention Audit (2026-09-29)
 
@@ -818,6 +813,10 @@ alone. Avoid adding a second parallel type graph or serializing all workers.
 - [x] Restore imported derivation preparation and its canonical rule edge,
   preserving shared workers and preparation subscriptions without checking on
   decode; `check-artifact-derivation-checkpoint` is an owner-level gate only.
+- [x] Verify direct source-image rule relocation through ordinary canonical
+  factories, without per-input preparation wrappers. Retain byte-identical
+  step-0 resaves and ordinary rejection; full acceptance passes for this
+  prototype revision. This does not waive remaining continuation/provenance work.
 - [ ] Expand continuation transport to unfinished fields, classifier queries
   lacking a retained structural type, and other source/typing owners. Integrate
   the completed owner interfaces into ordinary `.a` checkpoint transport;

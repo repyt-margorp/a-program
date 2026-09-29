@@ -23,7 +23,65 @@
  enum { RULE_KEY_FIELDS = 18 };
  
  static void rule_key(const struct pg_derivation_input *input, uint64_t *key)
-@@ -202,6 +218,32 @@
+@@ -180,6 +196,57 @@
+ 	return pg_synthesis_rule(synthesis, &input, premises, NULL, NULL);
+ }
+ 
++static int import_premise(void *unused, const void *key, size_t i, const void **child)
++{
++	(void)unused;
++	const struct pg_derivation_input *input = key;
++	if (i == input->count) return 0;
++	*child = input->premises[i];
++	return *child ? 1 : -1;
++}
++
++int pg_synthesis_import_rules(struct pg_synthesis *s, size_t count,
++	const struct pg_derivation_input *const *inputs, struct pg_effect_inference *effects,
++	struct pg_synthesis_job *const **result)
++{
++	if (!s || !result || (count && !inputs) || count > SIZE_MAX / sizeof(void *)) return -1;
++	struct pg_dag dag;
++	if (pg_dag_init(&dag, import_premise, NULL)) return -1;
++	int status = -1;
++	for (size_t i = 0; i < count; ++i) if (!inputs[i] || pg_dag_add(&dag, inputs[i])) goto done;
++	if (dag.count > SIZE_MAX / sizeof(void *)) goto done;
++	size_t arity = 0;
++	for (const struct pg_dag_node *node = dag.first; node; node = node->next) {
++		const struct pg_derivation_input *input = node->key;
++		if (input->count > arity) arity = input->count;
++	}
++	if (arity > SIZE_MAX / sizeof(void *)) goto done;
++	struct pg_synthesis_job **jobs = pg_alloc(&dag.storage, dag.count * sizeof(*jobs));
++	struct pg_synthesis_job **premises = pg_alloc(&dag.storage, arity * sizeof(*premises));
++	struct pg_synthesis_job **selected = pg_alloc(s->typing->graph, count * sizeof(*selected));
++	if (!jobs || !premises || !selected) goto done;
++	for (const struct pg_dag_node *node = dag.first; node; node = node->next) {
++		const struct pg_derivation_input *input = node->key;
++		for (size_t i = 0; i < input->count; ++i)
++			premises[i] = jobs[pg_dag_find(&dag, input->premises[i])->id - 1];
++		struct pg_derivation_input header = *input;
++		struct pg_effect_equation *equation = NULL;
++		if (header.effect_parameter) {
++			equation = pg_effect_equation_find(effects, header.effect_parameter);
++			header.effect_parameter = NULL;
++		}
++		jobs[node->id - 1] = input->effect_parameter && !equation ? NULL
++			: pg_synthesis_rule(s, &header, premises, equation ? effects : NULL, equation);
++		if (!jobs[node->id - 1]) goto done;
++	}
++	for (size_t i = 0; i < count; ++i) selected[i] = jobs[pg_dag_find(&dag, inputs[i])->id - 1];
++	*result = selected;
++	status = 0;
++done:
++	pg_dag_destroy(&dag);
++	return status;
++}
++
+ static int derivation_endpoint(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
+ 	const struct pg_term *actual, const struct pg_term *stored)
+ {
+@@ -202,6 +269,32 @@
  	return job && job->role == DERIVATION_JOB ? job->inputs[0] : NULL;
  }
  
@@ -56,7 +114,7 @@
  struct pg_synthesis_job *pg_synthesis_rule_premise(struct pg_synthesis *synthesis,
  	const struct pg_synthesis_job *job, size_t index)
  {
-@@ -415,11 +457,64 @@
+@@ -415,11 +508,64 @@
  	return status;
  }
  
@@ -122,7 +180,7 @@
  	if (!local->rule) {
  		if (input->count > SIZE_MAX / sizeof(struct pg_synthesis_job *)) {
  			pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
-@@ -433,20 +528,9 @@
+@@ -433,20 +579,9 @@
  			pg_synthesis_enqueue(synthesis, job);
  			return;
  		}

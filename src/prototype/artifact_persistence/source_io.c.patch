@@ -234,16 +234,27 @@
  	size_t context_count, reference_count;
  	const struct pg_context *const *contexts;
  	const struct pg_term *const *references;
-@@ -988,7 +1060,7 @@
- 		if (!rules[i]) goto fail;
+@@ -979,16 +1051,11 @@
+ 		source_offset += input.scope_count + (input.constructor ? 2 : 1);
  	}
+ 	if (fgetc(file) != EOF || ferror(file)) goto fail;
+-	if (nd > SIZE_MAX / sizeof(void *)) goto fail;
+-	struct pg_synthesis_job **rules = pg_alloc(scratch, nd * sizeof(*rules));
+-	if (!rules) goto fail;
++	struct pg_synthesis_job *const *rules;
+ 	pg_effect_inference_seal(&program->imported_effects);
+-	for (size_t i = 0; i < nd; ++i) {
+-		rules[i] = pg_synthesis_derivation_inference(&program->synthesis, derivations[i], &program->imported_effects);
+-		if (!rules[i]) goto fail;
+-	}
++	if (pg_synthesis_import_rules(&program->synthesis, nd, derivations, &program->imported_effects, &rules)) goto fail;
  	dependencies = (struct restore_order){records, ids, NULL, (size_t)n, (size_t)np};
 -	struct restore_node *nodes = pg_alloc(&order.storage, ((size_t)n + (size_t)np) * sizeof(*nodes));
 +	struct restore_node *nodes = pg_wire_array(&order.storage, n + np, sizeof(*nodes));
  	if (!nodes) goto fail;
  	dependencies.nodes = nodes;
  	for (size_t i = 0; i < n + np; ++i)
-@@ -1164,6 +1236,10 @@
+@@ -1164,6 +1231,10 @@
  			references[slot]->as.reference, contexts[2 * slot], contexts[2 * slot + 1]};
  		if (pg_synthesis_declaration_member_at(&program->synthesis, producers[producer - 1], (size_t)index, &allocation)) goto fail;
  	}

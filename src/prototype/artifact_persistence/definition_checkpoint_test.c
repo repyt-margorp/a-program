@@ -6,6 +6,7 @@
 #include "artifact/schedule.h"
 #include "artifact/file.h"
 #include "wire.h"
+#include "dag.h"
 #include "iadt.h"
 #include <assert.h>
 #include <stdlib.h>
@@ -709,6 +710,14 @@ static FILE *namespace_save(struct fixture *f, struct pg_synthesis_job *member)
 /* Only the unpublished startup queue is replaced here. This temporary map
  * covers every imported job so the scheduler cannot lose a subscription.
  * It is neither serialized nor used as the semantic root set. */
+static int validation_premise(void *owner, const void *key, size_t i, const void **child)
+{
+	const struct pg_derivation_input *input = pg_synthesis_plain_derivation(key);
+	if (!input || i == input->count) return 0;
+	*child = pg_synthesis_rule_premise(owner, key, i);
+	return *child ? 1 : -1;
+}
+
 static void namespace_validation_queue(struct fixture *f, size_t count, struct pg_synthesis_job *const *targets)
 {
 	struct pg_synthesis *s = &f->program->synthesis;
@@ -718,7 +727,21 @@ static void namespace_validation_queue(struct fixture *f, size_t count, struct p
 	for (size_t i = 0; i < s->jobs.capacity; ++i)
 		for (struct pg_index_entry *entry = s->jobs.buckets[i]; entry; entry = entry->next)
 			add_job(f, (void *)entry);
-	validation_queue(f, count, targets);
+	/* The source reader now relocates canonical premise jobs immediately.
+	 * Keep the validation closure runnable instead of dropping its existing
+	 * premises and relying on lazy wrappers to recreate them. */
+	struct pg_dag closure;
+	assert(!pg_dag_init(&closure, validation_premise, s));
+	for (size_t i = 0; i < count; ++i) assert(!pg_dag_add(&closure, targets[i]));
+	struct pg_synthesis_job **pending = calloc(closure.count + 1, sizeof(*pending));
+	assert(pending);
+	size_t ready = 0;
+	for (const struct pg_dag_node *n = closure.first; n; n = n->next) {
+		struct pg_synthesis_job *job = (void *)n->key;
+		if (job->status == PG_SYNTHESIS_PENDING) pending[ready++] = job;
+	}
+	validation_queue(f, ready, pending);
+	free(pending); pg_dag_destroy(&closure);
 }
 
 static void namespace_validate(struct fixture *f)

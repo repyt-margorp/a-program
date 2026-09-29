@@ -1,6 +1,20 @@
 --- a/synthesis.h
 +++ b/synthesis.h
-@@ -868,6 +868,23 @@
+@@ -450,6 +450,13 @@
+  * ordinary rule jobs await sealing/convergence before accepting F formation. */
+ struct pg_synthesis_job *pg_synthesis_derivation_inference(struct pg_synthesis *synthesis,
+ 	const struct pg_derivation_input *input, struct pg_effect_inference *work);
++/* Relocate a complete stored DAG directly to ordinary pending rule requests.
++ * This assembles dependencies only: no Solve, normalization or evidence. All
++ * selected roots share one traversal. Use only for an unpublished import owner;
++ * discard that owner on failure. Output is published only on success. */
++int pg_synthesis_import_rules(struct pg_synthesis *, size_t,
++	const struct pg_derivation_input *const *, struct pg_effect_inference *,
++	struct pg_synthesis_job *const **);
+ /* Same unaccepted rule evaluator, with producer premises instead of loaded
+  * input->premises. The input header is copied and structurally keyed together
+  * with exact premise/parameter producer pointers; header allocation identity
+@@ -868,6 +875,23 @@
  void pg_synthesis_advance(struct pg_synthesis *synthesis, uint64_t budget);
  enum pg_synthesis_status pg_synthesis_status(const struct pg_synthesis_job *job);
  const struct pg_evidence *pg_synthesis_result(const struct pg_synthesis_job *job);

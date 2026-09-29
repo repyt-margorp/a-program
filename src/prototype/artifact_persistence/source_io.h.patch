@@ -18,7 +18,19 @@
   * already suspended values under surface &, admits checked
   * termination requests, and uses TOTAL source RETURN/arrow contracts with F
   * totality contracts, context-authoritative Pi premises and lexical
-@@ -54,22 +61,26 @@
+@@ -48,28 +55,37 @@
+  * registration verifies each retained producer before using it.
+  * Reuses immutable syntax, lexical parents, namespaces and import bindings.
+  * Rule evidence is stored as unaccepted derivation inputs through the existing
+- * codec, with one Core table for all rule roots. Effect contributions must be
++ * codec, with one Core table for all rule roots. Loading relocates the full
++ * input DAG to canonical ordinary rule requests in one shared dependency walk;
++ * it does not schedule a second DAG-expansion job for each input. This is graph
++ * assembly, not proof checking: no Solve, endpoint computation or evidence
++ * admission runs. Ordinary rules check the imported premises after loading.
++ * Effect contributions must be
+  * complete (workers sealed); solutions are recomputed by ordinary Solve.
+  * Source declarations retain their nominal reference in the shared graph,
   * not an allocation-only formation theorem. Source synthesis checks fields
   * and result images against that immutable declaration; nested alpha renaming
   * uses fresh field evidence, not acceptance of loaded annotations.
