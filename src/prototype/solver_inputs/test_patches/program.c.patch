@@ -1,0 +1,59 @@
+--- a/program.c
++++ b/program.c
+@@ -35,10 +35,10 @@
+ 	struct pg_synthesis_job *whnf = pg_synthesis_normalize_jobs(&p->synthesis, context, p->root, PG_REDUCTION_WHNF);
+ 	assert(nf && whnf && nf != whnf && !p->synthesis.steps);
+ 	assert(nf == pg_synthesis_normalize_jobs(&p->synthesis, context, p->root, PG_REDUCTION_NF));
+-	struct pg_synthesis_job *c, *proof;
++	struct pg_synthesis_input c, proof;
+ 	enum pg_reduction_kind kind;
+ 	assert(!pg_synthesis_normalization_input(&p->synthesis, nf, &c, &proof, &kind, NULL));
+-	assert(c == context && proof == p->root && kind == PG_REDUCTION_NF);
++	assert(!c.checked && c.pending == context && !proof.checked && proof.pending == p->root && kind == PG_REDUCTION_NF);
+ 	assert(pg_synthesis_normalization_input(&p->synthesis, p->root, &c, &proof, &kind, NULL));
+ 	struct pg_synthesis_job *invalid = pg_synthesis_normalize_jobs(&p->synthesis, p->root, p->root, PG_REDUCTION_NF);
+ 	assert(invalid && !pg_synthesis_result(nf));
+@@ -50,11 +50,41 @@
+ 	assert(pg_synthesis_status(whnf) == PG_SYNTHESIS_DONE);
+ 	assert(pg_synthesis_status(invalid) == PG_SYNTHESIS_REJECTED);
+ 	const struct pg_evidence *ctx = pg_synthesis_result(context), *input = pg_synthesis_result(p->root);
++	size_t jobs = p->synthesis.jobs.count;
++	size_t evidence = p->typing.proofs.count, terms = p->graph.terms.count;
+ 	struct pg_synthesis_job *accepted = pg_synthesis_nf(&p->synthesis, ctx, input);
+-	assert(accepted == pg_synthesis_normalize_jobs(&p->synthesis,
+-		pg_synthesis_evidence(&p->synthesis, ctx), pg_synthesis_evidence(&p->synthesis, input), PG_REDUCTION_NF));
++	assert(accepted && p->synthesis.jobs.count == jobs + 1);
++	assert(evidence == p->typing.proofs.count && terms == p->graph.terms.count);
++	assert(!pg_synthesis_normalization_input(&p->synthesis, accepted, &c, &proof, &kind, NULL));
++	assert(c.checked == ctx && !c.pending && proof.checked == input && !proof.pending);
++	assert(accepted == pg_synthesis_reduction_request(&p->synthesis, c, proof, PG_REDUCTION_NF, 0));
++	assert(p->synthesis.jobs.count == jobs + 1);
++	assert(pg_synthesis_input_result(proof) == input);
++	struct pg_synthesis_job *context_adapter = pg_synthesis_evidence(&p->synthesis, ctx);
++	struct pg_synthesis_job *proof_adapter = pg_synthesis_evidence(&p->synthesis, input);
++	size_t with_adapters = p->synthesis.jobs.count;
++	assert(accepted == pg_synthesis_normalize_jobs(&p->synthesis, context_adapter, proof_adapter, PG_REDUCTION_NF));
++	assert(p->synthesis.jobs.count == with_adapters);
++	assert(!pg_synthesis_reduction_request(&p->synthesis, (struct pg_synthesis_input){0}, proof, PG_REDUCTION_NF, 0));
++	assert(!pg_synthesis_reduction_request(&p->synthesis,
++		(struct pg_synthesis_input){ctx, context}, proof, PG_REDUCTION_NF, 0));
++	assert(!pg_synthesis_reduction_request(&p->synthesis, c, proof, PG_REDUCTION_NF, 2));
++	struct pg_program *foreign = pg_program_create(text, strlen(text), PG_DEFINITION_EXPLICIT_THUNK);
++	assert(foreign && !pg_synthesis_reduction_request(&foreign->synthesis, c, proof, PG_REDUCTION_NF, 0));
++	assert(!pg_synthesis_reduction_request(&foreign->synthesis,
++		(struct pg_synthesis_input){.pending = context}, proof, PG_REDUCTION_NF, 0));
++	pg_program_destroy(foreign);
+ 	pg_synthesis_advance(&p->synthesis, 10000);
+ 	assert(pg_synthesis_result(accepted) == pg_synthesis_result(nf));
++	const struct pg_evidence *extended = pg_prove_context_extension(&p->typing, ctx,
++		pg_binder(&p->graph), pg_prove_universe(&p->typing, ctx, 0));
++	const struct pg_evidence *projected = pg_prove_projection(&p->typing, extended, input);
++	assert(projected && pg_evidence_subject(projected)->core == pg_evidence_subject(input)->core);
++	struct pg_synthesis_job *other_use = pg_synthesis_nf(&p->synthesis, extended, projected);
++	assert(other_use && other_use != accepted);
++	pg_synthesis_advance(&p->synthesis, 10000);
++	assert(pg_synthesis_status(other_use) == PG_SYNTHESIS_DONE);
++	assert(pg_evidence_context(pg_synthesis_result(other_use)) == pg_evidence_context(extended));
+ 	assert(!pg_synthesis_normalize_jobs(&p->synthesis, context, p->root, (enum pg_reduction_kind)99));
+ 	pg_program_destroy(p);
+ }

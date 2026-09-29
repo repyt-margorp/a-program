@@ -1,0 +1,177 @@
+--- a/source_io.c
++++ b/source_io.c
+@@ -70,17 +70,26 @@
+ struct producer_input {
+ 	const struct pg_source_scope *scope, *prepared;
+ 	const struct pg_syntax *syntax, *definitions;
+-	struct pg_synthesis_job *operands[2];
+-	const struct pg_synthesis_job *rule;
++	const void *operands[2];
++	const void *rule;
+ 	struct callable_input callable;
+ 	size_t arity;
+ 	unsigned mode;
+ };
+ 
+-static struct producer_input producer_input(const struct pg_synthesis *synthesis,
+-	const struct pg_synthesis_job *job)
++/* Transport borrows checked leaves directly. This scratch membership index
++ * distinguishes references; it never creates a completed solver request. */
++struct producer_collection {
++	const struct pg_synthesis *synthesis;
++	struct pg_dag checked;
++};
++
++static struct producer_input producer_input(struct producer_collection *c, const void *key)
+ {
+ 	struct producer_input input = {0};
++	if (pg_dag_find(&c->checked, key)) return (struct producer_input){.rule = key};
++	const struct pg_synthesis *synthesis = c->synthesis;
++	const struct pg_synthesis_job *job = key;
+ 	const struct pg_source_scope *local = pg_synthesis_prepared_environment(job);
+ 	struct pg_source_environment prepared;
+ 	if (local && !pg_synthesis_environment_input(synthesis, local, &prepared) && prepared.definitions)
+@@ -88,15 +97,25 @@
+ 	input.arity = 2;
+ 	enum pg_reduction_kind kind;
+ 	int force;
++	struct pg_synthesis_input operands[2];
++	struct pg_synthesis_job *left, *right;
+ 	if (!callable_input(synthesis, job, &input.callable)) {
+ 		input.operands[0] = input.callable.left;
+ 		input.operands[1] = input.callable.right;
+ 		input.mode = input.callable.operation ? 6 : 5;
+ 	} else if (!pg_synthesis_normalization_input(synthesis, job,
+-		&input.operands[0], &input.operands[1], &kind, &force)) {
++		&operands[0], &operands[1], &kind, &force)) {
++		for (size_t i = 0; i < 2; ++i) {
++			if (operands[i].checked) {
++				if (pg_dag_add(&c->checked, operands[i].checked)) return input;
++				input.operands[i] = operands[i].checked;
++			} else input.operands[i] = operands[i].pending;
++		}
+ 		input.mode = (kind == PG_REDUCTION_NF ? 2 : 1) + (force ? 2 : 0);
+-	} else if (pg_synthesis_source_expect_input(synthesis, job,
+-		&input.scope, &input.operands[0], &input.operands[1])) {
++	} else if (!pg_synthesis_source_expect_input(synthesis, job, &input.scope, &left, &right)) {
++		input.operands[0] = left;
++		input.operands[1] = right;
++	} else {
+ 		input.arity = 0;
+ 		if (pg_synthesis_source_input(synthesis, job, &input.scope, &input.syntax) &&
+ 			pg_synthesis_definition_input(synthesis, job, &input.scope, &input.definitions, &input.syntax))
+@@ -168,13 +187,15 @@
+ 
+ static int producer_child(void *owner, const void *key, size_t index, const void **result)
+ {
+-	const struct pg_synthesis *const *synthesis = owner;
+-	struct producer_input input = producer_input(*synthesis, key);
++	struct producer_collection *c = owner;
++	struct producer_input input = producer_input(c, key);
++	if (c->checked.failed) return -1;
+ 	if (input.arity) {
+ 		if (index >= input.arity) return 0;
+ 		*result = input.operands[index];
+-		return 1;
++		return *result ? 1 : -1;
+ 	}
++	if (pg_dag_find(&c->checked, key)) return 0;
+ 	const struct pg_syntax_item *item;
+ 	struct pg_synthesis_job *term;
+ 	if (pg_synthesis_definition_entry(key, index, &item, &term) != 1) return 0;
+@@ -202,6 +223,7 @@
+ 
+ struct origin_collection {
+ 	const struct pg_synthesis *synthesis;
++	struct producer_collection *values;
+ 	struct pg_dag *scopes, *syntax, *rules, *origins, *producers, *allocations, *bindings, *declarations;
+ 	struct pg_dag objects, terms, contexts, references, environment_binders;
+ 	struct pg_index candidates;
+@@ -243,7 +265,11 @@
+ 		const struct pg_dag_node *scope_node = c->last_scope ? c->last_scope->next : c->scopes->first;
+ 		if (!producer && !scope_node) return 0;
+ 		for (; producer; c->last_producer = producer, producer = producer->next) {
+-			struct producer_input input = producer_input(c->synthesis, producer->key);
++			struct producer_input input = producer_input(c->values, producer->key);
++			if (pg_dag_find(&c->values->checked, producer->key)) {
++				if (pg_dag_add(c->rules, producer->key)) return -1;
++				continue;
++			}
+ 			if (input.prepared && pg_dag_add(c->scopes, input.prepared)) return -1;
+ 			const struct pg_source_scope *local = pg_synthesis_prepared_environment(producer->key);
+ 			if (local && index_environment_references(c, local)) return -1;
+@@ -659,7 +685,9 @@
+ 	struct pg_dag bindings = {0}, declarations = {0};
+ 	struct pg_effect_inference effects = {0};
+ 	struct pg_declaration_io codec = {0};
++	struct producer_collection values = {.synthesis = synthesis};
+ 	struct origin_collection collection = {.synthesis = synthesis, .scopes = &scopes,
++		.values = &values,
+ 		.syntax = &syntax, .rules = &rules, .origins = &origins, .producers = &producers,
+ 		.allocations = &allocations, .bindings = &bindings,
+ 		.declarations = &declarations, .codec = &codec};
+@@ -667,7 +695,8 @@
+ 	int status = -1;
+ 	/* Callbacks only inspect synthesis; no solver entry is invoked. */
+ 	if (pg_dag_init(&scopes, child, &synthesis) || pg_dag_init(&syntax, pg_syntax_child, NULL)
+-		|| pg_dag_init(&producers, producer_child, &synthesis)
++		|| pg_dag_init(&values.checked, NULL, NULL)
++		|| pg_dag_init(&producers, producer_child, &values)
+ 		|| pg_dag_init(&rules, NULL, NULL) || pg_dag_init(&origins, NULL, NULL) || pg_dag_init(&allocations, NULL, NULL)
+ 		|| pg_dag_init(&bindings, NULL, NULL)
+ 		|| pg_dag_init(&declarations, NULL, NULL)
+@@ -685,12 +714,13 @@
+ 	size_t semantic_producers = materialized ? producers.count : 0;
+ 	for (const struct pg_dag_node *node = producers.first; node && node->id <= semantic_producers; node = node->next) {
+ 		const struct pg_occurrence *subject = NULL;
+-		if (pg_synthesis_materialized(node->key, &subject) < 0) goto done;
++		if (pg_dag_find(&values.checked, node->key)) subject = pg_evidence_subject(node->key);
++		else if (pg_synthesis_materialized(node->key, &subject) < 0) goto done;
+ 		if (subject && pg_dag_add(&collection.terms, subject->core)) goto done;
+ 	}
+ 	if (retain_objects(&collection)) goto done;
+ 	const struct pg_derivation_input *const *derivations;
+-	if (pg_synthesis_export_rule_closure(synthesis, &rules, &rules.storage, &effects, 1,
++	if (pg_synthesis_export_rule_closure(synthesis, &rules, &values.checked, &rules.storage, &effects, 1,
+ 		retain_dependencies, &collection, &derivations)) goto done;
+ 	if (collection.member_count > SIZE_MAX - allocations.count) goto done;
+ 	size_t allocation_count = allocations.count + collection.member_count;
+@@ -784,14 +814,15 @@
+ 	}
+ 	for (size_t i = 0; i < count; ++i) if (pg_wire_write_u64(file, id(&producers, roots[i]))) goto done;
+ 	for (const struct pg_dag_node *node = producers.first; node; node = node->next) {
+-		struct producer_input input = producer_input(synthesis, node->key);
++		struct producer_input input = producer_input(&values, node->key);
+ 		/* Without syntax, its wire slot carries the existing request mode. */
+ 		uint64_t words[] = {id(&scopes, input.scope), input.syntax ? id(&syntax, input.syntax) : input.mode,
+ 			input.callable.reference ? id(&allocations, node->key) : id(&syntax, input.definitions),
+ 			input.callable.reference ? (uint64_t)input.callable.allocated : id(&rules, input.rule),
+ 			id(&producers, input.operands[0]), id(&producers, input.operands[1]), id(&scopes, input.prepared)};
+ 		for (size_t i = 0; i < 7; ++i) if (pg_wire_write_u64(file, words[i])) goto done;
+-		int complete = node->id <= semantic_producers && pg_synthesis_saved_complete(synthesis, node->key);
++		int complete = node->id <= semantic_producers &&
++			(pg_dag_find(&values.checked, node->key) || pg_synthesis_saved_complete(synthesis, node->key));
+ 		if (fputc(complete, file) == EOF) goto done;
+ 	}
+ 	for (const struct pg_dag_node *node = scopes.first; node; node = node->next) {
+@@ -841,8 +872,10 @@
+ 	if (producers.count > SIZE_MAX / sizeof(void *)) goto done;
+ 	const struct pg_occurrence **semantic = pg_alloc(&rules.storage, producers.count * sizeof(*semantic));
+ 	if (!semantic) goto done;
+-	for (const struct pg_dag_node *node = producers.first; node; node = node->next)
+-		if (node->id <= semantic_producers && pg_synthesis_materialized(node->key, &semantic[node->id - 1]) < 0) goto done;
++	for (const struct pg_dag_node *node = producers.first; node && node->id <= semantic_producers; node = node->next) {
++		if (pg_dag_find(&values.checked, node->key)) semantic[node->id - 1] = pg_evidence_subject(node->key);
++		else if (pg_synthesis_materialized(node->key, &semantic[node->id - 1]) < 0) goto done;
++	}
+ 	status = pg_retained_write_semantic_with(file, rules.count, derivations, &effects,
+ 		payload.count, payload.terms, producers.count, semantic, &pg_declaration_graph_codec, &codec,
+ 		continuation, owner);
+@@ -855,6 +888,7 @@
+ 	pg_effect_inference_destroy(&effects); pg_dag_destroy(&rules); pg_dag_destroy(&origins);
+ 	pg_dag_destroy(&bindings); pg_dag_destroy(&declarations);
+ 	pg_dag_destroy(&syntax); pg_dag_destroy(&scopes); pg_dag_destroy(&producers); pg_dag_destroy(&allocations);
++	pg_dag_destroy(&values.checked);
+ 	return status;
+ }
+ 

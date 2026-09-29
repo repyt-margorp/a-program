@@ -1,0 +1,28 @@
+--- a/synthesis_work.c
++++ b/synthesis_work.c
+@@ -1,5 +1,25 @@
+ #include "synthesis_work.h"
+ 
++const struct pg_evidence *pg_synthesis_input_result(struct pg_synthesis_input input)
++{
++	if (input.checked) return input.pending ? NULL : input.checked;
++	return input.pending ? pg_synthesis_result(input.pending) : NULL;
++}
++
++int pg_synthesis_input_owned(const struct pg_synthesis *synthesis, struct pg_synthesis_input input)
++{
++	if (!synthesis) return 0;
++	if (input.checked)
++		return !input.pending && pg_evidence_owned_by(input.checked, synthesis->typing);
++	return input.pending && input.pending->owner == synthesis->owner_key;
++}
++
++int pg_synthesis_await_input(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
++	struct pg_synthesis_input input)
++{
++	return input.checked ? 0 : pg_synthesis_await(synthesis, job, input.pending);
++}
++
+ void pg_synthesis_work_destroy(struct pg_synthesis *synthesis)
+ {
+ 	for (size_t i = 0; i < synthesis->jobs.capacity; ++i)

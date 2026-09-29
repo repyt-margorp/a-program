@@ -1,0 +1,14 @@
+--- a/synthesis_iadt.c
++++ b/synthesis_iadt.c
+@@ -1118,8 +1118,9 @@
+ 		pg_synthesis_enqueue(synthesis, job); return;
+ 	}
+ 	for (size_t i = 0; i < 2; ++i) {
+-		if (!state->normal[i]) state->normal[i] = pg_synthesis_normalize_jobs(synthesis, cj,
+-			pg_synthesis_evidence(synthesis, state->endpoints[i]), PG_REDUCTION_WHNF);
++		if (!state->normal[i]) state->normal[i] = pg_synthesis_reduction_request(synthesis,
++			(struct pg_synthesis_input){.pending = cj},
++			(struct pg_synthesis_input){.checked = state->endpoints[i]}, PG_REDUCTION_WHNF, 0);
+ 		if (!state->normal[i]) goto error;
+ 		if (state->normal[i]->status == PG_SYNTHESIS_PENDING) { pg_synthesis_subscribe(synthesis, job, state->normal[i], 0); return; }
+ 		if (state->normal[i]->status == PG_SYNTHESIS_ERROR) goto error;

@@ -1,0 +1,43 @@
+--- a/synthesis_derivation.c
++++ b/synthesis_derivation.c
+@@ -381,7 +381,7 @@
+ }
+ 
+ int pg_synthesis_export_rule_closure(const struct pg_synthesis *synthesis,
+-	struct pg_dag *roots, struct pg_graph *storage, struct pg_effect_inference *effects,
++	struct pg_dag *roots, const struct pg_dag *checked, struct pg_graph *storage, struct pg_effect_inference *effects,
+ 	int require_closed,
+ 	int (*observe)(void *, const struct pg_derivation_input *, const struct pg_effect_inference *),
+ 	void *owner, const struct pg_derivation_input *const **result)
+@@ -401,7 +401,10 @@
+ 		|| pg_dag_init(&jobs, export_job_child, &export)) goto done;
+ 	const struct pg_dag_node *last_raw = NULL, *last_proof = NULL, *last_job = NULL, *last_worker = NULL;
+ 	for (const struct pg_dag_node *root = roots->first; root; root = root->next) {
+-		if (pg_dag_add(&jobs, root->key)) goto done;
++		if (checked && pg_dag_find(checked, root->key)) {
++			if (!pg_evidence_owned_by(root->key, synthesis->typing)) goto done;
++			if (pg_dag_add(&export.proofs, root->key)) goto done;
++		} else if (pg_dag_add(&jobs, root->key)) goto done;
+ 		for (const struct pg_dag_node *node = last_worker ? last_worker->next : export.workers.first;
+ 			node; last_worker = node, node = node->next) {
+ 			export.source_effects = node->key;
+@@ -474,7 +477,9 @@
+ 			inputs[node->id - 1] = proofs[pg_dag_find(&export.proofs, job->result)->id - 1];
+ 	}
+ 	for (const struct pg_dag_node *node = roots->first; node; node = node->next)
+-		selected[node->id - 1] = inputs[pg_dag_find(&jobs, node->key)->id - 1];
++		selected[node->id - 1] = checked && pg_dag_find(checked, node->key)
++			? proofs[pg_dag_find(&export.proofs, node->key)->id - 1]
++			: inputs[pg_dag_find(&jobs, node->key)->id - 1];
+ 	*result = selected;
+ 	export.status = 0;
+ done:
+@@ -496,7 +501,7 @@
+ 	if (pg_dag_init(&selected, NULL, NULL)) goto done;
+ 	for (size_t i = 0; i < count; ++i) if (pg_dag_add(&selected, roots[i])) goto done;
+ 	const struct pg_derivation_input *const *inputs;
+-	status = pg_synthesis_export_rule_closure(synthesis, &selected, storage, effects, require_closed, NULL, NULL, &inputs);
++	status = pg_synthesis_export_rule_closure(synthesis, &selected, NULL, storage, effects, require_closed, NULL, NULL, &inputs);
+ 	if (status) goto done;
+ 	const struct pg_derivation_input **output = pg_alloc(storage, count * sizeof(*output));
+ 	if (!output) { status = -1; goto done; }

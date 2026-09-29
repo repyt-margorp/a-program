@@ -1,7 +1,7 @@
 # Solver and Evidence Duplication Audit
 
 Date: 2026-09-30
-Status: initial audit complete; refactoring not implemented.
+Status: audit complete; first SE1 prototype implemented, full refactor unfinished.
 Parent: [artifact plan, AP0](2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md#ap0-simplify-before-extending-persistence).
 This is the active prerequisite work list, not another artifact format proposal.
 
@@ -114,7 +114,7 @@ The larger aggregate uses `finite_sorting/provider.sh quick.p boolean-order.p`
 with the same spelling replacement. It remains pending at the measured budget;
 this audit makes no completion or regression claim about that partial sample.
 
-Fresh verification: the List-09 and completed QuickSort censuses produced
+At the audit-only milestone, the List-09 and completed QuickSort censuses produced
 identical TSVs in O2 and ASan/UBSan builds, including repeated samples without
 additional fuel. No full acceptance suite was rerun for this audit-only change.
 
@@ -219,6 +219,64 @@ Do not mark a milestone complete just because a view hides the old representatio
   under the selected trust/revalidation policy, without an independent replay
   engine. Return to AP6 only after the prerequisite refactor is complete.
 
-This change adds only an audit utility and plan corrections. No kernel rule,
-public `.a` format or accepted implementation has changed; no code-size reduction
-or completed-refactoring claim is made yet.
+### SE1 First Migration
+
+The [direct-input prototype](../src/prototype/solver_inputs/README.md) applies
+after the artifact candidate. Baseline is `d9113c1`; measurements continue to
+exclude the unrelated accepted-source working-tree edits listed above.
+
+- [x] WHNF/NF requests borrow checked inputs without creating Evidence Jobs.
+  Pending inputs refer to their existing producer, without a new input node.
+- [x] Migrate binding/domain normalization, CLI demands and IADT endpoint
+  requests through that same input representation. Validate ownership once at
+  request construction; do not change interned keys after a producer finishes.
+- [x] Export checked leaves directly, without creating Jobs during writing.
+  The membership index is temporary transport bookkeeping; no wire fields,
+  Core tags, acceptance table or target-language data were added.
+- [ ] Finish rule premises, scopes, classifier/expectation, context and Identity
+  consumers, remove `EVIDENCE_JOB`, then remove duplicated query scheduling.
+  The remaining adapter recognition is temporary, not the final architecture.
+
+Fresh O2 measurements after this migration:
+
+| Completed input | Jobs before / after | Evidence Jobs before / after | Job bytes before / after | Solve steps |
+| --- | ---: | ---: | ---: | ---: |
+| List-09 | 1,061 / 1,034 | 152 / 125 | 187,424 / 185,096 | 2,824 unchanged |
+| General QuickSort Local Sorted | 69,221 / 65,751 | 12,360 / 8,890 | 11,878,608 / 11,573,984 | 815,075 unchanged |
+
+Term, typed-occurrence and Evidence counts are unchanged. An intermediate
+version split direct inputs from legacy Evidence-adapter inputs, adding 18
+normalization requests and 27 dispatches in QuickSort. Reject that split:
+both denote the same checked input, so the final factory keys them identically.
+Distinct unfinished producers keep their identities; distinct typed uses of
+the same Core are not merged.
+
+Implementation deltas against the artifact candidate (not patch-file line counts):
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `program.c` | 6 | 6 | 0 |
+| `source_io.c` | 52 | 18 | +34 |
+| `synthesis.c` | 3 | 2 | +1 |
+| `synthesis.h` | 23 | 5 | +18 |
+| `synthesis_conversion.c` | 44 | 28 | +16 |
+| `synthesis_derivation.c` | 9 | 4 | +5 |
+| `synthesis_iadt.c` | 3 | 2 | +1 |
+| `synthesis_work.c` | 20 | 0 | +20 |
+| `synthesis_work.h` | 3 | 0 | +3 |
+| Implementation total | 163 | 65 | +98 |
+| `tests/program.c` | 34 | 4 | +30 |
+| `tests/source_io.c` | 58 | 5 | +53 |
+
+Fresh verification of this prototype: the existing O2 `make check`, normalization
+checkpoint and source checkpoint suites pass (the latter covers 204 lifecycle
+cuts). ASan/UBSan runs of `program_test`, `source_io_test normalization` and the
+normalization checkpoint test also pass. New assertions cover request sharing,
+foreign/invalid inputs, distinct contexts, allocation-free checked-leaf export,
+and a byte-identical step-0 read/resave. These results exclude the concurrent
+accepted-source edits; they are not a promotion of this prototype.
+
+This is a staged migration, not a code-size reduction or completion of SE1.
+The public partition gate was rerun on the final candidate and still fails at
+100+100, 1000+1000, 1600+1600 and 2824+0. A passing checked-input step-0 roundtrip
+does not close that gate.

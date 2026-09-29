@@ -1,0 +1,87 @@
+--- a/source_io.c
++++ b/source_io.c
+@@ -2591,8 +2591,61 @@
+ 	puts("source materialized roots: inert read/resave, shared input origins and explicit local NF cache reuse passed");
+ }
+ 
++static void checked_normalization_inputs(void)
++{
++	struct pg_program *p = pg_program_create("main:=@;", 8, PG_DEFINITION_EXPLICIT_THUNK);
++	assert(p && p->root);
++	const struct pg_evidence *context = pg_prove_empty_context(&p->typing);
++	const struct pg_evidence *value = pg_prove_type_value(&p->typing, pg_prove_universe(&p->typing, context, 0));
++	const struct pg_evidence *input = pg_prove_return(&p->typing, value);
++	for (size_t i = 0; i < 16; ++i) input = pg_prove_force(&p->typing, pg_prove_thunk(&p->typing, input));
++	assert(input);
++	size_t jobs = p->synthesis.jobs.count;
++	struct pg_synthesis_job *nf = pg_synthesis_nf(&p->synthesis, context, input);
++	assert(nf && p->synthesis.jobs.count == jobs + 1);
++	struct pg_synthesis_job *roots[] = {nf, nf};
++	size_t terms = p->graph.terms.count, evidence = p->typing.proofs.count;
++	size_t occurrences = p->typing.occurrences.count;
++	FILE *file = tmpfile();
++	assert(file && !pg_sources_write(file, &p->synthesis, 2, roots));
++	assert(p->synthesis.jobs.count == jobs + 1 && !p->synthesis.steps);
++	assert(p->graph.terms.count == terms && p->typing.proofs.count == evidence);
++	assert(p->typing.occurrences.count == occurrences);
++	rewind(file);
++	size_t count;
++	struct pg_synthesis_job *const *loaded;
++	struct pg_program *q = pg_sources_read(file, 100000, &count, &loaded);
++	assert(q && count == 2 && loaded[0] == loaded[1] && !q->synthesis.steps);
++	FILE *again = tmpfile();
++	assert(again && !pg_sources_write(again, &q->synthesis, count, loaded));
++	assert(!q->synthesis.steps);
++	rewind(file); rewind(again);
++	for (;;) {
++		int a = fgetc(file), b = fgetc(again);
++		assert(a == b);
++		if (a == EOF) break;
++	}
++	assert(!ferror(file) && !ferror(again));
++	while (q->synthesis.ready) {
++		assert(q->synthesis.steps < 10000);
++		pg_synthesis_advance(&q->synthesis, 1);
++	}
++	assert(pg_synthesis_status(loaded[0]) == PG_SYNTHESIS_DONE);
++	pg_synthesis_advance(&p->synthesis, 10000);
++	assert(pg_synthesis_status(nf) == PG_SYNTHESIS_DONE);
++	const struct pg_evidence *a = pg_prove_return_value(&p->typing, pg_synthesis_result(nf));
++	const struct pg_evidence *b = pg_prove_return_value(&q->typing, pg_synthesis_result(loaded[0]));
++	uint64_t level_a, level_b;
++	assert(a && b && pg_universe_level(pg_evidence_subject(a)->core, &level_a));
++	assert(pg_universe_level(pg_evidence_subject(b)->core, &level_b));
++	assert(level_a == 0 && level_b == 0);
++	assert(!fclose(file) && !fclose(again));
++	pg_program_destroy(q); pg_program_destroy(p);
++}
++
+ static void normalization_requests(void)
+ {
++	checked_normalization_inputs();
+ 	normalization_origin();
+ 	retained_normalization();
+ 	const char *text = "{{ id:=&(\\A:@ => \\x:A => x); }}.id";
+@@ -2621,17 +2674,17 @@
+ 			struct pg_synthesis_job *const *loaded;
+ 			struct pg_program *q = pg_sources_read(file, 100000, &count, &loaded);
+ 			assert(q && count == 7 && !q->synthesis.steps && loaded[1] == loaded[3]);
+-			struct pg_synthesis_job *c, *term;
++			struct pg_synthesis_input c, term;
+ 			enum pg_reduction_kind kind;
+ 			assert(!pg_synthesis_normalization_input(&q->synthesis, loaded[1], &c, &term, &kind, NULL));
+-			assert(term == loaded[0] && kind == PG_REDUCTION_NF);
++			assert(!term.checked && term.pending == loaded[0] && kind == PG_REDUCTION_NF);
+ 			assert(!pg_synthesis_normalization_input(&q->synthesis, loaded[2], &c, &term, &kind, NULL));
+-			assert(term == loaded[0] && kind == PG_REDUCTION_WHNF);
++			assert(!term.checked && term.pending == loaded[0] && kind == PG_REDUCTION_WHNF);
+ 			int force;
+ 			assert(!pg_synthesis_normalization_input(&q->synthesis, loaded[5], &c, &term, &kind, &force));
+-			assert(term == loaded[0] && kind == PG_REDUCTION_NF && force);
++			assert(!term.checked && term.pending == loaded[0] && kind == PG_REDUCTION_NF && force);
+ 			assert(!pg_synthesis_normalization_input(&q->synthesis, loaded[6], &c, &term, &kind, &force));
+-			assert(term == loaded[0] && kind == PG_REDUCTION_WHNF && force);
++			assert(!term.checked && term.pending == loaded[0] && kind == PG_REDUCTION_WHNF && force);
+ 			for (size_t i = 0; i < count; ++i) assert(!pg_synthesis_result(loaded[i]));
+ 			FILE *again = tmpfile();
+ 			assert(again && !pg_sources_write(again, &q->synthesis, count, loaded));

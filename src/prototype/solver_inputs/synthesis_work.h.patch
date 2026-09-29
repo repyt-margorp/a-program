@@ -1,0 +1,11 @@
+--- a/synthesis_work.h
++++ b/synthesis_work.h
+@@ -78,5 +78,8 @@
+ /* Zero means done; otherwise subscribe once or propagate the failure. */
+ int pg_synthesis_await(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
+ 	struct pg_synthesis_job *dependency);
++int pg_synthesis_input_owned(const struct pg_synthesis *, struct pg_synthesis_input);
++/* Internal immutable operand, already validated by its request factory. */
++int pg_synthesis_await_input(struct pg_synthesis *, struct pg_synthesis_job *, struct pg_synthesis_input);
+ 
+ #endif

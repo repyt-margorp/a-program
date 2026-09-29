@@ -1,0 +1,28 @@
+--- a/program.c
++++ b/program.c
+@@ -200,9 +200,9 @@
+ 	const struct pg_evidence *context = pg_prove_empty_context(&program->typing);
+ 	if (!context) return NULL;
+ 	if (pg_evidence_context(proof) != pg_evidence_context(context)) return NULL;
+-	return pg_synthesis_evaluate_jobs(&program->synthesis,
+-		pg_synthesis_evidence(&program->synthesis, context), pg_synthesis_evidence(&program->synthesis, proof),
+-		full ? PG_REDUCTION_NF : PG_REDUCTION_WHNF);
++	return pg_synthesis_reduction_request(&program->synthesis,
++		(struct pg_synthesis_input){.checked = context}, (struct pg_synthesis_input){.checked = proof},
++		full ? PG_REDUCTION_NF : PG_REDUCTION_WHNF, 1);
+ }
+ 
+ struct pg_synthesis_job *pg_program_select_name(struct pg_program *program,
+@@ -219,9 +219,9 @@
+ {
+ 	struct pg_synthesis_job *subject = pg_program_select_name(program, module, name);
+ 	if (!subject) return NULL;
+-	return pg_synthesis_evaluate_jobs(&program->synthesis,
+-		pg_synthesis_evidence(&program->synthesis, pg_prove_empty_context(&program->typing)),
+-		subject, full ? PG_REDUCTION_NF : PG_REDUCTION_WHNF);
++	return pg_synthesis_reduction_request(&program->synthesis,
++		(struct pg_synthesis_input){.checked = pg_prove_empty_context(&program->typing)},
++		(struct pg_synthesis_input){.pending = subject}, full ? PG_REDUCTION_NF : PG_REDUCTION_WHNF, 1);
+ }
+ 
+ void pg_program_destroy(struct pg_program *program)

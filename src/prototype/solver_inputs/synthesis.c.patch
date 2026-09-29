@@ -1,0 +1,14 @@
+--- a/synthesis.c
++++ b/synthesis.c
+@@ -4340,8 +4340,9 @@
+ 		const struct pg_evidence *ends[] = {path->left, path->right};
+ 		const struct pg_object *heads[2] = {0};
+ 		for (size_t i = 0; i < 2; ++i) {
+-			if (!path->normal[i]) path->normal[i] = pg_synthesis_normalize_jobs(synthesis,
+-				branch->scope->context_job, pg_synthesis_evidence(synthesis, ends[i]), PG_REDUCTION_WHNF);
++			if (!path->normal[i]) path->normal[i] = pg_synthesis_reduction_request(synthesis,
++				(struct pg_synthesis_input){.pending = branch->scope->context_job},
++				(struct pg_synthesis_input){.checked = ends[i]}, PG_REDUCTION_WHNF, 0);
+ 			if (!path->normal[i]) goto error;
+ 			if (pg_synthesis_await(synthesis, job, path->normal[i])) return;
+ 			const struct pg_term *head = pg_evidence_subject(path->normal[i]->result)->core;
