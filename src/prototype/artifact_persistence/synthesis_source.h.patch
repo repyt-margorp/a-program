@@ -57,7 +57,7 @@
  /* Restored lexical binder allocation. Each owner keeps its own cursor;
   * this payload describes source addresses, not a second typed Context. */
  struct pg_source_context_allocation {
-@@ -50,12 +100,22 @@
+@@ -50,12 +100,31 @@
  	const struct pg_object *, size_t, struct pg_synthesis_job *const *);
  struct pg_synthesis_job *pg_synthesis_rule_premise(struct pg_synthesis *, const struct pg_synthesis_job *, size_t);
  const struct pg_derivation_input *pg_synthesis_plain_derivation(const struct pg_synthesis_job *);
@@ -68,6 +68,15 @@
 + * Effect/comparison/reduction state must be transported separately. */
 +int pg_synthesis_rule_frontier(const struct pg_synthesis *, const struct pg_synthesis_job *, size_t *);
 +int pg_synthesis_rule_resume(struct pg_synthesis *, struct pg_synthesis_job *, size_t);
++/* Imported derivation preparation is distinct from checking the prepared rule.
++ * Inspection neither creates unvisited premises nor starts work. Restore on a
++ * fresh pending input only, after its prepared premise edges are restored;
++ * prepared=1 recreates the ordinary rule through its existing factory, not a
++ * checked result. Its own cursor and the scheduler remain separate owners. */
++const struct pg_derivation_input *pg_synthesis_derivation_input(const struct pg_synthesis_job *);
++int pg_synthesis_derivation_frontier(const struct pg_synthesis *, const struct pg_synthesis_job *,
++	size_t *, struct pg_synthesis_job **);
++int pg_synthesis_derivation_resume(struct pg_synthesis *, struct pg_synthesis_job *, size_t, int prepared);
  const struct pg_evidence *pg_synthesis_evidence_input(const struct pg_synthesis_job *);
  const struct pg_synthesis_job *pg_synthesis_operation_origin(const struct pg_synthesis_job *);
  /* Follow an existing lexical alias edge, without evaluation or acceptance. */

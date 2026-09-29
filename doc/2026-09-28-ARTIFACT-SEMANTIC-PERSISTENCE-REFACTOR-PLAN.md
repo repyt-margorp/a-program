@@ -698,7 +698,18 @@ The public partition gate still fails at 100+100 and later
 (`/tmp/a-program-input-partitions/partitions.tsv`). The next integration must
 connect owner identities and continuations to the shared source relocation and
 explicit validation/provenance policy; adding more isolated passing fixtures
-alone does not meet AP1.3/AP2.3. Full regression verification is in progress.
+alone does not meet AP1.3/AP2.3.
+
+Fresh full `check-acceptance` passes (exit 0), including both LT providers and
+partition orders, general Sorted/permutation witnesses and invalid-evidence
+controls (`/tmp/a-program-input-acceptance.log`). Semantic/owner checkpoints,
+CLI policy, 21 C differentials, Oracle tests and checked/trusted C Acc QuickSort
+also pass (`/tmp/a-program-input-artifact.log`, `/tmp/a-program-input-policy.log`,
+`/tmp/a-program-input-c.log`). List 09 remains 2,824 steps and 50,508 bytes,
+identical to the prior increment. Candidate: clean accepted `e716232` plus the
+prototype overlays at `ea287c2` and this increment; unrelated working-tree edits
+are excluded. PR #48 and `21d849a` only changed documentation during this run.
+These results do not repair the public partition failure recorded above.
 
 Actual C/header delta from `ea287c2`: `synthesis_work.c` +28/-9,
 `synthesis_work.h` +3/-0, `synthesis_derivation.c` +73/-15,

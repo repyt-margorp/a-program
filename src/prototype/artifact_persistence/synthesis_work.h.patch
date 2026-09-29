@@ -27,3 +27,13 @@
  	const void *inputs[];
  };
  
+@@ -45,6 +56,9 @@
+ 
+ struct pg_synthesis_job *pg_synthesis_work_request(struct pg_synthesis *synthesis,
+ 	const struct pg_synthesis_work_class *kind, size_t count, const void *const *inputs);
++/* Inspect an existing exact request without allocating or scheduling work. */
++struct pg_synthesis_job *pg_synthesis_work_find(const struct pg_synthesis *,
++	const struct pg_synthesis_work_class *, size_t, const void *const *);
+ struct pg_synthesis_job *pg_synthesis_work_request_inputs(struct pg_synthesis *synthesis,
+ 	const struct pg_synthesis_work_class *kind, size_t prefix, const void *const *inputs,
+ 	size_t count, struct pg_synthesis_job *const *jobs);

@@ -283,6 +283,7 @@ bash src/prototype/artifact_persistence/overlay.sh /tmp/a-program-artifact-persi
 make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artifact-persistence BUILD=/tmp/a-program-artifact-persistence/build check-artifact-transport
 make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artifact-persistence BUILD=/tmp/a-program-artifact-persistence/build check-artifact-semantic
 make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artifact-persistence BUILD=/tmp/a-program-artifact-persistence/build check-artifact-normalization-checkpoint
+make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artifact-persistence BUILD=/tmp/a-program-artifact-persistence/build check-artifact-derivation-checkpoint
 make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artifact-persistence BUILD=/tmp/a-program-artifact-persistence/build check-artifact-definition-checkpoint
 make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artifact-persistence BUILD=/tmp/a-program-artifact-persistence/build check-artifact-constructor-checkpoint
 make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artifact-persistence BUILD=/tmp/a-program-artifact-persistence/build check-artifact-history
@@ -325,12 +326,21 @@ claim strict revalidation costs no fuel. The 64-definition 1+19/10+10/20+0 versu
 obligations and terminal saved queue endpoints reject. Source I/O, semantic,
 CLI/C differential and Acc QuickSort also pass; full acceptance was not rerun.
 
-`check-artifact-namespace-frontier` remains a separate failing coverage gate:
-the `Nat.zero` fixture has a published constructor callable still queued outside
-the currently supported owner closure. The source program compiles; no covered
-late checkpoint exists yet. Retain that unfinished namespace work, not just the
-module's current selected result. Default `.a` loading does not use these hooks,
-and the whole-source partition gate below still fails.
+At `ea287c2`, `check-artifact-namespace-frontier` and
+`check-artifact-namespace-body-frontier` pass: the latter restores 70 started
+constructor-body boundaries, including pending children of completed modules.
+Unfinished field/query owners and public `.a` integration remain open; default
+loading does not use these hooks and the whole-source partition gate still fails.
+
+The imported-derivation checkpoint gate now covers 190 boundaries in known-origin
+rule DAGs, including shared canonical rules and preparation subscriptions.
+It preserves the premise cursor and prepared-rule edge through the normal
+factory, without reconstructing a second proof system. Exact lookup shares the
+request interner and does not allocate unvisited work. Completed premises are
+explicitly rechecked with ordinary Solve before pending cursors are attached.
+O2/ASan/UBSan check inert decode/resave, zero fuel, unchanged remaining dispatches,
+final proof bytes, invalid attachments and invalid rules remaining rejected.
+This fixture is not a public `.a` format or a trust-import implementation.
 
 The constructor gate separately transports the checked field map through existing
 rule inputs, verifies it using ordinary Solve, then resumes the value owner before
@@ -339,8 +349,8 @@ flags. O2/ASan/UBSan pass 0/1/2-field cases with and without type parameters:
 validation takes 227/263/299 and 349/385/421 steps; the remaining 1/16/28 steps and
 Core bytes match after destroying the original Program. Inert resave/step 0,
 foreign inputs, constant fields and rewinding started work are checked. Attachment
-itself creates no Terms/proofs. Private unfinished field/body work, source interface
-metadata and ordinary `.a` integration remain open. Constructor and induction now
+itself creates no Terms/proofs. Started-body/source-interface restoration is
+covered above; unfinished fields and ordinary `.a` integration remain open. Constructor and induction now
 read field order from the checked schema's immutable pointer view, not completed
 scope-worker history. The view is built once per schema/constructor and is not
 serialized. Bounds, nominal labels and exact dependent prefix order are checked.

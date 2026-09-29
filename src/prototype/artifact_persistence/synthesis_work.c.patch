@@ -13,7 +13,62 @@
  void pg_synthesis_work_destroy(struct pg_synthesis *synthesis)
  {
  	for (size_t i = 0; i < synthesis->jobs.capacity; ++i)
-@@ -179,6 +172,51 @@
+@@ -40,19 +33,16 @@
+ 	return (role->size + alignment - 1) / alignment * alignment;
+ }
+ 
+-struct pg_synthesis_job *pg_synthesis_work_request_inputs(struct pg_synthesis *synthesis,
++static struct pg_synthesis_job *find_request(const struct pg_synthesis *synthesis,
+ 	const struct pg_synthesis_work_class *role, size_t prefix, const void *const *inputs,
+-	size_t job_count, struct pg_synthesis_job *const *jobs)
++	size_t job_count, struct pg_synthesis_job *const *jobs, uint64_t *hash)
+ {
+-	if (!role || !role->advance || (prefix && !inputs) || (job_count && !jobs)) return NULL;
+-	if (job_count > SIZE_MAX - prefix) return NULL;
+ 	size_t count = prefix + job_count;
+-	if (count > (SIZE_MAX - sizeof(struct pg_synthesis_job)) / sizeof(*inputs)) return NULL;
+-	uint64_t hash = ((uintptr_t)role ^ count) * UINT64_C(1099511628211);
++	*hash = ((uintptr_t)role ^ count) * UINT64_C(1099511628211);
+ 	for (size_t i = 0; i < count; ++i)
+-		hash = (hash ^ (uintptr_t)request_operand(prefix, inputs, jobs, i)) * UINT64_C(1099511628211);
+-	for (struct pg_index_entry *entry = pg_index_candidates(&synthesis->jobs, hash); entry; entry = entry->next) {
+-		if (entry->hash != hash) continue;
++		*hash = (*hash ^ (uintptr_t)request_operand(prefix, inputs, jobs, i)) * UINT64_C(1099511628211);
++	for (struct pg_index_entry *entry = pg_index_candidates(&synthesis->jobs, *hash); entry; entry = entry->next) {
++		if (entry->hash != *hash) continue;
+ 		struct pg_synthesis_job *job = (struct pg_synthesis_job *)entry;
+ 		if (job->role != role) continue;
+ 		if (job->input_count != count) continue;
+@@ -60,6 +50,28 @@
+ 		while (i < count && job->inputs[i] == request_operand(prefix, inputs, jobs, i)) ++i;
+ 		if (i == count) return job;
+ 	}
++	return NULL;
++}
++
++struct pg_synthesis_job *pg_synthesis_work_find(const struct pg_synthesis *synthesis,
++	const struct pg_synthesis_work_class *role, size_t count, const void *const *inputs)
++{
++	if (!synthesis || !role || (count && !inputs)) return NULL;
++	uint64_t hash;
++	return find_request(synthesis, role, count, inputs, 0, NULL, &hash);
++}
++
++struct pg_synthesis_job *pg_synthesis_work_request_inputs(struct pg_synthesis *synthesis,
++	const struct pg_synthesis_work_class *role, size_t prefix, const void *const *inputs,
++	size_t job_count, struct pg_synthesis_job *const *jobs)
++{
++	if (!role || !role->advance || (prefix && !inputs) || (job_count && !jobs)) return NULL;
++	if (job_count > SIZE_MAX - prefix) return NULL;
++	size_t count = prefix + job_count;
++	if (count > (SIZE_MAX - sizeof(struct pg_synthesis_job)) / sizeof(*inputs)) return NULL;
++	uint64_t hash;
++	struct pg_synthesis_job *existing = find_request(synthesis, role, prefix, inputs, job_count, jobs, &hash);
++	if (existing) return existing;
+ 	size_t bytes = sizeof(struct pg_synthesis_job) + count * sizeof(*inputs);
+ 	if (role->size > SIZE_MAX - (_Alignof(struct pg_synthesis_job) - 1)) return NULL;
+ 	size_t offset = state_extent(role);
+@@ -179,6 +191,51 @@
  	return job->status == PG_SYNTHESIS_DONE ? job->result : NULL;
  }
  

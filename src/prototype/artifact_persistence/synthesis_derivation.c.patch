@@ -1,6 +1,29 @@
 --- a/synthesis_derivation.c
 +++ b/synthesis_derivation.c
-@@ -202,6 +202,32 @@
+@@ -83,6 +83,22 @@
+ 	return job && job->role == EVIDENCE_JOB ? job->inputs[0] : NULL;
+ }
+ 
++const struct pg_derivation_input *pg_synthesis_derivation_input(const struct pg_synthesis_job *job)
++{
++	return job && job->role == DERIVATION_INPUT_JOB ? job->inputs[0] : NULL;
++}
++
++int pg_synthesis_derivation_frontier(const struct pg_synthesis *synthesis,
++	const struct pg_synthesis_job *job, size_t *next, struct pg_synthesis_job **rule)
++{
++	if (!synthesis || !job || !next || !rule || job->owner != synthesis->owner_key) return -1;
++	const struct derivation_input_work *local = pg_synthesis_work_state(job, DERIVATION_INPUT_JOB);
++	if (!local) return -1;
++	*next = local->next;
++	*rule = local->rule;
++	return 0;
++}
++
+ enum { RULE_KEY_FIELDS = 18 };
+ 
+ static void rule_key(const struct pg_derivation_input *input, uint64_t *key)
+@@ -202,6 +218,32 @@
  	return job && job->role == DERIVATION_JOB ? job->inputs[0] : NULL;
  }
  
@@ -33,3 +56,93 @@
  struct pg_synthesis_job *pg_synthesis_rule_premise(struct pg_synthesis *synthesis,
  	const struct pg_synthesis_job *job, size_t index)
  {
+@@ -415,11 +457,64 @@
+ 	return status;
+ }
+ 
++static struct pg_synthesis_job *prepared_premise(const struct pg_synthesis *synthesis,
++	const struct pg_synthesis_job *job, size_t index)
++{
++	const struct pg_derivation_input *input = job->inputs[0];
++	const void *key[] = {input->premises[index], job->inputs[1]};
++	struct pg_synthesis_job *premise = pg_synthesis_work_find(synthesis, DERIVATION_INPUT_JOB, 2, key);
++	return pg_synthesis_work_project(premise).rule;
++}
++
++static struct pg_synthesis_job *prepared_rule(struct pg_synthesis *synthesis,
++	const struct pg_synthesis_job *job, enum pg_synthesis_status *failure)
++{
++	const struct pg_derivation_input *input = job->inputs[0];
++	struct pg_effect_inference *work = (void *)job->inputs[1];
++	*failure = PG_SYNTHESIS_REJECTED;
++	if (input->count > SIZE_MAX / sizeof(struct pg_synthesis_job *)) {
++		*failure = PG_SYNTHESIS_ERROR; return NULL;
++	}
++	struct pg_derivation_input header = *input;
++	struct pg_effect_equation *equation = NULL;
++	if (input->effect_parameter) {
++		equation = pg_effect_equation_find(work, input->effect_parameter);
++		if (!equation) return NULL;
++		header.effect_parameter = NULL;
++	}
++	struct pg_synthesis_job **premises = input->count ? malloc(input->count * sizeof(*premises)) : NULL;
++	if (input->count && !premises) { *failure = PG_SYNTHESIS_ERROR; return NULL; }
++	for (size_t i = 0; i < input->count; ++i) premises[i] = prepared_premise(synthesis, job, i);
++	struct pg_synthesis_job *rule = pg_synthesis_rule(synthesis, &header, premises, equation ? work : NULL, equation);
++	free(premises);
++	return rule;
++}
++
++int pg_synthesis_derivation_resume(struct pg_synthesis *synthesis,
++	struct pg_synthesis_job *job, size_t next, int prepared)
++{
++	size_t previous;
++	struct pg_synthesis_job *rule;
++	if (pg_synthesis_derivation_frontier(synthesis, job, &previous, &rule) || previous || rule) return -1;
++	if (job->status != PG_SYNTHESIS_PENDING || (prepared != 0 && prepared != 1)) return -1;
++	const struct pg_derivation_input *input = job->inputs[0];
++	if (next > input->count || (prepared && next != input->count)) return -1;
++	for (size_t i = 0; i < next; ++i) if (!prepared_premise(synthesis, job, i)) return -1;
++	if (prepared) {
++		enum pg_synthesis_status failure;
++		rule = prepared_rule(synthesis, job, &failure);
++		if (!rule) return -1;
++	}
++	struct derivation_input_work *local = pg_synthesis_work_state(job, DERIVATION_INPUT_JOB);
++	local->next = next;
++	local->rule = rule;
++	return 0;
++}
++
+ static void derivation_input_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+ {
+ 	struct derivation_input_work *local = pg_synthesis_work_state(job, DERIVATION_INPUT_JOB);
+ 	const struct pg_derivation_input *input = job->inputs[0];
+-	struct pg_effect_inference *work = (void *)job->inputs[1];
+ 	if (!local->rule) {
+ 		if (input->count > SIZE_MAX / sizeof(struct pg_synthesis_job *)) {
+ 			pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
+@@ -433,20 +528,9 @@
+ 			pg_synthesis_enqueue(synthesis, job);
+ 			return;
+ 		}
+-		struct pg_derivation_input header = *input;
+-		struct pg_effect_equation *equation = NULL;
+-		if (input->effect_parameter) {
+-			equation = pg_effect_equation_find(work, input->effect_parameter);
+-			if (!equation) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
+-			header.effect_parameter = NULL;
+-		}
+-		struct pg_synthesis_job **premises = input->count ? malloc(input->count * sizeof(*premises)) : NULL;
+-		if (input->count && !premises) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+-		for (size_t i = 0; i < input->count; ++i)
+-			premises[i] = pg_synthesis_work_project(pg_synthesis_rule_premise(synthesis, job, i)).rule;
+-		local->rule = pg_synthesis_rule(synthesis, &header, premises, equation ? work : NULL, equation);
+-		free(premises);
+-		if (!local->rule) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
++		enum pg_synthesis_status failure;
++		local->rule = prepared_rule(synthesis, job, &failure);
++		if (!local->rule) { pg_synthesis_finish(synthesis, job, failure); return; }
+ 	}
+ 	pg_synthesis_forward(synthesis, job, local->rule);
+ }
