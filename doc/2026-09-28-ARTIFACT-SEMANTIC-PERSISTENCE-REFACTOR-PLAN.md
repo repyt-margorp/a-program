@@ -19,6 +19,8 @@ changes are excluded from this audit.
 4. **AP4:** implement the first downstream C transpiler, now explicitly requested.
 5. **AP5:** add the downstream Linker/LinkerScript requested on 2026-09-29
    (#46, PR #48); do not change artifact semantics or admission policy (#47).
+6. **AP6:** realize ordinary C arguments/results and target-native calls/data
+   from selected typed exports (#49, PR #50), not only structural execution.
 
 This is the active implementation plan, superseding R1-R6 in the
 [growth audit](2026-09-28-RETAINED-IMAGE-GROWTH-AUDIT.md). That document retains
@@ -56,6 +58,11 @@ User paraphrases, 2026-09-28:
 - Follow-up, same date (user paraphrase): merge the new PR and explicitly add
   Linker/LinkerScript to `.a`-to-C. These are subordinate transpiler facilities,
   not A Program language features or reasons to change `.a`. See AP5.
+- Follow-up, same date (user paraphrase): merge the native-lowering PR; a suitable
+  LinkerScript must produce modules usable from other C code, without merely
+  carrying the source implementation model into C. Close issues whose actual
+  completion criteria are met; do not retain them for unrelated later work.
+  See AP6 and the issue audit below.
 
 ### Objective (Code)
 
@@ -1481,15 +1488,16 @@ the LinkerScript parser in the source parser or artifact codecs.
   after success/failure and zero Solve/graph growth in emission itself. Re-run
   existing backend, QuickSort and artifact zero-step/partition gates; report
   still-open partition failures rather than attributing their repair to linking.
-- [ ] **AP5.6:** after the isolated ABI works, specify callable Pi arguments,
+- [ ] **AP5.6 (follow-up in AP6/#49):** specify callable Pi arguments,
   owned boxed handles, component/shared nominal identity and restricted flat
   types before enabling them. Test distinct-family collisions and shared-family
   controls. Foreign symbol bindings require an existing type/effect contract;
   unresolved bindings may be listed for objects but must resolve for executables.
   Shared-library visibility and further target profiles follow explicit tests.
-- [ ] **AP5.7:** update #46 with evidence at each increment; close only when its
-  agreed library/admission/identity/lifetime criteria pass. Keep #47 open unless
-  its separate admissibility criteria are implemented. Report implementation,
+- [x] **AP5.7:** close #46 against its initial isolated-library completion
+  criterion, with verified admission/identity/lifetime limits and an explicit
+  handoff of AP5.6 to AP6/#49. Closed on 2026-09-29 after the audit below.
+  Keep #47 open until its separate admissibility criteria pass. Report implementation,
   test and documentation line deltas separately; do not count a merged report
   as implemented functionality or complete AP1-AP3/#44 from a backend pass.
 
@@ -1546,6 +1554,168 @@ Implementation delta (excluding tests/docs/build): `emit.c` +76/-6, `emit.h`
 Documentation is excluded from these counts. No accepted implementation or
 unrelated working-tree changes are included.
 
+## AP6. Target-Native Public Modules
+
+### Subjective (User)
+
+2026-09-29, English paraphrase: incorporate the new Issue/PR and make suitable
+LinkerScripts produce A Program-derived modules that people can use as ordinary
+C modules. The present output appears to preserve too much of the A Program
+implementation model. Keep the backend subordinate to `.a` and the language.
+The user requests the capability, not the report's exact profile grammar or a
+hand-written QuickSort replacement. The following staging is an agent proposal.
+
+### Objective (Code)
+
+PR [#50](https://github.com/repyt-margorp/a-program/pull/50) merged at `1a047e3`,
+adding only [the native-lowering audit](2026-09-29-NATIVE-QSORT-LOWERING-AUDIT.md).
+Implementation inspection at `baabea8`, unchanged by that merge:
+
+- `c_backend/emit.c:entry_mode` rejects exported unapplied Pi computations.
+  `pg_c_emit_header` exposes only `int ap_export_ALIAS(void)`; returned values
+  are discarded. Linkability is implemented; an ordinary data/function API is not.
+- `pg_c_emit_exports` emits one `tN` function per reachable Core node. Lambda
+  creates a closure; APP calls `ap_apply` with a delayed operand. Its independent
+  runtime preserves supported semantics without embedding the compiler, but is
+  not direct native realization of those computations.
+- `link/plan.c` accepts only `isolated_v1`/`host-c11`; it has no lowering or
+  representation choice. `link/driver.c` always copies/compiles `runtime.c`,
+  even if a future native component would need none.
+- The read-only input is already `pg_occurrence` plus owner views, not a new
+  semantic IR. `main.c` owns admission; no lowering pass should duplicate it.
+- Fresh O2 Linker/C/Acc QuickSort gates and full compiler `check-acceptance`
+  passed at `baabea8` on clean accepted sources plus prototype overlays.
+  These do not test any proposed native profile.
+- The report's 53-line Bool sorter is a hand-derived candidate selected by a
+  fixed template and provenance hashes. Its artifact was not decoded. The
+  reported finite tests are external-session results, not rerun upstream CI or
+  a checked compiler transformation. Preserve that distinction.
+
+### Assessment
+
+Adopt the selected-boundary and native-realization direction. Separate three
+contracts without creating three mutable authorities:
+
+1. Existing accepted/trusted typed input: what the source computation means.
+2. One downstream LinkerScript: which public inputs/results, representation,
+   ownership, target, observations and unsupported policy are requested.
+3. One target-local lowering result: implemented transformations, required
+   dependencies, emitted ABI and diagnostics/receipt. It cannot grant evidence.
+
+The script selects implemented transformations; it cannot assert an arbitrary
+source/C equivalence. Keep `native_script` exclusively for native linker layout.
+No target profile, C symbol, buffer contract or transformation result enters
+the canonical `.a`, Core, source syntax or kernel. Reuse the parsed link plan;
+do not add a parallel manifest database, solver, permanent C type graph or replay.
+
+**Two independent requirements:** a flat public API could still marshal into
+closures internally; direct calls could still expose unusable internal values.
+Neither alone completes this request. First obtain a small genuinely native
+fixed-width function boundary, then extend calls/constructors and container
+representations. Keep the structural backend as the differential reference and
+an explicitly selected fallback, never a silent replacement for a native-only
+request or a different ABI.
+
+Agent proposal for the first profile: closed first-order functions over existing
+`#Int32`/`#Int64`, native parameters and a status/result contract. For example,
+the already-valid source `add := \x : #Int32 => \y : #Int32 => #int_add x y;`
+should support an ordinary C client calling
+`int ap_export_add(int32_t x, int32_t y, int32_t *out)` without any `ap_value`,
+environment or compiler headers. Derive/check widths and arity from the typed
+Pi/result, not from the alias or script assertions. Preserve wrapping arithmetic
+without C signed-overflow undefined behavior. This signature/profile is a
+proposal, not supported syntax or a newly accepted mathematical integer model.
+
+Do not eagerly evaluate every Core APP operand merely to use a C call: the
+current runtime deliberately delays it. Use checked value operands and explicit
+sequencing; preserve captures, unused arguments, repeated thunks and effects.
+Reject unsupported dependent/higher/Identity cases in the native profile while
+the structural profile retains its existing support. Scalar native lowering
+needs no blanket proof erasure; do not make all of #47 its prerequisite.
+
+For containers, identify the selected nominal family and constructors through
+typed owner views. Specify `Rep(source_value, target_buffer)` and input extent,
+ownership/aliasing, length and failure conditions before List-to-slice lowering.
+Finite C buffers are an explicit foreign input domain, not a replacement of all
+unbounded source values. Preserve persistent source inputs via copy-out unless
+ownership justifies mutation. Acc can drive recursion and Identity can affect
+runtime behavior: source Sortedness alone authorizes erasing neither. An Acc
+lowering needs a recurrence/refinement argument, separately from #47 relevance.
+
+Reject adopting the report's template by export spelling or hash. Also reject
+mandatory whole-program NF, compile-time print, a generic multi-target framework
+before C works, and a large IR hierarchy merely to rename Core nodes. Introduce
+only the C-local functions/blocks/operands needed by actual transformations.
+Share analysis by appropriate graph/environment/profile keys, not Term alone
+where captures or representation differ. Justified A Program precomputation
+must use existing mechanisms under the invocation's explicit budget, not a
+hidden extra normalization pass.
+
+### Plan
+
+This is #49's sole active implementation checklist; the imported report remains
+research/provenance. AP1-AP3 checkpoint work and #47 remain independently open.
+New implementation stays under `src/prototype/c_backend/`, with `lower/` only
+when needed; promotion remains a separate approved change.
+
+- [x] **AP6.0:** merge PR #50 intact; inspect current emitter, adapter, link
+  parser/driver and issue completion boundaries. Do not adopt its template.
+- [ ] **AP6.1:** extend `link/plan.h/.c` with a versioned lowering/ABI contract
+  and explicit unsupported policy, distinct from `native_script`. Reuse one
+  plan and named-root resolution. Document native-only versus explicit fallback;
+  reject unknown profiles, incompatible signatures and unsupported directives.
+- [ ] **AP6.2:** derive the first fixed-width callable boundary from admitted
+  occurrences in `emit.h` and C-local lowering. Implement native scalar
+  constants/functions and checked direct arithmetic/sequence, with actual C
+  inputs/results and no structural runtime dependency for supported examples.
+  Compare independent C calls with the interpreter, including overflow extrema,
+  input-dependent outputs, repeated calls and two modules in one client.
+- [ ] **AP6.3:** generalize known saturated calls using shared application-spine
+  and capture analysis; retain partial/higher-order adapters only when the
+  requested ABI/profile supports them. Test unused arguments, nested captures,
+  shadowing, partial application, delayed failure and effect order. No evaluation
+  of user effects during compilation or function replacement by name.
+- [ ] **AP6.4:** lower constructor/match control and define nominal
+  representation contracts; test length, append and partition before QuickSort.
+  Distinguish semantic justification dependencies from residual executable
+  dependencies. Drop only those whose permitted use/realization is established;
+  retain necessary private callees, effects and callbacks. Check distinct versus
+  intentionally shared families and reject incompatible cross-module exchange.
+- [ ] **AP6.5:** implement finite List-to-slice copy-out and justified
+  specialization/recurrence lowering for ordinary QuickSort inputs, not a closed
+  printed example. Tie Acc/relevance transformations to checked applicability
+  and #47 where needed. Record source/target relation and resource/failure
+  contract; require independent lowering evidence in addition to source Sorted.
+- [ ] **AP6.6:** update `link/driver.c` to include only required runtime/helpers
+  and emit ABI/profile/transformation/assumption/fallback diagnostics in receipts.
+  Preserve staged publication and existing cc/ar/link-script invocation.
+  Public headers must expose only the chosen C contract, not compiler internals.
+  Failed native requests must not publish a structurally incompatible library.
+- [ ] **AP6.7:** add durable upstream native-client/differential/sanitizer gates
+  to `c_backend/build.mk`. Cover closed results, open functions, effectful entries,
+  private dependencies, unsupported profiles, unchanged `.a`, deterministic
+  output and no hidden Solve. Compare sizes/performance only for the same ABI,
+  inputs and observations; the 53-vs-10,873 report is not such a comparison.
+- [ ] **AP6.8:** push each verified boundary, report separate implementation,
+  test and documentation deltas, and update #49 with supported/unsupported cases.
+  Close only on reusable native lowering, not on scalar marshalling alone or a
+  manual sort template. Other targets are later profiles, not blockers for C.
+
+### Issue Audit (2026-09-29)
+
+| Issue | Decision and remaining reason |
+| --- | --- |
+| #46 | Closed: initial isolated multi-export C library/executable milestone passes. General native arguments/results and AP5.6 continue in AP6/#49; they are not reported as implemented. |
+| #44 | Keep open: structural C and checked/trusted QuickSort work, but selected-export admissibility beside unresolved obligations and general dependent/higher Identity target coverage remain incomplete (AP4.6/#47). Failed fuel partitioning is separate, not by itself the reason to retain a C issue. |
+| #47 | Keep open: no general checked relevance or partial-artifact admission rule; a link script does not provide either. |
+| #49 | Keep open: PR #50 is a design record; no reusable native profile or ordinary parameter/result ABI is implemented yet. |
+| #41 | Keep open: F1/F2 are accepted and F3/F4 prototypes have passed their gates, but F3/F4 promotion and accepted regression integration remain open in the finite-sorting plan. No new five-backend verification is claimed here. |
+| #43 | Keep open: loop/state/result synthesis and logical boundary choices are still undecided. No evidence that the request is unnecessary or disproved. |
+
+No remaining issue is classified as invalid merely because a narrower milestone
+works. The #46 closure and this handoff supersede the earlier decision to keep
+that packaging issue open for future ABI extensions. Overall goal stays active.
+
 ## Research Records
 
 The following PR #45 files are imported verbatim. Their supplied research remains
@@ -1560,3 +1730,8 @@ PR #48 is also preserved as supplied research:
 [Linkable components and target link manifest](2026-09-29-LINKABLE-COMPILATION-UNITS-AND-TARGET-LINK-MANIFEST-DESIGN.md).
 AP5 is the active implementation checklist for #46. Its assessment, not the
 report's illustrative ABI/CLI or pending-proof defaults, governs this increment.
+
+PR #50 is preserved as supplied research:
+[Native QuickSort lowering audit](2026-09-29-NATIVE-QSORT-LOWERING-AUDIT.md).
+AP6 adopts its target-native direction, not its hand-derived template or an
+unverified source-to-target refinement claim.

@@ -207,3 +207,9 @@ O2 and ASan/UBSan pass against clean `e716232` plus the artifact overlays at
 Acc QuickSort also pass. This does not fix the separately failing public
 artifact split-fuel gate. Callable Pi/boxed/flat ABIs, shared semantic identity,
 foreign imports and shared-library visibility remain AP5.6 work.
+
+The initial packaging issue #46 is closed; it does not imply a general native
+C API. #49 and [AP6](../../../doc/2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md#ap6-target-native-public-modules)
+now track typed C arguments/results, direct calls and representation lowering.
+PR #50's hand-derived Bool sorter is research, not an available lowering profile.
+A native-only request must not silently become this status-only structural ABI.
