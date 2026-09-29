@@ -1,9 +1,9 @@
 --- a/synthesis_source.h
 +++ b/synthesis_source.h
-@@ -22,6 +22,57 @@
+@@ -22,6 +22,66 @@
  	struct pg_synthesis_job *clause;
  };
- 
+
 +/* Borrowed committed registration frontier, including failed registrations.
 + * A failed item does not advance its cursor. Entries keep their source recipes;
 + * registration completion is name publication, not acceptance of those entries.
@@ -23,8 +23,9 @@
 +int pg_synthesis_definition_resume(struct pg_synthesis *, struct pg_synthesis_job *,
 +	const struct pg_definition_frontier *);
 +
-+/* Pending definition bodies and module-check traversal. These borrow/restore
-+ * only owner-local edges/cursors. Child work/results must be restored or checked
++/* Definition bodies and module-check traversal. Getters also expose completed
++ * owners; attachment requires pending owners. These borrow/restore only local
++ * edges/cursors. Child work/results must be restored or checked
 + * separately, and the enclosing checkpoint must replace scheduling before Solve.
 + * The module position is its next entry, or 0/1 before/after named selection. */
 +struct pg_module_frontier {
@@ -35,6 +36,14 @@
 +int pg_synthesis_definition_resume_body(struct pg_synthesis *, struct pg_synthesis_job *, struct pg_synthesis_job *);
 +int pg_synthesis_module_frontier(const struct pg_synthesis *, const struct pg_synthesis_job *, struct pg_module_frontier *);
 +int pg_synthesis_module_resume(struct pg_synthesis *, struct pg_synthesis_job *, const struct pg_module_frontier *);
++
++/* Literal/@ preparation has no mutable continuation beyond its rule edge.
++ * 1 supported (possibly unprepared), 0 other syntax, -1 wrong owner/arguments.
++ * The shared factory performs no Solve, forwarding or evidence admission. An
++ * enclosing checkpoint must map the returned rule, its cursors and schedule. */
++int pg_synthesis_literal_frontier(const struct pg_synthesis *, const struct pg_synthesis_job *,
++	struct pg_synthesis_job **);
++struct pg_synthesis_job *pg_synthesis_prepare_literal(struct pg_synthesis *, struct pg_synthesis_job *);
 +
 +/* Constructor continuation immediately after field-scope construction, before
 + * abstracting its body. Borrow the checked map, not the completed worker's
@@ -58,7 +67,7 @@
  /* Restored lexical binder allocation. Each owner keeps its own cursor;
   * this payload describes source addresses, not a second typed Context. */
  struct pg_source_context_allocation {
-@@ -50,12 +101,31 @@
+@@ -50,12 +110,31 @@
  	const struct pg_object *, size_t, struct pg_synthesis_job *const *);
  struct pg_synthesis_job *pg_synthesis_rule_premise(struct pg_synthesis *, const struct pg_synthesis_job *, size_t);
  const struct pg_derivation_input *pg_synthesis_plain_derivation(const struct pg_synthesis_job *);

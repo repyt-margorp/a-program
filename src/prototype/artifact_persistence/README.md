@@ -314,6 +314,7 @@ make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artif
 make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artifact-persistence BUILD=/tmp/a-program-artifact-persistence/build check-artifact-normalization-checkpoint
 make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artifact-persistence BUILD=/tmp/a-program-artifact-persistence/build check-artifact-derivation-checkpoint
 make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artifact-persistence BUILD=/tmp/a-program-artifact-persistence/build check-artifact-definition-checkpoint
+make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artifact-persistence BUILD=/tmp/a-program-artifact-persistence/build check-artifact-source-checkpoint
 make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artifact-persistence BUILD=/tmp/a-program-artifact-persistence/build check-artifact-constructor-checkpoint
 make -f src/prototype/artifact_persistence/build.mk OVERLAY=/tmp/a-program-artifact-persistence BUILD=/tmp/a-program-artifact-persistence/build check-artifact-history
 ```
@@ -391,6 +392,16 @@ yield identical final proof bytes. Arbitrary source-private continuations,
 open effects, started comparison/reduction work and provenance-policy integration
 remain unsupported. This owner codec is not a public source checkpoint;
 APGSRC68 and the ordinary full-derivation format are unchanged.
+
+The source checkpoint gate composes real source-input I/O, direct rules and one
+schedule at 116 lifecycle cuts in four closed literal modules. The artifact-local
+source payload stores body/module/literal continuations, not name registration,
+typed results or backend data. Rechecking uses ordinary Solve and counts toward
+its step total. O2/ASan/UBSan pass exact inert/live resaves, remaining dispatches,
+final images and the 0+0/10+10/1+19/0+20/20+0 fragment partitions. Its bounded
+standalone codec sections are a test envelope, not a public format: shared
+nominal relocation, general source continuations and provenance remain open.
+The public `.a` partition gate below still fails; these results do not replace it.
 
 The constructor gate separately transports the checked field map through existing
 rule inputs, verifies it using ordinary Solve, then resumes the value owner before

@@ -794,6 +794,41 @@ constructed rule requests changes identity/fuel and is not an acceptable shortcu
   (net +124 implementation lines); checkpoint tests +234/-9. This adds supported
   dependency composition, not a claim of overall code reduction.
 
+**2026-09-30, source-owner composition after `cf28c76`:**
+
+- **Subjective (User):** keep target-only responsibilities out of `.a`.
+- **Objective (Code):** `artifact/source.[ch]` transports only definition body
+  edges, module traversal cursors and literal/@ rule edges. Normal source I/O
+  owns syntax, scopes and name registration; the new payload does not duplicate
+  them. Literal preparation shares the ordinary synthesis factory. Completed
+  targets still require ordinary checking before cursor/schedule attachment.
+- **Assessment:** these continuations serve A Program's own Solve, not C
+  generation. Public APGSRC68 and backend formats are unchanged. The test uses
+  bounded standalone source/header sections because both codecs require EOF;
+  relaxing EOF or adopting independent nominal relocation tables is rejected.
+  General integration must share relocation, not promote this fixture envelope.
+- **Plan/status:** O2/ASan/UBSan pass 116 complete lifecycle cuts across four
+  closed literal modules, including shared rules. Inert resaves, reconstructed
+  live snapshots, remaining dispatches and final source images match exactly.
+  The 0+0, 10+10, 1+19, 0+20 and 20+0 fragment checks pass; rechecking is counted
+  in ordinary Solve steps, not a free second allowance. Guards reject omitted
+  rule edges, foreign/duplicate inputs, unsupported syntax and unchecked
+  completion. Logs: `/tmp/a-program-source-checkpoint-{final,asan}.log`.
+  Full O2 `check-acceptance` and the existing definition, derivation,
+  normalization/schedule and semantic-image gates pass on clean `e716232` plus
+  the prototypes, excluding unrelated working-tree changes. Logs:
+  `/tmp/a-program-source-checkpoint-{suite,c-boundary}.log`.
+  LinkerScript/native-enum gates preserve the input artifact. On the identical
+  List input, parent/candidate public images match at 0/200/completion steps
+  (25,369/26,390/50,820 bytes; completion at 2,824 steps).
+  The public partition gate still fails: 100+100 differs by 178 bytes and
+  1600+1600 remains pending versus single-run completion. Results:
+  `/tmp/a-program-source-checkpoint-partitions/partitions.tsv`. AP1-AP3 remain
+  open for general source continuations, shared relocation and provenance.
+  Actual implementation delta: `synthesis.c` +50/-18, its header +11/-2,
+  `artifact/source.c` +216/-0 and its header +32/-0 (net +289); test +404/-0,
+  build +8/-0. This adds continuation coverage, not overall code reduction.
+
 #### Rejected Read Policy and Retention Audit (2026-09-29)
 
 The user rejected the agent's byte-derived allowance. That prototype and its
@@ -877,6 +912,9 @@ alone. Avoid adding a second parallel type graph or serializing all workers.
 - [x] Restore imported derivation preparation and its canonical rule edge,
   preserving shared workers and preparation subscriptions without checking on
   decode; `check-artifact-derivation-checkpoint` is an owner-level gate only.
+- [x] Compose source-input transport, definition/module/literal owners, direct
+  rules and one schedule for complete closed-literal lifecycles;
+  `check-artifact-source-checkpoint` remains a restricted fixture envelope.
 - [x] Verify direct source-image rule relocation through ordinary canonical
   factories, without per-input preparation wrappers. Retain byte-identical
   step-0 resaves and ordinary rejection; full acceptance passes for this
@@ -1724,6 +1762,7 @@ transpilation is a bad pattern. Transpiler/Linker responsibilities must remain
 downstream. Do not persist target-only representations, ABI decisions, lowering
 analysis or link configuration in `.a`. A missing backend view is not by itself
 a reason to add an artifact field; first derive it from existing semantic data.
+The user reaffirmed this boundary on 2026-09-30.
 
 Implementation review criterion (agent): every proposed artifact field must name
 an A Program consumer independent of target generation, and explain why existing

@@ -24,6 +24,14 @@ check-artifact-normalization-checkpoint: $(BUILD)/artifact_normalization_checkpo
 	$(BUILD)/artifact_normalization_checkpoint_test
 
 NORMALIZATION_IO := $(addprefix $(ROOT),machine_io.c computation_io.c identity_io.c comparison_io.c eval_io.c artifact/schedule.c)
+.PHONY: check-artifact-source-checkpoint
+check-artifact-source-checkpoint: $(BUILD)/artifact_source_checkpoint_test
+	$(BUILD)/artifact_source_checkpoint_test
+
+$(BUILD)/artifact_source_checkpoint_test: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ROOT)artifact/schedule.c $(ROOT)artifact/derivation.c $(ROOT)artifact/source.c $(wildcard $(ROOT)*.h) $(wildcard $(ROOT)artifact/*.h) $(ARTIFACT_PROTOTYPE)source_checkpoint_test.c
+	mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ROOT)artifact/schedule.c $(ROOT)artifact/derivation.c $(ROOT)artifact/source.c $(ARTIFACT_PROTOTYPE)source_checkpoint_test.c -Wl,--wrap=pg_synthesis_advance -o $@
+
 .PHONY: check-artifact-derivation-checkpoint
 check-artifact-derivation-checkpoint: $(BUILD)/artifact_derivation_checkpoint_test
 	$(BUILD)/artifact_derivation_checkpoint_test
