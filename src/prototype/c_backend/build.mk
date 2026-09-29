@@ -3,7 +3,7 @@ OVERLAY ?= /tmp/a-program-c-backend-base
 include $(C_BACKEND)../artifact_persistence/build.mk
 
 LINK_SOURCES := $(C_BACKEND)link/plan.c $(C_BACKEND)link/driver.c
-LOWER_SOURCES := $(C_BACKEND)lower/scalar.c
+LOWER_SOURCES := $(C_BACKEND)lower/scalar.c $(C_BACKEND)lower/representation.c
 $(BUILD)/a-to-c: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(wildcard $(ROOT)*.h $(ROOT)artifact/*.h $(C_BACKEND)link/*.h $(C_BACKEND)lower/*.h) $(C_BACKEND)main.c $(C_BACKEND)emit.c $(C_BACKEND)emit.h $(C_BACKEND)runtime.h $(LINK_SOURCES) $(LOWER_SOURCES)
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -DPG_C_BACKEND_DIRECTORY='"$(C_BACKEND)"' -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(C_BACKEND)main.c $(C_BACKEND)emit.c $(LINK_SOURCES) $(LOWER_SOURCES) -o $@
@@ -15,6 +15,10 @@ check-c-link: $(BUILD)/a-to-c $(BUILD)/pointer-check
 .PHONY: check-c-scalar
 check-c-scalar: $(BUILD)/a-to-c $(BUILD)/pointer-check $(BUILD)/c_scalar_test
 	bash $(C_BACKEND)lower/check.sh $(BUILD)/a-to-c $(BUILD)/pointer-check $(BUILD)/c_scalar_test
+
+.PHONY: check-c-enum
+check-c-enum: $(BUILD)/a-to-c $(BUILD)/pointer-check
+	bash $(C_BACKEND)lower/enum_check.sh $(BUILD)/a-to-c $(BUILD)/pointer-check
 
 $(BUILD)/c_scalar_test: $(SOURCES) $(wildcard $(ROOT)*.h $(C_BACKEND)lower/*.h) $(C_BACKEND)lower/oracle_test.c $(LOWER_SOURCES) $(C_BACKEND)emit.c $(C_BACKEND)emit.h
 	mkdir -p $(BUILD)

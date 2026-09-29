@@ -1572,6 +1572,13 @@ concept was **Tradition**: conventionally choosing a way of expressing things.
 Preserve this motivation for future design, rather than treating C's customary
 form as intrinsic to A Program's theory.
 
+Further clarification on 2026-09-29, English paraphrase of the user: refactoring
+artifact functionality can be appropriate, but continually extending `.a` for
+transpilation is a bad pattern. Transpiler/Linker responsibilities must remain
+downstream. Do not persist target-only representations, ABI decisions, lowering
+analysis or link configuration in `.a`. A missing backend view is not by itself
+a reason to add an artifact field; first derive it from existing semantic data.
+
 ### Objective (Code)
 
 PR [#50](https://github.com/repyt-margorp/a-program/pull/50) merged at `1a047e3`,
@@ -1695,6 +1702,8 @@ when needed; promotion remains a separate approved change.
   dependencies. Drop only those whose permitted use/realization is established;
   retain necessary private callees, effects and callbacks. Check distinct versus
   intentionally shared families and reject incompatible cross-module exchange.
+  Closed nullary enum selections and conditional Match are verified below;
+  fieldful/recursive/container representations and shared-family exchange remain.
 - [ ] **AP6.5:** implement finite List-to-slice copy-out and justified
   specialization/recurrence lowering for ordinary QuickSort inputs, not a closed
   printed example. Tie Acc/relevance transformations to checked applicability
@@ -1805,6 +1814,65 @@ AP6.3 remains open for representations outside scalar known calls; AP6.4/AP6.5
 must address ADT/control/container/Acc semantics before native QuickSort is
 claimed. #49 remains open, as do the independent AP1-AP3 checkpoint requirements.
 
+### Nullary Representation Milestone (2026-09-29)
+
+AP6.4 implementation decision (agent): start the representation
+boundary with explicitly selected, closed, unindexed nullary ADTs. A downstream
+`enum32 SOURCE ALIAS` directive selects an admitted nominal type, not just its
+erased layout. The extended native profile exposes a distinct C struct tag
+with a checked uint32 constructor position and lower Match into selected-branch
+control flow. Invalid foreign positions must fail before calling source code.
+No eager execution of every branch. Keep the existing scalar contract unchanged.
+Do not infer equivalence of nominal families from matching constructor counts;
+ambiguous reused erased layouts must reject until typed-edge-directed selection
+exists. Independent generated headers do not yet declare shared nominal type
+identity. This is a finite representation relation, not ADT erasure, a List
+buffer contract or an Acc transformation.
+
+Objective at `7dedefa` plus this prototype change: `native_direct_v1` /
+`c_native_v1` reuses scalar lowering with target representation pointers in
+callee keys; equal integer widths cannot merge distinct selected families.
+`lower/representation.c` borrows existing declaration views and stores its index
+only in the temporary backend arena. `main.c` admits type selections through the
+same Program/budget/policy as function exports. No new admission authority.
+Nullary Match branches reuse private callees/capture lifting and execute only
+in their selected switch arm. Function-returning Match and subsequent scalar
+arguments are supported. Public enum arguments are range-checked before entry.
+The contract is documented in [the backend guide](../src/prototype/c_backend/README.md#native-nullary-adts).
+
+Assessment: a declaration can retain an ambient parameter prefix even when its
+selected type occurrence is closed. Checking `parameters == NULL` incorrectly
+rejected ordinary source Bool. Instead inspect the existing declaration's index
+and field extensions relative to its prefix, plus the admitted closed type.
+No artifact repair, schema rewrite, new Core object or persistent C type cache
+was needed. Reused erased layouts remain deliberately ambiguous and reject when
+two nominal selections try to assign them different representations. The script
+and `link.json`, not `.a`, own all representation/ABI choices.
+
+Fresh O2 `check-c-scalar`, `check-c-enum`, `check-c-link`, `check-c-backend` and
+`check-c-sorting-boundary` pass; ASan/UBSan scalar/enum gates also pass. Baseline:
+clean accepted `e716232` plus artifact overlays through `baabea8` and backend
+`7dedefa` plus this change, excluding unrelated worktree edits. Native tests
+compare independent inputs with the interpreter, all constructors in two/three
+case types, same-shaped distinct families, captures/Fold/curried Match, invalid
+tags, unsupported selections, all four products and deterministic checked/trusted
+output. Raw fixtures forbid evaluator/substitution calls during emission, assert
+source graph/evidence counts unchanged, and reject ambiguous shared layouts.
+Input `.a` digests are unchanged after successful and rejected link requests.
+The source differential initially lacked imports and assumed C-style `\n`
+escaping; these test mistakes were corrected without changing source semantics.
+Full compiler acceptance is not rerun for this backend-only milestone.
+
+Non-documentation delta: `lower/scalar.c` +158/-46, `scalar.h` +5/-0,
+`representation.c` +92/-0, `representation.h` +25/-0, `link/plan.c` +26/-8,
+`plan.h` +4/-1, `driver.c` +16/-3, `main.c` +6/-4: implementation net +270.
+Tests: `lower/oracle_test.c` +53/-3, `check.sh` +3/-1, `enum_check.sh` +86/-0,
+`enum_client.c` +38/-0, `enum_fixture.p` +23/-0, `enum_differential.c` +22/-0,
+`enum_differential.p` +20/-0: test net +241. `build.mk` +5/-1: net +4.
+This is a new native representation capability, not a code-reduction milestone.
+AP6.3-AP6.5/#49 and independent AP1-AP3 checkpoints remain open. The existing
+structural Acc QuickSort test is not evidence of native QuickSort support.
+
 ### Issue Audit (2026-09-29)
 
 | Issue | Decision and remaining reason |
@@ -1812,7 +1880,7 @@ claimed. #49 remains open, as do the independent AP1-AP3 checkpoint requirements
 | #46 | Closed: initial isolated multi-export C library/executable milestone passes. General native arguments/results and AP5.6 continue in AP6/#49; they are not reported as implemented. |
 | #44 | Keep open: structural C and checked/trusted QuickSort work, but selected-export admissibility beside unresolved obligations and general dependent/higher Identity target coverage remain incomplete (AP4.6/#47). Failed fuel partitioning is separate, not by itself the reason to retain a C issue. |
 | #47 | Keep open: no general checked relevance or partial-artifact admission rule; a link script does not provide either. |
-| #49 | Keep open: the scalar native ABI/profile is implemented at `3c0ce77`; general calls, ADT representations and native QuickSort are not. PR #50 remains a design record, not an implemented sorter template. |
+| #49 | Keep open: shared scalar calls and closed nullary ADT/Match representations are verified; higher-order calls, fieldful/recursive data and native QuickSort remain. PR #50 remains a design record, not an implemented sorter template. |
 | #41 | Keep open: F1/F2 are accepted and F3/F4 prototypes have passed their gates, but F3/F4 promotion and accepted regression integration remain open in the finite-sorting plan. No new five-backend verification is claimed here. |
 | #43 | Keep open: loop/state/result synthesis and logical boundary choices are still undecided. No evidence that the request is unnecessary or disproved. |
 

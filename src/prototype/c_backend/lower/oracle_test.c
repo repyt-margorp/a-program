@@ -2,6 +2,7 @@
 #include "classifier.h"
 #include "computation.h"
 #include "host.h"
+#include "iadt.h"
 #include "support.h"
 #include <assert.h>
 #include <inttypes.h>
@@ -52,7 +53,8 @@ static const struct pg_occurrence *occurrence(struct pg_typing *t, const struct 
 	return pg_occurrence(t, PG_JUDGEMENT_COMPUTATION, NULL, term, type, NULL, 0, NULL);
 }
 
-static void inert(struct pg_typing *t, FILE *source, size_t count, const struct pg_c_export *exports, int status)
+static void inert_emit(struct pg_typing *t, FILE *source, size_t count, const struct pg_c_export *exports,
+	size_t enum_count, const struct pg_c_export *enums, int status)
 {
 	FILE *header = tmpfile();
 	assert(header);
@@ -60,12 +62,59 @@ static void inert(struct pg_typing *t, FILE *source, size_t count, const struct 
 	size_t proofs = t->proofs.count, subjects = t->occurrences.count;
 	const char *error;
 	emitting = 1;
-	assert(pg_c_emit_scalar(source, header, count, exports, SIZE_MAX, &error) == status);
+	int result = enum_count ? pg_c_emit_native(source, header, count, exports, SIZE_MAX, enum_count, enums, &error) :
+		pg_c_emit_scalar(source, header, count, exports, SIZE_MAX, &error);
+	assert(result == status);
 	emitting = 0;
 	assert(terms == t->graph->terms.count && objects == t->graph->objects.count);
 	assert(proofs == t->proofs.count && subjects == t->occurrences.count);
 	if (status) assert(!ftell(source) && !ftell(header));
 	assert(!fclose(header));
+}
+
+static void inert(struct pg_typing *t, FILE *source, size_t count, const struct pg_c_export *exports, int status)
+{
+	inert_emit(t, source, count, exports, 0, NULL, status);
+}
+
+static void enum_match(struct pg_typing *t, const char *path)
+{
+	struct pg_graph *g = t->graph;
+	struct pg_data_constructor_input inputs[2] = {{0}, {0}};
+	const struct pg_data_declaration *d = pg_data_declaration(g, NULL, NULL, 2, inputs);
+	assert(d);
+	const struct pg_data_layout *layout = pg_data_declaration_layout(d);
+	const struct pg_term *family = pg_reference(g, pg_data_declaration_family(d));
+	struct pg_c_export enums[2] = {{"Choice", pg_occurrence(t, PG_JUDGEMENT_VALUE_TYPE, NULL, family,
+		pg_universe(g, 0), NULL, 0, NULL)}};
+	const struct pg_object *x = pg_binder(g);
+	struct pg_match_clause clauses[2];
+	for (size_t i = 0; i < 2; ++i) clauses[i] = (struct pg_match_clause){pg_data_constructor(layout, i),
+		op(g, &pg_return_operation, pg_reference(g, pg_host_integer(g, pg_host_type("Int32"), (int64_t)(7 + i))))};
+	const struct pg_term *body = pg_data_match(g, layout, pg_reference(g, x), 2, clauses);
+	const struct pg_term *classifier = pg_pi(g, family, x, pg_computation_type(g, PG_TOTALITY_TOTAL,
+		pg_effect_row(g, 0, NULL), pg_reference(g, pg_host_type("Int32"))));
+	struct pg_c_export export = {"choice", occurrence(t, pg_lambda(g, x, body), classifier)};
+	FILE *source = fopen(path, "w");
+	assert(source);
+	inert_emit(t, source, 1, &export, 1, enums, 0);
+	fputs("#include <assert.h>\nint main(void) { int32_t out;\n", source);
+	for (size_t i = 0; i < 2; ++i) {
+		int64_t expected = evaluate(g, app(g, export.subject->core, pg_reference(g, pg_data_constructor(layout, i))));
+		fprintf(source, "assert(!ap_export_choice((struct ap_enum_Choice){%zu}, &out) && out == %" PRId64 ");\n", i, expected);
+	}
+	fputs("}\n", source);
+	fclose(source);
+	/* Distinct declarations may intentionally share an erased layout. A backend
+	 * cannot use that layout to choose between two nominal C type selections. */
+	const struct pg_data_declaration *other = pg_data_declaration_at_layout(g, layout, NULL, NULL, 2, inputs);
+	assert(other);
+	enums[1] = (struct pg_c_export){"Other", pg_occurrence(t, PG_JUDGEMENT_VALUE_TYPE, NULL,
+		pg_reference(g, pg_data_declaration_family(other)), pg_universe(g, 0), NULL, 0, NULL)};
+	source = tmpfile();
+	assert(source);
+	inert_emit(t, source, 1, &export, 2, enums, -1);
+	fclose(source);
 }
 
 static void shared_calls(struct pg_typing *t)
@@ -100,10 +149,11 @@ static void shared_calls(struct pg_typing *t)
 
 int main(int argc, char **argv)
 {
-	assert(argc == 2);
+	assert(argc == 3);
 	struct pg_graph g;
 	struct pg_typing t;
 	assert(!pg_graph_init(&g) && !pg_typing_init(&t, &g));
+	enum_match(&t, argv[2]);
 	shared_calls(&t);
 	struct pg_c_export exports[8];
 	char names[8][16];

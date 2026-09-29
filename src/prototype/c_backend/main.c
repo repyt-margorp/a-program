@@ -113,10 +113,12 @@ int main(int argc, char **argv)
 	if (!program) { fputs("C export: cannot read artifact\n", stderr); goto cleanup; }
 	if (!count) { fputs("C export: artifact has no root\n", stderr); goto done; }
 	uint64_t spent = 0;
-	for (size_t i = 0; i < plan.count; ++i) {
-		struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = plan.names[i], .length = strlen(plan.names[i])};
+	for (size_t i = 0; i < plan.count + plan.enum_count; ++i) {
+		const char *selected_name = i < plan.count ? plan.names[i] : plan.enum_names[i - plan.count];
+		struct pg_c_export *target = i < plan.count ? &plan.exports[i] : &plan.enums[i - plan.count];
+		struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = selected_name, .length = strlen(selected_name)};
 		if (trust_image) {
-			int available = pg_artifact_trusted_export(program, roots[0], name, &plan.exports[i].subject);
+			int available = pg_artifact_trusted_export(program, roots[0], name, &target->subject);
 			if (available != 1) {
 				fputs("C export: no complete saved module/export; trust does not complete pending work\n", stderr);
 				status = available < 0 ? 2 : 3;
@@ -139,7 +141,7 @@ int main(int argc, char **argv)
 		}
 		const struct pg_evidence *proof = pg_synthesis_result(selected);
 		if (!pg_evidence_owned_by(proof, &program->typing)) goto checked;
-		plan.exports[i].subject = pg_evidence_subject(proof);
+		target->subject = pg_evidence_subject(proof);
 	}
 	status = script ? pg_c_link_publish(&plan, output, cc, ar, script, trust_image, spent) : publish(output, &plan);
 checked:

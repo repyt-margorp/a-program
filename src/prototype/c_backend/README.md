@@ -11,6 +11,10 @@
 2026-09-29, paraphrase: continue artifact implementation through C transpilation;
 push verified increments. Preserve the single-fuel policy and separation of
 computation from typing. This supersedes the previous wait-before-C instruction.
+Further clarification that day: readable target code is a cultural convention
+(the user's **Tradition**), not source theory. Refactoring `.a` is permitted,
+but do not extend its semantics or fields for backend/Linker responsibilities.
+Target representations, ABI choices and lowering analysis remain downstream.
 
 ## Objective (Code)
 
@@ -223,8 +227,8 @@ functions/DAGs using the existing iterative `pg_dag` and pointer/environment ind
 not evaluate source terms or change their graph, classifiers, proofs or artifact.
 Source Pi binders become actual C parameters; pure total fixed-width results
 become output values. Aliases of an identical export share its private C function.
-Known callees are shared across call sites by source Lambda, supplied scalar
-widths and free-binder/capture widths, never by runtime argument values or export
+Known callees are shared across call sites by source Lambda, supplied target
+representations and free-binder/capture representations, never by runtime argument values or export
 spelling. Only required scalar captures become extra private C parameters.
 Membership uses the existing immutable source support trie; it does not copy a
 source Context or rescan the function body for every capture. Intermediate C
@@ -283,6 +287,66 @@ Native scripts must explicitly request `fallback reject`. There is no automatic
 boxed fallback. Existing scripts select `structural_v1` by default, or explicitly
 with `lowering structural_v1`; that profile requires `abi isolated_v1`.
 Checking/trust and the input `.a` format are unchanged by the profile choice.
+
+## Native Nullary ADTs
+
+`native_direct_v1` / `c_native_v1` extends the same scalar lowering, not another
+source evaluator. Select each closed, unindexed, nullary nominal type explicitly:
+
+```text
+aplink 1
+artifact choices.a
+abi c_native_v1
+target host-c11
+product archive
+lowering native_direct_v1
+fallback reject
+enum32 Bool Bool
+export negate negate
+```
+
+For `Bool := @{false : *; true : *;};` and ordinary `negate`, this emits:
+
+```c
+struct ap_enum_Bool { uint32_t tag; };
+#define AP_ENUM_Bool_C0 UINT32_C(0)
+#define AP_ENUM_Bool_C1 UINT32_C(1)
+int ap_export_negate(struct ap_enum_Bool a1, struct ap_enum_Bool *out);
+```
+
+Tags are constructor positions in the selected declaration, not source pointer
+IDs or inferred equivalences. `Bool` has no special backend meaning. Separate
+selected families produce distinct C struct types even with the same arity.
+All enum inputs are checked before calling generated code: status 2 leaves the
+output untouched on an invalid position. Status 1 means null output; status 0
+writes the result. As for scalar APIs, nonnull output must be valid storage.
+Headers check `AP_C_NATIVE_ABI` 1 and use the supported GNU/Clang toolchain's
+`#pragma once`. Match becomes a C switch calling only the selected branch's
+shared helper; captures and subsequent first-order arguments use the existing
+native call lowering. An impossible internal tag aborts rather than fabricating
+a source result. These products need no structural runtime or allocator.
+
+Representation selections are admitted by the same adapter as function exports.
+The lowerer reads existing declarations; their ambient prefix is allowed, but
+index/field extensions are not. Unsaturated type families, fieldful/indexed
+constructors, higher-order/effectful signatures and unknown representations
+reject. Two selected nominal families deliberately sharing one erased layout
+also reject: that layout alone cannot choose their C representation. The profile
+does not establish shared nominal identity across independently generated
+headers. Aliases must be coordinated by the C client; equal names/counts are not
+an A Program type-equivalence proof.
+
+`enum32` and its representation index exist only in this backend. No new `.a`
+field, source syntax, Kernel rule or persistent target analysis is introduced.
+The receipt records selections in `link.json`, not in the input image. This is
+not yet List/slice conversion, Acc erasure or native QuickSort lowering.
+
+`check-c-enum` covers all four products, every input constructor in two/three-case
+types, same-shaped distinct families, Match returning a function, Fold/captures,
+invalid input positions, repeated headers, unsupported selections, interpreter
+differentials, deterministic checked/trusted C and unchanged artifact digests.
+The raw Oracle fixture additionally rejects ambiguous reused layouts and checks
+native enum emission performs no source evaluation or graph/evidence mutation.
 
 `check-c-scalar` tests source/object/archive/executable products, standalone and
 two-module C clients, capture/sequencing, alias sharing, null outputs, ABI/profile

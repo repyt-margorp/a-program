@@ -86,8 +86,12 @@ static int receipt(const char *path, const struct pg_c_link_plan *plan, const ch
 	fputs(",\n  \"fallback\": \"reject\",\n  \"runtime_abi\": ", file);
 	fputs(plan->lowering == PG_C_STRUCTURAL ? "2" : "null", file);
 	fputs(",\n  \"transformations\": ", file);
-	fputs(plan->lowering == PG_C_STRUCTURAL ? "[\"structural-closures\"]" :
-		"[\"scalar-abi\",\"fixed-width-arithmetic\",\"pure-sequencing\",\"shared-direct-calls\",\"scalar-capture-lifting\"]", file);
+	if (plan->lowering == PG_C_STRUCTURAL) fputs("[\"structural-closures\"]", file);
+	else {
+		fputs("[\"fixed-width-arithmetic\",\"pure-sequencing\",\"shared-direct-calls\",\"capture-lifting\"", file);
+		if (plan->enum_count) fputs(",\"nullary-enum32\",\"conditional-match\"", file);
+		fputc(']', file);
+	}
 	fputs(",\n  \"cc\": ", file);
 	json_string(file, cc);
 	fputs(",\n  \"ar\": ", file); json_string(file, ar);
@@ -97,7 +101,13 @@ static int receipt(const char *path, const struct pg_c_link_plan *plan, const ch
 		fputs("    {\"source\": ", file); json_string(file, plan->names[i]);
 		fprintf(file, ", \"symbol\": \"ap_export_%s\"}%s\n", plan->exports[i].alias, i + 1 < plan->count ? "," : "");
 	}
-	fputs("  ],\n  \"entry\": ", file);
+	fputs("  ],\n  \"enum32\": [", file);
+	for (size_t i = 0; i < plan->enum_count; ++i) {
+		if (i) fputs(", ", file);
+		fputs("{\"source\": ", file); json_string(file, plan->enum_names[i]);
+		fputs(", \"alias\": ", file); json_string(file, plan->enums[i].alias); fputc('}', file);
+	}
+	fputs("],\n  \"entry\": ", file);
 	json_string(file, plan->entry == SIZE_MAX ? NULL : plan->exports[plan->entry].alias);
 	fputs("\n}\n", file);
 	int status = ferror(file) ? -1 : 0;
@@ -140,6 +150,9 @@ int pg_c_link_publish(const struct pg_c_link_plan *plan, const char *directory,
 	if (runtime) {
 		emitted = pg_c_emit_exports(file, plan->count, plan->exports, plan->entry, &error);
 		if (!emitted) emitted = pg_c_emit_header(header, plan->count, plan->exports);
+	} else if (plan->lowering == PG_C_NATIVE_DIRECT) {
+		emitted = pg_c_emit_native(file, header, plan->count, plan->exports, plan->entry,
+			plan->enum_count, plan->enums, &error);
 	} else emitted = pg_c_emit_scalar(file, header, plan->count, plan->exports, plan->entry, &error);
 	int closed = fclose(file), header_closed = fclose(header);
 	if (emitted) { fprintf(stderr, "C link: cannot lower exports: %s\n", error); status = 4; goto done; }
