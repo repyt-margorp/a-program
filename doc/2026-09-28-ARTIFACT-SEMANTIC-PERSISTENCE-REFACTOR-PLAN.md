@@ -1565,6 +1565,13 @@ implementation model. Keep the backend subordinate to `.a` and the language.
 The user requests the capability, not the report's exact profile grammar or a
 hand-written QuickSort replacement. The following staging is an agent proposal.
 
+Later follow-up on 2026-09-29, English paraphrase of the user: readable C
+transpilation is **culture**, just as writing theory in 2020s natural language
+or in classical C notation is cultural. The user's original name for this
+concept was **Tradition**: conventionally choosing a way of expressing things.
+Preserve this motivation for future design, rather than treating C's customary
+form as intrinsic to A Program's theory.
+
 ### Objective (Code)
 
 PR [#50](https://github.com/repyt-margorp/a-program/pull/50) merged at `1a047e3`,
@@ -1604,6 +1611,9 @@ contracts without creating three mutable authorities:
 
 The script selects implemented transformations; it cannot assert an arbitrary
 source/C equivalence. Keep `native_script` exclusively for native linker layout.
+Agent interpretation of Tradition: lowering profiles choose target conventions;
+they do not establish another source semantics or acceptance authority. This
+does not require a new Core former, source keyword or framework rename.
 No target profile, C symbol, buffer contract or transformation result enters
 the canonical `.a`, Core, source syntax or kernel. Reuse the parsed link plan;
 do not add a parallel manifest database, solver, permanent C type graph or replay.
@@ -1623,8 +1633,9 @@ should support an ordinary C client calling
 `int ap_export_add(int32_t x, int32_t y, int32_t *out)` without any `ap_value`,
 environment or compiler headers. Derive/check widths and arity from the typed
 Pi/result, not from the alias or script assertions. Preserve wrapping arithmetic
-without C signed-overflow undefined behavior. This signature/profile is a
-proposal, not supported syntax or a newly accepted mathematical integer model.
+without C signed-overflow undefined behavior. This is an agent-selected target
+contract, not a newly accepted mathematical integer model. The initial subset
+is now implemented in the unpromoted prototype, as recorded below.
 
 Do not eagerly evaluate every Core APP operand merely to use a C call: the
 current runtime deliberately delays it. Use checked value operands and explicit
@@ -1660,11 +1671,11 @@ when needed; promotion remains a separate approved change.
 
 - [x] **AP6.0:** merge PR #50 intact; inspect current emitter, adapter, link
   parser/driver and issue completion boundaries. Do not adopt its template.
-- [ ] **AP6.1:** extend `link/plan.h/.c` with a versioned lowering/ABI contract
+- [x] **AP6.1:** extend `link/plan.h/.c` with a versioned lowering/ABI contract
   and explicit unsupported policy, distinct from `native_script`. Reuse one
   plan and named-root resolution. Document native-only versus explicit fallback;
   reject unknown profiles, incompatible signatures and unsupported directives.
-- [ ] **AP6.2:** derive the first fixed-width callable boundary from admitted
+- [x] **AP6.2:** derive the first fixed-width callable boundary from admitted
   occurrences in `emit.h` and C-local lowering. Implement native scalar
   constants/functions and checked direct arithmetic/sequence, with actual C
   inputs/results and no structural runtime dependency for supported examples.
@@ -1686,7 +1697,7 @@ when needed; promotion remains a separate approved change.
   printed example. Tie Acc/relevance transformations to checked applicability
   and #47 where needed. Record source/target relation and resource/failure
   contract; require independent lowering evidence in addition to source Sorted.
-- [ ] **AP6.6:** update `link/driver.c` to include only required runtime/helpers
+- [x] **AP6.6 (current profiles):** update `link/driver.c` to include only required runtime/helpers
   and emit ABI/profile/transformation/assumption/fallback diagnostics in receipts.
   Preserve staged publication and existing cc/ar/link-script invocation.
   Public headers must expose only the chosen C contract, not compiler internals.
@@ -1700,6 +1711,46 @@ when needed; promotion remains a separate approved change.
   test and documentation deltas, and update #49 with supported/unsupported cases.
   Close only on reusable native lowering, not on scalar marshalling alone or a
   manual sort template. Other targets are later profiles, not blockers for C.
+
+### Initial Scalar Milestone (2026-09-29)
+
+Objective at `81c830a` plus this prototype change: `scalar_direct_v1` /
+`c_scalar_v1` emits actual Int32/Int64 parameters/results, unsigned wrapping
+arithmetic, scalar sequencing and known saturated scalar calls. Each export
+gets a temporary target DAG; identical aliases share the private function.
+One parsed link plan remains authoritative for target policy. No new source
+Term former, classifier, admission path, `.a` field or accepted-code edit.
+Product receipts identify native/structural lowering; only structural products
+include the runtime. See [the executable contract and tests](../src/prototype/c_backend/README.md#native-scalar-profile).
+
+Assessment: do not claim general uncurrying from this subset. Actual lowering
+of `mul (add x y) (sub x y)` includes a function-returning Fold and rejects;
+the explicit scalar block counterpart succeeds. Retain that rejection test
+until AP6.3 handles negative/function results coherently. Known Lambda calls
+currently specialize at use sites; reusable private callees and cross-call
+analysis are still needed. No QuickSort template, C buffer representation or
+Acc/proof erasure was introduced. #49 stays open.
+
+Fresh O2 `check-c-scalar`, `check-c-link`, `check-c-backend` and
+`check-c-sorting-boundary` pass on clean accepted `e716232` plus the artifact
+overlays through `baabea8` and this backend change. Scalar coverage includes
+400 arithmetic cases against the existing evaluator, independent C inputs,
+extrema32/64, captures, repeated calls, two components, all four native products,
+unchanged artifact hashes and deterministic output. The raw emitter test forbids
+evaluator/substitution calls, checks source/proof counts and traverses a shared
+4,096-level DAG. Fresh ASan/UBSan `check-c-scalar` also passes, including the
+adapter, compiler admission, raw generator and generated C source clients.
+AP6.7 is still open for general calls/ADT/effect semantics.
+The full compiler acceptance pass at `baabea8` is historical, not rerun for this
+backend-only change. AP1-AP3 split-fuel/checkpoint work remains unfinished.
+
+Implementation deltas excluding documentation: `lower/scalar.c` +331/-0,
+`lower/scalar.h` +12/-0, `link/driver.c` +30/-15, `link/plan.c` +27/-4,
+`link/plan.h` +4/-0: net +385. Tests: `lower/check.sh` +111/-0,
+`lower/client.c` +51/-0, `lower/fixture.p` +19/-0,
+`lower/oracle_test.c` +148/-0: net +329. `build.mk` +11/-2: net +9.
+This adds a native capability rather than removing the reference backend;
+it is not a code-reduction milestone. Unrelated dirty files are excluded.
 
 ### Issue Audit (2026-09-29)
 

@@ -14,7 +14,7 @@ computation from typing. This supersedes the previous wait-before-C instruction.
 
 ## Objective (Code)
 
-`emit.c` reads a borrowed closed `pg_occurrence`, Core DAG and public Oracle
+The structural profile's `emit.c` reads a borrowed closed `pg_occurrence`, Core DAG and public Oracle
 views. It emits one C function per shared Core node. It never calls parsing,
 Solve, conversion or normalization. Binder/layout/label identities become local
 target ordinals without alpha interning or changes to the input graph.
@@ -78,8 +78,9 @@ Limitations:
 - Runtime allocation is invocation-wide; no garbage collection, tail-call
   guarantee, bounded memory or performance claim. C stack/heap resources bound
   execution. The ABI is versioned locally, never written into canonical `.a`.
-- Entry selection uses the first image root as a source module. Exported
-  entries must be returning computations or closed values, not unapplied Pi.
+- Entry selection uses the first image root as a source module. In the
+  structural profile exports must be returning computations or closed values,
+  not unapplied Pi. The separate scalar profile below admits a limited Pi subset.
 
 The ABI requires C11, 8-bit bytes and exact `uint32_t`/`uint64_t`. Arithmetic
 uses unsigned intermediates and masks, avoiding C signed-overflow undefined
@@ -161,8 +162,8 @@ cc -std=c11 -I/tmp/component client.c /tmp/component/library.a -o /tmp/client
 The output directory must not exist. It is staged beside the destination and
 published after successful emission and native tools; failures publish nothing.
 Like other CLI outputs, the path requires exclusive ownership during execution.
-Every product contains `component.c`, `component.h`, `runtime.c`, `runtime.h`
-and `link.json`. Product roles, not `.a` suffixes, distinguish the input artifact
+Every structural product contains `component.c`, `component.h`, `runtime.c`,
+`runtime.h` and `link.json`. Product roles, not `.a` suffixes, distinguish the input artifact
 from the native archive:
 
 | Product | Additional files / entry rule |
@@ -213,3 +214,68 @@ C API. #49 and [AP6](../../../doc/2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFAC
 now track typed C arguments/results, direct calls and representation lowering.
 PR #50's hand-derived Bool sorter is research, not an available lowering profile.
 A native-only request must not silently become this status-only structural ABI.
+
+## Native Scalar Profile
+
+Agent implementation decision for AP6.1/AP6.2: `lower/scalar.c` borrows admitted
+typed exports and translates the supported scalar subset into a temporary C-local
+DAG using the existing iterative `pg_dag` and pointer/environment index. It does
+not evaluate source terms or change their graph, classifiers, proofs or artifact.
+Source Pi binders become actual C parameters; pure total fixed-width results
+become output values. Aliases of an identical export share its private C function.
+
+```text
+aplink 1
+artifact integers.a
+abi c_scalar_v1
+target host-c11
+product archive
+lowering scalar_direct_v1
+fallback reject
+export add add
+```
+
+For `add := \x : #Int32 => \y : #Int32 => #int_add x y;`, the generated header
+declares `int ap_export_add(int32_t a1, int32_t a2, int32_t *out)`.
+Call it from an ordinary C translation unit and link `library.a`:
+
+```c
+#include "component.h"
+int main(void)
+{
+	int32_t answer;
+	return ap_export_add(20, 22, &answer) || answer != 42;
+}
+```
+
+Status 0 writes the result; status 1 means a null output pointer. Otherwise the
+pointer must name writable storage of the declared type. Int32/Int64 wrapping
+add/subtract/multiply/negate use unsigned arithmetic and bounded signed decoding.
+The native products contain no structural runtime files, closures, `ap_value`,
+allocator or compiler dependencies. `component.h` checks `AP_C_SCALAR_ABI` 1.
+An executable requires a zero-argument selected export and discards its result.
+The receipt records profile/ABI/fallback and implemented transformations;
+`runtime_abi: null` means this profile needs no structural runtime.
+
+Supported initially: scalar constants/parameters, Return, total-result,
+syntactic Force/Thunk, scalar-result zero-clause Fold and syntactically known
+saturated scalar Lambda calls (specialized, not yet reusable private callees).
+The result must have an empty effect row and established totality. Unsupported
+ADT, Text, Identity, effects, higher-order/dynamic calls and function-returning
+Fold reject before publication. For example `mul (add x y) (sub x y)` currently
+rejects because its source lowering contains such a Fold; an explicit scalar
+sequence `{ a := add x y; b := sub x y; mul a b; }` is supported. This is a backend
+limitation, not a source syntax/type restriction. General calls remain AP6.3.
+
+Native scripts must explicitly request `fallback reject`. There is no automatic
+boxed fallback. Existing scripts select `structural_v1` by default, or explicitly
+with `lowering structural_v1`; that profile requires `abi isolated_v1`.
+Checking/trust and the input `.a` format are unchanged by the profile choice.
+
+`check-c-scalar` tests source/object/archive/executable products, standalone and
+two-module C clients, capture/sequencing, alias sharing, null outputs, ABI/profile
+refusal, deterministic C, unchanged `.a` and admission boundaries. Its raw Oracle
+fixture compares 400 integer cases with the existing evaluator and asserts no
+evaluation/substitution steps or source allocation during emission; a 4,096-level
+shared DAG checks iterative traversal and bounded output growth. These raw
+fixtures test correspondence, not Kernel admission of arbitrary descriptions.

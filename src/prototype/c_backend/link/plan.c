@@ -8,6 +8,16 @@ struct export_row {
 	const char *name, *alias;
 };
 
+const char *pg_c_lowering_name(enum pg_c_lowering lowering)
+{
+	return lowering == PG_C_SCALAR_DIRECT ? "scalar_direct_v1" : "structural_v1";
+}
+
+const char *pg_c_abi_name(enum pg_c_lowering lowering)
+{
+	return lowering == PG_C_SCALAR_DIRECT ? "c_scalar_v1" : "isolated_v1";
+}
+
 static int space(unsigned char c)
 {
 	return c == ' ' || c == '\t' || c == '\n' || c == '\r';
@@ -70,8 +80,8 @@ int pg_c_link_read(struct pg_c_link_plan *plan, const char *path, size_t *line, 
 	FILE *file = fopen(path, "rb");
 	if (!file) return -1;
 	struct export_row *first = NULL, **tail = &first;
-	const char *entry = NULL;
-	int version = 0, abi = 0, product = 0, target = 0, status = -1;
+	const char *entry = NULL, *abi = NULL;
+	int version = 0, lowering = 0, fallback = 0, product = 0, target = 0, status = -1;
 	char *text = NULL;
 	size_t capacity = 0;
 	ssize_t length;
@@ -104,8 +114,17 @@ int pg_c_link_read(struct pg_c_link_plan *plan, const char *path, size_t *line, 
 			plan->artifact = relative(&plan->storage, path, args[1]);
 			if (!plan->artifact) goto done;
 		} else if (!strcmp(args[0], "abi")) {
-			if (abi || strcmp(args[1], "isolated_v1")) goto done;
-			abi = 1;
+			if (abi) goto done;
+			abi = args[1];
+		} else if (!strcmp(args[0], "lowering")) {
+			if (lowering) goto done;
+			if (!strcmp(args[1], "scalar_direct_v1")) plan->lowering = PG_C_SCALAR_DIRECT;
+			else if (!strcmp(args[1], "structural_v1")) plan->lowering = PG_C_STRUCTURAL;
+			else goto done;
+			lowering = 1;
+		} else if (!strcmp(args[0], "fallback")) {
+			if (fallback || strcmp(args[1], "reject")) goto done;
+			fallback = 1;
 		} else if (!strcmp(args[0], "target")) {
 			if (target || strcmp(args[1], "host-c11")) goto done;
 			target = 1;
@@ -128,6 +147,10 @@ int pg_c_link_read(struct pg_c_link_plan *plan, const char *path, size_t *line, 
 	}
 	*error = "missing required directive or invalid product/entry combination";
 	if (ferror(file) || !version || !abi || !product || !target || !plan->artifact || !plan->count) goto done;
+	*error = "ABI/lowering mismatch or missing explicit native fallback policy";
+	if (strcmp(abi, pg_c_abi_name(plan->lowering))) goto done;
+	if (plan->lowering == PG_C_SCALAR_DIRECT && !fallback) goto done;
+	*error = "invalid product/entry combination";
 	if (plan->product == PG_C_EXECUTABLE && !entry) goto done;
 	if ((plan->product == PG_C_OBJECT || plan->product == PG_C_ARCHIVE) && entry) goto done;
 	if (plan->native_script && plan->product != PG_C_EXECUTABLE) goto done;

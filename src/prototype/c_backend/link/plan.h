@@ -4,10 +4,12 @@
 #include "../emit.h"
 
 enum pg_c_product { PG_C_SOURCE, PG_C_OBJECT, PG_C_ARCHIVE, PG_C_EXECUTABLE };
+enum pg_c_lowering { PG_C_STRUCTURAL, PG_C_SCALAR_DIRECT };
 struct pg_c_link_plan {
 	struct pg_graph storage;
 	const char *artifact, *native_script;
 	enum pg_c_product product;
+	enum pg_c_lowering lowering;
 	size_t count, entry;
 	const char **names;
 	struct pg_c_export *exports;
@@ -18,6 +20,8 @@ struct pg_c_link_plan {
  * no code executed, and no admission policy is accepted from script data. */
 int pg_c_link_read(struct pg_c_link_plan *, const char *path, size_t *line, const char **error);
 void pg_c_link_destroy(struct pg_c_link_plan *);
+const char *pg_c_lowering_name(enum pg_c_lowering);
+const char *pg_c_abi_name(enum pg_c_lowering);
 
 /* Publish a new directory only after emission and any native tools succeed.
  * Existing directories/files are never replaced. Tools are explicit argv[0]

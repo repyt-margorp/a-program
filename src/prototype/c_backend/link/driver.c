@@ -1,5 +1,6 @@
 #define _XOPEN_SOURCE 700
 #include "plan.h"
+#include "../lower/scalar.h"
 #include <errno.h>
 #include <inttypes.h>
 #include <stdlib.h>
@@ -80,7 +81,14 @@ static int receipt(const char *path, const struct pg_c_link_plan *plan, const ch
 	fputs(",\n  \"link_script\": ", file); json_string(file, script);
 	fputs(",\n  \"native_script\": ", file); json_string(file, plan->native_script);
 	fputs(",\n  \"product\": ", file); json_string(file, products[plan->product]);
-	fputs(",\n  \"target\": \"host-c11\",\n  \"abi\": \"isolated_v1\",\n  \"runtime_abi\": 2,\n  \"cc\": ", file);
+	fputs(",\n  \"target\": \"host-c11\",\n  \"abi\": ", file); json_string(file, pg_c_abi_name(plan->lowering));
+	fputs(",\n  \"lowering\": ", file); json_string(file, pg_c_lowering_name(plan->lowering));
+	fputs(",\n  \"fallback\": \"reject\",\n  \"runtime_abi\": ", file);
+	fputs(plan->lowering == PG_C_STRUCTURAL ? "2" : "null", file);
+	fputs(",\n  \"transformations\": ", file);
+	fputs(plan->lowering == PG_C_STRUCTURAL ? "[\"structural-closures\"]" :
+		"[\"scalar-abi\",\"fixed-width-arithmetic\",\"pure-sequencing\",\"known-lambda-specialization\"]", file);
+	fputs(",\n  \"cc\": ", file);
 	json_string(file, cc);
 	fputs(",\n  \"ar\": ", file); json_string(file, ar);
 	fprintf(file, ",\n  \"admission\": \"%s\",\n  \"validation_steps\": %" PRIu64 ",\n  \"exports\": [\n",
@@ -124,34 +132,41 @@ int pg_c_link_publish(const struct pg_c_link_plan *plan, const char *directory,
 	for (size_t i = 0; i < FILES; ++i) if (!(paths[i] = path_join(staging, names[i]))) goto done;
 	FILE *file = fopen(paths[SOURCE], "w");
 	if (!file) goto done;
+	FILE *header = fopen(paths[HEADER], "w");
+	if (!header) { fclose(file); goto done; }
 	const char *error;
-	int emitted = pg_c_emit_exports(file, plan->count, plan->exports, plan->entry, &error);
-	int closed = fclose(file);
+	int runtime = plan->lowering == PG_C_STRUCTURAL;
+	int emitted;
+	if (runtime) {
+		emitted = pg_c_emit_exports(file, plan->count, plan->exports, plan->entry, &error);
+		if (!emitted) emitted = pg_c_emit_header(header, plan->count, plan->exports);
+	} else emitted = pg_c_emit_scalar(file, header, plan->count, plan->exports, plan->entry, &error);
+	int closed = fclose(file), header_closed = fclose(header);
 	if (emitted) { fprintf(stderr, "C link: cannot lower exports: %s\n", error); status = 4; goto done; }
-	if (closed) goto done;
-	file = fopen(paths[HEADER], "w");
-	if (!file) goto done;
-	emitted = pg_c_emit_header(file, plan->count, plan->exports);
-	closed = fclose(file);
-	if (emitted || closed) goto done;
-	if (copy_runtime(names[RUNTIME], paths[RUNTIME]) || copy_runtime(names[RUNTIME_HEADER], paths[RUNTIME_HEADER])) goto done;
+	if (closed || header_closed) goto done;
+	if (runtime && (copy_runtime(names[RUNTIME], paths[RUNTIME]) || copy_runtime(names[RUNTIME_HEADER], paths[RUNTIME_HEADER]))) goto done;
 	if (plan->product != PG_C_SOURCE) {
 		char *compile[] = {(char *)cc, "-std=c11", "-O2", "-c", paths[SOURCE], "-o", paths[OBJECT], NULL};
 		if (run(compile)) goto done;
-		compile[4] = paths[RUNTIME]; compile[6] = paths[RUNTIME_OBJECT];
-		if (run(compile)) goto done;
+		if (runtime) {
+			compile[4] = paths[RUNTIME]; compile[6] = paths[RUNTIME_OBJECT];
+			if (run(compile)) goto done;
+		}
 	}
 	if (plan->product == PG_C_ARCHIVE) {
-		char *archive[] = {(char *)ar, "rcs", paths[ARCHIVE], paths[OBJECT], paths[RUNTIME_OBJECT], NULL};
+		char *archive[] = {(char *)ar, "rcs", paths[ARCHIVE], paths[OBJECT], runtime ? paths[RUNTIME_OBJECT] : NULL, NULL};
 		if (run(archive)) goto done;
 	}
 	if (plan->product == PG_C_EXECUTABLE) {
-		char *link[] = {(char *)cc, paths[OBJECT], paths[RUNTIME_OBJECT], "-o", paths[EXECUTABLE], NULL, NULL, NULL, NULL, NULL};
+		char *link[10] = {(char *)cc, paths[OBJECT]};
+		size_t n = 2;
+		if (runtime) link[n++] = paths[RUNTIME_OBJECT];
+		link[n++] = "-o"; link[n++] = paths[EXECUTABLE];
 		char *native = NULL;
 		if (plan->native_script) {
 			native = realpath(plan->native_script, NULL);
 			if (!native) { perror(plan->native_script); goto done; }
-			link[5] = "-Xlinker"; link[6] = "-T"; link[7] = "-Xlinker"; link[8] = native;
+			link[n++] = "-Xlinker"; link[n++] = "-T"; link[n++] = "-Xlinker"; link[n++] = native;
 		}
 		int linked = run(link);
 		free(native);
