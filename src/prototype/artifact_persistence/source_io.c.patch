@@ -1,16 +1,79 @@
 --- a/source_io.c
 +++ b/source_io.c
-@@ -10,8 +10,7 @@
+@@ -1,4 +1,5 @@
+ #include "source_io.h"
++#include "synthesis_source.h"
+ #include "iadt.h"
+ #include "syntax_io.h"
+ #include "dag.h"
+@@ -10,8 +11,7 @@
  #include <string.h>
  #include <stdlib.h>
  
 -static const char magic[8] = "APGSRC\76";
 -static const char retained_magic[8] = "APGSRC\77";
-+static const char magic[8] = "APGSRC\102";
++static const char magic[8] = "APGSRC\103";
  enum environment_kind { ROOT, NAME, MODULE, NAMESPACE, IMPORTS, DEFINITIONS, BINDING, CONTEXT_BINDING, HANDLER_SCOPE, HANDLER_BINDING, GRAPH_BINDING };
  
  struct environment {
-@@ -492,6 +491,46 @@
+@@ -21,6 +21,7 @@
+ 	const struct pg_syntax *syntax, *definitions;
+ 	struct pg_synthesis_job *rule;
+ 	struct pg_synthesis_job *producer;
++	struct pg_synthesis_job *registration;
+ 	const struct pg_object *binder;
+ 	struct pg_handler_clause_input allocation;
+ 	unsigned slot;
+@@ -67,7 +68,7 @@
+ /* Borrow the producer's transport inputs. This is neither a retained snapshot
+  * nor a result of checking; collection and encoding use the same projection. */
+ struct producer_input {
+-	const struct pg_source_scope *scope;
++	const struct pg_source_scope *scope, *prepared;
+ 	const struct pg_syntax *syntax, *definitions;
+ 	struct pg_synthesis_job *operands[2];
+ 	const struct pg_synthesis_job *rule;
+@@ -80,6 +81,10 @@
+ 	const struct pg_synthesis_job *job)
+ {
+ 	struct producer_input input = {0};
++	const struct pg_source_scope *local = pg_synthesis_prepared_environment(job);
++	struct pg_source_environment prepared;
++	if (local && !pg_synthesis_environment_input(synthesis, local, &prepared) && prepared.definitions)
++		input.prepared = local;
+ 	input.arity = 2;
+ 	enum pg_reduction_kind kind;
+ 	int force;
+@@ -136,6 +141,7 @@
+ 	}
+ 	if (input.definitions) {
+ 		output->kind = DEFINITIONS; output->definitions = input.definitions;
++		output->registration = input.registration;
+ 		return 0;
+ 	}
+ 	struct pg_synthesis_job *job = input.producer ? input.producer : input.module;
+@@ -238,6 +244,7 @@
+ 		if (!producer && !scope_node) return 0;
+ 		for (; producer; c->last_producer = producer, producer = producer->next) {
+ 			struct producer_input input = producer_input(c->synthesis, producer->key);
++			if (input.prepared && pg_dag_add(c->scopes, input.prepared)) return -1;
+ 			const struct pg_source_scope *local = pg_synthesis_prepared_environment(producer->key);
+ 			if (local && index_environment_references(c, local)) return -1;
+ 			if (input.callable.reference) {
+@@ -281,6 +288,12 @@
+ 			if (input.definitions && pg_dag_add(c->syntax, input.definitions)) return -1;
+ 			if (input.rule && pg_dag_add(c->rules, input.rule)) return -1;
+ 			if (input.producer && pg_dag_add(c->producers, input.producer)) return -1;
++			if (input.registration) {
++				const struct pg_syntax_item *item;
++				struct pg_synthesis_job *entry;
++				for (size_t i = 0; pg_synthesis_definition_entry(input.registration, i, &item, &entry) == 1; ++i)
++					if (entry && pg_dag_add(c->producers, entry)) return -1;
++			}
+ 			if (input.binder && pg_dag_add(&c->terms, pg_reference(&c->rules->storage, input.binder))) return -1;
+ 			if (input.kind == HANDLER_BINDING) {
+ 				const struct pg_object *binders[] = {input.allocation.payload, input.allocation.resume, input.allocation.response};
+@@ -492,6 +505,46 @@
  	return 0;
  }
  
@@ -57,7 +120,7 @@
  static int collect_origin(struct origin_collection *c, const void *key)
  {
  	const struct pg_synthesis_job *job = key;
-@@ -499,6 +538,15 @@
+@@ -499,6 +552,15 @@
  	const struct pg_source_scope *scope;
  	const struct pg_syntax *syntax;
  	if (pg_synthesis_source_input(c->synthesis, job, &scope, &syntax)) return -1;
@@ -73,7 +136,7 @@
  	/* Inspect lexical descendants only after syntax and object reachability. */
  	const struct pg_source_scope *parent = scope;
  	while (!id(c->scopes, parent)) {
-@@ -587,8 +635,8 @@
+@@ -587,8 +649,8 @@
  	return retain_objects(c);
  }
  
@@ -84,7 +147,7 @@
  {
  	if (!file || !synthesis || (count && !roots)) return -1;
  	struct pg_dag scopes = {0}, syntax = {0}, rules = {0}, origins = {0}, producers = {0}, allocations = {0};
-@@ -616,10 +664,15 @@
+@@ -616,10 +678,15 @@
  		|| pg_declaration_io_init(&codec, synthesis->typing)) goto done;
  	if (pg_graph_dependencies_init(&collection.terms, &collection.objects, &pg_declaration_graph_codec, &codec)) goto done;
  	for (size_t i = 0; i < count; ++i) if (!roots[i] || pg_dag_add(&producers, roots[i])) goto done;
@@ -103,8 +166,18 @@
  	const struct pg_derivation_input *const *derivations;
  	if (pg_synthesis_export_rule_closure(synthesis, &rules, &rules.storage, &effects, 1,
  		retain_dependencies, &collection, &derivations)) goto done;
-@@ -691,7 +744,7 @@
- 		for (size_t i = 0; pg_synthesis_definition_entry(node->key, i, &item, &producer) == 1; ++i)
+@@ -685,13 +752,15 @@
+ 	if (pg_contexts_pack(&rules.storage, context_count, contexts, reference_count, references,
+ 		&payload.metadata_count, &payload.metadata, &payload.count, &payload.terms)) goto done;
+ 	size_t entry_count = 0;
+-	for (const struct pg_dag_node *node = producers.first; node; node = node->next) {
++	for (const struct pg_dag_node *node = scopes.first; node; node = node->next) {
++		struct environment input;
++		if (environment(synthesis, node->key, &input)) goto done;
+ 		const struct pg_syntax_item *item;
+ 		struct pg_synthesis_job *producer;
+-		for (size_t i = 0; pg_synthesis_definition_entry(node->key, i, &item, &producer) == 1; ++i)
++		for (size_t i = 0; pg_synthesis_definition_entry(input.registration, i, &item, &producer) == 1; ++i)
  			if (producer) ++entry_count;
  	}
 -	if (fwrite(reductions ? retained_magic : magic, 1, 8, file) != 8 || pg_wire_write_u64(file, synthesis->definition_policy)
@@ -112,16 +185,29 @@
  		|| pg_wire_write_u64(file, scopes.count) || pg_wire_write_u64(file, count)
  		|| pg_wire_write_u64(file, origins.count) || pg_wire_write_u64(file, producers.count)
  		|| pg_wire_write_u64(file, entry_count)) goto done;
-@@ -714,6 +767,8 @@
+@@ -712,13 +781,17 @@
+ 		uint64_t words[] = {id(&scopes, input.scope), input.syntax ? id(&syntax, input.syntax) : input.mode,
+ 			input.callable.reference ? id(&allocations, node->key) : id(&syntax, input.definitions),
  			input.callable.reference ? (uint64_t)input.callable.allocated : id(&rules, input.rule),
- 			id(&producers, input.operands[0]), id(&producers, input.operands[1])};
- 		for (size_t i = 0; i < 6; ++i) if (pg_wire_write_u64(file, words[i])) goto done;
+-			id(&producers, input.operands[0]), id(&producers, input.operands[1])};
+-		for (size_t i = 0; i < 6; ++i) if (pg_wire_write_u64(file, words[i])) goto done;
++			id(&producers, input.operands[0]), id(&producers, input.operands[1]), id(&scopes, input.prepared)};
++		for (size_t i = 0; i < 7; ++i) if (pg_wire_write_u64(file, words[i])) goto done;
 +		int complete = node->id <= semantic_producers && pg_synthesis_saved_complete(synthesis, node->key);
 +		if (fputc(complete, file) == EOF) goto done;
  	}
- 	for (const struct pg_dag_node *node = producers.first; node; node = node->next) {
+-	for (const struct pg_dag_node *node = producers.first; node; node = node->next) {
++	for (const struct pg_dag_node *node = scopes.first; node; node = node->next) {
++		struct environment input;
++		if (environment(synthesis, node->key, &input)) goto done;
  		const struct pg_syntax_item *item;
-@@ -757,8 +812,13 @@
+ 		struct pg_synthesis_job *producer;
+-		for (size_t i = 0; pg_synthesis_definition_entry(node->key, i, &item, &producer) == 1; ++i) {
++		for (size_t i = 0; pg_synthesis_definition_entry(input.registration, i, &item, &producer) == 1; ++i) {
+ 			if (!producer) continue;
+ 			if (pg_wire_write_u64(file, node->id) || pg_wire_write_u64(file, i)
+ 				|| pg_wire_write_u64(file, id(&producers, producer))) goto done;
+@@ -757,8 +830,13 @@
  	if (pg_wire_write_u64(file, collection.member_count)) goto done;
  	for (const struct source_member *member = collection.members; member; member = member->next)
  		if (pg_wire_write_u64(file, id(&producers, member->declaration)) || pg_wire_write_u64(file, member->index)) goto done;
@@ -137,7 +223,7 @@
  done:
  	pg_dag_destroy(&collection.contexts);
  	pg_dag_destroy(&collection.references);
-@@ -774,7 +834,13 @@
+@@ -774,7 +852,13 @@
  int pg_sources_write(FILE *file, const struct pg_synthesis *synthesis,
  	size_t count, struct pg_synthesis_job *const *roots)
  {
@@ -152,7 +238,31 @@
  }
  
  struct record {
-@@ -821,17 +887,15 @@
+@@ -794,19 +878,20 @@
+ 
+ static int restore_child(void *owner, const void *key, size_t index, const void **result)
+ {
+-	if (index == 3) return 0;
++	if (index == 4) return 0;
+ 	const struct restore_order *order = owner;
+ 	const struct restore_node *node = key;
+ 	uint64_t dependency;
+ 	int scope;
+ 	if (node->scope) {
++		if (index == 3) return 0;
+ 		const struct record *r = &order->records[node->index];
+ 		scope = index < 2;
+ 		dependency = index == 0 ? r->parent : index == 1 ? r->target
+ 			: (r->kind == NAME || r->kind == MODULE) ? r->rule : r->operation;
+ 	} else {
+-		const uint64_t *r = &order->ids[6 * node->index];
+-		scope = index == 0;
++		const uint64_t *r = &order->ids[7 * node->index];
++		scope = index == 0 || index == 3;
+ 		dependency = r[index ? index + 3 : 0];
+ 	}
+ 	if (!dependency) return 2;
+@@ -821,17 +906,15 @@
  	if (!file || !count || !roots) return NULL;
  	char header[8];
  	uint64_t policy, n, nr, no, np, ne;
@@ -169,13 +279,13 @@
 -	if (np > (limit - n - nr - 3 * no) / 6) return NULL;
 -	if (ne > (limit - n - nr - 3 * no - 6 * np) / 3) return NULL;
 -	struct pg_program *program = pg_program_allocate((enum pg_definition_policy)policy);
-+	if (np > (limit - n - nr - 3 * no) / 7) return NULL;
-+	if (ne > (limit - n - nr - 3 * no - 7 * np) / 3) return NULL;
++	if (np > (limit - n - nr - 3 * no) / 8) return NULL;
++	if (ne > (limit - n - nr - 3 * no - 8 * np) / 3) return NULL;
 +	struct pg_program *program = pg_program_allocate_empty((enum pg_definition_policy)policy);
  	if (!program) return NULL;
  	struct pg_declaration_io codec = {0};
  	struct pg_dag order = {0};
-@@ -841,16 +905,17 @@
+@@ -841,16 +924,17 @@
  	struct pg_graph *graph = &program->graph;
  	/* Wire tables live only through restoration; referenced objects and roots do not. */
  	struct pg_graph *scratch = &order.storage;
@@ -191,7 +301,7 @@
 -	size_t remaining = limit - (size_t)n - (size_t)nr - 3 * (size_t)no - 6 * (size_t)np - 3 * (size_t)ne;
 +	struct record *records = pg_wire_array(scratch, n, sizeof(*records));
 +	const struct pg_source_scope **scopes = pg_wire_array(scratch, n, sizeof(*scopes));
-+	uint64_t *ids = pg_wire_array(scratch, np, 6 * sizeof(*ids));
++	uint64_t *ids = pg_wire_array(scratch, np, 7 * sizeof(*ids));
 +	unsigned char *complete = pg_wire_array(scratch, np, sizeof(*complete));
 +	uint64_t *selections = pg_wire_array(scratch, nr, sizeof(*selections));
 +	uint64_t *origin_ids = pg_wire_array(scratch, no, 3 * sizeof(*origin_ids));
@@ -199,17 +309,17 @@
 +	struct pg_synthesis_job **jobs = pg_wire_array(graph, nr, sizeof(*jobs));
 +	struct pg_synthesis_job **producers = pg_wire_array(scratch, np, sizeof(*producers));
 +	if (!records || !scopes || !ids || !complete || !jobs || !origin_ids || !selections || !producers || !entries) goto fail;
-+	size_t remaining = limit - (size_t)n - (size_t)nr - 3 * (size_t)no - 7 * (size_t)np - 3 * (size_t)ne;
++	size_t remaining = limit - (size_t)n - (size_t)nr - 3 * (size_t)no - 8 * (size_t)np - 3 * (size_t)ne;
  	size_t binding_reference_count = 0;
  	for (size_t i = 0; i < n; ++i) {
  		uint64_t w[10];
-@@ -869,7 +934,12 @@
+@@ -869,7 +953,12 @@
  	}
  	for (size_t i = 0; i < nr; ++i)
  		if (pg_wire_read_u64(file, &selections[i]) || !selections[i] || selections[i] > np) goto fail;
 -	for (size_t i = 0; i < 6 * np; ++i) if (pg_wire_read_u64(file, &ids[i])) goto fail;
 +	for (size_t i = 0; i < np; ++i) {
-+		for (size_t j = 0; j < 6; ++j) if (pg_wire_read_u64(file, &ids[6 * i + j])) goto fail;
++		for (size_t j = 0; j < 7; ++j) if (pg_wire_read_u64(file, &ids[7 * i + j])) goto fail;
 +		int flag = fgetc(file);
 +		if (flag != 0 && flag != 1) goto fail;
 +		complete[i] = (unsigned char)flag;
@@ -217,7 +327,7 @@
  	for (size_t i = 0; i < 3 * ne; ++i) if (pg_wire_read_u64(file, &entries[i])) goto fail;
  	for (size_t i = 0; i < 3 * no; ++i) if (pg_wire_read_u64(file, &origin_ids[i])) goto fail;
  	size_t nt;
-@@ -921,10 +991,12 @@
+@@ -921,10 +1010,12 @@
  	size_t input_count = 0;
  	const struct pg_term *const *input_terms;
  	const struct pg_derivation_input *const *derivations;
@@ -234,7 +344,7 @@
  	size_t context_count, reference_count;
  	const struct pg_context *const *contexts;
  	const struct pg_term *const *references;
-@@ -979,16 +1051,11 @@
+@@ -979,16 +1070,11 @@
  		source_offset += input.scope_count + (input.constructor ? 2 : 1);
  	}
  	if (fgetc(file) != EOF || ferror(file)) goto fail;
@@ -254,7 +364,49 @@
  	if (!nodes) goto fail;
  	dependencies.nodes = nodes;
  	for (size_t i = 0; i < n + np; ++i)
-@@ -1164,6 +1231,10 @@
+@@ -998,8 +1084,8 @@
+ 		const struct restore_node *node = entry->key;
+ 		size_t i = node->index;
+ 		if (!node->scope) {
+-			uint64_t scope = ids[6 * i], syntax = ids[6 * i + 1], definitions = ids[6 * i + 2], rule = ids[6 * i + 3];
+-			uint64_t left = ids[6 * i + 4], right = ids[6 * i + 5];
++			uint64_t scope = ids[7 * i], syntax = ids[7 * i + 1], definitions = ids[7 * i + 2], rule = ids[7 * i + 3];
++			uint64_t left = ids[7 * i + 4], right = ids[7 * i + 5], prepared = ids[7 * i + 6];
+ 			if (!scope && (syntax == 5 || syntax == 6)) {
+ 				if (!left || left > i || !right || right > i || !definitions || definitions > use_count || rule > 1) goto fail;
+ 				const struct pg_term *reference = references[definitions - 1];
+@@ -1041,6 +1127,12 @@
+ 					: pg_synthesis_request(&program->synthesis, scopes[scope - 1], terms[syntax - 1]);
+ 			}
+ 			if (!producers[i]) goto fail;
++			if (prepared) {
++				if (records[prepared - 1].kind != DEFINITIONS) goto fail;
++				if (!pg_synthesis_prepared_environment(producers[i]))
++					if (!pg_synthesis_prepare_module(&program->synthesis, producers[i])) goto fail;
++				if (pg_synthesis_prepared_environment(producers[i]) != scopes[prepared - 1]) goto fail;
++			}
+ 			continue;
+ 		}
+ 		const struct record *r = &records[i];
+@@ -1126,9 +1218,14 @@
+ 		if (!scopes[i]) goto fail;
+ 	}
+ 	for (size_t i = 0; i < ne; ++i) {
+-		uint64_t module = entries[3 * i], index = entries[3 * i + 1], producer = entries[3 * i + 2];
+-		if (!module || module > np || !producer || producer >= module || index > SIZE_MAX) goto fail;
+-		if (pg_synthesis_retain_definition_input(&program->synthesis, producers[module - 1],
++		uint64_t scope = entries[3 * i], index = entries[3 * i + 1], producer = entries[3 * i + 2];
++		if (!scope || scope > n || !producer || producer > np || index > SIZE_MAX) goto fail;
++		if (records[scope - 1].kind != DEFINITIONS) goto fail;
++		if (i && (entries[3 * (i - 1)] > scope ||
++			(entries[3 * (i - 1)] == scope && entries[3 * (i - 1) + 1] >= index))) goto fail;
++		struct pg_source_environment input;
++		if (pg_synthesis_environment_input(&program->synthesis, scopes[scope - 1], &input)) goto fail;
++		if (pg_synthesis_retain_definition_input(&program->synthesis, input.registration,
+ 			(size_t)index, producers[producer - 1])) goto fail;
+ 	}
+ 	for (size_t i = 0; i < no; ++i) {
+@@ -1164,6 +1261,10 @@
  			references[slot]->as.reference, contexts[2 * slot], contexts[2 * slot + 1]};
  		if (pg_synthesis_declaration_member_at(&program->synthesis, producers[producer - 1], (size_t)index, &allocation)) goto fail;
  	}

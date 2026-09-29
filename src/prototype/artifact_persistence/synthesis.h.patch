@@ -1,6 +1,14 @@
 --- a/synthesis.h
 +++ b/synthesis.h
-@@ -450,6 +450,13 @@
+@@ -191,6 +191,7 @@
+ 	struct pg_token name;
+ 	struct pg_synthesis_job *producer, *module;
+ 	const struct pg_syntax *definitions;
++	struct pg_synthesis_job *registration; /* Owner of definitions, otherwise NULL. */
+ 	const struct pg_syntax *handler;
+ 	struct pg_synthesis_job *binding;
+ 	struct pg_synthesis_job *context;
+@@ -450,6 +451,13 @@
   * ordinary rule jobs await sealing/convergence before accepting F formation. */
  struct pg_synthesis_job *pg_synthesis_derivation_inference(struct pg_synthesis *synthesis,
  	const struct pg_derivation_input *input, struct pg_effect_inference *work);
@@ -14,7 +22,7 @@
  /* Same unaccepted rule evaluator, with producer premises instead of loaded
   * input->premises. The input header is copied and structurally keyed together
   * with exact premise/parameter producer pointers; header allocation identity
-@@ -868,6 +875,23 @@
+@@ -868,6 +876,23 @@
  void pg_synthesis_advance(struct pg_synthesis *synthesis, uint64_t budget);
  enum pg_synthesis_status pg_synthesis_status(const struct pg_synthesis_job *job);
  const struct pg_evidence *pg_synthesis_result(const struct pg_synthesis_job *job);
@@ -38,3 +46,13 @@
  /* Read-only diagnostics for rejected declaration checks in this store, not
   * a new failure authority or a complete causal explanation of a root status.
   * Each callback borrows constructor/index tokens and a zero-based written
+@@ -897,7 +922,8 @@
+  * Does not allocate, register names, or advance Solve. */
+ int pg_synthesis_definition_entry(const struct pg_synthesis_job *root, size_t index,
+ 	const struct pg_syntax_item **item, struct pg_synthesis_job **producer);
+-/* Retain an unaccepted module-input relationship without advancing Solve.
++/* Retain an unaccepted namespace-input relationship without advancing Solve.
++ * The owner is its registration or a module selection sharing it.
+  * Ordinary registration must reconstruct the identical producer before use.
+  * Existing entries cannot be overwritten. Does not retain acceptance/cursors. */
+ int pg_synthesis_retain_definition_input(struct pg_synthesis *synthesis,

@@ -817,6 +817,25 @@ alone. Avoid adding a second parallel type graph or serializing all workers.
   factories, without per-input preparation wrappers. Retain byte-identical
   step-0 resaves and ordinary rejection; full acceptance passes for this
   prototype revision. This does not waive remaining continuation/provenance work.
+- [x] Align retained entry ownership with the **lexical namespace** before
+  restoring its progress. APGSRC67 stores each entry table once, plus each
+  producer's prepared namespace edge. The ordinary source owner consumes those
+  same links; no synthetic parent export or second name table is created.
+  `shared_registration_inputs` fails at `6cb1887` (four entries for two
+  selections of a two-entry namespace) and passes with two shared entries.
+  Parent-omitted/child-first roots, semantic O2/ASan/UBSan and source/CLI history
+  gates pass. This does not yet persist indexed/activated cursors or scheduling.
+  Example-09 completed image grows 50,508 -> 50,796 bytes from explicit owner
+  edges; do not report whole-image compaction. The public partition gate still
+  fails: 100+100 has 26,010 vs 26,366 bytes; 1600+1600 remains pending vs done.
+  Fresh full O2 `check-acceptance`, definition/namespace-body checkpoints and
+  C/Linker/Acc QuickSort gates also pass (2026-09-29, clean accepted sources plus
+  prototype overlays; unrelated working-tree edits excluded). Logs:
+  `/tmp/a-program-lexical-registration-{history,asan,acceptance,c,checkpoints}.log`.
+  Actual source delta from `6cb1887`: `source_io.c` +51/-21, `source_io.h`
+  +3/-1, `synthesis.c` +5/-6, `synthesis.h` +3/-1 (net +33). Tests:
+  `semantic_test.c` +43/-1, `tests/source_io.c` +8/-8, `tests/seed.c` +1/-1
+  (net +42). Patch-file churn and documentation are counted separately.
 - [ ] Connect registration progress through the retained **lexical namespace**
   dependencies, not only exported module producers. Reuse existing entry links,
   recipe validation and scope order. Keep proof acceptance separate; no extra
@@ -830,7 +849,8 @@ alone. Avoid adding a second parallel type graph or serializing all workers.
   Restoring parents first fixed export ordering, not this missing dependency.
   `lexical_module_roots` now preserves both counterexamples as permanent tests,
   using the existing source API (not invented nested-block surface syntax).
-  The trial codec/format change was withdrawn; APGSRC66 remains current.
+  That trial codec/format change was withdrawn; it did not replace APGSRC66.
+  The subsequent APGSRC67 ownership change above does not adopt its cursors.
   Next owner contract: collect registration from live lexical scopes, share its
   entry links once, and relocate outer namespaces before local assertions. Do
   not invent a public module root, scan all historical jobs, or drop a charged
@@ -987,7 +1007,7 @@ The desired composition law is `advance(advance(S, a), b) = advance(S, a+b)`;
 the serialized-resume variant inserts save/load between the two advances.
 Fix compiler version, input image, selected roots, policy and requests when
 testing it. Exclude format migration and host execution from this pure gate.
-Baseline APGSRC62/63 and prototype APGSRC66 reconstruction do not preserve the full running frontier;
+Baseline APGSRC62/63 and prototype APGSRC67 reconstruction do not preserve the full running frontier;
 the equality of supplied or reported fuel therefore does not establish equality
 of progress. A recompute fallback must be reported as such, not counted as passing
 this resume gate. Count any required revalidation explicitly; do not hide its cost

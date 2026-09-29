@@ -1,16 +1,18 @@
 --- a/source_io.h
 +++ b/source_io.h
-@@ -3,8 +3,15 @@
+@@ -3,8 +3,17 @@
  #include "program.h"
  #include <stdio.h>
  
 -/* Reconstructible source environments and source/definition/rule roots, including pending modules.
 - * APGSRC62 retains source/handler binding symbols and family index telescopes, preserves
-+/* APGSRC66 preserves available typed construction at each producer.
++/* APGSRC67 preserves available typed construction at each producer.
 + * It shares relocation with source/rule inputs and nominal declarations.
 + * Reading exposes descriptive results through pg_synthesis_materialized,
 + * not accepted evidence. Local Solve still checks source and annotations;
 + * private pending continuations are not yet retained by this prototype.
++ * Definition entry links belong to their lexical namespace, shared by all
++ * selections, including namespaces without an exported module root.
 + * Older formats reject; rebuild them from source.
 + *
 + * Reconstructible source environments and source/definition/rule roots, including pending modules.
@@ -18,7 +20,7 @@
   * already suspended values under surface &, admits checked
   * termination requests, and uses TOTAL source RETURN/arrow contracts with F
   * totality contracts, context-authoritative Pi premises and lexical
-@@ -48,28 +55,37 @@
+@@ -48,28 +57,37 @@
   * registration verifies each retained producer before using it.
   * Reuses immutable syntax, lexical parents, namespaces and import bindings.
   * Rule evidence is stored as unaccepted derivation inputs through the existing

@@ -36,14 +36,18 @@
  		assert(!fseek(file, (long)scope[6], SEEK_CUR));
  	}
 -	assert(!fseek(file, (long)(header[2] + 6 * header[4] + 3 * header[5] + 3 * header[3]) * 8, SEEK_CUR));
-+	assert(!fseek(file, (long)(header[2] + 6 * header[4] + 3 * header[5] + 3 * header[3]) * 8 + (long)header[4], SEEK_CUR));
++	assert(!fseek(file, (long)(header[2] + 7 * header[4] + 3 * header[5] + 3 * header[3]) * 8 + (long)header[4], SEEK_CUR));
  	struct pg_graph graph = {0};
  	assert(!pg_graph_init(&graph));
  	const struct pg_syntax *const *syntax;
-@@ -1497,6 +1504,8 @@
+@@ -1495,8 +1502,10 @@
+ 	assert(!fseek(file, (long)(8 * header[2]), SEEK_CUR));
+ 	for (size_t i = 0; i < header[4]; ++i) {
  		long position = ftell(file);
- 		uint64_t record[6];
- 		for (size_t j = 0; j < 6; ++j) assert(!pg_wire_read_u64(file, &record[j]));
+-		uint64_t record[6];
+-		for (size_t j = 0; j < 6; ++j) assert(!pg_wire_read_u64(file, &record[j]));
++		uint64_t record[7];
++		for (size_t j = 0; j < 7; ++j) assert(!pg_wire_read_u64(file, &record[j]));
 +		int complete = fgetc(file);
 +		assert(complete == 0 || complete == 1);
  		if (record[0] || !record[4] || !record[5]) continue;
@@ -332,24 +336,38 @@
  }
  
  static void normalization_requests(void)
-@@ -3109,6 +3097,8 @@
+@@ -3107,8 +3095,10 @@
+ 	assert(!fseek(file, (long)header[2] * 8, SEEK_CUR));
+ 	for (size_t i = 0; i < header[4]; ++i) {
  		long position = ftell(file);
- 		uint64_t fields[6];
- 		for (size_t j = 0; j < 6; ++j) assert(!pg_wire_read_u64(file, &fields[j]));
+-		uint64_t fields[6];
+-		for (size_t j = 0; j < 6; ++j) assert(!pg_wire_read_u64(file, &fields[j]));
++		uint64_t fields[7];
++		for (size_t j = 0; j < 7; ++j) assert(!pg_wire_read_u64(file, &fields[j]));
 +		int complete = fgetc(file);
 +		assert(complete == 0 || complete == 1);
  		if (!fields[4]) continue;
  		/* Cyclic operand, missing operand, and mixed source/annotation record. */
  		const size_t slots[] = {4, 5, 1};
-@@ -3382,7 +3372,7 @@
+@@ -3382,15 +3372,15 @@
  		for (size_t j = 0; j < 10; ++j) assert(!pg_wire_read_u64(file, &scope[j]));
  		assert(!fseek(file, (long)scope[6], SEEK_CUR));
  	}
 -	assert(!fseek(file, (long)(header[2] + 6 * header[4]) * 8, SEEK_CUR));
-+	assert(!fseek(file, (long)(header[2] + 6 * header[4]) * 8 + (long)header[4], SEEK_CUR));
++	assert(!fseek(file, (long)(header[2] + 7 * header[4]) * 8 + (long)header[4], SEEK_CUR));
  	uint64_t entries[6];
  	long start = ftell(file);
  	for (size_t i = 0; i < 6; ++i) assert(!pg_wire_read_u64(file, &entries[i]));
+ 	assert(entries[1] == 0 && entries[4] == 1);
+-	/* Invalid owner, source index and cyclic edge fail during reconstruction.
++	/* Invalid owner, source index and out-of-range edge fail during reconstruction.
+ 	 * A well-formed edge to the wrong producer remains unaccepted until Solve. */
+ 	const size_t slots[] = {3, 4, 5, 5};
+-	const uint64_t values[] = {0, 2, entries[3], entries[2]};
++	const uint64_t values[] = {0, 2, header[4] + 1, entries[2]};
+ 	for (size_t i = 0; i < 4; ++i) {
+ 		long offset = start + (long)slots[i] * 8;
+ 		assert(!fseek(file, offset, SEEK_SET) && !pg_wire_write_u64(file, values[i]));
 @@ -3558,27 +3548,28 @@
  		struct pg_synthesis_job *selected[] = {p->root,
  			pg_synthesis_evidence(&p->synthesis, pg_synthesis_result(p->root))};

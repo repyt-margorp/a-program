@@ -150,6 +150,47 @@ static void lexical_module_roots(void)
 	}
 }
 
+static void shared_registration_inputs(void)
+{
+	const char source[] = "first := #1; second := #2;";
+	struct pg_program *p = pg_program_create(source, sizeof(source) - 1, PG_DEFINITION_IMPLICIT_THUNK);
+	const struct pg_source_scope *scope;
+	const struct pg_syntax *syntax;
+	assert(p && !pg_synthesis_source_input(&p->synthesis, p->root, &scope, &syntax));
+	struct pg_syntax *selections = pg_alloc(&p->graph, 4 * sizeof(*selections));
+	struct pg_synthesis_job *initial[2];
+	assert(selections && syntax->item_count == 2);
+	for (size_t i = 0; i < 2; ++i) {
+		selections[i + 2] = (struct pg_syntax){.kind = PG_SYNTAX_ATOM, .token = syntax->items[i].name};
+		selections[i] = (struct pg_syntax){.kind = PG_SYNTAX_QUALIFIED,
+			.left = syntax, .right = &selections[i + 2]};
+		initial[i] = pg_synthesis_request(&p->synthesis, scope, &selections[i]);
+		assert(initial[i]);
+	}
+	advance(p, 10000);
+	assert(initial[0]->status == PG_SYNTHESIS_DONE && initial[1]->status == PG_SYNTHESIS_DONE);
+	assert(pg_synthesis_prepared_environment(initial[0]) == pg_synthesis_prepared_environment(initial[1]));
+	FILE *file = save(p, 2, initial);
+	pg_program_destroy(p);
+	assert(!fseek(file, 8, SEEK_SET));
+	uint64_t header[6];
+	for (size_t i = 0; i < 6; ++i) assert(!pg_wire_read_u64(file, &header[i]));
+	assert(header[2] == 2 && header[5] == 2); /* One entry table, not one per selection. */
+	rewind(file);
+	size_t count;
+	struct pg_synthesis_job *const *roots;
+	p = pg_sources_read(file, PG_ARTIFACT_DEFAULT_LIMIT, &count, &roots);
+	assert(p && count == 2 && roots[0] != roots[1]);
+	no_import_preparation(p);
+	assert(pg_synthesis_prepared_environment(roots[0]) == pg_synthesis_prepared_environment(roots[1]));
+	FILE *copy = save(p, count, roots);
+	equal_files(file, copy);
+	assert(!fclose(file) && !fclose(copy));
+	advance(p, 10000);
+	assert(roots[0]->status == PG_SYNTHESIS_DONE && roots[1]->status == PG_SYNTHESIS_DONE);
+	pg_program_destroy(p);
+}
+
 static struct pg_derivation_input *rule_input(struct pg_graph *g, enum pg_evidence_rule rule,
 	size_t count, const struct pg_derivation_input *const *premises)
 {
@@ -812,7 +853,7 @@ static void completion_format(void)
 		for (size_t j = 0; j < 10; ++j) assert(!pg_wire_read_u64(file, &words[j]));
 		assert(!fseek(file, (long)words[6], SEEK_CUR));
 	}
-	assert(!fseek(file, (long)(8 * header[2] + 48), SEEK_CUR));
+	assert(!fseek(file, (long)(8 * header[2] + 56), SEEK_CUR));
 	long flag = ftell(file);
 	assert(flag >= 0 && fgetc(file) == 0);
 	assert(!fseek(file, flag, SEEK_SET) && fputc(2, file) != EOF);
@@ -893,6 +934,7 @@ int main(void)
 {
 	early_wake();
 	lexical_module_roots();
+	shared_registration_inputs();
 	direct_rule_import();
 	limit_arguments();
 	completion_format();

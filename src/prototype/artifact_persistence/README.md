@@ -40,7 +40,7 @@ Missing descriptor support and insufficient bounds reject without publishing
 output roots or counts, through both scoped and unscoped descriptor entry points.
 Existing graph, declaration and occurrence transport tests also pass. This is
 not a complete source-image persistence or checkpoint implementation.
-The prototype now writes APGSRC66/APGRET4 with available typed results connected
+The prototype now writes APGSRC67/APGRET4 with available typed results connected
 to existing producer ordinals. Its view borrows `pg_occurrence`; there is no new
 type graph or accepted-result DB. Import preserves descriptive input only, and
 ordinary Solve still checks source/annotations. Selected producer dependencies
@@ -54,7 +54,13 @@ supplies necessary source allocations; default
 constructor fields reuse their existing lexical addresses instead of retaining
 every incidental use-context proof. Structural identity rules are unchanged.
 
-APGSRC66 adds one descriptive completion byte per producer, using the existing
+APGSRC67 owns definition entry links once per lexical namespace, not once per
+exported module selection. Producers retain their prepared namespace edge;
+unexported lexical parents need no synthetic public root. This transports
+existing inputs, not name-index cursors, typed acceptance or a saved schedule.
+Multiple selections share the same entry table after inert import.
+
+The completion byte introduced in APGSRC66 remains descriptive, using the existing
 producer associations and typed graph. It does not restore live `DONE` status,
 accept Kernel evidence, or save private cursors. `artifact/file.c` owns explicit
 trusted export: before any Solve, a completed source module and all its entries

@@ -1,6 +1,16 @@
 --- a/synthesis.c
 +++ b/synthesis.c
-@@ -1227,6 +1227,66 @@
+@@ -569,7 +569,8 @@
+ 	} else if (!context || pg_evidence_context(context)) return -1;
+ 	*input = (struct pg_source_environment){.parent = scope->parent, .exports = scope->exports,
+ 		.imports = scope->imports, .name = scope->name, .producer = scope->producer, .module = scope->module,
+-		.definitions = scope->definitions ? scope->definitions->syntax : NULL};
++		.definitions = scope->definitions ? scope->definitions->syntax : NULL,
++		.registration = scope->definitions ? scope->registration : NULL};
+ 	return 0;
+ }
+ 
+@@ -1227,6 +1228,66 @@
  	return 0;
  }
  
@@ -67,7 +77,7 @@
  struct pg_synthesis_job *pg_synthesis_constructor_value(struct pg_synthesis *synthesis,
  	const struct pg_evidence *formation, const struct pg_object *constructor,
  	const struct pg_evidence *parameters)
-@@ -1239,11 +1299,18 @@
+@@ -1239,11 +1300,18 @@
  	const struct pg_evidence *formation, const struct pg_object *constructor,
  	const struct pg_evidence *parameters, const struct pg_context *prefix, const struct pg_context *end)
  {
@@ -91,7 +101,7 @@
  }
  
  int pg_synthesis_typed_input(struct pg_synthesis *synthesis,
-@@ -1299,12 +1366,15 @@
+@@ -1299,12 +1367,15 @@
  	return NULL;
  }
  
@@ -109,16 +119,23 @@
  	struct pg_synthesis_job *registration = definition_registration(synthesis, source_work(root)->scope, syntax);
  	if (!registration) return NULL;
  	source_work(root)->right = registration;
-@@ -1330,7 +1400,7 @@
- 	const struct pg_syntax *syntax = source_work(root)->syntax;
- 	if (syntax && syntax->kind == PG_SYNTAX_QUALIFIED) syntax = syntax->left;
- 	if (!syntax || syntax->kind != PG_SYNTAX_DEFINITIONS || index >= syntax->item_count) return -1;
+@@ -1325,12 +1396,10 @@
+ int pg_synthesis_retain_definition_input(struct pg_synthesis *synthesis,
+ 	struct pg_synthesis_job *root, size_t index, struct pg_synthesis_job *producer)
+ {
+-	if (!root || root->owner != synthesis->owner_key || root->role != EXPRESSION_JOB) return -1;
++	if (!root || root->owner != synthesis->owner_key) return -1;
+ 	if (!producer || producer->owner != synthesis->owner_key) return -1;
+-	const struct pg_syntax *syntax = source_work(root)->syntax;
+-	if (syntax && syntax->kind == PG_SYNTAX_QUALIFIED) syntax = syntax->left;
+-	if (!syntax || syntax->kind != PG_SYNTAX_DEFINITIONS || index >= syntax->item_count) return -1;
 -	struct pg_synthesis_job *registration = prepare_module(synthesis, root);
-+	struct pg_synthesis_job *registration = pg_synthesis_prepare_module(synthesis, root);
++	struct pg_synthesis_job *registration = root->role == DEFINITION_SCOPE_JOB
++		? root : pg_synthesis_prepare_module(synthesis, root);
  	if (!registration) return -1;
  	return definition_input(source_work(registration)->definitions, index, producer);
  }
-@@ -2473,6 +2543,113 @@
+@@ -2473,6 +2542,113 @@
  	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED);
  }
  
@@ -232,7 +249,7 @@
  static void definition_scope_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
  	struct source_work *local = source_work(job);
-@@ -2534,6 +2711,80 @@
+@@ -2534,6 +2710,80 @@
  	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_DONE);
  }
  
@@ -313,7 +330,7 @@
  static void definitions_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
  	struct source_work *local = source_work(job);
-@@ -2541,7 +2792,7 @@
+@@ -2541,7 +2791,7 @@
  	int selected = syntax->kind == PG_SYNTAX_QUALIFIED;
  	if (selected) syntax = syntax->left;
  	if (!local->right) {
@@ -322,7 +339,7 @@
  		return;
  	}
  	if (local->left->status != PG_SYNTHESIS_DONE) {
-@@ -2568,13 +2819,12 @@
+@@ -2568,13 +2818,12 @@
  	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_DONE);
  }
  
@@ -339,7 +356,7 @@
  	if (!local->callable) {
  		const struct source_metadata *origin = source_metadata(synthesis, pg_evidence_subject(formation));
  		size_t ordinal;
-@@ -2582,10 +2832,10 @@
+@@ -2582,10 +2831,10 @@
  		if (origin && origin->constructors && pg_data_constructor_position(layout, constructor, &ordinal)) {
  			const struct source_constructor *source = &origin->constructors[ordinal];
  			if (source->implicit_count) {
@@ -352,7 +369,7 @@
  				*callable = (struct constructor_callable){.source = source,
  					.field = source->implicit_count, .count = source->implicit_count};
  				for (size_t i = 0; i < callable->count; ++i) callable->indices[i] = i;
-@@ -2593,6 +2843,43 @@
+@@ -2593,6 +2842,43 @@
  			}
  		}
  	}
@@ -396,7 +413,7 @@
  	const struct pg_evidence *map = local->left->result, *context = pg_evidence_premise(map, 1);
  	size_t prefix = pg_evidence_context_map(parameters)->count;
  	if (!local->value_job) {
-@@ -2742,16 +3029,12 @@
+@@ -2742,16 +3028,12 @@
  			pg_synthesis_scope_context(local->scope), pg_synthesis_scope_context(local->scope));
  		const struct pg_object *constructor = pg_data_constructor(pg_data_schema_layout(schema), i);
  		const struct pg_constructor_allocation *allocation = local->member_allocations ? &local->member_allocations[i] : NULL;

@@ -111,7 +111,7 @@ skip format/representability checks. It does not reduce the retained graph.
 `--trust-image --steps 0` opts out of revalidation, relying on the image author's
 completion statements. Use only when that external trust is justified; a digest
 stored inside the same file does not authenticate it. This option is local to
-artifact admission, not the C emitter, runtime or Kernel. APGSRC66 is required;
+artifact admission, not the C emitter, runtime or Kernel. APGSRC67 is required;
 rebuild older images from source. Once any ordinary Solve has begun, the API
 refuses trusted export; a save then reports only locally completed producers.
 Exit codes: 0 emitted, 1 rejected, 2 input/I/O failure, 3 pending, 4 unsupported.
