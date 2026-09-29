@@ -4,8 +4,8 @@
 #include "wire.h"
 #include <string.h>
 
-static const char magic[8] = "APGSRCW1";
-enum source_record_kind { DEFINITION, MODULE, LITERAL };
+static const char magic[8] = "APGSRCW2";
+enum source_record_kind { DEFINITION, MODULE, LITERAL, REFERENCE };
 
 struct source_record {
 	enum source_record_kind kind;
@@ -28,7 +28,9 @@ static int kind(const struct pg_synthesis *s, const struct pg_synthesis_job *job
 	if (syntax->kind == PG_SYNTAX_DEFINITIONS) return MODULE;
 	if (syntax->kind == PG_SYNTAX_QUALIFIED && syntax->left->kind == PG_SYNTAX_DEFINITIONS) return MODULE;
 	struct pg_synthesis_job *rule;
-	return pg_synthesis_literal_frontier(s, job, &rule) == 1 ? LITERAL : -1;
+	if (pg_synthesis_literal_frontier(s, job, &rule) == 1) return LITERAL;
+	struct pg_reference_frontier reference;
+	return pg_synthesis_reference_frontier(s, job, &reference) == 1 ? REFERENCE : -1;
 }
 
 static uint64_t reference(const struct pg_dag *jobs, const struct pg_synthesis_job *job)
@@ -70,10 +72,12 @@ const struct pg_artifact_source *pg_artifact_source_capture(struct pg_graph *sto
 		struct source_record *r = &c->records[i];
 		*r = (struct source_record){.kind = (enum source_record_kind)type, .job = (size_t)slot - 1, .status = job->status};
 		struct pg_module_frontier module;
+		struct pg_reference_frontier source;
 		switch (r->kind) {
 		case MODULE:
 			r->count = pg_synthesis_module_frontier(s, job, &module) ? 0 : 3;
 			break;
+		case REFERENCE: r->count = 2; break;
 		default: r->count = 1; break;
 		}
 		r->data = pg_wire_array(storage, r->count, sizeof(*r->data));
@@ -93,6 +97,11 @@ const struct pg_artifact_source *pg_artifact_source_capture(struct pg_graph *sto
 		case LITERAL:
 			if (pg_synthesis_literal_frontier(s, job, &child) != 1) goto done;
 			r->data[0] = reference(&map, child);
+			break;
+		case REFERENCE:
+			if (pg_synthesis_reference_frontier(s, job, &source) != 1) goto done;
+			r->data[0] = reference(&map, source.producer);
+			r->data[1] = reference(&map, source.rule);
 			break;
 		}
 		for (size_t j = 0; j < r->count; ++j) if (r->data[j] == UINT64_MAX) goto done;
@@ -128,7 +137,7 @@ const struct pg_artifact_source *pg_artifact_source_read(FILE *file, struct pg_g
 	size_t available = limit;
 	for (size_t i = 0; i < c->count; ++i) {
 		uint64_t type, slot, status, n;
-		if (pg_wire_read_u64(file, &type) || type > LITERAL || pg_wire_read_u64(file, &slot) || slot >= jobs) return NULL;
+		if (pg_wire_read_u64(file, &type) || type > REFERENCE || pg_wire_read_u64(file, &slot) || slot >= jobs) return NULL;
 		if (pg_wire_read_u64(file, &status) || status > PG_SYNTHESIS_DONE) return NULL;
 		if (seen[slot]++ || pg_wire_read_u64(file, &n) || n > available) return NULL;
 		available -= (size_t)n;
@@ -144,6 +153,9 @@ const struct pg_artifact_source *pg_artifact_source_read(FILE *file, struct pg_g
 			if (n && n != 3) return NULL;
 			if (n && (!r->data[0] || r->data[0] > jobs || !r->data[2] || r->data[2] > jobs)) return NULL;
 			first = (size_t)n;
+			break;
+		case REFERENCE:
+			if (n != 2 || (r->data[0] && !r->data[1])) return NULL;
 			break;
 		default: if (n != 1) return NULL; break;
 		}
@@ -208,6 +220,17 @@ int pg_artifact_source_attach(struct pg_synthesis *s, const struct pg_artifact_s
 		if (jobs[c->records[i].job]->status != c->records[i].status) return -1;
 	for (size_t i = 0; i < c->count; ++i) {
 		const struct source_record *r = &c->records[i];
+		if (r->kind == REFERENCE) {
+			struct pg_reference_frontier view = {resolve(jobs, r->data[0]), resolve(jobs, r->data[1])};
+			if (r->status == PG_SYNTHESIS_PENDING) {
+				if (pg_synthesis_reference_resume(s, jobs[r->job], &view)) return -1;
+			} else {
+				struct pg_reference_frontier current;
+				if (pg_synthesis_reference_frontier(s, jobs[r->job], &current) != 1
+					|| current.producer != view.producer || current.rule != view.rule) return -1;
+			}
+			continue;
+		}
 		if (r->kind != MODULE || !r->count || r->status != PG_SYNTHESIS_PENDING) continue;
 		struct pg_module_frontier view = {r->data[1], resolve(jobs, r->data[2])};
 		if (pg_synthesis_module_resume(s, jobs[r->job], &view)) return -1;

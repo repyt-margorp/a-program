@@ -14,7 +14,7 @@
 #include <string.h>
 
 /* Compose real source-input I/O with owner-local continuations. This test
- * envelope supports closed literal modules, not arbitrary source checkpoints. */
+ * envelope supports closed literal/alias modules, not arbitrary checkpoints. */
 static int solving;
 static size_t cuts;
 static uint64_t verification;
@@ -70,6 +70,11 @@ static struct checkpoint collect(struct pg_program *p)
 		if (!pg_synthesis_module_frontier(&p->synthesis, job, &module)) add(&prefix, module.previous);
 		if (!pg_synthesis_definition_body(&p->synthesis, job, &child)) add(&prefix, child);
 		if (pg_synthesis_literal_frontier(&p->synthesis, job, &child) == 1) add(&roots, child);
+		struct pg_reference_frontier reference;
+		if (pg_synthesis_reference_frontier(&p->synthesis, job, &reference) == 1) {
+			add(&prefix, reference.producer);
+			add(&roots, reference.rule);
+		}
 	}
 	c.prefix_count = prefix.count;
 	struct pg_synthesis_job **external = pg_wire_array(&p->graph, prefix.count, sizeof(*external));
@@ -459,15 +464,101 @@ static void guards(void)
 	puts("source guards: invalid ownership/mappings, omitted rule, unsupported syntax and unchecked completion rejected");
 }
 
+static void reference_guards(void)
+{
+	for (size_t wrong = 0; wrong < 2; ++wrong) {
+		struct pg_program *p = expression("main := n;"), *other = expression("main := n;");
+		struct pg_synthesis *s = &p->synthesis;
+		const struct pg_source_scope *scope;
+		const struct pg_syntax *syntax;
+		assert(!pg_synthesis_source_input(s, p->root, &scope, &syntax));
+		const struct pg_object *binders[2];
+		for (size_t i = 0; i < 2; ++i) {
+			binders[i] = pg_binder(&p->graph);
+			const struct pg_evidence *context = pg_synthesis_scope_context(scope);
+			const struct pg_evidence *extended = pg_prove_context_extension(&p->typing, context,
+				binders[i], pg_prove_universe(&p->typing, context, 0));
+			scope = pg_synthesis_bind(s, scope, syntax->token, binders[i], extended);
+			assert(scope);
+		}
+		struct pg_synthesis_job *use = pg_synthesis_request(s, scope, syntax);
+		struct pg_reference_frontier view = {0};
+		assert(pg_synthesis_reference_frontier(s, use, &view) == 1 && !view.producer && !view.rule);
+		assert(!pg_synthesis_reference_resume(s, use, &view));
+		view.rule = other->root;
+		assert(pg_synthesis_reference_resume(s, use, &view));
+		assert(pg_synthesis_reference_frontier(&other->synthesis, use, &view) == -1);
+		view.rule = pg_synthesis_plain_rule(s, PG_VARIABLE, binders[wrong ? 0 : 1], 1, &scope->context_job);
+		assert(pg_synthesis_reference_resume(s, p->root, &view)); /* No lexical n here. */
+		size_t proofs = p->typing.proofs.count;
+		int status = pg_synthesis_reference_resume(s, use, &view);
+		assert(wrong ? status != 0 : status == 0);
+		assert(!s->steps && proofs == p->typing.proofs.count && !use->result);
+		if (!wrong) {
+			assert(pg_synthesis_reference_resume(s, use, &view)); /* Already attached. */
+			advance(s, 1000);
+			assert(use->result == pg_prove_variable(&p->typing, pg_synthesis_scope_context(scope), binders[1]));
+		}
+		pg_program_destroy(p); pg_program_destroy(other);
+	}
+	for (size_t wrong = 0; wrong < 3; ++wrong) {
+		struct pg_program *p = expression("main := n;");
+		struct pg_synthesis *s = &p->synthesis;
+		const struct pg_source_scope *scope;
+		const struct pg_syntax *syntax;
+		assert(!pg_synthesis_source_input(s, p->root, &scope, &syntax));
+		const struct pg_evidence *context = pg_synthesis_scope_context(scope);
+		struct pg_synthesis_job *producer = pg_synthesis_evidence(s, pg_prove_universe(&p->typing, context, 0));
+		scope = pg_synthesis_name_job(s, scope, syntax->token, producer);
+		struct pg_synthesis_job *use = pg_synthesis_request(s, scope, syntax);
+		struct pg_synthesis_job *rule = pg_synthesis_plain_rule(s, PG_CONTEXT_PROJECTION, NULL, 2,
+			(struct pg_synthesis_job *[]){scope->context_job, producer});
+		struct pg_reference_frontier view = {producer, NULL};
+		assert(pg_synthesis_reference_resume(s, use, &view)); /* Producer without rule. */
+		view.rule = wrong == 2 ? scope->context_job : rule;
+		if (wrong == 1) view.producer = scope->context_job;
+		size_t proofs = p->typing.proofs.count;
+		int status = pg_synthesis_reference_resume(s, use, &view);
+		assert(wrong ? status != 0 : status == 0);
+		assert(!s->steps && proofs == p->typing.proofs.count && !use->result);
+		if (!wrong) {
+			advance(s, 1000);
+			assert(use->result == producer->result);
+		}
+		pg_program_destroy(p);
+	}
+	struct pg_program *p = expression("main := n;");
+	struct pg_synthesis *s = &p->synthesis;
+	const struct pg_source_scope *scope;
+	const struct pg_syntax *syntax;
+	assert(!pg_synthesis_source_input(s, p->root, &scope, &syntax));
+	const char *text = "n := #1;";
+	struct pg_synthesis_job *module = pg_program_source(p, scope, text, strlen(text), &p->parser);
+	struct pg_synthesis_job *producer = pg_program_select_name(p, module, syntax->token);
+	assert(producer && producer->status == PG_SYNTHESIS_PENDING);
+	scope = pg_synthesis_name_job(s, scope, syntax->token, producer);
+	struct pg_synthesis_job *use = pg_synthesis_request(s, scope, syntax);
+	struct pg_reference_frontier view = {producer, pg_synthesis_plain_rule(s, PG_CONTEXT_PROJECTION, NULL, 2,
+		(struct pg_synthesis_job *[]){scope->context_job, producer})};
+	size_t proofs = p->typing.proofs.count, jobs = s->jobs.count;
+	assert(pg_synthesis_reference_resume(s, use, &view));
+	assert(!s->steps && proofs == p->typing.proofs.count && jobs == s->jobs.count && !use->result);
+	pg_program_destroy(p);
+	puts("reference guards: shadowed binders, exact producer/rule, foreign ownership, unchecked definitions and duplicate attachment");
+}
+
 int main(void)
 {
 	shared_nominal_inputs();
 	guards();
+	reference_guards();
 	partitions();
 	lifecycle("main := #1;");
 	lifecycle("{{ main := #1; }}.main");
 	lifecycle("{{ first := @; second := #\"hello\"; main := #-17; }}.main");
 	lifecycle("{{ first := #1; second := #1; main := #1; }}.main");
+	lifecycle("{{ first := #1; second := first; main := second; }}.main");
+	lifecycle("{{ main := second; second := first; first := #1; }}.main");
 	printf("source checkpoint: %zu complete lifecycle cuts, %llu charged verification steps\n",
 		cuts, (unsigned long long)verification);
 	return 0;

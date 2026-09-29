@@ -394,9 +394,13 @@ remain unsupported. This owner codec is not a public source checkpoint;
 APGSRC68 and the ordinary full-derivation format are unchanged.
 
 The source checkpoint gate composes real source-input I/O, direct rules and one
-schedule at 116 lifecycle cuts in four closed literal modules. The artifact-local
-source payload stores body/module/literal continuations, not name registration,
-typed results or backend data. Rechecking uses ordinary Solve and counts toward
+schedule at 204 lifecycle cuts in six closed literal/alias modules. The artifact-local
+source payload stores body/module/literal/reference continuations, not name registration,
+typed results or backend data. Plain identifiers retain exact producer/rule edges;
+the ordinary lexical lookup and rule factory also reconnect restored references.
+Forward aliases are covered across every cut. Owner-level guards distinguish
+shadowed binders, wrong producers/rules and unchecked definitions. Attachment
+does not run Solve or grant evidence. Rechecking uses ordinary Solve and counts toward
 its step total. O2/ASan/UBSan pass exact inert/live resaves, remaining dispatches,
 final images and the 0+0/10+10/1+19/0+20/20+0 fragment partitions. Its bounded
 continuation envelope now uses one retained Core/object table (APGRET5), not

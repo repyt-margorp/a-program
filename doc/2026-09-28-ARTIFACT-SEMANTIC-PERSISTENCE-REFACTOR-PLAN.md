@@ -858,6 +858,38 @@ constructed rule requests changes identity/fuel and is not an acceptable shortcu
   Actual source deltas: `retained_io.c` +40/-6, header +20/-0; `source_io.c`
   +19/-8, header +18/-0 (net +83). Tests +128/-58; metrics +8/-6; build +1/-1.
 
+**2026-09-30, source-reference continuation after `15ce2de`:**
+
+- **Subjective (User):** keep Transpiler/Linker-only information out of `.a`.
+- **Objective (Code):** plain identifiers retain a producer/projection edge or
+  a scope-bound VARIABLE rule in `source_work`. The restricted checkpoint lacked
+  these links. Reference preparation now shares the ordinary source factory;
+  `artifact/source` stores two mapped job links, not another binding/name table.
+  Internal metadata becomes APGSRCW2; public APGSRC68 and backend formats stay
+  unchanged. No target representation, ABI or link configuration is added.
+- **Assessment:** restoring these links is justified by Solve's remaining work.
+  Attachment requires the exact lexical producer/binder and checked definition
+  producers; it neither accepts saved status flags nor performs computation.
+  Qualified/import/namespace continuations remain outside this owner payload.
+- **Plan/status:** O2/ASan/UBSan pass 204 complete lifecycle cuts, including
+  backward/forward aliases; inert/live images, remaining dispatches and final
+  bytes match. Rechecking costs 1,166 ordinary Solve steps across those tests.
+  Baseline: clean `e716232` plus the prototype overlays and this delta;
+  unrelated Evidence/IADT working-tree changes are excluded.
+  Full O2 `check-acceptance`, definition/derivation checkpoints and the
+  semantic/history/source/Identity I/O gates pass on that same candidate.
+  Guards reject shadowed-binder substitution, wrong producer/rule, foreign
+  ownership, unchecked definitions and repeated attachment. Linker/native-enum/
+  scalar gates pass, including unchanged images, source graph/proof counts and
+  no hidden evaluation in lowering. Parent/candidate List images match exactly
+  at 0/200/completion (25,369/26,390/50,820 bytes; 2,824 completion steps).
+  The public partition gate remains failing, unchanged; see
+  `/tmp/a-program-source-reference-partitions/partitions.tsv`. This is owner
+  coverage, not AP1-AP3 completion. Logs: `/tmp/a-program-source-reference-asan.log`,
+  `/tmp/a-program-source-reference-suite.log`, `/tmp/a-program-source-reference-c-boundary.log`.
+  Actual implementation deltas: `synthesis.c` +55/-13, header +15/-0;
+  `artifact/source.c` +27/-4, header +4/-2 (net +82). Tests +92/-1.
+
 #### Rejected Read Policy and Retention Audit (2026-09-29)
 
 The user rejected the agent's byte-derived allowance. That prototype and its
@@ -947,6 +979,13 @@ alone. Avoid adding a second parallel type graph or serializing all workers.
 - [x] Share source and continuation Core/object relocation in that envelope;
   retain temporary-object lifetimes and exact read boundaries. Check nominal
   separation and shared Lambda binders without granting imported acceptance.
+- [x] Restore plain identifier producer/rule edges using the ordinary reference
+  factory; test forward aliases across every cut and exact lexical binder guards.
+- [ ] Next compose Lambda binding/domain annotation and normalization owners
+  with that shared closure and schedule. `synthesis_binding.c:domain_step`
+  currently creates checked type adapters before its normalization request;
+  preserve this boundary without running kernel checks during inert decode.
+  Do not treat a lexical VARIABLE-owner test as a complete Lambda checkpoint.
 - [x] Verify direct source-image rule relocation through ordinary canonical
   factories, without per-input preparation wrappers. Retain byte-identical
   step-0 resaves and ordinary rejection; full acceptance passes for this
@@ -1805,6 +1844,12 @@ do not mutate the image to make it acceptable. Changing profiles must leave the
 input image unchanged on both successful and rejected requests.
 Rechecked at `43bbc0a`: O2 `check-c-link` and `check-c-enum` pass, including
 the input-image immutability checks (`/tmp/a-program-boundary-link-check.log`).
+Rechecked after `15ce2de`: native representation entries belong to
+`c_backend/lower/scalar.c`'s temporary module arena (`m.order.storage`), not the
+Program graph or artifact codec. Linker choices remain in `link/plan`/`driver`.
+Both input-image immutability gates pass again with the source-reference delta.
+The scalar/enum Oracle gate also preserves input Term/object/occurrence/proof
+counts and forbids evaluator/substitution advancement during emission.
 
 ### Objective (Code)
 

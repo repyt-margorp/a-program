@@ -1,6 +1,6 @@
 --- a/synthesis_source.h
 +++ b/synthesis_source.h
-@@ -22,6 +22,66 @@
+@@ -22,6 +22,81 @@
  	struct pg_synthesis_job *clause;
  };
 
@@ -45,6 +45,21 @@
 +	struct pg_synthesis_job **);
 +struct pg_synthesis_job *pg_synthesis_prepare_literal(struct pg_synthesis *, struct pg_synthesis_job *);
 +
++/* Plain identifier continuation: lexical producer plus its projection rule,
++ * or a VARIABLE rule using the scope's existing binder. No name table copy.
++ * 1 supported, 0 another source form/state, -1 invalid ownership. Attachment
++ * shares ordinary rule preparation and requires checked definition producers;
++ * it does not resolve qualified members, run Solve or grant evidence. Restore
++ * source scopes and child jobs first, then the enclosing schedule. Discard an
++ * unpublished import after an attachment error. */
++struct pg_reference_frontier {
++	struct pg_synthesis_job *producer, *rule;
++};
++int pg_synthesis_reference_frontier(const struct pg_synthesis *, const struct pg_synthesis_job *,
++	struct pg_reference_frontier *);
++int pg_synthesis_reference_resume(struct pg_synthesis *, struct pg_synthesis_job *,
++	const struct pg_reference_frontier *);
++
 +/* Constructor continuation immediately after field-scope construction, before
 + * abstracting its body. Borrow the checked map, not the completed worker's
 + * history. 1 ready, 0 another stage, -1 wrong owner/request. Attachment requires
@@ -67,7 +82,7 @@
  /* Restored lexical binder allocation. Each owner keeps its own cursor;
   * this payload describes source addresses, not a second typed Context. */
  struct pg_source_context_allocation {
-@@ -50,12 +110,31 @@
+@@ -50,12 +125,31 @@
  	const struct pg_object *, size_t, struct pg_synthesis_job *const *);
  struct pg_synthesis_job *pg_synthesis_rule_premise(struct pg_synthesis *, const struct pg_synthesis_job *, size_t);
  const struct pg_derivation_input *pg_synthesis_plain_derivation(const struct pg_synthesis_job *);

@@ -8,8 +8,8 @@ struct pg_artifact_source;
 
 /* Source-owned cursors/edges in an enclosing shared job mapping. The enclosing
  * image transports syntax/scopes and reconstructs request identities first.
- * Supported owners: definitions, module traversal and
- * literal/@ expressions. Other source continuations reject, never recompute.
+ * Supported owners: definitions, module traversal, literal/@ expressions and
+ * plain identifier references. Other source continuations reject, never recompute.
  * Records borrow no live pointers after capture. No source results, proof flags
  * authorizing acceptance, or independent scheduler are stored here. */
 const struct pg_artifact_source *pg_artifact_source_capture(struct pg_graph *,
@@ -22,6 +22,8 @@ const struct pg_artifact_source *pg_artifact_source_read(FILE *, struct pg_graph
  * but never accepts a result.
  * Failure requires discarding the unpublished Program. After this, recheck the
  * saved completed targets through ordinary Solve and attach pending cursors.
+ * Identifier edges attach after their definition producers are checked; the
+ * ordinary scope lookup must select the exact saved producer or binder rule.
  * The enclosing image supplies provenance and finally restores ONE schedule. */
 int pg_artifact_source_prepare(struct pg_synthesis *, const struct pg_artifact_source *,
 	size_t job_count, struct pg_synthesis_job *const *jobs);
