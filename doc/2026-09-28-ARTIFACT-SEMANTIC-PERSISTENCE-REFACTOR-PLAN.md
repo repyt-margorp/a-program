@@ -3,13 +3,16 @@
 Date: 2026-09-28
 Updated: 2026-09-30
 Status: in progress; APGSRC68 persistence and first C backend are prototypes,
-not promoted. Exact resumption and trust/fuel integration remain unfinished.
+not promoted. AP0 simplification now precedes further persistence/backend work.
+Exact resumption and trust/fuel integration remain unfinished.
 Baseline: `152b59506e915e18a34f6dc8041e981fb2a82888` (PR #45 documents
 imported). Implementation is unchanged from `e716232`; unrelated working-tree
 changes are excluded from this audit.
 
 ## Problem List
 
+0. **AP0:** audit and remove redundant Job/Evidence construction before adding
+   further persistence or backend features (2026-09-30 user instruction).
 1. **AP1:** specify what `.a` preserves, without confusing semantic progress
    with evaluator history or making C the owner of A Program semantics.
 2. **AP2:** implement shared, inert transport of that data and remove unused
@@ -25,6 +28,21 @@ changes are excluded from this audit.
 This is the active implementation plan, superseding R1-R6 in the
 [growth audit](2026-09-28-RETAINED-IMAGE-GROWTH-AUDIT.md). That document retains
 measurements, causes and the separate Context/syntax investigations.
+
+## AP0. Simplify Before Extending Persistence
+
+The user's 2026-09-30 follow-up requires auditing Job/Evidence duplication,
+revising the plan from that audit, and completing the refactor before continuing.
+The [Solver/Evidence audit and SE1-SE5 work list](2026-09-30-SOLVER-EVIDENCE-DUPLICATION-AUDIT-AND-PLAN.md)
+now controls the next implementation. It records measured Evidence-only Jobs,
+duplicated construction paths, premise overlap and export-time graph copying.
+"No recomputation" does not justify keeping an unnecessary wrapper.
+
+Do not extend the binding/domain checkpoint codec or AP6 while this gate is
+open. Existing passing checkpoint fixtures remain historical evidence, not a
+commitment to preserve every current worker representation. Public split-fuel
+failures remain open. This changes task order, not Core/type boundaries or the
+requirement to keep Transpiler/Linker-only data out of `.a`.
 
 ## AP1. Persistence Contract
 
@@ -981,10 +999,11 @@ alone. Avoid adding a second parallel type graph or serializing all workers.
   separation and shared Lambda binders without granting imported acceptance.
 - [x] Restore plain identifier producer/rule edges using the ordinary reference
   factory; test forward aliases across every cut and exact lexical binder guards.
-- [ ] Next compose Lambda binding/domain annotation and normalization owners
+- [ ] After AP0/SE1-SE5, compose Lambda binding/domain annotation and normalization owners
   with that shared closure and schedule. `synthesis_binding.c:domain_step`
   currently creates checked type adapters before its normalization request;
-  preserve this boundary without running kernel checks during inert decode.
+  preserve its semantics without freezing the current wrapper representation
+  or running kernel checks during inert decode.
   Do not treat a lexical VARIABLE-owner test as a complete Lambda checkpoint.
 - [x] Verify direct source-image rule relocation through ordinary canonical
   factories, without per-input preparation wrappers. Retain byte-identical

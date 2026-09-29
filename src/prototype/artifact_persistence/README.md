@@ -1,5 +1,10 @@
 # Artifact Persistence Prototype
 
+Current prerequisite (2026-09-30): finish the
+[Solver/Evidence simplification gate](../../../doc/2026-09-30-SOLVER-EVIDENCE-DUPLICATION-AUDIT-AND-PLAN.md)
+before adding owner checkpoint fields or backend features. `state_audit.c`
+measures existing allocations/references; it changes no runtime or wire contract.
+
 ## Problem List
 
 1. Typed occurrences cannot use the existing nominal descriptor codec.
