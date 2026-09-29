@@ -14,7 +14,7 @@
  * Source continuation integration remains a separate, non-passing gate. */
 static const char magic[8] = "APGDCT\1";
 static int solving;
-static size_t checked_cuts, preparation_edges, shared_rules;
+static size_t checked_cuts, direct_cuts, preparation_edges, shared_rules;
 
 void __real_pg_synthesis_advance(struct pg_synthesis *, uint64_t);
 void __wrap_pg_synthesis_advance(struct pg_synthesis *s, uint64_t budget)
@@ -130,6 +130,7 @@ static void restore(struct checkpoint *c)
 {
 	struct pg_synthesis *s = &c->program->synthesis;
 	assert(!pg_artifact_derivations_prepare(s, c->state, c->count, c->inputs, NULL, &c->jobs));
+	assert(s->jobs.count == pg_artifact_derivations_job_count(c->state) + 1);
 	validation_schedule(c->program, c->state, c->jobs);
 	assert(!s->steps && c->program->typing.proofs.count == 1);
 	uint64_t total = 100000, used = UINT64_MAX;
@@ -160,7 +161,7 @@ static FILE *result(struct pg_program *p, struct pg_synthesis_job *root)
 	return file;
 }
 
-static struct pg_synthesis_job *read_seed(struct pg_program *p, FILE *seed)
+static struct pg_synthesis_job *read_seed(struct pg_program *p, FILE *seed, int direct)
 {
 	struct pg_declaration_io codec;
 	assert(!pg_declaration_io_init(&codec, &p->typing));
@@ -170,16 +171,21 @@ static struct pg_synthesis_job *read_seed(struct pg_program *p, FILE *seed)
 	assert(!pg_derivations_read_descriptors(seed, &p->typing, 100000, 100000,
 		&pg_declaration_graph_codec, &codec, &count, &inputs));
 	assert(count == 1);
-	struct pg_synthesis_job *root = pg_synthesis_derivation(&p->synthesis, inputs[0]);
+	struct pg_synthesis_job *root;
+	if (direct) {
+		struct pg_synthesis_job *const *rules;
+		assert(!pg_synthesis_import_rules(&p->synthesis, count, inputs, NULL, &rules));
+		root = rules[0];
+	} else root = pg_synthesis_derivation(&p->synthesis, inputs[0]);
 	assert(root && p->typing.proofs.count == 1 && !p->synthesis.steps);
 	pg_declaration_io_destroy(&codec);
 	return root;
 }
 
-static void partition(FILE *seed, uint64_t cut)
+static void partition(FILE *seed, uint64_t cut, int direct)
 {
 	struct pg_program *p = empty();
-	struct pg_synthesis_job *root = read_seed(p, seed);
+	struct pg_synthesis_job *root = read_seed(p, seed, direct);
 	advance(&p->synthesis, cut);
 	struct checkpoint c;
 	collect(&c, p, root);
@@ -218,18 +224,25 @@ static void partition(FILE *seed, uint64_t cut)
 	assert(!fclose(copy) && !fclose(expected) && !fclose(image));
 	pg_declaration_io_destroy(&c.codec); pg_program_destroy(p);
 	++checked_cuts;
+	direct_cuts += direct;
 }
 
 static void all_partitions(FILE *seed)
 {
-	struct pg_program *p = empty();
-	struct pg_synthesis_job *root = read_seed(p, seed);
-	advance(&p->synthesis, 100000);
-	assert(pg_synthesis_result(root) && !p->synthesis.ready);
-	uint64_t total = p->synthesis.steps;
-	pg_program_destroy(p);
-	for (uint64_t cut = 0; cut <= total; ++cut) partition(seed, cut);
-	assert(!fclose(seed));
+	FILE *expected = NULL;
+	for (int direct = 0; direct < 2; ++direct) {
+		struct pg_program *p = empty();
+		struct pg_synthesis_job *root = read_seed(p, seed, direct);
+		advance(&p->synthesis, 100000);
+		assert(pg_synthesis_result(root) && !p->synthesis.ready);
+		uint64_t total = p->synthesis.steps;
+		FILE *actual = result(p, root);
+		if (expected) { equal_files(expected, actual); assert(!fclose(actual)); }
+		else expected = actual;
+		pg_program_destroy(p);
+		for (uint64_t cut = 0; cut <= total; ++cut) partition(seed, cut, direct);
+	}
+	assert(!fclose(expected) && !fclose(seed));
 }
 
 static void source(const char *text)
@@ -403,14 +416,22 @@ static void codec_boundaries(void)
 	pg_program_destroy(q); pg_program_destroy(p);
 }
 
-static void invalid_completed_assertion(void)
+static void invalid_completed_assertion(int direct)
 {
 	struct pg_program *p = empty(), *q = empty();
 	const struct pg_derivation_input *context = input(p, PG_CONTEXT_EMPTY, 0, NULL);
-	struct pg_synthesis_job *root = pg_synthesis_derivation(&p->synthesis, input(p, PG_RETURN_INTRO, 1, &context));
-	for (unsigned i = 0; !pg_synthesis_work_project(root).rule; ++i) {
-		assert(i < 100);
-		advance(&p->synthesis, 1);
+	const struct pg_derivation_input *invalid = input(p, PG_RETURN_INTRO, 1, &context);
+	struct pg_synthesis_job *root;
+	if (direct) {
+		struct pg_synthesis_job *const *rules;
+		assert(!pg_synthesis_import_rules(&p->synthesis, 1, &invalid, NULL, &rules));
+		root = rules[0];
+	} else {
+		root = pg_synthesis_derivation(&p->synthesis, invalid);
+		for (unsigned i = 0; !pg_synthesis_work_project(root).rule; ++i) {
+			assert(i < 100);
+			advance(&p->synthesis, 1);
+		}
 	}
 	struct pg_synthesis_job **captured;
 	const struct pg_artifact_derivations *c = pg_artifact_derivations_capture(&p->graph, &p->synthesis, 1, &root, &captured);
@@ -441,17 +462,53 @@ static void invalid_completed_assertion(void)
 	pg_program_destroy(q); pg_program_destroy(p);
 }
 
+static void direct_boundaries(void)
+{
+	struct pg_program *p = empty(), *other = empty();
+	struct pg_synthesis_job *context = pg_synthesis_plain_rule(&p->synthesis, PG_CONTEXT_EMPTY, NULL, 0, NULL);
+	struct pg_synthesis_job *root = pg_synthesis_plain_rule(&p->synthesis, PG_UNIVERSE_FORM, NULL, 1, &context);
+	struct pg_synthesis_job *bad[] = {root, NULL};
+	struct pg_synthesis_job **mapping = NULL;
+	assert(!pg_artifact_derivations_capture(&p->graph, &p->synthesis, 2, bad, &mapping) && !mapping);
+	bad[1] = pg_synthesis_plain_rule(&other->synthesis, PG_CONTEXT_EMPTY, NULL, 0, NULL);
+	assert(!pg_artifact_derivations_capture(&p->graph, &p->synthesis, 2, bad, &mapping) && !mapping);
+	/* A completed external owner is not silently replaced by a fresh rule. */
+	bad[1] = pg_synthesis_evidence(&p->synthesis, pg_prove_empty_context(&p->typing));
+	bad[0] = pg_synthesis_plain_rule(&p->synthesis, PG_UNIVERSE_FORM, NULL, 1, &bad[1]);
+	assert(!pg_artifact_derivations_capture(&p->graph, &p->synthesis, 1, bad, &mapping) && !mapping);
+	const struct pg_artifact_derivations *c = pg_artifact_derivations_capture(&p->graph, &p->synthesis, 1, &root, &mapping);
+	assert(c && pg_artifact_derivations_job_count(c) == 2);
+	size_t count;
+	const struct pg_derivation_input *const *inputs = pg_artifact_derivations_inputs(c, &count);
+	assert(count == 2);
+	const struct pg_derivation_input *invalid[] = {inputs[0], inputs[0]};
+	struct pg_synthesis_job **output = NULL;
+	assert(pg_artifact_derivations_prepare(&other->synthesis, c, 2, invalid, NULL, &output) && !output);
+	invalid[0] = inputs[1]; invalid[1] = inputs[0];
+	assert(pg_artifact_derivations_prepare(&other->synthesis, c, 2, invalid, NULL, &output) && !output);
+	assert(!other->synthesis.steps && other->typing.proofs.count == 1);
+	FILE *file = tmpfile();
+	assert(file && !pg_artifact_derivations_write(file, c));
+	assert(!fseek(file, 6, SEEK_SET) && fputc(1, file) != EOF);
+	rewind(file);
+	assert(!pg_artifact_derivations_read(file, &other->graph, 100));
+	assert(!fclose(file));
+	pg_program_destroy(other); pg_program_destroy(p);
+}
+
 int main(void)
 {
 	guards();
 	codec_boundaries();
-	invalid_completed_assertion();
+	invalid_completed_assertion(0);
+	invalid_completed_assertion(1);
+	direct_boundaries();
 	source("main := @;");
 	source("main := \\x : @ => x;");
 	source("main := #int_add;");
 	shared();
-	assert(checked_cuts && preparation_edges && shared_rules);
-	printf("derivation checkpoint: %zu cuts, %zu preparation edges, %zu shared rules\n",
-		checked_cuts, preparation_edges, shared_rules);
+	assert(checked_cuts && direct_cuts && preparation_edges && shared_rules);
+	printf("derivation checkpoint: %zu cuts (%zu direct), %zu preparation edges, %zu shared rules\n",
+		checked_cuts, direct_cuts, preparation_edges, shared_rules);
 	return 0;
 }

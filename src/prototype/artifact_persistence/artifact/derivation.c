@@ -4,11 +4,13 @@
 #include "synthesis_source.h"
 #include "dag.h"
 #include "wire.h"
+#include "effect_inference.h"
 #include <string.h>
 
-static const char magic[8] = "APGDRC\1";
+static const char magic[8] = "APGDRC\2";
 
 struct pg_artifact_derivations {
+	/* Input adapters precede plain rules; zero adapters means a direct DAG. */
 	size_t raw_count, count, root_count;
 	const struct pg_derivation_input *const *inputs;
 	uint64_t *next, *prepared, *status, *roots;
@@ -17,7 +19,7 @@ struct pg_artifact_derivations {
 static struct pg_artifact_derivations *allocate(struct pg_graph *storage,
 	size_t raw, size_t count, size_t roots)
 {
-	if (!raw || count < raw || count - raw > raw || !roots) return NULL;
+	if (!count || count < raw || (raw && count - raw > raw) || !roots) return NULL;
 	struct pg_artifact_derivations *c = pg_alloc(storage, sizeof(*c));
 	if (!c) return NULL;
 	c->raw_count = raw; c->count = count; c->root_count = roots;
@@ -38,11 +40,94 @@ static int input_child(void *unused, const void *key, size_t i, const void **chi
 	return *child ? 1 : -1;
 }
 
+/* Direct rule requests already have their premise graph. Do not convert them
+ * into imported-input adapters: that would change request identity and fuel. */
+static int rule_child(void *owner, const void *key, size_t i, const void **child)
+{
+	const struct pg_synthesis *const *s = owner;
+	const struct pg_synthesis_job *job = key;
+	const struct pg_derivation_input *input = pg_synthesis_plain_derivation(job);
+	if (!input || job->owner != (*s)->owner_key || job->inputs[1] || input->effect_parameter) return -1;
+	if (i == input->count) return 0;
+	*child = job->inputs[3 + i];
+	return *child ? 1 : -1;
+}
+
+static struct pg_artifact_derivations *capture_frontier(struct pg_graph *storage,
+	const struct pg_synthesis *s, const struct pg_dag *jobs, size_t raw, size_t count,
+	struct pg_synthesis_job *const *roots, struct pg_synthesis_job ***output)
+{
+	struct pg_artifact_derivations *c = allocate(storage, raw, jobs->count, count);
+	struct pg_synthesis_job **mapping = pg_wire_array(storage, jobs->count, sizeof(*mapping));
+	const struct pg_derivation_input **headers = pg_wire_array(storage, raw, sizeof(*headers));
+	if (!c || !mapping || !headers) return NULL;
+	c->inputs = headers;
+	for (const struct pg_dag_node *n = jobs->first; n; n = n->next) {
+		struct pg_synthesis_job *job = (void *)n->key;
+		size_t i = n->id - 1, next;
+		if (job->status != PG_SYNTHESIS_PENDING && job->status != PG_SYNTHESIS_DONE) return NULL;
+		mapping[i] = job; c->status[i] = job->status;
+		if (i < raw) {
+			struct pg_synthesis_job *rule;
+			headers[i] = pg_synthesis_derivation_input(job);
+			if (pg_synthesis_derivation_frontier(s, job, &next, &rule)) return NULL;
+			c->next[i] = next;
+			c->prepared[i] = rule ? pg_dag_find(jobs, rule)->id : 0;
+		} else if (job->status == PG_SYNTHESIS_PENDING) {
+			if (pg_synthesis_rule_frontier(s, job, &next) != 1) return NULL;
+			c->next[i] = next;
+		}
+	}
+	for (size_t i = 0; i < count; ++i) c->roots[i] = pg_dag_find(jobs, roots[i])->id - 1;
+	*output = mapping;
+	return c;
+}
+
+static const struct pg_artifact_derivations *capture_rules(struct pg_graph *storage,
+	const struct pg_synthesis *s, size_t count, struct pg_synthesis_job *const *roots,
+	struct pg_synthesis_job ***output)
+{
+	struct pg_dag jobs;
+	if (pg_dag_init(&jobs, rule_child, &s)) return NULL;
+	const struct pg_artifact_derivations *result = NULL;
+	for (size_t i = 0; i < count; ++i) if (!roots[i] || pg_dag_add(&jobs, roots[i])) goto done;
+	struct pg_synthesis_job **mapping;
+	struct pg_artifact_derivations *c = capture_frontier(storage, s, &jobs, 0, count, roots, &mapping);
+	if (!c) goto done;
+	struct pg_effect_inference effects;
+	if (pg_effect_inference_init(&effects, storage)) goto done;
+	int failed = pg_synthesis_export_rules(s, jobs.count, mapping, storage, &effects, 1, &c->inputs);
+	pg_effect_inference_destroy(&effects);
+	if (failed) goto done;
+	*output = mapping;
+	result = c;
+done:
+	pg_dag_destroy(&jobs);
+	return result;
+}
+
+static int direct_mapping(const struct pg_synthesis *s, size_t count, struct pg_synthesis_job *const *jobs)
+{
+	struct pg_dag closure;
+	if (pg_dag_init(&closure, rule_child, &s)) return 0;
+	int valid = 0;
+	for (size_t i = 0; i < count; ++i) {
+		if (!jobs[i] || pg_dag_add(&closure, jobs[i])) goto done;
+		/* Capture supplies every premise, once, before its consumers. */
+		if (closure.count != i + 1 || pg_dag_find(&closure, jobs[i])->id != i + 1) goto done;
+	}
+	valid = 1;
+done:
+	pg_dag_destroy(&closure);
+	return valid;
+}
+
 const struct pg_artifact_derivations *pg_artifact_derivations_capture(struct pg_graph *storage,
 	const struct pg_synthesis *s, size_t count, struct pg_synthesis_job *const *roots,
 	struct pg_synthesis_job ***output)
 {
 	if (!storage || !s || !count || !roots || !roots[0] || !output) return NULL;
+	if (pg_synthesis_plain_derivation(roots[0])) return capture_rules(storage, s, count, roots, output);
 	struct pg_dag inputs = {0}, jobs = {0};
 	const struct pg_artifact_derivations *result = NULL;
 	if (pg_dag_init(&inputs, input_child, NULL) || pg_dag_init(&jobs, NULL, NULL)) goto done;
@@ -63,32 +148,7 @@ const struct pg_artifact_derivations *pg_artifact_derivations_capture(struct pg_
 		if (pg_synthesis_derivation_frontier(s, n->key, &next, &rule)) goto done;
 		if (rule && pg_dag_add(&jobs, rule)) goto done;
 	}
-	struct pg_artifact_derivations *c = allocate(storage, raw, jobs.count, count);
-	if (!c) goto done;
-	struct pg_synthesis_job **mapping = pg_wire_array(storage, jobs.count, sizeof(*mapping));
-	const struct pg_derivation_input **headers = pg_wire_array(storage, raw, sizeof(*headers));
-	if (!mapping || !headers) goto done;
-	c->inputs = headers;
-	for (const struct pg_dag_node *n = jobs.first; n; n = n->next) {
-		struct pg_synthesis_job *job = (void *)n->key;
-		size_t i = n->id - 1, next;
-		mapping[i] = job;
-		if (job->status != PG_SYNTHESIS_PENDING && job->status != PG_SYNTHESIS_DONE) goto done;
-		c->status[i] = job->status;
-		if (i < raw) {
-			struct pg_synthesis_job *rule;
-			headers[i] = pg_synthesis_derivation_input(job);
-			if (pg_synthesis_derivation_frontier(s, job, &next, &rule)) goto done;
-			c->next[i] = next;
-			c->prepared[i] = rule ? pg_dag_find(&jobs, rule)->id : 0;
-		} else if (job->status == PG_SYNTHESIS_PENDING) {
-			if (pg_synthesis_rule_frontier(s, job, &next) != 1) goto done;
-			c->next[i] = next;
-		}
-	}
-	for (size_t i = 0; i < count; ++i) c->roots[i] = pg_dag_find(&jobs, roots[i])->id - 1;
-	*output = mapping;
-	result = c;
+	result = capture_frontier(storage, s, &jobs, raw, count, roots, output);
 done:
 	pg_dag_destroy(&jobs); pg_dag_destroy(&inputs);
 	return result;
@@ -103,7 +163,7 @@ const struct pg_derivation_input *const *pg_artifact_derivations_inputs(
 	const struct pg_artifact_derivations *c, size_t *count)
 {
 	if (!c || !count || !c->inputs) return NULL;
-	*count = c->raw_count;
+	*count = c->raw_count ? c->raw_count : c->count;
 	return c->inputs;
 }
 
@@ -141,7 +201,7 @@ const struct pg_artifact_derivations *pg_artifact_derivations_read(FILE *file, s
 		if (!*slot && c->status[i] == PG_SYNTHESIS_DONE) return NULL;
 	}
 	for (size_t i = 0; i < roots; ++i)
-		if (pg_wire_read_u64(file, &c->roots[i]) || c->roots[i] >= raw) return NULL;
+		if (pg_wire_read_u64(file, &c->roots[i]) || c->roots[i] >= (raw ? raw : count)) return NULL;
 	return c;
 }
 
@@ -149,9 +209,18 @@ int pg_artifact_derivations_prepare(struct pg_synthesis *s, const struct pg_arti
 	size_t count, const struct pg_derivation_input *const *inputs, struct pg_effect_inference *effects,
 	struct pg_synthesis_job ***result)
 {
-	if (!s || !c || count != c->raw_count || !inputs || !result) return -1;
+	if (!s || !c || count != (c->raw_count ? c->raw_count : c->count) || !inputs || !result) return -1;
 	struct pg_synthesis_job **jobs = pg_wire_array(s->typing->graph, c->count, sizeof(*jobs));
 	if (!jobs) return -1;
+	if (!c->raw_count) {
+		for (size_t i = 0; i < count; ++i) if (!inputs[i] || inputs[i]->effect_parameter) return -1;
+		struct pg_synthesis_job *const *imported;
+		if (pg_synthesis_import_rules(s, count, inputs, effects, &imported)) return -1;
+		if (!direct_mapping(s, count, imported)) return -1;
+		memcpy(jobs, imported, count * sizeof(*jobs));
+		*result = jobs;
+		return 0;
+	}
 	for (size_t i = 0; i < count; ++i) {
 		if (!inputs[i] || inputs[i]->effect_parameter) return -1;
 		jobs[i] = pg_synthesis_derivation_inference(s, inputs[i], effects);
@@ -186,6 +255,10 @@ static int mapping_valid(const struct pg_synthesis *s, const struct pg_artifact_
 	if (!s || !c || !jobs) return 0;
 	for (size_t i = 0; i < c->count; ++i)
 		if (!jobs[i] || jobs[i]->owner != s->owner_key) return 0;
+	if (!c->raw_count) {
+		for (size_t i = 0; i < c->count; ++i)
+			if (!pg_synthesis_plain_derivation(jobs[i])) return 0;
+	}
 	for (size_t i = 0; i < c->raw_count; ++i) {
 		size_t next;
 		struct pg_synthesis_job *rule;

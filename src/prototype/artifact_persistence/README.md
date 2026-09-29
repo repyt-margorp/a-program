@@ -362,8 +362,9 @@ constructor-body boundaries, including pending children of completed modules.
 Unfinished field/query owners and public `.a` integration remain open; default
 loading does not use these hooks and the whole-source partition gate still fails.
 
-The imported-derivation checkpoint gate now covers 190 boundaries in known-origin
-rule DAGs, including shared canonical rules and preparation subscriptions.
+The derivation checkpoint gate now covers 281 boundaries in known-origin rule
+DAGs: 190 lazy imported-input boundaries and 91 direct-rule boundaries, including
+shared canonical rules and preparation subscriptions.
 It preserves the premise cursor and prepared-rule edge through the normal
 factory, without reconstructing a second proof system. Exact lookup shares the
 request interner and does not allocate unvisited work. Completed premises are
@@ -378,8 +379,13 @@ across all worker kinds. The owner payload neither duplicates that schedule nor
 admits saved completion flags. Validation queues use the common schedule API.
 O2/ASan/UBSan also reject truncated metadata, miswired mappings and false saved
 completion; aliases and shared prepared rules survive. Source I/O now assembles
-canonical rules directly rather than using these lazy-input wrappers. This
-owner codec remains for explicit lazy requests, not a public source checkpoint.
+canonical rules directly rather than using lazy-input wrappers. APGDRC2 also
+restores a closed direct-rule DAG through that same factory, without adding
+wrappers or changing its remaining fuel. Both routes share cursor transport and
+yield identical final proof bytes. External source/evidence premises and started
+comparison/reduction state remain unsupported; capture rejects them, without
+substituting fresh requests. The owner codec is not a public source checkpoint;
+APGSRC68 is unchanged.
 
 The constructor gate separately transports the checked field map through existing
 rule inputs, verifies it using ordinary Solve, then resumes the value owner before

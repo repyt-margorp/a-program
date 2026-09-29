@@ -1,7 +1,7 @@
 # Artifact Semantic Persistence Refactor
 
 Date: 2026-09-28
-Updated: 2026-09-29
+Updated: 2026-09-30
 Status: in progress; APGSRC68 persistence and first C backend are prototypes,
 not promoted. Exact resumption and trust/fuel integration remain unfinished.
 Baseline: `152b59506e915e18a34f6dc8041e981fb2a82888` (PR #45 documents
@@ -737,6 +737,29 @@ Delta from `75b1f60`, excluding patch context: `synthesis_derivation.c` +51/-0,
 Tests: `semantic_test.c` +71/-1, `definition_checkpoint_test.c` +24/-1
 (net +93). Accepted sources and unrelated working-tree edits are unchanged;
 all candidates use clean `e716232` plus these prototype overlays.
+
+**2026-09-30, direct-rule checkpoint increment after `cbe6395`:** the owner
+codec still accepted only lazy imported-input roots, although the source loader
+now constructs plain rules. It now also captures a closed DAG of direct rules,
+using the existing shared rule exporter/importer and one common cursor encoder.
+No lazy adapter is inserted, and no ready queue or proof authority is duplicated.
+Internal owner metadata is APGDRC2; public APGSRC68 and all backend formats stay
+unchanged. Mixed source/evidence owners, open effect parameters and started
+comparison/reduction state still reject rather than being silently recomputed.
+
+Fresh O2/ASan/UBSan: 281 cuts, including 91 direct-rule cuts, preserve aliases,
+inert bytes, remaining dispatches and final proofs after destroying the original
+Program. Direct and lazy routes produce identical final proof bytes. Rechecking
+saved completed premises uses ordinary Solve and is charged; false completion
+still rejects. The new direct-root regression fails on `cbe6395`. Existing
+definition, WHNF/scheduler and semantic-image gates pass on clean `e716232` plus
+the prototypes; full acceptance is not rerun for this isolated codec change.
+Logs: `/tmp/a-program-direct-rule-checkpoint-{before,final,final-asan,suite}.log`.
+Implementation/header delta: +109/-33; tests: +79/-22. This expands continuation
+coverage, not the claimed completion scope. AP1-AP3 remain open. Next compose
+plain rules with source-owned and accepted-evidence premises through one shared
+mapping and explicit provenance policy; replacing such premises by newly
+constructed rule requests changes identity/fuel and is not an acceptable shortcut.
 
 #### Rejected Read Policy and Retention Audit (2026-09-29)
 

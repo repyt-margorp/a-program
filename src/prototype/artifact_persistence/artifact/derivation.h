@@ -8,8 +8,11 @@ struct pg_artifact_derivations;
 
 /* Inert continuation metadata for imported derivation workers.
  * Raw inputs use the enclosing artifact's ordinary shared descriptor codec;
- * this payload contains only their ordinals and cursors. All requested
- * roots must use the same inference owner and no open effect parameter. Pending
+ * this payload contains only their ordinals and cursors. Direct plain-rule
+ * DAGs use the same codec without adding imported-input adapter jobs. A capture
+ * contains either imported-input roots with one inference owner, or plain rules
+ * whose premises are also plain rules; mixed/external owners are not yet
+ * supported. Neither form accepts an open effect parameter. Pending
  * plain rules must not yet have started comparison/effect/reduction work.
  * Unsupported input closures return NULL, never a recomputed checkpoint.
  * Metadata and the mapping array belong to storage; inputs and mapped jobs
