@@ -829,6 +829,35 @@ constructed rule requests changes identity/fuel and is not an acceptable shortcu
   `artifact/source.c` +216/-0 and its header +32/-0 (net +289); test +404/-0,
   build +8/-0. This adds continuation coverage, not overall code reduction.
 
+**2026-09-30, shared source/rule transport after `5b3685e`:**
+
+- **Subjective (User):** the preceding downstream-only requirement still applies.
+- **Objective (Code):** source I/O owns temporary exported effect rows until its
+  retained image finishes writing. Moving the terminal table outside that call
+  would outlive those objects. Instead, `pg_sources_*_with` lets continuation
+  codecs use the existing retained table before its owner releases storage.
+  The checkpoint test's two standalone tables and temporary section files are
+  removed. APGRET5 identifies this continued prototype envelope; default public
+  APGSRC68/APGRET4 bytes and all backend formats are unchanged.
+- **Assessment:** the consumer is Solve's source/rule continuation, not a target
+  backend. No C representation, ABI, link setting or acceptance flag is added.
+  Readers still enforce the exact enclosing boundary and reject a missing or
+  unexpected continuation. Callback outputs remain provisional until success.
+- **Plan/status:** O2 and ASan/UBSan pass the 116-cut checkpoint gate and a new
+  nominal-sharing case: two distinct same-shape ADTs and a Lambda share exact
+  Core references between source results and unaccepted rule parameters,
+  survive inert resaving, and pass ordinary source rechecking. Source/identity
+  I/O, semantic/history/metrics, definition/derivation checkpoint and derivation
+  I/O gates pass. LinkerScript/native-enum tests preserve input images. Logs:
+  `/tmp/a-program-source-shared-{suite,asan,derivation,c-boundary}.log`.
+  List images match the parent at 0/200/completion (25,369/26,390/50,820 bytes).
+  The public partition gate still fails with the same 100+100 and 1600+1600
+  discrepancies (`/tmp/a-program-source-shared-partitions/partitions.tsv`).
+  General source continuations and provenance remain open; the preceding full
+  acceptance result is historical, not rerun for this transport-only increment.
+  Actual source deltas: `retained_io.c` +40/-6, header +20/-0; `source_io.c`
+  +19/-8, header +18/-0 (net +83). Tests +128/-58; metrics +8/-6; build +1/-1.
+
 #### Rejected Read Policy and Retention Audit (2026-09-29)
 
 The user rejected the agent's byte-derived allowance. That prototype and its
@@ -915,6 +944,9 @@ alone. Avoid adding a second parallel type graph or serializing all workers.
 - [x] Compose source-input transport, definition/module/literal owners, direct
   rules and one schedule for complete closed-literal lifecycles;
   `check-artifact-source-checkpoint` remains a restricted fixture envelope.
+- [x] Share source and continuation Core/object relocation in that envelope;
+  retain temporary-object lifetimes and exact read boundaries. Check nominal
+  separation and shared Lambda binders without granting imported acceptance.
 - [x] Verify direct source-image rule relocation through ordinary canonical
   factories, without per-input preparation wrappers. Retain byte-identical
   step-0 resaves and ordinary rejection; full acceptance passes for this

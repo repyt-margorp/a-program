@@ -131,17 +131,19 @@ static int premise(void *unused, const void *key, size_t index, const void **chi
 	return 1;
 }
 
-int __real_pg_retained_write_semantic(FILE *, size_t, const struct pg_derivation_input *const *,
+int __real_pg_retained_write_semantic_with(FILE *, size_t, const struct pg_derivation_input *const *,
 	const struct pg_effect_inference *, size_t, const struct pg_term *const *, size_t,
-	const struct pg_occurrence *const *, const struct pg_graph_codec *, void *);
-int __wrap_pg_retained_write_semantic(FILE *file, size_t count,
+	const struct pg_occurrence *const *, const struct pg_graph_codec *, void *,
+	int (*)(FILE *, const struct pg_graph_codec *, void *, void *), void *);
+int __wrap_pg_retained_write_semantic_with(FILE *file, size_t count,
 	const struct pg_derivation_input *const *roots, const struct pg_effect_inference *effects,
 	size_t term_count, const struct pg_term *const *terms, size_t semantic_count,
-	const struct pg_occurrence *const *semantic, const struct pg_graph_codec *codec, void *owner)
+	const struct pg_occurrence *const *semantic, const struct pg_graph_codec *codec, void *owner,
+	int (*continuation)(FILE *, const struct pg_graph_codec *, void *, void *), void *continuation_owner)
 {
 	long start = ftell(file);
-	int result = __real_pg_retained_write_semantic(file, count, roots, effects, term_count,
-		terms, semantic_count, semantic, codec, owner);
+	int result = __real_pg_retained_write_semantic_with(file, count, roots, effects, term_count,
+		terms, semantic_count, semantic, codec, owner, continuation, continuation_owner);
 	if (result || !measuring) return result;
 	long end = ftell(file);
 	/* Inspect the just-written terminal table; no duplicate payload parser. */

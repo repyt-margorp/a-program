@@ -3,7 +3,7 @@
 @@ -3,8 +3,21 @@
  #include "program.h"
  #include <stdio.h>
- 
+
 -/* Reconstructible source environments and source/definition/rule roots, including pending modules.
 - * APGSRC62 retains source/handler binding symbols and family index telescopes, preserves
 +/* APGSRC68 preserves available typed construction at each producer.
@@ -24,7 +24,7 @@
   * already suspended values under surface &, admits checked
   * termination requests, and uses TOTAL source RETURN/arrow contracts with F
   * totality contracts, context-authoritative Pi premises and lexical
-@@ -45,31 +58,40 @@
+@@ -45,31 +58,58 @@
   * cycles before invoking the ordinary construction factories.
   * Module entries retain source-item indices and producer references, including
   * unaccepted annotations, across an unsolved read/write cycle. Ordinary
@@ -74,4 +74,22 @@
 + * Only APGSRC68 is accepted. It contains no evaluator-history archive. */
  struct pg_program *pg_sources_read(FILE *file, size_t limit,
  	size_t *count, struct pg_synthesis_job *const **roots);
++
++/* Source plus owner continuation, sharing the retained image's Core/object
++ * table. This is transport composition, not a complete checkpoint or a backend
++ * extension. materialized selects existing retained-results (1) or inputs (0).
++ * A non-NULL callback selects APGRET5 inside the source envelope; ordinary
++ * readers reject that form. NULL preserves the existing standalone bytes.
++ * Callbacks use the supplied codec/object owner and keep referenced objects
++ * alive until the write returns. Read callbacks run before source restoration
++ * and boundary validation; discard their provisional outputs if reading fails.
++ * The returned Program owns restored terms; loading performs no Solve. */
++struct pg_graph_codec;
++int pg_sources_write_with(FILE *file, const struct pg_synthesis *synthesis,
++	size_t count, struct pg_synthesis_job *const *roots, int materialized,
++	int (*continuation)(FILE *, const struct pg_graph_codec *, void *, void *), void *owner);
++struct pg_program *pg_sources_read_with(FILE *file, size_t limit,
++	size_t *count, struct pg_synthesis_job *const **roots,
++	int (*continuation)(FILE *, struct pg_typing *, size_t, size_t, const struct pg_graph_codec *, void *, void *),
++	void *owner);
  #endif

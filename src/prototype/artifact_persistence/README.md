@@ -399,8 +399,13 @@ source payload stores body/module/literal continuations, not name registration,
 typed results or backend data. Rechecking uses ordinary Solve and counts toward
 its step total. O2/ASan/UBSan pass exact inert/live resaves, remaining dispatches,
 final images and the 0+0/10+10/1+19/0+20/20+0 fragment partitions. Its bounded
-standalone codec sections are a test envelope, not a public format: shared
-nominal relocation, general source continuations and provenance remain open.
+continuation envelope now uses one retained Core/object table (APGRET5), not
+separate standalone source/header tables. The source owner keeps temporary
+objects alive until table serialization ends. A nominal-sharing test covers
+two distinct same-shape ADTs, shared Lambda binders, inert resaving, ordinary
+rechecking and exact boundary rejection. Default APGSRC68/APGRET4 bytes are
+unchanged. General source continuations and provenance remain open; this is
+not a completed public checkpoint format or a transpiler extension.
 The public `.a` partition gate below still fails; these results do not replace it.
 
 The constructor gate separately transports the checked field map through existing
