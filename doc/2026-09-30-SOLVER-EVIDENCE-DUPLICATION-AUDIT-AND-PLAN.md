@@ -267,20 +267,37 @@ Constraint record underneath an unchanged, independently stateful Job record.
 requires accounting for each remaining owner and deleting needless wrappers,
 not just accepting direct inputs. For each role, record its canonical key, input
 owner, unfinished cursor, completion owner and actual resumption consumer.
-Latest user follow-up, 2026-10-01 (English paraphrase): the concern is the
-independent Job/Evidence graph above Term, typing and Solve, not merely adapter
-allocation size. Static recheck at `d4f33a1cbe5c25c22171ee8ddee7f6b611a5b2c5`
-confirms the accepted implementation still has `evidence_ready`'s DONE wrapper,
-`checked_query_step`'s copied query result/status, and Match's `count + 6`
-receipt premises alongside typed operands. These are consolidation candidates,
-not proof that every receipt or unfinished operation is redundant. The committed
-prototype removes the checked-query wrapper and the Identity classifier
-consumer's wrapper; it has not removed the whole Job graph. The then-uncommitted
-`source_receipt_work` trial was excluded from that static recheck; its subsequent
-verification is recorded in the source-I/O milestone below. No tests were
-rerun for the static recheck. Do not declare SE1 complete merely because
-completed Evidence adapters disappear: the remaining ownership inventory and
-frontier/resumption gates below still apply.
+Latest user follow-up, 2026-10-01 (English paraphrase): resume the Solve
+constraint frontier rather than maintaining a near-identical Job/Evidence graph
+above Term, typing and Solve. The concern is duplicated authority, not merely
+adapter allocation size. This is a request for critical examination, not approval
+of an additional constraint table or of moving mutable solver state into Core.
+
+Static recheck at `55d77817d67abab5f695c70e91cca939538ecf9a` compares accepted
+`src/` (with concurrent Context/IADT edits) with the verified prototype assembled
+on `e716232`. The uncommitted `adapter_removal_work` trial is not verified evidence.
+No tests were rerun for this recheck; milestone test results below are historical.
+
+| Inspected operation | Accepted implementation | Committed prototype / remaining obligation |
+| --- | --- | --- |
+| `synthesis_derivation.c:evidence_ready` | Immediately DONE Job repeats the same checked Evidence in input/result. | Non-test prototype callers use direct inputs; the adapter factory still exists for tests. Factory deletion alone does not finish SE1. |
+| `synthesis_context.c:checked_query_step`; `synthesis_effect.c:inference_step` | Outer scheduling records mirror an already-owned query/effect completion. | These wrappers are removed; consumers borrow the existing progress owners. |
+| `synthesis_function.c:classifier_step` | Job advances `pg_classifier_request` and copies its result/completion. | This general wrapper remains, although Identity and normalization consumers now borrow queries directly. Consolidate ownership without losing pre-acceptance classifier discovery. |
+| `synthesis_context.c:substitution_step`; `synthesis_derivation.c:derivation_step` | Partial map/next image or premise/comparison phase is held by the unfinished operation. | These are real cursors, not checked Term copies. No separate underlying constraint currently owns all this work. Consolidate the operation itself instead of deleting it or adding a parallel owner. |
+| `evidence.c:prove_data_elimination` | Typed operands/maps/type retain structural inputs; the receipt also retains `count + 6` premise references. | This overlap remains SE3 work. Map exact receipts, Contexts and conversions before removing duplicated edges. |
+
+The intended resume path is: load canonical unfinished obligations and their
+local cursors, rebuild disposable readiness/wakeup references, then run ordinary
+Solve on the same owners. A frontier listing alone cannot recover a half-finished
+conversion or map construction. Keeping the cursor does not justify keeping a
+second graph with copied inputs/results. Core pointers alone also cannot key a
+typed obligation: the same Core may occur under different Contexts/classifiers.
+Evidence is a checked-admission receipt borrowing a conclusion, not the
+object-language witness Term itself. Preserve that admission distinction while
+removing reconstructible premise edges; do not maintain a second witness program.
+
+Do not declare SE1 complete merely because completed Evidence adapters disappear:
+the remaining ownership inventory and frontier/resumption gates below still apply.
 Use canonical constraints and their owner-local continuation as the frontier
 target; do not allocate a second constraint-shaped Task graph. Audit existing
 typed/effect query owners first, then source construction and rule checking.
