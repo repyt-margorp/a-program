@@ -278,7 +278,19 @@
  	struct pg_synthesis_job *right, struct pg_synthesis_job *path,
  	const struct pg_object *field, struct pg_synthesis_job *left_field,
  	struct pg_synthesis_job *right_field)
-@@ -582,22 +594,28 @@
+@@ -462,8 +474,9 @@
+ static struct pg_synthesis_job *identity_classifier(struct pg_synthesis *synthesis,
+ 	const struct pg_evidence *context, const struct pg_evidence *term)
+ {
+-	return pg_synthesis_identity_formation(synthesis, pg_synthesis_classifier_formation(synthesis,
+-		pg_synthesis_evidence(synthesis, context), pg_synthesis_evidence(synthesis, term)));
++	struct pg_synthesis_job *classifier = pg_synthesis_classifier_in(synthesis,
++		(struct pg_synthesis_input){.checked = context}, (struct pg_synthesis_input){.checked = term});
++	return pg_synthesis_identity_formation(synthesis, (struct pg_synthesis_input){.pending = classifier});
+ }
+ 
+ /* Vary the complete Identity boundary, not only a value in its left fiber.
+@@ -582,22 +595,28 @@
  	struct constructor_transport_work *local = pg_synthesis_work_state(job, CONSTRUCTOR_TRANSPORT_JOB);
  	if (local->value_job) { pg_synthesis_forward(synthesis, job, local->value_job); return; }
  	const struct pg_evidence *inputs[6];
@@ -312,14 +324,26 @@
  	struct pg_synthesis_job *endpoints[] = {local->left, local->right};
  	const struct pg_object *constructors[2];
  	for (size_t i = 0; i < 2; ++i) {
-@@ -679,11 +697,12 @@
+@@ -673,17 +692,19 @@
+ 		parameters, pg_prove_variable(typing, extended, pg_evidence_context(extended)->binder), count, branches);
+ 	free(branches);
+ 	if (!family) goto unsupported;
+-	if (boundary.path_count >= SIZE_MAX / sizeof(struct pg_synthesis_job *)) goto error;
++	if (boundary.path_count >= SIZE_MAX / sizeof(struct pg_synthesis_input)) goto error;
+ 	size_t path_count = boundary.path_count + 1;
+-	struct pg_synthesis_job **paths = malloc(path_count * sizeof(*paths));
++	struct pg_synthesis_input *paths = malloc(path_count * sizeof(*paths));
  	if (!paths) goto error;
  	for (size_t i = 0; i < boundary.path_count; ++i)
- 		paths[i] = pg_synthesis_evidence(synthesis, pg_prove_projection(typing, context, pg_prove_structural_subject(typing, boundary.paths[i])));
+-		paths[i] = pg_synthesis_evidence(synthesis, pg_prove_projection(typing, context, pg_prove_structural_subject(typing, boundary.paths[i])));
 -	paths[boundary.path_count] = (void *)job->inputs[3];
-+	paths[boundary.path_count] = (void *)job->inputs[4];
- 	struct pg_synthesis_job *transport = pg_synthesis_family_transport_jobs(synthesis,
- 		pg_synthesis_evidence(synthesis, family), left, right, path_count, paths, pg_synthesis_evidence(synthesis, value), PG_IDENTITY_RIGHT);
+-	struct pg_synthesis_job *transport = pg_synthesis_family_transport_jobs(synthesis,
+-		pg_synthesis_evidence(synthesis, family), left, right, path_count, paths, pg_synthesis_evidence(synthesis, value), PG_IDENTITY_RIGHT);
++		paths[i] = (struct pg_synthesis_input){.checked = pg_prove_projection(typing, context, pg_prove_structural_subject(typing, boundary.paths[i]))};
++	paths[boundary.path_count] = (struct pg_synthesis_input){.pending = (void *)job->inputs[4]};
++	struct pg_synthesis_job *transport = pg_synthesis_family_transport(synthesis,
++		(struct pg_synthesis_input){.checked = family}, left, right, path_count, paths,
++		(struct pg_synthesis_input){.checked = value}, PG_IDENTITY_RIGHT);
  	free(paths);
 -	local->value_job = pg_synthesis_expect(synthesis, transport, pg_synthesis_evidence(synthesis, target));
 +	local->value_job = pg_synthesis_expect_inputs(synthesis, (struct pg_synthesis_input){.pending = transport},
@@ -327,7 +351,7 @@
  	if (!local->value_job) goto rejected;
  	pg_synthesis_forward(synthesis, job, local->value_job);
  	return;
-@@ -701,12 +720,14 @@
+@@ -701,12 +722,14 @@
  static struct pg_synthesis_job *index_transport_check(struct pg_synthesis *synthesis,
  	struct pg_synthesis_job *job, struct pg_synthesis_job *argument)
  {
@@ -346,7 +370,7 @@
  	}
  	return pg_synthesis_expect(synthesis, argument, target);
  }
-@@ -772,7 +793,7 @@
+@@ -772,7 +795,7 @@
  	if (!lv || !rv) return NULL;
  	struct pg_typing *typing = synthesis->typing;
  	struct index_transport_state *state = local->index_transport;
@@ -355,7 +379,7 @@
  	const struct pg_term *from = pg_evidence_subject(direction == PG_IDENTITY_LEFT ? rv : lv)->core;
  	struct index_scope **slot = &state->scopes[direction == PG_IDENTITY_RIGHT];
  	if (!*slot && from->kind == PG_REFERENCE && from->as.reference->kind == PG_BINDER) {
-@@ -813,7 +834,7 @@
+@@ -813,7 +836,7 @@
  	}
  	const struct pg_evidence *source = work->source, *ls = work->left, *rs = work->right;
  	if (!ls || !rs) return NULL;
@@ -364,7 +388,21 @@
  	const struct pg_evidence *type = pg_prove_classifier(typing, context, argument->result);
  	/* Factor the typed index occurrence, not a raw normal form of its type.
  	 * The latter retains the original operands and cannot be inverted as if
-@@ -903,7 +924,7 @@
+@@ -847,9 +870,10 @@
+ 		pg_prove_return_type(typing, type));
+ 	if (!family) return NULL;
+ 	family = pg_prove_return_content(typing, family);
+-	struct pg_synthesis_job *path = pg_synthesis_evidence(synthesis, state->path);
+-	struct pg_synthesis_job *transported = pg_synthesis_family_transport_jobs(synthesis,
+-		pg_synthesis_evidence(synthesis, family), ls, rs, 1, &path, argument, direction);
++	struct pg_synthesis_input path = {.checked = state->path};
++	struct pg_synthesis_job *transported = pg_synthesis_family_transport(synthesis,
++		(struct pg_synthesis_input){.checked = family}, ls, rs, 1, &path,
++		(struct pg_synthesis_input){.pending = argument}, direction);
+ 	return transported;
+ }
+ 
+@@ -903,7 +927,7 @@
  	struct index_transport_work *local = pg_synthesis_work_state(job, job->role);
  	struct pg_typing *typing = synthesis->typing;
  	struct index_transport_state *state = local->index_transport;
@@ -373,7 +411,7 @@
  	const struct pg_evidence *value = state->normal[direction == PG_IDENTITY_LEFT]->result;
  	const struct pg_term *head = pg_evidence_subject(value)->core;
  	while (head->kind == PG_APPLICATION) head = head->as.application.function;
-@@ -950,7 +971,7 @@
+@@ -950,7 +974,7 @@
  	if (branch_count > SIZE_MAX / sizeof(const struct pg_evidence *)) goto done;
  	const struct pg_evidence **branches = pg_alloc(&temporary, branch_count * sizeof(*branches));
  	if (!branches) goto done;
@@ -382,7 +420,30 @@
  	const struct pg_evidence *type = pg_prove_classifier(typing, context, argument->result);
  	for (size_t i = 0; i < branch_count; ++i) {
  		const struct pg_object *label = pg_data_constructor(layout, i);
-@@ -998,7 +1019,8 @@
+@@ -975,15 +999,16 @@
+ 		pg_prove_substitution_projection(typing, base_context, extended));
+ 	const struct pg_evidence *family = pg_prove_type_case(typing, instance.formation, parameter_map,
+ 		pg_prove_variable(typing, extended, pg_evidence_context(extended)->binder), branch_count, branches);
+-	if (!family || boundary.path_count >= SIZE_MAX / sizeof(struct pg_synthesis_job *)) goto done;
++	if (!family || boundary.path_count >= SIZE_MAX / sizeof(struct pg_synthesis_input)) goto done;
+ 	size_t path_count = boundary.path_count + 1;
+-	struct pg_synthesis_job **paths = pg_alloc(&temporary, path_count * sizeof(*paths));
++	struct pg_synthesis_input *paths = pg_alloc(&temporary, path_count * sizeof(*paths));
+ 	if (!paths) goto done;
+ 	for (size_t i = 0; i < boundary.path_count; ++i)
+-		paths[i] = pg_synthesis_evidence(synthesis, pg_prove_projection(typing, context, pg_prove_structural_subject(typing, boundary.paths[i])));
+-	paths[boundary.path_count] = pg_synthesis_evidence(synthesis, state->path);
+-	struct pg_synthesis_job *transported = pg_synthesis_family_transport_jobs(synthesis,
+-		pg_synthesis_evidence(synthesis, family), left, right, path_count, paths, argument, direction);
++		paths[i] = (struct pg_synthesis_input){.checked = pg_prove_projection(typing, context, pg_prove_structural_subject(typing, boundary.paths[i]))};
++	paths[boundary.path_count] = (struct pg_synthesis_input){.checked = state->path};
++	struct pg_synthesis_job *transported = pg_synthesis_family_transport(synthesis,
++		(struct pg_synthesis_input){.checked = family}, left, right, path_count, paths,
++		(struct pg_synthesis_input){.pending = argument}, direction);
+ 	const struct pg_evidence *target = pg_prove_reindex(typing, direction == PG_IDENTITY_LEFT ? left : right, family);
+ 	result = pg_synthesis_expect(synthesis, transported, pg_synthesis_normalize(synthesis, context, target));
+ done:
+@@ -998,7 +1023,8 @@
  	const struct pg_evidence *transported, int *progress)
  {
  	struct index_transport_work *local = pg_synthesis_work_state(job, job->role);
@@ -392,7 +453,7 @@
  	*progress = 0;
  	if (!target->result) return 1;
  	const struct pg_term *before = pg_evidence_classifier(argument->result);
-@@ -1006,7 +1028,7 @@
+@@ -1006,7 +1032,7 @@
  	if (!before || !after) return 1;
  	struct index_progress *work = &local->index_transport->progress;
  	if (!work->next) {
@@ -401,7 +462,7 @@
  		work->counts[0] = work->counts[1] = 0;
  		work->next = 1;
  	}
-@@ -1042,18 +1064,18 @@
+@@ -1042,18 +1068,18 @@
  static void index_transport_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
  	struct index_transport_work *local = pg_synthesis_work_state(job, job->role);
@@ -424,7 +485,7 @@
  	if (!local->index_transport) {
  		local->index_transport = pg_alloc(typing->graph, sizeof(*local->index_transport));
  		if (!local->index_transport) goto error;
-@@ -1073,8 +1095,8 @@
+@@ -1073,8 +1099,8 @@
  					int status = index_transport_progress(job, candidate->result, &progress);
  					if (!status) { pg_synthesis_enqueue(synthesis, job); return; }
  					if (status < 0) goto error;
@@ -435,7 +496,16 @@
  						: index_transport_check(synthesis, job, candidate);
  				}
  				struct pg_synthesis_job *check = state->checks[index];
-@@ -1118,8 +1140,9 @@
+@@ -1093,7 +1119,7 @@
+ 	if (!state->path) {
+ 		if (pg_evidence_rule(state->cursor) != PG_CONTEXT_EXTEND) goto next_context;
+ 		struct pg_synthesis_job *formation = pg_synthesis_identity_formation(synthesis,
+-			pg_synthesis_evidence(synthesis, pg_context_declared_input(synthesis->typing, state->cursor)));
++			(struct pg_synthesis_input){.checked = pg_context_declared_input(synthesis->typing, state->cursor)});
+ 		if (!formation) goto error;
+ 		if (formation->status == PG_SYNTHESIS_PENDING) { pg_synthesis_subscribe(synthesis, job, formation, 0); return; }
+ 		struct pg_identity_boundary boundary;
+@@ -1118,8 +1144,9 @@
  		pg_synthesis_enqueue(synthesis, job); return;
  	}
  	for (size_t i = 0; i < 2; ++i) {

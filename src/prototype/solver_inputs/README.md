@@ -57,11 +57,15 @@ The derivation-checkpoint prototype now borrows checked external inputs
 separately from scheduled workers; neither capture nor restoration recreates
 Evidence adapters. Its private payload is `APGDRC4`, without backward reading;
 this is not adoption of a new public `.a` format or additional owner codecs.
+Identity formation, faces, reflexivity, instances and family action/transport
+now use direct checked/pending inputs through one API. Source and IADT transport
+callers no longer wrap the known family, endpoints or paths into Evidence Jobs.
+The separate face/action entry points and temporary path-to-Job array are removed.
 
 ### Assessment
 
 This removes some adapters, not the independent Job graph. Known-family
-results and other context/IADT/Identity constructors still use
+results and other context/IADT/operation consumers still use
 adapters. Producer-to-checked forwarding paths also remain. Removing classifier
 forwarding alone lost completed-result reuse, so that trial was rejected;
 removing the query wrapper does not settle the pending/checked request ownership.

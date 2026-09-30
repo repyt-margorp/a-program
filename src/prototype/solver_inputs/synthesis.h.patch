@@ -94,7 +94,54 @@
  	int require_closed,
  	int (*observe)(void *, const struct pg_derivation_input *, const struct pg_effect_inference *),
  	void *owner, const struct pg_derivation_input *const **result);
-@@ -582,14 +602,14 @@
+@@ -544,52 +564,46 @@
+ const struct pg_source_scope *pg_synthesis_module_namespace(struct pg_synthesis *synthesis,
+ 	const struct pg_source_scope *parent, struct pg_token name,
+ 	struct pg_synthesis_job *module);
+-/* Diagonal action of an input job, after its own synthesis has succeeded.
+- * Both jobs belong to this store. The supplied context must be exactly the
++/* Diagonal action after the input has been checked.
++ * Inputs belong to this typing/store. The supplied context must be exactly the
+  * input judgement's context; no expected classifier guides the producer.
+  * Results use the existing checked reflexivity rule, not a Core-only lookup.
+  * This scheduler API does not introduce a new surface keyword. */
+ struct pg_synthesis_job *pg_synthesis_reflexivity(struct pg_synthesis *synthesis,
+-	const struct pg_evidence *context, struct pg_synthesis_job *input);
++	const struct pg_evidence *context, struct pg_synthesis_input input);
+ /* Act on a synthesized input along checked substitutions and selected paths.
+- * Input belongs to this store; its source context comes from the substitutions.
++ * Inputs belong to this typing/store; source context comes from the substitutions.
+  * The request does not synthesize or act immediately. Boundary evidence must
+  * outlive the store. All selected paths participate in the immutable job key.
+  * After synthesis, check each path against its prefix-dependent family using
+  * ordinary conversion evidence; expected families never guide input synthesis. */
+ struct pg_synthesis_job *pg_synthesis_family_action(struct pg_synthesis *synthesis,
+-	struct pg_synthesis_job *input, const struct pg_evidence *left_substitution,
+-	const struct pg_evidence *right_substitution, size_t count,
+-	const struct pg_evidence *const *paths);
+-/* Same request with pending path producers. Completed evidence enters through
+- * pg_synthesis_evidence; it has no separate action/checking implementation. */
+-struct pg_synthesis_job *pg_synthesis_family_action_jobs(struct pg_synthesis *synthesis,
+-	struct pg_synthesis_job *input, const struct pg_evidence *left_substitution,
++	struct pg_synthesis_input input, const struct pg_evidence *left_substitution,
+ 	const struct pg_evidence *right_substitution, size_t count,
+-	struct pg_synthesis_job *const *paths);
++	const struct pg_synthesis_input *paths);
+ /* Transport a value along the action of a value-type family. Compose ordinary
+  * type-as-value, action, classifier normalization, conversion and transport
+  * jobs; no additional rule, work kind or equality reflection. Family and value
+  * synthesize independently. Selected paths are checked, never inferred merely
+  * from equal endpoints. The result has the opposite endpoint's family type. */
+-struct pg_synthesis_job *pg_synthesis_family_transport_jobs(struct pg_synthesis *synthesis,
+-	struct pg_synthesis_job *family, const struct pg_evidence *left_substitution,
++struct pg_synthesis_job *pg_synthesis_family_transport(struct pg_synthesis *synthesis,
++	struct pg_synthesis_input family, const struct pg_evidence *left_substitution,
+ 	const struct pg_evidence *right_substitution, size_t count,
+-	struct pg_synthesis_job *const *paths, struct pg_synthesis_job *value,
++	const struct pg_synthesis_input *paths, struct pg_synthesis_input value,
+ 	enum pg_identity_direction direction);
+ /* Derive elimination of a supplied Identity between distinct constructors.
+  * Builds an ordinary type case and transports value to target_type along path.
   * Equal/neutral constructor heads are unsupported, not evidence of falsity.
   * All six inputs are checked in context; target_type is a value formation. */
  struct pg_synthesis_job *pg_synthesis_disjoint_transport(struct pg_synthesis *synthesis,
@@ -111,7 +158,7 @@
  	struct pg_synthesis_job *right, struct pg_synthesis_job *path,
  	const struct pg_object *field, struct pg_synthesis_job *left_field,
  	struct pg_synthesis_job *right_field);
-@@ -637,9 +657,10 @@
+@@ -637,9 +651,10 @@
  	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
  	const struct pg_evidence *generalization, const struct pg_syntax *clause);
  /* Recover the selected nominal declaration and parameter map, never by Core
@@ -124,7 +171,7 @@
  int pg_synthesis_inductive_instance_result(const struct pg_synthesis_job *job,
  	struct pg_inductive_instance *output);
  /* Abstract an independently synthesized body over an accepted context suffix.
-@@ -664,12 +685,18 @@
+@@ -664,12 +679,18 @@
   * Completed incompatible inputs are rejected without exposing partial proof. */
  struct pg_synthesis_job *pg_synthesis_reindex_jobs(struct pg_synthesis *synthesis,
  	struct pg_synthesis_job *substitution, struct pg_synthesis_job *proof);
@@ -143,7 +190,7 @@
  /* Source annotation over independently synthesized inputs. Applies the same
   * source-reference/polarity adaptations as expr :: type, then post-checks.
   * No syntax fabrication or expected-type feedback into either producer. */
-@@ -684,25 +711,22 @@
+@@ -684,38 +705,35 @@
   * classifier, post-checks the value argument and uses ordinary APP evidence.
   * No implicit force, thunk, return or sequencing; no expected type flows
   * into either producer. Accepted inputs reuse normalization and comparison;
@@ -175,7 +222,42 @@
  	struct pg_synthesis_job *body);
  /* Instantiate an independently produced Universe Identity family at two
   * value endpoints. Post-check each against its own endpoint type; never
-@@ -752,33 +776,21 @@
+  * replace the chosen family with a homogeneous or inferred relation. */
+ struct pg_synthesis_job *pg_synthesis_identity_instance(struct pg_synthesis *synthesis,
+-	const struct pg_evidence *context, struct pg_synthesis_job *family,
+-	struct pg_synthesis_job *left, struct pg_synthesis_job *right);
++	const struct pg_evidence *context, struct pg_synthesis_input family,
++	struct pg_synthesis_input left, struct pg_synthesis_input right);
+ /* Recover retained Identity formation after its producer completes. Shared
+  * by accepted input evidence, including requests from distinct producers.
+  * The output is convertible to the input, not a conversion certificate;
+  * callers requiring the original classifier must still post-check it. */
+ struct pg_synthesis_job *pg_synthesis_identity_formation(struct pg_synthesis *synthesis,
+-	struct pg_synthesis_job *producer);
++	struct pg_synthesis_input producer);
+ /* Share a suspended endpoint derivation on the ordinary work queue. face is
+  * an immutable, graph-lived canonical endpoint selector: its first coordinate
+  * is fixed, followed by its ordered axes. Those axes count outer Identity
+@@ -732,12 +750,7 @@
+  * and endpoint traversal steps. The same immutable-input lifetime applies.
+  * Permutations and hidden Identity dimensions remain unsupported. */
+ struct pg_synthesis_job *pg_synthesis_identity_face(struct pg_synthesis *synthesis,
+-	const struct pg_evidence *context, const struct pg_evidence *formation,
+-	const struct pg_dimension_map *face);
+-/* Wait for a formation producer, then share the accepted-evidence face job.
+- * A failed producer propagates its status; a completed non-formation rejects. */
+-struct pg_synthesis_job *pg_synthesis_identity_face_job(struct pg_synthesis *synthesis,
+-	const struct pg_evidence *context, struct pg_synthesis_job *formation,
++	const struct pg_evidence *context, struct pg_synthesis_input formation,
+ 	const struct pg_dimension_map *face);
+ /* Select the source boundary for a permutation: permutation composed with
+  * target_face = ordered composed with intrinsic. The returned producer proves
+@@ -748,37 +761,25 @@
+ struct pg_dimensions;
+ struct pg_synthesis_job *pg_synthesis_permutation_source_face(struct pg_synthesis *synthesis,
+ 	struct pg_dimensions *dimensions, const struct pg_evidence *context,
+-	struct pg_synthesis_job *formation, const struct pg_dimension_map *permutation,
++	struct pg_synthesis_input formation, const struct pg_dimension_map *permutation,
  	const struct pg_dimension_map *target_face, const struct pg_dimension_map **intrinsic);
  /* Extend a checked substitution with an independently typed value. The
   * expected dependent field type is reindexed and compared using shared work;
@@ -219,7 +301,7 @@
  /* Instantiate Self, then lift each constructor field. Formation and parameter
   * substitution are pending producers; fresh field binders belong to this job. */
  struct pg_synthesis_job *pg_synthesis_constructor_scope(struct pg_synthesis *synthesis,
-@@ -837,7 +849,8 @@
+@@ -837,7 +838,8 @@
  	const struct pg_evidence *context, const struct pg_evidence *computation);
  /* Normalize an accepted term or formation using shared pure WHNF work, then
   * retain typing through directed subject-reduction evidence. The immutable
@@ -229,7 +311,7 @@
  struct pg_synthesis_job *pg_synthesis_normalize(struct pg_synthesis *synthesis,
  	const struct pg_evidence *context, const struct pg_evidence *proof);
  /* Strong pure normalization of the same typed inputs, with a distinct job
-@@ -857,8 +870,8 @@
+@@ -857,8 +859,8 @@
  	enum pg_reduction_kind kind);
  /* Immutable request operands, for retention without serializing acceptance. */
  int pg_synthesis_normalization_input(const struct pg_synthesis *synthesis,

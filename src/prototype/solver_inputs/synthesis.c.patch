@@ -1159,7 +1159,7 @@
  		struct pg_synthesis_job *domain = pg_synthesis_plain_rule(synthesis, PG_PI_DOMAIN, NULL, 1, &type);
  		variable = pg_synthesis_expect(synthesis, variable, domain);
  		type = pg_synthesis_plain_rule(synthesis, PG_PI_CODOMAIN, NULL, 2,
-@@ -5406,7 +5485,8 @@
+@@ -5406,12 +5485,13 @@
  static int source_has_identity(struct pg_synthesis *synthesis, struct pg_synthesis_job *parent)
  {
  	for (const struct pg_source_scope *scope = source_work(parent)->scope; scope; scope = scope->parent) {
@@ -1169,6 +1169,12 @@
  			scope = scope->parent;
  		const struct pg_evidence *context = pg_synthesis_scope_context(scope);
  		if (!context || pg_evidence_rule(context) != PG_CONTEXT_EXTEND) continue;
+ 		struct pg_synthesis_job *formation = pg_synthesis_identity_formation(synthesis,
+-			pg_synthesis_evidence(synthesis, pg_context_declared_input(synthesis->typing, context)));
++			(struct pg_synthesis_input){.checked = pg_context_declared_input(synthesis->typing, context)});
+ 		if (!formation) { pg_synthesis_finish(synthesis, parent, PG_SYNTHESIS_ERROR); return -1; }
+ 		if (formation->status == PG_SYNTHESIS_PENDING) { depend(synthesis, parent, formation); return -1; }
+ 		if (formation->status == PG_SYNTHESIS_ERROR) { pg_synthesis_finish(synthesis, parent, PG_SYNTHESIS_ERROR); return -1; }
 @@ -5423,7 +5503,8 @@
  static struct pg_synthesis_job *constructor_callable_origin(struct pg_synthesis *synthesis, struct pg_synthesis_job *producer)
  {

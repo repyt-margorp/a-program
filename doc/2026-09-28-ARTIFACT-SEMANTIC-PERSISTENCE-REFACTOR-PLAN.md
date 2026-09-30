@@ -37,6 +37,10 @@ The [Solver/Evidence audit and SE1-SE5 work list](2026-09-30-SOLVER-EVIDENCE-DUP
 now controls the next implementation. It records measured Evidence-only Jobs,
 duplicated construction paths, premise overlap and export-time graph copying.
 "No recomputation" does not justify keeping an unnecessary wrapper.
+The follow-up Job audit distinguishes removable completed/query wrappers from
+actual unfinished construction. Retain a work record only for a demonstrated
+obligation with no other owner; fewer adapters alone do not complete AP0.
+Do not replace the Job graph with a renamed graph or put typing state in Core.
 
 The [direct-input prototype](../src/prototype/solver_inputs/README.md) removes
 checked normalization, Context-input, post-check and rule-premise adapters and
@@ -61,7 +65,10 @@ inputs, including handler and constant-result consumers. Source-scope Contexts,
 lookup and environment export now also use direct inputs. The checkpoint
 prototype borrows checked external data separately from scheduled workers;
 it does not reconstruct Context Jobs to preserve its previous physical layout.
-Remaining IADT/Identity/known-result adapters and duplicated query ownership
+Identity formation/faces/reflexivity/instances and family action/transport now
+also take direct inputs, including their source and IADT consumers. Separate
+checked/pending APIs and the temporary path-to-Job array are removed and verified.
+Remaining IADT/operation/known-result adapters and duplicated query ownership
 are the next SE1 work. Full Job removal and public persistence remain open.
 
 Do not extend the binding/domain checkpoint codec or AP6 while this gate is

@@ -133,6 +133,30 @@ owner, with the ready queue referencing that owner directly. For example,
 does not need to own them again. This is a candidate replacement, not a claim
 that deleting all Jobs from the present implementation already works.
 
+Follow-up inspection at `d0dd69d` (2026-09-30), separating accepted sources
+from the committed direct-input prototype:
+
+- **No unfinished work:** `synthesis_derivation.c:evidence_ready` only assigns
+  `result = inputs[0]` and DONE. This role still exists in both implementations;
+  direct Evidence references can replace it. It is not a second witness Term.
+- **Already-owned work:** accepted `synthesis_context.c:checked_query_step`
+  wraps a `pg_typed_query` that already owns progress and result. The committed
+  prototype has removed that wrapper. This is evidence for removing this
+  particular allocation, not for treating every enclosing operation as an alias.
+- **Genuinely unfinished work:** `substitution_step` retains its current map,
+  next image and a pending conversion. `source_work` also precedes the finished
+  typed result. These cursors cannot simply be replaced with that future result.
+  Their representation should belong to the operation, without another graph
+  copying its inputs, progress and result.
+
+A common queue header embedded in an operation is not inherently redundant;
+two independently owned records for the same operation are. Conversely,
+`reindex_step` waits for a structural occurrence action and then constructs
+checked reindexing evidence: the action result alone is not that evidence.
+Audit distinct obligations before deleting such a wrapper. No new runtime tests
+were run for this follow-up inspection; uncommitted Identity API work is not
+included in the verified milestone.
+
 Some synthesis requests precede the existence of a typed conclusion. Their
 identity includes the operation, scope and inputs, not just a Term pointer.
 Inventory these cases before deciding the remaining state layout. Do not move
@@ -180,6 +204,9 @@ Do not mark a milestone complete just because a view hides the old representatio
   and genuinely unfinished construction. Try direct owner references plus
   owner-local suspension state; document any residual allocation that cannot be
   eliminated and why. An independent Job graph is not an acceptance criterion.
+  For each retained record, identify the unfinished obligation that has no
+  other owner. Direct-input migration alone does not discharge this requirement;
+  a renamed task graph or one mutable status per Core Term also fails it.
   Then migrate the dependency interface and its callers
   so accepted Evidence needs no `EVIDENCE_JOB`, scheduler status or duplicate
   result slot. Remove the adapter factory/role, then redundant producer-to-
@@ -275,7 +302,10 @@ baseline described above. Concurrent accepted-source edits remain excluded.
   when a producer finishes. Removed the source checkpoint fixture's root Context
   Job and the derivation codec's requirement for an external checked input to
   have a Job. This prerequisite is distinct from further owner-codec expansion.
-- [ ] Finish known-family result adapters, other context and Identity
+- [x] Unify Identity formation, faces, reflexivity, instances and family action/
+  transport inputs. Migrate source and IADT consumers; remove the separate
+  checked/pending APIs and the temporary path-to-Job array.
+- [ ] Finish known-family result adapters and other context/IADT/operation
   consumers, remove `EVIDENCE_JOB`, then remove duplicated query scheduling.
   The remaining adapter recognition is temporary, not the final architecture.
 
@@ -700,3 +730,41 @@ not a speedup or `.a`-size claim.
 
 These are applied-source changes, not patch context or documentation lines.
 The intermediate source increase is not presented as the final simplification.
+
+### SE1 Identity Inputs (2026-09-30)
+
+**Objective (Code):** parent `d0dd69d` plus the Identity prototype, same isolated
+baseline. Formation, faces, reflexivity, instances and family action/transport
+now borrow checked or pending inputs through one API. Source and IADT transport
+consumers use it directly. The separate face/action APIs and temporary array
+wrapping checked paths into Jobs are removed. Tests retain exact request sharing,
+stable pending keys, prefix-dependent path checking and endpoint rejection.
+
+**Assessment:** the remaining producer-to-checked forwarding still shares
+completed requests. This milestone removes input adapters, not that ownership
+problem or the whole Job graph. Witnesses and conversion/transport obligations
+are unchanged. Foreign reflexivity contexts now fail at the request boundary.
+
+**Plan / Results:** O2 `check` and seven checkpoint targets pass, including
+general QuickSort ordinary-result Sorted and negative/image controls. ASan/UBSan
+synthesis, IADT, source-checkpoint (204 cuts) and derivation-checkpoint (281 cuts,
+15 mixed cuts) pass. LeakSanitizer could not run under sandbox ptrace; the same
+binaries passed outside that sandbox. Freshly regenerated source/tests/checkpoint
+files match the tested overlay. Public partitions still fail at 100+100,
+1000+1000, 1600+1600 and completed+0; step 0 and 10+10 pass.
+
+QuickSort Jobs: 55,718 -> 54,751; adapters: 1,739 -> 772; live Job bytes:
+9,574,080 -> 9,480,808. List-09: 896 -> 891 Jobs, 20 -> 15 adapters,
+155,032 -> 154,552 bytes. Steps, Terms, occurrences, Evidence and premise edges
+are unchanged; repeated completed samples do not grow. These are live-store
+measurements, not `.a` size or runtime claims.
+
+| Applied-code delta from `d0dd69d` | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `synthesis.c` | 1 | 1 | 0 |
+| `synthesis.h` | 14 | 25 | -11 |
+| `synthesis_iadt.c` | 22 | 18 | +4 |
+| `synthesis_identity.c` | 98 | 100 | -2 |
+| Implementation total | 135 | 144 | -9 |
+| `tests/synthesis.c` | 104 | 93 | +11 |
+| `tests/iadt.c` | 19 | 18 | +1 |
