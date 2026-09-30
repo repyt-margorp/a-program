@@ -47,8 +47,11 @@ and lifting now borrow their existing typed queries without a second Job;
 their ordinary consumers retain only a query reference. Substitution images
 now use direct inputs too; checked family-pair results no longer allocate
 completed Jobs. The duplicate known/pending substitution APIs are removed.
-This does not
-repair the public split-fuel failures or authorize a new checkpoint/backend codec.
+Classifier operands now use direct inputs and normalization borrows the existing
+typed query, without its former classifier-formation Job. Removing forwarding
+alone lost completed-result sharing and was rejected; that ownership remains
+open. These changes do not repair the public split-fuel failures or authorize a
+new checkpoint/backend codec.
 
 Do not extend the binding/domain checkpoint codec or AP6 while this gate is
 open. Existing passing checkpoint fixtures remain historical evidence, not a

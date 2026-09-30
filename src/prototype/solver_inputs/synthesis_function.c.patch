@@ -137,34 +137,49 @@
  		return;
  	default: goto unsupported;
  	}
-@@ -393,15 +392,22 @@
+@@ -393,15 +392,24 @@
  struct pg_synthesis_job *pg_synthesis_classifier_formation(struct pg_synthesis *synthesis,
  	const struct pg_synthesis_job *context, const struct pg_synthesis_job *term)
  {
 -	if (!context || context->owner != synthesis->owner_key) return NULL;
-+	return pg_synthesis_classifier_in(synthesis, (struct pg_synthesis_input){.pending = (void *)context}, (void *)term);
+-	if (!term || term->owner != synthesis->owner_key) return NULL;
+-	const void *inputs[] = {context, term};
+-	return pg_synthesis_work_request(synthesis, CLASSIFIER_FORMATION_JOB, 2, inputs);
++	return pg_synthesis_classifier_in(synthesis, (struct pg_synthesis_input){.pending = (void *)context},
++		(struct pg_synthesis_input){.pending = (void *)term});
 +}
 +
 +struct pg_synthesis_job *pg_synthesis_classifier_in(struct pg_synthesis *synthesis,
-+	struct pg_synthesis_input context, struct pg_synthesis_job *term)
++	struct pg_synthesis_input context, struct pg_synthesis_input term)
 +{
 +	if (!pg_synthesis_input_owned(synthesis, context)) return NULL;
- 	if (!term || term->owner != synthesis->owner_key) return NULL;
--	const void *inputs[] = {context, term};
--	return pg_synthesis_work_request(synthesis, CLASSIFIER_FORMATION_JOB, 2, inputs);
++	if (!pg_synthesis_input_owned(synthesis, term)) return NULL;
 +	context = pg_synthesis_input_direct(context);
-+	const void *inputs[] = {context.checked, context.pending, term};
-+	return pg_synthesis_work_request(synthesis, CLASSIFIER_FORMATION_JOB, 3, inputs);
++	term = pg_synthesis_input_direct(term);
++	const void *inputs[] = {context.checked, context.pending, term.checked, term.pending};
++	return pg_synthesis_work_request(synthesis, CLASSIFIER_FORMATION_JOB, 4, inputs);
  }
  
- struct pg_synthesis_job *pg_synthesis_classifier_formation_input(const struct pg_synthesis_job *job)
+-struct pg_synthesis_job *pg_synthesis_classifier_formation_input(const struct pg_synthesis_job *job)
++struct pg_synthesis_input pg_synthesis_classifier_formation_input(const struct pg_synthesis_job *job)
  {
 -	return job && job->role == CLASSIFIER_FORMATION_JOB ? (void *)job->inputs[1] : NULL;
-+	return job && job->role == CLASSIFIER_FORMATION_JOB ? (void *)job->inputs[2] : NULL;
++	return job && job->role == CLASSIFIER_FORMATION_JOB ? pg_synthesis_work_dependency(job, 2) : (struct pg_synthesis_input){0};
  }
  
  /* Only the pending recipe projects the operand's classifier. After acceptance,
-@@ -417,10 +423,11 @@
+@@ -409,18 +417,20 @@
+ int pg_synthesis_classifier_formation_structure(struct pg_synthesis *synthesis,
+ 	const struct pg_synthesis_job *job, struct pg_synthesis_job **structure)
+ {
+-	struct pg_synthesis_job *term = pg_synthesis_classifier_formation_input(job);
+-	if (!term) return 0;
+-	*structure = pg_synthesis_classifier_structure(synthesis, term);
++	struct pg_synthesis_input term = pg_synthesis_classifier_formation_input(job);
++	if (!term.checked && !term.pending) return 0;
++	*structure = pg_synthesis_classifier_structure_input(synthesis, term);
+ 	return 1;
+ }
  
  static void classifier_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
@@ -173,14 +188,15 @@
 -	const struct pg_synthesis_job *context = job->inputs[0], *body = job->inputs[1];
 -	struct pg_typed_query *classifier = pg_classifier_request(synthesis->typing, context->result, body->result);
 +	struct pg_synthesis_input context = pg_synthesis_work_dependency(job, 0);
-+	struct pg_synthesis_job *body = (void *)job->inputs[2];
++	struct pg_synthesis_input body = pg_synthesis_classifier_formation_input(job);
 +	if (pg_synthesis_await_input(synthesis, job, context)) return;
-+	if (pg_synthesis_await(synthesis, job, body)) return;
-+	struct pg_typed_query *classifier = pg_classifier_request(synthesis->typing, pg_synthesis_input_result(context), body->result);
++	if (pg_synthesis_await_input(synthesis, job, body)) return;
++	struct pg_typed_query *classifier = pg_classifier_request(synthesis->typing,
++		pg_synthesis_input_result(context), pg_synthesis_input_result(body));
  	int status = pg_typed_query_advance(classifier, 1);
  	if (!status) { pg_synthesis_enqueue(synthesis, job); return; }
  	job->result = pg_typed_query_result(classifier);
-@@ -510,7 +517,7 @@
+@@ -510,7 +520,7 @@
  {
  	if (!pg_evidence_owned_by(context, synthesis->typing)) return NULL;
  	if (pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT) return NULL;
@@ -189,7 +205,7 @@
  }
  
  struct pg_synthesis_job *pg_synthesis_application_domain(struct pg_synthesis *synthesis,
-@@ -524,12 +531,19 @@
+@@ -524,12 +534,21 @@
  struct pg_synthesis_job *pg_synthesis_application_jobs(struct pg_synthesis *synthesis,
  	struct pg_synthesis_job *context, struct pg_synthesis_job *function, struct pg_synthesis_job *argument)
  {
@@ -204,10 +220,12 @@
  	if (!function || function->owner != synthesis->owner_key) return NULL;
  	if (!argument || argument->owner != synthesis->owner_key) return NULL;
 -	struct pg_synthesis_job *callee = pg_synthesis_normalize_classifier_jobs(synthesis, context, function);
-+	struct pg_synthesis_job *callee = pg_synthesis_normalize_classifier_in(synthesis, context, function);
++	struct pg_synthesis_job *callee = pg_synthesis_normalize_classifier_in(synthesis, context,
++		(struct pg_synthesis_input){.pending = function});
  	if (!callee) return NULL;
 -	struct pg_synthesis_job *domain = pg_synthesis_application_domain(synthesis, context, callee);
-+	struct pg_synthesis_job *formation = pg_synthesis_classifier_in(synthesis, context, callee);
++	struct pg_synthesis_job *formation = pg_synthesis_classifier_in(synthesis, context,
++		(struct pg_synthesis_input){.pending = callee});
 +	struct pg_synthesis_job *domain = pg_synthesis_plain_rule(synthesis, PG_PI_DOMAIN, NULL, 1, &formation);
  	struct pg_synthesis_job *checked = pg_synthesis_expect(synthesis, argument, domain);
  	if (!checked) return NULL;

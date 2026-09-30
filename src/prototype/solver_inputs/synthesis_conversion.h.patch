@@ -1,11 +1,13 @@
 --- a/synthesis_conversion.h
 +++ b/synthesis_conversion.h
-@@ -16,8 +16,8 @@
+@@ -15,9 +15,9 @@
+ const struct pg_evidence *pg_synthesis_convert(struct pg_synthesis *, struct pg_synthesis_job *,
  	const struct pg_evidence *, const struct pg_evidence *);
  /* Read-only adapter inputs for provisional inspection, not acceptance. */
- struct pg_synthesis_job *pg_synthesis_classifier_input(const struct pg_synthesis_job *);
+-struct pg_synthesis_job *pg_synthesis_classifier_input(const struct pg_synthesis_job *);
 -struct pg_synthesis_job *pg_synthesis_expect_input(const struct pg_synthesis_job *);
 -struct pg_synthesis_job *pg_synthesis_expect_target(const struct pg_synthesis_job *);
++struct pg_synthesis_input pg_synthesis_classifier_input(const struct pg_synthesis_job *);
 +struct pg_synthesis_input pg_synthesis_expect_input(const struct pg_synthesis_job *);
 +struct pg_synthesis_input pg_synthesis_expect_target(const struct pg_synthesis_job *);
  

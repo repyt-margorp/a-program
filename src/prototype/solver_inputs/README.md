@@ -38,13 +38,17 @@ Composition and lifting no longer allocate a `CHECKED_QUERY_JOB`: constructor
 scope and Identity-family owners borrow the existing typed query directly.
 The query keeps its sole progress/status/result. Any query advance consumes
 the caller's dispatch, preventing two advances through a completion boundary.
+Classifier formation and normalization also accept direct typed operands;
+structural readers inspect those inputs without recreating Jobs. Normalization
+borrows the existing classifier query instead of a classifier-formation Job.
 
 ### Assessment
 
 This removes some adapters, not the independent Job graph. Source scopes,
-classifier operands and other context/IADT/Identity
-constructors still use adapters. Several producer-to-checked forwarding paths
-also remain; removing the query wrapper does not settle their ownership.
+known-family results and other context/IADT/Identity constructors still use
+adapters. Producer-to-checked forwarding paths also remain. Removing classifier
+forwarding alone lost completed-result reuse, so that trial was rejected;
+removing the query wrapper does not settle the pending/checked request ownership.
 Keeping those indefinitely would not
 complete SE1. No semantic boundary has been merged merely to reduce node count.
 

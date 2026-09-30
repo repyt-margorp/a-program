@@ -13,7 +13,7 @@
  		}
  	}
  	advance(s, 10000);
-@@ -601,11 +601,11 @@
+@@ -601,12 +601,12 @@
  	while (!pg_synthesis_evidence_input(body)) {
  		const struct pg_derivation_input *rule = pg_synthesis_plain_derivation(body);
  		assert(rule && rule->rule == PG_LAMBDA_INTRO && rule->count == 2);
@@ -24,10 +24,12 @@
  		rule = pg_synthesis_plain_derivation(pi);
  		assert(rule && rule->rule == PG_PI_FORM && rule->count == 2);
 -		struct pg_synthesis_job *classifier = pg_synthesis_rule_premise(s, pi, 1);
+-		assert(pg_synthesis_classifier_formation_input(classifier) == adapter);
 +		struct pg_synthesis_job *classifier = pg_synthesis_rule_input(s, pi, 1).pending;
- 		assert(pg_synthesis_classifier_formation_input(classifier) == adapter);
++		assert(pg_synthesis_classifier_formation_input(classifier).pending == adapter);
  		/* A pending classifier here either has not started or has a retained
  		 * structural type and finishes in one dispatch, without query progress. */
+ 		if (classifier->status == PG_SYNTHESIS_PENDING && pg_synthesis_result(adapter))
 @@ -714,7 +714,9 @@
  {
  	const struct pg_derivation_input *input = pg_synthesis_plain_derivation(key);

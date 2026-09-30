@@ -258,7 +258,10 @@ baseline described above. Concurrent accepted-source edits remain excluded.
   replace known/pending substitution APIs with one request and one validation
   path. Return checked family-pair results without a completed Job; retain
   dependent value conversion and migrate Match generalization consumers.
-- [ ] Finish scopes, classifier operands, other context and Identity
+- [x] Migrate classifier operands and structural readers to direct inputs.
+  Normalization borrows the existing classifier query rather than allocating a
+  classifier-formation Job. Keep completed-input sharing and pending identities.
+- [ ] Finish scopes, known-family result adapters, other context and Identity
   consumers, remove `EVIDENCE_JOB`, then remove duplicated query scheduling.
   The remaining adapter recognition is temporary, not the final architecture.
 
@@ -448,3 +451,54 @@ image keys cost space; the measured reduction includes that cost.
 | `synthesis_iadt.c` | 6 | 5 | +1 |
 | Implementation total | 71 | 78 | -7 |
 | `tests/synthesis.c` | 105 | 46 | +59 |
+
+### SE1 Classifier Inputs (2026-09-30)
+
+**Objective (Code):** parent `232ffbc` plus this prototype on the same isolated
+baseline. Classifier operands and their provisional readers now borrow direct
+inputs. Normalization no longer allocates a classifier-formation Job solely to
+advance an existing `pg_classifier_request`. A family discovered after waiting
+returns its checked input without another adapter; the known-family convenience
+API still returns an Evidence Job and remains an SE1 task.
+
+**Assessment:** a trial also deleted producer-to-checked forwarding. The existing
+`named_transport` warm-reuse assertion then failed: later requests for the same
+checked input allocated fresh work instead of reusing the completed operation.
+Reject that trial, without weakening the test or adding a result cache. The final
+implementation retains canonical checked-input sharing. This does not establish
+that the forwarding graph is necessary; removing it requires moving the complete
+operation's ownership, not just deleting its connecting edge.
+
+**Plan / Results:** fresh `make check` and seven checkpoint/namespace targets
+pass, including general QuickSort ordinary-result proofs and negative/image
+controls. Tests cover allocation-free checked inputs, shared classifier query
+progress, zero fuel, stable pending keys, distinct producers of one result,
+foreign/malformed inputs, and post-completion reuse. The public partition gate
+still fails at 100+100, 1000+1000, 1600+1600 and completed+0. SE1 remains open.
+ASan/UBSan synthesis, IADT, definition-checkpoint and both namespace-frontier
+variants also pass.
+
+| Completed input | Jobs before / after | Evidence Jobs before / after | Job bytes before / after | Steps before / after |
+| --- | ---: | ---: | ---: | ---: |
+| List-09 | 961 / 911 | 59 / 35 | 161,032 / 156,376 | 2,824 / 2,726 |
+| General QuickSort Local Sorted | 60,838 / 56,712 | 4,764 / 2,733 | 10,058,232 / 9,655,672 | 815,008 / 809,533 |
+
+Occurrences, Evidence and premise-edge counts are unchanged. QuickSort retains
+1,037,913 Core nodes versus 1,037,914 before; whole-arena temporary construction
+is not asserted identical across schedules. List-09 retains 259. Repeated final
+samples are unchanged. These are live-store counts, not artifact bytes or timing.
+
+| Applied-code delta from `232ffbc` | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `synthesis.c` | 14 | 9 | +5 |
+| `synthesis_source.h` | 3 | 3 | 0 |
+| `synthesis_conversion.c` | 44 | 22 | +22 |
+| `synthesis_conversion.h` | 1 | 1 | 0 |
+| `synthesis_function.c` | 20 | 15 | +5 |
+| `synthesis_cbpv.c` | 5 | 3 | +2 |
+| `synthesis_identity.c` | 2 | 1 | +1 |
+| Implementation total | 89 | 54 | +35 |
+| `tests/synthesis.c` | 72 | 2 | +70 |
+| `checkpoint_tests/definition_checkpoint_test.c` | 1 | 1 | 0 |
+
+No wire fields, Core tags, acceptance table or backend metadata were added.
