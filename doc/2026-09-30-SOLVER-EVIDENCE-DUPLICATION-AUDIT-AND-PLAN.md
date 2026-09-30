@@ -162,6 +162,10 @@ recorded separately below.
 
 **Subjective (User):** 2026-09-30, English paraphrase: question the need for Job
 itself, not only the size of its adapters.
+Follow-up paraphrase: resume from the Solve constraint frontier; investigate
+whether Job/Evidence add another near-identical structure above Term, typing and
+Solve, with unnecessary competing authority. This requests investigation, not
+approval of a particular replacement layout.
 
 **Objective (Code):** `synthesis_work.h:pg_synthesis_job` retains an interned
 request key, result reference, status, queue link and dependency notifications.
@@ -174,6 +178,11 @@ wrapper. `classifier_step` still forwards producer-keyed requests to another
 checked-input-keyed request. `substitution_step` genuinely needs its next-image
 cursor and pending conversion; source block synthesis also needs its position
 before the final typed occurrence exists.
+`effect_inference.h:pg_effect_inference` already owns its equation queue and
+dependency cursor, while `synthesis_effect.c` places a scheduling Job around it.
+`derivation_step` retains the next premise and conversion/normalization phase.
+These are distinct cases: the former already has a progress owner; the latter
+also has unfinished checking, not simply a missing result reference.
 
 **Assessment:** an independent Job graph is neither a CBPV requirement nor an
 object-language proof. Its necessity has not been established. Retain the
@@ -186,10 +195,32 @@ but this does not require retaining every scheduler frame and forwarding edge.
 Removing forwarding alone previously lost checked-result sharing, so the change
 must preserve that sharing through one actual owner rather than abandon it.
 
+The user's frontier model is a viable architectural target: authoritative
+constraints borrow original syntax/typed inputs and solved results; a ready
+frontier references those constraints, not another shadow graph of their inputs
+and answers. Reconstructing readiness on load is not proof replay. Reconstructing
+only readiness does not preserve work already spent inside a suspended reduction
+or conversion: exact continuation additionally needs that owner's cursor.
+Without it, restarting partial work may preserve meaning but not equal-fuel
+progress. Disposable wake indexes/queues can be rebuilt from canonical constraints;
+record their deterministic ordering contract where partition tests require it.
+
+Evidence is not uniformly another Term graph: its conclusion borrows the typed
+occurrence/context/map, with a receipt and sometimes premise references. An
+object-language witness remains a Term. The fact that a descriptive graph exists
+does not establish that it passed Kernel checking. Removing redundant receipts
+or premise arrays must therefore preserve one checked-admission authority,
+without promoting provisional classifier/effect approximations to accepted facts.
+SE3 already covers concrete duplicate Match/induction premise edges; it must not
+be replaced by an unsupported claim that every Evidence record is removable.
+
 **Plan:** use the existing SE1 work list, not a second migration track. Its gate
 requires accounting for each remaining owner and deleting needless wrappers,
 not just accepting direct inputs. For each role, record its canonical key, input
 owner, unfinished cursor, completion owner and actual resumption consumer.
+Use canonical constraints and their owner-local continuation as the frontier
+target; do not allocate a second constraint-shaped Task graph. Audit existing
+typed/effect query owners first, then source construction and rule checking.
 Delete completed Evidence adapters; borrow already-owned queries; unify duplicate
 operation ownership and construction paths before expanding persistence. Verify
 shared and distinct typed uses, every changed suspension boundary, and zero-fuel

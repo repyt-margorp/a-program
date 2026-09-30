@@ -41,6 +41,10 @@ The follow-up Job audit distinguishes removable completed/query wrappers from
 actual unfinished construction. Retain a work record only for a demonstrated
 obligation with no other owner; fewer adapters alone do not complete AP0.
 Do not replace the Job graph with a renamed graph or put typing state in Core.
+The user's follow-up proposes resuming from the Solve constraint frontier.
+Audit canonical constraint ownership and its partial-work cursors, with readiness
+derived from those same records rather than a second input/result graph. Keep
+checked admission distinct from merely constructing descriptive typed data.
 
 The [direct-input prototype](../src/prototype/solver_inputs/README.md) removes
 checked normalization, Context-input, post-check and rule-premise adapters and
