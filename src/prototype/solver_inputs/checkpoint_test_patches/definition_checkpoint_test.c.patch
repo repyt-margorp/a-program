@@ -1,5 +1,14 @@
 --- a/definition_checkpoint_test.c
 +++ b/definition_checkpoint_test.c
+@@ -518,7 +518,7 @@
+ 	const struct pg_evidence *computation = pg_prove_return(&p->typing, value);
+ 	assert(context && type && value && computation);
+ 	const struct pg_evidence *inputs[] = {type, value, computation};
+-	struct pg_synthesis_job *scope = pg_synthesis_evidence(s, context);
++	struct pg_synthesis_input scope = {.checked = context};
+ 	for (size_t i = 0; i < 3; ++i) {
+ 		struct pg_synthesis_job *input = pg_synthesis_evidence(s, inputs[i]);
+ 		struct pg_synthesis_job *body = pg_synthesis_body(s, input, scope);
 @@ -535,9 +535,9 @@
  		if (i == 2) assert(selected == input);
  		else {

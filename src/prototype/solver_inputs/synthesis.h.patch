@@ -80,6 +80,18 @@
  /* Source annotation over independently synthesized inputs. Applies the same
   * source-reference/polarity adaptations as expr :: type, then post-checks.
   * No syntax fabrication or expected-type feedback into either producer. */
+@@ -700,9 +727,9 @@
+ 	const struct pg_object *binder);
+ /* Shared source/continuation Lambda construction. Context already contains
+  * the binder with the supplied domain. Value bodies are lifted by RETURN;
+- * raw computation bodies remain raw. All three producers may be pending. */
++ * raw computation bodies remain raw. Contexts can be checked or pending. */
+ struct pg_synthesis_job *pg_synthesis_lambda_body(struct pg_synthesis *synthesis,
+-	struct pg_synthesis_job *context,
++	struct pg_synthesis_input context,
+ 	struct pg_synthesis_job *body);
+ /* Instantiate an independently produced Universe Identity family at two
+  * value endpoints. Post-check each against its own endpoint type; never
 @@ -752,33 +779,21 @@
  	const struct pg_dimension_map *target_face, const struct pg_dimension_map **intrinsic);
  /* Extend a checked substitution with an independently typed value. The

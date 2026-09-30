@@ -44,6 +44,9 @@ borrows the existing classifier query instead of a classifier-formation Job.
 Nominal IADT recovery accepts direct typed inputs and retains the existing
 inductive query. It no longer wraps the input in an Evidence Job or repeatedly
 reconstructs its normalization proof while that query is suspended.
+Logical-family conversion/domain requests and Lambda-body/Pi-scope contexts use
+the same inputs; abstraction and operation-signature consumers no longer need
+Evidence adapters. The actual family/CBPV conversion and context checks remain.
 
 ### Assessment
 

@@ -28,7 +28,15 @@
  const struct pg_derivation_input *pg_synthesis_plain_derivation(const struct pg_synthesis_job *);
  /* Borrow/restore a rule's premise cursor before endpoint computation starts.
   * 1 supplies a cursor, 0 needs another state owner, -1 rejects the request.
-@@ -152,7 +171,7 @@
+@@ -145,14 +164,14 @@
+ const struct pg_synthesis_job *pg_synthesis_operation_origin(const struct pg_synthesis_job *);
+ /* Follow an existing lexical alias edge, without evaluation or acceptance. */
+ struct pg_synthesis_job *pg_synthesis_source_origin(const struct pg_synthesis_job *);
+-struct pg_synthesis_job *pg_synthesis_body(struct pg_synthesis *, struct pg_synthesis_job *, struct pg_synthesis_job *);
++struct pg_synthesis_job *pg_synthesis_body(struct pg_synthesis *, struct pg_synthesis_job *, struct pg_synthesis_input);
+ struct pg_synthesis_job *pg_synthesis_body_input(const struct pg_synthesis_job *);
+ /* Restore only the already-selected adapter. Selection shares the normal body
+  * factory; its child rule still needs its own progress and evidence checking. */
  int pg_synthesis_body_resume(struct pg_synthesis *, struct pg_synthesis_job *);
  struct pg_synthesis_job *pg_synthesis_classifier_formation(struct pg_synthesis *,
  	const struct pg_synthesis_job *, const struct pg_synthesis_job *);
@@ -37,3 +45,17 @@
  int pg_synthesis_classifier_formation_structure(struct pg_synthesis *, const struct pg_synthesis_job *,
  	struct pg_synthesis_job **);
  const struct pg_object *pg_synthesis_pi_scope_binder(const struct pg_synthesis_job *);
+@@ -170,10 +189,10 @@
+ 	struct pg_synthesis_job *, struct pg_synthesis_job *);
+ /* Checked logical-family/CBPV adapters, never expected-type inference. */
+ struct pg_synthesis_job *pg_synthesis_family_contract(struct pg_synthesis *,
+-	struct pg_synthesis_job *, struct pg_synthesis_job *);
++	struct pg_synthesis_input, struct pg_synthesis_input);
+ struct pg_synthesis_job *pg_synthesis_family_domain(struct pg_synthesis *,
+-	struct pg_synthesis_job *);
+-struct pg_synthesis_job *pg_synthesis_family_function(struct pg_synthesis *, struct pg_synthesis_job *);
++	struct pg_synthesis_input);
++struct pg_synthesis_job *pg_synthesis_family_function(struct pg_synthesis *, struct pg_synthesis_input);
+ struct pg_synthesis_job *pg_synthesis_result_context_input(struct pg_synthesis *,
+ 	const struct pg_synthesis_job *, const struct pg_object *);
+ int pg_synthesis_typed_input(struct pg_synthesis *, const struct pg_evidence *, const struct pg_evidence *);

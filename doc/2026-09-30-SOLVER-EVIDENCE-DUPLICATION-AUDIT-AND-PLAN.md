@@ -264,7 +264,10 @@ baseline described above. Concurrent accepted-source edits remain excluded.
 - [x] Migrate nominal IADT lookup to direct inputs; retain its existing query
   across suspension instead of repeatedly obtaining normalization evidence.
   Preserve nominal formation, canonical checked sharing and stable pending keys.
-- [ ] Finish scopes, known-family result adapters, other context and Identity
+- [x] Migrate logical-family requests and Lambda-body/Pi-scope contexts together;
+  remove their checked-input adapters, including abstraction and operation
+  signature consumers. Keep family/CBPV conversion and context checking.
+- [ ] Finish source scopes, known-family result adapters, other context and Identity
   consumers, remove `EVIDENCE_JOB`, then remove duplicated query scheduling.
   The remaining adapter recognition is temporary, not the final architecture.
 
@@ -551,3 +554,51 @@ are still SE1 work, not justified by this smaller count.
 | Implementation total | 49 | 38 | +11 |
 | `tests/synthesis.c` | 73 | 8 | +65 |
 | `tests/source_io.c` | 2 | 1 | +1 |
+
+### SE1 Family and Lambda Inputs (2026-09-30)
+
+**Objective (Code):** parent `ebe238c` plus this prototype on the same isolated
+baseline. Family conversion, family-domain lookup and Lambda-body contexts still
+required Jobs. Fixing only the family interface would have recreated adapters
+when abstracting its body. These interfaces and Pi-scope construction now use
+the existing by-value checked/pending input. Operation-signature premises also
+pass checked data directly. No new API variant, owner class or wire field.
+
+**Assessment:** no-work wrapping is distinct from converting a checked logical
+family into a CBPV callable. Preserve the latter, context equality checks and
+pending failure propagation. Pending family request identities are now stable
+after completion; they still share the canonical checked-input computation.
+Family query lookups and the outer workers remain, so this does not close SE1.
+
+**Plan / Results:** fresh O2 `make check` and seven checkpoint/namespace targets
+pass, including the general QuickSort ordinary-result theorem and negative/image
+controls. Tests retain family application/projection, cancellation at every
+cut, zero fuel and warm reuse; they now also assert zero Evidence adapters in
+the family conversion test, direct/legacy key sharing, stable pending contexts,
+malformed/foreign rejection and rejection of the wrong body Context. The fresh
+overlay exactly matches tested source/tests. Public partition failures remain
+at 100+100, 1000+1000, 1600+1600 and completed+0.
+ASan/UBSan synthesis, IADT, definition-checkpoint and both namespace-frontier
+variants also pass.
+
+| Completed input | Jobs before / after | Evidence Jobs before / after | Job bytes before / after |
+| --- | ---: | ---: | ---: |
+| List-09 | 908 / 901 | 32 / 25 | 156,104 / 155,552 |
+| General QuickSort Local Sorted | 56,428 / 56,030 | 2,449 / 2,051 | 9,627,896 / 9,606,168 |
+
+Steps (2,726 / 809,533), Terms, occurrences, Evidence and premise edges are
+unchanged. Repeated final samples do not grow. Larger direct-input slots are
+included in these live Job bytes; this is not an artifact-size or timing claim.
+
+| Applied-code delta from `ebe238c` | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `synthesis.c` | 21 | 14 | +7 |
+| `synthesis.h` | 2 | 2 | 0 |
+| `synthesis_source.h` | 4 | 4 | 0 |
+| `synthesis_function.c` | 74 | 58 | +16 |
+| `synthesis_cbpv.c` | 13 | 12 | +1 |
+| `synthesis_handler.c` | 7 | 6 | +1 |
+| `synthesis_operation.c` | 11 | 10 | +1 |
+| Implementation total | 132 | 106 | +26 |
+| `tests/synthesis.c` | 56 | 28 | +28 |
+| `definition_checkpoint_test.c` | 1 | 1 | 0 |

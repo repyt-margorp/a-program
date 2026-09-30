@@ -54,6 +54,8 @@ open. Nominal IADT lookup also takes direct inputs and retains its typed query
 across suspension, without an Evidence adapter or repeated normalization-proof
 lookup. These changes do not repair the public split-fuel failures or authorize
 a new checkpoint/backend codec.
+Logical-family conversion and Lambda-body/Pi-scope contexts now also take direct
+inputs; their checking and semantic conversion remain ordinary Solve work.
 
 Do not extend the binding/domain checkpoint codec or AP6 while this gate is
 open. Existing passing checkpoint fixtures remain historical evidence, not a
