@@ -41,6 +41,9 @@ stored graph. Remaining legacy Evidence-adapter recognition is still temporary.
 Job-only expect/reindex/normalization/evaluation aliases are removed. Rule export
 also borrows checked/pending roots through its existing closure traversal; known
 receipts need no completed scheduler node. Reading still creates unchecked work.
+The obsolete fixed-prefix-plus-Job-array request API is removed; ordinary arrays
+and borrowed key projections use the same interner. IADT and all checkpoint tests
+now pass checked receipts directly rather than constructing Evidence Jobs.
 Composition and lifting no longer allocate a `CHECKED_QUERY_JOB`: constructor
 scope and Identity-family owners borrow the existing typed query directly.
 The query keeps its sole progress/status/result. Any query advance consumes

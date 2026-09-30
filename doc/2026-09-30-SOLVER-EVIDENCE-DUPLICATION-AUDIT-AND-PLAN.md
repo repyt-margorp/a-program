@@ -1746,7 +1746,8 @@ open. API removal alone is not completion of the frontier refactor.
 - [x] Focused O2 synthesis, program and derivation-I/O tests.
 - [x] O2 normalization and constructor checkpoints, including exact remaining fuel.
 - [x] Final ASan/UBSan synthesis, program, source/derivation I/O and both migrated checkpoints.
-- [ ] Full O2 acceptance, semantic audit and remaining checkpoint gates.
+- [x] Full O2 acceptance, semantic audit and remaining checkpoint gates;
+  integrated successor revalidation is recorded below.
 - [x] Same-budget List/QuickSort census and public partition comparison.
 
 Export boundaries cover missing/oversized input arrays, mixed inputs, foreign
@@ -1765,8 +1766,9 @@ context, documentation and unrelated accepted edits. Per-file evidence and
 verification logs use `/tmp/a-program-direct-alias-`. The final full-regression
 log reaches the last derived-LT success marker, including both providers and
 partition orders. On continuation its process handle is no longer available;
-the aggregate exit code was not retained. Keep the full-gate checkbox open
-until an observed terminal result, rather than infer it from the log alone.
+the aggregate exit code was not retained. The successor's integrated full
+regression below supplies the observed terminal result; no historical exit
+code is inferred from that earlier log.
 
 The ordinary List/QuickSort census is byte-identical to the preceding milestone
 at matching budgets. Public partition TSVs also match: the same four reload
@@ -1789,3 +1791,69 @@ failures remain and the partition target exits 2. This is not a passing gate.
 | `checkpoint_tests/normalization_checkpoint_test.c` | 21 | 21 | 0 |
 | `checkpoint_tests/constructor_checkpoint_test.c` | 1 | 2 | -1 |
 | `artifact_tests/semantic_test.c` | 3 | 1 | +2 |
+
+### SE1 Remaining Checked-IADT Consumers (2026-10-01)
+
+#### Subjective (User)
+
+English paraphrase of the latest requirement: the Solve frontier should refer to
+canonical obligations, not duplicate Term/typed inputs in a separate Job graph.
+
+#### Objective (Code)
+
+Parent `da162ec`, same archived accepted baseline `e716232`. Removed 23 adapter
+calls: 21 in IADT tests and the final two in checkpoint tests. Checked Match,
+index-path and constructor-field premises are borrowed directly. There remain
+65 factory calls in synthesis tests and 27 in source-I/O tests; the Evidence
+factory is not yet deleted. Ordinary compiler call sites do not require it.
+`pg_synthesis_work_request_inputs` had only one test caller and the ordinary
+request's internal call. Remove this obsolete prefix/Job-array key interface and
+its branching key object; retain the single existing interner and borrowed-key
+projection. No owner, acceptance store, cursor, Core or wire field is added.
+
+#### Assessment
+
+Do not discard the negative controls with the old adapters. Mixed checked/pending
+input rejection uses a genuine producer; the wrong-kind body-resume guard uses
+an unfinished ordinary Universe rule. Sharing, zero-fuel behavior, invalid
+transport endpoints, field selection and scope checks retain their assertions.
+This prerequisite cleanup does not discharge the SE1 ownership criterion.
+Static ownership tracing identifies `synthesis_identity.c:action_input` as the
+next query-wrapper removal: reflexivity/family action have already awaited and
+validated their inputs before requesting classifier formation. They can borrow
+`pg_classifier_request` directly. Do not apply this reasoning to pending
+result-Context or application recipes, whose structural readers need a
+classifier projection before full acceptance.
+
+#### Plan
+
+- [x] Fresh patch assembly matches source/tests and checkpoint/audit fixtures.
+- [x] Focused O2 synthesis/IADT and four migrated checkpoint/namespace gates.
+- [x] Final ASan/UBSan synthesis/IADT and migrated checkpoint gates.
+- [x] Full O2 acceptance, semantic audit and all seven checkpoint gates.
+- [x] Repeat ordinary census/public partition comparison before committing.
+
+Evidence logs use `/tmp/a-program-accepted-operands-`. The unchanged accepted
+worktree edits are excluded, not reverted. Full SE1-SE5 remain open.
+The final `make` invocation completed with exit 0, including both general
+QuickSort providers/partition orders, ordinary-result proofs and invalid controls.
+List/QuickSort census rows match the parent byte-for-byte at the same budgets.
+Public partition rows also match; the same four reload failures remain and that
+target exits 2. No test is weakened or marked as an expected-success failure.
+The default worktree overlay also assembles with the concurrent Context/IADT
+relocation edits. Its focused core/IADT tests pass; this is not a second full
+regression run or inclusion of those edits in the commit. Differences from the
+isolated candidate are only the four edited source files, two edited test files
+and two new fixtures listed by the working-tree comparison.
+
+| Applied-file delta from `da162ec` | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `src/synthesis_work.c` | 5 | 23 | -18 |
+| `src/synthesis_work.h` | 0 | 3 | -3 |
+| `tests/synthesis.c` | 7 | 2 | +5 |
+| `tests/iadt.c` | 50 | 52 | -2 |
+| `checkpoint_tests/definition_checkpoint_test.c` | 6 | 4 | +2 |
+| `checkpoint_tests/derivation_checkpoint_test.c` | 2 | 2 | 0 |
+
+Implementation +5/-26 (net -21); tests +65/-60 (net +5). These are applied-code
+counts, not patch-context or documentation lines; no speedup is asserted.

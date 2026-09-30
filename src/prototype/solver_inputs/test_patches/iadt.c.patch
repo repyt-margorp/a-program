@@ -87,18 +87,23 @@
  		assert(scope);
  		const char source[] = "Acc := @\\subject : A => { acc : (x:A) -> ((y:A) -> R y x -> * y) -> * x; };";
  		struct pg_parser parser;
-@@ -962,15 +957,15 @@
+@@ -960,17 +955,18 @@
+ 		struct pg_synthesis synthesis;
+ 		assert(!pg_whnf_work_init(&work, typing->graph));
  		assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
- 		struct pg_synthesis_job *applied = pg_synthesis_evidence(&synthesis, match);
+-		struct pg_synthesis_job *applied = pg_synthesis_evidence(&synthesis, match);
++		struct pg_synthesis_input applied = {.checked = match};
  		for (size_t i = 0; i < 2; ++i)
 -			applied = pg_synthesis_application(&synthesis, context, applied, pg_synthesis_evidence(&synthesis, arguments[i]));
-+			applied = pg_synthesis_application(&synthesis, (struct pg_synthesis_input){.checked = context}, (struct pg_synthesis_input){.pending = applied}, (struct pg_synthesis_input){.checked = arguments[i]});
- 		const struct pg_evidence *result = solve_index_proof(&synthesis, applied, chunk, PG_SYNTHESIS_DONE);
+-		const struct pg_evidence *result = solve_index_proof(&synthesis, applied, chunk, PG_SYNTHESIS_DONE);
++			applied = (struct pg_synthesis_input){.pending = pg_synthesis_application(&synthesis,
++				(struct pg_synthesis_input){.checked = context}, applied, (struct pg_synthesis_input){.checked = arguments[i]})};
++		const struct pg_evidence *result = solve_index_proof(&synthesis, applied.pending, chunk, PG_SYNTHESIS_DONE);
  		assert(pg_evidence_classifier(result) == pg_return_type(typing->graph, pg_evidence_subject(original_type)->core));
  		const struct pg_evidence *normal = solve_index_proof(&synthesis,
 -			pg_synthesis_normalize_jobs(&synthesis, pg_synthesis_evidence(&synthesis, context), applied, PG_REDUCTION_NF),
 +			pg_synthesis_reduction_request(&synthesis,
-+				(struct pg_synthesis_input){.checked = context}, (struct pg_synthesis_input){.pending = applied}, PG_REDUCTION_NF, 0),
++				(struct pg_synthesis_input){.checked = context}, applied, PG_REDUCTION_NF, 0),
  			chunk, PG_SYNTHESIS_DONE);
  		assert(pg_evidence_subject(normal)->core == pg_evidence_subject(pg_prove_return(typing, original_value))->core);
 -		solve_index_proof(&synthesis, pg_synthesis_application(&synthesis, context,
@@ -107,17 +112,19 @@
  			chunk, PG_SYNTHESIS_REJECTED);
  		pg_synthesis_destroy(&synthesis);
  		pg_whnf_work_destroy(&work);
-@@ -1682,18 +1677,20 @@
+@@ -1682,18 +1678,20 @@
  			struct pg_synthesis synthesis;
  			assert(!pg_whnf_work_init(&work, typing->graph));
  			assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
 -			struct pg_synthesis_job *fj = pg_synthesis_evidence(&synthesis, family);
+-			struct pg_synthesis_job *vj = pg_synthesis_evidence(&synthesis, input);
 +			struct pg_synthesis_input family_input = {.checked = family}, value_input = {.checked = input};
- 			struct pg_synthesis_job *vj = pg_synthesis_evidence(&synthesis, input);
++			const struct pg_evidence *vj = input;
  			for (size_t i = 0; i < 2; ++i) {
- 				struct pg_synthesis_job *pj = pg_synthesis_evidence(&synthesis, paths[i]);
+-				struct pg_synthesis_job *pj = pg_synthesis_evidence(&synthesis, paths[i]);
 -				struct pg_synthesis_job *job = pg_synthesis_family_transport_jobs(&synthesis,
 -					fj, ls, rs, 1, &pj, vj, PG_IDENTITY_RIGHT);
++				const struct pg_evidence *pj = paths[i];
 +				struct pg_synthesis_input path_input = {.checked = paths[i]};
 +				struct pg_synthesis_job *job = pg_synthesis_family_transport(&synthesis,
 +					family_input, ls, rs, 1, &path_input, value_input, PG_IDENTITY_RIGHT);
@@ -132,10 +139,16 @@
  					chunk, PG_SYNTHESIS_DONE);
  				assert(pg_evidence_subject(checked)->core == pg_evidence_subject(result)->core);
  				assert(pg_evidence_classifier(checked) == pg_evidence_subject(expected)->core);
-@@ -1703,12 +1700,25 @@
+@@ -1703,12 +1701,25 @@
  					pg_prove_return(typing, checked));
  				assert(theorem && !pg_evidence_context(theorem));
  				if (!injection) {
+-					struct pg_synthesis_job *cj = pg_synthesis_evidence(&synthesis, context);
+-					struct pg_synthesis_job *lj = pg_synthesis_evidence(&synthesis, left);
+-					struct pg_synthesis_job *rj = pg_synthesis_evidence(&synthesis, right);
+-					struct pg_synthesis_job *tj = pg_synthesis_evidence(&synthesis, expected);
+-					struct pg_synthesis_job *derived = pg_synthesis_disjoint_transport(&synthesis, cj, lj, rj, pj, vj, tj);
+-					assert(derived && !pg_synthesis_result(derived));
 +					size_t jobs = synthesis.jobs.count;
 +					struct pg_synthesis_input c = {.checked = context}, l = {.checked = left}, r = {.checked = right};
 +					struct pg_synthesis_input path = {.checked = paths[i]}, v = {.checked = input}, t = {.checked = expected};
@@ -145,46 +158,45 @@
 +					assert(pg_synthesis_disjoint_transport(&synthesis, c, l, r, path, v, t) == direct);
 +					assert(!pg_synthesis_disjoint_transport(&synthesis, c, l, r, (struct pg_synthesis_input){0}, v, t));
 +					assert(!pg_synthesis_disjoint_transport(&synthesis, c,
-+						(struct pg_synthesis_input){.checked = left, .pending = pj}, r, path, v, t));
++						(struct pg_synthesis_input){.checked = left, .pending = job}, r, path, v, t));
 +					uint64_t steps = synthesis.steps;
 +					pg_synthesis_advance(&synthesis, 0);
 +					assert(synthesis.steps == steps && !pg_synthesis_result(direct) && synthesis.jobs.count == jobs + 1);
- 					struct pg_synthesis_job *cj = pg_synthesis_evidence(&synthesis, context);
- 					struct pg_synthesis_job *lj = pg_synthesis_evidence(&synthesis, left);
- 					struct pg_synthesis_job *rj = pg_synthesis_evidence(&synthesis, right);
- 					struct pg_synthesis_job *tj = pg_synthesis_evidence(&synthesis, expected);
--					struct pg_synthesis_job *derived = pg_synthesis_disjoint_transport(&synthesis, cj, lj, rj, pj, vj, tj);
--					assert(derived && !pg_synthesis_result(derived));
-+					struct pg_synthesis_job *derived = pg_synthesis_disjoint_transport(&synthesis, (struct pg_synthesis_input){.pending = cj}, (struct pg_synthesis_input){.pending = lj}, (struct pg_synthesis_input){.pending = rj}, (struct pg_synthesis_input){.pending = pj}, (struct pg_synthesis_input){.pending = vj}, (struct pg_synthesis_input){.pending = tj});
++					const struct pg_evidence *cj = context;
++					const struct pg_evidence *lj = left;
++					const struct pg_evidence *rj = right;
++					const struct pg_evidence *tj = expected;
++					struct pg_synthesis_job *derived = pg_synthesis_disjoint_transport(&synthesis, (struct pg_synthesis_input){.checked = cj}, (struct pg_synthesis_input){.checked = lj}, (struct pg_synthesis_input){.checked = rj}, (struct pg_synthesis_input){.checked = pj}, (struct pg_synthesis_input){.checked = vj}, (struct pg_synthesis_input){.checked = tj});
 +					assert(derived == direct && !pg_synthesis_result(derived));
  					const struct pg_evidence *eliminated = solve_index_proof(&synthesis, derived, chunk, PG_SYNTHESIS_DONE);
  					assert(pg_evidence_classifier(eliminated) == pg_evidence_subject(expected)->core);
  					assert(pg_term_independent(pg_evidence_subject(eliminated)->core, i ? q : p) == 0);
-@@ -1722,31 +1732,31 @@
+@@ -1722,43 +1733,50 @@
  						pg_prove_return(typing, eliminated));
  					assert(closed && !pg_evidence_context(closed));
  					size_t before = typing->proofs.count, terms = typing->graph->terms.count;
 -					assert(derived == pg_synthesis_disjoint_transport(&synthesis, cj, lj, rj, pj, vj, tj));
-+					assert(derived == pg_synthesis_disjoint_transport(&synthesis, (struct pg_synthesis_input){.pending = cj}, (struct pg_synthesis_input){.pending = lj}, (struct pg_synthesis_input){.pending = rj}, (struct pg_synthesis_input){.pending = pj}, (struct pg_synthesis_input){.pending = vj}, (struct pg_synthesis_input){.pending = tj}));
++					assert(derived == pg_synthesis_disjoint_transport(&synthesis, (struct pg_synthesis_input){.checked = cj}, (struct pg_synthesis_input){.checked = lj}, (struct pg_synthesis_input){.checked = rj}, (struct pg_synthesis_input){.checked = pj}, (struct pg_synthesis_input){.checked = vj}, (struct pg_synthesis_input){.checked = tj}));
  					assert(before == typing->proofs.count && terms == typing->graph->terms.count);
 -					solve_index_proof(&synthesis, pg_synthesis_disjoint_transport(&synthesis, cj, rj, lj, pj, vj, tj),
-+					solve_index_proof(&synthesis, pg_synthesis_disjoint_transport(&synthesis, (struct pg_synthesis_input){.pending = cj}, (struct pg_synthesis_input){.pending = rj}, (struct pg_synthesis_input){.pending = lj}, (struct pg_synthesis_input){.pending = pj}, (struct pg_synthesis_input){.pending = vj}, (struct pg_synthesis_input){.pending = tj}),
++					solve_index_proof(&synthesis, pg_synthesis_disjoint_transport(&synthesis, (struct pg_synthesis_input){.checked = cj}, (struct pg_synthesis_input){.checked = rj}, (struct pg_synthesis_input){.checked = lj}, (struct pg_synthesis_input){.checked = pj}, (struct pg_synthesis_input){.checked = vj}, (struct pg_synthesis_input){.checked = tj}),
  						chunk, PG_SYNTHESIS_REJECTED);
 -					solve_index_proof(&synthesis, pg_synthesis_disjoint_transport(&synthesis, cj, lj, lj, pj, vj, tj),
-+					solve_index_proof(&synthesis, pg_synthesis_disjoint_transport(&synthesis, (struct pg_synthesis_input){.pending = cj}, (struct pg_synthesis_input){.pending = lj}, (struct pg_synthesis_input){.pending = lj}, (struct pg_synthesis_input){.pending = pj}, (struct pg_synthesis_input){.pending = vj}, (struct pg_synthesis_input){.pending = tj}),
++					solve_index_proof(&synthesis, pg_synthesis_disjoint_transport(&synthesis, (struct pg_synthesis_input){.checked = cj}, (struct pg_synthesis_input){.checked = lj}, (struct pg_synthesis_input){.checked = lj}, (struct pg_synthesis_input){.checked = pj}, (struct pg_synthesis_input){.checked = vj}, (struct pg_synthesis_input){.checked = tj}),
  						chunk, PG_SYNTHESIS_UNSUPPORTED);
  					const struct pg_evidence *diagonal = pg_prove_reflexivity(typing,
  						pg_prove_projection(typing, context, nat), left);
 -					solve_index_proof(&synthesis, pg_synthesis_disjoint_transport(&synthesis, cj, lj, rj,
 -						pg_synthesis_evidence(&synthesis, diagonal), vj, tj), chunk, PG_SYNTHESIS_REJECTED);
 -					assert(!pg_synthesis_disjoint_transport(&synthesis, cj, lj, rj, NULL, vj, tj));
-+					solve_index_proof(&synthesis, pg_synthesis_disjoint_transport(&synthesis, (struct pg_synthesis_input){.pending = cj}, (struct pg_synthesis_input){.pending = lj}, (struct pg_synthesis_input){.pending = rj},
-+						(struct pg_synthesis_input){.checked = diagonal}, (struct pg_synthesis_input){.pending = vj}, (struct pg_synthesis_input){.pending = tj}), chunk, PG_SYNTHESIS_REJECTED);
-+					assert(!pg_synthesis_disjoint_transport(&synthesis, (struct pg_synthesis_input){.pending = cj}, (struct pg_synthesis_input){.pending = lj}, (struct pg_synthesis_input){.pending = rj}, (struct pg_synthesis_input){0}, (struct pg_synthesis_input){.pending = vj}, (struct pg_synthesis_input){.pending = tj}));
- 					struct pg_synthesis_job *computed = pg_synthesis_evidence(&synthesis,
- 						pg_prove_return(typing, input));
+-					struct pg_synthesis_job *computed = pg_synthesis_evidence(&synthesis,
+-						pg_prove_return(typing, input));
 -					solve_index_proof(&synthesis, pg_synthesis_disjoint_transport(&synthesis, cj, lj, rj, pj, computed, tj),
-+					solve_index_proof(&synthesis, pg_synthesis_disjoint_transport(&synthesis, (struct pg_synthesis_input){.pending = cj}, (struct pg_synthesis_input){.pending = lj}, (struct pg_synthesis_input){.pending = rj}, (struct pg_synthesis_input){.pending = pj}, (struct pg_synthesis_input){.pending = computed}, (struct pg_synthesis_input){.pending = tj}),
++					solve_index_proof(&synthesis, pg_synthesis_disjoint_transport(&synthesis, (struct pg_synthesis_input){.checked = cj}, (struct pg_synthesis_input){.checked = lj}, (struct pg_synthesis_input){.checked = rj},
++						(struct pg_synthesis_input){.checked = diagonal}, (struct pg_synthesis_input){.checked = vj}, (struct pg_synthesis_input){.checked = tj}), chunk, PG_SYNTHESIS_REJECTED);
++					assert(!pg_synthesis_disjoint_transport(&synthesis, (struct pg_synthesis_input){.checked = cj}, (struct pg_synthesis_input){.checked = lj}, (struct pg_synthesis_input){.checked = rj}, (struct pg_synthesis_input){0}, (struct pg_synthesis_input){.checked = vj}, (struct pg_synthesis_input){.checked = tj}));
++					const struct pg_evidence *computed = pg_prove_return(typing, input);
++					solve_index_proof(&synthesis, pg_synthesis_disjoint_transport(&synthesis, (struct pg_synthesis_input){.checked = cj}, (struct pg_synthesis_input){.checked = lj}, (struct pg_synthesis_input){.checked = rj}, (struct pg_synthesis_input){.checked = pj}, (struct pg_synthesis_input){.checked = computed}, (struct pg_synthesis_input){.checked = tj}),
  						chunk, PG_SYNTHESIS_REJECTED);
  					const struct pg_object *rp = pg_binder(typing->graph);
  					const struct pg_evidence *reverse_context = pg_prove_context_extension(typing, context, rp,
@@ -205,11 +217,20 @@
  					solve_index_proof(&synthesis, reverse, chunk, PG_SYNTHESIS_DONE);
  				}
  				if (injection) {
-@@ -1758,7 +1768,15 @@
- 					struct pg_synthesis_job *rj = pg_synthesis_evidence(&synthesis, right);
- 					struct pg_synthesis_job *nj = pg_synthesis_evidence(&synthesis, nv);
- 					struct pg_synthesis_job *mj = pg_synthesis_evidence(&synthesis, mv);
+ 					struct pg_inductive_instance instance;
+ 					assert(pg_inductive_instance(typing, nat, &instance));
+ 					const struct pg_object *field = pg_evidence_context(pg_data_schema_fields(instance.schema, succ))->binder;
+-					struct pg_synthesis_job *cj = pg_synthesis_evidence(&synthesis, context);
+-					struct pg_synthesis_job *lj = pg_synthesis_evidence(&synthesis, left);
+-					struct pg_synthesis_job *rj = pg_synthesis_evidence(&synthesis, right);
+-					struct pg_synthesis_job *nj = pg_synthesis_evidence(&synthesis, nv);
+-					struct pg_synthesis_job *mj = pg_synthesis_evidence(&synthesis, mv);
 -					struct pg_synthesis_job *derived = pg_synthesis_constructor_field_identity(&synthesis, cj, lj, rj, pj, field, nj, mj);
++					const struct pg_evidence *cj = context;
++					const struct pg_evidence *lj = left;
++					const struct pg_evidence *rj = right;
++					const struct pg_evidence *nj = nv;
++					const struct pg_evidence *mj = mv;
 +					size_t jobs = synthesis.jobs.count;
 +					struct pg_synthesis_job *direct = pg_synthesis_constructor_field_identity(&synthesis,
 +						(struct pg_synthesis_input){.checked = context}, (struct pg_synthesis_input){.checked = left},
@@ -217,17 +238,17 @@
 +						field, (struct pg_synthesis_input){.checked = nv}, (struct pg_synthesis_input){.checked = mv});
 +					assert(direct && synthesis.jobs.count == jobs + 1);
 +					assert(pg_synthesis_work_dependency(direct, 8).checked == nv && direct->inputs[12] == field);
-+					struct pg_synthesis_job *derived = pg_synthesis_constructor_field_identity(&synthesis, (struct pg_synthesis_input){.pending = cj}, (struct pg_synthesis_input){.pending = lj}, (struct pg_synthesis_input){.pending = rj}, (struct pg_synthesis_input){.pending = pj}, field, (struct pg_synthesis_input){.pending = nj}, (struct pg_synthesis_input){.pending = mj});
++					struct pg_synthesis_job *derived = pg_synthesis_constructor_field_identity(&synthesis, (struct pg_synthesis_input){.checked = cj}, (struct pg_synthesis_input){.checked = lj}, (struct pg_synthesis_input){.checked = rj}, (struct pg_synthesis_input){.checked = pj}, field, (struct pg_synthesis_input){.checked = nj}, (struct pg_synthesis_input){.checked = mj});
 +					assert(derived == direct && synthesis.jobs.count == jobs + 1);
  					const struct pg_evidence *proof = solve_index_proof(&synthesis, derived, chunk, PG_SYNTHESIS_DONE);
  					assert(pg_evidence_classifier(proof) == pg_evidence_subject(expected)->core);
  					assert(!pg_term_independent(pg_evidence_subject(proof)->core, i ? q : p));
-@@ -1768,61 +1786,62 @@
+@@ -1768,61 +1786,60 @@
  					transport_scopes(&synthesis, transported);
  					common_rule(typing, transported);
  					size_t before = typing->proofs.count, terms = typing->graph->terms.count;
 -					assert(derived == pg_synthesis_constructor_field_identity(&synthesis, cj, lj, rj, pj, field, nj, mj));
-+					assert(derived == pg_synthesis_constructor_field_identity(&synthesis, (struct pg_synthesis_input){.pending = cj}, (struct pg_synthesis_input){.pending = lj}, (struct pg_synthesis_input){.pending = rj}, (struct pg_synthesis_input){.pending = pj}, field, (struct pg_synthesis_input){.pending = nj}, (struct pg_synthesis_input){.pending = mj}));
++					assert(derived == pg_synthesis_constructor_field_identity(&synthesis, (struct pg_synthesis_input){.checked = cj}, (struct pg_synthesis_input){.checked = lj}, (struct pg_synthesis_input){.checked = rj}, (struct pg_synthesis_input){.checked = pj}, field, (struct pg_synthesis_input){.checked = nj}, (struct pg_synthesis_input){.checked = mj}));
  					assert(before == typing->proofs.count && terms == typing->graph->terms.count);
 -					solve_index_proof(&synthesis, pg_synthesis_constructor_field_identity(&synthesis, cj, lj, rj, pj,
 -						field, mj, nj), chunk, PG_SYNTHESIS_REJECTED);
@@ -235,26 +256,27 @@
 -						pg_binder(typing->graph), nj, mj), chunk, PG_SYNTHESIS_REJECTED);
 -					assert(!pg_synthesis_constructor_field_identity(&synthesis, cj, lj, rj, pj, NULL, nj, mj));
 -					assert(!pg_synthesis_constructor_field_identity(&synthesis, cj, lj, rj, NULL, field, nj, mj));
-+					solve_index_proof(&synthesis, pg_synthesis_constructor_field_identity(&synthesis, (struct pg_synthesis_input){.pending = cj}, (struct pg_synthesis_input){.pending = lj}, (struct pg_synthesis_input){.pending = rj}, (struct pg_synthesis_input){.pending = pj},
-+						field, (struct pg_synthesis_input){.pending = mj}, (struct pg_synthesis_input){.pending = nj}), chunk, PG_SYNTHESIS_REJECTED);
-+					solve_index_proof(&synthesis, pg_synthesis_constructor_field_identity(&synthesis, (struct pg_synthesis_input){.pending = cj}, (struct pg_synthesis_input){.pending = lj}, (struct pg_synthesis_input){.pending = rj}, (struct pg_synthesis_input){.pending = pj},
-+						pg_binder(typing->graph), (struct pg_synthesis_input){.pending = nj}, (struct pg_synthesis_input){.pending = mj}), chunk, PG_SYNTHESIS_REJECTED);
-+					assert(!pg_synthesis_constructor_field_identity(&synthesis, (struct pg_synthesis_input){.pending = cj}, (struct pg_synthesis_input){.pending = lj}, (struct pg_synthesis_input){.pending = rj}, (struct pg_synthesis_input){.pending = pj}, NULL, (struct pg_synthesis_input){.pending = nj}, (struct pg_synthesis_input){.pending = mj}));
-+					assert(!pg_synthesis_constructor_field_identity(&synthesis, (struct pg_synthesis_input){.pending = cj}, (struct pg_synthesis_input){.pending = lj}, (struct pg_synthesis_input){.pending = rj}, (struct pg_synthesis_input){0}, field, (struct pg_synthesis_input){.pending = nj}, (struct pg_synthesis_input){.pending = mj}));
++					solve_index_proof(&synthesis, pg_synthesis_constructor_field_identity(&synthesis, (struct pg_synthesis_input){.checked = cj}, (struct pg_synthesis_input){.checked = lj}, (struct pg_synthesis_input){.checked = rj}, (struct pg_synthesis_input){.checked = pj},
++						field, (struct pg_synthesis_input){.checked = mj}, (struct pg_synthesis_input){.checked = nj}), chunk, PG_SYNTHESIS_REJECTED);
++					solve_index_proof(&synthesis, pg_synthesis_constructor_field_identity(&synthesis, (struct pg_synthesis_input){.checked = cj}, (struct pg_synthesis_input){.checked = lj}, (struct pg_synthesis_input){.checked = rj}, (struct pg_synthesis_input){.checked = pj},
++						pg_binder(typing->graph), (struct pg_synthesis_input){.checked = nj}, (struct pg_synthesis_input){.checked = mj}), chunk, PG_SYNTHESIS_REJECTED);
++					assert(!pg_synthesis_constructor_field_identity(&synthesis, (struct pg_synthesis_input){.checked = cj}, (struct pg_synthesis_input){.checked = lj}, (struct pg_synthesis_input){.checked = rj}, (struct pg_synthesis_input){.checked = pj}, NULL, (struct pg_synthesis_input){.checked = nj}, (struct pg_synthesis_input){.checked = mj}));
++					assert(!pg_synthesis_constructor_field_identity(&synthesis, (struct pg_synthesis_input){.checked = cj}, (struct pg_synthesis_input){.checked = lj}, (struct pg_synthesis_input){.checked = rj}, (struct pg_synthesis_input){0}, field, (struct pg_synthesis_input){.checked = nj}, (struct pg_synthesis_input){.checked = mj}));
  					const struct pg_evidence *refl = pg_prove_reflexivity(typing,
  						pg_prove_projection(typing, context, nat), left);
- 					struct pg_synthesis_job *rfl = pg_synthesis_evidence(&synthesis, refl);
+-					struct pg_synthesis_job *rfl = pg_synthesis_evidence(&synthesis, refl);
 -					solve_index_proof(&synthesis, pg_synthesis_constructor_field_identity(&synthesis, cj, lj, rj, rfl,
 -						field, nj, mj), chunk, PG_SYNTHESIS_REJECTED);
-+					solve_index_proof(&synthesis, pg_synthesis_constructor_field_identity(&synthesis, (struct pg_synthesis_input){.pending = cj}, (struct pg_synthesis_input){.pending = lj}, (struct pg_synthesis_input){.pending = rj}, (struct pg_synthesis_input){.pending = rfl},
-+						field, (struct pg_synthesis_input){.pending = nj}, (struct pg_synthesis_input){.pending = mj}), chunk, PG_SYNTHESIS_REJECTED);
++					const struct pg_evidence *rfl = refl;
++					solve_index_proof(&synthesis, pg_synthesis_constructor_field_identity(&synthesis, (struct pg_synthesis_input){.checked = cj}, (struct pg_synthesis_input){.checked = lj}, (struct pg_synthesis_input){.checked = rj}, (struct pg_synthesis_input){.checked = rfl},
++						field, (struct pg_synthesis_input){.checked = nj}, (struct pg_synthesis_input){.checked = mj}), chunk, PG_SYNTHESIS_REJECTED);
  					struct pg_synthesis_job *diagonal = pg_synthesis_constructor_field_identity(&synthesis,
 -						cj, lj, lj, rfl, field, nj, nj);
-+						(struct pg_synthesis_input){.pending = cj}, (struct pg_synthesis_input){.pending = lj}, (struct pg_synthesis_input){.pending = lj}, (struct pg_synthesis_input){.pending = rfl}, field, (struct pg_synthesis_input){.pending = nj}, (struct pg_synthesis_input){.pending = nj});
++						(struct pg_synthesis_input){.checked = cj}, (struct pg_synthesis_input){.checked = lj}, (struct pg_synthesis_input){.checked = lj}, (struct pg_synthesis_input){.checked = rfl}, field, (struct pg_synthesis_input){.checked = nj}, (struct pg_synthesis_input){.checked = nj});
  					const struct pg_evidence *normal = solve_index_proof(&synthesis,
 -						pg_synthesis_normalize_jobs(&synthesis, cj, diagonal, PG_REDUCTION_NF), chunk, PG_SYNTHESIS_DONE);
 +						pg_synthesis_reduction_request(&synthesis,
-+							(struct pg_synthesis_input){.pending = cj}, (struct pg_synthesis_input){.pending = diagonal}, PG_REDUCTION_NF, 0), chunk, PG_SYNTHESIS_DONE);
++							(struct pg_synthesis_input){.checked = cj}, (struct pg_synthesis_input){.pending = diagonal}, PG_REDUCTION_NF, 0), chunk, PG_SYNTHESIS_DONE);
  					assert(pg_alpha_equal(pg_evidence_subject(normal)->core, pg_evidence_subject(input)->core) == 1);
  				}
  				if (chunk == 1) results[i] = checked;
@@ -289,31 +311,33 @@
 -				fj, rs, ls, 1, &pj, vj, PG_IDENTITY_RIGHT), chunk, PG_SYNTHESIS_REJECTED);
 -			solve_index_proof(&synthesis, pg_synthesis_family_transport_jobs(&synthesis,
 -				fj, ls, rs, 1, &refl_job, vj, PG_IDENTITY_RIGHT), chunk, PG_SYNTHESIS_REJECTED);
+-			struct pg_synthesis_job *wrong = pg_synthesis_evidence(&synthesis,
+-				pg_prove_return(typing, input));
+-			solve_index_proof(&synthesis, pg_synthesis_family_transport_jobs(&synthesis,
+-				fj, ls, rs, 1, &pj, wrong, PG_IDENTITY_RIGHT), chunk, PG_SYNTHESIS_REJECTED);
+-			struct pg_synthesis_job *computation_type = pg_synthesis_evidence(&synthesis,
+-				pg_prove_return_type(typing, family));
+-			solve_index_proof(&synthesis, pg_synthesis_family_transport_jobs(&synthesis,
+-				computation_type, ls, rs, 1, &pj, vj, PG_IDENTITY_RIGHT), chunk, PG_SYNTHESIS_REJECTED);
+-			assert(!pg_synthesis_family_transport_jobs(&synthesis, fj, ls, rs, 1, NULL, vj, PG_IDENTITY_RIGHT));
+-			assert(!pg_synthesis_family_transport_jobs(&synthesis, fj, ls, rs, 1, &pj, vj, 2));
 +			struct pg_synthesis_input path_input = {.checked = paths[0]};
 +			solve_index_proof(&synthesis, pg_synthesis_family_transport(&synthesis,
 +				family_input, rs, ls, 1, &path_input, value_input, PG_IDENTITY_RIGHT), chunk, PG_SYNTHESIS_REJECTED);
 +			solve_index_proof(&synthesis, pg_synthesis_family_transport(&synthesis,
 +				family_input, ls, rs, 1, &reflexive_input, value_input, PG_IDENTITY_RIGHT), chunk, PG_SYNTHESIS_REJECTED);
- 			struct pg_synthesis_job *wrong = pg_synthesis_evidence(&synthesis,
- 				pg_prove_return(typing, input));
--			solve_index_proof(&synthesis, pg_synthesis_family_transport_jobs(&synthesis,
--				fj, ls, rs, 1, &pj, wrong, PG_IDENTITY_RIGHT), chunk, PG_SYNTHESIS_REJECTED);
++			const struct pg_evidence *wrong = pg_prove_return(typing, input);
 +			solve_index_proof(&synthesis, pg_synthesis_family_transport(&synthesis,
-+				family_input, ls, rs, 1, &path_input, (struct pg_synthesis_input){.pending = wrong}, PG_IDENTITY_RIGHT), chunk, PG_SYNTHESIS_REJECTED);
- 			struct pg_synthesis_job *computation_type = pg_synthesis_evidence(&synthesis,
- 				pg_prove_return_type(typing, family));
--			solve_index_proof(&synthesis, pg_synthesis_family_transport_jobs(&synthesis,
--				computation_type, ls, rs, 1, &pj, vj, PG_IDENTITY_RIGHT), chunk, PG_SYNTHESIS_REJECTED);
--			assert(!pg_synthesis_family_transport_jobs(&synthesis, fj, ls, rs, 1, NULL, vj, PG_IDENTITY_RIGHT));
--			assert(!pg_synthesis_family_transport_jobs(&synthesis, fj, ls, rs, 1, &pj, vj, 2));
++				family_input, ls, rs, 1, &path_input, (struct pg_synthesis_input){.checked = wrong}, PG_IDENTITY_RIGHT), chunk, PG_SYNTHESIS_REJECTED);
++			const struct pg_evidence *computation_type = pg_prove_return_type(typing, family);
 +			solve_index_proof(&synthesis, pg_synthesis_family_transport(&synthesis,
-+				(struct pg_synthesis_input){.pending = computation_type}, ls, rs, 1, &path_input, value_input, PG_IDENTITY_RIGHT), chunk, PG_SYNTHESIS_REJECTED);
++				(struct pg_synthesis_input){.checked = computation_type}, ls, rs, 1, &path_input, value_input, PG_IDENTITY_RIGHT), chunk, PG_SYNTHESIS_REJECTED);
 +			assert(!pg_synthesis_family_transport(&synthesis, family_input, ls, rs, 1, NULL, value_input, PG_IDENTITY_RIGHT));
 +			assert(!pg_synthesis_family_transport(&synthesis, family_input, ls, rs, 1, &path_input, value_input, 2));
  			pg_synthesis_destroy(&synthesis);
  			pg_whnf_work_destroy(&work);
  		}
-@@ -1899,8 +1918,8 @@
+@@ -1899,8 +1916,8 @@
  		assert(pg_prove_derivation(typing, input.rule, &parameters, 2, premises) == normalized[i]);
  		struct pg_synthesis synthesis;
  		assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
@@ -324,12 +348,23 @@
  		while (pg_synthesis_status(job) == PG_SYNTHESIS_PENDING) {
  			pg_synthesis_advance(&synthesis, chunk);
  			assert(synthesis.steps < 10000);
-@@ -2053,7 +2072,7 @@
+@@ -2045,13 +2062,13 @@
+ 		for (size_t i = 0; i < 2; ++i) {
+ 			const struct pg_evidence *lv = pg_prove_projection(typing, context, values[i]);
+ 			const struct pg_evidence *rv = pg_prove_projection(typing, context, reverse[i]);
+-			struct pg_synthesis_job *inputs[] = {pg_synthesis_evidence(&synthesis, context),
+-				pg_synthesis_evidence(&synthesis, pg_prove_projection(typing, context, left)),
+-				pg_synthesis_evidence(&synthesis, pg_prove_projection(typing, context, right)),
+-				pg_synthesis_evidence(&synthesis, pg_prove_variable(typing, context, p)),
+-				pg_synthesis_evidence(&synthesis, lv), pg_synthesis_evidence(&synthesis, rv)};
++			struct pg_synthesis_input inputs[] = {{.checked = context},
++				{.checked = pg_prove_projection(typing, context, left)},
++				{.checked = pg_prove_projection(typing, context, right)},
++				{.checked = pg_prove_variable(typing, context, p)},
++				{.checked = lv}, {.checked = rv}};
  			for (size_t j = 0; j < 6; ++j)
- 				solve_index_proof(&synthesis, inputs[j], chunk, PG_SYNTHESIS_DONE);
+-				solve_index_proof(&synthesis, inputs[j], chunk, PG_SYNTHESIS_DONE);
++				assert(pg_synthesis_input_owned(&synthesis, inputs[j]));
  			jobs[i] = pg_synthesis_constructor_field_identity(&synthesis,
--				inputs[0], inputs[1], inputs[2], inputs[3], fields[i], inputs[4], inputs[5]);
-+				(struct pg_synthesis_input){.pending = inputs[0]}, (struct pg_synthesis_input){.pending = inputs[1]}, (struct pg_synthesis_input){.pending = inputs[2]}, (struct pg_synthesis_input){.pending = inputs[3]}, fields[i], (struct pg_synthesis_input){.pending = inputs[4]}, (struct pg_synthesis_input){.pending = inputs[5]});
+ 				inputs[0], inputs[1], inputs[2], inputs[3], fields[i], inputs[4], inputs[5]);
  			if (!i) {
- 				/* Scheduling endpoint normalization must not first construct the
- 				 * field identity/reflexivity on every subsequent wakeup. */

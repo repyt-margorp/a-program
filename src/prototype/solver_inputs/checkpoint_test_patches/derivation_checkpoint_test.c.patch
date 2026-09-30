@@ -168,12 +168,14 @@
  	assert(!fseek(file, 6, SEEK_SET) && fputc(1, file) != EOF);
  	rewind(file);
  	assert(!pg_artifact_derivations_read(file, &other->graph, 100));
-@@ -538,7 +541,7 @@
+@@ -537,8 +540,8 @@
+ static void header_boundaries(void)
  {
  	struct pg_program *p = empty(), *q = empty();
- 	struct pg_synthesis_job *evidence = pg_synthesis_evidence(&p->synthesis, pg_prove_empty_context(&p->typing));
+-	struct pg_synthesis_job *evidence = pg_synthesis_evidence(&p->synthesis, pg_prove_empty_context(&p->typing));
 -	struct pg_synthesis_job *rule = pg_synthesis_plain_rule(&p->synthesis, PG_UNIVERSE_FORM, NULL, 1, &evidence);
-+	struct pg_synthesis_job *rule = pg_synthesis_plain_rule_inputs(&p->synthesis, PG_UNIVERSE_FORM, NULL, 1, &(struct pg_synthesis_input){.pending = evidence});
++	const struct pg_evidence *context = pg_prove_empty_context(&p->typing);
++	struct pg_synthesis_job *rule = pg_synthesis_plain_rule_inputs(&p->synthesis, PG_UNIVERSE_FORM, NULL, 1, &(struct pg_synthesis_input){.checked = context});
  	/* This borrowed header has no trailing premises[] allocation. */
  	const struct pg_derivation_input *header = pg_synthesis_plain_derivation(rule);
  	const struct pg_derivation_input *headers[] = {header, header};
