@@ -261,6 +261,9 @@ baseline described above. Concurrent accepted-source edits remain excluded.
 - [x] Migrate classifier operands and structural readers to direct inputs.
   Normalization borrows the existing classifier query rather than allocating a
   classifier-formation Job. Keep completed-input sharing and pending identities.
+- [x] Migrate nominal IADT lookup to direct inputs; retain its existing query
+  across suspension instead of repeatedly obtaining normalization evidence.
+  Preserve nominal formation, canonical checked sharing and stable pending keys.
 - [ ] Finish scopes, known-family result adapters, other context and Identity
   consumers, remove `EVIDENCE_JOB`, then remove duplicated query scheduling.
   The remaining adapter recognition is temporary, not the final architecture.
@@ -502,3 +505,49 @@ samples are unchanged. These are live-store counts, not artifact bytes or timing
 | `checkpoint_tests/definition_checkpoint_test.c` | 1 | 1 | 0 |
 
 No wire fields, Core tags, acceptance table or backend metadata were added.
+
+### SE1 IADT Lookup Inputs (2026-09-30)
+
+**Objective (Code):** parent `6b9cdaa` plus this prototype, with the same isolated
+baseline. Nominal lookup required an Evidence adapter even for completed types.
+While its typed query was pending, each dispatch repeated normalization-proof
+construction and query lookup. These were interned lookups, not necessarily new
+proof allocations. Its stored instance was a borrowed pointer, not a copied ADT.
+
+**Assessment:** pass checked data directly, retain the existing typed query,
+and read the nominal instance from its owner. This removes no-work adapters but
+does not remove the outer normalization/lookup worker or producer forwarding.
+The pending-key API now retains the original producer identity after completion;
+checked-input calls still share the completed canonical operation. Constructor,
+Match and family callers already holding checked inputs use them directly.
+No new owner, compatibility API or artifact field is introduced.
+
+**Plan / Results:** fresh O2 `make check` and all seven checkpoint/namespace
+targets pass, including the general QuickSort ordinary-result theorem and
+negative/image controls. Focused tests cover one worker and zero adapters for a
+checked nominal input, shared queries across consumers, at most one query advance
+per dispatch, zero fuel, completed reuse, stable pending aliases and malformed/
+foreign inputs. Fresh overlay source/tests equal the tested work tree exactly.
+ASan/UBSan synthesis, IADT and constructor-checkpoint tests also pass.
+The public partition gate still fails at 100+100, 1000+1000, 1600+1600 and
+completed+0. This is not SE1 or artifact-plan completion.
+
+| Completed input | Jobs before / after | Evidence Jobs before / after | Job bytes before / after |
+| --- | ---: | ---: | ---: |
+| List-09 | 911 / 908 | 35 / 32 | 156,376 / 156,104 |
+| General QuickSort Local Sorted | 56,712 / 56,428 | 2,733 / 2,449 | 9,655,672 / 9,627,896 |
+
+Steps (2,726 / 809,533), Term, occurrence, Evidence and premise-edge counts are
+unchanged; repeated completed samples do not grow. No artifact-size or timing
+improvement is claimed. The remaining 2,449 adapters and independent workers
+are still SE1 work, not justified by this smaller count.
+
+| Applied-code delta from `6b9cdaa` | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `synthesis_iadt.c` | 34 | 29 | +5 |
+| `synthesis.h` | 3 | 2 | +1 |
+| `synthesis.c` | 10 | 6 | +4 |
+| `synthesis_function.c` | 2 | 1 | +1 |
+| Implementation total | 49 | 38 | +11 |
+| `tests/synthesis.c` | 73 | 8 | +65 |
+| `tests/source_io.c` | 2 | 1 | +1 |

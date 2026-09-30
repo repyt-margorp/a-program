@@ -48,7 +48,20 @@
  	int require_closed,
  	int (*observe)(void *, const struct pg_derivation_input *, const struct pg_effect_inference *),
  	void *owner, const struct pg_derivation_input *const **result);
-@@ -664,12 +684,18 @@
+@@ -637,9 +657,10 @@
+ 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
+ 	const struct pg_evidence *generalization, const struct pg_syntax *clause);
+ /* Recover the selected nominal declaration and parameter map, never by Core
+- * lookup. Pending producers converge on the same accepted-evidence request. */
++ * lookup. Pending identities remain stable; their work borrows the canonical
++ * checked-input query rather than wrapping completed evidence in a Job. */
+ struct pg_synthesis_job *pg_synthesis_inductive_instance(struct pg_synthesis *synthesis,
+-	struct pg_synthesis_job *type);
++	struct pg_synthesis_input type);
+ int pg_synthesis_inductive_instance_result(const struct pg_synthesis_job *job,
+ 	struct pg_inductive_instance *output);
+ /* Abstract an independently synthesized body over an accepted context suffix.
+@@ -664,12 +685,18 @@
   * Completed incompatible inputs are rejected without exposing partial proof. */
  struct pg_synthesis_job *pg_synthesis_reindex_jobs(struct pg_synthesis *synthesis,
  	struct pg_synthesis_job *substitution, struct pg_synthesis_job *proof);
@@ -67,7 +80,7 @@
  /* Source annotation over independently synthesized inputs. Applies the same
   * source-reference/polarity adaptations as expr :: type, then post-checks.
   * No syntax fabrication or expected-type feedback into either producer. */
-@@ -752,33 +778,21 @@
+@@ -752,33 +779,21 @@
  	const struct pg_dimension_map *target_face, const struct pg_dimension_map **intrinsic);
  /* Extend a checked substitution with an independently typed value. The
   * expected dependent field type is reindexed and compared using shared work;
@@ -111,7 +124,7 @@
  /* Instantiate Self, then lift each constructor field. Formation and parameter
   * substitution are pending producers; fresh field binders belong to this job. */
  struct pg_synthesis_job *pg_synthesis_constructor_scope(struct pg_synthesis *synthesis,
-@@ -837,7 +851,8 @@
+@@ -837,7 +852,8 @@
  	const struct pg_evidence *context, const struct pg_evidence *computation);
  /* Normalize an accepted term or formation using shared pure WHNF work, then
   * retain typing through directed subject-reduction evidence. The immutable
@@ -121,7 +134,7 @@
  struct pg_synthesis_job *pg_synthesis_normalize(struct pg_synthesis *synthesis,
  	const struct pg_evidence *context, const struct pg_evidence *proof);
  /* Strong pure normalization of the same typed inputs, with a distinct job
-@@ -857,8 +872,8 @@
+@@ -857,8 +873,8 @@
  	enum pg_reduction_kind kind);
  /* Immutable request operands, for retention without serializing acceptance. */
  int pg_synthesis_normalization_input(const struct pg_synthesis *synthesis,

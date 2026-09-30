@@ -50,8 +50,10 @@ completed Jobs. The duplicate known/pending substitution APIs are removed.
 Classifier operands now use direct inputs and normalization borrows the existing
 typed query, without its former classifier-formation Job. Removing forwarding
 alone lost completed-result sharing and was rejected; that ownership remains
-open. These changes do not repair the public split-fuel failures or authorize a
-new checkpoint/backend codec.
+open. Nominal IADT lookup also takes direct inputs and retains its typed query
+across suspension, without an Evidence adapter or repeated normalization-proof
+lookup. These changes do not repair the public split-fuel failures or authorize
+a new checkpoint/backend codec.
 
 Do not extend the binding/domain checkpoint codec or AP6 while this gate is
 open. Existing passing checkpoint fixtures remain historical evidence, not a

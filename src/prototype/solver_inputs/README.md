@@ -41,6 +41,9 @@ the caller's dispatch, preventing two advances through a completion boundary.
 Classifier formation and normalization also accept direct typed operands;
 structural readers inspect those inputs without recreating Jobs. Normalization
 borrows the existing classifier query instead of a classifier-formation Job.
+Nominal IADT recovery accepts direct typed inputs and retains the existing
+inductive query. It no longer wraps the input in an Evidence Job or repeatedly
+reconstructs its normalization proof while that query is suspended.
 
 ### Assessment
 

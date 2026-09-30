@@ -1,6 +1,16 @@
 --- a/source_io.c
 +++ b/source_io.c
-@@ -2591,8 +2591,61 @@
+@@ -100,7 +100,8 @@
+ 		assert(fiber && pg_synthesis_result(fiber));
+ 		struct pg_synthesis_job *normalized = pg_synthesis_normalize(&p->synthesis,
+ 			pg_prove_empty_context(&p->typing), pg_synthesis_result(fiber));
+-		struct pg_synthesis_job *recovery = pg_synthesis_inductive_instance(&p->synthesis, normalized);
++		struct pg_synthesis_job *recovery = pg_synthesis_inductive_instance(&p->synthesis,
++			(struct pg_synthesis_input){.pending = normalized});
+ 		assert(recovery);
+ 		while (pg_synthesis_status(recovery) == PG_SYNTHESIS_PENDING) {
+ 			assert(p->synthesis.steps < 100000);
+@@ -2591,8 +2592,61 @@
  	puts("source materialized roots: inert read/resave, shared input origins and explicit local NF cache reuse passed");
  }
  
@@ -62,7 +72,7 @@
  	normalization_origin();
  	retained_normalization();
  	const char *text = "{{ id:=&(\\A:@ => \\x:A => x); }}.id";
-@@ -2621,17 +2674,17 @@
+@@ -2621,17 +2675,17 @@
  			struct pg_synthesis_job *const *loaded;
  			struct pg_program *q = pg_sources_read(file, 100000, &count, &loaded);
  			assert(q && count == 7 && !q->synthesis.steps && loaded[1] == loaded[3]);
