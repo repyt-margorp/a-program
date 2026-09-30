@@ -41,7 +41,7 @@
  
  static int reindex_inputs(struct pg_synthesis *synthesis,
  	const struct pg_evidence *substitution, const struct pg_evidence *proof)
-@@ -49,60 +31,55 @@
+@@ -49,60 +31,53 @@
  	return pg_evidence_context(proof) == pg_evidence_context_map(substitution)->source;
  }
  
@@ -56,8 +56,6 @@
 -	return pg_synthesis_work_request(synthesis, REINDEX_JOB, 2, inputs);
 +	if (!pg_synthesis_input_owned(synthesis, substitution)) return NULL;
 +	if (!pg_synthesis_input_owned(synthesis, proof)) return NULL;
-+	substitution = pg_synthesis_input_direct(substitution);
-+	proof = pg_synthesis_input_direct(proof);
 +	const void *inputs[] = {substitution.checked, substitution.pending, proof.checked, proof.pending};
 +	return pg_synthesis_work_request(synthesis, REINDEX_JOB, 4, inputs);
  }
@@ -129,7 +127,7 @@
  		if (!reindex_inputs(synthesis, substitution, proof)) {
  			pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
  		}
-@@ -123,8 +100,7 @@
+@@ -123,8 +98,7 @@
  		break;
  	case PG_SUBSTITUTION_DONE:
  		job->result = pg_prove_reindex(synthesis->typing,
@@ -139,7 +137,7 @@
  		pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
  		break;
  	}
-@@ -136,8 +112,8 @@
+@@ -136,8 +110,8 @@
  	if (!local->checked) {
  		struct pg_synthesis_job *type = pg_synthesis_reindex(synthesis,
  			job->inputs[0], pg_context_declared_input(synthesis->typing, job->inputs[1]));
@@ -150,7 +148,7 @@
  	}
  	if (pg_synthesis_await(synthesis, job, local->checked)) return;
  	job->result = pg_prove_substitution_pair(synthesis->typing,
-@@ -145,45 +121,44 @@
+@@ -145,45 +119,44 @@
  	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
  }
  
@@ -180,8 +178,8 @@
 -	size_t count, struct pg_synthesis_job *const *images)
 +	const struct substitution_key *key = input;
 +	size_t offset = index / 2;
-+	struct pg_synthesis_input value = pg_synthesis_input_direct(
-+		offset < 2 ? key->contexts[offset] : key->images[offset - 2]);
++	struct pg_synthesis_input value = 
++		offset < 2 ? key->contexts[offset] : key->images[offset - 2];
 +	return index % 2 ? (const void *)value.pending : value.checked;
 +}
 +
@@ -222,7 +220,7 @@
  			if (!contexts[i] || pg_evidence_judgement(contexts[i]) != PG_JUDGEMENT_CONTEXT) goto rejected;
  		}
  		size_t arity;
-@@ -196,10 +171,11 @@
+@@ -196,10 +169,11 @@
  		local->map = pg_prove_substitution(synthesis->typing, source, contexts[1], 0, NULL);
  		if (!local->map) goto error;
  	}
@@ -238,7 +236,7 @@
  		++local->next;
  	}
  	if (local->next == count) {
-@@ -207,9 +183,9 @@
+@@ -207,9 +181,9 @@
  		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_DONE);
  		return;
  	}
@@ -251,7 +249,7 @@
  	if (!image || !pg_evidence_subject(image)) {
  		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
  	}
-@@ -225,7 +201,7 @@
+@@ -225,7 +199,7 @@
  		if (!image || pg_evidence_judgement(image) != PG_JUDGEMENT_VALUE) goto rejected;
  	}
  	local->pair = pg_synthesis_substitution_pair(synthesis, local->map, extension, image);

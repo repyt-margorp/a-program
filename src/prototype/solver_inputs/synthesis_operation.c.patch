@@ -1,6 +1,6 @@
 --- a/synthesis_operation.c
 +++ b/synthesis_operation.c
-@@ -36,25 +36,27 @@
+@@ -36,25 +36,25 @@
  	return (struct pg_synthesis_projection){.rule = rule, .preparing = !rule, .value_kind = -1};
  }
  
@@ -16,8 +16,6 @@
  	if (!pg_operation_label_types(label, &a, &b)) return NULL;
 -	const void *inputs[] = {label, payload, response};
 -	return pg_synthesis_work_request(synthesis, OPERATION_JOB, 3, inputs);
-+	payload = pg_synthesis_input_direct(payload);
-+	response = pg_synthesis_input_direct(response);
 +	const void *inputs[] = {label, payload.checked, payload.pending, response.checked, response.pending};
 +	return pg_synthesis_work_request(synthesis, OPERATION_JOB, 5, inputs);
  }
@@ -38,7 +36,7 @@
  	return job;
  }
  
-@@ -63,17 +65,19 @@
+@@ -63,17 +63,19 @@
  {
  	const struct operation_work *local = operation_work(job);
  	if (!synthesis || !local || !input || job->owner != synthesis->owner_key) return -1;
@@ -62,7 +60,7 @@
  	struct operation_work *local = operation_work(job);
  	if (local->allocation) return local->allocation == allocation ? job : NULL;
  	if (local->rule) return NULL;
-@@ -85,15 +89,19 @@
+@@ -85,15 +87,19 @@
  {
  	struct operation_work *local = operation_work(job);
  	if (!local->rule) {
@@ -88,7 +86,7 @@
  		if (!local->allocation) {
  			const struct pg_context *allocation = pg_context_bind(synthesis->typing, NULL,
  				pg_binder(synthesis->typing->graph), pg_evidence_subject(pg_operation_payload_type(operation))->core, PG_JUDGEMENT_VALUE);
-@@ -106,21 +114,24 @@
+@@ -106,21 +112,24 @@
  		 * checked contexts from the signature, not the saved field types. */
  		const struct pg_object *a = local->allocation->parent->binder;
  		const struct pg_object *b = local->allocation->binder;

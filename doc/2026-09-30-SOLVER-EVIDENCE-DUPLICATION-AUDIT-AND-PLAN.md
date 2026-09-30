@@ -296,6 +296,19 @@ Evidence is a checked-admission receipt borrowing a conclusion, not the
 object-language witness Term itself. Preserve that admission distinction while
 removing reconstructible premise edges; do not maintain a second witness program.
 
+2026-10-01 assessment clarification (agent): preserve required information, not
+the current containers. Neither an independent Job database nor a separate full
+Evidence DAG follows from the theory. Checked admission can belong to the
+canonical scoped typed-use owner; conversion certificates and genuinely
+independent premises must remain reachable wherever that admission is stored.
+Do not claim the present Evidence representation is mandatory merely because
+checking is necessary. A descriptive Term or classifier is not itself checked
+admission. Likewise, a frontier can be rebuilt from unfinished constraints only
+if those constraints retain the interrupted operation's actual cursor. Several
+current Jobs are that sole owner, not wrappers over another constraint record.
+The refactor must consolidate them with the construction/checking operation,
+not create a parallel ConstraintDB and keep the same stateful Jobs above it.
+
 Do not declare SE1 complete merely because completed Evidence adapters disappear:
 the remaining ownership inventory and frontier/resumption gates below still apply.
 Use canonical constraints and their owner-local continuation as the frontier
@@ -506,13 +519,68 @@ baseline described above. Concurrent accepted-source edits remain excluded.
   callers. Rule export accepts the same borrowed checked/pending roots; ordinary
   program and normalization/constructor checkpoint consumers need no adapters.
   See the direct export milestone below for verification status.
-- [ ] Remove `EVIDENCE_JOB`, remaining test callers and adapter recognition.
+- [x] Remove `EVIDENCE_JOB`, remaining test callers and adapter recognition.
   Checked roots must use the same borrowed inputs, not a replacement completed
-  worker. Tests
-  must use real pending owners where suspension is the property under test.
-  Reading may still return real unchecked producers. Then remove duplicated
-  query scheduling.
-  The remaining adapter recognition is temporary, not the final architecture.
+  worker. Tests use real pending owners where suspension is the property under
+  test. Reading still returns real unchecked producers. See the deletion
+  milestone below; this completes only the adapter-removal prerequisite.
+- [ ] Consolidate remaining duplicate query scheduling and forwarding under
+  canonical unfinished-operation owners. Inventory keys, inputs, cursors,
+  results and wakeup consumers; preserve provisional classifier discovery.
+  No second Constraint/Task graph underneath retained stateful Jobs. SE1 remains
+  open until the ownership and resumption gates, not just adapter removal, pass.
+
+### SE1 Completed-Input Adapter Deletion (2026-10-01)
+
+#### Subjective (User)
+
+English paraphrase of the latest follow-up: resume the Solve constraint frontier,
+not another nearly identical Job/Evidence graph above Term and typing. Separate
+required information from the current containers; no production promotion is
+authorized by this inspection request.
+
+#### Objective (Code)
+
+Parent `f589e40`; implementation comparison is the verified `55d7781` overlay,
+assembled on accepted-source snapshot `e716232`. The prototype removes the factory,
+role, recognition API and remaining input-unwrapping helper. All 65 synthesis-test
+factory calls and the program/definition-checkpoint recognition paths are gone.
+The read-only census also drops the obsolete adapter API and its two columns.
+The source/test/checkpoint/artifact-test trees match fresh patch assembly exactly.
+
+#### Assessment
+
+Checked inputs remain borrowed receipts, not replacement completed workers.
+Pending-owner tests now use actual unfinished projection/query operations,
+retaining cross-store, scoped-use, wrong-role and zero-fuel rejection checks.
+List and QuickSort census values match the parent in every remaining column:
+875/53885 Jobs and 2725/809426 steps. Compiler callers already stopped creating
+adapters in earlier milestones; deleting the remaining API does not reduce these
+runtime counts and is not completion of the frontier refactor. General classifier
+wrapping, producer forwarding and SE3 premise overlap still require consolidation.
+
+#### Plan
+
+- [x] Remove the adapter implementation and every candidate caller/recognizer.
+- [x] O2 synthesis/program tests; ASan/UBSan synthesis/program/source-I/O and
+  normalization tests; semantic gate and all seven checkpoint targets pass.
+- [x] Acceptance commands all pass across two runs of the frozen candidate.
+  The first aggregate exited 2 on the obsolete census API and stopped scheduling
+  `check`/`check-examples`. After correcting the census, both remaining targets
+  exit 0; all 342 acceptance commands are accounted for across the logs. The
+  first aggregate is not relabeled as a successful run.
+- [x] Current-worktree overlay applies; O2 Core/IADT/synthesis tests pass with
+  the unrelated local Context/IADT edits. Those edits are not in this milestone.
+- [x] Public split-fuel gate rerun: still exits 2, with the same four failing
+  partitions (`100+100`, `1000+1000`, `1600+1600`, `2725+0`). The report exactly
+  matches the parent's; zero-fuel and early partitions pass. Overall gate is open.
+
+Evidence: `/tmp/a-program-adapter-removal-{acceptance,acceptance-remainder,checkpoints}.log`,
+`/tmp/a-program-adapter-removal-asan-*.log`, List/QuickSort census TSVs and
+`/tmp/a-program-adapter-removal-partitions/partitions.tsv` (ephemeral work files).
+[Per-file source/test deltas](../src/prototype/solver_inputs/adapter-removal-lines.tsv)
+are +163/-341, net -178: implementation -97, audit -6, tests -75; patch-file
+churn and documentation are excluded. SE1-SE5 are not marked complete.
 
 ### SE1 Source-I/O Receipt Inputs (2026-10-01)
 

@@ -275,8 +275,8 @@
 -				if (jobs[i]->inputs[3 + k] != jobs[c->links[i].slots[k]]) return 0;
 +			for (size_t k = 0; k < header->count; ++k) {
 +				struct pg_synthesis_input actual = pg_synthesis_work_dependency(jobs[i], 3 + 2 * k);
-+				struct pg_synthesis_input expected = pg_synthesis_input_direct(
-+					linked_input(c, c->links[i].slots[k], jobs, dependencies));
++				struct pg_synthesis_input expected =
++					linked_input(c, c->links[i].slots[k], jobs, dependencies);
 +				if (actual.checked != expected.checked || actual.pending != expected.pending) return 0;
 +			}
  		}

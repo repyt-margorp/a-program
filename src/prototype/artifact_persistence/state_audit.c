@@ -28,7 +28,7 @@ static void census(const struct pg_program *p, uint64_t requested)
 	size_t proofs = p->typing.proofs.count, occurrences = p->typing.occurrences.count;
 	size_t jobs = s->jobs.count;
 	uint64_t steps = s->steps;
-	size_t pending = 0, done = 0, adapters = 0, adapter_bytes = 0, job_bytes = 0;
+	size_t pending = 0, done = 0, job_bytes = 0;
 	size_t rules = 0, lazy = 0, outputs = 0, structural = 0, premise_edges = 0, overlap = 0;
 	struct pg_dag results;
 	assert(!pg_dag_init(&results, NULL, NULL));
@@ -44,12 +44,6 @@ static void census(const struct pg_program *p, uint64_t requested)
 			rules += pg_synthesis_plain_derivation(job) != NULL;
 			lazy += pg_synthesis_derivation_input(job) != NULL;
 			structural += job->role->structure != NULL;
-			const struct pg_evidence *evidence = pg_synthesis_evidence_input(job);
-			if (evidence) {
-				assert(job->status == PG_SYNTHESIS_DONE && job->result == evidence);
-				assert(!job->next && !job->waiters && !job->dependency);
-				++adapters; adapter_bytes += bytes;
-			}
 			if (job->result) { ++outputs; assert(!pg_dag_add(&results, job->result)); }
 		}
 	}
@@ -63,9 +57,9 @@ static void census(const struct pg_program *p, uint64_t requested)
 				overlap += typed_edge(subject, pg_evidence_subject(pg_evidence_premise(proof, j)));
 		}
 	}
-	printf("%" PRIu64 "\t%" PRIu64 "\t%d\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\n",
+	printf("%" PRIu64 "\t%" PRIu64 "\t%d\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\n",
 		requested, steps, pg_synthesis_status(p->root), terms, occurrences, proofs,
-		jobs, pending, done, adapters, adapter_bytes, job_bytes, rules, lazy, structural,
+		jobs, pending, done, job_bytes, rules, lazy, structural,
 		outputs, results.count, premise_edges, overlap);
 	pg_dag_destroy(&results);
 	assert(steps == s->steps && jobs == s->jobs.count && proofs == p->typing.proofs.count);
@@ -87,7 +81,7 @@ int main(int argc, char **argv)
 	struct pg_program *p = pg_program_create(source, (size_t)length, PG_DEFINITION_IMPLICIT_THUNK);
 	free(source);
 	assert(p && p->root);
-	puts("requested_fuel\tsteps\tstatus\tterms\toccurrences\tevidence\tjobs\tpending\tdone\tevidence_adapters\tadapter_bytes\tjob_bytes\trules\tlazy_inputs\tstructure_capable_jobs\tresult_refs\tunique_results\tpremise_edges\ttyped_overlap");
+	puts("requested_fuel\tsteps\tstatus\tterms\toccurrences\tevidence\tjobs\tpending\tdone\tjob_bytes\trules\tlazy_inputs\tstructure_capable_jobs\tresult_refs\tunique_results\tpremise_edges\ttyped_overlap");
 	uint64_t previous = 0;
 	for (int i = 2; i < argc; ++i) {
 		char *end;

@@ -18,7 +18,7 @@
  	const struct pg_evidence *maps[2];
  	const struct pg_evidence **declarations, **paths;
  	size_t count, common, next;
-@@ -40,93 +40,94 @@
+@@ -40,93 +40,90 @@
  	.size = sizeof(struct instance_work), .advance = instance_step}};
  
  struct pg_synthesis_job *pg_synthesis_identity_instance(struct pg_synthesis *synthesis,
@@ -37,9 +37,6 @@
 +	if (!pg_synthesis_input_owned(synthesis, family)) return NULL;
 +	if (!pg_synthesis_input_owned(synthesis, left)) return NULL;
 +	if (!pg_synthesis_input_owned(synthesis, right)) return NULL;
-+	family = pg_synthesis_input_direct(family);
-+	left = pg_synthesis_input_direct(left);
-+	right = pg_synthesis_input_direct(right);
 +	const void *inputs[] = {context, family.checked, family.pending,
 +		left.checked, left.pending, right.checked, right.pending};
 +	return pg_synthesis_work_request(synthesis, INSTANCE_JOB, 7, inputs);
@@ -56,7 +53,6 @@
 +	if (!pg_synthesis_input_owned(synthesis, input)) return NULL;
 +	if (!pg_evidence_owned_by(context, synthesis->typing)) return NULL;
 +	if (pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT) return NULL;
-+	input = pg_synthesis_input_direct(input);
 +	const void *inputs[] = {context, input.checked, input.pending};
 +	return pg_synthesis_work_request(synthesis, REFLEXIVITY_JOB, 3, inputs);
  }
@@ -86,7 +82,7 @@
 -	return pg_synthesis_work_request_inputs(synthesis, FAMILY_ACTION_JOB, 3, inputs, count, paths);
 +	const struct family_key *key = data;
 +	if (i < 2) return i ? key->right : key->left;
-+	struct pg_synthesis_input input = pg_synthesis_input_direct(i < 4 ? key->input : key->paths[(i - 4) / 2]);
++	struct pg_synthesis_input input = i < 4 ? key->input : key->paths[(i - 4) / 2];
 +	return i % 2 ? (const void *)input.pending : input.checked;
  }
  
@@ -170,7 +166,7 @@
  }
  
  static int endpoint_selector(const struct pg_dimension_map *face)
-@@ -154,27 +155,16 @@
+@@ -154,27 +151,15 @@
  	const struct pg_dimension_map *face)
  {
  	if (!endpoint_selector(face)) return NULL;
@@ -198,13 +194,12 @@
 -	const void *inputs[] = {context, formation, face};
 -	return pg_synthesis_work_request(synthesis, FACE_JOB, 3, inputs);
 +	if (!pg_synthesis_input_owned(synthesis, producer)) return NULL;
-+	producer = pg_synthesis_input_direct(producer);
 +	const void *inputs[] = {producer.checked, producer.pending};
 +	return pg_synthesis_work_request(synthesis, FORMATION_JOB, 2, inputs);
  }
  
  static int face_formation(struct pg_synthesis *synthesis,
-@@ -191,7 +181,7 @@
+@@ -191,7 +176,7 @@
  
  struct pg_synthesis_job *pg_synthesis_permutation_source_face(struct pg_synthesis *synthesis,
  	struct pg_dimensions *dimensions, const struct pg_evidence *context,
@@ -213,7 +208,7 @@
  	const struct pg_dimension_map *target_face, const struct pg_dimension_map **intrinsic)
  {
  	if (!dimensions || dimensions->graph != synthesis->typing->graph) return NULL;
-@@ -203,33 +193,39 @@
+@@ -203,33 +188,38 @@
  	const struct pg_dimension_map *composed = pg_dimension_compose(dimensions, permutation, target_face);
  	const struct pg_dimension_map *ordered, *orientation;
  	if (pg_dimension_face_factor(dimensions, composed, &ordered, &orientation) != 0) return NULL;
@@ -235,7 +230,6 @@
 +	if (!pg_evidence_owned_by(context, synthesis->typing)) return NULL;
 +	if (pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT) return NULL;
 +	if (!pg_synthesis_input_owned(synthesis, formation)) return NULL;
-+	formation = pg_synthesis_input_direct(formation);
 +	if (formation.checked && !face_formation(synthesis, context, formation.checked)) return NULL;
 +	const void *inputs[] = {context, formation.checked, formation.pending, face};
 +	return pg_synthesis_work_request(synthesis, FACE_JOB, 4, inputs);
@@ -261,7 +255,7 @@
  		if (pg_synthesis_forward(synthesis, job, canonical)) return;
  		local->formation = pg_identity_formation_init(synthesis->typing, proof);
  		if (!local->formation) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-@@ -246,20 +242,22 @@
+@@ -246,20 +236,22 @@
  {
  	struct face_work *local = pg_synthesis_work_state(job, FACE_JOB);
  	if (!local->face) {
@@ -290,7 +284,7 @@
  		if (!local->face) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
  	}
  	int status = pg_identity_face_advance(local->face, 1);
-@@ -277,18 +275,18 @@
+@@ -277,18 +269,18 @@
  	if (!local->family) {
  		const struct pg_evidence *values[3];
  		for (size_t i = 0; i < 3; ++i) {
@@ -315,7 +309,7 @@
  	}
  	if (pg_synthesis_await(synthesis, job, local->family)) return;
  	size_t i = local->next;
-@@ -297,8 +295,8 @@
+@@ -297,8 +289,8 @@
  		const struct pg_evidence *type = pg_prove_identity_endpoint_type(synthesis->typing,
  			local->family->result, side);
  		if (!type) goto rejected;
@@ -326,7 +320,7 @@
  	}
  	if (pg_synthesis_await(synthesis, job, local->endpoints[i])) return;
  	if (++local->next < 2) { pg_synthesis_enqueue(synthesis, job); return; }
-@@ -326,19 +324,21 @@
+@@ -326,19 +318,21 @@
   * of a family substitution. Classifier requests remain shared across owners. */
  static const struct pg_evidence *action_input(struct pg_synthesis *synthesis,
  	struct pg_synthesis_job *job, const struct pg_evidence *context,
@@ -354,7 +348,7 @@
  	return input;
  }
  
-@@ -346,9 +346,9 @@
+@@ -346,9 +340,9 @@
  {
  	struct reflexivity_work *local = pg_synthesis_work_state(job, REFLEXIVITY_JOB);
  	const struct pg_evidence *input = action_input(synthesis, job, job->inputs[0],
@@ -366,7 +360,7 @@
  	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
  }
  
-@@ -357,7 +357,7 @@
+@@ -357,7 +351,7 @@
  	struct family_work *state = pg_synthesis_work_state(job, FAMILY_ACTION_JOB);
  	const struct pg_evidence *left = job->inputs[0], *right = job->inputs[1];
  	if (!state->prefixes[0]) {
@@ -375,7 +369,7 @@
  		if (count > arity || pg_evidence_context_map(right)->count != arity) goto rejected;
  		if (pg_evidence_context(left) != pg_evidence_context(right)) goto rejected;
  		if (pg_evidence_context(pg_evidence_premise(left, 0)) != pg_evidence_context(pg_evidence_premise(right, 0))) goto rejected;
-@@ -373,21 +373,21 @@
+@@ -373,21 +367,21 @@
  		}
  		for (size_t side = 0; side < 2; ++side) {
  			const struct pg_evidence *map = job->inputs[side];
@@ -403,7 +397,7 @@
  		if (!pg_evidence_owned_by(path, synthesis->typing)) goto rejected;
  		if (pg_evidence_judgement(path) != PG_JUDGEMENT_VALUE) goto rejected;
  		if (pg_evidence_context(path) != pg_evidence_context(left)) goto rejected;
-@@ -396,7 +396,8 @@
+@@ -396,7 +390,8 @@
  			pg_substitution_image_at(synthesis->typing, left, state->common + i),
  			pg_substitution_image_at(synthesis->typing, right, state->common + i));
  		if (!type) goto rejected;
@@ -413,7 +407,7 @@
  	}
  	if (pg_synthesis_await(synthesis, job, state->checked)) return 0;
  	state->paths[i] = state->checked->result;
-@@ -420,9 +421,9 @@
+@@ -420,9 +415,9 @@
  {
  	struct family_work *local = pg_synthesis_work_state(job, FAMILY_ACTION_JOB);
  	const struct pg_evidence *input = action_input(synthesis, job,

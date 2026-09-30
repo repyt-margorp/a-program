@@ -35,15 +35,16 @@ Source-I/O fixtures also use direct checked inputs for retained Contexts,
 substitutions, functions, constructor roots and Match theorems. Match allocation
 inspection accepts the same input representation instead of requiring an
 Evidence Job; inspection does not advance Solve or produce checked facts.
-The adapter factory still remains for synthesis tests; this prerequisite does
-not complete the single-owner/frontier refactor.
-Rule requests use the same hash lookup for direct and legacy inputs, borrowing
+The adapter factory, role and recognition API are removed, including all test
+callers. Suspension tests use real unfinished operations; known checked inputs
+allocate no scheduler node. This does not complete the single-owner/frontier refactor.
+Rule requests use the same hash lookup for checked and pending inputs, borrowing
 the key during lookup and copying it only on a miss. Structural queries retain
 only a result, child query and normalization pointer, not the broad source state.
 The Job-only rule/plain-rule contracts and alternate producer-key representation
 are removed, including source/import/preparation and test callers. Temporary
 premise arrays borrow the canonical checked/pending inputs; they are not another
-stored graph. Remaining legacy Evidence-adapter recognition is still temporary.
+stored graph. No compatibility adapter recognition remains.
 Job-only expect/reindex/normalization/evaluation aliases are removed. Rule export
 also borrows checked/pending roots through its existing closure traversal; known
 receipts need no completed scheduler node. Reading still creates unchecked work.
@@ -106,8 +107,8 @@ must actually be a checked Context judgement, not just share its scope pointer.
 Selected checked bodies do not require a pending-rule projection or a new codec.
 Lexical names, lookup and environments use the same direct inputs. Checked leaves
 retain typed-use identity; pending keys remain stable after completion. Source
-export uses its existing DAG key projection to share a checked leaf reached
-directly or through a legacy adapter, avoiding duplicate transport records.
+export shares checked leaves directly through its existing DAG traversal,
+without an adapter-recognition key projection.
 No new persistence fields are added. Restricted source checkpoints still reject
 direct checked reference capture; their existing pending-owner scope is unchanged.
 Classifier normalization has one checked/pending input/result API. Checked
@@ -141,8 +142,8 @@ kernel acceptance remain, without another Job-only input interface.
 Index-result, index/constructor transport and constant-motive consumers also use
 the same inputs. Checked endpoints, paths, values and targets need no completed
 Job. Genuine transport retains its finite candidate search and suspension cursor.
-Ordinary compiler consumers no longer call the Evidence-adapter factory; that
-factory, test callers and source-root adapter recognition still need removal.
+Ordinary compiler consumers and tests borrow checked receipts directly; the
+Evidence-adapter factory, test callers and source-root recognition are removed.
 This does not remove the independent Job graph.
 Producer-to-checked forwarding paths also remain. Removing classifier
 forwarding alone lost completed-result reuse, so that trial was rejected;

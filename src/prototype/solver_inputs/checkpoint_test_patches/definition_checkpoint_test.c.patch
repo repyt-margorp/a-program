@@ -94,7 +94,7 @@
  	struct pg_synthesis *s = &f->program->synthesis;
  	size_t first = f->count;
 -	while (!pg_synthesis_evidence_input(body)) {
-+	struct pg_synthesis_input input = pg_synthesis_input_direct((struct pg_synthesis_input){.pending = body});
++	struct pg_synthesis_input input = (struct pg_synthesis_input){.pending = body};
 +	while (!input.checked) {
 +		body = input.pending;
  		const struct pg_derivation_input *rule = pg_synthesis_plain_derivation(body);

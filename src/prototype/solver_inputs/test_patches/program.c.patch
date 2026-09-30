@@ -6,13 +6,7 @@
  #include "source_io.h"
  #include "artifact/file.h"
  #include "derivation.h"
-@@ -28,19 +29,26 @@
- 	const char *text = "{{ id:=&(\\A:@ => \\x:A => x); }}.id";
- 	struct pg_program *p = pg_program_create(text, strlen(text), PG_DEFINITION_EXPLICIT_THUNK);
- 	assert(p && p->root);
-+	for (size_t i = 0; i < p->synthesis.jobs.capacity; ++i)
-+		for (struct pg_index_entry *entry = p->synthesis.jobs.buckets[i]; entry; entry = entry->next)
-+			assert(!pg_synthesis_evidence_input((const void *)entry));
+@@ -31,16 +32,20 @@
  	struct pg_derivation_input empty = {.rule = PG_CONTEXT_EMPTY};
  	struct pg_synthesis_job *context = pg_synthesis_derivation(&p->synthesis, &empty);
  	assert(context);
@@ -39,7 +33,7 @@
  	assert(invalid && !pg_synthesis_result(nf));
  	while (p->synthesis.ready) {
  		assert(p->synthesis.steps < 10000);
-@@ -50,12 +58,42 @@
+@@ -50,12 +55,42 @@
  	assert(pg_synthesis_status(whnf) == PG_SYNTHESIS_DONE);
  	assert(pg_synthesis_status(invalid) == PG_SYNTHESIS_REJECTED);
  	const struct pg_evidence *ctx = pg_synthesis_result(context), *input = pg_synthesis_result(p->root);
@@ -85,7 +79,7 @@
  	pg_program_destroy(p);
  }
  
-@@ -322,8 +360,8 @@
+@@ -322,8 +357,8 @@
  	assert(type && pg_evidence_classifier(result) == pg_evidence_subject(type)->core);
  	/* Resolve labels in this declaration, never hard-code constructor ordinals
  	 * or accept an erased shape belonging to a different nominal type. */
@@ -96,7 +90,7 @@
  	char expression[256];
  	int length = snprintf(expression, sizeof(expression), "expected:=%s.%s;", type_name, base_name);
  	assert(length > 0 && (size_t)length < sizeof(expression));
-@@ -368,8 +406,8 @@
+@@ -368,8 +403,8 @@
  static const struct pg_evidence *evaluated_value(struct pg_program *p, struct pg_synthesis_job *subject)
  {
  	assert(subject);
@@ -107,7 +101,7 @@
  	assert(job);
  	while (pg_synthesis_status(job) == PG_SYNTHESIS_PENDING) {
  		assert(p->synthesis.steps < comparison_steps);
-@@ -660,7 +698,7 @@
+@@ -660,7 +695,7 @@
  	/* Imports are in the client's lexical environment, not its public exports. */
  	const struct pg_source_scope *scope = pg_synthesis_prepared_environment(p->root);
  	struct pg_synthesis_job *subject = pg_synthesis_named_input(&p->synthesis, scope,
@@ -116,7 +110,7 @@
  	assert(subject);
  	const struct pg_evidence *function = pg_synthesis_result(subject);
  	struct witness_fixture *fixtures = NULL;
-@@ -671,7 +709,7 @@
+@@ -671,7 +706,7 @@
  		int stored = *argument == '&';
  		if (stored) ++argument;
  		subject = pg_synthesis_named_input(&p->synthesis, scope,
@@ -125,7 +119,7 @@
  		assert(subject);
  		const struct pg_evidence *value = stored ? pg_synthesis_result(subject) : evaluated_value(p, subject);
  		assert(value);
-@@ -829,7 +867,7 @@
+@@ -829,7 +864,7 @@
  		assert(origins[i] && !pg_typed_query_steps(origins[i]));
  	}
  	const struct pg_source_scope *delayed = pg_synthesis_name(&p->synthesis, p->scope,
@@ -134,7 +128,7 @@
  	const char *inspection = "relation:=@delayed;";
  	struct pg_parser inspection_parser;
  	struct pg_synthesis_job *inspected = pg_program_source(p, delayed, inspection,
-@@ -852,9 +890,9 @@
+@@ -852,9 +887,9 @@
  	assert(pg_function_graph_witness(&delayed_graph));
  	pg_function_graph_destroy(&delayed_graph);
  	const struct pg_source_scope *names = pg_synthesis_name(&p->synthesis, p->scope,

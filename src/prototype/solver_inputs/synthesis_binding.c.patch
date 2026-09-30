@@ -27,7 +27,7 @@
  	job->result = pg_synthesis_scope_context(scope);
  	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
  }
-@@ -297,8 +297,16 @@
+@@ -297,8 +297,15 @@
  struct pg_synthesis_job *pg_synthesis_declared_type(struct pg_synthesis *synthesis,
  	struct pg_synthesis_job *context, const struct pg_object *binder)
  {
@@ -40,13 +40,12 @@
 +	struct pg_synthesis_input context, const struct pg_object *binder)
 +{
 +	if (!pg_synthesis_input_owned(synthesis, context) || !binder) return NULL;
-+	context = pg_synthesis_input_direct(context);
 +	return pg_synthesis_work_request(synthesis, DECLARED_TYPE_JOB, 3,
 +		(const void *[]){context.checked, context.pending, binder});
  }
  
  const struct pg_synthesis_work_class *pg_synthesis_binding_type_class(const struct pg_synthesis_job *input)
-@@ -323,8 +331,9 @@
+@@ -323,8 +330,9 @@
  static void domain_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
  	struct declaration_work *local = pg_synthesis_work_state(job, DOMAIN_STRUCTURE_JOB);
@@ -58,7 +57,7 @@
  	if (proof) {
  		enum pg_evidence_judgement kind = pg_evidence_judgement(proof);
  		if (kind == PG_JUDGEMENT_VALUE_TYPE || kind == PG_JUDGEMENT_COMPUTATION_TYPE)
-@@ -335,7 +344,7 @@
+@@ -335,7 +343,7 @@
  	if (!local->input) {
  		struct pg_synthesis_job *annotation = (void *)producer->inputs[1], *rule;
  		if (pg_synthesis_await_preparation(synthesis, job, annotation, &rule)) return;
@@ -67,7 +66,7 @@
  			local->input = pg_synthesis_type_structure(synthesis, annotation);
  		else {
  			const struct pg_derivation_input *input = pg_synthesis_plain_derivation(rule);
-@@ -350,9 +359,10 @@
+@@ -350,9 +358,10 @@
  static void declared_type_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
  	struct declaration_work *local = pg_synthesis_work_state(job, DECLARED_TYPE_JOB);
@@ -81,7 +80,7 @@
  	if (accepted) {
  		const struct pg_context *declaration = pg_evidence_judgement(accepted) == PG_JUDGEMENT_CONTEXT
  			? pg_context_lookup(pg_evidence_context(accepted), binder) : NULL;
-@@ -364,20 +374,20 @@
+@@ -364,20 +373,20 @@
  	if (!local->input) {
  		struct pg_synthesis_job *prepared;
  		if (pg_synthesis_await_preparation(synthesis, job, context, &prepared)) return;
