@@ -126,3 +126,132 @@
  			for (size_t i = 0; i < count; ++i) assert(!pg_synthesis_result(loaded[i]));
  			FILE *again = tmpfile();
  			assert(again && !pg_sources_write(again, &q->synthesis, count, loaded));
+@@ -3172,7 +3233,7 @@
+ 	reference.token.text_length = name.length;
+ 	const struct pg_source_scope *scope = base;
+ 	for (size_t i = 0; i < depth; ++i) {
+-		struct pg_synthesis_job *check = pg_synthesis_source_expect(&p->synthesis, scope, term, type);
++		struct pg_synthesis_job *check = pg_synthesis_source_expect(&p->synthesis, scope, (struct pg_synthesis_input){.pending = term}, (struct pg_synthesis_input){.pending = type});
+ 		scope = pg_synthesis_name_job(&p->synthesis, scope, name, check);
+ 		term = pg_synthesis_request(&p->synthesis, scope, &reference);
+ 		assert(check && scope && term);
+@@ -3206,7 +3267,10 @@
+ 			struct pg_source_environment environment;
+ 			assert(!pg_synthesis_environment_input(&p->synthesis, scope, &environment));
+ 			assert(environment.producer && environment.parent);
+-			assert(!pg_synthesis_source_expect_input(&p->synthesis, environment.producer, &scope, &term, &type));
++			struct pg_synthesis_input inputs[2];
++			assert(!pg_synthesis_source_expect_input(&p->synthesis, environment.producer, &scope, &inputs[0], &inputs[1]));
++			assert(!inputs[0].checked && !inputs[1].checked);
++			term = inputs[0].pending; type = inputs[1].pending;
+ 			assert(scope == environment.parent);
+ 			if (!shared_type) shared_type = type;
+ 			assert(type == shared_type);
+@@ -3225,6 +3289,62 @@
+ 	puts("source image: 512 alternating lexical/annotation dependencies retain shared syntax and split-budget results");
+ }
+ 
++static void checked_annotation_sources(void)
++{
++	struct pg_program *p = pg_program_allocate(PG_DEFINITION_EXPLICIT_THUNK);
++	assert(p);
++	const struct pg_evidence *empty = pg_prove_empty_context(&p->typing);
++	const struct pg_evidence *u0 = pg_prove_universe(&p->typing, empty, 0);
++	const struct pg_evidence *u1 = pg_prove_universe(&p->typing, empty, 1);
++	size_t jobs = p->synthesis.jobs.count;
++	struct pg_synthesis_job *valid = pg_synthesis_source_expect(&p->synthesis, p->scope,
++		(struct pg_synthesis_input){.checked = u0}, (struct pg_synthesis_input){.checked = u1});
++	struct pg_synthesis_job *invalid = pg_synthesis_source_expect(&p->synthesis, p->scope,
++		(struct pg_synthesis_input){.checked = u0}, (struct pg_synthesis_input){.checked = u0});
++	assert(valid && invalid && p->synthesis.jobs.count == jobs + 2);
++	struct pg_synthesis_job *selected[] = {valid, invalid, valid};
++	FILE *file = tmpfile();
++	size_t proofs = p->typing.proofs.count;
++	assert(file && !pg_sources_write(file, &p->synthesis, 3, selected));
++	assert(!p->synthesis.steps && p->synthesis.jobs.count == jobs + 2 && p->typing.proofs.count == proofs);
++	pg_program_destroy(p);
++	uint64_t steps = 0;
++	for (uint64_t chunk = 1; chunk <= 64; chunk *= 64) {
++		rewind(file);
++		size_t count;
++		struct pg_synthesis_job *const *roots;
++		p = pg_sources_read(file, 10000, &count, &roots);
++		assert(p && count == 3 && roots[0] == roots[2] && !p->synthesis.steps);
++		assert(p->typing.proofs.count == 1 && !pg_synthesis_result(roots[0]) && !pg_synthesis_result(roots[1]));
++		const struct pg_source_scope *scope;
++		struct pg_synthesis_input term, type, wrong_term, wrong_type;
++		assert(!pg_synthesis_source_expect_input(&p->synthesis, roots[0], &scope, &term, &type));
++		assert(!pg_synthesis_source_expect_input(&p->synthesis, roots[1], &scope, &wrong_term, &wrong_type));
++		assert(!term.checked && !type.checked && term.pending && type.pending);
++		assert(term.pending == wrong_term.pending && term.pending == wrong_type.pending && !wrong_type.checked);
++		FILE *again = tmpfile();
++		jobs = p->synthesis.jobs.count;
++		assert(again && !pg_sources_write(again, &p->synthesis, count, roots));
++		pg_synthesis_advance(&p->synthesis, 0);
++		assert(!p->synthesis.steps && p->typing.proofs.count == 1 && p->synthesis.jobs.count == jobs);
++		rewind(file); rewind(again);
++		int byte;
++		do { byte = fgetc(file); assert(byte == fgetc(again)); } while (byte != EOF);
++		assert(!ferror(file) && !ferror(again) && !fclose(again));
++		while (p->synthesis.ready) {
++			assert(p->synthesis.steps < 10000);
++			pg_synthesis_advance(&p->synthesis, chunk);
++		}
++		assert(pg_synthesis_status(roots[0]) == PG_SYNTHESIS_DONE && pg_synthesis_status(roots[1]) == PG_SYNTHESIS_REJECTED);
++		assert(pg_evidence_subject(pg_synthesis_result(roots[0]))->core == pg_universe(&p->graph, 0));
++		if (chunk == 1) steps = p->synthesis.steps;
++		assert(p->synthesis.steps == steps);
++		pg_program_destroy(p);
++	}
++	assert(!fclose(file));
++	puts("source image: checked annotations retain shared inputs, load unaccepted and roundtrip unchanged at step zero");
++}
++
+ static void annotation_sources(FILE *file, int writing, uint64_t chunk)
+ {
+ 	struct pg_program *p;
+@@ -3232,6 +3352,7 @@
+ 	struct pg_synthesis_job *const *roots;
+ 	if (writing) {
+ 		prepared_scope_chain();
++		checked_annotation_sources();
+ 		p = pg_program_allocate(PG_DEFINITION_EXPLICIT_THUNK);
+ 		assert(p);
+ 		struct pg_synthesis_job *term = parse(p, p->scope, "{{main:=@;}}.main");
+@@ -3240,9 +3361,9 @@
+ 		struct pg_synthesis_job *type = pg_synthesis_rule(&p->synthesis, &header, &context, NULL, NULL);
+ 		header.parameters.level = 0;
+ 		struct pg_synthesis_job *wrong = pg_synthesis_rule(&p->synthesis, &header, &context, NULL, NULL);
+-		struct pg_synthesis_job *valid = pg_synthesis_source_expect(&p->synthesis, p->scope, term, type);
+-		struct pg_synthesis_job *invalid = pg_synthesis_source_expect(&p->synthesis, p->scope, term, wrong);
+-		struct pg_synthesis_job *nested = pg_synthesis_source_expect(&p->synthesis, p->scope, valid, type);
++		struct pg_synthesis_job *valid = pg_synthesis_source_expect(&p->synthesis, p->scope, (struct pg_synthesis_input){.pending = term}, (struct pg_synthesis_input){.pending = type});
++		struct pg_synthesis_job *invalid = pg_synthesis_source_expect(&p->synthesis, p->scope, (struct pg_synthesis_input){.pending = term}, (struct pg_synthesis_input){.pending = wrong});
++		struct pg_synthesis_job *nested = pg_synthesis_source_expect(&p->synthesis, p->scope, (struct pg_synthesis_input){.pending = valid}, (struct pg_synthesis_input){.pending = type});
+ 		struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = "T", .length = 1};
+ 		const struct pg_source_scope *good_scope = pg_synthesis_name_job(&p->synthesis, p->scope, name, valid);
+ 		const struct pg_source_scope *bad_scope = pg_synthesis_name_job(&p->synthesis, p->scope, name, invalid);
+@@ -3276,11 +3397,11 @@
+ 		assert(p->typing.proofs.count == 1);
+ 		for (size_t i = 0; i < count; ++i) assert(!pg_synthesis_result(roots[i]));
+ 		const struct pg_source_scope *scope;
+-		struct pg_synthesis_job *term, *type;
++		struct pg_synthesis_input term, type;
+ 		assert(!pg_synthesis_source_expect_input(&p->synthesis, roots[0], &scope, &term, &type));
+-		assert(term == roots[2] && type == roots[5]);
++		assert(term.pending == roots[2] && type.pending == roots[5] && !term.checked && !type.checked);
+ 		assert(!pg_synthesis_source_expect_input(&p->synthesis, roots[2], &scope, &term, &type));
+-		assert(term == roots[3] && type == roots[5]);
++		assert(term.pending == roots[3] && type.pending == roots[5] && !term.checked && !type.checked);
+ 		const struct pg_syntax *syntax;
+ 		struct pg_source_environment environment;
+ 		assert(!pg_synthesis_source_input(&p->synthesis, roots[6], &scope, &syntax));
+@@ -3439,7 +3560,7 @@
+ 		struct pg_synthesis_job *definition = pg_synthesis_definition_request(&p->synthesis,
+ 			scope, syntax, syntax->items[0].expression);
+ 		struct pg_synthesis_job *type = pg_synthesis_request(&p->synthesis, local, syntax->items[1].expression);
+-		check = pg_synthesis_source_expect(&p->synthesis, local, definition, type);
++		check = pg_synthesis_source_expect(&p->synthesis, local, (struct pg_synthesis_input){.pending = definition}, (struct pg_synthesis_input){.pending = type});
+ 		assert(check);
+ 		if (p->synthesis.jobs.count != jobs) {
+ 			fprintf(stderr, "prepared module round %zu: reconstructed %zu missing producer inputs\n",

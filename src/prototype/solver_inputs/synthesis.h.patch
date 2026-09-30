@@ -200,7 +200,7 @@
  int pg_synthesis_inductive_instance_result(const struct pg_synthesis_job *job,
  	struct pg_inductive_instance *output);
  /* Abstract an independently synthesized body over an accepted context suffix.
-@@ -664,12 +679,18 @@
+@@ -664,58 +679,61 @@
   * Completed incompatible inputs are rejected without exposing partial proof. */
  struct pg_synthesis_job *pg_synthesis_reindex_jobs(struct pg_synthesis *synthesis,
  	struct pg_synthesis_job *substitution, struct pg_synthesis_job *proof);
@@ -219,7 +219,17 @@
  /* Source annotation over independently synthesized inputs. Applies the same
   * source-reference/polarity adaptations as expr :: type, then post-checks.
   * No syntax fabrication or expected-type feedback into either producer. */
-@@ -684,38 +705,35 @@
+ struct pg_synthesis_job *pg_synthesis_source_expect(struct pg_synthesis *synthesis,
+-	const struct pg_source_scope *scope, struct pg_synthesis_job *term,
+-	struct pg_synthesis_job *type);
++	const struct pg_source_scope *scope, struct pg_synthesis_input term,
++	struct pg_synthesis_input type);
+ /* Borrow the immutable inputs, before or after Solve. Zero on success. */
+ int pg_synthesis_source_expect_input(const struct pg_synthesis *synthesis,
+ 	const struct pg_synthesis_job *job, const struct pg_source_scope **scope,
+-	struct pg_synthesis_job **term, struct pg_synthesis_job **type);
++	struct pg_synthesis_input *term, struct pg_synthesis_input *type);
+ /* Raw CBPV application of independent producers. Exposes the computation
   * classifier, post-checks the value argument and uses ordinary APP evidence.
   * No implicit force, thunk, return or sequencing; no expected type flows
   * into either producer. Accepted inputs reuse normalization and comparison;

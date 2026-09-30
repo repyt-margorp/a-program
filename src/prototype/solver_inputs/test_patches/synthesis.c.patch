@@ -691,6 +691,15 @@
  	pg_synthesis_destroy(&synthesis);
  	pg_whnf_work_destroy(&work);
  }
+@@ -3492,7 +3571,7 @@
+ 		const struct pg_source_scope *local = pg_synthesis_definition_scope(&synthesis, scope, syntax);
+ 		struct pg_synthesis_job *definition = pg_synthesis_definition_request(&synthesis, scope, syntax, syntax->items[0].expression);
+ 		struct pg_synthesis_job *type = pg_synthesis_request(&synthesis, local, syntax->items[1].expression);
+-		struct pg_synthesis_job *check = pg_synthesis_source_expect(&synthesis, local, definition, type);
++		struct pg_synthesis_job *check = pg_synthesis_source_expect(&synthesis, local, (struct pg_synthesis_input){.pending = definition}, (struct pg_synthesis_input){.pending = type});
+ 		assert(module && definition && type && check);
+ 		uint64_t steps = synthesis.steps;
+ 		size_t proofs = typing->proofs.count;
 @@ -3956,7 +4035,7 @@
  	 * request, including a projected Identity and repeated callers. */
  	size_t discovery_jobs = synthesis.jobs.count;
@@ -1878,7 +1887,7 @@
  	const struct pg_syntax *syntax = expression_syntax(typing->graph, "T:=@;");
  	struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = "T", .length = 1};
  	size_t jobs = synthesis.jobs.count, scopes = synthesis.scopes.count;
-@@ -7682,6 +8171,49 @@
+@@ -7682,6 +8171,117 @@
  	puts("synthesis lifetime: stale scopes/jobs rejected; retained typing evidence reused");
  }
  
@@ -1925,10 +1934,78 @@
 +	puts("scope inputs: adapter-free checked contexts, stable pending keys and exact binder validation passed");
 +}
 +
++static void annotation_inputs(struct pg_typing *typing)
++{
++	struct pg_whnf_work work;
++	struct pg_synthesis synthesis, foreign;
++	assert(!pg_whnf_work_init(&work, typing->graph));
++	assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
++	assert(!pg_synthesis_init(&foreign, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
++	const struct pg_source_scope *root = pg_synthesis_root(&synthesis);
++	const struct pg_evidence *empty = pg_synthesis_scope_context(root);
++	const struct pg_evidence *u0 = pg_prove_universe(typing, empty, 0);
++	const struct pg_evidence *u1 = pg_prove_universe(typing, empty, 1);
++	size_t jobs = synthesis.jobs.count;
++	struct pg_synthesis_job *check = pg_synthesis_source_expect(&synthesis, root, checked_input(u0), checked_input(u1));
++	assert(check && synthesis.jobs.count == jobs + 1);
++	const struct pg_source_scope *scope;
++	struct pg_synthesis_input term, type;
++	assert(!pg_synthesis_source_expect_input(&synthesis, check, &scope, &term, &type));
++	assert(scope == root && term.checked == u0 && type.checked == u1 && !term.pending && !type.pending);
++	pg_synthesis_advance(&synthesis, 0);
++	assert(!synthesis.steps && !pg_synthesis_result(check));
++	const struct pg_evidence *result = complete(&synthesis, check, PG_SYNTHESIS_DONE);
++	assert(result && pg_evidence_subject(result)->core == pg_universe(typing->graph, 0));
++	jobs = synthesis.jobs.count;
++	assert(pg_synthesis_source_expect(&synthesis, root, checked_input(u0), checked_input(u1)) == check);
++	assert(synthesis.jobs.count == jobs);
++	struct pg_synthesis_job *pending = request(&synthesis, root, "main:=@;");
++	struct pg_synthesis_job *other = pg_synthesis_source_expect(&synthesis, root, pending_input(pending), checked_input(u1));
++	assert(other && other != check && complete(&synthesis, other, PG_SYNTHESIS_DONE) == result);
++	assert(pg_synthesis_source_expect(&synthesis, root, pending_input(pending), checked_input(u1)) == other);
++	assert(!pg_synthesis_source_expect_input(&synthesis, other, &scope, &term, &type));
++	assert(term.pending == pending && !term.checked && type.checked == u1);
++	struct pg_synthesis_job *foreign_job = request(&foreign, pg_synthesis_root(&foreign), "main:=@;");
++	jobs = synthesis.jobs.count;
++	assert(!pg_synthesis_source_expect(&synthesis, root, (struct pg_synthesis_input){u0, pending}, checked_input(u1)));
++	assert(!pg_synthesis_source_expect(&synthesis, root, pending_input(foreign_job), checked_input(u1)));
++	assert(!pg_synthesis_source_expect(&synthesis, pg_synthesis_root(&foreign), checked_input(u0), checked_input(u1)));
++	struct pg_typing foreign_typing;
++	assert(!pg_typing_init(&foreign_typing, typing->graph));
++	const struct pg_evidence *foreign_type = pg_prove_universe(&foreign_typing, pg_prove_empty_context(&foreign_typing), 1);
++	assert(foreign_type && !pg_synthesis_source_expect(&synthesis, root, checked_input(u0), checked_input(foreign_type)));
++	assert(synthesis.jobs.count == jobs);
++	pg_typing_destroy(&foreign_typing);
++	complete(&synthesis, pg_synthesis_source_expect(&synthesis, root, checked_input(u0), checked_input(u0)), PG_SYNTHESIS_REJECTED);
++	/* Checked endpoints do not imply that their destination context is ready. */
++	pending = request(&synthesis, root, "main:=@{unit:*;};");
++	const struct pg_object *binder = pg_binder(typing->graph);
++	struct pg_synthesis_job *extension = pg_synthesis_plain_rule_inputs(&synthesis, PG_CONTEXT_EXTEND,
++		binder, 2, (struct pg_synthesis_input[]){checked_input(empty), pending_input(pending)});
++	struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = "x", .length = 1};
++	scope = pg_synthesis_bind_context(&synthesis, root, name, binder, extension);
++	check = pg_synthesis_source_expect(&synthesis, scope, checked_input(u0), checked_input(u1));
++	assert(scope && check && !pg_synthesis_scope_context(scope));
++	while (!pg_synthesis_scope_context(scope)) {
++		assert(synthesis.ready && synthesis.steps < 10000);
++		assert(pg_synthesis_status(check) == PG_SYNTHESIS_PENDING);
++		pg_synthesis_advance(&synthesis, 1);
++	}
++	result = complete(&synthesis, check, PG_SYNTHESIS_DONE);
++	assert(pg_evidence_context(result) == pg_evidence_context(pg_synthesis_scope_context(scope)));
++	assert(pg_evidence_subject(result)->core == pg_universe(typing->graph, 0));
++	const struct pg_evidence *scoped = pg_prove_universe(typing, pg_synthesis_scope_context(scope), 0);
++	complete(&synthesis, pg_synthesis_source_expect(&synthesis, root, checked_input(scoped), checked_input(u1)), PG_SYNTHESIS_REJECTED);
++	pg_synthesis_destroy(&foreign);
++	pg_synthesis_destroy(&synthesis);
++	pg_whnf_work_destroy(&work);
++	puts("annotations: direct checked inputs, immutable pending keys and context suspension passed");
++}
++
  static void family_reification(struct pg_typing *typing)
  {
  	struct pg_whnf_work work;
-@@ -7706,16 +8238,33 @@
+@@ -7706,16 +8306,33 @@
  	const struct pg_evidence *projected = pg_prove_projection(typing, context, family);
  	const struct pg_evidence *cases[] = {family, partial, projected};
  	const struct pg_evidence *contexts[] = {empty, empty, context};
@@ -1964,7 +2041,7 @@
  			assert(synthesis.steps - steps < 10000);
  		}
  		const struct pg_evidence *function = pg_synthesis_result(adapted);
-@@ -7725,37 +8274,55 @@
+@@ -7725,37 +8342,55 @@
  		assert(applied);
  		const struct pg_evidence *result = pg_prove_return_value(typing, normalize(&synthesis, contexts[i], applied));
  		assert(result && pg_evidence_subject(result)->core == pg_universe(typing->graph, 0));
@@ -2034,7 +2111,7 @@
  	assert(jobs == foreign.jobs.count);
  	pg_synthesis_destroy(&foreign);
  	const struct pg_source_scope *scope = pg_synthesis_name(&synthesis, pg_synthesis_root(&synthesis),
-@@ -7771,9 +8338,9 @@
+@@ -7771,9 +8406,9 @@
  	for (uint64_t cutoff = 0; ; ++cutoff) {
  		assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_IMPLICIT_THUNK));
  		struct pg_synthesis_job *adapted = pg_synthesis_family_function(&synthesis,
@@ -2046,15 +2123,16 @@
  		pg_synthesis_advance(&synthesis, cutoff);
  		int done = pg_synthesis_status(contract) == PG_SYNTHESIS_DONE;
  		assert(done || pg_synthesis_status(contract) == PG_SYNTHESIS_PENDING);
-@@ -7921,6 +8488,7 @@
+@@ -7921,6 +8556,8 @@
  	composition_sharing();
  	lift_sharing();
  	synthesis_lifetime(&typing);
 +	scope_inputs(&typing);
++	annotation_inputs(&typing);
  	accepted_inputs(&typing);
  	pending_names(&typing);
  	source_imports(&typing);
-@@ -7933,6 +8501,11 @@
+@@ -7933,6 +8570,11 @@
  	dependency_failures(&typing);
  	endpoint_jobs(&typing);
  	substitution_jobs(&typing);
@@ -2066,7 +2144,7 @@
  	square_template_jobs(&typing);
  	dependent_cube_substitution(&typing);
  	dependent_application_jobs(&typing);
-@@ -8023,7 +8596,7 @@
+@@ -8023,7 +8665,7 @@
  	for (size_t i = 0; i < 2; ++i) {
  		size_t jobs = synthesis.jobs.count;
  		struct pg_synthesis_job *discovered = pg_synthesis_identity_formation(&synthesis,
@@ -2075,3 +2153,25 @@
  		assert(pg_synthesis_status(discovered) == PG_SYNTHESIS_UNSUPPORTED);
  		assert(!pg_synthesis_result(discovered) && synthesis.jobs.count == jobs);
  	}
+@@ -8418,16 +9060,16 @@
+ 	const struct pg_syntax *annotation = annotation_definition.expression;
+ 	struct pg_synthesis_job *annotation_term = pg_synthesis_request(&synthesis, scope, annotation->left);
+ 	struct pg_synthesis_job *annotation_type = pg_synthesis_request(&synthesis, scope, annotation->right);
+-	struct pg_synthesis_job *direct_annotation = pg_synthesis_source_expect(&synthesis, scope, annotation_term, annotation_type);
++	struct pg_synthesis_job *direct_annotation = pg_synthesis_source_expect(&synthesis, scope, (struct pg_synthesis_input){.pending = annotation_term}, (struct pg_synthesis_input){.pending = annotation_type});
+ 	assert(direct_annotation && !pg_synthesis_result(direct_annotation));
+-	assert(!pg_synthesis_source_expect(&synthesis, NULL, annotation_term, annotation_type));
+-	assert(!pg_synthesis_source_expect(&synthesis, scope, NULL, annotation_type));
+-	assert(!pg_synthesis_source_expect(&synthesis, scope, annotation_term, NULL));
++	assert(!pg_synthesis_source_expect(&synthesis, NULL, (struct pg_synthesis_input){.pending = annotation_term}, (struct pg_synthesis_input){.pending = annotation_type}));
++	assert(!pg_synthesis_source_expect(&synthesis, scope, (struct pg_synthesis_input){}, (struct pg_synthesis_input){.pending = annotation_type}));
++	assert(!pg_synthesis_source_expect(&synthesis, scope, (struct pg_synthesis_input){.pending = annotation_term}, (struct pg_synthesis_input){}));
+ 	const struct pg_evidence *annotation_result = complete(&synthesis,
+ 		pg_synthesis_request(&synthesis, scope, annotation), PG_SYNTHESIS_DONE);
+ 	assert(pg_synthesis_result(direct_annotation) == annotation_result);
+ 	size_t annotation_jobs = synthesis.jobs.count;
+-	assert(pg_synthesis_source_expect(&synthesis, scope, annotation_term, annotation_type) == direct_annotation);
++	assert(pg_synthesis_source_expect(&synthesis, scope, (struct pg_synthesis_input){.pending = annotation_term}, (struct pg_synthesis_input){.pending = annotation_type}) == direct_annotation);
+ 	assert(synthesis.jobs.count == annotation_jobs);
+ 	complete(&synthesis, request(&synthesis, scope, "main := (\\y : A => missing) :: A -> A;"), PG_SYNTHESIS_REJECTED);
+ 	complete(&synthesis, request(&synthesis, scope, "main := x :: @;"), PG_SYNTHESIS_REJECTED);

@@ -68,6 +68,10 @@ Family reification uses the same allocation-free query-yield operation as
 checked lifting. Completing an origin query cannot advance the application-body
 query in the same dispatch. Query failure policy remains with each consumer;
 the family owner's nominal fallback is unchanged. No new progress owner is added.
+Source and block-binding annotations also use direct inputs through one API.
+They await their scope Context and project both endpoints before post-checking;
+the expected type never supplies missing synthesis. Source export borrows checked
+leaves, while reading restores unchecked ordinary producers without acceptance.
 
 ### Assessment
 

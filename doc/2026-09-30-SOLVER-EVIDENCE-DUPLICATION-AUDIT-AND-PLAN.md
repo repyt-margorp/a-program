@@ -379,9 +379,45 @@ baseline described above. Concurrent accepted-source edits remain excluded.
 - [x] Share the bounded query-borrowing operation with family-origin/body
   consumers. A query completing must not permit a second query advance in
   that dispatch; preserve nominal fallback when a body query has no result.
+- [x] Migrate source and block-binding annotations to the same direct inputs,
+  including immutable-input readers, source transport and checkpoint fixtures.
+  This is a prerequisite to direct lexical-name inputs, not expected-guided
+  inference or removal of the annotation's actual post-check obligation.
 - [ ] Finish known-family result adapters and other context/IADT
   consumers, remove `EVIDENCE_JOB`, then remove duplicated query scheduling.
   The remaining adapter recognition is temporary, not the final architecture.
+
+### Annotation Input Result (2026-09-30)
+
+**Objective (Code):** `b4b633a` plus this prototype milestone, tested on the same
+isolated accepted baseline. Source `::` and block annotations borrow checked or
+pending endpoints through one API. Context readiness is awaited explicitly;
+both endpoints are projected into that Context before the ordinary post-check.
+The new nested-context regression exposed the missing target projection during
+development; it now passes. Checked input presence does not bypass validation.
+Source writing borrows checked leaves without allocating Jobs or changing fuel;
+reading restores ordinary unchecked producers, not acceptance. No wire fields,
+Core tags or separate verification engine were added.
+
+**Assessment:** lexical-name migration needs this consumer to accept direct
+inputs. Pending keys remain unchanged after completion; exact checked inputs
+share independently of pending producers. This does not remove all adapters,
+annotation conversion, forwarding, or the independent Job graph. The unresolved
+Effect scheduling owner remains part of SE1, not replaced by another task graph.
+
+**Plan / Results:** O2 `check` and all seven checkpoint/namespace targets pass.
+ASan/UBSan synthesis, full source-I/O script and source/definition/namespace
+checkpoints pass. Tests cover one annotation Job with no input adapters, ownership
+and malformed-input rejection, context suspension, invalid context projection,
+ordinary rejection of a wrong target, checked-leaf sharing and byte-identical
+step-zero resave. Fresh patch application exactly matches the tested candidate.
+List/QuickSort retain 890/54,750 Jobs, 14/771 adapters and 2,726/809,533 steps;
+annotation input slots add 144/688 Job-allocation bytes. No performance or net
+allocation reduction is claimed for this prerequisite. The public partition gate
+still fails the same four cases (100+100, 1000+1000, 1600+1600, completed+0).
+Actual deltas versus `b4b633a`: `synthesis.c` +33/-24, `synthesis.h` +3/-3,
+`source_io.c` +3/-7 (implementation net +5); tests +144/-15 (net +129);
+definition checkpoint fixture +9/-6 (net +3). SE1-SE5 remain incomplete.
 
 ### Operation Input Result (2026-09-30)
 

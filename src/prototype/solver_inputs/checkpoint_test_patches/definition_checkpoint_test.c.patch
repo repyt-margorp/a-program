@@ -1,6 +1,46 @@
 --- a/definition_checkpoint_test.c
 +++ b/definition_checkpoint_test.c
-@@ -518,7 +518,7 @@
+@@ -64,10 +64,11 @@
+ 	for (size_t i = 0; i < f->frontier.count; ++i) add_job(f, f->frontier.entries[i]);
+ 	for (size_t i = 0; i < f->frontier.count; ++i) {
+ 		const struct pg_source_scope *scope;
+-		struct pg_synthesis_job *term, *type;
++		struct pg_synthesis_job *term;
+ 		if (!pg_synthesis_definition_body(&f->program->synthesis, f->frontier.entries[i], &term)) add_job(f, term);
+-		if (!pg_synthesis_source_expect_input(&f->program->synthesis, f->frontier.entries[i], &scope, &term, &type)) {
+-			add_job(f, term); add_job(f, type);
++		struct pg_synthesis_input inputs[2];
++		if (!pg_synthesis_source_expect_input(&f->program->synthesis, f->frontier.entries[i], &scope, &inputs[0], &inputs[1])) {
++			for (size_t j = 0; j < 2; ++j) add_job(f, inputs[j].pending);
+ 		}
+ 	}
+ }
+@@ -216,11 +217,12 @@
+ 	for (size_t i = 0; i < f->count; ++i) {
+ 		int wanted = 0;
+ 		for (size_t j = 0; j < f->frontier.count; ++j) {
+-			struct pg_synthesis_job *entry = f->frontier.entries[j], *body = NULL, *term, *type;
++			struct pg_synthesis_job *entry = f->frontier.entries[j], *body = NULL;
++			struct pg_synthesis_input term, type;
+ 			const struct pg_source_scope *scope;
+ 			if (entry == f->jobs[i] && statuses[j] != PG_SYNTHESIS_PENDING) wanted = 1;
+ 			if (bodies[j] && !pg_synthesis_definition_body(&f->program->synthesis, entry, &body) && body == f->jobs[i]) wanted = 1;
+-			if (!pg_synthesis_source_expect_input(&f->program->synthesis, entry, &scope, &term, &type) && type == f->jobs[i]) wanted = 1;
++			if (!pg_synthesis_source_expect_input(&f->program->synthesis, entry, &scope, &term, &type) && type.pending == f->jobs[i]) wanted = 1;
+ 		}
+ 		if (wanted) targets[count++] = f->jobs[i];
+ 	}
+@@ -314,7 +316,8 @@
+ 				term = entries[j];
+ 		}
+ 		assert(term);
+-		entries[i] = pg_synthesis_source_expect(s, inner, term, pg_synthesis_request(s, inner, item->expression));
++		entries[i] = pg_synthesis_source_expect(s, inner, (struct pg_synthesis_input){.pending = term},
++			(struct pg_synthesis_input){.pending = pg_synthesis_request(s, inner, item->expression)});
+ 	}
+ 	view.entries = entries;
+ 	/* Retained input attachment is independent of the registration cursor. */
+@@ -518,7 +521,7 @@
  	const struct pg_evidence *computation = pg_prove_return(&p->typing, value);
  	assert(context && type && value && computation);
  	const struct pg_evidence *inputs[] = {type, value, computation};
@@ -9,7 +49,7 @@
  	for (size_t i = 0; i < 3; ++i) {
  		struct pg_synthesis_job *input = pg_synthesis_evidence(s, inputs[i]);
  		struct pg_synthesis_job *body = pg_synthesis_body(s, input, scope);
-@@ -535,9 +535,9 @@
+@@ -535,9 +538,9 @@
  		if (i == 2) assert(selected == input);
  		else {
  			assert(pg_synthesis_plain_derivation(selected)->rule == PG_RETURN_INTRO);
@@ -22,7 +62,7 @@
  		}
  	}
  	advance(s, 10000);
-@@ -601,12 +601,12 @@
+@@ -601,12 +604,12 @@
  	while (!pg_synthesis_evidence_input(body)) {
  		const struct pg_derivation_input *rule = pg_synthesis_plain_derivation(body);
  		assert(rule && rule->rule == PG_LAMBDA_INTRO && rule->count == 2);
@@ -39,7 +79,7 @@
  		/* A pending classifier here either has not started or has a retained
  		 * structural type and finishes in one dispatch, without query progress. */
  		if (classifier->status == PG_SYNTHESIS_PENDING && pg_synthesis_result(adapter))
-@@ -714,7 +714,9 @@
+@@ -714,7 +717,9 @@
  {
  	const struct pg_derivation_input *input = pg_synthesis_plain_derivation(key);
  	if (!input || i == input->count) return 0;
@@ -50,7 +90,7 @@
  	return *child ? 1 : -1;
  }
  
-@@ -859,7 +861,7 @@
+@@ -859,7 +864,7 @@
  			if (children[i]->status == PG_SYNTHESIS_PENDING && rule) {
  				assert(pg_synthesis_rule_resume(s, children[i], rule->count + 1));
  				for (size_t j = 0; j < rule->count; ++j) {
