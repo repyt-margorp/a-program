@@ -109,10 +109,11 @@
   * independent of the destination's excluded binders; it is not TypeExpect. */
  struct pg_synthesis_job *pg_synthesis_index_transport(struct pg_synthesis *,
 -	struct pg_synthesis_job *, struct pg_synthesis_job *, struct pg_synthesis_job *);
-+	struct pg_synthesis_input, struct pg_synthesis_job *, struct pg_synthesis_job *);
++	struct pg_synthesis_input, struct pg_synthesis_input, struct pg_synthesis_input);
  struct pg_synthesis_job *pg_synthesis_index_result(struct pg_synthesis *,
 -	struct pg_synthesis_job *, struct pg_synthesis_job *, struct pg_synthesis_job *);
-+	struct pg_synthesis_input, struct pg_synthesis_job *, struct pg_synthesis_job *);
- struct pg_synthesis_job *pg_synthesis_index_transport_target(const struct pg_synthesis_job *);
+-struct pg_synthesis_job *pg_synthesis_index_transport_target(const struct pg_synthesis_job *);
++	struct pg_synthesis_input, struct pg_synthesis_input, struct pg_synthesis_input);
++struct pg_synthesis_input pg_synthesis_index_transport_target(const struct pg_synthesis_job *);
  
  #endif

@@ -111,8 +111,12 @@ keeps its identity after completion. Source transport uses the same inputs.
 
 ### Assessment
 
-This removes some adapters, not the independent Job graph. Index-result/transport
-and other context/IADT consumers still use adapters.
+Index-result, index/constructor transport and constant-motive consumers also use
+the same inputs. Checked endpoints, paths, values and targets need no completed
+Job. Genuine transport retains its finite candidate search and suspension cursor.
+Ordinary compiler consumers no longer call the Evidence-adapter factory; that
+factory, test callers and source-root adapter recognition still need removal.
+This does not remove the independent Job graph.
 Producer-to-checked forwarding paths also remain. Removing classifier
 forwarding alone lost completed-result reuse, so that trial was rejected;
 removing the query wrapper does not settle the pending/checked request ownership.

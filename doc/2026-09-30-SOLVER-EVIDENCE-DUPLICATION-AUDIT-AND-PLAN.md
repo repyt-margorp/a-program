@@ -413,8 +413,13 @@ baseline described above. Concurrent accepted-source edits remain excluded.
 - [x] Finish IH-binding Context inputs through one binding API, including known
   associations, actual pending parent checks and all environment/I/O consumers.
   Focused, checkpoint, sanitizer and full acceptance verification pass.
-- [ ] Finish index-result/transport and remaining Context input
-  adapters and consumers, remove `EVIDENCE_JOB`, then remove duplicated query scheduling.
+- [x] Verify index-result/transport and constant-motive direct inputs together
+  with checked-target structural projection and source consumers. See the
+  transport milestone below; full acceptance of the pending-Context fix passes.
+- [ ] Remove `EVIDENCE_JOB`, test callers and source-root adapter recognition,
+  including the Job-only source-writer root contract. Checked roots must use
+  the same borrowed inputs, not a replacement completed worker. Reading may
+  still return real unchecked producers. Then remove duplicated query scheduling.
   The remaining adapter recognition is temporary, not the final architecture.
 
 ### Effect Owner Result (2026-09-30)
@@ -1353,3 +1358,82 @@ are live-store measurements, not artifact-size or elapsed-speedup claims.
 | `source_checkpoint_test.c` | 1 | 1 | 0 |
 
 Counts are applied-source changes, excluding patch context and documentation.
+
+### SE1 Transport Inputs (2026-10-01)
+
+#### Subjective (User)
+
+2026-10-01, English paraphrase: resume authoritative Solve constraints, rather
+than add Job/Evidence structures duplicating Term and typing. Preserve one
+owner for each genuinely unfinished operation.
+
+#### Objective (Code)
+
+Parent `4454d5e`, frozen accepted baseline `e716232`, plus these prototype edits.
+Index-result, index transport, constructor disjointness/field transport and
+constant-motive inputs now borrow the existing checked/pending representation.
+Result extraction awaits its source/destination Context owners before reading
+their checked results. A cold pending-input test failed before this fix and
+passes with it; each of its three cases actually waits on the original producer.
+The source classifier projection reads the same transport target; it does not
+recreate a target Job. All public call sites and suspension-test readers migrate
+together. The source compiler no longer calls `pg_synthesis_evidence`; its
+factory, test callers and source-root adapter recognition remain temporarily.
+No Core tag, acceptance table, target-specific field or wire extension is added.
+
+#### Assessment
+
+Endpoint/path/context validation remains ordinary checking. A direct target
+from the wrong Context is rejected, not reinterpreted as a synthesis hint.
+The genuinely unfinished transport retains its finite dependency-decrease
+measure, candidate scopes/maps and comparison cursor. Removing that cursor
+would restart computation, not simplify duplicated authority.
+The allocation-only adapter milestone does not complete SE1-SE5. In particular,
+classifier query completion is still mirrored by an outer Job, and the public
+image does not yet resume the complete owner frontier.
+
+#### Plan
+
+- [x] O2 synthesis passes, including cold source/destination Context waiting.
+- [x] Reverify IADT/source-I/O and seven O2 checkpoint targets after the waiting fix.
+- [x] Reverify ASan/UBSan synthesis/IADT/source-I/O after the waiting fix.
+- [x] Fresh cumulative patches reproduce all source/test/checkpoint files exactly.
+- [x] Reverify ASan/UBSan source/definition/namespace/namespace-body/constructor checkpoints.
+- [x] Full O2 acceptance, including general ordinary-result Sorted/permutation.
+
+New tests cover direct checked targets/results, checked versus adapter request
+sharing, zero-fuel inactivity, missing/mixed/foreign input rejection and exact
+Context requirements. Existing pending transport tests retain their candidate
+scope/map identity assertions and cancellation coverage. The initial direct
+test supplied an unprojected target in the outer Context; it was correctly
+rejected. The test now asserts both the valid projected target and that rejection.
+The first full run exercised all four general QuickSort provider/order variants,
+but returned exit 2 because a syntax-inventory subprocess changed directory and
+could not resolve the relative BUILD path. That run is not a passing gate.
+The fixed-code run uses an absolute BUILD path and exits 0, including all four
+QuickSort provider/order variants; no test is removed or relaxed. This verifies
+the prototype milestone, not production promotion or completion of SE1-SE5.
+
+| Completed census | Jobs before / after | Adapters before / after | Job bytes before / after |
+| --- | ---: | ---: | ---: |
+| List-09 | 875 / 875 | 0 / 0 | 153,528 / 153,528 |
+| General QuickSort Local Sorted | 54,005 / 53,952 | 53 / 0 | 9,431,528 / 9,427,472 |
+
+Steps (2725 / 809493), Terms, occurrences, Evidence and premise edges are
+unchanged; repeated terminal samples do not grow. These are live-store counts,
+not artifact-size, total-memory or elapsed-speedup claims. Public partition
+checks still fail at 100+100, 1000+1000, 1600+1600 and completed+0 (2725+0);
+0+0 and 10+10 pass. No failed gate is changed into expected success.
+
+| Applied-code delta from `4454d5e` | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `synthesis_iadt.c` | 70 | 58 | +12 |
+| `synthesis.c` | 21 | 19 | +2 |
+| `synthesis.h` | 8 | 8 | 0 |
+| `synthesis_source.h` | 3 | 3 | 0 |
+| Implementation total | 102 | 88 | +14 |
+| `tests/iadt.c` | 48 | 26 | +22 |
+| `tests/synthesis.c` | 70 | 5 | +65 |
+
+Counts exclude patch context/documentation. Logs and census files use the prefix
+`/tmp/a-program-transport-input-`; partition details are `partitions/partitions.tsv`.
