@@ -322,6 +322,21 @@
  				}
  			} else if (rule) {
  				if (rule > nd || scope || syntax || definitions) goto fail;
+@@ -1198,10 +1252,10 @@
+ 				struct pg_source_environment field;
+ 				if (r->name.kind || r->name.length || pg_synthesis_environment_input(s, target, &field)) goto fail;
+ 				scopes[i] = r->kind == GRAPH_BINDING
+-					? pg_synthesis_bind_graph(s, parent, field.binder, input->parameters.binder, rules[r->rule - 1])
+-					: pg_synthesis_bind_hypothesis(s, parent, field.binder, input->parameters.binder, rules[r->rule - 1]);
+-			} else scopes[i] = pg_synthesis_bind_context(s, parent, r->name,
+-				input->parameters.binder, rules[r->rule - 1]);
++					? pg_synthesis_bind_graph(s, parent, field.binder, input->parameters.binder, (struct pg_synthesis_input){.pending = rules[r->rule - 1]})
++					: pg_synthesis_bind_hypothesis(s, parent, field.binder, input->parameters.binder, (struct pg_synthesis_input){.pending = rules[r->rule - 1]});
++			} else scopes[i] = pg_synthesis_bind(s, parent, r->name,
++				input->parameters.binder, (struct pg_synthesis_input){.pending = rules[r->rule - 1]});
+ 			if (!scopes[i]) goto fail;
+ 			continue;
+ 		}
 @@ -1217,7 +1271,7 @@
  		if (r->kind == NAME || r->kind == MODULE) {
  			if (!r->rule || r->rule > np || !parent || target || r->syntax || r->definitions) goto fail;

@@ -42,6 +42,18 @@
  	}
  }
  
+@@ -480,9 +474,9 @@
+ 		assert(!pg_whnf_work_init(&work, &graph));
+ 		assert(!pg_synthesis_init(&synthesis, &typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
+ 		const struct pg_source_scope *scope = pg_synthesis_bind(&synthesis, pg_synthesis_root(&synthesis),
+-			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "A", .length = 1}, a, ac);
++			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "A", .length = 1}, a, (struct pg_synthesis_input){.checked = ac});
+ 		scope = pg_synthesis_bind(&synthesis, scope,
+-			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "R", .length = 1}, r, rc);
++			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "R", .length = 1}, r, (struct pg_synthesis_input){.checked = rc});
+ 		assert(scope);
+ 		const char source[] = "Acc := @\\subject : A => { acc : (x:A) -> ((y:A) -> R y x -> * y) -> * x; };";
+ 		struct pg_parser parser;
 @@ -962,15 +956,14 @@
  		assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
  		struct pg_synthesis_job *applied = pg_synthesis_evidence(&synthesis, match);

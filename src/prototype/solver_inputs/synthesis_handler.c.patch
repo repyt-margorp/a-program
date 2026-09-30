@@ -55,8 +55,10 @@
 -			source_scope->context_job, local->left, local->binder);
 +			source_scope->context, local->left, local->binder);
  		if (!context) goto error;
- 		local->inner = pg_synthesis_bind_context(synthesis, source_scope, clause->items[0].name,
- 			local->binder, context);
+-		local->inner = pg_synthesis_bind_context(synthesis, source_scope, clause->items[0].name,
+-			local->binder, context);
++		local->inner = pg_synthesis_bind(synthesis, source_scope, clause->items[0].name,
++			local->binder, (struct pg_synthesis_input){.pending = context});
  		if (!local->inner) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
  		struct pg_synthesis_job *body = pg_synthesis_request(synthesis, local->inner, clause->right);
  		local->value_job = pg_synthesis_lambda_body(synthesis,
@@ -157,8 +159,10 @@
 -	struct pg_synthesis_job *payload_context = pg_synthesis_rule_premise(synthesis, context, 0);
 +	struct pg_synthesis_job *payload_context = pg_synthesis_rule_input(synthesis, context, 0).pending;
  	const struct pg_source_scope *scope = pg_synthesis_scope_bind(synthesis, source_scope,
- 		clause->items[0].name, input->payload, payload_context, NULL, job, PG_SOURCE_UNASSOCIATED);
- 	local->inner = pg_synthesis_scope_bind(synthesis, scope, clause->items[1].name, input->resume, context, NULL, job, PG_SOURCE_UNASSOCIATED);
+-		clause->items[0].name, input->payload, payload_context, NULL, job, PG_SOURCE_UNASSOCIATED);
+-	local->inner = pg_synthesis_scope_bind(synthesis, scope, clause->items[1].name, input->resume, context, NULL, job, PG_SOURCE_UNASSOCIATED);
++		clause->items[0].name, input->payload, (struct pg_synthesis_input){.pending = payload_context}, NULL, job, PG_SOURCE_UNASSOCIATED);
++	local->inner = pg_synthesis_scope_bind(synthesis, scope, clause->items[1].name, input->resume, (struct pg_synthesis_input){.pending = context}, NULL, job, PG_SOURCE_UNASSOCIATED);
  	if (!local->inner) return PG_SYNTHESIS_ERROR;
  	struct pg_synthesis_job *body = pg_synthesis_request(synthesis, local->inner, clause->right);
 -	struct pg_synthesis_job *inner_lambda = pg_synthesis_lambda_body(synthesis, context, body);

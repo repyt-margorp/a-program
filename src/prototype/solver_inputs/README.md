@@ -104,11 +104,15 @@ starts from its checked elimination result and allocates a continuation only for
 actual path/generalization applications or a computed scrutinee. Known implicit
 constructor indices and branch Contexts are borrowed directly. The Job-only
 classifier-formation entry point is removed; its query worker is not yet removed.
+Lexical binding now has one checked/pending Context API; the Job-only binding
+entry point is removed. IH/graph associations borrow known Contexts directly.
+Only unavailable inputs require a binding-validation request; an existing one
+keeps its identity after completion. Source transport uses the same inputs.
 
 ### Assessment
 
-This removes some adapters, not the independent Job graph. IH binding,
-index-result/transport and other context/IADT consumers still use adapters.
+This removes some adapters, not the independent Job graph. Index-result/transport
+and other context/IADT consumers still use adapters.
 Producer-to-checked forwarding paths also remain. Removing classifier
 forwarding alone lost completed-result reuse, so that trial was rejected;
 removing the query wrapper does not settle the pending/checked request ownership.

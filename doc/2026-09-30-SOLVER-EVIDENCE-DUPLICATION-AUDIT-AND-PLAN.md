@@ -410,7 +410,10 @@ baseline described above. Concurrent accepted-source edits remain excluded.
 - [x] Migrate application callees/arguments and known Match results directly.
   Retain actual path/generalization applications and computed-scrutinee closure;
   remove the Job-only classifier-formation API and known-index input adapters.
-- [ ] Finish IH-binding, index-result/transport and remaining Context input
+- [x] Finish IH-binding Context inputs through one binding API, including known
+  associations, actual pending parent checks and all environment/I/O consumers.
+  Focused, checkpoint, sanitizer and full acceptance verification pass.
+- [ ] Finish index-result/transport and remaining Context input
   adapters and consumers, remove `EVIDENCE_JOB`, then remove duplicated query scheduling.
   The remaining adapter recognition is temporary, not the final architecture.
 
@@ -1273,3 +1276,80 @@ not an artifact-size, total-memory or elapsed-speedup claim.
 | `tests/iadt.c` | 2 | 3 | -1 |
 
 Counts follow applied source contents, excluding patch context and documentation.
+
+### SE1 Binding Context Inputs (2026-10-01)
+
+#### Subjective (User)
+
+2026-10-01, English paraphrase: resume the canonical Solve frontier rather than
+manage another near-identical Job/Evidence graph above Term and typing. Preserve
+only the unfinished operation's own continuation, not a renamed shadow graph.
+
+#### Objective (Code)
+
+Parent `ddf007c` plus these prototype edits; frozen accepted baseline `e716232`.
+`pg_synthesis_bind` now handles checked/pending inputs. Its separate Job-only
+entry point is removed. IH and graph bindings use the same representation and
+exact parent/binder/associated-field validation. Known Contexts are borrowed
+without an adapter or binding worker. Environment export, declared-type queries,
+source restoration and checkpoint fixtures migrate together; no wire field,
+Core tag or acceptance store is added. A raw decoded rule is still unchecked.
+
+#### Assessment
+
+The first trial unnecessarily suspended checked extensions whose parent producer
+had already finished. Indexed Match then could not obtain the branch Context and
+became unsupported. That trial is rejected, not covered by a relaxed test.
+The corrected factory borrows ready Contexts immediately, while preserving an
+existing request created when its parent really was pending. The hash lookup
+references that same obligation; it does not add a scope-validation result table.
+The original pending transport test remains unchanged and passes. Pending
+binding validation still uses broad source state; its removal/localization and
+remaining query/result ownership are not completed by this input migration.
+SE1-SE5 and public `.a` partition/resumption remain open.
+
+#### Plan
+
+- [x] Focused O2 synthesis/IADT/source-I/O and seven O2 checkpoint targets pass.
+- [x] ASan/UBSan synthesis/IADT/source-I/O and source/definition/namespace/
+  namespace-body/constructor checkpoint targets pass.
+- [x] Fresh patch application exactly matches all ten modified source/test files.
+- [x] Full O2 acceptance passes, including both LT providers/partition orders,
+  universal ordinary-result Sorted/permutation proofs, images and negative controls.
+
+This verified prototype milestone is ready to push; it does not authorize
+production promotion or complete the remaining ownership/resumption gate.
+
+Added tests cover direct IH/graph association without Job allocation, exact
+environment export, absent associations, mixed/foreign input rejection,
+zero-fuel inactivity and stable validation identity before/after a pending
+parent completes. Existing tests retain conditional typing, transport waiting,
+effectful bodies and source restoration. Public partitions freshly fail at
+100+100, 1000+1000, 1600+1600 and completed+0 (2725+0); 0+0 and 10+10 pass.
+No failed gate is made expected success. Logs use the prefix
+`/tmp/a-program-scope-input-`; detailed partition evidence is `partitions/partitions.tsv`.
+
+| Completed census | Jobs before / after | Adapters before / after | Job bytes before / after |
+| --- | ---: | ---: | ---: |
+| List-09 | 877 / 875 | 1 / 0 | 153,960 / 153,528 |
+| General QuickSort Local Sorted | 54,059 / 54,005 | 80 / 53 | 9,443,048 / 9,431,528 |
+
+Steps decrease 2726 -> 2725 and 809533 -> 809493. Terms, occurrences, Evidence
+and premise edges are unchanged; repeated terminal samples do not grow. These
+are live-store measurements, not artifact-size or elapsed-speedup claims.
+
+| Applied-code delta from `ddf007c` | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `synthesis.c` | 43 | 43 | 0 |
+| `synthesis.h` | 7 | 11 | -4 |
+| `synthesis_source.h` | 2 | 2 | 0 |
+| `synthesis_binding.c` | 3 | 2 | +1 |
+| `synthesis_handler.c` | 4 | 4 | 0 |
+| `source_io.c` | 4 | 4 | 0 |
+| Implementation total | 63 | 66 | -3 |
+| `tests/synthesis.c` | 110 | 51 | +59 |
+| `tests/iadt.c` | 2 | 2 | 0 |
+| `tests/source_io.c` | 12 | 12 | 0 |
+| `source_checkpoint_test.c` | 1 | 1 | 0 |
+
+Counts are applied-source changes, excluding patch context and documentation.

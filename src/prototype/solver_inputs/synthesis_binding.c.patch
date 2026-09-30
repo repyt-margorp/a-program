@@ -81,7 +81,15 @@
  	if (accepted) {
  		const struct pg_context *declaration = pg_evidence_judgement(accepted) == PG_JUDGEMENT_CONTEXT
  			? pg_context_lookup(pg_evidence_context(accepted), binder) : NULL;
-@@ -369,15 +379,14 @@
+@@ -364,20 +374,20 @@
+ 	if (!local->input) {
+ 		struct pg_synthesis_job *prepared;
+ 		if (pg_synthesis_await_preparation(synthesis, job, context, &prepared)) return;
+-		if (!prepared) prepared = pg_synthesis_scope_context_input(context);
+-		if (prepared) local->input = pg_synthesis_declared_type(synthesis, prepared, binder);
++		struct pg_synthesis_input input = prepared ? (struct pg_synthesis_input){.pending = prepared}
++			: pg_synthesis_scope_context_input(context);
++		if (input.checked || input.pending) local->input = pg_synthesis_declared_type_input(synthesis, input, binder);
  		else if (binding) {
  			const struct pg_source_scope *scope = context->inputs[0];
  			local->input = binding->binder == binder ? pg_synthesis_type_structure(synthesis, binding->domain)

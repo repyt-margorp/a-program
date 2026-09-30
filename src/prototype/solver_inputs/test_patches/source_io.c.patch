@@ -19,6 +19,40 @@
  		assert(scope);
  		struct pg_synthesis_job *root = parse(p, scope, "{{ main := &F; }}.main");
  		pg_synthesis_advance(&p->synthesis, budgets[i]);
+@@ -290,10 +291,10 @@
+ 		const struct pg_evidence *yc = pg_prove_context_extension(t, xc, pg_binder(&p->graph), pg_prove_variable(t, xc, a));
+ 		const struct pg_evidence *rc = pg_prove_family_context_extension(t, ac, r, yc, pg_prove_projection(t, yc, u));
+ 		assert(rc);
+-		const struct pg_source_scope *scope = pg_synthesis_bind_context(&p->synthesis, pg_synthesis_root(&p->synthesis),
+-			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "A", .length = 1}, a, pg_synthesis_evidence(&p->synthesis, ac));
+-		scope = pg_synthesis_bind_context(&p->synthesis, scope,
+-			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "R", .length = 1}, r, pg_synthesis_evidence(&p->synthesis, rc));
++		const struct pg_source_scope *scope = pg_synthesis_bind(&p->synthesis, pg_synthesis_root(&p->synthesis),
++			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "A", .length = 1}, a, (struct pg_synthesis_input){.checked = ac});
++		scope = pg_synthesis_bind(&p->synthesis, scope,
++			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "R", .length = 1}, r, (struct pg_synthesis_input){.checked = rc});
+ 		assert(scope);
+ 		const char *source[] = {"relation := R;",
+ 			"Acc := @\\subject : A => { acc : (x:A) -> ((y:A) -> R y x -> * y) -> * x; };",
+@@ -398,12 +399,12 @@
+ 		pg_prove_return_type(t, pg_prove_projection(t, xc, at)));
+ 	const struct pg_evidence *ic = pg_prove_context_extension(t, xc, ih, it);
+ 	const struct pg_source_scope *scope = pg_synthesis_root(&p->synthesis);
+-	scope = pg_synthesis_bind_context(&p->synthesis, scope,
+-		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "A", .length = 1}, a, pg_synthesis_evidence(&p->synthesis, ac));
+-	scope = pg_synthesis_bind_context(&p->synthesis, scope,
+-		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "x", .length = 1}, x, pg_synthesis_evidence(&p->synthesis, xc));
+-	scope = graph ? pg_synthesis_bind_graph(&p->synthesis, scope, x, ih, pg_synthesis_evidence(&p->synthesis, ic))
+-		: pg_synthesis_bind_hypothesis(&p->synthesis, scope, x, ih, pg_synthesis_evidence(&p->synthesis, ic));
++	scope = pg_synthesis_bind(&p->synthesis, scope,
++		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "A", .length = 1}, a, (struct pg_synthesis_input){.checked = ac});
++	scope = pg_synthesis_bind(&p->synthesis, scope,
++		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "x", .length = 1}, x, (struct pg_synthesis_input){.checked = xc});
++	scope = graph ? pg_synthesis_bind_graph(&p->synthesis, scope, x, ih, (struct pg_synthesis_input){.checked = ic})
++		: pg_synthesis_bind_hypothesis(&p->synthesis, scope, x, ih, (struct pg_synthesis_input){.checked = ic});
+ 	assert(scope);
+ 	struct pg_parser parser;
+ 	struct pg_definition definition;
 @@ -426,10 +427,10 @@
  	assert(!pg_synthesis_source_input(&p->synthesis, roots[0], &scope, &syntax));
  	struct pg_source_environment environment, field;
@@ -32,6 +66,18 @@
  	pg_synthesis_advance(&p->synthesis, 10000);
  	const struct pg_evidence *result = pg_synthesis_result(roots[0]);
  	const struct pg_term *expected = pg_reference(&p->graph, environment.binder);
+@@ -474,9 +475,9 @@
+ 		const struct pg_evidence *contexts[] = {ac, yc, destination};
+ 		const char *names[] = {"A", "y", "z"};
+ 		for (size_t i = 0; i < 3; ++i)
+-			scope = pg_synthesis_bind_context(&p->synthesis, scope,
++			scope = pg_synthesis_bind(&p->synthesis, scope,
+ 				(struct pg_token){.kind = PG_TOKEN_IDENT, .text = names[i], .length = 1},
+-				binders[i], pg_synthesis_evidence(&p->synthesis, contexts[i]));
++				binders[i], (struct pg_synthesis_input){.checked = contexts[i]});
+ 		assert(scope);
+ 		struct pg_synthesis_job *direct = pg_synthesis_evidence(&p->synthesis, images[1]);
+ 		struct pg_effect_inference effects;
 @@ -515,12 +516,14 @@
  		const struct pg_source_scope *scopes[4];
  		for (size_t n = 0; n < 4; ++n) {

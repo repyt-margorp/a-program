@@ -127,7 +127,13 @@
  	c.jobs = mapping;
  	assert(!pg_artifact_source_prepare(&p->synthesis, c.source, c.count, c.jobs));
  	assert(pg_artifact_source_attach(&p->synthesis, c.source, c.count, c.jobs));
-@@ -483,12 +493,12 @@
+@@ -478,17 +488,17 @@
+ 			const struct pg_evidence *context = pg_synthesis_scope_context(scope);
+ 			const struct pg_evidence *extended = pg_prove_context_extension(&p->typing, context,
+ 				binders[i], pg_prove_universe(&p->typing, context, 0));
+-			scope = pg_synthesis_bind(s, scope, syntax->token, binders[i], extended);
++			scope = pg_synthesis_bind(s, scope, syntax->token, binders[i], (struct pg_synthesis_input){.checked = extended});
+ 			assert(scope);
  		}
  		struct pg_synthesis_job *use = pg_synthesis_request(s, scope, syntax);
  		struct pg_reference_frontier view = {0};
