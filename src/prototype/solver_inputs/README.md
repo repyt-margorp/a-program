@@ -19,6 +19,11 @@ binding/domain normalization, CLI demands and IADT endpoint normalization;
 Context reindexing, substitution source/destination inputs; post-synthesis
 type expectations; and rule premises, including their structural queries,
 scope readers, checking, export and checkpoint consumers.
+Substitution images use the same direct inputs. One API accepts checked or
+pending contexts/images, with validity and arity checked by the ordinary worker.
+Family pairing returns its checked result directly; dependent value pairing
+still awaits reindexing and post-check conversion. Neither creates an adapter
+merely to pass an existing result to a consumer.
 An input directly borrows checked Evidence or its pending producer. The two
 pointers are passed/stored by value; there is no allocated wrapper, result table
 or new Core tag. Pending request identity does not change when its input finishes.
@@ -37,7 +42,7 @@ the caller's dispatch, preventing two advances through a completion boundary.
 ### Assessment
 
 This removes some adapters, not the independent Job graph. Source scopes,
-classifier operands, substitution images and other context/IADT/Identity
+classifier operands and other context/IADT/Identity
 constructors still use adapters. Several producer-to-checked forwarding paths
 also remain; removing the query wrapper does not settle their ownership.
 Keeping those indefinitely would not

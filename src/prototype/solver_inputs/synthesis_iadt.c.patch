@@ -8,7 +8,36 @@
  };
  struct induction_scope_work {
  	struct pg_source_context_allocation *allocation;
-@@ -237,13 +238,17 @@
+@@ -170,22 +171,23 @@
+ 	if (head->kind != PG_SYNTAX_ATOM || head->token.kind != '*' || arguments != index_count) goto rejected;
+ 	if (index_count > SIZE_MAX - parameter_count) goto error;
+ 	size_t count = parameter_count + index_count;
+-	if (count > SIZE_MAX / sizeof(struct pg_synthesis_job *)) goto error;
+-	struct pg_synthesis_job **images = malloc(count * sizeof(*images));
++	if (count > SIZE_MAX / sizeof(struct pg_synthesis_input)) goto error;
++	struct pg_synthesis_input *images = malloc(count * sizeof(*images));
+ 	if (count && !images) goto error;
+ 	const struct pg_evidence *extension = indices;
+ 	head = syntax;
+ 	for (size_t i = count; i; --i, extension = pg_context_parent_input(synthesis->typing, extension)) {
+ 		if (i > parameter_count) {
+-			images[i - 1] = pg_synthesis_request(synthesis, scope, head->right);
++			images[i - 1] = (struct pg_synthesis_input){.pending = pg_synthesis_request(synthesis, scope, head->right)};
+ 			head = head->left;
+ 		} else {
+ 			const struct pg_evidence *image = pg_prove_variable(synthesis->typing,
+ 				fields, pg_evidence_context(extension)->binder);
+-			images[i - 1] = pg_synthesis_evidence(synthesis, image);
++			images[i - 1] = (struct pg_synthesis_input){.checked = image};
+ 		}
+ 	}
+-	local->substitution = pg_synthesis_substitution(synthesis, indices, fields, count, images);
++	local->substitution = pg_synthesis_substitution(synthesis,
++		(struct pg_synthesis_input){.checked = indices}, (struct pg_synthesis_input){.checked = fields}, count, images);
+ 	free(images);
+ 	if (!local->substitution) goto error;
+ 	pg_synthesis_forward(synthesis, job, local->substitution);
+@@ -237,13 +239,17 @@
  		struct pg_synthesis_job *family = pg_synthesis_reindex_jobs(synthesis, (void *)job->inputs[1], (void *)job->inputs[0]);
  		struct pg_synthesis_job *value = pg_evidence_judgement(formation) == PG_JUDGEMENT_TYPE_FAMILY
  			? family : pg_synthesis_plain_rule(synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &family);
@@ -29,7 +58,7 @@
  	const struct pg_evidence *formation = pg_synthesis_result(job->inputs[0]);
  	const struct pg_evidence *field = pg_data_schema_field(pg_evidence_inductive_schema(formation), job->inputs[2], local->next);
  	if (!field) {
-@@ -260,9 +265,9 @@
+@@ -260,9 +266,9 @@
  		if (!binder) goto rejected;
  	}
  	++local->next;
@@ -42,7 +71,7 @@
  	return;
  rejected:
  	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
-@@ -321,9 +326,8 @@
+@@ -321,9 +327,8 @@
  		const struct pg_evidence *ih = pg_prove_inductive_hypothesis_type(synthesis->typing,
  			formation, parameters, motive_context, motive, context, field, retained ? retained->declared_type : NULL);
  		if (!ih) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
@@ -54,7 +83,7 @@
  			retained ? retained->binder : pg_binder(synthesis->typing->graph), 2, premises);
  		if (!local->pending) goto error;
  		pg_synthesis_subscribe(synthesis, job, local->pending, 0);
-@@ -683,7 +687,8 @@
+@@ -683,7 +688,8 @@
  	struct pg_synthesis_job *transport = pg_synthesis_family_transport_jobs(synthesis,
  		pg_synthesis_evidence(synthesis, family), left, right, path_count, paths, pg_synthesis_evidence(synthesis, value), PG_IDENTITY_RIGHT);
  	free(paths);
@@ -64,7 +93,7 @@
  	if (!local->value_job) goto rejected;
  	pg_synthesis_forward(synthesis, job, local->value_job);
  	return;
-@@ -1118,8 +1123,9 @@
+@@ -1118,8 +1124,9 @@
  		pg_synthesis_enqueue(synthesis, job); return;
  	}
  	for (size_t i = 0; i < 2; ++i) {

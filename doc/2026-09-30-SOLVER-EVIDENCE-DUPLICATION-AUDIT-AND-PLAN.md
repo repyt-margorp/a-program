@@ -254,7 +254,11 @@ baseline described above. Concurrent accepted-source edits remain excluded.
   the consumer's dispatch, even when it finishes; no second query may advance
   in that dispatch. Test zero fuel, sharing across owners, cancellation,
   completed reuse and failures, then rerun source/checkpoint regressions.
-- [ ] Finish scopes, classifier operands, substitution images, other context and Identity
+- [x] Migrate substitution images through the same direct-input representation;
+  replace known/pending substitution APIs with one request and one validation
+  path. Return checked family-pair results without a completed Job; retain
+  dependent value conversion and migrate Match generalization consumers.
+- [ ] Finish scopes, classifier operands, other context and Identity
   consumers, remove `EVIDENCE_JOB`, then remove duplicated query scheduling.
   The remaining adapter recognition is temporary, not the final architecture.
 
@@ -400,3 +404,47 @@ The public partition gate was rerun: 100+100 and 1000+1000 still differ in bytes
 Step-0 pending resave and 10+10 pass. These remain AP1-AP3 failures; SE1 and the
 overall goal are not complete. The next SE1 work is remaining no-work Evidence
 adapters and producer-to-checked forwarding, not another persistence codec.
+
+### SE1 Substitution Inputs (2026-09-30)
+
+**Objective (Code):** parent `93b3bea` plus this prototype, using the same isolated
+accepted baseline. Substitution images formerly required Job pointers even when
+already checked. Family pairing returned an ordinary checked substitution and
+then allocated a DONE Job solely to expose it to consumers.
+
+**Assessment:** use existing by-value inputs, not another allocated wrapper.
+The single substitution API validates ownership on request and checks context
+shape/arity in its worker for both input forms. Previously the known-input API
+rejected arity at request time while the pending API deferred it; now both report
+ordinary rejection when advanced. No expected type flows into image synthesis.
+Family pairing retains its existing ordinary checking rule; value pairing still
+requires the reindexed type and conversion receipt. Match generalization keeps
+its distinction between failed speculation and a hard error.
+
+**Plan / Results:** direct/legacy-input keys share one request; unfinished input
+identity stays stable after completion. Fresh `make check` and all seven
+checkpoint/namespace targets pass, including general QuickSort ordinary-result
+proofs and their negative/image controls. Focused tests cover mixed images,
+dependent cube rejection, zero fuel, foreign/malformed inputs, and family pairing
+without any Job allocation. ASan/UBSan synthesis, IADT and constructor-checkpoint
+tests also pass. The public partition gate still fails at 100+100,
+1000+1000, 1600+1600 and completed+0; no persistence completion is claimed.
+
+| Completed input | Jobs before / after | Evidence Jobs before / after | Job bytes before / after |
+| --- | ---: | ---: | ---: |
+| List-09 | 968 / 961 | 66 / 59 | 161,664 / 161,032 |
+| General QuickSort Local Sorted | 60,991 / 60,838 | 4,917 / 4,764 | 10,072,920 / 10,058,232 |
+
+Solve steps (2,824 / 815,008), Terms, occurrences, Evidence and premise-edge
+counts are unchanged. Repeated completed requests do not grow stores. This is
+live Job allocation, not `.a` size or an elapsed-time improvement. The two-slot
+image keys cost space; the measured reduction includes that cost.
+
+| Applied-code delta from `93b3bea` | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `synthesis.c` | 12 | 10 | +2 |
+| `synthesis.h` | 10 | 11 | -1 |
+| `synthesis_context.c` | 43 | 52 | -9 |
+| `synthesis_iadt.c` | 6 | 5 | +1 |
+| Implementation total | 71 | 78 | -7 |
+| `tests/synthesis.c` | 105 | 46 | +59 |
