@@ -419,6 +419,9 @@ baseline described above. Concurrent accepted-source edits remain excluded.
 - [x] Finish direct source/artifact-writer roots, CLI selections and their I/O,
   checkpoint and audit-test consumers. See the root-input milestone below;
   full acceptance, focused, semantic and checkpoint gates pass.
+- [x] Finish sequencing/result-Context and handler carrier/continuation inputs
+  through the same borrowed representation, including structural readers and
+  source restoration. See the CBPV-input milestone below.
 - [ ] Remove `EVIDENCE_JOB`, test callers and remaining adapter recognition.
   Checked roots must use the same borrowed inputs, not a replacement completed
   worker. Migrate the remaining sequencing/result/carrier operands and remove
@@ -1521,3 +1524,76 @@ No failure is reclassified as expected success. SE1-SE5 remain open.
 These count applied source, resolving symlinks, not patch context. Test-build
 selection adds 5/removes 4 lines; overlay assembly adds 13. Neither adds an
 execution/acceptance path. Logs and TSVs use `/tmp/a-program-root-input-`.
+
+### SE1 CBPV Inputs (2026-10-01)
+
+#### Subjective (User)
+
+2026-10-01, English paraphrase: a resumed Solve frontier must refer to the
+unfinished computation, not wrap Term/typed construction in a second Job graph.
+This reiterates the existing requirement; it does not authorize production edits.
+
+#### Objective (Code)
+
+Parent `18a54ff`, frozen accepted baseline `e716232`, plus the prototype.
+Sequencing, result-Context extraction, constant-result extraction and handler
+return/carrier/clause inputs now borrow the same checked/pending representation.
+Their existing interfaces change together with source callers, structural
+readers and handler-scope restoration; no Job-only compatibility API is added.
+The sequence's normalization dependency also permits a direct checked result.
+The result-Context reader preserves a checked operand instead of assuming a Job.
+The source wire format and ordinary kernel rules do not change.
+
+#### Assessment
+
+Known inputs need no completed adapter. Actual Fold/Pi/context/conversion work
+and handler effect-equation ownership remain. An explicit carrier is still a
+post-synthesis bound, not an expected type used to infer a clause body.
+The remaining Evidence factory and rule/expect/reindex/normalization aliases are
+not removed by this milestone.
+Those convenience aliases already route to the same interned request; removing
+them eliminates a duplicate input contract, not a second solving authority.
+The classifier-formation Job still delegates to a separately owned typed query
+and copies its completion/result. That ownership issue remains SE1/SE2 work;
+provisional classifier projection must survive its consolidation.
+
+Initial verification caught one missed restore call after the signature change.
+The new test then incorrectly used a value-subject comparator for a Context,
+and compared an unspecified-totality Return against a total Return. These
+fixture mistakes were corrected using Context judgements and an explicitly
+total ordinary Return rule; kernel acceptance/comparison was not weakened.
+
+#### Plan
+
+- [x] Direct checked inputs, repeated request sharing, missing/mixed/foreign
+  rejection, zero-fuel inactivity and stable real pending-input identity.
+- [x] O2 `all check`, semantic audit and seven checkpoint targets pass.
+- [x] Fresh cumulative patches reproduce source/test/audit files exactly.
+- [x] ASan/UBSan synthesis, source-I/O, semantic and source/definition/body checkpoints.
+- [x] Full O2 acceptance, including all general QuickSort provider/order variants.
+
+The final full acceptance run exits 0, including all four provider/order
+variants, ordinary-result Sorted/permutation, exact outputs, partial images
+and invalid evidence. This verifies the prototype, not production promotion.
+
+Fresh List-09/general QuickSort retain 2725/809493 steps, 875/53952 Jobs and
+zero Evidence adapters. Terms, occurrences, proofs and premise edges are
+unchanged. Job allocation bytes increase 153528 -> 153696 and 9427472 -> 9431888
+because direct input slots and the normalization input occupy more inline space.
+This is an input-contract change, not a memory/speedup claim. Repeated terminal
+samples do not grow. Public partition TSVs exactly match the previous milestone:
+the same four reload failures remain; no failure becomes an expected pass.
+
+| Applied-code delta from `18a54ff` | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `synthesis_cbpv.c` | 42 | 42 | 0 |
+| `synthesis_function.c` | 3 | 4 | -1 |
+| `synthesis_handler.c` | 60 | 51 | +9 |
+| `synthesis.h` / `synthesis_source.h` | 13 | 13 | 0 |
+| `synthesis.c` | 11 | 11 | 0 |
+| Implementation total | 129 | 121 | +8 |
+| `tests/synthesis.c` | 133 | 88 | +45 |
+| `tests/source_io.c` | 3 | 3 | 0 |
+
+Counts resolve applied-file symlinks and exclude patch context/documentation.
+Logs, census and partition files use `/tmp/a-program-cbpv-input-`. SE1-SE5 stay open.

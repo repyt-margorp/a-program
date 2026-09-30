@@ -352,6 +352,24 @@
  		assert(scope);
  	}
  	*output = scope;
+@@ -994,7 +1083,7 @@
+ 	if (mode == 1 || mode == 2 || mode >= 4) {
+ 		pg_synthesis_advance(&p->synthesis, 10000);
+ 		assert(pg_synthesis_result(roots[0]) && pg_synthesis_result(roots[1]));
+-		struct pg_synthesis_job *original = pg_synthesis_handler(&p->synthesis, scope, NULL, definition.expression);
++		struct pg_synthesis_job *original = pg_synthesis_handler(&p->synthesis, scope, (struct pg_synthesis_input){0}, definition.expression);
+ 		if (!pg_synthesis_result(original)) {
+ 			fprintf(stderr, "handler source before save: mode=%d status=%d ready=%d steps=%llu\n",
+ 				mode, pg_synthesis_status(original), p->synthesis.ready != NULL,
+@@ -1012,7 +1101,7 @@
+ 		 * unused internal Lambda scopes need not be retained by the writer. */
+ 		struct pg_synthesis_job *carrier = pg_synthesis_source_handler_carrier(&p->synthesis, scope, definition.expression);
+ 		struct pg_synthesis_job *clause = pg_synthesis_handler_clause(&p->synthesis, inner,
+-			carrier, definition.expression->items[0].expression);
++			(struct pg_synthesis_input){.pending = carrier}, definition.expression->items[0].expression);
+ 		const struct pg_source_scope *clause_scope = pg_synthesis_handler_clause_scope(clause);
+ 		assert(clause_scope);
+ 		initial[0] = parse(p, clause_scope, "{{x:=req;}}.x");
 @@ -1020,7 +1109,9 @@
  	for (unsigned round = 0; round < 3; ++round) {
  		FILE *file = tmpfile();
@@ -363,6 +381,15 @@
  		assert(p->synthesis.steps == steps);
  		if (mode >= 6) invalid_handler_binding(file);
  		pg_program_destroy(p);
+@@ -1046,7 +1137,7 @@
+ 		assert(p->synthesis.steps < 10000);
+ 		pg_synthesis_advance(&p->synthesis, 1);
+ 	}
+-	struct pg_synthesis_job *handler = pg_synthesis_handler(&p->synthesis, environment.parent, NULL, environment.handler);
++	struct pg_synthesis_job *handler = pg_synthesis_handler(&p->synthesis, environment.parent, (struct pg_synthesis_input){0}, environment.handler);
+ 	const struct pg_evidence *handled = pg_synthesis_result(handler), *value = pg_synthesis_result(roots[1]);
+ 	if (!handled || !value) fprintf(stderr, "handler scopes: handler %d, roots %d %d, steps %llu\n",
+ 		pg_synthesis_status(handler), pg_synthesis_status(roots[0]), pg_synthesis_status(roots[1]),
 @@ -1133,7 +1224,7 @@
  		size_t boundary = 0;
  		for (;;) {

@@ -111,6 +111,10 @@ keeps its identity after completion. Source transport uses the same inputs.
 Source/artifact writer roots and CLI selections borrow that same input directly;
 there is no Job-only writer or completed Job for a known selected result.
 Reading restores ordinary unchecked producers without Solve or acceptance.
+Sequencing and result-Context inputs, constant-result extraction and handler
+return/carrier/clause operands use the same borrowed representation. Their
+structural readers preserve checked inputs; inferred effect owners and ordinary
+kernel acceptance remain, without another Job-only input interface.
 
 ### Assessment
 

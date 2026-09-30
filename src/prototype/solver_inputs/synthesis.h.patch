@@ -112,42 +112,86 @@
  	const struct pg_context *allocation);
  /* Independently synthesize a #return clause as a raw continuation Lambda.
   * The input supplies its result-domain type, not an expected clause codomain.
+@@ -284,7 +297,7 @@
+  * Recover the resulting Pi classifier to obtain the return clause's carrier.
+  * This alone neither infers operation-clause effects nor accepts a handler. */
+ struct pg_synthesis_job *pg_synthesis_handler_return(struct pg_synthesis *synthesis,
+-	const struct pg_source_scope *scope, struct pg_synthesis_job *input,
++	const struct pg_source_scope *scope, struct pg_synthesis_input input,
+ 	const struct pg_syntax *clause);
+ /* Build the pending context Gamma, payload:A, resume:U(Pi(response:B, carrier))
+  * using ordinary context/Pi/Thunk rules. All type inputs may still be pending;
 @@ -292,8 +305,8 @@
   * neither allocates fresh binders nor resolves an operation name. Consumers
   * retain their own operation-reference validation dependency. */
  struct pg_synthesis_job *pg_synthesis_handler_context(struct pg_synthesis *synthesis,
 -	struct pg_synthesis_job *context, struct pg_synthesis_job *carrier,
 -	struct pg_synthesis_job *payload_type, struct pg_synthesis_job *response_type,
-+	struct pg_synthesis_input context, struct pg_synthesis_job *carrier,
++	struct pg_synthesis_input context, struct pg_synthesis_input carrier,
 +	struct pg_synthesis_input payload_type, struct pg_synthesis_input response_type,
  	const struct pg_object *payload, const struct pg_object *resume, const struct pg_object *response);
  /* Resolve operation inputs through ordinary source aliases, prepare a pending
   * payload/resumption context and synthesize the clause without waiting for a
-@@ -343,7 +356,7 @@
+@@ -302,7 +315,7 @@
+  * nested Lambda proof; final pg_prove_handler still checks carrier/effect
+  * compatibility. This API does not guess or infer a missing carrier. */
+ struct pg_synthesis_job *pg_synthesis_handler_clause(struct pg_synthesis *synthesis,
+-	const struct pg_source_scope *scope, struct pg_synthesis_job *carrier,
++	const struct pg_source_scope *scope, struct pg_synthesis_input carrier,
+ 	const struct pg_syntax *clause);
+ /* Immutable allocation input, not a saved classifier or accepted signature.
+  * Ordinary clause synthesis checks that source lookup selects this producer. */
+@@ -311,7 +324,7 @@
+ 	const struct pg_object *payload, *resume, *response;
+ };
+ struct pg_synthesis_job *pg_synthesis_handler_clause_at(struct pg_synthesis *synthesis,
+-	const struct pg_source_scope *scope, struct pg_synthesis_job *carrier,
++	const struct pg_source_scope *scope, struct pg_synthesis_input carrier,
+ 	const struct pg_syntax *clause, const struct pg_handler_clause_input *input);
+ const struct pg_source_scope *pg_synthesis_handler_clause_scope(const struct pg_synthesis_job *job);
+ int pg_synthesis_handler_clause_input(const struct pg_synthesis *synthesis,
+@@ -328,13 +341,13 @@
+ const struct pg_source_scope *pg_synthesis_restore_handler_binding(struct pg_synthesis *synthesis,
+ 	const struct pg_handler_binding_input *input);
+ /* Assemble all clauses through the shared producers and final kernel rule.
+- * Exactly one #return clause is required, in any position. A NULL carrier
++ * Exactly one #return clause is required, in any position. An empty carrier input
+  * requests independent return-type and least positive effect inference. The
+  * handler owns that equation work until synthesis destruction; all structural
+  * contributions precede sealing and final kernel acceptance. Explicit carriers
+  * remain post-synthesis bounds, not expected types for clause elaboration. */
+ struct pg_synthesis_job *pg_synthesis_handler(struct pg_synthesis *synthesis,
+-	const struct pg_source_scope *scope, struct pg_synthesis_job *carrier,
++	const struct pg_source_scope *scope, struct pg_synthesis_input carrier,
+ 	const struct pg_syntax *syntax);
+ struct pg_effect_inference;
+ struct pg_effect_equation;
+@@ -343,32 +356,24 @@
   * use application. If a computation has a dependent result, only a checked
   * pure RETURN may supply the argument. No host effects are executed here. */
  struct pg_synthesis_job *pg_synthesis_sequence(struct pg_synthesis *synthesis,
 -	struct pg_synthesis_job *context, struct pg_synthesis_job *input,
-+	struct pg_synthesis_input context, struct pg_synthesis_job *input,
- 	struct pg_synthesis_job *continuation);
+-	struct pg_synthesis_job *continuation);
++	struct pg_synthesis_input context, struct pg_synthesis_input input,
++	struct pg_synthesis_input continuation);
  /* Recover a callable's classifier, open its Pi telescope and discharge binders
   * innermost first with ordinary constant-codomain rules. Parameter domains may
-@@ -351,24 +364,16 @@
+  * depend on earlier parameters; the remaining result must not depend on them.
   * Structural consumers may inspect the result before evidence acceptance;
   * use one parameter for return clauses, two for operation clauses. */
  struct pg_synthesis_job *pg_synthesis_constant_result(struct pg_synthesis *synthesis,
 -	struct pg_synthesis_job *context, struct pg_synthesis_job *callable, size_t parameters);
-+	struct pg_synthesis_input context, struct pg_synthesis_job *callable, size_t parameters);
++	struct pg_synthesis_input context, struct pg_synthesis_input callable, size_t parameters);
  /* Recover a constant result value type from an independently synthesized
   * return continuation, then form F G C using the converged equation G.
 - * The context is a producer and may be unresolved; acceptance awaits it.
-+ * The context is checked evidence or an unresolved producer; acceptance awaits it.
++ * Context and return inputs may be checked or unresolved; acceptance awaits them.
   * Work outlives synthesis; notify sealing through effect_inference below. No clause body
   * is checked against an expected type here; final handler checking remains
   * required. Dependent/raw-Pi codomains are not coerced to F G C. */
  struct pg_synthesis_job *pg_synthesis_handler_carrier(struct pg_synthesis *synthesis,
 -	struct pg_synthesis_job *context, struct pg_synthesis_job *returned,
-+	struct pg_synthesis_input context, struct pg_synthesis_job *returned,
++	struct pg_synthesis_input context, struct pg_synthesis_input returned,
  	struct pg_effect_inference *work, const struct pg_effect_equation *equation);
 -/* Borrow a positive effect-equation graph into ordinary budgeted Solve.
 - * Completion has no proof result: closed rows are read from work and must still
@@ -378,7 +422,7 @@
 + * formation producer, usable by pg_synthesis_bind. */
  struct pg_synthesis_job *pg_synthesis_result_context(struct pg_synthesis *synthesis,
 -	struct pg_synthesis_job *context, struct pg_synthesis_job *computation,
-+	struct pg_synthesis_input context, struct pg_synthesis_job *computation,
++	struct pg_synthesis_input context, struct pg_synthesis_input computation,
  	const struct pg_object *binder);
  /* Shared source/continuation Lambda construction. Context already contains
   * the binder with the supplied domain. Value bodies are lifted by RETURN;
