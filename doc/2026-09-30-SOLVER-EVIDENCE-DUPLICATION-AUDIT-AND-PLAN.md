@@ -2223,7 +2223,8 @@ added. General classifier forwarding and the broader SE1-SE5 gates remain open.
 - [x] Complete full acceptance, including both general QuickSort providers/orders.
 - [x] Reassemble recorded patches exactly; check coexistence with user edits.
 - [x] Record applied per-file deltas; prepare the verified prototype milestone.
-- [ ] Push the verified prototype milestone after full acceptance finishes.
+- [x] Push the verified prototype milestone after full acceptance finishes:
+  `dc33ef4` published to `origin/main` on 2026-10-01.
 
 Fresh census: List-09 completes in 2,720 steps (parent 2,725), with 870 Jobs
 (875) and 153,016 Job bytes (153,696). General QuickSort completes in 809,172
