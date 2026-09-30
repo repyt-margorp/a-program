@@ -267,6 +267,14 @@ baseline described above. Concurrent accepted-source edits remain excluded.
 - [x] Migrate logical-family requests and Lambda-body/Pi-scope contexts together;
   remove their checked-input adapters, including abstraction and operation
   signature consumers. Keep family/CBPV conversion and context checking.
+- [x] Unify application, sequencing and result-context APIs around direct
+  Context inputs; migrate constant-result and handler consumers, deleting
+  separate checked/Job entry points rather than adding another API variant.
+- [ ] Migrate source-scope Context storage, environment export and name lookup
+  together. Scope identity must retain checked/pending input identity, not change
+  when a producer finishes. Source checkpoint fixtures currently assume a root
+  Context Job at prefix slot zero; remove that assumption, not recreate an adapter
+  for serialization. This prerequisite is distinct from further codec expansion.
 - [ ] Finish source scopes, known-family result adapters, other context and Identity
   consumers, remove `EVIDENCE_JOB`, then remove duplicated query scheduling.
   The remaining adapter recognition is temporary, not the final architecture.
@@ -602,3 +610,41 @@ included in these live Job bytes; this is not an artifact-size or timing claim.
 | Implementation total | 132 | 106 | +26 |
 | `tests/synthesis.c` | 56 | 28 | +28 |
 | `definition_checkpoint_test.c` | 1 | 1 | 0 |
+
+### SE1 Context Consumers (2026-09-30)
+
+**Objective (Code):** parent `455ad02` plus this prototype, on the same isolated
+baseline. Scope migration encountered Job-only Context consumers. Application,
+sequencing and result-context construction already had direct implementations
+behind duplicate APIs. These are now the sole entry points; constant-result
+extraction and handler Context/carrier construction borrow the same inputs.
+The completed destination in Match motive construction no longer needs a Job.
+
+**Assessment:** this removes a prerequisite to scope migration, not the scope's
+Job owner itself. No new worker, acceptance state, Core tag or wire field was
+added. Conversion, effect discovery and dependent-codomain checks remain.
+
+**Plan / Results:** O2 `check` and all seven checkpoint/namespace targets pass,
+including the general QuickSort ordinary-result theorem and negative/image
+controls. A new direct-context test covers zero fuel, no Evidence adapters,
+legacy/direct sharing, stable pending identity and malformed/foreign rejection.
+ASan/UBSan synthesis, IADT and definition/both namespace variants pass. Fresh
+overlay source/tests/checkpoints exactly match the tested work. The public
+partition gate still fails at 100+100, 1000+1000, 1600+1600 and completed+0.
+
+QuickSort Jobs: 56,030 -> 56,010; adapters: 2,051 -> 2,031; live Job bytes:
+9,606,168 -> 9,604,088. List-09 is unchanged. Steps, Terms, occurrences, Evidence
+and premise edges are unchanged for both; repeated final samples do not grow.
+This is not a claim of reduced `.a` size or improved runtime.
+
+| Applied-code delta from `455ad02` | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `synthesis.c` | 17 | 17 | 0 |
+| `synthesis.h` | 9 | 12 | -3 |
+| `synthesis_source.h` | 1 | 7 | -6 |
+| `synthesis_function.c` | 12 | 24 | -12 |
+| `synthesis_cbpv.c` | 4 | 18 | -14 |
+| `synthesis_handler.c` | 18 | 16 | +2 |
+| Implementation total | 61 | 94 | -33 |
+| `tests/synthesis.c` | 124 | 55 | +69 |
+| `tests/iadt.c` | 2 | 2 | 0 |

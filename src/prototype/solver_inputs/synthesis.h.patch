@@ -22,6 +22,43 @@
  /* Implicit mode also quotes inferred computational functions at argument and
   * named block-binding boundaries. Returning computations still sequence;
   * logical family signatures are not quoted as runtime functions. */
+@@ -292,7 +306,7 @@
+  * neither allocates fresh binders nor resolves an operation name. Consumers
+  * retain their own operation-reference validation dependency. */
+ struct pg_synthesis_job *pg_synthesis_handler_context(struct pg_synthesis *synthesis,
+-	struct pg_synthesis_job *context, struct pg_synthesis_job *carrier,
++	struct pg_synthesis_input context, struct pg_synthesis_job *carrier,
+ 	struct pg_synthesis_job *payload_type, struct pg_synthesis_job *response_type,
+ 	const struct pg_object *payload, const struct pg_object *resume, const struct pg_object *response);
+ /* Resolve operation inputs through ordinary source aliases, prepare a pending
+@@ -343,7 +357,7 @@
+  * use application. If a computation has a dependent result, only a checked
+  * pure RETURN may supply the argument. No host effects are executed here. */
+ struct pg_synthesis_job *pg_synthesis_sequence(struct pg_synthesis *synthesis,
+-	struct pg_synthesis_job *context, struct pg_synthesis_job *input,
++	struct pg_synthesis_input context, struct pg_synthesis_job *input,
+ 	struct pg_synthesis_job *continuation);
+ /* Recover a callable's classifier, open its Pi telescope and discharge binders
+  * innermost first with ordinary constant-codomain rules. Parameter domains may
+@@ -351,15 +365,15 @@
+  * Structural consumers may inspect the result before evidence acceptance;
+  * use one parameter for return clauses, two for operation clauses. */
+ struct pg_synthesis_job *pg_synthesis_constant_result(struct pg_synthesis *synthesis,
+-	struct pg_synthesis_job *context, struct pg_synthesis_job *callable, size_t parameters);
++	struct pg_synthesis_input context, struct pg_synthesis_job *callable, size_t parameters);
+ /* Recover a constant result value type from an independently synthesized
+  * return continuation, then form F G C using the converged equation G.
+- * The context is a producer and may be unresolved; acceptance awaits it.
++ * The context is checked evidence or an unresolved producer; acceptance awaits it.
+  * Work outlives synthesis; notify sealing through effect_inference below. No clause body
+  * is checked against an expected type here; final handler checking remains
+  * required. Dependent/raw-Pi codomains are not coerced to F G C. */
+ struct pg_synthesis_job *pg_synthesis_handler_carrier(struct pg_synthesis *synthesis,
+-	struct pg_synthesis_job *context, struct pg_synthesis_job *returned,
++	struct pg_synthesis_input context, struct pg_synthesis_job *returned,
+ 	struct pg_effect_inference *work, const struct pg_effect_equation *equation);
+ /* Borrow a positive effect-equation graph into ordinary budgeted Solve.
+  * Completion has no proof result: closed rows are read from work and must still
 @@ -468,6 +482,9 @@
  struct pg_synthesis_job *pg_synthesis_rule(struct pg_synthesis *synthesis,
  	const struct pg_derivation_input *input, struct pg_synthesis_job *const *premises,
@@ -80,7 +117,27 @@
  /* Source annotation over independently synthesized inputs. Applies the same
   * source-reference/polarity adaptations as expr :: type, then post-checks.
   * No syntax fabrication or expected-type feedback into either producer. */
-@@ -700,9 +727,9 @@
+@@ -684,25 +711,22 @@
+  * classifier, post-checks the value argument and uses ordinary APP evidence.
+  * No implicit force, thunk, return or sequencing; no expected type flows
+  * into either producer. Accepted inputs reuse normalization and comparison;
+- * rule scheduling may remain pending even when those computations are cached. */
++ * rule scheduling may remain pending even when those computations are cached.
++ * Contexts are borrowed checked evidence or stable unresolved producers. */
+ struct pg_synthesis_job *pg_synthesis_application(struct pg_synthesis *synthesis,
+-	const struct pg_evidence *context, struct pg_synthesis_job *function,
+-	struct pg_synthesis_job *argument);
+-/* Same rule graph with a pending context producer. */
+-struct pg_synthesis_job *pg_synthesis_application_jobs(struct pg_synthesis *synthesis,
+-	struct pg_synthesis_job *context, struct pg_synthesis_job *function,
++	struct pg_synthesis_input context, struct pg_synthesis_job *function,
+ 	struct pg_synthesis_job *argument);
+ /* Prepare Gamma,x:A from a pending M:F E A, without executing M or supplying
+  * its result. The caller owns the stable binder; the result is a context
+  * formation producer, usable by pg_synthesis_bind_context. */
+ struct pg_synthesis_job *pg_synthesis_result_context(struct pg_synthesis *synthesis,
+-	struct pg_synthesis_job *context, struct pg_synthesis_job *computation,
++	struct pg_synthesis_input context, struct pg_synthesis_job *computation,
  	const struct pg_object *binder);
  /* Shared source/continuation Lambda construction. Context already contains
   * the binder with the supplied domain. Value bodies are lifted by RETURN;
@@ -92,7 +149,7 @@
  	struct pg_synthesis_job *body);
  /* Instantiate an independently produced Universe Identity family at two
   * value endpoints. Post-check each against its own endpoint type; never
-@@ -752,33 +779,21 @@
+@@ -752,33 +776,21 @@
  	const struct pg_dimension_map *target_face, const struct pg_dimension_map **intrinsic);
  /* Extend a checked substitution with an independently typed value. The
   * expected dependent field type is reindexed and compared using shared work;
@@ -136,7 +193,7 @@
  /* Instantiate Self, then lift each constructor field. Formation and parameter
   * substitution are pending producers; fresh field binders belong to this job. */
  struct pg_synthesis_job *pg_synthesis_constructor_scope(struct pg_synthesis *synthesis,
-@@ -837,7 +852,8 @@
+@@ -837,7 +849,8 @@
  	const struct pg_evidence *context, const struct pg_evidence *computation);
  /* Normalize an accepted term or formation using shared pure WHNF work, then
   * retain typing through directed subject-reduction evidence. The immutable
@@ -146,7 +203,7 @@
  struct pg_synthesis_job *pg_synthesis_normalize(struct pg_synthesis *synthesis,
  	const struct pg_evidence *context, const struct pg_evidence *proof);
  /* Strong pure normalization of the same typed inputs, with a distinct job
-@@ -857,8 +873,8 @@
+@@ -857,8 +870,8 @@
  	enum pg_reduction_kind kind);
  /* Immutable request operands, for retention without serializing acceptance. */
  int pg_synthesis_normalization_input(const struct pg_synthesis *synthesis,

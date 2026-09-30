@@ -31,3 +31,20 @@
  	}
  }
  
+@@ -962,14 +956,14 @@
+ 		assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
+ 		struct pg_synthesis_job *applied = pg_synthesis_evidence(&synthesis, match);
+ 		for (size_t i = 0; i < 2; ++i)
+-			applied = pg_synthesis_application(&synthesis, context, applied, pg_synthesis_evidence(&synthesis, arguments[i]));
++			applied = pg_synthesis_application(&synthesis, (struct pg_synthesis_input){.checked = context}, applied, pg_synthesis_evidence(&synthesis, arguments[i]));
+ 		const struct pg_evidence *result = solve_index_proof(&synthesis, applied, chunk, PG_SYNTHESIS_DONE);
+ 		assert(pg_evidence_classifier(result) == pg_return_type(typing->graph, pg_evidence_subject(original_type)->core));
+ 		const struct pg_evidence *normal = solve_index_proof(&synthesis,
+ 			pg_synthesis_normalize_jobs(&synthesis, pg_synthesis_evidence(&synthesis, context), applied, PG_REDUCTION_NF),
+ 			chunk, PG_SYNTHESIS_DONE);
+ 		assert(pg_evidence_subject(normal)->core == pg_evidence_subject(pg_prove_return(typing, original_value))->core);
+-		solve_index_proof(&synthesis, pg_synthesis_application(&synthesis, context,
++		solve_index_proof(&synthesis, pg_synthesis_application(&synthesis, (struct pg_synthesis_input){.checked = context},
+ 			pg_synthesis_evidence(&synthesis, match), pg_synthesis_evidence(&synthesis, arguments[1])),
+ 			chunk, PG_SYNTHESIS_REJECTED);
+ 		pg_synthesis_destroy(&synthesis);

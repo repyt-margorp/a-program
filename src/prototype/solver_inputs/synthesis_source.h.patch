@@ -1,6 +1,6 @@
 --- a/synthesis_source.h
 +++ b/synthesis_source.h
-@@ -123,7 +123,26 @@
+@@ -123,7 +123,20 @@
  	struct pg_synthesis_job *, const struct pg_object *, struct pg_synthesis_job *, enum pg_source_association);
  struct pg_synthesis_job *pg_synthesis_plain_rule(struct pg_synthesis *, enum pg_evidence_rule,
  	const struct pg_object *, size_t, struct pg_synthesis_job *const *);
@@ -19,16 +19,10 @@
 +	struct pg_synthesis_input);
 +struct pg_synthesis_job *pg_synthesis_normalize_classifier_in(struct pg_synthesis *, struct pg_synthesis_input,
 +	struct pg_synthesis_input);
-+struct pg_synthesis_job *pg_synthesis_application_in(struct pg_synthesis *, struct pg_synthesis_input,
-+	struct pg_synthesis_job *, struct pg_synthesis_job *);
-+struct pg_synthesis_job *pg_synthesis_result_context_in(struct pg_synthesis *, struct pg_synthesis_input,
-+	struct pg_synthesis_job *, const struct pg_object *);
-+struct pg_synthesis_job *pg_synthesis_sequence_in(struct pg_synthesis *, struct pg_synthesis_input,
-+	struct pg_synthesis_job *, struct pg_synthesis_job *);
  const struct pg_derivation_input *pg_synthesis_plain_derivation(const struct pg_synthesis_job *);
  /* Borrow/restore a rule's premise cursor before endpoint computation starts.
   * 1 supplies a cursor, 0 needs another state owner, -1 rejects the request.
-@@ -145,14 +164,14 @@
+@@ -145,14 +158,14 @@
  const struct pg_synthesis_job *pg_synthesis_operation_origin(const struct pg_synthesis_job *);
  /* Follow an existing lexical alias edge, without evaluation or acceptance. */
  struct pg_synthesis_job *pg_synthesis_source_origin(const struct pg_synthesis_job *);
@@ -45,8 +39,12 @@
  int pg_synthesis_classifier_formation_structure(struct pg_synthesis *, const struct pg_synthesis_job *,
  	struct pg_synthesis_job **);
  const struct pg_object *pg_synthesis_pi_scope_binder(const struct pg_synthesis_job *);
-@@ -170,10 +189,10 @@
- 	struct pg_synthesis_job *, struct pg_synthesis_job *);
+@@ -167,13 +180,13 @@
+ int pg_synthesis_cbpv_type_rule(enum pg_evidence_rule);
+ const struct pg_synthesis_work_class *pg_synthesis_cbpv_structure_class(enum pg_evidence_rule, int classifier);
+ struct pg_synthesis_job *pg_synthesis_application_domain(struct pg_synthesis *,
+-	struct pg_synthesis_job *, struct pg_synthesis_job *);
++	struct pg_synthesis_input, struct pg_synthesis_job *);
  /* Checked logical-family/CBPV adapters, never expected-type inference. */
  struct pg_synthesis_job *pg_synthesis_family_contract(struct pg_synthesis *,
 -	struct pg_synthesis_job *, struct pg_synthesis_job *);

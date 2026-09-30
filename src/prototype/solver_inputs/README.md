@@ -47,6 +47,10 @@ reconstructs its normalization proof while that query is suspended.
 Logical-family conversion/domain requests and Lambda-body/Pi-scope contexts use
 the same inputs; abstraction and operation-signature consumers no longer need
 Evidence adapters. The actual family/CBPV conversion and context checks remain.
+Application, sequencing and result-context construction each have one direct
+Context API, not separate checked/Job entry points. Constant-result extraction
+and handler-context/carrier construction use the same input representation.
+Scope storage and source-environment export still require their own migration.
 
 ### Assessment
 

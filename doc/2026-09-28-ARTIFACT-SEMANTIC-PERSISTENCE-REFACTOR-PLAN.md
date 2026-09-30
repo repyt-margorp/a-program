@@ -56,6 +56,9 @@ lookup. These changes do not repair the public split-fuel failures or authorize
 a new checkpoint/backend codec.
 Logical-family conversion and Lambda-body/Pi-scope contexts now also take direct
 inputs; their checking and semantic conversion remain ordinary Solve work.
+Application/sequencing/result-context entry points are now unified around those
+inputs, including handler and constant-result consumers. Source-scope storage
+still uses Jobs; removing its adapters is the next SE1 migration, not completed.
 
 Do not extend the binding/domain checkpoint codec or AP6 while this gate is
 open. Existing passing checkpoint fixtures remain historical evidence, not a
