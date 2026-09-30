@@ -1,6 +1,14 @@
 --- a/synthesis_iadt.c
 +++ b/synthesis_iadt.c
-@@ -237,9 +237,9 @@
+@@ -74,6 +74,7 @@
+ 	struct pg_source_context_allocation *allocation;
+ 	size_t next;
+ 	struct pg_synthesis_job *pending;
++	struct pg_typed_query *lift;
+ };
+ struct induction_scope_work {
+ 	struct pg_source_context_allocation *allocation;
+@@ -237,13 +238,17 @@
  		struct pg_synthesis_job *family = pg_synthesis_reindex_jobs(synthesis, (void *)job->inputs[1], (void *)job->inputs[0]);
  		struct pg_synthesis_job *value = pg_evidence_judgement(formation) == PG_JUDGEMENT_TYPE_FAMILY
  			? family : pg_synthesis_plain_rule(synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &family);
@@ -13,7 +21,28 @@
  		if (!local->pending) goto error;
  	}
  	if (pg_synthesis_await(synthesis, job, local->pending)) return;
-@@ -321,9 +321,8 @@
+ 	const struct pg_evidence *map = local->pending->result;
++	if (local->lift) {
++		if (pg_synthesis_await_query(synthesis, job, local->lift)) return;
++		map = pg_typed_query_result(local->lift);
++	}
+ 	const struct pg_evidence *formation = pg_synthesis_result(job->inputs[0]);
+ 	const struct pg_evidence *field = pg_data_schema_field(pg_evidence_inductive_schema(formation), job->inputs[2], local->next);
+ 	if (!field) {
+@@ -260,9 +265,9 @@
+ 		if (!binder) goto rejected;
+ 	}
+ 	++local->next;
+-	local->pending = pg_synthesis_substitution_lift(synthesis, map, field, binder);
+-	if (!local->pending) goto error;
+-	pg_synthesis_subscribe(synthesis, job, local->pending, 0);
++	local->lift = pg_substitution_lift_request(synthesis->typing, map, field, binder);
++	if (!local->lift) goto error;
++	pg_synthesis_enqueue(synthesis, job);
+ 	return;
+ rejected:
+ 	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+@@ -321,9 +326,8 @@
  		const struct pg_evidence *ih = pg_prove_inductive_hypothesis_type(synthesis->typing,
  			formation, parameters, motive_context, motive, context, field, retained ? retained->declared_type : NULL);
  		if (!ih) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
@@ -25,7 +54,7 @@
  			retained ? retained->binder : pg_binder(synthesis->typing->graph), 2, premises);
  		if (!local->pending) goto error;
  		pg_synthesis_subscribe(synthesis, job, local->pending, 0);
-@@ -683,7 +682,8 @@
+@@ -683,7 +687,8 @@
  	struct pg_synthesis_job *transport = pg_synthesis_family_transport_jobs(synthesis,
  		pg_synthesis_evidence(synthesis, family), left, right, path_count, paths, pg_synthesis_evidence(synthesis, value), PG_IDENTITY_RIGHT);
  	free(paths);
@@ -35,7 +64,7 @@
  	if (!local->value_job) goto rejected;
  	pg_synthesis_forward(synthesis, job, local->value_job);
  	return;
-@@ -1118,8 +1118,9 @@
+@@ -1118,8 +1123,9 @@
  		pg_synthesis_enqueue(synthesis, job); return;
  	}
  	for (size_t i = 0; i < 2; ++i) {

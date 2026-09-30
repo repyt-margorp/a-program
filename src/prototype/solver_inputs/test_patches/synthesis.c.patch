@@ -1,6 +1,45 @@
 --- a/synthesis.c
 +++ b/synthesis.c
-@@ -993,7 +993,7 @@
+@@ -11,6 +11,7 @@
+ #include "prelude.h"
+ #include "effect_inference.h"
+ #include "derivation.h"
++#include "typed_query.h"
+ 
+ #include <assert.h>
+ #include <stdio.h>
+@@ -23,6 +24,30 @@
+ 	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_DONE);
+ }
+ 
++/* Test-only owner: production consumers retain queries in their own state.
++ * Exercise borrowing and dispatch limits without restoring a wrapper API. */
++static void query_consumer_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
++{
++	for (size_t i = 0; i < job->input_count; ++i)
++		if (pg_synthesis_await_query(synthesis, job, (void *)job->inputs[i])) return;
++	job->result = pg_typed_query_result(job->inputs[job->input_count - 1]);
++	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_DONE);
++}
++
++static struct pg_synthesis_job *query_consumer(struct pg_synthesis *synthesis,
++	struct pg_typed_query *first, struct pg_typed_query *second)
++{
++	static const struct pg_synthesis_work_class role = {.advance = query_consumer_step};
++	const void *inputs[] = {first, second};
++	return pg_synthesis_work_request(synthesis, &role, 2, inputs);
++}
++
++static int failing_query_step(struct pg_typed_query *query)
++{
++	(void)query;
++	return -1;
++}
++
+ static void owner_test_start(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+ {
+ 	struct owner_test_state *state = pg_synthesis_work_state(job, job->role);
+@@ -993,7 +1018,7 @@
  		for (size_t i = 0; i < 6; ++i) {
  			function_shapes[i] = pg_synthesis_term_structure(&synthesis, function_rules[i]);
  			assert(function_shapes[i] && function_shapes[i]->role->size <= 5 * sizeof(void *) + sizeof(struct pg_comparison));
@@ -9,7 +48,7 @@
  			size_t requests = synthesis.jobs.count;
  			assert(pg_synthesis_term_structure(&synthesis, function_rules[i]) == function_shapes[i]);
  			if (i != 2 && i != 3) assert(pg_synthesis_type_structure(&synthesis, function_rules[i]) == function_shapes[i]);
-@@ -2770,8 +2770,8 @@
+@@ -2770,8 +2795,8 @@
  		struct pg_synthesis_job *function = request(&synthesis, root, "f := \\A:@ => \\x:A => @;");
  		if (accepted) complete(&synthesis, function, PG_SYNTHESIS_DONE);
  		struct pg_synthesis_job *result = pg_synthesis_constant_result(&synthesis, context, function, 2);
@@ -20,7 +59,7 @@
  		const struct pg_object *scope_binder = pg_synthesis_pi_scope_binder(scope);
  		assert(scope_binder && scope->role->size == 2 * sizeof(void *));
  		assert(!pg_synthesis_pi_scope_binder(function));
-@@ -4336,7 +4336,10 @@
+@@ -4336,7 +4361,10 @@
  		assert(pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
  		struct pg_synthesis_job *images[] = {pg_synthesis_evidence(&synthesis, a_value),
  			pg_synthesis_return(&synthesis, destination, computation)};
@@ -31,7 +70,31 @@
  		assert(job && pg_synthesis_substitution(&synthesis, source, destination, 2, images) == job);
  		assert(job == pg_synthesis_substitution_jobs(&synthesis, pg_synthesis_evidence(&synthesis, source),
  			pg_synthesis_evidence(&synthesis, destination), 2, images));
-@@ -4639,6 +4642,124 @@
+@@ -4359,19 +4387,18 @@
+ 		const struct pg_evidence *extension = pg_prove_context_extension(typing, source,
+ 			pg_binder(typing->graph), lift_type);
+ 		const struct pg_object *lift_binder = pg_binder(typing->graph);
+-		struct pg_synthesis_job *lift = pg_synthesis_substitution_lift(&synthesis, map, extension, lift_binder);
+-		assert(lift && pg_synthesis_status(lift) == PG_SYNTHESIS_PENDING);
+-		assert(!lift->role->size);
+ 		struct pg_typed_query *checked = pg_substitution_lift_request(typing, map, extension, lift_binder);
+ 		assert(checked && !pg_typed_query_steps(checked));
++		struct pg_synthesis_job *lift = query_consumer(&synthesis, checked, checked);
++		assert(lift && pg_synthesis_status(lift) == PG_SYNTHESIS_PENDING);
+ 		struct pg_context_lift *worker = pg_context_lift_request(typing,
+ 			pg_evidence_context_map(map), pg_evidence_context(extension), lift_binder);
+ 		assert(worker && !pg_context_lift_result(worker) && !pg_context_lift_steps(worker));
+ 		uint64_t before_lift = synthesis.steps;
+ 		pg_synthesis_advance(&synthesis, 0);
+ 		assert(synthesis.steps == before_lift && !pg_synthesis_result(lift));
+-		assert(lift == pg_synthesis_substitution_lift(&synthesis, map, extension, lift_binder));
+-		assert(!pg_synthesis_substitution_lift(&synthesis, map, source, lift_binder));
++		assert(checked == pg_substitution_lift_request(typing, map, extension, lift_binder));
++		assert(!pg_substitution_lift_request(typing, map, source, lift_binder));
+ 		int checked_after_allocation = 0;
+ 		while (pg_synthesis_status(lift) == PG_SYNTHESIS_PENDING) {
+ 			uint64_t steps = pg_context_lift_steps(worker);
+@@ -4639,6 +4666,124 @@
  	}
  }
  
@@ -156,7 +219,7 @@
  static void shared_conversion_jobs(struct pg_typing *typing)
  {
  	struct pg_whnf_work work;
-@@ -4660,8 +4781,9 @@
+@@ -4660,8 +4805,9 @@
  	struct pg_synthesis_job *right = pg_synthesis_expect(&synthesis,
  		pg_synthesis_evidence(&synthesis, pg_prove_variable(typing, context, y)), type);
  	assert(left->role->size == sizeof(void *) && right->role->size == sizeof(void *));
@@ -168,7 +231,7 @@
  	struct pg_synthesis_job *comparison = pg_synthesis_compare_terms(&synthesis,
  		pg_reference(typing->graph, a), pg_reference(typing->graph, a));
  	assert(comparison && comparison->role->size == 2 * sizeof(void *));
-@@ -4945,9 +5067,9 @@
+@@ -4945,9 +5091,9 @@
  	assert(pg_evidence_premise(converted_path, 0) == selected[1]);
  	/* Family paths use the same post-check request as an independent caller. */
  	size_t requests = split.jobs.count;
@@ -181,7 +244,106 @@
  	assert(shared_check && split.jobs.count == requests);
  	assert(pg_synthesis_status(shared_check) == PG_SYNTHESIS_DONE);
  	assert(pg_synthesis_result(shared_check) == converted_path);
-@@ -7933,6 +8055,8 @@
+@@ -7376,11 +7522,11 @@
+ 	struct pg_occurrence_action *action = pg_occurrence_action_request(&typing,
+ 		pg_evidence_context_map(tau), pg_evidence_subject(image));
+ 	assert(query && action);
+-	struct pg_synthesis_job *left = pg_synthesis_substitution_compose(&first, sigma, tau);
+-	struct pg_synthesis_job *right = pg_synthesis_substitution_compose(&second, sigma, tau);
++	struct pg_synthesis_job *left = query_consumer(&first, query, query);
++	struct pg_synthesis_job *right = query_consumer(&second, query, query);
+ 	assert(left && right && left != right);
+-	assert(!left->role->size && !right->role->size);
+-	assert(pg_synthesis_substitution_compose(&first, sigma, tau) == left);
++	assert(first.jobs.count == 1 && second.jobs.count == 1);
++	assert(pg_substitution_compose_request(&typing, sigma, tau) == query);
+ 	pg_synthesis_advance(&first, 0);
+ 	assert(!first.steps && !pg_typed_query_steps(query) && !pg_occurrence_action_steps(action));
+ 	for (size_t i = 0; i < 8; ++i) {
+@@ -7400,6 +7546,7 @@
+ 	}
+ 	const struct pg_evidence *result = pg_synthesis_result(right);
+ 	assert(result && result == pg_typed_query_result(query));
++	assert(second.jobs.count == 1);
+ 	assert(pg_evidence_premise(result, 0) == contexts[0]);
+ 	assert(pg_evidence_premise(result, 1) == contexts[2]);
+ 	assert(pg_evidence_context_map(result)->images[0] == pg_occurrence_action_result(action));
+@@ -7410,15 +7557,38 @@
+ 	size_t proofs = typing.proofs.count, terms = graph.terms.count, queries = typing.typed_queries.count;
+ 	for (size_t i = 0; i < 32; ++i) {
+ 		assert(pg_prove_substitution_compose(&typing, sigma, tau) == result);
+-		assert(pg_synthesis_substitution_compose(&second, sigma, tau) == right);
++		assert(pg_substitution_compose_request(&typing, sigma, tau) == query);
+ 		pg_synthesis_advance(&second, 64);
+ 	}
+ 	assert(pg_typed_query_steps(query) == steps && pg_occurrence_action_steps(action) == actions);
+ 	assert(typing.proofs.count == proofs && graph.terms.count == terms && typing.typed_queries.count == queries);
+ 	assert(!pg_substitution_compose_request(&typing, tau, sigma));
+ 	assert(!pg_substitution_compose_request(&foreign, sigma, tau));
+-	assert(!pg_synthesis_substitution_compose(&second, empty, tau));
+-	assert(!pg_synthesis_substitution_compose(&second, sigma, NULL));
++	assert(!pg_substitution_compose_request(&typing, empty, tau));
++	assert(!pg_substitution_compose_request(&typing, sigma, NULL));
++	/* Two distinct queries must not both advance in one consumer dispatch,
++	 * including the dispatch on which the first query finishes. */
++	const struct pg_evidence *identity = pg_prove_substitution(&typing, contexts[1], contexts[1], 1, &variables[1]);
++	struct pg_typed_query *queries_to_run[] = {
++		pg_substitution_compose_request(&typing, sigma, identity),
++		pg_substitution_compose_request(&typing, identity, tau)};
++	assert(queries_to_run[0] && queries_to_run[1] && queries_to_run[0] != queries_to_run[1]);
++	struct pg_synthesis_job *both = query_consumer(&second, queries_to_run[0], queries_to_run[1]);
++	while (pg_synthesis_status(both) == PG_SYNTHESIS_PENDING) {
++		uint64_t before = pg_typed_query_steps(queries_to_run[0]) + pg_typed_query_steps(queries_to_run[1]);
++		pg_synthesis_advance(&second, 1);
++		uint64_t after = pg_typed_query_steps(queries_to_run[0]) + pg_typed_query_steps(queries_to_run[1]);
++		assert(after <= before + 1 && second.steps < 10000);
++	}
++	assert(pg_synthesis_result(both) == pg_typed_query_result(queries_to_run[1]));
++	static const struct pg_typed_query_class failing = {.advance = failing_query_step};
++	struct pg_typed_query *bad = pg_typed_query_request(&typing, &failing, 0, NULL, NULL);
++	complete(&second, query_consumer(&second, bad, query), PG_SYNTHESIS_ERROR);
++	assert(pg_typed_query_steps(bad) == 1 && !pg_typed_query_result(bad));
++	struct pg_typed_query *alien = pg_typed_query_request(&foreign, &failing, 0, NULL, NULL);
++	complete(&second, query_consumer(&second, alien, query), PG_SYNTHESIS_ERROR);
++	assert(!pg_typed_query_steps(alien));
++	complete(&second, query_consumer(&second, NULL, query), PG_SYNTHESIS_ERROR);
+ 	pg_synthesis_destroy(&second);
+ 	pg_whnf_work_destroy(&reduction);
+ 	pg_typing_destroy(&foreign);
+@@ -7450,10 +7620,10 @@
+ 	const struct pg_evidence *extension = pg_prove_family_context_extension(&typing, source, pg_binder(&graph),
+ 		indices, pg_prove_universe(&typing, indices, 0));
+ 	struct pg_typed_query *query = pg_substitution_lift_request(&typing, prefix, extension, binder);
+-	struct pg_synthesis_job *left = pg_synthesis_substitution_lift(&first, prefix, extension, binder);
+-	struct pg_synthesis_job *right = pg_synthesis_substitution_lift(&second, prefix, extension, binder);
++	struct pg_synthesis_job *left = query_consumer(&first, query, query);
++	struct pg_synthesis_job *right = query_consumer(&second, query, query);
+ 	assert(query && left && right && left != right);
+-	assert(!left->role->size && !right->role->size);
++	assert(first.jobs.count == 1 && second.jobs.count == 1);
+ 	assert(!pg_typed_query_advance(query, 0) && !pg_typed_query_steps(query));
+ 	for (size_t i = 0; i < 8; ++i) {
+ 		uint64_t steps = pg_typed_query_steps(query);
+@@ -7477,7 +7647,7 @@
+ 	size_t proofs = typing.proofs.count, queries = typing.typed_queries.count;
+ 	for (size_t i = 0; i < 32; ++i) {
+ 		assert(pg_prove_substitution_lift(&typing, prefix, extension, binder) == result);
+-		assert(pg_synthesis_substitution_lift(&second, prefix, extension, binder) == right);
++		assert(pg_substitution_lift_request(&typing, prefix, extension, binder) == query);
+ 		pg_synthesis_advance(&second, 64);
+ 	}
+ 	assert(pg_typed_query_steps(query) == steps);
+@@ -7486,7 +7656,8 @@
+ 	assert(!pg_substitution_lift_request(&typing, prefix, destination, binder));
+ 	assert(!pg_substitution_lift_request(&typing, prefix, extension, b));
+ 	assert(!pg_substitution_lift_request(&typing, prefix, extension, NULL));
+-	assert(!pg_synthesis_substitution_lift(&second, empty, extension, binder));
++	assert(!pg_substitution_lift_request(&typing, empty, extension, binder));
++	assert(second.jobs.count == 1);
+ 	pg_synthesis_destroy(&second);
+ 	pg_whnf_work_destroy(&reduction);
+ 	pg_typing_destroy(&foreign);
+@@ -7933,6 +8104,8 @@
  	dependency_failures(&typing);
  	endpoint_jobs(&typing);
  	substitution_jobs(&typing);

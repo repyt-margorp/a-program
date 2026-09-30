@@ -42,7 +42,9 @@ The [direct-input prototype](../src/prototype/solver_inputs/README.md) removes
 checked normalization, Context-input, post-check and rule-premise adapters and
 passes its regression gates. Rule readers and export use direct references;
 structural queries no longer allocate the broad source work state. Remaining
-Evidence adapters and duplicate query scheduling keep SE1 open. This does not
+Evidence adapters and duplicate construction paths keep SE1 open. Composition
+and lifting now borrow their existing typed queries without a second Job;
+their ordinary consumers retain only a query reference. This does not
 repair the public split-fuel failures or authorize a new checkpoint/backend codec.
 
 Do not extend the binding/domain checkpoint codec or AP6 while this gate is

@@ -247,11 +247,18 @@ baseline described above. Concurrent accepted-source edits remain excluded.
 - [x] Remove broad source state from generic term/type/classifier queries.
   Their private state contains three borrowed pointers, not source/Match fields.
   This physical cleanup does not complete SE2's single-construction-path work.
+- [x] Remove `CHECKED_QUERY_JOB` and its composition/lift wrapper APIs. These
+  queries already own progress, status and results in `typing->typed_queries`.
+  Constructor-scope and Identity-family consumers should borrow them directly,
+  without interning a second scheduling/result node. One query advance consumes
+  the consumer's dispatch, even when it finishes; no second query may advance
+  in that dispatch. Test zero fuel, sharing across owners, cancellation,
+  completed reuse and failures, then rerun source/checkpoint regressions.
 - [ ] Finish scopes, classifier operands, substitution images, other context and Identity
   consumers, remove `EVIDENCE_JOB`, then remove duplicated query scheduling.
   The remaining adapter recognition is temporary, not the final architecture.
 
-Fresh O2 measurements after the rule-premise migration and state cleanup:
+O2 measurements at `7b0bf99`, after rule-premise migration and state cleanup:
 
 | Completed input | Jobs before / after | Evidence Jobs before / after | Job bytes before / after | Solve steps |
 | --- | ---: | ---: | ---: | ---: |
@@ -333,3 +340,63 @@ This is a staged migration, not a code-size reduction or completion of SE1.
 The public partition gate was rerun on the final candidate and still fails at
 100+100, 1000+1000, 1600+1600 and 2824+0. A passing checked-input step-0 roundtrip
 does not close that gate.
+
+### SE1 Checked-Query Ownership
+
+2026-09-30, parent `7b0bf99` plus the current prototype changes. The isolated
+accepted baseline and exclusion of concurrent source edits are unchanged.
+
+The audit found that composition and lifting already intern their queries in
+`typing->typed_queries`. `CHECKED_QUERY_JOB` only advanced that query and copied
+its status/result. Remove that class and both public synthesis wrapper APIs.
+Constructor-scope and Identity-family work now retain the original query, not a
+new Task or result table. The constructor owner retains its initial pending
+substitution separately because that input must still be checked.
+
+`pg_synthesis_await_query` is an internal borrowing operation, not a request
+factory. It allocates no node and never accepts Evidence. An advance consumes
+the current dispatch, even if it finishes; the caller continues on a later
+dispatch. Already completed queries require no further query steps. This keeps
+one fuel budget without duplicate scheduling/result authority. Core, typed
+rules and the artifact format are unchanged.
+
+Fresh O2 census relative to `7b0bf99`:
+
+| Completed input | Jobs before / after | Job bytes before / after | Solve steps before / after |
+| --- | ---: | ---: | ---: |
+| List-09 | 975 / 968 | 162,312 / 161,664 | 2,824 / 2,824 |
+| General QuickSort Local Sorted | 61,778 / 60,991 | 10,152,032 / 10,072,920 | 815,075 / 815,008 |
+
+Final Term, occurrence, Evidence and premise-edge counts are unchanged; repeated
+completed requests do not grow stores. This removes 787 QuickSort Jobs and
+79,112 Job bytes, not all remaining Evidence adapters (4,917 remain). Dispatch
+order changes, so equal partial fuel need not reproduce the old revision's
+intermediate counts. No `.a` size or elapsed-time improvement is claimed.
+
+Applied-code delta against `7b0bf99`:
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `synthesis_context.c` | 0 | 28 | -28 |
+| `synthesis.h` | 0 | 11 | -11 |
+| `synthesis_work.c` | 16 | 0 | +16 |
+| `synthesis_work.h` | 3 | 0 | +3 |
+| `synthesis_iadt.c` | 8 | 3 | +5 |
+| `synthesis_identity.c` | 4 | 4 | 0 |
+| Implementation total | 31 | 46 | -15 |
+| `tests/synthesis.c` | 66 | 17 | +49 |
+| `tests/iadt.c` | 5 | 11 | -6 |
+
+Fresh `make check` and all seven checkpoint/namespace targets in the prototype
+README pass. ASan/UBSan synthesis, IADT and constructor-checkpoint tests pass.
+Test-only consumers exercise shared query borrowing, zero fuel, cancellation,
+reuse, foreign/failed/null queries, and the one-advance limit across two distinct
+queries. Actual source consumers are covered by constructor/Identity tests and
+the general QuickSort theorem with negative/image controls. No production
+wrapper is retained merely to keep the old test API.
+
+The public partition gate was rerun: 100+100 and 1000+1000 still differ in bytes,
+1600+1600 also differs in progress, and completed+0 still loses accepted status.
+Step-0 pending resave and 10+10 pass. These remain AP1-AP3 failures; SE1 and the
+overall goal are not complete. The next SE1 work is remaining no-work Evidence
+adapters and producer-to-checked forwarding, not another persistence codec.

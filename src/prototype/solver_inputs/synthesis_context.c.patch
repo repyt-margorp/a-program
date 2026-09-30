@@ -1,6 +1,39 @@
 --- a/synthesis_context.c
 +++ b/synthesis_context.c
-@@ -49,21 +49,30 @@
+@@ -12,7 +12,6 @@
+ static void reindex_step(struct pg_synthesis *, struct pg_synthesis_job *);
+ static void pair_step(struct pg_synthesis *, struct pg_synthesis_job *);
+ static void substitution_step(struct pg_synthesis *, struct pg_synthesis_job *);
+-static void checked_query_step(struct pg_synthesis *, struct pg_synthesis_job *);
+ 
+ static const struct pg_synthesis_work_class REINDEX_JOB[1] = {{
+ 	.size = sizeof(struct reindex_work), .advance = reindex_step}};
+@@ -20,24 +19,6 @@
+ 	.size = sizeof(struct pair_work), .advance = pair_step}};
+ static const struct pg_synthesis_work_class SUBSTITUTION_JOB[1] = {{
+ 	.size = sizeof(struct substitution_work), .advance = substitution_step}};
+-static const struct pg_synthesis_work_class CHECKED_QUERY_JOB[1] = {{.advance = checked_query_step}};
+-
+-struct pg_synthesis_job *pg_synthesis_substitution_compose(struct pg_synthesis *synthesis,
+-	const struct pg_evidence *first, const struct pg_evidence *second)
+-{
+-	struct pg_typed_query *query = pg_substitution_compose_request(synthesis->typing, first, second);
+-	const void *inputs[] = {query};
+-	return query ? pg_synthesis_work_request(synthesis, CHECKED_QUERY_JOB, 1, inputs) : NULL;
+-}
+-
+-static void checked_query_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+-{
+-	struct pg_typed_query *query = (void *)job->inputs[0];
+-	int status = pg_typed_query_advance(query, 1);
+-	if (!status) { pg_synthesis_enqueue(synthesis, job); return; }
+-	job->result = pg_typed_query_result(query);
+-	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+-}
+ 
+ static int reindex_inputs(struct pg_synthesis *synthesis,
+ 	const struct pg_evidence *substitution, const struct pg_evidence *proof)
+@@ -49,21 +30,30 @@
  	return pg_evidence_context(proof) == pg_evidence_context_map(substitution)->source;
  }
  
@@ -37,7 +70,19 @@
  }
  
  struct pg_synthesis_job *pg_synthesis_substitution_pair(struct pg_synthesis *synthesis,
-@@ -98,11 +107,13 @@
+@@ -86,23 +76,16 @@
+ 	return pg_synthesis_work_request(synthesis, PAIR_JOB, 3, inputs);
+ }
+ 
+-struct pg_synthesis_job *pg_synthesis_substitution_lift(struct pg_synthesis *synthesis,
+-	const struct pg_evidence *substitution, const struct pg_evidence *extension,
+-	const struct pg_object *binder)
+-{
+-	struct pg_typed_query *query = pg_substitution_lift_request(synthesis->typing, substitution, extension, binder);
+-	const void *inputs[] = {query};
+-	return query ? pg_synthesis_work_request(synthesis, CHECKED_QUERY_JOB, 1, inputs) : NULL;
+-}
+-
  static void reindex_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
  	struct reindex_work *local = pg_synthesis_work_state(job, REINDEX_JOB);
@@ -55,7 +100,7 @@
  		if (!reindex_inputs(synthesis, substitution, proof)) {
  			pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
  		}
-@@ -123,8 +134,7 @@
+@@ -123,8 +106,7 @@
  		break;
  	case PG_SUBSTITUTION_DONE:
  		job->result = pg_prove_reindex(synthesis->typing,
@@ -65,7 +110,7 @@
  		pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
  		break;
  	}
-@@ -136,8 +146,8 @@
+@@ -136,8 +118,8 @@
  	if (!local->checked) {
  		struct pg_synthesis_job *type = pg_synthesis_reindex(synthesis,
  			job->inputs[0], pg_context_declared_input(synthesis->typing, job->inputs[1]));
@@ -76,7 +121,7 @@
  	}
  	if (pg_synthesis_await(synthesis, job, local->checked)) return;
  	job->result = pg_prove_substitution_pair(synthesis->typing,
-@@ -145,6 +155,22 @@
+@@ -145,6 +127,22 @@
  	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
  }
  
@@ -99,7 +144,7 @@
  struct pg_synthesis_job *pg_synthesis_substitution(struct pg_synthesis *synthesis,
  	const struct pg_evidence *source, const struct pg_evidence *destination,
  	size_t count, struct pg_synthesis_job *const *images)
-@@ -156,34 +182,28 @@
+@@ -156,34 +154,28 @@
  	size_t arity;
  	if (pg_context_extension_size(pg_evidence_context(source), NULL, &arity) != 0) return NULL;
  	if (arity != count || (count && !images)) return NULL;
@@ -142,7 +187,7 @@
  			if (!contexts[i] || pg_evidence_judgement(contexts[i]) != PG_JUDGEMENT_CONTEXT) goto rejected;
  		}
  		size_t arity;
-@@ -207,7 +227,7 @@
+@@ -207,7 +199,7 @@
  		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_DONE);
  		return;
  	}

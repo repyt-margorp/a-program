@@ -1,0 +1,33 @@
+--- a/iadt.c
++++ b/iadt.c
+@@ -166,16 +166,12 @@
+ 	const struct pg_object *binder, const struct pg_evidence *expected)
+ {
+ 	for (uint64_t chunk = 1; chunk <= 64; chunk *= 64) {
+-		struct pg_whnf_work work;
+-		struct pg_synthesis synthesis;
+-		assert(!pg_whnf_work_init(&work, typing->graph));
+-		assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
+ 		size_t proofs = typing->proofs.count;
+-		struct pg_synthesis_job *job = pg_synthesis_substitution_lift(&synthesis, substitution, extension, binder);
+-		assert(job && pg_synthesis_status(job) == PG_SYNTHESIS_PENDING && typing->proofs.count == proofs);
+-		while (pg_synthesis_status(job) == PG_SYNTHESIS_PENDING) pg_synthesis_advance(&synthesis, chunk);
+-		const struct pg_evidence *result = pg_synthesis_result(job);
+-		assert(result && job == pg_synthesis_substitution_lift(&synthesis, substitution, extension, binder));
++		struct pg_typed_query *query = pg_substitution_lift_request(typing, substitution, extension, binder);
++		assert(query && typing->proofs.count == proofs);
++		while (!pg_typed_query_advance(query, chunk)) assert(pg_typed_query_steps(query) < 100000);
++		const struct pg_evidence *result = pg_typed_query_result(query);
++		assert(result && query == pg_substitution_lift_request(typing, substitution, extension, binder));
+ 		const struct pg_object *source = pg_evidence_context(extension)->binder;
+ 		const struct pg_evidence *image = pg_substitution_image(typing, result, source);
+ 		const struct pg_evidence *reference = pg_substitution_image(typing, expected, source);
+@@ -183,8 +179,6 @@
+ 		assert(pg_evidence_subject(image)->core == pg_evidence_subject(reference)->core);
+ 		assert(pg_alpha_equal(pg_evidence_classifier(image), pg_evidence_classifier(reference)) == 1);
+ 		common_rule(typing, result);
+-		pg_synthesis_destroy(&synthesis);
+-		pg_whnf_work_destroy(&work);
+ 	}
+ }
+ 

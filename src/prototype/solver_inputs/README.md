@@ -29,12 +29,17 @@ and file layout are unchanged. Read still creates ordinary unchecked premises.
 Rule requests use the same hash lookup for direct and legacy inputs, borrowing
 the key during lookup and copying it only on a miss. Structural queries retain
 only a result, child query and normalization pointer, not the broad source state.
+Composition and lifting no longer allocate a `CHECKED_QUERY_JOB`: constructor
+scope and Identity-family owners borrow the existing typed query directly.
+The query keeps its sole progress/status/result. Any query advance consumes
+the caller's dispatch, preventing two advances through a completion boundary.
 
 ### Assessment
 
 This removes some adapters, not the independent Job graph. Source scopes,
 classifier operands, substitution images and other context/IADT/Identity
-constructors still use adapters, as does checked-query scheduling.
+constructors still use adapters. Several producer-to-checked forwarding paths
+also remain; removing the query wrapper does not settle their ownership.
 Keeping those indefinitely would not
 complete SE1. No semantic boundary has been merged merely to reduce node count.
 

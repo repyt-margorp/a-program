@@ -1,5 +1,14 @@
 --- a/synthesis_identity.c
 +++ b/synthesis_identity.c
+@@ -14,7 +14,7 @@
+ };
+ struct family_work {
+ 	struct pg_synthesis_job *classifier, *checked;
+-	struct pg_synthesis_job *prefixes[2];
++	struct pg_typed_query *prefixes[2];
+ 	const struct pg_evidence *maps[2];
+ 	const struct pg_evidence **declarations, **paths;
+ 	size_t count, common, next;
 @@ -113,9 +113,8 @@
  	struct pg_synthesis_job *action = pg_synthesis_family_action_jobs(synthesis,
  		type_value, left_substitution, right_substitution, count, paths);
@@ -12,6 +21,24 @@
  	if (!action) return NULL;
  	struct pg_synthesis_job *left = pg_synthesis_plain_rule(synthesis, PG_IDENTITY_LEFT_TYPE, NULL, 1, &action);
  	struct pg_synthesis_job *right = pg_synthesis_plain_rule(synthesis, PG_IDENTITY_RIGHT_TYPE, NULL, 1, &action);
+@@ -373,14 +372,14 @@
+ 		}
+ 		for (size_t side = 0; side < 2; ++side) {
+ 			const struct pg_evidence *map = job->inputs[side];
+-			state->prefixes[side] = pg_synthesis_substitution_compose(synthesis,
++			state->prefixes[side] = pg_substitution_compose_request(synthesis->typing,
+ 				pg_prove_substitution_projection(synthesis->typing, prefix, pg_evidence_premise(map, 0)), map);
+ 		}
+ 	}
+ 	if (!state->maps[0]) {
+ 		for (size_t side = 0; side < 2; ++side)
+-			if (pg_synthesis_await(synthesis, job, state->prefixes[side])) return 0;
+-		for (size_t side = 0; side < 2; ++side) state->maps[side] = state->prefixes[side]->result;
++			if (pg_synthesis_await_query(synthesis, job, state->prefixes[side])) return 0;
++		for (size_t side = 0; side < 2; ++side) state->maps[side] = pg_typed_query_result(state->prefixes[side]);
+ 	}
+ 	if (state->next == state->count) return 1;
+ 	size_t i = state->next;
 @@ -396,7 +395,8 @@
  			pg_substitution_image_at(synthesis->typing, left, state->common + i),
  			pg_substitution_image_at(synthesis->typing, right, state->common + i));
