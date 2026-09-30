@@ -31,6 +31,12 @@ or new Core tag. Pending request identity does not change when its input finishe
 Source transport visits checked leaves without allocating Jobs. Its temporary
 pointer-membership index is destroyed after export; the existing rule payload
 and file layout are unchanged. Read still creates ordinary unchecked premises.
+Source-I/O fixtures also use direct checked inputs for retained Contexts,
+substitutions, functions, constructor roots and Match theorems. Match allocation
+inspection accepts the same input representation instead of requiring an
+Evidence Job; inspection does not advance Solve or produce checked facts.
+The adapter factory still remains for synthesis tests; this prerequisite does
+not complete the single-owner/frontier refactor.
 Rule requests use the same hash lookup for direct and legacy inputs, borrowing
 the key during lookup and copying it only on a miss. Structural queries retain
 only a result, child query and normalization pointer, not the broad source state.

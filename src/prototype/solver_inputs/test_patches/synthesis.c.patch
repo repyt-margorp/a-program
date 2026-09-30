@@ -54,6 +54,15 @@
  static void owner_test_start(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
  	struct owner_test_state *state = pg_synthesis_work_state(job, job->role);
+@@ -58,7 +93,7 @@
+ 		assert(pg_synthesis_work_input(job, count - 1) == inputs[count - 1]);
+ 		assert(!pg_synthesis_work_input(job, count));
+ 		assert(!pg_synthesis_allocation_object(&synthesis, job));
+-		assert(!pg_synthesis_match_allocation(job, typing->graph));
++		assert(!pg_synthesis_match_allocation(pending_input(job), typing->graph));
+ 		assert(!pg_synthesis_definition(job, (struct pg_token){.text = "x", .length = 1}));
+ 		jobs[count - 1] = job;
+ 	}
 @@ -66,6 +101,10 @@
  	struct pg_synthesis_job *zero = pg_synthesis_work_request(&synthesis, &empty, 1, inputs);
  	assert(zero && zero != jobs[0] && !pg_synthesis_work_state(zero, &empty));

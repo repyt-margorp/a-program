@@ -67,16 +67,33 @@
  			pg_program_destroy(p);
  			rewind(file);
  			p = pg_sources_read(file, 10000, &count, &roots);
-@@ -364,7 +371,7 @@
- 		roots = selected;
+@@ -359,17 +366,20 @@
+ 		assert(pg_synthesis_status(roots[1]) == PG_SYNTHESIS_DONE);
+ 		/* An explicitly selected theorem remains a checking root, but neither
+ 		 * source declaration needs it as an allocation producer. */
+-		struct pg_synthesis_job *selected[] = {equivalent,
+-			pg_synthesis_evidence(&p->synthesis, pg_synthesis_result(equivalent)), invalid};
+-		roots = selected;
++		struct pg_synthesis_input selected[] = {{.pending = equivalent},
++			{.checked = pg_synthesis_result(equivalent)}, {.pending = invalid}};
++		roots = NULL;
  		for (unsigned round = 0; round < 2; ++round) {
  			FILE *file = tmpfile();
 -			assert(file && !pg_sources_write(file, &p->synthesis, 3, roots));
-+			assert(file && !pg_sources_write(file, &p->synthesis, 3, (struct pg_synthesis_input[]){{.pending = (roots)[0]}, {.pending = (roots)[1]}, {.pending = (roots)[2]}}));
++			assert(file && !pg_sources_write(file, &p->synthesis, 3, selected));
  			pg_program_destroy(p);
  			rewind(file);
  			p = pg_sources_read(file, 100000, &count, &roots);
-@@ -398,12 +405,12 @@
+ 			assert(p && count == 3 && !p->synthesis.steps);
+-			for (size_t i = 0; i < count; ++i) assert(!pg_synthesis_result(roots[i]));
++			for (size_t i = 0; i < count; ++i) {
++				assert(!pg_synthesis_result(roots[i]));
++				selected[i] = (struct pg_synthesis_input){.pending = roots[i]};
++			}
+ 			assert(!fclose(file));
+ 		}
+ 		while (p->synthesis.ready && p->synthesis.steps < 40000) pg_synthesis_advance(&p->synthesis, chunk);
+@@ -398,12 +408,12 @@
  		pg_prove_return_type(t, pg_prove_projection(t, xc, at)));
  	const struct pg_evidence *ic = pg_prove_context_extension(t, xc, ih, it);
  	const struct pg_source_scope *scope = pg_synthesis_root(&p->synthesis);
@@ -95,7 +112,7 @@
  	assert(scope);
  	struct pg_parser parser;
  	struct pg_definition definition;
-@@ -415,7 +422,9 @@
+@@ -415,7 +425,9 @@
  	size_t count = 1;
  	for (unsigned round = 0; round < 3; ++round) {
  		FILE *file = tmpfile();
@@ -106,7 +123,7 @@
  		pg_program_destroy(p);
  		rewind(file);
  		p = pg_sources_read(file, 10000, &count, &roots);
-@@ -426,10 +435,10 @@
+@@ -426,10 +438,10 @@
  	assert(!pg_synthesis_source_input(&p->synthesis, roots[0], &scope, &syntax));
  	struct pg_source_environment environment, field;
  	assert(!pg_synthesis_environment_input(&p->synthesis, scope, &environment));
@@ -119,7 +136,7 @@
  	pg_synthesis_advance(&p->synthesis, 10000);
  	const struct pg_evidence *result = pg_synthesis_result(roots[0]);
  	const struct pg_term *expected = pg_reference(&p->graph, environment.binder);
-@@ -474,15 +483,17 @@
+@@ -474,26 +486,28 @@
  		const struct pg_evidence *contexts[] = {ac, yc, destination};
  		const char *names[] = {"A", "y", "z"};
  		for (size_t i = 0; i < 3; ++i)
@@ -129,53 +146,85 @@
 -				binders[i], pg_synthesis_evidence(&p->synthesis, contexts[i]));
 +				binders[i], (struct pg_synthesis_input){.checked = contexts[i]});
  		assert(scope);
- 		struct pg_synthesis_job *direct = pg_synthesis_evidence(&p->synthesis, images[1]);
+-		struct pg_synthesis_job *direct = pg_synthesis_evidence(&p->synthesis, images[1]);
++		struct pg_synthesis_input direct = {.checked = images[1]};
  		struct pg_effect_inference effects;
  		assert(!pg_effect_inference_init(&effects, &p->graph));
  		const struct pg_derivation_input *const *inputs;
 -		assert(!pg_synthesis_export_rules(&p->synthesis, 1, &direct, &p->graph, &effects, 1, &inputs));
 +		assert(!pg_synthesis_export_rules(&p->synthesis, 1, (struct pg_synthesis_input[]){
-+			{.pending = direct}
++			direct
 +			}, &p->graph, &effects, 1, &inputs));
  		assert(inputs[0]->rule == PG_VARIABLE && inputs[0]->count == 1);
  		struct pg_derivation_input *invalid = pg_alloc(&p->graph, sizeof(*invalid) + sizeof(void *));
  		assert(invalid);
-@@ -515,12 +526,14 @@
+ 		*invalid = *inputs[0]; invalid->premises[0] = inputs[0]->premises[0];
+ 		invalid->parameters.binder = x;
+-		struct pg_synthesis_job *producers[4] = {direct, NULL,
+-			pg_synthesis_evidence(&p->synthesis, pg_substitution_image(t, right, x)), NULL};
++		struct pg_synthesis_input producers[4] = {direct, {0},
++			{.checked = pg_substitution_image(t, right, x)}, {0}};
+ 		for (size_t n = 0; n < 2; ++n) {
+ 			size_t i = scenario & 2 ? 1 - n : n;
+-			producers[2 * i + 1] = pg_synthesis_derivation(&p->synthesis, i ? invalid : inputs[0]);
+-			assert(producers[2 * i + 1] && !pg_synthesis_result(producers[2 * i + 1]));
++			producers[2 * i + 1].pending = pg_synthesis_derivation(&p->synthesis, i ? invalid : inputs[0]);
++			assert(producers[2 * i + 1].pending && !pg_synthesis_input_result(producers[2 * i + 1]));
+ 			if (scenario & 4) {
+ 				while (p->synthesis.ready) {
+ 					assert(p->synthesis.steps < 10000);
+@@ -501,7 +515,7 @@
+ 				}
+ 			}
+ 		}
+-		assert(producers[1] != direct);
++		assert(producers[1].pending && !producers[1].checked);
+ 		struct pg_syntax syntax = {.kind = PG_SYNTAX_ATOM,
+ 			.token = {.kind = PG_TOKEN_IDENT, .text = "v", .length = 1, .text_length = 1}};
+ 		struct pg_synthesis_job *uses[4];
+@@ -511,16 +525,18 @@
+ 			.token = {.kind = PG_TOKEN_IDENT, .text = "w", .length = 1, .text_length = 1},
+ 			.left = &domain, .right = &syntax};
+ 		const struct pg_object *allocation = scenario & 8 ? NULL : pg_binder(&p->graph);
+-		struct pg_synthesis_job *functions[5];
++		struct pg_synthesis_job *functions[4];
  		const struct pg_source_scope *scopes[4];
  		for (size_t n = 0; n < 4; ++n) {
  			size_t i = scenario & 2 ? 3 - n : n;
 -			const struct pg_source_scope *named = pg_synthesis_name_job(&p->synthesis, scope, syntax.token, producers[i]);
-+			const struct pg_source_scope *named = pg_synthesis_name(&p->synthesis, scope, syntax.token, (struct pg_synthesis_input){.pending = producers[i]});
++			const struct pg_source_scope *named = pg_synthesis_name(&p->synthesis, scope, syntax.token, producers[i]);
  			assert(named);
  			scopes[i] = named;
  			struct pg_source_environment environment;
  			assert(!pg_synthesis_environment_input(&p->synthesis, named, &environment));
 -			assert(environment.parent == scope && environment.producer == producers[i]);
-+			const struct pg_evidence *checked = i % 2 ? NULL : pg_synthesis_result(producers[i]);
++			const struct pg_evidence *checked = i % 2 ? NULL : pg_synthesis_input_result(producers[i]);
 +			assert(environment.parent == scope && environment.value.checked == checked);
-+			assert(environment.value.pending == (checked ? NULL : producers[i]));
++			assert(environment.value.pending == (checked ? NULL : producers[i].pending));
  			uses[i] = pg_synthesis_request(&p->synthesis, named, &syntax);
  			assert(uses[i]);
  			/* Allocation identity may be shared without sharing acceptance. */
-@@ -533,7 +546,7 @@
+@@ -533,16 +549,16 @@
  			functions[i] = pg_synthesis_request(&p->synthesis, named, &lambda);
  			assert(functions[i]);
  		}
 -		const struct pg_source_scope *shadow = pg_synthesis_name_job(&p->synthesis, scopes[0], syntax.token, producers[2]);
-+		const struct pg_source_scope *shadow = pg_synthesis_name(&p->synthesis, scopes[0], syntax.token, (struct pg_synthesis_input){.pending = producers[2]});
++		const struct pg_source_scope *shadow = pg_synthesis_name(&p->synthesis, scopes[0], syntax.token, producers[2]);
  		struct pg_synthesis_job *shadowed = pg_synthesis_request(&p->synthesis, shadow, &syntax);
  		assert(shadowed);
  		while (p->synthesis.ready) {
-@@ -542,7 +555,7 @@
+ 			assert(p->synthesis.steps < 10000);
+ 			pg_synthesis_advance(&p->synthesis, chunk);
  		}
- 		assert(pg_synthesis_result(producers[1]) == pg_synthesis_result(direct));
+-		assert(pg_synthesis_result(producers[1]) == pg_synthesis_result(direct));
++		assert(pg_synthesis_input_result(producers[1]) == direct.checked);
  		for (size_t i = 0; i < 4; ++i)
 -			assert(pg_synthesis_name_job(&p->synthesis, scope, syntax.token, producers[i]) == scopes[i]);
-+			assert(pg_synthesis_name(&p->synthesis, scope, syntax.token, (struct pg_synthesis_input){.pending = producers[i]}) == scopes[i]);
++			assert(pg_synthesis_name(&p->synthesis, scope, syntax.token, producers[i]) == scopes[i]);
  		for (size_t i = 0; i < 3; ++i) {
  			const struct pg_evidence *result = pg_synthesis_result(uses[i]);
  			assert(result && pg_evidence_subject(result) == pg_context_map_lookup(i == 2 ? rm : lm, x, NULL));
-@@ -567,10 +580,10 @@
+@@ -567,25 +583,30 @@
  		assert(type != images[0] && pg_evidence_subject(type) == pg_evidence_subject(images[0]));
  		const struct pg_evidence *first = scenario & 2 ? images[0] : type;
  		const struct pg_evidence *second = scenario & 2 ? type : images[0];
@@ -186,24 +235,37 @@
 +		const struct pg_source_scope *known = pg_synthesis_name(&p->synthesis, scope, syntax.token, (struct pg_synthesis_input){.checked = first});
 +		assert(known && pg_synthesis_name(&p->synthesis, scope, syntax.token, (struct pg_synthesis_input){.checked = second}) == known);
 +		assert(pg_synthesis_name(&p->synthesis, scope, syntax.token, (struct pg_synthesis_input){.checked = images[1]}) != known);
-+		assert(!pg_synthesis_name(&p->synthesis, scope, syntax.token, (struct pg_synthesis_input){.checked = pg_synthesis_result(producers[3])}));
++		assert(!pg_synthesis_name(&p->synthesis, scope, syntax.token, (struct pg_synthesis_input){.checked = pg_synthesis_input_result(producers[3])}));
  		pg_effect_inference_destroy(&effects);
  		/* Retain a typed reference to the allocation, not just its source AST. */
- 		functions[4] = pg_synthesis_evidence(&p->synthesis,
-@@ -579,7 +592,11 @@
- 		struct pg_synthesis_job *const *roots = functions;
+-		functions[4] = pg_synthesis_evidence(&p->synthesis,
+-			pg_synthesis_result(pg_synthesis_binding_at(&p->synthesis, scopes[0], &lambda, allocation)));
+-		assert(functions[4]);
+-		struct pg_synthesis_job *const *roots = functions;
++		struct pg_synthesis_input selected[] = {
++			{.pending = functions[0]}, {.pending = functions[1]},
++			{.pending = functions[2]}, {.pending = functions[3]},
++			{.checked = pg_synthesis_result(pg_synthesis_binding_at(&p->synthesis, scopes[0], &lambda, allocation))}};
++		assert(selected[4].checked);
++		struct pg_synthesis_job *const *roots = NULL;
  		for (unsigned round = 0; round < 2; ++round) {
  			FILE *file = tmpfile();
 -			assert(file && !pg_sources_write(file, &p->synthesis, 5, roots));
-+			assert(file && !pg_sources_write(file, &p->synthesis, 5, (struct pg_synthesis_input[]){
-+				{.pending = (roots)[0]}, {.pending = (roots)[1]},
-+				{.pending = (roots)[2]}, {.pending = (roots)[3]},
-+				{.pending = (roots)[4]}
-+			}));
++			assert(file && !pg_sources_write(file, &p->synthesis, 5, selected));
  			pg_program_destroy(p);
  			rewind(file);
  			size_t count;
-@@ -637,7 +654,7 @@
+ 			p = pg_sources_read(file, 100000, &count, &roots);
+ 			assert(p && count == 5 && !p->synthesis.steps);
+-			for (size_t i = 0; i < count; ++i) assert(!pg_synthesis_result(roots[i]));
++			for (size_t i = 0; i < count; ++i) {
++				assert(!pg_synthesis_result(roots[i]));
++				selected[i] = (struct pg_synthesis_input){.pending = roots[i]};
++			}
+ 			assert(!fclose(file));
+ 		}
+ 		while (p->synthesis.ready) {
+@@ -637,7 +658,7 @@
  		if (input.name.length == 5 && !memcmp(input.name.text, "alias", 5)) break;
  		named = input.parent;
  	}
@@ -212,13 +274,18 @@
  	assert(pg_evidence_rule(image) == PG_REINDEX);
  	trace->map = pg_evidence_premise(image, 0);
  	trace->original = pg_evidence_premise(image, 1);
-@@ -685,13 +702,14 @@
+@@ -681,17 +702,18 @@
+ 		const struct pg_evidence *alias = pg_prove_variable(&p->typing,
+ 			pg_synthesis_result(v), pg_synthesis_binding_binder(n));
+ 		assert(alias);
+-		struct pg_synthesis_job *direct = pg_synthesis_evidence(&p->synthesis, alias);
++		struct pg_synthesis_input direct = {.checked = alias};
  		struct pg_effect_inference effects;
  		assert(!pg_effect_inference_init(&effects, &p->graph));
  		const struct pg_derivation_input *const *inputs;
 -		assert(!pg_synthesis_export_rules(&p->synthesis, 1, &direct, &p->graph, &effects, 1, &inputs));
 +		assert(!pg_synthesis_export_rules(&p->synthesis, 1, (struct pg_synthesis_input[]){
-+			{.pending = direct}
++			direct
 +			}, &p->graph, &effects, 1, &inputs));
  		struct pg_synthesis_job *imported = pg_synthesis_derivation(&p->synthesis, inputs[0]);
  		if (scenario & 2) {
@@ -230,18 +297,29 @@
  			assert(imported && pg_synthesis_status(imported) == PG_SYNTHESIS_PENDING);
  		} else {
  			while (p->synthesis.ready) {
-@@ -710,8 +728,8 @@
+@@ -700,17 +722,18 @@
+ 			}
+ 			assert(pg_synthesis_result(imported) == alias);
+ 		}
+-		assert(imported != direct);
++		assert(imported);
+ 		assert(inputs[0]->rule == PG_VARIABLE && inputs[0]->count == 1);
+ 		struct pg_derivation_input *invalid = pg_alloc(&p->graph, sizeof(*invalid) + sizeof(void *));
+ 		assert(invalid);
+ 		*invalid = *inputs[0]; invalid->premises[0] = inputs[0]->premises[0];
+ 		invalid->parameters.binder = pg_binder(&p->graph);
+-		struct pg_synthesis_job *producers[] = {direct, imported, pg_synthesis_derivation(&p->synthesis, invalid)};
++		struct pg_synthesis_input producers[] = {direct, {.pending = imported},
++			{.pending = pg_synthesis_derivation(&p->synthesis, invalid)}};
  		struct pg_synthesis_job *bodies[3];
  		for (size_t j = 0; j < 3; ++j) {
  			size_t i = scenario & 4 ? 2 - j : j;
 -			const struct pg_source_scope *named = pg_synthesis_name_job(&p->synthesis,
--				pg_synthesis_binding_scope(v), (struct pg_token){.kind = PG_TOKEN_IDENT, .text = "alias", .length = 5}, producers[i]);
 +			const struct pg_source_scope *named = pg_synthesis_name(&p->synthesis,
-+				pg_synthesis_binding_scope(v), (struct pg_token){.kind = PG_TOKEN_IDENT, .text = "alias", .length = 5}, (struct pg_synthesis_input){.pending = producers[i]});
+ 				pg_synthesis_binding_scope(v), (struct pg_token){.kind = PG_TOKEN_IDENT, .text = "alias", .length = 5}, producers[i]);
  			bodies[i] = pg_synthesis_request(&p->synthesis, named, definition.expression->right->right);
  			assert(bodies[i]);
- 		}
-@@ -719,7 +737,7 @@
+@@ -719,7 +742,7 @@
  		struct pg_synthesis_job *const *roots = bodies;
  		for (unsigned round = 0; round < (scenario & 4 ? 2U : 0U); ++round) {
  			FILE *file = tmpfile();
@@ -250,16 +328,38 @@
  			pg_program_destroy(p);
  			rewind(file);
  			size_t count;
-@@ -759,7 +777,7 @@
+@@ -751,22 +774,24 @@
+ 		assert(trace.application && trace.application->kind == PG_SYNTAX_APPLICATION);
+ 		assert(!pg_synthesis_visit_source_allocations(&p->synthesis, trace_index_alias, &trace));
+ 		assert(trace.application_job);
+-		struct pg_synthesis_job *selected[] = {trace.application_job,
+-			pg_synthesis_evidence(&p->synthesis, trace.map),
+-			pg_synthesis_evidence(&p->synthesis, trace.original)};
+-		roots = selected;
++		struct pg_synthesis_input selected[] = {{.pending = trace.application_job},
++			{.checked = trace.map}, {.checked = trace.original}};
++		roots = NULL;
+ 		for (unsigned round = 0; round < 2; ++round) {
  			FILE *file = tmpfile();
  			uint64_t steps = p->synthesis.steps;
  			size_t proofs = p->typing.proofs.count;
 -			assert(file && !pg_sources_write(file, &p->synthesis, 3, roots));
-+			assert(file && !pg_sources_write(file, &p->synthesis, 3, (struct pg_synthesis_input[]){{.pending = (roots)[0]}, {.pending = (roots)[1]}, {.pending = (roots)[2]}}));
++			assert(file && !pg_sources_write(file, &p->synthesis, 3, selected));
  			assert(p->synthesis.steps == steps && p->typing.proofs.count == proofs);
  			pg_program_destroy(p);
  			rewind(file);
-@@ -835,7 +853,7 @@
+ 			size_t count;
+ 			p = pg_sources_read(file, 100000, &count, &roots);
+ 			assert(p && count == 3 && !p->synthesis.steps && !fclose(file));
+-			for (size_t i = 0; i < count; ++i) assert(!pg_synthesis_result(roots[i]));
++			for (size_t i = 0; i < count; ++i) {
++				assert(!pg_synthesis_result(roots[i]));
++				selected[i] = (struct pg_synthesis_input){.pending = roots[i]};
++			}
+ 		}
+ 		while (p->synthesis.ready) {
+ 			assert(p->synthesis.steps < 30000);
+@@ -835,7 +860,7 @@
  				FILE *file = tmpfile();
  				uint64_t steps = p->synthesis.steps;
  				size_t proofs = p->typing.proofs.count;
@@ -268,7 +368,7 @@
  				assert(p->synthesis.steps == steps && p->typing.proofs.count == proofs);
  				invalid_binding_rule(file);
  				pg_program_destroy(p);
-@@ -864,8 +882,75 @@
+@@ -864,8 +889,75 @@
  	puts("source bindings: syntax and symbols survive inert saves; annotations are checked only by ordinary Solve");
  }
  
@@ -344,7 +444,7 @@
  	source_binding_annotations();
  	source_alias_targets();
  	mapped_alias_producers();
-@@ -946,22 +1031,29 @@
+@@ -946,22 +1038,29 @@
  		struct pg_synthesis_job *value = pg_synthesis_definition(p->root, name);
  		assert(pg_synthesis_result(value));
  		if (!i) type = pg_synthesis_result(value);
@@ -379,7 +479,11 @@
  		assert(scope);
  	}
  	*output = scope;
-@@ -994,7 +1086,7 @@
+@@ -991,10 +1090,11 @@
+ 	if (mode >= 4) initial[2] = pg_synthesis_request(&p->synthesis, scope, definition.expression);
+ 	size_t count = mode >= 4 ? 4 : 2;
+ 	struct pg_synthesis_job *const *roots = initial;
++	const struct pg_evidence *checked = NULL;
  	if (mode == 1 || mode == 2 || mode >= 4) {
  		pg_synthesis_advance(&p->synthesis, 10000);
  		assert(pg_synthesis_result(roots[0]) && pg_synthesis_result(roots[1]));
@@ -388,7 +492,16 @@
  		if (!pg_synthesis_result(original)) {
  			fprintf(stderr, "handler source before save: mode=%d status=%d ready=%d steps=%llu\n",
  				mode, pg_synthesis_status(original), p->synthesis.ready != NULL,
-@@ -1012,7 +1104,7 @@
+@@ -1004,7 +1104,7 @@
+ 		}
+ 		if (mode >= 4) {
+ 			assert(pg_synthesis_result(initial[2]));
+-			initial[3] = pg_synthesis_evidence(&p->synthesis, pg_synthesis_result(initial[2]));
++			checked = pg_synthesis_result(initial[2]);
+ 		}
+ 	}
+ 	if (mode >= 6) {
+@@ -1012,7 +1112,7 @@
  		 * unused internal Lambda scopes need not be retained by the writer. */
  		struct pg_synthesis_job *carrier = pg_synthesis_source_handler_carrier(&p->synthesis, scope, definition.expression);
  		struct pg_synthesis_job *clause = pg_synthesis_handler_clause(&p->synthesis, inner,
@@ -397,18 +510,20 @@
  		const struct pg_source_scope *clause_scope = pg_synthesis_handler_clause_scope(clause);
  		assert(clause_scope);
  		initial[0] = parse(p, clause_scope, "{{x:=req;}}.x");
-@@ -1020,7 +1112,9 @@
+@@ -1020,7 +1120,11 @@
  	for (unsigned round = 0; round < 3; ++round) {
  		FILE *file = tmpfile();
  		uint64_t steps = p->synthesis.steps;
 -		assert(file && !pg_sources_write(file, &p->synthesis, count, roots));
 +		struct pg_synthesis_input export_inputs_5[(count) + 1];
-+		for (size_t i = 0; i < (count); ++i) export_inputs_5[i] = (struct pg_synthesis_input){.pending = (roots)[i]};
++		for (size_t i = 0; i < count; ++i)
++			export_inputs_5[i] = !round && i == 3 ? (struct pg_synthesis_input){.checked = checked}
++				: (struct pg_synthesis_input){.pending = roots[i]};
 +		assert(file && !pg_sources_write(file, &p->synthesis, count, export_inputs_5));
  		assert(p->synthesis.steps == steps);
  		if (mode >= 6) invalid_handler_binding(file);
  		pg_program_destroy(p);
-@@ -1046,7 +1140,7 @@
+@@ -1046,7 +1150,7 @@
  		assert(p->synthesis.steps < 10000);
  		pg_synthesis_advance(&p->synthesis, 1);
  	}
@@ -417,7 +532,7 @@
  	const struct pg_evidence *handled = pg_synthesis_result(handler), *value = pg_synthesis_result(roots[1]);
  	if (!handled || !value) fprintf(stderr, "handler scopes: handler %d, roots %d %d, steps %llu\n",
  		pg_synthesis_status(handler), pg_synthesis_status(roots[0]), pg_synthesis_status(roots[1]),
-@@ -1133,7 +1227,7 @@
+@@ -1133,7 +1237,7 @@
  		size_t boundary = 0;
  		for (;;) {
  			FILE *file = tmpfile();
@@ -426,7 +541,7 @@
  			if (saved) fprintf(stderr, "handler boundary: write case=%zu step=%zu status=%d\n",
  				test, boundary, pg_synthesis_status(selected[0]));
  			assert(file && !saved);
-@@ -1148,7 +1242,9 @@
+@@ -1148,7 +1252,9 @@
  				assert(!pg_synthesis_result(roots[0]) && !pg_synthesis_result(roots[1]));
  				if (round) { assert(!fclose(file)); break; }
  				FILE *again = tmpfile();
@@ -437,7 +552,7 @@
  				rewind(file); rewind(again);
  				int byte;
  				do {
-@@ -1238,7 +1334,7 @@
+@@ -1238,7 +1344,7 @@
  		struct pg_constructor_allocation retained;
  		assert(pg_synthesis_declaration_member_input(&p->synthesis, family, 1, &retained) == 1);
  		assert(retained.fields == allocation.fields && !p->synthesis.steps);
@@ -446,7 +561,7 @@
  		const char *selection = "r:=Nat.succ;";
  		pg_parser_init(&parser, &p->graph, selection, strlen(selection));
  		assert(pg_parser_next(&parser, &definition) == 1);
-@@ -1251,8 +1347,8 @@
+@@ -1251,8 +1357,8 @@
  		if (mode < 2) {
  			const struct pg_evidence *formation = pg_synthesis_result(family);
  			const struct pg_evidence *empty = pg_prove_empty_context(&p->typing);
@@ -457,7 +572,7 @@
  			assert(pg_synthesis_status(member) == PG_SYNTHESIS_DONE);
  			const struct pg_term *core = pg_evidence_subject(pg_synthesis_result(member))->core;
  			assert(core->kind == PG_LAMBDA && core->as.lambda.binder == binder);
-@@ -1374,7 +1470,9 @@
+@@ -1374,7 +1480,9 @@
  	for (unsigned round = 0; round < 3; ++round) {
  		FILE *file = tmpfile();
  		uint64_t steps = p->synthesis.steps;
@@ -468,7 +583,7 @@
  		assert(p->synthesis.steps == steps);
  		if (!round) invalid_declaration_members(file);
  		pg_program_destroy(p);
-@@ -1396,8 +1494,8 @@
+@@ -1396,8 +1504,8 @@
  	}
  	const struct pg_evidence *formation = pg_synthesis_result(roots[0]);
  	const struct pg_evidence *empty = pg_prove_empty_context(&p->typing);
@@ -479,7 +594,7 @@
  	assert(member && pg_synthesis_status(member) == PG_SYNTHESIS_DONE);
  	const struct pg_term *core = pg_evidence_subject(pg_synthesis_result(member))->core;
  	assert(core->kind == PG_LAMBDA && core->as.lambda.binder == input.fields->binder);
-@@ -1426,18 +1524,18 @@
+@@ -1426,18 +1534,18 @@
  		/* Use a serializable pending rule, not a general substitution request
  		 * accidentally completed by earlier constructor synthesis. */
  		const struct pg_evidence *empty = pg_prove_empty_context(&p->typing);
@@ -503,7 +618,7 @@
  				NULL, fields));
  		}
  		if (mode == 2) pg_synthesis_advance(&p->synthesis, 10000);
-@@ -1446,7 +1544,9 @@
+@@ -1446,7 +1554,9 @@
  		for (unsigned round = 0; round < 3; ++round) {
  			uint64_t steps = p->synthesis.steps;
  			FILE *file = tmpfile();
@@ -514,7 +629,7 @@
  			assert(p->synthesis.steps == steps);
  			pg_program_destroy(p);
  			rewind(file);
-@@ -1456,7 +1556,8 @@
+@@ -1456,7 +1566,8 @@
  		}
  		struct pg_constructor_input input;
  		assert(!pg_synthesis_constructor_input(&p->synthesis, roots[0], &input));
@@ -524,7 +639,7 @@
  		assert(input.allocated == (mode == 1 || mode == 2));
  		pg_synthesis_advance(&p->synthesis, 10000);
  		if (mode == 3) {
-@@ -1479,7 +1580,7 @@
+@@ -1479,7 +1590,7 @@
  			const struct pg_object *binder;
  			assert(pg_pi_view(pg_evidence_classifier(result), &domain, &binder, &codomain));
  			assert(binder == core->as.lambda.binder);
@@ -533,18 +648,33 @@
  			assert(codomain == pg_computation_type(&p->graph, PG_TOTALITY_TOTAL, pg_effect_row(&p->graph, 0, NULL), domain));
  		}
  		pg_program_destroy(p);
-@@ -1535,7 +1636,9 @@
+@@ -1529,18 +1640,20 @@
+ 	assert(proof);
+ 	const struct pg_evidence *forced = pg_prove_force(&p->typing, proof);
+ 	assert(forced);
+-	struct pg_synthesis_job *initial[] = {p->root, pg_synthesis_evidence(&p->synthesis, proof),
+-		pg_synthesis_evidence(&p->synthesis, forced)};
+-	struct pg_synthesis_job *const *roots = initial;
++	struct pg_synthesis_input initial[] = {{.pending = p->root}, {.checked = proof}, {.checked = forced}};
++	struct pg_synthesis_job *const *roots = NULL;
  	size_t count = 3;
  	for (unsigned round = 0; round < 3; ++round) {
  		FILE *file = tmpfile();
 -		assert(file && !pg_sources_write(file, &p->synthesis, count, roots));
-+		struct pg_synthesis_input export_inputs_9[(count) + 1];
-+		for (size_t i = 0; i < (count); ++i) export_inputs_9[i] = (struct pg_synthesis_input){.pending = (roots)[i]};
-+		assert(file && !pg_sources_write(file, &p->synthesis, count, export_inputs_9));
++		assert(file && !pg_sources_write(file, &p->synthesis, count, initial));
  		pg_program_destroy(p);
  		rewind(file);
  		p = pg_sources_read(file, 100000, &count, &roots);
-@@ -1627,7 +1730,7 @@
+ 		assert(p && count == 3 && !p->synthesis.steps);
+-		for (size_t i = 0; i < count; ++i) assert(!pg_synthesis_result(roots[i]));
++		for (size_t i = 0; i < count; ++i) {
++			assert(!pg_synthesis_result(roots[i]));
++			initial[i] = (struct pg_synthesis_input){.pending = roots[i]};
++		}
+ 		assert(!fclose(file));
+ 		if (!round) continue; /* Resave before any Solve or proof admission. */
+ 		pg_synthesis_advance(&p->synthesis, 10000);
+@@ -1627,7 +1740,7 @@
  		assert(!pg_synthesis_visit_source_bindings(&p->synthesis, check_source_allocation, &check) && check.count == 1);
  		FILE *file = tmpfile();
  		uint64_t steps = p->synthesis.steps;
@@ -553,7 +683,7 @@
  		assert(p->synthesis.steps == steps);
  		invalid_source_bindings(file);
  		pg_program_destroy(p);
-@@ -1659,7 +1762,7 @@
+@@ -1659,7 +1772,7 @@
  		assert(!pg_synthesis_visit_source_bindings(&p->synthesis, check_source_allocation, &check) && check.count == 1);
  		FILE *file = tmpfile();
  		uint64_t steps = p->synthesis.steps;
@@ -562,32 +692,18 @@
  		assert(p->synthesis.steps == steps);
  		pg_program_destroy(p);
  		rewind(file);
-@@ -1727,11 +1830,11 @@
- 			allocation = pg_context_bind(&p->typing, prefix, end->binder,
- 				end->declared_type, end->judgement);
- 		}
--		assert(pg_synthesis_constructor_scope_at(&restored, f, constructor, ps, fields->parent, fields));
--		struct pg_synthesis_job *job = pg_synthesis_induction_scope_at(&restored, f, constructor, ps, mc, m, prefix, allocation);
-+		assert(pg_synthesis_constructor_scope_at(&restored, (struct pg_synthesis_input){.pending = f}, constructor, (struct pg_synthesis_input){.pending = ps}, fields->parent, fields));
-+		struct pg_synthesis_job *job = pg_synthesis_induction_scope_at(&restored, (struct pg_synthesis_input){.pending = f}, constructor, (struct pg_synthesis_input){.pending = ps}, (struct pg_synthesis_input){.pending = mc}, (struct pg_synthesis_input){.pending = m}, prefix, allocation);
- 		assert(job && !restored.steps && !pg_synthesis_result(job));
--		assert(pg_synthesis_induction_scope(&restored, f, constructor, ps, mc, m) == job);
--		assert(pg_synthesis_induction_scope_at(&restored, f, constructor, ps, mc, m, prefix, allocation) == job);
-+		assert(pg_synthesis_induction_scope(&restored, (struct pg_synthesis_input){.pending = f}, constructor, (struct pg_synthesis_input){.pending = ps}, (struct pg_synthesis_input){.pending = mc}, (struct pg_synthesis_input){.pending = m}) == job);
-+		assert(pg_synthesis_induction_scope_at(&restored, (struct pg_synthesis_input){.pending = f}, constructor, (struct pg_synthesis_input){.pending = ps}, (struct pg_synthesis_input){.pending = mc}, (struct pg_synthesis_input){.pending = m}, prefix, allocation) == job);
- 		while (restored.ready) {
- 			assert(restored.steps < 10000);
- 			pg_synthesis_advance(&restored, mode & 1 ? 64 : 1);
-@@ -1739,7 +1842,7 @@
- 		assert(pg_synthesis_status(job) == (mode < 2 ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED));
- 		if (mode < 2) assert(pg_evidence_context(pg_evidence_premise(pg_synthesis_result(job), 1)) == end);
- 		const struct pg_context *other = pg_context_bind(&p->typing, fields, pg_binder(&p->graph), end->declared_type, PG_JUDGEMENT_VALUE);
--		assert(!pg_synthesis_induction_scope_at(&restored, f, constructor, ps, mc, m, fields, other));
-+		assert(!pg_synthesis_induction_scope_at(&restored, (struct pg_synthesis_input){.pending = f}, constructor, (struct pg_synthesis_input){.pending = ps}, (struct pg_synthesis_input){.pending = mc}, (struct pg_synthesis_input){.pending = m}, fields, other));
- 		pg_synthesis_destroy(&restored);
- 	}
- }
-@@ -1813,8 +1916,8 @@
+@@ -1713,8 +1826,8 @@
+ 	for (unsigned mode = 0; mode < 5; ++mode) {
+ 		struct pg_synthesis restored;
+ 		assert(!pg_synthesis_init(&restored, &p->typing, &p->evaluation, PG_DEFINITION_EXPLICIT_THUNK));
+-		struct pg_synthesis_job *f = pg_synthesis_evidence(&restored, formation), *ps = pg_synthesis_evidence(&restored, parameters);
+-		struct pg_synthesis_job *mc = pg_synthesis_evidence(&restored, motive_context), *m = pg_synthesis_evidence(&restored, motive);
++		struct pg_synthesis_input f = {.checked = formation}, ps = {.checked = parameters};
++		struct pg_synthesis_input mc = {.checked = motive_context}, m = {.checked = motive};
+ 		const struct pg_context *prefix = fields, *allocation = end;
+ 		if (mode == 1) allocation = pg_context_bind(&p->typing, fields, end->binder, pg_universe(&p->graph, 0), PG_JUDGEMENT_VALUE);
+ 		if (mode == 2) allocation = fields;
+@@ -1813,8 +1926,8 @@
  	struct pg_program *p = handler_base(1, &scope);
  	if (binding) {
  		struct pg_synthesis_job *box = parse(p, scope, "{{Box:=&(\\A:@=>@{mk:A->*;});}}.Box");
@@ -598,7 +714,7 @@
  		assert(scope);
  	}
  	struct pg_parser parser;
-@@ -1847,11 +1950,11 @@
+@@ -1847,11 +1960,11 @@
  		assert(initial.matches == 1);
  	}
  	FILE *before = tmpfile(), *after = tmpfile();
@@ -612,7 +728,7 @@
  		const struct pg_source_scope *foreign = binding
  			? pg_synthesis_binding_scope(pg_synthesis_binding(&p->synthesis, parent, syntax))
  			: pg_synthesis_handler_scope(&p->synthesis, parent, syntax);
-@@ -1884,7 +1987,7 @@
+@@ -1884,7 +1997,7 @@
  		fprintf(stderr, "local environment: binding=%d candidates=%zu -> %zu\n", binding, candidates, expanded);
  	size_t jobs = p->synthesis.jobs.count, scopes = p->synthesis.scopes.count, proofs = p->typing.proofs.count;
  	uint64_t steps = p->synthesis.steps;
@@ -621,23 +737,52 @@
  	assert(p->synthesis.jobs.count == jobs && p->synthesis.scopes.count == scopes);
  	assert(p->typing.proofs.count == proofs && p->synthesis.steps == steps);
  	rewind(before); rewind(after);
-@@ -2042,7 +2145,9 @@
+@@ -1904,7 +2017,8 @@
+ 	if (pg_synthesis_source_input(&p->synthesis, job, &scope, &syntax) || syntax->kind != PG_SYNTAX_ELIMINATION) return 0;
+ 	++check->count;
+ 	struct pg_graph storage = {0};
+-	const struct pg_match_allocation *allocation = pg_synthesis_match_allocation(job, &storage);
++	const struct pg_match_allocation *allocation = pg_synthesis_match_allocation(
++		(struct pg_synthesis_input){.pending = job}, &storage);
+ 	assert(allocation);
+ 	struct pg_source_environment environment;
+ 	assert(!pg_synthesis_environment_input(&p->synthesis, scope, &environment));
+@@ -2038,27 +2152,39 @@
+ 		 * Its allocation is reusable; its result is not an expected type. */
+ 		const struct pg_evidence *saved = pg_prove_induction(typing, formation, parameters, scrutinee, mc, motive, 2, branches);
+ 		assert(saved);
+-		struct pg_synthesis_job *receipt = pg_synthesis_evidence(&p->synthesis, saved);
  		struct pg_effect_inference inference;
  		assert(!pg_effect_inference_init(&inference, &p->graph));
  		const struct pg_derivation_input *const *inputs;
 -		assert(!pg_synthesis_export_rules(&p->synthesis, 1, &receipt, &p->graph, &inference, 1, &inputs));
 +		assert(!pg_synthesis_export_rules(&p->synthesis, 1, (struct pg_synthesis_input[]){
-+			{.pending = receipt}
++			{.checked = saved}
 +			}, &p->graph, &inference, 1, &inputs));
  		struct pg_synthesis_job *origin = pg_synthesis_derivation(&p->synthesis, inputs[0]);
- 		const struct pg_match_allocation *allocation = pg_synthesis_match_allocation(receipt, &p->graph);
+-		const struct pg_match_allocation *allocation = pg_synthesis_match_allocation(receipt, &p->graph);
++		assert(origin && !pg_synthesis_result(origin));
++		uint64_t steps = p->synthesis.steps;
++		size_t jobs = p->synthesis.jobs.count, proofs = typing->proofs.count;
++		size_t subjects = typing->occurrences.count, queries = typing->typed_queries.count;
++		assert(!pg_synthesis_match_allocation((struct pg_synthesis_input){0}, &p->graph));
++		assert(!pg_synthesis_match_allocation((struct pg_synthesis_input){.pending = origin}, &p->graph));
++		assert(!pg_synthesis_match_allocation((struct pg_synthesis_input){.checked = saved, .pending = origin}, &p->graph));
++		assert(!pg_synthesis_match_allocation((struct pg_synthesis_input){.checked = saved}, NULL));
++		const struct pg_match_allocation *allocation = pg_synthesis_match_allocation((struct pg_synthesis_input){.checked = saved}, &p->graph);
++		assert(allocation && allocation->induction.count == 2);
++		assert(p->synthesis.steps == steps && p->synthesis.jobs.count == jobs);
++		assert(typing->proofs.count == proofs && typing->occurrences.count == subjects);
++		assert(typing->typed_queries.count == queries);
  		struct pg_synthesis_job *job = pg_synthesis_restore_elimination(&p->synthesis,
-@@ -2052,13 +2157,13 @@
- 		struct pg_synthesis_job *context_job = pg_synthesis_evidence(&p->synthesis, context);
+ 			pg_synthesis_binding_scope(binding), definition.expression->right, allocation);
+ 		assert(job && !pg_synthesis_result(job));
+ 		pg_effect_inference_destroy(&inference);
+-		struct pg_synthesis_job *context_job = pg_synthesis_evidence(&p->synthesis, context);
  		struct pg_derivation_input invalid = {.rule = PG_VARIABLE,
  			.parameters.binder = pg_binder(&p->graph), .count = 1};
 -		struct pg_synthesis_job *bad = pg_synthesis_rule(&p->synthesis, &invalid, &context_job, NULL, NULL);
-+		struct pg_synthesis_job *bad = pg_synthesis_rule_inputs(&p->synthesis, &invalid, &(struct pg_synthesis_input){.pending = context_job}, NULL, NULL);
++		struct pg_synthesis_job *bad = pg_synthesis_rule_inputs(&p->synthesis, &invalid, &(struct pg_synthesis_input){.checked = context}, NULL, NULL);
  		assert(bad);
  		struct pg_synthesis_job *initial[] = {job, origin, bad};
  		struct pg_synthesis_job *const *roots = initial;
@@ -648,7 +793,7 @@
  			pg_program_destroy(p);
  			rewind(file);
  			size_t count;
-@@ -2086,11 +2191,11 @@
+@@ -2086,11 +2212,11 @@
  			size_t candidates = lexical_allocation_candidates(&p->synthesis, owner);
  			assert(candidates);
  			FILE *before = tmpfile(), *after = tmpfile();
@@ -662,7 +807,7 @@
  				struct pg_synthesis_job *alias = pg_synthesis_restore_elimination(&p->synthesis,
  					sibling, definition.expression->right, allocation);
  				assert(alias && !pg_synthesis_result(alias));
-@@ -2109,7 +2214,7 @@
+@@ -2109,7 +2235,7 @@
  				find_allocation_reference, NULL, NULL, &lookup) && lookup.count == 1);
  			uint64_t steps = p->synthesis.steps;
  			size_t proofs = p->typing.proofs.count;
@@ -671,7 +816,7 @@
  			assert(p->synthesis.steps == steps && p->typing.proofs.count == proofs);
  			rewind(before); rewind(after);
  			int byte;
-@@ -2128,7 +2233,7 @@
+@@ -2128,7 +2254,7 @@
  		FILE *file = tmpfile();
  		uint64_t steps = p->synthesis.steps;
  		size_t jobs = p->synthesis.jobs.count, proofs = p->typing.proofs.count;
@@ -680,18 +825,28 @@
  		assert(p->synthesis.steps == steps && p->synthesis.jobs.count == jobs && p->typing.proofs.count == proofs);
  		if (saved_origins == 1) invalid_match_allocations(file);
  		pg_program_destroy(p);
-@@ -2229,7 +2334,9 @@
+@@ -2221,7 +2347,6 @@
+ 		for (size_t i = 0; i < 6; ++i) {
+ 			initial[i] = pg_synthesis_definition(p->root,
+ 				(struct pg_token){.kind = PG_TOKEN_IDENT, .text = names[i], .length = strlen(names[i])});
+-			if (typed) initial[i] = pg_synthesis_evidence(&p->synthesis, pg_synthesis_result(initial[i]));
+ 			assert(initial[i]);
+ 		}
+ 		struct pg_synthesis_job *const *roots = initial;
+@@ -2229,7 +2354,11 @@
  		for (unsigned round = 0; round < 2; ++round) {
  			FILE *file = tmpfile();
  			uint64_t steps = p->synthesis.steps;
 -			assert(file && !pg_sources_write(file, &p->synthesis, count, roots));
 +			struct pg_synthesis_input export_inputs_10[(count) + 1];
-+			for (size_t i = 0; i < (count); ++i) export_inputs_10[i] = (struct pg_synthesis_input){.pending = (roots)[i]};
++			for (size_t i = 0; i < count; ++i)
++				export_inputs_10[i] = typed && !round ? (struct pg_synthesis_input){.checked = pg_synthesis_result(roots[i])}
++					: (struct pg_synthesis_input){.pending = roots[i]};
 +			assert(file && !pg_sources_write(file, &p->synthesis, count, export_inputs_10));
  			assert(p->synthesis.steps == steps);
  			pg_program_destroy(p);
  			rewind(file);
-@@ -2238,8 +2345,8 @@
+@@ -2238,8 +2367,8 @@
  		}
  		const struct pg_source_scope *scope = pg_synthesis_root(&p->synthesis);
  		for (size_t i = 0; i < count; ++i)
@@ -702,7 +857,7 @@
  		assert(scope);
  		struct pg_parser parser;
  		struct pg_definition definition;
-@@ -2288,11 +2395,11 @@
+@@ -2288,11 +2417,11 @@
  	/* Sharing syntax is not sharing a lexical use. Unselected siblings must
  	 * not change the selected image or turn saving into additional Solve work. */
  	FILE *before = tmpfile(), *after = tmpfile();
@@ -716,7 +871,7 @@
  		assert(sibling && sibling != found.scope);
  		struct pg_synthesis_job *use = pg_synthesis_request(&p->synthesis, sibling, found.syntax);
  		assert(use && use != found.job);
-@@ -2335,7 +2442,7 @@
+@@ -2335,7 +2464,7 @@
  	for (unsigned i = 0; i < 128; ++i) {
  		const struct pg_source_scope *sibling = pg_synthesis_name(&p->synthesis, found.scope,
  			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "elsewhere", .length = 9},
@@ -725,7 +880,7 @@
  		const struct pg_source_scope *definitions = pg_synthesis_definition_scope(&p->synthesis,
  			sibling, environment.definitions);
  		struct pg_synthesis_job *use = pg_synthesis_member_at(&p->synthesis, definitions,
-@@ -2347,7 +2454,7 @@
+@@ -2347,7 +2476,7 @@
  	scoped_member_origins(&isolated, found.scope);
  	assert(isolated.job == found.job && isolated.visited == indexed.visited);
  	size_t save_jobs = p->synthesis.jobs.count, save_scopes = p->synthesis.scopes.count;
@@ -734,16 +889,22 @@
  	assert(p->synthesis.steps == save_steps && p->typing.proofs.count == save_proofs);
  	assert(p->synthesis.jobs.count == save_jobs && p->synthesis.scopes.count == save_scopes);
  	rewind(before);
-@@ -2367,7 +2474,7 @@
- 		pg_prove_context_extension(&p->typing, pg_prove_empty_context(&p->typing), binder, nat));
+@@ -2363,11 +2492,11 @@
+ 	 * constructor. Its allocation address must still survive source-free saves. */
+ 	const struct pg_evidence *nat = pg_synthesis_result(pg_synthesis_definition(p->root,
+ 		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "Nat", .length = 3}));
+-	struct pg_synthesis_job *context = pg_synthesis_evidence(&p->synthesis,
+-		pg_prove_context_extension(&p->typing, pg_prove_empty_context(&p->typing), binder, nat));
++	const struct pg_evidence *context =
++		pg_prove_context_extension(&p->typing, pg_prove_empty_context(&p->typing), binder, nat);
  	assert(context);
  	FILE *context_file = tmpfile();
 -	assert(context_file && !pg_sources_write(context_file, &p->synthesis, 1, &context));
-+	assert(context_file && !pg_sources_write(context_file, &p->synthesis, 1, (struct pg_synthesis_input[]){{.pending = context}}));
++	assert(context_file && !pg_sources_write(context_file, &p->synthesis, 1, (struct pg_synthesis_input[]){{.checked = context}}));
  	for (unsigned round = 0; round < 2; ++round) {
  		size_t syntax_count, root_count;
  		uint64_t bindings;
-@@ -2378,7 +2485,9 @@
+@@ -2378,7 +2507,9 @@
  		struct pg_program *loaded = pg_sources_read(context_file, 100000, &root_count, &context_roots);
  		assert(loaded && root_count == 1 && !loaded->synthesis.steps && !fclose(context_file));
  		context_file = tmpfile();
@@ -754,7 +915,7 @@
  		assert(!loaded->synthesis.steps);
  		pg_program_destroy(loaded);
  	}
-@@ -2407,7 +2516,10 @@
+@@ -2407,7 +2538,10 @@
  	assert(retyped);
  	struct pg_synthesis_job *selected[] = {p->root, restored, rejected, retyped};
  	FILE *pending = tmpfile();
@@ -766,7 +927,7 @@
  	assert(p->synthesis.steps == steps && !pg_synthesis_result(restored) && !pg_synthesis_result(rejected));
  	pg_synthesis_advance(&p->synthesis, 10000);
  	assert(pg_synthesis_status(restored) == PG_SYNTHESIS_DONE);
-@@ -2426,7 +2538,9 @@
+@@ -2426,7 +2560,9 @@
  	for (unsigned round = 0; round < 3; ++round) {
  		FILE *file = tmpfile();
  		steps = p->synthesis.steps;
@@ -777,7 +938,7 @@
  		assert(p->synthesis.steps == steps);
  		pg_program_destroy(p);
  		rewind(file);
-@@ -2493,7 +2607,10 @@
+@@ -2493,7 +2629,10 @@
  		struct pg_synthesis_job *selected[4];
  		for (size_t i = 0; i < 4; ++i) selected[i] = uses[(first + i) % 4];
  		FILE *file = tmpfile();
@@ -789,18 +950,18 @@
  		rewind(file);
  		size_t count;
  		struct pg_synthesis_job *const *roots;
-@@ -2566,7 +2683,9 @@
+@@ -2560,8 +2699,8 @@
+ static void retained_normalization(void)
+ {
+ 	struct pg_program *p = retained_program("{{ id:=&(\\A:@ => \\x:A => x); }}.id");
+-	struct pg_synthesis_job *selected[] = {p->root,
+-		pg_synthesis_evidence(&p->synthesis, pg_synthesis_result(p->root))};
++	struct pg_synthesis_input selected[] = {{.pending = p->root},
++		{.checked = pg_synthesis_result(p->root)}};
+ 	/* Both the materialized source and an explicit proof keep their lexical
  	 * dependencies. Neither requires a reduction archive. */
  	for (unsigned mode = 0; mode < 2; ++mode) {
- 		FILE *file = tmpfile();
--		assert(file && !pg_sources_write(file, &p->synthesis, mode + 1, selected));
-+		struct pg_synthesis_input export_inputs_13[(mode + 1) + 1];
-+		for (size_t i = 0; i < (mode + 1); ++i) export_inputs_13[i] = (struct pg_synthesis_input){.pending = (selected)[i]};
-+		assert(file && !pg_sources_write(file, &p->synthesis, mode + 1, export_inputs_13));
- 		size_t syntax_count;
- 		source_binding_section(file, &syntax_count);
- 		uint64_t bindings;
-@@ -2577,7 +2696,9 @@
+@@ -2577,7 +2716,9 @@
  	size_t count = 1;
  	for (unsigned round = 0; round < 3; ++round) {
  		FILE *file = tmpfile();
@@ -811,7 +972,7 @@
  		pg_program_destroy(p);
  		rewind(file);
  		p = pg_sources_read(file, 100000, &count, &roots);
-@@ -2591,8 +2712,63 @@
+@@ -2591,8 +2732,63 @@
  	puts("source materialized roots: inert read/resave, shared input origins and explicit local NF cache reuse passed");
  }
  
@@ -875,7 +1036,7 @@
  	normalization_origin();
  	retained_normalization();
  	const char *text = "{{ id:=&(\\A:@ => \\x:A => x); }}.id";
-@@ -2600,19 +2776,29 @@
+@@ -2600,19 +2796,29 @@
  	assert(p && p->root);
  	struct pg_derivation_input empty = {.rule = PG_CONTEXT_EMPTY};
  	struct pg_synthesis_job *context = pg_synthesis_derivation(&p->synthesis, &empty);
@@ -911,7 +1072,7 @@
  		assert(p->synthesis.steps == steps);
  		if (!snapshot) invalid_normalization_mode(file);
  		for (size_t round = 0; round < 2; ++round) {
-@@ -2621,20 +2807,22 @@
+@@ -2621,20 +2827,22 @@
  			struct pg_synthesis_job *const *loaded;
  			struct pg_program *q = pg_sources_read(file, 100000, &count, &loaded);
  			assert(q && count == 7 && !q->synthesis.steps && loaded[1] == loaded[3]);
@@ -940,7 +1101,7 @@
  			assert(!q->synthesis.steps);
  			while (q->synthesis.ready) {
  				assert(q->synthesis.steps < 10000);
-@@ -2680,7 +2868,7 @@
+@@ -2680,7 +2888,7 @@
  			parse(original, local, "{{ main:=good; }}.main")};
  		assert(roots[1]);
  		FILE *file = tmpfile();
@@ -949,12 +1110,15 @@
  		rewind(file);
  		size_t count;
  		struct pg_synthesis_job *const *restored;
-@@ -2707,22 +2895,30 @@
+@@ -2705,24 +2913,32 @@
+ {
+ 	struct pg_program *p = pg_program_allocate(PG_DEFINITION_EXPLICIT_THUNK);
  	assert(p);
- 	struct pg_synthesis_job *context = pg_synthesis_evidence(&p->synthesis, pg_prove_empty_context(&p->typing));
+-	struct pg_synthesis_job *context = pg_synthesis_evidence(&p->synthesis, pg_prove_empty_context(&p->typing));
++	struct pg_synthesis_input context = {.checked = pg_prove_empty_context(&p->typing)};
  	struct pg_derivation_input universe = {.rule = PG_UNIVERSE_FORM, .count = 1};
 -	struct pg_synthesis_job *type = pg_synthesis_rule(&p->synthesis, &universe, &context, NULL, NULL);
-+	struct pg_synthesis_job *type = pg_synthesis_rule_inputs(&p->synthesis, &universe, &(struct pg_synthesis_input){.pending = context}, NULL, NULL);
++	struct pg_synthesis_job *type = pg_synthesis_rule_inputs(&p->synthesis, &universe, &context, NULL, NULL);
  	struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = "T", .length = 1};
 -	const struct pg_source_scope *scope = pg_synthesis_name_job(&p->synthesis, p->scope, name, type);
 +	const struct pg_source_scope *scope = pg_synthesis_name(&p->synthesis, p->scope, name, (struct pg_synthesis_input){.pending = type});
@@ -985,7 +1149,7 @@
  	assert(!p->synthesis.steps && !pg_synthesis_result(type));
  	pg_program_destroy(p);
  	rewind(file);
-@@ -2764,7 +2960,7 @@
+@@ -2764,7 +2980,7 @@
  	assert(namespace);
  	struct pg_synthesis_job *client = parse(p, namespace, "{{ main:=lib.id; }}.main");
  	struct pg_token alias = {.kind = PG_TOKEN_IDENT, .text = "alias", .length = 5};
@@ -994,7 +1158,7 @@
  	const struct pg_source_scope *imports = pg_synthesis_import_scope(&p->synthesis, p->scope, exports);
  	struct pg_synthesis_job *consumer = parse(p, imports, "{{ import alias; main:=alias; }}.main");
  	struct pg_token public = {.kind = PG_TOKEN_IDENT, .text = "public", .length = 6};
-@@ -2772,7 +2968,12 @@
+@@ -2772,7 +2988,12 @@
  	struct pg_synthesis_job *member = parse(p, published, "{{ main:=public.alias; }}.main");
  	struct pg_synthesis_job *roots[] = {client, consumer, p->root, client, member, reserved, missing};
  	size_t jobs = p->synthesis.jobs.count, scopes = p->synthesis.scopes.count, proofs = p->typing.proofs.count;
@@ -1008,7 +1172,7 @@
  	assert(!p->synthesis.steps && p->synthesis.jobs.count == jobs && p->synthesis.scopes.count == scopes);
  	assert(p->typing.proofs.count == proofs);
  	struct pg_token id = {.kind = PG_TOKEN_IDENT, .text = "id", .length = 2};
-@@ -2795,14 +2996,19 @@
+@@ -2795,14 +3016,19 @@
  	assert(!pg_synthesis_definition_input(&p->synthesis, definition, &ambient, &definitions, &expression));
  	assert(ambient == provider_scope && definitions == provider && expression == provider->items[0].expression);
  	FILE *accepted = tmpfile();
@@ -1030,7 +1194,7 @@
  	assert(!pg_sources_write(retained, &p->synthesis, 1, &evidence));
  	assert(!fclose(retained));
  	pg_program_destroy(p);
-@@ -2817,7 +3023,9 @@
+@@ -2817,7 +3043,9 @@
  	assert(!p->synthesis.steps && !p->parser.reader.input);
  	/* Reading releases its wire workspace; roots and borrowed names must survive. */
  	FILE *resaved = tmpfile();
@@ -1041,36 +1205,48 @@
  	pg_program_destroy(p);
  	rewind(resaved);
  	p = pg_sources_read(resaved, 10000, &count, &roots);
-@@ -2852,7 +3060,7 @@
+@@ -2845,28 +3073,29 @@
+ 		while (p->synthesis.ready) { assert(p->synthesis.steps < 10000); pg_synthesis_advance(&p->synthesis, 64); }
+ 		assert(pg_synthesis_status(p->root) == PG_SYNTHESIS_DONE);
+ 		const char *names[] = {"D", "E", "d", "e"};
+-		struct pg_synthesis_job *values[4];
++		const struct pg_evidence *values[4];
+ 		const struct pg_source_scope *scope = p->scope;
+ 		for (size_t i = 0; i < 4; ++i) {
+ 			struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = names[i], .length = 1};
  			const struct pg_evidence *proof = pg_synthesis_result(pg_synthesis_definition(p->root, name));
  			assert(proof);
- 			values[i] = pg_synthesis_evidence(&p->synthesis, proof);
+-			values[i] = pg_synthesis_evidence(&p->synthesis, proof);
 -			scope = pg_synthesis_name_job(&p->synthesis, scope, name, values[i]);
-+			scope = pg_synthesis_name(&p->synthesis, scope, name, (struct pg_synthesis_input){.pending = values[i]});
++			values[i] = proof;
++			scope = pg_synthesis_name(&p->synthesis, scope, name, (struct pg_synthesis_input){.checked = values[i]});
  			assert(scope);
  		}
- 		const struct pg_evidence *type = pg_synthesis_result(values[0]);
-@@ -2860,14 +3068,16 @@
+-		const struct pg_evidence *type = pg_synthesis_result(values[0]);
++		const struct pg_evidence *type = values[0];
+ 		const struct pg_operation_declaration *declaration = pg_operation_declaration(&p->typing, type, type);
  		const struct pg_evidence *function = pg_prove_operation_function(&p->typing, declaration);
  		assert(function);
- 		struct pg_synthesis_job *operation = pg_synthesis_evidence(&p->synthesis, function);
+-		struct pg_synthesis_job *operation = pg_synthesis_evidence(&p->synthesis, function);
 -		scope = pg_synthesis_name_job(&p->synthesis, scope,
 -			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "ask", .length = 3}, operation);
 +		scope = pg_synthesis_name(&p->synthesis, scope,
-+			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "ask", .length = 3}, (struct pg_synthesis_input){.pending = operation});
++			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "ask", .length = 3}, (struct pg_synthesis_input){.checked = function});
  		assert(scope);
- 		struct pg_synthesis_job *roots[] = {
- 			parse(p, scope, "{{ main:=d; main::D; }}.main"),
- 			parse(p, scope, "{{ main:=e; main::D; }}.main"),
- 			parse(p, scope, "{{ main:=&(ask d); }}.main"), values[0], values[1], values[2], values[3], operation, p->root};
--		assert(!pg_sources_write(file, &p->synthesis, origins ? 9 : 8, roots));
-+		struct pg_synthesis_input export_inputs_18[(origins ? 9 : 8) + 1];
-+		for (size_t i = 0; i < (origins ? 9 : 8); ++i) export_inputs_18[i] = (struct pg_synthesis_input){.pending = (roots)[i]};
-+		assert(!pg_sources_write(file, &p->synthesis, origins ? 9 : 8, export_inputs_18));
+-		struct pg_synthesis_job *roots[] = {
+-			parse(p, scope, "{{ main:=d; main::D; }}.main"),
+-			parse(p, scope, "{{ main:=e; main::D; }}.main"),
+-			parse(p, scope, "{{ main:=&(ask d); }}.main"), values[0], values[1], values[2], values[3], operation, p->root};
++		struct pg_synthesis_input roots[] = {
++			{.pending = parse(p, scope, "{{ main:=d; main::D; }}.main")},
++			{.pending = parse(p, scope, "{{ main:=e; main::D; }}.main")},
++			{.pending = parse(p, scope, "{{ main:=&(ask d); }}.main")},
++			{.checked = values[0]}, {.checked = values[1]}, {.checked = values[2]},
++			{.checked = values[3]}, {.checked = function}, {.pending = p->root}};
+ 		assert(!pg_sources_write(file, &p->synthesis, origins ? 9 : 8, roots));
  		pg_program_destroy(p);
  	} else {
- 		size_t count;
-@@ -2876,7 +3086,9 @@
+@@ -2876,7 +3105,9 @@
  		assert(p && count == (origins ? 9u : 8u) && !p->synthesis.steps);
  		if (origins) {
  			FILE *pending = tmpfile();
@@ -1081,16 +1257,18 @@
  			assert(!p->synthesis.steps);
  			pg_program_destroy(p);
  			rewind(pending);
-@@ -2962,7 +3174,7 @@
- 	struct pg_synthesis_job *selected[] = {p->root,
- 		pg_synthesis_evidence(&p->synthesis, pg_synthesis_result(declaration))};
+@@ -2959,8 +3190,8 @@
+ 	check_allocation_reference(&p->synthesis, declaration, scope);
+ 	size_t candidates = lexical_allocation_candidates(&p->synthesis, scope);
+ 	assert(candidates);
+-	struct pg_synthesis_job *selected[] = {p->root,
+-		pg_synthesis_evidence(&p->synthesis, pg_synthesis_result(declaration))};
++	struct pg_synthesis_input selected[] = {{.pending = p->root},
++		{.checked = pg_synthesis_result(declaration)}};
  	FILE *before = tmpfile(), *after = tmpfile();
--	assert(before && after && !pg_sources_write(before, &p->synthesis, 2, selected));
-+	assert(before && after && !pg_sources_write(before, &p->synthesis, 2, (struct pg_synthesis_input[]){{.pending = (selected)[0]}, {.pending = (selected)[1]}}));
+ 	assert(before && after && !pg_sources_write(before, &p->synthesis, 2, selected));
  	struct pg_graph storage = {0};
- 	size_t context_count, term_count;
- 	const struct pg_context *const *contexts;
-@@ -2993,7 +3205,7 @@
+@@ -2993,7 +3224,7 @@
  		 * even if that scope explicitly borrows the very same declaration. */
  		const struct pg_source_scope *sibling = pg_synthesis_name(&p->synthesis, scope,
  			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "unused", .length = 6},
@@ -1099,7 +1277,7 @@
  		struct pg_synthesis_job *alias = pg_synthesis_declaration_at(&p->synthesis,
  			sibling, syntax, pg_data_declaration_view(family));
  		assert(alias && !pg_synthesis_result(alias));
-@@ -3008,7 +3220,7 @@
+@@ -3008,7 +3239,7 @@
  		/* One erased layout does not identify a nominal family. */
  		const struct pg_source_scope *foreign = pg_synthesis_name(&p->synthesis, sibling,
  			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "other", .length = 5},
@@ -1108,32 +1286,34 @@
  		struct pg_synthesis_job *distinct = pg_synthesis_declaration_at(&p->synthesis, foreign, syntax, other);
  		assert(distinct && !pg_synthesis_result(distinct));
  		assert(pg_synthesis_allocation_object(&p->synthesis, distinct) == pg_data_declaration_family(other));
-@@ -3019,7 +3231,7 @@
- 	check_declaration_origins(&p->synthesis, pg_data_declaration_family(other), 0, 1);
- 	uint64_t steps = p->synthesis.steps;
- 	size_t proofs = p->typing.proofs.count;
--	assert(!pg_sources_write(after, &p->synthesis, 2, selected));
-+	assert(!pg_sources_write(after, &p->synthesis, 2, (struct pg_synthesis_input[]){{.pending = (selected)[0]}, {.pending = (selected)[1]}}));
- 	assert(p->synthesis.steps == steps && p->typing.proofs.count == proofs);
- 	rewind(before); rewind(after);
- 	int byte;
-@@ -3033,7 +3245,9 @@
+@@ -3029,16 +3260,17 @@
+ 	} while (byte != EOF);
+ 	assert(!ferror(before) && !ferror(after));
+ 	assert(!fclose(before) && !fclose(after));
+-	struct pg_synthesis_job *const *roots = selected;
++	struct pg_synthesis_job *const *roots = NULL;
  	size_t count = 2;
  	for (size_t round = 0; round < 2; ++round) {
  		FILE *file = tmpfile();
 -		assert(file && !pg_sources_write(file, &p->synthesis, count, roots));
-+		struct pg_synthesis_input export_inputs_20[(count) + 1];
-+		for (size_t i = 0; i < (count); ++i) export_inputs_20[i] = (struct pg_synthesis_input){.pending = (roots)[i]};
-+		assert(file && !pg_sources_write(file, &p->synthesis, count, export_inputs_20));
++		assert(file && !pg_sources_write(file, &p->synthesis, count, selected));
  		pg_program_destroy(p);
  		rewind(file);
  		p = pg_sources_read(file, 50000, &count, &roots);
-@@ -3064,14 +3278,16 @@
+ 		assert(p && count == 2 && !p->synthesis.steps);
+ 		assert(!pg_synthesis_result(roots[0]) && !pg_synthesis_result(roots[1]));
++		for (size_t i = 0; i < count; ++i) selected[i] = (struct pg_synthesis_input){.pending = roots[i]};
+ 		assert(!fclose(file));
+ 	}
+ 	while (p->synthesis.ready) { assert(p->synthesis.steps < 30000); pg_synthesis_advance(&p->synthesis, 1); }
+@@ -3063,15 +3295,17 @@
+ 		assert(pg_synthesis_status(p->root) == PG_SYNTHESIS_DONE);
  		const struct pg_evidence *function = pg_synthesis_result(pg_synthesis_definition(p->root, name));
  		assert(function);
- 		struct pg_synthesis_job *roots[] = {p->root, pg_synthesis_evidence(&p->synthesis, function)};
+-		struct pg_synthesis_job *roots[] = {p->root, pg_synthesis_evidence(&p->synthesis, function)};
 -		assert(roots[1] && !pg_sources_write(file, &p->synthesis, 2, roots));
-+		assert(roots[1] && !pg_sources_write(file, &p->synthesis, 2, (struct pg_synthesis_input[]){{.pending = (roots)[0]}, {.pending = (roots)[1]}}));
++		struct pg_synthesis_input roots[] = {{.pending = p->root}, {.checked = function}};
++		assert(!pg_sources_write(file, &p->synthesis, 2, roots));
  	} else {
  		size_t count;
  		struct pg_synthesis_job *const *roots;
@@ -1147,16 +1327,19 @@
  		assert(!p->synthesis.steps);
  		pg_program_destroy(p);
  		rewind(pending);
-@@ -3164,7 +3380,7 @@
+@@ -3162,9 +3396,9 @@
+ 	const size_t depth = 512;
+ 	struct pg_program *p = pg_program_allocate(PG_DEFINITION_EXPLICIT_THUNK);
  	assert(p);
- 	struct pg_synthesis_job *context = pg_synthesis_evidence(&p->synthesis, pg_prove_empty_context(&p->typing));
+-	struct pg_synthesis_job *context = pg_synthesis_evidence(&p->synthesis, pg_prove_empty_context(&p->typing));
++	struct pg_synthesis_input context = {.checked = pg_prove_empty_context(&p->typing)};
  	struct pg_derivation_input universe = {.rule = PG_UNIVERSE_FORM, .count = 1, .parameters.level = 1};
 -	struct pg_synthesis_job *type = pg_synthesis_rule(&p->synthesis, &universe, &context, NULL, NULL);
-+	struct pg_synthesis_job *type = pg_synthesis_rule_inputs(&p->synthesis, &universe, &(struct pg_synthesis_input){.pending = context}, NULL, NULL);
++	struct pg_synthesis_job *type = pg_synthesis_rule_inputs(&p->synthesis, &universe, &context, NULL, NULL);
  	const struct pg_source_scope *base = pg_synthesis_root(&p->synthesis);
  	struct pg_synthesis_job *term = parse(p, base, "{{main:=@;}}.main");
  	struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = "T", .length = 1};
-@@ -3172,14 +3388,14 @@
+@@ -3172,14 +3406,14 @@
  	reference.token.text_length = name.length;
  	const struct pg_source_scope *scope = base;
  	for (size_t i = 0; i < depth; ++i) {
@@ -1174,7 +1357,7 @@
  	assert(!p->synthesis.steps && !pg_synthesis_result(term));
  	assert(!fseek(file, 16, SEEK_SET));
  	uint64_t scope_count, root_count, origin_count, producer_count;
-@@ -3205,8 +3421,11 @@
+@@ -3205,8 +3439,11 @@
  			assert(syntax == shared_reference);
  			struct pg_source_environment environment;
  			assert(!pg_synthesis_environment_input(&p->synthesis, scope, &environment));
@@ -1188,7 +1371,7 @@
  			assert(scope == environment.parent);
  			if (!shared_type) shared_type = type;
  			assert(type == shared_type);
-@@ -3225,6 +3444,64 @@
+@@ -3225,6 +3462,64 @@
  	puts("source image: 512 alternating lexical/annotation dependencies retain shared syntax and split-budget results");
  }
  
@@ -1253,7 +1436,7 @@
  static void annotation_sources(FILE *file, int writing, uint64_t chunk)
  {
  	struct pg_program *p;
-@@ -3232,31 +3509,37 @@
+@@ -3232,31 +3527,37 @@
  	struct pg_synthesis_job *const *roots;
  	if (writing) {
  		prepared_scope_chain();
@@ -1261,16 +1444,17 @@
  		p = pg_program_allocate(PG_DEFINITION_EXPLICIT_THUNK);
  		assert(p);
  		struct pg_synthesis_job *term = parse(p, p->scope, "{{main:=@;}}.main");
- 		struct pg_synthesis_job *context = pg_synthesis_evidence(&p->synthesis, pg_prove_empty_context(&p->typing));
+-		struct pg_synthesis_job *context = pg_synthesis_evidence(&p->synthesis, pg_prove_empty_context(&p->typing));
++		struct pg_synthesis_input context = {.checked = pg_prove_empty_context(&p->typing)};
  		struct pg_derivation_input header = {.rule = PG_UNIVERSE_FORM, .count = 1, .parameters.level = 1};
 -		struct pg_synthesis_job *type = pg_synthesis_rule(&p->synthesis, &header, &context, NULL, NULL);
-+		struct pg_synthesis_job *type = pg_synthesis_rule_inputs(&p->synthesis, &header, &(struct pg_synthesis_input){.pending = context}, NULL, NULL);
++		struct pg_synthesis_job *type = pg_synthesis_rule_inputs(&p->synthesis, &header, &context, NULL, NULL);
  		header.parameters.level = 0;
 -		struct pg_synthesis_job *wrong = pg_synthesis_rule(&p->synthesis, &header, &context, NULL, NULL);
 -		struct pg_synthesis_job *valid = pg_synthesis_source_expect(&p->synthesis, p->scope, term, type);
 -		struct pg_synthesis_job *invalid = pg_synthesis_source_expect(&p->synthesis, p->scope, term, wrong);
 -		struct pg_synthesis_job *nested = pg_synthesis_source_expect(&p->synthesis, p->scope, valid, type);
-+		struct pg_synthesis_job *wrong = pg_synthesis_rule_inputs(&p->synthesis, &header, &(struct pg_synthesis_input){.pending = context}, NULL, NULL);
++		struct pg_synthesis_job *wrong = pg_synthesis_rule_inputs(&p->synthesis, &header, &context, NULL, NULL);
 +		struct pg_synthesis_job *valid = pg_synthesis_source_expect(&p->synthesis, p->scope, (struct pg_synthesis_input){.pending = term}, (struct pg_synthesis_input){.pending = type});
 +		struct pg_synthesis_job *invalid = pg_synthesis_source_expect(&p->synthesis, p->scope, (struct pg_synthesis_input){.pending = term}, (struct pg_synthesis_input){.pending = wrong});
 +		struct pg_synthesis_job *nested = pg_synthesis_source_expect(&p->synthesis, p->scope, (struct pg_synthesis_input){.pending = valid}, (struct pg_synthesis_input){.pending = type});
@@ -1300,7 +1484,7 @@
  		rewind(names);
  		struct pg_program *restored = pg_sources_read(names, 10000, &count, &roots);
  		assert(restored && count == 2 && !restored->synthesis.steps);
-@@ -3276,21 +3559,23 @@
+@@ -3276,21 +3577,23 @@
  		assert(p->typing.proofs.count == 1);
  		for (size_t i = 0; i < count; ++i) assert(!pg_synthesis_result(roots[i]));
  		const struct pg_source_scope *scope;
@@ -1330,7 +1514,7 @@
  		pg_program_destroy(p);
  		rewind(pending);
  		p = pg_sources_read(pending, 10000, &count, &roots);
-@@ -3342,13 +3627,17 @@
+@@ -3342,13 +3645,17 @@
  			}
  		}
  		uint64_t steps = p->synthesis.steps;
@@ -1350,7 +1534,7 @@
  		pg_program_destroy(p);
  		rewind(pending);
  		p = pg_sources_read(pending, 20000, &count, &roots);
-@@ -3421,7 +3710,7 @@
+@@ -3421,7 +3728,7 @@
  	for (size_t round = 0; round < 2; ++round) {
  		FILE *file = tmpfile();
  		uint64_t steps = p->synthesis.steps;
@@ -1359,7 +1543,7 @@
  		assert(p->synthesis.steps == steps);
  		invalid_module_entries(file);
  		pg_program_destroy(p);
-@@ -3439,7 +3728,7 @@
+@@ -3439,7 +3746,7 @@
  		struct pg_synthesis_job *definition = pg_synthesis_definition_request(&p->synthesis,
  			scope, syntax, syntax->items[0].expression);
  		struct pg_synthesis_job *type = pg_synthesis_request(&p->synthesis, local, syntax->items[1].expression);
@@ -1368,7 +1552,7 @@
  		assert(check);
  		if (p->synthesis.jobs.count != jobs) {
  			fprintf(stderr, "prepared module round %zu: reconstructed %zu missing producer inputs\n",
-@@ -3473,7 +3762,7 @@
+@@ -3473,7 +3780,7 @@
  		size_t snapshots = 0;
  		for (;;) {
  			FILE *file = tmpfile();
@@ -1377,18 +1561,21 @@
  			rewind(file);
  			size_t count;
  			struct pg_synthesis_job *const *roots;
-@@ -3550,7 +3839,9 @@
- 		struct pg_synthesis_job *selected[] = {p->root,
- 			pg_synthesis_evidence(&p->synthesis, pg_synthesis_result(p->root))};
+@@ -3547,10 +3854,10 @@
+ 			assert(!pg_synthesis_visit_source_bindings(&p->synthesis, check_source_allocation, &check) && check.count == 1);
+ 		}
+ 		FILE *file = fopen(argv[2], "w+b");
+-		struct pg_synthesis_job *selected[] = {p->root,
+-			pg_synthesis_evidence(&p->synthesis, pg_synthesis_result(p->root))};
++		struct pg_synthesis_input selected[] = {{.pending = p->root},
++			{.checked = pg_synthesis_result(p->root)}};
  		count = !strcmp(argv[1], "retained-write-typed") ? 2 : 1;
 -		assert(selected[1] && file && !pg_sources_write(file, &p->synthesis, count, selected));
-+		struct pg_synthesis_input export_inputs_26[(count) + 1];
-+		for (size_t i = 0; i < (count); ++i) export_inputs_26[i] = (struct pg_synthesis_input){.pending = (selected)[i]};
-+		assert(selected[1] && file && !pg_sources_write(file, &p->synthesis, count, export_inputs_26));
++		assert(selected[1].checked && file && !pg_sources_write(file, &p->synthesis, count, selected));
  		assert(!fclose(file));
  	} else {
  		FILE *file = fopen(argv[2], "rb");
-@@ -3561,7 +3852,9 @@
+@@ -3561,7 +3868,9 @@
  		if (!strcmp(argv[1], "retained-resave")) {
  			assert(argc == 4);
  			file = fopen(argv[3], "w+b");
@@ -1399,7 +1586,7 @@
  			assert(!fclose(file) && !p->synthesis.steps && !p->evaluation.jobs.count);
  		} else {
  			assert(argc == 3);
-@@ -3577,6 +3870,63 @@
+@@ -3577,6 +3886,63 @@
  	pg_program_destroy(p);
  }
  
@@ -1463,7 +1650,7 @@
  int main(int argc, char **argv)
  {
  	/* Compare a saved named construction with independently checked source. */
-@@ -3629,7 +3979,7 @@
+@@ -3629,7 +3995,7 @@
  		pg_program_destroy(p);
  		return 0;
  	}

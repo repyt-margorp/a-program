@@ -267,6 +267,20 @@ Constraint record underneath an unchanged, independently stateful Job record.
 requires accounting for each remaining owner and deleting needless wrappers,
 not just accepting direct inputs. For each role, record its canonical key, input
 owner, unfinished cursor, completion owner and actual resumption consumer.
+Latest user follow-up, 2026-10-01 (English paraphrase): the concern is the
+independent Job/Evidence graph above Term, typing and Solve, not merely adapter
+allocation size. Static recheck at `d4f33a1cbe5c25c22171ee8ddee7f6b611a5b2c5`
+confirms the accepted implementation still has `evidence_ready`'s DONE wrapper,
+`checked_query_step`'s copied query result/status, and Match's `count + 6`
+receipt premises alongside typed operands. These are consolidation candidates,
+not proof that every receipt or unfinished operation is redundant. The committed
+prototype removes the checked-query wrapper and the Identity classifier
+consumer's wrapper; it has not removed the whole Job graph. The then-uncommitted
+`source_receipt_work` trial was excluded from that static recheck; its subsequent
+verification is recorded in the source-I/O milestone below. No tests were
+rerun for the static recheck. Do not declare SE1 complete merely because
+completed Evidence adapters disappear: the remaining ownership inventory and
+frontier/resumption gates below still apply.
 Use canonical constraints and their owner-local continuation as the frontier
 target; do not allocate a second constraint-shaped Task graph. Audit existing
 typed/effect query owners first, then source construction and rule checking.
@@ -482,6 +496,65 @@ baseline described above. Concurrent accepted-source edits remain excluded.
   Reading may still return real unchecked producers. Then remove duplicated
   query scheduling.
   The remaining adapter recognition is temporary, not the final architecture.
+
+### SE1 Source-I/O Receipt Inputs (2026-10-01)
+
+#### Subjective (User)
+
+English paraphrase of the latest requirement: resume canonical Solve obligations,
+not a duplicate Job/Evidence graph. This prerequisite changes no proof rules or
+object-language syntax and is not approval to promote the prototype.
+
+#### Objective (Code)
+
+Parent `d4f33a1`, isolated accepted baseline `e716232`, plus the prototype patches.
+All 27 Evidence-adapter factory calls in `tests/source_io.c` are removed. Checked
+Contexts, maps, functions and retained roots use existing direct inputs. On read,
+unchecked roots still have actual Solve producers; repeated unsolved resaves
+update the selected inputs to those restored producers. Synthesis tests still
+contain 65 factory calls, so the factory/role/recognition have not been removed.
+
+#### Assessment
+
+The Match-allocation inspection API now accepts the same checked/pending inputs;
+it does not add an alternate Job API. Checked extraction still materializes a
+temporary allocation view, not a scheduler record or acceptance fact. This is
+not completion of SE3's premise or SE4's persistence cleanup. Boundary tests
+reject empty, unaccepted and mixed inputs and check that normal extraction leaves
+Jobs, Evidence, typed occurrences/queries and Solve steps unchanged. Source-origin,
+scope, nominal-family, negative-control and read-before-Solve checks are retained.
+Static review corrected a stale selected-root reference in the unverified trial
+and the read-only export handle's const mismatch before final verification.
+
+#### Plan
+
+- [x] Migrate every source-I/O fixture adapter to direct checked inputs.
+- [x] Add Match inspection rejection and no-progress/no-Job boundary checks.
+- [x] Focused O2 source-I/O script, synthesis and IADT tests pass.
+- [x] ASan/UBSan source-I/O script and synthesis tests pass.
+- [x] Fresh assembly exactly matches all four source/test/fixture directories.
+- [x] Default worktree overlay assembles; core/IADT/synthesis tests pass with
+  concurrent user Context/IADT edits, excluded from this milestone.
+- [x] Full O2 acceptance, semantic audit and all seven checkpoint gates finish
+  with exit 0, including both general QuickSort providers/partition orders,
+  ordinary-result proofs, semantic partial images and invalid evidence.
+- [x] Repeat ordinary census and public partition comparison: List/QuickSort
+  TSVs equal the parent; public partition target exits 2 with the same four
+  reload failures and an identical TSV. This is not a passing gate.
+
+Evidence logs use `/tmp/a-program-source-receipt-`. Full SE1-SE5 remain open;
+the verified workbench is `/tmp/a-program-source-receipt-tested-work`.
+Next remove the remaining synthesis-test adapters without replacing
+pending-owner tests with checked
+inputs, then delete the factory/role/recognition. Ownership consolidation beyond
+adapters and the public split-fuel failures remain mandatory completion work.
+
+Applied-file delta from the parent: `synthesis.c` +6/-5, `synthesis.h` +1/-1,
+`source_io.c` +2/-1 (implementation +9/-7, net +2); `tests/source_io.c`
++124/-108 and `tests/synthesis.c` +1/-1 (tests +125/-109, net +16).
+Patch-context churn and documentation lines are excluded from these C counts.
+No ordinary-compile speedup or Job-count reduction is claimed by this fixture
+migration; the unchanged ordinary census is expected.
 
 ### Effect Owner Result (2026-09-30)
 

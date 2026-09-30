@@ -62,6 +62,15 @@
  enum pg_source_association { PG_SOURCE_UNASSOCIATED, PG_SOURCE_HYPOTHESIS, PG_SOURCE_GRAPH };
  struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
  	const struct pg_source_scope *scope, const struct pg_syntax *syntax);
+@@ -143,7 +155,7 @@
+ /* Read retained input or extract it from the accepted typed construction into
+  * caller-owned temporary storage. This never executes Solve. */
+ const struct pg_match_allocation *pg_synthesis_match_allocation(
+-	const struct pg_synthesis_job *job, struct pg_graph *storage);
++	struct pg_synthesis_input input, struct pg_graph *storage);
+ struct pg_synthesis_job *pg_synthesis_restore_elimination(struct pg_synthesis *synthesis,
+ 	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
+ 	const struct pg_match_allocation *allocation);
 @@ -183,18 +195,19 @@
  const struct pg_source_scope *pg_synthesis_definition_scope(struct pg_synthesis *synthesis,
  	const struct pg_source_scope *scope, const struct pg_syntax *definitions);
