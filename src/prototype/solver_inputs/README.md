@@ -14,8 +14,10 @@ finish the ownership refactor before extending persistence or the C backend.
 
 ### Objective (Code)
 
-The first migration covers typed WHNF/NF and closed evaluation demands, including
-binding/domain normalization, CLI demands and IADT endpoint normalization.
+The migration covers typed WHNF/NF and closed evaluation demands, including
+binding/domain normalization, CLI demands and IADT endpoint normalization;
+Context reindexing, substitution source/destination inputs; and post-synthesis
+type expectations, including Match and Identity-family callers.
 An input directly borrows checked Evidence or its pending producer. The two
 pointers are passed/stored by value; there is no allocated wrapper, result table
 or new Core tag. Pending request identity does not change when its input finishes.
@@ -27,8 +29,9 @@ and file layout are unchanged. Read still creates ordinary unchecked premises.
 ### Assessment
 
 This removes some adapters, not the independent Job graph. Rule premises,
-source scopes, classifier/expectation, context/IADT/Identity constructors and
-checked-query scheduling still use it. Keeping those indefinitely would not
+source scopes, classifier normalization, substitution images and other
+context/IADT/Identity constructors still use it, as does checked-query scheduling.
+Keeping those indefinitely would not
 complete SE1. No semantic boundary has been merged merely to reduce node count.
 
 ### Plan

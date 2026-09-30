@@ -1,0 +1,12 @@
+--- a/synthesis_identity.c
++++ b/synthesis_identity.c
+@@ -396,7 +396,8 @@
+ 			pg_substitution_image_at(synthesis->typing, left, state->common + i),
+ 			pg_substitution_image_at(synthesis->typing, right, state->common + i));
+ 		if (!type) goto rejected;
+-		state->checked = pg_synthesis_expect(synthesis, producer, pg_synthesis_evidence(synthesis, type));
++		state->checked = pg_synthesis_expect_inputs(synthesis, (struct pg_synthesis_input){.pending = producer},
++			(struct pg_synthesis_input){.checked = type});
+ 	}
+ 	if (pg_synthesis_await(synthesis, job, state->checked)) return 0;
+ 	state->paths[i] = state->checked->result;

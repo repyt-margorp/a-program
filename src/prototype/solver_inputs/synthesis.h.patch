@@ -38,7 +38,26 @@
  	int require_closed,
  	int (*observe)(void *, const struct pg_derivation_input *, const struct pg_effect_inference *),
  	void *owner, const struct pg_derivation_input *const **result);
-@@ -837,7 +854,8 @@
+@@ -664,12 +681,18 @@
+  * Completed incompatible inputs are rejected without exposing partial proof. */
+ struct pg_synthesis_job *pg_synthesis_reindex_jobs(struct pg_synthesis *synthesis,
+ 	struct pg_synthesis_job *substitution, struct pg_synthesis_job *proof);
++struct pg_synthesis_job *pg_synthesis_reindex_input(struct pg_synthesis *synthesis,
++	struct pg_synthesis_input substitution, struct pg_synthesis_input proof);
+ /* Post-check independently produced term/type evidence with matching context
+  * and polarity. Explicit closed F rows permit directed effect widening after
+  * result-type conversion. No expectation reaches the producer, and no Core
+  * coercion is inserted. Surface :: performs its exposure before this step. */
+ struct pg_synthesis_job *pg_synthesis_expect(struct pg_synthesis *synthesis,
+ 	struct pg_synthesis_job *term, struct pg_synthesis_job *type);
++/* Checked operands are borrowed; pending producers retain their identity.
++ * This only compares after synthesis, never guides either input's inference. */
++struct pg_synthesis_job *pg_synthesis_expect_inputs(struct pg_synthesis *synthesis,
++	struct pg_synthesis_input term, struct pg_synthesis_input type);
+ /* Source annotation over independently synthesized inputs. Applies the same
+  * source-reference/polarity adaptations as expr :: type, then post-checks.
+  * No syntax fabrication or expected-type feedback into either producer. */
+@@ -837,7 +860,8 @@
  	const struct pg_evidence *context, const struct pg_evidence *computation);
  /* Normalize an accepted term or formation using shared pure WHNF work, then
   * retain typing through directed subject-reduction evidence. The immutable
@@ -48,7 +67,7 @@
  struct pg_synthesis_job *pg_synthesis_normalize(struct pg_synthesis *synthesis,
  	const struct pg_evidence *context, const struct pg_evidence *proof);
  /* Strong pure normalization of the same typed inputs, with a distinct job
-@@ -857,8 +875,8 @@
+@@ -857,8 +881,8 @@
  	enum pg_reduction_kind kind);
  /* Immutable request operands, for retention without serializing acceptance. */
  int pg_synthesis_normalization_input(const struct pg_synthesis *synthesis,

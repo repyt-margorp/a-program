@@ -1,10 +1,14 @@
 --- a/synthesis_work.h
 +++ b/synthesis_work.h
-@@ -78,5 +78,8 @@
+@@ -78,5 +78,12 @@
  /* Zero means done; otherwise subscribe once or propagate the failure. */
  int pg_synthesis_await(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
  	struct pg_synthesis_job *dependency);
 +int pg_synthesis_input_owned(const struct pg_synthesis *, struct pg_synthesis_input);
++/* Unwrap only a legacy always-complete Evidence adapter, never a producer
++ * whose identity would change when it finishes. Validate ownership first. */
++struct pg_synthesis_input pg_synthesis_input_direct(struct pg_synthesis_input);
++struct pg_synthesis_input pg_synthesis_work_dependency(const struct pg_synthesis_job *, size_t);
 +/* Internal immutable operand, already validated by its request factory. */
 +int pg_synthesis_await_input(struct pg_synthesis *, struct pg_synthesis_job *, struct pg_synthesis_input);
  

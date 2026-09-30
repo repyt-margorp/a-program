@@ -1,6 +1,16 @@
 --- a/synthesis_iadt.c
 +++ b/synthesis_iadt.c
-@@ -1118,8 +1118,9 @@
+@@ -683,7 +683,8 @@
+ 	struct pg_synthesis_job *transport = pg_synthesis_family_transport_jobs(synthesis,
+ 		pg_synthesis_evidence(synthesis, family), left, right, path_count, paths, pg_synthesis_evidence(synthesis, value), PG_IDENTITY_RIGHT);
+ 	free(paths);
+-	local->value_job = pg_synthesis_expect(synthesis, transport, pg_synthesis_evidence(synthesis, target));
++	local->value_job = pg_synthesis_expect_inputs(synthesis, (struct pg_synthesis_input){.pending = transport},
++		(struct pg_synthesis_input){.checked = target});
+ 	if (!local->value_job) goto rejected;
+ 	pg_synthesis_forward(synthesis, job, local->value_job);
+ 	return;
+@@ -1118,8 +1119,9 @@
  		pg_synthesis_enqueue(synthesis, job); return;
  	}
  	for (size_t i = 0; i < 2; ++i) {

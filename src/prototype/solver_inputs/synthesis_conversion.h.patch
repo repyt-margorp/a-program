@@ -1,0 +1,13 @@
+--- a/synthesis_conversion.h
++++ b/synthesis_conversion.h
+@@ -16,8 +16,8 @@
+ 	const struct pg_evidence *, const struct pg_evidence *);
+ /* Read-only adapter inputs for provisional inspection, not acceptance. */
+ struct pg_synthesis_job *pg_synthesis_classifier_input(const struct pg_synthesis_job *);
+-struct pg_synthesis_job *pg_synthesis_expect_input(const struct pg_synthesis_job *);
+-struct pg_synthesis_job *pg_synthesis_expect_target(const struct pg_synthesis_job *);
++struct pg_synthesis_input pg_synthesis_expect_input(const struct pg_synthesis_job *);
++struct pg_synthesis_input pg_synthesis_expect_target(const struct pg_synthesis_job *);
+ 
+ /* Owner-local WHNF continuation, not a second reduction result/cache.
+  * pending borrows a live continuation; it does not allocate or advance work.

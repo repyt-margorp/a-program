@@ -38,9 +38,9 @@ now controls the next implementation. It records measured Evidence-only Jobs,
 duplicated construction paths, premise overlap and export-time graph copying.
 "No recomputation" does not justify keeping an unnecessary wrapper.
 
-The first [direct-input prototype](../src/prototype/solver_inputs/README.md)
-removes checked normalization adapters and passes its regression gates; it does
-not complete SE1 or repair the public split-fuel failures.
+The [direct-input prototype](../src/prototype/solver_inputs/README.md) removes
+checked normalization, Context-input and post-check adapters and passes its
+regression gates; it does not complete SE1 or repair the public split-fuel failures.
 
 Do not extend the binding/domain checkpoint codec or AP6 while this gate is
 open. Existing passing checkpoint fixtures remain historical evidence, not a

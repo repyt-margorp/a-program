@@ -1,7 +1,7 @@
 # Solver and Evidence Duplication Audit
 
 Date: 2026-09-30
-Status: audit complete; first SE1 prototype implemented, full refactor unfinished.
+Status: audit complete; SE1 direct-input migration underway, full refactor unfinished.
 Parent: [artifact plan, AP0](2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md#ap0-simplify-before-extending-persistence).
 This is the active prerequisite work list, not another artifact format proposal.
 
@@ -219,7 +219,7 @@ Do not mark a milestone complete just because a view hides the old representatio
   under the selected trust/revalidation policy, without an independent replay
   engine. Return to AP6 only after the prerequisite refactor is complete.
 
-### SE1 First Migration
+### SE1 Direct-Input Migration
 
 The [direct-input prototype](../src/prototype/solver_inputs/README.md) applies
 after the artifact candidate. Baseline is `d9113c1`; measurements continue to
@@ -233,16 +233,25 @@ exclude the unrelated accepted-source working-tree edits listed above.
 - [x] Export checked leaves directly, without creating Jobs during writing.
   The membership index is temporary transport bookkeeping; no wire fields,
   Core tags, acceptance table or target-language data were added.
-- [ ] Finish rule premises, scopes, classifier/expectation, context and Identity
+- [x] Extend the same input representation to Context reindexing, substitution
+  source/destination inputs and post-synthesis expectations. Migrate known
+  Match/Identity-family operands and share legacy/direct keys. Actual conversion
+  still runs and creates its checked receipt; a direct pointer is not a bypass.
+- [ ] Finish rule premises, scopes, classifier normalization, substitution images,
+  other context and Identity
   consumers, remove `EVIDENCE_JOB`, then remove duplicated query scheduling.
   The remaining adapter recognition is temporary, not the final architecture.
 
-Fresh O2 measurements after this migration:
+Fresh O2 measurements after this migration (including the follow-up to `46b9532`):
 
 | Completed input | Jobs before / after | Evidence Jobs before / after | Job bytes before / after | Solve steps |
 | --- | ---: | ---: | ---: | ---: |
-| List-09 | 1,061 / 1,034 | 152 / 125 | 187,424 / 185,096 | 2,824 unchanged |
-| General QuickSort Local Sorted | 69,221 / 65,751 | 12,360 / 8,890 | 11,878,608 / 11,573,984 | 815,075 unchanged |
+| List-09 | 1,061 / 985 | 152 / 76 | 187,424 / 181,280 | 2,824 unchanged |
+| General QuickSort Local Sorted | 69,221 / 62,293 | 12,360 / 5,432 | 11,878,608 / 11,282,816 | 815,075 unchanged |
+
+Relative to the normalization-only milestone `46b9532`, the Context/expectation
+migration removes another 3,458 QuickSort Jobs and 291,168 Job-allocation bytes.
+These are live-store measurements, not `.a` size or total-memory claims.
 
 Term, typed-occurrence and Evidence counts are unchanged. An intermediate
 version split direct inputs from legacy Evidence-adapter inputs, adding 18
@@ -257,24 +266,41 @@ Implementation deltas against the artifact candidate (not patch-file line counts
 | --- | ---: | ---: | ---: |
 | `program.c` | 6 | 6 | 0 |
 | `source_io.c` | 52 | 18 | +34 |
-| `synthesis.c` | 3 | 2 | +1 |
-| `synthesis.h` | 23 | 5 | +18 |
-| `synthesis_conversion.c` | 44 | 28 | +16 |
-| `synthesis_derivation.c` | 9 | 4 | +5 |
-| `synthesis_iadt.c` | 3 | 2 | +1 |
-| `synthesis_work.c` | 20 | 0 | +20 |
-| `synthesis_work.h` | 3 | 0 | +3 |
-| Implementation total | 163 | 65 | +98 |
+| `synthesis.c` | 35 | 14 | +21 |
+| `synthesis.h` | 29 | 5 | +24 |
+| `synthesis_context.c` | 49 | 29 | +20 |
+| `synthesis_conversion.c` | 63 | 47 | +16 |
+| `synthesis_conversion.h` | 2 | 2 | 0 |
+| `synthesis_derivation.c` | 15 | 4 | +11 |
+| `synthesis_iadt.c` | 5 | 3 | +2 |
+| `synthesis_identity.c` | 2 | 1 | +1 |
+| `synthesis_work.c` | 27 | 0 | +27 |
+| `synthesis_work.h` | 7 | 0 | +7 |
+| Implementation total | 292 | 129 | +163 |
 | `tests/program.c` | 34 | 4 | +30 |
 | `tests/source_io.c` | 58 | 5 | +53 |
+| `tests/synthesis.c` | 67 | 5 | +62 |
+
+The Context/expectation increment alone is implementation +144/-79 (net +65),
+tests +67/-5 (net +62). This intermediate migration still increases source size.
 
 Fresh verification of this prototype: the existing O2 `make check`, normalization
 checkpoint and source checkpoint suites pass (the latter covers 204 lifecycle
-cuts). ASan/UBSan runs of `program_test`, `source_io_test normalization` and the
-normalization checkpoint test also pass. New assertions cover request sharing,
+cuts). ASan/UBSan `synthesis_test` and `source_io_test normalization` pass on the
+Context/expectation revision; `program_test` and the normalization checkpoint
+had also passed under sanitizers at the preceding milestone. New assertions cover request sharing,
 foreign/invalid inputs, distinct contexts, allocation-free checked-leaf export,
 and a byte-identical step-0 read/resave. These results exclude the concurrent
 accepted-source edits; they are not a promotion of this prototype.
+
+Further inspection identified a required joint migration: `pg_synthesis_rule_premise`
+is consumed by rule checking, Lambda/Pi/CBPV structural queries, scope discovery
+and derivation checkpoints. Some consumers also index the Job operand array
+directly. Replace these readers together with direct premise references; do not
+restore Evidence Jobs inside a convenience getter. Pending structural queries
+must still discover effect dependencies before acceptance. An existing test
+that allocated legacy adapters while checking request reuse was migrated to
+direct inputs; its no-new-request assertion is retained, not weakened.
 
 This is a staged migration, not a code-size reduction or completion of SE1.
 The public partition gate was rerun on the final candidate and still fails at

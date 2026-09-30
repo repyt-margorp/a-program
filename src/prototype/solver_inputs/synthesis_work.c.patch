@@ -1,6 +1,6 @@
 --- a/synthesis_work.c
 +++ b/synthesis_work.c
-@@ -1,5 +1,25 @@
+@@ -1,5 +1,32 @@
  #include "synthesis_work.h"
  
 +const struct pg_evidence *pg_synthesis_input_result(struct pg_synthesis_input input)
@@ -21,6 +21,13 @@
 +	struct pg_synthesis_input input)
 +{
 +	return input.checked ? 0 : pg_synthesis_await(synthesis, job, input.pending);
++}
++
++struct pg_synthesis_input pg_synthesis_work_dependency(const struct pg_synthesis_job *job, size_t offset)
++{
++	if (!job || offset >= job->input_count || job->input_count - offset < 2)
++		return (struct pg_synthesis_input){0};
++	return (struct pg_synthesis_input){job->inputs[offset], (void *)job->inputs[offset + 1]};
 +}
 +
  void pg_synthesis_work_destroy(struct pg_synthesis *synthesis)

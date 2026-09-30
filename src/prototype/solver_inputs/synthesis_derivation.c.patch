@@ -1,6 +1,19 @@
 --- a/synthesis_derivation.c
 +++ b/synthesis_derivation.c
-@@ -381,7 +381,7 @@
+@@ -83,6 +83,12 @@
+ 	return job && job->role == EVIDENCE_JOB ? job->inputs[0] : NULL;
+ }
+ 
++struct pg_synthesis_input pg_synthesis_input_direct(struct pg_synthesis_input input)
++{
++	const struct pg_evidence *checked = pg_synthesis_evidence_input(input.pending);
++	return checked ? (struct pg_synthesis_input){.checked = checked} : input;
++}
++
+ const struct pg_derivation_input *pg_synthesis_derivation_input(const struct pg_synthesis_job *job)
+ {
+ 	return job && job->role == DERIVATION_INPUT_JOB ? job->inputs[0] : NULL;
+@@ -381,7 +387,7 @@
  }
  
  int pg_synthesis_export_rule_closure(const struct pg_synthesis *synthesis,
@@ -9,7 +22,7 @@
  	int require_closed,
  	int (*observe)(void *, const struct pg_derivation_input *, const struct pg_effect_inference *),
  	void *owner, const struct pg_derivation_input *const **result)
-@@ -401,7 +401,10 @@
+@@ -401,7 +407,10 @@
  		|| pg_dag_init(&jobs, export_job_child, &export)) goto done;
  	const struct pg_dag_node *last_raw = NULL, *last_proof = NULL, *last_job = NULL, *last_worker = NULL;
  	for (const struct pg_dag_node *root = roots->first; root; root = root->next) {
@@ -21,7 +34,7 @@
  		for (const struct pg_dag_node *node = last_worker ? last_worker->next : export.workers.first;
  			node; last_worker = node, node = node->next) {
  			export.source_effects = node->key;
-@@ -474,7 +477,9 @@
+@@ -474,7 +483,9 @@
  			inputs[node->id - 1] = proofs[pg_dag_find(&export.proofs, job->result)->id - 1];
  	}
  	for (const struct pg_dag_node *node = roots->first; node; node = node->next)
@@ -32,7 +45,7 @@
  	*result = selected;
  	export.status = 0;
  done:
-@@ -496,7 +501,7 @@
+@@ -496,7 +507,7 @@
  	if (pg_dag_init(&selected, NULL, NULL)) goto done;
  	for (size_t i = 0; i < count; ++i) if (pg_dag_add(&selected, roots[i])) goto done;
  	const struct pg_derivation_input *const *inputs;

@@ -1,6 +1,48 @@
 --- a/synthesis_conversion.c
 +++ b/synthesis_conversion.c
-@@ -71,52 +71,66 @@
+@@ -36,14 +36,14 @@
+ 	return job && job->role == CLASSIFIER_JOB ? (void *)job->inputs[1] : NULL;
+ }
+ 
+-struct pg_synthesis_job *pg_synthesis_expect_input(const struct pg_synthesis_job *job)
++struct pg_synthesis_input pg_synthesis_expect_input(const struct pg_synthesis_job *job)
+ {
+-	return job && job->role == EXPECT_JOB ? (void *)job->inputs[0] : NULL;
++	return job && job->role == EXPECT_JOB ? pg_synthesis_work_dependency(job, 0) : (struct pg_synthesis_input){0};
+ }
+ 
+-struct pg_synthesis_job *pg_synthesis_expect_target(const struct pg_synthesis_job *job)
++struct pg_synthesis_input pg_synthesis_expect_target(const struct pg_synthesis_job *job)
+ {
+-	return job && job->role == EXPECT_JOB ? (void *)job->inputs[1] : NULL;
++	return job && job->role == EXPECT_JOB ? pg_synthesis_work_dependency(job, 2) : (struct pg_synthesis_input){0};
+ }
+ 
+ static void conversion_destroy(struct pg_synthesis_job *job)
+@@ -61,62 +61,79 @@
+ struct pg_synthesis_job *pg_synthesis_expect(struct pg_synthesis *synthesis,
+ 	struct pg_synthesis_job *term, struct pg_synthesis_job *type)
+ {
+-	if (!term || term->owner != synthesis->owner_key) return NULL;
+-	if (!type || type->owner != synthesis->owner_key) return NULL;
+-	const void *inputs[] = {term, type};
+-	return pg_synthesis_work_request(synthesis, EXPECT_JOB, 2, inputs);
++	return pg_synthesis_expect_inputs(synthesis, (struct pg_synthesis_input){.pending = term},
++		(struct pg_synthesis_input){.pending = type});
++}
++
++struct pg_synthesis_job *pg_synthesis_expect_inputs(struct pg_synthesis *synthesis,
++	struct pg_synthesis_input term, struct pg_synthesis_input type)
++{
++	if (!pg_synthesis_input_owned(synthesis, term)) return NULL;
++	if (!pg_synthesis_input_owned(synthesis, type)) return NULL;
++	term = pg_synthesis_input_direct(term);
++	type = pg_synthesis_input_direct(type);
++	const void *inputs[] = {term.checked, term.pending, type.checked, type.pending};
++	return pg_synthesis_work_request(synthesis, EXPECT_JOB, 4, inputs);
+ }
+ 
+ struct pg_synthesis_job *pg_synthesis_normalize(struct pg_synthesis *synthesis,
  	const struct pg_evidence *context, const struct pg_evidence *proof)
  {
  	if (!pg_synthesis_typed_input(synthesis, context, proof)) return NULL;
@@ -22,12 +64,6 @@
  
 -static struct pg_synthesis_job *normalization_request(struct pg_synthesis *synthesis,
 -	struct pg_synthesis_job *context, struct pg_synthesis_job *proof,
-+static struct pg_synthesis_input direct_input(struct pg_synthesis_input input)
-+{
-+	const struct pg_evidence *checked = pg_synthesis_evidence_input(input.pending);
-+	return checked ? (struct pg_synthesis_input){.checked = checked} : input;
-+}
-+
 +struct pg_synthesis_job *pg_synthesis_reduction_request(struct pg_synthesis *synthesis,
 +	struct pg_synthesis_input context, struct pg_synthesis_input proof,
  	enum pg_reduction_kind kind, int force)
@@ -42,8 +78,8 @@
 +	if (force != 0 && force != 1) return NULL;
 +	/* Existing callers can still supply a completed Evidence adapter. Its
 +	 * borrowed proof is the same input, not another normalization request. */
-+	context = direct_input(context);
-+	proof = direct_input(proof);
++	context = pg_synthesis_input_direct(context);
++	proof = pg_synthesis_input_direct(proof);
 +	const void *inputs[] = {context.checked, context.pending, proof.checked, proof.pending,
 +		force ? &pg_force_operation : NULL};
 +	return pg_synthesis_work_request(synthesis, kind == PG_REDUCTION_NF ? NF_JOB : NORMALIZATION_JOB, 5, inputs);
@@ -76,15 +112,55 @@
  	if (job->role != NORMALIZATION_JOB && job->role != NF_JOB) return -1;
 -	*context = (void *)job->inputs[0];
 -	*proof = (void *)job->inputs[1];
-+	*context = (struct pg_synthesis_input){job->inputs[0], (void *)job->inputs[1]};
-+	*proof = (struct pg_synthesis_input){job->inputs[2], (void *)job->inputs[3]};
++	*context = pg_synthesis_work_dependency(job, 0);
++	*proof = pg_synthesis_work_dependency(job, 2);
  	*kind = job->role == NF_JOB ? PG_REDUCTION_NF : PG_REDUCTION_WHNF;
 -	if (force) *force = job->inputs[2] != NULL;
 +	if (force) *force = job->inputs[4] != NULL;
  	return 0;
  }
  
-@@ -301,16 +315,18 @@
+@@ -229,14 +246,13 @@
+ static void expect_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+ {
+ 	struct expectation_work *local = pg_synthesis_work_state(job, EXPECT_JOB);
+-	const struct pg_synthesis_job *producer = job->inputs[0];
++	struct pg_synthesis_input value = pg_synthesis_expect_input(job);
++	struct pg_synthesis_input expected = pg_synthesis_expect_target(job);
+ 	if (!local->checking_type) {
+-		for (size_t i = 0; i < 2; ++i) {
+-			struct pg_synthesis_job *input = (struct pg_synthesis_job *)job->inputs[i];
+-			if (pg_synthesis_await(synthesis, job, input)) return;
+-		}
+-		const struct pg_evidence *term = ((const struct pg_synthesis_job *)job->inputs[0])->result;
+-		const struct pg_evidence *type = ((const struct pg_synthesis_job *)job->inputs[1])->result;
++		if (pg_synthesis_await_input(synthesis, job, value)) return;
++		if (pg_synthesis_await_input(synthesis, job, expected)) return;
++		const struct pg_evidence *term = pg_synthesis_input_result(value);
++		const struct pg_evidence *type = pg_synthesis_input_result(expected);
+ 		if (!pg_evidence_owned_by(term, synthesis->typing)) goto rejected;
+ 		if (!pg_evidence_owned_by(type, synthesis->typing)) goto rejected;
+ 		if (pg_evidence_context(term) != pg_evidence_context(type)) goto rejected;
+@@ -249,14 +265,14 @@
+ 			break;
+ 		default: goto rejected;
+ 		}
+-		struct pg_synthesis_job *canonical = pg_synthesis_expect(synthesis,
+-			pg_synthesis_evidence(synthesis, term), pg_synthesis_evidence(synthesis, type));
++		struct pg_synthesis_job *canonical = pg_synthesis_expect_inputs(synthesis,
++			(struct pg_synthesis_input){.checked = term}, (struct pg_synthesis_input){.checked = type});
+ 		if (pg_synthesis_forward(synthesis, job, canonical)) return;
+ 		local->checking_type = post_check_type(synthesis, term, type);
+ 		if (!local->checking_type) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+ 	}
+-	job->result = pg_synthesis_convert(synthesis, job, producer->result, local->checking_type);
+-	const struct pg_evidence *target = ((const struct pg_synthesis_job *)job->inputs[1])->result;
++	job->result = pg_synthesis_convert(synthesis, job, pg_synthesis_input_result(value), local->checking_type);
++	const struct pg_evidence *target = pg_synthesis_input_result(expected);
+ 	if (job->result && local->checking_type != target) {
+ 		job->result = pg_prove_effect_subsumption(synthesis->typing, job->result, target);
+ 		if (!job->result) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+@@ -301,16 +317,16 @@
  static const struct pg_evidence *normalization_input(struct pg_synthesis *synthesis,
  	const struct pg_synthesis_job *job)
  {
@@ -93,10 +169,8 @@
 -	if (!pg_synthesis_typed_input(synthesis, context->result, proof->result)) return NULL;
 -	if (!job->inputs[2]) return proof->result;
 -	if (pg_evidence_context(context->result)) return NULL;
-+	const struct pg_evidence *context = pg_synthesis_input_result(
-+		(struct pg_synthesis_input){job->inputs[0], (void *)job->inputs[1]});
-+	const struct pg_evidence *proof = pg_synthesis_input_result(
-+		(struct pg_synthesis_input){job->inputs[2], (void *)job->inputs[3]});
++	const struct pg_evidence *context = pg_synthesis_input_result(pg_synthesis_work_dependency(job, 0));
++	const struct pg_evidence *proof = pg_synthesis_input_result(pg_synthesis_work_dependency(job, 2));
 +	if (!pg_synthesis_typed_input(synthesis, context, proof)) return NULL;
 +	if (!job->inputs[4]) return proof;
 +	if (pg_evidence_context(context)) return NULL;
@@ -118,7 +192,7 @@
  		for (size_t i = 0; i < 2; ++i) {
 -			struct pg_synthesis_job *premise = (void *)job->inputs[i];
 -			if (pg_synthesis_await(synthesis, job, premise)) return;
-+			struct pg_synthesis_input premise = {job->inputs[2 * i], (void *)job->inputs[2 * i + 1]};
++			struct pg_synthesis_input premise = pg_synthesis_work_dependency(job, 2 * i);
 +			if (pg_synthesis_await_input(synthesis, job, premise)) return;
  		}
  		local->checking_term = normalization_input(synthesis, job);

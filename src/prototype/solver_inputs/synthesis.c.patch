@@ -1,6 +1,70 @@
 --- a/synthesis.c
 +++ b/synthesis.c
-@@ -4340,8 +4340,9 @@
+@@ -2552,9 +2552,9 @@
+ 		local->checking_type = right;
+ 	}
+ 	if (!local->value_job) {
+-		local->value_job = pg_synthesis_expect(synthesis,
+-			pg_synthesis_evidence(synthesis, local->checking_term),
+-			pg_synthesis_evidence(synthesis, local->checking_type));
++		local->value_job = pg_synthesis_expect_inputs(synthesis,
++			(struct pg_synthesis_input){.checked = local->checking_term},
++			(struct pg_synthesis_input){.checked = local->checking_type});
+ 	}
+ 	local->exports = source_exports(local->left);
+ 	pg_synthesis_forward(synthesis, job, local->value_job);
+@@ -3839,7 +3839,8 @@
+ 		const struct pg_evidence *expected = pg_prove_match_branch_type(typing,
+ 			state->instance.formation, constructor, state->instance.parameters, mc, state->candidate, scope->result);
+ 		if (!expected) goto next;
+-		branch->converted = pg_synthesis_expect(synthesis, branch->adapted, pg_synthesis_evidence(synthesis, expected));
++		branch->converted = pg_synthesis_expect_inputs(synthesis, (struct pg_synthesis_input){.pending = branch->adapted},
++			(struct pg_synthesis_input){.checked = expected});
+ 	}
+ 	if (!branch->converted) goto error;
+ 	if (branch->converted->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, branch->converted); return; }
+@@ -3926,7 +3927,8 @@
+ 			body = pg_synthesis_plain_rule(synthesis, PG_THUNK_INTRO, NULL, 1, &body);
+ 			body = pg_synthesis_index_transport(synthesis, branch->scope->context_job, body, pg_synthesis_evidence(synthesis, target));
+ 			body = pg_synthesis_plain_rule(synthesis, PG_FORCE_ELIM, NULL, 1, &body);
+-		} else body = pg_synthesis_expect(synthesis, body, pg_synthesis_evidence(synthesis, target));
++		} else body = pg_synthesis_expect_inputs(synthesis, (struct pg_synthesis_input){.pending = body},
++			(struct pg_synthesis_input){.checked = target});
+ 		branch->converted = pg_synthesis_abstract(synthesis, context, fields, body);
+ 		if (!branch->converted) goto error;
+ 	}
+@@ -4017,7 +4019,8 @@
+ 		const struct pg_evidence *context = pg_synthesis_scope_context(local->inner), *fields = pg_synthesis_scope_context(branch->scope);
+ 		struct pg_synthesis_job *body = pg_synthesis_abstract(synthesis, fields, fields, branch->body);
+ 		const struct pg_evidence *result_type = match_result_type(synthesis, state, branch->type_job->result);
+-		body = pg_synthesis_expect(synthesis, body, pg_synthesis_evidence(synthesis, result_type));
++		body = pg_synthesis_expect_inputs(synthesis, (struct pg_synthesis_input){.pending = body},
++			(struct pg_synthesis_input){.checked = result_type});
+ 		struct pg_synthesis_job *function = pg_synthesis_abstract(synthesis, context, fields, body);
+ 		branch->converted = function;
+ 		if (!branch->converted) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+@@ -4044,8 +4047,8 @@
+ 		const struct pg_evidence *expected = pg_prove_match_branch_type(synthesis->typing,
+ 			state->instance.formation, constructor, state->instance.parameters, state->motive_context, state->motive, scope->result);
+ 		if (!expected) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+-		branch->converted = pg_synthesis_expect(synthesis, pg_synthesis_evidence(synthesis, branch->function),
+-			pg_synthesis_evidence(synthesis, expected));
++		branch->converted = pg_synthesis_expect_inputs(synthesis, (struct pg_synthesis_input){.checked = branch->function},
++			(struct pg_synthesis_input){.checked = expected});
+ 		if (!branch->converted) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+ 	}
+ 	if (pg_synthesis_await(synthesis, job, branch->converted)) return;
+@@ -4242,7 +4245,8 @@
+ 			 * current completion state. Reuse the ordinary checking dependencies. */
+ 			producer = pg_synthesis_plain_rule(synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
+ 				(struct pg_synthesis_job *[]){original->context_job, old->producer});
+-			producer = pg_synthesis_reindex_jobs(synthesis, pg_synthesis_evidence(synthesis, map), producer);
++			producer = pg_synthesis_reindex_input(synthesis, (struct pg_synthesis_input){.checked = map},
++				(struct pg_synthesis_input){.pending = producer});
+ 		}
+ 		scope = pg_synthesis_name_job(synthesis, scope, old->name, producer);
+ 		if (!scope) return NULL;
+@@ -4340,8 +4344,9 @@
  		const struct pg_evidence *ends[] = {path->left, path->right};
  		const struct pg_object *heads[2] = {0};
  		for (size_t i = 0; i < 2; ++i) {
@@ -12,3 +76,41 @@
  			if (!path->normal[i]) goto error;
  			if (pg_synthesis_await(synthesis, job, path->normal[i])) return;
  			const struct pg_term *head = pg_evidence_subject(path->normal[i]->result)->core;
+@@ -4973,8 +4978,15 @@
+ 			struct pg_synthesis_job *prepared;
+ 			if (pg_synthesis_await_preparation(synthesis, job, producer, &prepared)) return;
+ 			/* Classifier conversion and post-checking never rewrite the subject. */
++			struct pg_synthesis_input checked = pg_synthesis_expect_input(producer);
++			if (checked.checked) {
++				const struct pg_occurrence *subject = pg_evidence_subject(checked.checked);
++				if (!subject) goto unsupported;
++				local->type_structure = subject->core;
++				goto done;
++			}
+ 			if (pg_synthesis_classifier_input(producer)) prepared = pg_synthesis_classifier_input(producer);
+-			else if (pg_synthesis_expect_input(producer)) prepared = pg_synthesis_expect_input(producer);
++			else if (checked.pending) prepared = checked.pending;
+ 			if (!prepared) goto unsupported;
+ 			local->left = pg_synthesis_term_structure(synthesis, prepared);
+ 		}
+@@ -5026,9 +5038,18 @@
+ 		goto consume;
+ 	}
+ 	struct pg_synthesis_job *transport_target = pg_synthesis_index_transport_target(producer);
+-	if (pg_synthesis_expect_target(producer) || transport_target) {
++	struct pg_synthesis_input expected = pg_synthesis_expect_target(producer);
++	if (expected.checked) {
++		enum pg_evidence_judgement kind = pg_evidence_judgement(expected.checked);
++		const struct pg_occurrence *subject = pg_evidence_subject(expected.checked);
++		if (kind != PG_JUDGEMENT_VALUE_TYPE && kind != PG_JUDGEMENT_COMPUTATION_TYPE) subject = NULL;
++		local->type_structure = subject ? subject->core : NULL;
++		pg_synthesis_finish(synthesis, job, local->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
++		return;
++	}
++	if (expected.pending || transport_target) {
+ 		local->left = pg_synthesis_type_structure(synthesis,
+-			transport_target ? transport_target : pg_synthesis_expect_target(producer));
++			transport_target ? transport_target : expected.pending);
+ 		goto consume;
+ 	}
+ 	if (prepared) {

@@ -1,0 +1,110 @@
+--- a/synthesis.c
++++ b/synthesis.c
+@@ -4336,7 +4336,10 @@
+ 		assert(pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
+ 		struct pg_synthesis_job *images[] = {pg_synthesis_evidence(&synthesis, a_value),
+ 			pg_synthesis_return(&synthesis, destination, computation)};
++		size_t jobs = synthesis.jobs.count, terms = typing->graph->terms.count, evidence = typing->proofs.count;
+ 		struct pg_synthesis_job *job = pg_synthesis_substitution(&synthesis, source, destination, 2, images);
++		assert(synthesis.jobs.count == jobs + 1 && !synthesis.steps);
++		assert(typing->graph->terms.count == terms && typing->proofs.count == evidence);
+ 		assert(job && pg_synthesis_substitution(&synthesis, source, destination, 2, images) == job);
+ 		assert(job == pg_synthesis_substitution_jobs(&synthesis, pg_synthesis_evidence(&synthesis, source),
+ 			pg_synthesis_evidence(&synthesis, destination), 2, images));
+@@ -4639,6 +4642,63 @@
+ 	}
+ }
+ 
++static void direct_checked_inputs(struct pg_typing *typing)
++{
++	struct pg_whnf_work work;
++	struct pg_synthesis synthesis, other;
++	assert(!pg_whnf_work_init(&work, typing->graph));
++	assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
++	assert(!pg_synthesis_init(&other, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
++	const struct pg_evidence *empty = pg_prove_empty_context(typing);
++	const struct pg_evidence *type = pg_prove_universe(typing, empty, 1);
++	const struct pg_evidence *value = pg_prove_type_value(typing, pg_prove_universe(typing, empty, 0));
++	const struct pg_evidence *extended = pg_prove_context_extension(typing, empty, pg_binder(typing->graph), type);
++	const struct pg_evidence *map = pg_prove_substitution(typing, empty, extended, 0, NULL);
++	const struct pg_evidence *local_value = pg_prove_type_value(typing, pg_prove_universe(typing, extended, 0));
++	const struct pg_evidence *local_type = pg_prove_universe(typing, extended, 1);
++	struct pg_synthesis_input v = {.checked = value}, t = {.checked = type}, m = {.checked = map};
++	size_t jobs = synthesis.jobs.count, terms = typing->graph->terms.count, proofs = typing->proofs.count;
++	struct pg_synthesis_job *check = pg_synthesis_expect_inputs(&synthesis, v, t);
++	struct pg_synthesis_job *reindex = pg_synthesis_reindex_input(&synthesis, m, v);
++	assert(check && reindex && synthesis.jobs.count == jobs + 2);
++	assert(typing->graph->terms.count == terms && typing->proofs.count == proofs && !synthesis.steps);
++	assert(pg_synthesis_expect_input(check).checked == value && !pg_synthesis_expect_input(check).pending);
++	assert(pg_synthesis_work_dependency(reindex, 0).checked == map);
++	assert(pg_synthesis_reindex_input(&synthesis, m, v) == reindex);
++	assert(pg_synthesis_expect_inputs(&synthesis, v, t) == check);
++	assert(synthesis.jobs.count == jobs + 2);
++	struct pg_synthesis_job *local = pg_synthesis_expect_inputs(&synthesis,
++		(struct pg_synthesis_input){.checked = local_value}, (struct pg_synthesis_input){.checked = local_type});
++	assert(local && local != check && pg_evidence_subject(local_value)->core == pg_evidence_subject(value)->core);
++	struct pg_synthesis_job *foreign = pg_synthesis_evidence(&other, value);
++	assert(!pg_synthesis_expect_inputs(&synthesis, (struct pg_synthesis_input){.pending = foreign}, t));
++	assert(!pg_synthesis_reindex_input(&synthesis, m, (struct pg_synthesis_input){.pending = foreign}));
++	assert(!pg_synthesis_expect_inputs(&synthesis, (struct pg_synthesis_input){0}, t));
++	struct pg_synthesis_job *adapter = pg_synthesis_evidence(&synthesis, value);
++	assert(!pg_synthesis_reindex_input(&synthesis, m, (struct pg_synthesis_input){value, adapter}));
++	assert(!pg_synthesis_expect_inputs(&synthesis, (struct pg_synthesis_input){value, adapter}, t));
++	assert(pg_synthesis_expect(&synthesis, adapter, pg_synthesis_evidence(&synthesis, type)) == check);
++	assert(pg_synthesis_reindex_jobs(&synthesis, pg_synthesis_evidence(&synthesis, map), adapter) == reindex);
++	pg_synthesis_advance(&synthesis, 0);
++	assert(!synthesis.steps && !pg_synthesis_result(check) && !pg_synthesis_result(reindex));
++	const struct pg_evidence *checked = complete(&synthesis, check, PG_SYNTHESIS_DONE);
++	same_judgement(checked, value);
++	assert(pg_evidence_rule(checked) == PG_TYPE_CONVERSION && pg_evidence_premise(checked, 0) == value);
++	same_judgement(complete(&synthesis, local, PG_SYNTHESIS_DONE), local_value);
++	same_judgement(complete(&synthesis, reindex, PG_SYNTHESIS_DONE), local_value);
++	struct pg_synthesis_job *mismatch = pg_synthesis_expect_inputs(&synthesis, v,
++		(struct pg_synthesis_input){.checked = local_type});
++	complete(&synthesis, mismatch, PG_SYNTHESIS_REJECTED);
++	complete(&synthesis, pg_synthesis_reindex_input(&synthesis, m,
++		(struct pg_synthesis_input){.checked = local_value}), PG_SYNTHESIS_REJECTED);
++	struct pg_synthesis_job *dependent = pg_synthesis_reindex_input(&synthesis, m,
++		(struct pg_synthesis_input){.pending = mismatch});
++	complete(&synthesis, dependent, PG_SYNTHESIS_REJECTED);
++	pg_synthesis_destroy(&other);
++	pg_synthesis_destroy(&synthesis);
++	pg_whnf_work_destroy(&work);
++}
++
+ static void shared_conversion_jobs(struct pg_typing *typing)
+ {
+ 	struct pg_whnf_work work;
+@@ -4660,8 +4720,9 @@
+ 	struct pg_synthesis_job *right = pg_synthesis_expect(&synthesis,
+ 		pg_synthesis_evidence(&synthesis, pg_prove_variable(typing, context, y)), type);
+ 	assert(left->role->size == sizeof(void *) && right->role->size == sizeof(void *));
+-	assert(pg_synthesis_expect_target(left) == type && !pg_synthesis_expect_target(type));
+-	assert(pg_synthesis_expect_input(left) == pg_synthesis_work_input(left, 0));
++	assert(pg_synthesis_expect_target(left).checked == pg_synthesis_result(type));
++	assert(!pg_synthesis_expect_target(type).checked && !pg_synthesis_expect_target(type).pending);
++	assert(pg_synthesis_expect_input(left).checked == pg_synthesis_work_input(left, 0));
+ 	struct pg_synthesis_job *comparison = pg_synthesis_compare_terms(&synthesis,
+ 		pg_reference(typing->graph, a), pg_reference(typing->graph, a));
+ 	assert(comparison && comparison->role->size == 2 * sizeof(void *));
+@@ -4945,9 +5006,9 @@
+ 	assert(pg_evidence_premise(converted_path, 0) == selected[1]);
+ 	/* Family paths use the same post-check request as an independent caller. */
+ 	size_t requests = split.jobs.count;
+-	struct pg_synthesis_job *shared_check = pg_synthesis_expect(&split,
+-		pg_synthesis_evidence(&split, selected[1]),
+-		pg_synthesis_evidence(&split, pg_evidence_premise(converted_path, 1)));
++	struct pg_synthesis_job *shared_check = pg_synthesis_expect_inputs(&split,
++		(struct pg_synthesis_input){.checked = selected[1]},
++		(struct pg_synthesis_input){.checked = pg_evidence_premise(converted_path, 1)});
+ 	assert(shared_check && split.jobs.count == requests);
+ 	assert(pg_synthesis_status(shared_check) == PG_SYNTHESIS_DONE);
+ 	assert(pg_synthesis_result(shared_check) == converted_path);
+@@ -7933,6 +7994,7 @@
+ 	dependency_failures(&typing);
+ 	endpoint_jobs(&typing);
+ 	substitution_jobs(&typing);
++	direct_checked_inputs(&typing);
+ 	square_template_jobs(&typing);
+ 	dependent_cube_substitution(&typing);
+ 	dependent_application_jobs(&typing);
