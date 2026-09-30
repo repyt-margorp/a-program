@@ -221,10 +221,12 @@ without promoting provisional classifier/effect approximations to accepted facts
 SE3 already covers concrete duplicate Match/induction premise edges; it must not
 be replaced by an unsupported claim that every Evidence record is removable.
 
-2026-10-01 static recheck at `8d3ac3fd263a3dd9cf884fd0c6f74d52d4f8f9c0`:
-the committed direct-input overlay was inspected in an unmodified disposable
-workbench. This is not production promotion or fresh runtime verification;
-concurrent accepted-source edits remain outside this recheck.
+2026-10-01 static recheck at `a78240f42fb3e3bfac5a35435326c1a3c89fdb8f`:
+accepted `src/` and the committed direct-input overlay were inspected separately.
+The overlay workbench uses accepted-source baseline `e716232`, not promotion
+into `src/`. Concurrent uncommitted Context-renaming/IADT-relocation edits were
+read; they do not replace the Job, occurrence or Evidence layouts considered
+here. This recheck makes no new runtime or performance verification claim.
 
 - `synthesis_derivation.c:evidence_ready` still retains identical Evidence
   pointers in the input and result of an immediately DONE Job. Ordinary source
@@ -233,6 +235,9 @@ concurrent accepted-source edits remain outside this recheck.
   and copies its completion/result into a Job. The typed query is the existing
   progress owner. The pending operand's classifier projection must survive
   removal of this wrapper; it supports effect discovery before acceptance.
+  In the overlay, `synthesis_identity.c:action_input` still creates that wrapper
+  after receiving an accepted input. This consumer can instead borrow the
+  canonical typed query; the Identity action itself remains a distinct obligation.
 - `synthesis_context.c:substitution_step` holds the partial map, next image and
   pending pairing. No underlying complete constraint record currently replaces
   this owner. Preserve this unfinished obligation, not a second copy of it.
@@ -249,6 +254,15 @@ checking phase. Rebuilding readiness must not restart saved partial work or
 silently alter scheduling order when equal-fuel partition behavior is required.
 This sharpens the existing SE1 completion criterion, not a new work track.
 
+The relevant ownership test is not whether two structures look alike. A partial
+operation, its completed typed description and its checked-admission receipt
+have different responsibilities. Conversely, two records tracking the same
+query's progress/completion are a concrete consolidation candidate. A Job result
+pointer borrowing accepted Evidence is not, by itself, a second acceptance
+authority. The target keeps each obligation's inputs, cursor and result in one
+owner; the frontier only references that owner. It must not introduce a new
+Constraint record underneath an unchanged, independently stateful Job record.
+
 **Plan:** use the existing SE1 work list, not a second migration track. Its gate
 requires accounting for each remaining owner and deleting needless wrappers,
 not just accepting direct inputs. For each role, record its canonical key, input
@@ -260,6 +274,10 @@ Delete completed Evidence adapters; borrow already-owned queries; unify duplicat
 operation ownership and construction paths before expanding persistence. Verify
 shared and distinct typed uses, every changed suspension boundary, and zero-fuel
 and split-fuel behavior. Do not claim all Job state removable until that gate passes.
+For the accepted-input Identity classifier consumer, verify direct query sharing,
+one transition per dispatch, failure propagation and no extra classifier Job.
+Removing that consumer's wrapper is not removal of every classifier-formation
+operation, and is not completion of SE1.
 
 Some synthesis requests precede the existence of a typed conclusion. Their
 identity includes the operation, scope and inputs, not just a Term pointer.
@@ -1824,6 +1842,7 @@ validated their inputs before requesting classifier formation. They can borrow
 `pg_classifier_request` directly. Do not apply this reasoning to pending
 result-Context or application recipes, whose structural readers need a
 classifier projection before full acceptance.
+The Identity classifier milestone below supersedes this next-task selection.
 
 #### Plan
 
@@ -1857,3 +1876,59 @@ and two new fixtures listed by the working-tree comparison.
 
 Implementation +5/-26 (net -21); tests +65/-60 (net +5). These are applied-code
 counts, not patch-context or documentation lines; no speedup is asserted.
+
+### SE1 Identity Classifier Ownership (2026-10-01)
+
+#### Subjective (User)
+
+English paraphrase of the latest requirement: resume the canonical Solve
+frontier, without placing another near-identical Job/Evidence structure above
+Term and typed data. This milestone adopts no new object-language proof format.
+
+#### Objective (Code)
+
+Parent `a78240f`, accepted baseline `e716232`. The prototype's
+`synthesis_identity.c:action_input` now borrows `pg_classifier_request` directly
+after awaiting and validating its operand. Reflexivity/family owners retain only
+the query pointer, not a classifier-formation Job. Query progress/status/result
+remain in the existing typing-owned query. The ordinary formation factory and
+its pending structural projections are not deleted in this milestone.
+
+#### Assessment
+
+This removes a concrete forwarding owner, not the distinct Identity checking
+obligation. Each query advance consumes the action's dispatch and yields even
+on completion; a failed or unavailable classifier remains UNSUPPORTED, matching
+the former formation worker. No Core, admission, queue or wire field is added.
+The new boundary test checks fresh shared queries, step 0, completion yielding,
+borrower cancellation, stable completed reuse, wrong scope and unsupported kind.
+Existing source-action tests retain pending-input, dependent, cycle and higher
+Identity controls. The test fixture's initial invalid Pi construction was fixed
+to supply a computation codomain; no production acceptance rule was relaxed.
+
+#### Plan
+
+- [x] Replace both accepted-input action classifier wrappers with direct queries.
+- [x] Fresh assembly reproduces source, tests and checkpoint/audit fixtures exactly.
+- [x] Focused O2 synthesis and ASan/UBSan synthesis/IADT pass.
+- [x] Default worktree overlay assembles; focused core/IADT/synthesis pass with
+  concurrent user Context/IADT edits, which are not included in this change.
+- [x] Full O2 acceptance, semantic audit and all seven checkpoint gates finish.
+- [x] Compare ordinary List/QuickSort census to the parent.
+- [x] Public partition gate rerun: exit 2, identical parent TSV, the same four
+  reload failures; this is not a passing or expected-success gate.
+
+Evidence logs use `/tmp/a-program-identity-query-`. Full SE1-SE5 remain open.
+The full `make` invocation finished with exit 0, including both general
+QuickSort providers/partition orders, ordinary-result proofs, semantic partial
+images and invalid controls. The separate public partition target remains exit 2.
+List census rows are unchanged. QuickSort completes in 809,426 transitions
+(parent 809,493), with 53,885 Jobs (parent 53,952) and 9,423,312 Job allocation
+bytes (parent 9,431,888). Terms, occurrences, Evidence and premise-edge counts
+are unchanged; zero-fuel and 1,000-step rows match the parent. Removing 67
+classifier wrappers saves 8,576 Job bytes; this is not a total-memory or wall-time
+speedup measurement. Repeated terminal samples do not grow these stores.
+The source delta is +11/-9 (net +2); the boundary test is +69/-0.
+These are applied C-file differences from the parent, not cumulative patch
+context. Job allocation elimination, not a source-line reduction, is the
+verified ownership change in this milestone.
