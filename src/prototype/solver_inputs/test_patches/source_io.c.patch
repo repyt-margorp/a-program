@@ -23,7 +23,25 @@
  	pg_synthesis_advance(&p->synthesis, 10000);
  	const struct pg_evidence *result = pg_synthesis_result(roots[0]);
  	const struct pg_term *expected = pg_reference(&p->graph, environment.binder);
-@@ -2591,8 +2592,61 @@
+@@ -951,9 +952,16 @@
+ 	if (operations) {
+ 		const struct pg_operation_declaration *operation = pg_operation_declaration(&p->typing, type, type);
+ 		assert(operation);
++		size_t jobs = p->synthesis.jobs.count;
++		struct pg_synthesis_job *callable = pg_synthesis_operation(&p->synthesis, operation);
++		assert(callable && p->synthesis.jobs.count == jobs + 1);
++		struct pg_operation_input signature;
++		assert(!pg_synthesis_operation_input(&p->synthesis, callable, &signature));
++		assert(signature.payload.checked == type && !signature.payload.pending);
++		assert(signature.response.checked == type && !signature.response.pending);
+ 		scope = pg_synthesis_name_job(&p->synthesis, scope,
+ 			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "ask", .length = 3},
+-			pg_synthesis_operation(&p->synthesis, operation));
++			callable);
+ 		assert(scope);
+ 	}
+ 	if (operations > 1) {
+@@ -2591,8 +2599,61 @@
  	puts("source materialized roots: inert read/resave, shared input origins and explicit local NF cache reuse passed");
  }
  
@@ -85,7 +103,7 @@
  	normalization_origin();
  	retained_normalization();
  	const char *text = "{{ id:=&(\\A:@ => \\x:A => x); }}.id";
-@@ -2621,17 +2675,17 @@
+@@ -2621,17 +2682,17 @@
  			struct pg_synthesis_job *const *loaded;
  			struct pg_program *q = pg_sources_read(file, 100000, &count, &loaded);
  			assert(q && count == 7 && !q->synthesis.steps && loaded[1] == loaded[3]);

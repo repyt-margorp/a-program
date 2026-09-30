@@ -374,9 +374,45 @@ baseline described above. Concurrent accepted-source edits remain excluded.
 - [x] Unify Identity formation, faces, reflexivity, instances and family action/
   transport inputs. Migrate source and IADT consumers; remove the separate
   checked/pending APIs and the temporary path-to-Job array.
-- [ ] Finish known-family result adapters and other context/IADT/operation
+- [x] Migrate operation signatures, handler signature premises and startup
+  Contexts to direct inputs; source transport borrows the same checked leaves.
+- [ ] Finish known-family result adapters and other context/IADT
   consumers, remove `EVIDENCE_JOB`, then remove duplicated query scheduling.
   The remaining adapter recognition is temporary, not the final architecture.
+
+### Operation Input Result (2026-09-30)
+
+**Objective (Code):** `2e95665` plus the `solver_inputs` operation milestone,
+verified against the isolated accepted baseline. Operation payload/response,
+handler signature premises and startup Contexts use the existing direct input;
+the Job-only operation request API is removed. Source transport borrows checked
+leaves without new wire fields. Invalid allocation shape is rejected before
+request allocation. No checking rule, witness representation or Core tag changes.
+
+**Assessment:** removes adapters, not the operation constructor or Job graph.
+The source builder still has genuine pending Lambda/request construction. The
+next ownership investigation targets the Effect worker's already-owned queue,
+not another expansion of adapters or checkpoint codecs.
+
+**Plan / Results:** O2 `check` plus all seven checkpoint/namespace targets pass;
+ASan/UBSan synthesis, program, execution, handler boundaries and source/derivation
+checkpoints pass. Fresh patch application exactly matches the tested sources and
+tests. New assertions cover direct signatures, malformed pairs, checked/pending
+handler inputs, zero startup adapters and invalid-allocation non-growth.
+The public partition gate still fails at 100+100, 1000+1000, 1600+1600 and
+completed+0. SE1-SE5 are not complete.
+
+| Completed input | Jobs before / after | Evidence Jobs before / after | Job bytes before / after | Solve steps |
+| --- | ---: | ---: | ---: | ---: |
+| List-09 | 891 / 890 | 15 / 14 | 154,552 / 154,464 | 2,726 unchanged |
+| QuickSort Local Sorted | 54,751 / 54,750 | 772 / 771 | 9,480,808 / 9,480,720 | 809,533 unchanged |
+
+Terms, occurrences, Evidence and premise edges are unchanged; repeated completed
+samples do not grow. These are live-store counts, not `.a` size or timing claims.
+Applied implementation changes: `synthesis.h` +6/-6, `synthesis_operation.c`
++25/-17, `synthesis_handler.c` +13/-14, `program.c` +15/-12, `source_io.c` +15/-13:
+total +74/-62, net +12. Tests: synthesis +50/-20, program +4/-0, source I/O +8/-1,
+net +41. Patch-context and documentation lines are excluded.
 
 O2 measurements at `7b0bf99`, after rule-premise migration and state cleanup:
 

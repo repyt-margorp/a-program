@@ -1,6 +1,22 @@
 --- a/program.c
 +++ b/program.c
-@@ -35,10 +35,10 @@
+@@ -1,4 +1,5 @@
+ #include "program.h"
++#include "synthesis_source.h"
+ #include "source_io.h"
+ #include "artifact/file.h"
+ #include "derivation.h"
+@@ -28,6 +29,9 @@
+ 	const char *text = "{{ id:=&(\\A:@ => \\x:A => x); }}.id";
+ 	struct pg_program *p = pg_program_create(text, strlen(text), PG_DEFINITION_EXPLICIT_THUNK);
+ 	assert(p && p->root);
++	for (size_t i = 0; i < p->synthesis.jobs.capacity; ++i)
++		for (struct pg_index_entry *entry = p->synthesis.jobs.buckets[i]; entry; entry = entry->next)
++			assert(!pg_synthesis_evidence_input((const void *)entry));
+ 	struct pg_derivation_input empty = {.rule = PG_CONTEXT_EMPTY};
+ 	struct pg_synthesis_job *context = pg_synthesis_derivation(&p->synthesis, &empty);
+ 	assert(context);
+@@ -35,10 +39,10 @@
  	struct pg_synthesis_job *whnf = pg_synthesis_normalize_jobs(&p->synthesis, context, p->root, PG_REDUCTION_WHNF);
  	assert(nf && whnf && nf != whnf && !p->synthesis.steps);
  	assert(nf == pg_synthesis_normalize_jobs(&p->synthesis, context, p->root, PG_REDUCTION_NF));
@@ -13,7 +29,7 @@
  	assert(pg_synthesis_normalization_input(&p->synthesis, p->root, &c, &proof, &kind, NULL));
  	struct pg_synthesis_job *invalid = pg_synthesis_normalize_jobs(&p->synthesis, p->root, p->root, PG_REDUCTION_NF);
  	assert(invalid && !pg_synthesis_result(nf));
-@@ -50,11 +50,41 @@
+@@ -50,11 +54,41 @@
  	assert(pg_synthesis_status(whnf) == PG_SYNTHESIS_DONE);
  	assert(pg_synthesis_status(invalid) == PG_SYNTHESIS_REJECTED);
  	const struct pg_evidence *ctx = pg_synthesis_result(context), *input = pg_synthesis_result(p->root);

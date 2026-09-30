@@ -61,6 +61,9 @@ Identity formation, faces, reflexivity, instances and family action/transport
 now use direct checked/pending inputs through one API. Source and IADT transport
 callers no longer wrap the known family, endpoints or paths into Evidence Jobs.
 The separate face/action entry points and temporary path-to-Job array are removed.
+Operation signatures and handler premises borrow the same checked/pending input.
+Startup Contexts and source export no longer wrap those known inputs in Jobs.
+The Job-only operation request API is removed, not retained as another variant.
 
 ### Assessment
 

@@ -1,7 +1,82 @@
 --- a/synthesis_operation.c
 +++ b/synthesis_operation.c
-@@ -91,8 +91,8 @@
- 			job->inputs[0], pg_synthesis_result(job->inputs[1]), pg_synthesis_result(job->inputs[2]));
+@@ -36,25 +36,27 @@
+ 	return (struct pg_synthesis_projection){.rule = rule, .preparing = !rule, .value_kind = -1};
+ }
+ 
+-struct pg_synthesis_job *pg_synthesis_operation_jobs(struct pg_synthesis *synthesis,
+-	const struct pg_object *label, struct pg_synthesis_job *payload, struct pg_synthesis_job *response)
++struct pg_synthesis_job *pg_synthesis_operation_request(struct pg_synthesis *synthesis,
++	const struct pg_object *label, struct pg_synthesis_input payload, struct pg_synthesis_input response)
+ {
+ 	const struct pg_term *a, *b;
+-	if (!payload || !response || payload->owner != synthesis->owner_key || response->owner != synthesis->owner_key) return NULL;
++	if (!pg_synthesis_input_owned(synthesis, payload)) return NULL;
++	if (!pg_synthesis_input_owned(synthesis, response)) return NULL;
+ 	if (!pg_operation_label_types(label, &a, &b)) return NULL;
+-	const void *inputs[] = {label, payload, response};
+-	return pg_synthesis_work_request(synthesis, OPERATION_JOB, 3, inputs);
++	payload = pg_synthesis_input_direct(payload);
++	response = pg_synthesis_input_direct(response);
++	const void *inputs[] = {label, payload.checked, payload.pending, response.checked, response.pending};
++	return pg_synthesis_work_request(synthesis, OPERATION_JOB, 5, inputs);
+ }
+ 
+ struct pg_synthesis_job *pg_synthesis_operation(struct pg_synthesis *synthesis,
+ 	const struct pg_operation_declaration *declaration)
+ {
+ 	if (!declaration) return NULL;
+-	struct pg_synthesis_job *job = pg_synthesis_operation_jobs(synthesis, pg_operation_label(declaration),
+-		pg_synthesis_evidence(synthesis, pg_operation_payload_type(declaration)),
+-		pg_synthesis_evidence(synthesis, pg_operation_response_type(declaration)));
+-	if (job && pg_evidence_owned_by(pg_operation_payload_type(declaration), synthesis->typing)
+-		&& pg_evidence_owned_by(pg_operation_response_type(declaration), synthesis->typing)) operation_work(job)->declaration = declaration;
++	struct pg_synthesis_job *job = pg_synthesis_operation_request(synthesis, pg_operation_label(declaration),
++		(struct pg_synthesis_input){.checked = pg_operation_payload_type(declaration)},
++		(struct pg_synthesis_input){.checked = pg_operation_response_type(declaration)});
++	if (job) operation_work(job)->declaration = declaration;
+ 	return job;
+ }
+ 
+@@ -63,17 +65,19 @@
+ {
+ 	const struct operation_work *local = operation_work(job);
+ 	if (!synthesis || !local || !input || job->owner != synthesis->owner_key) return -1;
+-	*input = (struct pg_operation_input){job->inputs[0], (void *)job->inputs[1], (void *)job->inputs[2], local->allocation};
++	*input = (struct pg_operation_input){job->inputs[0], pg_synthesis_work_dependency(job, 1),
++		pg_synthesis_work_dependency(job, 3), local->allocation};
+ 	return 0;
+ }
+ 
+ struct pg_synthesis_job *pg_synthesis_operation_at(struct pg_synthesis *synthesis,
+-	const struct pg_object *label, struct pg_synthesis_job *payload, struct pg_synthesis_job *response,
++	const struct pg_object *label, struct pg_synthesis_input payload, struct pg_synthesis_input response,
+ 	const struct pg_context *allocation)
+ {
+-	struct pg_synthesis_job *job = pg_synthesis_operation_jobs(synthesis, label, payload, response);
+ 	size_t count;
+-	if (!job || pg_context_extension_size(allocation, NULL, &count) || count != 2) return NULL;
++	if (pg_context_extension_size(allocation, NULL, &count) || count != 2) return NULL;
++	struct pg_synthesis_job *job = pg_synthesis_operation_request(synthesis, label, payload, response);
++	if (!job) return NULL;
+ 	struct operation_work *local = operation_work(job);
+ 	if (local->allocation) return local->allocation == allocation ? job : NULL;
+ 	if (local->rule) return NULL;
+@@ -85,14 +89,18 @@
+ {
+ 	struct operation_work *local = operation_work(job);
+ 	if (!local->rule) {
+-		for (size_t i = 1; i < 3; ++i)
+-			if (pg_synthesis_await(synthesis, job, (void *)job->inputs[i])) return;
++		const struct pg_evidence *signature[2];
++		for (size_t i = 0; i < 2; ++i) {
++			struct pg_synthesis_input input = pg_synthesis_work_dependency(job, 1 + 2 * i);
++			if (pg_synthesis_await_input(synthesis, job, input)) return;
++			signature[i] = pg_synthesis_input_result(input);
++		}
+ 		const struct pg_operation_declaration *operation = pg_operation_declaration_at(synthesis->typing,
+-			job->inputs[0], pg_synthesis_result(job->inputs[1]), pg_synthesis_result(job->inputs[2]));
++			job->inputs[0], signature[0], signature[1]);
  		if (!operation) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
  		local->declaration = operation;
 -		struct pg_synthesis_job *payload = pg_synthesis_evidence(synthesis, pg_operation_payload_type(operation));
@@ -11,7 +86,7 @@
  		struct pg_synthesis_job *empty = pg_synthesis_plain_rule(synthesis, PG_CONTEXT_EMPTY, NULL, 0, NULL);
  		if (!local->allocation) {
  			const struct pg_context *allocation = pg_context_bind(synthesis->typing, NULL,
-@@ -106,21 +106,22 @@
+@@ -106,21 +114,22 @@
  		 * checked contexts from the signature, not the saved field types. */
  		const struct pg_object *a = local->allocation->parent->binder;
  		const struct pg_object *b = local->allocation->binder;

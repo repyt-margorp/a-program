@@ -72,8 +72,10 @@ it does not reconstruct Context Jobs to preserve its previous physical layout.
 Identity formation/faces/reflexivity/instances and family action/transport now
 also take direct inputs, including their source and IADT consumers. Separate
 checked/pending APIs and the temporary path-to-Job array are removed and verified.
-Remaining IADT/operation/known-result adapters and duplicated query ownership
-are the next SE1 work. Full Job removal and public persistence remain open.
+Operation signatures, handler signature premises and startup Contexts now also
+borrow direct inputs through source transport, without additional wire fields.
+Remaining IADT/known-result adapters and duplicated query ownership are still
+SE1 work. Independent Job-graph removal and public persistence remain open.
 
 Do not extend the binding/domain checkpoint codec or AP6 while this gate is
 open. Existing passing checkpoint fixtures remain historical evidence, not a

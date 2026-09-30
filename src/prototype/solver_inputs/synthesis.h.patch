@@ -31,15 +31,44 @@
  	const struct pg_object *binder;
  	const struct pg_source_scope *associated;
  	enum pg_source_association association;
-@@ -292,7 +306,7 @@
+@@ -262,21 +276,21 @@
+  * Solve constructs its Lambda/request/RETURN evidence once; names and aliases
+  * can refer to this producer before completion. Signature ownership is checked
+  * by the same operation function builder, not inferred from the erased Core.
+- * The accepted-declaration entry wraps its signature evidence as producers. */
++ * Accepted declarations borrow their checked signature inputs directly. */
+ struct pg_synthesis_job *pg_synthesis_operation(struct pg_synthesis *synthesis,
+ 	const struct pg_operation_declaration *declaration);
+-struct pg_synthesis_job *pg_synthesis_operation_jobs(struct pg_synthesis *synthesis,
+-	const struct pg_object *label, struct pg_synthesis_job *payload, struct pg_synthesis_job *response);
++struct pg_synthesis_job *pg_synthesis_operation_request(struct pg_synthesis *synthesis,
++	const struct pg_object *label, struct pg_synthesis_input payload, struct pg_synthesis_input response);
+ /* Raw wrapper allocation contains two binders, never signature authority. */
+ struct pg_operation_input {
+ 	const struct pg_object *label;
+-	struct pg_synthesis_job *payload, *response;
++	struct pg_synthesis_input payload, response;
+ 	const struct pg_context *allocation;
+ };
+ int pg_synthesis_operation_input(const struct pg_synthesis *synthesis,
+ 	const struct pg_synthesis_job *job, struct pg_operation_input *input);
+ struct pg_synthesis_job *pg_synthesis_operation_at(struct pg_synthesis *synthesis,
+-	const struct pg_object *label, struct pg_synthesis_job *payload, struct pg_synthesis_job *response,
++	const struct pg_object *label, struct pg_synthesis_input payload, struct pg_synthesis_input response,
+ 	const struct pg_context *allocation);
+ /* Independently synthesize a #return clause as a raw continuation Lambda.
+  * The input supplies its result-domain type, not an expected clause codomain.
+@@ -292,8 +306,8 @@
   * neither allocates fresh binders nor resolves an operation name. Consumers
   * retain their own operation-reference validation dependency. */
  struct pg_synthesis_job *pg_synthesis_handler_context(struct pg_synthesis *synthesis,
 -	struct pg_synthesis_job *context, struct pg_synthesis_job *carrier,
+-	struct pg_synthesis_job *payload_type, struct pg_synthesis_job *response_type,
 +	struct pg_synthesis_input context, struct pg_synthesis_job *carrier,
- 	struct pg_synthesis_job *payload_type, struct pg_synthesis_job *response_type,
++	struct pg_synthesis_input payload_type, struct pg_synthesis_input response_type,
  	const struct pg_object *payload, const struct pg_object *resume, const struct pg_object *response);
  /* Resolve operation inputs through ordinary source aliases, prepare a pending
+  * payload/resumption context and synthesize the clause without waiting for a
 @@ -343,7 +357,7 @@
   * use application. If a computation has a dependent result, only a checked
   * pure RETURN may supply the argument. No host effects are executed here. */
