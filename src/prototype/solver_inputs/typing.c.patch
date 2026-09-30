@@ -1,0 +1,34 @@
+--- a/typing.c
++++ b/typing.c
+@@ -24,7 +24,6 @@
+ 	if (pg_index_init(&typing->occurrence_inputs) != 0) goto fail;
+ 	if (pg_index_init(&typing->typed_queries) != 0) goto fail;
+ 	if (pg_index_init(&typing->proofs) != 0) goto fail;
+-	if (pg_index_init(&typing->evidence_conclusions) != 0) goto fail;
+ 	if (pg_substitution_work_init(&typing->substitutions, graph) == 0) return 0;
+ fail:
+ 	pg_typing_destroy(typing);
+@@ -44,7 +43,6 @@
+ 	pg_index_destroy(&typing->typed_queries);
+ 	pg_index_destroy(&typing->induction_requests);
+ 	pg_index_destroy(&typing->proofs);
+-	pg_index_destroy(&typing->evidence_conclusions);
+ 	pg_substitution_work_destroy(&typing->substitutions);
+ 	memset(typing, 0, sizeof(*typing));
+ }
+@@ -121,6 +119,7 @@
+ 	struct context_entry *entry = pg_alloc(typing->graph, sizeof(*entry));
+ 	if (!entry) return NULL;
+ 	entry->context = *declaration;
++	entry->context.receipts = NULL;
+ 	if (pg_index_insert(&typing->contexts, &entry->index, hash) != 0) return NULL;
+ 	return &entry->context;
+ }
+@@ -274,6 +273,7 @@
+ 	struct pg_occurrence *result = pg_alloc(typing->graph, size);
+ 	if (!result) return NULL;
+ 	*result = *header;
++	result->receipts = NULL;
+ 	result->induction = NULL;
+ 	for (size_t i = 0; i < operand_count; ++i) result->operands[i] = operands[i];
+ 	if (map_count) memcpy(result->operands + operand_count, maps, map_count * sizeof(*maps));

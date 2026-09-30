@@ -1,0 +1,226 @@
+--- a/evidence.c
++++ b/evidence.c
+@@ -26,33 +26,60 @@
+ 	const struct pg_evidence *premises[];
+ };
+ 
++/* Stored in the receipt's trailing allocation, not a second proof graph.
++ * The conclusion owner's first receipt is stable. Only selections differing
++ * from that receipt need another edge; the complete logical input view stays
++ * available through pg_evidence_premise, without a live typing-store index. */
++struct elimination_receipt_selection {
++	size_t ordinal;
++	const struct pg_evidence *proof;
++};
++struct elimination_receipts {
++	size_t count;
++	struct elimination_receipt_selection selections[];
++};
++
++static int elimination_rule(enum pg_evidence_rule rule)
++{
++	return rule == PG_MATCH_ELIM || rule == PG_INDUCTION_ELIM;
++}
++
+ static const struct pg_evidence *formed_classifier(struct pg_typing *typing,
+ 	const struct pg_evidence *term);
+ static const struct pg_evidence *pi_codomain(struct pg_typing *typing,
+ 	const struct pg_evidence *pi, const struct pg_evidence *argument,
+ 	const struct pg_occurrence *retained);
+ 
+-struct evidence_conclusion {
+-	/* The first proof follows this prefix in the same allocation. */
+-	_Alignas(struct pg_evidence) struct pg_index_entry index;
+-	struct pg_evidence *last;
+-};
++static struct pg_evidence *conclusion_last(const struct pg_typing *typing,
++	enum pg_evidence_judgement judgement, const void *key)
++{
++	if (judgement == PG_JUDGEMENT_CONTEXT)
++		return key ? ((const struct pg_context *)key)->receipts : typing ? typing->empty_receipts : NULL;
++	if (!key) return NULL;
++	if (judgement == PG_JUDGEMENT_SUBSTITUTION)
++		return ((const struct pg_context_map *)key)->receipts;
++	return ((const struct pg_occurrence *)key)->receipts;
++}
++
++/* The circular chain is anchored at the existing conclusion, not a second
++ * conclusion table. Its first receipt is stable across later alternatives. */
++static struct pg_evidence *conclusion_receipt(const struct pg_typing *typing,
++	enum pg_evidence_judgement judgement, const void *key)
++{
++	struct pg_evidence *last = conclusion_last(typing, judgement, key);
++	return last ? last->next_conclusion : NULL;
++}
+ 
+ static struct pg_evidence *conclusion_first(const struct pg_typing *typing,
+ 	enum pg_evidence_judgement judgement, const void *key)
+ {
+-	uint64_t hash = ((uintptr_t)key ^ judgement) * UINT64_C(1099511628211);
+-	if (!typing || !typing->evidence_conclusions.capacity) return NULL;
+-	for (struct pg_index_entry *p = pg_index_candidates(&typing->evidence_conclusions, hash); p; p = p->next) {
+-		struct evidence_conclusion *entry = (void *)p;
+-		struct pg_evidence *proof = (void *)(entry + 1);
+-		if (p->hash != hash || pg_evidence_judgement(proof) != judgement) continue;
+-		const void *found = judgement == PG_JUDGEMENT_CONTEXT ? (const void *)proof->conclusion.context
+-			: judgement == PG_JUDGEMENT_SUBSTITUTION ? (const void *)proof->conclusion.map
+-			: (const void *)proof->conclusion.subject;
+-		if (found == key) return proof;
+-	}
+-	return NULL;
++	if (!typing || !typing->owner_key) return NULL;
++	struct pg_evidence *proof = conclusion_receipt(typing, judgement, key);
++	if (!proof || proof->owner != typing->owner_key) return NULL;
++	const void *found = judgement == PG_JUDGEMENT_CONTEXT ? (const void *)proof->conclusion.context
++		: judgement == PG_JUDGEMENT_SUBSTITUTION ? (const void *)proof->conclusion.map
++		: (const void *)proof->conclusion.subject;
++	return found == key ? proof : NULL;
+ }
+ 
+ const struct pg_evidence *pg_evidence_for_subject(const struct pg_typing *typing,
+@@ -61,7 +88,8 @@
+ 	if (!subject) return NULL;
+ 	if (after) {
+ 		if (!pg_evidence_owned_by(after, typing) || pg_evidence_subject(after) != subject) return NULL;
+-		return after->next_conclusion;
++		const struct pg_evidence *first = conclusion_first(typing, subject->judgement, subject);
++		return after->next_conclusion == first ? NULL : after->next_conclusion;
+ 	}
+ 	return conclusion_first(typing, subject->judgement, subject);
+ }
+@@ -72,6 +100,25 @@
+ 	return conclusion_first(typing, PG_JUDGEMENT_CONTEXT, context);
+ }
+ 
++static const struct pg_evidence *elimination_premise(const struct pg_occurrence *subject,
++	size_t ordinal)
++{
++	if (!subject || subject->operand_count < 3 || subject->map_count != 1) return NULL;
++	size_t count = subject->operand_count - 3;
++	const struct pg_occurrence *input;
++	if (ordinal == 0) input = subject->operands[count + 1];
++	else if (ordinal == 1) input = subject->operands[count + 2];
++	else if (ordinal == 2)
++		return conclusion_receipt(NULL, PG_JUDGEMENT_SUBSTITUTION, pg_occurrence_maps(subject)[0]);
++	else if (ordinal == 3) input = subject->operands[0];
++	else if (ordinal == 4)
++		return conclusion_receipt(NULL, PG_JUDGEMENT_CONTEXT, subject->operands[count + 1]->context);
++	else if (ordinal < count + 5) input = subject->operands[ordinal - 4];
++	else if (ordinal == count + 5) input = subject->type;
++	else return NULL;
++	return input ? conclusion_receipt(NULL, input->judgement, input) : NULL;
++}
++
+ struct pg_operation_declaration {
+ 	struct pg_object_entry base;
+ 	const struct pg_object *label;
+@@ -192,7 +239,7 @@
+ 		if (context_input) return proof;
+ 		if (proof->premise_count != count) continue;
+ 		size_t i = 0;
+-		while (i < count && proof->premises[i] == premises[i]) ++i;
++		while (i < count && pg_evidence_premise(proof, i) == premises[i]) ++i;
+ 		if (i == count) return proof;
+ 	}
+ 	return NULL;
+@@ -221,17 +268,24 @@
+ 	enum pg_evidence_judgement judgement = map ? PG_JUDGEMENT_SUBSTITUTION
+ 		: subject ? subject->judgement : PG_JUDGEMENT_CONTEXT;
+ 	const void *key = map ? (const void *)map : subject ? (const void *)subject : (const void *)context;
+-	struct pg_evidence *first = conclusion_first(typing, judgement, key);
+-	struct evidence_conclusion *conclusion = first ? (struct evidence_conclusion *)first - 1 : NULL;
+-	size_t prefix = conclusion ? 0 : sizeof(*conclusion);
+-	if (count > (SIZE_MAX - prefix - sizeof(struct pg_evidence)) / sizeof(*premises)) return NULL;
+-	/* Reserve both indexes before allocating their common owner or publishing. */
++	struct pg_evidence *last = conclusion_last(typing, judgement, key);
++	if (last && last->owner != typing->owner_key) return NULL;
++	size_t retained = count, bytes;
++	if (elimination_rule(rule)) {
++		retained = 0;
++		for (size_t i = 0; i < count; ++i)
++			retained += elimination_premise(subject, i) != premises[i];
++		if (retained > (SIZE_MAX - sizeof(struct elimination_receipts)) / sizeof(struct elimination_receipt_selection)) return NULL;
++		bytes = sizeof(struct elimination_receipts) + retained * sizeof(struct elimination_receipt_selection);
++	} else {
++		if (count > SIZE_MAX / sizeof(*premises)) return NULL;
++		bytes = count * sizeof(*premises);
++	}
++	if (bytes > SIZE_MAX - sizeof(struct pg_evidence)) return NULL;
++	/* Reserve the derivation index before publishing its admission link. */
+ 	if (pg_index_prepare_insert(&typing->proofs)) return NULL;
+-	if (!conclusion && pg_index_prepare_insert(&typing->evidence_conclusions)) return NULL;
+-	void *storage = pg_alloc(typing->graph, prefix + sizeof(struct pg_evidence) + count * sizeof(*premises));
+-	if (!storage) return NULL;
+-	if (!conclusion) conclusion = storage;
+-	struct pg_evidence *proof = prefix ? (void *)(conclusion + 1) : storage;
++	struct pg_evidence *proof = pg_alloc(typing->graph, sizeof(*proof) + bytes);
++	if (!proof) return NULL;
+ 	proof->owner = typing->owner_key;
+ 	proof->rule = rule;
+ 	if (map) proof->conclusion.map = map;
+@@ -239,14 +293,22 @@
+ 	else proof->conclusion.context = context;
+ 	proof->certificate = certificate;
+ 	proof->premise_count = count;
+-	for (size_t i = 0; i < count; ++i) proof->premises[i] = premises[i];
++	if (elimination_rule(rule)) {
++		struct elimination_receipts *inputs = (void *)proof->premises;
++		inputs->count = retained;
++		size_t next = 0;
++		for (size_t i = 0; i < count; ++i)
++			if (elimination_premise(subject, i) != premises[i])
++				inputs->selections[next++] = (struct elimination_receipt_selection){i, premises[i]};
++	} else for (size_t i = 0; i < count; ++i) proof->premises[i] = premises[i];
+ 	if (pg_index_insert(&typing->proofs, &proof->index, hash) != 0) return NULL;
+-	if (conclusion->last) conclusion->last->next_conclusion = proof;
+-	else {
+-		uint64_t key_hash = ((uintptr_t)key ^ judgement) * UINT64_C(1099511628211);
+-		if (pg_index_insert(&typing->evidence_conclusions, &conclusion->index, key_hash)) return NULL;
+-	}
+-	conclusion->last = proof;
++	proof->next_conclusion = last ? last->next_conclusion : proof;
++	if (last) last->next_conclusion = proof;
++	/* Descriptive fields stay immutable; checking alone publishes this link. */
++	if (map) ((struct pg_context_map *)map)->receipts = proof;
++	else if (subject) ((struct pg_occurrence *)subject)->receipts = proof;
++	else if (context) ((struct pg_context *)context)->receipts = proof;
++	else typing->empty_receipts = proof;
+ 	return proof;
+ }
+ 
+@@ -2505,7 +2567,7 @@
+ 		const struct pg_evidence *result = request->result;
+ 		if (result->premise_count != count) continue;
+ 		size_t i = 0;
+-		while (i < count && result->premises[i] == premises[i]) ++i;
++		while (i < count && pg_evidence_premise(result, i) == premises[i]) ++i;
+ 		if (i == count) return request;
+ 	}
+ 	struct induction_request *request = pg_alloc(typing->graph, sizeof(*request));
+@@ -5457,8 +5519,24 @@
+ 	return subject ? subject->classifier : NULL;
+ }
+ size_t pg_evidence_premise_count(const struct pg_evidence *evidence) { return evidence->premise_count; }
+-const struct pg_evidence *const *pg_evidence_premises(const struct pg_evidence *evidence) { return evidence->premises; }
++size_t pg_evidence_retained_premise_count(const struct pg_evidence *evidence)
++{
++	if (!elimination_rule(evidence->rule)) return evidence->premise_count;
++	const struct elimination_receipts *inputs = (const void *)evidence->premises;
++	return inputs->count;
++}
+ const struct pg_evidence *pg_evidence_premise(const struct pg_evidence *evidence, size_t index)
+ {
+-	return index < evidence->premise_count ? evidence->premises[index] : NULL;
++	if (index >= evidence->premise_count) return NULL;
++	if (!elimination_rule(evidence->rule)) return evidence->premises[index];
++	const struct elimination_receipts *inputs = (const void *)evidence->premises;
++	size_t low = 0, high = inputs->count;
++	while (low < high) {
++		size_t middle = low + (high - low) / 2;
++		if (inputs->selections[middle].ordinal < index) low = middle + 1;
++		else high = middle;
++	}
++	if (low < inputs->count && inputs->selections[low].ordinal == index)
++		return inputs->selections[low].proof;
++	return elimination_premise(evidence->conclusion.subject, index);
+ }

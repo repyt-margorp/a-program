@@ -38,6 +38,15 @@ Evidence Job; inspection does not advance Solve or produce checked facts.
 The adapter factory, role and recognition API are removed, including all test
 callers. Suspension tests use real unfinished operations; known checked inputs
 allocate no scheduler node. This does not complete the single-owner/frontier refactor.
+Checked receipts now attach to their existing typed occurrence, Context or map;
+the separate conclusion index and its prefix allocations are removed. Admission
+links are ignored by descriptive interning and are never serialized. Only checking
+publishes them, with typing-owner isolation. Match/induction borrow canonical
+receipts through those typed inputs and retain only exceptional exact selections.
+Alternatives and their order remain observable; no proof is replaced by the default.
+The contiguous Evidence-premise API is deleted; consumers use the logical getter,
+which remains valid after typing-index disposal. This is partial SE3 work, not
+removal of all retained rule premises or completion of the resumption gate.
 Rule requests use the same hash lookup for checked and pending inputs, borrowing
 the key during lookup and copying it only on a miss. Structural queries retain
 only a result, child query and normalization pointer, not the broad source state.

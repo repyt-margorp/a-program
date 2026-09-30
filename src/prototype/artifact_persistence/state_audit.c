@@ -30,6 +30,7 @@ static void census(const struct pg_program *p, uint64_t requested)
 	uint64_t steps = s->steps;
 	size_t pending = 0, done = 0, job_bytes = 0;
 	size_t rules = 0, lazy = 0, outputs = 0, structural = 0, premise_edges = 0, overlap = 0;
+	size_t retained_edges = 0, eliminations = 0;
 	struct pg_dag results;
 	assert(!pg_dag_init(&results, NULL, NULL));
 	for (size_t i = 0; i < s->jobs.capacity; ++i) {
@@ -53,14 +54,17 @@ static void census(const struct pg_program *p, uint64_t requested)
 			const struct pg_occurrence *subject = pg_evidence_subject(proof);
 			size_t count = pg_evidence_premise_count(proof);
 			premise_edges += count;
+			retained_edges += pg_evidence_retained_premise_count(proof);
+			eliminations += pg_evidence_rule(proof) == PG_MATCH_ELIM
+				|| pg_evidence_rule(proof) == PG_INDUCTION_ELIM;
 			for (size_t j = 0; j < count; ++j)
 				overlap += typed_edge(subject, pg_evidence_subject(pg_evidence_premise(proof, j)));
 		}
 	}
-	printf("%" PRIu64 "\t%" PRIu64 "\t%d\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\n",
+	printf("%" PRIu64 "\t%" PRIu64 "\t%d\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\n",
 		requested, steps, pg_synthesis_status(p->root), terms, occurrences, proofs,
 		jobs, pending, done, job_bytes, rules, lazy, structural,
-		outputs, results.count, premise_edges, overlap);
+		outputs, results.count, premise_edges, overlap, retained_edges, eliminations);
 	pg_dag_destroy(&results);
 	assert(steps == s->steps && jobs == s->jobs.count && proofs == p->typing.proofs.count);
 	assert(terms == p->graph.terms.count && objects == p->graph.objects.count);
@@ -81,7 +85,7 @@ int main(int argc, char **argv)
 	struct pg_program *p = pg_program_create(source, (size_t)length, PG_DEFINITION_IMPLICIT_THUNK);
 	free(source);
 	assert(p && p->root);
-	puts("requested_fuel\tsteps\tstatus\tterms\toccurrences\tevidence\tjobs\tpending\tdone\tjob_bytes\trules\tlazy_inputs\tstructure_capable_jobs\tresult_refs\tunique_results\tpremise_edges\ttyped_overlap");
+	puts("requested_fuel\tsteps\tstatus\tterms\toccurrences\tevidence\tjobs\tpending\tdone\tjob_bytes\trules\tlazy_inputs\tstructure_capable_jobs\tresult_refs\tunique_results\tpremise_edges\ttyped_overlap\tretained_premise_edges\telimination_receipts");
 	uint64_t previous = 0;
 	for (int i = 2; i < argc; ++i) {
 		char *end;

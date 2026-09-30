@@ -1,0 +1,48 @@
+--- a/typing.h
++++ b/typing.h
+@@ -6,6 +6,7 @@
+ enum pg_evidence_judgement { PG_JUDGEMENT_CONTEXT, PG_JUDGEMENT_VALUE_TYPE,
+ 	PG_JUDGEMENT_COMPUTATION_TYPE, PG_JUDGEMENT_VALUE, PG_JUDGEMENT_COMPUTATION,
+ 	PG_JUDGEMENT_SUBSTITUTION, PG_JUDGEMENT_TYPE_FAMILY, PG_JUDGEMENT_INPUT };
++struct pg_evidence;
+ 
+ /* Immutable declared telescope. Its existence is not a typing certificate. */
+ struct pg_context {
+@@ -15,6 +16,9 @@
+ 	enum pg_evidence_judgement judgement;
+ 	/* Family signature telescope, extending parent; not formation evidence. */
+ 	const struct pg_context *indices;
++	/* Kernel-owned admission link, excluded from descriptive identity and I/O.
++	 * Constructors ignore incoming links; only checking publishes receipts. */
++	struct pg_evidence *receipts;
+ };
+ 
+ /* Lexical allocation of recursive elimination, not acceptance evidence.
+@@ -54,6 +58,7 @@
+ 	/* Selected construction maps follow operands in the same allocation.
+ 	 * Unlike map above, they are inputs, not an action on the whole subject. */
+ 	size_t map_count;
++	struct pg_evidence *receipts;
+ 	const struct pg_occurrence *operands[];
+ };
+ 
+@@ -63,6 +68,7 @@
+ 	struct pg_index_entry index;
+ 	const struct pg_context *source, *destination;
+ 	size_t count;
++	struct pg_evidence *receipts;
+ 	const struct pg_occurrence *images[];
+ };
+ 
+@@ -91,9 +97,8 @@
+ 	/* Memoized default lexical allocation requests, not acceptance evidence. */
+ 	struct pg_index induction_requests;
+ 	struct pg_index proofs;
+-	/* Read-only lookup paths to the same accepted derivations, not claims or
+-	 * another acceptance store. Alternatives are never replaced. */
+-	struct pg_index evidence_conclusions;
++	/* NULL Context has no allocated descriptive owner for its admission link. */
++	struct pg_evidence *empty_receipts;
+ 	/* Computation work, not an additional source of typing evidence. */
+ 	struct pg_substitution_work substitutions;
+ 	struct pg_typing_wait *free_waits;

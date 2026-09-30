@@ -1,0 +1,21 @@
+--- a/evidence.h
++++ b/evidence.h
+@@ -730,13 +730,14 @@
+ /* Context formation has no term subject or classifier. */
+ const struct pg_occurrence *pg_evidence_subject(const struct pg_evidence *evidence);
+ const struct pg_term *pg_evidence_classifier(const struct pg_evidence *evidence);
+-/* Physical receipt history only. Context and direct function/CBPV rules keep
++/* Logical receipt inputs. Context and direct function/CBPV rules keep
+  * their inputs in typed structure, not here. Exporters enumerate checking
+  * inputs with pg_derivation_input_dependency instead of assuming this layout. */
+ size_t pg_evidence_premise_count(const struct pg_evidence *evidence);
+-/* Borrowed immutable array, in derivation order, valid until graph destruction.
+- * Use premise_count for bounds. An empty array must not be dereferenced. */
+-const struct pg_evidence *const *pg_evidence_premises(const struct pg_evidence *evidence);
++/* Number of physically retained receipt edges; not logical rule arity.
++ * Diagnostic inspection only, without allocation, checking or Solve. */
++size_t pg_evidence_retained_premise_count(const struct pg_evidence *evidence);
++/* Borrowed exact receipt selection, valid until graph destruction. */
+ const struct pg_evidence *pg_evidence_premise(const struct pg_evidence *evidence, size_t index);
+ 
+ #endif

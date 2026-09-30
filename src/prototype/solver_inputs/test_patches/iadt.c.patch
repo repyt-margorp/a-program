@@ -368,3 +368,54 @@
  			jobs[i] = pg_synthesis_constructor_field_identity(&synthesis,
  				inputs[0], inputs[1], inputs[2], inputs[3], fields[i], inputs[4], inputs[5]);
  			if (!i) {
+@@ -3056,6 +3073,38 @@
+ 	const struct pg_evidence *pred = pg_prove_match(&typing, nat,
+ 		identity, succ, z_context, nat_motive, 2, pred_branches);
+ 	assert(pred && pg_evidence_rule(pred) == PG_MATCH_ELIM);
++	const struct pg_evidence *pred_inputs[] = {
++		nat_motive, nat, identity, succ, z_context, zero_function, pred_branch,
++		pg_prove_classifier(&typing, empty, pred)};
++	assert(pg_evidence_premise_count(pred) == 8);
++	assert(pg_evidence_retained_premise_count(pred) < 8);
++	proofs = typing.proofs.count; terms = graph.terms.count;
++	for (size_t i = 0; i < 8; ++i) assert(pg_evidence_premise(pred, i) == pred_inputs[i]);
++	assert(!pg_evidence_premise(pred, 8));
++	assert(typing.proofs.count == proofs && graph.terms.count == terms);
++	/* Distinct derivations of the same typed branch must not collapse to the
++	 * default receipt when the Match stores only exceptional selections. */
++	const struct pg_evidence *alternate_match_zero = pg_prove_effect_subsumption(&typing,
++		zero_function, pg_prove_classifier(&typing, empty, zero_function));
++	assert(alternate_match_zero && alternate_match_zero != zero_function);
++	assert(pg_evidence_subject(alternate_match_zero) == pg_evidence_subject(zero_function));
++	const struct pg_evidence *alternate_branches[] = {alternate_match_zero, pred_branch};
++	const struct pg_evidence *alternate_pred = pg_prove_match(&typing, nat,
++		identity, succ, z_context, nat_motive, 2, alternate_branches);
++	assert(alternate_pred && alternate_pred != pred);
++	assert(pg_evidence_subject(alternate_pred) == pg_evidence_subject(pred));
++	assert(pg_evidence_premise(alternate_pred, 5) == alternate_match_zero);
++	assert(pg_evidence_premise(pred, 5) == zero_function);
++	assert(pg_evidence_retained_premise_count(alternate_pred) ==
++		pg_evidence_retained_premise_count(pred) + 1);
++	assert(pg_evidence_for_subject(&typing, pg_evidence_subject(pred), NULL) == pred);
++	assert(pg_evidence_for_subject(&typing, pg_evidence_subject(pred), pred) == alternate_pred);
++	assert(!pg_evidence_for_subject(&typing, pg_evidence_subject(pred), alternate_pred));
++	common_rule(&typing, alternate_pred);
++	assert(pg_prove_match(&typing, nat, identity, succ,
++		z_context, nat_motive, 2, pred_branches) == pred);
++	assert(pg_prove_match(&typing, nat, identity, succ,
++		z_context, nat_motive, 2, alternate_branches) == alternate_pred);
+ 	check(&constructor_work, pg_evidence_subject(pred)->core, pg_evidence_subject(zero_function)->core);
+ 	const struct pg_reduction_certificate *pred_receipt = pg_whnf_certificate(
+ 		pg_whnf_request(&constructor_work, &pg_pure_policy, pg_evidence_subject(pred)->core));
+@@ -3383,6 +3432,11 @@
+ 	/* A retained signature does not belong to a reinitialized typing store,
+ 	 * even when no constructors would otherwise force a premise check. */
+ 	pg_typing_destroy(&typing);
++	for (size_t i = 0; i < 8; ++i) {
++		assert(pg_evidence_premise(pred, i) == pred_inputs[i]);
++		assert(pg_evidence_premise(alternate_pred, i) ==
++			(i == 5 ? alternate_match_zero : pred_inputs[i]));
++	}
+ 	assert(!pg_typing_init(&typing, &graph));
+ 	assert(!pg_data_schema(&typing, signature, 0, NULL));
+ 	pg_typing_destroy(&typing);

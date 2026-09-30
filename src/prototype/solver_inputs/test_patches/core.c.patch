@@ -1,0 +1,79 @@
+--- a/core.c
++++ b/core.c
+@@ -91,15 +91,14 @@
+ 	assert(pg_derivation_input_header(source, &input) == 0);
+ 	assert(pg_derivation_parameters(source, &input.parameters) == 0);
+ 	size_t count = input.count;
+-	const struct pg_evidence *const *borrowed = pg_evidence_premises(source);
+-	for (size_t i = 0; i < pg_evidence_premise_count(source); ++i) assert(borrowed[i] == pg_evidence_premise(source, i));
++	const struct pg_evidence *first = pg_evidence_premise(source, 0);
+ 	if (pg_evidence_judgement(source) == PG_JUDGEMENT_CONTEXT) assert(!pg_evidence_premise_count(source));
+ 	const struct pg_evidence **premises = pg_alloc(typing->graph, (count + 1) * sizeof(*premises));
+ 	assert(premises);
+ 	for (size_t i = 0; i < count; ++i) assert(pg_derivation_input_dependency(typing, source, i, premises + i) == 1);
+ 	assert(pg_derivation_input_dependency(typing, source, count, premises + count) == 0);
+ 	assert(pg_prove_derivation(typing, input.rule, &input.parameters, count, premises) == source);
+-	assert(pg_evidence_premises(source) == borrowed);
++	assert(pg_evidence_premise(source, 0) == first);
+ 	premises[count] = source;
+ 	assert(!pg_prove_derivation(typing, input.rule, &input.parameters, count + 1, premises));
+ 	if (count) {
+@@ -1962,10 +1961,10 @@
+ 	assert(action && pg_occurrence_action_result(action) == pg_evidence_subject(destination_y));
+ 	uint64_t action_steps = pg_occurrence_action_steps(action);
+ 	const struct pg_evidence *first_receipt = pg_evidence_for_subject(&typing, pg_evidence_subject(reindexed), NULL);
+-	size_t conclusion_count = typing.evidence_conclusions.count;
++	size_t occurrence_count = typing.occurrences.count;
+ 	const struct pg_evidence *alternative_result = pg_prove_reindex(&typing, alternate, source_x);
+ 	assert(alternative_result != reindexed && pg_evidence_subject(alternative_result) == pg_evidence_subject(reindexed));
+-	assert(typing.evidence_conclusions.count == conclusion_count);
++	assert(typing.occurrences.count == occurrence_count);
+ 	assert(pg_evidence_for_subject(&typing, pg_evidence_subject(reindexed), NULL) == first_receipt);
+ 	assert(pg_evidence_for_subject(&typing, pg_evidence_subject(reindexed), reindexed) == alternative_result);
+ 	assert(!pg_evidence_for_subject(&typing, pg_evidence_subject(reindexed), alternative_result));
+@@ -1984,12 +1983,12 @@
+ 		assert(++receipt_count <= typing.proofs.count);
+ 	}
+ 	assert(saw_original && saw_alternative);
+-	/* Growing both indexes must preserve the first proof and alternative order. */
+-	size_t capacity = typing.evidence_conclusions.capacity;
++	/* Growing the derivation index cannot replace the owner-local admission. */
++	size_t capacity = typing.proofs.capacity;
+ 	const struct pg_evidence *after_alternative = pg_evidence_for_subject(&typing, same_subject, alternative_result);
+ 	for (size_t level = 0; level <= capacity; ++level)
+ 		assert(pg_prove_universe(&typing, empty, level));
+-	assert(typing.evidence_conclusions.capacity > capacity);
++	assert(typing.proofs.capacity > capacity);
+ 	assert(pg_evidence_for_subject(&typing, same_subject, NULL) == first_receipt);
+ 	assert(pg_evidence_for_subject(&typing, same_subject, reindexed) == alternative_result);
+ 	assert(pg_evidence_for_subject(&typing, same_subject, alternative_result) == after_alternative);
+@@ -5616,6 +5615,19 @@
+ 	}
+ 	/* Arena-owned evidence survives index disposal, but not as accepted input
+ 	 * to another initialization of the same C storage address. */
++	const struct pg_evidence *scope = pg_prove_context_extension(&first,
++		contexts[0], pg_binder(graph), types[0]);
++	assert(scope && pg_evidence_context(scope)->receipts);
++	struct pg_context header = *pg_evidence_context(scope);
++	header.binder = pg_binder(graph);
++	const struct pg_context *unaccepted = pg_context_intern(&first, &header);
++	assert(unaccepted && !unaccepted->receipts);
++	assert(!pg_evidence_for_context(&first, unaccepted));
++	header = *pg_evidence_context(scope);
++	header.receipts = (struct pg_evidence *)contexts[1];
++	assert(pg_context_intern(&first, &header) == pg_evidence_context(scope));
++	assert(pg_evidence_for_context(&first, pg_evidence_context(scope)) == scope);
++	assert(!pg_evidence_for_context(&second, pg_evidence_context(scope)));
+ 	pg_typing_destroy(&second);
+ 	assert(!pg_evidence_owned_by(types[1], &second));
+ 	assert(!pg_typing_init(&second, graph));
+@@ -5882,7 +5894,8 @@
+ 		claimed.core = i ? pg_application(graph, pg_reference(graph, &pg_thunk_operation), omega) : omega;
+ 		const struct pg_occurrence *description = pg_occurrence_intern(&typing, &claimed,
+ 			subject->operands, pg_occurrence_maps(subject));
+-		assert(description && !pg_prove_structural_subject(&typing, description));
++		assert(description && !description->receipts);
++		assert(!pg_prove_structural_subject(&typing, description));
+ 		assert(!pg_evidence_for_subject(&typing, description, NULL));
+ 		assert(pg_prove_structural_subject(&typing, pg_evidence_subject(source)) == source);
+ 	}

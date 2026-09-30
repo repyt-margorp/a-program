@@ -263,6 +263,28 @@ authority. The target keeps each obligation's inputs, cursor and result in one
 owner; the frontier only references that owner. It must not introduce a new
 Constraint record underneath an unchanged, independently stateful Job record.
 
+Latest static recheck, 2026-10-01, `85f4ccd` plus the separately inspected
+uncommitted Context/IADT edits: the committed prototype has now deleted the
+completed Evidence adapter factory and all callers. Accepted `src/` still has
+that adapter; prototype deletion is not production promotion. The general
+classifier Job still forwards the canonical typed query's result/status; partial
+substitution and derivation workers still own genuinely unfinished cursors.
+These observations supersede the adapter status in the historical tables below.
+No fresh runtime verification was performed for this recheck.
+
+Agent assessment: adopt the user's frontier model as the architectural target,
+not a claim that every existing Job already has an underlying constraint record.
+Retain each unfinished obligation once, with its own cursor; reconstruct only
+queue/wakeup references on load. Admission indexes are lookup paths, not extra
+authorities merely because they index Evidence. The uncommitted
+`solver_inputs/elimination_receipts_work` trial moves receipt lookup onto typed
+owners and stores only non-default Match/induction selections. It remains an
+agent experiment, not an approved representation: owner isolation, exact premise
+identity after index disposal, memory cost and full resumption gates are still
+required. Neither that trial nor adapter deletion completes SE1-SE5.
+The SE3 milestone below supersedes this trial status; it does not supersede the
+remaining single-owner construction and public resumption gates.
+
 **Plan:** use the existing SE1 work list, not a second migration track. Its gate
 requires accounting for each remaining owner and deleting needless wrappers,
 not just accepting direct inputs. For each role, record its canonical key, input
@@ -392,6 +414,8 @@ Do not mark a milestone complete just because a view hides the old representatio
   Match/induction/constructor. Migrate interning keys, consumers, export and
   ordinary checking in the same milestone. Recheck concurrent relocation work;
   do not overwrite it or silently discard required scope/formation evidence.
+  Match/induction sharing and conclusion-index removal are implemented in the
+  SE3 milestone below; constructor/other-rule input consolidation remains open.
 - [ ] **SE4 persistence projection:** consume those canonical structures through
   borrowed views, removing exported copies of reconstructible rule-input trees
   and obsolete owner codecs. Keep only unfinished state needed by actual Solve
@@ -2090,3 +2114,63 @@ The source delta is +11/-9 (net +2); the boundary test is +69/-0.
 These are applied C-file differences from the parent, not cumulative patch
 context. Job allocation elimination, not a source-line reduction, is the
 verified ownership change in this milestone.
+
+### SE3 Shared Admission and Elimination Inputs (2026-10-01)
+
+#### Subjective (User)
+
+English paraphrase, 2026-10-01: resume the Solve frontier without a second
+near-identical Job/Evidence structure above Term and typed data. Remove duplicated
+ownership, not merely rename its containers. Core computation stays untyped.
+
+#### Objective (Code)
+
+Parent `85f4ccd`, prototype on accepted baseline `e716232`; concurrent user
+Context/IADT edits are excluded from this milestone. Typed occurrences, Contexts
+and maps now anchor their checked receipts directly. The conclusion index and
+its first-proof prefix allocation are deleted. Descriptive constructors ignore
+incoming admission links; only checking publishes them, with owner isolation.
+Match/induction no longer retain a complete second premise array: typed inputs
+supply stable first receipts; sparse selections preserve other exact receipts.
+The contiguous-premise API is removed and all callers use the logical getter.
+No Core tag, pending-state store, acceptance table or wire field is added.
+
+| Completed census | Logical edges, unchanged | Retained edges, before / after | Wrapped aligned arena bytes, before / after |
+| --- | ---: | ---: | ---: |
+| List-09 | 857 | 857 / 849 | 527,088 / 517,680 |
+| General QuickSort Local Sorted | 200,407 | 200,407 / 199,746 | 238,173,696 / 237,598,448 |
+
+All previous census columns match at identical requested budgets; QuickSort still
+uses 809,426 transitions. The allocation wrapper measures cumulative `pg_alloc`
+requests originating outside `graph.c`, including temporary work, not total live
+memory. Its output is unchanged by the diagnostic interposition. QuickSort saves
+575,248 such bytes and 140 requests; this is not a demonstrated wall-time speedup.
+Applied-file deltas are recorded in [the line-count sheet](../src/prototype/solver_inputs/elimination-receipts-lines.tsv):
+implementation +137/-49 (net +88), tests +67/-11 (net +56), audit/build +40/-3
+(net +37). Physical duplication decreased; source lines did not decrease.
+
+#### Assessment
+
+Agent implementation decision: preserve exact receipt choices and alternatives,
+not proof irrelevance. A circular tail link keeps the first receipt stable while
+adding alternatives in order. Admission links do not participate in descriptive
+identity or I/O. Reject the earlier index-dependent compression trial: logical
+premise reads must survive index disposal and not depend on a live typing store.
+Ordinary checking, canonical reuse and foreign-store rejection remain required.
+Constructor receipts still retain family/formation/parameter/instance inputs;
+the general classifier wrapper still duplicates a query result/status. These
+remain work under the main SE1-SE3 list, not new migration tracks.
+
+#### Plan
+
+Fresh assembly reproduces source/tests/checkpoint/audit fixtures exactly. Focused
+O2 tests, the full `check`/examples run, semantic audit and seven checkpoint gates
+pass. ASan/UBSan Core/IADT/Identity/synthesis and source/derivation I/O pass.
+New controls cover exact alternate Match receipts, stable logical inputs after
+index disposal, copied-header admission rejection and no-work reads. The default
+overlay also assembles with user edits; its Core/IADT/synthesis pass separately.
+Full `check-acceptance` finished with exit 0, including both general QuickSort
+providers/partition orders, ordinary-result proofs and invalid controls.
+Public partitions remain exit 2 with the same four parent
+failures and identical TSV; this gate is not waived. Evidence logs and comparison
+files use `/tmp/a-program-elimination-receipts-`. Full SE1-SE5 remain unfinished.

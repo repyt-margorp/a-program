@@ -1,0 +1,22 @@
+--- a/function_graph.c
++++ b/function_graph.c
+@@ -1089,7 +1089,10 @@
+ 	const struct pg_evidence *body = pg_prove_elimination_reindex(t, map, s->body);
+ 	if (!body) return -1;
+ 	size_t count = pg_evidence_premise_count(body) - 6;
+-	const struct pg_evidence *const *branches = pg_evidence_premises(body) + 5;
++	if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) return -1;
++	const struct pg_evidence **branches = malloc(count * sizeof(*branches));
++	if (count && !branches) return -1;
++	for (size_t i = 0; i < count; ++i) branches[i] = pg_evidence_premise(body, i + 5);
+ 	const struct pg_evidence *input = pg_prove_variable(t, scope, pg_evidence_context(scope)->binder);
+ 	if (pg_evidence_rule(body) == PG_INDUCTION_ELIM)
+ 		body = pg_prove_induction(t, pg_evidence_premise(body, 1),
+@@ -1098,6 +1101,7 @@
+ 	else body = pg_prove_match(t, pg_evidence_premise(body, 1),
+ 		pg_evidence_premise(body, 2), input, pg_evidence_premise(body, 4),
+ 		pg_evidence_premise(body, 0), count, branches);
++	free(branches);
+ 	const struct pg_evidence *function = pg_prove_abstract(t, context, scope, body);
+ 	if (!function) return -1;
+ 	s->captured_input = scrutinee;

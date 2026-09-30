@@ -109,3 +109,12 @@
  		while (synthesis.ready) { assert(synthesis.steps < 4000); pg_synthesis_advance(&synthesis, chunk); }
  		for (size_t i = 0; i < count; ++i) assert(pg_synthesis_status(jobs[i]) == PG_SYNTHESIS_DONE);
  		same_snapshot(snapshot, producer_snapshot(&synthesis, count, jobs, typing->graph));
+@@ -1405,7 +1418,7 @@
+ 	size_t count = pg_evidence_premise_count(proof);
+ 	const struct pg_evidence **premises = malloc(count * sizeof(*premises));
+ 	assert(premises);
+-	memcpy(premises, pg_evidence_premises(proof), count * sizeof(*premises));
++	for (size_t i = 0; i < count; ++i) premises[i] = pg_evidence_premise(proof, i);
+ 	premises[rule == PG_CONSTRUCTOR_INTRO ? 0 : count - 1] = formation;
+ 	const struct pg_evidence *result = pg_prove_derivation(typing, rule, &parameters, count, premises);
+ 	free(premises);

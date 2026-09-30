@@ -109,3 +109,7 @@ $(BUILD)/artifact_metrics: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES))
 $(BUILD)/artifact_state_audit: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(wildcard $(ROOT)*.h) $(ARTIFACT_PROTOTYPE)state_audit.c
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ARTIFACT_PROTOTYPE)state_audit.c -o $@
+
+$(BUILD)/artifact_allocation_audit: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(wildcard $(ROOT)*.h) $(ARTIFACT_PROTOTYPE)state_audit.c $(ARTIFACT_PROTOTYPE)allocation_audit.c
+	mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ARTIFACT_PROTOTYPE)state_audit.c $(ARTIFACT_PROTOTYPE)allocation_audit.c -Wl,--wrap=pg_alloc -Wl,--wrap=pg_program_destroy -o $@
