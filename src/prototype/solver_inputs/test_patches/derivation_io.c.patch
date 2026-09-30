@@ -1,5 +1,16 @@
 --- a/derivation_io.c
 +++ b/derivation_io.c
+@@ -513,8 +513,8 @@
+ 	struct pg_synthesis_job *producer, const char *source)
+ {
+ 	struct pg_token token = {.kind = PG_TOKEN_IDENT, .text = "loaded", .length = 6};
+-	const struct pg_source_scope *scope = pg_synthesis_name_job(synthesis,
+-		pg_synthesis_root(synthesis), token, producer);
++	const struct pg_source_scope *scope = pg_synthesis_name(synthesis,
++		pg_synthesis_root(synthesis), token, (struct pg_synthesis_input){.pending = producer});
+ 	assert(scope);
+ 	struct pg_parser parser;
+ 	struct pg_definition definition;
 @@ -1108,7 +1108,6 @@
  		const struct pg_object *binder = roots[2]->premises[0]->parameters.binder;
  		assert(pg_synthesis_type_structure_result(structure) == pg_pi(graph, pg_thunk_type(typing->graph, pending), binder, pending));

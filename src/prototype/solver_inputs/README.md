@@ -84,6 +84,12 @@ the same interface. Checked constructor bodies no longer need completed input
 Jobs. The ordinary polarity lifting and Context checks remain; a Context input
 must actually be a checked Context judgement, not just share its scope pointer.
 Selected checked bodies do not require a pending-rule projection or a new codec.
+Lexical names, lookup and environments use the same direct inputs. Checked leaves
+retain typed-use identity; pending keys remain stable after completion. Source
+export uses its existing DAG key projection to share a checked leaf reached
+directly or through a legacy adapter, avoiding duplicate transport records.
+No new persistence fields are added. Restricted source checkpoints still reject
+direct checked reference capture; their existing pending-owner scope is unchanged.
 
 ### Assessment
 

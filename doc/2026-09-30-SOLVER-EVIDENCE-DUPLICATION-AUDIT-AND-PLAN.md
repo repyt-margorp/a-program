@@ -195,6 +195,13 @@ but this does not require retaining every scheduler frame and forwarding edge.
 Removing forwarding alone previously lost checked-result sharing, so the change
 must preserve that sharing through one actual owner rather than abandon it.
 
+Clarification from the 2026-09-30 code inspection at `910d515`: there is not
+already a separate canonical constraint record underneath every Job. Some Jobs
+are the sole unfinished-operation record. Those require ownership consolidation,
+not deletion followed by a renamed copy. A borrowed result pointer is not itself
+a competing acceptance authority; duplicated progress/validation decisions are
+the concern. Term identity must remain independent of typed-use identity.
+
 The user's frontier model is a viable architectural target: authoritative
 constraints borrow original syntax/typed inputs and solved results; a ready
 frontier references those constraints, not another shadow graph of their inputs
@@ -391,7 +398,7 @@ baseline described above. Concurrent accepted-source edits remain excluded.
 - [x] Migrate body, abstraction and Lambda-body inputs through the same direct
   representation. Checked constructor bodies no longer need an Evidence Job;
   actual polarity lifting, Context validation and Lambda construction remain.
-- [ ] Migrate lexical-name inputs and their lookup/environment/source-transport
+- [x] Migrate lexical-name inputs and their lookup/environment/source-transport
   consumers together. Preserve typed-use identity and stable pending keys;
   do not recreate a completed producer just to retain lexical provenance.
 - [ ] Finish known-family result adapters and other context/IADT
@@ -484,6 +491,57 @@ Public partition testing still fails on reload at 100+100, 1,000+1,000,
 | `definition_checkpoint_test.c` | 21 | 14 | +7 |
 
 Counts follow applied source, excluding patch context and documentation.
+
+### Lexical Name Input Result (2026-09-30)
+
+**Objective (Code):** parent `910d515` plus this prototype, with accepted-source
+snapshot `e716232` excluding concurrent edits. Names, lookup, environments and
+source-reference inputs now borrow checked receipts or pending producers through
+one API. The Job-only name API is removed. Typed-use identity, scope ownership
+and pending keys are preserved. A pending parent Context remains a real
+projection obligation, not grounds to reject an otherwise checked leaf early.
+Source export canonicalizes legacy adapter/direct references through its existing
+DAG key projection. An initial acceptance run exposed duplicate wire producers;
+the correction retains byte-identical step-0 resave, rather than relaxing it.
+No new Core tags, wire fields or owner codecs were introduced.
+
+**Assessment:** QuickSort adapters fall from 652 to 489, total Jobs from 54,631
+to 54,468 and Job allocation bytes from 9,492,808 to 9,475,856. List remains at
+11 adapters, 887 Jobs and 154,648 Job bytes. Steps remain 809,533 / 2,726 and
+typed/Evidence/premise counts are unchanged. Job bytes exclude scopes, indexes
+and other arenas: this is not a total-memory or speedup claim. Restricted source
+checkpoint capture still rejects direct checked references; SE1-SE5 remain open.
+
+**Plan / Results:** focused O2 synthesis/program/source-I/O and seven checkpoint
+targets pass. ASan/UBSan synthesis, IADT, full source-I/O and five source/
+derivation/definition/namespace checkpoint targets pass. Fresh cumulative patch
+application matches all tested source, tests and checkpoint fixtures exactly.
+Final full O2 `check-acceptance` (including `check`) passes, including both LT
+providers, both partition orders and invalid-evidence refusal after reload.
+Public partitions freshly retain four reload failures at 100+100,
+1,000+1,000, 1,600+1,600 and 2,726+0; 0+0 and 10+10 pass.
+Evidence: `/tmp/a-program-name-input-final-acceptance.log`,
+`/tmp/a-program-name-input-checkpoints-final.log`,
+`/tmp/a-program-name-input-asan-checkpoints.log`,
+`/tmp/a-program-name-input-partitions/partitions.tsv` and the List/Quick census
+files `/tmp/a-program-name-input-{list,quick}-census.tsv`.
+
+| Applied-code delta from `910d515` | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `artifact/source.c` | 5 | 3 | +2 |
+| `program.c` | 8 | 8 | 0 |
+| `source_io.c` | 29 | 10 | +19 |
+| `synthesis.c` | 153 | 132 | +21 |
+| `synthesis.h` | 14 | 15 | -1 |
+| `synthesis_source.h` | 6 | 4 | +2 |
+| Implementation total | 215 | 172 | +43 |
+| `tests/derivation_io.c` / `execution.c` / `program.c` | 11 | 11 | 0 |
+| `tests/source_io.c` | 107 | 40 | +67 |
+| `tests/synthesis.c` | 217 | 131 | +86 |
+| `source_checkpoint_test.c` | 12 | 12 | 0 |
+
+Counts exclude cumulative patch context and documentation; this intermediate
+adapter migration is not yet a source-size reduction or ownership completion.
 
 ### Annotation Input Result (2026-09-30)
 

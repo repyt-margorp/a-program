@@ -1,0 +1,29 @@
+--- a/artifact/source.c
++++ b/artifact/source.c
+@@ -100,7 +100,8 @@
+ 			break;
+ 		case REFERENCE:
+ 			if (pg_synthesis_reference_frontier(s, job, &source) != 1) goto done;
+-			r->data[0] = reference(&map, source.producer);
++			if (source.value.checked) goto done;
++			r->data[0] = reference(&map, source.value.pending);
+ 			r->data[1] = reference(&map, source.rule);
+ 			break;
+ 		}
+@@ -221,13 +222,14 @@
+ 	for (size_t i = 0; i < c->count; ++i) {
+ 		const struct source_record *r = &c->records[i];
+ 		if (r->kind == REFERENCE) {
+-			struct pg_reference_frontier view = {resolve(jobs, r->data[0]), resolve(jobs, r->data[1])};
++			struct pg_reference_frontier view = {{.pending = resolve(jobs, r->data[0])}, resolve(jobs, r->data[1])};
+ 			if (r->status == PG_SYNTHESIS_PENDING) {
+ 				if (pg_synthesis_reference_resume(s, jobs[r->job], &view)) return -1;
+ 			} else {
+ 				struct pg_reference_frontier current;
+ 				if (pg_synthesis_reference_frontier(s, jobs[r->job], &current) != 1
+-					|| current.producer != view.producer || current.rule != view.rule) return -1;
++					|| current.value.checked != view.value.checked || current.value.pending != view.value.pending
++					|| current.rule != view.rule) return -1;
+ 			}
+ 			continue;
+ 		}

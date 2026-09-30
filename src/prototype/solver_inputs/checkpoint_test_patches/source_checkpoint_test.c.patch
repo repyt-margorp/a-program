@@ -36,6 +36,15 @@
  		struct pg_synthesis_job *job = (void *)n->key, *child = NULL;
  		const struct pg_source_scope *scope = pg_synthesis_prepared_environment(job);
  		if (scope) add(&prefix, scope->registration);
+@@ -72,7 +79,7 @@
+ 		if (pg_synthesis_literal_frontier(&p->synthesis, job, &child) == 1) add(&roots, child);
+ 		struct pg_reference_frontier reference;
+ 		if (pg_synthesis_reference_frontier(&p->synthesis, job, &reference) == 1) {
+-			add(&prefix, reference.producer);
++			add(&prefix, reference.value.pending);
+ 			add(&roots, reference.rule);
+ 		}
+ 	}
 @@ -84,10 +91,9 @@
  	for (const struct pg_dag_node *n = prefix.first; n; n = n->next) {
  		struct pg_synthesis_job *job = (void *)n->key;
@@ -118,7 +127,13 @@
  	c.jobs = mapping;
  	assert(!pg_artifact_source_prepare(&p->synthesis, c.source, c.count, c.jobs));
  	assert(pg_artifact_source_attach(&p->synthesis, c.source, c.count, c.jobs));
-@@ -488,7 +498,7 @@
+@@ -483,12 +493,12 @@
+ 		}
+ 		struct pg_synthesis_job *use = pg_synthesis_request(s, scope, syntax);
+ 		struct pg_reference_frontier view = {0};
+-		assert(pg_synthesis_reference_frontier(s, use, &view) == 1 && !view.producer && !view.rule);
++		assert(pg_synthesis_reference_frontier(s, use, &view) == 1 && !view.value.pending && !view.rule);
+ 		assert(!pg_synthesis_reference_resume(s, use, &view));
  		view.rule = other->root;
  		assert(pg_synthesis_reference_resume(s, use, &view));
  		assert(pg_synthesis_reference_frontier(&other->synthesis, use, &view) == -1);
@@ -127,30 +142,48 @@
  		assert(pg_synthesis_reference_resume(s, p->root, &view)); /* No lexical n here. */
  		size_t proofs = p->typing.proofs.count;
  		int status = pg_synthesis_reference_resume(s, use, &view);
-@@ -511,12 +521,12 @@
- 		struct pg_synthesis_job *producer = pg_synthesis_evidence(s, pg_prove_universe(&p->typing, context, 0));
- 		scope = pg_synthesis_name_job(s, scope, syntax->token, producer);
+@@ -508,22 +518,22 @@
+ 		const struct pg_syntax *syntax;
+ 		assert(!pg_synthesis_source_input(s, p->root, &scope, &syntax));
+ 		const struct pg_evidence *context = pg_synthesis_scope_context(scope);
+-		struct pg_synthesis_job *producer = pg_synthesis_evidence(s, pg_prove_universe(&p->typing, context, 0));
+-		scope = pg_synthesis_name_job(s, scope, syntax->token, producer);
++		const struct pg_evidence *proof = pg_prove_universe(&p->typing, context, 0);
++		scope = pg_synthesis_name(s, scope, syntax->token, (struct pg_synthesis_input){.checked = proof});
  		struct pg_synthesis_job *use = pg_synthesis_request(s, scope, syntax);
 -		struct pg_synthesis_job *rule = pg_synthesis_plain_rule(s, PG_CONTEXT_PROJECTION, NULL, 2,
 -			(struct pg_synthesis_job *[]){scope->context_job, producer});
-+		struct pg_synthesis_job *rule = pg_synthesis_plain_rule_inputs(s, PG_CONTEXT_PROJECTION, NULL, 2,
-+			(struct pg_synthesis_input[]){scope->context, {.pending = producer}});
- 		struct pg_reference_frontier view = {producer, NULL};
- 		assert(pg_synthesis_reference_resume(s, use, &view)); /* Producer without rule. */
+-		struct pg_reference_frontier view = {producer, NULL};
+-		assert(pg_synthesis_reference_resume(s, use, &view)); /* Producer without rule. */
 -		view.rule = wrong == 2 ? scope->context_job : rule;
 -		if (wrong == 1) view.producer = scope->context_job;
-+		view.rule = wrong == 2 ? producer : rule;
-+		if (wrong == 1) view.producer = rule;
++		struct pg_synthesis_job *rule = pg_synthesis_plain_rule_inputs(s, PG_CONTEXT_PROJECTION, NULL, 2,
++			(struct pg_synthesis_input[]){scope->context, {.checked = proof}});
++		struct pg_reference_frontier view = {{.checked = proof}, NULL};
++		assert(pg_synthesis_reference_resume(s, use, &view)); /* Input without rule. */
++		view.rule = wrong == 2 ? p->root : rule;
++		if (wrong == 1) view.value = (struct pg_synthesis_input){.pending = rule};
  		size_t proofs = p->typing.proofs.count;
  		int status = pg_synthesis_reference_resume(s, use, &view);
  		assert(wrong ? status != 0 : status == 0);
-@@ -538,8 +548,8 @@
+ 		assert(!s->steps && proofs == p->typing.proofs.count && !use->result);
+ 		if (!wrong) {
+ 			advance(s, 1000);
+-			assert(use->result == producer->result);
++			assert(use->result == proof);
+ 		}
+ 		pg_program_destroy(p);
+ 	}
+@@ -536,10 +546,10 @@
+ 	struct pg_synthesis_job *module = pg_program_source(p, scope, text, strlen(text), &p->parser);
+ 	struct pg_synthesis_job *producer = pg_program_select_name(p, module, syntax->token);
  	assert(producer && producer->status == PG_SYNTHESIS_PENDING);
- 	scope = pg_synthesis_name_job(s, scope, syntax->token, producer);
+-	scope = pg_synthesis_name_job(s, scope, syntax->token, producer);
++	scope = pg_synthesis_name(s, scope, syntax->token, (struct pg_synthesis_input){.pending = producer});
  	struct pg_synthesis_job *use = pg_synthesis_request(s, scope, syntax);
 -	struct pg_reference_frontier view = {producer, pg_synthesis_plain_rule(s, PG_CONTEXT_PROJECTION, NULL, 2,
 -		(struct pg_synthesis_job *[]){scope->context_job, producer})};
-+	struct pg_reference_frontier view = {producer, pg_synthesis_plain_rule_inputs(s, PG_CONTEXT_PROJECTION, NULL, 2,
++	struct pg_reference_frontier view = {{.pending = producer}, pg_synthesis_plain_rule_inputs(s, PG_CONTEXT_PROJECTION, NULL, 2,
 +		(struct pg_synthesis_input[]){scope->context, {.pending = producer}})};
  	size_t proofs = p->typing.proofs.count, jobs = s->jobs.count;
  	assert(pg_synthesis_reference_resume(s, use, &view));

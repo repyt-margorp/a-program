@@ -73,3 +73,53 @@
  	assert(!pg_synthesis_normalize_jobs(&p->synthesis, context, p->root, (enum pg_reduction_kind)99));
  	pg_program_destroy(p);
  }
+@@ -322,8 +356,8 @@
+ 	assert(type && pg_evidence_classifier(result) == pg_evidence_subject(type)->core);
+ 	/* Resolve labels in this declaration, never hard-code constructor ordinals
+ 	 * or accept an erased shape belonging to a different nominal type. */
+-	const struct pg_source_scope *scope = pg_synthesis_name_job(&program->synthesis,
+-		program->scope, name, type_job);
++	const struct pg_source_scope *scope = pg_synthesis_name(&program->synthesis,
++		program->scope, name, (struct pg_synthesis_input){.pending = type_job});
+ 	char expression[256];
+ 	int length = snprintf(expression, sizeof(expression), "expected:=%s.%s;", type_name, base_name);
+ 	assert(length > 0 && (size_t)length < sizeof(expression));
+@@ -660,7 +694,7 @@
+ 	/* Imports are in the client's lexical environment, not its public exports. */
+ 	const struct pg_source_scope *scope = pg_synthesis_prepared_environment(p->root);
+ 	struct pg_synthesis_job *subject = pg_synthesis_named_input(&p->synthesis, scope,
+-		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = name, .length = strlen(name)});
++		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = name, .length = strlen(name)}).pending;
+ 	assert(subject);
+ 	const struct pg_evidence *function = pg_synthesis_result(subject);
+ 	struct witness_fixture *fixtures = NULL;
+@@ -671,7 +705,7 @@
+ 		int stored = *argument == '&';
+ 		if (stored) ++argument;
+ 		subject = pg_synthesis_named_input(&p->synthesis, scope,
+-			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = argument, .length = strlen(argument)});
++			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = argument, .length = strlen(argument)}).pending;
+ 		assert(subject);
+ 		const struct pg_evidence *value = stored ? pg_synthesis_result(subject) : evaluated_value(p, subject);
+ 		assert(value);
+@@ -829,7 +863,7 @@
+ 		assert(origins[i] && !pg_typed_query_steps(origins[i]));
+ 	}
+ 	const struct pg_source_scope *delayed = pg_synthesis_name(&p->synthesis, p->scope,
+-		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "delayed", .length = 7}, wrapped);
++		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "delayed", .length = 7}, (struct pg_synthesis_input){.checked = wrapped});
+ 	const char *inspection = "relation:=@delayed;";
+ 	struct pg_parser inspection_parser;
+ 	struct pg_synthesis_job *inspected = pg_program_source(p, delayed, inspection,
+@@ -852,9 +886,9 @@
+ 	assert(pg_function_graph_witness(&delayed_graph));
+ 	pg_function_graph_destroy(&delayed_graph);
+ 	const struct pg_source_scope *names = pg_synthesis_name(&p->synthesis, p->scope,
+-		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "original", .length = 8}, raw);
++		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "original", .length = 8}, (struct pg_synthesis_input){.checked = raw});
+ 	names = pg_synthesis_name(&p->synthesis, names,
+-		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "alternate", .length = 9}, alternate);
++		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "alternate", .length = 9}, (struct pg_synthesis_input){.checked = alternate});
+ 	const char *source = "left:=@original;right:=@alternate;leftBase:=(@original).nil;rightBase:=(@alternate).nil;";
+ 	struct pg_parser parser;
+ 	struct pg_synthesis_job *module = pg_program_source(p, names, source, strlen(source), &parser);

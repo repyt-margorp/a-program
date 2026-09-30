@@ -27,7 +27,7 @@
  		}
  		const struct pg_object *function;
  		for (size_t i = 0; (function = pg_host_function(i)); ++i) {
-@@ -37,14 +38,14 @@
+@@ -37,21 +38,21 @@
  			if (domain != host) continue;
  			if (!arity || arity > 2) return NULL;
  			struct pg_derivation_input result_type = {.rule = PG_HOST_TYPE_FORM, .count = 1, .parameters.constant = result};
@@ -45,7 +45,16 @@
  			}
  			struct pg_derivation_input intro = {.rule = PG_HOST_FUNCTION_INTRO, .count = 1,
  				.parameters.constant = function};
-@@ -100,11 +101,12 @@
+ 			struct pg_synthesis_job *value = pg_synthesis_rule(&p->synthesis, &intro, &signature, NULL, NULL);
+ 			const char *name = pg_host_function_name(function);
+-			scope = pg_synthesis_name_job(&p->synthesis, scope,
+-				(struct pg_token){.kind = PG_TOKEN_IDENT, .text = name, .length = strlen(name), .text_length = strlen(name)}, value);
++			scope = pg_synthesis_name(&p->synthesis, scope,
++				(struct pg_token){.kind = PG_TOKEN_IDENT, .text = name, .length = strlen(name), .text_length = strlen(name)}, (struct pg_synthesis_input){.pending = value});
+ 			if (!scope) return NULL;
+ 		}
+ 	}
+@@ -100,24 +101,26 @@
  	const struct pg_source_scope *hosts = program->scope;
  	const char *names[] = {"Int", "Int32", "Int64", "Text"};
  	const struct pg_evidence *empty = pg_prove_empty_context(&program->typing);
@@ -59,21 +68,34 @@
 +		struct pg_synthesis_job *type = pg_synthesis_rule_inputs(&program->synthesis, &input, &context, NULL, NULL);
  		struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = names[i],
  			.length = strlen(names[i]), .text_length = strlen(names[i])};
- 		hosts = pg_synthesis_name_job(&program->synthesis, hosts, name, type);
-@@ -114,10 +116,11 @@
+-		hosts = pg_synthesis_name_job(&program->synthesis, hosts, name, type);
++		hosts = pg_synthesis_name(&program->synthesis, hosts, name, (struct pg_synthesis_input){.pending = type});
+ 		if (!hosts) goto fail;
+ 	}
+ 	hosts = host_functions(program, hosts, context);
  	if (!hosts) goto fail;
  	struct pg_derivation_input text_input = {.rule = PG_HOST_TYPE_FORM, .count = 1,
  		.parameters.constant = pg_host_type("Text")};
 -	struct pg_synthesis_job *text = pg_synthesis_rule(&program->synthesis, &text_input, &context, NULL, NULL);
+-	hosts = pg_synthesis_name_job(&program->synthesis, hosts,
 +	struct pg_synthesis_job *text = pg_synthesis_rule_inputs(&program->synthesis, &text_input, &context, NULL, NULL);
- 	hosts = pg_synthesis_name_job(&program->synthesis, hosts,
++	hosts = pg_synthesis_name(&program->synthesis, hosts,
  		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "print", .length = 5, .text_length = 5},
 -		pg_synthesis_operation_jobs(&program->synthesis, pg_host_print(&program->graph), text, text));
-+		pg_synthesis_operation_request(&program->synthesis, pg_host_print(&program->graph),
-+			(struct pg_synthesis_input){.pending = text}, (struct pg_synthesis_input){.pending = text}));
++		(struct pg_synthesis_input){.pending = pg_synthesis_operation_request(&program->synthesis, pg_host_print(&program->graph),
++			(struct pg_synthesis_input){.pending = text}, (struct pg_synthesis_input){.pending = text})});
  	if (!hosts) goto fail;
  	program->scope = pg_synthesis_namespace(&program->synthesis, program->scope,
  		(struct pg_token){.kind = '#'}, hosts);
+@@ -185,7 +188,7 @@
+ 		*selection = (struct pg_syntax){.kind = PG_SYNTAX_QUALIFIED, .left = module_reference, .right = member};
+ 		struct pg_synthesis_job *selected = pg_synthesis_request(&program->synthesis, scope, selection);
+ 		if (!selected) return NULL;
+-		parent = pg_synthesis_name_job(&program->synthesis, parent, item->name, selected);
++		parent = pg_synthesis_name(&program->synthesis, parent, item->name, (struct pg_synthesis_input){.pending = selected});
+ 		if (!parent) return NULL;
+ 	}
+ 	entry->result = parent;
 @@ -200,9 +203,9 @@
  	const struct pg_evidence *context = pg_prove_empty_context(&program->typing);
  	if (!context) return NULL;
@@ -87,6 +109,15 @@
  }
  
  struct pg_synthesis_job *pg_program_select_name(struct pg_program *program,
+@@ -211,7 +214,7 @@
+ 	if (!program) return NULL;
+ 	const struct pg_source_scope *exports = pg_program_exports(program,
+ 		pg_synthesis_root(&program->synthesis), module);
+-	return pg_synthesis_named_input(&program->synthesis, exports, name);
++	return pg_synthesis_named_input(&program->synthesis, exports, name).pending;
+ }
+ 
+ struct pg_synthesis_job *pg_program_evaluate_name(struct pg_program *program,
 @@ -219,9 +222,9 @@
  {
  	struct pg_synthesis_job *subject = pg_program_select_name(program, module, name);
