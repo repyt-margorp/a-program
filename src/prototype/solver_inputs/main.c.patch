@@ -1,0 +1,34 @@
+--- a/main.c
++++ b/main.c
+@@ -14,7 +14,7 @@
+ 
+ struct root_list {
+ 	/* Ordered user selections; aliases are allowed, jobs remain interned. */
+-	struct pg_synthesis_job **items;
++	struct pg_synthesis_input *items;
+ 	size_t count, capacity;
+ };
+ 
+@@ -24,11 +24,11 @@
+ 	if (roots->count == roots->capacity) {
+ 		if (roots->capacity > SIZE_MAX / sizeof(*roots->items) / 2) return -1;
+ 		size_t capacity = roots->capacity ? roots->capacity * 2 : 8;
+-		struct pg_synthesis_job **items = realloc(roots->items, capacity * sizeof(*items));
++		struct pg_synthesis_input *items = realloc(roots->items, capacity * sizeof(*items));
+ 		if (!items) return -1;
+ 		roots->items = items; roots->capacity = capacity;
+ 	}
+-	roots->items[roots->count++] = job;
++	roots->items[roots->count++] = (struct pg_synthesis_input){.pending = job};
+ 	return 0;
+ }
+ 
+@@ -203,7 +203,7 @@
+ 				fprintf(stderr, "root index must be in 1..%zu\n", roots->count);
+ 				continue;
+ 			}
+-			program->root = roots->items[index - 1];
++			program->root = roots->items[index - 1].pending;
+ 			report(stdout, program, program->root);
+ 			continue;
+ 		}

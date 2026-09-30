@@ -1,0 +1,13 @@
+--- a/metrics.c
++++ b/metrics.c
+@@ -258,7 +258,9 @@
+ 	FILE *file = tmpfile();
+ 	assert(file);
+ 	measuring = 1;
+-	assert(!pg_sources_write(file, &program->synthesis, count, roots));
++	struct pg_synthesis_input export_inputs_0[(count) + 1];
++	for (size_t i = 0; i < (count); ++i) export_inputs_0[i] = (struct pg_synthesis_input){.pending = (roots)[i]};
++	assert(!pg_sources_write(file, &program->synthesis, count, export_inputs_0));
+ 	printf("image_bytes=%ld\n", ftell(file));
+ 	assert(!program->synthesis.steps && nodes == program->graph.terms.count);
+ 	assert(occurrences == program->typing.occurrences.count && proofs == program->typing.proofs.count);

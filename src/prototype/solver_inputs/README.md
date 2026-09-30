@@ -108,6 +108,9 @@ Lexical binding now has one checked/pending Context API; the Job-only binding
 entry point is removed. IH/graph associations borrow known Contexts directly.
 Only unavailable inputs require a binding-validation request; an existing one
 keeps its identity after completion. Source transport uses the same inputs.
+Source/artifact writer roots and CLI selections borrow that same input directly;
+there is no Job-only writer or completed Job for a known selected result.
+Reading restores ordinary unchecked producers without Solve or acceptance.
 
 ### Assessment
 
@@ -143,3 +146,6 @@ make -f src/prototype/artifact_persistence/build.mk \
 contains unrelated edits. Keep that baseline explicit in verification reports.
 The optional checkpoint-test directory adapts assertions to the new premise
 representation without changing the artifact-only candidate's tests.
+For semantic/metrics audit targets, use `ARTIFACT_TESTS=$overlay/artifact_tests/`
+with the generated candidate's migrated fixtures. This changes test selection,
+not the compiler or source-file protocol.

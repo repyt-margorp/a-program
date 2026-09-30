@@ -1,5 +1,6 @@
 ARTIFACT_PROTOTYPE := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 CHECKPOINT_TESTS ?= $(ARTIFACT_PROTOTYPE)
+ARTIFACT_TESTS ?= $(ARTIFACT_PROTOTYPE)
 OVERLAY ?= /tmp/a-program-artifact-persistence
 include $(OVERLAY)/src/Makefile
 
@@ -93,17 +94,17 @@ check-artifact-sorting: $(BUILD)/pointer-check $(BUILD)/program_test
 	bash $(ARTIFACT_PROTOTYPE)../finite_sorting/tree-check.sh $(BUILD)/pointer-check $(BUILD)/program_test
 	bash $(ARTIFACT_PROTOTYPE)../finite_sorting/bubble-check.sh $(BUILD)/pointer-check $(BUILD)/program_test
 
-$(BUILD)/artifact_semantic_test: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(wildcard $(ROOT)*.h $(ROOT)artifact/*.h) $(ARTIFACT_PROTOTYPE)semantic_test.c $(ARTIFACT_PROTOTYPE)semantic_consumer.c
+$(BUILD)/artifact_semantic_test: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(wildcard $(ROOT)*.h $(ROOT)artifact/*.h) $(ARTIFACT_TESTS)semantic_test.c $(ARTIFACT_TESTS)semantic_consumer.c
 	mkdir -p $(BUILD)
-	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ARTIFACT_PROTOTYPE)semantic_test.c $(ARTIFACT_PROTOTYPE)semantic_consumer.c -Wl,--wrap=pg_synthesis_advance -Wl,--wrap=pg_whnf_advance -Wl,--wrap=pg_substitution_advance -Wl,--wrap=pg_effect_inference_advance -o $@
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ARTIFACT_TESTS)semantic_test.c $(ARTIFACT_TESTS)semantic_consumer.c -Wl,--wrap=pg_synthesis_advance -Wl,--wrap=pg_whnf_advance -Wl,--wrap=pg_substitution_advance -Wl,--wrap=pg_effect_inference_advance -o $@
 
 $(BUILD)/artifact_transport_test: $(SOURCES) $(ROOT)graph_io.c $(ROOT)context_io.c $(ROOT)occurrence_io.c $(ROOT)wire.c $(wildcard $(ROOT)*.h $(ROOT)artifact/*.h) $(ARTIFACT_PROTOTYPE)transport_test.c
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(ROOT)graph_io.c $(ROOT)context_io.c $(ROOT)occurrence_io.c $(ROOT)wire.c $(ARTIFACT_PROTOTYPE)transport_test.c -Wl,--wrap=pg_whnf_advance -Wl,--wrap=pg_substitution_advance -o $@
 
-$(BUILD)/artifact_metrics: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(wildcard $(ROOT)*.h $(ROOT)artifact/*.h) $(ARTIFACT_PROTOTYPE)metrics.c
+$(BUILD)/artifact_metrics: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(wildcard $(ROOT)*.h $(ROOT)artifact/*.h) $(ARTIFACT_TESTS)metrics.c
 	mkdir -p $(BUILD)
-	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ARTIFACT_PROTOTYPE)metrics.c -Wl,--wrap=pg_graph_write_descriptors -Wl,--wrap=pg_occurrences_write_descriptors -Wl,--wrap=pg_contexts_write_descriptors -Wl,--wrap=pg_retained_write_semantic_with -Wl,--wrap=pg_synthesis_advance -Wl,--wrap=pg_whnf_advance -Wl,--wrap=pg_substitution_advance -Wl,--wrap=pg_effect_inference_advance -o $@
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ARTIFACT_TESTS)metrics.c -Wl,--wrap=pg_graph_write_descriptors -Wl,--wrap=pg_occurrences_write_descriptors -Wl,--wrap=pg_contexts_write_descriptors -Wl,--wrap=pg_retained_write_semantic_with -Wl,--wrap=pg_synthesis_advance -Wl,--wrap=pg_whnf_advance -Wl,--wrap=pg_substitution_advance -Wl,--wrap=pg_effect_inference_advance -o $@
 
 $(BUILD)/artifact_state_audit: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(wildcard $(ROOT)*.h) $(ARTIFACT_PROTOTYPE)state_audit.c
 	mkdir -p $(BUILD)

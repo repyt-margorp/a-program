@@ -1,0 +1,9 @@
+--- a/file.h
++++ b/file.h
+@@ -38,5 +38,5 @@
+ /* Atomically replace path only after successful serialization and close. */
+ enum pg_artifact_contents { PG_ARTIFACT_MATERIALIZED, PG_ARTIFACT_INPUTS };
+ int pg_artifact_save_file(const char *path, const struct pg_program *program,
+-	size_t count, struct pg_synthesis_job *const *roots, enum pg_artifact_contents contents);
++	size_t count, const struct pg_synthesis_input *roots, enum pg_artifact_contents contents);
+ #endif

@@ -1,0 +1,15 @@
+--- a/file.c
++++ b/file.c
+@@ -92,10 +92,10 @@
+ }
+ 
+ int pg_artifact_save_file(const char *path, const struct pg_program *program,
+-	size_t count, struct pg_synthesis_job *const *roots, enum pg_artifact_contents contents)
++	size_t count, const struct pg_synthesis_input *roots, enum pg_artifact_contents contents)
+ {
+ 	if (!path || !program) return -1;
+-	int (*write_image)(FILE *, const struct pg_synthesis *, size_t, struct pg_synthesis_job *const *);
++	int (*write_image)(FILE *, const struct pg_synthesis *, size_t, const struct pg_synthesis_input *);
+ 	switch (contents) {
+ 	case PG_ARTIFACT_MATERIALIZED: write_image = pg_sources_write; break;
+ 	case PG_ARTIFACT_INPUTS: write_image = pg_sources_write_inputs; break;

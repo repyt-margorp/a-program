@@ -68,7 +68,18 @@
  		assert(c.rules);
  		c.count = pg_artifact_derivations_job_count(c.rules);
  		c.inputs = pg_artifact_derivations_inputs(c.rules, &c.input_count);
-@@ -174,6 +181,7 @@
+@@ -138,7 +145,9 @@
+ 	struct pg_program *p = c->program;
+ 	size_t terms = p->graph.terms.count, proofs = p->typing.proofs.count, jobs = p->synthesis.jobs.count;
+ 	FILE *file = tmpfile();
+-	assert(file && !pg_sources_write_with(file, &p->synthesis, c->source_count, c->sources, 0, write_continuation, c));
++	struct pg_synthesis_input export_inputs_0[(c->source_count) + 1];
++	for (size_t i = 0; i < (c->source_count); ++i) export_inputs_0[i] = (struct pg_synthesis_input){.pending = (c->sources)[i]};
++	assert(file && !pg_sources_write_with(file, &p->synthesis, c->source_count, export_inputs_0, 0, write_continuation, c));
+ 	assert(terms == p->graph.terms.count && proofs == p->typing.proofs.count && jobs == p->synthesis.jobs.count);
+ 	rewind(file);
+ 	return file;
+@@ -174,6 +183,7 @@
  	c.program = pg_sources_read_with(file, 100000, &c.source_count, &sources, read_continuation, &c);
  	struct pg_program *p = c.program;
  	assert(p && !p->synthesis.steps && p->typing.proofs.count == 1);
@@ -76,7 +87,7 @@
  	c.sources = pg_wire_array(&p->graph, c.source_count, sizeof(*c.sources));
  	assert(c.sources); memcpy(c.sources, sources, c.source_count * sizeof(*c.sources));
  	size_t n = c.prefix_count;
-@@ -181,8 +189,7 @@
+@@ -181,8 +191,7 @@
  	assert(c.jobs);
  	for (size_t i = 0; i < n; ++i) {
  		uint64_t tag = c.recipes[2 * i], index = c.recipes[2 * i + 1];
@@ -86,7 +97,7 @@
  		else assert(tag == 1);
  	}
  	for (size_t i = 0; i < n; ++i) if (c.recipes[2 * i] == 1) {
-@@ -201,8 +208,9 @@
+@@ -201,8 +210,9 @@
  	struct pg_synthesis *s = &p->synthesis;
  	if (c->rules) {
  		struct pg_synthesis_job **mapping;
@@ -97,7 +108,7 @@
  		c->jobs = mapping;
  	}
  	assert(!pg_artifact_source_prepare(s, c->source, c->count, c->jobs));
-@@ -221,7 +229,8 @@
+@@ -221,7 +231,8 @@
  		verification += spent;
  	}
  	solving = 0;
@@ -107,7 +118,45 @@
  	assert(!pg_artifact_source_attach(s, c->source, c->count, c->jobs));
  	assert(!pg_artifact_schedule_attach(s, c->schedule, c->count, c->jobs));
  	free(targets);
-@@ -419,7 +428,7 @@
+@@ -295,8 +306,8 @@
+ 	assert(headers[0]->source != headers[1]->source);
+ 	struct shared_inputs out = {3, headers, 0}, in = {0};
+ 	FILE *file = tmpfile(), *plain = tmpfile();
+-	assert(file && plain && !pg_sources_write_with(file, &p->synthesis, 3, jobs, 1, write_shared, &out));
+-	assert(!pg_sources_write(plain, &p->synthesis, 3, jobs));
++	assert(file && plain && !pg_sources_write_with(file, &p->synthesis, 3, (struct pg_synthesis_input[]){{.pending = (jobs)[0]}, {.pending = (jobs)[1]}, {.pending = (jobs)[2]}}, 1, write_shared, &out));
++	assert(!pg_sources_write(plain, &p->synthesis, 3, (struct pg_synthesis_input[]){{.pending = (jobs)[0]}, {.pending = (jobs)[1]}, {.pending = (jobs)[2]}}));
+ 	pg_program_destroy(p);
+ 	rewind(file);
+ 	size_t count = 0;
+@@ -316,11 +327,15 @@
+ 	}
+ 	assert(in.headers[0]->source != in.headers[1]->source);
+ 	FILE *copy = tmpfile();
+-	assert(copy && !pg_sources_write_with(copy, &p->synthesis, count, roots, 1, write_shared, &in));
++	struct pg_synthesis_input export_inputs_1[(count) + 1];
++	for (size_t i = 0; i < (count); ++i) export_inputs_1[i] = (struct pg_synthesis_input){.pending = (roots)[i]};
++	assert(copy && !pg_sources_write_with(copy, &p->synthesis, count, export_inputs_1, 1, write_shared, &in));
+ 	equal(file, copy);
+ 	FILE *extra = tmpfile();
+ 	in.trailing = 1;
+-	assert(extra && !pg_sources_write_with(extra, &p->synthesis, count, roots, 1, write_shared, &in));
++	struct pg_synthesis_input export_inputs_2[(count) + 1];
++	for (size_t i = 0; i < (count); ++i) export_inputs_2[i] = (struct pg_synthesis_input){.pending = (roots)[i]};
++	assert(extra && !pg_sources_write_with(extra, &p->synthesis, count, export_inputs_2, 1, write_shared, &in));
+ 	rewind(extra);
+ 	struct shared_inputs bad = {0};
+ 	size_t absent = 0;
+@@ -340,7 +355,7 @@
+ {
+ 	assert(p->root->status == PG_SYNTHESIS_DONE && !p->synthesis.ready);
+ 	FILE *file = tmpfile();
+-	assert(file && !pg_sources_write(file, &p->synthesis, 1, &p->root));
++	assert(file && !pg_sources_write(file, &p->synthesis, 1, (struct pg_synthesis_input[]){{.pending = p->root}}));
+ 	return file;
+ }
+ 
+@@ -419,7 +434,7 @@
  	struct pg_synthesis_job *rule = NULL;
  	assert(pg_synthesis_literal_frontier(s, p->root, &rule) == 1 && !rule);
  	assert(!pg_synthesis_prepare_literal(s, other->root));
@@ -116,7 +165,7 @@
  	assert(pg_synthesis_literal_frontier(&other->synthesis, p->root, &rule) == -1);
  	struct pg_synthesis_job *jobs[] = {p->root, p->root};
  	assert(!pg_artifact_source_capture(&p->graph, s, 2, jobs, 1, &p->root));
-@@ -444,8 +453,9 @@
+@@ -444,8 +459,9 @@
  	pg_program_destroy(p); pg_program_destroy(other);
  	c = read_image(file); p = c.program;
  	struct pg_synthesis_job **mapping;
@@ -127,7 +176,7 @@
  	c.jobs = mapping;
  	assert(!pg_artifact_source_prepare(&p->synthesis, c.source, c.count, c.jobs));
  	assert(pg_artifact_source_attach(&p->synthesis, c.source, c.count, c.jobs));
-@@ -478,17 +488,17 @@
+@@ -478,17 +494,17 @@
  			const struct pg_evidence *context = pg_synthesis_scope_context(scope);
  			const struct pg_evidence *extended = pg_prove_context_extension(&p->typing, context,
  				binders[i], pg_prove_universe(&p->typing, context, 0));
@@ -148,7 +197,7 @@
  		assert(pg_synthesis_reference_resume(s, p->root, &view)); /* No lexical n here. */
  		size_t proofs = p->typing.proofs.count;
  		int status = pg_synthesis_reference_resume(s, use, &view);
-@@ -508,22 +518,22 @@
+@@ -508,22 +524,22 @@
  		const struct pg_syntax *syntax;
  		assert(!pg_synthesis_source_input(s, p->root, &scope, &syntax));
  		const struct pg_evidence *context = pg_synthesis_scope_context(scope);
@@ -180,7 +229,7 @@
  		}
  		pg_program_destroy(p);
  	}
-@@ -536,10 +546,10 @@
+@@ -536,10 +552,10 @@
  	struct pg_synthesis_job *module = pg_program_source(p, scope, text, strlen(text), &p->parser);
  	struct pg_synthesis_job *producer = pg_program_select_name(p, module, syntax->token);
  	assert(producer && producer->status == PG_SYNTHESIS_PENDING);

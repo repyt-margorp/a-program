@@ -1,0 +1,11 @@
+--- a/seed.c
++++ b/seed.c
+@@ -131,7 +131,7 @@
+ 	assert(file && p);
+ 	const struct pg_syntax malformed = {.kind = PG_SYNTAX_APPLICATION};
+ 	struct pg_synthesis_job *root = pg_synthesis_request(&p->synthesis, p->scope, &malformed);
+-	assert(root && !pg_sources_write(file, &p->synthesis, 1, &root));
++	assert(root && !pg_sources_write(file, &p->synthesis, 1, (struct pg_synthesis_input[]){{.pending = root}}));
+ 	rewind(file);
+ 	assert(!pg_seed_read(file, 4096));
+ 	assert(!fclose(file));

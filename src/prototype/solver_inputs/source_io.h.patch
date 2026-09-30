@@ -1,0 +1,30 @@
+--- a/source_io.h
++++ b/source_io.h
+@@ -77,14 +77,16 @@
+  * it never grants kernel acceptance. Unsupported producer/scope
+  * kinds fail explicitly instead of being omitted. Source roots are recomputed;
+  * retaining annotation recipes is not a complete CHECKPOINT codec.
++ * Roots borrow the same checked/pending inputs as ordinary Solve consumers.
++ * Checked roots allocate no scheduler node; they export unaccepted rule inputs.
+  * Streams are borrowed. */
+ int pg_sources_write(FILE *file, const struct pg_synthesis *synthesis,
+-	size_t count, struct pg_synthesis_job *const *roots);
++	size_t count, const struct pg_synthesis_input *roots);
+ /* Same format and writer, but omit materialized producer results and completion. Preserve
+  * reconstruction inputs/obligations; solving this image restarts computation.
+  * This explicit recompute profile is not a progress-preserving checkpoint. */
+ int pg_sources_write_inputs(FILE *file, const struct pg_synthesis *synthesis,
+-	size_t count, struct pg_synthesis_job *const *roots);
++	size_t count, const struct pg_synthesis_input *roots);
+ /* Owns the reconstructed stores in the returned program. root is the first
+  * selected job, or NULL for no selections. Additional roots are graph-owned.
+  * Source producers retain their own restored lexical environments. The Program
+@@ -106,7 +108,7 @@
+  * The returned Program owns restored terms; loading performs no Solve. */
+ struct pg_graph_codec;
+ int pg_sources_write_with(FILE *file, const struct pg_synthesis *synthesis,
+-	size_t count, struct pg_synthesis_job *const *roots, int materialized,
++	size_t count, const struct pg_synthesis_input *roots, int materialized,
+ 	int (*continuation)(FILE *, const struct pg_graph_codec *, void *, void *), void *owner);
+ struct pg_program *pg_sources_read_with(FILE *file, size_t limit,
+ 	size_t *count, struct pg_synthesis_job *const **roots,

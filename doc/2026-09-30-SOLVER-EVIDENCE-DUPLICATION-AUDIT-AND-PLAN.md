@@ -416,10 +416,16 @@ baseline described above. Concurrent accepted-source edits remain excluded.
 - [x] Verify index-result/transport and constant-motive direct inputs together
   with checked-target structural projection and source consumers. See the
   transport milestone below; full acceptance of the pending-Context fix passes.
-- [ ] Remove `EVIDENCE_JOB`, test callers and source-root adapter recognition,
-  including the Job-only source-writer root contract. Checked roots must use
-  the same borrowed inputs, not a replacement completed worker. Reading may
-  still return real unchecked producers. Then remove duplicated query scheduling.
+- [x] Finish direct source/artifact-writer roots, CLI selections and their I/O,
+  checkpoint and audit-test consumers. See the root-input milestone below;
+  full acceptance, focused, semantic and checkpoint gates pass.
+- [ ] Remove `EVIDENCE_JOB`, test callers and remaining adapter recognition.
+  Checked roots must use the same borrowed inputs, not a replacement completed
+  worker. Migrate the remaining sequencing/result/carrier operands and remove
+  Job-only rule/expect/reindex/normalization aliases with their callers; tests
+  must use real pending owners where suspension is the property under test.
+  Reading may still return real unchecked producers. Then remove duplicated
+  query scheduling.
   The remaining adapter recognition is temporary, not the final architecture.
 
 ### Effect Owner Result (2026-09-30)
@@ -1437,3 +1443,81 @@ checks still fail at 100+100, 1000+1000, 1600+1600 and completed+0 (2725+0);
 
 Counts exclude patch context/documentation. Logs and census files use the prefix
 `/tmp/a-program-transport-input-`; partition details are `partitions/partitions.tsv`.
+
+### SE1 Root Inputs (2026-10-01)
+
+#### Subjective (User)
+
+2026-10-01, English paraphrase: reconstruct the authoritative Solve frontier,
+not another Job/Evidence graph above Term and typed construction. A no-work
+completed wrapper is not justified by persistence or an API requiring a Job.
+
+#### Objective (Code)
+
+Parent `8933f72`, frozen accepted baseline `e716232`, plus these prototype edits.
+The existing source writers and atomic artifact-file writer now receive the
+same checked/pending inputs as Solve. CLI root selections store that input
+directly. Seed writing and all I/O/checkpoint/audit callers migrate together;
+there is no parallel Job-only writer. Known namespace formation/map/body roots
+and explicit accepted exports need no Evidence adapter. Reading still returns
+ordinary unchecked producers, with zero Solve and no evidence admission.
+The source wire format, trust policy and shared relocation remain unchanged.
+
+#### Assessment
+
+This removes a concrete API requirement for completed Jobs, not the entire Job
+graph or its remaining adapter factory/test callers. Export membership remains
+scratch bookkeeping, not an acceptance authority. The temporary selection
+arrays in reader tests borrow restored producer pointers; they do not schedule
+work or persist a second result graph. No backend data or new wire field enters
+`.a`. The ordinary compilation census is unchanged, as this milestone changes
+root transport rather than computation ownership.
+
+Two old audit assumptions required correction: an obsolete Job-only binding
+API, and a total Job count including the removed startup Evidence wrapper.
+The negative Context test now uses an ordinary pending Universe-formation
+request; registration still must not bypass its invalid Context result. The
+import test still requires exactly 2048 projection requests plus Context,
+Universe and invalid Return, and no duplicate requests on repeated import.
+The new round-trip test compares relocated results within their own graph,
+not nominal Oracle pointers from two independently owned Programs.
+
+#### Plan
+
+- [x] Direct checked/pending root tests: missing/mixed/foreign rejection,
+  unchanged live stores, exact repeated/step-0 bytes and shared decoded roots.
+- [x] O2 source-I/O/seed gates and seven checkpoint targets pass.
+- [x] O2 and ASan/UBSan semantic artifact audit passes.
+- [x] ASan/UBSan source-I/O/seed and source/definition/namespace/body checkpoints pass.
+- [x] Final cumulative patches reproduce all source/test/audit files exactly.
+- [x] Full O2 acceptance, including ordinary-result Sorted/permutation.
+
+The final full acceptance run exits 0, including all four general QuickSort
+provider/order variants and invalid-evidence boundaries. This is prototype
+verification, not production promotion or completion of SE1-SE5.
+
+Fresh List-09 and general QuickSort census TSVs exactly match the previous
+milestone. The public partition gate still exits 1 with the same four failed
+reload cases (100+100, 1000+1000, 1600+1600 and 2725+0). Additional 0+20,
+20+0, 1+19 and 0+2725 cases pass; shared baseline rows are unchanged.
+No failure is reclassified as expected success. SE1-SE5 remain open.
+
+| Applied-code delta from `8933f72` | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `source_io.c` | 13 | 5 | +8 |
+| `source_io.h` | 5 | 3 | +2 |
+| `seed.c` | 1 | 1 | 0 |
+| `main.c` | 4 | 4 | 0 |
+| `artifact/file.c` | 2 | 2 | 0 |
+| `artifact/file.h` | 1 | 1 | 0 |
+| Implementation total | 26 | 16 | +10 |
+| `tests/source_io.c` | 216 | 65 | +151 |
+| `tests/seed.c` | 1 | 1 | 0 |
+| `source_checkpoint_test.c` | 12 | 6 | +6 |
+| `definition_checkpoint_test.c` | 6 | 6 | 0 |
+| `semantic_test.c` | 16 | 11 | +5 |
+| `metrics.c` | 3 | 1 | +2 |
+
+These count applied source, resolving symlinks, not patch context. Test-build
+selection adds 5/removes 4 lines; overlay assembly adds 13. Neither adds an
+execution/acceptance path. Logs and TSVs use `/tmp/a-program-root-input-`.
