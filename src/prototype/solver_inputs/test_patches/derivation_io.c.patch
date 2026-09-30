@@ -19,6 +19,26 @@
  		while (synthesis.ready) { assert(synthesis.steps < 4000); pg_synthesis_advance(&synthesis, chunk); }
  		for (size_t i = 0; i < count; ++i)
  			assert(pg_synthesis_status(jobs[i]) == (i == 4 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE));
+@@ -1299,8 +1298,8 @@
+ 		assert(!pg_effect_dependency(&first, pg_effect_equation(&first, seed), empty, a));
+ 		struct pg_derivation_input header = {.rule = PG_RETURN_TYPE_FORM, .count = 1};
+ 		struct pg_synthesis_job *selected[] = {identity,
+-			pg_synthesis_rule(&synthesis, &header, &universe, &first, a),
+-			pg_synthesis_rule(&synthesis, &header, &universe, &second, b), identity};
++			pg_synthesis_rule_inputs(&synthesis, &header, &(struct pg_synthesis_input){.pending = universe}, &first, a),
++			pg_synthesis_rule_inputs(&synthesis, &header, &(struct pg_synthesis_input){.pending = universe}, &second, b), identity};
+ 		assert(selected[1] && selected[2]);
+ 		assert(!pg_graph_init(&storage) && !pg_effect_inference_init(&image, &storage));
+ 		jobs = synthesis.jobs.count; proofs = typing->proofs.count;
+@@ -1318,7 +1317,7 @@
+ 		struct pg_effect_inference conflict;
+ 		assert(!pg_effect_inference_init(&conflict, graph));
+ 		struct pg_effect_equation *duplicate = pg_effect_equation_at(&conflict, pg_effect_equation_parameter(&first, a), empty);
+-		struct pg_synthesis_job *overlap[] = {selected[1], pg_synthesis_rule(&synthesis, &header, &universe, &conflict, duplicate)};
++		struct pg_synthesis_job *overlap[] = {selected[1], pg_synthesis_rule_inputs(&synthesis, &header, &(struct pg_synthesis_input){.pending = universe}, &conflict, duplicate)};
+ 		assert(!pg_graph_init(&storage) && !pg_effect_inference_init(&image, &storage));
+ 		inputs = NULL;
+ 		assert(pg_synthesis_export_rules(&synthesis, 2, overlap, &storage, &image, 0, &inputs) == -1 && !inputs && image.failed);
 @@ -1360,7 +1359,6 @@
  		assert(pg_synthesis_status(jobs[0]) == PG_SYNTHESIS_DONE && jobs[0] == jobs[3]);
  		assert(!pg_synthesis_result(jobs[1]) && !pg_synthesis_result(jobs[2]));

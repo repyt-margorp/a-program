@@ -8,6 +8,31 @@
  
  #include <assert.h>
  #include <stdio.h>
+@@ -39,11 +40,11 @@
+ 		struct pg_synthesis synthesis;
+ 		assert(!pg_whnf_work_init(&work, typing->graph));
+ 		assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
+-		struct pg_synthesis_job **jobs = pg_alloc(typing->graph, input.count * sizeof(*jobs));
++		struct pg_synthesis_input *jobs = pg_alloc(typing->graph, input.count * sizeof(*jobs));
+ 		assert(jobs);
+-		for (size_t i = 0; i < input.count; ++i) jobs[i] = pg_synthesis_evidence(&synthesis, premises[i]);
+-		struct pg_synthesis_job *job = pg_synthesis_rule(&synthesis, &input, jobs, NULL, NULL);
+-		assert(job && job == pg_synthesis_rule(&synthesis, &input, jobs, NULL, NULL));
++		for (size_t i = 0; i < input.count; ++i) jobs[i] = (struct pg_synthesis_input){.checked = premises[i]};
++		struct pg_synthesis_job *job = pg_synthesis_rule_inputs(&synthesis, &input, jobs, NULL, NULL);
++		assert(job && job == pg_synthesis_rule_inputs(&synthesis, &input, jobs, NULL, NULL));
+ 		while (pg_synthesis_status(job) == PG_SYNTHESIS_PENDING) {
+ 			assert(synthesis.steps < 10000);
+ 			pg_synthesis_advance(&synthesis, chunk);
+@@ -54,7 +55,7 @@
+ 			conflict.argument = conflict.recursion;
+ 			struct pg_derivation_input invalid = input;
+ 			invalid.parameters.induction = &conflict;
+-			struct pg_synthesis_job *rejected = pg_synthesis_rule(&synthesis, &invalid, jobs, NULL, NULL);
++			struct pg_synthesis_job *rejected = pg_synthesis_rule_inputs(&synthesis, &invalid, jobs, NULL, NULL);
+ 			assert(rejected && rejected != job);
+ 			while (pg_synthesis_status(rejected) == PG_SYNTHESIS_PENDING) {
+ 				assert(synthesis.steps < 10000);
 @@ -89,8 +90,8 @@
  	size_t jobs = synthesis->jobs.count;
  	for (size_t i = 0; i < pg_data_constructor_count(instance.schema); ++i) {
@@ -273,6 +298,17 @@
  			pg_synthesis_destroy(&synthesis);
  			pg_whnf_work_destroy(&work);
  		}
+@@ -1899,8 +1915,8 @@
+ 		assert(pg_prove_derivation(typing, input.rule, &parameters, 2, premises) == normalized[i]);
+ 		struct pg_synthesis synthesis;
+ 		assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
+-		struct pg_synthesis_job *jobs[] = {pg_synthesis_evidence(&synthesis, premises[0]), pg_synthesis_evidence(&synthesis, premises[1])};
+-		struct pg_synthesis_job *job = pg_synthesis_rule(&synthesis, &input, jobs, NULL, NULL);
++		struct pg_synthesis_input jobs[] = {{.checked = premises[0]}, {.checked = premises[1]}};
++		struct pg_synthesis_job *job = pg_synthesis_rule_inputs(&synthesis, &input, jobs, NULL, NULL);
+ 		while (pg_synthesis_status(job) == PG_SYNTHESIS_PENDING) {
+ 			pg_synthesis_advance(&synthesis, chunk);
+ 			assert(synthesis.steps < 10000);
 @@ -2053,7 +2069,7 @@
  			for (size_t j = 0; j < 6; ++j)
  				solve_index_proof(&synthesis, inputs[j], chunk, PG_SYNTHESIS_DONE);

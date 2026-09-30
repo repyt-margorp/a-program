@@ -221,6 +221,34 @@ without promoting provisional classifier/effect approximations to accepted facts
 SE3 already covers concrete duplicate Match/induction premise edges; it must not
 be replaced by an unsupported claim that every Evidence record is removable.
 
+2026-10-01 static recheck at `8d3ac3fd263a3dd9cf884fd0c6f74d52d4f8f9c0`:
+the committed direct-input overlay was inspected in an unmodified disposable
+workbench. This is not production promotion or fresh runtime verification;
+concurrent accepted-source edits remain outside this recheck.
+
+- `synthesis_derivation.c:evidence_ready` still retains identical Evidence
+  pointers in the input and result of an immediately DONE Job. Ordinary source
+  callers no longer require it, but the factory and test callers remain.
+- `synthesis_function.c:classifier_step` still advances `pg_classifier_request`
+  and copies its completion/result into a Job. The typed query is the existing
+  progress owner. The pending operand's classifier projection must survive
+  removal of this wrapper; it supports effect discovery before acceptance.
+- `synthesis_context.c:substitution_step` holds the partial map, next image and
+  pending pairing. No underlying complete constraint record currently replaces
+  this owner. Preserve this unfinished obligation, not a second copy of it.
+- Match/induction still retains typed operands and `count + 6` receipt premises.
+  This concrete overlap is separate from scheduling and remains SE3 work.
+
+The agent's recommendation is **frontier plus owner-local cursors**, not an
+independent Job graph. Here a constraint includes an unfinished construction or
+checking obligation, not only a numeric/effect equation. The ready queue and
+reverse dependency index may be disposable references to those owners; neither
+owns a second result or acceptance state. Merely scanning Terms cannot recover
+the frontier: a Term does not identify its scoped typed use or its unfinished
+checking phase. Rebuilding readiness must not restart saved partial work or
+silently alter scheduling order when equal-fuel partition behavior is required.
+This sharpens the existing SE1 completion criterion, not a new work track.
+
 **Plan:** use the existing SE1 work list, not a second migration track. Its gate
 requires accounting for each remaining owner and deleting needless wrappers,
 not just accepting direct inputs. For each role, record its canonical key, input
@@ -422,10 +450,13 @@ baseline described above. Concurrent accepted-source edits remain excluded.
 - [x] Finish sequencing/result-Context and handler carrier/continuation inputs
   through the same borrowed representation, including structural readers and
   source restoration. See the CBPV-input milestone below.
+- [x] Remove the Job-only rule/premise contract and every caller, including
+  import/preparation, source synthesis, tests and checkpoint consumers. Only
+  the checked/pending API remains; no compatibility conversion helper is kept.
 - [ ] Remove `EVIDENCE_JOB`, test callers and remaining adapter recognition.
   Checked roots must use the same borrowed inputs, not a replacement completed
-  worker. Migrate the remaining sequencing/result/carrier operands and remove
-  Job-only rule/expect/reindex/normalization aliases with their callers; tests
+  worker. Remove remaining Job-only expect/reindex/normalization aliases with
+  their callers; tests
   must use real pending owners where suspension is the property under test.
   Reading may still return real unchecked producers. Then remove duplicated
   query scheduling.
@@ -1597,3 +1628,84 @@ the same four reload failures remain; no failure becomes an expected pass.
 
 Counts resolve applied-file symlinks and exclude patch context/documentation.
 Logs, census and partition files use `/tmp/a-program-cbpv-input-`. SE1-SE5 stay open.
+
+### SE1 Single Rule Input Contract (2026-10-01)
+
+#### Subjective (User)
+
+English paraphrase of the latest instruction: resume the canonical Solve
+frontier rather than retaining another Job/Evidence graph over typed structure.
+This milestone removes an input-contract duplication, not all unfinished owners.
+
+#### Objective (Code)
+
+Parent `8d3ac3f` plus the cumulative prototype patches. Rule requests now have
+only checked/pending premises. The Job-only rule/plain-rule APIs, alternate
+producer-key branch and test-local Job-array rule helper are deleted. Import
+and preparation use direct-input scratch arrays; their actual unfinished rule
+owners remain. Existing checking, structural projection and wire format do not
+change. Tests borrow known receipts directly, rather than creating adapters.
+Additional gates cover a missing array, oversized arity, mixed/foreign operands,
+and mutation of the caller's temporary array without mutation of the interned key.
+
+#### Assessment
+
+This deletes a duplicate contract, not an independent authority by itself.
+The Evidence factory, other Job-only contracts, classifier-formation/query
+ownership, duplicated elimination premises and public exact resumption remain.
+
+**Verification provenance correction:** default overlay assembly copies the
+current accepted worktree. Its IADT/evidence edits were present in the initial
+tests, despite earlier milestone descriptions calling that environment isolated.
+Patch reproduction caught an unrelated IADT test addition in the generated diff;
+it was removed from packaging, not from the user's files. The current recheck
+also builds from a fresh `git archive e7162320712f1acdc9420b6ffae993cd97035663`.
+Treat prior exclusion claims as superseded where only default assembly was used.
+The default-worktree and archived-baseline results are distinguished below.
+
+#### Plan
+
+- [x] O2 `all check` and all seven checkpoint gates on both assemblies.
+- [x] Default-worktree and archived-baseline ASan/UBSan synthesis, IADT, source/derivation I/O,
+  semantic audit and derivation-checkpoint gates.
+- [x] Fresh patch reproduction exactly matches source/tests/audit fixtures.
+- [x] Archived-baseline List/QuickSort census and public partition TSVs exactly
+  match the preceding milestone at the same budgets.
+- [x] Full O2 acceptance on both assemblies.
+
+Both acceptance runs exited 0, including all four general QuickSort
+provider/order variants, ordinary-result Sorted/permutation, invalid evidence,
+finite views and witness packet/isolation checks. This milestone is verified
+prototype work; it is not promotion into accepted `src/`.
+
+The derivation-I/O binary was initially invoked without its required arguments;
+that invocation failed its CLI assertion. Its ordinary test script then passed;
+no implementation or checking rule was changed to bypass the assertion.
+The public partition script still fails the same four reload cases; `make`
+reports exit 2. This is not a passing gate or an expected-success reclassification.
+Completed List/QuickSort remain at 2725/809493 steps, 875/53952 Jobs and zero
+Evidence adapters; graph counts and Job bytes are unchanged. SE1-SE5 stay open.
+
+| Applied-file delta from `8d3ac3f` | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `src/synthesis_derivation.c` | 13 | 33 | -20 |
+| `src/synthesis_source.h` | 0 | 2 | -2 |
+| `src/synthesis.h` | 2 | 5 | -3 |
+| `src/synthesis_cbpv.c` | 3 | 3 | 0 |
+| `src/synthesis_iadt.c` | 2 | 2 | 0 |
+| `src/synthesis_handler.c` | 19 | 11 | +8 |
+| `src/synthesis_function.c` | 18 | 18 | 0 |
+| `src/synthesis_operation.c` | 8 | 6 | +2 |
+| `src/synthesis.c` | 38 | 33 | +5 |
+| `src/program.c` | 2 | 2 | 0 |
+| `src/synthesis_identity.c` | 5 | 5 | 0 |
+| Implementation total | 110 | 120 | -10 |
+| `tests/iadt.c` | 7 | 7 | 0 |
+| `tests/derivation_io.c` | 3 | 3 | 0 |
+| `tests/synthesis.c` | 312 | 196 | +116 |
+| `tests/source_io.c` | 10 | 11 | -1 |
+| `artifact_tests/semantic_test.c` | 2 | 2 | 0 |
+| `checkpoint_tests/derivation_checkpoint_test.c` | 7 | 7 | 0 |
+
+Applied-code counts resolve symlinks and exclude unrelated changes, patch context
+and documentation. Logs and TSVs use `/tmp/a-program-rule-input-`.

@@ -9,7 +9,7 @@
  	const struct pg_evidence *maps[2];
  	const struct pg_evidence **declarations, **paths;
  	size_t count, common, next;
-@@ -40,87 +40,88 @@
+@@ -40,93 +40,94 @@
  	.size = sizeof(struct instance_work), .advance = instance_step}};
  
  struct pg_synthesis_job *pg_synthesis_identity_instance(struct pg_synthesis *synthesis,
@@ -141,15 +141,26 @@
 +	action = pg_synthesis_normalize_classifier(synthesis, context,
 +		(struct pg_synthesis_input){.pending = action}).pending;
  	if (!action) return NULL;
- 	struct pg_synthesis_job *left = pg_synthesis_plain_rule(synthesis, PG_IDENTITY_LEFT_TYPE, NULL, 1, &action);
- 	struct pg_synthesis_job *right = pg_synthesis_plain_rule(synthesis, PG_IDENTITY_RIGHT_TYPE, NULL, 1, &action);
+-	struct pg_synthesis_job *left = pg_synthesis_plain_rule(synthesis, PG_IDENTITY_LEFT_TYPE, NULL, 1, &action);
+-	struct pg_synthesis_job *right = pg_synthesis_plain_rule(synthesis, PG_IDENTITY_RIGHT_TYPE, NULL, 1, &action);
 -	struct pg_synthesis_job *checked = pg_synthesis_expect(synthesis, value,
 -		direction == PG_IDENTITY_RIGHT ? left : right);
++	struct pg_synthesis_job *left = pg_synthesis_plain_rule_inputs(synthesis, PG_IDENTITY_LEFT_TYPE, NULL, 1, &(struct pg_synthesis_input){.pending = action});
++	struct pg_synthesis_job *right = pg_synthesis_plain_rule_inputs(synthesis, PG_IDENTITY_RIGHT_TYPE, NULL, 1, &(struct pg_synthesis_input){.pending = action});
 +	struct pg_synthesis_job *checked = pg_synthesis_expect_inputs(synthesis, value,
 +		(struct pg_synthesis_input){.pending = direction == PG_IDENTITY_RIGHT ? left : right});
  	struct pg_derivation_input transport = {.rule = PG_IDENTITY_TRANSPORT,
  		.count = 3, .parameters.direction = direction};
- 	struct pg_synthesis_job *premises[] = {
+-	struct pg_synthesis_job *premises[] = {
+-		direction == PG_IDENTITY_RIGHT ? right : left, action, checked
++	struct pg_synthesis_input premises[] = {
++		{.pending = direction == PG_IDENTITY_RIGHT ? right : left}, {.pending = action}, {.pending = checked}
+ 	};
+-	return pg_synthesis_rule(synthesis, &transport, premises, NULL, NULL);
++	return pg_synthesis_rule_inputs(synthesis, &transport, premises, NULL, NULL);
+ }
+ 
+ static int endpoint_selector(const struct pg_dimension_map *face)
 @@ -154,27 +155,16 @@
  	const struct pg_dimension_map *face)
  {

@@ -35,7 +35,8 @@
 +			struct pg_synthesis_job *value_type = pg_synthesis_rule_inputs(&p->synthesis, &result_type, &contexts[arity], NULL, NULL);
  			struct pg_derivation_input returned = {.rule = PG_RETURN_TYPE_FORM, .count = 1,
  				.parameters.totality = PG_TOTALITY_TOTAL, .parameters.effects = pg_effect_row(&p->graph, 0, NULL)};
- 			struct pg_synthesis_job *signature = pg_synthesis_rule(&p->synthesis, &returned, &value_type, NULL, NULL);
+-			struct pg_synthesis_job *signature = pg_synthesis_rule(&p->synthesis, &returned, &value_type, NULL, NULL);
++			struct pg_synthesis_job *signature = pg_synthesis_rule_inputs(&p->synthesis, &returned, &(struct pg_synthesis_input){.pending = value_type}, NULL, NULL);
  			for (size_t depth = arity; depth; --depth) {
  				struct pg_derivation_input pi = {.rule = PG_PI_FORM, .count = 2};
 -				struct pg_synthesis_job *premises[] = {contexts[depth], signature};
@@ -45,7 +46,8 @@
  			}
  			struct pg_derivation_input intro = {.rule = PG_HOST_FUNCTION_INTRO, .count = 1,
  				.parameters.constant = function};
- 			struct pg_synthesis_job *value = pg_synthesis_rule(&p->synthesis, &intro, &signature, NULL, NULL);
+-			struct pg_synthesis_job *value = pg_synthesis_rule(&p->synthesis, &intro, &signature, NULL, NULL);
++			struct pg_synthesis_job *value = pg_synthesis_rule_inputs(&p->synthesis, &intro, &(struct pg_synthesis_input){.pending = signature}, NULL, NULL);
  			const char *name = pg_host_function_name(function);
 -			scope = pg_synthesis_name_job(&p->synthesis, scope,
 -				(struct pg_token){.kind = PG_TOKEN_IDENT, .text = name, .length = strlen(name), .text_length = strlen(name)}, value);

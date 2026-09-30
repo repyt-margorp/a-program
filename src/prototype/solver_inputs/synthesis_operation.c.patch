@@ -62,7 +62,7 @@
  	struct operation_work *local = operation_work(job);
  	if (local->allocation) return local->allocation == allocation ? job : NULL;
  	if (local->rule) return NULL;
-@@ -85,14 +89,18 @@
+@@ -85,15 +89,19 @@
  {
  	struct operation_work *local = operation_work(job);
  	if (!local->rule) {
@@ -81,12 +81,14 @@
  		local->declaration = operation;
 -		struct pg_synthesis_job *payload = pg_synthesis_evidence(synthesis, pg_operation_payload_type(operation));
 -		struct pg_synthesis_job *response = pg_synthesis_evidence(synthesis, pg_operation_response_type(operation));
+-		struct pg_synthesis_job *empty = pg_synthesis_plain_rule(synthesis, PG_CONTEXT_EMPTY, NULL, 0, NULL);
 +		struct pg_synthesis_input payload = {.checked = pg_operation_payload_type(operation)};
 +		struct pg_synthesis_input response = {.checked = pg_operation_response_type(operation)};
- 		struct pg_synthesis_job *empty = pg_synthesis_plain_rule(synthesis, PG_CONTEXT_EMPTY, NULL, 0, NULL);
++		struct pg_synthesis_job *empty = pg_synthesis_plain_rule_inputs(synthesis, PG_CONTEXT_EMPTY, NULL, 0, NULL);
  		if (!local->allocation) {
  			const struct pg_context *allocation = pg_context_bind(synthesis->typing, NULL,
-@@ -106,21 +114,22 @@
+ 				pg_binder(synthesis->typing->graph), pg_evidence_subject(pg_operation_payload_type(operation))->core, PG_JUDGEMENT_VALUE);
+@@ -106,21 +114,24 @@
  		 * checked contexts from the signature, not the saved field types. */
  		const struct pg_object *a = local->allocation->parent->binder;
  		const struct pg_object *b = local->allocation->binder;
@@ -94,19 +96,26 @@
 -			(struct pg_synthesis_job *[]){empty, payload});
 -		struct pg_synthesis_job *domain = pg_synthesis_plain_rule(synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
 -			(struct pg_synthesis_job *[]){scope, response});
+-		struct pg_synthesis_job *response_scope = pg_synthesis_plain_rule(synthesis, PG_CONTEXT_EXTEND, b, 2,
+-			(struct pg_synthesis_job *[]){scope, domain});
+-		struct pg_synthesis_job *value = pg_synthesis_plain_rule(synthesis, PG_VARIABLE, b, 1, &response_scope);
 +		struct pg_synthesis_job *scope = pg_synthesis_plain_rule_inputs(synthesis, PG_CONTEXT_EXTEND, a, 2,
 +			(struct pg_synthesis_input[]){{.pending = empty}, payload});
 +		struct pg_synthesis_job *domain = pg_synthesis_plain_rule_inputs(synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
 +			(struct pg_synthesis_input[]){{.pending = scope}, response});
- 		struct pg_synthesis_job *response_scope = pg_synthesis_plain_rule(synthesis, PG_CONTEXT_EXTEND, b, 2,
- 			(struct pg_synthesis_job *[]){scope, domain});
- 		struct pg_synthesis_job *value = pg_synthesis_plain_rule(synthesis, PG_VARIABLE, b, 1, &response_scope);
++		struct pg_synthesis_job *response_scope = pg_synthesis_plain_rule_inputs(synthesis, PG_CONTEXT_EXTEND, b, 2, (struct pg_synthesis_input[]){
++			{.pending = scope},
++			{.pending = domain}
++		});
++		struct pg_synthesis_job *value = pg_synthesis_plain_rule_inputs(synthesis, PG_VARIABLE, b, 1, &(struct pg_synthesis_input){.pending = response_scope});
  		struct pg_derivation_input return_rule = {.rule = PG_RETURN_INTRO, .count = 1, .parameters.totality = PG_TOTALITY_TOTAL};
- 		struct pg_synthesis_job *returned = pg_synthesis_rule(synthesis, &return_rule, &value, NULL, NULL);
+-		struct pg_synthesis_job *returned = pg_synthesis_rule(synthesis, &return_rule, &value, NULL, NULL);
 -		struct pg_synthesis_job *continuation = pg_synthesis_lambda_body(synthesis, response_scope, returned);
+-		struct pg_synthesis_job *argument = pg_synthesis_plain_rule(synthesis, PG_VARIABLE, a, 1, &scope);
++		struct pg_synthesis_job *returned = pg_synthesis_rule_inputs(synthesis, &return_rule, &(struct pg_synthesis_input){.pending = value}, NULL, NULL);
 +		struct pg_synthesis_job *continuation = pg_synthesis_lambda_body(synthesis,
 +			(struct pg_synthesis_input){.pending = response_scope}, (struct pg_synthesis_input){.pending = returned});
- 		struct pg_synthesis_job *argument = pg_synthesis_plain_rule(synthesis, PG_VARIABLE, a, 1, &scope);
++		struct pg_synthesis_job *argument = pg_synthesis_plain_rule_inputs(synthesis, PG_VARIABLE, a, 1, &(struct pg_synthesis_input){.pending = scope});
  		struct pg_derivation_input input = {.rule = PG_REQUEST_INTRO, .count = 4, .parameters.operation_label = pg_operation_label(operation)};
 -		struct pg_synthesis_job *request = pg_synthesis_rule(synthesis, &input,
 -			(struct pg_synthesis_job *[]){payload, response, argument, continuation}, NULL, NULL);

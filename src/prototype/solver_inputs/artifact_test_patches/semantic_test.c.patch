@@ -35,9 +35,11 @@
  	assert(!pg_synthesis_import_rules(&p->synthesis, 6, inputs, NULL, &jobs));
  	no_import_preparation(p);
  	assert(jobs[0] == jobs[2] && jobs[1] == jobs[4]);
- 	assert(jobs[1] == pg_synthesis_rule(&p->synthesis, context, NULL, NULL, NULL));
- 	assert(jobs[3] == pg_synthesis_rule(&p->synthesis, universe, &jobs[1], NULL, NULL));
+-	assert(jobs[1] == pg_synthesis_rule(&p->synthesis, context, NULL, NULL, NULL));
+-	assert(jobs[3] == pg_synthesis_rule(&p->synthesis, universe, &jobs[1], NULL, NULL));
 -	assert(p->synthesis.jobs.count == 2052 && !pg_synthesis_result(jobs[0]));
++	assert(jobs[1] == pg_synthesis_rule_inputs(&p->synthesis, context, NULL, NULL, NULL));
++	assert(jobs[3] == pg_synthesis_rule_inputs(&p->synthesis, universe, &(struct pg_synthesis_input){.pending = jobs[1]}, NULL, NULL));
 +	/* Each projection plus Context, Universe and invalid Return owns one request. */
 +	assert(p->synthesis.jobs.count == before + 2048 + 3 && !pg_synthesis_result(jobs[0]));
  	advance(p, 0);

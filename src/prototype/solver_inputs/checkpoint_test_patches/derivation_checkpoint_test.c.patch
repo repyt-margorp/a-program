@@ -111,8 +111,19 @@
  	assert(!pg_synthesis_result(pg_artifact_derivations_root(c, jobs, 0)));
  	pg_program_destroy(q); pg_program_destroy(p);
  }
-@@ -495,20 +495,23 @@
- 	bad[1] = pg_synthesis_plain_rule(&other->synthesis, PG_CONTEXT_EMPTY, NULL, 0, NULL);
+@@ -487,28 +487,31 @@
+ static void direct_boundaries(void)
+ {
+ 	struct pg_program *p = empty(), *other = empty();
+-	struct pg_synthesis_job *context = pg_synthesis_plain_rule(&p->synthesis, PG_CONTEXT_EMPTY, NULL, 0, NULL);
+-	struct pg_synthesis_job *root = pg_synthesis_plain_rule(&p->synthesis, PG_UNIVERSE_FORM, NULL, 1, &context);
++	struct pg_synthesis_job *context = pg_synthesis_plain_rule_inputs(&p->synthesis, PG_CONTEXT_EMPTY, NULL, 0, NULL);
++	struct pg_synthesis_job *root = pg_synthesis_plain_rule_inputs(&p->synthesis, PG_UNIVERSE_FORM, NULL, 1, &(struct pg_synthesis_input){.pending = context});
+ 	struct pg_synthesis_job *bad[] = {root, NULL};
+ 	struct pg_synthesis_job **mapping = NULL;
+ 	assert(!pg_artifact_derivations_capture(&p->graph, &p->synthesis, 2, bad, &mapping) && !mapping);
+-	bad[1] = pg_synthesis_plain_rule(&other->synthesis, PG_CONTEXT_EMPTY, NULL, 0, NULL);
++	bad[1] = pg_synthesis_plain_rule_inputs(&other->synthesis, PG_CONTEXT_EMPTY, NULL, 0, NULL);
  	assert(!pg_artifact_derivations_capture(&p->graph, &p->synthesis, 2, bad, &mapping) && !mapping);
  	/* A completed external owner is not silently replaced by a fresh rule. */
 -	bad[1] = pg_synthesis_evidence(&p->synthesis, pg_prove_empty_context(&p->typing));
@@ -157,6 +168,15 @@
  	assert(!fseek(file, 6, SEEK_SET) && fputc(1, file) != EOF);
  	rewind(file);
  	assert(!pg_artifact_derivations_read(file, &other->graph, 100));
+@@ -538,7 +541,7 @@
+ {
+ 	struct pg_program *p = empty(), *q = empty();
+ 	struct pg_synthesis_job *evidence = pg_synthesis_evidence(&p->synthesis, pg_prove_empty_context(&p->typing));
+-	struct pg_synthesis_job *rule = pg_synthesis_plain_rule(&p->synthesis, PG_UNIVERSE_FORM, NULL, 1, &evidence);
++	struct pg_synthesis_job *rule = pg_synthesis_plain_rule_inputs(&p->synthesis, PG_UNIVERSE_FORM, NULL, 1, &(struct pg_synthesis_input){.pending = evidence});
+ 	/* This borrowed header has no trailing premises[] allocation. */
+ 	const struct pg_derivation_input *header = pg_synthesis_plain_derivation(rule);
+ 	const struct pg_derivation_input *headers[] = {header, header};
 @@ -562,7 +565,7 @@
  	rewind(file); decoded = NULL; count = SIZE_MAX;
  	assert(pg_derivation_headers_read(file, &q->typing, 1000, 1000, NULL, NULL, &count, &decoded));
@@ -224,19 +244,24 @@
  }
  
  static void mixed(void)
-@@ -673,10 +675,10 @@
+@@ -673,12 +675,12 @@
  	for (uint64_t cut = 0;; ++cut) {
  		struct pg_program *p = empty();
  		struct pg_synthesis_job *context = pg_synthesis_derivation(&p->synthesis, input(p, PG_CONTEXT_EMPTY, 0, NULL));
 -		struct pg_synthesis_job *evidence = pg_synthesis_evidence(&p->synthesis, pg_prove_empty_context(&p->typing));
 +		struct pg_synthesis_input evidence = {.checked = pg_prove_empty_context(&p->typing)};
  		struct pg_synthesis_job *roots[] = {
- 			pg_synthesis_plain_rule(&p->synthesis, PG_UNIVERSE_FORM, NULL, 1, &context),
+-			pg_synthesis_plain_rule(&p->synthesis, PG_UNIVERSE_FORM, NULL, 1, &context),
 -			pg_synthesis_plain_rule(&p->synthesis, PG_UNIVERSE_FORM, NULL, 1, &evidence), NULL};
+-		struct pg_synthesis_job *value = pg_synthesis_plain_rule(&p->synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &roots[0]);
+-		roots[2] = pg_synthesis_plain_rule(&p->synthesis, PG_RETURN_INTRO, NULL, 1, &value);
++			pg_synthesis_plain_rule_inputs(&p->synthesis, PG_UNIVERSE_FORM, NULL, 1, &(struct pg_synthesis_input){.pending = context}),
 +			pg_synthesis_plain_rule_inputs(&p->synthesis, PG_UNIVERSE_FORM, NULL, 1, &evidence), NULL};
- 		struct pg_synthesis_job *value = pg_synthesis_plain_rule(&p->synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &roots[0]);
- 		roots[2] = pg_synthesis_plain_rule(&p->synthesis, PG_RETURN_INTRO, NULL, 1, &value);
++		struct pg_synthesis_job *value = pg_synthesis_plain_rule_inputs(&p->synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &(struct pg_synthesis_input){.pending = roots[0]});
++		roots[2] = pg_synthesis_plain_rule_inputs(&p->synthesis, PG_RETURN_INTRO, NULL, 1, &(struct pg_synthesis_input){.pending = value});
  		assert(roots[0] != roots[1]);
+ 		advance(&p->synthesis, cut);
+ 		struct mixed_checkpoint m;
 @@ -693,15 +695,17 @@
  		p = empty(); mixed_init(&m, p);
  		assert(!pg_graph_image_read(image, magic, &p->graph, 10000, 10000,

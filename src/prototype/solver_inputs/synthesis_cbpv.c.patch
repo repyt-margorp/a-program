@@ -88,7 +88,8 @@
 +	if (!pg_synthesis_input_owned(synthesis, computation) || !binder) return NULL;
 +	struct pg_synthesis_job *formation = pg_synthesis_classifier_in(synthesis, context, computation);
  	if (!formation) return NULL;
- 	struct pg_synthesis_job *domain = pg_synthesis_plain_rule(synthesis, PG_RETURN_CONTENT, NULL, 1, &formation);
+-	struct pg_synthesis_job *domain = pg_synthesis_plain_rule(synthesis, PG_RETURN_CONTENT, NULL, 1, &formation);
++	struct pg_synthesis_job *domain = pg_synthesis_plain_rule_inputs(synthesis, PG_RETURN_CONTENT, NULL, 1, &(struct pg_synthesis_input){.pending = formation});
  	if (!domain) return NULL;
 -	struct pg_synthesis_job *premises[] = {context, domain};
 -	return pg_synthesis_plain_rule(synthesis, PG_CONTEXT_EXTEND, binder, 2, premises);
@@ -377,15 +378,17 @@
  		binder = pg_binder(synthesis->typing->graph);
 -		struct pg_synthesis_job *extended = pg_synthesis_result_context(synthesis,
 -			(void *)job->inputs[0], local->normalized, binder);
-+		struct pg_synthesis_job *extended = pg_synthesis_result_context(synthesis, scope, local->normalized, binder);
- 		struct pg_synthesis_job *variable = pg_synthesis_plain_rule(synthesis, PG_VARIABLE, binder, 1, &extended);
+-		struct pg_synthesis_job *variable = pg_synthesis_plain_rule(synthesis, PG_VARIABLE, binder, 1, &extended);
 -		struct pg_synthesis_job *premises[] = {extended, (void *)job->inputs[2]};
 -		struct pg_synthesis_job *projected = pg_synthesis_plain_rule(synthesis, PG_CONTEXT_PROJECTION, NULL, 2, premises);
 -		struct pg_synthesis_job *applied = pg_synthesis_application_jobs(synthesis, extended, projected, variable);
+-		struct pg_synthesis_job *quoted = pg_synthesis_plain_rule(synthesis, PG_THUNK_INTRO, NULL, 1, &applied);
++		struct pg_synthesis_job *extended = pg_synthesis_result_context(synthesis, scope, local->normalized, binder);
++		struct pg_synthesis_job *variable = pg_synthesis_plain_rule_inputs(synthesis, PG_VARIABLE, binder, 1, &(struct pg_synthesis_input){.pending = extended});
 +		struct pg_synthesis_input premises[] = {{.pending = extended}, pg_synthesis_work_dependency(job, 4)};
 +		struct pg_synthesis_job *projected = pg_synthesis_plain_rule_inputs(synthesis, PG_CONTEXT_PROJECTION, NULL, 2, premises);
 +		struct pg_synthesis_job *applied = pg_synthesis_application(synthesis, (struct pg_synthesis_input){.pending = extended}, (struct pg_synthesis_input){.pending = projected}, (struct pg_synthesis_input){.pending = variable});
- 		struct pg_synthesis_job *quoted = pg_synthesis_plain_rule(synthesis, PG_THUNK_INTRO, NULL, 1, &applied);
++		struct pg_synthesis_job *quoted = pg_synthesis_plain_rule_inputs(synthesis, PG_THUNK_INTRO, NULL, 1, &(struct pg_synthesis_input){.pending = applied});
  		premises[0] = local->normalized;
 -		premises[1] = pg_synthesis_lambda_body(synthesis, extended, quoted);
 -		local->rule = pg_synthesis_plain_rule(synthesis, PG_FOLD_ELIM, NULL, 2, premises);
