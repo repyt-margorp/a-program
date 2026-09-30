@@ -154,6 +154,10 @@ Job. Genuine transport retains its finite candidate search and suspension cursor
 Ordinary compiler consumers and tests borrow checked receipts directly; the
 Evidence-adapter factory, test callers and source-root recognition are removed.
 This does not remove the independent Job graph.
+Reindex requests no longer forward to a second checked-input worker after their
+operands resolve. Existing exact checked receipts are borrowed directly through
+the same input/result API; real pending keys and the shared action remain stable.
+The Job-only reindex API is deleted, without a new result cache or wire field.
 Producer-to-checked forwarding paths also remain. Removing classifier
 forwarding alone lost completed-result reuse, so that trial was rejected;
 removing the query wrapper does not settle the pending/checked request ownership.

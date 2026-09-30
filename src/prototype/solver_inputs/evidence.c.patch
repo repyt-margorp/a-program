@@ -197,7 +197,41 @@
  		if (i == count) return request;
  	}
  	struct induction_request *request = pg_alloc(typing->graph, sizeof(*request));
-@@ -5457,8 +5519,24 @@
+@@ -4431,13 +4493,29 @@
+ 		map->destination, NULL, 2, premises, NULL, map);
+ }
+ 
++static int reindex_inputs(const struct pg_typing *typing,
++	const struct pg_evidence *substitution, const struct pg_evidence *proof)
++{
++	if (!pg_evidence_owned_by(substitution, typing)) return 0;
++	if (substitution->rule != PG_CONTEXT_SUBSTITUTION) return 0;
++	if (!pg_evidence_owned_by(proof, typing) || !pg_evidence_subject(proof)) return 0;
++	return pg_evidence_context(proof) == pg_evidence_context(substitution->premises[0]);
++}
++
++const struct pg_evidence *pg_reindex_receipt(const struct pg_typing *typing,
++	const struct pg_evidence *substitution, const struct pg_evidence *proof)
++{
++	if (!reindex_inputs(typing, substitution, proof)) return NULL;
++	const struct pg_evidence *premises[] = {substitution, proof};
++	uint64_t hash;
++	return find_record(typing, PG_REINDEX,
++		pg_evidence_context(substitution), NULL, 2, premises, NULL, &hash);
++}
++
+ const struct pg_evidence *pg_prove_reindex(struct pg_typing *typing,
+ 	const struct pg_evidence *substitution, const struct pg_evidence *proof)
+ {
+-	if (!pg_evidence_owned_by(substitution, typing)) return NULL;
+-	if (substitution->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
+-	if (!pg_evidence_owned_by(proof, typing) || !pg_evidence_subject(proof)) return NULL;
+-	if (pg_evidence_context(proof) != pg_evidence_context(substitution->premises[0])) return NULL;
++	if (!reindex_inputs(typing, substitution, proof)) return NULL;
+ 	const struct pg_evidence *premises[] = {substitution, proof};
+ 	uint64_t hash;
+ 	const struct pg_evidence *result = find_record(typing, PG_REINDEX,
+@@ -5457,8 +5535,24 @@
  	return subject ? subject->classifier : NULL;
  }
  size_t pg_evidence_premise_count(const struct pg_evidence *evidence) { return evidence->premise_count; }

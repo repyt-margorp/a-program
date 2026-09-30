@@ -548,6 +548,9 @@ baseline described above. Concurrent accepted-source edits remain excluded.
   worker. Tests use real pending owners where suspension is the property under
   test. Reading still returns real unchecked producers. See the deletion
   milestone below; this completes only the adapter-removal prerequisite.
+- [x] Remove reindex producer-to-checked forwarding while retaining warm reuse
+  through exact checked receipts, stable pending keys and the shared typed
+  action. See the reindex-frontier milestone below for its verification gates.
 - [ ] Consolidate remaining duplicate query scheduling and forwarding under
   canonical unfinished-operation owners. Inventory keys, inputs, cursors,
   results and wakeup consumers; preserve provisional classifier discovery.
@@ -2174,3 +2177,76 @@ providers/partition orders, ordinary-result proofs and invalid controls.
 Public partitions remain exit 2 with the same four parent
 failures and identical TSV; this gate is not waived. Evidence logs and comparison
 files use `/tmp/a-program-elimination-receipts-`. Full SE1-SE5 remain unfinished.
+
+### SE1 Reindex Frontier Ownership (2026-10-01)
+
+#### Subjective (User)
+
+English paraphrase, 2026-10-01: resume the Solve frontier rather than a second
+Job/Evidence graph; consolidate ownership instead of renaming duplicated state.
+This prototype remains separate from accepted sources and user Context/IADT edits.
+
+#### Objective (Code)
+
+Parent `9eb94cf`, assembled on isolated accepted baseline `e716232` plus recorded
+prototype patches. `synthesis_context.c:reindex_step` created another checked-input
+Job after its pending operands resolved. Both borrowed the same occurrence action;
+the outer worker then copied the other Job's admission result and completion.
+The checked `PG_REINDEX` result already has an exact-premise key in `typing.proofs`.
+
+#### Assessment
+
+Remove that forwarding owner, not just its edge. One checked/pending result API
+now returns an existing exact checked receipt directly or the actual unfinished
+obligation. Existing pending keys remain stable, including originally checked
+requests that needed work. Pending requests no longer manufacture checked-input
+Jobs on completion. The ordinary occurrence action owns structural progress;
+the reindex obligation checks admission afterward. An action result alone is
+not a checked fact. The new read-only receipt lookup uses the existing proof
+index, not a result cache, acceptance table or replay engine.
+
+Pairing, constructor scopes, family continuations, source name transport and data
+cases borrow that same result interface. The Job-only reindex API is deleted.
+Two distinct producers retain their own unresolved-input obligations, but share
+the action and exact admission result once inputs agree. No Core/wire field is
+added. General classifier forwarding and the broader SE1-SE5 gates remain open.
+
+#### Plan
+
+- [x] Delete automatic checked-input reindex forwarding and migrate all callers.
+- [x] Preserve warm admission reuse and pending request identity without a cache.
+- [x] Add alias sharing, one-action-step-per-dispatch, zero-fuel, scheduler-lifetime
+  and action-without-admission boundary tests; retain existing negative controls.
+- [x] Full O2 `check`, examples, semantic audit and seven checkpoint gates pass.
+- [x] ASan/UBSan synthesis passes, with leak detection enabled.
+- [x] Repeat ordinary List/QuickSort census and public partition comparison.
+- [x] Complete full acceptance, including both general QuickSort providers/orders.
+- [x] Reassemble recorded patches exactly; check coexistence with user edits.
+- [x] Record applied per-file deltas; prepare the verified prototype milestone.
+- [ ] Push the verified prototype milestone after full acceptance finishes.
+
+Fresh census: List-09 completes in 2,720 steps (parent 2,725), with 870 Jobs
+(875) and 153,016 Job bytes (153,696). General QuickSort completes in 809,172
+steps (809,426), with 53,643 Jobs (53,885) and 9,392,688 Job bytes (9,423,312).
+Completed Terms, occurrences, Evidence and logical/retained premise counts are
+unchanged; repeated terminal censuses do not grow them. Zero-fuel rows match.
+These are live Job allocations, not total memory, artifact size or a wall-time
+speedup claim. Family continuation state includes the existing checked/pending
+input pair; its cost is included, not hidden from the net reduction.
+
+Public partition comparison still exits 2: reload failures at 100+100,
+1000+1000, 1600+1600 and completion+0. The completion budget falls from 2,725
+to 2,720; image byte counts and failure classes match the parent. This is not
+a passing gate. Fresh evidence files use `/tmp/a-program-reindex-frontier-`.
+
+Recorded patches reproduce `src`, tests, checkpoint fixtures and artifact audit
+fixtures exactly. The default worktree overlay also assembles, and its Core,
+IADT and synthesis tests pass with the concurrent user edits. These edits are
+not included or promoted. Applied deltas from `9eb94cf` are recorded in
+[the per-file sheet](../src/prototype/solver_inputs/reindex-frontier-lines.tsv):
+implementation +84/-53 (net +31), tests +105/-25 (net +80). Stored patch context
+and documentation are separate from those applied C-file counts.
+Full `check-acceptance` exits 0, including both LT providers/partition orders,
+universal Sorted/permutation witnesses, ordinary results, semantic partial images
+and invalid controls. Full SE1-SE5 remain unfinished; public partitions are not
+waived by this milestone's successful acceptance run.

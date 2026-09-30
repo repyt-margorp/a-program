@@ -1,6 +1,17 @@
 --- a/evidence.h
 +++ b/evidence.h
-@@ -730,13 +730,14 @@
+@@ -628,6 +628,10 @@
+  * this rule reuses that completed work without replacing either premise. */
+ const struct pg_evidence *pg_prove_reindex(struct pg_typing *typing,
+ 	const struct pg_evidence *substitution, const struct pg_evidence *proof);
++/* Read an already checked exact-premise result. No action, checking, allocation
++ * or progress occurs; a completed structural action alone is not admission. */
++const struct pg_evidence *pg_reindex_receipt(const struct pg_typing *typing,
++	const struct pg_evidence *substitution, const struct pg_evidence *proof);
+ /* Invert accepted RETURN v : F A or THUNK M : U C judgements with canonical
+  * heads. Reuse the checked typed child, or certify the selected boundary by
+  * inversion; never execute M or guess a type from Core.
+@@ -730,13 +734,14 @@
  /* Context formation has no term subject or classifier. */
  const struct pg_occurrence *pg_evidence_subject(const struct pg_evidence *evidence);
  const struct pg_term *pg_evidence_classifier(const struct pg_evidence *evidence);

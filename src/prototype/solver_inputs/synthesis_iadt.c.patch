@@ -241,16 +241,17 @@
  				pg_evidence_context_map(parameters)->destination)) goto rejected;
  		}
 -		struct pg_synthesis_job *family = pg_synthesis_reindex_jobs(synthesis, (void *)job->inputs[1], (void *)job->inputs[0]);
-+		struct pg_synthesis_job *family = pg_synthesis_reindex_input(synthesis,
-+			pg_synthesis_work_dependency(job, 2), pg_synthesis_work_dependency(job, 0));
- 		struct pg_synthesis_job *value = pg_evidence_judgement(formation) == PG_JUDGEMENT_TYPE_FAMILY
+-		struct pg_synthesis_job *value = pg_evidence_judgement(formation) == PG_JUDGEMENT_TYPE_FAMILY
 -			? family : pg_synthesis_plain_rule(synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &family);
 -		struct pg_synthesis_job *premises[] = {pg_synthesis_evidence(synthesis, self),
 -			pg_synthesis_evidence(synthesis, pg_evidence_premise(parameters, 1)), (void *)job->inputs[1], value};
 -		local->pending = pg_synthesis_plain_rule(synthesis, PG_CONTEXT_SUBSTITUTION, NULL, 4, premises);
-+			? family : pg_synthesis_plain_rule_inputs(synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &(struct pg_synthesis_input){.pending = family});
++		struct pg_synthesis_input family = pg_synthesis_reindex_input(synthesis,
++			pg_synthesis_work_dependency(job, 2), pg_synthesis_work_dependency(job, 0));
++		struct pg_synthesis_input value = pg_evidence_judgement(formation) == PG_JUDGEMENT_TYPE_FAMILY
++			? family : (struct pg_synthesis_input){.pending = pg_synthesis_plain_rule_inputs(synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &family)};
 +		struct pg_synthesis_input premises[] = {{.checked = self},
-+			{.checked = pg_evidence_premise(parameters, 1)}, pg_synthesis_work_dependency(job, 2), {.pending = value}};
++			{.checked = pg_evidence_premise(parameters, 1)}, pg_synthesis_work_dependency(job, 2), value};
 +		local->pending = pg_synthesis_plain_rule_inputs(synthesis, PG_CONTEXT_SUBSTITUTION, NULL, 4, premises);
  		if (!local->pending) goto error;
  	}

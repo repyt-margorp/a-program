@@ -379,7 +379,7 @@
  struct pg_data_schema;
  /* Assemble field telescopes and result maps for a parsed @{...} or @\i:T=>
   * declaration in its already opened parameter scope. Constructors are checked
-@@ -637,85 +631,86 @@
+@@ -637,85 +631,84 @@
  	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
  	const struct pg_evidence *generalization, const struct pg_syntax *clause);
  /* Recover the selected nominal declaration and parameter map, never by Core
@@ -406,19 +406,21 @@
  struct pg_synthesis_job *pg_synthesis_constant_motive(struct pg_synthesis *synthesis,
  	const struct pg_evidence *destination, const struct pg_evidence *fields,
 -	struct pg_synthesis_job *body);
-+	struct pg_synthesis_input body);
- /* Shared suspended typed substitution; the checked substitution/proof pair
-  * determines a job. Uses the existing reindex machine, not a second traversal. */
- struct pg_synthesis_job *pg_synthesis_reindex(struct pg_synthesis *synthesis,
- 	const struct pg_evidence *substitution, const struct pg_evidence *proof);
+-/* Shared suspended typed substitution; the checked substitution/proof pair
+- * determines a job. Uses the existing reindex machine, not a second traversal. */
+-struct pg_synthesis_job *pg_synthesis_reindex(struct pg_synthesis *synthesis,
+-	const struct pg_evidence *substitution, const struct pg_evidence *proof);
 -/* Record dependencies before either input completes. The evidence API above
 - * uses this same request with evidence producers; no second reindex machine.
 - * Completed incompatible inputs are rejected without exposing partial proof. */
 -struct pg_synthesis_job *pg_synthesis_reindex_jobs(struct pg_synthesis *synthesis,
 -	struct pg_synthesis_job *substitution, struct pg_synthesis_job *proof);
-+/* Borrow checked inputs or record stable pending dependencies. Solve checks
-+ * their context before applying the shared typed action. */
-+struct pg_synthesis_job *pg_synthesis_reindex_input(struct pg_synthesis *synthesis,
++	struct pg_synthesis_input body);
++/* Borrow an already checked exact-premise result without a scheduler node.
++ * Otherwise retain one unfinished obligation over stable checked/pending
++ * inputs. It borrows the shared action, then checks admission; resolving an
++ * input never creates another checked-input Job for the same work. */
++struct pg_synthesis_input pg_synthesis_reindex_input(struct pg_synthesis *synthesis,
 +	struct pg_synthesis_input substitution, struct pg_synthesis_input proof);
  /* Post-check independently produced term/type evidence with matching context
   * and polarity. Explicit closed F rows permit directed effect widening after
@@ -496,7 +498,7 @@
  /* Share a suspended endpoint derivation on the ordinary work queue. face is
   * an immutable, graph-lived canonical endpoint selector: its first coordinate
   * is fixed, followed by its ordered axes. Those axes count outer Identity
-@@ -732,12 +727,7 @@
+@@ -732,12 +725,7 @@
   * and endpoint traversal steps. The same immutable-input lifetime applies.
   * Permutations and hidden Identity dimensions remain unsupported. */
  struct pg_synthesis_job *pg_synthesis_identity_face(struct pg_synthesis *synthesis,
@@ -510,7 +512,7 @@
  	const struct pg_dimension_map *face);
  /* Select the source boundary for a permutation: permutation composed with
   * target_face = ordered composed with intrinsic. The returned producer proves
-@@ -748,64 +738,47 @@
+@@ -748,64 +736,47 @@
  struct pg_dimensions;
  struct pg_synthesis_job *pg_synthesis_permutation_source_face(struct pg_synthesis *synthesis,
  	struct pg_dimensions *dimensions, const struct pg_evidence *context,
@@ -595,7 +597,7 @@
  	const struct pg_object *constructor;
  	int allocated;
  	const struct pg_context *prefix, *fields;
-@@ -818,15 +791,15 @@
+@@ -818,15 +789,15 @@
  /* Extend the shared field scope with thunked motives for direct recursive
   * fields. Input producers must ultimately justify the same nominal family. */
  struct pg_synthesis_job *pg_synthesis_induction_scope(struct pg_synthesis *synthesis,
@@ -617,7 +619,7 @@
  /* Pure checked computation -> returned value, using the same job table and
   * scheduler. The immutable context/evidence pair is the key, never bare Core.
   * A neutral total, empty-effect input has a checked symbolic result; an
-@@ -837,7 +810,8 @@
+@@ -837,7 +808,8 @@
  	const struct pg_evidence *context, const struct pg_evidence *computation);
  /* Normalize an accepted term or formation using shared pure WHNF work, then
   * retain typing through directed subject-reduction evidence. The immutable
@@ -627,7 +629,7 @@
  struct pg_synthesis_job *pg_synthesis_normalize(struct pg_synthesis *synthesis,
  	const struct pg_evidence *context, const struct pg_evidence *proof);
  /* Strong pure normalization of the same typed inputs, with a distinct job
-@@ -845,27 +819,17 @@
+@@ -845,27 +817,17 @@
   * This may normalize under THUNK; it is not a runtime execution request. */
  struct pg_synthesis_job *pg_synthesis_nf(struct pg_synthesis *synthesis,
  	const struct pg_evidence *context, const struct pg_evidence *proof);
