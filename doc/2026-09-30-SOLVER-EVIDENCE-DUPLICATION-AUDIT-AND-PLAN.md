@@ -133,8 +133,9 @@ owner, with the ready queue referencing that owner directly. For example,
 does not need to own them again. This is a candidate replacement, not a claim
 that deleting all Jobs from the present implementation already works.
 
-Follow-up inspection at `d0dd69d` (2026-09-30), separating accepted sources
-from the committed direct-input prototype:
+Follow-up inspection at `ee2fefa` (2026-09-30), separating accepted sources
+from the committed direct-input prototype. The unfinished local operation-input
+trial and unrelated accepted-source edits are excluded from these conclusions:
 
 - **No unfinished work:** `synthesis_derivation.c:evidence_ready` only assigns
   `result = inputs[0]` and DONE. This role still exists in both implementations;
@@ -154,8 +155,45 @@ two independently owned records for the same operation are. Conversely,
 `reindex_step` waits for a structural occurrence action and then constructs
 checked reindexing evidence: the action result alone is not that evidence.
 Audit distinct obligations before deleting such a wrapper. No new runtime tests
-were run for this follow-up inspection; uncommitted Identity API work is not
-included in the verified milestone.
+were run for this follow-up static inspection; verified Identity migration is
+recorded separately below.
+
+### Does Job Have to Exist?
+
+**Subjective (User):** 2026-09-30, English paraphrase: question the need for Job
+itself, not only the size of its adapters.
+
+**Objective (Code):** `synthesis_work.h:pg_synthesis_job` retains an interned
+request key, result reference, status, queue link and dependency notifications.
+`synthesis_work.c:pg_synthesis_work_request_key` allocates owner-private state
+and this header together on a hash miss: it does not recursively copy a Term.
+However, `synthesis_derivation.c:evidence_ready` allocates this representation
+even when no work remains. `typed_query.h:pg_typed_query` already owns a query's
+key, progress and result; the prototype now borrows that query without its old
+wrapper. `classifier_step` still forwards producer-keyed requests to another
+checked-input-keyed request. `substitution_step` genuinely needs its next-image
+cursor and pending conversion; source block synthesis also needs its position
+before the final typed occurrence exists.
+
+**Assessment:** an independent Job graph is neither a CBPV requirement nor an
+object-language proof. Its necessity has not been established. Retain the
+capability to suspend, share and resume unfinished operations, not this layout
+by default. A queue can reference the existing operation owner. Where there is
+no owner yet, a single unfinished-construction record may be necessary; attaching
+it to a nonexistent future occurrence, a mutable shared Term, or a renamed Task
+graph does not solve ownership. Completed results may remain memoized for sharing,
+but this does not require retaining every scheduler frame and forwarding edge.
+Removing forwarding alone previously lost checked-result sharing, so the change
+must preserve that sharing through one actual owner rather than abandon it.
+
+**Plan:** use the existing SE1 work list, not a second migration track. Its gate
+requires accounting for each remaining owner and deleting needless wrappers,
+not just accepting direct inputs. For each role, record its canonical key, input
+owner, unfinished cursor, completion owner and actual resumption consumer.
+Delete completed Evidence adapters; borrow already-owned queries; unify duplicate
+operation ownership and construction paths before expanding persistence. Verify
+shared and distinct typed uses, every changed suspension boundary, and zero-fuel
+and split-fuel behavior. Do not claim all Job state removable until that gate passes.
 
 Some synthesis requests precede the existence of a typed conclusion. Their
 identity includes the operation, scope and inputs, not just a Term pointer.
