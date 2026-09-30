@@ -22,6 +22,15 @@
  /* Implicit mode also quotes inferred computational functions at argument and
   * named block-binding boundaries. Returning computations still sequence;
   * logical family signatures are not quoted as runtime functions. */
+@@ -194,7 +208,7 @@
+ 	struct pg_synthesis_job *registration; /* Owner of definitions, otherwise NULL. */
+ 	const struct pg_syntax *handler;
+ 	struct pg_synthesis_job *binding;
+-	struct pg_synthesis_job *context;
++	struct pg_synthesis_input context;
+ 	const struct pg_object *binder;
+ 	const struct pg_source_scope *associated;
+ 	enum pg_source_association association;
 @@ -292,7 +306,7 @@
   * neither allocates fresh binders nor resolves an operation name. Consumers
   * retain their own operation-reference validation dependency. */
@@ -85,6 +94,23 @@
  	int require_closed,
  	int (*observe)(void *, const struct pg_derivation_input *, const struct pg_effect_inference *),
  	void *owner, const struct pg_derivation_input *const **result);
+@@ -582,14 +602,14 @@
+  * Equal/neutral constructor heads are unsupported, not evidence of falsity.
+  * All six inputs are checked in context; target_type is a value formation. */
+ struct pg_synthesis_job *pg_synthesis_disjoint_transport(struct pg_synthesis *synthesis,
+-	struct pg_synthesis_job *context, struct pg_synthesis_job *left,
++	struct pg_synthesis_input context, struct pg_synthesis_job *left,
+ 	struct pg_synthesis_job *right, struct pg_synthesis_job *path,
+ 	struct pg_synthesis_job *value, struct pg_synthesis_job *target_type);
+ /* Explicit same-constructor field identity by type-case action/transport.
+  * The schema binder fixes the observer; this is not result-type inference.
+  * The field type must be independent of preceding constructor fields. */
+ struct pg_synthesis_job *pg_synthesis_constructor_field_identity(struct pg_synthesis *synthesis,
+-	struct pg_synthesis_job *context, struct pg_synthesis_job *left,
++	struct pg_synthesis_input context, struct pg_synthesis_job *left,
+ 	struct pg_synthesis_job *right, struct pg_synthesis_job *path,
+ 	const struct pg_object *field, struct pg_synthesis_job *left_field,
+ 	struct pg_synthesis_job *right_field);
 @@ -637,9 +657,10 @@
  	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
  	const struct pg_evidence *generalization, const struct pg_syntax *clause);

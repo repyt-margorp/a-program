@@ -106,6 +106,15 @@
  };
  struct induction_scope_work {
  	struct pg_source_context_allocation *allocation;
+@@ -155,7 +160,7 @@
+ 	const struct pg_syntax *syntax = job->inputs[3];
+ 	if (pg_synthesis_scope_wait(synthesis, job, scope)) return;
+ 	if (local->substitution) { pg_synthesis_forward(synthesis, job, local->substitution); return; }
+-	if (pg_synthesis_await(synthesis, job, scope->context_job)) return;
++	if (pg_synthesis_await_input(synthesis, job, scope->context)) return;
+ 	const struct pg_evidence *parameters = job->inputs[1], *indices = job->inputs[2];
+ 	const struct pg_evidence *fields = pg_synthesis_scope_context(scope);
+ 	if (!fields) goto error;
 @@ -170,22 +175,23 @@
  	if (head->kind != PG_SYNTAX_ATOM || head->token.kind != '*' || arguments != index_count) goto rejected;
  	if (index_count > SIZE_MAX - parameter_count) goto error;
@@ -191,7 +200,124 @@
  			retained ? retained->binder : pg_binder(synthesis->typing->graph), 2, premises);
  		if (!local->pending) goto error;
  		pg_synthesis_subscribe(synthesis, job, local->pending, 0);
-@@ -683,7 +693,8 @@
+@@ -397,52 +407,54 @@
+ 	.size = sizeof(struct index_transport_work), .advance = index_transport_step, .destroy = index_transport_destroy}};
+ 
+ static struct pg_synthesis_job *index_transport_request(struct pg_synthesis *synthesis,
+-	const struct pg_synthesis_work_class *role, struct pg_synthesis_job *context,
++	const struct pg_synthesis_work_class *role, struct pg_synthesis_input context,
+ 	struct pg_synthesis_job *argument, struct pg_synthesis_job *target)
+ {
+-	if (!synthesis) return NULL;
+-	const void *inputs[] = {context, argument, target};
+-	for (size_t i = 0; i < 3; ++i) {
++	if (!pg_synthesis_input_owned(synthesis, context)) return NULL;
++	context = pg_synthesis_input_direct(context);
++	const void *inputs[] = {context.checked, context.pending, argument, target};
++	for (size_t i = 2; i < 4; ++i) {
+ 		const struct pg_synthesis_job *input = inputs[i];
+ 		if (!input || input->owner != synthesis->owner_key) return NULL;
+ 	}
+-	return pg_synthesis_work_request(synthesis, role, 3, inputs);
++	return pg_synthesis_work_request(synthesis, role, 4, inputs);
+ }
+ 
+ struct pg_synthesis_job *pg_synthesis_index_transport(struct pg_synthesis *synthesis,
+-	struct pg_synthesis_job *context, struct pg_synthesis_job *argument, struct pg_synthesis_job *target)
++	struct pg_synthesis_input context, struct pg_synthesis_job *argument, struct pg_synthesis_job *target)
+ {
+ 	return index_transport_request(synthesis, INDEX_TRANSPORT_JOB, context, argument, target);
+ }
+ 
+ struct pg_synthesis_job *pg_synthesis_index_result(struct pg_synthesis *synthesis,
+-	struct pg_synthesis_job *context, struct pg_synthesis_job *argument, struct pg_synthesis_job *destination)
++	struct pg_synthesis_input context, struct pg_synthesis_job *argument, struct pg_synthesis_job *destination)
+ {
+ 	return index_transport_request(synthesis, INDEX_RESULT_JOB, context, argument, destination);
+ }
+ 
+ struct pg_synthesis_job *pg_synthesis_index_transport_target(const struct pg_synthesis_job *job)
+ {
+-	return job && job->role == INDEX_TRANSPORT_JOB ? (void *)job->inputs[2] : NULL;
++	return job && job->role == INDEX_TRANSPORT_JOB ? (void *)job->inputs[3] : NULL;
+ }
+ 
+ static struct pg_synthesis_job *constructor_transport_request(struct pg_synthesis *synthesis,
+-	struct pg_synthesis_job *context, struct pg_synthesis_job *left,
++	struct pg_synthesis_input context, struct pg_synthesis_job *left,
+ 	struct pg_synthesis_job *right, struct pg_synthesis_job *path,
+ 	struct pg_synthesis_job *value, struct pg_synthesis_job *target_type,
+ 	const struct pg_object *field)
+ {
+-	if (!synthesis) return NULL;
+-	const void *inputs[] = {context, left, right, path, value, target_type, field};
+-	for (size_t i = 0; i < 6; ++i) {
++	if (!pg_synthesis_input_owned(synthesis, context)) return NULL;
++	context = pg_synthesis_input_direct(context);
++	const void *inputs[] = {context.checked, context.pending, left, right, path, value, target_type, field};
++	for (size_t i = 2; i < 7; ++i) {
+ 		const struct pg_synthesis_job *input = inputs[i];
+ 		if (!input || input->owner != synthesis->owner_key) return NULL;
+ 	}
+-	return pg_synthesis_work_request(synthesis, CONSTRUCTOR_TRANSPORT_JOB, 7, inputs);
++	return pg_synthesis_work_request(synthesis, CONSTRUCTOR_TRANSPORT_JOB, 8, inputs);
+ }
+ 
+ struct pg_synthesis_job *pg_synthesis_disjoint_transport(struct pg_synthesis *synthesis,
+-	struct pg_synthesis_job *context, struct pg_synthesis_job *left,
++	struct pg_synthesis_input context, struct pg_synthesis_job *left,
+ 	struct pg_synthesis_job *right, struct pg_synthesis_job *path,
+ 	struct pg_synthesis_job *value, struct pg_synthesis_job *target_type)
+ {
+@@ -450,7 +462,7 @@
+ }
+ 
+ struct pg_synthesis_job *pg_synthesis_constructor_field_identity(struct pg_synthesis *synthesis,
+-	struct pg_synthesis_job *context, struct pg_synthesis_job *left,
++	struct pg_synthesis_input context, struct pg_synthesis_job *left,
+ 	struct pg_synthesis_job *right, struct pg_synthesis_job *path,
+ 	const struct pg_object *field, struct pg_synthesis_job *left_field,
+ 	struct pg_synthesis_job *right_field)
+@@ -582,22 +594,28 @@
+ 	struct constructor_transport_work *local = pg_synthesis_work_state(job, CONSTRUCTOR_TRANSPORT_JOB);
+ 	if (local->value_job) { pg_synthesis_forward(synthesis, job, local->value_job); return; }
+ 	const struct pg_evidence *inputs[6];
+-	for (size_t i = 0; i < 6; ++i) {
+-		struct pg_synthesis_job *input = (void *)job->inputs[i];
++	struct pg_synthesis_input scope = pg_synthesis_work_dependency(job, 0);
++	if (pg_synthesis_await_input(synthesis, job, scope)) return;
++	inputs[0] = pg_synthesis_input_result(scope);
++	if (!inputs[0]) goto rejected;
++	for (size_t i = 1; i < 6; ++i) {
++		struct pg_synthesis_job *input = (void *)job->inputs[i + 1];
+ 		if (pg_synthesis_await(synthesis, job, input)) return;
+ 		inputs[i] = input->result;
+ 		if (!inputs[i]) goto rejected;
+ 	}
+ 	struct pg_typing *typing = synthesis->typing;
+ 	const struct pg_evidence *context = inputs[0], *value = inputs[4], *target = inputs[5];
+-	const struct pg_object *field = job->inputs[6];
++	const struct pg_object *field = job->inputs[7];
+ 	if (pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT) goto rejected;
+ 	for (size_t i = 1; i < 6; ++i)
+ 		if (pg_evidence_context(inputs[i]) != pg_evidence_context(context)) goto rejected;
+ 	if (pg_evidence_judgement(value) != PG_JUDGEMENT_VALUE) goto rejected;
+ 	if (pg_evidence_judgement(target) != (field ? PG_JUDGEMENT_VALUE : PG_JUDGEMENT_VALUE_TYPE)) goto rejected;
+-	if (!local->left) local->left = pg_synthesis_normalize_jobs(synthesis, (void *)job->inputs[0], (void *)job->inputs[1], PG_REDUCTION_WHNF);
+-	if (!local->right) local->right = pg_synthesis_normalize_jobs(synthesis, (void *)job->inputs[0], (void *)job->inputs[2], PG_REDUCTION_WHNF);
++	if (!local->left) local->left = pg_synthesis_reduction_request(synthesis, scope,
++		(struct pg_synthesis_input){.pending = (void *)job->inputs[2]}, PG_REDUCTION_WHNF, 0);
++	if (!local->right) local->right = pg_synthesis_reduction_request(synthesis, scope,
++		(struct pg_synthesis_input){.pending = (void *)job->inputs[3]}, PG_REDUCTION_WHNF, 0);
+ 	struct pg_synthesis_job *endpoints[] = {local->left, local->right};
+ 	const struct pg_object *constructors[2];
+ 	for (size_t i = 0; i < 2; ++i) {
+@@ -679,11 +697,12 @@
+ 	if (!paths) goto error;
+ 	for (size_t i = 0; i < boundary.path_count; ++i)
+ 		paths[i] = pg_synthesis_evidence(synthesis, pg_prove_projection(typing, context, pg_prove_structural_subject(typing, boundary.paths[i])));
+-	paths[boundary.path_count] = (void *)job->inputs[3];
++	paths[boundary.path_count] = (void *)job->inputs[4];
  	struct pg_synthesis_job *transport = pg_synthesis_family_transport_jobs(synthesis,
  		pg_synthesis_evidence(synthesis, family), left, right, path_count, paths, pg_synthesis_evidence(synthesis, value), PG_IDENTITY_RIGHT);
  	free(paths);
@@ -201,14 +327,122 @@
  	if (!local->value_job) goto rejected;
  	pg_synthesis_forward(synthesis, job, local->value_job);
  	return;
-@@ -1118,8 +1129,9 @@
+@@ -701,12 +720,14 @@
+ static struct pg_synthesis_job *index_transport_check(struct pg_synthesis *synthesis,
+ 	struct pg_synthesis_job *job, struct pg_synthesis_job *argument)
+ {
+-	struct pg_synthesis_job *target = (void *)job->inputs[2];
++	struct pg_synthesis_job *target = (void *)job->inputs[3];
+ 	if (job->role == INDEX_RESULT_JOB) {
+-		struct pg_synthesis_job *context = (void *)job->inputs[0];
+-		struct pg_synthesis_job *type = pg_synthesis_constant_motive(synthesis, target->result, context->result, argument);
++		struct pg_synthesis_input context = pg_synthesis_work_dependency(job, 0);
++		struct pg_synthesis_job *type = pg_synthesis_constant_motive(synthesis, target->result,
++			pg_synthesis_input_result(context), argument);
+ 		type = pg_synthesis_plain_rule(synthesis, PG_RETURN_CONTENT, NULL, 1, &type);
+-		target = pg_synthesis_plain_rule(synthesis, PG_CONTEXT_PROJECTION, NULL, 2, (struct pg_synthesis_job *[]){context, type});
++		target = pg_synthesis_plain_rule_inputs(synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
++			(struct pg_synthesis_input[]){context, {.pending = type}});
+ 	}
+ 	return pg_synthesis_expect(synthesis, argument, target);
+ }
+@@ -772,7 +793,7 @@
+ 	if (!lv || !rv) return NULL;
+ 	struct pg_typing *typing = synthesis->typing;
+ 	struct index_transport_state *state = local->index_transport;
+-	const struct pg_evidence *context = ((struct pg_synthesis_job *)job->inputs[0])->result;
++	const struct pg_evidence *context = pg_synthesis_input_result(pg_synthesis_work_dependency(job, 0));
+ 	const struct pg_term *from = pg_evidence_subject(direction == PG_IDENTITY_LEFT ? rv : lv)->core;
+ 	struct index_scope **slot = &state->scopes[direction == PG_IDENTITY_RIGHT];
+ 	if (!*slot && from->kind == PG_REFERENCE && from->as.reference->kind == PG_BINDER) {
+@@ -813,7 +834,7 @@
+ 	}
+ 	const struct pg_evidence *source = work->source, *ls = work->left, *rs = work->right;
+ 	if (!ls || !rs) return NULL;
+-	struct pg_synthesis_job *argument = (void *)job->inputs[1];
++	struct pg_synthesis_job *argument = (void *)job->inputs[2];
+ 	const struct pg_evidence *type = pg_prove_classifier(typing, context, argument->result);
+ 	/* Factor the typed index occurrence, not a raw normal form of its type.
+ 	 * The latter retains the original operands and cannot be inverted as if
+@@ -903,7 +924,7 @@
+ 	struct index_transport_work *local = pg_synthesis_work_state(job, job->role);
+ 	struct pg_typing *typing = synthesis->typing;
+ 	struct index_transport_state *state = local->index_transport;
+-	const struct pg_evidence *context = ((struct pg_synthesis_job *)job->inputs[0])->result;
++	const struct pg_evidence *context = pg_synthesis_input_result(pg_synthesis_work_dependency(job, 0));
+ 	const struct pg_evidence *value = state->normal[direction == PG_IDENTITY_LEFT]->result;
+ 	const struct pg_term *head = pg_evidence_subject(value)->core;
+ 	while (head->kind == PG_APPLICATION) head = head->as.application.function;
+@@ -950,7 +971,7 @@
+ 	if (branch_count > SIZE_MAX / sizeof(const struct pg_evidence *)) goto done;
+ 	const struct pg_evidence **branches = pg_alloc(&temporary, branch_count * sizeof(*branches));
+ 	if (!branches) goto done;
+-	struct pg_synthesis_job *argument = (void *)job->inputs[1];
++	struct pg_synthesis_job *argument = (void *)job->inputs[2];
+ 	const struct pg_evidence *type = pg_prove_classifier(typing, context, argument->result);
+ 	for (size_t i = 0; i < branch_count; ++i) {
+ 		const struct pg_object *label = pg_data_constructor(layout, i);
+@@ -998,7 +1019,8 @@
+ 	const struct pg_evidence *transported, int *progress)
+ {
+ 	struct index_transport_work *local = pg_synthesis_work_state(job, job->role);
+-	const struct pg_synthesis_job *context = job->inputs[0], *argument = job->inputs[1], *target = job->inputs[2];
++	const struct pg_evidence *context = pg_synthesis_input_result(pg_synthesis_work_dependency(job, 0));
++	const struct pg_synthesis_job *argument = job->inputs[2], *target = job->inputs[3];
+ 	*progress = 0;
+ 	if (!target->result) return 1;
+ 	const struct pg_term *before = pg_evidence_classifier(argument->result);
+@@ -1006,7 +1028,7 @@
+ 	if (!before || !after) return 1;
+ 	struct index_progress *work = &local->index_transport->progress;
+ 	if (!work->next) {
+-		work->field = pg_evidence_context(context->result);
++		work->field = pg_evidence_context(context);
+ 		work->counts[0] = work->counts[1] = 0;
+ 		work->next = 1;
+ 	}
+@@ -1042,18 +1064,18 @@
+ static void index_transport_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+ {
+ 	struct index_transport_work *local = pg_synthesis_work_state(job, job->role);
+-	if (!local->left) local->left = index_transport_check(synthesis, job, (void *)job->inputs[1]);
++	if (!local->left) local->left = index_transport_check(synthesis, job, (void *)job->inputs[2]);
+ 	if (!local->left) goto error;
+ 	if (local->left->status == PG_SYNTHESIS_PENDING) { pg_synthesis_subscribe(synthesis, job, local->left, 0); return; }
+ 	if (local->left->status != PG_SYNTHESIS_REJECTED &&
+ 		!(job->role == INDEX_RESULT_JOB && local->left->status == PG_SYNTHESIS_UNSUPPORTED)) {
+ 		pg_synthesis_forward(synthesis, job, local->left); return;
+ 	}
+-	struct pg_synthesis_job *cj = (void *)job->inputs[0], *argument = (void *)job->inputs[1];
+-	if (pg_synthesis_await(synthesis, job, cj)) return;
++	struct pg_synthesis_job *argument = (void *)job->inputs[2];
++	if (pg_synthesis_await_input(synthesis, job, pg_synthesis_work_dependency(job, 0))) return;
+ 	if (argument->status != PG_SYNTHESIS_DONE || pg_evidence_judgement(argument->result) != PG_JUDGEMENT_VALUE) goto rejected;
+ 	struct pg_typing *typing = synthesis->typing;
+-	const struct pg_evidence *context = cj->result;
++	const struct pg_evidence *context = pg_synthesis_input_result(pg_synthesis_work_dependency(job, 0));
+ 	if (!local->index_transport) {
+ 		local->index_transport = pg_alloc(typing->graph, sizeof(*local->index_transport));
+ 		if (!local->index_transport) goto error;
+@@ -1073,8 +1095,8 @@
+ 					int status = index_transport_progress(job, candidate->result, &progress);
+ 					if (!status) { pg_synthesis_enqueue(synthesis, job); return; }
+ 					if (status < 0) goto error;
+-					const void *inputs[] = {job->inputs[0], candidate, job->inputs[2]};
+-					state->checks[index] = progress ? pg_synthesis_work_request(synthesis, job->role, 3, inputs)
++					state->checks[index] = progress ? index_transport_request(synthesis, job->role,
++						pg_synthesis_work_dependency(job, 0), candidate, (void *)job->inputs[3])
+ 						: index_transport_check(synthesis, job, candidate);
+ 				}
+ 				struct pg_synthesis_job *check = state->checks[index];
+@@ -1118,8 +1140,9 @@
  		pg_synthesis_enqueue(synthesis, job); return;
  	}
  	for (size_t i = 0; i < 2; ++i) {
 -		if (!state->normal[i]) state->normal[i] = pg_synthesis_normalize_jobs(synthesis, cj,
 -			pg_synthesis_evidence(synthesis, state->endpoints[i]), PG_REDUCTION_WHNF);
 +		if (!state->normal[i]) state->normal[i] = pg_synthesis_reduction_request(synthesis,
-+			(struct pg_synthesis_input){.pending = cj},
++			pg_synthesis_work_dependency(job, 0),
 +			(struct pg_synthesis_input){.checked = state->endpoints[i]}, PG_REDUCTION_WHNF, 0);
  		if (!state->normal[i]) goto error;
  		if (state->normal[i]->status == PG_SYNTHESIS_PENDING) { pg_synthesis_subscribe(synthesis, job, state->normal[i], 0); return; }

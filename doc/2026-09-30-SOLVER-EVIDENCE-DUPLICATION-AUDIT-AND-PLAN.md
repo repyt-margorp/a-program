@@ -270,12 +270,12 @@ baseline described above. Concurrent accepted-source edits remain excluded.
 - [x] Unify application, sequencing and result-context APIs around direct
   Context inputs; migrate constant-result and handler consumers, deleting
   separate checked/Job entry points rather than adding another API variant.
-- [ ] Migrate source-scope Context storage, environment export and name lookup
+- [x] Migrate source-scope Context storage, environment export and name lookup
   together. Scope identity must retain checked/pending input identity, not change
-  when a producer finishes. Source checkpoint fixtures currently assume a root
-  Context Job at prefix slot zero; remove that assumption, not recreate an adapter
-  for serialization. This prerequisite is distinct from further codec expansion.
-- [ ] Finish source scopes, known-family result adapters, other context and Identity
+  when a producer finishes. Removed the source checkpoint fixture's root Context
+  Job and the derivation codec's requirement for an external checked input to
+  have a Job. This prerequisite is distinct from further owner-codec expansion.
+- [ ] Finish known-family result adapters, other context and Identity
   consumers, remove `EVIDENCE_JOB`, then remove duplicated query scheduling.
   The remaining adapter recognition is temporary, not the final architecture.
 
@@ -648,3 +648,55 @@ This is not a claim of reduced `.a` size or improved runtime.
 | Implementation total | 61 | 94 | -33 |
 | `tests/synthesis.c` | 124 | 55 | +69 |
 | `tests/iadt.c` | 2 | 2 | 0 |
+
+### SE1 Source Scopes (2026-09-30)
+
+**Objective (Code):** parent `5acaae3` plus this prototype, same isolated
+baseline. Source scopes, environment export, lookup, Match index transport and
+constructor application now borrow direct Context inputs. Tests check no Job
+allocation for root/checked bindings, stable pending identities after completion,
+exact binder validation and ordinary source-image rechecking.
+
+**Assessment:** the checkpoint failure exposed a real Job-only transport
+assumption, not a need to restore root adapters. The derivation codec now takes
+borrowed spans of checked inputs and pending owners. Checked references have no
+queue slots or duplicated completion state; missing/foreign references fail.
+Its experimental `APGDRC4` payload changes reference ordinals, not the public
+source format. No new semantic graph, Core tag, trust grant or owner codec was
+introduced. This does not finish SE1 or establish that all Jobs are removable.
+
+**Plan / Results:** O2 `check` and all seven checkpoint targets pass, including
+general QuickSort ordinary-result and negative/image controls. ASan/UBSan
+synthesis, IADT, source-checkpoint (204 cuts) and derivation-checkpoint (281 cuts,
+15 mixed cuts) pass. Regenerated overlay source/tests/checkpoints exactly match
+tested files. Public partitions still fail at 100+100, 1000+1000, 1600+1600 and
+2726+0; step 0 and 10+10 pass. Do not close AP0/AP1-AP3 from these local gates.
+
+QuickSort Jobs: 56,010 -> 55,718; Evidence adapters: 2,031 -> 1,739; live Job
+bytes: 9,604,088 -> 9,574,080. List-09: 901 -> 896 Jobs, 25 -> 20 adapters,
+155,552 -> 155,032 bytes. Steps, Terms, occurrences, Evidence and premise edges
+are unchanged, and repeated final samples do not grow. Standalone root creation
+allocates no Job; the initialized CLI still has one adapter elsewhere. This is
+not a speedup or `.a`-size claim.
+
+| Applied-code delta from `5acaae3` | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `artifact/derivation.c` | 76 | 48 | +28 |
+| `artifact/derivation.h` | 17 | 6 | +11 |
+| `source_io.c` | 8 | 5 | +3 |
+| `synthesis.c` | 133 | 130 | +3 |
+| `synthesis.h` | 3 | 3 | 0 |
+| `synthesis_binding.c` | 4 | 4 | 0 |
+| `synthesis_handler.c` | 8 | 8 | 0 |
+| `synthesis_iadt.c` | 50 | 39 | +11 |
+| `synthesis_schema.c` | 2 | 2 | 0 |
+| `synthesis_source.h` | 3 | 3 | 0 |
+| Implementation total | 304 | 248 | +56 |
+| `tests/synthesis.c` | 52 | 2 | +50 |
+| `tests/iadt.c` | 17 | 17 | 0 |
+| `tests/source_io.c` | 2 | 2 | 0 |
+| `source_checkpoint_test.c` | 29 | 19 | +10 |
+| `derivation_checkpoint_test.c` | 50 | 48 | +2 |
+
+These are applied-source changes, not patch context or documentation lines.
+The intermediate source increase is not presented as the final simplification.

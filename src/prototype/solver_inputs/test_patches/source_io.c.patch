@@ -10,6 +10,19 @@
  		assert(recovery);
  		while (pg_synthesis_status(recovery) == PG_SYNTHESIS_PENDING) {
  			assert(p->synthesis.steps < 100000);
+@@ -426,10 +427,10 @@
+ 	assert(!pg_synthesis_source_input(&p->synthesis, roots[0], &scope, &syntax));
+ 	struct pg_source_environment environment, field;
+ 	assert(!pg_synthesis_environment_input(&p->synthesis, scope, &environment));
+-	assert(environment.context && environment.associated);
++	assert((environment.context.checked || environment.context.pending) && environment.associated);
+ 	assert(environment.association == (graph ? PG_SOURCE_GRAPH : PG_SOURCE_HYPOTHESIS));
+ 	assert(!pg_synthesis_environment_input(&p->synthesis, environment.associated, &field));
+-	assert(field.binder && field.context);
++	assert(field.binder && (field.context.checked || field.context.pending));
+ 	pg_synthesis_advance(&p->synthesis, 10000);
+ 	const struct pg_evidence *result = pg_synthesis_result(roots[0]);
+ 	const struct pg_term *expected = pg_reference(&p->graph, environment.binder);
 @@ -2591,8 +2592,61 @@
  	puts("source materialized roots: inert read/resave, shared input origins and explicit local NF cache reuse passed");
  }

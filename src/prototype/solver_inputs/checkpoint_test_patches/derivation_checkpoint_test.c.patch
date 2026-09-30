@@ -1,6 +1,250 @@
 --- a/derivation_checkpoint_test.c
 +++ b/derivation_checkpoint_test.c
-@@ -699,9 +699,11 @@
+@@ -43,7 +43,7 @@
+ static struct pg_program *empty(void)
+ {
+ 	struct pg_program *p = pg_program_allocate_empty(PG_DEFINITION_IMPLICIT_THUNK);
+-	assert(p && p->synthesis.jobs.count == 1 && p->typing.proofs.count == 1);
++	assert(p && p->synthesis.jobs.count == 0 && p->typing.proofs.count == 1);
+ 	return p;
+ }
+ 
+@@ -146,23 +146,23 @@
+ {
+ 	struct pg_synthesis *s = &c->program->synthesis;
+ 	assert(!pg_artifact_derivations_prepare(s, c->state, c->count, c->inputs, NULL, &c->jobs));
+-	assert(s->jobs.count == pg_artifact_derivations_job_count(c->state) + 1);
++	assert(s->jobs.count == pg_artifact_derivations_job_count(c->state));
+ 	validation_schedule(c->program, c->state, c->jobs);
+ 	assert(!s->steps && c->program->typing.proofs.count == 1);
+ 	uint64_t total = 100000, used = UINT64_MAX;
+ 	solving = 1;
+-	enum pg_synthesis_status status = pg_artifact_derivations_revalidate(c->program, c->state, c->jobs, total, 0, &used);
++	enum pg_synthesis_status status = pg_artifact_derivations_revalidate(c->program, c->state, c->jobs, NULL, total, 0, &used);
+ 	assert(!used && !s->steps);
+-	if (status == PG_SYNTHESIS_PENDING) assert(pg_artifact_derivations_attach(s, c->state, c->jobs));
++	if (status == PG_SYNTHESIS_PENDING) assert(pg_artifact_derivations_attach(s, c->state, c->jobs, NULL));
+ 	while (status == PG_SYNTHESIS_PENDING) {
+ 		assert(total);
+-		status = pg_artifact_derivations_revalidate(c->program, c->state, c->jobs, 1, total, &used);
++		status = pg_artifact_derivations_revalidate(c->program, c->state, c->jobs, NULL, 1, total, &used);
+ 		assert(used == 1);
+ 		total -= used;
+ 	}
+ 	solving = 0;
+ 	assert(status == PG_SYNTHESIS_DONE && !s->ready);
+-	assert(!pg_artifact_derivations_attach(s, c->state, c->jobs));
++	assert(!pg_artifact_derivations_attach(s, c->state, c->jobs, NULL));
+ 	assert(!pg_artifact_schedule_attach(s, c->schedule, pg_artifact_derivations_job_count(c->state), c->jobs));
+ }
+ 
+@@ -217,7 +217,7 @@
+ 	assert(!pg_declaration_io_init(&c.codec, &p->typing));
+ 	assert(!pg_graph_image_read(image, magic, &p->graph, 100000, 100000,
+ 		&pg_declaration_graph_codec, &c.codec, read_payload, &c));
+-	assert(p->typing.proofs.count == 1 && p->synthesis.jobs.count == 1);
++	assert(p->typing.proofs.count == 1 && p->synthesis.jobs.count == 0);
+ 	FILE *copy = save(&c);
+ 	equal_files(image, copy); assert(!fclose(copy));
+ 	restore(&c);
+@@ -369,7 +369,7 @@
+ 	FILE *file = tmpfile();
+ 	assert(file && !pg_artifact_derivations_write(file, c));
+ 	long length = ftell(file);
+-	assert(length == 88);
++	assert(length == 96);
+ 	unsigned char *bytes = malloc((size_t)length);
+ 	assert(bytes);
+ 	rewind(file);
+@@ -379,7 +379,7 @@
+ 		assert(!pg_artifact_derivations_read(file, &p->graph, 100));
+ 		assert(!fclose(file));
+ 	}
+-	const uint64_t invalid[][2] = {{8, 0}, {16, 0}, {24, 0}, {32, 1}, {48, 2}, {72, 1}, {80, 1}};
++	const uint64_t invalid[][2] = {{8, 0}, {16, 0}, {24, 0}, {32, 1}, {40, 1}, {56, 2}, {80, 1}, {88, 1}};
+ 	for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
+ 		file = metadata_copy(bytes, (size_t)length);
+ 		assert(!fseek(file, (long)invalid[i][0], SEEK_SET) && !pg_wire_write_u64(file, invalid[i][1]));
+@@ -415,15 +415,15 @@
+ 	validation_schedule(q, c, jobs);
+ 	struct pg_synthesis_job *first = jobs[0];
+ 	jobs[0] = jobs[1];
+-	assert(pg_artifact_derivations_attach(&q->synthesis, c, jobs));
++	assert(pg_artifact_derivations_attach(&q->synthesis, c, jobs, NULL));
+ 	jobs[0] = first;
+ 	uint64_t spent = UINT64_MAX;
+ 	solving = 1;
+-	assert(pg_artifact_derivations_revalidate(q, c, jobs, 0, 100, &spent) == PG_SYNTHESIS_DONE && !spent);
+-	assert(pg_artifact_derivations_revalidate(p, c, jobs, 100, 100, &spent) == PG_SYNTHESIS_ERROR);
++	assert(pg_artifact_derivations_revalidate(q, c, jobs, NULL, 0, 100, &spent) == PG_SYNTHESIS_DONE && !spent);
++	assert(pg_artifact_derivations_revalidate(p, c, jobs, NULL, 100, 100, &spent) == PG_SYNTHESIS_ERROR);
+ 	solving = 0;
+-	assert(pg_artifact_derivations_attach(&p->synthesis, c, jobs));
+-	assert(!pg_artifact_derivations_attach(&q->synthesis, c, jobs));
++	assert(pg_artifact_derivations_attach(&p->synthesis, c, jobs, NULL));
++	assert(!pg_artifact_derivations_attach(&q->synthesis, c, jobs, NULL));
+ 	assert(!pg_artifact_schedule_attach(&q->synthesis, schedule, pg_artifact_derivations_job_count(c), jobs));
+ 	advance(&q->synthesis, 100);
+ 	assert(pg_synthesis_result(pg_artifact_derivations_root(c, jobs, 0)));
+@@ -458,7 +458,7 @@
+ 	assert(file && !pg_artifact_derivations_write(file, c));
+ 	uint64_t jobs_count;
+ 	assert(!fseek(file, 16, SEEK_SET) && !pg_wire_read_u64(file, &jobs_count));
+-	assert(!fseek(file, 40, SEEK_SET));
++	assert(!fseek(file, 48, SEEK_SET));
+ 	for (size_t i = 0; i < jobs_count; ++i) {
+ 		assert(!fseek(file, 8, SEEK_CUR));
+ 		assert(!pg_wire_write_u64(file, PG_SYNTHESIS_DONE));
+@@ -474,12 +474,12 @@
+ 	struct pg_synthesis_job **jobs;
+ 	assert(!pg_artifact_derivations_prepare(&q->synthesis, c, count, inputs, NULL, &jobs));
+ 	validation_schedule(q, c, jobs);
+-	assert(pg_artifact_derivations_attach(&q->synthesis, c, jobs));
++	assert(pg_artifact_derivations_attach(&q->synthesis, c, jobs, NULL));
+ 	uint64_t spent;
+ 	solving = 1;
+-	assert(pg_artifact_derivations_revalidate(q, c, jobs, 100, 100, &spent) == PG_SYNTHESIS_REJECTED);
++	assert(pg_artifact_derivations_revalidate(q, c, jobs, NULL, 100, 100, &spent) == PG_SYNTHESIS_REJECTED);
+ 	solving = 0;
+-	assert(spent && spent <= 100 && pg_artifact_derivations_attach(&q->synthesis, c, jobs));
++	assert(spent && spent <= 100 && pg_artifact_derivations_attach(&q->synthesis, c, jobs, NULL));
+ 	assert(!pg_synthesis_result(pg_artifact_derivations_root(c, jobs, 0)));
+ 	pg_program_destroy(q); pg_program_destroy(p);
+ }
+@@ -495,20 +495,23 @@
+ 	bad[1] = pg_synthesis_plain_rule(&other->synthesis, PG_CONTEXT_EMPTY, NULL, 0, NULL);
+ 	assert(!pg_artifact_derivations_capture(&p->graph, &p->synthesis, 2, bad, &mapping) && !mapping);
+ 	/* A completed external owner is not silently replaced by a fresh rule. */
+-	bad[1] = pg_synthesis_evidence(&p->synthesis, pg_prove_empty_context(&p->typing));
+-	bad[0] = pg_synthesis_plain_rule(&p->synthesis, PG_UNIVERSE_FORM, NULL, 1, &bad[1]);
++	const struct pg_evidence *proof = pg_prove_empty_context(&p->typing);
++	bad[0] = pg_synthesis_plain_rule_inputs(&p->synthesis, PG_UNIVERSE_FORM, NULL, 1,
++		&(struct pg_synthesis_input){.checked = proof});
+ 	assert(!pg_artifact_derivations_capture(&p->graph, &p->synthesis, 1, bad, &mapping) && !mapping);
++	struct pg_artifact_derivation_dependencies dependencies = {.checked_count = 1};
+ 	assert(!pg_artifact_derivations_capture_with_dependencies(&p->graph, &p->synthesis,
+-		1, bad, 1, NULL, &mapping));
+-	struct pg_synthesis_job *dependencies[] = {bad[1], bad[1]};
++		1, bad, &dependencies, &mapping));
++	const struct pg_evidence *checked[] = {proof, proof};
++	dependencies.checked = checked; dependencies.checked_count = 2;
+ 	assert(!pg_artifact_derivations_capture_with_dependencies(&p->graph, &p->synthesis,
+-		1, bad, 2, dependencies, &mapping));
+-	dependencies[0] = bad[0];
++		1, bad, &dependencies, &mapping));
++	dependencies.checked_count = 1; dependencies.job_count = 1; dependencies.jobs = bad;
+ 	assert(!pg_artifact_derivations_capture_with_dependencies(&p->graph, &p->synthesis,
+-		1, bad, 1, dependencies, &mapping));
+-	dependencies[0] = pg_synthesis_evidence(&other->synthesis, pg_prove_empty_context(&other->typing));
++		1, bad, &dependencies, &mapping));
++	dependencies.job_count = 0; checked[0] = pg_prove_empty_context(&other->typing);
+ 	assert(!pg_artifact_derivations_capture_with_dependencies(&p->graph, &p->synthesis,
+-		1, bad, 1, dependencies, &mapping));
++		1, bad, &dependencies, &mapping));
+ 	const struct pg_artifact_derivations *c = pg_artifact_derivations_capture(&p->graph, &p->synthesis, 1, &root, &mapping);
+ 	assert(c && pg_artifact_derivations_job_count(c) == 2);
+ 	size_t count;
+@@ -523,10 +526,10 @@
+ 	FILE *file = tmpfile();
+ 	assert(file && !pg_artifact_derivations_write(file, c));
+ 	/* Direct dependency slots must precede their consumers. */
+-	assert(!fseek(file, 88, SEEK_SET) && !pg_wire_write_u64(file, 1));
++	assert(!fseek(file, 96, SEEK_SET) && !pg_wire_write_u64(file, 1));
+ 	rewind(file);
+ 	assert(!pg_artifact_derivations_read(file, &other->graph, 100));
+-	assert(!fseek(file, 88, SEEK_SET) && !pg_wire_write_u64(file, 0));
++	assert(!fseek(file, 96, SEEK_SET) && !pg_wire_write_u64(file, 0));
+ 	assert(!fseek(file, 6, SEEK_SET) && fputc(1, file) != EOF);
+ 	rewind(file);
+ 	assert(!pg_artifact_derivations_read(file, &other->graph, 100));
+@@ -562,7 +565,7 @@
+ 	rewind(file); decoded = NULL; count = SIZE_MAX;
+ 	assert(pg_derivation_headers_read(file, &q->typing, 1000, 1000, NULL, NULL, &count, &decoded));
+ 	assert(count == SIZE_MAX && !decoded && !q->synthesis.steps);
+-	assert(q->typing.proofs.count == 1 && q->synthesis.jobs.count == 1 && !fclose(file));
++	assert(q->typing.proofs.count == 1 && q->synthesis.jobs.count == 0 && !fclose(file));
+ 	pg_program_destroy(q); pg_program_destroy(p);
+ }
+ 
+@@ -587,13 +590,11 @@
+ 	assert(a->state);
+ 	a->inputs = pg_artifact_derivations_inputs(a->state, &a->count);
+ 	size_t n = pg_artifact_derivations_job_count(a->state);
+-	struct pg_synthesis_job **dependencies = calloc(n + 1, sizeof(*dependencies));
+-	assert(dependencies);
+-	memcpy(dependencies, a->jobs, n * sizeof(*dependencies));
+-	dependencies[n] = pg_synthesis_evidence(&p->synthesis, pg_prove_empty_context(&p->typing));
++	const struct pg_evidence *context_proof = pg_prove_empty_context(&p->typing);
++	struct pg_artifact_derivation_dependencies dependencies = {.job_count = n, .jobs = a->jobs,
++		.checked_count = 1, .checked = &context_proof};
+ 	b->state = pg_artifact_derivations_capture_with_dependencies(&p->graph, &p->synthesis,
+-		3, roots, n + 1, dependencies, &b->jobs);
+-	free(dependencies);
++		3, roots, &dependencies, &b->jobs);
+ 	assert(b->state);
+ 	b->inputs = pg_artifact_derivations_inputs(b->state, &b->count);
+ 	b->schedule = pg_artifact_schedule_capture(&p->graph, &p->synthesis,
+@@ -641,16 +642,16 @@
+ 	struct pg_synthesis *s = &p->synthesis;
+ 	assert(!pg_artifact_derivations_prepare(s, a->state, a->count, a->inputs, NULL, &a->jobs));
+ 	size_t n = pg_artifact_derivations_job_count(a->state), count = pg_artifact_derivations_job_count(b->state);
+-	struct pg_synthesis_job **dependencies = calloc(n + 1, sizeof(*dependencies));
++	const struct pg_evidence *context_proof = pg_prove_empty_context(&p->typing);
++	struct pg_artifact_derivation_dependencies dependencies = {.job_count = n, .jobs = a->jobs,
++		.checked_count = 1, .checked = &context_proof};
+ 	size_t *targets = calloc(count, sizeof(*targets));
+-	assert(dependencies && targets);
+-	memcpy(dependencies, a->jobs, n * sizeof(*dependencies));
+-	dependencies[n] = pg_synthesis_evidence(s, pg_prove_empty_context(&p->typing));
++	assert(targets);
+ 	assert(pg_artifact_derivations_prepare(s, b->state, b->count, b->inputs, NULL, &b->jobs) && !b->jobs);
+ 	assert(!pg_artifact_derivations_prepare_with_dependencies(s, b->state, b->count, b->inputs,
+-		NULL, n + 1, dependencies, &b->jobs));
++		NULL, &dependencies, &b->jobs));
+ 	assert(s->jobs.count == count && !s->steps && p->typing.proofs.count == 1);
+-	for (size_t i = 0; i <= n; ++i) assert(b->jobs[i] == dependencies[i]);
++	for (size_t i = 0; i < n; ++i) assert(b->jobs[i] == dependencies.jobs[i]);
+ 	size_t ready = pg_artifact_derivations_validation(a->state, targets);
+ 	ready += pg_artifact_derivations_validation(b->state, targets + ready);
+ 	const struct pg_artifact_schedule *validation = pg_artifact_schedule_ready(&p->graph, count, ready, targets);
+@@ -660,12 +661,13 @@
+ 	for (size_t i = 0; i < 2; ++i) {
+ 		uint64_t spent;
+ 		struct checkpoint *c = owners[i];
+-		assert(pg_artifact_derivations_revalidate(p, c->state, c->jobs, 1000, 1000, &spent) == PG_SYNTHESIS_DONE);
+-		assert(!pg_artifact_derivations_attach(s, c->state, c->jobs));
++		const struct pg_artifact_derivation_dependencies *d = i ? &dependencies : NULL;
++		assert(pg_artifact_derivations_revalidate(p, c->state, c->jobs, d, 1000, 1000, &spent) == PG_SYNTHESIS_DONE);
++		assert(!pg_artifact_derivations_attach(s, c->state, c->jobs, d));
+ 	}
+ 	solving = 0;
+ 	assert(!pg_artifact_schedule_attach(s, b->schedule, count, b->jobs));
+-	free(targets); free(dependencies);
++	free(targets);
+ }
+ 
+ static void mixed(void)
+@@ -673,10 +675,10 @@
+ 	for (uint64_t cut = 0;; ++cut) {
+ 		struct pg_program *p = empty();
+ 		struct pg_synthesis_job *context = pg_synthesis_derivation(&p->synthesis, input(p, PG_CONTEXT_EMPTY, 0, NULL));
+-		struct pg_synthesis_job *evidence = pg_synthesis_evidence(&p->synthesis, pg_prove_empty_context(&p->typing));
++		struct pg_synthesis_input evidence = {.checked = pg_prove_empty_context(&p->typing)};
+ 		struct pg_synthesis_job *roots[] = {
+ 			pg_synthesis_plain_rule(&p->synthesis, PG_UNIVERSE_FORM, NULL, 1, &context),
+-			pg_synthesis_plain_rule(&p->synthesis, PG_UNIVERSE_FORM, NULL, 1, &evidence), NULL};
++			pg_synthesis_plain_rule_inputs(&p->synthesis, PG_UNIVERSE_FORM, NULL, 1, &evidence), NULL};
+ 		struct pg_synthesis_job *value = pg_synthesis_plain_rule(&p->synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &roots[0]);
+ 		roots[2] = pg_synthesis_plain_rule(&p->synthesis, PG_RETURN_INTRO, NULL, 1, &value);
+ 		assert(roots[0] != roots[1]);
+@@ -693,15 +695,17 @@
+ 		p = empty(); mixed_init(&m, p);
+ 		assert(!pg_graph_image_read(image, magic, &p->graph, 10000, 10000,
+ 			&pg_declaration_graph_codec, &m.upstream.codec, mixed_read, &m));
+-		assert(!p->synthesis.steps && p->typing.proofs.count == 1 && p->synthesis.jobs.count == 1);
++		assert(!p->synthesis.steps && p->typing.proofs.count == 1 && p->synthesis.jobs.count == 0);
+ 		FILE *copy = mixed_save(&m);
+ 		equal_files(image, copy); assert(!fclose(copy));
  		mixed_restore(&m);
  		for (size_t i = 0; i < 3; ++i)
  			roots[i] = pg_artifact_derivations_root(m.downstream.state, m.downstream.jobs, i);

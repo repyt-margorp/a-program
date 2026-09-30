@@ -1,0 +1,62 @@
+--- a/artifact/derivation.h
++++ b/artifact/derivation.h
+@@ -6,12 +6,21 @@
+ 
+ struct pg_artifact_derivations;
+ 
++/* Borrowed dependencies owned by the enclosing importer. Checked inputs have
++ * no scheduler slots; restoring them is subject to that owner's trust policy. */
++struct pg_artifact_derivation_dependencies {
++	size_t job_count, checked_count;
++	struct pg_synthesis_job *const *jobs;
++	const struct pg_evidence *const *checked;
++};
++
+ /* Inert continuation metadata for imported derivation workers.
+  * Raw inputs use the enclosing artifact's ordinary shared descriptor codec;
+  * this payload contains only their ordinals and cursors. Direct plain-rule
+  * DAGs use the parameter-only header codec without input adapter jobs. External
+- * premises are mapped jobs owned/restored by the enclosing importer, never
+- * replaced by equivalent derivations. They occupy the returned mapping's prefix;
++ * pending premises are mapped jobs owned/restored by the enclosing importer,
++ * never replaced by equivalent derivations. They occupy the mapping's prefix;
++ * checked premises borrow the enclosing owner's checked-input table instead.
+  * this owner stores neither their continuations nor their completion status.
+  * Imported-input roots cannot use external dependencies. Neither form accepts
+  * an open effect parameter. Pending
+@@ -25,8 +34,8 @@
+ 	struct pg_synthesis_job *const *roots, struct pg_synthesis_job ***mapping);
+ const struct pg_artifact_derivations *pg_artifact_derivations_capture_with_dependencies(
+ 	struct pg_graph *storage, const struct pg_synthesis *, size_t,
+-	struct pg_synthesis_job *const *roots, size_t dependency_count,
+-	struct pg_synthesis_job *const *dependencies, struct pg_synthesis_job ***mapping);
++	struct pg_synthesis_job *const *roots,
++	const struct pg_artifact_derivation_dependencies *, struct pg_synthesis_job ***mapping);
+ size_t pg_artifact_derivations_job_count(const struct pg_artifact_derivations *);
+ const struct pg_derivation_input *const *pg_artifact_derivations_inputs(
+ 	const struct pg_artifact_derivations *, size_t *count);
+@@ -48,7 +57,7 @@
+ int pg_artifact_derivations_prepare_with_dependencies(struct pg_synthesis *,
+ 	const struct pg_artifact_derivations *, size_t,
+ 	const struct pg_derivation_input *const *, struct pg_effect_inference *,
+-	size_t dependency_count, struct pg_synthesis_job *const *dependencies,
++	const struct pg_artifact_derivation_dependencies *,
+ 	struct pg_synthesis_job ***jobs);
+ /* Enumerate plain-rule slots whose saved completion requires rechecking.
+  * out has job_count capacity. No duplicate verification or status authority. */
+@@ -58,12 +67,14 @@
+  * checks, never supply their answers. spent must be deducted from total fuel. */
+ enum pg_synthesis_status pg_artifact_derivations_revalidate(struct pg_program *,
+ 	const struct pg_artifact_derivations *, struct pg_synthesis_job *const *,
++	const struct pg_artifact_derivation_dependencies *,
+ 	uint64_t budget, uint64_t validation_limit, uint64_t *spent);
+ /* Attach only after the saved completed premises have actually been checked.
+  * No checking or trust fallback here. Pending rules retain their normal kernel
+  * checks. The enclosing import still owns the provenance of unfinished state. */
+ int pg_artifact_derivations_attach(struct pg_synthesis *,
+-	const struct pg_artifact_derivations *, struct pg_synthesis_job *const *);
++	const struct pg_artifact_derivations *, struct pg_synthesis_job *const *,
++	const struct pg_artifact_derivation_dependencies *);
+ struct pg_synthesis_job *pg_artifact_derivations_root(
+ 	const struct pg_artifact_derivations *, struct pg_synthesis_job *const *, size_t);
+ 

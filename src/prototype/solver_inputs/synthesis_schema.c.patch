@@ -1,0 +1,20 @@
+--- a/synthesis_schema.c
++++ b/synthesis_schema.c
+@@ -75,7 +75,7 @@
+ 	const struct pg_source_scope *scope = job->inputs[0];
+ 	const struct pg_syntax *syntax = job->inputs[2];
+ 	if (pg_synthesis_scope_wait(synthesis, job, scope)) return;
+-	if (pg_synthesis_await(synthesis, job, scope->context_job)) return;
++	if (pg_synthesis_await_input(synthesis, job, scope->context)) return;
+ 	if (!pg_synthesis_scope_context(scope)) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+ 	if (!local->left) {
+ 		if (syntax->kind == PG_SYNTAX_LAMBDA) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
+@@ -196,7 +196,7 @@
+ 	const struct pg_source_scope *scope = job->inputs[0];
+ 	const struct pg_syntax *syntax = job->inputs[1];
+ 	if (pg_synthesis_scope_wait(synthesis, job, scope)) return;
+-	if (pg_synthesis_await(synthesis, job, scope->context_job)) return;
++	if (pg_synthesis_await_input(synthesis, job, scope->context)) return;
+ 	if (!pg_synthesis_scope_context(scope)) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+ 	if (!local->left) {
+ 		local->left = local->nominal_input ? pg_synthesis_telescope_at(synthesis, scope, syntax->left,

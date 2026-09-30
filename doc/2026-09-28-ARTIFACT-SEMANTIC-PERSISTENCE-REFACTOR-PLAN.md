@@ -57,8 +57,12 @@ a new checkpoint/backend codec.
 Logical-family conversion and Lambda-body/Pi-scope contexts now also take direct
 inputs; their checking and semantic conversion remain ordinary Solve work.
 Application/sequencing/result-context entry points are now unified around those
-inputs, including handler and constant-result consumers. Source-scope storage
-still uses Jobs; removing its adapters is the next SE1 migration, not completed.
+inputs, including handler and constant-result consumers. Source-scope Contexts,
+lookup and environment export now also use direct inputs. The checkpoint
+prototype borrows checked external data separately from scheduled workers;
+it does not reconstruct Context Jobs to preserve its previous physical layout.
+Remaining IADT/Identity/known-result adapters and duplicated query ownership
+are the next SE1 work. Full Job removal and public persistence remain open.
 
 Do not extend the binding/domain checkpoint codec or AP6 while this gate is
 open. Existing passing checkpoint fixtures remain historical evidence, not a

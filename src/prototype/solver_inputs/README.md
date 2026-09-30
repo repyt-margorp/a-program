@@ -50,12 +50,18 @@ Evidence adapters. The actual family/CBPV conversion and context checks remain.
 Application, sequencing and result-context construction each have one direct
 Context API, not separate checked/Job entry points. Constant-result extraction
 and handler-context/carrier construction use the same input representation.
-Scope storage and source-environment export still require their own migration.
+Source scopes now retain the same checked/pending Context input. Name lookup,
+block/application/Match contexts and environment export no longer require a
+completed Context Job. Pending scope keys do not change after completion.
+The derivation-checkpoint prototype now borrows checked external inputs
+separately from scheduled workers; neither capture nor restoration recreates
+Evidence adapters. Its private payload is `APGDRC4`, without backward reading;
+this is not adoption of a new public `.a` format or additional owner codecs.
 
 ### Assessment
 
-This removes some adapters, not the independent Job graph. Source scopes,
-known-family results and other context/IADT/Identity constructors still use
+This removes some adapters, not the independent Job graph. Known-family
+results and other context/IADT/Identity constructors still use
 adapters. Producer-to-checked forwarding paths also remain. Removing classifier
 forwarding alone lost completed-result reuse, so that trial was rejected;
 removing the query wrapper does not settle the pending/checked request ownership.

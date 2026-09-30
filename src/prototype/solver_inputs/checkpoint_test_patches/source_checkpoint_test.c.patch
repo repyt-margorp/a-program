@@ -1,0 +1,157 @@
+--- a/source_checkpoint_test.c
++++ b/source_checkpoint_test.c
+@@ -32,6 +32,7 @@
+ 
+ struct checkpoint {
+ 	struct pg_program *program;
++	const struct pg_evidence *context;
+ 	size_t count, prefix_count, source_count, input_count;
+ 	struct pg_synthesis_job **jobs;
+ 	struct pg_synthesis_job **sources;
+@@ -42,6 +43,12 @@
+ 	const struct pg_derivation_input *const *inputs;
+ };
+ 
++static struct pg_artifact_derivation_dependencies dependencies(const struct checkpoint *c)
++{
++	return (struct pg_artifact_derivation_dependencies){.job_count = c->prefix_count,
++		.jobs = c->jobs, .checked_count = 1, .checked = &c->context};
++}
++
+ static void add(struct pg_dag *dag, const void *key)
+ {
+ 	if (key) assert(!pg_dag_add(dag, key));
+@@ -55,11 +62,11 @@
+ 
+ static struct checkpoint collect(struct pg_program *p)
+ {
+-	struct checkpoint c = {.program = p};
++	struct checkpoint c = {.program = p, .context = pg_synthesis_scope_context(p->scope)};
+ 	struct pg_dag prefix, roots;
+ 	assert(!pg_dag_init(&prefix, NULL, NULL) && !pg_dag_init(&roots, NULL, NULL));
+-	add(&prefix, p->scope->context_job); add(&prefix, p->root);
+-	for (const struct pg_dag_node *n = prefix.first->next; n; n = n->next) {
++	add(&prefix, p->root);
++	for (const struct pg_dag_node *n = prefix.first; n; n = n->next) {
+ 		struct pg_synthesis_job *job = (void *)n->key, *child = NULL;
+ 		const struct pg_source_scope *scope = pg_synthesis_prepared_environment(job);
+ 		if (scope) add(&prefix, scope->registration);
+@@ -84,10 +91,9 @@
+ 	for (const struct pg_dag_node *n = prefix.first; n; n = n->next) {
+ 		struct pg_synthesis_job *job = (void *)n->key;
+ 		external[n->id - 1] = job;
+-		if (n->id == 1) continue;
+ 		if (registration(&p->synthesis, job)) {
+ 			c.recipes[2 * (n->id - 1)] = 1;
+-			for (const struct pg_dag_node *anchor = prefix.first->next; anchor; anchor = anchor->next) {
++			for (const struct pg_dag_node *anchor = prefix.first; anchor; anchor = anchor->next) {
+ 				if (anchor == n || registration(&p->synthesis, (void *)anchor->key)) continue;
+ 				const struct pg_source_scope *scope = pg_synthesis_prepared_environment(anchor->key);
+ 				if (scope && scope->registration == job) { c.recipes[2 * (n->id - 1) + 1] = anchor->id; break; }
+@@ -104,8 +110,9 @@
+ 		struct pg_synthesis_job **rule_roots = pg_wire_array(&p->graph, roots.count, sizeof(*rule_roots));
+ 		assert(rule_roots);
+ 		for (const struct pg_dag_node *n = roots.first; n; n = n->next) rule_roots[n->id - 1] = (void *)n->key;
++		struct pg_artifact_derivation_dependencies deps = dependencies(&c);
+ 		c.rules = pg_artifact_derivations_capture_with_dependencies(&p->graph, &p->synthesis,
+-			roots.count, rule_roots, c.prefix_count, external, &c.jobs);
++			roots.count, rule_roots, &deps, &c.jobs);
+ 		assert(c.rules);
+ 		c.count = pg_artifact_derivations_job_count(c.rules);
+ 		c.inputs = pg_artifact_derivations_inputs(c.rules, &c.input_count);
+@@ -174,6 +181,7 @@
+ 	c.program = pg_sources_read_with(file, 100000, &c.source_count, &sources, read_continuation, &c);
+ 	struct pg_program *p = c.program;
+ 	assert(p && !p->synthesis.steps && p->typing.proofs.count == 1);
++	c.context = pg_synthesis_scope_context(p->scope);
+ 	c.sources = pg_wire_array(&p->graph, c.source_count, sizeof(*c.sources));
+ 	assert(c.sources); memcpy(c.sources, sources, c.source_count * sizeof(*c.sources));
+ 	size_t n = c.prefix_count;
+@@ -181,8 +189,7 @@
+ 	assert(c.jobs);
+ 	for (size_t i = 0; i < n; ++i) {
+ 		uint64_t tag = c.recipes[2 * i], index = c.recipes[2 * i + 1];
+-		if (!tag) { assert(!i && !index); c.jobs[i] = p->scope->context_job; }
+-		else if (tag == 2) { assert(index && index <= c.source_count); c.jobs[i] = c.sources[index - 1]; }
++		if (tag == 2) { assert(index && index <= c.source_count); c.jobs[i] = c.sources[index - 1]; }
+ 		else assert(tag == 1);
+ 	}
+ 	for (size_t i = 0; i < n; ++i) if (c.recipes[2 * i] == 1) {
+@@ -201,8 +208,9 @@
+ 	struct pg_synthesis *s = &p->synthesis;
+ 	if (c->rules) {
+ 		struct pg_synthesis_job **mapping;
++		struct pg_artifact_derivation_dependencies deps = dependencies(c);
+ 		assert(!pg_artifact_derivations_prepare_with_dependencies(s, c->rules, c->input_count, c->inputs,
+-			NULL, c->prefix_count, c->jobs, &mapping));
++			NULL, &deps, &mapping));
+ 		c->jobs = mapping;
+ 	}
+ 	assert(!pg_artifact_source_prepare(s, c->source, c->count, c->jobs));
+@@ -221,7 +229,8 @@
+ 		verification += spent;
+ 	}
+ 	solving = 0;
+-	if (c->rules) assert(!pg_artifact_derivations_attach(s, c->rules, c->jobs));
++	struct pg_artifact_derivation_dependencies deps = dependencies(c);
++	if (c->rules) assert(!pg_artifact_derivations_attach(s, c->rules, c->jobs, &deps));
+ 	assert(!pg_artifact_source_attach(s, c->source, c->count, c->jobs));
+ 	assert(!pg_artifact_schedule_attach(s, c->schedule, c->count, c->jobs));
+ 	free(targets);
+@@ -419,7 +428,7 @@
+ 	struct pg_synthesis_job *rule = NULL;
+ 	assert(pg_synthesis_literal_frontier(s, p->root, &rule) == 1 && !rule);
+ 	assert(!pg_synthesis_prepare_literal(s, other->root));
+-	assert(!pg_synthesis_prepare_literal(s, p->scope->context_job));
++	assert(!pg_synthesis_prepare_literal(s, NULL));
+ 	assert(pg_synthesis_literal_frontier(&other->synthesis, p->root, &rule) == -1);
+ 	struct pg_synthesis_job *jobs[] = {p->root, p->root};
+ 	assert(!pg_artifact_source_capture(&p->graph, s, 2, jobs, 1, &p->root));
+@@ -444,8 +453,9 @@
+ 	pg_program_destroy(p); pg_program_destroy(other);
+ 	c = read_image(file); p = c.program;
+ 	struct pg_synthesis_job **mapping;
++	struct pg_artifact_derivation_dependencies deps = dependencies(&c);
+ 	assert(!pg_artifact_derivations_prepare_with_dependencies(&p->synthesis, c.rules,
+-		c.input_count, c.inputs, NULL, c.prefix_count, c.jobs, &mapping));
++		c.input_count, c.inputs, NULL, &deps, &mapping));
+ 	c.jobs = mapping;
+ 	assert(!pg_artifact_source_prepare(&p->synthesis, c.source, c.count, c.jobs));
+ 	assert(pg_artifact_source_attach(&p->synthesis, c.source, c.count, c.jobs));
+@@ -488,7 +498,7 @@
+ 		view.rule = other->root;
+ 		assert(pg_synthesis_reference_resume(s, use, &view));
+ 		assert(pg_synthesis_reference_frontier(&other->synthesis, use, &view) == -1);
+-		view.rule = pg_synthesis_plain_rule(s, PG_VARIABLE, binders[wrong ? 0 : 1], 1, &scope->context_job);
++		view.rule = pg_synthesis_plain_rule_inputs(s, PG_VARIABLE, binders[wrong ? 0 : 1], 1, &scope->context);
+ 		assert(pg_synthesis_reference_resume(s, p->root, &view)); /* No lexical n here. */
+ 		size_t proofs = p->typing.proofs.count;
+ 		int status = pg_synthesis_reference_resume(s, use, &view);
+@@ -511,12 +521,12 @@
+ 		struct pg_synthesis_job *producer = pg_synthesis_evidence(s, pg_prove_universe(&p->typing, context, 0));
+ 		scope = pg_synthesis_name_job(s, scope, syntax->token, producer);
+ 		struct pg_synthesis_job *use = pg_synthesis_request(s, scope, syntax);
+-		struct pg_synthesis_job *rule = pg_synthesis_plain_rule(s, PG_CONTEXT_PROJECTION, NULL, 2,
+-			(struct pg_synthesis_job *[]){scope->context_job, producer});
++		struct pg_synthesis_job *rule = pg_synthesis_plain_rule_inputs(s, PG_CONTEXT_PROJECTION, NULL, 2,
++			(struct pg_synthesis_input[]){scope->context, {.pending = producer}});
+ 		struct pg_reference_frontier view = {producer, NULL};
+ 		assert(pg_synthesis_reference_resume(s, use, &view)); /* Producer without rule. */
+-		view.rule = wrong == 2 ? scope->context_job : rule;
+-		if (wrong == 1) view.producer = scope->context_job;
++		view.rule = wrong == 2 ? producer : rule;
++		if (wrong == 1) view.producer = rule;
+ 		size_t proofs = p->typing.proofs.count;
+ 		int status = pg_synthesis_reference_resume(s, use, &view);
+ 		assert(wrong ? status != 0 : status == 0);
+@@ -538,8 +548,8 @@
+ 	assert(producer && producer->status == PG_SYNTHESIS_PENDING);
+ 	scope = pg_synthesis_name_job(s, scope, syntax->token, producer);
+ 	struct pg_synthesis_job *use = pg_synthesis_request(s, scope, syntax);
+-	struct pg_reference_frontier view = {producer, pg_synthesis_plain_rule(s, PG_CONTEXT_PROJECTION, NULL, 2,
+-		(struct pg_synthesis_job *[]){scope->context_job, producer})};
++	struct pg_reference_frontier view = {producer, pg_synthesis_plain_rule_inputs(s, PG_CONTEXT_PROJECTION, NULL, 2,
++		(struct pg_synthesis_input[]){scope->context, {.pending = producer}})};
+ 	size_t proofs = p->typing.proofs.count, jobs = s->jobs.count;
+ 	assert(pg_synthesis_reference_resume(s, use, &view));
+ 	assert(!s->steps && proofs == p->typing.proofs.count && jobs == s->jobs.count && !use->result);

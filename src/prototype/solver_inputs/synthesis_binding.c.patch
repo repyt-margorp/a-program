@@ -1,5 +1,32 @@
 --- a/synthesis_binding.c
 +++ b/synthesis_binding.c
+@@ -40,7 +40,7 @@
+ 	const struct pg_source_scope *scope)
+ {
+ 	if (pg_synthesis_scope_wait(synthesis, job, scope)) return 0;
+-	if (pg_synthesis_await(synthesis, job, scope->context_job)) return 0;
++	if (pg_synthesis_await_input(synthesis, job, scope->context)) return 0;
+ 	if (pg_synthesis_scope_context(scope)) return 1;
+ 	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR);
+ 	return 0;
+@@ -80,7 +80,7 @@
+ 		if (syntax->kind == PG_SYNTAX_PI)
+ 			name = syntax->left->kind == PG_SYNTAX_BINDER ? syntax->left->token : (struct pg_token){0};
+ 		local->scope = pg_synthesis_intern_scope(synthesis, (struct pg_source_scope){.parent = scope,
+-			.name = name, .binder = local->binder, .context_job = job});
++			.name = name, .binder = local->binder, .context = {.pending = job}});
+ 	}
+ 	return local->scope ? job : NULL;
+ }
+@@ -289,7 +289,7 @@
+ 	if (pg_synthesis_scope_wait(synthesis, job, outer)) return;
+ 	if (pg_synthesis_await(synthesis, job, structure)) return;
+ 	const struct pg_source_scope *scope = pg_synthesis_telescope_scope(structure);
+-	if (pg_synthesis_await(synthesis, job, scope->context_job)) return;
++	if (pg_synthesis_await_input(synthesis, job, scope->context)) return;
+ 	job->result = pg_synthesis_scope_context(scope);
+ 	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+ }
 @@ -297,8 +297,16 @@
  struct pg_synthesis_job *pg_synthesis_declared_type(struct pg_synthesis *synthesis,
  	struct pg_synthesis_job *context, const struct pg_object *binder)
@@ -45,7 +72,12 @@
  	if (accepted) {
  		const struct pg_context *declaration = pg_evidence_judgement(accepted) == PG_JUDGEMENT_CONTEXT
  			? pg_context_lookup(pg_evidence_context(accepted), binder) : NULL;
-@@ -373,11 +383,10 @@
+@@ -369,15 +379,14 @@
+ 		else if (binding) {
+ 			const struct pg_source_scope *scope = context->inputs[0];
+ 			local->input = binding->binder == binder ? pg_synthesis_type_structure(synthesis, binding->domain)
+-				: pg_synthesis_declared_type(synthesis, scope->context_job, binder);
++				: pg_synthesis_declared_type_input(synthesis, scope->context, binder);
  		} else {
  			const struct pg_derivation_input *input = pg_synthesis_plain_derivation(context);
  			if (input && input->rule == PG_CONTEXT_EXTEND) {
