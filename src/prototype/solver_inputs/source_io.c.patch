@@ -324,7 +324,7 @@
  {
  	return pg_sources_write_with(file, synthesis, count, roots, 0, NULL, NULL);
  }
-@@ -1120,14 +1180,16 @@
+@@ -1120,27 +1180,29 @@
  				if (syntax == 6) {
  					if (prefix) goto fail;
  					producers[i] = rule ? pg_synthesis_operation_at(&program->synthesis, reference->as.reference,
@@ -347,7 +347,15 @@
  				}
  			} else if (left || right) {
  				if (!left || left > i || !right || right > i || definitions || rule) goto fail;
-@@ -1140,7 +1202,7 @@
+ 				if (!scope) {
+ 					if (syntax < 1 || syntax > 4) goto fail;
+ 					enum pg_reduction_kind kind = syntax % 2 ? PG_REDUCTION_WHNF : PG_REDUCTION_NF;
+-					producers[i] = syntax > 2 ? pg_synthesis_evaluate_jobs(&program->synthesis,
+-						producers[left - 1], producers[right - 1], kind)
+-						: pg_synthesis_normalize_jobs(&program->synthesis, producers[left - 1], producers[right - 1], kind);
++					producers[i] = pg_synthesis_reduction_request(&program->synthesis,
++						(struct pg_synthesis_input){.pending = producers[left - 1]},
++						(struct pg_synthesis_input){.pending = producers[right - 1]}, kind, syntax > 2);
  				} else {
  					if (scope > n || syntax) goto fail;
  					producers[i] = pg_synthesis_source_expect(&program->synthesis, scopes[scope - 1],

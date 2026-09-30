@@ -87,7 +87,7 @@
  		assert(scope);
  		const char source[] = "Acc := @\\subject : A => { acc : (x:A) -> ((y:A) -> R y x -> * y) -> * x; };";
  		struct pg_parser parser;
-@@ -962,15 +957,14 @@
+@@ -962,15 +957,15 @@
  		assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
  		struct pg_synthesis_job *applied = pg_synthesis_evidence(&synthesis, match);
  		for (size_t i = 0; i < 2; ++i)
@@ -96,7 +96,9 @@
  		const struct pg_evidence *result = solve_index_proof(&synthesis, applied, chunk, PG_SYNTHESIS_DONE);
  		assert(pg_evidence_classifier(result) == pg_return_type(typing->graph, pg_evidence_subject(original_type)->core));
  		const struct pg_evidence *normal = solve_index_proof(&synthesis,
- 			pg_synthesis_normalize_jobs(&synthesis, pg_synthesis_evidence(&synthesis, context), applied, PG_REDUCTION_NF),
+-			pg_synthesis_normalize_jobs(&synthesis, pg_synthesis_evidence(&synthesis, context), applied, PG_REDUCTION_NF),
++			pg_synthesis_reduction_request(&synthesis,
++				(struct pg_synthesis_input){.checked = context}, (struct pg_synthesis_input){.pending = applied}, PG_REDUCTION_NF, 0),
  			chunk, PG_SYNTHESIS_DONE);
  		assert(pg_evidence_subject(normal)->core == pg_evidence_subject(pg_prove_return(typing, original_value))->core);
 -		solve_index_proof(&synthesis, pg_synthesis_application(&synthesis, context,
@@ -105,7 +107,7 @@
  			chunk, PG_SYNTHESIS_REJECTED);
  		pg_synthesis_destroy(&synthesis);
  		pg_whnf_work_destroy(&work);
-@@ -1682,12 +1676,13 @@
+@@ -1682,18 +1677,20 @@
  			struct pg_synthesis synthesis;
  			assert(!pg_whnf_work_init(&work, typing->graph));
  			assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
@@ -122,7 +124,15 @@
  				assert(job && pg_synthesis_status(job) == PG_SYNTHESIS_PENDING);
  				assert(!pg_synthesis_result(job));
  				const struct pg_evidence *result = solve_index_proof(&synthesis, job, chunk, PG_SYNTHESIS_DONE);
-@@ -1703,12 +1698,25 @@
+ 				assert(pg_evidence_rule(result) == PG_IDENTITY_TRANSPORT);
+ 				const struct pg_evidence *checked = solve_index_proof(&synthesis,
+-					pg_synthesis_expect(&synthesis, job, pg_synthesis_evidence(&synthesis, expected)),
++					pg_synthesis_expect_inputs(&synthesis,
++						(struct pg_synthesis_input){.pending = job}, (struct pg_synthesis_input){.checked = expected}),
+ 					chunk, PG_SYNTHESIS_DONE);
+ 				assert(pg_evidence_subject(checked)->core == pg_evidence_subject(result)->core);
+ 				assert(pg_evidence_classifier(checked) == pg_evidence_subject(expected)->core);
+@@ -1703,12 +1700,25 @@
  					pg_prove_return(typing, checked));
  				assert(theorem && !pg_evidence_context(theorem));
  				if (!injection) {
@@ -150,7 +160,7 @@
  					const struct pg_evidence *eliminated = solve_index_proof(&synthesis, derived, chunk, PG_SYNTHESIS_DONE);
  					assert(pg_evidence_classifier(eliminated) == pg_evidence_subject(expected)->core);
  					assert(pg_term_independent(pg_evidence_subject(eliminated)->core, i ? q : p) == 0);
-@@ -1722,31 +1730,31 @@
+@@ -1722,31 +1732,31 @@
  						pg_prove_return(typing, eliminated));
  					assert(closed && !pg_evidence_context(closed));
  					size_t before = typing->proofs.count, terms = typing->graph->terms.count;
@@ -195,7 +205,7 @@
  					solve_index_proof(&synthesis, reverse, chunk, PG_SYNTHESIS_DONE);
  				}
  				if (injection) {
-@@ -1758,7 +1766,15 @@
+@@ -1758,7 +1768,15 @@
  					struct pg_synthesis_job *rj = pg_synthesis_evidence(&synthesis, right);
  					struct pg_synthesis_job *nj = pg_synthesis_evidence(&synthesis, nv);
  					struct pg_synthesis_job *mj = pg_synthesis_evidence(&synthesis, mv);
@@ -212,7 +222,7 @@
  					const struct pg_evidence *proof = solve_index_proof(&synthesis, derived, chunk, PG_SYNTHESIS_DONE);
  					assert(pg_evidence_classifier(proof) == pg_evidence_subject(expected)->core);
  					assert(!pg_term_independent(pg_evidence_subject(proof)->core, i ? q : p));
-@@ -1768,21 +1784,21 @@
+@@ -1768,61 +1786,62 @@
  					transport_scopes(&synthesis, transported);
  					common_rule(typing, transported);
  					size_t before = typing->proofs.count, terms = typing->graph->terms.count;
@@ -242,9 +252,11 @@
 -						cj, lj, lj, rfl, field, nj, nj);
 +						(struct pg_synthesis_input){.pending = cj}, (struct pg_synthesis_input){.pending = lj}, (struct pg_synthesis_input){.pending = lj}, (struct pg_synthesis_input){.pending = rfl}, field, (struct pg_synthesis_input){.pending = nj}, (struct pg_synthesis_input){.pending = nj});
  					const struct pg_evidence *normal = solve_index_proof(&synthesis,
- 						pg_synthesis_normalize_jobs(&synthesis, cj, diagonal, PG_REDUCTION_NF), chunk, PG_SYNTHESIS_DONE);
+-						pg_synthesis_normalize_jobs(&synthesis, cj, diagonal, PG_REDUCTION_NF), chunk, PG_SYNTHESIS_DONE);
++						pg_synthesis_reduction_request(&synthesis,
++							(struct pg_synthesis_input){.pending = cj}, (struct pg_synthesis_input){.pending = diagonal}, PG_REDUCTION_NF, 0), chunk, PG_SYNTHESIS_DONE);
  					assert(pg_alpha_equal(pg_evidence_subject(normal)->core, pg_evidence_subject(input)->core) == 1);
-@@ -1790,16 +1806,16 @@
+ 				}
  				if (chunk == 1) results[i] = checked;
  				else assert(pg_alpha_equal(pg_evidence_subject(checked)->core, pg_evidence_subject(results[i])->core) == 1);
  				size_t proofs = typing->proofs.count, terms = typing->graph->terms.count;
@@ -264,8 +276,11 @@
 +					family_input, ls, ls, 1, &reflexive_input, value_input, direction);
  				solve_index_proof(&synthesis, diagonal, chunk, PG_SYNTHESIS_DONE);
  				const struct pg_evidence *reduced = solve_index_proof(&synthesis,
- 					pg_synthesis_normalize_jobs(&synthesis, pg_synthesis_evidence(&synthesis, context),
-@@ -1808,21 +1824,21 @@
+-					pg_synthesis_normalize_jobs(&synthesis, pg_synthesis_evidence(&synthesis, context),
+-						diagonal, PG_REDUCTION_NF), chunk, PG_SYNTHESIS_DONE);
++					pg_synthesis_reduction_request(&synthesis,
++						(struct pg_synthesis_input){.checked = context}, (struct pg_synthesis_input){.pending = diagonal}, PG_REDUCTION_NF, 0), chunk, PG_SYNTHESIS_DONE);
+ 				assert(pg_alpha_equal(pg_evidence_subject(reduced)->core, pg_evidence_subject(input)->core) == 1);
  			}
  			/* Distinct constructors do not themselves supply a path. Neither a
  			 * reversed boundary nor refl of one endpoint proves the required Eq. */
@@ -298,7 +313,7 @@
  			pg_synthesis_destroy(&synthesis);
  			pg_whnf_work_destroy(&work);
  		}
-@@ -1899,8 +1915,8 @@
+@@ -1899,8 +1918,8 @@
  		assert(pg_prove_derivation(typing, input.rule, &parameters, 2, premises) == normalized[i]);
  		struct pg_synthesis synthesis;
  		assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
@@ -309,7 +324,7 @@
  		while (pg_synthesis_status(job) == PG_SYNTHESIS_PENDING) {
  			pg_synthesis_advance(&synthesis, chunk);
  			assert(synthesis.steps < 10000);
-@@ -2053,7 +2069,7 @@
+@@ -2053,7 +2072,7 @@
  			for (size_t j = 0; j < 6; ++j)
  				solve_index_proof(&synthesis, inputs[j], chunk, PG_SYNTHESIS_DONE);
  			jobs[i] = pg_synthesis_constructor_field_identity(&synthesis,

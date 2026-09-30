@@ -6,7 +6,7 @@
  #include "source_io.h"
  #include "artifact/file.h"
  #include "derivation.h"
-@@ -28,6 +29,9 @@
+@@ -28,19 +29,26 @@
  	const char *text = "{{ id:=&(\\A:@ => \\x:A => x); }}.id";
  	struct pg_program *p = pg_program_create(text, strlen(text), PG_DEFINITION_EXPLICIT_THUNK);
  	assert(p && p->root);
@@ -16,20 +16,30 @@
  	struct pg_derivation_input empty = {.rule = PG_CONTEXT_EMPTY};
  	struct pg_synthesis_job *context = pg_synthesis_derivation(&p->synthesis, &empty);
  	assert(context);
-@@ -35,10 +39,10 @@
- 	struct pg_synthesis_job *whnf = pg_synthesis_normalize_jobs(&p->synthesis, context, p->root, PG_REDUCTION_WHNF);
+-	struct pg_synthesis_job *nf = pg_synthesis_normalize_jobs(&p->synthesis, context, p->root, PG_REDUCTION_NF);
+-	struct pg_synthesis_job *whnf = pg_synthesis_normalize_jobs(&p->synthesis, context, p->root, PG_REDUCTION_WHNF);
++	struct pg_synthesis_job *nf = pg_synthesis_reduction_request(&p->synthesis,
++		(struct pg_synthesis_input){.pending = context}, (struct pg_synthesis_input){.pending = p->root}, PG_REDUCTION_NF, 0);
++	struct pg_synthesis_job *whnf = pg_synthesis_reduction_request(&p->synthesis,
++		(struct pg_synthesis_input){.pending = context}, (struct pg_synthesis_input){.pending = p->root}, PG_REDUCTION_WHNF, 0);
  	assert(nf && whnf && nf != whnf && !p->synthesis.steps);
- 	assert(nf == pg_synthesis_normalize_jobs(&p->synthesis, context, p->root, PG_REDUCTION_NF));
+-	assert(nf == pg_synthesis_normalize_jobs(&p->synthesis, context, p->root, PG_REDUCTION_NF));
 -	struct pg_synthesis_job *c, *proof;
++	assert(nf == pg_synthesis_reduction_request(&p->synthesis,
++		(struct pg_synthesis_input){.pending = context}, (struct pg_synthesis_input){.pending = p->root}, PG_REDUCTION_NF, 0));
 +	struct pg_synthesis_input c, proof;
  	enum pg_reduction_kind kind;
  	assert(!pg_synthesis_normalization_input(&p->synthesis, nf, &c, &proof, &kind, NULL));
 -	assert(c == context && proof == p->root && kind == PG_REDUCTION_NF);
 +	assert(!c.checked && c.pending == context && !proof.checked && proof.pending == p->root && kind == PG_REDUCTION_NF);
  	assert(pg_synthesis_normalization_input(&p->synthesis, p->root, &c, &proof, &kind, NULL));
- 	struct pg_synthesis_job *invalid = pg_synthesis_normalize_jobs(&p->synthesis, p->root, p->root, PG_REDUCTION_NF);
+-	struct pg_synthesis_job *invalid = pg_synthesis_normalize_jobs(&p->synthesis, p->root, p->root, PG_REDUCTION_NF);
++	struct pg_synthesis_job *invalid = pg_synthesis_reduction_request(&p->synthesis,
++		(struct pg_synthesis_input){.pending = p->root}, (struct pg_synthesis_input){.pending = p->root}, PG_REDUCTION_NF, 0);
  	assert(invalid && !pg_synthesis_result(nf));
-@@ -50,11 +54,41 @@
+ 	while (p->synthesis.ready) {
+ 		assert(p->synthesis.steps < 10000);
+@@ -50,12 +58,42 @@
  	assert(pg_synthesis_status(whnf) == PG_SYNTHESIS_DONE);
  	assert(pg_synthesis_status(invalid) == PG_SYNTHESIS_REJECTED);
  	const struct pg_evidence *ctx = pg_synthesis_result(context), *input = pg_synthesis_result(p->root);
@@ -45,11 +55,10 @@
 +	assert(accepted == pg_synthesis_reduction_request(&p->synthesis, c, proof, PG_REDUCTION_NF, 0));
 +	assert(p->synthesis.jobs.count == jobs + 1);
 +	assert(pg_synthesis_input_result(proof) == input);
-+	struct pg_synthesis_job *context_adapter = pg_synthesis_evidence(&p->synthesis, ctx);
-+	struct pg_synthesis_job *proof_adapter = pg_synthesis_evidence(&p->synthesis, input);
-+	size_t with_adapters = p->synthesis.jobs.count;
-+	assert(accepted == pg_synthesis_normalize_jobs(&p->synthesis, context_adapter, proof_adapter, PG_REDUCTION_NF));
-+	assert(p->synthesis.jobs.count == with_adapters);
++	assert(accepted == pg_synthesis_reduction_request(&p->synthesis,
++		(struct pg_synthesis_input){.checked = ctx},
++		(struct pg_synthesis_input){.checked = input}, PG_REDUCTION_NF, 0));
++	assert(p->synthesis.jobs.count == jobs + 1);
 +	assert(!pg_synthesis_reduction_request(&p->synthesis, (struct pg_synthesis_input){0}, proof, PG_REDUCTION_NF, 0));
 +	assert(!pg_synthesis_reduction_request(&p->synthesis,
 +		(struct pg_synthesis_input){ctx, context}, proof, PG_REDUCTION_NF, 0));
@@ -61,6 +70,7 @@
 +	pg_program_destroy(foreign);
  	pg_synthesis_advance(&p->synthesis, 10000);
  	assert(pg_synthesis_result(accepted) == pg_synthesis_result(nf));
+-	assert(!pg_synthesis_normalize_jobs(&p->synthesis, context, p->root, (enum pg_reduction_kind)99));
 +	const struct pg_evidence *extended = pg_prove_context_extension(&p->typing, ctx,
 +		pg_binder(&p->graph), pg_prove_universe(&p->typing, ctx, 0));
 +	const struct pg_evidence *projected = pg_prove_projection(&p->typing, extended, input);
@@ -70,10 +80,12 @@
 +	pg_synthesis_advance(&p->synthesis, 10000);
 +	assert(pg_synthesis_status(other_use) == PG_SYNTHESIS_DONE);
 +	assert(pg_evidence_context(pg_synthesis_result(other_use)) == pg_evidence_context(extended));
- 	assert(!pg_synthesis_normalize_jobs(&p->synthesis, context, p->root, (enum pg_reduction_kind)99));
++	assert(!pg_synthesis_reduction_request(&p->synthesis,
++		(struct pg_synthesis_input){.pending = context}, (struct pg_synthesis_input){.pending = p->root}, (enum pg_reduction_kind)99, 0));
  	pg_program_destroy(p);
  }
-@@ -322,8 +356,8 @@
+ 
+@@ -322,8 +360,8 @@
  	assert(type && pg_evidence_classifier(result) == pg_evidence_subject(type)->core);
  	/* Resolve labels in this declaration, never hard-code constructor ordinals
  	 * or accept an erased shape belonging to a different nominal type. */
@@ -84,7 +96,18 @@
  	char expression[256];
  	int length = snprintf(expression, sizeof(expression), "expected:=%s.%s;", type_name, base_name);
  	assert(length > 0 && (size_t)length < sizeof(expression));
-@@ -660,7 +694,7 @@
+@@ -368,8 +406,8 @@
+ static const struct pg_evidence *evaluated_value(struct pg_program *p, struct pg_synthesis_job *subject)
+ {
+ 	assert(subject);
+-	struct pg_synthesis_job *job = pg_synthesis_evaluate_jobs(&p->synthesis,
+-		pg_synthesis_evidence(&p->synthesis, pg_prove_empty_context(&p->typing)), subject, PG_REDUCTION_NF);
++	struct pg_synthesis_job *job = pg_synthesis_reduction_request(&p->synthesis,
++		(struct pg_synthesis_input){.checked = pg_prove_empty_context(&p->typing)}, (struct pg_synthesis_input){.pending = subject}, PG_REDUCTION_NF, 1);
+ 	assert(job);
+ 	while (pg_synthesis_status(job) == PG_SYNTHESIS_PENDING) {
+ 		assert(p->synthesis.steps < comparison_steps);
+@@ -660,7 +698,7 @@
  	/* Imports are in the client's lexical environment, not its public exports. */
  	const struct pg_source_scope *scope = pg_synthesis_prepared_environment(p->root);
  	struct pg_synthesis_job *subject = pg_synthesis_named_input(&p->synthesis, scope,
@@ -93,7 +116,7 @@
  	assert(subject);
  	const struct pg_evidence *function = pg_synthesis_result(subject);
  	struct witness_fixture *fixtures = NULL;
-@@ -671,7 +705,7 @@
+@@ -671,7 +709,7 @@
  		int stored = *argument == '&';
  		if (stored) ++argument;
  		subject = pg_synthesis_named_input(&p->synthesis, scope,
@@ -102,7 +125,7 @@
  		assert(subject);
  		const struct pg_evidence *value = stored ? pg_synthesis_result(subject) : evaluated_value(p, subject);
  		assert(value);
-@@ -829,7 +863,7 @@
+@@ -829,7 +867,7 @@
  		assert(origins[i] && !pg_typed_query_steps(origins[i]));
  	}
  	const struct pg_source_scope *delayed = pg_synthesis_name(&p->synthesis, p->scope,
@@ -111,7 +134,7 @@
  	const char *inspection = "relation:=@delayed;";
  	struct pg_parser inspection_parser;
  	struct pg_synthesis_job *inspected = pg_program_source(p, delayed, inspection,
-@@ -852,9 +886,9 @@
+@@ -852,9 +890,9 @@
  	assert(pg_function_graph_witness(&delayed_graph));
  	pg_function_graph_destroy(&delayed_graph);
  	const struct pg_source_scope *names = pg_synthesis_name(&p->synthesis, p->scope,

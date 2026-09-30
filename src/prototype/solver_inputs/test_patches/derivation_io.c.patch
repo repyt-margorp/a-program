@@ -19,27 +19,89 @@
  		while (synthesis.ready) { assert(synthesis.steps < 4000); pg_synthesis_advance(&synthesis, chunk); }
  		for (size_t i = 0; i < count; ++i)
  			assert(pg_synthesis_status(jobs[i]) == (i == 4 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE));
-@@ -1299,8 +1298,8 @@
+@@ -1180,7 +1179,11 @@
+ 	const struct pg_derivation_input *const *inputs;
+ 	uint64_t steps = synthesis->steps;
+ 	size_t proofs = synthesis->typing->proofs.count, requests = synthesis->jobs.count;
+-	assert(!pg_synthesis_export_rules(synthesis, count, jobs, &storage, &effects, 0, &inputs));
++	struct pg_synthesis_input *roots = calloc(count, sizeof(*roots));
++	assert(roots);
++	for (size_t i = 0; i < count; ++i) roots[i].pending = jobs[i];
++	assert(!pg_synthesis_export_rules(synthesis, count, roots, &storage, &effects, 0, &inputs));
++	free(roots);
+ 	for (size_t i = 0; i < count; ++i)
+ 		direct_input_dependencies(inputs[i], &pg_builtin_graph_codec, graph);
+ 	struct pg_dag objects = {0};
+@@ -1213,7 +1216,9 @@
+ 	struct pg_effect_inference image;
+ 	assert(!pg_graph_init(&storage) && !pg_effect_inference_init(&image, &storage));
+ 	const struct pg_derivation_input *const *inputs;
+-	assert(!pg_synthesis_export_rules(synthesis, 1, &source, &storage, &image, 1, &inputs));
++	assert(!pg_synthesis_export_rules(synthesis, 1, (struct pg_synthesis_input[]){
++		{.pending = source}
++		}, &storage, &image, 1, &inputs));
+ 	const struct pg_evidence *accepted = pg_synthesis_result(source);
+ 	struct pg_synthesis resumed;
+ 	assert(!pg_synthesis_init(&resumed, synthesis->typing,
+@@ -1278,7 +1283,9 @@
+ 		assert(!pg_graph_init(&storage) && !pg_effect_inference_init(&image, &storage));
+ 		const struct pg_derivation_input *const *inputs = NULL;
+ 		size_t jobs = synthesis.jobs.count, proofs = typing->proofs.count;
+-		assert(pg_synthesis_export_rules(&synthesis, 1, &identity, &storage, &image, 0, &inputs) == 1);
++		assert(pg_synthesis_export_rules(&synthesis, 1, (struct pg_synthesis_input[]){
++			{.pending = identity}
++			}, &storage, &image, 0, &inputs) == 1);
+ 		assert(!inputs && image.failed && synthesis.jobs.count == jobs && typing->proofs.count == proofs);
+ 		pg_effect_inference_destroy(&image);
+ 		pg_graph_destroy(&storage);
+@@ -1289,7 +1296,6 @@
+ 		assert(pg_synthesis_status(identity) == PG_SYNTHESIS_DONE);
+ 		retained_source_proof(&synthesis, identity, chunk);
+ 		const struct pg_evidence *u = pg_prove_universe(typing, pg_prove_empty_context(typing), 0);
+-		struct pg_synthesis_job *universe = pg_synthesis_evidence(&synthesis, u);
+ 		const struct pg_term *type = pg_evidence_subject(u)->core;
+ 		const struct pg_object *op = pg_operation_label_create(graph, type, type);
+ 		const struct pg_effect_row *empty = pg_effect_row(graph, 0, NULL), *seed = pg_effect_row(graph, 1, &op);
+@@ -1299,14 +1305,19 @@
  		assert(!pg_effect_dependency(&first, pg_effect_equation(&first, seed), empty, a));
  		struct pg_derivation_input header = {.rule = PG_RETURN_TYPE_FORM, .count = 1};
  		struct pg_synthesis_job *selected[] = {identity,
 -			pg_synthesis_rule(&synthesis, &header, &universe, &first, a),
 -			pg_synthesis_rule(&synthesis, &header, &universe, &second, b), identity};
-+			pg_synthesis_rule_inputs(&synthesis, &header, &(struct pg_synthesis_input){.pending = universe}, &first, a),
-+			pg_synthesis_rule_inputs(&synthesis, &header, &(struct pg_synthesis_input){.pending = universe}, &second, b), identity};
++			pg_synthesis_rule_inputs(&synthesis, &header, &(struct pg_synthesis_input){.checked = u}, &first, a),
++			pg_synthesis_rule_inputs(&synthesis, &header, &(struct pg_synthesis_input){.checked = u}, &second, b), identity};
  		assert(selected[1] && selected[2]);
  		assert(!pg_graph_init(&storage) && !pg_effect_inference_init(&image, &storage));
  		jobs = synthesis.jobs.count; proofs = typing->proofs.count;
-@@ -1318,7 +1317,7 @@
+ 		size_t terms = graph->terms.count;
+ 		uint64_t steps = synthesis.steps;
+-		assert(!pg_synthesis_export_rules(&synthesis, 4, selected, &storage, &image, 0, &inputs));
++		assert(!pg_synthesis_export_rules(&synthesis, 4, (struct pg_synthesis_input[]){
++			{.pending = selected[0]},
++			{.pending = selected[1]},
++			{.pending = selected[2]},
++			{.pending = selected[3]}
++			}, &storage, &image, 0, &inputs));
+ 		assert(inputs[0] == inputs[3] && inputs[1]->effect_parameter != inputs[2]->effect_parameter);
+ 		assert(image.row_sources.count == 3 && !image.sealed);
+ 		assert(jobs == synthesis.jobs.count && proofs == typing->proofs.count && steps == synthesis.steps && terms == graph->terms.count);
+@@ -1318,10 +1329,13 @@
  		struct pg_effect_inference conflict;
  		assert(!pg_effect_inference_init(&conflict, graph));
  		struct pg_effect_equation *duplicate = pg_effect_equation_at(&conflict, pg_effect_equation_parameter(&first, a), empty);
 -		struct pg_synthesis_job *overlap[] = {selected[1], pg_synthesis_rule(&synthesis, &header, &universe, &conflict, duplicate)};
-+		struct pg_synthesis_job *overlap[] = {selected[1], pg_synthesis_rule_inputs(&synthesis, &header, &(struct pg_synthesis_input){.pending = universe}, &conflict, duplicate)};
++		struct pg_synthesis_job *overlap[] = {selected[1], pg_synthesis_rule_inputs(&synthesis, &header, &(struct pg_synthesis_input){.checked = u}, &conflict, duplicate)};
  		assert(!pg_graph_init(&storage) && !pg_effect_inference_init(&image, &storage));
  		inputs = NULL;
- 		assert(pg_synthesis_export_rules(&synthesis, 2, overlap, &storage, &image, 0, &inputs) == -1 && !inputs && image.failed);
-@@ -1360,7 +1359,6 @@
+-		assert(pg_synthesis_export_rules(&synthesis, 2, overlap, &storage, &image, 0, &inputs) == -1 && !inputs && image.failed);
++		assert(pg_synthesis_export_rules(&synthesis, 2, (struct pg_synthesis_input[]){
++			{.pending = overlap[0]},
++			{.pending = overlap[1]}
++			}, &storage, &image, 0, &inputs) == -1 && !inputs && image.failed);
+ 		pg_effect_inference_destroy(&image);
+ 		pg_graph_destroy(&storage);
+ 		const char declaration_source[] = "D := @{};";
+@@ -1360,7 +1374,6 @@
  		assert(pg_synthesis_status(jobs[0]) == PG_SYNTHESIS_DONE && jobs[0] == jobs[3]);
  		assert(!pg_synthesis_result(jobs[1]) && !pg_synthesis_result(jobs[2]));
  		pg_effect_inference_seal(&image);

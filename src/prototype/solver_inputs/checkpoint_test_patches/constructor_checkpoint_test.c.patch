@@ -1,6 +1,6 @@
 --- a/constructor_checkpoint_test.c
 +++ b/constructor_checkpoint_test.c
-@@ -239,10 +239,11 @@
+@@ -239,15 +239,15 @@
  	struct pg_synthesis isolated;
  	assert(!pg_synthesis_init(&isolated, &p->typing, &p->evaluation, PG_DEFINITION_IMPLICIT_THUNK));
  	struct pg_synthesis_job *scope_job = pg_synthesis_constructor_scope(&isolated,
@@ -14,3 +14,9 @@
  	const struct pg_evidence *scope;
  	assert(job && pg_synthesis_constructor_ready_scope(&isolated, job, &scope) == 1);
  	assert(pg_synthesis_constructor_ready_scope(&p->synthesis, job, &scope) == -1);
+-	struct pg_synthesis_job *inputs[] = {pg_synthesis_evidence(&isolated, formation),
+-		pg_synthesis_evidence(&isolated, parameters), pg_synthesis_evidence(&isolated, scope)};
++	struct pg_synthesis_input inputs[] = {{.checked = formation}, {.checked = parameters}, {.checked = scope}};
+ 	assert(!pg_synthesis_export_rules(&isolated, 3, inputs, &p->graph,
+ 		&p->imported_effects, 1, &c.inputs));
+ 	FILE *saved = save(&c);

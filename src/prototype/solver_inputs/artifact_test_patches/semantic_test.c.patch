@@ -72,7 +72,18 @@
  	assert(terms == program->graph.terms.count && proofs == program->typing.proofs.count);
  	assert(occurrences == program->typing.occurrences.count && jobs == program->synthesis.jobs.count);
  	assert(steps == program->synthesis.steps);
-@@ -968,8 +973,8 @@
+@@ -729,7 +734,9 @@
+ 	assert(!pg_graph_init(&storage) && !pg_effect_inference_init(&effects, &storage));
+ 	assert(!pg_declaration_io_init(&codec, &program->typing));
+ 	const struct pg_derivation_input *const *inputs;
+-	assert(!pg_synthesis_export_rules(&program->synthesis, 1, &selected, &storage, &effects, 1, &inputs));
++	assert(!pg_synthesis_export_rules(&program->synthesis, 1, (struct pg_synthesis_input[]){
++		{.pending = selected}
++		}, &storage, &effects, 1, &inputs));
+ 	FILE *file = tmpfile();
+ 	assert(file && !pg_retained_write_semantic(file, 1, inputs, &effects,
+ 		0, NULL, 2, stored, &pg_declaration_graph_codec, &codec));
+@@ -968,8 +975,8 @@
  	assert((pg_synthesis_status(program->root) == PG_SYNTHESIS_DONE) == valid);
  	FILE *file = tmpfile();
  	assert(file);

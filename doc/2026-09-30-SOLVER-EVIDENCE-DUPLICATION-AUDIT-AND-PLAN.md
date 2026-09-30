@@ -453,10 +453,13 @@ baseline described above. Concurrent accepted-source edits remain excluded.
 - [x] Remove the Job-only rule/premise contract and every caller, including
   import/preparation, source synthesis, tests and checkpoint consumers. Only
   the checked/pending API remains; no compatibility conversion helper is kept.
-- [ ] Remove `EVIDENCE_JOB`, test callers and remaining adapter recognition.
+- [x] Remove Job-only expect/reindex/normalization/evaluation aliases and their
+  callers. Rule export accepts the same borrowed checked/pending roots; ordinary
+  program and normalization/constructor checkpoint consumers need no adapters.
+  See the direct export milestone below for verification status.
+- [ ] Remove `EVIDENCE_JOB`, remaining test callers and adapter recognition.
   Checked roots must use the same borrowed inputs, not a replacement completed
-  worker. Remove remaining Job-only expect/reindex/normalization aliases with
-  their callers; tests
+  worker. Tests
   must use real pending owners where suspension is the property under test.
   Reading may still return real unchecked producers. Then remove duplicated
   query scheduling.
@@ -1709,3 +1712,80 @@ Evidence adapters; graph counts and Job bytes are unchanged. SE1-SE5 stay open.
 
 Applied-code counts resolve symlinks and exclude unrelated changes, patch context
 and documentation. Logs and TSVs use `/tmp/a-program-rule-input-`.
+
+### SE1 Direct Reduction and Export Inputs (2026-10-01)
+
+#### Subjective (User)
+
+English paraphrase of the latest requirement: resume the Solve frontier without
+retaining Job/Evidence structures that duplicate known typed inputs and results.
+
+#### Objective (Code)
+
+Parent `dd430c0`, prototype assembled from the archived accepted baseline
+`e7162320712f1acdc9420b6ffae993cd97035663`, excluding concurrent accepted edits.
+Removed four Job-only forwarding APIs and migrated all 57 calls. Rule export now
+accepts checked/pending roots through the existing closure traversal; its
+temporary membership indexes do not allocate Jobs, advance Solve or retain a
+second acceptance table. Output ordering and duplicate roots are preserved.
+The source reader selects reduction/force through the same request, without a
+duplicate conditional call. No Core, Kernel rule or wire field is changed.
+
+#### Assessment
+
+The direct comparison test now needs three Jobs instead of six: two genuine
+post-checks and one shared comparison. Its failure-sharing test needs two checks
+and one comparison, with no accepted-input wrapper. Program and both migrated
+checkpoint consumers contain no Evidence-adapter calls. The factory and other
+test callers still exist; mirrored classifier/query ownership and SE3-SE5 remain
+open. API removal alone is not completion of the frontier refactor.
+
+#### Plan
+
+- [x] Fresh patch assembly exactly reproduces source/tests/checkpoint/audit inputs.
+- [x] Focused O2 synthesis, program and derivation-I/O tests.
+- [x] O2 normalization and constructor checkpoints, including exact remaining fuel.
+- [x] Final ASan/UBSan synthesis, program, source/derivation I/O and both migrated checkpoints.
+- [ ] Full O2 acceptance, semantic audit and remaining checkpoint gates.
+- [x] Same-budget List/QuickSort census and public partition comparison.
+
+Export boundaries cover missing/oversized input arrays, mixed inputs, foreign
+checked/pending owners, repeated mixed-root export, no source allocation/advance,
+and unchanged output plus poisoned transport state on failure. Initial focused
+commands were invoked before those test binaries were built (exit 127); explicit
+target builds and subsequent correct invocations passed.
+Static recheck then corrected the export count bound to `sizeof(*roots)`, since
+the borrowed-input element contains two pointers. The oversized test targets
+that exact boundary. The first full acceptance run was deliberately stopped
+(exit 143) before editing frozen sources; final gates are rerun, not inherited.
+
+Applied-file delta from `dd430c0`: implementation +31/-62 (net -31);
+tests/checkpoint/audit fixtures +207/-107 (net +100). These counts exclude patch
+context, documentation and unrelated accepted edits. Per-file evidence and
+verification logs use `/tmp/a-program-direct-alias-`. The final full-regression
+log reaches the last derived-LT success marker, including both providers and
+partition orders. On continuation its process handle is no longer available;
+the aggregate exit code was not retained. Keep the full-gate checkbox open
+until an observed terminal result, rather than infer it from the log alone.
+
+The ordinary List/QuickSort census is byte-identical to the preceding milestone
+at matching budgets. Public partition TSVs also match: the same four reload
+failures remain and the partition target exits 2. This is not a passing gate.
+
+| Applied-file delta from `dd430c0` | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `src/synthesis_context.c` | 0 | 7 | -7 |
+| `src/synthesis_conversion.c` | 0 | 21 | -21 |
+| `src/synthesis.h` | 4 | 19 | -15 |
+| `src/synthesis.c` | 6 | 4 | +2 |
+| `src/synthesis_iadt.c` | 2 | 1 | +1 |
+| `src/source_io.c` | 3 | 3 | 0 |
+| `src/synthesis_derivation.c` | 16 | 7 | +9 |
+| `tests/synthesis.c` | 115 | 49 | +66 |
+| `tests/iadt.c` | 8 | 5 | +3 |
+| `tests/program.c` | 16 | 12 | +4 |
+| `tests/source_io.c` | 19 | 8 | +11 |
+| `tests/derivation_io.c` | 24 | 9 | +15 |
+| `checkpoint_tests/normalization_checkpoint_test.c` | 21 | 21 | 0 |
+| `checkpoint_tests/constructor_checkpoint_test.c` | 1 | 2 | -1 |
+| `artifact_tests/semantic_test.c` | 3 | 1 | +2 |

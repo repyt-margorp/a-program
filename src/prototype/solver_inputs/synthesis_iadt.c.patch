@@ -598,7 +598,7 @@
  	for (size_t i = 0; i < branch_count; ++i) {
  		const struct pg_object *label = pg_data_constructor(layout, i);
  		const struct pg_evidence *map = (*slot)->boundary->branches[i]->result;
-@@ -975,15 +1011,16 @@
+@@ -975,17 +1011,19 @@
  		pg_prove_substitution_projection(typing, base_context, extended));
  	const struct pg_evidence *family = pg_prove_type_case(typing, instance.formation, parameter_map,
  		pg_prove_variable(typing, extended, pg_evidence_context(extended)->binder), branch_count, branches);
@@ -619,9 +619,13 @@
 +		(struct pg_synthesis_input){.checked = family}, left, right, path_count, paths,
 +		argument, direction);
  	const struct pg_evidence *target = pg_prove_reindex(typing, direction == PG_IDENTITY_LEFT ? left : right, family);
- 	result = pg_synthesis_expect(synthesis, transported, pg_synthesis_normalize(synthesis, context, target));
+-	result = pg_synthesis_expect(synthesis, transported, pg_synthesis_normalize(synthesis, context, target));
++	result = pg_synthesis_expect_inputs(synthesis,
++		(struct pg_synthesis_input){.pending = transported}, (struct pg_synthesis_input){.pending = pg_synthesis_normalize(synthesis, context, target)});
  done:
-@@ -998,24 +1035,26 @@
+ 	pg_graph_destroy(&temporary);
+ 	return result;
+@@ -998,24 +1036,26 @@
  	const struct pg_evidence *transported, int *progress)
  {
  	struct index_transport_work *local = pg_synthesis_work_state(job, job->role);
@@ -654,7 +658,7 @@
  			if (!work->comparison.state && pg_independence_init(&work->comparison,
  				term, work->field->binder)) return -1;
  			enum pg_comparison_status status = pg_comparison_advance(&work->comparison, 1);
-@@ -1042,18 +1081,25 @@
+@@ -1042,18 +1082,25 @@
  static void index_transport_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
  	struct index_transport_work *local = pg_synthesis_work_state(job, job->role);
@@ -685,7 +689,7 @@
  	if (!local->index_transport) {
  		local->index_transport = pg_alloc(typing->graph, sizeof(*local->index_transport));
  		if (!local->index_transport) goto error;
-@@ -1073,9 +1119,9 @@
+@@ -1073,9 +1120,9 @@
  					int status = index_transport_progress(job, candidate->result, &progress);
  					if (!status) { pg_synthesis_enqueue(synthesis, job); return; }
  					if (status < 0) goto error;
@@ -698,7 +702,7 @@
  				}
  				struct pg_synthesis_job *check = state->checks[index];
  				if (!check) goto error;
-@@ -1093,7 +1139,7 @@
+@@ -1093,7 +1140,7 @@
  	if (!state->path) {
  		if (pg_evidence_rule(state->cursor) != PG_CONTEXT_EXTEND) goto next_context;
  		struct pg_synthesis_job *formation = pg_synthesis_identity_formation(synthesis,
@@ -707,7 +711,7 @@
  		if (!formation) goto error;
  		if (formation->status == PG_SYNTHESIS_PENDING) { pg_synthesis_subscribe(synthesis, job, formation, 0); return; }
  		struct pg_identity_boundary boundary;
-@@ -1118,8 +1164,9 @@
+@@ -1118,8 +1165,9 @@
  		pg_synthesis_enqueue(synthesis, job); return;
  	}
  	for (size_t i = 0; i < 2; ++i) {

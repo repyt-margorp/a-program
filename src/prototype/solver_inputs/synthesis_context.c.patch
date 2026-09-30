@@ -41,30 +41,25 @@
  
  static int reindex_inputs(struct pg_synthesis *synthesis,
  	const struct pg_evidence *substitution, const struct pg_evidence *proof)
-@@ -49,60 +31,62 @@
+@@ -49,60 +31,55 @@
  	return pg_evidence_context(proof) == pg_evidence_context_map(substitution)->source;
  }
  
+-struct pg_synthesis_job *pg_synthesis_reindex_jobs(struct pg_synthesis *synthesis,
+-	struct pg_synthesis_job *substitution, struct pg_synthesis_job *proof)
 +struct pg_synthesis_job *pg_synthesis_reindex_input(struct pg_synthesis *synthesis,
 +	struct pg_synthesis_input substitution, struct pg_synthesis_input proof)
-+{
+ {
+-	if (!substitution || substitution->owner != synthesis->owner_key) return NULL;
+-	if (!proof || proof->owner != synthesis->owner_key) return NULL;
+-	const void *inputs[] = {substitution, proof};
+-	return pg_synthesis_work_request(synthesis, REINDEX_JOB, 2, inputs);
 +	if (!pg_synthesis_input_owned(synthesis, substitution)) return NULL;
 +	if (!pg_synthesis_input_owned(synthesis, proof)) return NULL;
 +	substitution = pg_synthesis_input_direct(substitution);
 +	proof = pg_synthesis_input_direct(proof);
 +	const void *inputs[] = {substitution.checked, substitution.pending, proof.checked, proof.pending};
 +	return pg_synthesis_work_request(synthesis, REINDEX_JOB, 4, inputs);
-+}
-+
- struct pg_synthesis_job *pg_synthesis_reindex_jobs(struct pg_synthesis *synthesis,
- 	struct pg_synthesis_job *substitution, struct pg_synthesis_job *proof)
- {
--	if (!substitution || substitution->owner != synthesis->owner_key) return NULL;
--	if (!proof || proof->owner != synthesis->owner_key) return NULL;
--	const void *inputs[] = {substitution, proof};
--	return pg_synthesis_work_request(synthesis, REINDEX_JOB, 2, inputs);
-+	return pg_synthesis_reindex_input(synthesis, (struct pg_synthesis_input){.pending = substitution},
-+		(struct pg_synthesis_input){.pending = proof});
  }
  
  struct pg_synthesis_job *pg_synthesis_reindex(struct pg_synthesis *synthesis,
@@ -134,7 +129,7 @@
  		if (!reindex_inputs(synthesis, substitution, proof)) {
  			pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
  		}
-@@ -123,8 +107,7 @@
+@@ -123,8 +100,7 @@
  		break;
  	case PG_SUBSTITUTION_DONE:
  		job->result = pg_prove_reindex(synthesis->typing,
@@ -144,7 +139,7 @@
  		pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
  		break;
  	}
-@@ -136,8 +119,8 @@
+@@ -136,8 +112,8 @@
  	if (!local->checked) {
  		struct pg_synthesis_job *type = pg_synthesis_reindex(synthesis,
  			job->inputs[0], pg_context_declared_input(synthesis->typing, job->inputs[1]));
@@ -155,7 +150,7 @@
  	}
  	if (pg_synthesis_await(synthesis, job, local->checked)) return;
  	job->result = pg_prove_substitution_pair(synthesis->typing,
-@@ -145,45 +128,44 @@
+@@ -145,45 +121,44 @@
  	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
  }
  
@@ -227,7 +222,7 @@
  			if (!contexts[i] || pg_evidence_judgement(contexts[i]) != PG_JUDGEMENT_CONTEXT) goto rejected;
  		}
  		size_t arity;
-@@ -196,10 +178,11 @@
+@@ -196,10 +171,11 @@
  		local->map = pg_prove_substitution(synthesis->typing, source, contexts[1], 0, NULL);
  		if (!local->map) goto error;
  	}
@@ -243,7 +238,7 @@
  		++local->next;
  	}
  	if (local->next == count) {
-@@ -207,9 +190,9 @@
+@@ -207,9 +183,9 @@
  		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_DONE);
  		return;
  	}
@@ -256,7 +251,7 @@
  	if (!image || !pg_evidence_subject(image)) {
  		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
  	}
-@@ -225,7 +208,7 @@
+@@ -225,7 +201,7 @@
  		if (!image || pg_evidence_judgement(image) != PG_JUDGEMENT_VALUE) goto rejected;
  	}
  	local->pair = pg_synthesis_substitution_pair(synthesis, local->map, extension, image);
