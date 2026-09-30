@@ -1,8 +1,17 @@
 --- a/synthesis_work.c
 +++ b/synthesis_work.c
-@@ -1,4 +1,47 @@
+@@ -1,4 +1,53 @@
  #include "synthesis_work.h"
 +#include "typed_query.h"
++
++int pg_synthesis_yield_query(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
++	struct pg_typed_query *query)
++{
++	if (!query || query->typing != synthesis->typing || query->status) return 0;
++	pg_typed_query_advance(query, 1);
++	pg_synthesis_enqueue(synthesis, job);
++	return 1;
++}
 +
 +int pg_synthesis_await_query(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
 +	struct pg_typed_query *query)
@@ -13,10 +22,7 @@
 +	if (query->status < 0) {
 +		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return 1;
 +	}
-+	if (query->status) return 0;
-+	pg_typed_query_advance(query, 1);
-+	pg_synthesis_enqueue(synthesis, job);
-+	return 1;
++	return pg_synthesis_yield_query(synthesis, job, query);
 +}
 +
 +const struct pg_evidence *pg_synthesis_input_result(struct pg_synthesis_input input)
@@ -48,7 +54,7 @@
  
  void pg_synthesis_work_destroy(struct pg_synthesis *synthesis)
  {
-@@ -24,10 +67,16 @@
+@@ -24,10 +73,16 @@
  
  /* Read the caller's fixed prefix and dependency array without assembling a
   * temporary key. Stored requests still own one flat immutable input array. */
@@ -68,7 +74,7 @@
  }
  
  static size_t state_extent(const struct pg_synthesis_work_class *role)
-@@ -37,20 +86,19 @@
+@@ -37,20 +92,19 @@
  }
  
  static struct pg_synthesis_job *find_request(const struct pg_synthesis *synthesis,
@@ -93,7 +99,7 @@
  		if (i == count) return job;
  	}
  	return NULL;
-@@ -61,7 +109,8 @@
+@@ -61,7 +115,8 @@
  {
  	if (!synthesis || !role || (count && !inputs)) return NULL;
  	uint64_t hash;
@@ -103,7 +109,7 @@
  }
  
  struct pg_synthesis_job *pg_synthesis_work_request_inputs(struct pg_synthesis *synthesis,
-@@ -70,12 +119,20 @@
+@@ -70,12 +125,20 @@
  {
  	if (!role || !role->advance || (prefix && !inputs) || (job_count && !jobs)) return NULL;
  	if (job_count > SIZE_MAX - prefix) return NULL;
@@ -128,7 +134,7 @@
  	if (role->size > SIZE_MAX - (_Alignof(struct pg_synthesis_job) - 1)) return NULL;
  	size_t offset = state_extent(role);
  	if (bytes > SIZE_MAX - offset) return NULL;
-@@ -85,7 +142,7 @@
+@@ -85,7 +148,7 @@
  	job->owner = synthesis->owner_key;
  	job->role = role;
  	job->input_count = count;

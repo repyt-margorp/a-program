@@ -64,6 +64,10 @@ The separate face/action entry points and temporary path-to-Job array are remove
 Operation signatures and handler premises borrow the same checked/pending input.
 Startup Contexts and source export no longer wrap those known inputs in Jobs.
 The Job-only operation request API is removed, not retained as another variant.
+Family reification uses the same allocation-free query-yield operation as
+checked lifting. Completing an origin query cannot advance the application-body
+query in the same dispatch. Query failure policy remains with each consumer;
+the family owner's nominal fallback is unchanged. No new progress owner is added.
 
 ### Assessment
 

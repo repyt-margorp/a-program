@@ -376,6 +376,9 @@ baseline described above. Concurrent accepted-source edits remain excluded.
   checked/pending APIs and the temporary path-to-Job array.
 - [x] Migrate operation signatures, handler signature premises and startup
   Contexts to direct inputs; source transport borrows the same checked leaves.
+- [x] Share the bounded query-borrowing operation with family-origin/body
+  consumers. A query completing must not permit a second query advance in
+  that dispatch; preserve nominal fallback when a body query has no result.
 - [ ] Finish known-family result adapters and other context/IADT
   consumers, remove `EVIDENCE_JOB`, then remove duplicated query scheduling.
   The remaining adapter recognition is temporary, not the final architecture.
@@ -556,6 +559,35 @@ The public partition gate was rerun: 100+100 and 1000+1000 still differ in bytes
 Step-0 pending resave and 10+10 pass. These remain AP1-AP3 failures; SE1 and the
 overall goal are not complete. The next SE1 work is remaining no-work Evidence
 adapters and producer-to-checked forwarding, not another persistence codec.
+
+#### Family Query Boundary (2026-09-30)
+
+**Objective (Code):** parent `f93ae9b` plus this prototype, with the same isolated
+accepted baseline. `family_function_step` could advance its origin query and
+application-body query in one dispatch when origin completed. The added cold
+partial-family test fails on the parent implementation at the two-query budget
+assertion and passes on the candidate. Both queries remain canonical typing
+owners; no additional cursor, result slot, Job role or wire field was added.
+
+**Assessment:** share an allocation-free yielding operation with the existing
+checked-query borrower. Yield even when that advance completes; terminal queries
+consume no query steps. Keep failure policy at the consumer: checked lifting
+fails on a failed query, while family reification retains its nominal fallback.
+A broader trial delayed completion of unrelated single-query consumers and
+failed the advanced-namespace exact-resumption gate. Reject that unnecessary
+delay; it is not required to prevent two query advances. This fix does not
+remove the independent Job graph or close the ownership audit.
+
+**Plan / verification:** the candidate passes full O2 `check` and all seven
+checkpoint/namespace targets. ASan/UBSan synthesis, List-09 program, handler
+boundaries and source/derivation checkpoints pass. Fresh patch application matches
+the tested source, tests and checkpoint tests. Logs: `/tmp/a-program-family-frontier-*`.
+List-09 and general QuickSort Local Sorted census rows are unchanged from the
+parent, including repeated completed samples. The public partition gate still
+fails at 100+100, 1000+1000, 1600+1600 and completed+0; do not close SE1-SE5.
+Applied deltas against the parent: `synthesis_function.c` +2/-2, `synthesis_work.c`
++10/-4, `synthesis_work.h` +3/-0; implementation net +9. `tests/synthesis.c`
++19/-1, net +18. Patch-file context churn is not implementation growth.
 
 ### SE1 Substitution Inputs (2026-09-30)
 

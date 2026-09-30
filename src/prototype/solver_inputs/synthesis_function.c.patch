@@ -273,7 +273,7 @@
  	if (!local->continuation) goto error;
  	if (pg_synthesis_await(synthesis, job, local->continuation)) return;
  	job->result = pg_prove_value_type(synthesis->typing, local->continuation->result);
-@@ -326,13 +331,19 @@
+@@ -326,17 +331,23 @@
  static void family_function_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
  	struct family_work *local = pg_synthesis_work_state(job, FAMILY_FUNCTION_JOB);
@@ -299,6 +299,11 @@
  	if (local->continuation) { pg_synthesis_forward(synthesis, job, local->continuation); return; }
  	if (!local->preparation) {
  		struct pg_typed_query *origin = pg_construction_origin_request(synthesis->typing, proof);
+-		if (!pg_typed_query_advance(origin, 1)) { pg_synthesis_enqueue(synthesis, job); return; }
++		if (pg_synthesis_yield_query(synthesis, job, origin)) return;
+ 		const struct pg_evidence *construction = pg_typed_query_result(origin);
+ 		const struct pg_evidence *environment = pg_construction_origin_environment(origin);
+ 		const struct pg_occurrence *subject = construction ? pg_evidence_subject(construction) : NULL;
 @@ -345,23 +356,24 @@
  			const struct pg_scope *selected = pg_evidence_binding_scope(construction);
  			const struct pg_evidence *context = selected ? pg_evidence_for_scope(synthesis->typing, selected) : NULL;
@@ -312,7 +317,8 @@
  			struct pg_typed_query *application = pg_application_body_request(synthesis->typing,
  				pg_prove_structural_subject(synthesis->typing, subject->operands[0]),
  				pg_prove_structural_subject(synthesis->typing, subject->operands[1]));
- 			if (!pg_typed_query_advance(application, 1)) { pg_synthesis_enqueue(synthesis, job); return; }
+-			if (!pg_typed_query_advance(application, 1)) { pg_synthesis_enqueue(synthesis, job); return; }
++			if (pg_synthesis_yield_query(synthesis, job, application)) return;
  			const struct pg_evidence *body = pg_typed_query_result(application);
 -			if (body) local->continuation = pg_synthesis_family_function(synthesis, pg_synthesis_evidence(synthesis, body));
 +			if (body) local->continuation = pg_synthesis_family_function(synthesis, (struct pg_synthesis_input){.checked = body});
