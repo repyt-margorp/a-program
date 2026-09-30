@@ -94,11 +94,16 @@ Classifier normalization has one checked/pending input/result API. Checked
 families with a checked matching Context return directly, without an Evidence
 Job. Pending Contexts keep their scope-checking obligation and stable request
 identity; ordinary value/computation inputs retain actual normalization work.
+Constructor members, field scopes and IH scopes also borrow checked/pending
+inputs through one API. A checked field map seeds the existing member worker
+directly; declaration, parameters and map do not need completed Jobs. Source
+transport reads these inputs from the owner, not its private key-array layout.
+Dependent field lifting and IH construction retain their unfinished cursors.
 
 ### Assessment
 
-This removes some adapters, not the independent Job graph. Constructor/Match
-and other context/IADT consumers still use adapters. Producer-to-checked
+This removes some adapters, not the independent Job graph. Match completion,
+classifier-formation and other context/IADT consumers still use adapters. Producer-to-checked
 forwarding paths also remain. Removing classifier
 forwarding alone lost completed-result reuse, so that trial was rejected;
 removing the query wrapper does not settle the pending/checked request ownership.

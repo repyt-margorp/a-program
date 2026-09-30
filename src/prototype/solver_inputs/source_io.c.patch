@@ -20,15 +20,6 @@
  	const struct pg_object *reference;
  	const struct pg_context *prefix, *fields;
  	int allocated, operation;
-@@ -40,7 +40,7 @@
- {
- 	struct pg_constructor_input constructor;
- 	if (!pg_synthesis_constructor_input(synthesis, job, &constructor)) {
--		*input = (struct callable_input){constructor.formation, constructor.parameters, constructor.constructor,
-+		*input = (struct callable_input){{.pending = constructor.formation}, {.pending = constructor.parameters}, constructor.constructor,
- 			constructor.prefix, constructor.fields, constructor.allocated, 0};
- 		return 0;
- 	}
 @@ -70,17 +70,37 @@
  struct producer_input {
  	const struct pg_source_scope *scope, *prepared;
@@ -299,7 +290,7 @@
  	return status;
  }
  
-@@ -1120,9 +1172,11 @@
+@@ -1120,14 +1172,16 @@
  				if (syntax == 6) {
  					if (prefix) goto fail;
  					producers[i] = rule ? pg_synthesis_operation_at(&program->synthesis, reference->as.reference,
@@ -313,7 +304,15 @@
 +							(struct pg_synthesis_input){.pending = producers[right - 1]});
  				} else {
  					if (rule && !pg_synthesis_constructor_scope_at(&program->synthesis,
- 						producers[left - 1], reference->as.reference, producers[right - 1], prefix, fields)) goto fail;
+-						producers[left - 1], reference->as.reference, producers[right - 1], prefix, fields)) goto fail;
+-					producers[i] = pg_synthesis_constructor_value_jobs(&program->synthesis,
+-						producers[left - 1], reference->as.reference, producers[right - 1]);
++						(struct pg_synthesis_input){.pending = producers[left - 1]}, reference->as.reference, (struct pg_synthesis_input){.pending = producers[right - 1]}, prefix, fields)) goto fail;
++					producers[i] = pg_synthesis_constructor_value(&program->synthesis,
++						(struct pg_synthesis_input){.pending = producers[left - 1]}, reference->as.reference, (struct pg_synthesis_input){.pending = producers[right - 1]});
+ 				}
+ 			} else if (left || right) {
+ 				if (!left || left > i || !right || right > i || definitions || rule) goto fail;
 @@ -1140,7 +1194,7 @@
  				} else {
  					if (scope > n || syntax) goto fail;

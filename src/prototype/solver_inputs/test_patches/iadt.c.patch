@@ -1,5 +1,16 @@
 --- a/iadt.c
 +++ b/iadt.c
+@@ -89,8 +89,8 @@
+ 	size_t jobs = synthesis->jobs.count;
+ 	for (size_t i = 0; i < pg_data_constructor_count(instance.schema); ++i) {
+ 		struct pg_synthesis_job *scope = pg_synthesis_constructor_scope(synthesis,
+-			pg_synthesis_evidence(synthesis, formation), pg_data_constructor(pg_data_schema_layout(instance.schema), i),
+-			pg_synthesis_evidence(synthesis, pg_evidence_premise(family, 1)));
++			(struct pg_synthesis_input){.checked = formation}, pg_data_constructor(pg_data_schema_layout(instance.schema), i),
++			(struct pg_synthesis_input){.checked = pg_evidence_premise(family, 1)});
+ 		assert(scope && pg_synthesis_status(scope) == PG_SYNTHESIS_DONE);
+ 		const struct pg_context *fields = pg_evidence_context(pg_synthesis_result(scope));
+ 		const struct pg_term *branch = pg_evidence_subject(pg_evidence_premise(family, i + 3))->core;
 @@ -166,16 +166,12 @@
  	const struct pg_object *binder, const struct pg_evidence *expected)
  {

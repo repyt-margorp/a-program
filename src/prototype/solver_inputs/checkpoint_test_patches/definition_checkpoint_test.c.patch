@@ -122,7 +122,22 @@
  	assert(pg_evidence_rule(leaf) == PG_CONSTRUCTOR_INTRO);
  	return leaf;
  }
-@@ -697,7 +705,8 @@
+@@ -675,9 +683,11 @@
+ 	add_job(f, member);
+ 	size_t first = f->count;
+ 	const struct pg_evidence *leaf = advanced ? namespace_body(f, body) : NULL;
+-	struct pg_synthesis_job *roots[] = {f->program->root, input.formation,
+-		input.parameters, pg_synthesis_evidence(s, map), leaf ? pg_synthesis_evidence(s, leaf) : NULL};
+-	const struct pg_data_layout *layout = pg_data_schema_layout(pg_evidence_inductive_schema(input.formation->result));
++	struct pg_synthesis_job *roots[] = {f->program->root,
++		input.formation.pending ? input.formation.pending : pg_synthesis_evidence(s, input.formation.checked),
++		input.parameters.pending ? input.parameters.pending : pg_synthesis_evidence(s, input.parameters.checked),
++		pg_synthesis_evidence(s, map), leaf ? pg_synthesis_evidence(s, leaf) : NULL};
++	const struct pg_data_layout *layout = pg_data_schema_layout(pg_evidence_inductive_schema(pg_synthesis_input_result(input.formation)));
+ 	size_t ordinal;
+ 	assert(pg_data_constructor_position(layout, input.constructor, &ordinal));
+ 	struct pg_module_frontier module = {0};
+@@ -697,7 +707,8 @@
  			assert(pg_synthesis_rule_frontier(s, job, &next) == 1);
  			cursor.body[i].premise = next;
  		}
@@ -132,7 +147,7 @@
  	}
  	namespace_cursor_write(file, &cursor);
  	free(cursor.body);
-@@ -714,7 +723,9 @@
+@@ -714,7 +725,9 @@
  {
  	const struct pg_derivation_input *input = pg_synthesis_plain_derivation(key);
  	if (!input || i == input->count) return 0;
@@ -143,7 +158,7 @@
  	return *child ? 1 : -1;
  }
  
-@@ -838,9 +849,10 @@
+@@ -838,9 +851,10 @@
  		for (size_t i = first; i < base; ++i)
  			if (cursor.body[i - first].selected) assert(!pg_synthesis_body_resume(s, f.jobs[i]));
  		for (size_t i = first; i < base; ++i) {
@@ -156,7 +171,7 @@
  		}
  		assert(f.count - first == cursor.count);
  		struct pg_synthesis_job **children = malloc(cursor.count * sizeof(*children));
-@@ -859,7 +871,7 @@
+@@ -859,7 +873,7 @@
  			if (children[i]->status == PG_SYNTHESIS_PENDING && rule) {
  				assert(pg_synthesis_rule_resume(s, children[i], rule->count + 1));
  				for (size_t j = 0; j < rule->count; ++j) {

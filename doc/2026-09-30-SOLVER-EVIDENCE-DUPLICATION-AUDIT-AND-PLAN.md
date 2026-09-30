@@ -404,7 +404,10 @@ baseline described above. Concurrent accepted-source edits remain excluded.
 - [x] Unify classifier-normalization entry points and return known family
   results directly. Preserve pending Context obligations, typed-use identity,
   canonical sharing and rejection instead of introducing completed workers.
-- [ ] Finish known-family result adapters and other context/IADT
+- [x] Migrate constructor member/field/IH inputs, Match consumers and source
+  transport together. Borrow a checked field scope instead of allocating three
+  completed input Jobs; retain one unfinished scope cursor and checked admission.
+- [ ] Finish remaining Context/IADT/Match input adapters and
   consumers, remove `EVIDENCE_JOB`, then remove duplicated query scheduling.
   The remaining adapter recognition is temporary, not the final architecture.
 
@@ -922,6 +925,61 @@ and `/tmp/a-program-family-result-{list,quick}-census.tsv`.
 | `tests/synthesis.c` | 61 | 24 | +37 |
 
 Counts exclude cumulative patch context and documentation.
+
+### Constructor Input Migration (2026-09-30)
+
+**Objective (Code):** parent `289fca4` plus this prototype, frozen accepted
+baseline `e716232`. Constructor member, field-scope and IH-scope requests use
+the existing checked/pending inputs. The separate member `_jobs` API is removed.
+`constructor_from_scope` borrows the checked field map instead of creating
+declaration, parameter and map Evidence Jobs. Match, constructor transport,
+source I/O and checkpoint fixtures consume the same owner inputs. No Core tag,
+acceptance table or public wire field is added.
+
+**Assessment:** the field/IH cursor still owns genuinely unfinished checking;
+direct inputs do not accept saved field types. An early trial missed a direct
+constructor-key-array reader and failed Indexed ADT tests. Namespace/Match
+readers now use the owner's input projection rather than its private layout.
+Match completion and classifier-formation adapters, producer forwarding and
+public resumption remain unfinished SE1/AP work; this is not removal of Job.
+
+**Plan / Results:** focused O2 synthesis/IADT/source-I/O and all seven O2
+checkpoint targets pass. ASan/UBSan synthesis, IADT, source-I/O, constructor and
+both namespace-boundary targets pass. Fresh patch application exactly matches
+the tested source/tests/checkpoint fixtures. Full O2 acceptance passes, including
+both LT providers, both partition orders and invalid evidence after reload.
+Tests check zero-fuel inactivity, one worker for a checked field-map input,
+no completed input adapters, repeated reuse, pending/foreign/mixed inputs and
+retained allocation rejection. Existing tests cover dependent fields, IH scopes,
+invalid constructor labels and saved constant images. Public reload partitions
+still fail at 100+100, 1000+1000, 1600+1600 and 2726+0; 0+0 and 10+10 pass.
+Evidence: `/tmp/a-program-constructor-input-{acceptance,checkpoints,asan-checkpoints}.log`,
+`/tmp/a-program-constructor-input-{list,quick}-census.tsv` and
+`/tmp/a-program-constructor-input-partitions/partitions.tsv`.
+
+| Completed census | Jobs before / after | Adapters before / after | Job bytes before / after |
+| --- | ---: | ---: | ---: |
+| List-09 | 887 / 878 | 11 / 2 | 154,648 / 154,064 |
+| General QuickSort Local Sorted | 54,468 / 54,158 | 489 / 179 | 9,475,856 / 9,453,344 |
+
+Steps (2726 / 809533), Core Terms, typed occurrences, Evidence and premise edges
+are unchanged; repeated terminal samples do not grow. No total-memory, artifact
+size or runtime speedup is claimed.
+
+| Applied-code delta from `289fca4` | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `synthesis.c` | 92 | 84 | +8 |
+| `synthesis.h` | 15 | 20 | -5 |
+| `synthesis_iadt.c` | 44 | 36 | +8 |
+| `source_io.c` | 4 | 4 | 0 |
+| Implementation total | 155 | 144 | +11 |
+| `tests/synthesis.c` | 72 | 35 | +37 |
+| `tests/iadt.c` | 2 | 2 | 0 |
+| `tests/source_io.c` | 14 | 13 | +1 |
+| `constructor_checkpoint_test.c` | 3 | 2 | +1 |
+| `definition_checkpoint_test.c` | 5 | 3 | +2 |
+
+Counts follow symlink contents and exclude patch context/documentation.
 
 ### SE1 IADT Lookup Inputs (2026-09-30)
 
