@@ -38,7 +38,7 @@
  }
  
  static void conversion_destroy(struct pg_synthesis_job *job)
-@@ -61,62 +64,79 @@
+@@ -61,112 +64,143 @@
  struct pg_synthesis_job *pg_synthesis_expect(struct pg_synthesis *synthesis,
  	struct pg_synthesis_job *term, struct pg_synthesis_job *type)
  {
@@ -139,38 +139,46 @@
  	return 0;
  }
  
-@@ -129,8 +149,8 @@
- 		/* A pending callee may resolve to a family, not a CBPV computation. */
- 		return pg_synthesis_evidence(synthesis, proof);
- 	case PG_JUDGEMENT_VALUE: case PG_JUDGEMENT_COMPUTATION:
+-struct pg_synthesis_job *pg_synthesis_normalize_classifier(struct pg_synthesis *synthesis,
+-	const struct pg_evidence *context, const struct pg_evidence *proof)
++struct pg_synthesis_input pg_synthesis_normalize_classifier(struct pg_synthesis *synthesis,
++	struct pg_synthesis_input context, struct pg_synthesis_input proof)
+ {
+-	if (!pg_synthesis_typed_input(synthesis, context, proof)) return NULL;
+-	switch (pg_evidence_judgement(proof)) {
+-	case PG_JUDGEMENT_TYPE_FAMILY:
+-		/* A pending callee may resolve to a family, not a CBPV computation. */
+-		return pg_synthesis_evidence(synthesis, proof);
+-	case PG_JUDGEMENT_VALUE: case PG_JUDGEMENT_COMPUTATION:
 -		return pg_synthesis_normalize_classifier_jobs(synthesis,
 -			pg_synthesis_evidence(synthesis, context), pg_synthesis_evidence(synthesis, proof));
-+		return pg_synthesis_normalize_classifier_in(synthesis,
-+			(struct pg_synthesis_input){.checked = context}, (struct pg_synthesis_input){.checked = proof});
- 	default: return NULL;
+-	default: return NULL;
++	if (!pg_synthesis_input_owned(synthesis, context)) return (struct pg_synthesis_input){0};
++	if (!pg_synthesis_input_owned(synthesis, proof)) return (struct pg_synthesis_input){0};
++	context = pg_synthesis_input_direct(context);
++	proof = pg_synthesis_input_direct(proof);
++	if (proof.checked) {
++		switch (pg_evidence_judgement(proof.checked)) {
++		case PG_JUDGEMENT_TYPE_FAMILY:
++			if (!context.checked) break;
++			if (!pg_synthesis_typed_input(synthesis, context.checked, proof.checked)) return (struct pg_synthesis_input){0};
++			/* Already a checked family: no classifier work or scheduler frame. */
++			return proof;
++		case PG_JUDGEMENT_VALUE: case PG_JUDGEMENT_COMPUTATION: break;
++		default: return (struct pg_synthesis_input){0};
++		}
  	}
- }
-@@ -138,35 +158,60 @@
- struct pg_synthesis_job *pg_synthesis_normalize_classifier_jobs(struct pg_synthesis *synthesis,
- 	struct pg_synthesis_job *context, struct pg_synthesis_job *proof)
- {
+-}
+-
+-struct pg_synthesis_job *pg_synthesis_normalize_classifier_jobs(struct pg_synthesis *synthesis,
+-	struct pg_synthesis_job *context, struct pg_synthesis_job *proof)
+-{
 -	if (!context || context->owner != synthesis->owner_key) return NULL;
 -	if (!proof || proof->owner != synthesis->owner_key) return NULL;
 -	const void *inputs[] = {context, proof};
 -	return pg_synthesis_work_request(synthesis, CLASSIFIER_JOB, 2, inputs);
-+	return pg_synthesis_normalize_classifier_in(synthesis, (struct pg_synthesis_input){.pending = context},
-+		(struct pg_synthesis_input){.pending = proof});
-+}
-+
-+struct pg_synthesis_job *pg_synthesis_normalize_classifier_in(struct pg_synthesis *synthesis,
-+	struct pg_synthesis_input context, struct pg_synthesis_input proof)
-+{
-+	if (!pg_synthesis_input_owned(synthesis, context)) return NULL;
-+	if (!pg_synthesis_input_owned(synthesis, proof)) return NULL;
-+	context = pg_synthesis_input_direct(context);
-+	proof = pg_synthesis_input_direct(proof);
 +	const void *inputs[] = {context.checked, context.pending, proof.checked, proof.pending};
-+	return pg_synthesis_work_request(synthesis, CLASSIFIER_JOB, 4, inputs);
++	return (struct pg_synthesis_input){.pending = pg_synthesis_work_request(synthesis, CLASSIFIER_JOB, 4, inputs)};
  }
  
  static void classifier_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
@@ -198,9 +206,9 @@
  		}
 -		struct pg_synthesis_job *canonical = pg_synthesis_normalize_classifier(synthesis, context->result, term->result);
 -		if (!canonical) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
-+		struct pg_synthesis_job *canonical = pg_synthesis_normalize_classifier_in(synthesis,
++		struct pg_synthesis_job *canonical = pg_synthesis_normalize_classifier(synthesis,
 +			(struct pg_synthesis_input){.checked = pg_synthesis_input_result(context)},
-+			(struct pg_synthesis_input){.checked = term});
++			(struct pg_synthesis_input){.checked = term}).pending;
  		if (pg_synthesis_forward(synthesis, job, canonical)) return;
 -		if (!local->right) local->right = pg_synthesis_classifier_formation(synthesis, context, term);
 -		if (pg_synthesis_await(synthesis, job, local->right)) return;
@@ -230,7 +238,7 @@
  }
  
  struct pg_synthesis_job *pg_synthesis_compare_terms(struct pg_synthesis *synthesis,
-@@ -229,14 +274,13 @@
+@@ -229,14 +263,13 @@
  static void expect_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
  	struct expectation_work *local = pg_synthesis_work_state(job, EXPECT_JOB);
@@ -251,7 +259,7 @@
  		if (!pg_evidence_owned_by(term, synthesis->typing)) goto rejected;
  		if (!pg_evidence_owned_by(type, synthesis->typing)) goto rejected;
  		if (pg_evidence_context(term) != pg_evidence_context(type)) goto rejected;
-@@ -249,14 +293,14 @@
+@@ -249,14 +282,14 @@
  			break;
  		default: goto rejected;
  		}
@@ -270,7 +278,7 @@
  	if (job->result && local->checking_type != target) {
  		job->result = pg_prove_effect_subsumption(synthesis->typing, job->result, target);
  		if (!job->result) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-@@ -301,16 +345,16 @@
+@@ -301,16 +334,16 @@
  static const struct pg_evidence *normalization_input(struct pg_synthesis *synthesis,
  	const struct pg_synthesis_job *job)
  {
@@ -296,7 +304,7 @@
  }
  
  const struct pg_whnf_job *pg_synthesis_normalization_pending(const struct pg_synthesis *synthesis,
-@@ -346,8 +390,8 @@
+@@ -346,8 +379,8 @@
  	struct normalization_work *local = pg_synthesis_work_state(job, job->role);
  	if (!local->checking_term) {
  		for (size_t i = 0; i < 2; ++i) {

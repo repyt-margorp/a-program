@@ -90,12 +90,16 @@ export uses its existing DAG key projection to share a checked leaf reached
 directly or through a legacy adapter, avoiding duplicate transport records.
 No new persistence fields are added. Restricted source checkpoints still reject
 direct checked reference capture; their existing pending-owner scope is unchanged.
+Classifier normalization has one checked/pending input/result API. Checked
+families with a checked matching Context return directly, without an Evidence
+Job. Pending Contexts keep their scope-checking obligation and stable request
+identity; ordinary value/computation inputs retain actual normalization work.
 
 ### Assessment
 
-This removes some adapters, not the independent Job graph. Known-family
-results and other context/IADT/operation consumers still use
-adapters. Producer-to-checked forwarding paths also remain. Removing classifier
+This removes some adapters, not the independent Job graph. Constructor/Match
+and other context/IADT consumers still use adapters. Producer-to-checked
+forwarding paths also remain. Removing classifier
 forwarding alone lost completed-result reuse, so that trial was rejected;
 removing the query wrapper does not settle the pending/checked request ownership.
 Keeping those indefinitely would not

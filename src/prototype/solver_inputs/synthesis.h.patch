@@ -431,7 +431,7 @@
  struct pg_synthesis_job *pg_synthesis_normalize(struct pg_synthesis *synthesis,
  	const struct pg_evidence *context, const struct pg_evidence *proof);
  /* Strong pure normalization of the same typed inputs, with a distinct job
-@@ -857,8 +853,8 @@
+@@ -857,15 +853,15 @@
  	enum pg_reduction_kind kind);
  /* Immutable request operands, for retention without serializing acceptance. */
  int pg_synthesis_normalization_input(const struct pg_synthesis *synthesis,
@@ -441,4 +441,16 @@
 +	struct pg_synthesis_input *proof, enum pg_reduction_kind *kind, int *force);
  /* Retain the term, normalize its derived classifier and explicitly convert
   * its typing evidence. No target type is supplied to synthesis or guessed
-  * from Core. An unchanged classifier preserves the original proof. */
+- * from Core. An unchanged classifier preserves the original proof. */
+-struct pg_synthesis_job *pg_synthesis_normalize_classifier(struct pg_synthesis *synthesis,
+-	const struct pg_evidence *context, const struct pg_evidence *proof);
+-struct pg_synthesis_job *pg_synthesis_normalize_classifier_jobs(struct pg_synthesis *synthesis,
+-	struct pg_synthesis_job *context, struct pg_synthesis_job *proof);
++ * from Core. An unchanged classifier preserves the original proof. Checked
++ * families with a checked Context return directly; value/computation inputs
++ * and pending Contexts retain an ordinary checking/normalization request. */
++struct pg_synthesis_input pg_synthesis_normalize_classifier(struct pg_synthesis *synthesis,
++	struct pg_synthesis_input context, struct pg_synthesis_input proof);
+ /* Expose checked THUNK code through shared normalization and typed inversion.
+  * This does not execute the stored computation or cache an effect result. */
+ struct pg_synthesis_job *pg_synthesis_unthunk(struct pg_synthesis *synthesis,

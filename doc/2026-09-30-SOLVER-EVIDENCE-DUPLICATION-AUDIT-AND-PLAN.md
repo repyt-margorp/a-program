@@ -401,6 +401,9 @@ baseline described above. Concurrent accepted-source edits remain excluded.
 - [x] Migrate lexical-name inputs and their lookup/environment/source-transport
   consumers together. Preserve typed-use identity and stable pending keys;
   do not recreate a completed producer just to retain lexical provenance.
+- [x] Unify classifier-normalization entry points and return known family
+  results directly. Preserve pending Context obligations, typed-use identity,
+  canonical sharing and rejection instead of introducing completed workers.
 - [ ] Finish known-family result adapters and other context/IADT
   consumers, remove `EVIDENCE_JOB`, then remove duplicated query scheduling.
   The remaining adapter recognition is temporary, not the final architecture.
@@ -832,7 +835,8 @@ baseline. Classifier operands and their provisional readers now borrow direct
 inputs. Normalization no longer allocates a classifier-formation Job solely to
 advance an existing `pg_classifier_request`. A family discovered after waiting
 returns its checked input without another adapter; the known-family convenience
-API still returns an Evidence Job and remains an SE1 task.
+API still returns an Evidence Job at that revision; the result migration below
+supersedes this particular remaining task, not the rest of SE1.
 
 **Assessment:** a trial also deleted producer-to-checked forwarding. The existing
 `named_transport` warm-reuse assertion then failed: later requests for the same
@@ -875,6 +879,49 @@ samples are unchanged. These are live-store counts, not artifact bytes or timing
 | `checkpoint_tests/definition_checkpoint_test.c` | 1 | 1 | 0 |
 
 No wire fields, Core tags, acceptance table or backend metadata were added.
+
+### Classifier Result Migration (2026-09-30)
+
+**Objective (Code):** parent `40cc48a` plus this prototype, using frozen accepted
+baseline `e716232`. One checked/pending API replaces the three classifier-
+normalization entry points. A checked family under a checked matching Context
+returns its original receipt directly. Pending Contexts retain the actual scope
+obligation and stable request key. Application-domain and motive-demand consumers
+borrow the same result; no adapter factory call remains in the conversion owner.
+
+**Assessment:** ordinary value/computation requests still check their Context
+inside Solve. An initial early-rejection trial changed sequencing rejection into
+an internal error; it was corrected without weakening the rejection gate.
+Checked family direct return must validate its Context before granting that
+result. Core/typing remain separate, with no new tags, tables or wire fields.
+Constructor/Match adapters and producer-to-checked forwarding remain SE1 work.
+
+**Plan / Results:** focused O2 synthesis/program/IADT and seven checkpoint
+targets pass. ASan/UBSan synthesis, IADT, full source-I/O and normalization/
+source/derivation checkpoints pass. Fresh patch application exactly matches the
+tested source/tests/fixtures. Full O2 acceptance passes, including both LT
+providers, both partition orders and invalid evidence after image reload. Tests cover
+unchanged allocation counts for generic, partial and projected families, step 0,
+pending Context rejection and key reuse, mixed/foreign inputs and legacy adapter
+unwrapping. List/Quick census counts are unchanged from the lexical milestone,
+including terminal repeats. Public reload partitions still fail at 100+100,
+1,000+1,000, 1,600+1,600 and 2,726+0; 0+0 and 10+10 pass. SE1-SE5 remain open.
+Evidence: `/tmp/a-program-family-result-{acceptance,checkpoints,asan-checkpoints}.log`
+and `/tmp/a-program-family-result-{list,quick}-census.tsv`.
+
+| Applied-code delta from `40cc48a` | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `synthesis.c` | 27 | 23 | +4 |
+| `synthesis.h` | 5 | 5 | 0 |
+| `synthesis_source.h` | 1 | 3 | -2 |
+| `synthesis_conversion.c` | 17 | 28 | -11 |
+| `synthesis_cbpv.c` | 3 | 3 | 0 |
+| `synthesis_function.c` | 8 | 10 | -2 |
+| `synthesis_identity.c` | 3 | 3 | 0 |
+| Implementation total | 64 | 75 | -11 |
+| `tests/synthesis.c` | 61 | 24 | +37 |
+
+Counts exclude cumulative patch context and documentation.
 
 ### SE1 IADT Lookup Inputs (2026-09-30)
 

@@ -138,8 +138,8 @@
 -		pg_evidence_premise(left_substitution, 1));
 -	action = pg_synthesis_normalize_classifier_jobs(synthesis, context, action);
 +	struct pg_synthesis_input context = {.checked = pg_evidence_premise(left_substitution, 1)};
-+	action = pg_synthesis_normalize_classifier_in(synthesis, context,
-+		(struct pg_synthesis_input){.pending = action});
++	action = pg_synthesis_normalize_classifier(synthesis, context,
++		(struct pg_synthesis_input){.pending = action}).pending;
  	if (!action) return NULL;
  	struct pg_synthesis_job *left = pg_synthesis_plain_rule(synthesis, PG_IDENTITY_LEFT_TYPE, NULL, 1, &action);
  	struct pg_synthesis_job *right = pg_synthesis_plain_rule(synthesis, PG_IDENTITY_RIGHT_TYPE, NULL, 1, &action);
@@ -270,7 +270,7 @@
  		if (!local->face) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
  	}
  	int status = pg_identity_face_advance(local->face, 1);
-@@ -277,16 +275,16 @@
+@@ -277,18 +275,18 @@
  	if (!local->family) {
  		const struct pg_evidence *values[3];
  		for (size_t i = 0; i < 3; ++i) {
@@ -290,8 +290,11 @@
 +			(struct pg_synthesis_input){.checked = values[0]}, (struct pg_synthesis_input){.checked = values[1]},
 +			(struct pg_synthesis_input){.checked = values[2]});
  		if (pg_synthesis_forward(synthesis, job, canonical)) return;
- 		local->family = pg_synthesis_normalize_classifier(synthesis, context, values[0]);
+-		local->family = pg_synthesis_normalize_classifier(synthesis, context, values[0]);
++		local->family = pg_synthesis_normalize_classifier(synthesis, (struct pg_synthesis_input){.checked = context}, (struct pg_synthesis_input){.checked = values[0]}).pending;
  	}
+ 	if (pg_synthesis_await(synthesis, job, local->family)) return;
+ 	size_t i = local->next;
 @@ -297,8 +295,8 @@
  		const struct pg_evidence *type = pg_prove_identity_endpoint_type(synthesis->typing,
  			local->family->result, side);

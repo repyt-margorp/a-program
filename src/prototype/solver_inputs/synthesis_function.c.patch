@@ -240,7 +240,7 @@
  		if (pg_evidence_judgement(proof) == PG_JUDGEMENT_VALUE) proof = pg_prove_force(synthesis->typing, proof);
  		if (!proof || pg_evidence_judgement(proof) != PG_JUDGEMENT_COMPUTATION) goto rejected;
 -		local->preparation = pg_synthesis_normalize_classifier(synthesis, context->result, proof);
-+		local->preparation = pg_synthesis_normalize_classifier(synthesis, scope, proof);
++		local->preparation = pg_synthesis_normalize_classifier(synthesis, (struct pg_synthesis_input){.checked = scope}, (struct pg_synthesis_input){.checked = proof}).pending;
  		if (!local->preparation) goto error;
  	}
  	if (pg_synthesis_await(synthesis, job, local->preparation)) return;
@@ -463,7 +463,7 @@
  	}
  	for (size_t i = parameters; result && i; --i) {
  		struct pg_synthesis_job *premises[] = {scopes[i - 1], result};
-@@ -504,32 +530,29 @@
+@@ -504,50 +530,45 @@
  	return result;
  }
  
@@ -478,11 +478,10 @@
 -
  struct pg_synthesis_job *pg_synthesis_application_domain(struct pg_synthesis *synthesis,
 -	struct pg_synthesis_job *context, struct pg_synthesis_job *callee)
-+	struct pg_synthesis_input context, struct pg_synthesis_job *callee)
++	struct pg_synthesis_input context, struct pg_synthesis_input callee)
  {
 -	struct pg_synthesis_job *formation = pg_synthesis_classifier_formation(synthesis, context, callee);
-+	struct pg_synthesis_job *formation = pg_synthesis_classifier_in(synthesis, context,
-+		(struct pg_synthesis_input){.pending = callee});
++	struct pg_synthesis_job *formation = pg_synthesis_classifier_in(synthesis, context, callee);
  	if (!formation) return NULL;
  	return pg_synthesis_plain_rule(synthesis, PG_PI_DOMAIN, NULL, 1, &formation);
  }
@@ -499,17 +498,19 @@
  	if (!function || function->owner != synthesis->owner_key) return NULL;
  	if (!argument || argument->owner != synthesis->owner_key) return NULL;
 -	struct pg_synthesis_job *callee = pg_synthesis_normalize_classifier_jobs(synthesis, context, function);
-+	struct pg_synthesis_job *callee = pg_synthesis_normalize_classifier_in(synthesis, context,
-+		(struct pg_synthesis_input){.pending = function});
- 	if (!callee) return NULL;
+-	if (!callee) return NULL;
 -	struct pg_synthesis_job *domain = pg_synthesis_application_domain(synthesis, context, callee);
-+	struct pg_synthesis_job *formation = pg_synthesis_classifier_in(synthesis, context,
-+		(struct pg_synthesis_input){.pending = callee});
++	struct pg_synthesis_input callee = pg_synthesis_normalize_classifier(synthesis, context,
++		(struct pg_synthesis_input){.pending = function});
++	if (!pg_synthesis_input_owned(synthesis, callee)) return NULL;
++	struct pg_synthesis_job *formation = pg_synthesis_classifier_in(synthesis, context, callee);
 +	struct pg_synthesis_job *domain = pg_synthesis_plain_rule(synthesis, PG_PI_DOMAIN, NULL, 1, &formation);
  	struct pg_synthesis_job *checked = pg_synthesis_expect(synthesis, argument, domain);
  	if (!checked) return NULL;
- 	struct pg_synthesis_job *premises[] = {callee, checked};
-@@ -537,17 +560,17 @@
+-	struct pg_synthesis_job *premises[] = {callee, checked};
+-	return pg_synthesis_plain_rule(synthesis, PG_APP_ELIM, NULL, 2, premises);
++	struct pg_synthesis_input premises[] = {callee, {.pending = checked}};
++	return pg_synthesis_plain_rule_inputs(synthesis, PG_APP_ELIM, NULL, 2, premises);
  }
  
  struct pg_synthesis_job *pg_synthesis_lambda_body(struct pg_synthesis *synthesis,

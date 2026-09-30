@@ -160,6 +160,15 @@
  }
  
  static struct pg_synthesis_job *request_evaluation(struct pg_synthesis *synthesis,
+@@ -379,7 +385,7 @@
+ 		const struct pg_evidence *term = local->dependency->result;
+ 		job->result = contents(synthesis, job, term);
+ 		if (job->result) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_DONE); return; }
+-		local->dependency = pg_synthesis_normalize_classifier(synthesis, job->inputs[0], term);
++		local->dependency = pg_synthesis_normalize_classifier(synthesis, (struct pg_synthesis_input){.checked = job->inputs[0]}, (struct pg_synthesis_input){.checked = term}).pending;
+ 		local->stage = 1;
+ 		pg_synthesis_subscribe(synthesis, job, local->dependency, 0);
+ 		return;
 @@ -391,14 +397,16 @@
  	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
  }
@@ -294,8 +303,8 @@
  			if (!local->rule) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
  		} else {
 -			local->normalized = pg_synthesis_normalize_classifier_jobs(synthesis, (void *)job->inputs[0], argument);
-+			local->normalized = pg_synthesis_normalize_classifier_in(synthesis, scope,
-+				(struct pg_synthesis_input){.pending = argument});
++			local->normalized = pg_synthesis_normalize_classifier(synthesis, scope,
++				(struct pg_synthesis_input){.pending = argument}).pending;
  			if (!local->normalized) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 -			struct pg_synthesis_job *premises[] = {local->normalized, (void *)job->inputs[2]};
 +			struct pg_synthesis_job *premises[] = {local->normalized, (void *)job->inputs[3]};
