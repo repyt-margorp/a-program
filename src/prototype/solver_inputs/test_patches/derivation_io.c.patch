@@ -1,0 +1,18 @@
+--- a/derivation_io.c
++++ b/derivation_io.c
+@@ -1108,7 +1108,6 @@
+ 		const struct pg_object *binder = roots[2]->premises[0]->parameters.binder;
+ 		assert(pg_synthesis_type_structure_result(structure) == pg_pi(graph, pg_thunk_type(typing->graph, pending), binder, pending));
+ 		pg_effect_inference_seal(&effects);
+-		assert(pg_synthesis_effect_inference(&synthesis, &effects));
+ 		while (synthesis.ready) { assert(synthesis.steps < 4000); pg_synthesis_advance(&synthesis, chunk); }
+ 		for (size_t i = 0; i < count; ++i)
+ 			assert(pg_synthesis_status(jobs[i]) == (i == 4 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE));
+@@ -1360,7 +1359,6 @@
+ 		assert(pg_synthesis_status(jobs[0]) == PG_SYNTHESIS_DONE && jobs[0] == jobs[3]);
+ 		assert(!pg_synthesis_result(jobs[1]) && !pg_synthesis_result(jobs[2]));
+ 		pg_effect_inference_seal(&image);
+-		assert(pg_synthesis_effect_inference(&synthesis, &image));
+ 		while (synthesis.ready) { assert(synthesis.steps < 4000); pg_synthesis_advance(&synthesis, chunk); }
+ 		for (size_t i = 0; i < count; ++i) assert(pg_synthesis_status(jobs[i]) == PG_SYNTHESIS_DONE);
+ 		same_snapshot(snapshot, producer_snapshot(&synthesis, count, jobs, typing->graph));

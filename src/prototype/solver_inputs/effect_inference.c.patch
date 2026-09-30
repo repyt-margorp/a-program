@@ -1,0 +1,91 @@
+--- a/effect_inference.c
++++ b/effect_inference.c
+@@ -41,11 +41,11 @@
+ 	struct pg_effect_equation *equation)
+ {
+ 	struct row_source *source = pg_alloc(&work->arena, sizeof(*source));
+-	if (!source) { work->failed = 1; return -1; }
++	if (!source) { pg_effect_inference_fail(work); return -1; }
+ 	*source = (struct row_source){.object = object, .equation = equation};
+ 	uint64_t hash = ((uintptr_t)object >> 3) * UINT64_C(1099511628211);
+ 	if (pg_index_insert(&work->row_sources, &source->index, hash)) {
+-		work->failed = 1; return -1;
++		pg_effect_inference_fail(work); return -1;
+ 	}
+ 	return 0;
+ }
+@@ -73,6 +73,7 @@
+ 
+ void pg_effect_inference_destroy(struct pg_effect_inference *work)
+ {
++	pg_effect_inference_fail(work);
+ 	pg_index_destroy(&work->dependencies);
+ 	pg_index_destroy(&work->row_sources);
+ 	pg_graph_destroy(&work->arena);
+@@ -84,7 +85,7 @@
+ {
+ 	if (!work->rows || work->sealed || work->failed || !seed) return NULL;
+ 	const struct pg_object *parameter = pg_binder(work->rows);
+-	if (!parameter) { work->failed = 1; return NULL; }
++	if (!parameter) { pg_effect_inference_fail(work); return NULL; }
+ 	return pg_effect_equation_at(work, parameter, seed);
+ }
+ 
+@@ -97,7 +98,7 @@
+ 	if (existing) return existing->seed == seed ? existing : NULL;
+ 	if (work->sealed) return NULL;
+ 	struct pg_effect_equation *equation = pg_alloc(&work->arena, sizeof(*equation));
+-	if (!equation) { work->failed = 1; return NULL; }
++	if (!equation) { pg_effect_inference_fail(work); return NULL; }
+ 	*equation = (struct pg_effect_equation){.owner = work, .parameter = parameter, .seed = seed, .value = seed};
+ 	if (register_source(work, parameter, equation)) return NULL;
+ 	if (work->last_equation) work->last_equation->next_definition = equation;
+@@ -237,7 +238,7 @@
+ 	}
+ 	return 0;
+ fail:
+-	work->failed = 1;
++	pg_effect_inference_fail(work);
+ 	return -1;
+ }
+ 
+@@ -272,10 +273,10 @@
+ 		if (edge->source == source && edge->target == target && edge->mask == mask) return 0;
+ 	}
+ 	struct pg_effect_dependency *edge = pg_alloc(&work->arena, sizeof(*edge));
+-	if (!edge) { work->failed = 1; return -1; }
++	if (!edge) { pg_effect_inference_fail(work); return -1; }
+ 	*edge = (struct pg_effect_dependency){.source = source, .target = target,
+ 		.mask = mask, .next = source->outgoing};
+-	if (pg_index_insert(&work->dependencies, &edge->index, hash)) { work->failed = 1; return -1; }
++	if (pg_index_insert(&work->dependencies, &edge->index, hash)) { pg_effect_inference_fail(work); return -1; }
+ 	if (work->last_dependency) work->last_dependency->next_definition = edge;
+ 	else work->first_dependency = edge;
+ 	work->last_dependency = edge;
+@@ -304,6 +305,13 @@
+ void pg_effect_inference_seal(struct pg_effect_inference *work)
+ {
+ 	work->sealed = 1;
++	pg_subscription_notify(&work->waiters);
++}
++
++void pg_effect_inference_fail(struct pg_effect_inference *work)
++{
++	work->failed = 1;
++	pg_subscription_notify(&work->waiters);
+ }
+ 
+ int pg_effect_inference_advance(struct pg_effect_inference *work, uint64_t budget)
+@@ -322,10 +330,10 @@
+ 		struct pg_effect_dependency *edge = work->cursor;
+ 		if (edge) {
+ 			const struct pg_effect_row *contribution = pg_effect_difference(work->rows, work->current->value, edge->mask);
+-			if (!contribution) { work->failed = 1; return -1; }
++			if (!contribution) { pg_effect_inference_fail(work); return -1; }
+ 			if (pg_effect_subset(contribution, edge->target->value) != 1) {
+ 				const struct pg_effect_row *value = pg_effect_union(work->rows, edge->target->value, contribution);
+-				if (!value) { work->failed = 1; return -1; }
++				if (!value) { pg_effect_inference_fail(work); return -1; }
+ 				edge->target->value = value;
+ 				enqueue(work, edge->target);
+ 			}

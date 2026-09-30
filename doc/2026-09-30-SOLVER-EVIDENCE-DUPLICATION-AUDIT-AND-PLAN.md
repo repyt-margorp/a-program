@@ -383,9 +383,61 @@ baseline described above. Concurrent accepted-source edits remain excluded.
   including immutable-input readers, source transport and checkpoint fixtures.
   This is a prerequisite to direct lexical-name inputs, not expected-guided
   inference or removal of the annotation's actual post-check obligation.
+- [x] Remove the Effect-inference Job, its factory/getter and mirrored status.
+  Consumers borrow the existing equation owner; seal/failure notifies them
+  directly. Share disposable notification edges with ordinary dependencies,
+  retaining one advance per dispatch and detaching borrowed edges on cancel.
+  This does not close the remaining owner/persistence work in SE1 or SE4.
 - [ ] Finish known-family result adapters and other context/IADT
   consumers, remove `EVIDENCE_JOB`, then remove duplicated query scheduling.
   The remaining adapter recognition is temporary, not the final architecture.
+
+### Effect Owner Result (2026-09-30)
+
+**Objective (Code):** parent `a6d8750` plus this prototype, on the same isolated
+accepted baseline. The equation queue/cursor/results in `pg_effect_inference`
+are now the only Effect-solving progress owner. Two direct rule consumers create
+two Jobs, not three; unsealed work parks them, seal/failure wakes them, and a
+dispatch advances the equation owner once, including the completing transition.
+Cancellation removes borrowed subscriptions. Released notification edges are
+reused; the focused two-consumer test retains two edges, not wait history.
+
+**Assessment:** notification edges are disposable references, not another
+constraint/result graph. This supersedes the unresolved Effect-wrapper finding
+in the annotation milestone; it does not remove all Jobs or Evidence adapters.
+The restricted schedule codec still rejects waits on external Effect owners;
+owner persistence remains unfinished, not hidden by an added transport graph.
+
+**Plan / Results:** O2 `check` and seven checkpoint targets pass. ASan/UBSan
+synthesis, the full source-I/O script and source/derivation/definition/namespace
+checkpoints pass. Fresh patch application exactly matches tested source, tests
+and checkpoint fixtures. Full O2 `check-acceptance` also passes, including
+Effect/handler origins, nesting, general sorting, witness and image boundaries.
+List/QuickSort retain 890/54,750 Jobs, 14/771 adapters, 154,608/9,481,408 Job
+bytes and 2,726/809,533 steps: these cases do not use the removed wrapper.
+Job bytes exclude notification allocations; no total-memory/speedup is claimed.
+Public partitions retain the four failures documented above. SE1-SE5 stay open.
+
+| Applied-code delta from `a6d8750` | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `effect_inference.c` / `.h` | 21 | 9 | +12 |
+| `subscription.c` / `.h` (new notification module) | 45 | 0 | +45 |
+| `synthesis.h` | 2 | 8 | -6 |
+| `synthesis_work.c` / `.h` | 101 | 16 | +85 |
+| `synthesis_effect.c` / `.h` | 4 | 40 | -36 |
+| `synthesis_derivation.c` | 14 | 17 | -3 |
+| `synthesis_cbpv.c` | 2 | 2 | 0 |
+| `synthesis_handler.c` | 2 | 3 | -1 |
+| `artifact/schedule.c` | 9 | 6 | +3 |
+| Implementation total | 200 | 101 | +99 |
+| Prototype `Makefile` | 1 | 0 | +1 |
+| `tests/synthesis.c` | 82 | 21 | +61 |
+| `tests/derivation_io.c` | 0 | 2 | -2 |
+| `normalization_checkpoint_test.c` | 3 | 2 | +1 |
+
+Applied-source counts follow symlink targets; patch context/docs are excluded.
+The intermediate increase adds shared notification/lifetime handling, not a
+new progress owner, and is not presented as final code-size simplification.
 
 ### Annotation Input Result (2026-09-30)
 

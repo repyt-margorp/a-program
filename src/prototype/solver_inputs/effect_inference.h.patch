@@ -1,0 +1,27 @@
+--- a/effect_inference.h
++++ b/effect_inference.h
+@@ -2,6 +2,7 @@
+ #define A_PROGRAM_POINTER_EFFECT_INFERENCE_H
+ 
+ #include "classifier.h"
++#include "subscription.h"
+ 
+ struct pg_effect_equation;
+ struct pg_effect_dependency;
+@@ -15,6 +16,7 @@
+ 	struct pg_effect_dependency *first_dependency, *last_dependency;
+ 	struct pg_effect_equation *head, *tail, *current;
+ 	struct pg_effect_dependency *cursor;
++	struct pg_subscription *waiters;
+ 	int sealed, failed;
+ };
+ 
+@@ -89,6 +91,8 @@
+ 	const struct pg_effect_row *handled, struct pg_effect_equation *returned,
+ 	size_t count, struct pg_effect_equation *const *clauses);
+ void pg_effect_inference_seal(struct pg_effect_inference *work);
++/* Wake parked consumers without a second scheduling/result owner. */
++void pg_effect_inference_fail(struct pg_effect_inference *work);
+ /* -1 failure, 0 pending, 1 converged. One transition processes one edge or
+  * one empty adjacency list. Row set operations are not wall-time bounded. */
+ int pg_effect_inference_advance(struct pg_effect_inference *work, uint64_t budget);

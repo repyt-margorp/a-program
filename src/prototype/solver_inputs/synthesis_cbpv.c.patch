@@ -61,6 +61,18 @@
  		if (pg_synthesis_await(synthesis, job, local->right)) return;
  		if (!pg_computation_type_spine_view(left, &totality, &row, &value)) goto accepted;
  		if (!continuation_structure_step(synthesis, job, pg_synthesis_type_structure_result(local->right), totality, row)) goto accepted;
+@@ -206,9 +207,9 @@
+ 	} else switch (input->rule) {
+ 	case PG_RETURN_TYPE_FORM:
+ 		if (producer->inputs[1]) {
+-			const struct pg_synthesis_job *effects = producer->inputs[1];
++			const struct pg_effect_inference *effects = producer->inputs[1];
+ 			row = pg_reference(synthesis->typing->graph,
+-				pg_effect_equation_parameter(pg_synthesis_effect_worker(effects), producer->inputs[2]));
++				pg_effect_equation_parameter(effects, producer->inputs[2]));
+ 		} else row = pg_effect_reference(synthesis->typing->graph, input->parameters.effects);
+ 		if (!row) goto unsupported;
+ 		local->result = pg_computation_type_spine(synthesis->typing->graph, input->parameters.totality, row, left);
 @@ -234,17 +235,18 @@
  }
  

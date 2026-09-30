@@ -1,0 +1,14 @@
+--- a/normalization_checkpoint_test.c
++++ b/normalization_checkpoint_test.c
+@@ -193,8 +193,9 @@
+ 		assert(!pg_synthesis_normalization_attach(&synthesis, jobs[1], whnf));
+ 		assert(!pg_artifact_schedule_attach(&synthesis, c.schedule, 5, jobs));
+ 		assert(synthesis.ready == jobs[0] && jobs[0]->next == jobs[1] && synthesis.ready_tail == jobs[1]);
+-		assert(jobs[0]->waiters->parent == jobs[3] && jobs[0]->waiters->next->parent == jobs[2]);
+-		assert(jobs[1]->waiters->parent == jobs[4]);
++		assert(((struct waiter *)jobs[0]->waiters)->parent == jobs[3]);
++		assert(((struct waiter *)jobs[0]->waiters->next)->parent == jobs[2]);
++		assert(((struct waiter *)jobs[1]->waiters)->parent == jobs[4]);
+ 	}
+ 	assert(pg_synthesis_normalization_attach(&synthesis, job, whnf));
+ 	assert(pg_synthesis_normalization_pending(&synthesis, job) == whnf);

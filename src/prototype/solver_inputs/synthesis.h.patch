@@ -1,11 +1,12 @@
 --- a/synthesis.h
 +++ b/synthesis.h
-@@ -7,7 +7,21 @@
+@@ -7,7 +7,22 @@
  enum pg_synthesis_status { PG_SYNTHESIS_PENDING, PG_SYNTHESIS_DONE,
  	PG_SYNTHESIS_REJECTED, PG_SYNTHESIS_UNSUPPORTED, PG_SYNTHESIS_ERROR };
  struct pg_source_scope;
 +struct pg_synthesis;
  struct pg_synthesis_job;
++struct waiter;
 +/* A borrowed input, not an allocated producer. Exactly one field is set.
 + * Checked inputs retain their typed identity; pending inputs retain the owner
 + * of unfinished work. Neither Core pointer equality nor completion changes a key. */
@@ -22,7 +23,15 @@
  /* Implicit mode also quotes inferred computational functions at argument and
   * named block-binding boundaries. Returning computations still sequence;
   * logical family signatures are not quoted as runtime functions. */
-@@ -194,7 +208,7 @@
+@@ -29,6 +44,7 @@
+ 	struct pg_index source_references;
+ 	struct pg_synthesis_job *ready;
+ 	struct pg_synthesis_job *ready_tail;
++	struct waiter *free_waiters;
+ 	uint64_t steps;
+ 	enum pg_definition_policy definition_policy;
+ };
+@@ -194,7 +210,7 @@
  	struct pg_synthesis_job *registration; /* Owner of definitions, otherwise NULL. */
  	const struct pg_syntax *handler;
  	struct pg_synthesis_job *binding;
@@ -31,7 +40,7 @@
  	const struct pg_object *binder;
  	const struct pg_source_scope *associated;
  	enum pg_source_association association;
-@@ -262,21 +276,21 @@
+@@ -262,21 +278,21 @@
   * Solve constructs its Lambda/request/RETURN evidence once; names and aliases
   * can refer to this producer before completion. Signature ownership is checked
   * by the same operation function builder, not inferred from the erased Core.
@@ -58,7 +67,7 @@
  	const struct pg_context *allocation);
  /* Independently synthesize a #return clause as a raw continuation Lambda.
   * The input supplies its result-domain type, not an expected clause codomain.
-@@ -292,8 +306,8 @@
+@@ -292,8 +308,8 @@
   * neither allocates fresh binders nor resolves an operation name. Consumers
   * retain their own operation-reference validation dependency. */
  struct pg_synthesis_job *pg_synthesis_handler_context(struct pg_synthesis *synthesis,
@@ -69,7 +78,7 @@
  	const struct pg_object *payload, const struct pg_object *resume, const struct pg_object *response);
  /* Resolve operation inputs through ordinary source aliases, prepare a pending
   * payload/resumption context and synthesize the clause without waiting for a
-@@ -343,7 +357,7 @@
+@@ -343,7 +359,7 @@
   * use application. If a computation has a dependent result, only a checked
   * pure RETURN may supply the argument. No host effects are executed here. */
  struct pg_synthesis_job *pg_synthesis_sequence(struct pg_synthesis *synthesis,
@@ -78,7 +87,7 @@
  	struct pg_synthesis_job *continuation);
  /* Recover a callable's classifier, open its Pi telescope and discharge binders
   * innermost first with ordinary constant-codomain rules. Parameter domains may
-@@ -351,15 +365,15 @@
+@@ -351,24 +367,16 @@
   * Structural consumers may inspect the result before evidence acceptance;
   * use one parameter for return clauses, two for operation clauses. */
  struct pg_synthesis_job *pg_synthesis_constant_result(struct pg_synthesis *synthesis,
@@ -95,9 +104,18 @@
 -	struct pg_synthesis_job *context, struct pg_synthesis_job *returned,
 +	struct pg_synthesis_input context, struct pg_synthesis_job *returned,
  	struct pg_effect_inference *work, const struct pg_effect_equation *equation);
- /* Borrow a positive effect-equation graph into ordinary budgeted Solve.
-  * Completion has no proof result: closed rows are read from work and must still
-@@ -468,6 +482,9 @@
+-/* Borrow a positive effect-equation graph into ordinary budgeted Solve.
+- * Completion has no proof result: closed rows are read from work and must still
+- * be checked by typing rules. Work outlives this synthesis store. Unsealed work
+- * parks without polling. After sealing (or construction failure), call this
+- * function again to notify this store; it wakes the same producer once.
+- * Rules may register dependencies before sealing, without accepting a row. */
+-struct pg_synthesis_job *pg_synthesis_effect_inference(struct pg_synthesis *synthesis,
+-	struct pg_effect_inference *work);
+ /* Register (the structural F row of formation minus mask) in target. This
+  * awaits structural information, not accepted evidence or row convergence.
+  * Completion has no proof result. The owner must await every contribution
+@@ -468,6 +476,9 @@
  struct pg_synthesis_job *pg_synthesis_rule(struct pg_synthesis *synthesis,
  	const struct pg_derivation_input *input, struct pg_synthesis_job *const *premises,
  	struct pg_effect_inference *work, const struct pg_effect_equation *equation);
@@ -107,7 +125,7 @@
  /* Read-only export of stored input DAGs, prepared rule DAGs or completed proof jobs.
   * 0 ready, 1 an input is not prepared, -1 unsupported/error. No Solve occurs.
   * Unfinished source elaboration is not replaced by its provisional term.
-@@ -487,10 +504,13 @@
+@@ -487,10 +498,13 @@
  /* Append-only root closure for transport. observe may append to the leaf DAG
   * roots, but may not run or mutate synthesis. Exactly one of header/worker is
   * non-NULL. Headers are borrowed during the callback; premises are visited
@@ -123,7 +141,7 @@
  	int require_closed,
  	int (*observe)(void *, const struct pg_derivation_input *, const struct pg_effect_inference *),
  	void *owner, const struct pg_derivation_input *const **result);
-@@ -544,52 +564,46 @@
+@@ -544,52 +558,46 @@
  const struct pg_source_scope *pg_synthesis_module_namespace(struct pg_synthesis *synthesis,
  	const struct pg_source_scope *parent, struct pg_token name,
  	struct pg_synthesis_job *module);
@@ -187,7 +205,7 @@
  	struct pg_synthesis_job *right, struct pg_synthesis_job *path,
  	const struct pg_object *field, struct pg_synthesis_job *left_field,
  	struct pg_synthesis_job *right_field);
-@@ -637,9 +651,10 @@
+@@ -637,9 +645,10 @@
  	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
  	const struct pg_evidence *generalization, const struct pg_syntax *clause);
  /* Recover the selected nominal declaration and parameter map, never by Core
@@ -200,7 +218,7 @@
  int pg_synthesis_inductive_instance_result(const struct pg_synthesis_job *job,
  	struct pg_inductive_instance *output);
  /* Abstract an independently synthesized body over an accepted context suffix.
-@@ -664,58 +679,61 @@
+@@ -664,58 +673,61 @@
   * Completed incompatible inputs are rejected without exposing partial proof. */
  struct pg_synthesis_job *pg_synthesis_reindex_jobs(struct pg_synthesis *synthesis,
  	struct pg_synthesis_job *substitution, struct pg_synthesis_job *proof);
@@ -277,7 +295,7 @@
  /* Share a suspended endpoint derivation on the ordinary work queue. face is
   * an immutable, graph-lived canonical endpoint selector: its first coordinate
   * is fixed, followed by its ordered axes. Those axes count outer Identity
-@@ -732,12 +750,7 @@
+@@ -732,12 +744,7 @@
   * and endpoint traversal steps. The same immutable-input lifetime applies.
   * Permutations and hidden Identity dimensions remain unsupported. */
  struct pg_synthesis_job *pg_synthesis_identity_face(struct pg_synthesis *synthesis,
@@ -291,7 +309,7 @@
  	const struct pg_dimension_map *face);
  /* Select the source boundary for a permutation: permutation composed with
   * target_face = ordered composed with intrinsic. The returned producer proves
-@@ -748,37 +761,25 @@
+@@ -748,37 +755,25 @@
  struct pg_dimensions;
  struct pg_synthesis_job *pg_synthesis_permutation_source_face(struct pg_synthesis *synthesis,
  	struct pg_dimensions *dimensions, const struct pg_evidence *context,
@@ -340,7 +358,7 @@
  /* Instantiate Self, then lift each constructor field. Formation and parameter
   * substitution are pending producers; fresh field binders belong to this job. */
  struct pg_synthesis_job *pg_synthesis_constructor_scope(struct pg_synthesis *synthesis,
-@@ -837,7 +838,8 @@
+@@ -837,7 +832,8 @@
  	const struct pg_evidence *context, const struct pg_evidence *computation);
  /* Normalize an accepted term or formation using shared pure WHNF work, then
   * retain typing through directed subject-reduction evidence. The immutable
@@ -350,7 +368,7 @@
  struct pg_synthesis_job *pg_synthesis_normalize(struct pg_synthesis *synthesis,
  	const struct pg_evidence *context, const struct pg_evidence *proof);
  /* Strong pure normalization of the same typed inputs, with a distinct job
-@@ -857,8 +859,8 @@
+@@ -857,8 +853,8 @@
  	enum pg_reduction_kind kind);
  /* Immutable request operands, for retention without serializing acceptance. */
  int pg_synthesis_normalization_input(const struct pg_synthesis *synthesis,

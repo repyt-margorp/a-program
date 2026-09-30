@@ -1,0 +1,9 @@
+--- a/synthesis_effect.h
++++ b/synthesis_effect.h
+@@ -5,6 +5,5 @@
+ 
+ /* Borrow the row worker of an inference request. No progress or acceptance.
+  * NULL for other requests; consumers do not depend on its input layout. */
+-struct pg_effect_inference *pg_synthesis_effect_worker(const struct pg_synthesis_job *job);
+ 
+ #endif

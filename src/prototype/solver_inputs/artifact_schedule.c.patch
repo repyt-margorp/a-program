@@ -1,0 +1,45 @@
+--- a/artifact/schedule.c
++++ b/artifact/schedule.c
+@@ -102,7 +102,8 @@
+ 	if (last != synthesis->ready_tail) return -1;
+ 	for (size_t i = 0; i < map->count; ++i) {
+ 		const struct pg_synthesis_job *child = jobs[i];
+-		for (const struct waiter *w = child->waiters; w; w = w->next) {
++		for (const struct pg_subscription *edge = child->waiters; edge; edge = edge->next) {
++			const struct waiter *w = (const void *)edge;
+ 			size_t p = slot(map, w->parent);
+ 			if (p == SIZE_MAX || (marks[p] & 2) || w->child != child) return -1;
+ 			if (!replacing && marks[p]) return -1;
+@@ -135,7 +136,8 @@
+ 	for (const struct pg_synthesis_job *job = synthesis->ready; job; job = job->next)
+ 		state->queue[q++] = slot(&map, job);
+ 	for (size_t i = 0; i < count; ++i)
+-		for (const struct waiter *w = jobs[i]->waiters; w; w = w->next) {
++		for (const struct pg_subscription *edge = jobs[i]->waiters; edge; edge = edge->next) {
++			const struct waiter *w = (const void *)edge;
+ 			state->edges[e++] = slot(&map, w->parent);
+ 			state->edges[e++] = i;
+ 			state->edges[e++] = (unsigned)w->preparation;
+@@ -199,17 +201,18 @@
+ 		edges[i] = (struct waiter){.parent = parent, .child = child, .preparation = (int)edge[2]};
+ 	}
+ 	/* Publish only after every mapping and edge has passed validation. */
++	for (size_t i = 0; i < count; ++i)
++		if (jobs[i]->dependency) pg_subscription_detach(&jobs[i]->dependency->edge);
+ 	for (size_t i = 0; i < count; ++i) {
+ 		jobs[i]->next = NULL;
+-		jobs[i]->waiters = jobs[i]->dependency = NULL;
++		jobs[i]->waiters = NULL;
++		jobs[i]->dependency = NULL;
+ 	}
+ 	synthesis->ready = synthesis->ready_tail = NULL;
+ 	for (size_t i = 0; i < state->ready; ++i) pg_synthesis_enqueue(synthesis, jobs[state->queue[i]]);
+ 	for (size_t i = state->waiting; i-- > 0;) {
+ 		struct waiter *w = &edges[i];
+-		w->next = w->child->waiters;
+-		w->child->waiters = w;
+-		w->parent->dependency = w;
++		pg_synthesis_subscribe_at(synthesis, w->parent, w->child, w->preparation, w);
+ 	}
+ 	result = 0;
+ done:

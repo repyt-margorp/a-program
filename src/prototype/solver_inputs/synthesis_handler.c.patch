@@ -1,5 +1,21 @@
 --- a/synthesis_handler.c
 +++ b/synthesis_handler.c
+@@ -99,13 +99,13 @@
+ static void handler_completed(struct pg_synthesis *synthesis, struct pg_synthesis_job *job, int first)
+ {
+ 	(void)first;
++	(void)synthesis;
+ 	struct handler_state *state = handler_work(job)->handler;
+ 	if (job->status <= PG_SYNTHESIS_DONE || !state || !state->effect_owner) return;
+ 	struct handler_state *owner = state->effect_owner;
+ 	if (owner->effects.sealed || owner->failure) return;
+ 	owner->failure = job->status;
+-	owner->effects.failed = 1;
+-	pg_synthesis_effect_inference(synthesis, &owner->effects);
++	pg_effect_inference_fail(&owner->effects);
+ }
+ 
+ const struct pg_source_scope *pg_synthesis_handler_environment(const struct pg_synthesis_job *job)
 @@ -127,7 +127,7 @@
  {
  	struct pg_synthesis_job *input = pg_synthesis_request(synthesis, scope, syntax->left);
@@ -188,3 +204,11 @@
  				state->collection = pg_synthesis_effect_contribution(synthesis, &owner->effects, state->equation,
  					state->collected ? empty : state->handled, formation);
  			}
+@@ -613,7 +615,6 @@
+ 			state->registered = 1;
+ 			if (!--owner->registering) {
+ 				pg_effect_inference_seal(&owner->effects);
+-				if (!pg_synthesis_effect_inference(synthesis, &owner->effects)) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+ 			}
+ 		}
+ 	}

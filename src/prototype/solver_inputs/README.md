@@ -72,6 +72,13 @@ Source and block-binding annotations also use direct inputs through one API.
 They await their scope Context and project both endpoints before post-checking;
 the expected type never supplies missing synthesis. Source export borrows checked
 leaves, while reading restores unchecked ordinary producers without acceptance.
+Effect consumers borrow the existing equation owner directly. The inference
+Job, its mirrored completion and factory-recall wakeup are removed. Job and
+Effect owners share disposable subscriber-owned notification edges; these
+contain no inputs, results, progress or acceptance. Released edges return to a
+Solve-local pool instead of retaining one allocation per historical wait.
+The restricted schedule codec still handles Job-to-Job waits only; this change
+does not introduce a new Effect checkpoint or establish public resumption.
 
 ### Assessment
 
