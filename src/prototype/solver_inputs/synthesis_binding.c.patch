@@ -1,0 +1,61 @@
+--- a/synthesis_binding.c
++++ b/synthesis_binding.c
+@@ -297,8 +297,16 @@
+ struct pg_synthesis_job *pg_synthesis_declared_type(struct pg_synthesis *synthesis,
+ 	struct pg_synthesis_job *context, const struct pg_object *binder)
+ {
+-	if (!context || context->owner != synthesis->owner_key || !binder) return NULL;
+-	return pg_synthesis_work_request(synthesis, DECLARED_TYPE_JOB, 2, (const void *[]){context, binder});
++	return pg_synthesis_declared_type_input(synthesis, (struct pg_synthesis_input){.pending = context}, binder);
++}
++
++struct pg_synthesis_job *pg_synthesis_declared_type_input(struct pg_synthesis *synthesis,
++	struct pg_synthesis_input context, const struct pg_object *binder)
++{
++	if (!pg_synthesis_input_owned(synthesis, context) || !binder) return NULL;
++	context = pg_synthesis_input_direct(context);
++	return pg_synthesis_work_request(synthesis, DECLARED_TYPE_JOB, 3,
++		(const void *[]){context.checked, context.pending, binder});
+ }
+ 
+ const struct pg_synthesis_work_class *pg_synthesis_binding_type_class(const struct pg_synthesis_job *input)
+@@ -323,8 +331,9 @@
+ static void domain_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+ {
+ 	struct declaration_work *local = pg_synthesis_work_state(job, DOMAIN_STRUCTURE_JOB);
+-	struct pg_synthesis_job *producer = (void *)job->inputs[0];
+-	const struct pg_evidence *proof = pg_synthesis_result(producer);
++	struct pg_synthesis_input dependency = pg_synthesis_work_dependency(job, 0);
++	struct pg_synthesis_job *producer = dependency.pending;
++	const struct pg_evidence *proof = pg_synthesis_input_result(dependency);
+ 	if (proof) {
+ 		enum pg_evidence_judgement kind = pg_evidence_judgement(proof);
+ 		if (kind == PG_JUDGEMENT_VALUE_TYPE || kind == PG_JUDGEMENT_COMPUTATION_TYPE)
+@@ -350,9 +359,10 @@
+ static void declared_type_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+ {
+ 	struct declaration_work *local = pg_synthesis_work_state(job, DECLARED_TYPE_JOB);
+-	struct pg_synthesis_job *context = (void *)job->inputs[0];
+-	const struct pg_object *binder = job->inputs[1];
+-	const struct pg_evidence *accepted = pg_synthesis_result(context);
++	struct pg_synthesis_input dependency = pg_synthesis_work_dependency(job, 0);
++	struct pg_synthesis_job *context = dependency.pending;
++	const struct pg_object *binder = job->inputs[2];
++	const struct pg_evidence *accepted = pg_synthesis_input_result(dependency);
+ 	if (accepted) {
+ 		const struct pg_context *declaration = pg_evidence_judgement(accepted) == PG_JUDGEMENT_CONTEXT
+ 			? pg_context_lookup(pg_evidence_context(accepted), binder) : NULL;
+@@ -373,11 +383,10 @@
+ 		} else {
+ 			const struct pg_derivation_input *input = pg_synthesis_plain_derivation(context);
+ 			if (input && input->rule == PG_CONTEXT_EXTEND) {
+-				struct pg_synthesis_job *premise = pg_synthesis_rule_premise(synthesis, context,
++				struct pg_synthesis_input premise = pg_synthesis_rule_input(synthesis, context,
+ 					input->parameters.binder == binder ? 1 : 0);
+-				if (!premise) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+ 				local->input = input->parameters.binder == binder
+-					? pg_synthesis_type_structure(synthesis, premise) : pg_synthesis_declared_type(synthesis, premise, binder);
++					? pg_synthesis_type_structure_input(synthesis, premise) : pg_synthesis_declared_type_input(synthesis, premise, binder);
+ 			}
+ 		}
+ 	}

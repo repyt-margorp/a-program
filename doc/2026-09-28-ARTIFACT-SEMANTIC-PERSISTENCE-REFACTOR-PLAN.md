@@ -39,8 +39,11 @@ duplicated construction paths, premise overlap and export-time graph copying.
 "No recomputation" does not justify keeping an unnecessary wrapper.
 
 The [direct-input prototype](../src/prototype/solver_inputs/README.md) removes
-checked normalization, Context-input and post-check adapters and passes its
-regression gates; it does not complete SE1 or repair the public split-fuel failures.
+checked normalization, Context-input, post-check and rule-premise adapters and
+passes its regression gates. Rule readers and export use direct references;
+structural queries no longer allocate the broad source work state. Remaining
+Evidence adapters and duplicate query scheduling keep SE1 open. This does not
+repair the public split-fuel failures or authorize a new checkpoint/backend codec.
 
 Do not extend the binding/domain checkpoint codec or AP6 while this gate is
 open. Existing passing checkpoint fixtures remain historical evidence, not a

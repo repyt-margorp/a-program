@@ -1,0 +1,11 @@
+--- a/synthesis_handler.c
++++ b/synthesis_handler.c
+@@ -329,7 +329,7 @@
+ 	struct pg_synthesis_job *context = pg_synthesis_handler_context(synthesis, source_scope->context_job,
+ 		(void *)job->inputs[1], signature.payload, signature.response, input->payload, input->resume, input->response);
+ 	if (!context) return PG_SYNTHESIS_ERROR;
+-	struct pg_synthesis_job *payload_context = pg_synthesis_rule_premise(synthesis, context, 0);
++	struct pg_synthesis_job *payload_context = pg_synthesis_rule_input(synthesis, context, 0).pending;
+ 	const struct pg_source_scope *scope = pg_synthesis_scope_bind(synthesis, source_scope,
+ 		clause->items[0].name, input->payload, payload_context, NULL, job, PG_SOURCE_UNASSOCIATED);
+ 	local->inner = pg_synthesis_scope_bind(synthesis, scope, clause->items[1].name, input->resume, context, NULL, job, PG_SOURCE_UNASSOCIATED);

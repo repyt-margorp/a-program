@@ -1,0 +1,16 @@
+--- a/derivation_checkpoint_test.c
++++ b/derivation_checkpoint_test.c
+@@ -699,9 +699,11 @@
+ 		mixed_restore(&m);
+ 		for (size_t i = 0; i < 3; ++i)
+ 			roots[i] = pg_artifact_derivations_root(m.downstream.state, m.downstream.jobs, i);
+-		assert(roots[0] != roots[1] && roots[0]->inputs[3] != roots[1]->inputs[3]);
++		assert(roots[0] != roots[1]);
++		assert(pg_synthesis_rule_input(&p->synthesis, roots[0], 0).pending !=
++			pg_synthesis_rule_input(&p->synthesis, roots[1], 0).pending);
+ 		context = pg_artifact_derivations_root(m.upstream.state, m.upstream.jobs, 0);
+-		assert(roots[0]->inputs[3] == context);
++		assert(pg_synthesis_rule_input(&p->synthesis, roots[0], 0).pending == context);
+ 		struct mixed_checkpoint again;
+ 		mixed_collect(&again, p, context, roots);
+ 		copy = mixed_save(&again);

@@ -1,4 +1,5 @@
 ARTIFACT_PROTOTYPE := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+CHECKPOINT_TESTS ?= $(ARTIFACT_PROTOTYPE)
 OVERLAY ?= /tmp/a-program-artifact-persistence
 include $(OVERLAY)/src/Makefile
 
@@ -28,17 +29,17 @@ NORMALIZATION_IO := $(addprefix $(ROOT),machine_io.c computation_io.c identity_i
 check-artifact-source-checkpoint: $(BUILD)/artifact_source_checkpoint_test
 	$(BUILD)/artifact_source_checkpoint_test
 
-$(BUILD)/artifact_source_checkpoint_test: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ROOT)artifact/schedule.c $(ROOT)artifact/derivation.c $(ROOT)artifact/source.c $(wildcard $(ROOT)*.h) $(wildcard $(ROOT)artifact/*.h) $(ARTIFACT_PROTOTYPE)source_checkpoint_test.c
+$(BUILD)/artifact_source_checkpoint_test: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ROOT)artifact/schedule.c $(ROOT)artifact/derivation.c $(ROOT)artifact/source.c $(wildcard $(ROOT)*.h) $(wildcard $(ROOT)artifact/*.h) $(CHECKPOINT_TESTS)source_checkpoint_test.c
 	mkdir -p $(BUILD)
-	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ROOT)artifact/schedule.c $(ROOT)artifact/derivation.c $(ROOT)artifact/source.c $(ARTIFACT_PROTOTYPE)source_checkpoint_test.c -Wl,--wrap=pg_synthesis_advance -o $@
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ROOT)artifact/schedule.c $(ROOT)artifact/derivation.c $(ROOT)artifact/source.c $(CHECKPOINT_TESTS)source_checkpoint_test.c -Wl,--wrap=pg_synthesis_advance -o $@
 
 .PHONY: check-artifact-derivation-checkpoint
 check-artifact-derivation-checkpoint: $(BUILD)/artifact_derivation_checkpoint_test
 	$(BUILD)/artifact_derivation_checkpoint_test
 
-$(BUILD)/artifact_derivation_checkpoint_test: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ROOT)artifact/schedule.c $(ROOT)artifact/derivation.c $(wildcard $(ROOT)*.h) $(wildcard $(ROOT)artifact/*.h) $(ARTIFACT_PROTOTYPE)derivation_checkpoint_test.c
+$(BUILD)/artifact_derivation_checkpoint_test: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ROOT)artifact/schedule.c $(ROOT)artifact/derivation.c $(wildcard $(ROOT)*.h) $(wildcard $(ROOT)artifact/*.h) $(CHECKPOINT_TESTS)derivation_checkpoint_test.c
 	mkdir -p $(BUILD)
-	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ROOT)artifact/schedule.c $(ROOT)artifact/derivation.c $(ARTIFACT_PROTOTYPE)derivation_checkpoint_test.c -Wl,--wrap=pg_synthesis_advance -o $@
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ROOT)artifact/schedule.c $(ROOT)artifact/derivation.c $(CHECKPOINT_TESTS)derivation_checkpoint_test.c -Wl,--wrap=pg_synthesis_advance -o $@
 
 .PHONY: check-artifact-definition-checkpoint
 check-artifact-definition-checkpoint: $(BUILD)/artifact_definition_checkpoint_test
@@ -58,17 +59,17 @@ check-artifact-namespace-body-frontier: $(BUILD)/artifact_definition_checkpoint_
 check-artifact-constructor-checkpoint: $(BUILD)/artifact_constructor_checkpoint_test
 	$(BUILD)/artifact_constructor_checkpoint_test
 
-$(BUILD)/artifact_constructor_checkpoint_test: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(wildcard $(ROOT)*.h) $(ARTIFACT_PROTOTYPE)constructor_checkpoint_test.c
+$(BUILD)/artifact_constructor_checkpoint_test: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(wildcard $(ROOT)*.h) $(CHECKPOINT_TESTS)constructor_checkpoint_test.c
 	mkdir -p $(BUILD)
-	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ARTIFACT_PROTOTYPE)constructor_checkpoint_test.c -Wl,--wrap=pg_synthesis_advance -o $@
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(CHECKPOINT_TESTS)constructor_checkpoint_test.c -Wl,--wrap=pg_synthesis_advance -o $@
 
-$(BUILD)/artifact_definition_checkpoint_test: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ROOT)artifact/schedule.c $(wildcard $(ROOT)*.h) $(ARTIFACT_PROTOTYPE)definition_checkpoint_test.c
+$(BUILD)/artifact_definition_checkpoint_test: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ROOT)artifact/schedule.c $(wildcard $(ROOT)*.h) $(CHECKPOINT_TESTS)definition_checkpoint_test.c
 	mkdir -p $(BUILD)
-	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ROOT)artifact/schedule.c $(ARTIFACT_PROTOTYPE)definition_checkpoint_test.c -Wl,--wrap=pg_synthesis_advance -o $@
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ROOT)artifact/schedule.c $(CHECKPOINT_TESTS)definition_checkpoint_test.c -Wl,--wrap=pg_synthesis_advance -o $@
 
-$(BUILD)/artifact_normalization_checkpoint_test: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(NORMALIZATION_IO) $(wildcard $(ROOT)*.h) $(ARTIFACT_PROTOTYPE)normalization_checkpoint_test.c
+$(BUILD)/artifact_normalization_checkpoint_test: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(NORMALIZATION_IO) $(wildcard $(ROOT)*.h) $(CHECKPOINT_TESTS)normalization_checkpoint_test.c
 	mkdir -p $(BUILD)
-	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(NORMALIZATION_IO) $(ARTIFACT_PROTOTYPE)normalization_checkpoint_test.c -Wl,--wrap=pg_synthesis_advance -Wl,--wrap=pg_whnf_advance -o $@
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(NORMALIZATION_IO) $(CHECKPOINT_TESTS)normalization_checkpoint_test.c -Wl,--wrap=pg_synthesis_advance -Wl,--wrap=pg_whnf_advance -o $@
 
 HISTORY_REPORT ?= $(BUILD)/history-fuel
 .PHONY: check-artifact-history

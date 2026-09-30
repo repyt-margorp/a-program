@@ -222,8 +222,9 @@ Do not mark a milestone complete just because a view hides the old representatio
 ### SE1 Direct-Input Migration
 
 The [direct-input prototype](../src/prototype/solver_inputs/README.md) applies
-after the artifact candidate. Baseline is `d9113c1`; measurements continue to
-exclude the unrelated accepted-source working-tree edits listed above.
+after the artifact candidate. Fresh rule-premise results below refer to parent
+`661d4a0` plus the prototype patches in this milestone, on the isolated accepted
+baseline described above. Concurrent accepted-source edits remain excluded.
 
 - [x] WHNF/NF requests borrow checked inputs without creating Evidence Jobs.
   Pending inputs refer to their existing producer, without a new input node.
@@ -237,21 +238,35 @@ exclude the unrelated accepted-source working-tree edits listed above.
   source/destination inputs and post-synthesis expectations. Migrate known
   Match/Identity-family operands and share legacy/direct keys. Actual conversion
   still runs and creates its checked receipt; a direct pointer is not a bypass.
-- [ ] Finish rule premises, scopes, classifier normalization, substitution images,
-  other context and Identity
+- [x] Migrate rule premises and every reader together: checking, Lambda/Pi/CBPV
+  structure queries, binder/scope discovery, export and checkpoint fixtures.
+  Remove the Job-only premise getter instead of recreating adapters inside it.
+  Direct inputs and legacy adapters have the same key; pending producers retain
+  stable identity after completion. Context-dependent callers reuse this input
+  representation rather than converting a checked Context back into a Job.
+- [x] Remove broad source state from generic term/type/classifier queries.
+  Their private state contains three borrowed pointers, not source/Match fields.
+  This physical cleanup does not complete SE2's single-construction-path work.
+- [ ] Finish scopes, classifier operands, substitution images, other context and Identity
   consumers, remove `EVIDENCE_JOB`, then remove duplicated query scheduling.
   The remaining adapter recognition is temporary, not the final architecture.
 
-Fresh O2 measurements after this migration (including the follow-up to `46b9532`):
+Fresh O2 measurements after the rule-premise migration and state cleanup:
 
 | Completed input | Jobs before / after | Evidence Jobs before / after | Job bytes before / after | Solve steps |
 | --- | ---: | ---: | ---: | ---: |
-| List-09 | 1,061 / 985 | 152 / 76 | 187,424 / 181,280 | 2,824 unchanged |
-| General QuickSort Local Sorted | 69,221 / 62,293 | 12,360 / 5,432 | 11,878,608 / 11,282,816 | 815,075 unchanged |
+| List-09 | 1,061 / 975 | 152 / 66 | 187,424 / 162,312 | 2,824 unchanged |
+| General QuickSort Local Sorted | 69,221 / 61,778 | 12,360 / 4,917 | 11,878,608 / 10,152,032 | 815,075 unchanged |
 
-Relative to the normalization-only milestone `46b9532`, the Context/expectation
-migration removes another 3,458 QuickSort Jobs and 291,168 Job-allocation bytes.
-These are live-store measurements, not `.a` size or total-memory claims.
+Relative to `661d4a0`, this milestone removes 515 QuickSort Jobs and 1,130,784
+Job-allocation bytes. Before the state cleanup, the new two-pointer premise keys
+increased Job bytes by 205,240 despite removing Jobs; that intermediate result
+was not a memory reduction. Generic queries no longer allocate unused source
+state. At step 0 List-09 now allocates 6,376 Job bytes versus 5,992 at baseline;
+the larger premise slots remain a tradeoff, not a universal size improvement.
+These are live-store measurements, not `.a` size, total-memory or speedup claims.
+The `structure_capable_jobs` census is now narrower: ordinary source Jobs no
+longer advertise a structure callback that always returns NULL.
 
 Term, typed-occurrence and Evidence counts are unchanged. An intermediate
 version split direct inputs from legacy Evidence-adapter inputs, adding 18
@@ -266,41 +281,53 @@ Implementation deltas against the artifact candidate (not patch-file line counts
 | --- | ---: | ---: | ---: |
 | `program.c` | 6 | 6 | 0 |
 | `source_io.c` | 52 | 18 | +34 |
-| `synthesis.c` | 35 | 14 | +21 |
-| `synthesis.h` | 29 | 5 | +24 |
+| `synthesis.c` | 143 | 81 | +62 |
+| `synthesis.h` | 32 | 5 | +27 |
 | `synthesis_context.c` | 49 | 29 | +20 |
-| `synthesis_conversion.c` | 63 | 47 | +16 |
+| `synthesis_conversion.c` | 83 | 61 | +22 |
 | `synthesis_conversion.h` | 2 | 2 | 0 |
-| `synthesis_derivation.c` | 15 | 4 | +11 |
-| `synthesis_iadt.c` | 5 | 3 | +2 |
-| `synthesis_identity.c` | 2 | 1 | +1 |
-| `synthesis_work.c` | 27 | 0 | +27 |
-| `synthesis_work.h` | 7 | 0 | +7 |
-| Implementation total | 292 | 129 | +163 |
+| `synthesis_derivation.c` | 89 | 27 | +62 |
+| `synthesis_iadt.c` | 10 | 9 | +1 |
+| `synthesis_identity.c` | 4 | 4 | 0 |
+| `synthesis_work.c` | 55 | 14 | +41 |
+| `synthesis_work.h` | 11 | 0 | +11 |
+| `synthesis_source.h` | 20 | 1 | +19 |
+| `synthesis_function.c` | 59 | 45 | +14 |
+| `synthesis_binding.c` | 19 | 10 | +9 |
+| `synthesis_cbpv.c` | 52 | 36 | +16 |
+| `synthesis_handler.c` | 1 | 1 | 0 |
+| `artifact/derivation.c` | 34 | 10 | +24 |
+| Implementation total | 721 | 359 | +362 |
 | `tests/program.c` | 34 | 4 | +30 |
 | `tests/source_io.c` | 58 | 5 | +53 |
-| `tests/synthesis.c` | 67 | 5 | +62 |
+| `tests/synthesis.c` | 132 | 8 | +124 |
+| `definition_checkpoint_test.c` | 10 | 8 | +2 |
+| `derivation_checkpoint_test.c` | 4 | 2 | +2 |
 
-The Context/expectation increment alone is implementation +144/-79 (net +65),
-tests +67/-5 (net +62). This intermediate migration still increases source size.
+The rule-premise increment alone is implementation +429/-230 (net +199), tests
++79/-13 (net +66), prototype build/overlay scripts +21/-10 (net +11).
+These exclude documentation and patch-file context lines. This intermediate
+migration still increases source size; SE1 is not a completed deletion milestone.
 
-Fresh verification of this prototype: the existing O2 `make check`, normalization
-checkpoint and source checkpoint suites pass (the latter covers 204 lifecycle
-cuts). ASan/UBSan `synthesis_test` and `source_io_test normalization` pass on the
-Context/expectation revision; `program_test` and the normalization checkpoint
-had also passed under sanitizers at the preceding milestone. New assertions cover request sharing,
-foreign/invalid inputs, distinct contexts, allocation-free checked-leaf export,
-and a byte-identical step-0 read/resave. These results exclude the concurrent
-accepted-source edits; they are not a promotion of this prototype.
+Fresh verification: O2 `make check` passes, including the general QuickSort
+ordinary-result theorem and negative/image controls. Normalization, source,
+derivation, definition, namespace/body and constructor checkpoint targets pass;
+source covers 204 lifecycle cuts and derivation covers 281 cuts (91 direct).
+ASan/UBSan `synthesis_test` and the derivation checkpoint pass on the final
+revision. New tests cover mixed checked/pending premises, invalid/foreign input,
+stable request identity, export without semantic/Solve allocation, ordinary
+import checking and small structural-query state. Earlier normalization/Context
+tests retain their exact-sharing and byte-identical step-0 assertions.
+These results exclude concurrent accepted-source edits and do not promote code.
 
-Further inspection identified a required joint migration: `pg_synthesis_rule_premise`
-is consumed by rule checking, Lambda/Pi/CBPV structural queries, scope discovery
-and derivation checkpoints. Some consumers also index the Job operand array
-directly. Replace these readers together with direct premise references; do not
-restore Evidence Jobs inside a convenience getter. Pending structural queries
-must still discover effect dependencies before acceptance. An existing test
-that allocated legacy adapters while checking request reuse was migrated to
-direct inputs; its no-new-request assertion is retained, not weakened.
+Implementation decisions: rule lookup borrows the caller's key and uses the
+existing shared interning algorithm, avoiding an initially tried temporary key
+allocation. Checkpoint handling finds checked leaves among explicitly supplied
+external owners using a temporary DAG index; it neither allocates Evidence Jobs
+nor extends the wire format. Unsupported ownership still fails. Test assertions
+now read checked/pending references instead of old physical operand offsets.
+The standalone artifact candidate keeps its own tests through an optional
+checkpoint-test path, not a duplicated test suite.
 
 This is a staged migration, not a code-size reduction or completion of SE1.
 The public partition gate was rerun on the final candidate and still fails at

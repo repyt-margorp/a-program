@@ -1,0 +1,50 @@
+--- a/definition_checkpoint_test.c
++++ b/definition_checkpoint_test.c
+@@ -535,9 +535,9 @@
+ 		if (i == 2) assert(selected == input);
+ 		else {
+ 			assert(pg_synthesis_plain_derivation(selected)->rule == PG_RETURN_INTRO);
+-			struct pg_synthesis_job *operand = pg_synthesis_rule_premise(s, selected, 0);
+-			if (i == 1) assert(operand == input);
+-			else assert(pg_synthesis_plain_derivation(operand)->rule == PG_VALUE_FROM_TYPE);
++			struct pg_synthesis_input operand = pg_synthesis_rule_input(s, selected, 0);
++			if (i == 1) assert(operand.checked == inputs[i] && !operand.pending);
++			else assert(pg_synthesis_plain_derivation(operand.pending)->rule == PG_VALUE_FROM_TYPE);
+ 		}
+ 	}
+ 	advance(s, 10000);
+@@ -601,11 +601,11 @@
+ 	while (!pg_synthesis_evidence_input(body)) {
+ 		const struct pg_derivation_input *rule = pg_synthesis_plain_derivation(body);
+ 		assert(rule && rule->rule == PG_LAMBDA_INTRO && rule->count == 2);
+-		struct pg_synthesis_job *pi = pg_synthesis_rule_premise(s, body, 0);
+-		struct pg_synthesis_job *adapter = pg_synthesis_rule_premise(s, body, 1);
++		struct pg_synthesis_job *pi = pg_synthesis_rule_input(s, body, 0).pending;
++		struct pg_synthesis_job *adapter = pg_synthesis_rule_input(s, body, 1).pending;
+ 		rule = pg_synthesis_plain_derivation(pi);
+ 		assert(rule && rule->rule == PG_PI_FORM && rule->count == 2);
+-		struct pg_synthesis_job *classifier = pg_synthesis_rule_premise(s, pi, 1);
++		struct pg_synthesis_job *classifier = pg_synthesis_rule_input(s, pi, 1).pending;
+ 		assert(pg_synthesis_classifier_formation_input(classifier) == adapter);
+ 		/* A pending classifier here either has not started or has a retained
+ 		 * structural type and finishes in one dispatch, without query progress. */
+@@ -714,7 +714,9 @@
+ {
+ 	const struct pg_derivation_input *input = pg_synthesis_plain_derivation(key);
+ 	if (!input || i == input->count) return 0;
+-	*child = pg_synthesis_rule_premise(owner, key, i);
++	struct pg_synthesis_input premise = pg_synthesis_rule_input(owner, key, i);
++	if (premise.checked) return 2;
++	*child = premise.pending;
+ 	return *child ? 1 : -1;
+ }
+ 
+@@ -859,7 +861,7 @@
+ 			if (children[i]->status == PG_SYNTHESIS_PENDING && rule) {
+ 				assert(pg_synthesis_rule_resume(s, children[i], rule->count + 1));
+ 				for (size_t j = 0; j < rule->count; ++j) {
+-					if (pg_synthesis_result(pg_synthesis_rule_premise(s, children[i], j))) continue;
++					if (pg_synthesis_input_result(pg_synthesis_rule_input(s, children[i], j))) continue;
+ 					assert(pg_synthesis_rule_resume(s, children[i], j + 1));
+ 					break;
+ 				}

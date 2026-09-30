@@ -1,0 +1,109 @@
+--- a/artifact/derivation.c
++++ b/artifact/derivation.c
+@@ -51,9 +51,21 @@
+  * into imported-input adapters: that would change request identity and fuel. */
+ struct rule_closure {
+ 	const struct pg_synthesis *synthesis;
+-	struct pg_dag external;
++	struct pg_dag external, checked;
++	struct pg_synthesis_job **checked_jobs;
+ };
+ 
++/* Only explicitly supplied external evidence is transportable here. Capture
++ * neither allocates a completed Job nor grants trust to a stored conclusion. */
++static struct pg_synthesis_job *rule_dependency(const struct rule_closure *closure,
++	const struct pg_synthesis_job *job, size_t i)
++{
++	struct pg_synthesis_input input = pg_synthesis_work_dependency(job, 3 + 2 * i);
++	if (!input.checked) return input.pending;
++	const struct pg_dag_node *node = pg_dag_find(&closure->checked, input.checked);
++	return node ? closure->checked_jobs[node->id - 1] : NULL;
++}
++
+ static int rule_child(void *owner, const void *key, size_t i, const void **child)
+ {
+ 	const struct rule_closure *closure = owner;
+@@ -62,13 +74,13 @@
+ 	const struct pg_derivation_input *input = pg_synthesis_plain_derivation(job);
+ 	if (!input || job->owner != closure->synthesis->owner_key || job->inputs[1] || input->effect_parameter) return -1;
+ 	if (i == input->count) return 0;
+-	*child = job->inputs[3 + i];
++	*child = rule_dependency(closure, job, i);
+ 	return *child ? 1 : -1;
+ }
+ 
+ static struct pg_artifact_derivations *capture_frontier(struct pg_graph *storage,
+ 	const struct pg_synthesis *s, const struct pg_dag *jobs, size_t external, size_t raw, size_t count,
+-	struct pg_synthesis_job *const *roots, struct pg_synthesis_job ***output)
++	struct pg_synthesis_job *const *roots, const struct rule_closure *closure, struct pg_synthesis_job ***output)
+ {
+ 	struct pg_artifact_derivations *c = allocate(storage, external, raw, jobs->count, count);
+ 	struct pg_synthesis_job **mapping = pg_wire_array(storage, jobs->count, sizeof(*mapping));
+@@ -89,7 +101,7 @@
+ 			c->links[i].slots = pg_wire_array(storage, header->count, sizeof(uint64_t));
+ 			if (!c->links[i].slots) return NULL;
+ 			for (size_t k = 0; k < header->count; ++k)
+-				c->links[i].slots[k] = pg_dag_find(jobs, job->inputs[3 + k])->id - 1;
++				c->links[i].slots[k] = pg_dag_find(jobs, rule_dependency(closure, job, k))->id - 1;
+ 		}
+ 		if (i < raw) {
+ 			struct pg_synthesis_job *rule;
+@@ -115,23 +127,31 @@
+ 	struct rule_closure closure = {.synthesis = s};
+ 	struct pg_dag jobs = {0};
+ 	const struct pg_artifact_derivations *result = NULL;
+-	if (pg_dag_init(&closure.external, NULL, NULL) || pg_dag_init(&jobs, rule_child, &closure)) goto done;
++	if (pg_dag_init(&closure.external, NULL, NULL) || pg_dag_init(&closure.checked, NULL, NULL)
++		|| pg_dag_init(&jobs, rule_child, &closure)) goto done;
++	closure.checked_jobs = pg_wire_array(&closure.checked.storage, external_count, sizeof(*closure.checked_jobs));
++	if (!closure.checked_jobs) goto done;
+ 	for (size_t i = 0; i < external_count; ++i) {
+ 		if (!external[i] || external[i]->owner != s->owner_key) goto done;
+ 		if (pg_dag_add(&closure.external, external[i]) || closure.external.count != i + 1) goto done;
+ 		if (pg_dag_add(&jobs, external[i])) goto done;
++		const struct pg_evidence *proof = pg_synthesis_evidence_input(external[i]);
++		if (proof && !pg_dag_find(&closure.checked, proof)) {
++			if (pg_dag_add(&closure.checked, proof)) goto done;
++			closure.checked_jobs[closure.checked.count - 1] = external[i];
++		}
+ 	}
+ 	for (size_t i = 0; i < count; ++i) {
+ 		if (!roots[i] || pg_dag_find(&closure.external, roots[i])) goto done;
+ 		if (pg_dag_add(&jobs, roots[i])) goto done;
+ 	}
+ 	struct pg_synthesis_job **mapping;
+-	struct pg_artifact_derivations *c = capture_frontier(storage, s, &jobs, external_count, 0, count, roots, &mapping);
++	struct pg_artifact_derivations *c = capture_frontier(storage, s, &jobs, external_count, 0, count, roots, &closure, &mapping);
+ 	if (!c) goto done;
+ 	*output = mapping;
+ 	result = c;
+ done:
+-	pg_dag_destroy(&jobs); pg_dag_destroy(&closure.external);
++	pg_dag_destroy(&jobs); pg_dag_destroy(&closure.external); pg_dag_destroy(&closure.checked);
+ 	return result;
+ }
+ 
+@@ -170,7 +190,7 @@
+ 		if (pg_synthesis_derivation_frontier(s, n->key, &next, &rule)) goto done;
+ 		if (rule && pg_dag_add(&jobs, rule)) goto done;
+ 	}
+-	result = capture_frontier(storage, s, &jobs, 0, raw, count, roots, output);
++	result = capture_frontier(storage, s, &jobs, 0, raw, count, roots, NULL, output);
+ done:
+ 	pg_dag_destroy(&jobs); pg_dag_destroy(&inputs);
+ 	return result;
+@@ -334,8 +354,12 @@
+ 		for (size_t i = c->external_count; i < c->count; ++i) {
+ 			const struct pg_derivation_input *header = pg_synthesis_plain_derivation(jobs[i]);
+ 			if (!header || header->count != c->links[i].count) return 0;
+-			for (size_t k = 0; k < header->count; ++k)
+-				if (jobs[i]->inputs[3 + k] != jobs[c->links[i].slots[k]]) return 0;
++			for (size_t k = 0; k < header->count; ++k) {
++				struct pg_synthesis_input actual = pg_synthesis_work_dependency(jobs[i], 3 + 2 * k);
++				struct pg_synthesis_input expected = pg_synthesis_input_direct(
++					(struct pg_synthesis_input){.pending = jobs[c->links[i].slots[k]]});
++				if (actual.checked != expected.checked || actual.pending != expected.pending) return 0;
++			}
+ 		}
+ 	}
+ 	for (size_t i = 0; i < c->raw_count; ++i) {

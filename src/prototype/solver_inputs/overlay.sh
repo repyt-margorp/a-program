@@ -14,3 +14,13 @@ done
 for patch in "$here"/test_patches/*.patch; do
 	git apply --unsafe-paths --directory="$overlay/tests" "$patch"
 done
+mkdir -p "$overlay/checkpoint_tests"
+for file in "$here"/../artifact_persistence/*_checkpoint_test.c; do
+	ln -s "$(readlink -f "$file")" "$overlay/checkpoint_tests/${file##*/}"
+done
+for patch in "$here"/checkpoint_test_patches/*.patch; do
+	name=${patch##*/}
+	name=${name%.patch}
+	cp --remove-destination "$(readlink -f "$overlay/checkpoint_tests/$name")" "$overlay/checkpoint_tests/$name"
+	git apply --unsafe-paths --directory="$overlay/checkpoint_tests" "$patch"
+done

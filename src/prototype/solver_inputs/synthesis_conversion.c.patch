@@ -1,7 +1,11 @@
 --- a/synthesis_conversion.c
 +++ b/synthesis_conversion.c
-@@ -36,14 +36,14 @@
- 	return job && job->role == CLASSIFIER_JOB ? (void *)job->inputs[1] : NULL;
+@@ -33,17 +33,17 @@
+ 
+ struct pg_synthesis_job *pg_synthesis_classifier_input(const struct pg_synthesis_job *job)
+ {
+-	return job && job->role == CLASSIFIER_JOB ? (void *)job->inputs[1] : NULL;
++	return job && job->role == CLASSIFIER_JOB ? (void *)job->inputs[2] : NULL;
  }
  
 -struct pg_synthesis_job *pg_synthesis_expect_input(const struct pg_synthesis_job *job)
@@ -120,7 +124,63 @@
  	return 0;
  }
  
-@@ -229,14 +246,13 @@
+@@ -129,8 +146,8 @@
+ 		/* A pending callee may resolve to a family, not a CBPV computation. */
+ 		return pg_synthesis_evidence(synthesis, proof);
+ 	case PG_JUDGEMENT_VALUE: case PG_JUDGEMENT_COMPUTATION:
+-		return pg_synthesis_normalize_classifier_jobs(synthesis,
+-			pg_synthesis_evidence(synthesis, context), pg_synthesis_evidence(synthesis, proof));
++		return pg_synthesis_normalize_classifier_in(synthesis,
++			(struct pg_synthesis_input){.checked = context}, pg_synthesis_evidence(synthesis, proof));
+ 	default: return NULL;
+ 	}
+ }
+@@ -138,27 +155,33 @@
+ struct pg_synthesis_job *pg_synthesis_normalize_classifier_jobs(struct pg_synthesis *synthesis,
+ 	struct pg_synthesis_job *context, struct pg_synthesis_job *proof)
+ {
+-	if (!context || context->owner != synthesis->owner_key) return NULL;
++	return pg_synthesis_normalize_classifier_in(synthesis, (struct pg_synthesis_input){.pending = context}, proof);
++}
++
++struct pg_synthesis_job *pg_synthesis_normalize_classifier_in(struct pg_synthesis *synthesis,
++	struct pg_synthesis_input context, struct pg_synthesis_job *proof)
++{
++	if (!pg_synthesis_input_owned(synthesis, context)) return NULL;
+ 	if (!proof || proof->owner != synthesis->owner_key) return NULL;
+-	const void *inputs[] = {context, proof};
+-	return pg_synthesis_work_request(synthesis, CLASSIFIER_JOB, 2, inputs);
++	context = pg_synthesis_input_direct(context);
++	const void *inputs[] = {context.checked, context.pending, proof};
++	return pg_synthesis_work_request(synthesis, CLASSIFIER_JOB, 3, inputs);
+ }
+ 
+ static void classifier_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+ {
+ 	struct classifier_work *local = pg_synthesis_work_state(job, CLASSIFIER_JOB);
+-	const struct pg_synthesis_job *context = job->inputs[0], *term = job->inputs[1];
++	struct pg_synthesis_input context = pg_synthesis_work_dependency(job, 0);
++	struct pg_synthesis_job *term = (void *)job->inputs[2];
+ 	if (!local->left) {
+-		for (size_t i = 0; i < 2; ++i) {
+-			struct pg_synthesis_job *input = (void *)job->inputs[i];
+-			if (pg_synthesis_await(synthesis, job, input)) return;
+-		}
+-		struct pg_synthesis_job *canonical = pg_synthesis_normalize_classifier(synthesis, context->result, term->result);
++		if (pg_synthesis_await_input(synthesis, job, context)) return;
++		if (pg_synthesis_await(synthesis, job, term)) return;
++		struct pg_synthesis_job *canonical = pg_synthesis_normalize_classifier(synthesis, pg_synthesis_input_result(context), term->result);
+ 		if (!canonical) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
+ 		if (pg_synthesis_forward(synthesis, job, canonical)) return;
+-		if (!local->right) local->right = pg_synthesis_classifier_formation(synthesis, context, term);
++		if (!local->right) local->right = pg_synthesis_classifier_in(synthesis, context, term);
+ 		if (pg_synthesis_await(synthesis, job, local->right)) return;
+-		local->left = pg_synthesis_normalize(synthesis, context->result, local->right->result);
++		local->left = pg_synthesis_normalize(synthesis, pg_synthesis_input_result(context), local->right->result);
+ 		pg_synthesis_subscribe(synthesis, job, local->left, 0);
+ 		return;
+ 	}
+@@ -229,14 +252,13 @@
  static void expect_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
  	struct expectation_work *local = pg_synthesis_work_state(job, EXPECT_JOB);
@@ -141,7 +201,7 @@
  		if (!pg_evidence_owned_by(term, synthesis->typing)) goto rejected;
  		if (!pg_evidence_owned_by(type, synthesis->typing)) goto rejected;
  		if (pg_evidence_context(term) != pg_evidence_context(type)) goto rejected;
-@@ -249,14 +265,14 @@
+@@ -249,14 +271,14 @@
  			break;
  		default: goto rejected;
  		}
@@ -160,7 +220,7 @@
  	if (job->result && local->checking_type != target) {
  		job->result = pg_prove_effect_subsumption(synthesis->typing, job->result, target);
  		if (!job->result) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-@@ -301,16 +317,16 @@
+@@ -301,16 +323,16 @@
  static const struct pg_evidence *normalization_input(struct pg_synthesis *synthesis,
  	const struct pg_synthesis_job *job)
  {
@@ -186,7 +246,7 @@
  }
  
  const struct pg_whnf_job *pg_synthesis_normalization_pending(const struct pg_synthesis *synthesis,
-@@ -346,8 +362,8 @@
+@@ -346,8 +368,8 @@
  	struct normalization_work *local = pg_synthesis_work_state(job, job->role);
  	if (!local->checking_term) {
  		for (size_t i = 0; i < 2; ++i) {

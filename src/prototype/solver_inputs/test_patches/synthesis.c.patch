@@ -1,5 +1,25 @@
 --- a/synthesis.c
 +++ b/synthesis.c
+@@ -993,7 +993,7 @@
+ 		for (size_t i = 0; i < 6; ++i) {
+ 			function_shapes[i] = pg_synthesis_term_structure(&synthesis, function_rules[i]);
+ 			assert(function_shapes[i] && function_shapes[i]->role->size <= 5 * sizeof(void *) + sizeof(struct pg_comparison));
+-			assert(pg_synthesis_work_input(function_shapes[i], 0) == function_rules[i]);
++			assert(pg_synthesis_work_dependency(function_shapes[i], 0).pending == function_rules[i]);
+ 			size_t requests = synthesis.jobs.count;
+ 			assert(pg_synthesis_term_structure(&synthesis, function_rules[i]) == function_shapes[i]);
+ 			if (i != 2 && i != 3) assert(pg_synthesis_type_structure(&synthesis, function_rules[i]) == function_shapes[i]);
+@@ -2770,8 +2770,8 @@
+ 		struct pg_synthesis_job *function = request(&synthesis, root, "f := \\A:@ => \\x:A => @;");
+ 		if (accepted) complete(&synthesis, function, PG_SYNTHESIS_DONE);
+ 		struct pg_synthesis_job *result = pg_synthesis_constant_result(&synthesis, context, function, 2);
+-		struct pg_synthesis_job *scope = pg_synthesis_rule_premise(&synthesis,
+-			pg_synthesis_rule_premise(&synthesis, result, 0), 0);
++		struct pg_synthesis_job *scope = pg_synthesis_rule_input(&synthesis,
++			pg_synthesis_rule_input(&synthesis, result, 0).pending, 0).pending;
+ 		const struct pg_object *scope_binder = pg_synthesis_pi_scope_binder(scope);
+ 		assert(scope_binder && scope->role->size == 2 * sizeof(void *));
+ 		assert(!pg_synthesis_pi_scope_binder(function));
 @@ -4336,7 +4336,10 @@
  		assert(pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK) == 0);
  		struct pg_synthesis_job *images[] = {pg_synthesis_evidence(&synthesis, a_value),
@@ -11,7 +31,7 @@
  		assert(job && pg_synthesis_substitution(&synthesis, source, destination, 2, images) == job);
  		assert(job == pg_synthesis_substitution_jobs(&synthesis, pg_synthesis_evidence(&synthesis, source),
  			pg_synthesis_evidence(&synthesis, destination), 2, images));
-@@ -4639,6 +4642,63 @@
+@@ -4639,6 +4642,124 @@
  	}
  }
  
@@ -72,10 +92,71 @@
 +	pg_whnf_work_destroy(&work);
 +}
 +
++static void direct_rule_inputs(struct pg_typing *typing)
++{
++	struct pg_whnf_work work;
++	struct pg_synthesis synthesis, imported;
++	assert(!pg_whnf_work_init(&work, typing->graph));
++	assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
++	assert(!pg_synthesis_init(&imported, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
++	const struct pg_evidence *empty = pg_prove_empty_context(typing);
++	struct pg_synthesis_input context = {.checked = empty};
++	size_t jobs = synthesis.jobs.count, terms = typing->graph->terms.count, proofs = typing->proofs.count;
++	struct pg_synthesis_job *type = pg_synthesis_plain_rule_inputs(&synthesis, PG_UNIVERSE_FORM, NULL, 1, &context);
++	assert(type && synthesis.jobs.count == jobs + 1 && !synthesis.steps);
++	assert(typing->graph->terms.count == terms && typing->proofs.count == proofs);
++	struct pg_synthesis_input premise = pg_synthesis_rule_input(&synthesis, type, 0);
++	assert(premise.checked == empty && !premise.pending);
++	assert(pg_synthesis_plain_rule_inputs(&synthesis, PG_UNIVERSE_FORM, NULL, 1, &context) == type);
++	assert(synthesis.jobs.count == jobs + 1);
++	struct pg_synthesis_job *foreign = pg_synthesis_plain_rule(&imported, PG_CONTEXT_EMPTY, NULL, 0, NULL);
++	assert(!pg_synthesis_plain_rule_inputs(&synthesis, PG_UNIVERSE_FORM, NULL, 1,
++		&(struct pg_synthesis_input){.pending = foreign}));
++	assert(!pg_synthesis_plain_rule_inputs(&synthesis, PG_UNIVERSE_FORM, NULL, 1,
++		&(struct pg_synthesis_input){0}));
++	struct pg_synthesis_job *value = pg_synthesis_plain_rule_inputs(&synthesis, PG_VALUE_FROM_TYPE, NULL, 1,
++		&(struct pg_synthesis_input){.pending = type});
++	struct pg_synthesis_input inputs[] = {context, {.pending = value}};
++	struct pg_synthesis_job *projected = pg_synthesis_plain_rule_inputs(&synthesis, PG_CONTEXT_PROJECTION, NULL, 2, inputs);
++	assert(projected && pg_synthesis_rule_input(&synthesis, projected, 1).pending == value);
++	assert(pg_synthesis_rule_resume(&synthesis, projected, 2));
++	struct pg_graph storage = {0};
++	struct pg_effect_inference effects;
++	assert(!pg_effect_inference_init(&effects, &storage));
++	const struct pg_derivation_input *const *exported;
++	jobs = synthesis.jobs.count;
++	assert(!pg_synthesis_export_rules(&synthesis, 1, &projected, &storage, &effects, 1, &exported));
++	assert(synthesis.jobs.count == jobs && !synthesis.steps && typing->proofs.count == proofs);
++	assert(exported[0]->premises[0] == exported[0]->premises[1]->premises[0]->premises[0]);
++	struct pg_synthesis_job *const *restored;
++	assert(!pg_synthesis_import_rules(&imported, 1, exported, NULL, &restored));
++	pg_synthesis_advance(&imported, 0);
++	assert(!imported.steps && !pg_synthesis_result(restored[0]));
++	const struct pg_evidence *result = complete(&synthesis, projected, PG_SYNTHESIS_DONE);
++	same_judgement(complete(&imported, restored[0], PG_SYNTHESIS_DONE), result);
++	assert(pg_synthesis_rule_input(&synthesis, projected, 1).pending == value);
++	assert(pg_synthesis_plain_rule_inputs(&synthesis, PG_CONTEXT_PROJECTION, NULL, 2, inputs) == projected);
++	struct pg_synthesis_job *adapter = pg_synthesis_evidence(&synthesis, empty);
++	assert(pg_synthesis_plain_rule(&synthesis, PG_UNIVERSE_FORM, NULL, 1, &adapter) == type);
++	assert(!pg_synthesis_plain_rule_inputs(&synthesis, PG_UNIVERSE_FORM, NULL, 1,
++		&(struct pg_synthesis_input){empty, adapter}));
++	struct pg_synthesis_input known = {.checked = result};
++	struct pg_synthesis_job *shape = pg_synthesis_term_structure_input(&synthesis, known);
++	assert(shape && pg_synthesis_work_dependency(shape, 0).checked == result);
++	assert(shape->role->size == 2 * sizeof(void *) + sizeof(struct pg_synthesis_reduction));
++	complete(&synthesis, shape, PG_SYNTHESIS_DONE);
++	assert(pg_synthesis_type_structure_result(shape) == pg_evidence_subject(result)->core);
++	pg_synthesis_destroy(&imported);
++	pg_effect_inference_destroy(&effects);
++	pg_graph_destroy(&storage);
++	pg_synthesis_destroy(&synthesis);
++	pg_whnf_work_destroy(&work);
++}
++
  static void shared_conversion_jobs(struct pg_typing *typing)
  {
  	struct pg_whnf_work work;
-@@ -4660,8 +4720,9 @@
+@@ -4660,8 +4781,9 @@
  	struct pg_synthesis_job *right = pg_synthesis_expect(&synthesis,
  		pg_synthesis_evidence(&synthesis, pg_prove_variable(typing, context, y)), type);
  	assert(left->role->size == sizeof(void *) && right->role->size == sizeof(void *));
@@ -87,7 +168,7 @@
  	struct pg_synthesis_job *comparison = pg_synthesis_compare_terms(&synthesis,
  		pg_reference(typing->graph, a), pg_reference(typing->graph, a));
  	assert(comparison && comparison->role->size == 2 * sizeof(void *));
-@@ -4945,9 +5006,9 @@
+@@ -4945,9 +5067,9 @@
  	assert(pg_evidence_premise(converted_path, 0) == selected[1]);
  	/* Family paths use the same post-check request as an independent caller. */
  	size_t requests = split.jobs.count;
@@ -100,11 +181,12 @@
  	assert(shared_check && split.jobs.count == requests);
  	assert(pg_synthesis_status(shared_check) == PG_SYNTHESIS_DONE);
  	assert(pg_synthesis_result(shared_check) == converted_path);
-@@ -7933,6 +7994,7 @@
+@@ -7933,6 +8055,8 @@
  	dependency_failures(&typing);
  	endpoint_jobs(&typing);
  	substitution_jobs(&typing);
 +	direct_checked_inputs(&typing);
++	direct_rule_inputs(&typing);
  	square_template_jobs(&typing);
  	dependent_cube_substitution(&typing);
  	dependent_application_jobs(&typing);

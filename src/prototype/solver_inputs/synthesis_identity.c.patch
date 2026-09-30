@@ -1,6 +1,18 @@
 --- a/synthesis_identity.c
 +++ b/synthesis_identity.c
-@@ -396,7 +396,8 @@
+@@ -113,9 +113,8 @@
+ 	struct pg_synthesis_job *action = pg_synthesis_family_action_jobs(synthesis,
+ 		type_value, left_substitution, right_substitution, count, paths);
+ 	if (!action) return NULL;
+-	struct pg_synthesis_job *context = pg_synthesis_evidence(synthesis,
+-		pg_evidence_premise(left_substitution, 1));
+-	action = pg_synthesis_normalize_classifier_jobs(synthesis, context, action);
++	struct pg_synthesis_input context = {.checked = pg_evidence_premise(left_substitution, 1)};
++	action = pg_synthesis_normalize_classifier_in(synthesis, context, action);
+ 	if (!action) return NULL;
+ 	struct pg_synthesis_job *left = pg_synthesis_plain_rule(synthesis, PG_IDENTITY_LEFT_TYPE, NULL, 1, &action);
+ 	struct pg_synthesis_job *right = pg_synthesis_plain_rule(synthesis, PG_IDENTITY_RIGHT_TYPE, NULL, 1, &action);
+@@ -396,7 +395,8 @@
  			pg_substitution_image_at(synthesis->typing, left, state->common + i),
  			pg_substitution_image_at(synthesis->typing, right, state->common + i));
  		if (!type) goto rejected;
