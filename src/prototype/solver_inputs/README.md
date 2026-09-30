@@ -99,12 +99,17 @@ inputs through one API. A checked field map seeds the existing member worker
 directly; declaration, parameters and map do not need completed Jobs. Source
 transport reads these inputs from the owner, not its private key-array layout.
 Dependent field lifting and IH construction retain their unfinished cursors.
+Application callees and arguments borrow those same inputs. Match completion
+starts from its checked elimination result and allocates a continuation only for
+actual path/generalization applications or a computed scrutinee. Known implicit
+constructor indices and branch Contexts are borrowed directly. The Job-only
+classifier-formation entry point is removed; its query worker is not yet removed.
 
 ### Assessment
 
-This removes some adapters, not the independent Job graph. Match completion,
-classifier-formation and other context/IADT consumers still use adapters. Producer-to-checked
-forwarding paths also remain. Removing classifier
+This removes some adapters, not the independent Job graph. IH binding,
+index-result/transport and other context/IADT consumers still use adapters.
+Producer-to-checked forwarding paths also remain. Removing classifier
 forwarding alone lost completed-result reuse, so that trial was rejected;
 removing the query wrapper does not settle the pending/checked request ownership.
 Keeping those indefinitely would not

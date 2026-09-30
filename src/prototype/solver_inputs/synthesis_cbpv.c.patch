@@ -299,7 +299,7 @@
  			if (kind == 2) argument = pg_synthesis_plain_rule(synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &argument);
 -			local->rule = pg_synthesis_application_jobs(synthesis, (void *)job->inputs[0],
 -				(void *)job->inputs[2], argument);
-+			local->rule = pg_synthesis_application(synthesis, scope, (void *)job->inputs[3], argument);
++			local->rule = pg_synthesis_application(synthesis, scope, (struct pg_synthesis_input){.pending = (void *)job->inputs[3]}, (struct pg_synthesis_input){.pending = argument});
  			if (!local->rule) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
  		} else {
 -			local->normalized = pg_synthesis_normalize_classifier_jobs(synthesis, (void *)job->inputs[0], argument);
@@ -339,7 +339,7 @@
  	if (!context || pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT || !input || !continuation) {
  		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
  	}
-@@ -570,21 +587,20 @@
+@@ -570,21 +587,19 @@
  		/* Preserve the effectful prefix outside the returned function.
  		 * The source adapter uses only checked APP/THUNK/RETURN/FOLD. */
  		binder = pg_binder(synthesis->typing->graph);
@@ -351,7 +351,7 @@
 +		struct pg_synthesis_job *premises[] = {extended, (void *)job->inputs[3]};
  		struct pg_synthesis_job *projected = pg_synthesis_plain_rule(synthesis, PG_CONTEXT_PROJECTION, NULL, 2, premises);
 -		struct pg_synthesis_job *applied = pg_synthesis_application_jobs(synthesis, extended, projected, variable);
-+		struct pg_synthesis_job *applied = pg_synthesis_application(synthesis, (struct pg_synthesis_input){.pending = extended}, projected, variable);
++		struct pg_synthesis_job *applied = pg_synthesis_application(synthesis, (struct pg_synthesis_input){.pending = extended}, (struct pg_synthesis_input){.pending = projected}, (struct pg_synthesis_input){.pending = variable});
  		struct pg_synthesis_job *quoted = pg_synthesis_plain_rule(synthesis, PG_THUNK_INTRO, NULL, 1, &applied);
  		premises[0] = local->normalized;
 -		premises[1] = pg_synthesis_lambda_body(synthesis, extended, quoted);
@@ -363,7 +363,6 @@
  	struct pg_synthesis_job *argument = pg_synthesis_return(synthesis, context, input);
 -	local->rule = pg_synthesis_application(synthesis, context,
 -		(void *)job->inputs[2], argument);
-+	local->rule = pg_synthesis_application(synthesis, (struct pg_synthesis_input){.checked = context},
-+		(void *)job->inputs[3], argument);
++	local->rule = pg_synthesis_application(synthesis, (struct pg_synthesis_input){.checked = context}, (struct pg_synthesis_input){.pending = (void *)job->inputs[3]}, (struct pg_synthesis_input){.pending = argument});
  	pg_synthesis_forward(synthesis, job, local->rule);
  }

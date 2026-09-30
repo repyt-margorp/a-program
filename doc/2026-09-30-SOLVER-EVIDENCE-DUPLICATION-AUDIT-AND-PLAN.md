@@ -407,8 +407,11 @@ baseline described above. Concurrent accepted-source edits remain excluded.
 - [x] Migrate constructor member/field/IH inputs, Match consumers and source
   transport together. Borrow a checked field scope instead of allocating three
   completed input Jobs; retain one unfinished scope cursor and checked admission.
-- [ ] Finish remaining Context/IADT/Match input adapters and
-  consumers, remove `EVIDENCE_JOB`, then remove duplicated query scheduling.
+- [x] Migrate application callees/arguments and known Match results directly.
+  Retain actual path/generalization applications and computed-scrutinee closure;
+  remove the Job-only classifier-formation API and known-index input adapters.
+- [ ] Finish IH-binding, index-result/transport and remaining Context input
+  adapters and consumers, remove `EVIDENCE_JOB`, then remove duplicated query scheduling.
   The remaining adapter recognition is temporary, not the final architecture.
 
 ### Effect Owner Result (2026-09-30)
@@ -1202,3 +1205,71 @@ measurements, not `.a` size or runtime claims.
 | Implementation total | 135 | 144 | -9 |
 | `tests/synthesis.c` | 104 | 93 | +11 |
 | `tests/iadt.c` | 19 | 18 | +1 |
+
+### SE1 Application and Match Inputs (2026-10-01)
+
+#### Subjective (User)
+
+2026-09-30 paraphrase: resume the authoritative Solve frontier rather than
+retain another Job/Evidence-shaped graph above Term and typing. The existing
+ownership gate remains the requirement, not merely fewer adapters.
+
+#### Objective (Code)
+
+Parent `aa6ffc8` plus this prototype, frozen accepted baseline `e716232`.
+Application borrows checked/pending callees and arguments through its existing
+API. Post-checking still uses ordinary classifier/domain/conversion rules.
+Match completion borrows its checked result; a pending chain is retained only
+for actual path/generalization applications or computed-scrutinee sequencing.
+Known constructor indices and branch Contexts no longer need adapters. The
+Job-only classifier-formation API is deleted, not retained as an alias. Source
+and test callers use the existing direct-input API. No Core tag, mutable result
+store, acceptance table or public wire field is added.
+
+#### Assessment
+
+This removes completed input wrappers, not the remaining independent Job graph.
+Classifier-formation still mirrors its typed Query's completion; IH binding and
+refuted-branch transport still need input migration. SE1-SE5 and AP1-AP3 remain
+open. Evidence receipt/premise ownership is unchanged by this milestone.
+
+#### Plan
+
+Focused O2 synthesis/IADT/source-I/O, all seven O2 checkpoint targets and
+ASan/UBSan synthesis/IADT/source-I/O plus constructor and both namespace-boundary
+targets pass. Full O2 acceptance passes, including both LT providers, both
+partition orders, general ordinary-result Sorted/permutation evidence and
+negative checks after reload. Fresh patch application matches the tested
+source/tests/checkpoints. The prototype milestone is ready to push; this does
+not authorize production promotion or close the remaining ownership gate.
+New tests cover zero-fuel inactivity, no checked-input adapters, distinct typed
+uses of the same Core, stable pending identity, checked/pending sharing, invalid
+scope/polarity and foreign/mixed inputs. Existing tests exercise dependent
+path application, computed scrutinees, effects, nested Match and resumed rules.
+Public partitions still fail at 100+100, 1000+1000, 1600+1600 and 2726+0;
+0+0 and 10+10 pass. No failed gate is converted to expected success.
+Evidence: `/tmp/a-program-application-input-{acceptance,checkpoints,asan-checkpoints}.log`,
+`/tmp/a-program-application-input-{list,quick}-census.tsv` and
+`/tmp/a-program-application-input-partitions/partitions.tsv`.
+
+| Completed census | Jobs before / after | Adapters before / after | Job bytes before / after |
+| --- | ---: | ---: | ---: |
+| List-09 | 878 / 877 | 2 / 1 | 154,064 / 153,960 |
+| General QuickSort Local Sorted | 54,158 / 54,059 | 179 / 80 | 9,453,344 / 9,443,048 |
+
+Steps (2726 / 809533), Terms, occurrences, Evidence and premise edges are
+unchanged; repeated terminal samples do not grow. This is a live-store count,
+not an artifact-size, total-memory or elapsed-speedup claim.
+
+| Applied-code delta from `aa6ffc8` | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `synthesis.c` | 24 | 23 | +1 |
+| `synthesis.h` | 4 | 3 | +1 |
+| `synthesis_function.c` | 6 | 13 | -7 |
+| `synthesis_cbpv.c` | 3 | 4 | -1 |
+| `synthesis_source.h` | 0 | 2 | -2 |
+| Implementation total | 37 | 45 | -8 |
+| `tests/synthesis.c` | 132 | 26 | +106 |
+| `tests/iadt.c` | 2 | 3 | -1 |
+
+Counts follow applied source contents, excluding patch context and documentation.
