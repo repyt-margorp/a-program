@@ -79,6 +79,11 @@ contain no inputs, results, progress or acceptance. Released edges return to a
 Solve-local pool instead of retaining one allocation per historical wait.
 The restricted schedule codec still handles Job-to-Job waits only; this change
 does not introduce a new Effect checkpoint or establish public resumption.
+Body, abstraction and Lambda-body requests borrow checked/pending inputs through
+the same interface. Checked constructor bodies no longer need completed input
+Jobs. The ordinary polarity lifting and Context checks remain; a Context input
+must actually be a checked Context judgement, not just share its scope pointer.
+Selected checked bodies do not require a pending-rule projection or a new codec.
 
 ### Assessment
 

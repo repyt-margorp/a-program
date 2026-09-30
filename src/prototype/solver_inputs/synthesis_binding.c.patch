@@ -58,6 +58,15 @@
  	if (proof) {
  		enum pg_evidence_judgement kind = pg_evidence_judgement(proof);
  		if (kind == PG_JUDGEMENT_VALUE_TYPE || kind == PG_JUDGEMENT_COMPUTATION_TYPE)
+@@ -335,7 +344,7 @@
+ 	if (!local->input) {
+ 		struct pg_synthesis_job *annotation = (void *)producer->inputs[1], *rule;
+ 		if (pg_synthesis_await_preparation(synthesis, job, annotation, &rule)) return;
+-		if (pg_synthesis_source_value_kind(annotation) == 2)
++		if (pg_synthesis_input_value_kind((struct pg_synthesis_input){.pending = annotation}) == 2)
+ 			local->input = pg_synthesis_type_structure(synthesis, annotation);
+ 		else {
+ 			const struct pg_derivation_input *input = pg_synthesis_plain_derivation(rule);
 @@ -350,9 +359,10 @@
  static void declared_type_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {

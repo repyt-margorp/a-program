@@ -312,7 +312,7 @@
 +				(struct pg_synthesis_input){.checked = pg_prove_structural_subject(synthesis->typing, subject->operands[0])});
  			local->continuation = pg_synthesis_lambda_body(synthesis,
 -				pg_synthesis_evidence(synthesis, context), body);
-+				(struct pg_synthesis_input){.checked = context}, body);
++				(struct pg_synthesis_input){.checked = context}, (struct pg_synthesis_input){.pending = body});
  		} else if (subject && subject->operand_count == 2 && subject->core->kind == PG_APPLICATION) {
  			struct pg_typed_query *application = pg_application_body_request(synthesis->typing,
  				pg_prove_structural_subject(synthesis->typing, subject->operands[0]),
@@ -509,18 +509,20 @@
  	struct pg_synthesis_job *checked = pg_synthesis_expect(synthesis, argument, domain);
  	if (!checked) return NULL;
  	struct pg_synthesis_job *premises[] = {callee, checked};
-@@ -537,17 +560,18 @@
+@@ -537,17 +560,17 @@
  }
  
  struct pg_synthesis_job *pg_synthesis_lambda_body(struct pg_synthesis *synthesis,
 -	struct pg_synthesis_job *context,
+-	struct pg_synthesis_job *body)
 +	struct pg_synthesis_input context,
- 	struct pg_synthesis_job *body)
++	struct pg_synthesis_input input)
  {
 -	if (!context || context->owner != synthesis->owner_key) return NULL;
+-	if (!body || body->owner != synthesis->owner_key) return NULL;
+-	body = pg_synthesis_body(synthesis, body, context);
 +	if (!pg_synthesis_input_owned(synthesis, context)) return NULL;
- 	if (!body || body->owner != synthesis->owner_key) return NULL;
- 	body = pg_synthesis_body(synthesis, body, context);
++	struct pg_synthesis_job *body = pg_synthesis_body(synthesis, input, context);
  	if (!body) return NULL;
 -	struct pg_synthesis_job *codomain = pg_synthesis_classifier_formation(synthesis, context, body);
 +	struct pg_synthesis_job *codomain = pg_synthesis_classifier_in(synthesis, context,

@@ -111,46 +111,144 @@
  }
  
  struct contents_work {
-@@ -323,12 +325,14 @@
+@@ -263,7 +265,7 @@
+ 	unsigned stage;
+ };
+ struct body_work {
+-	struct pg_synthesis_job *rule;
++	struct pg_synthesis_input rule;
+ };
+ struct sequence_work {
+ 	struct pg_synthesis_job *normalized, *fold, *rule;
+@@ -301,8 +303,9 @@
+ 
+ static struct pg_synthesis_projection body_project(const struct pg_synthesis_job *job)
+ {
+-	struct pg_synthesis_job *rule = body_work(job)->rule;
+-	return (struct pg_synthesis_projection){.rule = rule, .preparing = !rule, .value_kind = 0};
++	struct pg_synthesis_input rule = body_work(job)->rule;
++	return (struct pg_synthesis_projection){.rule = rule.pending,
++		.preparing = !rule.checked && !rule.pending, .value_kind = 0};
+ }
+ 
+ static struct pg_synthesis_projection sequence_project(const struct pg_synthesis_job *job)
+@@ -323,17 +326,20 @@
  }
  
  struct pg_synthesis_job *pg_synthesis_body(struct pg_synthesis *synthesis,
 -	struct pg_synthesis_job *input, struct pg_synthesis_job *context)
-+	struct pg_synthesis_job *input, struct pg_synthesis_input context)
++	struct pg_synthesis_input input, struct pg_synthesis_input context)
  {
- 	if (!synthesis || !input || input->owner != synthesis->owner_key) return NULL;
+-	if (!synthesis || !input || input->owner != synthesis->owner_key) return NULL;
 -	if (context && context->owner != synthesis->owner_key) return NULL;
 -	const void *inputs[] = {input, context};
 -	return pg_synthesis_work_request(synthesis, BODY_JOB, 2, inputs);
++	if (!pg_synthesis_input_owned(synthesis, input)) return NULL;
 +	if (context.checked || context.pending)
 +		if (!pg_synthesis_input_owned(synthesis, context)) return NULL;
++	input = pg_synthesis_input_direct(input);
 +	context = pg_synthesis_input_direct(context);
-+	const void *inputs[] = {input, context.checked, context.pending};
-+	return pg_synthesis_work_request(synthesis, BODY_JOB, 3, inputs);
++	const void *inputs[] = {input.checked, input.pending, context.checked, context.pending};
++	return pg_synthesis_work_request(synthesis, BODY_JOB, 4, inputs);
  }
  
- struct pg_synthesis_job *pg_synthesis_body_input(const struct pg_synthesis_job *job)
-@@ -432,13 +436,12 @@
- 		if (!body) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
- 		local->rule = body;
+-struct pg_synthesis_job *pg_synthesis_body_input(const struct pg_synthesis_job *job)
++struct pg_synthesis_input pg_synthesis_body_input(const struct pg_synthesis_job *job)
+ {
+-	return body_work(job) ? (void *)job->inputs[0] : NULL;
++	return body_work(job) ? pg_synthesis_work_dependency(job, 0) : (struct pg_synthesis_input){0};
+ }
+ 
+ static struct pg_synthesis_job *request_evaluation(struct pg_synthesis *synthesis,
+@@ -391,14 +397,16 @@
+ 	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
+ }
+ 
+-static struct pg_synthesis_job *body_rule(struct pg_synthesis *synthesis,
+-	struct pg_synthesis_job *input, int kind)
++static struct pg_synthesis_input body_rule(struct pg_synthesis *synthesis,
++	struct pg_synthesis_input input, int kind)
+ {
+-	if (kind == 2) input = pg_synthesis_plain_rule(synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &input);
++	if (kind == 2) input = (struct pg_synthesis_input){.pending =
++		pg_synthesis_plain_rule_inputs(synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &input)};
+ 	if (kind > 0) {
+ 		struct pg_derivation_input returned = {.rule = PG_RETURN_INTRO,
+ 			.parameters.totality = PG_TOTALITY_TOTAL, .count = 1};
+-		input = pg_synthesis_rule(synthesis, &returned, &input, NULL, NULL);
++		input = (struct pg_synthesis_input){.pending =
++			pg_synthesis_rule_inputs(synthesis, &returned, &input, NULL, NULL)};
  	}
+ 	return input;
+ }
+@@ -407,53 +415,60 @@
+ {
+ 	if (!synthesis || !job || job->owner != synthesis->owner_key) return -1;
+ 	struct body_work *local = body_work(job);
+-	if (!local || local->rule || job->status != PG_SYNTHESIS_PENDING) return -1;
+-	struct pg_synthesis_job *input = (void *)job->inputs[0];
+-	if (pg_synthesis_work_project(input).preparing) return -1;
+-	int kind = pg_synthesis_source_value_kind(input);
++	if (!local || local->rule.checked || local->rule.pending || job->status != PG_SYNTHESIS_PENDING) return -1;
++	struct pg_synthesis_input input = pg_synthesis_body_input(job);
++	if (pg_synthesis_work_project(input.pending).preparing) return -1;
++	int kind = pg_synthesis_input_value_kind(input);
+ 	if (kind < 0) return -1;
+ 	local->rule = body_rule(synthesis, input, kind);
+-	return local->rule ? 0 : -1;
++	return local->rule.checked || local->rule.pending ? 0 : -1;
+ }
+ 
+ static void body_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+ {
+ 	struct body_work *local = body_work(job);
+-	struct pg_synthesis_job *input = (void *)job->inputs[0];
+-	if (!local->rule) {
+-		if (pg_synthesis_await_preparation(synthesis, job, input, NULL)) return;
+-		int kind = pg_synthesis_source_value_kind(input);
++	struct pg_synthesis_input input = pg_synthesis_body_input(job);
++	if (!local->rule.checked && !local->rule.pending) {
++		if (input.pending && pg_synthesis_await_preparation(synthesis, job, input.pending, NULL)) return;
++		int kind = pg_synthesis_input_value_kind(input);
+ 		if (kind < 0) {
+-			if (input->status == PG_SYNTHESIS_PENDING) { pg_synthesis_subscribe(synthesis, job, input, 0); return; }
+-			pg_synthesis_finish(synthesis, job, input->status == PG_SYNTHESIS_DONE ? PG_SYNTHESIS_REJECTED : input->status);
++			if (pg_synthesis_await_input(synthesis, job, input)) return;
++			pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED);
+ 			return;
+ 		}
+-		struct pg_synthesis_job *body = body_rule(synthesis, input, kind);
+-		if (!body) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+-		local->rule = body;
+-	}
 -	struct pg_synthesis_job *context = (void *)job->inputs[1];
 -	if (context) {
 -		struct pg_synthesis_job *premises[] = {input, context};
 -		for (size_t i = 0; i < 2; ++i) {
 -			if (pg_synthesis_await(synthesis, job, premises[i])) return;
--		}
++		local->rule = body_rule(synthesis, input, kind);
++		if (!local->rule.checked && !local->rule.pending) {
++			pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
+ 		}
 -		if (!input->result || !context->result || pg_evidence_context(input->result) != pg_evidence_context(context->result)) {
-+	struct pg_synthesis_input context = pg_synthesis_work_dependency(job, 1);
++	}
++	struct pg_synthesis_input context = pg_synthesis_work_dependency(job, 2);
 +	if (context.checked || context.pending) {
-+		if (pg_synthesis_await(synthesis, job, input)) return;
++		if (pg_synthesis_await_input(synthesis, job, input)) return;
 +		if (pg_synthesis_await_input(synthesis, job, context)) return;
++		const struct pg_evidence *proof = pg_synthesis_input_result(input);
 +		const struct pg_evidence *scope = pg_synthesis_input_result(context);
-+		if (!input->result || !scope || pg_evidence_context(input->result) != pg_evidence_context(scope)) {
++		if (!scope || pg_evidence_judgement(scope) != PG_JUDGEMENT_CONTEXT) {
++			pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
++		}
++		if (!proof || pg_evidence_context(proof) != pg_evidence_context(scope)) {
  			pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
  		}
  	}
-@@ -446,14 +449,15 @@
+-	pg_synthesis_forward(synthesis, job, local->rule);
++	if (pg_synthesis_await_input(synthesis, job, local->rule)) return;
++	job->result = pg_synthesis_input_result(local->rule);
++	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
  }
  
  struct pg_synthesis_job *pg_synthesis_sequence(struct pg_synthesis *synthesis,
@@ -172,7 +270,7 @@
  }
  
  /* 1 selects FOLD; 0 suspends; -1 leaves conversion/finite-return checking to
-@@ -497,8 +501,9 @@
+@@ -497,10 +512,11 @@
  static void sequence_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
  	struct sequence_work *local = sequence_work(job);
@@ -181,9 +279,12 @@
 -		struct pg_synthesis_job *argument = (void *)job->inputs[1];
 +		struct pg_synthesis_job *argument = (void *)job->inputs[2];
  		if (pg_synthesis_await_preparation(synthesis, job, argument, NULL)) return;
- 		int kind = pg_synthesis_source_value_kind(argument);
+-		int kind = pg_synthesis_source_value_kind(argument);
++		int kind = pg_synthesis_input_value_kind((struct pg_synthesis_input){.pending = argument});
  		if (kind < 0) {
-@@ -508,13 +513,13 @@
+ 			if (argument->status == PG_SYNTHESIS_PENDING) { pg_synthesis_subscribe(synthesis, job, argument, 0); return; }
+ 			pg_synthesis_finish(synthesis, job, argument->status == PG_SYNTHESIS_DONE ? PG_SYNTHESIS_REJECTED : argument->status);
+@@ -508,13 +524,13 @@
  		}
  		if (kind > 0) {
  			if (kind == 2) argument = pg_synthesis_plain_rule(synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &argument);
@@ -201,7 +302,7 @@
  			local->fold = pg_synthesis_plain_rule(synthesis, PG_FOLD_ELIM, NULL, 2, premises);
  			if (!local->fold) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
  		}
-@@ -525,7 +530,7 @@
+@@ -525,7 +541,7 @@
  	if (!local->rule) {
  		struct pg_synthesis_job *shapes[] = {
  			pg_synthesis_classifier_structure(synthesis, local->normalized),
@@ -210,7 +311,7 @@
  		for (size_t i = 0; i < 2; ++i) {
  			if (!shapes[i]) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
  			if (shapes[i]->status == PG_SYNTHESIS_PENDING) { pg_synthesis_subscribe(synthesis, job, shapes[i], 0); return; }
-@@ -536,13 +541,14 @@
+@@ -536,13 +552,14 @@
  		if (!choice) return;
  		if (choice > 0) local->rule = local->fold;
  	}
@@ -229,7 +330,7 @@
  	if (!context || pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT || !input || !continuation) {
  		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
  	}
-@@ -570,21 +576,20 @@
+@@ -570,21 +587,20 @@
  		/* Preserve the effectful prefix outside the returned function.
  		 * The source adapter uses only checked APP/THUNK/RETURN/FOLD. */
  		binder = pg_binder(synthesis->typing->graph);
@@ -245,7 +346,7 @@
  		struct pg_synthesis_job *quoted = pg_synthesis_plain_rule(synthesis, PG_THUNK_INTRO, NULL, 1, &applied);
  		premises[0] = local->normalized;
 -		premises[1] = pg_synthesis_lambda_body(synthesis, extended, quoted);
-+		premises[1] = pg_synthesis_lambda_body(synthesis, (struct pg_synthesis_input){.pending = extended}, quoted);
++		premises[1] = pg_synthesis_lambda_body(synthesis, (struct pg_synthesis_input){.pending = extended}, (struct pg_synthesis_input){.pending = quoted});
  		local->rule = pg_synthesis_plain_rule(synthesis, PG_FOLD_ELIM, NULL, 2, premises);
  		pg_synthesis_forward(synthesis, job, local->rule);
  		return;

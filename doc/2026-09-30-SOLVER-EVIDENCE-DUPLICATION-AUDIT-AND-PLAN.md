@@ -388,6 +388,12 @@ baseline described above. Concurrent accepted-source edits remain excluded.
   directly. Share disposable notification edges with ordinary dependencies,
   retaining one advance per dispatch and detaching borrowed edges on cancel.
   This does not close the remaining owner/persistence work in SE1 or SE4.
+- [x] Migrate body, abstraction and Lambda-body inputs through the same direct
+  representation. Checked constructor bodies no longer need an Evidence Job;
+  actual polarity lifting, Context validation and Lambda construction remain.
+- [ ] Migrate lexical-name inputs and their lookup/environment/source-transport
+  consumers together. Preserve typed-use identity and stable pending keys;
+  do not recreate a completed producer just to retain lexical provenance.
 - [ ] Finish known-family result adapters and other context/IADT
   consumers, remove `EVIDENCE_JOB`, then remove duplicated query scheduling.
   The remaining adapter recognition is temporary, not the final architecture.
@@ -438,6 +444,46 @@ Public partitions retain the four failures documented above. SE1-SE5 stay open.
 Applied-source counts follow symlink targets; patch context/docs are excluded.
 The intermediate increase adds shared notification/lifetime handling, not a
 new progress owner, and is not presented as final code-size simplification.
+
+### Body Input Result (2026-09-30)
+
+**Objective (Code):** parent `db5d694` plus this prototype, using the same
+isolated accepted baseline. Body/abstraction inputs borrow checked results or
+pending producers through one API. Checked constructor bodies do not allocate
+input adapters. Context inputs must be checked Context judgements, not merely
+owned receipts with the same scope pointer. Focused tests cover wrong Context
+receipts, foreign/mixed inputs, scope mismatch, exact sharing, zero fuel and
+ordinary lifting/abstraction. No Core tags or wire fields were added.
+
+**Assessment:** the remaining BODY worker performs polarity/context work; this
+input migration does not establish that every enclosing worker is necessary.
+List/QuickSort adapters fall from 14/771 to 11/652 and all Jobs from 890/54,750
+to 887/54,631. Job bytes rise from 154,608/9,481,408 to 154,648/9,492,808 because
+direct-input keys/state are larger. Steps remain 2,726/809,533; typed/Evidence
+counts and premise edges are unchanged, including repeated terminal samples.
+This is not a memory/speedup claim or completion of the ownership refactor.
+
+**Plan / Results:** final O2 `check`, ASan/UBSan synthesis/IADT and the full
+source-I/O script pass, as do sanitizer source/derivation/definition/namespace
+checkpoints. Full O2 acceptance and all seven checkpoint targets also pass.
+Fresh patch application exactly matches the tested source/tests/fixtures.
+Public partition testing still fails on reload at 100+100, 1,000+1,000,
+1,600+1,600 and 2,726+0; step 0 and 10+10 pass. SE1-SE5 remain open.
+
+| Applied-code delta from `db5d694` | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `synthesis.c` / `.h` | 47 | 42 | +5 |
+| `synthesis_source.h` | 3 | 3 | 0 |
+| `synthesis_cbpv.c` | 44 | 33 | +11 |
+| `synthesis_function.c` | 3 | 4 | -1 |
+| `synthesis_handler.c` | 6 | 6 | 0 |
+| `synthesis_operation.c` | 2 | 2 | 0 |
+| `synthesis_binding.c` | 1 | 1 | 0 |
+| Implementation total | 106 | 91 | +15 |
+| `tests/synthesis.c` | 97 | 25 | +72 |
+| `definition_checkpoint_test.c` | 21 | 14 | +7 |
+
+Counts follow applied source, excluding patch context and documentation.
 
 ### Annotation Input Result (2026-09-30)
 

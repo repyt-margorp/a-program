@@ -40,7 +40,7 @@
  	}
  	view.entries = entries;
  	/* Retained input attachment is independent of the registration cursor. */
-@@ -518,7 +521,7 @@
+@@ -518,11 +521,11 @@
  	const struct pg_evidence *computation = pg_prove_return(&p->typing, value);
  	assert(context && type && value && computation);
  	const struct pg_evidence *inputs[] = {type, value, computation};
@@ -48,10 +48,25 @@
 +	struct pg_synthesis_input scope = {.checked = context};
  	for (size_t i = 0; i < 3; ++i) {
  		struct pg_synthesis_job *input = pg_synthesis_evidence(s, inputs[i]);
- 		struct pg_synthesis_job *body = pg_synthesis_body(s, input, scope);
-@@ -535,9 +538,9 @@
- 		if (i == 2) assert(selected == input);
+-		struct pg_synthesis_job *body = pg_synthesis_body(s, input, scope);
+-		assert(body && !pg_synthesis_body(&other->synthesis, input, scope));
++		struct pg_synthesis_job *body = pg_synthesis_body(s, (struct pg_synthesis_input){.pending = input}, scope);
++		assert(body && !pg_synthesis_body(&other->synthesis, (struct pg_synthesis_input){.pending = input}, scope));
+ 		assert(pg_synthesis_body_resume(&other->synthesis, body));
+ 		assert(pg_synthesis_body_resume(s, input));
+ 		size_t proofs = p->typing.proofs.count, terms = p->graph.terms.count;
+@@ -531,13 +534,16 @@
+ 		assert(body->status == PG_SYNTHESIS_PENDING && !body->result);
+ 		assert(!s->steps && p->typing.proofs.count == proofs && p->graph.terms.count == terms);
+ 		struct pg_synthesis_job *selected = pg_synthesis_work_project(body).rule;
+-		assert(selected);
+-		if (i == 2) assert(selected == input);
++		if (i == 2) {
++			assert(!selected && !pg_synthesis_work_project(body).preparing);
++			assert(pg_synthesis_body_input(body).checked == computation && !pg_synthesis_body_input(body).pending);
++		}
  		else {
++			assert(selected);
  			assert(pg_synthesis_plain_derivation(selected)->rule == PG_RETURN_INTRO);
 -			struct pg_synthesis_job *operand = pg_synthesis_rule_premise(s, selected, 0);
 -			if (i == 1) assert(operand == input);
@@ -62,8 +77,14 @@
  		}
  	}
  	advance(s, 10000);
-@@ -601,12 +604,12 @@
- 	while (!pg_synthesis_evidence_input(body)) {
+@@ -598,31 +604,33 @@
+ {
+ 	struct pg_synthesis *s = &f->program->synthesis;
+ 	size_t first = f->count;
+-	while (!pg_synthesis_evidence_input(body)) {
++	struct pg_synthesis_input input = pg_synthesis_input_direct((struct pg_synthesis_input){.pending = body});
++	while (!input.checked) {
++		body = input.pending;
  		const struct pg_derivation_input *rule = pg_synthesis_plain_derivation(body);
  		assert(rule && rule->rule == PG_LAMBDA_INTRO && rule->count == 2);
 -		struct pg_synthesis_job *pi = pg_synthesis_rule_premise(s, body, 0);
@@ -79,7 +100,39 @@
  		/* A pending classifier here either has not started or has a retained
  		 * structural type and finishes in one dispatch, without query progress. */
  		if (classifier->status == PG_SYNTHESIS_PENDING && pg_synthesis_result(adapter))
-@@ -714,7 +717,9 @@
+ 			assert(pg_evidence_subject(adapter->result)->type);
+ 		add_job(f, body); add_job(f, pi); add_job(f, adapter); add_job(f, classifier);
+-		body = pg_synthesis_body_input(adapter);
+-		assert(body);
++		input = pg_synthesis_body_input(adapter);
++		assert(input.checked || input.pending);
+ 	}
+ 	size_t end = f->count;
+ 	for (size_t i = first; i < end; ++i) {
+-		struct pg_synthesis_job *input = pg_synthesis_body_input(f->jobs[i]);
+-		if (!input) continue;
++		struct pg_synthesis_input source = pg_synthesis_body_input(f->jobs[i]);
++		if (!source.checked && !source.pending) continue;
+ 		struct pg_synthesis_job *selected = pg_synthesis_work_project(f->jobs[i]).rule;
+-		if (selected && selected != input) add_job(f, selected);
++		if (selected && selected != source.pending) add_job(f, selected);
+ 	}
+-	const struct pg_evidence *leaf = pg_synthesis_evidence_input(body);
++	const struct pg_evidence *leaf = input.checked;
+ 	assert(pg_evidence_rule(leaf) == PG_CONSTRUCTOR_INTRO);
+ 	return leaf;
+ }
+@@ -697,7 +705,8 @@
+ 			assert(pg_synthesis_rule_frontier(s, job, &next) == 1);
+ 			cursor.body[i].premise = next;
+ 		}
+-		cursor.body[i].selected = pg_synthesis_body_input(job) && pg_synthesis_work_project(job).rule;
++		struct pg_synthesis_input source = pg_synthesis_body_input(job);
++		cursor.body[i].selected = (source.checked || source.pending) && !pg_synthesis_work_project(job).preparing;
+ 	}
+ 	namespace_cursor_write(file, &cursor);
+ 	free(cursor.body);
+@@ -714,7 +723,9 @@
  {
  	const struct pg_derivation_input *input = pg_synthesis_plain_derivation(key);
  	if (!input || i == input->count) return 0;
@@ -90,7 +143,20 @@
  	return *child ? 1 : -1;
  }
  
-@@ -859,7 +864,7 @@
+@@ -838,9 +849,10 @@
+ 		for (size_t i = first; i < base; ++i)
+ 			if (cursor.body[i - first].selected) assert(!pg_synthesis_body_resume(s, f.jobs[i]));
+ 		for (size_t i = first; i < base; ++i) {
+-			if (!pg_synthesis_body_input(f.jobs[i])) continue;
++			struct pg_synthesis_input source = pg_synthesis_body_input(f.jobs[i]);
++			if (!source.checked && !source.pending) continue;
+ 			struct pg_synthesis_job *rule = pg_synthesis_work_project(f.jobs[i]).rule;
+-			if (rule && rule != pg_synthesis_body_input(f.jobs[i])) add_job(&f, rule);
++			if (rule && rule != source.pending) add_job(&f, rule);
+ 		}
+ 		assert(f.count - first == cursor.count);
+ 		struct pg_synthesis_job **children = malloc(cursor.count * sizeof(*children));
+@@ -859,7 +871,7 @@
  			if (children[i]->status == PG_SYNTHESIS_PENDING && rule) {
  				assert(pg_synthesis_rule_resume(s, children[i], rule->count + 1));
  				for (size_t j = 0; j < rule->count; ++j) {

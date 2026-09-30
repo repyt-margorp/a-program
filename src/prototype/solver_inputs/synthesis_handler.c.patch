@@ -30,7 +30,7 @@
  	struct pg_synthesis_job *job = pg_synthesis_work_request(synthesis, HANDLER_RETURN_JOB, 3, inputs);
  	if (job && !return_work(job)->left) {
 -		struct pg_synthesis_job *body = pg_synthesis_body(synthesis, input, NULL);
-+		struct pg_synthesis_job *body = pg_synthesis_body(synthesis, input, (struct pg_synthesis_input){0});
++		struct pg_synthesis_job *body = pg_synthesis_body(synthesis, (struct pg_synthesis_input){.pending = input}, (struct pg_synthesis_input){0});
  		if (!body) return NULL;
 -		struct pg_synthesis_job *premises[] = {scope->context_job, body};
 -		return_work(job)->left = pg_synthesis_plain_rule(synthesis, PG_CONTEXT_PROJECTION, NULL, 2, premises);
@@ -61,7 +61,7 @@
  		struct pg_synthesis_job *body = pg_synthesis_request(synthesis, local->inner, clause->right);
  		local->value_job = pg_synthesis_lambda_body(synthesis,
 -			context, body);
-+			(struct pg_synthesis_input){.pending = context}, body);
++			(struct pg_synthesis_input){.pending = context}, (struct pg_synthesis_input){.pending = body});
  	}
  	if (!local->value_job) goto error;
  	if (pg_synthesis_await(synthesis, job, local->value_job)) return;
@@ -70,7 +70,7 @@
  	struct pg_synthesis_job *carrier, size_t count, const struct source_handler_clause *clauses)
  {
 -	body = pg_synthesis_body(synthesis, body, NULL);
-+	body = pg_synthesis_body(synthesis, body, (struct pg_synthesis_input){0});
++	body = pg_synthesis_body(synthesis, (struct pg_synthesis_input){.pending = body}, (struct pg_synthesis_input){0});
  	if (!count) {
  		struct pg_synthesis_job *fold = pg_synthesis_plain_rule(synthesis, PG_FOLD_ELIM, NULL, 2,
  			(struct pg_synthesis_job *[]){body, returned});
@@ -164,8 +164,8 @@
 -	struct pg_synthesis_job *inner_lambda = pg_synthesis_lambda_body(synthesis, context, body);
 -	local->value_job = pg_synthesis_lambda_body(synthesis, payload_context, inner_lambda);
 +	struct pg_synthesis_job *inner_lambda = pg_synthesis_lambda_body(synthesis,
-+		(struct pg_synthesis_input){.pending = context}, body);
-+	local->value_job = pg_synthesis_lambda_body(synthesis, (struct pg_synthesis_input){.pending = payload_context}, inner_lambda);
++		(struct pg_synthesis_input){.pending = context}, (struct pg_synthesis_input){.pending = body});
++	local->value_job = pg_synthesis_lambda_body(synthesis, (struct pg_synthesis_input){.pending = payload_context}, (struct pg_synthesis_input){.pending = inner_lambda});
  	return local->value_job ? 0 : PG_SYNTHESIS_ERROR;
  }
  
@@ -192,7 +192,7 @@
  				size_t parameters;
  				if (!state->collected) {
 -					body = pg_synthesis_body(synthesis, local->left, NULL);
-+					body = pg_synthesis_body(synthesis, local->left, (struct pg_synthesis_input){0});
++					body = pg_synthesis_body(synthesis, (struct pg_synthesis_input){.pending = local->left}, (struct pg_synthesis_input){0});
  					parameters = 0;
  				} else if (state->collected == 1) { body = local->right; parameters = 1; }
  				else {
