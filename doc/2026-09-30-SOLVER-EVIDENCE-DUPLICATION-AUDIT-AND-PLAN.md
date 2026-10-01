@@ -283,15 +283,28 @@ dispatchers still remain separate, so this does not establish one frontier.
 Full frontier/persistence and partition gates remain open; no promotion or SE1
 completion follows.
 
-Agent assessment of the latest user concern: the frontier is a set of unfinished
-obligations, not another copy of the Term or derivation graph. Persist each
-obligation's actual cursor once; reconstruct disposable readiness references
-without redoing solved work. A common queue interface is justified only if it
-removes an existing wrapper's allocation and duplicated state, not if it merely
-adds another abstraction above unchanged owners. Evidence admission must remain
-distinct from witness Terms, but structural premise edges already recoverable
-from typed inputs should not be retained twice. This is the existing SE1-SE4
-ownership criterion, not authorization for a new representation or work list.
+2026-10-01 recheck at `7846f59`, including the uncommitted family-owner trial:
+accepted `src/synthesis_function.c:classifier_step` still copies a typed query's
+answer/status into its Job; the recorded prototype already removed that copy.
+`src/evidence.c:pg_evidence` borrows its typed conclusion: it is not a recursive
+copy of the Core Term. Concurrent accepted-source edits are excluded from trial
+verification. The trial exposed a concrete remaining consumer defect:
+`term_structure_step` read a family preparation's raw DONE status while its
+actual output was pending, making the historical QuickSort provider unsupported.
+Waiting on the actual output, rather than restoring answer copies, fixes that
+reproduction; the family milestone below tracks its gates.
+
+Agent assessment: the frontier references unfinished obligations, not another
+Term/derivation graph. Store each obligation's inputs, result and actual cursor
+once. Where a Job is currently the sole unfinished record, consolidate that
+record rather than adding a Constraint beneath it. Where a Query already owns
+the work, remove mirrored Job progress. Ready/wake indexes borrow these owners
+and may be reconstructed once on load; do not scan the entire graph each step.
+Saving only the frontier loses interrupted reduction/conversion progress.
+Evidence admission is distinct from object witness Terms; premise edges already
+recoverable from typed inputs should not be retained twice. A shared pointer or
+lookup index alone is not a competing authority. This sharpens SE1-SE4, not a new
+replacement graph, work list, or authorization to expand the wire format.
 
 Agent assessment: adopt the user's frontier model as the architectural target,
 not a claim that every existing Job already has an underlying constraint record.
@@ -2712,3 +2725,76 @@ and docs. The full trial invocation exits 0; the clean recorded source-I/O suite
 and normalization case also pass. An earlier no-argument source-I/O invocation
 failed its CLI assertion, not a test case. Full SE1-SE5 remain open under the
 existing active work list.
+
+### SE1 Family Construction Ownership (2026-10-01)
+
+#### Subjective (User)
+
+English paraphrase, 2026-10-01: resume the actual Solve frontier, not another
+Job/Evidence graph duplicating Term, typing and Solve. No new result database
+or replacement Task graph is authorized by this requirement.
+
+#### Objective (Code)
+
+At `7846f59`, the recorded prototype's `family_function_step` still requests a
+checked-input worker after discovering its pending input and copies the result
+back. `family_continue` also copies an already-owned continuation answer.
+Classifier/IADT discovery already borrows a canonical query, but its descriptor
+interface can express only that particular output owner. Concurrent accepted
+source edits remain excluded; this observation concerns the frozen-baseline
+prototype assembly, not a fresh test result.
+
+Fresh trial verification: synthesis tests and ASan/UBSan synthesis with leak
+checking pass, including nested borrowed-output structural reads, failure
+propagation, exact scoped sharing and zero fuel. The first full regression run
+failed QuickSort at 732,804 steps: structural fallback mistook preparation DONE
+for output completion. All three structural fallbacks now await the actual input
+owner. The same historical provider completes at 1,493,904 steps; the published
+parent completes at 1,493,976. No new proof axiom, expected-type inference or
+answer-copy compatibility path was added. The corrected full regression exits
+0: existing checks/examples/acceptance, semantic validation and all seven
+restricted checkpoint modes pass. This does not include a passing public
+partition gate; its failures are recorded below.
+
+The recorded patches assemble cleanly and match the trial's C/header files.
+Clean-assembly Core, IADT, synthesis, source-I/O and normalization tests pass.
+Evidence logs use `/tmp/a-program-family-owner-`; they are local verification
+records, not additional artifact data.
+
+Whole-store census versus the published IADT prototype: List-09 is unchanged
+(2,617 steps, 820 Jobs, 146,472 Job allocation bytes). General QuickSort Local
+Sorted changes from 801,912 to 801,877 steps, 48,985 to 48,958 Jobs, 8,757,048 to
+8,752,944 Job allocation bytes, and 34,340 to 34,054 raw Job result references.
+Typed-node, Evidence and Query counts remain unchanged. These are not total
+memory or wall-time estimates; the resolved-key index also gains 54 entries.
+
+Strict public partition verification still fails the same four reload cases:
+100:100 (-178 bytes), 1000:1000 (-1,123 bytes), 1600:1600 (pending instead of
+done), and 2617:0 (same image bytes but pending instead of done). In-memory and
+save-without-reload paths match exactly, including split 10+10 versus 20.
+This remains a frontier/cursor persistence blocker, not an accepted exception.
+
+#### Assessment
+
+Agent trial decision: use the existing checked/pending input representation for
+borrowed outputs as well as dependencies, replacing the query-only descriptor
+hook. Discovery completion must not mirror output completion. Family conversion
+should reuse its resolved input key and publish its actual continuation, without
+constructing another full checked-input worker. Already checked non-family inputs
+need no conversion worker. Retain genuine family construction and nominal
+normalization work. This is an SE1 ownership change, not the full frontier gate.
+The discovered raw-status consumer defect demonstrates why hiding mirrored state
+behind an interface is insufficient: consumers must follow the actual owner.
+The limited allocation reduction does not justify claiming consolidation is done.
+
+#### Plan
+
+- [x] Implement borrowed outputs and migrate classifier/IADT/family consumers;
+  remove the query-only hook and redundant family forwarding/result copies.
+- [x] Test converging inputs, exact scoped distinctions, failures, ownership,
+  zero fuel and interrupted-output advancement; run regression and sanitizers.
+- [x] Measure allocations/applied code deltas and rerun public partitions;
+  record the failures without waiving them. Applied implementation: +117/-68
+  (net +49); tests: +176/-19 (net +157), excluding patch context and docs.
+- [ ] Publish only verified prototype changes; keep SE1-SE5 incomplete until
+  the existing frontier/persistence gates actually pass.

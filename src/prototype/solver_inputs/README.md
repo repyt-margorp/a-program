@@ -153,6 +153,11 @@ not yet unify the two dispatchers or close the public resumption gate.
 IADT recovery similarly separates normalization preparation from its canonical
 typed query. It borrows that query's recovered type and instance view, without
 copying the parameter map or nominal-recovery completion into the preparation.
+Family conversion now borrows its actual construction output through the same
+checked/pending input representation. Discovery DONE is not output DONE; structural
+consumers wait on that output without reinstating result copies. Pending and
+resolved checked keys share one construction, while exact Contexts stay distinct.
+This is a prototype ownership change, not completed frontier persistence.
 Lexical binding now has one checked/pending Context API; the Job-only binding
 entry point is removed. IH/graph associations borrow known Contexts directly.
 Only unavailable inputs require a binding-validation request; an existing one

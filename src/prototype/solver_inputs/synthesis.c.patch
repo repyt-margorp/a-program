@@ -2530,7 +2530,7 @@
  			}
  			break;
  		default: break;
-@@ -4910,28 +5015,37 @@
+@@ -4910,28 +5015,38 @@
  
  /* 2 is a type used as a value, 1 a value, 0 computation, -1 unknown.
   * Accepted judgements supersede recipes; pending adapters expose their rule. */
@@ -2561,6 +2561,7 @@
  		break;
  	}
 -	const struct pg_evidence *result = rule->result ? rule->result : producer->result;
++	if (!result) result = pg_synthesis_result(rule);
 +	if (!result) result = rule->result ? rule->result : producer->result;
  	if (result) {
  		enum pg_evidence_judgement judgement = pg_evidence_judgement(result);
@@ -2575,7 +2576,7 @@
  		if (block_syntax(source_work(rule)->syntax)) return 0;
  		switch (source_work(rule)->syntax->kind) {
  		case PG_SYNTAX_LAMBDA: case PG_SYNTAX_APPLICATION: return 0;
-@@ -4944,8 +5058,13 @@
+@@ -4944,8 +5059,13 @@
  
  const struct pg_object *pg_synthesis_context_binder(const struct pg_synthesis_job *context)
  {
@@ -2591,7 +2592,7 @@
  	if (proof) {
  		const struct pg_context *scope = pg_evidence_context(proof);
  		return pg_evidence_judgement(proof) == PG_JUDGEMENT_CONTEXT && scope ? scope->binder : NULL;
-@@ -4954,27 +5073,35 @@
+@@ -4954,27 +5074,35 @@
  	if (binder) return binder;
  	binder = pg_synthesis_pi_scope_binder(context);
  	if (binder) return binder;
@@ -2636,7 +2637,7 @@
  			if (!prepared) goto unsupported;
  			local->left = pg_synthesis_term_structure(synthesis, prepared);
  		}
-@@ -4997,9 +5124,9 @@
+@@ -4997,9 +5125,9 @@
  	default: goto unsupported;
  	}
  	if (!local->left) {
@@ -2649,7 +2650,15 @@
  	}
  	if (!local->left) goto unsupported;
  	if (pg_synthesis_await(synthesis, job, local->left)) return;
-@@ -5014,21 +5141,31 @@
+@@ -5008,27 +5136,37 @@
+ 	pg_synthesis_finish(synthesis, job, local->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+ 	return;
+ unsupported:
+-	if (producer->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, producer); return; }
+-	pg_synthesis_finish(synthesis, job, producer->status == PG_SYNTHESIS_DONE ? PG_SYNTHESIS_UNSUPPORTED : producer->status);
++	if (pg_synthesis_await_input(synthesis, job, dependency)) return;
++	if (!accepted_structure(synthesis, job, dependency)) pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED);
+ }
  
  static void classifier_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
@@ -2690,7 +2699,7 @@
  		goto consume;
  	}
  	if (prepared) {
-@@ -5041,16 +5178,16 @@
+@@ -5041,16 +5179,16 @@
  		return;
  	}
  	if (input) {
@@ -2713,7 +2722,7 @@
  		default: break;
  		}
  	}
-@@ -5059,7 +5196,7 @@
+@@ -5059,7 +5197,7 @@
  	{
  		if (pg_synthesis_await(synthesis, job, local->left)) return;
  		const struct pg_term *type = pg_synthesis_type_structure_result(local->left);
@@ -2722,7 +2731,15 @@
  			const struct pg_reduction_certificate *receipt = pg_synthesis_reduction_advance(synthesis, job, &local->normalizing, type, PG_REDUCTION_WHNF);
  			if (!receipt) return;
  			type = pg_reduction_target(receipt);
-@@ -5075,20 +5212,25 @@
+@@ -5069,30 +5207,35 @@
+ 		return;
+ 	}
+ accepted_classifier:
+-	if (producer->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, producer); return; }
+-	pg_synthesis_finish(synthesis, job, producer->status == PG_SYNTHESIS_DONE ? PG_SYNTHESIS_UNSUPPORTED : producer->status);
++	if (pg_synthesis_await_input(synthesis, job, dependency)) return;
++	if (!accepted_structure(synthesis, job, dependency)) pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED);
+ }
  
  static void type_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
@@ -2752,8 +2769,14 @@
 +		local->left = pg_synthesis_type_structure_input(synthesis, pg_synthesis_rule_input(synthesis, producer, 1));
  		goto forward;
  	}
- 	if (producer->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, producer); return; }
-@@ -5101,8 +5243,8 @@
+-	if (producer->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, producer); return; }
+-	pg_synthesis_finish(synthesis, job, producer->status == PG_SYNTHESIS_DONE ? PG_SYNTHESIS_UNSUPPORTED : producer->status);
++	if (pg_synthesis_await_input(synthesis, job, dependency)) return;
++	if (!accepted_structure(synthesis, job, dependency)) pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED);
+ 	return;
+ forward:
+ 	forward_structure(synthesis, job);
+@@ -5101,8 +5244,8 @@
  int pg_synthesis_literal_frontier(const struct pg_synthesis *synthesis,
  	const struct pg_synthesis_job *job, struct pg_synthesis_job **rule)
  {
@@ -2764,7 +2787,7 @@
  	const struct source_work *local = source_work(job);
  	if (local->syntax->kind != PG_SYNTAX_ATOM) return 0;
  	struct pg_token token = local->syntax->token;
-@@ -5124,7 +5266,7 @@
+@@ -5124,7 +5267,7 @@
  	struct source_work *local = source_work(job);
  	struct pg_token token = local->syntax->token;
  	if (token.kind == '@') {
@@ -2773,7 +2796,7 @@
  		return local->left;
  	}
  	if (token.kind == PG_TOKEN_INT && (token.integer < INT32_MIN || token.integer > INT32_MAX)) return NULL;
-@@ -5134,23 +5276,23 @@
+@@ -5134,23 +5277,23 @@
  		: pg_host_literal(synthesis->typing->graph, type, token.text_length, (const unsigned char *)token.text);
  	if (!literal) return NULL;
  	struct pg_derivation_input formation = {.rule = PG_HOST_TYPE_FORM, .count = 1, .parameters.constant = type};
@@ -2804,7 +2827,7 @@
  	if (job->status == PG_SYNTHESIS_DONE && !result.rule) return 0;
  	*view = result;
  	return 1;
-@@ -5161,16 +5303,17 @@
+@@ -5161,16 +5304,17 @@
  {
  	struct pg_reference_frontier current;
  	if (!view || pg_synthesis_reference_frontier(synthesis, job, &current) != 1) return -1;
@@ -2829,7 +2852,7 @@
  	} else if (!reference.binder) return -1;
  	return prepare_reference_rule(synthesis, local, reference) == view->rule ? 0 : -1;
  }
-@@ -5178,7 +5321,7 @@
+@@ -5178,7 +5322,7 @@
  static int atomic_rule_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
  	struct source_work *local = source_work(job);
@@ -2838,7 +2861,7 @@
  	int qualified = local->syntax->kind == PG_SYNTAX_QUALIFIED;
  	if (qualified && (block_syntax(local->syntax) || local->syntax->left->kind == PG_SYNTAX_DEFINITIONS)) return 0;
  	if (!qualified && local->syntax->kind != PG_SYNTAX_ATOM) return 0;
-@@ -5201,13 +5344,13 @@
+@@ -5201,13 +5345,13 @@
  	if (!local->binder) {
  		if (local->left) return 0;
  		struct source_reference reference;
@@ -2857,7 +2880,7 @@
  				pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return 1;
  			}
  			pg_synthesis_forward(synthesis, job, prepare_reference_rule(synthesis, local, reference));
-@@ -5215,13 +5358,13 @@
+@@ -5215,13 +5359,13 @@
  		}
  		/* A pending named producer, not the enclosing context, determines when
  		 * its polarity becomes available. Subscribe before waiting on the row. */
@@ -2876,7 +2899,7 @@
  			return 1;
  		}
  		if (!reference.binder) {
-@@ -5254,19 +5397,23 @@
+@@ -5254,19 +5398,23 @@
  static int prepare_expression(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
  	struct source_work *local = source_work(job);
@@ -2909,7 +2932,7 @@
  		local->stage = APPLICATION_RULE_READY;
  		return 1;
  	}
-@@ -5289,14 +5436,14 @@
+@@ -5289,14 +5437,14 @@
  	if (!local->left) goto error;
  	if (syntax->kind == PG_SYNTAX_QUOTE) {
  		if (pg_synthesis_await_preparation(synthesis, job, local->left, NULL)) return 0;
@@ -2926,18 +2949,20 @@
  			struct pg_synthesis_job *shape = pg_synthesis_classifier_structure(synthesis, operand);
  			if (!shape) goto error;
  			if (pg_synthesis_await(synthesis, job, shape)) return 0;
-@@ -5309,8 +5456,8 @@
+@@ -5308,9 +5456,10 @@
+ 			/* Surface & preserves an already suspended value; it never runs it. */
  			local->right = operand;
  		} else {
++			struct pg_synthesis_input value = {.pending = pg_synthesis_pending(operand)};
  			if (operand->result && pg_evidence_judgement(operand->result) == PG_JUDGEMENT_TYPE_FAMILY)
 -				operand = pg_synthesis_family_function(synthesis, operand);
 -			local->right = pg_synthesis_plain_rule(synthesis, PG_THUNK_INTRO, NULL, 1, &operand);
-+				operand = pg_synthesis_family_function(synthesis, (struct pg_synthesis_input){.checked = operand->result});
-+			local->right = pg_synthesis_plain_rule_inputs(synthesis, PG_THUNK_INTRO, NULL, 1, &(struct pg_synthesis_input){.pending = pg_synthesis_pending(operand)});
++				value = pg_synthesis_family_function(synthesis, (struct pg_synthesis_input){.checked = operand->result});
++			local->right = pg_synthesis_plain_rule_inputs(synthesis, PG_THUNK_INTRO, NULL, 1, &value);
  		}
  		if (!local->right) goto error;
  	} else {
-@@ -5318,7 +5465,8 @@
+@@ -5318,7 +5467,8 @@
  		if (!local->right) goto error;
  	}
  	if (syntax->kind == PG_SYNTAX_LAMBDA) {
@@ -2947,7 +2972,7 @@
  		if (!local->value_job) goto error;
  	}
  	local->stage = 2;
-@@ -5336,16 +5484,16 @@
+@@ -5336,16 +5486,16 @@
  	const struct pg_object *binder = pg_synthesis_source_binder(synthesis, local->scope, local->syntax, state->binding_count, NULL);
  	if (!binder) return PG_SYNTHESIS_REJECTED;
  	++state->binding_count;
@@ -2969,7 +2994,7 @@
  	state->callee = callee ? variable : other;
  	state->argument = callee ? other : variable;
  	return PG_SYNTHESIS_DONE;
-@@ -5359,25 +5507,26 @@
+@@ -5359,25 +5509,26 @@
  	struct pg_synthesis_job *source = (void *)job->inputs[0];
  	struct pg_synthesis_job *type = (void *)job->inputs[1];
  	if (local->left) { pg_synthesis_forward(synthesis, job, local->left); return; }
@@ -3007,7 +3032,7 @@
  		local->left = type ? request_job(synthesis, CLASSIFIER_CONSTRAINT_JOB, source_work(source)->right, type) : NULL;
  	} else {
  		if (pg_synthesis_await(synthesis, job, type)) return;
-@@ -5406,12 +5555,13 @@
+@@ -5406,12 +5557,13 @@
  static int source_has_identity(struct pg_synthesis *synthesis, struct pg_synthesis_job *parent)
  {
  	for (const struct pg_source_scope *scope = source_work(parent)->scope; scope; scope = scope->parent) {
@@ -3023,7 +3048,7 @@
  		if (!formation) { pg_synthesis_finish(synthesis, parent, PG_SYNTHESIS_ERROR); return -1; }
  		if (formation->status == PG_SYNTHESIS_PENDING) { depend(synthesis, parent, formation); return -1; }
  		if (formation->status == PG_SYNTHESIS_ERROR) { pg_synthesis_finish(synthesis, parent, PG_SYNTHESIS_ERROR); return -1; }
-@@ -5423,29 +5573,30 @@
+@@ -5423,29 +5575,30 @@
  static struct pg_synthesis_job *constructor_callable_origin(struct pg_synthesis *synthesis, struct pg_synthesis_job *producer)
  {
  	if (!producer) return NULL;
@@ -3063,7 +3088,7 @@
  	}
  	return pg_synthesis_source_origin(producer);
  }
-@@ -5455,7 +5606,7 @@
+@@ -5455,7 +5608,7 @@
  	struct pg_synthesis_job *slow = producer, *fast = producer;
  	while (slow) {
  		const struct source_work *local = source_work(slow);
@@ -3072,7 +3097,7 @@
  		slow = constructor_callable_origin(synthesis, slow);
  		fast = constructor_callable_origin(synthesis, constructor_callable_origin(synthesis, fast));
  		if (slow && slow == fast) return NULL;
-@@ -5496,7 +5647,7 @@
+@@ -5496,7 +5649,7 @@
  		state->arguments[i - 1] = pg_synthesis_request(synthesis, local->scope, syntax->right);
  		if (!state->arguments[i - 1]) goto error;
  	}
@@ -3081,7 +3106,7 @@
  		.callee = callee, .argument = state->arguments[0], .spine = state};
  	local->application = application;
  	local->left = callee;
-@@ -5534,21 +5685,23 @@
+@@ -5534,21 +5687,23 @@
  		if (path->field >= input->field && path->field - input->field < argument_count) {
  			if (!state->instance) {
  				struct pg_synthesis_job *input_argument = arguments[path->field - input->field];
@@ -3117,7 +3142,7 @@
  			struct pg_inductive_instance instance;
  			size_t count;
  			if (!pg_synthesis_inductive_instance_result(state->instance, &instance) || !instance.indices) goto rejected;
-@@ -5556,25 +5709,28 @@
+@@ -5556,25 +5711,28 @@
  				pg_evidence_context(pg_data_schema_parameters(instance.schema)), &count) || path->index >= count) goto rejected;
  			size_t premises = pg_evidence_context_map(instance.indices)->count;
  			if (premises < count) goto error;
@@ -3157,7 +3182,7 @@
  		if (!state->function) goto error;
  		state->instance = NULL;
  		++state->next;
-@@ -5592,7 +5748,7 @@
+@@ -5592,7 +5750,7 @@
  	const struct constructor_application *state, struct pg_synthesis_job *body)
  {
  	for (size_t i = state->count; body && i; --i)
@@ -3166,7 +3191,7 @@
  	return body;
  }
  
-@@ -5606,9 +5762,9 @@
+@@ -5606,9 +5764,9 @@
  	struct application_state *application = local->application;
  	struct constructor_application *state = application->constructor;
  	if (!specialize_constructor(synthesis, job, state, callee, 1, &argument)) return;
@@ -3179,7 +3204,7 @@
  	body = abstract_constructor_indices(synthesis, state, body);
  	if (!body) goto error;
  	if (state->input->field == SIZE_MAX) goto error;
-@@ -5625,7 +5781,7 @@
+@@ -5625,7 +5783,7 @@
  static int prepare_application(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
  	struct source_work *local = source_work(job);
@@ -3188,7 +3213,7 @@
  	if (local->stage == APPLICATION_RULE_READY) {
  		if (local->application && local->application->constraint) {
  			struct pg_synthesis_job *constraint = local->application->constraint;
-@@ -5638,15 +5794,16 @@
+@@ -5638,15 +5796,16 @@
  	if (!local->application) {
  		local->application = pg_alloc(synthesis->typing->graph, sizeof(*local->application));
  		if (!local->application) goto error;
@@ -3208,7 +3233,7 @@
  			if (!state->tail) goto error;
  			state->frames = frame->parent;
  			pg_synthesis_enqueue(synthesis, job);
-@@ -5656,7 +5813,7 @@
+@@ -5656,7 +5815,7 @@
  			if (state->constraint && pg_synthesis_await(synthesis, job, state->constraint)) return 1;
  			state->callee = state->tail;
  			state->argument = state->spine->arguments[state->spine->next++];
@@ -3217,7 +3242,7 @@
  			state->tail = NULL;
  			state->constraint = NULL;
  			state->constructor = NULL;
-@@ -5685,27 +5842,28 @@
+@@ -5685,27 +5844,30 @@
  		const struct pg_object *binder;
  		if (!pg_pi_view(pg_synthesis_type_structure_result(raw_shape), &domain, &binder, &body)) goto error;
  		if (logical_family_signature(domain))
@@ -3225,21 +3250,29 @@
 +			argument = pg_synthesis_family_contract(synthesis,
 +				state->context, (struct pg_synthesis_input){.pending = pg_synthesis_pending(argument)});
  		if (!argument) goto error;
- 		if (pg_synthesis_await(synthesis, job, argument)) return 1;
- 		if (pg_evidence_judgement(argument->result) == PG_JUDGEMENT_COMPUTATION)
- 			argument = pg_synthesis_return(synthesis, pg_synthesis_scope_context(local->scope), argument->result);
+-		if (pg_synthesis_await(synthesis, job, argument)) return 1;
+-		if (pg_evidence_judgement(argument->result) == PG_JUDGEMENT_COMPUTATION)
+-			argument = pg_synthesis_return(synthesis, pg_synthesis_scope_context(local->scope), argument->result);
++		if (pg_synthesis_await_pending(synthesis, job, pg_synthesis_pending(argument))) return 1;
++		const struct pg_evidence *value = pg_synthesis_result(argument);
++		if (pg_evidence_judgement(value) == PG_JUDGEMENT_COMPUTATION)
++			argument = pg_synthesis_return(synthesis, pg_synthesis_scope_context(local->scope), value);
  		if (!argument) goto error;
- 		if (argument->result && pg_evidence_judgement(argument->result) == PG_JUDGEMENT_VALUE_TYPE)
+-		if (argument->result && pg_evidence_judgement(argument->result) == PG_JUDGEMENT_VALUE_TYPE)
 -			argument = pg_synthesis_plain_rule(synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &argument);
+-		if (pg_synthesis_await(synthesis, job, argument)) return 1;
++		value = pg_synthesis_result(argument);
++		if (value && pg_evidence_judgement(value) == PG_JUDGEMENT_VALUE_TYPE)
 +			argument = pg_synthesis_plain_rule_inputs(synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &(struct pg_synthesis_input){.pending = pg_synthesis_pending(argument)});
- 		if (pg_synthesis_await(synthesis, job, argument)) return 1;
++		if (pg_synthesis_await_pending(synthesis, job, pg_synthesis_pending(argument))) return 1;
  		/* Alpha-equal classifiers need no conversion formation. The ordinary
  		 * family rule still checks both accepted operands and their scope. */
- 		if (pg_alpha_equal(domain, pg_evidence_classifier(argument->result)) != 1 && !logical_family_signature(domain))
+-		if (pg_alpha_equal(domain, pg_evidence_classifier(argument->result)) != 1 && !logical_family_signature(domain))
 -			argument = pg_synthesis_expect(synthesis, argument,
 -				pg_synthesis_family_domain(synthesis, state->callee));
 -		struct pg_synthesis_job *premises[] = {state->callee, argument};
 -		state->tail = pg_synthesis_plain_rule(synthesis, PG_TYPE_FAMILY_APP, NULL, 2, premises);
++		if (pg_alpha_equal(domain, pg_evidence_classifier(pg_synthesis_result(argument))) != 1 && !logical_family_signature(domain))
 +			argument = pg_synthesis_expect_inputs(synthesis,
 +				(struct pg_synthesis_input){.pending = pg_synthesis_pending(argument)}, (struct pg_synthesis_input){.pending = pg_synthesis_pending(pg_synthesis_family_domain(synthesis, (struct pg_synthesis_input){.pending = pg_synthesis_pending(state->callee)}))});
 +		struct pg_synthesis_input premises[] = {{.pending = pg_synthesis_pending(state->callee)}, {.pending = pg_synthesis_pending(argument)}};
@@ -3253,7 +3286,7 @@
  	struct pg_synthesis_job *shape = pg_synthesis_classifier_structure(synthesis, callee);
  	if (!shape) goto error;
  	if (pg_synthesis_await(synthesis, job, shape)) return 1;
-@@ -5714,7 +5872,7 @@
+@@ -5714,7 +5876,7 @@
  	const struct pg_object *binder;
  	enum pg_totality totality;
  	if (pg_thunk_type_view(type, &forced)) {
@@ -3262,7 +3295,7 @@
  		if (!state->callee) goto error;
  		pg_synthesis_enqueue(synthesis, job);
  		return 1;
-@@ -5754,36 +5912,38 @@
+@@ -5754,36 +5916,38 @@
  	struct pg_synthesis_job *argument = state->argument;
  	if (pg_synthesis_await_preparation(synthesis, job, argument, NULL)) return 1;
  	if (!state->constructor && logical_family_signature(domain)) {
@@ -3280,9 +3313,9 @@
  	if (argument->result && pg_evidence_judgement(argument->result) == PG_JUDGEMENT_TYPE_FAMILY) {
 -		struct pg_synthesis_job *callable = pg_synthesis_family_function(synthesis, argument);
 -		state->argument = pg_synthesis_plain_rule(synthesis, PG_THUNK_INTRO, NULL, 1, &callable);
-+		struct pg_synthesis_job *callable = pg_synthesis_family_function(synthesis,
++		struct pg_synthesis_input callable = pg_synthesis_family_function(synthesis,
 +			(struct pg_synthesis_input){.checked = argument->result});
-+		state->argument = pg_synthesis_plain_rule_inputs(synthesis, PG_THUNK_INTRO, NULL, 1, &(struct pg_synthesis_input){.pending = pg_synthesis_pending(callable)});
++		state->argument = pg_synthesis_plain_rule_inputs(synthesis, PG_THUNK_INTRO, NULL, 1, &callable);
  		if (!state->argument) goto error;
  		pg_synthesis_enqueue(synthesis, job);
  		return 1;
@@ -3310,7 +3343,7 @@
  				state->argument = argument;
  				pg_synthesis_enqueue(synthesis, job); return 1;
  			}
-@@ -5798,7 +5958,8 @@
+@@ -5798,7 +5962,8 @@
  		constructor_application_step(synthesis, job, callee, argument);
  		return 1;
  	}
@@ -3320,7 +3353,7 @@
  	if (!expected) goto error;
  	if (!state->constraint) {
  		state->constraint = request_job(synthesis, CLASSIFIER_CONSTRAINT_JOB, state->argument, expected);
-@@ -5806,10 +5967,12 @@
+@@ -5806,10 +5971,12 @@
  	}
  	int identity = source_has_identity(synthesis, job);
  	if (identity < 0) return 1;
@@ -3337,7 +3370,7 @@
  	if (!state->tail) goto error;
  	pg_synthesis_enqueue(synthesis, job);
  	return 1;
-@@ -5821,78 +5984,69 @@
+@@ -5821,78 +5988,69 @@
  static void step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
  	struct source_work *local = source_work(job);
@@ -3440,7 +3473,7 @@
  	if (hypothesis_reference(synthesis, job)) return;
  	if (star_application(syntax) && !lookup_scope(local->scope, (struct pg_token){.kind = '*'}).binder) {
  		/* A star outside a declaration names only a lexically bound IH. */
-@@ -5911,7 +6065,7 @@
+@@ -5911,7 +6069,7 @@
  	case PG_SYNTAX_PI: case PG_SYNTAX_APPLICATION:
  		break;
  	case PG_SYNTAX_EXPECT:
@@ -3449,7 +3482,7 @@
  		if (local->value_job) local->exports = source_exports(local->value_job);
  		pg_synthesis_forward(synthesis, job, local->value_job); return;
  	default:
-@@ -5936,8 +6090,8 @@
+@@ -5936,8 +6094,8 @@
  	struct pg_token name)
  {
  	if (!source_work(root)) return NULL;
@@ -3460,7 +3493,7 @@
  	struct block_name *entry = lookup_name(&source_work(root)->definitions->names, name);
  	return entry ? entry->producer : NULL;
  }
-@@ -5946,13 +6100,13 @@
+@@ -5946,13 +6104,13 @@
  	const struct pg_syntax_item **item, struct pg_synthesis_job **producer)
  {
  	if (!root || !item || !producer) return -1;

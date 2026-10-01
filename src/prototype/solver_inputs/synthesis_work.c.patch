@@ -1,6 +1,6 @@
 --- a/synthesis_work.c
 +++ b/synthesis_work.c
-@@ -1,14 +1,153 @@
+@@ -1,14 +1,154 @@
  #include "synthesis_work.h"
 +#include "typed_query.h"
 +#include "effect_inference.h"
@@ -22,9 +22,7 @@
 +
 +static struct pg_typed_query *job_query(struct pg_pending *pending)
 +{
-+	struct pg_synthesis_job *job = (void *)pending;
-+	const struct pg_synthesis_work_class *role = pg_synthesis_work_role(job);
-+	return role->query ? role->query(job) : NULL;
++	return pg_pending_query(pg_synthesis_work_output((void *)pending).pending);
 +}
 +
 +static const struct pg_evidence *job_result(const struct pg_pending *pending)
@@ -102,6 +100,9 @@
 +	if (dependency && dependency->pending.owner != synthesis->owner_key) {
 +		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return 1;
 +	}
++	struct pg_synthesis_input output = pg_synthesis_work_output(dependency);
++	if (output.checked) return 0;
++	if (output.pending) return pg_synthesis_wait_pending(synthesis, job, output.pending);
 +	struct pg_typed_query *query = pg_pending_query(pending);
 +	if (!query) {
 +		if (!dependency) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return 1; }
@@ -155,7 +156,7 @@
  }
  
  void pg_synthesis_enqueue(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
-@@ -22,12 +161,10 @@
+@@ -22,12 +162,10 @@
  	synthesis->ready_tail = job;
  }
  
@@ -171,7 +172,7 @@
  }
  
  static size_t state_extent(const struct pg_synthesis_work_class *role)
-@@ -37,56 +174,85 @@
+@@ -37,56 +175,85 @@
  }
  
  static struct pg_synthesis_job *find_request(const struct pg_synthesis *synthesis,
@@ -277,7 +278,7 @@
  	if (role->start) role->start(synthesis, job);
  	else pg_synthesis_enqueue(synthesis, job);
  	return job;
-@@ -95,13 +261,14 @@
+@@ -95,13 +262,14 @@
  struct pg_synthesis_job *pg_synthesis_work_request(struct pg_synthesis *synthesis,
  	const struct pg_synthesis_work_class *kind, size_t count, const void *const *inputs)
  {
@@ -294,7 +295,17 @@
  }
  
  const void *pg_synthesis_work_input(const struct pg_synthesis_job *job, size_t index)
-@@ -117,20 +284,54 @@
+@@ -114,23 +282,64 @@
+ 	return job ? job->input_count : 0;
+ }
+ 
++struct pg_synthesis_input pg_synthesis_work_output(const struct pg_synthesis_job *job)
++{
++	if (!job || job->status != PG_SYNTHESIS_DONE) return (struct pg_synthesis_input){0};
++	const struct pg_synthesis_work_class *role = pg_synthesis_work_role(job);
++	return role->output ? role->output(job) : (struct pg_synthesis_input){0};
++}
++
  struct pg_synthesis_projection pg_synthesis_work_project(const struct pg_synthesis_job *job)
  {
  	struct pg_synthesis_projection view = {.value_kind = -1};
@@ -358,7 +369,7 @@
  	}
  }
  
-@@ -138,9 +339,20 @@
+@@ -138,9 +347,20 @@
  	enum pg_synthesis_status status)
  {
  	int first_finish = job->status == PG_SYNTHESIS_PENDING;
@@ -381,7 +392,7 @@
  }
  
  /* Subscribe exactly once at a stage transition. Completed dependencies need
-@@ -153,11 +365,33 @@
+@@ -153,11 +373,33 @@
  		pg_synthesis_enqueue(synthesis, parent);
  		return;
  	}
@@ -419,7 +430,7 @@
  }
  
  /* Zero means the dependency is done. Otherwise suspend or propagate its
-@@ -181,16 +415,46 @@
+@@ -181,16 +423,45 @@
  		job->next = NULL;
  		--budget;
  		++synthesis->steps;
@@ -435,9 +446,9 @@
 +enum pg_synthesis_status pg_synthesis_status(const struct pg_synthesis_job *job)
 +{
 +	if (!job) return PG_SYNTHESIS_ERROR;
-+	const struct pg_synthesis_work_class *role = pg_synthesis_work_role(job);
-+	struct pg_typed_query *query = role->query ? role->query(job) : NULL;
-+	if (query) return pg_synthesis_pending_status(&query->pending);
++	struct pg_synthesis_input output = pg_synthesis_work_output(job);
++	if (output.checked) return PG_SYNTHESIS_DONE;
++	if (output.pending) return pg_synthesis_pending_status(output.pending);
 +	return job->status;
 +}
 +
@@ -463,13 +474,12 @@
  const struct pg_evidence *pg_synthesis_result(const struct pg_synthesis_job *job)
  {
 +	if (!job) return NULL;
-+	const struct pg_synthesis_work_class *role = pg_synthesis_work_role(job);
-+	struct pg_typed_query *query = role->query ? role->query(job) : NULL;
-+	if (query) return pg_typed_query_result(query);
++	struct pg_synthesis_input output = pg_synthesis_work_output(job);
++	if (output.checked || output.pending) return pg_synthesis_input_result(output);
  	return job->status == PG_SYNTHESIS_DONE ? job->result : NULL;
  }
  
-@@ -215,7 +479,7 @@
+@@ -215,7 +486,7 @@
  int pg_synthesis_import_materialized(struct pg_synthesis *synthesis,
  	struct pg_synthesis_job *job, const struct pg_occurrence *root)
  {
@@ -478,7 +488,7 @@
  	if (!owns_entry(&synthesis->typing->occurrences, &root->index)) return -1;
  	if (job->imported && job->imported != root) return -1;
  	job->imported = root;
-@@ -225,7 +489,7 @@
+@@ -225,7 +496,7 @@
  int pg_synthesis_saved_complete(const struct pg_synthesis *synthesis,
  	const struct pg_synthesis_job *job)
  {
@@ -487,7 +497,7 @@
  	if (job->status == PG_SYNTHESIS_DONE) return 1;
  	return !synthesis->steps && job->imported_complete;
  }
-@@ -233,7 +497,7 @@
+@@ -233,7 +504,7 @@
  int pg_synthesis_import_completion(struct pg_synthesis *synthesis,
  	struct pg_synthesis_job *job)
  {
@@ -496,3 +506,17 @@
  	if (synthesis->steps) return -1;
  	job->imported_complete = 1;
  	return 0;
+@@ -261,10 +532,8 @@
+ {
+ 	if (!canonical) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return 1; }
+ 	if (canonical == job) return 0;
+-	if (canonical->status == PG_SYNTHESIS_PENDING) pg_synthesis_subscribe(synthesis, job, canonical, 0);
+-	else {
+-		job->result = canonical->result;
+-		pg_synthesis_finish(synthesis, job, canonical->status);
+-	}
++	if (pg_synthesis_wait_pending(synthesis, job, pg_synthesis_pending(canonical))) return 1;
++	job->result = pg_synthesis_result(canonical);
++	pg_synthesis_finish(synthesis, job, pg_synthesis_status(canonical));
+ 	return 1;
+ }

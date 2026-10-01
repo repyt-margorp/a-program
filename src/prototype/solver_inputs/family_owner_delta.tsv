@@ -1,0 +1,8 @@
+area	file	added	deleted	net
+src	synthesis_work.h	4	2	2
+src	synthesis_work.c	19	14	5
+src	synthesis_function.c	66	34	32
+src	synthesis_iadt.c	7	1	6
+src	synthesis_source.h	1	1	0
+src	synthesis.c	20	16	4
+tests	synthesis.c	176	19	157
