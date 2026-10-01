@@ -36,8 +36,14 @@
  		struct pg_synthesis_job *job = (void *)n->key, *child = NULL;
  		const struct pg_source_scope *scope = pg_synthesis_prepared_environment(job);
  		if (scope) add(&prefix, scope->registration);
-@@ -72,7 +79,7 @@
- 		if (pg_synthesis_literal_frontier(&p->synthesis, job, &child) == 1) add(&roots, child);
+@@ -68,11 +75,11 @@
+ 			for (size_t i = 0; i < names.count; ++i) add(&prefix, names.entries[i]);
+ 		struct pg_module_frontier module;
+ 		if (!pg_synthesis_module_frontier(&p->synthesis, job, &module)) add(&prefix, module.previous);
+-		if (!pg_synthesis_definition_body(&p->synthesis, job, &child)) add(&prefix, child);
+-		if (pg_synthesis_literal_frontier(&p->synthesis, job, &child) == 1) add(&roots, child);
++		if (!pg_synthesis_definition_body(&p->synthesis, job, &child))
++			add(pg_synthesis_plain_derivation(child) ? &roots : &prefix, child);
  		struct pg_reference_frontier reference;
  		if (pg_synthesis_reference_frontier(&p->synthesis, job, &reference) == 1) {
 -			add(&prefix, reference.producer);
@@ -156,16 +162,37 @@
  	return file;
  }
  
-@@ -419,7 +434,7 @@
- 	struct pg_synthesis_job *rule = NULL;
- 	assert(pg_synthesis_literal_frontier(s, p->root, &rule) == 1 && !rule);
- 	assert(!pg_synthesis_prepare_literal(s, other->root));
+@@ -414,22 +429,21 @@
+ 
+ static void guards(void)
+ {
+-	struct pg_program *p = expression("main := #1;"), *other = expression("main := #1;");
++	struct pg_program *p = start("main := #1;"), *other = start("main := #1;");
+ 	struct pg_synthesis *s = &p->synthesis;
+-	struct pg_synthesis_job *rule = NULL;
+-	assert(pg_synthesis_literal_frontier(s, p->root, &rule) == 1 && !rule);
+-	assert(!pg_synthesis_prepare_literal(s, other->root));
 -	assert(!pg_synthesis_prepare_literal(s, p->scope->context_job));
-+	assert(!pg_synthesis_prepare_literal(s, NULL));
- 	assert(pg_synthesis_literal_frontier(&other->synthesis, p->root, &rule) == -1);
+-	assert(pg_synthesis_literal_frontier(&other->synthesis, p->root, &rule) == -1);
++	assert(!pg_synthesis_prepare_module(s, other->root));
++	assert(!pg_synthesis_prepare_module(s, NULL));
  	struct pg_synthesis_job *jobs[] = {p->root, p->root};
  	assert(!pg_artifact_source_capture(&p->graph, s, 2, jobs, 1, &p->root));
-@@ -444,8 +459,9 @@
+ 	assert(!pg_artifact_source_capture(&p->graph, s, 1, jobs, 2, jobs));
+ 	assert(!pg_artifact_source_capture(&p->graph, s, 1, &other->root, 1, &other->root));
+-	rule = pg_synthesis_prepare_literal(s, p->root);
++	struct pg_synthesis_job *rule = pg_synthesis_prepare_module(s, p->root);
+ 	assert(rule && !s->steps && p->typing.proofs.count == 1 && !p->root->result);
+ 	size_t count = s->jobs.count;
+-	assert(pg_synthesis_prepare_literal(s, p->root) == rule && s->jobs.count == count);
++	assert(pg_synthesis_prepare_module(s, p->root) == rule && s->jobs.count == count);
+ 	assert(!pg_artifact_source_capture(&p->graph, s, 1, &p->root, 1, &p->root));
++	/* Finish the queued parent's initial dispatch after explicit preparation. */
++	advance(s, 1);
+ 	struct checkpoint c = collect(p);
+ 	assert(pg_artifact_source_prepare(&other->synthesis, c.source, c.count, c.jobs));
+ 	assert(pg_artifact_source_prepare(s, c.source, c.count - 1, c.jobs));
+@@ -444,19 +458,19 @@
  	pg_program_destroy(p); pg_program_destroy(other);
  	c = read_image(file); p = c.program;
  	struct pg_synthesis_job **mapping;
@@ -176,7 +203,19 @@
  	c.jobs = mapping;
  	assert(!pg_artifact_source_prepare(&p->synthesis, c.source, c.count, c.jobs));
  	assert(pg_artifact_source_attach(&p->synthesis, c.source, c.count, c.jobs));
-@@ -478,17 +494,17 @@
+ 	assert(!p->synthesis.steps && p->typing.proofs.count == 1);
+ 	assert(!fclose(file)); pg_program_destroy(p);
+ 	p = expression("main := \\x : @ => x;");
+-	assert(!pg_synthesis_prepare_literal(&p->synthesis, p->root));
+ 	assert(!pg_artifact_source_capture(&p->graph, &p->synthesis, 1, &p->root, 1, &p->root));
+ 	pg_program_destroy(p);
+ 	p = expression("main := #2147483648;");
+-	assert(!pg_synthesis_prepare_literal(&p->synthesis, p->root));
++	assert(pg_synthesis_plain_derivation(p->root)->rule == PG_HOST_VALUE_INTRO);
+ 	assert(!p->synthesis.steps && p->root->status == PG_SYNTHESIS_PENDING);
+ 	advance(&p->synthesis, 1000);
+ 	assert(p->root->status == PG_SYNTHESIS_REJECTED);
+@@ -478,17 +492,17 @@
  			const struct pg_evidence *context = pg_synthesis_scope_context(scope);
  			const struct pg_evidence *extended = pg_prove_context_extension(&p->typing, context,
  				binders[i], pg_prove_universe(&p->typing, context, 0));
@@ -197,7 +236,7 @@
  		assert(pg_synthesis_reference_resume(s, p->root, &view)); /* No lexical n here. */
  		size_t proofs = p->typing.proofs.count;
  		int status = pg_synthesis_reference_resume(s, use, &view);
-@@ -508,22 +524,22 @@
+@@ -508,22 +522,22 @@
  		const struct pg_syntax *syntax;
  		assert(!pg_synthesis_source_input(s, p->root, &scope, &syntax));
  		const struct pg_evidence *context = pg_synthesis_scope_context(scope);
@@ -229,7 +268,7 @@
  		}
  		pg_program_destroy(p);
  	}
-@@ -536,10 +552,10 @@
+@@ -536,10 +550,10 @@
  	struct pg_synthesis_job *module = pg_program_source(p, scope, text, strlen(text), &p->parser);
  	struct pg_synthesis_job *producer = pg_program_select_name(p, module, syntax->token);
  	assert(producer && producer->status == PG_SYNTHESIS_PENDING);

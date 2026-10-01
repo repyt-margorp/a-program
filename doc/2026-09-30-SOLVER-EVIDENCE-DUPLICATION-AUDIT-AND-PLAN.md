@@ -828,6 +828,30 @@ Do not mark a milestone complete just because a view hides the old representatio
   Remove the corresponding duplicated structural walkers and overbroad private
   state. Keep genuinely unfinished queries and effect dependencies; do not
   replace all of them with an unconditional wait for accepted Evidence.
+  Verified literal-input deletion (2026-10-02, parent `be4a61e`): `@`, Int32 and
+  Text requests return their existing ordinary rules directly. Delete the source
+  wrapper, literal preparation/frontier APIs, stale structural-reader branches
+  and restricted source checkpoint's LITERAL record; use the existing rule codec.
+  A closed literal shares the exact typed Context, not unrelated lexical scopes.
+  Saved annotation headers describe a recipe, not acceptance: ordinary checking
+  and post-check projection still validate its premises/Context. Invalid Int32,
+  foreign ownership, sharing, zero fuel and literal checkpoints are tested.
+  [Census](../src/prototype/solver_inputs/literal_inputs_measurements.tsv): QuickSort
+  loses 262 Jobs, 162 result references and 51,680 Job-layout bytes; 524 fewer
+  dispatches. Final typed graph, Evidence and query counts are unchanged.
+  [Deltas](../src/prototype/solver_inputs/literal_inputs_delta.tsv): implementation
+  +69/-82 (net -13), tests net +72, excluding patch context/data/documentation.
+  Full O2 acceptance and C/sanitizer gates pass; after three unreachable reader
+  branches were deleted, regression/examples, semantic persistence, all seven
+  checkpoint gates, five C gates, sanitizers and fresh/current focused checks
+  were repeated successfully. The final census is identical to the earlier one.
+  [Inputs](../src/prototype/solver_inputs/literal_inputs_inputs.tsv) pin sample
+  hashes; wrapped allocation is partial cumulative requests, not total live RAM.
+  The repeated QuickSort allocation sample varies between processes; retain both
+  observations without inferring a deterministic saving or speedup.
+  Public reload still fails four comparisons (100:100, 1000:1000, 1600:1600,
+  completed+0), not an expected-pass exemption. SE1-SE5 remain open. This is
+  an unpromoted prototype; user edits are excluded. Logs: `/tmp/a-program-literal-inputs-`.
   Verified application-owner increment (2026-10-02, parent `0fb14e9`): Function
   owns source App preparation and borrows scope/syntax from its exact key.
   Delete central application/callable slots, the separate application-state

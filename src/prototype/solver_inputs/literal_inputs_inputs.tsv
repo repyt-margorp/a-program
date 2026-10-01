@@ -1,0 +1,5 @@
+sample	source	sha256
+list	examples/09_list_induction.p	f2d58b2c2161c086f62022943ca63e9acdca3c2dd7c6fd1979cc4c7ff7c15b37
+effect-application	tests/acceptance/effect-application.p	ffc30183819f8c60017bf1dfe7109a04f0f75595fd5afeff6f076f0d9c37e928
+captured	tests/acceptance/function-graph-captured-match.p	d413867b85c37586d4e901e0212427666efdca2ad46845d7a26d64c0628acab1
+quick-local	/tmp/a-program-state-audit-quick-local.p	d3ca3cecdcb7be94aabe268d47f2dd7e3ec0d4db71610ff1efe24552dd980869

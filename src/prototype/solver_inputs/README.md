@@ -396,6 +396,23 @@ See [measurements](source_state_trim_measurements.tsv) and
 [applied deltas](source_state_trim_delta.tsv), net two implementation lines removed.
 This is stale-state deletion, not removal of the remaining source cursors.
 
+2026-10-02, literal-input deletion against `be4a61e`: `@`/Int32/Text borrow
+ordinary rule requests, with no source wrapper or LITERAL checkpoint record.
+Exact typed Contexts remain distinct; lexical maps do not distinguish closed
+literals. Annotation restoration compares the descriptive header, then ordinary
+checking/projection validates its Context and type. This does not trust a saved
+completion flag or use `::` for synthesis. [Census](literal_inputs_measurements.tsv)
+preserves final typed/Evidence/query counts and removes 262 QuickSort Jobs;
+[applied deltas](literal_inputs_delta.tsv) are -13 implementation, +72 tests.
+[Inputs](literal_inputs_inputs.tsv) pin sample hashes, including the previously
+recorded standalone QuickSort/LocalSorted source; the import-only C fixture is
+not a census substitute. [Allocation](literal_inputs_allocation.tsv) measures
+partial cumulative arena requests, not peak RAM or a universal speedup.
+The repeated QuickSort sample varies between processes; both observations are
+retained rather than claiming a deterministic allocation saving.
+Verification and the four unresolved public reload failures stay in the parent
+plan; this does not complete SE1-SE5 or promote the prototype.
+
 Use the parent plan for progress. Create and verify a disposable candidate:
 
 ```sh

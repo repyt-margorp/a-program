@@ -1,6 +1,26 @@
 --- a/artifact/source.c
 +++ b/artifact/source.c
-@@ -60,7 +60,7 @@
+@@ -4,8 +4,8 @@
+ #include "wire.h"
+ #include <string.h>
+ 
+-static const char magic[8] = "APGSRCW2";
+-enum source_record_kind { DEFINITION, MODULE, LITERAL, REFERENCE };
++static const char magic[8] = "APGSRCW3";
++enum source_record_kind { DEFINITION, MODULE, REFERENCE };
+ 
+ struct source_record {
+ 	enum source_record_kind kind;
+@@ -27,8 +27,6 @@
+ 	if (pg_synthesis_source_input(s, job, &scope, &syntax)) return -1;
+ 	if (syntax->kind == PG_SYNTAX_DEFINITIONS) return MODULE;
+ 	if (syntax->kind == PG_SYNTAX_QUALIFIED && syntax->left->kind == PG_SYNTAX_DEFINITIONS) return MODULE;
+-	struct pg_synthesis_job *rule;
+-	if (pg_synthesis_literal_frontier(s, job, &rule) == 1) return LITERAL;
+ 	struct pg_reference_frontier reference;
+ 	return pg_synthesis_reference_frontier(s, job, &reference) == 1 ? REFERENCE : -1;
+ }
+@@ -60,7 +58,7 @@
  	int failed = 1;
  	if (!c || pg_dag_init(&map, NULL, NULL) || pg_dag_init(&unique, NULL, NULL)) goto done;
  	for (size_t i = 0; i < job_count; ++i) {
@@ -9,8 +29,14 @@
  		if (pg_dag_add(&map, jobs[i]) || map.count != i + 1) goto done;
  	}
  	for (size_t i = 0; i < count; ++i) {
-@@ -100,7 +100,8 @@
+@@ -94,13 +92,10 @@
+ 			r->data[0] = reference(&map, scope->registration);
+ 			r->data[1] = module.position; r->data[2] = reference(&map, module.previous);
  			break;
+-		case LITERAL:
+-			if (pg_synthesis_literal_frontier(s, job, &child) != 1) goto done;
+-			r->data[0] = reference(&map, child);
+-			break;
  		case REFERENCE:
  			if (pg_synthesis_reference_frontier(s, job, &source) != 1) goto done;
 -			r->data[0] = reference(&map, source.producer);
@@ -19,7 +45,7 @@
  			r->data[1] = reference(&map, source.rule);
  			break;
  		}
-@@ -173,7 +174,7 @@
+@@ -173,7 +168,7 @@
  	size_t count, struct pg_synthesis_job *const *jobs)
  {
  	if (!s || !c || count != c->job_count || !jobs) return 0;
@@ -28,7 +54,22 @@
  	for (size_t i = 0; i < c->count; ++i)
  		if (kind(s, jobs[c->records[i].job]) != (int)c->records[i].kind) return 0;
  	return 1;
-@@ -221,13 +222,14 @@
+@@ -191,12 +186,10 @@
+ 	}
+ 	for (size_t i = 0; i < c->count; ++i) {
+ 		const struct source_record *r = &c->records[i];
+-		if (r->kind != DEFINITION && r->kind != LITERAL) continue;
++		if (r->kind != DEFINITION) continue;
+ 		struct pg_synthesis_job *child = resolve(jobs, r->data[0]);
+ 		if (!child) continue;
+-		if (r->kind == DEFINITION) {
+-			if (pg_synthesis_definition_resume_body(s, jobs[r->job], child)) return -1;
+-		} else if (pg_synthesis_prepare_literal(s, jobs[r->job]) != child) return -1;
++		if (pg_synthesis_definition_resume_body(s, jobs[r->job], child)) return -1;
+ 	}
+ 	return 0;
+ }
+@@ -221,13 +214,14 @@
  	for (size_t i = 0; i < c->count; ++i) {
  		const struct source_record *r = &c->records[i];
  		if (r->kind == REFERENCE) {

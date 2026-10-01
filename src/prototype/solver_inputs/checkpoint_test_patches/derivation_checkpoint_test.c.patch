@@ -295,3 +295,12 @@
  		struct mixed_checkpoint again;
  		mixed_collect(&again, p, context, roots);
  		copy = mixed_save(&again);
+@@ -729,6 +734,8 @@
+ 	header_boundaries();
+ 	mixed();
+ 	source("main := @;");
++	source("main := #-17;");
++	source("main := #\"hello\";");
+ 	source("main := \\x : @ => x;");
+ 	source("main := #int_add;");
+ 	shared();

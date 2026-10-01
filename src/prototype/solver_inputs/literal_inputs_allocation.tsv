@@ -1,0 +1,9 @@
+sample	revision	repetition	wrapped_arena_calls	wrapped_aligned_bytes
+list	be4a61e	1	4296	463552
+list	literal-inputs	1	4293	462944
+effect	be4a61e	1	28597	3023664
+effect	literal-inputs	1	28546	3010784
+quick	be4a61e	1	2891451	234016448
+quick	literal-inputs	1	2890244	233917728
+quick	be4a61e	2	2891740	234030320
+quick	literal-inputs	2	2891264	233966688
