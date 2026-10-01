@@ -1249,6 +1249,37 @@ Do not mark a milestone complete just because a view hides the old representatio
   and obsolete owner codecs. Keep only unfinished state needed by actual Solve
   consumers. Wire ordinals are transport references, not a new semantic layer.
   No C layout, ABI, LinkerScript or target-native representation enters `.a`.
+  Verified increment (2026-10-02, parent `41e5f48` plus export-input patches):
+  source saving no longer allocates the second rule-header/premise DAG. The
+  writer synchronously borrows original checked, raw and pending inputs through
+  one header/child projection. Membership/relocation maps remain temporary; no
+  new semantic tag, acceptance authority or wire field is introduced. The
+  explicit detached-input export API still copies a requested transport DAG for
+  test/checkpoint callers; source save no longer uses that path. Import checking
+  and the unfinished source owners remain, so SE1-SE5 are not complete.
+  All 40 paired images (four inputs, step 0/100/1000/completed, two repeats,
+  plus checked exports) equal the parent's bytes. Save does not advance Solve or
+  add Terms, Occurrences, Evidence or Jobs. [Write measurements](../src/prototype/solver_inputs/export_inputs_measurements.tsv)
+  show 30,078 fewer external arena requests / 5,268,528 fewer aligned requested
+  bytes for the checked general QuickSort `quick_locally_sorted` theorem; the
+  ordinary source-root case removes only 41 / 6,400. These are partial cumulative
+  allocation requests, not peak RAM or a speedup claim. [Census](../src/prototype/solver_inputs/export_inputs_state.tsv)
+  is unchanged; [sample hashes](../src/prototype/solver_inputs/literal_inputs_inputs.tsv)
+  retain the standalone QuickSort input, not an import-only replacement.
+  Fresh O2 `check`, examples, full acceptance and semantic/normalization/source/
+  derivation/definition/namespace/constructor checkpoint gates passed. After the
+  final NULL-root guard, rebuilt Core/IADT/synthesis, source/derivation I/O,
+  semantic and affected checkpoints passed again. ASan/UBSan passed Core/IADT/
+  synthesis and I/O; the final guard's I/O was rechecked under both sanitizers.
+  Fresh isolated assembly matches the tested candidate; dirty-current assembly
+  passes I/O without staging the user's edits. All five C backend gates passed.
+  The strict public partition gate still fails at the same four reload cases
+  (100+100, 1000+1000, 1600+1600, completed+0); its report and all 52 images match
+  the parent, not a waived pass. Evidence logs: `/tmp/a-program-export-inputs-*`.
+  [Applied deltas](../src/prototype/solver_inputs/export_inputs_delta.tsv):
+  implementation +408/-228 (net +180), tests +151, diagnostics net +70, build net
+  +8; documentation and patch context excluded. Actual copy deletion is not a
+  source-line reduction. This remains unpromoted prototype work.
 - [ ] **SE5 completion gate:** run existing acceptance, effect/handler, IADT,
   Identity, source/derivation I/O and backend boundary tests. Add focused tests
   for shared checked inputs from distinct producers, same Core with different

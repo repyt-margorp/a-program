@@ -1,0 +1,54 @@
+--- a/retained_io.c
++++ b/retained_io.c
+@@ -8,8 +8,7 @@
+ static const char continued_magic[8] = "APGRET\5";
+ 
+ struct write_state {
+-	size_t count;
+-	const struct pg_derivation_input *const *roots;
++	struct pg_derivation_view derivations;
+ 	const struct pg_effect_inference *effects;
+ 	const struct pg_reduction_archive *reductions;
+ 	size_t term_count;
+@@ -45,7 +44,7 @@
+ {
+ 	const struct write_state *state = context;
+ 	if (!state->semantic_format && pg_wire_write_u64(file, state->reductions != NULL)) return -1;
+-	if (pg_derivation_inputs_write_inference(file, state->count, state->roots, state->effects, codec, state->owner)) return -1;
++	if (pg_derivation_view_write(file, &state->derivations, state->effects, codec, state->owner)) return -1;
+ 	if (state->reductions && pg_reduction_archive_write(file, state->reductions, codec, state->owner)) return -1;
+ 	if (pg_graph_write_descriptors(file, state->term_count, state->terms, codec, state->owner)) return -1;
+ 	if (state->semantic_format && write_semantic(file, state, codec)) return -1;
+@@ -58,7 +57,7 @@
+ 	const struct pg_graph_codec *codec, void *owner)
+ {
+ 	if ((count && !roots) || (term_count && !terms)) return -1;
+-	struct write_state state = {.count = count, .roots = roots, .effects = effects,
++	struct write_state state = {.derivations = pg_derivation_input_view(count, roots), .effects = effects,
+ 		.reductions = reductions, .term_count = term_count, .terms = terms, .owner = owner};
+ 	return pg_graph_image_write(file, magic, codec, owner, write_payload, &state);
+ }
+@@ -80,8 +79,21 @@
+ 	const struct pg_graph_codec *codec, void *owner,
+ 	int (*continuation)(FILE *, const struct pg_graph_codec *, void *, void *), void *continuation_owner)
+ {
+-	if ((count && !roots) || (term_count && !terms) || (semantic_count && !semantic)) return -1;
+-	struct write_state state = {.count = count, .roots = roots, .effects = effects,
++	if (count && !roots) return -1;
++	struct pg_derivation_view view = pg_derivation_input_view(count, roots);
++	return pg_retained_write_semantic_view(file, &view, effects, term_count, terms,
++		semantic_count, semantic, codec, owner, continuation, continuation_owner);
++}
++
++int pg_retained_write_semantic_view(FILE *file, const struct pg_derivation_view *view,
++	const struct pg_effect_inference *effects,
++	size_t term_count, const struct pg_term *const *terms,
++	size_t semantic_count, const struct pg_occurrence *const *semantic,
++	const struct pg_graph_codec *codec, void *owner,
++	int (*continuation)(FILE *, const struct pg_graph_codec *, void *, void *), void *continuation_owner)
++{
++	if (!view || (term_count && !terms) || (semantic_count && !semantic)) return -1;
++	struct write_state state = {.derivations = *view, .effects = effects,
+ 		.term_count = term_count, .terms = terms, .owner = owner,
+ 		.semantic_format = 1, .semantic_count = semantic_count, .semantic = semantic,
+ 		.continuation = continuation, .continuation_owner = continuation_owner};

@@ -1,6 +1,13 @@
 --- a/Makefile
 +++ b/Makefile
-@@ -21,6 +21,7 @@
+@@ -1,5 +1,6 @@
+ CC ?= cc
+ CFLAGS ?= -std=c11 -Wall -Wextra -Werror -O2
++METRICS_RETAINED_WRITER := pg_retained_write_semantic_view
+ ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+ REPO := $(abspath $(ROOT)..)
+ TESTS := $(REPO)/tests
+@@ -21,6 +22,7 @@
  SOURCES += $(ROOT)function_graph.c $(ROOT)host.c $(ROOT)execution.c
  SOURCES += $(ROOT)evidence_function.c $(ROOT)evidence_cbpv.c $(ROOT)evidence_identity.c
  SOURCES += $(ROOT)scope.c $(ROOT)evidence_scope.c $(ROOT)typed_query.c

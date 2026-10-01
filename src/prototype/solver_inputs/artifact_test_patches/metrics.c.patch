@@ -1,6 +1,63 @@
 --- a/metrics.c
 +++ b/metrics.c
-@@ -258,7 +258,9 @@
+@@ -122,27 +122,24 @@
+ 	pg_dag_destroy(&typed);
+ }
+ 
+-static int premise(void *unused, const void *key, size_t index, const void **child)
++static int premise(void *owner, const void *key, size_t index, const void **child)
+ {
+-	(void)unused;
+-	const struct pg_derivation_input *input = key;
+-	if (index == input->count) return 0;
+-	*child = input->premises[index];
+-	return 1;
++	const struct pg_derivation_view *const *view = owner;
++	return (*view)->child((*view)->owner, key, index, child);
+ }
+ 
+-int __real_pg_retained_write_semantic_with(FILE *, size_t, const struct pg_derivation_input *const *,
++int __real_pg_retained_write_semantic_view(FILE *, const struct pg_derivation_view *,
+ 	const struct pg_effect_inference *, size_t, const struct pg_term *const *, size_t,
+ 	const struct pg_occurrence *const *, const struct pg_graph_codec *, void *,
+ 	int (*)(FILE *, const struct pg_graph_codec *, void *, void *), void *);
+-int __wrap_pg_retained_write_semantic_with(FILE *file, size_t count,
+-	const struct pg_derivation_input *const *roots, const struct pg_effect_inference *effects,
++int __wrap_pg_retained_write_semantic_view(FILE *file, const struct pg_derivation_view *view,
++	const struct pg_effect_inference *effects,
+ 	size_t term_count, const struct pg_term *const *terms, size_t semantic_count,
+ 	const struct pg_occurrence *const *semantic, const struct pg_graph_codec *codec, void *owner,
+ 	int (*continuation)(FILE *, const struct pg_graph_codec *, void *, void *), void *continuation_owner)
+ {
+ 	long start = ftell(file);
+-	int result = __real_pg_retained_write_semantic_with(file, count, roots, effects, term_count,
++	int result = __real_pg_retained_write_semantic_view(file, view, effects, term_count,
+ 		terms, semantic_count, semantic, codec, owner, continuation, continuation_owner);
+ 	if (result || !measuring) return result;
+ 	long end = ftell(file);
+@@ -156,12 +153,16 @@
+ 		(unsigned long long)references, (unsigned long long)((uint64_t)end - table));
+ 	assert(!fseek(file, end, SEEK_SET));
+ 	struct pg_dag rules = {0};
+-	assert(!pg_dag_init(&rules, premise, NULL));
+-	for (size_t i = 0; i < count; ++i) assert(!pg_dag_add(&rules, roots[i]));
++	const struct pg_derivation_view *reader = view;
++	assert(!pg_dag_init(&rules, premise, &reader));
++	for (size_t i = 0; i < view->count; ++i) assert(!pg_dag_add(&rules, view->root(view->owner, i)));
+ 	size_t edges = 0;
+-	for (const struct pg_dag_node *node = rules.first; node; node = node->next)
+-		edges += ((const struct pg_derivation_input *)node->key)->count;
+-	printf("rule_inputs roots=%zu nodes=%zu premise_edges=%zu\n", count, rules.count, edges);
++	for (const struct pg_dag_node *node = rules.first; node; node = node->next) {
++		struct pg_derivation_input header;
++		assert(!view->header(view->owner, node->key, &header));
++		edges += header.count;
++	}
++	printf("rule_inputs roots=%zu nodes=%zu premise_edges=%zu\n", view->count, rules.count, edges);
+ 	pg_dag_destroy(&rules);
+ 	return result;
+ }
+@@ -258,7 +259,9 @@
  	FILE *file = tmpfile();
  	assert(file);
  	measuring = 1;

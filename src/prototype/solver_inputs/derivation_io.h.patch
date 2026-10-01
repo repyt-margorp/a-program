@@ -1,0 +1,24 @@
+--- a/derivation_io.h
++++ b/derivation_io.h
+@@ -7,6 +7,21 @@
+ 
+ struct pg_effect_inference;
+ 
++/* Synchronous projection of an existing rule DAG. Keys and header parameters
++ * borrow their owners for the entire write. No premises are copied or accepted.
++ * child uses the ordinary DAG convention: 1 child, 0 end, -1 invalid. */
++struct pg_derivation_view {
++	size_t count;
++	const void *owner;
++	const void *(*root)(const void *, size_t);
++	int (*header)(const void *, const void *, struct pg_derivation_input *);
++	int (*child)(const void *, const void *, size_t, const void **);
++};
++struct pg_derivation_view pg_derivation_input_view(size_t,
++	const struct pg_derivation_input *const *);
++int pg_derivation_view_write(FILE *, const struct pg_derivation_view *,
++	const struct pg_effect_inference *, const struct pg_graph_codec *, void *);
++
+ enum { PG_DERIVATION_TERM_SLOTS = 9 };
+ struct pg_derivation_payload {
+ 	size_t count, metadata_count;

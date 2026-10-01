@@ -1,0 +1,15 @@
+--- a/retained_io.h
++++ b/retained_io.h
+@@ -31,6 +31,12 @@
+ 	size_t semantic_count, const struct pg_occurrence *const *semantic,
+ 	const struct pg_graph_codec *codec, void *owner,
+ 	int (*continuation)(FILE *, const struct pg_graph_codec *, void *, void *), void *continuation_owner);
++/* Same wire grammar, borrowing existing rule inputs for this synchronous write.
++ * The view is not retained, solved or accepted. */
++int pg_retained_write_semantic_view(FILE *, const struct pg_derivation_view *,
++	const struct pg_effect_inference *, size_t, const struct pg_term *const *,
++	size_t, const struct pg_occurrence *const *, const struct pg_graph_codec *, void *,
++	int (*)(FILE *, const struct pg_graph_codec *, void *, void *), void *);
+ int pg_retained_read_semantic_with(FILE *file, struct pg_typing *typing, size_t limit, size_t name_limit,
+ 	struct pg_effect_inference *effects, const struct pg_graph_codec *codec, void *owner,
+ 	size_t *count, const struct pg_derivation_input *const **roots,

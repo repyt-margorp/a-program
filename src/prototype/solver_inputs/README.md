@@ -413,6 +413,20 @@ retained rather than claiming a deterministic allocation saving.
 Verification and the four unresolved public reload failures stay in the parent
 plan; this does not complete SE1-SE5 or promote the prototype.
 
+2026-10-02, source-export projection against `41e5f48`: saving borrows the
+existing checked/raw/pending rule inputs instead of copying their entire DAG.
+The writer uses one synchronous header/child reader; no semantic state or wire
+field is added. Explicit detached-input export remains for test/checkpoint
+consumers. [Write measurements](export_inputs_measurements.tsv) preserve all
+40 paired images and remove 30,078 external arena requests / 5,268,528 aligned
+requested bytes in the checked general QuickSort LocalSorted export. This is
+partial cumulative save allocation, not peak RAM or compilation speed.
+[Census](export_inputs_state.tsv) is unchanged. [Applied deltas](export_inputs_delta.tsv)
+are net +180 implementation and +151 tests: actual DAG-copy deletion does not
+imply a line-count reduction. Verification and the same four unresolved public
+reload failures are recorded in the parent plan. This is not full Job/Evidence
+removal or production promotion.
+
 Use the parent plan for progress. Create and verify a disposable candidate:
 
 ```sh

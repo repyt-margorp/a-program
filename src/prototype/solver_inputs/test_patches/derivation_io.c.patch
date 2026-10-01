@@ -83,7 +83,96 @@
  		while (synthesis.ready) { assert(synthesis.steps < 4000); pg_synthesis_advance(&synthesis, chunk); }
  		for (size_t i = 0; i < count; ++i)
  			assert(pg_synthesis_status(jobs[i]) == (i == 4 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE));
-@@ -1180,7 +1182,11 @@
+@@ -1171,6 +1173,88 @@
+ 	pg_dag_destroy(&direct); pg_dag_destroy(&packed);
+ }
+ 
++struct snapshot_projection {
++	const struct pg_derivation_view *view;
++	const struct pg_dag *selected;
++	struct pg_synthesis_job *const *jobs;
++	size_t count;
++	FILE *file;
++	const struct pg_effect_inference *effects;
++	struct pg_graph *graph;
++};
++
++static const void *snapshot_root(const void *owner, size_t index)
++{
++	const struct snapshot_projection *snapshot = owner;
++	const struct pg_dag_node *node = pg_dag_find(snapshot->selected, pg_synthesis_pending(snapshot->jobs[index]));
++	assert(node);
++	return snapshot->view->root(snapshot->view->owner, node->id - 1);
++}
++
++static int snapshot_header(const void *owner, const void *key, struct pg_derivation_input *header)
++{
++	const struct snapshot_projection *snapshot = owner;
++	return snapshot->view->header(snapshot->view->owner, key, header);
++}
++
++static int snapshot_child(const void *owner, const void *key, size_t index, const void **child)
++{
++	const struct snapshot_projection *snapshot = owner;
++	return snapshot->view->child(snapshot->view->owner, key, index, child);
++}
++
++static int write_snapshot(void *owner, const struct pg_derivation_view *view)
++{
++	struct snapshot_projection *snapshot = owner;
++	snapshot->view = view;
++	struct pg_derivation_view reordered = {snapshot->count, snapshot, snapshot_root, snapshot_header, snapshot_child};
++	int status = pg_derivation_view_write(snapshot->file, &reordered, snapshot->effects, &pg_builtin_graph_codec, snapshot->graph);
++	snapshot->view = NULL;
++	return status;
++}
++
++static int overstated_header(const void *owner, const void *key, struct pg_derivation_input *header)
++{
++	const struct pg_derivation_view *original = owner;
++	if (original->header(original->owner, key, header)) return -1;
++	++header->count;
++	return 0;
++}
++
++static const void *delegated_root(const void *owner, size_t index)
++{
++	const struct pg_derivation_view *original = owner;
++	return original->root(original->owner, index);
++}
++
++static int delegated_child(const void *owner, const void *key, size_t index, const void **child)
++{
++	const struct pg_derivation_view *original = owner;
++	return original->child(original->owner, key, index, child);
++}
++
++static void malformed_view(struct pg_graph *graph)
++{
++	struct pg_derivation_input empty = {.rule = PG_CONTEXT_EMPTY};
++	const struct pg_derivation_input *roots[] = {&empty};
++	struct pg_derivation_view original = pg_derivation_input_view(1, roots), invalid = original;
++	invalid.header = overstated_header;
++	invalid.root = delegated_root;
++	invalid.child = delegated_child;
++	invalid.owner = &original;
++	FILE *file = tmpfile();
++	assert(file && pg_derivation_view_write(file, &invalid, NULL, &pg_builtin_graph_codec, graph) == -1);
++	assert(!fclose(file));
++	invalid = original; invalid.root = NULL;
++	file = tmpfile();
++	assert(file && pg_derivation_view_write(file, &invalid, NULL, &pg_builtin_graph_codec, graph) == -1);
++	assert(!fclose(file));
++	invalid = pg_derivation_input_view(1, NULL);
++	file = tmpfile();
++	assert(file && pg_derivation_view_write(file, &invalid, NULL, &pg_builtin_graph_codec, graph) == -1);
++	assert(!fclose(file));
++}
++
+ static FILE *producer_snapshot(struct pg_synthesis *synthesis, size_t count,
+ 	struct pg_synthesis_job **jobs, struct pg_graph *graph)
+ {
+@@ -1180,7 +1264,11 @@
  	const struct pg_derivation_input *const *inputs;
  	uint64_t steps = synthesis->steps;
  	size_t proofs = synthesis->typing->proofs.count, requests = synthesis->jobs.count;
@@ -96,7 +185,31 @@
  	for (size_t i = 0; i < count; ++i)
  		direct_input_dependencies(inputs[i], &pg_builtin_graph_codec, graph);
  	struct pg_dag objects = {0};
-@@ -1213,7 +1219,9 @@
+@@ -1194,6 +1282,23 @@
+ 	assert(file && !pg_derivation_inputs_write_inference(file, count, inputs, &effects, &pg_builtin_graph_codec, graph));
+ 	pg_effect_inference_destroy(&effects);
+ 	pg_graph_destroy(&storage);
++	struct pg_dag selected = {0};
++	assert(!pg_dag_init(&selected, NULL, NULL));
++	for (size_t i = 0; i < count; ++i) assert(!pg_dag_add(&selected, pg_synthesis_pending(jobs[i])));
++	assert(!pg_graph_init(&storage) && !pg_effect_inference_init(&effects, &storage));
++	FILE *borrowed = tmpfile();
++	assert(borrowed);
++	struct snapshot_projection snapshot = {NULL, &selected, jobs, count, borrowed, &effects, graph};
++	assert(!pg_synthesis_export_rule_closure(synthesis, &selected, NULL, &storage,
++		&effects, 0, NULL, &snapshot, write_snapshot));
++	size_t original_size, borrowed_size;
++	unsigned char *original_bytes = file_bytes(file, &original_size), *borrowed_bytes = file_bytes(borrowed, &borrowed_size);
++	assert(original_size == borrowed_size && !memcmp(original_bytes, borrowed_bytes, original_size));
++	assert(synthesis->steps == steps && synthesis->typing->proofs.count == proofs && synthesis->jobs.count == requests);
++	free(original_bytes); free(borrowed_bytes);
++	assert(!fclose(borrowed));
++	pg_dag_destroy(&selected);
++	pg_effect_inference_destroy(&effects); pg_graph_destroy(&storage);
+ 	rewind(file);
+ 	return file;
+ }
+@@ -1213,7 +1318,9 @@
  	struct pg_effect_inference image;
  	assert(!pg_graph_init(&storage) && !pg_effect_inference_init(&image, &storage));
  	const struct pg_derivation_input *const *inputs;
@@ -107,7 +220,7 @@
  	const struct pg_evidence *accepted = pg_synthesis_result(source);
  	struct pg_synthesis resumed;
  	assert(!pg_synthesis_init(&resumed, synthesis->typing,
-@@ -1278,7 +1286,9 @@
+@@ -1278,7 +1385,9 @@
  		assert(!pg_graph_init(&storage) && !pg_effect_inference_init(&image, &storage));
  		const struct pg_derivation_input *const *inputs = NULL;
  		size_t jobs = synthesis.jobs.count, proofs = typing->proofs.count;
@@ -118,7 +231,7 @@
  		assert(!inputs && image.failed && synthesis.jobs.count == jobs && typing->proofs.count == proofs);
  		pg_effect_inference_destroy(&image);
  		pg_graph_destroy(&storage);
-@@ -1289,7 +1299,6 @@
+@@ -1289,7 +1398,6 @@
  		assert(pg_synthesis_status(identity) == PG_SYNTHESIS_DONE);
  		retained_source_proof(&synthesis, identity, chunk);
  		const struct pg_evidence *u = pg_prove_universe(typing, pg_prove_empty_context(typing), 0);
@@ -126,7 +239,7 @@
  		const struct pg_term *type = pg_evidence_subject(u)->core;
  		const struct pg_object *op = pg_operation_label_create(graph, type, type);
  		const struct pg_effect_row *empty = pg_effect_row(graph, 0, NULL), *seed = pg_effect_row(graph, 1, &op);
-@@ -1299,14 +1308,19 @@
+@@ -1299,14 +1407,19 @@
  		assert(!pg_effect_dependency(&first, pg_effect_equation(&first, seed), empty, a));
  		struct pg_derivation_input header = {.rule = PG_RETURN_TYPE_FORM, .count = 1};
  		struct pg_synthesis_job *selected[] = {identity,
@@ -149,7 +262,7 @@
  		assert(inputs[0] == inputs[3] && inputs[1]->effect_parameter != inputs[2]->effect_parameter);
  		assert(image.row_sources.count == 3 && !image.sealed);
  		assert(jobs == synthesis.jobs.count && proofs == typing->proofs.count && steps == synthesis.steps && terms == graph->terms.count);
-@@ -1318,10 +1332,13 @@
+@@ -1318,10 +1431,13 @@
  		struct pg_effect_inference conflict;
  		assert(!pg_effect_inference_init(&conflict, graph));
  		struct pg_effect_equation *duplicate = pg_effect_equation_at(&conflict, pg_effect_equation_parameter(&first, a), empty);
@@ -165,7 +278,7 @@
  		pg_effect_inference_destroy(&image);
  		pg_graph_destroy(&storage);
  		const char declaration_source[] = "D := @{};";
-@@ -1360,7 +1377,6 @@
+@@ -1360,7 +1476,6 @@
  		assert(pg_synthesis_status(jobs[0]) == PG_SYNTHESIS_DONE && jobs[0] == jobs[3]);
  		assert(!pg_synthesis_result(jobs[1]) && !pg_synthesis_result(jobs[2]));
  		pg_effect_inference_seal(&image);
@@ -173,7 +286,7 @@
  		while (synthesis.ready) { assert(synthesis.steps < 4000); pg_synthesis_advance(&synthesis, chunk); }
  		for (size_t i = 0; i < count; ++i) assert(pg_synthesis_status(jobs[i]) == PG_SYNTHESIS_DONE);
  		same_snapshot(snapshot, producer_snapshot(&synthesis, count, jobs, typing->graph));
-@@ -1395,6 +1411,17 @@
+@@ -1395,6 +1510,17 @@
  	pg_whnf_work_destroy(&normalization);
  }
  
@@ -191,7 +304,7 @@
  static const struct pg_evidence *data_formation_request(struct pg_typing *typing,
  	const struct pg_evidence *proof, const struct pg_evidence *formation)
  {
-@@ -1403,13 +1430,8 @@
+@@ -1403,13 +1529,8 @@
  	enum pg_evidence_rule rule = pg_evidence_rule(proof);
  	assert(rule == PG_CONSTRUCTOR_INTRO || rule == PG_MATCH_ELIM || rule == PG_INDUCTION_ELIM);
  	size_t count = pg_evidence_premise_count(proof);
@@ -207,3 +320,11 @@
  }
  
  static void nominal_proofs(FILE *file, struct pg_typing *typing,
+@@ -1880,6 +2001,7 @@
+ 	struct pg_graph graph;
+ 	struct pg_typing typing;
+ 	assert(file && pg_graph_init(&graph) == 0 && pg_typing_init(&typing, &graph) == 0);
++	malformed_view(&graph);
+ 	discarded_input(&typing);
+ 	if (termination) termination_proofs(file, &typing, writing, bulk ? 64 : 1);
+ 	else if (nominal) nominal_proofs(file, &typing, writing, bulk ? 64 : 1);
