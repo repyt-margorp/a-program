@@ -448,6 +448,18 @@ not a RAM/speedup measurement. [Deltas](conversion_receipts_delta.tsv): +7
 implementation, +52 tests. Regression, checkpoint/C gates, sanitizers and fresh/
 current tests pass; 52 List images match. Four public reload failures stay open.
 
+2026-10-02, handler-wrapper deletion against `b307e8d`: multi-clause syntax
+requests the existing Handler owner directly, without the broad expression
+wrapper, another completion record or new wire fields. Source transport borrows
+that owner's scope/syntax; return-only syntax keeps generalized sequencing and
+explicit carriers keep ordinary rule export. [Census](handler_direct_measurements.tsv)
+removes 10 Jobs, 10 result copies, 2,400 Job-layout bytes and 20 dispatches in
+effect-application; final typed counts remain unchanged. [Deltas](handler_direct_delta.tsv):
+implementation net +13, tests +65, not a net code reduction or peak-memory
+claim. Regression, checkpoint/C gates, sanitizers and fresh/current checks pass,
+including partial/complete source roundtrips and step 0. All 52 List images match
+the parent; the same four public reload failures remain. Prototype only.
+
 Use the parent plan for progress. Create and verify a disposable candidate:
 
 ```sh

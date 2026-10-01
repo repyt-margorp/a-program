@@ -1,0 +1,11 @@
+--- a/synthesis_handler.h
++++ b/synthesis_handler.h
+@@ -5,6 +5,8 @@
+ 
+ /* Internal source-owner views. The public Handler API stays in synthesis.h. */
+ int pg_synthesis_handler_syntax(const struct pg_syntax *);
++int pg_synthesis_handler_source_input(const struct pg_synthesis_job *,
++	const struct pg_source_scope **, const struct pg_syntax **);
+ int pg_synthesis_return_clause(const struct pg_syntax *);
+ struct pg_synthesis_job *pg_synthesis_return_handler(struct pg_synthesis *,
+ 	const struct pg_source_scope *, const struct pg_syntax *);

@@ -23,8 +23,19 @@
  }
  
  static struct return_work *return_work(const struct pg_synthesis_job *job)
-@@ -85,9 +88,9 @@
+@@ -83,11 +86,20 @@
+ 	return pg_synthesis_work_state(job, HANDLER_JOB);
+ }
  
++int pg_synthesis_handler_source_input(const struct pg_synthesis_job *job,
++	const struct pg_source_scope **scope, const struct pg_syntax **syntax)
++{
++	if (!handler_work(job) || job->inputs[1] || job->inputs[2]) return -1;
++	if (input_syntax(job)->item_count < 2 || !pg_synthesis_handler_syntax(input_syntax(job))) return -1;
++	*scope = input_scope(job); *syntax = input_syntax(job);
++	return 0;
++}
++
  static struct pg_synthesis_projection handler_project(const struct pg_synthesis_job *job)
  {
 -	struct pg_synthesis_job *rule = job->role == HANDLER_RETURN_JOB ? return_work(job)->value_job
@@ -36,7 +47,7 @@
  }
  
  static void handler_destroy(struct pg_synthesis_job *job)
-@@ -99,13 +102,13 @@
+@@ -99,13 +111,13 @@
  static void handler_completed(struct pg_synthesis *synthesis, struct pg_synthesis_job *job, int first)
  {
  	(void)first;
@@ -52,7 +63,7 @@
  }
  
  const struct pg_source_scope *pg_synthesis_handler_environment(const struct pg_synthesis_job *job)
-@@ -118,7 +121,7 @@
+@@ -118,7 +130,7 @@
  {
  	if (!scope->effect_owner || scope->effect_owner->scope != scope) return 0;
  	*input = (struct pg_source_environment){.parent = scope->parent,
@@ -61,7 +72,7 @@
  	return 1;
  }
  
-@@ -126,61 +129,62 @@
+@@ -126,61 +138,62 @@
  	const struct pg_source_scope *scope, const struct pg_syntax *syntax)
  {
  	struct pg_synthesis_job *input = pg_synthesis_request(synthesis, scope, syntax->left);
@@ -145,7 +156,7 @@
  	return job;
  }
  
-@@ -217,14 +221,14 @@
+@@ -217,14 +230,14 @@
  		if (!local->binder) local->binder = pg_synthesis_source_binder(synthesis, source_scope, clause, 0, NULL);
  		if (!local->binder) goto error;
  		struct pg_synthesis_job *context = pg_synthesis_result_context(synthesis,
@@ -164,7 +175,7 @@
  	}
  	if (!local->value_job) goto error;
  	if (pg_synthesis_await(synthesis, job, local->value_job)) return;
-@@ -240,66 +244,75 @@
+@@ -240,66 +253,75 @@
  
  static struct pg_synthesis_job *handler_rule(struct pg_synthesis *synthesis,
  	struct pg_synthesis_job *body, struct pg_synthesis_job *returned,
@@ -273,7 +284,7 @@
  }
  
  static int prepare_handler_clause(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
-@@ -326,22 +339,23 @@
+@@ -326,22 +348,23 @@
  		if (!local->handler_clause) return PG_SYNTHESIS_ERROR;
  		*local->handler_clause = *input;
  	}
@@ -305,7 +316,7 @@
  	const struct pg_syntax *clause, const struct pg_handler_clause_input *input)
  {
  	struct pg_synthesis_job *job = pg_synthesis_handler_clause(synthesis, scope, carrier, clause);
-@@ -351,15 +365,15 @@
+@@ -351,15 +374,15 @@
  const struct pg_source_scope *pg_synthesis_handler_clause_scope(const struct pg_synthesis_job *job)
  {
  	const struct clause_work *local = clause_work(job);
@@ -324,7 +335,7 @@
  	*input = *local->handler_clause;
  	return 0;
  }
-@@ -377,7 +391,7 @@
+@@ -377,7 +400,7 @@
  			pg_synthesis_request(synthesis, source_scope, clause->left));
  		if (!local->left) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
  	}
@@ -333,7 +344,7 @@
  	{
  		struct pg_synthesis_job *operation = (void *)pg_synthesis_operation_origin(local->left);
  		if (!operation) {
-@@ -399,11 +413,13 @@
+@@ -399,11 +422,13 @@
  	}
  	if (pg_synthesis_await(synthesis, job, local->value_job)) return;
  	if (pg_synthesis_await(synthesis, job, local->left)) return;
@@ -350,7 +361,7 @@
  	job->result = local->value_job->result;
  	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_DONE);
  	return;
-@@ -416,7 +432,7 @@
+@@ -416,7 +441,7 @@
  	struct handler_work *local = handler_work(job);
  	const struct pg_source_scope *source_scope = input_scope(job);
  	const struct pg_syntax *source_syntax = input_syntax(job);
@@ -359,7 +370,7 @@
  	size_t count = source_syntax->item_count;
  	if (local->handler) return !independent || local->handler->effect_owner == local->handler ? 0 : -1;
  	if (count > (SIZE_MAX - sizeof(*local->handler)) / sizeof(struct source_handler_clause)) return -1;
-@@ -424,7 +440,7 @@
+@@ -424,7 +449,7 @@
  	if (!state) return -1;
  	state->source = job;
  	state->scope = source_scope;
@@ -368,7 +379,7 @@
  		state->labels = pg_alloc(synthesis->typing->graph, count * sizeof(*state->labels));
  		if (!state->labels) return -1;
  		struct handler_state *owner = source_scope->effect_owner;
-@@ -435,7 +451,7 @@
+@@ -435,7 +460,7 @@
  		state->effect_owner = owner;
  		if (source_scope->effect_owner != owner)
  			state->scope = pg_synthesis_intern_scope(synthesis, (struct pg_source_scope){
@@ -377,7 +388,7 @@
  		if (!state->scope) {
  			if (owner == state) pg_effect_inference_destroy(&state->effects);
  			return -1;
-@@ -449,7 +465,7 @@
+@@ -449,7 +474,7 @@
  const struct pg_source_scope *pg_synthesis_handler_scope(struct pg_synthesis *synthesis,
  	const struct pg_source_scope *parent, const struct pg_syntax *syntax)
  {
@@ -386,7 +397,7 @@
  	if (!job || prepare_handler(synthesis, job, 1)) return NULL;
  	return handler_work(job)->handler->scope;
  }
-@@ -471,16 +487,16 @@
+@@ -471,16 +496,16 @@
  		if (selected == SIZE_MAX) return PG_SYNTHESIS_REJECTED;
  		local->left = pg_synthesis_request(synthesis, state->scope, source_syntax->left);
  		if (!local->left) return PG_SYNTHESIS_ERROR;
@@ -406,7 +417,7 @@
  			&owner->effects, state->equation);
  		if (!state->carrier) return PG_SYNTHESIS_ERROR;
  	}
-@@ -490,13 +506,13 @@
+@@ -490,13 +515,13 @@
  struct pg_synthesis_job *pg_synthesis_source_handler_carrier(struct pg_synthesis *synthesis,
  	const struct pg_source_scope *parent, const struct pg_syntax *syntax)
  {
@@ -422,7 +433,7 @@
  {
  	struct pg_synthesis_job *clause = pg_synthesis_handler_clause(synthesis, handler_work(handler)->handler->scope, carrier, syntax);
  	if (!clause || (clause_work(clause)->handler_owner && clause_work(clause)->handler_owner != handler)) return NULL;
-@@ -509,7 +525,8 @@
+@@ -509,7 +534,8 @@
  {
  	if (!synthesis || !scope || !input || scope->owner != synthesis->owner_key) return -1;
  	const struct pg_synthesis_job *clause = scope->clause;
@@ -432,7 +443,7 @@
  	const struct pg_synthesis_job *handler = clause_work(clause)->handler_owner;
  	if (!clause_work(clause)->inner || !clause_work(clause)->handler_clause) return -1;
  	unsigned slot;
-@@ -532,8 +549,9 @@
+@@ -532,8 +558,9 @@
  	if (index == input->handler->item_count || pg_synthesis_return_clause(input->clause)) return NULL;
  	struct pg_synthesis_job *carrier = pg_synthesis_source_handler_carrier(synthesis, input->parent, input->handler);
  	if (!carrier) return NULL;
@@ -444,7 +455,7 @@
  	if (!clause) return NULL;
  	if (prepare_handler_clause(synthesis, clause, &input->allocation)) return NULL;
  	return input->slot ? clause_work(clause)->inner : clause_work(clause)->inner->parent;
-@@ -546,7 +564,8 @@
+@@ -546,7 +573,8 @@
  	const struct pg_syntax *source_syntax = input_syntax(job);
  	if (pg_synthesis_scope_wait(synthesis, job, source_scope)) return;
  	if (source_syntax->right) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
@@ -454,7 +465,7 @@
  	size_t count = source_syntax->item_count;
  	if (prepare_handler(synthesis, job, 0)) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
  	int preparation = prepare_handler_carrier(synthesis, job);
-@@ -569,9 +588,9 @@
+@@ -569,9 +597,9 @@
  				return;
  			}
  			struct pg_synthesis_job *body = source_handler_clause_job(synthesis, job,
@@ -467,7 +478,7 @@
  			state->clauses[state->count++] = (struct source_handler_clause){origin, body};
  		}
  		++state->scanned;
-@@ -579,27 +598,27 @@
+@@ -579,27 +607,27 @@
  		return;
  	}
  	if (!local->right) goto rejected;
@@ -499,7 +510,7 @@
  				state->collection = pg_synthesis_effect_contribution(synthesis, &owner->effects, state->equation,
  					state->collected ? empty : state->handled, formation);
  			}
-@@ -613,7 +632,6 @@
+@@ -613,7 +641,6 @@
  			state->registered = 1;
  			if (!--owner->registering) {
  				pg_effect_inference_seal(&owner->effects);

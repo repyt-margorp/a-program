@@ -1134,6 +1134,29 @@ Do not mark a milestone complete just because a view hides the old representatio
   partition images are byte-identical to the parent, with the same four failing
   public reload partitions. SE1-SE5 remain open; this is unpromoted prototype
   work. Logs use `/tmp/a-program-schema-owner-`.
+  Verified handler-wrapper deletion (2026-10-02, parent `b307e8d`): multi-clause
+  source handlers request their existing Handler owner directly; the second
+  broad expression allocation and forwarded completion are removed. Source
+  transport borrows syntax/scope from that owner, without another record or wire
+  field. Return-only syntax retains generalized sequencing, not the Handler
+  carrier restriction; explicit carrier requests remain ordinary rule exports.
+  [Paired census](../src/prototype/solver_inputs/handler_direct_measurements.tsv)
+  removes 10 Jobs, 10 result references, 2,400 Job-layout bytes and 20 dispatches
+  from effect-application. Final Term/Occurrence/Evidence/query counts and all
+  other samples' final censuses are unchanged. This is not a peak-memory or
+  general speedup claim. [Applied deltas](../src/prototype/solver_inputs/handler_direct_delta.tsv):
+  implementation +17/-4 (net +13), tests +65/-0, excluding docs, patch context
+  and symlink representation. O2 regression/examples/full acceptance, semantic
+  persistence, seven checkpoint and five C gates exit 0, including general
+  Sorted/result/permutation and both LT providers/partition orders. ASan/UBSan/
+  leaks, fresh assembly synthesis/source I/O and current-worktree Core/IADT/
+  synthesis/source I/O pass. Added tests check direct owner sharing, exact scope,
+  step 0 and roundtrips at 0/1/32/completed fuel, including invalid clauses.
+  Fresh source/tests/checkpoint/inspection files match the tested candidate.
+  All 52 List images and the strict four-failure partition TSV equal the parent;
+  the public reload gate remains failing, not waived. This is unpromoted
+  prototype work; user edits are excluded and SE1-SE5 remain open.
+  Logs use `/tmp/a-program-handler-direct-`.
 - [ ] **SE3 Evidence inputs:** map each retained premise to typed operands,
   context/map, receipt or other real logical input. Remove duplicate premise
   arrays and history-based access for the mapped rules, starting with

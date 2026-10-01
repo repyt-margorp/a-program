@@ -1,0 +1,8 @@
+file	added	removed	net	category
+src/synthesis.c	6	4	2	implementation
+src/synthesis_handler.c	9	0	9	implementation
+src/synthesis_handler.h	2	0	2	implementation
+tests/synthesis.c	11	0	11	tests
+tests/source_io.c	54	0	54	tests
+implementation_total	17	4	13	implementation
+tests_total	65	0	65	tests
