@@ -328,8 +328,18 @@ recheck; the verified reindex milestone below remains historical test evidence.
 | `synthesis_context.c:checked_query_step`; `synthesis_effect.c:inference_step` | Outer scheduling records mirror an already-owned query/effect completion. | These wrappers are removed; consumers borrow the existing progress owners. |
 | `synthesis_function.c:classifier_step` | Job advances `pg_classifier_request` and copies its result/completion. | At `4583ddd`, known inputs borrow the canonical query; unresolved inputs retain discovery only. Single dispatch/frontier restoration remains open. |
 | `synthesis_context.c:substitution_step`; `synthesis_derivation.c:derivation_step` | Partial map/next image or premise/comparison phase is held by the unfinished operation. | These are real cursors, not checked Term copies. No separate underlying constraint currently owns all this work. Consolidate the operation itself instead of deleting it or adding a parallel owner. |
-| `synthesis_context.c:reindex_step` | Resolved inputs create a second checked-input Job; the outer Job copies its completion/result. | Forwarding Job is removed; existing receipts are borrowed directly and real unfinished admission follows the shared occurrence action. General classifier ownership is still unresolved. |
-| `evidence.c:prove_data_elimination` | Typed operands/maps/type retain structural inputs; the receipt also retains `count + 6` premise references. | Match/induction now reconstruct logical premises from typed inputs, retaining only exceptional exact receipt selections. Constructor/other-rule overlap remains SE3 work. |
+| `synthesis_context.c:reindex_step` | Resolved inputs create a second checked-input Job; the outer Job copies its completion/result. | Forwarding Job is removed; existing receipts are borrowed directly and real unfinished admission follows the shared occurrence action. General classifier wrappers are removed at `4583ddd`; the complete frontier remains unresolved. |
+| `evidence.c:prove_data_elimination` | Typed operands/maps/type retain structural inputs; the receipt also retains `count + 6` premise references. | Match/induction, constructor, request and Fold milestones below borrow existing typed inputs and retain differing exact receipt selections. This is not removal of every receipt or closure of SE3. |
+
+2026-10-01 follow-up recheck at `17ff239` plus the IADT recovery trial below:
+accepted `src/synthesis_work.c:pg_synthesis_forward` and the assembled prototype
+still copy a child's result reference and completion into a forwarding Job.
+`family_function_step` still forwards pending inputs to a checked-input worker.
+This duplicates answer bookkeeping, not the pointed-to Term or proof itself;
+no competing admission authority or current incorrect answer follows merely
+from that pointer copy. The IADT trial removes recovery answer mirroring but
+retains genuine normalization preparation. Do not treat wrapper deletion as
+proof that the whole construction/frontier is unified.
 
 The intended resume path is: load canonical unfinished obligations and their
 local cursors, rebuild disposable readiness/wakeup references, then run ordinary
@@ -2638,3 +2648,66 @@ use `/tmp/a-program-classifier-owner-publish-check.log`. Full SE1-SE5 remain ope
 under the existing active work list; remaining IADT forwarding, construction
 duplication, receipt overlap and public owner-frontier restoration are not
 completed by this milestone.
+
+### SE1 IADT Recovery Ownership (2026-10-01)
+
+#### Subjective (User)
+
+English paraphrase of the latest follow-up: the resumed frontier should not
+duplicate Terms, typing or Solve with another authoritative Job/Evidence graph.
+Source: user message on 2026-10-01; this asks for critical examination, not
+approval of a new container or of deleting required checking information.
+
+#### Objective (Code)
+
+Parent `17ff239`, accepted baseline `e716232` plus recorded prototypes; concurrent
+accepted-source edits remain excluded. IADT recovery previously allocated a
+checked-input worker after resolving pending inputs and copied its query/result/
+completion back. The trial keeps one resolved-key normalization preparation and
+borrows the canonical nominal-recovery query. Preparation finishes when its
+query reference exists, not when the query succeeds; its raw result remains NULL.
+Constructor/Match/index-path/family consumers and qualified-name dependency
+resolution now await the actual owner through the existing pending interface.
+
+Fresh census: List-09 keeps 820 Jobs and 146,472 raw Job bytes; steps 2,612 ->
+2,617, raw result references 576 -> 571. General QuickSort changes 48,986 ->
+48,985 Jobs, 8,757,184 -> 8,757,048 raw Job bytes, 801,698 -> 801,912 steps,
+and 34,560 -> 34,340 raw result references. Completed Terms/occurrences/Evidence,
+typed-query counts/bytes and resolved-index storage are unchanged. Empty result
+slots still occupy header bytes; fewer references are not a memory saving by
+themselves. These measurements are not a wall-time speedup.
+
+#### Assessment
+
+Agent prototype decision: preserve real normalization evidence, not a second
+checked-input preparation or nominal-recovery result owner. Already-resolved
+inputs reuse the checked key before allocating. Earlier distinct discovery
+references can converge on one query; removing all retained discovery frames
+and consolidating dispatch/persistence remain SE1/SE4 work. No new queue, Core
+node, wire field, acceptance rule or expected-type inference is introduced.
+The user's frontier proposal does not require an independent Job graph. It
+does require actual interrupted reduction/substitution cursors if resumption
+must avoid recomputation. Keep those with the canonical unfinished operation;
+rebuild only disposable ready/wakeup references. Object witnesses remain Terms;
+checked admission and independent certificates need not form a second witness
+program, but cannot be inferred from the mere existence of a typed description.
+
+#### Plan
+
+- [x] Migrate all recovery consumers; test discovery/query completion separately,
+  zero fuel, converging producers, stable pending keys, and scoped/foreign inputs.
+- [x] Run synthesis tests and ASan/UBSan Core/IADT/Identity/synthesis with leaks.
+- [x] Reassemble recorded patches exactly and measure census/public partitions.
+- [x] Finish full O2 regression, examples, semantic, seven checkpoint gates and
+  acceptance; verify clean recorded Core/IADT/synthesis/source-I/O binaries.
+- [ ] Publish the prototype milestone without production promotion.
+
+The same four public reload failures remain at 100+100, 1,000+1,000,
+1,600+1,600 and terminal+0 (terminal fuel 2,617); no failure is waived.
+Evidence uses `/tmp/a-program-instance-owner-`. Per-file deltas are in
+[the line sheet](../src/prototype/solver_inputs/instance_owner_delta.tsv):
+implementation +75/-67 (net +8), tests +96/-26 (net +70), excluding patch context
+and docs. The full trial invocation exits 0; the clean recorded source-I/O suite
+and normalization case also pass. An earlier no-argument source-I/O invocation
+failed its CLI assertion, not a test case. Full SE1-SE5 remain open under the
+existing active work list.

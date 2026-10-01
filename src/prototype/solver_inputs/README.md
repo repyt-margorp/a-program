@@ -150,6 +150,9 @@ transition, including completion. Export borrows the actual answer without Solve
 Direct-query admission checks the live typing interner, rejecting foreign and
 reinitialized-owner inputs without adding another ownership record. This does
 not yet unify the two dispatchers or close the public resumption gate.
+IADT recovery similarly separates normalization preparation from its canonical
+typed query. It borrows that query's recovered type and instance view, without
+copying the parameter map or nominal-recovery completion into the preparation.
 Lexical binding now has one checked/pending Context API; the Job-only binding
 entry point is removed. IH/graph associations borrow known Contexts directly.
 Only unavailable inputs require a binding-validation request; an existing one

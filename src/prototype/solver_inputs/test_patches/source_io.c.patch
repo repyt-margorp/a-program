@@ -11,16 +11,22 @@
  			pg_program_destroy(p);
  			rewind(file);
  			p = pg_sources_read(file, 100000, &count, &roots);
-@@ -100,7 +102,8 @@
+@@ -100,11 +102,12 @@
  		assert(fiber && pg_synthesis_result(fiber));
  		struct pg_synthesis_job *normalized = pg_synthesis_normalize(&p->synthesis,
  			pg_prove_empty_context(&p->typing), pg_synthesis_result(fiber));
 -		struct pg_synthesis_job *recovery = pg_synthesis_inductive_instance(&p->synthesis, normalized);
-+		struct pg_synthesis_job *recovery = pg_synthesis_inductive_instance(&p->synthesis,
++		struct pg_pending *recovery = pg_synthesis_inductive_instance(&p->synthesis,
 +			(struct pg_synthesis_input){.pending = pg_synthesis_pending(normalized)});
  		assert(recovery);
- 		while (pg_synthesis_status(recovery) == PG_SYNTHESIS_PENDING) {
+-		while (pg_synthesis_status(recovery) == PG_SYNTHESIS_PENDING) {
++		while (pg_synthesis_advance_pending(&p->synthesis, recovery, 0) == PG_SYNTHESIS_PENDING) {
  			assert(p->synthesis.steps < 100000);
+-			pg_synthesis_advance(&p->synthesis, chunk);
++			pg_synthesis_advance_pending(&p->synthesis, recovery, chunk);
+ 		}
+ 		struct pg_inductive_instance instance;
+ 		assert(pg_synthesis_inductive_instance_result(recovery, &instance) && instance.indices);
 @@ -243,7 +246,7 @@
  		const struct pg_evidence *family = pg_prove_family_abstraction(&p->typing, context,
  			pg_prove_value_type(&p->typing, pg_prove_variable(&p->typing, context, binder)));
