@@ -63,6 +63,10 @@ updates are not sufficient progress; proceed with concrete code deletion and
 verification alongside the ownership audit. The user also reports GitHub
 connectivity restored; this is operational information, not a design change.
 
+2026-10-02, English paraphrase of the user's reiterated instruction: continue
+actual deletions, not documentation-only work; audit and implementation must
+advance together without rebuilding Oracle-local Term structure in Job/Evidence.
+
 ## Objective (Code)
 
 ### Revision and Method
@@ -597,6 +601,15 @@ not require a particular implementation descriptor. A source-key capability on
 static descriptors is an inspection contract, not a new Core/Oracle tag or
 serialized acceptance flag. Plain structural-building queries still remain.
 
+2026-10-02, agent implementation decision on `ba1e0d7`: Core-preserving
+Context projection and type/value readings should borrow their input's
+structural request, not retain a second structural result/Job. This does not
+skip the ordinary rule's scope or judgement checks. Test exact sharing before
+acceptance, long input chains, split/zero fuel and invalid rule rejection.
+The first focused run exposed a stale symbolic snapshot on a fresh accepted
+projection. Accepted inputs now read their typed data before borrowing raw
+inputs; retained pre-closure views remain immutable. No alias graph/cache is added.
+
 ## Plan
 
 No new binding/domain checkpoint fields or backend features before this gate.
@@ -754,6 +767,29 @@ Do not mark a milestone complete just because a view hides the old representatio
   report match the parent exactly; no failure is waived. Logs use
   `/tmp/a-program-source-oracle-`. Core-building/checking-owner consolidation,
   general frontier restoration and SE1-SE5 remain open; no production promotion.
+  Verified prototype increment (2026-10-02, parent `ba1e0d7`): Core-preserving Context
+  projection and type/value readings borrow the actual structural query instead
+  of allocating another Job/result. Three structural APIs use one iterative
+  discovery path; their duplicate rule dispatch is removed. Fresh accepted
+  inputs read typed data, while retained symbolic views stay unchanged. Tests
+  cover exact pre-acceptance sharing, 4,096 input links, split/zero fuel and
+  invalid rule rejection; the ordinary checking requests remain authoritative.
+  [Measurements](../src/prototype/solver_inputs/transparent_structure_measurements.tsv):
+  QuickSort Jobs 46,932 -> 46,381; Job bytes 7,965,984 -> 7,886,872; steps
+  799,129 -> 798,855. Typed Occurrences/Evidence/query counts are unchanged in
+  all four samples; QuickSort has two additional raw Terms. List steps increase
+  2,597 -> 2,618, so this is not a general speedup claim. [Applied deltas](../src/prototype/solver_inputs/transparent_structure_delta.tsv):
+  implementation +38/-36 (net +2), tests +74/-0. Source line count has not fallen.
+  Fresh assembly matches all 156 C/header files; recorded synthesis/derivation
+  and current-worktree Core/IADT/synthesis pass. Focused ASan/UBSan/leak and
+  all five C gates pass. Full regression, examples, acceptance, semantic
+  persistence and all seven checkpoint gates pass, including both LT providers,
+  both partition orders, general Sorted/permutation proofs and invalid controls.
+  The public partition
+  gate retains the same four failing reload cuts; zero fuel, 10+10=20 and all
+  in-memory/save-only comparisons pass. No failure is waived. Logs use
+  `/tmp/a-program-transparent-structure-`. SE1-SE5 and production promotion
+  remain unfinished.
   Verified prototype increment (2026-10-01, parent `9146893`): Lambda classifier,
   Handler carrier and Effect subsumption structural requests now borrow their
   actual input queries. Function/CBPV selection stays Oracle-local; their

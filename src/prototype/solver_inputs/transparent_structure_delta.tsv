@@ -1,0 +1,3 @@
+area	file	added	removed	net
+implementation	src/synthesis.c	38	36	2
+tests	tests/synthesis.c	74	0	74

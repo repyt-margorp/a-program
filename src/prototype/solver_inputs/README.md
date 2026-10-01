@@ -251,6 +251,16 @@ wire field is added. See [measurements](source_oracle_measurements.tsv),
 [allocation](source_oracle_allocation.tsv) and [applied deltas](source_oracle_delta.tsv)
 against `2a0ba44`. This reduces retained state, not total source line count;
 actual construction/checking consolidation and public resume remain unfinished.
+
+Core-preserving Context projection and type/value readings now borrow their
+input's structural query without a second Job/result. All three structural
+APIs use one iterative discovery path; ordinary rule checking remains separate.
+Fresh accepted inputs read typed data, not a stale symbolic snapshot; retained
+raw views are unchanged. See [measurements](transparent_structure_measurements.tsv)
+and [applied deltas](transparent_structure_delta.tsv) against `ba1e0d7`.
+This removes redundant scheduled requests, not the remaining construction
+owners, semantic checks or public-resumption failures.
+
 Lexical binding now has one checked/pending Context API; the Job-only binding
 entry point is removed. IH/graph associations borrow known Contexts directly.
 Only unavailable inputs require a binding-validation request; an existing one
