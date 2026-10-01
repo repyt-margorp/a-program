@@ -302,6 +302,16 @@ semantic boundary has been merged merely to reduce node count.
 
 ### Plan
 
+The 2026-10-02 borrowed-premise trial removes preparation/checking's unconditional
+temporary input arrays. Indexed readers and array callers share the same named
+rule checks; only variable-arity APIs materialize needed tail slices. Readers
+are synchronous borrowed arguments, not stored Job/Evidence records. The paired
+[census](borrowed_premises_measurements.tsv) is unchanged;
+[direct malloc calls](borrowed_premises_allocation.tsv) decrease. This does not
+delete the remaining owners or establish a general speedup. The
+[source deltas](borrowed_premises_delta.tsv) show a net increase, not a line-count
+reduction. Verification status remains in the parent plan.
+
 Use the parent plan for progress. Create and verify a disposable candidate:
 
 ```sh

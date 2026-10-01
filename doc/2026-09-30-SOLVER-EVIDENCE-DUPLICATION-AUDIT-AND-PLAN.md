@@ -610,6 +610,20 @@ The first focused run exposed a stale symbolic snapshot on a fresh accepted
 projection. Accepted inputs now read their typed data before borrowing raw
 inputs; retained pre-closure views remain immutable. No alias graph/cache is added.
 
+2026-10-02, agent decision on `7c3a1a1`: preparation and ordinary rule checking
+still materialize temporary premise arrays from immutable inputs. Use borrowed
+indexed readers at these call boundaries, following the existing request-key
+reader pattern. Keep one rule dispatcher and the named checking rules; retain
+temporary slices only where variable-arity rule APIs genuinely require them.
+This removes copies, not the remaining preparation/checking owners or witness
+Terms. Verify exact receipt selection, foreign/missing input rejection, large
+arities, zero/split fuel and persistence before claiming the increment complete.
+The first trial passed regression but used a fixed-size scratch Arena for
+variable slices: the combined allocator census exposed 4,021,920 additional
+QuickSort `calloc` bytes. Reject that allocation choice and use exact-size
+temporary slices (none for an empty tail); rerun verification on the corrected
+trial. A malloc-only decrease was insufficient evidence of an improvement.
+
 ## Plan
 
 No new binding/domain checkpoint fields or backend features before this gate.
@@ -909,6 +923,37 @@ Do not mark a milestone complete just because a view hides the old representatio
   Match/induction/constructor. Migrate interning keys, consumers, export and
   ordinary checking in the same milestone. Recheck concurrent relocation work;
   do not overwrite it or silently discard required scope/formation evidence.
+  Verified prototype increment (2026-10-02, parent `7c3a1a1`):
+  preparation reads its existing input owners through the request-key reader;
+  checking reads the immutable checked/pending operand slots directly. The two
+  unconditional `malloc`/copy/free paths in `synthesis_derivation.c` are deleted.
+  Array callers and indexed readers use one ordinary rule dispatcher. The
+  reader/owner are synchronous borrowed call arguments, never retained state;
+  variable-arity named rule APIs still require temporary tail slices. This is
+  not removal of those APIs, the remaining preparation/checking owners or object
+  witness Terms. New Core/IADT tests reconstruct directly from accepted inputs,
+  reject missing readers/children and preserve exact selections. The nominal
+  image test also borrows alternate formation selections without a premise copy.
+  [Paired censuses](../src/prototype/solver_inputs/borrowed_premises_measurements.tsv)
+  are identical in all four samples at fuel 0/100/1000/completion. Wrapped direct
+  [allocation measurements](../src/prototype/solver_inputs/borrowed_premises_allocation.tsv)
+  for the corrected trial remove 223/1,363/234/12,907 malloc calls for
+  List/effect/captured/QuickSort and 2,888/18,072/3,064/171,640
+  malloc bytes. Arena calloc requests are measured too: QuickSort combined
+  requested bytes decrease 155,224-188,056 in two paired runs; hash/pointer order
+  changes scratch allocation. These exclude libc internals and are not live-memory
+  or speedup estimates. Implementation is +169/-94 (net +75), tests +48/-7
+  (net +41), diagnostic +33/-0;
+  [applied-file deltas](../src/prototype/solver_inputs/borrowed_premises_delta.tsv).
+  Source line count has not decreased. Corrected-trial ASan/UBSan/leaks, five C gates, fresh
+  recorded-assembly checks and current-worktree Core/IADT/synthesis checks pass;
+  all 156 tested C/header files match the recorded assembly. User edits are
+  excluded. O2 regression/examples/full acceptance, semantic persistence and all
+  seven checkpoint gates exit 0, including universal Sorted/permutation/result
+  connection and both LT providers/partition orders. All 52 public List images
+  and the four-failure partition TSV match the parent exactly; that strict gate
+  still exits 1. SE1-SE5 remain open; this is unpromoted prototype work. Logs use
+  `/tmp/a-program-borrowed-premises-`.
   Verified prototype increment (2026-10-01, parent `85c5549`): IADT formation
   borrows its exact parameter/index/constructor-result receipts from the existing
   Schema and retains no second premise array. All raw formation-premise readers

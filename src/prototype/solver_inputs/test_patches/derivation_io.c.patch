@@ -173,12 +173,37 @@
  		while (synthesis.ready) { assert(synthesis.steps < 4000); pg_synthesis_advance(&synthesis, chunk); }
  		for (size_t i = 0; i < count; ++i) assert(pg_synthesis_status(jobs[i]) == PG_SYNTHESIS_DONE);
  		same_snapshot(snapshot, producer_snapshot(&synthesis, count, jobs, typing->graph));
-@@ -1405,7 +1421,7 @@
+@@ -1395,6 +1411,17 @@
+ 	pg_whnf_work_destroy(&normalization);
+ }
+ 
++struct formation_inputs {
++	const struct pg_evidence *proof, *formation;
++	size_t selected;
++};
++
++static const struct pg_evidence *formation_premise(const void *owner, size_t i)
++{
++	const struct formation_inputs *inputs = owner;
++	return i == inputs->selected ? inputs->formation : pg_evidence_premise(inputs->proof, i);
++}
++
+ static const struct pg_evidence *data_formation_request(struct pg_typing *typing,
+ 	const struct pg_evidence *proof, const struct pg_evidence *formation)
+ {
+@@ -1403,13 +1430,8 @@
+ 	enum pg_evidence_rule rule = pg_evidence_rule(proof);
+ 	assert(rule == PG_CONSTRUCTOR_INTRO || rule == PG_MATCH_ELIM || rule == PG_INDUCTION_ELIM);
  	size_t count = pg_evidence_premise_count(proof);
- 	const struct pg_evidence **premises = malloc(count * sizeof(*premises));
- 	assert(premises);
+-	const struct pg_evidence **premises = malloc(count * sizeof(*premises));
+-	assert(premises);
 -	memcpy(premises, pg_evidence_premises(proof), count * sizeof(*premises));
-+	for (size_t i = 0; i < count; ++i) premises[i] = pg_evidence_premise(proof, i);
- 	premises[rule == PG_CONSTRUCTOR_INTRO ? 0 : count - 1] = formation;
- 	const struct pg_evidence *result = pg_prove_derivation(typing, rule, &parameters, count, premises);
- 	free(premises);
+-	premises[rule == PG_CONSTRUCTOR_INTRO ? 0 : count - 1] = formation;
+-	const struct pg_evidence *result = pg_prove_derivation(typing, rule, &parameters, count, premises);
+-	free(premises);
+-	return result;
++	const struct formation_inputs inputs = {proof, formation, rule == PG_CONSTRUCTOR_INTRO ? 0 : count - 1};
++	return pg_prove_derivation_inputs(typing, rule, &parameters, count, &inputs, formation_premise);
+ }
+ 
+ static void nominal_proofs(FILE *file, struct pg_typing *typing,

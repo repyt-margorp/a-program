@@ -8,7 +8,37 @@
  
  #include <assert.h>
  #include <stdio.h>
-@@ -39,11 +40,11 @@
+@@ -23,6 +24,18 @@
+ 	return count;
+ }
+ 
++struct borrowed_inputs {
++	const struct pg_typing *typing;
++	const struct pg_evidence *proof;
++};
++
++static const struct pg_evidence *borrowed_premise(const void *owner, size_t i)
++{
++	const struct borrowed_inputs *inputs = owner;
++	const struct pg_evidence *child = NULL;
++	return pg_derivation_input_dependency(inputs->typing, inputs->proof, i, &child) == 1 ? child : NULL;
++}
++
+ static void common_rule(struct pg_typing *typing,
+ 	const struct pg_evidence *proof)
+ {
+@@ -33,17 +46,22 @@
+ 	for (size_t i = 0; i < input.count; ++i) assert(pg_derivation_input_dependency(typing, proof, i, premises + i) == 1);
+ 	size_t proofs = typing->proofs.count, terms = typing->graph->terms.count;
+ 	assert(pg_prove_derivation(typing, input.rule, &input.parameters, input.count, premises) == proof);
++	const struct borrowed_inputs borrowed = {typing, proof};
++	assert(pg_prove_derivation_inputs(typing, input.rule, &input.parameters, input.count,
++		&borrowed, borrowed_premise) == proof);
++	assert(!pg_prove_derivation_inputs(typing, input.rule, &input.parameters, input.count + 1,
++		&borrowed, borrowed_premise));
+ 	assert(typing->proofs.count == proofs && typing->graph->terms.count == terms);
+ 	for (uint64_t chunk = 1; chunk <= 64; chunk *= 64) {
+ 		struct pg_whnf_work work;
  		struct pg_synthesis synthesis;
  		assert(!pg_whnf_work_init(&work, typing->graph));
  		assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
@@ -24,7 +54,7 @@
  		while (pg_synthesis_status(job) == PG_SYNTHESIS_PENDING) {
  			assert(synthesis.steps < 10000);
  			pg_synthesis_advance(&synthesis, chunk);
-@@ -54,7 +55,7 @@
+@@ -54,7 +72,7 @@
  			conflict.argument = conflict.recursion;
  			struct pg_derivation_input invalid = input;
  			invalid.parameters.induction = &conflict;
@@ -33,7 +63,7 @@
  			assert(rejected && rejected != job);
  			while (pg_synthesis_status(rejected) == PG_SYNTHESIS_PENDING) {
  				assert(synthesis.steps < 10000);
-@@ -89,8 +90,8 @@
+@@ -89,8 +107,8 @@
  	size_t jobs = synthesis->jobs.count;
  	for (size_t i = 0; i < pg_data_constructor_count(instance.schema); ++i) {
  		struct pg_synthesis_job *scope = pg_synthesis_constructor_scope(synthesis,
@@ -44,7 +74,7 @@
  		assert(scope && pg_synthesis_status(scope) == PG_SYNTHESIS_DONE);
  		const struct pg_context *fields = pg_evidence_context(pg_synthesis_result(scope));
  		const struct pg_term *branch = pg_evidence_subject(pg_evidence_premise(family, i + 3))->core;
-@@ -99,6 +100,22 @@
+@@ -99,6 +117,22 @@
  	assert(synthesis->jobs.count == jobs);
  }
  
@@ -67,7 +97,7 @@
  static void positive_fields(void)
  {
  	struct pg_graph graph;
-@@ -166,16 +183,12 @@
+@@ -166,16 +200,12 @@
  	const struct pg_object *binder, const struct pg_evidence *expected)
  {
  	for (uint64_t chunk = 1; chunk <= 64; chunk *= 64) {
@@ -89,7 +119,7 @@
  		const struct pg_object *source = pg_evidence_context(extension)->binder;
  		const struct pg_evidence *image = pg_substitution_image(typing, result, source);
  		const struct pg_evidence *reference = pg_substitution_image(typing, expected, source);
-@@ -183,8 +196,6 @@
+@@ -183,8 +213,6 @@
  		assert(pg_evidence_subject(image)->core == pg_evidence_subject(reference)->core);
  		assert(pg_alpha_equal(pg_evidence_classifier(image), pg_evidence_classifier(reference)) == 1);
  		common_rule(typing, result);
@@ -98,7 +128,7 @@
  	}
  }
  
-@@ -326,6 +337,7 @@
+@@ -326,6 +354,7 @@
  	const struct pg_data_schema *schema = pg_data_schema(&typing, pg_data_signature(&typing, fc, ix), 0, NULL);
  	const struct pg_evidence *nominal = pg_prove_inductive_type(&typing, schema);
  	assert(nominal);
@@ -106,7 +136,7 @@
  	struct pg_inductive_instance recovered;
  	assert(!pg_inductive_instance(&typing, fiber, &recovered));
  	const struct pg_evidence *nf = pg_prove_projection(&typing, vc, nominal);
-@@ -480,9 +492,9 @@
+@@ -480,9 +509,9 @@
  		assert(!pg_whnf_work_init(&work, &graph));
  		assert(!pg_synthesis_init(&synthesis, &typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
  		const struct pg_source_scope *scope = pg_synthesis_bind(&synthesis, pg_synthesis_root(&synthesis),
@@ -118,7 +148,7 @@
  		assert(scope);
  		const char source[] = "Acc := @\\subject : A => { acc : (x:A) -> ((y:A) -> R y x -> * y) -> * x; };";
  		struct pg_parser parser;
-@@ -535,6 +547,7 @@
+@@ -535,6 +564,7 @@
  		pg_data_signature(&typing, sc, indices), 1, &result);
  	const struct pg_evidence *acc = pg_prove_inductive_type(&typing, schema);
  	assert(acc);
@@ -126,7 +156,7 @@
  	common_rule(&typing, acc);
  	const struct pg_evidence *acc_r = pg_prove_family_abstraction(&typing, rc, acc);
  	const struct pg_evidence *acc_a = pg_prove_family_abstraction(&typing, ac, acc_r);
-@@ -655,6 +668,8 @@
+@@ -655,6 +685,8 @@
  	}
  	const struct pg_evidence *constructor_value = pg_prove_constructor(&typing, acc, constructor,
  		pg_prove_substitution_projection(&typing, rc, field_context), 2, field_values);
@@ -135,7 +165,7 @@
  	const struct pg_evidence *premises[4];
  	for (size_t i = 0; i < 4; ++i) premises[i] = pg_evidence_premise(constructor_value, i);
  	const struct pg_evidence *family = premises[0];
-@@ -681,6 +696,7 @@
+@@ -681,6 +713,7 @@
  	assert(retained_instance && retained_instance != alternative);
  	assert(pg_evidence_subject(retained_instance) == pg_evidence_subject(alternative));
  	assert(pg_evidence_premise(retained_instance, 3) == flat);
@@ -143,7 +173,7 @@
  	common_rule(&typing, retained_instance);
  	pg_graph_destroy(&scratch);
  	premises[3] = mapped_fields;
-@@ -809,7 +825,19 @@
+@@ -809,7 +842,19 @@
  		common_rule(&typing, opened);
  	}
  	assert(pg_alpha_equal(pg_evidence_classifier(opened), pg_evidence_subject(expected)->core) == 1);
@@ -163,7 +193,7 @@
  	pg_graph_destroy(&graph);
  	puts("Acc: open logical relation, indexed function-field IH and dependent elimination passed");
  }
-@@ -960,17 +988,18 @@
+@@ -960,17 +1005,18 @@
  		struct pg_synthesis synthesis;
  		assert(!pg_whnf_work_init(&work, typing->graph));
  		assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
@@ -188,7 +218,7 @@
  			chunk, PG_SYNTHESIS_REJECTED);
  		pg_synthesis_destroy(&synthesis);
  		pg_whnf_work_destroy(&work);
-@@ -1682,18 +1711,20 @@
+@@ -1682,18 +1728,20 @@
  			struct pg_synthesis synthesis;
  			assert(!pg_whnf_work_init(&work, typing->graph));
  			assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
@@ -215,7 +245,7 @@
  					chunk, PG_SYNTHESIS_DONE);
  				assert(pg_evidence_subject(checked)->core == pg_evidence_subject(result)->core);
  				assert(pg_evidence_classifier(checked) == pg_evidence_subject(expected)->core);
-@@ -1703,12 +1734,25 @@
+@@ -1703,12 +1751,25 @@
  					pg_prove_return(typing, checked));
  				assert(theorem && !pg_evidence_context(theorem));
  				if (!injection) {
@@ -247,7 +277,7 @@
  					const struct pg_evidence *eliminated = solve_index_proof(&synthesis, derived, chunk, PG_SYNTHESIS_DONE);
  					assert(pg_evidence_classifier(eliminated) == pg_evidence_subject(expected)->core);
  					assert(pg_term_independent(pg_evidence_subject(eliminated)->core, i ? q : p) == 0);
-@@ -1722,43 +1766,50 @@
+@@ -1722,43 +1783,50 @@
  						pg_prove_return(typing, eliminated));
  					assert(closed && !pg_evidence_context(closed));
  					size_t before = typing->proofs.count, terms = typing->graph->terms.count;
@@ -319,7 +349,7 @@
  					const struct pg_evidence *proof = solve_index_proof(&synthesis, derived, chunk, PG_SYNTHESIS_DONE);
  					assert(pg_evidence_classifier(proof) == pg_evidence_subject(expected)->core);
  					assert(!pg_term_independent(pg_evidence_subject(proof)->core, i ? q : p));
-@@ -1768,61 +1819,60 @@
+@@ -1768,61 +1836,60 @@
  					transport_scopes(&synthesis, transported);
  					common_rule(typing, transported);
  					size_t before = typing->proofs.count, terms = typing->graph->terms.count;
@@ -413,7 +443,7 @@
  			pg_synthesis_destroy(&synthesis);
  			pg_whnf_work_destroy(&work);
  		}
-@@ -1899,8 +1949,8 @@
+@@ -1899,8 +1966,8 @@
  		assert(pg_prove_derivation(typing, input.rule, &parameters, 2, premises) == normalized[i]);
  		struct pg_synthesis synthesis;
  		assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
@@ -424,7 +454,7 @@
  		while (pg_synthesis_status(job) == PG_SYNTHESIS_PENDING) {
  			pg_synthesis_advance(&synthesis, chunk);
  			assert(synthesis.steps < 10000);
-@@ -2045,13 +2095,13 @@
+@@ -2045,13 +2112,13 @@
  		for (size_t i = 0; i < 2; ++i) {
  			const struct pg_evidence *lv = pg_prove_projection(typing, context, values[i]);
  			const struct pg_evidence *rv = pg_prove_projection(typing, context, reverse[i]);
@@ -444,7 +474,7 @@
  			jobs[i] = pg_synthesis_constructor_field_identity(&synthesis,
  				inputs[0], inputs[1], inputs[2], inputs[3], fields[i], inputs[4], inputs[5]);
  			if (!i) {
-@@ -2115,6 +2165,30 @@
+@@ -2115,6 +2182,30 @@
  	const struct pg_data_schema *nat_schema = pg_data_schema(&typing, signature, 2, results);
  	const struct pg_evidence *nat = pg_prove_inductive_type(&typing, nat_schema);
  	assert(nat && pg_evidence_rule(nat) == PG_INDUCTIVE_FORM);
@@ -475,7 +505,7 @@
  	constructor_field_paths(&typing, nat);
  	for (uint64_t chunk = 1; chunk <= 64; chunk *= 64) dependent_normalized_fields(&typing, nat, chunk);
  	struct pg_inductive_instance recovered;
-@@ -2218,8 +2292,24 @@
+@@ -2218,8 +2309,24 @@
  	const struct pg_evidence *succ = pg_prove_constructor(&typing, nat,
  		pg_data_constructor(nat_layout, 1), identity, 1, &zero);
  	assert(zero && succ && pg_evidence_rule(succ) == PG_CONSTRUCTOR_INTRO);
@@ -502,7 +532,7 @@
  	assert(pg_evidence_classifier(succ) == pg_evidence_subject(nat)->core);
  	assert(pg_evidence_subject(succ)->core == pg_application(&graph,
  		pg_reference(&graph, pg_data_constructor(nat_layout, 1)), pg_evidence_subject(zero)->core));
-@@ -3056,6 +3146,38 @@
+@@ -3056,6 +3163,38 @@
  	const struct pg_evidence *pred = pg_prove_match(&typing, nat,
  		identity, succ, z_context, nat_motive, 2, pred_branches);
  	assert(pred && pg_evidence_rule(pred) == PG_MATCH_ELIM);
@@ -541,7 +571,7 @@
  	check(&constructor_work, pg_evidence_subject(pred)->core, pg_evidence_subject(zero_function)->core);
  	const struct pg_reduction_certificate *pred_receipt = pg_whnf_certificate(
  		pg_whnf_request(&constructor_work, &pg_pure_policy, pg_evidence_subject(pred)->core));
-@@ -3383,6 +3505,15 @@
+@@ -3383,6 +3522,15 @@
  	/* A retained signature does not belong to a reinitialized typing store,
  	 * even when no constructors would otherwise force a premise check. */
  	pg_typing_destroy(&typing);

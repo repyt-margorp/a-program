@@ -1,0 +1,8 @@
+area	file	added	removed	net
+implementation	src/derivation.c	123	70	53
+implementation	src/derivation.h	7	0	7
+implementation	src/synthesis_derivation.c	39	24	15
+tests	tests/core.c	18	0	18
+tests	tests/iadt.c	17	0	17
+tests	tests/derivation_io.c	13	7	6
+diagnostic	src/prototype/solver_inputs/borrowed_input_audit.c	33	0	33
