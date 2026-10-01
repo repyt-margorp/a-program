@@ -198,6 +198,14 @@ binding post-checks retain two continuation pointers instead of the broad source
 layout; their inputs and exports are borrowed. The real checks and pending Job
 headers remain. See [deltas](source_check_owner_delta.tsv) and
 [measurements](source_check_owner_measurements.tsv) against `19a166a`.
+Match now owns its open result-type input; the separate result-slot Job and its
+copied receipt are deleted. Classifier propagation borrows immutable operands
+and its checking output, retaining only one continuation pointer instead of the
+broad source state. Constructor branches are allocated after schema discovery;
+the existing conversion checks remain. See [deltas](match_owner_delta.tsv),
+[measurements](match_owner_measurements.tsv) and [allocation](match_owner_allocation.tsv)
+against `0c59383`. Four broad source roles and the public reload failures remain;
+this is not complete Job removal or a universal allocation/speed improvement.
 Lexical binding now has one checked/pending Context API; the Job-only binding
 entry point is removed. IH/graph associations borrow known Contexts directly.
 Only unavailable inputs require a binding-validation request; an existing one

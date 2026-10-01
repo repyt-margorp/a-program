@@ -625,6 +625,32 @@ Do not mark a milestone complete just because a view hides the old representatio
   Pending validation/checking headers, post-check result forwarding and six broad
   source roles remain: this does not complete SE1-SE5 or promote prototype code.
   Logs use `/tmp/a-program-source-check-owner-`.
+  Verified prototype increment (2026-10-01, parent `0c59383`): Match retains its
+  open result-type input on its existing owner. The separate `RESULT_TYPE_JOB`,
+  dispatch path and copied terminal receipt are deleted. Constructor branches
+  are allocated once after schema discovery; equations can arrive earlier.
+  Classifier propagation borrows its immutable operands and actual output,
+  retaining one continuation pointer (8 bytes, formerly 184), not broad source
+  state. Additional equations still use existing conversion and cannot overwrite
+  the first input. Concurrent application wakeup, one shared Match/two equations,
+  zero fuel and independent `::` post-check tests pass. Full O2 regression,
+  examples, acceptance, semantic persistence and all seven checkpoint gates exit
+  0, including general Sorted/result connection and both LT providers/partition
+  orders. Separate C backend and focused ASan/UBSan synthesis/constructor/
+  derivation checks pass with leak detection. Fresh assembly matches all 156
+  tested C/header files; its focused checks and current-worktree Core/IADT/
+  synthesis checks pass. User edits remain excluded. Paired
+  [measurements](../src/prototype/solver_inputs/match_owner_measurements.tsv)
+  preserve Term/Occurrence/Evidence/query counts and logical premises. QuickSort
+  loses two Jobs/result references and 244,000 Job-storage bytes; steps fall by
+  one. Whole wrapped cumulative
+  [allocation](../src/prototype/solver_inputs/match_owner_allocation.tsv) falls
+  234,832 aligned bytes but grows 227 calls, not a general speedup result.
+  Actual implementation is +54/-30 (net +24), tests +90/-0;
+  [per-file deltas](../src/prototype/solver_inputs/match_owner_delta.tsv).
+  All 52 List partition images and the four-failure public reload report match
+  the parent exactly. Four broad source roles and public reload restoration
+  remain unfinished; SE1-SE5 stay open. Logs use `/tmp/a-program-match-owner-`.
 - [ ] **SE2 single construction path:** enumerate provisional structure inputs
   for Lambda/App/Pi and CBPV, extract their actual construction once under the
   existing semantic owners, and have checking consume that same construction.
