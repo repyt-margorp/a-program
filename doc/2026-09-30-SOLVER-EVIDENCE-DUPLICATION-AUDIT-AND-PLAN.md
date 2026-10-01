@@ -531,13 +531,30 @@ Expose the application's ordinary recipe before awaiting that cursor, to retain
 pending effect discovery. Existing argument checking still decides acceptance;
 concurrent equations must agree without replacing the Match's first input.
 Verify the boundary and full regressions before publishing this deletion.
-The [double-quote/open-Match probe](../src/prototype/solver_inputs/fixtures/nested-open-equation.p)
+Historical observation before the next trial: the
+[double-quote/open-Match probe](../src/prototype/solver_inputs/fixtures/nested-open-equation.p)
 also stops with no runnable work on the parent binary (707 steps, requested
 10,000) and candidate (706 steps). The outer quote's preparation waits
 for a checked classifier before the application can deliver its equation.
 This is an existing pending-structure cycle for SE2, not a demonstrated regression
 or evidence that the separate propagation Job is necessary. Do not claim that
 probe completes, supply its type through `::`, or restore a wrapper to hide it.
+
+2026-10-01, agent decision on parent `071742c`: reuse the actual construction
+found by polarity discovery. A Thunk introduction guarantees a U classifier
+only if its ordinary checking succeeds; this suffices to preserve surface `&`
+without checking its unfinished child twice. This is not early admission.
+Body preparation validates its requested Context, then borrows its adapted
+rule's output, not another result/completion copy. Both await entry points must
+follow that existing output; preparation DONE does not mean checking DONE.
+Focused tests pass, including rejected outputs and zero fuel. The default-policy
+CLI probe is freshly pending at 706 steps on the parent and done at 991 on the
+trial. This is progress past a cycle, not a speed comparison. O2 regression,
+examples/acceptance, semantic persistence, seven checkpoint gates, C backend
+and focused ASan/UBSan checks pass. The first namespace-body checkpoint run
+failed because its test read the removed adapter result after checking the
+public getter; correcting that stale test dereference and rerunning all seven
+gates passed. Broad source state and public frontier restoration remain open.
 
 Object-language equality witnesses remain Terms. Removing duplicated metalevel
 premises must not erase witness distinctions, conversion/reduction certificates,
@@ -975,9 +992,31 @@ baseline described above. Concurrent accepted-source edits remain excluded.
   five-line diagnostic fixture; [file deltas](../src/prototype/solver_inputs/application_owner_delta.tsv).
   Public in-memory/save-without-reload partitions and step 0 pass; the four
   reload failures remain at 100:100, 1000:1000, 1600:1600 and completed 2600:0.
-  The double-quote/open-Match probe above remains pending, not a waived passing
-  case. Four broad source roles and SE1-SE5 remain open. This is unpromoted
+  At this milestone the double-quote/open-Match probe remained pending; the
+  next verified increment below supersedes that result. Four broad source roles
+  and SE1-SE5 remain open. This is unpromoted
   prototype work; logs use `/tmp/a-program-application-owner-`.
+  Verified increment (2026-10-01, parent `071742c`): BODY discovery validates
+  its Context and borrows the actual rule output, retaining neither copied
+  result nor completed acceptance state. Job and pending await share one
+  algorithm; Match consumers use the actual output too. The same polarity walk
+  exposes the existing Thunk recipe to preserve repeated quotation. Rejected
+  children still reject; zero fuel performs no checking. The open double/triple
+  quote, concurrent equations, independent `::` and 1/7/64-step tests pass.
+  Full regression/examples/acceptance, semantic persistence, all seven
+  checkpoints, five C-backend gates and focused ASan/UBSan/leak checks pass.
+  Fresh recorded assembly matches all 156 C/header files and passes synthesis,
+  advanced namespace and derivation I/O; current-worktree Core/IADT/synthesis
+  tests pass without staging the user's production changes.
+  [Paired measurements](../src/prototype/solver_inputs/quote_body_owner_measurements.tsv)
+  keep final Terms, Occurrences, Evidence, queries and premise counts unchanged;
+  QuickSort loses 1,447 copied Job result references and 173 dispatches, not
+  fixed Job storage. Implementation +50/-33 (net +17), tests +38/-5 (net +33);
+  [file deltas](../src/prototype/solver_inputs/quote_body_owner_delta.tsv) exclude
+  documentation and patch context. Public reload still fails at 100:100,
+  1000:1000, 1600:1600 and completed 2597:0; step 0 and in-memory/save-only
+  partitions pass. This remains unpromoted prototype work, not SE1-SE5 completion.
+  Logs use `/tmp/a-program-quote-body-owner-`.
 
 ### SE1 Completed-Input Adapter Deletion (2026-10-01)
 

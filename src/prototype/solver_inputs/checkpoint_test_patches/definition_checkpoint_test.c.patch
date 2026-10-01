@@ -131,7 +131,8 @@
 +		/* This fixture covers retained types with one atomic query transition,
 +		 * not a partially traversed classifier recipe. */
  		if (classifier->status == PG_SYNTHESIS_PENDING && pg_synthesis_result(adapter))
- 			assert(pg_evidence_subject(adapter->result)->type);
+-			assert(pg_evidence_subject(adapter->result)->type);
++			assert(pg_evidence_subject(pg_synthesis_result(adapter))->type);
 +		const struct pg_typed_query *query = pg_pending_query(pg_synthesis_pending(classifier));
 +		if (query) {
 +			assert(pg_classifier_source(query)->type && pg_typed_query_steps(query) <= 1);

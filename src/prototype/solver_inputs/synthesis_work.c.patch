@@ -137,16 +137,16 @@
  {
 +	/* External owners may outlive this Solve invocation. Disconnect every
 +	 * borrowed edge before destroying any owner that could notify it. */
++	for (size_t i = 0; i < synthesis->jobs.capacity; ++i)
++		for (struct pg_index_entry *entry = synthesis->jobs.buckets[i]; entry; entry = entry->next) {
++			struct pg_synthesis_job *job = (void *)entry;
++			if (job->dependency) pg_subscription_detach(&job->dependency->edge);
++			job->dependency = NULL;
++		}
  	for (size_t i = 0; i < synthesis->jobs.capacity; ++i)
  		for (struct pg_index_entry *entry = synthesis->jobs.buckets[i]; entry; entry = entry->next) {
  			struct pg_synthesis_job *job = (void *)entry;
 -			if (job->role->destroy) job->role->destroy(job);
-+			if (job->dependency) pg_subscription_detach(&job->dependency->edge);
-+			job->dependency = NULL;
-+		}
-+	for (size_t i = 0; i < synthesis->jobs.capacity; ++i)
-+		for (struct pg_index_entry *entry = synthesis->jobs.buckets[i]; entry; entry = entry->next) {
-+			struct pg_synthesis_job *job = (void *)entry;
 +			if (pg_synthesis_work_role(job)->destroy) pg_synthesis_work_role(job)->destroy(job);
  		}
  	pg_index_destroy(&synthesis->jobs);
@@ -430,7 +430,20 @@
  }
  
  /* Zero means the dependency is done. Otherwise suspend or propagate its
-@@ -181,16 +423,45 @@
+@@ -165,11 +407,7 @@
+ int pg_synthesis_await(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
+ 	struct pg_synthesis_job *dependency)
+ {
+-	if (!dependency) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return 1; }
+-	if (dependency->status == PG_SYNTHESIS_DONE) return 0;
+-	if (dependency->status == PG_SYNTHESIS_PENDING) pg_synthesis_subscribe(synthesis, job, dependency, 0);
+-	else pg_synthesis_finish(synthesis, job, dependency->status);
+-	return 1;
++	return pg_synthesis_await_pending(synthesis, job, pg_synthesis_pending(dependency));
+ }
+ 
+ void pg_synthesis_advance(struct pg_synthesis *synthesis, uint64_t budget)
+@@ -181,16 +419,45 @@
  		job->next = NULL;
  		--budget;
  		++synthesis->steps;
@@ -479,7 +492,7 @@
  	return job->status == PG_SYNTHESIS_DONE ? job->result : NULL;
  }
  
-@@ -215,7 +486,7 @@
+@@ -215,7 +482,7 @@
  int pg_synthesis_import_materialized(struct pg_synthesis *synthesis,
  	struct pg_synthesis_job *job, const struct pg_occurrence *root)
  {
@@ -488,7 +501,7 @@
  	if (!owns_entry(&synthesis->typing->occurrences, &root->index)) return -1;
  	if (job->imported && job->imported != root) return -1;
  	job->imported = root;
-@@ -225,7 +496,7 @@
+@@ -225,7 +492,7 @@
  int pg_synthesis_saved_complete(const struct pg_synthesis *synthesis,
  	const struct pg_synthesis_job *job)
  {
@@ -497,7 +510,7 @@
  	if (job->status == PG_SYNTHESIS_DONE) return 1;
  	return !synthesis->steps && job->imported_complete;
  }
-@@ -233,7 +504,7 @@
+@@ -233,7 +500,7 @@
  int pg_synthesis_import_completion(struct pg_synthesis *synthesis,
  	struct pg_synthesis_job *job)
  {
@@ -506,7 +519,7 @@
  	if (synthesis->steps) return -1;
  	job->imported_complete = 1;
  	return 0;
-@@ -261,10 +532,8 @@
+@@ -261,10 +528,8 @@
  {
  	if (!canonical) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return 1; }
  	if (canonical == job) return 0;

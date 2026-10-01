@@ -1,0 +1,7 @@
+file	category	added	deleted	net
+src/synthesis.c	implementation	38	24	14
+src/synthesis_cbpv.c	implementation	11	4	7
+src/synthesis_work.c	implementation	1	5	-4
+tests/synthesis.c	test	37	4	33
+checkpoint_tests/definition_checkpoint_test.c	test	1	1	0
+fixtures/nested-open-equation.p	fixture_comment	1	1	0

@@ -1,4 +1,4 @@
-// Existing pending-structure cycle; not a passing acceptance fixture.
+// Regression: repeated & preserves a Thunk while APP supplies the open Match's carrier.
 Nat := @{zero:*; succ:*->*;};
 Positive := @\n:Nat=>{step:(k:Nat)->* (Nat.succ k);};
 main := (\f:(edge:Positive Nat.zero)->Nat=>Nat.zero)

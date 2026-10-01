@@ -209,7 +209,14 @@ checking remains independent; no result cache, semantic tag or wire field is
 added. See [deltas](application_owner_delta.tsv),
 [measurements](application_owner_measurements.tsv) and
 [allocation](application_owner_allocation.tsv) against `729d7d1`.
-Four broad source roles, the double-quote/open-Match preparation cycle and the
+Body preparation now borrows its actual checking output instead of copying a
+receipt/status; both await APIs follow that output. Repeated quotation uses the
+existing Thunk recipe without waiting for its checked child, breaking the
+double-quote/open-Match preparation cycle without premature acceptance. Against
+`071742c`, QuickSort retains the same final typed graph and Job storage but
+stores 1,447 fewer Job result references and uses 173 fewer dispatches. See
+[measurements](quote_body_owner_measurements.tsv) and
+[file deltas](quote_body_owner_delta.tsv). Four broad source roles and four
 public reload failures remain; this is not complete Job/Evidence removal.
 Lexical binding now has one checked/pending Context API; the Job-only binding
 entry point is removed. IH/graph associations borrow known Contexts directly.
