@@ -715,6 +715,27 @@ Do not mark a milestone complete just because a view hides the old representatio
   Remove the corresponding duplicated structural walkers and overbroad private
   state. Keep genuinely unfinished queries and effect dependencies; do not
   replace all of them with an unconditional wait for accepted Evidence.
+  Verified prototype increment (2026-10-01, parent `9146893`): Lambda classifier,
+  Handler carrier and Effect subsumption structural requests now borrow their
+  actual input queries. Function/CBPV selection stays Oracle-local; their
+  forwarding walks are deleted, without an alias index, replacement task,
+  additional acceptance or wire field. Zero/split-fuel, exact query sharing,
+  symbolic effect snapshots and invalid-body/clause rejection tests pass.
+  Full O2 regression/examples/acceptance, semantic and seven checkpoint gates,
+  five C gates, ASan/UBSan/leak checks, fresh assembly checks and current-worktree
+  Core/IADT/synthesis checks pass; all 156 assembled C/header files match.
+  Final Term/Occurrence/Evidence counts match the parent in four samples;
+  QuickSort loses 178 Jobs, 31,280 Job bytes and 111 dispatches. See
+  [measurements](../src/prototype/solver_inputs/structure_projection_measurements.tsv),
+  [allocation](../src/prototype/solver_inputs/structure_projection_allocation.tsv)
+  and [deltas](../src/prototype/solver_inputs/structure_projection_delta.tsv).
+  Allocation is a cumulative wrapped sample, not total memory or a speed claim;
+  pointer/hash ordering can change call counts between invocations. Applied
+  implementation +53/-29 (net +24), tests +20/-4 (net +16), excluding patch
+  context/docs. The public partition report exactly matches the parent's four
+  reload failures. Remaining Core-building queries, checking-owner consolidation
+  and SE1-SE5 stay open. Logs use `/tmp/a-program-structure-projection-`;
+  accepted code/user edits are excluded, and no test exemption was introduced.
   Prototype increment (2026-10-01, parent `a8715d7`): name registration,
   definitions and induction branches no longer allocate `source_work` or use its
   central dispatch. The union and multi-role macro are removed. Registration

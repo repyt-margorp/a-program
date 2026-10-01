@@ -177,6 +177,12 @@ without a scheduler record. The by-value Term/pending-query view has no acceptan
 or progress state. Existing provisional queries keep their identity and symbolic
 snapshots. This removes read-only Jobs, not the broad source-work union or the
 remaining centralized semantic dispatch; Oracle locality remains unfinished.
+Lambda classifier, Handler carrier and Effect subsumption shapes now borrow
+their actual input queries rather than allocating forwarding Jobs. Oracle-local
+selection preserves provisional snapshots; shape readiness is still not checked
+acceptance. See [deltas](structure_projection_delta.tsv) and
+[measurements](structure_projection_measurements.tsv) against `9146893`.
+Core-building queries and the four public reload failures remain unfinished.
 Function graph synthesis now lives in the function owner: common source work
 has no graph handle, case-layout slot, graph role, graph destruction or dispatch
 branch. Source metadata retains only names/layouts, not a graph-worker backlink.

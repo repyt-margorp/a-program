@@ -557,7 +557,7 @@
  }
  
 -struct pg_synthesis_job *pg_synthesis_type_structure(struct pg_synthesis *synthesis,
-+static struct pg_synthesis_structure structure_input(struct pg_synthesis *synthesis,
++struct pg_synthesis_structure pg_synthesis_structure_input(struct pg_synthesis *synthesis,
 +	struct pg_synthesis_input input, const struct pg_synthesis_work_class *role, int classifier, int type)
 +{
 +	if (!pg_synthesis_input_owned(synthesis, input)) return (struct pg_synthesis_structure){0};
@@ -593,7 +593,7 @@
 -	return request_job(synthesis, role ? role : TYPE_STRUCTURE_JOB, formation, NULL);
 +		return pg_synthesis_term_structure_input(synthesis, formation);
 +	const struct pg_synthesis_work_class *role = pg_synthesis_binding_type_class(pg_pending_job(formation.pending));
-+	return structure_input(synthesis, formation, role ? role : TYPE_STRUCTURE_JOB, 0, 1);
++	return pg_synthesis_structure_input(synthesis, formation, role ? role : TYPE_STRUCTURE_JOB, 0, 1);
  }
  
 -static const struct pg_term *source_work_structure(const struct pg_synthesis_job *job)
@@ -620,18 +620,18 @@
 -struct pg_synthesis_job *pg_synthesis_classifier_structure(struct pg_synthesis *synthesis,
 -	struct pg_synthesis_job *term)
 +enum pg_synthesis_status pg_synthesis_structure_status(struct pg_synthesis_structure input)
++{
++	return input.term ? PG_SYNTHESIS_DONE : input.pending ? input.pending->status : PG_SYNTHESIS_UNSUPPORTED;
++}
++
++int pg_synthesis_await_structure(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
++	struct pg_synthesis_structure input)
  {
 -	if (!term || term->owner != synthesis->owner_key) return NULL;
 -	const struct pg_derivation_input *input = pg_synthesis_plain_derivation(term);
 -	const struct pg_synthesis_work_class *role = input ? pg_synthesis_function_structure_class(input->rule, 1) : NULL;
 -	if (input && !role) role = pg_synthesis_cbpv_structure_class(input->rule, 1);
 -	return request_job(synthesis, role ? role : CLASSIFIER_STRUCTURE_JOB, term, NULL);
-+	return input.term ? PG_SYNTHESIS_DONE : input.pending ? input.pending->status : PG_SYNTHESIS_UNSUPPORTED;
-+}
-+
-+int pg_synthesis_await_structure(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
-+	struct pg_synthesis_structure input)
-+{
 +	if (input.term) return 0;
 +	if (input.pending) return pg_synthesis_await(synthesis, job, input.pending);
 +	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED);
@@ -664,10 +664,10 @@
  {
 -	return job && job->role == SCOPE_CONTEXT_JOB ? (void *)job->inputs[2] : NULL;
 +	if (!pg_synthesis_input_owned(synthesis, term)) return (struct pg_synthesis_structure){0};
-+	const struct pg_derivation_input *input = pg_synthesis_plain_derivation(pg_pending_job(term.pending));
-+	const struct pg_synthesis_work_class *role = input ? pg_synthesis_function_structure_class(input->rule, 1) : NULL;
-+	if (input && !role) role = pg_synthesis_cbpv_structure_class(input->rule, 1);
-+	return structure_input(synthesis, term, role ? role : CLASSIFIER_STRUCTURE_JOB, 1, 0);
++	struct pg_synthesis_structure result;
++	if (pg_synthesis_function_structure_input(synthesis, term, 1, &result)) return result;
++	if (pg_synthesis_cbpv_structure_input(synthesis, term, 1, &result)) return result;
++	return pg_synthesis_structure_input(synthesis, term, CLASSIFIER_STRUCTURE_JOB, 1, 0);
  }
  
 -const struct pg_source_scope *pg_synthesis_scope_bind(struct pg_synthesis *synthesis,
@@ -699,10 +699,10 @@
  {
 -	return pg_synthesis_scope_bind(synthesis, parent, name, binder, context, NULL, NULL, PG_SOURCE_UNASSOCIATED);
 +	if (!pg_synthesis_input_owned(synthesis, term)) return (struct pg_synthesis_structure){0};
-+	const struct pg_derivation_input *input = pg_synthesis_plain_derivation(pg_pending_job(term.pending));
-+	const struct pg_synthesis_work_class *role = input ? pg_synthesis_function_structure_class(input->rule, 0) : NULL;
-+	if (input && !role) role = pg_synthesis_cbpv_structure_class(input->rule, 0);
-+	return structure_input(synthesis, term, role ? role : TERM_STRUCTURE_JOB, 0, 0);
++	struct pg_synthesis_structure result;
++	if (pg_synthesis_function_structure_input(synthesis, term, 0, &result)) return result;
++	if (pg_synthesis_cbpv_structure_input(synthesis, term, 0, &result)) return result;
++	return pg_synthesis_structure_input(synthesis, term, TERM_STRUCTURE_JOB, 0, 0);
  }
  
  const struct pg_source_scope *pg_synthesis_bind_hypothesis(struct pg_synthesis *synthesis,
@@ -1845,7 +1845,8 @@
 +	struct pg_synthesis_input parts[] = {pg_synthesis_work_dependency(job, 1), pg_synthesis_work_dependency(job, 3)};
  	for (size_t i = 0; i < 2; ++i) {
 -		if (pg_synthesis_await(synthesis, job, parts[i])) return;
--	}
++		if (pg_synthesis_await_input(synthesis, job, parts[i])) return;
+ 	}
 -	if (!local->checking_term) {
 -		struct pg_synthesis_job *term = source_reference_producer(synthesis, local->left);
 -		if (!term) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
@@ -1876,8 +1877,7 @@
 -		if (!right) goto rejected;
 -		local->checking_term = left;
 -		local->checking_type = right;
-+		if (pg_synthesis_await_input(synthesis, job, parts[i])) return;
- 	}
+-	}
 -	if (!local->value_job) {
 -		local->value_job = pg_synthesis_expect(synthesis,
 -			pg_synthesis_evidence(synthesis, local->checking_term),

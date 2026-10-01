@@ -1,0 +1,6 @@
+area	file	added	removed	net
+implementation	src/synthesis.c	10	10	0
+implementation	src/synthesis_source.h	8	3	5
+implementation	src/synthesis_function.c	14	7	7
+implementation	src/synthesis_cbpv.c	21	9	12
+tests	tests/synthesis.c	20	4	16
