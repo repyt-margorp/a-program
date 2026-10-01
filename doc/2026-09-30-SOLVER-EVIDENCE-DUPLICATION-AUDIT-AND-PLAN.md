@@ -2506,7 +2506,8 @@ lookup is not serialized; full owner-frontier restoration remains unfinished.
 - [x] Finish full `check-acceptance`, including both LT providers/partition
   orders, universal Sorted/permutation witnesses, exact outputs, semantic
   partial images and invalid controls.
-- [ ] Publish the verified prototype milestone, without production promotion.
+- [x] Publish the verified prototype milestone (`6fbf092`, pushed to Main),
+  without production promotion.
 - [ ] Resolve the public partition gate under the existing SE1-SE5 work list.
 
 Fresh public partition target exits 2: the same four failing cases remain
