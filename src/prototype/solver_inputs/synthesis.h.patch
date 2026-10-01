@@ -23,7 +23,16 @@
  /* Implicit mode also quotes inferred computational functions at argument and
   * named block-binding boundaries. Returning computations still sequence;
   * logical family signatures are not quoted as runtime functions. */
-@@ -29,6 +44,7 @@
+@@ -19,6 +34,8 @@
+ 	const void *owner_key;
+ 	struct pg_whnf_work *normalization;
+ 	struct pg_index jobs;
++	/* Resolved request keys borrow existing owners, never progress or results. */
++	struct pg_index resolved_requests;
+ 	/* Immutable rule parameters, not conclusions or proof acceptance. */
+ 	struct pg_index rule_inputs;
+ 	struct pg_index scopes;
+@@ -29,6 +46,7 @@
  	struct pg_index source_references;
  	struct pg_synthesis_job *ready;
  	struct pg_synthesis_job *ready_tail;
@@ -31,7 +40,7 @@
  	uint64_t steps;
  	enum pg_definition_policy definition_policy;
  };
-@@ -48,24 +64,20 @@
+@@ -48,24 +66,20 @@
  /* A '*' token can name an explicitly supplied type assumption. Reading it
   * requires a universe-classified variable and retains extended_context in
   * the result. This does not create/discharge a recursive datatype signature;
@@ -62,7 +71,7 @@
  enum pg_source_association { PG_SOURCE_UNASSOCIATED, PG_SOURCE_HYPOTHESIS, PG_SOURCE_GRAPH };
  struct pg_synthesis_job *pg_synthesis_request(struct pg_synthesis *synthesis,
  	const struct pg_source_scope *scope, const struct pg_syntax *syntax);
-@@ -143,7 +155,7 @@
+@@ -143,7 +157,7 @@
  /* Read retained input or extract it from the accepted typed construction into
   * caller-owned temporary storage. This never executes Solve. */
  const struct pg_match_allocation *pg_synthesis_match_allocation(
@@ -71,7 +80,7 @@
  struct pg_synthesis_job *pg_synthesis_restore_elimination(struct pg_synthesis *synthesis,
  	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
  	const struct pg_match_allocation *allocation);
-@@ -183,18 +195,19 @@
+@@ -183,18 +197,19 @@
  const struct pg_source_scope *pg_synthesis_definition_scope(struct pg_synthesis *synthesis,
  	const struct pg_source_scope *scope, const struct pg_syntax *definitions);
  /* Reconstructible lexical input, not a copied scope or another authority.
@@ -94,7 +103,7 @@
  	const struct pg_object *binder;
  	const struct pg_source_scope *associated;
  	enum pg_source_association association;
-@@ -252,31 +265,25 @@
+@@ -252,31 +267,25 @@
   * is not context certification. Both retain the same source binder pointers. */
  const struct pg_source_scope *pg_synthesis_telescope_scope(const struct pg_synthesis_job *job);
  const struct pg_syntax *pg_synthesis_telescope_body(const struct pg_synthesis_job *job);
@@ -131,7 +140,7 @@
  	const struct pg_context *allocation);
  /* Independently synthesize a #return clause as a raw continuation Lambda.
   * The input supplies its result-domain type, not an expected clause codomain.
-@@ -284,7 +291,7 @@
+@@ -284,7 +293,7 @@
   * Recover the resulting Pi classifier to obtain the return clause's carrier.
   * This alone neither infers operation-clause effects nor accepts a handler. */
  struct pg_synthesis_job *pg_synthesis_handler_return(struct pg_synthesis *synthesis,
@@ -140,7 +149,7 @@
  	const struct pg_syntax *clause);
  /* Build the pending context Gamma, payload:A, resume:U(Pi(response:B, carrier))
   * using ordinary context/Pi/Thunk rules. All type inputs may still be pending;
-@@ -292,8 +299,8 @@
+@@ -292,8 +301,8 @@
   * neither allocates fresh binders nor resolves an operation name. Consumers
   * retain their own operation-reference validation dependency. */
  struct pg_synthesis_job *pg_synthesis_handler_context(struct pg_synthesis *synthesis,
@@ -151,7 +160,7 @@
  	const struct pg_object *payload, const struct pg_object *resume, const struct pg_object *response);
  /* Resolve operation inputs through ordinary source aliases, prepare a pending
   * payload/resumption context and synthesize the clause without waiting for a
-@@ -302,7 +309,7 @@
+@@ -302,7 +311,7 @@
   * nested Lambda proof; final pg_prove_handler still checks carrier/effect
   * compatibility. This API does not guess or infer a missing carrier. */
  struct pg_synthesis_job *pg_synthesis_handler_clause(struct pg_synthesis *synthesis,
@@ -160,7 +169,7 @@
  	const struct pg_syntax *clause);
  /* Immutable allocation input, not a saved classifier or accepted signature.
   * Ordinary clause synthesis checks that source lookup selects this producer. */
-@@ -311,7 +318,7 @@
+@@ -311,7 +320,7 @@
  	const struct pg_object *payload, *resume, *response;
  };
  struct pg_synthesis_job *pg_synthesis_handler_clause_at(struct pg_synthesis *synthesis,
@@ -169,7 +178,7 @@
  	const struct pg_syntax *clause, const struct pg_handler_clause_input *input);
  const struct pg_source_scope *pg_synthesis_handler_clause_scope(const struct pg_synthesis_job *job);
  int pg_synthesis_handler_clause_input(const struct pg_synthesis *synthesis,
-@@ -328,13 +335,13 @@
+@@ -328,13 +337,13 @@
  const struct pg_source_scope *pg_synthesis_restore_handler_binding(struct pg_synthesis *synthesis,
  	const struct pg_handler_binding_input *input);
  /* Assemble all clauses through the shared producers and final kernel rule.
@@ -185,7 +194,7 @@
  	const struct pg_syntax *syntax);
  struct pg_effect_inference;
  struct pg_effect_equation;
-@@ -343,32 +350,24 @@
+@@ -343,32 +352,24 @@
   * use application. If a computation has a dependent result, only a checked
   * pure RETURN may supply the argument. No host effects are executed here. */
  struct pg_synthesis_job *pg_synthesis_sequence(struct pg_synthesis *synthesis,
@@ -223,7 +232,7 @@
  /* Register (the structural F row of formation minus mask) in target. This
   * awaits structural information, not accepted evidence or row convergence.
   * Completion has no proof result. The owner must await every contribution
-@@ -458,17 +457,17 @@
+@@ -458,17 +459,17 @@
  int pg_synthesis_import_rules(struct pg_synthesis *, size_t,
  	const struct pg_derivation_input *const *, struct pg_effect_inference *,
  	struct pg_synthesis_job *const **);
@@ -247,7 +256,7 @@
   * 0 ready, 1 an input is not prepared, -1 unsupported/error. No Solve occurs.
   * Unfinished source elaboration is not replaced by its provisional term.
   * Stored derivation inputs retain their original DAG before, during and after
-@@ -481,42 +480,43 @@
+@@ -481,42 +482,43 @@
   * On failure effects is poisoned and roots is unchanged. This is not a whole
   * module checkpoint: callers must retain all other source obligations too. */
  int pg_synthesis_export_rules(const struct pg_synthesis *synthesis, size_t count,
@@ -307,7 +316,7 @@
  	const struct pg_source_scope *scope, struct pg_token name);
  /* Supply the driver-selected symbol bindings for source import statements.
   * This closed scope is not made lexically visible: only explicit imports
-@@ -544,55 +544,49 @@
+@@ -544,55 +546,49 @@
  const struct pg_source_scope *pg_synthesis_module_namespace(struct pg_synthesis *synthesis,
  	const struct pg_source_scope *parent, struct pg_token name,
  	struct pg_synthesis_job *module);
@@ -379,7 +388,7 @@
  struct pg_data_schema;
  /* Assemble field telescopes and result maps for a parsed @{...} or @\i:T=>
   * declaration in its already opened parameter scope. Constructors are checked
-@@ -637,85 +631,84 @@
+@@ -637,85 +633,84 @@
  	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
  	const struct pg_evidence *generalization, const struct pg_syntax *clause);
  /* Recover the selected nominal declaration and parameter map, never by Core
@@ -498,7 +507,7 @@
  /* Share a suspended endpoint derivation on the ordinary work queue. face is
   * an immutable, graph-lived canonical endpoint selector: its first coordinate
   * is fixed, followed by its ordered axes. Those axes count outer Identity
-@@ -732,12 +725,7 @@
+@@ -732,12 +727,7 @@
   * and endpoint traversal steps. The same immutable-input lifetime applies.
   * Permutations and hidden Identity dimensions remain unsupported. */
  struct pg_synthesis_job *pg_synthesis_identity_face(struct pg_synthesis *synthesis,
@@ -512,7 +521,7 @@
  	const struct pg_dimension_map *face);
  /* Select the source boundary for a permutation: permutation composed with
   * target_face = ordered composed with intrinsic. The returned producer proves
-@@ -748,64 +736,47 @@
+@@ -748,64 +738,47 @@
  struct pg_dimensions;
  struct pg_synthesis_job *pg_synthesis_permutation_source_face(struct pg_synthesis *synthesis,
  	struct pg_dimensions *dimensions, const struct pg_evidence *context,
@@ -597,7 +606,7 @@
  	const struct pg_object *constructor;
  	int allocated;
  	const struct pg_context *prefix, *fields;
-@@ -818,15 +789,15 @@
+@@ -818,15 +791,15 @@
  /* Extend the shared field scope with thunked motives for direct recursive
   * fields. Input producers must ultimately justify the same nominal family. */
  struct pg_synthesis_job *pg_synthesis_induction_scope(struct pg_synthesis *synthesis,
@@ -619,7 +628,7 @@
  /* Pure checked computation -> returned value, using the same job table and
   * scheduler. The immutable context/evidence pair is the key, never bare Core.
   * A neutral total, empty-effect input has a checked symbolic result; an
-@@ -837,7 +808,8 @@
+@@ -837,7 +810,8 @@
  	const struct pg_evidence *context, const struct pg_evidence *computation);
  /* Normalize an accepted term or formation using shared pure WHNF work, then
   * retain typing through directed subject-reduction evidence. The immutable
@@ -629,7 +638,7 @@
  struct pg_synthesis_job *pg_synthesis_normalize(struct pg_synthesis *synthesis,
  	const struct pg_evidence *context, const struct pg_evidence *proof);
  /* Strong pure normalization of the same typed inputs, with a distinct job
-@@ -845,27 +817,17 @@
+@@ -845,27 +819,17 @@
   * This may normalize under THUNK; it is not a runtime execution request. */
  struct pg_synthesis_job *pg_synthesis_nf(struct pg_synthesis *synthesis,
  	const struct pg_evidence *context, const struct pg_evidence *proof);

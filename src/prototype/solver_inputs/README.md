@@ -166,11 +166,20 @@ Reindex requests no longer forward to a second checked-input worker after their
 operands resolve. Existing exact checked receipts are borrowed directly through
 the same input/result API; real pending keys and the shared action remain stable.
 The Job-only reindex API is deleted, without a new result cache or wire field.
-Producer-to-checked forwarding paths also remain. Removing classifier
-forwarding alone lost completed-result reuse, so that trial was rejected;
-removing the query wrapper does not settle the pending/checked request ownership.
-Keeping those indefinitely would not
-complete SE1. No semantic boundary has been merged merely to reduce node count.
+Classifier normalization and post-synthesis assertion requests now publish a
+resolved-key lookup pointing to their existing owner. Each entry contains only
+an index header and owner pointer; its checked operands are borrowed through the
+owner's immutable inputs. There is no copied key array, status, cursor, result or
+acceptance store. Known checked requests allocate no lookup entry. Other pending
+producers can reuse that owner without creating a full checked-input Job, and
+later checked requests find it even before completion. Exact receipt pointers,
+not erased Core or conclusion equality, determine sharing. The disposable index
+is destroyed with the Solve invocation and is not serialized.
+Removing forwarding alone lost completed-result reuse; that trial was rejected.
+This lookup consolidation preserves the unchanged warm-sharing tests, not just
+terminal Kernel answers. Other forwarding paths and the general classifier query
+wrapper still remain. Keeping those indefinitely would not complete SE1. No
+semantic boundary has been merged merely to reduce node count.
 
 ### Plan
 

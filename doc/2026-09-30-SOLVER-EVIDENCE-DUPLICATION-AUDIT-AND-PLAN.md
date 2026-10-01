@@ -1,7 +1,7 @@
 # Solver and Evidence Duplication Audit
 
 Date: 2026-09-30
-Status: audit complete; SE1 direct-input migration underway, full refactor unfinished.
+Status: audit complete; SE1 ownership consolidation underway, full refactor unfinished.
 Parent: [artifact plan, AP0](2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md#ap0-simplify-before-extending-persistence).
 This is the active prerequisite work list, not another artifact format proposal.
 
@@ -352,6 +352,21 @@ result pointer alone is not a competing authority, and this static finding does
 not demonstrate contradictory accepted answers. No additional Constraint/Job
 database or full Evidence DAG is required by this ownership contract.
 
+2026-10-01 recheck at `e9731a0` (agent observation): accepted
+`synthesis_function.c:classifier_step` still mirrors the canonical typed query;
+`synthesis_effect.c:inference_step` schedules an independently owned effect
+solver. Neither observation establishes conflicting accepted results. The
+uncommitted `solver_inputs/conversion_frontier_work` trial removes checked-input
+forwarding from classifier normalization and post-synthesis assertion checking.
+Its existing focused test log reports failure at `square_template_jobs`: after
+checking against a pending type, requesting the same check against its resolved
+type no longer finds the completed result immediately. This is a sharing
+regression, not evidence that a second Job owner is necessary. Preserve that
+test; consolidate request discovery as well as progress ownership. This
+deletion-only trial is rejected; the resolved-request milestone below supersedes
+it. This finding alone approves no new constraint table or lookup-alias layout,
+and this initial recheck does not claim a fresh test run.
+
 Do not declare SE1 complete merely because completed Evidence adapters disappear:
 the remaining ownership inventory and frontier/resumption gates below still apply.
 Use canonical constraints and their owner-local continuation as the frontier
@@ -420,7 +435,11 @@ Do not mark a milestone complete just because a view hides the old representatio
   so accepted Evidence needs no `EVIDENCE_JOB`, scheduler status or duplicate
   result slot. Remove the adapter factory/role, then redundant producer-to-
   checked forwarding where the same operation is otherwise duplicated. Retain
-  exact sharing, ownership and failure contracts. First cover binding/domain,
+  exact sharing, ownership and failure contracts. In particular, a request made
+  through pending producers and a later request through their exact checked
+  results must reuse the same operation without allocating another full owner;
+  equal erased Core alone must not merge distinct scoped/proof inputs.
+  First cover binding/domain,
   normalization and rule premises together, not three incompatible adapters;
   then migrate source/context/IADT/Identity/operation consumers before closure.
 - [ ] **SE2 single construction path:** enumerate provisional structure inputs
@@ -2433,3 +2452,67 @@ Applied deltas from `76f67ad`, excluding stored patch context and documentation:
 | `tests/core.c` | 39 | 0 | +39 |
 
 Physical duplication decreases; implementation source increases by 42 lines.
+
+### SE1 Resolved Conversion Requests (2026-10-01)
+
+#### Subjective (User)
+
+English paraphrase of the latest follow-up: resume the actual Solve frontier;
+do not put a second near-identical Job/Evidence graph above typed construction.
+
+#### Objective (Code)
+
+Parent `e9731a0`; frozen accepted baseline `e716232`; unrelated Context/IADT
+worktree edits are excluded from the full candidate and preserved. Classifier
+normalization and assertion checking now publish a resolved-key lookup to their
+existing worker, instead of allocating another checked-input worker. Its
+24-byte entry holds only an index header and owner pointer; the key borrows
+checked receipts through the owner's immutable inputs. No copied input array,
+cursor, status, result, acceptance decision or wire field is added. Known
+checked requests do not allocate a lookup entry. `::` remains post-synthesis.
+
+| Completed census | Parent | Candidate |
+| --- | ---: | ---: |
+| List-09 steps / Jobs | 2,720 / 870 | 2,594 / 828 |
+| List-09 raw Job bytes | 153,016 | 147,120 |
+| List-09 aligned lookup entries + buckets | 0 | 1,344 + 512 |
+| General QuickSort steps / Jobs | 809,172 / 53,643 | 801,376 / 49,993 |
+| General QuickSort raw Job bytes | 9,392,688 | 8,880,936 |
+| General QuickSort aligned lookup entries + buckets | 0 | 115,936 + 32,768 |
+
+Occurrences, Evidence and logical/retained premise counts are unchanged; QuickSort
+has one fewer Core term. These are allocation/dispatch measurements, not total
+memory or wall-time measurements. Census includes the new lookup's cost.
+
+#### Assessment
+
+Agent implementation decision within prototype scope: retain one result owner
+and a disposable discovery index, not another constraint/result store. Exact
+receipt pointers prevent merging distinct Contexts or proof selections. The
+unchanged warm-sharing tests and new pending/checked tests pass. Several pending
+discovery requests can still forward to the same owner; removing all retained
+forwarding frames and the general classifier wrapper remains SE1 work. The
+lookup is not serialized; full owner-frontier restoration remains unfinished.
+
+#### Plan
+
+- [x] Remove checked-input worker recreation for these two roles; preserve warm
+  sharing, rejection, exact scopes and zero-fuel inactivity.
+- [x] Run O2 `check`, examples, semantic and all seven checkpoint targets;
+  run ASan/UBSan Core, IADT, Identity and synthesis with leak detection.
+- [x] Reassemble the recorded patches and compare source/test/checkpoint/artifact
+  directories exactly. Current-default Core/IADT/synthesis also pass; this is
+  not an independent full acceptance run on the unrelated local edits.
+- [x] Finish full `check-acceptance`, including both LT providers/partition
+  orders, universal Sorted/permutation witnesses, exact outputs, semantic
+  partial images and invalid controls.
+- [ ] Publish the verified prototype milestone, without production promotion.
+- [ ] Resolve the public partition gate under the existing SE1-SE5 work list.
+
+Fresh public partition target exits 2: the same four failing cases remain
+(100+100, 1000+1000, 1600+1600 and terminal+0); terminal fuel is now 2,594.
+No failure is waived. Evidence uses `/tmp/a-program-conversion-frontier-`.
+Applied per-file deltas are in
+[the line sheet](../src/prototype/solver_inputs/conversion-frontier-lines.tsv):
+implementation +56/-12 (net +44), tests +73/-0. Audit code is separately +10/-3.
+Full SE1-SE5 remain open; this is not production promotion.
