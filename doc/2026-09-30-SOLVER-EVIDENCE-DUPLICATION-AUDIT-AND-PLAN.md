@@ -295,18 +295,20 @@ above Term, typing and Solve. The concern is duplicated authority, not merely
 adapter allocation size. This is a request for critical examination, not approval
 of an additional constraint table or of moving mutable solver state into Core.
 
-Static recheck at `55d77817d67abab5f695c70e91cca939538ecf9a` compares accepted
-`src/` (with concurrent Context/IADT edits) with the verified prototype assembled
-on `e716232`. The uncommitted `adapter_removal_work` trial is not verified evidence.
-No tests were rerun for this recheck; milestone test results below are historical.
+Latest static recheck, 2026-10-01, at `808c217f73a691b79d13aa05cba5662ddb157e7e`:
+accepted `src/` and the recorded prototype assembled on `e716232` were inspected
+separately, including concurrent Context/IADT edits without modifying them.
+This supersedes the ownership table at `55d7781`. No tests were rerun for this
+recheck; the verified reindex milestone below remains historical test evidence.
 
 | Inspected operation | Accepted implementation | Committed prototype / remaining obligation |
 | --- | --- | --- |
-| `synthesis_derivation.c:evidence_ready` | Immediately DONE Job repeats the same checked Evidence in input/result. | Non-test prototype callers use direct inputs; the adapter factory still exists for tests. Factory deletion alone does not finish SE1. |
+| `synthesis_derivation.c:evidence_ready` | Immediately DONE Job repeats the same checked Evidence in input/result. | Adapter factory and all callers are deleted. This does not finish SE1. |
 | `synthesis_context.c:checked_query_step`; `synthesis_effect.c:inference_step` | Outer scheduling records mirror an already-owned query/effect completion. | These wrappers are removed; consumers borrow the existing progress owners. |
 | `synthesis_function.c:classifier_step` | Job advances `pg_classifier_request` and copies its result/completion. | This general wrapper remains, although Identity and normalization consumers now borrow queries directly. Consolidate ownership without losing pre-acceptance classifier discovery. |
 | `synthesis_context.c:substitution_step`; `synthesis_derivation.c:derivation_step` | Partial map/next image or premise/comparison phase is held by the unfinished operation. | These are real cursors, not checked Term copies. No separate underlying constraint currently owns all this work. Consolidate the operation itself instead of deleting it or adding a parallel owner. |
-| `evidence.c:prove_data_elimination` | Typed operands/maps/type retain structural inputs; the receipt also retains `count + 6` premise references. | This overlap remains SE3 work. Map exact receipts, Contexts and conversions before removing duplicated edges. |
+| `synthesis_context.c:reindex_step` | Resolved inputs create a second checked-input Job; the outer Job copies its completion/result. | Forwarding Job is removed; existing receipts are borrowed directly and real unfinished admission follows the shared occurrence action. General classifier ownership is still unresolved. |
+| `evidence.c:prove_data_elimination` | Typed operands/maps/type retain structural inputs; the receipt also retains `count + 6` premise references. | Match/induction now reconstruct logical premises from typed inputs, retaining only exceptional exact receipt selections. Constructor/other-rule overlap remains SE3 work. |
 
 The intended resume path is: load canonical unfinished obligations and their
 local cursors, rebuild disposable readiness/wakeup references, then run ordinary
@@ -330,6 +332,25 @@ if those constraints retain the interrupted operation's actual cursor. Several
 current Jobs are that sole owner, not wrappers over another constraint record.
 The refactor must consolidate them with the construction/checking operation,
 not create a parallel ConstraintDB and keep the same stateful Jobs above it.
+
+**Frontier contract (agent assessment, 2026-10-01):** rebuilding the ready set is
+enough to find which obligations can run, but is not the whole continuation.
+Each existing construction/checking owner must retain its input references,
+unresolved dependencies, interrupted cursor and solved result once. The frontier
+and reverse wake index contain references only; they do not own copied results
+or acceptance decisions. For example, a partially built substitution needs its
+current map and next-image position even when readiness can be reconstructed.
+Do not attach scoped typing progress to a shared untyped Core Term.
+
+The general classifier is the next concrete ownership case: its Job waits for
+producer inputs, then advances a canonical `pg_typed_query` and mirrors that
+query's result/status. Consolidate the actual query after input resolution,
+while retaining the unresolved construction and its provisional classifier
+projection before acceptance. The latter feeds effect inference; making every
+consumer wait for checked formation is not an equivalent replacement. A borrowed
+result pointer alone is not a competing authority, and this static finding does
+not demonstrate contradictory accepted answers. No additional Constraint/Job
+database or full Evidence DAG is required by this ownership contract.
 
 Do not declare SE1 complete merely because completed Evidence adapters disappear:
 the remaining ownership inventory and frontier/resumption gates below still apply.
@@ -2251,3 +2272,85 @@ Full `check-acceptance` exits 0, including both LT providers/partition orders,
 universal Sorted/permutation witnesses, ordinary results, semantic partial images
 and invalid controls. Full SE1-SE5 remain unfinished; public partitions are not
 waived by this milestone's successful acceptance run.
+
+### SE3 Constructor Receipt Inputs (2026-10-01)
+
+#### Subjective (User)
+
+English paraphrase of the 2026-10-01 follow-up: Job/Evidence must not duplicate
+the structures or authority already belonging to Term, typing and Solve.
+Preserve the untyped Core boundary and each real unfinished obligation once.
+
+#### Objective (Code)
+
+Parent `808c217`, isolated accepted baseline `e716232` plus recorded prototypes.
+`constructor_instance` already retains the result-type occurrence in `subject->type`,
+but its receipt also stores that type's checking receipt as the first of four
+premises. The other three premises retain declaration, parameter and instance
+admission not recoverable from the constructor's current operands alone.
+Match/induction also store the exceptional-selection count in an extra header,
+alongside a separately retained logical arity derivable from the typed operands.
+No accepted-source or concurrent user edit is changed.
+
+#### Assessment
+
+Agent prototype decision: store physical input count once in the receipt header.
+Constructor and elimination logical arities come from their rule/typed structure;
+other layouts keep their existing dense inputs. Constructor stores only the
+three independent premises when its type's stable first receipt is exactly the
+chosen premise; otherwise it retains all four. Do not replace a selected proof
+by another proof of the same subject. Match/induction keep the existing sparse
+ordinal/receipt selections, without another count header. Ordinary checking,
+exact proof keys and logical getters are unchanged; no new lookup table, Core
+node, typed edge, wire field or acceptance path is introduced.
+
+Initial focused verification disproved the test assumption that every constructor
+can omit the type receipt: the Nat fixture already has another first receipt.
+The implementation preserves that selection; the corrected test explicitly
+checks four retained inputs there. Indexed Acc supplies the three-input case.
+This distinction is evidence-driven, not a reason to identify alternate proofs.
+
+Further inspected SE3 candidates, not implemented here: `PG_REQUEST_INTRO`
+repeats payload/response type receipts already held by its operation declaration;
+`PG_FOLD_ELIM` repeats its two typed operands. Verify exact receipt selections
+and all consumers before removing those references. This does not replace the
+open SE1 general-classifier/frontier consolidation.
+
+#### Plan
+
+- [x] Implement in the isolated prototype; preserve both receipt-selection cases.
+- [x] Verify indexed Acc, alternate instance receipts, logical arity, allocation-free
+  reads and getters after typing-index disposal, plus existing rejection tests.
+- [x] Complete regression, acceptance, sanitizer, census and public partition
+  comparisons; reproduce recorded patches and report applied deltas.
+- [ ] Publish the verified prototype milestone; do not mark full SE1-SE5 complete.
+
+General classifier ownership, remaining constructor inputs and full SE1-SE5
+completion are still open. Full O2 `check`, examples, semantic audit and seven
+checkpoint gates pass. ASan/UBSan Core/IADT/Identity/synthesis pass with leak
+detection. Recorded patches reproduce source, tests and checkpoint/audit fixtures
+exactly; the default overlay also assembles, and Core/IADT/synthesis pass with
+the excluded user edits. Full `check-acceptance` exits 0, including both LT
+providers and partition orders, universal Sorted/permutation witnesses, ordinary
+results, semantic partial images and invalid controls. The four pre-existing
+public partition failures below remain open, not waived by this run.
+
+Fresh completed census: List-09 retained premise edges 849 -> 843; general
+QuickSort 199,746 -> 199,280. Logical edge counts, Terms, occurrences, Evidence,
+Jobs and step counts are unchanged, including zero-fuel and repeated terminal
+rows. The 466 omitted pointers and 90 removed count headers reduce QuickSort
+receipt payload by 4,448 bytes on this build, before arena alignment. This is
+not total live memory, artifact size or a measured speedup. The cumulative
+allocation wrapper varies across repeated parent/current runs and is not used
+as a net-memory comparison here. Public partitions still exit 2; their TSV is
+byte-identical to the parent's four failures. Evidence logs use
+`/tmp/a-program-constructor-receipts-`.
+
+Applied deltas from `808c217`, excluding stored patch context and documentation:
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `src/evidence.c` | 36 | 26 | +10 |
+| `tests/iadt.c` | 33 | 0 | +33 |
+
+Physical duplication decreases; implementation source lines increase by 10.

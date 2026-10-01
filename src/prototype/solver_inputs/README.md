@@ -47,6 +47,10 @@ Alternatives and their order remain observable; no proof is replaced by the defa
 The contiguous Evidence-premise API is deleted; consumers use the logical getter,
 which remains valid after typing-index disposal. This is partial SE3 work, not
 removal of all retained rule premises or completion of the resumption gate.
+Constructor receipts also borrow their result-type receipt when its stable
+first admission is the exact selected proof; other selections remain explicit.
+One physical input count replaces the separate elimination-selection header;
+logical arities come from existing rule/typed structure, without a new index.
 Rule requests use the same hash lookup for checked and pending inputs, borrowing
 the key during lookup and copying it only on a miss. Structural queries retain
 only a result, child query and normalization pointer, not the broad source state.

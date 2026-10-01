@@ -1,6 +1,12 @@
 --- a/evidence.c
 +++ b/evidence.c
-@@ -26,33 +26,60 @@
+@@ -22,37 +22,61 @@
+ 		const struct pg_context_map *map;
+ 	} conclusion;
+ 	const void *certificate;
+-	size_t premise_count;
++	/* Physical inputs only; structural rules derive their logical arity. */
++	size_t retained_count;
  	const struct pg_evidence *premises[];
  };
  
@@ -11,10 +17,6 @@
 +struct elimination_receipt_selection {
 +	size_t ordinal;
 +	const struct pg_evidence *proof;
-+};
-+struct elimination_receipts {
-+	size_t count;
-+	struct elimination_receipt_selection selections[];
 +};
 +
 +static int elimination_rule(enum pg_evidence_rule rule)
@@ -78,7 +80,7 @@
  }
  
  const struct pg_evidence *pg_evidence_for_subject(const struct pg_typing *typing,
-@@ -61,7 +88,8 @@
+@@ -61,7 +85,8 @@
  	if (!subject) return NULL;
  	if (after) {
  		if (!pg_evidence_owned_by(after, typing) || pg_evidence_subject(after) != subject) return NULL;
@@ -88,7 +90,7 @@
  	}
  	return conclusion_first(typing, subject->judgement, subject);
  }
-@@ -72,6 +100,25 @@
+@@ -72,6 +97,31 @@
  	return conclusion_first(typing, PG_JUDGEMENT_CONTEXT, context);
  }
  
@@ -111,19 +113,38 @@
 +	return input ? conclusion_receipt(NULL, input->judgement, input) : NULL;
 +}
 +
++static const struct pg_evidence *constructor_family_receipt(const struct pg_occurrence *subject)
++{
++	const struct pg_occurrence *type = subject ? subject->type : NULL;
++	return type ? conclusion_receipt(NULL, type->judgement, type) : NULL;
++}
++
  struct pg_operation_declaration {
  	struct pg_object_entry base;
  	const struct pg_object *label;
-@@ -192,7 +239,7 @@
+@@ -190,9 +240,9 @@
+ 		}
+ 		if (certificate_key(rule, proof->certificate) != key) continue;
  		if (context_input) return proof;
- 		if (proof->premise_count != count) continue;
+-		if (proof->premise_count != count) continue;
++		if (pg_evidence_premise_count(proof) != count) continue;
  		size_t i = 0;
 -		while (i < count && proof->premises[i] == premises[i]) ++i;
 +		while (i < count && pg_evidence_premise(proof, i) == premises[i]) ++i;
  		if (i == count) return proof;
  	}
  	return NULL;
-@@ -221,17 +268,24 @@
+@@ -214,6 +264,9 @@
+ 	const struct pg_context_map *map)
+ {
+ 	if (subject && subject->context != context) return NULL;
++	if (elimination_rule(rule) && (!subject || subject->operand_count < 3 || subject->operand_count > SIZE_MAX - 3 ||
++		count != subject->operand_count + 3)) return NULL;
++	if (rule == PG_CONSTRUCTOR_INTRO && count != 4) return NULL;
+ 	uint64_t hash;
+ 	const struct pg_evidence *existing = find_record(typing, rule, context,
+ 		subject, count, premises, certificate, &hash);
+@@ -221,32 +274,47 @@
  	enum pg_evidence_judgement judgement = map ? PG_JUDGEMENT_SUBSTITUTION
  		: subject ? subject->judgement : PG_JUDGEMENT_CONTEXT;
  	const void *key = map ? (const void *)map : subject ? (const void *)subject : (const void *)context;
@@ -139,11 +160,12 @@
 +		retained = 0;
 +		for (size_t i = 0; i < count; ++i)
 +			retained += elimination_premise(subject, i) != premises[i];
-+		if (retained > (SIZE_MAX - sizeof(struct elimination_receipts)) / sizeof(struct elimination_receipt_selection)) return NULL;
-+		bytes = sizeof(struct elimination_receipts) + retained * sizeof(struct elimination_receipt_selection);
++		if (retained > SIZE_MAX / sizeof(struct elimination_receipt_selection)) return NULL;
++		bytes = retained * sizeof(struct elimination_receipt_selection);
 +	} else {
-+		if (count > SIZE_MAX / sizeof(*premises)) return NULL;
-+		bytes = count * sizeof(*premises);
++		if (rule == PG_CONSTRUCTOR_INTRO && constructor_family_receipt(subject) == premises[0]) --retained;
++		if (retained > SIZE_MAX / sizeof(*premises)) return NULL;
++		bytes = retained * sizeof(*premises);
 +	}
 +	if (bytes > SIZE_MAX - sizeof(struct pg_evidence)) return NULL;
 +	/* Reserve the derivation index before publishing its admission link. */
@@ -158,19 +180,19 @@
  	proof->owner = typing->owner_key;
  	proof->rule = rule;
  	if (map) proof->conclusion.map = map;
-@@ -239,14 +293,22 @@
+ 	else if (subject) proof->conclusion.subject = subject;
  	else proof->conclusion.context = context;
  	proof->certificate = certificate;
- 	proof->premise_count = count;
+-	proof->premise_count = count;
 -	for (size_t i = 0; i < count; ++i) proof->premises[i] = premises[i];
++	proof->retained_count = retained;
 +	if (elimination_rule(rule)) {
-+		struct elimination_receipts *inputs = (void *)proof->premises;
-+		inputs->count = retained;
++		struct elimination_receipt_selection *inputs = (void *)proof->premises;
 +		size_t next = 0;
 +		for (size_t i = 0; i < count; ++i)
 +			if (elimination_premise(subject, i) != premises[i])
-+				inputs->selections[next++] = (struct elimination_receipt_selection){i, premises[i]};
-+	} else for (size_t i = 0; i < count; ++i) proof->premises[i] = premises[i];
++				inputs[next++] = (struct elimination_receipt_selection){i, premises[i]};
++	} else for (size_t i = 0; i < retained; ++i) proof->premises[i] = premises[i + count - retained];
  	if (pg_index_insert(&typing->proofs, &proof->index, hash) != 0) return NULL;
 -	if (conclusion->last) conclusion->last->next_conclusion = proof;
 -	else {
@@ -188,16 +210,19 @@
  	return proof;
  }
  
-@@ -2505,7 +2567,7 @@
+@@ -2503,9 +2571,9 @@
+ 		if (p->hash != hash) continue;
+ 		struct induction_request *request = (void *)p;
  		const struct pg_evidence *result = request->result;
- 		if (result->premise_count != count) continue;
+-		if (result->premise_count != count) continue;
++		if (pg_evidence_premise_count(result) != count) continue;
  		size_t i = 0;
 -		while (i < count && result->premises[i] == premises[i]) ++i;
 +		while (i < count && pg_evidence_premise(result, i) == premises[i]) ++i;
  		if (i == count) return request;
  	}
  	struct induction_request *request = pg_alloc(typing->graph, sizeof(*request));
-@@ -4431,13 +4493,29 @@
+@@ -4431,13 +4499,29 @@
  		map->destination, NULL, 2, premises, NULL, map);
  }
  
@@ -231,30 +256,36 @@
  	const struct pg_evidence *premises[] = {substitution, proof};
  	uint64_t hash;
  	const struct pg_evidence *result = find_record(typing, PG_REINDEX,
-@@ -5457,8 +5535,24 @@
+@@ -5456,9 +5540,29 @@
+ 	const struct pg_occurrence *subject = pg_evidence_subject(evidence);
  	return subject ? subject->classifier : NULL;
  }
- size_t pg_evidence_premise_count(const struct pg_evidence *evidence) { return evidence->premise_count; }
+-size_t pg_evidence_premise_count(const struct pg_evidence *evidence) { return evidence->premise_count; }
 -const struct pg_evidence *const *pg_evidence_premises(const struct pg_evidence *evidence) { return evidence->premises; }
++size_t pg_evidence_premise_count(const struct pg_evidence *evidence)
++{
++	if (elimination_rule(evidence->rule)) return evidence->conclusion.subject->operand_count + 3;
++	return evidence->rule == PG_CONSTRUCTOR_INTRO ? 4 : evidence->retained_count;
++}
 +size_t pg_evidence_retained_premise_count(const struct pg_evidence *evidence)
 +{
-+	if (!elimination_rule(evidence->rule)) return evidence->premise_count;
-+	const struct elimination_receipts *inputs = (const void *)evidence->premises;
-+	return inputs->count;
++	return evidence->retained_count;
 +}
  const struct pg_evidence *pg_evidence_premise(const struct pg_evidence *evidence, size_t index)
  {
 -	return index < evidence->premise_count ? evidence->premises[index] : NULL;
-+	if (index >= evidence->premise_count) return NULL;
++	if (index >= pg_evidence_premise_count(evidence)) return NULL;
++	if (evidence->rule == PG_CONSTRUCTOR_INTRO && evidence->retained_count == 3)
++		return index ? evidence->premises[index - 1] : constructor_family_receipt(evidence->conclusion.subject);
 +	if (!elimination_rule(evidence->rule)) return evidence->premises[index];
-+	const struct elimination_receipts *inputs = (const void *)evidence->premises;
-+	size_t low = 0, high = inputs->count;
++	const struct elimination_receipt_selection *inputs = (const void *)evidence->premises;
++	size_t low = 0, high = evidence->retained_count;
 +	while (low < high) {
 +		size_t middle = low + (high - low) / 2;
-+		if (inputs->selections[middle].ordinal < index) low = middle + 1;
++		if (inputs[middle].ordinal < index) low = middle + 1;
 +		else high = middle;
 +	}
-+	if (low < inputs->count && inputs->selections[low].ordinal == index)
-+		return inputs->selections[low].proof;
++	if (low < evidence->retained_count && inputs[low].ordinal == index)
++		return inputs[low].proof;
 +	return elimination_premise(evidence->conclusion.subject, index);
  }
