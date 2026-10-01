@@ -653,6 +653,30 @@ Do not mark a milestone complete just because a view hides the old representatio
   is +122/-65, tests +55/-0; [per-file deltas](../src/prototype/solver_inputs/oracle_local_delta.tsv).
   Public reload has the same four failing partitions; do not waive that gate
   or mark SE1-SE5 complete. Logs use `/tmp/a-program-oracle-local-`.
+  Verified prototype increment (2026-10-01, parent `937daea`): constructor value
+  construction and data-case checking now belong to the existing Schema module.
+  Their shared source roles/dispatch branches and constructor-scope union member
+  are deleted. Source consumers borrow field/callable inputs from that owner;
+  case checking borrows its body from the immutable request instead of retaining
+  another body/checked-term reference. Private state is 32/24 bytes respectively;
+  the remaining broad source layout and completed result forwarding are not
+  eliminated. No second owner, semantic tag, acceptance policy or wire field is
+  introduced. O2 regression/examples/full acceptance, semantic persistence and
+  all seven checkpoint gates exit 0, including general Sorted/result connection
+  and both LT providers/partition orders. Separate C backend gates and focused
+  ASan/UBSan synthesis/constructor/derivation checks pass with leak detection.
+  Fresh assembly matches all 156 tested C/header files and its focused checks
+  pass. Current-worktree Core/IADT/synthesis checks also pass; user edits remain
+  excluded. [Paired measurements](../src/prototype/solver_inputs/schema_owner_measurements.tsv)
+  preserve steps, Job/Term/Occurrence/Evidence/query counts in all four samples;
+  Job state storage falls by 1,280/1,120/1,760/27,200 bytes in
+  List/effect/captured-graph/QuickSort, not the total live-memory measurement.
+  Actual implementation is +300/-270 (net +30), tests +13/-0; central
+  `synthesis.c` loses 244 lines. [Per-file deltas](../src/prototype/solver_inputs/schema_owner_delta.tsv)
+  exclude patch context, documentation and symlink representation. All 52 List
+  partition images are byte-identical to the parent, with the same four failing
+  public reload partitions. SE1-SE5 remain open; this is unpromoted prototype
+  work. Logs use `/tmp/a-program-schema-owner-`.
 - [ ] **SE3 Evidence inputs:** map each retained premise to typed operands,
   context/map, receipt or other real logical input. Remove duplicate premise
   arrays and history-based access for the mapped rules, starting with

@@ -185,6 +185,13 @@ result is stored in the scheduler. Its source-interface readiness still exists,
 so this is not complete Job removal or cursor persistence. See
 [applied line changes](oracle_local_delta.tsv) and
 [paired measurements](oracle_local_measurements.tsv) against `97825ec`.
+Constructor values and data-case checking also live in the existing Schema
+owner, not the shared source layout or dispatcher. Field inputs are borrowed
+through the constructor owner; branch checking borrows its body from the request
+instead of storing a second checked-term reference. Implicit-index conventions
+and field checkpoints remain unchanged. This removes two broad-state roles,
+not all Jobs; see [deltas](schema_owner_delta.tsv) and
+[measurements](schema_owner_measurements.tsv) against `937daea`.
 Lexical binding now has one checked/pending Context API; the Job-only binding
 entry point is removed. IH/graph associations borrow known Contexts directly.
 Only unavailable inputs require a binding-validation request; an existing one

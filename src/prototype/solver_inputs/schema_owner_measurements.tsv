@@ -1,0 +1,17 @@
+sample	metric	parent_937daea	candidate	delta
+list-09-at-0	steps	0	0	0
+list-09-at-0	jobs	39	39	0
+list-09-at-0	job_bytes	6280	6280	0
+list-09-at-1000	job_bytes	76568	75608	-960
+list-09-completed	steps	2626	2626	0
+list-09-completed	jobs	814	814	0
+list-09-completed	job_bytes	145720	144440	-1280
+effect-application	steps	17892	17892	0
+effect-application	jobs	5088	5088	0
+effect-application	job_bytes	867360	866240	-1120
+captured-function-graph	steps	8524	8524	0
+captured-function-graph	jobs	2056	2056	0
+captured-function-graph	job_bytes	357656	355896	-1760
+quick-local	steps	800792	800792	0
+quick-local	jobs	48486	48486	0
+quick-local	job_bytes	8692296	8665096	-27200
