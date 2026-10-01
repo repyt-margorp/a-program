@@ -268,29 +268,18 @@ authority. The target keeps each obligation's inputs, cursor and result in one
 owner; the frontier only references that owner. It must not introduce a new
 Constraint record underneath an unchanged, independently stateful Job record.
 
-Latest static recheck, 2026-10-01, `f4c4218`: accepted `src/` and the
+Latest static recheck, 2026-10-01, `4583ddd`: accepted `src/` and the
 `solver_inputs` overlay on baseline `e716232` were inspected separately. The
 uncommitted Context/IADT edits remain outside this refactor. The committed
 prototype has deleted the completed Evidence adapter factory and all callers;
 accepted `src/` still has that adapter. Prototype deletion is not production
-promotion. The general classifier Job still advances the canonical typed query
-and copies its result/completion (`synthesis_function.c:classifier_step`), while
-`typed_query.h:pg_typed_query` already owns that query's cursor and result.
+promotion. The general classifier now borrows the canonical typed query directly;
+unresolved operands retain discovery only, without copying its answer/completion.
 Partial substitution and derivation workers still own genuinely unfinished
 cursors. These observations supersede the adapter status in historical tables.
-No fresh runtime verification was performed for this recheck.
-
-The uncommitted `solver_inputs/classifier_owner_work` trial is separate from
-that committed result. It passes a known-input classifier query directly and
-keeps an input-discovery owner when operands are unresolved. Discovery retains
-the canonical query reference, not its result or classification status. Its
-common prefix is embedded in existing owners; it allocates no adapter and owns
-no additional cursor/result/status. Job and typed-query dispatchers still remain
-separate, so this does not establish one frontier.
-Its initial O2 run failed input-image saving because export read the discovery
-Job's raw result instead of the actual query answer. The classifier-ownership
-milestone below records the correction, fuel-boundary tests and measured results,
-superseding that trial failure and the old constant-motive consumer status.
+The classifier-ownership milestone below records fresh verification, including
+the corrected export path and per-dispatch query fuel. Job and typed-query
+dispatchers still remain separate, so this does not establish one frontier.
 Full frontier/persistence and partition gates remain open; no promotion or SE1
 completion follows.
 
@@ -337,7 +326,7 @@ recheck; the verified reindex milestone below remains historical test evidence.
 | --- | --- | --- |
 | `synthesis_derivation.c:evidence_ready` | Immediately DONE Job repeats the same checked Evidence in input/result. | Adapter factory and all callers are deleted. This does not finish SE1. |
 | `synthesis_context.c:checked_query_step`; `synthesis_effect.c:inference_step` | Outer scheduling records mirror an already-owned query/effect completion. | These wrappers are removed; consumers borrow the existing progress owners. |
-| `synthesis_function.c:classifier_step` | Job advances `pg_classifier_request` and copies its result/completion. | This general wrapper remains, although Identity and normalization consumers now borrow queries directly. Consolidate ownership without losing pre-acceptance classifier discovery. |
+| `synthesis_function.c:classifier_step` | Job advances `pg_classifier_request` and copies its result/completion. | At `4583ddd`, known inputs borrow the canonical query; unresolved inputs retain discovery only. Single dispatch/frontier restoration remains open. |
 | `synthesis_context.c:substitution_step`; `synthesis_derivation.c:derivation_step` | Partial map/next image or premise/comparison phase is held by the unfinished operation. | These are real cursors, not checked Term copies. No separate underlying constraint currently owns all this work. Consolidate the operation itself instead of deleting it or adding a parallel owner. |
 | `synthesis_context.c:reindex_step` | Resolved inputs create a second checked-input Job; the outer Job copies its completion/result. | Forwarding Job is removed; existing receipts are borrowed directly and real unfinished admission follows the shared occurrence action. General classifier ownership is still unresolved. |
 | `evidence.c:prove_data_elimination` | Typed operands/maps/type retain structural inputs; the receipt also retains `count + 6` premise references. | Match/induction now reconstruct logical premises from typed inputs, retaining only exceptional exact receipt selections. Constructor/other-rule overlap remains SE3 work. |
@@ -2641,7 +2630,8 @@ In-memory partitions and seed step-0 controls remain exact. Terminal fuel is now
   combined invocation exited 2 only at the old namespace fixture; its corrected
   fixture and the clean full regression/checkpoint invocation subsequently pass.
 - [x] Measure census and rerun strict public partitions; retain all four failures.
-- [ ] Publish this prototype milestone without production promotion.
+- [x] Publish this prototype milestone without production promotion (`4583ddd`,
+  pushed to `origin/main` on 2026-10-01).
 
 Evidence logs use `/tmp/a-program-classifier-owner-`; clean publication checks
 use `/tmp/a-program-classifier-owner-publish-check.log`. Full SE1-SE5 remain open
