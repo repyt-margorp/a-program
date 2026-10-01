@@ -554,6 +554,8 @@ Do not mark a milestone complete just because a view hides the old representatio
   checking, without interrupted checking cursors. Promoting its completion flag
   to accepted evidence would not establish exact or checked resumption. SE1-SE5
   remain open; this milestone is unpromoted prototype code, not the full gate.
+  Publication: local Main commit `d6640ef` is verified. Push remains pending:
+  GitHub HTTPS connection failed on 2026-10-01; no remote publication is claimed.
 - [ ] **SE4 persistence projection:** consume those canonical structures through
   borrowed views, removing exported copies of reconstructible rule-input trees
   and obsolete owner codecs. Keep only unfinished state needed by actual Solve
