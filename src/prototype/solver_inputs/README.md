@@ -276,6 +276,16 @@ sanitizer tests, five C gates, full regression/acceptance, semantic persistence
 and seven checkpoint gates pass, including general QuickSort Sorted/permutation.
 Artifact controls are byte-identical; the four public reload failures stay open.
 
+Fold construction now borrows clause inputs synchronously. The provisional
+owner's clause array and the checked handler's temporary raw array are deleted;
+only the unfinished cursor remains. Core retains no callback/owner pointer and
+ordinary signature, carrier, effect and continuation checks still govern
+acceptance. See [census](fold_inputs_measurements.tsv),
+[allocation](fold_inputs_allocation.tsv) and [applied deltas](fold_inputs_delta.tsv)
+against `33b06f1`. Graph/fuel counts and artifact controls are unchanged; source
+grows by 27 implementation lines. This is not full Job/Evidence removal or
+resolution of public reload failures.
+
 Core-preserving Context projection and type/value readings now borrow their
 input's structural query without a second Job/result. All three structural
 APIs use one iterative discovery path; ordinary rule checking remains separate.

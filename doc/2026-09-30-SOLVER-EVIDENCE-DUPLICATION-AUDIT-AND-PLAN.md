@@ -171,6 +171,15 @@ additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
 
+2026-10-02, agent implementation decision at `33b06f1`: do not add a second
+Lambda/App constructor API merely to wrap existing interned Core builders.
+Their provisional descriptions are not checking authority. Instead remove the
+actual Fold clause copies: `fold_structure_state.clauses[]` and the checked
+handler's temporary raw clauses. Both can borrow existing immutable inputs
+through one synchronous Core constructor; retain only the unfinished cursor.
+No new proof format, request graph, or acceptance bypass is authorized by this
+decision. Fresh verification is required before recording this trial as done.
+
 **Job is not a semantic primitive.** Current Job inputs usually borrow existing
 objects; they do not necessarily copy Term nodes. Nevertheless, an independently
 interned request with its own result, status and dependency edges can duplicate
@@ -819,6 +828,26 @@ Do not mark a milestone complete just because a view hides the old representatio
   Remove the corresponding duplicated structural walkers and overbroad private
   state. Keep genuinely unfinished queries and effect dependencies; do not
   replace all of them with an unconditional wait for accepted Evidence.
+  Verified Fold-input increment (2026-10-02, parent `33b06f1`): delete the provisional
+  `fold_structure_state.clauses[]` allocation and the checked handler's temporary
+  raw clause array. Both borrow existing inputs through the same synchronous
+  Core builder; the structural owner keeps only its unfinished clause cursor.
+  No reader is retained in Core and no shape is promoted to accepted Evidence.
+  Focused/fresh/current Core/IADT/Solver and ASan/UBSan/leak checks and all five
+  C gates pass. Full O2 regression/examples/acceptance, semantic persistence
+  and all seven checkpoint gates exit 0, including general QuickSort
+  result/Sorted/permutation and both LT providers/partition orders.
+  [All 26 census fields](../src/prototype/solver_inputs/fold_inputs_measurements.tsv)
+  match the parent at fuel 0/100/1000/completion in four samples. The effect
+  sample removes ten temporary allocation calls (160 aligned requested bytes);
+  [allocation samples](../src/prototype/solver_inputs/fold_inputs_allocation.tsv)
+  are partial cumulative requests, not live RAM. QuickSort varies between
+  processes; no speedup or memory saving is inferred from that noise.
+  [Applied deltas](../src/prototype/solver_inputs/fold_inputs_delta.tsv):
+  implementation +65/-38 (net +27), tests +54/-0. All 52 List images, the strict
+  partition TSV and eight effect/captured images are byte-identical to the parent;
+  loaded captured-block step 0 is invariant. The four public reload failures
+  remain (gate exit 1), as do SE1-SE5 and general owner/frontier consolidation.
   Verified block-owner increment (2026-10-02, parent `f459c0f`): source block construction,
   its visited scopes, cursor and name-index cleanup now live in the CBPV owner.
   Delete the expression's block slot, extra state allocation, dispatch branch

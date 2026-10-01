@@ -1,0 +1,15 @@
+sample	revision	repetition	wrapped_arena_calls	wrapped_aligned_bytes
+list	33b06f1	1	4322	469200
+list	fold-inputs	1	4322	469200
+effect	33b06f1	1	28737	3047632
+effect	fold-inputs	1	28727	3047472
+captured	33b06f1	1	7490	764000
+captured	fold-inputs	1	7490	764000
+quick	33b06f1	1	2894040	234464128
+quick	fold-inputs	1	2892828	234405952
+quick	33b06f1	2	2894019	234463120
+quick	fold-inputs	2	2894023	234463312
+quick	33b06f1	3	2893792	234452224
+quick	fold-inputs	3	2894276	234475456
+quick	33b06f1	4	2894509	234486640
+quick	fold-inputs	4	2893676	234446656

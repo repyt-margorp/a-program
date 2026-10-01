@@ -826,7 +826,60 @@
  	const struct pg_evidence *premises[] = {substitution, proof};
  	uint64_t hash;
  	const struct pg_evidence *result = find_record(typing, PG_REINDEX,
-@@ -5367,7 +5530,7 @@
+@@ -5145,6 +5308,13 @@
+ 	return pg_alpha_equal(pg_pi_constant_codomain(resume), carrier) == 1;
+ }
+ 
++static struct pg_operation_clause handler_core_clause(const void *owner, size_t i)
++{
++	const struct pg_handler_clause *clauses = owner;
++	return (struct pg_operation_clause){pg_operation_label(clauses[i].operation),
++		pg_evidence_subject(clauses[i].body)->core};
++}
++
+ const struct pg_evidence *pg_prove_handler(struct pg_typing *typing,
+ 	const struct pg_evidence *computation, const struct pg_evidence *returned,
+ 	const struct pg_evidence *carrier, size_t count, const struct pg_handler_clause *clauses)
+@@ -5154,7 +5324,6 @@
+ 	if (!clauses || count > (SIZE_MAX - 3) / 3) return NULL;
+ 	size_t n = 3 + 3 * count;
+ 	if (n > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
+-	if (count > SIZE_MAX / sizeof(struct pg_operation_clause)) return NULL;
+ 	if (!pg_evidence_owned_by(computation, typing)) return NULL;
+ 	if (!pg_evidence_owned_by(returned, typing)) return NULL;
+ 	if (!pg_evidence_owned_by(carrier, typing)) return NULL;
+@@ -5178,10 +5347,9 @@
+ 	struct pg_graph temporary = {0};
+ 	const struct pg_evidence **premises = pg_alloc(&temporary, n * sizeof(*premises));
+ 	const struct pg_object **labels = pg_alloc(&temporary, count * sizeof(*labels));
+-	struct pg_operation_clause *raw = pg_alloc(&temporary, count * sizeof(*raw));
+ 	const struct pg_occurrence **operands = pg_alloc(&temporary, (count + 2) * sizeof(*operands));
+ 	const struct pg_evidence *result = NULL;
+-	if (!premises || !labels || !raw || !operands) goto done;
++	if (!premises || !labels || !operands) goto done;
+ 	premises[0] = computation; premises[1] = returned; premises[2] = carrier;
+ 	operands[0] = pg_evidence_subject(computation); operands[1] = pg_evidence_subject(returned);
+ 	for (size_t i = 0; i < count; ++i) {
+@@ -5193,7 +5361,6 @@
+ 		if (pg_evidence_judgement(body) != PG_JUDGEMENT_COMPUTATION || pg_evidence_context(body) != pg_evidence_context(computation)) goto done;
+ 		if (!handler_clause_type(pg_evidence_subject(body)->classifier, operation, pg_evidence_subject(carrier)->core)) goto done;
+ 		labels[i] = pg_operation_label(operation);
+-		raw[i] = (struct pg_operation_clause){labels[i], pg_evidence_subject(body)->core};
+ 		operands[i + 2] = pg_evidence_subject(body);
+ 		premises[3 + 3 * i] = operation->payload_type;
+ 		premises[4 + 3 * i] = operation->response_type;
+@@ -5202,8 +5369,8 @@
+ 	const struct pg_effect_row *handled = pg_effect_row(typing->graph, count, labels);
+ 	const struct pg_effect_row *forwarded = pg_effect_difference(typing->graph, input_effects, handled);
+ 	if (pg_effect_subset(forwarded, output_effects) != 1) goto done;
+-	const struct pg_term *core = pg_computation_fold(typing->graph, pg_evidence_subject(computation)->core,
+-		pg_evidence_subject(returned)->core, count, raw);
++	const struct pg_term *core = pg_computation_fold_inputs(typing->graph, pg_evidence_subject(computation)->core,
++		pg_evidence_subject(returned)->core, count, clauses, handler_core_clause);
+ 	if (!core) goto done;
+ 	const struct pg_occurrence *subject = pg_occurrence_typed(typing, PG_JUDGEMENT_COMPUTATION, core, pg_evidence_subject(carrier), NULL, count + 2, operands);
+ 	if (!subject) goto done;
+@@ -5367,7 +5534,7 @@
  static int typed_classifier_step(struct pg_typed_query *work)
  {
  	struct typed_recipe_query *local = pg_typed_query_state(work);
@@ -835,7 +888,7 @@
  	const struct pg_occurrence *subject = typed_source(work);
  	uint64_t level;
  	if (subject->type) work->result = pg_prove_structural_subject(typing, subject->type);
-@@ -5394,6 +5557,11 @@
+@@ -5394,6 +5561,11 @@
  		pg_alpha_equal(pg_evidence_subject(work->result)->core, subject->classifier) == 1 ? 1 : -1;
  }
  
@@ -847,7 +900,7 @@
  /* Universe successors are formed lazily in the typing store's graph. */
  static const struct pg_evidence *formed_classifier(struct pg_typing *typing,
  	const struct pg_evidence *term)
-@@ -5456,9 +5624,32 @@
+@@ -5456,9 +5628,32 @@
  	const struct pg_occurrence *subject = pg_evidence_subject(evidence);
  	return subject ? subject->classifier : NULL;
  }

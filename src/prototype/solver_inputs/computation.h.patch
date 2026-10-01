@@ -1,0 +1,15 @@
+--- a/computation.h
++++ b/computation.h
+@@ -45,6 +45,12 @@
+ const struct pg_term *pg_computation_fold(struct pg_graph *graph,
+ 	const struct pg_term *source, const struct pg_term *returned,
+ 	size_t count, const struct pg_operation_clause *clauses);
++/* Borrow immutable clause inputs synchronously, without a flattened copy.
++ * The reader may be called repeatedly; it must not advance computation or
++ * change its answer. No owner/reader pointer is retained by the Core graph. */
++const struct pg_term *pg_computation_fold_inputs(struct pg_graph *graph,
++	const struct pg_term *source, const struct pg_term *returned, size_t count,
++	const void *owner, struct pg_operation_clause (*clause)(const void *, size_t));
+ /* Versioned names of the fixed pure operators for graph relocation. These
+  * neither execute a computation nor certify a typed use of an operator. */
+ const char *pg_computation_name(const struct pg_object *object);

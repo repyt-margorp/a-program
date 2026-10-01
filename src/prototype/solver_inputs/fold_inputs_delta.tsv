@@ -1,0 +1,9 @@
+file	added	removed	net
+src/computation.c	26	11	15
+src/computation.h	6	0	6
+src/evidence.c	10	6	4
+src/synthesis_cbpv.c	23	21	2
+tests/core.c	29	0	29
+tests/synthesis.c	25	0	25
+implementation total	65	38	27
+tests total	54	0	54
