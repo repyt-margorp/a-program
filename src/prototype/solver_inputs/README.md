@@ -218,6 +218,12 @@ stores 1,447 fewer Job result references and uses 173 fewer dispatches. See
 [measurements](quote_body_owner_measurements.tsv) and
 [file deltas](quote_body_owner_delta.tsv). Four broad source roles and four
 public reload failures remain; this is not complete Job/Evidence removal.
+Application equations now follow existing Thunk/Lambda rule inputs instead of
+reinterpreting those AST forms. Lambda scope/body come from the retained Pi
+and body input; the actual Match alone keeps its open result equation. No new
+Job, payload tag or wire field is added. See [file deltas](recipe_equation_delta.tsv)
+and [final-count measurements](recipe_equation_measurements.tsv) against
+`e58a1c8`; QuickSort uses three more dispatches, with unchanged graph counts.
 Lexical binding now has one checked/pending Context API; the Job-only binding
 entry point is removed. IH/graph associations borrow known Contexts directly.
 Only unavailable inputs require a binding-validation request; an existing one

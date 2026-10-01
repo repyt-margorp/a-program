@@ -1,0 +1,3 @@
+file	category	added	deleted	net
+src/synthesis.c	implementation	22	15	7
+tests/synthesis.c	test	15	1	14

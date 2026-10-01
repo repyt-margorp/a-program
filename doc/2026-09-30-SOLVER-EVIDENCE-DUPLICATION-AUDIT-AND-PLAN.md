@@ -556,6 +556,31 @@ failed because its test read the removed adapter result after checking the
 public getter; correcting that stale test dereference and rerunning all seven
 gates passed. Broad source state and public frontier restoration remain open.
 
+2026-10-01, agent trial on `e58a1c8`: application equations now follow existing
+Thunk/Lambda rule inputs, not a second AST interpretation or scope recovery.
+Lambda Context/body come from the retained Pi/body input. Match alone keeps
+an open result equation; ordinary checking and post-synthesis `::` still decide
+acceptance. Focused tests pass, including two compatible callers plus a
+conflicting caller on one Match, dependent codomain propagation, invalid
+domains/quotes, zero fuel and split budgets. No Job, payload tag, result slot or
+wire field is added. Full O2 regression/examples/acceptance, semantic persistence,
+all seven checkpoints, five C-backend gates and focused ASan/UBSan/leak checks
+pass. Fresh assembly matches 156 C/header files and passes synthesis/derivation
+I/O; current-worktree Core/IADT/synthesis checks pass without staging user edits.
+The default-policy CLI probe completes at 991 steps. This is a verified,
+unpromoted prototype increment, not SE1-SE5 completion.
+[Final-count measurements](../src/prototype/solver_inputs/recipe_equation_measurements.tsv)
+retain the final graph and Job counts; List/effect/captured-block steps are
+unchanged, QuickSort uses three more dispatches, not a speed improvement.
+The QuickSort sample follows the source assembly command in Revision and Method;
+the captured sample here is `tests/acceptance/captured-block-match.p`.
+[File deltas](../src/prototype/solver_inputs/recipe_equation_delta.tsv): implementation
++22/-15 (net +7), tests +15/-1 (net +14), excluding patch context/documents.
+The public partition gate still fails the same four reload cases at 100:100,
+1000:1000, 1600:1600 and 2597:0; step 0 and in-memory/save-only partitions pass.
+Broad source state, provisional construction and general frontier restoration
+remain under the existing open work list. Logs use `/tmp/a-program-recipe-equation-`.
+
 Object-language equality witnesses remain Terms. Removing duplicated metalevel
 premises must not erase witness distinctions, conversion/reduction certificates,
 nominal identity, scoped substitutions or the difference between checking and
