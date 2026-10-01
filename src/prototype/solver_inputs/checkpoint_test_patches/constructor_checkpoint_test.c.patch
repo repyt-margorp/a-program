@@ -1,6 +1,17 @@
 --- a/constructor_checkpoint_test.c
 +++ b/constructor_checkpoint_test.c
-@@ -239,15 +239,15 @@
+@@ -157,7 +157,9 @@
+ 		assert(pg_synthesis_result(premises[i]));
+ 	}
+ 	assert(!s->ready && s->steps == validation);
+-	const struct pg_evidence *formation = premises[0]->result, *parameters = premises[1]->result, *scope = premises[2]->result;
++	const struct pg_evidence *formation = pg_synthesis_result(premises[0]);
++	const struct pg_evidence *parameters = pg_synthesis_result(premises[1]);
++	const struct pg_evidence *scope = pg_synthesis_result(premises[2]);
+ 	const struct pg_data_layout *layout = pg_data_schema_layout(pg_evidence_inductive_schema(formation));
+ 	assert(c.ordinal < pg_data_layout_count(layout));
+ 	const struct pg_object *constructor = pg_data_constructor(layout, c.ordinal);
+@@ -239,15 +241,15 @@
  	struct pg_synthesis isolated;
  	assert(!pg_synthesis_init(&isolated, &p->typing, &p->evaluation, PG_DEFINITION_IMPLICIT_THUNK));
  	struct pg_synthesis_job *scope_job = pg_synthesis_constructor_scope(&isolated,

@@ -1,0 +1,9 @@
+area	file	added	deleted	net
+src	synthesis.c	3	1	2
+src	synthesis_binding.c	30	24	6
+src	synthesis_derivation.c	9	2	7
+src	artifact/derivation.c	3	1	2
+tests	synthesis.c	88	0	88
+tests	derivation_io.c	3	0	3
+checkpoint_tests	derivation_checkpoint_test.c	2	1	1
+checkpoint_tests	constructor_checkpoint_test.c	3	1	2

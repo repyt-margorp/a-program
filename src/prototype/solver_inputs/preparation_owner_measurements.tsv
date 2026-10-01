@@ -1,0 +1,10 @@
+sample	metric	parent_e6e7d2f	candidate	delta
+effect-application	steps	17924	17919	-5
+effect-application	terms	1546	1546	0
+effect-application	typed_occurrences	2680	2680	0
+effect-application	evidence	3414	3414	0
+effect-application	jobs	5129	5129	0
+effect-application	result_references	2791	2780	-11
+effect-application	retained_premise_edges	5267	5267	0
+effect-application	wrapped_arena_calls	29170	29186	16
+effect-application	wrapped_aligned_bytes	3155584	3156608	1024

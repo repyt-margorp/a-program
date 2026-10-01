@@ -511,6 +511,31 @@ Do not mark a milestone complete just because a view hides the old representatio
   First cover binding/domain,
   normalization and rule premises together, not three incompatible adapters;
   then migrate source/context/IADT/Identity/operation consumers before closure.
+  Verified prototype prerequisite (2026-10-01; `e6e7d2f` plus the preparation
+  ownership patches): raw derivation and binder-domain preparation borrow their
+  actual checking/normalization output instead of copying its receipt and terminal
+  state. Agent implementation decision: preparation DONE is not checked DONE;
+  name readiness, binding/domain consumers and restricted checkpoint attachment
+  follow the actual output. Genuine input cursors and annotation conversion remain.
+  Fresh regression/examples/semantic and checkpoint gates pass; acceptance and
+  C-backend gates pass on these same implementation sources. The initial combined
+  run failed an obsolete constructor-test raw-result read; migrating that fixture
+  to the public getter passes separately and in the final regression. Latest
+  synthesis/derivation/constructor checks also pass ASan/UBSan with leak detection.
+  Clean patch assembly matches all 156 tested C/header files; its focused checks
+  pass. Logs use `/tmp/a-program-preparation-owner-final-`.
+  Applied source delta: +45/-28 (net +17); tests: +96/-2 (net +94), excluding docs
+  and patch context; see [file deltas](../src/prototype/solver_inputs/preparation_owner_delta.tsv).
+  The effect-application sample loses 11 result references and five dispatches,
+  but Jobs stay at 5,129 and wrapped aligned allocation grows by 1,024 bytes;
+  see [measurements](../src/prototype/solver_inputs/preparation_owner_measurements.tsv).
+  This is not a memory-saving or completed Job-removal milestone. Public reload
+  partitions still fail at 100:100, 1000:1000, 1600:1600 and 2617:0, unchanged
+  from the parent. Preserve and restore the actual checking frontier/cursor;
+  do not trust the saved completion flag or add a second task graph. SE1-SE5
+  remain open. SE2's provisional walkers still need their effect dependency cycle
+  resolved before consolidation. Publication remains pending while GitHub is
+  unreachable; accepted `src/` and user edits are not included.
 - [ ] **SE2 single construction path:** enumerate provisional structure inputs
   for Lambda/App/Pi and CBPV, extract their actual construction once under the
   existing semantic owners, and have checking consume that same construction.

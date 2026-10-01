@@ -316,7 +316,7 @@
  	*spent = 0;
  	uint64_t available = budget < limit ? budget : limit;
  	for (size_t i = c->external_count + c->raw_count; i < c->count; ++i) {
-@@ -366,9 +418,9 @@
+@@ -366,16 +418,18 @@
  }
  
  int pg_artifact_derivations_attach(struct pg_synthesis *s, const struct pg_artifact_derivations *c,
@@ -328,3 +328,13 @@
  	for (size_t i = c->external_count + c->raw_count; i < c->count; ++i) {
  		if (c->status[i] != PG_SYNTHESIS_DONE) continue;
  		if (!pg_synthesis_result(jobs[i])) return -1;
+ 	}
+ 	for (size_t i = 0; i < c->raw_count; ++i) {
+ 		if (c->status[i] != PG_SYNTHESIS_DONE) continue;
+-		if (!pg_synthesis_forward(s, jobs[i], jobs[c->prepared[i] - 1])) return -1;
++		if (!c->prepared[i]) return -1;
++		/* The raw recipe is prepared, not a second checked result. */
++		pg_synthesis_finish(s, jobs[i], PG_SYNTHESIS_DONE);
+ 	}
+ 	for (size_t i = c->external_count + c->raw_count; i < c->count; ++i)
+ 		if (c->status[i] == PG_SYNTHESIS_PENDING && pg_synthesis_rule_resume(s, jobs[i], c->next[i])) return -1;

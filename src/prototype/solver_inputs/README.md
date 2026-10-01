@@ -75,6 +75,12 @@ Composition and lifting no longer allocate a `CHECKED_QUERY_JOB`: constructor
 scope and Identity-family owners borrow the existing typed query directly.
 The query keeps its sole progress/status/result. Any query advance consumes
 the caller's dispatch, preventing two advances through a completion boundary.
+Raw derivation preparation and binder-domain preparation now borrow the actual
+checking/normalization owner. Preparation completion no longer copies its
+receipt or terminal checking state. Name readiness, domain consumers and the
+restricted derivation checkpoint distinguish prepared input from checked output.
+These preparation records still retain genuine discovery cursors; this change
+does not remove every Job or settle public same-fuel resumption.
 Classifier formation and normalization also accept direct typed operands;
 structural readers inspect those inputs without recreating Jobs. Normalization
 borrows the existing classifier query instead of a classifier-formation Job.
