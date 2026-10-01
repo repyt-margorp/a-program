@@ -1,12 +1,19 @@
 --- a/synthesis_function.c
 +++ b/synthesis_function.c
-@@ -1,5 +1,6 @@
+@@ -1,11 +1,12 @@
  #include "synthesis_source.h"
  #include "derivation.h"
 +#include "typed_query.h"
  
  /* Structural queries can close effect equations before a function is checked.
   * They expose raw structure, never Evidence; accepted typed data takes priority. */
+ struct function_structure_work {
+ 	const struct pg_term *result;
+-	struct pg_synthesis_job *left, *right;
++	struct pg_synthesis_structure left, right;
+ 	const struct pg_object *binder;
+ 	struct pg_substitution *substitution;
+ 	struct pg_comparison comparison;
 @@ -16,17 +17,19 @@
  static void function_structure_completed(struct pg_synthesis *, struct pg_synthesis_job *, int);
  static const struct pg_term *function_structure_result(const struct pg_synthesis_job *);
@@ -28,7 +35,7 @@
  }
  
  static void function_structure_destroy(struct pg_synthesis_job *job)
-@@ -66,32 +69,30 @@
+@@ -66,34 +69,32 @@
  {
  	struct function_structure_work *local = function_structure_work(job);
  	if (!local->binder) {
@@ -70,11 +77,15 @@
  		}
  	}
 -	if (!local->left) local->left = pg_synthesis_term_structure(synthesis, pg_synthesis_rule_premise(synthesis, producer, 1));
-+	if (!local->left) local->left = pg_synthesis_term_structure_input(synthesis, pg_synthesis_rule_input(synthesis, producer, 1));
- 	if (!local->left) goto unsupported;
- 	if (pg_synthesis_await(synthesis, job, local->left)) return;
+-	if (!local->left) goto unsupported;
+-	if (pg_synthesis_await(synthesis, job, local->left)) return;
++	if (!pg_synthesis_structure_valid(local->left)) local->left = pg_synthesis_term_structure_input(synthesis, pg_synthesis_rule_input(synthesis, producer, 1));
++	if (!pg_synthesis_structure_valid(local->left)) goto unsupported;
++	if (pg_synthesis_await_structure(synthesis, job, local->left)) return;
  	local->result = pg_lambda(synthesis->typing->graph, local->binder, pg_synthesis_type_structure_result(local->left));
-@@ -102,7 +103,7 @@
+ 	pg_synthesis_finish(synthesis, job, local->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+ 	return;
+@@ -102,14 +103,14 @@
  }
  
  static void pi_application_structure_step(struct pg_synthesis *synthesis,
@@ -83,15 +94,28 @@
  {
  	struct function_structure_work *local = function_structure_work(job);
  	if (!local->substitution) {
-@@ -119,7 +120,7 @@
+ 		const struct pg_term *domain, *codomain;
+ 		const struct pg_object *binder;
+ 		if (!pg_pi_view(type, &domain, &binder, &codomain)) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+-		if (!local->right) {
++		if (!pg_synthesis_structure_valid(local->right)) {
+ 			/* A constant codomain does not wait for argument conversion.
+ 			 * Once the argument is requested, dependence is already known. */
+ 			enum pg_comparison_status scan = pg_synthesis_independence(synthesis, job, &local->comparison, codomain, binder);
+@@ -119,10 +120,10 @@
  				pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_DONE);
  				return;
  			}
 -			local->right = pg_synthesis_term_structure(synthesis, argument);
 +			local->right = pg_synthesis_term_structure_input(synthesis, argument);
  		}
- 		if (!local->right) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
- 		if (pg_synthesis_await(synthesis, job, local->right)) return;
+-		if (!local->right) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+-		if (pg_synthesis_await(synthesis, job, local->right)) return;
++		if (!pg_synthesis_structure_valid(local->right)) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
++		if (pg_synthesis_await_structure(synthesis, job, local->right)) return;
+ 		struct pg_binding_value image = {binder, pg_synthesis_type_structure_result(local->right)};
+ 		local->substitution = pg_substitution_request(&synthesis->typing->substitutions, codomain, 1, &image);
+ 		if (!local->substitution) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
 @@ -136,9 +137,10 @@
  static void function_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
@@ -106,7 +130,7 @@
  	if (proof) {
  		const struct pg_occurrence *subject = pg_evidence_subject(proof);
  		local->result = !subject ? NULL : classifier ? subject->classifier : subject->core;
-@@ -147,25 +149,25 @@
+@@ -147,41 +149,41 @@
  	}
  	const struct pg_derivation_input *input = pg_synthesis_plain_derivation(producer);
  	if (!input) goto unsupported;
@@ -126,8 +150,9 @@
  			goto unsupported;
  		}
 -		if (!local->left) local->left = pg_synthesis_declared_type(synthesis, first, local->binder);
-+		if (!local->left) local->left = pg_synthesis_declared_type_input(synthesis, first, local->binder);
- 	} else if (!local->left) {
+-	} else if (!local->left) {
++		if (!pg_synthesis_structure_valid(local->left)) local->left.pending = pg_synthesis_declared_type_input(synthesis, first, local->binder);
++	} else if (!pg_synthesis_structure_valid(local->left)) {
  		if (input->rule == PG_APP_ELIM) {
 -			local->left = classifier ? pg_synthesis_classifier_structure(synthesis, first)
 -				: pg_synthesis_term_structure(synthesis, first);
@@ -140,9 +165,13 @@
 +				pg_synthesis_rule_input(synthesis, producer, 1));
 +		} else local->left = pg_synthesis_type_structure_input(synthesis, first);
  	}
- 	if (!local->left) goto unsupported;
- 	if (pg_synthesis_await(synthesis, job, local->left)) return;
-@@ -175,11 +177,11 @@
+-	if (!local->left) goto unsupported;
+-	if (pg_synthesis_await(synthesis, job, local->left)) return;
++	if (!pg_synthesis_structure_valid(local->left)) goto unsupported;
++	if (pg_synthesis_await_structure(synthesis, job, local->left)) return;
+ 	const struct pg_term *left = pg_synthesis_type_structure_result(local->left);
+ 	const struct pg_term *domain, *codomain;
+ 	const struct pg_object *binder;
  	switch (input->rule) {
  	case PG_PI_FORM: case PG_APP_ELIM:
  		if (classifier) {
@@ -152,11 +181,15 @@
  		}
 -		if (input->rule == PG_PI_FORM && !local->right) local->right = pg_synthesis_type_structure(synthesis,
 -			pg_synthesis_rule_premise(synthesis, producer, 1));
-+		if (input->rule == PG_PI_FORM && !local->right) local->right = pg_synthesis_type_structure_input(synthesis,
+-		if (!local->right) goto unsupported;
+-		if (pg_synthesis_await(synthesis, job, local->right)) return;
++		if (input->rule == PG_PI_FORM && !pg_synthesis_structure_valid(local->right)) local->right = pg_synthesis_type_structure_input(synthesis,
 +			pg_synthesis_rule_input(synthesis, producer, 1));
- 		if (!local->right) goto unsupported;
- 		if (pg_synthesis_await(synthesis, job, local->right)) return;
++		if (!pg_synthesis_structure_valid(local->right)) goto unsupported;
++		if (pg_synthesis_await_structure(synthesis, job, local->right)) return;
  		const struct pg_term *right = pg_synthesis_type_structure_result(local->right);
+ 		local->result = input->rule == PG_PI_FORM ? pg_pi(synthesis->typing->graph, left, local->binder, right)
+ 			: pg_application(synthesis->typing->graph, left, right);
 @@ -200,7 +202,7 @@
  		break;
  	}
@@ -523,7 +556,7 @@
   * the ordinary type-structure query reads the retained formation itself. */
  int pg_synthesis_classifier_formation_structure(struct pg_synthesis *synthesis,
 -	const struct pg_synthesis_job *job, struct pg_synthesis_job **structure)
-+	struct pg_pending *pending, struct pg_synthesis_job **structure)
++	struct pg_pending *pending, struct pg_synthesis_structure *structure)
  {
 -	struct pg_synthesis_job *term = pg_synthesis_classifier_formation_input(job);
 -	if (!term) return 0;

@@ -40,6 +40,21 @@ The target is not merely fewer Jobs or a different spelling of the enumeration.
 new user input immediately in each affected active plan's `Subjective (User)`,
 before context compaction can discard it. This requirement is now in `AGENTS.md`.
 
+2026-10-01, English paraphrase of the user's further clarification: the reviewed
+Job representation appeared to flatten the Lambda/Ref-based Core and its
+Oracle-local IADT/CBPV structures into a second upper-layer representation;
+remove that duplication rather than preserve Job as an architectural premise.
+Audit Evidence for the same flattening and remove duplicated structures
+thoroughly. The user's intended resume model is to retain the already verified
+portion through witness Terms and their typed Occurrences, and continue Solve
+from unfinished obligations on those owners. The Curry-Howard-based expectation
+that this can suffice is a user design requirement to investigate, not an agent
+claim that resume correctness has already been established.
+
+2026-10-01, English paraphrase of the user's follow-up: balance continued audit
+with concrete implementation; do not postpone all deletions until an exhaustive
+audit ends, or implement deletions without checking their actual ownership.
+
 The user has not approved a new dependency representation or a new proof format.
 The design directions below are agent proposals grounded in the inspected code.
 
@@ -67,6 +82,12 @@ a global semantic Job enum, but `synthesis.c:source_work` still contains broad
 state, including a union of function-graph, constructor, block/application/Match
 and definition work. Its `SOURCE_WORK` roles still share central dispatch.
 Descriptor replacement alone therefore does not satisfy Oracle locality.
+The same inspected trial's `evidence.c:pg_evidence` retains a rule identifier,
+conclusion reference, certificate and sparse receipt inputs, not a complete
+copy of each Oracle payload. However, `derivation.h:pg_derivation_parameters`
+and `synthesis.c:step` still centralize many domain-specific choices. Distinguish
+this actual centralization from the stronger, unproven claim that every Evidence
+is a duplicated witness Term.
 
 | ID | Inspected construction and consumer | Finding and limit |
 | --- | --- | --- |
@@ -485,6 +506,13 @@ where they validate different theorems. This is an agent implementation directio
 under the user's Oracle-locality requirement, not a claim that all continuation
 state or all checking provenance can be deleted.
 
+The next audit/implementation loop must test the user's Term/Occurrence resume
+model against actual import and unfinished checking boundaries. Curry-Howard
+supports keeping object proofs as Terms; it does not by itself identify a stored
+typing annotation with successful checking or recover a suspended cursor. Keep
+that necessary distinction on the existing typed/Oracle owners, without using
+it to justify a second full derivation program or permanent generic Job graph.
+
 Typed construction and its checking must use the same owner-local structural
 operations. Keep provisional structure unaccepted until the ordinary rules
 validate it. Preserve pending effect discovery, independent synthesis and `::`
@@ -571,15 +599,33 @@ Do not mark a milestone complete just because a view hides the old representatio
   Remove the corresponding duplicated structural walkers and overbroad private
   state. Keep genuinely unfinished queries and effect dependencies; do not
   replace all of them with an unconditional wait for accepted Evidence.
-  Current agent trial (2026-10-01; `f0ff363` overlay): structural factories
-  allocate a full Job even for an already checked occurrence's Core/classifier.
-  Replace the Job-only return contract with an allocation-free borrowed Term or
-  pending-discovery reference; migrate all ordinary consumers and tests together.
-  Keep existing pending-query identity/symbolic snapshots and effect discovery;
-  a borrowed view has no status/result authority or persistence graph. Public
-  source loading still reconstructs checking from initial state, so queue-only
-  restoration is insufficient; do not extend the restricted codec to every Job
-  merely to turn that gate green. Verify the trial before recording adoption.
+  Verified prototype prerequisite (2026-10-01; implementation parent `f0ff363`,
+  accepted baseline `e716232`): structural readers now borrow known Core/classifier
+  Terms directly, without creating a Job. All consumers use the same by-value
+  Term/pending-query view; it owns no state, acceptance or persistent graph.
+  Existing pending-query identity, symbolic snapshots and effect discovery stay
+  intact. No-allocation, wrong-owner, zero-fuel and independent post-check tests
+  pass. O2 regression/examples/acceptance/semantic and all seven checkpoint gates
+  pass; C backend gates and ASan/UBSan synthesis/derivation-I/O pass. Fresh assembly
+  matches all 156 tested C/header files; its synthesis/derivation checks pass.
+  Current-worktree assembly also passes Core/IADT/synthesis checks with the user's
+  unrelated local edits; those edits are not included in the prototype milestone.
+  Logs use `/tmp/a-program-structure-owner-`; the raw legacy QuickSort census
+  input was rejected by both binaries' parser, so measurements use the previously
+  recorded `quick-local` input rather than treating that rejection as a regression.
+  [Measurements](../src/prototype/solver_inputs/structure_owner_measurements.tsv)
+  show 6/41/459 fewer Jobs for List/effect-application/QuickSort, with unchanged
+  Term/Occurrence/Evidence counts. List uses nine more steps; borrowed views
+  enlarge pending owner state, so Job bytes grow in all three cases and wrapped
+  allocation grows by 6,048 bytes for effect-application. This is not a universal
+  speed/memory improvement or full Job/Evidence removal. Applied implementation
+  is +146/-96, tests +284/-254; see [deltas](../src/prototype/solver_inputs/structure_owner_delta.tsv).
+  Public reload still fails at 100:100, 1000:1000, 1600:1600 and completed+0
+  (now 2626:0). Source loading reconstructs checking from initial state, so
+  queue-only restoration is insufficient. Do not extend every Job's codec just
+  to turn the gate green. Next consolidate the broad source/Oracle state and
+  actual checking owners; keep SE1-SE5 open rather than pursue adapter counts
+  as a substitute for the user's clarified locality requirement.
 - [ ] **SE3 Evidence inputs:** map each retained premise to typed operands,
   context/map, receipt or other real logical input. Remove duplicate premise
   arrays and history-based access for the mapped rules, starting with

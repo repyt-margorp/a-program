@@ -41,6 +41,15 @@ Record new user requirements immediately in each affected active plan's
 Subjective before further work or context compaction, as now required by
 `AGENTS.md`. The linked SE1-SE5 plan remains the single AP0 work list.
 
+2026-10-01, English paraphrase of the user's further instruction: remove the
+Job/Evidence representations that flatten Core/Oracle-local structures into
+another graph. Resume should build on verified witness Terms and typed
+Occurrences plus their unfinished Solve obligations, rather than persist a
+duplicate semantic program. Validate this intended architecture; do not count
+adapter deletion alone as completion. Detailed requirements remain in SE1-SE5.
+The same follow-up requests a balanced audit/implementation loop, not an
+audit-only detour or unchecked wholesale deletion.
+
 ### Existing Audit and Progress Record
 
 The user's 2026-09-30 follow-up requires auditing Job/Evidence duplication,

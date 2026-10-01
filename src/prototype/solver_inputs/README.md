@@ -167,6 +167,11 @@ checked/pending input representation. Discovery DONE is not output DONE; structu
 consumers wait on that output without reinstating result copies. Pending and
 resolved checked keys share one construction, while exact Contexts stay distinct.
 This is a prototype ownership change, not completed frontier persistence.
+Structural readers also borrow already checked Core/classifier Terms directly,
+without a scheduler record. The by-value Term/pending-query view has no acceptance
+or progress state. Existing provisional queries keep their identity and symbolic
+snapshots. This removes read-only Jobs, not the broad source-work union or the
+remaining centralized semantic dispatch; Oracle locality remains unfinished.
 Lexical binding now has one checked/pending Context API; the Job-only binding
 entry point is removed. IH/graph associations borrow known Contexts directly.
 Only unavailable inputs require a binding-validation request; an existing one

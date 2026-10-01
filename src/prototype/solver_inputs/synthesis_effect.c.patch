@@ -12,7 +12,7 @@
  struct contribution_state { struct pg_synthesis_job *row; };
  struct row_state { struct pg_synthesis_job *children[2]; };
  struct substitution_state {
-@@ -14,47 +14,28 @@
+@@ -14,49 +14,36 @@
  	const struct pg_term *result;
  };
  
@@ -61,11 +61,21 @@
  	if (!work || work->rows != synthesis->typing->graph || !mask) return NULL;
  	if (!pg_effect_equation_parameter(work, target)) return NULL;
 -	struct pg_synthesis_job *structure = pg_synthesis_type_structure(synthesis, formation);
-+	struct pg_synthesis_job *structure = pg_synthesis_type_structure_input(synthesis, (struct pg_synthesis_input){.pending = formation});
- 	if (!structure) return NULL;
- 	const void *inputs[] = {work, target, mask, structure};
+-	if (!structure) return NULL;
+-	const void *inputs[] = {work, target, mask, structure};
++	struct pg_synthesis_structure structure = pg_synthesis_type_structure_input(synthesis, (struct pg_synthesis_input){.pending = formation});
++	if (structure.term) {
++		const struct pg_term *row, *value;
++		enum pg_totality totality;
++		if (!pg_computation_type_spine_view(structure.term, &totality, &row, &value)) return NULL;
++		return pg_synthesis_row_contribution(synthesis, work, target, mask, row);
++	}
++	if (!structure.pending) return NULL;
++	const void *inputs[] = {work, target, mask, structure.pending};
  	return pg_synthesis_work_request(synthesis, &contribution_class, 4, inputs);
-@@ -75,14 +56,13 @@
+ }
+ 
+@@ -75,14 +62,13 @@
  	const struct pg_effect_equation *const *equations)
  {
  	if (!term || (count && !equations) || count > SIZE_MAX / sizeof(void *) - 2) return NULL;
@@ -82,7 +92,7 @@
  	for (size_t i = 0; i < count; ++i) inputs[i + 2] = equations[i];
  	struct pg_synthesis_job *job = pg_synthesis_work_request(synthesis, &substitution_class, count + 2, inputs);
  	pg_graph_destroy(&temporary);
-@@ -95,16 +75,6 @@
+@@ -95,16 +81,6 @@
  	return state && pg_synthesis_status(job) == PG_SYNTHESIS_DONE ? state->result : NULL;
  }
  
@@ -99,7 +109,16 @@
  /* Registration must finish before row solving. Completed requests remain
   * reusable after sealing, but an unfinished contribution cannot add edges. */
  static int open_equation(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
-@@ -164,9 +134,8 @@
+@@ -123,7 +99,7 @@
+ 	if (pg_synthesis_await(synthesis, job, structure)) return;
+ 	const struct pg_term *row, *value;
+ 	enum pg_totality totality;
+-	if (!pg_computation_type_spine_view(pg_synthesis_type_structure_result(structure), &totality, &row, &value)) {
++	if (!pg_computation_type_spine_view(pg_synthesis_type_structure_result((struct pg_synthesis_structure){.pending = structure}), &totality, &row, &value)) {
+ 		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+ 	}
+ 	struct contribution_state *state = pg_synthesis_work_state(job, &contribution_class);
+@@ -164,9 +140,8 @@
  
  static void substitution_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {

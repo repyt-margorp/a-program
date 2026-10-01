@@ -1,5 +1,14 @@
 --- a/synthesis_cbpv.c
 +++ b/synthesis_cbpv.c
+@@ -12,7 +12,7 @@
+ };
+ struct computation_structure_work {
+ 	const struct pg_term *result;
+-	struct pg_synthesis_job *left, *right, *clause;
++	struct pg_synthesis_structure left, right, clause;
+ 	struct fold_structure_state *fold;
+ 	struct pg_comparison comparison;
+ };
 @@ -21,17 +21,19 @@
  static void computation_structure_completed(struct pg_synthesis *, struct pg_synthesis_job *, int);
  static const struct pg_term *computation_structure_result(const struct pg_synthesis_job *);
@@ -21,28 +30,43 @@
  }
  
  static void computation_structure_destroy(struct pg_synthesis_job *job)
-@@ -88,8 +90,8 @@
+@@ -86,26 +88,26 @@
+ 			sizeof(*local->fold) + count * sizeof(struct pg_operation_clause));
+ 		if (!local->fold) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
  	}
- 	if (!local->left) {
+-	if (!local->left) {
++	if (!pg_synthesis_structure_valid(local->left)) {
  		size_t offset = input->rule == PG_REQUEST_INTRO ? 2 : 0;
 -		local->left = pg_synthesis_term_structure(synthesis, pg_synthesis_rule_premise(synthesis, producer, offset));
 -		local->right = pg_synthesis_term_structure(synthesis, pg_synthesis_rule_premise(synthesis, producer, offset + 1));
 +		local->left = pg_synthesis_term_structure_input(synthesis, pg_synthesis_rule_input(synthesis, producer, offset));
 +		local->right = pg_synthesis_term_structure_input(synthesis, pg_synthesis_rule_input(synthesis, producer, offset + 1));
  	}
- 	struct pg_synthesis_job *parts[] = {local->left, local->right};
+-	struct pg_synthesis_job *parts[] = {local->left, local->right};
++	struct pg_synthesis_structure parts[] = {local->left, local->right};
  	for (size_t i = 0; i < 2; ++i) {
-@@ -98,8 +100,8 @@
+-		if (!parts[i]) { pg_synthesis_finish(synthesis, job, handling ? PG_SYNTHESIS_ERROR : PG_SYNTHESIS_UNSUPPORTED); return; }
+-		if (pg_synthesis_await(synthesis, job, parts[i])) return;
++		if (!pg_synthesis_structure_valid(parts[i])) { pg_synthesis_finish(synthesis, job, handling ? PG_SYNTHESIS_ERROR : PG_SYNTHESIS_UNSUPPORTED); return; }
++		if (pg_synthesis_await_structure(synthesis, job, parts[i])) return;
  	}
  	struct fold_structure_state *state = local->fold;
  	if (count && state->next < count) {
 -		if (!local->clause) local->clause = pg_synthesis_term_structure(synthesis,
 -			pg_synthesis_rule_premise(synthesis, producer, 5 + 3 * state->next));
-+		if (!local->clause) local->clause = pg_synthesis_term_structure_input(synthesis,
+-		if (pg_synthesis_await(synthesis, job, local->clause)) return;
++		if (!pg_synthesis_structure_valid(local->clause)) local->clause = pg_synthesis_term_structure_input(synthesis,
 +			pg_synthesis_rule_input(synthesis, producer, 5 + 3 * state->next));
- 		if (pg_synthesis_await(synthesis, job, local->clause)) return;
++		if (pg_synthesis_await_structure(synthesis, job, local->clause)) return;
  		state->clauses[state->next] = (struct pg_operation_clause){
  			pg_handler_signature_label(input->parameters.handler, state->next),
+ 			pg_synthesis_type_structure_result(local->clause)};
+ 		++state->next;
+-		local->clause = NULL;
++		local->clause = (struct pg_synthesis_structure){0};
+ 		pg_synthesis_enqueue(synthesis, job);
+ 		return;
+ 	}
 @@ -143,9 +145,10 @@
  static void computation_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
@@ -57,7 +81,16 @@
  	if (proof) {
  		const struct pg_occurrence *subject = pg_evidence_subject(proof);
  		local->result = !subject ? NULL : classifier ? subject->classifier : subject->core;
-@@ -168,10 +171,10 @@
+@@ -159,7 +162,7 @@
+ 		compound_structure_step(synthesis, job, producer, input); return;
+ 	default: break;
+ 	}
+-	if (!local->left) {
++	if (!pg_synthesis_structure_valid(local->left)) {
+ 		size_t ordinal = 0;
+ 		int type = pg_synthesis_cbpv_type_rule(input->rule);
+ 		if (classifier) switch (input->rule) {
+@@ -168,13 +171,13 @@
  		case PG_EFFECT_SUBSUMPTION: ordinal = 1; type = 1; break;
  		default: break;
  		}
@@ -70,19 +103,26 @@
 +			: classifier ? pg_synthesis_classifier_structure_input(synthesis, premise)
 +			: pg_synthesis_term_structure_input(synthesis, premise);
  	}
- 	if (!local->left) goto unsupported;
- 	if (pg_synthesis_await(synthesis, job, local->left)) return;
-@@ -188,8 +191,8 @@
+-	if (!local->left) goto unsupported;
+-	if (pg_synthesis_await(synthesis, job, local->left)) return;
++	if (!pg_synthesis_structure_valid(local->left)) goto unsupported;
++	if (pg_synthesis_await_structure(synthesis, job, local->left)) return;
+ 	const struct pg_term *left = pg_synthesis_type_structure_result(local->left);
+ 	const struct pg_term *row, *value;
+ 	enum pg_totality totality;
+@@ -188,9 +191,9 @@
  		return;
  	}
  	case PG_FOLD_ELIM:
 -		if (!local->right) local->right = pg_synthesis_classifier_structure(synthesis,
 -			pg_synthesis_rule_premise(synthesis, producer, 1));
-+		if (!local->right) local->right = pg_synthesis_classifier_structure_input(synthesis,
+-		if (pg_synthesis_await(synthesis, job, local->right)) return;
++		if (!pg_synthesis_structure_valid(local->right)) local->right = pg_synthesis_classifier_structure_input(synthesis,
 +			pg_synthesis_rule_input(synthesis, producer, 1));
- 		if (pg_synthesis_await(synthesis, job, local->right)) return;
++		if (pg_synthesis_await_structure(synthesis, job, local->right)) return;
  		if (!pg_computation_type_spine_view(left, &totality, &row, &value)) goto accepted;
  		if (!continuation_structure_step(synthesis, job, pg_synthesis_type_structure_result(local->right), totality, row)) goto accepted;
+ 		return;
 @@ -206,9 +209,9 @@
  	} else switch (input->rule) {
  	case PG_RETURN_TYPE_FORM:
@@ -387,18 +427,26 @@
  			if (!local->fold) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
  		}
  	}
-@@ -524,8 +543,8 @@
+@@ -523,26 +542,25 @@
+ 	/* A checked Fold supersedes provisional choice, not the Context checks below. */
  	if (!local->rule && pg_synthesis_result(local->fold)) local->rule = local->fold;
  	if (!local->rule) {
- 		struct pg_synthesis_job *shapes[] = {
+-		struct pg_synthesis_job *shapes[] = {
 -			pg_synthesis_classifier_structure(synthesis, local->normalized),
 -			pg_synthesis_classifier_structure(synthesis, (void *)job->inputs[2])};
++		struct pg_synthesis_structure shapes[] = {
 +			pg_synthesis_classifier_structure_input(synthesis, local->normalized),
 +			pg_synthesis_classifier_structure_input(synthesis, pg_synthesis_work_dependency(job, 4))};
  		for (size_t i = 0; i < 2; ++i) {
- 			if (!shapes[i]) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
- 			if (shapes[i]->status == PG_SYNTHESIS_PENDING) { pg_synthesis_subscribe(synthesis, job, shapes[i], 0); return; }
-@@ -536,13 +555,12 @@
+-			if (!shapes[i]) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+-			if (shapes[i]->status == PG_SYNTHESIS_PENDING) { pg_synthesis_subscribe(synthesis, job, shapes[i], 0); return; }
+-			if (shapes[i]->status == PG_SYNTHESIS_ERROR) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
++			if (!pg_synthesis_structure_valid(shapes[i])) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
++			if (pg_synthesis_structure_status(shapes[i]) == PG_SYNTHESIS_PENDING) { pg_synthesis_subscribe(synthesis, job, shapes[i].pending, 0); return; }
++			if (pg_synthesis_structure_status(shapes[i]) == PG_SYNTHESIS_ERROR) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+ 		}
+ 		int choice = fixed_sequence_fold(synthesis, job,
+ 			pg_synthesis_type_structure_result(shapes[0]), pg_synthesis_type_structure_result(shapes[1]));
  		if (!choice) return;
  		if (choice > 0) local->rule = local->fold;
  	}
