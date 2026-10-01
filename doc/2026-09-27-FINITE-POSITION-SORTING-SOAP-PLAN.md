@@ -1332,8 +1332,10 @@ included in this PR. A conventional two-front merge remains a separate proposal.
 - [x] Check other generic interfaces and retain the original order-law contracts.
 - [x] Add generic and Nat-compatibility controls using existing checker/comparator
   helpers, and register the new gates in the prototype backend aggregate.
-- [ ] Submit the tested library PR with partial #41 correspondence and explicit
+- [x] Submit the tested library PR with partial #41 correspondence and explicit
   nonclaims; do not close #41 or promote compiler code implicitly.
+  Submitted as [PR #54](https://github.com/repyt-margorp/a-program/pull/54),
+  implementation checkpoint `89c20d96`; this follow-up records submission only.
 
 ## F5. Verification and Publication
 
