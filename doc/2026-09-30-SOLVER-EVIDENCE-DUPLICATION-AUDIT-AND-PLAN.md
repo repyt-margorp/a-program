@@ -828,6 +828,17 @@ Do not mark a milestone complete just because a view hides the old representatio
   Remove the corresponding duplicated structural walkers and overbroad private
   state. Keep genuinely unfinished queries and effect dependencies; do not
   replace all of them with an unconditional wait for accepted Evidence.
+  Verified declaration-owner increment (2026-10-02, parent `5e9187c`): Schema
+  owns declaration preparation and borrows scope/syntax from its exact key.
+  Central dispatch/allocation slots are deleted, without a new tag or codec:
+  declaration state 160->48 bytes, other expressions 160->144. Universe/nominal
+  Self/relocation checks remain. Full regression, seven checkpoint/five C gates,
+  sanitizers and fresh/current checks pass; see [verification and limits](../src/prototype/solver_inputs/README.md).
+  [Census](../src/prototype/solver_inputs/declaration_owner_measurements.tsv)
+  differs only in Job bytes (QuickSort -104304); wrapped allocation is not live RAM.
+  [Applied deltas](../src/prototype/solver_inputs/declaration_owner_delta.tsv):
+  central synthesis -155 lines, implementation net +64, tests +30.
+  Artifact controls match; four public reload failures and SE1-SE5 stay open.
   Verified Fold-input increment (2026-10-02, parent `33b06f1`): delete the provisional
   `fold_structure_state.clauses[]` allocation and the checked handler's temporary
   raw clause array. Both borrow existing inputs through the same synchronous

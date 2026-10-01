@@ -286,6 +286,18 @@ against `33b06f1`. Graph/fuel counts and artifact controls are unchanged; source
 grows by 27 implementation lines. This is not full Job/Evidence removal or
 resolution of public reload failures.
 
+IADT declaration preparation now lives with Schema, borrowing scope/syntax from
+the existing request key. Central declaration dispatch/allocation slots are
+deleted: declaration state shrinks 160->48 bytes and other expressions 160->144.
+Conditional Universe, nominal Self and relocation checks remain authoritative.
+See [census](declaration_owner_measurements.tsv),
+[allocation](declaration_owner_allocation.tsv) and [applied deltas](declaration_owner_delta.tsv)
+against `5e9187c`: QuickSort Job bytes fall 104,304; other graph/fuel counts and
+artifact controls match. Full regression/acceptance, seven checkpoint and five
+C gates, sanitizers and fresh/current checks pass. Central synthesis loses 155
+lines, but total implementation grows 64. This is not full Job/Evidence removal;
+the four public reload failures remain open.
+
 Core-preserving Context projection and type/value readings now borrow their
 input's structural query without a second Job/result. All three structural
 APIs use one iterative discovery path; ordinary rule checking remains separate.

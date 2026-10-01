@@ -1,0 +1,7 @@
+file	added	removed	net
+src/synthesis.c	28	183	-155
+src/synthesis_schema.c	210	0	210
+src/synthesis_schema.h	4	0	4
+src/synthesis_source.h	5	0	5
+implementation_total	247	183	64
+tests/synthesis.c	30	0	30

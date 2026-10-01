@@ -1,0 +1,15 @@
+sample	revision	repetition	wrapped_arena_calls	wrapped_aligned_bytes
+list	5e9187c	1	4322	469200
+list	declaration-owner	1	4322	467456
+effect	5e9187c	1	28727	3047472
+effect	declaration-owner	1	28727	3041696
+captured	5e9187c	1	7489	763952
+captured	declaration-owner	1	7489	762928
+quick	5e9187c	1	2894234	234473440
+quick	declaration-owner	1	2894060	234360784
+quick	5e9187c	2	2894119	234467920
+quick	declaration-owner	2	2896242	234465520
+quick	5e9187c	3	2893442	234435424
+quick	declaration-owner	3	2894145	234364864
+quick	5e9187c	4	2893907	234457744
+quick	declaration-owner	4	2893570	234337264
