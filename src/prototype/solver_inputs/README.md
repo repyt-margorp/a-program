@@ -438,6 +438,16 @@ Full regression/acceptance, seven checkpoint/five C gates, sanitizers and clean/
 current checks pass. Four public reload comparisons still fail; this is not
 complete Job/Evidence removal or production promotion. Status stays in the plan.
 
+2026-10-02, conversion receipts against `917b1bc`: normalization borrows its
+typed origin; conversion/subsumption borrow origin/type admissions. The existing
+sparse layout preserves exact alternate proofs and certificates; unchanged
+reclassifications without typed edges retain real inputs. No graph/tag/field or
+checking shortcut is added. [Census](conversion_receipts_measurements.tsv)
+removes 4,452 QuickSort premise references, with other fields unchanged; this is
+not a RAM/speedup measurement. [Deltas](conversion_receipts_delta.tsv): +7
+implementation, +52 tests. Regression, checkpoint/C gates, sanitizers and fresh/
+current tests pass; 52 List images match. Four public reload failures stay open.
+
 Use the parent plan for progress. Create and verify a disposable candidate:
 
 ```sh

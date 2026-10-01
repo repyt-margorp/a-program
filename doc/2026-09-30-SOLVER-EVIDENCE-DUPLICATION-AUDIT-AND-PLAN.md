@@ -1140,6 +1140,26 @@ Do not mark a milestone complete just because a view hides the old representatio
   Match/induction/constructor. Migrate interning keys, consumers, export and
   ordinary checking in the same milestone. Recheck concurrent relocation work;
   do not overwrite it or silently discard required scope/formation evidence.
+  Verified conversion-receipt deletion (2026-10-02, parent `917b1bc`): pure
+  normalization borrows its typed origin's stable receipt; type conversion and
+  Effect subsumption borrow origin/type receipts through the existing sparse
+  selection layout. Unchanged reclassifications lacking those typed edges retain
+  their actual inputs. Exact alternate proofs and conversion certificates remain;
+  this adds no graph, tag, field or acceptance authority and bypasses no checking.
+  [Census](../src/prototype/solver_inputs/conversion_receipts_measurements.tsv):
+  final List/effect/captured/QuickSort retain 55/230/141/4452 fewer premise
+  references, with every other field unchanged, including logical premises and
+  Solve fuel. These are reference counts, not peak RAM or a speedup claim.
+  [Applied deltas](../src/prototype/solver_inputs/conversion_receipts_delta.tsv):
+  implementation +7/-0, tests +52/-0, excluding docs and patch-context churn.
+  Full O2 regression/examples/acceptance, semantic persistence, seven checkpoint
+  and five C gates pass. Focused ASan/UBSan/leaks and fresh/current-worktree
+  checking/I/O pass; fresh assembly matches tested source/tests. Tests retain
+  alternate proofs, reconstruct ordinary derivations, cover unchanged typing
+  boundaries and read logical inputs after typing-index disposal. All 52 List
+  images and the strict four-failure partition TSV equal the parent; the public
+  reload gate remains failing, not waived. SE1-SE5 stay open; prototype only,
+  user edits excluded. Logs use `/tmp/a-program-conversion-receipts-`.
   Verified prototype increment (2026-10-02, parent `b3aa9e6`): rule import
   borrows its existing DAG/job relocation map; the maximum-arity scan, scratch
   premise array and copy loop are deleted. Readers are synchronous, not stored.
