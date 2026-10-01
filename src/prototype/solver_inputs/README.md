@@ -264,6 +264,18 @@ full fixed-trial regression/acceptance, seven checkpoint and five C gates pass.
 Focused ASan/UBSan/leaks and fresh/current assembly tests also pass. No new graph/tag/wire field is
 added; full owner/frontier consolidation and public reload failures remain open.
 
+Source blocks now own their sequence cursor in CBPV, without the expression's
+second state allocation or completed receipt copy. Their syntax borrows the
+existing source key, and Match demand discovery borrows visited scopes rather
+than recreating them. See [census](block_owner_measurements.tsv),
+[allocation](block_owner_allocation.tsv) and [applied deltas](block_owner_delta.tsv)
+against `f459c0f`: QuickSort Job bytes fall 53,544, with unchanged graph/step counts.
+Central synthesis loses 156 lines, but total implementation grows 51; this is
+state consolidation, not total source reduction. Focused/fresh/current and
+sanitizer tests, five C gates, full regression/acceptance, semantic persistence
+and seven checkpoint gates pass, including general QuickSort Sorted/permutation.
+Artifact controls are byte-identical; the four public reload failures stay open.
+
 Core-preserving Context projection and type/value readings now borrow their
 input's structural query without a second Job/result. All three structural
 APIs use one iterative discovery path; ordinary rule checking remains separate.

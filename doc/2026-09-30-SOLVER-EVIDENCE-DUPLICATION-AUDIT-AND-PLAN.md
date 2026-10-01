@@ -660,6 +660,15 @@ discovery (`induction-index-environment.p`, fresh UBSan stack). Migrate that
 consumer to the owner reader, not back to copied results or a nullable-proof
 fallback. Add a small Lambda/IH demand regression with the borrowed-output tests.
 
+2026-10-02, agent decision on `f459c0f`: source blocks still allocate both the
+universal expression state and a separate block cursor, then copy the completed
+tail receipt. Move the existing cursor/sequence construction into the CBPV owner
+and borrow its final checking rule; remove the expression's block slot and
+dispatch branch. Match demand scanning borrows visited lexical scopes through
+that owner, without recreating them. Keep actual binding frames, ordered effects,
+named-result truncation and post-synthesis assertions. This is prototype work,
+not authorization to promote code or a claim that general resumption is solved.
+
 ## Plan
 
 No new binding/domain checkpoint fields or backend features before this gate.
@@ -810,6 +819,32 @@ Do not mark a milestone complete just because a view hides the old representatio
   Remove the corresponding duplicated structural walkers and overbroad private
   state. Keep genuinely unfinished queries and effect dependencies; do not
   replace all of them with an unconditional wait for accepted Evidence.
+  Verified block-owner increment (2026-10-02, parent `f459c0f`): source block construction,
+  its visited scopes, cursor and name-index cleanup now live in the CBPV owner.
+  Delete the expression's block slot, extra state allocation, dispatch branch
+  and receipt copy. Its immutable syntax is borrowed from the existing key;
+  shared sequencing frames are not a new Term representation. Central state
+  shrinks 168->160 bytes; the block retains only its 72-byte local state.
+  Fresh/frozen/current Core/IADT/synthesis and ASan/UBSan/leak tests pass,
+  including zero/split fuel, cancellation, truncation, duplicate names and wrong
+  post-checks. Five C gates, full O2 regression/examples/acceptance, semantic
+  persistence and all seven checkpoint gates exit 0, including general
+  QuickSort result/Sorted/permutation and both LT providers/partition orders.
+  Fresh recorded C/header/test files match the tested trial exactly.
+  [Paired census](../src/prototype/solver_inputs/block_owner_measurements.tsv)
+  differs only in Job layout bytes and result references. Completed
+  List/effect/captured/QuickSort save 728/3464/512/53544 Job bytes and remove
+  0/7/1/12 result references; all graph/step counts match. Four QuickSort
+  [arena samples](../src/prototype/solver_inputs/block_owner_allocation.tsv)
+  vary between processes: aligned requests fall 75216..134736 bytes, but calls
+  range from -608 to +632. These are cumulative partial allocation counts,
+  not live RAM or a general speedup. [Applied deltas](../src/prototype/solver_inputs/block_owner_delta.tsv):
+  central `synthesis.c` -156 lines; all implementation +245/-194 (net +51), tests
+  +38/-0. Source lines do not decrease overall. All 52 strict List images, the
+  four-failure partition TSV, and eight effect/captured-block images match the
+  parent byte-for-byte; loaded captured-block step 0 is also byte-invariant.
+  Public resumption still fails those four cases (exit 1); SE1-SE5 stay open.
+  Logs use `/tmp/a-program-block-owner-`; no production promotion or user edits.
   Verified source-state deletion (2026-10-02, parent `a5c617d`): remove the unused
   `tail`/`function` slots and simplify the latter's always-NULL preparation
   guard. Central private state shrinks 184->168 bytes; no new structure replaces

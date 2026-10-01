@@ -1,0 +1,15 @@
+sample	run	revision	wrapped_arena_calls	wrapped_aligned_bytes
+list	1	f459c0f	4322	470656
+list	1	block-owner	4322	469200
+effect	1	f459c0f	28744	3054448
+effect	1	block-owner	28737	3047632
+captured	1	f459c0f	7492	765056
+captured	1	block-owner	7490	764000
+quick	1	f459c0f	2893601	234548608
+quick	1	block-owner	2894233	234473392
+quick	2	f459c0f	2894755	234604000
+quick	2	block-owner	2894147	234469264
+quick	3	f459c0f	2894417	234587776
+quick	3	block-owner	2894151	234469456
+quick	4	f459c0f	2894427	234588256
+quick	4	block-owner	2894045	234464368

@@ -13,7 +13,23 @@
  	const struct pg_source_scope *exports;
  	struct pg_synthesis_job *module;
  	const struct pg_source_scope *imports;
-@@ -63,15 +64,16 @@
+@@ -22,6 +23,15 @@
+ 	struct pg_synthesis_job *clause;
+ };
+ 
++/* Actual sequencing inputs, shared by block, APP and computed Match contexts.
++ * This is a lexical bind frame, not another representation of the program. */
++struct pg_synthesis_sequence_frame {
++	struct pg_synthesis_job *input;
++	struct pg_synthesis_input context;
++	const struct pg_synthesis_sequence_frame *parent;
++	int binds;
++};
++
+ /* Borrowed committed registration frontier, including failed registrations.
+  * A failed item does not advance its cursor. Entries keep their source recipes;
+  * registration completion is name publication, not acceptance of those entries.
+@@ -63,15 +73,16 @@
  	struct pg_synthesis_job **);
  struct pg_synthesis_job *pg_synthesis_prepare_literal(struct pg_synthesis *, struct pg_synthesis_job *);
  
@@ -33,7 +49,7 @@
  };
  int pg_synthesis_reference_frontier(const struct pg_synthesis *, const struct pg_synthesis_job *,
  	struct pg_reference_frontier *);
-@@ -120,10 +122,21 @@
+@@ -120,10 +131,21 @@
  	const struct pg_source_scope *, const struct pg_syntax *, size_t slot, const struct pg_object *);
  const struct pg_source_scope *pg_synthesis_scope_bind(struct pg_synthesis *,
  	const struct pg_source_scope *, struct pg_token, const struct pg_object *,
@@ -59,7 +75,7 @@
  const struct pg_derivation_input *pg_synthesis_plain_derivation(const struct pg_synthesis_job *);
  /* Borrow/restore a rule's premise cursor before endpoint computation starts.
   * 1 supplies a cursor, 0 needs another state owner, -1 rejects the request.
-@@ -141,43 +154,65 @@
+@@ -141,43 +163,76 @@
  int pg_synthesis_derivation_frontier(const struct pg_synthesis *, const struct pg_synthesis_job *,
  	size_t *, struct pg_synthesis_job **);
  int pg_synthesis_derivation_resume(struct pg_synthesis *, struct pg_synthesis_job *, size_t, int prepared);
@@ -75,6 +91,17 @@
 +	const struct pg_source_scope *, const struct pg_syntax *);
 +struct pg_synthesis_job *pg_synthesis_source_quote(struct pg_synthesis *,
 +	const struct pg_source_scope *, const struct pg_syntax *);
++const struct pg_syntax *pg_synthesis_block_syntax(const struct pg_syntax *);
++size_t pg_synthesis_block_end(const struct pg_syntax *);
++struct pg_synthesis_job *pg_synthesis_source_block(struct pg_synthesis *,
++	const struct pg_source_scope *, const struct pg_syntax *);
++/* Visited statement scopes belong to the block cursor; this never runs Solve. */
++const struct pg_source_scope *pg_synthesis_block_scope(const struct pg_synthesis_job *, size_t);
++struct pg_synthesis_job *pg_synthesis_binding_expect(struct pg_synthesis *,
++	const struct pg_source_scope *, struct pg_synthesis_input, struct pg_synthesis_input);
++int pg_synthesis_prepare_value_argument(struct pg_synthesis *, struct pg_synthesis_job *,
++	struct pg_synthesis_input, struct pg_synthesis_job **);
++int pg_synthesis_logical_family_signature(const struct pg_term *);
 +struct pg_synthesis_job *pg_synthesis_quote_operand(const struct pg_synthesis_job *);
 +int pg_synthesis_input_kind(struct pg_synthesis_input, const struct pg_derivation_input **);
 +/* Type-position normalization uses the ordinary CBPV result query. */
@@ -143,7 +170,7 @@
  int pg_synthesis_await_preparation(struct pg_synthesis *, struct pg_synthesis_job *,
  	struct pg_synthesis_job *, struct pg_synthesis_job **);
  enum pg_comparison_status pg_synthesis_probe_advance(struct pg_synthesis *, struct pg_synthesis_job *, struct pg_comparison *);
-@@ -188,9 +223,9 @@
+@@ -188,9 +243,9 @@
  /* IADT-owned checked index transport. The second form discovers a result
   * independent of the destination's excluded binders; it is not TypeExpect. */
  struct pg_synthesis_job *pg_synthesis_index_transport(struct pg_synthesis *,
