@@ -2323,7 +2323,10 @@ open SE1 general-classifier/frontier consolidation.
   reads and getters after typing-index disposal, plus existing rejection tests.
 - [x] Complete regression, acceptance, sanitizer, census and public partition
   comparisons; reproduce recorded patches and report applied deltas.
-- [ ] Publish the verified prototype milestone; do not mark full SE1-SE5 complete.
+- [x] Publish the verified prototype milestone; do not mark full SE1-SE5 complete.
+
+Published to `origin/main` as `1ab416f` on 2026-10-01. Accepted source and
+concurrent user edits are excluded; this publishes the prototype, not promotion.
 
 General classifier ownership, remaining constructor inputs and full SE1-SE5
 completion are still open. Full O2 `check`, examples, semantic audit and seven
