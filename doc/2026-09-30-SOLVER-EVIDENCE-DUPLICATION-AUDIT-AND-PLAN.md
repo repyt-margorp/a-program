@@ -624,6 +624,22 @@ QuickSort `calloc` bytes. Reject that allocation choice and use exact-size
 temporary slices (none for an empty tail); rerun verification on the corrected
 trial. A malloc-only decrease was insufficient evidence of an improvement.
 
+2026-10-02, agent decision on `b3aa9e6`: rule import still scans the entire
+dependency order for its maximum arity and copies each node's inputs into a
+temporary array. Borrow the existing DAG/job map through the same synchronous
+request-key reader instead. Delete that scan, array and copy loop; retain the
+temporary topological map needed to relocate file-local pointers. No new
+frontier, retained input graph or wire field is justified by this change.
+
+2026-10-02, agent follow-up on `b3aa9e6` plus the import-reader trial:
+mapped Context-projection receipts still retain a Context/source pair already
+available on the typed occurrence. Test borrowing these exact stable admissions
+with the existing sparse-selection layout. Retain ordinary variable-image
+projections without an origin; preserve alternate source receipts. Do not extend
+this automatically to reindexing: an identity action can return an occurrence
+whose map/origin describe a different earlier action. Its current checking
+inputs are not recoverable from that result alone.
+
 ## Plan
 
 No new binding/domain checkpoint fields or backend features before this gate.
@@ -923,6 +939,24 @@ Do not mark a milestone complete just because a view hides the old representatio
   Match/induction/constructor. Migrate interning keys, consumers, export and
   ordinary checking in the same milestone. Recheck concurrent relocation work;
   do not overwrite it or silently discard required scope/formation evidence.
+  Verified prototype increment (2026-10-02, parent `b3aa9e6`): rule import
+  borrows its existing DAG/job relocation map; the maximum-arity scan, scratch
+  premise array and copy loop are deleted. Readers are synchronous, not stored.
+  Tests cover repeated/shared imports, exact alternate scopes, missing/cyclic
+  children and zero fuel. O2 regression/examples/full acceptance, semantic
+  persistence and all seven checkpoint gates exit 0, including general ordinary
+  QuickSort result/Sorted/permutation and both LT providers/partition orders.
+  Five C gates, focused ASan/UBSan/leaks and fresh/current assembly synthesis,
+  source-I/O and derivation-I/O checks pass. All 156 tested C/header files match
+  fresh assembly. All 52 List images and the strict four-failure TSV match the
+  parent; that public gate remains failing, not waived. Implementation is +17/-11
+  (net +6), tests +21/-1 (net +20), not a measured speedup or net line reduction;
+  [applied-file deltas](../src/prototype/solver_inputs/import_inputs_delta.tsv).
+  No Core tag, checking owner or wire field is added; SE1-SE5 remain open.
+  Logs use `/tmp/a-program-import-inputs-`. User edits are excluded.
+  Follow-up trial: borrow mapped Context-projection receipts from their typed
+  Context/origin and preserve exact alternate selections; verify ordinary
+  reconstruction, index-disposal access, state censuses and image invariance.
   Verified prototype increment (2026-10-02, parent `7c3a1a1`):
   preparation reads its existing input owners through the request-key reader;
   checking reads the immutable checked/pending operand slots directly. The two

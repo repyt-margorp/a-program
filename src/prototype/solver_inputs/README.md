@@ -312,6 +312,13 @@ delete the remaining owners or establish a general speedup. The
 [source deltas](borrowed_premises_delta.tsv) show a net increase, not a line-count
 reduction. Verification status remains in the parent plan.
 
+Rule import also borrows its existing topological pointer map through that
+reader, instead of scanning for maximum arity and reconstructing a premise
+array. The temporary relocation map remains necessary; no new Job, retained
+graph or image field is introduced. [Applied-file deltas](import_inputs_delta.tsv)
+are +17/-11 implementation and +21/-1 tests against `b3aa9e6`, not a net source
+reduction or a measured speedup. Status stays in the parent plan.
+
 Use the parent plan for progress. Create and verify a disposable candidate:
 
 ```sh
