@@ -328,6 +328,14 @@ steps and Term/Occurrence/Evidence/Job counts. See
 [applied deltas](projection_receipts_delta.tsv). This removes duplicate references,
 not object witness Terms, all Jobs or the existing public-resumption failures.
 
+The remaining central expression state no longer has unused `tail`/`function`
+slots or a preparation guard reading the always-NULL latter slot. Private state
+shrinks from 184 to 168 bytes, without new state or a new owner. QuickSort's
+measured Job layout shrinks by 102,864 bytes; other census fields are unchanged.
+See [measurements](source_state_trim_measurements.tsv) and
+[applied deltas](source_state_trim_delta.tsv), net two implementation lines removed.
+This is stale-state deletion, not removal of the remaining source cursors.
+
 Use the parent plan for progress. Create and verify a disposable candidate:
 
 ```sh

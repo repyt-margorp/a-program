@@ -640,6 +640,13 @@ this automatically to reindexing: an identity action can return an occurrence
 whose map/origin describe a different earlier action. Its current checking
 inputs are not recoverable from that result alone.
 
+2026-10-02, agent follow-up on `a5c617d`: the remaining central expression
+state still declares unused `tail` and `function` pointers. The latter is read
+only in a preparation guard and is never written; arena initialization makes
+it always NULL. Delete both slots and simplify that guard without changing
+discovery, checking, fuel or persistence. This is removal of stale state, not
+proof that the remaining expression/Match/application cursors are unnecessary.
+
 ## Plan
 
 No new binding/domain checkpoint fields or backend features before this gate.
@@ -768,6 +775,23 @@ Do not mark a milestone complete just because a view hides the old representatio
   Remove the corresponding duplicated structural walkers and overbroad private
   state. Keep genuinely unfinished queries and effect dependencies; do not
   replace all of them with an unconditional wait for accepted Evidence.
+  Verified source-state deletion (2026-10-02, parent `a5c617d`): remove the unused
+  `tail`/`function` slots and simplify the latter's always-NULL preparation
+  guard. Central private state shrinks 184->168 bytes; no new structure replaces
+  it. [Paired censuses](../src/prototype/solver_inputs/source_state_trim_measurements.tsv)
+  at fuel 0/100/1000/completion differ only in Job layout bytes. Completed
+  List/effect/captured/QuickSort save 1456/5696/848/102864 bytes; this excludes
+  arena padding/other allocations and is not a live-memory or speedup estimate.
+  [Applied-file deltas](../src/prototype/solver_inputs/source_state_trim_delta.tsv)
+  are +1/-3, net two implementation lines removed; tests are unchanged.
+  Focused ASan/UBSan/leaks, five C gates and fresh/current assembly
+  Core/IADT/synthesis pass. Fresh assembly matches the tested C/header files;
+  all 52 List images and the four-failure strict partition TSV match the parent.
+  O2 regression/examples/full acceptance, semantic persistence and all seven
+  checkpoint gates exit 0, including general QuickSort result/Sorted/permutation
+  and both LT providers/partition orders. The public gate still exits 1. No Core tag,
+  checking authority or wire field changes. SE1-SE5 remain open and this trial
+  unpromoted; logs use `/tmp/a-program-source-state-trim-`. User edits are excluded.
   Verified prototype increment (2026-10-02, parent `2a0ba44`): Lambda/Pi/Quote preparation no longer uses
   the broad central expression state or its dispatcher. Function/CBPV borrow
   syntax/scope from the exact request key. Lambda borrows Context/body from
