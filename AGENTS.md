@@ -86,6 +86,15 @@ the user. Distinguish an agent proposal, an agent implementation decision within
 authorized scope, and an explicitly user-approved decision. Silence is not
 approval of a new design principle.
 
+Record task-relevant user requirements, concerns, corrections, and design
+clarifications immediately in `Subjective (User)` of each affected active plan,
+before further investigation or implementation and before context compaction.
+Do not defer this until a milestone, commit, or final response; chat context is
+not the durable requirements record. Keep the dated note concise, identify it
+as a user paraphrase/translation, and preserve any superseded requirement.
+Keep agent conclusions in `Assessment`, not in the user's statement. If no
+active plan exists, create a concise SOAP note under `doc/` before proceeding.
+
 Pin code observations and test results to a revision and relevant local edits.
 Distinguish fresh verification, historical reports, and unverified hypotheses.
 A reported issue or a failed search alone does not establish a current bug.

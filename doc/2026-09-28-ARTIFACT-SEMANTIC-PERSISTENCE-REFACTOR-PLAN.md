@@ -31,6 +31,18 @@ measurements, causes and the separate Context/syntax investigations.
 
 ## AP0. Simplify Before Extending Persistence
 
+### Subjective (User)
+
+2026-10-01, English paraphrase of the user's clarification: do not re-expand
+Oracle-local semantic structures into a common Job enum/union/dispatcher. The
+frontier should reference the actual constraint owners, not a second program
+graph. Fewer Jobs or replacement descriptors alone do not satisfy this intent.
+Record new user requirements immediately in each affected active plan's
+Subjective before further work or context compaction, as now required by
+`AGENTS.md`. The linked SE1-SE5 plan remains the single AP0 work list.
+
+### Existing Audit and Progress Record
+
 The user's 2026-09-30 follow-up requires auditing Job/Evidence duplication,
 revising the plan from that audit, and completing the refactor before continuing.
 The [Solver/Evidence audit and SE1-SE5 work list](2026-09-30-SOLVER-EVIDENCE-DUPLICATION-AUDIT-AND-PLAN.md)

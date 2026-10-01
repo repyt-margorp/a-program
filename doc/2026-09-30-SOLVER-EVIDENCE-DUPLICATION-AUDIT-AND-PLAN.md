@@ -31,6 +31,15 @@ the Solve constraint frontier should suffice; critically examine Job/Evidence
 as possible duplicate graphs above Term, typed construction and Solve. This is
 a request to examine the architecture, not approval of a replacement wrapper.
 
+2026-10-01, English paraphrase of the user's clarification: the original concern
+was that Job enumerated and re-expanded the data structures already separated
+into Oracles, collapsing their implementation boundaries into one upper layer.
+The target is not merely fewer Jobs or a different spelling of the enumeration.
+
+2026-10-01, English paraphrase of the user's documentation instruction: record
+new user input immediately in each affected active plan's `Subjective (User)`,
+before context compaction can discard it. This requirement is now in `AGENTS.md`.
+
 The user has not approved a new dependency representation or a new proof format.
 The design directions below are agent proposals grounded in the inspected code.
 
@@ -51,6 +60,13 @@ allocation/structural views, derivation import/export and source persistence.
 It is not a completed proof that every premise or worker is removable.
 
 ### Findings
+
+Current clarification check (`f0ff363` plus the uncommitted structural-reader
+trial, 2026-10-01): `synthesis_work.h` uses private class descriptors rather than
+a global semantic Job enum, but `synthesis.c:source_work` still contains broad
+state, including a union of function-graph, constructor, block/application/Match
+and definition work. Its `SOURCE_WORK` roles still share central dispatch.
+Descriptor replacement alone therefore does not satisfy Oracle locality.
 
 | ID | Inspected construction and consumer | Finding and limit |
 | --- | --- | --- |
@@ -460,6 +476,15 @@ Choose its concrete C layout from the owner/dependency inventory before caller
 migration, then verify it with allocation measurements. Do not replace the
 wrapper with another separately allocated wrapper.
 
+Clarified completion criterion: common frontier code borrows owners and invokes
+their local operations; it does not enumerate or unpack every Oracle's semantic
+payload. Remove the broad `source_work` union and corresponding central semantic
+dispatch by consolidating construction/checking in their actual owning modules,
+not by moving the same union into another file. Local rule distinctions remain
+where they validate different theorems. This is an agent implementation direction
+under the user's Oracle-locality requirement, not a claim that all continuation
+state or all checking provenance can be deleted.
+
 Typed construction and its checking must use the same owner-local structural
 operations. Keep provisional structure unaccepted until the ordinary rules
 validate it. Preserve pending effect discovery, independent synthesis and `::`
@@ -488,6 +513,10 @@ Do not mark a milestone complete just because a view hides the old representatio
   For each retained record, identify the unfinished obligation that has no
   other owner. Direct-input migration alone does not discharge this requirement;
   a renamed task graph or one mutable status per Core Term also fails it.
+  A common descriptor interface alone also fails it if a shared upper-layer
+  union or dispatcher still re-expands the Oracle payloads. Verify owner-local
+  semantic handling and removal of the broad `source_work` layout, not just
+  disappearance of an enum or reduction of the Job count.
   The frontier borrows canonical unfinished obligations; only those obligations
   own inputs, interrupted cursors and results. Save the necessary cursor and
   deterministic scheduling information, not a second dependency program.
@@ -542,6 +571,15 @@ Do not mark a milestone complete just because a view hides the old representatio
   Remove the corresponding duplicated structural walkers and overbroad private
   state. Keep genuinely unfinished queries and effect dependencies; do not
   replace all of them with an unconditional wait for accepted Evidence.
+  Current agent trial (2026-10-01; `f0ff363` overlay): structural factories
+  allocate a full Job even for an already checked occurrence's Core/classifier.
+  Replace the Job-only return contract with an allocation-free borrowed Term or
+  pending-discovery reference; migrate all ordinary consumers and tests together.
+  Keep existing pending-query identity/symbolic snapshots and effect discovery;
+  a borrowed view has no status/result authority or persistence graph. Public
+  source loading still reconstructs checking from initial state, so queue-only
+  restoration is insufficient; do not extend the restricted codec to every Job
+  merely to turn that gate green. Verify the trial before recording adoption.
 - [ ] **SE3 Evidence inputs:** map each retained premise to typed operands,
   context/map, receipt or other real logical input. Remove duplicate premise
   arrays and history-based access for the mapped rules, starting with
