@@ -298,6 +298,20 @@ C gates, sanitizers and fresh/current checks pass. Central synthesis loses 155
 lines, but total implementation grows 64. This is not full Job/Evidence removal;
 the four public reload failures remain open.
 
+Source App preparation now lives in Function, borrowing scope/syntax from its
+exact key and its completed output from ordinary checking. Central App/callable
+slots, separate application-state allocations and result copies are deleted.
+Local progress is inline (120 bytes, formerly 144 + separately allocated 96);
+other expressions shrink 144->128. Constructor indices, lexical IH, open Match
+equations, CBPV sequencing and post-checks remain unchanged. See
+[census](source_application_measurements.tsv), [allocation](source_application_allocation.tsv)
+and [applied deltas](source_application_delta.tsv) against `0fb14e9`: QuickSort
+loses 2425 result references and 122024 Job-layout bytes, not total RAM. Central
+synthesis loses 542 lines, but total implementation grows 83. Full regression,
+seven checkpoint/five C gates, sanitizers and fresh/current checks pass; artifact
+controls match. Four public reload failures and SE1-SE5 remain open. No new task
+graph, semantic tag, codec or production promotion is included.
+
 Core-preserving Context projection and type/value readings now borrow their
 input's structural query without a second Job/result. All three structural
 APIs use one iterative discovery path; ordinary rule checking remains separate.

@@ -1,0 +1,15 @@
+sample	revision	repetition	wrapped_arena_calls	wrapped_aligned_bytes
+list	0fb14e9	1	4322	467456
+list	source-application	1	4296	463552
+effect	0fb14e9	1	28727	3041696
+effect	source-application	1	28597	3023664
+captured	0fb14e9	1	7489	762928
+captured	source-application	1	7478	761072
+quick	0fb14e9	1	2894482	234381040
+quick	source-application	1	2891062	233997776
+quick	0fb14e9	2	2893979	234356896
+quick	source-application	2	2892074	234046352
+quick	0fb14e9	3	2893677	234342400
+quick	source-application	3	2891882	234037136
+quick	0fb14e9	4	2894290	234371824
+quick	source-application	4	2890832	233986736

@@ -828,6 +828,25 @@ Do not mark a milestone complete just because a view hides the old representatio
   Remove the corresponding duplicated structural walkers and overbroad private
   state. Keep genuinely unfinished queries and effect dependencies; do not
   replace all of them with an unconditional wait for accepted Evidence.
+  Verified application-owner increment (2026-10-02, parent `0fb14e9`): Function
+  owns source App preparation and borrows scope/syntax from its exact key.
+  Delete central application/callable slots, the separate application-state
+  allocation and completed receipt copies. Actual progress is inline (120 bytes,
+  formerly 144 + separately allocated 96); other expressions shrink 144->128.
+  Preserve constructor indices, lexical IH, open Match equations, CBPV sequencing
+  and independent post-checks. No task graph, tag or persistence codec is added.
+  [Census](../src/prototype/solver_inputs/source_application_measurements.tsv)
+  preserves graph/step counts; QuickSort loses 2425 copied result references and
+  122024 Job-layout bytes, not total RAM. [Allocation](../src/prototype/solver_inputs/source_application_allocation.tsv)
+  is partial cumulative arena requests, not live memory or a speedup claim.
+  [Applied deltas](../src/prototype/solver_inputs/source_application_delta.tsv):
+  central synthesis -542 lines; implementation net +83, tests +23.
+  Full O2 regression/examples/acceptance, semantic persistence, seven checkpoint
+  and five C gates, focused ASan/UBSan/leaks and fresh/current checks pass.
+  Fresh assembly matches tested source/tests. All 52 List and eight effect/block
+  images match the parent; loaded block step 0 is byte-invariant. Four public
+  reload failures remain unchanged (exit 1); SE1-SE5 stay open. This is an
+  unpromoted prototype; user edits are excluded. Logs use `/tmp/a-program-source-application-`.
   Verified declaration-owner increment (2026-10-02, parent `5e9187c`): Schema
   owns declaration preparation and borrows scope/syntax from its exact key.
   Central dispatch/allocation slots are deleted, without a new tag or codec:
