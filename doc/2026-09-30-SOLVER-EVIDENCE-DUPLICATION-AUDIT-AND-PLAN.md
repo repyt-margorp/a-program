@@ -2357,3 +2357,76 @@ Applied deltas from `808c217`, excluding stored patch context and documentation:
 | `tests/iadt.c` | 33 | 0 | +33 |
 
 Physical duplication decreases; implementation source lines increase by 10.
+
+### SE3 Request and Fold Receipt Inputs (2026-10-01)
+
+#### Subjective (User)
+
+English paraphrase of the 2026-10-01 follow-up: keep the actual Solve frontier
+and unfinished cursors rather than another graph duplicating Term and typing.
+Evidence must not reconstruct proof structure already retained by typed inputs.
+
+#### Objective (Code)
+
+Parent `76f67ad`, frozen accepted baseline `e716232` plus recorded prototypes.
+`PG_REQUEST_INTRO` stores four premises although its existing operation
+declaration retains the first two receipts and its typed operands identify the
+remaining subjects. `PG_FOLD_ELIM` stores two premises for its two typed operands.
+Both use the ordinary logical premise getter for interning and transport.
+
+General classifier audit: `synthesis_function.c:classifier_step` still wraps
+`pg_classifier_request`; `synthesis.c:type_structure_step` can inspect its
+operand's provisional classifier before the producer is checked. CBPV result
+contexts also inspect that pending formation's source operand. The wrapper is
+not removed by this change. `synthesis_conversion.c:classifier_step` additionally
+forwards to a checked-input classifier-normalization Job; its normalization and
+conversion are real work, but that extra scheduling owner remains to consolidate.
+No contradictory accepted classifier was demonstrated by these static findings.
+
+#### Assessment
+
+Agent prototype decision: extend the constructor's omitted-prefix/dense-suffix
+layout to Request and Fold. Borrow the largest exact prefix from existing
+declaration/typed-input receipts; retain the suffix beginning at the first
+different selection. This preserves every exact proof key without an exception
+index, copied operand array, new Core tag, typed edge or wire field. No checker
+or reduction rule is bypassed. Receipt lookup does not compute or allocate.
+
+Do not implement classifier consolidation as another query wrapper or a third
+independent result table. Migrate the dependency interface and provisional
+projection together; source readiness and a canonical typed query's cursor are
+not interchangeable. This remains the existing SE1/SE2 obligation, not an excuse
+to declare the frontier refactor complete after receipt compaction.
+
+#### Plan
+
+- [x] Consolidate the three mapped dense layouts under one prefix/suffix path.
+- [x] Test canonical and alternative Request/Fold inputs, exact sharing,
+  allocation-free logical reads and read access after typing-index disposal.
+- [x] Run full O2 regression, examples, semantic audit, seven checkpoint gates,
+  and ASan/UBSan Core/IADT/Identity/synthesis with leak detection.
+- [x] Reassemble recorded patches exactly and compare census/public partitions.
+- [x] Complete full acceptance and verify the default overlay: assembly and
+  Core/IADT/synthesis pass with the excluded concurrent user edits.
+- [ ] Publish the prototype milestone. Keep full SE1-SE5 and the public
+  partition failures open.
+
+Fresh census: List-09 retained edges 843 -> 825; general QuickSort 199,280 ->
+199,042. Other census columns and terminal repeated/zero-fuel controls are
+unchanged: QuickSort still uses 809,172 steps and 53,643 Jobs. The 238 omitted
+pointers save 1,904 raw receipt bytes on this build, before arena alignment;
+this is not total live memory, artifact size or a speed claim. Public partitions
+exit 2 with a byte-identical TSV to the parent's four failures. Full
+`check-acceptance` exits 0, including both LT providers/partition orders,
+universal Sorted/permutation witnesses, ordinary results, semantic partial
+images and invalid controls. Logs and comparisons use
+`/tmp/a-program-request-fold-`.
+
+Applied deltas from `76f67ad`, excluding stored patch context and documentation:
+
+| File | Added | Removed | Net |
+| --- | ---: | ---: | ---: |
+| `src/evidence.c` | 55 | 13 | +42 |
+| `tests/core.c` | 39 | 0 | +39 |
+
+Physical duplication decreases; implementation source increases by 42 lines.

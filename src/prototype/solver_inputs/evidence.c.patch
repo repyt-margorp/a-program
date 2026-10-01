@@ -90,7 +90,7 @@
  	}
  	return conclusion_first(typing, subject->judgement, subject);
  }
-@@ -72,6 +97,31 @@
+@@ -72,12 +97,66 @@
  	return conclusion_first(typing, PG_JUDGEMENT_CONTEXT, context);
  }
  
@@ -113,16 +113,51 @@
 +	return input ? conclusion_receipt(NULL, input->judgement, input) : NULL;
 +}
 +
-+static const struct pg_evidence *constructor_family_receipt(const struct pg_occurrence *subject)
-+{
-+	const struct pg_occurrence *type = subject ? subject->type : NULL;
-+	return type ? conclusion_receipt(NULL, type->judgement, type) : NULL;
-+}
-+
  struct pg_operation_declaration {
  	struct pg_object_entry base;
  	const struct pg_object *label;
-@@ -190,9 +240,9 @@
+ 	const struct pg_evidence *payload_type, *response_type;
+ };
+ 
++static size_t borrowed_premise_count(enum pg_evidence_rule rule)
++{
++	switch (rule) {
++	case PG_CONSTRUCTOR_INTRO: case PG_REQUEST_INTRO: return 4;
++	case PG_FOLD_ELIM: return 2;
++	default: return 0;
++	}
++}
++
++/* Borrow only exact, stable checking receipts already retained by the typed
++ * input or declaration. A differing selection remains in the dense suffix. */
++static const struct pg_evidence *borrowed_premise(enum pg_evidence_rule rule,
++	const struct pg_occurrence *subject, const void *certificate, size_t ordinal)
++{
++	const struct pg_occurrence *input = NULL;
++	switch (rule) {
++	case PG_CONSTRUCTOR_INTRO:
++		if (!ordinal) input = subject->type;
++		break;
++	case PG_REQUEST_INTRO:
++		if (ordinal < 2) {
++			const struct pg_operation_declaration *operation = certificate;
++			return ordinal ? operation->response_type : operation->payload_type;
++		}
++		/* The remaining inputs are the typed payload and continuation. */
++		ordinal -= 2;
++		/* fall through */
++	case PG_FOLD_ELIM:
++		if (ordinal < subject->operand_count) input = subject->operands[ordinal];
++		break;
++	default: break;
++	}
++	return input ? conclusion_receipt(NULL, input->judgement, input) : NULL;
++}
++
+ static const struct pg_object_class operation_label_class = {"operation-label"};
+ static const struct pg_object_class operation_declaration_class = {"operation-declaration"};
+ struct operation_label {
+@@ -190,9 +269,9 @@
  		}
  		if (certificate_key(rule, proof->certificate) != key) continue;
  		if (context_input) return proof;
@@ -134,17 +169,18 @@
  		if (i == count) return proof;
  	}
  	return NULL;
-@@ -214,6 +264,9 @@
+@@ -214,6 +293,10 @@
  	const struct pg_context_map *map)
  {
  	if (subject && subject->context != context) return NULL;
 +	if (elimination_rule(rule) && (!subject || subject->operand_count < 3 || subject->operand_count > SIZE_MAX - 3 ||
 +		count != subject->operand_count + 3)) return NULL;
-+	if (rule == PG_CONSTRUCTOR_INTRO && count != 4) return NULL;
++	size_t arity = borrowed_premise_count(rule);
++	if (arity && count != arity) return NULL;
  	uint64_t hash;
  	const struct pg_evidence *existing = find_record(typing, rule, context,
  		subject, count, premises, certificate, &hash);
-@@ -221,32 +274,47 @@
+@@ -221,32 +304,55 @@
  	enum pg_evidence_judgement judgement = map ? PG_JUDGEMENT_SUBSTITUTION
  		: subject ? subject->judgement : PG_JUDGEMENT_CONTEXT;
  	const void *key = map ? (const void *)map : subject ? (const void *)subject : (const void *)context;
@@ -163,7 +199,15 @@
 +		if (retained > SIZE_MAX / sizeof(struct elimination_receipt_selection)) return NULL;
 +		bytes = retained * sizeof(struct elimination_receipt_selection);
 +	} else {
-+		if (rule == PG_CONSTRUCTOR_INTRO && constructor_family_receipt(subject) == premises[0]) --retained;
++		if (arity) {
++			size_t prefix = 0;
++			while (prefix < count) {
++				const struct pg_evidence *input = borrowed_premise(rule, subject, certificate, prefix);
++				if (!input || input != premises[prefix]) break;
++				++prefix;
++			}
++			retained -= prefix;
++		}
 +		if (retained > SIZE_MAX / sizeof(*premises)) return NULL;
 +		bytes = retained * sizeof(*premises);
 +	}
@@ -210,7 +254,7 @@
  	return proof;
  }
  
-@@ -2503,9 +2571,9 @@
+@@ -2503,9 +2609,9 @@
  		if (p->hash != hash) continue;
  		struct induction_request *request = (void *)p;
  		const struct pg_evidence *result = request->result;
@@ -222,7 +266,7 @@
  		if (i == count) return request;
  	}
  	struct induction_request *request = pg_alloc(typing->graph, sizeof(*request));
-@@ -4431,13 +4499,29 @@
+@@ -4431,13 +4537,29 @@
  		map->destination, NULL, 2, premises, NULL, map);
  }
  
@@ -256,7 +300,7 @@
  	const struct pg_evidence *premises[] = {substitution, proof};
  	uint64_t hash;
  	const struct pg_evidence *result = find_record(typing, PG_REINDEX,
-@@ -5456,9 +5540,29 @@
+@@ -5456,9 +5578,33 @@
  	const struct pg_occurrence *subject = pg_evidence_subject(evidence);
  	return subject ? subject->classifier : NULL;
  }
@@ -265,7 +309,8 @@
 +size_t pg_evidence_premise_count(const struct pg_evidence *evidence)
 +{
 +	if (elimination_rule(evidence->rule)) return evidence->conclusion.subject->operand_count + 3;
-+	return evidence->rule == PG_CONSTRUCTOR_INTRO ? 4 : evidence->retained_count;
++	size_t arity = borrowed_premise_count(evidence->rule);
++	return arity ? arity : evidence->retained_count;
 +}
 +size_t pg_evidence_retained_premise_count(const struct pg_evidence *evidence)
 +{
@@ -274,10 +319,13 @@
  const struct pg_evidence *pg_evidence_premise(const struct pg_evidence *evidence, size_t index)
  {
 -	return index < evidence->premise_count ? evidence->premises[index] : NULL;
-+	if (index >= pg_evidence_premise_count(evidence)) return NULL;
-+	if (evidence->rule == PG_CONSTRUCTOR_INTRO && evidence->retained_count == 3)
-+		return index ? evidence->premises[index - 1] : constructor_family_receipt(evidence->conclusion.subject);
-+	if (!elimination_rule(evidence->rule)) return evidence->premises[index];
++	size_t count = pg_evidence_premise_count(evidence);
++	if (index >= count) return NULL;
++	if (!elimination_rule(evidence->rule)) {
++		size_t prefix = count - evidence->retained_count;
++		return index < prefix ? borrowed_premise(evidence->rule,
++			evidence->conclusion.subject, evidence->certificate, index) : evidence->premises[index - prefix];
++	}
 +	const struct elimination_receipt_selection *inputs = (const void *)evidence->premises;
 +	size_t low = 0, high = evidence->retained_count;
 +	while (low < high) {
