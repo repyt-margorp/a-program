@@ -715,6 +715,26 @@ Do not mark a milestone complete just because a view hides the old representatio
   Remove the corresponding duplicated structural walkers and overbroad private
   state. Keep genuinely unfinished queries and effect dependencies; do not
   replace all of them with an unconditional wait for accepted Evidence.
+  Prototype increment (2026-10-01, parent `a8715d7`): name registration,
+  definitions and induction branches no longer allocate `source_work` or use its
+  central dispatch. The union and multi-role macro are removed. Registration
+  owns its existing index/frontier inline (88 bytes instead of 184 + a separate
+  88); definitions retain activation/body only (16 instead of 184), borrowing
+  syntax/scope/exports; branches retain four references (32 instead of 184).
+  This is an agent implementation decision, not a replacement Job graph or full
+  Oracle-module extraction. Full O2 regression/examples/acceptance, focused
+  ownership/zero-fuel tests, semantic and seven checkpoint gates, C-backend gates,
+  ASan/UBSan/leak checks and fresh/current assemblies pass. Fresh assembly matches 156
+  C/header files. [Measurements](../src/prototype/solver_inputs/definition_owner_measurements.tsv)
+  preserve all sampled semantic counts/steps; QuickSort Job storage falls 16,664
+  bytes. [Wrapped allocation](../src/prototype/solver_inputs/definition_owner_allocation.tsv)
+  falls 46,800 aligned bytes/610 calls for QuickSort, not a general memory/speed
+  claim. [Deltas](../src/prototype/solver_inputs/definition_owner_delta.tsv):
+  implementation +137/-114 (net +23), tests +63/-0, excluding patch context/docs.
+  The public partition report is identical to the parent's four reload failures;
+  no wire expansion or test exemption was added. Only expression preparation
+  uses the broad layout now; central semantic paths and SE1-SE5 remain open.
+  Logs use `/tmp/a-program-definition-owner-`; user edits are excluded.
   Verified prototype prerequisite (2026-10-01; implementation parent `f0ff363`,
   accepted baseline `e716232`): structural readers now borrow known Core/classifier
   Terms directly, without creating a Job. All consumers use the same by-value

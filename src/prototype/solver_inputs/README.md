@@ -224,6 +224,17 @@ and body input; the actual Match alone keeps its open result equation. No new
 Job, payload tag or wire field is added. See [file deltas](recipe_equation_delta.tsv)
 and [final-count measurements](recipe_equation_measurements.tsv) against
 `e58a1c8`; QuickSort uses three more dispatches, with unchanged graph counts.
+Name registration, definitions and induction branches no longer allocate the
+expression/Match/constructor state or pass through its central dispatcher.
+Registration owns its existing index/frontier inline (88 bytes, previously a
+184-byte state plus a separate 88-byte allocation). Definitions keep a body
+input and activation (16 bytes instead of 184); branches keep four construction
+references (32 instead of 184). Definition syntax/scope/exports are borrowed,
+not copied. Only expression preparation still uses `source_work`; its remaining
+central semantic paths and scheduler/Evidence cleanup are not complete. See
+[measurements](definition_owner_measurements.tsv),
+[wrapped allocation](definition_owner_allocation.tsv) and
+[applied file deltas](definition_owner_delta.tsv) against `a8715d7`.
 Lexical binding now has one checked/pending Context API; the Job-only binding
 entry point is removed. IH/graph associations borrow known Contexts directly.
 Only unavailable inputs require a binding-validation request; an existing one
