@@ -1,6 +1,107 @@
 --- a/synthesis_cbpv.c
 +++ b/synthesis_cbpv.c
-@@ -12,7 +12,7 @@
+@@ -4,6 +4,100 @@
+ #include "synthesis_effect.h"
+ #include "effect_inference.h"
+ 
++/* Type positions may advance pure computations or use their checked total
++ * result. Expected types never supply missing synthesis. */
++const struct pg_evidence *pg_synthesis_type_input(struct pg_synthesis *synthesis,
++	struct pg_synthesis_job *job, struct pg_synthesis_job **returned, const struct pg_evidence *context,
++	const struct pg_evidence *proof)
++{
++	if (pg_evidence_judgement(proof) != PG_JUDGEMENT_COMPUTATION) return proof;
++	if (!*returned) {
++		*returned = pg_synthesis_return(synthesis, context, proof);
++		pg_synthesis_subscribe(synthesis, job, *returned, 0);
++		return NULL;
++	}
++	struct pg_synthesis_job *producer = *returned;
++	if (producer->status != PG_SYNTHESIS_DONE) { pg_synthesis_finish(synthesis, job, producer->status); return NULL; }
++	*returned = NULL;
++	return producer->result;
++}
++
++struct source_quote_work {
++	struct pg_synthesis_job *operand, *rule;
++};
++static void source_quote_step(struct pg_synthesis *, struct pg_synthesis_job *);
++static struct pg_synthesis_projection source_quote_projection(const struct pg_synthesis_job *);
++static const struct pg_synthesis_work_class SOURCE_QUOTE[1] = {{
++	.pending = {&pg_synthesis_pending_ops}, .size = sizeof(struct source_quote_work),
++	.source_key = 1, .advance = source_quote_step, .project = source_quote_projection}};
++
++struct pg_synthesis_job *pg_synthesis_source_quote(struct pg_synthesis *synthesis,
++	const struct pg_source_scope *scope, const struct pg_syntax *syntax)
++{
++	if (!synthesis || !scope || scope->owner != synthesis->owner_key || !syntax || syntax->kind != PG_SYNTAX_QUOTE) return NULL;
++	return pg_synthesis_work_request(synthesis, SOURCE_QUOTE, 2, (const void *[]){scope, syntax});
++}
++
++struct pg_synthesis_job *pg_synthesis_quote_operand(const struct pg_synthesis_job *job)
++{
++	const struct source_quote_work *local = pg_synthesis_work_state(job, SOURCE_QUOTE);
++	return local ? local->operand : NULL;
++}
++
++static struct pg_synthesis_projection source_quote_projection(const struct pg_synthesis_job *job)
++{
++	const struct source_quote_work *local = pg_synthesis_work_state(job, SOURCE_QUOTE);
++	return (struct pg_synthesis_projection){local->rule,
++		job->status == PG_SYNTHESIS_PENDING && !local->rule, 1};
++}
++
++static void source_quote_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
++{
++	struct source_quote_work *local = pg_synthesis_work_state(job, SOURCE_QUOTE);
++	const struct pg_source_scope *scope = job->inputs[0];
++	const struct pg_syntax *syntax = job->inputs[1];
++	if (pg_synthesis_scope_wait(synthesis, job, scope)) return;
++	if (local->rule) { pg_synthesis_forward(synthesis, job, local->rule); return; }
++	if (!local->operand) local->operand = pg_synthesis_request(synthesis, scope, syntax->left);
++	if (!local->operand) goto error;
++	if (pg_synthesis_await_preparation(synthesis, job, local->operand, NULL)) return;
++	const struct pg_derivation_input *construction;
++	int kind = pg_synthesis_input_kind((struct pg_synthesis_input){.pending = pg_synthesis_pending(local->operand)}, &construction);
++	if (kind < 0 && local->operand->status == PG_SYNTHESIS_PENDING) {
++		pg_synthesis_await(synthesis, job, local->operand);
++		return;
++	}
++	struct pg_synthesis_job *operand = local->operand;
++	if (kind == 1 && construction && construction->rule == PG_THUNK_INTRO) {
++		/* Discovering U must not await its child. The actual producer still
++		 * checks that child; this preserves open Match/effect equations. */
++		local->rule = operand;
++	} else if (kind == 1) {
++		operand = pg_pending_job(pg_synthesis_normalize_classifier(synthesis, scope->context,
++			(struct pg_synthesis_input){.pending = pg_synthesis_pending(operand)}).pending);
++		struct pg_synthesis_structure shape = pg_synthesis_classifier_structure(synthesis, operand);
++		if (!pg_synthesis_structure_valid(shape)) goto error;
++		if (pg_synthesis_await_structure(synthesis, job, shape)) return;
++		const struct pg_term *content;
++		if (!pg_thunk_type_view(pg_synthesis_type_structure_result(shape), &content)) {
++			pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED);
++			return;
++		}
++		local->rule = operand;
++	} else {
++		struct pg_synthesis_input value = {.pending = pg_synthesis_pending(operand)};
++		const struct pg_evidence *proof = pg_synthesis_result(operand);
++		if (proof && pg_evidence_judgement(proof) == PG_JUDGEMENT_TYPE_FAMILY)
++			value = pg_synthesis_family_function(synthesis, (struct pg_synthesis_input){.checked = proof});
++		local->rule = pg_synthesis_plain_rule_inputs(synthesis, PG_THUNK_INTRO, NULL, 1, &value);
++	}
++	if (!local->rule) goto error;
++	pg_synthesis_forward(synthesis, job, local->rule);
++	return;
++error:
++	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR);
++}
++
+ /* Raw descriptions close pending effect equations; only ordinary rule checking
+  * produces Evidence. Both sequencing and handling use the same Fold graph. */
+ struct fold_structure_state {
+@@ -12,7 +106,7 @@
  };
  struct computation_structure_work {
  	const struct pg_term *result;
@@ -9,7 +110,7 @@
  	struct fold_structure_state *fold;
  	struct pg_comparison comparison;
  };
-@@ -21,17 +21,19 @@
+@@ -21,17 +115,19 @@
  static void computation_structure_completed(struct pg_synthesis *, struct pg_synthesis_job *, int);
  static const struct pg_term *computation_structure_result(const struct pg_synthesis_job *);
  static const struct pg_synthesis_work_class TERM_STRUCTURE_JOB[1] = {{
@@ -30,7 +131,7 @@
  }
  
  static void computation_structure_destroy(struct pg_synthesis_job *job)
-@@ -58,15 +60,31 @@
+@@ -58,15 +154,31 @@
  	}
  }
  
@@ -67,7 +168,7 @@
  }
  
  static void compound_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
-@@ -86,26 +104,26 @@
+@@ -86,26 +198,26 @@
  			sizeof(*local->fold) + count * sizeof(struct pg_operation_clause));
  		if (!local->fold) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
  	}
@@ -104,7 +205,7 @@
  		pg_synthesis_enqueue(synthesis, job);
  		return;
  	}
-@@ -143,9 +161,10 @@
+@@ -143,9 +255,10 @@
  static void computation_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
  	struct computation_structure_work *local = computation_structure_work(job);
@@ -118,7 +219,7 @@
  	if (proof) {
  		const struct pg_occurrence *subject = pg_evidence_subject(proof);
  		local->result = !subject ? NULL : classifier ? subject->classifier : subject->core;
-@@ -159,22 +178,20 @@
+@@ -159,22 +272,20 @@
  		compound_structure_step(synthesis, job, producer, input); return;
  	default: break;
  	}
@@ -148,7 +249,7 @@
  	const struct pg_term *left = pg_synthesis_type_structure_result(local->left);
  	const struct pg_term *row, *value;
  	enum pg_totality totality;
-@@ -188,9 +205,9 @@
+@@ -188,9 +299,9 @@
  		return;
  	}
  	case PG_FOLD_ELIM:
@@ -161,7 +262,7 @@
  		if (!pg_computation_type_spine_view(left, &totality, &row, &value)) goto accepted;
  		if (!continuation_structure_step(synthesis, job, pg_synthesis_type_structure_result(local->right), totality, row)) goto accepted;
  		return;
-@@ -201,14 +218,13 @@
+@@ -201,14 +312,13 @@
  	case PG_RETURN_INTRO:
  		local->result = pg_computation_type(synthesis->typing->graph, input->parameters.totality,
  			pg_effect_row(synthesis->typing->graph, 0, NULL), left); break;
@@ -178,7 +279,7 @@
  		} else row = pg_effect_reference(synthesis->typing->graph, input->parameters.effects);
  		if (!row) goto unsupported;
  		local->result = pg_computation_type_spine(synthesis->typing->graph, input->parameters.totality, row, left);
-@@ -220,7 +236,6 @@
+@@ -220,7 +330,6 @@
  	case PG_RETURN_INTRO: local->result = pg_application(synthesis->typing->graph, pg_reference(synthesis->typing->graph, &pg_return_operation), left); break;
  	case PG_THUNK_INTRO: local->result = pg_application(synthesis->typing->graph, pg_reference(synthesis->typing->graph, &pg_thunk_operation), left); break;
  	case PG_FORCE_ELIM: local->result = pg_application(synthesis->typing->graph, pg_reference(synthesis->typing->graph, &pg_force_operation), left); break;
@@ -186,7 +287,7 @@
  	default: goto unsupported;
  	}
  	pg_synthesis_finish(synthesis, job, local->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
-@@ -234,28 +249,28 @@
+@@ -234,28 +343,28 @@
  }
  
  struct pg_synthesis_job *pg_synthesis_result_context(struct pg_synthesis *synthesis,
@@ -228,7 +329,7 @@
  }
  
  struct contents_work {
-@@ -263,16 +278,18 @@
+@@ -263,16 +372,18 @@
  	unsigned stage;
  };
  struct body_work {
@@ -249,7 +350,7 @@
  static void sequence_step(struct pg_synthesis *, struct pg_synthesis_job *);
  static void sequence_destroy(struct pg_synthesis_job *);
  static void sequence_completed(struct pg_synthesis *, struct pg_synthesis_job *, int);
-@@ -280,12 +297,17 @@
+@@ -280,12 +391,17 @@
  static struct pg_synthesis_projection sequence_project(const struct pg_synthesis_job *);
  
  static const struct pg_synthesis_work_class RETURN_JOB[1] = {{
@@ -268,7 +369,7 @@
  	.size = sizeof(struct sequence_work), .advance = sequence_step, .project = sequence_project,
  	.destroy = sequence_destroy, .completed = sequence_completed}};
  
-@@ -294,6 +316,11 @@
+@@ -294,6 +410,11 @@
  	return pg_synthesis_work_state(job, BODY_JOB);
  }
  
@@ -280,7 +381,7 @@
  static struct sequence_work *sequence_work(const struct pg_synthesis_job *job)
  {
  	return pg_synthesis_work_state(job, SEQUENCE_JOB);
-@@ -301,8 +328,9 @@
+@@ -301,8 +422,9 @@
  
  static struct pg_synthesis_projection body_project(const struct pg_synthesis_job *job)
  {
@@ -292,7 +393,7 @@
  }
  
  static struct pg_synthesis_projection sequence_project(const struct pg_synthesis_job *job)
-@@ -323,17 +351,18 @@
+@@ -323,17 +445,18 @@
  }
  
  struct pg_synthesis_job *pg_synthesis_body(struct pg_synthesis *synthesis,
@@ -318,7 +419,7 @@
  }
  
  static struct pg_synthesis_job *request_evaluation(struct pg_synthesis *synthesis,
-@@ -362,13 +391,13 @@
+@@ -362,13 +485,13 @@
  static const struct pg_evidence *contents(struct pg_synthesis *synthesis,
  	struct pg_synthesis_job *job, const struct pg_evidence *proof)
  {
@@ -334,7 +435,7 @@
  	if (!local->dependency) {
  		local->dependency = pg_synthesis_normalize(synthesis, job->inputs[0], job->inputs[1]);
  		pg_synthesis_subscribe(synthesis, job, local->dependency, 0);
-@@ -379,81 +408,89 @@
+@@ -379,81 +502,89 @@
  		const struct pg_evidence *term = local->dependency->result;
  		job->result = contents(synthesis, job, term);
  		if (job->result) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_DONE); return; }
@@ -460,7 +561,7 @@
  }
  
  /* 1 selects FOLD; 0 suspends; -1 leaves conversion/finite-return checking to
-@@ -497,25 +534,26 @@
+@@ -497,25 +628,26 @@
  static void sequence_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
  	struct sequence_work *local = sequence_work(job);
@@ -499,7 +600,7 @@
  			if (!local->fold) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
  		}
  	}
-@@ -523,26 +561,25 @@
+@@ -523,26 +655,25 @@
  	/* A checked Fold supersedes provisional choice, not the Context checks below. */
  	if (!local->rule && pg_synthesis_result(local->fold)) local->rule = local->fold;
  	if (!local->rule) {
@@ -538,7 +639,7 @@
  	if (!context || pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT || !input || !continuation) {
  		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
  	}
-@@ -553,8 +590,8 @@
+@@ -553,8 +684,8 @@
  	if (pg_evidence_judgement(input) != PG_JUDGEMENT_COMPUTATION) {
  		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
  	}
@@ -549,7 +650,7 @@
  	if (local->fold->status == PG_SYNTHESIS_PENDING) { pg_synthesis_subscribe(synthesis, job, local->fold, 0); return; }
  	if (local->rule || local->fold->status != PG_SYNTHESIS_REJECTED) {
  		local->rule = local->fold;
-@@ -570,21 +607,19 @@
+@@ -570,21 +701,19 @@
  		/* Preserve the effectful prefix outside the returned function.
  		 * The source adapter uses only checked APP/THUNK/RETURN/FOLD. */
  		binder = pg_binder(synthesis->typing->graph);

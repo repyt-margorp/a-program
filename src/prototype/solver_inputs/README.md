@@ -241,6 +241,16 @@ central semantic paths and scheduler/Evidence cleanup are not complete. See
 [measurements](definition_owner_measurements.tsv),
 [wrapped allocation](definition_owner_allocation.tsv) and
 [applied file deltas](definition_owner_delta.tsv) against `a8715d7`.
+Lambda, Pi and surface quotation no longer use that central expression state.
+Their Function/CBPV owners borrow lexical inputs from their request keys.
+Lambda retains only its actual selected rule (8 bytes instead of 184), borrowing
+Context/body from that rule's Pi/body inputs; Pi keeps 24 bytes, quotation 16.
+Source inspection, Match demands and resume validation use the same lexical
+inputs, not the old descriptor. No Core tag, rule graph, acceptance store or
+wire field is added. See [measurements](source_oracle_measurements.tsv),
+[allocation](source_oracle_allocation.tsv) and [applied deltas](source_oracle_delta.tsv)
+against `2a0ba44`. This reduces retained state, not total source line count;
+actual construction/checking consolidation and public resume remain unfinished.
 Lexical binding now has one checked/pending Context API; the Job-only binding
 entry point is removed. IH/graph associations borrow known Contexts directly.
 Only unavailable inputs require a binding-validation request; an existing one

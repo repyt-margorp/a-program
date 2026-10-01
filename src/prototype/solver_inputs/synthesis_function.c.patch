@@ -1,10 +1,114 @@
 --- a/synthesis_function.c
 +++ b/synthesis_function.c
-@@ -1,11 +1,88 @@
+@@ -1,11 +1,192 @@
  #include "synthesis_source.h"
  #include "derivation.h"
 +#include "typed_query.h"
 +#include "function_graph.h"
++
++struct source_lambda_work {
++	struct pg_synthesis_job *rule;
++};
++struct source_pi_work {
++	struct pg_synthesis_job *binding, *body, *rule;
++};
++
++static void source_lambda_step(struct pg_synthesis *, struct pg_synthesis_job *);
++static void source_pi_step(struct pg_synthesis *, struct pg_synthesis_job *);
++static struct pg_synthesis_projection source_lambda_projection(const struct pg_synthesis_job *);
++static const struct pg_synthesis_work_class SOURCE_LAMBDA[1] = {{
++	.pending = {&pg_synthesis_pending_ops}, .size = sizeof(struct source_lambda_work),
++	.source_key = 1, .advance = source_lambda_step, .project = source_lambda_projection}};
++static const struct pg_synthesis_work_class SOURCE_PI[1] = {{
++	.pending = {&pg_synthesis_pending_ops}, .size = sizeof(struct source_pi_work),
++	.source_key = 1, .advance = source_pi_step}};
++
++struct pg_synthesis_job *pg_synthesis_source_lambda(struct pg_synthesis *synthesis,
++	const struct pg_source_scope *scope, const struct pg_syntax *syntax)
++{
++	if (!synthesis || !scope || scope->owner != synthesis->owner_key || !syntax || syntax->kind != PG_SYNTAX_LAMBDA) return NULL;
++	return pg_synthesis_work_request(synthesis, SOURCE_LAMBDA, 2, (const void *[]){scope, syntax});
++}
++
++struct pg_synthesis_job *pg_synthesis_source_pi(struct pg_synthesis *synthesis,
++	const struct pg_source_scope *scope, const struct pg_syntax *syntax)
++{
++	if (!synthesis || !scope || scope->owner != synthesis->owner_key || !syntax || syntax->kind != PG_SYNTAX_PI) return NULL;
++	return pg_synthesis_work_request(synthesis, SOURCE_PI, 2, (const void *[]){scope, syntax});
++}
++
++static struct pg_synthesis_projection source_lambda_projection(const struct pg_synthesis_job *job)
++{
++	const struct source_lambda_work *local = pg_synthesis_work_state(job, SOURCE_LAMBDA);
++	return (struct pg_synthesis_projection){local->rule,
++		job->status == PG_SYNTHESIS_PENDING && !local->rule, 0};
++}
++
++static void source_lambda_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
++{
++	struct source_lambda_work *local = pg_synthesis_work_state(job, SOURCE_LAMBDA);
++	const struct pg_source_scope *scope = job->inputs[0];
++	const struct pg_syntax *syntax = job->inputs[1];
++	if (pg_synthesis_scope_wait(synthesis, job, scope)) return;
++	if (!local->rule) {
++		struct pg_synthesis_job *binding = pg_synthesis_binding(synthesis, scope, syntax);
++		const struct pg_source_scope *inner = pg_synthesis_binding_scope(binding);
++		if (!inner) goto error;
++		struct pg_synthesis_job *body = pg_synthesis_request(synthesis, inner, syntax->right);
++		local->rule = pg_synthesis_lambda_body(synthesis,
++			(struct pg_synthesis_input){.pending = pg_synthesis_pending(binding)},
++			(struct pg_synthesis_input){.pending = pg_synthesis_pending(body)});
++		if (!body || !local->rule) goto error;
++	}
++	const struct pg_derivation_input *input = pg_synthesis_plain_derivation(local->rule);
++	if (input && input->rule == PG_LAMBDA_INTRO) {
++		/* Context and original body already belong to the actual Pi/body
++		 * inputs. Do not retain a parallel source representation of them. */
++		struct pg_synthesis_input pi = pg_synthesis_rule_input(synthesis, local->rule, 0);
++		struct pg_synthesis_input body = pg_synthesis_rule_input(synthesis, local->rule, 1);
++		body = pg_synthesis_body_input(pg_pending_job(body.pending));
++		const struct pg_evidence *proof = pg_synthesis_input_result(body);
++		if (proof && pg_synthesis_pending_status(body.pending) == PG_SYNTHESIS_DONE &&
++			pg_evidence_judgement(proof) == PG_JUDGEMENT_TYPE_FAMILY)
++			local->rule = pg_synthesis_plain_rule_inputs(synthesis, PG_TYPE_FAMILY_ABSTRACT, NULL, 2,
++				(struct pg_synthesis_input[]){pg_synthesis_rule_input(synthesis, pg_pending_job(pi.pending), 0), body});
++	}
++	pg_synthesis_forward(synthesis, job, local->rule);
++	return;
++error:
++	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR);
++}
++
++static void source_pi_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
++{
++	struct source_pi_work *local = pg_synthesis_work_state(job, SOURCE_PI);
++	const struct pg_source_scope *scope = job->inputs[0];
++	const struct pg_syntax *syntax = job->inputs[1];
++	if (pg_synthesis_scope_wait(synthesis, job, scope)) return;
++	if (!local->body) {
++		local->binding = pg_synthesis_binding(synthesis, scope, syntax);
++		const struct pg_source_scope *inner = pg_synthesis_binding_scope(local->binding);
++		if (!inner) goto error;
++		local->body = pg_synthesis_request(synthesis, inner, syntax->right);
++		if (!local->body) goto error;
++	}
++	if (pg_synthesis_await_input(synthesis, job, scope->context)) return;
++	if (!pg_synthesis_scope_context(scope)) goto error;
++	if (pg_synthesis_await(synthesis, job, local->binding)) return;
++	if (pg_synthesis_await(synthesis, job, local->body)) return;
++	const struct pg_evidence *context = pg_synthesis_scope_context(pg_synthesis_binding_scope(local->binding));
++	const struct pg_evidence *codomain = pg_synthesis_type_input(synthesis, job, &local->rule,
++		context, pg_synthesis_result(local->body));
++	if (!codomain) return;
++	if (pg_evidence_judgement(codomain) != PG_JUDGEMENT_COMPUTATION_TYPE)
++		codomain = pg_prove_computation_type(synthesis->typing, PG_TOTALITY_TOTAL,
++			pg_effect_row(synthesis->typing->graph, 0, NULL), pg_prove_value_type(synthesis->typing, codomain));
++	job->result = pg_prove_pi(synthesis->typing, context, codomain);
++	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);
++	return;
++error:
++	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR);
++}
 +
 +struct graph_work {
 +	struct pg_function_graph_work graph;
@@ -90,7 +194,7 @@
  	const struct pg_object *binder;
  	struct pg_substitution *substitution;
  	struct pg_comparison comparison;
-@@ -16,17 +93,19 @@
+@@ -16,17 +197,19 @@
  static void function_structure_completed(struct pg_synthesis *, struct pg_synthesis_job *, int);
  static const struct pg_term *function_structure_result(const struct pg_synthesis_job *);
  static const struct pg_synthesis_work_class TERM_STRUCTURE_JOB[1] = {{
@@ -111,7 +215,7 @@
  }
  
  static void function_structure_destroy(struct pg_synthesis_job *job)
-@@ -54,11 +133,21 @@
+@@ -54,11 +237,21 @@
  	}
  }
  
@@ -137,7 +241,7 @@
  }
  
  static void lambda_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
-@@ -66,34 +155,32 @@
+@@ -66,34 +259,32 @@
  {
  	struct function_structure_work *local = function_structure_work(job);
  	if (!local->binder) {
@@ -187,7 +291,7 @@
  	local->result = pg_lambda(synthesis->typing->graph, local->binder, pg_synthesis_type_structure_result(local->left));
  	pg_synthesis_finish(synthesis, job, local->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
  	return;
-@@ -102,14 +189,14 @@
+@@ -102,14 +293,14 @@
  }
  
  static void pi_application_structure_step(struct pg_synthesis *synthesis,
@@ -204,7 +308,7 @@
  			/* A constant codomain does not wait for argument conversion.
  			 * Once the argument is requested, dependence is already known. */
  			enum pg_comparison_status scan = pg_synthesis_independence(synthesis, job, &local->comparison, codomain, binder);
-@@ -119,10 +206,10 @@
+@@ -119,10 +310,10 @@
  				pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_DONE);
  				return;
  			}
@@ -218,7 +322,7 @@
  		struct pg_binding_value image = {binder, pg_synthesis_type_structure_result(local->right)};
  		local->substitution = pg_substitution_request(&synthesis->typing->substitutions, codomain, 1, &image);
  		if (!local->substitution) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-@@ -136,9 +223,10 @@
+@@ -136,9 +327,10 @@
  static void function_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
  	struct function_structure_work *local = function_structure_work(job);
@@ -232,7 +336,7 @@
  	if (proof) {
  		const struct pg_occurrence *subject = pg_evidence_subject(proof);
  		local->result = !subject ? NULL : classifier ? subject->classifier : subject->core;
-@@ -147,48 +235,45 @@
+@@ -147,48 +339,45 @@
  	}
  	const struct pg_derivation_input *input = pg_synthesis_plain_derivation(producer);
  	if (!input) goto unsupported;
@@ -299,7 +403,7 @@
  	case PG_PI_DOMAIN:
  		if (!pg_pi_view(left, &local->result, &binder, &codomain)) goto unsupported;
  		break;
-@@ -200,7 +285,7 @@
+@@ -200,7 +389,7 @@
  		break;
  	}
  	case PG_PI_CODOMAIN:
@@ -308,7 +412,7 @@
  		return;
  	default: goto unsupported;
  	}
-@@ -211,32 +296,48 @@
+@@ -211,32 +400,48 @@
  }
  
  struct family_work {
@@ -368,7 +472,7 @@
  	if (!pg_typed_query_advance(parameter, 1)) { pg_synthesis_enqueue(synthesis, job); return; }
  	const struct pg_evidence *scope = pg_typed_query_result(parameter);
  	if (scope && pg_evidence_rule(scope) == PG_CONTEXT_EXTEND)
-@@ -245,20 +346,36 @@
+@@ -245,20 +450,36 @@
  }
  
  struct pg_synthesis_job *pg_synthesis_family_contract(struct pg_synthesis *synthesis,
@@ -418,7 +522,7 @@
  }
  
  /* Establish a stable family by checking the returned type under its generic
-@@ -266,56 +383,67 @@
+@@ -266,56 +487,67 @@
  static void family_contract_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
  	struct family_work *local = pg_synthesis_work_state(job, FAMILY_CONTRACT_JOB);
@@ -514,7 +618,7 @@
  	return;
  rejected:
  	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
-@@ -326,17 +454,23 @@
+@@ -326,17 +558,23 @@
  static void family_function_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
  	struct family_work *local = pg_synthesis_work_state(job, FAMILY_FUNCTION_JOB);
@@ -546,7 +650,7 @@
  		const struct pg_evidence *construction = pg_typed_query_result(origin);
  		const struct pg_evidence *environment = pg_construction_origin_environment(origin);
  		const struct pg_occurrence *subject = construction ? pg_evidence_subject(construction) : NULL;
-@@ -344,34 +478,38 @@
+@@ -344,34 +582,38 @@
  		if (subject && subject->core->kind == PG_LAMBDA && pg_occurrence_scoped_input(subject, 0)) {
  			const struct pg_scope *selected = pg_evidence_binding_scope(construction);
  			const struct pg_evidence *context = selected ? pg_evidence_for_scope(synthesis->typing, selected) : NULL;
@@ -599,7 +703,7 @@
  }
  
  struct pi_scope_work {
-@@ -380,51 +518,78 @@
+@@ -380,51 +622,78 @@
  };
  
  static void classifier_step(struct pg_synthesis *, struct pg_synthesis_job *);
@@ -699,7 +803,7 @@
  }
  
  static struct pi_scope_work *pi_scope_work(const struct pg_synthesis_job *job)
-@@ -446,22 +611,22 @@
+@@ -446,22 +715,22 @@
  }
  
  static struct pg_synthesis_job *pi_scope(struct pg_synthesis *synthesis,
@@ -731,7 +835,7 @@
  	}
  	pg_synthesis_forward(synthesis, job, local->rule);
  }
-@@ -472,12 +637,12 @@
+@@ -472,12 +741,12 @@
  	return (struct pg_synthesis_projection){.rule = rule, .preparing = !rule, .value_kind = -1};
  }
  
@@ -749,7 +853,7 @@
  	if (parameters > SIZE_MAX / sizeof(struct pg_synthesis_job *)) return NULL;
  	struct pg_graph temporary = {0};
  	struct pg_synthesis_job **scopes = pg_alloc(&temporary, parameters * sizeof(*scopes));
-@@ -485,70 +650,64 @@
+@@ -485,70 +754,64 @@
  	/* Open the whole dependent telescope before discharging it in reverse.
  	 * A scope request owns its binder even while its domain is still pending. */
  	for (size_t i = 0; result && i < parameters; ++i) {

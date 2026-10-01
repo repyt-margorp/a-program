@@ -587,6 +587,16 @@ nominal identity, scoped substitutions or the difference between checking and
 executing an effect. Type/value judgement changes and `Thunk` formation are not
 the same as a no-work Evidence adapter and cannot be deleted on that analogy.
 
+2026-10-02, agent assessment on `2a0ba44` plus the source-Oracle prototype:
+Lambda source preparation needs only its selected rule; its Context and body
+already live on that rule's Pi/body inputs. Pi type-position normalization and
+surface quotation still have genuine unfinished dependencies. Their private
+states replace the broad central expression state, not the typing authority.
+Source inspection and resume validation must compare the actual lexical key,
+not require a particular implementation descriptor. A source-key capability on
+static descriptors is an inspection contract, not a new Core/Oracle tag or
+serialized acceptance flag. Plain structural-building queries still remain.
+
 ## Plan
 
 No new binding/domain checkpoint fields or backend features before this gate.
@@ -715,6 +725,35 @@ Do not mark a milestone complete just because a view hides the old representatio
   Remove the corresponding duplicated structural walkers and overbroad private
   state. Keep genuinely unfinished queries and effect dependencies; do not
   replace all of them with an unconditional wait for accepted Evidence.
+  Verified prototype increment (2026-10-02, parent `2a0ba44`): Lambda/Pi/Quote preparation no longer uses
+  the broad central expression state or its dispatcher. Function/CBPV borrow
+  syntax/scope from the exact request key. Lambda borrows Context/body from
+  the existing Pi/body rule inputs and retains only one rule pointer (8 bytes,
+  formerly 184); Pi retains 24 bytes and quotation 16. Type-position normalization
+  uses the existing CBPV query, not expected-type inference. Match demands,
+  definition body attachment and registration resume validate the same lexical
+  inputs, not the old central descriptor. Focused zero/split-fuel, sharing,
+  scope/ownership and ordinary-acceptance tests pass. The first regression run
+  exposed the old descriptor restriction on Pi assertions during image loading;
+  after replacing it with exact scope/syntax checks, the `07_add` image gate passes.
+  [Measurements](../src/prototype/solver_inputs/source_oracle_measurements.tsv)
+  preserve final Term/Occurrence/Evidence counts and premises in four samples.
+  QuickSort Job bytes fall 159,168, with nine additional structural requests and
+  dispatches: this is not a speedup claim. [Allocation](../src/prototype/solver_inputs/source_oracle_allocation.tsv)
+  is cumulative wrapped allocation, not live/total memory; pointer/hash order
+  varies between runs. [Applied deltas](../src/prototype/solver_inputs/source_oracle_delta.tsv):
+  implementation +250/-118 (net +132), tests +73/-1 (net +72). Code size has not
+  fallen; central semantic handling and retained state have been reduced.
+  Fresh assembly matches all 156 C/header files and its synthesis/derivation
+  checks pass. Current-worktree Core/IADT/synthesis, five C gates and focused
+  ASan/UBSan/leak checks pass without staging user changes. Full acceptance
+  passed on 2026-10-02, including general Sorted/permutation/result connection,
+  both LT providers/partition orders, partial images and invalid controls.
+  Semantic persistence and all seven checkpoint gates also pass. All 52 public
+  List partition images and the four-failure reload
+  report match the parent exactly; no failure is waived. Logs use
+  `/tmp/a-program-source-oracle-`. Core-building/checking-owner consolidation,
+  general frontier restoration and SE1-SE5 remain open; no production promotion.
   Verified prototype increment (2026-10-01, parent `9146893`): Lambda classifier,
   Handler carrier and Effect subsumption structural requests now borrow their
   actual input queries. Function/CBPV selection stays Oracle-local; their
