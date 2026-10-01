@@ -319,6 +319,15 @@ graph or image field is introduced. [Applied-file deltas](import_inputs_delta.ts
 are +17/-11 implementation and +21/-1 tests against `b3aa9e6`, not a net source
 reduction or a measured speedup. Status stays in the parent plan.
 
+Mapped Context-projection receipts now borrow their typed Context/origin's
+stable admissions. Alternate exact receipts remain sparse selections; ordinary
+variable images without an origin still retain their real inputs. Against
+`ca9a17c`, QuickSort retains 4,146 fewer premise references, with unchanged
+steps and Term/Occurrence/Evidence/Job counts. See
+[measurements](projection_receipts_measurements.tsv) and
+[applied deltas](projection_receipts_delta.tsv). This removes duplicate references,
+not object witness Terms, all Jobs or the existing public-resumption failures.
+
 Use the parent plan for progress. Create and verify a disposable candidate:
 
 ```sh

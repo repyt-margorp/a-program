@@ -631,7 +631,7 @@ request-key reader instead. Delete that scan, array and copy loop; retain the
 temporary topological map needed to relocate file-local pointers. No new
 frontier, retained input graph or wire field is justified by this change.
 
-2026-10-02, agent follow-up on `b3aa9e6` plus the import-reader trial:
+2026-10-02, agent follow-up on `ca9a17c`:
 mapped Context-projection receipts still retain a Context/source pair already
 available on the typed occurrence. Test borrowing these exact stable admissions
 with the existing sparse-selection layout. Retain ordinary variable-image
@@ -954,9 +954,25 @@ Do not mark a milestone complete just because a view hides the old representatio
   [applied-file deltas](../src/prototype/solver_inputs/import_inputs_delta.tsv).
   No Core tag, checking owner or wire field is added; SE1-SE5 remain open.
   Logs use `/tmp/a-program-import-inputs-`. User edits are excluded.
-  Follow-up trial: borrow mapped Context-projection receipts from their typed
-  Context/origin and preserve exact alternate selections; verify ordinary
-  reconstruction, index-disposal access, state censuses and image invariance.
+  Projection-receipt trial (2026-10-02, parent `ca9a17c`): mapped Context
+  projections borrow the typed Context/origin's stable receipts; differing exact
+  source selections remain sparse edges. Variable images without an origin
+  retain their real inputs. Ordinary reconstruction, access after index disposal,
+  focused ASan/UBSan/leaks and fresh/current assembly Core/IADT/synthesis pass.
+  [Paired censuses](../src/prototype/solver_inputs/projection_receipts_measurements.tsv)
+  at fuel 0/100/1000/completion differ only in retained premise references:
+  completed List/effect/captured/QuickSort change 816->776, 5262->4892,
+  1380->1310 and 198977->194831. Logical arities, steps and graph counts are
+  unchanged; these are reference counts, not byte or speed estimates.
+  All 52 List images and the four-failure strict partition TSV match the parent;
+  the public gate still exits 1. O2 regression/examples/full acceptance, semantic
+  persistence, all seven checkpoint gates and five C gates exit 0. This includes
+  general QuickSort result/Sorted/permutation and both LT providers/partition
+  orders. All 156 tested C/header files match fresh assembly; user edits are
+  excluded. [Applied-file deltas](../src/prototype/solver_inputs/projection_receipts_delta.tsv)
+  are +6/-0 implementation and +23/-0 tests, not a net line reduction.
+  No owner, tag, wire field or trust bypass is added. Keep SE1-SE5 open and this
+  increment unpromoted. Logs use `/tmp/a-program-projection-receipts-`.
   Verified prototype increment (2026-10-02, parent `7c3a1a1`):
   preparation reads its existing input owners through the request-key reader;
   checking reads the immutable checked/pending operand slots directly. The two

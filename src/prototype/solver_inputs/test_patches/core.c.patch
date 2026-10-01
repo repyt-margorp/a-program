@@ -43,7 +43,44 @@
  	premises[count] = source;
  	assert(!pg_prove_derivation(typing, input.rule, &input.parameters, count + 1, premises));
  	if (count) {
-@@ -1962,10 +1979,10 @@
+@@ -586,6 +603,26 @@
+ 	assert(a_type && pg_evidence_classifier(a_type) == pg_universe(graph, 0));
+ 	const struct pg_evidence *x_context = pg_prove_context_extension(&typing, a_context, x, a_type);
+ 	assert(x_context);
++	const struct pg_evidence *mapped_universe = pg_prove_projection(&typing, a_context, u0);
++	assert(mapped_universe && pg_evidence_premise_count(mapped_universe) == 2);
++	assert(!pg_evidence_retained_premise_count(mapped_universe));
++	assert(pg_evidence_premise(mapped_universe, 0) == a_context);
++	assert(pg_evidence_premise(mapped_universe, 1) == u0);
++	const struct pg_evidence *alternate_universe = pg_prove_reindex(&typing,
++		pg_prove_substitution_projection(&typing, empty, empty), u0);
++	const struct pg_evidence *selected_projection = pg_prove_projection(&typing, a_context, alternate_universe);
++	assert(selected_projection != mapped_universe);
++	assert(pg_evidence_subject(selected_projection) == pg_evidence_subject(mapped_universe));
++	assert(pg_evidence_retained_premise_count(selected_projection) == 1);
++	assert(pg_evidence_premise(selected_projection, 0) == a_context);
++	assert(pg_evidence_premise(selected_projection, 1) == alternate_universe);
++	assert(!pg_evidence_premise(selected_projection, 2));
++	reconstruct_derivation(&typing, mapped_universe);
++	reconstruct_derivation(&typing, selected_projection);
++	const struct pg_evidence *variable_projection = pg_prove_projection(&typing, x_context, a_type);
++	assert(!pg_evidence_subject(variable_projection)->origin);
++	assert(pg_evidence_retained_premise_count(variable_projection) == 2);
++	reconstruct_derivation(&typing, variable_projection);
+ 	const struct pg_evidence *fa = pg_prove_return_type(&typing, a_type);
+ 	assert(fa && pg_evidence_judgement(fa) == PG_JUDGEMENT_COMPUTATION_TYPE);
+ 	assert(!pg_prove_value_type(&typing, fa));
+@@ -1455,6 +1492,9 @@
+ 		reconstruct_derivation(&typing, records[i]);
+ 	}
+ 	pg_typing_destroy(&typing);
++	assert(pg_evidence_premise(mapped_universe, 0) == a_context);
++	assert(pg_evidence_premise(mapped_universe, 1) == u0);
++	assert(pg_evidence_premise(selected_projection, 1) == alternate_universe);
+ 	puts("evidence: checked contexts, stratified universes and occurrence-based variable derivations passed");
+ }
+ 
+@@ -1962,10 +2002,10 @@
  	assert(action && pg_occurrence_action_result(action) == pg_evidence_subject(destination_y));
  	uint64_t action_steps = pg_occurrence_action_steps(action);
  	const struct pg_evidence *first_receipt = pg_evidence_for_subject(&typing, pg_evidence_subject(reindexed), NULL);
@@ -56,7 +93,7 @@
  	assert(pg_evidence_for_subject(&typing, pg_evidence_subject(reindexed), NULL) == first_receipt);
  	assert(pg_evidence_for_subject(&typing, pg_evidence_subject(reindexed), reindexed) == alternative_result);
  	assert(!pg_evidence_for_subject(&typing, pg_evidence_subject(reindexed), alternative_result));
-@@ -1984,12 +2001,12 @@
+@@ -1984,12 +2024,12 @@
  		assert(++receipt_count <= typing.proofs.count);
  	}
  	assert(saw_original && saw_alternative);
@@ -72,7 +109,7 @@
  	assert(pg_evidence_for_subject(&typing, same_subject, NULL) == first_receipt);
  	assert(pg_evidence_for_subject(&typing, same_subject, reindexed) == alternative_result);
  	assert(pg_evidence_for_subject(&typing, same_subject, alternative_result) == after_alternative);
-@@ -5616,6 +5633,19 @@
+@@ -5616,6 +5656,19 @@
  	}
  	/* Arena-owned evidence survives index disposal, but not as accepted input
  	 * to another initialization of the same C storage address. */
@@ -92,7 +129,7 @@
  	pg_typing_destroy(&second);
  	assert(!pg_evidence_owned_by(types[1], &second));
  	assert(!pg_typing_init(&second, graph));
-@@ -5882,7 +5912,8 @@
+@@ -5882,7 +5935,8 @@
  		claimed.core = i ? pg_application(graph, pg_reference(graph, &pg_thunk_operation), omega) : omega;
  		const struct pg_occurrence *description = pg_occurrence_intern(&typing, &claimed,
  			subject->operands, pg_occurrence_maps(subject));
@@ -102,7 +139,7 @@
  		assert(!pg_evidence_for_subject(&typing, description, NULL));
  		assert(pg_prove_structural_subject(&typing, pg_evidence_subject(source)) == source);
  	}
-@@ -6195,6 +6226,42 @@
+@@ -6195,6 +6249,42 @@
  	const struct pg_evidence *request = pg_prove_request(&typing, op, payload, k);
  	assert(request && pg_evidence_rule(request) == PG_REQUEST_INTRO);
  	assert(pg_prove_request(&typing, op, payload, k) == request);
@@ -145,7 +182,7 @@
  	const struct pg_object *label;
  	const struct pg_term *a, *continuation;
  	assert(pg_computation_request_view(pg_evidence_subject(request)->core, &label, &a, &continuation));
-@@ -6294,6 +6361,36 @@
+@@ -6294,6 +6384,36 @@
  	assert(!pg_derivation_parameters(handled, &handler_parameters) && handler_parameters.handler == signature);
  	const struct pg_evidence *handler_premises[9];
  	for (size_t i = 0; i < 9; ++i) handler_premises[i] = pg_evidence_premise(handled, i);
@@ -182,7 +219,7 @@
  	assert(pg_prove_derivation(&typing, PG_HANDLER_ELIM, &handler_parameters, 9, handler_premises) == handled);
  	assert(!pg_prove_derivation(&typing, PG_HANDLER_ELIM, &handler_parameters, 8, handler_premises));
  	handler_premises[3] = u0;
-@@ -6425,8 +6522,16 @@
+@@ -6425,8 +6545,16 @@
  	struct pg_typing separate;
  	assert(!pg_typing_init(&separate, graph));
  	assert(!pg_prove_request(&separate, op, payload, k));
