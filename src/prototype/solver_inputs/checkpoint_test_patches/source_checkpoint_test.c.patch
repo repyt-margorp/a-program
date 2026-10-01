@@ -74,7 +74,7 @@
  	FILE *file = tmpfile();
 -	assert(file && !pg_sources_write_with(file, &p->synthesis, c->source_count, c->sources, 0, write_continuation, c));
 +	struct pg_synthesis_input export_inputs_0[(c->source_count) + 1];
-+	for (size_t i = 0; i < (c->source_count); ++i) export_inputs_0[i] = (struct pg_synthesis_input){.pending = (c->sources)[i]};
++	for (size_t i = 0; i < (c->source_count); ++i) export_inputs_0[i] = (struct pg_synthesis_input){.pending = pg_synthesis_pending((c->sources)[i])};
 +	assert(file && !pg_sources_write_with(file, &p->synthesis, c->source_count, export_inputs_0, 0, write_continuation, c));
  	assert(terms == p->graph.terms.count && proofs == p->typing.proofs.count && jobs == p->synthesis.jobs.count);
  	rewind(file);
@@ -124,8 +124,8 @@
  	FILE *file = tmpfile(), *plain = tmpfile();
 -	assert(file && plain && !pg_sources_write_with(file, &p->synthesis, 3, jobs, 1, write_shared, &out));
 -	assert(!pg_sources_write(plain, &p->synthesis, 3, jobs));
-+	assert(file && plain && !pg_sources_write_with(file, &p->synthesis, 3, (struct pg_synthesis_input[]){{.pending = (jobs)[0]}, {.pending = (jobs)[1]}, {.pending = (jobs)[2]}}, 1, write_shared, &out));
-+	assert(!pg_sources_write(plain, &p->synthesis, 3, (struct pg_synthesis_input[]){{.pending = (jobs)[0]}, {.pending = (jobs)[1]}, {.pending = (jobs)[2]}}));
++	assert(file && plain && !pg_sources_write_with(file, &p->synthesis, 3, (struct pg_synthesis_input[]){{.pending = pg_synthesis_pending((jobs)[0])}, {.pending = pg_synthesis_pending((jobs)[1])}, {.pending = pg_synthesis_pending((jobs)[2])}}, 1, write_shared, &out));
++	assert(!pg_sources_write(plain, &p->synthesis, 3, (struct pg_synthesis_input[]){{.pending = pg_synthesis_pending((jobs)[0])}, {.pending = pg_synthesis_pending((jobs)[1])}, {.pending = pg_synthesis_pending((jobs)[2])}}));
  	pg_program_destroy(p);
  	rewind(file);
  	size_t count = 0;
@@ -135,14 +135,14 @@
  	FILE *copy = tmpfile();
 -	assert(copy && !pg_sources_write_with(copy, &p->synthesis, count, roots, 1, write_shared, &in));
 +	struct pg_synthesis_input export_inputs_1[(count) + 1];
-+	for (size_t i = 0; i < (count); ++i) export_inputs_1[i] = (struct pg_synthesis_input){.pending = (roots)[i]};
++	for (size_t i = 0; i < (count); ++i) export_inputs_1[i] = (struct pg_synthesis_input){.pending = pg_synthesis_pending((roots)[i])};
 +	assert(copy && !pg_sources_write_with(copy, &p->synthesis, count, export_inputs_1, 1, write_shared, &in));
  	equal(file, copy);
  	FILE *extra = tmpfile();
  	in.trailing = 1;
 -	assert(extra && !pg_sources_write_with(extra, &p->synthesis, count, roots, 1, write_shared, &in));
 +	struct pg_synthesis_input export_inputs_2[(count) + 1];
-+	for (size_t i = 0; i < (count); ++i) export_inputs_2[i] = (struct pg_synthesis_input){.pending = (roots)[i]};
++	for (size_t i = 0; i < (count); ++i) export_inputs_2[i] = (struct pg_synthesis_input){.pending = pg_synthesis_pending((roots)[i])};
 +	assert(extra && !pg_sources_write_with(extra, &p->synthesis, count, export_inputs_2, 1, write_shared, &in));
  	rewind(extra);
  	struct shared_inputs bad = {0};
@@ -152,7 +152,7 @@
  	assert(p->root->status == PG_SYNTHESIS_DONE && !p->synthesis.ready);
  	FILE *file = tmpfile();
 -	assert(file && !pg_sources_write(file, &p->synthesis, 1, &p->root));
-+	assert(file && !pg_sources_write(file, &p->synthesis, 1, (struct pg_synthesis_input[]){{.pending = p->root}}));
++	assert(file && !pg_sources_write(file, &p->synthesis, 1, (struct pg_synthesis_input[]){{.pending = pg_synthesis_pending(p->root)}}));
  	return file;
  }
  
@@ -217,7 +217,7 @@
 +		struct pg_reference_frontier view = {{.checked = proof}, NULL};
 +		assert(pg_synthesis_reference_resume(s, use, &view)); /* Input without rule. */
 +		view.rule = wrong == 2 ? p->root : rule;
-+		if (wrong == 1) view.value = (struct pg_synthesis_input){.pending = rule};
++		if (wrong == 1) view.value = (struct pg_synthesis_input){.pending = pg_synthesis_pending(rule)};
  		size_t proofs = p->typing.proofs.count;
  		int status = pg_synthesis_reference_resume(s, use, &view);
  		assert(wrong ? status != 0 : status == 0);
@@ -234,12 +234,12 @@
  	struct pg_synthesis_job *producer = pg_program_select_name(p, module, syntax->token);
  	assert(producer && producer->status == PG_SYNTHESIS_PENDING);
 -	scope = pg_synthesis_name_job(s, scope, syntax->token, producer);
-+	scope = pg_synthesis_name(s, scope, syntax->token, (struct pg_synthesis_input){.pending = producer});
++	scope = pg_synthesis_name(s, scope, syntax->token, (struct pg_synthesis_input){.pending = pg_synthesis_pending(producer)});
  	struct pg_synthesis_job *use = pg_synthesis_request(s, scope, syntax);
 -	struct pg_reference_frontier view = {producer, pg_synthesis_plain_rule(s, PG_CONTEXT_PROJECTION, NULL, 2,
 -		(struct pg_synthesis_job *[]){scope->context_job, producer})};
-+	struct pg_reference_frontier view = {{.pending = producer}, pg_synthesis_plain_rule_inputs(s, PG_CONTEXT_PROJECTION, NULL, 2,
-+		(struct pg_synthesis_input[]){scope->context, {.pending = producer}})};
++	struct pg_reference_frontier view = {{.pending = pg_synthesis_pending(producer)}, pg_synthesis_plain_rule_inputs(s, PG_CONTEXT_PROJECTION, NULL, 2,
++		(struct pg_synthesis_input[]){scope->context, {.pending = pg_synthesis_pending(producer)}})};
  	size_t proofs = p->typing.proofs.count, jobs = s->jobs.count;
  	assert(pg_synthesis_reference_resume(s, use, &view));
  	assert(!s->steps && proofs == p->typing.proofs.count && jobs == s->jobs.count && !use->result);

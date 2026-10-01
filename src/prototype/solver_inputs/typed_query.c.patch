@@ -1,0 +1,113 @@
+--- a/typed_query.c
++++ b/typed_query.c
+@@ -1,5 +1,55 @@
+ #include "typed_query.h"
+ 
++struct pg_synthesis_job *pg_pending_job(struct pg_pending *pending)
++{
++	return pending && pending->role->ops->job ? pending->role->ops->job(pending) : NULL;
++}
++
++struct pg_typed_query *pg_pending_query(struct pg_pending *pending)
++{
++	return pending && pending->role->ops->query ? pending->role->ops->query(pending) : NULL;
++}
++
++const struct pg_evidence *pg_pending_result(const struct pg_pending *pending)
++{
++	return pending ? pending->role->ops->result(pending) : NULL;
++}
++
++static struct pg_typed_query *query_owner(struct pg_pending *pending)
++{
++	return (void *)pending;
++}
++
++static const struct pg_evidence *query_result(const struct pg_pending *pending)
++{
++	return pg_typed_query_result((const void *)pending);
++}
++
++const struct pg_pending_ops pg_typed_query_pending_ops = {
++	.query = query_owner, .result = query_result
++};
++
++const struct pg_typed_query_class *pg_typed_query_role(const struct pg_typed_query *query)
++{
++	return query ? (const void *)query->pending.role : NULL;
++}
++
++struct pg_typing *pg_typed_query_typing(const struct pg_typed_query *query)
++{
++	return query ? (void *)query->pending.owner : NULL;
++}
++
++int pg_typed_query_owned_by(const struct pg_typed_query *query, const struct pg_typing *typing)
++{
++	if (!typing || pg_typed_query_typing(query) != typing || !typing->typed_queries.capacity) return 0;
++	/* The typing container's address can be reused after reinitialization.
++	 * Its current interner, not that address alone, identifies live requests. */
++	for (const struct pg_index_entry *entry = pg_index_candidates(&typing->typed_queries, query->pending.index.hash);
++		entry; entry = entry->next)
++		if (entry == &query->pending.index) return 1;
++	return 0;
++}
++
+ static size_t state_extent(const struct pg_typed_query_class *role)
+ {
+ 	size_t alignment = _Alignof(struct pg_typed_query);
+@@ -21,7 +71,7 @@
+ 	for (struct pg_index_entry *entry = pg_index_candidates(&typing->typed_queries, hash); entry; entry = entry->next) {
+ 		if (entry->hash != hash) continue;
+ 		struct pg_typed_query *query = (void *)entry;
+-		if (query->role != role || query->ordinal != ordinal) continue;
++		if (pg_typed_query_role(query) != role || query->ordinal != ordinal) continue;
+ 		size_t i = 0;
+ 		while (i < role->input_count && query->inputs[i] == inputs[i]) ++i;
+ 		if (i == role->input_count) return query;
+@@ -32,18 +82,18 @@
+ 	char *storage = pg_alloc(typing->graph, offset + bytes);
+ 	if (!storage) return NULL;
+ 	struct pg_typed_query *query = (void *)(storage + offset);
+-	query->typing = typing;
+-	query->role = role;
++	query->pending.owner = typing;
++	query->pending.role = &role->pending;
+ 	query->ordinal = ordinal;
+ 	for (size_t i = 0; i < role->input_count; ++i) query->inputs[i] = inputs[i];
+-	if (pg_index_insert(&typing->typed_queries, &query->index, hash)) return NULL;
++	if (pg_index_insert(&typing->typed_queries, &query->pending.index, hash)) return NULL;
+ 	if (created) *created = 1;
+ 	return query;
+ }
+ 
+ void *pg_typed_query_state(const struct pg_typed_query *query)
+ {
+-	return (char *)query - state_extent(query->role);
++	return (char *)query - state_extent(pg_typed_query_role(query));
+ }
+ 
+ int pg_typed_query_advance(struct pg_typed_query *work, uint64_t budget)
+@@ -54,17 +104,17 @@
+ 		++work->steps;
+ 		if (!current->status && (!current->dependency || current->dependency->status)) {
+ 			if (current != work) ++current->steps;
+-			current->status = current->role->advance(current);
++			current->status = pg_typed_query_role(current)->advance(current);
+ 		}
+ 		if (current->status) {
+-			pg_typing_wait_clear(work->typing, &current->waiting);
+-			pg_typing_wait_pop(work->typing, &work->waiting);
++			pg_typing_wait_clear(pg_typed_query_typing(work), &current->waiting);
++			pg_typing_wait_pop(pg_typed_query_typing(work), &work->waiting);
+ 		} else if (current->dependency && !current->dependency->status) {
+-			if (pg_typing_wait_push(work->typing, &work->waiting, current->dependency))
++			if (pg_typing_wait_push(pg_typed_query_typing(work), &work->waiting, current->dependency))
+ 				work->status = -1;
+ 		}
+ 	}
+-	if (work->status) pg_typing_wait_clear(work->typing, &work->waiting);
++	if (work->status) pg_typing_wait_clear(pg_typed_query_typing(work), &work->waiting);
+ 	return work->status;
+ }
+ 

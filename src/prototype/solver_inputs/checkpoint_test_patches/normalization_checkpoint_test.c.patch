@@ -8,7 +8,7 @@
 -	struct pg_synthesis_job *proof_job = pg_synthesis_evidence(&other, proof);
 -	struct pg_synthesis_job *pending = pg_synthesis_normalize_jobs(&other, context_job, nf, PG_REDUCTION_WHNF);
 +	struct pg_synthesis_job *pending = pg_synthesis_reduction_request(&other,
-+		(struct pg_synthesis_input){.checked = context}, (struct pg_synthesis_input){.pending = nf}, PG_REDUCTION_WHNF, 0);
++		(struct pg_synthesis_input){.checked = context}, (struct pg_synthesis_input){.pending = pg_synthesis_pending(nf)}, PG_REDUCTION_WHNF, 0);
  	assert(pending && pg_synthesis_normalization_attach(&other, pending, whnf));
 -	struct pg_synthesis_job *correct = force
 -		? pg_synthesis_evaluate_jobs(&other, context_job, proof_job, PG_REDUCTION_WHNF)
@@ -36,11 +36,11 @@
 -	jobs[3] = pg_synthesis_expect(s, jobs[0], pg_synthesis_evidence(s, pg_prove_universe(s->typing, context, 42)));
 -	jobs[4] = pg_synthesis_expect(s, jobs[1], t);
 +	jobs[2] = pg_synthesis_expect_inputs(s,
-+		(struct pg_synthesis_input){.pending = jobs[0]}, (struct pg_synthesis_input){.checked = type});
++		(struct pg_synthesis_input){.pending = pg_synthesis_pending(jobs[0])}, (struct pg_synthesis_input){.checked = type});
 +	jobs[3] = pg_synthesis_expect_inputs(s,
-+		(struct pg_synthesis_input){.pending = jobs[0]}, (struct pg_synthesis_input){.checked = pg_prove_universe(s->typing, context, 42)});
++		(struct pg_synthesis_input){.pending = pg_synthesis_pending(jobs[0])}, (struct pg_synthesis_input){.checked = pg_prove_universe(s->typing, context, 42)});
 +	jobs[4] = pg_synthesis_expect_inputs(s,
-+		(struct pg_synthesis_input){.pending = jobs[1]}, (struct pg_synthesis_input){.checked = type});
++		(struct pg_synthesis_input){.pending = pg_synthesis_pending(jobs[1])}, (struct pg_synthesis_input){.checked = type});
  	for (size_t i = 0; i < 5; ++i) assert(jobs[i]);
  }
  
@@ -51,9 +51,9 @@
 -			? pg_synthesis_evaluate_jobs(&synthesis, premises[0], premises[1], PG_REDUCTION_WHNF)
 -			: pg_synthesis_normalize_jobs(&synthesis, premises[0], premises[1], PG_REDUCTION_WHNF);
 +			? pg_synthesis_reduction_request(&synthesis,
-+				(struct pg_synthesis_input){.pending = premises[0]}, (struct pg_synthesis_input){.pending = premises[1]}, PG_REDUCTION_WHNF, 1)
++				(struct pg_synthesis_input){.pending = pg_synthesis_pending(premises[0])}, (struct pg_synthesis_input){.pending = pg_synthesis_pending(premises[1])}, PG_REDUCTION_WHNF, 1)
 +			: pg_synthesis_reduction_request(&synthesis,
-+				(struct pg_synthesis_input){.pending = premises[0]}, (struct pg_synthesis_input){.pending = premises[1]}, PG_REDUCTION_WHNF, 0);
++				(struct pg_synthesis_input){.pending = pg_synthesis_pending(premises[0])}, (struct pg_synthesis_input){.pending = pg_synthesis_pending(premises[1])}, PG_REDUCTION_WHNF, 0);
  	assert(job && !pg_synthesis_normalization_pending(&synthesis, job));
  	wrong_owner_and_request(&synthesis, job, context, proof, whnf, force);
  	assert(!pg_synthesis_normalization_attach(&synthesis, job, whnf));
@@ -79,7 +79,7 @@
 -		? pg_synthesis_evaluate_jobs(&program->synthesis, premises[0], premises[1], PG_REDUCTION_WHNF)
 -		: pg_synthesis_normalize_jobs(&program->synthesis, premises[0], premises[1], PG_REDUCTION_WHNF);
 +	struct pg_synthesis_input premises[] = {
-+		{.checked = pg_prove_empty_context(&program->typing)}, {.pending = selected}};
++		{.checked = pg_prove_empty_context(&program->typing)}, {.pending = pg_synthesis_pending(selected)}};
 +	struct pg_synthesis_job *job = pg_synthesis_reduction_request(&program->synthesis,
 +		premises[0], premises[1], PG_REDUCTION_WHNF, force);
  	assert(job && !pg_synthesis_normalization_pending(&program->synthesis, job));
@@ -91,7 +91,25 @@
  	shared_jobs(&program->synthesis, context, proof, type, jobs);
 -	struct pg_synthesis_job *premises[] = {pg_synthesis_evidence(&program->synthesis, context), selected,
 -		pg_synthesis_evidence(&program->synthesis, type)};
-+	struct pg_synthesis_input premises[] = {{.checked = context}, {.pending = selected}, {.checked = type}};
++	struct pg_synthesis_input premises[] = {{.checked = context}, {.pending = pg_synthesis_pending(selected)}, {.checked = type}};
  	struct pg_graph storage;
  	struct pg_effect_inference effects;
  	struct pg_declaration_io codec;
+@@ -344,7 +345,8 @@
+ 	pg_synthesis_finish(s, job, PG_SYNTHESIS_DONE);
+ }
+ 
+-static const struct pg_synthesis_work_class consumer = {.start = idle_start, .advance = consumer_step};
++static const struct pg_synthesis_work_class consumer = {
++	.pending = {&pg_synthesis_pending_ops},.start = idle_start, .advance = consumer_step};
+ static const struct pg_synthesis_work_class preparing;
+ 
+ static void preparation_step(struct pg_synthesis *s, struct pg_synthesis_job *job)
+@@ -363,6 +365,7 @@
+ }
+ 
+ static const struct pg_synthesis_work_class preparing = {
++	.pending = {&pg_synthesis_pending_ops},
+ 	.size = sizeof(unsigned), .advance = preparation_step, .project = preparation_view};
+ 
+ static void schedule_jobs(struct pg_synthesis *s, struct pg_synthesis_job **jobs)

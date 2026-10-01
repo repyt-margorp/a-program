@@ -26,6 +26,11 @@ This is the active prerequisite work list, not another artifact format proposal.
 - Keep Core computation separate from typed construction. Do not extend `.a`
   for Transpiler/Linker responsibilities.
 
+2026-10-01, English paraphrase of the latest user follow-up: restarting from
+the Solve constraint frontier should suffice; critically examine Job/Evidence
+as possible duplicate graphs above Term, typed construction and Solve. This is
+a request to examine the architecture, not approval of a replacement wrapper.
+
 The user has not approved a new dependency representation or a new proof format.
 The design directions below are agent proposals grounded in the inspected code.
 
@@ -263,14 +268,41 @@ authority. The target keeps each obligation's inputs, cursor and result in one
 owner; the frontier only references that owner. It must not introduce a new
 Constraint record underneath an unchanged, independently stateful Job record.
 
-Latest static recheck, 2026-10-01, `85f4ccd` plus the separately inspected
-uncommitted Context/IADT edits: the committed prototype has now deleted the
-completed Evidence adapter factory and all callers. Accepted `src/` still has
-that adapter; prototype deletion is not production promotion. The general
-classifier Job still forwards the canonical typed query's result/status; partial
-substitution and derivation workers still own genuinely unfinished cursors.
-These observations supersede the adapter status in the historical tables below.
+Latest static recheck, 2026-10-01, `f4c4218`: accepted `src/` and the
+`solver_inputs` overlay on baseline `e716232` were inspected separately. The
+uncommitted Context/IADT edits remain outside this refactor. The committed
+prototype has deleted the completed Evidence adapter factory and all callers;
+accepted `src/` still has that adapter. Prototype deletion is not production
+promotion. The general classifier Job still advances the canonical typed query
+and copies its result/completion (`synthesis_function.c:classifier_step`), while
+`typed_query.h:pg_typed_query` already owns that query's cursor and result.
+Partial substitution and derivation workers still own genuinely unfinished
+cursors. These observations supersede the adapter status in historical tables.
 No fresh runtime verification was performed for this recheck.
+
+The uncommitted `solver_inputs/classifier_owner_work` trial is separate from
+that committed result. It passes a known-input classifier query directly and
+keeps an input-discovery owner when operands are unresolved. Discovery retains
+the canonical query reference, not its result or classification status. Its
+common prefix is embedded in existing owners; it allocates no adapter and owns
+no additional cursor/result/status. Job and typed-query dispatchers still remain
+separate, so this does not establish one frontier.
+Its initial O2 run failed input-image saving because export read the discovery
+Job's raw result instead of the actual query answer. The classifier-ownership
+milestone below records the correction, fuel-boundary tests and measured results,
+superseding that trial failure and the old constant-motive consumer status.
+Full frontier/persistence and partition gates remain open; no promotion or SE1
+completion follows.
+
+Agent assessment of the latest user concern: the frontier is a set of unfinished
+obligations, not another copy of the Term or derivation graph. Persist each
+obligation's actual cursor once; reconstruct disposable readiness references
+without redoing solved work. A common queue interface is justified only if it
+removes an existing wrapper's allocation and duplicated state, not if it merely
+adds another abstraction above unchanged owners. Evidence admission must remain
+distinct from witness Terms, but structural premise edges already recoverable
+from typed inputs should not be retained twice. This is the existing SE1-SE4
+ownership criterion, not authorization for a new representation or work list.
 
 Agent assessment: adopt the user's frontier model as the architectural target,
 not a claim that every existing Job already has an underlying constraint record.
@@ -341,6 +373,19 @@ and reverse wake index contain references only; they do not own copied results
 or acceptance decisions. For example, a partially built substitution needs its
 current map and next-image position even when readiness can be reconstructed.
 Do not attach scoped typing progress to a shared untyped Core Term.
+
+Clarification after inspecting `f4c4218` and the local classifier trial:
+"constraint" here means an actual construction/checking obligation, not a new
+table beneath the same Job. A query already owned by `typed_queries` is used
+directly; a partial substitution has one record for its map, next image and
+waiting dependency. The ready frontier borrows those records. Completed work
+may retain its canonical answer for sharing, but an independently completed Job
+above that answer is not justified by resumption. Do not assume a scan of Terms
+can recover scoped obligations, or require a full scan on every Solve step.
+Evidence must preserve checked admission and independent certificates; its
+current separate container and recoverable premise arrays are not required by
+that distinction. This is an agent architectural assessment, not a claim of
+conflicting accepted answers or a completed implementation.
 
 The general classifier is the next concrete ownership case: its Job waits for
 producer inputs, then advances a canonical `pg_typed_query` and mirrors that
@@ -431,6 +476,18 @@ Do not mark a milestone complete just because a view hides the old representatio
   For each retained record, identify the unfinished obligation that has no
   other owner. Direct-input migration alone does not discharge this requirement;
   a renamed task graph or one mutable status per Core Term also fails it.
+  The frontier borrows canonical unfinished obligations; only those obligations
+  own inputs, interrupted cursors and results. Save the necessary cursor and
+  deterministic scheduling information, not a second dependency program.
+  Evidence admission may move onto typed owners: retain independent checking
+  information, not a mandatory separate Evidence graph. Merely adding a common
+  header while retaining both stateful wrappers fails this ownership gate.
+  Check completed-frame retention as well as pending ownership: preserve exact
+  answer sharing without keeping a second completed Job for that answer. Queue
+  membership and reverse wake indexes borrow owners; they do not replicate the
+  typed/Term graph or own a parallel acceptance state. A query reference resolving
+  an input-discovery record is not closure of this gate until persistence and
+  all consumers distinguish discovery completion from query completion.
   Then migrate the dependency interface and its callers
   so accepted Evidence needs no `EVIDENCE_JOB`, scheduler status or duplicate
   result slot. Remove the adapter factory/role, then redundant producer-to-
@@ -2517,3 +2574,77 @@ Applied per-file deltas are in
 [the line sheet](../src/prototype/solver_inputs/conversion-frontier-lines.tsv):
 implementation +56/-12 (net +44), tests +73/-0. Audit code is separately +10/-3.
 Full SE1-SE5 remain open; this is not production promotion.
+
+### SE1 General Classifier Ownership (2026-10-01)
+
+#### Subjective (User)
+
+English paraphrase of the latest follow-up: resume the actual constraint frontier
+instead of maintaining a second Job graph duplicating Terms, typing and Solve.
+This requirement does not approve a particular replacement representation.
+
+#### Objective (Code)
+
+Parent `f4c4218`, frozen accepted baseline `e716232` plus recorded prototypes;
+concurrent accepted-source/Context/IADT edits are excluded and preserved.
+Known-input classifier requests now return the canonical typed query directly.
+Unresolved-input discovery retains only a reference to that query, not its
+answer. Its completion means discovery completed, not classification completed.
+The existing index/owner/role prefix is shared without allocating an adapter;
+Job/query header sizes remain 96/80 bytes on this build.
+
+Dependency/export consumers now borrow the actual owner's result. Query
+admission checks current interner membership, rejecting stale and foreign
+typing inputs without adding another ownership table. Every query transition,
+including completion, yields before a parent can advance another query.
+
+| Completed census | Parent | Candidate |
+| --- | ---: | ---: |
+| List-09 steps / Jobs | 2,594 / 828 | 2,612 / 820 |
+| List-09 raw Job bytes | 147,120 | 146,472 |
+| General QuickSort steps / Jobs | 801,376 / 49,993 | 801,698 / 48,986 |
+| General QuickSort raw Job bytes | 8,880,936 | 8,757,184 |
+
+Typed-query counts/bytes, Terms, occurrences and Evidence counts are unchanged.
+Query bytes remain 45,104 for List-09 and 5,345,744 for QuickSort. These are raw
+allocation/dispatch measurements, not total memory or a wall-time speedup.
+Applied per-file deltas are in
+[the line sheet](../src/prototype/solver_inputs/classifier_owner_delta.tsv):
+implementation +1,020/-698 (net +322); unit/checkpoint/artifact audit tests
++903/-735 (net +168). Stored patch context and documentation are excluded.
+
+#### Assessment
+
+Agent prototype decision: remove the classifier answer wrapper and preserve
+real source discovery separately. This does not yet give a single dispatcher:
+typed-query cursors and remaining construction Jobs still have separate queues.
+Private namespace checkpoint fixtures restore only answers already complete at
+capture, charge validation separately, and retain exact remaining-step/image
+checks. Their supported one-transition classifier queries are not a general
+public query-checkpoint codec. No wire fields or production code are added.
+
+Four public reload partition failures remain: 100+100 and 1,000+1,000 image-size
+differences; 1,600+1,600 progress/status differences; terminal+0 status difference.
+In-memory partitions and seed step-0 controls remain exact. Terminal fuel is now
+2,612. These failures remain completion blockers, not waived exceptions.
+
+#### Plan
+
+- [x] Migrate classifier consumers/export to the actual result owner; test
+  exact sharing, pending export, stale/foreign ownership and zero-fuel inactivity.
+- [x] Reproduce and fix multiple query advances in one parent dispatch.
+- [x] Run full O2 regression, examples, semantic and all seven checkpoint gates
+  from a clean recorded assembly; verify exact reassembly against trial inputs.
+- [x] Run ASan/UBSan Core/IADT/Identity/synthesis with leak detection.
+- [x] Verify both LT providers/partition orders, universal Sorted/permutation,
+  exact outputs, semantic partial images and invalid evidence. The earlier
+  combined invocation exited 2 only at the old namespace fixture; its corrected
+  fixture and the clean full regression/checkpoint invocation subsequently pass.
+- [x] Measure census and rerun strict public partitions; retain all four failures.
+- [ ] Publish this prototype milestone without production promotion.
+
+Evidence logs use `/tmp/a-program-classifier-owner-`; clean publication checks
+use `/tmp/a-program-classifier-owner-publish-check.log`. Full SE1-SE5 remain open
+under the existing active work list; remaining IADT forwarding, construction
+duplication, receipt overlap and public owner-frontier restoration are not
+completed by this milestone.

@@ -19,7 +19,7 @@
  		roots->items = items; roots->capacity = capacity;
  	}
 -	roots->items[roots->count++] = job;
-+	roots->items[roots->count++] = (struct pg_synthesis_input){.pending = job};
++	roots->items[roots->count++] = (struct pg_synthesis_input){.pending = pg_synthesis_pending(job)};
  	return 0;
  }
  
@@ -28,7 +28,7 @@
  				continue;
  			}
 -			program->root = roots->items[index - 1];
-+			program->root = roots->items[index - 1].pending;
++			program->root = pg_pending_job(roots->items[index - 1].pending);
  			report(stdout, program, program->root);
  			continue;
  		}

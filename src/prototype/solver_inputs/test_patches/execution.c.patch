@@ -8,7 +8,7 @@
 +	p->scope = pg_synthesis_name(&p->synthesis, p->scope,
  		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "Other", .length = 5},
 -		pg_synthesis_operation(&p->synthesis, op));
-+		(struct pg_synthesis_input){.pending = pg_synthesis_operation(&p->synthesis, op)});
++		(struct pg_synthesis_input){.pending = pg_synthesis_pending(pg_synthesis_operation(&p->synthesis, op))});
  	const struct pg_evidence *proof = entry(p, "main:=Other #\"a\";");
  	FILE *output = tmpfile();
  	assert(output);

@@ -118,7 +118,7 @@
 -	struct pg_synthesis_job *context = pg_synthesis_plain_rule(&p->synthesis, PG_CONTEXT_EMPTY, NULL, 0, NULL);
 -	struct pg_synthesis_job *root = pg_synthesis_plain_rule(&p->synthesis, PG_UNIVERSE_FORM, NULL, 1, &context);
 +	struct pg_synthesis_job *context = pg_synthesis_plain_rule_inputs(&p->synthesis, PG_CONTEXT_EMPTY, NULL, 0, NULL);
-+	struct pg_synthesis_job *root = pg_synthesis_plain_rule_inputs(&p->synthesis, PG_UNIVERSE_FORM, NULL, 1, &(struct pg_synthesis_input){.pending = context});
++	struct pg_synthesis_job *root = pg_synthesis_plain_rule_inputs(&p->synthesis, PG_UNIVERSE_FORM, NULL, 1, &(struct pg_synthesis_input){.pending = pg_synthesis_pending(context)});
  	struct pg_synthesis_job *bad[] = {root, NULL};
  	struct pg_synthesis_job **mapping = NULL;
  	assert(!pg_artifact_derivations_capture(&p->graph, &p->synthesis, 2, bad, &mapping) && !mapping);
@@ -257,10 +257,10 @@
 -			pg_synthesis_plain_rule(&p->synthesis, PG_UNIVERSE_FORM, NULL, 1, &evidence), NULL};
 -		struct pg_synthesis_job *value = pg_synthesis_plain_rule(&p->synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &roots[0]);
 -		roots[2] = pg_synthesis_plain_rule(&p->synthesis, PG_RETURN_INTRO, NULL, 1, &value);
-+			pg_synthesis_plain_rule_inputs(&p->synthesis, PG_UNIVERSE_FORM, NULL, 1, &(struct pg_synthesis_input){.pending = context}),
++			pg_synthesis_plain_rule_inputs(&p->synthesis, PG_UNIVERSE_FORM, NULL, 1, &(struct pg_synthesis_input){.pending = pg_synthesis_pending(context)}),
 +			pg_synthesis_plain_rule_inputs(&p->synthesis, PG_UNIVERSE_FORM, NULL, 1, &evidence), NULL};
-+		struct pg_synthesis_job *value = pg_synthesis_plain_rule_inputs(&p->synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &(struct pg_synthesis_input){.pending = roots[0]});
-+		roots[2] = pg_synthesis_plain_rule_inputs(&p->synthesis, PG_RETURN_INTRO, NULL, 1, &(struct pg_synthesis_input){.pending = value});
++		struct pg_synthesis_job *value = pg_synthesis_plain_rule_inputs(&p->synthesis, PG_VALUE_FROM_TYPE, NULL, 1, &(struct pg_synthesis_input){.pending = pg_synthesis_pending(roots[0])});
++		roots[2] = pg_synthesis_plain_rule_inputs(&p->synthesis, PG_RETURN_INTRO, NULL, 1, &(struct pg_synthesis_input){.pending = pg_synthesis_pending(value)});
  		assert(roots[0] != roots[1]);
  		advance(&p->synthesis, cut);
  		struct mixed_checkpoint m;
@@ -281,7 +281,7 @@
 +			pg_synthesis_rule_input(&p->synthesis, roots[1], 0).pending);
  		context = pg_artifact_derivations_root(m.upstream.state, m.upstream.jobs, 0);
 -		assert(roots[0]->inputs[3] == context);
-+		assert(pg_synthesis_rule_input(&p->synthesis, roots[0], 0).pending == context);
++		assert(pg_synthesis_rule_input(&p->synthesis, roots[0], 0).pending == pg_synthesis_pending(context));
  		struct mixed_checkpoint again;
  		mixed_collect(&again, p, context, roots);
  		copy = mixed_save(&again);

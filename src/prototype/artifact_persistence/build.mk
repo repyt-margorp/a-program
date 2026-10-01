@@ -106,10 +106,10 @@ $(BUILD)/artifact_metrics: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES))
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ARTIFACT_TESTS)metrics.c -Wl,--wrap=pg_graph_write_descriptors -Wl,--wrap=pg_occurrences_write_descriptors -Wl,--wrap=pg_contexts_write_descriptors -Wl,--wrap=pg_retained_write_semantic_with -Wl,--wrap=pg_synthesis_advance -Wl,--wrap=pg_whnf_advance -Wl,--wrap=pg_substitution_advance -Wl,--wrap=pg_effect_inference_advance -o $@
 
-$(BUILD)/artifact_state_audit: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(wildcard $(ROOT)*.h) $(ARTIFACT_PROTOTYPE)state_audit.c
+$(BUILD)/artifact_state_audit: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(wildcard $(ROOT)*.h) $(ARTIFACT_TESTS)state_audit.c
 	mkdir -p $(BUILD)
-	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ARTIFACT_PROTOTYPE)state_audit.c -o $@
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ARTIFACT_TESTS)state_audit.c -o $@
 
-$(BUILD)/artifact_allocation_audit: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(wildcard $(ROOT)*.h) $(ARTIFACT_PROTOTYPE)state_audit.c $(ARTIFACT_PROTOTYPE)allocation_audit.c
+$(BUILD)/artifact_allocation_audit: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(wildcard $(ROOT)*.h) $(ARTIFACT_TESTS)state_audit.c $(ARTIFACT_PROTOTYPE)allocation_audit.c
 	mkdir -p $(BUILD)
-	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ARTIFACT_PROTOTYPE)state_audit.c $(ARTIFACT_PROTOTYPE)allocation_audit.c -Wl,--wrap=pg_alloc -Wl,--wrap=pg_program_destroy -o $@
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ARTIFACT_TESTS)state_audit.c $(ARTIFACT_PROTOTYPE)allocation_audit.c -Wl,--wrap=pg_alloc -Wl,--wrap=pg_program_destroy -o $@

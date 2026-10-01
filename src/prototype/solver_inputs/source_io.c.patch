@@ -88,7 +88,7 @@
  		output->syntax = binding.clause;
  		output->definitions = binding.handler;
 -		output->producer = binding.allocation.operation;
-+		output->producer.pending = binding.allocation.operation;
++		output->producer.pending = pg_synthesis_pending(binding.allocation.operation);
  		output->allocation = binding.allocation;
  		output->slot = binding.slot;
  		return 0;
@@ -116,7 +116,7 @@
 +	}
 +	if (input.module) {
 +		output->kind = MODULE;
-+		output->producer.pending = input.module;
++		output->producer.pending = pg_synthesis_pending(input.module);
  		return 0;
  	}
  	if (input.exports) { output->kind = NAMESPACE; output->target = input.exports; }
@@ -190,7 +190,7 @@
  	if (syntax->kind == PG_SYNTAX_ELIMINATION) {
 -		const struct pg_match_allocation *input = pg_synthesis_match_allocation(job, &c->rules->storage);
 +		const struct pg_match_allocation *input = pg_synthesis_match_allocation(
-+			(struct pg_synthesis_input){.pending = (void *)job}, &c->rules->storage);
++			(struct pg_synthesis_input){.pending = pg_synthesis_pending((void *)job)}, &c->rules->storage);
  		if (!input || c->match_count == SIZE_MAX || SIZE_MAX - c->match_context_count < 2 ||
  			input->induction.count > (SIZE_MAX - c->match_context_count - 2) / 2) return -1;
  		struct source_match *match = pg_alloc(&c->rules->storage, sizeof(*match));
@@ -329,19 +329,19 @@
 -						producers[left - 1], producers[right - 1], fields)
 -						: pg_synthesis_operation_jobs(&program->synthesis, reference->as.reference,
 -							producers[left - 1], producers[right - 1]);
-+						(struct pg_synthesis_input){.pending = producers[left - 1]},
-+						(struct pg_synthesis_input){.pending = producers[right - 1]}, fields)
++						(struct pg_synthesis_input){.pending = pg_synthesis_pending(producers[left - 1])},
++						(struct pg_synthesis_input){.pending = pg_synthesis_pending(producers[right - 1])}, fields)
 +						: pg_synthesis_operation_request(&program->synthesis, reference->as.reference,
-+							(struct pg_synthesis_input){.pending = producers[left - 1]},
-+							(struct pg_synthesis_input){.pending = producers[right - 1]});
++							(struct pg_synthesis_input){.pending = pg_synthesis_pending(producers[left - 1])},
++							(struct pg_synthesis_input){.pending = pg_synthesis_pending(producers[right - 1])});
  				} else {
  					if (rule && !pg_synthesis_constructor_scope_at(&program->synthesis,
 -						producers[left - 1], reference->as.reference, producers[right - 1], prefix, fields)) goto fail;
 -					producers[i] = pg_synthesis_constructor_value_jobs(&program->synthesis,
 -						producers[left - 1], reference->as.reference, producers[right - 1]);
-+						(struct pg_synthesis_input){.pending = producers[left - 1]}, reference->as.reference, (struct pg_synthesis_input){.pending = producers[right - 1]}, prefix, fields)) goto fail;
++						(struct pg_synthesis_input){.pending = pg_synthesis_pending(producers[left - 1])}, reference->as.reference, (struct pg_synthesis_input){.pending = pg_synthesis_pending(producers[right - 1])}, prefix, fields)) goto fail;
 +					producers[i] = pg_synthesis_constructor_value(&program->synthesis,
-+						(struct pg_synthesis_input){.pending = producers[left - 1]}, reference->as.reference, (struct pg_synthesis_input){.pending = producers[right - 1]});
++						(struct pg_synthesis_input){.pending = pg_synthesis_pending(producers[left - 1])}, reference->as.reference, (struct pg_synthesis_input){.pending = pg_synthesis_pending(producers[right - 1])});
  				}
  			} else if (left || right) {
  				if (!left || left > i || !right || right > i || definitions || rule) goto fail;
@@ -352,13 +352,13 @@
 -						producers[left - 1], producers[right - 1], kind)
 -						: pg_synthesis_normalize_jobs(&program->synthesis, producers[left - 1], producers[right - 1], kind);
 +					producers[i] = pg_synthesis_reduction_request(&program->synthesis,
-+						(struct pg_synthesis_input){.pending = producers[left - 1]},
-+						(struct pg_synthesis_input){.pending = producers[right - 1]}, kind, syntax > 2);
++						(struct pg_synthesis_input){.pending = pg_synthesis_pending(producers[left - 1])},
++						(struct pg_synthesis_input){.pending = pg_synthesis_pending(producers[right - 1])}, kind, syntax > 2);
  				} else {
  					if (scope > n || syntax) goto fail;
  					producers[i] = pg_synthesis_source_expect(&program->synthesis, scopes[scope - 1],
 -						producers[left - 1], producers[right - 1]);
-+						(struct pg_synthesis_input){.pending = producers[left - 1]}, (struct pg_synthesis_input){.pending = producers[right - 1]});
++						(struct pg_synthesis_input){.pending = pg_synthesis_pending(producers[left - 1])}, (struct pg_synthesis_input){.pending = pg_synthesis_pending(producers[right - 1])});
  				}
  			} else if (rule) {
  				if (rule > nd || scope || syntax || definitions) goto fail;
@@ -370,10 +370,10 @@
 -					: pg_synthesis_bind_hypothesis(s, parent, field.binder, input->parameters.binder, rules[r->rule - 1]);
 -			} else scopes[i] = pg_synthesis_bind_context(s, parent, r->name,
 -				input->parameters.binder, rules[r->rule - 1]);
-+					? pg_synthesis_bind_graph(s, parent, field.binder, input->parameters.binder, (struct pg_synthesis_input){.pending = rules[r->rule - 1]})
-+					: pg_synthesis_bind_hypothesis(s, parent, field.binder, input->parameters.binder, (struct pg_synthesis_input){.pending = rules[r->rule - 1]});
++					? pg_synthesis_bind_graph(s, parent, field.binder, input->parameters.binder, (struct pg_synthesis_input){.pending = pg_synthesis_pending(rules[r->rule - 1])})
++					: pg_synthesis_bind_hypothesis(s, parent, field.binder, input->parameters.binder, (struct pg_synthesis_input){.pending = pg_synthesis_pending(rules[r->rule - 1])});
 +			} else scopes[i] = pg_synthesis_bind(s, parent, r->name,
-+				input->parameters.binder, (struct pg_synthesis_input){.pending = rules[r->rule - 1]});
++				input->parameters.binder, (struct pg_synthesis_input){.pending = pg_synthesis_pending(rules[r->rule - 1])});
  			if (!scopes[i]) goto fail;
  			continue;
  		}
@@ -382,7 +382,7 @@
  			if (!r->rule || r->rule > np || !parent || target || r->syntax || r->definitions) goto fail;
  			struct pg_synthesis_job *producer = producers[r->rule - 1];
 -			scopes[i] = r->kind == NAME ? pg_synthesis_name_job(s, parent, r->name, producer)
-+			scopes[i] = r->kind == NAME ? pg_synthesis_name(s, parent, r->name, (struct pg_synthesis_input){.pending = producer})
++			scopes[i] = r->kind == NAME ? pg_synthesis_name(s, parent, r->name, (struct pg_synthesis_input){.pending = pg_synthesis_pending(producer)})
  				: pg_synthesis_module_namespace(s, parent, r->name, producer);
  			if (!scopes[i]) goto fail;
  			continue;

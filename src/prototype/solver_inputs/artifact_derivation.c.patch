@@ -27,10 +27,12 @@
  };
  
  static int rule_child(void *owner, const void *key, size_t i, const void **child)
-@@ -61,20 +61,24 @@
+@@ -60,21 +60,25 @@
+ 	const struct pg_synthesis_job *job = key;
  	if (pg_dag_find(&closure->external, job)) return 0;
  	const struct pg_derivation_input *input = pg_synthesis_plain_derivation(job);
- 	if (!input || job->owner != closure->synthesis->owner_key || job->inputs[1] || input->effect_parameter) return -1;
+-	if (!input || job->owner != closure->synthesis->owner_key || job->inputs[1] || input->effect_parameter) return -1;
++	if (!input || job->pending.owner != closure->synthesis->owner_key || job->inputs[1] || input->effect_parameter) return -1;
 +	/* Checked premises are leaves in the enclosing data graph, not jobs. */
  	if (i == input->count) return 0;
 -	*child = job->inputs[3 + i];
@@ -70,7 +72,7 @@
  		}
  		if (i < raw) {
  			struct pg_synthesis_job *rule;
-@@ -109,13 +118,21 @@
+@@ -109,15 +118,23 @@
  
  static const struct pg_artifact_derivations *capture_rules(struct pg_graph *storage,
  	const struct pg_synthesis *s, size_t count, struct pg_synthesis_job *const *roots,
@@ -92,8 +94,11 @@
 +		if (pg_dag_add(&closure.checked, proof) || closure.checked.count != i + 1) goto done;
 +	}
  	for (size_t i = 0; i < external_count; ++i) {
- 		if (!external[i] || external[i]->owner != s->owner_key) goto done;
+-		if (!external[i] || external[i]->owner != s->owner_key) goto done;
++		if (!external[i] || external[i]->pending.owner != s->owner_key) goto done;
  		if (pg_dag_add(&closure.external, external[i]) || closure.external.count != i + 1) goto done;
+ 		if (pg_dag_add(&jobs, external[i])) goto done;
+ 	}
 @@ -126,12 +143,12 @@
  		if (pg_dag_add(&jobs, roots[i])) goto done;
  	}
@@ -109,7 +114,7 @@
  	return result;
  }
  
-@@ -139,17 +156,22 @@
+@@ -139,28 +156,33 @@
  	const struct pg_synthesis *s, size_t count, struct pg_synthesis_job *const *roots,
  	struct pg_synthesis_job ***output)
  {
@@ -137,6 +142,19 @@
  	struct pg_dag inputs = {0}, jobs = {0};
  	const struct pg_artifact_derivations *result = NULL;
  	if (pg_dag_init(&inputs, input_child, NULL) || pg_dag_init(&jobs, NULL, NULL)) goto done;
+ 	for (size_t i = 0; i < count; ++i) {
+ 		const struct pg_derivation_input *input = pg_synthesis_derivation_input(roots[i]);
+-		if (!input || roots[i]->owner != s->owner_key || roots[i]->inputs[1] != roots[0]->inputs[1]) goto done;
++		if (!input || roots[i]->pending.owner != s->owner_key || roots[i]->inputs[1] != roots[0]->inputs[1]) goto done;
+ 		if (pg_dag_add(&inputs, input)) goto done;
+ 	}
+ 	for (const struct pg_dag_node *n = inputs.first; n; n = n->next) {
+ 		const void *key[] = {n->key, roots[0]->inputs[1]};
+-		struct pg_synthesis_job *job = pg_synthesis_work_find(s, roots[0]->role, 2, key);
++		struct pg_synthesis_job *job = pg_synthesis_work_find(s, pg_synthesis_work_role(roots[0]), 2, key);
+ 		if (job && pg_dag_add(&jobs, job)) goto done;
+ 	}
+ 	size_t raw = jobs.count;
 @@ -170,7 +192,7 @@
  		if (pg_synthesis_derivation_frontier(s, n->key, &next, &rule)) goto done;
  		if (rule && pg_dag_add(&jobs, rule)) goto done;
@@ -184,7 +202,7 @@
  	}
  	for (size_t i = 0; i < raw; ++i) {
  		uint64_t *slot = &c->prepared[i];
-@@ -253,26 +278,46 @@
+@@ -253,28 +278,48 @@
  	size_t count, const struct pg_derivation_input *const *inputs, struct pg_effect_inference *effects,
  	struct pg_synthesis_job ***result)
  {
@@ -198,7 +216,7 @@
 +{
 +	return slot < c->checked_count
 +		? (struct pg_synthesis_input){.checked = dependencies->checked[slot]}
-+		: (struct pg_synthesis_input){.pending = jobs[slot - c->checked_count]};
++		: (struct pg_synthesis_input){.pending = pg_synthesis_pending(jobs[slot - c->checked_count])};
 +}
 +
 +static int dependencies_match(const struct pg_synthesis *s, const struct pg_artifact_derivations *c,
@@ -235,8 +253,11 @@
 +			for (size_t k = 0; k < links->count; ++k) premises[k] = linked_input(c, links->slots[k], jobs, dependencies);
 +			jobs[i] = pg_synthesis_rule_inputs(s, header, premises, NULL, NULL);
  		}
- 		if (!jobs[i] || jobs[i]->owner != s->owner_key) goto done;
+-		if (!jobs[i] || jobs[i]->owner != s->owner_key) goto done;
++		if (!jobs[i] || jobs[i]->pending.owner != s->owner_key) goto done;
  		if (pg_dag_add(&unique, jobs[i]) || unique.count != i + 1) goto done;
+ 	}
+ 	status = 0;
 @@ -285,14 +330,14 @@
  
  int pg_artifact_derivations_prepare_with_dependencies(struct pg_synthesis *s, const struct pg_artifact_derivations *c,
@@ -265,7 +286,8 @@
  	if (!s || !c || !jobs) return 0;
 +	if (!dependencies_match(s, c, dependencies)) return 0;
  	for (size_t i = 0; i < c->count; ++i)
- 		if (!jobs[i] || jobs[i]->owner != s->owner_key) return 0;
+-		if (!jobs[i] || jobs[i]->owner != s->owner_key) return 0;
++		if (!jobs[i] || jobs[i]->pending.owner != s->owner_key) return 0;
 +	for (size_t i = 0; i < c->external_count; ++i) if (jobs[i] != dependencies->jobs[i]) return 0;
  	if (!c->raw_count) {
  		for (size_t i = c->external_count; i < c->count; ++i) {

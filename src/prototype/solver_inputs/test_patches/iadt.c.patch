@@ -133,9 +133,9 @@
  		for (size_t i = 0; i < 2; ++i)
 -			applied = pg_synthesis_application(&synthesis, context, applied, pg_synthesis_evidence(&synthesis, arguments[i]));
 -		const struct pg_evidence *result = solve_index_proof(&synthesis, applied, chunk, PG_SYNTHESIS_DONE);
-+			applied = (struct pg_synthesis_input){.pending = pg_synthesis_application(&synthesis,
-+				(struct pg_synthesis_input){.checked = context}, applied, (struct pg_synthesis_input){.checked = arguments[i]})};
-+		const struct pg_evidence *result = solve_index_proof(&synthesis, applied.pending, chunk, PG_SYNTHESIS_DONE);
++			applied = (struct pg_synthesis_input){.pending = pg_synthesis_pending(pg_synthesis_application(&synthesis,
++				(struct pg_synthesis_input){.checked = context}, applied, (struct pg_synthesis_input){.checked = arguments[i]}))};
++		const struct pg_evidence *result = solve_index_proof(&synthesis, pg_pending_job(applied.pending), chunk, PG_SYNTHESIS_DONE);
  		assert(pg_evidence_classifier(result) == pg_return_type(typing->graph, pg_evidence_subject(original_type)->core));
  		const struct pg_evidence *normal = solve_index_proof(&synthesis,
 -			pg_synthesis_normalize_jobs(&synthesis, pg_synthesis_evidence(&synthesis, context), applied, PG_REDUCTION_NF),
@@ -172,7 +172,7 @@
  				const struct pg_evidence *checked = solve_index_proof(&synthesis,
 -					pg_synthesis_expect(&synthesis, job, pg_synthesis_evidence(&synthesis, expected)),
 +					pg_synthesis_expect_inputs(&synthesis,
-+						(struct pg_synthesis_input){.pending = job}, (struct pg_synthesis_input){.checked = expected}),
++						(struct pg_synthesis_input){.pending = pg_synthesis_pending(job)}, (struct pg_synthesis_input){.checked = expected}),
  					chunk, PG_SYNTHESIS_DONE);
  				assert(pg_evidence_subject(checked)->core == pg_evidence_subject(result)->core);
  				assert(pg_evidence_classifier(checked) == pg_evidence_subject(expected)->core);
@@ -195,7 +195,7 @@
 +					assert(pg_synthesis_disjoint_transport(&synthesis, c, l, r, path, v, t) == direct);
 +					assert(!pg_synthesis_disjoint_transport(&synthesis, c, l, r, (struct pg_synthesis_input){0}, v, t));
 +					assert(!pg_synthesis_disjoint_transport(&synthesis, c,
-+						(struct pg_synthesis_input){.checked = left, .pending = job}, r, path, v, t));
++						(struct pg_synthesis_input){.checked = left, .pending = pg_synthesis_pending(job)}, r, path, v, t));
 +					uint64_t steps = synthesis.steps;
 +					pg_synthesis_advance(&synthesis, 0);
 +					assert(synthesis.steps == steps && !pg_synthesis_result(direct) && synthesis.jobs.count == jobs + 1);
@@ -313,7 +313,7 @@
  					const struct pg_evidence *normal = solve_index_proof(&synthesis,
 -						pg_synthesis_normalize_jobs(&synthesis, cj, diagonal, PG_REDUCTION_NF), chunk, PG_SYNTHESIS_DONE);
 +						pg_synthesis_reduction_request(&synthesis,
-+							(struct pg_synthesis_input){.checked = cj}, (struct pg_synthesis_input){.pending = diagonal}, PG_REDUCTION_NF, 0), chunk, PG_SYNTHESIS_DONE);
++							(struct pg_synthesis_input){.checked = cj}, (struct pg_synthesis_input){.pending = pg_synthesis_pending(diagonal)}, PG_REDUCTION_NF, 0), chunk, PG_SYNTHESIS_DONE);
  					assert(pg_alpha_equal(pg_evidence_subject(normal)->core, pg_evidence_subject(input)->core) == 1);
  				}
  				if (chunk == 1) results[i] = checked;
@@ -338,7 +338,7 @@
 -					pg_synthesis_normalize_jobs(&synthesis, pg_synthesis_evidence(&synthesis, context),
 -						diagonal, PG_REDUCTION_NF), chunk, PG_SYNTHESIS_DONE);
 +					pg_synthesis_reduction_request(&synthesis,
-+						(struct pg_synthesis_input){.checked = context}, (struct pg_synthesis_input){.pending = diagonal}, PG_REDUCTION_NF, 0), chunk, PG_SYNTHESIS_DONE);
++						(struct pg_synthesis_input){.checked = context}, (struct pg_synthesis_input){.pending = pg_synthesis_pending(diagonal)}, PG_REDUCTION_NF, 0), chunk, PG_SYNTHESIS_DONE);
  				assert(pg_alpha_equal(pg_evidence_subject(reduced)->core, pg_evidence_subject(input)->core) == 1);
  			}
  			/* Distinct constructors do not themselves supply a path. Neither a

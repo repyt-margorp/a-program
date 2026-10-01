@@ -12,7 +12,7 @@
  
  static void conversion_step(struct pg_synthesis *, struct pg_synthesis_job *);
  static void conversion_destroy(struct pg_synthesis_job *);
-@@ -20,30 +23,35 @@
+@@ -20,30 +23,40 @@
  static void normalization_step(struct pg_synthesis *, struct pg_synthesis_job *);
  static void classifier_step(struct pg_synthesis *, struct pg_synthesis_job *);
  
@@ -22,41 +22,46 @@
 +}
 +
  static const struct pg_synthesis_work_class CONVERSION_JOB[1] = {{
++	.pending = {&pg_synthesis_pending_ops},
  	.size = sizeof(struct conversion_work), .advance = conversion_step, .destroy = conversion_destroy}};
  static const struct pg_synthesis_work_class EXPECT_JOB[1] = {{
 -	.size = sizeof(struct expectation_work), .advance = expect_step}};
++	.pending = {&pg_synthesis_pending_ops},
 +	.size = sizeof(struct expectation_work), .advance = expect_step, .resolved_input = resolved_input}};
  static const struct pg_synthesis_work_class NORMALIZATION_JOB[1] = {{
++	.pending = {&pg_synthesis_pending_ops},
  	.size = sizeof(struct normalization_work), .advance = normalization_step}};
  static const struct pg_synthesis_work_class NF_JOB[1] = {{
++	.pending = {&pg_synthesis_pending_ops},
  	.size = sizeof(struct normalization_work), .advance = normalization_step}};
  static const struct pg_synthesis_work_class CLASSIFIER_JOB[1] = {{
 -	.size = sizeof(struct classifier_work), .advance = classifier_step}};
++	.pending = {&pg_synthesis_pending_ops},
 +	.size = sizeof(struct classifier_work), .advance = classifier_step, .resolved_input = resolved_input}};
  
 -struct pg_synthesis_job *pg_synthesis_classifier_input(const struct pg_synthesis_job *job)
 +struct pg_synthesis_input pg_synthesis_classifier_input(const struct pg_synthesis_job *job)
  {
 -	return job && job->role == CLASSIFIER_JOB ? (void *)job->inputs[1] : NULL;
-+	return job && job->role == CLASSIFIER_JOB ? pg_synthesis_work_dependency(job, 2) : (struct pg_synthesis_input){0};
++	return job && pg_synthesis_work_role(job) == CLASSIFIER_JOB ? pg_synthesis_work_dependency(job, 2) : (struct pg_synthesis_input){0};
  }
  
 -struct pg_synthesis_job *pg_synthesis_expect_input(const struct pg_synthesis_job *job)
 +struct pg_synthesis_input pg_synthesis_expect_input(const struct pg_synthesis_job *job)
  {
 -	return job && job->role == EXPECT_JOB ? (void *)job->inputs[0] : NULL;
-+	return job && job->role == EXPECT_JOB ? pg_synthesis_work_dependency(job, 0) : (struct pg_synthesis_input){0};
++	return job && pg_synthesis_work_role(job) == EXPECT_JOB ? pg_synthesis_work_dependency(job, 0) : (struct pg_synthesis_input){0};
  }
  
 -struct pg_synthesis_job *pg_synthesis_expect_target(const struct pg_synthesis_job *job)
 +struct pg_synthesis_input pg_synthesis_expect_target(const struct pg_synthesis_job *job)
  {
 -	return job && job->role == EXPECT_JOB ? (void *)job->inputs[1] : NULL;
-+	return job && job->role == EXPECT_JOB ? pg_synthesis_work_dependency(job, 2) : (struct pg_synthesis_input){0};
++	return job && pg_synthesis_work_role(job) == EXPECT_JOB ? pg_synthesis_work_dependency(job, 2) : (struct pg_synthesis_input){0};
  }
  
  static void conversion_destroy(struct pg_synthesis_job *job)
-@@ -58,115 +66,115 @@
+@@ -58,115 +71,115 @@
  	return local && job->status == PG_SYNTHESIS_DONE ? local->certificate : NULL;
  }
  
@@ -134,14 +139,17 @@
 +	struct pg_synthesis_input *proof, enum pg_reduction_kind *kind, int *force)
  {
  	if (!synthesis || !job || !context || !proof || !kind) return -1;
- 	if (job->owner != synthesis->owner_key) return -1;
- 	if (job->role != NORMALIZATION_JOB && job->role != NF_JOB) return -1;
+-	if (job->owner != synthesis->owner_key) return -1;
+-	if (job->role != NORMALIZATION_JOB && job->role != NF_JOB) return -1;
 -	*context = (void *)job->inputs[0];
 -	*proof = (void *)job->inputs[1];
+-	*kind = job->role == NF_JOB ? PG_REDUCTION_NF : PG_REDUCTION_WHNF;
+-	if (force) *force = job->inputs[2] != NULL;
++	if (job->pending.owner != synthesis->owner_key) return -1;
++	if (pg_synthesis_work_role(job) != NORMALIZATION_JOB && pg_synthesis_work_role(job) != NF_JOB) return -1;
 +	*context = pg_synthesis_work_dependency(job, 0);
 +	*proof = pg_synthesis_work_dependency(job, 2);
- 	*kind = job->role == NF_JOB ? PG_REDUCTION_NF : PG_REDUCTION_WHNF;
--	if (force) *force = job->inputs[2] != NULL;
++	*kind = pg_synthesis_work_role(job) == NF_JOB ? PG_REDUCTION_NF : PG_REDUCTION_WHNF;
 +	if (force) *force = job->inputs[4] != NULL;
  	return 0;
  }
@@ -183,7 +191,7 @@
 -	const void *inputs[] = {context, proof};
 -	return pg_synthesis_work_request(synthesis, CLASSIFIER_JOB, 2, inputs);
 +	const void *inputs[] = {context.checked, context.pending, proof.checked, proof.pending};
-+	return (struct pg_synthesis_input){.pending = pg_synthesis_work_request(synthesis, CLASSIFIER_JOB, 4, inputs)};
++	return (struct pg_synthesis_input){.pending = pg_synthesis_pending(pg_synthesis_work_request(synthesis, CLASSIFIER_JOB, 4, inputs))};
  }
  
  static void classifier_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
@@ -241,7 +249,7 @@
  }
  
  struct pg_synthesis_job *pg_synthesis_compare_terms(struct pg_synthesis *synthesis,
-@@ -229,14 +237,13 @@
+@@ -229,14 +242,13 @@
  static void expect_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
  	struct expectation_work *local = pg_synthesis_work_state(job, EXPECT_JOB);
@@ -262,7 +270,7 @@
  		if (!pg_evidence_owned_by(term, synthesis->typing)) goto rejected;
  		if (!pg_evidence_owned_by(type, synthesis->typing)) goto rejected;
  		if (pg_evidence_context(term) != pg_evidence_context(type)) goto rejected;
-@@ -249,14 +256,12 @@
+@@ -249,14 +261,12 @@
  			break;
  		default: goto rejected;
  		}
@@ -280,7 +288,7 @@
  	if (job->result && local->checking_type != target) {
  		job->result = pg_prove_effect_subsumption(synthesis->typing, job->result, target);
  		if (!job->result) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-@@ -301,16 +306,16 @@
+@@ -301,22 +311,22 @@
  static const struct pg_evidence *normalization_input(struct pg_synthesis *synthesis,
  	const struct pg_synthesis_job *job)
  {
@@ -306,8 +314,28 @@
  }
  
  const struct pg_whnf_job *pg_synthesis_normalization_pending(const struct pg_synthesis *synthesis,
-@@ -346,8 +351,8 @@
- 	struct normalization_work *local = pg_synthesis_work_state(job, job->role);
+ 	const struct pg_synthesis_job *job)
+ {
+-	if (!synthesis || !job || job->owner != synthesis->owner_key) return NULL;
++	if (!synthesis || !job || job->pending.owner != synthesis->owner_key) return NULL;
+ 	if (job->status != PG_SYNTHESIS_PENDING) return NULL;
+ 	const struct normalization_work *local = pg_synthesis_work_state(job, NORMALIZATION_JOB);
+ 	if (!local || !local->checking_term || !local->reduction.whnf) return NULL;
+@@ -326,7 +336,7 @@
+ int pg_synthesis_normalization_attach(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
+ 	struct pg_whnf_job *whnf)
+ {
+-	if (!synthesis || !job || job->owner != synthesis->owner_key || !whnf) return -1;
++	if (!synthesis || !job || job->pending.owner != synthesis->owner_key || !whnf) return -1;
+ 	if (job->status != PG_SYNTHESIS_PENDING || job->dependency) return -1;
+ 	struct normalization_work *local = pg_synthesis_work_state(job, NORMALIZATION_JOB);
+ 	if (!local || local->checking_term || local->reduction.whnf) return -1;
+@@ -343,11 +353,11 @@
+ 
+ static void normalization_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+ {
+-	struct normalization_work *local = pg_synthesis_work_state(job, job->role);
++	struct normalization_work *local = pg_synthesis_work_state(job, pg_synthesis_work_role(job));
  	if (!local->checking_term) {
  		for (size_t i = 0; i < 2; ++i) {
 -			struct pg_synthesis_job *premise = (void *)job->inputs[i];
@@ -317,3 +345,12 @@
  		}
  		local->checking_term = normalization_input(synthesis, job);
  		if (!local->checking_term) {
+@@ -356,7 +366,7 @@
+ 	}
+ 	const struct pg_term *input = pg_evidence_subject(local->checking_term)->core;
+ 	const struct pg_reduction_certificate *certificate = pg_synthesis_reduction_advance(synthesis, job, &local->reduction, input,
+-		job->role == NF_JOB ? PG_REDUCTION_NF : PG_REDUCTION_WHNF);
++		pg_synthesis_work_role(job) == NF_JOB ? PG_REDUCTION_NF : PG_REDUCTION_WHNF);
+ 	if (!certificate) return;
+ 	job->result = pg_prove_normalization(synthesis->typing, local->checking_term, certificate);
+ 	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);

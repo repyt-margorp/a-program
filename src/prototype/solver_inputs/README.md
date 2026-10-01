@@ -141,7 +141,15 @@ Application callees and arguments borrow those same inputs. Match completion
 starts from its checked elimination result and allocates a continuation only for
 actual path/generalization applications or a computed scrutinee. Known implicit
 constructor indices and branch Contexts are borrowed directly. The Job-only
-classifier-formation entry point is removed; its query worker is not yet removed.
+classifier-formation entry point is removed. Known inputs now return the canonical
+typed query directly. Unresolved inputs retain one discovery record whose resolved
+query owns classification progress and the answer; discovery copies neither.
+Existing Job/query identity prefixes share an embedded view, without allocating
+another adapter or storing another result. Waiting yields after each query
+transition, including completion. Export borrows the actual answer without Solve.
+Direct-query admission checks the live typing interner, rejecting foreign and
+reinitialized-owner inputs without adding another ownership record. This does
+not yet unify the two dispatchers or close the public resumption gate.
 Lexical binding now has one checked/pending Context API; the Job-only binding
 entry point is removed. IH/graph associations borrow known Contexts directly.
 Only unavailable inputs require a binding-validation request; an existing one

@@ -1,6 +1,10 @@
 --- a/synthesis_effect.c
 +++ b/synthesis_effect.c
-@@ -4,7 +4,6 @@
+@@ -1,10 +1,10 @@
+ #include "synthesis_effect.h"
++#include "synthesis_source.h"
+ #include "synthesis_work.h"
+ #include "effect_inference.h"
  
  #include <stdlib.h>
  
@@ -8,7 +12,7 @@
  struct contribution_state { struct pg_synthesis_job *row; };
  struct row_state { struct pg_synthesis_job *children[2]; };
  struct substitution_state {
-@@ -14,14 +13,11 @@
+@@ -14,47 +14,28 @@
  	const struct pg_term *result;
  };
  
@@ -21,10 +25,13 @@
 -static const struct pg_synthesis_work_class inference_class = {
 -	.size = sizeof(struct inference_state), .advance = inference_step};
  static const struct pg_synthesis_work_class contribution_class = {
++	.pending = {&pg_synthesis_pending_ops},
  	.size = sizeof(struct contribution_state), .advance = contribution_step};
  static const struct pg_synthesis_work_class row_class = {
-@@ -29,25 +25,6 @@
++	.pending = {&pg_synthesis_pending_ops},
+ 	.size = sizeof(struct row_state), .advance = row_step};
  static const struct pg_synthesis_work_class substitution_class = {
++	.pending = {&pg_synthesis_pending_ops},
  	.size = sizeof(struct substitution_state), .advance = substitution_step, .destroy = substitution_destroy};
  
 -struct pg_effect_inference *pg_synthesis_effect_worker(const struct pg_synthesis_job *job)
@@ -48,8 +55,17 @@
 -
  struct pg_synthesis_job *pg_synthesis_effect_contribution(struct pg_synthesis *synthesis,
  	struct pg_effect_inference *work, struct pg_effect_equation *target,
- 	const struct pg_effect_row *mask, struct pg_synthesis_job *formation)
-@@ -75,14 +52,13 @@
+-	const struct pg_effect_row *mask, struct pg_synthesis_job *formation)
++	const struct pg_effect_row *mask, struct pg_pending *formation)
+ {
+ 	if (!work || work->rows != synthesis->typing->graph || !mask) return NULL;
+ 	if (!pg_effect_equation_parameter(work, target)) return NULL;
+-	struct pg_synthesis_job *structure = pg_synthesis_type_structure(synthesis, formation);
++	struct pg_synthesis_job *structure = pg_synthesis_type_structure_input(synthesis, (struct pg_synthesis_input){.pending = formation});
+ 	if (!structure) return NULL;
+ 	const void *inputs[] = {work, target, mask, structure};
+ 	return pg_synthesis_work_request(synthesis, &contribution_class, 4, inputs);
+@@ -75,14 +56,13 @@
  	const struct pg_effect_equation *const *equations)
  {
  	if (!term || (count && !equations) || count > SIZE_MAX / sizeof(void *) - 2) return NULL;
@@ -66,7 +82,7 @@
  	for (size_t i = 0; i < count; ++i) inputs[i + 2] = equations[i];
  	struct pg_synthesis_job *job = pg_synthesis_work_request(synthesis, &substitution_class, count + 2, inputs);
  	pg_graph_destroy(&temporary);
-@@ -95,16 +71,6 @@
+@@ -95,16 +75,6 @@
  	return state && pg_synthesis_status(job) == PG_SYNTHESIS_DONE ? state->result : NULL;
  }
  
@@ -83,7 +99,7 @@
  /* Registration must finish before row solving. Completed requests remain
   * reusable after sealing, but an unfinished contribution cannot add edges. */
  static int open_equation(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
-@@ -164,9 +130,8 @@
+@@ -164,9 +134,8 @@
  
  static void substitution_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {

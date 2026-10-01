@@ -120,7 +120,7 @@
  	const struct pg_object *label;
  	const struct pg_term *a, *continuation;
  	assert(pg_computation_request_view(pg_evidence_subject(request)->core, &label, &a, &continuation));
-@@ -6427,5 +6476,8 @@
+@@ -6427,6 +6476,9 @@
  	assert(!pg_prove_request(&separate, op, payload, k));
  	pg_typing_destroy(&separate);
  	pg_typing_destroy(&typing);
@@ -129,3 +129,4 @@
 +			assert(pg_evidence_premise(receipts[i], j) == receipt_inputs[i][j]);
  	puts("typed effects: signatures, multi-clause handlers, deep resumption, forwarding and effect bounds passed");
  }
+ 

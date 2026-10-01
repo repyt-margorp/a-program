@@ -1,0 +1,28 @@
+--- a/evidence_function.c
++++ b/evidence_function.c
+@@ -18,6 +18,7 @@
+ 
+ static int family_parameter_step(struct pg_typed_query *work);
+ static const struct pg_typed_query_class FAMILY_PARAMETER[1] = {{
++	.pending = {&pg_typed_query_pending_ops},
+ 	.size = sizeof(struct family_parameter), .input_count = 1, .advance = family_parameter_step}};
+ 
+ struct pg_typed_query *pg_family_parameter_request(struct pg_typing *typing,
+@@ -45,7 +46,7 @@
+ static int parameter_select(struct pg_typed_query *work)
+ {
+ 	struct family_parameter *local = pg_typed_query_state(work);
+-	struct pg_typing *typing = work->typing;
++	struct pg_typing *typing = pg_typed_query_typing(work);
+ 	const struct pg_evidence *source = local->source;
+ 	const struct pg_occurrence *subject = pg_evidence_subject(source);
+ 	const struct pg_evidence *parent, *prefix;
+@@ -99,7 +100,7 @@
+ static int family_parameter_step(struct pg_typed_query *work)
+ {
+ 	struct family_parameter *local = pg_typed_query_state(work);
+-	struct pg_typing *typing = work->typing;
++	struct pg_typing *typing = pg_typed_query_typing(work);
+ 	if (!local->stage) {
+ 		local->source = work->inputs[0];
+ 		/* Scope-sensitive inputs retain their selected formation. A search

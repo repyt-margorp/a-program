@@ -1,0 +1,68 @@
+--- a/state_audit.c
++++ b/state_audit.c
+@@ -2,6 +2,7 @@
+ #include "synthesis_source.h"
+ #include "derivation.h"
+ #include "dag.h"
++#include "typed_query.h"
+ 
+ #include <assert.h>
+ #include <errno.h>
+@@ -42,18 +43,31 @@
+ 	for (size_t i = 0; i < s->jobs.capacity; ++i) {
+ 		for (const struct pg_index_entry *entry = s->jobs.buckets[i]; entry; entry = entry->next) {
+ 			const struct pg_synthesis_job *job = (const void *)entry;
++			const struct pg_synthesis_work_class *role = pg_synthesis_work_role(job);
+ 			size_t alignment = _Alignof(struct pg_synthesis_job);
+ 			size_t bytes = sizeof(*job) + job->input_count * sizeof(*job->inputs)
+-				+ (job->role->size + alignment - 1) / alignment * alignment;
++				+ (role->size + alignment - 1) / alignment * alignment;
+ 			job_bytes += bytes;
+ 			pending += job->status == PG_SYNTHESIS_PENDING;
+ 			done += job->status == PG_SYNTHESIS_DONE;
+ 			rules += pg_synthesis_plain_derivation(job) != NULL;
+ 			lazy += pg_synthesis_derivation_input(job) != NULL;
+-			structural += job->role->structure != NULL;
++			structural += role->structure != NULL;
+ 			if (job->result) { ++outputs; assert(!pg_dag_add(&results, job->result)); }
+ 		}
+ 	}
++	size_t query_pending = 0, query_done = 0, query_bytes = 0;
++	for (size_t i = 0; i < p->typing.typed_queries.capacity; ++i) {
++		for (const struct pg_index_entry *entry = p->typing.typed_queries.buckets[i]; entry; entry = entry->next) {
++			const struct pg_typed_query *query = (const void *)entry;
++			const struct pg_typed_query_class *role = pg_typed_query_role(query);
++			size_t alignment = _Alignof(struct pg_typed_query);
++			query_bytes += sizeof(*query) + role->input_count * sizeof(*query->inputs)
++				+ (role->size + alignment - 1) / alignment * alignment;
++			query_pending += !query->status;
++			query_done += query->status == 1;
++		}
++	}
+ 	for (size_t i = 0; i < p->typing.proofs.capacity; ++i) {
+ 		for (const struct pg_index_entry *entry = p->typing.proofs.buckets[i]; entry; entry = entry->next) {
+ 			const struct pg_evidence *proof = (const void *)entry;
+@@ -67,11 +81,12 @@
+ 				overlap += typed_edge(subject, pg_evidence_subject(pg_evidence_premise(proof, j)));
+ 		}
+ 	}
+-	printf("%" PRIu64 "\t%" PRIu64 "\t%d\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\n",
++	printf("%" PRIu64 "\t%" PRIu64 "\t%d\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\n",
+ 		requested, steps, pg_synthesis_status(p->root), terms, occurrences, proofs,
+ 		jobs, pending, done, job_bytes, rules, lazy, structural,
+ 		outputs, results.count, premise_edges, overlap, retained_edges, eliminations,
+-		s->resolved_requests.count, key_bytes, key_buckets);
++		s->resolved_requests.count, key_bytes, key_buckets,
++		p->typing.typed_queries.count, query_pending, query_done, query_bytes);
+ 	pg_dag_destroy(&results);
+ 	assert(steps == s->steps && jobs == s->jobs.count && proofs == p->typing.proofs.count);
+ 	assert(terms == p->graph.terms.count && objects == p->graph.objects.count);
+@@ -92,7 +107,7 @@
+ 	struct pg_program *p = pg_program_create(source, (size_t)length, PG_DEFINITION_IMPLICIT_THUNK);
+ 	free(source);
+ 	assert(p && p->root);
+-	puts("requested_fuel\tsteps\tstatus\tterms\toccurrences\tevidence\tjobs\tpending\tdone\tjob_bytes\trules\tlazy_inputs\tstructure_capable_jobs\tresult_refs\tunique_results\tpremise_edges\ttyped_overlap\tretained_premise_edges\telimination_receipts\tresolved_keys\tresolved_key_aligned_bytes\tresolved_index_bytes");
++	puts("requested_fuel\tsteps\tstatus\tterms\toccurrences\tevidence\tjobs\tpending\tdone\tjob_bytes\trules\tlazy_inputs\tstructure_capable_jobs\tresult_refs\tunique_results\tpremise_edges\ttyped_overlap\tretained_premise_edges\telimination_receipts\tresolved_keys\tresolved_key_aligned_bytes\tresolved_index_bytes\ttyped_queries\tquery_pending\tquery_done\tquery_bytes");
+ 	uint64_t previous = 0;
+ 	for (int i = 2; i < argc; ++i) {
+ 		char *end;

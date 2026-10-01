@@ -3,6 +3,7 @@ set -euo pipefail
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 overlay=${1:?usage: overlay.sh NEW_DIRECTORY}
 bash "$here/../artifact_persistence/candidate.sh" "$overlay"
+cp "$here/pending.h" "$overlay/src/pending.h"
 for patch in "$here"/*.patch; do
 	name=${patch##*/}
 	name=${name%.patch}
@@ -28,7 +29,7 @@ for patch in "$here"/checkpoint_test_patches/*.patch; do
 	git apply --unsafe-paths --directory="$overlay/checkpoint_tests" "$patch"
 done
 mkdir "$overlay/artifact_tests"
-for name in semantic_test.c semantic_consumer.c metrics.c; do
+for name in semantic_test.c semantic_consumer.c metrics.c state_audit.c; do
 	ln -s "$(readlink -f "$here/../artifact_persistence/$name")" "$overlay/artifact_tests/$name"
 done
 for patch in "$here"/artifact_test_patches/*.patch; do

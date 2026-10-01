@@ -7,7 +7,7 @@
 -	const struct pg_source_scope *scope = pg_synthesis_name_job(synthesis,
 -		pg_synthesis_root(synthesis), token, producer);
 +	const struct pg_source_scope *scope = pg_synthesis_name(synthesis,
-+		pg_synthesis_root(synthesis), token, (struct pg_synthesis_input){.pending = producer});
++		pg_synthesis_root(synthesis), token, (struct pg_synthesis_input){.pending = pg_synthesis_pending(producer)});
  	assert(scope);
  	struct pg_parser parser;
  	struct pg_definition definition;
@@ -26,7 +26,7 @@
 -	assert(!pg_synthesis_export_rules(synthesis, count, jobs, &storage, &effects, 0, &inputs));
 +	struct pg_synthesis_input *roots = calloc(count, sizeof(*roots));
 +	assert(roots);
-+	for (size_t i = 0; i < count; ++i) roots[i].pending = jobs[i];
++	for (size_t i = 0; i < count; ++i) roots[i].pending = pg_synthesis_pending(jobs[i]);
 +	assert(!pg_synthesis_export_rules(synthesis, count, roots, &storage, &effects, 0, &inputs));
 +	free(roots);
  	for (size_t i = 0; i < count; ++i)
@@ -38,7 +38,7 @@
  	const struct pg_derivation_input *const *inputs;
 -	assert(!pg_synthesis_export_rules(synthesis, 1, &source, &storage, &image, 1, &inputs));
 +	assert(!pg_synthesis_export_rules(synthesis, 1, (struct pg_synthesis_input[]){
-+		{.pending = source}
++		{.pending = pg_synthesis_pending(source)}
 +		}, &storage, &image, 1, &inputs));
  	const struct pg_evidence *accepted = pg_synthesis_result(source);
  	struct pg_synthesis resumed;
@@ -49,7 +49,7 @@
  		size_t jobs = synthesis.jobs.count, proofs = typing->proofs.count;
 -		assert(pg_synthesis_export_rules(&synthesis, 1, &identity, &storage, &image, 0, &inputs) == 1);
 +		assert(pg_synthesis_export_rules(&synthesis, 1, (struct pg_synthesis_input[]){
-+			{.pending = identity}
++			{.pending = pg_synthesis_pending(identity)}
 +			}, &storage, &image, 0, &inputs) == 1);
  		assert(!inputs && image.failed && synthesis.jobs.count == jobs && typing->proofs.count == proofs);
  		pg_effect_inference_destroy(&image);
@@ -77,10 +77,10 @@
  		uint64_t steps = synthesis.steps;
 -		assert(!pg_synthesis_export_rules(&synthesis, 4, selected, &storage, &image, 0, &inputs));
 +		assert(!pg_synthesis_export_rules(&synthesis, 4, (struct pg_synthesis_input[]){
-+			{.pending = selected[0]},
-+			{.pending = selected[1]},
-+			{.pending = selected[2]},
-+			{.pending = selected[3]}
++			{.pending = pg_synthesis_pending(selected[0])},
++			{.pending = pg_synthesis_pending(selected[1])},
++			{.pending = pg_synthesis_pending(selected[2])},
++			{.pending = pg_synthesis_pending(selected[3])}
 +			}, &storage, &image, 0, &inputs));
  		assert(inputs[0] == inputs[3] && inputs[1]->effect_parameter != inputs[2]->effect_parameter);
  		assert(image.row_sources.count == 3 && !image.sealed);
@@ -95,8 +95,8 @@
  		inputs = NULL;
 -		assert(pg_synthesis_export_rules(&synthesis, 2, overlap, &storage, &image, 0, &inputs) == -1 && !inputs && image.failed);
 +		assert(pg_synthesis_export_rules(&synthesis, 2, (struct pg_synthesis_input[]){
-+			{.pending = overlap[0]},
-+			{.pending = overlap[1]}
++			{.pending = pg_synthesis_pending(overlap[0])},
++			{.pending = pg_synthesis_pending(overlap[1])}
 +			}, &storage, &image, 0, &inputs) == -1 && !inputs && image.failed);
  		pg_effect_inference_destroy(&image);
  		pg_graph_destroy(&storage);

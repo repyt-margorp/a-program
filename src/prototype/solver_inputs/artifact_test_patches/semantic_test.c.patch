@@ -6,12 +6,22 @@
  	FILE *file = tmpfile();
 -	assert(file && !pg_sources_write(file, &program->synthesis, count, roots));
 +	struct pg_synthesis_input export_inputs_0[(count) + 1];
-+	for (size_t i = 0; i < (count); ++i) export_inputs_0[i] = (struct pg_synthesis_input){.pending = (roots)[i]};
++	for (size_t i = 0; i < (count); ++i) export_inputs_0[i] = (struct pg_synthesis_input){.pending = pg_synthesis_pending((roots)[i])};
 +	assert(file && !pg_sources_write(file, &program->synthesis, count, export_inputs_0));
  	assert(terms == program->graph.terms.count && proofs == program->typing.proofs.count);
  	assert(occurrences == program->typing.occurrences.count && jobs == program->synthesis.jobs.count);
  	assert(steps == program->synthesis.steps);
-@@ -339,10 +341,11 @@
+@@ -91,7 +93,8 @@
+ 
+ static void early_wake(void)
+ {
+-	static const struct pg_synthesis_work_class role = {.advance = finish_work};
++	static const struct pg_synthesis_work_class role = {
++	.pending = {&pg_synthesis_pending_ops},.advance = finish_work};
+ 	struct pg_program *p = pg_program_allocate_empty(PG_DEFINITION_IMPLICIT_THUNK);
+ 	assert(p);
+ 	struct pg_synthesis_job *jobs[3];
+@@ -339,10 +342,11 @@
  	const struct pg_evidence *empty = pg_prove_empty_context(&p->typing);
  	/* A type is not a Context extension. Registration may still publish names,
  	 * but neither the module nor its definitions may bypass this failed input. */
@@ -23,11 +33,11 @@
 +		PG_UNIVERSE_FORM, NULL, 1, &(struct pg_synthesis_input){.checked = empty});
 +	const struct pg_source_scope *scope = pg_synthesis_bind(&p->synthesis, p->scope,
 +		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "x", .length = 1}, pg_binder(&p->graph),
-+		(struct pg_synthesis_input){.pending = invalid});
++		(struct pg_synthesis_input){.pending = pg_synthesis_pending(invalid)});
  	assert(scope && !pg_synthesis_scope_context(scope));
  	const char source[] = "main := @;";
  	struct pg_parser parser;
-@@ -385,12 +388,14 @@
+@@ -385,12 +389,14 @@
  		rule_input(&p->graph, PG_CONTEXT_EMPTY, 0, NULL),
  		rule_input(&p->graph, PG_RETURN_INTRO, 1, &context)};
  	struct pg_synthesis_job *const *jobs = NULL;
@@ -39,58 +49,58 @@
 -	assert(jobs[3] == pg_synthesis_rule(&p->synthesis, universe, &jobs[1], NULL, NULL));
 -	assert(p->synthesis.jobs.count == 2052 && !pg_synthesis_result(jobs[0]));
 +	assert(jobs[1] == pg_synthesis_rule_inputs(&p->synthesis, context, NULL, NULL, NULL));
-+	assert(jobs[3] == pg_synthesis_rule_inputs(&p->synthesis, universe, &(struct pg_synthesis_input){.pending = jobs[1]}, NULL, NULL));
++	assert(jobs[3] == pg_synthesis_rule_inputs(&p->synthesis, universe, &(struct pg_synthesis_input){.pending = pg_synthesis_pending(jobs[1])}, NULL, NULL));
 +	/* Each projection plus Context, Universe and invalid Return owns one request. */
 +	assert(p->synthesis.jobs.count == before + 2048 + 3 && !pg_synthesis_result(jobs[0]));
  	advance(p, 0);
  	no_import_preparation(p);
  	advance(p, 100000);
-@@ -481,7 +486,7 @@
+@@ -481,7 +487,7 @@
  		FILE *file = tmpfile();
  		assert(file);
  		for (size_t i = 0; i < prefix; ++i) assert(fputc(0, file) == 0);
 -		assert(!pg_sources_write(file, &source_program->synthesis, 1, &source_program->root));
-+		assert(!pg_sources_write(file, &source_program->synthesis, 1, (struct pg_synthesis_input[]){{.pending = source_program->root}}));
++		assert(!pg_sources_write(file, &source_program->synthesis, 1, (struct pg_synthesis_input[]){{.pending = pg_synthesis_pending(source_program->root)}}));
  		assert(!fseek(file, (long)prefix, SEEK_SET));
  		size_t count;
  		struct pg_synthesis_job *const *roots;
-@@ -582,7 +587,7 @@
+@@ -582,7 +588,7 @@
  	char path[] = "/tmp/a-program-publication-XXXXXX";
  	int descriptor = mkstemp(path);
  	assert(descriptor >= 0 && !close(descriptor));
 -	assert(!pg_artifact_save_file(path, program, 1, &program->root, PG_ARTIFACT_MATERIALIZED));
-+	assert(!pg_artifact_save_file(path, program, 1, &(struct pg_synthesis_input){.pending = program->root}, PG_ARTIFACT_MATERIALIZED));
++	assert(!pg_artifact_save_file(path, program, 1, &(struct pg_synthesis_input){.pending = pg_synthesis_pending(program->root)}, PG_ARTIFACT_MATERIALIZED));
  	/* A failed replacement must leave the previous artifact untouched. */
  	assert(pg_artifact_save_file(NULL, program, 0, NULL, PG_ARTIFACT_MATERIALIZED));
  	assert(pg_artifact_save_file(path, NULL, 0, NULL, PG_ARTIFACT_MATERIALIZED));
-@@ -607,7 +612,7 @@
+@@ -607,7 +613,7 @@
  	size_t occurrences = program->typing.occurrences.count, jobs = program->synthesis.jobs.count;
  	uint64_t steps = program->synthesis.steps;
  	FILE *file = tmpfile();
 -	assert(file && !pg_sources_write_inputs(file, &program->synthesis, 3, selection));
-+	assert(file && !pg_sources_write_inputs(file, &program->synthesis, 3, (struct pg_synthesis_input[]){{.pending = (selection)[0]}, {.pending = (selection)[1]}, {.pending = (selection)[2]}}));
++	assert(file && !pg_sources_write_inputs(file, &program->synthesis, 3, (struct pg_synthesis_input[]){{.pending = pg_synthesis_pending((selection)[0])}, {.pending = pg_synthesis_pending((selection)[1])}, {.pending = pg_synthesis_pending((selection)[2])}}));
  	assert(terms == program->graph.terms.count && proofs == program->typing.proofs.count);
  	assert(occurrences == program->typing.occurrences.count && jobs == program->synthesis.jobs.count);
  	assert(steps == program->synthesis.steps);
-@@ -729,7 +734,9 @@
+@@ -729,7 +735,9 @@
  	assert(!pg_graph_init(&storage) && !pg_effect_inference_init(&effects, &storage));
  	assert(!pg_declaration_io_init(&codec, &program->typing));
  	const struct pg_derivation_input *const *inputs;
 -	assert(!pg_synthesis_export_rules(&program->synthesis, 1, &selected, &storage, &effects, 1, &inputs));
 +	assert(!pg_synthesis_export_rules(&program->synthesis, 1, (struct pg_synthesis_input[]){
-+		{.pending = selected}
++		{.pending = pg_synthesis_pending(selected)}
 +		}, &storage, &effects, 1, &inputs));
  	FILE *file = tmpfile();
  	assert(file && !pg_retained_write_semantic(file, 1, inputs, &effects,
  		0, NULL, 2, stored, &pg_declaration_graph_codec, &codec));
-@@ -968,8 +975,8 @@
+@@ -968,8 +976,8 @@
  	assert((pg_synthesis_status(program->root) == PG_SYNTHESIS_DONE) == valid);
  	FILE *file = tmpfile();
  	assert(file);
 -	if (inputs_only) assert(!pg_sources_write_inputs(file, &program->synthesis, 1, &program->root));
 -	else assert(!pg_sources_write(file, &program->synthesis, 1, &program->root));
-+	if (inputs_only) assert(!pg_sources_write_inputs(file, &program->synthesis, 1, (struct pg_synthesis_input[]){{.pending = program->root}}));
-+	else assert(!pg_sources_write(file, &program->synthesis, 1, (struct pg_synthesis_input[]){{.pending = program->root}}));
++	if (inputs_only) assert(!pg_sources_write_inputs(file, &program->synthesis, 1, (struct pg_synthesis_input[]){{.pending = pg_synthesis_pending(program->root)}}));
++	else assert(!pg_sources_write(file, &program->synthesis, 1, (struct pg_synthesis_input[]){{.pending = pg_synthesis_pending(program->root)}}));
  	pg_program_destroy(program);
  	struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = "main", .length = 4};
  	struct pg_synthesis_job *const *roots;

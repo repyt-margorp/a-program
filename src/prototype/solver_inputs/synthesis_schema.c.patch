@@ -1,6 +1,35 @@
 --- a/synthesis_schema.c
 +++ b/synthesis_schema.c
-@@ -75,7 +75,7 @@
+@@ -15,8 +15,10 @@
+ static void data_schema_step(struct pg_synthesis *, struct pg_synthesis_job *);
+ static void schema_destroy(struct pg_synthesis_job *);
+ static const struct pg_synthesis_work_class CONSTRUCTOR_JOB[1] = {{
++	.pending = {&pg_synthesis_pending_ops},
+ 	.size = sizeof(struct constructor_result_work), .advance = constructor_step}};
+ static const struct pg_synthesis_work_class DATA_SCHEMA_JOB[1] = {{
++	.pending = {&pg_synthesis_pending_ops},
+ 	.size = sizeof(struct schema_work), .advance = data_schema_step, .destroy = schema_destroy}};
+ 
+ static void schema_destroy(struct pg_synthesis_job *job)
+@@ -50,7 +52,7 @@
+ 
+ const struct pg_data_schema *pg_synthesis_schema_result(const struct pg_synthesis_job *job)
+ {
+-	if (!job || job->role != DATA_SCHEMA_JOB || job->status != PG_SYNTHESIS_DONE) return NULL;
++	if (!job || pg_synthesis_work_role(job) != DATA_SCHEMA_JOB || job->status != PG_SYNTHESIS_DONE) return NULL;
+ 	const struct schema_work *local = pg_synthesis_work_state(job, DATA_SCHEMA_JOB);
+ 	return local->schema;
+ }
+@@ -64,7 +66,7 @@
+ 
+ const struct pg_data_declaration *pg_synthesis_schema_allocation(const struct pg_synthesis_job *job)
+ {
+-	if (!job || job->role != DATA_SCHEMA_JOB) return NULL;
++	if (!job || pg_synthesis_work_role(job) != DATA_SCHEMA_JOB) return NULL;
+ 	const struct schema_work *local = pg_synthesis_work_state(job, DATA_SCHEMA_JOB);
+ 	return local->nominal_input ? local->nominal_input : pg_data_schema_declaration(local->schema);
+ }
+@@ -75,7 +77,7 @@
  	const struct pg_source_scope *scope = job->inputs[0];
  	const struct pg_syntax *syntax = job->inputs[2];
  	if (pg_synthesis_scope_wait(synthesis, job, scope)) return;
@@ -9,7 +38,16 @@
  	if (!pg_synthesis_scope_context(scope)) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
  	if (!local->left) {
  		if (syntax->kind == PG_SYNTAX_LAMBDA) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
-@@ -196,7 +196,7 @@
+@@ -172,7 +174,7 @@
+ 	for (size_t bucket = 0; bucket < synthesis->jobs.capacity; ++bucket)
+ 		for (const struct pg_index_entry *entry = synthesis->jobs.buckets[bucket]; entry; entry = entry->next) {
+ 			const struct pg_synthesis_job *job = (const void *)entry;
+-			if (job->role != DATA_SCHEMA_JOB || job->status != PG_SYNTHESIS_REJECTED) continue;
++			if (pg_synthesis_work_role(job) != DATA_SCHEMA_JOB || job->status != PG_SYNTHESIS_REJECTED) continue;
+ 			const struct schema_work *state = pg_synthesis_work_state(job, DATA_SCHEMA_JOB);
+ 			const struct pg_syntax *constructors = pg_synthesis_telescope_body(state->right);
+ 			if (!constructors || state->checked == constructors->item_count || !state->members) continue;
+@@ -196,7 +198,7 @@
  	const struct pg_source_scope *scope = job->inputs[0];
  	const struct pg_syntax *syntax = job->inputs[1];
  	if (pg_synthesis_scope_wait(synthesis, job, scope)) return;

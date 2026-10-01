@@ -1,0 +1,48 @@
+--- a/evidence_scope.c
++++ b/evidence_scope.c
+@@ -82,8 +82,10 @@
+ static int scope_action_step(struct pg_typed_query *work);
+ static int checked_lift_step(struct pg_typed_query *work);
+ static const struct pg_typed_query_class SCOPE_ACTION[1] = {{
++	.pending = {&pg_typed_query_pending_ops},
+ 	.size = sizeof(struct scope_action), .input_count = 3, .advance = scope_action_step}};
+ static const struct pg_typed_query_class CONTEXT_LIFT[1] = {{
++	.pending = {&pg_typed_query_pending_ops},
+ 	.size = sizeof(struct checked_lift), .input_count = 3, .advance = checked_lift_step}};
+ 
+ static int checked_map(const struct pg_typing *typing, const struct pg_evidence *map)
+@@ -104,7 +106,7 @@
+ 
+ static int scope_action_step(struct pg_typed_query *work)
+ {
+-	struct pg_typing *typing = work->typing;
++	struct pg_typing *typing = pg_typed_query_typing(work);
+ 	struct scope_action *local = pg_typed_query_state(work);
+ 	const struct pg_evidence *prefix = work->inputs[0];
+ 	const struct pg_scope *scope = work->inputs[1];
+@@ -203,7 +205,7 @@
+ 	case PG_SUBSTITUTION_DONE: break;
+ 	}
+ 	const struct pg_context_map *map = pg_context_lift_result(local->allocation);
+-	work->dependency = scope_action_request(work->typing, work->inputs[0], work->inputs[1], map->destination);
++	work->dependency = scope_action_request(pg_typed_query_typing(work), work->inputs[0], work->inputs[1], map->destination);
+ 	return work->dependency ? 0 : -1;
+ }
+ 
+@@ -223,6 +225,7 @@
+ };
+ static int composition_step(struct pg_typed_query *work);
+ static const struct pg_typed_query_class CONTEXT_COMPOSE[1] = {{
++	.pending = {&pg_typed_query_pending_ops},
+ 	.size = sizeof(struct checked_composition), .input_count = 2, .advance = composition_step}};
+ 
+ struct pg_typed_query *pg_substitution_compose_request(struct pg_typing *typing,
+@@ -238,7 +241,7 @@
+ static int composition_step(struct pg_typed_query *work)
+ {
+ 	struct checked_composition *local = pg_typed_query_state(work);
+-	struct pg_typing *typing = work->typing;
++	struct pg_typing *typing = pg_typed_query_typing(work);
+ 	const struct pg_evidence *first = work->inputs[0], *second = work->inputs[1];
+ 	/* Prefix projections compose without substituting their variable images. */
+ 	if (pg_evidence_premise_count(first) == 2 && pg_evidence_premise_count(second) == 2) {
