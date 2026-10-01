@@ -192,6 +192,12 @@ instead of storing a second checked-term reference. Implicit-index conventions
 and field checkpoints remain unchanged. This removes two broad-state roles,
 not all Jobs; see [deltas](schema_owner_delta.tsv) and
 [measurements](schema_owner_measurements.tsv) against `937daea`.
+Scope validation now lives in Binding, with no private state or copied result;
+it borrows its original Context after validating the lexical binder. Source and
+binding post-checks retain two continuation pointers instead of the broad source
+layout; their inputs and exports are borrowed. The real checks and pending Job
+headers remain. See [deltas](source_check_owner_delta.tsv) and
+[measurements](source_check_owner_measurements.tsv) against `19a166a`.
 Lexical binding now has one checked/pending Context API; the Job-only binding
 entry point is removed. IH/graph associations borrow known Contexts directly.
 Only unavailable inputs require a binding-validation request; an existing one

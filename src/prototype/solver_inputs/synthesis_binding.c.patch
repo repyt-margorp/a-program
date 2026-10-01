@@ -1,6 +1,6 @@
 --- a/synthesis_binding.c
 +++ b/synthesis_binding.c
-@@ -13,7 +13,7 @@
+@@ -13,39 +13,111 @@
  	struct pg_source_context_allocation *allocation;
  };
  struct declaration_work {
@@ -9,7 +9,11 @@
  	const struct pg_term *result;
  };
  
-@@ -24,23 +24,36 @@
+ static void binding_step(struct pg_synthesis *, struct pg_synthesis_job *);
++static void scope_context_step(struct pg_synthesis *, struct pg_synthesis_job *);
+ static void domain_step(struct pg_synthesis *, struct pg_synthesis_job *);
+ static void telescope_step(struct pg_synthesis *, struct pg_synthesis_job *);
+ static void telescope_structure_step(struct pg_synthesis *, struct pg_synthesis_job *);
  static void declared_type_step(struct pg_synthesis *, struct pg_synthesis_job *);
  static void domain_structure_step(struct pg_synthesis *, struct pg_synthesis_job *);
  static const struct pg_term *declaration_result(const struct pg_synthesis_job *);
@@ -17,6 +21,9 @@
  static const struct pg_synthesis_work_class BINDING_JOB[1] = {{
 +	.pending = {&pg_synthesis_pending_ops},
  	.size = sizeof(struct binding_work), .advance = binding_step}};
++static const struct pg_synthesis_work_class SCOPE_CONTEXT_JOB[1] = {{
++	.pending = {&pg_synthesis_pending_ops}, .advance = scope_context_step,
++	.output = pg_synthesis_scope_context_input}};
  static const struct pg_synthesis_work_class DOMAIN_JOB[1] = {{
 -	.size = sizeof(struct domain_work), .advance = domain_step}};
 -static const struct pg_synthesis_work_class TELESCOPE_JOB[1] = {{.advance = telescope_step}};
@@ -49,7 +56,67 @@
  	if (pg_synthesis_scope_context(scope)) return 1;
  	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR);
  	return 0;
-@@ -80,7 +93,7 @@
+ }
+ 
++struct pg_synthesis_input pg_synthesis_scope_context_input(const struct pg_synthesis_job *job)
++{
++	return job && pg_synthesis_work_role(job) == SCOPE_CONTEXT_JOB
++		? pg_synthesis_work_dependency(job, 2) : (struct pg_synthesis_input){0};
++}
++
++static int binding_context(struct pg_synthesis *synthesis, const struct pg_source_scope *parent,
++	const struct pg_object *binder, const struct pg_evidence *extended_context, const struct pg_object *field)
++{
++	if (!parent || parent->owner != synthesis->owner_key ||
++		!pg_evidence_owned_by(extended_context, synthesis->typing)) return 0;
++	if (pg_evidence_judgement(extended_context) != PG_JUDGEMENT_CONTEXT) return 0;
++	const struct pg_context *context = pg_evidence_context(extended_context);
++	if (!pg_synthesis_scope_context(parent)) return 0;
++	if (!context || context->parent != pg_evidence_context(pg_synthesis_scope_context(parent))) return 0;
++	if (context->binder != binder) return 0;
++	return !field || pg_context_lookup(context->parent, field);
++}
++
++static void scope_context_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
++{
++	const struct pg_source_scope *parent = job->inputs[0];
++	if (!scope_ready(synthesis, job, parent)) return;
++	struct pg_synthesis_input context = pg_synthesis_scope_context_input(job);
++	if (pg_synthesis_await_input(synthesis, job, context)) return;
++	pg_synthesis_finish(synthesis, job, binding_context(synthesis, parent, job->inputs[1],
++		pg_synthesis_input_result(context), job->inputs[4]) ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);
++}
++
++const struct pg_source_scope *pg_synthesis_scope_bind(struct pg_synthesis *synthesis,
++	const struct pg_source_scope *parent, struct pg_token name,
++	const struct pg_object *binder, struct pg_synthesis_input context, const struct pg_object *field,
++	struct pg_synthesis_job *clause, enum pg_source_association association)
++{
++	if (!parent || parent->owner != synthesis->owner_key) return NULL;
++	if (!binder || binder->kind != PG_BINDER) return NULL;
++	if (!pg_synthesis_input_owned(synthesis, context)) return NULL;
++	if (field && field->kind != PG_BINDER) return NULL;
++	const void *inputs[] = {parent, binder, context.checked, context.pending, field};
++	/* A checked extension can outlive a still-pending parent. Preserve that
++	 * validation request if it exists; otherwise ready inputs need no work. */
++	struct pg_synthesis_job *checked = context.checked && parent->context.pending
++		? pg_synthesis_work_find(synthesis, SCOPE_CONTEXT_JOB, 5, inputs) : NULL;
++	if (context.checked && pg_synthesis_scope_context(parent) && !checked) {
++		if (!binding_context(synthesis, parent, binder, context.checked, field)) return NULL;
++	} else {
++		if (!checked) checked = pg_synthesis_work_request(synthesis, SCOPE_CONTEXT_JOB, 5, inputs);
++		if (!checked) return NULL;
++		context = (struct pg_synthesis_input){.pending = pg_synthesis_pending(checked)};
++	}
++	return pg_synthesis_intern_scope(synthesis, (struct pg_source_scope){.parent = parent, .name = name,
++		.binder = binder, .context = context, .associated_binder = field,
++		.association = association, .clause = clause});
++}
++
+ struct pg_synthesis_job *pg_synthesis_binding(struct pg_synthesis *synthesis,
+ 	const struct pg_source_scope *scope, const struct pg_syntax *syntax)
+ {
+@@ -80,7 +152,7 @@
  		if (syntax->kind == PG_SYNTAX_PI)
  			name = syntax->left->kind == PG_SYNTAX_BINDER ? syntax->left->token : (struct pg_token){0};
  		local->scope = pg_synthesis_intern_scope(synthesis, (struct pg_source_scope){.parent = scope,
@@ -58,7 +125,7 @@
  	}
  	return local->scope ? job : NULL;
  }
-@@ -91,7 +104,7 @@
+@@ -91,7 +163,7 @@
  {
  	const struct binding_work *local = pg_synthesis_work_state(job, BINDING_JOB);
  	if (!synthesis || !local || !scope || !syntax || !binder) return -1;
@@ -67,7 +134,7 @@
  	*scope = job->inputs[0]; *syntax = job->inputs[1]; *binder = local->binder;
  	return 0;
  }
-@@ -116,19 +129,19 @@
+@@ -116,19 +188,19 @@
  	if (!local->normalized) {
  		struct pg_synthesis_job *annotation = (void *)job->inputs[1];
  		if (pg_synthesis_await(synthesis, job, annotation)) return;
@@ -90,7 +157,7 @@
  }
  
  /* In binder annotations, an arrow telescope ending in @ declares a logical
-@@ -202,8 +215,8 @@
+@@ -202,8 +274,8 @@
  	const struct pg_syntax *syntax = job->inputs[1];
  	if (syntax->binder_marker) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
  	struct binding_work *local = pg_synthesis_work_state(job, BINDING_JOB);
@@ -101,7 +168,7 @@
  	job->result = family_parameter_annotation(pg_evidence_subject(domain)->core)
  		? family_parameter_context(synthesis, pg_synthesis_scope_context(scope), local->binder, domain)
  		: pg_prove_context_extension(synthesis->typing, pg_synthesis_scope_context(scope), local->binder, domain);
-@@ -240,7 +253,7 @@
+@@ -240,7 +312,7 @@
  static const struct telescope_work *telescope_result(const struct pg_synthesis_job *job)
  {
  	if (!job || job->status != PG_SYNTHESIS_DONE) return NULL;
@@ -110,7 +177,7 @@
  	return pg_synthesis_work_state(job, TELESCOPE_STRUCTURE_JOB);
  }
  
-@@ -289,7 +302,7 @@
+@@ -289,7 +361,7 @@
  	if (pg_synthesis_scope_wait(synthesis, job, outer)) return;
  	if (pg_synthesis_await(synthesis, job, structure)) return;
  	const struct pg_source_scope *scope = pg_synthesis_telescope_scope(structure);
@@ -119,7 +186,7 @@
  	job->result = pg_synthesis_scope_context(scope);
  	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
  }
-@@ -297,25 +310,32 @@
+@@ -297,25 +369,32 @@
  struct pg_synthesis_job *pg_synthesis_declared_type(struct pg_synthesis *synthesis,
  	struct pg_synthesis_job *context, const struct pg_object *binder)
  {
@@ -158,7 +225,7 @@
  	local->result = pg_synthesis_type_structure_result(local->input);
  	pg_synthesis_finish(synthesis, job, local->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
  }
-@@ -323,36 +343,37 @@
+@@ -323,36 +402,37 @@
  static void domain_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
  	struct declaration_work *local = pg_synthesis_work_state(job, DOMAIN_STRUCTURE_JOB);
@@ -220,7 +287,7 @@
  	if (accepted) {
  		const struct pg_context *declaration = pg_evidence_judgement(accepted) == PG_JUDGEMENT_CONTEXT
  			? pg_context_lookup(pg_evidence_context(accepted), binder) : NULL;
-@@ -361,28 +382,28 @@
+@@ -361,28 +441,28 @@
  		return;
  	}
  	const struct binding_work *binding = pg_synthesis_work_state(context, BINDING_JOB);

@@ -599,6 +599,32 @@ Do not mark a milestone complete just because a view hides the old representatio
   resolved before consolidation. The previous connectivity failure is resolved:
   commits through `97825ec` were pushed to Main on 2026-10-01. Accepted `src/`
   and user edits are not included.
+  Verified prototype increment (2026-10-01, parent `19a166a`): scope
+  validation belongs to Binding and borrows its checked input after validation,
+  with zero private state and no copied result. Source/binding post-checks borrow
+  scope, operands and exports; only type-computation/check continuation pointers
+  remain (16 bytes, formerly 192). Three shared roles/dispatch paths and the
+  source layout's duplicate checked-type field are removed. Do not remove lexical
+  validation: an admitted Context does not justify associating a different binder
+  with its name. The new rejection tests exercise that distinction and prevent
+  pre-validation acceptance; `::` remains an independent post-check. Focused O2,
+  C backend, ASan/UBSan with leak detection, clean-assembly synthesis/constructor/
+  derivation I/O and current-worktree Core/IADT/synthesis checks pass. Full O2
+  regression/examples/acceptance, semantic persistence and all seven checkpoint
+  gates exit 0, including general Sorted/result connection and all LT-provider/
+  partition orders with negative controls. The first census build used the old
+  helper path and failed; the corrected build uses the recorded patched helper.
+  [Paired measurements](../src/prototype/solver_inputs/source_check_owner_measurements.tsv)
+  preserve Solve steps, graph counts and logical premises in four samples. Job
+  state storage falls by 2,640/11,048/2,664/82,040 bytes for List/effect/graph/
+  QuickSort; this is not total memory or a speedup result. Job result references
+  fall by 35/18 in effect/QuickSort. Actual implementation is +136/-128 (net +8),
+  tests +21/-0; [per-file deltas](../src/prototype/solver_inputs/source_check_owner_delta.tsv).
+  Fresh assembly matches all 156 tested C/header files. All 52 List partition
+  images and the four-failure public reload report match the parent exactly.
+  Pending validation/checking headers, post-check result forwarding and six broad
+  source roles remain: this does not complete SE1-SE5 or promote prototype code.
+  Logs use `/tmp/a-program-source-check-owner-`.
 - [ ] **SE2 single construction path:** enumerate provisional structure inputs
   for Lambda/App/Pi and CBPV, extract their actual construction once under the
   existing semantic owners, and have checking consume that same construction.
