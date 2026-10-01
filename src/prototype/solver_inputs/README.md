@@ -427,6 +427,17 @@ imply a line-count reduction. Verification and the same four unresolved public
 reload failures are recorded in the parent plan. This is not full Job/Evidence
 removal or production promotion.
 
+2026-10-02, assertion-owner deletion against `1e707e6`: parsed `::` operands
+request the existing post-check directly; the broad expression wrapper and its
+preparation/dispatch are removed. Operation aliases follow the actual input,
+without copied metadata. No annotation supplies missing synthesis and no wire
+field is added. [Census](assert_inputs_measurements.tsv) removes five List Jobs,
+1,200 Job-layout bytes and ten dispatches; final typed counts remain unchanged.
+[Applied deltas](assert_inputs_delta.tsv): -12 implementation, +88 tests.
+Full regression/acceptance, seven checkpoint/five C gates, sanitizers and clean/
+current checks pass. Four public reload comparisons still fail; this is not
+complete Job/Evidence removal or production promotion. Status stays in the plan.
+
 Use the parent plan for progress. Create and verify a disposable candidate:
 
 ```sh

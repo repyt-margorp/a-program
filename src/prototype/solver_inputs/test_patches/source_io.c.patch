@@ -1377,7 +1377,7 @@
  			assert(scope == environment.parent);
  			if (!shared_type) shared_type = type;
  			assert(type == shared_type);
-@@ -3225,6 +3462,64 @@
+@@ -3225,6 +3462,128 @@
  	puts("source image: 512 alternating lexical/annotation dependencies retain shared syntax and split-budget results");
  }
  
@@ -1439,14 +1439,79 @@
 +	puts("source image: checked annotations retain shared inputs, load unaccepted and roundtrip unchanged at step zero");
 +}
 +
++static void parsed_annotation_sources(void)
++{
++	struct pg_program *p = pg_program_allocate(PG_DEFINITION_EXPLICIT_THUNK);
++	assert(p);
++	const struct pg_evidence *empty = pg_prove_empty_context(&p->typing);
++	const struct pg_evidence *u0 = pg_prove_universe(&p->typing, empty, 0);
++	const struct pg_evidence *u1 = pg_prove_universe(&p->typing, empty, 1);
++	const struct pg_source_scope *scope = pg_synthesis_name(&p->synthesis, p->scope,
++		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "V", .length = 1},
++		(struct pg_synthesis_input){.checked = u0});
++	scope = pg_synthesis_name(&p->synthesis, scope,
++		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "T", .length = 1},
++		(struct pg_synthesis_input){.checked = u1});
++	assert(scope);
++	const char *text[] = {"checked := V :: T;", "checked := V :: V;", "checked := Missing :: T;"};
++	struct pg_synthesis_input roots[4];
++	for (size_t i = 0; i < 3; ++i) {
++		struct pg_parser parser;
++		struct pg_definition definition;
++		pg_parser_init(&parser, &p->graph, text[i], strlen(text[i]));
++		assert(pg_parser_next(&parser, &definition) == 1);
++		struct pg_synthesis_job *owner = pg_synthesis_request(&p->synthesis, scope, definition.expression);
++		const struct pg_source_scope *actual;
++		struct pg_synthesis_input term, type;
++		assert(owner && !pg_synthesis_source_expect_input(&p->synthesis, owner, &actual, &term, &type));
++		assert(actual == scope && owner == pg_synthesis_source_expect(&p->synthesis, scope, term, type));
++		roots[i] = (struct pg_synthesis_input){.pending = pg_synthesis_pending(owner)};
++	}
++	roots[3] = roots[0];
++	FILE *file = tmpfile();
++	size_t jobs = p->synthesis.jobs.count, proofs = p->typing.proofs.count;
++	assert(file && !pg_sources_write(file, &p->synthesis, 4, roots));
++	assert(!p->synthesis.steps && jobs == p->synthesis.jobs.count && proofs == p->typing.proofs.count);
++	pg_program_destroy(p);
++	for (uint64_t chunk = 1; chunk <= 64; chunk *= 64) {
++		rewind(file);
++		size_t count;
++		struct pg_synthesis_job *const *restored;
++		p = pg_sources_read(file, 10000, &count, &restored);
++		assert(p && count == 4 && restored[0] == restored[3]);
++		jobs = p->synthesis.jobs.count; proofs = p->typing.proofs.count;
++		FILE *again = tmpfile();
++		for (size_t i = 0; i < count; ++i) roots[i] = (struct pg_synthesis_input){.pending = pg_synthesis_pending(restored[i])};
++		assert(again && !pg_sources_write(again, &p->synthesis, count, roots));
++		pg_synthesis_advance(&p->synthesis, 0);
++		assert(!p->synthesis.steps && jobs == p->synthesis.jobs.count && proofs == p->typing.proofs.count);
++		rewind(file); rewind(again);
++		int byte;
++		do { byte = fgetc(file); assert(byte == fgetc(again)); } while (byte != EOF);
++		assert(!ferror(file) && !ferror(again) && !fclose(again));
++		while (p->synthesis.ready) {
++			assert(p->synthesis.steps < 10000);
++			pg_synthesis_advance(&p->synthesis, chunk);
++		}
++		assert(pg_synthesis_status(restored[0]) == PG_SYNTHESIS_DONE);
++		assert(pg_evidence_subject(pg_synthesis_result(restored[0]))->core == pg_universe(&p->graph, 0));
++		assert(pg_synthesis_status(restored[1]) == PG_SYNTHESIS_REJECTED);
++		assert(pg_synthesis_status(restored[2]) == PG_SYNTHESIS_REJECTED);
++		pg_program_destroy(p);
++	}
++	assert(!fclose(file));
++	puts("source image: parsed assertions use their sole checking owner, preserve zero-step bytes and reject wrong or missing inputs");
++}
++
  static void annotation_sources(FILE *file, int writing, uint64_t chunk)
  {
  	struct pg_program *p;
-@@ -3232,31 +3527,37 @@
+@@ -3232,31 +3591,38 @@
  	struct pg_synthesis_job *const *roots;
  	if (writing) {
  		prepared_scope_chain();
 +		checked_annotation_sources();
++		parsed_annotation_sources();
  		p = pg_program_allocate(PG_DEFINITION_EXPLICIT_THUNK);
  		assert(p);
  		struct pg_synthesis_job *term = parse(p, p->scope, "{{main:=@;}}.main");
@@ -1490,7 +1555,7 @@
  		rewind(names);
  		struct pg_program *restored = pg_sources_read(names, 10000, &count, &roots);
  		assert(restored && count == 2 && !restored->synthesis.steps);
-@@ -3276,21 +3577,23 @@
+@@ -3276,21 +3642,23 @@
  		assert(p->typing.proofs.count == 1);
  		for (size_t i = 0; i < count; ++i) assert(!pg_synthesis_result(roots[i]));
  		const struct pg_source_scope *scope;
@@ -1520,7 +1585,7 @@
  		pg_program_destroy(p);
  		rewind(pending);
  		p = pg_sources_read(pending, 10000, &count, &roots);
-@@ -3342,13 +3645,17 @@
+@@ -3342,13 +3710,17 @@
  			}
  		}
  		uint64_t steps = p->synthesis.steps;
@@ -1540,7 +1605,7 @@
  		pg_program_destroy(p);
  		rewind(pending);
  		p = pg_sources_read(pending, 20000, &count, &roots);
-@@ -3421,7 +3728,7 @@
+@@ -3421,7 +3793,7 @@
  	for (size_t round = 0; round < 2; ++round) {
  		FILE *file = tmpfile();
  		uint64_t steps = p->synthesis.steps;
@@ -1549,7 +1614,7 @@
  		assert(p->synthesis.steps == steps);
  		invalid_module_entries(file);
  		pg_program_destroy(p);
-@@ -3439,7 +3746,7 @@
+@@ -3439,7 +3811,7 @@
  		struct pg_synthesis_job *definition = pg_synthesis_definition_request(&p->synthesis,
  			scope, syntax, syntax->items[0].expression);
  		struct pg_synthesis_job *type = pg_synthesis_request(&p->synthesis, local, syntax->items[1].expression);
@@ -1558,7 +1623,7 @@
  		assert(check);
  		if (p->synthesis.jobs.count != jobs) {
  			fprintf(stderr, "prepared module round %zu: reconstructed %zu missing producer inputs\n",
-@@ -3473,7 +3780,7 @@
+@@ -3473,7 +3845,7 @@
  		size_t snapshots = 0;
  		for (;;) {
  			FILE *file = tmpfile();
@@ -1567,7 +1632,7 @@
  			rewind(file);
  			size_t count;
  			struct pg_synthesis_job *const *roots;
-@@ -3547,10 +3854,10 @@
+@@ -3547,10 +3919,10 @@
  			assert(!pg_synthesis_visit_source_bindings(&p->synthesis, check_source_allocation, &check) && check.count == 1);
  		}
  		FILE *file = fopen(argv[2], "w+b");
@@ -1581,7 +1646,7 @@
  		assert(!fclose(file));
  	} else {
  		FILE *file = fopen(argv[2], "rb");
-@@ -3561,7 +3868,9 @@
+@@ -3561,7 +3933,9 @@
  		if (!strcmp(argv[1], "retained-resave")) {
  			assert(argc == 4);
  			file = fopen(argv[3], "w+b");
@@ -1592,7 +1657,7 @@
  			assert(!fclose(file) && !p->synthesis.steps && !p->evaluation.jobs.count);
  		} else {
  			assert(argc == 3);
-@@ -3577,6 +3886,63 @@
+@@ -3577,6 +3951,63 @@
  	pg_program_destroy(p);
  }
  
@@ -1656,7 +1721,7 @@
  int main(int argc, char **argv)
  {
  	/* Compare a saved named construction with independently checked source. */
-@@ -3629,7 +3995,7 @@
+@@ -3629,7 +4060,7 @@
  		pg_program_destroy(p);
  		return 0;
  	}

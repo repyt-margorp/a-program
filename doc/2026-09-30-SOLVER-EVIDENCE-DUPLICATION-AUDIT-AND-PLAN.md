@@ -852,6 +852,30 @@ Do not mark a milestone complete just because a view hides the old representatio
   Public reload still fails four comparisons (100:100, 1000:1000, 1600:1600,
   completed+0), not an expected-pass exemption. SE1-SE5 remain open. This is
   an unpromoted prototype; user edits are excluded. Logs: `/tmp/a-program-literal-inputs-`.
+  Verified assertion-owner deletion (2026-10-02, parent `1e707e6`): parsed
+  `PG_SYNTAX_EXPECT` operands go directly to the existing assertion owner.
+  The broad expression wrapper, preparation stage and dispatch case are deleted;
+  Operation aliases borrow that owner's original input. Synthesis still precedes
+  post-checking, with no new state/tag/codec or annotation-directed inference.
+  [Census](../src/prototype/solver_inputs/assert_inputs_measurements.tsv): List
+  completion removes five Jobs/result references, 1,200 Job-layout bytes and ten
+  dispatches (2612->2602); final typed/Evidence/query counts are unchanged.
+  Other sampled final censuses match; this is not a general memory/speedup claim.
+  [Applied deltas](../src/prototype/solver_inputs/assert_inputs_delta.tsv):
+  implementation +11/-23 (net -12), tests +89/-1 (net +88), excluding patch context.
+  Full O2 regression/examples/acceptance, semantic persistence, seven checkpoint
+  and five C gates pass, including general QuickSort Sorted/permutation. Focused
+  ASan/UBSan/leaks and fresh/current-worktree checks pass; fresh assembly matches
+  tested source/tests. Parsed assertions roundtrip byte-identically at step zero
+  and still reject missing inputs/wrong types. An initial test wrongly expected
+  fresh parses to share AST identity; the corrected test repeats the same AST.
+  Existing Operation-alias coverage exposed an old wrapper-specific origin path;
+  reading the direct assertion input fixes it without copying alias metadata.
+  All 42 common-budget List images match the parent's recorded images. The public
+  partition gate still fails four reload comparisons (100:100, 1000:1000,
+  1600:1600, completed+0), with completion now at 2602; no failure is waived.
+  SE1-SE5 remain open. Prototype only; user edits excluded.
+  Logs use `/tmp/a-program-assert-inputs-`.
   Verified application-owner increment (2026-10-02, parent `0fb14e9`): Function
   owns source App preparation and borrows scope/syntax from its exact key.
   Delete central application/callable slots, the separate application-state

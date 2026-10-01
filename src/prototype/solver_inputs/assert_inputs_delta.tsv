@@ -1,0 +1,6 @@
+file	added	removed	net	category
+src/synthesis.c	11	23	-12	implementation
+tests/synthesis.c	24	1	23	tests
+tests/source_io.c	65	0	65	tests
+implementation_total	11	23	-12	implementation
+tests_total	89	1	88	tests
