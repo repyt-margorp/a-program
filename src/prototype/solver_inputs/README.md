@@ -58,6 +58,11 @@ Handler retains its independent operation-signature proofs, not another copy
 of its computation, return clause, carrier and clause bodies. Logical order,
 alternative proof keys and access after typing-index disposal stay unchanged.
 This supersedes the omitted-prefix/dense-suffix layout for Request and Fold.
+IADT formation also borrows parameter/index/constructor-result receipts from
+its existing Schema, retaining no second premise array. Exact Schema receipt
+selections and logical order remain distinct even for one nominal declaration;
+the getter remains valid after typing-index disposal. This does not remove
+Schema checking, generative identity or the remaining Evidence/Job owners.
 Rule requests use the same hash lookup for checked and pending inputs, borrowing
 the key during lookup and copying it only on a miss. Structural queries retain
 only a result, child query and normalization pointer, not the broad source state.

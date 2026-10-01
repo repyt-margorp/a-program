@@ -659,6 +659,35 @@ Do not mark a milestone complete just because a view hides the old representatio
   Match/induction/constructor. Migrate interning keys, consumers, export and
   ordinary checking in the same milestone. Recheck concurrent relocation work;
   do not overwrite it or silently discard required scope/formation evidence.
+  Verified prototype increment (2026-10-01, parent `85c5549`): IADT formation
+  borrows its exact parameter/index/constructor-result receipts from the existing
+  Schema and retains no second premise array. All raw formation-premise readers
+  now use the logical getter. Tests cover empty/indexed families, distinct exact
+  result receipts for one nominal declaration, foreign-owner rejection, ordinary
+  reconstruction and access after typing-index disposal. This removes duplicate
+  edges, not Schema checking, generative identity or the remaining Evidence/Job
+  owners. Clean assembly matches all 156 tested C/header files; focused checks,
+  the current-worktree Core/IADT/synthesis checks and ASan/UBSan with leak detection
+  pass. User edits are not included. Regression, examples, semantic persistence,
+  all seven checkpoint gates and the separate C backend targets pass.
+  The first batch failed because it incorrectly requested C backend targets from
+  the artifact Makefile, not because a code test failed. The completed retained
+  QuickSort/derived-LT tests are reused in the corrected split acceptance run,
+  which exits 0 (`-o check-generic-retained` skips only that completed target);
+  do not report the failed batch as a successful aggregate run. An initial test
+  fixture wrongly expected identity Projection to produce a distinct receipt;
+  the corrected Reindex fixture tests a genuinely distinct exact proof selection.
+  [Measurements](../src/prototype/solver_inputs/schema_receipt_measurements.tsv)
+  retain all logical inputs and graph counts while removing 9/5/15/65 stored
+  premise pointers from List/effect/captured-graph/QuickSort. Steps are unchanged.
+  Whole-arena QuickSort allocation ranges overlap across repeated paired runs;
+  no overall allocation or speed improvement is established. Actual implementation
+  is +29/-17 (net +12), tests +46/-2 (net +44), excluding documentation and patch
+  context; see [per-file deltas](../src/prototype/solver_inputs/schema_receipt_delta.tsv).
+  All 52 List partition images are byte-identical to the parent. The strict public
+  gate still has the same four failures (100:100, 1000:1000, 1600:1600 and completed
+  2626:0); no wire field or resume acceptance shortcut is added. Logs use
+  `/tmp/a-program-schema-receipt-`. SE1-SE5 remain open; this is prototype work.
   Match/induction sharing and conclusion-index removal are implemented in the
   SE3 milestone below; constructor/other-rule input consolidation remains open.
   Mapped-receipt milestone (2026-10-01, agent implementation decision; parent
