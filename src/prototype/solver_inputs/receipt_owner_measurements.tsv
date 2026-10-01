@@ -1,0 +1,10 @@
+sample	metric	parent_c9e0ce8	candidate	delta
+effect-application	steps	17924	17924	0
+effect-application	terms	1546	1546	0
+effect-application	typed_occurrences	2680	2680	0
+effect-application	evidence	3414	3414	0
+effect-application	jobs	5129	5129	0
+effect-application	typed_queries	1785	1785	0
+effect-application	retained_premise_edges	5307	5267	-40
+effect-application	arena_allocation_calls	29170	29170	0
+effect-application	aligned_arena_bytes	3155904	3155584	-320

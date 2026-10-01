@@ -525,6 +525,35 @@ Do not mark a milestone complete just because a view hides the old representatio
   do not overwrite it or silently discard required scope/formation evidence.
   Match/induction sharing and conclusion-index removal are implemented in the
   SE3 milestone below; constructor/other-rule input consolidation remains open.
+  Mapped-receipt milestone (2026-10-01, agent implementation decision; parent
+  `c9e0ce8` plus the recorded prototype changes): constructor, Match/induction,
+  Request, Fold and Handler now share one storage path for independent inputs
+  and sparse exact receipt selections. Handler borrows its computation, return
+  clause, carrier and clause bodies from typed structure; independent operation
+  signature proofs remain. Logical premise order and exact proof keys are
+  unchanged. The remaining raw Handler reader now uses the logical getter.
+  No semantic graph, acceptance flag or persistence field was added.
+  Fresh verification: O2 `check`, `check-examples`, full `check-acceptance`,
+  `check-artifact-semantic` and all seven checkpoint targets passed; C backend,
+  sorting boundary, Linker, scalar and enum targets passed. ASan/UBSan with
+  leak detection passed Core, IADT, Identity and synthesis. Tests cover seven
+  two-clause receipt selections, foreign-owner rejection, reconstruction and
+  logical access after typing-index disposal. A fresh recorded assembly matches
+  every source/test C/header and passes Core, IADT and source-I/O tests.
+  Effect-application's parent/candidate `.a` files are byte-identical. Its
+  retained premise references fall by 40 and instrumented aligned arena
+  allocation by 320 bytes, with unchanged graph counts and 17,924 Solve steps;
+  see [measurements](../src/prototype/solver_inputs/receipt_owner_measurements.tsv).
+  This is not an overall memory/speed claim: a sparse alternative selection
+  includes an ordinal and can cost more than the old one-pointer dense suffix.
+  Implementation delta: +55/-44 (net +11); tests: +36/-1 (net +35), excluding
+  patch context and documentation; see [per-file delta](../src/prototype/solver_inputs/receipt_owner_delta.tsv).
+  Evidence logs use `/tmp/a-program-receipt-owner-`. The fresh strict public
+  partition report is identical to the parent's four-failure report. Current
+  `source_io.c` imports completion descriptively and reconstructs pending
+  checking, without interrupted checking cursors. Promoting its completion flag
+  to accepted evidence would not establish exact or checked resumption. SE1-SE5
+  remain open; this milestone is unpromoted prototype code, not the full gate.
 - [ ] **SE4 persistence projection:** consume those canonical structures through
   borrowed views, removing exported copies of reconstructible rule-input trees
   and obsolete owner codecs. Keep only unfinished state needed by actual Solve

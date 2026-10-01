@@ -51,10 +51,13 @@ Constructor receipts also borrow their result-type receipt when its stable
 first admission is the exact selected proof; other selections remain explicit.
 One physical input count replaces the separate elimination-selection header;
 logical arities come from existing rule/typed structure, without a new index.
-Request and Fold use the same omitted-prefix/dense-suffix layout: declaration
-receipts and exact first operand receipts are borrowed, while alternative
-checking selections stay explicit. Their logical inputs and proof keys remain
-unchanged, including after typing-index disposal.
+Mapped constructor, Match/induction, Request, Fold and Handler receipts now use
+one layout: independent inputs followed by sparse exact receipt selections.
+Typed inputs supply the default receipts; no duplicate operand list is stored.
+Handler retains its independent operation-signature proofs, not another copy
+of its computation, return clause, carrier and clause bodies. Logical order,
+alternative proof keys and access after typing-index disposal stay unchanged.
+This supersedes the omitted-prefix/dense-suffix layout for Request and Fold.
 Rule requests use the same hash lookup for checked and pending inputs, borrowing
 the key during lookup and copying it only on a miss. Structural queries retain
 only a result, child query and normalization pointer, not the broad source state.

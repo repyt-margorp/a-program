@@ -102,7 +102,7 @@
 +		{pg_operation_payload_type(op), pg_operation_response_type(op), payload, selected_continuation},
 +		{returned_payload, k}, {selected_return, k}, {returned_payload, selected_continuation}
 +	};
-+	const size_t retained[] = {0, 2, 1, 0, 2, 1};
++	const size_t retained[] = {0, 1, 1, 0, 1, 1};
 +	size_t receipt_proofs = typing.proofs.count, receipt_terms = graph->terms.count;
 +	for (size_t i = 0; i < 6; ++i) {
 +		size_t count = i < 3 ? 4 : 2;
@@ -120,10 +120,54 @@
  	const struct pg_object *label;
  	const struct pg_term *a, *continuation;
  	assert(pg_computation_request_view(pg_evidence_subject(request)->core, &label, &a, &continuation));
-@@ -6427,6 +6476,9 @@
+@@ -6294,6 +6343,36 @@
+ 	assert(!pg_derivation_parameters(handled, &handler_parameters) && handler_parameters.handler == signature);
+ 	const struct pg_evidence *handler_premises[9];
+ 	for (size_t i = 0; i < 9; ++i) handler_premises[i] = pg_evidence_premise(handled, i);
++	/* Typed children retain the structure; only signature proofs and exact
++	 * alternative receipt selections need independent premise edges. */
++	const struct pg_evidence *handler_receipts[7];
++	const struct pg_evidence *handler_inputs[7][9];
++	const struct pg_evidence *handler_selected[] = {
++		pg_prove_reindex(&typing, identity_map, two), selected_continuation,
++		pg_prove_reindex(&typing, identity_map, carrier),
++		pg_prove_reindex(&typing, identity_map, clause),
++		pg_prove_reindex(&typing, identity_map, u1)
++	};
++	const size_t selected_slots[] = {0, 1, 2, 5};
++	for (size_t i = 0; i < 5; ++i) assert(handler_selected[i]);
++	const size_t handler_retained[] = {4, 5, 5, 5, 5, 6, 4};
++	for (size_t i = 0; i < 7; ++i) {
++		memcpy(handler_inputs[i], handler_premises, sizeof(handler_premises));
++		if (i && i < 5) handler_inputs[i][selected_slots[i - 1]] = handler_selected[i - 1];
++		if (i == 5) handler_inputs[i][5] = handler_inputs[i][8] = handler_selected[3];
++		if (i == 6) handler_inputs[i][3] = handler_selected[4];
++		handler_receipts[i] = pg_prove_derivation(&typing, PG_HANDLER_ELIM, &handler_parameters, 9, handler_inputs[i]);
++		assert(handler_receipts[i]);
++		assert(pg_evidence_subject(handler_receipts[i]) == pg_evidence_subject(handled));
++		assert(pg_evidence_premise_count(handler_receipts[i]) == 9);
++		assert(pg_evidence_retained_premise_count(handler_receipts[i]) == handler_retained[i]);
++		for (size_t j = 0; j < 9; ++j) assert(pg_evidence_premise(handler_receipts[i], j) == handler_inputs[i][j]);
++		assert(!pg_evidence_premise(handler_receipts[i], 9));
++		assert(pg_prove_derivation(&typing, PG_HANDLER_ELIM, &handler_parameters, 9, handler_inputs[i]) == handler_receipts[i]);
++		reconstruct_derivation(&typing, handler_receipts[i]);
++		for (size_t j = 0; j < i; ++j) assert(handler_receipts[i] != handler_receipts[j]);
++	}
++	assert(handler_receipts[0] == handled);
+ 	assert(pg_prove_derivation(&typing, PG_HANDLER_ELIM, &handler_parameters, 9, handler_premises) == handled);
+ 	assert(!pg_prove_derivation(&typing, PG_HANDLER_ELIM, &handler_parameters, 8, handler_premises));
+ 	handler_premises[3] = u0;
+@@ -6425,8 +6504,16 @@
+ 	struct pg_typing separate;
+ 	assert(!pg_typing_init(&separate, graph));
  	assert(!pg_prove_request(&separate, op, payload, k));
++	assert(!pg_prove_derivation(&separate, PG_HANDLER_ELIM,
++		&handler_parameters, 9, handler_inputs[0]));
  	pg_typing_destroy(&separate);
  	pg_typing_destroy(&typing);
++	for (size_t i = 0; i < 7; ++i)
++		for (size_t j = 0; j < 9; ++j)
++			assert(pg_evidence_premise(handler_receipts[i], j) == handler_inputs[i][j]);
 +	for (size_t i = 0; i < 6; ++i)
 +		for (size_t j = 0; j < (i < 3 ? 4 : 2); ++j)
 +			assert(pg_evidence_premise(receipts[i], j) == receipt_inputs[i][j]);
