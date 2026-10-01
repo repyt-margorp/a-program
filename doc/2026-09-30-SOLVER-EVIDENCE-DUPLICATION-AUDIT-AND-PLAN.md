@@ -2408,8 +2408,11 @@ to declare the frontier refactor complete after receipt compaction.
 - [x] Reassemble recorded patches exactly and compare census/public partitions.
 - [x] Complete full acceptance and verify the default overlay: assembly and
   Core/IADT/synthesis pass with the excluded concurrent user edits.
-- [ ] Publish the prototype milestone. Keep full SE1-SE5 and the public
+- [x] Publish the prototype milestone. Keep full SE1-SE5 and the public
   partition failures open.
+
+Published to `origin/main` as `82f23b5` on 2026-10-01. This is prototype
+publication only; accepted source and concurrent user edits are excluded.
 
 Fresh census: List-09 retained edges 843 -> 825; general QuickSort 199,280 ->
 199,042. Other census columns and terminal repeated/zero-fuel controls are
