@@ -2786,6 +2786,9 @@ normalization work. This is an SE1 ownership change, not the full frontier gate.
 The discovered raw-status consumer defect demonstrates why hiding mirrored state
 behind an interface is insufficient: consumers must follow the actual owner.
 The limited allocation reduction does not justify claiming consolidation is done.
+Published prototype milestone: `13fdf8f5d119f9e981b549e0359aedbc14365c75`,
+pushed to `origin/main` on 2026-10-01. Accepted `src/` changes and user-authored
+uncommitted tests/documents were not included. Overall SE1-SE5 remain open.
 
 #### Plan
 
@@ -2796,5 +2799,5 @@ The limited allocation reduction does not justify claiming consolidation is done
 - [x] Measure allocations/applied code deltas and rerun public partitions;
   record the failures without waiving them. Applied implementation: +117/-68
   (net +49); tests: +176/-19 (net +157), excluding patch context and docs.
-- [ ] Publish only verified prototype changes; keep SE1-SE5 incomplete until
+- [x] Publish only verified prototype changes; keep SE1-SE5 incomplete until
   the existing frontier/persistence gates actually pass.
