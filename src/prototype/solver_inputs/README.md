@@ -172,6 +172,14 @@ without a scheduler record. The by-value Term/pending-query view has no acceptan
 or progress state. Existing provisional queries keep their identity and symbolic
 snapshots. This removes read-only Jobs, not the broad source-work union or the
 remaining centralized semantic dispatch; Oracle locality remains unfinished.
+Function graph synthesis now lives in the function owner: common source work
+has no graph handle, case-layout slot, graph role, graph destruction or dispatch
+branch. Source metadata retains only names/layouts, not a graph-worker backlink.
+The graph owner lends its formation through the existing output view; no second
+result is stored in the scheduler. Its source-interface readiness still exists,
+so this is not complete Job removal or cursor persistence. See
+[applied line changes](oracle_local_delta.tsv) and
+[paired measurements](oracle_local_measurements.tsv) against `97825ec`.
 Lexical binding now has one checked/pending Context API; the Job-only binding
 entry point is removed. IH/graph associations borrow known Contexts directly.
 Only unavailable inputs require a binding-validation request; an existing one

@@ -58,6 +58,11 @@ audit ends, or implement deletions without checking their actual ownership.
 The user has not approved a new dependency representation or a new proof format.
 The design directions below are agent proposals grounded in the inspected code.
 
+2026-10-01, English paraphrase of the latest correction: documentation-only
+updates are not sufficient progress; proceed with concrete code deletion and
+verification alongside the ownership audit. The user also reports GitHub
+connectivity restored; this is operational information, not a design change.
+
 ## Objective (Code)
 
 ### Revision and Method
@@ -591,8 +596,9 @@ Do not mark a milestone complete just because a view hides the old representatio
   from the parent. Preserve and restore the actual checking frontier/cursor;
   do not trust the saved completion flag or add a second task graph. SE1-SE5
   remain open. SE2's provisional walkers still need their effect dependency cycle
-  resolved before consolidation. Publication remains pending while GitHub is
-  unreachable; accepted `src/` and user edits are not included.
+  resolved before consolidation. The previous connectivity failure is resolved:
+  commits through `97825ec` were pushed to Main on 2026-10-01. Accepted `src/`
+  and user edits are not included.
 - [ ] **SE2 single construction path:** enumerate provisional structure inputs
   for Lambda/App/Pi and CBPV, extract their actual construction once under the
   existing semantic owners, and have checking consume that same construction.
@@ -626,6 +632,27 @@ Do not mark a milestone complete just because a view hides the old representatio
   to turn the gate green. Next consolidate the broad source/Oracle state and
   actual checking owners; keep SE1-SE5 open rather than pursue adapter counts
   as a substitute for the user's clarified locality requirement.
+  Current prototype increment (2026-10-01, parent `97825ec`): function graph
+  checking is removed from the broad source state/dispatcher and remains local
+  to `synthesis_function.c`. Source metadata retains names/layout only; its
+  graph-worker backlink and shared case-layout slot are deleted. The graph's
+  formation is borrowed through the existing output view, not copied into a
+  second result slot. Source-interface readiness is still scheduled, so the
+  independent graph owner and scheduler are not yet completely unified.
+  Full regression, examples, acceptance, semantic persistence and all seven
+  checkpoint gates pass, including general Sorted/result connection and both
+  derived-LT providers/partition orders. Focused/clean-assembly synthesis and
+  derivation I/O, C backend and ASan/UBSan checks also pass. The current-worktree
+  assembly passes Core/IADT/synthesis with user edits excluded from this change.
+  All 156 assembled code/test files
+  match the tested trial. Paired [measurements](../src/prototype/solver_inputs/oracle_local_measurements.tsv)
+  preserve steps, Jobs and Term/Occurrence/Evidence counts in four samples;
+  QuickSort Job storage drops 72,864 bytes. The graph example loses two result
+  copies. Wrapped QuickSort allocation calls increase by 311 despite fewer
+  bytes, so do not claim universal allocation reduction. Applied implementation
+  is +122/-65, tests +55/-0; [per-file deltas](../src/prototype/solver_inputs/oracle_local_delta.tsv).
+  Public reload has the same four failing partitions; do not waive that gate
+  or mark SE1-SE5 complete. Logs use `/tmp/a-program-oracle-local-`.
 - [ ] **SE3 Evidence inputs:** map each retained premise to typed operands,
   context/map, receipt or other real logical input. Remove duplicate premise
   arrays and history-based access for the mapped rules, starting with
@@ -663,8 +690,9 @@ Do not mark a milestone complete just because a view hides the old representatio
   checking, without interrupted checking cursors. Promoting its completion flag
   to accepted evidence would not establish exact or checked resumption. SE1-SE5
   remain open; this milestone is unpromoted prototype code, not the full gate.
-  Publication: local Main commit `d6640ef` is verified. Push remains pending:
-  GitHub HTTPS connection failed on 2026-10-01; no remote publication is claimed.
+  Publication: GitHub HTTPS initially failed on 2026-10-01; after connectivity
+  was restored, `d6640ef` and later verified commits through `97825ec` were
+  pushed to Main that day. No production promotion is implied.
 - [ ] **SE4 persistence projection:** consume those canonical structures through
   borrowed views, removing exported copies of reconstructible rule-input trees
   and obsolete owner codecs. Keep only unfinished state needed by actual Solve

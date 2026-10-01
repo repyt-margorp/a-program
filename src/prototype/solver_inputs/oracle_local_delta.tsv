@@ -1,0 +1,7 @@
+file	added	deleted	net
+src/synthesis.c	35	65	-30
+src/synthesis_function.c	76	0	76
+src/synthesis_source.h	11	0	11
+tests/synthesis.c	55	0	55
+implementation_total	122	65	57
+test_total	55	0	55

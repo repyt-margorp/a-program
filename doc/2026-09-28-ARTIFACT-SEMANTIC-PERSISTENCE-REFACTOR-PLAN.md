@@ -50,6 +50,10 @@ adapter deletion alone as completion. Detailed requirements remain in SE1-SE5.
 The same follow-up requests a balanced audit/implementation loop, not an
 audit-only detour or unchecked wholesale deletion.
 
+2026-10-01, English paraphrase of the latest correction: do not substitute
+documentation edits for implementation; continue code changes and verification
+alongside the SE ownership audit. GitHub connectivity is reported restored.
+
 ### Existing Audit and Progress Record
 
 The user's 2026-09-30 follow-up requires auditing Job/Evidence duplication,
