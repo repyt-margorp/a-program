@@ -1,0 +1,5 @@
+sample	run	parent_revision	parent_calls	candidate_calls	parent_aligned_bytes	candidate_aligned_bytes
+quick_local	0	729d7d1	2895868	2893945	235117984	234954016
+quick_local	1	729d7d1	2896111	2894704	235129648	234990448
+quick_local	2	729d7d1	2895463	2894892	235098544	234999472
+quick_local	3	729d7d1	2896008	2893967	235124704	234955072

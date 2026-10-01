@@ -523,6 +523,22 @@ operations. Keep provisional structure unaccepted until the ordinary rules
 validate it. Preserve pending effect discovery, independent synthesis and `::`
 as post-check only. Do not interpret a stored occurrence or a DONE byte as proof.
 
+2026-10-01, next prototype trial (agent decision, parent `729d7d1`): application
+result-type propagation has no independent consumer or semantic result. Keep
+its interrupted source/type/check cursor on the existing application owner,
+and delete the separately interned propagation Job, including no-work requests.
+Expose the application's ordinary recipe before awaiting that cursor, to retain
+pending effect discovery. Existing argument checking still decides acceptance;
+concurrent equations must agree without replacing the Match's first input.
+Verify the boundary and full regressions before publishing this deletion.
+The [double-quote/open-Match probe](../src/prototype/solver_inputs/fixtures/nested-open-equation.p)
+also stops with no runnable work on the parent binary (707 steps, requested
+10,000) and candidate (706 steps). The outer quote's preparation waits
+for a checked classifier before the application can deliver its equation.
+This is an existing pending-structure cycle for SE2, not a demonstrated regression
+or evidence that the separate propagation Job is necessary. Do not claim that
+probe completes, supply its type through `::`, or restore a wrapper to hide it.
+
 Object-language equality witnesses remain Terms. Removing duplicated metalevel
 premises must not erase witness distinctions, conversion/reduction certificates,
 nominal identity, scoped substitutions or the difference between checking and
@@ -938,6 +954,30 @@ baseline described above. Concurrent accepted-source edits remain excluded.
   results and wakeup consumers; preserve provisional classifier discovery.
   No second Constraint/Task graph underneath retained stateful Jobs. SE1 remains
   open until the ownership and resumption gates, not just adapter removal, pass.
+  Verified increment (2026-10-01, parent `729d7d1`): the independent classifier-
+  propagation Job, request interning, output forwarding and no-work dispatches
+  are deleted. The existing application owns the interrupted source/type/check
+  cursor and clears it when done; ordinary argument checking still decides
+  acceptance. No duplicate result, semantic enum or persistence field is added.
+  Concurrent shared-Match calls, nested Lambda propagation, closed repeated
+  quotation, zero fuel, 1/7/64-step partitions and independent `::` tests pass.
+  Full O2 regression/examples/acceptance, semantic persistence, all seven
+  checkpoints, C backend and focused ASan/UBSan with leak detection pass.
+  Fresh patch assembly matches all 156 C/header files and passes focused checks;
+  current-worktree Core/IADT/synthesis checks pass without including user edits.
+  [Paired measurements](../src/prototype/solver_inputs/application_owner_measurements.tsv)
+  preserve final Term/Occurrence/Evidence/query counts and logical premises.
+  QuickSort loses 1,383 Jobs, 165,960 Job-storage bytes and 1,390 dispatches.
+  Four [wrapped allocation pairs](../src/prototype/solver_inputs/application_owner_allocation.tsv)
+  have fewer calls/bytes, with run-to-run variation; these are cumulative arena
+  allocation, not live memory or a timing result. Implementation +37/-50 (net
+  -13); tests +43/-13 (net +30), excluding documentation, patch context and the
+  five-line diagnostic fixture; [file deltas](../src/prototype/solver_inputs/application_owner_delta.tsv).
+  Public in-memory/save-without-reload partitions and step 0 pass; the four
+  reload failures remain at 100:100, 1000:1000, 1600:1600 and completed 2600:0.
+  The double-quote/open-Match probe above remains pending, not a waived passing
+  case. Four broad source roles and SE1-SE5 remain open. This is unpromoted
+  prototype work; logs use `/tmp/a-program-application-owner-`.
 
 ### SE1 Completed-Input Adapter Deletion (2026-10-01)
 

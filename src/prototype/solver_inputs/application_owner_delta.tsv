@@ -1,0 +1,5 @@
+file	added	deleted	net
+src/synthesis.c	37	50	-13
+tests/synthesis.c	43	13	30
+implementation_total	37	50	-13
+test_total	43	13	30
