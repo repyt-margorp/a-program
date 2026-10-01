@@ -1,0 +1,7 @@
+file	added	deleted	net
+src/synthesis.c	29	14	15
+src/synthesis_function.c	8	1	7
+src/synthesis_cbpv.c	8	1	7
+src/synthesis_work.c	1	1	0
+src/synthesis_work.h	1	0	1
+tests/synthesis.c	21	3	18

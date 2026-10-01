@@ -46,13 +46,14 @@
  	/* Called once after interning. NULL schedules the initial step directly. */
  	void (*start)(struct pg_synthesis *, struct pg_synthesis_job *);
  	void (*advance)(struct pg_synthesis *, struct pg_synthesis_job *);
-@@ -52,21 +56,38 @@
+@@ -52,21 +56,39 @@
  	struct pg_synthesis_projection (*project)(const struct pg_synthesis_job *);
  	/* Borrowed descriptive output of a completed structural query, not proof. */
  	const struct pg_term *(*structure)(const struct pg_synthesis_job *);
 +	/* Exact checked-input key, available only after operand validation. */
 +	const void *(*resolved_input)(const struct pg_synthesis_job *, size_t);
 +	/* Completed preparation borrows its output owner, never a copied answer.
++	 * Forwarding to that owner does not fill the header's result slot.
 +	 * The returned reference must not lead back to this preparation. */
 +	struct pg_synthesis_input (*output)(const struct pg_synthesis_job *);
  };
@@ -88,7 +89,7 @@
  struct pg_synthesis_projection pg_synthesis_work_project(const struct pg_synthesis_job *job);
  int pg_synthesis_forward(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
  	struct pg_synthesis_job *canonical);
-@@ -75,8 +96,24 @@
+@@ -75,8 +97,24 @@
  	enum pg_synthesis_status status);
  void pg_synthesis_subscribe(struct pg_synthesis *synthesis, struct pg_synthesis_job *parent,
  	struct pg_synthesis_job *child, int preparation);

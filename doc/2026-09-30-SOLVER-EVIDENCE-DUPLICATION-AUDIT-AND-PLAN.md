@@ -647,6 +647,19 @@ it always NULL. Delete both slots and simplify that guard without changing
 discovery, checking, fuel or persistence. This is removal of stale state, not
 proof that the remaining expression/Match/application cursors are unnecessary.
 
+2026-10-02, agent decision on `7d432d9`: source Lambda/quotation, type assertions
+and induction branches already select a lower checking owner. Borrow that
+owner through the existing output contract instead of copying its receipt into
+the preparation header. Retain preparation until its actual choice is stable:
+a Lambda may still switch to logical-family abstraction after body discovery.
+Migrate consumers to the existing result reader, preserve exact receipt/failure
+selection and verify zero/split fuel, pending destruction and image invariance.
+This does not remove those genuine discovery cursors or the remaining aliases.
+The first trial exposed a direct `demand->callee->result` read in IH motive
+discovery (`induction-index-environment.p`, fresh UBSan stack). Migrate that
+consumer to the owner reader, not back to copied results or a nullable-proof
+fallback. Add a small Lambda/IH demand regression with the borrowed-output tests.
+
 ## Plan
 
 No new binding/domain checkpoint fields or backend features before this gate.
@@ -688,6 +701,28 @@ Do not mark a milestone complete just because a view hides the old representatio
   through pending producers and a later request through their exact checked
   results must reuse the same operation without allocating another full owner;
   equal erased Core alone must not merge distinct scoped/proof inputs.
+  Verified source output increment (2026-10-02, parent `7d432d9`): Lambda/quotation,
+  source/binding assertions and induction branches borrow their selected
+  checking owner through the existing output contract. Forwarding no longer
+  fills their second result slot. Retain actual preparation and failure checks;
+  no new output graph, tag, wire field or acceptance authority is added.
+  [Paired census](../src/prototype/solver_inputs/source_results_measurements.tsv)
+  at fuel 0/100/1000/completion differs only in retained Job result references:
+  completed List/effect/captured/QuickSort remove 13/6/5/533 references. Job layout
+  bytes and all graph/step counts stay equal; this is not a memory/speedup claim.
+  [Applied-file delta](../src/prototype/solver_inputs/source_results_delta.tsv):
+  implementation +47/-17 (net +30), tests +21/-3 (net +18), excluding patch-context
+  churn and docs. This milestone does not reduce total source size.
+  Focused/fresh/current Core/IADT/synthesis, focused ASan/UBSan/leaks and the
+  IH-demand reproducer pass; all five C gates exit 0. Full O2 regression/examples/
+  acceptance, semantic persistence and all seven checkpoint gates exit 0 on the
+  fixed trial, including general QuickSort result/Sorted/permutation and both LT
+  providers/partition orders. Fresh assembly matches the tested C/header files.
+  The failed first regression run was stopped after its IH-demand failure;
+  the owning result reader fixes that regression without restoring the copy.
+  All 52 strict List images and the four-failure partition TSV match the parent;
+  the public gate still exits 1. SE1-SE5 stay open; this is unpromoted prototype
+  work. Logs use `/tmp/a-program-source-results-fixed-`; user edits are excluded.
   First cover binding/domain,
   normalization and rule premises together, not three incompatible adapters;
   then migrate source/context/IADT/Identity/operation consumers before closure.

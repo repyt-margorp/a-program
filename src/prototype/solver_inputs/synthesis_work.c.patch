@@ -529,7 +529,7 @@
 -		pg_synthesis_finish(synthesis, job, canonical->status);
 -	}
 +	if (pg_synthesis_wait_pending(synthesis, job, pg_synthesis_pending(canonical))) return 1;
-+	job->result = pg_synthesis_result(canonical);
++	if (!pg_synthesis_work_role(job)->output) job->result = pg_synthesis_result(canonical);
 +	pg_synthesis_finish(synthesis, job, pg_synthesis_status(canonical));
  	return 1;
  }

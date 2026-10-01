@@ -252,6 +252,18 @@ wire field is added. See [measurements](source_oracle_measurements.tsv),
 against `2a0ba44`. This reduces retained state, not total source line count;
 actual construction/checking consolidation and public resume remain unfinished.
 
+Lambda/quotation, source/binding assertions and induction branches now borrow
+their selected checking output instead of copying it into the preparation
+header. Consumers read that owner; Lambda's genuine function/family choice and
+post-synthesis checks remain. See [census](source_results_measurements.tsv) and
+[applied deltas](source_results_delta.tsv) against `7d432d9`: QuickSort removes
+533 result references, with unchanged graph/step counts and Job bytes. This
+adds 30 implementation lines, not a source-size or speedup improvement. The
+first IH-demand reader regression is fixed and covered by a small test;
+full fixed-trial regression/acceptance, seven checkpoint and five C gates pass.
+Focused ASan/UBSan/leaks and fresh/current assembly tests also pass. No new graph/tag/wire field is
+added; full owner/frontier consolidation and public reload failures remain open.
+
 Core-preserving Context projection and type/value readings now borrow their
 input's structural query without a second Job/result. All three structural
 APIs use one iterative discovery path; ordinary rule checking remains separate.
