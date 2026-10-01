@@ -17,13 +17,14 @@ check 0 merge-source --save "$directory/source.a" "$directory/source.p"
 sed '/ :: /{ :next; /;$/d; N; b next; }' "$directory/source.p" > "$directory/independent.p"
 check 0 independent-synthesis "$directory/independent.p"
 equal "$directory/source.a" merge_report merge_report_expected
+equal "$directory/source.a" merge_report merge_legacy_report
 equal "$directory/source.a" merge_unfinished merge_reversed
 status=0
 equal "$directory/source.a" merge_report merge_report_wrong || status=$?
 [[ $status == 1 ]]
 for bad in \
-	'bad:=merge_fuel_local &merge_order &merge_compare &merge_decide Nat.zero merge_reversed (merge_fits.nil Nat.zero);' \
-	'bad:=merge_backend &merge_order &(\x:Nat=>\y:Nat=>Bool.true) &merge_decide;' \
+	'bad:=merge_fuel_local Nat &merge_order &merge_compare &merge_decide Nat.zero merge_reversed ((merge_fits Nat).nil Nat.zero);' \
+	'bad:=merge_backend Nat &merge_order &(\x:Nat=>\y:Nat=>Bool.true) &merge_decide;' \
 	'bad:=merge_certificate :: permutation Nat merge_duplicates merge_empty;'; do
 	{ sed -n '1,$p' "$directory/source.p"; printf '%s\n' "$bad"; } > "$directory/wrong.p"
 	check 1 rejected "$directory/wrong.p"

@@ -16,12 +16,28 @@ not evidence that its proposed interfaces already work. Broad P4/P5 remain open.
 | F1 | Checked finite positions and bijections | Complete |
 | F2 | Lawful List and indexed-container views | Complete for homogeneous List/Vec and the finite-position bridge |
 | F3 | One ordinary-result sorting specification | Prototype source/observations/rejection/resume verified; promotion pending |
-| F4 | Quick/Merge/Insertion/Bubble and additional backends | Five prototype gates passed; Bubble requires explicit transitivity, legacy Merge is Nat-specific insertion-based merge |
+| F4 | Quick/Merge/Insertion/Bubble and additional backends | Five source interfaces generic in payload type; generic Merge verified on the 2026-10-01 candidate below; repeated-insertion merge preserved, Bubble requires explicit transitivity |
 | F5 | Permanent rejection, image and regression gates | Prototype runners consolidated and verified; accepted-build integration pending |
 
 ## F0. Scope and Invariants
 
 ### Subjective (User)
+
+2026-10-01, English paraphrase of the Book-workspace user's clarification:
+the intended task is to improve A Program's source library and advance its
+related issues in parallel with compiler development, not accumulate a separate
+Book-only sorting implementation or another Fin/permutation framework. `.p`
+library definitions and proofs are an acceptable implementation route. Reuse
+the existing common sorting and finite-position machinery, identify actual
+MergeSort gaps, and distinguish library extensions from reproduced compiler
+bugs and acceptance/integration work. Work in the Book's independent language
+clone; do not modify the sibling development checkout.
+
+2026-10-01, subsequent user request (English paraphrase): fix MergeSort's
+Nat-only source-library interface, check the other sorting algorithms for the
+same limitation, and submit the implementation as a PR. State precisely which
+issue and subproblem the PR addresses. This authorizes source-library prototype
+work and a PR, not adoption of unrelated compiler/persistence changes.
 
 English paraphrase of 2026-09-27 conversation: prioritize the submitted Fin
 sorting research, implement it in the surface language, and prove QuickSort,
@@ -1187,6 +1203,137 @@ root edits and unpublished prototype experiments:
 Compiler C: **+9/-8, net +1**. Source proof library: **+238**; verification
 code/fixtures: **+210**; build: **+5**. Non-document total: **+462/-8, net +454**.
 The library addition is new functionality, not a claim that compiler size fell.
+
+## 2026-10-01 MergeSort Issue Triage
+
+### Subjective (User)
+
+English paraphrase of the current Book-workspace request: identify the relevant
+issue-level problems and improve A Program's `.p` library using its existing
+finite-position/common sorting design. Book-only APIs are not the intended
+deliverable. The subsequent request authorizes a library implementation PR
+with explicit issue correspondence; compiler promotion remains separate.
+
+### Objective (Code)
+
+Fresh baseline: `9146893f07f0fe3f4c8309c370420c1702dfb96d`, with the assembled
+`src/prototype/solver_inputs/overlay.sh` candidate. No compiler patch or `.p`
+body was changed for this check. The existing `merge-check.sh ... views` passes
+in 91 seconds at its unchanged 40M-step budget and explicit 10M reader bound:
+general asserted source 6,173,143 transitions; assertion-free source 3,295,516;
+List observations, three rejected proof/comparator controls, ordinary load,
+100-step checkpoint/zero-step byte-identical resave/resume, and actual Vec/Fin
+observations all pass. Vec comparisons take 6,491,791 transitions; the labelled
+origin comparison takes 6,524,668, both at evaluator chunks 1 and 64. These
+counts include source reconstruction/checking, not sorting complexity.
+Local log: `/tmp/a-program-merge-audit-20261001.OngS7x/upstream-merge-views.log`.
+The candidate binaries were freshly built with strict O2 flags. The full
+acceptance and sanitizer suites were not rerun; accepted-build parity is not
+claimed.
+
+The existing Merge backend takes `R : Nat -> Nat -> @` and a Nat comparison;
+Quick's backend takes an arbitrary `A`. `mergeBy` uses repeated `insertBy`;
+`mergeSort` is Nat-specific. Both algorithms already use the shared
+`sorting_backend`/`sorting_reordering`/`sorting_vector` contracts. The accepted
+Makefile registers Fin/List/Vec foundation tests, but not the five-backend
+`finite_sorting` prototype gate.
+
+### Assessment
+
+Issue routing (agent assessment, not new user-approved requirements):
+
+1. **Library extension:** MergeSort's element type is still fixed to Nat.
+   An arbitrary-element Merge backend is missing, not the Fin permutation
+   theory or the existing Nat result proofs. Implement algorithm-specific
+   `.p` definitions/proofs, then construct the existing common backend. Reuse
+   its List/Vec, inverse/action and actual-origin theorems; do not duplicate them.
+2. **Separate algorithm enhancement:** a conventional two-front merge is not
+   implemented by the legacy backend. Its current correctness is not a bug,
+   and an O(n log n) runtime guarantee must not be inferred from its name.
+   This can be included in a deliberately scoped generic-MergeSort proposal,
+   but should not silently replace the legacy function or its proven contract.
+3. **Existing #41/F5 integration work:** prototype success is not accepted
+   library/test adoption. The existing persistence/ownership prerequisites and
+   permanent gate integration remain separate from writing new sorting proofs.
+
+No new MergeSort compiler defect is established by this run. In particular,
+do not file missing Permutation, missing Local/Strong, or missing Fin/Vec
+correspondence reports: the existing scoped gate passes. Other algorithms and
+arbitrary-container views were not revalidated by this Merge-only check.
+
+### Plan
+
+- [x] Revalidate the existing upstream Merge backend before proposing missing
+  theorems; preserve the implementation and all negative controls.
+- [x] Scope a generic `.p` MergeSort library contribution against the existing
+  common backend. General Sorted/permutation proofs must concern its actual
+  output, with explicit order assumptions and independent synthesis.
+- [x] Verify Bool and distinct labelled payloads sharing keys, arbitrary-input
+  proofs, duplicate multiplicity, List/Vec shape and finite-origin observations.
+- [ ] Keep generic-MergeSort development distinct from the existing F5
+  adoption checklist; do not close #41 or claim accepted parity from this check.
+
+### Generic Merge Library Checkpoint, 2026-10-01
+
+**Subjective (User):** English paraphrase of the subsequent request: correct
+the Nat-only interface, inspect other Sorts for the same issue, submit a PR,
+and say which issue it resolves even if a dedicated issue does not exist.
+
+**Objective (Code):** baseline `2a0ba449580360b204d2c1f3357425ac0721f40a`
+plus this source-library patch. `src/prototype/finite_sorting/merge.p` now
+provides `merge_sort_fuel_by A le fuel xs`, `merge_sort_by A le xs`, and generic
+content/Local proofs and `merge_backend A R le decide`. Nat indexes fuel/length,
+not payloads. The algorithm's split and repeated `mergeBy` insertion are
+preserved. The accepted Nat fixtures and compiler C/headers are unchanged.
+Common Fin/Vec/position proofs are reused, not copied into new wrappers.
+
+Fresh strict-O2 tests on the assembled latest solver-input candidate:
+
+| Gate | Result | Source / assertion-free transitions |
+| --- | --- | --- |
+| `merge-check.sh ... views` | Pass, 106 s | 6,130,521 / 3,247,723 |
+| `merge-generic-check.sh` | Pass, 161 s | 6,915,043 / 4,039,406 |
+| `generic-interfaces-check.sh` | Pass | 6,612,464 / 3,719,940 |
+
+The Nat gate adds equality with the unchanged accepted `mergeSort` on its five
+existing samples. The generic gate checks open A/input Local, Strong and
+permutation consumers; Bool empty/singleton/reversed/ordered/duplicates;
+distinct labelled equal-key payloads; ordinary List/Vec results and Fin origins;
+actual value transport and both position inverses; six wrong-domain/order-law/
+content/fuel/shape/origin rejections; images and byte-identical zero-step resave
+of a 100-step checkpoint followed by ordinary completion. Comparisons use
+chunks 1 and 64. Reader allowances and the 40M budget are unchanged. Concurrent
+runs make these wall times unsuitable for speed comparisons.
+
+The interface gate checks all five generic source backend classifiers, also
+without post-check assertions. Quick, Insertion and Tree already take arbitrary
+`A`; Bubble does too and retains its explicit transitivity argument. The
+accepted `insertionSort` is an intentional Nat/default-comparator specialization
+of generic `insertionSortBy`, not the same limitation as the old Merge backend.
+Other full algorithm gates, full compiler acceptance, sanitizers, C lowering,
+stability and runtime-cost theorems were not rerun or newly established.
+Logs: `/tmp/a-program-generic-merge-20261001.Wsiemc/{nat-views,generic,interfaces}.log`.
+The downstream Book's `make check` also passes using the unchanged accepted
+compiler/fixtures; it is not verification of these prototype Merge definitions.
+
+**Assessment:** the PR addresses #41's Merge backend element-type limitation,
+not a new compiler defect and not all of #41/F5. No dedicated Nat-only issue
+was found in the repository issue-title audit. Reference #41 without an
+automatic closing directive; formal adoption and semantic-persistence work
+remain separate. The new generic entry points live in the existing prototype
+module so accepted Nat callers keep their current signatures. Prototype
+callers of `merge_backend` and its proof/fit helpers now supply `A` explicitly.
+The independent two-front Book implementation and its Fin wrappers are not
+included in this PR. A conventional two-front merge remains a separate proposal.
+
+**Plan:**
+
+- [x] Generalize the existing prototype proofs and adapt every prototype caller.
+- [x] Check other generic interfaces and retain the original order-law contracts.
+- [x] Add generic and Nat-compatibility controls using existing checker/comparator
+  helpers, and register the new gates in the prototype backend aggregate.
+- [ ] Submit the tested library PR with partial #41 correspondence and explicit
+  nonclaims; do not close #41 or promote compiler code implicitly.
 
 ## F5. Verification and Publication
 
