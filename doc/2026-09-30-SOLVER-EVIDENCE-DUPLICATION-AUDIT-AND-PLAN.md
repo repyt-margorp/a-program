@@ -2700,7 +2700,8 @@ program, but cannot be inferred from the mere existence of a typed description.
 - [x] Reassemble recorded patches exactly and measure census/public partitions.
 - [x] Finish full O2 regression, examples, semantic, seven checkpoint gates and
   acceptance; verify clean recorded Core/IADT/synthesis/source-I/O binaries.
-- [ ] Publish the prototype milestone without production promotion.
+- [x] Publish the prototype milestone without production promotion (`50e1f6f`,
+  pushed to `origin/main` on 2026-10-01).
 
 The same four public reload failures remain at 100+100, 1,000+1,000,
 1,600+1,600 and terminal+0 (terminal fuel 2,617); no failure is waived.
