@@ -533,9 +533,11 @@
 +	struct pg_synthesis_input body);
  /* Derive a constant computation motive from an independent branch producer.
   * The field context must extend the destination. Each removed binder needs
-  * checked codomain independence; dependent results remain unsupported rather
+- * checked codomain independence; dependent results remain unsupported rather
++ * checked codomain independence; dependent results reject this candidate rather
   * than being filled from an expected classifier. */
- struct pg_synthesis_job *pg_synthesis_constant_motive(struct pg_synthesis *synthesis,
+-struct pg_synthesis_job *pg_synthesis_constant_motive(struct pg_synthesis *synthesis,
++struct pg_pending *pg_synthesis_constant_motive(struct pg_synthesis *synthesis,
  	const struct pg_evidence *destination, const struct pg_evidence *fields,
 -	struct pg_synthesis_job *body);
 -/* Shared suspended typed substitution; the checked substitution/proof pair

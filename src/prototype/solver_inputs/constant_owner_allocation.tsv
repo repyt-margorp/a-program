@@ -1,0 +1,13 @@
+case	version	repetition	wrapped_arena_calls	wrapped_aligned_bytes	elapsed_seconds	user_seconds	system_seconds
+captured	parent	1	23110	2216624	0.009	0.009	0.000
+captured	candidate	1	23096	2215552	0.007	0.006	0.000
+captured	candidate	2	23097	2215600	0.007	0.006	0.000
+captured	parent	2	23109	2216576	0.008	0.008	0.000
+captured	parent	3	23109	2216576	0.008	0.008	0.000
+captured	candidate	3	23096	2215552	0.008	0.004	0.004
+quick	parent	1	2888897	230663088	0.861	0.772	0.084
+quick	candidate	1	2887934	230611504	0.852	0.770	0.080
+quick	candidate	2	2888239	230626144	0.831	0.746	0.084
+quick	parent	2	2888121	230625840	0.837	0.769	0.068
+quick	parent	3	2888288	230633856	0.841	0.781	0.056
+quick	candidate	3	2888235	230625952	0.897	0.822	0.072

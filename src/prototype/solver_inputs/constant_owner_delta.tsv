@@ -1,0 +1,6 @@
+kind	path	added	removed	net
+implementation	src/synthesis.c	18	52	-34
+implementation	src/synthesis.h	2	2	0
+implementation	src/synthesis_function.c	19	9	10
+implementation	src/synthesis_iadt.c	3	2	1
+test	tests/synthesis.c	20	6	14

@@ -591,7 +591,7 @@
  	if (!local->value_job) goto rejected;
  	pg_synthesis_forward(synthesis, job, local->value_job);
  	return;
-@@ -699,16 +756,18 @@
+@@ -699,16 +756,19 @@
   * scope, not whether it matches a surface expectation. Both goals use the same
   * scoped path search and ordinary transport/checking rules. */
  static struct pg_synthesis_job *index_transport_check(struct pg_synthesis *synthesis,
@@ -607,9 +607,10 @@
 +	struct pg_synthesis_input target = pg_synthesis_work_dependency(job, 4);
 +	if (pg_synthesis_work_role(job) == INDEX_RESULT_JOB) {
 +		struct pg_synthesis_input context = pg_synthesis_work_dependency(job, 0);
-+		struct pg_synthesis_job *type = pg_synthesis_constant_motive(synthesis, pg_synthesis_input_result(target),
++		struct pg_pending *classifier = pg_synthesis_constant_motive(synthesis, pg_synthesis_input_result(target),
 +			pg_synthesis_input_result(context), argument);
-+		type = pg_synthesis_plain_rule_inputs(synthesis, PG_RETURN_CONTENT, NULL, 1, &(struct pg_synthesis_input){.pending = pg_synthesis_pending(type)});
++		struct pg_synthesis_job *type = pg_synthesis_plain_rule_inputs(synthesis, PG_RETURN_CONTENT, NULL, 1,
++			&(struct pg_synthesis_input){.pending = classifier});
 +		target = (struct pg_synthesis_input){.pending = pg_synthesis_pending(pg_synthesis_plain_rule_inputs(synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
 +			(struct pg_synthesis_input[]){context, {.pending = pg_synthesis_pending(type)}}))};
  	}
@@ -618,7 +619,7 @@
  }
  
  /* Keep later independent declarations when varying an earlier index. The
-@@ -768,11 +827,11 @@
+@@ -768,11 +828,11 @@
  	const struct pg_evidence *lv, const struct pg_evidence *rv, enum pg_identity_direction direction,
  	const struct pg_evidence *normalized_from, int *pending)
  {
@@ -632,7 +633,7 @@
  	const struct pg_term *from = pg_evidence_subject(direction == PG_IDENTITY_LEFT ? rv : lv)->core;
  	struct index_scope **slot = &state->scopes[direction == PG_IDENTITY_RIGHT];
  	if (!*slot && from->kind == PG_REFERENCE && from->as.reference->kind == PG_BINDER) {
-@@ -813,8 +872,8 @@
+@@ -813,8 +873,8 @@
  	}
  	const struct pg_evidence *source = work->source, *ls = work->left, *rs = work->right;
  	if (!ls || !rs) return NULL;
@@ -643,7 +644,7 @@
  	/* Factor the typed index occurrence, not a raw normal form of its type.
  	 * The latter retains the original operands and cannot be inverted as if
  	 * they had reduced. Conversion checks the occurrence against the endpoint;
-@@ -847,9 +906,10 @@
+@@ -847,9 +907,10 @@
  		pg_prove_return_type(typing, type));
  	if (!family) return NULL;
  	family = pg_prove_return_content(typing, family);
@@ -657,7 +658,7 @@
  	return transported;
  }
  
-@@ -900,10 +960,10 @@
+@@ -900,10 +961,10 @@
  static struct pg_synthesis_job *index_constructor_candidate(struct pg_synthesis *synthesis,
  	struct pg_synthesis_job *job, enum pg_identity_direction direction, int *pending)
  {
@@ -670,7 +671,7 @@
  	const struct pg_evidence *value = state->normal[direction == PG_IDENTITY_LEFT]->result;
  	const struct pg_term *head = pg_evidence_subject(value)->core;
  	while (head->kind == PG_APPLICATION) head = head->as.application.function;
-@@ -950,8 +1010,8 @@
+@@ -950,8 +1011,8 @@
  	if (branch_count > SIZE_MAX / sizeof(const struct pg_evidence *)) goto done;
  	const struct pg_evidence **branches = pg_alloc(&temporary, branch_count * sizeof(*branches));
  	if (!branches) goto done;
@@ -681,7 +682,7 @@
  	for (size_t i = 0; i < branch_count; ++i) {
  		const struct pg_object *label = pg_data_constructor(layout, i);
  		const struct pg_evidence *map = (*slot)->boundary->branches[i]->result;
-@@ -975,17 +1035,19 @@
+@@ -975,17 +1036,19 @@
  		pg_prove_substitution_projection(typing, base_context, extended));
  	const struct pg_evidence *family = pg_prove_type_case(typing, instance.formation, parameter_map,
  		pg_prove_variable(typing, extended, pg_evidence_context(extended)->binder), branch_count, branches);
@@ -708,7 +709,7 @@
  done:
  	pg_graph_destroy(&temporary);
  	return result;
-@@ -997,25 +1059,27 @@
+@@ -997,25 +1060,27 @@
  static int index_transport_progress(struct pg_synthesis_job *job,
  	const struct pg_evidence *transported, int *progress)
  {
@@ -744,7 +745,7 @@
  			if (!work->comparison.state && pg_independence_init(&work->comparison,
  				term, work->field->binder)) return -1;
  			enum pg_comparison_status status = pg_comparison_advance(&work->comparison, 1);
-@@ -1041,19 +1105,26 @@
+@@ -1041,19 +1106,26 @@
  
  static void index_transport_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
@@ -778,7 +779,7 @@
  	if (!local->index_transport) {
  		local->index_transport = pg_alloc(typing->graph, sizeof(*local->index_transport));
  		if (!local->index_transport) goto error;
-@@ -1073,9 +1144,9 @@
+@@ -1073,9 +1145,9 @@
  					int status = index_transport_progress(job, candidate->result, &progress);
  					if (!status) { pg_synthesis_enqueue(synthesis, job); return; }
  					if (status < 0) goto error;
@@ -791,7 +792,7 @@
  				}
  				struct pg_synthesis_job *check = state->checks[index];
  				if (!check) goto error;
-@@ -1093,7 +1164,7 @@
+@@ -1093,7 +1165,7 @@
  	if (!state->path) {
  		if (pg_evidence_rule(state->cursor) != PG_CONTEXT_EXTEND) goto next_context;
  		struct pg_synthesis_job *formation = pg_synthesis_identity_formation(synthesis,
@@ -800,7 +801,7 @@
  		if (!formation) goto error;
  		if (formation->status == PG_SYNTHESIS_PENDING) { pg_synthesis_subscribe(synthesis, job, formation, 0); return; }
  		struct pg_identity_boundary boundary;
-@@ -1118,8 +1189,9 @@
+@@ -1118,8 +1190,9 @@
  		pg_synthesis_enqueue(synthesis, job); return;
  	}
  	for (size_t i = 0; i < 2; ++i) {

@@ -171,6 +171,19 @@ additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
 
+2026-10-02, agent implementation decision against `486d64d`:
+`CONSTANT_MOTIVE_JOB` has no independent reduction cursor. It stores an existing
+branch abstraction and constant-result request, translates rejection and copies
+the checked receipt. Remove that owner; the Function factory returns the
+canonical constant-result request directly. Match retains strategy fallback at
+its actual decision site, not in another scheduling object. Preserve scoped
+independence checking, independent branch synthesis and post-check-only `::`.
+Verify dependent/invalid branches, zero/split fuel, images and allocation/runtime
+effects before adoption; repeated factory lookup must not recreate checked work.
+The temporary constant-result Scope array also repeats the immutable parent
+edges already on those Scope requests. Traverse those edges in reverse and
+borrow each Scope's checking output; no second telescope or receipt is needed.
+
 2026-10-02, agent implementation decision against `2bebfca`: Handler return,
 operation clause and fold, sequencing, operation-function preparation,
 constructor-result preparation, field-bearing constructor abstraction and IADT result-map discovery
@@ -865,6 +878,29 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   and genuinely unfinished construction. Try direct owner references plus
   owner-local suspension state; document any residual allocation that cannot be
   eliminated and why. An independent Job graph is not an acceptance criterion.
+  Prototype increment (2026-10-02, parent `486d64d`; agent decision): delete
+  `CONSTANT_MOTIVE_JOB` and its receipt/status wrapper. Function's stateless
+  helper returns the canonical constant-result request; Match owns its actual
+  strategy fallback. Dependent classifiers reject that candidate, not the term.
+  Constant-result telescope closing follows existing Scope parent edges instead
+  of allocating a second array, and borrows the Scope's checked output.
+  [Paired census](../src/prototype/solver_inputs/constant_owner_measurements.tsv)
+  preserves completed Term/Occurrence/Evidence and premise counts on five inputs.
+  QuickSort removes 65 Jobs, 130 dispatches, 9,360 Job-layout bytes and 229 result
+  references; captured Match removes 6 Jobs and 11 dispatches. This is not a
+  total-memory or speedup claim: the [allocation/time probe](../src/prototype/solver_inputs/constant_owner_allocation.tsv)
+  has process variance and ran alongside regression tests.
+  [Applied deltas](../src/prototype/solver_inputs/constant_owner_delta.tsv):
+  implementation +42/-65 (net -23), tests +20/-6 (net +14), excluding patch/docs.
+  Focused O2, ASan/UBSan/leaks, semantic persistence, seven checkpoint and five C
+  gates pass. Full O2 regression/examples/acceptance exits 0, including general
+  Sorted/permutation/result connection, both LT providers/orders and invalid
+  proof rejection. Fresh assembly matches 128
+  C/header files and Synthesis tests; fresh/current-worktree focused checks pass.
+  [Hashes](../src/prototype/solver_inputs/constant_owner_inputs.tsv) pin sources/binaries.
+  All 52 public List images/report match the parent; the same three reload
+  failures remain (exit 1), not waived. SE1-SE5 remain open; prototype only,
+  unrelated user edits excluded. Logs use `/tmp/a-program-constant-owner-final-`.
   Verified prototype increment (2026-10-02, parent `2bebfca`; agent decision): delete
   `SOURCE_RETURN_HANDLER` state/dispatch and use the existing sequencing owner.
   Eight preparation roles borrow their checking owner's output rather than copy

@@ -635,6 +635,18 @@ This is unpromoted prototype work, not complete Job/Evidence removal. Role count
 inspect a completed Handler run with GDB at `state_audit.c:census` on separate
 `-O1 -g` builds; count/layout values agree with the O2 census, not total RAM.
 
+Constant motive discovery now returns the existing constant-result request;
+delete its wrapper Job. Telescope closing follows Scope parent inputs without a
+scratch array, and borrows checked output. Against `486d64d`, [paired counts](constant_owner_measurements.tsv)
+remove 65 QuickSort Jobs/130 dispatches/229 result references, with unchanged
+completed Term/Occurrence/Evidence counts. [Applied implementation](constant_owner_delta.tsv)
+shrinks by 23 lines; tests grow by 14. Full O2 regression/examples/acceptance,
+persistence/checkpoints, C, sanitizers and fresh/current focused checks pass.
+All 52 List images/report match; the same three reload failures remain.
+[Hashes](constant_owner_inputs.tsv) pin the comparison. The [allocation/time probe](constant_owner_allocation.tsv)
+varies by process and ran with other tests; it establishes no general speedup.
+This is unpromoted prototype work; SE1-SE5 remain unfinished.
+
 Use the parent plan for progress. Create and verify a disposable candidate:
 
 ```sh
