@@ -1,0 +1,11 @@
+section	file	added	deleted	net
+implementation	src/synthesis_derivation.c	4	14	-10
+implementation	src/graph_io.c	20	5	15
+implementation	src/synthesis.h	3	2	1
+implementation	src/source_io.c	3	2	1
+implementation-total	applied-source-not-patch-context	30	23	7
+tests	tests/synthesis.c	12	9	3
+tests	tests/graph_io.c	23	5	18
+tests	artifact_tests/semantic_test.c	14	12	2
+tests	checkpoint_tests/derivation_checkpoint_test.c	6	6	0
+tests-total	applied-source-not-patch-context	55	32	23

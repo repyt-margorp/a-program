@@ -82,13 +82,20 @@
  	assert(!pg_artifact_schedule_attach(s, c->schedule, pg_artifact_derivations_job_count(c->state), c->jobs));
  }
  
-@@ -194,6 +180,12 @@
+@@ -189,11 +175,17 @@
+ 	assert(count == 1);
+ 	struct pg_synthesis_job *root;
+ 	if (direct) {
+-		struct pg_synthesis_job *const *rules;
+-		assert(!pg_synthesis_import_rules(&p->synthesis, count, inputs, NULL, &rules));
++		struct pg_synthesis_job *rules[1];
++		assert(!pg_synthesis_import_rules(&p->synthesis, count, inputs, NULL, rules));
  		root = rules[0];
  	} else root = pg_synthesis_derivation(&p->synthesis, inputs[0]);
  	assert(root && p->typing.proofs.count == 1 && !p->synthesis.steps);
 +	size_t jobs = p->synthesis.jobs.count;
-+	struct pg_synthesis_job *const *rules;
-+	assert(!pg_synthesis_import_rules(&p->synthesis, count, inputs, NULL, &rules));
++	struct pg_synthesis_job *rules[1];
++	assert(!pg_synthesis_import_rules(&p->synthesis, count, inputs, NULL, rules));
 +	assert(rules[0] == root && pg_synthesis_derivation(&p->synthesis, inputs[0]) == root);
 +	assert(p->synthesis.jobs.count == jobs && !p->synthesis.steps);
 +	++shared_rules;
@@ -208,7 +215,14 @@
  	assert(!pg_artifact_schedule_attach(&q->synthesis, schedule, pg_artifact_derivations_job_count(c), jobs));
  	advance(&q->synthesis, 100);
  	assert(pg_synthesis_result(pg_artifact_derivations_root(c, jobs, 0)));
-@@ -444,10 +428,6 @@
+@@ -439,15 +423,11 @@
+ 	const struct pg_derivation_input *invalid = input(p, PG_RETURN_INTRO, 1, &context);
+ 	struct pg_synthesis_job *root;
+ 	if (direct) {
+-		struct pg_synthesis_job *const *rules;
+-		assert(!pg_synthesis_import_rules(&p->synthesis, 1, &invalid, NULL, &rules));
++		struct pg_synthesis_job *rules[1];
++		assert(!pg_synthesis_import_rules(&p->synthesis, 1, &invalid, NULL, rules));
  		root = rules[0];
  	} else {
  		root = pg_synthesis_derivation(&p->synthesis, invalid);

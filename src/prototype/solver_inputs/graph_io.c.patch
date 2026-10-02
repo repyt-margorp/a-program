@@ -1,0 +1,61 @@
+--- a/graph_io.c
++++ b/graph_io.c
+@@ -7,6 +7,9 @@
+ 
+ static const unsigned char magic[8] = {'A', 'P', 'G', 'C', 'O', 'R', 'E', 1};
+ 
++static int read_descriptors(FILE *, struct pg_graph *, struct pg_graph *, size_t, size_t,
++	const struct pg_graph_codec *, void *, size_t *, const struct pg_term *const **);
++
+ static int image_roots_write(FILE *file, size_t count, const struct pg_term *const *roots, void *opaque)
+ {
+ 	struct pg_dag *table = opaque;
+@@ -92,16 +95,21 @@
+ 	long metadata = ftell(file);
+ 	if (metadata < 0 || position < (uint64_t)metadata || position > LONG_MAX) return -1;
+ 	struct image_roots table;
++	struct pg_graph scratch = {0};
++	int status = -1;
+ 	if (fseek(file, (long)position, SEEK_SET)
+-		|| pg_graph_read_descriptors(file, graph, limit, name_limit, codec, object_owner, &table.count, &table.terms)) return -1;
++		|| read_descriptors(file, graph, &scratch, limit, name_limit, codec, object_owner, &table.count, &table.terms)) goto done;
+ 	long end = ftell(file);
+-	if (end < 0 || fseek(file, metadata, SEEK_SET)) return -1;
++	if (end < 0 || fseek(file, metadata, SEEK_SET)) goto done;
+ 	struct pg_graph_root_codec root_codec = {.read = image_roots_read, .context = &table};
+ 	struct pg_graph_codec nested = codec ? *codec : (struct pg_graph_codec){0};
+ 	nested.roots = &root_codec;
+ 	if (payload(file, graph, limit, name_limit, &nested, state)
+-		|| ftell(file) != (long)position || fseek(file, end, SEEK_SET)) return -1;
+-	return 0;
++		|| ftell(file) != (long)position || fseek(file, end, SEEK_SET)) goto done;
++	status = 0;
++done:
++	pg_graph_destroy(&scratch);
++	return status;
+ }
+ 
+ 
+@@ -414,6 +422,13 @@
+ 	const struct pg_graph_codec *codec, void *context,
+ 	size_t *count, const struct pg_term *const **roots)
+ {
++	return read_descriptors(file, graph, graph, limit, name_limit, codec, context, count, roots);
++}
++
++static int read_descriptors(FILE *file, struct pg_graph *graph, struct pg_graph *root_storage,
++	size_t limit, size_t name_limit, const struct pg_graph_codec *codec, void *context,
++	size_t *count, const struct pg_term *const **roots)
++{
+ 	if (!file || !graph || !count || !roots) return -1;
+ 	if (!graph->terms.capacity) return -1;
+ 	if (codec && codec->roots) {
+@@ -431,7 +446,7 @@
+ 	/* Relocation and descriptor assembly are borrowed only during this read. */
+ 	struct object_input *objects = pg_wire_array(&seen.storage, no, sizeof(*objects));
+ 	const struct pg_term **terms = pg_wire_array(&seen.storage, nt, sizeof(*terms));
+-	const struct pg_term **result = pg_wire_array(graph, nr, sizeof(*result));
++	const struct pg_term **result = pg_wire_array(root_storage, nr, sizeof(*result));
+ 	if (!objects || !terms || !result) goto done;
+ 	size_t available = limit - (size_t)no - (size_t)nt - (size_t)nr;
+ 	if (read_objects(file, graph, (size_t)no, name_limit, codec, context, (size_t)nt, &available, objects, &seen)) goto done;

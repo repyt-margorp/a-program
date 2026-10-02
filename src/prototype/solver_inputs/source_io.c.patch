@@ -606,7 +606,20 @@
  		&pg_declaration_graph_codec, &codec, &nd, &derivations, &input_count, &input_terms,
  		&semantic_count, &semantic, continuation, owner)) goto fail;
  	if (semantic_count != np) goto fail;
-@@ -1120,27 +1201,29 @@
+@@ -1095,9 +1176,10 @@
+ 		source_offset += input.scope_count + (input.constructor ? 2 : 1);
+ 	}
+ 	if (fgetc(file) != EOF || ferror(file)) goto fail;
+-	struct pg_synthesis_job *const *rules;
++	struct pg_synthesis_job **rules = pg_wire_array(scratch, nd, sizeof(*rules));
++	if (!rules) goto fail;
+ 	pg_effect_inference_seal(&program->imported_effects);
+-	if (pg_synthesis_import_rules(&program->synthesis, nd, derivations, &program->imported_effects, &rules)) goto fail;
++	if (pg_synthesis_import_rules(&program->synthesis, nd, derivations, &program->imported_effects, rules)) goto fail;
+ 	dependencies = (struct restore_order){records, ids, NULL, (size_t)n, (size_t)np};
+ 	struct restore_node *nodes = pg_wire_array(&order.storage, n + np, sizeof(*nodes));
+ 	if (!nodes) goto fail;
+@@ -1120,27 +1202,29 @@
  				if (syntax == 6) {
  					if (prefix) goto fail;
  					producers[i] = rule ? pg_synthesis_operation_at(&program->synthesis, reference->as.reference,
@@ -646,7 +659,7 @@
  				}
  			} else if (rule) {
  				if (rule > nd || scope || syntax || definitions) goto fail;
-@@ -1198,10 +1281,10 @@
+@@ -1198,10 +1282,10 @@
  				struct pg_source_environment field;
  				if (r->name.kind || r->name.length || pg_synthesis_environment_input(s, target, &field)) goto fail;
  				scopes[i] = r->kind == GRAPH_BINDING
@@ -661,7 +674,7 @@
  			if (!scopes[i]) goto fail;
  			continue;
  		}
-@@ -1217,7 +1300,7 @@
+@@ -1217,7 +1301,7 @@
  		if (r->kind == NAME || r->kind == MODULE) {
  			if (!r->rule || r->rule > np || !parent || target || r->syntax || r->definitions) goto fail;
  			struct pg_synthesis_job *producer = producers[r->rule - 1];

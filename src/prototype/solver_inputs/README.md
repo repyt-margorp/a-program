@@ -726,6 +726,18 @@ remain. Prototype only; SE1-SE5 and complete Job/Evidence consolidation are open
 The optional `import_allocation.mk` census accepts an existing `.a`, performs
 no Solve or admission and excludes initialization, graph.c internals and scratch.
 
+Rule import now writes caller-owned root slots; source restoration discards that
+array with its existing scratch. The shared image's whole Term lookup table is
+also read-local, while actual Terms and public roots keep their semantic lifetime.
+Against `149eca0`, [census](relocation_inputs_measurements.tsv) and all 52 List
+images/report agree; the same three reload failures remain. [Read allocations](relocation_inputs_import_allocation.tsv)
+decrease without smaller files; QuickSort samples have process variation.
+[Deltas](relocation_inputs_delta.tsv) are implementation +7 and tests +23 net,
+not a code-size reduction. [Hashes](relocation_inputs_inventory.tsv) pin inputs.
+Focused, persistence/checkpoint, C, sanitizer and fresh/integration checks pass;
+full O2 regression/examples/acceptance exits 0, including general QuickSort.
+Prototype only; SE1-SE5 remain open.
+
 Use the parent plan for progress. Create and verify a disposable candidate:
 
 ```sh

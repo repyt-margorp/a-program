@@ -1016,6 +1016,7 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   SE1-SE5 remain open. The selected import-root array still has permanent
   lifetime although source restoration needs only a temporary relocation map;
   inspect/remove that residual under SE4, not a new parallel work list.
+  Resolved by SE4's subsequent 2026-10-03 relocation-lifetime increment below.
   Prototype increment (2026-10-02, parent `486d64d`; agent decision): delete
   `CONSTANT_MOTIVE_JOB` and its receipt/status wrapper. Function's stateless
   helper returns the canonical constant-result request; Match owns its actual
@@ -2061,6 +2062,33 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   and obsolete owner codecs. Keep only unfinished state needed by actual Solve
   consumers. Wire ordinals are transport references, not a new semantic layer.
   No C layout, ABI, LinkerScript or target-native representation enters `.a`.
+  Verified prototype increment (2026-10-03, parent `149eca0`; agent decision): delete the
+  allocating rule-import wrapper. Import now writes caller-owned output slots;
+  source restoration keeps them in its existing scratch, not the Program arena.
+  The shared image's complete Term lookup table also becomes read-local. Its
+  actual Terms and selected public roots keep their original semantic lifetime;
+  one descriptor decoder serves both paths. No Job, semantic tag, acceptance
+  authority, wire field, trust policy or accepted-source promotion is added.
+  Deep 2,048-link rule import destroys its raw DAG and output array before Solve;
+  deep shared Term images survive lookup-table destruction. Failure leaves
+  caller output slots unchanged; zero roots/fuel do no checking. Focused O2,
+  persistence/seven checkpoints, five C gates, ASan/UBSan/leaks, fresh assembly
+  and current-user-edit Core/IADT/Synthesis pass. Full O2 regression, examples
+  and acceptance exit 0, including general QuickSort Sorted/permutation/result
+  connection, both LT providers/orders and invalid-evidence rejection.
+  [All five census inputs](../src/prototype/solver_inputs/relocation_inputs_measurements.tsv)
+  agree at 0/100/1000/completion. All 52 List images and the strict partition
+  report equal the parent: the same three public reload failures remain, exit 1.
+  [Read allocation samples](../src/prototype/solver_inputs/relocation_inputs_import_allocation.tsv)
+  remove 1,288 externally requested persistent-arena bytes on List; four paired
+  QuickSort reads remove 104,984-120,056 bytes with process variation. These
+  exclude initialization, graph.c internals and discarded scratch, not RSS,
+  peak memory, file-size reduction or a speedup. [Applied source delta](../src/prototype/solver_inputs/relocation_inputs_delta.tsv):
+  implementation +30/-23 (net +7), tests +55/-32 (net +23), excluding patch/docs.
+  [Hashes](../src/prototype/solver_inputs/relocation_inputs_inventory.tsv) pin
+  the candidate and inputs; logs use `/tmp/a-program-import-inputs-`.
+  SE1-SE5 remain open; duplicate structural construction and public frontier
+  persistence are not settled by these transport-lifetime deletions.
   Verified increment (2026-10-02, agent decision, parent `771b022`): the detached
   rule-header/premise exporter is deleted. Test, checkpoint and semantic-image
   callers use synchronous borrowed views or existing checked inputs; no copy is
