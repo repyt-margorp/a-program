@@ -1018,6 +1018,31 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   their actual lexical/typed owner, independent of classifier-completion timing,
   before removing pending-body discovery. Do not add another Job/Term graph or
   reconstruct accepted Evidence solely to recover that source edge.
+  Verified prototype increment (2026-10-03, parent `8b38099`; agent decision): address each named
+  block binder by its existing lexical binding key (block syntax, statement
+  ordinal, enclosing binders). Callable-origin lookup uses that source address,
+  not classifier completion or reconstructed Evidence. No new Job kind, index
+  or wire field is introduced. Known polarity selects the actual computation or
+  ordinary RETURN rule, including pending operands; existing discovery keys stay
+  stable. Unknown polarity and unfinished Context validation still need discovery.
+  This supersedes the previous checked-only restriction, not SE1's remaining work.
+  Full O2 regression/examples/acceptance, semantic/seven checkpoint and five C
+  gates pass, including unchanged dependent/partial/effectful constructors and
+  both LT providers/orders. ASan/UBSan/leaks Synthesis/source/derivation, fresh
+  assembly and current-user-edit Core/IADT/Synthesis pass. Lexical-address tests
+  cover inert registration, exact reuse, invalid slots and nested capture isolation.
+  [Census](../src/prototype/solver_inputs/sequence_origin_measurements.tsv) preserves
+  all five final Term/Occurrence/Evidence and logical-premise counts. QuickSort
+  removes 114 Jobs, 16,416 Job-layout bytes and 215 dispatches, but adds 18 lexical
+  binding records and 178 enclosing-binder references. [Images](../src/prototype/solver_inputs/sequence_origin_images.tsv)
+  grow 1,704 bytes for QuickSort and 168 for effects; three other images are equal.
+  These are source allocation addresses, not copied types/proofs. No total-memory,
+  file-size reduction or wall-clock speedup is claimed. [Applied deltas](../src/prototype/solver_inputs/sequence_origin_delta.tsv):
+  implementation +36/-12 (net +24), tests +52/-11 (net +41), audit +14/-3 (net +11).
+  [Public partitions](../src/prototype/solver_inputs/sequence_origin_partitions.tsv)
+  still fail reload 1000+1000, 1600+1600 and completed+0; exit 1 is not waived.
+  [Hashes](../src/prototype/solver_inputs/sequence_origin_inventory.tsv) pin inputs;
+  logs use `/tmp/a-program-sequence-origin-`. SE1-SE5 stay open; prototype only.
   Verified prototype increment (2026-10-03, parent `0e3865d`; agent decision):
   normalization now uses the existing resolved-input interner after operand
   validation. Equivalent checked inputs share the checking owner, without

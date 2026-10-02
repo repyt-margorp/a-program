@@ -134,20 +134,22 @@ Solve-local pool instead of retaining one allocation per historical wait.
 The restricted schedule codec still handles Job-to-Job waits only; this change
 does not introduce a new Effect checkpoint or establish public resumption.
 Body, abstraction and Lambda-body requests borrow checked/pending inputs through
-the same interface. Checked operands and a checked matching Context select the
-actual input or ordinary RETURN rule directly, without a body preparation Job.
-Pending operands retain their discovery owner and lexical input edges, even
-after completion. Checked constructor bodies no longer need completed input
-Jobs. The ordinary polarity lifting and Context checks remain; a Context input
-must actually be a checked Context judgement, not just share its scope pointer.
-Selected checked bodies do not require a pending-rule projection or a new codec.
-Against `4b46660`, QuickSort retains the same final typed-structure/receipt counts with
-133 fewer Jobs and 371 fewer dispatches; see [census](body_inputs_measurements.tsv),
-[applied deltas](body_inputs_delta.tsv) and [public partitions](body_inputs_partitions.tsv).
-The three public reload failures remain; this is not complete Job removal.
-Direct pending-body selection was rejected: a completed classifier query loses
-the pending source edge currently used to recover implicit-constructor calling
-conventions. That dependency still needs removal; no replacement graph is added.
+the same interface. Known polarity and a checked matching Context select the
+actual input or ordinary RETURN rule directly, including pending computations.
+Existing discovery identities remain stable; unknown polarity and unfinished
+Context checks still need discovery. A Context input must actually be a checked
+Context judgement, not just share its scope pointer. Block binders use the existing
+lexical address interner; implicit constructor conventions follow the named source
+statement instead of depending on retained classifier Jobs. This repairs the
+earlier rejected pending-body trial without a new index, Job kind or wire field.
+Against `8b38099`, QuickSort loses 114 Jobs and 215 dispatches with unchanged final
+Term/Occurrence/Evidence counts. Its lexical addresses add 18 binding records and
+178 enclosing-binder references; its image grows 1,704 bytes. No overall memory or
+file-size reduction is claimed. See [census](sequence_origin_measurements.tsv),
+[images](sequence_origin_images.tsv), [deltas](sequence_origin_delta.tsv) and
+[public partitions](sequence_origin_partitions.tsv). Full regression, checkpoint,
+C and focused sanitizer gates pass. The three public reload failures remain;
+this is not complete Job removal or accepted-source promotion.
 Lexical names, lookup and environments use the same direct inputs. Checked leaves
 retain typed-use identity; pending keys remain stable after completion. Source
 export shares checked leaves directly through its existing DAG traversal,

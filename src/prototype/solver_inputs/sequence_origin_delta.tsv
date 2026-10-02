@@ -1,0 +1,7 @@
+scope	file	added	removed	net
+implementation	synthesis.c	29	7	22
+implementation	synthesis.h	2	1	1
+implementation	synthesis_cbpv.c	3	2	1
+implementation	synthesis_source.h	2	2	0
+test	synthesis.c	52	11	41
+audit	state_audit.c	14	3	11

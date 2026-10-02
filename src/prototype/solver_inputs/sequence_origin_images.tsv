@@ -1,0 +1,6 @@
+case	parent_bytes	candidate_bytes	delta_bytes	byte_equal
+list	50820	50820	0	yes
+effect	218955	219123	168	no
+captured	134301	134301	0	yes
+quick	7822358	7824062	1704	no
+handler	47888	47888	0	yes

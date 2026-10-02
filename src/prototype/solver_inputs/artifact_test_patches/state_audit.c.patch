@@ -8,7 +8,29 @@
  
  #include <assert.h>
  #include <errno.h>
-@@ -42,18 +43,30 @@
+@@ -21,12 +22,21 @@
+ 	return 0;
+ }
+ 
++static int binding_edges(void *owner, const struct pg_source_binding *binding)
++{
++	size_t *count = owner;
++	*count += binding->scope_count;
++	return 0;
++}
++
+ static void census(const struct pg_program *p, uint64_t requested)
+ {
+ 	const struct pg_synthesis *s = &p->synthesis;
+ 	size_t terms = p->graph.terms.count, objects = p->graph.objects.count;
+ 	size_t proofs = p->typing.proofs.count, occurrences = p->typing.occurrences.count;
+ 	size_t jobs = s->jobs.count;
++	size_t bindings = s->source_bindings.count, references = s->source_references.count, scopes = 0;
++	assert(!pg_synthesis_visit_source_bindings(s, binding_edges, &scopes));
+ 	/* Lookup entries contain only an index header and an owner pointer. Report
+ 	 * arena alignment and bucket storage separately from full Job allocations. */
+ 	size_t key_extent = sizeof(struct pg_index_entry) + sizeof(struct pg_synthesis_job *);
+@@ -42,18 +52,30 @@
  	for (size_t i = 0; i < s->jobs.capacity; ++i) {
  		for (const struct pg_index_entry *entry = s->jobs.buckets[i]; entry; entry = entry->next) {
  			const struct pg_synthesis_job *job = (const void *)entry;
@@ -42,27 +64,33 @@
  	for (size_t i = 0; i < p->typing.proofs.capacity; ++i) {
  		for (const struct pg_index_entry *entry = p->typing.proofs.buckets[i]; entry; entry = entry->next) {
  			const struct pg_evidence *proof = (const void *)entry;
-@@ -67,11 +80,12 @@
+@@ -67,15 +89,18 @@
  				overlap += typed_edge(subject, pg_evidence_subject(pg_evidence_premise(proof, j)));
  		}
  	}
 -	printf("%" PRIu64 "\t%" PRIu64 "\t%d\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\n",
-+	printf("%" PRIu64 "\t%" PRIu64 "\t%d\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\n",
++	printf("%" PRIu64 "\t%" PRIu64 "\t%d\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\t%zu\n",
  		requested, steps, pg_synthesis_status(p->root), terms, occurrences, proofs,
  		jobs, pending, done, job_bytes, rules, lazy, structural,
  		outputs, results.count, premise_edges, overlap, retained_edges, eliminations,
 -		s->resolved_requests.count, key_bytes, key_buckets);
 +		s->resolved_requests.count, key_bytes, key_buckets,
-+		p->typing.typed_queries.count, query_pending, query_done, query_bytes);
++		p->typing.typed_queries.count, query_pending, query_done, query_bytes,
++		bindings, references, scopes);
  	pg_dag_destroy(&results);
  	assert(steps == s->steps && jobs == s->jobs.count && proofs == p->typing.proofs.count);
  	assert(terms == p->graph.terms.count && objects == p->graph.objects.count);
-@@ -92,7 +106,7 @@
+ 	assert(occurrences == p->typing.occurrences.count);
++	assert(bindings == s->source_bindings.count && references == s->source_references.count);
+ }
+ 
+ int main(int argc, char **argv)
+@@ -92,7 +117,7 @@
  	struct pg_program *p = pg_program_create(source, (size_t)length, PG_DEFINITION_IMPLICIT_THUNK);
  	free(source);
  	assert(p && p->root);
 -	puts("requested_fuel\tsteps\tstatus\tterms\toccurrences\tevidence\tjobs\tpending\tdone\tjob_bytes\trules\tlazy_inputs\tstructure_capable_jobs\tresult_refs\tunique_results\tpremise_edges\ttyped_overlap\tretained_premise_edges\telimination_receipts\tresolved_keys\tresolved_key_aligned_bytes\tresolved_index_bytes");
-+	puts("requested_fuel\tsteps\tstatus\tterms\toccurrences\tevidence\tjobs\tpending\tdone\tjob_bytes\trules\tlazy_inputs\tstructure_capable_jobs\tresult_refs\tunique_results\tpremise_edges\ttyped_overlap\tretained_premise_edges\telimination_receipts\tresolved_keys\tresolved_key_aligned_bytes\tresolved_index_bytes\ttyped_queries\tquery_pending\tquery_done\tquery_bytes");
++	puts("requested_fuel\tsteps\tstatus\tterms\toccurrences\tevidence\tjobs\tpending\tdone\tjob_bytes\trules\tlazy_inputs\tstructure_capable_jobs\tresult_refs\tunique_results\tpremise_edges\ttyped_overlap\tretained_premise_edges\telimination_receipts\tresolved_keys\tresolved_key_aligned_bytes\tresolved_index_bytes\ttyped_queries\tquery_pending\tquery_done\tquery_bytes\tsource_bindings\tsource_references\tbinding_scope_edges");
  	uint64_t previous = 0;
  	for (int i = 2; i < argc; ++i) {
  		char *end;
