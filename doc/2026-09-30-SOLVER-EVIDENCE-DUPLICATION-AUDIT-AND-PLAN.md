@@ -171,6 +171,14 @@ additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
 
+2026-10-02, agent decision against `464f6aa`: pending Variable/Universe/Host
+leaf descriptions still allocate structural Jobs whose sole step invokes an
+existing Core constructor. Construct that syntax directly, without a new tag,
+worker or proof; keep ordinary admission and genuinely pending source discovery.
+Do not merge `DOMAIN_STRUCTURE_JOB` into domain acceptance merely to delete it:
+its symbolic shape can close an effect cycle before the Context/type is checked.
+Descriptive readiness and checked admission must remain distinct outcomes.
+
 2026-10-02, agent decision against `0b9d421`: declared-type lookup still allocates
 `DECLARED_TYPE_JOB` for an already checked Context. Return the existing borrowed
 structure view for that case through one checked/pending API; delete the Job-only
@@ -835,6 +843,28 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   and genuinely unfinished construction. Try direct owner references plus
   owner-local suspension state; document any residual allocation that cannot be
   eliminated and why. An independent Job graph is not an acceptance criterion.
+  Verified prototype increment (2026-10-02, parent `464f6aa`; agent decision): Variable,
+  Universe and Host leaf descriptions use existing Core constructors directly;
+  delete their no-work structural dispatches. Ordinary admission still rejects
+  invalid premises and Universe overflow; descriptive visibility grants no proof.
+  Repeated queries allocate no Job/Occurrence/receipt or fuel. Known non-Comp
+  Effect inputs are refused immediately, not wrapped in a delayed rejection Job.
+  O2 Synthesis/source-I/O, semantic persistence, seven checkpoint and five C
+  gates, focused ASan/UBSan/leaks and dirty-current Core/IADT/Synthesis pass.
+  Full O2 regression/examples/acceptance exits 0, including universal Sorted,
+  permutation/result connection, both LT providers/orders and invalid proofs.
+  Fresh assembly matches 128 active C/header files and Synthesis tests.
+  [Paired counts](../src/prototype/solver_inputs/leaf_structure_measurements.tsv)
+  preserve completed Term/Occurrence/Evidence counts on five inputs; QuickSort
+  loses 10 Jobs/1,440 layout bytes/18 steps, Handler loses 1 Job/144 bytes/2 steps.
+  [Applied deltas](../src/prototype/solver_inputs/leaf_structure_delta.tsv):
+  implementation +16/-18 (net -2), tests +48/-2 (net +46), excluding patches/docs.
+  [Pinned hashes](../src/prototype/solver_inputs/leaf_structure_inputs.tsv).
+  All 52 public partition images/report equal the parent; the same three reload
+  failures remain (exit 1), not waived. SE1-SE5 stay open; unpromoted prototype.
+  Logs use `/tmp/a-program-leaf-structure-`. Keep genuinely pending discovery
+  and Domain's pre-admission shape needed to close effect cycles; do not replace
+  these with another acceptance authority merely to remove a class name.
   Verified prototype increment (2026-10-02, parent `0b9d421`; agent decision): checked
   declaration lookup borrows its Context field; pending plain extensions borrow
   their actual type operand, walking immutable parents without per-ancestor Jobs.

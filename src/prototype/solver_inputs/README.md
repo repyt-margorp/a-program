@@ -601,6 +601,15 @@ examples/acceptance, persistence, checkpoint, C and focused sanitizer gates pass
 The 52 public images/report match; three reload failures and SE1-SE5 stay open.
 This is unpromoted prototype work. See [pinned inputs](declared_type_inputs.tsv).
 
+Variable/Universe/Host leaf descriptions no longer allocate structural Jobs.
+Their Core shape does not grant admission: invalid premises/overflow still
+reject. Against `464f6aa`, [paired counts](leaf_structure_measurements.tsv) remove
+10 QuickSort Jobs/18 steps with unchanged completed typed/proof counts;
+[applied implementation](leaf_structure_delta.tsv) is net -2 lines. Full O2
+regression/examples/acceptance, focused sanitizer, persistence/checkpoint, C
+and dirty-current gates pass. SE1-SE5 and three public reload failures stay open.
+This is unpromoted prototype work; [hashes](leaf_structure_inputs.tsv) pin it.
+
 Use the parent plan for progress. Create and verify a disposable candidate:
 
 ```sh
