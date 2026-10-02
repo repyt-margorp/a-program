@@ -32,21 +32,105 @@
  	result->induction = NULL;
  	for (size_t i = 0; i < operand_count; ++i) result->operands[i] = operands[i];
  	if (map_count) memcpy(result->operands + operand_count, maps, map_count * sizeof(*maps));
-@@ -572,7 +572,7 @@
- 		return work->child ? PG_SUBSTITUTION_PENDING : PG_SUBSTITUTION_ERROR;
+@@ -370,18 +370,30 @@
+ 		.type = source->classifier == classifier ? source->type : NULL}, argument ? &argument : NULL, NULL);
+ }
+ 
+-const struct pg_binding_value *pg_context_map_bindings(const struct pg_context_map *map)
++static const struct pg_object *const *map_binders(const struct pg_context_map *map)
+ {
+-	return (const struct pg_binding_value *)(map->images + map->count);
++	return (const struct pg_object *const *)(map->images + map->count);
++}
++
++static struct pg_binding_value map_binding(const void *owner, size_t i)
++{
++	const struct pg_context_map *map = owner;
++	if (!map || i >= map->count) return (struct pg_binding_value){0};
++	return (struct pg_binding_value){map_binders(map)[i], map->images[i]->core};
++}
++
++struct pg_binding_inputs pg_context_map_bindings(const struct pg_context_map *map)
++{
++	return (struct pg_binding_inputs){.owner = map, .at = map_binding};
+ }
+ 
+ const struct pg_occurrence *pg_context_map_lookup(const struct pg_context_map *map,
+ 	const struct pg_object *binder, size_t *index)
+ {
+ 	if (!map) return NULL;
+-	const struct pg_binding_value *bindings = pg_context_map_bindings(map);
++	const struct pg_object *const *binders = map_binders(map);
+ 	for (size_t i = 0; i < map->count; ++i) {
+-		if (bindings[i].binder != binder) continue;
++		if (binders[i] != binder) continue;
+ 		if (index) *index = i;
+ 		return map->images[i];
  	}
- 	if (!work->substitution) work->substitution = pg_substitution_request(&typing->substitutions,
--		work->universe, work->indices_map->count, pg_context_map_bindings(work->indices_map));
-+		work->universe, work->indices_map->count, (struct pg_binding_inputs){.owner = pg_context_map_bindings(work->indices_map)});
- 	enum pg_substitution_status status = pg_substitution_advance(work->substitution, 1);
- 	if (status != PG_SUBSTITUTION_DONE) return status;
- 	const struct pg_term *type = pg_substitution_result(work->substitution);
-@@ -768,7 +768,7 @@
+@@ -393,7 +405,7 @@
+ 	size_t count, const struct pg_occurrence *const *images)
+ {
+ 	if (count && !images) return NULL;
+-	size_t stride = sizeof(*images) + sizeof(struct pg_binding_value);
++	size_t stride = sizeof(*images) + sizeof(struct pg_object *);
+ 	if (count > (SIZE_MAX - sizeof(struct pg_context_map)) / stride) return NULL;
+ 	uint64_t hash = (uintptr_t)source;
+ 	hash = (hash ^ (uintptr_t)destination) * UINT64_C(1099511628211);
+@@ -414,11 +426,11 @@
+ 	map->source = source;
+ 	map->destination = destination;
+ 	map->count = count;
+-	struct pg_binding_value *bindings = (struct pg_binding_value *)(map->images + count);
++	const struct pg_object **binders = (const struct pg_object **)(map->images + count);
+ 	const struct pg_context *scope = source;
+ 	for (size_t i = count; i; --i, scope = scope->parent) {
+ 		map->images[i - 1] = images[i - 1];
+-		bindings[i - 1] = (struct pg_binding_value){scope->binder, images[i - 1]->core};
++		binders[i - 1] = scope->binder;
+ 	}
+ 	return pg_index_insert(&typing->context_maps, &map->index, hash) ? NULL : map;
+ }
+@@ -660,10 +672,11 @@
+ 		return pg_occurrence_mapped(typing, source->judgement, core, classifier,
+ 			annotation, source, map);
+ 	}
+-	const struct pg_binding_value *bindings = pg_context_map_bindings(map);
+ 	int identity = map->source == map->destination;
+-	for (size_t i = 0; identity && i < map->count; ++i)
+-		identity = bindings[i].value->kind == PG_REFERENCE && bindings[i].value->as.reference == bindings[i].binder;
++	for (size_t i = 0; identity && i < map->count; ++i) {
++		struct pg_binding_value binding = map_binding(map, i);
++		identity = binding.value->kind == PG_REFERENCE && binding.value->as.reference == binding.binder;
++	}
+ 	return identity ? source : pg_occurrence_mapped(typing,
+ 		source->judgement, core, classifier, annotation, source, map);
+ }
+@@ -674,10 +687,10 @@
+ 	size_t count;
+ 	if (!map || !source || source->context != map->source) return NULL;
+ 	if (pg_context_extension_size(map->destination, map->source, &count)) return NULL;
+-	const struct pg_binding_value *bindings = pg_context_map_bindings(map);
+ 	for (size_t i = 0; i < map->count; ++i) {
+-		if (bindings[i].value->kind != PG_REFERENCE) return NULL;
+-		if (bindings[i].value->as.reference != bindings[i].binder) return NULL;
++		struct pg_binding_value binding = map_binding(map, i);
++		if (binding.value->kind != PG_REFERENCE) return NULL;
++		if (binding.value->as.reference != binding.binder) return NULL;
+ 	}
+ 	return action_result(typing, map, source, source->core, source->classifier, source->annotation);
+ }
+@@ -762,13 +775,12 @@
+ 		work->result = pg_occurrence_projection(work->typing, map, source);
+ 		if (work->result) return PG_SUBSTITUTION_DONE;
+ 	}
+-	const struct pg_binding_value *bindings = pg_context_map_bindings(map);
+ 	if (work->next < 3) {
+ 		const struct pg_term *inputs[] = {source->core, source->classifier, source->annotation};
  		if (!inputs[work->next]) { ++work->next; return PG_SUBSTITUTION_PENDING; }
  		if (!work->substitution) {
  			work->substitution = pg_substitution_request(&work->typing->substitutions,
 -				inputs[work->next], map->count, bindings);
-+				inputs[work->next], map->count, (struct pg_binding_inputs){.owner = bindings});
++				inputs[work->next], map->count, pg_context_map_bindings(map));
  			return work->substitution ? PG_SUBSTITUTION_PENDING : PG_SUBSTITUTION_ERROR;
  		}
  		enum pg_substitution_status status = pg_substitution_advance(work->substitution, 1);

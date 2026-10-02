@@ -67,6 +67,9 @@ connectivity restored; this is operational information, not a design change.
 actual deletions, not documentation-only work; audit and implementation must
 advance together without rebuilding Oracle-local Term structure in Job/Evidence.
 
+2026-10-03, English paraphrase of the continuation: keep that balance and remove
+duplicated stored structure; documentation-only activity is not implementation.
+
 ## Objective (Code)
 
 ### Revision and Method
@@ -171,7 +174,7 @@ additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
 
-2026-10-03, agent follow-up on `c1d93d3` plus the Effect-input trial:
+2026-10-03, agent follow-up on `efc55b1`:
 `pg_context_map` stores both typed images and their Core values in a second
 binding array. Project values from the existing images through the same borrowed
 input contract; retain only the positional binder index. Removing that index
@@ -783,11 +786,27 @@ not authorization to promote code or a claim that general resumption is solved.
 No new binding/domain checkpoint fields or backend features before this gate.
 Implement prototypes, verify, and push reviewable deletion-oriented milestones.
 
-- [ ] **SE1 Context-map images (2026-10-03, follows Effect inputs):** delete
+- [x] **SE1 Context-map images (2026-10-03, parent `efc55b1`):** delete
   copied Core-value slots; borrow typed images, retaining the binder index.
-  Test dependent maps, raw duplicate-binder ordering, array/reader request reuse,
-  zero/split fuel, owner lifetime and persistence. Measure actual storage,
-  run ordinary regression/checkpoint/sanitizer/C gates, then publish separately.
+  Dependent maps, raw duplicate-binder ordering, array/reader request reuse,
+  zero/split fuel, owner lifetime and persistence tests pass. On the tested
+  64-bit build, each map entry shrinks from 24 to 16 bytes; read access remains
+  constant-time without another stored Core-value array or Context-list walk.
+  [Census](../src/prototype/solver_inputs/map_images_measurements.tsv) is identical
+  for five inputs at fuel 0/100/1000/completion.
+  [Arena samples](../src/prototype/solver_inputs/map_images_allocation.tsv)
+  decrease aligned requested bytes by 1,968/12,320/15,824/1,283,200/1,216 for
+  List/Effect/captured/QuickSort/Handler. Capture/QuickSort call counts vary;
+  these are partial cumulative samples, not peak RAM or a universal speedup.
+  [Applied delta](../src/prototype/solver_inputs/map_images_delta.tsv):
+  implementation +41/-28 (net +13), tests +28/-13 (net +15), excluding patch
+  context/docs/reports. Full O2 regression/examples/acceptance, semantic persistence,
+  seven checkpoint/five C gates and Core/Synthesis/Eval-I/O/Source-I/O
+  ASan/UBSan/leaks exit 0. Fresh assembly matches all 156 C/header files;
+  dirty-current Core/IADT/Synthesis also pass. All 52 List images/report equal
+  the parent; the same three strict reload failures remain. Prototype only;
+  SE1-SE5 stay open. [Hashes](../src/prototype/solver_inputs/map_images_inventory.tsv)
+  pin tested files/inputs; logs use `/tmp/a-program-map-images-*.log`.
 
 - [x] **SE1 Effect substitution inputs (2026-10-03, parent `c1d93d3`):**
   unify existing Core substitution construction on stable synchronous inputs;
@@ -1351,6 +1370,9 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   Remove the corresponding duplicated structural walkers and overbroad private
   state. Keep genuinely unfinished queries and effect dependencies; do not
   replace all of them with an unconditional wait for accepted Evidence.
+  Next owner-locality audit: `synthesis_derivation.c:rule_key/rule_header` still
+  retains the broad 18-field raw derivation interface. Distinguish its actual
+  checking parameters from rebuilt Term payload; do not claim its removal yet.
   Verified prototype increment (2026-10-02, agent decision; parent `755363a`):
   classifier-formation, Variable and Host classifier shapes borrow their actual
   input queries. Delete the forwarding type-query path/helper and Variable/Host

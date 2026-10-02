@@ -344,6 +344,17 @@ kernel acceptance remain, without another Job-only input interface.
 
 ### Assessment
 
+2026-10-03, Context maps against `efc55b1`: delete the copied Core-value slots.
+The existing typed images supply values through the same substitution input;
+only the positional binder index remains, preserving constant-time reads.
+Each map entry is 16 rather than 24 bytes on the tested 64-bit build.
+[Census](map_images_measurements.tsv) and all 52 partition images are unchanged;
+[arena samples](map_images_allocation.tsv) show smaller requested byte totals,
+not measured peak RAM or a universal speedup. [Deltas](map_images_delta.tsv)
+are net +13 implementation, +15 tests. Full regression/checkpoint/C/sanitizer
+and fresh/current checks pass. The three public reload failures and full
+Job/Evidence ownership work remain open; this is unpromoted prototype code.
+
 2026-10-03, Effect substitution against `c1d93d3`: remove the intermediate
 binding array and temporary flattened key. Existing substitution construction
 accepts one stable synchronous array/reader view; only its immutable environment

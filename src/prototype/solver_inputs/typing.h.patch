@@ -46,3 +46,14 @@
  	/* Computation work, not an additional source of typing evidence. */
  	struct pg_substitution_work substitutions;
  	struct pg_typing_wait *free_waits;
+@@ -185,8 +190,8 @@
+ /* Completed action on a family's index telescope; NULL for a value binder. */
+ const struct pg_context_map *pg_context_lift_indices(const struct pg_context_lift *work);
+ uint64_t pg_context_lift_steps(const struct pg_context_lift *work);
+-/* Immutable erased projection of the typed images, computed at construction. */
+-const struct pg_binding_value *pg_context_map_bindings(const struct pg_context_map *map);
++/* Synchronous borrowed projection of typed images; no copied Core-value array. */
++struct pg_binding_inputs pg_context_map_bindings(const struct pg_context_map *map);
+ /* Return the oldest source image for binder. Optional index identifies its
+  * source-telescope position even when multiple binders have the same image. */
+ const struct pg_occurrence *pg_context_map_lookup(const struct pg_context_map *map,

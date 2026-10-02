@@ -15,12 +15,15 @@
  struct pg_substitution_state;
  struct pg_substitution { struct pg_substitution_state *state; };
  enum pg_substitution_status { PG_SUBSTITUTION_PENDING, PG_SUBSTITUTION_DONE, PG_SUBSTITUTION_ERROR };
-@@ -136,7 +144,7 @@
+@@ -136,9 +144,9 @@
  int pg_substitution_work_init(struct pg_substitution_work *work, struct pg_graph *graph);
  void pg_substitution_work_destroy(struct pg_substitution_work *work);
  struct pg_substitution *pg_substitution_request(struct pg_substitution_work *work,
 -	const struct pg_term *term, size_t count, const struct pg_binding_value *bindings);
 +	const struct pg_term *term, size_t count, struct pg_binding_inputs bindings);
  const struct pg_term *pg_substitution_compute(struct pg_substitution_work *work,
- 	const struct pg_term *term, size_t count, const struct pg_binding_value *bindings);
+-	const struct pg_term *term, size_t count, const struct pg_binding_value *bindings);
++	const struct pg_term *term, size_t count, struct pg_binding_inputs bindings);
  
+ /* Immutable pure policies outlive their jobs. Core does not decide which
+  * policies are admissible as conversion evidence; that is the checker's job.

@@ -1,0 +1,13 @@
+--- a/conversion.c
++++ b/conversion.c
+@@ -232,8 +232,8 @@
+ 			pg_alpha_equal(bindings[i].value, pg_reduction_source(reductions[i])) != 1) goto done;
+ 		images[i].value = pg_reduction_target(reductions[i]);
+ 	}
+-	if (pg_alpha_equal(left, pg_substitution_compute(work, body, count, bindings)) != 1 ||
+-		pg_alpha_equal(right, pg_substitution_compute(work, body, count, images)) != 1) goto done;
++	if (pg_alpha_equal(left, pg_substitution_compute(work, body, count, (struct pg_binding_inputs){.owner = bindings})) != 1 ||
++		pg_alpha_equal(right, pg_substitution_compute(work, body, count, (struct pg_binding_inputs){.owner = images})) != 1) goto done;
+ 	result = pg_alloc(work->graph, sizeof(*result));
+ 	if (result) *result = (struct pg_conversion_certificate){left, right};
+ done:

@@ -106,12 +106,12 @@
  			--i;
  			image = image->parent;
  		}
-@@ -623,7 +636,7 @@
+@@ -621,7 +634,7 @@
+ }
+ 
  const struct pg_term *pg_substitution_compute(struct pg_substitution_work *work,
- 	const struct pg_term *term, size_t count, const struct pg_binding_value *bindings)
+-	const struct pg_term *term, size_t count, const struct pg_binding_value *bindings)
++	const struct pg_term *term, size_t count, struct pg_binding_inputs bindings)
  {
--	struct pg_substitution *request = pg_substitution_request(work, term, count, bindings);
-+	struct pg_substitution *request = pg_substitution_request(work, term, count, (struct pg_binding_inputs){.owner = bindings});
+ 	struct pg_substitution *request = pg_substitution_request(work, term, count, bindings);
  	if (!request) return NULL;
- 	while (pg_substitution_advance(request, UINT64_MAX) == PG_SUBSTITUTION_PENDING) {}
- 	return pg_substitution_result(request);
