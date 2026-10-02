@@ -1043,6 +1043,13 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   still fail reload 1000+1000, 1600+1600 and completed+0; exit 1 is not waived.
   [Hashes](../src/prototype/solver_inputs/sequence_origin_inventory.tsv) pin inputs;
   logs use `/tmp/a-program-sequence-origin-`. SE1-SE5 stay open; prototype only.
+  Follow-up (2026-10-03, parent `e8e4c4d`): delete the now-unused
+  `pg_synthesis_result_context_input` reverse reader and its declaration. Only
+  inspection assertions remained; actual Context/type/effect checks stay covered.
+  Implementation -13 lines, tests -5. Fresh patch assembly, O2 check/examples,
+  constructor sequencing, semantic/source/namespace-body/constructor checkpoints
+  and ASan/UBSan/leaks Synthesis pass. Full acceptance is the preceding increment's
+  verified result, not a fresh run for this dead-API deletion. Prototype only.
   Verified prototype increment (2026-10-03, parent `0e3865d`; agent decision):
   normalization now uses the existing resolved-input interner after operand
   validation. Equivalent checked inputs share the checking owner, without

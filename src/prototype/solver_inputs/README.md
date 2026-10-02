@@ -150,6 +150,8 @@ file-size reduction is claimed. See [census](sequence_origin_measurements.tsv),
 [public partitions](sequence_origin_partitions.tsv). Full regression, checkpoint,
 C and focused sanitizer gates pass. The three public reload failures remain;
 this is not complete Job removal or accepted-source promotion.
+The obsolete result-Context reverse reader is deleted; callable provenance no
+longer depends on inspecting a classifier-formation Job chain.
 Lexical names, lookup and environments use the same direct inputs. Checked leaves
 retain typed-use identity; pending keys remain stable after completion. Source
 export shares checked leaves directly through its existing DAG traversal,
