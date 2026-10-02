@@ -1,0 +1,10 @@
+kind	path	added	removed	net
+implementation	src/synthesis.c	2	26	-24
+implementation	src/synthesis_work.c	5	0	5
+implementation	src/synthesis_work.h	1	0	1
+implementation	src/synthesis_cbpv.c	1	1	0
+implementation	src/synthesis_handler.c	3	5	-2
+implementation	src/synthesis_operation.c	1	1	0
+implementation	src/synthesis_iadt.c	8	1	7
+implementation	src/synthesis_schema.c	18	5	13
+test	tests/synthesis.c	70	15	55

@@ -575,7 +575,7 @@
  static void sequence_step(struct pg_synthesis *, struct pg_synthesis_job *);
  static void sequence_destroy(struct pg_synthesis_job *);
  static void sequence_completed(struct pg_synthesis *, struct pg_synthesis_job *, int);
-@@ -280,12 +577,17 @@
+@@ -280,20 +577,30 @@
  static struct pg_synthesis_projection sequence_project(const struct pg_synthesis_job *);
  
  static const struct pg_synthesis_work_class RETURN_JOB[1] = {{
@@ -592,9 +592,11 @@
  static const struct pg_synthesis_work_class SEQUENCE_JOB[1] = {{
 +	.pending = {&pg_synthesis_pending_ops},
  	.size = sizeof(struct sequence_work), .advance = sequence_step, .project = sequence_project,
- 	.destroy = sequence_destroy, .completed = sequence_completed}};
+-	.destroy = sequence_destroy, .completed = sequence_completed}};
++	.destroy = sequence_destroy, .completed = sequence_completed, .output = pg_synthesis_projected_output}};
  
-@@ -294,6 +596,11 @@
+ static struct body_work *body_work(const struct pg_synthesis_job *job)
+ {
  	return pg_synthesis_work_state(job, BODY_JOB);
  }
  

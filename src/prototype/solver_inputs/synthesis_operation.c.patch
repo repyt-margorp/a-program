@@ -14,11 +14,12 @@
  static struct pg_synthesis_projection operation_project(const struct pg_synthesis_job *);
  
  static const struct pg_synthesis_work_class OPERATION_JOB[1] = {{
-+	.pending = {&pg_synthesis_pending_ops},
- 	.size = sizeof(struct operation_work), .advance = operation_step, .project = operation_project}};
+-	.size = sizeof(struct operation_work), .advance = operation_step, .project = operation_project}};
 -static const struct pg_synthesis_work_class OPERATION_REFERENCE_JOB[1] = {{
 -	.size = sizeof(struct reference_work), .advance = reference_step}};
 -
++	.pending = {&pg_synthesis_pending_ops},
++	.size = sizeof(struct operation_work), .advance = operation_step, .project = operation_project, .output = pg_synthesis_projected_output}};
  static struct operation_work *operation_work(const struct pg_synthesis_job *job)
  {
  	return pg_synthesis_work_state(job, OPERATION_JOB);

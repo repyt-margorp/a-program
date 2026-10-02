@@ -620,6 +620,21 @@ completed typed/proof counts. [Implementation](telescope_owner_delta.tsv) is net
 persistence/checkpoints, C, sanitizer and fresh/current gates pass. The three
 public reload failures remain; this is unpromoted, unfinished SE1-SE5 work.
 
+Return-only handlers now share the existing sequencing owner directly; delete
+`SOURCE_RETURN_HANDLER` state/dispatch. Eight preparations borrow checked output
+instead of copying receipts; Context/carrier/index checks and genuine nullary
+construction remain. Against `2bebfca`, [counts](return_owner_measurements.tsv)
+remove 369 QuickSort result references, not Jobs or layout bytes. Handler loses
+one dispatch but gains 16 layout bytes overall: [role counts](return_owner_roles.tsv)
+identify changed discovery allocations. [Implementation delta](return_owner_delta.tsv)
+is +39/-39, tests +70/-15; [hashes](return_owner_inputs.tsv) pin sources/binaries.
+Focused O2/current-worktree, persistence/checkpoint, C and sanitizer gates pass;
+full O2 regression/examples/acceptance exits 0. All 52 List images/report
+match the parent; three public reload failures and SE1-SE5 remain open.
+This is unpromoted prototype work, not complete Job/Evidence removal. Role counts
+inspect a completed Handler run with GDB at `state_audit.c:census` on separate
+`-O1 -g` builds; count/layout values agree with the O2 census, not total RAM.
+
 Use the parent plan for progress. Create and verify a disposable candidate:
 
 ```sh

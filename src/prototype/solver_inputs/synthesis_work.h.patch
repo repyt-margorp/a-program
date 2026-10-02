@@ -46,7 +46,7 @@
  	/* Called once after interning. NULL schedules the initial step directly. */
  	void (*start)(struct pg_synthesis *, struct pg_synthesis_job *);
  	void (*advance)(struct pg_synthesis *, struct pg_synthesis_job *);
-@@ -52,21 +56,42 @@
+@@ -52,22 +56,44 @@
  	struct pg_synthesis_projection (*project)(const struct pg_synthesis_job *);
  	/* Borrowed descriptive output of a completed structural query, not proof. */
  	const struct pg_term *(*structure)(const struct pg_synthesis_job *);
@@ -90,9 +90,11 @@
  size_t pg_synthesis_work_input_count(const struct pg_synthesis_job *job);
 +struct pg_synthesis_input pg_synthesis_work_output(const struct pg_synthesis_job *);
  struct pg_synthesis_projection pg_synthesis_work_project(const struct pg_synthesis_job *job);
++struct pg_synthesis_input pg_synthesis_projected_output(const struct pg_synthesis_job *job);
  int pg_synthesis_forward(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
  	struct pg_synthesis_job *canonical);
-@@ -75,8 +100,24 @@
+ void pg_synthesis_enqueue(struct pg_synthesis *synthesis, struct pg_synthesis_job *job);
+@@ -75,8 +101,24 @@
  	enum pg_synthesis_status status);
  void pg_synthesis_subscribe(struct pg_synthesis *synthesis, struct pg_synthesis_job *parent,
  	struct pg_synthesis_job *child, int preparation);

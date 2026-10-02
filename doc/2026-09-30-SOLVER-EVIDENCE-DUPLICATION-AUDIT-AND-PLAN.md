@@ -171,6 +171,19 @@ additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
 
+2026-10-02, agent implementation decision against `2bebfca`: Handler return,
+operation clause and fold, sequencing, operation-function preparation,
+constructor-result preparation, field-bearing constructor abstraction and IADT result-map discovery
+still copy an existing checking owner's receipt into their Job header. Borrow
+that owner's output through the existing DONE-gated input view instead. Keep
+carrier/context/index checks and genuine nullary constructor admission; raw
+structure readiness must not expose a checked result. Delete the separate
+`SOURCE_RETURN_HANDLER` role/state/dispatch: return-only surface handling shares
+the existing sequencing owner directly. Roles whose output is their projected
+rule opt into one accessor; no Oracle switch, graph or progress state is added.
+This removes aliases and duplicate receipt references, not every unfinished
+discovery cursor or the resume gate.
+
 2026-10-02, agent decision against `b54fdcb`: Telescope discovery owns the
 Scope/tail cursor; a second `TELESCOPE_JOB` only waits for that cursor and copies
 its Context receipt. Consolidate discovery and checking on the existing owner,
@@ -852,6 +865,27 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   and genuinely unfinished construction. Try direct owner references plus
   owner-local suspension state; document any residual allocation that cannot be
   eliminated and why. An independent Job graph is not an acceptance criterion.
+  Verified prototype increment (2026-10-02, parent `2bebfca`; agent decision): delete
+  `SOURCE_RETURN_HANDLER` state/dispatch and use the existing sequencing owner.
+  Eight preparation roles borrow their checking owner's output rather than copy
+  its receipt. Keep actual Context/carrier/index checks and genuine nullary
+  constructor admission; preparation alone exposes no accepted output.
+  [Paired census](../src/prototype/solver_inputs/return_owner_measurements.tsv)
+  preserves completed Term/Occurrence/Evidence counts. QuickSort loses 369
+  copied receipt references, not Jobs or Job-layout bytes. Handler loses one
+  dispatch; its total Job count is unchanged and layout bytes increase by 16.
+  [Role census](../src/prototype/solver_inputs/return_owner_roles.tsv) shows the
+  deleted alias and changed discovery allocations; no overall memory/speedup claim.
+  [Applied deltas](../src/prototype/solver_inputs/return_owner_delta.tsv):
+  implementation +39/-39 (net 0), tests +70/-15 (net +55), excluding patch/docs.
+  Focused O2, ASan/UBSan/leaks, semantic persistence, seven checkpoint and five C
+  gates pass. Full O2 regression/examples/acceptance exits 0, including ordinary
+  QuickSort-result/Sorted/permutation and both LT providers/partition orders.
+  Fresh assembly matches 128 C/header files and Synthesis tests; dirty-current
+  Core/IADT/Synthesis pass. [Hashes](../src/prototype/solver_inputs/return_owner_inputs.tsv).
+  All 52 public List images/report match the parent; the same three reload
+  failures remain (exit 1), not waived. SE1-SE5 remain open; prototype only,
+  unrelated user edits excluded. Logs use `/tmp/a-program-return-owner-`.
   Verified prototype increment (2026-10-02, parent `b54fdcb`; agent decision):
   collapse structural/checked Telescope work into one cursor owner; delete the
   second role/factory, Schema's duplicate pointer and copied Context receipt.
