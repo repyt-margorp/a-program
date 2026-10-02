@@ -1064,6 +1064,36 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   still fail the same three reload cases (exit 1). [Hashes](../src/prototype/solver_inputs/scope_inputs_ready_inventory.tsv)
   pin the trial; logs use `/tmp/a-program-scope-inputs-ready-`. SE1-SE5 stay open;
   prototype only, not accepted-source promotion or completion of Job removal.
+
+- [x] **SE1 Context cursor consolidation (2026-10-03, parent `5786038`;
+  agent implementation decision):** remove Constructor partial-application
+  `scopes[]` and its duplicate count; abstract the same pending Context parent
+  chain, bounded by the existing callable's remaining-index count. Substitution
+  retains only its current checked/pending map input, not a copied pair result
+  and completed header result. Its forward declaration order is temporary
+  scratch, released on completion/failure/destruction; repeated reverse scans
+  would instead make dependent checking quadratic. No new semantic owner, tag,
+  checking rule or wire field is introduced. Focused Synthesis/source-I/O tests
+  pass, including one/two omitted indices, partial-call reuse, split dispatch,
+  retained-map lifetime and abandoned pending work. Full O2 regression/examples/
+  acceptance exits 0, including general Sorted/permutation/result connection and
+  both LT providers/orders. Semantic/seven checkpoint and five C gates pass;
+  ASan/UBSan/leaks Synthesis/source-I/O, fresh assembly and current-user-edit
+  Core/IADT/Synthesis pass. The unrelated user files remain unchanged.
+  [Paired census](../src/prototype/solver_inputs/context_cursor_measurements.tsv)
+  preserves Term/Occurrence/Evidence, Jobs, steps, premise and query counts on
+  five inputs at all 20 sampled budgets. QuickSort loses 33 copied header result
+  references and 264 Job-layout bytes. Those bytes exclude the removed Constructor
+  scope arrays and temporary Substitution scratch; no total-memory or speedup
+  claim is made. [All five images](../src/prototype/solver_inputs/context_cursor_images.tsv)
+  are byte-identical to the parent. [Applied deltas](../src/prototype/solver_inputs/context_cursor_delta.tsv):
+  implementation +46/-26 (net +20), tests +50. Stored duplication is removed,
+  but resource-lifetime callbacks mean this increment does not reduce source lines.
+  [Public partitions](../src/prototype/solver_inputs/context_cursor_partitions.tsv)
+  still fail reload 1000+1000, 1600+1600 and completed+0 (exit 1), not waived.
+  [Hashes](../src/prototype/solver_inputs/context_cursor_inventory.tsv) pin the
+  frozen trial; logs use `/tmp/a-program-context-cursor-`. SE1-SE5 remain open;
+  prototype only, not accepted-source promotion or complete Job/Evidence removal.
   Verified prototype increment (2026-10-03, parent `0e3865d`; agent decision):
   normalization now uses the existing resolved-input interner after operand
   validation. Equivalent checked inputs share the checking owner, without

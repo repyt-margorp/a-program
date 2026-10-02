@@ -1,17 +1,18 @@
 --- a/synthesis_context.c
 +++ b/synthesis_context.c
-@@ -1,43 +1,19 @@
+@@ -1,42 +1,42 @@
  #include "synthesis_work.h"
 +#include "derivation.h"
++#include <stdlib.h>
  
 -struct reindex_work { struct pg_occurrence_action *action; };
 -struct pair_work { struct pg_synthesis_job *checked; };
  struct substitution_work {
- 	const struct pg_evidence *map;
+-	const struct pg_evidence *map;
++	struct pg_synthesis_input map;
  	const struct pg_evidence **extensions;
  	size_t next;
 -	struct pg_synthesis_job *pair, *returned;
-+	struct pg_synthesis_input pair;
 +	struct pg_synthesis_job *returned;
  };
  
@@ -19,36 +20,54 @@
 -static void pair_step(struct pg_synthesis *, struct pg_synthesis_job *);
  static void substitution_step(struct pg_synthesis *, struct pg_synthesis_job *);
 -static void checked_query_step(struct pg_synthesis *, struct pg_synthesis_job *);
++static void substitution_destroy(struct pg_synthesis_job *);
++static void substitution_completed(struct pg_synthesis *, struct pg_synthesis_job *, int);
++static struct pg_synthesis_input substitution_output(const struct pg_synthesis_job *);
  
 -static const struct pg_synthesis_work_class REINDEX_JOB[1] = {{
 -	.size = sizeof(struct reindex_work), .advance = reindex_step}};
 -static const struct pg_synthesis_work_class PAIR_JOB[1] = {{
 -	.size = sizeof(struct pair_work), .advance = pair_step}};
  static const struct pg_synthesis_work_class SUBSTITUTION_JOB[1] = {{
-+	.pending = {&pg_synthesis_pending_ops},
- 	.size = sizeof(struct substitution_work), .advance = substitution_step}};
+-	.size = sizeof(struct substitution_work), .advance = substitution_step}};
 -static const struct pg_synthesis_work_class CHECKED_QUERY_JOB[1] = {{.advance = checked_query_step}};
--
++	.pending = {&pg_synthesis_pending_ops},
++	.size = sizeof(struct substitution_work), .advance = substitution_step,
++	.destroy = substitution_destroy, .completed = substitution_completed, .output = substitution_output}};
+ 
 -struct pg_synthesis_job *pg_synthesis_substitution_compose(struct pg_synthesis *synthesis,
 -	const struct pg_evidence *first, const struct pg_evidence *second)
--{
++static void substitution_destroy(struct pg_synthesis_job *job)
+ {
 -	struct pg_typed_query *query = pg_substitution_compose_request(synthesis->typing, first, second);
 -	const void *inputs[] = {query};
 -	return query ? pg_synthesis_work_request(synthesis, CHECKED_QUERY_JOB, 1, inputs) : NULL;
--}
--
++	struct substitution_work *local = pg_synthesis_work_state(job, SUBSTITUTION_JOB);
++	free(local->extensions);
++	local->extensions = NULL;
+ }
+ 
 -static void checked_query_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
--{
++static void substitution_completed(struct pg_synthesis *synthesis, struct pg_synthesis_job *job, int first)
+ {
 -	struct pg_typed_query *query = (void *)job->inputs[0];
 -	int status = pg_typed_query_advance(query, 1);
 -	if (!status) { pg_synthesis_enqueue(synthesis, job); return; }
 -	job->result = pg_typed_query_result(query);
 -	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
--}
++	(void)synthesis;
++	(void)first;
++	substitution_destroy(job);
++}
++
++static struct pg_synthesis_input substitution_output(const struct pg_synthesis_job *job)
++{
++	const struct substitution_work *local = pg_synthesis_work_state(job, SUBSTITUTION_JOB);
++	return local->map;
+ }
  
  static int reindex_inputs(struct pg_synthesis *synthesis,
- 	const struct pg_evidence *substitution, const struct pg_evidence *proof)
-@@ -49,72 +25,47 @@
+@@ -49,72 +49,47 @@
  	return pg_evidence_context(proof) == pg_evidence_context_map(substitution)->source;
  }
  
@@ -113,16 +132,16 @@
 -struct pg_synthesis_job *pg_synthesis_substitution_lift(struct pg_synthesis *synthesis,
 -	const struct pg_evidence *substitution, const struct pg_evidence *extension,
 -	const struct pg_object *binder)
--{
++void pg_synthesis_reindex_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
++	const struct pg_evidence *substitution, const struct pg_evidence *proof)
+ {
 -	struct pg_typed_query *query = pg_substitution_lift_request(synthesis->typing, substitution, extension, binder);
 -	const void *inputs[] = {query};
 -	return query ? pg_synthesis_work_request(synthesis, CHECKED_QUERY_JOB, 1, inputs) : NULL;
 -}
 -
 -static void reindex_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
-+void pg_synthesis_reindex_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
-+	const struct pg_evidence *substitution, const struct pg_evidence *proof)
- {
+-{
 -	struct reindex_work *local = pg_synthesis_work_state(job, REINDEX_JOB);
 -	if (!local->action) {
 -		for (size_t i = 0; i < 2; ++i)
@@ -152,7 +171,7 @@
  	case PG_SUBSTITUTION_PENDING:
  		pg_synthesis_enqueue(synthesis, job);
  		return;
-@@ -122,68 +73,50 @@
+@@ -122,101 +97,78 @@
  		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR);
  		break;
  	case PG_SUBSTITUTION_DONE:
@@ -166,7 +185,13 @@
  }
  
 -static void pair_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
--{
++struct substitution_key {
++	struct pg_synthesis_input contexts[2];
++	const struct pg_synthesis_input *images;
++};
++
++static const void *substitution_operand(const void *input, size_t index)
+ {
 -	struct pair_work *local = pg_synthesis_work_state(job, PAIR_JOB);
 -	if (!local->checked) {
 -		struct pg_synthesis_job *type = pg_synthesis_reindex(synthesis,
@@ -178,16 +203,18 @@
 -	job->result = pg_prove_substitution_pair(synthesis->typing,
 -		job->inputs[0], job->inputs[1], local->checked->result);
 -	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
--}
-+struct substitution_key {
-+	struct pg_synthesis_input contexts[2];
-+	const struct pg_synthesis_input *images;
-+};
++	const struct substitution_key *key = input;
++	size_t offset = index / 2;
++	struct pg_synthesis_input value =
++		offset < 2 ? key->contexts[offset] : key->images[offset - 2];
++	return index % 2 ? (const void *)value.pending : value.checked;
+ }
  
--struct pg_synthesis_job *pg_synthesis_substitution(struct pg_synthesis *synthesis,
+ struct pg_synthesis_job *pg_synthesis_substitution(struct pg_synthesis *synthesis,
 -	const struct pg_evidence *source, const struct pg_evidence *destination,
 -	size_t count, struct pg_synthesis_job *const *images)
-+static const void *substitution_operand(const void *input, size_t index)
++	struct pg_synthesis_input source, struct pg_synthesis_input destination,
++	size_t count, const struct pg_synthesis_input *images)
  {
 -	if (!pg_evidence_owned_by(source, synthesis->typing)) return NULL;
 -	if (!pg_evidence_owned_by(destination, synthesis->typing)) return NULL;
@@ -198,20 +225,12 @@
 -	if (arity != count || (count && !images)) return NULL;
 -	return pg_synthesis_substitution_jobs(synthesis, pg_synthesis_evidence(synthesis, source),
 -		pg_synthesis_evidence(synthesis, destination), count, images);
-+	const struct substitution_key *key = input;
-+	size_t offset = index / 2;
-+	struct pg_synthesis_input value =
-+		offset < 2 ? key->contexts[offset] : key->images[offset - 2];
-+	return index % 2 ? (const void *)value.pending : value.checked;
- }
- 
+-}
+-
 -struct pg_synthesis_job *pg_synthesis_substitution_jobs(struct pg_synthesis *synthesis,
 -	struct pg_synthesis_job *source, struct pg_synthesis_job *destination,
 -	size_t count, struct pg_synthesis_job *const *images)
-+struct pg_synthesis_job *pg_synthesis_substitution(struct pg_synthesis *synthesis,
-+	struct pg_synthesis_input source, struct pg_synthesis_input destination,
-+	size_t count, const struct pg_synthesis_input *images)
- {
+-{
 -	if (!source || source->owner != synthesis->owner_key) return NULL;
 -	if (!destination || destination->owner != synthesis->owner_key) return NULL;
 +	if (!pg_synthesis_input_owned(synthesis, source)) return NULL;
@@ -232,8 +251,9 @@
  {
  	struct substitution_work *local = pg_synthesis_work_state(job, SUBSTITUTION_JOB);
 -	size_t count = job->input_count - 2;
+-	if (!local->map) {
 +	size_t count = (job->input_count - 4) / 2;
- 	if (!local->map) {
++	if (!local->map.checked && !local->map.pending) {
  		const struct pg_evidence *contexts[2];
  		for (size_t i = 0; i < 2; ++i) {
 -			struct pg_synthesis_job *producer = (void *)job->inputs[i];
@@ -245,23 +265,28 @@
  			if (!contexts[i] || pg_evidence_judgement(contexts[i]) != PG_JUDGEMENT_CONTEXT) goto rejected;
  		}
  		size_t arity;
-@@ -196,10 +129,11 @@
- 		local->map = pg_prove_substitution(synthesis->typing, source, contexts[1], 0, NULL);
- 		if (!local->map) goto error;
- 	}
+ 		const struct pg_evidence *source = contexts[0];
+ 		if (pg_context_extension_size(pg_evidence_context(source), NULL, &arity) || arity != count) goto rejected;
+ 		if (count > SIZE_MAX / sizeof(*local->extensions)) goto error;
+-		local->extensions = pg_alloc(synthesis->typing->graph, count * sizeof(*local->extensions));
++		/* Forward dependent checking needs this order only while unfinished. */
++		local->extensions = malloc(count * sizeof(*local->extensions));
+ 		if (count && !local->extensions) goto error;
+ 		for (size_t i = count; i; --i, source = pg_context_parent_input(synthesis->typing, source)) local->extensions[i - 1] = source;
+-		local->map = pg_prove_substitution(synthesis->typing, source, contexts[1], 0, NULL);
+-		if (!local->map) goto error;
+-	}
 -	if (local->pair) {
 -		if (pg_synthesis_await(synthesis, job, local->pair)) return;
 -		local->map = local->pair->result;
 -		local->pair = local->returned = NULL;
-+	if (local->pair.checked || local->pair.pending) {
-+		if (pg_synthesis_await_input(synthesis, job, local->pair)) return;
-+		local->map = pg_synthesis_input_result(local->pair);
-+		local->pair = (struct pg_synthesis_input){0};
-+		local->returned = NULL;
- 		++local->next;
+-		++local->next;
++		local->map.checked = pg_prove_substitution(synthesis->typing, source, contexts[1], 0, NULL);
++		if (!local->map.checked) goto error;
  	}
++	if (pg_synthesis_await_input(synthesis, job, local->map)) return;
  	if (local->next == count) {
-@@ -207,9 +141,9 @@
+-		job->result = local->map;
  		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_DONE);
  		return;
  	}
@@ -274,12 +299,25 @@
  	if (!image || !pg_evidence_subject(image)) {
  		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return;
  	}
-@@ -225,7 +159,7 @@
+ 	if (pg_evidence_judgement(image) == PG_JUDGEMENT_COMPUTATION) {
+-		if (!local->returned) local->returned = pg_synthesis_return(synthesis, pg_evidence_premise(local->map, 1), image);
++		if (!local->returned) local->returned = pg_synthesis_return(synthesis, pg_evidence_premise(pg_synthesis_input_result(local->map), 1), image);
+ 		if (pg_synthesis_await(synthesis, job, local->returned)) return;
+-		image = local->returned->result;
++		image = pg_synthesis_result(local->returned);
+ 	}
+ 	const struct pg_evidence *extension = local->extensions[local->next];
+ 	if (pg_evidence_rule(extension) != PG_CONTEXT_FAMILY_EXTEND) {
+@@ -224,8 +176,10 @@
+ 			image = pg_prove_type_value(synthesis->typing, image);
  		if (!image || pg_evidence_judgement(image) != PG_JUDGEMENT_VALUE) goto rejected;
  	}
- 	local->pair = pg_synthesis_substitution_pair(synthesis, local->map, extension, image);
+-	local->pair = pg_synthesis_substitution_pair(synthesis, local->map, extension, image);
 -	pg_synthesis_subscribe(synthesis, job, local->pair, 0);
-+	if (!pg_synthesis_await_input(synthesis, job, local->pair)) pg_synthesis_enqueue(synthesis, job);
++	local->map = pg_synthesis_substitution_pair(synthesis, pg_synthesis_input_result(local->map), extension, image);
++	local->returned = NULL;
++	++local->next;
++	if (!pg_synthesis_await_input(synthesis, job, local->map)) pg_synthesis_enqueue(synthesis, job);
  	return;
  rejected:
  	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;

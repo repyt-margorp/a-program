@@ -998,8 +998,7 @@
 +	struct pg_synthesis_input context;
 +	struct pg_synthesis_job *function;
 +	struct pg_pending *instance;
-+	struct pg_synthesis_job **scopes;
-+	size_t next, count;
++	size_t next;
 +};
 +struct constructor_spine {
 +	struct constructor_application specialization;
@@ -1282,8 +1281,7 @@
 +		state->context = application->context;
 +		state->output = pg_alloc(synthesis->typing->graph,
 +			sizeof(*state->output) + input->count * sizeof(*state->output->indices));
-+		state->scopes = pg_alloc(synthesis->typing->graph, input->count * sizeof(*state->scopes));
-+		if (!state->output || !state->scopes) goto error;
++		if (!state->output) goto error;
 +		*state->output = (struct constructor_callable){.source = input->source, .field = input->field};
 +	}
 +	if (state->next < input->count) {
@@ -1329,7 +1327,6 @@
 +			struct pg_synthesis_job *extension = pg_synthesis_plain_rule_inputs(synthesis, PG_CONTEXT_EXTEND, binder, 2,
 +				(struct pg_synthesis_input[]){state->context, {.pending = pg_synthesis_pending(domain)}});
 +			if (!extension) goto error;
-+			state->scopes[state->count++] = extension;
 +			state->output->indices[state->output->count++] = index;
 +			state->context = (struct pg_synthesis_input){.pending = pg_synthesis_pending(extension)};
 +			state->function = pg_synthesis_plain_rule_inputs(synthesis, PG_CONTEXT_PROJECTION, NULL, 2, (struct pg_synthesis_input[]){
@@ -1355,8 +1352,11 @@
 +static struct pg_synthesis_job *abstract_constructor_indices(struct pg_synthesis *synthesis,
 +	const struct constructor_application *state, struct pg_synthesis_job *body)
 +{
-+	for (size_t i = state->count; body && i; --i)
-+		body = pg_synthesis_lambda_body(synthesis, (struct pg_synthesis_input){.pending = pg_synthesis_pending(state->scopes[i - 1])}, (struct pg_synthesis_input){.pending = pg_synthesis_pending(body)});
++	struct pg_synthesis_input context = state->context;
++	for (size_t i = state->output->count; body && i; --i) {
++		body = pg_synthesis_lambda_body(synthesis, context, (struct pg_synthesis_input){.pending = pg_synthesis_pending(body)});
++		context = pg_synthesis_rule_input(synthesis, pg_pending_job(context.pending), 0);
++	}
 +	return body;
 +}
 +
