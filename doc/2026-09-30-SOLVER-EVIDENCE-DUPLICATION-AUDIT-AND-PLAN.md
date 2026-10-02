@@ -1016,6 +1016,28 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   Remove the corresponding duplicated structural walkers and overbroad private
   state. Keep genuinely unfinished queries and effect dependencies; do not
   replace all of them with an unconditional wait for accepted Evidence.
+  Verified prototype (2026-10-02, agent decision, parent `e6dd1b3`): Handler checking
+  borrows clauses from ordinary rule inputs or the existing typed Fold owner.
+  The two temporary clause-array reconstruction paths are deleted; each visited
+  clause is read once into the actual typed constructor's inputs. Signature
+  checking, exact receipt selections and provisional Effect dependencies remain.
+  Repeated hash-consed Core constructor calls do not by themselves establish
+  duplicated graph allocation; do not remove necessary provisional queries on
+  that assumption. Borrowed/array equivalence, reader lifetime, invalid inputs,
+  ordering and typed Fold rebuilding pass. Full O2 regression/examples/acceptance,
+  semantic persistence, seven checkpoint and five C gates pass, including general
+  Sorted/permutation and both LT providers/orders. Focused ASan/UBSan/leaks and
+  fresh/current-worktree Core/synthesis/IADT checks pass. All 388 assembled C/header
+  files match the tested candidate. [Paired census](../src/prototype/solver_inputs/handler_reader_measurements.tsv)
+  preserves all fields at fuel 0/100/1000/completion on five samples. Handler
+  [wrapped allocation](../src/prototype/solver_inputs/handler_reader_allocation.tsv)
+  saves four arena requests/64 aligned bytes; this is partial cumulative allocation,
+  not live RAM or a speedup. [Applied deltas](../src/prototype/solver_inputs/handler_reader_delta.tsv):
+  implementation +71/-32 (net +39), tests +49/-1 (net +48); no net code reduction.
+  All 52 List partition images and the completed Handler image equal the parent.
+  The same three strict public reload failures remain, not waived. No Job, tag,
+  format, trust policy or acceptance store is added. SE1-SE5 remain open; prototype
+  only, user edits excluded. Logs use `/tmp/a-program-handler-reader-`.
   Verified literal-input deletion (2026-10-02, parent `be4a61e`): `@`, Int32 and
   Text requests return their existing ordinary rules directly. Delete the source
   wrapper, literal preparation/frontier APIs, stale structural-reader branches

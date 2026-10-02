@@ -26,7 +26,7 @@
  		return result;
  	}
  	size_t formation = count;
-@@ -146,12 +149,34 @@
+@@ -146,12 +149,50 @@
  	}
  	for (size_t i = 0; i < count; ++i) {
  		if (i == formation) {
@@ -41,6 +41,22 @@
 +static const struct pg_evidence *array_premise(const void *owner, size_t i)
 +{
 +	return ((const struct pg_evidence *const *)owner)[i];
++}
++
++struct handler_inputs {
++	struct pg_typing *typing;
++	const struct pg_handler_signature *signature;
++	const void *owner;
++	const struct pg_evidence *(*premise)(const void *, size_t);
++};
++
++static struct pg_handler_clause handler_clause(const void *owner, size_t i)
++{
++	const struct handler_inputs *inputs = owner;
++	return (struct pg_handler_clause){pg_operation_declaration_at(inputs->typing,
++		pg_handler_signature_label(inputs->signature, i),
++		inputs->premise(inputs->owner, 3 + 3 * i), inputs->premise(inputs->owner, 4 + 3 * i)),
++		inputs->premise(inputs->owner, 5 + 3 * i)};
 +}
 +
 +/* Only the variable-arity named rules still require contiguous slices. Array
@@ -63,7 +79,7 @@
  /* Arity selection is plumbing only: semantic checks stay in the named rules. */
  #define RULE(tag, arity, call) case tag: if (count != arity) return NULL; result = (call); break
  
-@@ -160,6 +185,15 @@
+@@ -160,6 +201,15 @@
  	const struct pg_derivation_parameters *parameters, size_t count,
  	const struct pg_evidence *const *p)
  {
@@ -79,14 +95,13 @@
  	if (!typing || !parameters) return NULL;
  	if (count && !p) return NULL;
  	if (parameters->declaration && rule != PG_INDUCTIVE_FORM) return NULL;
-@@ -169,97 +203,104 @@
+@@ -169,97 +219,99 @@
  	if (parameters->induction && rule != PG_INDUCTION_ELIM) return NULL;
  	if ((unsigned)parameters->totality > PG_TOTALITY_TOTAL) return NULL;
  	if (parameters->totality != PG_TOTALITY_UNSPECIFIED && rule != PG_RETURN_TYPE_FORM && rule != PG_RETURN_INTRO) return NULL;
 -	for (size_t i = 0; i < count; ++i) if (!pg_evidence_owned_by(p[i], typing)) return NULL;
 +	for (size_t i = 0; i < count; ++i) if (!pg_evidence_owned_by(p(owner, i), typing)) return NULL;
  	const struct pg_evidence *result = NULL;
-+	struct pg_graph temporary = {0};
 +	const struct pg_evidence **allocated = NULL;
 +	const struct pg_evidence *const *tail;
  	struct pg_identity_boundary boundary;
@@ -196,18 +211,18 @@
  	case PG_HANDLER_ELIM: {
  		size_t clauses = pg_handler_signature_count(parameters->handler);
  		if (!clauses || clauses > (SIZE_MAX - 3) / 3 || count != 3 + 3 * clauses) return NULL;
- 		if (clauses > SIZE_MAX / sizeof(struct pg_handler_clause)) return NULL;
+-		if (clauses > SIZE_MAX / sizeof(struct pg_handler_clause)) return NULL;
 -		struct pg_graph temporary = {0};
- 		struct pg_handler_clause *bodies = pg_alloc(&temporary, clauses * sizeof(*bodies));
+-		struct pg_handler_clause *bodies = pg_alloc(&temporary, clauses * sizeof(*bodies));
 -		if (!bodies) { pg_graph_destroy(&temporary); return NULL; }
-+		if (!bodies) goto done;
- 		for (size_t i = 0; i < clauses; ++i)
- 			bodies[i] = (struct pg_handler_clause){pg_operation_declaration_at(typing,
+-		for (size_t i = 0; i < clauses; ++i)
+-			bodies[i] = (struct pg_handler_clause){pg_operation_declaration_at(typing,
 -				pg_handler_signature_label(parameters->handler, i), p[3 + 3 * i], p[4 + 3 * i]), p[5 + 3 * i]};
 -		result = pg_prove_handler(typing, p[0], p[1], p[2], clauses, bodies);
 -		pg_graph_destroy(&temporary);
-+				pg_handler_signature_label(parameters->handler, i), p(owner, 3 + 3 * i), p(owner, 4 + 3 * i)), p(owner, 5 + 3 * i)};
-+		result = pg_prove_handler(typing, p(owner, 0), p(owner, 1), p(owner, 2), clauses, bodies);
++		const struct handler_inputs inputs = {typing, parameters->handler, owner, p};
++		result = pg_prove_handler_inputs(typing, p(owner, 0), p(owner, 1), p(owner, 2),
++			clauses, &inputs, handler_clause);
  		break;
  	}
 -	RULE(PG_EFFECT_SUBSUMPTION, 2, pg_prove_effect_subsumption(typing, p[0], p[1]));
@@ -242,7 +257,7 @@
  		int lift;
  		if (!transport || transport->operand_count != 2 ||
  			!pg_identity_field_view(transport->core, NULL, NULL, NULL, &lift) || lift) return NULL;
-@@ -269,16 +310,24 @@
+@@ -269,16 +321,24 @@
  	}
  	case PG_CONTEXT_SUBSTITUTION:
  		if (count < 2) return NULL;
@@ -273,7 +288,7 @@
  	default: return NULL;
  	}
  	/* Rule inputs are requests, including after loading. Ordinary constructors
-@@ -290,9 +339,13 @@
+@@ -290,9 +350,12 @@
  	case PG_CONTEXT_SUBSTITUTION:
  	case PG_REQUEST_INTRO: case PG_HANDLER_ELIM:
  	case PG_CONSTRUCTOR_INTRO: case PG_MATCH_ELIM: case PG_INDUCTION_ELIM: case PG_TYPE_CASE:
@@ -284,7 +299,6 @@
  	}
 +done:
 +	free(allocated);
-+	pg_graph_destroy(&temporary);
 +	return result;
  }
  

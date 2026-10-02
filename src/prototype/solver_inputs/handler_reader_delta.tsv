@@ -1,0 +1,7 @@
+group	file	added	deleted	net
+implementation	src/evidence.c	47	23	24
+implementation	src/evidence.h	5	0	5
+implementation	src/derivation.c	19	9	10
+implementation_total	applied_sources_vs_e6dd1b3	71	32	39
+test	tests/core.c	49	1	48
+test_total	applied_tests_vs_e6dd1b3	49	1	48

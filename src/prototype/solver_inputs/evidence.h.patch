@@ -10,7 +10,19 @@
  /* Closed host descriptors are checked against the fixed host contract. A raw
   * semantic reference or arbitrary signature cannot establish these premises. */
  const struct pg_evidence *pg_prove_host_type(struct pg_typing *typing,
-@@ -628,6 +631,10 @@
+@@ -132,6 +135,11 @@
+ const struct pg_evidence *pg_prove_handler(struct pg_typing *typing,
+ 	const struct pg_evidence *computation, const struct pg_evidence *returned,
+ 	const struct pg_evidence *carrier, size_t count, const struct pg_handler_clause *clauses);
++/* The synchronous reader is borrowed, never retained; each clause is read once. */
++const struct pg_evidence *pg_prove_handler_inputs(struct pg_typing *typing,
++	const struct pg_evidence *computation, const struct pg_evidence *returned,
++	const struct pg_evidence *carrier, size_t count, const void *owner,
++	struct pg_handler_clause (*clause)(const void *, size_t));
+ /* Closed-row computation-type formation. The row is a syntactic set of labels,
+  * not evidence of an operation's signature, execution, or termination. */
+ const struct pg_evidence *pg_prove_effect_type(struct pg_typing *typing,
+@@ -628,6 +636,10 @@
   * this rule reuses that completed work without replacing either premise. */
  const struct pg_evidence *pg_prove_reindex(struct pg_typing *typing,
  	const struct pg_evidence *substitution, const struct pg_evidence *proof);
@@ -21,7 +33,7 @@
  /* Invert accepted RETURN v : F A or THUNK M : U C judgements with canonical
   * heads. Reuse the checked typed child, or certify the selected boundary by
   * inversion; never execute M or guess a type from Core.
-@@ -730,13 +737,14 @@
+@@ -730,13 +742,14 @@
  /* Context formation has no term subject or classifier. */
  const struct pg_occurrence *pg_evidence_subject(const struct pg_evidence *evidence);
  const struct pg_term *pg_evidence_classifier(const struct pg_evidence *evidence);

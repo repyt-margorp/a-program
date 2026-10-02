@@ -1,0 +1,6 @@
+case	parent	fuel_cuts	compared_rows	all_census_fields_equal	completion_steps	terms	occurrences	evidence	jobs	retained_premise_edges
+list	e6dd1b3	0,100,1000,10000000	4	yes	1950	259	429	555	749	165
+effect	e6dd1b3	0,100,1000,10000000	4	yes	13779	1546	2680	3414	4570	797
+captured	e6dd1b3	0,100,1000,10000000	4	yes	6958	2549	1992	2605	1912	969
+quick	e6dd1b3	0,100,1000,10000000	4	yes	766493	1037912	114387	94975	44611	24506
+handler	e6dd1b3	0,100,1000,10000000	4	yes	2692	388	425	530	924	115

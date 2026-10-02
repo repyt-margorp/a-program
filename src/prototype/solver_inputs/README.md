@@ -507,6 +507,19 @@ Regression, checkpoint/C gates, sanitizers and fresh/current checks pass. All
 52 public images match the parent, including the still-failing three reload
 comparisons. This is neither full Job/Evidence deletion nor production promotion.
 
+2026-10-02, borrowed Handler clauses against `e6dd1b3`: ordinary rule checking
+and typed Fold rebuilding no longer reconstruct temporary clause arrays/arenas.
+One checker reads each visited clause once; Core construction borrows its actual
+typed inputs. The array convenience entry has no separate checker or allocation.
+Exact receipts, signature checks and forwarding remain. [Census](handler_reader_measurements.tsv)
+preserves all fields on five samples; [allocation](handler_reader_allocation.tsv)
+saves four arena requests/64 aligned bytes on the Handler sample, not peak RAM
+or a speedup. [Deltas](handler_reader_delta.tsv): implementation net +39, tests
+net +48, not code reduction. Regression/acceptance, checkpoint/C gates, sanitizers
+and fresh/current checks pass. The 52 List images and completed Handler image
+match; the same three public reload failures remain. No new Job/tag/wire fields;
+SE1-SE5 remain open, and this is an unpromoted prototype.
+
 Use the parent plan for progress. Create and verify a disposable candidate:
 
 ```sh
