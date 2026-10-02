@@ -695,6 +695,25 @@ structure. Verify logical premises, ordinary checking and persistence unchanged.
 Function-graph Jobs are not removed blindly: helper waits and source-interface
 publication remain genuine work. Prototype scope; SE1-SE5 remain unfinished.
 
+2026-10-02, verified agent prototype on `4b4d62e`: Context-substitution receipts
+borrow source/destination/image receipts from the typed map. Exact alternative
+selections and empty-Context inputs without a descriptive owner remain explicit.
+The independent prefix proof is retained once in the existing rule-parameter
+slot, included in the physical-reference census; no map history/query/tag/wire
+field is added. All raw premise consumers now use the logical getter. Eight
+boundary cases preserve logical order, sharing and index-disposal access.
+[Paired census](../src/prototype/solver_inputs/context_receipts_measurements.tsv)
+differs only in retained premise references: List/effect/captured/QuickSort remove
+292/2,073/2,064/98,316 at completion; graph counts and steps are equal. No overall
+memory/speedup claim. [Applied delta](../src/prototype/solver_inputs/context_receipts_delta.tsv):
+implementation +89/-69 (net +20), tests +36/-0, excluding docs and patch context.
+Fresh full O2 regression/examples/acceptance, semantic persistence, seven
+checkpoint and five C gates pass, including both LT providers/orders and invalid
+evidence. ASan/UBSan/leaks Core/synthesis/source/derivation, exact fresh assembly
+and current-worktree checks pass. All 52 List images and the four-failure public
+resume report equal the parent; SE1-SE5 remain open. Prototype only; user edits
+are excluded. Logs use `/tmp/a-program-context-receipts-`.
+
 - [x] **SE0 audit:** trace the four producer/consumer paths above; add a read-only
   census and pin the baseline. Audit measurements do not complete the refactor.
 - [ ] **SE1 ownership before adapters:** enumerate Job roles and record their
