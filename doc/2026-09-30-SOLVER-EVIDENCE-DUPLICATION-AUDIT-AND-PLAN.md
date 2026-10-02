@@ -1496,13 +1496,27 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   and obsolete owner codecs. Keep only unfinished state needed by actual Solve
   consumers. Wire ordinals are transport references, not a new semantic layer.
   No C layout, ABI, LinkerScript or target-native representation enters `.a`.
+  Verified increment (2026-10-02, agent decision, parent `771b022`): the detached
+  rule-header/premise exporter is deleted. Test, checkpoint and semantic-image
+  callers use synchronous borrowed views or existing checked inputs; no copy is
+  moved into a compatibility helper. Exact sharing/root order, invalid/foreign
+  inputs, callback failure, step-0 inertness and no exported-DAG allocation pass.
+  Full O2 regression/examples/acceptance, semantic persistence, seven checkpoint
+  and five C gates pass; ASan/UBSan/leaks Core/synthesis/source/derivation and
+  affected normalization/constructor/semantic tests pass. Fresh assembly matches
+  the tested candidate; fresh I/O/synthesis/semantic/checkpoints and dirty-current
+  Core/IADT/synthesis pass. [Census](../src/prototype/solver_inputs/borrowed_export_measurements.tsv)
+  is unchanged. All 52 public partition images and its three-failure report
+  match the parent: resumption is not complete or waived. [Applied delta](../src/prototype/solver_inputs/borrowed_export_delta.tsv):
+  implementation +45/-60 (net -15), tests +173/-174 (net -1), excluding docs and
+  patch context. Logs use `/tmp/a-program-borrowed-export-`; prototype only.
   Verified increment (2026-10-02, parent `41e5f48` plus export-input patches):
   source saving no longer allocates the second rule-header/premise DAG. The
   writer synchronously borrows original checked, raw and pending inputs through
   one header/child projection. Membership/relocation maps remain temporary; no
   new semantic tag, acceptance authority or wire field is introduced. The
-  explicit detached-input export API still copies a requested transport DAG for
-  test/checkpoint callers; source save no longer uses that path. Import checking
+  explicit detached-input export API then still copied a requested transport DAG
+  for test/checkpoint callers; the increment above deletes it. Import checking
   and the unfinished source owners remain, so SE1-SE5 are not complete.
   All 40 paired images (four inputs, step 0/100/1000/completed, two repeats,
   plus checked exports) equal the parent's bytes. Save does not advance Solve or

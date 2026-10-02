@@ -418,8 +418,9 @@ plan; this does not complete SE1-SE5 or promote the prototype.
 2026-10-02, source-export projection against `41e5f48`: saving borrows the
 existing checked/raw/pending rule inputs instead of copying their entire DAG.
 The writer uses one synchronous header/child reader; no semantic state or wire
-field is added. Explicit detached-input export remains for test/checkpoint
-consumers. [Write measurements](export_inputs_measurements.tsv) preserve all
+field is added. Detached-input export then remained for test/checkpoint
+consumers; the borrowed-export increment below deletes it.
+[Write measurements](export_inputs_measurements.tsv) preserve all
 40 paired images and remove 30,078 external arena requests / 5,268,528 aligned
 requested bytes in the checked general QuickSort LocalSorted export. This is
 partial cumulative save allocation, not peak RAM or compilation speed.
@@ -473,6 +474,14 @@ repeated central source dispatch; no new Term tag or artifact field is added.
 not code reduction or a peak-memory/speedup claim. Regression/acceptance,
 checkpoint/C gates, sanitizers and fresh/current checks pass. All 52 List images
 match; the same four public reload failures remain. SE1-SE5 stay open.
+
+2026-10-02, borrowed export against `771b022`: the remaining detached rule-DAG
+copy is deleted; test/checkpoint/semantic writers borrow existing inputs, without
+a compatibility copier. [Deltas](borrowed_export_delta.tsv): implementation net
+-15, tests net -1. [Census](borrowed_export_measurements.tsv) and all 52 public
+partition images match the parent. Full regression, affected transport/C gates,
+sanitizers and fresh/current checks pass; the same three public reload failures
+remain. This is not complete Job/Evidence removal or production promotion.
 
 Use the parent plan for progress. Create and verify a disposable candidate:
 

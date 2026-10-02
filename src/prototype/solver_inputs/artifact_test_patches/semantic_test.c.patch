@@ -93,18 +93,44 @@
  	assert(terms == program->graph.terms.count && proofs == program->typing.proofs.count);
  	assert(occurrences == program->typing.occurrences.count && jobs == program->synthesis.jobs.count);
  	assert(steps == program->synthesis.steps);
-@@ -729,7 +731,9 @@
+@@ -708,6 +710,20 @@
+ 	pg_program_destroy(program);
+ }
+ 
++struct validation_writer {
++	FILE *file;
++	const struct pg_effect_inference *effects;
++	const struct pg_occurrence *const *stored;
++	struct pg_declaration_io *codec;
++};
++
++static int write_validation(void *owner, const struct pg_derivation_view *view)
++{
++	const struct validation_writer *writer = owner;
++	return pg_retained_write_semantic_view(writer->file, view, writer->effects,
++		0, NULL, 2, writer->stored, &pg_declaration_graph_codec, writer->codec, NULL, NULL);
++}
++
+ static void materialized_validation(const char *source)
+ {
+ 	struct pg_program *program = pg_program_create(source, strlen(source), PG_DEFINITION_IMPLICIT_THUNK);
+@@ -729,10 +745,12 @@
  	assert(!pg_graph_init(&storage) && !pg_effect_inference_init(&effects, &storage));
  	assert(!pg_declaration_io_init(&codec, &program->typing));
  	const struct pg_derivation_input *const *inputs;
 -	assert(!pg_synthesis_export_rules(&program->synthesis, 1, &selected, &storage, &effects, 1, &inputs));
+ 	FILE *file = tmpfile();
+-	assert(file && !pg_retained_write_semantic(file, 1, inputs, &effects,
+-		0, NULL, 2, stored, &pg_declaration_graph_codec, &codec));
++	struct validation_writer writer = {file, &effects, stored, &codec};
++	assert(file);
 +	assert(!pg_synthesis_export_rules(&program->synthesis, 1, (struct pg_synthesis_input[]){
 +		{.pending = pg_synthesis_pending(selected)}
-+		}, &storage, &effects, 1, &inputs));
- 	FILE *file = tmpfile();
- 	assert(file && !pg_retained_write_semantic(file, 1, inputs, &effects,
- 		0, NULL, 2, stored, &pg_declaration_graph_codec, &codec));
-@@ -968,8 +972,8 @@
++		}, &storage, &effects, 1, &writer, write_validation));
+ 	pg_declaration_io_destroy(&codec);
+ 	pg_effect_inference_destroy(&effects);
+ 	pg_graph_destroy(&storage);
+@@ -968,8 +986,8 @@
  	assert((pg_synthesis_status(program->root) == PG_SYNTHESIS_DONE) == valid);
  	FILE *file = tmpfile();
  	assert(file);

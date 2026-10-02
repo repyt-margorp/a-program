@@ -297,7 +297,7 @@
   * ordinary rule jobs await sealing/convergence before accepting F formation. */
  struct pg_synthesis_job *pg_synthesis_derivation_inference(struct pg_synthesis *synthesis,
  	const struct pg_derivation_input *input, struct pg_effect_inference *work);
-@@ -458,17 +471,17 @@
+@@ -458,65 +471,71 @@
  int pg_synthesis_import_rules(struct pg_synthesis *, size_t,
  	const struct pg_derivation_input *const *, struct pg_effect_inference *,
  	struct pg_synthesis_job *const **);
@@ -321,14 +321,27 @@
   * 0 ready, 1 an input is not prepared, -1 unsupported/error. No Solve occurs.
   * Unfinished source elaboration is not replaced by its provisional term.
   * Stored derivation inputs retain their original DAG before, during and after
-@@ -481,42 +494,45 @@
-  * On failure effects is poisoned and roots is unchanged. This is not a whole
-  * module checkpoint: callers must retain all other source obligations too. */
+  * Solve, including rejected inputs. Export does not force their expansion.
+- * storage owns the transport inputs, which borrow Core objects from synthesis.
++ * emit synchronously borrows the original rule DAG, preserving root order and
++ * repetitions. Neither the view nor its owner may escape the callback. No
++ * detached header/premise graph is allocated; emit must not mutate synthesis.
+  * effects is empty and initialized with storage; it receives immutable
+  * definitions from all reached workers, never their solutions/sealing flags.
+  * require_closed rejects still-extensible workers with result 1. Use it for
+  * self-contained images which do not retain contribution-generating work.
+- * On failure effects is poisoned and roots is unchanged. This is not a whole
+- * module checkpoint: callers must retain all other source obligations too. */
++ * On failure effects is poisoned and emit is not called for an invalid closure.
++ * This is not a whole module checkpoint: callers must retain all other source
++ * obligations too. */
++struct pg_derivation_view;
  int pg_synthesis_export_rules(const struct pg_synthesis *synthesis, size_t count,
 -	struct pg_synthesis_job *const *jobs, struct pg_graph *storage,
 +	const struct pg_synthesis_input *inputs, struct pg_graph *storage,
  	struct pg_effect_inference *effects, int require_closed,
- 	const struct pg_derivation_input *const **roots);
+-	const struct pg_derivation_input *const **roots);
++	void *owner, int (*emit)(void *, const struct pg_derivation_view *));
  /* Append-only root closure for transport. observe may append to the leaf DAG
   * roots, but may not run or mutate synthesis. Exactly one of header/worker is
   * non-NULL. Headers are borrowed during the callback; premises are visited
@@ -339,7 +352,6 @@
 + * synchronously, with roots in final ID order; no copied rule-input tree is
 + * created. It must not mutate synthesis. Failure poisons effects. */
  struct pg_dag;
-+struct pg_derivation_view;
  int pg_synthesis_export_rule_closure(const struct pg_synthesis *synthesis,
 -	struct pg_dag *roots, struct pg_graph *storage, struct pg_effect_inference *effects,
 +	struct pg_dag *roots, const struct pg_dag *checked, struct pg_graph *storage, struct pg_effect_inference *effects,
@@ -384,7 +396,7 @@
  	const struct pg_source_scope *scope, struct pg_token name);
  /* Supply the driver-selected symbol bindings for source import statements.
   * This closed scope is not made lexically visible: only explicit imports
-@@ -544,55 +560,49 @@
+@@ -544,55 +563,49 @@
  const struct pg_source_scope *pg_synthesis_module_namespace(struct pg_synthesis *synthesis,
  	const struct pg_source_scope *parent, struct pg_token name,
  	struct pg_synthesis_job *module);
@@ -456,7 +468,7 @@
  struct pg_data_schema;
  /* Assemble field telescopes and result maps for a parsed @{...} or @\i:T=>
   * declaration in its already opened parameter scope. Constructors are checked
-@@ -637,85 +647,85 @@
+@@ -637,85 +650,85 @@
  	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
  	const struct pg_evidence *generalization, const struct pg_syntax *clause);
  /* Recover the selected nominal declaration and parameter map, never by Core
@@ -578,7 +590,7 @@
  /* Share a suspended endpoint derivation on the ordinary work queue. face is
   * an immutable, graph-lived canonical endpoint selector: its first coordinate
   * is fixed, followed by its ordered axes. Those axes count outer Identity
-@@ -732,12 +742,7 @@
+@@ -732,12 +745,7 @@
   * and endpoint traversal steps. The same immutable-input lifetime applies.
   * Permutations and hidden Identity dimensions remain unsupported. */
  struct pg_synthesis_job *pg_synthesis_identity_face(struct pg_synthesis *synthesis,
@@ -592,7 +604,7 @@
  	const struct pg_dimension_map *face);
  /* Select the source boundary for a permutation: permutation composed with
   * target_face = ordered composed with intrinsic. The returned producer proves
-@@ -748,64 +753,47 @@
+@@ -748,64 +756,47 @@
  struct pg_dimensions;
  struct pg_synthesis_job *pg_synthesis_permutation_source_face(struct pg_synthesis *synthesis,
  	struct pg_dimensions *dimensions, const struct pg_evidence *context,
@@ -677,7 +689,7 @@
  	const struct pg_object *constructor;
  	int allocated;
  	const struct pg_context *prefix, *fields;
-@@ -818,15 +806,15 @@
+@@ -818,15 +809,15 @@
  /* Extend the shared field scope with thunked motives for direct recursive
   * fields. Input producers must ultimately justify the same nominal family. */
  struct pg_synthesis_job *pg_synthesis_induction_scope(struct pg_synthesis *synthesis,
@@ -699,7 +711,7 @@
  /* Pure checked computation -> returned value, using the same job table and
   * scheduler. The immutable context/evidence pair is the key, never bare Core.
   * A neutral total, empty-effect input has a checked symbolic result; an
-@@ -837,7 +825,8 @@
+@@ -837,7 +828,8 @@
  	const struct pg_evidence *context, const struct pg_evidence *computation);
  /* Normalize an accepted term or formation using shared pure WHNF work, then
   * retain typing through directed subject-reduction evidence. The immutable
@@ -709,7 +721,7 @@
  struct pg_synthesis_job *pg_synthesis_normalize(struct pg_synthesis *synthesis,
  	const struct pg_evidence *context, const struct pg_evidence *proof);
  /* Strong pure normalization of the same typed inputs, with a distinct job
-@@ -845,27 +834,17 @@
+@@ -845,27 +837,17 @@
   * This may normalize under THUNK; it is not a runtime execution request. */
  struct pg_synthesis_job *pg_synthesis_nf(struct pg_synthesis *synthesis,
  	const struct pg_evidence *context, const struct pg_evidence *proof);
@@ -744,7 +756,7 @@
  /* Expose checked THUNK code through shared normalization and typed inversion.
   * This does not execute the stored computation or cache an effect result. */
  struct pg_synthesis_job *pg_synthesis_unthunk(struct pg_synthesis *synthesis,
-@@ -874,6 +853,9 @@
+@@ -874,6 +856,9 @@
   * tail. Finite primitive transitions do not starve other ready work. This is
   * not a wall-clock bound on individual kernel rules or allocation. */
  void pg_synthesis_advance(struct pg_synthesis *synthesis, uint64_t budget);

@@ -1,6 +1,26 @@
 --- a/constructor_checkpoint_test.c
 +++ b/constructor_checkpoint_test.c
-@@ -157,7 +157,9 @@
+@@ -30,14 +30,17 @@
+ 	struct pg_program *program;
+ 	struct pg_declaration_io objects;
+ 	const struct pg_derivation_input *const *inputs;
++	const struct pg_evidence *const *checked;
+ 	size_t ordinal;
+ };
+ 
+ static int write_payload(FILE *file, const struct pg_graph_codec *codec, void *owner)
+ {
+ 	struct checkpoint *c = owner;
+-	return pg_wire_write_u64(file, c->ordinal) || pg_derivation_inputs_write_inference(file,
+-		3, c->inputs, &c->program->imported_effects, codec, &c->objects);
++	if (pg_wire_write_u64(file, c->ordinal)) return -1;
++	return c->checked
++		? pg_derivations_write_descriptors(file, &c->program->typing, 3, c->checked, codec, &c->objects)
++		: pg_derivation_inputs_write_inference(file, 3, c->inputs, &c->program->imported_effects, codec, &c->objects);
+ }
+ 
+ static int read_payload(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+@@ -157,7 +160,9 @@
  		assert(pg_synthesis_result(premises[i]));
  	}
  	assert(!s->ready && s->steps == validation);
@@ -11,7 +31,7 @@
  	const struct pg_data_layout *layout = pg_data_schema_layout(pg_evidence_inductive_schema(formation));
  	assert(c.ordinal < pg_data_layout_count(layout));
  	const struct pg_object *constructor = pg_data_constructor(layout, c.ordinal);
-@@ -239,15 +241,15 @@
+@@ -239,17 +244,16 @@
  	struct pg_synthesis isolated;
  	assert(!pg_synthesis_init(&isolated, &p->typing, &p->evaluation, PG_DEFINITION_IMPLICIT_THUNK));
  	struct pg_synthesis_job *scope_job = pg_synthesis_constructor_scope(&isolated,
@@ -27,7 +47,10 @@
  	assert(pg_synthesis_constructor_ready_scope(&p->synthesis, job, &scope) == -1);
 -	struct pg_synthesis_job *inputs[] = {pg_synthesis_evidence(&isolated, formation),
 -		pg_synthesis_evidence(&isolated, parameters), pg_synthesis_evidence(&isolated, scope)};
-+	struct pg_synthesis_input inputs[] = {{.checked = formation}, {.checked = parameters}, {.checked = scope}};
- 	assert(!pg_synthesis_export_rules(&isolated, 3, inputs, &p->graph,
- 		&p->imported_effects, 1, &c.inputs));
+-	assert(!pg_synthesis_export_rules(&isolated, 3, inputs, &p->graph,
+-		&p->imported_effects, 1, &c.inputs));
++	const struct pg_evidence *checked[] = {formation, parameters, scope};
++	c.checked = checked;
  	FILE *saved = save(&c);
+ 	uint64_t before = isolated.steps;
+ 	advance(&isolated, 100000);

@@ -1,6 +1,26 @@
 --- a/normalization_checkpoint_test.c
 +++ b/normalization_checkpoint_test.c
-@@ -115,13 +115,11 @@
+@@ -42,6 +42,7 @@
+ 	struct pg_effect_inference *effects;
+ 	struct pg_declaration_io *objects;
+ 	const struct pg_derivation_input *const *premises;
++	const struct pg_evidence *const *checked;
+ 	const struct pg_whnf_job *saved;
+ 	struct pg_whnf_job *restored;
+ 	size_t premise_count;
+@@ -53,7 +54,10 @@
+ static int write_payload(FILE *file, const struct pg_graph_codec *codec, void *owner)
+ {
+ 	struct checkpoint *c = owner;
+-	if (pg_derivation_inputs_write_inference(file, c->premise_count, c->premises, c->effects, codec, c->objects)) return -1;
++	int status = c->checked
++		? pg_derivations_write_descriptors(file, c->typing, c->premise_count, c->checked, codec, c->objects)
++		: pg_derivation_inputs_write_inference(file, c->premise_count, c->premises, c->effects, codec, c->objects);
++	if (status) return -1;
+ 	if (pg_whnf_pending_write(file, c->saved, codec, c->objects)) return -1;
+ 	if (c->premise_count == 2) return 0;
+ 	return c->schedule ? pg_artifact_schedule_save(file, c->schedule)
+@@ -115,13 +119,11 @@
  	const struct pg_evidence *different = pg_prove_universe(s->typing, context, 42);
  	struct pg_synthesis_job *wrong = pg_synthesis_normalize(&other, context, different);
  	assert(wrong && pg_synthesis_normalization_attach(&other, wrong, whnf));
@@ -18,7 +38,7 @@
  	assert(correct && pg_whnf_request(&evaluation, &pg_pure_policy, whnf->request.input));
  	assert(pg_synthesis_normalization_attach(&other, correct, whnf));
  	whnf->request.policy = &pg_beta_policy;
-@@ -135,17 +133,19 @@
+@@ -135,17 +137,19 @@
  static void shared_jobs(struct pg_synthesis *s, const struct pg_evidence *context,
  	const struct pg_evidence *proof, const struct pg_evidence *type, struct pg_synthesis_job **jobs)
  {
@@ -44,7 +64,7 @@
  	for (size_t i = 0; i < 5; ++i) assert(jobs[i]);
  }
  
-@@ -184,8 +184,10 @@
+@@ -184,8 +188,10 @@
  		shared_jobs(&synthesis, context, proof, pg_synthesis_result(premises[2]), jobs);
  		job = jobs[0];
  	} else job = force
@@ -57,7 +77,7 @@
  	assert(job && !pg_synthesis_normalization_pending(&synthesis, job));
  	wrong_owner_and_request(&synthesis, job, context, proof, whnf, force);
  	assert(!pg_synthesis_normalization_attach(&synthesis, job, whnf));
-@@ -193,8 +195,9 @@
+@@ -193,8 +199,9 @@
  		assert(!pg_synthesis_normalization_attach(&synthesis, jobs[1], whnf));
  		assert(!pg_artifact_schedule_attach(&synthesis, c.schedule, 5, jobs));
  		assert(synthesis.ready == jobs[0] && jobs[0]->next == jobs[1] && synthesis.ready_tail == jobs[1]);
@@ -69,7 +89,7 @@
  	}
  	assert(pg_synthesis_normalization_attach(&synthesis, job, whnf));
  	assert(pg_synthesis_normalization_pending(&synthesis, job) == whnf);
-@@ -242,11 +245,10 @@
+@@ -242,19 +249,15 @@
  	advance(&program->synthesis, 100000);
  	const struct pg_evidence *proof = pg_synthesis_result(selected);
  	assert(proof && !program->synthesis.ready);
@@ -83,19 +103,56 @@
 +	struct pg_synthesis_job *job = pg_synthesis_reduction_request(&program->synthesis,
 +		premises[0], premises[1], PG_REDUCTION_WHNF, force);
  	assert(job && !pg_synthesis_normalization_pending(&program->synthesis, job));
- 	struct pg_graph storage;
- 	struct pg_effect_inference effects;
-@@ -300,8 +302,7 @@
+-	struct pg_graph storage;
+-	struct pg_effect_inference effects;
+ 	struct pg_declaration_io codec;
+-	assert(!pg_graph_init(&storage) && !pg_effect_inference_init(&effects, &storage));
+ 	assert(!pg_declaration_io_init(&codec, &program->typing));
+-	struct checkpoint c = {.typing = &program->typing, .effects = &effects, .objects = &codec, .premise_count = 2};
+-	assert(!pg_synthesis_export_rules(&program->synthesis, 2, premises, &storage, &effects, 1, &c.premises));
++	const struct pg_evidence *checked[] = {premises[0].checked, proof};
++	struct checkpoint c = {.typing = &program->typing, .objects = &codec, .checked = checked, .premise_count = 2};
+ 	FILE *images[512];
+ 	size_t count = 0;
+ 	int evaluating = 0, materializing = 0;
+@@ -272,8 +275,6 @@
+ 	assert(program->synthesis.steps - before == count + 1);
+ 	FILE *expected = result_file(&codec, pg_evidence_subject(pg_synthesis_result(job))->core);
+ 	pg_declaration_io_destroy(&codec);
+-	pg_effect_inference_destroy(&effects);
+-	pg_graph_destroy(&storage);
+ 	pg_program_destroy(program);
+ 	for (size_t i = 0; i < count; ++i) {
+ 		resume(images[i], expected, count - i, force);
+@@ -300,16 +301,11 @@
  	assert(type);
  	struct pg_synthesis_job *jobs[5];
  	shared_jobs(&program->synthesis, context, proof, type, jobs);
 -	struct pg_synthesis_job *premises[] = {pg_synthesis_evidence(&program->synthesis, context), selected,
 -		pg_synthesis_evidence(&program->synthesis, type)};
-+	struct pg_synthesis_input premises[] = {{.checked = context}, {.pending = pg_synthesis_pending(selected)}, {.checked = type}};
- 	struct pg_graph storage;
- 	struct pg_effect_inference effects;
+-	struct pg_graph storage;
+-	struct pg_effect_inference effects;
++	const struct pg_evidence *checked[] = {context, proof, type};
  	struct pg_declaration_io codec;
-@@ -344,7 +345,8 @@
+-	assert(!pg_graph_init(&storage) && !pg_effect_inference_init(&effects, &storage));
+ 	assert(!pg_declaration_io_init(&codec, &program->typing));
+-	struct checkpoint c = {.typing = &program->typing, .effects = &effects, .objects = &codec,
++	struct checkpoint c = {.typing = &program->typing, .checked = checked, .objects = &codec,
+ 		.premise_count = 3, .synthesis = &program->synthesis, .jobs = jobs};
+-	assert(!pg_synthesis_export_rules(&program->synthesis, 3, premises, &storage, &effects, 1, &c.premises));
+ 	advance(&program->synthesis, 5);
+ 	c.saved = pg_synthesis_normalization_pending(&program->synthesis, jobs[0]);
+ 	assert(c.saved && c.saved == pg_synthesis_normalization_pending(&program->synthesis, jobs[1]));
+@@ -321,8 +317,6 @@
+ 	assert(pg_synthesis_status(jobs[3]) == PG_SYNTHESIS_REJECTED);
+ 	FILE *expected = result_file(&codec, pg_evidence_subject(pg_synthesis_result(jobs[0]))->core);
+ 	pg_declaration_io_destroy(&codec);
+-	pg_effect_inference_destroy(&effects);
+-	pg_graph_destroy(&storage);
+ 	pg_program_destroy(program);
+ 	resume(file, expected, remaining, 1);
+ 	assert(!fclose(file) && !fclose(expected));
+@@ -344,7 +338,8 @@
  	pg_synthesis_finish(s, job, PG_SYNTHESIS_DONE);
  }
  
@@ -105,7 +162,7 @@
  static const struct pg_synthesis_work_class preparing;
  
  static void preparation_step(struct pg_synthesis *s, struct pg_synthesis_job *job)
-@@ -363,6 +365,7 @@
+@@ -363,6 +358,7 @@
  }
  
  static const struct pg_synthesis_work_class preparing = {
