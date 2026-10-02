@@ -7432,7 +7432,7 @@
  static void family_reification(struct pg_typing *typing)
  {
  	struct pg_whnf_work work;
-@@ -7706,60 +10298,125 @@
+@@ -7706,61 +10298,170 @@
  	const struct pg_evidence *projected = pg_prove_projection(typing, context, family);
  	const struct pg_evidence *cases[] = {family, partial, projected};
  	const struct pg_evidence *contexts[] = {empty, empty, context};
@@ -7507,11 +7507,20 @@
 -		struct pg_synthesis_job *pending = pg_synthesis_family_function(&synthesis, alias);
 -		assert(pending && pending == pg_synthesis_family_function(&synthesis, alias));
 -		assert(complete(&synthesis, pending, PG_SYNTHESIS_DONE) == function);
-+		struct pg_synthesis_job *domain = pg_synthesis_family_domain(&synthesis, input);
-+		const struct pg_evidence *parameter_type = complete(&synthesis, domain, PG_SYNTHESIS_DONE);
++		size_t domain_jobs = synthesis.jobs.count;
++		struct pg_typed_query *parameter = pg_family_parameter_request(typing, cases[i], 0);
++		assert(parameter && synthesis.jobs.count == domain_jobs);
++		uint64_t parameter_steps = pg_typed_query_steps(parameter), domain_steps = synthesis.steps;
++		assert(pg_synthesis_advance_pending(&synthesis, &parameter->pending, 0) == PG_SYNTHESIS_PENDING);
++		assert(pg_typed_query_steps(parameter) == parameter_steps && synthesis.steps == domain_steps);
++		const struct pg_evidence *parameter_scope = complete_pending(&synthesis, &parameter->pending, PG_SYNTHESIS_DONE);
++		assert(parameter_scope && pg_evidence_rule(parameter_scope) == PG_CONTEXT_EXTEND);
++		const struct pg_evidence *parameter_type = pg_context_declared_input(typing, parameter_scope);
 +		assert(pg_evidence_subject(parameter_type)->core == pg_universe(typing->graph, 1));
 +		assert(pg_evidence_context(parameter_type) == pg_evidence_context(contexts[i]));
-+		assert(pg_synthesis_family_domain(&synthesis, input) == domain);
++		assert(pg_family_parameter_request(typing, cases[i], 0) == parameter);
++		assert(pg_synthesis_advance_pending(&synthesis, &parameter->pending, 0) == PG_SYNTHESIS_DONE);
++		assert(synthesis.jobs.count == domain_jobs);
 +		struct pg_synthesis_job *alias = pg_synthesis_plain_rule_inputs(&synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
 +			(struct pg_synthesis_input[]){context_input, input});
 +		struct pg_synthesis_input pending = pg_synthesis_family_function(&synthesis, pending_input(alias));
@@ -7563,7 +7572,6 @@
 +	assert(!rejected.checked && !rejected.pending);
 +	assert(!pg_synthesis_family_function(&synthesis, invalid).pending && !pg_synthesis_family_function(&synthesis, invalid).checked);
 +	assert(!pg_synthesis_family_contract(&synthesis, invalid, input));
-+	assert(!pg_synthesis_family_domain(&synthesis, invalid));
  	struct pg_synthesis foreign;
  	assert(!pg_synthesis_init(&foreign, typing, &work, PG_DEFINITION_IMPLICIT_THUNK));
  	size_t jobs = foreign.jobs.count;
@@ -7574,7 +7582,6 @@
 +	assert(!rejected.checked && !rejected.pending);
 +	assert(!pg_synthesis_family_function(&foreign, producer).pending && !pg_synthesis_family_function(&foreign, producer).checked);
 +	assert(!pg_synthesis_family_contract(&foreign, context_input, producer));
-+	assert(!pg_synthesis_family_domain(&foreign, producer));
 +	assert(!pg_synthesis_inductive_instance(&foreign, producer));
  	assert(jobs == foreign.jobs.count);
  	pg_synthesis_destroy(&foreign);
@@ -7582,9 +7589,47 @@
 -		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "F", .length = 1}, family);
 +		(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "F", .length = 1}, (struct pg_synthesis_input){.checked = family});
  	assert(scope);
++	struct pg_synthesis_job *wrong_domain = request(&synthesis, scope, "main := F #Int;");
++	before = synthesis.steps;
++	pg_synthesis_advance(&synthesis, 0);
++	assert(synthesis.steps == before && !pg_synthesis_result(wrong_domain));
++	complete(&synthesis, wrong_domain, PG_SYNTHESIS_REJECTED);
++	/* A selected declaration may be convertible but not alpha-equal to the
++	 * argument classifier. The existing query and ordinary post-check suffice. */
++	const struct pg_evidence *redex_type = pg_prove_value_type(typing,
++		pg_prove_total_pure_value(typing, pg_prove_return_contract(typing, PG_TOTALITY_TOTAL,
++			pg_prove_type_value(typing, u1))));
++	assert(redex_type && pg_alpha_equal(pg_evidence_subject(redex_type)->core, pg_evidence_subject(u1)->core) != 1);
++	const unsigned chunks[] = {1, 7, 64};
++	for (size_t i = 0; i < sizeof(chunks) / sizeof(*chunks); ++i) {
++		const struct pg_evidence *parameter_context = pg_prove_context_extension(typing, empty,
++			pg_binder(typing->graph), redex_type);
++		const struct pg_evidence *redex_family = pg_prove_family_abstraction(typing, parameter_context,
++			pg_prove_projection(typing, parameter_context, u0));
++		assert(redex_family);
++		const struct pg_source_scope *named = pg_synthesis_name(&synthesis, pg_synthesis_root(&synthesis),
++			(struct pg_token){.kind = PG_TOKEN_IDENT, .text = "D", .length = 1}, checked_input(redex_family));
++		struct pg_synthesis_job *call = request(&synthesis, named, "main := D (@);");
++		uint64_t before_call = synthesis.steps;
++		struct pg_typed_query *parameter = pg_family_parameter_request(typing, redex_family, 0);
++		uint64_t before_query = pg_typed_query_steps(parameter);
++		pg_synthesis_advance(&synthesis, 0);
++		assert(synthesis.steps == before_call && pg_typed_query_steps(parameter) == before_query);
++		while (pg_synthesis_status(call) == PG_SYNTHESIS_PENDING) {
++			assert(synthesis.steps - before_call < 10000);
++			uint64_t before_slice = synthesis.steps, query_slice = pg_typed_query_steps(parameter);
++			pg_synthesis_advance(&synthesis, chunks[i]);
++			assert(synthesis.steps - before_slice <= chunks[i]);
++			assert(pg_typed_query_steps(parameter) - query_slice <= chunks[i]);
++		}
++		assert(pg_synthesis_status(call) == PG_SYNTHESIS_DONE && parameter->status == 1);
++		assert(pg_context_declared_input(typing, pg_typed_query_result(parameter)) == redex_type);
++		same_judgement(normalize(&synthesis, empty, pg_synthesis_result(call)), u0);
++	}
  	const struct pg_evidence *quoted = complete(&synthesis, request(&synthesis, scope, "main := &F;"), PG_SYNTHESIS_DONE);
  	const struct pg_evidence *call = pg_prove_application(typing, pg_prove_force(typing, quoted),
-@@ -7770,10 +10427,10 @@
+ 		pg_prove_type_value(typing, pg_prove_universe(typing, empty, 0)));
+@@ -7770,10 +10471,10 @@
  	pg_synthesis_destroy(&synthesis);
  	for (uint64_t cutoff = 0; ; ++cutoff) {
  		assert(!pg_synthesis_init(&synthesis, typing, &work, PG_DEFINITION_IMPLICIT_THUNK));
@@ -7598,7 +7643,7 @@
  		pg_synthesis_advance(&synthesis, cutoff);
  		int done = pg_synthesis_status(contract) == PG_SYNTHESIS_DONE;
  		assert(done || pg_synthesis_status(contract) == PG_SYNTHESIS_PENDING);
-@@ -7785,6 +10442,81 @@
+@@ -7785,6 +10486,81 @@
  	puts("family reification: retained declaration inputs are not mistaken for nominal data");
  }
  
@@ -7680,7 +7725,7 @@
  static void graded_application(struct pg_typing *typing)
  {
  	struct pg_whnf_work work;
-@@ -7812,7 +10544,7 @@
+@@ -7812,7 +10588,7 @@
  						pg_prove_projection(typing, index_context, u0))));
  			const struct pg_evidence *callback_context = pg_prove_context_extension(typing, empty, callback, callback_type);
  			const struct pg_source_scope *callback_scope = pg_synthesis_bind(&synthesis, pg_synthesis_root(&synthesis),
@@ -7689,7 +7734,7 @@
  			assert(callback_scope);
  			complete(&synthesis, program(&synthesis, callback_scope,
  				"D:=\\F:@->@=>F; applied:=D f;"),
-@@ -7848,7 +10580,7 @@
+@@ -7848,7 +10624,7 @@
  		const struct pg_source_scope *scope = pg_synthesis_root(&synthesis);
  		for (size_t i = 0; i < 3; ++i)
  			scope = pg_synthesis_name(&synthesis, scope,
@@ -7698,7 +7743,7 @@
  		const char *sources[] = {
  			"main := f Arg;", "main := f (f Arg);",
  			"main := { x := f Arg; f x; };", "main := Producer Arg;"
-@@ -7863,8 +10595,8 @@
+@@ -7863,8 +10639,8 @@
  			assert(returned && pg_evidence_subject(returned)->core == pg_evidence_subject(argument)->core);
  			for (enum pg_totality target = PG_TOTALITY_UNSPECIFIED; target <= PG_TOTALITY_TOTAL; ++target) {
  				const struct pg_evidence *type = pg_prove_computation_type(typing, target, row, u1);
@@ -7709,7 +7754,7 @@
  				const struct pg_evidence *checked = complete(&synthesis, check,
  					grade >= target ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_REJECTED);
  				if (checked) assert(pg_evidence_classifier(checked) == pg_evidence_subject(type)->core);
-@@ -7872,8 +10604,8 @@
+@@ -7872,8 +10648,8 @@
  		}
  		struct pg_synthesis_job *flag = request(&synthesis, scope, "Flag:=@{yes:*; no:*;};");
  		complete(&synthesis, flag, PG_SYNTHESIS_DONE);
@@ -7720,7 +7765,7 @@
  		const char *branches[] = {
  			"main:=\\b:Flag=>b @yes=>f Arg @no=>Arg;",
  			"main:=\\b:Flag=>b @yes=>Arg @no=>f Arg;"
-@@ -7893,6 +10625,263 @@
+@@ -7893,6 +10669,263 @@
  	puts("graded source application: sequencing and Match preserve guarantees; post-checks only weaken");
  }
  
@@ -7984,7 +8029,7 @@
  int main(void)
  {
  	struct pg_graph graph;
-@@ -7902,8 +10891,13 @@
+@@ -7902,8 +10935,13 @@
  	assert(pg_graph_init(&graph) == 0);
  	assert(pg_typing_init(&typing, &graph) == 0);
  	owner_work_storage(&typing);
@@ -7998,7 +8043,7 @@
  	source_body_kinds(&typing);
  	source_preparation_subscription(&typing);
  	sequence_structure_choice(&typing);
-@@ -7921,6 +10915,9 @@
+@@ -7921,6 +10959,9 @@
  	composition_sharing();
  	lift_sharing();
  	synthesis_lifetime(&typing);
@@ -8008,7 +8053,7 @@
  	accepted_inputs(&typing);
  	pending_names(&typing);
  	source_imports(&typing);
-@@ -7929,19 +10926,43 @@
+@@ -7929,19 +10970,43 @@
  	source_declarations(&typing);
  	definition_selections(&typing);
  	retained_module_inputs(&typing);
@@ -8052,7 +8097,7 @@
  	shared_conversion_jobs(&typing);
  	conversion_owner_cancellation();
  	library_levels(&typing);
-@@ -7973,7 +10994,7 @@
+@@ -7973,7 +11038,7 @@
  	const struct pg_evidence *a_context = pg_prove_context_extension(&typing, empty, a, universe);
  	struct pg_token a_name = {.kind = PG_TOKEN_IDENT, .length = 1, .text = "A"};
  	struct pg_token x_name = {.kind = PG_TOKEN_IDENT, .length = 1, .text = "x"};
@@ -8061,7 +8106,7 @@
  	const struct pg_evidence *a_type = pg_prove_variable(&typing, a_context, a);
  	const struct pg_evidence *typed_application = pg_prove_application(&typing,
  		pg_prove_projection(&typing, a_context, identity), a_type);
-@@ -8015,7 +11036,7 @@
+@@ -8015,7 +11080,7 @@
  		assert(normalize(&synthesis, x_context, projected_application) == projected_reduct);
  	}
  	assert(graph.terms.count == reduction_terms && typing.proofs.count == reduction_proofs);
@@ -8070,7 +8115,7 @@
  	application_allocations(&synthesis, scope, pg_prove_projection(&typing, x_context, typed_reduct), return_x);
  	/* Negative Identity discovery is also shared, not restarted per call. */
  	const struct pg_evidence *ordinary_domains[] = {
-@@ -8023,7 +11044,7 @@
+@@ -8023,7 +11088,7 @@
  	for (size_t i = 0; i < 2; ++i) {
  		size_t jobs = synthesis.jobs.count;
  		struct pg_synthesis_job *discovered = pg_synthesis_identity_formation(&synthesis,
@@ -8079,7 +8124,7 @@
  		assert(pg_synthesis_status(discovered) == PG_SYNTHESIS_UNSUPPORTED);
  		assert(!pg_synthesis_result(discovered) && synthesis.jobs.count == jobs);
  	}
-@@ -8031,15 +11052,17 @@
+@@ -8031,15 +11096,17 @@
  	const struct pg_evidence *ih_type = pg_prove_thunk_type(&typing,
  		pg_prove_classifier(&typing, x_context, return_x));
  	const struct pg_evidence *ih_context = pg_prove_context_extension(&typing, x_context, ih, ih_type);
@@ -8102,7 +8147,7 @@
  	assert(bad_ih_scope && bad_ih_scope != ih_scope);
  	struct pg_synthesis_job *ih_job = request(&synthesis, ih_scope, "r:=*x;");
  	const struct pg_evidence *ih_result = complete(&synthesis, ih_job, PG_SYNTHESIS_DONE);
-@@ -8047,7 +11070,7 @@
+@@ -8047,7 +11114,7 @@
  		pg_prove_force(&typing, pg_prove_variable(&typing, ih_context, ih)))->core);
  	complete(&synthesis, request(&synthesis, bad_ih_scope, "r:=*x;"), PG_SYNTHESIS_REJECTED);
  	assert(!pg_synthesis_bind_hypothesis(&synthesis, pending_field, NULL, ih,
@@ -8111,7 +8156,7 @@
  	identity_contents(&typing, &beta, x_context, second_application, x_value, sigma);
  	normalization_jobs(&typing, x_context, second_application, x_value);
  	const struct pg_evidence *deep_body = return_x;
-@@ -8202,7 +11225,8 @@
+@@ -8202,7 +11269,8 @@
  	size_t evaluation_jobs = synthesis.jobs.count;
  	struct pg_synthesis_job *shared_return = pg_synthesis_return(&synthesis, x_context, second_application);
  	assert(shared_return && pg_synthesis_status(shared_return) == PG_SYNTHESIS_PENDING);
@@ -8121,7 +8166,7 @@
  	assert(synthesis.jobs.count == evaluation_jobs + 1);
  	assert(pg_synthesis_return(&synthesis, x_context, second_application) == shared_return);
  	uint64_t evaluation_steps = synthesis.steps;
-@@ -8320,7 +11344,7 @@
+@@ -8320,7 +11388,7 @@
  	assert(pg_evidence_conversion(converted_return));
  	struct pg_synthesis_job *unthunk_job = pg_synthesis_unthunk(&synthesis, x_context, converted_value);
  	assert(unthunk_job && pg_synthesis_status(unthunk_job) == PG_SYNTHESIS_PENDING);
@@ -8130,7 +8175,7 @@
  	const struct pg_evidence *unthunked = complete(&synthesis, unthunk_job, PG_SYNTHESIS_DONE);
  	assert(pg_evidence_rule(unthunked) == PG_THUNK_COMPUTATION);
  	assert(pg_alpha_equal(pg_evidence_subject(unthunked)->core, pg_evidence_subject(computed_domain)->core) == 1);
-@@ -8418,19 +11442,23 @@
+@@ -8418,19 +11486,23 @@
  	const struct pg_syntax *annotation = annotation_definition.expression;
  	struct pg_synthesis_job *annotation_term = pg_synthesis_request(&synthesis, scope, annotation->left);
  	struct pg_synthesis_job *annotation_type = pg_synthesis_request(&synthesis, scope, annotation->right);
@@ -8160,7 +8205,7 @@
  	complete(&synthesis, request(&synthesis, scope, "main := &(\\y : A => y);"), PG_SYNTHESIS_DONE);
  	complete(&synthesis, request(&synthesis, scope, "main := (&(\\y : A => y)) x;"), PG_SYNTHESIS_DONE);
  	const struct pg_evidence *higher = complete(&synthesis,
-@@ -8641,8 +11669,8 @@
+@@ -8641,8 +11713,8 @@
  	struct pg_synthesis strict;
  	assert(pg_synthesis_init(&strict, &typing, &beta, PG_DEFINITION_EXPLICIT_THUNK) == 0);
  	const struct pg_source_scope *strict_root = pg_synthesis_root(&strict);

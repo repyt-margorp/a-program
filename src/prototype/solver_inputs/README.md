@@ -536,6 +536,17 @@ bytes change, with 949,336 fewer bytes on completed QuickSort. Actual code is
 net +71 lines, not a source reduction. SE1-SE5 and three public reload failures
 remain open; this is an unpromoted prototype.
 
+Logical-family application now borrows its selected parameter query directly.
+`FAMILY_DOMAIN_JOB`, its factory and copied result are removed; its caller's
+existing phase avoids repeated argument discovery while suspended. Convertible
+but non-alpha-equal domains retain the ordinary post-check, tested at chunks
+1/7/64 alongside wrong-domain rejection. [Fixture counts](family_domain_census.tsv)
+compare identical O0 tests against `fa6c916`; the one-off GDB probe uses test
+line locations pinned to this increment, not a permanent timing gate. The five
+existing census inputs are unchanged; [applied code](family_domain_delta.tsv)
+grows one line. This removes a work owner, not all Jobs or Evidence. Full gates
+pass; the same three public reload failures remain open.
+
 Use the parent plan for progress. Create and verify a disposable candidate:
 
 ```sh

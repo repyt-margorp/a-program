@@ -806,6 +806,31 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   and genuinely unfinished construction. Try direct owner references plus
   owner-local suspension state; document any residual allocation that cannot be
   eliminated and why. An independent Job graph is not an acceptance criterion.
+  Verified prototype (2026-10-02, parent `fa6c916`, agent decision): delete
+  `FAMILY_DOMAIN_JOB`, its factory and result copy. Logical-family application
+  yields the existing parameter query and passes its exact declaration to the
+  ordinary post-check. Its existing local phase avoids repeating argument
+  discovery/alpha scans while the query is suspended; no private pointer,
+  query class, acceptance owner or wire field is added. A non-alpha but
+  convertible domain succeeds at chunks 1/7/64; incorrect domains reject,
+  selected/partial/projected families and zero fuel pass. Full O2 regression,
+  examples/acceptance, semantic persistence, seven checkpoint and five C gates
+  pass. Additional conversion boundary tests pass separately on the same
+  implementation, ASan/UBSan/leaks and fresh/current-worktree Core/IADT/synthesis
+  pass. All 388 reassembled C/header files match the final tested assembly.
+  [Paired fixture counts](../src/prototype/solver_inputs/family_domain_census.tsv),
+  using O0 GDB on identical tests, show 1/2/2 fewer new Jobs after requesting
+  three sequential calls; steps are 37/15/15 versus 37/12/12. This is not a
+  wall-time or general-memory claim. All fields in the five-input census equal
+  the preceding `typed_owner` candidate rows, including zero fuel; input hashes
+  are unchanged. All 52 public partition images/report equal the parent; the
+  same three reload failures remain, not waived. The first added fixture used
+  bare `@` in argument position and failed parsing; `D (@)` is the corrected
+  syntax, not an implementation change. [Applied deltas](../src/prototype/solver_inputs/family_domain_delta.tsv):
+  implementation +38/-37 (net +1), tests +49/-5 (net +44). Do not merge telescope
+  discovery with acceptance: scope/tail consumers run before Context checking.
+  Logs: `/tmp/a-program-family-domain-`. SE1-SE5 remain open; prototype only,
+  unrelated user changes excluded.
   Verified prototype increment (2026-10-02, parent `9e9377b`; agent decision):
   delete the dedicated Reindex worker and action-pointer cache. Convenience and
   ordinary `PG_REINDEX` requests now share one rule owner and checker, borrowing
