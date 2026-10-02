@@ -699,6 +699,33 @@ Do not mark a milestone complete just because a view hides the old representatio
   union or dispatcher still re-expands the Oracle payloads. Verify owner-local
   semantic handling and removal of the broad `source_work` layout, not just
   disappearance of an enum or reduction of the Job count.
+  Verified upper-layout deletion (2026-10-02, agent decision, parent `30bf913`):
+  the broad `source_work`, `EXPRESSION_JOB` and shared semantic `step` are
+  removed. Private Match/reference/module/graph-reference/return-sequencing
+  owners keep only their actual suspension data (64/40/40/16/8 bytes on this
+  build, excluding the common header and separately owned queries/cases).
+  Scope/syntax borrow the canonical key; source-rule inspection delegates to
+  owner projections instead of repeating central semantic dispatch. Module
+  selections cannot receive constructor member allocations. Exact registration,
+  preparation-before-effect-checking and `::` post-check contracts remain.
+  [Paired census](../src/prototype/solver_inputs/source_owners_measurements.tsv):
+  only Job-layout bytes change at fuel 0/100/1000/completion. Completed
+  List/effect/captured-graph/QuickSort save 4,728/13,728/11,336/327,656 bytes;
+  Job counts, typed counts, receipts, queries and steps are unchanged. This is
+  not peak RAM or a speedup measurement. [Applied deltas](../src/prototype/solver_inputs/source_owners_delta.tsv):
+  implementation +289/-226 (net +63), tests +52/-1 (net +51), excluding docs
+  and patch context; this is not net code reduction. O2 regression/examples/
+  acceptance, semantic persistence, seven checkpoint and five C gates exit 0,
+  including general Sorted/result/permutation and both LT providers/orders.
+  ASan/UBSan/leaks synthesis/source/derivation I/O, fresh-assembly checks and
+  current-worktree Core/IADT/synthesis/source I/O pass. An initial missing
+  startup enqueue was fixed; the first full run was stopped after an invalid
+  new parser fixture was identified, then rerun successfully with the corrected
+  fixture. All 52 strict List images and the four-failure partition TSV equal
+  the parent. The public reload gate still fails, not waived. Evidence admission,
+  remaining stateful forwarding and resumable query/frontier ownership remain
+  open: this does not complete SE1-SE5 or remove every Job/Evidence record.
+  Prototype only; user edits are excluded. Logs use `/tmp/a-program-source-owners-`.
   The frontier borrows canonical unfinished obligations; only those obligations
   own inputs, interrupted cursors and results. Save the necessary cursor and
   deterministic scheduling information, not a second dependency program.

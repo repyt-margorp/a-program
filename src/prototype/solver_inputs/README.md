@@ -460,6 +460,18 @@ claim. Regression, checkpoint/C gates, sanitizers and fresh/current checks pass,
 including partial/complete source roundtrips and step 0. All 52 List images match
 the parent; the same four public reload failures remain. Prototype only.
 
+2026-10-02, upper-layout deletion against `30bf913`: `source_work`,
+`EXPRESSION_JOB` and the shared semantic dispatcher are removed. Match,
+lexical-reference, module, graph-reference and return-sequencing owners keep
+private suspension data and borrow their key's scope/syntax. Projections replace
+repeated central source dispatch; no new Term tag or artifact field is added.
+[Census](source_owners_measurements.tsv) changes only Job-layout bytes, saving
+327,656 bytes on completed QuickSort; counts and steps stay identical.
+[Deltas](source_owners_delta.tsv): implementation net +63, tests net +51,
+not code reduction or a peak-memory/speedup claim. Regression/acceptance,
+checkpoint/C gates, sanitizers and fresh/current checks pass. All 52 List images
+match; the same four public reload failures remain. SE1-SE5 stay open.
+
 Use the parent plan for progress. Create and verify a disposable candidate:
 
 ```sh
