@@ -1,0 +1,22 @@
+kind	case	parent	candidate	equal	detail
+census	captured	4	4	true	all fields at 0/100/1000/completion
+image	captured	134301	134301	true	90c1a3cffa867b161ed1a05bb43e635bd3a1bcac912c151659d018ebe96acb57
+census	effect	4	4	true	all fields at 0/100/1000/completion
+image	effect	219123	219123	true	a41ec7f977129427568ddba611405b5fd03d52d343d36c65d5973b2654c8673b
+census	handler	4	4	true	all fields at 0/100/1000/completion
+image	handler	47888	47888	true	a5443d8a39c02c1bdd84dd6a879697ceb85078e203c54101ce93c6054e4190b2
+census	list	4	4	true	all fields at 0/100/1000/completion
+image	list	50820	50820	true	897bb28fad5a37a8cac48aff36287af25bdab6f4229a572c26e35c85198ba762
+census	quick	4	4	true	all fields at 0/100/1000/completion
+image	quick	7824062	7824062	true	8d60c94180930f475c8e7a504e5600bdcd37e90c8d2ff97220708f9773c5ffd8
+partitions	list	3 failures	3 failures	true	exit 1, not waived
+partition images	list	52	52	true	strict bytes against parent
+normalization fixture	completed mixed roots	9802	9575	false	same checked result selected directly and via completed normalization; removes 227 duplicate bytes
+normalization fixture	pending	9487	9487	true	actual unfinished inputs retained
+applied source delta	source_io.c	1 deleted	15 added	false	net +14; excludes patch context and documentation
+applied source delta	source_io.h	2 deleted	3 added	false	net +1; API comments
+applied test delta	source_io.c	10 deleted	65 added	false	net +55; regression fixtures
+parent revision	main	6296bb9180fdd86517fd48aeb45a2bd2c3bcd751	prototype trial	n/a	not accepted-source promotion
+input hash	src/source_io.c	5c519afdeb6faf25c9f6d1b8332be330b98c21811fb1656781d07c7e76118715	0db1c7ee466cc22c29ae61235bc64573a442a8372da4a1eb1a9c95d9d3b5e56b	false	assembled source, not patch text
+input hash	src/source_io.h	248d8338f3fdaa657ca24f2e98cd7075ea9bfc39a8bf4b933eb9eb8b6ef572c7	c90206719be08053053971b7b7e7e2c4b3a3c235db9494606dc94586adb4d5d7	false	assembled source, not patch text
+input hash	tests/source_io.c	0e956f20d2e90c384cb4e03db411bfd404fd920513d834deab745d1d9c6a9041	90bfdae587d1248b324c5095bfbc8601a4422b6572baa125db4684f8f8061b7e	false	assembled source, not patch text

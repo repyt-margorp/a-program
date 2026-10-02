@@ -2260,6 +2260,33 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   and obsolete owner codecs. Keep only unfinished state needed by actual Solve
   consumers. Wire ordinals are transport references, not a new semantic layer.
   No C layout, ABI, LinkerScript or target-native representation enters `.a`.
+  Verified SE4 increment (2026-10-03, parent `6296bb9`; agent decision): completed
+  normalization saves the existing checked result, not another adapter-input
+  recipe. Pending reductions keep their actual work. The broader trial is
+  rejected: Indexed ADT roundtrips fail because `synthesis.c:2577` validates
+  `::` declaration links through SOURCE_EXPECT inputs. Constructor/member and
+  handler APIs also inspect callable owners; `pg_program_exports` needs lexical
+  module input. Removing these dependencies requires recovering semantic data
+  from typed structures and retaining lexical associations, not weakening the
+  checks or recreating an all-Oracle Job graph. This remains SE1/SE4 work.
+  Completed reductions and direct result roots use the same borrowed transport
+  key, through the existing DAG projection, not an additional alias table.
+  The first trial without this projection fails mixed-root byte identity.
+  - [x] Verify canonical completed exports, exact typed/nominal distinctions,
+    pending/refused contracts, inert resaves and fresh charged checking.
+  - [x] Run full regression, persistence/checkpoint/backend and sanitizer gates;
+    measure image changes and keep unresolved public resume failures visible.
+  [Paired measurements](../src/prototype/solver_inputs/source_receipts_verification.tsv)
+  show mixed-result images 9,802 -> 9,575 bytes; ordinary five-program images
+  and all 52 List partition images are unchanged. The same three public resume
+  failures remain, exit 1. No runtime allocation or speed reduction is claimed.
+  Fresh full O2 regression/examples/acceptance, semantic persistence, seven
+  checkpoint and five C gates pass, including both LT providers/orders and
+  invalid-evidence controls. ASan/UBSan/leaks Core, derivation, source and
+  synthesis, fresh patch assembly and user-edit integration checks pass.
+  Applied implementation delta: +18/-3 (net +15, including API comments);
+  tests +65/-10 (net +55), excluding patch context and documentation. Logs use
+  `/tmp/a-program-source-receipts-`. Prototype only; SE1-SE5 remain open.
   Verified SE4 increment (2026-10-03, parent `6dfe793`; agent decision): completed
   rule producers export their existing accepted typed inputs, not their former
   Job recipe or effect-equation worker. Pending/refused inputs keep their actual

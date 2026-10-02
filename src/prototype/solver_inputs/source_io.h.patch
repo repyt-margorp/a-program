@@ -1,6 +1,19 @@
 --- a/source_io.h
 +++ b/source_io.h
-@@ -77,14 +77,16 @@
+@@ -23,9 +23,10 @@
+  * totality contracts, context-authoritative Pi premises and lexical
+  * result-to-graph binder associations in the ordinary
+  * context-binding records. These are names, not imported graph certificates.
+- * It retains normalization requests as context/term producer edges with
++ * Pending/refused normalization retains context/term producer edges with
+  * WHNF/NF mode and optional one-time closed thunk demand, without a claimed
+- * endpoint or evaluator progress.
++ * endpoint or evaluator progress. Completed normalization shares its checked
++ * input closure with direct result roots; loading still grants no acceptance.
+  * A shared producer DAG also retains prepared source annotations and their
+  * source/rule operands. Selected roots retain order and aliases independently
+  * of dependency order. Loading recreates annotations with the usual factory.
+@@ -77,14 +78,16 @@
   * it never grants kernel acceptance. Unsupported producer/scope
   * kinds fail explicitly instead of being omitted. Source roots are recomputed;
   * retaining annotation recipes is not a complete CHECKPOINT codec.
@@ -19,7 +32,7 @@
  /* Owns the reconstructed stores in the returned program. root is the first
   * selected job, or NULL for no selections. Additional roots are graph-owned.
   * Source producers retain their own restored lexical environments. The Program
-@@ -106,7 +108,7 @@
+@@ -106,7 +109,7 @@
   * The returned Program owns restored terms; loading performs no Solve. */
  struct pg_graph_codec;
  int pg_sources_write_with(FILE *file, const struct pg_synthesis *synthesis,
