@@ -1050,6 +1050,20 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   constructor sequencing, semantic/source/namespace-body/constructor checkpoints
   and ASan/UBSan/leaks Synthesis pass. Full acceptance is the preceding increment's
   verified result, not a fresh run for this dead-API deletion. Prototype only.
+  Verified SE1 increment (2026-10-03, parent `bc08ac0`): Context binding borrows
+  an already checked producer directly, keeping its pending key. Existing
+  validation owners remain stable; unresolved or invalid pending inputs still
+  require exact parent/Binder validation. No cached Context or new graph is added.
+  First-use/reuse, invalid input and zero-fuel tests pass; full O2 regression/
+  examples/acceptance, semantic/seven checkpoint and five C gates, ASan/UBSan/leaks,
+  fresh assembly and current-user-edit Core/IADT/Synthesis pass. Unrelated edits
+  remain untouched. [Counts](../src/prototype/solver_inputs/scope_inputs_ready_measurements.tsv)
+  agree at every sampled fuel on five inputs; [images](../src/prototype/solver_inputs/scope_inputs_ready_images.tsv)
+  are byte-identical. No benchmark improvement is claimed. [Applied delta](../src/prototype/solver_inputs/scope_inputs_ready_delta.tsv):
+  implementation -2, tests +17. [Public partitions](../src/prototype/solver_inputs/scope_inputs_ready_partitions.tsv)
+  still fail the same three reload cases (exit 1). [Hashes](../src/prototype/solver_inputs/scope_inputs_ready_inventory.tsv)
+  pin the trial; logs use `/tmp/a-program-scope-inputs-ready-`. SE1-SE5 stay open;
+  prototype only, not accepted-source promotion or completion of Job removal.
   Verified prototype increment (2026-10-03, parent `0e3865d`; agent decision):
   normalization now uses the existing resolved-input interner after operand
   validation. Equivalent checked inputs share the checking owner, without

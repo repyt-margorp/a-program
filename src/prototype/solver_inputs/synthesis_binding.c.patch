@@ -1,6 +1,6 @@
 --- a/synthesis_binding.c
 +++ b/synthesis_binding.c
-@@ -13,39 +13,111 @@
+@@ -13,39 +13,109 @@
  	struct pg_source_context_allocation *allocation;
  };
  struct declaration_work {
@@ -100,13 +100,11 @@
 +	if (!pg_synthesis_input_owned(synthesis, context)) return NULL;
 +	if (field && field->kind != PG_BINDER) return NULL;
 +	const void *inputs[] = {parent, binder, context.checked, context.pending, field};
-+	/* A checked extension can outlive a still-pending parent. Preserve that
-+	 * validation request if it exists; otherwise ready inputs need no work. */
-+	struct pg_synthesis_job *checked = context.checked && parent->context.pending
-+		? pg_synthesis_work_find(synthesis, SCOPE_CONTEXT_JOB, 5, inputs) : NULL;
-+	if (context.checked && pg_synthesis_scope_context(parent) && !checked) {
-+		if (!binding_context(synthesis, parent, binder, context.checked, field)) return NULL;
-+	} else {
++	/* Preserve an existing validation key. An already checked producer needs
++	 * no second owner; its pending identity is still the lexical scope key. */
++	struct pg_synthesis_job *checked = pg_synthesis_work_find(synthesis, SCOPE_CONTEXT_JOB, 5, inputs);
++	if (checked || !binding_context(synthesis, parent, binder, pg_synthesis_input_result(context), field)) {
++		if (!checked && context.checked && pg_synthesis_scope_context(parent)) return NULL;
 +		if (!checked) checked = pg_synthesis_work_request(synthesis, SCOPE_CONTEXT_JOB, 5, inputs);
 +		if (!checked) return NULL;
 +		context = (struct pg_synthesis_input){.pending = pg_synthesis_pending(checked)};
@@ -119,7 +117,7 @@
  struct pg_synthesis_job *pg_synthesis_binding(struct pg_synthesis *synthesis,
  	const struct pg_source_scope *scope, const struct pg_syntax *syntax)
  {
-@@ -80,7 +152,7 @@
+@@ -80,7 +150,7 @@
  		if (syntax->kind == PG_SYNTAX_PI)
  			name = syntax->left->kind == PG_SYNTAX_BINDER ? syntax->left->token : (struct pg_token){0};
  		local->scope = pg_synthesis_intern_scope(synthesis, (struct pg_source_scope){.parent = scope,
@@ -128,7 +126,7 @@
  	}
  	return local->scope ? job : NULL;
  }
-@@ -91,7 +163,7 @@
+@@ -91,7 +161,7 @@
  {
  	const struct binding_work *local = pg_synthesis_work_state(job, BINDING_JOB);
  	if (!synthesis || !local || !scope || !syntax || !binder) return -1;
@@ -137,7 +135,7 @@
  	*scope = job->inputs[0]; *syntax = job->inputs[1]; *binder = local->binder;
  	return 0;
  }
-@@ -116,19 +188,19 @@
+@@ -116,19 +186,19 @@
  	if (!local->normalized) {
  		struct pg_synthesis_job *annotation = (void *)job->inputs[1];
  		if (pg_synthesis_await(synthesis, job, annotation)) return;
@@ -160,7 +158,7 @@
  }
  
  /* In binder annotations, an arrow telescope ending in @ declares a logical
-@@ -202,71 +274,83 @@
+@@ -202,71 +272,83 @@
  	const struct pg_syntax *syntax = job->inputs[1];
  	if (syntax->binder_marker) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
  	struct binding_work *local = pg_synthesis_work_state(job, BINDING_JOB);
@@ -271,7 +269,7 @@
  		return;
  	}
  	const struct pg_object *binder = NULL;
-@@ -282,40 +366,44 @@
+@@ -282,40 +364,44 @@
  	pg_synthesis_enqueue(synthesis, job);
  }
  
@@ -336,7 +334,7 @@
  	local->result = pg_synthesis_type_structure_result(local->input);
  	pg_synthesis_finish(synthesis, job, local->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
  }
-@@ -323,36 +411,37 @@
+@@ -323,36 +409,37 @@
  static void domain_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
  	struct declaration_work *local = pg_synthesis_work_state(job, DOMAIN_STRUCTURE_JOB);
@@ -398,7 +396,7 @@
  	if (accepted) {
  		const struct pg_context *declaration = pg_evidence_judgement(accepted) == PG_JUDGEMENT_CONTEXT
  			? pg_context_lookup(pg_evidence_context(accepted), binder) : NULL;
-@@ -361,28 +450,20 @@
+@@ -361,28 +448,20 @@
  		return;
  	}
  	const struct binding_work *binding = pg_synthesis_work_state(context, BINDING_JOB);

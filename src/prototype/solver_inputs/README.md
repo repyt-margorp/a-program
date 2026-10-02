@@ -152,6 +152,11 @@ C and focused sanitizer gates pass. The three public reload failures remain;
 this is not complete Job removal or accepted-source promotion.
 The obsolete result-Context reverse reader is deleted; callable provenance no
 longer depends on inspecting a classifier-formation Job chain.
+Context binding also borrows a completed producer without another validation Job.
+Existing validation keys stay stable; exact parent/Binder checks remain for
+unfinished or invalid inputs. Boundary, full regression and sanitizer gates pass.
+The five-input [census](scope_inputs_ready_measurements.tsv) and [images](scope_inputs_ready_images.tsv)
+are unchanged; this is not a measured runtime improvement or a completed resume gate.
 Lexical names, lookup and environments use the same direct inputs. Checked leaves
 retain typed-use identity; pending keys remain stable after completion. Source
 export shares checked leaves directly through its existing DAG traversal,
