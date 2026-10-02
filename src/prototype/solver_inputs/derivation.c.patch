@@ -1,15 +1,6 @@
 --- a/derivation.c
 +++ b/derivation.c
-@@ -4,6 +4,8 @@
- #include "scope.h"
- #include "evidence_structure.h"
- 
-+#include <stdlib.h>
-+
- static size_t typed_inputs(const struct pg_evidence *proof,
- 	const struct pg_occurrence **inputs)
- {
-@@ -129,13 +131,14 @@
+@@ -129,13 +129,14 @@
  /* Result formation is checked by exact typed subject, not receipt history.
   * Other supplied inputs still belong to the rule-specific contract. */
  static const struct pg_evidence *checked_premises(const struct pg_evidence *result,
@@ -26,7 +17,7 @@
  		return result;
  	}
  	size_t formation = count;
-@@ -146,12 +149,50 @@
+@@ -146,12 +147,33 @@
  	}
  	for (size_t i = 0; i < count; ++i) {
  		if (i == formation) {
@@ -59,27 +50,10 @@
 +		inputs->premise(inputs->owner, 5 + 3 * i)};
 +}
 +
-+/* Only the variable-arity named rules still require contiguous slices. Array
-+ * callers already own those slices; borrowed readers materialize only the tail
-+ * needed by that rule, never a second complete list for every check. */
-+static const struct pg_evidence *const *premise_slice(const struct pg_evidence ***allocated,
-+	const void *owner, const struct pg_evidence *(*premise)(const void *, size_t),
-+	size_t first, size_t count)
-+{
-+	static const struct pg_evidence *const empty[] = {NULL};
-+	if (!count) return empty;
-+	if (premise == array_premise) return (const struct pg_evidence *const *)owner + first;
-+	if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
-+	const struct pg_evidence **inputs = malloc(count * sizeof(*inputs));
-+	if (inputs) for (size_t i = 0; i < count; ++i) inputs[i] = premise(owner, first + i);
-+	*allocated = inputs;
-+	return inputs;
-+}
-+
  /* Arity selection is plumbing only: semantic checks stay in the named rules. */
  #define RULE(tag, arity, call) case tag: if (count != arity) return NULL; result = (call); break
  
-@@ -160,6 +201,15 @@
+@@ -160,6 +182,15 @@
  	const struct pg_derivation_parameters *parameters, size_t count,
  	const struct pg_evidence *const *p)
  {
@@ -95,15 +69,14 @@
  	if (!typing || !parameters) return NULL;
  	if (count && !p) return NULL;
  	if (parameters->declaration && rule != PG_INDUCTIVE_FORM) return NULL;
-@@ -169,97 +219,99 @@
+@@ -169,97 +200,95 @@
  	if (parameters->induction && rule != PG_INDUCTION_ELIM) return NULL;
  	if ((unsigned)parameters->totality > PG_TOTALITY_TOTAL) return NULL;
  	if (parameters->totality != PG_TOTALITY_UNSPECIFIED && rule != PG_RETURN_TYPE_FORM && rule != PG_RETURN_INTRO) return NULL;
 -	for (size_t i = 0; i < count; ++i) if (!pg_evidence_owned_by(p[i], typing)) return NULL;
 +	for (size_t i = 0; i < count; ++i) if (!pg_evidence_owned_by(p(owner, i), typing)) return NULL;
  	const struct pg_evidence *result = NULL;
-+	const struct pg_evidence **allocated = NULL;
-+	const struct pg_evidence *const *tail;
++	struct pg_evidence_inputs tail = {.owner = owner, .at = p};
  	struct pg_identity_boundary boundary;
  	switch (rule) {
 -	RULE(PG_HOST_TYPE_FORM, 1, pg_prove_host_type(typing, p[0], parameters->constant));
@@ -116,8 +89,7 @@
 +	RULE(PG_CONSTRUCTOR_INTRO, 4, pg_prove_constructor_instance(typing, p(owner, 1), parameters->constructor, p(owner, 2), p(owner, 3)));
  	case PG_MATCH_ELIM: case PG_INDUCTION_ELIM:
  		if (count < 6) return NULL;
-+		tail = premise_slice(&allocated, owner, p, 5, count - 6);
-+		if (!tail) goto done;
++		tail.first = 5;
  		result = rule == PG_MATCH_ELIM
 -			? pg_prove_match(typing, p[1], p[2], p[3], p[4], p[0], count - 6, p + 5)
 -			: pg_prove_induction_at(typing, p[1], p[2], p[3], p[4], p[0],
@@ -129,8 +101,7 @@
  	case PG_TYPE_CASE:
  		if (count < 4) return NULL;
 -		result = pg_prove_type_case(typing, p[0], p[1], p[2], count - 3, p + 3);
-+		tail = premise_slice(&allocated, owner, p, 3, count - 3);
-+		if (!tail) goto done;
++		tail.first = 3;
 +		result = pg_prove_type_case(typing, p(owner, 0), p(owner, 1), p(owner, 2), count - 3, tail);
  		break;
  	case PG_INDUCTIVE_FORM: {
@@ -139,8 +110,7 @@
 +		size_t prefix = pg_evidence_rule(p(owner, 0)) == PG_CONTEXT_FAMILY_EXTEND ? 2 : 1;
  		if (count < prefix) return NULL;
 -		const struct pg_data_signature *signature = pg_data_signature(typing, p[0], prefix == 2 ? p[1] : p[0]);
-+		tail = premise_slice(&allocated, owner, p, prefix, count - prefix);
-+		if (!tail) goto done;
++		tail.first = prefix;
 +		const struct pg_data_signature *signature = pg_data_signature(typing, p(owner, 0), p(owner, prefix == 2 ? 1 : 0));
  		const struct pg_data_schema *schema = pg_data_schema_check(typing, parameters->declaration,
 -			signature, count - prefix, p + prefix);
@@ -257,7 +227,7 @@
  		int lift;
  		if (!transport || transport->operand_count != 2 ||
  			!pg_identity_field_view(transport->core, NULL, NULL, NULL, &lift) || lift) return NULL;
-@@ -269,16 +321,24 @@
+@@ -269,16 +298,22 @@
  	}
  	case PG_CONTEXT_SUBSTITUTION:
  		if (count < 2) return NULL;
@@ -265,16 +235,14 @@
 -			: pg_prove_substitution_extension(typing, p[0], p[1], p[2], count - 3, p + 3); break;
 +		if (count == 2) result = pg_prove_substitution_projection(typing, p(owner, 0), p(owner, 1));
 +		else {
-+			tail = premise_slice(&allocated, owner, p, 3, count - 3);
-+			if (!tail) goto done;
++			tail.first = 3;
 +			result = pg_prove_substitution_extension(typing, p(owner, 0), p(owner, 1), p(owner, 2), count - 3, tail);
 +		}
 +		break;
  	case PG_FAMILY_IDENTITY_FORM:
  		if (count < 5) return NULL;
 -		result = pg_prove_family_identity_type(typing, p[0], p[1], p[2], count - 5, p + 3, p[count - 2], p[count - 1]); break;
-+		tail = premise_slice(&allocated, owner, p, 3, count - 5);
-+		if (!tail) goto done;
++		tail.first = 3;
 +		result = pg_prove_family_identity_type(typing, p(owner, 0), p(owner, 1), p(owner, 2), count - 5, tail,
 +			p(owner, count - 2), p(owner, count - 1)); break;
  	case PG_FAMILY_ACTION:
@@ -288,7 +256,7 @@
  	default: return NULL;
  	}
  	/* Rule inputs are requests, including after loading. Ordinary constructors
-@@ -290,9 +350,12 @@
+@@ -290,9 +325,10 @@
  	case PG_CONTEXT_SUBSTITUTION:
  	case PG_REQUEST_INTRO: case PG_HANDLER_ELIM:
  	case PG_CONSTRUCTOR_INTRO: case PG_MATCH_ELIM: case PG_INDUCTION_ELIM: case PG_TYPE_CASE:
@@ -297,8 +265,6 @@
 +		result = checked_premises(result, rule, count, owner, p); break;
 +	default: break;
  	}
-+done:
-+	free(allocated);
 +	return result;
  }
  

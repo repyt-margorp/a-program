@@ -6083,7 +6083,14 @@
  	assert(shared_check && split.jobs.count == requests);
  	assert(pg_synthesis_status(shared_check) == PG_SYNTHESIS_DONE);
  	assert(pg_synthesis_result(shared_check) == converted_path);
-@@ -4963,29 +7261,29 @@
+@@ -4957,35 +7255,35 @@
+ 	const struct pg_evidence *prefix = pg_context_parent_input(typing, source);
+ 	const struct pg_evidence *second_type = pg_prove_family_identity_type(typing, pg_context_declared_input(typing, source),
+ 		pg_prove_substitution(typing, prefix, choices, 4, li), pg_prove_substitution(typing, prefix, choices, 4, ri),
+-		1, selected, li[4], ri[4]);
++		1, (struct pg_evidence_inputs){.owner = selected}, li[4], ri[4]);
+ 	assert(second_type);
+ 	assert(pg_conversion_init(&comparison, &work, pg_evidence_classifier(selected[1]), pg_evidence_subject(second_type)->core) == 0);
  	assert(pg_conversion_advance(&comparison, 100000) == PG_CONVERSION_EQUAL);
  	selected[1] = pg_prove_conversion(typing, selected[1], second_type, pg_conversion_certificate(&comparison));
  	pg_conversion_destroy(&comparison);
@@ -6472,7 +6479,7 @@
  		while (pg_synthesis_status(waiting) == PG_SYNTHESIS_PENDING &&
  			pg_synthesis_dependency(waiting) != restored->registration) {
  			assert(synthesis.ready);
-@@ -5863,7 +8189,7 @@
+@@ -5863,17 +8189,19 @@
  		assert(!pg_synthesis_result(waiting));
  		complete(&synthesis, waiting, i ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE);
  		complete(&synthesis, telescope, i ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE);
@@ -6481,7 +6488,9 @@
  	}
  	assert(pg_evidence_context(source_map) == pg_evidence_context(map));
  	for (size_t i = 0; i < pg_evidence_context_map(map)->count; ++i)
-@@ -5872,8 +8198,10 @@
+ 		same_judgement(pg_substitution_image_at(typing, source_map, i), pg_substitution_image_at(typing, map, i));
+-	const struct pg_data_schema *schema = pg_data_schema(typing, pg_data_signature(typing, parameter_context, index_context), 1, &source_map);
++	const struct pg_data_schema *schema = pg_data_schema(typing, pg_data_signature(typing, parameter_context, index_context), 1, (struct pg_evidence_inputs){.owner = &source_map});
  	assert(schema && pg_data_schema_fields(schema, pg_data_constructor(pg_data_schema_layout(schema), 0)) == field_context);
  	/* Source admission discharges a separately checked Self-family hypothesis;
  	 * the conditional telescope/schema above is not itself that admission. */
@@ -6886,7 +6895,16 @@
  		assert(scope_job == pg_synthesis_induction_scope(&synthesis,
  			formation_job, constructor, parameters_job, context_job, motive_job));
  		const struct pg_evidence *scope_map = complete(&synthesis, scope_job, PG_SYNTHESIS_DONE);
-@@ -6311,7 +8748,13 @@
+@@ -6287,7 +8724,7 @@
+ 		assert(pg_evidence_premise(scope_map, 0) == pg_evidence_premise(field_map, 0));
+ 		const struct pg_evidence *scope_context = pg_evidence_premise(scope_map, 1);
+ 		assert(scope_map == pg_prove_substitution_extension(typing,
+-			pg_evidence_premise(field_map, 0), scope_context, field_map, 0, NULL));
++			pg_evidence_premise(field_map, 0), scope_context, field_map, 0, (struct pg_evidence_inputs){.owner = NULL}));
+ 		struct pg_typed_query *scope_query = pg_substitution_rebase_request(typing, scope_context, field_map);
+ 		while (!pg_typed_query_advance(scope_query, 1)) {}
+ 		const struct pg_evidence *rebased = pg_typed_query_result(scope_query);
+@@ -6311,14 +8748,20 @@
  		struct pg_synthesis_job *branch = pg_synthesis_induction_branch(&synthesis, named,
  			nat, pg_data_constructor(nat_layout, i), nat_instance.parameters, motive_context, motive,
  			NULL, induction->items[i].expression);
@@ -6900,6 +6918,32 @@
  		size_t proofs = typing->proofs.count, terms = typing->graph->terms.count;
  		assert(pg_synthesis_induction_branch(&synthesis, named, nat, pg_data_constructor(nat_layout, i),
  			nat_instance.parameters, motive_context, motive, NULL, induction->items[i].expression) == branch);
+ 		assert(typing->proofs.count == proofs && typing->graph->terms.count == terms);
+ 	}
+ 	const struct pg_evidence *countdown = pg_prove_induction(typing, nat,
+-		nat_instance.parameters, two, motive_context, motive, 2, induction_branches);
++		nat_instance.parameters, two, motive_context, motive, 2, (struct pg_evidence_inputs){.owner = induction_branches});
+ 	assert(countdown);
+ 	const struct pg_evidence *countdown_result = complete(&synthesis,
+ 		pg_synthesis_return(&synthesis, empty, countdown), PG_SYNTHESIS_DONE);
+@@ -6330,7 +8773,7 @@
+ 			nat, pg_data_constructor(nat_layout, i), nat_instance.parameters, motive_context, motive,
+ 			NULL, copy_induction->items[i].expression), PG_SYNTHESIS_DONE);
+ 	const struct pg_evidence *copy = pg_prove_induction(typing, nat,
+-		nat_instance.parameters, two, motive_context, motive, 2, induction_branches);
++		nat_instance.parameters, two, motive_context, motive, 2, (struct pg_evidence_inputs){.owner = induction_branches});
+ 	assert(copy);
+ 	const struct pg_evidence *copied = complete(&synthesis, pg_synthesis_nf(&synthesis, empty, copy), PG_SYNTHESIS_DONE);
+ 	const struct pg_evidence *copied_value = pg_prove_return_value(typing, copied);
+@@ -6344,7 +8787,7 @@
+ 			nat, pg_data_constructor(nat_layout, i), nat_instance.parameters, motive_context, function_motive,
+ 			NULL, function_induction->items[i].expression), PG_SYNTHESIS_DONE);
+ 	const struct pg_evidence *recursive_function = pg_prove_induction(typing,
+-		nat, nat_instance.parameters, two, motive_context, function_motive, 2, induction_branches);
++		nat, nat_instance.parameters, two, motive_context, function_motive, 2, (struct pg_evidence_inputs){.owner = induction_branches});
+ 	assert(recursive_function);
+ 	const struct pg_evidence *function_result = complete(&synthesis, pg_synthesis_return(&synthesis, empty,
+ 		pg_prove_application(typing, recursive_function, zero)), PG_SYNTHESIS_DONE);
 @@ -6398,8 +8841,8 @@
  	complete(&synthesis, request(&synthesis, named, "r:=succ;"), PG_SYNTHESIS_REJECTED);
  	struct pg_synthesis_job *other_job = request(&synthesis, root, "Other:=@{zero:*; succ:*->*;};");
@@ -7290,6 +7334,15 @@
  	assert(!pg_synthesis_schema_result(waiting) && !synthesis.ready);
  	steps = synthesis.steps;
  	pg_synthesis_advance(&synthesis, 1000);
+@@ -7097,7 +9593,7 @@
+ 	const struct pg_evidence *images[] = {pg_prove_variable(typing, fields, a), pg_prove_variable(typing, fields, x),
+ 		pg_prove_variable(typing, fields, p)};
+ 	const struct pg_evidence *result_map = pg_prove_substitution(typing, indices, fields, 3, images);
+-	const struct pg_data_schema *schema = pg_data_schema(typing, pg_data_signature(typing, parameters, indices), 1, &result_map);
++	const struct pg_data_schema *schema = pg_data_schema(typing, pg_data_signature(typing, parameters, indices), 1, (struct pg_evidence_inputs){.owner = &result_map});
+ 	assert(schema);
+ 	const struct pg_object *ctor = pg_data_constructor(pg_data_schema_layout(schema), 0);
+ 	const struct pg_evidence *iv = pg_prove_variable(typing, indices, i);
 @@ -7111,8 +9607,8 @@
  	const struct pg_object *binders[] = {a, x, p};
  	const struct pg_source_scope *scope = pg_synthesis_root(&split), *other_scope = pg_synthesis_root(&whole);
@@ -7301,7 +7354,7 @@
  		assert(scope && other_scope);
  	}
  	const char *result_sources[] = {"r:=* x p;", "r:=* ((\\z:A => z) x) p;"};
-@@ -7121,11 +9617,14 @@
+@@ -7121,20 +9617,23 @@
  		size_t prior_terms = graph->terms.count, prior_proofs = typing->proofs.count;
  		struct pg_synthesis_job *result = pg_synthesis_data_result(&split, scope, parameters, indices, syntax);
  		assert(result && pg_synthesis_data_result(&split, scope, parameters, indices, syntax) == result);
@@ -7316,9 +7369,11 @@
  		assert(pg_evidence_rule(map) == PG_CONTEXT_SUBSTITUTION && pg_evidence_context(map) == pg_evidence_context(fields));
  		assert(pg_evidence_premise(map, 0) == indices && pg_evidence_premise(map, 1) == fields);
  		for (size_t j = 0; j < 3; ++j) {
-@@ -7134,7 +9633,7 @@
+ 			same_judgement(pg_substitution_image_at(typing, map, j), images[j]);
+ 			same_judgement(pg_substitution_image_at(typing, map, j), pg_substitution_image_at(typing, pg_synthesis_result(bulk), j));
  		}
- 		assert(pg_data_schema(typing, pg_data_signature(typing, parameters, indices), 1, &map));
+-		assert(pg_data_schema(typing, pg_data_signature(typing, parameters, indices), 1, &map));
++		assert(pg_data_schema(typing, pg_data_signature(typing, parameters, indices), 1, (struct pg_evidence_inputs){.owner = &map}));
  		if (!n) {
 -			const struct pg_source_scope *shadow = pg_synthesis_name(&split, scope, names[0], images[1]);
 +			const struct pg_source_scope *shadow = pg_synthesis_name(&split, scope, names[0], (struct pg_synthesis_input){.checked = images[1]});

@@ -1,0 +1,76 @@
+--- a/iadt.c
++++ b/iadt.c
+@@ -507,9 +507,9 @@
+ static const struct pg_data_schema *schema_build(struct pg_typing *typing,
+ 	const struct pg_data_declaration *declaration,
+ 	const struct pg_data_signature *signature,
+-	size_t count, const struct pg_evidence *const *results)
++	size_t count, struct pg_evidence_inputs results)
+ {
+-	if (!signature || !pg_evidence_owned_by(signature->parameters, typing) || (count && !results)) return NULL;
++	if (!signature || !pg_evidence_owned_by(signature->parameters, typing)) return NULL;
+ 	const struct pg_evidence *parameters = signature->parameters, *indices = signature->indices;
+ 	const struct pg_context *prefix = pg_evidence_context(parameters);
+ 	if (declaration && (declaration->parameters != prefix
+@@ -521,7 +521,7 @@
+ 	struct pg_graph temporary = {0};
+ 	struct pg_data_schema *schema = NULL;
+ 	for (size_t i = 0; i < count; ++i) {
+-		const struct pg_evidence *result = results[i];
++		const struct pg_evidence *result = pg_evidence_input(results, i);
+ 		if (!pg_evidence_owned_by(result, typing)) goto done;
+ 		if (pg_evidence_rule(result) != PG_CONTEXT_SUBSTITUTION) goto done;
+ 		if (pg_evidence_context(pg_evidence_premise(result, 0)) != pg_evidence_context(indices)) goto done;
+@@ -544,11 +544,12 @@
+ 		struct pg_data_constructor_input *inputs = pg_alloc(&temporary, count * sizeof(*inputs));
+ 		if (!inputs) goto done;
+ 		for (size_t i = 0; i < count; ++i) {
+-			size_t images = pg_evidence_context_map(results[i])->count;
++			const struct pg_evidence *result = pg_evidence_input(results, i);
++			size_t images = pg_evidence_context_map(result)->count;
+ 			const struct pg_term **terms = pg_alloc(&temporary, images * sizeof(*terms));
+ 			if (!terms) goto done;
+-			for (size_t j = 0; j < images; ++j) terms[j] = pg_evidence_context_map(results[i])->images[j]->core;
+-			inputs[i] = (struct pg_data_constructor_input){pg_evidence_context(results[i]), terms};
++			for (size_t j = 0; j < images; ++j) terms[j] = pg_evidence_context_map(result)->images[j]->core;
++			inputs[i] = (struct pg_data_constructor_input){pg_evidence_context(result), terms};
+ 		}
+ 		declaration = pg_data_declaration(typing->graph, prefix, pg_evidence_context(indices), count, inputs);
+ 		if (!declaration) goto done;
+@@ -558,16 +559,17 @@
+ 	schema->signature = signature;
+ 	schema->declaration = declaration;
+ 	for (size_t i = 0; i < count; ++i) {
++		const struct pg_evidence *result = pg_evidence_input(results, i);
+ 		size_t arity = declaration->layout->constructors[i].arity;
+ 		if (arity > SIZE_MAX / sizeof(const struct pg_evidence *)) { schema = NULL; goto done; }
+ 		const struct pg_evidence **ordered = pg_alloc(typing->graph, arity * sizeof(*ordered));
+ 		if (arity && !ordered) { schema = NULL; goto done; }
+-		const struct pg_evidence *fields = pg_evidence_premise(results[i], 1);
++		const struct pg_evidence *fields = pg_evidence_premise(result, 1);
+ 		for (size_t j = arity; j; --j, fields = pg_context_parent_input(typing, fields)) {
+ 			if (!fields) { schema = NULL; goto done; }
+ 			ordered[j - 1] = fields;
+ 		}
+-		schema->constructors[i] = (struct schema_constructor){results[i], ordered};
++		schema->constructors[i] = (struct schema_constructor){result, ordered};
+ 	}
+ done:
+ 	pg_graph_destroy(&temporary);
+@@ -575,14 +577,14 @@
+ }
+ 
+ const struct pg_data_schema *pg_data_schema(struct pg_typing *typing,
+-	const struct pg_data_signature *signature, size_t count, const struct pg_evidence *const *results)
++	const struct pg_data_signature *signature, size_t count, struct pg_evidence_inputs results)
+ {
+ 	return schema_build(typing, NULL, signature, count, results);
+ }
+ 
+ const struct pg_data_schema *pg_data_schema_check(struct pg_typing *typing,
+ 	const struct pg_data_declaration *declaration, const struct pg_data_signature *signature,
+-	size_t count, const struct pg_evidence *const *results)
++	size_t count, struct pg_evidence_inputs results)
+ {
+ 	return declaration ? schema_build(typing, declaration, signature, count, results) : NULL;
+ }

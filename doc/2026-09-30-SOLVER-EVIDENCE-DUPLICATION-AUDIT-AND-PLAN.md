@@ -171,6 +171,15 @@ additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
 
+2026-10-02, agent implementation decision against `2f2e6d1`: receipt admission
+already borrows typed inputs, but `derivation.c:premise_slice` still allocates
+full premise tails before ordinary Match/induction, TypeCase, Schema, substitution
+and family Identity checking. Use one synchronous input view for those existing
+constructors and their callers, not parallel array/borrowed APIs or another graph.
+Preserve exact receipt selection, dependent checks, nominal allocation and
+post-check-only expectations. The view is a call argument, never retained work
+or evidence; verify null/foreign inputs, repeated lookup, source images and fuel.
+
 2026-10-02, agent implementation decision against `486d64d`:
 `CONSTANT_MOTIVE_JOB` has no independent reduction cursor. It stores an existing
 branch abstraction and constant-result request, translates rejection and copies
@@ -1643,6 +1652,32 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   Match/induction/constructor. Migrate interning keys, consumers, export and
   ordinary checking in the same milestone. Recheck concurrent relocation work;
   do not overwrite it or silently discard required scope/formation evidence.
+  Increment against `2f2e6d1` (2026-10-02, agent decision):
+  - [x] Delete `premise_slice`; existing variable-arity constructors accept one
+    synchronous array/reader view, also used by their admission interner.
+  - [x] Delete Match's checked-branch copy and IH's branch scratch arena;
+    borrow existing checked inputs without rebuilding their proofs.
+  - [x] Check exact alternate receipts, offsets, null/foreign inputs, caller
+    mutation, repeated lookup and ordinary reconstruction. O2 focused tests,
+    persistence/seven checkpoints, five C gates and ASan/UBSan/leaks pass.
+    The clean assembled tree matches all 148 C/header files of the trial.
+    Concurrent relocation changes were merged and call arguments adapted only
+    in a disposable verification tree; its Core/IADT/synthesis tests pass.
+  - [x] Full O2 regression/examples/acceptance exits 0, including general
+    QuickSort Sorted/permutation/result, both LT providers and partition orders,
+    invalid-proof refusal, source/image consumers and optional witness isolation.
+  [Census](../src/prototype/solver_inputs/derivation_inputs_measurements.tsv):
+  all 20 paired rows agree, including step 0, partial fuel and completion.
+  [External arena requests](../src/prototype/solver_inputs/derivation_inputs_allocation.tsv)
+  decrease by 1,075 / 51,600 aligned bytes on QuickSort; these are cumulative,
+  not peak RAM, and exclude `malloc` tails removed by `premise_slice`.
+  [Applied deltas](../src/prototype/solver_inputs/derivation_inputs_delta.tsv):
+  implementation +152/-168 (net -16); tests +204/-170 (net +34).
+  [Hashes](../src/prototype/solver_inputs/derivation_inputs_inventory.tsv) pin
+  the comparison; logs use `/tmp/a-program-derivation-inputs-`.
+  All 52 List images/report match the parent. The same three public reload
+  failures remain unwaived; no wire fields or trust policy changed. Prototype
+  only; unrelated user edits excluded and SE1-SE5 remain open.
   Verified prototype increment (2026-10-02, parent `ffc5cb1`; agent decision):
   remove five transient flattened receipt arrays from inductive formation,
   Match/induction, TypeCase, substitution extension and family Identity.

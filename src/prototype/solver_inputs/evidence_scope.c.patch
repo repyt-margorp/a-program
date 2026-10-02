@@ -20,6 +20,15 @@
  	struct scope_action *local = pg_typed_query_state(work);
  	const struct pg_evidence *prefix = work->inputs[0];
  	const struct pg_scope *scope = work->inputs[1];
+@@ -157,7 +159,7 @@
+ 		: pg_prove_context_extension(typing, parent, to->binder, type);
+ 	if (!destination || pg_evidence_context(destination) != to) return -1;
+ 	const struct pg_evidence *image = pg_prove_variable(typing, destination, to->binder);
+-	work->result = pg_prove_substitution_extension(typing, declaration, destination, local->parent, 1, &image);
++	work->result = pg_prove_substitution_extension(typing, declaration, destination, local->parent, 1, (struct pg_evidence_inputs){.owner = &image});
+ 	return work->result ? 1 : -1;
+ }
+ 
 @@ -203,7 +205,7 @@
  	case PG_SUBSTITUTION_DONE: break;
  	}

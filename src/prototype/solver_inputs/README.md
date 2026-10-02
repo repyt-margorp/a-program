@@ -647,6 +647,18 @@ All 52 List images/report match; the same three reload failures remain.
 varies by process and ran with other tests; it establishes no general speedup.
 This is unpromoted prototype work; SE1-SE5 remain unfinished.
 
+Named variable-arity checking now borrows the same input view as admission;
+`premise_slice`, Match's copied branch list and IH's branch scratch arena are
+deleted. No view escapes, and exact proof selections remain distinct. Against
+`2f2e6d1`, [all paired rows](derivation_inputs_measurements.tsv) agree;
+[external arena requests](derivation_inputs_allocation.tsv) save 1,075 calls /
+51,600 aligned bytes on QuickSort, not a peak-RAM or speedup claim.
+[Implementation](derivation_inputs_delta.tsv) is +152/-168, tests +204/-170;
+[hashes](derivation_inputs_inventory.tsv) pin the tested sources and inputs.
+Full O2 regression/examples/acceptance, persistence/checkpoints, C and focused
+ASan/UBSan/leaks pass; the assembled candidate exactly matches the tested files.
+The same three public reload failures remain; SE1-SE5 are unfinished.
+
 Use the parent plan for progress. Create and verify a disposable candidate:
 
 ```sh

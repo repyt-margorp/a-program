@@ -380,6 +380,61 @@
  }
  
  static void nominal_proofs(FILE *file, struct pg_typing *typing,
+@@ -1431,7 +1517,7 @@
+ 			pg_prove_substitution(typing, parameters, parameters, 1, &self_type),
+ 			pg_prove_substitution(typing, parameters, fields, 1, &field_self)};
+ 		const struct pg_data_signature *signature = pg_data_signature(typing, parameters, parameters);
+-		const struct pg_data_schema *schema = pg_data_schema(typing, signature, 2, results);
++		const struct pg_data_schema *schema = pg_data_schema(typing, signature, 2, (struct pg_evidence_inputs){.owner = results});
+ 		const struct pg_evidence *formation = pg_prove_inductive_type(typing, schema);
+ 		const struct pg_data_layout *layout = pg_data_schema_layout(schema);
+ 		const struct pg_evidence *identity = pg_prove_substitution(typing, empty, empty, 0, NULL);
+@@ -1448,7 +1534,7 @@
+ 			pg_prove_return(typing, pg_prove_variable(typing, p_context, p)));
+ 		const struct pg_evidence *branches[] = {base, predecessor};
+ 		const struct pg_evidence *match = pg_prove_match(typing, formation,
+-			identity, succ, z_context, motive, 2, branches);
++			identity, succ, z_context, motive, 2, (struct pg_evidence_inputs){.owner = branches});
+ 		const struct pg_evidence *scope = pg_prove_induction_scope(typing, formation,
+ 			pg_data_constructor(layout, 1), identity, z_context, motive);
+ 		assert(scope);
+@@ -1458,15 +1544,15 @@
+ 		const struct pg_evidence *twice = pg_prove_constructor(typing, formation,
+ 			pg_data_constructor(layout, 1), identity, 1, &succ);
+ 		const struct pg_evidence *induction = pg_prove_induction(typing, formation,
+-			identity, twice, z_context, motive, 2, branches);
++			identity, twice, z_context, motive, 2, (struct pg_evidence_inputs){.owner = branches});
+ 		assert(match && induction);
+ 		const struct pg_evidence *upper = pg_prove_universe(typing, p_context, 1);
+ 		const struct pg_evidence *type_branches[] = {
+ 			formation, pg_prove_family_abstraction(typing, p_context, upper)};
+ 		const struct pg_evidence *type_zero = pg_prove_type_case(typing,
+-			formation, identity, zero, 2, type_branches);
++			formation, identity, zero, 2, (struct pg_evidence_inputs){.owner = type_branches});
+ 		const struct pg_evidence *type_succ = pg_prove_type_case(typing,
+-			formation, identity, succ, 2, type_branches);
++			formation, identity, succ, 2, (struct pg_evidence_inputs){.owner = type_branches});
+ 		assert(type_zero && type_succ);
+ 		assert(pg_evidence_classifier(type_zero) == pg_universe(typing->graph, 2));
+ 		assert(pg_evidence_classifier(type_succ) == pg_universe(typing->graph, 2));
+@@ -1638,7 +1724,7 @@
+ 		pg_prove_substitution_projection(typing, parameters, fields), indices,
+ 		pg_prove_variable(typing, fields, field));
+ 	const struct pg_data_schema *schema = pg_data_schema(typing,
+-		pg_data_signature(typing, parameters, indices), 1, &result);
++		pg_data_signature(typing, parameters, indices), 1, (struct pg_evidence_inputs){.owner = &result});
+ 	const struct pg_evidence *formation = pg_prove_inductive_type(typing, schema);
+ 	const struct pg_object *constructor = pg_data_constructor(pg_data_schema_layout(schema), 0);
+ 	const struct pg_evidence *map = pg_prove_substitution_projection(typing, empty, context);
+@@ -1656,7 +1742,7 @@
+ 	const struct pg_evidence *body = pg_prove_force(typing,
+ 		pg_substitution_image(typing, field_map, field));
+ 	const struct pg_evidence *branch = pg_prove_abstract(typing, context, scope, body);
+-	*decoded = pg_prove_match(typing, formation, map, encoded, motive_context, motive, 1, &branch);
++	*decoded = pg_prove_match(typing, formation, map, encoded, motive_context, motive, 1, (struct pg_evidence_inputs){.owner = &branch});
+ 	assert(*decoded);
+ 	return encoded;
+ }
 @@ -1880,6 +1966,7 @@
  	struct pg_graph graph;
  	struct pg_typing typing;

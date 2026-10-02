@@ -450,7 +450,7 @@
 +	size_t prefix = pg_evidence_context_map(parameters)->count;
 +	if (!local->body) {
 +		const struct pg_evidence *projected = pg_prove_substitution_extension(synthesis->typing,
-+			pg_evidence_premise(parameters, 0), context, parameters, 0, NULL);
++			pg_evidence_premise(parameters, 0), context, parameters, 0, (struct pg_evidence_inputs){.owner = NULL});
 +		size_t count = pg_evidence_context_map(map)->count - prefix - 1;
 +		const struct pg_evidence *body = pg_prove_constructor_instance(synthesis->typing,
 +			formation, constructor, projected, map);
@@ -603,7 +603,7 @@
  		if (local->nominal_input) indices = pg_prove_context_alpha(synthesis->typing, indices,
  			pg_data_declaration_indices(local->nominal_input));
  		if (!indices) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
-@@ -259,7 +748,7 @@
+@@ -259,13 +748,13 @@
  			results = pg_alloc(&temporary, local->checked * sizeof(*results));
  		if (local->checked && !results) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
  		for (size_t i = 0; i < local->checked; ++i) {
@@ -612,6 +612,14 @@
  			if (local->nominal_input) results[i] = schema_result_context(synthesis->typing, results[i], indices,
  				pg_data_declaration_fields(local->nominal_input, i));
  		}
+ 		local->schema = local->nominal_input
+-			? pg_data_schema_check(synthesis->typing, local->nominal_input, signature, local->checked, results)
+-			: pg_data_schema(synthesis->typing, signature, local->checked, results);
++			? pg_data_schema_check(synthesis->typing, local->nominal_input, signature, local->checked, (struct pg_evidence_inputs){.owner = results})
++			: pg_data_schema(synthesis->typing, signature, local->checked, (struct pg_evidence_inputs){.owner = results});
+ 		pg_graph_destroy(&temporary);
+ 		pg_synthesis_finish(synthesis, job, local->schema ? PG_SYNTHESIS_DONE
+ 			: local->nominal_input ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_ERROR);
 @@ -276,7 +765,7 @@
  	if (pg_synthesis_await(synthesis, job, producer)) return;
  	enum pg_synthesis_status recovery = constructor_index_paths(synthesis,

@@ -1,0 +1,32 @@
+--- a/function_witness.c
++++ b/function_witness.c
+@@ -25,7 +25,7 @@
+ 		pg_prove_variable(t, output, pg_evidence_context(output)->binder));
+ 	const struct pg_evidence *fields = pg_prove_context_extension(t, output, pg_binder(t->graph), relation);
+ 	const struct pg_evidence *result = pg_prove_substitution_projection(t, self, fields);
+-	const struct pg_data_schema *schema = pg_data_schema(t, pg_data_signature(t, self, self), 1, &result);
++	const struct pg_data_schema *schema = pg_data_schema(t, pg_data_signature(t, self, self), 1, (struct pg_evidence_inputs){.owner = &result});
+ 	s->packet = pg_prove_inductive_type(t, schema);
+ 	return s->packet ? 0 : -1;
+ }
+@@ -190,7 +190,7 @@
+ 			body = pg_prove_abstract(t, f->bound, pg_evidence_premise(f->fields, 1), body);
+ 			const struct pg_evidence *mc = pg_prove_inductive_motive_context(t, f->formation, f->parameters, pg_binder(t->graph));
+ 			body = pg_prove_match(t, f->formation, f->parameters, f->value, mc,
+-				pg_function_plan_projection(s, mc, f->target), 1, &body);
++				pg_function_plan_projection(s, mc, f->target), 1, (struct pg_evidence_inputs){.owner = &body});
+ 			body = pg_prove_abstract(t, f->before, f->bound, body);
+ 			body = pg_prove_fold(t, f->input, body);
+ 		}
+@@ -309,9 +309,9 @@
+ 			body = witness_case(s, 0);
+ 		}
+ 		else if (s->induction) body = pg_prove_induction(s->typing, s->input.formation,
+-			pg_function_plan_parameters_at(s, s->argument_context), argument, s->motive_context, s->motive, s->count, s->witness_branches);
++			pg_function_plan_parameters_at(s, s->argument_context), argument, s->motive_context, s->motive, s->count, (struct pg_evidence_inputs){.owner = s->witness_branches});
+ 		else body = pg_prove_match(s->typing, s->input.formation,
+-			pg_function_plan_parameters_at(s, s->argument_context), argument, s->motive_context, s->motive, s->count, s->witness_branches);
++			pg_function_plan_parameters_at(s, s->argument_context), argument, s->motive_context, s->motive, s->count, (struct pg_evidence_inputs){.owner = s->witness_branches});
+ 		const struct pg_evidence *context = s->argument_context;
+ 		if (s->specialization) {
+ 			body = pg_prove_abstract(s->typing, s->context, context, body);

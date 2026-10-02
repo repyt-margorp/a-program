@@ -409,7 +409,7 @@
  		if (count > arity || pg_evidence_context_map(right)->count != arity) goto rejected;
  		if (pg_evidence_context(left) != pg_evidence_context(right)) goto rejected;
  		if (pg_evidence_context(pg_evidence_premise(left, 0)) != pg_evidence_context(pg_evidence_premise(right, 0))) goto rejected;
-@@ -373,21 +386,21 @@
+@@ -373,30 +386,31 @@
  		}
  		for (size_t side = 0; side < 2; ++side) {
  			const struct pg_evidence *map = job->inputs[side];
@@ -437,7 +437,9 @@
  		if (!pg_evidence_owned_by(path, synthesis->typing)) goto rejected;
  		if (pg_evidence_judgement(path) != PG_JUDGEMENT_VALUE) goto rejected;
  		if (pg_evidence_context(path) != pg_evidence_context(left)) goto rejected;
-@@ -396,7 +409,8 @@
+ 		const struct pg_evidence *type = pg_prove_family_identity_type(synthesis->typing,
+-			pg_context_declared_input(synthesis->typing, state->declarations[i]), state->maps[0], state->maps[1], i, state->paths,
++			pg_context_declared_input(synthesis->typing, state->declarations[i]), state->maps[0], state->maps[1], i, (struct pg_evidence_inputs){.owner = state->paths},
  			pg_substitution_image_at(synthesis->typing, left, state->common + i),
  			pg_substitution_image_at(synthesis->typing, right, state->common + i));
  		if (!type) goto rejected;

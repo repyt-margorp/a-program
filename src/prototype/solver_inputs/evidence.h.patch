@@ -1,16 +1,33 @@
 --- a/evidence.h
 +++ b/evidence.h
-@@ -21,6 +21,9 @@
+@@ -21,6 +21,17 @@
  	PG_TERMINATION_FORM, PG_TERMINATION_INTRO, PG_TOTAL_PURE_VALUE,
  	PG_HOST_TYPE_FORM, PG_HOST_VALUE_INTRO, PG_HOST_FUNCTION_INTRO };
  struct pg_evidence;
++/* Synchronous, stable input view. A null reader selects an Evidence array.
++ * Neither the view nor its owner is retained by checking or admission. */
++struct pg_evidence_inputs {
++	const void *owner;
++	const struct pg_evidence *(*at)(const void *, size_t);
++	size_t first;
++};
++const struct pg_evidence *pg_evidence_input(struct pg_evidence_inputs inputs, size_t i);
 +struct pg_typed_query;
 +/* Descriptive source of a classifier query, not a selected rule premise. */
 +const struct pg_occurrence *pg_classifier_source(const struct pg_typed_query *);
  /* Closed host descriptors are checked against the fixed host contract. A raw
   * semantic reference or arbitrary signature cannot establish these premises. */
  const struct pg_evidence *pg_prove_host_type(struct pg_typing *typing,
-@@ -132,6 +135,11 @@
+@@ -66,7 +77,7 @@
+ const struct pg_evidence *pg_prove_type_case(struct pg_typing *typing,
+ 	const struct pg_evidence *formation,
+ 	const struct pg_evidence *parameters, const struct pg_evidence *scrutinee,
+-	size_t count, const struct pg_evidence *const *branches);
++	size_t count, struct pg_evidence_inputs branches);
+ /* Expected branch classifier, formed by the same constructor/motive
+  * substitution as Match/induction. Does not synthesize or check a body. */
+ const struct pg_evidence *pg_prove_match_branch_type(struct pg_typing *typing,
+@@ -132,6 +143,11 @@
  const struct pg_evidence *pg_prove_handler(struct pg_typing *typing,
  	const struct pg_evidence *computation, const struct pg_evidence *returned,
  	const struct pg_evidence *carrier, size_t count, const struct pg_handler_clause *clauses);
@@ -22,7 +39,52 @@
  /* Closed-row computation-type formation. The row is a syntactic set of labels,
   * not evidence of an operation's signature, execution, or termination. */
  const struct pg_evidence *pg_prove_effect_type(struct pg_typing *typing,
-@@ -628,6 +636,10 @@
+@@ -305,7 +321,7 @@
+ 	const struct pg_evidence *formation,
+ 	const struct pg_evidence *parameters, const struct pg_evidence *scrutinee,
+ 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
+-	size_t count, const struct pg_evidence *const *branches);
++	size_t count, struct pg_evidence_inputs branches);
+ /* Conditional induction branch context for supported recursive field shapes.
+  * Returns the constructor field substitution projected into a destination
+  * extended by one IH value per recursive field, in field order. Direct fields
+@@ -331,7 +347,7 @@
+ 	const struct pg_evidence *formation,
+ 	const struct pg_evidence *parameters, const struct pg_evidence *scrutinee,
+ 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
+-	size_t count, const struct pg_evidence *const *branches);
++	size_t count, struct pg_evidence_inputs branches);
+ /* Reconstruct with explicit allocation. Distinct valid allocations produce
+  * distinct constructions; no existing derivation is replaced. Default
+  * allocation requests are memoized separately from accepted derivations. */
+@@ -339,7 +355,7 @@
+ 	const struct pg_evidence *formation,
+ 	const struct pg_evidence *parameters, const struct pg_evidence *scrutinee,
+ 	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
+-	size_t count, const struct pg_evidence *const *branches,
++	size_t count, struct pg_evidence_inputs branches,
+ 	const struct pg_induction_allocation *allocation);
+ /* Read-only inputs of an accepted direct Match/induction. All operand/map
+  * receipts were registered by its introduction; never reconstruct evidence
+@@ -434,7 +450,7 @@
+ const struct pg_evidence *pg_prove_family_identity_type(struct pg_typing *typing,
+ 	const struct pg_evidence *family, const struct pg_evidence *left_substitution,
+ 	const struct pg_evidence *right_substitution, size_t count,
+-	const struct pg_evidence *const *paths,
++	struct pg_evidence_inputs paths,
+ 	const struct pg_evidence *left, const struct pg_evidence *right);
+ /* t : C in Gamma,Delta acts along the same checked boundary as C. Endpoints
+  * are t[left]/t[right], not caller-supplied witnesses. Preserves polarity. */
+@@ -594,7 +610,7 @@
+ const struct pg_evidence *pg_prove_substitution_extension(struct pg_typing *typing,
+ 	const struct pg_evidence *source, const struct pg_evidence *destination,
+ 	const struct pg_evidence *prefix, size_t count,
+-	const struct pg_evidence *const *images);
++	struct pg_evidence_inputs images);
+ /* Positional variable substitution between equally long telescopes. Every
+  * dependent field is checked by the ordinary substitution rule, including
+  * fields unused by a subsequent result. Binder identities need not agree. */
+@@ -628,6 +644,10 @@
   * this rule reuses that completed work without replacing either premise. */
  const struct pg_evidence *pg_prove_reindex(struct pg_typing *typing,
  	const struct pg_evidence *substitution, const struct pg_evidence *proof);
@@ -33,7 +95,7 @@
  /* Invert accepted RETURN v : F A or THUNK M : U C judgements with canonical
   * heads. Reuse the checked typed child, or certify the selected boundary by
   * inversion; never execute M or guess a type from Core.
-@@ -730,13 +742,14 @@
+@@ -730,13 +750,14 @@
  /* Context formation has no term subject or classifier. */
  const struct pg_occurrence *pg_evidence_subject(const struct pg_evidence *evidence);
  const struct pg_term *pg_evidence_classifier(const struct pg_evidence *evidence);

@@ -823,9 +823,21 @@
  	assert(allocation);
  	struct pg_source_environment environment;
  	assert(!pg_synthesis_environment_input(&p->synthesis, scope, &environment));
-@@ -2038,27 +2196,40 @@
+@@ -1941,7 +2099,7 @@
+ 	for (size_t i = 0; i < view.count; ++i) branches[i] = pg_evidence_premise(fresh, i + 5);
+ 	const struct pg_evidence *alternate = pg_prove_induction_at(&p->typing,
+ 		view.formation, view.parameters, view.scrutinee, view.motive_context, motive,
+-		view.count, branches, pg_evidence_induction_allocation(fresh));
++		view.count, (struct pg_evidence_inputs){.owner = branches}, pg_evidence_induction_allocation(fresh));
+ 	assert(alternate && alternate != fresh);
+ 	assert(pg_evidence_subject(alternate) == pg_evidence_subject(fresh));
+ 	assert(pg_evidence_premise(alternate, 0) == motive);
+@@ -2036,29 +2194,42 @@
+ 		}
+ 		/* The saved theorem is deliberately weaker than the source program.
  		 * Its allocation is reusable; its result is not an expected type. */
- 		const struct pg_evidence *saved = pg_prove_induction(typing, formation, parameters, scrutinee, mc, motive, 2, branches);
+-		const struct pg_evidence *saved = pg_prove_induction(typing, formation, parameters, scrutinee, mc, motive, 2, branches);
++		const struct pg_evidence *saved = pg_prove_induction(typing, formation, parameters, scrutinee, mc, motive, 2, (struct pg_evidence_inputs){.owner = branches});
  		assert(saved);
 -		struct pg_synthesis_job *receipt = pg_synthesis_evidence(&p->synthesis, saved);
 -		struct pg_effect_inference inference;

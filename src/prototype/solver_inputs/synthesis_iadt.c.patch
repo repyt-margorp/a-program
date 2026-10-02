@@ -393,6 +393,15 @@
  			retained ? retained->binder : pg_binder(synthesis->typing->graph), 2, premises);
  		if (!local->pending) goto error;
  		pg_synthesis_subscribe(synthesis, job, local->pending, 0);
+@@ -331,7 +370,7 @@
+ 	}
+ 	if (local->allocation && local->allocation->next != local->allocation->count) goto rejected;
+ 	job->result = pg_prove_substitution_extension(synthesis->typing,
+-		pg_evidence_premise(map, 0), context, map, 0, NULL);
++		pg_evidence_premise(map, 0), context, map, 0, (struct pg_evidence_inputs){.owner = NULL});
+ 	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_UNSUPPORTED);
+ 	return;
+ rejected:
 @@ -386,74 +425,83 @@
  static void index_transport_step(struct pg_synthesis *, struct pg_synthesis_job *);
  static void index_transport_destroy(struct pg_synthesis_job *job)
@@ -564,8 +573,12 @@
  	struct pg_synthesis_job *endpoints[] = {local->left, local->right};
  	const struct pg_object *constructors[2];
  	for (size_t i = 0; i < 2; ++i) {
-@@ -673,17 +728,19 @@
- 		parameters, pg_prove_variable(typing, extended, pg_evidence_context(extended)->binder), count, branches);
+@@ -670,20 +725,22 @@
+ 		branches[i] = branch;
+ 	}
+ 	const struct pg_evidence *family = pg_prove_type_case(typing, instance.formation,
+-		parameters, pg_prove_variable(typing, extended, pg_evidence_context(extended)->binder), count, branches);
++		parameters, pg_prove_variable(typing, extended, pg_evidence_context(extended)->binder), count, (struct pg_evidence_inputs){.owner = branches});
  	free(branches);
  	if (!family) goto unsupported;
 -	if (boundary.path_count >= SIZE_MAX / sizeof(struct pg_synthesis_job *)) goto error;
@@ -682,11 +695,13 @@
  	for (size_t i = 0; i < branch_count; ++i) {
  		const struct pg_object *label = pg_data_constructor(layout, i);
  		const struct pg_evidence *map = (*slot)->boundary->branches[i]->result;
-@@ -975,17 +1036,19 @@
+@@ -974,18 +1035,20 @@
+ 	parameter_map = pg_prove_substitution_compose(typing, parameter_map,
  		pg_prove_substitution_projection(typing, base_context, extended));
  	const struct pg_evidence *family = pg_prove_type_case(typing, instance.formation, parameter_map,
- 		pg_prove_variable(typing, extended, pg_evidence_context(extended)->binder), branch_count, branches);
+-		pg_prove_variable(typing, extended, pg_evidence_context(extended)->binder), branch_count, branches);
 -	if (!family || boundary.path_count >= SIZE_MAX / sizeof(struct pg_synthesis_job *)) goto done;
++		pg_prove_variable(typing, extended, pg_evidence_context(extended)->binder), branch_count, (struct pg_evidence_inputs){.owner = branches});
 +	if (!family || boundary.path_count >= SIZE_MAX / sizeof(struct pg_synthesis_input)) goto done;
  	size_t path_count = boundary.path_count + 1;
 -	struct pg_synthesis_job **paths = pg_alloc(&temporary, path_count * sizeof(*paths));
