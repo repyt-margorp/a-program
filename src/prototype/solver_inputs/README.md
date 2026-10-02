@@ -527,6 +527,15 @@ and fresh/current checks pass. The 52 List images and completed Handler image
 match; the same three public reload failures remain. No new Job/tag/wire fields;
 SE1-SE5 remain open, and this is an unpromoted prototype.
 
+Evidence's eleven typed-query roles no longer use a shared Oracle-state union
+or cross-role initializer. Each keeps only its actual cursor; phase checking
+has zero private bytes and classifier lookup one input pointer. The existing
+interner, exact chosen receipts and checking path remain. See the parent SE1
+work list and [paired census](typed_owner_measurements.tsv): only query-layout
+bytes change, with 949,336 fewer bytes on completed QuickSort. Actual code is
+net +71 lines, not a source reduction. SE1-SE5 and three public reload failures
+remain open; this is an unpromoted prototype.
+
 Use the parent plan for progress. Create and verify a disposable candidate:
 
 ```sh

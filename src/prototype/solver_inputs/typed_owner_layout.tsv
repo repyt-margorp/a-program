@@ -1,0 +1,12 @@
+role	parent_private_bytes	candidate_private_bytes
+body	104	72
+head	104	72
+input	104	88
+elimination	104	8
+origin	104	16
+classifier	104	8
+rebase	104	40
+map_rebase	104	40
+inductive	104	32
+selection	104	16
+phase	104	0

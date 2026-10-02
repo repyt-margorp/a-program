@@ -357,7 +357,75 @@
  }
  
  static int map_dependency(void *owner, const void *key, size_t index, const void **child)
-@@ -735,7 +933,7 @@
+@@ -694,23 +892,58 @@
+ 	size_t count, next;
+ };
+ 
+-struct typed_recipe_query {
++struct typed_body_query {
+ 	const struct pg_occurrence *current;
+ 	const struct pg_evidence *argument, *environment, *value;
+ 	enum typed_query_resume resume;
++	struct pg_occurrence_action *action;
++	struct typed_association *association;
++	struct typed_fold *fold;
++	size_t forces;
++};
++
++struct typed_input_query {
++	const struct pg_occurrence *current;
++	const struct pg_evidence *argument, *value;
++	enum typed_query_resume resume;
+ 	struct pg_occurrence_input *input;
+ 	struct pg_typed_query *lift;
+ 	struct pg_occurrence_action *action;
+-	union {
+-		struct { struct typed_field *field; struct typed_selection *selection; };
+-		struct { struct typed_association *association; struct typed_fold *fold; };
+-		struct typed_elimination *elimination;
+-		struct typed_rebase *rebase;
+-		struct typed_inductive *inductive;
+-	};
++	struct typed_field *field;
++	struct typed_selection *selection;
+ 	const struct pg_reduction_certificate *reduction;
+ 	const struct pg_reduction_certificate *input_reduction;
+-	size_t forces;
++};
++
++struct typed_elimination_query {
++	struct typed_elimination *elimination;
++};
++
++struct typed_origin_query {
++	const struct pg_evidence *environment;
++	enum typed_query_resume resume;
++};
++
++struct typed_classifier_query {
++	struct pg_occurrence_input *input;
++};
++
++struct typed_rebase_query {
++	const struct pg_occurrence *current;
++	const struct pg_evidence *argument, *environment;
++	enum typed_query_resume resume;
++	struct typed_rebase *rebase;
++};
++
++struct typed_inductive_query {
++	const struct pg_occurrence *current;
++	const struct pg_evidence *value, *environment;
++	struct typed_inductive *inductive;
++};
++
++struct typed_selection_query {
++	const struct pg_occurrence *current;
++	struct typed_selection *selection;
+ };
+ 
+ static const struct pg_occurrence *typed_source(const struct pg_typed_query *work)
+@@ -735,7 +968,7 @@
  		return *value ? 0 : -1;
  	}
  	if (!*frames) return 1;
@@ -366,7 +434,7 @@
  	const struct scope_frame *frame = *frames;
  	if (frame->map) {
  		*value = pg_prove_reindex(typing, pg_prove_context_map(typing, frame->map), *value);
-@@ -765,32 +963,43 @@
+@@ -765,47 +998,56 @@
  {
  	int status = typed_input_step(work);
  	if (status == 1 && !work->result && !work->ordinal)
@@ -378,41 +446,122 @@
  }
  
  static const struct pg_typed_query_class TYPED_BODY[1] = {{
+-	.size = sizeof(struct typed_recipe_query), .input_count = 2, .advance = typed_body_step}};
 +	.pending = {&pg_typed_query_pending_ops},
- 	.size = sizeof(struct typed_recipe_query), .input_count = 2, .advance = typed_body_step}};
++	.size = sizeof(struct typed_body_query), .input_count = 2, .advance = typed_body_step}};
  static const struct pg_typed_query_class TYPED_INPUT[1] = {{
+-	.size = sizeof(struct typed_recipe_query), .input_count = 2, .advance = typed_input_advance}};
 +	.pending = {&pg_typed_query_pending_ops},
- 	.size = sizeof(struct typed_recipe_query), .input_count = 2, .advance = typed_input_advance}};
++	.size = sizeof(struct typed_input_query), .input_count = 2, .advance = typed_input_advance}};
  static const struct pg_typed_query_class TYPED_HEAD[1] = {{
+-	.size = sizeof(struct typed_recipe_query), .input_count = 2, .advance = typed_body_step}};
 +	.pending = {&pg_typed_query_pending_ops},
- 	.size = sizeof(struct typed_recipe_query), .input_count = 2, .advance = typed_body_step}};
++	.size = sizeof(struct typed_body_query), .input_count = 2, .advance = typed_body_step}};
  static const struct pg_typed_query_class TYPED_ELIMINATION[1] = {{
+-	.size = sizeof(struct typed_recipe_query), .input_count = 2, .advance = typed_elimination_step}};
 +	.pending = {&pg_typed_query_pending_ops},
- 	.size = sizeof(struct typed_recipe_query), .input_count = 2, .advance = typed_elimination_step}};
++	.size = sizeof(struct typed_elimination_query), .input_count = 2, .advance = typed_elimination_step}};
  static const struct pg_typed_query_class TYPED_ORIGIN[1] = {{
+-	.size = sizeof(struct typed_recipe_query), .input_count = 2, .advance = typed_origin_step}};
 +	.pending = {&pg_typed_query_pending_ops},
- 	.size = sizeof(struct typed_recipe_query), .input_count = 2, .advance = typed_origin_step}};
++	.size = sizeof(struct typed_origin_query), .input_count = 2, .advance = typed_origin_step}};
  static const struct pg_typed_query_class TYPED_CLASSIFIER[1] = {{
+-	.size = sizeof(struct typed_recipe_query), .input_count = 2, .advance = typed_classifier_step}};
 +	.pending = {&pg_typed_query_pending_ops},
- 	.size = sizeof(struct typed_recipe_query), .input_count = 2, .advance = typed_classifier_step}};
++	.size = sizeof(struct typed_classifier_query), .input_count = 2, .advance = typed_classifier_step}};
  static const struct pg_typed_query_class TYPED_REBASE[1] = {{
+-	.size = sizeof(struct typed_recipe_query), .input_count = 2, .advance = typed_rebase_step}};
 +	.pending = {&pg_typed_query_pending_ops},
- 	.size = sizeof(struct typed_recipe_query), .input_count = 2, .advance = typed_rebase_step}};
++	.size = sizeof(struct typed_rebase_query), .input_count = 2, .advance = typed_rebase_step}};
  static const struct pg_typed_query_class TYPED_MAP_REBASE[1] = {{
+-	.size = sizeof(struct typed_recipe_query), .input_count = 2, .advance = typed_rebase_step}};
 +	.pending = {&pg_typed_query_pending_ops},
- 	.size = sizeof(struct typed_recipe_query), .input_count = 2, .advance = typed_rebase_step}};
++	.size = sizeof(struct typed_rebase_query), .input_count = 2, .advance = typed_rebase_step}};
  static const struct pg_typed_query_class TYPED_INDUCTIVE[1] = {{
+-	.size = sizeof(struct typed_recipe_query), .input_count = 2, .advance = typed_inductive_step}};
 +	.pending = {&pg_typed_query_pending_ops},
- 	.size = sizeof(struct typed_recipe_query), .input_count = 2, .advance = typed_inductive_step}};
++	.size = sizeof(struct typed_inductive_query), .input_count = 2, .advance = typed_inductive_step}};
  static const struct pg_typed_query_class TYPED_SELECTION[1] = {{
+-	.size = sizeof(struct typed_recipe_query), .input_count = 2, .advance = typed_selection_step}};
 +	.pending = {&pg_typed_query_pending_ops},
- 	.size = sizeof(struct typed_recipe_query), .input_count = 2, .advance = typed_selection_step}};
++	.size = sizeof(struct typed_selection_query), .input_count = 2, .advance = typed_selection_step}};
  static const struct pg_typed_query_class TYPED_PHASE[1] = {{
+-	.size = sizeof(struct typed_recipe_query), .input_count = 2, .advance = typed_phase_step}};
 +	.pending = {&pg_typed_query_pending_ops},
- 	.size = sizeof(struct typed_recipe_query), .input_count = 2, .advance = typed_phase_step}};
++	.input_count = 2, .advance = typed_phase_step}};
  
- static struct pg_typed_query *typed_query_request(struct pg_typing *typing,
-@@ -864,15 +1073,15 @@
+-static struct pg_typed_query *typed_query_request(struct pg_typing *typing,
+-	const void *source, const struct pg_evidence *argument,
+-	const struct pg_typed_query_class *kind, size_t ordinal, const void *key)
+-{
+-	int map = kind == TYPED_MAP_REBASE;
+-	const void *value = map ? (const void *)argument : key ? key : argument ? (kind == TYPED_REBASE
+-		? (const void *)pg_evidence_context(argument) : (const void *)pg_evidence_subject(argument)) : NULL;
+-	const void *inputs[] = {source, value};
++static struct pg_typed_query *typed_body_request(struct pg_typing *typing,
++	const struct pg_occurrence *source, const struct pg_evidence *argument,
++	const struct pg_typed_query_class *kind, const struct pg_term *target)
++{
++	const void *key = argument ? (const void *)pg_evidence_subject(argument) : (const void *)target;
++	const void *inputs[] = {source, key};
+ 	int created;
+-	struct pg_typed_query *work = pg_typed_query_request(typing, kind, ordinal, inputs, &created);
++	struct pg_typed_query *work = pg_typed_query_request(typing, kind, 0, inputs, &created);
+ 	if (created) {
+-		struct typed_recipe_query *local = pg_typed_query_state(work);
+-		local->current = map ? NULL : source;
++		struct typed_body_query *local = pg_typed_query_state(work);
++		local->current = source;
+ 		local->argument = argument;
+ 	}
+ 	return work;
+@@ -819,14 +1061,14 @@
+ 	if (!pg_evidence_owned_by(argument, typing)) return NULL;
+ 	if (pg_evidence_judgement(argument) != PG_JUDGEMENT_VALUE && pg_evidence_judgement(argument) != PG_JUDGEMENT_TYPE_FAMILY) return NULL;
+ 	if (pg_evidence_context(function) != pg_evidence_context(argument)) return NULL;
+-	return typed_query_request(typing, pg_evidence_subject(function), argument, TYPED_BODY, 0, NULL);
++	return typed_body_request(typing, pg_evidence_subject(function), argument, TYPED_BODY, NULL);
+ }
+ 
+ struct pg_typed_query *pg_return_body_request(struct pg_typing *typing,
+ 	const struct pg_evidence *computation)
+ {
+ 	if (!pg_evidence_owned_by(computation, typing) || pg_evidence_judgement(computation) != PG_JUDGEMENT_COMPUTATION) return NULL;
+-	return typed_query_request(typing, pg_evidence_subject(computation), NULL, TYPED_BODY, 0, NULL);
++	return typed_body_request(typing, pg_evidence_subject(computation), NULL, TYPED_BODY, NULL);
+ }
+ 
+ struct pg_typed_query *pg_elimination_body_request(struct pg_typing *typing,
+@@ -834,7 +1076,8 @@
+ {
+ 	if (!pg_evidence_owned_by(elimination, typing)) return NULL;
+ 	if (elimination->rule != PG_MATCH_ELIM && elimination->rule != PG_INDUCTION_ELIM) return NULL;
+-	return typed_query_request(typing, pg_evidence_subject(elimination), NULL, TYPED_ELIMINATION, 0, NULL);
++	const void *inputs[] = {pg_evidence_subject(elimination), NULL};
++	return pg_typed_query_request(typing, TYPED_ELIMINATION, 0, inputs, NULL);
+ }
+ 
+ static struct pg_typed_query *typed_head_request(struct pg_typing *typing,
+@@ -847,7 +1090,7 @@
+ 	}
+ 	/* Without a receipt the caller requests constructor exposure, not a
+ 	 * prediction of the evaluator's normal form. */
+-	return typed_query_request(typing, pg_evidence_subject(source), NULL, TYPED_HEAD, 0, receipt ? pg_reduction_target(receipt) : NULL);
++	return typed_body_request(typing, pg_evidence_subject(source), NULL, TYPED_HEAD, receipt ? pg_reduction_target(receipt) : NULL);
+ }
+ 
+ /* Reuse the accepted source and its finite reduction chain. Different input
+@@ -855,7 +1098,8 @@
+ static struct pg_typed_query *typed_phase_request(struct pg_typing *typing,
+ 	const struct pg_occurrence *source, const struct pg_reduction_phase *phase)
+ {
+-	return typed_query_request(typing, source, NULL, TYPED_PHASE, 0, phase);
++	const void *inputs[] = {source, phase};
++	return pg_typed_query_request(typing, TYPED_PHASE, 0, inputs, NULL);
+ }
+ 
+ static int typed_phase_step(struct pg_typed_query *work)
+@@ -864,15 +1108,15 @@
  	const struct pg_evidence *source;
  	if (phase->previous) {
  		if (!work->dependency) {
@@ -432,20 +581,94 @@
  	return work->result ? 1 : -1;
  }
  
-@@ -909,7 +1118,7 @@
- 	const struct pg_evidence *first, const struct pg_evidence *second)
+@@ -880,21 +1124,43 @@
+ 	const struct pg_evidence *source, size_t index)
  {
- 	struct typed_recipe_query *local = pg_typed_query_state(work);
+ 	if (!pg_evidence_owned_by(source, typing) || !pg_evidence_subject(source) || index == SIZE_MAX) return NULL;
+-	return typed_query_request(typing, pg_evidence_subject(source), NULL, TYPED_INPUT, index, NULL);
++	const void *inputs[] = {pg_evidence_subject(source), NULL};
++	int created;
++	struct pg_typed_query *work = pg_typed_query_request(typing, TYPED_INPUT, index, inputs, &created);
++	if (created) {
++		struct typed_input_query *local = pg_typed_query_state(work);
++		local->current = inputs[0];
++	}
++	return work;
+ }
+ 
+ struct pg_typed_query *pg_construction_origin_request(struct pg_typing *typing,
+ 	const struct pg_evidence *source)
+ {
+ 	if (!pg_evidence_owned_by(source, typing) || !pg_evidence_subject(source)) return NULL;
+-	return typed_query_request(typing, pg_evidence_subject(source), NULL, TYPED_ORIGIN, 0, NULL);
++	const void *inputs[] = {pg_evidence_subject(source), NULL};
++	return pg_typed_query_request(typing, TYPED_ORIGIN, 0, inputs, NULL);
++}
++
++static struct pg_typed_query *typed_rebase_request(struct pg_typing *typing,
++	const struct pg_evidence *context, const void *source, const struct pg_typed_query_class *kind)
++{
++	const void *inputs[] = {source, kind == TYPED_MAP_REBASE ? (const void *)context : (const void *)pg_evidence_context(context)};
++	int created;
++	struct pg_typed_query *work = pg_typed_query_request(typing, kind, 0, inputs, &created);
++	if (created) {
++		struct typed_rebase_query *local = pg_typed_query_state(work);
++		local->current = kind == TYPED_MAP_REBASE ? NULL : source;
++		local->argument = context;
++	}
++	return work;
+ }
+ 
+ struct pg_typed_query *pg_rebase_request(struct pg_typing *typing,
+ 	const struct pg_evidence *context, const struct pg_evidence *source)
+ {
+ 	if (!context_proof(typing, context) || !pg_evidence_owned_by(source, typing) || !pg_evidence_subject(source)) return NULL;
+-	return typed_query_request(typing, pg_evidence_subject(source), context, TYPED_REBASE, 0, NULL);
++	return typed_rebase_request(typing, context, pg_evidence_subject(source), TYPED_REBASE);
+ }
+ 
+ struct pg_typed_query *pg_substitution_rebase_request(struct pg_typing *typing,
+@@ -902,36 +1168,35 @@
+ {
+ 	if (!context_proof(typing, context) || !pg_evidence_owned_by(map, typing)) return NULL;
+ 	if (map->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
+-	return typed_query_request(typing, map, context, TYPED_MAP_REBASE, 0, NULL);
++	return typed_rebase_request(typing, context, map, TYPED_MAP_REBASE);
+ }
+ 
+ static int typed_environment_request(struct pg_typed_query *work,
+-	const struct pg_evidence *first, const struct pg_evidence *second)
++	enum typed_query_resume *resume, const struct pg_evidence *first, const struct pg_evidence *second)
+ {
+-	struct typed_recipe_query *local = pg_typed_query_state(work);
 -	work->dependency = pg_substitution_compose_request(work->typing, first, second);
+-	local->resume = TYPED_RESUME_COMPOSITION;
 +	work->dependency = pg_substitution_compose_request(pg_typed_query_typing(work), first, second);
- 	local->resume = TYPED_RESUME_COMPOSITION;
++	*resume = TYPED_RESUME_COMPOSITION;
  	return work->dependency ? 0 : -1;
  }
-@@ -927,11 +1136,11 @@
+ 
+-static int typed_environment_resume(struct pg_typed_query *work)
++static int typed_environment_resume(struct pg_typed_query *work,
++	enum typed_query_resume *resume, const struct pg_evidence **environment)
  {
- 	struct typed_recipe_query *local = pg_typed_query_state(work);
- 	if (local->resume == TYPED_RESUME_COMPOSITION) return typed_environment_resume(work);
+-	struct typed_recipe_query *local = pg_typed_query_state(work);
+-	local->environment = pg_typed_query_result(work->dependency);
++	*environment = pg_typed_query_result(work->dependency);
+ 	work->dependency = NULL;
+-	local->resume = TYPED_RESUME_NONE;
+-	return local->environment ? 0 : -1;
++	*resume = TYPED_RESUME_NONE;
++	return *environment ? 0 : -1;
+ }
+ 
+ static int typed_rebase_step(struct pg_typed_query *work)
+ {
+-	struct typed_recipe_query *local = pg_typed_query_state(work);
+-	if (local->resume == TYPED_RESUME_COMPOSITION) return typed_environment_resume(work);
 -	struct pg_typing *typing = work->typing;
++	struct typed_rebase_query *local = pg_typed_query_state(work);
++	if (local->resume == TYPED_RESUME_COMPOSITION) return typed_environment_resume(work, &local->resume, &local->environment);
 +	struct pg_typing *typing = pg_typed_query_typing(work);
  	const struct pg_evidence *context = local->argument;
 -	int map_query = work->role == TYPED_MAP_REBASE;
@@ -456,7 +679,16 @@
  		work->result = typed_map(work);
  		return 1;
  	}
-@@ -1037,13 +1246,13 @@
+@@ -958,7 +1223,7 @@
+ 			if (subject->map) {
+ 				const struct pg_evidence *inner = pg_prove_context_map(typing, subject->map);
+ 				local->current = subject->origin;
+-				if (local->environment) return typed_environment_request(work, inner, local->environment);
++				if (local->environment) return typed_environment_request(work, &local->resume, inner, local->environment);
+ 				local->environment = inner;
+ 				return inner ? 0 : -1;
+ 			}
+@@ -1037,13 +1302,13 @@
  		return work->dependency ? 0 : -1;
  	}
  	if (state->constructor.constructor) {
@@ -472,7 +704,15 @@
  			context, state->count, state->outputs);
  		work->result = map_query ? map : pg_prove_reindex(typing, map, state->source);
  	} else if (state->reduction) work->result = pg_prove_normalization(typing, state->outputs[0], state->reduction);
-@@ -1060,8 +1269,8 @@
+@@ -1054,14 +1319,14 @@
+ 
+ static int typed_origin_step(struct pg_typed_query *work)
+ {
+-	struct typed_recipe_query *local = pg_typed_query_state(work);
++	struct typed_origin_query *local = pg_typed_query_state(work);
+ 	if (local->resume == TYPED_RESUME_COMPOSITION)
+-		return typed_environment_resume(work) ? -1 : 1;
++		return typed_environment_resume(work, &local->resume, &local->environment) ? -1 : 1;
  	const struct pg_occurrence *subject = typed_source(work);
  	if (subject->origin && !subject->selection && (subject->map || subject->judgement == subject->origin->judgement)) {
  		if (!work->dependency) {
@@ -483,13 +723,14 @@
  			return work->dependency ? 0 : -1;
  		}
  		if (!work->dependency->status) return 0;
-@@ -1069,20 +1278,20 @@
+@@ -1069,41 +1334,41 @@
  		if (!work->result) return -1;
  		local->environment = pg_construction_origin_environment(work->dependency);
  		if (subject->map) {
 -			const struct pg_evidence *step = pg_prove_context_map(work->typing, subject->map);
+-			if (local->environment) return typed_environment_request(work, local->environment, step);
 +			const struct pg_evidence *step = pg_prove_context_map(pg_typed_query_typing(work), subject->map);
- 			if (local->environment) return typed_environment_request(work, local->environment, step);
++			if (local->environment) return typed_environment_request(work, &local->resume, local->environment, step);
  			local->environment = step;
  			if (!step) return -1;
  		}
@@ -503,15 +744,18 @@
  const struct pg_evidence *pg_construction_origin_environment(const struct pg_typed_query *work)
  {
 -	if (!work || work->role != TYPED_ORIGIN || work->status != 1) return NULL;
+-	struct typed_recipe_query *local = pg_typed_query_state(work);
 +	if (!work || pg_typed_query_role(work) != TYPED_ORIGIN || work->status != 1) return NULL;
- 	struct typed_recipe_query *local = pg_typed_query_state(work);
++	struct typed_origin_query *local = pg_typed_query_state(work);
  	return local->environment;
  }
-@@ -1091,19 +1300,19 @@
+ 
+ static int typed_body_enter(struct pg_typed_query *work, const struct pg_occurrence *current,
  	const struct pg_evidence *argument)
  {
- 	struct typed_recipe_query *local = pg_typed_query_state(work);
+-	struct typed_recipe_query *local = pg_typed_query_state(work);
 -	const struct pg_evidence *source = pg_prove_structural_subject(work->typing, current);
++	struct typed_body_query *local = pg_typed_query_state(work);
 +	const struct pg_evidence *source = pg_prove_structural_subject(pg_typed_query_typing(work), current);
  	/* A captured callee may itself be the image of a binder. Apply the same
  	 * pending scope to both operands before asking shared application work. */
@@ -532,16 +776,18 @@
  	local->resume = TYPED_RESUME_BODY;
  	return work->dependency ? 0 : -1;
  }
-@@ -1140,7 +1349,7 @@
+@@ -1139,8 +1404,8 @@
+  * The shape guides work only; ordinary rules establish every typed result. */
  static int typed_association_start(struct pg_typed_query *work)
  {
- 	struct typed_recipe_query *local = pg_typed_query_state(work);
+-	struct typed_recipe_query *local = pg_typed_query_state(work);
 -	if (work->role != TYPED_HEAD || !work->inputs[1] || local->forces) return 0;
++	struct typed_body_query *local = pg_typed_query_state(work);
 +	if (pg_typed_query_role(work) != TYPED_HEAD || !work->inputs[1] || local->forces) return 0;
  	if (!fold_source(fold_source(local->current->core))) return 0;
  	const struct pg_term *target = work->inputs[1], *source = fold_source(target);
  	if (!source) return 0;
-@@ -1150,12 +1359,12 @@
+@@ -1150,12 +1415,12 @@
  	if (!call || call->kind != PG_APPLICATION) return 0;
  	const struct pg_term *argument = call->as.application.argument;
  	if (argument->kind != PG_REFERENCE || argument->as.reference != lambda->as.lambda.binder) return 0;
@@ -558,16 +804,37 @@
  	state->binder = lambda->as.lambda.binder;
  	if (!state->outer || !state->inner_target) return -1;
  	local->association = state;
-@@ -1166,7 +1375,7 @@
+@@ -1165,16 +1430,16 @@
+ 
  static int typed_association_step(struct pg_typed_query *work)
  {
- 	struct typed_recipe_query *local = pg_typed_query_state(work);
+-	struct typed_recipe_query *local = pg_typed_query_state(work);
 -	struct pg_typing *typing = work->typing;
++	struct typed_body_query *local = pg_typed_query_state(work);
 +	struct pg_typing *typing = pg_typed_query_typing(work);
  	struct typed_association *state = local->association;
  	const struct pg_evidence **outputs[] = {&state->inner, &state->inner, &state->source, &state->first, &state->last};
  	if (state->next < 5) {
-@@ -1220,24 +1429,24 @@
+ 		if (!work->dependency) {
+ 			switch (state->next) {
+ 			case 0: work->dependency = pg_typed_input_request(typing, state->outer, 0); break;
+-			case 1: work->dependency = typed_query_request(typing, pg_evidence_subject(state->inner), NULL,
+-				TYPED_HEAD, 0, state->inner_target); break;
++			case 1: work->dependency = typed_body_request(typing, pg_evidence_subject(state->inner), NULL,
++				TYPED_HEAD, state->inner_target); break;
+ 			case 2: work->dependency = pg_typed_input_request(typing, state->inner, 0); break;
+ 			case 3: work->dependency = pg_typed_input_request(typing, state->inner, 1); break;
+ 			case 4: work->dependency = pg_typed_input_request(typing, state->outer, 1); break;
+@@ -1204,7 +1469,7 @@
+ 
+ static int typed_fold_start(struct pg_typed_query *work)
+ {
+-	struct typed_recipe_query *local = pg_typed_query_state(work);
++	struct typed_body_query *local = pg_typed_query_state(work);
+ 	const struct pg_occurrence *source = local->current;
+ 	const struct pg_term *head = source->core;
+ 	size_t supplied = source->operand_count, count = 0;
+@@ -1220,24 +1485,24 @@
  		!pg_computation_handler_view(head->as.reference, &count, &positions)) return 0;
  	if (count > SIZE_MAX - 2 || supplied != count + 2) return -1;
  	if (supplied > SIZE_MAX / sizeof(const struct pg_evidence *)) return -1;
@@ -599,7 +866,7 @@
  		if (!state->carrier) return -1;
  	}
  	local->environment = NULL;
-@@ -1245,27 +1454,31 @@
+@@ -1245,33 +1510,37 @@
  	return 1;
  }
  
@@ -647,18 +914,30 @@
  }
  
  static int typed_fold_wait(struct pg_typed_query *work,
-@@ -1280,7 +1493,7 @@
+ 	const struct pg_evidence **slot, struct pg_typed_query *dependency)
+ {
+-	struct typed_recipe_query *local = pg_typed_query_state(work);
++	struct typed_body_query *local = pg_typed_query_state(work);
+ 	local->fold->waiting = slot;
+ 	work->dependency = dependency;
+ 	return dependency ? 0 : -1;
+@@ -1279,8 +1548,8 @@
+ 
  static int typed_fold_step(struct pg_typed_query *work)
  {
- 	struct typed_recipe_query *local = pg_typed_query_state(work);
+-	struct typed_recipe_query *local = pg_typed_query_state(work);
 -	struct pg_typing *typing = work->typing;
++	struct typed_body_query *local = pg_typed_query_state(work);
 +	struct pg_typing *typing = pg_typed_query_typing(work);
  	struct typed_fold *state = local->fold;
  	if (state->waiting) {
  		if (!work->dependency->status) return 0;
-@@ -1339,8 +1552,8 @@
+@@ -1337,10 +1606,10 @@
+ 
+ static int typed_return_step(struct pg_typed_query *work)
  {
- 	struct typed_recipe_query *local = pg_typed_query_state(work);
+-	struct typed_recipe_query *local = pg_typed_query_state(work);
++	struct typed_body_query *local = pg_typed_query_state(work);
  	if (!work->dependency) {
 -		work->dependency = typed_head_request(work->typing,
 -			pg_prove_structural_subject(work->typing, typed_source(work)), NULL);
@@ -667,7 +946,7 @@
  		return work->dependency ? 0 : -1;
  	}
  	if (!work->dependency->status) return 0;
-@@ -1352,8 +1565,8 @@
+@@ -1352,19 +1621,19 @@
  	}
  	const struct pg_term *core = pg_evidence_subject(result)->core;
  	if (core->kind != PG_APPLICATION || core->as.application.function !=
@@ -678,11 +957,14 @@
  	local->resume = TYPED_RESUME_INPUT;
  	return work->dependency ? 0 : -1;
  }
-@@ -1362,9 +1575,9 @@
+ 
+ static int typed_body_step(struct pg_typed_query *work)
  {
- 	struct typed_recipe_query *local = pg_typed_query_state(work);
- 	if (local->resume == TYPED_RESUME_COMPOSITION) return typed_environment_resume(work);
+-	struct typed_recipe_query *local = pg_typed_query_state(work);
+-	if (local->resume == TYPED_RESUME_COMPOSITION) return typed_environment_resume(work);
 -	struct pg_typing *typing = work->typing;
++	struct typed_body_query *local = pg_typed_query_state(work);
++	if (local->resume == TYPED_RESUME_COMPOSITION) return typed_environment_resume(work, &local->resume, &local->environment);
 +	struct pg_typing *typing = pg_typed_query_typing(work);
  	const struct pg_occurrence *current = local->current;
 -	if (work->role == TYPED_BODY && !local->argument) return typed_return_step(work);
@@ -690,7 +972,7 @@
  	if (local->association) return typed_association_step(work);
  	if (local->fold) return typed_fold_step(work);
  	if (local->resume == TYPED_RESUME_BODY) {
-@@ -1385,7 +1598,7 @@
+@@ -1385,7 +1654,7 @@
  	const struct pg_term *core = current->core;
  	/* The retained reduction specifies the head. Constructor guesses cannot
  	 * replace that boundary, especially while a context action is pending. */
@@ -699,7 +981,32 @@
  		(work->inputs[1] || local->action || exposed_head(current))) {
  		const struct pg_occurrence *image = current;
  		if (local->environment) {
-@@ -1563,7 +1776,7 @@
+@@ -1425,7 +1694,7 @@
+ 		if (current->map) {
+ 			const struct pg_evidence *step = pg_prove_context_map(typing, current->map);
+ 			local->current = current->origin;
+-			if (local->environment) return typed_environment_request(work, step, local->environment);
++			if (local->environment) return typed_environment_request(work, &local->resume, step, local->environment);
+ 			local->environment = step;
+ 			return step ? 0 : -1;
+ 		} else if (current->judgement != current->origin->judgement) {
+@@ -1493,7 +1762,14 @@
+ 	const struct pg_occurrence *source, const struct scope_frame *outer)
+ {
+ 	if (!source || !source->classifier) return NULL;
+-	return typed_query_request(typing, source, NULL, TYPED_SELECTION, 0, outer);
++	const void *inputs[] = {source, outer};
++	int created;
++	struct pg_typed_query *work = pg_typed_query_request(typing, TYPED_SELECTION, 0, inputs, &created);
++	if (created) {
++		struct typed_selection_query *local = pg_typed_query_state(work);
++		local->current = source;
++	}
++	return work;
+ }
+ 
+ /* Only link a query's private prefix. Published tails are immutable and can
+@@ -1563,7 +1839,7 @@
  			if (!state->body) return -1;
  		}
  	}
@@ -708,25 +1015,54 @@
  	state->lift = NULL;
  	state->action = NULL;
  	if (frame) { state->cursor = frame->next; return 0; }
-@@ -1576,7 +1789,7 @@
+@@ -1575,8 +1851,8 @@
+ 
  static int typed_selection_step(struct pg_typed_query *work)
  {
- 	struct typed_recipe_query *local = pg_typed_query_state(work);
+-	struct typed_recipe_query *local = pg_typed_query_state(work);
 -	struct pg_typing *typing = work->typing;
++	struct typed_selection_query *local = pg_typed_query_state(work);
 +	struct pg_typing *typing = pg_typed_query_typing(work);
  	if (!local->selection) {
  		local->selection = pg_alloc(typing->graph, sizeof(*local->selection));
  		if (!local->selection) return -1;
-@@ -1703,7 +1916,7 @@
+@@ -1674,7 +1950,14 @@
+ {
+ 	if (!pg_evidence_owned_by(type, typing)) return NULL;
+ 	if (pg_evidence_judgement(type) != PG_JUDGEMENT_VALUE_TYPE && pg_evidence_judgement(type) != PG_JUDGEMENT_TYPE_FAMILY) return NULL;
+-	return typed_query_request(typing, pg_evidence_subject(type), NULL, TYPED_INDUCTIVE, 0, NULL);
++	const void *inputs[] = {pg_evidence_subject(type), NULL};
++	int created;
++	struct pg_typed_query *work = pg_typed_query_request(typing, TYPED_INDUCTIVE, 0, inputs, &created);
++	if (created) {
++		struct typed_inductive_query *local = pg_typed_query_state(work);
++		local->current = inputs[0];
++	}
++	return work;
+ }
+ 
+ /* The nominal owner fixes the formation context and classifier. Look up that
+@@ -1702,8 +1985,8 @@
+ 
  static int typed_inductive_step(struct pg_typed_query *work)
  {
- 	struct typed_recipe_query *local = pg_typed_query_state(work);
+-	struct typed_recipe_query *local = pg_typed_query_state(work);
 -	struct pg_typing *typing = work->typing;
++	struct typed_inductive_query *local = pg_typed_query_state(work);
 +	struct pg_typing *typing = pg_typed_query_typing(work);
  	if (!local->inductive) local->inductive = pg_alloc(typing->graph, sizeof(*local->inductive));
  	struct typed_inductive *state = local->inductive;
  	if (!state) return -1;
-@@ -1768,7 +1981,7 @@
+@@ -1720,7 +2003,7 @@
+ 		if (!work->dependency->status) return 0;
+ 		formation = pg_typed_query_result(work->dependency);
+ 		if (!formation) return -1;
+-		const struct typed_recipe_query *selected = pg_typed_query_state(work->dependency);
++		const struct typed_selection_query *selected = pg_typed_query_state(work->dependency);
+ 		state->frames = selected->selection->frames.first;
+ 		work->dependency = NULL;
+ 		goto advanced;
+@@ -1768,7 +2051,7 @@
  	local->value = formation;
  instantiate:
  	if (!local->environment) {
@@ -735,7 +1071,7 @@
  		local->environment = pg_prove_substitution_projection(typing, context, context);
  		return local->environment ? 0 : -1;
  	}
-@@ -1792,7 +2005,7 @@
+@@ -1792,7 +2075,7 @@
  		if (!state->instance) return -1;
  		if (state->arguments) {
  			if (pg_evidence_judgement(state->instance) != PG_JUDGEMENT_TYPE_FAMILY) return -1;
@@ -744,7 +1080,7 @@
  			if (!state->prefix) return -1;
  			for (struct inductive_argument *a = state->arguments; a; a = a->next) ++state->count;
  			if (state->count > SIZE_MAX / sizeof(*state->values)) return -1;
-@@ -1814,7 +2027,7 @@
+@@ -1814,7 +2097,7 @@
  	}
  	const struct pg_evidence *instance = state->instance, *indices = NULL;
  	if (state->count) {
@@ -753,16 +1089,18 @@
  			pg_data_schema_indices(formation->certificate));
  		indices = pg_data_signature_instance(typing, signature, state->prefix, state->count, state->values);
  		if (!indices || pg_evidence_judgement(instance) != PG_JUDGEMENT_VALUE_TYPE) return -1;
-@@ -1831,7 +2044,7 @@
+@@ -1831,8 +2114,8 @@
  
  const struct pg_inductive_instance *pg_inductive_query_result(const struct pg_typed_query *work)
  {
 -	if (!work || work->role != TYPED_INDUCTIVE || work->status != 1) return NULL;
+-	struct typed_recipe_query *local = pg_typed_query_state(work);
 +	if (!work || pg_typed_query_role(work) != TYPED_INDUCTIVE || work->status != 1) return NULL;
- 	struct typed_recipe_query *local = pg_typed_query_state(work);
++	struct typed_inductive_query *local = pg_typed_query_state(work);
  	return &local->inductive->result;
  }
-@@ -1852,7 +2065,7 @@
+ 
+@@ -1852,7 +2135,7 @@
  {
  	if (!pg_evidence_owned_by(formation, typing) || formation->rule != PG_INDUCTIVE_FORM) return NULL;
  	if (!pg_evidence_owned_by(parameters, typing) || parameters->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
@@ -771,7 +1109,7 @@
  	return pg_prove_reindex(typing, parameters, formation);
  }
  
-@@ -1921,7 +2134,7 @@
+@@ -1921,7 +2204,7 @@
  	const struct pg_evidence *self = pg_evidence_judgement(formation) == PG_JUDGEMENT_TYPE_FAMILY
  		? family : pg_prove_type_value(typing, family);
  	const struct pg_evidence *extended = pg_prove_substitution_extend(typing, parameters,
@@ -780,7 +1118,7 @@
  	const struct pg_evidence *instance = pg_data_instance(typing, formation->certificate, constructor, extended, count, fields);
  	return constructor_instance(typing, formation, constructor, parameters, instance, family);
  }
-@@ -1933,14 +2146,14 @@
+@@ -1933,14 +2216,14 @@
  	if (!pg_evidence_owned_by(map, typing) || map->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
  	if (!context_proof(typing, fields)) return NULL;
  	size_t count;
@@ -797,7 +1135,7 @@
  	}
  	if (count > SIZE_MAX / sizeof(const struct pg_evidence *)) return NULL;
  	struct pg_graph temporary = {0};
-@@ -1973,7 +2186,7 @@
+@@ -1973,7 +2256,7 @@
  	const struct pg_evidence *self = pg_evidence_judgement(formation) == PG_JUDGEMENT_TYPE_FAMILY
  		? family : pg_prove_type_value(typing, family);
  	if (!self) return NULL;
@@ -806,7 +1144,7 @@
  	return lift_scope(typing, map, fields, allocation, retained);
  }
  
-@@ -2001,7 +2214,7 @@
+@@ -2001,7 +2284,7 @@
  	const struct pg_evidence *map)
  {
  	if (!map) return NULL;
@@ -815,7 +1153,7 @@
  	for (size_t i = pg_evidence_context_map(parameters)->count + 1;
  		i < pg_evidence_context_map(map)->count; ++i) {
  		family = pg_prove_family_application(typing, family,
-@@ -2019,7 +2232,7 @@
+@@ -2019,7 +2302,7 @@
  	const struct pg_evidence *map = prove_data_scope(typing, formation,
  		pg_data_schema_indices(formation->certificate), parameters, indices, retained);
  	if (!map) return NULL;
@@ -824,7 +1162,7 @@
  		family_in_scope(typing, formation, parameters, map));
  }
  
-@@ -2049,7 +2262,7 @@
+@@ -2049,7 +2332,7 @@
  	if (!map) return NULL;
  	const struct pg_evidence *body = pg_prove_return_contract(typing, PG_TOTALITY_TOTAL,
  		pg_prove_type_value(typing, family_in_scope(typing, formation, parameters, map)));
@@ -833,7 +1171,7 @@
  }
  
  static const struct pg_evidence *constructor_in_scope(struct pg_typing *typing,
-@@ -2060,7 +2273,7 @@
+@@ -2060,7 +2343,7 @@
  	size_t total = pg_evidence_context_map(map)->count;
  	if (total <= prefix) return NULL;
  	const struct pg_evidence *arguments = pg_prove_substitution_compose(typing,
@@ -842,7 +1180,7 @@
  	return pg_prove_constructor_instance(typing, formation, constructor, arguments, map);
  }
  
-@@ -2073,7 +2286,7 @@
+@@ -2073,7 +2356,7 @@
  	const struct pg_evidence *body = constructor_in_scope(typing, formation, constructor, parameters, map);
  	body = pg_prove_return_contract(typing, PG_TOTALITY_TOTAL, body);
  	if (!body) return NULL;
@@ -851,7 +1189,7 @@
  }
  
  /* Check Gamma, indices, z : Family(parameters, indices), not a fixed fiber.
-@@ -2084,12 +2297,12 @@
+@@ -2084,12 +2367,12 @@
  {
  	if (!pg_evidence_owned_by(formation, typing) || formation->rule != PG_INDUCTIVE_FORM) return 0;
  	if (!pg_evidence_owned_by(parameters, typing) || parameters->rule != PG_CONTEXT_SUBSTITUTION) return 0;
@@ -866,7 +1204,7 @@
  	const struct pg_evidence *indices = pg_context_parent_input(typing, motive_context), *prefix = indices;
  	struct pg_graph temporary = {0};
  	int valid = 0;
-@@ -2120,7 +2333,7 @@
+@@ -2120,7 +2403,7 @@
  	const struct pg_evidence *destination, const struct pg_evidence *value)
  {
  	if (!pg_inductive_motive_context_valid(typing, formation, parameters, source)) return NULL;
@@ -875,7 +1213,7 @@
  	if (pg_evidence_judgement(formation) == PG_JUDGEMENT_TYPE_FAMILY) {
  		const struct pg_evidence *type = pg_prove_classifier(typing, destination, value);
  		struct pg_inductive_instance instance;
-@@ -2205,12 +2418,12 @@
+@@ -2205,12 +2488,12 @@
  	for (size_t i = 0; i < indices; ++i)
  		bindings[i].image = pg_substitution_image_at(typing, fiber, first + i);
  	bindings[indices].image = value;
@@ -890,7 +1228,7 @@
  		else map = pg_prove_substitution_lift(typing, map, extension, pg_binder(typing->graph));
  	}
  	result = map;
-@@ -2312,10 +2525,10 @@
+@@ -2312,10 +2595,10 @@
  	if (!pg_inductive_motive_context_valid(typing, formation, parameters, motive_context)) return NULL;
  	const struct pg_evidence *fields = pg_data_schema_fields(formation->certificate, constructor);
  	if (!fields) return NULL;
@@ -903,7 +1241,7 @@
  	if (count > SIZE_MAX / sizeof(const struct pg_term *)) return NULL;
  	struct pg_graph temporary = {0};
  	const struct pg_evidence *result = NULL;
-@@ -2337,7 +2550,7 @@
+@@ -2337,7 +2620,7 @@
  			saved_prefix = saved_prefix->parent;
  		}
  		if (!pg_context_same_allocation_shape(saved_prefix,
@@ -912,7 +1250,7 @@
  		ih_allocations = pg_alloc(&temporary, recursive_count * sizeof(*ih_allocations));
  		if (recursive_count && !ih_allocations) goto done;
  		for (size_t i = recursive_count; i; --i, allocation = allocation->parent)
-@@ -2347,7 +2560,7 @@
+@@ -2347,7 +2630,7 @@
  		? pg_prove_constructor_scope_at(typing, formation, constructor, parameters, allocation)
  		: pg_prove_constructor_scope(typing, formation, constructor, parameters);
  	if (!map) goto done;
@@ -921,7 +1259,7 @@
  	size_t next_ih = 0;
  	for (size_t i = 0; i < count; ++i) {
  		if (!recursive_fields[i]) continue;
-@@ -2360,7 +2573,7 @@
+@@ -2360,7 +2643,7 @@
  		context = pg_prove_context_extension(typing, context, binder, ih);
  		if (!context) goto done;
  	}
@@ -930,7 +1268,7 @@
  done:
  	pg_graph_destroy(&temporary);
  	return result;
-@@ -2430,11 +2643,11 @@
+@@ -2430,11 +2713,11 @@
  	const struct pg_term **ih_types = pg_alloc(&temporary, count * sizeof(*ih_types));
  	const struct pg_term *result = NULL;
  	if (count && (!types || !ih_types)) goto done;
@@ -945,7 +1283,7 @@
  	for (size_t i = count; i; --i) {
  		int recursive = pg_data_recursive_field(types[i - 1], self);
  		if (recursive < 0) goto done;
-@@ -2474,7 +2687,7 @@
+@@ -2474,7 +2757,7 @@
  	if (!pg_evidence_owned_by(parameters, typing) || parameters->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
  	if (!pg_evidence_owned_by(fields, typing) || fields->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
  	if (pg_evidence_context_map(fields)->count <= pg_evidence_context_map(parameters)->count) return NULL;
@@ -954,7 +1292,7 @@
  	size_t count;
  	if (pg_context_extension_size(pg_evidence_context(context), pg_evidence_context(parameters), &count)) return NULL;
  	const struct pg_evidence *value = constructor_in_scope(typing, formation, constructor, parameters, fields);
-@@ -2503,9 +2716,9 @@
+@@ -2503,9 +2786,9 @@
  		if (p->hash != hash) continue;
  		struct induction_request *request = (void *)p;
  		const struct pg_evidence *result = request->result;
@@ -966,7 +1304,7 @@
  		if (i == count) return request;
  	}
  	struct induction_request *request = pg_alloc(typing->graph, sizeof(*request));
-@@ -2530,8 +2743,8 @@
+@@ -2530,8 +2813,8 @@
  	}
  	if (!pg_evidence_owned_by(formation, typing) || formation->rule != PG_INDUCTIVE_FORM) return NULL;
  	if (!pg_evidence_owned_by(parameters, typing) || parameters->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
@@ -977,7 +1315,7 @@
  	if (allocation) {
  		const struct pg_object *binders[] = {allocation->recursion, allocation->argument, allocation->self};
  		for (size_t i = 0; i < 3; ++i) {
-@@ -2617,7 +2830,7 @@
+@@ -2617,7 +2900,7 @@
  		formation, constructor, parameters, motive_context, motive)
  			: pg_prove_constructor_scope(typing, formation, constructor, parameters);
  		if (!map) goto done;
@@ -986,7 +1324,7 @@
  		if (contexts) contexts[i] = allocation ? allocation->clauses[i] : pg_evidence_context(context);
  		const struct pg_evidence *expected = pg_prove_match_branch_type(typing,
  			formation, constructor, parameters, motive_context, motive, map);
-@@ -2688,7 +2901,7 @@
+@@ -2688,7 +2971,7 @@
  	struct pg_elimination_inputs view;
  	if (pg_elimination_view(typing, elimination, &view)) return NULL;
  	if (!pg_evidence_owned_by(substitution, typing) || substitution->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
@@ -995,16 +1333,18 @@
  	struct pg_occurrence_input *query = pg_occurrence_input_mapped_request(typing,
  		view.subject, view.count + 1, pg_evidence_context_map(substitution));
  	while (pg_occurrence_input_advance(query, 1024) == PG_INPUT_PENDING) {}
-@@ -2784,7 +2997,7 @@
+@@ -2783,8 +3066,8 @@
+ 
  static int typed_body_match(struct pg_typed_query *work)
  {
- 	struct typed_recipe_query *local = pg_typed_query_state(work);
+-	struct typed_recipe_query *local = pg_typed_query_state(work);
 -	struct pg_typing *typing = work->typing;
++	struct typed_body_query *local = pg_typed_query_state(work);
 +	struct pg_typing *typing = pg_typed_query_typing(work);
  	const struct pg_evidence *source = pg_prove_structural_subject(typing, local->current);
  	if (local->environment)
  		source = pg_prove_elimination_reindex(typing, local->environment, source);
-@@ -2813,7 +3026,7 @@
+@@ -2813,7 +3096,7 @@
  		pg_graph_destroy(&temporary);
  		return result;
  	}
@@ -1013,16 +1353,18 @@
  	struct pg_call_telescope telescope;
  	if (pg_prove_call_telescope(typing, context, pg_prove_force(typing, field), NULL, &telescope)) return NULL;
  	const struct pg_evidence *scope = telescope.context, *call = telescope.call, *classifier = telescope.classifier;
-@@ -2835,7 +3048,7 @@
+@@ -2834,8 +3117,8 @@
+ 
  static int typed_elimination_prepare(struct pg_typed_query *work)
  {
- 	struct typed_recipe_query *local = pg_typed_query_state(work);
+-	struct typed_recipe_query *local = pg_typed_query_state(work);
 -	struct pg_typing *typing = work->typing;
++	struct typed_elimination_query *local = pg_typed_query_state(work);
 +	struct pg_typing *typing = pg_typed_query_typing(work);
  	const struct pg_evidence *elimination = pg_prove_structural_subject(typing, typed_source(work));
  	struct pg_elimination_inputs view;
  	if (pg_elimination_view(typing, elimination, &view)) return -1;
-@@ -2856,7 +3069,7 @@
+@@ -2856,7 +3139,7 @@
  	}
  	if (elimination->rule == PG_INDUCTION_ELIM) {
  		const struct pg_context *declaration = pg_evidence_context(pg_data_schema_fields(schema, value.constructor));
@@ -1031,7 +1373,16 @@
  		for (size_t i = count; i; --i, declaration = declaration->parent) {
  			int kind = pg_data_recursive_field(declaration->declared_type, self);
  			if (kind < 0) return -1;
-@@ -2891,7 +3104,7 @@
+@@ -2876,7 +3159,7 @@
+ 
+ static int typed_elimination_step(struct pg_typed_query *work)
+ {
+-	struct typed_recipe_query *local = pg_typed_query_state(work);
++	struct typed_elimination_query *local = pg_typed_query_state(work);
+ 	if (!local->elimination) return typed_elimination_prepare(work);
+ 	struct typed_elimination *state = local->elimination;
+ 	if (work->dependency) {
+@@ -2891,7 +3174,7 @@
  	}
  	const struct pg_evidence *argument = state->arguments[state->next++];
  	if (!argument) return 0;
@@ -1040,7 +1391,7 @@
  	return work->dependency ? 0 : -1;
  }
  
-@@ -2923,7 +3136,7 @@
+@@ -2923,7 +3206,7 @@
  {
  	if (!pg_evidence_owned_by(refinement, typing) || refinement->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
  	if (!pg_evidence_owned_by(instance, typing) || instance->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
@@ -1049,7 +1400,7 @@
  	struct pg_graph temporary = {0};
  	struct pg_index bindings;
  	if (pg_index_init(&bindings)) return NULL;
-@@ -2953,7 +3166,7 @@
+@@ -2953,7 +3236,7 @@
  		if (!binding) goto done;
  		images[i - 1] = binding->image;
  	}
@@ -1058,7 +1409,7 @@
  	const struct pg_evidence *composite = pg_prove_substitution_compose(typing, refinement, map);
  	if (!composite || pg_evidence_context_map(composite)->count != pg_evidence_context_map(instance)->count) goto done;
  	for (size_t i = 0; i < pg_evidence_context_map(composite)->count; ++i)
-@@ -3014,7 +3227,7 @@
+@@ -3014,7 +3297,7 @@
  	for (size_t i = 0; i < count; ++i) {
  		const struct pg_evidence *map = refinements[i], *body = branches[i];
  		if (!pg_evidence_owned_by(map, typing) || map->rule != PG_CONTEXT_SUBSTITUTION) goto done;
@@ -1067,7 +1418,7 @@
  		if (!pg_evidence_owned_by(body, typing) || pg_evidence_context(body) != pg_evidence_context(map)) goto done;
  		const struct pg_evidence *expected = pg_prove_constructor_refinement(typing, context,
  			scrutinee, pg_data_constructor(pg_data_schema_layout(instance.schema), i));
-@@ -3022,7 +3235,7 @@
+@@ -3022,7 +3305,7 @@
  		if (!i) {
  			size_t left, right;
  			prefix = context;
@@ -1076,7 +1427,7 @@
  			if (pg_context_extension_size(pg_evidence_context(prefix), NULL, &left) ||
  				pg_context_extension_size(pg_evidence_context(target), NULL, &right)) goto done;
  			while (left > right) { prefix = pg_context_parent_input(typing, prefix); --left; }
-@@ -3031,16 +3244,16 @@
+@@ -3031,16 +3314,16 @@
  				prefix = pg_context_parent_input(typing, prefix); target = pg_context_parent_input(typing, target);
  			}
  		}
@@ -1096,7 +1447,7 @@
  			pg_prove_reindex(typing, lift, body));
  		if (!functions[i]) goto done;
  	}
-@@ -3073,12 +3286,12 @@
+@@ -3073,12 +3356,12 @@
  	for (size_t i = 0; map && i < suffix; ++i) {
  		struct refinement_binding *binding = refinement_find(&replacements, pg_evidence_context(extensions[i])->binder);
  		if (binding) map = pg_prove_substitution_pair(typing, map, extensions[i],
@@ -1111,7 +1462,7 @@
  		generalized = pg_prove_pi(typing, scope, generalized);
  	result = pg_prove_match(typing, instance.formation, instance.parameters,
  		scrutinee, mc, generalized, count, functions);
-@@ -3101,7 +3314,7 @@
+@@ -3101,7 +3384,7 @@
  	if (!typing) return NULL;
  	if (!pg_evidence_owned_by(formation, typing) || formation->rule != PG_INDUCTIVE_FORM) return NULL;
  	if (!pg_evidence_owned_by(parameters, typing) || parameters->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
@@ -1120,7 +1471,7 @@
  	if (!pg_evidence_owned_by(scrutinee, typing) || pg_evidence_judgement(scrutinee) != PG_JUDGEMENT_VALUE) return NULL;
  	if (pg_evidence_context(scrutinee) != pg_evidence_context(parameters)) return NULL;
  	const struct pg_data_schema *schema = formation->certificate;
-@@ -3121,14 +3334,14 @@
+@@ -3121,14 +3404,14 @@
  	result = find_record(typing, PG_TYPE_CASE,
  		pg_evidence_context(parameters), NULL, count + 3, premises, NULL, &hash);
  	if (result) goto done;
@@ -1137,7 +1488,16 @@
  	const struct pg_evidence *prefix = prove_data_scope(typing, formation, self, parameters, NULL, 0);
  	if (!prefix) goto done;
  	const struct pg_context_map *map = pg_evidence_context_map(prefix);
-@@ -3778,21 +3991,21 @@
+@@ -3768,7 +4051,7 @@
+ static int typed_input_align(struct pg_typed_query *work, const struct pg_evidence *input,
+ 	const struct pg_term *head)
+ {
+-	struct typed_recipe_query *local = pg_typed_query_state(work);
++	struct typed_input_query *local = pg_typed_query_state(work);
+ 	const struct pg_occurrence *child = pg_evidence_subject(input);
+ 	const struct pg_term *body;
+ 	const struct pg_object *binder = pg_occurrence_input_binder(head, work->ordinal, &body);
+@@ -3778,21 +4061,21 @@
  	}
  	if (child->context->parent != local->current->context) return -1;
  	if (!local->lift) {
@@ -1165,16 +1525,18 @@
  	return local->argument ? 1 : -1;
  }
  
-@@ -3802,7 +4015,7 @@
+@@ -3801,8 +4084,8 @@
+  * checking the new substitution remains the ordinary dependent map rule. */
  static int typed_field_step(struct pg_typed_query *work)
  {
- 	struct typed_recipe_query *local = pg_typed_query_state(work);
+-	struct typed_recipe_query *local = pg_typed_query_state(work);
 -	struct pg_typing *typing = work->typing;
++	struct typed_input_query *local = pg_typed_query_state(work);
 +	struct pg_typing *typing = pg_typed_query_typing(work);
  	if (!local->field) {
  		if (!work->ordinal) return 1;
  		struct constructor_structure view;
-@@ -3814,7 +4027,7 @@
+@@ -3814,7 +4097,7 @@
  		const struct pg_evidence *self = pg_evidence_judgement(family) == PG_JUDGEMENT_TYPE_FAMILY
  			? family : pg_prove_type_value(typing, family);
  		const struct pg_evidence *map = pg_prove_substitution_pair(typing, view.parameters,
@@ -1183,16 +1545,36 @@
  		if (!map) return -1;
  		struct typed_field *field = pg_alloc(typing->graph, sizeof(*field));
  		if (!field) return -1;
-@@ -3868,7 +4081,7 @@
+@@ -3846,7 +4129,7 @@
+ 		const struct pg_evidence *declaration = field->declarations[field->next];
+ 		size_t slot = field->prefix + field->next;
+ 		field->bindings[slot] = (struct pg_binding_value){pg_evidence_context(declaration)->binder, original->core};
+-		const struct typed_recipe_query *selected = pg_typed_query_state(work->dependency);
++		const struct typed_input_query *selected = pg_typed_query_state(work->dependency);
+ 		field->reductions[slot] = selected->input_reduction;
+ 		field->map = pg_prove_substitution_pair(typing, field->map, declaration, value);
+ 		if (!field->map) return -1;
+@@ -3867,8 +4150,8 @@
+ 
  static int typed_input_step(struct pg_typed_query *work)
  {
- 	struct typed_recipe_query *local = pg_typed_query_state(work);
+-	struct typed_recipe_query *local = pg_typed_query_state(work);
 -	struct pg_typing *typing = work->typing;
++	struct typed_input_query *local = pg_typed_query_state(work);
 +	struct pg_typing *typing = pg_typed_query_typing(work);
  	const struct pg_occurrence *source = typed_source(work);
  	if (local->resume == TYPED_RESUME_SCOPE_IMAGE) {
  		struct typed_selection *state = local->selection;
-@@ -4311,7 +4524,7 @@
+@@ -3933,7 +4216,7 @@
+ 	if (local->resume == TYPED_RESUME_SELECTION) {
+ 		local->selection = pg_alloc(typing->graph, sizeof(*local->selection));
+ 		if (!local->selection) return -1;
+-		const struct typed_recipe_query *selected = pg_typed_query_state(work->dependency);
++		const struct typed_selection_query *selected = pg_typed_query_state(work->dependency);
+ 		local->selection->frames.first = selected->selection->frames.first;
+ 		local->current = pg_evidence_subject(input);
+ 		work->dependency = pg_typed_input_request(typing, input, work->ordinal);
+@@ -4311,7 +4594,7 @@
  	if (!context_proof(typing, destination)) return NULL;
  	if (!pg_evidence_owned_by(prefix, typing) || prefix->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
  	if (count && !images) return NULL;
@@ -1201,7 +1583,7 @@
  	size_t stride = sizeof(const struct pg_evidence *) + sizeof(const struct pg_occurrence *);
  	if (count > (SIZE_MAX - 3 * sizeof(const struct pg_evidence *)) / stride) return NULL;
  	size_t bytes = (count + 3) * sizeof(const struct pg_evidence *);
-@@ -4331,7 +4544,7 @@
+@@ -4331,7 +4614,7 @@
  	}
  	uint64_t hash;
  	result = find_record(typing, PG_CONTEXT_SUBSTITUTION,
@@ -1210,7 +1592,7 @@
  	if (result) goto done;
  	/* Structural construction is shared with lifting and scoped instantiation;
  	 * only this layer checks the supplied receipts and dependent classifiers. */
-@@ -4352,7 +4565,7 @@
+@@ -4352,7 +4635,7 @@
  		if (pg_alpha_equal(expected, pg_evidence_subject(image)->classifier) != 1) goto done;
  	}
  	result = accept_record(typing, PG_CONTEXT_SUBSTITUTION,
@@ -1219,7 +1601,7 @@
  done:
  	free(premises);
  	return result;
-@@ -4431,13 +4644,29 @@
+@@ -4431,13 +4714,29 @@
  		map->destination, NULL, 2, premises, NULL, map);
  }
  
@@ -1253,7 +1635,7 @@
  	const struct pg_evidence *premises[] = {substitution, proof};
  	uint64_t hash;
  	const struct pg_evidence *result = find_record(typing, PG_REINDEX,
-@@ -4493,8 +4722,8 @@
+@@ -4493,8 +4792,8 @@
  	}
  	if (!substitution_proof(typing, left_substitution)) return NULL;
  	if (!substitution_proof(typing, right_substitution)) return NULL;
@@ -1264,7 +1646,7 @@
  	const struct pg_context *context = pg_evidence_context(left_substitution);
  	if (pg_evidence_context(right_substitution) != context) return NULL;
  	size_t arity = pg_evidence_context_map(left_substitution)->count;
-@@ -4522,7 +4751,7 @@
+@@ -4522,7 +4821,7 @@
  		if (pg_alpha_equal(pg_evidence_context_map(left_substitution)->images[i]->core,
  			pg_evidence_context_map(right_substitution)->images[i]->core) != 1) goto done;
  	}
@@ -1273,7 +1655,7 @@
  	for (size_t i = count; i; --i) {
  		declarations[i - 1] = declaration;
  		declaration = declaration->parent;
-@@ -4600,7 +4829,7 @@
+@@ -4600,7 +4899,7 @@
  	size_t count, const struct pg_evidence *const *values)
  {
  	if (!pg_evidence_owned_by(prefix, typing) || prefix->rule != PG_CONTEXT_SUBSTITUTION) return NULL;
@@ -1282,7 +1664,7 @@
  }
  
  struct context_alpha_frame {
-@@ -4675,7 +4904,7 @@
+@@ -4675,7 +4974,7 @@
  {
  	if (!substitution_proof(typing, substitution)) return NULL;
  	return pg_prove_substitution_extension(typing, source_extension,
@@ -1291,7 +1673,7 @@
  }
  
  struct pattern_variable {
-@@ -4718,7 +4947,7 @@
+@@ -4718,7 +5017,7 @@
  	if (!body) return NULL;
  	struct pg_graph temporary = {0};
  	const struct pg_evidence *result = NULL;
@@ -1300,7 +1682,7 @@
  	struct pattern_type_frame *frame = &root;
  	while (frame) {
  		const struct pg_evidence *child = NULL, *child_context = frame->context;
-@@ -4786,7 +5015,7 @@
+@@ -4786,7 +5085,7 @@
  			}
  			if (frame->next == frame->count) {
  				const struct pg_evidence *parameters = pg_prove_substitution(typing,
@@ -1309,7 +1691,7 @@
  					frame->parameters, frame->images);
  				result = pg_prove_reindex(typing, parameters, frame->instance.formation);
  				for (size_t i = frame->parameters + 1; result && i < frame->count; ++i)
-@@ -4798,7 +5027,7 @@
+@@ -4798,7 +5097,7 @@
  			size_t i = frame->next++;
  			if (i == frame->parameters) continue; /* Rebuild Self from the new parameters. */
  			const struct pg_evidence *selected = NULL;
@@ -1318,7 +1700,7 @@
  			for (size_t j = pg_evidence_context_map(pattern)->count;
  				pg_evidence_context(extension) != pg_evidence_context(prefix);
  				--j, extension = pg_context_parent_input(typing, extension)) {
-@@ -4835,7 +5064,7 @@
+@@ -4835,7 +5134,7 @@
  	if (!context_proof(typing, prefix) || !substitution_proof(typing, pattern)) return NULL;
  	if (!pg_evidence_owned_by(body, typing)) return NULL;
  	if (pg_evidence_judgement(body) != PG_JUDGEMENT_COMPUTATION_TYPE || pg_evidence_context(body) != pg_evidence_context(pattern)) return NULL;
@@ -1327,7 +1709,7 @@
  	size_t source_count, destination_count, common;
  	if (pg_context_extension_size(pg_evidence_context(source), pg_evidence_context(prefix), &source_count)) return NULL;
  	if (pg_context_extension_size(pg_evidence_context(destination), pg_evidence_context(prefix), &destination_count)) return NULL;
-@@ -4873,7 +5102,7 @@
+@@ -4873,7 +5172,7 @@
  	for (size_t i = 0; inverse && i < destination_count; ++i) {
  		const struct pattern_variable *entry = pattern_variable(&variables, pg_evidence_context(fields[i])->binder);
  		if (entry) {
@@ -1336,7 +1718,7 @@
  			const struct pg_evidence *domain = pg_prove_reindex(typing, inverse, pg_context_declared_input(typing, fields[i]));
  			if (!image || !domain) goto done;
  			if (pg_alpha_equal(pg_evidence_subject(image)->classifier, pg_evidence_subject(domain)->core) == 1) {
-@@ -4890,7 +5119,7 @@
+@@ -4890,7 +5189,7 @@
  	result = pattern_index_type(typing, prefix, pattern, inverse, result);
  	/* Keep every intermediate substitution total and typed. Only then remove
  	 * fresh nuisance fields, checking that the result does not depend on them. */
@@ -1345,7 +1727,7 @@
  		extension = pg_context_parent_input(typing, extension))
  		result = pg_prove_pi_constant_codomain(typing,
  			pg_prove_pi(typing, extension, result));
-@@ -5145,16 +5374,40 @@
+@@ -5145,16 +5444,40 @@
  	return pg_alpha_equal(pg_pi_constant_codomain(resume), carrier) == 1;
  }
  
@@ -1388,7 +1770,7 @@
  	if (!pg_evidence_owned_by(computation, typing)) return NULL;
  	if (!pg_evidence_owned_by(returned, typing)) return NULL;
  	if (!pg_evidence_owned_by(carrier, typing)) return NULL;
-@@ -5178,22 +5431,21 @@
+@@ -5178,22 +5501,21 @@
  	struct pg_graph temporary = {0};
  	const struct pg_evidence **premises = pg_alloc(&temporary, n * sizeof(*premises));
  	const struct pg_object **labels = pg_alloc(&temporary, count * sizeof(*labels));
@@ -1415,7 +1797,7 @@
  		operands[i + 2] = pg_evidence_subject(body);
  		premises[3 + 3 * i] = operation->payload_type;
  		premises[4 + 3 * i] = operation->response_type;
-@@ -5202,8 +5454,9 @@
+@@ -5202,8 +5524,9 @@
  	const struct pg_effect_row *handled = pg_effect_row(typing->graph, count, labels);
  	const struct pg_effect_row *forwarded = pg_effect_difference(typing->graph, input_effects, handled);
  	if (pg_effect_subset(forwarded, output_effects) != 1) goto done;
@@ -1427,16 +1809,25 @@
  	if (!core) goto done;
  	const struct pg_occurrence *subject = pg_occurrence_typed(typing, PG_JUDGEMENT_COMPUTATION, core, pg_evidence_subject(carrier), NULL, count + 2, operands);
  	if (!subject) goto done;
-@@ -5367,7 +5620,7 @@
+@@ -5361,13 +5684,14 @@
+ 	if (pg_evidence_context(context) != pg_evidence_context(term)) return NULL;
+ 	if (pg_evidence_judgement(term) != PG_JUDGEMENT_VALUE &&
+ 		pg_evidence_judgement(term) != PG_JUDGEMENT_COMPUTATION) return NULL;
+-	return typed_query_request(typing, pg_evidence_subject(term), NULL, TYPED_CLASSIFIER, 0, NULL);
++	const void *inputs[] = {pg_evidence_subject(term), NULL};
++	return pg_typed_query_request(typing, TYPED_CLASSIFIER, 0, inputs, NULL);
+ }
+ 
  static int typed_classifier_step(struct pg_typed_query *work)
  {
- 	struct typed_recipe_query *local = pg_typed_query_state(work);
+-	struct typed_recipe_query *local = pg_typed_query_state(work);
 -	struct pg_typing *typing = work->typing;
++	struct typed_classifier_query *local = pg_typed_query_state(work);
 +	struct pg_typing *typing = pg_typed_query_typing(work);
  	const struct pg_occurrence *subject = typed_source(work);
  	uint64_t level;
  	if (subject->type) work->result = pg_prove_structural_subject(typing, subject->type);
-@@ -5394,6 +5647,11 @@
+@@ -5394,6 +5718,11 @@
  		pg_alpha_equal(pg_evidence_subject(work->result)->core, subject->classifier) == 1 ? 1 : -1;
  }
  
@@ -1448,7 +1839,7 @@
  /* Universe successors are formed lazily in the typing store's graph. */
  static const struct pg_evidence *formed_classifier(struct pg_typing *typing,
  	const struct pg_evidence *term)
-@@ -5456,9 +5714,32 @@
+@@ -5456,9 +5785,32 @@
  	const struct pg_occurrence *subject = pg_evidence_subject(evidence);
  	return subject ? subject->classifier : NULL;
  }

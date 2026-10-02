@@ -860,6 +860,29 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   union or dispatcher still re-expands the Oracle payloads. Verify owner-local
   semantic handling and removal of the broad `source_work` layout, not just
   disappearance of an enum or reduction of the Job count.
+  Verified prototype increment (2026-10-02, agent decision, parent `076a35f`):
+  remove Evidence's `typed_recipe_query` union and its cross-role initializer.
+  The eleven query roles retain only actual suspension fields: classifier has
+  one input pointer, phase checking has no private state. Composition borrows
+  the calling owner's cursor instead of casting unrelated states to a common
+  layout. Request keys, chosen receipts, dependency and transition order remain;
+  no object witness, acceptance owner, semantic tag or wire field is added.
+  [Private layouts](../src/prototype/solver_inputs/typed_owner_layout.tsv) are
+  verified on the 64-bit sanitizer build (formerly 104 bytes for every role).
+  Zero/split fuel, interrupted scope/selection/inductive queries, zero-state
+  phase reuse and compact classifier/origin/rebase tests pass. Full O2
+  regression/examples/acceptance, semantic persistence, seven checkpoint and
+  five C gates, ASan/UBSan/leaks Core/synthesis/source/derivation I/O and
+  fresh/current-worktree checks pass. All 388 reassembled C/header files match.
+  [Paired census](../src/prototype/solver_inputs/typed_owner_measurements.tsv)
+  changes only query-layout bytes on five inputs at fuel 0/100/1000/completion;
+  completed QuickSort saves 949,336 bytes, not a peak-RAM or speedup claim.
+  [Applied deltas](../src/prototype/solver_inputs/typed_owner_delta.tsv):
+  implementation +153/-82 (net +71), tests +23/-0; no source-line reduction.
+  All 52 List images/report equal the parent; the same three public reload
+  failures remain, not waived. [Inputs](../src/prototype/solver_inputs/typed_owner_inputs.tsv)
+  pin hashes. Logs: `/tmp/a-program-typed-owner-`. SE1-SE5 remain open;
+  prototype only, unrelated user edits excluded.
   Verified upper-layout deletion (2026-10-02, agent decision, parent `30bf913`):
   the broad `source_work`, `EXPRESSION_JOB` and shared semantic `step` are
   removed. Private Match/reference/module/graph-reference/return-sequencing
