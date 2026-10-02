@@ -1,0 +1,7 @@
+file	added	deleted	net
+src/conversion.c	29	17	12
+src/conversion.h	7	3	4
+src/evidence.c	24	12	12
+tests/core.c	37	13	24
+tests/iadt.c	19	7	12
+tests/derivation_io.c	7	2	5

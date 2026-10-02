@@ -695,6 +695,20 @@ no general speedup. Full O2, persistence/checkpoints, C and focused sanitizer
 gates pass; [hashes](effect_frontier_inventory.tsv) pin the tested candidate.
 The same three public reload failures and SE1-SE5 remain open. Prototype only.
 
+Dependent-field checking also borrows its parameter/Self prefix from the existing
+Context map, and its suffix Core/binder from original Occurrences/declarations.
+The binding copy, unchanged-prefix reduction slots and congruence target-image
+scratch array are removed. Original versus reduced fields still require genuine
+receipts; no acceptance rule or persistent graph is added. Against `7d72b62`,
+[all census rows](field_inputs_measurements.tsv) and 52 List images/report agree,
+including the same three unresolved public reload failures. Full O2 regression,
+persistence/checkpoints, C and focused sanitizers pass; 64-parameter and split-
+budget tests pass in fresh and current-user-edit trees. [Actual source deltas](field_inputs_delta.tsv)
+are implementation +28 and tests +41, not a line-count reduction. [Hashes](field_inputs_inventory.tsv)
+and [partial allocation samples](field_inputs_allocation.tsv) pin this unpromoted
+prototype increment. The broad rule header is checking metadata, not a copied
+Oracle Term; packing it and reconstructing consumers is not an adopted solution.
+
 Use the parent plan for progress. Create and verify a disposable candidate:
 
 ```sh

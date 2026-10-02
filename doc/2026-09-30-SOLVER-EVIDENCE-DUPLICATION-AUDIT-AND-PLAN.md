@@ -1370,9 +1370,11 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   Remove the corresponding duplicated structural walkers and overbroad private
   state. Keep genuinely unfinished queries and effect dependencies; do not
   replace all of them with an unconditional wait for accepted Evidence.
-  Next owner-locality audit: `synthesis_derivation.c:rule_key/rule_header` still
-  retains the broad 18-field raw derivation interface. Distinguish its actual
-  checking parameters from rebuilt Term payload; do not claim its removal yet.
+  Owner-locality audit (2026-10-03, `7d72b62`, agent assessment): the broad
+  `rule_key/rule_header` input carries checking parameters, not copied Oracle
+  Terms. Replacing it with a packed record and reconstructing headers for
+  consumers would add a boundary without removing a semantic duplicate;
+  reject that shortcut. Localizing the actual rule contracts remains open.
   Verified prototype increment (2026-10-02, agent decision; parent `755363a`):
   classifier-formation, Variable and Host classifier shapes borrow their actual
   input queries. Delete the forwarding type-query path/helper and Variable/Host
@@ -1750,6 +1752,37 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   Match/induction/constructor. Migrate interning keys, consumers, export and
   ordinary checking in the same milestone. Recheck concurrent relocation work;
   do not overwrite it or silently discard required scope/formation evidence.
+  - [x] **Dependent-field inputs (2026-10-03, parent `7d72b62`):** remove
+    `typed_field.bindings` and the prefix reduction slots; borrow unchanged
+    prefix images from the existing Context map and suffix Core/binder from
+    retained original Occurrences/declarations. Preserve original versus
+    reduced fields and their exact pure reduction receipts. Replace conversion
+    congruence's copied target-image array with a synchronous input reader,
+    shared by both substitutions. Verify dependent-field exposure, receipt
+    rejection, zero/split fuel, serialization and sorting regressions before
+    publishing. This is an agent implementation decision within the existing
+    duplicate-removal scope, not a new equality or acceptance rule.
+    Verified prototype: prefix images are borrowed, suffix inputs retain only
+    original Occurrences and their genuine reduction receipts. Both endpoint
+    substitutions use the same Core algorithm through stack-only readers;
+    no callback, extra Job, Term tag or acceptance state is retained. On this
+    64-bit build the two old field arrays used `24*(prefix+ordinal)` requested
+    bytes, versus `16*ordinal` now; congruence's temporary target array is gone.
+    These are layout facts, not peak-RAM or speedup claims. Full O2 regression,
+    examples/acceptance, persistence/seven checkpoints, five C gates and focused
+    ASan/UBSan/leaks pass. Added checks cover 64 parameters, last-field-first,
+    chunks 1/64, unchanged/shadowed inputs, invalid receipts and caller mutation.
+    Fresh assembly matches all 156 C/header files; fresh and concurrent-user-edit
+    Core/IADT checks pass, as does current-tree synthesis. [All paired census
+    rows](../src/prototype/solver_inputs/field_inputs_measurements.tsv) and all
+    52 public List images/partition TSV equal the parent. The three public
+    reload failures remain, not waived. [Allocation samples](../src/prototype/solver_inputs/field_inputs_allocation.tsv)
+    are cumulative external arena requests with process variation. [Applied
+    deltas](../src/prototype/solver_inputs/field_inputs_delta.tsv): implementation
+    +60/-32 (net +28), tests +63/-22 (net +41), excluding docs and patch context.
+    [Hashes](../src/prototype/solver_inputs/field_inputs_inventory.tsv) pin inputs,
+    sources and binaries; logs use `/tmp/a-program-field-inputs-`. SE1-SE5 remain
+    open; accepted code and unrelated user edits are not promoted by this change.
   Increment against `2f2e6d1` (2026-10-02, agent decision):
   - [x] Delete `premise_slice`; existing variable-arity constructors accept one
     synchronous array/reader view, also used by their admission interner.
