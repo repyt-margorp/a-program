@@ -1,6 +1,6 @@
 --- a/synthesis_schema.c
 +++ b/synthesis_schema.c
-@@ -1,6 +1,66 @@
+@@ -1,23 +1,501 @@
  #include "synthesis_schema.h"
 +#include "synthesis_conversion.h"
  #include "iadt.h"
@@ -67,7 +67,10 @@
  struct constructor_result_work { struct pg_synthesis_job *left, *right; };
  struct schema_work {
  	struct pg_index names;
-@@ -10,14 +70,431 @@
+-	struct pg_synthesis_job *left, *right;
++	struct pg_synthesis_job *left;
+ 	const struct pg_data_declaration *nominal_input;
+ 	const struct pg_data_schema *schema;
  	struct source_constructor *members;
  	size_t indexed, checked;
  };
@@ -174,9 +177,10 @@
 +			if (candidate == stored) allocation = local->nominal_input;
 +			binder = allocation ? parameters->binder : pg_binder(synthesis->typing->graph);
 +		} else binder = pg_binder(synthesis->typing->graph);
++		const struct pg_evidence *indices = indexed ? pg_synthesis_result(local->right) : NULL;
 +		const struct pg_evidence *self = indexed
 +			? pg_prove_family_context_extension(synthesis->typing, pg_synthesis_scope_context(scope), binder,
-+				local->right->result, pg_prove_projection(synthesis->typing, local->right->result, local->domain))
++				indices, pg_prove_projection(synthesis->typing, indices, local->domain))
 +			: pg_prove_context_extension(synthesis->typing, pg_synthesis_scope_context(scope), binder, local->domain);
 +		if (allocation) self = pg_prove_context_alpha(synthesis->typing, self,
 +			pg_data_declaration_parameters(allocation));
@@ -499,7 +503,7 @@
  
  static void schema_destroy(struct pg_synthesis_job *job)
  {
-@@ -50,7 +527,7 @@
+@@ -50,7 +528,7 @@
  
  const struct pg_data_schema *pg_synthesis_schema_result(const struct pg_synthesis_job *job)
  {
@@ -508,7 +512,7 @@
  	const struct schema_work *local = pg_synthesis_work_state(job, DATA_SCHEMA_JOB);
  	return local->schema;
  }
-@@ -64,7 +541,7 @@
+@@ -64,7 +542,7 @@
  
  const struct pg_data_declaration *pg_synthesis_schema_allocation(const struct pg_synthesis_job *job)
  {
@@ -517,7 +521,7 @@
  	const struct schema_work *local = pg_synthesis_work_state(job, DATA_SCHEMA_JOB);
  	return local->nominal_input ? local->nominal_input : pg_data_schema_declaration(local->schema);
  }
-@@ -75,7 +552,7 @@
+@@ -75,7 +553,7 @@
  	const struct pg_source_scope *scope = job->inputs[0];
  	const struct pg_syntax *syntax = job->inputs[2];
  	if (pg_synthesis_scope_wait(synthesis, job, scope)) return;
@@ -526,16 +530,28 @@
  	if (!pg_synthesis_scope_context(scope)) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
  	if (!local->left) {
  		if (syntax->kind == PG_SYNTAX_LAMBDA) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
-@@ -172,7 +649,7 @@
+@@ -88,7 +566,7 @@
+ 	if (pg_synthesis_await(synthesis, job, indices)) return;
+ 	if (!local->right) {
+ 		local->right = pg_synthesis_data_result(synthesis, pg_synthesis_telescope_scope(local->left),
+-			pg_synthesis_scope_context(scope), indices->result, pg_synthesis_telescope_body(local->left));
++			pg_synthesis_scope_context(scope), pg_synthesis_result(indices), pg_synthesis_telescope_body(local->left));
+ 		pg_synthesis_subscribe(synthesis, job, local->right, 0);
+ 		return;
+ 	}
+@@ -172,9 +650,9 @@
  	for (size_t bucket = 0; bucket < synthesis->jobs.capacity; ++bucket)
  		for (const struct pg_index_entry *entry = synthesis->jobs.buckets[bucket]; entry; entry = entry->next) {
  			const struct pg_synthesis_job *job = (const void *)entry;
 -			if (job->role != DATA_SCHEMA_JOB || job->status != PG_SYNTHESIS_REJECTED) continue;
 +			if (pg_synthesis_work_role(job) != DATA_SCHEMA_JOB || job->status != PG_SYNTHESIS_REJECTED) continue;
  			const struct schema_work *state = pg_synthesis_work_state(job, DATA_SCHEMA_JOB);
- 			const struct pg_syntax *constructors = pg_synthesis_telescope_body(state->right);
+-			const struct pg_syntax *constructors = pg_synthesis_telescope_body(state->right);
++			const struct pg_syntax *constructors = pg_synthesis_telescope_body(state->left);
  			if (!constructors || state->checked == constructors->item_count || !state->members) continue;
-@@ -196,7 +673,7 @@
+ 			const struct source_constructor *member = &state->members[state->checked];
+ 			if (!member->indices) continue;
+@@ -196,19 +674,17 @@
  	const struct pg_source_scope *scope = job->inputs[0];
  	const struct pg_syntax *syntax = job->inputs[1];
  	if (pg_synthesis_scope_wait(synthesis, job, scope)) return;
@@ -544,3 +560,27 @@
  	if (!pg_synthesis_scope_context(scope)) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
  	if (!local->left) {
  		local->left = local->nominal_input ? pg_synthesis_telescope_at(synthesis, scope, syntax->left,
+ 			pg_data_declaration_parameters(local->nominal_input), pg_data_declaration_indices(local->nominal_input))
+ 			: pg_synthesis_telescope(synthesis, scope, syntax->left);
+ 		if (!local->left) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+-		local->right = pg_synthesis_telescope_structure(synthesis, scope, syntax->left);
+-		pg_synthesis_subscribe(synthesis, job, local->right, 0);
+-		return;
+ 	}
+-	if (local->right->status != PG_SYNTHESIS_DONE) { pg_synthesis_finish(synthesis, job, local->right->status); return; }
+-	const struct pg_syntax *constructors = pg_synthesis_telescope_body(local->right);
++	if (pg_synthesis_await_preparation(synthesis, job, local->left, NULL)) return;
++	const struct pg_syntax *constructors = pg_synthesis_telescope_body(local->left);
++	if (!constructors) { pg_synthesis_finish(synthesis, job, local->left->status); return; }
+ 	if (!local->names.capacity) {
+ 		if (constructors->kind != PG_SYNTAX_CONSTRUCTORS) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
+ 		if (pg_index_init(&local->names) != 0) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+@@ -247,7 +723,7 @@
+ 	}
+ 	if (local->checked == constructors->item_count) {
+ 		if (pg_synthesis_await(synthesis, job, local->left)) return;
+-		const struct pg_evidence *indices = local->left->result;
++		const struct pg_evidence *indices = pg_synthesis_result(local->left);
+ 		if (local->nominal_input) indices = pg_prove_context_alpha(synthesis->typing, indices,
+ 			pg_data_declaration_indices(local->nominal_input));
+ 		if (!indices) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }

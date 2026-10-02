@@ -13,11 +13,13 @@
 +static void scope_context_step(struct pg_synthesis *, struct pg_synthesis_job *);
  static void domain_step(struct pg_synthesis *, struct pg_synthesis_job *);
  static void telescope_step(struct pg_synthesis *, struct pg_synthesis_job *);
- static void telescope_structure_step(struct pg_synthesis *, struct pg_synthesis_job *);
+-static void telescope_structure_step(struct pg_synthesis *, struct pg_synthesis_job *);
  static void declared_type_step(struct pg_synthesis *, struct pg_synthesis_job *);
  static void domain_structure_step(struct pg_synthesis *, struct pg_synthesis_job *);
  static const struct pg_term *declaration_result(const struct pg_synthesis_job *);
 +static struct pg_synthesis_input domain_output(const struct pg_synthesis_job *);
++static struct pg_synthesis_projection telescope_projection(const struct pg_synthesis_job *);
++static struct pg_synthesis_input telescope_output(const struct pg_synthesis_job *);
  static const struct pg_synthesis_work_class BINDING_JOB[1] = {{
 +	.pending = {&pg_synthesis_pending_ops},
  	.size = sizeof(struct binding_work), .advance = binding_step}};
@@ -27,13 +29,14 @@
  static const struct pg_synthesis_work_class DOMAIN_JOB[1] = {{
 -	.size = sizeof(struct domain_work), .advance = domain_step}};
 -static const struct pg_synthesis_work_class TELESCOPE_JOB[1] = {{.advance = telescope_step}};
+-static const struct pg_synthesis_work_class TELESCOPE_STRUCTURE_JOB[1] = {{
+-	.size = sizeof(struct telescope_work), .advance = telescope_structure_step}};
 +	.pending = {&pg_synthesis_pending_ops},
 +	.size = sizeof(struct domain_work), .advance = domain_step, .output = domain_output}};
 +static const struct pg_synthesis_work_class TELESCOPE_JOB[1] = {{
-+	.pending = {&pg_synthesis_pending_ops},.advance = telescope_step}};
- static const struct pg_synthesis_work_class TELESCOPE_STRUCTURE_JOB[1] = {{
 +	.pending = {&pg_synthesis_pending_ops},
- 	.size = sizeof(struct telescope_work), .advance = telescope_structure_step}};
++	.size = sizeof(struct telescope_work), .advance = telescope_step,
++	.project = telescope_projection, .output = telescope_output}};
  static const struct pg_synthesis_work_class DECLARED_TYPE_JOB[1] = {{
 +	.pending = {&pg_synthesis_pending_ops},
  	.size = sizeof(struct declaration_work), .advance = declared_type_step, .structure = declaration_result}};
@@ -157,7 +160,7 @@
  }
  
  /* In binder annotations, an arrow telescope ending in @ declares a logical
-@@ -202,8 +274,8 @@
+@@ -202,71 +274,83 @@
  	const struct pg_syntax *syntax = job->inputs[1];
  	if (syntax->binder_marker) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
  	struct binding_work *local = pg_synthesis_work_state(job, BINDING_JOB);
@@ -168,25 +171,122 @@
  	job->result = family_parameter_annotation(pg_evidence_subject(domain)->core)
  		? family_parameter_context(synthesis, pg_synthesis_scope_context(scope), local->binder, domain)
  		: pg_prove_context_extension(synthesis->typing, pg_synthesis_scope_context(scope), local->binder, domain);
-@@ -240,7 +312,7 @@
- static const struct telescope_work *telescope_result(const struct pg_synthesis_job *job)
- {
- 	if (!job || job->status != PG_SYNTHESIS_DONE) return NULL;
--	if (job->role == TELESCOPE_JOB) job = job->inputs[0];
-+	if (pg_synthesis_work_role(job) == TELESCOPE_JOB) job = job->inputs[0];
- 	return pg_synthesis_work_state(job, TELESCOPE_STRUCTURE_JOB);
- }
- 
-@@ -289,33 +361,49 @@
- 	if (pg_synthesis_scope_wait(synthesis, job, outer)) return;
- 	if (pg_synthesis_await(synthesis, job, structure)) return;
- 	const struct pg_source_scope *scope = pg_synthesis_telescope_scope(structure);
--	if (pg_synthesis_await(synthesis, job, scope->context_job)) return;
-+	if (pg_synthesis_await_input(synthesis, job, scope->context)) return;
- 	job->result = pg_synthesis_scope_context(scope);
  	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
  }
  
+-struct pg_synthesis_job *pg_synthesis_telescope_structure(struct pg_synthesis *synthesis,
+-	const struct pg_source_scope *scope, const struct pg_syntax *syntax)
+-{
+-	if (!scope || scope->owner != synthesis->owner_key || !syntax) return NULL;
+-	return pg_synthesis_work_request(synthesis, TELESCOPE_STRUCTURE_JOB, 2, (const void *[]){scope, syntax});
+-}
+-
+ struct pg_synthesis_job *pg_synthesis_telescope(struct pg_synthesis *synthesis,
+ 	const struct pg_source_scope *scope, const struct pg_syntax *syntax)
+ {
+-	struct pg_synthesis_job *structure = pg_synthesis_telescope_structure(synthesis, scope, syntax);
+-	return structure ? pg_synthesis_work_request(synthesis, TELESCOPE_JOB, 1, (const void *[]){structure}) : NULL;
++	if (!scope || scope->owner != synthesis->owner_key || !syntax) return NULL;
++	return pg_synthesis_work_request(synthesis, TELESCOPE_JOB, 2, (const void *[]){scope, syntax});
+ }
+ 
+ struct pg_synthesis_job *pg_synthesis_telescope_at(struct pg_synthesis *synthesis,
+ 	const struct pg_source_scope *scope, const struct pg_syntax *syntax,
+ 	const struct pg_context *prefix, const struct pg_context *end)
+ {
+-	struct pg_synthesis_job *structure = pg_synthesis_telescope_structure(synthesis, scope, syntax);
+-	if (!structure) return NULL;
+-	struct telescope_work *local = pg_synthesis_work_state(structure, TELESCOPE_STRUCTURE_JOB);
++	struct pg_synthesis_job *job = pg_synthesis_telescope(synthesis, scope, syntax);
++	if (!job) return NULL;
++	struct telescope_work *local = pg_synthesis_work_state(job, TELESCOPE_JOB);
+ 	if (pg_synthesis_context_allocation_at(synthesis, &local->allocation, prefix, end, local->scope != NULL)) return NULL;
+-	return pg_synthesis_telescope(synthesis, scope, syntax);
++	return job;
+ }
+ 
+-/* The checked telescope borrows the structural request's scope and tail.
+- * It has no second cursor or copied result; its result certifies the Context. */
+-static const struct telescope_work *telescope_result(const struct pg_synthesis_job *job)
++/* Lexical discovery is available before Context admission. Both readiness
++ * notification and readers use this cursor, not another structural owner. */
++static const struct telescope_work *prepared_telescope(const struct pg_synthesis_job *job)
+ {
+-	if (!job || job->status != PG_SYNTHESIS_DONE) return NULL;
+-	if (job->role == TELESCOPE_JOB) job = job->inputs[0];
+-	return pg_synthesis_work_state(job, TELESCOPE_STRUCTURE_JOB);
++	const struct telescope_work *local = pg_synthesis_work_state(job, TELESCOPE_JOB);
++	if (!local || !local->scope || !local->tail) return NULL;
++	const struct pg_syntax *syntax = job->inputs[1];
++	if (local->tail->kind == syntax->kind &&
++		(local->tail->kind == PG_SYNTAX_LAMBDA || local->tail->kind == PG_SYNTAX_PI)) return NULL;
++	if (local->allocation && local->allocation->next != local->allocation->count) return NULL;
++	return local;
++}
++
++static struct pg_synthesis_projection telescope_projection(const struct pg_synthesis_job *job)
++{
++	return (struct pg_synthesis_projection){.value_kind = -1,
++		.preparing = job->status == PG_SYNTHESIS_PENDING && !prepared_telescope(job)};
++}
++
++static struct pg_synthesis_input telescope_output(const struct pg_synthesis_job *job)
++{
++	const struct telescope_work *local = prepared_telescope(job);
++	return local ? local->scope->context : (struct pg_synthesis_input){0};
+ }
+ 
+ const struct pg_source_scope *pg_synthesis_telescope_scope(const struct pg_synthesis_job *job)
+ {
+-	const struct telescope_work *local = telescope_result(job);
++	const struct telescope_work *local = prepared_telescope(job);
+ 	return local ? local->scope : NULL;
+ }
+ 
+ const struct pg_syntax *pg_synthesis_telescope_body(const struct pg_synthesis_job *job)
+ {
+-	const struct telescope_work *local = telescope_result(job);
++	const struct telescope_work *local = prepared_telescope(job);
+ 	return local ? local->tail : NULL;
+ }
+ 
+-static void telescope_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
++static void telescope_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+ {
+ 	const struct pg_source_scope *scope = job->inputs[0];
+ 	if (pg_synthesis_scope_wait(synthesis, job, scope)) return;
+ 	const struct pg_syntax *syntax = job->inputs[1];
+-	struct telescope_work *local = pg_synthesis_work_state(job, TELESCOPE_STRUCTURE_JOB);
++	struct telescope_work *local = pg_synthesis_work_state(job, TELESCOPE_JOB);
+ 	if (!local->scope) { local->scope = scope; local->tail = syntax; }
+ 	if (local->tail->kind != syntax->kind ||
+ 		(local->tail->kind != PG_SYNTAX_LAMBDA && local->tail->kind != PG_SYNTAX_PI)) {
+-		pg_synthesis_finish(synthesis, job, local->allocation && local->allocation->next != local->allocation->count
+-			? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE);
++		if (local->allocation && local->allocation->next != local->allocation->count) {
++			pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
++		}
++		if (pg_synthesis_await_input(synthesis, job, local->scope->context)) return;
++		pg_synthesis_finish(synthesis, job, pg_synthesis_scope_context(local->scope) ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+ 		return;
+ 	}
+ 	const struct pg_object *binder = NULL;
+@@ -282,40 +366,44 @@
+ 	pg_synthesis_enqueue(synthesis, job);
+ }
+ 
+-static void telescope_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+-{
+-	struct pg_synthesis_job *structure = (void *)job->inputs[0];
+-	const struct pg_source_scope *outer = structure->inputs[0];
+-	if (pg_synthesis_scope_wait(synthesis, job, outer)) return;
+-	if (pg_synthesis_await(synthesis, job, structure)) return;
+-	const struct pg_source_scope *scope = pg_synthesis_telescope_scope(structure);
+-	if (pg_synthesis_await(synthesis, job, scope->context_job)) return;
+-	job->result = pg_synthesis_scope_context(scope);
+-	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+-}
+-
 -struct pg_synthesis_job *pg_synthesis_declared_type(struct pg_synthesis *synthesis,
 -	struct pg_synthesis_job *context, const struct pg_object *binder)
 +struct pg_synthesis_structure pg_synthesis_declared_type(struct pg_synthesis *synthesis,

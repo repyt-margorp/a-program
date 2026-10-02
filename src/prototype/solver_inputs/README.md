@@ -610,6 +610,16 @@ regression/examples/acceptance, focused sanitizer, persistence/checkpoint, C
 and dirty-current gates pass. SE1-SE5 and three public reload failures stay open.
 This is unpromoted prototype work; [hashes](leaf_structure_inputs.tsv) pin it.
 
+Telescope traversal and Context checking now share one cursor owner. Delete the
+second role/factory, Schema's duplicate pointer and the copied Context receipt;
+existing preparation/completion notification preserves provisional discovery
+without acceptance. Against `b54fdcb`, [census](telescope_owner_measurements.tsv)
+removes 68 QuickSort Jobs/result references and 115 dispatches, with unchanged
+completed typed/proof counts. [Implementation](telescope_owner_delta.tsv) is net
+-5 lines; [hashes](telescope_owner_inputs.tsv) pin the comparison. Full regression,
+persistence/checkpoints, C, sanitizer and fresh/current gates pass. The three
+public reload failures remain; this is unpromoted, unfinished SE1-SE5 work.
+
 Use the parent plan for progress. Create and verify a disposable candidate:
 
 ```sh

@@ -3335,6 +3335,15 @@
  	const struct pg_effect_row *effects;
  	enum pg_totality totality;
  	const struct pg_term *content;
+@@ -3428,7 +3177,7 @@
+ 		if (result->telescope->status != PG_SYNTHESIS_DONE) goto skip;
+ 		struct motive_lambda *frame = pg_alloc(typing->graph, sizeof(*frame));
+ 		if (!frame) goto error;
+-		*frame = (struct motive_lambda){context, result->telescope->result, result->effects, result->totality, result->lambdas};
++		*frame = (struct motive_lambda){context, pg_synthesis_result(result->telescope), result->effects, result->totality, result->lambdas};
+ 		result->lambdas = frame;
+ 		result->scope = pg_synthesis_telescope_scope(result->telescope);
+ 		result->syntax = pg_synthesis_telescope_body(result->telescope);
 @@ -3438,8 +3187,8 @@
  		if (!result->effects) goto error;
  		pg_synthesis_enqueue(synthesis, job); return;

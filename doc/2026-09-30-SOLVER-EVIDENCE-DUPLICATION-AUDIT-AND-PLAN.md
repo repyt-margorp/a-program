@@ -171,6 +171,15 @@ additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
 
+2026-10-02, agent decision against `b54fdcb`: Telescope discovery owns the
+Scope/tail cursor; a second `TELESCOPE_JOB` only waits for that cursor and copies
+its Context receipt. Consolidate discovery and checking on the existing owner,
+using the scheduler's preparation notification for provisional readers and
+ordinary completion for admitted Contexts. Borrow the Scope's checked output;
+delete the second factory/role and Schema's duplicate pointer. Preparation is
+not acceptance. Verify cyclic/unresolved domains, both kinds of waiter, nominal
+allocation, rejection, zero fuel and persistence before publishing the trial.
+
 2026-10-02, agent decision against `464f6aa`: pending Variable/Universe/Host
 leaf descriptions still allocate structural Jobs whose sole step invokes an
 existing Core constructor. Construct that syntax directly, without a new tag,
@@ -843,6 +852,26 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   and genuinely unfinished construction. Try direct owner references plus
   owner-local suspension state; document any residual allocation that cannot be
   eliminated and why. An independent Job graph is not an acceptance criterion.
+  Verified prototype increment (2026-10-02, parent `b54fdcb`; agent decision):
+  collapse structural/checked Telescope work into one cursor owner; delete the
+  second role/factory, Schema's duplicate pointer and copied Context receipt.
+  Existing preparation notification exposes lexical Scope/tail; full completion
+  alone borrows checked Context output. No replacement graph, tag or wire field.
+  Reuse, step-0 inertness, cyclic domains, preparation/completion waiters, rejected
+  domains and reserved-binder arity/conflict tests pass. Full O2 regression,
+  examples/acceptance, semantic persistence, seven checkpoint and five C gates,
+  focused ASan/UBSan/leaks and fresh/dirty-current checks pass. Fresh assembly
+  matches 128 C/header files and Synthesis tests; unrelated user edits excluded.
+  [Paired counts](../src/prototype/solver_inputs/telescope_owner_measurements.tsv)
+  retain completed Term/Occurrence/Evidence counts on five inputs. QuickSort
+  removes 68 Jobs/result references, 7,224 Job-layout bytes and 115 dispatches.
+  [Applied deltas](../src/prototype/solver_inputs/telescope_owner_delta.tsv):
+  implementation +54/-59 (net -5), tests +81/-24 (net +57), excluding patch/doc
+  lines. [Input/binary hashes](../src/prototype/solver_inputs/telescope_owner_inputs.tsv).
+  All 52 public partition images match the parent after mapping the completion
+  budget 1950->1939. The same three reload failures remain (exit 1), not waived;
+  the report differs only in that completion budget/used fuel. SE1-SE5 remain
+  open; prototype only. Logs use `/tmp/a-program-telescope-owner-`.
   Verified prototype increment (2026-10-02, parent `464f6aa`; agent decision): Variable,
   Universe and Host leaf descriptions use existing Core constructors directly;
   delete their no-work structural dispatches. Ordinary admission still rejects
