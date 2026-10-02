@@ -2260,6 +2260,39 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   and obsolete owner codecs. Keep only unfinished state needed by actual Solve
   consumers. Wire ordinals are transport references, not a new semantic layer.
   No C layout, ABI, LinkerScript or target-native representation enters `.a`.
+  Verified SE4 increment (2026-10-03, parent `6dfe793`; agent decision): completed
+  rule producers export their existing accepted typed inputs, not their former
+  Job recipe or effect-equation worker. Pending/refused inputs keep their actual
+  unchecked contract; writing does not check or advance them. Source wire
+  references use selected-root ordinals, so several producers can reference one
+  canonical receipt without a second mapping authority. No import trust changes.
+  - [x] Verify completed/pending sharing, removed effect history, import checking,
+    zero-fuel inertness, duplicate root order and invalid/foreign-input refusal.
+  - [x] Run regression, persistence/checkpoint/backend and sanitizer gates;
+    measure persisted closure and compare public split-fuel failures honestly.
+  The old before/after byte-identity expectation is superseded only after charged
+  admission: finished exports must equal direct checked exports, not preserve
+  obsolete equation sites. Untouched pending/refused inputs still resave
+  identically. A [2,048-request standalone derivation fixture](../src/prototype/solver_inputs/completed_inputs_closure.tsv)
+  shrinks from 311,656 to 360 bytes after admission and exactly equals direct
+  checked export. Its fresh import has no accepted evidence or step-0 progress;
+  ordinary Solve checks it. This is not a measured whole-program `.a` reduction.
+  [All five ordinary completed images](../src/prototype/solver_inputs/completed_inputs_images.tsv),
+  [20 paired census points](../src/prototype/solver_inputs/completed_inputs_measurements.tsv)
+  and [52 strict List partition images](../src/prototype/solver_inputs/completed_inputs_partitions.tsv)
+  match the parent. The same three public reload failures remain, exit 1.
+  Full O2 regression/examples/acceptance, semantic/seven checkpoint and five C
+  gates pass, including both LT providers/orders and the ordinary QuickSort
+  result connection. Final focused I/O/Synthesis, ASan/UBSan/leaks, fresh assembly
+  and user-edit Core/IADT/Synthesis checks pass; the parent fails the new receipt
+  selection expectation. [Applied delta](../src/prototype/solver_inputs/completed_inputs_delta.tsv):
+  implementation +12/-9 (net +3, including header comments), tests +114/-10
+  (net +104); docs/patch context excluded. No runtime speedup is claimed.
+  [Hashes](../src/prototype/solver_inputs/completed_inputs_inventory.tsv) pin
+  the inputs; logs use `/tmp/a-program-completed-inputs-`. Prototype only,
+  SE1-SE5 unfinished. Next audit/deletion target: completed source-producer
+  recipes, preserving necessary lexical/nominal provenance rather than moving
+  the same structure into another cache or record.
   Verified prototype increment (2026-10-03, parent `149eca0`; agent decision): delete the
   allocating rule-import wrapper. Import now writes caller-owned output slots;
   source restoration keeps them in its existing scratch, not the Program arena.

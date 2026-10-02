@@ -151,7 +151,7 @@
  		while (synthesis.ready) { assert(synthesis.steps < 4000); pg_synthesis_advance(&synthesis, chunk); }
  		for (size_t i = 0; i < count; ++i)
  			assert(pg_synthesis_status(jobs[i]) == (i == 4 ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_DONE));
-@@ -1171,29 +1179,102 @@
+@@ -1171,29 +1179,103 @@
  	pg_dag_destroy(&direct); pg_dag_destroy(&packed);
  }
  
@@ -170,8 +170,8 @@
 +	assert(view->count == snapshot->count);
 +	for (size_t i = 0; i < view->count; ++i) {
 +		const void *key = view->root(view->owner, i), *child;
-+		const void *expected = pg_synthesis_plain_derivation(snapshot->jobs[i])
-+			? (const void *)pg_synthesis_pending(snapshot->jobs[i]) : pg_synthesis_result(snapshot->jobs[i]);
++		const void *expected = pg_synthesis_result(snapshot->jobs[i]);
++		if (!expected) expected = pg_synthesis_pending(snapshot->jobs[i]);
 +		struct pg_derivation_input header;
 +		assert(key == expected && !view->header(view->owner, key, &header));
 +		direct_input_dependencies(&header, &pg_builtin_graph_codec, snapshot->graph);
@@ -184,7 +184,8 @@
 +		assert(view->root(view->owner, 0) == view->root(view->owner, 3));
 +		assert(!view->header(view->owner, view->root(view->owner, 1), &left));
 +		assert(!view->header(view->owner, view->root(view->owner, 2), &right));
-+		assert(left.effect_parameter && right.effect_parameter && left.effect_parameter != right.effect_parameter);
++		if (pg_synthesis_result(snapshot->jobs[1])) assert(!left.effect_parameter && !right.effect_parameter);
++		else assert(left.effect_parameter && right.effect_parameter && left.effect_parameter != right.effect_parameter);
 +	}
 +	++snapshot->seen;
 +	return pg_derivation_view_write(snapshot->file, view, snapshot->effects, &pg_builtin_graph_codec, snapshot->graph);
@@ -268,7 +269,7 @@
  	rewind(file);
  	return file;
  }
-@@ -1209,18 +1290,21 @@
+@@ -1209,18 +1291,21 @@
  static void retained_source_proof(struct pg_synthesis *synthesis,
  	struct pg_synthesis_job *source, uint64_t chunk)
  {
@@ -296,7 +297,7 @@
  	assert(restored && !pg_synthesis_result(restored));
  	assert(synthesis->typing->proofs.count == proofs);
  	uint64_t limit = synthesis->steps + 1000;
-@@ -1232,18 +1316,13 @@
+@@ -1232,18 +1317,13 @@
  	assert(pg_synthesis_result(restored) == accepted);
  	assert(synthesis->typing->proofs.count == proofs);
  	uint64_t steps = synthesis->steps;
@@ -319,16 +320,72 @@
  	assert(rejected);
  	limit = synthesis->steps + 1000;
  	while (pg_synthesis_status(rejected) == PG_SYNTHESIS_PENDING) {
-@@ -1253,8 +1332,6 @@
+@@ -1253,8 +1333,62 @@
  	assert(pg_synthesis_status(rejected) == PG_SYNTHESIS_REJECTED);
  	assert(pg_synthesis_result(source) == accepted && pg_synthesis_result(restored) == accepted);
  	pg_synthesis_destroy(&resumed);
 -	pg_effect_inference_destroy(&image);
 -	pg_graph_destroy(&storage);
++}
++
++static void completed_projection_closure(struct pg_synthesis *synthesis, uint64_t chunk)
++{
++	const struct pg_evidence *empty = pg_prove_empty_context(synthesis->typing);
++	struct pg_synthesis_job *root = pg_synthesis_plain_rule_inputs(synthesis,
++		PG_UNIVERSE_FORM, NULL, 1, &(struct pg_synthesis_input){.checked = empty});
++	for (size_t i = 0; i < 2048; ++i)
++		root = pg_synthesis_plain_rule_inputs(synthesis, PG_CONTEXT_PROJECTION, NULL, 2,
++			(struct pg_synthesis_input[]){{.checked = empty}, {.pending = pg_synthesis_pending(root)}});
++	assert(root);
++	FILE *pending = producer_snapshot(synthesis, 1, &root, synthesis->typing->graph);
++	assert(!fseek(pending, 0, SEEK_END));
++	long pending_bytes = ftell(pending);
++	uint64_t limit = synthesis->steps + 65536;
++	while (pg_synthesis_status(root) == PG_SYNTHESIS_PENDING) {
++		assert(synthesis->steps < limit);
++		pg_synthesis_advance(synthesis, chunk);
++	}
++	const struct pg_evidence *checked = pg_synthesis_result(root);
++	assert(checked);
++	FILE *completed = producer_snapshot(synthesis, 1, &root, synthesis->typing->graph);
++	assert(!fseek(completed, 0, SEEK_END));
++	long completed_bytes = ftell(completed);
++	assert(completed_bytes > 0 && completed_bytes < pending_bytes);
++	FILE *direct = tmpfile();
++	assert(direct && !pg_derivations_write_descriptors(direct, synthesis->typing, 1, &checked,
++		&pg_builtin_graph_codec, synthesis->typing->graph));
++	rewind(direct);
++	same_snapshot(completed, direct);
++	struct pg_graph graph;
++	struct pg_typing typing;
++	struct pg_whnf_work normalization;
++	struct pg_synthesis imported;
++	assert(!pg_graph_init(&graph) && !pg_typing_init(&typing, &graph));
++	assert(!pg_whnf_work_init(&normalization, &graph));
++	assert(!pg_synthesis_init(&imported, &typing, &normalization, PG_DEFINITION_EXPLICIT_THUNK));
++	rewind(completed);
++	size_t count;
++	const struct pg_derivation_input *const *inputs;
++	assert(!pg_derivations_read_descriptors(completed, &typing, 100, 100, &pg_builtin_graph_codec, &graph, &count, &inputs));
++	assert(count == 1 && !typing.proofs.count);
++	struct pg_synthesis_job *loaded = pg_synthesis_derivation(&imported, inputs[0]);
++	assert(loaded);
++	pg_synthesis_advance(&imported, 0);
++	assert(!imported.steps && !typing.proofs.count && !pg_synthesis_result(loaded));
++	while (pg_synthesis_status(loaded) == PG_SYNTHESIS_PENDING) {
++		assert(imported.steps < 1000);
++		pg_synthesis_advance(&imported, chunk);
++	}
++	assert(pg_synthesis_status(loaded) == PG_SYNTHESIS_DONE);
++	assert(pg_evidence_subject(pg_synthesis_result(loaded))->core == pg_universe(&graph, 0));
++	pg_synthesis_destroy(&imported); pg_whnf_work_destroy(&normalization);
++	pg_typing_destroy(&typing); pg_graph_destroy(&graph);
++	printf("completed projection closure: %ld pending -> %ld checked bytes, no retained Job chain\n", pending_bytes, completed_bytes);
++	assert(!fclose(pending) && !fclose(completed));
  }
  
  static void producer_proofs(FILE *file, struct pg_typing *typing,
-@@ -1276,10 +1353,12 @@
+@@ -1276,10 +1410,12 @@
  		struct pg_graph storage;
  		struct pg_effect_inference image;
  		assert(!pg_graph_init(&storage) && !pg_effect_inference_init(&image, &storage));
@@ -344,15 +401,17 @@
  		pg_effect_inference_destroy(&image);
  		pg_graph_destroy(&storage);
  		while (pg_synthesis_status(identity) == PG_SYNTHESIS_PENDING) {
-@@ -1289,7 +1368,6 @@
+@@ -1288,8 +1424,8 @@
+ 		}
  		assert(pg_synthesis_status(identity) == PG_SYNTHESIS_DONE);
  		retained_source_proof(&synthesis, identity, chunk);
++		completed_projection_closure(&synthesis, chunk);
  		const struct pg_evidence *u = pg_prove_universe(typing, pg_prove_empty_context(typing), 0);
 -		struct pg_synthesis_job *universe = pg_synthesis_evidence(&synthesis, u);
  		const struct pg_term *type = pg_evidence_subject(u)->core;
  		const struct pg_object *op = pg_operation_label_create(graph, type, type);
  		const struct pg_effect_row *empty = pg_effect_row(graph, 0, NULL), *seed = pg_effect_row(graph, 1, &op);
-@@ -1299,29 +1377,37 @@
+@@ -1299,29 +1435,37 @@
  		assert(!pg_effect_dependency(&first, pg_effect_equation(&first, seed), empty, a));
  		struct pg_derivation_input header = {.rule = PG_RETURN_TYPE_FORM, .count = 1};
  		struct pg_synthesis_job *selected[] = {identity,
@@ -398,7 +457,7 @@
  		pg_effect_inference_destroy(&image);
  		pg_graph_destroy(&storage);
  		const char declaration_source[] = "D := @{};";
-@@ -1348,7 +1434,7 @@
+@@ -1348,7 +1492,7 @@
  		assert(!pg_effect_inference_init(&image, graph));
  		size_t count;
  		const struct pg_derivation_input *const *inputs;
@@ -407,15 +466,26 @@
  		assert(count == 4 && inputs[0] == inputs[3] && !typing->proofs.count);
  		struct pg_synthesis_job *jobs[4];
  		for (size_t i = 0; i < count; ++i) jobs[i] = pg_synthesis_derivation_inference(&synthesis, inputs[i], &image);
-@@ -1360,7 +1446,6 @@
+@@ -1360,10 +1504,16 @@
  		assert(pg_synthesis_status(jobs[0]) == PG_SYNTHESIS_DONE && jobs[0] == jobs[3]);
  		assert(!pg_synthesis_result(jobs[1]) && !pg_synthesis_result(jobs[2]));
  		pg_effect_inference_seal(&image);
 -		assert(pg_synthesis_effect_inference(&synthesis, &image));
  		while (synthesis.ready) { assert(synthesis.steps < 4000); pg_synthesis_advance(&synthesis, chunk); }
  		for (size_t i = 0; i < count; ++i) assert(pg_synthesis_status(jobs[i]) == PG_SYNTHESIS_DONE);
- 		same_snapshot(snapshot, producer_snapshot(&synthesis, count, jobs, typing->graph));
-@@ -1395,6 +1480,17 @@
+-		same_snapshot(snapshot, producer_snapshot(&synthesis, count, jobs, typing->graph));
++		assert(!fclose(snapshot));
++		/* Completed inputs encode exactly the checked closure, not worker history. */
++		snapshot = tmpfile();
++		const struct pg_evidence *checked[4];
++		for (size_t i = 0; i < count; ++i) checked[i] = pg_synthesis_result(jobs[i]);
++		assert(snapshot && !pg_derivations_write_descriptors(snapshot, typing, count, checked, &pg_builtin_graph_codec, graph));
++		same_snapshot(snapshot, producer_snapshot(&synthesis, count, jobs, graph));
++		same_snapshot(snapshot, producer_snapshot(&synthesis, count, jobs, graph));
+ 		assert(!fclose(snapshot));
+ 		struct pg_derivation_input invalid = {.rule = PG_APP_ELIM};
+ 		struct pg_synthesis_job *rejected = pg_synthesis_derivation(&synthesis, &invalid);
+@@ -1395,6 +1545,17 @@
  	pg_whnf_work_destroy(&normalization);
  }
  
@@ -433,7 +503,7 @@
  static const struct pg_evidence *data_formation_request(struct pg_typing *typing,
  	const struct pg_evidence *proof, const struct pg_evidence *formation)
  {
-@@ -1403,13 +1499,8 @@
+@@ -1403,13 +1564,8 @@
  	enum pg_evidence_rule rule = pg_evidence_rule(proof);
  	assert(rule == PG_CONSTRUCTOR_INTRO || rule == PG_MATCH_ELIM || rule == PG_INDUCTION_ELIM);
  	size_t count = pg_evidence_premise_count(proof);
@@ -449,7 +519,7 @@
  }
  
  static void nominal_proofs(FILE *file, struct pg_typing *typing,
-@@ -1431,7 +1522,7 @@
+@@ -1431,7 +1587,7 @@
  			pg_prove_substitution(typing, parameters, parameters, 1, &self_type),
  			pg_prove_substitution(typing, parameters, fields, 1, &field_self)};
  		const struct pg_data_signature *signature = pg_data_signature(typing, parameters, parameters);
@@ -458,7 +528,7 @@
  		const struct pg_evidence *formation = pg_prove_inductive_type(typing, schema);
  		const struct pg_data_layout *layout = pg_data_schema_layout(schema);
  		const struct pg_evidence *identity = pg_prove_substitution(typing, empty, empty, 0, NULL);
-@@ -1448,7 +1539,7 @@
+@@ -1448,7 +1604,7 @@
  			pg_prove_return(typing, pg_prove_variable(typing, p_context, p)));
  		const struct pg_evidence *branches[] = {base, predecessor};
  		const struct pg_evidence *match = pg_prove_match(typing, formation,
@@ -467,7 +537,7 @@
  		const struct pg_evidence *scope = pg_prove_induction_scope(typing, formation,
  			pg_data_constructor(layout, 1), identity, z_context, motive);
  		assert(scope);
-@@ -1458,15 +1549,15 @@
+@@ -1458,15 +1614,15 @@
  		const struct pg_evidence *twice = pg_prove_constructor(typing, formation,
  			pg_data_constructor(layout, 1), identity, 1, &succ);
  		const struct pg_evidence *induction = pg_prove_induction(typing, formation,
@@ -486,7 +556,7 @@
  		assert(type_zero && type_succ);
  		assert(pg_evidence_classifier(type_zero) == pg_universe(typing->graph, 2));
  		assert(pg_evidence_classifier(type_succ) == pg_universe(typing->graph, 2));
-@@ -1638,7 +1729,7 @@
+@@ -1638,7 +1794,7 @@
  		pg_prove_substitution_projection(typing, parameters, fields), indices,
  		pg_prove_variable(typing, fields, field));
  	const struct pg_data_schema *schema = pg_data_schema(typing,
@@ -495,7 +565,7 @@
  	const struct pg_evidence *formation = pg_prove_inductive_type(typing, schema);
  	const struct pg_object *constructor = pg_data_constructor(pg_data_schema_layout(schema), 0);
  	const struct pg_evidence *map = pg_prove_substitution_projection(typing, empty, context);
-@@ -1656,7 +1747,7 @@
+@@ -1656,7 +1812,7 @@
  	const struct pg_evidence *body = pg_prove_force(typing,
  		pg_substitution_image(typing, field_map, field));
  	const struct pg_evidence *branch = pg_prove_abstract(typing, context, scope, body);
@@ -504,7 +574,7 @@
  	assert(*decoded);
  	return encoded;
  }
-@@ -1880,6 +1971,7 @@
+@@ -1880,6 +2036,7 @@
  	struct pg_graph graph;
  	struct pg_typing typing;
  	assert(file && pg_graph_init(&graph) == 0 && pg_typing_init(&typing, &graph) == 0);

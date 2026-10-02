@@ -1,0 +1,3 @@
+fixture	pending_bytes	checked_bytes	removed_bytes	checked_matches_direct_export	checked_read_requires_solve
+optimized	311656	360	311296	true	true
+asan-ubsan	311656	360	311296	true	true

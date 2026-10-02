@@ -396,6 +396,8 @@
 -		if (pg_dag_add(&export->raw, job->inputs[0])) return -1;
 +	struct pg_pending *pending = (void *)key;
 +	if (!pg_synthesis_input_owned(export->synthesis, (struct pg_synthesis_input){.pending = pending})) return -1;
++	const struct pg_evidence *proof = pg_pending_result(pending);
++	if (proof) return pg_dag_add(&export->proofs, proof);
 +	const struct pg_synthesis_job *job = pg_pending_job(pending);
 +	if (job && pg_synthesis_work_role(job) == DERIVATION_JOB) {
 +		const struct pg_derivation_input *input = job->inputs[0];
@@ -416,8 +418,6 @@
 -	if (job->status == PG_SYNTHESIS_DONE && job->result)
 -		return pg_dag_add(&export->proofs, job->result);
 -	export->status = job->status == PG_SYNTHESIS_PENDING ? 1 : -1;
-+	const struct pg_evidence *proof = pg_pending_result(pending);
-+	if (proof) return pg_dag_add(&export->proofs, proof);
 +	export->status = pg_synthesis_pending_status(pending) == PG_SYNTHESIS_PENDING ? 1 : -1;
  	return -1;
  }
@@ -434,10 +434,10 @@
 -	if (input) *input = *header;
 -	return input;
 +	if (input.checked) return input.checked;
-+	const struct pg_synthesis_job *job = pg_pending_job(input.pending);
-+	if (job && pg_synthesis_work_role(job) == DERIVATION_JOB) return input.pending;
 +	const struct pg_evidence *proof = pg_pending_result(input.pending);
-+	return proof && pg_evidence_owned_by(proof, export->synthesis->typing) ? proof : NULL;
++	if (proof) return pg_evidence_owned_by(proof, export->synthesis->typing) ? proof : NULL;
++	const struct pg_synthesis_job *job = pg_pending_job(input.pending);
++	return job && pg_synthesis_work_role(job) == DERIVATION_JOB ? input.pending : NULL;
 +}
 +
 +static const void *export_root(const void *owner, size_t index)
@@ -524,12 +524,13 @@
  		for (const struct pg_dag_node *node = last_proof ? last_proof->next : export.proofs.first;
  			node; last_proof = node, node = node->next) {
  			struct pg_derivation_input header;
-@@ -420,170 +461,103 @@
+@@ -420,170 +461,104 @@
  		}
  		for (const struct pg_dag_node *node = last_job ? last_job->next : jobs.first;
  			node; last_job = node, node = node->next) {
 -			const struct pg_synthesis_job *job = node->key;
 -			if (job->role != DERIVATION_JOB) continue;
++			if (pg_pending_result((void *)node->key)) continue;
 +			const struct pg_synthesis_job *job = pg_pending_job((void *)node->key);
 +			if (!job || pg_synthesis_work_role(job) != DERIVATION_JOB) continue;
  			struct pg_derivation_input header = *(const struct pg_derivation_input *)job->inputs[0];
@@ -765,7 +766,7 @@
  }
  
  static void derivation_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
-@@ -593,30 +567,25 @@
+@@ -593,30 +568,25 @@
  	if (input->parameters.conversion || input->parameters.reduction) {
  		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
  	}
@@ -803,7 +804,7 @@
  		const struct pg_occurrence *subject = pg_evidence_subject(source);
  		if (!subject) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
  		if (!local->computation) local->computation = pg_alloc(synthesis->typing->graph, sizeof(*local->computation));
-@@ -625,7 +594,7 @@
+@@ -625,7 +595,7 @@
  		const struct pg_term *actual_source = converting ? pg_evidence_classifier(source) : subject->core;
  		const struct pg_term *actual_target = NULL;
  		if (converting) {
@@ -812,7 +813,7 @@
  			if (!target) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
  			actual_target = target->core;
  		}
-@@ -656,11 +625,14 @@
+@@ -656,11 +626,14 @@
  	} else if (input->source || input->target) {
  		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
  	}
