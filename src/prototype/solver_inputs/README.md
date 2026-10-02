@@ -547,6 +547,39 @@ existing census inputs are unchanged; [applied code](family_domain_delta.tsv)
 grows one line. This removes a work owner, not all Jobs or Evidence. Full gates
 pass; the same three public reload failures remain open.
 
+### Borrowed Admission Inputs
+
+Parent `ffc5cb1`, 2026-10-02: inductive formation, Match/induction, TypeCase,
+substitution extension and family Identity no longer allocate flattened receipt
+arrays just for lookup/admission. The existing interner borrows synchronous
+readers and retains only required edges; exact alternative receipts remain.
+The new caller-lifetime and invalid-input tests pass on parent and candidate.
+Full regression, persistence/checkpoint, C and focused sanitizer gates pass.
+This is unpromoted prototype work; SE1-SE5 and three public reload failures
+remain open. All 52 public partition images and the report equal the parent.
+
+[Applied source deltas](admission_inputs_delta.tsv) are implementation +113/-80
+and tests +49/-0. [Five-input counts](admission_inputs_measurements.tsv) are
+identical at each cumulative budget 0/100/1000/10000000. Inputs and measured
+binaries are pinned in [the hash inventory](admission_inputs_inputs.tsv).
+[Allocation rows](admission_inputs_allocation.tsv) count cumulative successful
+requests: external `pg_alloc` uses aligned requested bytes; linked malloc/calloc
+uses requested bytes. They are separate probes, not additive live-memory totals,
+and do not include every libc allocation. QuickSort saves 1,103 external arena
+requests and 53,280 aligned bytes; no general speedup or peak-RAM claim.
+
+Reproduce counts with `artifact_state_audit` from the existing artifact
+`build.mk`, selecting `ARTIFACT_TESTS=$overlay/artifact_tests/`, and pass the four
+budgets above. Build `artifact_allocation_audit` for the arena probe. For the
+malloc/calloc probe, build `artifact_state_audit` with the existing
+`borrowed_input_audit.c` in `CFLAGS` and linker flags
+`-Wl,--wrap=malloc -Wl,--wrap=calloc -Wl,--wrap=pg_program_destroy`; pass only
+10000000 to avoid different sampling I/O. Use the parent plan's
+[Reproduction](../../../doc/2026-09-30-SOLVER-EVIDENCE-DUPLICATION-AUDIT-AND-PLAN.md#reproduction)
+to flatten the QuickSort fixtures. Both measurements use O2 frozen source;
+unrelated accepted-source edits are excluded. Logs use
+`/tmp/a-program-admission-inputs-`.
+
 Use the parent plan for progress. Create and verify a disposable candidate:
 
 ```sh

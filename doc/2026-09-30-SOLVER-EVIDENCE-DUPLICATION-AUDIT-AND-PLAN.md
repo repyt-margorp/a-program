@@ -171,6 +171,16 @@ additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
 
+2026-10-02, agent decision against `ffc5cb1`: admission lookup for inductive
+formation, Match/induction, TypeCase, family Identity and substitution extension
+still flattens already-owned receipts into temporary full premise arrays. Replace
+those copies with a private synchronous borrowed-input reader in the existing
+receipt interner; keep its exact receipt identity, sparse selections and all
+checks. Typed operands and independent certificates are not interchangeable
+with accepted receipts. This deletes copying, not the pending solver frontier
+or every Evidence record. Verify exact alternate receipts, I/O and graph/fuel
+censuses before recording completion; no new authority or wire format.
+
 2026-10-02, agent implementation decision at `33b06f1`: do not add a second
 Lambda/App constructor API merely to wrap existing interned Core builders.
 Their provisional descriptions are not checking authority. Instead remove the
@@ -1441,6 +1451,32 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   Match/induction/constructor. Migrate interning keys, consumers, export and
   ordinary checking in the same milestone. Recheck concurrent relocation work;
   do not overwrite it or silently discard required scope/formation evidence.
+  Verified prototype increment (2026-10-02, parent `ffc5cb1`; agent decision):
+  remove five transient flattened receipt arrays from inductive formation,
+  Match/induction, TypeCase, substitution extension and family Identity.
+  The existing interner reads their immutable inputs synchronously; no reader
+  escapes and no new authority, tag or wire field is introduced. Exact alternate
+  receipt selections and independent certificates remain. Caller-array mutation,
+  null/oversized inputs and logical prefix/argument/suffix order are tested;
+  the new tests also pass on the parent implementation. Full O2 regression,
+  examples/acceptance, semantic persistence, seven checkpoint and five C gates
+  pass, including both LT providers/orders and invalid evidence. Focused
+  ASan/UBSan/leaks, fresh assembly and dirty-worktree Core/IADT/synthesis pass;
+  all 156 active C/header files match the frozen tested candidate.
+  [Paired census](../src/prototype/solver_inputs/admission_inputs_measurements.tsv)
+  has identical fields at 0/100/1000/completion for all five inputs. Cumulative
+  external arena requests on QuickSort decrease by 1,103 (53,280 aligned bytes);
+  [allocation measurements](../src/prototype/solver_inputs/admission_inputs_allocation.tsv)
+  also record linked malloc/calloc requests, not live/peak RAM or timing claims.
+  [Applied deltas](../src/prototype/solver_inputs/admission_inputs_delta.tsv):
+  implementation +113/-80 (net +33), tests +49/-0; not net line reduction.
+  All 52 public partition images/report equal the parent; the same three reload
+  failures remain, not waived. Handler admission still collects its read-once
+  clause inputs and independent signature receipts; this increment does not
+  infer those receipts from their subjects or reread callbacks. SE1-SE5 remain
+  open, prototype only, unrelated user edits excluded. Logs use
+  `/tmp/a-program-admission-inputs-`; reproduction and hashes are in the
+  [prototype README](../src/prototype/solver_inputs/README.md#borrowed-admission-inputs).
   Verified prototype increment (2026-10-02, parent `e3b1216`; agent decision):
   ten Universe/Host/Variable/Termination/TypeCase/family-Identity rules borrow
   their existing typed Context/type/operand/map receipts instead of storing

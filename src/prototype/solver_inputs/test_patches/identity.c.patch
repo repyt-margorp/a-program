@@ -12,7 +12,7 @@
  
  static void field_views(void)
  {
-@@ -127,6 +129,45 @@
+@@ -127,6 +129,61 @@
  	assert(pg_identity_boundary_view(scoped, &view));
  	assert(view.family == inputs[0] && view.paths == scoped->operands + 1 && view.path_count == 1);
  	assert(view.left_substitution == maps[0] && view.right_substitution == maps[1]);
@@ -34,6 +34,22 @@
 +		assert(!pg_derivation_parameters(receipts[i], &parameters));
 +		assert(pg_prove_derivation(&typing, PG_FAMILY_IDENTITY_FORM, &parameters, 6, premises[i]) == receipts[i]);
 +	}
++	const struct pg_evidence *selected_path = pg_prove_reindex(&typing, destination_map, path);
++	assert(selected_path && selected_path != path && pg_evidence_subject(selected_path) == pg_evidence_subject(path));
++	const struct pg_evidence *mutable_paths[] = {selected_path};
++	const struct pg_evidence *path_receipt = pg_prove_family_identity_type(&typing, family,
++		map, map, 1, mutable_paths, selected_value, selected_value);
++	assert(path_receipt && path_receipt != selected && pg_evidence_subject(path_receipt) == pg_evidence_subject(selected));
++	assert(pg_evidence_premise(path_receipt, 3) == selected_path);
++	mutable_paths[0] = path;
++	assert(pg_prove_family_identity_type(&typing, family,
++		map, map, 1, mutable_paths, selected_value, selected_value) == selected);
++	mutable_paths[0] = NULL;
++	assert(!pg_prove_family_identity_type(&typing, family,
++		map, map, 1, mutable_paths, selected_value, selected_value));
++	assert(pg_evidence_premise(path_receipt, 3) == selected_path);
++	assert(pg_evidence_premise(path_receipt, 4) == selected_value);
++	assert(pg_evidence_premise(path_receipt, 5) == selected_value);
 +	const struct pg_evidence *action = pg_prove_family_action(&typing, pg_prove_projection(&typing, source, u1),
 +		pg_prove_variable(&typing, source, a), map, map, 1, &path);
 +	assert(action && pg_evidence_premise_count(action) == 2 && !pg_evidence_retained_premise_count(action));
@@ -58,7 +74,7 @@
  
  	/* A well-shaped APP spine alone does not establish the selected path type. */
  	inputs[1] = inputs[2];
-@@ -144,6 +185,10 @@
+@@ -144,6 +201,10 @@
  	assert(!pg_identity_boundary_view(invalid, &view));
  	assert(!pg_identity_boundary_type(&typing, invalid));
  	pg_typing_destroy(&typing);
@@ -69,7 +85,7 @@
  	pg_graph_destroy(&graph);
  }
  
-@@ -1071,13 +1116,18 @@
+@@ -1071,13 +1132,18 @@
  	assert(!pg_identity_boundary_view(pg_evidence_subject(center), &original_boundary));
  	assert(!pg_identity_boundary_view(NULL, &original_boundary));
  	assert(original_boundary.family == pg_evidence_subject(pg_evidence_premise(original, 0)));
