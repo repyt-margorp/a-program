@@ -107,7 +107,7 @@ block/application/Match contexts and environment export no longer require a
 completed Context Job. Pending scope keys do not change after completion.
 The derivation-checkpoint prototype now borrows checked external inputs
 separately from scheduled workers; neither capture nor restoration recreates
-Evidence adapters. Its private payload is `APGDRC4`, without backward reading;
+Evidence adapters. Its private payload is `APGDRC\5`, without backward reading;
 this is not adoption of a new public `.a` format or additional owner codecs.
 Identity formation, faces, reflexivity, instances and family action/transport
 now use direct checked/pending inputs through one API. Source and IADT transport

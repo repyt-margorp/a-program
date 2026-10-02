@@ -745,22 +745,24 @@
  }
  
  static void derivation_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
-@@ -593,12 +570,9 @@
+@@ -593,30 +570,25 @@
  	if (input->parameters.conversion || input->parameters.reduction) {
  		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
  	}
 -	if (input->count > SIZE_MAX / sizeof(const struct pg_evidence *)) {
 -		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return;
 -	}
- 	if (local->next < input->count) {
+-	if (local->next < input->count) {
 -		struct pg_synthesis_job *p = pg_synthesis_rule_premise(synthesis, job, local->next);
 -		if (pg_synthesis_await(synthesis, job, p)) return;
++	while (local->next < input->count) {
 +		struct pg_synthesis_input p = pg_synthesis_rule_input(synthesis, job, local->next);
 +		if (pg_synthesis_await_input(synthesis, job, p)) return;
  		++local->next;
- 		pg_synthesis_enqueue(synthesis, job);
- 		return;
-@@ -607,16 +581,16 @@
+-		pg_synthesis_enqueue(synthesis, job);
+-		return;
+ 	}
+ 	int converting = input->rule == PG_TYPE_CONVERSION;
  	int normalizing = input->rule == PG_PURE_NORMALIZATION;
  	struct pg_derivation_parameters parameters = input->parameters;
  	if (job->inputs[1]) {
@@ -781,7 +783,7 @@
  		const struct pg_occurrence *subject = pg_evidence_subject(source);
  		if (!subject) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
  		if (!local->computation) local->computation = pg_alloc(synthesis->typing->graph, sizeof(*local->computation));
-@@ -625,7 +599,7 @@
+@@ -625,7 +597,7 @@
  		const struct pg_term *actual_source = converting ? pg_evidence_classifier(source) : subject->core;
  		const struct pg_term *actual_target = NULL;
  		if (converting) {
@@ -790,7 +792,7 @@
  			if (!target) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
  			actual_target = target->core;
  		}
-@@ -656,11 +630,7 @@
+@@ -656,11 +628,7 @@
  	} else if (input->source || input->target) {
  		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
  	}

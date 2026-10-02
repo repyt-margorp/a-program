@@ -1,0 +1,4 @@
+file	added	removed	net
+src/synthesis_derivation.c	1	3	-2
+tests/synthesis.c	40	4	36
+checkpoint_tests/definition_checkpoint_test.c	12	6	6

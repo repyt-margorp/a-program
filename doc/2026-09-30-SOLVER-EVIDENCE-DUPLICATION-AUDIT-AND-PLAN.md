@@ -684,6 +684,44 @@ No new binding/domain checkpoint fields or backend features before this gate.
 Implement prototypes, verify, and push reviewable deletion-oriented milestones.
 Do not mark a milestone complete just because a view hides the old representation.
 
+2026-10-02, verified agent prototype on `2d802de`: ordinary rule checking now
+consumes already checked premises through its existing monotonic cursor, yielding
+only for unfinished inputs. Delete the empty per-premise self-requeue; the named
+kernel rule still checks the conclusion. No owner, cache, trust policy or public
+wire field is added. [Applied delta](../src/prototype/solver_inputs/rule_frontier_delta.tsv):
+implementation +1/-3 (net -2), verification +52/-10 (net +42), excluding docs/data
+and cumulative patch-file context. [Paired census](../src/prototype/solver_inputs/rule_frontier_measurements.tsv):
+List/effect/captured graph/QuickSort remove 15/92/36/1,490 Jobs and
+647/3,673/1,520/31,702 dispatches. QuickSort Job-layout storage falls by 231,088
+bytes; this is not a total-memory or wall-time measurement. Typed Occurrence,
+Evidence, query and logical/retained-premise counts are unchanged. Zero-fuel
+counts match in all four samples; the initial and completed List images are
+byte-identical to the parent.
+
+The first regression exposed two timing-dependent fixtures: pending-Context
+waiting used formerly empty dispatches, and competing Match equations assumed
+request creation ordered their independently checked carriers. Keep actual
+waiting via an unsealed effect input; establish the first Match carrier before
+checking later agreeing/conflicting callers. Rejection assertions remain.
+A checkpoint fixture also assumed a selected namespace had already started;
+preserve its unstarted state and queued first dispatch instead. No production
+codec is extended. Initial combined regression exited 2 at that fixture;
+the corrected seven checkpoint/semantic gates exit 0 with exact remaining fuel
+and bytes, including the newly exposed unstarted boundary. The other full O2
+regression/examples/acceptance targets completed successfully, including both LT
+providers/orders, general Sorted/permutation and ordinary-result proofs. Five C
+gates and ASan/UBSan/leaks Core/synthesis/source/derivation/checkpoint pass.
+Fresh patch assembly matches all tested source/test/checkpoint files and passes
+focused checks. Current-worktree Core/IADT/synthesis checks pass; user edits are
+excluded from the commit. Logs use `/tmp/a-program-rule-frontier-`.
+
+Public strict List reload still fails at 1,000+1,000, 1,600+1,600 and complete+0
+(now 1,955+0). The prior 100+100 mismatch disappears at this changed progress
+boundary, not because general resumption was fixed. In-memory splits, inert
+save/load and initial/completed byte equality pass; do not promote this to a
+resume acceptance gate. Saved descriptions/completion flags remain untrusted.
+SE1-SE5 remain open; prototype only.
+
 2026-10-02, verified agent prototype on `112646d`: delete imported derivation
 preparation Jobs, their cursor API, raw export branch and checkpoint format
 branch. Single-root/batch imports share ordinary checking requests; temporary

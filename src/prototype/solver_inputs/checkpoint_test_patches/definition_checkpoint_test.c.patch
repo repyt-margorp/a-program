@@ -8,6 +8,15 @@
  #include <assert.h>
  #include <stdlib.h>
  #include <string.h>
+@@ -17,7 +18,7 @@
+  * their saved status is compared, never imported as accepted evidence. */
+ static int solving;
+ static uint64_t checked_dispatches;
+-static size_t body_edges, module_cursors;
++static size_t body_edges, module_cursors, unstarted_modules;
+ void __real_pg_synthesis_advance(struct pg_synthesis *, uint64_t);
+ void __wrap_pg_synthesis_advance(struct pg_synthesis *s, uint64_t steps)
+ {
 @@ -64,10 +65,11 @@
  	for (size_t i = 0; i < f->frontier.count; ++i) add_job(f, f->frontier.entries[i]);
  	for (size_t i = 0; i < f->frontier.count; ++i) {
@@ -23,7 +32,21 @@
  		}
  	}
  }
-@@ -216,11 +218,12 @@
+@@ -87,8 +89,11 @@
+ 	if (f->unselected) {
+ 		assert(!pg_wire_write_u64(file, f->unselected->status));
+ 		if (f->unselected->status == PG_SYNTHESIS_PENDING) {
+-			assert(!pg_synthesis_module_frontier(s, f->unselected, &module));
+-			assert(!pg_wire_write_u64(file, module.position));
++			/* A newly queued namespace has no registration cursor yet. Its
++			 * first ordinary dispatch must still occur after restoration. */
++			int unstarted = pg_synthesis_module_frontier(s, f->unselected, &module);
++			assert(!pg_wire_write_u64(file, unstarted ? UINT64_MAX : module.position));
++			unstarted_modules += !!unstarted;
+ 		}
+ 	}
+ 	for (size_t i = 0; i < f->frontier.count; ++i) {
+@@ -216,11 +221,12 @@
  	for (size_t i = 0; i < f->count; ++i) {
  		int wanted = 0;
  		for (size_t j = 0; j < f->frontier.count; ++j) {
@@ -38,7 +61,18 @@
  		}
  		if (wanted) targets[count++] = f->jobs[i];
  	}
-@@ -314,7 +317,8 @@
+@@ -292,7 +298,9 @@
+ 	assert(f.registration);
+ 	if (canonical) {
+ 		f.unselected = pg_synthesis_request(s, f.program->scope, block);
+-		assert(f.unselected && pg_synthesis_prepare_module(s, f.unselected) == f.registration);
++		assert(f.unselected);
++		if (canonical_position != UINT64_MAX)
++			assert(pg_synthesis_prepare_module(s, f.unselected) == f.registration);
+ 	}
+ 	const struct pg_source_scope *inner = pg_synthesis_definition_scope(s, f.program->scope, block);
+ 	for (size_t i = 0; i < view.count; ++i) {
+@@ -314,7 +322,8 @@
  				term = entries[j];
  		}
  		assert(term);
@@ -48,7 +82,17 @@
  	}
  	view.entries = entries;
  	/* Retained input attachment is independent of the registration cursor. */
-@@ -365,7 +369,7 @@
+@@ -344,7 +353,8 @@
+ 			solving = 0;
+ 			f.validation += used;
+ 			assert(f.unselected->status == (enum pg_synthesis_status)canonical_status);
+-		} else if (canonical) module_resume(&f, f.unselected, canonical_position);
++		} else if (canonical && canonical_position != UINT64_MAX)
++			module_resume(&f, f.unselected, canonical_position);
+ 		module_resume(&f, f.program->root, position);
+ 	}
+ 	assert(!pg_artifact_schedule_attach(s, schedule, f.count, f.jobs));
+@@ -365,7 +375,7 @@
  	*status = pg_synthesis_status(f->program->root);
  	assert(!f->program->synthesis.ready);
  	FILE *file = tmpfile();
@@ -57,7 +101,7 @@
  	return file;
  }
  
-@@ -518,26 +522,31 @@
+@@ -518,26 +528,31 @@
  	const struct pg_evidence *computation = pg_prove_return(&p->typing, value);
  	assert(context && type && value && computation);
  	const struct pg_evidence *inputs[] = {type, value, computation};
@@ -97,7 +141,7 @@
  		}
  	}
  	advance(s, 10000);
-@@ -584,7 +593,7 @@
+@@ -584,7 +599,7 @@
  	return 0;
  }
  
@@ -106,7 +150,7 @@
  struct namespace_cursor {
  	uint64_t ordinal, position, complete, advanced, count;
  	struct body_cursor *body;
-@@ -598,31 +607,38 @@
+@@ -598,31 +613,38 @@
  {
  	struct pg_synthesis *s = &f->program->synthesis;
  	size_t first = f->count;
@@ -159,7 +203,7 @@
  	assert(pg_evidence_rule(leaf) == PG_CONSTRUCTOR_INTRO);
  	return leaf;
  }
-@@ -636,6 +652,7 @@
+@@ -636,6 +658,7 @@
  		assert(!pg_wire_write_u64(file, c->body[i].status));
  		assert(!pg_wire_write_u64(file, c->body[i].premise));
  		assert(!pg_wire_write_u64(file, c->body[i].selected));
@@ -167,7 +211,7 @@
  	}
  }
  
-@@ -652,6 +669,7 @@
+@@ -652,6 +675,7 @@
  		assert(!pg_wire_read_u64(file, &c.body[i].status));
  		assert(!pg_wire_read_u64(file, &c.body[i].premise));
  		assert(!pg_wire_read_u64(file, &c.body[i].selected));
@@ -175,7 +219,7 @@
  	}
  	return c;
  }
-@@ -675,9 +693,9 @@
+@@ -675,9 +699,9 @@
  	add_job(f, member);
  	size_t first = f->count;
  	const struct pg_evidence *leaf = advanced ? namespace_body(f, body) : NULL;
@@ -188,7 +232,7 @@
  	size_t ordinal;
  	assert(pg_data_constructor_position(layout, input.constructor, &ordinal));
  	struct pg_module_frontier module = {0};
-@@ -692,12 +710,15 @@
+@@ -692,12 +716,15 @@
  	for (size_t i = 0; i < cursor.count; ++i) {
  		struct pg_synthesis_job *job = f->jobs[first + i];
  		cursor.body[i].status = job->status;
@@ -205,7 +249,7 @@
  	}
  	namespace_cursor_write(file, &cursor);
  	free(cursor.body);
-@@ -714,7 +735,9 @@
+@@ -714,7 +741,9 @@
  {
  	const struct pg_derivation_input *input = pg_synthesis_plain_derivation(key);
  	if (!input || i == input->count) return 0;
@@ -216,7 +260,7 @@
  	return *child ? 1 : -1;
  }
  
-@@ -778,7 +801,9 @@
+@@ -778,7 +807,9 @@
  		assert(copy);
  		namespace_cursor_write(copy, &cursor);
  		assert(!pg_artifact_schedule_save(copy, schedule));
@@ -227,7 +271,7 @@
  		equal_files(saved, copy);
  		assert(!fclose(copy));
  		advance(s, 0);
-@@ -838,9 +863,10 @@
+@@ -838,9 +869,10 @@
  		for (size_t i = first; i < base; ++i)
  			if (cursor.body[i - first].selected) assert(!pg_synthesis_body_resume(s, f.jobs[i]));
  		for (size_t i = first; i < base; ++i) {
@@ -240,7 +284,7 @@
  		}
  		assert(f.count - first == cursor.count);
  		struct pg_synthesis_job **children = malloc(cursor.count * sizeof(*children));
-@@ -854,12 +880,23 @@
+@@ -854,12 +886,23 @@
  		free(pending);
  		namespace_validate(&f);
  		for (size_t i = 0; i < cursor.count; ++i) {
@@ -265,3 +309,12 @@
  					assert(pg_synthesis_rule_resume(s, children[i], j + 1));
  					break;
  				}
+@@ -1010,7 +1053,7 @@
+ 	late += lifecycle("{{main:=@; bad:=missing;}}.main", PG_SYNTHESIS_REJECTED);
+ 	late += lifecycle("{{main:=@; main::@;}}.main", PG_SYNTHESIS_REJECTED);
+ 	late += lifecycle("Nat:=@{zero:*;succ:*->*;}; main:=Nat.succ Nat.zero; main::Nat;", PG_SYNTHESIS_DONE);
+-	assert(body_edges && module_cursors);
++	assert(body_edges && module_cursors && unstarted_modules);
+ 	printf("source lifecycle: %zu owner frontiers, %zu body edges, %zu module cursors, %llu charged verification dispatches\n",
+ 		late, body_edges, module_cursors, (unsigned long long)checked_dispatches);
+ 	return 0;
