@@ -341,7 +341,15 @@
  	puts("effects: explicit closed sets, union laws, unknown is not empty, and pure-only views passed");
  }
  
-@@ -5882,7 +6084,8 @@
+@@ -5813,6 +6015,7 @@
+ 		pg_prove_universe(&typing, context, 0));
+ 	const struct pg_effect_row *empty = pg_effect_row(graph, 0, NULL), *row;
+ 	const struct pg_evidence *types[2], *returned[2], *functions[2];
++	const struct pg_evidence *termination_receipts[2][2], *termination_inputs[2][2];
+ 	const struct pg_term *value;
+ 	enum pg_totality grade;
+ 	const struct pg_object *x = pg_binder(graph);
+@@ -5882,7 +6085,8 @@
  		claimed.core = i ? pg_application(graph, pg_reference(graph, &pg_thunk_operation), omega) : omega;
  		const struct pg_occurrence *description = pg_occurrence_intern(&typing, &claimed,
  			subject->operands, pg_occurrence_maps(subject));
@@ -351,7 +359,62 @@
  		assert(!pg_evidence_for_subject(&typing, description, NULL));
  		assert(pg_prove_structural_subject(&typing, pg_evidence_subject(source)) == source);
  	}
-@@ -6195,6 +6398,42 @@
+@@ -5925,10 +6129,39 @@
+ 		assert(value == pg_evidence_subject(suspended)->core);
+ 		const struct pg_evidence *witness = pg_prove_termination(&typing, termination, suspended);
+ 		assert(!!witness == i);
++		termination_receipts[i][0] = termination;
++		termination_receipts[i][1] = witness;
++		termination_inputs[i][0] = suspended_type;
++		termination_inputs[i][1] = suspended;
++		assert(pg_evidence_premise_count(termination) == 2);
++		assert(pg_evidence_premise(termination, 0) == suspended_type);
++		assert(pg_evidence_premise(termination, 1) == suspended);
++		assert(!pg_evidence_retained_premise_count(termination));
++		reconstruct_derivation(&typing, termination);
+ 		struct pg_derivation_parameters parameters = {0};
+ 		assert(pg_prove_derivation(&typing, PG_TERMINATION_INTRO, &parameters, 2,
+ 			(const struct pg_evidence *[]){termination, suspended}) == witness);
+ 		if (witness) {
++			assert(pg_evidence_premise_count(witness) == 2);
++			assert(pg_evidence_premise(witness, 0) == termination);
++			assert(pg_evidence_premise(witness, 1) == suspended);
++			assert(!pg_evidence_retained_premise_count(witness));
++			const struct pg_evidence *alternate = pg_prove_reindex(&typing,
++				pg_prove_substitution_projection(&typing, outer, outer), suspended);
++			assert(alternate && alternate != suspended && pg_evidence_subject(alternate) == pg_evidence_subject(suspended));
++			const struct pg_evidence *selected_type = pg_prove_termination_type(&typing, suspended_type, alternate);
++			const struct pg_evidence *selected = pg_prove_termination(&typing, selected_type, alternate);
++			assert(selected_type && selected && selected_type != termination && selected != witness);
++			assert(pg_evidence_subject(selected_type) == pg_evidence_subject(termination));
++			assert(pg_evidence_retained_premise_count(selected_type) == 1);
++			assert(pg_evidence_retained_premise_count(selected) == 2);
++			assert(pg_evidence_premise(selected_type, 1) == alternate);
++			assert(pg_evidence_premise(selected, 0) == selected_type && pg_evidence_premise(selected, 1) == alternate);
++			reconstruct_derivation(&typing, selected_type);
++			reconstruct_derivation(&typing, selected);
++			termination_receipts[i][0] = selected_type;
++			termination_receipts[i][1] = selected;
++			termination_inputs[i][1] = alternate;
+ 			assert(pg_evidence_classifier(witness) == pg_evidence_subject(termination)->core);
+ 			assert(pg_prove_classifier(&typing, outer, witness) == termination);
+ 			struct pg_derivation_parameters parameters;
+@@ -6014,6 +6247,14 @@
+ 		}
+ 	}
+ 	pg_typing_destroy(&typing);
++	for (size_t i = 0; i < 2; ++i) {
++		assert(pg_evidence_premise(termination_receipts[i][0], 0) == termination_inputs[i][0]);
++		assert(pg_evidence_premise(termination_receipts[i][0], 1) == termination_inputs[i][1]);
++		if (termination_receipts[i][1]) {
++			assert(pg_evidence_premise(termination_receipts[i][1], 0) == termination_receipts[i][0]);
++			assert(pg_evidence_premise(termination_receipts[i][1], 1) == termination_inputs[i][1]);
++		}
++	}
+ 	puts("totality: distinct contracts, RETURN, directed weakening, APP/FORCE and Fold bounds passed");
+ }
+ 
+@@ -6195,6 +6436,42 @@
  	const struct pg_evidence *request = pg_prove_request(&typing, op, payload, k);
  	assert(request && pg_evidence_rule(request) == PG_REQUEST_INTRO);
  	assert(pg_prove_request(&typing, op, payload, k) == request);
@@ -394,7 +457,7 @@
  	const struct pg_object *label;
  	const struct pg_term *a, *continuation;
  	assert(pg_computation_request_view(pg_evidence_subject(request)->core, &label, &a, &continuation));
-@@ -6294,6 +6533,36 @@
+@@ -6294,6 +6571,36 @@
  	assert(!pg_derivation_parameters(handled, &handler_parameters) && handler_parameters.handler == signature);
  	const struct pg_evidence *handler_premises[9];
  	for (size_t i = 0; i < 9; ++i) handler_premises[i] = pg_evidence_premise(handled, i);
@@ -431,7 +494,7 @@
  	assert(pg_prove_derivation(&typing, PG_HANDLER_ELIM, &handler_parameters, 9, handler_premises) == handled);
  	assert(!pg_prove_derivation(&typing, PG_HANDLER_ELIM, &handler_parameters, 8, handler_premises));
  	handler_premises[3] = u0;
-@@ -6425,8 +6694,16 @@
+@@ -6425,8 +6732,16 @@
  	struct pg_typing separate;
  	assert(!pg_typing_init(&separate, graph));
  	assert(!pg_prove_request(&separate, op, payload, k));
@@ -448,3 +511,38 @@
  	puts("typed effects: signatures, multi-clause handlers, deep resumption, forwarding and effect bounds passed");
  }
  
+@@ -6444,6 +6759,7 @@
+ 		const struct pg_evidence *domain = pg_prove_variable(&typing, parameters, a);
+ 		const struct pg_evidence *scope = pg_prove_context_extension(&typing, parameters, x, domain);
+ 		const struct pg_evidence *body = pg_prove_return(&typing, pg_prove_variable(&typing, scope, x));
++		const struct pg_evidence *canonical_scope = scope;
+ 		if (variant & 4) {
+ 			const struct pg_evidence *unused = pg_prove_context_extension(&typing, parameters, pg_binder(graph),
+ 				pg_prove_universe(&typing, parameters, 3));
+@@ -6454,6 +6770,17 @@
+ 			assert(selected && selected != scope && pg_evidence_context(selected) == pg_evidence_context(scope));
+ 			scope = selected;
+ 		}
++		const struct pg_evidence *scoped_inputs[] = {
++			pg_prove_universe(&typing, scope, 0), pg_prove_variable(&typing, scope, x)};
++		assert(pg_evidence_premise_count(u0) == 1 && pg_evidence_retained_premise_count(u0) == 1);
++		assert(pg_evidence_premise(u0, 0) == empty);
++		for (size_t i = 0; i < 2; ++i) {
++			assert(scoped_inputs[i] && pg_evidence_premise_count(scoped_inputs[i]) == 1);
++			assert(pg_evidence_premise(scoped_inputs[i], 0) == scope);
++			assert(pg_evidence_retained_premise_count(scoped_inputs[i]) == !!(variant & 4));
++			reconstruct_derivation(&typing, scoped_inputs[i]);
++		}
++		assert(pg_evidence_for_context(&typing, pg_evidence_context(scope)) == canonical_scope);
+ 		const struct pg_evidence *pi = pg_prove_pi(&typing, scope, pg_prove_classifier(&typing, scope, body));
+ 		if (variant & 1) {
+ 			assert(pg_prove_thunk_content(&typing, pg_prove_thunk_type(&typing, pi)) == pi);
+@@ -6498,6 +6825,8 @@
+ 		pg_function_graph_destroy(&generated);
+ 		pg_whnf_work_destroy(&evaluation);
+ 		pg_typing_destroy(&typing);
++		for (size_t i = 0; i < 2; ++i) assert(pg_evidence_premise(scoped_inputs[i], 0) == scope);
++		assert(pg_evidence_premise(u0, 0) == empty);
+ 	}
+ 	puts("function graph: retained Pi/body, alternate admission, selected Universe and specialization without Lambda rebuilding");
+ }

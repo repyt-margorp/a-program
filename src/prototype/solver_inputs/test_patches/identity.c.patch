@@ -1,6 +1,10 @@
 --- a/identity.c
 +++ b/identity.c
-@@ -5,6 +5,7 @@
+@@ -2,9 +2,11 @@
+ #include "evidence.h"
+ #include "computation.h"
+ #include "action.h"
++#include "derivation.h"
  
  #include <assert.h>
  #include <stdio.h>
@@ -8,7 +12,64 @@
  
  static void field_views(void)
  {
-@@ -1071,13 +1072,18 @@
+@@ -127,6 +129,45 @@
+ 	assert(pg_identity_boundary_view(scoped, &view));
+ 	assert(view.family == inputs[0] && view.paths == scoped->operands + 1 && view.path_count == 1);
+ 	assert(view.left_substitution == maps[0] && view.right_substitution == maps[1]);
++	const struct pg_evidence *canonical = pg_prove_family_identity_type(&typing, family, map, map, 1, &path, value, value);
++	const struct pg_evidence *destination_map = pg_prove_substitution_projection(&typing, destination, destination);
++	const struct pg_evidence *selected_value = pg_prove_reindex(&typing, destination_map, value);
++	assert(selected_value && selected_value != value && pg_evidence_subject(selected_value) == pg_evidence_subject(value));
++	const struct pg_evidence *selected = pg_prove_family_identity_type(&typing, family, map, map,
++		1, &path, selected_value, selected_value);
++	assert(canonical && selected && canonical != selected && pg_evidence_subject(canonical) == pg_evidence_subject(selected));
++	const struct pg_evidence *receipts[] = {canonical, selected};
++	const struct pg_evidence *premises[][6] = {
++		{family, map, map, path, value, value}, {family, map, map, path, selected_value, selected_value}};
++	for (size_t i = 0; i < 2; ++i) {
++		assert(pg_evidence_premise_count(receipts[i]) == 6);
++		assert(pg_evidence_retained_premise_count(receipts[i]) == 2 * i);
++		for (size_t j = 0; j < 6; ++j) assert(pg_evidence_premise(receipts[i], j) == premises[i][j]);
++		struct pg_derivation_parameters parameters;
++		assert(!pg_derivation_parameters(receipts[i], &parameters));
++		assert(pg_prove_derivation(&typing, PG_FAMILY_IDENTITY_FORM, &parameters, 6, premises[i]) == receipts[i]);
++	}
++	const struct pg_evidence *action = pg_prove_family_action(&typing, pg_prove_projection(&typing, source, u1),
++		pg_prove_variable(&typing, source, a), map, map, 1, &path);
++	assert(action && pg_evidence_premise_count(action) == 2 && !pg_evidence_retained_premise_count(action));
++	const struct pg_evidence *action_inputs[] = {pg_evidence_premise(action, 0), pg_evidence_premise(action, 1)};
++	struct pg_derivation_parameters action_parameters;
++	assert(!pg_derivation_parameters(action, &action_parameters));
++	assert(pg_prove_derivation(&typing, PG_FAMILY_ACTION, &action_parameters, 2, action_inputs) == action);
++	const struct pg_evidence *selected_term = pg_prove_reindex(&typing,
++		pg_prove_substitution_projection(&typing, source, source), action_inputs[1]);
++	assert(selected_term && selected_term != action_inputs[1] && pg_evidence_subject(selected_term) == pg_evidence_subject(action_inputs[1]));
++	const struct pg_evidence *selected_action = pg_prove_family_action(&typing,
++		pg_prove_projection(&typing, source, u1), selected_term, map, map, 1, &path);
++	assert(selected_action && selected_action != action && pg_evidence_subject(selected_action) == pg_evidence_subject(action));
++	const struct pg_evidence *selected_action_inputs[] = {pg_evidence_premise(selected_action, 0), selected_term};
++	assert(pg_evidence_premise(selected_action, 1) == selected_term);
++	assert(pg_evidence_retained_premise_count(selected_action) == 2);
++	assert(pg_prove_derivation(&typing, PG_FAMILY_ACTION, &action_parameters, 2, selected_action_inputs) == selected_action);
++	size_t proofs = typing.proofs.count, terms = graph.terms.count;
++	assert(pg_prove_family_identity_type(&typing, family, map, map, 1, &path, selected_value, selected_value) == selected);
++	assert(pg_prove_family_action(&typing, pg_prove_projection(&typing, source, u1), selected_term, map, map, 1, &path) == selected_action);
++	assert(typing.proofs.count == proofs && graph.terms.count == terms);
+ 
+ 	/* A well-shaped APP spine alone does not establish the selected path type. */
+ 	inputs[1] = inputs[2];
+@@ -144,6 +185,10 @@
+ 	assert(!pg_identity_boundary_view(invalid, &view));
+ 	assert(!pg_identity_boundary_type(&typing, invalid));
+ 	pg_typing_destroy(&typing);
++	for (size_t i = 0; i < 2; ++i)
++		for (size_t j = 0; j < 6; ++j) assert(pg_evidence_premise(receipts[i], j) == premises[i][j]);
++	for (size_t i = 0; i < 2; ++i) assert(pg_evidence_premise(action, i) == action_inputs[i]);
++	for (size_t i = 0; i < 2; ++i) assert(pg_evidence_premise(selected_action, i) == selected_action_inputs[i]);
+ 	pg_graph_destroy(&graph);
+ }
+ 
+@@ -1071,13 +1116,18 @@
  	assert(!pg_identity_boundary_view(pg_evidence_subject(center), &original_boundary));
  	assert(!pg_identity_boundary_view(NULL, &original_boundary));
  	assert(original_boundary.family == pg_evidence_subject(pg_evidence_premise(original, 0)));

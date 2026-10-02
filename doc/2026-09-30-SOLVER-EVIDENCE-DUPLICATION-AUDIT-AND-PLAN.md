@@ -1326,6 +1326,28 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   Match/induction/constructor. Migrate interning keys, consumers, export and
   ordinary checking in the same milestone. Recheck concurrent relocation work;
   do not overwrite it or silently discard required scope/formation evidence.
+  Verified prototype increment (2026-10-02, parent `e3b1216`; agent decision):
+  ten Universe/Host/Variable/Termination/TypeCase/family-Identity rules borrow
+  their existing typed Context/type/operand/map receipts instead of storing
+  duplicate premise pointers. Empty-Context receipts, TypeCase's independent
+  formation/parameter inputs and different exact proof selections remain.
+  Ordinary reconstruction, repeat lookup, foreign/invalid rejection and access
+  after typing-index disposal pass. An initial Identity fixture incorrectly
+  assumed reindexing a derived family preserves its typed-node pointer; the
+  corrected fixture uses genuinely identical variable endpoints, not a kernel
+  change to make that assumption pass. O2 full regression/examples/acceptance,
+  semantic persistence, seven checkpoint and five C gates exit 0. Focused
+  ASan/UBSan/leaks and fresh/current-worktree Core/Host/IADT/Identity checks pass;
+  all 156 assembled C/header files match the frozen tested candidate. User edits
+  are excluded. [Paired censuses](../src/prototype/solver_inputs/remaining_receipts_measurements.tsv)
+  at 0/100/1000/completion change only retained premise counts: completed
+  List/effect/captured-Match/QuickSort save 76/446/400/30,594 references.
+  This is not a peak-memory or speedup measurement. [Applied deltas](../src/prototype/solver_inputs/remaining_receipts_delta.tsv)
+  are implementation +29/-0, tests +151/-0, not source-line reduction. All 52
+  public partition images and the strict three-failure TSV equal the parent;
+  that gate still fails and is not waived. No new tag, owner, wire field or
+  acceptance policy is added. SE1-SE5 stay open; prototype only. Logs use
+  `/tmp/a-program-remaining-receipts-`.
   Verified conversion-receipt deletion (2026-10-02, parent `917b1bc`): pure
   normalization borrows its typed origin's stable receipt; type conversion and
   Effect subsumption borrow origin/type receipts through the existing sparse

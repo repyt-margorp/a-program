@@ -483,6 +483,17 @@ partition images match the parent. Full regression, affected transport/C gates,
 sanitizers and fresh/current checks pass; the same three public reload failures
 remain. This is not complete Job/Evidence removal or production promotion.
 
+2026-10-02, remaining receipt overlap against `e3b1216`: ten rules borrow their
+existing typed Context/type/operand/map inputs; only independent premises and
+different exact selections are stored. [Census](remaining_receipts_measurements.tsv)
+preserves all fields except retained references, removing 30,594 from completed
+QuickSort. The captured sample is `function-graph-captured-match.p` (not the
+earlier captured-request sample). [Deltas](remaining_receipts_delta.tsv):
+implementation +29, tests +151, not line reduction or a RAM/speedup claim.
+Regression/acceptance, semantic/checkpoint/C gates, sanitizers and fresh/current
+checks pass. All 52 images match; three public reload failures remain. No new
+graph, tag or wire data is introduced. SE1-SE5 are unfinished; prototype only.
+
 Use the parent plan for progress. Create and verify a disposable candidate:
 
 ```sh
