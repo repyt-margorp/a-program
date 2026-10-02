@@ -1,0 +1,6 @@
+group	file	added	deleted	net
+implementation	src/synthesis.c	19	12	7
+implementation	src/synthesis_function.c	0	11	-11
+implementation	src/synthesis_source.h	0	2	-2
+test	tests/synthesis.c	21	1	20
+implementation_total	applied_sources_vs_755363a	19	25	-6

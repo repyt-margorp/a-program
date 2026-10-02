@@ -1016,6 +1016,26 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   Remove the corresponding duplicated structural walkers and overbroad private
   state. Keep genuinely unfinished queries and effect dependencies; do not
   replace all of them with an unconditional wait for accepted Evidence.
+  Verified prototype increment (2026-10-02, agent decision; parent `755363a`):
+  classifier-formation, Variable and Host classifier shapes borrow their actual
+  input queries. Delete the forwarding type-query path/helper and Variable/Host
+  dispatch branches, without a replacement Job, tag or authority. Accepted views
+  still read typed data; existing symbolic views stay immutable. Shape readiness
+  does not discharge formation's Context/judgement checks. Direct sharing,
+  unaccepted Effect-dependent inputs, zero/split fuel and wrong-Context rejection
+  pass. Full O2 regression/examples/acceptance (including general Sorted and both
+  LT providers/orders), semantic persistence, seven checkpoint and five C gates,
+  focused ASan/UBSan/leaks and fresh/current-worktree Core/synthesis/IADT pass.
+  All 388 assembled C/header files match. [Paired census](../src/prototype/solver_inputs/classifier_projection_measurements.tsv)
+  preserves all zero-fuel fields and final typed/Evidence/query/premise counts;
+  QuickSort loses 230 Jobs/33,120 Job-layout bytes and 216 dispatches, Handler
+  loses 42 Jobs/6,048 bytes and 58 dispatches. These are layout/fuel measurements,
+  not total RAM or wall-time speedups. [Applied deltas](../src/prototype/solver_inputs/classifier_projection_delta.tsv):
+  implementation +19/-25 (net -6), tests +21/-1 (net +20). All 52 List partition
+  images/report equal the parent; the same three public reload failures remain,
+  not waived. [Inputs](../src/prototype/solver_inputs/classifier_projection_inputs.tsv)
+  pin the samples and compiler/source hashes. Logs: `/tmp/a-program-classifier-projection-`.
+  SE1-SE5 remain open; prototype only, unrelated user edits excluded.
   Verified prototype (2026-10-02, agent decision, parent `e6dd1b3`): Handler checking
   borrows clauses from ordinary rule inputs or the existing typed Fold owner.
   The two temporary clause-array reconstruction paths are deleted; each visited

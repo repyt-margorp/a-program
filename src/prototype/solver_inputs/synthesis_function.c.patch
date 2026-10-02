@@ -719,7 +719,7 @@
  }
  
  struct pi_scope_work {
-@@ -380,51 +641,78 @@
+@@ -380,51 +641,67 @@
  };
  
  static void classifier_step(struct pg_synthesis *, struct pg_synthesis_job *);
@@ -767,11 +767,19 @@
 +		if (query) return &query->pending;
 +	}
 +	return pg_synthesis_pending(pg_synthesis_work_request(synthesis, CLASSIFIER_FORMATION_JOB, 4, inputs));
-+}
-+
+ }
+ 
+-/* Only the pending recipe projects the operand's classifier. After acceptance,
+- * the ordinary type-structure query reads the retained formation itself. */
+-int pg_synthesis_classifier_formation_structure(struct pg_synthesis *synthesis,
+-	const struct pg_synthesis_job *job, struct pg_synthesis_job **structure)
 +struct pg_synthesis_input pg_synthesis_classifier_formation_input(struct pg_synthesis *synthesis,
 +	struct pg_pending *pending)
-+{
+ {
+-	struct pg_synthesis_job *term = pg_synthesis_classifier_formation_input(job);
+-	if (!term) return 0;
+-	*structure = pg_synthesis_classifier_structure(synthesis, term);
+-	return 1;
 +	struct pg_synthesis_job *job = pg_pending_job(pending);
 +	if (job && pg_synthesis_work_role(job) == CLASSIFIER_FORMATION_JOB) return pg_synthesis_work_dependency(job, 2);
 +	struct pg_typed_query *query = pg_pending_query(pending);
@@ -779,21 +787,6 @@
 +	const struct pg_occurrence *source = pg_classifier_source(query);
 +	/* Structural origin only. The actual rule still retains its selected input. */
 +	return (struct pg_synthesis_input){.checked = source ? pg_evidence_for_subject(synthesis->typing, source, NULL) : NULL};
- }
- 
- /* Only the pending recipe projects the operand's classifier. After acceptance,
-  * the ordinary type-structure query reads the retained formation itself. */
- int pg_synthesis_classifier_formation_structure(struct pg_synthesis *synthesis,
--	const struct pg_synthesis_job *job, struct pg_synthesis_job **structure)
-+	struct pg_pending *pending, struct pg_synthesis_structure *structure)
- {
--	struct pg_synthesis_job *term = pg_synthesis_classifier_formation_input(job);
--	if (!term) return 0;
--	*structure = pg_synthesis_classifier_structure(synthesis, term);
-+	struct pg_synthesis_input term = pg_synthesis_classifier_formation_input(synthesis, pending);
-+	if (!term.checked && !term.pending) return 0;
-+	*structure = pg_synthesis_classifier_structure_input(synthesis, term);
- 	return 1;
  }
  
  static void classifier_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
@@ -819,7 +812,7 @@
  }
  
  static struct pi_scope_work *pi_scope_work(const struct pg_synthesis_job *job)
-@@ -446,22 +734,22 @@
+@@ -446,22 +723,22 @@
  }
  
  static struct pg_synthesis_job *pi_scope(struct pg_synthesis *synthesis,
@@ -851,7 +844,7 @@
  	}
  	pg_synthesis_forward(synthesis, job, local->rule);
  }
-@@ -472,12 +760,12 @@
+@@ -472,12 +749,12 @@
  	return (struct pg_synthesis_projection){.rule = rule, .preparing = !rule, .value_kind = -1};
  }
  
@@ -869,7 +862,7 @@
  	if (parameters > SIZE_MAX / sizeof(struct pg_synthesis_job *)) return NULL;
  	struct pg_graph temporary = {0};
  	struct pg_synthesis_job **scopes = pg_alloc(&temporary, parameters * sizeof(*scopes));
-@@ -485,70 +773,675 @@
+@@ -485,70 +762,675 @@
  	/* Open the whole dependent telescope before discharging it in reverse.
  	 * A scope request owns its binder even while its domain is still pending. */
  	for (size_t i = 0; result && i < parameters; ++i) {

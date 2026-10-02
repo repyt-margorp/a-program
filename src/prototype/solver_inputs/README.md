@@ -185,6 +185,13 @@ selection preserves provisional snapshots; shape readiness is still not checked
 acceptance. See [deltas](structure_projection_delta.tsv) and
 [measurements](structure_projection_measurements.tsv) against `9146893`.
 Core-building queries and the four public reload failures remain unfinished.
+Classifier-formation shapes likewise borrow the operand's classifier query;
+Variable and Host classifier shapes borrow the declaration/type input directly.
+The forwarding worker paths are deleted, not replaced by another stored graph.
+Raw shape availability does not admit the formation or its Context. See
+[applied deltas](classifier_projection_delta.tsv) and
+[paired census](classifier_projection_measurements.tsv) against `755363a`.
+The current public partition gate retains three failures; SE1-SE5 are unfinished.
 Function graph synthesis now lives in the function owner: common source work
 has no graph handle, case-layout slot, graph role, graph destruction or dispatch
 branch. Source metadata retains only names/layouts, not a graph-worker backlink.
