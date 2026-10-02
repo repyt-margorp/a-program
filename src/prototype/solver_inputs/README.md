@@ -580,6 +580,17 @@ to flatten the QuickSort fixtures. Both measurements use O2 frozen source;
 unrelated accepted-source edits are excluded. Logs use
 `/tmp/a-program-admission-inputs-`.
 
+Operation-label discovery now reads existing lexical producers directly.
+`OPERATION_REFERENCE_JOB` and both adapter APIs are deleted, not replaced by
+another worker. Handler still awaits the source's own checking result; aliases,
+quotes, modules, pending signatures, failed assertions and cycle refusal are
+covered. Against `ffd2fcf`, [applied source](operation_origin_delta.tsv) shrinks
+implementation by 74 lines; [paired counts](operation_origin_measurements.tsv)
+remove 11/5 Jobs from completed Effect/Handler samples without changing their
+Term/Occurrence/Evidence counts. Full regression/acceptance, persistence/checkpoint,
+C and focused sanitizer gates pass; SE1-SE5 and the same three public reload
+failures remain open. This is an unpromoted prototype increment.
+
 Use the parent plan for progress. Create and verify a disposable candidate:
 
 ```sh

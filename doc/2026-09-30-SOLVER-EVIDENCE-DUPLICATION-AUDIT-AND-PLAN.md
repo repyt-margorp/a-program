@@ -171,6 +171,16 @@ additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
 
+2026-10-02, agent decision against `ffd2fcf`: `OPERATION_REFERENCE_JOB` owns
+no object witness or independent check. It waits for the existing lexical
+producer, recursively allocates more reference Jobs and copies the operation
+origin/status. Remove this role and its factory; use source-origin lookup for
+descriptive signature discovery and await the original lexical producer before
+accepting a Handler clause. Keep that producer's failed expectation/ownership
+checks, nominal operation identity and cycle refusal. Test alias/quote/module
+paths, pending signature discovery, zero fuel and invalid labels; no replacement
+Task graph or Core-based recognition of operations.
+
 2026-10-02, agent decision against `ffc5cb1`: admission lookup for inductive
 formation, Match/induction, TypeCase, family Identity and substitution extension
 still flattens already-owned receipts into temporary full premise arrays. Replace
@@ -816,6 +826,29 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   and genuinely unfinished construction. Try direct owner references plus
   owner-local suspension state; document any residual allocation that cannot be
   eliminated and why. An independent Job graph is not an acceptance criterion.
+  Verified prototype deletion (2026-10-02, parent `ffd2fcf`; agent decision): remove
+  `OPERATION_REFERENCE_JOB`, its private state, factory and input adapter.
+  Handler discovers the nominal signature through existing source-origin links
+  and awaits the original lexical producer; lookup creates no Job, Term or
+  receipt and spends no fuel. Failed assertions and non-label functions/apps
+  reject; foreign signature owners and cyclic origin chains are not recognized.
+  O2 Synthesis/source-I/O, semantic persistence, seven checkpoint and five C
+  gates, focused ASan/UBSan/leaks and dirty-current Core/IADT/Synthesis pass.
+  Full O2 regression/examples/acceptance also exits 0, including general
+  Sorted/permutation/result connection and invalid-proof rejection. A fresh patch
+  assembly matches the frozen trial's 128 active C/header files and Synthesis tests.
+  [Paired counts](../src/prototype/solver_inputs/operation_origin_measurements.tsv)
+  retain completed Term/Occurrence/Evidence counts on all five inputs. Effect
+  loses 11 Jobs/1,320 layout bytes and 31 steps; Handler loses 5 Jobs/600 bytes
+  and 13 steps. Mid-budget scheduling changes are recorded, not assumed equal.
+  [Applied deltas](../src/prototype/solver_inputs/operation_origin_delta.tsv):
+  implementation +7/-81 (net -74), tests +46/-41 (net +5), excluding patches/docs.
+  [Input/binary hashes](../src/prototype/solver_inputs/operation_origin_inputs.tsv)
+  pin the comparison. All 52 List partition images/report equal the parent;
+  the same three public reload failures remain (exit 1), not waived. The first C
+  invocation used nonexistent `check-c-linker`; the corrected five-target batch
+  uses `check-c-link` and exits 0. Logs use `/tmp/a-program-operation-origin-`.
+  SE1-SE5 remain open; no production promotion or new Task graph/format.
   Verified prototype (2026-10-02, parent `fa6c916`, agent decision): delete
   `FAMILY_DOMAIN_JOB`, its factory and result copy. Logical-family application
   yields the existing parameter query and passes its exact declaration to the

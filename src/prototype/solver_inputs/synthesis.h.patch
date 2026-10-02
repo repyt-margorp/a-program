@@ -249,7 +249,35 @@
  /* Same registration from a raw row-expression DAG: closed/parameter leaves
   * and union nodes. Each exact row/target/mask request shares work. No row is
   * accepted as a type; await completion before sealing, as above. A rejected
-@@ -422,9 +426,18 @@
+@@ -393,24 +397,12 @@
+ 	const struct pg_term *term, struct pg_effect_inference *work, size_t count,
+ 	const struct pg_effect_equation *const *equations);
+ const struct pg_term *pg_synthesis_effect_substitution_result(const struct pg_synthesis_job *job);
+-/* Resolve nominal operation identity through completed lexical aliases,
+- * definition storage, quotation and successful source expectations. This is
+- * shared budgeted work over producer links, not Core recognition or function
+- * evaluation. Arbitrary functions and bare evidence registrations do not
+- * acquire operation identity. Failed/pending producers retain their status.
+- * Completion has no proof result and validates the original producer chain. */
+-struct pg_synthesis_job *pg_synthesis_operation_reference(struct pg_synthesis *synthesis,
+-	struct pg_synthesis_job *producer);
+-/* Structural declaration lookup, possibly before reference validation. NULL
++/* Structural declaration lookup through the existing lexical producer links,
++ * possibly before source validation. No separate reference Job is allocated. NULL
+  * means unavailable, not a negative proof. Cyclic producer chains stop without
+- * evaluation. Consumers must still await reference completion before accepting
++ * evaluation. Consumers must still await the source producer before accepting
+  * a clause; knowing the signature does not validate an alias or expectation. */
+ const struct pg_operation_declaration *pg_synthesis_operation_declaration(const struct pg_synthesis_job *job);
+-/* Borrow the actual signature producers through the same nominal provenance
+- * path, even while their proofs are pending. This is input, not signature or
+- * alias acceptance. Consumers must still validate the reference and types. */
+-int pg_synthesis_operation_reference_input(const struct pg_synthesis *synthesis,
+-	const struct pg_synthesis_job *reference, struct pg_operation_input *input);
+ struct pg_derivation_input;
+ /* Structural subject of an unaccepted formation producer. Universe/F/U/Pi
+  * inputs can be inspected before row closure. Unknown rule forms await their
+@@ -422,9 +414,18 @@
   * snapshots after substituting solved parameters, not by raw pointer identity.
   * Known formation rules share their construction request with term_structure;
   * source/projection views still enforce that the subject describes a type. */
@@ -270,7 +298,7 @@
  /* Structural classifier for pending VARIABLE/FORCE/THUNK/LAMBDA/APP rule inputs.
   * Prepared source VARIABLE/quotation rules share this projection too.
   * Uses binder identity through context producers, not names or accepted proof
-@@ -433,21 +446,21 @@
+@@ -433,21 +434,21 @@
   * Accepted producers expose their retained classifier without new inference.
   * Other producers await acceptance. Read the raw result with the same
   * type_structure_result accessor; it supplies no typing evidence. */
@@ -297,7 +325,7 @@
   * ordinary rule jobs await sealing/convergence before accepting F formation. */
  struct pg_synthesis_job *pg_synthesis_derivation_inference(struct pg_synthesis *synthesis,
  	const struct pg_derivation_input *input, struct pg_effect_inference *work);
-@@ -458,65 +471,71 @@
+@@ -458,65 +459,71 @@
  int pg_synthesis_import_rules(struct pg_synthesis *, size_t,
  	const struct pg_derivation_input *const *, struct pg_effect_inference *,
  	struct pg_synthesis_job *const **);
@@ -396,7 +424,7 @@
  	const struct pg_source_scope *scope, struct pg_token name);
  /* Supply the driver-selected symbol bindings for source import statements.
   * This closed scope is not made lexically visible: only explicit imports
-@@ -544,55 +563,49 @@
+@@ -544,55 +551,49 @@
  const struct pg_source_scope *pg_synthesis_module_namespace(struct pg_synthesis *synthesis,
  	const struct pg_source_scope *parent, struct pg_token name,
  	struct pg_synthesis_job *module);
@@ -468,7 +496,7 @@
  struct pg_data_schema;
  /* Assemble field telescopes and result maps for a parsed @{...} or @\i:T=>
   * declaration in its already opened parameter scope. Constructors are checked
-@@ -637,85 +650,85 @@
+@@ -637,85 +638,85 @@
  	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
  	const struct pg_evidence *generalization, const struct pg_syntax *clause);
  /* Recover the selected nominal declaration and parameter map, never by Core
@@ -590,7 +618,7 @@
  /* Share a suspended endpoint derivation on the ordinary work queue. face is
   * an immutable, graph-lived canonical endpoint selector: its first coordinate
   * is fixed, followed by its ordered axes. Those axes count outer Identity
-@@ -732,12 +745,7 @@
+@@ -732,12 +733,7 @@
   * and endpoint traversal steps. The same immutable-input lifetime applies.
   * Permutations and hidden Identity dimensions remain unsupported. */
  struct pg_synthesis_job *pg_synthesis_identity_face(struct pg_synthesis *synthesis,
@@ -604,7 +632,7 @@
  	const struct pg_dimension_map *face);
  /* Select the source boundary for a permutation: permutation composed with
   * target_face = ordered composed with intrinsic. The returned producer proves
-@@ -748,64 +756,47 @@
+@@ -748,64 +744,47 @@
  struct pg_dimensions;
  struct pg_synthesis_job *pg_synthesis_permutation_source_face(struct pg_synthesis *synthesis,
  	struct pg_dimensions *dimensions, const struct pg_evidence *context,
@@ -689,7 +717,7 @@
  	const struct pg_object *constructor;
  	int allocated;
  	const struct pg_context *prefix, *fields;
-@@ -818,15 +809,15 @@
+@@ -818,15 +797,15 @@
  /* Extend the shared field scope with thunked motives for direct recursive
   * fields. Input producers must ultimately justify the same nominal family. */
  struct pg_synthesis_job *pg_synthesis_induction_scope(struct pg_synthesis *synthesis,
@@ -711,7 +739,7 @@
  /* Pure checked computation -> returned value, using the same job table and
   * scheduler. The immutable context/evidence pair is the key, never bare Core.
   * A neutral total, empty-effect input has a checked symbolic result; an
-@@ -837,7 +828,8 @@
+@@ -837,7 +816,8 @@
  	const struct pg_evidence *context, const struct pg_evidence *computation);
  /* Normalize an accepted term or formation using shared pure WHNF work, then
   * retain typing through directed subject-reduction evidence. The immutable
@@ -721,7 +749,7 @@
  struct pg_synthesis_job *pg_synthesis_normalize(struct pg_synthesis *synthesis,
  	const struct pg_evidence *context, const struct pg_evidence *proof);
  /* Strong pure normalization of the same typed inputs, with a distinct job
-@@ -845,27 +837,17 @@
+@@ -845,27 +825,17 @@
   * This may normalize under THUNK; it is not a runtime execution request. */
  struct pg_synthesis_job *pg_synthesis_nf(struct pg_synthesis *synthesis,
  	const struct pg_evidence *context, const struct pg_evidence *proof);
@@ -756,7 +784,7 @@
  /* Expose checked THUNK code through shared normalization and typed inversion.
   * This does not execute the stored computation or cache an effect result. */
  struct pg_synthesis_job *pg_synthesis_unthunk(struct pg_synthesis *synthesis,
-@@ -874,6 +856,9 @@
+@@ -874,6 +844,9 @@
   * tail. Finite primitive transitions do not starve other ready work. This is
   * not a wall-clock bound on individual kernel rules or allocation. */
  void pg_synthesis_advance(struct pg_synthesis *synthesis, uint64_t budget);

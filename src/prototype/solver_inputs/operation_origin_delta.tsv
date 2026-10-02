@@ -1,0 +1,5 @@
+category	file	added	deleted	net
+implementation	src/synthesis_operation.c	2	62	-60
+implementation	src/synthesis_handler.c	2	4	-2
+implementation	src/synthesis.h	3	15	-12
+test	tests/synthesis.c	46	41	5
