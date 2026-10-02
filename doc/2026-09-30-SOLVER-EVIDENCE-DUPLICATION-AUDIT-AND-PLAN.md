@@ -1931,6 +1931,34 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   Match/induction/constructor. Migrate interning keys, consumers, export and
   ordinary checking in the same milestone. Recheck concurrent relocation work;
   do not overwrite it or silently discard required scope/formation evidence.
+  - [x] **Unary inversion receipts (2026-10-03, parent `0c0c5a6`):**
+    agent decision: RETURN_VALUE/THUNK_COMPUTATION still store their input
+    receipt even when the Occurrence origin already retains its conclusion.
+    Borrow that origin's stable receipt through the existing logical-input
+    getter; preserve exact differing selections and origin-less inputs. Do not
+    change inversion checks, structural children, wire arity or fuel. Check
+    canonical/alternative receipts, reconstruction, index-disposal lifetime,
+    unchanged images, regressions and sanitizer gates before publication.
+    Verified: four origin-backed inversion cases retain zero extra premise
+    pointers. Same-Core boundary origins identify the child, not the producer;
+    their required independent input remains. Alternative callers reuse the
+    canonical typed-input selection, as in the parent; do not impose a new
+    receipt-selection policy. Parent control passes with its old retained-count
+    expectation, and fails the new zero-retention assertion. Full O2 regression,
+    examples/acceptance, semantic/seven checkpoint/five C gates and focused
+    ASan/UBSan/leaks pass. Fresh assembly matches tested sources/tests; separate
+    Core/IADT/Synthesis checks pass with the user's edits, which are not staged.
+    [Census](../src/prototype/solver_inputs/unary_receipts_measurements.tsv) is
+    unchanged in all five samples, including retained counts: these samples do
+    not exercise the removed inversion edges. [Five final images](../src/prototype/solver_inputs/unary_receipts_images.tsv)
+    and all 52 List partition images match the parent byte-for-byte. The same
+    [three public reload failures](../src/prototype/solver_inputs/unary_receipts_partitions.tsv)
+    remain, exit 1, not waived. [Applied delta](../src/prototype/solver_inputs/unary_receipts_delta.tsv):
+    implementation +6/-1 (net +5), tests +58/-0, excluding docs/patch context.
+    No speedup or peak-memory claim; no tag, checking owner, wire field or trust
+    policy added. [Hashes](../src/prototype/solver_inputs/unary_receipts_inventory.tsv)
+    pin the inputs. Logs use `/tmp/a-program-unary-receipts-`; prototype only,
+    SE1-SE5 remain open.
   - [x] **Dependent-field inputs (2026-10-03, parent `7d72b62`):** remove
     `typed_field.bindings` and the prefix reduction slots; borrow unchanged
     prefix images from the existing Context map and suffix Core/binder from
