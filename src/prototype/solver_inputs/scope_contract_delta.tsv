@@ -1,0 +1,3 @@
+category	file	added	deleted	net
+implementation	src/synthesis_binding.c	24	7	17
+test	tests/synthesis.c	85	6	79

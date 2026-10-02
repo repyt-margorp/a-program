@@ -1094,6 +1094,38 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   [Hashes](../src/prototype/solver_inputs/context_cursor_inventory.tsv) pin the
   frozen trial; logs use `/tmp/a-program-context-cursor-`. SE1-SE5 remain open;
   prototype only, not accepted-source promotion or complete Job/Evidence removal.
+- [x] **SE1 lexical Context contracts (2026-10-03, parent `7a6d0f8`;
+  agent implementation decision):** an exact ordinary/family Context-extension
+  rule already checks its parent and binder. A source binding can borrow that
+  pending input without a second `SCOPE_CONTEXT_JOB`, provided its parent input
+  and binder match exactly and no separate IH association is required. This is
+  not early acceptance: failed Context formation still rejects the consumer.
+  Opaque producers and association checks retain their actual obligation;
+  existing validation keys stay stable. Inertness, exact reuse, invalid
+  domain/parent/binder, family extension and delayed-parent tests pass, with
+  chunks 1/64. Full O2 regression/examples/acceptance exits 0, including general
+  Sorted/permutation/result connection and both LT providers/orders. Semantic
+  persistence/seven checkpoint and five C gates, ASan/UBSan/leaks, fresh assembly
+  and current-user-edit Core/IADT/Synthesis pass; unrelated files are unchanged.
+  [Paired census](../src/prototype/solver_inputs/scope_contract_measurements.tsv):
+  completed Term/Occurrence/Evidence, rule, logical/retained premise and query
+  counts agree on all five inputs. QuickSort loses 19 Jobs, 27 dispatches and
+  2,592 Job-layout bytes; effects lose 48/93/6,632, handler 18/33/2,488.
+  Partial-fuel progress can differ after removing dispatches; step 0 agrees.
+  These are not total-memory or wall-clock speedup measurements.
+  [Five images](../src/prototype/solver_inputs/scope_contract_images.tsv) are
+  byte-identical to the parent. [Applied deltas](../src/prototype/solver_inputs/scope_contract_delta.tsv):
+  implementation +24/-7 (net +17), tests +85/-6 (net +79), not patch/doc lines.
+  Stored duplicate validation is reduced, not total source size.
+  [Public partitions](../src/prototype/solver_inputs/scope_contract_partitions.tsv)
+  still fail reload 1000+1000, 1600+1600 and completed+0 (exit 1), not waived.
+  [Hashes](../src/prototype/solver_inputs/scope_contract_inventory.tsv) pin the
+  candidate; logs use `/tmp/a-program-scope-contract-`. No replacement scope
+  state, pending class, Term graph, wire field or acceptance authority is added.
+  SE1-SE5 remain open; prototype only, not accepted-source promotion or complete
+  Job/Evidence removal. Static recheck also confirms basic Lambda/App/unary
+  introduction receipts already borrow typed children without another premise
+  array; they are not a newly discovered duplicate graph.
   Verified prototype increment (2026-10-03, parent `0e3865d`; agent decision):
   normalization now uses the existing resolved-input interner after operand
   validation. Equivalent checked inputs share the checking owner, without
