@@ -684,6 +684,17 @@ No new binding/domain checkpoint fields or backend features before this gate.
 Implement prototypes, verify, and push reviewable deletion-oriented milestones.
 Do not mark a milestone complete just because a view hides the old representation.
 
+2026-10-02, agent trial on `6506828`, rejected before adoption: moving reindex
+admission into an additional typed query reduces completed List Jobs by 7 but
+adds 98 completed queries. Job/query layout bytes change 162,184 -> 171,424
+at the same 2,602 steps; semantic counts are unchanged. That preserves another
+completed input/result owner rather than removing it. Do not adopt the trial
+or its API. Instead remove reindex receipt inputs already present in the typed
+map/origin, retaining exact alternative selections and inputs absent from that
+structure. Verify logical premises, ordinary checking and persistence unchanged.
+Function-graph Jobs are not removed blindly: helper waits and source-interface
+publication remain genuine work. Prototype scope; SE1-SE5 remain unfinished.
+
 - [x] **SE0 audit:** trace the four producer/consumer paths above; add a read-only
   census and pin the baseline. Audit measurements do not complete the refactor.
 - [ ] **SE1 ownership before adapters:** enumerate Job roles and record their
@@ -1338,6 +1349,23 @@ Do not mark a milestone complete just because a view hides the old representatio
   Publication: GitHub HTTPS initially failed on 2026-10-01; after connectivity
   was restored, `d6640ef` and later verified commits through `97825ec` were
   pushed to Main that day. No production promotion is implied.
+  Verified reindex increment (2026-10-02, agent decision; parent `6506828`):
+  mapped receipts borrow the map/origin inputs already retained by the typed
+  action. Exact alternative receipts and inputs absent from that action remain
+  independent; no new query, tag, API or wire field is added. Seven selection
+  cases preserve logical arity/order, exact sharing and access after index
+  disposal. [Paired census](../src/prototype/solver_inputs/reindex_receipts_measurements.tsv)
+  differs only in retained premise references: completed List/effect/captured/
+  QuickSort remove 188/1,346/1,114/36,963 references; steps and graph counts stay
+  equal. This is not a peak-memory/speedup claim. [Applied delta](../src/prototype/solver_inputs/reindex_receipts_delta.tsv):
+  implementation +6/-0, tests +32/-0, excluding docs and patch context.
+  Fresh full O2 regression/examples/acceptance, semantic persistence, all seven
+  checkpoint and five C gates pass, including both LT providers/orders and
+  invalid-evidence controls. ASan/UBSan/leaks Core/synthesis/source/derivation,
+  fresh-assembly checks and current-worktree Core/IADT/synthesis pass. All 52
+  strict List images and the four-failure partition report match the parent;
+  the public resume gate still fails. SE1-SE5 remain open; prototype only.
+  Logs use `/tmp/a-program-reindex-receipts-`; user edits are excluded.
 - [ ] **SE4 persistence projection:** consume those canonical structures through
   borrowed views, removing exported copies of reconstructible rule-input trees
   and obsolete owner codecs. Keep only unfinished state needed by actual Solve
