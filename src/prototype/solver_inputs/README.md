@@ -344,6 +344,18 @@ kernel acceptance remain, without another Job-only input interface.
 
 ### Assessment
 
+2026-10-03, Effect substitution against `c1d93d3`: remove the intermediate
+binding array and temporary flattened key. Existing substitution construction
+accepts one stable synchronous array/reader view; only its immutable environment
+is retained. The completed Term pointer survives lower work-store destruction,
+without copying the Term. Array/reader reuse, identity prefixes, shadowing,
+input lifetime and zero/split fuel are tested. [Census](effect_images_measurements.tsv)
+is unchanged; [deltas](effect_images_delta.tsv) are net +19 implementation,
++48 tests, not source reduction. [Allocation samples](effect_images_allocation.tsv)
+exclude the removed direct-malloc buffer, and establish no universal speedup.
+Full regression/checkpoint/C/sanitizer and fresh/current gates pass; public
+partition images match but the existing three reload failures remain open.
+
 Index-result, index/constructor transport and constant-motive consumers also use
 the same inputs. Checked endpoints, paths, values and targets need no completed
 Job. Genuine transport retains its finite candidate search and suspension cursor.

@@ -1,0 +1,36 @@
+--- a/eval_io.c
++++ b/eval_io.c
+@@ -364,7 +364,7 @@
+ 	assert(!pg_graph_init(&graph));
+ 	assert(!pg_substitution_work_init(&shared, &graph));
+ 	const struct pg_term *input = substitution_fixture(&graph, &image);
+-	struct pg_substitution *request = pg_substitution_request(&shared, input, 1, &image);
++	struct pg_substitution *request = pg_substitution_request(&shared, input, 1, (struct pg_binding_inputs){.owner = &image});
+ 	assert(request && pg_substitution_advance(request, 10000) == PG_SUBSTITUTION_DONE);
+ 	uint64_t steps = pg_substitution_steps(request);
+ 	pg_substitution_work_destroy(&shared);
+@@ -373,13 +373,13 @@
+ 		assert(!pg_graph_init(&graph));
+ 		assert(!pg_substitution_work_init(&shared, &graph));
+ 		input = substitution_fixture(&graph, &image);
+-		request = pg_substitution_request(&shared, input, 1, &image);
++		request = pg_substitution_request(&shared, input, 1, (struct pg_binding_inputs){.owner = &image});
+ 		assert(request);
+ 		struct pg_substitution_state *state = request->state;
+ 		assert(state->input_storage == &shared.storage);
+ 		const struct pg_closure *original = pg_substitution_input(request);
+ 		struct pg_substitution *sibling = pg_substitution_request(&shared,
+-			pg_reference(&graph, image.binder), 1, &image);
++			pg_reference(&graph, image.binder), 1, (struct pg_binding_inputs){.owner = &image});
+ 		assert(sibling != request && pg_substitution_input(sibling)->environment == original->environment);
+ 		assert(pg_substitution_advance(sibling, 10000) == PG_SUBSTITUTION_DONE);
+ 		assert(pg_substitution_result(sibling) == image.value && !pg_substitution_steps(request));
+@@ -389,7 +389,7 @@
+ 		assert(request->state == state && state->input_storage == &shared.storage);
+ 		assert(pg_substitution_input(request) == original && request->state->root == root);
+ 		assert(pg_substitution_steps(request) == cut);
+-		assert(pg_substitution_request(&shared, input, 1, &image) == request);
++		assert(pg_substitution_request(&shared, input, 1, (struct pg_binding_inputs){.owner = &image}) == request);
+ 		if (cut == steps) {
+ 			assert(!request->state->context.temporary.blocks);
+ 			assert(!request->state->context.results.count);

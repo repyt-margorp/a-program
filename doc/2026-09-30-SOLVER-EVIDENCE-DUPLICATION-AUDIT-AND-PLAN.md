@@ -171,6 +171,25 @@ additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
 
+2026-10-03, agent follow-up on `c1d93d3` plus the Effect-input trial:
+`pg_context_map` stores both typed images and their Core values in a second
+binding array. Project values from the existing images through the same borrowed
+input contract; retain only the positional binder index. Removing that index
+would replace constant-time indexed reads with repeated Context-list walks.
+Keep ordinary scope/dependent checks, exact image identity and wire layout;
+this is not permission to infer acceptance from descriptive maps.
+
+2026-10-02, agent decision on `c1d93d3`: unary CBPV, Lambda/APP and Context
+introduction already retain no premise array; do not invent new receipt storage
+there. Effect substitution still copies equation results into `bindings[]`
+before the Core substitution owner consumes them.
+Use one synchronous array/reader contract for the existing substitution API;
+borrow solved equations, preserve ordered images/identity-prefix normalization,
+checking and unfinished cursors. Remove the staging array and temporary flattened
+request key, not the actual substitution work. Retain the borrowed completed
+Term pointer: the lower substitution store frees its work on destruction while
+the Core result remains graph-owned; this pointer is not a copied Term graph.
+
 2026-10-02, agent implementation decision against `2f2e6d1`: receipt admission
 already borrows typed inputs, but `derivation.c:premise_slice` still allocates
 full premise tails before ordinary Match/induction, TypeCase, Schema, substitution
@@ -763,6 +782,34 @@ not authorization to promote code or a claim that general resumption is solved.
 
 No new binding/domain checkpoint fields or backend features before this gate.
 Implement prototypes, verify, and push reviewable deletion-oriented milestones.
+
+- [ ] **SE1 Context-map images (2026-10-03, follows Effect inputs):** delete
+  copied Core-value slots; borrow typed images, retaining the binder index.
+  Test dependent maps, raw duplicate-binder ordering, array/reader request reuse,
+  zero/split fuel, owner lifetime and persistence. Measure actual storage,
+  run ordinary regression/checkpoint/sanitizer/C gates, then publish separately.
+
+- [x] **SE1 Effect substitution inputs (2026-10-03, parent `c1d93d3`):**
+  unify existing Core substitution construction on stable synchronous inputs;
+  delete Effect's intermediate binding array and key scratch; retain the
+  graph-owned completed result across lower work-store destruction.
+  Array/reader sharing, shadowing, identity-prefix handling, null/invalid
+  inputs, reader lifetime, zero/split fuel and destruction tests pass.
+  Full O2 regression/examples/acceptance, semantic persistence, seven checkpoint,
+  five C gates and focused Core/Synthesis/Eval-I/O/Source-I/O ASan/UBSan/leaks
+  exit 0. Fresh patch assembly matches all 156 C/header files; dirty-current
+  Core/IADT/Synthesis pass without including the user's edits in this increment.
+  [Paired census](../src/prototype/solver_inputs/effect_images_measurements.tsv)
+  is identical at fuel 0/100/1000/completion for five inputs. The deleted staging
+  allocation used direct malloc, excluded from the
+  [arena samples](../src/prototype/solver_inputs/effect_images_allocation.tsv);
+  those samples establish no general speedup or total-memory saving.
+  [Applied delta](../src/prototype/solver_inputs/effect_images_delta.tsv):
+  implementation +68/-49 (net +19), tests +72/-24 (net +48), excluding patch
+  context/docs/reports. [Hashes](../src/prototype/solver_inputs/effect_images_inventory.tsv)
+  pin tested files/inputs. All 52 List images/report match the parent; the same
+  three strict reload failures remain, not waived. Prototype only; SE1-SE5 open.
+  Logs: `/tmp/a-program-effect-images-*.log`.
 
 - [x] **SE1 Effect-row traversal increment (2026-10-02, parent `d1b8290`):**
   delete per-join child Jobs and the shape-discovery forwarding Job in

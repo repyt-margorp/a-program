@@ -327,7 +327,7 @@
  			/* A constant codomain does not wait for argument conversion.
  			 * Once the argument is requested, dependence is already known. */
  			enum pg_comparison_status scan = pg_synthesis_independence(synthesis, job, &local->comparison, codomain, binder);
-@@ -119,10 +329,10 @@
+@@ -119,12 +329,12 @@
  				pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_DONE);
  				return;
  			}
@@ -339,8 +339,11 @@
 +		if (!pg_synthesis_structure_valid(local->right)) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
 +		if (pg_synthesis_await_structure(synthesis, job, local->right)) return;
  		struct pg_binding_value image = {binder, pg_synthesis_type_structure_result(local->right)};
- 		local->substitution = pg_substitution_request(&synthesis->typing->substitutions, codomain, 1, &image);
+-		local->substitution = pg_substitution_request(&synthesis->typing->substitutions, codomain, 1, &image);
++		local->substitution = pg_substitution_request(&synthesis->typing->substitutions, codomain, 1, (struct pg_binding_inputs){.owner = &image});
  		if (!local->substitution) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+ 	}
+ 	enum pg_substitution_status status = pg_substitution_advance(local->substitution, 1);
 @@ -136,9 +346,10 @@
  static void function_structure_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {

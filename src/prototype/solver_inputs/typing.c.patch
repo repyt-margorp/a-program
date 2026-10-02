@@ -32,3 +32,21 @@
  	result->induction = NULL;
  	for (size_t i = 0; i < operand_count; ++i) result->operands[i] = operands[i];
  	if (map_count) memcpy(result->operands + operand_count, maps, map_count * sizeof(*maps));
+@@ -572,7 +572,7 @@
+ 		return work->child ? PG_SUBSTITUTION_PENDING : PG_SUBSTITUTION_ERROR;
+ 	}
+ 	if (!work->substitution) work->substitution = pg_substitution_request(&typing->substitutions,
+-		work->universe, work->indices_map->count, pg_context_map_bindings(work->indices_map));
++		work->universe, work->indices_map->count, (struct pg_binding_inputs){.owner = pg_context_map_bindings(work->indices_map)});
+ 	enum pg_substitution_status status = pg_substitution_advance(work->substitution, 1);
+ 	if (status != PG_SUBSTITUTION_DONE) return status;
+ 	const struct pg_term *type = pg_substitution_result(work->substitution);
+@@ -768,7 +768,7 @@
+ 		if (!inputs[work->next]) { ++work->next; return PG_SUBSTITUTION_PENDING; }
+ 		if (!work->substitution) {
+ 			work->substitution = pg_substitution_request(&work->typing->substitutions,
+-				inputs[work->next], map->count, bindings);
++				inputs[work->next], map->count, (struct pg_binding_inputs){.owner = bindings});
+ 			return work->substitution ? PG_SUBSTITUTION_PENDING : PG_SUBSTITUTION_ERROR;
+ 		}
+ 		enum pg_substitution_status status = pg_substitution_advance(work->substitution, 1);
