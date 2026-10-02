@@ -17,14 +17,14 @@
 +}
 +
 +static int proof_header(const void *unused, const void *key, struct pg_derivation_input *header)
- {
--	const struct pg_typing *const *typing = owner;
++{
 +	(void)unused;
 +	return pg_derivation_input_header(key, header);
 +}
 +
 +static int proof_child(const void *owner, const void *key, size_t index, const void **child)
-+{
+ {
+-	const struct pg_typing *const *typing = owner;
 +	const struct proof_view *view = owner;
  	const struct pg_evidence *input = NULL;
 -	int status = pg_derivation_input_dependency(*typing, key, index, &input);
@@ -177,3 +177,65 @@
  }
  
  struct input_record {
+@@ -259,11 +314,11 @@
+ 	return pg_derivations_read_descriptors(file, typing, limit, name_limit, &codec, owner, count, roots);
+ }
+ 
+-static int read_dag(FILE *file, struct pg_typing *typing, size_t limit, size_t name_limit,
++static int read_dag(FILE *file, struct pg_typing *typing, struct pg_graph *inputs, size_t limit, size_t name_limit,
+ 	struct pg_effect_inference *work, const struct pg_graph_codec *codec, void *owner,
+ 	size_t *count, const struct pg_derivation_input *const **roots, struct pg_graph *scratch, int headers)
+ {
+-	if (!typing || !typing->contexts.capacity) return -1;
++	if (!typing || !typing->contexts.capacity || !inputs) return -1;
+ 	struct pg_graph *graph = typing->graph;
+ 	if (!file || !graph || !graph->terms.capacity || !count || !roots) return -1;
+ 	if (work && (work->rows != graph || work->sealed || work->failed || work->row_sources.count)) return -1;
+@@ -305,7 +360,7 @@
+ 		if (arity > available || arity > (SIZE_MAX - sizeof(struct pg_derivation_input)) / sizeof(void *)) return -1;
+ 		available -= (size_t)arity;
+ 		size_t edges = headers ? 0 : (size_t)arity;
+-		struct pg_derivation_input *input = pg_alloc(graph, sizeof(*input) + edges * sizeof(*input->premises));
++		struct pg_derivation_input *input = pg_alloc(inputs, sizeof(*input) + edges * sizeof(*input->premises));
+ 		if (!input) return -1;
+ 		records[i].input = input;
+ 		input->rule = (enum pg_evidence_rule)rule;
+@@ -320,7 +375,7 @@
+ 			input->premises[j] = records[id - 1].input;
+ 		}
+ 	}
+-	const struct pg_derivation_input **result = pg_wire_array(graph, nr, sizeof(*result));
++	const struct pg_derivation_input **result = pg_wire_array(inputs, nr, sizeof(*result));
+ 	if (!result) return -1;
+ 	for (size_t i = 0; i < nr; ++i) {
+ 		uint64_t id;
+@@ -433,16 +488,16 @@
+ 	const struct pg_graph_codec *codec, void *owner,
+ 	size_t *count, const struct pg_derivation_input *const **roots)
+ {
+-	return pg_derivations_read_inference(file, typing, limit, name_limit, NULL, codec, owner, count, roots);
++	return pg_derivations_read_inference(file, typing, typing ? typing->graph : NULL, limit, name_limit, NULL, codec, owner, count, roots);
+ }
+ 
+-int pg_derivations_read_inference(FILE *file, struct pg_typing *typing, size_t limit, size_t name_limit,
++int pg_derivations_read_inference(FILE *file, struct pg_typing *typing, struct pg_graph *inputs, size_t limit, size_t name_limit,
+ 	struct pg_effect_inference *work, const struct pg_graph_codec *codec, void *owner,
+ 	size_t *count, const struct pg_derivation_input *const **roots)
+ {
+-	/* Keep rule inputs, but discard the wire-index and relocation workspace. */
++	/* The caller chooses the rule-input lifetime independently of semantic data. */
+ 	struct pg_graph scratch = {0};
+-	int status = read_dag(file, typing, limit, name_limit, work, codec, owner, count, roots, &scratch, 0);
++	int status = read_dag(file, typing, inputs, limit, name_limit, work, codec, owner, count, roots, &scratch, 0);
+ 	pg_graph_destroy(&scratch);
+ 	if (status && work) work->failed = 1;
+ 	return status;
+@@ -453,7 +508,7 @@
+ 	size_t *count, const struct pg_derivation_input *const **roots)
+ {
+ 	struct pg_graph scratch = {0};
+-	int status = read_dag(file, typing, limit, name_limit, NULL, codec, owner, count, roots, &scratch, 1);
++	int status = read_dag(file, typing, typing ? typing->graph : NULL, limit, name_limit, NULL, codec, owner, count, roots, &scratch, 1);
+ 	pg_graph_destroy(&scratch);
+ 	return status;
+ }

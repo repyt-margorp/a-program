@@ -597,6 +597,15 @@
  {
  	return pg_sources_write_with(file, synthesis, count, roots, 0, NULL, NULL);
  }
+@@ -1037,7 +1118,7 @@
+ 	const struct pg_derivation_input *const *derivations;
+ 	size_t semantic_count = 0;
+ 	const struct pg_occurrence *const *semantic = NULL;
+-	if (pg_retained_read_semantic_with(file, &program->typing, limit, limit, &program->imported_effects,
++	if (pg_retained_read_semantic_with(file, &program->typing, scratch, limit, limit, &program->imported_effects,
+ 		&pg_declaration_graph_codec, &codec, &nd, &derivations, &input_count, &input_terms,
+ 		&semantic_count, &semantic, continuation, owner)) goto fail;
+ 	if (semantic_count != np) goto fail;
 @@ -1120,27 +1201,29 @@
  				if (syntax == 6) {
  					if (prefix) goto fail;

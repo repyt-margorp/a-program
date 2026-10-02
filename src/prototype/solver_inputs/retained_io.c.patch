@@ -52,3 +52,54 @@
  		.term_count = term_count, .terms = terms, .owner = owner,
  		.semantic_format = 1, .semantic_count = semantic_count, .semantic = semantic,
  		.continuation = continuation, .continuation_owner = continuation_owner};
+@@ -90,6 +102,7 @@
+ 
+ struct read_state {
+ 	struct pg_typing *typing;
++	struct pg_graph *inputs;
+ 	size_t count;
+ 	const struct pg_derivation_input *const *roots;
+ 	struct pg_effect_inference *effects;
+@@ -140,7 +153,7 @@
+ 	if (graph != state->typing->graph) return -1;
+ 	uint64_t has_reductions = 0;
+ 	if (!state->semantic_format && (pg_wire_read_u64(file, &has_reductions) || has_reductions > 1)) return -1;
+-	if (pg_derivations_read_inference(file, state->typing, limit, name_limit, state->effects,
++	if (pg_derivations_read_inference(file, state->typing, state->inputs, limit, name_limit, state->effects,
+ 		codec, state->owner, &state->count, &state->roots)) return -1;
+ 	if (has_reductions && pg_reduction_records_read(file, graph, limit, name_limit,
+ 		codec, state->owner, &state->reductions)) return -1;
+@@ -158,7 +171,7 @@
+ 	size_t *term_count, const struct pg_term *const **terms)
+ {
+ 	if (!typing || !count || !roots || !reductions || !term_count || !terms) return -1;
+-	struct read_state state = {.typing = typing, .effects = effects, .owner = owner};
++	struct read_state state = {.typing = typing, .inputs = typing->graph, .effects = effects, .owner = owner};
+ 	if (pg_graph_image_read(file, magic, typing->graph, limit, name_limit, codec, owner, read_payload, &state)) return -1;
+ 	*count = state.count;
+ 	*roots = state.roots;
+@@ -174,11 +187,11 @@
+ 	size_t *term_count, const struct pg_term *const **terms,
+ 	size_t *semantic_count, const struct pg_occurrence *const **semantic)
+ {
+-	return pg_retained_read_semantic_with(file, typing, limit, name_limit, effects, codec, owner,
++	return pg_retained_read_semantic_with(file, typing, typing ? typing->graph : NULL, limit, name_limit, effects, codec, owner,
+ 		count, roots, term_count, terms, semantic_count, semantic, NULL, NULL);
+ }
+ 
+-int pg_retained_read_semantic_with(FILE *file, struct pg_typing *typing, size_t limit, size_t name_limit,
++int pg_retained_read_semantic_with(FILE *file, struct pg_typing *typing, struct pg_graph *inputs, size_t limit, size_t name_limit,
+ 	struct pg_effect_inference *effects, const struct pg_graph_codec *codec, void *owner,
+ 	size_t *count, const struct pg_derivation_input *const **roots,
+ 	size_t *term_count, const struct pg_term *const **terms,
+@@ -186,8 +199,8 @@
+ 	int (*continuation)(FILE *, struct pg_typing *, size_t, size_t, const struct pg_graph_codec *, void *, void *),
+ 	void *continuation_owner)
+ {
+-	if (!typing || !count || !roots || !term_count || !terms || !semantic_count || !semantic) return -1;
+-	struct read_state state = {.typing = typing, .effects = effects, .owner = owner, .semantic_format = 1,
++	if (!typing || !inputs || !count || !roots || !term_count || !terms || !semantic_count || !semantic) return -1;
++	struct read_state state = {.typing = typing, .inputs = inputs, .effects = effects, .owner = owner, .semantic_format = 1,
+ 		.continuation = continuation, .continuation_owner = continuation_owner};
+ 	if (pg_graph_image_read(file, continuation ? continued_magic : semantic_magic,
+ 		typing->graph, limit, name_limit, codec, owner, read_payload, &state)) return -1;

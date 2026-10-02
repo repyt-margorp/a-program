@@ -33,7 +33,7 @@
  	assert(invalid && !pg_synthesis_result(nf));
  	while (p->synthesis.ready) {
  		assert(p->synthesis.steps < 10000);
-@@ -50,12 +55,42 @@
+@@ -50,12 +55,45 @@
  	assert(pg_synthesis_status(whnf) == PG_SYNTHESIS_DONE);
  	assert(pg_synthesis_status(invalid) == PG_SYNTHESIS_REJECTED);
  	const struct pg_evidence *ctx = pg_synthesis_result(context), *input = pg_synthesis_result(p->root);
@@ -42,17 +42,20 @@
  	struct pg_synthesis_job *accepted = pg_synthesis_nf(&p->synthesis, ctx, input);
 -	assert(accepted == pg_synthesis_normalize_jobs(&p->synthesis,
 -		pg_synthesis_evidence(&p->synthesis, ctx), pg_synthesis_evidence(&p->synthesis, input), PG_REDUCTION_NF));
-+	assert(accepted && p->synthesis.jobs.count == jobs + 1);
++	assert(accepted == nf && p->synthesis.jobs.count == jobs);
 +	assert(evidence == p->typing.proofs.count && terms == p->graph.terms.count);
 +	assert(!pg_synthesis_normalization_input(&p->synthesis, accepted, &c, &proof, &kind, NULL));
-+	assert(c.checked == ctx && !c.pending && proof.checked == input && !proof.pending);
++	/* Resolving the operands reuses the original owner without rewriting its key. */
++	assert(!c.checked && c.pending == pg_synthesis_pending(context));
++	assert(!proof.checked && proof.pending == pg_synthesis_pending(p->root));
++	assert(pg_synthesis_input_result(c) == ctx);
 +	assert(accepted == pg_synthesis_reduction_request(&p->synthesis, c, proof, PG_REDUCTION_NF, 0));
-+	assert(p->synthesis.jobs.count == jobs + 1);
++	assert(p->synthesis.jobs.count == jobs);
 +	assert(pg_synthesis_input_result(proof) == input);
 +	assert(accepted == pg_synthesis_reduction_request(&p->synthesis,
 +		(struct pg_synthesis_input){.checked = ctx},
 +		(struct pg_synthesis_input){.checked = input}, PG_REDUCTION_NF, 0));
-+	assert(p->synthesis.jobs.count == jobs + 1);
++	assert(p->synthesis.jobs.count == jobs);
 +	assert(!pg_synthesis_reduction_request(&p->synthesis, (struct pg_synthesis_input){0}, proof, PG_REDUCTION_NF, 0));
 +	assert(!pg_synthesis_reduction_request(&p->synthesis,
 +		(struct pg_synthesis_input){ctx, pg_synthesis_pending(context)}, proof, PG_REDUCTION_NF, 0));
@@ -79,7 +82,7 @@
  	pg_program_destroy(p);
  }
  
-@@ -322,8 +357,8 @@
+@@ -322,8 +360,8 @@
  	assert(type && pg_evidence_classifier(result) == pg_evidence_subject(type)->core);
  	/* Resolve labels in this declaration, never hard-code constructor ordinals
  	 * or accept an erased shape belonging to a different nominal type. */
@@ -90,7 +93,7 @@
  	char expression[256];
  	int length = snprintf(expression, sizeof(expression), "expected:=%s.%s;", type_name, base_name);
  	assert(length > 0 && (size_t)length < sizeof(expression));
-@@ -368,8 +403,8 @@
+@@ -368,8 +406,8 @@
  static const struct pg_evidence *evaluated_value(struct pg_program *p, struct pg_synthesis_job *subject)
  {
  	assert(subject);
@@ -101,7 +104,7 @@
  	assert(job);
  	while (pg_synthesis_status(job) == PG_SYNTHESIS_PENDING) {
  		assert(p->synthesis.steps < comparison_steps);
-@@ -659,8 +694,8 @@
+@@ -659,8 +697,8 @@
  	assert(pg_synthesis_status(p->root) == PG_SYNTHESIS_DONE);
  	/* Imports are in the client's lexical environment, not its public exports. */
  	const struct pg_source_scope *scope = pg_synthesis_prepared_environment(p->root);
@@ -112,7 +115,7 @@
  	assert(subject);
  	const struct pg_evidence *function = pg_synthesis_result(subject);
  	struct witness_fixture *fixtures = NULL;
-@@ -670,8 +705,8 @@
+@@ -670,8 +708,8 @@
  		const char *argument = arguments[i];
  		int stored = *argument == '&';
  		if (stored) ++argument;
@@ -123,7 +126,7 @@
  		assert(subject);
  		const struct pg_evidence *value = stored ? pg_synthesis_result(subject) : evaluated_value(p, subject);
  		assert(value);
-@@ -829,7 +864,7 @@
+@@ -829,7 +867,7 @@
  		assert(origins[i] && !pg_typed_query_steps(origins[i]));
  	}
  	const struct pg_source_scope *delayed = pg_synthesis_name(&p->synthesis, p->scope,
@@ -132,7 +135,7 @@
  	const char *inspection = "relation:=@delayed;";
  	struct pg_parser inspection_parser;
  	struct pg_synthesis_job *inspected = pg_program_source(p, delayed, inspection,
-@@ -852,9 +887,9 @@
+@@ -852,9 +890,9 @@
  	assert(pg_function_graph_witness(&delayed_graph));
  	pg_function_graph_destroy(&delayed_graph);
  	const struct pg_source_scope *names = pg_synthesis_name(&p->synthesis, p->scope,

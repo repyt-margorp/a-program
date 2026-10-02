@@ -20,6 +20,15 @@
  }
  
  static int read_payload(FILE *file, struct pg_graph *graph, size_t limit, size_t name_limit,
+@@ -49,7 +52,7 @@
+ 	size_t count;
+ 	if (pg_wire_read_u64(file, &ordinal) || ordinal > SIZE_MAX) return -1;
+ 	c->ordinal = (size_t)ordinal;
+-	return pg_derivations_read_inference(file, &c->program->typing, limit, name_limit,
++	return pg_derivations_read_inference(file, &c->program->typing, c->program->typing.graph, limit, name_limit,
+ 		&c->program->imported_effects, codec, &c->objects, &count, &c->inputs) || count != 3;
+ }
+ 
 @@ -157,7 +160,9 @@
  		assert(pg_synthesis_result(premises[i]));
  	}

@@ -709,6 +709,23 @@ and [partial allocation samples](field_inputs_allocation.tsv) pin this unpromote
 prototype increment. The broad rule header is checking metadata, not a copied
 Oracle Term; packing it and reconstructing consumers is not an adopted solution.
 
+Typed WHNF/NF now reuses the existing resolved-input owner without rewriting
+pending keys; mode, force, scope and exact receipts remain distinct. Handler
+admission borrows its one-read clause snapshot, not another flattened premise
+array. Source restoration discards the raw imported rule DAG after copying its
+exact requests; referenced semantic objects remain in their real graph. Deep
+import, invalid premises, recursive/effect I/O and focused sanitizers pass.
+Against `0e3865d`, [paired census](checked_owners_measurements.tsv) is unchanged.
+[Import requests](checked_owners_import_allocation.tsv) remove 7,552 externally
+requested persistent-arena bytes on QuickSort, not RSS or artifact bytes.
+[Deltas](checked_owners_delta.tsv) are implementation net +24, tests +107,
+separate census/build +60; [hashes](checked_owners_inventory.tsv) pin verification.
+Full O2 regression/acceptance, persistence/checkpoints, C and fresh/integration
+checks pass. All 52 public List images match; the same three reload failures
+remain. Prototype only; SE1-SE5 and complete Job/Evidence consolidation are open.
+The optional `import_allocation.mk` census accepts an existing `.a`, performs
+no Solve or admission and excludes initialization, graph.c internals and scratch.
+
 Use the parent plan for progress. Create and verify a disposable candidate:
 
 ```sh

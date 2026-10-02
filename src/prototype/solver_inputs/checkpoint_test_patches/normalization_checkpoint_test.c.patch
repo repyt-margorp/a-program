@@ -20,6 +20,15 @@
  	if (pg_whnf_pending_write(file, c->saved, codec, c->objects)) return -1;
  	if (c->premise_count == 2) return 0;
  	return c->schedule ? pg_artifact_schedule_save(file, c->schedule)
+@@ -65,7 +69,7 @@
+ {
+ 	struct checkpoint *c = owner;
+ 	size_t count;
+-	if (pg_derivations_read_inference(file, c->typing, limit, name_limit, c->effects,
++	if (pg_derivations_read_inference(file, c->typing, graph, limit, name_limit, c->effects,
+ 		codec, c->objects, &count, &c->premises) || (count != 2 && count != 3)) return -1;
+ 	c->premise_count = count;
+ 	if (pg_whnf_pending_read(file, c->restored, graph, limit, name_limit, codec, c->objects)) return -1;
 @@ -115,13 +119,11 @@
  	const struct pg_evidence *different = pg_prove_universe(s->typing, context, 42);
  	struct pg_synthesis_job *wrong = pg_synthesis_normalize(&other, context, different);

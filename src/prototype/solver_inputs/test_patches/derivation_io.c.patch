@@ -117,6 +117,24 @@
  	const struct pg_term *row_term;
  	assert(pg_computation_type_spine_view(pg_synthesis_type_structure_result(shape), &grade, &row_term, &type));
  	assert(grade == totality);
+@@ -971,7 +980,7 @@
+ 		rewind(fragment);
+ 		size_t count = 71;
+ 		const struct pg_derivation_input *const *roots = NULL;
+-		assert(pg_derivations_read_inference(fragment, &typing, 1000, 100, &effects,
++		assert(pg_derivations_read_inference(fragment, &typing, typing.graph, 1000, 100, &effects,
+ 			&pg_builtin_graph_codec, &graph, &count, &roots));
+ 		assert(count == 71 && !roots && effects.failed);
+ 		pg_typing_destroy(&typing);
+@@ -1088,7 +1097,7 @@
+ 	} else {
+ 		size_t count;
+ 		const struct pg_derivation_input *const *roots;
+-		assert(!pg_derivations_read_inference(file, typing, 1000, 100, &effects, &pg_builtin_graph_codec, typing->graph, &count, &roots));
++		assert(!pg_derivations_read_inference(file, typing, typing->graph, 1000, 100, &effects, &pg_builtin_graph_codec, typing->graph, &count, &roots));
+ 		assert(count == 5 && roots[2] == roots[3] && !typing->proofs.count && !effects.sealed);
+ 		const struct pg_object *parameter = roots[0]->effect_parameter;
+ 		assert(parameter && parameter == roots[1]->effect_parameter && parameter == roots[4]->effect_parameter);
 @@ -1101,14 +1110,13 @@
  		struct pg_synthesis_job *jobs[5];
  		for (size_t i = 0; i < count; ++i) jobs[i] = pg_synthesis_derivation_inference(&synthesis, roots[i], &effects);
@@ -380,6 +398,15 @@
  		pg_effect_inference_destroy(&image);
  		pg_graph_destroy(&storage);
  		const char declaration_source[] = "D := @{};";
+@@ -1348,7 +1434,7 @@
+ 		assert(!pg_effect_inference_init(&image, graph));
+ 		size_t count;
+ 		const struct pg_derivation_input *const *inputs;
+-		assert(!pg_derivations_read_inference(file, typing, 1000, 100, &image, &pg_builtin_graph_codec, typing->graph, &count, &inputs));
++		assert(!pg_derivations_read_inference(file, typing, typing->graph, 1000, 100, &image, &pg_builtin_graph_codec, typing->graph, &count, &inputs));
+ 		assert(count == 4 && inputs[0] == inputs[3] && !typing->proofs.count);
+ 		struct pg_synthesis_job *jobs[4];
+ 		for (size_t i = 0; i < count; ++i) jobs[i] = pg_synthesis_derivation_inference(&synthesis, inputs[i], &image);
 @@ -1360,7 +1446,6 @@
  		assert(pg_synthesis_status(jobs[0]) == PG_SYNTHESIS_DONE && jobs[0] == jobs[3]);
  		assert(!pg_synthesis_result(jobs[1]) && !pg_synthesis_result(jobs[2]));

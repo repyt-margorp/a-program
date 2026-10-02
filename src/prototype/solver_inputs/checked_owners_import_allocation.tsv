@@ -1,0 +1,13 @@
+case	version	image_bytes	roots	steps	terms	occurrences	jobs	persistent_requests	persistent_requested_bytes
+list	parent	50820	1	0	214	238	69	1099	95093
+list	candidate	50820	1	0	214	238	69	1060	89125
+effect	parent	218955	1	0	1014	1574	72	4595	409468
+effect	candidate	218955	1	0	1014	1574	72	4556	403500
+captured	parent	134301	1	0	1055	887	62	2777	250073
+captured	candidate	134301	1	0	1055	887	62	2738	244105
+quick	parent	7822358	1	0	208229	51495	559	229583	17291985
+quick	candidate	7822358	1	0	208229	51495	559	229511	17284433
+handler	parent	47888	1	0	215	245	45	1007	87885
+handler	candidate	47888	1	0	215	245	45	968	81917
+list-step-0	parent	25369	1	0	19	0	40	603	39473
+list-step-0	candidate	25369	1	0	19	0	40	564	33505

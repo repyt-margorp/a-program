@@ -897,7 +897,7 @@
  	const struct pg_handler_signature *signature = pg_evidence_handler_signature(handled);
  	assert(signature && pg_handler_signature_count(signature) == 2);
  	assert(pg_handler_signature_label(signature, 0) == pg_operation_label(op));
-@@ -6294,6 +6757,36 @@
+@@ -6294,6 +6757,49 @@
  	assert(!pg_derivation_parameters(handled, &handler_parameters) && handler_parameters.handler == signature);
  	const struct pg_evidence *handler_premises[9];
  	for (size_t i = 0; i < 9; ++i) handler_premises[i] = pg_evidence_premise(handled, i);
@@ -931,10 +931,23 @@
 +		for (size_t j = 0; j < i; ++j) assert(handler_receipts[i] != handler_receipts[j]);
 +	}
 +	assert(handler_receipts[0] == handled);
++	for (size_t i = 0; i < 7; ++i) {
++		struct pg_handler_clause selected[2];
++		for (size_t j = 0; j < 2; ++j) selected[j] = (struct pg_handler_clause){
++			pg_operation_declaration_at(&typing, pg_operation_label(clauses[j].operation),
++				handler_inputs[i][3 + 3 * j], handler_inputs[i][4 + 3 * j]), handler_inputs[i][5 + 3 * j]};
++		size_t visits = 0;
++		const struct handler_reader_fixture reader = {selected, 2, &visits};
++		assert(pg_prove_handler_inputs(&typing, handler_inputs[i][0], handler_inputs[i][1],
++			handler_inputs[i][2], 2, &reader, checked_handler_clause) == handler_receipts[i]);
++		assert(visits == 2);
++		memset(selected, 0, sizeof(selected));
++		for (size_t j = 0; j < 9; ++j) assert(pg_evidence_premise(handler_receipts[i], j) == handler_inputs[i][j]);
++	}
  	assert(pg_prove_derivation(&typing, PG_HANDLER_ELIM, &handler_parameters, 9, handler_premises) == handled);
  	assert(!pg_prove_derivation(&typing, PG_HANDLER_ELIM, &handler_parameters, 8, handler_premises));
  	handler_premises[3] = u0;
-@@ -6376,6 +6869,10 @@
+@@ -6376,6 +6882,10 @@
  	clauses[0].operation = other; clauses[1].operation = op;
  	const struct pg_evidence *reordered = pg_prove_handler(&typing, two, k, carrier, 2, clauses);
  	assert(reordered);
@@ -945,7 +958,7 @@
  	assert(pg_evidence_handler_signature(reordered) != signature);
  	handler_parameters.handler = pg_evidence_handler_signature(reordered);
  	assert(pg_prove_derivation(&typing, PG_HANDLER_ELIM, &handler_parameters, 9, handler_premises) == reordered);
-@@ -6407,7 +6904,11 @@
+@@ -6407,7 +6917,11 @@
  	struct pg_handler_clause extra = {op, resume_clause(&typing, op, carrier, other)};
  	assert(extra.body && !pg_prove_handler(&typing, request, k, carrier, 1, &extra));
  	const struct pg_evidence *pure_input = pg_prove_return(&typing, payload);
@@ -958,7 +971,7 @@
  	const struct pg_object *both_labels[] = {pg_operation_label(op), other_label};
  	const struct pg_evidence *swap_carrier = pg_prove_effect_type(&typing,
  		pg_effect_row(graph, 2, both_labels), u1);
-@@ -6425,8 +6926,18 @@
+@@ -6425,8 +6939,18 @@
  	struct pg_typing separate;
  	assert(!pg_typing_init(&separate, graph));
  	assert(!pg_prove_request(&separate, op, payload, k));
@@ -977,7 +990,7 @@
  	puts("typed effects: signatures, multi-clause handlers, deep resumption, forwarding and effect bounds passed");
  }
  
-@@ -6444,6 +6955,7 @@
+@@ -6444,6 +6968,7 @@
  		const struct pg_evidence *domain = pg_prove_variable(&typing, parameters, a);
  		const struct pg_evidence *scope = pg_prove_context_extension(&typing, parameters, x, domain);
  		const struct pg_evidence *body = pg_prove_return(&typing, pg_prove_variable(&typing, scope, x));
@@ -985,7 +998,7 @@
  		if (variant & 4) {
  			const struct pg_evidence *unused = pg_prove_context_extension(&typing, parameters, pg_binder(graph),
  				pg_prove_universe(&typing, parameters, 3));
-@@ -6454,6 +6966,17 @@
+@@ -6454,6 +6979,17 @@
  			assert(selected && selected != scope && pg_evidence_context(selected) == pg_evidence_context(scope));
  			scope = selected;
  		}
@@ -1003,7 +1016,7 @@
  		const struct pg_evidence *pi = pg_prove_pi(&typing, scope, pg_prove_classifier(&typing, scope, body));
  		if (variant & 1) {
  			assert(pg_prove_thunk_content(&typing, pg_prove_thunk_type(&typing, pi)) == pi);
-@@ -6498,6 +7021,8 @@
+@@ -6498,6 +7034,8 @@
  		pg_function_graph_destroy(&generated);
  		pg_whnf_work_destroy(&evaluation);
  		pg_typing_destroy(&typing);

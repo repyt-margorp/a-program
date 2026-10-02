@@ -982,6 +982,40 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   and genuinely unfinished construction. Try direct owner references plus
   owner-local suspension state; document any residual allocation that cannot be
   eliminated and why. An independent Job graph is not an acceptance criterion.
+  Verified prototype increment (2026-10-03, parent `0e3865d`; agent decision):
+  normalization now uses the existing resolved-input interner after operand
+  validation. Equivalent checked inputs share the checking owner, without
+  changing pending keys, WHNF/NF mode, force demand or exact receipt/scope keys.
+  Handler checking borrows one validated clause snapshot rather than allocating
+  a flattened premise array; exact selections and one-read callbacks remain.
+  SE4 deletion in the same increment: source import formerly retained the raw
+  derivation DAG after copying its requests into ordinary checking owners.
+  The existing restore scratch now owns those raw headers/edges; restoration
+  discards them before Solve. Referenced Terms/Contexts/induction allocations
+  retain their actual semantic lifetime. No new graph, Job role, proof store,
+  wire field, accepted-source promotion or trust policy is added.
+  Deep 2,048-link import survives scratch destruction before Solve, preserving
+  shared roots and invalid-input rejection; recursive/effect I/O also passes.
+  Full O2 regression/examples/acceptance exits 0, including general QuickSort
+  Sorted/permutation/result connection and both LT providers/orders. Semantic
+  persistence, seven checkpoint and five C gates, focused ASan/UBSan/leaks and
+  fresh/integration Core/IADT/Synthesis pass. Integration preserves unrelated
+  user edits; only its test copy adapts overlapping Schema API call sites.
+  [Paired census](../src/prototype/solver_inputs/checked_owners_measurements.tsv)
+  agrees on all five inputs at every sampled fuel. [Import allocation](../src/prototype/solver_inputs/checked_owners_import_allocation.tsv)
+  removes 72 external persistent-arena requests / 7,552 requested bytes on the
+  same QuickSort image, 39 / 5,968 on List including step 0. These exclude
+  initialization, graph.c internals and discarded scratch; not RSS/peak memory
+  or smaller files. All 52 List images/report equal the parent byte-for-byte;
+  the same three public reload failures remain (exit 1), not waived.
+  [Actual deltas](../src/prototype/solver_inputs/checked_owners_delta.tsv):
+  implementation +61/-37 (net +24), tests +116/-9 (net +107), separate audit
+  harness/build +60. No general speedup or total code-size reduction is claimed.
+  [Hashes](../src/prototype/solver_inputs/checked_owners_inventory.tsv) pin the
+  candidate and inputs; logs use `/tmp/a-program-checked-owners-`.
+  SE1-SE5 remain open. The selected import-root array still has permanent
+  lifetime although source restoration needs only a temporary relocation map;
+  inspect/remove that residual under SE4, not a new parallel work list.
   Prototype increment (2026-10-02, parent `486d64d`; agent decision): delete
   `CONSTANT_MOTIVE_JOB` and its receipt/status wrapper. Function's stateless
   helper returns the canonical constant-result request; Match owns its actual
