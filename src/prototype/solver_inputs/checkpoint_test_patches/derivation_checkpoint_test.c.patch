@@ -434,7 +434,56 @@
  		struct mixed_checkpoint again;
  		mixed_collect(&again, p, context, roots);
  		copy = mixed_save(&again);
-@@ -729,11 +711,13 @@
+@@ -719,8 +701,48 @@
+ 	}
+ }
+ 
++static void reindex_frontier(void)
++{
++	struct pg_program *p = empty();
++	struct pg_synthesis *s = &p->synthesis;
++	struct pg_typing *typing = &p->typing;
++	const struct pg_evidence *context = pg_prove_empty_context(typing);
++	const struct pg_object *x = pg_binder(&p->graph);
++	const struct pg_evidence *scope = pg_prove_context_extension(typing, context, x,
++		pg_prove_universe(typing, context, 1));
++	const struct pg_evidence *value = pg_prove_variable(typing, scope, x);
++	const struct pg_evidence *image = pg_prove_type_value(typing, pg_prove_universe(typing, context, 0));
++	const struct pg_evidence *map = pg_prove_substitution(typing, scope, context, 1, &image);
++	struct pg_synthesis_input premises[] = {{.checked = map}, {.checked = value}};
++	struct pg_synthesis_job *root = pg_synthesis_plain_rule_inputs(s, PG_REINDEX, NULL, 2, premises);
++	assert(root && pg_synthesis_reindex_input(s, premises[0], premises[1]).pending == pg_synthesis_pending(root));
++	const struct pg_evidence *checked[] = {map, value};
++	struct pg_artifact_derivation_dependencies dependencies = {.checked_count = 2, .checked = checked};
++	struct pg_synthesis_job **mapping;
++	assert(pg_artifact_derivations_capture_with_dependencies(&p->graph, s, 1, &root, &dependencies, &mapping));
++	assert(mapping && mapping[0] == root);
++	struct pg_occurrence_action *action = pg_occurrence_action_request(typing,
++		pg_evidence_context_map(map), pg_evidence_subject(value));
++	assert(action && !pg_occurrence_action_steps(action));
++	advance(s, 0);
++	assert(!s->steps && !pg_occurrence_action_steps(action));
++	advance(s, 1);
++	assert(pg_synthesis_status(root) == PG_SYNTHESIS_PENDING && pg_occurrence_action_steps(action) == 1);
++	size_t proofs = typing->proofs.count, jobs = s->jobs.count;
++	struct pg_synthesis_job **previous = mapping;
++	assert(!pg_artifact_derivations_capture_with_dependencies(&p->graph, s, 1, &root, &dependencies, &mapping));
++	assert(mapping == previous && s->steps == 1 && pg_occurrence_action_steps(action) == 1);
++	assert(typing->proofs.count == proofs && s->jobs.count == jobs);
++	advance(s, 1000);
++	const struct pg_evidence *result = pg_synthesis_result(root);
++	assert(result && pg_evidence_subject(result) == pg_occurrence_action_result(action));
++	assert(pg_artifact_derivations_capture_with_dependencies(&p->graph, s, 1, &root, &dependencies, &mapping));
++	pg_program_destroy(p);
++}
++
+ int main(void)
+ {
++	reindex_frontier();
+ 	guards();
+ 	codec_boundaries();
+ 	invalid_completed_assertion(0);
+@@ -729,11 +751,13 @@
  	header_boundaries();
  	mixed();
  	source("main := @;");

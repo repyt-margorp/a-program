@@ -57,7 +57,7 @@
  };
  int pg_synthesis_reference_frontier(const struct pg_synthesis *, const struct pg_synthesis_job *,
  	struct pg_reference_frontier *);
-@@ -114,17 +117,35 @@
+@@ -114,70 +117,124 @@
  
  const struct pg_source_scope *pg_synthesis_intern_scope(struct pg_synthesis *, struct pg_source_scope);
  int pg_synthesis_register_name(struct pg_synthesis *, struct pg_index *, struct pg_token);
@@ -97,8 +97,9 @@
  /* Borrow/restore a rule's premise cursor before endpoint computation starts.
   * 1 supplies a cursor, 0 needs another state owner, -1 rejects the request.
   * Resume needs a fresh pending rule and locally checked skipped premises.
-@@ -132,52 +153,88 @@
-  * Effect/comparison/reduction state must be transported separately. */
+  * It grants no conclusion, runs no Solve and leaves scheduling to its owner.
+- * Effect/comparison/reduction state must be transported separately. */
++ * Effect/comparison/reduction/Reindex action state must be transported separately. */
  int pg_synthesis_rule_frontier(const struct pg_synthesis *, const struct pg_synthesis_job *, size_t *);
  int pg_synthesis_rule_resume(struct pg_synthesis *, struct pg_synthesis_job *, size_t);
 -/* Imported derivation preparation is distinct from checking the prepared rule.

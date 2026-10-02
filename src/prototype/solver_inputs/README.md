@@ -494,6 +494,19 @@ Regression/acceptance, semantic/checkpoint/C gates, sanitizers and fresh/current
 checks pass. All 52 images match; three public reload failures remain. No new
 graph, tag or wire data is introduced. SE1-SE5 are unfinished; prototype only.
 
+2026-10-02, Reindex rule unification against `9e9377b`: remove the dedicated
+worker/action-pointer state; convenience and ordinary `PG_REINDEX` requests
+share one rule owner and its Context checker. The existing Occurrence action
+retains substitution progress, not another copied payload. Exact receipt
+selections remain distinct; checked results allocate no adapter or header.
+Interrupted actions are refused by the restricted premise-cursor checkpoint.
+[Census](reindex_rule_measurements.tsv) preserves counts and steps except rule
+classification/layout; completed QuickSort grows 7,680 Job-layout bytes.
+[Applied deltas](reindex_rule_delta.tsv): implementation net +5, tests net +78.
+Regression, checkpoint/C gates, sanitizers and fresh/current checks pass. All
+52 public images match the parent, including the still-failing three reload
+comparisons. This is neither full Job/Evidence deletion nor production promotion.
+
 Use the parent plan for progress. Create and verify a disposable candidate:
 
 ```sh

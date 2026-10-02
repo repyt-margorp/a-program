@@ -806,6 +806,31 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   and genuinely unfinished construction. Try direct owner references plus
   owner-local suspension state; document any residual allocation that cannot be
   eliminated and why. An independent Job graph is not an acceptance criterion.
+  Verified prototype increment (2026-10-02, parent `9e9377b`; agent decision):
+  delete the dedicated Reindex worker and action-pointer cache. Convenience and
+  ordinary `PG_REINDEX` requests now share one rule owner and checker, borrowing
+  the canonical Occurrence action with at most one transition per dispatch.
+  Exact alternative receipts remain distinct; action completion is not proof
+  admission. Cold/warm sharing, zero fuel, cancellation, invalid scopes/arity
+  and endpoints pass. The restricted rule codec captures unstarted/completed
+  rules but refuses an interrupted action whose cursor it cannot transport.
+  A new test's initial assumption that failed capture clears its output pointer
+  was corrected to the actual unchanged-output behavior, without changing the
+  implementation. O2 full regression/examples/acceptance, semantic persistence,
+  seven checkpoint and five C gates pass, including general Sorted/permutation
+  and both LT providers/orders. Focused ASan/UBSan/leaks and fresh/current
+  synthesis/IADT tests pass; all 156 final assembled C/header files match the
+  tested prototype. [Census](../src/prototype/solver_inputs/reindex_rule_measurements.tsv)
+  preserves every field except rule classification and Job-layout bytes:
+  List/effect/captured-Match/QuickSort increase by 224/160/352/7,680 bytes.
+  The removed private pointer does not outweigh the ordinary rule's key/state;
+  this is path unification, not memory saving or a speedup claim.
+  [Applied deltas](../src/prototype/solver_inputs/reindex_rule_delta.tsv):
+  implementation +50/-45 (net +5), tests +83/-5 (net +78), excluding patch
+  context and docs. All 52 public partition images and the three-failure report
+  equal the parent; the strict reload gate still fails, not waived. No new
+  graph, tag, format or trust policy is added. SE1-SE5 remain open; prototype
+  only, user edits excluded. Logs use `/tmp/a-program-reindex-rule-`.
   Verified prototype (2026-10-02, agent decision, parent `134735d`): replace the
   dedicated substitution `PAIR_JOB` and its checking cursor with the existing
   `PG_CONTEXT_SUBSTITUTION` rule request. Its four premises are the extension,
