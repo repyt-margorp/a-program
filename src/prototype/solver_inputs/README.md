@@ -591,6 +591,16 @@ Term/Occurrence/Evidence counts. Full regression/acceptance, persistence/checkpo
 C and focused sanitizer gates pass; SE1-SE5 and the same three public reload
 failures remain open. This is an unpromoted prototype increment.
 
+Declared types now borrow checked Context fields or pending plain-extension
+operands rather than allocate lookup Jobs per ancestor. Pending source telescope
+discovery remains; visibility is not admission. [Paired counts](declared_type_measurements.tsv)
+against `0b9d421` remove 189 Jobs from completed QuickSort and 131 from Effect,
+without changing completed Term/Occurrence/Evidence counts. [Applied deltas](declared_type_delta.tsv)
+are implementation net +1 and tests +43, not code shrinkage. Full regression,
+examples/acceptance, persistence, checkpoint, C and focused sanitizer gates pass.
+The 52 public images/report match; three reload failures and SE1-SE5 stay open.
+This is unpromoted prototype work. See [pinned inputs](declared_type_inputs.tsv).
+
 Use the parent plan for progress. Create and verify a disposable candidate:
 
 ```sh

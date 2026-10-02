@@ -921,8 +921,8 @@
 +			classifier = 0;
 +			type = 1;
 +		} else if (classifier && rule->rule == PG_VARIABLE && rule->count == 1) {
-+			return (struct pg_synthesis_structure){.pending = pg_synthesis_declared_type_input(synthesis,
-+				pg_synthesis_rule_input(synthesis, producer, 0), rule->parameters.binder)};
++			return pg_synthesis_declared_type(synthesis,
++				pg_synthesis_rule_input(synthesis, producer, 0), rule->parameters.binder);
 +		} else break;
 +		input = pg_synthesis_rule_input(synthesis, producer, ordinal);
 +	}

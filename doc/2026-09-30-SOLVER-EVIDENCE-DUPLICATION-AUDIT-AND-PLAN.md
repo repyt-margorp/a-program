@@ -171,6 +171,15 @@ additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
 
+2026-10-02, agent decision against `0b9d421`: declared-type lookup still allocates
+`DECLARED_TYPE_JOB` for an already checked Context. Return the existing borrowed
+structure view for that case through one checked/pending API; delete the Job-only
+entry point. Plain Context extensions also lend their actual type operand;
+their immutable parent inputs form an acyclic DAG, not another discovery graph.
+Keep pending source telescope discovery and its effect-cycle information,
+ownership/judgement checks and binder identity. This is descriptive lookup, not
+admission, new inference or permission to use `::` as synthesis input.
+
 2026-10-02, agent decision against `ffd2fcf`: `OPERATION_REFERENCE_JOB` owns
 no object witness or independent check. It waits for the existing lexical
 producer, recursively allocates more reference Jobs and copies the operation
@@ -826,6 +835,27 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   and genuinely unfinished construction. Try direct owner references plus
   owner-local suspension state; document any residual allocation that cannot be
   eliminated and why. An independent Job graph is not an acceptance criterion.
+  Verified prototype increment (2026-10-02, parent `0b9d421`; agent decision): checked
+  declaration lookup borrows its Context field; pending plain extensions borrow
+  their actual type operand, walking immutable parents without per-ancestor Jobs.
+  One checked/pending API replaces both Job-only entries; Variable/Pi readers
+  consume that view. Pending source telescope discovery remains, not a replacement
+  worker or acceptance authority. Repeated checked/128-deep pending lookup,
+  zero-fuel inertness, foreign/mixed/wrong-judgement inputs and wrong-scope Context
+  rejection pass. Synthesis/source-I/O, semantic persistence, seven checkpoint
+  and five C gates, focused ASan/UBSan/leaks and dirty-current Core/IADT/Synthesis
+  pass. Full O2 regression/examples/acceptance exits 0, including general
+  Sorted/permutation/result connection, both LT providers/orders and invalid proofs.
+  Fresh assembly matches 128 active C/header files and the Synthesis test.
+  [Paired counts](../src/prototype/solver_inputs/declared_type_measurements.tsv)
+  preserve completed Term/Occurrence/Evidence counts on five inputs. QuickSort
+  loses 189 Jobs/27,016 layout bytes/87 steps; Effect loses 131/18,600/168.
+  [Applied deltas](../src/prototype/solver_inputs/declared_type_delta.tsv):
+  implementation +27/-26 (net +1), tests +53/-10 (net +43), excluding patches/docs.
+  [Input/binary hashes](../src/prototype/solver_inputs/declared_type_inputs.tsv)
+  pin the comparison. All 52 public partition images/report equal the parent;
+  the same three reload failures remain (exit 1), not waived. SE1-SE5 remain
+  open; prototype only. Logs use `/tmp/a-program-declared-type-`.
   Verified prototype deletion (2026-10-02, parent `ffd2fcf`; agent decision): remove
   `OPERATION_REFERENCE_JOB`, its private state, factory and input adapter.
   Handler discovers the nominal signature through existing source-origin links

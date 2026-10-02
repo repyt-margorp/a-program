@@ -376,7 +376,7 @@
  		}
 -		if (!local->left) local->left = pg_synthesis_declared_type(synthesis, first, local->binder);
 -	} else if (!local->left) {
-+		if (!pg_synthesis_structure_valid(local->left)) local->left.pending = pg_synthesis_declared_type_input(synthesis, first, local->binder);
++		if (!pg_synthesis_structure_valid(local->left)) local->left = pg_synthesis_declared_type(synthesis, first, local->binder);
 +	} else if (!pg_synthesis_structure_valid(local->left)) {
  		if (input->rule == PG_APP_ELIM) {
 -			local->left = classifier ? pg_synthesis_classifier_structure(synthesis, first)
