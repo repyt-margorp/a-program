@@ -684,6 +684,29 @@ No new binding/domain checkpoint fields or backend features before this gate.
 Implement prototypes, verify, and push reviewable deletion-oriented milestones.
 Do not mark a milestone complete just because a view hides the old representation.
 
+2026-10-02, verified agent prototype on `708c01d`: Identity formation/instance/
+face discovery no longer allocates a second full request for its resolved exact
+receipts. The existing resolved-key index shares the original work. Keys remain
+immutable: a face's recovered formation is a different input, not a mutation of
+the original key. Genuine formation/endpoint cursors remain; no additional
+typed query, Oracle enumeration, witness representation or wire field is added.
+Pending-first/checked-first sharing, zero fuel, higher faces and cancellation
+pass. The first new fixture accidentally reused an already completed formation;
+it was corrected to use a distinct, genuinely unprocessed checked input.
+[Paired census](../src/prototype/solver_inputs/identity_requests_measurements.tsv):
+QuickSort removes 18 Jobs and 36 transitions (798,331 -> 798,295); raw Job-layout
+bytes decrease by 2,160, lookup-key aligned bytes increase by 576, with unchanged
+bucket bytes and typed graph/query counts. Other three samples are unchanged.
+This is not a peak-memory or wall-time claim. [Applied delta](../src/prototype/solver_inputs/identity_requests_delta.tsv):
+implementation +27/-13, tests +35/-2; no net source-line reduction.
+Full O2 regression/examples/acceptance, semantic persistence, seven checkpoint
+and five C gates pass, including general Sorted/result/permutation and both LT
+providers/orders. ASan/UBSan/leaks Core/synthesis/source/derivation I/O pass.
+Fresh patch assembly matches the tested sources and passes Core/synthesis/
+source I/O; the separate current-worktree assembly passes Core/IADT/synthesis.
+All 52 List images and the public four-failure resume report equal the parent.
+SE1-SE5 remain open; this is not promotion. Logs use `/tmp/a-program-identity-requests-`.
+
 2026-10-02, agent trial on `6506828`, rejected before adoption: moving reindex
 admission into an additional typed query reduces completed List Jobs by 7 but
 adds 98 completed queries. Job/query layout bytes change 162,184 -> 171,424
