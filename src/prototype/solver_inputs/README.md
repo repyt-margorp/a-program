@@ -22,7 +22,9 @@ scope readers, checking, export and checkpoint consumers.
 Substitution images use the same direct inputs. One API accepts checked or
 pending contexts/images, with validity and arity checked by the ordinary worker.
 Family pairing returns its checked result directly; dependent value pairing
-still awaits reindexing and post-check conversion. Neither creates an adapter
+uses the existing four-premise substitution rule, without a dedicated pair
+worker. Reindexing and post-check conversion remain genuine obligations.
+Neither creates an adapter
 merely to pass an existing result to a consumer.
 An input directly borrows checked Evidence or its pending producer. The two
 pointers are passed/stored by value; there is no allocated wrapper, result table

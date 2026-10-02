@@ -806,6 +806,28 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   and genuinely unfinished construction. Try direct owner references plus
   owner-local suspension state; document any residual allocation that cannot be
   eliminated and why. An independent Job graph is not an acceptance criterion.
+  Verified prototype (2026-10-02, agent decision, parent `134735d`): replace the
+  dedicated substitution `PAIR_JOB` and its checking cursor with the existing
+  `PG_CONTEXT_SUBSTITUTION` rule request. Its four premises are the extension,
+  destination, prefix and post-checked image. Reindexing and post-synthesis
+  conversion remain actual obligations, not duplicated pair progress. This
+  removes an upper-layer constructor without adding an owner, rule or format.
+  Repeated requests, dependent images, rejection and zero/split fuel pass.
+  [Applied deltas](../src/prototype/solver_inputs/substitution_rule_delta.tsv):
+  implementation +12/-23 (net -11), tests +12/-1 (net +11), excluding patch
+  context and docs. [Paired census](../src/prototype/solver_inputs/substitution_rule_measurements.tsv):
+  completed List/effect/captured-block/QuickSort retain the same typed graphs
+  and logical/physical proof inputs. Job-layout bytes increase by
+  504/544/648/15,720; steps change by -5/+2/-3/-100. No memory/speedup claim:
+  adoption removes an independent constructor/checking cursor, not every Job.
+  Full O2 regression/examples/acceptance, semantic persistence, seven checkpoint
+  and five C gates pass, including general Sorted/result/permutation and both
+  LT providers/orders. ASan/UBSan/leaks Core/synthesis/source/derivation I/O and
+  checkpoint, exact fresh assembly and current-worktree Core/IADT/synthesis
+  checks pass. Public reload still has three failures (terminal cut now 1,950);
+  seed and completed images equal the parent. No format or trust policy changes.
+  Source/typed-query frontier and public resume remain open; SE1-SE5 incomplete.
+  Prototype only; user edits excluded. Logs use `/tmp/a-program-substitution-rule-`.
   For each retained record, identify the unfinished obligation that has no
   other owner. Direct-input migration alone does not discharge this requirement;
   a renamed task graph or one mutable status per Core Term also fails it.
