@@ -982,6 +982,32 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   and genuinely unfinished construction. Try direct owner references plus
   owner-local suspension state; document any residual allocation that cannot be
   eliminated and why. An independent Job graph is not an acceptance criterion.
+  Verified subject-shape prototype (2026-10-03, parent `0565634`; agent decision): post-check
+  and classifier normalization preserve subject Core. Borrow their immutable
+  operand's structural query rather than allocate a forwarding shape Job.
+  Keep their actual assertion/conversion/normalization work and all classifier
+  queries; a descriptive term is not acceptance of the enclosing request.
+  - [x] Verify pending/checked inputs, deep alias chains, rejection, foreign
+    ownership, zero/split fuel, and stable symbolic shapes after effect closure.
+  - [x] Compare live ownership counts and persisted images; run regression,
+    persistence/checkpoint/backend gates before adopting the prototype delta.
+  [Paired census](../src/prototype/solver_inputs/subject_shapes_measurements.tsv)
+  removes 28 Jobs/4,032 Job-layout bytes and 37 dispatches in QuickSort, and
+  four Jobs/576 bytes/four dispatches in captured Match. Completed typed graph,
+  Evidence and query counts are unchanged. QuickSort has one extra temporary
+  Core Term; do not claim that all allocation decreased. All five completed
+  [images](../src/prototype/solver_inputs/subject_shapes_images.tsv) and all 52
+  List partition images equal the parent. The [public resume gate](../src/prototype/solver_inputs/subject_shapes_partitions.tsv)
+  still exits 1 with the same three failures; it is not waived.
+  [Actual delta](../src/prototype/solver_inputs/subject_shapes_delta.tsv):
+  implementation +10/-13, tests +66/-0, excluding patch alignment and docs.
+  The new ownership test fails on the parent; candidate O2/ASan/UBSan, semantic,
+  seven checkpoint, five C gates and user-edit integration pass. Fresh assembly
+  matches tested code and its focused tests pass. Full O2 regression/examples/
+  acceptance exits 0, including both LT providers/orders, ordinary-result
+  connection, general Sorted/permutation and invalid-evidence rejection;
+  SE1-SE5 remain open. [Inventory](../src/prototype/solver_inputs/subject_shapes_inventory.tsv)
+  pins inputs/results; logs use `/tmp/a-program-subject-shapes-`.
   Direct-body increment (2026-10-03, parent `4b46660`; agent decision): body and
   abstraction return checked/pending inputs through one interface. Checked
   operands and a checked matching Context select the ordinary RETURN rule

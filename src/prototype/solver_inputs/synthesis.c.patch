@@ -224,20 +224,7 @@
 +static const struct pg_synthesis_work_class INDUCTION_BRANCH_JOB[1] = {{
 +	.pending = {&pg_synthesis_pending_ops}, .size = sizeof(struct induction_branch_work),
 +	.advance = induction_branch_step, .output = induction_branch_output}};
- 
--#define SOURCE_WORK(name) static const struct pg_synthesis_work_class name[1] = {{ \
--	.size = sizeof(struct source_work), .start = source_work_start, .advance = step, .destroy = source_work_destroy, \
--	.completed = source_work_completed, .project = source_work_projection, .structure = source_work_structure}}
--SOURCE_WORK(TERM_STRUCTURE_JOB);
--SOURCE_WORK(CLASSIFIER_STRUCTURE_JOB); SOURCE_WORK(TYPE_STRUCTURE_JOB); SOURCE_WORK(EXPRESSION_JOB);
--SOURCE_WORK(DEFINITION_JOB); SOURCE_WORK(DEFINITION_SCOPE_JOB);
--SOURCE_WORK(RESULT_TYPE_JOB); SOURCE_WORK(CLASSIFIER_CONSTRAINT_JOB); SOURCE_WORK(BINDING_EXPECT_JOB);
--SOURCE_WORK(SOURCE_EXPECT_JOB);
--SOURCE_WORK(DATA_CASE_JOB);
--SOURCE_WORK(CONSTRUCTOR_VALUE_JOB); SOURCE_WORK(INDUCTION_BRANCH_JOB);
--SOURCE_WORK(CONSTANT_MOTIVE_JOB);
--SOURCE_WORK(SCOPE_CONTEXT_JOB); SOURCE_WORK(FUNCTION_GRAPH_JOB);
--#undef SOURCE_WORK
++
 +static void definition_start(struct pg_synthesis *, struct pg_synthesis_job *);
 +static void definition_step(struct pg_synthesis *, struct pg_synthesis_job *);
 +static void definition_scope_step(struct pg_synthesis *, struct pg_synthesis_job *);
@@ -248,11 +235,9 @@
 +static const struct pg_synthesis_work_class DEFINITION_SCOPE_JOB[1] = {{
 +	.pending = {&pg_synthesis_pending_ops}, .size = sizeof(struct definition_state),
 +	.advance = definition_scope_step, .destroy = definition_scope_destroy}};
- 
--static struct source_work *source_work(const struct pg_synthesis_job *job)
++
 +static struct definition_work *definition_work(const struct pg_synthesis_job *job)
- {
--	return job && job->role->advance == step ? pg_synthesis_work_state(job, job->role) : NULL;
++{
 +	return pg_synthesis_work_state(job, DEFINITION_JOB);
 +}
 +
@@ -273,7 +258,20 @@
 +static const struct pg_synthesis_work_class BINDING_EXPECT_JOB[1] = {{
 +	.pending = {&pg_synthesis_pending_ops}, .size = sizeof(struct source_expect_work),
 +	.advance = source_expect_step, .project = source_expect_projection, .output = source_expect_output}};
-+
+ 
+-#define SOURCE_WORK(name) static const struct pg_synthesis_work_class name[1] = {{ \
+-	.size = sizeof(struct source_work), .start = source_work_start, .advance = step, .destroy = source_work_destroy, \
+-	.completed = source_work_completed, .project = source_work_projection, .structure = source_work_structure}}
+-SOURCE_WORK(TERM_STRUCTURE_JOB);
+-SOURCE_WORK(CLASSIFIER_STRUCTURE_JOB); SOURCE_WORK(TYPE_STRUCTURE_JOB); SOURCE_WORK(EXPRESSION_JOB);
+-SOURCE_WORK(DEFINITION_JOB); SOURCE_WORK(DEFINITION_SCOPE_JOB);
+-SOURCE_WORK(RESULT_TYPE_JOB); SOURCE_WORK(CLASSIFIER_CONSTRAINT_JOB); SOURCE_WORK(BINDING_EXPECT_JOB);
+-SOURCE_WORK(SOURCE_EXPECT_JOB);
+-SOURCE_WORK(DATA_CASE_JOB);
+-SOURCE_WORK(CONSTRUCTOR_VALUE_JOB); SOURCE_WORK(INDUCTION_BRANCH_JOB);
+-SOURCE_WORK(CONSTANT_MOTIVE_JOB);
+-SOURCE_WORK(SCOPE_CONTEXT_JOB); SOURCE_WORK(FUNCTION_GRAPH_JOB);
+-#undef SOURCE_WORK
 +static struct match_work *match_work(const struct pg_synthesis_job *job)
 +{
 +	return pg_synthesis_work_state(job, SOURCE_MATCH);
@@ -295,11 +293,13 @@
 +{
 +	return job->inputs[1];
 +}
-+
+ 
+-static struct source_work *source_work(const struct pg_synthesis_job *job)
 +/* Result equations can arrive before scrutinee normalization. Keep the input
 + * on its Match owner; allocate the constructor cases only after discovery. */
 +static struct match_state *match_state(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
-+{
+ {
+-	return job && job->role->advance == step ? pg_synthesis_work_state(job, job->role) : NULL;
 +	struct match_work *local = match_work(job);
 +	if (!local->match) local->match = pg_alloc(synthesis->typing->graph, sizeof(*local->match));
 +	return local->match;
@@ -843,7 +843,7 @@
  		case PG_SYNTAX_ELIMINATION:
  			if (pg_synthesis_handler_syntax(input->syntax)) return NULL;
  			if (input->slot) return NULL;
-@@ -934,86 +1075,163 @@
+@@ -934,86 +1075,173 @@
  	}
  }
  
@@ -895,6 +895,16 @@
 +		struct pg_synthesis_job *producer = pg_pending_job(input.pending);
 +		const struct pg_derivation_input *rule = pg_synthesis_plain_derivation(producer);
 +		if (!rule) {
++			/* Assertion and classifier conversion keep subject Core unchanged.
++			 * The operand owns its shape; these checks still own admission. */
++			if (!classifier && !type) {
++				struct pg_synthesis_input operand = pg_synthesis_classifier_input(producer);
++				if (!operand.checked && !operand.pending) operand = pg_synthesis_expect_input(producer);
++				if (pg_synthesis_input_owned(synthesis, operand)) {
++					input = operand;
++					continue;
++				}
++			}
 +			/* Classifier formation already has the operand's shape owner.
 +			 * Borrow it; formation still checks its own Context and judgement. */
 +			if (!type) break;
@@ -971,7 +981,12 @@
 +}
 +
 +int pg_synthesis_structure_valid(struct pg_synthesis_structure input)
-+{
+ {
+-	if (!term || term->owner != synthesis->owner_key) return NULL;
+-	const struct pg_derivation_input *input = pg_synthesis_plain_derivation(term);
+-	const struct pg_synthesis_work_class *role = input ? pg_synthesis_function_structure_class(input->rule, 1) : NULL;
+-	if (input && !role) role = pg_synthesis_cbpv_structure_class(input->rule, 1);
+-	return request_job(synthesis, role ? role : CLASSIFIER_STRUCTURE_JOB, term, NULL);
 +	return input.term != NULL || input.pending != NULL;
 +}
 +
@@ -987,22 +1002,17 @@
 +	if (input.pending) return pg_synthesis_await(synthesis, job, input.pending);
 +	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED);
 +	return 1;
-+}
-+
+ }
+ 
+-struct pg_synthesis_job *pg_synthesis_term_structure(struct pg_synthesis *synthesis,
 +const struct pg_term *pg_synthesis_type_structure_result(struct pg_synthesis_structure input)
- {
--	if (!term || term->owner != synthesis->owner_key) return NULL;
--	const struct pg_derivation_input *input = pg_synthesis_plain_derivation(term);
--	const struct pg_synthesis_work_class *role = input ? pg_synthesis_function_structure_class(input->rule, 1) : NULL;
--	if (input && !role) role = pg_synthesis_cbpv_structure_class(input->rule, 1);
--	return request_job(synthesis, role ? role : CLASSIFIER_STRUCTURE_JOB, term, NULL);
++{
 +	if (input.term) return input.term;
 +	const struct pg_synthesis_job *job = input.pending;
 +	if (!job || job->status != PG_SYNTHESIS_DONE || !pg_synthesis_work_role(job)->structure) return NULL;
 +	return pg_synthesis_work_role(job)->structure(job);
- }
- 
--struct pg_synthesis_job *pg_synthesis_term_structure(struct pg_synthesis *synthesis,
++}
++
 +struct pg_synthesis_structure pg_synthesis_classifier_structure(struct pg_synthesis *synthesis,
  	struct pg_synthesis_job *term)
  {
@@ -1060,7 +1070,7 @@
  {
  	if (!field) return NULL;
  	return pg_synthesis_scope_bind(synthesis, parent, (struct pg_token){0}, binder, context, field, NULL, PG_SOURCE_HYPOTHESIS);
-@@ -1021,7 +1239,7 @@
+@@ -1021,7 +1249,7 @@
  
  const struct pg_source_scope *pg_synthesis_bind_graph(struct pg_synthesis *synthesis,
  	const struct pg_source_scope *parent, const struct pg_object *value,
@@ -1069,7 +1079,7 @@
  {
  	if (!value) return NULL;
  	return pg_synthesis_scope_bind(synthesis, parent, (struct pg_token){0}, binder, context, value, NULL, PG_SOURCE_GRAPH);
-@@ -1029,27 +1247,22 @@
+@@ -1029,27 +1257,22 @@
  
  const struct pg_source_scope *pg_synthesis_name(struct pg_synthesis *synthesis,
  	const struct pg_source_scope *parent, struct pg_token name,
@@ -1109,7 +1119,7 @@
  }
  
  const struct pg_source_scope *pg_synthesis_import_scope(struct pg_synthesis *synthesis,
-@@ -1059,7 +1272,7 @@
+@@ -1059,7 +1282,7 @@
  	if (!bindings || bindings->owner != synthesis->owner_key) return NULL;
  	if (!pg_synthesis_scope_context(bindings) || pg_evidence_context(pg_synthesis_scope_context(bindings))) return NULL;
  	return pg_synthesis_intern_scope(synthesis, (struct pg_source_scope){.parent = parent,
@@ -1118,7 +1128,7 @@
  }
  
  static const struct pg_source_scope *publish_namespace(struct pg_synthesis *synthesis,
-@@ -1071,13 +1284,13 @@
+@@ -1071,13 +1294,13 @@
  		if (name.kind != PG_TOKEN_IDENT || !name.text || !name.length) return NULL;
  	}
  	if (module) {
@@ -1135,7 +1145,7 @@
  }
  
  const struct pg_source_scope *pg_synthesis_namespace(struct pg_synthesis *synthesis,
-@@ -1093,60 +1306,51 @@
+@@ -1093,60 +1316,51 @@
  	const struct pg_source_scope *parent, struct pg_token name,
  	struct pg_synthesis_job *module)
  {
@@ -1219,7 +1229,7 @@
  struct pg_synthesis_job *pg_synthesis_induction_branch(struct pg_synthesis *synthesis,
  	const struct pg_source_scope *scope, const struct pg_evidence *formation,
  	const struct pg_object *constructor, const struct pg_evidence *parameters,
-@@ -1165,155 +1369,29 @@
+@@ -1165,155 +1379,29 @@
  		pg_evidence_context(pg_synthesis_scope_context(scope))) return NULL;
  	if (!clause || clause->kind != PG_SYNTAX_CLAUSE) return NULL;
  	const void *inputs[] = {scope, formation, constructor, parameters, motive_context, motive, clause, generalization};
@@ -1388,7 +1398,7 @@
  int pg_synthesis_typed_input(struct pg_synthesis *synthesis,
  	const struct pg_evidence *context, const struct pg_evidence *proof)
  {
-@@ -1323,18 +1401,18 @@
+@@ -1323,18 +1411,18 @@
  	return pg_evidence_context(context) == pg_evidence_context(proof);
  }
  
@@ -1412,7 +1422,7 @@
  }
  
  static void depend(struct pg_synthesis *synthesis, struct pg_synthesis_job *parent,
-@@ -1346,18 +1424,17 @@
+@@ -1346,18 +1434,17 @@
  static struct pg_synthesis_job *definition_registration(struct pg_synthesis *synthesis,
  	const struct pg_source_scope *scope, const struct pg_syntax *syntax)
  {
@@ -1437,7 +1447,7 @@
  	if (!state->scope || !state->entries) goto fail;
  	state->count = syntax->item_count;
  	state->syntax = syntax;
-@@ -1370,16 +1447,16 @@
+@@ -1370,16 +1457,16 @@
  struct pg_synthesis_job *pg_synthesis_prepare_module(struct pg_synthesis *synthesis,
  	struct pg_synthesis_job *root)
  {
@@ -1460,7 +1470,7 @@
  	depend(synthesis, root, registration);
  	return registration;
  }
-@@ -1396,19 +1473,19 @@
+@@ -1396,19 +1483,19 @@
  int pg_synthesis_retain_definition_input(struct pg_synthesis *synthesis,
  	struct pg_synthesis_job *root, size_t index, struct pg_synthesis_job *producer)
  {
@@ -1485,7 +1495,7 @@
  }
  
  struct pg_synthesis_job *pg_synthesis_definition_request(struct pg_synthesis *synthesis,
-@@ -1419,10 +1496,8 @@
+@@ -1419,10 +1506,8 @@
  	struct pg_synthesis_job *registration = definition_registration(synthesis, scope, definitions);
  	if (!registration) return NULL;
  	struct pg_synthesis_job *job = request_job(synthesis, DEFINITION_JOB, registration, expression);
@@ -1497,7 +1507,7 @@
  	return job;
  }
  
-@@ -1433,34 +1508,6 @@
+@@ -1433,34 +1518,6 @@
  	return pg_prove_value_type(synthesis->typing, proof);
  }
  
@@ -1532,7 +1542,7 @@
  
  static const struct pg_evidence *value(struct pg_synthesis *synthesis, const struct pg_evidence *proof)
  {
-@@ -1490,25 +1537,24 @@
+@@ -1490,25 +1547,24 @@
  
  struct source_reference {
  	const struct pg_object *binder;
@@ -1564,7 +1574,7 @@
  		}
  		if (scope->name.kind != token.kind) continue;
  		/* Punctuation tokens carry their spelling in kind, not text. */
-@@ -1516,58 +1562,47 @@
+@@ -1516,58 +1572,47 @@
  			if (scope->name.length != token.length) continue;
  			if (memcmp(scope->name.text, token.text, token.length) != 0) continue;
  		}
@@ -1644,7 +1654,7 @@
  
  struct marker_shadow {
  	struct pg_token name;
-@@ -1633,7 +1668,7 @@
+@@ -1633,7 +1678,7 @@
  		tasks = tasks->next;
  		size_t count = syntax->item_count;
  		if (syntax->kind == PG_SYNTAX_QUALIFIED && syntax->left->kind == PG_SYNTAX_BLOCK) {
@@ -1653,7 +1663,7 @@
  			syntax = syntax->left;
  		}
  		if (syntax->kind == PG_SYNTAX_DECLARATION) continue;
-@@ -1722,15 +1757,15 @@
+@@ -1722,15 +1767,15 @@
  	return branch_dependencies(scope, prefix, body, NULL, NULL);
  }
  
@@ -1672,7 +1682,7 @@
  }
  
  /* Collect APP domain constraints on IH applications in their lexical scopes.
-@@ -1759,12 +1794,12 @@
+@@ -1759,12 +1804,12 @@
  	if (!scan) return 0;
  	const struct pg_syntax *syntax = scan->syntax;
  	const struct pg_source_scope *scope = scan->scope;
@@ -1689,7 +1699,7 @@
  			if (producer->status == PG_SYNTHESIS_PENDING) {
  				if (pg_synthesis_dependency(producer)) depend(synthesis, job, (void *)pg_synthesis_dependency(producer));
  				else pg_synthesis_enqueue(synthesis, job);
-@@ -1773,7 +1808,7 @@
+@@ -1773,7 +1818,7 @@
  			branch->scan = scan->next;
  		} else {
  			size_t i = scan->item++;
@@ -1698,7 +1708,7 @@
  		}
  		pg_synthesis_enqueue(synthesis, job); return 1;
  	}
-@@ -1788,11 +1823,11 @@
+@@ -1788,11 +1833,11 @@
  	} else if (syntax->kind == PG_SYNTAX_APPLICATION) {
  		const struct pg_syntax *head = syntax->right;
  		size_t count = 0;
@@ -1712,7 +1722,7 @@
  			const struct pg_object *field = hypothesis_field(scope, head->right->token);
  			const struct pg_context *fields = pg_evidence_context(pg_synthesis_scope_context(branch->scope));
  			while (fields && fields != prefix && fields->binder != field) fields = fields->parent;
-@@ -1821,51 +1856,72 @@
+@@ -1821,51 +1866,72 @@
  	pg_synthesis_enqueue(synthesis, job); return 1;
  }
  
@@ -1810,7 +1820,7 @@
  {
  	if (reference->exports) {
  		*reference = lookup_scope(reference->exports, token);
-@@ -1873,83 +1929,84 @@
+@@ -1873,83 +1939,84 @@
  	}
  	if (reference->module) {
  		struct pg_synthesis_job *module = reference->module;
@@ -1931,7 +1941,7 @@
  		return reference->exports || reference->module ? PG_SYNTHESIS_UNSUPPORTED : PG_SYNTHESIS_REJECTED;
  	}
  	const struct pg_syntax *root = syntax;
-@@ -1960,9 +2017,9 @@
+@@ -1960,9 +2027,9 @@
  		*reference = lookup_scope(scope, root->token);
  	} else {
  		if (!count) return PG_SYNTHESIS_UNSUPPORTED;
@@ -1944,7 +1954,7 @@
  	}
  	if (!count) return PG_SYNTHESIS_DONE;
  	if (count > SIZE_MAX / sizeof(const struct pg_syntax *)) return PG_SYNTHESIS_ERROR;
-@@ -1978,15 +2035,15 @@
+@@ -1978,15 +2045,15 @@
  	return status;
  }
  
@@ -1964,7 +1974,7 @@
  	struct pg_graph temporary = {0};
  	struct pg_index names = {0}, aliases = {0};
  	int result = -1;
-@@ -2002,24 +2059,24 @@
+@@ -2002,24 +2069,24 @@
  		if (!spelling || !name) goto done;
  		memcpy(spelling, text, (size_t)length + 1);
  		name->name = (struct pg_token){.kind = PG_TOKEN_IDENT, .text = spelling, .length = (size_t)length};
@@ -1997,7 +2007,7 @@
  			if (lookup_name(&names, name->name)) continue;
  			struct block_name *alias = lookup_name(&aliases, name->name);
  			if (alias) {
-@@ -2036,14 +2093,14 @@
+@@ -2036,14 +2103,14 @@
  		for (struct pg_index_entry *entry = aliases.buckets[i]; entry; entry = entry->next) {
  			const struct block_name *alias = (const struct block_name *)entry;
  			if (!alias->producer) continue;
@@ -2014,7 +2024,7 @@
  	result = 0;
  done:
  	pg_index_destroy(&names); pg_index_destroy(&aliases);
-@@ -2054,25 +2111,27 @@
+@@ -2054,25 +2121,27 @@
  /* Source call slots are an interface layout, not an execution schedule.
   * Lexical shadowing and block cutoffs use the same marker walker as IH scope
   * analysis. The backend validates every slot against its typed call plan. */
@@ -2053,7 +2063,7 @@
  		const struct pg_syntax *clause = branch->clause;
  		if (!clause) goto done;
  		/* Named source patterns require their resolved field layout here too. */
-@@ -2085,8 +2144,8 @@
+@@ -2085,8 +2154,8 @@
  			if (!argument_shadow) goto done;
  			body = body->right;
  		}
@@ -2064,7 +2074,7 @@
  		if (clause->item_count > SIZE_MAX / sizeof(size_t)) goto done;
  		size_t *positions = pg_alloc(&temporary, clause->item_count * sizeof(*positions));
  		size_t *last_group = pg_alloc(&temporary, clause->item_count * sizeof(*last_group));
-@@ -2108,14 +2167,14 @@
+@@ -2108,14 +2177,14 @@
  			const struct pg_syntax *expression = top ? top->items[group].expression : body;
  			const struct pg_syntax *result_call = expression;
  			while (result_call->kind == PG_SYNTAX_EXPECT) result_call = result_call->left;
@@ -2081,7 +2091,7 @@
  					struct pg_token name = syntax->right->token;
  					const struct marker_shadow *bound = shadow;
  					while (bound && !same_name(bound->name, name)) bound = bound->parent;
-@@ -2136,10 +2195,10 @@
+@@ -2136,10 +2205,10 @@
  					++orders[i].count;
  					continue;
  				}
@@ -2094,7 +2104,7 @@
  						if (marker_push(&temporary, &items, block->items[item].expression, shadow)) goto done;
  						if (block->items[item].name.kind == PG_TOKEN_IDENT) {
  							shadow = marker_bind(&temporary, shadow, block->items[item].name);
-@@ -2168,7 +2227,7 @@
+@@ -2168,7 +2237,7 @@
  		if (orders[i].count > SIZE_MAX / sizeof(size_t)) goto done;
  		size_t *fields = pg_alloc(&temporary, orders[i].count * sizeof(*fields));
  		if (orders[i].count && !fields) goto done;
@@ -2103,7 +2113,7 @@
  		if (trailing > SIZE_MAX - branch->field_count) goto done;
  		if (orders[i].count > (SIZE_MAX - branch->field_count - trailing) / 2) goto done;
  		layout->count = branch->field_count + trailing + 2 * orders[i].count;
-@@ -2185,160 +2244,144 @@
+@@ -2185,160 +2254,144 @@
  		}
  		orders[i].fields = fields;
  	}
@@ -2327,7 +2337,7 @@
  		if (!job->result) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
  	}
  	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
-@@ -2363,24 +2406,6 @@
+@@ -2363,24 +2416,6 @@
  	return pg_synthesis_probe_advance(synthesis, job, work);
  }
  
@@ -2352,7 +2362,7 @@
  
  static int same_name(struct pg_token left, struct pg_token right)
  {
-@@ -2398,110 +2423,27 @@
+@@ -2398,110 +2433,27 @@
  	return pg_index_insert(names, &entry->index, name_hash(name));
  }
  
@@ -2475,7 +2485,7 @@
  	if (pg_evidence_judgement(result) == PG_JUDGEMENT_COMPUTATION) {
  		if (synthesis->definition_policy == PG_DEFINITION_EXPLICIT_THUNK) {
  			pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
-@@ -2509,55 +2451,54 @@
+@@ -2509,55 +2461,54 @@
  		result = pg_prove_thunk(synthesis->typing, result);
  	}
  	job->result = result;
@@ -2527,13 +2537,13 @@
 -		if (!right) goto rejected;
 -		local->checking_term = left;
 -		local->checking_type = right;
--	}
++		if (pg_synthesis_await_input(synthesis, job, parts[i])) return;
+ 	}
 -	if (!local->value_job) {
 -		local->value_job = pg_synthesis_expect(synthesis,
 -			pg_synthesis_evidence(synthesis, local->checking_term),
 -			pg_synthesis_evidence(synthesis, local->checking_type));
-+		if (pg_synthesis_await_input(synthesis, job, parts[i])) return;
- 	}
+-	}
 -	local->exports = source_exports(local->left);
 -	pg_synthesis_forward(synthesis, job, local->value_job);
 +	struct pg_synthesis_input term = source_reference_input(synthesis, parts[0]);
@@ -2572,7 +2582,7 @@
  	return;
  rejected:
  	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED);
-@@ -2566,10 +2507,9 @@
+@@ -2566,10 +2517,9 @@
  int pg_synthesis_definition_frontier(const struct pg_synthesis *synthesis,
  	const struct pg_synthesis_job *registration, struct pg_definition_frontier *view)
  {
@@ -2586,7 +2596,7 @@
  	*view = (struct pg_definition_frontier){.count = state->count, .indexed = state->indexed,
  		.activated = state->activated, .entries = state->entries, .complete = registration->status == PG_SYNTHESIS_DONE};
  	return 0;
-@@ -2585,12 +2525,12 @@
+@@ -2585,12 +2535,12 @@
  	if (view->indexed > view->count || view->activated > view->indexed) return -1;
  	if (view->activated && view->indexed != view->count) return -1;
  	if (view->count && !view->entries) return -1;
@@ -2602,7 +2612,7 @@
  	}
  	struct pg_index names;
  	if (pg_index_init(&names)) return -1;
-@@ -2605,27 +2545,36 @@
+@@ -2605,27 +2555,36 @@
  			if (registered || i < view->activated) goto fail;
  			continue;
  		}
@@ -2648,7 +2658,7 @@
  			break;
  		default: goto fail;
  		}
-@@ -2645,18 +2594,19 @@
+@@ -2645,18 +2604,19 @@
  		const struct pg_syntax_item *item = &state->syntax->items[i];
  		if (item->operation != PG_TOKEN_EXPECT) continue;
  		struct block_name *name = lookup_name(&names, item->name);
@@ -2674,7 +2684,7 @@
  	}
  	state->indexed = view->indexed;
  	state->activated = view->activated;
-@@ -2671,8 +2621,9 @@
+@@ -2671,8 +2631,9 @@
  
  static void definition_scope_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
@@ -2686,7 +2696,7 @@
  	/* Local definitions remain dormant until registration completes. Import
  	 * references use the immutable incoming provider scope, never this index. */
  	if (state->indexed < state->count) {
-@@ -2688,16 +2639,12 @@
+@@ -2688,16 +2649,12 @@
  			struct block_name *name = lookup_name(&state->names, item->name);
  			if (!name) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
  			if (item->operation == PG_SYNTAX_IMPORT) {
@@ -2704,7 +2714,7 @@
  				if (!name->producer) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
  				if (definition_input(state, i, name->producer)) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
  			}
-@@ -2712,16 +2659,16 @@
+@@ -2712,16 +2669,16 @@
  		if (item->operation != PG_TOKEN_EXPECT) {
  			struct pg_synthesis_job *producer = state->entries[i];
  			if (!producer) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
@@ -2726,7 +2736,7 @@
  			if (!check) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
  			if (definition_input(state, i, check)) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
  		}
-@@ -2735,11 +2682,11 @@
+@@ -2735,11 +2692,11 @@
  int pg_synthesis_definition_body(const struct pg_synthesis *synthesis,
  	const struct pg_synthesis_job *definition, struct pg_synthesis_job **body)
  {
@@ -2743,7 +2753,7 @@
  	return 0;
  }
  
-@@ -2749,26 +2696,28 @@
+@@ -2749,26 +2706,28 @@
  	struct pg_synthesis_job *previous;
  	if (!definition || definition->status != PG_SYNTHESIS_PENDING) return -1;
  	if (pg_synthesis_definition_body(synthesis, definition, &previous) || previous) return -1;
@@ -2782,7 +2792,7 @@
  	return 0;
  }
  
-@@ -2778,21 +2727,21 @@
+@@ -2778,21 +2737,21 @@
  	struct pg_module_frontier current;
  	if (!module || module->status != PG_SYNTHESIS_PENDING) return -1;
  	if (!view || pg_synthesis_module_frontier(synthesis, module, &current) || current.position) return -1;
@@ -2811,7 +2821,7 @@
  			if (!value) return -1;
  		} else {
  			if (previous != state->entries[view->position - 1]) return -1;
-@@ -2810,8 +2759,9 @@
+@@ -2810,8 +2769,9 @@
  
  static void definitions_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
@@ -2823,7 +2833,7 @@
  	int selected = syntax->kind == PG_SYNTAX_QUALIFIED;
  	if (selected) syntax = syntax->left;
  	if (!local->right) {
-@@ -2819,18 +2769,18 @@
+@@ -2819,18 +2779,18 @@
  		return;
  	}
  	if (pg_synthesis_await(synthesis, job, local->left)) return;
@@ -2846,7 +2856,7 @@
  		local->exports = source_exports(local->value_job);
  	} else if (state->next < state->count) {
  		local->left = state->entries[state->next++];
-@@ -2840,230 +2790,6 @@
+@@ -2840,230 +2800,6 @@
  	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_DONE);
  }
  
@@ -3077,7 +3087,7 @@
  
  /* Resolve source selectors against the generated telescope, then use the
   * same lexical field bindings in ordinary and inductive branch synthesis. */
-@@ -3085,9 +2811,9 @@
+@@ -3085,9 +2821,9 @@
  	if (count && !bindings) return PG_SYNTHESIS_ERROR;
  	enum pg_synthesis_status status = PG_SYNTHESIS_REJECTED;
  	if (named) {
@@ -3090,7 +3100,7 @@
  		if (source->count != count) goto done;
  		for (size_t i = 0; i < count; ++i) bindings[i].graph_value = source->fields[i].graph_value;
  		for (size_t i = 0; i < clause->item_count; ++i) {
-@@ -3104,12 +2830,11 @@
+@@ -3104,12 +2840,11 @@
  				selected = field;
  			}
  			if (selected == count) {
@@ -3106,7 +3116,7 @@
  					if (block->items[j].name.kind == PG_TOKEN_IDENT && same_name(block->items[j].name, item->name))
  						status = PG_SYNTHESIS_UNSUPPORTED;
  				goto done;
-@@ -3129,7 +2854,7 @@
+@@ -3129,7 +2864,7 @@
  			if (bindings[i].graph_value > i) goto done;
  			value = pg_evidence_context(extensions[bindings[i].graph_value - 1])->binder;
  		}
@@ -3115,7 +3125,7 @@
  		if (scope && value) {
  			struct pg_source_scope associated = *scope;
  			associated.association = PG_SOURCE_GRAPH;
-@@ -3156,15 +2881,20 @@
+@@ -3156,15 +2891,20 @@
  
  static void induction_branch_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
@@ -3144,7 +3154,7 @@
  		size_t fields = pg_evidence_context_map(map)->count - pg_evidence_context_map(parameters)->count - 1, total;
  		const struct pg_evidence *context = pg_evidence_premise(map, 1);
  		if (pg_context_extension_size(pg_evidence_context(context), pg_evidence_context(parameters), &total)) goto error;
-@@ -3174,9 +2904,9 @@
+@@ -3174,9 +2914,9 @@
  		unsigned char *recursive = pg_alloc(&temporary, fields);
  		if ((total && !extensions) || (fields && !recursive)) { pg_graph_destroy(&temporary); goto error; }
  		for (size_t i = total; i; --i, context = pg_context_parent_input(synthesis->typing, context)) extensions[i - 1] = context;
@@ -3156,7 +3166,7 @@
  		if (status != PG_SYNTHESIS_DONE) { pg_graph_destroy(&temporary); pg_synthesis_finish(synthesis, job, status); return; }
  		/* Match IHs to original field binders, not their surface spelling. */
  		const struct pg_object *self = pg_evidence_context(pg_evidence_premise(formation, 0))->binder;
-@@ -3188,65 +2918,42 @@
+@@ -3188,65 +2928,42 @@
  			if (!recursive[i]) continue;
  			if (next == total) { scope = NULL; break; }
  			scope = pg_synthesis_bind_hypothesis(synthesis, scope, pg_evidence_context(extensions[i])->binder,
@@ -3236,7 +3246,7 @@
  }
  
  /* Source binders belong to the branch's typed Lambda edges, not the separate
-@@ -3254,7 +2961,7 @@
+@@ -3254,7 +2971,7 @@
  static int source_match_branch_context(const struct pg_synthesis_job *job,
  	size_t ordinal, size_t count, const struct pg_context **context)
  {
@@ -3245,7 +3255,7 @@
  	const struct pg_match_allocation *allocation = local->match_allocation;
  	if (!allocation || ordinal >= allocation->induction.count) return -1;
  	const struct pg_context *branch = allocation->branches[ordinal];
-@@ -3268,7 +2975,7 @@
+@@ -3268,7 +2985,7 @@
  static const struct pg_evidence *match_motive_context(struct pg_synthesis *synthesis,
  	struct pg_synthesis_job *job)
  {
@@ -3254,7 +3264,7 @@
  	struct match_state *state = local->match;
  	if (!state->generic_context) {
  		const struct pg_evidence *context;
-@@ -3287,9 +2994,9 @@
+@@ -3287,9 +3004,9 @@
  
  static void match_explicit_motive_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
@@ -3266,7 +3276,7 @@
  	const struct pg_evidence *context = pg_synthesis_scope_context(local->inner);
  	const struct pg_evidence *mc = match_motive_context(synthesis, job);
  	if (!mc) goto unsupported;
-@@ -3306,13 +3013,13 @@
+@@ -3306,13 +3023,13 @@
  		const struct pg_source_scope *scope = local->inner;
  		for (size_t i = 0; scope && i < count; ++i)
  			scope = pg_synthesis_bind(synthesis, scope, state->generalization ? (struct pg_token){0} : motive->items[i].name,
@@ -3282,7 +3292,7 @@
  		}
  		free(extensions);
  		if (!scope) goto unsupported;
-@@ -3320,7 +3027,7 @@
+@@ -3320,7 +3037,7 @@
  		if (!state->explicit_type_job) goto error;
  	}
  	if (pg_synthesis_await(synthesis, job, state->explicit_type_job)) return;
@@ -3291,7 +3301,7 @@
  	if (!type) return;
  	if (pg_evidence_context(type) != pg_evidence_context(target)) goto rejected;
  	const struct pg_effect_row *effects = state->motive_effects;
-@@ -3381,7 +3088,7 @@
+@@ -3381,7 +3098,7 @@
  static const struct pg_evidence *match_constructor_pattern(struct pg_synthesis *synthesis,
  	struct pg_synthesis_job *job, size_t ordinal, const struct pg_evidence *context)
  {
@@ -3300,7 +3310,7 @@
  	struct match_state *state = local->match;
  	struct match_branch *branch = &state->branches[ordinal];
  	return constructor_pattern(synthesis, state->instance.formation, state->instance.parameters,
-@@ -3394,7 +3101,7 @@
+@@ -3394,7 +3111,7 @@
   * published: ordinary induction must subsequently check the complete branch. */
  static void match_result_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
@@ -3309,7 +3319,7 @@
  	struct match_state *state = local->match;
  	struct match_branch *branch = &state->branches[state->result_checked];
  	struct pg_typing *typing = synthesis->typing;
-@@ -3408,10 +3115,12 @@
+@@ -3408,10 +3125,12 @@
  		if (!branch->result->effects) goto error;
  	}
  	struct motive_result *result = branch->result;
@@ -3326,7 +3336,7 @@
  	const struct pg_effect_row *effects;
  	enum pg_totality totality;
  	const struct pg_term *content;
-@@ -3428,7 +3137,7 @@
+@@ -3428,7 +3147,7 @@
  		if (result->telescope->status != PG_SYNTHESIS_DONE) goto skip;
  		struct motive_lambda *frame = pg_alloc(typing->graph, sizeof(*frame));
  		if (!frame) goto error;
@@ -3335,7 +3345,7 @@
  		result->lambdas = frame;
  		result->scope = pg_synthesis_telescope_scope(result->telescope);
  		result->syntax = pg_synthesis_telescope_body(result->telescope);
-@@ -3438,8 +3147,8 @@
+@@ -3438,8 +3157,8 @@
  		if (!result->effects) goto error;
  		pg_synthesis_enqueue(synthesis, job); return;
  	}
@@ -3346,7 +3356,7 @@
  		if (syntax->kind == PG_SYNTAX_QUALIFIED) syntax = syntax->left;
  		if (!end) goto skip;
  		const struct pg_syntax_item *item = &syntax->items[result->next];
-@@ -3453,9 +3162,9 @@
+@@ -3453,9 +3172,9 @@
  			if (recursive < 0) goto error;
  			if (recursive) goto skip;
  			struct pg_synthesis_job *input = pg_synthesis_request(synthesis, result->scope, item->expression);
@@ -3359,7 +3369,7 @@
  			if (!result->input) goto error;
  		}
  		if (result->input->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, result->input); return; }
-@@ -3467,8 +3176,8 @@
+@@ -3467,8 +3186,8 @@
  		if (!result->effects) goto error;
  		if (item->name.length) {
  			const struct pg_object *binder = pg_binder(typing->graph);
@@ -3370,7 +3380,7 @@
  			if (!result->scope) goto error;
  		}
  		result->input = NULL;
-@@ -3480,30 +3189,29 @@
+@@ -3480,30 +3199,29 @@
  		if (!result->nested) goto error;
  		if (result->nested->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, result->nested); return; }
  		if (result->nested->status == PG_SYNTHESIS_ERROR) goto error;
@@ -3411,7 +3421,7 @@
  			type = pg_prove_reindex(typing, actual, type);
  		}
  		if (!type) {
-@@ -3512,13 +3220,13 @@
+@@ -3512,13 +3230,13 @@
  		}
  		goto result_type;
  	}
@@ -3427,7 +3437,7 @@
  		if (!result->callee) goto error;
  	}
  	if (result->callee->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, result->callee); return; }
-@@ -3577,53 +3285,58 @@
+@@ -3577,53 +3295,58 @@
  	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR);
  }
  
@@ -3504,7 +3514,7 @@
  		const struct pg_evidence *motive_context = match_motive_context(synthesis, job);
  		if (!motive_context) goto skip;
  		const struct pg_evidence *field = pg_prove_variable(synthesis->typing, context, demand->field);
-@@ -3633,7 +3346,7 @@
+@@ -3633,7 +3356,7 @@
  		if (!pattern) goto skip;
  		const struct pg_evidence *prefix = pg_synthesis_scope_context(local->inner);
  		for (size_t i = 0; i < demand->count; ++i) {
@@ -3513,7 +3523,7 @@
  			const struct pg_evidence *argument_type = pg_prove_classifier(synthesis->typing, context, argument);
  			const struct pg_evidence *pulled = pg_prove_pattern_type(synthesis->typing,
  				prefix, pattern, pg_prove_return_type(synthesis->typing, argument_type));
-@@ -3672,20 +3385,20 @@
+@@ -3672,20 +3395,20 @@
   * still has to establish that the candidate covers every recursive branch. */
  static void match_effects_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
@@ -3537,7 +3547,7 @@
  			state->motive_effects = pg_effect_union(synthesis->typing->graph, state->motive_effects, effects);
  			if (totality < state->motive_totality) state->motive_totality = totality;
  			if (!state->motive_effects) goto error;
-@@ -3713,7 +3426,7 @@
+@@ -3713,7 +3436,7 @@
  static const struct pg_evidence *match_candidate_type(struct pg_synthesis *synthesis,
  	struct pg_synthesis_job *job, size_t ordinal, const struct pg_evidence *type)
  {
@@ -3546,7 +3556,7 @@
  	struct match_state *state = local->match;
  	struct pg_typing *typing = synthesis->typing;
  	struct match_branch *branch = &state->branches[ordinal];
-@@ -3734,13 +3447,13 @@
+@@ -3734,13 +3457,13 @@
  	struct pg_synthesis_job *job, size_t ordinal, const struct pg_evidence *motive_context,
  	const struct pg_evidence *motive)
  {
@@ -3565,7 +3575,7 @@
  	if (!local->match_allocation)
  		return pg_synthesis_induction_scope(synthesis, formation, constructor, parameters, context, type);
  	const struct pg_evidence *fields = pg_data_schema_fields(state->instance.schema, constructor);
-@@ -3763,7 +3476,7 @@
+@@ -3763,7 +3486,7 @@
  	struct pg_synthesis_job *job, size_t ordinal, const struct pg_evidence *motive_context,
  	const struct pg_evidence *motive)
  {
@@ -3574,7 +3584,7 @@
  	struct match_state *state = local->match;
  	const struct pg_object *constructor = pg_data_constructor(pg_data_schema_layout(state->instance.schema), ordinal);
  	return pg_synthesis_induction_branch(synthesis, local->inner,
-@@ -3776,7 +3489,7 @@
+@@ -3776,7 +3499,7 @@
   * unsuccessful proposals never replace the ordinary constant-motive path. */
  static void match_recursive_motive_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
@@ -3583,7 +3593,7 @@
  	struct match_state *state = local->match;
  	struct pg_typing *typing = synthesis->typing;
  	const struct pg_evidence *mc = match_motive_context(synthesis, job);
-@@ -3787,16 +3500,15 @@
+@@ -3787,16 +3510,15 @@
  		if (branch->needs_ih || branch->contradiction) goto next;
  		const struct pg_evidence *fields = pg_synthesis_scope_context(branch->scope);
  		if (!branch->type_job) {
@@ -3606,7 +3616,7 @@
  		if (!candidate) goto next;
  		/* Indexed motives may depend on a family index without mentioning the
  		 * scrutinee itself. Test the complete motive telescope, not its tail. */
-@@ -3819,7 +3531,7 @@
+@@ -3819,7 +3541,7 @@
  		state->checked = state->prepared = state->validated = state->count;
  		for (size_t i = 0; i < state->count; ++i) {
  			struct match_branch *branch = &state->branches[i];
@@ -3615,7 +3625,7 @@
  			if (branch->needs_ih) branch->body = branch->adapted;
  			branch->adapted = branch->converted = NULL;
  		}
-@@ -3839,12 +3551,13 @@
+@@ -3839,12 +3561,13 @@
  		const struct pg_evidence *expected = pg_prove_match_branch_type(typing,
  			state->instance.formation, constructor, state->instance.parameters, mc, state->candidate, scope->result);
  		if (!expected) goto next;
@@ -3633,7 +3643,7 @@
  	++state->candidate_checked;
  	pg_synthesis_enqueue(synthesis, job); return;
  next:
-@@ -3864,23 +3577,23 @@
+@@ -3864,23 +3587,23 @@
   * equations. Check every reachable body before committing to that motive. */
  static void match_candidate_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
@@ -3664,7 +3674,7 @@
  				}
  				if (!branch->refined) goto error;
  				if (branch->refined->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, branch->refined); return; }
-@@ -3919,21 +3632,23 @@
+@@ -3919,21 +3642,23 @@
  		const struct pg_evidence *pattern = match_constructor_pattern(synthesis, job, state->candidate_checked, fields);
  		const struct pg_evidence *target = pg_prove_reindex(typing, pattern, state->candidate);
  		if (!target) goto next_candidate;
@@ -3698,7 +3708,7 @@
  	++state->candidate_checked;
  	pg_synthesis_enqueue(synthesis, job); return;
  next_candidate:
-@@ -3948,7 +3663,7 @@
+@@ -3948,7 +3673,7 @@
  
  static void match_dependent_motive_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
@@ -3707,7 +3717,7 @@
  	struct match_state *state = local->match;
  	const struct pg_evidence *context = pg_synthesis_scope_context(local->inner);
  	if (state->typed < state->count) {
-@@ -3956,17 +3671,16 @@
+@@ -3956,17 +3681,16 @@
  		if (branch->contradiction) { ++state->typed; pg_synthesis_enqueue(synthesis, job); return; }
  		const struct pg_evidence *fields = pg_synthesis_scope_context(branch->scope);
  		if (!branch->type_job) {
@@ -3730,7 +3740,7 @@
  			if (totality < state->motive_totality) state->motive_totality = totality;
  			state->motive_effects = state->motive_effects
  				? pg_effect_union(synthesis->typing->graph, state->motive_effects, effects) : effects;
-@@ -3986,7 +3700,7 @@
+@@ -3986,7 +3710,7 @@
  	if (!families) goto error;
  	for (size_t i = 0; i < state->count; ++i) {
  		struct match_branch *branch = &state->branches[i];
@@ -3739,7 +3749,7 @@
  		for (const struct pg_evidence *scope = pg_synthesis_scope_context(branch->scope);
  			type && pg_evidence_context(scope) != pg_evidence_context(context); scope = pg_context_parent_input(synthesis->typing, scope))
  			type = pg_prove_family_abstraction(synthesis->typing, scope, type);
-@@ -3994,7 +3708,7 @@
+@@ -3994,7 +3718,7 @@
  	}
  	const struct pg_evidence *scrutinee = pg_prove_variable(synthesis->typing, mc, pg_evidence_context(mc)->binder);
  	const struct pg_evidence *type = pg_prove_type_case(synthesis->typing,
@@ -3748,7 +3758,7 @@
  	free(families);
  	state->motive = pg_prove_computation_type(synthesis->typing,
  		state->motive_totality, state->motive_effects, type);
-@@ -4010,20 +3724,21 @@
+@@ -4010,20 +3734,21 @@
  
  static void match_dependent_branch(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
@@ -3776,7 +3786,7 @@
  	branch->converted = NULL;
  	++state->prepared;
  	pg_synthesis_enqueue(synthesis, job);
-@@ -4031,25 +3746,25 @@
+@@ -4031,25 +3756,25 @@
  
  static void match_validate_branch(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
@@ -3808,7 +3818,7 @@
  	++state->validated;
  	pg_synthesis_enqueue(synthesis, job);
  }
-@@ -4059,7 +3774,7 @@
+@@ -4059,7 +3784,7 @@
   * elimination, not silently retyped at each constructor. */
  static int match_generalize(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
@@ -3817,7 +3827,7 @@
  	struct match_state *state = local->match;
  	struct pg_typing *typing = synthesis->typing;
  	const struct pg_evidence *context = pg_synthesis_scope_context(local->inner);
-@@ -4121,7 +3836,7 @@
+@@ -4121,7 +3846,7 @@
  		state->generalized_count = work->copied;
  		return 0;
  	}
@@ -3826,7 +3836,7 @@
  		extension = work->extensions[work->next];
  		const struct pg_object *binder = pg_evidence_context(extension)->binder;
  		const struct pg_evidence *image = NULL;
-@@ -4147,14 +3862,16 @@
+@@ -4147,14 +3872,16 @@
  				pg_prove_variable(typing, context, binder));
  			++work->copied;
  		}
@@ -3850,7 +3860,7 @@
  	++work->next;
  	pg_synthesis_enqueue(synthesis, job);
  	return 1;
-@@ -4208,7 +3925,7 @@
+@@ -4208,7 +3935,7 @@
  			if (term && term->kind == PG_REFERENCE && term->as.reference == pg_evidence_context(destination)->binder) break;
  		}
  		scope = pg_synthesis_bind(synthesis, scope, old ? old->name : (struct pg_token){0},
@@ -3859,7 +3869,7 @@
  		if (scope && old && old->associated_binder) {
  			const struct pg_evidence *associated = pg_substitution_image(typing, map, old->associated_binder);
  			const struct pg_term *field = associated ? pg_evidence_subject(associated)->core : NULL;
-@@ -4227,24 +3944,25 @@
+@@ -4227,24 +3954,25 @@
  	for (const struct pg_source_scope *old = original; old; old = old->parent) {
  		if (!old->name.length) continue;
  		const struct pg_evidence *image;
@@ -3895,7 +3905,7 @@
  		if (!scope) return NULL;
  	}
  	return scope;
-@@ -4254,7 +3972,7 @@
+@@ -4254,7 +3982,7 @@
   * the actual index and the constructor index as an explicit motive argument. */
  static int match_index_context(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
@@ -3904,7 +3914,7 @@
  	struct match_state *state = local->match;
  	if (state->path_context || state->induction || state->generalization || !state->instance.indices) return 0;
  	size_t first = pg_evidence_context_map(state->instance.parameters)->count + 1;
-@@ -4292,7 +4010,7 @@
+@@ -4292,7 +4020,7 @@
  
  static int match_index_scope(struct pg_synthesis *synthesis, struct pg_synthesis_job *job, size_t ordinal)
  {
@@ -3913,7 +3923,7 @@
  	struct match_state *state = local->match;
  	struct match_branch *branch = &state->branches[ordinal];
  	struct pg_typing *typing = synthesis->typing;
-@@ -4302,7 +4020,7 @@
+@@ -4302,7 +4030,7 @@
  		if (!pattern) return -1;
  		const struct pg_evidence *context = pg_evidence_premise(pattern, 1);
  		branch->scope = pg_synthesis_bind(synthesis, branch->scope, (struct pg_token){0},
@@ -3922,7 +3932,7 @@
  		if (!branch->scope) return -1;
  	}
  	if (!pattern || state->path_count > SIZE_MAX / sizeof(*branch->paths)) return -1;
-@@ -4331,7 +4049,7 @@
+@@ -4331,7 +4059,7 @@
   * a transport derivation using the corresponding, scoped Identity witness. */
  static void match_index_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
@@ -3931,7 +3941,7 @@
  	struct match_state *state = local->match;
  	struct match_branch *branch = &state->branches[state->path_scoped];
  	if (!branch->paths && match_index_scope(synthesis, job, state->path_scoped)) goto unsupported;
-@@ -4340,8 +4058,9 @@
+@@ -4340,8 +4068,9 @@
  		const struct pg_evidence *ends[] = {path->left, path->right};
  		const struct pg_object *heads[2] = {0};
  		for (size_t i = 0; i < 2; ++i) {
@@ -3943,7 +3953,7 @@
  			if (!path->normal[i]) goto error;
  			if (pg_synthesis_await(synthesis, job, path->normal[i])) return;
  			const struct pg_term *head = pg_evidence_subject(path->normal[i]->result)->core;
-@@ -4370,7 +4089,7 @@
+@@ -4370,7 +4099,7 @@
  
  static void match_refuted_branch(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
@@ -3952,7 +3962,7 @@
  	struct match_state *state = local->match;
  	struct match_branch *branch = &state->branches[state->prepared];
  	if (!branch->contradiction) { ++state->prepared; pg_synthesis_enqueue(synthesis, job); return; }
-@@ -4381,17 +4100,17 @@
+@@ -4381,17 +4110,17 @@
  		const struct pg_evidence *type = pg_prove_reindex(synthesis->typing, branch->pattern, state->path_result);
  		type = pg_prove_thunk_type(synthesis->typing, type);
  		if (!type) goto unsupported;
@@ -3978,7 +3988,7 @@
  	++state->prepared;
  	pg_synthesis_enqueue(synthesis, job); return;
  unsupported:
-@@ -4402,58 +4121,62 @@
+@@ -4402,58 +4131,62 @@
  
  static void match_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
  {
@@ -4063,7 +4073,7 @@
  		local->match->instance = instance;
  		local->match->motive_totality = PG_TOTALITY_TOTAL;
  		local->match->count = count;
-@@ -4461,20 +4184,21 @@
+@@ -4461,20 +4194,21 @@
  	}
  	struct match_state *state = local->match;
  	const struct pg_data_layout *layout = pg_data_schema_layout(state->instance.schema);
@@ -4092,7 +4102,7 @@
  		size_t ordinal;
  		if (!pg_data_constructor_position(layout, constructor, &ordinal)) goto rejected;
  		if (state->branches[ordinal].clause) goto rejected;
-@@ -4498,13 +4222,13 @@
+@@ -4498,13 +4232,13 @@
  			const struct pg_context *saved;
  			if (source_match_branch_context(job, ordinal, field_count, &saved) ||
  				!pg_synthesis_constructor_scope_at(synthesis,
@@ -4110,7 +4120,7 @@
  		if (!scope_job) goto error;
  		if (pg_synthesis_await(synthesis, job, scope_job)) return;
  		const struct pg_evidence *map = scope_job->result;
-@@ -4521,7 +4245,7 @@
+@@ -4521,7 +4255,7 @@
  		if (status != PG_SYNTHESIS_DONE) { free(extensions); pg_synthesis_finish(synthesis, job, status); return; }
  		free(extensions);
  		if (!scope) goto error;
@@ -4119,7 +4129,7 @@
  		branch->scope = scope;
  		branch->fields = pg_synthesis_scope_context(scope);
  		branch->field_count = count;
-@@ -4568,7 +4292,7 @@
+@@ -4568,7 +4302,7 @@
  	}
  	if (state->has_demands && state->effect_checked < state->count) { match_effects_step(synthesis, job); return; }
  	if (state->demanded < state->count) { match_demand_step(synthesis, job); return; }
@@ -4128,7 +4138,7 @@
  	/* A base case alone does not establish a constant recursive motive.
  	 * First use independent result contracts from recursive branches; the
  	 * ordinary branch checks must still validate every resulting equation. */
-@@ -4586,20 +4310,32 @@
+@@ -4586,20 +4320,32 @@
  		/* Retain constructor-index information before choosing a constant
  		 * result. Refuted branches above cannot propose a motive. */
  		if (state->path_context) state->type_cases = 1;
@@ -4169,7 +4179,7 @@
  			if (!state->motive) state->motive = type;
  			else {
  				struct pg_synthesis_job *comparison = pg_synthesis_compare_terms(synthesis,
-@@ -4621,10 +4357,10 @@
+@@ -4621,10 +4367,10 @@
  	if (!state->motive && state->path_context) {
  		for (size_t i = 0; i < state->count; ++i)
  			if (!state->branches[i].contradiction) goto unsupported;
@@ -4184,7 +4194,7 @@
  		if (!state->motive || pg_evidence_judgement(state->motive) != PG_JUDGEMENT_COMPUTATION_TYPE) goto rejected;
  	}
  	if (!state->motive) goto unsupported;
-@@ -4640,7 +4376,7 @@
+@@ -4640,7 +4386,7 @@
  		}
  		if (pg_synthesis_await(synthesis, job, state->motive_job)) return;
  		state->motive_context = state->generic_context;
@@ -4193,7 +4203,7 @@
  		if (state->path_context) state->path_result = state->motive;
  		const struct pg_evidence *extension = state->generalization ? pg_evidence_premise(state->generalization, 1) : NULL;
  		for (size_t i = state->generalized_count; i; --i, extension = pg_context_parent_input(synthesis->typing, extension))
-@@ -4662,19 +4398,18 @@
+@@ -4662,19 +4408,18 @@
  				state->prepared, state->motive_context, state->motive);
  			if (!branch->body) goto error;
  			if (pg_synthesis_await(synthesis, job, branch->body)) return;
@@ -4217,7 +4227,7 @@
  		}
  		if (!branch->function) goto unsupported;
  		++state->prepared;
-@@ -4687,9 +4422,7 @@
+@@ -4687,9 +4432,7 @@
  	struct pg_induction_allocation generated = {0};
  	const struct pg_context **clauses = NULL;
  	enum pg_synthesis_status elimination_status = PG_SYNTHESIS_UNSUPPORTED;
@@ -4228,7 +4238,7 @@
  	if (state->induction && !allocation) {
  		clauses = malloc(state->count * sizeof(*clauses));
  		if (!clauses) { elimination_status = PG_SYNTHESIS_ERROR; goto elimination_done; }
-@@ -4717,7 +4450,6 @@
+@@ -4717,7 +4460,6 @@
  			state->instance.parameters, scrutinee, state->motive_context, state->motive, state->count, branches);
  elimination_done:
  	free(clauses);
@@ -4236,7 +4246,7 @@
  	if (!job->result) {
  		if (elimination_status != PG_SYNTHESIS_PENDING) pg_synthesis_finish(synthesis, job, elimination_status);
  		return;
-@@ -4728,33 +4460,39 @@
+@@ -4728,33 +4470,39 @@
  	if (!local->value_job) {
  		struct match_state *state = local->match;
  		const struct pg_evidence *context = pg_synthesis_scope_context(local->inner);
@@ -4288,7 +4298,7 @@
  	local->match_frame = NULL;
  	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_DONE);
  	return;
-@@ -4766,74 +4504,45 @@
+@@ -4766,74 +4514,45 @@
  	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR);
  }
  
@@ -4380,7 +4390,7 @@
  }
  
  /* Project the existing rule and, when requested, its preparation state.
-@@ -4842,59 +4551,53 @@
+@@ -4842,59 +4561,53 @@
  static struct pg_synthesis_job *source_rule(const struct pg_synthesis_job *producer,
  	int *preparing)
  {
@@ -4480,7 +4490,7 @@
  }
  
  int pg_synthesis_await_preparation(struct pg_synthesis *synthesis,
-@@ -4910,42 +4613,56 @@
+@@ -4910,42 +4623,56 @@
  
  /* 2 is a type used as a value, 1 a value, 0 computation, -1 unknown.
   * Accepted judgements supersede recipes; pending adapters expose their rule. */
@@ -4555,7 +4565,7 @@
  	if (proof) {
  		const struct pg_context *scope = pg_evidence_context(proof);
  		return pg_evidence_judgement(proof) == PG_JUDGEMENT_CONTEXT && scope ? scope->binder : NULL;
-@@ -4954,112 +4671,88 @@
+@@ -4954,112 +4681,75 @@
  	if (binder) return binder;
  	binder = pg_synthesis_pi_scope_binder(context);
  	if (binder) return binder;
@@ -4586,18 +4596,9 @@
 +		if (!pg_synthesis_structure_valid(local->left)) {
  			struct pg_synthesis_job *prepared;
  			if (pg_synthesis_await_preparation(synthesis, job, producer, &prepared)) return;
- 			/* Classifier conversion and post-checking never rewrite the subject. */
+-			/* Classifier conversion and post-checking never rewrite the subject. */
 -			if (pg_synthesis_classifier_input(producer)) prepared = pg_synthesis_classifier_input(producer);
 -			else if (pg_synthesis_expect_input(producer)) prepared = pg_synthesis_expect_input(producer);
-+			struct pg_synthesis_input checked = pg_synthesis_classifier_input(producer);
-+			if (!checked.checked && !checked.pending) checked = pg_synthesis_expect_input(producer);
-+			if (checked.checked) {
-+				const struct pg_occurrence *subject = pg_evidence_subject(checked.checked);
-+				if (!subject) goto unsupported;
-+				local->type_structure = subject->core;
-+				goto done;
-+			}
-+			if (checked.pending) prepared = pg_pending_job(checked.pending);
  			if (!prepared) goto unsupported;
  			local->left = pg_synthesis_term_structure(synthesis, prepared);
  		}
@@ -4627,10 +4628,10 @@
 -	if (!local->left) goto unsupported;
 -	if (pg_synthesis_await(synthesis, job, local->left)) return;
 -	local->type_structure = pg_synthesis_type_structure_result(local->left);
+-done:
+-	pg_synthesis_finish(synthesis, job, local->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+-	return;
 +	goto unsupported;
- done:
- 	pg_synthesis_finish(synthesis, job, local->type_structure ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
- 	return;
  unsupported:
 -	if (producer->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, producer); return; }
 -	pg_synthesis_finish(synthesis, job, producer->status == PG_SYNTHESIS_DONE ? PG_SYNTHESIS_UNSUPPORTED : producer->status);
@@ -4712,7 +4713,7 @@
  			const struct pg_reduction_certificate *receipt = pg_synthesis_reduction_advance(synthesis, job, &local->normalizing, type, PG_REDUCTION_WHNF);
  			if (!receipt) return;
  			type = pg_reduction_target(receipt);
-@@ -5069,88 +4762,45 @@
+@@ -5069,88 +4759,45 @@
  		return;
  	}
  accepted_classifier:
@@ -4821,7 +4822,7 @@
  	if (job->status == PG_SYNTHESIS_DONE && !result.rule) return 0;
  	*view = result;
  	return 1;
-@@ -5161,39 +4811,26 @@
+@@ -5161,39 +4808,26 @@
  {
  	struct pg_reference_frontier current;
  	if (!view || pg_synthesis_reference_frontier(synthesis, job, &current) != 1) return -1;
@@ -4876,7 +4877,7 @@
  	if (local->value_job) {
  		if (local->left) local->exports = source_exports(local->left);
  		pg_synthesis_forward(synthesis, job, local->value_job); return 1;
-@@ -5201,27 +4838,27 @@
+@@ -5201,27 +4835,27 @@
  	if (!local->binder) {
  		if (local->left) return 0;
  		struct source_reference reference;
@@ -4915,7 +4916,7 @@
  			return 1;
  		}
  		if (!reference.binder) {
-@@ -5229,233 +4866,69 @@
+@@ -5229,233 +4863,69 @@
  			pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED);
  			return 1;
  		}
@@ -5184,15 +5185,14 @@
  		slow = constructor_callable_origin(synthesis, slow);
  		fast = constructor_callable_origin(synthesis, constructor_callable_origin(synthesis, fast));
  		if (slow && slow == fast) return NULL;
-@@ -5463,482 +4936,32 @@
+@@ -5463,482 +4933,32 @@
  	return NULL;
  }
  
 -/* A constructor spine owns its argument synthesis. It must not change the
 - * meaning of a separately requested partial application with fewer inputs. */
 -static int prepare_constructor_spine(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
-+static int source_context_wait(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
- {
+-{
 -	struct source_work *local = source_work(job);
 -	const struct pg_syntax *head = local->syntax;
 -	size_t count = 0;
@@ -5349,7 +5349,8 @@
 -
 -/* Expose the callee first, then sequence its argument, using ordinary rules. */
 -static int prepare_application(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
--{
++static int source_context_wait(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+ {
 -	struct source_work *local = source_work(job);
 -	if (job->role != EXPRESSION_JOB || local->syntax->kind != PG_SYNTAX_APPLICATION) return 0;
 -	if (local->stage == APPLICATION_RULE_READY) {
@@ -5682,7 +5683,7 @@
  	return entry ? entry->producer : NULL;
  }
  
-@@ -5946,14 +4969,14 @@
+@@ -5946,14 +4966,14 @@
  	const struct pg_syntax_item **item, struct pg_synthesis_job **producer)
  {
  	if (!root || !item || !producer) return -1;
