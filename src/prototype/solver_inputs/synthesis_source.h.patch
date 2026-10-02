@@ -97,10 +97,19 @@
  /* Borrow/restore a rule's premise cursor before endpoint computation starts.
   * 1 supplies a cursor, 0 needs another state owner, -1 rejects the request.
   * Resume needs a fresh pending rule and locally checked skipped premises.
-@@ -141,43 +162,88 @@
- int pg_synthesis_derivation_frontier(const struct pg_synthesis *, const struct pg_synthesis_job *,
- 	size_t *, struct pg_synthesis_job **);
- int pg_synthesis_derivation_resume(struct pg_synthesis *, struct pg_synthesis_job *, size_t, int prepared);
+@@ -132,52 +153,88 @@
+  * Effect/comparison/reduction state must be transported separately. */
+ int pg_synthesis_rule_frontier(const struct pg_synthesis *, const struct pg_synthesis_job *, size_t *);
+ int pg_synthesis_rule_resume(struct pg_synthesis *, struct pg_synthesis_job *, size_t);
+-/* Imported derivation preparation is distinct from checking the prepared rule.
+- * Inspection neither creates unvisited premises nor starts work. Restore on a
+- * fresh pending input only, after its prepared premise edges are restored;
+- * prepared=1 recreates the ordinary rule through its existing factory, not a
+- * checked result. Its own cursor and the scheduler remain separate owners. */
+-const struct pg_derivation_input *pg_synthesis_derivation_input(const struct pg_synthesis_job *);
+-int pg_synthesis_derivation_frontier(const struct pg_synthesis *, const struct pg_synthesis_job *,
+-	size_t *, struct pg_synthesis_job **);
+-int pg_synthesis_derivation_resume(struct pg_synthesis *, struct pg_synthesis_job *, size_t, int prepared);
 -const struct pg_evidence *pg_synthesis_evidence_input(const struct pg_synthesis_job *);
  const struct pg_synthesis_job *pg_synthesis_operation_origin(const struct pg_synthesis_job *);
  /* Follow an existing lexical alias edge, without evaluation or acceptance. */
@@ -204,7 +213,7 @@
  int pg_synthesis_await_preparation(struct pg_synthesis *, struct pg_synthesis_job *,
  	struct pg_synthesis_job *, struct pg_synthesis_job **);
  enum pg_comparison_status pg_synthesis_probe_advance(struct pg_synthesis *, struct pg_synthesis_job *, struct pg_comparison *);
-@@ -188,9 +254,9 @@
+@@ -188,9 +245,9 @@
  /* IADT-owned checked index transport. The second form discovers a result
   * independent of the destination's excluded binders; it is not TypeExpect. */
  struct pg_synthesis_job *pg_synthesis_index_transport(struct pg_synthesis *,

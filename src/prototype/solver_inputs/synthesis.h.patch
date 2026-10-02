@@ -270,7 +270,7 @@
  /* Structural classifier for pending VARIABLE/FORCE/THUNK/LAMBDA/APP rule inputs.
   * Prepared source VARIABLE/quotation rules share this projection too.
   * Uses binder identity through context producers, not names or accepted proof
-@@ -433,13 +446,13 @@
+@@ -433,21 +446,21 @@
   * Accepted producers expose their retained classifier without new inference.
   * Other producers await acceptance. Read the raw result with the same
   * type_structure_result accessor; it supplies no typing evidence. */
@@ -284,8 +284,19 @@
 -struct pg_synthesis_job *pg_synthesis_term_structure(struct pg_synthesis *synthesis,
 +struct pg_synthesis_structure pg_synthesis_term_structure(struct pg_synthesis *synthesis,
  	struct pg_synthesis_job *term);
- /* Unaccepted stored rule DAG; request does not traverse or accept it. Inputs
-  * outlive synthesis. Uses ordinary dependencies, rules and pure work. */
+-/* Unaccepted stored rule DAG; request does not traverse or accept it. Inputs
+- * outlive synthesis. Uses ordinary dependencies, rules and pure work. */
++/* Relocate an unaccepted stored DAG to ordinary pending rule requests. No
++ * Solve, normalization or evidence admission. Discard the import on failure. */
+ struct pg_synthesis_job *pg_synthesis_derivation(struct pg_synthesis *synthesis,
+ 	const struct pg_derivation_input *input);
+ /* Expand the same immutable rule DAG with relocated effect parameters resolved
+  * in work. Definitions must already be registered; work outlives synthesis.
+- * No worker address lives in the stored inputs. Expansion is fuel-accounted;
++ * No worker address lives in the stored inputs. Relocation is inert;
+  * ordinary rule jobs await sealing/convergence before accepting F formation. */
+ struct pg_synthesis_job *pg_synthesis_derivation_inference(struct pg_synthesis *synthesis,
+ 	const struct pg_derivation_input *input, struct pg_effect_inference *work);
 @@ -458,17 +471,17 @@
  int pg_synthesis_import_rules(struct pg_synthesis *, size_t,
  	const struct pg_derivation_input *const *, struct pg_effect_inference *,

@@ -684,6 +684,29 @@ No new binding/domain checkpoint fields or backend features before this gate.
 Implement prototypes, verify, and push reviewable deletion-oriented milestones.
 Do not mark a milestone complete just because a view hides the old representation.
 
+2026-10-02, verified agent prototype on `112646d`: delete imported derivation
+preparation Jobs, their cursor API, raw export branch and checkpoint format
+branch. Single-root/batch imports share ordinary checking requests; temporary
+transport relocation is not retained Solve state. Invalid transport dependencies
+fail during import; invalid typing claims still reach ordinary checking.
+Checkpoint format is single-owner `APGDRC\5`, without compatibility adapters.
+[Applied delta](../src/prototype/solver_inputs/direct_import_delta.tsv):
+implementation +94/-353 (net -259), verification +63/-98 (net -35), excluding
+docs/data and cumulative patch-file context. [Fresh paired checks](../src/prototype/solver_inputs/direct_import_measurements.tsv)
+reduce materialized validation 7/58/268/822 -> 3/33/160/505 and ordinary derivation
+import 1,670 -> 1,326 transitions. These are dispatch counts, not wall time.
+Four source census samples are unchanged at four budgets; all 52 public List
+images and the four-failure resume report equal the parent. Full O2 regression,
+examples/acceptance, semantic images, seven checkpoint and five C gates pass,
+including both LT providers/orders and universal Sorted/permutation witnesses.
+ASan/UBSan/leaks Core/synthesis/source/derivation/checkpoint pass. Fresh patch
+assembly matches the tested code and passes Core/synthesis/source/checkpoint.
+Its first assembly used the wrong layered patch location; that packaging error
+was corrected without changing the tested implementation. The separate
+current-worktree assembly passes Core/IADT/synthesis; user edits are neither
+staged nor reverted.
+SE1-SE5 remain open; prototype only. Logs use `/tmp/a-program-direct-import-`.
+
 2026-10-02, verified agent prototype on `708c01d`: Identity formation/instance/
 face discovery no longer allocates a second full request for its resolved exact
 receipts. The existing resolved-key index shares the original work. Keys remain

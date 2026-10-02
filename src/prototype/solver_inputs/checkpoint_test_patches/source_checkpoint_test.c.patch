@@ -110,7 +110,7 @@
 +		struct pg_artifact_derivation_dependencies deps = dependencies(c);
  		assert(!pg_artifact_derivations_prepare_with_dependencies(s, c->rules, c->input_count, c->inputs,
 -			NULL, c->prefix_count, c->jobs, &mapping));
-+			NULL, &deps, &mapping));
++			&deps, &mapping));
  		c->jobs = mapping;
  	}
  	assert(!pg_artifact_source_prepare(s, c->source, c->count, c->jobs));
@@ -199,7 +199,7 @@
 +	struct pg_artifact_derivation_dependencies deps = dependencies(&c);
  	assert(!pg_artifact_derivations_prepare_with_dependencies(&p->synthesis, c.rules,
 -		c.input_count, c.inputs, NULL, c.prefix_count, c.jobs, &mapping));
-+		c.input_count, c.inputs, NULL, &deps, &mapping));
++		c.input_count, c.inputs, &deps, &mapping));
  	c.jobs = mapping;
  	assert(!pg_artifact_source_prepare(&p->synthesis, c.source, c.count, c.jobs));
  	assert(pg_artifact_source_attach(&p->synthesis, c.source, c.count, c.jobs));

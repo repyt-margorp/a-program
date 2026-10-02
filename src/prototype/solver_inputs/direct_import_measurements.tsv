@@ -1,0 +1,6 @@
+test	case	parent_steps	candidate_steps	source
+materialized_validation	universe	7	3	main := @;
+materialized_validation	lambda	58	33	main := \A : @ => A;
+materialized_validation	constructor	268	160	Nat := @{zero:*;succ:*->*;}; main := Nat.succ Nat.zero;
+materialized_validation	induction	822	505	Nat := @{zero:*;succ:*->*;}; main := \n:Nat => n @zero => Nat.zero @succ k => Nat.succ (*k);
+derivation_io	shared-premises	1670	1326	tests/derivation_io.sh, ordinary read fixture

@@ -8,7 +8,7 @@
  
  #include <assert.h>
  #include <errno.h>
-@@ -42,18 +43,31 @@
+@@ -42,18 +43,30 @@
  	for (size_t i = 0; i < s->jobs.capacity; ++i) {
  		for (const struct pg_index_entry *entry = s->jobs.buckets[i]; entry; entry = entry->next) {
  			const struct pg_synthesis_job *job = (const void *)entry;
@@ -21,7 +21,7 @@
  			pending += job->status == PG_SYNTHESIS_PENDING;
  			done += job->status == PG_SYNTHESIS_DONE;
  			rules += pg_synthesis_plain_derivation(job) != NULL;
- 			lazy += pg_synthesis_derivation_input(job) != NULL;
+-			lazy += pg_synthesis_derivation_input(job) != NULL;
 -			structural += job->role->structure != NULL;
 +			structural += role->structure != NULL;
  			if (job->result) { ++outputs; assert(!pg_dag_add(&results, job->result)); }
@@ -42,7 +42,7 @@
  	for (size_t i = 0; i < p->typing.proofs.capacity; ++i) {
  		for (const struct pg_index_entry *entry = p->typing.proofs.buckets[i]; entry; entry = entry->next) {
  			const struct pg_evidence *proof = (const void *)entry;
-@@ -67,11 +81,12 @@
+@@ -67,11 +80,12 @@
  				overlap += typed_edge(subject, pg_evidence_subject(pg_evidence_premise(proof, j)));
  		}
  	}
@@ -57,7 +57,7 @@
  	pg_dag_destroy(&results);
  	assert(steps == s->steps && jobs == s->jobs.count && proofs == p->typing.proofs.count);
  	assert(terms == p->graph.terms.count && objects == p->graph.objects.count);
-@@ -92,7 +107,7 @@
+@@ -92,7 +106,7 @@
  	struct pg_program *p = pg_program_create(source, (size_t)length, PG_DEFINITION_IMPLICIT_THUNK);
  	free(source);
  	assert(p && p->root);
