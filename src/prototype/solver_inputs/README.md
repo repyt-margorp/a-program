@@ -659,6 +659,19 @@ Full O2 regression/examples/acceptance, persistence/checkpoints, C and focused
 ASan/UBSan/leaks pass; the assembled candidate exactly matches the tested files.
 The same three public reload failures remain; SE1-SE5 are unfinished.
 
+Effect contribution no longer mirrors each join as child Jobs or forwards
+shape discovery to a second contribution Job. One demand advances the existing
+Term DAG; temporary traversal storage is lazy and freed at completion/failure.
+Against `d1b8290`, the [shared-DAG probe](effect_frontier_sharing.tsv) removes
+514 of 515 Jobs at depth 512, not 514 Terms. [Real inputs](effect_frontier_measurements.tsv)
+preserve completed typed/proof counts; Effect/Handler remove 40/15 Jobs.
+[Applied implementation](effect_frontier_delta.tsv) grows by 67 lines; regression
+tests grow by 86, excluding the standalone probe and Make fragment. Traversal's
+step grain changes; [allocation ranges](effect_frontier_allocation.tsv) establish
+no general speedup. Full O2, persistence/checkpoints, C and focused sanitizer
+gates pass; [hashes](effect_frontier_inventory.tsv) pin the tested candidate.
+The same three public reload failures and SE1-SE5 remain open. Prototype only.
+
 Use the parent plan for progress. Create and verify a disposable candidate:
 
 ```sh

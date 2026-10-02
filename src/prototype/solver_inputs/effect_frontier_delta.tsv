@@ -1,0 +1,6 @@
+file	added	deleted	net
+src/dag.c	25	6	19
+src/dag.h	6	0	6
+src/synthesis_effect.c	70	28	42
+tests/core.c	24	0	24
+tests/synthesis.c	62	0	62

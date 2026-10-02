@@ -1,0 +1,54 @@
+--- a/dag.c
++++ b/dag.c
+@@ -47,13 +47,23 @@
+ 	return r;
+ }
+ 
+-int pg_dag_add(struct pg_dag *dag, const void *root)
++int pg_dag_advance(struct pg_dag *dag, const void *root, uint64_t budget)
+ {
+ 	if (dag->failed || !dag->index.capacity) return -1;
+-	struct record *r = record(dag, root);
+-	if (!r) goto fail;
+-	if (r->node.id) return 0;
+-	while (r) {
++	if (!budget) {
++		const struct pg_dag_node *found = pg_dag_find(dag, root);
++		return found && found->id ? 1 : 0;
++	}
++	struct record *r = (void *)dag->pending;
++	if (r) {
++		if (dag->root != root) goto fail;
++	} else {
++		r = record(dag, root);
++		if (!r) goto fail;
++		if (r->node.id) return 1;
++		dag->root = root;
++	}
++	while (r && budget--) {
+ 		r->active = 1;
+ 		const void *key = NULL;
+ 		int status = dag->child ? dag->child(dag->context, r->node.key, r->cursor, &key) : 0;
+@@ -76,12 +86,21 @@
+ 			r = r->pending;
+ 		} else goto fail;
+ 	}
+-	return 0;
++	dag->pending = r ? &r->node : NULL;
++	if (!r) dag->root = NULL;
++	return r ? 0 : 1;
+ fail:
+ 	dag->failed = 1;
+ 	return -1;
+ }
+ 
++int pg_dag_add(struct pg_dag *dag, const void *root)
++{
++	int status;
++	do status = pg_dag_advance(dag, root, UINT64_MAX); while (!status);
++	return status < 0 ? -1 : 0;
++}
++
+ void pg_dag_destroy(struct pg_dag *dag)
+ {
+ 	pg_index_destroy(&dag->index);

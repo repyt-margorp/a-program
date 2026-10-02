@@ -763,6 +763,35 @@ not authorization to promote code or a claim that general resumption is solved.
 
 No new binding/domain checkpoint fields or backend features before this gate.
 Implement prototypes, verify, and push reviewable deletion-oriented milestones.
+
+- [x] **SE1 Effect-row traversal increment (2026-10-02, parent `d1b8290`):**
+  delete per-join child Jobs and the shape-discovery forwarding Job in
+  `synthesis_effect.c`. One contribution demand walks the existing Term DAG
+  through bounded `pg_dag_advance`; it allocates traversal storage only for
+  joins and frees it on completion/failure/destruction. The synchronous DAG API
+  uses the same traversal loop. No Core tag, proof authority or wire field added.
+  [Shared-DAG probe](../src/prototype/solver_inputs/effect_frontier_sharing.tsv):
+  depth 512 removes 514 of 515 Jobs (74,160 to 144 retained Job-layout bytes).
+  Temporary DAG storage is excluded; this is not total-memory reduction.
+  [Paired census](../src/prototype/solver_inputs/effect_frontier_measurements.tsv):
+  completed Effect/Handler remove 40/15 Jobs, preserving all five inputs'
+  final Term/Occurrence/Evidence/premise counts. The deep probe uses more steps
+  (1,028 to 1,541): one transition now visits a child slot or closes a node.
+  [Allocation samples](../src/prototype/solver_inputs/effect_frontier_allocation.tsv)
+  have overlapping QuickSort ranges; no general speedup/regression established.
+  [Applied delta](../src/prototype/solver_inputs/effect_frontier_delta.tsv):
+  implementation +101/-34 (net +67), tests +86/-0, excluding the standalone
+  probe, Make fragment, reports, docs and cumulative patch context.
+  Full O2 regression/examples/acceptance, semantic persistence, seven checkpoint,
+  five C and focused ASan/UBSan/leaks gates exit 0. Shared/deep joins, zero/split
+  fuel, masks, malformed rows, sealing and pending destruction are covered.
+  Fresh assembly matches all 156 source/test C/header files; dirty-current
+  Core/IADT/Synthesis also pass. [Hashes](../src/prototype/solver_inputs/effect_frontier_inventory.tsv)
+  pin the candidate and inputs. All 52 public List images/report match the parent;
+  the same three strict reload failures remain (exit 1), not waived. SE1-SE5
+  remain open. Prototype only; user edits excluded. Agent decision: lexical
+  definition indices are actual source lookup state, not deleted merely because
+  they reference pending producers. Logs use `/tmp/a-program-effect-frontier-`.
 Do not mark a milestone complete just because a view hides the old representation.
 
 2026-10-02, verified agent prototype on `2d802de`: ordinary rule checking now
