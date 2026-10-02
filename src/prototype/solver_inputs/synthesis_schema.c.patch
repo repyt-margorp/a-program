@@ -430,8 +430,8 @@
 +	if (projected->source != prefix->source || projected->destination != fields->destination || projected->count != prefix->count) return -1;
 +	for (size_t i = 0; i < prefix->count; ++i)
 +		if (projected->images[i]->core != prefix->images[i]->core) return -1;
-+	struct pg_synthesis_job *body = pg_synthesis_abstract(synthesis,
-+		pg_evidence_premise(parameters, 1), pg_evidence_premise(scope, 1), (struct pg_synthesis_input){.checked = leaf});
++	struct pg_synthesis_job *body = pg_pending_job(pg_synthesis_abstract(synthesis,
++		pg_evidence_premise(parameters, 1), pg_evidence_premise(scope, 1), (struct pg_synthesis_input){.checked = leaf}).pending);
 +	if (!body || constructor_callable_prepare(synthesis, job)) return -1;
 +	struct constructor_value_work *local = pg_synthesis_work_state(job, CONSTRUCTOR_VALUE_JOB);
 +	local->body = body;
@@ -456,7 +456,7 @@
 +			formation, constructor, projected, map);
 +		if (!body) goto error;
 +		if (!count) { job->result = body; pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_DONE); return; }
-+		local->body = pg_synthesis_abstract(synthesis, pg_evidence_premise(parameters, 1), context, (struct pg_synthesis_input){.checked = body});
++		local->body = pg_pending_job(pg_synthesis_abstract(synthesis, pg_evidence_premise(parameters, 1), context, (struct pg_synthesis_input){.checked = body}).pending);
 +		if (!local->body) goto error;
 +	}
 +	/* Nullary constructors are values; field-bearing ones are raw functions. */

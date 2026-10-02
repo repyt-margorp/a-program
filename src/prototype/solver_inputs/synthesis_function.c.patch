@@ -842,7 +842,7 @@
  	}
  	pg_synthesis_forward(synthesis, job, local->rule);
  }
-@@ -472,83 +724,726 @@
+@@ -472,83 +724,725 @@
  	return (struct pg_synthesis_projection){.rule = rule, .preparing = !rule, .value_kind = -1};
  }
  
@@ -911,9 +911,9 @@
 +	if (!pg_evidence_owned_by(fields, synthesis->typing) || pg_evidence_judgement(fields) != PG_JUDGEMENT_CONTEXT) return NULL;
 +	size_t count;
 +	if (pg_context_extension_size(pg_evidence_context(fields), pg_evidence_context(destination), &count)) return NULL;
-+	struct pg_synthesis_job *function = pg_synthesis_abstract(synthesis, destination, fields, body);
-+	return function ? pg_synthesis_constant_result(synthesis, (struct pg_synthesis_input){.checked = destination},
-+		(struct pg_synthesis_input){.pending = pg_synthesis_pending(function)}, count) : NULL;
++	struct pg_synthesis_input function = pg_synthesis_abstract(synthesis, destination, fields, body);
++	return pg_synthesis_input_owned(synthesis, function) ? pg_synthesis_constant_result(synthesis,
++		(struct pg_synthesis_input){.checked = destination}, function, count) : NULL;
  }
  
  struct pg_synthesis_job *pg_synthesis_application_domain(struct pg_synthesis *synthesis,
@@ -965,12 +965,12 @@
 -	if (!context || context->owner != synthesis->owner_key) return NULL;
 -	if (!body || body->owner != synthesis->owner_key) return NULL;
 -	body = pg_synthesis_body(synthesis, body, context);
-+	if (!pg_synthesis_input_owned(synthesis, context)) return NULL;
-+	struct pg_synthesis_job *body = pg_synthesis_body(synthesis, input, context);
- 	if (!body) return NULL;
+-	if (!body) return NULL;
 -	struct pg_synthesis_job *codomain = pg_synthesis_classifier_formation(synthesis, context, body);
-+	struct pg_pending *codomain = pg_synthesis_classifier_in(synthesis, context,
-+		(struct pg_synthesis_input){.pending = pg_synthesis_pending(body)});
++	if (!pg_synthesis_input_owned(synthesis, context)) return NULL;
++	struct pg_synthesis_input body = pg_synthesis_body(synthesis, input, context);
++	if (!pg_synthesis_input_owned(synthesis, body)) return NULL;
++	struct pg_pending *codomain = pg_synthesis_classifier_in(synthesis, context, body);
  	if (!codomain) return NULL;
 -	struct pg_synthesis_job *premises[] = {context, codomain};
 -	struct pg_synthesis_job *pi = pg_synthesis_plain_rule(synthesis, PG_PI_FORM, NULL, 2, premises);
@@ -979,7 +979,7 @@
  	if (!pi) return NULL;
 -	struct pg_synthesis_job *lambda_premises[] = {pi, body};
 -	return pg_synthesis_plain_rule(synthesis, PG_LAMBDA_INTRO, NULL, 2, lambda_premises);
-+	struct pg_synthesis_input lambda_premises[] = {{.pending = pg_synthesis_pending(pi)}, {.pending = pg_synthesis_pending(body)}};
++	struct pg_synthesis_input lambda_premises[] = {{.pending = pg_synthesis_pending(pi)}, body};
 +	return pg_synthesis_plain_rule_inputs(synthesis, PG_LAMBDA_INTRO, NULL, 2, lambda_premises);
 +}
 +

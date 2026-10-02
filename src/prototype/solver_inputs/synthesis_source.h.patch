@@ -57,7 +57,7 @@
  };
  int pg_synthesis_reference_frontier(const struct pg_synthesis *, const struct pg_synthesis_job *,
  	struct pg_reference_frontier *);
-@@ -114,70 +117,120 @@
+@@ -114,70 +117,122 @@
  
  const struct pg_source_scope *pg_synthesis_intern_scope(struct pg_synthesis *, struct pg_source_scope);
  int pg_synthesis_register_name(struct pg_synthesis *, struct pg_index *, struct pg_token);
@@ -153,7 +153,9 @@
 +/* Type-position normalization uses the ordinary CBPV result query. */
 +const struct pg_evidence *pg_synthesis_type_input(struct pg_synthesis *, struct pg_synthesis_job *,
 +	struct pg_synthesis_job **, const struct pg_evidence *, const struct pg_evidence *);
-+struct pg_synthesis_job *pg_synthesis_body(struct pg_synthesis *, struct pg_synthesis_input, struct pg_synthesis_input);
++/* Checked operands borrow their actual input/rule after Context validation.
++ * Pending operands retain discovery identity and their lexical input edges. */
++struct pg_synthesis_input pg_synthesis_body(struct pg_synthesis *, struct pg_synthesis_input, struct pg_synthesis_input);
 +struct pg_synthesis_input pg_synthesis_body_input(const struct pg_synthesis_job *);
  /* Restore only the already-selected adapter. Selection shares the normal body
   * factory; its child rule still needs its own progress and evidence checking. */
@@ -213,7 +215,7 @@
  int pg_synthesis_await_preparation(struct pg_synthesis *, struct pg_synthesis_job *,
  	struct pg_synthesis_job *, struct pg_synthesis_job **);
  enum pg_comparison_status pg_synthesis_probe_advance(struct pg_synthesis *, struct pg_synthesis_job *, struct pg_comparison *);
-@@ -188,9 +241,9 @@
+@@ -188,9 +243,9 @@
  /* IADT-owned checked index transport. The second form discovers a result
   * independent of the destination's excluded binders; it is not TypeExpect. */
  struct pg_synthesis_job *pg_synthesis_index_transport(struct pg_synthesis *,

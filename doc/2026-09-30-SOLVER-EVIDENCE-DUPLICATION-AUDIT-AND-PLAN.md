@@ -982,6 +982,42 @@ are excluded. Logs use `/tmp/a-program-context-receipts-`.
   and genuinely unfinished construction. Try direct owner references plus
   owner-local suspension state; document any residual allocation that cannot be
   eliminated and why. An independent Job graph is not an acceptance criterion.
+  Direct-body increment (2026-10-03, parent `4b46660`; agent decision): body and
+  abstraction return checked/pending inputs through one interface. Checked
+  operands and a checked matching Context select the ordinary RETURN rule
+  directly; checked computations need no preparation Job. Pending operands and
+  unfinished Context checks retain stable discovery identity and input edges.
+  Lambda, block and Handler consumers borrow that output; no mirrored Term,
+  semantic tag, checking authority, wire field or trust bypass is added.
+  Focused O2, semantic/seven checkpoint, five C gates and ASan/UBSan/leaks pass;
+  freshly assembled C/headers match. Current-user-edit Core/IADT/Synthesis pass
+  without changing the user's working-tree files.
+  The namespace checkpoint now walks the actual RETURN premise rather than
+  assuming a body wrapper, preserving exact remaining dispatches and bytes.
+  [Paired census](../src/prototype/solver_inputs/body_inputs_measurements.tsv)
+  preserves all five final Term/Occurrence/Evidence and logical-premise counts.
+  QuickSort removes 133 Jobs, 19,096 Job bytes and 371 dispatches; List removes
+  3 Jobs and 9 dispatches. This is not a measured wall-clock speedup.
+  [Applied deltas](../src/prototype/solver_inputs/body_inputs_delta.tsv):
+  implementation +66/-54 (net +12), tests +81/-54 (net +27), excluding patches/docs.
+  [Public partitions](../src/prototype/solver_inputs/body_inputs_partitions.tsv)
+  still fail the same three reload cases; the gate exits 1, not waived.
+  [Hashes](../src/prototype/solver_inputs/body_inputs_inventory.tsv) pin the
+  prototype; logs use `/tmp/a-program-body-inputs-`. Full O2 regression/examples/
+  acceptance exits 0, including both LT providers/orders, exact outputs and
+  invalid-evidence rejection. The final boundary test also passes O2 and
+  ASan/UBSan/leaks. SE1-SE5 remain open; no accepted-source promotion.
+  Rejected trial: direct selection for pending operands broke the unchanged
+  indexed-constructor-sequencing test. Completed classifier formation returns
+  a checked operand, but callable-origin recovery reads only its pending source
+  edge, exposing an existing scheduling-dependent provenance assumption. The
+  accepted scope of this increment is checked operands only, not a repair of
+  that broader issue. A focused test now retains a completed pending input's
+  exact origin; the existing effectful partial-constructor gate passes again.
+  Next SE1 prerequisite: obtain implicit-constructor calling conventions from
+  their actual lexical/typed owner, independent of classifier-completion timing,
+  before removing pending-body discovery. Do not add another Job/Term graph or
+  reconstruct accepted Evidence solely to recover that source edge.
   Verified prototype increment (2026-10-03, parent `0e3865d`; agent decision):
   normalization now uses the existing resolved-input interner after operand
   validation. Equivalent checked inputs share the checking owner, without

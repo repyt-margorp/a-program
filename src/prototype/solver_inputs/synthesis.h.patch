@@ -533,7 +533,8 @@
 +/* Abstract a checked or independently synthesized body over an accepted context suffix.
   * Builds ordinary Lambda producers without waiting for the body. Context
   * binders are retained; no fresh binders or provisional proofs are created. */
- struct pg_synthesis_job *pg_synthesis_abstract(struct pg_synthesis *synthesis,
+-struct pg_synthesis_job *pg_synthesis_abstract(struct pg_synthesis *synthesis,
++struct pg_synthesis_input pg_synthesis_abstract(struct pg_synthesis *synthesis,
  	const struct pg_evidence *prefix, const struct pg_evidence *context,
 -	struct pg_synthesis_job *body);
 +	struct pg_synthesis_input body);

@@ -1208,7 +1208,7 @@
  struct pg_synthesis_job *pg_synthesis_induction_branch(struct pg_synthesis *synthesis,
  	const struct pg_source_scope *scope, const struct pg_evidence *formation,
  	const struct pg_object *constructor, const struct pg_evidence *parameters,
-@@ -1165,153 +1365,27 @@
+@@ -1165,155 +1365,29 @@
  		pg_evidence_context(pg_synthesis_scope_context(scope))) return NULL;
  	if (!clause || clause->kind != PG_SYNTAX_CLAUSE) return NULL;
  	const void *inputs[] = {scope, formation, constructor, parameters, motive_context, motive, clause, generalization};
@@ -1218,32 +1218,36 @@
 +	return pg_synthesis_work_request(synthesis, INDUCTION_BRANCH_JOB, 8, inputs);
  }
  
- struct pg_synthesis_job *pg_synthesis_abstract(struct pg_synthesis *synthesis,
+-struct pg_synthesis_job *pg_synthesis_abstract(struct pg_synthesis *synthesis,
++struct pg_synthesis_input pg_synthesis_abstract(struct pg_synthesis *synthesis,
  	const struct pg_evidence *prefix, const struct pg_evidence *context,
 -	struct pg_synthesis_job *body)
 +	struct pg_synthesis_input body)
  {
 -	if (!body || body->owner != synthesis->owner_key) return NULL;
-+	if (!pg_synthesis_input_owned(synthesis, body)) return NULL;
- 	if (!pg_evidence_owned_by(prefix, synthesis->typing) || pg_evidence_judgement(prefix) != PG_JUDGEMENT_CONTEXT) return NULL;
- 	if (!pg_evidence_owned_by(context, synthesis->typing) || pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT) return NULL;
+-	if (!pg_evidence_owned_by(prefix, synthesis->typing) || pg_evidence_judgement(prefix) != PG_JUDGEMENT_CONTEXT) return NULL;
+-	if (!pg_evidence_owned_by(context, synthesis->typing) || pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT) return NULL;
++	if (!pg_synthesis_input_owned(synthesis, body)) return (struct pg_synthesis_input){0};
++	if (!pg_evidence_owned_by(prefix, synthesis->typing) || pg_evidence_judgement(prefix) != PG_JUDGEMENT_CONTEXT) return (struct pg_synthesis_input){0};
++	if (!pg_evidence_owned_by(context, synthesis->typing) || pg_evidence_judgement(context) != PG_JUDGEMENT_CONTEXT) return (struct pg_synthesis_input){0};
  	size_t count;
- 	if (pg_context_extension_size(pg_evidence_context(context), pg_evidence_context(prefix), &count)) return NULL;
+-	if (pg_context_extension_size(pg_evidence_context(context), pg_evidence_context(prefix), &count)) return NULL;
 -	if (!count) return pg_synthesis_body(synthesis, body, pg_synthesis_evidence(synthesis, context));
 -	for (size_t i = 0; body && i < count; ++i) {
 -		body = pg_synthesis_lambda_body(synthesis,
 -			pg_synthesis_evidence(synthesis, context), body);
++	if (pg_context_extension_size(pg_evidence_context(context), pg_evidence_context(prefix), &count)) return (struct pg_synthesis_input){0};
 +	if (!count) return pg_synthesis_body(synthesis, body, (struct pg_synthesis_input){.checked = context});
 +	for (size_t i = 0; i < count; ++i) {
 +		struct pg_synthesis_job *lambda = pg_synthesis_lambda_body(synthesis,
 +			(struct pg_synthesis_input){.checked = context}, body);
-+		if (!lambda) return NULL;
++		if (!lambda) return (struct pg_synthesis_input){0};
 +		body = (struct pg_synthesis_input){.pending = pg_synthesis_pending(lambda)};
  		context = pg_context_parent_input(synthesis->typing, context);
  	}
--	return body;
--}
--
+ 	return body;
+ }
+ 
 -struct pg_synthesis_job *pg_synthesis_constant_motive(struct pg_synthesis *synthesis,
 -	const struct pg_evidence *destination, const struct pg_evidence *fields,
 -	struct pg_synthesis_job *body)
@@ -1368,10 +1372,11 @@
 -	}
 -	return pg_synthesis_constructor_scope_at(synthesis, (void *)job->inputs[0], constructor,
 -		(void *)job->inputs[2], prefix, end) ? job : NULL;
-+	return pg_pending_job(body.pending);
- }
- 
+-}
+-
  int pg_synthesis_typed_input(struct pg_synthesis *synthesis,
+ 	const struct pg_evidence *context, const struct pg_evidence *proof)
+ {
 @@ -1323,18 +1397,18 @@
  	return pg_evidence_context(context) == pg_evidence_context(proof);
  }
@@ -3179,9 +3184,9 @@
 -		pg_synthesis_scope_context(local->scope), pg_synthesis_scope_context(local->inner), local->left);
 -	if (!local->value_job) goto error;
 -	pg_synthesis_forward(synthesis, job, local->value_job);
-+	if (!local->abstraction) local->abstraction = pg_synthesis_abstract(synthesis,
++	if (!local->abstraction) local->abstraction = pg_pending_job(pg_synthesis_abstract(synthesis,
 +		pg_synthesis_scope_context(parent), pg_synthesis_scope_context(local->scope),
-+		(struct pg_synthesis_input){.pending = pg_synthesis_pending(local->body)});
++		(struct pg_synthesis_input){.pending = pg_synthesis_pending(local->body)}).pending);
 +	if (!local->abstraction) goto error;
 +	pg_synthesis_forward(synthesis, job, local->abstraction);
  	return;
@@ -3338,8 +3343,8 @@
 -			input = pg_synthesis_body(synthesis, input, NULL);
 -			result->input = pg_synthesis_normalize_classifier_jobs(synthesis, context_job, input);
 +			if (item->name.length && pg_synthesis_prepare_value_argument(synthesis, job, context_input, &input)) return;
-+			input = pg_synthesis_body(synthesis, (struct pg_synthesis_input){.pending = pg_synthesis_pending(input)}, (struct pg_synthesis_input){0});
-+			result->input = pg_pending_job(pg_synthesis_normalize_classifier(synthesis, context_input, (struct pg_synthesis_input){.pending = pg_synthesis_pending(input)}).pending);
++			struct pg_synthesis_input body = pg_synthesis_body(synthesis, (struct pg_synthesis_input){.pending = pg_synthesis_pending(input)}, (struct pg_synthesis_input){0});
++			result->input = pg_pending_job(pg_synthesis_normalize_classifier(synthesis, context_input, body).pending);
  			if (!result->input) goto error;
  		}
  		if (result->input->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, result->input); return; }
@@ -3373,7 +3378,7 @@
 -		struct pg_synthesis_job *body = pg_synthesis_abstract(synthesis, fields, fields, part->body);
 -		struct pg_synthesis_job *formation = pg_synthesis_classifier_formation(synthesis,
 -			pg_synthesis_evidence(synthesis, fields), body);
-+		struct pg_synthesis_job *body = pg_synthesis_abstract(synthesis, fields, fields, (struct pg_synthesis_input){.pending = pg_synthesis_pending(part->body)});
++		struct pg_synthesis_job *body = pg_pending_job(pg_synthesis_abstract(synthesis, fields, fields, (struct pg_synthesis_input){.pending = pg_synthesis_pending(part->body)}).pending);
 +		struct pg_pending *formation = pg_synthesis_classifier_in(synthesis, (struct pg_synthesis_input){.checked = fields}, (struct pg_synthesis_input){.pending = pg_synthesis_pending(body)});
  		if (!formation) goto error;
 -		if (formation->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, formation); return; }
@@ -3510,7 +3515,7 @@
  	if (!branch->needs_ih) {
  		const struct pg_evidence *context = pg_synthesis_scope_context(branch->scope);
 -		struct pg_synthesis_job *body = pg_synthesis_abstract(synthesis, context, context, branch->body);
-+		struct pg_synthesis_job *body = pg_synthesis_abstract(synthesis, context, context, (struct pg_synthesis_input){.pending = pg_synthesis_pending(branch->body)});
++		struct pg_synthesis_job *body = pg_pending_job(pg_synthesis_abstract(synthesis, context, context, (struct pg_synthesis_input){.pending = pg_synthesis_pending(branch->body)}).pending);
  		if (!body) goto error;
  		if (pg_synthesis_await(synthesis, job, body)) return;
  		const struct pg_effect_row *effects;
@@ -3574,7 +3579,7 @@
 -			struct pg_synthesis_job *body = pg_synthesis_abstract(synthesis, fields, fields, branch->body);
 -			branch->type_job = pg_synthesis_classifier_formation(synthesis,
 -				pg_synthesis_evidence(synthesis, fields), body);
-+			struct pg_synthesis_job *body = pg_synthesis_abstract(synthesis, fields, fields, (struct pg_synthesis_input){.pending = pg_synthesis_pending(branch->body)});
++			struct pg_synthesis_job *body = pg_pending_job(pg_synthesis_abstract(synthesis, fields, fields, (struct pg_synthesis_input){.pending = pg_synthesis_pending(branch->body)}).pending);
 +			branch->type_job = pg_synthesis_classifier_in(synthesis, (struct pg_synthesis_input){.checked = fields}, (struct pg_synthesis_input){.pending = pg_synthesis_pending(body)});
  		}
  		if (!branch->type_job) goto error;
@@ -3640,7 +3645,7 @@
 -					struct pg_synthesis_job *goal = pg_synthesis_evidence(synthesis, context);
 -					if (!quoted || !goal) goto error;
 -					branch->refined = pg_synthesis_index_result(synthesis, branch->scope->context_job, quoted, goal);
-+					struct pg_synthesis_job *body = pg_synthesis_abstract(synthesis, fields, fields, (struct pg_synthesis_input){.pending = pg_synthesis_pending(branch->body)});
++					struct pg_synthesis_job *body = pg_pending_job(pg_synthesis_abstract(synthesis, fields, fields, (struct pg_synthesis_input){.pending = pg_synthesis_pending(branch->body)}).pending);
 +					struct pg_synthesis_job *quoted = pg_synthesis_plain_rule_inputs(synthesis, PG_THUNK_INTRO, NULL, 1, &(struct pg_synthesis_input){.pending = pg_synthesis_pending(body)});
 +					if (!quoted) goto error;
 +					branch->refined = pg_synthesis_index_result(synthesis, branch->scope->context,
@@ -3653,7 +3658,7 @@
  		const struct pg_evidence *target = pg_prove_reindex(typing, pattern, state->candidate);
  		if (!target) goto next_candidate;
 -		struct pg_synthesis_job *body = pg_synthesis_abstract(synthesis, fields, body_context, branch->body);
-+		struct pg_synthesis_job *body = pg_synthesis_abstract(synthesis, fields, body_context, (struct pg_synthesis_input){.pending = pg_synthesis_pending(branch->body)});
++		struct pg_synthesis_job *body = pg_pending_job(pg_synthesis_abstract(synthesis, fields, body_context, (struct pg_synthesis_input){.pending = pg_synthesis_pending(branch->body)}).pending);
  		if (state->path_context) {
  			/* Transport U(C), then force, without running C during synthesis. */
  			target = pg_prove_thunk_type(typing, target);
@@ -3668,7 +3673,7 @@
 +			body = pg_synthesis_plain_rule_inputs(synthesis, PG_FORCE_ELIM, NULL, 1, &(struct pg_synthesis_input){.pending = pg_synthesis_pending(body)});
 +		} else body = pg_synthesis_expect_inputs(synthesis, (struct pg_synthesis_input){.pending = pg_synthesis_pending(body)},
 +			(struct pg_synthesis_input){.checked = target});
-+		branch->converted = pg_synthesis_abstract(synthesis, context, fields, (struct pg_synthesis_input){.pending = pg_synthesis_pending(body)});
++		branch->converted = pg_pending_job(pg_synthesis_abstract(synthesis, context, fields, (struct pg_synthesis_input){.pending = pg_synthesis_pending(body)}).pending);
  		if (!branch->converted) goto error;
  	}
 -	if (branch->converted->status == PG_SYNTHESIS_PENDING) { depend(synthesis, job, branch->converted); return; }
@@ -3698,7 +3703,7 @@
 -			struct pg_synthesis_job *body = pg_synthesis_abstract(synthesis, fields, fields, branch->body);
 -			branch->type_job = pg_synthesis_classifier_formation(synthesis,
 -				pg_synthesis_evidence(synthesis, fields), body);
-+			struct pg_synthesis_job *body = pg_synthesis_abstract(synthesis, fields, fields, (struct pg_synthesis_input){.pending = pg_synthesis_pending(branch->body)});
++			struct pg_synthesis_job *body = pg_pending_job(pg_synthesis_abstract(synthesis, fields, fields, (struct pg_synthesis_input){.pending = pg_synthesis_pending(branch->body)}).pending);
 +			branch->type_job = pg_synthesis_classifier_in(synthesis, (struct pg_synthesis_input){.checked = fields}, (struct pg_synthesis_input){.pending = pg_synthesis_pending(body)});
  			if (!branch->type_job) goto error;
  		}
@@ -3746,11 +3751,11 @@
 -		const struct pg_evidence *result_type = match_result_type(synthesis, state, branch->type_job->result);
 -		body = pg_synthesis_expect(synthesis, body, pg_synthesis_evidence(synthesis, result_type));
 -		struct pg_synthesis_job *function = pg_synthesis_abstract(synthesis, context, fields, body);
-+		struct pg_synthesis_job *body = pg_synthesis_abstract(synthesis, fields, fields, (struct pg_synthesis_input){.pending = pg_synthesis_pending(branch->body)});
++		struct pg_synthesis_job *body = pg_pending_job(pg_synthesis_abstract(synthesis, fields, fields, (struct pg_synthesis_input){.pending = pg_synthesis_pending(branch->body)}).pending);
 +		const struct pg_evidence *result_type = match_result_type(synthesis, state, pg_pending_result(branch->type_job));
 +		body = pg_synthesis_expect_inputs(synthesis, (struct pg_synthesis_input){.pending = pg_synthesis_pending(body)},
 +			(struct pg_synthesis_input){.checked = result_type});
-+		struct pg_synthesis_job *function = pg_synthesis_abstract(synthesis, context, fields, (struct pg_synthesis_input){.pending = pg_synthesis_pending(body)});
++		struct pg_synthesis_job *function = pg_pending_job(pg_synthesis_abstract(synthesis, context, fields, (struct pg_synthesis_input){.pending = pg_synthesis_pending(body)}).pending);
  		branch->converted = function;
  		if (!branch->converted) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
  	}
@@ -3945,14 +3950,15 @@
 -			pg_synthesis_evidence(synthesis, path->path), pg_synthesis_evidence(synthesis, path->left),
 -			pg_synthesis_evidence(synthesis, type));
 -		branch->body = pg_synthesis_plain_rule(synthesis, PG_FORCE_ELIM, NULL, 1, &branch->body);
+-		branch->adapted = pg_synthesis_abstract(synthesis, pg_synthesis_scope_context(local->inner),
+-			pg_synthesis_scope_context(branch->scope), branch->body);
 +		branch->body = pg_synthesis_disjoint_transport(synthesis, branch->scope->context,
 +			(struct pg_synthesis_input){.checked = path->left}, (struct pg_synthesis_input){.checked = path->right},
 +			(struct pg_synthesis_input){.checked = path->path}, (struct pg_synthesis_input){.checked = path->left},
 +			(struct pg_synthesis_input){.checked = type});
 +		branch->body = pg_synthesis_plain_rule_inputs(synthesis, PG_FORCE_ELIM, NULL, 1, &(struct pg_synthesis_input){.pending = pg_synthesis_pending(branch->body)});
- 		branch->adapted = pg_synthesis_abstract(synthesis, pg_synthesis_scope_context(local->inner),
--			pg_synthesis_scope_context(branch->scope), branch->body);
-+			pg_synthesis_scope_context(branch->scope), (struct pg_synthesis_input){.pending = pg_synthesis_pending(branch->body)});
++		branch->adapted = pg_pending_job(pg_synthesis_abstract(synthesis, pg_synthesis_scope_context(local->inner),
++			pg_synthesis_scope_context(branch->scope), (struct pg_synthesis_input){.pending = pg_synthesis_pending(branch->body)}).pending);
  		if (!branch->adapted) goto error;
  	}
  	if (pg_synthesis_await(synthesis, job, branch->adapted)) return;
@@ -4119,8 +4125,8 @@
 -			? pg_synthesis_abstract(synthesis, context, pg_synthesis_scope_context(branch->scope), branch->body)
 -			: pg_synthesis_constant_motive(synthesis, context, pg_synthesis_scope_context(branch->scope), branch->body);
 +		const struct pg_evidence *fields = pg_synthesis_scope_context(branch->scope);
-+		struct pg_synthesis_job *function = pg_synthesis_abstract(synthesis, context, fields,
-+			(struct pg_synthesis_input){.pending = pg_synthesis_pending(branch->body)});
++		struct pg_synthesis_job *function = pg_pending_job(pg_synthesis_abstract(synthesis, context, fields,
++			(struct pg_synthesis_input){.pending = pg_synthesis_pending(branch->body)}).pending);
 +		if (!function) goto error;
 +		struct pg_pending *candidate = pg_synthesis_pending(function);
 +		if (!state->motive_context && !state->type_cases) {
@@ -4191,7 +4197,7 @@
 -						projected_image(synthesis, destination, pg_substitution_image_at(synthesis->typing, map, i)));
 -				branch->adapted = pg_synthesis_abstract(synthesis, context, destination, body);
 +					body = pg_synthesis_application(synthesis, (struct pg_synthesis_input){.checked = destination}, (struct pg_synthesis_input){.pending = pg_synthesis_pending(body)}, (struct pg_synthesis_input){.pending = pg_synthesis_pending(projected_image(synthesis, destination, pg_substitution_image_at(synthesis->typing, map, i)))});
-+				branch->adapted = pg_synthesis_abstract(synthesis, context, destination, (struct pg_synthesis_input){.pending = pg_synthesis_pending(body)});
++				branch->adapted = pg_pending_job(pg_synthesis_abstract(synthesis, context, destination, (struct pg_synthesis_input){.pending = pg_synthesis_pending(body)}).pending);
  				if (!branch->adapted) goto error;
  			}
  			if (pg_synthesis_await(synthesis, job, branch->adapted)) return;
