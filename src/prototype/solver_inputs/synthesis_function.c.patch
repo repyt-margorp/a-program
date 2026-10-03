@@ -1211,12 +1211,12 @@
 +			scope = scope->parent;
 +		const struct pg_evidence *context = pg_synthesis_scope_context(scope);
 +		if (!context || pg_evidence_rule(context) != PG_CONTEXT_EXTEND) continue;
-+		struct pg_synthesis_job *formation = pg_synthesis_identity_formation(synthesis,
++		struct pg_pending *formation = pg_synthesis_identity_formation(synthesis,
 +			(struct pg_synthesis_input){.checked = pg_context_declared_input(synthesis->typing, context)});
 +		if (!formation) { pg_synthesis_finish(synthesis, parent, PG_SYNTHESIS_ERROR); return -1; }
-+		if (formation->status == PG_SYNTHESIS_PENDING) { pg_synthesis_subscribe(synthesis, parent, formation, 0); return -1; }
-+		if (formation->status == PG_SYNTHESIS_ERROR) { pg_synthesis_finish(synthesis, parent, PG_SYNTHESIS_ERROR); return -1; }
-+		if (formation->result) return 1;
++		if (pg_synthesis_wait_pending(synthesis, parent, formation)) return -1;
++		if (pg_synthesis_pending_status(formation) == PG_SYNTHESIS_ERROR) { pg_synthesis_finish(synthesis, parent, PG_SYNTHESIS_ERROR); return -1; }
++		if (pg_pending_result(formation)) return 1;
 +	}
 +	return 0;
 +}

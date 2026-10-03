@@ -1,0 +1,29 @@
+--- a/action.h
++++ b/action.h
+@@ -46,20 +46,19 @@
+  * convertible, not necessarily alpha-equivalent, to the input subject. Callers
+  * must retain the input derivation and check conversion when typing at that
+  * input; this result does not certify a new equality or a shared Core pointer.
+- * Work is synchronous; no new acceptance rule or cached boundary authority. */
++ * Work is synchronous; it uses the same typed query as suspended recovery.
++ * No new acceptance rule or cached boundary authority. */
+ const struct pg_evidence *pg_identity_formation(struct pg_typing *typing,
+ 	const struct pg_evidence *formation);
+ 
+ /* The same recovery suspended between retained origin wrappers. No work at
+  * request time and no partial result. Returns 0 pending, 1 done, -1 unsupported
+  * or allocation failure; failure does not assert uninhabitance. Primitive
+- * proof reconstruction remains synchronous. Destroying work retains evidence. */
+-struct pg_identity_formation_work;
+-struct pg_identity_formation_work *pg_identity_formation_init(struct pg_typing *typing,
++ * proof reconstruction remains synchronous. The typing store owns progress and
++ * result; requests share only the exact accepted input receipt, not erased Core. */
++struct pg_typed_query;
++struct pg_typed_query *pg_identity_formation_request(struct pg_typing *typing,
+ 	const struct pg_evidence *formation);
+-int pg_identity_formation_advance(struct pg_identity_formation_work *work, uint64_t fuel);
+-const struct pg_evidence *pg_identity_formation_result(const struct pg_identity_formation_work *work);
+-void pg_identity_formation_destroy(struct pg_identity_formation_work *work);
+ 
+ /* Select a codimension-one endpoint of an explicit iterated Identity.
+  * depth zero selects the outermost direction; larger depths descend through

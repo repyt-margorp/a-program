@@ -174,6 +174,16 @@ additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
 
+2026-10-03, agent decision against `2e3f9f7`: Identity formation recovery in
+`action.c` allocates a separate work object with cursor/result/failure, while
+`synthesis_identity.c` schedules it and copies the result into a Job. Move the
+existing traversal into an Oracle-local typed query, shared by synchronous and
+Solve callers. Delete the standalone init/advance/result/destroy lifecycle;
+known checked inputs use the query directly. Unresolved producers retain only
+input discovery, borrowing the query after resolution. Preserve exact input
+receipt identity, ownership, unsupported/rejected distinctions and fuel charging;
+do not replace this overlap with another constraint or replay graph.
+
 2026-10-03, agent decision against `4109450`: constructor preparation copies
 the schema's complete implicit-index convention into an allocated callable
 record and identity-index array. Borrow the immutable declaration convention
@@ -794,6 +804,36 @@ not authorization to promote code or a claim that general resumption is solved.
 
 No new binding/domain checkpoint fields or backend features before this gate.
 Implement prototypes, verify, and push reviewable deletion-oriented milestones.
+
+- [x] **SE1 Identity formation owner (2026-10-03, parent `2e3f9f7`):**
+  consolidate recovery on its Oracle-local typed query; delete copied progress
+  and standalone heap-work lifecycle, not the actual formation checks.
+  - [x] Verify shared checked/discovered inputs, exact receipt distinctions,
+    zero/split fuel, cancellation, failure and typing-owner lifetime.
+  - [x] Run regression/persistence/checkpoint/C/sanitizer gates; compare applied
+    source deltas, graph/fuel measurements and the unwaived public resume gate.
+  Delete the standalone formation work and its four lifecycle APIs. Checked
+  formations directly borrow one typed query; unresolved producers retain only
+  input discovery, without a copied recovery cursor/result. Synchronous callers
+  use the same owner. Tests cover distinct receipts on one typed subject and
+  cancellation/recreation of Solve within the same typing store; they do not
+  claim that public `.a` reload restores this frontier. Full O2 regression,
+  examples/acceptance (including both LT providers and partition orders),
+  semantic persistence, seven checkpoint and five C gates pass. Core/Identity/
+  Synthesis/Source-I/O ASan/UBSan/leaks, fresh assembly and concurrent-user-edit
+  Core/IADT/Synthesis checks pass.
+  [Measurements](../src/prototype/solver_inputs/identity_formation_verification.tsv):
+  implementation +92/-107 (net -15), tests +97/-42 (net +55), excluding patch
+  context/docs. Completed QuickSort Jobs fall 43,755 -> 43,048; Solve steps fall
+  765,277 -> 764,530. Query storage increases: combined Job/query layout bytes
+  rise by 11,104; cumulative external aligned arena requests rise by 8,848.
+  Do not claim overall memory or runtime improvement. All five completed
+  ordinary images equal their parent bytes; zero-fuel census and List-09 inert
+  resave are unchanged. The public strict partition gate still exits 1 with
+  three reload failures (1000+1000, 1600+1600, terminal 1921+0); no waiver.
+  Face/endpoint heap traversal remains for a subsequent ownership audit;
+  this is not full Job/Evidence deletion. Prototype only; SE1-SE5 remain open.
+  Logs use `/tmp/a-program-identity-formation-`; source hashes are in the report.
 
 - [x] **SE1 constructor calling convention (2026-10-03, parent `4109450`):**
   remove the constructor Job's copied initial callable/list. Borrow declaration

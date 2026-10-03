@@ -1,0 +1,260 @@
+kind	case	budget	parent	candidate	detail
+steps	captured	0	0	0	live store census; equal fuel need not have equal progress
+status	captured	0	0	0	live store census; equal fuel need not have equal progress
+terms	captured	0	1	1	live store census; equal fuel need not have equal progress
+occurrences	captured	0	0	0	live store census; equal fuel need not have equal progress
+evidence	captured	0	1	1	live store census; equal fuel need not have equal progress
+jobs	captured	0	39	39	live store census; equal fuel need not have equal progress
+job_bytes	captured	0	6128	6128	live store census; equal fuel need not have equal progress
+typed_queries	captured	0	0	0	live store census; equal fuel need not have equal progress
+query_bytes	captured	0	0	0	live store census; equal fuel need not have equal progress
+resolved_keys	captured	0	0	0	live store census; equal fuel need not have equal progress
+result_refs	captured	0	0	0	live store census; equal fuel need not have equal progress
+steps	captured	100	100	100	live store census; equal fuel need not have equal progress
+status	captured	100	0	0	live store census; equal fuel need not have equal progress
+terms	captured	100	60	60	live store census; equal fuel need not have equal progress
+occurrences	captured	100	47	47	live store census; equal fuel need not have equal progress
+evidence	captured	100	56	56	live store census; equal fuel need not have equal progress
+jobs	captured	100	72	72	live store census; equal fuel need not have equal progress
+job_bytes	captured	100	10936	10936	live store census; equal fuel need not have equal progress
+typed_queries	captured	100	9	9	live store census; equal fuel need not have equal progress
+query_bytes	captured	100	1216	1216	live store census; equal fuel need not have equal progress
+resolved_keys	captured	100	0	0	live store census; equal fuel need not have equal progress
+result_refs	captured	100	49	49	live store census; equal fuel need not have equal progress
+steps	captured	1000	1000	1000	live store census; equal fuel need not have equal progress
+status	captured	1000	0	0	live store census; equal fuel need not have equal progress
+terms	captured	1000	114	114	live store census; equal fuel need not have equal progress
+occurrences	captured	1000	146	146	live store census; equal fuel need not have equal progress
+evidence	captured	1000	210	210	live store census; equal fuel need not have equal progress
+jobs	captured	1000	497	497	live store census; equal fuel need not have equal progress
+job_bytes	captured	1000	77472	77472	live store census; equal fuel need not have equal progress
+typed_queries	captured	1000	54	54	live store census; equal fuel need not have equal progress
+query_bytes	captured	1000	6688	6688	live store census; equal fuel need not have equal progress
+resolved_keys	captured	1000	10	10	live store census; equal fuel need not have equal progress
+result_refs	captured	1000	236	236	live store census; equal fuel need not have equal progress
+steps	captured	10000000	6885	6877	live store census; equal fuel need not have equal progress
+status	captured	10000000	1	1	live store census; equal fuel need not have equal progress
+terms	captured	10000000	2549	2549	live store census; equal fuel need not have equal progress
+occurrences	captured	10000000	1992	1992	live store census; equal fuel need not have equal progress
+evidence	captured	10000000	2605	2605	live store census; equal fuel need not have equal progress
+jobs	captured	10000000	1835	1821	live store census; equal fuel need not have equal progress
+job_bytes	captured	10000000	284640	283032	live store census; equal fuel need not have equal progress
+typed_queries	captured	10000000	1161	1175	live store census; equal fuel need not have equal progress
+query_bytes	captured	10000000	156648	158440	live store census; equal fuel need not have equal progress
+resolved_keys	captured	10000000	140	140	live store census; equal fuel need not have equal progress
+result_refs	captured	10000000	1126	1126	live store census; equal fuel need not have equal progress
+image	captured	complete	134301	134301	byte_equal=true; 90c1a3cffa867b161ed1a05bb43e635bd3a1bcac912c151659d018ebe96acb57; regression gates check results
+wrapped_arena_calls	captured	complete	23077	23077	cumulative external arena requests, not live RAM or speed
+wrapped_aligned_bytes	captured	complete	2197280	2197344	cumulative external arena requests, not live RAM or speed
+steps	effect	0	0	0	live store census; equal fuel need not have equal progress
+status	effect	0	0	0	live store census; equal fuel need not have equal progress
+terms	effect	0	1	1	live store census; equal fuel need not have equal progress
+occurrences	effect	0	0	0	live store census; equal fuel need not have equal progress
+evidence	effect	0	1	1	live store census; equal fuel need not have equal progress
+jobs	effect	0	39	39	live store census; equal fuel need not have equal progress
+job_bytes	effect	0	6128	6128	live store census; equal fuel need not have equal progress
+typed_queries	effect	0	0	0	live store census; equal fuel need not have equal progress
+query_bytes	effect	0	0	0	live store census; equal fuel need not have equal progress
+resolved_keys	effect	0	0	0	live store census; equal fuel need not have equal progress
+result_refs	effect	0	0	0	live store census; equal fuel need not have equal progress
+steps	effect	100	100	100	live store census; equal fuel need not have equal progress
+status	effect	100	0	0	live store census; equal fuel need not have equal progress
+terms	effect	100	60	60	live store census; equal fuel need not have equal progress
+occurrences	effect	100	47	47	live store census; equal fuel need not have equal progress
+evidence	effect	100	56	56	live store census; equal fuel need not have equal progress
+jobs	effect	100	82	82	live store census; equal fuel need not have equal progress
+job_bytes	effect	100	12184	12184	live store census; equal fuel need not have equal progress
+typed_queries	effect	100	9	9	live store census; equal fuel need not have equal progress
+query_bytes	effect	100	1216	1216	live store census; equal fuel need not have equal progress
+resolved_keys	effect	100	0	0	live store census; equal fuel need not have equal progress
+result_refs	effect	100	49	49	live store census; equal fuel need not have equal progress
+steps	effect	1000	1000	1000	live store census; equal fuel need not have equal progress
+status	effect	1000	0	0	live store census; equal fuel need not have equal progress
+terms	effect	1000	69	69	live store census; equal fuel need not have equal progress
+occurrences	effect	1000	63	63	live store census; equal fuel need not have equal progress
+evidence	effect	1000	102	101	live store census; equal fuel need not have equal progress
+jobs	effect	1000	772	781	live store census; equal fuel need not have equal progress
+job_bytes	effect	1000	121776	123232	live store census; equal fuel need not have equal progress
+typed_queries	effect	1000	15	16	live store census; equal fuel need not have equal progress
+query_bytes	effect	1000	1928	2056	live store census; equal fuel need not have equal progress
+resolved_keys	effect	1000	4	4	live store census; equal fuel need not have equal progress
+result_refs	effect	1000	129	128	live store census; equal fuel need not have equal progress
+steps	effect	10000000	13145	13142	live store census; equal fuel need not have equal progress
+status	effect	10000000	1	1	live store census; equal fuel need not have equal progress
+terms	effect	10000000	1546	1546	live store census; equal fuel need not have equal progress
+occurrences	effect	10000000	2680	2680	live store census; equal fuel need not have equal progress
+evidence	effect	10000000	3414	3414	live store census; equal fuel need not have equal progress
+jobs	effect	10000000	4120	4118	live store census; equal fuel need not have equal progress
+job_bytes	effect	10000000	647248	647064	live store census; equal fuel need not have equal progress
+typed_queries	effect	10000000	1784	1787	live store census; equal fuel need not have equal progress
+query_bytes	effect	10000000	242616	243000	live store census; equal fuel need not have equal progress
+resolved_keys	effect	10000000	327	327	live store census; equal fuel need not have equal progress
+result_refs	effect	10000000	2232	2232	live store census; equal fuel need not have equal progress
+image	effect	complete	219123	219123	byte_equal=true; a41ec7f977129427568ddba611405b5fd03d52d343d36c65d5973b2654c8673b; regression gates check results
+wrapped_arena_calls	effect	complete	27802	27803	cumulative external arena requests, not live RAM or speed
+wrapped_aligned_bytes	effect	complete	2783088	2783264	cumulative external arena requests, not live RAM or speed
+steps	handler	0	0	0	live store census; equal fuel need not have equal progress
+status	handler	0	0	0	live store census; equal fuel need not have equal progress
+terms	handler	0	1	1	live store census; equal fuel need not have equal progress
+occurrences	handler	0	0	0	live store census; equal fuel need not have equal progress
+evidence	handler	0	1	1	live store census; equal fuel need not have equal progress
+jobs	handler	0	39	39	live store census; equal fuel need not have equal progress
+job_bytes	handler	0	6128	6128	live store census; equal fuel need not have equal progress
+typed_queries	handler	0	0	0	live store census; equal fuel need not have equal progress
+query_bytes	handler	0	0	0	live store census; equal fuel need not have equal progress
+resolved_keys	handler	0	0	0	live store census; equal fuel need not have equal progress
+result_refs	handler	0	0	0	live store census; equal fuel need not have equal progress
+steps	handler	100	100	100	live store census; equal fuel need not have equal progress
+status	handler	100	0	0	live store census; equal fuel need not have equal progress
+terms	handler	100	60	60	live store census; equal fuel need not have equal progress
+occurrences	handler	100	47	47	live store census; equal fuel need not have equal progress
+evidence	handler	100	56	56	live store census; equal fuel need not have equal progress
+jobs	handler	100	133	133	live store census; equal fuel need not have equal progress
+job_bytes	handler	100	21072	21072	live store census; equal fuel need not have equal progress
+typed_queries	handler	100	9	9	live store census; equal fuel need not have equal progress
+query_bytes	handler	100	1216	1216	live store census; equal fuel need not have equal progress
+resolved_keys	handler	100	0	0	live store census; equal fuel need not have equal progress
+result_refs	handler	100	49	49	live store census; equal fuel need not have equal progress
+steps	handler	1000	1000	1000	live store census; equal fuel need not have equal progress
+status	handler	1000	0	0	live store census; equal fuel need not have equal progress
+terms	handler	1000	102	103	live store census; equal fuel need not have equal progress
+occurrences	handler	1000	117	120	live store census; equal fuel need not have equal progress
+evidence	handler	1000	153	156	live store census; equal fuel need not have equal progress
+jobs	handler	1000	559	558	live store census; equal fuel need not have equal progress
+job_bytes	handler	1000	88264	88144	live store census; equal fuel need not have equal progress
+typed_queries	handler	1000	53	55	live store census; equal fuel need not have equal progress
+query_bytes	handler	1000	7280	7512	live store census; equal fuel need not have equal progress
+resolved_keys	handler	1000	14	14	live store census; equal fuel need not have equal progress
+result_refs	handler	1000	169	170	live store census; equal fuel need not have equal progress
+steps	handler	10000000	2472	2470	live store census; equal fuel need not have equal progress
+status	handler	10000000	1	1	live store census; equal fuel need not have equal progress
+terms	handler	10000000	388	388	live store census; equal fuel need not have equal progress
+occurrences	handler	10000000	425	425	live store census; equal fuel need not have equal progress
+evidence	handler	10000000	530	530	live store census; equal fuel need not have equal progress
+jobs	handler	10000000	790	789	live store census; equal fuel need not have equal progress
+job_bytes	handler	10000000	125256	125136	live store census; equal fuel need not have equal progress
+typed_queries	handler	10000000	206	207	live store census; equal fuel need not have equal progress
+query_bytes	handler	10000000	28696	28824	live store census; equal fuel need not have equal progress
+resolved_keys	handler	10000000	36	36	live store census; equal fuel need not have equal progress
+result_refs	handler	10000000	418	418	live store census; equal fuel need not have equal progress
+image	handler	complete	47888	47888	byte_equal=true; a5443d8a39c02c1bdd84dd6a879697ceb85078e203c54101ce93c6054e4190b2; regression gates check results
+wrapped_arena_calls	handler	complete	4574	4582	cumulative external arena requests, not live RAM or speed
+wrapped_aligned_bytes	handler	complete	459600	460112	cumulative external arena requests, not live RAM or speed
+steps	list	0	0	0	live store census; equal fuel need not have equal progress
+status	list	0	0	0	live store census; equal fuel need not have equal progress
+terms	list	0	1	1	live store census; equal fuel need not have equal progress
+occurrences	list	0	0	0	live store census; equal fuel need not have equal progress
+evidence	list	0	1	1	live store census; equal fuel need not have equal progress
+jobs	list	0	39	39	live store census; equal fuel need not have equal progress
+job_bytes	list	0	6128	6128	live store census; equal fuel need not have equal progress
+typed_queries	list	0	0	0	live store census; equal fuel need not have equal progress
+query_bytes	list	0	0	0	live store census; equal fuel need not have equal progress
+resolved_keys	list	0	0	0	live store census; equal fuel need not have equal progress
+result_refs	list	0	0	0	live store census; equal fuel need not have equal progress
+steps	list	100	100	100	live store census; equal fuel need not have equal progress
+status	list	100	0	0	live store census; equal fuel need not have equal progress
+terms	list	100	60	60	live store census; equal fuel need not have equal progress
+occurrences	list	100	47	47	live store census; equal fuel need not have equal progress
+evidence	list	100	56	56	live store census; equal fuel need not have equal progress
+jobs	list	100	71	71	live store census; equal fuel need not have equal progress
+job_bytes	list	100	11160	11160	live store census; equal fuel need not have equal progress
+typed_queries	list	100	9	9	live store census; equal fuel need not have equal progress
+query_bytes	list	100	1216	1216	live store census; equal fuel need not have equal progress
+resolved_keys	list	100	0	0	live store census; equal fuel need not have equal progress
+result_refs	list	100	49	49	live store census; equal fuel need not have equal progress
+steps	list	1000	1000	1000	live store census; equal fuel need not have equal progress
+status	list	1000	0	0	live store census; equal fuel need not have equal progress
+terms	list	1000	127	127	live store census; equal fuel need not have equal progress
+occurrences	list	1000	161	161	live store census; equal fuel need not have equal progress
+evidence	list	1000	208	208	live store census; equal fuel need not have equal progress
+jobs	list	1000	402	401	live store census; equal fuel need not have equal progress
+job_bytes	list	1000	62344	62224	live store census; equal fuel need not have equal progress
+typed_queries	list	1000	60	61	live store census; equal fuel need not have equal progress
+query_bytes	list	1000	7888	8016	live store census; equal fuel need not have equal progress
+resolved_keys	list	1000	11	11	live store census; equal fuel need not have equal progress
+result_refs	list	1000	246	246	live store census; equal fuel need not have equal progress
+steps	list	10000000	1927	1921	live store census; equal fuel need not have equal progress
+status	list	10000000	1	1	live store census; equal fuel need not have equal progress
+terms	list	10000000	259	259	live store census; equal fuel need not have equal progress
+occurrences	list	10000000	429	429	live store census; equal fuel need not have equal progress
+evidence	list	10000000	555	555	live store census; equal fuel need not have equal progress
+jobs	list	10000000	722	717	live store census; equal fuel need not have equal progress
+job_bytes	list	10000000	111864	111264	live store census; equal fuel need not have equal progress
+typed_queries	list	10000000	256	261	live store census; equal fuel need not have equal progress
+query_bytes	list	10000000	33760	34400	live store census; equal fuel need not have equal progress
+resolved_keys	list	10000000	42	42	live store census; equal fuel need not have equal progress
+result_refs	list	10000000	459	459	live store census; equal fuel need not have equal progress
+image	list	complete	50820	50820	byte_equal=true; 897bb28fad5a37a8cac48aff36287af25bdab6f4229a572c26e35c85198ba762; regression gates check results
+wrapped_arena_calls	list	complete	4232	4232	cumulative external arena requests, not live RAM or speed
+wrapped_aligned_bytes	list	complete	432144	432144	cumulative external arena requests, not live RAM or speed
+steps	quick	0	0	0	live store census; equal fuel need not have equal progress
+status	quick	0	0	0	live store census; equal fuel need not have equal progress
+terms	quick	0	1	1	live store census; equal fuel need not have equal progress
+occurrences	quick	0	0	0	live store census; equal fuel need not have equal progress
+evidence	quick	0	1	1	live store census; equal fuel need not have equal progress
+jobs	quick	0	39	39	live store census; equal fuel need not have equal progress
+job_bytes	quick	0	6128	6128	live store census; equal fuel need not have equal progress
+typed_queries	quick	0	0	0	live store census; equal fuel need not have equal progress
+query_bytes	quick	0	0	0	live store census; equal fuel need not have equal progress
+resolved_keys	quick	0	0	0	live store census; equal fuel need not have equal progress
+result_refs	quick	0	0	0	live store census; equal fuel need not have equal progress
+steps	quick	100	100	100	live store census; equal fuel need not have equal progress
+status	quick	100	0	0	live store census; equal fuel need not have equal progress
+terms	quick	100	60	60	live store census; equal fuel need not have equal progress
+occurrences	quick	100	47	47	live store census; equal fuel need not have equal progress
+evidence	quick	100	56	56	live store census; equal fuel need not have equal progress
+jobs	quick	100	79	79	live store census; equal fuel need not have equal progress
+job_bytes	quick	100	11800	11800	live store census; equal fuel need not have equal progress
+typed_queries	quick	100	9	9	live store census; equal fuel need not have equal progress
+query_bytes	quick	100	1216	1216	live store census; equal fuel need not have equal progress
+resolved_keys	quick	100	0	0	live store census; equal fuel need not have equal progress
+result_refs	quick	100	49	49	live store census; equal fuel need not have equal progress
+steps	quick	1000	1000	1000	live store census; equal fuel need not have equal progress
+status	quick	1000	0	0	live store census; equal fuel need not have equal progress
+terms	quick	1000	61	61	live store census; equal fuel need not have equal progress
+occurrences	quick	1000	48	48	live store census; equal fuel need not have equal progress
+evidence	quick	1000	59	59	live store census; equal fuel need not have equal progress
+jobs	quick	1000	1303	1303	live store census; equal fuel need not have equal progress
+job_bytes	quick	1000	184904	184904	live store census; equal fuel need not have equal progress
+typed_queries	quick	1000	9	9	live store census; equal fuel need not have equal progress
+query_bytes	quick	1000	1216	1216	live store census; equal fuel need not have equal progress
+resolved_keys	quick	1000	0	0	live store census; equal fuel need not have equal progress
+result_refs	quick	1000	50	50	live store census; equal fuel need not have equal progress
+steps	quick	10000000	765277	764530	live store census; equal fuel need not have equal progress
+status	quick	10000000	1	1	live store census; equal fuel need not have equal progress
+terms	quick	10000000	1037913	1037913	live store census; equal fuel need not have equal progress
+occurrences	quick	10000000	114387	114387	live store census; equal fuel need not have equal progress
+evidence	quick	10000000	94975	94975	live store census; equal fuel need not have equal progress
+jobs	quick	10000000	43755	43048	live store census; equal fuel need not have equal progress
+job_bytes	quick	10000000	6793032	6709288	live store census; equal fuel need not have equal progress
+typed_queries	quick	10000000	32853	33594	live store census; equal fuel need not have equal progress
+query_bytes	quick	10000000	4396408	4491256	live store census; equal fuel need not have equal progress
+resolved_keys	quick	10000000	3702	3684	live store census; equal fuel need not have equal progress
+result_refs	quick	10000000	27740	27712	live store census; equal fuel need not have equal progress
+image	quick	complete	7824062	7824062	byte_equal=true; 8d60c94180930f475c8e7a504e5600bdcd37e90c8d2ff97220708f9773c5ffd8; regression gates check results
+wrapped_arena_calls	quick	complete	2887149	2887154	cumulative external arena requests, not live RAM or speed
+wrapped_aligned_bytes	quick	complete	229259904	229263664	cumulative external arena requests, not live RAM or speed
+applied delta	src/action.c	n/a	46 deleted	30 added	net -16; excludes symlink/patch context/docs
+input hash	src/action.c	n/a	1323d9201525b2fb54850e2be15524ea5fff9275e19d81fa1e4c441157882e1c	0ed1aa95c326b08d898667aa98b7d75abae143e19f7e302f4b2f102488b57afe	applied source
+applied delta	src/action.h	n/a	7 deleted	6 added	net -1; excludes symlink/patch context/docs
+input hash	src/action.h	n/a	b6dc5eeef495a58635660063915b6747a814f43e4d455b437cd583ae6ab7959a	135f21c0ca9bde461ca1117648d7901d91a43542e7a4c6a4c8be92584a3d50ff	applied source
+applied delta	src/synthesis.h	n/a	2 deleted	4 added	net 2; excludes symlink/patch context/docs
+input hash	src/synthesis.h	n/a	704cb7446f086b8ee80731668721b082bcf210496ff3c27d8f52ddf4d58f7130	d5b49dfcda6528c33dba739a5f8dd62f127dccb7281367d88d4796ddb8407722	applied source
+applied delta	src/synthesis_identity.c	n/a	38 deleted	34 added	net -4; excludes symlink/patch context/docs
+input hash	src/synthesis_identity.c	n/a	2ead7222418af2a6872069d4d6226140a1f50cb606b986c763de8c3a41362e7f	6766daf4f9cf2e96a0dcf898499cda7e8d860b1e13a502fb151830c0ef6c6052	applied source
+applied delta	src/synthesis_function.c	n/a	4 deleted	4 added	net 0; excludes symlink/patch context/docs
+input hash	src/synthesis_function.c	n/a	74080ccd74cb69cf5f0b0fa4c16106dd993fe6f8343fed17e6c98912c27f03b7	feac6e22d90e0f1adf6da6e4febafb27d2b0290832c3d7dd38dd617b53adc1d1	applied source
+applied delta	src/synthesis_iadt.c	n/a	10 deleted	14 added	net 4; excludes symlink/patch context/docs
+input hash	src/synthesis_iadt.c	n/a	f7acc614c0a2ad3e4a970426bfc6a447471b39bcb349d38878917e9823b181be	76c90ddd54ada186452ce5854dcccf92baaee34c8c2297a8d5a69987af9fe32e	applied source
+applied delta	tests/identity.c	n/a	15 deleted	49 added	net 34; excludes symlink/patch context/docs
+input hash	tests/identity.c	n/a	e1469fa113da670b6fd6b11038bc0b448192e64ebf87bd5111eafc75580a6a50	49f67be021ea53528e9c101481ceddaf57a99dfafa974aa252addf79a29639fd	applied source
+applied delta	tests/synthesis.c	n/a	27 deleted	48 added	net 21; excludes symlink/patch context/docs
+input hash	tests/synthesis.c	n/a	c3bcceb8b9faaf3b989fdc36c05240fa706aea921ebae02b7da5823caff49613	3aedf330bb72aa30b11ba1863aa05c9e12882971345a46073bd1e1683e6da344	applied source
+parent revision	main	n/a	2e3f9f7	unpromoted prototype	SE1-SE5 incomplete; public resume gate unwaived
+verification	O2 regression/examples/acceptance	complete	parent scope	pass exit 0	includes both LT providers/orders, universal Sorted/permutation and ordinary outputs
+verification	semantic/checkpoint/C	complete	parent scope	pass exit 0	semantic persistence; 7 restricted checkpoint and 5 C gates; not the public resume gate
+verification	Core/Identity/Synthesis/SourceIO sanitizers	complete	parent scope	pass exit 0	ASan/UBSan; detect_leaks=1; final Identity assertion rerun
+verification	fresh assembly	complete	canonical patches	pass	applied source/tests equal; Synthesis/Identity/SourceIO rerun
+verification	concurrent user edit integration	complete	current dirty accepted files	pass	Core/IADT/Synthesis; user edits unchanged and excluded from commit
+verification	public strict fuel partitions	complete	3 reload failures	3 reload failures exit 1	1000+1000; 1600+1600; terminal 1921+0; no waiver
+verification	List zero-fuel/save	0	25369 bytes	25369 bytes	0+0 including reload is exact; Solve fuel unchanged

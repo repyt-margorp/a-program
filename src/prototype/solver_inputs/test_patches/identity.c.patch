@@ -1,10 +1,11 @@
 --- a/identity.c
 +++ b/identity.c
-@@ -2,9 +2,11 @@
+@@ -2,9 +2,12 @@
  #include "evidence.h"
  #include "computation.h"
  #include "action.h"
 +#include "derivation.h"
++#include "typed_query.h"
  
  #include <assert.h>
  #include <stdio.h>
@@ -12,7 +13,7 @@
  
  static void field_views(void)
  {
-@@ -127,6 +129,61 @@
+@@ -127,6 +130,61 @@
  	assert(pg_identity_boundary_view(scoped, &view));
  	assert(view.family == inputs[0] && view.paths == scoped->operands + 1 && view.path_count == 1);
  	assert(view.left_substitution == maps[0] && view.right_substitution == maps[1]);
@@ -74,7 +75,7 @@
  
  	/* A well-shaped APP spine alone does not establish the selected path type. */
  	inputs[1] = inputs[2];
-@@ -144,6 +201,10 @@
+@@ -144,6 +202,10 @@
  	assert(!pg_identity_boundary_view(invalid, &view));
  	assert(!pg_identity_boundary_type(&typing, invalid));
  	pg_typing_destroy(&typing);
@@ -85,7 +86,7 @@
  	pg_graph_destroy(&graph);
  }
  
-@@ -595,7 +656,7 @@
+@@ -595,7 +657,7 @@
  				substitutions[j] = pg_prove_substitution_pair(typing, prefixes[j], source, j == i ? argument : target);
  			}
  			lift = convert_to(typing, &work, lift, pg_prove_family_identity_type(typing, domain,
@@ -94,7 +95,7 @@
  			const struct pg_evidence *paths[] = {r, lift};
  			const struct pg_evidence *b_value = pg_prove_type_value(typing, b);
  			const struct pg_evidence *b_path = pg_prove_family_action(typing,
-@@ -743,7 +804,7 @@
+@@ -743,7 +805,7 @@
  	}
  	const struct pg_evidence *paths[] = {path, convert_to(typing, &work, result_path,
  		pg_prove_family_identity_type(typing, pg_prove_universe(typing, prefix, 0),
@@ -103,7 +104,7 @@
  	const struct pg_evidence *action = pg_prove_family_action(typing,
  		pg_prove_classifier(typing, parameters, family), family, maps[0], maps[1], 2, paths);
  	action = convert_to(typing, &work, action, pg_prove_identity_type(typing,
-@@ -1071,13 +1132,18 @@
+@@ -1071,13 +1133,18 @@
  	assert(!pg_identity_boundary_view(pg_evidence_subject(center), &original_boundary));
  	assert(!pg_identity_boundary_view(NULL, &original_boundary));
  	assert(original_boundary.family == pg_evidence_subject(pg_evidence_premise(original, 0)));
@@ -123,7 +124,80 @@
  	assert(computation && pg_evidence_judgement(computation) == PG_JUDGEMENT_COMPUTATION_TYPE);
  	const struct pg_evidence *computation_source = computation;
  	computation = pg_prove_reindex(typing, map, computation);
-@@ -2428,8 +2494,8 @@
+@@ -1291,24 +1358,57 @@
+ 	const struct pg_evidence *wrapped = instance;
+ 	for (size_t i = 0; i < 64; ++i)
+ 		wrapped = pg_prove_value_type(typing, pg_prove_type_value(typing, wrapped));
+-	assert(!pg_identity_formation_init(typing, path));
++	assert(!pg_identity_formation_request(typing, path));
+ 	/* Receipt round trips share structure; they add no structural work. */
+ 	assert(pg_evidence_subject(wrapped) == pg_evidence_subject(instance));
++	struct pg_typed_query *known = pg_identity_formation_request(typing, instance);
++	assert(known && pg_typed_query_result(known) == recovered);
++	size_t queries = typing->typed_queries.count;
++	assert(pg_identity_formation_request(typing, instance) == known);
++	assert(typing->typed_queries.count == queries);
++	struct pg_typed_query *roundtrip = pg_identity_formation_request(typing, wrapped);
++	assert(wrapped == instance && roundtrip == known);
++	const struct pg_evidence *alternate = pg_prove_reindex(typing,
++		pg_prove_substitution_projection(typing, empty, empty), instance);
++	assert(alternate != instance && pg_evidence_subject(alternate) == pg_evidence_subject(instance));
++	struct pg_typed_query *selected = pg_identity_formation_request(typing, alternate);
++	assert(selected != known && selected->inputs[0] == alternate && known->inputs[0] == instance);
++	assert(pg_typed_query_advance(selected, 0) == 0 && !selected->steps);
++	assert(pg_typed_query_advance(selected, 1) == 1);
++	assert(pg_typed_query_result(selected) == recovered);
++	assert(pg_typed_query_result(roundtrip) == recovered);
++	uint64_t expected_steps = 0;
+ 	for (uint64_t split = 0; split <= 1; ++split) {
+-		struct pg_identity_formation_work *pending = pg_identity_formation_init(typing, wrapped);
+-		assert(pending && !pg_identity_formation_result(pending));
+-		assert(pg_identity_formation_advance(pending, split) == (split == 1));
+-		assert(pg_identity_formation_result(pending) == (split == 1 ? recovered : NULL));
+-		assert(pg_identity_formation_advance(pending, 1 - split) == 1);
+-		assert(pg_identity_formation_result(pending) == recovered);
+-		pg_identity_formation_destroy(pending);
+-	}
+-	struct pg_identity_formation_work *unsupported = pg_identity_formation_init(typing, universe);
+-	assert(unsupported && pg_identity_formation_advance(unsupported, 0) == 0);
+-	assert(pg_identity_formation_advance(unsupported, 1) == -1);
+-	assert(pg_identity_formation_advance(unsupported, 0) == -1);
+-	assert(!pg_identity_formation_result(unsupported));
+-	pg_identity_formation_destroy(unsupported);
++		const struct pg_evidence *scope = pg_prove_context_extension(typing, empty,
++			pg_binder(typing->graph), universe);
++		const struct pg_evidence *projected = pg_prove_projection(typing, scope, wrapped);
++		struct pg_typed_query *pending = pg_identity_formation_request(typing, projected);
++		assert(pending && !pg_typed_query_result(pending) && !pending->steps);
++		queries = typing->typed_queries.count;
++		assert(pg_identity_formation_request(typing, projected) == pending);
++		assert(typing->typed_queries.count == queries);
++		assert(pg_typed_query_advance(pending, 0) == 0 && !pending->steps);
++		pg_typed_query_advance(pending, split);
++		while (!pending->status) {
++			assert(pending->steps < 100);
++			pg_typed_query_advance(pending, 1);
++		}
++		const struct pg_evidence *result = pg_typed_query_result(pending);
++		assert(result && pg_evidence_context(result) == pg_evidence_context(scope));
++		assert(pg_alpha_equal(pg_evidence_subject(result)->core, pg_evidence_subject(recovered)->core) == 1);
++		assert(pg_identity_formation(typing, projected) == result);
++		if (!split) expected_steps = pending->steps;
++		assert(pending->steps == expected_steps);
++		assert(pg_typed_query_advance(pending, 0) == 1 && pending->steps == expected_steps);
++	}
++	const struct pg_evidence *unsupported_scope = pg_prove_context_extension(typing, empty,
++		pg_binder(typing->graph), universe);
++	struct pg_typed_query *unsupported = pg_identity_formation_request(typing,
++		pg_prove_universe(typing, unsupported_scope, 1));
++	assert(unsupported && pg_typed_query_advance(unsupported, 0) == 0);
++	assert(pg_typed_query_advance(unsupported, 1) == -1);
++	assert(pg_typed_query_advance(unsupported, 0) == -1);
++	assert(!pg_typed_query_result(unsupported));
+ 	for (uint64_t split = 0; split <= 1; ++split) {
+ 		struct pg_identity_endpoint_work *pending = pg_identity_endpoint_init(typing,
+ 			empty, wrapped, 0, PG_IDENTITY_LEFT);
+@@ -2428,8 +2528,8 @@
  	const struct pg_evidence *ls = pg_prove_substitution(typing, source, scope, 1, &a);
  	const struct pg_evidence *rs = pg_prove_substitution(typing, source, scope, 1, &b);
  	assert(ls && rs && family);
@@ -134,7 +208,7 @@
  	assert(vp && vq && vp != vq);
  	/* A family declaration's second premise is its index Context, not a type.
  	 * A malformed boundary must be rejected without interpreting that receipt
-@@ -2443,10 +2509,10 @@
+@@ -2443,10 +2543,10 @@
  	const struct pg_evidence *endpoint = pg_prove_type_value(typing, universe);
  	assert(family_scope && family_image && family_map && constant && endpoint);
  	assert(pg_prove_family_identity_type(typing, constant, family_map, family_map,
@@ -147,7 +221,7 @@
  	assert(typing->proofs.count == proofs_before_boundary);
  	const struct pg_occurrence *structure = pg_evidence_subject(vp);
  	assert(structure->map_count == 2 && structure->operand_count == 4);
-@@ -2476,7 +2542,7 @@
+@@ -2476,7 +2576,7 @@
  	assert(pg_evidence_judgement(vp) == PG_JUDGEMENT_VALUE_TYPE);
  	assert(pg_evidence_subject(vp)->core != pg_evidence_subject(vq)->core);
  	assert(pg_evidence_premise(vp, 0) == family && pg_evidence_premise(vp, 3) == p);
@@ -156,7 +230,7 @@
  	const struct pg_term *abstraction = pg_lambda(typing->graph, z, pg_evidence_subject(family)->core);
  	const struct pg_term *expected = pg_identity_instance(typing->graph,
  		pg_identity_apply(typing->graph, abstraction, pg_evidence_subject(a)->core,
-@@ -2486,7 +2552,7 @@
+@@ -2486,7 +2586,7 @@
  	const struct pg_evidence *cf = pg_prove_return_type(typing, family);
  	const struct pg_evidence *rx = pg_prove_return(typing, x);
  	const struct pg_evidence *ry = pg_prove_return(typing, y);
@@ -165,7 +239,7 @@
  	assert(cp && pg_evidence_judgement(cp) == PG_JUDGEMENT_COMPUTATION_TYPE);
  	struct pg_whnf_work work;
  	assert(pg_whnf_work_init(&work, typing->graph) == 0);
-@@ -2623,9 +2689,9 @@
+@@ -2623,9 +2723,9 @@
  	const struct pg_evidence *mp = pg_prove_projection(typing, mscope, p);
  	const struct pg_evidence *ml = pg_prove_variable(typing, mscope, m0);
  	const struct pg_evidence *mr = pg_prove_variable(typing, mscope, m1);
@@ -177,7 +251,7 @@
  			pg_prove_force(typing, ml), pg_prove_force(typing, mr)));
  	assert(mid && mexpanded);
  	converts(&work, pg_evidence_subject(mid)->core, pg_evidence_subject(mexpanded)->core);
-@@ -2685,7 +2751,7 @@
+@@ -2685,7 +2785,7 @@
  		pg_prove_classifier(typing, telescope_scope, tleft[i]), tleft[i]);
  	const struct pg_evidence *diagonal_prefix = pg_prove_substitution(typing, source, telescope_scope, 1, tleft);
  	const struct pg_evidence *path_type = pg_prove_family_identity_type(typing,
@@ -186,7 +260,7 @@
  	struct pg_conversion diagonal_conversion;
  	assert(pg_conversion_init(&diagonal_conversion, &work, pg_evidence_classifier(diagonal_paths[1]),
  		pg_evidence_subject(path_type)->core) == 0);
-@@ -2731,7 +2797,7 @@
+@@ -2731,7 +2831,7 @@
  	const struct pg_evidence *many_type = etype, *many_ls = tls, *many_rs = trs;
  	for (size_t i = 2; i < 8; ++i) {
  		const struct pg_evidence *center_type = pg_prove_family_identity_type(typing,
@@ -195,7 +269,7 @@
  		const struct pg_object *center_binder = pg_binder(typing->graph), *source_binder = pg_binder(typing->graph);
  		many_destination = pg_prove_context_extension(typing, many_destination, center_binder, center_type);
  		assert(many_destination);
-@@ -2764,7 +2830,7 @@
+@@ -2764,7 +2864,7 @@
  		assert(functions[i]);
  	}
  	assert(pg_evidence_subject(functions[0])->core == pg_evidence_subject(functions[1])->core);
@@ -204,7 +278,7 @@
  	assert(acted_pi && pg_evidence_judgement(acted_pi) == PG_JUDGEMENT_COMPUTATION_TYPE);
  	const struct pg_object *x0 = pg_binder(typing->graph), *x1 = pg_binder(typing->graph), *center = pg_binder(typing->graph);
  	const struct pg_evidence *boundary = pg_identity_context_extend(typing, scope, p, x0, x1, center);
-@@ -2793,7 +2859,7 @@
+@@ -2793,7 +2893,7 @@
  		applied = pg_prove_application(typing, applied, pg_prove_variable(typing, path_scope, arguments[i]));
  	action_result(typing, path_scope, &work, applied,
  		pg_prove_return(typing, pg_prove_variable(typing, path_scope, center)));
@@ -213,7 +287,7 @@
  	struct pg_conversion distinct;
  	assert(pg_conversion_init(&distinct, &work, pg_evidence_subject(other_pi)->core, pg_evidence_subject(output)->core) == 0);
  	assert(pg_conversion_advance(&distinct, 100000) == PG_CONVERSION_DIFFERENT);
-@@ -2802,15 +2868,15 @@
+@@ -2802,15 +2902,15 @@
  	assert(pg_evidence_classifier(cp) == pg_evidence_classifier(vp));
  	assert(!pg_prove_type_value(typing, cp));
  	assert(!pg_prove_context_extension(typing, scope, pg_binder(typing->graph), cp));
@@ -238,7 +312,7 @@
  
  	/* A dependent family of identifications, with a common ambient type t:
  	 * C(z) = Id Universe t z. Vary z along p, retaining t := A on both faces. */
-@@ -2823,11 +2889,11 @@
+@@ -2823,11 +2923,11 @@
  	const struct pg_evidence *li[] = {a, a}, *ri[] = {a, b}, *wrong[] = {b, b};
  	ls = pg_prove_substitution(typing, source, scope, 2, li);
  	rs = pg_prove_substitution(typing, source, scope, 2, ri);
@@ -253,7 +327,7 @@
  	/* The unvaried ambient term t maps to A on both faces: its action is refl A. */
  	zsort = pg_prove_projection(typing, source, universe);
  	const struct pg_evidence *ambient = pg_prove_variable(typing, source, t);
-@@ -2860,7 +2926,7 @@
+@@ -2860,7 +2960,7 @@
  	assert(pg_alpha_equal(pg_evidence_subject(hs)->core, expected) == 1);
  	struct pg_typing foreign;
  	assert(pg_typing_init(&foreign, typing->graph) == 0);
