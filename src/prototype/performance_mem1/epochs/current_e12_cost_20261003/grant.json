@@ -1,0 +1,20 @@
+{
+  "id": "MEM1V3-E12-20261003T154600Z-600",
+  "coordinator": "Root Merge",
+  "authority": "Existing user-authorized exclusive measurement coordination; agent operational grant, not new user approval.",
+  "not_before_UTC": "2026-10-03T15:46:00Z",
+  "hard_deadline_UTC": "2026-10-03T15:56:00Z",
+  "original_config_sha256": "a3335c5ec6e3b9d8274ce96487d595a434166cd001db58c1f25ee8e91488d154",
+  "cases": 6,
+  "variants": 2,
+  "repetitions": 3,
+  "samples": 36,
+  "max_seconds": 600,
+  "per_run_seconds": 180,
+  "launch_rule": "Derive only maximum_seconds=min(600,floor(remaining absolute seconds)-2) at launch; record launch UTC, remaining, original/derived hashes. Stop all children before hard deadline.",
+  "safe_boundary": "Root gates terminal; no active compiler/workload processes observed. C/Job Goal stalled, four bounded owners achieved/stopped. Root performs read-only/light review only.",
+  "current_candidate_source128": "0deb36a72542b9f56eb986314c89bd459802896ca32268857a4b875bfcfe2f48",
+  "baseline_source128": "12026914c550d0d8c4455a32f593a1f8600aaafe7a76a30fe15e7a4803970be7",
+  "new_builds_native_reruns_extra_workloads": false,
+  "scope": "Only exact36 configured AP jobs with existing GNU time collector. Post-review requires all36 expected charged-step counts and outcomes; no accepted promotion."
+}

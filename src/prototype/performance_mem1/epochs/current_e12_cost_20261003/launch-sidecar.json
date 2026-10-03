@@ -1,0 +1,28 @@
+{
+  "grant_id": "MEM1V3-E12-20261003T154600Z-600",
+  "grant_path": "/tmp/a-program-merge-mem1-v3-e12-exclusive-grant-20261003.json",
+  "grant_sha256": "09b82cafc96e6f4dab1ce8a9fec7ce14a8cc6e7b2667d8d9272366d111d2c414",
+  "launch_UTC": "2026-10-03T15:48:26.754134+00:00",
+  "remaining_absolute_seconds": 453.245866,
+  "hard_deadline_UTC": "2026-10-03T15:56:00Z",
+  "original_config": "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/configuration-final-proposed.json",
+  "original_config_sha256": "a3335c5ec6e3b9d8274ce96487d595a434166cd001db58c1f25ee8e91488d154",
+  "derived_config": "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/configuration-granted-derived.json",
+  "derived_config_sha256": "f51097b9c5064f54bf30b664ee298806b8a79f7963a73814ec9d3b0710f7afdd",
+  "only_changed_key": "maximum_seconds",
+  "derived_maximum_seconds": 451,
+  "all280_pins_before": true,
+  "collector_sha256": "9c50c62d1ddc49e85c88abe94f95162c85096165afcdff7cd945bb9b9a004b71",
+  "argv": [
+    "python3",
+    "/tmp/ap-performance-measure-gnu-time-e6-20261003.py",
+    "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/configuration-granted-derived.json",
+    "/tmp/ap-performance-mem1-v3-e12-exclusive-samples-20261003",
+    "--granted-slot",
+    "MEM1V3-E12-20261003T154600Z-600"
+  ],
+  "terminal": true,
+  "collector_exit": 0,
+  "terminal_UTC": "2026-10-03T15:49:08.050690+00:00",
+  "collector_process_returned": true
+}

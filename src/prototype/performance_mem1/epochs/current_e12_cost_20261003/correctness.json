@@ -1,0 +1,171 @@
+{
+  "complete": true,
+  "comparative_wall_RSS": false,
+  "same_source_proof_helper_inputs": true,
+  "checks": [
+    {
+      "case": "list",
+      "variant": "baseline",
+      "argv": [
+        "/tmp/ap-performance-current-joint-898463e-bd1ddf3-6715af2-d22be9f-cb959eb-20261003/build/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 0,
+      "steps": 1915,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "case": "list",
+      "variant": "captured-head-v3",
+      "argv": [
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/build/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 0,
+      "steps": 1915,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "case": "imported-local-sorted",
+      "variant": "baseline",
+      "argv": [
+        "/tmp/ap-performance-current-joint-898463e-bd1ddf3-6715af2-d22be9f-cb959eb-20261003/build/pointer-check",
+        "--steps",
+        "1000000000",
+        "--legacy-intrinsic-dot",
+        "--imports",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/quick-local-provider.p",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/imported-local-sorted.p"
+      ],
+      "exit": 0,
+      "steps": 761848,
+      "log_sha256": "b9d0c64243321a9d2f702bb9ba30af64046f24ed9b86846fe5a7613d0d6b636a"
+    },
+    {
+      "case": "imported-local-sorted",
+      "variant": "captured-head-v3",
+      "argv": [
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/build/pointer-check",
+        "--steps",
+        "1000000000",
+        "--legacy-intrinsic-dot",
+        "--imports",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/quick-local-provider.p",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/imported-local-sorted.p"
+      ],
+      "exit": 0,
+      "steps": 761848,
+      "log_sha256": "b9d0c64243321a9d2f702bb9ba30af64046f24ed9b86846fe5a7613d0d6b636a"
+    },
+    {
+      "case": "trees4",
+      "variant": "baseline",
+      "argv": [
+        "/tmp/ap-performance-current-joint-898463e-bd1ddf3-6715af2-d22be9f-cb959eb-20261003/build/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees4.p"
+      ],
+      "exit": 0,
+      "steps": 2318248,
+      "log_sha256": "775df37afe1464024ea41c3aae5bde666ffedcc4771dfb894f46f27fd64157c2"
+    },
+    {
+      "case": "trees4",
+      "variant": "captured-head-v3",
+      "argv": [
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/build/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees4.p"
+      ],
+      "exit": 0,
+      "steps": 2318248,
+      "log_sha256": "775df37afe1464024ea41c3aae5bde666ffedcc4771dfb894f46f27fd64157c2"
+    },
+    {
+      "case": "trees16",
+      "variant": "baseline",
+      "argv": [
+        "/tmp/ap-performance-current-joint-898463e-bd1ddf3-6715af2-d22be9f-cb959eb-20261003/build/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees16.p"
+      ],
+      "exit": 0,
+      "steps": 7608511,
+      "log_sha256": "f5e289c1ce771b2e2e0f3d5692211942e3a749de75db1ee255624e9a3b44ec10"
+    },
+    {
+      "case": "trees16",
+      "variant": "captured-head-v3",
+      "argv": [
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/build/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees16.p"
+      ],
+      "exit": 0,
+      "steps": 7608511,
+      "log_sha256": "f5e289c1ce771b2e2e0f3d5692211942e3a749de75db1ee255624e9a3b44ec10"
+    },
+    {
+      "case": "trees64",
+      "variant": "baseline",
+      "argv": [
+        "/tmp/ap-performance-current-joint-898463e-bd1ddf3-6715af2-d22be9f-cb959eb-20261003/build/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees64.p"
+      ],
+      "exit": 0,
+      "steps": 29780510,
+      "log_sha256": "863fcfc39e5413f133d2bd49d4489d76bb270a6d0b13132b0186179250724a95"
+    },
+    {
+      "case": "trees64",
+      "variant": "captured-head-v3",
+      "argv": [
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/build/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees64.p"
+      ],
+      "exit": 0,
+      "steps": 29780510,
+      "log_sha256": "863fcfc39e5413f133d2bd49d4489d76bb270a6d0b13132b0186179250724a95"
+    },
+    {
+      "case": "trees400",
+      "variant": "baseline",
+      "argv": [
+        "/tmp/ap-performance-current-joint-898463e-bd1ddf3-6715af2-d22be9f-cb959eb-20261003/build/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees400.p"
+      ],
+      "exit": 0,
+      "steps": 183507626,
+      "log_sha256": "7ba8df8b6c83ab421a4b89f1df1cfdc087483b38440654b32afcc30fc2402394"
+    },
+    {
+      "case": "trees400",
+      "variant": "captured-head-v3",
+      "argv": [
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/build/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees400.p"
+      ],
+      "exit": 0,
+      "steps": 183507626,
+      "log_sha256": "7ba8df8b6c83ab421a4b89f1df1cfdc087483b38440654b32afcc30fc2402394"
+    }
+  ],
+  "passed": true,
+  "no_GNU_time_or_measurement_collector_executed": true
+}
