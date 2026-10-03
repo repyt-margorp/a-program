@@ -3,7 +3,7 @@
 Date: 2026-10-03
 Status: Core coordinates; Job/Evidence, C and performance Goals active; Surface delivered and stopped.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
-Reviewed prototype Main checkpoint: `0fc0c0b`; original worker baseline: `2d747cc`.
+Reviewed prototype Main checkpoint: `341261d`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
 changes no implementation or promotion rules.
 Related: [SE1-SE5](2026-09-30-SOLVER-EVIDENCE-DUPLICATION-AUDIT-AND-PLAN.md),
@@ -24,6 +24,24 @@ not the existing owner work lists.
 ## 1. Core Ownership and Integration
 
 ### Subjective (User)
+
+2026-10-03, English paraphrase of the explicit clarification to the Core-pause
+question: use both notification waiting and a timed Wait state. Even without a
+notification, Core should wake every six hours and inspect progress. This
+supersedes notification-only waiting and does not ask to stop worker Goals.
+
+2026-10-03, English paraphrase of the latest request: Core itself should be
+woken and activated by the worker sessions. Prefer notification-driven
+coordination over an always-active polling session. The available wake/resume
+mechanism still needs verification; do not assume tmux notifications alone can
+resume this conversation.
+
+2026-10-03, English paraphrase of the latest clarification: performance and
+Job/Evidence reduction or deletion are tightly related; verify them together
+with concentrated attention. C backend follows A Program through `.a` and
+LinkerScript, prioritizing C code usable from other C modules rather than
+unbounded investigation. It remains important as a bridge to external systems
+and eventual generic assembler lowering, not an authority over A Program.
 
 2026-10-03, English paraphrase of the latest explicit instruction: if Surface
 is finished, shut down that session. Preserve its delivered work; this does not
@@ -101,10 +119,36 @@ Job/Evidence implementation owner moves to `job-evidence`. Core must not edit
 the same implementation concurrently. Separate worktrees prevent accidental
 edits, but do not eliminate semantic conflicts. Core performs reviewed Main
 integration and cross-lane verification; workers publish only their task branches.
-Supervision proposal: while Core is active, inspect worker panes and worktree
-diffs at least every ten minutes and at epoch boundaries. Read status/blockers
-and relevant tests, then send concrete steering when needed. An inactive Main
-session provides no automatic supervision; tmux alone does not supply it.
+The latest user preference supersedes the ten-minute polling proposal:
+workers notify Core at a ready epoch, blocking decision, cross-owner conflict
+or material regression. Core reviews the reported files/tests, integrates only
+verified work and returns directions before waiting again. Ordinary tool output
+must not wake Core repeatedly. A notification is worker evidence, not a new user
+design approval or permission to merge Main.
+
+Wake transport is not yet verified. Local CLI `0.159.2` exposes `codex queue`
+and generated `thread/queue/add`/`thread/queue/start` schemas. Official
+[App Server documentation](https://developers.openai.com/codex/app-server)
+distinguishes starting a turn from steering an active turn; neither tmux output
+nor a saved thread ID proves that a worker reaches this live Core owner. A
+read-only managed-proxy probe timed out without submitting a turn. Core's task
+view reports workers `notLoaded` while their actual tmux Goals are running;
+verify owner routing before loading/resuming any thread, to avoid a second Core.
+Use existing session messaging rather than a new scheduler. Following the
+user's clarification, keep Core's Goal active and use the available interruptible
+`clock.sleep` for up to six hours after completing current coordination work.
+New input can end this wait early; otherwise the timer returns Core to a status
+and handoff review. This is a wait in the existing conversation, not process
+termination, Goal completion or a duplicate Core launch. Worker Goals continue.
+Automatic recovery after closing the conversation/host restart is not verified;
+do not claim an independently installed periodic service.
+
+Core implementation decision following the latest priority: verify current
+producer, Job/Evidence deletion, captured-head/readback and their combination
+on matching inputs. Preserve results, scope, acceptance and saved frontiers;
+report allocation/traversal/fuel separately from exclusive wall/RSS measurements.
+Backend work remains downstream C-module realization, not a reason to expand
+the producer's semantic schema or require general theory coverage first.
 
 ### Plan
 
@@ -119,18 +163,38 @@ session provides no automatic supervision; tmux alone does not supply it.
   verify an active Goal and actual code inspection, and notify all lanes.
 - [x] Verify concrete deletion/test activity at the next supervision checkpoint;
   launch and inspection alone are not implementation completion.
-- [ ] Periodically review worker status, diffs, tests and blockers and issue
-  directions; record material decisions in the owning SOAP plan.
+- [x] Record notification-driven coordination in Subjective and send the
+  requirement to all three live workers without pausing their implementation.
+- [ ] Verify worker-to-current-Core delivery and an actual idle wake; do not
+  count a queued message, tmux alert or duplicate resumed session as success.
+- [x] Clarify the fallback: user requests notification OR six-hour timer, not
+  notification-only waiting. Keep worker Goals active and do not mark Core done.
+- [ ] Enter an interruptible six-hour Wait after current handoffs; on notice or
+  timeout, inspect worker status/tests/conflicts, coordinate and wait again.
+- [ ] Review worker notifications, diffs, tests and blockers and issue directions;
+  record material decisions in the owning SOAP plan. Six-hour checks provide the
+  requested fallback while the worker wake route is unverified.
 - [ ] Review cross-owner findings; transfer file ownership for an explicit epoch
   when needed, rather than permanently excluding a necessary large refactor.
 - [ ] Integrate each completed epoch, run relevant combined regression gates,
   record unresolved failures, and publish only reviewed commits to Main.
+- [ ] Prioritize coupled Job/Evidence/performance verification on exact tested
+  epochs and a common producer; compare isolated and combined costs without
+  attributing storage deletion to an unmeasured speedup.
+- [x] Complete the common-producer four-variant/five-input census and eleven
+  focused combined gates; delegate broad combined gates to performance.
 - Completion: workers can deliver independent changes without a second Core
   authority; SE completion remains governed by its original criteria.
 
 ## 2. C Backend
 
 ### Subjective (User)
+
+2026-10-03, English paraphrase of the latest clarification: keep the C backend
+a downstream project using `.a` and LinkerScript. Prioritize usable C code and
+interoperation with other C modules without excessive scope expansion. Its
+importance is connecting A Program to external systems and generic assembler
+lowering; "downstream" does not mean unimportant.
 
 2026-10-03, English paraphrase: assign C-backend design to the first sub-session.
 Earlier requirements keep C/LinkerScript subordinate to A Program: target
@@ -190,6 +254,11 @@ Start with supported checked exports, not completion of all relevance research.
 
 ### Subjective (User)
 
+2026-10-03, English paraphrase of the latest clarification: performance work
+and Job/Evidence reduction or deletion are closely coupled and need focused
+joint verification. Separate sessions must not obscure their shared costs or
+combined correctness.
+
 2026-10-03, English paraphrase: assign system performance, including waste in
 other modules, to the second sub-session. Prioritize a simpler implementation
 and removal of unnecessary work over technical tuning that complicates it.
@@ -226,10 +295,26 @@ remain required before integration. No comparative wall/RSS run has occurred.
 descriptor-only Identity observer from seven real sanitizer failures in the
 published head epoch. Core inspected the separate `eval_frame_cleanup.patch`:
 successful/error head delivery releases decoded empty-frame scratch, while
-return 2 preserves charged fallback. The worker reports 14 focused corrective
-checks passing, including fresh-process TotalResult cuts and explicit callback
-outcomes; broad O2/sanitizer gates and an exact frozen handoff remain pending.
-The original failed commands are preserved; this is not Main integration.
+return 2 preserves charged fallback. The worker initially reported 14 focused
+corrective checks passing. Subsequent Core inspection confirms all 45 broader
+sanitizer commands and all 384 recorded O2 acceptance recipes exit 0 in the
+corrective reports. Core checked the 44-file frozen manifest, committed and
+pushed `05390513bca302b4a219881994c5bbd69d5b733a` on the worker branch. Applied
+runtime correction is `eval.c` +5/-1; return 2 retains charged fallback. The
+original failed commands are preserved; this is not Main integration, full
+worker completion or broad verification of the current joint producer.
+
+2026-10-03 04:37 UTC Core verification: Main `341261d` canonical producer with
+family/Surface, published performance `f3c3555`, separate frame cleanup and
+explicit observer adapters passes ten checks: Core/IADT/Synthesis, full Source
+IO/Identity IO, head/TotalResult/cleanup units, normalization checkpoint and all
+70 fresh-process TotalResult cuts. Charged depth-1,000 WHNF remains 3,014 steps.
+Logs: `/tmp/a-program-core-performance-combined-*`; source manifest:
+`/tmp/a-program-core-performance-combined-source.sha256`. Core retained its
+initial failed build: assembly accidentally replaced the newer prototype
+`eval.h` with the accepted header. Correcting that assembly yields exit 0; this
+is not a runtime regression. Full combined acceptance and actual timing remain
+open. Job deletion is not included in this ten-check result.
 
 ### Assessment
 
@@ -277,6 +362,11 @@ the exact Bend2 implementation before choosing commands or citing claims.
 
 ### Subjective (User)
 
+2026-10-03, English paraphrase of the latest clarification: examine Job/Evidence
+reduction or deletion together with performance, concentrating verification on
+their interaction rather than treating their session boundaries as independent
+architectures.
+
 2026-10-03, English paraphrase: delegate Job/Evidence implementation to a
 separate Codex session and specialize this Core session in merges and audits.
 Earlier requirements retain Oracle locality, typed construction as authority,
@@ -289,13 +379,49 @@ SE prototype patches. SE1-SE5 is unfinished; the three public split-fuel failure
 in its verification report remain unwaived. Unrelated dirty accepted-source and
 test changes are not part of the worker baseline.
 
-2026-10-03 04:26 UTC supervision at worker `5035c7a` plus private epoch edits:
-Core inspected removal of copied module/reference results, the module export
-cache and redundant stage. Focused tests pass; broad acceptance is running.
-Epoch2 extends deletion privately, so its canonical patches cannot inherit
-Epoch1 results without matching snapshots or fresh verification. The QuickSort
-census records status 2 (rejected), not completed checking; preserve these rows
-and repeat the measurement on a verified current-grammar workload.
+2026-10-03 supervision at worker `5035c7a` plus private epoch edits: Core
+inspected removal of copied module/reference results, the module export cache
+and redundant stage. Epoch1's frozen manifest verifies all file hashes; its
+reported full acceptance, focused sanitizers and C gates pass. Applied runtime
+delta is +7/-12; tests +21/-3. Epoch2 extends deletion privately and remains
+distinct pending its broad verification. Epoch3 investigates reconnecting
+started definition bodies through existing lexical factories, not another graph.
+
+The initial QuickSort census was rejected; its failure records remain. The
+corrected provider/import census completes at 766,477 dispatches on both Epoch1
+variants, with 3,753 fewer copied result references but identical Term,
+Occurrence, Evidence and dispatch counts. Five completed workloads remove
+50/154/111/3,753/26 result references. This is storage/reference attribution,
+not an observed time or peak-memory improvement. Evidence is frozen under the
+worker's `src/prototype/solver_inputs/epochs/job_evidence_e1/`.
+Core's current producer plus Surface/performance/cleanup joint Epoch1 build is
+verified by eleven terminal exit-0 gates: Core/IADT/Synthesis, full Source IO
+and Identity IO, head/TotalResult/cleanup, normalization/source checkpoints and
+70 fresh-process TotalResult cuts. The exact 128-source manifest is
+`/tmp/a-program-core-job-performance-combined-source.sha256`; relevant logs are
+`/tmp/a-program-core-job-performance-combined-*`. Performance is assigned the
+broader acceptance/checkpoint/sanitizer gates on a private dereferenced copy;
+those results remain pending.
+
+The common-producer census completes all twenty variant/input pairs, including
+the ordinary imported general LocalSorted QuickSort. Its final QuickSort rows:
+
+| Variant | Dispatches | Terms | Occurrences | Evidence | Job payload bytes | Copied result refs |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Baseline | 766477 | 1037917 | 114388 | 94974 | 6764880 | 27902 |
+| Job E1 | 766477 | 1037917 | 114388 | 94974 | 6764848 | 24149 |
+| Head + cleanup | 761848 | 1036772 | 114388 | 94974 | 6764880 | 27902 |
+| Both | 761848 | 1036772 | 114388 | 94974 | 6764848 | 24149 |
+
+[Measurements](../src/prototype/solver_inputs/joint_verification/measurements.tsv)
+include step 0, 100 and 1000 checkpoints and the other four inputs; source/input
+and report hashes are beside them. This attributes 4629 fewer dispatches to the
+head path and 3753 fewer copied references to Job E1, not a measured wall/RSS
+speedup. Fixed result slots still occupy their headers; do not convert the
+reference count into an assumed byte saving. All 52 public partition images
+and all 40 verdict rows are byte-identical with and without Job E1 on this
+producer. The same three strict reload failures remain failed and unwaived in
+the [partition report](../src/prototype/solver_inputs/joint_verification/combined-partitions.tsv).
 
 ### Assessment
 
