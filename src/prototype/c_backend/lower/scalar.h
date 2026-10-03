@@ -18,7 +18,7 @@ int pg_c_emit_native(FILE *source, FILE *header, size_t count,
 
 /* Copied emitter-selected metadata, valid after temporary lowering is destroyed. */
 struct pg_c_native_contract {
-	int recursive, natural, copy_out;
+	int recursive, natural, copy_out, value_fields;
 };
 int pg_c_emit_native_profile(FILE *source, FILE *header, size_t count,
 	const struct pg_c_export *exports, size_t entry, size_t enum_count,

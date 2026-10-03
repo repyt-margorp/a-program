@@ -753,11 +753,12 @@ static void value(FILE *out, const struct expression *e)
 		if (e->container->value->type->natural) {
 			fputc('(', out); value(out, e->container); fputs(" - UINT32_C(1))", out); return;
 		}
-		if (!e->type->recursive) fprintf(out, "(uint%zu_t)(", e->type->width);
+		int bits = !e->type->constructors || e->type->natural;
+		if (bits) fprintf(out, "(uint%zu_t)(", e->type->width);
 		value(out, e->container);
 		fprintf(out, "%sfields.c%zu.f%zu%s", e->container->value->type->recursive ? "->" : ".", e->constructor, e->field,
-			e->type->layout && !e->type->recursive && !e->type->natural ? ".tag" : "");
-		if (!e->type->recursive) fputc(')', out);
+			e->type->layout && !e->type->constructors ? ".tag" : "");
+		if (bits) fputc(')', out);
 	} else if (e->parameter) fprintf(out, "a%zu", e->parameter);
 	else fprintf(out, "v%zu", e->id);
 }
@@ -818,6 +819,27 @@ static void allocation_guard(FILE *out, const struct function *f)
 {
 	if (!f->module->representations.arena_alias) return;
 	fputs("\tif (arena->status) { ", out); failure_return(out, f); fputs(" }\n", out);
+}
+
+static void value_validators(FILE *out, const struct pg_c_representations *table)
+{
+	for (size_t i = 0; i < table->count; ++i) {
+		const struct pg_c_representation *r = table->types[i];
+		if (!r->constructors || r->natural || r->recursive) continue;
+		fprintf(out, "static int ap_valid_value_%s(struct ap_data_%s input)\n{\n\tswitch (input.tag) {\n", r->alias, r->alias);
+		for (size_t j = 0; j < r->count; ++j) {
+			fprintf(out, "\tcase %zu:\n", j);
+			const struct pg_c_constructor_representation *c = &r->constructors[j];
+			for (size_t k = 0; k < c->count; ++k) {
+				const struct pg_c_representation *f = c->fields[k];
+				if (!f->layout || f->natural) continue;
+				if (f->constructors) fprintf(out, "\t\tif (!ap_valid_value_%s(input.fields.c%zu.f%zu)) return 0;\n", f->alias, j, k);
+				else fprintf(out, "\t\tif ((uint64_t)input.fields.c%zu.f%zu.tag >= UINT64_C(%zu)) return 0;\n", j, k, f->count);
+			}
+			fputs("\t\treturn 1;\n", out);
+		}
+		fputs("\tdefault: return 0;\n\t}\n}\n\n", out);
+	}
 }
 
 static void emit_function(FILE *out, const struct function *f)
@@ -899,7 +921,7 @@ static int emit(FILE *source, FILE *header, size_t count,
 	struct function **functions = NULL;
 	int status = -1;
 	if (pg_dag_init(&m.order, lower_child, &m) || pg_index_init(&m.functions) || pg_index_init(&m.arguments) || pg_index_init(&m.results)) goto done;
-	*error = "representations require unique closed declarations; data fields must be scalars, selected enums or one direct Self tail";
+	*error = "representations require unique closed declarations; fields need scalar, enum, prior selected value data or direct Self contracts";
 	if (pg_c_representations_native(&m.representations, &m.order.storage, enum_count, enums, natural_count, naturals, data_count, data)) goto done;
 	*error = "cannot inspect existing induction result classifiers";
 	if (induction_results(&m, count, exports)) goto done;
@@ -931,6 +953,7 @@ static int emit(FILE *source, FILE *header, size_t count,
 	fputs("#ifdef __cplusplus\nextern \"C\" {\n#endif\n", header);
 	pg_c_nodes_declarations(header, &m.representations);
 	pg_c_nodes_implementation(source, &m.representations);
+	value_validators(source, &m.representations);
 	for (const struct function *f = m.first; f; f = f->next) { signature(source, f); fputs(";\n", source); }
 	fputc('\n', source);
 	for (const struct function *f = m.first; f; f = f->next) emit_function(source, f);
@@ -939,6 +962,11 @@ static int emit(FILE *source, FILE *header, size_t count,
 		fprintf(header, "int ap_export_%s(", exports[i].alias); parameters(header, f); fputs(");\n", header);
 		fprintf(source, "int ap_export_%s(", exports[i].alias); parameters(source, f);
 		fputs(")\n{\n\tif (!out) return 1;\n", source);
+		for (size_t j = 0; j < m.representations.count; ++j) {
+			const struct pg_c_representation *r = m.representations.types[j];
+			if (r->constructors && !r->natural && !r->recursive)
+				fprintf(source, "\t(void)ap_valid_value_%s;\n", r->alias);
+		}
 		if (m.representations.arena_alias) {
 			fputs("\tif (!arena) return 1;\n\tif (arena->depth || arena->depth_limit > 256) return 4;\n\t(void)ap_allocate;\n", source);
 			for (size_t j = 0; j < m.representations.count; ++j) if (m.representations.types[j]->recursive)
@@ -948,15 +976,7 @@ static int emit(FILE *source, FILE *header, size_t count,
 			const struct pg_c_representation *r = f->parameters[j]->type;
 			if (r->recursive) fprintf(source, "\tif (!ap_validate_%s(a%zu)) return 2;\n", r->alias, j + 1);
 			else if (r->constructors && !r->natural) {
-				fprintf(source, "\tswitch (a%zu.tag) {\n", j + 1);
-				for (size_t k = 0; k < r->count; ++k) {
-					fprintf(source, "\tcase %zu:\n", k);
-					const struct pg_c_constructor_representation *c = &r->constructors[k];
-					for (size_t l = 0; l < c->count; ++l) if (c->fields[l]->layout && !c->fields[l]->natural)
-						fprintf(source, "\t\tif ((uint64_t)a%zu.fields.c%zu.f%zu.tag >= UINT64_C(%zu)) return 2;\n", j + 1, k, l, c->fields[l]->count);
-					fputs("\t\tbreak;\n", source);
-				}
-				fputs("\tdefault: return 2;\n\t}\n", source);
+				fprintf(source, "\tif (!ap_valid_value_%s(a%zu)) return 2;\n", r->alias, j + 1);
 			} else if (r->layout && !r->natural) fprintf(source, "\tif ((uint64_t)a%zu.tag >= UINT64_C(%zu)) return 2;\n", j + 1, r->count);
 		}
 		if (m.representations.arena_alias)
@@ -993,7 +1013,13 @@ static int emit(FILE *source, FILE *header, size_t count,
 	if (!status && contract) {
 		*contract = (struct pg_c_native_contract){.natural = natural_count != 0};
 		for (size_t i = 0; i < m.representations.count; ++i) {
-			if (m.representations.types[i]->recursive) contract->recursive = 1;
+			const struct pg_c_representation *r = m.representations.types[i];
+			if (r->recursive) contract->recursive = 1;
+			if (r->constructors) for (size_t j = 0; j < r->count; ++j)
+				for (size_t k = 0; k < r->constructors[j].count; ++k) {
+					const struct pg_c_representation *f = r->constructors[j].fields[k];
+					if (f != r && f->constructors && !f->natural) contract->value_fields = 1;
+				}
 			size_t cell, payload;
 			if (pg_c_representation_list(m.representations.types[i], &cell, &payload)) contract->copy_out = 1;
 		}
