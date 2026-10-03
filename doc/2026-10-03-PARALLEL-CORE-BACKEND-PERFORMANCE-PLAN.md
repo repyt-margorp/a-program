@@ -25,6 +25,13 @@ not the existing owner work lists.
 
 ### Subjective (User)
 
+2026-10-03, English paraphrase of the latest request: add one separate audit
+session for `../aize`. Multi-goal development belongs in that project; inspect
+its repository and record useful lessons from this Goal-based workflow under
+`../aize/doc`. Its stability problems need investigation, not assumed causes.
+This is independent of A Program implementation and does not authorize changing
+either system's implementation. Core continues supervising the existing lanes.
+
 2026-10-03, English paraphrase of the latest follow-up: wake/restart/notification
 arrangements must not replace supervision of actual implementation progress.
 Continue monitoring the workers' code changes and verification, not just the
@@ -161,6 +168,15 @@ on matching inputs. Preserve results, scope, acceptance and saved frontiers;
 report allocation/traversal/fuel separately from exclusive wall/RSS measurements.
 Backend work remains downstream C-module realization, not a reason to expand
 the producer's semantic schema or require general theory coverage first.
+
+Independent human-requested audit: `a-program:aize-audit` runs GPT-6.1-Sol xhigh
+with its own active audit Goal. Core verified it reading the assignment and
+inspecting `aize`; the implementation lanes continue. Its sole document is
+`../aize/doc/2026-10-03-GOAL-BASED-MULTI-SESSION-WORKFLOW-AUDIT.md` in that
+repository (baseline `5d1072c` plus preserved local edits). A separate outbox relay
+notifies Core without restarting the existing relay. No aize implementation,
+live-state modification or Git publication is authorized. Its one work list and
+findings remain in the aize audit, not in the A Program implementation checklist.
 
 ### Plan
 
