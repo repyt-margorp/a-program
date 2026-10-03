@@ -181,7 +181,7 @@ the producer's semantic schema or require general theory coverage first.
   Core; active routing and the relay passed. Idle routing is mock-tested only.
 - [x] Clarify the fallback: user requests notification OR six-hour timer, not
   notification-only waiting. Keep worker Goals active and do not mark Core done.
-- [ ] Enter an interruptible six-hour Wait after current handoffs; on notice or
+- [x] Enter an interruptible six-hour Wait after current handoffs; on notice or
   timeout, inspect worker status/tests/conflicts, coordinate and wait again.
 - [ ] Review worker notifications, diffs, tests and blockers and issue directions;
   record material decisions in the owning SOAP plan. Six-hour checks provide the
@@ -446,6 +446,13 @@ verified performance correction is integrated as `f27bd13`. E2's 36-entry
 manifest passes Core hash verification and its applied
 code was reviewed; E2 needs current-producer combined gates before integration.
 Later E3/E4 persistence/registration trials remain independent worker epochs.
+Core's first six-hour Wait was interrupted after 294.2237 seconds by E2's lean
+publication-delta notice. Live supervision then caught the worker's correction:
+its generated report patch normalized TSV newlines, breaking exact report hashes.
+Publication is held; no E2 files are staged. Original runtime freeze is unchanged
+and remains available for the separately assigned current-producer joint gates.
+Keep the failed delta/report as history and verify corrected exact bytes before
+task-branch publication; do not classify this report-assembly error as a runtime bug.
 
 The common-producer census completes all twenty variant/input pairs, including
 the ordinary imported general LocalSorted QuickSort. Its final QuickSort rows:
