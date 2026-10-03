@@ -3,7 +3,7 @@
 Date: 2026-10-03
 Status: Core coordinates; Job/Evidence, C and performance Goals active; Surface delivered and stopped.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
-Reviewed prototype Main checkpoint: `7b27c4c`; original worker baseline: `2d747cc`.
+Reviewed prototype Main checkpoint: `53debc8`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
 changes no implementation or promotion rules.
 Related: [SE1-SE5](2026-09-30-SOLVER-EVIDENCE-DUPLICATION-AUDIT-AND-PLAN.md),
@@ -16,22 +16,32 @@ not the existing owner work lists.
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | `core`: coordination, design audit, verification and Main integration | All lanes | Sole integration owner; no parallel SE implementation |
-| 2 | `c-backend`: downstream C design | #44, #49; shared policy #47 | Local-function C epoch integrated; native Acc/QuickSort remains open |
+| 2 | `c-backend`: downstream C design | #44, #49; shared policy #47 | C6 value records integrated; native Acc/QuickSort remains open |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Jointly verified epoch integrated as `f27bd13`; full Goal remains active |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
-| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E2 integrated as `7b27c4c`; E3/E4 joint qualification remains separate |
+| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E3 integrated as `48364b0`; E4/E6 joint qualification remains separate |
 
 ### Current Delivery Status
 
-2026-10-03 Core inspection at `7b27c4c`; owning workers' requested issue-linked
-feedback is being collected. These are deliverables, not issue completion scores.
+2026-10-03 Core inspection at `53debc8`; all three active workers supplied
+issue-linked feedback through the existing outbox. Core verified their notice
+hashes and read their single current tables. These are deliverables, not issue
+completion scores; worker-local results are not relabelled joint verification.
 
 | Owner / issue scope | Delivered and verified | Not yet delivered / next boundary |
 | --- | --- | --- |
-| Job/Evidence; SE1-SE5 / AP0, related #51/#47 | E1/E2 prototype Main; copied result/export caches removed, E2 joint 384 O2 recipes and 45 sanitizer commands pass | E3/E4 task-published, separate joint gates running; E6 local verification ready; Job/Evidence still exist and three strict reload failures remain |
-| C backend; #44/#49 | C4 transactional array conversion and C5 bounded local functions prototype Main; C5 nine current-producer gates pass | C6 nested value records locally verified, current-producer ten-gate integration pending; native Acc/QuickSort unsupported |
-| Performance; #56, measurement work #51/#52 | Captured-head cleanup prototype Main; E2 common-producer joint qualification complete | E3/E4 owner qualification in progress; no exclusive wall/RSS comparison, cross-system benchmark or #52 completion claimed |
+| Job/Evidence; SE1-SE5 / AP0, related #51/#47 | E1/E2/E3 prototype Main; E2 joint 384 O2 recipes/45 sanitizer commands pass; E3 inert body links jointly verified | E4/E6 task-pushed, joint qualification pending; E7 metadata borrowing locally verified/private; E8 Graph-output trial underway; Job/Evidence still exist and strict3 remain |
+| C backend; #44/#49 | C4 transactional arrays, C5 local functions and C6 nested value records prototype Main; C6 ten current-E3-producer gates pass | C7 enum-List arrays privately verified, not published/jointly tested; native Acc/QuickSort unsupported |
+| Performance; #56, measurement work #51/#52 | Captured-head cleanup prototype Main; E2 broad joint and E3 targeted joint qualification complete | E4 final broad qualification underway, E6 next; cross-system inputs qualified locally but no wall/RSS comparison or #52 completion claimed |
 | Surface; #57 | Delivered prototype integrated; session stopped | Issue-wide closure still requires its recorded remaining criteria; no active worker |
+
+Owning tables: Job/Evidence's [SE Plan](2026-09-30-SOLVER-EVIDENCE-DUPLICATION-AUDIT-AND-PLAN.md#plan),
+performance's worker-local `doc/2026-10-03-PERFORMANCE-JOINT-VERIFICATION.md`,
+and C's Goal (temporary feedback addendum during its immutable C6 freeze).
+Current worker reporting updates remain local until their next exact publication;
+this consolidated status is durable Main feedback. #41/#43 are separate design
+questions, not silently assigned to these epochs. #47's general relevance policy
+and #52's equality-reuse design are not completed by storage deletion or C emission.
 
 
 ## 1. Core Ownership and Integration
@@ -243,6 +253,8 @@ findings and proposed repairs stay in its audit, not this implementation work li
   requested fallback if notification delivery fails.
 - [ ] Obtain current issue-linked feedback from all three active workers, then
   keep their concise status tables current at milestones and six-hour checks.
+- [x] Receive and review the initial three issue-linked reports; keep future
+  updates in those existing tables, not another reporting subsystem.
 - [ ] Review cross-owner findings; transfer file ownership for an explicit epoch
   when needed, rather than permanently excluding a necessary large refactor.
 - [ ] Integrate each completed epoch, run relevant combined regression gates,
@@ -320,6 +332,14 @@ dynamic callbacks, demanded effects and the specific three-closure capture shape
 still refuse. [Core evidence](../src/prototype/c_backend/verification/core-epoch5.json)
 pins the combined gate; worker sanitizer results remain in the
 [handoff](2026-10-03-C-BACKEND-EPOCH5-HANDOFF.md).
+
+Epoch6 `cea1dc0` is exact task-branch published (16 frozen files, push 0,
+independent remote verified). Core's ten O2 C gates pass on the jointly tested
+E3/family/Surface/head producer; its 128 runtime hashes are unchanged after the
+run. Native value records cover 105 cases per C product and 16 source observations.
+Core integrated this prototype as `53debc8`; no producer/schema or accepted-source
+change. [Core evidence](../src/prototype/c_backend/verification/core-epoch6.json)
+pins the fresh combined run, not a rerun of the worker's seven sanitizer gates.
 
 ### Assessment
 
@@ -539,7 +559,14 @@ completion byte's separate descriptive/start bits. All 24 published canonical
 and report hash records match Git's index. APGSRC69 rejects older formats;
 loading restores a body link, not accepted evidence or child computation progress.
 Worker gates pass with setup failures retained; the same strict three remain.
-E3 Main integration waits its own current-producer codec/frontier gates after E2.
+E3 subsequently passes its separate current-producer codec/frontier qualification:
+57 O2 recipes (only the inherited strict partition target fails), 13 sanitizer
+commands, inert resave/invalid-marker controls and paired old-format controls.
+The exact E2 parent fails both missing-body assertions while E3 passes them.
+Core freshly verified all 1,318 evidence records and integrated E3 as `48364b0`;
+this targeted result does not claim a repeated full 384-recipe suite.
+[Joint evidence](../src/prototype/solver_inputs/joint_verification/e3-codec-summary.json)
+retains the same three strict reload failures and parent/setup evidence.
 Its original frozen manifest includes an external transport patch deliberately
 not published. Future durable manifests must list published files only; keep
 transport hashes separate and avoid copying canonical patches already pinned by
@@ -569,6 +596,17 @@ This rejects that lookup, not every possible future owner refactor. Preserve
 lexical identity through its existing source owner rather than merging names
 or adding a shadow Oracle graph. Job owns permanent publication of the 17-line
 test-only control; performance includes it in final E4 coverage without E5 code.
+
+E6 exact lexical Binder borrowing is task-pushed as `b2d6668`; Core verified all
+14 published hash records plus the manifest and local verification logs. Applied
+runtime +12/-12 removes a redundant Binder pointer; worker QuickSort Job payload
+falls 7,872 bytes with checking counts unchanged. The permanent E5 namespace
+control is included. Generic Git whitespace checking reports patch-context and
+CRLF-report formatting, not an applied-C source failure; preserve those exact
+frozen bytes. Main integration awaits E4 then E6 joint qualification. E7's
+namespace-preserving source-owner metadata borrowing is only locally verified:
+reported layout -1,312 QuickSort bytes, no timing or peak-memory claim. E8 remains
+a private Graph-output borrowing trial. Full SE1-SE5 completion is not claimed.
 
 The common-producer census completes all twenty variant/input pairs, including
 the ordinary imported general LocalSorted QuickSort. Its final QuickSort rows:

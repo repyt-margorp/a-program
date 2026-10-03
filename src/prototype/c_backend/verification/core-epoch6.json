@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-03",
+  "scope": "Prototype integration; no producer/schema extension or accepted promotion",
+  "backend_commit": "cea1dc0177d36328d6f4de2a8f151b5952d2c2c5",
+  "integration_commit": "53debc870231f415bdf926b537a7c1a8670e81d7",
+  "producer_epoch": "Job E3 51c476d on common family/Surface/head/E2 producer",
+  "source_manifest_sha256": "e87b8781d160d48b961e2091640058aa21dccb92a4a76f50eea548519764622e",
+  "source_records": 128,
+  "source_before_and_after_hash_check_exit": 0,
+  "gate_exit": 0,
+  "gates": [
+    "check-c-backend", "check-c-sorting-boundary", "check-c-link",
+    "check-c-scalar", "check-c-enum", "check-c-data", "check-c-list",
+    "check-c-numeric-list", "check-c-static-functions", "check-c-value-records"
+  ],
+  "build_parallelism": 2,
+  "evidence_log": "/tmp/ap-core-c-backend-e6-Jztwok/current-producer-gates.log",
+  "evidence_log_sha256": "83e34e4f131160466e2ef58ee1d9218bd747f41650ec822de73c3c9e5193fe0a",
+  "emitter_sha256": "67cbe2bc9aa2de0fdc186096093f05615695c19c203d89a48e69afc9811515e1",
+  "producer_sha256": "ed95bbed2352d21e0e20e83f84b30ddcdb8af9d7ad290884008b177936aef598",
+  "new_value_record_cases_per_product": 105,
+  "new_source_observations": 16,
+  "worker_seven_native_sanitizer_gates": "Reported separately in C6 handoff; not independently rerun here",
+  "retained_refusals": "Recursive aggregate/pointer fields, dynamic callbacks, demanded effects, native Acc/QuickSort",
+  "setup_failure": "Initial private git archive used a non-repository cwd and stopped before build; explicit repository path corrected",
+  "comparative_wall_rss": false,
+  "issue_or_full_goal_completion_claimed": false
+}
