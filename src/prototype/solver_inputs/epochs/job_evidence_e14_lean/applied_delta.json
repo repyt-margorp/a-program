@@ -1,0 +1,15 @@
+{
+  "files": [
+    {
+      "file": "src/synthesis_cbpv.c",
+      "added": 9,
+      "removed": 9
+    },
+    {
+      "file": "tests/synthesis.c",
+      "added": 8,
+      "removed": 0
+    }
+  ],
+  "documentation": "Lean report only; one active SE work list remains outside the frozen set."
+}

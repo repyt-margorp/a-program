@@ -1,0 +1,86 @@
+--- a/src/synthesis_cbpv.c
++++ b/src/synthesis_cbpv.c
+@@ -551,7 +551,6 @@
+ 	struct pg_synthesis_input rule;
+ };
+ struct sequence_work {
+-	struct pg_synthesis_input normalized;
+ 	struct pg_synthesis_job *fold, *rule;
+ 	struct pg_comparison comparison;
+ 	unsigned stage;
+@@ -830,19 +829,20 @@
+ 			local->rule = pg_synthesis_application(synthesis, scope, pg_synthesis_work_dependency(job, 4), argument);
+ 			if (!local->rule) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+ 		} else {
+-			local->normalized = pg_synthesis_normalize_classifier(synthesis, scope, argument);
+-			if (!local->normalized.checked && !local->normalized.pending) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+-			struct pg_synthesis_input premises[] = {local->normalized, pg_synthesis_work_dependency(job, 4)};
++			struct pg_synthesis_input normalized = pg_synthesis_normalize_classifier(synthesis, scope, argument);
++			if (!normalized.checked && !normalized.pending) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
++			struct pg_synthesis_input premises[] = {normalized, pg_synthesis_work_dependency(job, 4)};
+ 			local->fold = pg_synthesis_plain_rule_inputs(synthesis, PG_FOLD_ELIM, NULL, 2, premises);
+ 			if (!local->fold) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+ 		}
+ 	}
+ 	if (local->rule && local->rule != local->fold) { pg_synthesis_forward(synthesis, job, local->rule); return; }
++	struct pg_synthesis_input normalized = pg_synthesis_rule_input(synthesis, local->fold, 0);
+ 	/* A checked Fold supersedes provisional choice, not the Context checks below. */
+ 	if (!local->rule && pg_synthesis_result(local->fold)) local->rule = local->fold;
+ 	if (!local->rule) {
+ 		struct pg_synthesis_structure shapes[] = {
+-			pg_synthesis_classifier_structure_input(synthesis, local->normalized),
++			pg_synthesis_classifier_structure_input(synthesis, normalized),
+ 			pg_synthesis_classifier_structure_input(synthesis, pg_synthesis_work_dependency(job, 4))};
+ 		for (size_t i = 0; i < 2; ++i) {
+ 			if (!pg_synthesis_structure_valid(shapes[i])) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+@@ -870,8 +870,8 @@
+ 	if (pg_evidence_judgement(input) != PG_JUDGEMENT_COMPUTATION) {
+ 		pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return;
+ 	}
+-	if (pg_synthesis_await_input(synthesis, job, local->normalized)) return;
+-	input = pg_synthesis_input_result(local->normalized);
++	if (pg_synthesis_await_input(synthesis, job, normalized)) return;
++	input = pg_synthesis_input_result(normalized);
+ 	if (local->fold->status == PG_SYNTHESIS_PENDING) { pg_synthesis_subscribe(synthesis, job, local->fold, 0); return; }
+ 	if (local->rule || local->fold->status != PG_SYNTHESIS_REJECTED) {
+ 		local->rule = local->fold;
+@@ -887,13 +887,13 @@
+ 		/* Preserve the effectful prefix outside the returned function.
+ 		 * The source adapter uses only checked APP/THUNK/RETURN/FOLD. */
+ 		binder = pg_binder(synthesis->typing->graph);
+-		struct pg_synthesis_job *extended = pg_synthesis_result_context(synthesis, scope, local->normalized, binder);
++		struct pg_synthesis_job *extended = pg_synthesis_result_context(synthesis, scope, normalized, binder);
+ 		struct pg_synthesis_job *variable = pg_synthesis_plain_rule_inputs(synthesis, PG_VARIABLE, binder, 1, &(struct pg_synthesis_input){.pending = pg_synthesis_pending(extended)});
+ 		struct pg_synthesis_input premises[] = {{.pending = pg_synthesis_pending(extended)}, pg_synthesis_work_dependency(job, 4)};
+ 		struct pg_synthesis_job *projected = pg_synthesis_plain_rule_inputs(synthesis, PG_CONTEXT_PROJECTION, NULL, 2, premises);
+ 		struct pg_synthesis_job *applied = pg_synthesis_application(synthesis, (struct pg_synthesis_input){.pending = pg_synthesis_pending(extended)}, (struct pg_synthesis_input){.pending = pg_synthesis_pending(projected)}, (struct pg_synthesis_input){.pending = pg_synthesis_pending(variable)});
+ 		struct pg_synthesis_job *quoted = pg_synthesis_plain_rule_inputs(synthesis, PG_THUNK_INTRO, NULL, 1, &(struct pg_synthesis_input){.pending = pg_synthesis_pending(applied)});
+-		premises[0] = local->normalized;
++		premises[0] = normalized;
+ 		premises[1] = (struct pg_synthesis_input){.pending = pg_synthesis_pending(pg_synthesis_lambda_body(synthesis, (struct pg_synthesis_input){.pending = pg_synthesis_pending(extended)}, (struct pg_synthesis_input){.pending = pg_synthesis_pending(quoted)}))};
+ 		local->rule = pg_synthesis_plain_rule_inputs(synthesis, PG_FOLD_ELIM, NULL, 2, premises);
+ 		pg_synthesis_forward(synthesis, job, local->rule);
+--- a/tests/synthesis.c
++++ b/tests/synthesis.c
+@@ -6546,6 +6546,12 @@
+ 	struct pg_synthesis_input callable = checked_input(pg_synthesis_result(function));
+ 	struct pg_synthesis_input output_type = checked_input(pg_pending_result(carrier));
+ 	struct pg_synthesis_job *known_sequence = pg_synthesis_sequence(&synthesis, c, ready, callable);
++	struct pg_synthesis_input normalized_ready = pg_synthesis_normalize_classifier(&synthesis, c, ready);
++	struct pg_synthesis_job *known_fold = pg_synthesis_plain_rule_inputs(&synthesis,
++		PG_FOLD_ELIM, NULL, 2, (struct pg_synthesis_input[]){normalized_ready, callable});
++	assert(known_fold);
++	assert(pg_synthesis_rule_input(&synthesis, known_fold, 0).checked == normalized_ready.checked);
++	assert(pg_synthesis_rule_input(&synthesis, known_fold, 0).pending == normalized_ready.pending);
+ 	struct pg_synthesis_job *known_context = pg_synthesis_result_context(&synthesis, c, ready, result);
+ 	struct pg_pending *known_result = pg_synthesis_constant_result(&synthesis, c, callable, 1);
+ 	struct pg_synthesis_job *known_clause = pg_synthesis_handler_context(&synthesis, c, output_type,
+@@ -6558,6 +6564,8 @@
+ 	assert(pg_synthesis_work_dependency(known_sequence, 2).checked == ready.checked);
+ 	assert(pg_synthesis_work_dependency(known_sequence, 4).checked == callable.checked);
+ 	same_judgement(complete(&synthesis, known_sequence, PG_SYNTHESIS_DONE), pg_synthesis_result(sequence));
++	assert(complete(&synthesis, known_fold, PG_SYNTHESIS_DONE) == pg_synthesis_result(known_sequence));
++	assert(pg_synthesis_rule_input(&synthesis, known_fold, 0).pending == normalized_ready.pending);
+ 	const struct pg_evidence *known_scope = complete(&synthesis, known_context, PG_SYNTHESIS_DONE);
+ 	assert(pg_evidence_judgement(known_scope) == PG_JUDGEMENT_CONTEXT);
+ 	assert(pg_evidence_context(known_scope) == pg_evidence_context(pg_synthesis_result(extended)));

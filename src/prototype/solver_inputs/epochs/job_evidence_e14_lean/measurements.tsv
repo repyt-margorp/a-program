@@ -1,0 +1,6 @@
+sample	steps	status	parent_job_bytes	candidate_job_bytes	deleted_job_bytes	parent_external_calls	candidate_external_calls	parent_cumulative_aligned_bytes	candidate_cumulative_aligned_bytes
+list	1921	DONE	110744	110632	112	4360	4360	441856	441744
+effect	13142	DONE	645688	644680	1008	27622	27622	2784224	2783216
+captured	2307	DONE	92640	92576	64	7557	7558	736976	736960
+quick	766477	DONE	6726784	6723840	2944	2888424	2887247	229306320	229246880
+handler	2470	DONE	124880	124768	112	4649	4649	469008	468896
