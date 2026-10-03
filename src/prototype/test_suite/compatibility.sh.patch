@@ -1,0 +1,113 @@
+--- a/compatibility.sh
++++ b/compatibility.sh
+@@ -8,7 +8,7 @@
+ failed=0
+ total=0
+ 
+-while read -r expectation name left right; do
++while read -r expectation name pairs; do
+ 	[ -n "$expectation" ] || continue
+ 	total=$((total + 1))
+ 	code=0
+@@ -23,26 +23,11 @@
+ 			failed=$((failed + 1))
+ 		fi
+ 	fi
+-	if [ -n "$left" ]; then
+-		if ! "${runtime[@]}" --equal "$fixtures/$name.p" "$left" "$right"; then
++	for pair in $pairs; do
++		if ! "${runtime[@]}" --equal "$fixtures/$name.p" "${pair%:*}" "${pair#*:}"; then
+ 			failed=$((failed + 1))
+ 		fi
+-	fi
+-	if [ "$name" = typing/function_graph_generated_length_check ]; then
+-		if ! "${runtime[@]}" --equal "$fixtures/$name.p" certifiedMain expected; then
+-			failed=$((failed + 1))
+-		fi
+-	fi
+-	if [ "$name" = typing/function_graph_dependent_spine_check ]; then
+-		if ! "${runtime[@]}" --equal "$fixtures/$name.p" certified expected; then
+-			failed=$((failed + 1))
+-		fi
+-	fi
+-	if [ "$name" = typing/function_graph_two_recursive_calls_check ]; then
+-		if ! "${runtime[@]}" --equal "$fixtures/$name.p" certified expected; then
+-			failed=$((failed + 1))
+-		fi
+-	fi
++	done
+ done <<'CASES'
+ 0 typing/explicit_index_family_vec_check
+ 0 cbpv/runtime_strict_effects_check
+@@ -61,48 +46,28 @@
+ 0 typing/iadts_general_conformance_check
+ 0 typing/typed_shared_core_definition_check
+ 0 typing/dependent_constructor_provider_check
+-0 typing/outer_ih_nested_match_check tailResult tailExpected
+-0 typing/outer_ih_nested_match_check functionResult functionExpected
+-0 typing/recursive_ih_field_identity_check leftResult leftExpected
+-0 typing/recursive_ih_field_identity_check rightResult rightExpected
+-0 typing/recursive_ih_field_identity_check bothResult leftExpected
+-0 typing/recursive_ih_field_identity_check sizeResult sizeExpected
+-0 typing/recursive_ih_field_identity_check choiceLeftResult leftExpected
+-0 typing/recursive_ih_field_identity_check choiceRightResult rightExpected
+-0 typing/list_map_induction_check directMain expectedMulti
+-0 typing/list_map_induction_check helperMain expectedMulti
+-0 typing/list_map_induction_check monomorphicEmpty expectedEmpty
+-0 typing/list_map_induction_check monomorphicSingle expectedSingle
+-0 typing/list_map_induction_check monomorphicMulti expectedMulti
+-0 typing/list_map_induction_check polymorphicMain expectedMulti
+-0 typing/list_map_induction_check sequencedMain expectedMulti
++0 typing/outer_ih_nested_match_check tailResult:tailExpected functionResult:functionExpected
++0 typing/recursive_ih_field_identity_check leftResult:leftExpected rightResult:rightExpected bothResult:leftExpected sizeResult:sizeExpected choiceLeftResult:leftExpected choiceRightResult:rightExpected
++0 typing/list_map_induction_check directMain:expectedMulti helperMain:expectedMulti monomorphicEmpty:expectedEmpty monomorphicSingle:expectedSingle monomorphicMulti:expectedMulti polymorphicMain:expectedMulti sequencedMain:expectedMulti
+ 0 typing/dependent_pi_surface_check
+ 0 typing/indexed_branch_rebuild_check
+ 0 typing/residual_index_equation_negative
+ 0 ../../../../../../examples/type-infer-and-check/level2/02_tree
+ 0 typing/dependent_recursive_comparison_check
+-0 typing/insertion_sort_check main expected
+-0 typing/eager_insertion_check main expected
+-0 typing/eager_insertion_check earlyMain earlyExpected
+-0 typing/eager_insertion_check traceEarly traceEarlyExpected
+-0 typing/eager_insertion_check traceRecursive traceRecursiveExpected
++0 typing/insertion_sort_check main:expected
++0 typing/eager_insertion_check main:expected earlyMain:earlyExpected traceEarly:traceEarlyExpected traceRecursive:traceRecursiveExpected
+ 1 typing/if8_order_check
+-0 typing/function_graph_generated_length_check main expected
++0 typing/function_graph_generated_length_check main:expected certifiedMain:expected
+ 0 typing/function_graph_certified_length_model
+-0 typing/host_text_recursive_motive_check main expected
+-0 typing/host_expression_evaluator_check main expected
+-0 typing/function_graph_dependent_output_ih_check main expected
+-0 typing/function_graph_two_recursive_calls_check main expected
+-0 typing/function_graph_dependent_spine_check main expected
+-0 typing/function_graph_nominal_index_constant_motive_check main expected
+-0 typing/function_graph_block_binding_check main expected
++0 typing/host_text_recursive_motive_check main:expected
++0 typing/host_expression_evaluator_check main:expected
++0 typing/function_graph_dependent_output_ih_check main:expected
++0 typing/function_graph_two_recursive_calls_check main:expected certified:expected
++0 typing/function_graph_dependent_spine_check main:expected certified:expected
++0 typing/function_graph_nominal_index_constant_motive_check main:expected
++0 typing/function_graph_block_binding_check main:expected
+ 1 typing/function_graph_named_case_check
+-0 typing/if8_fuel_free_quicksort_check main expected
+-0 typing/if8_fuel_free_quicksort_check emptyMain emptyExpected
+-0 typing/if8_fuel_free_quicksort_check singletonMain singletonExpected
+-0 typing/if8_fuel_free_quicksort_check ascendingMain ascendingExpected
+-0 typing/if8_fuel_free_quicksort_check descendingMain descendingExpected
+-0 typing/if8_fuel_free_quicksort_check duplicateMain duplicateExpected
++0 typing/if8_fuel_free_quicksort_check main:expected emptyMain:emptyExpected singletonMain:singletonExpected ascendingMain:ascendingExpected descendingMain:descendingExpected duplicateMain:duplicateExpected
+ 1 negative/function_graph_incompatible_recursive_property
+ 0 negative/function_graph_coarse_forgery
+ 1 ../../../../../../tests/acceptance/generated-function-graph-direct-forgery
+@@ -124,7 +89,7 @@
+ # Despite its historical filename, residual_index_equation_negative contains
+ # no false equality assertion: the result is Nat independently of the index.
+ # Retaining an unresolved index equation must not reject that constant motive.
+-printf 'source compatibility and selected results: %s/%s passed\n' "$((total - failed))" "$total"
++printf 'source compatibility: %s sources; %s failures\n' "$total" "$failed"
+ test "$failed" -eq 0
+ 
+ # Check both base cases and recursive directions, including the returned LE
