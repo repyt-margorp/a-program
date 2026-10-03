@@ -1,7 +1,7 @@
 # Parallel Core, Backend, Performance and Surface Work
 
 Date: 2026-10-03
-Status: Core coordinates; Job/Evidence, C and performance Goals active; Surface delivered.
+Status: Core coordinates; Job/Evidence, C and performance Goals active; Surface delivered and stopped.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `64df10d`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -18,12 +18,21 @@ not the existing owner work lists.
 | 1 | `core`: coordination, design audit, verification and Main integration | All lanes | Sole integration owner; no parallel SE implementation |
 | 2 | `c-backend`: downstream C design | #44, #49; shared policy #47 | Single-tail List epoch integrated; numeric partition work in progress |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Focused epoch pushed; Main integration awaits broad gates |
-| 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; worker available for further scope |
+| 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
 | 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | Separate worker Goal active at `5035c7a` |
 
 ## 1. Core Ownership and Integration
 
 ### Subjective (User)
+
+2026-10-03, English paraphrase of the latest explicit instruction: if Surface
+is finished, shut down that session. Preserve its delivered work; this does not
+instruct deleting its branch/worktree or closing unfinished parts of #57.
+
+2026-10-03, English paraphrase of the current Core Goal: supervise the four
+implementation scopes and their Goals, resolve conflicts, review/merge verified
+results and finish the whole assigned work. A delivered epoch does not shrink
+the remaining scope or establish completion of another lane.
 
 2026-10-03, English paraphrase of the latest explicit decision: this session
 becomes coordination Core, specializing in merges and audits. Move actual
@@ -357,3 +366,14 @@ Core owns coordination/review/integration only and has stopped parallel SE code
 edits. The handoff/role decision is pushed on Main as `5035c7a`; no accepted
 implementation, model update or issue closure was performed for setup.
 GitHub poll at this checkpoint found no new open issue/PR since the prior poll.
+
+2026-10-03 04:09 UTC: Core verified Surface's pane reported `Goal achieved`,
+its published implementation remains `276f4c3`, and only its owning Goal document
+has later local edits. At the user's explicit instruction Core closed only
+`a-program:surface`; the three other worker windows remain live. The worktree,
+branch, frozen evidence and local documentation are retained. No issue closure
+or broader source promotion is implied. Job/Evidence has begun actual owner
+deletions and focused tests; Core granted its requested O2 acceptance `-j2`
+correctness slot. Comparative timing remains exclusive. Performance reports
+restored-frame scratch leaks in its sanitizer batch and is verifying a separate
+evaluator-only correction; its failed published epoch is not merged or waived.
