@@ -32,9 +32,9 @@ distinct from Root fresh gates and accepted performance promotion.
 
 | Owner / issue scope | Delivered and verified | Not yet delivered / next boundary |
 | --- | --- | --- |
-| Job/Evidence; SE1-SE5 / AP0, related #51/#47 | E1-E4/E6/E7/E8 prototype Main; exact E7/E8 `3ad0303`/`50cd56b` and joint runtime128 verified; integrations `efc3ff0`/`f6d7cfe` | E9 frozen24 and isolated E10 frozen19 await separate publication/qualification; strict3 remain |
-| C backend; #44/#49 | C8 task `884d5bb` exact17 published/pushed; Root twelve current-E8 strict-O2 gates pass, prototype Main `dea5fc1`; C7 eleven current-E6 gates remain historical | Private applied-List follow-up pending; native Acc/QuickSort and broader C/Identity/admissibility criteria remain open |
-| Performance; #56, measurement work #51/#52 | E6 measurement task `44e479b`, Main `99efcf7`, exact114 published; 30 samples/292 pins verified. E7/E8 qualified; accepted13-file candidate O2 386/0 and affected sanitizer groups8/0 | Accepted epoch `7631e5a` verified/pushed; prototype compatibility verified; state-image follow-up received; E9/E10 next; accepted-only timing unmeasured and #52 separate |
+| Job/Evidence; SE1-SE5 / AP0, related #51/#47 | E1-E4/E6/E7/E8 prototype Main; exact E7/E8 `3ad0303`/`50cd56b` and joint runtime128 verified; integrations `efc3ff0`/`f6d7cfe` | E9 task `bd1ddf3` exact24 and isolated E10 task `6715af2` exact19 published/pushed; qualification pending; strict3 remain |
+| C backend; #44/#49 | C8 task `884d5bb` exact17 published/pushed; Root twelve current-E8 strict-O2 gates pass, prototype Main `dea5fc1`; C7 eleven current-E6 gates remain historical | C9 task `60c100c` exact38 published/pushed; Root current-E8 thirteen gates running; native Acc/QuickSort and broader C/Identity/admissibility criteria remain open |
+| Performance; #56, measurement work #51/#52 | E6 measurement task `44e479b`, Main `99efcf7`, exact114 published; 30 samples/292 pins verified. E7/E8 qualified; accepted13-file candidate O2 386/0 and affected sanitizer groups8/0 | Accepted epoch `7631e5a` verified/pushed; prototype compatibility verified; state-image task `ac6a8b2` exact2 published/pushed and integrated; E9/E10 next; accepted-only timing unmeasured and #52 separate |
 | Surface; #57 | Delivered prototype integrated; session stopped; Merge reviewed polarity, brace/migration, scope and version gates | Accepted language policy/promotion and selector diagnostics remain unresolved; #57 stays open; no active worker |
 | Verification audit; #59/PR #60, related #51 | Static task `7ed3ad1` pushed/remote verified; Main merge `5683755`; Merge reproduced exact inventory and verified 385 source hashes/114 archived dependencies | Bounded static delivery complete; dynamic/full #59 open; four-job cost deferred because full config review missed eight-minute boundary; no timing executed |
 | Sort library; #41/F3-F5 | PR54 integrated and GitHub merged; isolated worker actual gpt-6.1-sol/xhigh verified, bounded Goal complete. Finite-function task `5e6ed84` exact11 pushed with corrected provenance and two worker focused gates | Root two focused E6 gates pass; exact11 prototype Main integrated; accepted Sort/F5 adoption remains separate |
@@ -237,6 +237,18 @@ typed owners; preserve Core/type separation and ordinary Solve semantics.
 
 ### Objective (Code)
 
+2026-10-03 Root task review: E9 `bd1ddf3` exact24 and E10 `6715af2` exact19
+are independently pushed/remote verified, each preserving E8 `50cd56b` parent.
+E10 has a distinct isolated task branch; E9 Git metadata/index advancement leaves
+later live canonical bytes unchanged. [Review](../src/prototype/solver_inputs/joint_verification/e9-e10-publication-review.json)
+pins source-guard and receipt-storage decisions; combined qualification remains
+performance-owned. C9 task `60c100c` exact38 is pushed/remote verified; Root all13
+current-E8 gates run at one build job. Its frozen older C8-pending status is
+superseded by Root C8 gates/pushed Main. C holds safely and Job packages E11 then
+holds E12 unqualified. State-image task `ac6a8b2` exact2 is published/integrated
+as `6867359`: all65 pins/36 outcomes freshly checked, three completed image
+pairs equal,12 inert resaves pending3 with exact bytes. Counts are not RAM/time.
+
 2026-10-03 fresh Merge publication: Main `e14856f` push succeeded and remote
 matches, including accepted performance-only `7631e5a`, E7/E8/C8 and deployed
 heartbeat source/evidence. The selected promotion meets its separate criteria;
@@ -279,8 +291,8 @@ Accepted `src/evidence.*`, `src/iadt.*` and their tests retain unrelated edits.
 partial prototype deliveries and distinct remaining criteria, not a universal
 all-SE/strict-resume gate. #41 still needs F5 accepted adoption; #44 remaining
 export/admissibility/dependent/higher-Identity contracts; #49 native Acc/QuickSort;
-#56 the selected accepted promotion plus its remaining profiling/arena/index and
-owner work; #57 accepted language-policy adoption; #51 owner/lifecycle/topology
+#56 selected accepted promotion complete, with its separate accepted-current-head
+measurements, profiling/arena/index and owner work remaining; #57 accepted language-policy adoption; #51 owner/lifecycle/topology
 reproduction gates; #59 measured cost/dynamic coverage. #43/#47/#52 retain separate
 recursion/relevance/equality decisions. #56 explicitly permits separately
 characterized pre-existing reload failures. No completed issue was found merely

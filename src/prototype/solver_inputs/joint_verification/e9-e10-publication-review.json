@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-03",
+  "scope": "Root frozen task publication/code review; independent E9 and isolated E10, not joint Main acceptance",
+  "tasks": [
+    {
+      "epoch": "e9",
+      "task": "bd1ddf3a0ac86c365c1b1bf5992eb254cf752a99",
+      "parent": "50cd56b2a52b7e370bc7ecb3436c4993e2e5d6a2",
+      "manifest": "2f595265ace0c179770970ba44036a1729681430a534e50043e7fdf8367aa7cf",
+      "transport": "99e0c6f2c42773fa23e22561956940484e6a08a427e42e974d4d7898f2458e74",
+      "worker_report_hashes_freshly_verified": 26,
+      "Main_integrated": false
+    },
+    {
+      "epoch": "e10",
+      "task": "6715af2d91f9024fd85e122db57a2415b3c0d747",
+      "parent": "50cd56b2a52b7e370bc7ecb3436c4993e2e5d6a2",
+      "manifest": "fed2ab6bf1d774b8373d7a35466d65f9a17bcb485c428014c71a4b6b2af6520b",
+      "transport": "aae854d01e708c507db959763157d1d11bc6354d8b3ece37d93c5d45560db162",
+      "worker_report_hashes_freshly_verified": 17,
+      "Main_integrated": false
+    }
+  ],
+  "E9_review": "APGSRC70 fourth namespace word bounds position by activated and requires completed registration. Ordinal conveys no child acceptance: ordinary module Solve awaits every claimed prefix owner, preserving failed/pending barriers and inert input-only zero position. Source-claim and in-range forged-prefix controls retained.",
+  "E10_review": "Unary borrowed-selection ordinal is zero, so store exact selected proof pointer; multi-premise receipt selections and independent typing authority retained. Diagnostic trailing bytes separately count stored edges. Aligned receipt extent remains80 bytes; no RAM/time claim.",
+  "qualification_order": "Performance independently qualifies distinct E9 first, then named composed E9+E10; preserve isolated E8+E10 worker evidence and original split/setup/strict outcomes.",
+  "later_live_work": "E11/E12 excluded from both exact frozen task epochs; task branch metadata/index update preserves live bytes.",
+  "Root_Mainedits": "No accepted Job/Evidence changes; neither task integrated into Main pending qualification."
+}
