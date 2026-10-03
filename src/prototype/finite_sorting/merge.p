@@ -1,4 +1,16 @@
 // Keep the legacy repeated-insertion merge; this is not linear-time merging.
+// Generalize payloads only: Nat still indexes fuel and measured lengths.
+merge_sort_fuel_by := \A:@ => \le:A->A->Bool => \fuel:Nat => fuel
+	@zero => (\xs:List A => xs)
+	@succ remaining => (\xs:List A => xs
+		@nil => (List A).nil
+		@cons head tail => (splitAlternating A xs @halves left right =>
+			mergeBy A &le (*remaining left) (*remaining right)));
+merge_sort_fuel_by :: (A:@)->(A->A->Bool)->Nat->List A->List A;
+merge_sort_by := \A:@ => \le:A->A->Bool => \xs:List A => measure A xs
+	@measured size values => merge_sort_fuel_by A &le size xs;
+merge_sort_by :: (A:@)->(A->A->Bool)->List A->List A;
+
 merge_local := \A:@ => \R:A->A->@ => \le:A->A->Bool =>
 	\decide:(x:A)->(y:A)->general_decision A R x y (le x y) => \xs:List A => \ys:List A => xs
 	@(self => general_locally_sorted A R ys->general_locally_sorted A R (mergeBy A &le self ys))
@@ -49,110 +61,110 @@ split_content := \A:@ => \xs:List A => xs
 	@cons h t => split_content_step A h t (splitAlternating A t) *t;
 split_content :: (A:@)->(xs:List A)->permutation A xs (split_contents A (splitAlternating A xs));
 
-merge_fuel_content_parts := \le:Nat->Nat->Bool => \n:Nat => \xs:List Nat =>
-	\ih:(values:List Nat)->permutation Nat values (mergeSortFuel &le n values) =>
-	\parts:Halves Nat => parts
-	@(self => permutation Nat xs (split_contents Nat self)->permutation Nat xs
-		(self @halves l r => mergeBy Nat &le (mergeSortFuel &le n l) (mergeSortFuel &le n r)))
-	@halves l r => (\prior:permutation Nat xs (append Nat l r) =>
-		(permutation Nat).compose xs (append Nat l r)
-			(mergeBy Nat &le (mergeSortFuel &le n l) (mergeSortFuel &le n r)) prior
-			((permutation Nat).compose (append Nat l r)
-				(append Nat (mergeSortFuel &le n l) (mergeSortFuel &le n r))
-				(mergeBy Nat &le (mergeSortFuel &le n l) (mergeSortFuel &le n r))
-				(permutation_append Nat l (mergeSortFuel &le n l) (ih l) r (mergeSortFuel &le n r) (ih r))
-				(merge_content Nat &le (mergeSortFuel &le n l) (mergeSortFuel &le n r))));
-merge_fuel_content := \le:Nat->Nat->Bool => \fuel:Nat => fuel
-	@(n => (xs:List Nat)->permutation Nat xs (mergeSortFuel &le n xs))
-	@zero => (\xs:List Nat => permutation_refl Nat xs)
-	@succ n => (\xs:List Nat => xs
-		@(self => permutation Nat self (mergeSortFuel &le (Nat.succ n) self))
-		@nil => (permutation Nat).nil
-		@cons h t => merge_fuel_content_parts &le n ((List Nat).cons h t) &*n
-			(splitAlternating Nat ((List Nat).cons h t)) (split_content Nat ((List Nat).cons h t)));
-merge_fuel_content :: (le:Nat->Nat->Bool)->(n:Nat)->(xs:List Nat)->
-	permutation Nat xs (mergeSortFuel &le n xs);
-merge_content_measured := \le:Nat->Nat->Bool => \xs:List Nat => \out:Measured Nat => out
-	@(self => permutation Nat xs (self @measured n values => mergeSortFuel &le n xs))
-	@measured n values => merge_fuel_content &le n xs;
-merge_sort_content := \le:Nat->Nat->Bool => \xs:List Nat => merge_content_measured &le xs (measure Nat xs);
-merge_sort_content :: (le:Nat->Nat->Bool)->(xs:List Nat)->permutation Nat xs (mergeSort &le xs);
+merge_fuel_content_parts := \A:@ => \le:A->A->Bool => \n:Nat => \xs:List A =>
+	\ih:(values:List A)->permutation A values (merge_sort_fuel_by A &le n values) =>
+	\parts:Halves A => parts
+	@(self => permutation A xs (split_contents A self)->permutation A xs
+		(self @halves l r => mergeBy A &le (merge_sort_fuel_by A &le n l) (merge_sort_fuel_by A &le n r)))
+	@halves l r => (\prior:permutation A xs (append A l r) =>
+		(permutation A).compose xs (append A l r)
+			(mergeBy A &le (merge_sort_fuel_by A &le n l) (merge_sort_fuel_by A &le n r)) prior
+			((permutation A).compose (append A l r)
+				(append A (merge_sort_fuel_by A &le n l) (merge_sort_fuel_by A &le n r))
+				(mergeBy A &le (merge_sort_fuel_by A &le n l) (merge_sort_fuel_by A &le n r))
+				(permutation_append A l (merge_sort_fuel_by A &le n l) (ih l) r (merge_sort_fuel_by A &le n r) (ih r))
+				(merge_content A &le (merge_sort_fuel_by A &le n l) (merge_sort_fuel_by A &le n r))));
+merge_fuel_content := \A:@ => \le:A->A->Bool => \fuel:Nat => fuel
+	@(n => (xs:List A)->permutation A xs (merge_sort_fuel_by A &le n xs))
+	@zero => (\xs:List A => permutation_refl A xs)
+	@succ n => (\xs:List A => xs
+		@(self => permutation A self (merge_sort_fuel_by A &le (Nat.succ n) self))
+		@nil => (permutation A).nil
+		@cons h t => merge_fuel_content_parts A &le n ((List A).cons h t) &*n
+			(splitAlternating A ((List A).cons h t)) (split_content A ((List A).cons h t)));
+merge_fuel_content :: (A:@)->(le:A->A->Bool)->(n:Nat)->(xs:List A)->
+	permutation A xs (merge_sort_fuel_by A &le n xs);
+merge_content_measured := \A:@ => \le:A->A->Bool => \xs:List A => \out:Measured A => out
+	@(self => permutation A xs (self @measured n values => merge_sort_fuel_by A &le n xs))
+	@measured n values => merge_fuel_content A &le n xs;
+merge_sort_content := \A:@ => \le:A->A->Bool => \xs:List A => merge_content_measured A &le xs (measure A xs);
+merge_sort_content :: (A:@)->(le:A->A->Bool)->(xs:List A)->permutation A xs (merge_sort_by A &le xs);
 
 // Fuel zero preserves contents but need not sort. The length bound is essential.
-merge_fits := @\n:Nat => @\xs:List Nat => {
-	nil:(bound:Nat)->* bound (List Nat).nil;
-	cons:(bound:Nat)->(h:Nat)->(t:List Nat)->* bound t->* (Nat.succ bound) ((List Nat).cons h t);
+merge_fits := \A:@ => @\n:Nat => @\xs:List A => {
+	nil:(bound:Nat)->* bound (List A).nil;
+	cons:(bound:Nat)->(h:A)->(t:List A)->* bound t->* (Nat.succ bound) ((List A).cons h t);
 };
-merge_fits_weaken := \n:Nat => \xs:List Nat => \p:merge_fits n xs => p
-	@nil bound => merge_fits.nil (Nat.succ bound)
-	@cons bound h t prior => merge_fits.cons (Nat.succ bound) h t *prior;
-merge_fits_tail := \n:Nat => \h:Nat => \t:List Nat => \p:merge_fits (Nat.succ n) ((List Nat).cons h t) => p
+merge_fits_weaken := \A:@ => \n:Nat => \xs:List A => \p:merge_fits A n xs => p
+	@nil bound => (merge_fits A).nil (Nat.succ bound)
+	@cons bound h t prior => (merge_fits A).cons (Nat.succ bound) h t *prior;
+merge_fits_tail := \A:@ => \n:Nat => \h:A => \t:List A => \p:merge_fits A (Nat.succ n) ((List A).cons h t) => p
 	@cons bound x xs prior => prior;
-merge_fits_sized := \n:Nat => \v:SizedList Nat n => \xs:List Nat => \p:sized_contents Nat n v xs => p
-	@(bound values source self => merge_fits bound source)
-	@nil => merge_fits.nil Nat.zero
-	@cons bound h t values prior => merge_fits.cons bound h values *prior;
-merge_fits_zero := \R:Nat->Nat->@ => \xs:List Nat => \p:merge_fits Nat.zero xs => p
-	@nil bound => (general_locally_sorted Nat R).nil;
-merge_fits_sized :: (n:Nat)->(v:SizedList Nat n)->(xs:List Nat)->sized_contents Nat n v xs->merge_fits n xs;
-merge_fits_zero :: (R:Nat->Nat->@)->(xs:List Nat)->merge_fits Nat.zero xs->general_locally_sorted Nat R xs;
+merge_fits_sized := \A:@ => \n:Nat => \v:SizedList A n => \xs:List A => \p:sized_contents A n v xs => p
+	@(bound values source self => merge_fits A bound source)
+	@nil => (merge_fits A).nil Nat.zero
+	@cons bound h t values prior => (merge_fits A).cons bound h values *prior;
+merge_fits_zero := \A:@ => \R:A->A->@ => \xs:List A => \p:merge_fits A Nat.zero xs => p
+	@nil bound => (general_locally_sorted A R).nil;
+merge_fits_sized :: (A:@)->(n:Nat)->(v:SizedList A n)->(xs:List A)->sized_contents A n v xs->merge_fits A n xs;
+merge_fits_zero :: (A:@)->(R:A->A->@)->(xs:List A)->merge_fits A Nat.zero xs->general_locally_sorted A R xs;
 
-merge_parts_bound := \n:Nat => @\parts:Halves Nat => {
-	halves:(l:List Nat)->(r:List Nat)->merge_fits n l->merge_fits n r->* ((Halves Nat).halves l r);
+merge_parts_bound := \A:@ => \n:Nat => @\parts:Halves A => {
+	halves:(l:List A)->(r:List A)->merge_fits A n l->merge_fits A n r->* ((Halves A).halves l r);
 };
-merge_split_bound_step := \n:Nat => \h:Nat => \parts:Halves Nat => \p:merge_parts_bound n parts => p
-	@(values self => merge_parts_bound (Nat.succ n)
-		(values @halves l r => (Halves Nat).halves ((List Nat).cons h r) l))
-	@halves l r left right => (merge_parts_bound (Nat.succ n)).halves ((List Nat).cons h r) l
-		(merge_fits.cons n h r right) (merge_fits_weaken n l left);
-merge_split_bound := \n:Nat => \xs:List Nat => \p:merge_fits n xs => p
-	@(bound values self => merge_parts_bound bound (splitAlternating Nat values))
-	@nil bound => (merge_parts_bound bound).halves (List Nat).nil (List Nat).nil
-		(merge_fits.nil bound) (merge_fits.nil bound)
-	@cons bound h t prior => merge_split_bound_step bound h (splitAlternating Nat t) *prior;
-merge_split_bound :: (n:Nat)->(xs:List Nat)->merge_fits n xs->merge_parts_bound n (splitAlternating Nat xs);
+merge_split_bound_step := \A:@ => \n:Nat => \h:A => \parts:Halves A => \p:merge_parts_bound A n parts => p
+	@(values self => merge_parts_bound A (Nat.succ n)
+		(values @halves l r => (Halves A).halves ((List A).cons h r) l))
+	@halves l r left right => (merge_parts_bound A (Nat.succ n)).halves ((List A).cons h r) l
+		((merge_fits A).cons n h r right) (merge_fits_weaken A n l left);
+merge_split_bound := \A:@ => \n:Nat => \xs:List A => \p:merge_fits A n xs => p
+	@(bound values self => merge_parts_bound A bound (splitAlternating A values))
+	@nil bound => (merge_parts_bound A bound).halves (List A).nil (List A).nil
+		((merge_fits A).nil bound) ((merge_fits A).nil bound)
+	@cons bound h t prior => merge_split_bound_step A bound h (splitAlternating A t) *prior;
+merge_split_bound :: (A:@)->(n:Nat)->(xs:List A)->merge_fits A n xs->merge_parts_bound A n (splitAlternating A xs);
 
 
-merge_right_bound := \n:Nat => \parts:Halves Nat => parts @halves l r => merge_fits n r;
-merge_split_cons_bound := \n:Nat => \h:Nat => \parts:Halves Nat => \p:merge_parts_bound n parts => p
-	@(values self => merge_right_bound n (values @halves l r => (Halves Nat).halves ((List Nat).cons h r) l))
+merge_right_bound := \A:@ => \n:Nat => \parts:Halves A => parts @halves l r => merge_fits A n r;
+merge_split_cons_bound := \A:@ => \n:Nat => \h:A => \parts:Halves A => \p:merge_parts_bound A n parts => p
+	@(values self => merge_right_bound A n (values @halves l r => (Halves A).halves ((List A).cons h r) l))
 	@halves l r left right => left;
 
-merge_fuel_local_parts := \R:Nat->Nat->@ => \le:Nat->Nat->Bool =>
-	\decide:(x:Nat)->(y:Nat)->general_decision Nat R x y (le x y) => \n:Nat =>
-	\ih:(xs:List Nat)->merge_fits n xs->general_locally_sorted Nat R (mergeSortFuel &le n xs) =>
-	\parts:Halves Nat => parts
-	@(self => merge_right_bound n self->general_locally_sorted Nat R (self @halves l r =>
-		mergeBy Nat &le (mergeSortFuel &le n l) (mergeSortFuel &le n r)))
-	@halves l r => (\bound:merge_fits n r => merge_local Nat R &le decide
-		(mergeSortFuel &le n l) (mergeSortFuel &le n r) (ih r bound));
-merge_fuel_local := \R:Nat->Nat->@ => \le:Nat->Nat->Bool =>
-	\decide:(x:Nat)->(y:Nat)->general_decision Nat R x y (le x y) => \fuel:Nat => fuel
-	@(n => (xs:List Nat)->merge_fits n xs->general_locally_sorted Nat R (mergeSortFuel &le n xs))
-	@zero => (\xs:List Nat => merge_fits_zero R xs)
-	@succ n => (\xs:List Nat => xs
-		@(self => merge_fits (Nat.succ n) self->general_locally_sorted Nat R (mergeSortFuel &le (Nat.succ n) self))
-		@nil => (\bound:merge_fits (Nat.succ n) (List Nat).nil => (general_locally_sorted Nat R).nil)
-		@cons h t => (\bound:merge_fits (Nat.succ n) ((List Nat).cons h t) =>
-			merge_fuel_local_parts R &le decide n &*n (splitAlternating Nat ((List Nat).cons h t))
-				(merge_split_cons_bound n h (splitAlternating Nat t)
-					(merge_split_bound n t (merge_fits_tail n h t bound)))));
-merge_fuel_local :: (R:Nat->Nat->@)->(le:Nat->Nat->Bool)->
-	((x:Nat)->(y:Nat)->general_decision Nat R x y (le x y))->(n:Nat)->(xs:List Nat)->
-	merge_fits n xs->general_locally_sorted Nat R (mergeSortFuel &le n xs);
-merge_local_measured := \R:Nat->Nat->@ => \le:Nat->Nat->Bool =>
-	\decide:(x:Nat)->(y:Nat)->general_decision Nat R x y (le x y) => \xs:List Nat =>
-	\out:Measured Nat => \p:measurement_contents Nat xs out => p
-	@(values self => general_locally_sorted Nat R (values @measured n v => mergeSortFuel &le n xs))
-	@measured n v representation => merge_fuel_local R &le decide n xs (merge_fits_sized n v xs representation);
-merge_sort_local := \R:Nat->Nat->@ => \le:Nat->Nat->Bool =>
-	\decide:(x:Nat)->(y:Nat)->general_decision Nat R x y (le x y) => \xs:List Nat =>
-	merge_local_measured R &le decide xs (measure Nat xs) (measure_content_result Nat xs);
-merge_sort_local :: (R:Nat->Nat->@)->(le:Nat->Nat->Bool)->
-	((x:Nat)->(y:Nat)->general_decision Nat R x y (le x y))->(xs:List Nat)->
-	general_locally_sorted Nat R (mergeSort &le xs);
-merge_backend := \R:Nat->Nat->@ => \le:Nat->Nat->Bool =>
-	\decide:(x:Nat)->(y:Nat)->general_decision Nat R x y (le x y) =>
-	(sorting_backend Nat R).mk &(mergeSort &le) &(merge_sort_local R &le decide) &(merge_sort_content &le);
-merge_backend :: (R:Nat->Nat->@)->(le:Nat->Nat->Bool)->
-	((x:Nat)->(y:Nat)->general_decision Nat R x y (le x y))->sorting_backend Nat R;
+merge_fuel_local_parts := \A:@ => \R:A->A->@ => \le:A->A->Bool =>
+	\decide:(x:A)->(y:A)->general_decision A R x y (le x y) => \n:Nat =>
+	\ih:(xs:List A)->merge_fits A n xs->general_locally_sorted A R (merge_sort_fuel_by A &le n xs) =>
+	\parts:Halves A => parts
+	@(self => merge_right_bound A n self->general_locally_sorted A R (self @halves l r =>
+		mergeBy A &le (merge_sort_fuel_by A &le n l) (merge_sort_fuel_by A &le n r)))
+	@halves l r => (\bound:merge_fits A n r => merge_local A R &le decide
+		(merge_sort_fuel_by A &le n l) (merge_sort_fuel_by A &le n r) (ih r bound));
+merge_fuel_local := \A:@ => \R:A->A->@ => \le:A->A->Bool =>
+	\decide:(x:A)->(y:A)->general_decision A R x y (le x y) => \fuel:Nat => fuel
+	@(n => (xs:List A)->merge_fits A n xs->general_locally_sorted A R (merge_sort_fuel_by A &le n xs))
+	@zero => (\xs:List A => merge_fits_zero A R xs)
+	@succ n => (\xs:List A => xs
+		@(self => merge_fits A (Nat.succ n) self->general_locally_sorted A R (merge_sort_fuel_by A &le (Nat.succ n) self))
+		@nil => (\bound:merge_fits A (Nat.succ n) (List A).nil => (general_locally_sorted A R).nil)
+		@cons h t => (\bound:merge_fits A (Nat.succ n) ((List A).cons h t) =>
+			merge_fuel_local_parts A R &le decide n &*n (splitAlternating A ((List A).cons h t))
+				(merge_split_cons_bound A n h (splitAlternating A t)
+					(merge_split_bound A n t (merge_fits_tail A n h t bound)))));
+merge_fuel_local :: (A:@)->(R:A->A->@)->(le:A->A->Bool)->
+	((x:A)->(y:A)->general_decision A R x y (le x y))->(n:Nat)->(xs:List A)->
+	merge_fits A n xs->general_locally_sorted A R (merge_sort_fuel_by A &le n xs);
+merge_local_measured := \A:@ => \R:A->A->@ => \le:A->A->Bool =>
+	\decide:(x:A)->(y:A)->general_decision A R x y (le x y) => \xs:List A =>
+	\out:Measured A => \p:measurement_contents A xs out => p
+	@(values self => general_locally_sorted A R (values @measured n v => merge_sort_fuel_by A &le n xs))
+	@measured n v representation => merge_fuel_local A R &le decide n xs (merge_fits_sized A n v xs representation);
+merge_sort_local := \A:@ => \R:A->A->@ => \le:A->A->Bool =>
+	\decide:(x:A)->(y:A)->general_decision A R x y (le x y) => \xs:List A =>
+	merge_local_measured A R &le decide xs (measure A xs) (measure_content_result A xs);
+merge_sort_local :: (A:@)->(R:A->A->@)->(le:A->A->Bool)->
+	((x:A)->(y:A)->general_decision A R x y (le x y))->(xs:List A)->
+	general_locally_sorted A R (merge_sort_by A &le xs);
+merge_backend := \A:@ => \R:A->A->@ => \le:A->A->Bool =>
+	\decide:(x:A)->(y:A)->general_decision A R x y (le x y) =>
+	(sorting_backend A R).mk &(merge_sort_by A &le) &(merge_sort_local A R &le decide) &(merge_sort_content A &le);
+merge_backend :: (A:@)->(R:A->A->@)->(le:A->A->Bool)->
+	((x:A)->(y:A)->general_decision A R x y (le x y))->sorting_backend A R;
