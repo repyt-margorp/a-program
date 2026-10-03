@@ -1,7 +1,7 @@
 # Parallel Core, Backend, Performance and Surface Work
 
 Date: 2026-10-03
-Status: lane assignment selected; worker setup in progress; measurements pending.
+Status: all three workers running; Core trial and worker verification in progress.
 Code baseline: `main`, `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Local state: unfinished `identity_boundary_trial`; unrelated accepted-source and
 test edits are excluded. This plan changes no implementation or promotion rules.
@@ -14,13 +14,18 @@ Supersedes the earlier three-session assignment, not the existing owner work lis
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | `core`: Job/Evidence ownership, exact resume and integration | SE1-SE5, AP0 | In progress in the existing work list |
-| 2 | `c-backend`: downstream C design | #44, #49; shared policy #47 | Assignment selected; worker not launched |
-| 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Scoped; worker setup underway |
-| 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Scoped; worker setup underway |
+| 2 | `c-backend`: downstream C design | #44, #49; shared policy #47 | Goal running in separate worktree |
+| 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Goal running in separate worktree |
+| 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Goal running in separate worktree |
 
 ## 1. Core Ownership and Integration
 
 ### Subjective (User)
+
+2026-10-03, English paraphrase of the latest authorization: each worker may
+commit and push its own work. Only this Core session merges worker results;
+continue periodic supervision. This does not authorize worker promotion or
+direct pushes to Main. This note applies to all three linked worker Goal briefs.
 
 2026-10-03, English paraphrase of the latest follow-ups: name sessions by
 their task rather than Main/Sub numbers. The user now reports tmux installed
@@ -75,12 +80,13 @@ session provides no automatic supervision; tmux alone does not supply it.
 ### Plan
 
 - [ ] Continue the single SE1-SE5 work list; do not duplicate its task checklist here.
-- [ ] Publish the committed compiler/overlay recipe used by both workers;
+- [x] Publish the committed compiler/overlay recipe used by all workers;
   do not copy an unfinished trial or unrelated local changes into their baseline.
-- [ ] Assign separate worktrees, branches, overlay/build/output paths and task briefs.
-- [ ] Verify the requested model and `/goal` support, then launch the three tmux
-  workers. Main periodically reviews their status, diffs, tests and blockers
-  and issues directions; record material decisions in the owning SOAP plan.
+- [x] Assign separate worktrees, branches, overlay/build/output paths and task briefs.
+- [x] Verify the requested model and `/goal` support, then launch the three tmux
+  workers.
+- [ ] Periodically review worker status, diffs, tests and blockers and issue
+  directions; record material decisions in the owning SOAP plan.
 - [ ] Review cross-owner findings; transfer file ownership for an explicit epoch
   when needed, rather than permanently excluding a necessary large refactor.
 - [ ] Integrate each completed epoch, run relevant combined regression gates,
@@ -137,11 +143,12 @@ forthcoming; this is not approval to weaken checking or introduce a new engine.
 
 ### Objective (Code)
 
-Fresh GitHub metadata lists seven issues and three PRs (#53-#55); no separate
-Bend2/performance submission was identified yet. #51 concerns ownership/size
+The initial GitHub inspection listed seven issues and three PRs (#53-#55), before
+the arrival of #56/#57 and PR #58. #51 concerns ownership/size
 measurement, #52 selected checked relation reuse, #53 audit documents, and #55
 long-term distributed Solve intent, not an immediate scheduler implementation.
-No full PR diff was freshly verified for this plan.
+PR #58's documentation was subsequently inspected and merged; publication is
+not acceptance of all recommendations or fresh verification of speed claims.
 
 Existing tools include `artifact_persistence/state_audit.c`,
 `allocation_audit.c`, `image_audit/fuel_curve.sh`, and the readback construction
@@ -168,7 +175,8 @@ the exact Bend2 implementation before choosing commands or citing claims.
 
 ### Plan
 
-- [ ] Inspect the forthcoming performance issue/PR; record adopted, rejected and
+- [x] Inspect the performance issue #56 and PR #58; delegate detailed revalidation
+  to the owning worker and record adopted, rejected and
   deferred recommendations without treating reported problems as current bugs.
 - [ ] Pin the latest committed baseline and its parent with identical workloads,
   including small Core cases, List induction and ordinary-result sort proofs.
@@ -224,3 +232,12 @@ Codex check succeeded with explicit `gpt-6.1-sol`, `xhigh` and no fallback.
 These checks establish tooling, not launched workers or resumed Goals.
 [Goals](https://developers.openai.com/cookbook/examples/codex/using_goals_in_codex),
 [GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol).
+
+2026-10-03 02:04 UTC: default tmux session `a-program` has live windows
+`c-backend`, `performance` and `surface`. Each pane reports `GPT-6.1-Sol xhigh`,
+`Pursuing goal` and actual inspection/edit activity. Their separate worktrees
+are `/home/repyt/workspace/a-program-workers/<task>` on branches
+`parallel/<task>-20261003`, all started from `2d747ccfec844e8afc72d408385ceb79a7c01808`.
+That revision merges the three PR #58 documents without implementation changes.
+No worker epoch has yet been reviewed or integrated. View with
+`tmux attach -t a-program`; select a window with `Ctrl+b`, then `w`.
