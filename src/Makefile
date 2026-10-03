@@ -97,6 +97,29 @@ check-eval-io: $(BUILD)/eval_io_test
 check-identity-io: $(BUILD)/identity_io_test
 	bash $(TESTS)/identity_io.sh $(BUILD)/identity_io_test
 
+.PHONY: check-head-delivery
+check-acceptance: check-head-delivery
+check-head-delivery: $(BUILD)/direct_test $(BUILD)/head_test $(BUILD)/total_result_test $(BUILD)/head_cleanup_test
+	bash $(TESTS)/head_delivery.sh $(BUILD)
+
+HEAD_MACHINE_IO := $(addprefix $(ROOT),retained_io.c derivation_io.c reduction_io.c machine_io.c computation_io.c identity_io.c comparison_io.c graph_io.c eval_io.c wire.c)
+
+$(BUILD)/direct_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(TESTS)/direct_test.c
+	mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(TESTS)/direct_test.c -o $@
+
+$(BUILD)/head_test: $(SOURCES) $(HEAD_MACHINE_IO) $(wildcard $(ROOT)*.h) $(TESTS)/head_test.c
+	mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(HEAD_MACHINE_IO) $(TESTS)/head_test.c -o $@
+
+$(BUILD)/total_result_test: $(SOURCES) $(HEAD_MACHINE_IO) $(wildcard $(ROOT)*.h) $(TESTS)/total_result_test.c
+	mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(HEAD_MACHINE_IO) $(TESTS)/total_result_test.c -o $@
+
+$(BUILD)/head_cleanup_test: $(SOURCES) $(wildcard $(ROOT)*.h) $(TESTS)/head_cleanup_test.c
+	mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(TESTS)/head_cleanup_test.c -o $@
+
 check: check-eval-io check-identity-io check-quick-result
 
 check: $(BUILD)/typed_structure_test

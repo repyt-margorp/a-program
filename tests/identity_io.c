@@ -2079,7 +2079,9 @@ static void total_result_machine(void)
 	while (pg_eval_advance(&machine, 1) == PG_EVAL_PENDING) {
 		assert(machine.steps < 500);
 		for (const struct pg_eval_frame *p = machine.frames; p; p = p->parent)
-			if (p->continuation == pg_computation_continuation_resolve("computation/total_result/v1")) saw_projection = 1;
+			if (p->continuation == pg_computation_continuation_resolve("computation/total_result/v1") ||
+				p->continuation == pg_computation_continuation_resolve("computation/total_result_head/v1"))
+				saw_projection = 1;
 		machine_resave(&machine, &graph, NULL, &expected);
 	}
 	assert(saw_projection && machine.status == PG_EVAL_WHNF);

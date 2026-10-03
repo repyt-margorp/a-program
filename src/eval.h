@@ -64,6 +64,19 @@ struct pg_eval_continuation {
 	const char *name;
 	int (*resume)(struct pg_eval *, const struct pg_term *, const void *);
 };
+// Optional owner-local head delivery. The first member uses the marker below;
+// existing materialized descriptors and frame/codec layouts remain unchanged.
+// Resume sees the restored caller and a borrowed captured head/spine. Return 2
+// without mutating the caller to request the ordinary materialized fallback.
+// Success consumes the demanded input itself; it need not copy the old prefix.
+// This is evaluator progress, never a completed reduction certificate.
+struct pg_eval_head_continuation {
+	struct pg_eval_continuation continuation;
+	int (*resume)(struct pg_eval *, struct pg_closure, const struct pg_argument *, const void *);
+	const struct pg_eval_continuation *fallback;
+};
+/* Registration marker, interpreted only by the evaluator. */
+int pg_eval_head_marker(struct pg_eval *, const struct pg_term *, const void *);
 const struct pg_eval_continuation *pg_eval_continuation_find(const char *name,
 	size_t count, const struct pg_eval_continuation *const *entries);
 int pg_eval_demand(struct pg_eval *machine, size_t index,

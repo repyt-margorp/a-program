@@ -111,9 +111,39 @@ struct pg_argument *pg_eval_frame_copy_argument(struct pg_eval_frame *frame, str
 	return copy;
 }
 
+int pg_eval_head_marker(struct pg_eval *machine, const struct pg_term *answer, const void *state)
+{
+	(void)machine;
+	(void)answer;
+	(void)state;
+	return -1; /* The descriptor is interpreted by resume_frame, never called. */
+}
+
 static int resume_frame(struct pg_eval *machine)
 {
 	struct pg_eval_frame *frame = machine->frames;
+	const struct pg_eval_head_continuation *head = frame->continuation->resume == pg_eval_head_marker
+		? (const struct pg_eval_head_continuation *)frame->continuation : NULL;
+	if (head && !frame->answer.readback.output && !frame->answer.done) {
+		struct pg_closure value = machine->current;
+		const struct pg_argument *spine = machine->arguments;
+		machine->current = frame->caller;
+		machine->arguments = frame->arguments;
+		machine->frames = frame->parent;
+		machine->head_ready = 0;
+		int result = head->resume(machine, value, spine, frame->state);
+		if (result != 2) {
+			/* Restored empty frames can still own decoded readback scratch. */
+			pg_materialize_destroy(&frame->answer);
+			return result > 1 ? -1 : result;
+		}
+		/* A declined head leaves its caller unchanged. Resume charged readback
+		 * on this same frame; neutral/effectful cases keep the old algorithm. */
+		machine->current = value;
+		machine->arguments = spine;
+		machine->frames = frame;
+		machine->head_ready = 1;
+	}
 	if (!frame->answer.done) {
 		int status = pg_materialize_step(&frame->answer, machine->output, machine->current, machine->arguments);
 		return status < 0 ? -1 : 0;
@@ -135,7 +165,7 @@ static int resume_frame(struct pg_eval *machine)
 	machine->frames = frame->parent;
 	machine->head_ready = 0;
 	pg_materialize_destroy(&frame->answer);
-	return frame->continuation->resume(machine, answer, frame->state);
+	return (head ? head->fallback : frame->continuation)->resume(machine, answer, frame->state);
 }
 
 void pg_eval_init(struct pg_eval *machine, const struct pg_term *term)

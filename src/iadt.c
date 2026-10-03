@@ -162,11 +162,13 @@ const struct pg_term *pg_data_recursive_match(struct pg_graph *graph,
 static int apply_fields(struct pg_eval *machine, struct pg_closure branch,
 	size_t count, const struct pg_term *const *fields, size_t consume)
 {
-	const struct pg_object *k = pg_binder(machine->output);
-	const struct pg_term *body = pg_reference(machine->output, k);
-	for (size_t i = 0; i < count; ++i) body = pg_application(machine->output, body, fields[i]);
-	/* Reuse lexical substitution for the selected branch's captured scope. */
-	return pg_eval_apply(machine, (struct pg_closure){pg_lambda(machine->output, k, body), NULL}, branch, consume);
+	if (pg_eval_enter(machine, branch, consume)) return -1;
+	/* Materialized fields are closed over their substitutions. The branch
+	 * retains its own captured environment and trailing caller arguments. */
+	for (size_t i = count; i; --i)
+		if (pg_eval_apply(machine, machine->current,
+			(struct pg_closure){fields[i - 1], NULL}, 0)) return -1;
+	return 0;
 }
 
 static int match_answer(struct pg_eval *machine, const struct pg_term *answer, const void *unused);
@@ -193,6 +195,40 @@ static int match_answer(struct pg_eval *machine, const struct pg_term *answer, c
 	struct pg_closure branch = *pg_eval_argument(machine, position + 1);
 	return apply_fields(machine, branch, count, fields, layout->count + 1);
 }
+
+static int match_head(struct pg_eval *machine, struct pg_closure head,
+	const struct pg_argument *arguments, const void *state)
+{
+	(void)state;
+	const struct pg_data_layout *layout = (const struct pg_data_layout *)machine->current.term->as.reference;
+	if (head.term->kind != PG_REFERENCE) return 2;
+	const struct pg_constructor *c = constructor(head.term->as.reference, layout);
+	if (!c) return 2;
+	size_t count = 0;
+	for (const struct pg_argument *cursor = arguments; cursor; cursor = cursor->next) ++count;
+	if (count != c->arity) return 2;
+	size_t position = (size_t)(c - layout->constructors);
+	struct pg_closure branch = *pg_eval_argument(machine, position + 1);
+	if (pg_eval_enter(machine, branch, layout->count + 1)) return -1;
+	if (!arguments) return 0;
+	/* Retain each field's actual closure, including its own environment. */
+	struct pg_argument *first = NULL, *last = NULL;
+	for (const struct pg_argument *cursor = arguments; cursor; cursor = cursor->next) {
+		struct pg_argument *copy = pg_alloc(&machine->temporary, sizeof(*copy));
+		if (!copy) return -1;
+		*copy = (struct pg_argument){cursor->value, NULL};
+		if (last) last->next = copy;
+		else first = copy;
+		last = copy;
+	}
+	last->next = machine->arguments;
+	machine->arguments = first;
+	return 0;
+}
+
+static const struct pg_eval_head_continuation match_head_continuation = {
+	{"iadt/match_head/v1", pg_eval_head_marker}, match_head, &match_answer_continuation
+};
 
 static const struct pg_data_layout *matcher(const struct pg_term *term)
 {
@@ -262,7 +298,7 @@ int pg_data_action(struct pg_eval *machine, const struct pg_term *source)
 const struct pg_eval_continuation *pg_data_continuation_resolve(const char *name)
 {
 	static const struct pg_eval_continuation *const entries[] = {
-		&match_answer_continuation, &action_answer_continuation
+		&match_answer_continuation, &action_answer_continuation, &match_head_continuation.continuation
 	};
 	return pg_eval_continuation_find(name, sizeof(entries) / sizeof(*entries), entries);
 }
@@ -281,7 +317,7 @@ int pg_data_dispatch(struct pg_eval *machine)
 	if (object->kind != PG_SEMANTIC_OBJECT || object->owner != &match_class) return 1;
 	const struct pg_data_layout *layout = (const struct pg_data_layout *)object;
 	if (!pg_eval_argument(machine, layout->count)) return 1;
-	return pg_eval_demand(machine, 0, &match_answer_continuation, NULL);
+	return pg_eval_demand(machine, 0, &match_head_continuation.continuation, NULL);
 }
 
 struct pg_data_signature {
