@@ -5,11 +5,11 @@
  #include <stdio.h>
  
 -/* APGSRC68 preserves available typed construction at each producer.
-+/* APGSRC69 preserves available typed construction at each producer.
++/* APGSRC70 preserves available typed construction at each producer.
   * It shares relocation with source/rule inputs and nominal declarations.
   * Reading exposes descriptive results through pg_synthesis_materialized,
   * not accepted evidence. Local Solve still checks source and annotations;
-@@ -12,8 +12,10 @@
+@@ -12,8 +12,13 @@
   * selections, including namespaces without an exported module root.
   * Each namespace retains committed indexing/activation cursors and name-only
   * completion. Reading restores these links in lexical order, not typed results.
@@ -18,11 +18,14 @@
 + * Failed items are rechecked by Solve. Started definition bodies reconnect
 + * through their existing lexical request keys; a start bit shares the producer
 + * completion byte, without a second body graph. Neither child checking progress
-+ * nor module traversal or the pending schedule is restored by this bit.
++ * nor the pending schedule is restored by this bit. The namespace record also
++ * retains its whole-module traversal ordinal. It is descriptive: ordinary Solve
++ * checks every skipped prefix owner before using it, without imported acceptance.
++ * Inputs-only profiles retain ordinal zero for normal recomputation.
   * Older formats reject; rebuild them from source.
   *
   * Reconstructible source environments and source/definition/rule roots, including pending modules.
-@@ -23,9 +25,10 @@
+@@ -23,9 +28,10 @@
   * totality contracts, context-authoritative Pi premises and lexical
   * result-to-graph binder associations in the ordinary
   * context-binding records. These are names, not imported graph certificates.
@@ -35,7 +38,7 @@
   * A shared producer DAG also retains prepared source annotations and their
   * source/rule operands. Selected roots retain order and aliases independently
   * of dependency order. Loading recreates annotations with the usual factory.
-@@ -77,21 +80,23 @@
+@@ -77,21 +83,23 @@
   * it never grants kernel acceptance. Unsupported producer/scope
   * kinds fail explicitly instead of being omitted. Source roots are recomputed;
   * retaining annotation recipes is not a complete CHECKPOINT codec.
@@ -62,7 +65,7 @@
  struct pg_program *pg_sources_read(FILE *file, size_t limit,
  	size_t *count, struct pg_synthesis_job *const **roots);
  
-@@ -106,7 +111,7 @@
+@@ -106,7 +114,7 @@
   * The returned Program owns restored terms; loading performs no Solve. */
  struct pg_graph_codec;
  int pg_sources_write_with(FILE *file, const struct pg_synthesis *synthesis,
