@@ -7,10 +7,20 @@ bash "$here/../performance/overlay.sh" "$overlay" head-adapted
 if [[ -L "$overlay/src/eval.c" ]]; then
 	cp --remove-destination "$(readlink -f "$overlay/src/eval.c")" "$overlay/src/eval.c"
 fi
-git apply --check --unsafe-paths --directory="$overlay/src" "$here/eval_frame_cleanup.patch"
-git apply --unsafe-paths --directory="$overlay/src" "$here/eval_frame_cleanup.patch"
-git apply --check --unsafe-paths --directory="$overlay/tests" "$here/identity_io_adapter.patch"
-git apply --unsafe-paths --directory="$overlay/tests" "$here/identity_io_adapter.patch"
+apply_once() {
+	local directory=$1 patch=$2
+	if git apply --reverse --check --unsafe-paths --directory="$directory" "$patch" 2>/dev/null; then
+		return
+	fi
+	git apply --check --unsafe-paths --directory="$directory" "$patch"
+	git apply --unsafe-paths --directory="$directory" "$patch"
+}
+apply_once "$overlay/src" "$here/eval_frame_cleanup.patch"
+apply_once "$overlay/tests" "$here/identity_io_adapter.patch"
+# Accepted head tests need the prototype codec's additional link dependencies.
+if rg -q '^HEAD_MACHINE_IO :=' "$overlay/src/Makefile"; then
+	printf '\nHEAD_MACHINE_IO += $(filter-out $(HEAD_MACHINE_IO) $(ROOT)main.c,$(CLI_SOURCES)) $(ROOT)artifact/schedule.c\n' >> "$overlay/src/Makefile"
+fi
 printf '%s\n' head-adapted-cleanup > "$overlay/variant.txt"
 sha256sum "$here/eval_frame_cleanup.patch" "$here/identity_io_adapter.patch" \
 	> "$overlay/corrective-patches.sha256"

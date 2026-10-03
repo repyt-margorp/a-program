@@ -1,5 +1,13 @@
 # Captured-head and direct-IADT experiment
 
+Promotion compatibility, 2026-10-03: overlay assembly recognizes these exact
+patches when the accepted implementation already contains them. Accepted decoded
+frame cleanup is retained. On that accepted base, `base` and `direct` also retain
+the accepted head behavior. Reproduce the original ordinary/head comparison and
+original observer failures from the pinned pre-promotion measurement task
+`44e479be675aeb59f386372c052f94fe10634dcd`; those historical results are not new
+measurements or failures of the promoted accepted tests.
+
 Coherent focused epoch for Issue #56 / PR #58, based on worktree
 `parallel/performance-20261003` at `2d747cc` (the full actual revision is
 in [results/epoch.json](results/epoch.json)). This is prototype code, not

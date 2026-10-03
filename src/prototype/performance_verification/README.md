@@ -1,5 +1,12 @@
 # Broad prototype verification
 
+Promotion compatibility, 2026-10-03: the corrective overlay applies each exact
+patch once, recognizes accepted head delivery plus its cleanup, and retains the
+accepted observer migrations. Its private Makefile adds only the prototype
+codec dependencies needed by the promoted independent head tests. Historical
+unadapted observer and scratch-leak failures below remain pinned to their
+original epochs; assembly after promotion does not rerun or erase those records.
+
 `make_shell.py` records each Make recipe's original exit code while a diagnostic
 `make -k -i` run continues after failures. The aggregate Make exit is not an
 acceptance result. Audit every record's `exit`, the original log and the requested
