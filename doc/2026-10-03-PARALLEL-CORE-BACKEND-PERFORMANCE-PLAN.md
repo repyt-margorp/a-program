@@ -449,10 +449,15 @@ Later E3/E4 persistence/registration trials remain independent worker epochs.
 Core's first six-hour Wait was interrupted after 294.2237 seconds by E2's lean
 publication-delta notice. Live supervision then caught the worker's correction:
 its generated report patch normalized TSV newlines, breaking exact report hashes.
-Publication is held; no E2 files are staged. Original runtime freeze is unchanged
+Publication was held without staging E2. Original runtime freeze is unchanged
 and remains available for the separately assigned current-producer joint gates.
 Keep the failed delta/report as history and verify corrected exact bytes before
 task-branch publication; do not classify this report-assembly error as a runtime bug.
+The corrected v2 delta subsequently passes Core's index-level hash check for all
+five canonical and eleven lean-manifest records, including exact TSV bytes. E2
+is now published as `44b0389` on its task branch, not integrated into Main.
+Performance owns the newly assigned E2/current-producer joint gates; no E2
+joint-success, wall/RSS speedup or accepted-source promotion is claimed.
 
 The common-producer census completes all twenty variant/input pairs, including
 the ordinary imported general LocalSorted QuickSort. Its final QuickSort rows:
