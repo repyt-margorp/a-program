@@ -3,8 +3,8 @@ OVERLAY ?= /tmp/a-program-c-backend-base
 include $(C_BACKEND)../artifact_persistence/build.mk
 
 LINK_SOURCES := $(C_BACKEND)link/plan.c $(C_BACKEND)link/driver.c
-LOWER_SOURCES := $(C_BACKEND)lower/scalar.c $(C_BACKEND)lower/representation.c $(C_BACKEND)lower/nodes.c
-$(BUILD)/a-to-c: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(wildcard $(ROOT)*.h $(ROOT)artifact/*.h $(C_BACKEND)link/*.h $(C_BACKEND)lower/*.h) $(C_BACKEND)main.c $(C_BACKEND)emit.c $(C_BACKEND)emit.h $(C_BACKEND)runtime.h $(LINK_SOURCES) $(LOWER_SOURCES)
+LOWER_SOURCES := $(C_BACKEND)lower/scalar.c $(C_BACKEND)lower/representation.c $(C_BACKEND)lower/nodes.c $(C_BACKEND)selection.c
+$(BUILD)/a-to-c: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(wildcard $(ROOT)*.h $(ROOT)artifact/*.h $(C_BACKEND)*.h $(C_BACKEND)link/*.h $(C_BACKEND)lower/*.h) $(C_BACKEND)main.c $(C_BACKEND)emit.c $(C_BACKEND)emit.h $(C_BACKEND)runtime.h $(LINK_SOURCES) $(LOWER_SOURCES)
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -DPG_C_BACKEND_DIRECTORY='"$(C_BACKEND)"' -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(C_BACKEND)main.c $(C_BACKEND)emit.c $(LINK_SOURCES) $(LOWER_SOURCES) -o $@
 
@@ -40,7 +40,7 @@ check-c-static-functions: $(BUILD)/a-to-c $(BUILD)/pointer-check $(BUILD)/c_stat
 check-c-transitive-functions: $(BUILD)/a-to-c $(BUILD)/pointer-check $(BUILD)/c_transitive_oracle_test
 	bash $(C_BACKEND)lower/transitive_function_check.sh $(BUILD)/a-to-c $(BUILD)/pointer-check $(BUILD)/c_transitive_oracle_test
 
-$(BUILD)/c_transitive_oracle_test: $(SOURCES) $(wildcard $(ROOT)*.h $(C_BACKEND)lower/*.h) $(C_BACKEND)lower/transitive_oracle_test.c $(LOWER_SOURCES) $(C_BACKEND)emit.c $(C_BACKEND)emit.h
+$(BUILD)/c_transitive_oracle_test: $(SOURCES) $(wildcard $(ROOT)*.h $(C_BACKEND)*.h $(C_BACKEND)lower/*.h) $(C_BACKEND)lower/transitive_oracle_test.c $(LOWER_SOURCES) $(C_BACKEND)emit.c $(C_BACKEND)emit.h
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -I$(ROOT) -I$(C_BACKEND)lower $(SOURCES) $(C_BACKEND)lower/transitive_oracle_test.c $(LOWER_SOURCES) $(C_BACKEND)emit.c -Wl,--wrap=pg_eval_advance -Wl,--wrap=pg_substitution_advance -Wl,--wrap=pg_whnf_advance -Wl,--wrap=pg_typed_query_advance -o $@
 
@@ -52,11 +52,19 @@ check-c-value-records: $(BUILD)/a-to-c $(BUILD)/pointer-check
 check-c-enum-list: $(BUILD)/a-to-c $(BUILD)/pointer-check
 	bash $(C_BACKEND)lower/enum_list_check.sh $(BUILD)/a-to-c $(BUILD)/pointer-check
 
-$(BUILD)/c_static_oracle_test: $(SOURCES) $(wildcard $(ROOT)*.h $(C_BACKEND)lower/*.h) $(C_BACKEND)lower/static_oracle_test.c $(LOWER_SOURCES) $(C_BACKEND)emit.c $(C_BACKEND)emit.h
+.PHONY: check-c-applied-families
+check-c-applied-families: $(BUILD)/a-to-c $(BUILD)/pointer-check $(BUILD)/c_applied_inert_test
+	bash $(C_BACKEND)applied/gate.sh $(BUILD)/a-to-c $(BUILD)/pointer-check $(BUILD)/c_applied_inert_test
+
+$(BUILD)/c_applied_inert_test: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(wildcard $(ROOT)*.h $(ROOT)artifact/*.h $(C_BACKEND)*.h $(C_BACKEND)link/*.h $(C_BACKEND)lower/*.h) $(C_BACKEND)applied/inert_test.c $(C_BACKEND)link/plan.c $(LOWER_SOURCES) $(C_BACKEND)emit.c
+	mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -I$(ROOT) -I$(C_BACKEND) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(C_BACKEND)applied/inert_test.c $(C_BACKEND)link/plan.c $(LOWER_SOURCES) $(C_BACKEND)emit.c -Wl,--wrap=pg_eval_advance -Wl,--wrap=pg_substitution_advance -Wl,--wrap=pg_whnf_advance -Wl,--wrap=pg_typed_query_advance -o $@
+
+$(BUILD)/c_static_oracle_test: $(SOURCES) $(wildcard $(ROOT)*.h $(C_BACKEND)*.h $(C_BACKEND)lower/*.h) $(C_BACKEND)lower/static_oracle_test.c $(LOWER_SOURCES) $(C_BACKEND)emit.c $(C_BACKEND)emit.h
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -I$(ROOT) -I$(C_BACKEND)lower $(SOURCES) $(C_BACKEND)lower/static_oracle_test.c $(LOWER_SOURCES) $(C_BACKEND)emit.c -Wl,--wrap=pg_eval_advance -Wl,--wrap=pg_substitution_advance -o $@
 
-$(BUILD)/c_scalar_test: $(SOURCES) $(wildcard $(ROOT)*.h $(C_BACKEND)lower/*.h) $(C_BACKEND)lower/oracle_test.c $(LOWER_SOURCES) $(C_BACKEND)emit.c $(C_BACKEND)emit.h
+$(BUILD)/c_scalar_test: $(SOURCES) $(wildcard $(ROOT)*.h $(C_BACKEND)*.h $(C_BACKEND)lower/*.h) $(C_BACKEND)lower/oracle_test.c $(LOWER_SOURCES) $(C_BACKEND)emit.c $(C_BACKEND)emit.h
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(C_BACKEND)lower/oracle_test.c $(LOWER_SOURCES) $(C_BACKEND)emit.c -Wl,--wrap=pg_eval_advance -Wl,--wrap=pg_substitution_advance -o $@
 

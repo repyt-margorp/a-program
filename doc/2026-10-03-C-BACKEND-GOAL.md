@@ -85,6 +85,29 @@ names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
 
+Merge report, 2026-10-03, freshly checked against Git: exact C8 task
+`884d5bbe192e128fc98de8f3afcd2d3bce59211d` is committed/pushed, and all 17 old
+manifest hashes match that immutable revision. Merge finds the bounded capture
+queue/stable order coherent and releases the live freeze for separate work.
+Its current-qualified-producer twelve gates/Main review remain pending. This is
+task publication, not Main integration or accepted promotion. C7's exact tested
+candidate `091669f` is integrated; Main `66fa707` is pushed/remote verified in
+Merge's later report. Historical handoffs/manifests stay unchanged.
+
+Fresh C9 at published C8 plus active prototype edits: the applied selector,
+parameter/signature mapping and ordinary C clients are adopted. All thirteen O2
+and ten generated-client ASan/UBSan/leak gates are terminal exit 0 on the pinned
+worker producer. The new source/test/doc manifest has 34 files, SHA256
+`1ceade3b72ffe12c448cd21983e759cc3d67dad004a641abc3ab69e24b83eec6`.
+Nat/enum/reversed Lists, a two-parameter value family, mixed C products and admitted
+source take/drop/slice are positive; five guarded profiles advance no source work.
+Initial incorrect Nat branch arity was corrected in the private fixture without
+a producer change. Exact files, source deltas, tests/failures and target limits
+are in the [C9 handoff](2026-10-03-C-BACKEND-EPOCH9-HANDOFF.md). This is a separate
+frozen task epoch, not current-producer joint verification, native Acc/QuickSort
+completion or accepted promotion. Historical private evidence stays in the
+[continuation note](2026-10-03-C-BACKEND-APPLIED-LIST-NEXT-NOTE.md).
+
 Fresh final C8 at task parent `d275b75` plus the 12-source-file manifest:
 the active prototype retains transitive known-function captures, source delta
 `+27/-17`. Twelve O2 gates and nine generated-client ASan/UBSan/leak gates are
@@ -137,11 +160,12 @@ Current issue status (2026-10-03; detailed pins stay in linked epoch plans):
 | --- | --- | --- | --- | --- | --- |
 | #49 native calls/data/List/Nat32 | C1-C5 through `312c2da`: first-order ABI, value data, nodes, numeric partitions, transactional arrays, known local functions. | Local C5: 9 O2/5 native sanitizer gates. Core: 9 combined O2 gates on reviewed 128-runtime-hash snapshot. | Task `312c2da` pushed; prototype Main `435d965` is an inspected ancestor of Core's pushed C6 Main `53debc8`. | Broader native contracts remain; no accepted promotion. | Preserve these contracts in C6/C7. |
 | #49 selected value records, C6 | `cea1dc0177d36328d6f4de2a8f151b5952d2c2c5`: whole nested records, active tag validation, emitter receipt metadata. | Local 10 O2/7 native sanitizer gates; 105 cases/product, 16 source observations. Core evidence `fd45c42`: 10 O2 gates on joint E3 producer pass. | Task commit/push/remote verified; Core Main `53debc870231f415bdf926b537a7c1a8670e81d7` integrated and pushed. | Bounded record criterion verified; recursive pointer/aggregate fields and broader AP6 remain open. | Distinct C7 enum List arrays. |
-| #49 finite enum List arrays, C7 | `d275b75d246d9795d798ee7771519c0febc6c9bb`: enum copies and validation before arena mutation; all 14 historical hashes match Git. | Local 11 O2/8 native sanitizer gates; 875 cases/product, 24 source observations, 17 inert raw/evaluator observations. Merge reports all 11 joint E6 O2 gates pass; log `02942769`. | Exact task commit/push/remote verified; tested candidate `091669f` is local prototype Main. Main push follows. | Main publication still pending in the latest report; multi-payload/aggregate shapes remain excluded. | Separate private capture/applied-List work from `d275b75`. |
-| #49 transitive known-function captures, C8 | `d275b75` plus active lowerer SHA256 `dbeb9d53c30ca38ae8734a0c1c7c3bd5aa42303a935c47de331997ac6e0fcb54`: finite dependency walk, source delta +27/-17. Source manifest SHA256 `f114d8d31c94803d972a0419f69d23615d654b3966a3a7e10a1d72e20ad9afff`. | Final 12 O2/9 client sanitizer gates pass; 600 Int32 + seven Int64 cases/product, six source observations and 300 raw comparisons. Exact old `nested_three` positive; original raw controls and callback/effect/native Acc refusals retained. | Frozen handoff; delegated task publication and joint/Main review pending. No new commit yet. | Merge's current-producer verification; unsupported recursive captures and native Acc stay open. | Publish/review C8, then separate bounded applied-List epoch. |
-| #49 selected applied List boundary, private probe | `d275b75` plus scratch selector/parameter/signature wiring; 28-file source manifest SHA256 `269ce58955960626af5d386da09b6d42c6bbc0cc4d2c4ab0d28e057bf0c9e176`. Active implementation unchanged. | Local O2/client sanitizers: 1093 Nat Lists, 127 enum Lists, 127 reversed Lists, 34 two-parameter values per product and nine source observations. Four inert profiles pass; fourteen checked/trusted refusal requests retained. | Scratch only, unpublished/unintegrated; no accepted promotion. | Regression gates/current-producer review; one instance per erased layout and only reference arguments. Earlier harness/setup failures retained and corrected. | Verify regressions before adopting a separate bounded applied-List epoch. |
-| #44/#49 native Acc/QuickSort | C4 `a3b6bce` pins native refusal; C7 `d275b75` retains it. Private applied List progress above resolves only the first representation obligation. No native sorter. | Historical checked/trusted status 4/no product; Merge C7 sorting boundary gate passes. Structural FFTT is separate. | C4-C7 task-published; C7 local Main candidate `091669f`, push pending in the latest report. No native Acc epoch publication. | Indexed SizedList and callable recursive Acc fields remain unsupported; no producer defect established. | Report concrete indexed/callable representation needs through Merge; keep work bounded and downstream. |
-| #49 remaining public contracts | Dynamic callbacks/effects, higher Identity, unsupported recursive captures and general shared nominal exchange remain explicit limits. C8 resolves only the tested known-function chains. | Local/joint gates verify supported cases and refusals, not general completion. | No publication of those missing contracts; C8 task publication pending. | Need bounded justified representation/demand contracts. | Preserve refusals in the separate applied-List work; route any shared need through Merge. |
+| #49 finite enum List arrays, C7 | `d275b75d246d9795d798ee7771519c0febc6c9bb`: enum copies and validation before arena mutation; all 14 historical hashes match Git. | Local 11 O2/8 native sanitizer gates; 875 cases/product, 24 source observations, 17 inert raw/evaluator observations. Merge reports all 11 joint E6 O2 gates pass; log `02942769`. | Exact task commit/push/remote verified; tested candidate `091669f` integrated, Main `66fa707` pushed/remote verified. | Bounded enum criterion verified; multi-payload/aggregate shapes remain excluded. | Preserve array contracts in the separate applied-List epoch. |
+| #49 transitive known-function captures, C8 | `884d5bbe192e128fc98de8f3afcd2d3bce59211d`: finite dependency walk, source delta +27/-17; all 17 historical hashes match Git. | Final 12 O2/9 client sanitizer gates pass; 600 Int32 + seven Int64 cases/product, six source observations and 300 raw comparisons. Exact old `nested_three` positive; original raw controls and callback/effect/native Acc refusals retained. Merge's bounded capture audit is coherent. | Exact task committed/pushed; live freeze released. Current-qualified-producer twelve gates/Main review pending. | Joint verification/integration; unsupported recursive captures and native Acc stay open. | Separate bounded applied-List epoch from published C8. |
+| #49 selected applied families, C9 | `884d5bb` plus active selector/parameter/signature wiring; 34-source/test/doc manifest SHA256 `1ceade3b72ffe12c448cd21983e759cc3d67dad004a641abc3ab69e24b83eec6`. | Final 13 O2/10 client sanitizer gates pass. Per product: 1093 Nat Lists, 127 enum Lists, 127 reversed Lists, 34 two-parameter values; nine source observations. Five inert profiles; fourteen checked/trusted refusals retained. | Exact C9 frozen handoff; task publication/joint/Main review pending. C8 task published, Main pending. | One instance per erased layout/reference arguments only; Merge current-producer verification. No accepted promotion. | Publish/review exact C9; preserve unsupported indexed/callable contracts. |
+| #49 source List slices and ordinary modules, C9 | Same C9 source basis: admitted take/drop/slice use generic native Match/known thunks; ordinary C converts arrays between separate nominal products. | O2/client sanitizers pass 1093 Lists with five take/drop limits and 25 slice pairs per List/product; nine full-payload source comparisons. Nine product pairs/both header orders/shared arena rollback/lifetime and incompatible C pointer refusal pass; repeated rows are not independent properties. | Included in the C9 frozen handoff; unpublished/unintegrated. | Target Nat32/depth/storage limits remain; drop reconstructs suffix. Indexed SizedList/callable Acc/native QuickSort stay open. | Qualify exact C9 against Merge's current producer before Main integration. |
+| #44/#49 native Acc/QuickSort | C4 `a3b6bce` pins native refusal; C7/C8 retain it. Private applied List progress resolves only the first representation obligation. No native sorter. | Historical checked/trusted status 4/no product; private C8-based sorting boundary gate passes. Structural FFTT is separate. | C4-C8 task-published; C7 tested `091669f` integrated/pushed on Main `66fa707`; C8 Main pending. No native Acc epoch publication. | Indexed SizedList and callable recursive Acc fields remain unsupported; no producer defect established. | Report concrete indexed/callable representation needs through Merge; keep work bounded and downstream. |
+| #49 remaining public contracts | Dynamic callbacks/effects, higher Identity, unsupported recursive captures and general shared nominal exchange remain explicit limits. C8 resolves only the tested known-function chains. | Local/joint gates verify supported cases and refusals, not general completion. | No publication of those missing contracts; C8 task published, Main pending. | Need bounded justified representation/demand contracts. | Preserve refusals in the separate applied-List work; route any shared need through Merge. |
 
 Evidence: historical [C5](2026-10-03-C-BACKEND-EPOCH5-HANDOFF.md),
 [C6](2026-10-03-C-BACKEND-EPOCH6-HANDOFF.md) and active
@@ -595,11 +619,18 @@ this target work while Main continues SE1, superseding the earlier AP6 hold.
   remote and releases the live freeze. Historical evidence remains unchanged.
 - [x] Merge reports eleven current-E6 C7 gates pass and local prototype Main
   candidate `091669f`; keep joint O2 distinct from worker sanitizer evidence.
-- [ ] Merge's C7 Main publication/status push confirmation.
+- [x] Merge reports C7 Main `66fa707` pushed/remote verified, including evidence.
 - [x] C8: adopt/verify finite transitive static captures; final twelve O2/nine
   generated-client sanitizer gates and style pass. Exact old refusal is positive.
 - [x] Freeze C8 exact source/test/docs; keep applied-List implementation outside it.
-- [ ] Delegated C8 task publication and separate Merge joint/Main review.
+- [x] Delegated exact C8 task `884d5bb` committed/pushed; all 17 immutable hashes
+  freshly verify. Merge releases the live freeze for separate work.
+- [ ] Separate Merge current-qualified-producer twelve-gate C8/Main review.
+- [x] Adopt the separately verified applied selector/client candidate and finish
+  bounded source take/drop/slice verification before a distinct exact handoff.
+- [x] Freeze separate C9 after thirteen O2/ten client sanitizer gates and style;
+  preserve exact C8/private historical evidence.
+- [ ] Delegated C9 task publication and separate Merge current-producer/Main review.
 - [ ] Maintain the single issue table at material events and within six active
   hours; use brief pointer/hash notices and keep Core workflow in Assessment.
 - [ ] Coordinate further bounded target ABI/lowering increments under the latest

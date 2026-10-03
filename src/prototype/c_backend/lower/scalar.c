@@ -121,12 +121,12 @@ static int induction_results(struct module *m, size_t count, const struct pg_c_e
 		const struct pg_term *classifier = s->classifier, *domain, *codomain;
 		const struct pg_object *binder;
 		while (pg_pi_view(classifier, &domain, &binder, &codomain)) {
-			if (domain->kind != PG_REFERENCE || !pg_c_representation_find(&m->representations, domain->as.reference)) break;
+			if (!pg_c_representation_term(&m->representations, domain)) break;
 			classifier = codomain;
 		}
 		if (!pg_pure_computation_type_view(classifier, &totality, &content) ||
-			totality != PG_TOTALITY_TOTAL || content->kind != PG_REFERENCE) continue;
-		const struct pg_c_representation *type = pg_c_representation_find(&m->representations, content->as.reference);
+			totality != PG_TOTALITY_TOTAL) continue;
+		const struct pg_c_representation *type = pg_c_representation_term(&m->representations, content);
 		if (!type) continue;
 		const struct pg_c_representation *old = result_type(m, s->core);
 		if (old) { if (old != type) goto done; continue; }
@@ -724,8 +724,8 @@ static struct function *prepare(struct module *m, const struct pg_occurrence *su
 	struct function *f = function(m, count);
 	if (!f) return NULL;
 	for (size_t i = 0; i < count; ++i) {
-		if (!computation || !pg_pi_view(type, &domain, &binder, &codomain) || domain->kind != PG_REFERENCE) return NULL;
-		if (!(f->parameters[i]->type = pg_c_representation_find(&m->representations, domain->as.reference))) return NULL;
+		if (!computation || !pg_pi_view(type, &domain, &binder, &codomain)) return NULL;
+		if (!(f->parameters[i]->type = pg_c_representation_term(&m->representations, domain))) return NULL;
 		type = codomain;
 	}
 	if (computation) {
@@ -733,16 +733,17 @@ static struct function *prepare(struct module *m, const struct pg_occurrence *su
 		if (!pg_pure_computation_type_view(type, &totality, &content) || totality != PG_TOTALITY_TOTAL) return NULL;
 		type = content;
 	}
-	if (type->kind != PG_REFERENCE || !pg_c_representation_find(&m->representations, type->as.reference)) return NULL;
+	const struct pg_c_representation *result = pg_c_representation_term(&m->representations, type);
+	if (!result) return NULL;
 	const struct argument *pending = NULL;
 	for (size_t i = count; i; --i) {
 		pending = argument(m, NULL, NULL, f->parameters[i - 1], pending);
 		if (!pending) return NULL;
 	}
 	f->body = expression(f, term, NULL, pending);
-	if (f->body) f->body->expected = pg_c_representation_find(&m->representations, type->as.reference);
+	if (f->body) f->body->expected = result;
 	if (!f->body || pg_dag_add(&m->order, f->body)) return NULL;
-	return f->body->computation == computation && f->body->value->type == pg_c_representation_find(&m->representations, type->as.reference) ? f : NULL;
+	return f->body->computation == computation && f->body->value->type == result ? f : NULL;
 }
 
 static void parameters(FILE *out, const struct function *f)

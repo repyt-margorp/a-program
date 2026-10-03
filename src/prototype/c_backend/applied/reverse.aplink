@@ -1,0 +1,13 @@
+aplink 1
+artifact applied-list.a
+abi c_native_v1
+target host-c11
+product source
+lowering native_direct_v1
+fallback reject
+nat32 Nat Nat
+data_of empty_reverse ReverseNumbers
+export empty_reverse empty_reverse
+export identity_reverse identity_reverse
+export prepend_reverse prepend_reverse
+export length_reverse length_reverse

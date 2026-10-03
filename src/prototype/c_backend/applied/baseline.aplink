@@ -1,0 +1,10 @@
+aplink 1
+artifact applied-list.a
+abi c_native_v1
+target host-c11
+product source
+lowering native_direct_v1
+fallback reject
+nat32 Nat Nat
+data list_type Numbers
+export identity identity
