@@ -1,6 +1,6 @@
 # Verified Performance Promotion
 
-Date: 2026-10-03. Status: authorized, scope selection and accepted verification pending.
+Date: 2026-10-03. Status: accepted epoch `7631e5a` verified and committed; publication pending.
 Related: [central schedule](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md),
 Issues #56/#51. This is a separate promotion epoch and its sole work list.
 
@@ -41,6 +41,37 @@ Both measured variants share the E6/family/Surface producer; those prototype
 dependencies are not automatically authorized for wholesale adoption. Accepted
 baseline applicability and the minimal dependency set remain to be inspected.
 
+2026-10-03, fresh advisory and code review at accepted Main `99efcf7`: exact
+measured delta `5fed3e37` applies without fuzz to committed computation.c,
+eval.c/h and iadt.c (+137/-12). It uses existing closure/environment, application,
+materialization and immutable descriptor interfaces; no required Job/Surface/
+family/C dependency is identified. Main's unrelated iadt.c schema-relocation
+addition is 33 lines in a separate function and remains excluded. The two Core
+physical-policy observers and Identity descriptor observer need explicit test
+migration; independent head/direct/total-result/cleanup tests already exist in
+the prototype. Accepted compilation and behavior are verified below.
+
+2026-10-03, Root fresh accepted qualification: isolated candidate `a7a8bc3`
+passes all 386 recorded O2 recipes and eight affected ASan/UBSan/leak command
+groups after ten instrumented binaries build. Default direct/head/TotalResult/
+cleanup tests cover all raw and fresh-process cuts and charged final readback.
+Original candidate Core/Identity observers fail -6/134 and remain recorded;
+clean original accepted controls both pass. Explicit test migrations retain all
+assertions, preserve legacy materialized-Force coverage and independently verify
+the default captured-head policy. Runtime sources are only the measured four
+files (+137/-12); no additional accepted runtime dependency is required.
+
+Accepted Main commit `7631e5a099f79bd33aa41d0dc3263c06c92fe244` contains exactly
+those thirteen tested runtime/test/build blobs. Reverse application of the
+approved patch to live protected files restores all nine original hashes.
+Unrelated Core/IADT/evidence edits and fixtures remain outside the index. Private
+prototype assembly after promotion matches all 128 qualified E8 runtime files;
+its promoted head gate passes after correcting the retained initial link failure.
+Four prototype helper/document files recognize exact accepted patches once and
+add only private codec/synthesis link dependencies. Frozen historical evidence
+is unchanged. [Promotion evidence](../src/prototype/performance_promotion/verification/accepted-20261003.json)
+pins candidate/source/logs, original failures, controls and preservation.
+
 ### Assessment
 
 Agent decision within the new approval: finish publication of already verified
@@ -51,14 +82,23 @@ content; do not silently accept unverified local trials or overwrite user work.
 Accepted full regression and affected-layer checks must establish the promoted
 scope; prototype timing alone does not establish accepted parity.
 
+Agent scope decision: select only the four measured runtime files, with explicit
+observer migrations and independent normative tests needed for their accepted
+contract. Keep original observer failures as historical evidence and preserve
+legacy materialized-demand assertions alongside default-head policy checks.
+Use a clean isolated accepted checkout; verify reverse application of the
+approved promotion restores each protected working file's original bytes.
+Joint E6 timings remain qualified joint-producer measurements; accepted-only
+performance is unmeasured until a separate agreed slot.
+
 ### Plan
 
 - [x] Record explicit promotion approval and its limits before investigation.
-- [ ] Compare verified performance changes with committed accepted code and
+- [x] Compare verified performance changes with committed accepted code and
   identify the minimal justified dependency set and local-edit overlaps.
-- [ ] Implement the selected promotion in an isolated review checkout; update
+- [x] Implement the selected promotion in an isolated review checkout; update
   meaningful accepted regression tests/docs only as needed.
-- [ ] Run affected checks and accepted full regression/parity; preserve actual
+- [x] Run affected checks and accepted full regression/parity; preserve actual
   failures and producer-specific strict-resume observations.
 - [ ] Review the exact diff, preserve all unrelated dirty bytes, publish the
   separate accepted epoch and report issue-linked scope and verification.

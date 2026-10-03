@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: Merge activated after verified handoff; the visible parent is the inquiry desk. Three implementation workers continue and the bounded verification-audit lane is active.
+Status: Merge activated after verified handoff; the visible parent is the inquiry desk. Three implementation workers continue; the bounded verification audit and finite-function library worker are complete.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -20,24 +20,24 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | 2 | `c-backend`: downstream C design | #44, #49; shared policy #47 | C6 value records integrated; native Acc/QuickSort remains open |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Jointly verified epoch integrated as `f27bd13`; full Goal remains active |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
-| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E4/E6 distinct reviewed prototype merges `3a8c024`/`01c29c0`; E7/E8 task-published, joint review pending; strict3 remain |
-| 6 | `verification-audit`: independent read-mostly suite/debt inventory | #59 / PR #60, #51 | Active bounded inventory/pilot; no test deletion, acceptance relaxation or broad rerun |
+| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E4/E6 distinct reviewed prototype merges `3a8c024`/`01c29c0`; E7/E8 qualified and prototype Main integrated; E9/E10 frozen review pending; strict3 remain |
+| 6 | `verification-audit`: independent read-mostly suite/debt inventory | #59 / PR #60, #51 | Bounded static inventory/pilot complete; measured cost deferred, full #59 remains open |
 
 ### Current Delivery Status
 
-2026-10-03 07:44 UTC Merge inspection at `4d1d941`, before the local handoff
-documentation update: all four workers supplied issue-linked feedback through
-the existing outbox. Merge verified notice hashes; E4/C7 reports are newly
-received evidence pending review, not independently rerun gates. These are deliverables, not issue
-completion scores; worker-local results are not relabelled joint verification.
+2026-10-03 10:35 UTC Merge inspection at local Main `dea5fc1`: the table
+reflects exact task publications and independently inspected qualification.
+These are deliverables, not issue completion scores; worker-local results stay
+distinct from Root fresh gates and accepted performance promotion.
 
 | Owner / issue scope | Delivered and verified | Not yet delivered / next boundary |
 | --- | --- | --- |
-| Job/Evidence; SE1-SE5 / AP0, related #51/#47 | E1-E4/E6 prototype Main; E4 `3a8c024` and E6 `01c29c0` each match runtime128 and their distinct frozen joint reports; E7/E8 exact task `3ad0303`/`50cd56b` pushed | E7/E8 joint qualification and Main integration pending; E9 private; strict3 remain |
-| C backend; #44/#49 | C4-C7 prototype Main; C7 task `d275b75`, integration `091669f`; eleven fresh current-E6 gates pass with exact runtime128/frozen14 and binary/log pins | Private capture/applied-family work pending; native Acc/QuickSort unsupported; broader C/Identity/admissibility criteria remain open |
-| Performance; #56, measurement work #51/#52 | E2/E3/E4/E6 distinct joint evidence; matched E6 baseline/head 30 sequential timing samples pass, logs/metrics and 292 pins freshly verified | Exact trees workload wall/RSS improve; QuickSort ranges overlap; compact publication pending; E7/E8 correctness next, #52 remains separate |
+| Job/Evidence; SE1-SE5 / AP0, related #51/#47 | E1-E4/E6/E7/E8 prototype Main; exact E7/E8 `3ad0303`/`50cd56b` and joint runtime128 verified; integrations `efc3ff0`/`f6d7cfe` | E9 frozen24 and isolated E10 frozen19 await separate publication/qualification; strict3 remain |
+| C backend; #44/#49 | C8 task `884d5bb` exact17 published/pushed; Root twelve current-E8 strict-O2 gates pass, prototype Main `dea5fc1`; C7 eleven current-E6 gates remain historical | Private applied-List follow-up pending; native Acc/QuickSort and broader C/Identity/admissibility criteria remain open |
+| Performance; #56, measurement work #51/#52 | E6 measurement task `44e479b`, Main `99efcf7`, exact114 published; 30 samples/292 pins verified. E7/E8 qualified; accepted13-file candidate O2 386/0 and affected sanitizer groups8/0 | Accepted promotion publication/compatibility pending; state-image follow-up received; E9/E10 next; accepted-only timing unmeasured and #52 separate |
 | Surface; #57 | Delivered prototype integrated; session stopped; Merge reviewed polarity, brace/migration, scope and version gates | Accepted language policy/promotion and selector diagnostics remain unresolved; #57 stays open; no active worker |
 | Verification audit; #59/PR #60, related #51 | Static task `7ed3ad1` pushed/remote verified; Main merge `5683755`; Merge reproduced exact inventory and verified 385 source hashes/114 archived dependencies | Bounded static delivery complete; dynamic/full #59 open; four-job cost deferred because full config review missed eight-minute boundary; no timing executed |
+| Sort library; #41/F3-F5 | PR54 integrated and GitHub merged; isolated worker actual gpt-6.1-sol/xhigh verified, bounded Goal complete. Finite-function task `5e6ed84` exact11 pushed with corrected provenance and two worker focused gates | Root two focused gates running; prototype Main review/integration next; accepted Sort/F5 adoption remains separate |
 
 Owning tables: Job/Evidence's [SE Plan](2026-09-30-SOLVER-EVIDENCE-DUPLICATION-AUDIT-AND-PLAN.md#plan),
 performance's worker-local `doc/2026-10-03-PERFORMANCE-JOINT-VERIFICATION.md`,
@@ -237,6 +237,19 @@ typed owners; preserve Core/type separation and ordinary Solve semantics.
 
 ### Objective (Code)
 
+2026-10-03 09:34 UTC, fresh Merge inspection at Main `99efcf7`: C7's eleven
+current-E6 gates and generic PR #54's three focused gates passed; evidence is
+committed in `66fa707` and PR #54 is confirmed merged on GitHub. E6 measurement
+task `44e479b` and Main merge `99efcf7` preserve all 114 frozen files exactly;
+both pushes succeeded. Sort owner `%11`, branch `parallel/sort-library-20261003`,
+worktree `/home/repyt/workspace/a-program-workers/sort-library`, thread
+`01a10111-a71f-7cd0-8b00-22b9f6f3aa1a`, has an active implementation Goal;
+its actual turn_context verifies the requested model/effort. Its first selected
+gap is a finite-function API with inverse-map recovery of labelled occurrences,
+using already verified Vec and permutation laws. Worker-local progress is not
+yet a qualified publication. The bounded verification-audit Goal is complete;
+its four-job cost remains deferred and unmeasured.
+
 The ownership prototype remains under `src/prototype/solver_inputs/`. Core's
 Identity boundary Query/lifecycle epoch is committed as `a51f9c9`: full O2
 regression/examples/acceptance, focused and sanitizer gates passed. Its
@@ -253,6 +266,29 @@ public resume failures are in the
 Accepted `src/evidence.*`, `src/iadt.*` and their tests retain unrelated edits.
 
 ### Assessment
+
+2026-10-03 issue-criteria review (agent assessment): ten open issues reflect
+partial prototype deliveries and distinct remaining criteria, not a universal
+all-SE/strict-resume gate. #41 still needs F5 accepted adoption; #44 remaining
+export/admissibility/dependent/higher-Identity contracts; #49 native Acc/QuickSort;
+#56 the selected accepted promotion plus its remaining profiling/arena/index and
+owner work; #57 accepted language-policy adoption; #51 owner/lifecycle/topology
+reproduction gates; #59 measured cost/dynamic coverage. #43/#47/#52 retain separate
+recursion/relevance/equality decisions. #56 explicitly permits separately
+characterized pre-existing reload failures. No completed issue was found merely
+awaiting administrative closure. Four docs/library PRs are merged; last issue
+closure #46 on Sep29 and new #59 on Oct3 also explain the stable count.
+
+2026-10-03, Merge operational decision within the clarified wake requirement:
+the existing relay `%9` now watches all five retained outboxes and has an
+independent 21,600-second heartbeat. Actual process PID `1674731` reports first
+due `2026-10-03T13:44:22.084Z`; later notices do not reset that deadline.
+Accelerated timer controls pass for active steering, idle turn start, refusal
+to resume an unloaded owner and serial/coalesced delivery. Existing six relay
+controls also pass. The running revised relay acknowledged actual active
+delivery through the unchanged loaded-owner guard. This is an in-process tmux
+watcher: a stopped watcher, closed owner or host restart has no verified recovery.
+The desk relay receives material reports and has no periodic timer of its own.
 
 2026-10-03 07:44 UTC, fresh Merge activation at Main `4d1d941` plus this local
 documentation edit: own rollout verifies `gpt-6.1-sol`/`xhigh`; `create_goal`
@@ -531,6 +567,10 @@ findings and proposed repairs stay in its audit, not this implementation work li
   accepted tests and arrange measurement only through the common exclusive slot.
 - [x] Confirm Merge has acknowledged all pending epochs and unrelated dirty files;
   release the desk from integration, publication and broad verification work.
+- [x] Launch the explicitly requested isolated Sort library worker, verify its
+  actual model/effort, active implementation Goal and first independent gap.
+- [x] Install/test an independent six-hour heartbeat on the existing Merge relay;
+  verify actual PID/next due and active delivery without another Merge owner.
 - [ ] Merge keeps issue-linked reporting current and reports material changes
   and each six-hour active checkpoint to the desk.
 

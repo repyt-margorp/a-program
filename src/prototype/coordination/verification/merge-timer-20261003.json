@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-03",
+  "scope": "Existing loaded Merge owner periodic reconciliation, independently of worker notices",
+  "thread": "01a100b3-1d83-7090-bbf6-62544c39ec4b",
+  "actual_pid": 1674731,
+  "tmux_pane": "%9",
+  "heartbeat_seconds": 21600,
+  "first_due_UTC": "2026-10-03T13:44:22.084Z",
+  "source_pins": {
+    "src/prototype/coordination/watch_core.cjs": "c84f3484c2b6702ad0378d74665555e7217265b73e7a6eeaf0cc27f6f9dbff41",
+    "src/prototype/coordination/notify_core.cjs": "d53c736f74e013232728fc70bbfea41e95fe87fea4eb9a85a6a6c8085be6edcf",
+    "src/prototype/coordination/test_watch_timer.cjs": "2431528d8efdab3fa323e6789a18025e4008e7d9a819e29e9042810b995f7901"
+  },
+  "controls": {
+    "existing_notification_modes": 6,
+    "timer_modes": [
+      "active",
+      "idle",
+      "absent",
+      "busy"
+    ],
+    "timer_log_sha256": "5fc785c7b6ff8951a53c5a95e64b87803a72d44301b2abfbd71b3d50999953a0",
+    "all_passed": true
+  },
+  "actual_deployment": "ps confirms five-outbox watcher with21600s interval; live guarded turn/steer acknowledgments observed.",
+  "idle": "Mock-verified turn/start for already loaded idle owner, not live idle smoke test.",
+  "limits": "One serial/coalesced pending heartbeat; never thread/start/resume/fork, no duplicate owner; in-process watcher has no verified stopped-process or host-restart recovery."
+}

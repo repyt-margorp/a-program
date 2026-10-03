@@ -612,7 +612,7 @@ this target work while Main continues SE1, superseding the earlier AP6 hold.
 - [x] Root publishes/pushes exact C8 task `884d5bb` (seventeen frozen files).
 - [x] Root twelve current-E8 O2 gates pass; exact producer/source pins and
   retained setup failure are in `core-epoch8.json`.
-- [ ] Prototype Main integration/publication confirmation.
+- [x] Prototype Main integration `dea5fc1`; Main publication is tracked by Merge.
 - [ ] Maintain the single issue table at material events and within six active
   hours; use brief pointer/hash notices and keep Core workflow in Assessment.
 - [ ] Coordinate further bounded target ABI/lowering increments under the latest

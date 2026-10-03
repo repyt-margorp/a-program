@@ -1,0 +1,315 @@
+{
+  "date": "2026-10-03",
+  "scope": "Explicitly authorized selected performance promotion; accepted runtime four-file +137/-12 and necessary tests/build only",
+  "accepted_commit": "7631e5a099f79bd33aa41d0dc3263c06c92fe244",
+  "accepted_base": "99efcf7027541e9cde8548c9f0cc8d9f6355cb1f",
+  "review_candidate": "a7a8bc3b1db3dba69efa2707f28221802a025b3e",
+  "files_sha256": {
+    "src/computation.c": "57892fe021530bb525447af881113910e1a5e07bd20d8a8c910baa64b19d18f3",
+    "src/eval.c": "24b45d6e3e6a16892a55206b753f2544107d0bcc5a8d2e2144582ee854adff01",
+    "src/eval.h": "1171ac7861ba206d3e26d4d7f36de5189774dc6efc4c988a49a5f96c5f01deff",
+    "src/iadt.c": "b9136b5af7b88b640c92314cf00bc0da28de44459296298e3c9f2974fc11cfb0",
+    "src/Makefile": "c2945907ca38199c427d8cf524b5fed2e04e93f00eaca3820697a980f0c20fc0",
+    "tests/core.c": "da33bfd74fd017b84eb9b03cb65c11c9f5754d1d5a0b634a0ab1ebe304b2f3f8",
+    "tests/identity_io.c": "69c6298027c2f70af27283b2b96e750d5387aa2c878c4a8b5d4c73aa5fe56c22",
+    "tests/direct_test.c": "1185b68036477b1d979766a69b91a604c6d753be319511938210dcc01f14cbd7",
+    "tests/head_test.c": "1ac4e9079f15fcb0bd5fa531f1d1d14aacce85ed8c4cd1cd2a5d586488a2e9f8",
+    "tests/total_result_test.c": "adaa4b6556a0a3c5e3f39b3b241893dbfbe67d0da925a725ff4a3463af3e5d4a",
+    "tests/head_cleanup_test.c": "773cadab36e9a6e1ebff96a13e34c165064eb5845c1a8efac9c8e891e43750a4",
+    "tests/total_result_cuts.py": "2d76923fb1e964f2e6283f19fc59e3359a8f8494d4099ff341f9d886a459828e",
+    "tests/head_delivery.sh": "70f650f5a6dfd9ea231ac66f35b58230b0a76473ae3352a632a2dd4828fb8d86"
+  },
+  "O2": {
+    "make_exit": 0,
+    "recipes": 386,
+    "failed_recipes": [],
+    "passed": true,
+    "ended": "2026-10-03T10:11:41.955673+00:00",
+    "log_sha256": "4478f7850c7a8dcba20c20b9c95aa7e876d470a983016202886467d16626361c"
+  },
+  "ASan_UBSan_leaks": {
+    "build_argv": [
+      "make",
+      "-s",
+      "-j1",
+      "BUILD=/tmp/a-program-merge-accepted-promotion-20261003/build/asan",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+      "/tmp/a-program-merge-accepted-promotion-20261003/build/asan/direct_test",
+      "/tmp/a-program-merge-accepted-promotion-20261003/build/asan/head_test",
+      "/tmp/a-program-merge-accepted-promotion-20261003/build/asan/total_result_test",
+      "/tmp/a-program-merge-accepted-promotion-20261003/build/asan/head_cleanup_test",
+      "/tmp/a-program-merge-accepted-promotion-20261003/build/asan/core_test",
+      "/tmp/a-program-merge-accepted-promotion-20261003/build/asan/identity_io_test",
+      "/tmp/a-program-merge-accepted-promotion-20261003/build/asan/eval_io_test",
+      "/tmp/a-program-merge-accepted-promotion-20261003/build/asan/iadt_test",
+      "/tmp/a-program-merge-accepted-promotion-20261003/build/asan/source_io_test",
+      "/tmp/a-program-merge-accepted-promotion-20261003/build/asan/synthesis_test"
+    ],
+    "build_exit": 0,
+    "checks": [
+      {
+        "argv": [
+          "bash",
+          "/tmp/a-program-merge-accepted-promotion-20261003/tests/head_delivery.sh",
+          "/tmp/a-program-merge-accepted-promotion-20261003/build/asan"
+        ],
+        "exit": 0,
+        "log": "/tmp/a-program-merge-accepted-promotion-evidence-20261003/accepted-asan-0.log",
+        "sha256": "50813502305db577f135446dfa1da3e619f0b64e70e4b26df71f7be3976a60b2"
+      },
+      {
+        "argv": [
+          "/tmp/a-program-merge-accepted-promotion-20261003/build/asan/core_test"
+        ],
+        "exit": 0,
+        "log": "/tmp/a-program-merge-accepted-promotion-evidence-20261003/accepted-asan-1.log",
+        "sha256": "d8926d562872dbb819bcfe95f8e9c2ec370671cfbbd1c0829a62400c961772b2"
+      },
+      {
+        "argv": [
+          "bash",
+          "/tmp/a-program-merge-accepted-promotion-20261003/tests/identity_io.sh",
+          "/tmp/a-program-merge-accepted-promotion-20261003/build/asan/identity_io_test"
+        ],
+        "exit": 0,
+        "log": "/tmp/a-program-merge-accepted-promotion-evidence-20261003/accepted-asan-2.log",
+        "sha256": "34aa3d9588db085e6fc93f0bcb20ed8229543498f1d916558d67ef5a6eccf96f"
+      },
+      {
+        "argv": [
+          "bash",
+          "/tmp/a-program-merge-accepted-promotion-20261003/tests/eval_io.sh",
+          "/tmp/a-program-merge-accepted-promotion-20261003/build/asan/eval_io_test"
+        ],
+        "exit": 0,
+        "log": "/tmp/a-program-merge-accepted-promotion-evidence-20261003/accepted-asan-3.log",
+        "sha256": "a7478709b3d6fa5a35c6435b8191e91eb943c08e320b4196027a77542da70b75"
+      },
+      {
+        "argv": [
+          "/tmp/a-program-merge-accepted-promotion-20261003/build/asan/iadt_test"
+        ],
+        "exit": 0,
+        "log": "/tmp/a-program-merge-accepted-promotion-evidence-20261003/accepted-asan-4.log",
+        "sha256": "6b7cc726b6630e39b04b1745aa4823adf2e664abe419f81be62cda19925ed01e"
+      },
+      {
+        "argv": [
+          "bash",
+          "/tmp/a-program-merge-accepted-promotion-20261003/tests/source_io.sh",
+          "/tmp/a-program-merge-accepted-promotion-20261003/build/asan/source_io_test"
+        ],
+        "exit": 0,
+        "log": "/tmp/a-program-merge-accepted-promotion-evidence-20261003/accepted-asan-5.log",
+        "sha256": "8bc30e591f43df28cc1bc6848bae97f912b190aeea987489b8f84ede1842412e"
+      },
+      {
+        "argv": [
+          "/tmp/a-program-merge-accepted-promotion-20261003/build/asan/source_io_test",
+          "normalization"
+        ],
+        "exit": 0,
+        "log": "/tmp/a-program-merge-accepted-promotion-evidence-20261003/accepted-asan-6.log",
+        "sha256": "2ef1770cd316207fc4aa198054fa0475347d5b6494fbc2a42c035c2822f779fd"
+      },
+      {
+        "argv": [
+          "/tmp/a-program-merge-accepted-promotion-20261003/build/asan/synthesis_test"
+        ],
+        "exit": 0,
+        "log": "/tmp/a-program-merge-accepted-promotion-evidence-20261003/accepted-asan-7.log",
+        "sha256": "be65c75d8e1179a987021bc831b91041feb517d4bd7016b62e8cb22129669bb3"
+      }
+    ],
+    "complete": true,
+    "passed": true
+  },
+  "post_promotion_prototype_head_gate": {
+    "argv": [
+      "make",
+      "-s",
+      "-j1",
+      "-f",
+      "/tmp/a-program-merge-post-promotion-final-20261003/src/Makefile",
+      "BUILD=/tmp/a-program-merge-post-promotion-final-20261003/build",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+      "check-head-delivery"
+    ],
+    "exit": 0,
+    "log_sha256": "50813502305db577f135446dfa1da3e619f0b64e70e4b26df71f7be3976a60b2",
+    "candidate": "ce4ef133393f24ea7505c727b7057e18443d556e"
+  },
+  "post_promotion_source128": "Exactly equal to qualified E8 runtime; code assembly reuses accepted head/cleanup without reverting them.",
+  "preservation": {
+    "accepted_commit": "7631e5a099f79bd33aa41d0dc3263c06c92fe244",
+    "review_candidate": "a7a8bc3b1db3dba69efa2707f28221802a025b3e",
+    "paths": [
+      "src/computation.c",
+      "src/eval.c",
+      "src/eval.h",
+      "src/iadt.c",
+      "src/Makefile",
+      "tests/core.c",
+      "tests/identity_io.c",
+      "tests/direct_test.c",
+      "tests/head_test.c",
+      "tests/total_result_test.c",
+      "tests/head_cleanup_test.c",
+      "tests/total_result_cuts.py",
+      "tests/head_delivery.sh"
+    ],
+    "exact_tested_index_blobs": true,
+    "protected_reverse_hashes_all_nine_exact": true,
+    "original_user_edits_remain_unaccepted": true,
+    "no_accepted_only_timing_claim": true
+  },
+  "historical_observers": {
+    "revision": "99efcf7027541e9cde8548c9f0cc8d9f6355cb1f",
+    "runtime_patch": "5fed3e376fcd2b7d6af4e1a055d2b40ed51bab89386653172a41ec3c8dceff8c",
+    "records": [
+      {
+        "name": "original-core",
+        "argv": [
+          "/tmp/a-program-merge-accepted-promotion-20261003/build/original/core_test"
+        ],
+        "exit": -6,
+        "unmodified_test_source": true
+      },
+      {
+        "name": "original-identity-io",
+        "argv": [
+          "bash",
+          "/tmp/a-program-merge-accepted-promotion-20261003/tests/identity_io.sh",
+          "/tmp/a-program-merge-accepted-promotion-20261003/build/original/identity_io_test"
+        ],
+        "exit": 134,
+        "unmodified_test_source": true
+      }
+    ],
+    "passing_results": false
+  },
+  "baseline_controls": {
+    "revision": "99efcf7027541e9cde8548c9f0cc8d9f6355cb1f",
+    "accepted_runtime_unmodified": true,
+    "flags": "-std=c11 -Wall -Wextra -Werror -O2",
+    "checks": [
+      {
+        "name": "baseline-core",
+        "argv": [
+          "/tmp/a-program-merge-accepted-baseline-20261003/build/core_test"
+        ],
+        "exit": 0,
+        "log_sha256": "6e04ecedbb5bba239500713b0ef8f8c30672ebfa2b12599c6487afb15df31bd8"
+      },
+      {
+        "name": "baseline-identity-io",
+        "argv": [
+          "bash",
+          "/tmp/a-program-merge-review-20261003/tests/identity_io.sh",
+          "/tmp/a-program-merge-accepted-baseline-20261003/build/identity_io_test"
+        ],
+        "exit": 0,
+        "log_sha256": "34aa3d9588db085e6fc93f0bcb20ed8229543498f1d916558d67ef5a6eccf96f"
+      }
+    ]
+  },
+  "evidence_directory": "/tmp/a-program-merge-accepted-promotion-evidence-20261003",
+  "retained_setup_failures": [
+    "Initial private prototype head link lacked synthesis dependencies; corrected only private overlay Makefile.",
+    "Initial migration table reader column mismatch and initial sanitizer metadata field mismatch corrected before publication."
+  ],
+  "interpretation": "Joint E6 speed/RSS data remain pinned separately. No accepted-only timing, universal ranking, strict-resume waiver, or other prototype lane adoption.",
+  "overlay_variants": {
+    "rows": [
+      {
+        "base": "before",
+        "variant": "base",
+        "exit": 0,
+        "runtime4": {
+          "computation.c": "1ad48bbb5196eb1ba12d5c9637b1fb1980bff5c2d8876bb1451bddb7f17334ef",
+          "eval.c": "725522a12851dd543b2d9884a6c5ae7f9f833dab6b610a97c8caf833cf5e0123",
+          "eval.h": "7ba9ce3dc15b9157c58489f1a92f92f892595b9df439a580a891a6b463fb1957",
+          "iadt.c": "7ed82d9d2ae8828d313474e69d66829397a38dd83fce6645c9ad14ad9bdbced1"
+        }
+      },
+      {
+        "base": "before",
+        "variant": "direct",
+        "exit": 0,
+        "runtime4": {
+          "computation.c": "1ad48bbb5196eb1ba12d5c9637b1fb1980bff5c2d8876bb1451bddb7f17334ef",
+          "eval.c": "725522a12851dd543b2d9884a6c5ae7f9f833dab6b610a97c8caf833cf5e0123",
+          "eval.h": "7ba9ce3dc15b9157c58489f1a92f92f892595b9df439a580a891a6b463fb1957",
+          "iadt.c": "5836912218b727ed4f3c8e9f9888504c4399b2c0daa31ffb1846637e7ea04161"
+        }
+      },
+      {
+        "base": "before",
+        "variant": "head",
+        "exit": 0,
+        "runtime4": {
+          "computation.c": "86e07e1b9e732e2ab1940b8cae966b6368586ae37f6dd9df1deed7aa770fc28d",
+          "eval.c": "966a151b241a5682a565f361f3902eda2edbf4504260e2249a07f2dd848cea30",
+          "eval.h": "83124efa76569efc1da5da0ea5a922b1e63e553ac014b1c8d86ac3f0083b35f6",
+          "iadt.c": "78fea20444a7ad90658fd8e7e1af9a37247acf4728171e46872838a9379e3ec1"
+        }
+      },
+      {
+        "base": "before",
+        "variant": "head-adapted",
+        "exit": 0,
+        "runtime4": {
+          "computation.c": "86e07e1b9e732e2ab1940b8cae966b6368586ae37f6dd9df1deed7aa770fc28d",
+          "eval.c": "966a151b241a5682a565f361f3902eda2edbf4504260e2249a07f2dd848cea30",
+          "eval.h": "83124efa76569efc1da5da0ea5a922b1e63e553ac014b1c8d86ac3f0083b35f6",
+          "iadt.c": "78fea20444a7ad90658fd8e7e1af9a37247acf4728171e46872838a9379e3ec1"
+        }
+      },
+      {
+        "base": "after",
+        "variant": "base",
+        "exit": 0,
+        "runtime4": {
+          "computation.c": "86e07e1b9e732e2ab1940b8cae966b6368586ae37f6dd9df1deed7aa770fc28d",
+          "eval.c": "3aa190ccb4b2cf99604de066cd981c20e76991b636af49cfcdb20a1b20e701f3",
+          "eval.h": "83124efa76569efc1da5da0ea5a922b1e63e553ac014b1c8d86ac3f0083b35f6",
+          "iadt.c": "78fea20444a7ad90658fd8e7e1af9a37247acf4728171e46872838a9379e3ec1"
+        }
+      },
+      {
+        "base": "after",
+        "variant": "direct",
+        "exit": 0,
+        "runtime4": {
+          "computation.c": "86e07e1b9e732e2ab1940b8cae966b6368586ae37f6dd9df1deed7aa770fc28d",
+          "eval.c": "3aa190ccb4b2cf99604de066cd981c20e76991b636af49cfcdb20a1b20e701f3",
+          "eval.h": "83124efa76569efc1da5da0ea5a922b1e63e553ac014b1c8d86ac3f0083b35f6",
+          "iadt.c": "78fea20444a7ad90658fd8e7e1af9a37247acf4728171e46872838a9379e3ec1"
+        }
+      },
+      {
+        "base": "after",
+        "variant": "head",
+        "exit": 0,
+        "runtime4": {
+          "computation.c": "86e07e1b9e732e2ab1940b8cae966b6368586ae37f6dd9df1deed7aa770fc28d",
+          "eval.c": "3aa190ccb4b2cf99604de066cd981c20e76991b636af49cfcdb20a1b20e701f3",
+          "eval.h": "83124efa76569efc1da5da0ea5a922b1e63e553ac014b1c8d86ac3f0083b35f6",
+          "iadt.c": "78fea20444a7ad90658fd8e7e1af9a37247acf4728171e46872838a9379e3ec1"
+        }
+      },
+      {
+        "base": "after",
+        "variant": "head-adapted",
+        "exit": 0,
+        "runtime4": {
+          "computation.c": "86e07e1b9e732e2ab1940b8cae966b6368586ae37f6dd9df1deed7aa770fc28d",
+          "eval.c": "3aa190ccb4b2cf99604de066cd981c20e76991b636af49cfcdb20a1b20e701f3",
+          "eval.h": "83124efa76569efc1da5da0ea5a922b1e63e553ac014b1c8d86ac3f0083b35f6",
+          "iadt.c": "78fea20444a7ad90658fd8e7e1af9a37247acf4728171e46872838a9379e3ec1"
+        }
+      }
+    ],
+    "interpretation": "After promotion all variants retain the accepted runtime; historical timing comparisons require frozen pre-promotion producer. Before promotion three implementation variants remain distinct; head/head-adapted share runtime and differ test observers."
+  }
+}
