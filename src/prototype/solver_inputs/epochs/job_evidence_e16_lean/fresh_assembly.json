@@ -1,0 +1,8 @@
+{
+  "parent_source156": "d4790a1ca1346cb2278f81bf4872b01ba4c74fc2889dee785878d965e01788bd",
+  "candidate_source156": "a00c742673f74c1ef0b12f800e572b4ec138fe56acf51d30319aad8536adceeb",
+  "applied_delta": "9a68907c7d9df2d7ae45db91b44de545470cd699a44b5be7a402b14ec324476c",
+  "all156_after_apply_exact": true,
+  "canonical_source_and_test_exact": true,
+  "namespace": "Exact isolated E14 parent; canonical projection under job_evidence_epoch16_canonical_projection."
+}

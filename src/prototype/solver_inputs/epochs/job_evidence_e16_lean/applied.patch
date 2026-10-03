@@ -1,0 +1,94 @@
+--- a/src/synthesis_work.c
++++ b/src/synthesis_work.c
+@@ -69,7 +69,13 @@
+ 	if (input.checked)
+ 		return !input.pending && pg_evidence_owned_by(input.checked, synthesis->typing);
+ 	struct pg_synthesis_job *job = pg_pending_job(input.pending);
+-	if (job) return job->pending.owner == synthesis->owner_key;
++	if (job) {
++		if (job->pending.owner != synthesis->owner_key || !synthesis->jobs.capacity) return 0;
++		for (const struct pg_index_entry *entry = pg_index_candidates(&synthesis->jobs, job->pending.index.hash);
++			entry; entry = entry->next)
++			if (entry == &job->pending.index) return 1;
++		return 0;
++	}
+ 	struct pg_typed_query *query = pg_pending_query(input.pending);
+ 	if (query) return pg_typed_query_owned_by(query, synthesis->typing);
+ 	return input.pending && input.pending->owner == synthesis->owner_key;
+--- a/src/artifact/schedule.c
++++ b/src/artifact/schedule.c
+@@ -71,7 +71,8 @@
+ {
+ 	if (!synthesis || (count && !jobs)) return -1;
+ 	for (size_t i = 0; i < count; ++i) {
+-		if (!jobs[i] || jobs[i]->pending.owner != synthesis->owner_key) return -1;
++		if (!pg_synthesis_input_owned(synthesis,
++			(struct pg_synthesis_input){.pending = pg_synthesis_pending(jobs[i])})) return -1;
+ 		if (pg_dag_add(map, jobs[i]) || map->count != i + 1) return -1;
+ 	}
+ 	return 0;
+--- a/tests/synthesis.c
++++ b/tests/synthesis.c
+@@ -138,6 +138,20 @@
+ 		jobs[count - 1] = job;
+ 	}
+ 	assert(jobs[0] != jobs[1]);
++	/* A copied owner tag does not give caller storage a canonical lifetime. */
++	struct pg_synthesis_job copied = *jobs[0];
++	assert(pg_synthesis_input_owned(&synthesis, pending_input(jobs[0])));
++	assert(!pg_synthesis_input_owned(&synthesis, pending_input(&copied)));
++	size_t retained_jobs = synthesis.jobs.count, retained_rules = synthesis.rule_inputs.count;
++	struct pg_synthesis_job *retained_ready = synthesis.ready, *retained_tail = synthesis.ready_tail;
++	struct pg_synthesis_input copied_inputs[] = {pending_input(&copied), pending_input(&copied)};
++	assert(!pg_synthesis_plain_rule_inputs(&synthesis, PG_CONTEXT_PROJECTION, NULL, 2, copied_inputs));
++	assert(synthesis.jobs.count == retained_jobs && synthesis.rule_inputs.count == retained_rules && !synthesis.steps);
++	assert(synthesis.ready == retained_ready && synthesis.ready_tail == retained_tail);
++	copied.pending.owner = NULL;
++	assert(!pg_synthesis_input_owned(&synthesis, pending_input(&copied)));
++	struct pg_synthesis inactive = {0};
++	assert(!pg_synthesis_input_owned(&inactive, pending_input(&copied)));
+ 	struct pg_synthesis_job *zero = pg_synthesis_work_request(&synthesis, &empty, 1, inputs);
+ 	assert(zero && zero != jobs[0] && !pg_synthesis_work_state(zero, &empty));
+ 	assert(!pg_synthesis_work_request(&synthesis, &oversized, 0, NULL));
+--- a/checkpoint_tests/normalization_checkpoint_test.c
++++ b/checkpoint_tests/normalization_checkpoint_test.c
+@@ -371,6 +371,31 @@
+ 	}
+ }
+ 
++static void schedule_copied_owner(void)
++{
++	struct pg_program *p = pg_program_allocate_empty(PG_DEFINITION_IMPLICIT_THUNK);
++	assert(p);
++	struct pg_synthesis_job *jobs[4];
++	schedule_jobs(&p->synthesis, jobs);
++	const struct pg_artifact_schedule *dormant = pg_artifact_schedule_ready(&p->graph, 4, 0, NULL);
++	assert(dormant && !pg_artifact_schedule_attach(&p->synthesis, dormant, 4, jobs));
++	assert(!p->synthesis.ready && !p->synthesis.steps);
++	size_t size = sizeof(*jobs[0]) + jobs[0]->input_count * sizeof(*jobs[0]->inputs);
++	struct pg_synthesis_job *copied = malloc(size);
++	assert(copied);
++	memcpy(copied, jobs[0], size);
++	struct pg_synthesis_job *mapping[] = {copied, jobs[1], jobs[2], jobs[3]};
++	size_t ordinal = 0;
++	const struct pg_artifact_schedule *ready = pg_artifact_schedule_ready(&p->graph, 4, 1, &ordinal);
++	assert(ready && pg_artifact_schedule_attach(&p->synthesis, ready, 4, mapping));
++	assert(!p->synthesis.ready && !p->synthesis.ready_tail && !p->synthesis.steps);
++	free(copied);
++	assert(!pg_artifact_schedule_attach(&p->synthesis, ready, 4, jobs));
++	assert(p->synthesis.ready == jobs[0] && p->synthesis.ready_tail == jobs[0]);
++	pg_program_destroy(p);
++	puts("scheduler: copied owner tag cannot publish caller storage as runnable work");
++}
++
+ static void schedule_boundaries(void)
+ {
+ 	struct pg_program *p = pg_program_allocate_empty(PG_DEFINITION_IMPLICIT_THUNK);
+@@ -496,6 +521,7 @@
+ 		"n @zero=>Nat.zero @succ k=>Nat.succ *k; main := id (Nat.succ (Nat.succ Nat.zero));", 1);
+ 	partitions("main := #int_add #4 #5;", 1);
+ 	shared_checkpoint();
++	schedule_copied_owner();
+ 	schedule_boundaries();
+ 	waiting_cycle();
+ 	return 0;

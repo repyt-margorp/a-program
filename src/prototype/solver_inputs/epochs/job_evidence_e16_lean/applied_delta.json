@@ -1,0 +1,25 @@
+{
+  "files": [
+    {
+      "file": "src/synthesis_work.c",
+      "added": 7,
+      "removed": 1
+    },
+    {
+      "file": "src/artifact/schedule.c",
+      "added": 2,
+      "removed": 1
+    },
+    {
+      "file": "tests/synthesis.c",
+      "added": 14,
+      "removed": 0
+    },
+    {
+      "file": "checkpoint_tests/normalization_checkpoint_test.c",
+      "added": 26,
+      "removed": 0
+    }
+  ],
+  "documentation": "Lean report only; one active SE work list remains outside the frozen set."
+}

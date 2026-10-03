@@ -1,0 +1,7 @@
+{
+  "stage": "static identifier lookup before any build/test",
+  "invalid": "PG_CONTEXT_WEAKEN",
+  "correction": "existing PG_CONTEXT_PROJECTION with two pending operands; actual checking still ordinary Solve",
+  "no_build_or_runtime_gate_executed": true,
+  "initial_unbuilt_trial_sha256": "8f8dbd5b65b7d7cc7e32b9ba71a93078df1c3dfdacbdd1186dd7acdfa4e9bcb5"
+}

@@ -179,3 +179,43 @@
  	.size = sizeof(unsigned), .advance = preparation_step, .project = preparation_view};
  
  static void schedule_jobs(struct pg_synthesis *s, struct pg_synthesis_job **jobs)
+@@ -373,6 +369,31 @@
+ 		jobs[i] = pg_synthesis_work_request(s, &consumer, 1, inputs);
+ 		assert(jobs[i]);
+ 	}
++}
++
++static void schedule_copied_owner(void)
++{
++	struct pg_program *p = pg_program_allocate_empty(PG_DEFINITION_IMPLICIT_THUNK);
++	assert(p);
++	struct pg_synthesis_job *jobs[4];
++	schedule_jobs(&p->synthesis, jobs);
++	const struct pg_artifact_schedule *dormant = pg_artifact_schedule_ready(&p->graph, 4, 0, NULL);
++	assert(dormant && !pg_artifact_schedule_attach(&p->synthesis, dormant, 4, jobs));
++	assert(!p->synthesis.ready && !p->synthesis.steps);
++	size_t size = sizeof(*jobs[0]) + jobs[0]->input_count * sizeof(*jobs[0]->inputs);
++	struct pg_synthesis_job *copied = malloc(size);
++	assert(copied);
++	memcpy(copied, jobs[0], size);
++	struct pg_synthesis_job *mapping[] = {copied, jobs[1], jobs[2], jobs[3]};
++	size_t ordinal = 0;
++	const struct pg_artifact_schedule *ready = pg_artifact_schedule_ready(&p->graph, 4, 1, &ordinal);
++	assert(ready && pg_artifact_schedule_attach(&p->synthesis, ready, 4, mapping));
++	assert(!p->synthesis.ready && !p->synthesis.ready_tail && !p->synthesis.steps);
++	free(copied);
++	assert(!pg_artifact_schedule_attach(&p->synthesis, ready, 4, jobs));
++	assert(p->synthesis.ready == jobs[0] && p->synthesis.ready_tail == jobs[0]);
++	pg_program_destroy(p);
++	puts("scheduler: copied owner tag cannot publish caller storage as runnable work");
+ }
+ 
+ static void schedule_boundaries(void)
+@@ -500,6 +521,7 @@
+ 		"n @zero=>Nat.zero @succ k=>Nat.succ *k; main := id (Nat.succ (Nat.succ Nat.zero));", 1);
+ 	partitions("main := #int_add #4 #5;", 1);
+ 	shared_checkpoint();
++	schedule_copied_owner();
+ 	schedule_boundaries();
+ 	waiting_cycle();
+ 	return 0;

@@ -1,0 +1,30 @@
+group	gate_or_sample	variant	exit	report	report_sha256
+focused	parent-build		0	/tmp/job-evidence-e16-v3-parent-build.log	2e04a18d7c8e8a38105ced1a4145f2c1ae5f222c68c7698383c02a1ec2b64871
+focused	parent-pending_owner_control		0	/tmp/job-evidence-e16-v3-parent-pending_owner_control.log	eb1fbea305782ee7d2f436fd58ce04d75dec540896e20ab1afa9f23402ddd8d7
+focused	parent-synthesis_test		-6	/tmp/job-evidence-e16-v3-parent-synthesis_test.log	c59dfcb5d090b851326184ba7029473b0736ff8ff19aef0f8c68a33048eade77
+focused	parent-artifact_normalization_checkpoint_test		-6	/tmp/job-evidence-e16-v3-parent-artifact_normalization_checkpoint_test.log	f2ea6b70ce1f1f96cce60cbd3fb6f6787d75220bdd9946ab217d7618975aa22e
+focused	candidate-build		0	/tmp/job-evidence-e16-v3-candidate-build.log	39c41898a061bed523b8b826298ca51affdb476cc188708a2285292d48db93e2
+focused	candidate-pending_owner_control		0	/tmp/job-evidence-e16-v3-candidate-pending_owner_control.log	112b1871f5fb1c56f69da0451b59b7bb5578ec861096825c1c579f85af739f73
+focused	candidate-synthesis_test		0	/tmp/job-evidence-e16-v3-candidate-synthesis_test.log	c500145c76c988830cfbdc1160ad934e4662123bd2d058c1f2e5fd554499ff8f
+focused	candidate-artifact_normalization_checkpoint_test		0	/tmp/job-evidence-e16-v3-candidate-artifact_normalization_checkpoint_test.log	1ebf4f4e00c8b3398bccaf6b80a403637fe5fd75058653c0cb997c102c8254e4
+focused	asan-build		0	/tmp/job-evidence-e16-v3-asan-build.log	bd939324e1e68303e5c91fbe6b7c60398b5958d0930e41b1b67a845492fa1a84
+focused	asan-pending_owner_control		0	/tmp/job-evidence-e16-v3-asan-pending_owner_control.log	112b1871f5fb1c56f69da0451b59b7bb5578ec861096825c1c579f85af739f73
+focused	asan-synthesis_test		0	/tmp/job-evidence-e16-v3-asan-synthesis_test.log	c500145c76c988830cfbdc1160ad934e4662123bd2d058c1f2e5fd554499ff8f
+focused	asan-artifact_normalization_checkpoint_test		0	/tmp/job-evidence-e16-v3-asan-artifact_normalization_checkpoint_test.log	1ebf4f4e00c8b3398bccaf6b80a403637fe5fd75058653c0cb997c102c8254e4
+broad	broad		0	/tmp/job-evidence-e16-broad-v2.log	d146e9a182d5c46e2e0db766d1c8787b5a4df83abe336b989b3302e0c94f0e04
+supplemental	baseline-C-eight-scripts		0	/tmp/job-evidence-e16-c.log	3f84cb30a83c8b48f29b4e14389597ecb1d73eb019b5af883c2823432bdb7643
+supplemental	strict-public-original-three		1	/tmp/job-evidence-e16-partitions.log	bb686c24f0022ccb920f6b25807f2ee75b3fcb7761da4b0ad06ba690f5561f0e
+census	census-build	E15	0	/tmp/job-evidence-e16-E15-census-build.log	d8699329fed3d578fc699971c51aabf1c779a8e870f6dac5c2c8d62fc9ed32fc
+census	list	E15	0		09415aa2a735ec7aa8caec257c1ab9792aabb16925c10ef70e678c865356c28d
+census	effect	E15	0		72e0f8e9f86cd28b121fc72ae8564ba30d81c3843e9311610ec7fa996ffc30b7
+census	captured	E15	0		76b0286b9f1fc79953c6882e34cf95d37fc0e8d4250abf677f7f449c4e4df2c2
+census	quick	E15	0		7e2e77a5910f4c94ef94b85782765126338066d6a74d6cd540dc54c556a9881c
+census	handler	E15	0		6aad30c07814eff6205ff8617869e379e20ee078a41a5b7674e6a6e409ce9da6
+census	census-build	E16	0	/tmp/job-evidence-e16-E16-census-build.log	49094a9595fa5fa2ef7a84016685ca533e77667e6f0893332da041e8667b0ba2
+census	list	E16	0		09415aa2a735ec7aa8caec257c1ab9792aabb16925c10ef70e678c865356c28d
+census	effect	E16	0		72e0f8e9f86cd28b121fc72ae8564ba30d81c3843e9311610ec7fa996ffc30b7
+census	captured	E16	0		76b0286b9f1fc79953c6882e34cf95d37fc0e8d4250abf677f7f449c4e4df2c2
+census	quick	E16	0		7e2e77a5910f4c94ef94b85782765126338066d6a74d6cd540dc54c556a9881c
+census	handler	E16	0		6aad30c07814eff6205ff8617869e379e20ee078a41a5b7674e6a6e409ce9da6
+policy	build		0	/tmp/job-evidence-e16-policy-build.log	cc3c2391cc100eeb87b5faed2f408a6a6db9b8062849b3d90a22430bea070527
+policy	policy-progress		0	/tmp/job-evidence-e16-policy-policy-progress.log	20a653ebb6574d593ea036c26172ec0761bbfb1480f1b57c505f741b962ecc50
