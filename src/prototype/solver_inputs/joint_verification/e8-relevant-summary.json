@@ -1,0 +1,33 @@
+{
+  "revision": "f82ad9fae549dc49eeb30d7bb6100fb76794b03c",
+  "epoch8_task": "50cd56b2a52b7e370bc7ecb3436c4993e2e5d6a2",
+  "parent_epoch7_task": "3ad03033708135895352e3b19ddef64169c62c22",
+  "fresh_root_hash_checks": {
+    "evidence_records": 1956,
+    "runtime_sources": 128,
+    "selected_tests": 6,
+    "all_exact": true
+  },
+  "canonical_assembly": "/tmp/a-program-merge-e8-assembled-20261003",
+  "Surface_patch": "E7 context-only rebase applies without further changes",
+  "source_manifest_sha256": "9ba2b33cbe8bc68eac338073506bcb205f36d20cb0a34f9f88607d975ef07740",
+  "joint_manifest_sha256": "253a36c017d91a7270da0907519257c6178fb278ec1b43ce35d03e10be1c8749",
+  "joint_summary_sha256": "4151814f5ece3f09ef288ce135d1667c464dfd5d5bd31c718b812dc092c7c5dd",
+  "worker_fresh_gates": {
+    "relevant_O2_recipes": 408,
+    "only_failed_target": "check-artifact-partitions",
+    "sanitizer_commands": 45,
+    "focused_O2": 23,
+    "cross_build": 140,
+    "raw_cuts": 70,
+    "checkpoints": 7
+  },
+  "inherited_E7_full_O2_recipes": 384,
+  "fresh_root_full_suite_rerun": false,
+  "strict_failures": [
+    "1000:1000",
+    "1600:1600",
+    "1915:0"
+  ],
+  "scope": "prototype E8 only; retain own Binder VARIABLE result and checked Graph output borrowing guard"
+}
