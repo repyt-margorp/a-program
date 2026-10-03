@@ -216,10 +216,19 @@ files byte-exact to disk, preserving the old path through a symlink; compiler
 TMPDIR now disk-backed, no shared cleanup. Job independently retries broad
 serially on owned disk. E16 isolated-parent12 raw/control records and156+156
 pins verify tag-only copied-Job admission versus zero-step membership rejection;
-parent protection134/134 remains a failure, no current-Main bug claim.
+parent protection134/134 remains a failure. Superseding 21:35 UTC Root review
+freshly reproduces ownership/factory admission at Main0585663/source1283f48e22e:
+`copied_job_owned=1 factory_created=1 steps=0`, unchanged existing control/build0.
+This establishes that specific current-producer gap; current scheduler-save
+and candidate repair qualification remain separate, pending exact E16 freeze.
 [E16 review](../src/prototype/coordination/reviews/job-e16-owner-counterexample-20261003.json).
 C16 frozen18/retained182/raw2300 verify; fresh Root current-E15 ABI/affected
-checks now run separately. Prior live harness edit is superseded by the final
+checks pass and taska4a2e98/Main0585663 are pushed/remote exact. Binary48,
+unary39, modules99 and shared58 rows match in both O2/client-source SAN;
+linker and matched-image I/O19 also pass with all pins unchanged.
+[C16 receipt](../src/prototype/c_backend/verification/core-epoch16.json).
+Seventeen frozen files exact, Goal provenance alone reconciled; protected9 and
+1780 worker tracked files preserved. Prior live harness edit is superseded by the final
 freeze, with initial sentinel134 retained and no saved pre-correction source
 bytes claim. Three original owners continue; completed four stay stopped.
 Fresh issue snapshot remains nine open/zero PR, updates unchanged; timer alive,
@@ -227,8 +236,8 @@ next 2026-10-04T01:44:22.084Z. No new cost grant or human design attribution.
 
 | Owner / issue scope | Delivered and verified | Not yet delivered / next boundary |
 | --- | --- | --- |
-| Job/Evidence; SE1-SE5 / AP0, #51/#47 | E1-E4/E6-E15 corrected prototypes integrated. E15 exact29 task150e30a/Main1d46b5b pushed/remote exact;539 worker input pins/nine reports and fresh Root current-E14 source1283f48e22e full synthesis O2/SAN/public52/full TSV match E14; canonical files exact | E16 isolated-parent lifetime gap/candidate reviewed, parent protection134/134; broad ENOSPC2 retained, disk-backed retry running. Current-Main reproduction/freeze/joint pending; E17 unbuilt private. Strict3 and original rejections retained, no full Goal or actual E15 cost |
-| C backend; #61 (historical #44/#49) | C1-C15 bounded prototypes integrated. C15 exact8 taskba5d39d/Maind219fca pushed/remote exact; fresh current-E14 producer/frozen C14 backend O2/client-source SAN99 each pass; seven frozen files exact plus reconciled Goal | C16 notice4f4cf1c0 private worker progress: binary O2/SAN33 and old unary39 pass; independent binary Core and affected product/I/O gates pending. No freeze/current-producer/integration claim. Caller lifetime/totality, higher/native Acc/QuickSort remain open |
+| Job/Evidence; SE1-SE5 / AP0, #51/#47 | E1-E4/E6-E15 corrected prototypes integrated. E15 exact29 task150e30a/Main1d46b5b pushed/remote exact;539 worker input pins/nine reports and fresh Root current-E14 source1283f48e22e full synthesis O2/SAN/public52/full TSV match E14; canonical files exact | Root current producer reproduces copied-Job ownership/factory gap at zero steps. E16 isolated-parent protections134/134 and candidate focused O2/SAN0 reviewed; broad ENOSPC2 retained/disk retry advances, exact freeze/current fix qualification pending. E17 private/unqualified. Strict3/original rejections retained; no full Goal or actual E15 cost |
+| C backend; #61 (historical #44/#49) | C1-C16 bounded prototypes integrated. C16 exact18 taska4a2e98/Main0585663 pushed/remote exact; frozen17 plus reconciled Goal. Fresh current-E15 source1283f48e22e binary48/unary39/modules99/shared58 O2/client-source SAN each and link/I/O19 pass;182 worker inputs/2300 raw outputs exact | Caller interpretation/purity/totality/success/synchronous borrowed code-context lifetime and limited SAN scope remain. General/boxed/effect/dependent/mixed-width/arity3 and native Acc/QuickSort remain open; no new actual cost or broad Goal closure |
 | Performance; #56/#51/#52 | V3/MEM2/MEM3 source/cost and MEM4/MEM5 exact11 each integrated/pushed. MEM4 task2e92608/Main9a9e1da and MEM5 task27a35a1/Main82be0a8,1125/1586 worker files exact; fresh Root parent/candidate O2/SAN16 controls each pass. Fold36 raw88 retains scoped Tree400 wall-1.43%/RSS-1.91%, disjoint ranges | Five other timing ranges overlap; Tree4/LocalSorted RSS overlap and startup List limited. MEM4/MEM5 actual cost unmeasured; field-array path absent at100K census. Owned argument/environment lifetime research continues, full retained-memory/recovery/Goal criteria open |
 | Surface; #57 | Verified prototype integrated, completed owner stopped | Accepted policy/promotion and selector diagnostics unresolved; no owner restart |
 | Static audit; #59/PR #60 | Task7ed3ad1/Main5683755; Root385 source/114 archived dependency hashes and exact inventory verified; bounded Goal achieved | Dynamic/full #59 and controlled cost remain open; no static-owner restart |
@@ -261,12 +270,12 @@ reporting subsystem. Its audit cover is pinned to `37de1e8`, not current Main.
 | Order / owner | Issue or PR | Next deliverable and dependency |
 | --- | --- | --- |
 | 0 / desk -> Merge | Workflow | Merge reviews evidence; Performance runs, original C/Job resumed once in place with actual tool/code progress. Test-suite/issue-audit/static/Sort bounded Goals achieved and stopped; protected local bytes preserved. Scheduled six-hour report delivered; Root resumes coordination after audit handoff |
-| 1 / Job, Root reviews independently | SE/AP, #51 | E15 task150e30a/Main1d46b5b fresh synthesis O2/SAN/public persistence and exact29 publication complete. Review E16 disk-backed broad/C/strict/frozen handoff separately, then reproduce owner gap on current Main before adoption; E17 stays private. Preserve strict3/rejected failures |
+| 1 / Job, Root reviews independently | SE/AP, #51 | E15 task150e30a/Main1d46b5b delivered; current producer copied-Job ownership/factory gap freshly reproduced. Review E16 disk-backed broad/C/strict/frozen handoff, then independently qualify member-index repair on current producer before integration. E17 stays private; preserve strict3/rejected failures |
 | 1 / performance + Job | #56 / #51 | MEM3 source/cost, MEM4/MEM5 source11 each delivered with fresh focused O2/SAN qualification. Preserve scoped modest Tree400 gain/five overlapping timing ranges and all original failures. Original Performance owner continues argument/environment lifetime work; no automatic new measurement slot |
 | Complete bounded / test-suite; Root publishes | #59 / PR #60 | Verified pilot removes22 duplicate calls with all distinct outcomes preserved; Root raw/assembly review complete. Exact7 taskbc16df9/Main36a27be prototype integrated; broader inventory/cost/accepted adoption remain open |
 | Complete bounded / issue-audit | All open Issues/PRs | Verified comments/dispositions,44/49 superseded by61; nine issues open. Owner stopped; Root resumes coordination, no repeat audit |
 | Complete bounded / verification-audit | #59 / PR #60; #51 | Static inventory/pilot delivered and worker complete; four-job measured cost remains deferred, full #59 open. Do not restart the completed owner automatically |
-| 2 / C backend | #61 (historical #44/#49) | C15 current-E14 qualification/taskba5d39d/Maind219fca publication complete. Await C16 independent binary Core/affected product/I/O gates and separate freeze; preserve old unary refusals and native/higher/ownership boundaries |
+| 2 / C backend | #61 (historical #44/#49) | C16 current-E15 ABI/Core/affected checks and taska4a2e98/Main0585663 publication complete. Original owner reviews next bounded justified AP obligation; preserve old unary refusals, caller preconditions and native/higher/ownership boundaries. No automatic cost grant or source-policy expansion |
 | Complete review / Merge | PR #60, #53, #55 | Documentation reviewed/imported with provenance; no open PRs. Full issue criteria remain independent of publication |
 | Complete bounded / Sort library | PR #54 / #41 | Generic MergeSort and finite-function prototype verified/integrated; bounded worker complete. Accepted Sort/F5 and broader containers remain separate; no owner restart |
 | Review / Merge | #57 | Audit delivered prototype against Issue criteria; Surface stays stopped. Prototype delivery is not accepted promotion; do not reopen a worker just to repeat completed gates |

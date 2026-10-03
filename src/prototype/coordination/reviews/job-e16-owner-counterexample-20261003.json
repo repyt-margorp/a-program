@@ -1,117 +1,165 @@
 {
-  "notice_sha256": "c7ae093256c763cb89b1163020bc0611c237632f1d61ba7929e8d6362f7f2bdc",
-  "worker_focused_verdicts_sha256": "f9a6dc88a58b5d28c42b8ee5f7dcef89a807d4632cd7e033e8c6e27af15f5a7b",
-  "worker_focused_requests_sha256": "a76a8285c6fafef3aac14d22a99039545a98eab9da68bdde1ea944c31e8e83e0",
-  "source_control_manifests": {
-    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e16/parent_control_sources.sha256": {
-      "sha256": "7dc70bdeefd3d1a2ec9d63ff9fb0578a49b8149f15f436d89859713ba2d7c5dc",
-      "count": 156,
-      "all_files_exact": true
+  "initial_worker_review": {
+    "notice_sha256": "c7ae093256c763cb89b1163020bc0611c237632f1d61ba7929e8d6362f7f2bdc",
+    "worker_focused_verdicts_sha256": "f9a6dc88a58b5d28c42b8ee5f7dcef89a807d4632cd7e033e8c6e27af15f5a7b",
+    "worker_focused_requests_sha256": "a76a8285c6fafef3aac14d22a99039545a98eab9da68bdde1ea944c31e8e83e0",
+    "source_control_manifests": {
+      "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e16/parent_control_sources.sha256": {
+        "sha256": "7dc70bdeefd3d1a2ec9d63ff9fb0578a49b8149f15f436d89859713ba2d7c5dc",
+        "count": 156,
+        "all_files_exact": true
+      },
+      "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e16/tested_sources.sha256": {
+        "sha256": "a00c742673f74c1ef0b12f800e572b4ec138fe56acf51d30319aad8536adceeb",
+        "count": 156,
+        "all_files_exact": true
+      }
     },
-    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e16/tested_sources.sha256": {
-      "sha256": "a00c742673f74c1ef0b12f800e572b4ec138fe56acf51d30319aad8536adceeb",
-      "count": 156,
-      "all_files_exact": true
-    }
+    "all12_raw_reports_and_unit_binaries_verified": true,
+    "verdicts": [
+      {
+        "gate": "parent-build",
+        "expected_exit": 0,
+        "exit": 0,
+        "shell_convention_exit": 0,
+        "parent_counterexample_not_acceptance_waiver": false
+      },
+      {
+        "gate": "parent-pending_owner_control",
+        "expected_exit": 0,
+        "exit": 0,
+        "shell_convention_exit": 0,
+        "parent_counterexample_not_acceptance_waiver": false
+      },
+      {
+        "gate": "parent-synthesis_test",
+        "expected_exit": -6,
+        "exit": -6,
+        "shell_convention_exit": 134,
+        "parent_counterexample_not_acceptance_waiver": true
+      },
+      {
+        "gate": "parent-artifact_normalization_checkpoint_test",
+        "expected_exit": -6,
+        "exit": -6,
+        "shell_convention_exit": 134,
+        "parent_counterexample_not_acceptance_waiver": true
+      },
+      {
+        "gate": "candidate-build",
+        "expected_exit": 0,
+        "exit": 0,
+        "shell_convention_exit": 0,
+        "parent_counterexample_not_acceptance_waiver": false
+      },
+      {
+        "gate": "candidate-pending_owner_control",
+        "expected_exit": 0,
+        "exit": 0,
+        "shell_convention_exit": 0,
+        "parent_counterexample_not_acceptance_waiver": false
+      },
+      {
+        "gate": "candidate-synthesis_test",
+        "expected_exit": 0,
+        "exit": 0,
+        "shell_convention_exit": 0,
+        "parent_counterexample_not_acceptance_waiver": false
+      },
+      {
+        "gate": "candidate-artifact_normalization_checkpoint_test",
+        "expected_exit": 0,
+        "exit": 0,
+        "shell_convention_exit": 0,
+        "parent_counterexample_not_acceptance_waiver": false
+      },
+      {
+        "gate": "asan-build",
+        "expected_exit": 0,
+        "exit": 0,
+        "shell_convention_exit": 0,
+        "parent_counterexample_not_acceptance_waiver": false
+      },
+      {
+        "gate": "asan-pending_owner_control",
+        "expected_exit": 0,
+        "exit": 0,
+        "shell_convention_exit": 0,
+        "parent_counterexample_not_acceptance_waiver": false
+      },
+      {
+        "gate": "asan-synthesis_test",
+        "expected_exit": 0,
+        "exit": 0,
+        "shell_convention_exit": 0,
+        "parent_counterexample_not_acceptance_waiver": false
+      },
+      {
+        "gate": "asan-artifact_normalization_checkpoint_test",
+        "expected_exit": 0,
+        "exit": 0,
+        "shell_convention_exit": 0,
+        "parent_counterexample_not_acceptance_waiver": false
+      }
+    ],
+    "initial_broad_storage_failure": {
+      "exit": 2,
+      "request_sha256": "15535a72d4a1f9f9f0bcebaf6cc719c5c5ce922441422375b4afb89f24986849",
+      "report": "/tmp/job-evidence-e16-broad.log",
+      "report_sha256": "de5140cd5bb4fd88cc5448a5718739c8410fed90743014795769b0b56f97a4c2",
+      "failure": "cp complete.a to resaved.a: No space left on device in derived_lt.sh; make exit2",
+      "storage": "/tmp tmpfs32GiB at100%; worktree disk759GiB available; failed fixture trap removed its own temporary directory",
+      "source156_after_exact": true,
+      "overlay469_after_exact": true,
+      "no_semantic_pass_inferred": true
+    },
+    "assessment": "Tag-only Job admission accepts a copied caller-owned allocation in the isolated E15 parent. Existing-index membership candidate rejects atomically at zero steps while genuine owned completion passes. Parent permanent protections fail rather than waiving acceptance. Candidate O2/SAN focused evidence verified; broad/storage-retry and current Main reproduction/qualification remain separate and incomplete.",
+    "no_current_Main_defect_or_full_Goal_claim": true
   },
-  "all12_raw_reports_and_unit_binaries_verified": true,
-  "verdicts": [
-    {
-      "gate": "parent-build",
-      "expected_exit": 0,
-      "exit": 0,
-      "shell_convention_exit": 0,
-      "parent_counterexample_not_acceptance_waiver": false
-    },
-    {
-      "gate": "parent-pending_owner_control",
-      "expected_exit": 0,
-      "exit": 0,
-      "shell_convention_exit": 0,
-      "parent_counterexample_not_acceptance_waiver": false
-    },
-    {
-      "gate": "parent-synthesis_test",
-      "expected_exit": -6,
-      "exit": -6,
-      "shell_convention_exit": 134,
-      "parent_counterexample_not_acceptance_waiver": true
-    },
-    {
-      "gate": "parent-artifact_normalization_checkpoint_test",
-      "expected_exit": -6,
-      "exit": -6,
-      "shell_convention_exit": 134,
-      "parent_counterexample_not_acceptance_waiver": true
-    },
-    {
-      "gate": "candidate-build",
-      "expected_exit": 0,
-      "exit": 0,
-      "shell_convention_exit": 0,
-      "parent_counterexample_not_acceptance_waiver": false
-    },
-    {
-      "gate": "candidate-pending_owner_control",
-      "expected_exit": 0,
-      "exit": 0,
-      "shell_convention_exit": 0,
-      "parent_counterexample_not_acceptance_waiver": false
-    },
-    {
-      "gate": "candidate-synthesis_test",
-      "expected_exit": 0,
-      "exit": 0,
-      "shell_convention_exit": 0,
-      "parent_counterexample_not_acceptance_waiver": false
-    },
-    {
-      "gate": "candidate-artifact_normalization_checkpoint_test",
-      "expected_exit": 0,
-      "exit": 0,
-      "shell_convention_exit": 0,
-      "parent_counterexample_not_acceptance_waiver": false
-    },
-    {
-      "gate": "asan-build",
-      "expected_exit": 0,
-      "exit": 0,
-      "shell_convention_exit": 0,
-      "parent_counterexample_not_acceptance_waiver": false
-    },
-    {
-      "gate": "asan-pending_owner_control",
-      "expected_exit": 0,
-      "exit": 0,
-      "shell_convention_exit": 0,
-      "parent_counterexample_not_acceptance_waiver": false
-    },
-    {
-      "gate": "asan-synthesis_test",
-      "expected_exit": 0,
-      "exit": 0,
-      "shell_convention_exit": 0,
-      "parent_counterexample_not_acceptance_waiver": false
-    },
-    {
-      "gate": "asan-artifact_normalization_checkpoint_test",
-      "expected_exit": 0,
-      "exit": 0,
-      "shell_convention_exit": 0,
-      "parent_counterexample_not_acceptance_waiver": false
-    }
-  ],
-  "initial_broad_storage_failure": {
-    "exit": 2,
-    "request_sha256": "15535a72d4a1f9f9f0bcebaf6cc719c5c5ce922441422375b4afb89f24986849",
-    "report": "/tmp/job-evidence-e16-broad.log",
-    "report_sha256": "de5140cd5bb4fd88cc5448a5718739c8410fed90743014795769b0b56f97a4c2",
-    "failure": "cp complete.a to resaved.a: No space left on device in derived_lt.sh; make exit2",
-    "storage": "/tmp tmpfs32GiB at100%; worktree disk759GiB available; failed fixture trap removed its own temporary directory",
-    "source156_after_exact": true,
-    "overlay469_after_exact": true,
-    "no_semantic_pass_inferred": true
+  "superseding_Root_review_UTC": "2026-10-03 21:35 UTC",
+  "fresh_current_Main_review": {
+    "Main_revision": "0585663c6430ab44929770724bf15d78680d0b48",
+    "source128": "3f48e22e250a835fe338783f6bba5d943b0a5576dfdc2f7fff92684a6c1769a4",
+    "existing_worker_control_sha256": "4eb870041c394f515267757f6c849f377b35ef279e79ddb6ac60672169245781",
+    "checks": [
+      {
+        "argv": [
+          "make",
+          "-j1",
+          "-f",
+          "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e16-current-owner-control.mk",
+          "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main",
+          "ROOT=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main/src/",
+          "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e16-current-owner-control/build",
+          "REPO=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main",
+          "TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main/tests",
+          "OWNER_CONTROL=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e16-current-owner-control/pending_owner_control.c",
+          "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+          "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e16-current-owner-control/build/pending_owner_control"
+        ],
+        "exit": 0,
+        "log_sha256": "a2c440ed59f925ac2c18d102b0bbe3d76a54168c4af20adb2b1697a95c52883b",
+        "label": "build"
+      },
+      {
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e16-current-owner-control/build/pending_owner_control",
+          "parent"
+        ],
+        "exit": 0,
+        "log_sha256": "eb1fbea305782ee7d2f436fd58ce04d75dec540896e20ab1afa9f23402ddd8d7",
+        "label": "counterexample"
+      }
+    ],
+    "complete": true,
+    "candidate_fix_included": false,
+    "all_source_pins_after_exact": true,
+    "current_Main_reproduction": true,
+    "scope": "Current prototype producer E15 source1283f48e22e freshly accepts a copied caller-owned Job into ownership/factory at zero steps. Isolated worker E16 member-index rejection and scheduler protection are separate. No runtime fix, broad/SAN/current scheduler save or accepted-source claim.",
+    "control_output": "copied_job_owned=1 factory_created=1 steps=0\n",
+    "Root_results_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e16-current-owner-control/Root-results.json",
+    "Root_results_sha256": "cee101a212220cf3f52f402077c9bfc5c8308bc31b1e0a45ec446b878616d2bb"
   },
-  "assessment": "Tag-only Job admission accepts a copied caller-owned allocation in the isolated E15 parent. Existing-index membership candidate rejects atomically at zero steps while genuine owned completion passes. Parent permanent protections fail rather than waiving acceptance. Candidate O2/SAN focused evidence verified; broad/storage-retry and current Main reproduction/qualification remain separate and incomplete.",
-  "no_current_Main_defect_or_full_Goal_claim": true
+  "assessment": "Fresh current prototype E15 producer at Main0585663/source1283f48e22e accepts a copied caller-owned Job and creates a consumer at zero steps. This now establishes that specific current-producer ownership/factory gap, superseding the earlier worker-only scope. Current scheduler-save reproduction and candidate fix qualification remain separate. Wait for exact E16 freeze, independently reconstruct and qualify index-membership repair; no accepted-source edit or new authority needed.",
+  "no_full_Goal_or_issue_closure_or_promotion_claim": true
 }

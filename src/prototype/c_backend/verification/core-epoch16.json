@@ -1,0 +1,419 @@
+{
+  "Main_parent": "82be0a84c411c314c6ee841f7bbb622c095103d6",
+  "source128": "3f48e22e250a835fe338783f6bba5d943b0a5576dfdc2f7fff92684a6c1769a4",
+  "C16_frozen_snapshot_sha256": "f2fe2d25f1473f184aa8c46ed238287f134df3c06bd6419a9d2a71543883a018",
+  "worker_E8_evidence_separate": true,
+  "complete": true,
+  "comparative_cost": false,
+  "passed": true,
+  "all_pins_after_exact": true,
+  "Core_manual_source_inert_and_header_controls": true,
+  "affected_unary_modules_shared_link_IO": true,
+  "io_native_script_only_current_image_path_changed": true,
+  "all48_binary_and39_unary_and99_module_and58_shared_rows_O2_SAN_match": true,
+  "no_runtime_test_assertion_or_producer_schema_change": true,
+  "limits": "Fresh Root current-E15 target qualification, separate from historical worker E8. Caller interpretation/purity/totality/success and synchronous borrowed code/context lifetime preconditions. Limited client/source sanitizer coverage. No general callable/native Acc/QuickSort, actual cost, new broad joint suite, accepted promotion or Goal completion.",
+  "checks": [
+    {
+      "gate": "build",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-publication/src/prototype/c_backend/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main",
+        "ROOT=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/build",
+        "REPO=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main",
+        "TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main/tests",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/build/c_callback2_inert_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/build/c_callback_inert_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "80fe5b374d505f8f9000b721e370200fd97f53e7500a44855f064a00cc3ece71",
+      "sanitizer_scope": "O2"
+    },
+    {
+      "gate": "binary-o2",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-publication/src/prototype/c_backend/callback2/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main/build-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/build/c_callback2_inert_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/binary-o2"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "e891266bdde080706dc206d38658d8f1dc6e24100a5ef24e27974a270c318b30",
+      "sanitizer_scope": "O2",
+      "expected_status_rows": 48,
+      "status_rows_all_match": true,
+      "status_sha256": "cd7e813a541be892d6f85630ae8b5008b63ffa3fa86e6dc06fbafebd5c4c1f93"
+    },
+    {
+      "gate": "unary-o2",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-publication/src/prototype/c_backend/callback/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main/build-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/build/c_callback_inert_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/unary-o2"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "0daea983d5fd714e6797214410160764d6315d8dc39ca8da96c219289ba4663b",
+      "sanitizer_scope": "O2",
+      "expected_status_rows": 39,
+      "status_rows_all_match": true,
+      "status_sha256": "9b6519865db0069747929a63d49baf0b376ccb31ac60097bb4b431f62ad3774d"
+    },
+    {
+      "gate": "modules-o2",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-publication/src/prototype/c_backend/callback_modules/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main/build-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/build/c_callback_inert_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/modules-o2"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "ccbdd70cb70b5c2ce7f7fe57c063319b6951bf3afd09c6a09af195b92096a9b4",
+      "sanitizer_scope": "O2",
+      "expected_status_rows": 99,
+      "status_rows_all_match": true,
+      "status_sha256": "2524b13f45b78a76a446e38a0c1a9d6e5bec8f4e0e7da468620a7545bfc38c6e"
+    },
+    {
+      "gate": "shared-o2",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-publication/src/prototype/c_backend/shared/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main/build-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/shared-o2"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "3add37407f0847b57a64c2dbe86bb42287a9d7e58ab0349f2638d1d6048fda0c",
+      "sanitizer_scope": "O2",
+      "expected_status_rows": 58,
+      "status_rows_all_match": true,
+      "status_sha256": "db55db1ef31f2e5c35817799bae2a37e1d827837b5594d519e1d1067dcda19b3"
+    },
+    {
+      "gate": "binary-san",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-publication/src/prototype/c_backend/callback2/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main/build-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/build/c_callback2_inert_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/binary-san"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "e891266bdde080706dc206d38658d8f1dc6e24100a5ef24e27974a270c318b30",
+      "sanitizer_scope": "Clients/oracle/header clients and source product bodies; backend/producer/Core/object/archive/shared stay O2",
+      "expected_status_rows": 48,
+      "status_rows_all_match": true,
+      "status_sha256": "cd7e813a541be892d6f85630ae8b5008b63ffa3fa86e6dc06fbafebd5c4c1f93"
+    },
+    {
+      "gate": "unary-san",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-publication/src/prototype/c_backend/callback/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main/build-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/build/c_callback_inert_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/unary-san"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "0daea983d5fd714e6797214410160764d6315d8dc39ca8da96c219289ba4663b",
+      "sanitizer_scope": "Clients/oracle/header clients and source product bodies; backend/producer/Core/object/archive/shared stay O2",
+      "expected_status_rows": 39,
+      "status_rows_all_match": true,
+      "status_sha256": "9b6519865db0069747929a63d49baf0b376ccb31ac60097bb4b431f62ad3774d"
+    },
+    {
+      "gate": "modules-san",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-publication/src/prototype/c_backend/callback_modules/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main/build-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/build/c_callback_inert_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/modules-san"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "ccbdd70cb70b5c2ce7f7fe57c063319b6951bf3afd09c6a09af195b92096a9b4",
+      "sanitizer_scope": "Clients/oracle/header clients and source product bodies; backend/producer/Core/object/archive/shared stay O2",
+      "expected_status_rows": 99,
+      "status_rows_all_match": true,
+      "status_sha256": "2524b13f45b78a76a446e38a0c1a9d6e5bec8f4e0e7da468620a7545bfc38c6e"
+    },
+    {
+      "gate": "shared-san",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-publication/src/prototype/c_backend/shared/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main/build-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/shared-san"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "3add37407f0847b57a64c2dbe86bb42287a9d7e58ab0349f2638d1d6048fda0c",
+      "sanitizer_scope": "Clients/oracle/header clients and source product bodies; backend/producer/Core/object/archive/shared stay O2",
+      "expected_status_rows": 58,
+      "status_rows_all_match": true,
+      "status_sha256": "db55db1ef31f2e5c35817799bae2a37e1d827837b5594d519e1d1067dcda19b3"
+    },
+    {
+      "gate": "link",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-publication/src/prototype/c_backend/link/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main/build-o2/pointer-check"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "1e223b7ce4e51dcf5760af609768d72d0b3c6b2a87cef5f74b0fb36177020955",
+      "sanitizer_scope": "O2"
+    },
+    {
+      "gate": "io",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-publication/src/prototype/c_backend/link/publication_io_check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/shared-o2/applied-list.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/current-io-native.aplink",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/io"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "a4a9e03276262019b1e1e9e479d14eab63435e398650169c0c82bb7de981ea0f",
+      "sanitizer_scope": "O2",
+      "expected_status_rows": 19,
+      "status_rows_all_match": true,
+      "status_sha256": "3c763e8de8d294aaa67b241768e5849427579b83b8e6a50a7c21df4d0c9d2141"
+    }
+  ],
+  "publication": {
+    "task": "a4a2e988f4b916784b7f3f6dc7b05d04c78692d9",
+    "task_parent": "ba5d39d1537ffa93770d1705603e4bac37ab14ea",
+    "Main_parent": "b10f96c3aea7e9c99c2b5ffc45e511eb3688f36b",
+    "exact18_frozen_files": {
+      "doc/2026-10-03-C-BACKEND-GOAL.md": "5d5a7e7878867de958080841a0c804b4758fd6227621eee096daa6fc4d9880c6",
+      "doc/2026-10-04-C-BACKEND-CALLABLE-SHAPE-NOTE.md": "2179d46a0d776e1dcbd9eca20505340e3636e41af811584f01179214dbf303b5",
+      "doc/2026-10-04-C-BACKEND-EPOCH16-HANDOFF.md": "034958752034d06d286d6296e8eac29187ba6bc57ecf0a8037beec43e153bbc8",
+      "src/prototype/c_backend/README.md": "bfef820df210231e36720aa8291f27452252ac50c7878659b9b9167dca69f66c",
+      "src/prototype/c_backend/build.mk": "0a9d0ec0805a45c56ed6b8d0cea28097d1e9c4a66b868a31ae15e988018dc407",
+      "src/prototype/c_backend/link/plan.h": "63fa5ba7693af47d26b35b9110dfdab31106b686e3647ad3576a237684c001d7",
+      "src/prototype/c_backend/link/plan.c": "b0bfc7a52397376d3bf4ecd3650ce7ff7f3350dc3fd83ed53c600f81c12bf68b",
+      "src/prototype/c_backend/link/driver.c": "5c2a5e41f1f77291b0b092d23e04b7e0e112f92c156ae3e39276dc427c978138",
+      "src/prototype/c_backend/lower/representation.h": "7936f67673d3d4447dfcd253e16f22c34fa196aa0f494d8b0caa5a910114166d",
+      "src/prototype/c_backend/lower/representation.c": "df97be685d91309bd521e98a40305adcc62be5fe0a7e1b021003f45aa73d9ade",
+      "src/prototype/c_backend/lower/scalar.h": "0a79a660db2206048abd63f7c7c7da290849ffdc9d2ddd6cf203df51b2e55e86",
+      "src/prototype/c_backend/lower/scalar.c": "f077d3ad00f9e010e69ffc9aed462e67330e0ad9da4a6f9395d9ec1073421c32",
+      "src/prototype/c_backend/callback2/fixture.p": "d2337782a3736781d04e8c5a1dec8c8c0c4865c3c0cb39da1ce506a285e8ca6c",
+      "src/prototype/c_backend/callback2/callback.aplink": "6964ee316defa914f8fb61aec3fae79ca0475799334c201b23365dd1a6b23b27",
+      "src/prototype/c_backend/callback2/client.c": "14a91472d9bbb2a57066d9e2a280622b4ca2e71d544a067712bcafc64694460c",
+      "src/prototype/c_backend/callback2/header_client.c": "e0f3cc83cda12a6e528fd5df512076cc7f4262a55c0c6e9e04288db700a1035c",
+      "src/prototype/c_backend/callback2/inert_test.c": "ed94aa4c2a5607019bcd264717c206eda8963d9a7f241f54f1332bb10acc649f",
+      "src/prototype/c_backend/callback2/check.sh": "01575f48946ec59950103f693405482d8eafa4b7603d883d64bb7e0bfe74b49d"
+    },
+    "worker_index_only_advance": true,
+    "worker_live_tracked_files_preserved": 1780,
+    "task_remote_exact": true,
+    "Root_results_sha256": "11e391b676d6f1a275b5b7935ce15050cdd931c41c7d7ae4a4a5907aa5111708",
+    "private_Main_review": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-main-review",
+    "conflicts": [
+      "doc/2026-10-03-C-BACKEND-GOAL.md"
+    ],
+    "accepted_promotion_or_Goal_completion": false,
+    "Main_merge": "0585663c6430ab44929770724bf15d78680d0b48",
+    "exact17_frozen_non_Goal_bytes": true,
+    "Goal_provenance_only_reconciled": true,
+    "Goal_sha256": "5faa8af76533081b982084c2117479d05440513215adf8df23a2eb9d74da57ad",
+    "protected9_exact": true,
+    "Main_remote_exact": true
+  },
+  "Root_results_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-current-e15-gates/Root-results.json",
+  "Root_results_sha256": "11e391b676d6f1a275b5b7935ce15050cdd931c41c7d7ae4a4a5907aa5111708",
+  "Root_input_count": 373,
+  "worker_freeze_review": {
+    "freeze": {
+      "lane": "c-backend",
+      "epoch": "C16",
+      "issue": "#61 P2/AP5.6 fixed binary scalar callbacks",
+      "branch": "parallel/c-backend-20261003",
+      "parent": "ba5d39d1537ffa93770d1705603e4bac37ab14ea",
+      "message": "prototype: lower borrowed binary scalar callbacks",
+      "files": {
+        "doc/2026-10-03-C-BACKEND-GOAL.md": "5d5a7e7878867de958080841a0c804b4758fd6227621eee096daa6fc4d9880c6",
+        "doc/2026-10-04-C-BACKEND-CALLABLE-SHAPE-NOTE.md": "2179d46a0d776e1dcbd9eca20505340e3636e41af811584f01179214dbf303b5",
+        "doc/2026-10-04-C-BACKEND-EPOCH16-HANDOFF.md": "034958752034d06d286d6296e8eac29187ba6bc57ecf0a8037beec43e153bbc8",
+        "src/prototype/c_backend/README.md": "bfef820df210231e36720aa8291f27452252ac50c7878659b9b9167dca69f66c",
+        "src/prototype/c_backend/build.mk": "0a9d0ec0805a45c56ed6b8d0cea28097d1e9c4a66b868a31ae15e988018dc407",
+        "src/prototype/c_backend/link/plan.h": "63fa5ba7693af47d26b35b9110dfdab31106b686e3647ad3576a237684c001d7",
+        "src/prototype/c_backend/link/plan.c": "b0bfc7a52397376d3bf4ecd3650ce7ff7f3350dc3fd83ed53c600f81c12bf68b",
+        "src/prototype/c_backend/link/driver.c": "5c2a5e41f1f77291b0b092d23e04b7e0e112f92c156ae3e39276dc427c978138",
+        "src/prototype/c_backend/lower/representation.h": "7936f67673d3d4447dfcd253e16f22c34fa196aa0f494d8b0caa5a910114166d",
+        "src/prototype/c_backend/lower/representation.c": "df97be685d91309bd521e98a40305adcc62be5fe0a7e1b021003f45aa73d9ade",
+        "src/prototype/c_backend/lower/scalar.h": "0a79a660db2206048abd63f7c7c7da290849ffdc9d2ddd6cf203df51b2e55e86",
+        "src/prototype/c_backend/lower/scalar.c": "f077d3ad00f9e010e69ffc9aed462e67330e0ad9da4a6f9395d9ec1073421c32",
+        "src/prototype/c_backend/callback2/fixture.p": "d2337782a3736781d04e8c5a1dec8c8c0c4865c3c0cb39da1ce506a285e8ca6c",
+        "src/prototype/c_backend/callback2/callback.aplink": "6964ee316defa914f8fb61aec3fae79ca0475799334c201b23365dd1a6b23b27",
+        "src/prototype/c_backend/callback2/client.c": "14a91472d9bbb2a57066d9e2a280622b4ca2e71d544a067712bcafc64694460c",
+        "src/prototype/c_backend/callback2/header_client.c": "e0f3cc83cda12a6e528fd5df512076cc7f4262a55c0c6e9e04288db700a1035c",
+        "src/prototype/c_backend/callback2/inert_test.c": "ed94aa4c2a5607019bcd264717c206eda8963d9a7f241f54f1332bb10acc649f",
+        "src/prototype/c_backend/callback2/check.sh": "01575f48946ec59950103f693405482d8eafa4b7603d883d64bb7e0bfe74b49d"
+      },
+      "file_count": 18,
+      "manifest_sha256": "28cbd18bb84946902ae910277e4dd91a9b8bb2f43cdb275be95cee6b63e071a6",
+      "snapshot_sha256": "f2fe2d25f1473f184aa8c46ed238287f134df3c06bd6419a9d2a71543883a018",
+      "verification_sha256": "8010317ad24330d12469acd3a90abc442c4085a25ab7b19f6134593289a46d4d",
+      "qualified_input_count": 182,
+      "qualified_input_manifest_sha256": "66a9f7f27afd0c5e36e5ba23f5cb8fb887912dfe65e536c039dc258a93cd7f98",
+      "run_file_count": 2300,
+      "run_manifest_sha256": "71eb426799c065bd69c3b423bc7d35d0de405bd2509d31dfff13b81f47e581e3",
+      "retained_input_map_sha256": "8aeddb7d8c95db6643245d320528267926668480ee6b3dd6294e5b8fbac5d51e",
+      "deltas": {
+        "doc/2026-10-03-C-BACKEND-GOAL.md": {
+          "plus": 47,
+          "minus": 3
+        },
+        "doc/2026-10-04-C-BACKEND-CALLABLE-SHAPE-NOTE.md": {
+          "plus": 111,
+          "minus": 0
+        },
+        "doc/2026-10-04-C-BACKEND-EPOCH16-HANDOFF.md": {
+          "plus": 164,
+          "minus": 0
+        },
+        "src/prototype/c_backend/README.md": {
+          "plus": 24,
+          "minus": 0
+        },
+        "src/prototype/c_backend/build.mk": {
+          "plus": 8,
+          "minus": 0
+        },
+        "src/prototype/c_backend/link/plan.h": {
+          "plus": 1,
+          "minus": 1
+        },
+        "src/prototype/c_backend/link/plan.c": {
+          "plus": 3,
+          "minus": 2
+        },
+        "src/prototype/c_backend/link/driver.c": {
+          "plus": 7,
+          "minus": 0
+        },
+        "src/prototype/c_backend/lower/representation.h": {
+          "plus": 1,
+          "minus": 1
+        },
+        "src/prototype/c_backend/lower/representation.c": {
+          "plus": 2,
+          "minus": 1
+        },
+        "src/prototype/c_backend/lower/scalar.h": {
+          "plus": 5,
+          "minus": 0
+        },
+        "src/prototype/c_backend/lower/scalar.c": {
+          "plus": 47,
+          "minus": 16
+        },
+        "src/prototype/c_backend/callback2/fixture.p": {
+          "plus": 29,
+          "minus": 0
+        },
+        "src/prototype/c_backend/callback2/callback.aplink": {
+          "plus": 15,
+          "minus": 0
+        },
+        "src/prototype/c_backend/callback2/client.c": {
+          "plus": 85,
+          "minus": 0
+        },
+        "src/prototype/c_backend/callback2/header_client.c": {
+          "plus": 27,
+          "minus": 0
+        },
+        "src/prototype/c_backend/callback2/inert_test.c": {
+          "plus": 168,
+          "minus": 0
+        },
+        "src/prototype/c_backend/callback2/check.sh": {
+          "plus": 113,
+          "minus": 0
+        }
+      },
+      "implementation_delta": {
+        "files": 7,
+        "plus": 66,
+        "minus": 21
+      },
+      "build_delta": {
+        "plus": 8,
+        "minus": 0
+      },
+      "new_fixture_client_harness_lines": 437,
+      "remaining": "Root task publication and current-producer/Main review separate; native Acc/QuickSort and general/boxed/effect/dependent/arity3/mixed-width contracts unsupported; no promotion/schema/producer/erasure change or comparative run."
+    },
+    "publication_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c16-publication",
+    "182_retained_inputs_exact": true,
+    "2300_raw_outputs_exact": true,
+    "evidence_path": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch16-20261004",
+    "notice_sha256": "416d04f8b75e74cc86c883522f46a3137d8c259fd2efc06eeb0a93d898f5ce9e",
+    "historical_live_current_progress_12_exact_1_later_harness_edit": "Superseded by frozen final18 and retained182; no false regression inference.",
+    "Root_current_E15_pending": true
+  },
+  "original_sentinel_failure": {
+    "outer_gate_exit": 1,
+    "rows": [
+      [
+        "admit",
+        "0",
+        "0"
+      ],
+      [
+        "emit-source",
+        "0",
+        "0"
+      ],
+      [
+        "compile-source",
+        "0",
+        "0"
+      ],
+      [
+        "client-source",
+        "0",
+        "134"
+      ]
+    ],
+    "client_exit": 134,
+    "cause": "Stale output sentinel following a successful prior offset iteration; reset before each missing-unary check, no emitter change or weakened expectation",
+    "logs_and_failed_binary_retained": true,
+    "precorrection_client_source_bytes_not_separately_retained": true
+  },
+  "assessment": "Separate fixed unary/binary profile derives same-width independent scalar domains/pure-total result using admitted Pi views. Flat C code/context borrowed synchronously. Old unary profile binary refusal, null/output/header/selection/shape refusal controls stay intact. Independently rebuilt current-E15 Core/inert backend verifies supported representation without executing evaluation during emission. Caller interpretation/purity/totality/success/lifetime preconditions remain.",
+  "accepted_selection_changed": false,
+  "review_UTC": "2026-10-03"
+}
