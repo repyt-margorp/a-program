@@ -1,0 +1,8 @@
+{
+  "stage": "static prebuild fixture correction; no build/test executed",
+  "initial_trial_sha256": "0589c9473e29722745e124c9ed3d9927a83bf8f6982fed9a05440de657dc340e",
+  "initial_source156_sha256": "8d290c3095639a9b2d830e08462c39bb6ce19062510043c5d431167ceec11134",
+  "incorrect_fixture_identifier": "PG_JUDGEMENT_CONTEXT_SUBSTITUTION",
+  "existing_enum_verified_in_typing_h": "PG_JUDGEMENT_SUBSTITUTION",
+  "runtime_source_unchanged": true
+}

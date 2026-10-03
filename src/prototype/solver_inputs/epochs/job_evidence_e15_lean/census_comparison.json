@@ -1,0 +1,93 @@
+{
+  "source156_before_after_exact": true,
+  "all35_fields_equal_at_all_cuts": true,
+  "ordinary_imported_theorem_asserted": true,
+  "scope": "Five representative semantic controls do not request function Graph owners; final Job layout/counts unchanged. Graph-state8-byte field and leaf array deletion are separate; peak/live/time/cumulative attribution not inferred.",
+  "samples": [
+    {
+      "sample": "list",
+      "status": "DONE",
+      "steps": 1921,
+      "typed": 429,
+      "evidence": 555,
+      "graph_sources": 0,
+      "job_bytes_equal": 110632,
+      "parent_external_cumulative": {
+        "wrapped_arena_calls": 4360,
+        "wrapped_aligned_bytes": 441744
+      },
+      "candidate_external_cumulative": {
+        "wrapped_arena_calls": 4360,
+        "wrapped_aligned_bytes": 441744
+      }
+    },
+    {
+      "sample": "effect",
+      "status": "DONE",
+      "steps": 13142,
+      "typed": 2680,
+      "evidence": 3414,
+      "graph_sources": 0,
+      "job_bytes_equal": 644680,
+      "parent_external_cumulative": {
+        "wrapped_arena_calls": 27622,
+        "wrapped_aligned_bytes": 2783216
+      },
+      "candidate_external_cumulative": {
+        "wrapped_arena_calls": 27622,
+        "wrapped_aligned_bytes": 2783216
+      }
+    },
+    {
+      "sample": "captured",
+      "status": "DONE",
+      "steps": 2307,
+      "typed": 632,
+      "evidence": 797,
+      "graph_sources": 0,
+      "job_bytes_equal": 92576,
+      "parent_external_cumulative": {
+        "wrapped_arena_calls": 7557,
+        "wrapped_aligned_bytes": 736912
+      },
+      "candidate_external_cumulative": {
+        "wrapped_arena_calls": 7559,
+        "wrapped_aligned_bytes": 737008
+      }
+    },
+    {
+      "sample": "quick",
+      "status": "DONE",
+      "steps": 766477,
+      "typed": 114388,
+      "evidence": 94974,
+      "graph_sources": 0,
+      "job_bytes_equal": 6723840,
+      "parent_external_cumulative": {
+        "wrapped_arena_calls": 2887589,
+        "wrapped_aligned_bytes": 229263296
+      },
+      "candidate_external_cumulative": {
+        "wrapped_arena_calls": 2888721,
+        "wrapped_aligned_bytes": 229317632
+      }
+    },
+    {
+      "sample": "handler",
+      "status": "DONE",
+      "steps": 2470,
+      "typed": 425,
+      "evidence": 530,
+      "graph_sources": 0,
+      "job_bytes_equal": 124768,
+      "parent_external_cumulative": {
+        "wrapped_arena_calls": 4649,
+        "wrapped_aligned_bytes": 468896
+      },
+      "candidate_external_cumulative": {
+        "wrapped_arena_calls": 4649,
+        "wrapped_aligned_bytes": 468896
+      }
+    }
+  ]
+}
