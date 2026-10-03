@@ -25,7 +25,7 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 
 ### Current Delivery Status
 
-2026-10-03 10:35 UTC Merge inspection at local Main `dea5fc1`: the table
+2026-10-03 11:05 UTC Merge inspection at local Main `48c42eb`: the table
 reflects exact task publications and independently inspected qualification.
 These are deliverables, not issue completion scores; worker-local results stay
 distinct from Root fresh gates and accepted performance promotion.
@@ -33,7 +33,7 @@ distinct from Root fresh gates and accepted performance promotion.
 | Owner / issue scope | Delivered and verified | Not yet delivered / next boundary |
 | --- | --- | --- |
 | Job/Evidence; SE1-SE5 / AP0, related #51/#47 | E1-E4/E6/E7/E8 prototype Main; exact E7/E8 `3ad0303`/`50cd56b` and joint runtime128 verified; integrations `efc3ff0`/`f6d7cfe` | E9 task `bd1ddf3` exact24 and isolated E10 task `6715af2` exact19 published/pushed; qualification pending; strict3 remain |
-| C backend; #44/#49 | C8 task `884d5bb` exact17 published/pushed; Root twelve current-E8 strict-O2 gates pass, prototype Main `dea5fc1`; C7 eleven current-E6 gates remain historical | C9 task `60c100c` exact38 published/pushed; Root current-E8 thirteen gates running; native Acc/QuickSort and broader C/Identity/admissibility criteria remain open |
+| C backend; #44/#49 | C9 task `60c100c` exact38 published/pushed; Root thirteen current-E8 strict-O2 gates pass, prototype Main `48c42eb`; C8 twelve and C7 eleven gates remain separately pinned | Native Acc/QuickSort and broader C/Identity/admissibility criteria remain open; no accepted C promotion |
 | Performance; #56, measurement work #51/#52 | E6 measurement task `44e479b`, Main `99efcf7`, exact114 published; 30 samples/292 pins verified. E7/E8 qualified; accepted13-file candidate O2 386/0 and affected sanitizer groups8/0 | Accepted epoch `7631e5a` verified/pushed; prototype compatibility verified; state-image task `ac6a8b2` exact2 published/pushed and integrated; E9/E10 next; accepted-only timing unmeasured and #52 separate |
 | Surface; #57 | Delivered prototype integrated; session stopped; Merge reviewed polarity, brace/migration, scope and version gates | Accepted language policy/promotion and selector diagnostics remain unresolved; #57 stays open; no active worker |
 | Verification audit; #59/PR #60, related #51 | Static task `7ed3ad1` pushed/remote verified; Main merge `5683755`; Merge reproduced exact inventory and verified 385 source hashes/114 archived dependencies | Bounded static delivery complete; dynamic/full #59 open; four-job cost deferred because full config review missed eight-minute boundary; no timing executed |
@@ -243,9 +243,11 @@ E10 has a distinct isolated task branch; E9 Git metadata/index advancement leave
 later live canonical bytes unchanged. [Review](../src/prototype/solver_inputs/joint_verification/e9-e10-publication-review.json)
 pins source-guard and receipt-storage decisions; combined qualification remains
 performance-owned. C9 task `60c100c` exact38 is pushed/remote verified; Root all13
-current-E8 gates run at one build job. Its frozen older C8-pending status is
-superseded by Root C8 gates/pushed Main. C holds safely and Job packages E11 then
-holds E12 unqualified. State-image task `ac6a8b2` exact2 is published/integrated
+current-E8 gates pass at one build job, and prototype Main `48c42eb` integrates
+the reconciled candidate and [fresh evidence](../src/prototype/c_backend/verification/core-epoch9.json).
+Its frozen older C8-pending status is superseded by Root C8 gates/pushed Main.
+C holds safely; Job E11 is frozen for isolated E9 review and E12 stays private,
+unqualified. State-image task `ac6a8b2` exact2 is published/integrated
 as `6867359`: all65 pins/36 outcomes freshly checked, three completed image
 pairs equal,12 inert resaves pending3 with exact bytes. Counts are not RAM/time.
 
