@@ -1,0 +1,173 @@
+--- a/src/synthesis.c
++++ b/src/synthesis.c
+@@ -966,10 +966,14 @@
+ struct pg_source_binding_cursor pg_synthesis_source_binding_scope(const struct pg_source_binding *input)
+ {
+ 	if (!input) return (struct pg_source_binding_cursor){0};
+-	/* Only a nonempty native address retains this one existing lexical owner.
++	/* Only a nonempty native address retains this one existing scope owner.
+ 	 * Empty addresses need no tail; raw arrays keep their independent lifetime. */
+-	if (input->scope_count && !input->scope)
+-		return (struct pg_source_binding_cursor){.source = *(const struct pg_source_scope *const *)(input + 1)};
++	if (input->scope_count && !input->scope) {
++		const struct source_binding *entry = (const void *)((const unsigned char *)input - offsetof(struct source_binding, input));
++		if (input->syntax)
++			return (struct pg_source_binding_cursor){.source = *(const struct pg_source_scope *const *)(entry + 1)};
++		return (struct pg_source_binding_cursor){.context = *(const struct pg_context *const *)(entry + 1)};
++	}
+ 	return (struct pg_source_binding_cursor){.binders = input->scope, .count = input->scope_count};
+ }
+ 
+@@ -1068,13 +1072,21 @@
+ 	/* A local head stamp does not retain a caller-owned ancestor. */
+ 	const struct pg_source_scope *source = initial.source && binding_scope_local(synthesis, initial.source)
+ 		? initial.source : NULL;
+-	size_t retained = source ? (count != 0) : count;
++	const struct pg_context *context = initial.context;
++	for (const struct pg_context *parent = context; parent; parent = parent->parent) {
++		if (pg_context_owned_by(parent, synthesis->typing)) continue;
++		context = NULL;
++		break;
++	}
++	int borrowed = source || context;
++	size_t retained = borrowed ? (count != 0) : count;
+ 	struct source_binding *entry = pg_alloc(synthesis->typing->graph,
+ 		sizeof(*entry) + retained * sizeof(*input->scope));
+ 	if (!entry) return NULL;
+ 	const struct pg_object **scope = (void *)(entry + 1);
+ 	cursor = initial;
+ 	if (source && count) *(const struct pg_source_scope **)(entry + 1) = source;
++	else if (context && count) *(const struct pg_context **)(entry + 1) = context;
+ 	else {
+ 		for (size_t i = 0; i < retained; ++i) {
+ 			if (!pg_synthesis_source_binding_next(&cursor, &binder)) return NULL;
+@@ -1082,7 +1094,7 @@
+ 		}
+ 	}
+ 	entry->input = *input;
+-	entry->input.scope = !source && retained ? scope : NULL;
++	entry->input.scope = !borrowed && retained ? scope : NULL;
+ 	entry->input.scope_count = count;
+ 	if (!entry->input.binder) entry->input.binder = pg_binder(synthesis->typing->graph);
+ 	if (!entry->input.binder || pg_index_insert(&synthesis->source_bindings, &entry->index, hash)) return NULL;
+--- a/src/typing.c
++++ b/src/typing.c
+@@ -82,6 +82,23 @@
+ 	return (hash ^ (uintptr_t)declared_type) * UINT64_C(1099511628211);
+ }
+ 
++static uint64_t declaration_hash(const struct pg_context *context)
++{
++	uint64_t hash = context_hash(context->parent, context->binder, context->declared_type);
++	hash = (hash ^ context->judgement) * UINT64_C(1099511628211);
++	return (hash ^ (uintptr_t)context->indices) * UINT64_C(1099511628211);
++}
++
++int pg_context_owned_by(const struct pg_context *context, const struct pg_typing *typing)
++{
++	if (!typing || !typing->owner_key) return 0;
++	if (!context) return 1;
++	uint64_t hash = declaration_hash(context);
++	for (const struct pg_index_entry *entry = pg_index_candidates(&typing->contexts, hash); entry; entry = entry->next)
++		if (entry->hash == hash && &((const struct context_entry *)entry)->context == context) return 1;
++	return 0;
++}
++
+ const struct pg_context *pg_context_bind(struct pg_typing *typing,
+ 	const struct pg_context *parent, const struct pg_object *binder,
+ 	const struct pg_term *declared_type, enum pg_evidence_judgement judgement)
+@@ -106,9 +123,7 @@
+ 		if (judgement != PG_JUDGEMENT_TYPE_FAMILY) return NULL;
+ 		if (pg_context_extension_size(declaration->indices, parent, &count) || !count) return NULL;
+ 	}
+-	uint64_t hash = context_hash(parent, binder, declared_type);
+-	hash = (hash ^ judgement) * UINT64_C(1099511628211);
+-	hash = (hash ^ (uintptr_t)declaration->indices) * UINT64_C(1099511628211);
++	uint64_t hash = declaration_hash(declaration);
+ 	for (struct pg_index_entry *candidate = pg_index_candidates(&typing->contexts, hash); candidate; candidate = candidate->next) {
+ 		if (candidate->hash != hash) continue;
+ 		const struct context_entry *entry = (const struct context_entry *)candidate;
+--- a/src/typing.h
++++ b/src/typing.h
+@@ -116,6 +116,10 @@
+ 	const struct pg_term *declared_type, enum pg_evidence_judgement judgement);
+ const struct pg_context *pg_context_intern(struct pg_typing *typing,
+ 	const struct pg_context *declaration);
++/* Canonical descriptive ownership of this node only, without checking/allocation.
++ * A copied tuple/receipt link is not membership; NULL is the empty Context.
++ * A locally interned head may have a caller-owned parent. */
++int pg_context_owned_by(const struct pg_context *, const struct pg_typing *);
+ /* Close a declared telescope into its logical Pi signature. No typing claim. */
+ const struct pg_term *pg_context_signature(struct pg_graph *graph,
+ 	const struct pg_context *parent, const struct pg_context *indices,
+--- a/tests/core.c
++++ b/tests/core.c
+@@ -683,6 +683,20 @@
+ 	const struct pg_object *y = pg_binder(graph);
+ 	const struct pg_evidence *a_context = pg_prove_context_extension(&typing, empty, a, u0);
+ 	assert(a_context && pg_context_declared_input(&typing, a_context) == u0);
++	const struct pg_context *owned_context = pg_evidence_context(a_context);
++	assert(pg_context_owned_by(owned_context, &typing) && pg_context_owned_by(NULL, &typing));
++	assert(!pg_context_owned_by(NULL, NULL));
++	struct pg_context copied_context = *owned_context;
++	assert(copied_context.receipts && !pg_context_owned_by(&copied_context, &typing));
++	struct pg_typing foreign_context_owner;
++	assert(!pg_typing_init(&foreign_context_owner, graph));
++	const struct pg_context *foreign_context = pg_context_intern(&foreign_context_owner, &copied_context);
++	assert(foreign_context && foreign_context != owned_context);
++	assert(pg_context_owned_by(foreign_context, &foreign_context_owner));
++	assert(!pg_context_owned_by(foreign_context, &typing));
++	assert(!pg_context_owned_by(owned_context, &foreign_context_owner));
++	pg_typing_destroy(&foreign_context_owner);
++	assert(!pg_context_owned_by(foreign_context, &foreign_context_owner));
+ 	const struct pg_evidence *a_type = pg_prove_variable(&typing, a_context, a);
+ 	assert(a_type && pg_evidence_classifier(a_type) == pg_universe(graph, 0));
+ 	const struct pg_evidence *x_context = pg_prove_context_extension(&typing, a_context, x, a_type);
+--- a/tests/synthesis.c
++++ b/tests/synthesis.c
+@@ -9961,6 +9961,45 @@
+ 	const struct pg_source_binding *binding = pg_synthesis_source_binding(&synthesis,
+ 		&(struct pg_source_binding){.constructor = successor, .scope_count = 2, .scope = address});
+ 	assert(binding && binding->binder == deep_fields->binder && synthesis.source_bindings.count == binding_count);
++	assert(!binding->scope && binding->scope_count == 2);
++	struct pg_source_binding_cursor constructor_cursor = pg_synthesis_source_binding_scope(binding);
++	const struct pg_object *parameter_binder;
++	assert(pg_synthesis_source_binding_next(&constructor_cursor, &parameter_binder) && parameter_binder == address[0]);
++	assert(pg_synthesis_source_binding_next(&constructor_cursor, &parameter_binder) && parameter_binder == address[1]);
++	assert(!pg_synthesis_source_binding_next(&constructor_cursor, &parameter_binder));
++	/* A stack tuple, even with a copied receipt link, has no retained owner. */
++	struct pg_context transient = *nested_fields;
++	transient.binder = pg_binder(typing->graph);
++	const struct pg_object *transient_binder = transient.binder;
++	assert(!pg_context_owned_by(&transient, typing));
++	const struct pg_object *allocated_binder = pg_synthesis_constructor_binder(&synthesis, &transient, successor, 0);
++	assert(allocated_binder);
++	const struct pg_object *transient_scope[] = {transient.binder, ordinary_fields->binder};
++	const struct pg_source_binding *independent = pg_synthesis_source_binding(&synthesis,
++		&(struct pg_source_binding){.constructor = successor, .scope_count = 2, .scope = transient_scope});
++	assert(independent && independent->binder == allocated_binder && independent->scope);
++	transient.binder = pg_binder(typing->graph); transient.parent = NULL;
++	constructor_cursor = pg_synthesis_source_binding_scope(independent);
++	assert(pg_synthesis_source_binding_next(&constructor_cursor, &parameter_binder) && parameter_binder == transient_binder);
++	assert(pg_synthesis_source_binding_next(&constructor_cursor, &parameter_binder) && parameter_binder == ordinary_fields->binder);
++	assert(!pg_synthesis_source_binding_next(&constructor_cursor, &parameter_binder));
++	/* Canonical head identity does not give its raw parent a retained lifetime. */
++	struct pg_context stack_parent = *ordinary_fields;
++	stack_parent.binder = pg_binder(typing->graph); stack_parent.parent = NULL;
++	const struct pg_context *mixed_context = pg_context_bind(typing, &stack_parent,
++		pg_binder(typing->graph), stack_parent.declared_type, stack_parent.judgement);
++	assert(mixed_context && pg_context_owned_by(mixed_context, typing));
++	assert(!pg_context_owned_by(&stack_parent, typing));
++	const struct pg_object *mixed_scope[] = {mixed_context->binder, stack_parent.binder};
++	const struct pg_object *mixed_binder = pg_synthesis_constructor_binder(&synthesis, mixed_context, successor, 0);
++	const struct pg_source_binding *mixed_binding = pg_synthesis_source_binding(&synthesis,
++		&(struct pg_source_binding){.constructor = successor, .scope_count = 2, .scope = mixed_scope});
++	assert(mixed_binding && mixed_binding->binder == mixed_binder && mixed_binding->scope);
++	stack_parent.binder = pg_binder(typing->graph);
++	constructor_cursor = pg_synthesis_source_binding_scope(mixed_binding);
++	assert(pg_synthesis_source_binding_next(&constructor_cursor, &parameter_binder) && parameter_binder == mixed_scope[0]);
++	assert(pg_synthesis_source_binding_next(&constructor_cursor, &parameter_binder) && parameter_binder == mixed_scope[1]);
++	assert(!pg_synthesis_source_binding_next(&constructor_cursor, &parameter_binder));
+ 	assert(ordinary_map && !pg_synthesis_constructor_scope_at(&synthesis,
+ 		(struct pg_synthesis_input){.checked = admitted}, successor, (struct pg_synthesis_input){.checked = parameter_map},
+ 		NULL, pg_evidence_context(pg_evidence_premise(ordinary_map, 1))));

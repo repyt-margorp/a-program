@@ -1,0 +1,9 @@
+--- a/constructor_scope_lifetime_control.c
++++ b/constructor_scope_lifetime_control.c
+@@ -1,5 +1,6 @@
+ #include "program.h"
+ #include "synthesis_source.h"
++#include "iadt.h"
+ 
+ #include <assert.h>
+ #include <stddef.h>

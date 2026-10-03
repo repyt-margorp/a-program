@@ -1,0 +1,196 @@
+[
+  {
+    "variant": "E12c",
+    "record": "focused_verdicts",
+    "result": [
+      {
+        "command": [
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch12_corrected/o2/constructor_scope_lifetime_control",
+          "--mutation-only"
+        ],
+        "exit": 0
+      },
+      {
+        "command": [
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch12_corrected/o2/constructor_scope_lifetime_control"
+        ],
+        "exit": 0
+      },
+      {
+        "command": [
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch12_corrected/o2/core_test"
+        ],
+        "exit": 0
+      },
+      {
+        "command": [
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch12_corrected/o2/synthesis_test"
+        ],
+        "exit": 0
+      },
+      {
+        "command": [
+          "bash",
+          "tests/source_io.sh",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch12_corrected/o2/source_io_test"
+        ],
+        "exit": 0
+      },
+      {
+        "command": [
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch12_corrected/o2/source_io_test",
+          "normalization"
+        ],
+        "exit": 0
+      }
+    ]
+  },
+  {
+    "variant": "E12c",
+    "record": "asan_verdicts",
+    "result": [
+      {
+        "command": [
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch12_corrected/asan/constructor_scope_lifetime_control",
+          "--mutation-only"
+        ],
+        "exit": 0
+      },
+      {
+        "command": [
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch12_corrected/asan/constructor_scope_lifetime_control"
+        ],
+        "exit": 0
+      },
+      {
+        "command": [
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch12_corrected/asan/core_test"
+        ],
+        "exit": 0
+      },
+      {
+        "command": [
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch12_corrected/asan/synthesis_test"
+        ],
+        "exit": 0
+      },
+      {
+        "command": [
+          "bash",
+          "tests/source_io.sh",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch12_corrected/asan/source_io_test"
+        ],
+        "exit": 0
+      },
+      {
+        "command": [
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch12_corrected/asan/source_io_test",
+          "normalization"
+        ],
+        "exit": 0
+      }
+    ]
+  },
+  {
+    "variant": "E12c",
+    "record": "broad_verification",
+    "result": {
+      "gate": "full-unskipped-O2-acceptance-semantic-seven-checkpoints",
+      "exit": 0,
+      "request_sha256": "89cb215b14c5817672b705d4c2751de4460cac29fdff59581d8570151028cdfd",
+      "report": "/tmp/job-evidence-e12c-broad.log",
+      "report_sha256": "a77797eb74bc4699c70a49b72a6601a7e72483e0ec8886af73484106139d7344",
+      "exit_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "source156_before_after_exact": true,
+      "actual_overlay_inputs469_before_after_exact": true,
+      "no_joint_or_cost_claim": true
+    }
+  },
+  {
+    "variant": "E12c",
+    "record": "supplemental_verification",
+    "result": [
+      {
+        "gate": "baseline-C-eight-scripts",
+        "exit": 0,
+        "report": "/tmp/job-evidence-e12c-c.log",
+        "report_sha256": "27cec01e33092924ca53202a947c8f8e39bb963ed6e4d5b4767ded91fba5255a",
+        "exit_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+        "source156_after_exact": true,
+        "supplemental_inputs_after_exact": 56
+      },
+      {
+        "gate": "strict-public-original-three",
+        "exit": 1,
+        "report": "/tmp/job-evidence-e12c-partitions.log",
+        "report_sha256": "219f801cfffc4fd994c52880fa28861232fb4244a8fa1994f46e447d0b3a22fa",
+        "exit_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+        "source156_after_exact": true,
+        "supplemental_inputs_after_exact": 56
+      }
+    ]
+  },
+  {
+    "variant": "E12c",
+    "record": "strict_comparison",
+    "result": {
+      "reference": "exact E9 public_partitions",
+      "complete_verdict_fuel_tsv_equal": true,
+      "raw_images": 52,
+      "all_raw_images_equal": true,
+      "strict_gate_exit": 1,
+      "original_failures_unwaived": true
+    }
+  },
+  {
+    "variant": "E11c",
+    "record": "verification",
+    "result": {
+      "gate": "full-unskipped-O2-acceptance-semantic-seven-checkpoints",
+      "exit": 0,
+      "local_report": "/tmp/job-evidence-e11c-broad.log",
+      "report_sha256": "9d2eccef487bc29f2af20fc1bef84c7cc7793d30aacc6297662cbcce35e411ae",
+      "exit_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "source156_before_after_exact": true,
+      "overlay_inputs469_after_exact": true,
+      "focused_manifest_unchanged": "b4f22f4c245ace2fafda6462e7066f7789f99b9b0bd80f5c7daa97151b397186",
+      "no_joint_or_cost_claim": true
+    }
+  },
+  {
+    "variant": "E11c",
+    "record": "supplemental_verification",
+    "result": [
+      {
+        "gate": "baseline-C-eight-scripts",
+        "exit": 0,
+        "report": "/tmp/job-evidence-e11c-c.log",
+        "report_sha256": "f766232f08463eb439431a846357b3c0ed17b7f7f18bc3a330a7c50c249ae9c0",
+        "exit_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+        "source156_after_exact": true,
+        "supplemental_inputs_after_exact": 56
+      },
+      {
+        "gate": "strict-public-original-three",
+        "exit": 1,
+        "report": "/tmp/job-evidence-e11c-partitions.log",
+        "report_sha256": "12ce63e261ed578d80591af2524d97ec9cb975f87bd3dc07938b06d8f7b654fd",
+        "exit_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+        "source156_after_exact": true,
+        "supplemental_inputs_after_exact": 56
+      }
+    ]
+  },
+  {
+    "variant": "E11c",
+    "record": "strict_comparison",
+    "result": {
+      "reference": "exact E9 public_partitions",
+      "complete_verdict_fuel_tsv_equal": true,
+      "raw_images": 52,
+      "all_raw_images_equal": true,
+      "strict_gate_exit": 1,
+      "original_failures_unwaived": true
+    }
+  }
+]

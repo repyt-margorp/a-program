@@ -46,7 +46,18 @@
  	/* Computation work, not an additional source of typing evidence. */
  	struct pg_substitution_work substitutions;
  	struct pg_typing_wait *free_waits;
-@@ -185,8 +190,8 @@
+@@ -111,6 +116,10 @@
+ 	const struct pg_term *declared_type, enum pg_evidence_judgement judgement);
+ const struct pg_context *pg_context_intern(struct pg_typing *typing,
+ 	const struct pg_context *declaration);
++/* Canonical descriptive ownership of this node only, without checking/allocation.
++ * A copied tuple/receipt link is not membership; NULL is the empty Context.
++ * A locally interned head may have a caller-owned parent. */
++int pg_context_owned_by(const struct pg_context *, const struct pg_typing *);
+ /* Close a declared telescope into its logical Pi signature. No typing claim. */
+ const struct pg_term *pg_context_signature(struct pg_graph *graph,
+ 	const struct pg_context *parent, const struct pg_context *indices,
+@@ -185,8 +194,8 @@
  /* Completed action on a family's index telescope; NULL for a value binder. */
  const struct pg_context_map *pg_context_lift_indices(const struct pg_context_lift *work);
  uint64_t pg_context_lift_steps(const struct pg_context_lift *work);

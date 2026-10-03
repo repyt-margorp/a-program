@@ -1,0 +1,8 @@
+{
+  "parent_task": "d22be9f4ca7a44536790668e98ab36a688c94070",
+  "fresh_source156_exact": true,
+  "full_canonical_five_exact": true,
+  "no_global_canonical_mutation": true,
+  "source_manifest_sha256": "0a76201b7ca5b89bc129d2a11d6694a22a774474489e6f2c919e9152dd5a3458",
+  "canonical_manifest_sha256": "d3b41194777b11c41bf9959ba001945156e10f42c1cb82f5bb558e2433f94aa8"
+}

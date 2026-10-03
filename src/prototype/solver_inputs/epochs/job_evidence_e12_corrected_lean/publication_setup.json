@@ -1,0 +1,11 @@
+{
+  "stage": "first lean publication preparation, before any manifest or ready notice",
+  "exit": 1,
+  "failed_check": "verification of control_inputs.sha256 relative constructor_scope_lifetime_control.c against repository cwd",
+  "diagnostic": "FileNotFoundError: /home/repyt/workspace/a-program-workers/job-evidence/constructor_scope_lifetime_control.c",
+  "actual_namespace": "src/prototype/solver_inputs/epochs/job_evidence_e12_corrected",
+  "correction": "check the existing relative control manifest from its own epoch directory before freezing",
+  "runtime_source156_unchanged": true,
+  "control_source_and_recipe_unchanged": true,
+  "not_a_runtime_or_test_verdict": true
+}

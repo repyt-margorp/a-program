@@ -1,0 +1,133 @@
+{
+  "source156_each_before_after_exact": true,
+  "unchanged_nonlayout_counts_all_cuts": true,
+  "ordinary_imported_theorem_asserted": true,
+  "samples": [
+    {
+      "sample": "list",
+      "status": "DONE",
+      "steps": 1921,
+      "variants": [
+        {
+          "variant": "E9",
+          "retained_array_edges": 19,
+          "raw_binding_bytes": 1496,
+          "aligned_binding_bytes": 1552
+        },
+        {
+          "variant": "E11c",
+          "retained_array_edges": 6,
+          "raw_binding_bytes": 1440,
+          "aligned_binding_bytes": 1504
+        },
+        {
+          "variant": "E12c",
+          "retained_array_edges": 0,
+          "raw_binding_bytes": 1424,
+          "aligned_binding_bytes": 1504
+        }
+      ]
+    },
+    {
+      "sample": "effect",
+      "status": "DONE",
+      "steps": 13142,
+      "variants": [
+        {
+          "variant": "E9",
+          "retained_array_edges": 44,
+          "raw_binding_bytes": 7840,
+          "aligned_binding_bytes": 7936
+        },
+        {
+          "variant": "E11c",
+          "retained_array_edges": 3,
+          "raw_binding_bytes": 7704,
+          "aligned_binding_bytes": 7920
+        },
+        {
+          "variant": "E12c",
+          "retained_array_edges": 0,
+          "raw_binding_bytes": 7704,
+          "aligned_binding_bytes": 7920
+        }
+      ]
+    },
+    {
+      "sample": "captured",
+      "status": "DONE",
+      "steps": 2307,
+      "variants": [
+        {
+          "variant": "E9",
+          "retained_array_edges": 7,
+          "raw_binding_bytes": 760,
+          "aligned_binding_bytes": 784
+        },
+        {
+          "variant": "E11c",
+          "retained_array_edges": 0,
+          "raw_binding_bytes": 744,
+          "aligned_binding_bytes": 784
+        },
+        {
+          "variant": "E12c",
+          "retained_array_edges": 0,
+          "raw_binding_bytes": 744,
+          "aligned_binding_bytes": 784
+        }
+      ]
+    },
+    {
+      "sample": "quick",
+      "status": "DONE",
+      "steps": 766477,
+      "variants": [
+        {
+          "variant": "E9",
+          "retained_array_edges": 10460,
+          "raw_binding_bytes": 200032,
+          "aligned_binding_bytes": 206864
+        },
+        {
+          "variant": "E11c",
+          "retained_array_edges": 5006,
+          "raw_binding_bytes": 164816,
+          "aligned_binding_bytes": 175536
+        },
+        {
+          "variant": "E12c",
+          "retained_array_edges": 0,
+          "raw_binding_bytes": 129888,
+          "aligned_binding_bytes": 143424
+        }
+      ]
+    },
+    {
+      "sample": "handler",
+      "status": "DONE",
+      "steps": 2470,
+      "variants": [
+        {
+          "variant": "E9",
+          "retained_array_edges": 0,
+          "raw_binding_bytes": 1088,
+          "aligned_binding_bytes": 1088
+        },
+        {
+          "variant": "E11c",
+          "retained_array_edges": 0,
+          "raw_binding_bytes": 1088,
+          "aligned_binding_bytes": 1088
+        },
+        {
+          "variant": "E12c",
+          "retained_array_edges": 0,
+          "raw_binding_bytes": 1088,
+          "aligned_binding_bytes": 1088
+        }
+      ]
+    }
+  ],
+  "no_peak_time_claim": true
+}

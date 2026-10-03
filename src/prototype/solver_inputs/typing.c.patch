@@ -31,7 +31,42 @@
  	pg_substitution_work_destroy(&typing->substitutions);
  	memset(typing, 0, sizeof(*typing));
  }
-@@ -121,6 +121,7 @@
+@@ -80,6 +80,23 @@
+ 	uint64_t hash = (uintptr_t)parent;
+ 	hash = (hash ^ (uintptr_t)binder) * UINT64_C(1099511628211);
+ 	return (hash ^ (uintptr_t)declared_type) * UINT64_C(1099511628211);
++}
++
++static uint64_t declaration_hash(const struct pg_context *context)
++{
++	uint64_t hash = context_hash(context->parent, context->binder, context->declared_type);
++	hash = (hash ^ context->judgement) * UINT64_C(1099511628211);
++	return (hash ^ (uintptr_t)context->indices) * UINT64_C(1099511628211);
++}
++
++int pg_context_owned_by(const struct pg_context *context, const struct pg_typing *typing)
++{
++	if (!typing || !typing->owner_key) return 0;
++	if (!context) return 1;
++	uint64_t hash = declaration_hash(context);
++	for (const struct pg_index_entry *entry = pg_index_candidates(&typing->contexts, hash); entry; entry = entry->next)
++		if (entry->hash == hash && &((const struct context_entry *)entry)->context == context) return 1;
++	return 0;
+ }
+ 
+ const struct pg_context *pg_context_bind(struct pg_typing *typing,
+@@ -106,9 +123,7 @@
+ 		if (judgement != PG_JUDGEMENT_TYPE_FAMILY) return NULL;
+ 		if (pg_context_extension_size(declaration->indices, parent, &count) || !count) return NULL;
+ 	}
+-	uint64_t hash = context_hash(parent, binder, declared_type);
+-	hash = (hash ^ judgement) * UINT64_C(1099511628211);
+-	hash = (hash ^ (uintptr_t)declaration->indices) * UINT64_C(1099511628211);
++	uint64_t hash = declaration_hash(declaration);
+ 	for (struct pg_index_entry *candidate = pg_index_candidates(&typing->contexts, hash); candidate; candidate = candidate->next) {
+ 		if (candidate->hash != hash) continue;
+ 		const struct context_entry *entry = (const struct context_entry *)candidate;
+@@ -121,6 +136,7 @@
  	struct context_entry *entry = pg_alloc(typing->graph, sizeof(*entry));
  	if (!entry) return NULL;
  	entry->context = *declaration;
@@ -39,7 +74,7 @@
  	if (pg_index_insert(&typing->contexts, &entry->index, hash) != 0) return NULL;
  	return &entry->context;
  }
-@@ -274,6 +275,7 @@
+@@ -274,6 +290,7 @@
  	struct pg_occurrence *result = pg_alloc(typing->graph, size);
  	if (!result) return NULL;
  	*result = *header;
@@ -47,14 +82,15 @@
  	result->induction = NULL;
  	for (size_t i = 0; i < operand_count; ++i) result->operands[i] = operands[i];
  	if (map_count) memcpy(result->operands + operand_count, maps, map_count * sizeof(*maps));
-@@ -370,18 +372,30 @@
+@@ -370,18 +387,30 @@
  		.type = source->classifier == classifier ? source->type : NULL}, argument ? &argument : NULL, NULL);
  }
  
 -const struct pg_binding_value *pg_context_map_bindings(const struct pg_context_map *map)
-+static const struct pg_object *const *map_binders(const struct pg_context_map *map)
- {
+-{
 -	return (const struct pg_binding_value *)(map->images + map->count);
++static const struct pg_object *const *map_binders(const struct pg_context_map *map)
++{
 +	return (const struct pg_object *const *)(map->images + map->count);
 +}
 +
@@ -82,7 +118,7 @@
  		if (index) *index = i;
  		return map->images[i];
  	}
-@@ -393,7 +407,7 @@
+@@ -393,7 +422,7 @@
  	size_t count, const struct pg_occurrence *const *images)
  {
  	if (count && !images) return NULL;
@@ -91,7 +127,7 @@
  	if (count > (SIZE_MAX - sizeof(struct pg_context_map)) / stride) return NULL;
  	uint64_t hash = (uintptr_t)source;
  	hash = (hash ^ (uintptr_t)destination) * UINT64_C(1099511628211);
-@@ -414,11 +428,11 @@
+@@ -414,11 +443,11 @@
  	map->source = source;
  	map->destination = destination;
  	map->count = count;
@@ -105,7 +141,7 @@
  	}
  	return pg_index_insert(&typing->context_maps, &map->index, hash) ? NULL : map;
  }
-@@ -660,10 +674,11 @@
+@@ -660,10 +689,11 @@
  		return pg_occurrence_mapped(typing, source->judgement, core, classifier,
  			annotation, source, map);
  	}
@@ -120,7 +156,7 @@
  	return identity ? source : pg_occurrence_mapped(typing,
  		source->judgement, core, classifier, annotation, source, map);
  }
-@@ -674,10 +689,10 @@
+@@ -674,10 +704,10 @@
  	size_t count;
  	if (!map || !source || source->context != map->source) return NULL;
  	if (pg_context_extension_size(map->destination, map->source, &count)) return NULL;
@@ -134,7 +170,7 @@
  	}
  	return action_result(typing, map, source, source->core, source->classifier, source->annotation);
  }
-@@ -762,13 +777,12 @@
+@@ -762,13 +792,12 @@
  		work->result = pg_occurrence_projection(work->typing, map, source);
  		if (work->result) return PG_SUBSTITUTION_DONE;
  	}
