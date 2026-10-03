@@ -195,9 +195,12 @@ int pg_c_link_publish(const struct pg_c_link_plan *plan, const char *directory,
 			plan->enum_count, plan->enums, plan->natural_count, plan->naturals,
 			plan->data_count, plan->data, &contract, &error);
 	} else emitted = pg_c_emit_scalar(file, header, plan->count, plan->exports, plan->entry, &error);
+	/* Save stream errors before closing handles; they are I/O failures even
+	 * when the emitter also returns its unsupported-lowering sentinel. */
+	int failed = ferror(file) || ferror(header);
 	int closed = fclose(file), header_closed = fclose(header);
+	if (failed || closed || header_closed) goto done;
 	if (emitted) { fprintf(stderr, "C link: cannot lower exports: %s\n", error); status = 4; goto done; }
-	if (closed || header_closed) goto done;
 	if (runtime && (copy_runtime(names[RUNTIME], paths[RUNTIME]) || copy_runtime(names[RUNTIME_HEADER], paths[RUNTIME_HEADER]))) goto done;
 	if (plan->product != PG_C_SOURCE) {
 		char *compile[] = {(char *)cc, "-std=c11", "-O2", "-c", paths[SOURCE], "-o", paths[OBJECT], NULL};
