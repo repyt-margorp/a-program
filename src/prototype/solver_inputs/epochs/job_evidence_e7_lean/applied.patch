@@ -1,0 +1,323 @@
+--- a/src/synthesis.c
++++ b/src/synthesis.c
+@@ -21,10 +21,8 @@
+ struct source_metadata {
+ 	struct pg_index_entry index;
+ 	const struct pg_occurrence *subject;
+-	const struct pg_source_scope *exports;
++	struct pg_synthesis_job *source;
+ 	struct pg_synthesis_job *match;
+-	const struct pg_synthesis_graph_names *graph_names;
+-	const struct source_constructor *constructors;
+ };
+ 
+ struct source_binding {
+@@ -384,7 +382,15 @@
+ 	const struct module_work *module = module_work(job);
+ 	if (module) return job->status == PG_SYNTHESIS_DONE ? source_exports(synthesis, source_module_projection(job).rule) : NULL;
+ 	const struct reference_work *reference = reference_work(job);
+-	if (!reference) return pg_synthesis_declaration_exports(job);
++	if (!reference) {
++		const struct pg_source_scope *exports = pg_synthesis_declaration_exports(job);
++		if (!exports) {
++			const struct pg_evidence *declaration;
++			const struct pg_synthesis_graph_names *names;
++			if (pg_synthesis_graph_source(job, &declaration, &exports, &names) != 1) return NULL;
++		}
++		return exports;
++	}
+ 	if (reference->left) return source_exports(synthesis, reference->left);
+ 	return reference->value_job ? input_exports(synthesis,
+ 		pg_synthesis_rule_input(synthesis, reference->value_job, 1)) : NULL;
+@@ -461,24 +467,48 @@
+ 	return metadata;
+ }
+ 
++static const struct pg_source_scope *metadata_exports(const struct pg_synthesis *synthesis,
++	const struct source_metadata *origin)
++{
++	return origin ? source_exports(synthesis, origin->source) : NULL;
++}
++
++static const struct pg_synthesis_graph_names *metadata_graph_names(const struct source_metadata *origin)
++{
++	const struct pg_evidence *declaration;
++	const struct pg_source_scope *exports;
++	const struct pg_synthesis_graph_names *names;
++	return origin && pg_synthesis_graph_source(origin->source, &declaration, &exports, &names) == 1 ? names : NULL;
++}
++
+ const struct source_constructor *pg_synthesis_constructor_source(const struct pg_synthesis *synthesis,
+ 	const struct pg_evidence *formation, const struct pg_object *constructor)
+ {
+ 	const struct source_metadata *origin = source_metadata(synthesis, pg_evidence_subject(formation));
+-	if (!origin || !origin->constructors) return NULL;
++	const struct source_constructor *constructors = origin ? pg_synthesis_declaration_members(origin->source) : NULL;
++	if (!constructors) return NULL;
+ 	size_t ordinal;
+ 	const struct pg_data_layout *layout = pg_data_schema_layout(pg_evidence_inductive_schema(formation));
+-	return pg_data_constructor_position(layout, constructor, &ordinal) ? &origin->constructors[ordinal] : NULL;
+-}
+-
+-int pg_synthesis_declaration_metadata(struct pg_synthesis *synthesis,
+-	const struct pg_evidence *formation, const struct pg_source_scope *exports,
+-	const struct source_constructor *constructors)
+-{
++	return pg_data_constructor_position(layout, constructor, &ordinal) ? &constructors[ordinal] : NULL;
++}
++
++int pg_synthesis_source_metadata(struct pg_synthesis *synthesis,
++	const struct pg_evidence *formation, struct pg_synthesis_job *source)
++{
++	if (!synthesis || !source || source->pending.owner != synthesis->owner_key
++		|| !pg_evidence_owned_by(formation, synthesis->typing)) return -1;
++	const struct pg_source_scope *exports = pg_synthesis_declaration_exports(source);
++	if (exports) {
++		if (source->result != formation) return -1;
++	} else {
++		const struct pg_evidence *declaration;
++		const struct pg_synthesis_graph_names *names;
++		if (pg_synthesis_graph_source(source, &declaration, &exports, &names) != 1
++			|| declaration != formation || !exports) return -1;
++	}
+ 	struct source_metadata *origin = register_source_metadata(synthesis, pg_evidence_subject(formation));
+ 	if (!origin) return -1;
+-	origin->exports = exports;
+-	origin->constructors = constructors;
++	origin->source = source;
+ 	return 0;
+ }
+ 
+@@ -1915,7 +1945,7 @@
+ 	const struct pg_evidence *proof = pg_synthesis_input_result(input);
+ 	if (!proof) return NULL;
+ 	const struct source_metadata *origin = source_metadata(synthesis, pg_evidence_subject(proof));
+-	return origin ? origin->exports : NULL;
++	return metadata_exports(synthesis, origin);
+ }
+ 
+ static struct pg_synthesis_job *prepare_reference_rule(struct pg_synthesis *synthesis,
+@@ -2000,8 +2030,9 @@
+ 		struct pg_inductive_instance instance;
+ 		if (!pg_synthesis_inductive_instance_result(instance_job, &instance)) return PG_SYNTHESIS_ERROR;
+ 		const struct source_metadata *origin = source_metadata(synthesis, pg_evidence_subject(instance.formation));
+-		if (!origin || !origin->exports) return PG_SYNTHESIS_UNSUPPORTED;
+-		struct source_reference member = lookup_scope(origin->exports, token);
++		exports = metadata_exports(synthesis, origin);
++		if (!exports) return PG_SYNTHESIS_UNSUPPORTED;
++		struct source_reference member = lookup_scope(exports, token);
+ 		if (!member.value.pending) return PG_SYNTHESIS_REJECTED;
+ 		struct pg_constructor_input constructor_input;
+ 		if (pg_synthesis_constructor_input(synthesis, pg_pending_job(member.value.pending), &constructor_input)) return PG_SYNTHESIS_UNSUPPORTED;
+@@ -2051,8 +2082,10 @@
+ }
+ 
+ int pg_synthesis_graph_exports(struct pg_synthesis *synthesis,
+-	struct pg_function_graph_work *work, const struct pg_synthesis_graph_names *names_input)
+-{
++	struct pg_function_graph_work *work, const struct pg_source_scope **output,
++	struct pg_synthesis_graph_names **names_output)
++{
++	struct pg_synthesis_graph_names *names_input = *names_output;
+ 	const struct pg_evidence *declaration = pg_function_graph_declaration(work);
+ 	const struct pg_evidence *context = pg_context_parent_input(synthesis->typing, pg_evidence_premise(declaration, 0));
+ 	const struct pg_evidence *parameters = pg_prove_substitution_projection(synthesis->typing, context, context);
+@@ -2086,10 +2119,11 @@
+ 		if (!source.formation) continue;
+ 		if (source.refined) names_input = NULL;
+ 		const struct source_metadata *origin = source_metadata(synthesis, pg_evidence_subject(source.formation));
+-		if (!origin || !origin->exports) goto done;
++		const struct pg_source_scope *source_exports = metadata_exports(synthesis, origin);
++		if (!source_exports) goto done;
+ 		const struct pg_object *constructor = pg_data_constructor(target, index);
+ 		struct pg_synthesis_job *producer = pg_synthesis_constructor_value(synthesis, (struct pg_synthesis_input){.checked = declaration}, constructor, (struct pg_synthesis_input){.checked = parameters});
+-		for (const struct pg_source_scope *name = origin->exports; name; name = name->parent) {
++		for (const struct pg_source_scope *name = source_exports; name; name = name->parent) {
+ 			struct pg_constructor_input input;
+ 			if (pg_synthesis_constructor_input(synthesis, pg_pending_job(name->value.pending), &input) || input.constructor != source.constructor) continue;
+ 			if (lookup_name(&names, name->name)) continue;
+@@ -2112,10 +2146,7 @@
+ 			if (!exports) goto done;
+ 		}
+ 	}
+-	struct source_metadata *origin = register_source_metadata(synthesis, pg_evidence_subject(declaration));
+-	if (!origin) goto done;
+-	origin->exports = exports;
+-	origin->graph_names = names_input;
++	*output = exports; *names_output = names_input;
+ 	result = 0;
+ done:
+ 	pg_index_destroy(&names); pg_index_destroy(&aliases);
+@@ -2815,10 +2846,10 @@
+ {
+ 	int named = clause && clause->item_count && clause->items[0].operation;
+ 	size_t hidden = 0, ordinal;
+-	const struct source_metadata *origin = source_metadata(synthesis, pg_evidence_subject(formation));
+ 	const struct pg_data_layout *layout = pg_data_schema_layout(pg_evidence_inductive_schema(formation));
+ 	if (!pg_data_constructor_position(layout, constructor, &ordinal)) return PG_SYNTHESIS_REJECTED;
+-	if (origin && origin->constructors) hidden = origin->constructors[ordinal].implicit_count;
++	const struct source_constructor *calling = pg_synthesis_constructor_source(synthesis, formation, constructor);
++	if (calling) hidden = calling->implicit_count;
+ 	if (hidden > count) return PG_SYNTHESIS_ERROR;
+ 	if (clause && !named && count - hidden != clause->item_count) return PG_SYNTHESIS_REJECTED;
+ 	if (count > SIZE_MAX / sizeof(struct source_case_field)) return PG_SYNTHESIS_ERROR;
+@@ -2826,7 +2857,7 @@
+ 	if (count && !bindings) return PG_SYNTHESIS_ERROR;
+ 	enum pg_synthesis_status status = PG_SYNTHESIS_REJECTED;
+ 	if (named) {
+-		const struct pg_synthesis_graph_names *names = origin ? origin->graph_names : NULL;
++		const struct pg_synthesis_graph_names *names = metadata_graph_names(source_metadata(synthesis, pg_evidence_subject(formation)));
+ 		if (!names) { status = PG_SYNTHESIS_UNSUPPORTED; goto done; }
+ 		const struct source_case_layout *source = &names->cases[ordinal];
+ 		if (source->count != count) goto done;
+@@ -4187,7 +4218,8 @@
+ 		if (!count) goto unsupported;
+ 		if (count > SIZE_MAX / sizeof(struct match_branch)) goto error;
+ 		const struct source_metadata *origin = source_metadata(synthesis, pg_evidence_subject(instance.formation));
+-		if (!origin || !origin->exports) goto unsupported;
++		const struct pg_source_scope *exports = metadata_exports(synthesis, origin);
++		if (!exports) goto unsupported;
+ 		struct match_state *state = match_state(synthesis, job);
+ 		if (!state) goto error;
+ 		state->branches = pg_alloc(synthesis->typing->graph, count * sizeof(*state->branches));
+@@ -4195,7 +4227,7 @@
+ 		local->match->instance = instance;
+ 		local->match->motive_totality = PG_TOTALITY_TOTAL;
+ 		local->match->count = count;
+-		local->match->labels = origin->exports;
++		local->match->labels = exports;
+ 	}
+ 	struct match_state *state = local->match;
+ 	const struct pg_data_layout *layout = pg_data_schema_layout(state->instance.schema);
+--- a/src/synthesis_source.h
++++ b/src/synthesis_source.h
+@@ -120,8 +120,7 @@
+ /* Source names/allocation provenance only; never proof admission. */
+ int pg_synthesis_register_source_allocation(struct pg_synthesis *, struct pg_synthesis_job *);
+ struct source_constructor;
+-int pg_synthesis_declaration_metadata(struct pg_synthesis *, const struct pg_evidence *,
+-	const struct pg_source_scope *, const struct source_constructor *);
++int pg_synthesis_source_metadata(struct pg_synthesis *, const struct pg_evidence *, struct pg_synthesis_job *);
+ const struct pg_evidence *pg_synthesis_scope_context(const struct pg_source_scope *);
+ int pg_synthesis_scope_wait(struct pg_synthesis *, struct pg_synthesis_job *, const struct pg_source_scope *);
+ const struct pg_object *pg_synthesis_source_binder(struct pg_synthesis *,
+@@ -219,7 +218,9 @@
+ int pg_synthesis_graph_order(struct pg_synthesis *, struct pg_function_graph_work *,
+ 	const struct pg_synthesis_job *, struct pg_synthesis_graph_names **);
+ int pg_synthesis_graph_exports(struct pg_synthesis *, struct pg_function_graph_work *,
+-	const struct pg_synthesis_graph_names *);
++	const struct pg_source_scope **, struct pg_synthesis_graph_names **);
++int pg_synthesis_graph_source(const struct pg_synthesis_job *, const struct pg_evidence **,
++	const struct pg_source_scope **, const struct pg_synthesis_graph_names **);
+ int pg_synthesis_cbpv_type_rule(enum pg_evidence_rule);
+ int pg_synthesis_cbpv_structure_input(struct pg_synthesis *, struct pg_synthesis_input,
+ 	int classifier, struct pg_synthesis_structure *);
+--- a/src/synthesis_schema.c
++++ b/src/synthesis_schema.c
+@@ -31,6 +31,12 @@
+ {
+ 	const struct declaration_work *local = declaration_work(job);
+ 	return local ? local->exports : NULL;
++}
++
++const struct source_constructor *pg_synthesis_declaration_members(const struct pg_synthesis_job *job)
++{
++	const struct declaration_work *local = declaration_work(job);
++	return local ? pg_synthesis_schema_members(local->left) : NULL;
+ }
+ 
+ const struct pg_data_declaration *pg_synthesis_declaration_allocation(const struct pg_synthesis_job *job)
+@@ -226,8 +232,7 @@
+ 		} else member = pg_synthesis_constructor_value(synthesis, (struct pg_synthesis_input){.checked = job->result}, constructor, (struct pg_synthesis_input){.checked = parameters});
+ 		local->exports = pg_synthesis_name(synthesis, local->exports, constructors->items[i].name, (struct pg_synthesis_input){.pending = pg_synthesis_pending(member)});
+ 	}
+-	if (pg_synthesis_declaration_metadata(synthesis, job->result, local->exports,
+-		pg_synthesis_schema_members(local->left))) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
++	if (pg_synthesis_source_metadata(synthesis, job->result, job)) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+ 	pg_synthesis_finish(synthesis, job, local->exports ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+ }
+ 
+--- a/src/synthesis_schema.h
++++ b/src/synthesis_schema.h
+@@ -26,6 +26,7 @@
+ struct pg_synthesis_job *pg_synthesis_source_declaration(struct pg_synthesis *,
+ 	const struct pg_source_scope *, const struct pg_syntax *);
+ const struct pg_source_scope *pg_synthesis_declaration_exports(const struct pg_synthesis_job *);
++const struct source_constructor *pg_synthesis_declaration_members(const struct pg_synthesis_job *);
+ const struct pg_data_declaration *pg_synthesis_declaration_allocation(const struct pg_synthesis_job *);
+ const struct pg_data_declaration *pg_synthesis_schema_allocation(const struct pg_synthesis_job *);
+ const struct source_constructor *pg_synthesis_constructor_source(const struct pg_synthesis *,
+--- a/src/synthesis_function.c
++++ b/src/synthesis_function.c
+@@ -129,6 +129,7 @@
+ struct graph_work {
+ 	struct pg_function_graph_work graph;
+ 	struct pg_synthesis_graph_names *names;
++	const struct pg_source_scope *exports;
+ 	int ordered;
+ };
+ 
+@@ -156,6 +157,17 @@
+ {
+ 	const struct graph_work *local = pg_synthesis_work_state(job, GRAPH_WORK);
+ 	return (struct pg_synthesis_input){.checked = pg_function_graph_formation(&local->graph)};
++}
++
++int pg_synthesis_graph_source(const struct pg_synthesis_job *job, const struct pg_evidence **declaration,
++	const struct pg_source_scope **exports, const struct pg_synthesis_graph_names **names)
++{
++	const struct graph_work *local = pg_synthesis_work_state(job, GRAPH_WORK);
++	if (!local) return 0;
++	if (!declaration || !exports || !names) return -1;
++	*declaration = pg_function_graph_declaration(&local->graph);
++	*exports = local->exports; *names = local->names;
++	return 1;
+ }
+ 
+ static void graph_destroy(struct pg_synthesis_job *job)
+@@ -189,7 +201,8 @@
+ 	if (status == PG_FUNCTION_GRAPH_PENDING) { pg_synthesis_enqueue(synthesis, job); return; }
+ 	if (status == PG_FUNCTION_GRAPH_ERROR) goto error;
+ 	if (status != PG_FUNCTION_GRAPH_DONE) goto unsupported;
+-	if (pg_synthesis_graph_exports(synthesis, &local->graph, local->names)) goto unsupported;
++	if (pg_synthesis_graph_exports(synthesis, &local->graph, &local->exports, &local->names)) goto unsupported;
++	if (pg_synthesis_source_metadata(synthesis, pg_function_graph_declaration(&local->graph), job)) goto error;
+ 	/* Formation stays in the graph owner. The scheduler publishes readiness of
+ 	 * the source interface, not a second copy of its checked result. */
+ 	pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_DONE);
+--- a/tests/synthesis.c
++++ b/tests/synthesis.c
+@@ -8696,6 +8696,7 @@
+ 		assert(!pg_synthesis_init(&foreign, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
+ 		assert(!pg_synthesis_source_declaration(&foreign, root, syntax));
+ 		assert(pg_synthesis_source_input(&foreign, job, &borrowed_scope, &borrowed_syntax) == -1);
++		assert(pg_synthesis_source_metadata(&foreign, pg_synthesis_scope_context(root), job) == -1);
+ 		struct pg_constructor_allocation member;
+ 		assert(pg_synthesis_declaration_member_input(&foreign, job, 0, &member) == -1);
+ 		pg_synthesis_destroy(&foreign);
+@@ -8731,6 +8732,14 @@
+ 		assert(!pg_derivation_input_header(type, &input) && input.parameters.declaration);
+ 		assert(pg_synthesis_declaration_allocation(job) == input.parameters.declaration);
+ 		assert(pg_synthesis_declaration_exports(job));
++		if (pg_syntax_constructors(syntax)->item_count) {
++			const struct source_constructor *members = pg_synthesis_declaration_members(job);
++			assert(members && pg_synthesis_constructor_source(&synthesis, type,
++				pg_data_constructor(pg_data_schema_layout(pg_evidence_inductive_schema(type)), 0)) == members);
++		}
++		assert(pg_synthesis_source_metadata(&synthesis, type, no_inputs) == -1);
++		assert(pg_synthesis_source_metadata(&synthesis, pg_prove_universe(typing, pg_prove_empty_context(typing), 0), job) == -1);
++		assert(synthesis.source_metadata.count == metadata);
+ 		{
+ 			const struct pg_syntax *restored = expression_syntax(typing->graph, sources[i]);
+ 			struct pg_synthesis_job *rechecked = pg_synthesis_declaration_at(&synthesis, root, restored, input.parameters.declaration);
+@@ -8740,6 +8749,10 @@
+ 			assert(pg_synthesis_request(&synthesis, root, restored) == rechecked);
+ 			assert(complete(&synthesis, rechecked, PG_SYNTHESIS_DONE) == type);
+ 			assert(synthesis.source_metadata.count == metadata);
++			if (pg_syntax_constructors(restored)->item_count)
++				assert(pg_synthesis_constructor_source(&synthesis, type,
++					pg_data_constructor(pg_data_schema_layout(pg_evidence_inductive_schema(type)), 0))
++					== pg_synthesis_declaration_members(rechecked));
+ 			if (i == 1) {
+ 				struct pg_synthesis_job *renamed = pg_synthesis_declaration_at(&synthesis, root,
+ 					expression_syntax(typing->graph, "D:=@{nothing:*; successor:*->*;};"), input.parameters.declaration);
