@@ -1,0 +1,6 @@
+kind	applied_file	added	deleted	net
+implementation	src/synthesis.c	27	21	6
+implementation	src/synthesis_derivation.c	1	1	0
+implementation	src/synthesis_source.h	1	1	0
+tests	tests/synthesis.c	35	1	34
+tests	checkpoint_tests/source_checkpoint_test.c	0	0	0

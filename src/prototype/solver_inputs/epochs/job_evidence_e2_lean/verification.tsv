@@ -1,0 +1,14 @@
+gate	exit	evidence
+acceptance	0	local-full-report-sha256:9a9bf8e200e890c1ee4f60dd7441aa3c1460879ec288e3cfc24afabc66c031ac
+c	0	local-full-report-sha256:253110064386090fad5ee6e8db46e70e3c3715f16422ebcd1d9ff4f9ed1d0b71
+focused-final	0	local-full-report-sha256:28a8977e5ea697eaf092732d74fee04e2e21ebc9524d4fcca16d64d669a7d3ae
+final-synthesis	0	local-full-report-sha256:c500145c76c988830cfbdc1160ad934e4662123bd2d058c1f2e5fd554499ff8f
+asan-core	0	local-full-report-sha256:c8d3d61396428f26d62fe22c381aae9c68446db749f6dd072ebcbbc05a66a212
+asan-synthesis	0	local-full-report-sha256:c500145c76c988830cfbdc1160ad934e4662123bd2d058c1f2e5fd554499ff8f
+asan-source	0	local-full-report-sha256:cbda9add5b762979397b62e4bbb7e1d3954db7bb8acc5550251c0a15f0ec9de2
+asan-derivation	0	local-full-report-sha256:3065e801e51c595f0b3abca996fd095d986b573bcba4ece31d504e563e93d292
+partitions	1	local-full-report-sha256:212e50ca2546c51d9b49f8b274e3f70627c92f3f69909a998c82943425e03ed4
+parent-control	134	local-full-report-sha256:00208e647d08a94fa54039ca8b28908cde99a7acdef8af32b0cf4cf8c223e5ae
+fresh-assembly-156-C-and-headers	0	tested_sources.sha256
+completed-five-paired-censuses-only-Job-bytes-change	0	measurements.tsv
+parent-52-partition-images-and-verdict-TSV-equal	0	public_partitions.tsv
