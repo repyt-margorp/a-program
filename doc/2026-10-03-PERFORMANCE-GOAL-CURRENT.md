@@ -79,6 +79,19 @@ separate. No E11/E12 runtime is included.
 
 ### Assessment
 
+2026-10-03 19:38 UTC, Root Fold qualification/publication: exact12 task86a0699 on57a94cc
+and prototype Main9d5cda2 are pushed/remote exact. All1257 pins/source12881c3ad27
+verify; Root freshly reconstructs patch and passes parent/candidate O2/SAN
+Fold67-cut and cleanup controls, four builds/eight executions. Worker index-only
+advancement preserves2099 prior tracked live files; protected9 and old freezes
+remain exact. [Root publication review](../src/prototype/performance_followup/mem3-fold-publication-root-review.json)
+supersedes historical READY/runtime-review pending fields; strict3 remain.
+Separate cost-request16704347 config4dab6b88 has36 exact jobs/289 verified pins,
+reviewed but ungranted under the implementation-first delegation. Visible-roots
+17-pin debug evidence verifies; deliberate200000-node Tree16 cap/driver1 is
+retained as incomplete lower bounds, without dead/peak/live-memory inference.
+No actual Fold RAM/time, accepted promotion or full Goal/issue completion.
+
 2026-10-03 19:29 UTC, Root review: corrected E11/E12 now integrate into prototype Main
 with independently reconstructed source12812026914. Fresh Core O2/SAN and
 public-resume execution preserve all52 images/full TSV and strict3. These are

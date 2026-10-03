@@ -17,10 +17,10 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | Inquiry desk -> `merge`: reporting vs coordination/integration | All lanes | Desk answers the user; only Merge integrates after verified handoff |
-| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C1-C13 bounded prototypes integrated; C14 bounded callback probe continues, native Acc/QuickSort remains open |
+| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C1-C14 bounded prototypes integrated and current-E12 qualified; native Acc/QuickSort remains open |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Accepted performance7631e5a; V3 bounded measured tree gain reviewed; MEM2 beta environment elision rejected; IADT source9 published, bounded tree RSS gain/mixed timing measured; full Goal active |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
-| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E1-E4/E6-E10 prototype Main; corrected E11/E12 tasks published; Root focused/broad provenance verified; combined current qualification and E13 continue, strict3 remain |
+| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E1-E4/E6-E12 corrected prototypes Main integrated; current source/lifetime/resume verified; E13 review pending, strict3 remain |
 | 6 | `verification-audit`: independent read-mostly suite/debt inventory | #59 / PR #60, #51 | Bounded static inventory/pilot complete; measured cost deferred, full #59 remains open |
 | 7 | `test-suite`: implement coverage-preserving test reductions | #59 / PR #60 | Bounded Goal complete; exact7 taskbc16df9 pushed/remote verified, Root raw/assembly review complete, prototype Main36a27be integrated |
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
@@ -116,11 +116,24 @@ unwaived. New Fold exact12 READY notice d04f6635 and separate cost-request
 No accepted/default promotion, full Goal or issue closure. Earlier pending
 statements above are historical and superseded by this checkpoint/table.
 
+2026-10-03 19:38 UTC, Root Fold qualification/publication: exact12 task86a0699 on57a94cc
+and prototype Main9d5cda2 are pushed/remote exact. All1257 pins/source12881c3ad27
+verify; Root freshly reconstructs patch and passes parent/candidate O2/SAN
+Fold67-cut and cleanup controls, four builds/eight executions. Worker index-only
+advancement preserves2099 prior tracked live files; protected9 and old freezes
+remain exact. [Root publication review](../src/prototype/performance_followup/mem3-fold-publication-root-review.json)
+supersedes historical READY/runtime-review pending fields; strict3 remain.
+Separate cost-request16704347 config4dab6b88 has36 exact jobs/289 verified pins,
+reviewed but ungranted under the implementation-first delegation. Visible-roots
+17-pin debug evidence verifies; deliberate200000-node Tree16 cap/driver1 is
+retained as incomplete lower bounds, without dead/peak/live-memory inference.
+No actual Fold RAM/time, accepted promotion or full Goal/issue completion.
+
 | Owner / issue scope | Delivered and verified | Not yet delivered / next boundary |
 | --- | --- | --- |
 | Job/Evidence; SE1-SE5 / AP0, #51/#47 | E1-E4/E6-E12 corrected prototypes integrated. E11 taskd22be9f/Main ea39262 exact25; E12 taskcb959eb/Main684d47c exact29 paths, 28 task-byte-exact plus combined Core test patch. Root current source12842639815/12026914, all2013/2064 pins and fresh lifetime O2/SAN controls pass; full Core O2/SAN pass | Fresh public52/full TSV equal qualified E12; original strict3 remain. E13 exact28 frozen READY, ownership review/publication pending. E14 local broad0; E15 Graph input borrowing proposed/unbuilt. Original unsafe E11/E12 remain rejected; no full ownership/layout completion |
 | C backend; #61, historical #44/#49 | C1-C14 bounded prototypes integrated. C14 taske9d74f7/Main6c36dcb exact23 paths, 22 frozen bytes plus reconciled Goal doc. Root current-E12 callback O2/client-source SAN39 each, four products400 Core comparisons each, shared58 each, link and matched IO19 pass | Four corrected explicit-import source consumers retain output/fuel; historical mismatched image failure preserved and reproduced before C14. Caller lifetime/purity contracts, native Acc/QuickSort and higher exports remain open |
-| Performance; #56/#51/#52 | E6 measurements30 published; E7-E10 qualified; accepted13-file promotion7631e5a independently verified. MEM1 diagnosis40 exact; Root fresh inline-state parent0/v1 signal6/v2 0 | V1 rejected despite passing acceptance and lower sampled capacity; no qualified gain. V2 superseded/rejected: new materialized-failure callback destruction passes parent SAN0 but V2 retire_frame heap-use-after-free/signal6, independently reproduced by Root (reportd5155b89). Exact18 task1297e0b/Mainf48ab5e remain historical prototype, earlier384/45 and Root controls inadequate. V3 exact18 taskc861728/Maincc69f52 integrated; exact111 cost evidence/addendum taske561030/Main895ac67, original109 unchanged; Root O2/SAN callback3 each0, current-E12 exact36 cost samples complete/uncensored. Tree400 median5.34021->4.92598s/RSS1891928->1001764KiB, unchanged183507626 steps. LocalSorted RSS+492KiB/smallList startup variation retained; bounded measured gain, no default/accepted replacement |
+| Performance; #56/#51/#52 | V3 source18/cost111, MEM2 source9/cost88 and MEM3 Fold source12 verified/published. Fold task86a0699/Main9d5cda2 all1257 pins; fresh parent/candidate O2/SAN67-cut/cleanup controls0. Prior V3/MEM2 measured tree gains and mixed timing retained | Full Goal active; Fold actual cost unmeasured,36-job/289-pin proposal reviewed without grant. Visible-root cap/driver1 and LocalSorted attribution limits preserved. Rejected V1/V2/capture elision and all old failures remain; no default/accepted replacement |
 | Surface; #57 | Verified prototype integrated, completed owner stopped | Accepted policy/promotion and selector diagnostics unresolved; no owner restart |
 | Static audit; #59/PR #60 | Task7ed3ad1/Main5683755; Root385 source/114 archived dependency hashes and exact inventory verified; bounded Goal achieved | Dynamic/full #59 and controlled cost remain open; no static-owner restart |
 | Sort; #41/F3-F5 | PR54 and finite-function task5e6ed84/Main966c4e1 integrated; bounded Goal achieved, focused gates0 | Accepted Sort/F5 and broader interfaces remain separate |
@@ -153,7 +166,7 @@ reporting subsystem. Its audit cover is pinned to `37de1e8`, not current Main.
 | --- | --- | --- |
 | 0 / desk -> Merge | Workflow | Merge reviews evidence; Performance runs, C/Job capacity-stalled. Test-suite/issue-audit/static/Sort bounded Goals achieved and stopped; protected local bytes preserved. Scheduled six-hour report delivered; Root resumes coordination after audit handoff |
 | 1 / Job, Root reviews independently | SE/AP, #51 | Corrected E11/E12 Main integration and current source qualification complete, detailed integration receipt linked below. Review E13 frozen header deletion; E15 Graph consumer remains Job-owned/unbuilt. Preserve strict3 and original unsafe failures; no pointer-layout completion claim |
-| 1 / performance + Job | #56 / #51 | V1/V2 and MEM2 capture elision remain rejected; V3 source18/cost111 and MEM2 source9/cost88 delivered with bounded measured tree RAM gains and timing limits. MEM3 Fold exact12 READY/source81c3ad27, terminal1257-pin freeze; prior Root source/raw review complete, fresh runtime review and publication next. Cost proposal36 jobs/289 pins pending exclusive scheduling, no active grant. Job owns separate header/Graph work; Root resolves conflicts |
+| 1 / performance + Job | #56 / #51 | V3/MEM2 and Fold exact12 task86a0699/Main9d5cda2 delivered with fresh Root lifetime/persistence controls. Preserve measured-result limits, strict3 and rejected candidates. Fold36-job/289-pin cost proposal reviewed, no grant; existing Performance owner continues allocation-site attribution. Job header/Graph work remains separate |
 | Complete bounded / test-suite; Root publishes | #59 / PR #60 | Verified pilot removes22 duplicate calls with all distinct outcomes preserved; Root raw/assembly review complete. Exact7 taskbc16df9/Main36a27be prototype integrated; broader inventory/cost/accepted adoption remain open |
 | Complete bounded / issue-audit | All open Issues/PRs | Verified comments/dispositions,44/49 superseded by61; nine issues open. Owner stopped; Root resumes coordination, no repeat audit |
 | Complete bounded / verification-audit | #59 / PR #60; #51 | Static inventory/pilot delivered and worker complete; four-job measured cost remains deferred, full #59 open. Do not restart the completed owner automatically |

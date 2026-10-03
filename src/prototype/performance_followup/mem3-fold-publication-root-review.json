@@ -1,0 +1,382 @@
+{
+  "review_UTC": "2026-10-03 19:38 UTC",
+  "review_Main": "9d5cda2b5007ef2a222e5083ce4de2f49ad70ce0",
+  "READY_notice_sha256": "d04f66350f9db1247a721c172ad0a253ea2f142858cbc69a005d9ced5ae9dddd",
+  "cost_request_notice_sha256": "16704347db7f081747984732d5c2112a7437e674a49a64ed218902411b1f6998",
+  "publication": {
+    "task": "86a069946ae450458003b0b1bfb8e238876df71a",
+    "parent": "57a94ccb2e664aa44226ac3b1682072a16b8586a",
+    "exact12_paths": [
+      "src/prototype/performance_mem3/epochs/fold_empty_tail_v1/README.md",
+      "src/prototype/performance_mem3/epochs/fold_empty_tail_v1/allocation-summary.json",
+      "src/prototype/performance_mem3/epochs/fold_empty_tail_v1/computation.patch",
+      "src/prototype/performance_mem3/epochs/fold_empty_tail_v1/evidence.json",
+      "src/prototype/performance_mem3/epochs/fold_empty_tail_v1/fold-call-comparison.json",
+      "src/prototype/performance_mem3/epochs/fold_empty_tail_v1/fold_spine_test.c",
+      "src/prototype/performance_mem3/epochs/fold_empty_tail_v1/known-failures.json",
+      "src/prototype/performance_mem3/epochs/fold_empty_tail_v1/manifest.sha256",
+      "src/prototype/performance_mem3/epochs/fold_empty_tail_v1/parent-source.sha256",
+      "src/prototype/performance_mem3/epochs/fold_empty_tail_v1/source.sha256",
+      "src/prototype/performance_mem3/epochs/fold_empty_tail_v1/summary.json",
+      "src/prototype/performance_mem3/epochs/fold_empty_tail_v1/verify.mk"
+    ],
+    "Root_review_sha256": "a87c154538cc8d18d5383646ef0a837e61682aa5380b80a5845dc8da45731276",
+    "worker_live_tracked_bytes_preserved": 2099,
+    "worker_index_only_advanced": true,
+    "task_remote_exact": true,
+    "Main_before": "a087fec5b4a71348c970919249f133fe1fbe3ac8",
+    "source128": "81c3ad27dfd01aef14ad8e977d1b783cc3636368b6e5afcab0840d07d055e541",
+    "no_cost_grant_or_sample_launch": true,
+    "prototype_Main": "9d5cda2b5007ef2a222e5083ce4de2f49ad70ce0",
+    "exact12_Main_bytes_verified": true,
+    "Main_remote_exact": true,
+    "protected9_unchanged": true,
+    "accepted_default_runtime_selection_or_Goal_completion": false
+  },
+  "private1257_pins_verified": true,
+  "manifest_sha256": "e7f00ff87da284b3f38c7a6609b1e4c2177556d9190dc34f20ce35b60841eeb6",
+  "publication_manifest_sha256": "6afd52f38919f91b172f518952374f451a090c093b3dd413e2c4a06f1bede635",
+  "source128_parent": "2e87fd8444726e9bacc9cb4e7b4e17f814685a515f716b212a849ca1d24ac85e",
+  "source128_candidate": "81c3ad27dfd01aef14ad8e977d1b783cc3636368b6e5afcab0840d07d055e541",
+  "only_runtime_file": "src/computation.c",
+  "patch_sha256": "f6b25d36a1ddd4f5d822c81cd4c8072e2c571e3a3e0df368e40f694a44e7eb8d",
+  "fresh_patch_reconstruction_exact": true,
+  "source_assessment": "Exact unary Return guard supplies immutable argument spine. After pg_eval_enter validates consume and restores continuation closure/environment, empty caller tail can reuse that spine. Nonempty tails retain pg_eval_apply. Machine temporary arena or decoded graph owns nodes beyond materializer scratch cleanup and stateless frame retirement. No node mutation, owner/index/schema/ABI added. Extra argument traversal remains a possible CPU cost.",
+  "fresh_Root_records": [
+    {
+      "label": "build-parent-o2",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/tmp/a-program-merge-mem3-fold-publication-20261003/src/prototype/performance_mem3/epochs/fold_empty_tail_v1/verify.mk",
+        "OVERLAY=/tmp/a-program-merge-mem3-fold-controls-20261003/parent",
+        "ROOT=/tmp/a-program-merge-mem3-fold-controls-20261003/parent/src/",
+        "BUILD=/tmp/a-program-merge-mem3-fold-controls-20261003/parent-o2",
+        "REPO=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003",
+        "TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/tests",
+        "CHECKPOINT_TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/checkpoint_tests/",
+        "ARTIFACT_TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/artifact_tests/",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/tmp/a-program-merge-mem3-fold-controls-20261003/parent-o2/fold_spine_test",
+        "/tmp/a-program-merge-mem3-fold-controls-20261003/parent-o2/performance_head_cleanup_test"
+      ],
+      "exit": 0,
+      "log_sha256": "02cbac560891c88011b50479dc65f64b3a36fd89af383f69214749c42d2dfcaf",
+      "sanitizer": false
+    },
+    {
+      "label": "fold-parent-o2",
+      "argv": [
+        "/tmp/a-program-merge-mem3-fold-controls-20261003/parent-o2/fold_spine_test"
+      ],
+      "exit": 0,
+      "log_sha256": "13fce26898aaec928fc6881003b643ff8d809675b165465231f6e19c9e1098d3",
+      "sanitizer": false
+    },
+    {
+      "label": "cleanup-parent-o2",
+      "argv": [
+        "/tmp/a-program-merge-mem3-fold-controls-20261003/parent-o2/performance_head_cleanup_test"
+      ],
+      "exit": 0,
+      "log_sha256": "ef6a15bf74b72d2339aa61f8d9cba28dec73055daba969aee497cfdc49f103a8",
+      "sanitizer": false
+    },
+    {
+      "label": "build-candidate-o2",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/tmp/a-program-merge-mem3-fold-publication-20261003/src/prototype/performance_mem3/epochs/fold_empty_tail_v1/verify.mk",
+        "OVERLAY=/tmp/a-program-merge-mem3-fold-controls-20261003/candidate",
+        "ROOT=/tmp/a-program-merge-mem3-fold-controls-20261003/candidate/src/",
+        "BUILD=/tmp/a-program-merge-mem3-fold-controls-20261003/candidate-o2",
+        "REPO=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003",
+        "TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/tests",
+        "CHECKPOINT_TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/checkpoint_tests/",
+        "ARTIFACT_TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/artifact_tests/",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/tmp/a-program-merge-mem3-fold-controls-20261003/candidate-o2/fold_spine_test",
+        "/tmp/a-program-merge-mem3-fold-controls-20261003/candidate-o2/performance_head_cleanup_test"
+      ],
+      "exit": 0,
+      "log_sha256": "3f63796d267787ac891395014a16fc1faaa071c9fc99ca671e4041cb8ef7445a",
+      "sanitizer": false
+    },
+    {
+      "label": "fold-candidate-o2",
+      "argv": [
+        "/tmp/a-program-merge-mem3-fold-controls-20261003/candidate-o2/fold_spine_test"
+      ],
+      "exit": 0,
+      "log_sha256": "13fce26898aaec928fc6881003b643ff8d809675b165465231f6e19c9e1098d3",
+      "sanitizer": false
+    },
+    {
+      "label": "cleanup-candidate-o2",
+      "argv": [
+        "/tmp/a-program-merge-mem3-fold-controls-20261003/candidate-o2/performance_head_cleanup_test"
+      ],
+      "exit": 0,
+      "log_sha256": "ef6a15bf74b72d2339aa61f8d9cba28dec73055daba969aee497cfdc49f103a8",
+      "sanitizer": false
+    },
+    {
+      "label": "build-parent-san",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/tmp/a-program-merge-mem3-fold-publication-20261003/src/prototype/performance_mem3/epochs/fold_empty_tail_v1/verify.mk",
+        "OVERLAY=/tmp/a-program-merge-mem3-fold-controls-20261003/parent",
+        "ROOT=/tmp/a-program-merge-mem3-fold-controls-20261003/parent/src/",
+        "BUILD=/tmp/a-program-merge-mem3-fold-controls-20261003/parent-san",
+        "REPO=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003",
+        "TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/tests",
+        "CHECKPOINT_TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/checkpoint_tests/",
+        "ARTIFACT_TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/artifact_tests/",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/tmp/a-program-merge-mem3-fold-controls-20261003/parent-san/fold_spine_test",
+        "/tmp/a-program-merge-mem3-fold-controls-20261003/parent-san/performance_head_cleanup_test"
+      ],
+      "exit": 0,
+      "log_sha256": "8d66065b38accee2d9e6fd55896fa56307b835f1db9cc64064ee00e06d956e11",
+      "sanitizer": true
+    },
+    {
+      "label": "fold-parent-san",
+      "argv": [
+        "/tmp/a-program-merge-mem3-fold-controls-20261003/parent-san/fold_spine_test"
+      ],
+      "exit": 0,
+      "log_sha256": "13fce26898aaec928fc6881003b643ff8d809675b165465231f6e19c9e1098d3",
+      "sanitizer": true
+    },
+    {
+      "label": "cleanup-parent-san",
+      "argv": [
+        "/tmp/a-program-merge-mem3-fold-controls-20261003/parent-san/performance_head_cleanup_test"
+      ],
+      "exit": 0,
+      "log_sha256": "ef6a15bf74b72d2339aa61f8d9cba28dec73055daba969aee497cfdc49f103a8",
+      "sanitizer": true
+    },
+    {
+      "label": "build-candidate-san",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/tmp/a-program-merge-mem3-fold-publication-20261003/src/prototype/performance_mem3/epochs/fold_empty_tail_v1/verify.mk",
+        "OVERLAY=/tmp/a-program-merge-mem3-fold-controls-20261003/candidate",
+        "ROOT=/tmp/a-program-merge-mem3-fold-controls-20261003/candidate/src/",
+        "BUILD=/tmp/a-program-merge-mem3-fold-controls-20261003/candidate-san",
+        "REPO=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003",
+        "TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/tests",
+        "CHECKPOINT_TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/checkpoint_tests/",
+        "ARTIFACT_TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/artifact_tests/",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/tmp/a-program-merge-mem3-fold-controls-20261003/candidate-san/fold_spine_test",
+        "/tmp/a-program-merge-mem3-fold-controls-20261003/candidate-san/performance_head_cleanup_test"
+      ],
+      "exit": 0,
+      "log_sha256": "6cbac074b04652f37e2a1fab68fbf727842831bc1beeaa688053a23fca49d2fa",
+      "sanitizer": true
+    },
+    {
+      "label": "fold-candidate-san",
+      "argv": [
+        "/tmp/a-program-merge-mem3-fold-controls-20261003/candidate-san/fold_spine_test"
+      ],
+      "exit": 0,
+      "log_sha256": "13fce26898aaec928fc6881003b643ff8d809675b165465231f6e19c9e1098d3",
+      "sanitizer": true
+    },
+    {
+      "label": "cleanup-candidate-san",
+      "argv": [
+        "/tmp/a-program-merge-mem3-fold-controls-20261003/candidate-san/performance_head_cleanup_test"
+      ],
+      "exit": 0,
+      "log_sha256": "ef6a15bf74b72d2339aa61f8d9cba28dec73055daba969aee497cfdc49f103a8",
+      "sanitizer": true
+    }
+  ],
+  "fresh_Root_results_sha256": "a87c154538cc8d18d5383646ef0a837e61682aa5380b80a5845dc8da45731276",
+  "fresh_Root_scope": "Parent/candidate strict O2 and ASan/UBSan: five result/fuel cases 11/15/12/13/11, all67 cuts with two inert save-load cycles, zero budget and completion, plus original head-cleanup controls. Four builds/eight executions pass; leak and stack-after-return detection enabled.",
+  "worker_terminal_summary": {
+    "terminal": true,
+    "parent_source128": "2e87fd8444726e9bacc9cb4e7b4e17f814685a515f716b212a849ca1d24ac85e",
+    "candidate_source128": "81c3ad27dfd01aef14ad8e977d1b783cc3636368b6e5afcab0840d07d055e541",
+    "only_runtime_change": [
+      "src/computation.c"
+    ],
+    "patch_sha256": "f6b25d36a1ddd4f5d822c81cd4c8072e2c571e3a3e0df368e40f694a44e7eb8d",
+    "fold_test_sha256": "ebd1f8f179718d5b37e58f4ce5939502adb43a47a54851d8c5dd88adbd3551ae",
+    "focused_records": 410,
+    "focused_failed": 0,
+    "raw_steps": [
+      11,
+      15,
+      12,
+      13,
+      11
+    ],
+    "all_raw_cuts": 67,
+    "fresh_O2_cross_reads": 268,
+    "fresh_SAN_cross_reads": 268,
+    "affected_records": 18,
+    "affected_failed": 0,
+    "additional_transport_SAN_records": 11,
+    "additional_transport_SAN_failed": 0,
+    "O2_persistence_recipes": 44,
+    "O2_persistence_failed": 1,
+    "only_original_strict3": true,
+    "public_images_equal": 52,
+    "history_images_equal": 28,
+    "full_verdict_fuel_TSV_equal": true,
+    "all_seven_checkpoint_boundaries_O2_SAN_pass": true,
+    "new_full_acceptance_claim": false,
+    "new_actual_memory_or_time_claim": false,
+    "full_Goal_active": true,
+    "unchanged_parent_test_hashes": {
+      "tests/seed.c": "4cb899c7326fd0f7c1b759487ac4cc215017f3897fe40e3abb9b58ccf1f5f428",
+      "checkpoint_tests/source_checkpoint_test.c": "6fdda40ce93e779704258dd6bc9ad48f2915bdc41a71da545f7117105dedabdc",
+      "tests/source_io.c": "de602b91d591096dd8214e1ae217681866cfc3890eae501643f7a04516bf268a",
+      "tests/synthesis.c": "909617efa5375bf3aacb6f035add72701c0ec468e9d99a4292f9ca93efac9201",
+      "artifact_tests/semantic_test.c": "b6e748e6476c0ff3521fd5f527c67ac5d88edff43a72c7e221674856fffea5df",
+      "tests/core.c": "647790ebcb1c2f3c3b28fcd04e9cf6e7c2607081458a5efd96138f1f334834a5",
+      "tests/identity_io.c": "3fe6d01dfd4a8f8eb6332a2cf85fd2a433d0c6c68f1e217ef5e12106d8dec292"
+    },
+    "new_owner_index_ABI_schema_overhead": 0,
+    "original_failures_preserved": true
+  },
+  "worker_SAN_crossreader_records268_all_exit0_verified": true,
+  "historical_worker_evidence_limits": "Broader affected/checkpoint/cross-reader/public/history/census results are frozen worker executions independently hashed, not repeated Root full-suite execution. Original strict3/observer/SAN/setup failures remain. No new full384 claim.",
+  "census": "Tree400 removes1725722 cumulative requests/55223104 aligned bytes. List unchanged. LocalSorted totals increase/vary; both genuine imported runs call Fold179 times, direct removal at most179 copies/5728 bytes; whole-program change not fully attributed. Census omits internal graph allocations and is not actual peak/live RAM or time.",
+  "cost_proposal": {
+    "configuration": "/tmp/ap-performance-mem3-fold-cost-request-20261003/configuration-proposed.json",
+    "sha256": "4dab6b887e69aa60e2ab8f429f5ae503473414e25cdecf62c0fe79d3c98cf510",
+    "all289_pins_verified": true,
+    "exact36_unique_jobs_verified": true,
+    "scope": "Six same proof/helper AP cases, immutable MEM2 parent and Fold candidate, three sequential repetitions, second order reversed. Existing GNU collector/tool only, no build/native/extra workload. All six expected DONE/charged steps must match in samples.",
+    "request_maximum_seconds": 600,
+    "per_run_seconds": 180,
+    "active_grant_or_launch": false,
+    "decision": "Concrete proposal reviewed; exclusive scheduling deferred under desk implementation-first delegation. No new hold/grant inferred from worker request."
+  },
+  "visible_roots": {
+    "notice_sha256": "d7cf85d6266897f9098f6edef6c37042844e65910a42da3b2c56a4a9175db172",
+    "worker_manifest17_verified": true,
+    "terminal_analysis_sha256": "93494253e3f96e17a92f7a2c3372f99bdd606e05fde7a325d9ad570d932c7c24",
+    "worker_analysis": {
+      "terminal": true,
+      "source128": "81c3ad27dfd01aef14ad8e977d1b783cc3636368b6e5afcab0840d07d055e541",
+      "debug_binary_sha256": "fea41c2dd0b129b898732a7c6d40e62dcc9288fdaa4bba06d2330d2fb9b4299d",
+      "debug_flags": "-std=c11 -Wall -Wextra -Werror -O2 -g",
+      "CLI_outcomes": "list DONE1915/exit0; pending tree cuts1M/2M/5M each exit3 as requested",
+      "original_driver_exit": 1,
+      "original_driver_failure": "Tree16 5M visible-root traversal reached the deliberate200000-node cap; original driver asserted completeness and exited1 after all4 processes stopped. Preserve original partial live.json and helper; no runtime semantic failure or replacement rerun.",
+      "rows": [
+        {
+          "name": "list-done",
+          "synthesis_steps": 1915,
+          "visible_environment_nodes": 0,
+          "visible_argument_nodes": 0,
+          "visible_layout_bytes": 0,
+          "machine_arena_capacity_bytes": 0,
+          "machine_arena_used_bytes": 0,
+          "active_frames": 0,
+          "spare_frames": 0,
+          "whnf_jobs": {
+            "PG_EVAL_WHNF": 23
+          },
+          "opaque_roots_not_traversed": {},
+          "visible_counts_incomplete_lower_bounds": false,
+          "log_sha256": "fa8541c42c61f407a7232ebe183e91df136d482dcb583bb8c111d6fecb4c1221",
+          "visible_sha256": "e257501e7e45566abe2c11131114c46fdc8d98bb17736b997a77f5fb8083948a",
+          "capacity_sha256": "32c473113a899096d04f8c07dc7ba2c0e3f97d22ec743fdcfa633b554b06c818"
+        },
+        {
+          "name": "trees4-cut1M",
+          "synthesis_steps": 1000000,
+          "visible_environment_nodes": 86963,
+          "visible_argument_nodes": 141,
+          "visible_layout_bytes": 2786200,
+          "machine_arena_capacity_bytes": 8798208,
+          "machine_arena_used_bytes": 8762576,
+          "active_frames": 52,
+          "spare_frames": 9,
+          "whnf_jobs": {
+            "PG_EVAL_PENDING": 5,
+            "PG_EVAL_WHNF": 51
+          },
+          "opaque_roots_not_traversed": {},
+          "visible_counts_incomplete_lower_bounds": false,
+          "log_sha256": "c4a2ea1f1a5e901c05093ef066a333ba95212a9acc2937fa8cf63da93fd2d3cd",
+          "visible_sha256": "c41e2ad99a1957776b1c185642d1e7d6c000d59c1bbd39f972548d847dfe18d5",
+          "capacity_sha256": "a3071ebc3ecf34f8e69aa8750d4dc287407f3d1a6a55d4e889a2ab0cbab8794c"
+        },
+        {
+          "name": "trees4-cut2M",
+          "synthesis_steps": 2000000,
+          "visible_environment_nodes": 77755,
+          "visible_argument_nodes": 32,
+          "visible_layout_bytes": 2488928,
+          "machine_arena_capacity_bytes": 7929856,
+          "machine_arena_used_bytes": 7925856,
+          "active_frames": 11,
+          "spare_frames": 3,
+          "whnf_jobs": {
+            "PG_EVAL_PENDING": 1,
+            "PG_EVAL_WHNF": 60
+          },
+          "opaque_roots_not_traversed": {},
+          "visible_counts_incomplete_lower_bounds": false,
+          "log_sha256": "f142253610a2496a342b04b9ce57dcb334a7e30ec479a387039789fa0ea89325",
+          "visible_sha256": "9c02dc227660e9081efaaff836cdd57c99bea3569e0b67b07fa7f19383d7a64f",
+          "capacity_sha256": "9d34139b9493b81b27a0dbd9674b02f194afb4009e5ef375308d0d47ae647f46"
+        },
+        {
+          "name": "trees16-cut5M",
+          "synthesis_steps": 5000000,
+          "visible_environment_nodes": 199747,
+          "visible_argument_nodes": 253,
+          "visible_layout_bytes": 6397976,
+          "machine_arena_capacity_bytes": 24330240,
+          "machine_arena_used_bytes": 24225600,
+          "active_frames": 96,
+          "spare_frames": 18,
+          "whnf_jobs": {
+            "PG_EVAL_PENDING": 9,
+            "PG_EVAL_WHNF": 113
+          },
+          "opaque_roots_not_traversed": {},
+          "visible_counts_incomplete_lower_bounds": true,
+          "log_sha256": "3a01e1c763a83204b1d40977bb930bea4956fb57bc4673202db81caad1f93371",
+          "visible_sha256": "3b3dd06ce96182b4c69234d541ea744f479b0cef132ca9ff9db6908517125687",
+          "capacity_sha256": "b8611a85f0de4fc2ab962ee0d68268f89c296f0e118cac657c03893f79dd84b6"
+        }
+      ],
+      "limits": [
+        "Visible nodes are known evaluator roots; opaque states and external captures are not proved absent over their lifetimes.",
+        "Root reachability counts do not justify recycling or beta-environment deletion.",
+        "Used arena slots include historical allocations; differences from visible node layout do not quantify dead memory.",
+        "Selected cuts, not peak/live/cumulative RAM or comparative timing. Tree16 root counts are incomplete lower bounds.",
+        "Exact current Fold source is unchanged; no owner/index/ABI or runtime wrapper added."
+      ],
+      "full_Goal_active": true,
+      "new_runtime_deletion": false,
+      "unsafe_recycling_authorized": false,
+      "new_actual_memory_time_claim": false
+    },
+    "verification_kind": "Root read-only hash verification of historical worker probe; no new Root GDB/runtime execution.",
+    "peak_live_cumulative_RSS_or_dead_memory_claim": false,
+    "cost_grant": false
+  },
+  "supersedes_read_only_focused_review_status": "mem3-fold-root-review.json remains immutable historical review; READY and fresh qualification/publication pending fields are superseded here.",
+  "accepted_default_change_or_full_Goal_completion_or_issue_closure": false,
+  "protected9_exact": true
+}

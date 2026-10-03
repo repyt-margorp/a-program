@@ -94,7 +94,7 @@ brief; detailed evidence remains in the linked manifests and reports below.
 | #56 / MEM1: delete unnecessary work/state for actual memory/time | V1 inline-state and V2 materialized-callback UAF rejected; V3 recycles only stateless captured-head frames after parent cleanup | Root exact128/1944 verified, fresh callback3 O2/SAN0; current-E12 candidate1816/base2064 and exact36 cost samples/expected steps/raw hashes verified, no censored samples | V3 exact18 taskc861728 pushed/remote exact; prototype Maincc69f52 same bytes; cost111/addendum taske561030/Main895ac67 exact, original109 unchanged; accepted/default selection unchanged | Bounded tree400 median wall5.34021->4.92598s, peakRSS1891928->1001764KiB; LocalSorted RSS+492KiB, smallList startup dominated. Strict3 and full Goal/accepted adoption remain open | Exact cost evidence published; integrate current corrected Job layers separately, then continue owned deletions |
 | #56 / MEM2: preserve captured lexical state | Private beta environment elisionc3c91bd3 rejected on qualified V3/E12 source1280deb36a7 | Root verifies exact30 freeze0573b9be and original results; fresh four O2/SAN builds0, fourteen executions reproduce six semantic failures. Parent local/images pass; candidate retained binding becomes unbound, fuel2->1; no sanitizer diagnostics | Root report5ac6c445; no rejected runtime integration or current-parent defect | Public retained closure/configuration contents and lifetime must be preserved; no physical-layout or full-machine checkpoint claim | Direct-IADT no-trailing-argument field-spine lifetime research continues privately; qualify live/restored/retained nodes before reuse |
 | #56 / MEM2: delete copied IADT field spines | Source1282e87fd84/patchb19dd27b; empty-tail immutable fields reused, nonempty tail copies retained | Root all1964/fresh controls0; source/images/fuel exact; same replacement36 samples0, raw expected steps/all279 pins verified, no censored rows | Source9 task6b0ed93/Main6ebf453; Root raw84 unchanged; worker cost88 task57a94cc/Main5ad5536 raw-identical and12 recomputed summaries exact; accepted/default unchanged | Four tree RSS ranges disjoint, tree400 -2.50%; all six time ranges overlap, mixed medians and LocalSorted RSS+24KiB; no clear speed/Goal claim | Expired worker refusal and freeze-helper field-name failure preserved; Root release consumed18:19; no comparative grant |
-| #56 / MEM3: delete copied captured Fold spine | Immutable exact12 READY/source81c3ad27 from MEM2parent2e87fd84, only computation.c/patchf6b25d36; empty caller-tail unary Return reuse | Worker terminal1257-pin freeze: focused410/0, cuts67, cross268 O2+268 SAN, affected18/0, transport11/0; persistence44 only strict recipe1, public52/history28/full TSV equal parent. Prior Root source/raw review verified | READY notice d04f6635/manifest6afd52f3; fresh Root execution and exact publication pending | Original strict/observer/fixture/setup failures retained. Tree400 cumulative -1725722 requests/-55223104 bytes is not actual RAM/time; LocalSorted changes not fully attributed | Complete Root runtime/publication review; independently inspect future36-job/289-pin cost proposal before any exclusive grant |
+| #56 / MEM3: delete copied captured Fold spine | Source12881c3ad27 from MEM2parent2e87fd84, only computation.c; empty caller-tail unary Return reuse | All1257 frozen pins/source exact; fresh Root parent/candidate O2/SAN67-cut/cleanup controls,4 builds+8 runs0. Worker410 focus/268O2+268SAN reads/affected18/transport11 pass; public52/history28/TSV equal parent, strict3 retained | Exact12 task86a0699/Main9d5cda2 pushed/remote exact; worker index-only preserves2099 live files; historical Root focused review unchanged | No actual Fold RAM/time yet. LocalSorted179 Fold calls bounds direct deletion5728 bytes; whole-program census increases unattributed. Visible-roots Tree16 capped/incomplete/driver1 retained | Future36-job cost proposal/all289 pins reviewed; no active exclusive grant. Continue owned allocation-site attribution; full Goal active |
 
 Fresh Git inspection verifies HEAD and tracking branch at `0539051`; every
 committed/live file matches the corrective 44-file frozen manifest. Core's exact
@@ -264,6 +264,19 @@ under `/tmp/ap-performance-measurement-e6-preparation-20261003`. The inputs,
 runtime and tests are unchanged; no wall/RSS values were collected.
 
 ### Assessment
+
+2026-10-03 19:38 UTC, Root Fold qualification/publication: exact12 task86a0699 on57a94cc
+and prototype Main9d5cda2 are pushed/remote exact. All1257 pins/source12881c3ad27
+verify; Root freshly reconstructs patch and passes parent/candidate O2/SAN
+Fold67-cut and cleanup controls, four builds/eight executions. Worker index-only
+advancement preserves2099 prior tracked live files; protected9 and old freezes
+remain exact. [Root publication review](../src/prototype/performance_followup/mem3-fold-publication-root-review.json)
+supersedes historical READY/runtime-review pending fields; strict3 remain.
+Separate cost-request16704347 config4dab6b88 has36 exact jobs/289 verified pins,
+reviewed but ungranted under the implementation-first delegation. Visible-roots
+17-pin debug evidence verifies; deliberate200000-node Tree16 cap/driver1 is
+retained as incomplete lower bounds, without dead/peak/live-memory inference.
+No actual Fold RAM/time, accepted promotion or full Goal/issue completion.
 
 2026-10-03 19:29 UTC, Root review: corrected E11/E12 now integrate into prototype Main
 with independently reconstructed source12812026914. Fresh Core O2/SAN and
