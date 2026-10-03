@@ -25,7 +25,7 @@ expect_status() {
 expect_status 0 "$compiler" --save "$temporary/static-functions.a" "$fixtures/static_functions.p"
 sha256sum "$temporary/static-functions.a" > "$temporary/before"
 cp "$fixtures/static_functions.aplink" "$temporary/source.aplink"
-for name in captured_block shadowed_block repeated_block curried_block unused_block captured64 nested_two unused_effect; do
+for name in captured_block shadowed_block repeated_block curried_block unused_block captured64 nested_two nested_three unused_effect; do
 	printf 'export %s %s\n' "$name" "$name" >> "$temporary/source.aplink"
 done
 for product in source object archive; do
@@ -52,7 +52,7 @@ cmp "$temporary/source/component.c" "$temporary/trusted/component.c"
 cmp "$temporary/source/component.h" "$temporary/trusted/component.h"
 expect_status 3 "$backend" --steps 0 --link "$temporary/source.aplink" "$temporary/no-fuel"
 test ! -e "$temporary/no-fuel"
-for name in dynamic_callback effect_block nested_three; do
+for name in dynamic_callback effect_block; do
 	sed "s/export closed_block closed_block/export $name $name/" "$fixtures/static_functions.aplink" > "$temporary/bad.aplink"
 	expect_status 4 "$backend" --link "$temporary/bad.aplink" "$temporary/bad"
 	test ! -e "$temporary/bad"
@@ -60,5 +60,5 @@ for name in dynamic_callback effect_block nested_three; do
 done
 sha256sum "$temporary/static-functions.a" > "$temporary/after"
 cmp "$temporary/before" "$temporary/after"
-printf 'Native static functions: 260 Int32 and 5 Int64 cases per product, source differential and retained callback/effect/capture refusals passed\n'
+printf 'Native static functions: 360 Int32 and 5 Int64 cases per product, source differential, exact former nested_three positive and retained callback/effect refusals passed\n'
 bash "$here/static_native_check.sh" "$backend" "$compiler"

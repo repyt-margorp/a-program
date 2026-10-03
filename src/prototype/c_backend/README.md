@@ -371,11 +371,20 @@ captured, shadowed, repeated, curried and unused definitions are tested, includi
 Int64 parameters and native Nat/List captures. An unused known function's effectful
 body is not executed. A demanded effectful body still rejects the native profile.
 
-This is bounded support. The fixture's three-closure captured-offset chain
-`h -> g -> f` still rejects with status 4 before publication; its two-closure
-counterpart succeeds. This describes those shapes, not a general numeric nesting
-limit. Dynamic callback parameters, function fields and unsupported nested
-recursive captures remain refusals. Native Acc/QuickSort is still unsupported.
+Known lexical closures retain their transitive native dependencies through a
+finite binding queue. Three/four/eight-function captured-offset chains, shadowing,
+repeated demand, signed extrema and Int64 parameters are covered; the exact
+former `nested_three` refusal now has positive coverage. Binder identity and
+stable lexical order determine captures. This introduces no source evaluation,
+runtime closure or public callback ABI. Dynamic callbacks, function fields and
+unsupported nested recursive captures remain refusals. Native Acc/QuickSort is
+still unsupported.
+
+`check-c-transitive-functions` adds 300 raw evaluator comparisons with inert
+emission, plus 600 Int32/seven Int64 cases per source/object/archive product and
+six source observations. It retains demanded-effect/callback refusals and
+deterministic checked/trusted products. The existing static-function gate keeps
+its original raw controls and adds the formerly refused three-closure chain.
 
 `check-c-static-functions` verifies ordinary source/object/archive clients,
 scalar extrema and source differentials, Nat32 overflow and resource rollback,

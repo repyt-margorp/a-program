@@ -1,0 +1,14 @@
+aplink 1
+artifact transitive-functions.a
+abi c_scalar_v1
+target host-c11
+product source
+lowering scalar_direct_v1
+fallback reject
+export chain_three chain_three
+export chain_four chain_four
+export chain_eight chain_eight
+export shadowed shadowed
+export repeated repeated
+export unused_effect unused_effect
+export chain64 chain64

@@ -294,8 +294,8 @@ static struct function *function(struct module *m, size_t count)
 	return f;
 }
 
-/* Capture only free source binders, in stable lexical order. The existing
-	* immutable support trie answers membership without rescanning the body. */
+/* Follow known lexical closures to their native dependencies, then retain
+	* stable lexical order. Source support membership never evaluates a body. */
 static int captures(struct expression *e)
 {
 	size_t capacity = 0;
@@ -309,25 +309,35 @@ static int captures(struct expression *e)
 	for (const struct binding *b = e->environment; b; b = b->parent) {
 		int member = pg_support_contains(e->head, b->binder);
 		if (member < 0) goto done;
-		/* A static IH closure retains its field and recursive target. */
-		if (!member) for (const struct binding *d = e->environment; d; d = d->parent)
-			if (d->value->delayed && pg_support_contains(e->head, d->binder) == 1 &&
-				pg_support_contains(d->value->suspended, b->binder) == 1) member = 1;
-		/* A static recursion closure also retains its native captures. */
-		if (!member) for (const struct binding *r = e->environment; r; r = r->parent) {
-			if (!r->value->recursion) continue;
-			int used = pg_support_contains(e->head, r->binder);
-			for (const struct binding *d = e->environment; !used && d; d = d->parent)
-				if (d->value->delayed && pg_support_contains(e->head, d->binder) == 1 &&
-					pg_support_contains(d->value->suspended, r->binder) == 1) used = 1;
-			if (used != 1) continue;
-			for (size_t j = 0; j < r->value->recursion->capture_count; ++j)
-				if (r->value->recursion->captures[j] == b->binder) member = 1;
-		}
 		if (!member || pg_dag_find(&seen, b->binder)) continue;
 		if (pg_dag_add(&seen, b->binder)) goto done;
 		e->captures[e->capture_count++] = b;
 	}
+	/* Each source binder enters this finite queue once. Delayed bodies retain
+		* other known closures; recursive targets retain their native captures. */
+	for (size_t i = 0; i < e->capture_count; ++i) {
+		const struct expression *v = e->captures[i]->value;
+		if (!v->delayed && !v->recursion) continue;
+		for (const struct binding *b = e->environment; b; b = b->parent) {
+			if (pg_dag_find(&seen, b->binder)) continue;
+			int member = v->delayed ? pg_support_contains(v->suspended, b->binder) : 0;
+			if (member < 0) goto done;
+			if (v->recursion) for (size_t j = 0; !member && j < v->recursion->capture_count; ++j)
+				if (v->recursion->captures[j] == b->binder) member = 1;
+			if (!member) continue;
+			if (pg_dag_add(&seen, b->binder)) goto done;
+			e->captures[e->capture_count++] = b;
+		}
+	}
+	const struct binding **ordered = pg_alloc(&e->function->module->order.storage,
+		capacity * sizeof(*ordered));
+	if (!ordered) goto done;
+	size_t position = 0;
+	for (const struct binding *b = e->environment; b; b = b->parent)
+		for (size_t i = 0; i < e->capture_count; ++i)
+			if (e->captures[i] == b) { ordered[position++] = b; break; }
+	if (position != e->capture_count) goto done;
+	e->captures = ordered;
 	status = 0;
 done:
 	pg_dag_destroy(&seen);
