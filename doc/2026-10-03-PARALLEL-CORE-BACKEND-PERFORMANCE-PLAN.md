@@ -1,10 +1,11 @@
 # Parallel Core, Backend, Performance and Surface Work
 
 Date: 2026-10-03
-Status: all three workers running; Core trial and worker verification in progress.
-Code baseline: `main`, `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
-Local state: unfinished `identity_boundary_trial`; unrelated accepted-source and
-test edits are excluded. This plan changes no implementation or promotion rules.
+Status: all three workers running; first Core/C prototype epochs published.
+Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
+Reviewed prototype Main checkpoint: `9061be3`; worker baseline: `2d747cc`.
+Local state: unrelated accepted-source and test edits remain excluded. This plan
+changes no implementation or promotion rules.
 Related: [SE1-SE5](2026-09-30-SOLVER-EVIDENCE-DUPLICATION-AUDIT-AND-PLAN.md),
 [AP0-AP6](2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md).
 Supersedes the earlier three-session assignment, not the existing owner work lists.
@@ -14,9 +15,9 @@ Supersedes the earlier three-session assignment, not the existing owner work lis
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | `core`: Job/Evidence ownership, exact resume and integration | SE1-SE5, AP0 | In progress in the existing work list |
-| 2 | `c-backend`: downstream C design | #44, #49; shared policy #47 | Goal running in separate worktree |
-| 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Goal running in separate worktree |
-| 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Goal running in separate worktree |
+| 2 | `c-backend`: downstream C design | #44, #49; shared policy #47 | Fieldful-data epoch integrated; next epoch in progress |
+| 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Focused epoch pushed; Main integration awaits broad gates |
+| 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Focused epoch pushed; full regression in progress |
 
 ## 1. Core Ownership and Integration
 
@@ -60,11 +61,14 @@ typed owners; preserve Core/type separation and ordinary Solve semantics.
 
 ### Objective (Code)
 
-At the baseline, the committed ownership prototype is under
-`src/prototype/solver_inputs/`. The current local Identity boundary trial is
-unfinished and unverified, not a worker baseline. Earlier fresh checks recorded
-three public split-fuel resume failures; no tests were rerun for this document.
-Accepted `src/evidence.*`, `src/iadt.*` and their tests have unrelated local edits.
+The ownership prototype remains under `src/prototype/solver_inputs/`. Core's
+Identity boundary Query/lifecycle epoch is committed as `a51f9c9`: full O2
+regression/examples/acceptance, focused and sanitizer gates passed. Its
+[verification report](../src/prototype/solver_inputs/identity_boundary_verification.tsv)
+records 451 boundary partitions, 55 owner-cancellation cuts and applied code
+delta -33 lines, separately from tests. Three public split-fuel resume failures
+remain unchanged and unwaived; this does not complete SE1-SE5.
+Accepted `src/evidence.*`, `src/iadt.*` and their tests retain unrelated edits.
 
 ### Assessment
 
@@ -109,6 +113,13 @@ still loads Job-rooted exports and calls `pg_artifact_revalidate`; it is not
 fully independent of ongoing Main changes. `build.mk` defaults to shared `/tmp`
 paths, so workers must supply private `OVERLAY` and `BUILD` paths.
 GitHub inspection finds #44 and #49 open; no fresh backend verification here.
+
+2026-10-03 checkpoint: worker epoch `bb69983` is pushed to
+`parallel/c-backend-20261003` and Core merged it through `9061be3`. All six
+backend gates passed with the current Core producer; worker sanitizer and
+immutability controls are in the [handoff](2026-10-03-C-BACKEND-EPOCH1-HANDOFF.md).
+This merges prototype code only. Recursive/container and broader admission
+work remain open; neither #44 nor #49 is complete.
 
 ### Assessment
 
@@ -156,6 +167,12 @@ benchmark. `src/graph.c` already has exact interning and scoped comparison;
 `src/eval.h` separates reduction, readback and substitution. Their existence
 does not establish which is currently dominant. Current cross-system timings
 and fresh bottleneck measurements have not been obtained.
+
+2026-10-03 checkpoint: focused captured-head/direct-IADT epoch `f3c3555` is
+pushed on `parallel/performance-20261003`, not merged into Main. Its evidence
+distinguishes call/fuel/allocation counts from unmeasured wall/RSS, and preserves
+the two original Core failures separately from adapted tests. Broader gates and
+combined current-Core verification remain required before integration.
 
 ### Assessment
 
@@ -244,5 +261,14 @@ These checks establish tooling, not launched workers or resumed Goals.
 are `/home/repyt/workspace/a-program-workers/<task>` on branches
 `parallel/<task>-20261003`, all started from `2d747ccfec844e8afc72d408385ceb79a7c01808`.
 That revision merges the three PR #58 documents without implementation changes.
-No worker epoch has yet been reviewed or integrated. View with
+This is the launch checkpoint; later integration supersedes its initial state. View with
 `tmux attach -t a-program`; select a window with `Ctrl+b`, then `w`.
+
+2026-10-03 supervision checkpoint: all three Goals remain live. Surface epoch
+`90939fc` is pushed on `parallel/surface-20261003`, not merged into Main.
+Surface owns the full-regression slot; performance comparisons wait for release. Its broad
+run found one old-brace `sed` test-harness migration omission; the worker is
+preparing a separate correction, not hiding it in a passing result. Worker
+branch publication is separate from Main merge and accepted-source promotion.
+GitHub was rechecked: no new open issue/PR since the preceding poll; existing
+partial issues remain open.
