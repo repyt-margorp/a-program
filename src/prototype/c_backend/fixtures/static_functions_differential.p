@@ -5,6 +5,7 @@ import repeated_block;
 import curried_block;
 import unused_block;
 import nested_two;
+import nested_three;
 import unused_effect;
 
 main := {
@@ -16,4 +17,5 @@ main := {
 	#print (#int_to_text (unused_block #-2147483648)); #print #"|";
 	#print (#int_to_text (nested_two #42 #-99)); #print #"|";
 	#print (#int_to_text (unused_effect #123)); #print #"|";
+	#print (#int_to_text (nested_three #42 #-99)); #print #"|";
 };

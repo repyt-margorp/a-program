@@ -24,6 +24,7 @@ int main(void)
 		for (size_t j = 0; j < sizeof(values) / sizeof(values[0]); ++j) {
 			assert(!ap_export_captured_block(values[j], x, &out) && out == wrap((int64_t)x + values[j]));
 			assert(!ap_export_nested_two(values[j], x, &out) && out == wrap((int64_t)x + values[j]));
+			assert(!ap_export_nested_three(values[j], x, &out) && out == wrap((int64_t)x + values[j]));
 		}
 	}
 	assert(ap_export_closed_block(1, NULL) == 1);
@@ -34,6 +35,7 @@ int main(void)
 	assert(ap_export_unused_block(1, NULL) == 1);
 	assert(ap_export_unused_effect(1, NULL) == 1);
 	assert(ap_export_nested_two(1, 2, NULL) == 1);
+	assert(ap_export_nested_three(1, 2, NULL) == 1);
 	assert(ap_export_captured64(1, 2, NULL) == 1);
 	const int64_t wide[][3] = {
 		{INT64_MIN, INT64_MIN, 0}, {INT64_MAX, 1, INT64_MIN},
@@ -51,5 +53,6 @@ int main(void)
 	assert(!ap_export_unused_block(INT32_MIN, &out)); printf("%" PRId32 "|", out);
 	assert(!ap_export_nested_two(42, -99, &out)); printf("%" PRId32 "|", out);
 	assert(!ap_export_unused_effect(123, &out)); printf("%" PRId32 "|", out);
+	assert(!ap_export_nested_three(42, -99, &out)); printf("%" PRId32 "|", out);
 	return 0;
 }
