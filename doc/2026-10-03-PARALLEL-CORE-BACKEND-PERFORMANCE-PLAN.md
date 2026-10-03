@@ -276,6 +276,21 @@ proposal `570d7af6` is under review; C acknowledged a safe terminal hold, Job's
 current gate must finish before grant. All CPU-heavy workers are explicitly
 released after the agreed slot; audit gate cost is coordinated within it.
 
+2026-10-03 08:12 UTC exclusive scheduling decision: Job's stopped notice
+`5289e8a3` confirms E9's broad command terminal exit 2, unpublished/unqualified;
+C's current hold `de394122` confirms no heavy children. Related process inspection
+also finds no heavy build/check process. Matched E6 baseline/runtime128 and its
+20-record qualification evidence freshly verify; all 285 planned source/tool/
+binary pins match. Grant slot `e6-shared-cost-20261003-0812` through 08:52:05 UTC:
+performance alone runs its 30 pinned sequential samples, three repetitions and
+<=180 seconds each, capped to the remaining absolute window. No extra workload
+or broad gate. Preserve warm-filesystem/process-startup/RSS limits and censored
+failures. Audit may receive a separate sequential phase only after performance
+reports all measurement children stopped and its complete gate key is reviewed;
+otherwise cost stays deferred. Merge/C/Job/audit start no other heavy work during
+this window. Explicit release follows terminal measurement/expiry. Static review
+and docs continue. No comparative result exists at this grant.
+
 2026-10-03 agent operational decision within the user's explicit tree request:
 the desk records/relays user requirements and answers questions; it does not
 review every patch, stage worker changes or merge/push Main after activation.
