@@ -481,6 +481,20 @@ not published. Future durable manifests must list published files only; keep
 transport hashes separate and avoid copying canonical patches already pinned by
 Git. Original freezes are not rewritten.
 
+E4 `ec95371` is task-branch published, with push exit 0 and an independently
+matching remote ref. Core reviewed registration-key borrowing and checked all
+13 published manifest records plus the manifest against Git's index, and all
+11 local verification-log hashes. The lean manifest contains published files
+only; external transport and historical full freezes are not copied into Git.
+Applied runtime +37/-30, tests +10/-0 remove three duplicated registration fields
+(24 bytes per registration), not calculation steps or all Job/Evidence storage.
+Worker gates pass with the same strict three failures; Main integration awaits
+separate E2/E3/E4 current-producer qualification. Performance is assigned these
+layers in order, retaining each snapshot and avoiding needless identical suite
+reruns. Its first E2 setup attempt stopped at a migration TSV column-name error
+before any gate ran; that failure is retained. Live Job E5 and C nested-value
+implementation/test activity was inspected and remains outside these freezes.
+
 The common-producer census completes all twenty variant/input pairs, including
 the ordinary imported general LocalSorted QuickSort. Its final QuickSort rows:
 
