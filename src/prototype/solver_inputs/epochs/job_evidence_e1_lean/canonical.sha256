@@ -1,0 +1,3 @@
+6335fa61f9df8792626bc3129496cd3e2c19590e5836b4487583d0397a64e7b1  src/prototype/solver_inputs/synthesis.c.patch
+5f149f00a79e42cbff588bb459841df7293d518e525a7aa6ec2835940e7cdc47  src/prototype/solver_inputs/test_patches/synthesis.c.patch
+fe291f5e6b8c868841196ee932d47421e43dd301e58fae3357da4f29a7a4b768  src/prototype/solver_inputs/checkpoint_test_patches/source_checkpoint_test.c.patch

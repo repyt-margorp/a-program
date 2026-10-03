@@ -1,0 +1,164 @@
+--- a/src/synthesis.c
++++ b/src/synthesis.c
+@@ -247,8 +247,6 @@
+ };
+ struct module_work {
+ 	struct pg_synthesis_job *left, *right, *value_job;
+-	const struct pg_source_scope *exports;
+-	unsigned stage;
+ };
+ struct graph_reference_work {
+ 	struct pg_synthesis_job *value_job;
+@@ -260,11 +258,11 @@
+ static const struct pg_synthesis_work_class SOURCE_REFERENCE[1] = {{
+ 	.pending = {&pg_synthesis_pending_ops}, .size = sizeof(struct reference_work),
+ 	.source_key = 1, .start = source_reference_start, .advance = reference_step,
+-	.project = source_reference_projection}};
++	.project = source_reference_projection, .output = pg_synthesis_projected_output}};
+ static const struct pg_synthesis_work_class SOURCE_MODULE[1] = {{
+ 	.pending = {&pg_synthesis_pending_ops}, .size = sizeof(struct module_work),
+ 	.source_key = 1, .start = source_reference_start, .advance = definitions_step,
+-	.project = source_module_projection}};
++	.project = source_module_projection, .output = pg_synthesis_projected_output}};
+ static const struct pg_synthesis_work_class SOURCE_GRAPH_REFERENCE[1] = {{
+ 	.pending = {&pg_synthesis_pending_ops}, .size = sizeof(struct graph_reference_work),
+ 	.source_key = 1, .advance = graph_reference_step}};
+@@ -385,7 +383,7 @@
+ 	if (job && (pg_synthesis_work_role(job) == SOURCE_EXPECT_JOB || pg_synthesis_work_role(job) == BINDING_EXPECT_JOB))
+ 		return source_exports(pg_pending_job(pg_synthesis_work_dependency(job, 1).pending));
+ 	const struct module_work *module = module_work(job);
+-	if (module) return module->exports;
++	if (module) return job->status == PG_SYNTHESIS_DONE ? source_exports(module->value_job) : NULL;
+ 	const struct reference_work *reference = reference_work(job);
+ 	return reference ? reference->exports : pg_synthesis_declaration_exports(job);
+ }
+@@ -2728,7 +2726,7 @@
+ 	if (selected) syntax = syntax->left;
+ 	if (!syntax || syntax->kind != PG_SYNTAX_DEFINITIONS || !local->right
+ 		|| pg_synthesis_work_role(local->right) != DEFINITION_SCOPE_JOB) return -1;
+-	*view = (struct pg_module_frontier){selected ? local->stage : definition_state(local->right)->next, local->left};
++	*view = (struct pg_module_frontier){selected ? local->value_job != NULL : definition_state(local->right)->next, local->left};
+ 	return 0;
+ }
+ 
+@@ -2763,7 +2761,7 @@
+ 		}
+ 	}
+ 	local->left = previous;
+-	if (selected) { local->stage = (unsigned)view->position; local->value_job = value; }
++	if (selected) local->value_job = value;
+ 	else state->next = view->position;
+ 	return 0;
+ }
+@@ -2782,17 +2780,14 @@
+ 	if (pg_synthesis_await(synthesis, job, local->left)) return;
+ 	struct definition_state *state = definition_state(local->right);
+ 	if (selected) {
+-		if (!local->stage) {
++		if (!local->value_job) {
+ 			local->value_job = pg_pending_job(lookup_definition(state, source_syntax(job)->right->token).pending);
+ 			if (!local->value_job) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
+ 			/* Selection cannot hide an invalid or pending unselected entry. */
+ 			local->left = pg_synthesis_request(synthesis, source_scope(job), syntax);
+-			local->stage = 1;
+ 			depend(synthesis, job, local->left);
+ 			return;
+ 		}
+-		job->result = pg_synthesis_result(local->value_job);
+-		local->exports = source_exports(local->value_job);
+ 	} else if (state->next < state->count) {
+ 		local->left = state->entries[state->next++];
+ 		depend(synthesis, job, local->left);
+@@ -4573,7 +4568,7 @@
+ 	const struct pg_syntax *syntax = source_syntax(job);
+ 	struct pg_synthesis_job *rule = NULL;
+ 	int waiting = 0;
+-	if (syntax->kind == PG_SYNTAX_QUALIFIED) {
++	if (syntax->kind == PG_SYNTAX_QUALIFIED || syntax->kind == PG_SYNTAX_IMPORT) {
+ 		rule = local->value_job;
+ 		waiting = !rule;
+ 	} else if (syntax->kind == PG_SYNTAX_ATOM) {
+--- a/tests/synthesis.c
++++ b/tests/synthesis.c
+@@ -4116,6 +4116,13 @@
+ 		assert(item->operation == PG_SYNTAX_IMPORT && imported[i]);
+ 	}
+ 	assert(imported[0] == imported[1]);
++	assert(!imported[0]->result && !provider->result);
++	struct pg_synthesis_input output = pg_synthesis_work_output(imported[0]);
++	assert(output.pending && pg_synthesis_input_result(output) == answer);
++	uint64_t read_steps = synthesis.steps;
++	size_t proofs = typing->proofs.count;
++	assert(pg_synthesis_result(imported[0]) == answer);
++	assert(synthesis.steps == read_steps && typing->proofs.count == proofs);
+ 	assert(pg_synthesis_definition_entry(client, 2, &item, &obligation) == 1);
+ 	assert(item->operation == PG_TOKEN_EXPECT && obligation != imported[0]);
+ 	assert(pg_synthesis_status(obligation) == PG_SYNTHESIS_DONE);
+@@ -4241,6 +4248,10 @@
+ 	while (pg_synthesis_status(selected) == PG_SYNTHESIS_PENDING) {
+ 		assert(synthesis.steps < initial_steps + 10000);
+ 		pg_synthesis_advance(&synthesis, 1);
++		if (pg_synthesis_status(selected) == PG_SYNTHESIS_PENDING) {
++			assert(!pg_synthesis_result(selected));
++			assert(!pg_synthesis_work_output(selected).pending);
++		}
+ 		for (size_t i = 0; i < 4; ++i) {
+ 			assert(pg_synthesis_definition_entry(selected, i, &item, &producer) == 1);
+ 			if (registered[i]) assert(producer == registered[i]);
+@@ -4248,6 +4259,10 @@
+ 		}
+ 	}
+ 	const struct pg_evidence *answer = complete(&synthesis, selected, PG_SYNTHESIS_DONE);
++	assert(!selected->result);
++	struct pg_synthesis_input output = pg_synthesis_work_output(selected);
++	assert(output.pending == pg_synthesis_pending(registered[0]));
++	assert(pg_synthesis_input_result(output) == answer);
+ 	complete(&synthesis, module, PG_SYNTHESIS_DONE);
+ 	for (size_t i = 0; i < 4; ++i) {
+ 		assert(pg_synthesis_definition_entry(module, i, &item, &producer) == 1);
+@@ -4263,6 +4278,7 @@
+ 	size_t terms = typing->graph->terms.count, proofs = typing->proofs.count, reductions = work.jobs.count;
+ 	struct pg_synthesis_job *second = pg_synthesis_request(&synthesis, scope, select_definition(typing->graph, definitions, right));
+ 	assert(complete(&synthesis, second, PG_SYNTHESIS_DONE) == answer);
++	assert(!second->result);
+ 	assert(pg_synthesis_definition(second, left) == pg_synthesis_definition(module, left));
+ 	assert(synthesis.jobs.count == jobs + 1 && synthesis.scopes.count == scopes);
+ 	assert(typing->graph->terms.count == terms && typing->proofs.count == proofs && work.jobs.count == reductions);
+@@ -4312,6 +4328,7 @@
+ 	assert(pg_synthesis_status(selected) == PG_SYNTHESIS_PENDING && pg_synthesis_cycle(selected));
+ 	assert(pg_synthesis_status(pg_synthesis_definition(selected, left)) == PG_SYNTHESIS_DONE);
+ 	assert(!pg_synthesis_result(selected) && !synthesis.ready);
++	assert(!pg_synthesis_work_output(selected).pending && !selected->result);
+ 	assert(pg_synthesis_definition_entry(selected, 1, &item, &producer) == 1);
+ 	assert(producer && pg_synthesis_status(producer) == PG_SYNTHESIS_PENDING);
+ 	uint64_t steps = synthesis.steps;
+@@ -4400,7 +4417,7 @@
+ 	/* A definition never allocates the expression/Match/constructor layout. */
+ 	assert(pg_synthesis_work_role(definition)->size <= 2 * sizeof(void *));
+ 	/* Registration owns the name index; a module owns only its checking cursor. */
+-	assert(pg_synthesis_work_role(module)->size <= 5 * sizeof(void *));
++	assert(pg_synthesis_work_role(module)->size <= 3 * sizeof(void *));
+ 	assert(pg_synthesis_work_role(registration) != pg_synthesis_work_role(module));
+ 	size_t jobs = synthesis.jobs.count, scopes = synthesis.scopes.count, proofs = typing->proofs.count;
+ 	assert(pg_synthesis_definition_request(&synthesis, root, syntax, expression) == definition);
+--- a/checkpoint_tests/source_checkpoint_test.c
++++ b/checkpoint_tests/source_checkpoint_test.c
+@@ -511,7 +511,8 @@
+ 		if (!wrong) {
+ 			assert(pg_synthesis_reference_resume(s, use, &view)); /* Already attached. */
+ 			advance(s, 1000);
+-			assert(use->result == pg_prove_variable(&p->typing, pg_synthesis_scope_context(scope), binders[1]));
++			assert(pg_synthesis_result(use) == pg_prove_variable(&p->typing, pg_synthesis_scope_context(scope), binders[1]));
++			assert(!use->result);
+ 		}
+ 		pg_program_destroy(p); pg_program_destroy(other);
+ 	}
+@@ -537,7 +538,7 @@
+ 		assert(!s->steps && proofs == p->typing.proofs.count && !use->result);
+ 		if (!wrong) {
+ 			advance(s, 1000);
+-			assert(use->result == proof);
++			assert(pg_synthesis_result(use) == proof && !use->result);
+ 		}
+ 		pg_program_destroy(p);
+ 	}

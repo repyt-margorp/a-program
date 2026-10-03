@@ -236,7 +236,17 @@
  		assert(pg_synthesis_reference_resume(s, p->root, &view)); /* No lexical n here. */
  		size_t proofs = p->typing.proofs.count;
  		int status = pg_synthesis_reference_resume(s, use, &view);
-@@ -508,22 +522,22 @@
+@@ -497,7 +511,8 @@
+ 		if (!wrong) {
+ 			assert(pg_synthesis_reference_resume(s, use, &view)); /* Already attached. */
+ 			advance(s, 1000);
+-			assert(use->result == pg_prove_variable(&p->typing, pg_synthesis_scope_context(scope), binders[1]));
++			assert(pg_synthesis_result(use) == pg_prove_variable(&p->typing, pg_synthesis_scope_context(scope), binders[1]));
++			assert(!use->result);
+ 		}
+ 		pg_program_destroy(p); pg_program_destroy(other);
+ 	}
+@@ -508,22 +523,22 @@
  		const struct pg_syntax *syntax;
  		assert(!pg_synthesis_source_input(s, p->root, &scope, &syntax));
  		const struct pg_evidence *context = pg_synthesis_scope_context(scope);
@@ -264,11 +274,11 @@
  		if (!wrong) {
  			advance(s, 1000);
 -			assert(use->result == producer->result);
-+			assert(use->result == proof);
++			assert(pg_synthesis_result(use) == proof && !use->result);
  		}
  		pg_program_destroy(p);
  	}
-@@ -536,10 +550,10 @@
+@@ -536,10 +551,10 @@
  	struct pg_synthesis_job *module = pg_program_source(p, scope, text, strlen(text), &p->parser);
  	struct pg_synthesis_job *producer = pg_program_select_name(p, module, syntax->token);
  	assert(producer && producer->status == PG_SYNTHESIS_PENDING);

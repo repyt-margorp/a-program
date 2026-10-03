@@ -15,6 +15,12 @@ This is the active prerequisite work list, not another artifact format proposal.
 
 ## Subjective (User)
 
+2026-10-03, English paraphrase of the latest direct user clarification:
+performance and Job/Evidence reduction/deletion are tightly coupled and require
+concentrated joint verification. C remains an important downstream consumer of
+`.a` plus LinkerScript, emitting C usable from other C modules without expanding
+this owner scope. Preserve checking when measuring improvements.
+
 2026-10-03, English paraphrase of the latest explicit workflow change: move
 Job/Evidence implementation to a separate Codex session; this session becomes
 coordination Core specializing in merges and audits. This supersedes the earlier
@@ -132,6 +138,21 @@ epochs, with separate working directories to avoid interference.
 
 ## Objective (Code)
 
+2026-10-03, fresh epoch 1 against `5035c7a` / producer `64df10d`:
+module/reference output borrowing and module export/stage deletion pass full O2
+regression/examples/acceptance, semantic/seven checkpoint gates, focused
+ASan/UBSan/leaks and all baseline C gates. The storage control fails the parent
+at the retained import/module result. Initial binder output and direct-result
+checkpoint failures were corrected. All five corrected censuses reach DONE on
+both producers; QuickSort checks the ordinary `quick_locally_sorted` theorem
+using the verified provider assembly and explicit legacy parsing. The rejected
+61,489-step workload and incomplete-provider retry remain separate failed evidence.
+Strict public partitions still fail 1000+1000, 1600+1600 and 1921+0; all 52 images
+and the verdict TSV match the parent. Public restoration retains registration
+and descriptive typed roots, but lacks checking cursors/schedule. Epoch 2's
+additional module-pointer/reference-export deletion is a separate trial under
+broad verification. SE1-SE5 remain unfinished.
+
 ### Revision and Method
 
 Audited `37b66f750c6f5c8728cb1d0e837ff35335263518`: accepted `src/` plus the
@@ -233,6 +254,72 @@ identical TSVs in O2 and ASan/UBSan builds, including repeated samples without
 additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
+
+2026-10-03, Core combination report: current Main `341261d` plus performance
+passes its focused owners and 70 fresh-process TotalResult cuts. This is isolated
+performance evidence, not joint success. Core will combine this worker's frozen
+epoch 1 producer diffs; epoch 2 remains distinct until its own broad gate ends.
+No accepted dirty source is a publication input.
+
+2026-10-03, Core operational coordination: provide exact tested canonical
+owner-deletion/frontier snapshots for integration with captured-head/readback on
+common producer, inputs and progress. Core is assembling family/Surface/performance
+gates; this worker does not edit eval/readback. Deleted retained copies are not
+peak-memory, traversal or time measurements. Joint before/after costs require an
+exclusive timing slot. Surface remains intentionally stopped with its completed
+branch preserved.
+
+2026-10-03, Core census correction: epoch 1's first QuickSort terminal rows
+are REJECTED at 61,489 dispatches, not completed general Sorted evidence. Preserve
+the original TSV/fixture/hash and label rejected-workload measurements. Use the
+verified theorem's real provider/import path with explicitly pinned grammar
+compatibility; require both baseline and candidate DONE before claiming completed
+counts. Do not weaken synthesis or label the stale combined fixture a regression.
+
+2026-10-03, Core policy guidance (operational, not new user instruction): AP
+retains inert untrusted load, total B, validation cap R, v <= min(B,R) and
+useful progress <= B-v. No automatic trust-on-reload is approved; the trusted
+export getter is only a completed-export read view. Keep the original three
+strict failures. Add policy/progress diagnostics or an explicitly selected
+policy gate: completed+0 can preserve bytes/progress while locally unaccepted;
+1000/1600 must separate charged revalidation from lost continuation. Core grants
+necessary artifact-persistence producer changes for a separately named epoch;
+reuse ordinary Solve/typed owners without a replay checker or shadow graph.
+Backend borrows the API; Performance retains eval/readback ownership.
+
+2026-10-03, agent cursor assessment against the epoch 2 trial: module selection
+needs no copied value owner; the immutable registered name entry and current
+checking edge identify it. Retain the whole-module ordinal: repeated annotation
+entries can share the same producer, so a previous-producer pointer alone cannot
+reconstruct traversal position. Public reload loses traversal/body/checking
+state as well as acceptance. Epoch 3 will add ordinary-owner policy/progress
+diagnostics; original public-gate verdicts remain failures.
+
+2026-10-03, Core supervision: preserve the failed census command; the copied
+QuickSort fixture requires explicit legacy `#.Name` compatibility. The diagnostic
+now requests that parser option, matching CLI gates, not an acceptance waiver.
+Main `0fc0c0b` includes backend `720f92a`; this worker verifies its pinned baseline
+C lane and Core owns later combinations. Freeze epoch 1 from its own snapshots
+and tested sources; epoch 2 remains a separate private trial, not evidence for
+epoch 1. Keep all three public resume failures and next tackle their owner/frontier
+causes. No production, backend or Surface edits are authorized here.
+
+2026-10-03, Core scheduling: full O2 acceptance at `-j2` is authorized now;
+correctness sanitizer/C gates may overlap. No wall/RSS comparisons without an
+exclusive slot. Surface completed its scoped Goal and its window is closed;
+this does not change this producer or SE scope. Continue implementation and
+exact handoff without another scheduling question.
+
+2026-10-03, Core operational launch/review (not a new user quotation): this
+worker owns implementation from `5035c7a` / producer `64df10d`; coordination
+record `4455bd6` requires no rebase. Keep prototype owner code/tests and private
+outputs, route other-lane needs through Core, and provide exact frozen publication
+files if Git metadata is read-only. Core confirmed the requested model/active
+Goal and producer inspection. Agent candidate selection: borrow selected-module
+and reference output owners; delete copied final results and module export scope
+while retaining import/binder/namespace/failure barriers. Focused controls precede
+broad gates. Core test coordination and original three public reload failures
+remain explicit; SE1-SE5 completion criteria are unchanged.
 
 2026-10-03, agent clarification at `eb0aad6` plus the unverified Identity-boundary
 trial: Curry-Howard supports representing object proofs by typed witness Terms;
@@ -1193,6 +1280,18 @@ and current-worktree checks pass. All 52 List images and the four-failure public
 resume report equal the parent; SE1-SE5 remain open. Prototype only; user edits
 are excluded. Logs use `/tmp/a-program-context-receipts-`.
 
+- [x] **SE1 module/reference epoch 1 (2026-10-03, parent `5035c7a`;
+  agent implementation decision):** borrow checked output through existing
+  projection owners, delete module export-scope and stage copies, preserve whole
+  module/import/binder/namespace/failure barriers. Applied implementation +7/-12;
+  tests +21/-3. Full O2, semantic/seven checkpoints, focused sanitizers and
+  baseline C gates pass. Parent storage control fails. Corrected completed
+  List/effect/captured/QuickSort/handler censuses remove 50/154/111/3,753/26
+  result references with identical dispatches and typed/Evidence counts.
+  This measures retained copies, not peak memory or time. Exact epoch snapshots,
+  hashes, rejected census and original three strict resume failures are in
+  [epoch 1](../src/prototype/solver_inputs/epochs/job_evidence_e1/).
+  No accepted-source promotion or SE1-SE5 completion.
 - [x] **SE0 audit:** trace the four producer/consumer paths above; add a read-only
   census and pin the baseline. Audit measurements do not complete the refactor.
 - [ ] **SE1 ownership before adapters:** enumerate Job roles and record their

@@ -1,0 +1,4 @@
+kind	applied_file	added	deleted	net
+implementation	src/synthesis.c	7	12	-5
+tests	tests/synthesis.c	18	1	17
+tests	checkpoint_tests/source_checkpoint_test.c	3	2	1
