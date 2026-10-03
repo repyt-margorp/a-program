@@ -1,0 +1,4 @@
+Exact isolated semantic/task parent:50cd56b2a52b7e370bc7ecb3436c4993e2e5d6a2
+Frozen E8 manifest:881cddafb1545624e594a4c4aa0d185672b65d6cd972f73aae0036614af62c13
+E10 applied runtime/test patch:f64f7e01be6c3e29f352d4217666c0ac257e3e930787ee457ae1a4192bdf53f5
+Transport changes only evidence.c.patch, evidence.h.patch, test_patches/core.c.patch and lean E10 evidence. E9's seven canonical files and private E11 are excluded. The isolated E8+E10 sources are tested; combined E9+E10 qualification is separate.

@@ -84,18 +84,18 @@
  /* Positional variable substitution between equally long telescopes. Every
   * dependent field is checked by the ordinary substitution rule, including
   * fields unused by a subsequent result. Binder identities need not agree. */
-@@ -628,6 +644,10 @@
+@@ -627,6 +643,10 @@
+  * callers first advance pg_occurrence_action_request on the same map/subject;
   * this rule reuses that completed work without replacing either premise. */
  const struct pg_evidence *pg_prove_reindex(struct pg_typing *typing,
- 	const struct pg_evidence *substitution, const struct pg_evidence *proof);
++	const struct pg_evidence *substitution, const struct pg_evidence *proof);
 +/* Read an already checked exact-premise result. No action, checking, allocation
 + * or progress occurs; a completed structural action alone is not admission. */
 +const struct pg_evidence *pg_reindex_receipt(const struct pg_typing *typing,
-+	const struct pg_evidence *substitution, const struct pg_evidence *proof);
+ 	const struct pg_evidence *substitution, const struct pg_evidence *proof);
  /* Invert accepted RETURN v : F A or THUNK M : U C judgements with canonical
   * heads. Reuse the checked typed child, or certify the selected boundary by
-  * inversion; never execute M or guess a type from Core.
-@@ -730,13 +750,14 @@
+@@ -730,13 +750,16 @@
  /* Context formation has no term subject or classifier. */
  const struct pg_occurrence *pg_evidence_subject(const struct pg_evidence *evidence);
  const struct pg_term *pg_evidence_classifier(const struct pg_evidence *evidence);
@@ -110,6 +110,8 @@
 +/* Number of physically retained receipt edges; not logical rule arity.
 + * Diagnostic inspection only, without allocation, checking or Solve. */
 +size_t pg_evidence_retained_premise_count(const struct pg_evidence *evidence);
++/* Stored trailing premise/selection bytes, excluding receipt/certificate owners. */
++size_t pg_evidence_retained_premise_bytes(const struct pg_evidence *evidence);
 +/* Borrowed exact receipt selection, valid until graph destruction. */
  const struct pg_evidence *pg_evidence_premise(const struct pg_evidence *evidence, size_t index);
  

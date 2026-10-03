@@ -1,0 +1,104 @@
+--- a/src/evidence.c
++++ b/src/evidence.c
+@@ -447,8 +447,9 @@
+ 		if (independent_premises_before(rule, key, i + 1) != independent_premises_before(rule, key, i)) continue;
+ 		selections += borrowed_premise(rule, key, certificate, i) != pg_evidence_input(inputs, i);
+ 	}
+-	if (independent > SIZE_MAX / sizeof(const struct pg_evidence *) || selections > SIZE_MAX / sizeof(struct receipt_selection)) return NULL;
+-	size_t bytes = independent * sizeof(const struct pg_evidence *), extra = selections * sizeof(struct receipt_selection);
++	size_t selection_size = arity == 1 ? sizeof(const struct pg_evidence *) : sizeof(struct receipt_selection);
++	if (independent > SIZE_MAX / sizeof(const struct pg_evidence *) || selections > SIZE_MAX / selection_size) return NULL;
++	size_t bytes = independent * sizeof(const struct pg_evidence *), extra = selections * selection_size;
+ 	if (extra > SIZE_MAX - bytes) return NULL;
+ 	bytes += extra;
+ 	if (bytes > SIZE_MAX - sizeof(struct pg_evidence)) return NULL;
+@@ -470,8 +471,10 @@
+ 		if (!arity) { proof->premises[i] = premise; continue; }
+ 		size_t slot = independent_premises_before(rule, key, i);
+ 		if (independent_premises_before(rule, key, i + 1) != slot) proof->premises[slot] = premise;
+-		else if (borrowed_premise(rule, key, certificate, i) != premise)
+-			selected[next++] = (struct receipt_selection){i, premise};
++		else if (borrowed_premise(rule, key, certificate, i) != premise) {
++			if (arity == 1) proof->premises[0] = premise;
++			else selected[next++] = (struct receipt_selection){i, premise};
++		}
+ 	}
+ 	if (pg_index_insert(&typing->proofs, &proof->index, hash) != 0) return NULL;
+ 	proof->next_conclusion = last ? last->next_conclusion : proof;
+@@ -5853,11 +5856,23 @@
+ {
+ 	return evidence->retained_count + (evidence->rule == PG_CONTEXT_SUBSTITUTION && evidence->certificate);
+ }
++size_t pg_evidence_retained_premise_bytes(const struct pg_evidence *evidence)
++{
++	if (!evidence) return 0;
++	size_t arity = borrowed_premise_count(evidence->rule, evidence->conclusion.subject, evidence->certificate);
++	size_t independent = arity ? independent_premises_before(evidence->rule, evidence->conclusion.subject, arity)
++		: evidence->retained_count;
++	size_t selection_size = arity == 1 ? sizeof(const struct pg_evidence *) : sizeof(struct receipt_selection);
++	return independent * sizeof(const struct pg_evidence *) + (evidence->retained_count - independent) * selection_size;
++}
+ const struct pg_evidence *pg_evidence_premise(const struct pg_evidence *evidence, size_t index)
+ {
+ 	size_t count = pg_evidence_premise_count(evidence);
+ 	if (index >= count) return NULL;
+ 	if (!borrowed_premise_count(evidence->rule, evidence->conclusion.subject, evidence->certificate)) return evidence->premises[index];
++	/* A unary selection's ordinal is always zero; retain only its exact proof. */
++	if (count == 1) return evidence->retained_count ? evidence->premises[0]
++		: borrowed_premise(evidence->rule, evidence->conclusion.subject, evidence->certificate, 0);
+ 	size_t slot = independent_premises_before(evidence->rule, evidence->conclusion.subject, index);
+ 	if (independent_premises_before(evidence->rule, evidence->conclusion.subject, index + 1) != slot) return evidence->premises[slot];
+ 	size_t independent = independent_premises_before(evidence->rule, evidence->conclusion.subject, count);
+--- a/src/evidence.h
++++ b/src/evidence.h
+@@ -757,6 +757,8 @@
+ /* Number of physically retained receipt edges; not logical rule arity.
+  * Diagnostic inspection only, without allocation, checking or Solve. */
+ size_t pg_evidence_retained_premise_count(const struct pg_evidence *evidence);
++/* Stored trailing premise/selection bytes, excluding receipt/certificate owners. */
++size_t pg_evidence_retained_premise_bytes(const struct pg_evidence *evidence);
+ /* Borrowed exact receipt selection, valid until graph destruction. */
+ const struct pg_evidence *pg_evidence_premise(const struct pg_evidence *evidence, size_t index);
+ 
+--- a/tests/core.c
++++ b/tests/core.c
+@@ -676,6 +676,7 @@
+ 	assert(pg_evidence_classifier(u0) == pg_universe(graph, 1));
+ 	assert(pg_evidence_premise(u0, 0) == empty);
+ 	assert(pg_evidence_premise_count(u0) == 1);
++	assert(pg_evidence_retained_premise_bytes(u0) == sizeof(const struct pg_evidence *));
+ 	assert(!pg_evidence_premise(u0, 1));
+ 	assert(!pg_prove_universe(&typing, empty, UINT64_MAX));
+ 	const struct pg_object *a = pg_binder(graph);
+@@ -698,6 +699,7 @@
+ 	assert(selected_projection != mapped_universe);
+ 	assert(pg_evidence_subject(selected_projection) == pg_evidence_subject(mapped_universe));
+ 	assert(pg_evidence_retained_premise_count(selected_projection) == 1);
++	assert(pg_evidence_retained_premise_bytes(selected_projection) == 2 * sizeof(const struct pg_evidence *));
+ 	assert(pg_evidence_premise(selected_projection, 0) == a_context);
+ 	assert(pg_evidence_premise(selected_projection, 1) == alternate_universe);
+ 	assert(!pg_evidence_premise(selected_projection, 2));
+@@ -940,6 +942,7 @@
+ 	assert(pg_reduction_head_congruence(pg_nf_certificate(beta_nf)));
+ 	const struct pg_evidence *beta_result = pg_prove_normalization(&typing, app, pg_nf_certificate(beta_nf));
+ 	assert(pg_evidence_premise_count(beta_result) == 1 && !pg_evidence_retained_premise_count(beta_result));
++	assert(!pg_evidence_retained_premise_bytes(beta_result));
+ 	assert(pg_evidence_premise(beta_result, 0) == app && !pg_evidence_premise(beta_result, 1));
+ 	const struct pg_evidence *alternate_app = pg_prove_reindex(&typing,
+ 		pg_prove_substitution_projection(&typing, x_context, x_context), app);
+@@ -947,6 +950,7 @@
+ 	const struct pg_evidence *selected_normal = pg_prove_normalization(&typing, alternate_app, pg_nf_certificate(beta_nf));
+ 	assert(selected_normal != beta_result && pg_evidence_subject(selected_normal) == pg_evidence_subject(beta_result));
+ 	assert(pg_evidence_retained_premise_count(selected_normal) == 1);
++	assert(pg_evidence_retained_premise_bytes(selected_normal) == sizeof(const struct pg_evidence *));
+ 	assert(pg_evidence_premise(selected_normal, 0) == alternate_app);
+ 	assert(pg_prove_normalization(&typing, alternate_app, pg_nf_certificate(beta_nf)) == selected_normal);
+ 	reconstruct_derivation(&typing, beta_result);
+@@ -1623,6 +1627,7 @@
+ 	assert(pg_evidence_premise(selected_projection, 1) == alternate_universe);
+ 	assert(pg_evidence_premise(beta_result, 0) == app);
+ 	assert(pg_evidence_premise(selected_normal, 0) == alternate_app);
++	assert(pg_evidence_retained_premise_bytes(selected_normal) == sizeof(const struct pg_evidence *));
+ 	assert(pg_evidence_premise(converted, 0) == quoted_function && pg_evidence_premise(converted, 1) == upi_z);
+ 	assert(pg_evidence_premise(selected_conversion, 0) == alternate_quote);
+ 	puts("evidence: checked contexts, stratified universes and occurrence-based variable derivations passed");
