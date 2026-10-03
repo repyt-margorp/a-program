@@ -1,0 +1,78 @@
+[
+  {
+    "label": "v1-expanded-rejected",
+    "build_argv": [
+      "make",
+      "-f",
+      "/tmp/ap-performance-mem1-gates.mk",
+      "-j1",
+      "OVERLAY=/tmp/ap-performance-mem1-frames-73fa86c9-20261003",
+      "BUILD=/tmp/ap-performance-mem1-frames-73fa86c9-20261003/debug",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2 -g3",
+      "/tmp/ap-performance-mem1-frames-73fa86c9-20261003/debug/frame_retirement_test"
+    ],
+    "build_exit": 0,
+    "test_exit": -6,
+    "expected_exit": -6,
+    "input_test_sha256": "340831c01ab47b49401535d0e53ad1817ca88b61c9fd9ac4ae303d1bc9ae7e73",
+    "log_sha256": "2db6d5f982c28b9bb86c717a1e508aa7efd78097a7a9735027acac761c4ed703",
+    "original_v1_failure_remains_material": true
+  },
+  {
+    "label": "parent-stateless-cleanup",
+    "build_argv": [
+      "make",
+      "-f",
+      "/tmp/ap-performance-mem1-gates.mk",
+      "-j1",
+      "OVERLAY=/tmp/ap-performance-mem1-73fa86c9-20261003",
+      "BUILD=/tmp/ap-performance-mem1-73fa86c9-20261003/debug",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2 -g3",
+      "/tmp/ap-performance-mem1-73fa86c9-20261003/debug/stateless_head_cleanup_test"
+    ],
+    "build_exit": 0,
+    "test_exit": 0,
+    "expected_exit": 0,
+    "input_test_sha256": "4ac7f0173e81d7355e785abc80818b800873b9124ad2395cca1d575555ad368f",
+    "log_sha256": "1b6870cb7c5a109e761795a021289308304d20ac0a05d437bf159951df9c6e81",
+    "original_v1_failure_remains_material": true
+  },
+  {
+    "label": "v2-stateless-cleanup",
+    "build_argv": [
+      "make",
+      "-f",
+      "/tmp/ap-performance-mem1-gates.mk",
+      "-j1",
+      "OVERLAY=/tmp/ap-performance-mem1-stateless-frames-73fa86c9-20261003",
+      "BUILD=/tmp/ap-performance-mem1-stateless-frames-73fa86c9-20261003/debug",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2 -g3",
+      "/tmp/ap-performance-mem1-stateless-frames-73fa86c9-20261003/debug/stateless_head_cleanup_test"
+    ],
+    "build_exit": 0,
+    "test_exit": 0,
+    "expected_exit": 0,
+    "input_test_sha256": "4ac7f0173e81d7355e785abc80818b800873b9124ad2395cca1d575555ad368f",
+    "log_sha256": "1b6870cb7c5a109e761795a021289308304d20ac0a05d437bf159951df9c6e81",
+    "original_v1_failure_remains_material": true
+  },
+  {
+    "label": "v2-stateless-cleanup-SAN",
+    "build_argv": [
+      "make",
+      "-f",
+      "/tmp/ap-performance-mem1-gates.mk",
+      "-j1",
+      "OVERLAY=/tmp/ap-performance-mem1-stateless-frames-73fa86c9-20261003",
+      "BUILD=/tmp/ap-performance-mem1-stateless-frames-73fa86c9-20261003/asan",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+      "/tmp/ap-performance-mem1-stateless-frames-73fa86c9-20261003/asan/stateless_head_cleanup_test"
+    ],
+    "build_exit": 0,
+    "test_exit": 0,
+    "expected_exit": 0,
+    "input_test_sha256": "4ac7f0173e81d7355e785abc80818b800873b9124ad2395cca1d575555ad368f",
+    "log_sha256": "1b6870cb7c5a109e761795a021289308304d20ac0a05d437bf159951df9c6e81",
+    "original_v1_failure_remains_material": true
+  }
+]

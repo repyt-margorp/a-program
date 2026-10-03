@@ -1,0 +1,68 @@
+--- a/src/eval.c
++++ b/src/eval.c
+@@ -75,7 +75,9 @@
+ 	const struct pg_eval_continuation *continuation, const void *state)
+ {
+ 	if (!machine->output || !continuation || !continuation->resume || !value.term) return -1;
+-	struct pg_eval_frame *frame = pg_alloc(&machine->temporary, sizeof(*frame));
++	struct pg_eval_frame *frame = machine->free_frames;
++	if (frame) machine->free_frames = frame->parent;
++	else frame = pg_alloc(&machine->temporary, sizeof(*frame));
+ 	if (!frame) return -1;
+ 	*frame = (struct pg_eval_frame){.caller = machine->current, .arguments = machine->arguments,
+ 		.target = target, .continuation = continuation, .state = state, .parent = machine->frames, .cursor = machine->arguments};
+@@ -117,6 +119,16 @@
+ 	(void)answer;
+ 	(void)state;
+ 	return -1; /* The descriptor is interpreted by resume_frame, never called. */
++}
++
++static void retire_frame(struct pg_eval *machine, struct pg_eval_frame *frame)
++{
++	/* Opaque callback state can borrow inline fields beyond this invocation. */
++	if (frame->state) return;
++	/* The callback has returned; its state and captured delivery are no longer
++	 * borrowed from this frame. Retained closures keep their own arena links. */
++	*frame = (struct pg_eval_frame){.parent = machine->free_frames};
++	machine->free_frames = frame;
+ }
+ 
+ static int resume_frame(struct pg_eval *machine)
+@@ -135,6 +147,7 @@
+ 		if (result != 2) {
+ 			/* Restored empty frames can still own decoded readback scratch. */
+ 			pg_materialize_destroy(&frame->answer);
++			retire_frame(machine, frame);
+ 			return result > 1 ? -1 : result;
+ 		}
+ 		/* A declined head leaves its caller unchanged. Resume charged readback
+@@ -165,7 +178,9 @@
+ 	machine->frames = frame->parent;
+ 	machine->head_ready = 0;
+ 	pg_materialize_destroy(&frame->answer);
+-	return (head ? head->fallback : frame->continuation)->resume(machine, answer, frame->state);
++	int result = (head ? head->fallback : frame->continuation)->resume(machine, answer, frame->state);
++	retire_frame(machine, frame);
++	return result;
+ }
+ 
+ void pg_eval_init(struct pg_eval *machine, const struct pg_term *term)
+@@ -831,6 +846,7 @@
+ 	job->certificate = certificate;
+ 	pg_materialize_destroy(&job->output);
+ 	pg_graph_destroy(&job->machine.temporary);
++	job->machine.free_frames = NULL;
+ 	job->machine.current = (struct pg_closure){certificate->target, NULL};
+ 	job->machine.arguments = NULL;
+ 	return PG_EVAL_WHNF;
+--- a/src/eval.h
++++ b/src/eval.h
+@@ -33,6 +33,8 @@
+ 	int (*dispatch)(struct pg_eval *machine);
+ 	struct pg_graph *output;
+ 	struct pg_eval_frame *frames;
++	/* Retired stateless frames contain no frontier or borrowed callback state. */
++	struct pg_eval_frame *free_frames;
+ 	int head_ready;
+ 	struct pg_eval_task *task;
+ };

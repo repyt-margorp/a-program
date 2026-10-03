@@ -1,0 +1,74 @@
+{
+  "epoch": "MEM1 stateless-frame-v2",
+  "branch": "parallel/performance-20261003",
+  "task_HEAD_at_verification": "73d822918cd832930b1d1543eba608fcaed1452f",
+  "runtime_publication": false,
+  "Main_integration": false,
+  "accepted_promotion": false,
+  "chosen_commit_message": "prototype: recycle stateless evaluator demand frames",
+  "parent_source128": "73fa86c94b805b768d2c8493ce6f6a46c51983e556974c4920d805b59eefc743",
+  "candidate_source128": "8f6ea298a8d2f7be65c12e5abb756be0ad77a6d41fa4f7794b4781569639fca7",
+  "runtime_files": [
+    "src/eval.c",
+    "src/eval.h"
+  ],
+  "new_authority_or_codec": false,
+  "O2_acceptance": {
+    "recipes": 384,
+    "nonzero": 0
+  },
+  "artifact_batch": {
+    "recipes": 41,
+    "nonzero_recipes": 1,
+    "original_strict_reload_failures": 3
+  },
+  "sanitizers": {
+    "build_recipes": 38,
+    "nonzero": 0,
+    "checks": 45,
+    "nonzero_checks": 0,
+    "ASAN_OPTIONS": "detect_leaks=1:abort_on_error=1",
+    "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+  },
+  "focused_o2_checks": 23,
+  "cross_build_fresh_readbacks": 140,
+  "TotalResult_separate_process_cuts_per_build": 70,
+  "TotalResult_charged_steps": 3014,
+  "callback_controls": {
+    "reentrant_inline_state": 6,
+    "NULL_state_head_cleanup_return2": 4,
+    "O2_and_SAN": 0,
+    "parent_equal_output": true
+  },
+  "parent_byte_identical_images": {
+    "public": 52,
+    "history": 28,
+    "full_partition_fuel_TSV": true
+  },
+  "selected_cut_net_arena_capacity_delta": -872644608,
+  "tree400_steps_unchanged": 183507626,
+  "external_cumulative_request_delta": -11363962,
+  "external_cumulative_aligned_byte_delta": -2727318176,
+  "added_aligned_job_bytes_in_tree_census": 32704,
+  "list_steps_unchanged": 1915,
+  "list_external_call_delta": 0,
+  "list_added_aligned_bytes": 368,
+  "metrics_limits": [
+    "Sampled allocator capacity is not actual peak RSS or semantic live bytes.",
+    "Census omits graph.c internal calls and is cumulative, not RAM.",
+    "Actual wall/RSS and net speed remain unmeasured; no exclusive slot granted.",
+    "Callback lifetime review establishes current owner call sites, not an explicit arbitrary self-destruction contract."
+  ],
+  "failures_preserved": [
+    "Original strict3, physical observers and original seven sanitizer failures.",
+    "Rejected MEM1 v1 original inline-state control signal6 and fresh expanded control signal6, despite full O2 suite0.",
+    "Missing archive CLI fixture, parent/candidate setup controls and GDB observer setup failures."
+  ],
+  "full_Goal_active": true,
+  "distinct_E11_runtime_excluded": true,
+  "gates_terminal": true,
+  "owned_tests_sha256": {
+    "frame_retirement_test.c": "340831c01ab47b49401535d0e53ad1817ca88b61c9fd9ac4ae303d1bc9ae7e73",
+    "stateless_head_cleanup_test.c": "4ac7f0173e81d7355e785abc80818b800873b9124ad2395cca1d575555ad368f"
+  }
+}

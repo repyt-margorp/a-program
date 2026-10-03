@@ -1,0 +1,8 @@
+{
+  "records": 1969,
+  "evidence_manifest": "/tmp/ap-performance-mem1-stateless-v2-evidence-20261003/verification.sha256",
+  "evidence_manifest_sha256": "c0734afabb694690839a962a34cac52364a835a2955642c11b3ec7db63cc1e3a",
+  "source128": "8f6ea298a8d2f7be65c12e5abb756be0ad77a6d41fa4f7794b4781569639fca7",
+  "semantic_RUNTIME_source_records": 128,
+  "ELFs_excluded_but_original_binaries_pinned_in_gate_reports": true
+}

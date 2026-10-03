@@ -1,0 +1,15 @@
+{
+  "terminal": true,
+  "build_exit": 0,
+  "test_exit": 0,
+  "flags": "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+  "environment": {
+    "ASAN_OPTIONS": "detect_leaks=1:abort_on_error=1",
+    "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+  },
+  "test_sha256": "340831c01ab47b49401535d0e53ad1817ca88b61c9fd9ac4ae303d1bc9ae7e73",
+  "log_sha256": "6fd2f0515b9b1690e79ca5e43f038066f813d0ab9e2e0aaa4fe103912a4e0623",
+  "source128": "8f6ea298a8d2f7be65c12e5abb756be0ad77a6d41fa4f7794b4781569639fca7",
+  "parent_o2_output_equal": true,
+  "wall_RSS_measurement": false
+}

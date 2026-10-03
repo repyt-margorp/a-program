@@ -1,0 +1,78 @@
+{
+  "parent_source128": "73fa86c94b805b768d2c8493ce6f6a46c51983e556974c4920d805b59eefc743",
+  "observed": "Existing head resume cleans frame answer after callback return; advance uses machine after resume. Current owner machine destruction sites are store/execution destruction, codec restore/error and completed-job cleanup; none is a continuation callback.",
+  "inference": "A callback must preserve the current machine arena through its return for existing head cleanup and task cleanup as well as retirement. Public eval.h describes borrowed state until resume or destroy but does not explicitly state an in-callback machine-destroy prohibition. Do not claim an additional arbitrary callback lifetime guarantee from this search.",
+  "candidate_scope": "Opaque frame internals belong to evaluator/codec. V2 retains all non-NULL callback-state frames; public answer/head/spine values refer to output or independent argument/environment arena storage, which the pool never recycles.",
+  "required_controls": [
+    "materialized and captured reentrancy",
+    "inline frame-state continuation lifetime",
+    "return2 materialized fallback",
+    "head success/error cleanup",
+    "fresh-process raw all cuts",
+    "seven checkpoints",
+    "ASan UBSan leak checks"
+  ],
+  "runtime_destroy_init_sites": [
+    {
+      "path": "computation.c",
+      "line": 594,
+      "text": "pg_eval_init(machine, term);"
+    },
+    {
+      "path": "computation_io.c",
+      "line": 74,
+      "text": "pg_eval_init(machine, NULL);"
+    },
+    {
+      "path": "computation_io.c",
+      "line": 102,
+      "text": "pg_eval_destroy(machine);"
+    },
+    {
+      "path": "computation_io.c",
+      "line": 103,
+      "text": "pg_eval_init(machine, NULL);"
+    },
+    {
+      "path": "eval.c",
+      "line": 171,
+      "text": "void pg_eval_init(struct pg_eval *machine, const struct pg_term *term)"
+    },
+    {
+      "path": "eval.c",
+      "line": 675,
+      "text": "void pg_eval_destroy(struct pg_eval *machine)"
+    },
+    {
+      "path": "eval.c",
+      "line": 703,
+      "text": "pg_eval_destroy(&job->machine);"
+    },
+    {
+      "path": "eval.c",
+      "line": 781,
+      "text": "pg_eval_init(&job->machine, input);"
+    },
+    {
+      "path": "eval.c",
+      "line": 827,
+      "text": "pg_eval_destroy(&canonical->machine);"
+    },
+    {
+      "path": "execution.c",
+      "line": 103,
+      "text": "pg_eval_destroy(&execution->machine);"
+    },
+    {
+      "path": "machine_io.c",
+      "line": 329,
+      "text": "pg_eval_destroy(&job->machine);"
+    },
+    {
+      "path": "machine_io.c",
+      "line": 406,
+      "text": "for (size_t i = 0; i < forest.initialized; ++i) pg_eval_destroy(forest.machines[i]);"
+    }
+  ],
+  "runtime_or_schema_edit": false
+}
