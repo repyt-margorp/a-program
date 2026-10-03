@@ -492,8 +492,19 @@ Worker gates pass with the same strict three failures; Main integration awaits
 separate E2/E3/E4 current-producer qualification. Performance is assigned these
 layers in order, retaining each snapshot and avoiding needless identical suite
 reruns. Its first E2 setup attempt stopped at a migration TSV column-name error
-before any gate ran; that failure is retained. Live Job E5 and C nested-value
-implementation/test activity was inspected and remains outside these freezes.
+before any gate ran; that failure is retained. C nested-value work remains a
+separate live downstream trial.
+
+Private E5 declaration-export deletion is rejected, not published. Core inspected
+its code and verified ten frozen records plus five local report hashes (manifest
+`218b9550fbec3aaeb8a42ecb83d6897691b4547a7ea4dd2fe4748da201bb87eb`).
+Two declarations sharing one nominal formation expose `zero/succ` versus
+`nothing/successor`: E4 with the new namespace test passes; E5 reads overwritten
+typed-subject metadata and loses `Original.zero` (reported exits 0 versus 134).
+This rejects that lookup, not every possible future owner refactor. Preserve
+lexical identity through its existing source owner rather than merging names
+or adding a shadow Oracle graph. Job owns permanent publication of the 17-line
+test-only control; performance includes it in final E4 coverage without E5 code.
 
 The common-producer census completes all twenty variant/input pairs, including
 the ordinary imported general LocalSorted QuickSort. Its final QuickSort rows:
