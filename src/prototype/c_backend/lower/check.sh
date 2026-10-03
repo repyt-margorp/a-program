@@ -9,7 +9,7 @@ trap 'rm -rf "$temporary"' EXIT
 cc=${CC:-cc}
 read -r -a flags <<< "${C_BACKEND_CFLAGS:--std=c11 -Wall -Wextra -Werror -O2}"
 
-"$oracle" "$temporary/oracle.c" "$temporary/enum.c" "$temporary/data.c" "$temporary/list.c" "$temporary/natural.c"
+"$oracle" "$temporary/oracle.c" "$temporary/enum.c" "$temporary/data.c" "$temporary/list.c" "$temporary/natural.c" "$temporary/enum-list.c"
 "$cc" "${flags[@]}" "$temporary/oracle.c" -o "$temporary/oracle"
 "$temporary/oracle"
 "$cc" "${flags[@]}" "$temporary/enum.c" -o "$temporary/enum"
@@ -20,6 +20,8 @@ read -r -a flags <<< "${C_BACKEND_CFLAGS:--std=c11 -Wall -Wextra -Werror -O2}"
 "$temporary/list"
 "$cc" "${flags[@]}" "$temporary/natural.c" -o "$temporary/natural"
 "$temporary/natural"
+"$cc" "${flags[@]}" "$temporary/enum-list.c" -o "$temporary/enum-list"
+"$temporary/enum-list"
 
 expect_status() {
 	local expected=$1 status=0

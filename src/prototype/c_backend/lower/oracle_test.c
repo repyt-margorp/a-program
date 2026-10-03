@@ -369,9 +369,75 @@ static void natural_data(struct pg_typing *t, const char *path)
 	fclose(source);
 }
 
+static void enum_list_data(struct pg_typing *t, const char *path)
+{
+	struct pg_graph *g = t->graph;
+	struct pg_data_constructor_input choices[3] = {{0}, {0}, {0}};
+	const struct pg_data_declaration *choice = pg_data_declaration(g, NULL, NULL, 3, choices);
+	assert(choice);
+	const struct pg_data_layout *choice_layout = pg_data_declaration_layout(choice);
+	const struct pg_term *choice_family = pg_reference(g, pg_data_declaration_family(choice));
+	struct pg_c_export enumeration = {"Choice", pg_occurrence(t, PG_JUDGEMENT_VALUE_TYPE,
+		NULL, choice_family, pg_universe(g, 0), NULL, 0, NULL)};
+	const struct pg_object *self = pg_binder(g), *tail = pg_binder(g), *head = pg_binder(g);
+	const struct pg_context *prefix = pg_context_bind(t, NULL, self, pg_universe(g, 0), PG_JUDGEMENT_VALUE);
+	const struct pg_context *fields = pg_context_bind(t, prefix, tail, pg_reference(g, self), PG_JUDGEMENT_VALUE);
+	fields = pg_context_bind(t, fields, head, choice_family, PG_JUDGEMENT_VALUE);
+	assert(prefix && fields);
+	const struct pg_term *images[] = {pg_reference(g, self)};
+	struct pg_data_constructor_input inputs[2] = {{.fields = fields, .images = images}, {.fields = prefix, .images = images}};
+	const struct pg_data_declaration *d = pg_data_declaration(g, prefix, prefix, 2, inputs);
+	assert(d);
+	const struct pg_data_layout *layout = pg_data_declaration_layout(d);
+	const struct pg_term *family = pg_reference(g, pg_data_declaration_family(d));
+	struct pg_c_export data = {"EnumChain", pg_occurrence(t, PG_JUDGEMENT_VALUE_TYPE,
+		NULL, family, pg_universe(g, 0), NULL, 0, NULL)};
+	const struct pg_object *xs = pg_binder(g), *label = pg_binder(g);
+	const struct pg_term *vx = pg_reference(g, xs);
+	const struct pg_term *result = pg_computation_type(g, PG_TOTALITY_TOTAL, pg_effect_row(g, 0, NULL), family);
+	struct pg_c_export exports[3] = {{"identity", occurrence(t,
+		pg_lambda(g, xs, op(g, &pg_return_operation, vx)), pg_pi(g, family, xs, result))}};
+	struct pg_match_clause clauses[2] = {
+		{pg_data_constructor(layout, 0), pg_lambda(g, tail, pg_lambda(g, head, op(g, &pg_return_operation, pg_reference(g, head))))},
+		{pg_data_constructor(layout, 1), op(g, &pg_return_operation, pg_reference(g, pg_data_constructor(choice_layout, 2)))}
+	};
+	result = pg_computation_type(g, PG_TOTALITY_TOTAL, pg_effect_row(g, 0, NULL), choice_family);
+	exports[1] = (struct pg_c_export){"first", occurrence(t,
+		pg_lambda(g, xs, pg_data_match(g, layout, vx, 2, clauses)), pg_pi(g, family, xs, result))};
+	struct pg_match_clause values[3];
+	for (size_t i = 0; i < 3; ++i)
+		values[i] = (struct pg_match_clause){pg_data_constructor(choice_layout, i),
+			op(g, &pg_return_operation, pg_reference(g, pg_host_integer(g, pg_host_type("Int32"), (int64_t)(7 + i))))};
+	result = pg_computation_type(g, PG_TOTALITY_TOTAL, pg_effect_row(g, 0, NULL), pg_reference(g, pg_host_type("Int32")));
+	exports[2] = (struct pg_c_export){"choice", occurrence(t,
+		pg_lambda(g, label, pg_data_match(g, choice_layout, pg_reference(g, label), 3, values)), pg_pi(g, choice_family, label, result))};
+	FILE *source = fopen(path, "w"); assert(source);
+	inert_representations(t, source, 3, exports, 1, &enumeration, 1, &data, 0);
+	fputs("#include <assert.h>\nint main(void)\n{\n\tstruct ap_c_arena arena = {0};\n"
+		"\tstruct ap_enum_Choice values[16], buffer[16], first;\n\tint32_t answer;\n"
+		"\tconst struct ap_data_EnumChain *input, *output; size_t written;\n", source);
+	const struct pg_term *input = pg_reference(g, pg_data_constructor(layout, 1));
+	for (size_t i = 0; i <= 16; ++i) {
+		if (i) input = app(g, op(g, pg_data_constructor(layout, 0), input), pg_reference(g, pg_data_constructor(choice_layout, (i - 1) % 3)));
+		const struct pg_term *first = op(g, &pg_total_result_operation, app(g, exports[1].subject->core, input));
+		int64_t expected = evaluate(g, app(g, exports[2].subject->core, first));
+		for (size_t j = 0; j < i; ++j) fprintf(source, "\tvalues[%zu].tag = %zu;\n", j, (i - j - 1) % 3);
+		fprintf(source, "\tassert(!ap_from_EnumChain(&arena, %s, %zu, &input));\n"
+			"\tassert(!ap_export_identity(&arena, input, &output) && output == input);\n"
+			"\tassert(!ap_copy_EnumChain(output, buffer, 16, &written) && written == %zu);\n", i ? "values" : "NULL", i, i);
+		for (size_t j = 0; j < i; ++j) fprintf(source, "\tassert(buffer[%zu].tag == %zu);\n", j, (i - j - 1) % 3);
+		fprintf(source, "\tassert(!ap_export_first(&arena, output, &first));\n"
+			"\tassert(!ap_export_choice(&arena, first, &answer) && answer == %" PRId64 ");\n", expected);
+	}
+	fputs("\tvalues[0].tag = 3; output = input; size_t count = arena.count;\n"
+		"\tassert(ap_from_EnumChain(&arena, values, 1, &output) == 2 && output == input && arena.count == count);\n"
+		"\tap_arena_EnumChain_destroy(&arena);\n}\n", source);
+	assert(!fclose(source));
+}
+
 int main(int argc, char **argv)
 {
-	assert(argc == 6);
+	assert(argc == 7);
 	struct pg_graph g;
 	struct pg_typing t;
 	assert(!pg_graph_init(&g) && !pg_typing_init(&t, &g));
@@ -379,6 +445,7 @@ int main(int argc, char **argv)
 	data_match(&t, argv[3]);
 	recursive_data(&t, argv[4]);
 	natural_data(&t, argv[5]);
+	enum_list_data(&t, argv[6]);
 	shared_calls(&t);
 	struct pg_c_export exports[8];
 	char names[8][16];
