@@ -1,0 +1,120 @@
+{
+  "lane": "performance",
+  "epoch": "current producer341261d + frozen Job Epoch1 + performance0539051",
+  "implementation_commit": "05390513bca302b4a219881994c5bbd69d5b733a",
+  "branch": "parallel/performance-20261003",
+  "existing_commit_message": "Free decoded frame scratch after captured-head delivery",
+  "source_manifest": "/tmp/a-program-core-job-performance-combined-source.sha256",
+  "source_manifest_sha256": "7f712101e9bf8113f6b0abc9ba337ee083af94e34d85a2654820c26c25e7d352",
+  "source_records": 128,
+  "private_copy": "/tmp/ap-performance-current-joint-341261d-0539051-20261003",
+  "test_only_scope": true,
+  "core_trial_and_frozen44_unchanged": true,
+  "o2_acceptance": {
+    "terminal": true,
+    "original_recipes": 384,
+    "original_failures": 1,
+    "failure": "private copy omitted four training inputs; original failure retained",
+    "unchanged_failed_gate_rerun_exit": 0,
+    "all_runtime_acceptance_gates_pass_after_copy_correction": true,
+    "report": "/tmp/ap-performance-current-joint-341261d-0539051-20261003/o2-acceptance-result.json"
+  },
+  "o2_artifacts": {
+    "recipes": 41,
+    "failures": 1,
+    "transport_semantic_history_and_all7_checkpoints_passed": true,
+    "strict_reload_failures": [
+      {
+        "partition": "1000:1000",
+        "path": "reload",
+        "budget": "2000",
+        "used": "2000",
+        "status": "pending",
+        "bytes": "32752",
+        "delta": "-19124",
+        "size_equal": "no",
+        "byte_equal": "no",
+        "status_equal": "no",
+        "fuel_equal": "no"
+      },
+      {
+        "partition": "1600:1600",
+        "path": "reload",
+        "budget": "3200",
+        "used": "3200",
+        "status": "pending",
+        "bytes": "38354",
+        "delta": "-13522",
+        "size_equal": "no",
+        "byte_equal": "no",
+        "status_equal": "no",
+        "fuel_equal": "no"
+      },
+      {
+        "partition": "1915:0",
+        "path": "reload",
+        "budget": "1915",
+        "used": "1915",
+        "status": "pending",
+        "bytes": "51876",
+        "delta": "0",
+        "size_equal": "yes",
+        "byte_equal": "yes",
+        "status_equal": "no",
+        "fuel_equal": "yes"
+      }
+    ],
+    "report": "/tmp/ap-performance-current-joint-341261d-0539051-20261003/o2-artifact-result.json"
+  },
+  "focused_controls": {
+    "o2": {
+      "commands": 23,
+      "failures": 0,
+      "report": "/tmp/ap-performance-current-joint-341261d-0539051-20261003/o2-checks/checks.json",
+      "sha256": "f364b542e3aa6773266571dd99014760ff32429af76c00d736c81ae02ba1b334"
+    },
+    "asan": {
+      "commands": 45,
+      "failures": 0,
+      "report": "/tmp/ap-performance-current-joint-341261d-0539051-20261003/asan-checks/checks.json",
+      "sha256": "32b5757f29a660c0e36d2e3fde0663586e0ea01f7913443b0abc00673d71ecb9"
+    }
+  },
+  "total_result_cuts": {
+    "each_build": 70,
+    "cross_instrumentation_reads": 140,
+    "all_passed": true,
+    "whnf_charged_steps": 3014,
+    "cross_instrumentation_byte_differences": 4,
+    "byte_observation_report": "/tmp/ap-performance-current-joint-341261d-0539051-20261003/raw-cut-coherence.json"
+  },
+  "failures_preserved": {
+    "original_Core_observers": 2,
+    "original_identity_io_observer": 1,
+    "original_f3_sanitizer_commands": 7,
+    "historical_bad_concatenated_import_fixture": "separate setup/input rejection; Core logs and local census copies retained",
+    "new_missing_training_copy_failure": "retained, corrected copy, unchanged rerun passed",
+    "strict_public_reload_failures": 3
+  },
+  "integration_needs": [
+    "Core review of this joint test-only evidence; no Main merge/promotion claimed",
+    "Keep three strict reload failures with producer/query/frontier owner; route any owner fix through Core/job-evidence",
+    "Timing baseline waits for the exact tested Job E2 epoch and agreed exclusive measurement slot"
+  ],
+  "Core_route_probe": "status unavailable from enabled task tools; no wake message or load/resume/fork",
+  "broad_correctness_processes_terminal": true,
+  "broad_correctness_slot_released": true,
+  "full_performance_goal_active": true,
+  "comparative_wall_rss_measurements": false,
+  "source_files_changed": [],
+  "notification_route": "Authorized own prototype outbox; Core-owned guarded pointer/hash relay. No task thread load/resume/fork.",
+  "own_goal_plan": "doc/2026-10-03-PERFORMANCE-JOINT-VERIFICATION.md",
+  "frozen_performance_manifest": "/tmp/ap-performance-corrective-f3c3555-20261003-publication.sha256",
+  "frozen_performance_manifest_sha256": "1a9946fe14e74ac04a8310bdd8c9d71ddaf139878b235020be050c90eac86648",
+  "core_review": {
+    "date": "2026-10-03",
+    "main_revision": "9cb96a9",
+    "fresh_manifest_check": "1033 entries verified; sha256sum -c --quiet exit 0",
+    "scope": "Job E1 only; E2 not included"
+  }
+}

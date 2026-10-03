@@ -19,11 +19,16 @@ not the existing owner work lists.
 | 2 | `c-backend`: downstream C design | #44, #49; shared policy #47 | Numeric/List epoch integrated; native Acc/QuickSort remains open |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Focused epoch pushed; Main integration awaits broad gates |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
-| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | Separate worker Goal active at `5035c7a` |
+| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E1 published as `7c6a625`; later epochs remain separate |
 
 ## 1. Core Ownership and Integration
 
 ### Subjective (User)
+
+2026-10-03, English paraphrase of the latest follow-up: wake/restart/notification
+arrangements must not replace supervision of actual implementation progress.
+Continue monitoring the workers' code changes and verification, not just the
+coordination setup.
 
 2026-10-03, English paraphrase of the explicit clarification to the Core-pause
 question: use both notification waiting and a timed Wait state. Even without a
@@ -126,15 +131,22 @@ verified work and returns directions before waiting again. Ordinary tool output
 must not wake Core repeatedly. A notification is worker evidence, not a new user
 design approval or permission to merge Main.
 
-Wake transport is not yet verified. Local CLI `0.159.2` exposes `codex queue`
-and generated `thread/queue/add`/`thread/queue/start` schemas. Official
+Wake transport is verified during active Wait, not after process termination.
+Local CLI `0.159.2` uses a managed Unix WebSocket control endpoint. Official
 [App Server documentation](https://developers.openai.com/codex/app-server)
-distinguishes starting a turn from steering an active turn; neither tmux output
-nor a saved thread ID proves that a worker reaches this live Core owner. A
-read-only managed-proxy probe timed out without submitting a turn. Core's task
-view reports workers `notLoaded` while their actual tmux Goals are running;
-verify owner routing before loading/resuming any thread, to avoid a second Core.
-Use existing session messaging rather than a new scheduler. Following the
+distinguishes starting a turn from steering an active turn. Initial raw transport
+probes timed out; the correct WebSocket route acknowledged the existing Core.
+A worker's direct socket attempt returned EACCES; no permissions were widened.
+Core now runs `src/prototype/coordination/watch_core.cjs` in tmux window
+`core-notifications`. It relays only file pointers/hashes from the three named
+worker outboxes. Newline-terminated regular text files up to 8 KiB are accepted;
+partial, oversized, symlink and duplicate events are ignored. The helper refuses
+an unloaded Core rather than loading, resuming or forking it. Mock tests pass for
+absent/active/idle/stale routing and guarded relay delivery. An actual Job E2
+outbox notification ended a 180-second Core Wait after 43.1563 seconds; its hash
+matched on inspection. Actual terminated-process recovery remains unverified.
+Workers are still controlled through their actual tmux owners, not Core's
+`notLoaded` task view. Following the
 user's clarification, keep Core's Goal active and use the available interruptible
 `clock.sleep` for up to six hours after completing current coordination work.
 New input can end this wait early; otherwise the timer returns Core to a status
@@ -165,15 +177,15 @@ the producer's semantic schema or require general theory coverage first.
   launch and inspection alone are not implementation completion.
 - [x] Record notification-driven coordination in Subjective and send the
   requirement to all three live workers without pausing their implementation.
-- [ ] Verify worker-to-current-Core delivery and an actual idle wake; do not
-  count a queued message, tmux alert or duplicate resumed session as success.
+- [x] Verify worker-to-current-Core delivery during actual Wait without a new
+  Core; active routing and the relay passed. Idle routing is mock-tested only.
 - [x] Clarify the fallback: user requests notification OR six-hour timer, not
   notification-only waiting. Keep worker Goals active and do not mark Core done.
 - [ ] Enter an interruptible six-hour Wait after current handoffs; on notice or
   timeout, inspect worker status/tests/conflicts, coordinate and wait again.
 - [ ] Review worker notifications, diffs, tests and blockers and issue directions;
   record material decisions in the owning SOAP plan. Six-hour checks provide the
-  requested fallback while the worker wake route is unverified.
+  requested fallback if notification delivery fails.
 - [ ] Review cross-owner findings; transfer file ownership for an explicit epoch
   when needed, rather than permanently excluding a necessary large refactor.
 - [ ] Integrate each completed epoch, run relevant combined regression gates,
@@ -227,6 +239,14 @@ are +228/-73; test/fixtures +406/-5; build +4/-0; docs +296/-14. No accepted
 source, `.a` schema or producer authority changed. Core released the freeze for
 native Acc/QuickSort continuation; structural sorting success is not native
 completion, and #44/#49/full worker Goal remain open.
+
+2026-10-03 ready checkpoint: Core verified all eleven frozen Epoch4 file hashes
+against worker base `720f92a` and inspected transactional array-to-List emission,
+rollback and ordinary C clients. Worker O2/sanitizer gates are reported in the
+[handoff](2026-10-03-C-BACKEND-EPOCH4-HANDOFF.md); separate Core combined gates
+and Main integration remain pending. Native open QuickSort explicitly refuses
+its unsupported representation; neither structural success nor array conversion
+establishes native Acc/QuickSort completion.
 
 ### Assessment
 
@@ -316,6 +336,19 @@ initial failed build: assembly accidentally replaced the newer prototype
 is not a runtime regression. Full combined acceptance and actual timing remain
 open. Job deletion is not included in this ten-check result.
 
+2026-10-03 joint terminal checkpoint: the performance worker completed the exact
+128-source current-producer/Job E1/head-cleanup snapshot. Core read its frozen
+summary: 45 sanitizer and 23 O2 focused commands pass; transport, semantic,
+history and seven checkpoints pass. The 384-recipe acceptance run originally
+failed because its private copy omitted four training inputs; the unchanged
+158-entry syntax gate passes after restoring those inputs. That original failure
+is retained, not relabelled passing. The strict partition target still fails at
+the same three cases. Evidence: private
+`/tmp/ap-performance-current-joint-341261d-0539051-20261003/verification.sha256`
+(1033 records, SHA256 `ae05927ed56cb773e9513cbcf5e2ff1b5d687ede76ec0d0bd89930ab74fe7460`).
+Four cross-instrumentation raw image hashes differ; all 140 cross-build reads
+pass. No cross-instrumentation byte equality or wall/RSS speedup is claimed.
+
 ### Assessment
 
 Agent proposal: Sub2 measures the whole path but owns only an agreed,
@@ -401,7 +434,11 @@ and Identity IO, head/TotalResult/cleanup, normalization/source checkpoints and
 `/tmp/a-program-core-job-performance-combined-source.sha256`; relevant logs are
 `/tmp/a-program-core-job-performance-combined-*`. Performance is assigned the
 broader acceptance/checkpoint/sanitizer gates on a private dereferenced copy;
-those results remain pending.
+their terminal results and retained failures are recorded in section 3.
+Core published frozen E1 as `7c6a625` on its task branch; Main integration is
+separate. E2's 36-entry manifest passes Core hash verification and its applied
+code was reviewed; E2 needs current-producer combined gates before integration.
+Later E3/E4 persistence/registration trials remain independent worker epochs.
 
 The common-producer census completes all twenty variant/input pairs, including
 the ordinary imported general LocalSorted QuickSort. Its final QuickSort rows:
