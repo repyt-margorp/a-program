@@ -1,0 +1,4 @@
+Unadapted Identity IO at published implementation f3c35558ca8ce2b1c5fac4c7ce3eba63da75b858.
+Recipe exit: 134. Core adapter is separate.
+identity_io_test: /tmp/ap-performance-2d747cc-final-20261003/tests/identity_io.c:2085: total_result_machine: Assertion `saw_projection && machine.status == PG_EVAL_WHNF' failed.
+/tmp/ap-performance-2d747cc-final-20261003/tests/identity_io.sh: line 6:  3341 Aborted                 "$binary"

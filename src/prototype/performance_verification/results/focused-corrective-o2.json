@@ -1,0 +1,267 @@
+{
+  "parent_implementation": "f3c35558ca8ce2b1c5fac4c7ce3eba63da75b858",
+  "flags": "-std=c11 -Wall -Wextra -Werror -O2",
+  "comparative_measurements": false,
+  "checks": [
+    {
+      "label": "total-result-fresh",
+      "command": [
+        "python3",
+        "-B",
+        "src/prototype/performance_verification/total_result_cuts.py",
+        "/tmp/ap-performance-corrective-f3c3555-20261003/build/performance_total_result_test",
+        "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/total-result-fresh"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/total-result-fresh.log",
+      "log_sha256": "3f0a539e6ab4a914ad16e9992371f25d03c38574704c18d61de610b29ea5439a"
+    },
+    {
+      "label": "head-cleanup",
+      "command": [
+        "/tmp/ap-performance-corrective-f3c3555-20261003/build/performance_head_cleanup_test"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/head-cleanup.log",
+      "log_sha256": "ef6a15bf74b72d2339aa61f8d9cba28dec73055daba969aee497cfdc49f103a8"
+    },
+    {
+      "label": "head-unit",
+      "command": [
+        "/tmp/ap-performance-corrective-f3c3555-20261003/build/performance_head_test"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/head-unit.log",
+      "log_sha256": "f8e5e8f8d3105e5fc7cb72c36ccf604242c230317856c582352910c0debdf0b2"
+    },
+    {
+      "label": "force-0-write",
+      "command": [
+        "/tmp/ap-performance-corrective-f3c3555-20261003/build/performance_head_test",
+        "write",
+        "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/head-fresh/0.machine",
+        "0"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/force-0-write.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "force-0-read",
+      "command": [
+        "/tmp/ap-performance-corrective-f3c3555-20261003/build/performance_head_test",
+        "read",
+        "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/head-fresh/0.machine"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/force-0-read.log",
+      "log_sha256": "140ab3032cef6444af469c13ee950a479b700215587f929900184b9dde641ba2"
+    },
+    {
+      "label": "force-1-write",
+      "command": [
+        "/tmp/ap-performance-corrective-f3c3555-20261003/build/performance_head_test",
+        "write",
+        "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/head-fresh/1.machine",
+        "1"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/force-1-write.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "force-1-read",
+      "command": [
+        "/tmp/ap-performance-corrective-f3c3555-20261003/build/performance_head_test",
+        "read",
+        "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/head-fresh/1.machine"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/force-1-read.log",
+      "log_sha256": "140ab3032cef6444af469c13ee950a479b700215587f929900184b9dde641ba2"
+    },
+    {
+      "label": "force-2-write",
+      "command": [
+        "/tmp/ap-performance-corrective-f3c3555-20261003/build/performance_head_test",
+        "write",
+        "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/head-fresh/2.machine",
+        "2"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/force-2-write.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "force-2-read",
+      "command": [
+        "/tmp/ap-performance-corrective-f3c3555-20261003/build/performance_head_test",
+        "read",
+        "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/head-fresh/2.machine"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/force-2-read.log",
+      "log_sha256": "140ab3032cef6444af469c13ee950a479b700215587f929900184b9dde641ba2"
+    },
+    {
+      "label": "force-3-write",
+      "command": [
+        "/tmp/ap-performance-corrective-f3c3555-20261003/build/performance_head_test",
+        "write",
+        "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/head-fresh/3.machine",
+        "3"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/force-3-write.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "force-3-read",
+      "command": [
+        "/tmp/ap-performance-corrective-f3c3555-20261003/build/performance_head_test",
+        "read",
+        "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/head-fresh/3.machine"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/force-3-read.log",
+      "log_sha256": "140ab3032cef6444af469c13ee950a479b700215587f929900184b9dde641ba2"
+    },
+    {
+      "label": "force-4-write",
+      "command": [
+        "/tmp/ap-performance-corrective-f3c3555-20261003/build/performance_head_test",
+        "write",
+        "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/head-fresh/4.machine",
+        "4"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/force-4-write.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "force-4-read",
+      "command": [
+        "/tmp/ap-performance-corrective-f3c3555-20261003/build/performance_head_test",
+        "read",
+        "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/head-fresh/4.machine"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/force-4-read.log",
+      "log_sha256": "140ab3032cef6444af469c13ee950a479b700215587f929900184b9dde641ba2"
+    },
+    {
+      "label": "force-5-write",
+      "command": [
+        "/tmp/ap-performance-corrective-f3c3555-20261003/build/performance_head_test",
+        "write",
+        "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/head-fresh/5.machine",
+        "5"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/force-5-write.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "force-5-read",
+      "command": [
+        "/tmp/ap-performance-corrective-f3c3555-20261003/build/performance_head_test",
+        "read",
+        "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/head-fresh/5.machine"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/force-5-read.log",
+      "log_sha256": "140ab3032cef6444af469c13ee950a479b700215587f929900184b9dde641ba2"
+    },
+    {
+      "label": "force-6-write",
+      "command": [
+        "/tmp/ap-performance-corrective-f3c3555-20261003/build/performance_head_test",
+        "write",
+        "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/head-fresh/6.machine",
+        "6"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/force-6-write.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "force-6-read",
+      "command": [
+        "/tmp/ap-performance-corrective-f3c3555-20261003/build/performance_head_test",
+        "read",
+        "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/head-fresh/6.machine"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/force-6-read.log",
+      "log_sha256": "140ab3032cef6444af469c13ee950a479b700215587f929900184b9dde641ba2"
+    },
+    {
+      "label": "force-7-write",
+      "command": [
+        "/tmp/ap-performance-corrective-f3c3555-20261003/build/performance_head_test",
+        "write",
+        "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/head-fresh/7.machine",
+        "7"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/force-7-write.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "force-7-read",
+      "command": [
+        "/tmp/ap-performance-corrective-f3c3555-20261003/build/performance_head_test",
+        "read",
+        "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/head-fresh/7.machine"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/force-7-read.log",
+      "log_sha256": "140ab3032cef6444af469c13ee950a479b700215587f929900184b9dde641ba2"
+    },
+    {
+      "label": "force-8-write",
+      "command": [
+        "/tmp/ap-performance-corrective-f3c3555-20261003/build/performance_head_test",
+        "write",
+        "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/head-fresh/8.machine",
+        "8"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/force-8-write.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "force-8-read",
+      "command": [
+        "/tmp/ap-performance-corrective-f3c3555-20261003/build/performance_head_test",
+        "read",
+        "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/head-fresh/8.machine"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/corrective-focused-o2/force-8-read.log",
+      "log_sha256": "140ab3032cef6444af469c13ee950a479b700215587f929900184b9dde641ba2"
+    }
+  ],
+  "passed": true
+}

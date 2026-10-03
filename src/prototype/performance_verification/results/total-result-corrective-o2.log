@@ -1,0 +1,6 @@
+TotalResult case=0: all 9 raw reload cuts passed; projection=3 head=3 captured=2 readback=0
+TotalResult case=1: all 13 raw reload cuts passed; projection=3 head=3 captured=2 readback=0
+TotalResult case=2: all 30 raw reload cuts passed; projection=23 head=23 captured=2 readback=9
+TotalResult case=3: all 7 raw reload cuts passed; projection=4 head=4 captured=0 readback=2
+TotalResult case=4: all 11 raw reload cuts passed; projection=8 head=8 captured=0 readback=4
+TotalResult WHNF: final readback charged, chunks agree at 3014 steps

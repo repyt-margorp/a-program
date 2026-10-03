@@ -1,0 +1,4 @@
+head cleanup behavior=0: scratch released; fallback=0; steps=3
+head cleanup behavior=-1: scratch released; fallback=0; steps=2
+head cleanup behavior=2: scratch released; fallback=1; steps=5
+head cleanup behavior=3: scratch released; fallback=0; steps=2
