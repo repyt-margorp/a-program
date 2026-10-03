@@ -16,6 +16,26 @@ Related: [coordination](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md),
 
 ### Subjective (User)
 
+2026-10-03, English paraphrase of the later human clarification relayed by
+inquiry desk thread `019ebfae-06be-7b71-974a-b97505daed4a`: delete unnecessary
+mechanisms/work for speed, without additional tuning complexity. Memory needed
+for intermediate computation and resume is acceptable; roughly order-of-magnitude
+excess versus other systems is not. Preserve indispensable frontier/checked
+facts while identifying redundant graphs/copies/dead transient state. Account
+new index/owner overhead and demonstrate net memory/time effects with meaning,
+fuel and resume preserved. No unsafe borrowing, discarded necessary progress,
+hard 10x target or overlapping heavy benchmark is approved.
+
+2026-10-03, English paraphrase of the human requirement relayed by inquiry desk
+thread `019ebfae-06be-7b71-974a-b97505daed4a`: improve both speed and peak memory
+through software/design changes. The reported AP tree peak of about 1847 MiB
+versus native checkers' about 97-529 MiB is excessive. Coordinate with performance
+to pin allocations and retained owners and delete redundant graphs/copies.
+Require matched wall/RSS and semantic/fuel/resume gates; record/file sizes do not
+establish RAM gains. Preserve safe lifetimes; do not use unsafe borrowing or add
+wrappers merely for profiling. Continue qualified epochs; no heavy rerun is
+requested by this status inquiry.
+
 2026-10-03, English paraphrase of the latest direct user clarification:
 performance and Job/Evidence reduction/deletion are tightly coupled and need
 concentrated joint verification. C remains important downstream: `.a` plus
@@ -77,6 +97,15 @@ This is a candidate deletion, not user approval of a solution or the full Goal.
 
 ### Assessment
 
+2026-10-03, Merge operational schedule: coordinate the pending MEM1 attribution
+and scaling epoch with performance after current qualification. Existing SE
+owners retain responsibility for the resulting safe deletion; this adds no
+second owner/work list. Account new index/ownership storage, preserve needed
+frontier/checked facts and distinguish cumulative/retained layout from peak RAM.
+The rejected E11 lifetime control remains a required safety boundary. Current
+corrected E11 focused work continues; matched wall/RSS needs a later exclusive
+slot and is unmeasured here.
+
 2026-10-03, Core operational coordination: deliver exact tested canonical
 snapshots for joint captured-head/readback integration on common producer, inputs
 and progress. Core is assembling family/Surface/performance gates. This worker
@@ -101,6 +130,12 @@ Use the existing SE1-SE5 checkboxes and completion criteria. Before each handoff
 report exact frozen files/hashes, applied implementation/test/doc deltas, tests,
 inherited/new failures, next concrete action and cross-owner needs. A small epoch
 is progress, not full Goal completion; finish only against the SE criteria.
+
+Route MEM1 owner/copy/lifetime findings from performance into that same SE list
+after current qualification. Implement the simplest safe deletion and include
+new overhead; matched time/RSS plus semantic/fuel/step-zero/split-resume evidence
+is required before claiming a memory/time gain. The performance Goal owns its
+pending measurement work list; current storage counts alone do not complete it.
 
 Focused verification should cover the removed storage's actual owner/readers,
 pending and checked inputs, errors, warm sharing, zero/split fuel and cancellation.

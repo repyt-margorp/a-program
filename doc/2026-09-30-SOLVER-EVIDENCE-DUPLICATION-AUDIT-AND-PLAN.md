@@ -15,6 +15,26 @@ This is the active prerequisite work list, not another artifact format proposal.
 
 ## Subjective (User)
 
+2026-10-03, English paraphrase of the later human clarification relayed by
+inquiry desk thread `019ebfae-06be-7b71-974a-b97505daed4a`: improve speed by
+deleting unnecessary mechanisms/work instead of adding tuning complexity.
+Necessary intermediate computation for resume may use memory; roughly
+order-of-magnitude excess versus other systems is unacceptable. Distinguish
+needed frontier/checked facts from redundant graphs/copies/dead transient state,
+include new index/ownership overhead and demonstrate net memory/time effects
+with meaning, fuel and resume intact. No unsafe borrowing, discarded required
+progress, hard 10x target or overlapping heavy benchmark is approved.
+
+2026-10-03, English paraphrase of the human requirement relayed by inquiry desk
+thread `019ebfae-06be-7b71-974a-b97505daed4a`: improve both speed and peak memory
+through software/design changes. The reported AP tree peak of about 1847 MiB
+versus native checkers' about 97-529 MiB is excessive. Jointly pin allocation and
+retained-owner causes with performance and delete redundant graphs/copies.
+Require matched wall/RSS plus semantic/fuel/resume gates; record/file-size
+reductions are not RAM measurements. No unsafe borrowing or profiling-only
+wrappers. Qualified epochs continue; this inquiry requests plan/status coverage,
+not heavy reruns.
+
 2026-10-03, English paraphrase of the latest direct user clarification:
 performance and Job/Evidence reduction/deletion are tightly coupled and require
 concentrated joint verification. C remains an important downstream consumer of
@@ -254,6 +274,15 @@ identical TSVs in O2 and ASan/UBSan builds, including repeated samples without
 additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
+
+2026-10-03, Merge operational schedule after the human memory/deletion priority:
+MEM1 follows current qualification, with attribution/scaling/matched costs owned
+by performance and resulting owner/copy/lifetime deletions kept in this SE list.
+Preserve indispensable frontier/checked facts and safe lifetime, include all new
+index/owner overhead, and distinguish peak/live/cumulative allocation from final
+node counts or serialized/layout sizes. Rejected E11 cannot be published merely
+because its other historical gates passed. Matched time/RSS is pending a later
+exclusive slot; this plan/status inquiry starts no heavy rerun or new authority.
 
 2026-10-03, Core combination report: current Main `341261d` plus performance
 passes its focused owners and 70 fresh-process TotalResult cuts. This is isolated

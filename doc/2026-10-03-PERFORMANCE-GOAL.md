@@ -16,6 +16,26 @@ Related: [coordination](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md),
 
 ### Subjective (User)
 
+2026-10-03, English paraphrase of the later human clarification relayed by
+inquiry desk thread `019ebfae-06be-7b71-974a-b97505daed4a`: improve speed by
+deleting unnecessary mechanisms/work, without adding tuning complexity. Required
+intermediate computation for resume may consume memory; roughly order-of-magnitude
+excess versus other systems is unacceptable. Preserve needed progress/checked
+facts, identify redundant graphs/copies/dead transient state, include new
+index/ownership overhead, and demonstrate net memory/time effects with meaning,
+fuel and resume unchanged. No unsafe borrowing, discarded required progress,
+hard 10x target or overlapping heavy benchmark is approved.
+
+2026-10-03, English paraphrase of the human requirement relayed by inquiry desk
+thread `019ebfae-06be-7b71-974a-b97505daed4a`: AP tree peak memory of about
+1847 MiB after optimization versus native checkers' about 97-529 MiB is excessive.
+Improve both speed and memory through software/design changes. Coordinate with
+Job/Evidence to pin allocation and retained-owner causes and delete redundant
+graphs/copies. Require matched wall/RSS plus semantic/fuel/resume gates; storage
+counts alone are not measured RAM gains. Do not use unsafe borrowing or add
+wrappers merely for profiling. Existing qualified epochs continue; this status
+inquiry does not request heavy reruns.
+
 2026-10-03, English paraphrase: Sub2 investigates performance, preferably by
 removing waste and simplifying structures before technical tuning. Compare
 relevant tasks with Bend2, Lean, Agda and Rocq. The user is submitting audit
@@ -168,6 +188,16 @@ Their historical Bend ratios and missing raw bundle are not fresh measurements.
 
 ### Assessment
 
+2026-10-03, Merge operational schedule: MEM1 remains pending after distinct E9
+then E9+E10 qualification. Peak1847 MiB is a historical E6 measurement; final
+Core10636362->298214 is a retained-count result and does not explain that peak.
+Attribute peak/live/cumulative allocation and retained capacity by actual owner,
+including new index/ownership overhead. Use existing census/allocator tools,
+representative size scaling and a simplest safe deletion with Job/Evidence.
+Preserve checked facts and resumable frontiers; no blanket graph deletion follows
+from similar records. Current qualification continues; an exclusive later slot
+owns matched wall/RSS. No new profiling-only wrapper or authority is planned.
+
 Assigned scope: whole-path measurement, comparative research and one measured
 deletion/refactor epoch outside Main's current owners. Do not select a hot path
 from intuition alone, or call a smaller scheduler count a memory/time win.
@@ -296,6 +326,18 @@ are excluded. Notify Core before changing any file in the frozen set; delegated
 task-branch publication remains separate from integration review and Goal completion.
 
 ### Plan
+
+- [ ] **MEM1, pending after current qualification:** pin accepted/current-prototype
+  producers, identical completed workloads and existing tool inputs; attribute
+  peak/live/cumulative bytes and retained capacity among Core, typed, Evidence,
+  Job, query, index and scratch owners. Check representative size scaling and
+  include all new index/ownership overhead; final counts do not explain peak RSS.
+- [ ] Use that attribution with Job/Evidence to select the simplest deletion of
+  redundant work/copies/dead transient state. Preserve necessary checked facts,
+  suspended frontier and safe lifetime; account implementation additions/deletions.
+- [ ] In a later exclusive slot, demonstrate net matched wall/RSS effects with
+  semantic, fuel, step-zero and split-resume controls. Report implemented versus
+  measured versus pending, retaining pre-existing failures without waivers.
 
 - [x] Read AGENTS.md, CODING_STYLE.md, coordination and relevant SE/AP boundaries.
 - [x] Check GitHub for the incoming performance audit/issue/PR. Read and link

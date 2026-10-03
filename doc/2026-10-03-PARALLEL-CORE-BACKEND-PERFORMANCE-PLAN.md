@@ -82,6 +82,27 @@ their owners. Add review items only for material changes; no duplicate task grap
 
 ### Subjective (User)
 
+2026-10-03, English paraphrase of the later human clarification relayed by the
+same inquiry desk: improve speed by deleting unnecessary mechanisms/work rather
+than adding tuning complexity. Memory needed for intermediate computation and
+resume is acceptable; roughly order-of-magnitude excess versus other systems is
+not. Distinguish necessary resumable progress/checked facts from redundant
+graphs, copies and dead transient state. Account for new index/ownership overhead
+and demonstrate net memory/time effects with meaning, fuel and resume preserved.
+Resume history does not excuse excess. This does not approve discarding required
+progress, unsafe borrowing, a hard 10x target or overlapping heavy benchmarks.
+
+2026-10-03, English paraphrase of the human requirement relayed by inquiry desk
+thread `019ebfae-06be-7b71-974a-b97505daed4a`: AP tree peak memory, reported at
+about 1847 MiB after optimization versus about 97-529 MiB for native checkers,
+is excessive. Require software/design improvements for both speed and memory,
+and show that active plans cover both. Performance and Job/Evidence must pin
+allocation and retained-owner causes, remove redundant graphs/copies, and use
+matched wall/RSS measurements plus semantic, fuel and resume gates. File/record
+size reductions do not establish RAM savings; unsafe borrowing and wrappers
+added only for profiling are unacceptable. Continue qualified epochs; this
+status inquiry does not request heavy reruns.
+
 2026-10-03, English translation of the latest human clarification relayed by
 inquiry desk thread `019ebfae-06be-7b71-974a-b97505daed4a`: scheduled waking and
 progress inspection belong to the Merge owner. If workers send no completion
@@ -749,6 +770,25 @@ Start with supported checked exports, not completion of all relevance research.
 
 ### Subjective (User)
 
+2026-10-03, English paraphrase of the later human clarification relayed by
+inquiry desk thread `019ebfae-06be-7b71-974a-b97505daed4a`: improve speed by
+deleting unnecessary mechanisms/work, without adding tuning complexity. Retaining
+intermediate computation for resume is acceptable; roughly order-of-magnitude
+excess versus other systems is not. Preserve necessary progress/checked facts,
+delete redundant graphs/copies/dead transient state, count any new index/owner
+overhead, and demonstrate net memory/time effects without changing meaning,
+fuel or resume. No unsafe borrowing, discarded required progress, hard 10x target
+or overlapping heavy benchmark is approved.
+
+2026-10-03, English paraphrase of the human requirement relayed by the same
+inquiry desk: improve both speed and peak memory through software/design changes.
+The reported AP tree peak of about 1847 MiB versus native checkers' about
+97-529 MiB is excessive. Pin allocation/retained-owner causes jointly with
+Job/Evidence and delete redundant graphs/copies. Validate matched wall/RSS and
+semantic/fuel/resume behavior; record/file-size reductions alone are not measured
+RAM gains. Do not use unsafe borrowing or add wrappers merely for profiling.
+Existing qualified epochs continue; no heavy rerun is requested by this inquiry.
+
 2026-10-03, English translation of explicit human approval relayed by the inquiry
 desk: promote verified speed improvements from Prototype into accepted `src/`.
 This supersedes the former no-promotion boundary for selected performance work,
@@ -842,6 +882,20 @@ Pure graph,
 evaluator or readback changes can be developed separately after checking shared
 dependencies. Do not silently change fuel granularity to report fewer steps.
 
+2026-10-03, Merge memory scheduling decision following the human clarification:
+MEM1 is explicitly pending after distinct E9/E9+E10 qualification. Its work list
+is in the [performance Goal](2026-10-03-PERFORMANCE-GOAL.md#plan); Job/Evidence
+owns findings in its existing SE list. E6 head peak RSS is about1847 MiB even
+though final interned Core terms fall from10,636,362 to298,214. Those observations
+do not attribute the peak: distinguish peak, live and cumulative bytes and
+retained capacity by Core/typed/Evidence/Job/query/index/scratch owner, including
+all new overhead and representative size scaling. Reuse existing tools and
+choose the simplest safe deletion; preserve required checked facts and suspended
+frontiers. The native comparison includes different helper/proof work, so no
+universal ratio or hard target follows. Correctness-only current epochs continue;
+matched time/RSS waits for a later exclusive slot. Rejected E11 demonstrates why
+owner lifetime must be checked before counting a borrowing change as a saving.
+
 Cross-system comparison must match results and work performed. Measure source
 construction/type checking, proof construction/conversion, evaluation and native
 execution separately. Pin versions, semantics, representation, integer behavior,
@@ -854,6 +908,10 @@ the exact Bend2 implementation before choosing commands or citing claims.
 - [x] Inspect the performance issue #56 and PR #58; delegate detailed revalidation
   to the owning worker and record adopted, rejected and
   deferred recommendations without treating reported problems as current bugs.
+- [ ] Coordinate pending MEM1 after current qualification; performance owns
+  attribution/scaling/matched costs and Job owns the corresponding safe deletion.
+  Record implemented, measured and pending status separately; no new heavy rerun
+  is triggered by the human plan/status inquiry.
 - [ ] Pin the latest committed baseline and its parent with identical workloads,
   including small Core cases, List induction and ordinary-result sort proofs.
 - [ ] Reuse existing census/timing tools; record repeated wall/CPU time, peak
@@ -877,6 +935,23 @@ the exact Bend2 implementation before choosing commands or citing claims.
 ## 5. Job/Evidence Implementation Owner
 
 ### Subjective (User)
+
+2026-10-03, English paraphrase of the later human clarification relayed by the
+same inquiry desk: refactor for speed by deleting unnecessary mechanisms/work.
+Resume may retain necessary intermediate computation, but does not justify
+roughly order-of-magnitude excess memory. Preserve necessary frontier/checked
+facts, distinguish redundant graphs/copies/dead transient state, include new
+index/ownership overhead, and demonstrate net memory/time effects with meaning,
+fuel and resume intact. No unsafe borrowing, discarded required progress, hard
+10x target or overlapping heavy benchmark is approved.
+
+2026-10-03, English paraphrase of the human requirement relayed by inquiry desk
+thread `019ebfae-06be-7b71-974a-b97505daed4a`: both speed and peak memory require
+software/design improvement. Coordinate with performance to pin allocations and
+retained owners and delete redundant graphs/copies. Use matched wall/RSS plus
+semantic/fuel/resume gates; storage counts are not RAM measurements. Preserve
+safe lifetimes without unsafe borrowing or profiling-only wrappers. Continue
+qualified epochs; this status inquiry does not request heavy reruns.
 
 2026-10-03, English paraphrase of the latest clarification: examine Job/Evidence
 reduction or deletion together with performance, concentrating verification on
