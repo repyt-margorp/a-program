@@ -1,0 +1,22 @@
+group	gate_or_sample	variant	exit	report	report_sha256
+focused	build	parent	0	/tmp/job-evidence-e18-parent-build.log	26391aa916d18c1837ae0e88effdc60fb94e3704a33af41cd5de21d8943fa64f
+focused	synthesis	parent	0	/tmp/job-evidence-e18-parent-synthesis.log	c500145c76c988830cfbdc1160ad934e4662123bd2d058c1f2e5fd554499ff8f
+focused	build	candidate	0	/tmp/job-evidence-e18-candidate-build.log	de61879b27701e9b1088f9da39cdfae6604230aca34986ec65436428129e16d1
+focused	synthesis	candidate	0	/tmp/job-evidence-e18-candidate-synthesis.log	c500145c76c988830cfbdc1160ad934e4662123bd2d058c1f2e5fd554499ff8f
+focused	build	asan	0	/tmp/job-evidence-e18-asan-build.log	266280aff09a6944c08aca984371986bb272018502a62e419aedd5f56657167e
+focused	synthesis	asan	0	/tmp/job-evidence-e18-asan-synthesis.log	c500145c76c988830cfbdc1160ad934e4662123bd2d058c1f2e5fd554499ff8f
+broad	broad		0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e18/broad.log	f4c5be9d2f663254ad74774992c63874724ebf7e4cc9d2ec5c0226eebd36ec39
+supplemental	baseline-C-eight-scripts		0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e18/c.log	e94ca88274da2c854f2eec00293cb80c25df059503e0fe53e1e4a5da829d9228
+supplemental	strict-public-original-three		1	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e18/partitions.log	ba33fc26e79d53a918be2c630fc62e25aa8753fb58c63485ceb2537c8b6e4448
+census	census-build	E17	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e18/E17-census-build.log	9dbd794c1ce4e9339cba6e22e34372e5be5ff00618779fb6f840940038870dde
+census	list	E17	0		09415aa2a735ec7aa8caec257c1ab9792aabb16925c10ef70e678c865356c28d
+census	effect	E17	0		72e0f8e9f86cd28b121fc72ae8564ba30d81c3843e9311610ec7fa996ffc30b7
+census	captured	E17	0		76b0286b9f1fc79953c6882e34cf95d37fc0e8d4250abf677f7f449c4e4df2c2
+census	quick	E17	0		7e2e77a5910f4c94ef94b85782765126338066d6a74d6cd540dc54c556a9881c
+census	handler	E17	0		6aad30c07814eff6205ff8617869e379e20ee078a41a5b7674e6a6e409ce9da6
+census	census-build	E18	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e18/E18-census-build.log	256614dae0e97fa382788f0c10e0993aa01db4962ea2bc46049f081d2a2aab20
+census	list	E18	0		09415aa2a735ec7aa8caec257c1ab9792aabb16925c10ef70e678c865356c28d
+census	effect	E18	0		72e0f8e9f86cd28b121fc72ae8564ba30d81c3843e9311610ec7fa996ffc30b7
+census	captured	E18	0		76b0286b9f1fc79953c6882e34cf95d37fc0e8d4250abf677f7f449c4e4df2c2
+census	quick	E18	0		7e2e77a5910f4c94ef94b85782765126338066d6a74d6cd540dc54c556a9881c
+census	handler	E18	0		6aad30c07814eff6205ff8617869e379e20ee078a41a5b7674e6a6e409ce9da6

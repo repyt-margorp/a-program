@@ -1,0 +1,125 @@
+--- a/src/synthesis.c
++++ b/src/synthesis.c
+@@ -2951,16 +2951,17 @@
+ 	if (calling) hidden = calling->implicit_count;
+ 	if (hidden > count) return PG_SYNTHESIS_ERROR;
+ 	if (clause && !named && count - hidden != clause->item_count) return PG_SYNTHESIS_REJECTED;
+-	if (count > SIZE_MAX / sizeof(struct source_case_field)) return PG_SYNTHESIS_ERROR;
+-	struct source_case_field *bindings = calloc(count, sizeof(*bindings));
+-	if (count && !bindings) return PG_SYNTHESIS_ERROR;
++	const struct pg_syntax_item **bindings = NULL;
++	const struct source_case_layout *source = NULL;
+ 	enum pg_synthesis_status status = PG_SYNTHESIS_REJECTED;
+ 	if (named) {
++		if (count > SIZE_MAX / sizeof(*bindings)) return PG_SYNTHESIS_ERROR;
++		bindings = calloc(count, sizeof(*bindings));
++		if (count && !bindings) return PG_SYNTHESIS_ERROR;
+ 		const struct pg_synthesis_graph_names *names = metadata_graph_names(source_metadata(synthesis, pg_evidence_subject(formation)));
+ 		if (!names) { status = PG_SYNTHESIS_UNSUPPORTED; goto done; }
+-		const struct source_case_layout *source = &names->cases[ordinal];
++		source = &names->cases[ordinal];
+ 		if (source->count != count) goto done;
+-		for (size_t i = 0; i < count; ++i) bindings[i].graph_value = source->fields[i].graph_value;
+ 		for (size_t i = 0; i < clause->item_count; ++i) {
+ 			const struct pg_syntax_item *item = &clause->items[i];
+ 			if (item->operation != PG_TOKEN_ASSIGN || !item->expression || item->expression->kind != PG_SYNTAX_ATOM) goto done;
+@@ -2984,22 +2985,24 @@
+ 						status = PG_SYNTHESIS_UNSUPPORTED;
+ 				goto done;
+ 			}
+-			if (bindings[selected].name.kind) goto done;
+-			bindings[selected].name = alias;
++			if (bindings[selected]) goto done;
++			bindings[selected] = item;
+ 		}
+ 	} else if (clause) for (size_t i = 0; i < count - hidden; ++i) {
+ 		if (clause->items[i].operation) goto done;
+-		bindings[i + hidden].name = clause->items[i].name;
+ 	}
+ 	const struct pg_source_scope *scope = parent;
+ 	for (size_t i = 0; scope && i < count; ++i) {
+ 		const struct pg_object *binder = pg_evidence_context(extensions[i])->binder;
+ 		const struct pg_object *value = NULL;
+-		if (bindings[i].graph_value) {
+-			if (bindings[i].graph_value > i) goto done;
+-			value = pg_evidence_context(extensions[bindings[i].graph_value - 1])->binder;
+-		}
+-		scope = pg_synthesis_bind(synthesis, scope, bindings[i].name, binder, (struct pg_synthesis_input){.checked = extensions[i]});
++		size_t graph_value = source ? source->fields[i].graph_value : 0;
++		if (graph_value) {
++			if (graph_value > i) goto done;
++			value = pg_evidence_context(extensions[graph_value - 1])->binder;
++		}
++		struct pg_token name = named ? bindings[i] ? bindings[i]->expression->token : (struct pg_token){0}
++			: clause && i >= hidden ? clause->items[i - hidden].name : (struct pg_token){0};
++		scope = pg_synthesis_bind(synthesis, scope, name, binder, (struct pg_synthesis_input){.checked = extensions[i]});
+ 		if (scope && value) {
+ 			struct pg_source_scope associated = *scope;
+ 			associated.association = PG_SOURCE_GRAPH;
+--- a/tests/synthesis.c
++++ b/tests/synthesis.c
+@@ -11841,6 +11841,56 @@
+ 	pg_typing_destroy(&foreign); pg_typing_destroy(&typing); pg_graph_destroy(&graph);
+ }
+ 
++static void named_case_scope_borrowing(void)
++{
++	const char *source = "Nat:=@{zero:*;succ:*->*;};NatList:=@{nil:*;cons:Nat->*->*;};"
++		"length:=\\xs:NatList=>xs @nil=>Nat.zero @cons head tail=>{tailLength:=*tail;Nat.succ tailLength;};"
++		"length_graph:=\\xs:NatList=>xs @(self=>@length self (length self))"
++		" @nil=>(@length).nil @cons head tail=>(@length).cons head tail (length tail) *tail;"
++		"one:=NatList.cons Nat.zero NatList.nil;two:=NatList.cons Nat.zero one;"
++		"consume:=\\input:NatList=>\\output:Nat=>\\graph:@length input output=>output;"
++		"select:=\\input:NatList=>\\output:Nat=>\\graph:@length input output=>graph"
++		" @nil=>Nat.zero @cons {tail;tailLength:=recursive;}=>Nat.succ (consume tail recursive @recursive);"
++		"main:=select two (length two) (length_graph two);expected:=Nat.succ (Nat.succ Nat.zero);";
++	uint64_t steps = 0;
++	const uint64_t chunks[] = {1, 7, 64};
++	for (size_t i = 0; i < sizeof(chunks) / sizeof(*chunks); ++i) {
++		struct pg_graph graph;
++		struct pg_typing typing;
++		struct pg_whnf_work normalization;
++		struct pg_synthesis synthesis;
++		assert(!pg_graph_init(&graph) && !pg_typing_init(&typing, &graph));
++		assert(!pg_whnf_work_init(&normalization, &graph));
++		assert(!pg_synthesis_init(&synthesis, &typing, &normalization, PG_DEFINITION_IMPLICIT_THUNK));
++		struct pg_synthesis_job *root = program(&synthesis, pg_synthesis_root(&synthesis), source);
++		pg_synthesis_advance(&synthesis, 0);
++		assert(!synthesis.steps && !pg_synthesis_result(root));
++		while (synthesis.ready) {
++			assert(synthesis.steps < 100000);
++			pg_synthesis_advance(&synthesis, chunks[i]);
++		}
++		assert(pg_synthesis_status(root) == PG_SYNTHESIS_DONE);
++		if (!steps) steps = synthesis.steps;
++		assert(synthesis.steps == steps);
++		const struct pg_evidence *context = pg_prove_empty_context(&typing);
++		const struct pg_evidence *main = pg_synthesis_result(pg_synthesis_definition(root,
++			(struct pg_token){.text="main", .length=4}));
++		const struct pg_evidence *expected = pg_synthesis_result(pg_synthesis_definition(root,
++			(struct pg_token){.text="expected", .length=8}));
++		/* The selected recursive proof must keep the association to its value,
++		 * and positional branch names must retain their original lexical owner. */
++		same_judgement(complete(&synthesis, pg_synthesis_reduction_request(&synthesis,
++			checked_input(context), checked_input(main), PG_REDUCTION_NF, 1), PG_SYNTHESIS_DONE),
++			complete(&synthesis, pg_synthesis_reduction_request(&synthesis,
++			checked_input(context), checked_input(expected), PG_REDUCTION_NF, 1), PG_SYNTHESIS_DONE));
++		pg_synthesis_destroy(&synthesis);
++		assert(pg_evidence_owned_by(main, &typing) && pg_evidence_subject(main));
++		pg_whnf_work_destroy(&normalization);
++		pg_typing_destroy(&typing);
++		pg_graph_destroy(&graph);
++	}
++}
++
+ static void motive_frontier_lifetime(void)
+ {
+ 	/* Cancel across preparation/scan boundaries; completed receipts outlive
+@@ -11961,6 +12011,7 @@
+ 	assert(pg_graph_init(&graph) == 0);
+ 	assert(pg_typing_init(&typing, &graph) == 0);
+ 	effect_join_frontier(&typing);
++	named_case_scope_borrowing();
+ 	motive_frontier_lifetime();
+ 	owner_work_storage(&typing);
+ 	graph_owner_outputs();
