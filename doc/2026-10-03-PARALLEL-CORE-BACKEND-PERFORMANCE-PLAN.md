@@ -207,6 +207,11 @@ the exact Bend2 implementation before choosing commands or citing claims.
   coordinator read issue bodies and the current-head review; historical supplied
   reports are evidence to revalidate, not accepted patches or fresh speed claims.
 - Workers push only their own branches; Main performs reviewed integration.
+- Worker sandbox failure at shared worktree Git metadata is now observed on
+  `surface` (`index.lock: Read-only file system`). Agent publication decision:
+  Core may commit/push a worker's verified epoch on its task branch after the
+  worker hands it off. This is delegated publication, not a merge/promotion or
+  a workaround granting blanket filesystem access; tests can continue meanwhile.
 - One owner edits each implementation/plan per epoch. Shared findings are
   handed off, not solved independently in both lanes.
 - Full regression and measured performance use one agreed machine slot;

@@ -887,13 +887,35 @@ not authorization to promote code or a claim that general resumption is solved.
 No new binding/domain checkpoint fields or backend features before this gate.
 Implement prototypes, verify, and push reviewable deletion-oriented milestones.
 
-- [ ] **SE1 Identity boundary owners (2026-10-03, parent `eb0aad6`):**
+- [x] **SE1 Identity boundary owners (2026-10-03, parent `eb0aad6`):**
   share formation recovery and actual Face/endpoint traversal on typed owners;
   delete heap-worker APIs and Job result/progress duplication.
-  - [ ] Verify exact inputs, scopes/selectors, warm sharing, zero/split fuel,
+  - [x] Verify exact inputs, scopes/selectors, warm sharing, zero/split fuel,
     cancellation/resume and scratch cleanup at all traversal boundaries.
-  - [ ] Run regression/persistence/checkpoint/C/sanitizer gates; measure actual
+  - [x] Run regression/persistence/checkpoint/C/sanitizer gates; measure actual
     code/state/image/fuel deltas and retain the unwaived public reload failures.
+  2026-10-03, verified trial at `6cf452a` plus canonical boundary patches:
+  endpoint and Face requests now borrow Oracle-local typed queries; heap-worker
+  lifecycle APIs and copied Job results are removed. Focused O2 Identity and
+  Synthesis tests pass, including 451 fresh partitions/cancellation cuts and
+  55 typing-owner cancellation cuts. Warm requests are tested as warm reuse,
+  not reset to manufacture a second cursor. Driving one Face root need not
+  schedule an unrelated input-discovery root; the test explicitly advances
+  that root and retains the same result checks. Implementation +168/-201
+  (net -33), tests +209/-123 (net +86); patches/docs are excluded.
+  [Verification](../src/prototype/solver_inputs/identity_boundary_verification.tsv):
+  full O2 regression/examples/acceptance, semantic persistence, seven checkpoint
+  and five C gates pass. Core/Identity/Synthesis/Source-I/O ASan/UBSan/leaks pass;
+  fresh canonical assembly matches the tested trial. The dirty-source overlay
+  recipe conflicts at the user's added IADT API; the parent's explicitly adapted
+  integration overlay with these boundary changes passes Core/IADT/Synthesis.
+  No user edits are overwritten or staged. All five fuel censuses/completed
+  ordinary images are identical to the formation parent. QuickSort cumulative
+  external arena requests increase by 1,140 calls/547,200 bytes; no overall memory
+  or speed gain claimed. The strict public gate still fails in the same three
+  reload cases, with an identical report; no waiver. Combined tests with the
+  separately pinned Backend epoch `bb69983` also pass. Prototype only;
+  SE1-SE5 remain open, and public frontier resumption is not solved.
 
 - [x] **SE1 Identity formation owner (2026-10-03, parent `2e3f9f7`):**
   consolidate recovery on its Oracle-local typed query; delete copied progress

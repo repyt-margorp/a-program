@@ -1,0 +1,42 @@
+kind	case	parent	candidate	detail
+revision	Main	eb0aad673dd0fb5219eb0d720d45a819cc50edba	6cf452a64d6e67cee496487858a33d41f1d2434c plus local canonical patches	semantic parent unchanged; prototype only
+verification	O2 regression/examples/acceptance	parent scope	pass exit 0	includes both LT providers/orders, universal Sorted/permutation and invalid evidence
+verification	Identity/Synthesis focused	parent scope	pass exit 0	451 cold query partitions/cancellation cuts; 55 typing-owner cancellation cuts
+verification	semantic/checkpoint/C	parent scope	pass exit 0	semantic persistence, seven restricted checkpoint and five C gates
+verification	Core/Identity/Synthesis/SourceIO sanitizers	parent scope	pass exit 0	ASan/UBSan with detect_leaks=1 and halt_on_error=1
+verification	fresh final assembly	canonical patches	identical source/tests	compared every source/test file to verified trial, including Makefile
+verification	current dirty source assembly	unrelated local additions	patch conflict at iadt.h	no user edits overwritten; not a test or semantic failure
+verification	adapted user-addition integration	parent integration overlay	Core/IADT/Synthesis pass exit 0	inherited checked input-reader adapter; current boundary source/tests substituted; no accepted files staged
+verification	C Backend combined	bb69983 pinned snapshot	all six gates pass exit 0	current boundary producer; scalar/enum/data/link/structural/sorting gates; no promotion
+verification	public strict partitions	three reload failures exit 1	three reload failures exit 1	1000+1000, 1600+1600 and terminal 1921+0 remain unwaived; entire report identical
+census	five inputs fuel 0/100/1000/completion	formation epoch	identical full TSV	List, effect application, captured Match, QuickSort and handler
+image	five completed ordinary images	formation epoch	byte-identical	same workload hashes as map_images_inventory.tsv
+image	List zero-fuel inert reload	25369 bytes	25369 bytes	0+0 exact; no Solve progress
+allocation	List external arena calls/bytes	4232/432144	4232/432144	cumulative wrapped requests, not live RAM or runtime
+allocation	effect external arena calls/bytes	27803/2783264	27803/2783264	cumulative wrapped requests, not live RAM or runtime
+allocation	captured external arena calls/bytes	23077/2197344	23077/2197344	cumulative wrapped requests, not live RAM or runtime
+allocation	QuickSort external arena calls/bytes	2887154/229263664	2888294/229318384	+1140 calls/+547200 bytes; includes temporary frame arena requests; no memory/speed gain claimed
+allocation	handler external arena calls/bytes	4582/460112	4582/460112	cumulative wrapped requests, not live RAM or runtime
+applied delta	src/Makefile	2 deleted	2 added	net 0; minimal occurrence-I/O target also links query teardown
+applied delta	src/action.c	132 deleted	99 added	net -33
+applied delta	src/action.h	14 deleted	8 added	net -6
+applied delta	src/synthesis.h	5 deleted	7 added	net +2
+applied delta	src/synthesis_identity.c	49 deleted	30 added	net -19
+applied delta	src/typed_query.c	1 deleted	19 added	net +18
+applied delta	src/typed_query.h	0 deleted	3 added	net +3
+applied delta	src/typing.c	0 deleted	2 added	net +2
+applied delta	tests/identity.c	65 deleted	147 added	net +82
+applied delta	tests/synthesis.c	58 deleted	62 added	net +4
+applied total	implementation excluding Makefile	201 deleted	168 added	net -33; patch context/docs/reports excluded
+applied total	tests	123 deleted	209 added	net +86; patch context/docs/reports excluded
+candidate hash	src/action.c	n/a	bf0018eca9b7d66d52e263adde431dedd4bd5d7542d30f0a4c45cd24bb3b1362	applied source SHA-256
+candidate hash	src/action.h	n/a	5b352b039d634ac38e1a67fbea8cd58d2d9ad8ab68488da1d408f16b5c8cda40	applied source SHA-256
+candidate hash	src/synthesis.h	n/a	6a04dd8a16daf9116d047a00e09407c60f4638145696f7cba52a55a38f7a782a	applied source SHA-256
+candidate hash	src/synthesis_identity.c	n/a	fbad0b5b5d010d2ee49c0904a0811917bb84432ebcafd7b627af6b5cab0d5929	applied source SHA-256
+candidate hash	src/typed_query.c	n/a	ac6ebad9d78b21bf414d8c3f4f30ae96b822163936d651d4e3f276b9d5bd83dd	applied source SHA-256
+candidate hash	src/typed_query.h	n/a	6204390c8bcf06820fa9337be8c694848abb6e179894f951b04c8d10d8df74d9	applied source SHA-256
+candidate hash	src/typing.c	n/a	a32bd36f8e756965d4087cb566be817da012572c12481737f887913ff2dc0f69	applied source SHA-256
+candidate hash	src/Makefile	n/a	063d846eb99f86c1c133abf393b3a2a7cf97f548eb472f8b786365f11ba1a167	applied build recipe SHA-256
+candidate hash	tests/identity.c	n/a	48edb7acaaf76f5d53f0d3861da2c5a86b32d1c147f6e9263f0edc2fbd9267c2	applied test SHA-256
+candidate hash	tests/synthesis.c	n/a	254b17af6121fc4597347f39ea0d545268f5362a4a2746e647ef51925145630f	applied test SHA-256
+evidence	logs/images	formation epoch	/tmp/a-program-identity-boundary-*	2026-10-03 fresh checks; summaries above distinguish failures, integration and gains

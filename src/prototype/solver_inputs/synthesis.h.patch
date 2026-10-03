@@ -527,7 +527,7 @@
  struct pg_data_schema;
  /* Assemble field telescopes and result maps for a parsed @{...} or @\i:T=>
   * declaration in its already opened parameter scope. Constructors are checked
-@@ -637,85 +638,87 @@
+@@ -637,107 +638,106 @@
  	const struct pg_evidence *motive_context, const struct pg_evidence *motive,
  	const struct pg_evidence *generalization, const struct pg_syntax *clause);
  /* Recover the selected nominal declaration and parameter map, never by Core
@@ -648,31 +648,49 @@
 - * callers requiring the original classifier must still post-check it. */
 -struct pg_synthesis_job *pg_synthesis_identity_formation(struct pg_synthesis *synthesis,
 -	struct pg_synthesis_job *producer);
+-/* Share a suspended endpoint derivation on the ordinary work queue. face is
 + * callers requiring the original classifier must still post-check it.
 + * Checked inputs borrow the typing store's query directly; a pending producer
 + * retains input discovery only, not another recovery cursor or result. */
 +struct pg_pending *pg_synthesis_identity_formation(struct pg_synthesis *synthesis,
 +	struct pg_synthesis_input producer);
- /* Share a suspended endpoint derivation on the ordinary work queue. face is
++/* Share a suspended endpoint derivation on its typed query. face is
   * an immutable, graph-lived canonical endpoint selector: its first coordinate
   * is fixed, followed by its ordered axes. Those axes count outer Identity
-@@ -732,12 +735,7 @@
+  * directions, not the full dimension of the input. Its pointer, context and
+  * formation identify the request. One queue step advances one traversal
+  * step, not a bounded-cost primitive proof rule. Unsupported is not rejection.
+- * This is a restricted entry to identity_face, sharing its job and result;
++ * This is a restricted entry to identity_face, sharing its query and result;
+  * it adds no surface syntax or typed center symmetry rule. */
+ struct pg_dimension_map;
+-struct pg_synthesis_job *pg_synthesis_identity_endpoint(struct pg_synthesis *synthesis,
++struct pg_pending *pg_synthesis_identity_endpoint(struct pg_synthesis *synthesis,
+ 	const struct pg_evidence *context, const struct pg_evidence *formation,
+ 	const struct pg_dimension_map *face);
+ /* Select an ordered proper face, suspending between retained-family checks
   * and endpoint traversal steps. The same immutable-input lifetime applies.
++ * Checked inputs return the typed query directly. An unresolved producer
++ * retains only input discovery; it borrows the query once its input completes.
   * Permutations and hidden Identity dimensions remain unsupported. */
- struct pg_synthesis_job *pg_synthesis_identity_face(struct pg_synthesis *synthesis,
+-struct pg_synthesis_job *pg_synthesis_identity_face(struct pg_synthesis *synthesis,
 -	const struct pg_evidence *context, const struct pg_evidence *formation,
 -	const struct pg_dimension_map *face);
 -/* Wait for a formation producer, then share the accepted-evidence face job.
 - * A failed producer propagates its status; a completed non-formation rejects. */
 -struct pg_synthesis_job *pg_synthesis_identity_face_job(struct pg_synthesis *synthesis,
 -	const struct pg_evidence *context, struct pg_synthesis_job *formation,
++struct pg_pending *pg_synthesis_identity_face(struct pg_synthesis *synthesis,
 +	const struct pg_evidence *context, struct pg_synthesis_input formation,
  	const struct pg_dimension_map *face);
  /* Select the source boundary for a permutation: permutation composed with
   * target_face = ordered composed with intrinsic. The returned producer proves
-@@ -748,64 +746,47 @@
+@@ -746,66 +746,49 @@
+  * no typed symmetry is admitted, and intrinsic changes only on success.
+  * Geometry is interned in dimensions, which must use the same graph. */
  struct pg_dimensions;
- struct pg_synthesis_job *pg_synthesis_permutation_source_face(struct pg_synthesis *synthesis,
+-struct pg_synthesis_job *pg_synthesis_permutation_source_face(struct pg_synthesis *synthesis,
++struct pg_pending *pg_synthesis_permutation_source_face(struct pg_synthesis *synthesis,
  	struct pg_dimensions *dimensions, const struct pg_evidence *context,
 -	struct pg_synthesis_job *formation, const struct pg_dimension_map *permutation,
 +	struct pg_synthesis_input formation, const struct pg_dimension_map *permutation,
@@ -755,7 +773,7 @@
  	const struct pg_object *constructor;
  	int allocated;
  	const struct pg_context *prefix, *fields;
-@@ -818,15 +799,15 @@
+@@ -818,15 +801,15 @@
  /* Extend the shared field scope with thunked motives for direct recursive
   * fields. Input producers must ultimately justify the same nominal family. */
  struct pg_synthesis_job *pg_synthesis_induction_scope(struct pg_synthesis *synthesis,
@@ -777,7 +795,7 @@
  /* Pure checked computation -> returned value, using the same job table and
   * scheduler. The immutable context/evidence pair is the key, never bare Core.
   * A neutral total, empty-effect input has a checked symbolic result; an
-@@ -837,7 +818,8 @@
+@@ -837,7 +820,8 @@
  	const struct pg_evidence *context, const struct pg_evidence *computation);
  /* Normalize an accepted term or formation using shared pure WHNF work, then
   * retain typing through directed subject-reduction evidence. The immutable
@@ -787,7 +805,7 @@
  struct pg_synthesis_job *pg_synthesis_normalize(struct pg_synthesis *synthesis,
  	const struct pg_evidence *context, const struct pg_evidence *proof);
  /* Strong pure normalization of the same typed inputs, with a distinct job
-@@ -845,27 +827,17 @@
+@@ -845,27 +829,17 @@
   * This may normalize under THUNK; it is not a runtime execution request. */
  struct pg_synthesis_job *pg_synthesis_nf(struct pg_synthesis *synthesis,
  	const struct pg_evidence *context, const struct pg_evidence *proof);
@@ -822,7 +840,7 @@
  /* Expose checked THUNK code through shared normalization and typed inversion.
   * This does not execute the stored computation or cache an effect result. */
  struct pg_synthesis_job *pg_synthesis_unthunk(struct pg_synthesis *synthesis,
-@@ -874,6 +846,9 @@
+@@ -874,6 +848,9 @@
   * tail. Finite primitive transitions do not starve other ready work. This is
   * not a wall-clock bound on individual kernel rules or allocation. */
  void pg_synthesis_advance(struct pg_synthesis *synthesis, uint64_t budget);

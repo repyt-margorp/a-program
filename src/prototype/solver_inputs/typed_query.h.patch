@@ -17,13 +17,15 @@
  	const struct pg_evidence *result;
  	struct pg_typed_query *dependency;
  	struct pg_typing_wait *waiting;
-@@ -20,10 +19,16 @@
+@@ -20,13 +19,22 @@
  };
  
  struct pg_typed_query_class {
 +	struct pg_pending_class pending;
  	size_t size, input_count;
  	int (*advance)(struct pg_typed_query *);
++	/* Release private scratch only; the typed answer stays on its owner. */
++	void (*destroy)(struct pg_typed_query *);
  };
  
 +extern const struct pg_pending_ops pg_typed_query_pending_ops;
@@ -34,3 +36,7 @@
  struct pg_typed_query *pg_typed_query_request(struct pg_typing *typing,
  	const struct pg_typed_query_class *role, size_t ordinal,
  	const void *const *inputs, int *created);
+ void *pg_typed_query_state(const struct pg_typed_query *query);
++void pg_typed_query_destroy(struct pg_typing *typing);
+ 
+ #endif

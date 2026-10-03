@@ -65,7 +65,7 @@
  		size_t i = 0;
  		while (i < role->input_count && query->inputs[i] == inputs[i]) ++i;
  		if (i == role->input_count) return query;
-@@ -32,18 +82,18 @@
+@@ -32,18 +82,33 @@
  	char *storage = pg_alloc(typing->graph, offset + bytes);
  	if (!storage) return NULL;
  	struct pg_typed_query *query = (void *)(storage + offset);
@@ -85,15 +85,31 @@
  {
 -	return (char *)query - state_extent(query->role);
 +	return (char *)query - state_extent(pg_typed_query_role(query));
++}
++
++static void query_cleanup(struct pg_typed_query *query)
++{
++	const struct pg_typed_query_class *role = pg_typed_query_role(query);
++	if (role->destroy) role->destroy(query);
++}
++
++void pg_typed_query_destroy(struct pg_typing *typing)
++{
++	for (size_t i = 0; i < typing->typed_queries.capacity; ++i)
++		for (struct pg_index_entry *entry = typing->typed_queries.buckets[i]; entry; entry = entry->next) {
++			struct pg_typed_query *query = (void *)entry;
++			if (!query->status) query_cleanup(query);
++		}
  }
  
  int pg_typed_query_advance(struct pg_typed_query *work, uint64_t budget)
-@@ -54,17 +104,17 @@
+@@ -54,17 +119,20 @@
  		++work->steps;
  		if (!current->status && (!current->dependency || current->dependency->status)) {
  			if (current != work) ++current->steps;
 -			current->status = current->role->advance(current);
 +			current->status = pg_typed_query_role(current)->advance(current);
++			if (current->status) query_cleanup(current);
  		}
  		if (current->status) {
 -			pg_typing_wait_clear(work->typing, &current->waiting);
@@ -102,8 +118,10 @@
 +			pg_typing_wait_pop(pg_typed_query_typing(work), &work->waiting);
  		} else if (current->dependency && !current->dependency->status) {
 -			if (pg_typing_wait_push(work->typing, &work->waiting, current->dependency))
-+			if (pg_typing_wait_push(pg_typed_query_typing(work), &work->waiting, current->dependency))
++			if (pg_typing_wait_push(pg_typed_query_typing(work), &work->waiting, current->dependency)) {
  				work->status = -1;
++				query_cleanup(work);
++			}
  		}
  	}
 -	if (work->status) pg_typing_wait_clear(work->typing, &work->waiting);
