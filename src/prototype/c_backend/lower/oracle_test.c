@@ -53,23 +53,33 @@ static const struct pg_occurrence *occurrence(struct pg_typing *t, const struct 
 	return pg_occurrence(t, PG_JUDGEMENT_COMPUTATION, NULL, term, type, NULL, 0, NULL);
 }
 
-static void inert_representations(struct pg_typing *t, FILE *source, size_t count, const struct pg_c_export *exports,
-	size_t enum_count, const struct pg_c_export *enums, size_t data_count, const struct pg_c_export *data, int status)
+static void inert_native(struct pg_typing *t, FILE *source, size_t count, const struct pg_c_export *exports,
+	size_t enum_count, const struct pg_c_export *enums, size_t natural_count, const struct pg_c_export *naturals,
+	size_t data_count, const struct pg_c_export *data, int status)
 {
 	FILE *header = tmpfile();
 	assert(header);
 	size_t terms = t->graph->terms.count, objects = t->graph->objects.count;
 	size_t proofs = t->proofs.count, subjects = t->occurrences.count;
 	const char *error;
+	struct pg_c_native_contract contract = {0};
 	emitting = 1;
-	int result = (data_count || enum_count) ? pg_c_emit_native(source, header, count, exports, SIZE_MAX, enum_count, enums, data_count, data, &error) :
+	int result = (data_count || enum_count || natural_count) ? pg_c_emit_native_profile(source, header, count, exports, SIZE_MAX,
+		enum_count, enums, natural_count, naturals, data_count, data, &contract, &error) :
 		pg_c_emit_scalar(source, header, count, exports, SIZE_MAX, &error);
 	assert(result == status);
 	emitting = 0;
 	assert(terms == t->graph->terms.count && objects == t->graph->objects.count);
 	assert(proofs == t->proofs.count && subjects == t->occurrences.count);
 	if (status) assert(!ftell(source) && !ftell(header));
+	else assert(contract.natural == (natural_count != 0));
 	assert(!fclose(header));
+}
+
+static void inert_representations(struct pg_typing *t, FILE *source, size_t count, const struct pg_c_export *exports,
+	size_t enum_count, const struct pg_c_export *enums, size_t data_count, const struct pg_c_export *data, int status)
+{
+	inert_native(t, source, count, exports, enum_count, enums, 0, NULL, data_count, data, status);
 }
 
 static void inert_emit(struct pg_typing *t, FILE *source, size_t count, const struct pg_c_export *exports,
@@ -272,20 +282,73 @@ static void recursive_data(struct pg_typing *t, const char *path)
 		expected = evaluate(g, app(g, sum, joined));
 		fprintf(source, "\tassert(!ap_export_append(&arena, &nodes[%zu], &nodes[%zu], &out));\n"
 			"\tassert(!ap_export_sum(&arena, out, &scalar) && scalar == INT32_C(%" PRId64 "));\n", i, i, expected);
+		fputs("\t{ int32_t buffer[6]; size_t written;\n", source);
+		fprintf(source, "\tassert(!ap_copy_Chain(&nodes[%zu], buffer, 6, &written) && written == %zu);\n", i, i);
+		for (size_t j = 0; j < i; ++j)
+			fprintf(source, "\tassert(buffer[%zu] == INT32_C(%" PRId32 "));\n", j, numbers[i - j - 1]);
+		fputs("\t}\n", source);
 	}
 	fputs("\tap_arena_Chain_destroy(&arena);\n}\n", source);
 	assert(!fclose(source));
 }
 
+static void natural_data(struct pg_typing *t, const char *path)
+{
+	struct pg_graph *g = t->graph;
+	const struct pg_object *self = pg_binder(g), *tail = pg_binder(g), *x = pg_binder(g);
+	const struct pg_context *prefix = pg_context_bind(t, NULL, self, pg_universe(g, 0), PG_JUDGEMENT_VALUE);
+	const struct pg_context *fields = pg_context_bind(t, prefix, tail, pg_reference(g, self), PG_JUDGEMENT_VALUE);
+	const struct pg_term *images[] = {pg_reference(g, self)};
+	struct pg_data_constructor_input inputs[2] = {{.fields = fields, .images = images}, {.fields = prefix, .images = images}};
+	const struct pg_data_declaration *d = pg_data_declaration(g, prefix, prefix, 2, inputs);
+	assert(d);
+	const struct pg_data_layout *layout = pg_data_declaration_layout(d);
+	const struct pg_term *family = pg_reference(g, pg_data_declaration_family(d));
+	struct pg_c_export naturals[2] = {{"Natural", pg_occurrence(t, PG_JUDGEMENT_VALUE_TYPE, NULL, family, pg_universe(g, 0), NULL, 0, NULL)}};
+	const struct pg_term *int32 = pg_reference(g, pg_host_type("Int32"));
+	const struct pg_term *type = pg_computation_type(g, PG_TOTALITY_TOTAL, pg_effect_row(g, 0, NULL), int32);
+	struct pg_match_clause clauses[2] = {
+		{pg_data_constructor(layout, 0), pg_lambda(g, tail, op(g, &pg_return_operation, pg_reference(g, pg_host_integer(g, pg_host_type("Int32"), 1))))},
+		{pg_data_constructor(layout, 1), op(g, &pg_return_operation, pg_reference(g, pg_host_integer(g, pg_host_type("Int32"), 0)))}
+	};
+	const struct pg_term *body = pg_lambda(g, x, pg_data_match(g, layout, pg_reference(g, x), 2, clauses));
+	struct pg_c_export exports[2] = {{"positive", occurrence(t, body, pg_pi(g, family, x, type))}};
+	type = pg_computation_type(g, PG_TOTALITY_TOTAL, pg_effect_row(g, 0, NULL), family);
+	body = pg_lambda(g, x, op(g, &pg_return_operation, op(g, pg_data_constructor(layout, 0), pg_reference(g, x))));
+	exports[1] = (struct pg_c_export){"bump", occurrence(t, body, pg_pi(g, family, x, type))};
+	FILE *source = fopen(path, "w");
+	assert(source);
+	inert_native(t, source, 2, exports, 0, NULL, 1, naturals, 0, NULL, 0);
+	fputs("#include <assert.h>\nint main(void)\n{\n\tstruct ap_c_arena arena = {0};\n\tint32_t answer;\n\tuint32_t magnitude;\n", source);
+	const struct pg_term *input = pg_reference(g, pg_data_constructor(layout, 1));
+	for (size_t i = 0; i <= 16; ++i) {
+		int64_t expected = evaluate(g, app(g, exports[0].subject->core, input));
+		fprintf(source, "\tassert(!ap_export_positive(&arena, %zu, &answer) && answer == %" PRId64 ");\n"
+			"\tassert(!ap_export_bump(&arena, %zu, &magnitude) && magnitude == %zu);\n", i, expected, i, i + 1);
+		input = op(g, pg_data_constructor(layout, 0), input);
+	}
+	fputs("\tassert(ap_export_bump(&arena, UINT32_MAX, &magnitude) == 5 && magnitude == 17);\n"
+		"\tap_arena_Natural_destroy(&arena);\n}\n", source);
+	assert(!fclose(source));
+	const struct pg_data_declaration *other = pg_data_declaration_at_layout(g, layout, prefix, prefix, 2, inputs);
+	assert(other);
+	naturals[1] = (struct pg_c_export){"Other", pg_occurrence(t, PG_JUDGEMENT_VALUE_TYPE, NULL,
+		pg_reference(g, pg_data_declaration_family(other)), pg_universe(g, 0), NULL, 0, NULL)};
+	source = tmpfile(); assert(source);
+	inert_native(t, source, 2, exports, 0, NULL, 2, naturals, 0, NULL, -1);
+	fclose(source);
+}
+
 int main(int argc, char **argv)
 {
-	assert(argc == 5);
+	assert(argc == 6);
 	struct pg_graph g;
 	struct pg_typing t;
 	assert(!pg_graph_init(&g) && !pg_typing_init(&t, &g));
 	enum_match(&t, argv[2]);
 	data_match(&t, argv[3]);
 	recursive_data(&t, argv[4]);
+	natural_data(&t, argv[5]);
 	shared_calls(&t);
 	struct pg_c_export exports[8];
 	char names[8][16];

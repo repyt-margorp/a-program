@@ -1,7 +1,6 @@
 #define _XOPEN_SOURCE 700
 #include "plan.h"
 #include "../lower/scalar.h"
-#include "../lower/representation.h"
 #include <errno.h>
 #include <inttypes.h>
 #include <stdlib.h>
@@ -73,18 +72,9 @@ static void json_string(FILE *file, const char *value)
 }
 
 static int receipt(const char *path, const struct pg_c_link_plan *plan, const char *script,
-	const char *cc, const char *ar, int trusted, uint64_t spent)
+	const char *cc, const char *ar, int trusted, uint64_t spent, const struct pg_c_native_contract *contract)
 {
-	struct pg_graph storage = {0};
-	struct pg_c_representations representations = {0};
-	int recursive = 0;
-	if (plan->lowering == PG_C_NATIVE_DIRECT) {
-		int status = pg_c_representations_init(&representations, &storage,
-			plan->enum_count, plan->enums, plan->data_count, plan->data);
-		recursive = representations.arena_alias != NULL;
-		pg_c_representations_destroy(&representations); pg_graph_destroy(&storage);
-		if (status) return -1;
-	}
+	int recursive = contract->recursive;
 	FILE *file = fopen(path, "w");
 	if (!file) return -1;
 	static const char *const products[] = {"source", "object", "archive", "executable"};
@@ -101,8 +91,10 @@ static int receipt(const char *path, const struct pg_c_link_plan *plan, const ch
 	else {
 		fputs("[\"fixed-width-arithmetic\",\"pure-sequencing\",\"shared-direct-calls\",\"capture-lifting\"", file);
 		if (plan->enum_count) fputs(",\"nullary-enum32\",\"conditional-match\"", file);
+		if (contract->natural) fputs(",\"checked-nat32\",\"conditional-match\"", file);
 		if (plan->data_count) fputs(",\"fieldful-tagged-values\",\"conditional-match\"", file);
 		if (recursive) fputs(",\"single-tail-nodes\",\"direct-recursive-match\",\"known-ih-thunks\",\"arena-construction\"", file);
+		if (contract->copy_out) fputs(",\"finite-list-copy-out\"", file);
 		fputc(']', file);
 	}
 	fputs(",\n  \"cc\": ", file);
@@ -127,9 +119,26 @@ static int receipt(const char *path, const struct pg_c_link_plan *plan, const ch
 		fputs(", \"alias\": ", file); json_string(file, plan->data[i].alias); fputc('}', file);
 	}
 	fputs("],\n  \"data_contract\": ", file);
-	fputs(recursive ?
-		"{\"ownership\":\"borrowed-inputs-and-caller-arena\",\"fields\":\"int32-int64-selected-enum32-single-self-tail\",\"invalid_input\":2,\"allocation_failure\":3,\"depth_limit\":4,\"failure_output\":\"unchanged\",\"allocation_rollback\":true}" : plan->data_count ?
-		"{\"ownership\":\"value-copy\",\"fields\":\"int32-int64-selected-enum32\",\"invalid_input\":2,\"invalid_input_output\":\"unchanged\"}" : "null", file);
+	if (plan->data_count) {
+		fputs("{\"ownership\":", file);
+		json_string(file, recursive ? "borrowed-inputs-and-caller-arena" : "value-copy");
+		fputs(",\"fields\":\"int32-int64-selected-enum32", file);
+		if (contract->natural) fputs("-selected-nat32", file);
+		if (recursive) fputs("-single-self-tail", file);
+		fputs("\",\"invalid_input\":2,", file);
+		fputs(recursive ? "\"allocation_failure\":3,\"depth_limit\":4,\"failure_output\":\"unchanged\",\"allocation_rollback\":true}" :
+			"\"invalid_input_output\":\"unchanged\"}", file);
+	} else fputs("null", file);
+	fputs(",\n  \"nat32\": [", file);
+	for (size_t i = 0; i < plan->natural_count; ++i) {
+		if (i) fputs(", ", file);
+		fputs("{\"source\": ", file); json_string(file, plan->natural_names[i]);
+		fputs(", \"alias\": ", file); json_string(file, plan->naturals[i].alias); fputc('}', file);
+	}
+	fputs("],\n  \"natural_overflow\": ", file); fputs(contract->natural ? "5" : "null", file);
+	fputs(",\n  \"natural_depth_limit\": ", file); fputs(contract->natural ? "4" : "null", file);
+	fputs(",\n  \"list_copy_out\": ", file);
+	fputs(contract->copy_out ? "{\"capacity_failure\":6,\"failure_buffer\":\"unchanged\",\"failure_length\":\"unchanged\",\"overlap\":\"forbidden\"}" : "null", file);
 	fputs(",\n  \"entry\": ", file);
 	json_string(file, plan->entry == SIZE_MAX ? NULL : plan->exports[plan->entry].alias);
 	fputs("\n}\n", file);
@@ -170,12 +179,14 @@ int pg_c_link_publish(const struct pg_c_link_plan *plan, const char *directory,
 	const char *error;
 	int runtime = plan->lowering == PG_C_STRUCTURAL;
 	int emitted;
+	struct pg_c_native_contract contract = {0};
 	if (runtime) {
 		emitted = pg_c_emit_exports(file, plan->count, plan->exports, plan->entry, &error);
 		if (!emitted) emitted = pg_c_emit_header(header, plan->count, plan->exports);
 	} else if (plan->lowering == PG_C_NATIVE_DIRECT) {
-		emitted = pg_c_emit_native(file, header, plan->count, plan->exports, plan->entry,
-			plan->enum_count, plan->enums, plan->data_count, plan->data, &error);
+		emitted = pg_c_emit_native_profile(file, header, plan->count, plan->exports, plan->entry,
+			plan->enum_count, plan->enums, plan->natural_count, plan->naturals,
+			plan->data_count, plan->data, &contract, &error);
 	} else emitted = pg_c_emit_scalar(file, header, plan->count, plan->exports, plan->entry, &error);
 	int closed = fclose(file), header_closed = fclose(header);
 	if (emitted) { fprintf(stderr, "C link: cannot lower exports: %s\n", error); status = 4; goto done; }
@@ -208,7 +219,7 @@ int pg_c_link_publish(const struct pg_c_link_plan *plan, const char *directory,
 		free(native);
 		if (linked) goto done;
 	}
-	if (receipt(paths[RECEIPT], plan, script, cc, ar, trusted, spent)) goto done;
+	if (receipt(paths[RECEIPT], plan, script, cc, ar, trusted, spent, &contract)) goto done;
 	/* Do not overwrite an existing product. Like the other CLI publications,
 	 * this command requires exclusive ownership of its output path. */
 	if (!lstat(directory, &existing) || errno != ENOENT) goto done;

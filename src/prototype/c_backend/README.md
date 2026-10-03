@@ -416,7 +416,7 @@ AP6.4/AP6.5 work.
 
 The same `data SOURCE ALIAS` directive now also selects closed unindexed data
 with at most one direct Self field per constructor; other fields remain Int32,
-Int64 or selected enum32. This covers List/Nat shapes. A recursive selection uses
+Int64, selected enum32 or selected nat32. This covers List/Nat shapes. A recursive selection uses
 `const struct ap_data_ALIAS *` for native parameters/results and Self fields.
 An explicit terminal constructor is a node; NULL is an invalid source value.
 General trees with two Self fields, recursive function/thunk fields, indexed and
@@ -426,7 +426,8 @@ source recursion rules or producer changes.
 Components with a recursive selection add `struct ap_c_arena *arena` as the
 first argument of every public export. Zero initialize the arena, then release
 its allocations with `ap_arena_ALIAS_destroy(&arena)`, where ALIAS is the first
-recursive selection. Inputs are borrowed immutable finite chains; the caller
+nat32 selection, or the first recursive data selection if there is no nat32.
+Inputs are borrowed immutable finite chains; the caller
 keeps every reachable node readable until all results sharing it are retired.
 Constructor nodes belong to the supplied arena. Identity may return its input;
 append copies the left chain and shares its right input. Destroying the arena
@@ -475,8 +476,57 @@ allocation rollback with actual malloc failure, bounded recursion, malformed
 tails/tags/cycles and retained tree/thunk/callback/effect refusals. The raw Oracle
 gate separately compares recursive sum/append with the existing evaluator while
 forbidding evaluation/substitution during emission and checking graph/store counts.
-This advances the list obligation; numeric-predicate partitioning, slice copyout,
-Acc/QuickSort, dynamic callbacks and demanded Identity remain incomplete.
+This gate covers Bool-field selection; the numeric partition and copy-out gate
+below extends this boundary. Acc/QuickSort, dynamic callbacks and demanded
+Identity remain incomplete.
+
+### Numeric predicates and finite List copy-out
+
+`nat32 SOURCE ALIAS` explicitly maps a selected closed unindexed declaration
+with exactly one nullary constructor and one unary direct-Self constructor to
+`uint32_t`. Constructor positions come from the declaration, including reversed
+order; their names have no meaning to this selection. The relation is
+`Rep(zero, 0)` and `Rep(succ n, k + 1)` when `Rep(n, k)` and `k < UINT32_MAX`.
+Every uint32 magnitude denotes that many source successors. This is a finite
+foreign domain, not a replacement for all source naturals. Status 5 reports
+successor overflow, with unchanged output. A shared arena also holds recursion
+depth/status for nat32-only components; these functions need no node allocation.
+
+The existing source `nat_less_or_equal` lowers through Match, predecessor fields,
+extra first-order recursive arguments and known IH calls. It is not replaced by
+a C comparison primitive. Its result drives stable `lower` (at most pivot) and
+`upper` (greater than pivot) List partitions. The source equations and conditional
+execution are preserved. The depth limit applies to nested List and Nat matches;
+large equal inputs can return 4 even though a source evaluation would terminate.
+Neither the width nor depth bound supplies source evidence.
+
+A selected `data` shape with two constructors, one nullary and one containing
+exactly a single Self tail plus one Int32/Int64/nat32 payload, additionally emits
+`ap_copy_ALIAS(input, buffer, capacity, written)`. Either constructor order and
+either field order are supported. If `Rep(xs, [v0, ..., vn-1])`, a successful call
+writes those payloads in order to `buffer[0..n-1]` and sets `*written = n`.
+The caller supplies writable capacity in elements; inputs, buffer and `written`
+must be separate and remain live for the call. The function validates the entire
+finite input and counts its length before writing. Status 6 reports insufficient
+capacity or length overflow; statuses 1/2 report null outputs or malformed chains.
+All failures preserve the buffer and `written`. An empty List accepts a null
+buffer with zero capacity. Input nodes and unused buffer elements remain intact.
+The helper allocates no storage and does not depend on the recursive depth limit.
+This is copy-out; native slice-input sorting and Acc lowering remain future work.
+
+`check-c-numeric-list` checks 1,089 comparator pairs and 27,305 stable partition
+cases with ordinary C inputs, source/C output agreement, all native products,
+checked/trusted determinism, unchanged `.a`, magnitude/depth/allocation failures,
+malformed/cyclic input, finite capacity and reversed Int64 List fields. The raw
+Oracle also checks 17 Nat observations and Int32 List copy-out while forbidding
+evaluation/substitution during emission and checking source graph/store counts.
+Invalid Nat shapes, unselected nested fields, block-local thunks, dynamic callbacks
+and effects retain explicit refusal gates. Native indexed/dependent data, trees,
+unsupported recursive closure captures, callbacks/effects and higher Identity
+remain unsupported. General cross-module nominal exchange remains open.
+
+Receipts use copied emitter-selected contract flags after lowering. They describe
+Nat overflow and finite copy-out without rebuilding target representations.
 
 `check-c-scalar` tests source/object/archive/executable products, standalone and
 two-module C clients, capture/sequencing, alias sharing, null outputs, ABI/profile
