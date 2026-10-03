@@ -1,0 +1,3 @@
+Exact semantic parent: E7 manifest40d1ccb99d6a3e23c06502054d5b750bb3e383775e2b430fb313993959752714
+External E7 transportc71f66941a6ceffbbf9f5e961d31e12db1f2bfcbc1fe8213495800cba6a017c1 against taskb2d66682be75c21a3c2a8c5138db9d3f0c5e0eb2
+Apply E7 first; E8 transport is incremental against the exact E7 canonical bytes, not directly against b2d6668. E7 task commit is not yet reported.

@@ -1,0 +1,75 @@
+--- a/src/synthesis.c
++++ b/src/synthesis.c
+@@ -202,6 +202,7 @@
+ static void reference_step(struct pg_synthesis *, struct pg_synthesis_job *);
+ static void definitions_step(struct pg_synthesis *, struct pg_synthesis_job *);
+ static void graph_reference_step(struct pg_synthesis *, struct pg_synthesis_job *);
++static struct pg_synthesis_input graph_reference_output(const struct pg_synthesis_job *);
+ static int source_context_wait(struct pg_synthesis *, struct pg_synthesis_job *);
+ static int atomic_rule_step(struct pg_synthesis *, struct pg_synthesis_job *);
+ static void source_unsupported_step(struct pg_synthesis *, struct pg_synthesis_job *);
+@@ -261,7 +262,7 @@
+ 	.project = source_module_projection, .output = pg_synthesis_projected_output}};
+ static const struct pg_synthesis_work_class SOURCE_GRAPH_REFERENCE[1] = {{
+ 	.pending = {&pg_synthesis_pending_ops}, .size = sizeof(struct graph_reference_work),
+-	.source_key = 1, .advance = graph_reference_step}};
++	.source_key = 1, .advance = graph_reference_step, .output = graph_reference_output}};
+ static const struct pg_synthesis_work_class SOURCE_UNSUPPORTED[1] = {{
+ 	.pending = {&pg_synthesis_pending_ops}, .source_key = 1, .advance = source_unsupported_step}};
+ 
+@@ -2308,6 +2309,12 @@
+ 	return pg_synthesis_function_graph(synthesis, function, origin ? origin->match : NULL);
+ }
+ 
++static struct pg_synthesis_input graph_reference_output(const struct pg_synthesis_job *job)
++{
++	const struct graph_reference_work *local = pg_synthesis_work_state(job, SOURCE_GRAPH_REFERENCE);
++	return (struct pg_synthesis_input){.pending = pg_synthesis_pending(local->value_job)};
++}
++
+ static void graph_reference_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+ {
+ 	if (source_context_wait(synthesis, job)) return;
+--- a/tests/synthesis.c
++++ b/tests/synthesis.c
+@@ -11665,6 +11665,40 @@
+ 	assert(!pg_synthesis_function_graph(&synthesis, wrong, NULL));
+ 	assert(!pg_synthesis_function_graph(&synthesis, function, pg_synthesis_request(&other,
+ 		pg_synthesis_root(&other), &(struct pg_syntax){.kind=PG_SYNTAX_ATOM, .token={.kind='@'}})));
++	scope = pg_synthesis_name(&synthesis, scope,
++		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="id", .length=2}, checked_input(function));
++	struct pg_synthesis_job *reference = request(&synthesis, scope, "r:=@id;");
++	assert(reference && !pg_synthesis_result(reference));
++	steps = synthesis.steps;
++	pg_synthesis_advance_pending(&synthesis, pg_synthesis_pending(reference), 0);
++	assert(steps == synthesis.steps && !pg_synthesis_result(reference));
++	while (reference->status == PG_SYNTHESIS_PENDING) {
++		assert(synthesis.steps - steps < 10000 && !pg_synthesis_work_output(reference).pending);
++		pg_synthesis_advance(&synthesis, 1);
++	}
++	borrowed_result(reference, pg_synthesis_result(reference));
++	assert(reference->status == PG_SYNTHESIS_DONE && pg_synthesis_result(reference));
++	const struct pg_object *parameter = pg_binder(&graph), *associated = pg_binder(&graph);
++	const struct pg_evidence *empty = pg_synthesis_scope_context(root);
++	const struct pg_evidence *extension = pg_prove_context_extension(&typing, empty, parameter,
++		pg_prove_universe(&typing, empty, 0));
++	scope = pg_synthesis_scope_bind(&synthesis, root,
++		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="f", .length=1}, parameter,
++		checked_input(extension), NULL, NULL, PG_SOURCE_UNASSOCIATED);
++	complete(&synthesis, request(&synthesis, scope, "r:=@f;"), PG_SYNTHESIS_REJECTED);
++	extension = pg_prove_context_extension(&typing, extension, associated,
++		pg_prove_universe(&typing, extension, 0));
++	scope = pg_synthesis_scope_bind(&synthesis, scope,
++		(struct pg_token){.kind=PG_TOKEN_IDENT, .text="fg", .length=2}, associated,
++		checked_input(extension), parameter, NULL, PG_SOURCE_GRAPH);
++	struct pg_synthesis_job *leaf = request(&synthesis, scope, "r:=@f;");
++	const struct pg_evidence *variable = complete(&synthesis, leaf, PG_SYNTHESIS_DONE);
++	assert(leaf->result == variable && pg_evidence_rule(variable) == PG_VARIABLE);
++	assert(pg_evidence_subject(variable)->core == pg_reference(&graph, associated));
++	assert(!pg_synthesis_work_output(leaf).checked && !pg_synthesis_work_output(leaf).pending);
++	struct pg_synthesis_job *missing = request(&synthesis, scope, "r:=@missing;");
++	complete(&synthesis, missing, PG_SYNTHESIS_UNSUPPORTED);
++	assert(!missing->result && !pg_synthesis_work_output(missing).pending);
+ 	pg_synthesis_destroy(&other);
+ 	pg_synthesis_destroy(&synthesis);
+ 	assert(pg_evidence_owned_by(formation, &typing));
