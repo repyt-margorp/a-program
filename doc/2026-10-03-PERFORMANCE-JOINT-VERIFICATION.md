@@ -1,7 +1,7 @@
 # Coupled Performance and Job Verification
 
 Date: 2026-10-03
-Status: E1/E2/E3/E4/E6/E7/E8/E9/E9+E10 frozen; independent MEM1 attribution underway; Goal active.
+Status: E9/E10 and corrected E11/E12 joint qualification frozen; V3 bounded measured gain reviewed; MEM2 beta environment elision rejected; Goal active.
 Active Goal: [Current Performance Goal](2026-10-03-PERFORMANCE-GOAL-CURRENT.md).
 Historical parent: [Performance Goal](2026-10-03-PERFORMANCE-GOAL.md), frozen at
 task-branch commit `05390513bca302b4a219881994c5bbd69d5b733a`.
@@ -92,6 +92,7 @@ brief; detailed evidence remains in the linked manifests and reports below.
 | #56: same-input retained state and completed artifacts | Diagnostic helper + compact report, exact measured E6 ordinary/head sources and three pinned inputs | Six DONE censuses/source saves and12 full fresh reloads pass;12 zero-step resaves preserve bytes while CLI reports pending3. All three completed pairs byte-identical. Trees retain10,338,148 fewer Core terms; typed/Evidence/Job counts equal | Separate65-record evidence frozen `eb4e7542`; frozen2 bytes freshly match live/task `ac6a8b2420051b06d41c1b7032526c360d1ae690` and remote task branch. Published114/E7/E8 immutable; no Main integration claim | Preserve obsolete metrics-helper build2; semantic-object/complete allocator census and additional time/RSS gains are not claimed | Preserve publication while qualifying distinct E9/E10; no extra broad runs |
 | #56: lifetime and allocation attribution | Read-only E6 graph/evaluator ownership inspection; runtime unchanged | Interned terms remain in Program graph until destruction; evaluator/readback scratch frees separately. Both measured variants retain the same arena/index defaults | Findings recorded separately; no new owner implementation or tuning patch | Per-owner RAM and independent arena/index or head/direct timing factors remain unmeasured | Preserve these limits in future agreed cost scope after exact coupled qualification |
 | #56 / MEM1: delete unnecessary work/state for actual memory/time | V1 inline-state and V2 materialized-callback UAF rejected; V3 recycles only stateless captured-head frames after parent cleanup | Root exact128/1944 verified, fresh callback3 O2/SAN0; current-E12 candidate1816/base2064 and exact36 cost samples/expected steps/raw hashes verified, no censored samples | V3 exact18 taskc861728 pushed/remote exact; prototype Maincc69f52 same bytes; cost111/addendum taske561030/Main895ac67 exact, original109 unchanged; accepted/default selection unchanged | Bounded tree400 median wall5.34021->4.92598s, peakRSS1891928->1001764KiB; LocalSorted RSS+492KiB, smallList startup dominated. Strict3 and full Goal/accepted adoption remain open | Exact cost evidence published; integrate current corrected Job layers separately, then continue owned deletions |
+| #56 / MEM2: preserve captured lexical state | Private beta environment elisionc3c91bd3 rejected on qualified V3/E12 source1280deb36a7 | Root verifies exact30 freeze0573b9be and original results; fresh four O2/SAN builds0, fourteen executions reproduce six semantic failures. Parent local/images pass; candidate retained binding becomes unbound, fuel2->1; no sanitizer diagnostics | Root report5ac6c445; no rejected runtime integration or current-parent defect | Public retained closure/configuration contents and lifetime must be preserved; no physical-layout or full-machine checkpoint claim | Direct-IADT no-trailing-argument field-spine lifetime research continues privately; qualify live/restored/retained nodes before reuse |
 
 Fresh Git inspection verifies HEAD and tracking branch at `0539051`; every
 committed/live file matches the corrective 44-file frozen manifest. Core's exact
@@ -261,6 +262,19 @@ under `/tmp/ap-performance-measurement-e6-preparation-20261003`. The inputs,
 runtime and tests are unchanged; no wall/RSS values were collected.
 
 ### Assessment
+
+2026-10-03 16:47 UTC, Root superseding current review at Main3b09a98:
+V3 source18 and measured cost111 are published prototypes; later current
+qualification/measurement in the issue table supersedes the historical V3
+pending paragraph below. MEM2 constant-body beta elision is rejected separately:
+all30 frozen files0573b9be and source1280deb36a7 verified; fresh Root four
+O2/SAN builds and fourteen executions reproduce six semantic failures. Parent
+local/cross-reader configurations pass; candidate code/data lose a retained
+binding and one charged step. No sanitizer diagnostics or current-parent bug.
+[Root review](../src/prototype/performance_followup/mem2-capture-root-review.json)
+records unchanged V3/E12 and the result/fuel control. Configuration fragments
+do not establish full-machine persistence. Candidate runtime is not integrated;
+independent field-spine lifetime research continues with no publication hold.
 
 2026-10-03 14:36 UTC, Root superseding review: V1 and V2 are rejected.
 New materialized-failure callback control93da2cfa lets the callback destroy its
@@ -635,6 +649,8 @@ epochs remain immutable.
   attribute peak/live/cumulative bytes and scaling using existing tools; jointly
   delete unnecessary work/state with Job, then demonstrate net actual memory/time
   with unchanged meaning/fuel/step0/split-resume in an exclusive matched run.
+- [x] Review/reproduce rejected MEM2 beta environment elision separately: retain
+  all six semantic failures, parent/current V3 qualification and immutable evidence.
 - [ ] Carry the parent Goal's remaining full-performance criteria here: full
   workload/checker qualification, including BendTT where applicable, and honest
   separate owner/timing attribution. Historical parent checkboxes are superseded;

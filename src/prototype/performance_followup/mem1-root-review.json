@@ -125,6 +125,13 @@
     "implementation_replacement": false,
     "decision": "Preserve rejected immutable epochs; runnable accepted/default producer remains separate from MEM1."
   },
+  "mem2_constant_beta_rejection": {
+    "review": "mem2-capture-root-review.json",
+    "Root_fresh_report_sha256": "5ac6c445fab2714bda4f7ce9f28d71565e9aa9fe4248b5c9dfc1b553ddfa9f49",
+    "status": "REJECTED_SEMANTIC_CAPTURE_FAILURE",
+    "current_v3_E12_unchanged": true,
+    "runtime_integration": false
+  },
   "v3": {
     "status": "PROTOTYPE_PUBLISHED_BOUNDED_MEASURED_GAIN",
     "notice_sha256": "700fcaaaba2e340127afe707d5d3b7da4501f4545b29ad056756eea25d96eed1",

@@ -1,7 +1,7 @@
 # Performance Goal: Current Speed and Memory Work
 
 Date: 2026-10-03
-Status: active; E9+E10 published; MEM1 v1/v2 rejected; captured-head-only v3 prototype published, bounded current-E12 memory/time gain measured and reviewed.
+Status: active; V3 bounded current-E12 memory/time gain reviewed; MEM2 beta environment elision independently rejected; argument-spine lifetime work continues.
 This is the active successor to the frozen
 [Performance Goal at0539051](2026-10-03-PERFORMANCE-GOAL.md). Its published bytes
 and historical handoffs remain immutable. The single current issue-status table
@@ -78,6 +78,25 @@ Original observer, sanitizer, strict partition and setup failures remain
 separate. No E11/E12 runtime is included.
 
 ### Assessment
+
+2026-10-03 16:47 UTC, Root MEM2 review at Main3b09a98: reject semantic-body
+beta environment elision (private patchc3c91bd3). All30 frozen files0573b9be
+and original four builds/fourteen executions verified. Root independently
+reconstructs the patch on qualified source1280deb36a7: four O2/ASan/UBSan builds
+succeed, and fourteen executions reproduce all six semantic failures. The
+ordinary caller constant/fuel matches, but a closure retained at cut2 returns
+an unbound binder in1 step instead of its value in2. Both fresh readers pass
+parent-produced two-root configurations and fail candidate-produced ones.
+Public lexical links require preserved contents/lifetime; the original machine
+stays alive in the local control. This tests result/fuel, without physical-layout
+assertions or a full-machine checkpoint claim. No sanitizer diagnostics, test
+adapter or current V3/E12 defect. [Root fresh review](../src/prototype/performance_followup/mem2-capture-root-review.json)
+records the rejection; candidate runtime is not integrated. Original V3 source18
+and cost111 remain unchanged. Performance now investigates direct-IADT field
+spine reuse only with no trailing caller arguments; this is observed prototype
+work, not a qualified deletion. Prove live, restored and retained-node lifetimes
+before reuse and route shared owners through Root/Job. No new cost samples or
+full Goal closure follows.
 
 2026-10-03 14:36 UTC, Root superseding review: V1 and V2 are rejected.
 New materialized-failure callback control93da2cfa lets the callback destroy its

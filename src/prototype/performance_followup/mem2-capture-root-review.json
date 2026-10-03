@@ -1,0 +1,287 @@
+{
+  "review_base_Main": "3b09a98223c74e6fbf6877646624f4de81d6e5da",
+  "notice_sha256": "77cc54ad4da7468e606dfd3e91eeba716ac43750fabf88ea3b712a7e93b00676",
+  "worker_task": "e561030d0dbb03f568033be2bf23ae2d7fbc189b",
+  "parent_source128": "0deb36a72542b9f56eb986314c89bd459802896ca32268857a4b875bfcfe2f48",
+  "freeze_manifest_sha256": "0573b9beb5ddceceecf65b9f8f5222f2854a1af358fdeb704c57aaf37af5292a",
+  "exact30_frozen_files_verified": true,
+  "source_pins_verified": 130,
+  "candidate_patch_sha256": "c3c91bd37fbef2c6c7a90cc31e761e0d79f09f797b4479ff8532092a47738f63",
+  "control_sha256": "e70c00390c0a1dc7993f7dc6fdcdaa61a7e0757a60bca032d9b0e8cc2caf276d",
+  "worker_original4_builds_and14_executions_verified": true,
+  "Root_records": [
+    {
+      "label": "build-parent-o2",
+      "argv": [
+        "cc",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O2",
+        "-I/tmp/ap-performance-mem1-v3-current-e12-20261003/src",
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/src/graph.c",
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/src/support.c",
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/src/dag.c",
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/src/eval.c",
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/src/symmetry.c",
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/src/graph_io.c",
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/src/wire.c",
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/src/eval_io.c",
+        "/tmp/a-program-merge-mem2-capture-review-20261003/control.c",
+        "-o",
+        "/tmp/a-program-merge-mem2-capture-review-20261003/parent-o2"
+      ],
+      "exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sanitizer": false
+    },
+    {
+      "label": "build-candidate-o2",
+      "argv": [
+        "cc",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O2",
+        "-I/tmp/ap-performance-mem1-v3-current-e12-20261003/src",
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/src/graph.c",
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/src/support.c",
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/src/dag.c",
+        "/tmp/a-program-merge-mem2-capture-review-20261003/src/eval.c",
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/src/symmetry.c",
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/src/graph_io.c",
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/src/wire.c",
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/src/eval_io.c",
+        "/tmp/a-program-merge-mem2-capture-review-20261003/control.c",
+        "-o",
+        "/tmp/a-program-merge-mem2-capture-review-20261003/candidate-o2"
+      ],
+      "exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sanitizer": false
+    },
+    {
+      "label": "local-parent-o2",
+      "argv": [
+        "/tmp/a-program-merge-mem2-capture-review-20261003/parent-o2"
+      ],
+      "exit": 0,
+      "log_sha256": "847433f692dee08b4008515c77c130b3a88f756a2c403eb90da8ff910ba2dfab",
+      "sanitizer": false
+    },
+    {
+      "label": "local-candidate-o2",
+      "argv": [
+        "/tmp/a-program-merge-mem2-capture-review-20261003/candidate-o2"
+      ],
+      "exit": 1,
+      "log_sha256": "b37e4429aae6c84f8eed3c3d9a62d3a6942e274e13f8be0f61c1343162f6921a",
+      "sanitizer": false
+    },
+    {
+      "label": "write-parent",
+      "argv": [
+        "/tmp/a-program-merge-mem2-capture-review-20261003/parent-o2",
+        "--write",
+        "/tmp/a-program-merge-mem2-capture-review-20261003/parent.cfg"
+      ],
+      "exit": 0,
+      "log_sha256": "8a6800480544499e8684a56dbd23a4a4f1ddcb5b7551691ae963dd2acc0ac68f",
+      "sanitizer": false
+    },
+    {
+      "label": "write-candidate",
+      "argv": [
+        "/tmp/a-program-merge-mem2-capture-review-20261003/candidate-o2",
+        "--write",
+        "/tmp/a-program-merge-mem2-capture-review-20261003/candidate.cfg"
+      ],
+      "exit": 0,
+      "log_sha256": "8a6800480544499e8684a56dbd23a4a4f1ddcb5b7551691ae963dd2acc0ac68f",
+      "sanitizer": false
+    },
+    {
+      "label": "read-parent-from-parent-o2",
+      "argv": [
+        "/tmp/a-program-merge-mem2-capture-review-20261003/parent-o2",
+        "--read",
+        "/tmp/a-program-merge-mem2-capture-review-20261003/parent.cfg"
+      ],
+      "exit": 0,
+      "log_sha256": "847433f692dee08b4008515c77c130b3a88f756a2c403eb90da8ff910ba2dfab",
+      "sanitizer": false
+    },
+    {
+      "label": "read-parent-from-candidate-o2",
+      "argv": [
+        "/tmp/a-program-merge-mem2-capture-review-20261003/parent-o2",
+        "--read",
+        "/tmp/a-program-merge-mem2-capture-review-20261003/candidate.cfg"
+      ],
+      "exit": 1,
+      "log_sha256": "b37e4429aae6c84f8eed3c3d9a62d3a6942e274e13f8be0f61c1343162f6921a",
+      "sanitizer": false
+    },
+    {
+      "label": "read-candidate-from-parent-o2",
+      "argv": [
+        "/tmp/a-program-merge-mem2-capture-review-20261003/candidate-o2",
+        "--read",
+        "/tmp/a-program-merge-mem2-capture-review-20261003/parent.cfg"
+      ],
+      "exit": 0,
+      "log_sha256": "847433f692dee08b4008515c77c130b3a88f756a2c403eb90da8ff910ba2dfab",
+      "sanitizer": false
+    },
+    {
+      "label": "read-candidate-from-candidate-o2",
+      "argv": [
+        "/tmp/a-program-merge-mem2-capture-review-20261003/candidate-o2",
+        "--read",
+        "/tmp/a-program-merge-mem2-capture-review-20261003/candidate.cfg"
+      ],
+      "exit": 1,
+      "log_sha256": "b37e4429aae6c84f8eed3c3d9a62d3a6942e274e13f8be0f61c1343162f6921a",
+      "sanitizer": false
+    },
+    {
+      "label": "build-parent-san",
+      "argv": [
+        "cc",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O1",
+        "-g",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "-fno-pie",
+        "-no-pie",
+        "-I/tmp/ap-performance-mem1-v3-current-e12-20261003/src",
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/src/graph.c",
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/src/support.c",
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/src/dag.c",
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/src/eval.c",
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/src/symmetry.c",
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/src/graph_io.c",
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/src/wire.c",
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/src/eval_io.c",
+        "/tmp/a-program-merge-mem2-capture-review-20261003/control.c",
+        "-o",
+        "/tmp/a-program-merge-mem2-capture-review-20261003/parent-san"
+      ],
+      "exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sanitizer": false
+    },
+    {
+      "label": "build-candidate-san",
+      "argv": [
+        "cc",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O1",
+        "-g",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "-fno-pie",
+        "-no-pie",
+        "-I/tmp/ap-performance-mem1-v3-current-e12-20261003/src",
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/src/graph.c",
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/src/support.c",
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/src/dag.c",
+        "/tmp/a-program-merge-mem2-capture-review-20261003/src/eval.c",
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/src/symmetry.c",
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/src/graph_io.c",
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/src/wire.c",
+        "/tmp/ap-performance-mem1-v3-current-e12-20261003/src/eval_io.c",
+        "/tmp/a-program-merge-mem2-capture-review-20261003/control.c",
+        "-o",
+        "/tmp/a-program-merge-mem2-capture-review-20261003/candidate-san"
+      ],
+      "exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sanitizer": false
+    },
+    {
+      "label": "local-parent-san",
+      "argv": [
+        "/tmp/a-program-merge-mem2-capture-review-20261003/parent-san"
+      ],
+      "exit": 0,
+      "log_sha256": "847433f692dee08b4008515c77c130b3a88f756a2c403eb90da8ff910ba2dfab",
+      "sanitizer": true
+    },
+    {
+      "label": "local-candidate-san",
+      "argv": [
+        "/tmp/a-program-merge-mem2-capture-review-20261003/candidate-san"
+      ],
+      "exit": 1,
+      "log_sha256": "b37e4429aae6c84f8eed3c3d9a62d3a6942e274e13f8be0f61c1343162f6921a",
+      "sanitizer": true
+    },
+    {
+      "label": "read-parent-from-parent-san",
+      "argv": [
+        "/tmp/a-program-merge-mem2-capture-review-20261003/parent-san",
+        "--read",
+        "/tmp/a-program-merge-mem2-capture-review-20261003/parent.cfg"
+      ],
+      "exit": 0,
+      "log_sha256": "847433f692dee08b4008515c77c130b3a88f756a2c403eb90da8ff910ba2dfab",
+      "sanitizer": true
+    },
+    {
+      "label": "read-parent-from-candidate-san",
+      "argv": [
+        "/tmp/a-program-merge-mem2-capture-review-20261003/parent-san",
+        "--read",
+        "/tmp/a-program-merge-mem2-capture-review-20261003/candidate.cfg"
+      ],
+      "exit": 1,
+      "log_sha256": "b37e4429aae6c84f8eed3c3d9a62d3a6942e274e13f8be0f61c1343162f6921a",
+      "sanitizer": true
+    },
+    {
+      "label": "read-candidate-from-parent-san",
+      "argv": [
+        "/tmp/a-program-merge-mem2-capture-review-20261003/candidate-san",
+        "--read",
+        "/tmp/a-program-merge-mem2-capture-review-20261003/parent.cfg"
+      ],
+      "exit": 0,
+      "log_sha256": "847433f692dee08b4008515c77c130b3a88f756a2c403eb90da8ff910ba2dfab",
+      "sanitizer": true
+    },
+    {
+      "label": "read-candidate-from-candidate-san",
+      "argv": [
+        "/tmp/a-program-merge-mem2-capture-review-20261003/candidate-san",
+        "--read",
+        "/tmp/a-program-merge-mem2-capture-review-20261003/candidate.cfg"
+      ],
+      "exit": 1,
+      "log_sha256": "b37e4429aae6c84f8eed3c3d9a62d3a6942e274e13f8be0f61c1343162f6921a",
+      "sanitizer": true
+    }
+  ],
+  "Root_semantic_failures_preserved": 6,
+  "Root_images_exact_worker_images": true,
+  "parent_local_and_all_parent_image_readers_exit0": true,
+  "candidate_local_and_all_candidate_image_readers_exit1": true,
+  "sanitizer_diagnostics": false,
+  "decision": "REJECT_MEM2_CONSTANT_BETA_ENVIRONMENT_ELISION",
+  "reason": "Ordinary caller constant/fuel matches; retained owner closure loses bound value and one charged step. Both fresh readers confirm this in candidate-produced configuration fragments.",
+  "full_machine_checkpoint_claim": false,
+  "current_v3_E12_bug": false,
+  "accepted_or_canonical_runtime_mutation": false,
+  "cost_samples": 0,
+  "protected9_unchanged": true,
+  "next_owned_scope": "Performance evaluator/IADT argument-spine deletion research; establish external/restored/retained node lifetimes; shared owner findings route through Root/Job."
+}
