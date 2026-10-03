@@ -184,7 +184,8 @@ void pg_c_representations_destroy(struct pg_c_representations *table)
 
 void pg_c_representation_type(FILE *out, const struct pg_c_representation *type)
 {
-	if (type->callback) fprintf(out, "struct ap_c_callback_i%zu", type->width);
+	if (type->callback == 2) fprintf(out, "struct ap_c_callback2_i%zu", type->width);
+	else if (type->callback) fprintf(out, "struct ap_c_callback_i%zu", type->width);
 	else if (type->natural) fputs("uint32_t", out);
 	else if (type->layout) fprintf(out, "%sstruct ap_%s_%s%s", type->recursive ? "const " : "",
 		type->constructors ? "data" : "enum", type->alias, type->recursive ? " *" : "");

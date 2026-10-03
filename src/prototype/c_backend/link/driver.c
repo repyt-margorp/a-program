@@ -116,6 +116,7 @@ static int receipt(const char *path, const struct pg_c_link_plan *plan, const ch
 	else {
 		fputs("[\"fixed-width-arithmetic\",\"pure-sequencing\",\"shared-direct-calls\",\"capture-lifting\"", file);
 		if (plan->lowering == PG_C_CALLBACK_DIRECT) fputs(",\"borrowed-unary-scalar-callbacks\"", file);
+		if (plan->lowering == PG_C_CALLBACK2_DIRECT) fputs(",\"borrowed-unary-binary-scalar-callbacks\"", file);
 		if (plan->enum_count) fputs(",\"nullary-enum32\",\"conditional-match\"", file);
 		if (contract->natural) fputs(",\"checked-nat32\",\"conditional-match\"", file);
 		if (plan->data_count) fputs(",\"fieldful-tagged-values\",\"conditional-match\"", file);
@@ -126,6 +127,10 @@ static int receipt(const char *path, const struct pg_c_link_plan *plan, const ch
 	}
 	if (plan->lowering == PG_C_CALLBACK_DIRECT)
 		fputs(",\n  \"callback_contract\":{\"shape\":\"same-width-unary-int32-int64\",\"source\":\"pure-total\","
+			"\"ownership\":\"borrowed-code-and-context\",\"foreign_precondition\":\"implements-source-function\","
+			"\"null_code\":2,\"failure_output\":\"unchanged\",\"returns_closures\":false}", file);
+	if (plan->lowering == PG_C_CALLBACK2_DIRECT)
+		fputs(",\n  \"callback_contract\":{\"shape\":\"same-width-unary-binary-int32-int64\",\"source\":\"pure-total\","
 			"\"ownership\":\"borrowed-code-and-context\",\"foreign_precondition\":\"implements-source-function\","
 			"\"null_code\":2,\"failure_output\":\"unchanged\",\"returns_closures\":false}", file);
 	fputs(",\n  \"cc\": ", file);
@@ -226,6 +231,8 @@ int pg_c_link_publish(const struct pg_c_link_plan *plan, const char *directory,
 			plan->data_count, plan->data, &contract, &error);
 	} else if (plan->lowering == PG_C_CALLBACK_DIRECT)
 		emitted = pg_c_emit_callbacks(file, header, plan->count, plan->exports, plan->entry, &error);
+	else if (plan->lowering == PG_C_CALLBACK2_DIRECT)
+		emitted = pg_c_emit_callbacks2(file, header, plan->count, plan->exports, plan->entry, &error);
 	else emitted = pg_c_emit_scalar(file, header, plan->count, plan->exports, plan->entry, &error);
 	/* Save stream errors before closing handles; they are I/O failures even
 	 * when the emitter also returns its unsupported-lowering sentinel. */

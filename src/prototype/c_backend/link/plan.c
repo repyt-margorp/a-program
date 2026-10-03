@@ -11,13 +11,13 @@ struct export_row {
 
 const char *pg_c_lowering_name(enum pg_c_lowering lowering)
 {
-	static const char *const names[] = {"structural_v1", "scalar_direct_v1", "native_direct_v1", "callback_direct_v1"};
+	static const char *const names[] = {"structural_v1", "scalar_direct_v1", "native_direct_v1", "callback_direct_v1", "callback2_direct_v1"};
 	return names[lowering];
 }
 
 const char *pg_c_abi_name(enum pg_c_lowering lowering)
 {
-	static const char *const names[] = {"isolated_v1", "c_scalar_v1", "c_native_v1", "c_callback_v1"};
+	static const char *const names[] = {"isolated_v1", "c_scalar_v1", "c_native_v1", "c_callback_v1", "c_callback2_v1"};
 	return names[lowering];
 }
 
@@ -129,6 +129,7 @@ int pg_c_link_read(struct pg_c_link_plan *plan, const char *path, size_t *line, 
 			if (!strcmp(args[1], "scalar_direct_v1")) plan->lowering = PG_C_SCALAR_DIRECT;
 			else if (!strcmp(args[1], "native_direct_v1")) plan->lowering = PG_C_NATIVE_DIRECT;
 			else if (!strcmp(args[1], "callback_direct_v1")) plan->lowering = PG_C_CALLBACK_DIRECT;
+			else if (!strcmp(args[1], "callback2_direct_v1")) plan->lowering = PG_C_CALLBACK2_DIRECT;
 			else if (!strcmp(args[1], "structural_v1")) plan->lowering = PG_C_STRUCTURAL;
 			else goto done;
 			lowering = 1;

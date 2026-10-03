@@ -14,6 +14,11 @@ int pg_c_emit_scalar(FILE *source, FILE *header, size_t count,
 int pg_c_emit_callbacks(FILE *source, FILE *header, size_t count,
 	const struct pg_c_export *exports, size_t entry, const char **error);
 
+/* Separate bounded ABI: unary/binary same-width pure-total scalar callbacks.
+	* Flat binary calls require both value operands; no foreign closure escapes. */
+int pg_c_emit_callbacks2(FILE *source, FILE *header, size_t count,
+	const struct pg_c_export *exports, size_t entry, const char **error);
+
 /* Explicit target-side representations, including single-tail recursive data.
 	* The scalar profile has no selections. */
 int pg_c_emit_native(FILE *source, FILE *header, size_t count,
