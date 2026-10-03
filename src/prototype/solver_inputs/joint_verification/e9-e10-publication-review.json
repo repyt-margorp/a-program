@@ -9,7 +9,8 @@
       "manifest": "2f595265ace0c179770970ba44036a1729681430a534e50043e7fdf8367aa7cf",
       "transport": "99e0c6f2c42773fa23e22561956940484e6a08a427e42e974d4d7898f2458e74",
       "worker_report_hashes_freshly_verified": 26,
-      "Main_integrated": false
+      "Main_integrated": true,
+      "Main_integration": "6a48aaebbe96dbb3ab8aee9c1bc560c366cc974f"
     },
     {
       "epoch": "e10",
@@ -38,5 +39,6 @@
     "e11_e12_excluded": true,
     "summary_sha256": "5f263d5277ca74c415772e8b8a46442c96ebefb1acdce7650cd12f9f9e4b828a",
     "private_output": "/tmp/a-program-merge-e9-assembled-20261003"
-  }
+  },
+  "E9_qualification": "Root1989 frozen/source128/hash and exact policy adaptation reviewed; targeted81 only original strict recipe fails, relevant ASan/O2 controls pass; see e9-relevant-summary.json"
 }

@@ -32,7 +32,7 @@ distinct from Root fresh gates and accepted performance promotion.
 
 | Owner / issue scope | Delivered and verified | Not yet delivered / next boundary |
 | --- | --- | --- |
-| Job/Evidence; SE1-SE5 / AP0, related #51/#47 | E1-E4/E6/E7/E8 prototype Main; exact E7/E8 `3ad0303`/`50cd56b` and joint runtime128 verified; integrations `efc3ff0`/`f6d7cfe` | E9 task `bd1ddf3` exact24 and isolated E10 task `6715af2` exact19 pushed, performance qualification running; E11 publication held after Root lifetime counterexample; E12 private/unqualified; strict3 remain |
+| Job/Evidence; SE1-SE5 / AP0, related #51/#47 | E1-E4/E6/E7/E8/E9 prototype Main; E9 `bd1ddf3` exact24, Root1989 frozen/runtime128 pins match, targeted81 only strict recipe fails and relevant O2/SAN controls pass; integration `6a48aae` | Isolated E10 `6715af2` exact19 pushed, composed E9+E10 qualification running; rejected E11 corrected focused only; E12 private/unqualified; strict3 remain |
 | C backend; #44/#49 | C9 task `60c100c` exact38 published/pushed; Root thirteen current-E8 strict-O2 gates pass, prototype Main `48c42eb`; C8 twelve and C7 eleven gates remain separately pinned | Native Acc/QuickSort and broader C/Identity/admissibility criteria remain open; no accepted C promotion |
 | Performance; #56, measurement work #51/#52 | E6 measurement task `44e479b`, Main `99efcf7`, exact114 published; 30 samples/292 pins verified. E7/E8 qualified; accepted13-file candidate O2 386/0 and affected sanitizer groups8/0 | Accepted epoch `7631e5a` verified/pushed; prototype compatibility verified; state-image task `ac6a8b2` exact2 published/pushed and integrated; E9/E10 next; accepted-only timing unmeasured and #52 separate |
 | Surface; #57 | Delivered prototype integrated; session stopped; Merge reviewed polarity, brace/migration, scope and version gates | Accepted language policy/promotion and selector diagnostics remain unresolved; #57 stays open; no active worker |
@@ -257,6 +257,17 @@ Earlier requirements remain: do not duplicate Term/Oracle structures above the
 typed owners; preserve Core/type separation and ordinary Solve semantics.
 
 ### Objective (Code)
+
+2026-10-03 Root terminal E9 review at Main `6a48aae`: all1989 frozen records,
+runtime128 and exact two-literal policy adaptation verified. Targeted81 recipes
+fail only the strict partition target; focused23+8, sanitizer45+5/build38 and
+transport/semantic/history/seven checkpoint controls pass. All590 module cuts
+per build and forged-prefix/source-claim controls are retained. Fresh accepted-
+promotion-compatible canonical assembly reproduces all128 qualified bytes.
+[Review](../src/prototype/solver_inputs/joint_verification/e9-relevant-summary.json)
+keeps historical full acceptance and ordinary1921/performance1915 distinct.
+E9 prototype integrates; E9+E10 remains pending, E11 rejected/correction focused,
+MEM1 remains unimplemented/unmeasured after current qualification.
 
 2026-10-03 Root task review: E9 `bd1ddf3` exact24 and E10 `6715af2` exact19
 are independently pushed/remote verified, each preserving E8 `50cd56b` parent.
