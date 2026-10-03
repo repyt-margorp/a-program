@@ -77,6 +77,7 @@ int pg_c_representations_init(struct pg_c_representations *table, struct pg_grap
 		if (!r->constructors) return -1;
 		for (size_t j = 0; j < n; ++j) {
 			struct pg_c_constructor_representation *c = &r->constructors[j];
+			c->tail = SIZE_MAX;
 			const struct pg_context *fields = pg_data_declaration_fields(d, j);
 			const struct pg_data_layout *owner;
 			size_t position, arity;
@@ -86,15 +87,21 @@ int pg_c_representations_init(struct pg_c_representations *table, struct pg_grap
 			c->fields = pg_alloc(storage, c->count * sizeof(*c->fields));
 			if (!c->fields) return -1;
 			for (size_t k = c->count; k; --k, fields = fields->parent) {
-				/* This epoch admits scalar/enum fields only. A nominal Self,
-				 * dependent field, callback or nested aggregate is unsupported. */
+				/* The declaration prefix ends in its dedicated Self binder.
+					* Only a direct, single recursive field has a node contract. */
 				if (fields->judgement != PG_JUDGEMENT_VALUE || !fields->declared_type ||
 					fields->declared_type->kind != PG_REFERENCE) return -1;
 				const struct pg_c_representation *f = pg_c_representation_find(table, fields->declared_type->as.reference);
-				if (!f || f->constructors) return -1;
+				if (!f && prefix && fields->declared_type->as.reference == prefix->binder &&
+					pg_universe_level(prefix->declared_type, &level)) {
+					if (c->tail != SIZE_MAX) return -1;
+					c->tail = k - 1; r->recursive = 1; f = r;
+				}
+				if (!f || (f->constructors && f != r)) return -1;
 				c->fields[k - 1] = f;
 			}
 		}
+		if (r->recursive && !table->arena_alias) table->arena_alias = r->alias;
 	}
 	return 0;
 }
@@ -106,7 +113,8 @@ void pg_c_representations_destroy(struct pg_c_representations *table)
 
 void pg_c_representation_type(FILE *out, const struct pg_c_representation *type)
 {
-	if (type->layout) fprintf(out, "struct ap_%s_%s", type->constructors ? "data" : "enum", type->alias);
+	if (type->layout) fprintf(out, "%sstruct ap_%s_%s%s", type->recursive ? "const " : "",
+		type->constructors ? "data" : "enum", type->alias, type->recursive ? " *" : "");
 	else fprintf(out, "int%zu_t", type->width);
 }
 
@@ -120,7 +128,7 @@ void pg_c_representation_declarations(FILE *out, const struct pg_c_representatio
 {
 	for (size_t i = 0; i < table->count; ++i) {
 		const struct pg_c_representation *r = table->types[i];
-		pg_c_representation_type(out, r); fputs(" { uint32_t tag;", out);
+		fprintf(out, "struct ap_%s_%s { uint32_t tag;", r->constructors ? "data" : "enum", r->alias);
 		if (r->constructors) {
 			fputs(" union {\n", out);
 			for (size_t j = 0; j < r->count; ++j) {

@@ -1,5 +1,6 @@
 #include "scalar.h"
 #include "representation.h"
+#include "nodes.h"
 #include "classifier.h"
 #include "computation.h"
 #include "dag.h"
@@ -17,7 +18,7 @@ struct binding {
 };
 
 /* Arguments retain their lexical scope when Fold exposes another function.
- * Native parameters have value instead of term; these are target operands. */
+	* Native parameters have value instead of term; these are target operands. */
 struct argument {
 	struct pg_index_entry index;
 	const struct pg_term *term;
@@ -29,11 +30,11 @@ struct argument {
 struct expression {
 	struct pg_index_entry index;
 	struct function *function, *callee;
-	const struct pg_term *term, *head;
+	const struct pg_term *term, *head, *suspended;
 	const struct binding *environment;
 	const struct argument *pending, *arguments, *cursor;
 	size_t count, parameter, capture_count, id;
-	const struct pg_c_representation *type, *match;
+	const struct pg_c_representation *type, *match, *expected;
 	const struct pg_c_constructor_representation *construction;
 	struct expression *container;
 	size_t constructor, field;
@@ -43,6 +44,8 @@ struct expression {
 	uint64_t bits;
 	int computation;
 	char arithmetic;
+	int recursive_template, delayed;
+	struct function *recursion;
 };
 
 struct function {
@@ -53,17 +56,84 @@ struct function {
 	struct pg_index expressions;
 	struct expression **parameters, *body, *first, *last;
 	const struct pg_object **captures;
+	struct expression **static_captures;
 	size_t id, count, capture_count, definitions;
+	const struct pg_c_representation *result;
+	int recursive;
 };
 
 struct module {
 	struct pg_dag order;
-	struct pg_index functions, arguments;
+	struct pg_index functions, arguments, results;
 	struct pg_c_representations representations;
 	struct function *first, *last;
 	size_t count;
 	const char *error;
 };
+
+struct result_entry {
+	struct pg_index_entry index;
+	const struct pg_term *term;
+	const struct pg_c_representation *type;
+};
+
+static const struct pg_c_representation *result_type(const struct module *m, const struct pg_term *term)
+{
+	for (struct pg_index_entry *i = pg_index_candidates(&m->results, (uintptr_t)term); i; i = i->next) {
+		const struct result_entry *r = (const struct result_entry *)i;
+		if (r->term == term) return r->type;
+	}
+	return NULL;
+}
+
+static int subject_child(void *unused, const void *key, size_t slot, const void **out)
+{
+	(void)unused;
+	const struct pg_occurrence *s = key;
+	if (slot < s->operand_count) { *out = s->operands[slot]; return *out ? 1 : 2; }
+	slot -= s->operand_count;
+	if (!slot) { *out = s->type; return *out ? 1 : 2; }
+	if (slot == 1) { *out = s->origin; return *out ? 1 : 2; }
+	slot -= 2;
+	const struct pg_context_map *const *maps = pg_occurrence_maps(s);
+	for (size_t i = 0; i <= s->map_count; ++i) {
+		const struct pg_context_map *map = i ? maps[i - 1] : s->map;
+		if (!map) continue;
+		if (slot < map->count) { *out = map->images[slot]; return *out ? 1 : 2; }
+		slot -= map->count;
+	}
+	return 0;
+}
+
+/* Read existing descriptive result classifiers of admitted induction inputs.
+	* This avoids guessing an inner fold's result from its caller's result. */
+static int induction_results(struct module *m, size_t count, const struct pg_c_export *exports)
+{
+	struct pg_dag subjects;
+	if (pg_dag_init(&subjects, subject_child, NULL)) return -1;
+	int status = -1;
+	for (size_t i = 0; i < count; ++i) if (pg_dag_add(&subjects, exports[i].subject)) goto done;
+	for (const struct pg_dag_node *n = subjects.first; n; n = n->next) {
+		const struct pg_occurrence *s = n->key;
+		const struct pg_term *content;
+		enum pg_totality totality;
+		if (!s->induction || !s->core || !s->classifier ||
+			!pg_pure_computation_type_view(s->classifier, &totality, &content) ||
+			totality != PG_TOTALITY_TOTAL || content->kind != PG_REFERENCE) continue;
+		const struct pg_c_representation *type = pg_c_representation_find(&m->representations, content->as.reference);
+		if (!type) continue;
+		const struct pg_c_representation *old = result_type(m, s->core);
+		if (old) { if (old != type) goto done; continue; }
+		struct result_entry *r = pg_alloc(&m->order.storage, sizeof(*r));
+		if (!r) goto done;
+		*r = (struct result_entry){.term = s->core, .type = type};
+		if (pg_index_insert(&m->results, &r->index, (uintptr_t)s->core)) goto done;
+	}
+	status = 0;
+done:
+	pg_dag_destroy(&subjects);
+	return status;
+}
 
 static uint64_t mix(uint64_t hash, uintptr_t value)
 {
@@ -82,6 +152,30 @@ static const struct pg_term *callable(const struct pg_term *term)
 	const struct pg_term *argument, *body;
 	while ((argument = unary(term, &pg_force_operation)) && (body = unary(argument, &pg_thunk_operation))) term = body;
 	return term;
+}
+
+/* Recognize exactly the existing erased recursive-Match builder. Admission
+	* and totality belong to the source driver, not this target pattern. */
+static const struct pg_term *recursive_template(const struct pg_term *term)
+{
+	if (term->kind != PG_APPLICATION) return NULL;
+	const struct pg_term *unfold = term->as.application.function;
+	if (unfold != term->as.application.argument || unfold->kind != PG_LAMBDA) return NULL;
+	const struct pg_term *body = unfold->as.lambda.body;
+	if (body->kind != PG_APPLICATION) return NULL;
+	const struct pg_term *self = body->as.application.argument, *function = body->as.application.function;
+	if (self->kind != PG_APPLICATION || self->as.application.function->kind != PG_REFERENCE ||
+		self->as.application.argument->kind != PG_REFERENCE ||
+		self->as.application.function->as.reference != unfold->as.lambda.binder ||
+		self->as.application.argument->as.reference != unfold->as.lambda.binder ||
+		function->kind != PG_LAMBDA || function->as.lambda.body->kind != PG_LAMBDA) return NULL;
+	return function;
+}
+
+static struct expression *lookup(const struct binding *environment, const struct pg_object *binder)
+{
+	for (const struct binding *b = environment; b; b = b->parent) if (b->binder == binder) return b->value;
+	return NULL;
 }
 
 static const struct argument *argument(struct module *m, const struct pg_term *term,
@@ -109,8 +203,11 @@ static struct expression *expression(struct function *f, const struct pg_term *t
 	struct expression *e = pg_alloc(&f->module->order.storage, sizeof(*e));
 	if (!e) return NULL;
 	*e = (struct expression){.function = f, .term = term, .head = term,
-		.environment = environment, .pending = pending, .arguments = pending};
+		.environment = environment, .pending = pending, .arguments = pending,
+		.expected = result_type(f->module, term)};
 	while (e->head->kind == PG_APPLICATION) {
+		const struct pg_term *recursive = recursive_template(e->head);
+		if (recursive) { e->head = recursive; e->recursive_template = 1; break; }
 		const struct pg_term *function = callable(e->head);
 		if (function->kind == PG_LAMBDA) { e->head = function; break; }
 		e->arguments = argument(f->module, e->head->as.application.argument, environment, NULL, e->arguments);
@@ -139,6 +236,7 @@ static int child(struct expression *e, size_t slot, const struct pg_term *term,
 	const struct binding *environment, const struct argument *pending, const void **out)
 {
 	e->inputs[slot] = expression(e->function, term, environment, pending);
+	if (e->inputs[slot] && !e->inputs[slot]->expected) e->inputs[slot]->expected = e->expected;
 	*out = e->inputs[slot];
 	return *out ? 1 : -1;
 }
@@ -191,7 +289,7 @@ static struct function *function(struct module *m, size_t count)
 }
 
 /* Capture only free source binders, in stable lexical order. The existing
- * immutable support trie answers membership without rescanning the body. */
+	* immutable support trie answers membership without rescanning the body. */
 static int captures(struct expression *e)
 {
 	size_t capacity = 0;
@@ -205,6 +303,21 @@ static int captures(struct expression *e)
 	for (const struct binding *b = e->environment; b; b = b->parent) {
 		int member = pg_support_contains(e->head, b->binder);
 		if (member < 0) goto done;
+		/* A static IH closure retains its field and recursive target. */
+		if (!member) for (const struct binding *d = e->environment; d; d = d->parent)
+			if (d->value->delayed && pg_support_contains(e->head, d->binder) == 1 &&
+				pg_support_contains(d->value->suspended, b->binder) == 1) member = 1;
+		/* A static recursion closure also retains its native captures. */
+		if (!member) for (const struct binding *r = e->environment; r; r = r->parent) {
+			if (!r->value->recursion) continue;
+			int used = pg_support_contains(e->head, r->binder);
+			for (const struct binding *d = e->environment; !used && d; d = d->parent)
+				if (d->value->delayed && pg_support_contains(e->head, d->binder) == 1 &&
+					pg_support_contains(d->value->suspended, r->binder) == 1) used = 1;
+			if (used != 1) continue;
+			for (size_t j = 0; j < r->value->recursion->capture_count; ++j)
+				if (r->value->recursion->captures[j] == b->binder) member = 1;
+		}
 		if (!member || pg_dag_find(&seen, b->binder)) continue;
 		if (pg_dag_add(&seen, b->binder)) goto done;
 		e->captures[e->capture_count++] = b;
@@ -218,34 +331,47 @@ done:
 static struct function *callee(struct expression *e)
 {
 	struct module *m = e->function->module;
+	for (size_t i = 0; i < e->count; ++i) if (!e->inputs[i]->value->type) return NULL;
 	if (captures(e)) return NULL;
 	uint64_t hash = mix((uintptr_t)e->head, e->count);
 	for (size_t i = 0; i < e->count; ++i) hash = mix(hash, (uintptr_t)e->inputs[i]->value->type);
-	for (size_t i = 0; i < e->capture_count; ++i)
-		hash = mix(mix(hash, (uintptr_t)e->captures[i]->binder), (uintptr_t)e->captures[i]->value->type);
+	size_t native_captures = 0;
+	for (size_t i = 0; i < e->capture_count; ++i) {
+		const struct expression *v = e->captures[i]->value;
+		if (!v->type && !v->recursion && !v->delayed) return NULL;
+		if (v->type) ++native_captures;
+		hash = mix(mix(hash, (uintptr_t)e->captures[i]->binder), (uintptr_t)(v->type ? (const void *)v->type : (const void *)v));
+	}
 	for (struct pg_index_entry *entry = pg_index_candidates(&m->functions, hash); entry; entry = entry->next) {
 		struct function *f = (struct function *)entry;
-		if (f->lambda != e->head || f->capture_count != e->capture_count || f->count != e->count + e->capture_count) continue;
+		if (f->lambda != e->head || f->capture_count != e->capture_count || f->count != e->count + native_captures) continue;
 		size_t i = 0;
 		while (i < e->count && f->parameters[i]->type == e->inputs[i]->value->type) ++i;
 		if (i != e->count) continue;
 		i = 0;
-		while (i < e->capture_count && f->captures[i] == e->captures[i]->binder &&
-			f->parameters[e->count + i]->type == e->captures[i]->value->type) ++i;
+		size_t p = e->count;
+		while (i < e->capture_count && f->captures[i] == e->captures[i]->binder) {
+			if (e->captures[i]->value->type && f->parameters[p++]->type != e->captures[i]->value->type) break;
+			if (!e->captures[i]->value->type && f->static_captures[i] != e->captures[i]->value) break;
+			++i;
+		}
 		if (i == e->capture_count) return f;
 	}
-	if (e->count > SIZE_MAX - e->capture_count) return NULL;
-	struct function *f = function(m, e->count + e->capture_count);
+	if (e->count > SIZE_MAX - native_captures) return NULL;
+	struct function *f = function(m, e->count + native_captures);
 	if (!f) return NULL;
 	f->lambda = e->head; f->capture_count = e->capture_count;
 	f->captures = pg_alloc(&m->order.storage, e->capture_count * sizeof(*f->captures));
-	if (!f->captures) return NULL;
+	f->static_captures = pg_alloc(&m->order.storage, e->capture_count * sizeof(*f->static_captures));
+	if (!f->captures || !f->static_captures) return NULL;
 	const struct binding *environment = NULL;
+	size_t p = e->count;
 	for (size_t i = 0; i < e->capture_count; ++i) {
-		struct expression *p = f->parameters[e->count + i];
-		p->type = e->captures[i]->value->type;
+		struct expression *v = e->captures[i]->value;
+		f->static_captures[i] = v->type ? NULL : v;
+		if (v->type) { v = f->parameters[p++]; v->type = e->captures[i]->value->type; }
 		f->captures[i] = e->captures[i]->binder;
-		environment = bind(f, environment, f->captures[i], p);
+		environment = bind(f, environment, f->captures[i], v);
 		if (!environment) return NULL;
 	}
 	const struct pg_term *body = e->head;
@@ -257,18 +383,77 @@ static struct function *callee(struct expression *e)
 		if (!environment) return NULL;
 		body = body->as.lambda.body; ++consumed;
 	}
+	for (size_t i = 0; i < e->capture_count; ++i) if (e->captures[i]->value->delayed) {
+		struct expression *thunk = pg_alloc(&m->order.storage, sizeof(*thunk));
+		if (!thunk) return NULL;
+		*thunk = *e->captures[i]->value; thunk->value = thunk; thunk->environment = environment;
+		environment = bind(f, environment, e->captures[i]->binder, thunk);
+		if (!environment) return NULL;
+	}
 	const struct argument *pending = NULL;
 	for (size_t i = e->count; i > consumed; --i) {
 		pending = argument(m, NULL, NULL, f->parameters[i - 1], pending);
 		if (!pending) return NULL;
 	}
 	f->body = expression(f, body, environment, pending);
+	if (f->body && !f->body->expected) f->body->expected = e->expected;
 	if (!f->body || pg_index_insert(&m->functions, &f->index, hash)) return NULL;
 	return f;
 }
 
+static struct function *recursive_function(struct expression *e)
+{
+	if (e->count != 1 || !e->expected || captures(e)) return NULL;
+	struct module *m = e->function->module;
+	struct function *f = function(m, 1 + e->capture_count);
+	if (!f) return NULL;
+	f->recursive = 1; f->result = e->expected; f->capture_count = e->capture_count;
+	f->captures = pg_alloc(&m->order.storage, f->capture_count * sizeof(*f->captures));
+	if (!f->captures) return NULL;
+	const struct binding *environment = NULL;
+	for (size_t i = 0; i < f->capture_count; ++i) {
+		const struct binding *b = e->captures[i];
+		if (!b->value->type) return NULL;
+		f->parameters[i + 1]->type = b->value->type; f->captures[i] = b->binder;
+		environment = bind(f, environment, b->binder, f->parameters[i + 1]);
+		if (!environment) return NULL;
+	}
+	struct expression *recursion = pg_alloc(&m->order.storage, sizeof(*recursion));
+	if (!recursion) return NULL;
+	*recursion = (struct expression){.recursion = f}; recursion->value = recursion;
+	environment = bind(f, environment, e->head->as.lambda.binder, recursion);
+	const struct pg_term *lambda = e->head->as.lambda.body;
+	f->parameters[0]->type = e->inputs[0]->value->type;
+	if (!f->parameters[0]->type || !f->parameters[0]->type->recursive) return NULL;
+	environment = bind(f, environment, lambda->as.lambda.binder, f->parameters[0]);
+	if (!environment) return NULL;
+	f->body = expression(f, lambda->as.lambda.body, environment, NULL);
+	if (f->body) f->body->expected = f->result;
+	return f->body ? f : NULL;
+}
+
+/* Known IH thunks are lexical target closures. They are forced only at their
+	* source use, never evaluated eagerly or passed through the public ABI. */
+static int inline_call(struct expression *e, const void **out)
+{
+	const struct pg_term *body = e->head;
+	const struct binding *environment = e->environment;
+	size_t consumed = 0;
+	while (consumed < e->count && body->kind == PG_LAMBDA) {
+		environment = bind(e->function, environment, body->as.lambda.binder, e->inputs[consumed++]->value);
+		if (!environment) return -1;
+		body = body->as.lambda.body;
+	}
+	const struct argument *pending = NULL;
+	for (size_t i = e->count; i > consumed; --i) {
+		pending = argument(e->function->module, NULL, NULL, e->inputs[i - 1]->value, pending);
+		if (!pending) return -1;
+	}
+	return child(e, e->count, body, environment, pending, out);
+}
+
 /* Keep branch computations inside private callees: visiting their graphs must
- * not turn conditional execution into eager evaluation of every branch. */
+	* not turn conditional execution into eager evaluation of every branch. */
 static int match(struct expression *e, const struct pg_c_representation *type,
 	size_t slot, const void **out)
 {
@@ -303,7 +488,7 @@ static int match(struct expression *e, const struct pg_c_representation *type,
 		size_t fields = c ? c->count : 0;
 		if (fields > SIZE_MAX - extra || fields + extra > SIZE_MAX / sizeof(*call->inputs)) return -1;
 		*call = (struct expression){.function = e->function, .head = callable(a->term),
-			.environment = a->environment, .count = fields + extra};
+			.environment = a->environment, .count = fields + extra, .expected = e->expected};
 		call->inputs = pg_alloc(&e->function->module->order.storage, call->count * sizeof(*call->inputs));
 		if (!call->inputs) return -1;
 		for (size_t i = 0; i < fields; ++i) {
@@ -344,8 +529,8 @@ static int constructor(struct expression *e, const struct pg_c_representation *t
 	return 0;
 }
 
-/* Dependencies include private callee bodies, so the same iterative walker
- * orders local scalar definitions and rejects recursive target specializations. */
+/* Dependencies include private callee bodies. Direct calls to an already
+	* recognized recursive target use its represented result without a DAG cycle. */
 static int lower(struct expression *e, size_t slot, const void **out)
 {
 	const struct pg_c_representations *representations = &e->function->module->representations;
@@ -358,9 +543,7 @@ static int lower(struct expression *e, size_t slot, const void **out)
 	if (e->head->kind == PG_REFERENCE && !e->count) {
 		const struct pg_object *object = e->head->as.reference, *type;
 		if (object->kind == PG_BINDER) {
-			for (const struct binding *b = e->environment; b; b = b->parent)
-				if (b->binder == object) return forward(e, b->value, 0);
-			return -1;
+			return forward(e, lookup(e->environment, object), 0);
 		}
 		size_t count;
 		const unsigned char *bytes;
@@ -374,6 +557,33 @@ static int lower(struct expression *e, size_t slot, const void **out)
 	if (!e->count) return -1;
 	const struct pg_object *operation = e->head->kind == PG_REFERENCE ? e->head->as.reference : NULL;
 	const struct argument *a = e->arguments;
+	struct expression *known = operation && operation->kind == PG_BINDER ? lookup(e->environment, operation) : NULL;
+	if (known && known->recursion) {
+		struct function *f = known->recursion;
+		if (e->count != 1) return -1;
+		if (!slot) return operand(e, 0, a, out);
+		if (e->inputs[0]->computation || e->inputs[0]->value->type != f->parameters[0]->type) return -1;
+		e->callee = f; e->type = f->result; e->computation = 1; e->value = e;
+		e->capture_count = f->capture_count;
+		e->captures = pg_alloc(&e->function->module->order.storage, f->capture_count * sizeof(*e->captures));
+		if (!e->captures) return -1;
+		for (size_t i = 0; i < f->capture_count; ++i) {
+			const struct binding *b = e->environment;
+			while (b && b->binder != f->captures[i]) b = b->parent;
+			if (!b || b->value->type != f->parameters[i + 1]->type) return -1;
+			e->captures[i] = b;
+		}
+		return 0;
+	}
+	if (operation == &pg_thunk_operation) {
+		/* Only the direct thunk produced for an admitted single-tail IH. */
+		const struct pg_term *body = e->count == 1 ? a->term : NULL;
+		if (!body || body->kind != PG_APPLICATION || body->as.application.function->kind != PG_REFERENCE) return -1;
+		struct expression *r = lookup(a->environment, body->as.application.function->as.reference);
+		if (!r || !r->recursion) return -1;
+		e->delayed = 1; e->suspended = body; e->value = e;
+		return 0;
+	}
 	if (operation && pg_data_layout_view(operation)) {
 		const struct pg_c_representation *type = pg_c_representation_find(representations, operation);
 		return type ? match(e, type, slot, out) : -1;
@@ -387,8 +597,16 @@ static int lower(struct expression *e, size_t slot, const void **out)
 	}
 	if (operation == &pg_force_operation) {
 		const struct pg_term *body = a->term ? unary(a->term, &pg_thunk_operation) : NULL;
-		if (!body) return -1;
-		if (!slot) return child(e, 0, body, a->environment, a->next, out);
+		struct expression *thunk = a->value;
+		if (!thunk && a->term && a->term->kind == PG_REFERENCE)
+			thunk = lookup(a->environment, a->term->as.reference);
+		if (thunk && thunk->delayed) {
+			body = thunk->suspended;
+			if (!slot) return child(e, 0, body, thunk->environment, a->next, out);
+		} else {
+			if (!body) return -1;
+			if (!slot) return child(e, 0, body, a->environment, a->next, out);
+		}
 		return forward(e, e->inputs[0], e->inputs[0]->computation);
 	}
 	if (operation == &pg_fold_operation) {
@@ -426,12 +644,15 @@ static int lower(struct expression *e, size_t slot, const void **out)
 	}
 	if (slot == e->count) {
 		for (size_t i = 0; i < e->count; ++i) if (e->inputs[i]->computation) return -1;
-		e->callee = callee(e);
+		for (size_t i = 0; i < e->count; ++i) if (e->inputs[i]->value->delayed) return inline_call(e, out);
+		e->callee = e->recursive_template ? recursive_function(e) : callee(e);
 		if (!e->callee) return -1;
 		*out = e->callee->body;
 		return 1;
 	}
+	if (!e->callee) return forward(e, e->inputs[e->count], e->inputs[e->count]->computation);
 	if (!e->callee->body->computation) return -1;
+	if (e->callee->recursive && e->callee->body->value->type != e->callee->result) return -1;
 	e->type = e->callee->body->value->type;
 	e->value = e; e->computation = 1;
 	return 0;
@@ -443,7 +664,7 @@ static int lower_child(void *owner, const void *key, size_t slot, const void **o
 	struct expression *e = (struct expression *)key;
 	m->error = "unsupported native expression, argument or capture representation";
 	int status = lower(e, slot, out);
-	if (status == 0 && e->value == e) {
+	if (status == 0 && e->value == e && !e->delayed) {
 		struct function *f = e->function;
 		if (f->definitions == SIZE_MAX) return -1;
 		e->id = ++f->definitions;
@@ -490,12 +711,14 @@ static struct function *prepare(struct module *m, const struct pg_occurrence *su
 		if (!pending) return NULL;
 	}
 	f->body = expression(f, term, NULL, pending);
+	if (f->body) f->body->expected = pg_c_representation_find(&m->representations, type->as.reference);
 	if (!f->body || pg_dag_add(&m->order, f->body)) return NULL;
 	return f->body->computation == computation && f->body->value->type == pg_c_representation_find(&m->representations, type->as.reference) ? f : NULL;
 }
 
 static void parameters(FILE *out, const struct function *f)
 {
+	if (f->module->representations.arena_alias) fputs("struct ap_c_arena *arena, ", out);
 	for (size_t i = 0; i < f->count; ++i) {
 		pg_c_representation_type(out, f->parameters[i]->type);
 		fprintf(out, " a%zu, ", i + 1);
@@ -508,8 +731,11 @@ static void value(FILE *out, const struct expression *e)
 {
 	e = e->value;
 	if (e->container) {
-		fprintf(out, "(uint%zu_t)(", e->type->width); value(out, e->container);
-		fprintf(out, ".fields.c%zu.f%zu%s)", e->constructor, e->field, e->type->layout ? ".tag" : "");
+		if (!e->type->recursive) fprintf(out, "(uint%zu_t)(", e->type->width);
+		value(out, e->container);
+		fprintf(out, "%sfields.c%zu.f%zu%s", e->container->value->type->recursive ? "->" : ".", e->constructor, e->field,
+			e->type->layout && !e->type->recursive ? ".tag" : "");
+		if (!e->type->recursive) fputc(')', out);
 	} else if (e->parameter) fprintf(out, "a%zu", e->parameter);
 	else fprintf(out, "v%zu", e->id);
 }
@@ -531,9 +757,11 @@ static void public_value(FILE *out, const struct pg_c_representation *type, cons
 static void signature(FILE *out, const struct function *f)
 {
 	fputs("static ", out); pg_c_representation_private_type(out, f->body->value->type); fprintf(out, " c%zu(", f->id);
-	if (!f->count) fputs("void", out);
+	int arena = f->module->representations.arena_alias != NULL;
+	if (arena) fputs("struct ap_c_arena *arena", out);
+	if (!f->count && !arena) fputs("void", out);
 	for (size_t i = 0; i < f->count; ++i) {
-		if (i) fputs(", ", out);
+		if (i || arena) fputs(", ", out);
 		pg_c_representation_private_type(out, f->parameters[i]->type); fprintf(out, " a%zu", i + 1);
 	}
 	fputc(')', out);
@@ -542,34 +770,68 @@ static void signature(FILE *out, const struct function *f)
 static void emit_call(FILE *out, const struct expression *e)
 {
 	fprintf(out, "c%zu(", e->callee->id);
-	for (size_t i = 0; i < e->count; ++i) { if (i) fputs(", ", out); value(out, e->inputs[i]); }
+	int comma = e->function->module->representations.arena_alias != NULL;
+	if (comma) fputs("arena", out);
+	for (size_t i = 0; i < e->count; ++i) { if (comma) fputs(", ", out); value(out, e->inputs[i]); comma = 1; }
 	for (size_t i = 0; i < e->capture_count; ++i) {
-		if (e->count || i) fputs(", ", out);
+		if (!e->captures[i]->value->type) continue;
+		if (comma) fputs(", ", out);
 		value(out, e->captures[i]->value);
+		comma = 1;
 	}
 	fputc(')', out);
+}
+
+static void failure_return(FILE *out, const struct function *f)
+{
+	if (f->recursive) fputs("--arena->depth; ", out);
+	fputs("return ", out);
+	if (f->body->value->type->constructors && !f->body->value->type->recursive) {
+		fputc('(', out); pg_c_representation_private_type(out, f->body->value->type); fputs("){0}", out);
+	} else fputs("0", out);
+	fputs(";", out);
+}
+
+static void allocation_guard(FILE *out, const struct function *f)
+{
+	if (!f->module->representations.arena_alias) return;
+	fputs("\tif (arena->status) { ", out); failure_return(out, f); fputs(" }\n", out);
 }
 
 static void emit_function(FILE *out, const struct function *f)
 {
 	signature(out, f); fputs("\n{\n", out);
+	if (f->module->representations.arena_alias) fputs("\t(void)arena;\n", out);
+	if (f->recursive) {
+		fputs("\tif (arena->depth >= (arena->depth_limit ? arena->depth_limit : 256)) { arena->status = 4; ", out);
+		/* No depth was entered on this path. */
+		if (f->body->value->type->constructors && !f->body->value->type->recursive) {
+			fputs("return (", out); pg_c_representation_private_type(out, f->body->value->type); fputs("){0};", out);
+		} else fputs("return 0;", out);
+		fputs(" }\n\t++arena->depth;\n", out);
+	}
 	for (size_t i = 0; i < f->count; ++i) fprintf(out, "\t(void)a%zu;\n", i + 1);
 	for (const struct expression *e = f->first; e; e = e->next) {
 		size_t id = e->id;
 		if (e->match) {
 			fputc('\t', out); pg_c_representation_private_type(out, e->type);
 			fprintf(out, " v%zu;\n\tswitch (", id); value(out, e->inputs[0]);
-			fputs(e->match->constructors ? ".tag) {\n" : ") {\n", out);
+			fputs(e->match->recursive ? "->tag) {\n" : e->match->constructors ? ".tag) {\n" : ") {\n", out);
 			for (size_t i = 0; i < e->match->count; ++i) {
 				fprintf(out, "\tcase %zu: v%zu = ", i, id); emit_call(out, e->branches[i]); fputs("; break;\n", out);
 			}
 			fprintf(out, "\tdefault: abort();\n\t}\n\t(void)v%zu;\n", id);
+			allocation_guard(out, f);
 			continue;
 		}
 		if (e->type->constructors) {
 			fputc('\t', out); pg_c_representation_private_type(out, e->type); fprintf(out, " v%zu = ", id);
 			if (e->callee) emit_call(out, e);
 			else {
+				if (e->type->recursive) fprintf(out, "ap_allocate(arena, sizeof(struct ap_data_%s));\n\tif (!v%zu) { ", e->type->alias, id);
+				if (e->type->recursive) {
+					failure_return(out, f); fprintf(out, " }\n\t*(struct ap_data_%s *)v%zu = (struct ap_data_%s)", e->type->alias, id, e->type->alias);
+				}
 				fprintf(out, "{.tag = UINT32_C(%" PRIu64 ")", e->bits);
 				for (size_t i = 0; i < e->construction->count; ++i) {
 					fprintf(out, ", .fields.c%" PRIu64 ".f%zu = ", e->bits, i);
@@ -577,7 +839,7 @@ static void emit_function(FILE *out, const struct function *f)
 				}
 				fputc('}', out);
 			}
-			fprintf(out, ";\n\t(void)v%zu;\n", id); continue;
+			fprintf(out, ";\n\t(void)v%zu;\n", id); allocation_guard(out, f); continue;
 		}
 		fprintf(out, "\tuint64_t v%zu = (uint%zu_t)(", id, e->type->width);
 		if (e->callee) emit_call(out, e);
@@ -585,7 +847,9 @@ static void emit_function(FILE *out, const struct function *f)
 		else if (e->arithmetic == '~') { fputs("UINT64_C(0) - ", out); value(out, e->inputs[0]); }
 		else { value(out, e->inputs[0]); fprintf(out, " %c ", e->arithmetic); value(out, e->inputs[1]); }
 		fprintf(out, ");\n\t(void)v%zu;\n", id);
+		allocation_guard(out, f);
 	}
+	if (f->recursive) fputs("\t--arena->depth;\n", out);
 	fputs("\treturn ", out); value(out, f->body); fputs(";\n}\n\n", out);
 }
 
@@ -602,9 +866,11 @@ static int emit(FILE *source, FILE *header, size_t count,
 	if (pg_dag_init(&roots, NULL, NULL)) return -1;
 	struct function **functions = NULL;
 	int status = -1;
-	if (pg_dag_init(&m.order, lower_child, &m) || pg_index_init(&m.functions) || pg_index_init(&m.arguments)) goto done;
-	*error = "representations require unique closed declarations; enum32 is nullary; data fields must be scalars or selected enums";
+	if (pg_dag_init(&m.order, lower_child, &m) || pg_index_init(&m.functions) || pg_index_init(&m.arguments) || pg_index_init(&m.results)) goto done;
+	*error = "representations require unique closed declarations; data fields must be scalars, selected enums or one direct Self tail";
 	if (pg_c_representations_init(&m.representations, &m.order.storage, enum_count, enums, data_count, data)) goto done;
+	*error = "cannot inspect existing induction result classifiers";
+	if (induction_results(&m, count, exports)) goto done;
 	for (size_t i = 0; i < count; ++i) if (pg_dag_add(&roots, exports[i].subject)) goto done;
 	functions = calloc(roots.count, sizeof(*functions));
 	if (!functions) goto done;
@@ -622,10 +888,16 @@ static int emit(FILE *source, FILE *header, size_t count,
 	if (enum_count || data_count) fputs("#include <stdlib.h>\n", source);
 	const char *abi = native ? "NATIVE" : "SCALAR", *name = native ? "native" : "scalar";
 	fputs("#pragma once\n/* ABI 1: 0 success; 1 null output; 2 invalid tag input. Output must be writable. */\n#include <stdint.h>\n", header);
+	if (m.representations.arena_alias)
+		fputs("/* Recursive profile: 1 also null arena; 2 also null tail/cycle; 3 allocation;\n"
+			"\t* 4 depth limit. Failures preserve output and roll back new allocations. */\n", header);
 	fprintf(header, "#ifndef AP_C_%s_ABI\n#define AP_C_%s_ABI 1\n#elif AP_C_%s_ABI != 1\n#error incompatible_A_Program_%s_ABI\n#endif\n", abi, abi, abi, name);
 	pg_c_representation_declarations(source, &m.representations);
 	pg_c_representation_declarations(header, &m.representations);
+	pg_c_nodes_declarations(source, &m.representations);
 	fputs("#ifdef __cplusplus\nextern \"C\" {\n#endif\n", header);
+	pg_c_nodes_declarations(header, &m.representations);
+	pg_c_nodes_implementation(source, &m.representations);
 	for (const struct function *f = m.first; f; f = f->next) { signature(source, f); fputs(";\n", source); }
 	fputc('\n', source);
 	for (const struct function *f = m.first; f; f = f->next) emit_function(source, f);
@@ -634,9 +906,15 @@ static int emit(FILE *source, FILE *header, size_t count,
 		fprintf(header, "int ap_export_%s(", exports[i].alias); parameters(header, f); fputs(");\n", header);
 		fprintf(source, "int ap_export_%s(", exports[i].alias); parameters(source, f);
 		fputs(")\n{\n\tif (!out) return 1;\n", source);
+		if (m.representations.arena_alias) {
+			fputs("\tif (!arena) return 1;\n\tif (arena->depth || arena->depth_limit > 256) return 4;\n\t(void)ap_allocate;\n", source);
+			for (size_t j = 0; j < m.representations.count; ++j) if (m.representations.types[j]->recursive)
+				fprintf(source, "\t(void)ap_validate_%s;\n", m.representations.types[j]->alias);
+		}
 		for (size_t j = 0; j < f->count; ++j) {
 			const struct pg_c_representation *r = f->parameters[j]->type;
-			if (r->constructors) {
+			if (r->recursive) fprintf(source, "\tif (!ap_validate_%s(a%zu)) return 2;\n", r->alias, j + 1);
+			else if (r->constructors) {
 				fprintf(source, "\tswitch (a%zu.tag) {\n", j + 1);
 				for (size_t k = 0; k < r->count; ++k) {
 					fprintf(source, "\tcase %zu:\n", k);
@@ -648,14 +926,19 @@ static int emit(FILE *source, FILE *header, size_t count,
 				fputs("\tdefault: return 2;\n\t}\n", source);
 			} else if (r->layout) fprintf(source, "\tif ((uint64_t)a%zu.tag >= UINT64_C(%zu)) return 2;\n", j + 1, r->count);
 		}
+		if (m.representations.arena_alias)
+			fputs("\tstruct ap_c_allocation *mark = arena->first;\n\tarena->status = 0;\n", source);
 		fputc('\t', source); pg_c_representation_private_type(source, f->body->value->type); fprintf(source, " result = c%zu(", f->id);
+		if (m.representations.arena_alias) fputs("arena", source);
 		for (size_t j = 0; j < f->count; ++j) {
 			const struct pg_c_representation *r = f->parameters[j]->type;
-			if (j) fputs(", ", source);
+			if (j || m.representations.arena_alias) fputs(", ", source);
 			if (!r->constructors) fprintf(source, "(uint%zu_t)", r->width);
 			fprintf(source, "a%zu%s", j + 1, r->layout && !r->constructors ? ".tag" : "");
 		}
 		fputs(");\n", source);
+		if (m.representations.arena_alias)
+			fputs("\tif (arena->status) { ap_release(arena, mark); return arena->status; }\n", source);
 		const struct pg_c_representation *r = f->body->value->type;
 		if (r->constructors) fputs("\t*out = result;\n", source);
 		else if (r->layout) fputs("\tout->tag = (uint32_t)result;\n", source);
@@ -666,14 +949,18 @@ static int emit(FILE *source, FILE *header, size_t count,
 	if (entry != SIZE_MAX) {
 		const struct function *f = functions[pg_dag_find(&roots, exports[entry].subject)->id - 1];
 		fputs("int main(void)\n{\n\t", source); pg_c_representation_type(source, f->body->value->type);
-		fprintf(source, " result;\n\treturn ap_export_%s(&result);\n}\n", exports[entry].alias);
+		fprintf(source, " result;\n");
+		if (m.representations.arena_alias) {
+			fprintf(source, "\tstruct ap_c_arena arena = {0};\n\tint status = ap_export_%s(&arena, &result);\n"
+				"\tap_arena_%s_destroy(&arena);\n\treturn status;\n}\n", exports[entry].alias, m.representations.arena_alias);
+		} else fprintf(source, "\treturn ap_export_%s(&result);\n}\n", exports[entry].alias);
 	}
 	*error = "cannot write native C output";
 	status = ferror(source) || ferror(header) ? -1 : 0;
 done:
 	for (struct function *f = m.first; f; f = f->next) pg_index_destroy(&f->expressions);
 	free(functions);
-	pg_index_destroy(&m.functions); pg_index_destroy(&m.arguments);
+	pg_index_destroy(&m.functions); pg_index_destroy(&m.arguments); pg_index_destroy(&m.results);
 	pg_c_representations_destroy(&m.representations);
 	pg_dag_destroy(&m.order); pg_dag_destroy(&roots);
 	return status;

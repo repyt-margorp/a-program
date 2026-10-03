@@ -9,7 +9,7 @@
 #include <string.h>
 
 /* Low-level correspondence fixtures are descriptive, not acceptance evidence.
- * check.sh separately obtains all exports through source Solve/admission. */
+	* check.sh separately obtains all exports through source Solve/admission. */
 static int emitting;
 enum pg_eval_status __real_pg_eval_advance(struct pg_eval *, uint64_t);
 enum pg_eval_status __wrap_pg_eval_advance(struct pg_eval *work, uint64_t budget)
@@ -216,14 +216,76 @@ static void data_match(struct pg_typing *t, const char *path)
 	fclose(source);
 }
 
+static void recursive_data(struct pg_typing *t, const char *path)
+{
+	struct pg_graph *g = t->graph;
+	const struct pg_object *self = pg_binder(g), *head = pg_binder(g), *tail = pg_binder(g);
+	const struct pg_term *int32 = pg_reference(g, pg_host_type("Int32"));
+	const struct pg_context *prefix = pg_context_bind(t, NULL, self, pg_universe(g, 0), PG_JUDGEMENT_VALUE);
+	const struct pg_context *fields = pg_context_bind(t, prefix, head, int32, PG_JUDGEMENT_VALUE);
+	fields = pg_context_bind(t, fields, tail, pg_reference(g, self), PG_JUDGEMENT_VALUE);
+	assert(prefix && fields);
+	const struct pg_term *images[] = {pg_reference(g, self)};
+	struct pg_data_constructor_input inputs[2] = {{.fields = prefix, .images = images}, {.fields = fields, .images = images}};
+	const struct pg_data_declaration *d = pg_data_declaration(g, prefix, prefix, 2, inputs);
+	assert(d);
+	const struct pg_data_layout *layout = pg_data_declaration_layout(d);
+	const struct pg_term *family = pg_reference(g, pg_data_declaration_family(d));
+	struct pg_c_export data = {"Chain", pg_occurrence(t, PG_JUDGEMENT_VALUE_TYPE, NULL, family, pg_universe(g, 0), NULL, 0, NULL)};
+	const struct pg_object *xs = pg_binder(g), *ys = pg_binder(g), *rec = pg_binder(g), *arg = pg_binder(g), *unfold = pg_binder(g), *ih = pg_binder(g);
+	const struct pg_term *vh = pg_reference(g, head), *vt = pg_reference(g, tail), *vy = pg_reference(g, ys);
+	const struct pg_term *call = app(g, pg_reference(g, rec), vt);
+	const struct pg_term *add = app(g, op(g, pg_host_function(0), vh),
+		op(g, &pg_total_result_operation, op(g, &pg_force_operation, pg_reference(g, ih))));
+	struct pg_match_clause clauses[2] = {
+		{pg_data_constructor(layout, 0), op(g, &pg_return_operation, pg_reference(g, pg_host_integer(g, pg_host_type("Int32"), 0)))},
+		{pg_data_constructor(layout, 1), pg_lambda(g, head, pg_lambda(g, tail,
+			app(g, pg_lambda(g, ih, add), op(g, &pg_thunk_operation, call))))}
+	};
+	const struct pg_term *sum = pg_lambda(g, xs, pg_data_recursive_match(g, layout, rec, arg, unfold, pg_reference(g, xs), 2, clauses));
+	const struct pg_term *scalar_type = pg_computation_type(g, PG_TOTALITY_TOTAL, pg_effect_row(g, 0, NULL), int32);
+	struct pg_c_export exports[2] = {{"sum", occurrence(t, sum, pg_pi(g, family, xs, scalar_type))}};
+	const struct pg_object *result = pg_binder(g);
+	const struct pg_term *cons = app(g, op(g, pg_data_constructor(layout, 1), vh), pg_reference(g, result));
+	clauses[0].branch = op(g, &pg_return_operation, vy);
+	clauses[1].branch = pg_lambda(g, head, pg_lambda(g, tail,
+		pg_computation_fold(g, call, pg_lambda(g, result, op(g, &pg_return_operation, cons)), 0, NULL)));
+	const struct pg_term *append = pg_lambda(g, xs, pg_lambda(g, ys,
+		pg_data_recursive_match(g, layout, rec, arg, unfold, pg_reference(g, xs), 2, clauses)));
+	const struct pg_term *list_type = pg_computation_type(g, PG_TOTALITY_TOTAL, pg_effect_row(g, 0, NULL), family);
+	exports[1] = (struct pg_c_export){"append", occurrence(t, append, pg_pi(g, family, xs, pg_pi(g, family, ys, list_type)))};
+	FILE *source = fopen(path, "w");
+	assert(source);
+	inert_representations(t, source, 2, exports, 0, NULL, 1, &data, 0);
+	fputs("#include <assert.h>\nint main(void)\n{\n\tstruct ap_c_arena arena = {0};\n"
+		"\tstruct ap_data_Chain nodes[7] = {{.tag = 0}};\n\tint32_t scalar;\n\tconst struct ap_data_Chain *out;\n", source);
+	const int32_t numbers[] = {INT32_MIN, INT32_MAX, -1, 1, 42, -99};
+	const struct pg_term *input = pg_reference(g, pg_data_constructor(layout, 0));
+	for (size_t i = 0; i <= 6; ++i) {
+		if (i) {
+			input = app(g, op(g, pg_data_constructor(layout, 1), pg_reference(g, pg_host_integer(g, pg_host_type("Int32"), numbers[i - 1]))), input);
+			fprintf(source, "\tnodes[%zu] = (struct ap_data_Chain){.tag = 1, .fields.c1 = {INT32_C(%" PRId32 "), &nodes[%zu]}};\n", i, numbers[i - 1], i - 1);
+		}
+		int64_t expected = evaluate(g, app(g, sum, input));
+		fprintf(source, "\tassert(!ap_export_sum(&arena, &nodes[%zu], &scalar) && scalar == INT32_C(%" PRId64 "));\n", i, expected);
+		const struct pg_term *joined = op(g, &pg_total_result_operation, app(g, app(g, append, input), input));
+		expected = evaluate(g, app(g, sum, joined));
+		fprintf(source, "\tassert(!ap_export_append(&arena, &nodes[%zu], &nodes[%zu], &out));\n"
+			"\tassert(!ap_export_sum(&arena, out, &scalar) && scalar == INT32_C(%" PRId64 "));\n", i, i, expected);
+	}
+	fputs("\tap_arena_Chain_destroy(&arena);\n}\n", source);
+	assert(!fclose(source));
+}
+
 int main(int argc, char **argv)
 {
-	assert(argc == 4);
+	assert(argc == 5);
 	struct pg_graph g;
 	struct pg_typing t;
 	assert(!pg_graph_init(&g) && !pg_typing_init(&t, &g));
 	enum_match(&t, argv[2]);
 	data_match(&t, argv[3]);
+	recursive_data(&t, argv[4]);
 	shared_calls(&t);
 	struct pg_c_export exports[8];
 	char names[8][16];

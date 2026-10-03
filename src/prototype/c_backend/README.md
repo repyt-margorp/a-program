@@ -395,10 +395,11 @@ and each scalar/enum field to its existing representation. Constructor emission
 builds those fields; Match passes exactly that case's fields to its private
 callee, retaining lexical captures and subsequent first-order operands.
 Differentials and raw Oracle checks support this correspondence; no new Kernel
-refinement theorem is claimed. Unknown field classifiers, recursive Self,
-indices, dependent/function fields and nested aggregates reject before publication.
+refinement theorem is claimed. Unknown field classifiers, indices,
+dependent/function fields and nested aggregates reject before publication.
 Block-local function thunks and open callback parameters also remain unsupported;
-the negative data gate retains both alongside recursive selections/exports.
+the negative data gate retains both and unselected recursive exports. Selected
+single-tail recursive data has the separate native profile described below.
 Distinct selected families remain distinct C struct types; shared nominal types
 across independently generated modules still require a future explicit contract.
 
@@ -408,7 +409,74 @@ selectors, nominal mixing, checked/trusted determinism and unchanged input bytes
 The scalar Oracle gate additionally tests fieldful emission without evaluator
 calls or source graph/proof mutation, compares 32/64-bit fields against the
 evaluator, and refuses ambiguous reused layouts before writing either stream.
-Recursive List/slice ownership and native QuickSort remain AP6.4/AP6.5 work.
+General recursive containers, List/slice conversion and native QuickSort remain
+AP6.4/AP6.5 work.
+
+### Single-tail recursive data
+
+The same `data SOURCE ALIAS` directive now also selects closed unindexed data
+with at most one direct Self field per constructor; other fields remain Int32,
+Int64 or selected enum32. This covers List/Nat shapes. A recursive selection uses
+`const struct ap_data_ALIAS *` for native parameters/results and Self fields.
+An explicit terminal constructor is a node; NULL is an invalid source value.
+General trees with two Self fields, recursive function/thunk fields, indexed and
+dependent containers still reject. The selection does not add artifact fields,
+source recursion rules or producer changes.
+
+Components with a recursive selection add `struct ap_c_arena *arena` as the
+first argument of every public export. Zero initialize the arena, then release
+its allocations with `ap_arena_ALIAS_destroy(&arena)`, where ALIAS is the first
+recursive selection. Inputs are borrowed immutable finite chains; the caller
+keeps every reachable node readable until all results sharing it are retired.
+Constructor nodes belong to the supplied arena. Identity may return its input;
+append copies the left chain and shares its right input. Destroying the arena
+frees only its allocations, including nodes made by earlier successful calls.
+Keep the arena live and avoid copying it. Result storage must be writable and
+separate from input nodes and arena metadata. Independent modules sharing a
+nominal family or recursive alias still need a future explicit contract.
+
+```c
+struct ap_c_arena arena = {0};
+struct ap_data_List nil = {.tag = AP_DATA_List_C0};
+const struct ap_data_List *result;
+int32_t count;
+ap_export_cons(&arena, 42, (struct ap_enum_Bool){AP_ENUM_Bool_C1}, &nil, &result);
+ap_export_length(&arena, result, &count);
+ap_arena_List_destroy(&arena);
+```
+
+Public validation checks active enum/tag fields, non-null tails and cycles with
+an iterative two-pointer walk before computation or allocation. Every pointer
+must refer to a readable, properly initialized C node; this ABI cannot validate
+arbitrary addresses. Return statuses are 0 success, 1 null output/arena, 2 invalid
+chain/tag, 3 allocation failure and 4 recursive depth limit. All failures preserve
+the output and roll back allocations made by that call; earlier successful
+results stay live. An arena `capacity` of zero leaves allocation unrestricted;
+otherwise it bounds the total live node count. `depth_limit` zero selects 256;
+values 1 through 256 bound simultaneously active recursive Match calls. Larger
+limits return 4. These are target resource failures, not source typing rules or
+termination evidence. Generated C still uses its native stack, with the limit
+checked before each recursive entry.
+
+The emitter recognizes the existing erased recursive-Match fixed-point
+template and lowers it to a direct recursive C function. It reads existing
+admitted induction result classifiers so a composed List-producing call is not
+mistaken for its caller's scalar result. Direct IH thunks remain statically known
+lexical closures, forced at their source use. Branch functions retain the thunk's
+recursive target, field and native captures; they do not eagerly evaluate unused
+branches or pass a dynamic callback across the ABI. Unsupported nested recursive
+closure captures and other thunk/function shapes reject explicitly. No evaluator,
+substitution, source graph mutation or new checking authority is used by emission.
+
+`check-c-list` covers length, sum, append, identity, construction, composition and
+stable selection by a stored Bool flag over 511 length/flag cases. It checks all
+native products, source evaluator agreement, determinism, immutable input images,
+allocation rollback with actual malloc failure, bounded recursion, malformed
+tails/tags/cycles and retained tree/thunk/callback/effect refusals. The raw Oracle
+gate separately compares recursive sum/append with the existing evaluator while
+forbidding evaluation/substitution during emission and checking graph/store counts.
+This advances the list obligation; numeric-predicate partitioning, slice copyout,
+Acc/QuickSort, dynamic callbacks and demanded Identity remain incomplete.
 
 `check-c-scalar` tests source/object/archive/executable products, standalone and
 two-module C clients, capture/sequencing, alias sharing, null outputs, ABI/profile

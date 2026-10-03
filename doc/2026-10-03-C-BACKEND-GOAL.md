@@ -17,9 +17,6 @@ Related: [coordination](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md),
 
 2026-10-03, English paraphrase of user authorization, relayed by Core: own
 task-branch commit/push is explicitly permitted; only Core merges Main.
-Provenance correction on 2026-10-03 following Core review supersedes the former
-mixed "Core/user authorization" label: delegated publication and retained
-negative coverage are Core/agent workflow decisions, recorded in Assessment.
 
 2026-10-03, English paraphrase of the continuation request: implement and
 verify AP4-AP6 and critically check #44/#49 against this committed worktree.
@@ -38,6 +35,22 @@ names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
 
+2026-10-03: local branch/upstream tracking now both point to `bb69983`, the
+published Epoch1. Core reports its push completed and its exact archive is under
+combined current Identity-boundary producer tests. Later Core-reported evidence:
+those combined backend gates passed. This is a coordinator report, not a fresh
+worker rerun. Later Core report: Main integration is `9061be3`, Main push
+succeeded and six current-Core backend gates passed. Prototype-only integration;
+the worker remains at its own `bb69983` baseline.
+
+Fresh Epoch2 verification at `bb69983` plus the exact lane edits in its
+[handoff](2026-10-03-C-BACKEND-EPOCH2-HANDOFF.md): seven O2 backend gates pass;
+native scalar/enum/data/list gates pass with ASan/UBSan and leak detection.
+The final list client covers 511 length/flag cases, 35 source differential
+observations and 14 raw recursive sum/append evaluator observations. Raw emission
+forbids evaluator/substitution calls and preserves graph/store counts. The
+producer is the private immutable task-baseline overlay, not current Main.
+
 Inspected 2026-10-03 at clean `2d747cc`, before lane edits: the baseline provides
 `src/prototype/c_backend/` with structural emission,
 LinkerScript and scalar/enum profiles. AP4-AP6 records incomplete parts; its
@@ -47,6 +60,46 @@ pinned/current producer images and emitted C/headers match byte-for-byte.
 Evidence and exact publication files are in the [epoch handoff](2026-10-03-C-BACKEND-EPOCH1-HANDOFF.md).
 
 ### Assessment
+
+Core workflow, 2026-10-03: shared Git remains read-only; Core performs the
+worker-branch commit/push and verifies emission with its current-owner plus
+Surface overlay before any Main merge. This is distinct from publication and
+does not authorize worker integration or accepted-source promotion.
+Core operational handoff steering, 2026-10-03: provide the exact frozen Epoch2
+files/hashes and handoff for worker-branch publication. Older queued literal/auth
+notes are resolved. Core's reported `9061be3` merge/push is integration evidence
+in Objective, not a new user requirement. This provenance correction changes
+documentation only; completed code/tests and verification remain unchanged.
+Core's native-container priority, exact freeze and queued-note handling are
+operational steering; style checks and apply_patch follow repository/coordinator
+instructions. They are not new direct user decisions. This supersedes their
+former Subjective attribution and the earlier mixed "Core/user authorization"
+label; actual user branch-publication/Core-only-Merge authorization stays there.
+
+Agent Epoch2 implementation decision, 2026-10-03 at `bb69983` plus lane docs:
+start with closed unindexed single-tail recursive declarations, represented as
+borrowed immutable C node pointers. Constructed nodes belong to an explicit
+caller-owned allocation arena. Recognize the existing erased recursive Match
+template and statically known induction thunks; do not introduce a recursive
+source former or infer a source type from the C representation. Validate finite
+input chains and retain explicit refusals for indexed/dependent fields, trees,
+callbacks and unsupported thunk shapes. Verify length, append and stable list
+selection before attempting slice/QuickSort. This is an agent choice within the
+owned downstream scope, not a new user design requirement.
+Current implementation: native length/sum/append and stable Bool-field selection,
+including scalar results of composed List-producing calls. Numeric-predicate
+partitioning is not implemented; do not present flag selection as its completion.
+Target arena allocation/depth failures have explicit statuses, preserve output
+and roll back only the failing call's new nodes. Default/max recursive depth is
+256; this is a target resource bound, not source termination evidence.
+
+Core workflow update, 2026-10-03: publication permits the next owned epoch.
+Superseding Core steer: the queued Int64 correction was already resolved before
+`bb69983`; do not recreate it as a new epoch. Additional Int64 coverage is
+optional. Core reports combined current-producer
+backend gates passed. The optional Int64 follow-up is retired before publication;
+prioritize native recursive/container lowering, without producer
+fields or hiding callback/Identity limitations.
 
 Core/agent workflow, 2026-10-03 (supersedes its earlier placement in Subjective):
 Core reports Surface's shared index.lock sandbox failure and offers delegated
@@ -63,11 +116,12 @@ Assigned scope: C design, lowering/runtime/link prototypes and lane-local tests.
 Fresh #44/#49 bodies/comments and PR #45/#50 diffs were inspected. Adopt the
 reusable native realization direction; reject the hand-derived sorter as an
 implementation and keep whole-module admission/selected-export policy with Core.
-Agent epoch decision: implement explicitly selected nonrecursive fieldful data
+Agent Epoch1 decision (historical): implement explicitly selected nonrecursive fieldful data
 as C tagged structs with direct constructor/Match calls, scalar/enum fields and
 borrow-free value ownership. This advances AP6.4 and non-scalar captures without
 claiming recursive List/Acc/QuickSort or higher Identity completion. Recursive,
-indexed, dependent and function fields must reject before publication. No new
+indexed, dependent and function fields must reject before publication. Epoch2
+supersedes the blanket recursive refusal for direct single-tail fields only. No new
 shared IR, checker or image fields. The later 2026-10-03 lane assignment permits
 this target work while Main continues SE1, superseding the earlier AP6 hold.
 
@@ -87,7 +141,14 @@ this target work while Main continues SE1, superseding the earlier AP6 hold.
 - [x] Verify this epoch's evaluator/C agreement, C module use, negative controls and input
   image immutability; test committed and current producer compatibility.
 - [x] Report per-file implementation/test/doc deltas and measured results in the handoff.
-- [ ] Core publishes this verified epoch on the task branch; merge review is separate.
+- [x] Core published Epoch1 as `bb69983` on the task branch; merge review is separate.
+- [x] Epoch2: implement single-tail recursive nodes, arena ownership, recursive
+  Match/known IH thunk lowering and finite input validation. Gates: native
+  length/append/selection with ordinary inputs, evaluator differentials, failed
+  allocation/output preservation, malformed/cyclic inputs, existing refusal
+  coverage, deterministic inert emission and O2/ASan/UBSan checks.
+- [ ] Core publication of the separately frozen Epoch2; later integration review
+  and current-Core producer combination remain distinct steps.
 - [ ] Continue the remaining AP4.6/AP5.6/AP6.3-AP6.8 work against their shared
   criteria: recursive data/length/append/partition, List/slice/Acc/QuickSort,
   callback/effect and Identity coverage, explicit cross-module nominal contracts.
@@ -113,19 +174,23 @@ this target work while Main continues SE1, superseding the earlier AP6 hold.
 
 ## Current Epoch
 
-2026-10-03: concrete implementation and verification progress; epoch 1 is frozen
-for Core review/publication, not merged/promoted. Its 19 files will receive no
-further worker edits during this review. Baseline/current private producer
+2026-10-03: concrete implementation and verification progress; Epoch1 was
+published as `bb69983`; Core reports prototype-only Main integration `9061be3`.
+No accepted-source promotion. Its exact archive stays frozen.
+The owned lane may continue with separately verified follow-ups. Baseline/current private producer
 paths and exact deltas/tests are in the [handoff](2026-10-03-C-BACKEND-EPOCH1-HANDOFF.md).
 The worker performed no shared Git index write or sandbox bypass. Core may
 commit/push the named task branch under the explicit publication authorization.
 Agent code review checked nominal layout refusal, unsigned/signed field mapping,
 conditional extraction, captures, output preservation and target-only storage.
-Tabs/English comments and shell syntax checks pass; no unresolved epoch test
-failure. Unsupported block-local function thunks, callbacks, recursive/dependent/
-nested fields and effects remain negative tests, not removed examples.
-Next: a recursive-data ownership/representation epoch with length/append/partition
-before List/slice/QuickSort; keep any needed relevance/admission decision with Core.
+Epoch2 adds verified single-tail recursion, arena ownership, length/append and
+stable Bool-field selection. Its code/test files are frozen for Core
+publication; the exact [handoff](2026-10-03-C-BACKEND-EPOCH2-HANDOFF.md) records
+tests, corrected preparatory failures and remaining limits. Tabs/English comments
+and shell syntax checks pass. Unsupported block-local thunks, callbacks, tree/
+indexed/dependent/nested fields and effects remain explicit negative coverage.
+Next after this handoff: numeric-predicate partitioning and slice/Acc/QuickSort;
+keep relevance/admission decisions with Core. The task has not completed AP6.4/5.
 Cross-owner handoff: #44 selected-export admission beside unresolved siblings and
 #47 relevance remain Core-owned. The full Goal is active; this epoch does not
 complete AP4.6, AP5.6 or AP6.3-AP6.5/7/8 and does not close #44/#49.
