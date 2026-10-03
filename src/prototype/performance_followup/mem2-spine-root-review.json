@@ -1,0 +1,238 @@
+{
+  "notice_sha256": "4d9b53790d730bebbd214f10dc2c3b8427d2fba1e172396dd687c29500b5320d",
+  "frozen9": {
+    "src/prototype/performance_mem2/epochs/iadt_empty_tail_v1/README.md": "90d144ad7909710b54cb5834455d9834ad45b19c942cd41f016795212aff2a45",
+    "src/prototype/performance_mem2/epochs/iadt_empty_tail_v1/allocation-summary.json": "05ba7751cc82c317eaf2a3315b33f617976bb01582d404216ee1c74a555e04b7",
+    "src/prototype/performance_mem2/epochs/iadt_empty_tail_v1/evidence.json": "50db84772421d36863ca539753fdd92352af31578779fd0cc144da49209b84d6",
+    "src/prototype/performance_mem2/epochs/iadt_empty_tail_v1/iadt.patch": "b19dd27bef9eca23dd6b78185aaa26569e9ede25a7be1bc039da49e8444f71f9",
+    "src/prototype/performance_mem2/epochs/iadt_empty_tail_v1/parent-source.sha256": "0deb36a72542b9f56eb986314c89bd459802896ca32268857a4b875bfcfe2f48",
+    "src/prototype/performance_mem2/epochs/iadt_empty_tail_v1/source.sha256": "2e87fd8444726e9bacc9cb4e7b4e17f814685a515f716b212a849ca1d24ac85e",
+    "src/prototype/performance_mem2/epochs/iadt_empty_tail_v1/summary.json": "a570002e8808dd81d4c22c7512946e0a58d41bd8fa545308bae8d63e58fa1841",
+    "src/prototype/performance_mem2/epochs/iadt_empty_tail_v1/verify.mk": "24ceeee368cc5f3a5c1d2d86d2aaaf53fd04bc98cebbbb4c8b3b5ce454e6b7ce",
+    "src/prototype/performance_mem2/epochs/iadt_empty_tail_v1/manifest.sha256": "3c2217a61816b7342571d5044a3bedc65f02156bade8788338347815971b6ee9"
+  },
+  "evidence1964_verified": true,
+  "source128_parent": "0deb36a72542b9f56eb986314c89bd459802896ca32268857a4b875bfcfe2f48",
+  "source128_candidate": "2e87fd8444726e9bacc9cb4e7b4e17f814685a515f716b212a849ca1d24ac85e",
+  "only_changed_file": "src/iadt.c",
+  "cost_configuration_sha256": "8cc0b7533615f954a4f59bf1b7bfa4e9f2ac597aac4b1ef78656da0fba711236",
+  "all279_cost_pins_verified": true,
+  "jobs36": true,
+  "fresh_controls_pending": false,
+  "task": "6b0ed936ae0b6356e94ade5846cca7fb21500bbe",
+  "parent": "e561030d0dbb03f568033be2bf23ae2d7fbc189b",
+  "exact9_paths": [
+    "src/prototype/performance_mem2/epochs/iadt_empty_tail_v1/README.md",
+    "src/prototype/performance_mem2/epochs/iadt_empty_tail_v1/allocation-summary.json",
+    "src/prototype/performance_mem2/epochs/iadt_empty_tail_v1/evidence.json",
+    "src/prototype/performance_mem2/epochs/iadt_empty_tail_v1/iadt.patch",
+    "src/prototype/performance_mem2/epochs/iadt_empty_tail_v1/manifest.sha256",
+    "src/prototype/performance_mem2/epochs/iadt_empty_tail_v1/parent-source.sha256",
+    "src/prototype/performance_mem2/epochs/iadt_empty_tail_v1/source.sha256",
+    "src/prototype/performance_mem2/epochs/iadt_empty_tail_v1/summary.json",
+    "src/prototype/performance_mem2/epochs/iadt_empty_tail_v1/verify.mk"
+  ],
+  "worker_live_tracked_bytes_preserved": 2002,
+  "worker_index_only_advanced": true,
+  "private_runtime_selection": true,
+  "task_remote_exact": true,
+  "Main_before": "71dc8708d7bed94290fa3345a65a8d16162023d3",
+  "Root_fresh_controls": "cd98d2e17e78acea8826218508afead57079bcd05d5ab9c38d4f266483d94972",
+  "prototype_Main": "6ebf4532fc7b9ffa95ce539f9d0c6d3079932a3d",
+  "exact9_Main_files_verified": true,
+  "Main_remote_exact": true,
+  "protected9_unchanged": true,
+  "default_or_accepted_runtime_replacement": false,
+  "reviewed_at_UTC": "2026-10-03T17:58:00Z",
+  "fresh_controls": {
+    "source128_exact": "2e87fd8444726e9bacc9cb4e7b4e17f814685a515f716b212a849ca1d24ac85e",
+    "frozen_patch_reconstructed_exact": true,
+    "records": [
+      {
+        "label": "build-o2",
+        "argv": [
+          "make",
+          "-j1",
+          "-f",
+          "/tmp/ap-performance-mem1-gates.mk",
+          "OVERLAY=/tmp/a-program-merge-mem2-spine-controls-20261003",
+          "ROOT=/tmp/a-program-merge-mem2-spine-controls-20261003/src/",
+          "BUILD=/tmp/a-program-merge-mem2-spine-controls-20261003/focused-o2",
+          "REPO=/home/repyt/workspace/a-program-workers/performance",
+          "TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/tests",
+          "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+          "/tmp/a-program-merge-mem2-spine-controls-20261003/focused-o2/performance_direct_test",
+          "/tmp/a-program-merge-mem2-spine-controls-20261003/focused-o2/performance_head_cleanup_test",
+          "/tmp/a-program-merge-mem2-spine-controls-20261003/focused-o2/frame_retirement_test",
+          "/tmp/a-program-merge-mem2-spine-controls-20261003/focused-o2/stateless_head_cleanup_test",
+          "/tmp/a-program-merge-mem2-spine-controls-20261003/focused-o2/callback_failure_cleanup_test"
+        ],
+        "exit": 0,
+        "log_sha256": "1d1342aa65435c16fa43ca551d6f3a9350e30bc90d81cb41cc4bb84a0dc4460a"
+      },
+      {
+        "label": "performance_direct_test-o2",
+        "argv": [
+          "/tmp/a-program-merge-mem2-spine-controls-20261003/focused-o2/performance_direct_test"
+        ],
+        "exit": 0,
+        "log_sha256": "5fc5f4643e5a4dd22b69556224e66e044b9315c4fa6107924c8297cfde5b32a6"
+      },
+      {
+        "label": "performance_head_cleanup_test-o2",
+        "argv": [
+          "/tmp/a-program-merge-mem2-spine-controls-20261003/focused-o2/performance_head_cleanup_test"
+        ],
+        "exit": 0,
+        "log_sha256": "ef6a15bf74b72d2339aa61f8d9cba28dec73055daba969aee497cfdc49f103a8"
+      },
+      {
+        "label": "frame_retirement_test-o2",
+        "argv": [
+          "/tmp/a-program-merge-mem2-spine-controls-20261003/focused-o2/frame_retirement_test"
+        ],
+        "exit": 0,
+        "log_sha256": "6fd2f0515b9b1690e79ca5e43f038066f813d0ab9e2e0aaa4fe103912a4e0623"
+      },
+      {
+        "label": "stateless_head_cleanup_test-o2",
+        "argv": [
+          "/tmp/a-program-merge-mem2-spine-controls-20261003/focused-o2/stateless_head_cleanup_test"
+        ],
+        "exit": 0,
+        "log_sha256": "1b6870cb7c5a109e761795a021289308304d20ac0a05d437bf159951df9c6e81"
+      },
+      {
+        "label": "callback_failure_cleanup_test-o2",
+        "argv": [
+          "/tmp/a-program-merge-mem2-spine-controls-20261003/focused-o2/callback_failure_cleanup_test"
+        ],
+        "exit": 0,
+        "log_sha256": "61ec4af330c385ae0f897bc52eb6b4f63fad77a93da5af858b2b8175fd8cbaef"
+      },
+      {
+        "label": "build-san",
+        "argv": [
+          "make",
+          "-j1",
+          "-f",
+          "/tmp/ap-performance-mem1-gates.mk",
+          "OVERLAY=/tmp/a-program-merge-mem2-spine-controls-20261003",
+          "ROOT=/tmp/a-program-merge-mem2-spine-controls-20261003/src/",
+          "BUILD=/tmp/a-program-merge-mem2-spine-controls-20261003/focused-san",
+          "REPO=/home/repyt/workspace/a-program-workers/performance",
+          "TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/tests",
+          "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+          "/tmp/a-program-merge-mem2-spine-controls-20261003/focused-san/performance_direct_test",
+          "/tmp/a-program-merge-mem2-spine-controls-20261003/focused-san/performance_head_cleanup_test",
+          "/tmp/a-program-merge-mem2-spine-controls-20261003/focused-san/frame_retirement_test",
+          "/tmp/a-program-merge-mem2-spine-controls-20261003/focused-san/stateless_head_cleanup_test",
+          "/tmp/a-program-merge-mem2-spine-controls-20261003/focused-san/callback_failure_cleanup_test"
+        ],
+        "exit": 0,
+        "log_sha256": "22cd78d7fc3a2898fb026eb5bbab2b3d829f59e7e153f13685d36fe0ed95b26f"
+      },
+      {
+        "label": "performance_direct_test-san",
+        "argv": [
+          "/tmp/a-program-merge-mem2-spine-controls-20261003/focused-san/performance_direct_test"
+        ],
+        "exit": 0,
+        "log_sha256": "5fc5f4643e5a4dd22b69556224e66e044b9315c4fa6107924c8297cfde5b32a6"
+      },
+      {
+        "label": "performance_head_cleanup_test-san",
+        "argv": [
+          "/tmp/a-program-merge-mem2-spine-controls-20261003/focused-san/performance_head_cleanup_test"
+        ],
+        "exit": 0,
+        "log_sha256": "ef6a15bf74b72d2339aa61f8d9cba28dec73055daba969aee497cfdc49f103a8"
+      },
+      {
+        "label": "frame_retirement_test-san",
+        "argv": [
+          "/tmp/a-program-merge-mem2-spine-controls-20261003/focused-san/frame_retirement_test"
+        ],
+        "exit": 0,
+        "log_sha256": "6fd2f0515b9b1690e79ca5e43f038066f813d0ab9e2e0aaa4fe103912a4e0623"
+      },
+      {
+        "label": "stateless_head_cleanup_test-san",
+        "argv": [
+          "/tmp/a-program-merge-mem2-spine-controls-20261003/focused-san/stateless_head_cleanup_test"
+        ],
+        "exit": 0,
+        "log_sha256": "1b6870cb7c5a109e761795a021289308304d20ac0a05d437bf159951df9c6e81"
+      },
+      {
+        "label": "callback_failure_cleanup_test-san",
+        "argv": [
+          "/tmp/a-program-merge-mem2-spine-controls-20261003/focused-san/callback_failure_cleanup_test"
+        ],
+        "exit": 0,
+        "log_sha256": "61ec4af330c385ae0f897bc52eb6b4f63fad77a93da5af858b2b8175fd8cbaef"
+      }
+    ],
+    "all12_builds_and_controls_exit0": true,
+    "controls": "Direct fuel/all55 cuts, captured environments/nonempty tail, reentrant/inline state, retained frame state, cleanup/error/return2.",
+    "candidate_runtime_only_private": true,
+    "new_cost_samples": 0,
+    "full_Goal_completion": false,
+    "initial_missing_src_Makefile_setup_failure_preserved": true,
+    "supplemental_src_Makefile_sha256": "063d846eb99f86c1c133abf393b3a2a7cf97f548eb472f8b786365f11ba1a167"
+  },
+  "fresh_controls_sha256": "cd98d2e17e78acea8826218508afead57079bcd05d5ab9c38d4f266483d94972",
+  "independent_raw_verification": {
+    "artifact_recipes": 55,
+    "artifact_only_original_strict_failure": true,
+    "SAN_build_recipes": 38,
+    "SAN_checks": 45,
+    "focused_O2_checks": 23,
+    "cross_build_reads": 140,
+    "public52_and_history28_exact": true,
+    "full_verdict_fuel_TSV_exact": true,
+    "inherited_tests_exact": true,
+    "census12_raw_counts_DONE_fuel_and_six_deltas_recomputed": true
+  },
+  "lifetime_review": "Reuse immutable validated field nodes only when restored selected caller arguments are empty. Live nodes remain machine-arena owned; inertly decoded argument forests remain output-graph owned under its outlives-machine contract. Existing head materialization destruction and frame retirement do not free these forests; nonempty-tail copies and environments/opaque state unchanged. No extra ABI/index/owner.",
+  "early_Root_setup_notes": [
+    "Initial fresh build omitted src/Makefile; exit2/log preserved before exact supplemental Makefile restoration and successful builds.",
+    "Initial image comparison looked in absent parent o2-partitions/history and census predicate expected DONE before wrapper count lines. Read frozen comparison helper and raw log format, then corrected only Root paths/predicates; final byte/fuel comparisons verified. No runtime/test assertion adapted."
+  ],
+  "historical_stage_note": "Private focused-summary broad_semantic_persistence_gates_pending flag describes earlier focused phase; immutable terminal-summary and all raw final gates establish readiness.",
+  "exclusive_cost_grant": {
+    "grant_id": "MEM2IADT-E12-20261003T180000Z-600",
+    "authority": "Root operational coordination within the existing user-authorized matched wall/RSS scope; not a new human approval",
+    "not_before_UTC": "2026-10-03T18:00:00Z",
+    "hard_deadline_UTC": "2026-10-03T18:10:00Z",
+    "maximum_seconds": 600,
+    "per_run_seconds": 180,
+    "exact_sequential_jobs": 36,
+    "configuration": "/tmp/ap-performance-mem2-iadt-spine-cost-request-20261003/configuration-proposed.json",
+    "configuration_sha256": "8cc0b7533615f954a4f59bf1b7bfa4e9f2ac597aac4b1ef78656da0fba711236",
+    "all279_input_pins_verified": true,
+    "parent_source128": "0deb36a72542b9f56eb986314c89bd459802896ca32268857a4b875bfcfe2f48",
+    "candidate_source128": "2e87fd8444726e9bacc9cb4e7b4e17f814685a515f716b212a849ca1d24ac85e",
+    "only_changed_runtime_file": "src/iadt.c",
+    "exact9_frozen_and1964_evidence_verified": true,
+    "Root_fresh_source128_controls": "/tmp/a-program-merge-mem2-spine-controls-20261003/Root-results.json",
+    "Root_fresh_controls_sha256": "cd98d2e17e78acea8826218508afead57079bcd05d5ab9c38d4f266483d94972",
+    "Root_two_builds_ten_O2_SAN_controls_exit0": true,
+    "launch_rule": "At actual launch derive ONLY maximum_seconds=min(600,floor(remaining absolute seconds)-2); record original/derived config hashes, UTC and remaining time. All workload children must stop before the absolute hard deadline.",
+    "collector": "/tmp/ap-performance-measure-gnu-time-e6-20261003.py",
+    "collector_sha256": "9c50c62d1ddc49e85c88abe94f95162c85096165afcdff7cd945bb9b9a004b71",
+    "new_build_native_extra_workloads": false,
+    "initial_slot_observation_UTC": "2026-10-03T17:53:47Z",
+    "initial_workload_build_children_observed": [],
+    "other_workers": "C/Job remain capacity-stalled on same owners; four bounded owners stopped; Root runs no heavy work during the slot",
+    "post_review": "Verify all36 raw argv/logs/GNU metrics and exact expected charged-step counts, all279 pins afterward, censored rows without reinterpretation, and stopped-child evidence. Report terminal state, then await Root slot release.",
+    "publication_hold": false,
+    "accepted_promotion_or_full_Goal_completion": false
+  },
+  "exclusive_cost_grant_sha256": "c23d6c6afef8f7e719bb6122c1d9ec50d1b40b4a590d652148d6bda9afd674d9",
+  "actual_cost_status": "GRANTED_FUTURE_SLOT_RESULTS_PENDING",
+  "new_actual_speed_or_peak_RAM_claim": false,
+  "rejected_beta_environment_runtime_excluded": true,
+  "accepted_promotion": false,
+  "full_Goal_complete": false
+}

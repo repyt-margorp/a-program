@@ -1,7 +1,7 @@
 # Performance Goal: Current Speed and Memory Work
 
 Date: 2026-10-03
-Status: active; V3 bounded current-E12 memory/time gain reviewed; MEM2 beta environment elision independently rejected; argument-spine lifetime work continues.
+Status: active; V3 bounded measured gain reviewed; MEM2 beta environment elision rejected; IADT empty-tail spine prototype published, matched costs pending.
 This is the active successor to the frozen
 [Performance Goal at0539051](2026-10-03-PERFORMANCE-GOAL.md). Its published bytes
 and historical handoffs remain immutable. The single current issue-status table
@@ -78,6 +78,29 @@ Original observer, sanitizer, strict partition and setup failures remain
 separate. No E11/E12 runtime is included.
 
 ### Assessment
+
+2026-10-03 17:58 UTC, Root MEM2 IADT review: frozen9 task6b0ed93 on exact
+parente561030 is pushed/remote verified; prototype Main6ebf453 contains only
+the same9 frozen files. All1964 evidence hashes, source1282e87fd84 versus
+parent0deb36a7 (only iadt.c changed), inherited tests and all279 cost pins verify.
+Root reconstructs the frozen patch privately: fresh O2/SAN builds and ten direct/
+callback controls0; actual raw gates45/23/cross140, public52/history28 and fuel
+TSV match. Source gates retain only original strict3; no new full384 claim.
+Reusing immutable validated field nodes with an empty selected caller tail
+preserves node/environment order; live machine-arena and decoded output-graph
+lifetimes survive existing head cleanup/frame retirement. Nonempty tail copies
+remain. No new owner/index/ABI or accepted/default selection change. Original
+beta environment rejection remains separate. [Root review](../src/prototype/performance_followup/mem2-spine-root-review.json)
+records initial Root setup/predicate corrections separately from successful
+checks. Twelve census raw logs/fuel and six deltas verify: tree400 removes
+2408960 requests/77086720 cumulative bytes; LocalSorted1053/47264 and the failed
+32-byte reporting assumption are preserved. These counts are not peak RAM/time.
+Root grants operational exclusive slot MEM2IADT-E12-20261003T180000Z-600,
+18:00-18:10 UTC: only exact36 sequential jobs/config8cc0b753, remaining-derived
+cap and all children stopped before the absolute deadline. C/Job are stalled,
+no workload children observed; Root runs no heavy work during the slot.
+Actual results, expected-step/pin/stopped-child review and release remain pending.
+This is existing-scope coordination, not new human approval or Goal completion.
 
 2026-10-03 16:47 UTC, Root MEM2 review at Main3b09a98: reject semantic-body
 beta environment elision (private patchc3c91bd3). All30 frozen files0573b9be
