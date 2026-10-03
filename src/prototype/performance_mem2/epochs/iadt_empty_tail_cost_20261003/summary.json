@@ -1,0 +1,52 @@
+{
+  "source_task": "6b0ed936ae0b6356e94ade5846cca7fb21500bbe",
+  "grant_id": "MEM2IADT-E12-ROOT-20261003T181500Z-600",
+  "executor": "Root on behalf of Performance",
+  "complete_samples": 36,
+  "failed_timeout_incomplete_censored": 0,
+  "all279_pins_freshly_verified": true,
+  "all_expected_steps_exact": true,
+  "raw_measurements_sha256": "36aadac64d1f09f360fb03d0c620d46be1e4a0bff8dfe7e761d0aea0f4fdd95e",
+  "original_configuration_sha256": "8cc0b7533615f954a4f59bf1b7bfa4e9f2ac597aac4b1ef78656da0fba711236",
+  "derived_configuration_sha256": "c83e6eb2d191c6f6f1a25a5356c1b13b10705b6156fd8e080582973f5c3f7a2d",
+  "Root_review_sha256": "3321e58ac695dea002370b56d8bb25070fd4a4fcca51c3fa5af5163c2ba29156",
+  "prior_worker_expired_grant_failure_sha256": "6dcc54019b263c39f7505f70ecbe48fc774f08f8014fc58ef7ae61cd883a4fbf",
+  "initial_freeze_helper_schema_failure": "KeyError: matched_summaries; Root field is summaries; raw samples unchanged",
+  "initial_failed_helper_sha256": "4dc111384fcee89fbb516a642092fc96761d2b1cbaec6589689b659773971711",
+  "limits": [
+    "Same AP source/proofs/helpers for each pair; includes parsing/synthesis/conversion and import-source work.",
+    "Fresh sequential processes, three repetitions; warm filesystem, no cache flush.",
+    "GNU time peak RSS KiB of wrapped command is not summed process memory; startup/allocator/kernel effects included.",
+    "Small list/startup and near-zero clock resolution may dominate; incomplete/timeout samples are censored.",
+    "No native cross-system reruns, universal ranking, accepted-only cost claim or other extra workload."
+  ],
+  "interpretation": {
+    "bounded_tree_peak_RSS_gain": true,
+    "tree400_RSS_delta_KiB": -25004,
+    "tree400_RSS_MiB": [
+      978.04296875,
+      953.625
+    ],
+    "all_six_wall_ranges_overlap": true,
+    "all_four_tree_RSS_ranges_disjoint": true,
+    "no_generalized_additional_speed_gain_established": true,
+    "all_four_tree_median_time_percent_changes": {
+      "trees4": 1.7934898678,
+      "trees16": 0.5323484561,
+      "trees64": 1.7977868428,
+      "trees400": -0.6689794082
+    },
+    "LocalSorted_observed_median_launcher_increase_percent": 2.8458204593,
+    "LocalSorted_RSS_delta_KiB": 24,
+    "list_RSS_delta_KiB": 108,
+    "list_startup_and_GNU_rounding_dominate": true,
+    "third_tree400_repetition_retained_seconds": {
+      "baseline": 7.207218103,
+      "candidate": 7.109159876
+    },
+    "third_tree400_slowdown_cause": "Unverified; no sample discarded or relabelled censored.",
+    "no_accepted_adoption_or_full_Goal_completion": true
+  },
+  "new_comparative_run_by_worker": false,
+  "full_Goal_active": true
+}

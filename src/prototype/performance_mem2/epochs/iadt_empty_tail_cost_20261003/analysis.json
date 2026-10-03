@@ -1,0 +1,488 @@
+[
+  {
+    "case": "list",
+    "variants": {
+      "baseline": {
+        "charged_steps": 1915,
+        "wall_seconds_launcher": {
+          "values": [
+            0.007824902,
+            0.004212126,
+            0.006977161
+          ],
+          "median": 0.006977161,
+          "min": 0.004212126,
+          "max": 0.007824902
+        },
+        "wall_seconds_GNU_time": {
+          "values": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "median": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "maximum_RSS_KiB": {
+          "values": [
+            2708,
+            2524,
+            2576
+          ],
+          "median": 2576,
+          "min": 2524,
+          "max": 2708
+        }
+      },
+      "iadt-empty-tail": {
+        "charged_steps": 1915,
+        "wall_seconds_launcher": {
+          "values": [
+            0.006152783,
+            0.00510824,
+            0.003944929
+          ],
+          "median": 0.00510824,
+          "min": 0.003944929,
+          "max": 0.006152783
+        },
+        "wall_seconds_GNU_time": {
+          "values": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "median": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "maximum_RSS_KiB": {
+          "values": [
+            2684,
+            2516,
+            2724
+          ],
+          "median": 2684,
+          "min": 2516,
+          "max": 2724
+        }
+      }
+    },
+    "median_percent_changes": {
+      "wall_seconds_launcher": -26.78626736576668,
+      "wall_seconds_GNU_time": null,
+      "maximum_RSS_KiB": 4.192546583850931
+    },
+    "ranges_overlap": {
+      "wall_seconds_launcher": true,
+      "wall_seconds_GNU_time": true,
+      "maximum_RSS_KiB": true
+    }
+  },
+  {
+    "case": "imported-local-sorted",
+    "variants": {
+      "baseline": {
+        "charged_steps": 761848,
+        "wall_seconds_launcher": {
+          "values": [
+            0.606545924,
+            0.596975567,
+            0.624992131
+          ],
+          "median": 0.606545924,
+          "min": 0.596975567,
+          "max": 0.624992131
+        },
+        "wall_seconds_GNU_time": {
+          "values": [
+            0.6,
+            0.59,
+            0.62
+          ],
+          "median": 0.6,
+          "min": 0.59,
+          "max": 0.62
+        },
+        "maximum_RSS_KiB": {
+          "values": [
+            170104,
+            169972,
+            170088
+          ],
+          "median": 170088,
+          "min": 169972,
+          "max": 170104
+        }
+      },
+      "iadt-empty-tail": {
+        "charged_steps": 761848,
+        "wall_seconds_launcher": {
+          "values": [
+            0.623807132,
+            0.623922169,
+            0.621448967
+          ],
+          "median": 0.623807132,
+          "min": 0.621448967,
+          "max": 0.623922169
+        },
+        "wall_seconds_GNU_time": {
+          "values": [
+            0.62,
+            0.62,
+            0.61
+          ],
+          "median": 0.62,
+          "min": 0.61,
+          "max": 0.62
+        },
+        "maximum_RSS_KiB": {
+          "values": [
+            170264,
+            170024,
+            170112
+          ],
+          "median": 170112,
+          "min": 170024,
+          "max": 170264
+        }
+      }
+    },
+    "median_percent_changes": {
+      "wall_seconds_launcher": 2.8458204592600733,
+      "wall_seconds_GNU_time": 3.3333333333333437,
+      "maximum_RSS_KiB": 0.014110342881323845
+    },
+    "ranges_overlap": {
+      "wall_seconds_launcher": true,
+      "wall_seconds_GNU_time": true,
+      "maximum_RSS_KiB": true
+    }
+  },
+  {
+    "case": "trees4",
+    "variants": {
+      "baseline": {
+        "charged_steps": 2318248,
+        "wall_seconds_launcher": {
+          "values": [
+            0.079745532,
+            0.075927199,
+            0.079571902
+          ],
+          "median": 0.079571902,
+          "min": 0.075927199,
+          "max": 0.079745532
+        },
+        "wall_seconds_GNU_time": {
+          "values": [
+            0.07,
+            0.07,
+            0.07
+          ],
+          "median": 0.07,
+          "min": 0.07,
+          "max": 0.07
+        },
+        "maximum_RSS_KiB": {
+          "values": [
+            21364,
+            21260,
+            21364
+          ],
+          "median": 21364,
+          "min": 21260,
+          "max": 21364
+        }
+      },
+      "iadt-empty-tail": {
+        "charged_steps": 2318248,
+        "wall_seconds_launcher": {
+          "values": [
+            0.077251149,
+            0.080999016,
+            0.084886931
+          ],
+          "median": 0.080999016,
+          "min": 0.077251149,
+          "max": 0.084886931
+        },
+        "wall_seconds_GNU_time": {
+          "values": [
+            0.07,
+            0.07,
+            0.08
+          ],
+          "median": 0.07,
+          "min": 0.07,
+          "max": 0.08
+        },
+        "maximum_RSS_KiB": {
+          "values": [
+            20960,
+            21012,
+            20932
+          ],
+          "median": 20960,
+          "min": 20932,
+          "max": 21012
+        }
+      }
+    },
+    "median_percent_changes": {
+      "wall_seconds_launcher": 1.79348986781791,
+      "wall_seconds_GNU_time": 0.0,
+      "maximum_RSS_KiB": -1.8910316420146067
+    },
+    "ranges_overlap": {
+      "wall_seconds_launcher": true,
+      "wall_seconds_GNU_time": true,
+      "maximum_RSS_KiB": false
+    }
+  },
+  {
+    "case": "trees16",
+    "variants": {
+      "baseline": {
+        "charged_steps": 7608511,
+        "wall_seconds_launcher": {
+          "values": [
+            0.220563803,
+            0.223161839,
+            0.217410942
+          ],
+          "median": 0.220563803,
+          "min": 0.217410942,
+          "max": 0.223161839
+        },
+        "wall_seconds_GNU_time": {
+          "values": [
+            0.21,
+            0.22,
+            0.21
+          ],
+          "median": 0.21,
+          "min": 0.21,
+          "max": 0.22
+        },
+        "maximum_RSS_KiB": {
+          "values": [
+            50708,
+            50848,
+            50644
+          ],
+          "median": 50708,
+          "min": 50644,
+          "max": 50848
+        }
+      },
+      "iadt-empty-tail": {
+        "charged_steps": 7608511,
+        "wall_seconds_launcher": {
+          "values": [
+            0.224505984,
+            0.221737971,
+            0.215156297
+          ],
+          "median": 0.221737971,
+          "min": 0.215156297,
+          "max": 0.224505984
+        },
+        "wall_seconds_GNU_time": {
+          "values": [
+            0.22,
+            0.21,
+            0.21
+          ],
+          "median": 0.21,
+          "min": 0.21,
+          "max": 0.22
+        },
+        "maximum_RSS_KiB": {
+          "values": [
+            49420,
+            49304,
+            49664
+          ],
+          "median": 49420,
+          "min": 49304,
+          "max": 49664
+        }
+      }
+    },
+    "median_percent_changes": {
+      "wall_seconds_launcher": 0.5323484561063685,
+      "wall_seconds_GNU_time": 0.0,
+      "maximum_RSS_KiB": -2.5400331308669255
+    },
+    "ranges_overlap": {
+      "wall_seconds_launcher": true,
+      "wall_seconds_GNU_time": true,
+      "maximum_RSS_KiB": false
+    }
+  },
+  {
+    "case": "trees64",
+    "variants": {
+      "baseline": {
+        "charged_steps": 29780510,
+        "wall_seconds_launcher": {
+          "values": [
+            0.755408966,
+            0.749383979,
+            0.768690054
+          ],
+          "median": 0.755408966,
+          "min": 0.749383979,
+          "max": 0.768690054
+        },
+        "wall_seconds_GNU_time": {
+          "values": [
+            0.75,
+            0.74,
+            0.76
+          ],
+          "median": 0.75,
+          "min": 0.74,
+          "max": 0.76
+        },
+        "maximum_RSS_KiB": {
+          "values": [
+            170220,
+            170396,
+            170316
+          ],
+          "median": 170316,
+          "min": 170220,
+          "max": 170396
+        }
+      },
+      "iadt-empty-tail": {
+        "charged_steps": 29780510,
+        "wall_seconds_launcher": {
+          "values": [
+            0.746677701,
+            0.768989609,
+            0.927453961
+          ],
+          "median": 0.768989609,
+          "min": 0.746677701,
+          "max": 0.927453961
+        },
+        "wall_seconds_GNU_time": {
+          "values": [
+            0.74,
+            0.76,
+            0.92
+          ],
+          "median": 0.76,
+          "min": 0.74,
+          "max": 0.92
+        },
+        "maximum_RSS_KiB": {
+          "values": [
+            166200,
+            165952,
+            165772
+          ],
+          "median": 165952,
+          "min": 165772,
+          "max": 166200
+        }
+      }
+    },
+    "median_percent_changes": {
+      "wall_seconds_launcher": 1.7977868427894839,
+      "wall_seconds_GNU_time": 1.333333333333342,
+      "maximum_RSS_KiB": -2.562295967495709
+    },
+    "ranges_overlap": {
+      "wall_seconds_launcher": true,
+      "wall_seconds_GNU_time": true,
+      "maximum_RSS_KiB": false
+    }
+  },
+  {
+    "case": "trees400",
+    "variants": {
+      "baseline": {
+        "charged_steps": 183507626,
+        "wall_seconds_launcher": {
+          "values": [
+            4.931993959,
+            4.911711004,
+            7.207218103
+          ],
+          "median": 4.931993959,
+          "min": 4.911711004,
+          "max": 7.207218103
+        },
+        "wall_seconds_GNU_time": {
+          "values": [
+            4.93,
+            4.9,
+            7.2
+          ],
+          "median": 4.93,
+          "min": 4.9,
+          "max": 7.2
+        },
+        "maximum_RSS_KiB": {
+          "values": [
+            1001516,
+            1001880,
+            1000408
+          ],
+          "median": 1001516,
+          "min": 1000408,
+          "max": 1001880
+        }
+      },
+      "iadt-empty-tail": {
+        "charged_steps": 183507626,
+        "wall_seconds_launcher": {
+          "values": [
+            4.898999935,
+            4.894853703,
+            7.109159876
+          ],
+          "median": 4.898999935,
+          "min": 4.894853703,
+          "max": 7.109159876
+        },
+        "wall_seconds_GNU_time": {
+          "values": [
+            4.89,
+            4.89,
+            7.1
+          ],
+          "median": 4.89,
+          "min": 4.89,
+          "max": 7.1
+        },
+        "maximum_RSS_KiB": {
+          "values": [
+            976512,
+            976712,
+            976012
+          ],
+          "median": 976512,
+          "min": 976012,
+          "max": 976712
+        }
+      }
+    },
+    "median_percent_changes": {
+      "wall_seconds_launcher": -0.668979408212611,
+      "wall_seconds_GNU_time": -0.8113590263691739,
+      "maximum_RSS_KiB": -2.496615131460711
+    },
+    "ranges_overlap": {
+      "wall_seconds_launcher": true,
+      "wall_seconds_GNU_time": true,
+      "maximum_RSS_KiB": false
+    }
+  }
+]
