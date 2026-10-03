@@ -63,5 +63,8 @@
     "Unchanged derived-LT aggregate600s cap remains incomplete/124; strict3/original unsafe E11 failures unwaived.",
     "Repository patch/docs representation adds lines; no accepted implementation/tests/build edit.",
     "Wall/RSS unmeasured; #59 remains open."
-  ]
+  ],
+  "Main_integration": "36a27be935aaa9c7310dce6881fa99576ec9caf2",
+  "Main_plan_and_JSON_provenance_corrected": true,
+  "five_other_task_files_exact": true
 }

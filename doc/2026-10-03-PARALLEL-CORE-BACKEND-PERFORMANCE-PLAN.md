@@ -22,7 +22,7 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
 | 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E1-E4/E6-E10 prototype Main; corrected E11 task published, broad/focused evidence verified; current joint qualification and E12 continue, strict3 remain |
 | 6 | `verification-audit`: independent read-mostly suite/debt inventory | #59 / PR #60, #51 | Bounded static inventory/pilot complete; measured cost deferred, full #59 remains open |
-| 7 | `test-suite`: implement coverage-preserving test reductions | #59 / PR #60 | Bounded Goal complete; exact7 taskbc16df9 pushed/remote verified, Root raw/assembly review complete, prototype Main integration next |
+| 7 | `test-suite`: implement coverage-preserving test reductions | #59 / PR #60 | Bounded Goal complete; exact7 taskbc16df9 pushed/remote verified, Root raw/assembly review complete, prototype Main36a27be integrated |
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
@@ -41,7 +41,7 @@ remain distinct from full issue completion and accepted promotion.
 | Surface; #57 | Verified prototype integrated, completed owner stopped | Accepted policy/promotion and selector diagnostics unresolved; no owner restart |
 | Static audit; #59/PR #60 | Task7ed3ad1/Main5683755; Root385 source/114 archived dependency hashes and exact inventory verified; bounded Goal achieved | Dynamic/full #59 and controlled cost remain open; no static-owner restart |
 | Sort; #41/F3-F5 | PR54 and finite-function task5e6ed84/Main966c4e1 integrated; bounded Goal achieved, focused gates0 | Accepted Sort/F5 and broader interfaces remain separate |
-| Test-suite; #59/PR #60 | Goal achieved. Final exact7 notice4432e3d/manifest0f30bef9, raw177/archive and776 dependencies exact. Root recomputed all distinct records:435 to413 calls; fresh original/reduced helpers reproduce128 runtime/23 C tests/two scripts. Worker47 completed recipes0 and ten injection controls verified | Exact task/Main prototype publication next. Net applied tests plus25-line helper is -13 lines; repository additions are patch/docs representation. Unchanged derived-LT600s run incomplete; no wall/RSS or accepted-test claim |
+| Test-suite; #59/PR #60 | Goal achieved. Final exact7 notice4432e3d/manifest0f30bef9, raw177/archive and776 dependencies exact. Root recomputed all distinct records:435 to413 calls; fresh original/reduced helpers reproduce128 runtime/23 C tests/two scripts. Worker47 completed recipes0 and ten injection controls verified | Exact7 taskbc16df9 pushed/remote verified, prototype Main36a27be integrated with corrected agent/user provenance. Net applied tests plus25-line helper is -13 lines; repository additions are patch/docs representation. Unchanged derived-LT600s run incomplete; no wall/RSS or accepted-test claim |
 | Issue-audit; all open Issues/PRs | Goal achieved. Root independently reread ten exact comments, successor61 body/open,44/49 closed/not_planned as superseded; task8bb5018 pushed, Mainb461ace local | Nine issues remain open, zero PRs. Superseded means residuals routed to61, not implemented. #59 and user design/adoption decisions remain open |
 
 Owning tables: Job/Evidence's [SE Plan](2026-09-30-SOLVER-EVIDENCE-DUPLICATION-AUDIT-AND-PLAN.md#plan),
@@ -71,7 +71,7 @@ reporting subsystem. Its audit cover is pinned to `37de1e8`, not current Main.
 | 0 / desk -> Merge | Workflow | Merge active; three implementation owners continue. Test-suite/issue-audit/static/Sort bounded Goals achieved and stopped; protected local bytes preserved. Scheduled six-hour report delivered; Root resumes coordination after audit handoff |
 | 1 / Job, Root reviews independently | SE/AP, #51 | Corrected E11 published/focused+broad verified; current joint qualification pending. Safe Context-ancestry repair on corrected parent continues without waiting. Preserve strict3 and original unsafe failures; no pointer-layout completion claim |
 | 1 / performance + Job | #56 / #51 | MEM1 v1 rejected on inline borrowed-state lifetime; stateless v2 qualifies independently, fresh memory/cost pending. Job owns separate header/scheduler inspection. Root resolves conflicts; matched wall/RSS needs an exclusive slot |
-| Complete bounded / test-suite; Root publishes | #59 / PR #60 | Verified pilot removes22 duplicate calls with all distinct outcomes preserved; Root raw/assembly review complete. Publish exact7 prototype; broader inventory/cost/accepted adoption remain open |
+| Complete bounded / test-suite; Root publishes | #59 / PR #60 | Verified pilot removes22 duplicate calls with all distinct outcomes preserved; Root raw/assembly review complete. Exact7 taskbc16df9/Main36a27be prototype integrated; broader inventory/cost/accepted adoption remain open |
 | Complete bounded / issue-audit | All open Issues/PRs | Verified comments/dispositions,44/49 superseded by61; nine issues open. Owner stopped; Root resumes coordination, no repeat audit |
 | Complete bounded / verification-audit | #59 / PR #60; #51 | Static inventory/pilot delivered and worker complete; four-job measured cost remains deferred, full #59 open. Do not restart the completed owner automatically |
 | 2 / C backend | #61 (historical #44/#49) | C1-C12 bounded prototypes delivered; C13 shared-library exact11 ready, Root current-producer review next. Native Acc/QuickSort and producer-policy boundaries remain explicit |
@@ -1320,7 +1320,8 @@ equivalence, verified all177 frozen archive records/776 dependencies and all47
 completed recipe exits/ten injection outcomes. Fresh original/reduced assembly
 matches qualified E9+E10 runtime128, pinned23 C tests and both tested scripts.
 No derived-LT terminal pass, comparative cost or accepted implementation claim.
-Exact7 task `bc16df9` pushed/remote verified; prototype Main integration follows.
+Exact7 task `bc16df9` pushed/remote verified; prototype Main `36a27be` integrated.
+Root corrected two documentation provenance labels; other five task files exact.
 Completed static audit reused.
 
 ### Assessment
