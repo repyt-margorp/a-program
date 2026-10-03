@@ -11,6 +11,8 @@ struct pg_c_representation {
 	const struct pg_data_layout *layout;
 	struct pg_c_constructor_representation *constructors;
 	int recursive;
+	int natural;
+	size_t zero;
 };
 struct pg_c_constructor_representation {
 	size_t count;
@@ -26,10 +28,15 @@ struct pg_c_representations {
 int pg_c_representations_init(struct pg_c_representations *, struct pg_graph *storage,
 	size_t enum_count, const struct pg_c_export *enums,
 	size_t data_count, const struct pg_c_export *data);
+int pg_c_representations_native(struct pg_c_representations *, struct pg_graph *storage,
+	size_t enum_count, const struct pg_c_export *enums,
+	size_t natural_count, const struct pg_c_export *naturals,
+	size_t data_count, const struct pg_c_export *data);
 void pg_c_representations_destroy(struct pg_c_representations *);
 const struct pg_c_representation *pg_c_representation_find(const struct pg_c_representations *, const struct pg_object *);
 void pg_c_representation_type(FILE *, const struct pg_c_representation *);
 void pg_c_representation_private_type(FILE *, const struct pg_c_representation *);
 void pg_c_representation_declarations(FILE *, const struct pg_c_representations *);
+int pg_c_representation_list(const struct pg_c_representation *, size_t *cell, size_t *payload);
 
 #endif

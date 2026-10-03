@@ -18,6 +18,12 @@ Related: [coordination](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md),
 2026-10-03, English paraphrase of user authorization, relayed by Core: own
 task-branch commit/push is explicitly permitted; only Core merges Main.
 
+2026-10-03, English paraphrase of the explicit user role decision relayed by
+Core: Core now specializes in design audit, combined verification and Main
+merges; Job/Evidence implementation belongs to its sole worker. The current
+target-only C epoch continues. Task-branch publication remains authorized;
+only Core integrates Main, with no accepted-source promotion.
+
 2026-10-03, English paraphrase of the continuation request: implement and
 verify AP4-AP6 and critically check #44/#49 against this committed worktree.
 Keep code prototype-only and downstream-only, without extending `.a` for target
@@ -35,13 +41,33 @@ names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
 
-2026-10-03: local branch/upstream tracking now both point to `bb69983`, the
+2026-10-03: fresh Git inspection confirms Epoch2 publication `4987c08` on the
+task branch and its upstream. Core reports seven current-owner/family-cursor plus
+Surface gates passed, followed by prototype-only Main integration `e5d4057` and
+Main push. These combined/integration results are Core reports, not worker reruns.
+At `4987c08`, `src/synthesis.c:atomic_rule_step` rejects integer tokens outside
+Int32 and synthesizes accepted integers as Int32. Large Int64 surface literals
+are unavailable. The published data fixture already uses `fallback : #Int64`
+for its Int64 branches; no synthesis or fixture correction is needed.
+
+Fresh Epoch3 verification at `4987c08` plus the exact lane edits in the
+[handoff](2026-10-03-C-BACKEND-EPOCH3-HANDOFF.md): eight O2 C gates pass and five
+native gates pass with ASan/UBSan/leak detection. Numeric coverage includes 1,089
+comparison pairs, 27,305 stable partition cases, ten source List observations
+and three Bool observations, 17 raw Nat Match evaluator observations, reversed
+constructor/field order, checked magnitude overflow and finite copy-out including
+300 nodes beyond the recursive execution limit. Final receipt/copy-out coverage
+passes focused O2 and sanitizer reruns. No remaining gate failure. This uses the
+private task-baseline producer; current-owner combined verification is Core's
+separate gate before integration.
+
+Historical Epoch1 inspection, 2026-10-03: branch/upstream both pointed to `bb69983`, the
 published Epoch1. Core reports its push completed and its exact archive is under
 combined current Identity-boundary producer tests. Later Core-reported evidence:
 those combined backend gates passed. This is a coordinator report, not a fresh
 worker rerun. Later Core report: Main integration is `9061be3`, Main push
 succeeded and six current-Core backend gates passed. Prototype-only integration;
-the worker remains at its own `bb69983` baseline.
+the worker then remained at its own `bb69983` baseline.
 
 Fresh Epoch2 verification at `bb69983` plus the exact lane edits in its
 [handoff](2026-10-03-C-BACKEND-EPOCH2-HANDOFF.md): seven O2 backend gates pass;
@@ -60,6 +86,20 @@ pinned/current producer images and emitted C/headers match byte-for-byte.
 Evidence and exact publication files are in the [epoch handoff](2026-10-03-C-BACKEND-EPOCH1-HANDOFF.md).
 
 ### Assessment
+
+Core operational routing, 2026-10-03: the job-evidence worker uses clean baseline
+`5035c7a`, producer `64df10d`; Core no longer edits SE owners concurrently.
+Route producer/admission/frontier needs through Core to that worker. This epoch
+needs no shared interface change. Continue implementation/tests and exact freeze
+handoff; resolved publication authorization and queued Epoch2 notes stay resolved.
+
+Core operational steer, 2026-10-03: release the Epoch2 freeze and prioritize
+native numeric-predicate partitioning/List boundary work. Borrow emitter-selected
+contract metadata to remove receipt representation reconstruction if simpler.
+Keep `.a`, schema and producer authority unchanged; ask Core before shared
+interface changes. Do not reopen resolved literal/auth work or publish status-only
+commits. The new Goal edits belong to the next epoch; the committed handoff and
+its historical manifest stay unchanged.
 
 Core workflow, 2026-10-03: shared Git remains read-only; Core performs the
 worker-branch commit/push and verifies emission with its current-owner plus
@@ -92,6 +132,21 @@ partitioning is not implemented; do not present flag selection as its completion
 Target arena allocation/depth failures have explicit statuses, preserve output
 and roll back only the failing call's new nodes. Default/max recursive depth is
 256; this is a target resource bound, not source termination evidence.
+
+Agent Epoch3 decision, 2026-10-03 at `4987c08` plus this plan: the existing
+`natLessOrEqual` uses recursive Nat matches; the host API supplies arithmetic,
+not an integer comparison primitive. Add an explicit target `nat32` selection
+for the exact closed zero/single-successor declaration shape, mapped to uint32
+with checked successor overflow. Lower the existing comparator and stable numeric
+List partitions through ordinary constructor/Match/call lowering, not a named
+comparator replacement. Generalize saturated recursive calls and retain the
+existing static IH capture handling. Nested recursive closure captures remain
+explicitly refused. Add finite List copy-out
+for a structurally checked scalar-payload/single-tail shape, with explicit buffer
+capacity and unchanged output on failure. Reuse emitter-selected contract flags
+in link receipts. These are backend-local choices; source authority and shared
+interfaces remain unchanged. Nat width and recursion depth are target resource
+bounds, not source typing or termination evidence.
 
 Core workflow update, 2026-10-03: publication permits the next owned epoch.
 Superseding Core steer: the queued Int64 correction was already resolved before
@@ -147,8 +202,13 @@ this target work while Main continues SE1, superseding the earlier AP6 hold.
   length/append/selection with ordinary inputs, evaluator differentials, failed
   allocation/output preservation, malformed/cyclic inputs, existing refusal
   coverage, deterministic inert emission and O2/ASan/UBSan checks.
-- [ ] Core publication of the separately frozen Epoch2; later integration review
-  and current-Core producer combination remain distinct steps.
+- [x] Core published Epoch2 as `4987c08`; Core reports combined verification and
+  prototype-only Main integration `e5d4057`. Freeze released for the next epoch.
+- [x] Epoch3: native Nat comparison, stable numeric List partitions and finite
+  scalar List copy-out. Verify source/C agreement, boundary/resource failures,
+  existing refusals, inert deterministic emission, receipts and O2/sanitizers.
+- [ ] Hand off the frozen Epoch3 files/hashes for Core task-branch publication;
+  current-owner combined checks and Main review remain separate.
 - [ ] Continue the remaining AP4.6/AP5.6/AP6.3-AP6.8 work against their shared
   criteria: recursive data/length/append/partition, List/slice/Acc/QuickSort,
   callback/effect and Identity coverage, explicit cross-module nominal contracts.
@@ -184,12 +244,15 @@ commit/push the named task branch under the explicit publication authorization.
 Agent code review checked nominal layout refusal, unsigned/signed field mapping,
 conditional extraction, captures, output preservation and target-only storage.
 Epoch2 adds verified single-tail recursion, arena ownership, length/append and
-stable Bool-field selection. Its code/test files are frozen for Core
-publication; the exact [handoff](2026-10-03-C-BACKEND-EPOCH2-HANDOFF.md) records
-tests, corrected preparatory failures and remaining limits. Tabs/English comments
-and shell syntax checks pass. Unsupported block-local thunks, callbacks, tree/
-indexed/dependent/nested fields and effects remain explicit negative coverage.
-Next after this handoff: numeric-predicate partitioning and slice/Acc/QuickSort;
+stable Bool-field selection. Core published it as `4987c08` and reports Main
+integration `e5d4057`; the historical [handoff](2026-10-03-C-BACKEND-EPOCH2-HANDOFF.md)
+and its manifest remain unchanged. Epoch3 is verified and frozen for Core
+publication: native numeric-predicate partitioning and finite List copy-out.
+Its [handoff](2026-10-03-C-BACKEND-EPOCH3-HANDOFF.md) defines the exact file set
+and evidence; no further edits in those files until Core releases the freeze.
+Unsupported block-local thunks, callbacks,
+tree/indexed/dependent/nested fields and effects remain explicit negative coverage.
+Further work includes slice/Acc/QuickSort;
 keep relevance/admission decisions with Core. The task has not completed AP6.4/5.
 Cross-owner handoff: #44 selected-export admission beside unresolved siblings and
 #47 relevance remain Core-owned. The full Goal is active; this epoch does not

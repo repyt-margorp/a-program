@@ -32,21 +32,26 @@ static int record(struct pg_c_representations *table, struct pg_graph *storage,
 	return pg_index_insert(&table->lookup, &e->index, (uintptr_t)key);
 }
 
-int pg_c_representations_init(struct pg_c_representations *table, struct pg_graph *storage,
+int pg_c_representations_native(struct pg_c_representations *table, struct pg_graph *storage,
 	size_t enum_count, const struct pg_c_export *enums,
+	size_t natural_count, const struct pg_c_export *naturals,
 	size_t data_count, const struct pg_c_export *data)
 {
 	if (pg_index_init(&table->lookup)) return -1;
 	if (data_count > SIZE_MAX - enum_count) return -1;
-	size_t count = enum_count + data_count;
+	if (natural_count > SIZE_MAX - enum_count - data_count) return -1;
+	size_t count = enum_count + natural_count + data_count;
 	if (count > SIZE_MAX / sizeof(*table->types)) return -1;
 	if (enum_count && !pg_c_export_names(enum_count, enums)) return -1;
+	if (natural_count && !pg_c_export_names(natural_count, naturals)) return -1;
 	if (data_count && !pg_c_export_names(data_count, data)) return -1;
 	table->count = count;
 	table->types = pg_alloc(storage, count * sizeof(*table->types));
 	if (!table->types) return -1;
 	for (size_t i = 0; i < count; ++i) {
-		const struct pg_c_export *selection = i < enum_count ? &enums[i] : &data[i - enum_count];
+		int natural = i >= enum_count && i < enum_count + natural_count;
+		const struct pg_c_export *selection = i < enum_count ? &enums[i] : natural ?
+			&naturals[i - enum_count] : &data[i - enum_count - natural_count];
 		const struct pg_occurrence *s = selection->subject;
 		uint64_t level;
 		if (!s || s->context || s->judgement != PG_JUDGEMENT_VALUE_TYPE || !s->core || s->core->kind != PG_REFERENCE) return -1;
@@ -68,7 +73,7 @@ int pg_c_representations_init(struct pg_c_representations *table, struct pg_grap
 		}
 		struct pg_c_representation *r = pg_alloc(storage, sizeof(*r));
 		if (!r) return -1;
-		*r = (struct pg_c_representation){.width = 32, .count = n, .alias = selection->alias, .layout = layout};
+		*r = (struct pg_c_representation){.width = 32, .count = n, .alias = selection->alias, .layout = layout, .natural = natural};
 		table->types[i] = r;
 		if (record(table, storage, s->core->as.reference, r) || record(table, storage, pg_data_matcher(layout), r)) return -1;
 		if (i < enum_count) continue;
@@ -97,13 +102,28 @@ int pg_c_representations_init(struct pg_c_representations *table, struct pg_grap
 					if (c->tail != SIZE_MAX) return -1;
 					c->tail = k - 1; r->recursive = 1; f = r;
 				}
-				if (!f || (f->constructors && f != r)) return -1;
+				if (!f || (f->constructors && !f->natural && f != r)) return -1;
 				c->fields[k - 1] = f;
 			}
 		}
-		if (r->recursive && !table->arena_alias) table->arena_alias = r->alias;
+		if (natural) {
+			/* Positions come from the selected declaration, never constructor names. */
+			if (n != 2) return -1;
+			size_t zero = r->constructors[0].count ? 1 : 0, successor = 1 - zero;
+			if (r->constructors[zero].count || r->constructors[successor].count != 1 ||
+				r->constructors[successor].tail != 0) return -1;
+			r->zero = zero; r->recursive = 0;
+		}
+		if ((r->recursive || natural) && !table->arena_alias) table->arena_alias = r->alias;
 	}
 	return 0;
+}
+
+int pg_c_representations_init(struct pg_c_representations *table, struct pg_graph *storage,
+	size_t enum_count, const struct pg_c_export *enums,
+	size_t data_count, const struct pg_c_export *data)
+{
+	return pg_c_representations_native(table, storage, enum_count, enums, 0, NULL, data_count, data);
 }
 
 void pg_c_representations_destroy(struct pg_c_representations *table)
@@ -113,14 +133,15 @@ void pg_c_representations_destroy(struct pg_c_representations *table)
 
 void pg_c_representation_type(FILE *out, const struct pg_c_representation *type)
 {
-	if (type->layout) fprintf(out, "%sstruct ap_%s_%s%s", type->recursive ? "const " : "",
+	if (type->natural) fputs("uint32_t", out);
+	else if (type->layout) fprintf(out, "%sstruct ap_%s_%s%s", type->recursive ? "const " : "",
 		type->constructors ? "data" : "enum", type->alias, type->recursive ? " *" : "");
 	else fprintf(out, "int%zu_t", type->width);
 }
 
 void pg_c_representation_private_type(FILE *out, const struct pg_c_representation *type)
 {
-	if (type->constructors) pg_c_representation_type(out, type);
+	if (type->constructors && !type->natural) pg_c_representation_type(out, type);
 	else fputs("uint64_t", out);
 }
 
@@ -128,6 +149,10 @@ void pg_c_representation_declarations(FILE *out, const struct pg_c_representatio
 {
 	for (size_t i = 0; i < table->count; ++i) {
 		const struct pg_c_representation *r = table->types[i];
+		if (r->natural) {
+			fprintf(out, "/* %s: zero = 0, successor = checked increment; status 5 on overflow. */\n", r->alias);
+			continue;
+		}
 		fprintf(out, "struct ap_%s_%s { uint32_t tag;", r->constructors ? "data" : "enum", r->alias);
 		if (r->constructors) {
 			fputs(" union {\n", out);
@@ -146,4 +171,17 @@ void pg_c_representation_declarations(FILE *out, const struct pg_c_representatio
 		for (size_t j = 0; j < r->count; ++j)
 			fprintf(out, "#define AP_%s_%s_C%zu UINT32_C(%zu)\n", r->constructors ? "DATA" : "ENUM", r->alias, j, j);
 	}
+}
+
+int pg_c_representation_list(const struct pg_c_representation *r, size_t *cell, size_t *payload)
+{
+	if (!r->recursive || r->count != 2) return 0;
+	size_t position = r->constructors[0].count ? 0 : 1;
+	const struct pg_c_constructor_representation *c = &r->constructors[position];
+	if (r->constructors[1 - position].count || c->count != 2 || c->tail > 1) return 0;
+	size_t field = 1 - c->tail;
+	const struct pg_c_representation *type = c->fields[field];
+	if (type->layout && !type->natural) return 0;
+	*cell = position; *payload = field;
+	return 1;
 }
