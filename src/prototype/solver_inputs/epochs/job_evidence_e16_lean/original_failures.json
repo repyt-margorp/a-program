@@ -1,0 +1,34 @@
+{
+  "initial_compile_failure.json": {
+    "stage": "standalone control compile",
+    "exit": 2,
+    "report": "/tmp/job-evidence-e16-parent-build.log",
+    "report_sha256": "b8aebb02776a532470370f41d2b8d2c0286e05841ab9485849c0be293307907b",
+    "request_sha256": "198c83454d27354bfa010f356dde791e7569602f4ecea88b5a19707098d12ec7",
+    "control_manifest_sha256": "b33ac929a9ad4be6745c735d5f3dd954fdd0170f598ad8f0712654dc933ed6ba",
+    "original_control_sha256": "247e9d301a095747bde351fd8ffa01718e773a21cb1748c6070f57ae378b8feb",
+    "failure": "Missing synthesis_source.h declaration for pg_synthesis_plain_rule_inputs; -Werror rejects implicit declaration. Parent Synthesis/normalization control builds preceded it but no controls ran.",
+    "correction": "Add owning declaration header only; runtime/tested source156 remains a00c7426. Preserve original report/request/source; new logs use e16-v2 names."
+  },
+  "initial_san_failure.json": {
+    "exit": 1,
+    "report": "/tmp/job-evidence-e16-v2-asan-pending_owner_control.log",
+    "report_sha256": "690d9460bd5dbb72b34114906b669edc08edc2fcd881c991bf3aaedb6df63b75",
+    "control_source_sha256": "a1d48213214d7433364483c85446e6b1add794328b53dfdc5f334fe78af5c117",
+    "control_manifest_sha256": "2e7eeb8e34f1e18a55efda6ba53b38d6adfc66feb5b5ae27ed5167281b6a0e59",
+    "request_sha256": "b8f98562cd88561f6b946aa8f154a41b95e8526cfe0f9c669bb926a69e3621b6",
+    "failure": "Standalone fixture omitted pg_typing_destroy: LeakSanitizer reports5632 bytes/11 typing/substitution index allocations. Candidate owner guard and all runtime156 sources unchanged.",
+    "correction": "Add required typing-owner destruction before graph teardown; leaks remain enabled. Preserve original verdict/log/source; corrected control uses v3 requests/reports."
+  },
+  "initial_broad_storage_failure.json": {
+    "exit": 2,
+    "request_sha256": "15535a72d4a1f9f9f0bcebaf6cc719c5c5ce922441422375b4afb89f24986849",
+    "report": "/tmp/job-evidence-e16-broad.log",
+    "report_sha256": "de5140cd5bb4fd88cc5448a5718739c8410fed90743014795769b0b56f97a4c2",
+    "failure": "cp complete.a to resaved.a: No space left on device in derived_lt.sh; make exit2",
+    "storage": "/tmp tmpfs32GiB at100%; worktree disk759GiB available; failed fixture trap removed its own temporary directory",
+    "source156_after_exact": true,
+    "overlay469_after_exact": true,
+    "no_semantic_pass_inferred": true
+  }
+}

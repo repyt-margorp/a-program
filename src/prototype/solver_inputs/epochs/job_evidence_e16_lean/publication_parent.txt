@@ -1,0 +1,1 @@
+Exact frozen E15 canonical parent: manifest05df92fe422ff6a7e420d40bf1e20484c8646516245148ef662cb764080d86c9; transport8c027434405c84bd09c4f974fd629a37589b87c5b72079f9d988e48cd0558ac4 published as task 150e30a68568683e7d0d9e754fa0fbf67c2e5b61. This transport applies to that exact E15 task snapshot. E10/current Main/E17 excluded. No shared Git mutation.

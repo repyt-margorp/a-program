@@ -1,15 +1,16 @@
 --- a/artifact/schedule.c
 +++ b/artifact/schedule.c
-@@ -71,7 +71,7 @@
+@@ -71,7 +71,8 @@
  {
  	if (!synthesis || (count && !jobs)) return -1;
  	for (size_t i = 0; i < count; ++i) {
 -		if (!jobs[i] || jobs[i]->owner != synthesis->owner_key) return -1;
-+		if (!jobs[i] || jobs[i]->pending.owner != synthesis->owner_key) return -1;
++		if (!pg_synthesis_input_owned(synthesis,
++			(struct pg_synthesis_input){.pending = pg_synthesis_pending(jobs[i])})) return -1;
  		if (pg_dag_add(map, jobs[i]) || map->count != i + 1) return -1;
  	}
  	return 0;
-@@ -102,7 +102,8 @@
+@@ -102,7 +103,8 @@
  	if (last != synthesis->ready_tail) return -1;
  	for (size_t i = 0; i < map->count; ++i) {
  		const struct pg_synthesis_job *child = jobs[i];
@@ -19,7 +20,7 @@
  			size_t p = slot(map, w->parent);
  			if (p == SIZE_MAX || (marks[p] & 2) || w->child != child) return -1;
  			if (!replacing && marks[p]) return -1;
-@@ -135,7 +136,8 @@
+@@ -135,7 +137,8 @@
  	for (const struct pg_synthesis_job *job = synthesis->ready; job; job = job->next)
  		state->queue[q++] = slot(&map, job);
  	for (size_t i = 0; i < count; ++i)
@@ -29,7 +30,7 @@
  			state->edges[e++] = slot(&map, w->parent);
  			state->edges[e++] = i;
  			state->edges[e++] = (unsigned)w->preparation;
-@@ -199,17 +201,18 @@
+@@ -199,17 +202,18 @@
  		edges[i] = (struct waiter){.parent = parent, .child = child, .preparation = (int)edge[2]};
  	}
  	/* Publish only after every mapping and edge has passed validation. */

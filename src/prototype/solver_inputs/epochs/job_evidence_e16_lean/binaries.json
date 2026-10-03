@@ -1,0 +1,11 @@
+{
+  "parent/rule_header_census/binding_storage_audit": "2457378d69fca0c6fd16bd6ad3c769b38f6e9358797b54165ca9417b0a06a3b0",
+  "candidate/rule_header_census/binding_storage_audit": "0400ef435adcbe5a8eb152c6a3925c8329c719332740d4d335fb804f990649e7",
+  "candidate/owner_controls/synthesis_test": "577fd4e7153b249b6197dfcd25ab47b2c702d39fb7ce768d3e5f511817232643",
+  "candidate/owner_controls/artifact_normalization_checkpoint_test": "9f3aefbd42c8425af28ce2da63028dee6e04ee7a7c92a8bfa897007df6c28194",
+  "candidate/owner_controls/pending_owner_control": "441466102087d1aea192358d9dba891b3d3f977dc864d4449c3a768c56018f26",
+  "candidate/owner_asan/synthesis_test": "5b11bc4ba73cde2a855637d22aa54e0544057c9d55b3d7579f29fcd515423794",
+  "candidate/owner_asan/artifact_normalization_checkpoint_test": "1c9205768af8000ceb903b87a346c302b297f7d1121ad2912d6e2c7446c74106",
+  "candidate/owner_asan/pending_owner_control": "010c5648b2d4a7179035da4ef56e139c6567d2a790c1b435322837a1c1e8c831",
+  "candidate/policy_control/resume_policy_control": "35b8ead8e779252223732e8cd80898835dc7820875704de7dfcde1d3b1d4a4fd"
+}
