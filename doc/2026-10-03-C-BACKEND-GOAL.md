@@ -649,7 +649,8 @@ this target work while Main continues SE1, superseding the earlier AP6 hold.
 - [x] Root publishes/pushes exact C9 task `60c100c` (38 frozen files).
 - [x] Root all thirteen current-E8 O2 gates pass, source128/frozen38 exact;
   evidence `core-epoch9.json` keeps worker client sanitizers separate.
-- [ ] Prototype Main integration/publication confirmation.
+- [x] Prototype Main integration `48c42eb`; status publication `7ca963d`
+  pushed and remote verified by Root.
 - [ ] Maintain the single issue table at material events and within six active
   hours; use brief pointer/hash notices and keep Core workflow in Assessment.
 - [ ] Coordinate further bounded target ABI/lowering increments under the latest

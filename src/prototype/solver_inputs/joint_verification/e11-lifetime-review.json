@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-03",
+  "decision": "Hold frozen E11 publication: confirmed retained-address mutation regression; corrected candidate required",
+  "isolated_parent": "bd1ddf3a0ac86c365c1b1bf5992eb254cf752a99",
+  "parent_source_pins": 156,
+  "candidate_source_pins": 156,
+  "candidate_manifest_sha256": "86c80f7a1c8785fc84c788fb3ae0a29a6f2a461dabda63e733b7db03bbc06ae6",
+  "exact_frozen_files": 21,
+  "local_report_hashes_verified": 19,
+  "review": "Canonical factory/visitor guards protect binding-tail reads. Scope interning retains raw parent pointers; a head owner stamp does not establish retained canonical ancestry. E11 borrows that scratch ancestry where E9 copies its Binder values.",
+  "fresh_control": {
+    "flags": "-std=c11 -Wall -Wextra -Werror -O0",
+    "checking_advancement": false,
+    "result": [
+      {
+        "name": "e9",
+        "build_exit": 0,
+        "run_exit": 0,
+        "output": "canonical head, caller-owned ancestor: retained address stable after scratch mutation\n"
+      },
+      {
+        "name": "e11",
+        "build_exit": 0,
+        "run_exit": 1,
+        "output": "canonical head, caller-owned ancestor: retained address changed after scratch mutation\n"
+      }
+    ],
+    "control": "e11_scope_lifetime_control.c",
+    "control_sha256": "4dec399eb005da6d93d8b45d8cdad6cd65cf10ed41628e8e6fce83ec6e0fac51"
+  },
+  "raw_evidence": "/tmp/a-program-merge-e11-lifetime-20261003",
+  "raw_sha256": {
+    "e11-build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "e11-run.log": "3a4abceaa3633254173693673f47e89388c11c83dc1804c01af8d588079c2d25",
+    "e9-build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "e9-run.log": "1fffbb46ba1faa0c400f3a4d3cd1e42c9fc08734a2e80932fdc1b3b314b399aa",
+    "setup-control.c": "dbaa8b9635aa027920218c12d91707cb2b94c3f51ba55eed111e349b488138c2",
+    "setup-terminal.json": "7f6690709382794425b2ac0b1e3696a867eed24ea3ddba14569b7e223745a28f",
+    "terminal.json": "8035fc2be2dbbdae189a0068bbc57441f90809f0730db1ddda6a601f8eb29afa"
+  },
+  "setup_failure": "Initial control supplied a DEFINITIONS node to the binding factory, which accepts its lambda expression; both rejected before testing lifetime. Setup source and terminal retained separately.",
+  "correction_scope": "Agent implementation decision: borrow only a fully retained local canonical ancestry through the existing index; otherwise preserve the prior owned flattened-array lifetime. No new owner index or scope-factory policy. Corrected E11 focused gates released at j1; broad/C/timing remain held.",
+  "historical_results": "Worker full/focused/sanitizer checks and five layout censuses remain exact historical evidence; they did not cover this mutation boundary. E12 separate, unqualified; E9/E10 common-producer qualification continues.",
+  "accepted_source_changes": false
+}

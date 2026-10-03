@@ -32,7 +32,7 @@ distinct from Root fresh gates and accepted performance promotion.
 
 | Owner / issue scope | Delivered and verified | Not yet delivered / next boundary |
 | --- | --- | --- |
-| Job/Evidence; SE1-SE5 / AP0, related #51/#47 | E1-E4/E6/E7/E8 prototype Main; exact E7/E8 `3ad0303`/`50cd56b` and joint runtime128 verified; integrations `efc3ff0`/`f6d7cfe` | E9 task `bd1ddf3` exact24 and isolated E10 task `6715af2` exact19 published/pushed; qualification pending; strict3 remain |
+| Job/Evidence; SE1-SE5 / AP0, related #51/#47 | E1-E4/E6/E7/E8 prototype Main; exact E7/E8 `3ad0303`/`50cd56b` and joint runtime128 verified; integrations `efc3ff0`/`f6d7cfe` | E9 task `bd1ddf3` exact24 and isolated E10 task `6715af2` exact19 pushed, performance qualification running; E11 publication held after Root lifetime counterexample; E12 private/unqualified; strict3 remain |
 | C backend; #44/#49 | C9 task `60c100c` exact38 published/pushed; Root thirteen current-E8 strict-O2 gates pass, prototype Main `48c42eb`; C8 twelve and C7 eleven gates remain separately pinned | Native Acc/QuickSort and broader C/Identity/admissibility criteria remain open; no accepted C promotion |
 | Performance; #56, measurement work #51/#52 | E6 measurement task `44e479b`, Main `99efcf7`, exact114 published; 30 samples/292 pins verified. E7/E8 qualified; accepted13-file candidate O2 386/0 and affected sanitizer groups8/0 | Accepted epoch `7631e5a` verified/pushed; prototype compatibility verified; state-image task `ac6a8b2` exact2 published/pushed and integrated; E9/E10 next; accepted-only timing unmeasured and #52 separate |
 | Surface; #57 | Delivered prototype integrated; session stopped; Merge reviewed polarity, brace/migration, scope and version gates | Accepted language policy/promotion and selector diagnostics remain unresolved; #57 stays open; no active worker |
@@ -246,8 +246,9 @@ performance-owned. C9 task `60c100c` exact38 is pushed/remote verified; Root all
 current-E8 gates pass at one build job, and prototype Main `48c42eb` integrates
 the reconciled candidate and [fresh evidence](../src/prototype/c_backend/verification/core-epoch9.json).
 Its frozen older C8-pending status is superseded by Root C8 gates/pushed Main.
-C holds safely; Job E11 is frozen for isolated E9 review and E12 stays private,
-unqualified. State-image task `ac6a8b2` exact2 is published/integrated
+C holds safely; Job E11's frozen isolated E9 review found a retained-address
+lifetime regression (fresh parent0/candidate1); publication is held for correction.
+E12 stays private, unqualified. State-image task `ac6a8b2` exact2 is published/integrated
 as `6867359`: all65 pins/36 outcomes freshly checked, three completed image
 pairs equal,12 inert resaves pending3 with exact bytes. Counts are not RAM/time.
 
@@ -288,6 +289,20 @@ public resume failures are in the
 Accepted `src/evidence.*`, `src/iadt.*` and their tests retain unrelated edits.
 
 ### Assessment
+
+2026-10-03 11:12 UTC, Root agent review: reject frozen E11 for publication and
+Main integration. All21 files,19 local reports and both156-source trees match
+their pins. A fresh focused [control](../src/prototype/solver_inputs/joint_verification/e11_scope_lifetime_control.c)
+uses a canonical SourceScope head with a caller-owned ancestor: E9 preserves its
+retained Binder address (exit0), E11 changes it after scratch mutation (exit1).
+[Review evidence](../src/prototype/solver_inputs/joint_verification/e11-lifetime-review.json)
+retains commands/results and the initial wrong-syntax setup failure separately.
+Borrow only fully retained canonical ancestry through the existing index;
+otherwise keep the old owned array. This is an agent correction within scope,
+not new user design approval or a scope-factory policy change. Job may run only
+the corrected isolated E11 focused/lifetime/sanitizer controls at one build job;
+broad/C/timing hold remains, E12 unqualified. Existing performance E9 then
+E9+E10 qualification continues on immutable tasks.
 
 2026-10-03 issue-criteria review (agent assessment): ten open issues reflect
 partial prototype deliveries and distinct remaining criteria, not a universal
