@@ -963,8 +963,8 @@ static int emit(FILE *source, FILE *header, size_t count,
 	pg_c_nodes_declarations(source, &m.representations);
 	fputs("#ifdef __cplusplus\nextern \"C\" {\n#endif\n", header);
 	pg_c_nodes_declarations(header, &m.representations);
-	pg_c_nodes_implementation(source, &m.representations);
 	value_validators(source, &m.representations);
+	pg_c_nodes_implementation(source, &m.representations);
 	for (const struct function *f = m.first; f; f = f->next) { signature(source, f); fputs(";\n", source); }
 	fputc('\n', source);
 	for (const struct function *f = m.first; f; f = f->next) emit_function(source, f);

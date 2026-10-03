@@ -103,6 +103,13 @@ names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
 
+2026-10-03, Root current-producer C12 review of exact task `97f8d7c` on
+E9+E10 runtime128 `73fa86c9`: all fourteen strict-O2 backend targets pass,
+including the new record-List gate and both former negative shapes as explicit
+positive clients. Root verifies all128 producer and pinned backend inputs remain
+unchanged. Fresh affected client/source sanitizer and I/O controls follow;
+worker E8 qualification remains separately attributed.
+
 2026-10-03 13:06 UTC, Root fresh qualification of exact C11 task `56e4ae875`
 against Main `09ee775` and current E9+E10 runtime128 `73fa86c9`: all thirteen
 strict-O2 backend gates and nineteen publication-I/O status controls pass.
@@ -120,6 +127,23 @@ Enum arrays: 875 boundary cases per product/24 source observations. Worker nativ
 sanitizer reports remain separate. Prototype integration is complete; accepted
 promotion/native Acc QuickSort and broader contracts remain open. This supersedes
 the older pending-C7 publication/joint status below without changing its history.
+
+Fresh independent C12: already-selected finite value records now have the
+single-tail List/array target contract. Ordinary admission and old checked/trusted
+status-4 refusal were proved before the guard/validator-order change. Focused
+record-List, affected value-record and enum-List O2/client sanitizer gates pass;
+C11 publication controls still pass. Source Match/sum/append preserve whole
+record fields; unsupported record shapes remain explicit. Exact pins are in the
+[record-List plan](2026-10-03-C-BACKEND-RECORD-LIST-PLAN.md) and separate handoff.
+C11's seven submitted entries remain exact in `epoch11-submitted-snapshot.tar`
+SHA256 `af0729f2998856df06a78eb80f5da74368e0f409d0da70ccf2c032e12484c318`;
+only this live owning status advances independently. Root's later C10 report
+confirms task `fe497956` and prototype Main `2753441`/status `0791e799` pushed
+and remote exact. This is coordinator evidence, not a worker Main operation.
+Root later reports exact C11 task `56e4ae875a18f336fff2262925472158a0d5d249`
+pushed/remote verified with live C12 edits preserved. Root's Main `545baa62` / publication `6988deb` and thirteen current-E9+E10
+backend/nineteen I/O controls are complete and remote verified; these are
+Root fresh tests, distinct from the worker's old-producer controls.
 
 Fresh C11 at `fe497956c3d0031a0db0c98a13db5c464fcd2a8b` plus owned edits:
 source/header/direct publication stream errors now return I/O status 2. The
@@ -227,7 +251,8 @@ Current issue status (2026-10-03; detailed pins stay in linked epoch plans):
 | #49 selected applied families, C9 | Exact task `60c100c9d06b314eaeb024462e8ce0e3f2da5bab`: selector/parameter/signature wiring; 38-file freeze SHA256 `f0a61e5edd02a55ed8a2cafc2f1aed876537a008ddb68c8c6646cc2a9e9490b8`. | Local 13 O2/10 client sanitizer gates pass; 1093 Nat Lists, 127 enum Lists, 127 reversed Lists, 34 values/product and nine source observations. Five inert profiles/fourteen checked/trusted refusals retained. Root thirteen strict O2 E8/runtime128 gates pass, `core-epoch9.json`. | Exact task pushed/remote verified; prototype Main `48c42eb`, publication `7ca963d` pushed/remote verified by Root. | One instance per erased layout/reference arguments only; indexed/callable shapes excluded. No accepted C promotion. | Preserve unsupported contracts in the focused ordinary-module follow-up. |
 | #49 source List slices and ordinary modules, C9 | Exact task `60c100c`: admitted take/drop/slice use generic native Match/known thunks; ordinary C converts arrays between separate nominal products. | Local O2/client sanitizers: 1093 Lists, five take/drop limits and 25 slice pairs/List/product; nine payload comparisons. Nine product pairs/both header orders/shared arena and incompatible pointer refusal pass. Root thirteen E8 gates pass; rows are not independent properties. | Same exact C9 task/Main publication `7ca963d`; historical handoff preserved. | Nat32/depth/storage limits remain; drop reconstructs suffix. Indexed SizedList/callable Acc/native QuickSort remain open. | Preserve these contracts in bounded ordinary-module verification. |
 | #49 ordinary C helper aliases, C10 | Task parent `60c100c` plus three test/harness files; reviewed client SHA256 `1333e8545580ad88e7b210dd0d7374d70ae37cc1bed9cc11fbf19aa48ad214af`. No emitter/producer/schema change. | Qualified C9/E8 fresh inputs; 18 serial O2 and 18 client ASan/UBSan/leak combinations pass. Eight Choice pairs/one four-element List per client; rollback/depth/lifetime and two default-symbol refusals pass. Exact pins in the alias note. | Exact six-file task `fe497956` pushed/remote verified; Root evidence review passes. Prototype Main `2753441` / status `0791e799` pushed/remote verified. | Explicit distinct aliases remain required; no general nominal exchange or fully instrumented object/archive claim. | Continue independent I/O correction/value-record List prototype; Root handles integration conflicts. |
-| #49 publication I/O status, C11 | Parent `fe497956` plus two implementation files: save stream errors before closing and prefer I/O status 2. Exact seven-file handoff. | Worker C9/E8 before/after19 and 18 O2/18 client sanitizer combinations pass. Root fresh current-E9+E10 thirteen backend gates and nineteen I/O controls pass. Unsupported 4, cleanup and prior output preserved. | Exact seven-file task `56e4ae875` pushed/remote verified; Root qualification complete, Main publication follows. | Linux fault interposition is test-only; backend/object/archive bodies are O2, not sanitizer-instrumented. No broad native completion. | Separate bounded already-selected finite value-record/single-tail List admission/refusal probe. |
+| #49 publication I/O status, C11 | Parent `fe497956` plus two implementation files: save stream errors before closing and prefer I/O status 2. Exact seven-file handoff. | Worker C9/E8 before/after19 and 18 O2/18 client sanitizer combinations pass. Root fresh current-E9+E10 thirteen backend gates and nineteen I/O controls pass. Unsupported 4, cleanup and prior output preserved. | Exact seven-file task `56e4ae875` pushed/remote verified; Root qualification complete; prototype Main `545baa62` published in `6988deb`, remote verified. | Linux fault interposition is test-only; backend/object/archive bodies are O2, not sanitizer-instrumented. No broad native completion. | Separate bounded already-selected finite value-record/single-tail List admission/refusal probe. |
+| #49 finite value-record List/arrays, C12 | Parent `56e4ae875a18f336fff2262925472158a0d5d249` plus three lowerer files: retain only List-shaped finite payloads, validate active fields before traversal/allocation, emit validators first. | 259 cases/product and 13 source observations; O2/client sanitizers and 24 checked/trusted refusals pass. Affected old value-record/enum-List gates and C11 I/O controls pass; former Recursive/Aggregates are explicit positives. | Exact sixteen-file task `97f8d7c` pushed/remote verified. Root current E9+E10 fourteen O2 gates pass; client sanitizer qualification live, Main review pending. | Recursive aggregates, multi-tail/non-List record shapes, callable/indexed fields and native Acc/QuickSort remain unsupported. No accepted C promotion. | Pin exact C12 handoff, then assess the next concrete C-module boundary within the bounded scope. |
 | #44/#49 native Acc/QuickSort | C4 `a3b6bce` pins native refusal; C7-C9 retain it. Applied List resolves only the first representation obligation. No native sorter. | Historical checked/trusted status 4/no product; Root C9 sorting-boundary gate passes. Structural FFTT remains separate. | C4-C9 task/prototype Main published; no native Acc epoch publication. | Indexed SizedList and callable recursive Acc fields remain unsupported; no producer defect established. | Report concrete indexed/callable representation needs through Merge; keep work bounded and downstream. |
 | #49 remaining public contracts | Dynamic callbacks/effects, higher Identity, recursive captures and general shared nominal exchange remain explicit limits. | Local/joint gates verify supported cases and refusals, not general completion. | C8/C9 task/prototype Main published; no publication of these missing contracts. | Need bounded justified representation/demand contracts. | Preserve refusals; route shared needs through Merge. |
 

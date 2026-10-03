@@ -4,8 +4,15 @@ backend=${1:?a-to-c binary}
 compiler=${2:?pointer-check binary}
 here=$(cd "$(dirname "$0")" && pwd)
 fixtures="$here/../fixtures"
-temporary=$(mktemp -d)
-trap 'rm -rf "$temporary"' EXIT
+if [[ -n ${3:-} ]]; then
+	temporary=$3
+	test ! -e "$temporary"
+	mkdir -p "$temporary"
+	temporary=$(realpath "$temporary")
+else
+	temporary=$(mktemp -d)
+	trap 'rm -rf "$temporary"' EXIT
+fi
 cc=${CC:-cc}
 read -r -a flags <<< "${C_BACKEND_CFLAGS:--std=c11 -Wall -Wextra -Werror -O2}"
 expect_status() {
@@ -32,8 +39,8 @@ for product in source object archive; do
 	object) input="$temporary/object/component.o" ;;
 	archive) input="$temporary/archive/library.a" ;;
 	esac
-	"$cc" "${flags[@]}" -I"$temporary/$product" "$here/enum_list_client.c" "$input" -Wl,--wrap=malloc -o "$temporary/client"
-	expect_status 0 "$temporary/client"
+	"$cc" "${flags[@]}" -I"$temporary/$product" "$here/enum_list_client.c" "$input" -Wl,--wrap=malloc -o "$temporary/client-$product"
+	expect_status 0 "$temporary/client-$product"
 	if [[ $product == source ]]; then cp "$temporary/out" "$temporary/generated"; fi
 done
 expect_status 0 "$compiler" --imports "$fixtures/enum_list.p" --run main "$fixtures/enum_list_differential.p"
@@ -63,12 +70,17 @@ cp "$fixtures/enum_list.aplink" "$temporary/bad.aplink"
 printf 'data Pairs Pairs\n' >> "$temporary/bad.aplink"
 expect_status 0 "$backend" --link "$temporary/bad.aplink" "$temporary/multi-payload"
 ! grep -E '^int ap_(copy|from)_Pairs' "$temporary/multi-payload/component.h"
-for extra in 'data Value Value\ndata Aggregates Rejected\n' 'data Tree Rejected\n'; do
-	cp "$fixtures/enum_list.aplink" "$temporary/bad.aplink"
-	printf '%b' "$extra" >> "$temporary/bad.aplink"
-	expect_status 4 "$backend" --link "$temporary/bad.aplink" "$temporary/bad"
-	test ! -e "$temporary/bad"
-done
+# The exact former finite-value Aggregates refusal now exposes List arrays.
+cp "$fixtures/enum_list.aplink" "$temporary/aggregates.aplink"
+printf 'data Value Value\ndata Aggregates Aggregates\n' >> "$temporary/aggregates.aplink"
+expect_status 0 "$backend" --link "$temporary/aggregates.aplink" "$temporary/aggregates"
+"$cc" "${flags[@]}" -I"$temporary/aggregates" "$here/../record_list/former_client.c" \
+	"$temporary/aggregates/component.c" -o "$temporary/aggregates-client"
+expect_status 0 "$temporary/aggregates-client"
+cp "$fixtures/enum_list.aplink" "$temporary/bad.aplink"
+printf 'data Tree Rejected\n' >> "$temporary/bad.aplink"
+expect_status 4 "$backend" --link "$temporary/bad.aplink" "$temporary/bad"
+test ! -e "$temporary/bad"
 sha256sum "$temporary/fixture.a" > "$temporary/after"
 cmp "$temporary/before" "$temporary/after"
 printf 'Native enum arrays: 875 cases per C product, 24 source observations, transactional input validation/rollback and 300-node conversion passed\n'
