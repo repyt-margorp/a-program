@@ -1,0 +1,60 @@
+{
+  "samples": [
+    {
+      "sample": "graph-captured",
+      "status": "DONE",
+      "steps": 6877,
+      "typed": 1992,
+      "evidence": 2605,
+      "graph_sources": 2,
+      "job_bytes": 281552,
+      "all35_fields_equal_at_all_cuts": true,
+      "parent_external_cumulative": {
+        "wrapped_arena_calls": 23156,
+        "wrapped_aligned_bytes": 2205536
+      },
+      "candidate_external_cumulative": {
+        "wrapped_arena_calls": 23154,
+        "wrapped_aligned_bytes": 2205504
+      }
+    },
+    {
+      "sample": "graph-branches",
+      "status": "DONE",
+      "steps": 32684,
+      "typed": 10145,
+      "evidence": 13340,
+      "graph_sources": 8,
+      "job_bytes": 925768,
+      "all35_fields_equal_at_all_cuts": true,
+      "parent_external_cumulative": {
+        "wrapped_arena_calls": 126277,
+        "wrapped_aligned_bytes": 11464064
+      },
+      "candidate_external_cumulative": {
+        "wrapped_arena_calls": 126258,
+        "wrapped_aligned_bytes": 11463296
+      }
+    },
+    {
+      "sample": "graph-helpers",
+      "status": "DONE",
+      "steps": 29096,
+      "typed": 8933,
+      "evidence": 10892,
+      "graph_sources": 8,
+      "job_bytes": 936288,
+      "all35_fields_equal_at_all_cuts": true,
+      "parent_external_cumulative": {
+        "wrapped_arena_calls": 103567,
+        "wrapped_aligned_bytes": 9516832
+      },
+      "candidate_external_cumulative": {
+        "wrapped_arena_calls": 103521,
+        "wrapped_aligned_bytes": 9514880
+      }
+    }
+  ],
+  "all_source_input_binary_pins_before_after_exact": true,
+  "scope": "Existing Graph workloads and census tools; actual owned Graph requests positive, all35 fields/fuel cuts exact. Independent external cumulative counters exclude state malloc and internal graph calls; no peak/live/time or per-field attribution formula."
+}

@@ -1,0 +1,42 @@
+{
+  "rows": [
+    {
+      "variant": "E14",
+      "command": [
+        "gdb",
+        "-nx",
+        "-batch",
+        "-ex",
+        "set auto-load off",
+        "-ex",
+        "printf \"graph_state_bytes=%llu\\n\", (unsigned long long)sizeof(struct pg_function_graph_state)",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch14/asan/synthesis_test"
+      ],
+      "exit": 0,
+      "binary_sha256": "57e2f2521f74f87597aacba9b00860b43fcff2bd3d9eafac30248b48289bb00f",
+      "graph_state_bytes": 648,
+      "report_sha256": "ad57b92d21ce45274eb8cce39ba9626703977e40d71d7be113e8678d731c120a",
+      "inferior_never_run": true
+    },
+    {
+      "variant": "E15",
+      "command": [
+        "gdb",
+        "-nx",
+        "-batch",
+        "-ex",
+        "set auto-load off",
+        "-ex",
+        "printf \"graph_state_bytes=%llu\\n\", (unsigned long long)sizeof(struct pg_function_graph_state)",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch15/asan/synthesis_test"
+      ],
+      "exit": 0,
+      "binary_sha256": "8067914594d06f120c0a6ee800cfdc7edd06fcbb8a9392d5f0ffe20c91e8d612",
+      "graph_state_bytes": 640,
+      "report_sha256": "516d7c7a1b55ca07bd0910c99df7f967722ff9ee36a559ea5708cdfa0ff74c38",
+      "inferior_never_run": true
+    }
+  ],
+  "deleted_state_bytes_per_graph": 8,
+  "scope": "Static debug-type layout of exact tested SAN binaries; not peak/live/RSS/time. The copied leaf results allocation is separately deleted; indispensable plans/maps retained."
+}

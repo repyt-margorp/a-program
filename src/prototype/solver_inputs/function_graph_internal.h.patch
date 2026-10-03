@@ -1,0 +1,11 @@
+diff --git a/function_graph_internal.h b/function_graph_internal.h
+--- a/function_graph_internal.h
++++ b/function_graph_internal.h
+@@ -87,7 +87,6 @@
+ 	const struct pg_evidence **index_arguments;
+ 	size_t index_count;
+ 	struct pg_inductive_instance input;
+-	const struct pg_evidence **results;
+ 	struct graph_case *plans;
+ 	struct graph_case *pending, *leaves, **leaf_tail;
+ 	struct graph_case *building, **build_tail;

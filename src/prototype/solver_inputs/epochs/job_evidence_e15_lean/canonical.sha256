@@ -1,0 +1,3 @@
+c7d08a10d74ffbd37c2fccc5a7074fc400a484d5af6a090be68545790a031291  src/prototype/solver_inputs/function_graph.c.patch
+c83b8e90dca95107cb3b5ebe3ab5e430d526a4cea12b765b25aeb15efbc794c8  src/prototype/solver_inputs/function_graph_internal.h.patch
+0949a4b94a4c150aa9be329dad02250b3979ce46e24fb56c580452651ee503bd  src/prototype/solver_inputs/test_patches/synthesis.c.patch

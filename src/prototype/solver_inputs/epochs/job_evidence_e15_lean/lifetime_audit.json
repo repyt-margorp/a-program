@@ -1,0 +1,35 @@
+{
+  "source156": "d4790a1ca1346cb2278f81bf4872b01ba4c74fc2889dee785878d965e01788bd",
+  "source_hashes": {
+    "src/function_graph.c": "45824e964d3620a49097ca9fee6c156800d54334549da885b856d524f6b04697",
+    "src/iadt.c": "7ed82d9d2ae8828d313474e69d66829397a38dd83fce6645c9ad14ad9bdbced1",
+    "src/evidence.h": "da1e35e5f4b4ae25a1da48868879557d1d340dc5620311ddf9a09291e4395240",
+    "tests/synthesis.c": "cc59a0cd708d2448eb969561398d59e0e55a50e885eb7a18675c73ce0122081a"
+  },
+  "focused_verdicts_sha256": "b1862ce73dc6e6c63d8e6fc82e1b21bf31cf0aca43e153a187ee6b6f114c21a1",
+  "asan_verdicts_sha256": "2c79e5a50bec269760b301bd7b0d0f5d2ed1421bd5bc48be4efff2e9cbbe9223",
+  "static_contract": "pg_function_graph_advance owns the stack input iterator; pg_data_schema/schema_build reads three ascending passes synchronously and stores checked receipts, never the callback/view. Leaves are appended with monotonically assigned leaf ordinals. Existing plans/helper/refined maps remain owned for subsequent source projection.",
+  "real_frame_evidence": [
+    {
+      "variant": "o2",
+      "binary_sha256": "6b3cdc30a306d2ffafcbe1392926a8e53b965f3ccc8b3cced9a45b3fab52d84b",
+      "symbols": [
+        "000000000009d7b0 t graph_owner_outputs",
+        "0000000000006554 t graph_owner_outputs.cold",
+        "0000000000060940 T pg_function_graph_advance",
+        "000000000005a760 t schema_build"
+      ]
+    },
+    {
+      "variant": "asan",
+      "binary_sha256": "8067914594d06f120c0a6ee800cfdc7edd06fcbb8a9392d5f0ffe20c91e8d612",
+      "symbols": [
+        "000000000063622c t graph_owner_outputs",
+        "00000000004ebb4f T pg_function_graph_advance",
+        "00000000004c94e1 t schema_build"
+      ]
+    }
+  ],
+  "permanent_regression": "graph_owner_outputs reads two typing-owned PG_JUDGEMENT_SUBSTITUTION schema receipts after pg_function_graph_advance returns and again after ordinary @id source work; zero-fuel, request-sharing, copied-result nonauthority and foreign-owner barriers retained.",
+  "limits": "Focused O2/SAN passed; full broad/C/public/census/current-producer and time/peak remain pending. No direct-IADT implementation edit."
+}

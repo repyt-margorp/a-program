@@ -1,0 +1,6 @@
+sample	status	steps	typed	evidence	graph_sources	parent_job_bytes	candidate_job_bytes	parent_external_calls	candidate_external_calls	parent_external_aligned	candidate_external_aligned
+list	DONE	1921	429	555	0	110632	110632	4360	4360	441744	441744
+effect	DONE	13142	2680	3414	0	644680	644680	27622	27622	2783216	2783216
+captured	DONE	2307	632	797	0	92576	92576	7557	7559	736912	737008
+quick	DONE	766477	114388	94974	0	6723840	6723840	2887589	2888721	229263296	229317632
+handler	DONE	2470	425	530	0	124768	124768	4649	4649	468896	468896
