@@ -33,9 +33,9 @@ completion scores; worker-local results are not relabelled joint verification.
 
 | Owner / issue scope | Delivered and verified | Not yet delivered / next boundary |
 | --- | --- | --- |
-| Job/Evidence; SE1-SE5 / AP0, related #51/#47 | E1/E2/E3 prototype Main; E2 joint 384 O2 recipes/45 sanitizer commands pass; E3 inert body links jointly verified | E4 task-pushed/joint report received, review pending; E6 joint builds live; E7/E8 exact incremental freezes ready/unpublished; E9 private; strict3 remain |
-| C backend; #44/#49 | C4 transactional arrays, C5 local functions and C6 nested value records prototype Main; C6 ten current-E3-producer gates pass | C7 14-file freeze received, locally eleven O2/eight native sanitizer gates reported; task publication/current-producer review pending; native Acc/QuickSort unsupported |
-| Performance; #56, measurement work #51/#52 | Captured-head cleanup prototype Main; E2 broad joint and E3 targeted joint qualification complete | E4 frozen joint evidence reports 384 O2/45 sanitizer/23 focused gates passing with strict3 retained; Merge review pending, E6 separately live; no wall/RSS comparison or #52 completion claimed |
+| Job/Evidence; SE1-SE5 / AP0, related #51/#47 | E1-E4 prototype Main; E4 `3a8c024` runtime128/source alignment and frozen joint evidence reviewed; E3 inert body links separately qualified | E6 joint report next; E7/E8 exact incremental freezes ready/unpublished; E9 private; strict3 remain |
+| C backend; #44/#49 | C4-C6 prototype Main; C6 ten current-E3-producer gates pass; C7 exact 14-file task `d275b75` pushed/remote verified | C7 current-producer eleven-gate qualification and Main integration pending; native Acc/QuickSort unsupported |
+| Performance; #56, measurement work #51/#52 | Captured-head cleanup prototype Main; E2 broad/E3 targeted and E4 broad evidence reviewed separately; E4 384 O2/45 sanitizer/23 focused passing, strict3 retained | E6 separate report/review next; matched-baseline measurement slot pending; no wall/RSS comparison or #52 completion claimed |
 | Surface; #57 | Delivered prototype integrated; session stopped | Issue-wide closure still requires its recorded remaining criteria; no active worker |
 | Verification audit; #59/PR #60, related #51 | Isolated worker launched at `4d1d941`, active bounded Goal and invocation inspection confirmed | Static effective-invocation inventory and QuickSort/persistence/legacy pilot pending; controlled cost later needs the common exclusive slot |
 
@@ -248,6 +248,18 @@ then E8; never stage live canonical files as E7 or include private E9. Audit slo
 request `2270bcbc` is deferred while E6 and owner correctness gates run: finish
 static inventory/pilot first, then agree the producer/binary/scope with performance
 for one exclusive cost slot. This defers measurement, not the bounded audit Goal.
+
+2026-10-03 07:55 UTC Merge checkpoint: reviewed E4 terminal recipe-result files,
+freshly matched a clean Main+E4 assembly to all 128 qualified runtime hashes and
+six selected test hashes with the same 17-line namespace test-only augmentation.
+Prototype merge `3a8c024` is on Main; nine protected tracked/untracked file hashes
+are unchanged. Initial staged-input guard refusal and omitted Surface assembly
+are recorded as setup failures, then corrected; no duplicate broad pass is claimed.
+[E4 review](../src/prototype/solver_inputs/joint_verification/e4-merge-review.json)
+pins worker terminal gates and fresh source alignment separately. C7's exact
+14 staged blobs match its freeze, task commit `d275b75` is pushed and independently
+remote verified; worker freeze is released for a distinct next native boundary.
+Current-producer C7 qualification remains pending and is done from immutable Git.
 
 2026-10-03 agent operational decision within the user's explicit tree request:
 the desk records/relays user requirements and answers questions; it does not

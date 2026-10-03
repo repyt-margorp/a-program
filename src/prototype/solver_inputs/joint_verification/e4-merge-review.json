@@ -1,0 +1,59 @@
+{
+  "date": "2026-10-03",
+  "review_owner": "Merge",
+  "main_parent": "5e836b71783db02b10ca998af4942c7d30ef6e09",
+  "task_epoch": "ec9537135f63b24ef5e355575dfa53f907251fb0",
+  "prototype_main_merge": "3a8c0243d85c0190a12158febd700d0b3bf32a32",
+  "qualified_snapshot": "/tmp/ap-performance-current-joint-898463e-ec95371-20261003",
+  "frozen_manifest_sha256": "0aeef32911e1b9980b003d361ba3a71ffe2f06d6a0fa77c6241675998a8ef726",
+  "frozen_records_freshly_verified": 1945,
+  "source_manifest_sha256": "f68fe0a5d4ea303795d241d5bc2975ef892bc318dfd8e1b61f4b1f6ca4bf66df",
+  "summary_sha256": "9af487988a528f6fbfe2e93b5f708e0dcef171f9502d6e59d34641aca5a55f65",
+  "fresh_candidate_assembly": "/tmp/a-program-merge-e4-assembled-20261003",
+  "candidate_runtime_records_exact": 128,
+  "selected_test_records_exact_with_test_only_namespace_control": 6,
+  "qualification_source": "Previously executed worker joint gates; fresh Merge hash/source alignment and terminal-result inspection, no broad rerun",
+  "terminal_worker_results": {
+    "o2_acceptance_recipes": 384,
+    "o2_acceptance_nonzero": 0,
+    "sanitizer_build_recipes": 38,
+    "sanitizer_commands": 45,
+    "sanitizer_nonzero": 0,
+    "focused_O2_commands": 23,
+    "focused_nonzero": 0,
+    "artifact_recipes": 41,
+    "artifact_nonzero": 1,
+    "all_seven_checkpoints": true
+  },
+  "unwaived_strict_reload_failures": [
+    "1000:1000",
+    "1600:1600",
+    "1915:0"
+  ],
+  "namespace_control": {
+    "sha256": "059ada9be4c24edcf2a2d6da413b24fbb621848d1dba31cfc5528a590868c002",
+    "test_only": true,
+    "lines": 17,
+    "rejected_E5_runtime": false,
+    "permanent_control_in_separate_E6": true
+  },
+  "private_setup_failures": [
+    {
+      "stage": "Assembly before detached candidate commit",
+      "exit": 1,
+      "cause": "Existing overlay guard refuses staged canonical changes; committed only the isolated candidate before assembly."
+    },
+    {
+      "stage": "Initial performance-only assembly alignment",
+      "mismatches": [
+        "src/syntax.c",
+        "src/syntax.h",
+        "src/syntax_io.c",
+        "src/synthesis.c"
+      ],
+      "cause": "Published Surface layer omitted; applied exact committed Surface patches/migrations, then all128 hashes matched."
+    }
+  ],
+  "scope": "14 prototype files; no accepted promotion or performance claim",
+  "protected_files_freshly_verified_unchanged": 9
+}
