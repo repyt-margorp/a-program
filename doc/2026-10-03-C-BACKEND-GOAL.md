@@ -720,7 +720,8 @@ this target work while Main continues SE1, superseding the earlier AP6 hold.
 - [x] Freeze exact bounded C10 test/docs handoff for Root publication/review.
 - [x] Root exact six-file task `fe497956` is pushed/remote verified; all frozen
   blobs/modes and 275 evidence artifacts/41 inputs/36 client statuses match.
-- [ ] Root completes separate prototype Main integration; independent next I/O
+- [x] Root prototype Main integration `2753441` completes the bounded C10 tests/docs
+  epoch; `core-epoch10.json` pins the fresh evidence review. Independent next I/O
   correction/value-record List work continues without waiting for publication.
 - [ ] Maintain the single issue table at material events and within six active
   hours; use brief pointer/hash notices and keep Core workflow in Assessment.
