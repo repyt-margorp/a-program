@@ -487,6 +487,19 @@ backend/producer remain O2. Product/order/phase repeats are not independent
 property counts. Details and retained setup failures are in the
 [C18 handoff](../../../doc/2026-10-04-C-BACKEND-EPOCH18-HANDOFF.md).
 
+`check-c-native-predicate-units` puts these ordinary C adapters in a separate
+translation unit behind a declarative header. C factories return the existing
+public descriptors by value; this enables no new A Program callable result.
+Adapter/client compile separately with opposite header orders, then link all
+sixteen product pairs or load the provider during synchronous calls. Each phase
+has 32 linked and eight loaded clients matching the same93 source observations;
+missing/duplicate adapter objects and mismatched nominal descriptors reject.
+Standalone repeated-header checks and exact headers across product modes pass.
+SAN includes client, adapter and source-product bodies; emitted other product
+bodies/backend/producer remain O2. Existing success, interpretation and borrowed
+lifetime preconditions remain. The
+[C19 handoff](../../../doc/2026-10-04-C-BACKEND-EPOCH19-HANDOFF.md) pins the scope.
+
 ## Native Nullary ADTs
 
 `native_direct_v1` / `c_native_v1` extends the same scalar lowering, not another
