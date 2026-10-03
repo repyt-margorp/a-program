@@ -117,7 +117,10 @@ static int receipt(const char *path, const struct pg_c_link_plan *plan, const ch
 	for (size_t i = 0; i < plan->data_count; ++i) {
 		if (i) fputs(", ", file);
 		fputs("{\"source\": ", file); json_string(file, plan->data_names[i]);
-		fputs(", \"alias\": ", file); json_string(file, plan->data[i].alias); fputc('}', file);
+		fputs(", \"alias\": ", file); json_string(file, plan->data[i].alias);
+		fputs(", \"selection\": ", file);
+		json_string(file, plan->data_from_value && plan->data_from_value[i] ? "value-classifier" : "value-type");
+		fputc('}', file);
 	}
 	fputs("],\n  \"data_contract\": ", file);
 	if (plan->data_count) {

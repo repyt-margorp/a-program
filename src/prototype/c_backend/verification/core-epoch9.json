@@ -1,0 +1,86 @@
+{
+  "date": "2026-10-03",
+  "scope": "Fresh Root C9 thirteen-gate qualification on exact E8; prototype downstream code only",
+  "task": "60c100c9d06b314eaeb024462e8ce0e3f2da5bab",
+  "candidate": "a383765fe8cc8b0b287a2f85451400000866cda7",
+  "producer": "50cd56b2a52b7e370bc7ecb3436c4993e2e5d6a2",
+  "runtime_sources_verified": 128,
+  "source_manifest_sha256": "9ba2b33cbe8bc68eac338073506bcb205f36d20cb0a34f9f88607d975ef07740",
+  "frozen_task_files_verified": 38,
+  "task_manifest_sha256": "f0a61e5edd02a55ed8a2cafc2f1aed876537a008ddb68c8c6646cc2a9e9490b8",
+  "review": "data_of borrows the admitted closed value type; applied reference parameters follow existing declaration order. Exact term lookup and one selected instance per erased layout refuse nominal ambiguity. No source evaluation, substitution, WHNF, typed-query or graph/evidence mutation during emission. Existing lowerer reused, private target storage/indices only.",
+  "verification": {
+    "flags": "-std=c11 -Wall -Wextra -Werror -O2",
+    "build_jobs": 1,
+    "rows": [
+      {
+        "target": "check-c-backend",
+        "exit": 0
+      },
+      {
+        "target": "check-c-link",
+        "exit": 0
+      },
+      {
+        "target": "check-c-scalar",
+        "exit": 0
+      },
+      {
+        "target": "check-c-enum",
+        "exit": 0
+      },
+      {
+        "target": "check-c-data",
+        "exit": 0
+      },
+      {
+        "target": "check-c-list",
+        "exit": 0
+      },
+      {
+        "target": "check-c-numeric-list",
+        "exit": 0
+      },
+      {
+        "target": "check-c-static-functions",
+        "exit": 0
+      },
+      {
+        "target": "check-c-value-records",
+        "exit": 0
+      },
+      {
+        "target": "check-c-enum-list",
+        "exit": 0
+      },
+      {
+        "target": "check-c-sorting-boundary",
+        "exit": 0
+      },
+      {
+        "target": "check-c-transitive-functions",
+        "exit": 0
+      },
+      {
+        "target": "check-c-applied-families",
+        "exit": 0
+      }
+    ],
+    "log_sha256": "d74f7c7c14d8e142260e5dcd314defc71ef7006078cf133c089722f7c08b3634",
+    "terminal": "2026-10-03T10:54:05.882546+00:00",
+    "native_cases_are_not_independent_properties": true,
+    "fresh_Root_sanitizers": false,
+    "worker_native_client_sanitizers": "Ten separately frozen client gates; tools/object/archive runtime bodies not all instrumented."
+  },
+  "binaries": {
+    "c_applied_inert_test": "c180026b587b1b52165f296d140e5e77dc02c50bc93de54c2dc9f82683aaabbe",
+    "c_transitive_oracle_test": "2769f9cf575232d8045ed488855d3f376e7e56692a1786532a42550b19ed7fc4",
+    "c_static_oracle_test": "1608a9840fe3f900b6a5b51720b6df32dbb7e0b0d741653328f7f75019193121",
+    "c_scalar_test": "8191dede175eaf0f7df9903301cfe3bf1cc00e7ff652d680fc54496131b0d4d0",
+    "c_oracle_test": "34f9d7c898aa43da22be0b5bfc3e06e5aa8e061436812d5835823fd043e02c9b",
+    "pointer-check": "6e3407fc7f6ba8dffa0642217f00b6d2ec8454e32dc41eac6b27cce30518cd44",
+    "a-to-c": "6fd5cc956cddf25a3a978a23e488e688a5c14f8d0226b58b14790453952aa362"
+  },
+  "private_evidence": "/tmp/a-program-merge-c9-e8-gates-20261003",
+  "remaining": "Native indexed/callable Acc QuickSort, callbacks/effects, unsupported recursive captures and broader Identity contracts remain open; no accepted C promotion or new producer authority."
+}

@@ -6,7 +6,7 @@
 struct export_row {
 	struct export_row *next;
 	const char *name, *alias;
-	int enumeration;
+	int enumeration, from_value;
 };
 
 const char *pg_c_lowering_name(enum pg_c_lowering lowering)
@@ -101,15 +101,17 @@ int pg_c_link_read(struct pg_c_link_plan *plan, const char *path, size_t *line, 
 			version = 1;
 			continue;
 		}
-		if (!strcmp(args[0], "export") || !strcmp(args[0], "enum32") || !strcmp(args[0], "data") || !strcmp(args[0], "nat32")) {
+		if (!strcmp(args[0], "export") || !strcmp(args[0], "enum32") || !strcmp(args[0], "data") ||
+			!strcmp(args[0], "data_of") || !strcmp(args[0], "nat32")) {
 			if (n != 3 || !pg_c_export_alias(args[2])) goto done;
-			int enumeration = !strcmp(args[0], "nat32") ? 3 : !strcmp(args[0], "data") ? 2 : !strcmp(args[0], "enum32");
+			int from_value = !strcmp(args[0], "data_of");
+			int enumeration = !strcmp(args[0], "nat32") ? 3 : from_value || !strcmp(args[0], "data") ? 2 : !strcmp(args[0], "enum32");
 			size_t *count = enumeration == 3 ? &plan->natural_count : enumeration == 2 ? &plan->data_count : enumeration ? &plan->enum_count : &plan->count;
 			if (*count == SIZE_MAX) goto done;
 			struct export_row *row = pg_alloc(&plan->storage, sizeof(*row));
 			if (!row) goto done;
 			row->name = args[1]; row->alias = args[2];
-			row->enumeration = enumeration;
+			row->enumeration = enumeration; row->from_value = from_value;
 			*tail = row; tail = &row->next;
 			++*count;
 			continue;
@@ -173,7 +175,8 @@ int pg_c_link_read(struct pg_c_link_plan *plan, const char *path, size_t *line, 
 	if (plan->data_count > SIZE_MAX / sizeof(*plan->data) || plan->data_count > SIZE_MAX - plan->enum_count - plan->count) goto done;
 	plan->data_names = pg_alloc(&plan->storage, plan->data_count * sizeof(*plan->data_names));
 	plan->data = pg_alloc(&plan->storage, plan->data_count * sizeof(*plan->data));
-	if (!plan->data_names || !plan->data) goto done;
+	plan->data_from_value = pg_alloc(&plan->storage, plan->data_count * sizeof(*plan->data_from_value));
+	if (!plan->data_names || !plan->data || !plan->data_from_value) goto done;
 	if (plan->natural_count > SIZE_MAX / sizeof(*plan->naturals) ||
 		plan->natural_count > SIZE_MAX - plan->data_count - plan->enum_count - plan->count) goto done;
 	plan->natural_names = pg_alloc(&plan->storage, plan->natural_count * sizeof(*plan->natural_names));
@@ -186,7 +189,8 @@ int pg_c_link_read(struct pg_c_link_plan *plan, const char *path, size_t *line, 
 			continue;
 		}
 		if (row->enumeration == 2) {
-			plan->data_names[k] = row->name; plan->data[k++].alias = row->alias;
+			plan->data_names[k] = row->name; plan->data[k].alias = row->alias;
+			plan->data_from_value[k++] = row->from_value;
 			continue;
 		}
 		if (row->enumeration) {
