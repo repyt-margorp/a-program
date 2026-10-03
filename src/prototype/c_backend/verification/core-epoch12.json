@@ -1,0 +1,78 @@
+{
+  "Main_integration": "370a98647d62577d1844400964ebc690a16d66cd",
+  "Main_base": "6988deb99ea9e5667271af83f805fb164c2c082a",
+  "task": "97f8d7c28f3438fb1b36d687e0e7efc175d8c6f3",
+  "exact_other_fifteen_frozen_files": true,
+  "Goal_conflicts_resolved": 2,
+  "Root_runtime128_and_backend_inputs_before_after_exact": true,
+  "source128_manifest_sha256": "73fa86c94b805b768d2c8493ce6f6a46c51983e556974c4920d805b59eefc743",
+  "Root_O2_targets": [
+    "check-c-backend",
+    "check-c-link",
+    "check-c-scalar",
+    "check-c-enum",
+    "check-c-data",
+    "check-c-list",
+    "check-c-numeric-list",
+    "check-c-static-functions",
+    "check-c-value-records",
+    "check-c-enum-list",
+    "check-c-sorting-boundary",
+    "check-c-transitive-functions",
+    "check-c-applied-families",
+    "check-c-record-list"
+  ],
+  "Root_O2_aggregate_exit": 0,
+  "Root_SAN_affected_commands": [
+    {
+      "name": "record-list",
+      "argv": [
+        "bash",
+        "/tmp/a-program-merge-c12-publication-20261003/src/prototype/c_backend/record_list/check.sh",
+        "/tmp/a-program-merge-c12-e10-gates-20261003/build/a-to-c",
+        "/tmp/a-program-merge-c12-e10-gates-20261003/build/pointer-check",
+        "/tmp/a-program-merge-c12-e10-gates-20261003/san-record-list"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "nested-record",
+      "argv": [
+        "bash",
+        "/tmp/a-program-merge-c12-publication-20261003/src/prototype/c_backend/lower/nested_record_check.sh",
+        "/tmp/a-program-merge-c12-e10-gates-20261003/build/a-to-c",
+        "/tmp/a-program-merge-c12-e10-gates-20261003/build/pointer-check",
+        "/tmp/a-program-merge-c12-e10-gates-20261003/san-nested-record"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "enum-list",
+      "argv": [
+        "bash",
+        "/tmp/a-program-merge-c12-publication-20261003/src/prototype/c_backend/lower/enum_list_check.sh",
+        "/tmp/a-program-merge-c12-e10-gates-20261003/build/a-to-c",
+        "/tmp/a-program-merge-c12-e10-gates-20261003/build/pointer-check",
+        "/tmp/a-program-merge-c12-e10-gates-20261003/san-enum-list"
+      ],
+      "exit": 0
+    }
+  ],
+  "Root_SAN_limits": "Client/source component inputs instrumented; backend, pointer and generated object/archive bodies O2.",
+  "Root_IO_status_controls": 19,
+  "Root_IO_exit": 0,
+  "Root_evidence_records": 321,
+  "Root_evidence_manifest_sha256": "e7ced1945ea0948e6c21c60c1ae5a6c497420e178ced26ec2de9143a67257126",
+  "Root_evidence_directory": "/tmp/a-program-merge-c12-e10-gates-20261003",
+  "worker_E8_inputs_verified": 159,
+  "worker_artifacts_verified": 747,
+  "worker_status_rows_verified": 74,
+  "accepted_promotion": false,
+  "limits": [
+    "Worker E8 gates and Root current E9+E10 gates are separate",
+    "Only finite prior selected record payloads in exact single-tail List shape admitted",
+    "Recursive aggregate/multi-tail/non-List/callable/indexed shapes still refuse",
+    "Native Acc/QuickSort unfinished",
+    "No broad producer acceptance or timing/RSS repeat"
+  ]
+}

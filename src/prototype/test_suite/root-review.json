@@ -1,0 +1,67 @@
+{
+  "reviewed_at_UTC": "2026-10-03 13:49 UTC",
+  "Main_base": "b461aceec7ecfbc19dff9170497cf3667cca33c2",
+  "task": "bc16df9cb4d95a99b049941217ed490b7a252f09",
+  "exact_task_files": 7,
+  "task_pushed_remote_verified": true,
+  "worker_final_notice_sha256": "4432e3d1f2b645352146e833f69ca3aa1cfa3a17ddb0544bfdf4cd5629086c61",
+  "raw_archive_sha256": "2f0f5aee2edb8950f19d91fb8d92fb92ff39b3a43efbf5f99c6129e7ae189c6a",
+  "Root_recomputed_raw_comparison": {
+    "quick": {
+      "original_invocations": 14,
+      "reduced_invocations": 12,
+      "removed_invocations": 2,
+      "distinct_effective_records_retained": 12,
+      "outcome_input_output_bytes_equal": true
+    },
+    "compatibility": {
+      "original_invocations": 421,
+      "reduced_invocations": 401,
+      "removed_invocations": 20,
+      "distinct_effective_records_retained": 392,
+      "outcome_input_output_bytes_equal": true
+    },
+    "all_archive_records_exact": 177,
+    "47_completed_recipe_exit0": true,
+    "ten_worker_injection_records_verified": true,
+    "all_dependencies_after_exact": 776
+  },
+  "Root_fresh_helper_assembly": {
+    "original": {
+      "runtime128_exact": true,
+      "pinned_C_tests_exact": 23,
+      "two_applied_scripts_exact": true
+    },
+    "reduced": {
+      "runtime128_exact": true,
+      "pinned_C_tests_exact": 23,
+      "two_applied_scripts_exact": true
+    }
+  },
+  "raw_review_sha256": "b820844d1d73e3406f278e3d669e339fa98aefea145cecc75041e2e37fff6ac0",
+  "fresh_assembly_sha256": "e0d91cff70eb854361df27013a32ce40ce0395dfaffb2076231b992395044c1e",
+  "source128_manifest_sha256": "73fa86c94b805b768d2c8493ce6f6a46c51983e556974c4920d805b59eefc743",
+  "applied_executable_delta": {
+    "compatibility": {
+      "add": 19,
+      "delete": 54
+    },
+    "quick_result": {
+      "add": 0,
+      "delete": 3
+    },
+    "helper": {
+      "add": 25,
+      "delete": 0
+    },
+    "net": -13
+  },
+  "worker_goal_achieved_observed": true,
+  "Main_review_provenance_correction": "Move three Root operational/taskbrief blocks from Subjective to Assessment; keep immutable task bytes exact. Human requests retain original meaning.",
+  "limits": [
+    "47 recipes and ten injection outcomes are worker execution records freshly hash/count inspected by Root; not new Root full-suite execution.",
+    "Unchanged derived-LT aggregate600s cap remains incomplete/124; strict3/original unsafe E11 failures unwaived.",
+    "Repository patch/docs representation adds lines; no accepted implementation/tests/build edit.",
+    "Wall/RSS unmeasured; #59 remains open."
+  ]
+}

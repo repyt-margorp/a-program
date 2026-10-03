@@ -1,7 +1,7 @@
 # Performance Goal: Current Speed and Memory Work
 
 Date: 2026-10-03
-Status: active; E9+E10 published, MEM1 frame-reuse candidate qualification underway.
+Status: active; E9+E10 published; MEM1 v1 rejected, conservative stateless v2 qualification underway.
 This is the active successor to the frozen
 [Performance Goal at0539051](2026-10-03-PERFORMANCE-GOAL.md). Its published bytes
 and historical handoffs remain immutable. The single current issue-status table
@@ -71,20 +71,21 @@ separate. No E11/E12 runtime is included.
 
 ### Assessment
 
-2026-10-03, Root review at Main `c2bab35b`: all forty diagnosis records match
-manifest `9f88231d`; sampled 180M-step pending WHNF arena capacity is
-1,685,012,480 bytes, falling to zero at completion 183,507,626. This identifies
-transient evaluator retention, not final Core/receipt storage, as the principal
-observed allocation at that cut. Capacity is not exact peak/live state or RSS;
-nested typed/malloc overhead remains incomplete. Separate candidate patch
-`698e97e2` recycles retired demand frames only after callbacks return and keeps
-the return2 fallback frame. Sample comparison `02f447d9` reports total arena
-capacity 1,769,812,912 to 897,168,304 bytes, including 49,152 additional memo
-arena bytes from the new machine field. Four focused tests pass in worker
-evidence; broad/fresh-process/sanitizer qualification is still live. No new
-time/RSS or promotion claim. Job inspects scheduler retention separately.
-Root reconciles these current findings without changing task `73d8229`'s
-immutable two-document snapshot or older frozen evidence.
+2026-10-03 13:49 UTC, Root superseding review at Main `b461ace`: MEM1 v1
+patch `698e97e2` is rejected. Fresh inline-frame-state control gives parent0,
+v1 signal6, conservative v2 0: a later demand still borrows state held by a
+retired frame. Passing v1 acceptance and its lower sampled capacity do not
+qualify that deletion or establish a gain. Keep its capacity values only as
+rejected-candidate evidence. V2 `b2c39601`, source128 `8f6ea298`, retains
+every non-NULL state frame and pools stateless frames after callback return.
+Qualification and fresh memory evidence remain pending; v1 values do not apply.
+Callback report `e742cb81` verifies current owners retain the machine arena
+through return; public borrowing prose does not establish an arbitrary custom
+callback guarantee. No new prohibition is adopted. Root controls and exact
+evidence are linked by [mem1-root-review.json](../src/prototype/performance_followup/mem1-root-review.json).
+Diagnosis40 still verifies sampled180M machine capacity1,685,012,480 bytes and
+zero completed-machine scratch; this is capacity, not peak/live/RSS/time.
+Job's header/scheduler work and correctedE11 joint qualification stay separate.
 
 MEM1 uses a private runtime-identical `73fa86c9` copy. Existing allocation audit
 counts cumulative external requests and omits graph.c internal calls, so it

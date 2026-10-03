@@ -1,6 +1,6 @@
 {
-  "reviewed_at_UTC": "2026-10-03 13:09 UTC",
-  "Main_revision": "c2bab35b2c1cabb4a3266341d4f7719634e8f9ae",
+  "reviewed_at_UTC": "2026-10-03 13:49 UTC",
+  "Main_revision": "b461aceec7ecfbc19dff9170497cf3667cca33c2",
   "worker_notice_sha256": "3e51fc6683d30113e7f4aefcfd114b1ce998f7cd5301622a0c78ba42f9afa91e",
   "diagnostic_manifest_sha256": "9f88231de97ef25205a69a85bafbec6befabaea7140f14fe401ab92ae7fb95d3",
   "all_40_evidence_hashes_verified": true,
@@ -48,8 +48,10 @@
     "aligned_WHNF_extent_delta_bytes": 16,
     "index_groups_and_shared_payloads_equal": true,
     "pending_completed_WHNF_counts_equal": true,
-    "qualification": "Worker focused four controls0; broad, fresh-process and sanitizer qualification live; runtime not task-published or Main-integrated.",
-    "Root_code_review": "Retire after callback returns; current popped frame cannot be reused by a reentrant callback before retirement. Declined head result2 retains its frame; active closures/arguments are not recycled."
+    "qualification": "Rejected by inline-frame-state control, signal6; parent and v2 exit0. V1 passing acceptance and sampled capacity do not qualify deletion or establish a gain.",
+    "Root_code_review": "Earlier four-control review was insufficient: next demand can borrow state inside a retired frame; clearing/reusing that frame violates lifetime.",
+    "status": "REJECTED_V1",
+    "capacity_values_apply_only_to_rejected_v1": true
   },
   "coordination": "Performance owns evaluator-frame reuse. Job owns separate Synthesis/typed scheduling-retention inspection; existing free_waiters found, no competing pool.",
   "limitations": [
@@ -57,5 +59,19 @@
     "Nested typed state, unindexed malloc arrays, allocator metadata/slack not fully enumerated.",
     "No new wall/RSS or actual speed/memory success claim; matched cost needs exclusive slot.",
     "Original observer setup errors, strict3 and original sanitizer failures preserved."
-  ]
+  ],
+  "v2": {
+    "source128_manifest_sha256": "8f6ea298a8d2f7be65c12e5abb756be0ad77a6d41fa4f7794b4781569639fca7",
+    "patch_sha256": "b2c396010d5f2781e1d341f3f5d622348728acac5db95b02c50cfbe2740f9ccf",
+    "decision": "Retain all non-NULL state frames; only stateless frames pool after callback return.",
+    "qualification": "Pending terminal gates/fresh memory/cost; no publication or accepted promotion",
+    "callback_review_sha256": "e742cb810df2da4495a7580acfc720a9335bafd72a566ae2c2e714cc88cdc13d",
+    "callback_contract_limit": "Current owners preserve machine arena through callback return; public prose does not establish arbitrary custom-callback lifetime guarantee. No new prohibition adopted.",
+    "fresh_Root_control": "/tmp/a-program-merge-mem1-state-control-20261003/Root-controls.json",
+    "fresh_Root_parent_V1_V2_exits": [
+      0,
+      -6,
+      0
+    ]
+  }
 }

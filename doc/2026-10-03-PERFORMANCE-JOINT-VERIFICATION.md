@@ -91,7 +91,7 @@ brief; detailed evidence remains in the linked manifests and reports below.
 | #56 with #51/#52 measurement boundaries: cross-system evidence | Official source `7d24b8d0235cb9781140512c0f163c48ea84a719`; collector `9c50c62d`, config `390adf41` | E6 measurements30/0; tree wall17.23→5.40s/RSS−36.3%, QuickSort medians equal. All114 task blobs match `0f017454`; initial zero-sample failure retained | Task `44e479be` pushed; measurement Main merge `99efcf7` is an ancestor of freshly observed remote `cf8cdf5` | Joint E6 timings do not establish accepted-only values; proof/helper/startup/RSS limits and strict3 remain | Future cost scope/slot only after coupled qualification and Root grant |
 | #56: same-input retained state and completed artifacts | Diagnostic helper + compact report, exact measured E6 ordinary/head sources and three pinned inputs | Six DONE censuses/source saves and12 full fresh reloads pass;12 zero-step resaves preserve bytes while CLI reports pending3. All three completed pairs byte-identical. Trees retain10,338,148 fewer Core terms; typed/Evidence/Job counts equal | Separate65-record evidence frozen `eb4e7542`; frozen2 bytes freshly match live/task `ac6a8b2420051b06d41c1b7032526c360d1ae690` and remote task branch. Published114/E7/E8 immutable; no Main integration claim | Preserve obsolete metrics-helper build2; semantic-object/complete allocator census and additional time/RSS gains are not claimed | Preserve publication while qualifying distinct E9/E10; no extra broad runs |
 | #56: lifetime and allocation attribution | Read-only E6 graph/evaluator ownership inspection; runtime unchanged | Interned terms remain in Program graph until destruction; evaluator/readback scratch frees separately. Both measured variants retain the same arena/index defaults | Findings recorded separately; no new owner implementation or tuning patch | Per-owner RAM and independent arena/index or head/direct timing factors remain unmeasured | Preserve these limits in future agreed cost scope after exact coupled qualification |
-| #56 / MEM1: delete unnecessary work/state for actual peak memory and time | Existing-tool GDB diagnosis40 verified by Root; private frame-reuse candidate changes only eval.c/h, patch `698e97e2` | Sampled180M total arena capacity1,769,812,912 to897,168,304, memo overhead49,152 included; Root recomputed comparison and all126 unchanged runtime files. Worker focused4 pass; broad/fresh-process/SAN live. Capacity is not peak RSS/time | Current Goal/joint snapshot exact2 task `73d8229` pushed, Main docs `c2bab35b`; runtime candidate not yet published or integrated | Need current lifetime/fuel/codec/all-cut qualification and actual matched wall/RSS; partial owner attribution remains incomplete. Job inspects private scheduler retention separately | Finish independent frame-reuse qualification and exact handoff; retain return2, reentrant callback and original failures. Later exclusive cost slot |
+| #56 / MEM1: delete unnecessary work/state for actual memory/time | Diagnosis40 exact; rejected v1 patch698e97e2, separate stateless v2 b2c39601/source1288f6ea298 | Root fresh inline-state parent0/v1 signal6/v2 0; v1 acceptance/capacity cannot qualify deletion. Current-owner callback reporte742cb81 verified; v2 full terminal gates and fresh memory pending | Current docs task73d8229/Mainc2bab35b; runtime unpublished, v1 rejected | No qualified peak/RSS/time improvement; retain non-NULL state and existing resume contracts. Arbitrary custom-callback guarantee not established | Finish v2 correctness, new capacity/scaling and exact handoff; later matched exclusive cost |
 
 Fresh Git inspection verifies HEAD and tracking branch at `0539051`; every
 committed/live file matches the corrective 44-file frozen manifest. Core's exact
@@ -262,16 +262,21 @@ runtime and tests are unchanged; no wall/RSS values were collected.
 
 ### Assessment
 
-2026-10-03, Root review at Main `c2bab35b`: sampled transient pending-WHNF
-arenas dominate the observed retained capacity at 100M/180M; completed-machine
-scratch is zero. The retired-frame pool remains private and under qualification.
-The candidate retires only after callbacks return, preserves result2 fallback
-and accounts its new pointer/aligned layout overhead. Detailed independent hash
-and arithmetic review is [mem1-root-review.json](../src/prototype/performance_followup/mem1-root-review.json).
-No measured RSS/time improvement or accepted promotion follows. Corrected E11
-`d22be9f` is a separate current-producer joint qualification, excluding MEM1 and
-E12. Historical schedules below retain their original provenance; the latest
-independent-workflow instruction supersedes publication-only holds.
+2026-10-03 13:49 UTC, Root superseding review at Main `b461ace`: MEM1 v1
+patch `698e97e2` is rejected. Fresh inline-frame-state control gives parent0,
+v1 signal6, conservative v2 0: a later demand still borrows state held by a
+retired frame. Passing v1 acceptance and its lower sampled capacity do not
+qualify that deletion or establish a gain. Keep its capacity values only as
+rejected-candidate evidence. V2 `b2c39601`, source128 `8f6ea298`, retains
+every non-NULL state frame and pools stateless frames after callback return.
+Qualification and fresh memory evidence remain pending; v1 values do not apply.
+Callback report `e742cb81` verifies current owners retain the machine arena
+through return; public borrowing prose does not establish an arbitrary custom
+callback guarantee. No new prohibition is adopted. Root controls and exact
+evidence are linked by [mem1-root-review.json](../src/prototype/performance_followup/mem1-root-review.json).
+Diagnosis40 still verifies sampled180M machine capacity1,685,012,480 bytes and
+zero completed-machine scratch; this is capacity, not peak/live/RSS/time.
+Job's header/scheduler work and correctedE11 joint qualification stay separate.
 
 2026-10-03 MEM1: continue on a private runtime-identical qualified `73fa86c9`
 copy, without publication/review hold. Existing allocation audit counts

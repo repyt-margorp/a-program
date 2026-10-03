@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: Merge owns Main; five workers continue, including new test-suite implementation and issue disposition. The bounded static audit and finite-function library worker are complete.
+Status: Merge owns Main; C, Performance and Job continue. Test-suite, issue disposition, static audit and finite-function bounded Goals are complete; full development issues remain open.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -17,31 +17,32 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | Inquiry desk -> `merge`: reporting vs coordination/integration | All lanes | Desk answers the user; only Merge integrates after verified handoff |
-| 2 | `c-backend`: downstream C design | #44, #49; shared policy #47 | C1-C11 bounded prototypes integrated; C12 value-record List work continues, native Acc/QuickSort remains open |
+| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C1-C12 bounded prototypes integrated; C13 shared-library handoff ready, native Acc/QuickSort remains open |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Accepted performance `7631e5a`, joint E7-E10 qualified; MEM1 attribution/deletion proceeds, full Goal active |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
 | 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E1-E4/E6-E10 prototype Main; corrected E11 task published, broad/focused evidence verified; current joint qualification and E12 continue, strict3 remain |
 | 6 | `verification-audit`: independent read-mostly suite/debt inventory | #59 / PR #60, #51 | Bounded static inventory/pilot complete; measured cost deferred, full #59 remains open |
-| 7 | `test-suite`: implement coverage-preserving test reductions | #59 / PR #60 | New independent Goal active; initialized, first reduction not yet delivered |
-| 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | New independent Goal active; sole issue writer, concrete consolidation under review |
+| 7 | `test-suite`: implement coverage-preserving test reductions | #59 / PR #60 | Bounded Goal complete; exact7 taskbc16df9 pushed/remote verified, Root raw/assembly review complete, prototype Main integration next |
+| 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
 
-2026-10-03 13:09 UTC Merge inspection at local Main `c2bab35b`: the table
-reflects exact task publications and independently inspected qualification.
-These are deliverables, not issue completion scores; worker-local results stay
-distinct from Root fresh gates and accepted performance promotion.
+2026-10-03 13:49 UTC six-hour Merge review at local Main `b461ace`; remote
+`6988deb` verified. C12 and issue-audit merges are local pending the next push.
+All seven retained panes freshly inspected: three implementation Goals active;
+four bounded Goals achieved. No owner resumed or duplicated. Deliverables below
+remain distinct from full issue completion and accepted promotion.
 
 | Owner / issue scope | Delivered and verified | Not yet delivered / next boundary |
 | --- | --- | --- |
-| Job/Evidence; SE1-SE5 / AP0, related #51/#47 | E1-E4/E6-E10 prototype Main; E10 `6715af2` exact19/Main `5e466381`, published in `09ee775`. Corrected E11 exact25 task `d22be9f` pushed; Root three lifetime/real escaped-frame O2/SAN controls0, all156 sources and469 tested-overlay inputs verified. Separate full unskipped O2/seven-checkpoint terminal0 | Current E9+E10+corrected E11 joint qualification pending. Corrected-parent E12 Context ancestry repair continues independently; original unsafe E11/E12 unqualified. Owned fallback required; strict3 remain |
-| C backend; #44/#49 | C9/C10 tasks and Main published; C11 exact7 task `56e4ae8` pushed. Worker old-producer before/after19 reproduces/fixes I/O status4 to2. Root fresh current-E9+E10 thirteen strict-O2 backend gates and nineteen I/O controls0; prototype Main `545baa62`, local pending push | C12 selected finite value-record/single-tail List prototype continues; live edits excluded from C11. Native Acc/QuickSort remains unfinished; no accepted C promotion. C11 client sanitizers cover the older C9/E8 producer; no new cost claim |
-| Performance; #56, measurement work #51/#52 | E6 measurement exact114/30 samples published; E7-E10 qualified, selected accepted13-file candidate O2 386/0 and sanitizer groups8/0. Current Goal/joint docs exact2 task `73d8229` pushed, local Main `c2bab35b`; Root verifies MEM1 diagnostic40 and sampled pending-WHNF arena retention | Frame-reuse candidate private, only eval.c/h; sampled180M total arena capacity1,769,812,912 to897,168,304 bytes with overhead included. This is capacity, not peak RSS/time; broader/fresh-process/SAN qualification live. Job inspects scheduler retention separately; later matched wall/RSS needs an exclusive slot |
-| Surface; #57 | Delivered prototype integrated; session stopped; Merge reviewed polarity, brace/migration, scope and version gates | Accepted language policy/promotion and selector diagnostics remain unresolved; #57 stays open; no active worker |
-| Verification audit; #59/PR #60, related #51 | Static task `7ed3ad1` pushed/remote verified; Main merge `5683755`; Merge reproduced exact inventory and verified 385 source hashes/114 archived dependencies | Bounded static delivery complete; dynamic/full #59 open; four-job cost deferred because full config review missed eight-minute boundary; no timing executed |
-| Sort library; #41/F3-F5 | PR54 integrated and GitHub merged; isolated worker actual gpt-6.1-sol/xhigh verified, bounded Goal complete. Finite-function task `5e6ed84` exact11 pushed with corrected provenance and two worker focused gates | Root two focused E6 gates pass; exact11 prototype Main integrated; accepted Sort/F5 adoption remains separate |
-| Test-suite; #59/PR #60 | Initialization `e423cc34` and focused report `a347cbdb` read/hash-verified; thread `01a101d2-a538-7c30-864a-7841a2de3896`, tmux `%12`, active Goal. Worker reports two prototype patches: applied tests net-38 lines, QuickResult14 to12 and compatibility421 to401 invocations, all distinct outcomes retained | Root comparison review and affected combined/failure-injection controls pending; no task freeze yet. Shared Core/SourceIO patches belong to Job, evaluator/codec controls to Performance; conflicts route to Merge. Accepted tests/build unchanged; wall/RSS unmeasured |
-| Issue-audit; all open Issues/PRs | Initialization `a2a07c3b` and consumed sole-writer receipt `50592d53` verified; thread `01a101d5-ab2f-7241-ab7e-f4a75e180327`, tmux `%14`, active Goal. Ten bodies/27 comments inspected in worker report | Concrete #44/#49 residual successor proposal `2e8df914` preserves separate source/target contracts; GitHub dispositions not yet verified. #59 remains open pending residual assessment; no automatic completion inferred from PR60/static audit |
+| Job/Evidence; SE1-SE5 / AP0, #51/#47 | E1-E4/E6-E10 prototype Main; corrected E11 exact25 taskd22be9f pushed. Root156 assembly/469 tested-overlay inputs and three fresh lifetime/escaped-stack O2/SAN controls0; worker unskipped broad0 | Separate current E9+E10+correctedE11 joint source12842639815 aligned, gates pending. CorrectedE12 broad just reported0, supplemental controls live; E13 header-index deletion separate. Original unsafe E11/E12 and strict3 remain |
+| C backend; #61, historical #44/#49 | C12 exact16 task97f8d7c pushed/remote verified, Main370a986. Root current E9+E10 fourteen strict O2 gates, three affected client/source sanitizer gates and nineteen I/O controls0 | C13 shared-library exact11 notice49bf8ae9 ready; Root immutable/current-producer review pending. Native Acc/QuickSort and higher contracts remain unfinished; no accepted C promotion |
+| Performance; #56/#51/#52 | E6 measurements30 published; E7-E10 qualified; accepted13-file promotion7631e5a independently verified. MEM1 diagnosis40 exact; Root fresh inline-state parent0/v1 signal6/v2 0 | V1 rejected despite passing acceptance and lower sampled capacity; no qualified gain. Stateless v2 source1288f6ea298/patchb2c39601 has live terminal qualification, fresh capacity/cost pending. No arbitrary custom-callback lifetime guarantee inferred |
+| Surface; #57 | Verified prototype integrated, completed owner stopped | Accepted policy/promotion and selector diagnostics unresolved; no owner restart |
+| Static audit; #59/PR #60 | Task7ed3ad1/Main5683755; Root385 source/114 archived dependency hashes and exact inventory verified; bounded Goal achieved | Dynamic/full #59 and controlled cost remain open; no static-owner restart |
+| Sort; #41/F3-F5 | PR54 and finite-function task5e6ed84/Main966c4e1 integrated; bounded Goal achieved, focused gates0 | Accepted Sort/F5 and broader interfaces remain separate |
+| Test-suite; #59/PR #60 | Goal achieved. Final exact7 notice4432e3d/manifest0f30bef9, raw177/archive and776 dependencies exact. Root recomputed all distinct records:435 to413 calls; fresh original/reduced helpers reproduce128 runtime/23 C tests/two scripts. Worker47 completed recipes0 and ten injection controls verified | Exact task/Main prototype publication next. Net applied tests plus25-line helper is -13 lines; repository additions are patch/docs representation. Unchanged derived-LT600s run incomplete; no wall/RSS or accepted-test claim |
+| Issue-audit; all open Issues/PRs | Goal achieved. Root independently reread ten exact comments, successor61 body/open,44/49 closed/not_planned as superseded; task8bb5018 pushed, Mainb461ace local | Nine issues remain open, zero PRs. Superseded means residuals routed to61, not implemented. #59 and user design/adoption decisions remain open |
 
 Owning tables: Job/Evidence's [SE Plan](2026-09-30-SOLVER-EVIDENCE-DUPLICATION-AUDIT-AND-PLAN.md#plan),
 performance's worker-local `doc/2026-10-03-PERFORMANCE-JOINT-VERIFICATION.md`,
@@ -54,9 +55,11 @@ and #52's equality-reuse design are not completed by storage deletion or C emiss
 
 ### Rescheduled Queue
 
-2026-10-03 12:24 UTC fresh GitHub snapshot: ten open Issues (#41, #43, #44,
-#47, #49, #51, #52, #56, #57, #59); zero open PRs. Historical documentation and
-Sort PR reviews below are complete; full issue criteria remain separate.
+2026-10-03 issue-audit terminal snapshot, independently verified by Root:
+nine open Issues (#41, #43, #47, #51, #52, #56, #57, #59, #61), zero open PRs.
+#44/#49 are closed as superseded by #61; residual source/native requirements
+and original provenance remain. Historical reviews below are complete; full
+issue criteria remain separate.
 New #59 / documentation PR #60 concern verification debt and progress accounting,
 not a newly established compiler defect. PR #58 is already merged. PR #60's
 672-line supplied audit is an input, not approval of every threshold or manifest.
@@ -65,13 +68,13 @@ reporting subsystem. Its audit cover is pinned to `37de1e8`, not current Main.
 
 | Order / owner | Issue or PR | Next deliverable and dependency |
 | --- | --- | --- |
-| 0 / desk -> Merge | Workflow | Merge active; five workers' initialization/action receipts verified, completed Sort/static-audit remain stopped. Preserve dirty accepted files; issue-audit owns GitHub dispositions |
+| 0 / desk -> Merge | Workflow | Merge active; three implementation owners continue. Test-suite/issue-audit/static/Sort bounded Goals achieved and stopped; protected local bytes preserved. Scheduled six-hour report delivered; Root resumes coordination after audit handoff |
 | 1 / Job, Root reviews independently | SE/AP, #51 | Corrected E11 published/focused+broad verified; current joint qualification pending. Safe Context-ancestry repair on corrected parent continues without waiting. Preserve strict3 and original unsafe failures; no pointer-layout completion claim |
-| 1 / performance + Job | #56 / #51 | MEM1 evaluator-frame reuse candidate qualifies independently; Job investigates private scheduler retention. Capacity sample verified, RSS/time pending. Root resolves shared-owner conflicts; later matched wall/RSS gets an exclusive slot |
-| 1 / test-suite | #59 / PR #60 | Implement first demonstrated prototype test reduction, preserving unique invariants and failures; reuse completed audit and compare original/reduced outcomes. No accepted test/build promotion |
-| 1 / issue-audit | All open Issues/PRs | Sole GitHub disposition writer: complete evidence-backed comments/closures/useful residual consolidation. #59 assessed first; Root supplies current pinned delivery/status and avoids concurrent issue writes |
+| 1 / performance + Job | #56 / #51 | MEM1 v1 rejected on inline borrowed-state lifetime; stateless v2 qualifies independently, fresh memory/cost pending. Job owns separate header/scheduler inspection. Root resolves conflicts; matched wall/RSS needs an exclusive slot |
+| Complete bounded / test-suite; Root publishes | #59 / PR #60 | Verified pilot removes22 duplicate calls with all distinct outcomes preserved; Root raw/assembly review complete. Publish exact7 prototype; broader inventory/cost/accepted adoption remain open |
+| Complete bounded / issue-audit | All open Issues/PRs | Verified comments/dispositions,44/49 superseded by61; nine issues open. Owner stopped; Root resumes coordination, no repeat audit |
 | Complete bounded / verification-audit | #59 / PR #60; #51 | Static inventory/pilot delivered and worker complete; four-job measured cost remains deferred, full #59 open. Do not restart the completed owner automatically |
-| 2 / C backend | #44 / #49 | C1-C11 bounded prototypes delivered; C12 existing-value-record List candidate continues. Relevant j1 correctness proceeds; native Acc/QuickSort and producer-policy boundaries remain explicit |
+| 2 / C backend | #61 (historical #44/#49) | C1-C12 bounded prototypes delivered; C13 shared-library exact11 ready, Root current-producer review next. Native Acc/QuickSort and producer-policy boundaries remain explicit |
 | Complete review / Merge | PR #60, #53, #55 | Documentation reviewed/imported with provenance; no open PRs. Full issue criteria remain independent of publication |
 | Complete bounded / Sort library | PR #54 / #41 | Generic MergeSort and finite-function prototype verified/integrated; bounded worker complete. Accepted Sort/F5 and broader containers remain separate; no owner restart |
 | Review / Merge | #57 | Audit delivered prototype against Issue criteria; Surface stays stopped. Prototype delivery is not accepted promotion; do not reopen a worker just to repeat completed gates |
@@ -829,7 +832,7 @@ Start with supported checked exports, not completion of all relevance research.
 
 ### Plan
 
-- [ ] Recheck #44/#49 against the pinned producer and specify one target epoch.
+- [ ] Recheck #61 residuals (superseded #44/#49) against the pinned producer and specify one target epoch.
 - [ ] Work under `src/prototype/c_backend/`; use a lane-specific SOAP work list
   linked from AP4-AP6 rather than duplicate those lists here.
 - [ ] Agree the selected typed-export interface and explicit pending/unsupported
@@ -1311,12 +1314,14 @@ tests/build require a separate intentional promotion.
 
 ### Objective (Code)
 
-Owner initialization `e423cc34` and first focused report `a347cbdb` are freshly
-read/hash-verified. Desk launch receipt confirms GPT-6.1-Sol xhigh, active Goal
-at thread `01a101d2-a538-7c30-864a-7841a2de3896`, worktree `test-suite`, tmux
-`%12`, branch `parallel/test-suite-20261003`, baseline `09ee775`. First two
-prototype test reductions have owner-local passing comparisons; Root comparison
-review and combined controls remain pending. Completed static audit is reused.
+Final handoff `4432e3d` and manifest `0f30bef9` verify exact seven files.
+At13:49 UTC, tmux%12 reports Goal achieved. Root recomputed focused record
+equivalence, verified all177 frozen archive records/776 dependencies and all47
+completed recipe exits/ten injection outcomes. Fresh original/reduced assembly
+matches qualified E9+E10 runtime128, pinned23 C tests and both tested scripts.
+No derived-LT terminal pass, comparative cost or accepted implementation claim.
+Exact7 task `bc16df9` pushed/remote verified; prototype Main integration follows.
+Completed static audit reused.
 
 ### Assessment
 
@@ -1344,24 +1349,21 @@ complete. This is GitHub disposition work, not code or heavy-test authority.
 
 ### Objective (Code)
 
-Initialization `a2a07c3b`, consumed writer receipt `50592d53` and concrete
-proposal `2e8df914` are freshly read/hash-verified. Desk launch confirms active
-GPT-6.1-Sol xhigh Goal at thread `01a101d5-ab2f-7241-ab7e-f4a75e180327`, worktree
-`issue-audit`, tmux `%14`, branch `parallel/issue-audit-20261003`. Its fresh
-reported snapshot is ten open Issues, zero open PRs; GitHub dispositions are
-not yet independently verified by Root.
+Final handoff `bfbabb9b`, two-record manifest `b3f86ed7`, task `8bb5018`
+and local Main `b461ace` verified. Root independently reread ten comment hashes,
+#61 body/open and #44/#49 closed/not_planned. Final nine issues/zero PRs match.
+At13:49 UTC, tmux%14 reports Goal achieved; completion accounting confirmed.
 
 ### Assessment
 
-Issue-audit is the sole disposition writer; Merge stops concurrent Issue
-mutations and supplies current evidence. A proposed C-backend successor may
-retain separate source-semantic/native-target residuals and the existing owner.
-Superseded closure must not claim remaining work implemented. No accepted #57
-policy decision or strict-reload waiver has been granted.
+Issue-audit completed its sole-writer disposition scope and remains stopped;
+Root resumes coordination. Open successor #61 preserves separate source/native
+residuals and the existing C owner. Closure of #44/#49 is supersession, not
+implementation completion. No accepted #57 policy or strict-reload waiver follows.
 
 ### Plan
 
 Use the one work list in the
 [owning plan](2026-10-03-ISSUE-LIFECYCLE-CONSOLIDATION-WORKER-PLAN.md).
-Verify concrete comments, links and issue states at the owner handoff; retain
-uncertain required work open. Do not restart the completed static audit.
+Comments, links and states verified against the owner's criteria; bounded audit
+complete. Retain unfinished issues open; do not restart either completed audit.
