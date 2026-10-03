@@ -156,7 +156,25 @@
  	assert(!pg_evidence_premise(u0, 1));
  	assert(!pg_prove_universe(&typing, empty, UINT64_MAX));
  	const struct pg_object *a = pg_binder(graph);
-@@ -586,6 +688,27 @@
+@@ -582,10 +684,45 @@
+ 	const struct pg_object *y = pg_binder(graph);
+ 	const struct pg_evidence *a_context = pg_prove_context_extension(&typing, empty, a, u0);
+ 	assert(a_context && pg_context_declared_input(&typing, a_context) == u0);
++	const struct pg_context *owned_context = pg_evidence_context(a_context);
++	assert(pg_context_owned_by(owned_context, &typing) && pg_context_owned_by(NULL, &typing));
++	assert(!pg_context_owned_by(NULL, NULL));
++	struct pg_context copied_context = *owned_context;
++	assert(copied_context.receipts && !pg_context_owned_by(&copied_context, &typing));
++	struct pg_typing foreign_context_owner;
++	assert(!pg_typing_init(&foreign_context_owner, graph));
++	const struct pg_context *foreign_context = pg_context_intern(&foreign_context_owner, &copied_context);
++	assert(foreign_context && foreign_context != owned_context);
++	assert(pg_context_owned_by(foreign_context, &foreign_context_owner));
++	assert(!pg_context_owned_by(foreign_context, &typing));
++	assert(!pg_context_owned_by(owned_context, &foreign_context_owner));
++	pg_typing_destroy(&foreign_context_owner);
++	assert(!pg_context_owned_by(foreign_context, &foreign_context_owner));
+ 	const struct pg_evidence *a_type = pg_prove_variable(&typing, a_context, a);
  	assert(a_type && pg_evidence_classifier(a_type) == pg_universe(graph, 0));
  	const struct pg_evidence *x_context = pg_prove_context_extension(&typing, a_context, x, a_type);
  	assert(x_context);
@@ -184,7 +202,7 @@
  	const struct pg_evidence *fa = pg_prove_return_type(&typing, a_type);
  	assert(fa && pg_evidence_judgement(fa) == PG_JUDGEMENT_COMPUTATION_TYPE);
  	assert(!pg_prove_value_type(&typing, fa));
-@@ -818,6 +941,20 @@
+@@ -818,6 +955,20 @@
  	assert(!pg_reduction_congruence(pg_nf_certificate(beta_nf)));
  	assert(pg_reduction_head_congruence(pg_nf_certificate(beta_nf)));
  	const struct pg_evidence *beta_result = pg_prove_normalization(&typing, app, pg_nf_certificate(beta_nf));
@@ -205,7 +223,7 @@
  	struct pg_typed_query *changed_head = pg_typed_input_request(&typing, beta_result, 0);
  	while (!pg_typed_query_advance(changed_head, 1)) assert(pg_typed_query_steps(changed_head) < 10000);
  	/* The source is APP but its result is RETURN. Input zero must be the
-@@ -1047,6 +1184,17 @@
+@@ -1047,6 +1198,17 @@
  	assert(pg_evidence_conversion(converted) == certificate);
  	assert(pg_evidence_premise(converted, 0) == quoted_function);
  	assert(pg_evidence_premise(converted, 1) == upi_z);
@@ -223,7 +241,7 @@
  	assert(pg_prove_conversion(&typing, quoted_function, upi_z, certificate) == converted);
  	assert(!pg_prove_conversion(&typing, quoted_function, upi_z, NULL));
  	assert(!pg_prove_conversion(&typing, x_term, upi_z, certificate));
-@@ -1454,7 +1602,34 @@
+@@ -1454,7 +1616,34 @@
  		}
  		reconstruct_derivation(&typing, records[i]);
  	}
@@ -258,7 +276,7 @@
  	puts("evidence: checked contexts, stratified universes and occurrence-based variable derivations passed");
  }
  
-@@ -1526,7 +1701,7 @@
+@@ -1526,7 +1715,7 @@
  		const struct pg_binding_value binding = {a, pg_reference(graph, renamed)};
  		const struct pg_evidence *original_child = i ? inner : fa;
  		const struct pg_term *body = pg_substitution_compute(&typing.substitutions,
@@ -267,7 +285,7 @@
  		const struct pg_term *alpha = i ? pg_lambda(graph, renamed, body)
  			: pg_pi(graph, pg_evidence_subject(u1)->core, renamed, body);
  		if (i == 2) alpha = pg_application(graph, pg_reference(graph, &pg_force_operation),
-@@ -1562,7 +1737,7 @@
+@@ -1562,7 +1751,7 @@
  		assert(child && pg_evidence_context(child)->parent == pg_evidence_context(empty));
  		assert(pg_evidence_context(child)->binder == renamed && pg_evidence_subject(child)->core == body);
  		const struct pg_term *classifier = pg_substitution_compute(&typing.substitutions,
@@ -276,7 +294,7 @@
  		assert(pg_evidence_classifier(child) == classifier);
  		uint64_t steps = pg_typed_query_steps(lift);
  		size_t proofs = typing.proofs.count, queries = typing.typed_queries.count;
-@@ -1724,13 +1899,13 @@
+@@ -1724,13 +1913,13 @@
  	const struct pg_evidence *g_argument = pg_prove_type_value(&typing, pg_prove_universe(&typing, g_context, 0));
  	struct pg_binding_value image = {a, pg_evidence_subject(g_argument)->core};
  	struct pg_substitution *prepared = pg_substitution_request(&typing.substitutions,
@@ -292,7 +310,7 @@
  	assert(pg_substitution_advance(prepared, 100) == PG_SUBSTITUTION_DONE);
  	assert(pg_substitution_steps(prepared) == substituted_steps);
  	const struct pg_evidence *g_formation = pg_prove_classifier(&typing, g_context, g_app);
-@@ -1847,9 +2022,24 @@
+@@ -1847,9 +2036,24 @@
  	assert(!pg_context_map_lookup(map, b, &position) && position == 1);
  	assert(!pg_context_map_lookup(map, NULL, NULL));
  	assert(!pg_context_map_lookup(NULL, a, NULL));
@@ -320,7 +338,7 @@
  	assert(pg_prove_type_value(&typing, pg_prove_value_type(&typing, destination_b)) == destination_b);
  	const struct pg_evidence *alternate_b = pg_prove_reindex(&typing,
  		pg_prove_substitution_projection(&typing, destination, destination), destination_b);
-@@ -1932,6 +2122,52 @@
+@@ -1932,6 +2136,52 @@
  		assert(!pg_prove_substitution(&typing, source, destination, 2, bad_last));
  		assert(typing.proofs.count == proofs);
  	}
@@ -373,7 +391,7 @@
  	assert(!pg_evidence_context_map(destination_b) && !pg_evidence_context_map(NULL));
  	assert(!pg_context_map(&typing, map->source, map->destination, 1, map->images));
  	struct pg_occurrence_action *split = pg_occurrence_action_request(&typing, map, pg_evidence_subject(source_x));
-@@ -1962,10 +2198,10 @@
+@@ -1962,10 +2212,10 @@
  	assert(action && pg_occurrence_action_result(action) == pg_evidence_subject(destination_y));
  	uint64_t action_steps = pg_occurrence_action_steps(action);
  	const struct pg_evidence *first_receipt = pg_evidence_for_subject(&typing, pg_evidence_subject(reindexed), NULL);
@@ -386,7 +404,7 @@
  	assert(pg_evidence_for_subject(&typing, pg_evidence_subject(reindexed), NULL) == first_receipt);
  	assert(pg_evidence_for_subject(&typing, pg_evidence_subject(reindexed), reindexed) == alternative_result);
  	assert(!pg_evidence_for_subject(&typing, pg_evidence_subject(reindexed), alternative_result));
-@@ -1984,12 +2220,12 @@
+@@ -1984,12 +2234,12 @@
  		assert(++receipt_count <= typing.proofs.count);
  	}
  	assert(saw_original && saw_alternative);
@@ -402,7 +420,7 @@
  	assert(pg_evidence_for_subject(&typing, same_subject, NULL) == first_receipt);
  	assert(pg_evidence_for_subject(&typing, same_subject, reindexed) == alternative_result);
  	assert(pg_evidence_for_subject(&typing, same_subject, alternative_result) == after_alternative);
-@@ -2037,6 +2273,35 @@
+@@ -2037,6 +2287,35 @@
  	assert(pg_evidence_subject(reindexed_return)->origin == pg_evidence_subject(returned));
  	assert(pg_evidence_subject(reindexed_return)->map == map);
  	assert(pg_evidence_subject(reindexed_return)->operand_count == 0);
@@ -438,7 +456,7 @@
  	size_t input_proofs = typing.proofs.count;
  	struct pg_occurrence_input *input = pg_occurrence_input_request(&typing, pg_evidence_subject(reindexed_return), 0);
  	assert(input && !pg_occurrence_input_result(input));
-@@ -2291,6 +2556,7 @@
+@@ -2291,6 +2570,7 @@
  		struct pg_typed_query *origin = pg_construction_origin_request(&typing, projected);
  		struct pg_typed_query *inner_origin = pg_construction_origin_request(&typing, reindexed_return);
  		assert(origin && inner_origin && !pg_typed_query_advance(origin, 0));
@@ -446,7 +464,7 @@
  		assert(!pg_construction_origin_environment(origin));
  		assert(pg_construction_origin_request(&typing, alternate_return) == inner_origin);
  		assert(!pg_typed_query_advance(inner_origin, 1));
-@@ -2957,9 +3223,9 @@
+@@ -2957,9 +3237,9 @@
  	assert(typing.proofs.count == proof_count);
  	pg_graph_destroy(&scratch);
  	reconstruct_derivation(&typing, dag);
@@ -459,7 +477,7 @@
  	/* Missing mapped origins still need ordered checking, even when most
  	 * structural requests can use already accepted prerequisites directly. */
  	const struct pg_evidence *chain_scope = empty;
-@@ -2981,6 +3247,12 @@
+@@ -2981,6 +3261,12 @@
  		chain, PG_JUDGEMENT_COMPUTATION, pg_universe(graph, 4))));
  	assert(typing.proofs.count == proof_count);
  	pg_typing_destroy(&typing);
@@ -472,7 +490,7 @@
  	puts("typed substitution: dependent declarations, simultaneous images and shared premise DAG passed");
  }
  
-@@ -3543,6 +3815,18 @@
+@@ -3543,6 +3829,18 @@
  	puts("fold association: neutral inputs, captured continuations, operation order and extraction boundary passed");
  }
  
@@ -491,7 +509,7 @@
  static void request_forwarding_test(struct pg_graph *graph)
  {
  	static const struct pg_object_class operation_class = {"test-operation"};
-@@ -3609,6 +3893,23 @@
+@@ -3609,6 +3907,23 @@
  	struct pg_operation_clause clauses[] = {{&second, second_clause}, {&first, first_clause}};
  	const struct pg_term *handled = pg_computation_fold(graph, request, ret, 2, clauses);
  	assert(handled && handled == pg_computation_fold(graph, request, ret, 2, clauses));
@@ -515,7 +533,7 @@
  	assert(pg_computation_fold(graph, request, return_r, 0, NULL) == body);
  	assert(request_whnf(graph, handled, 1) == pg_application(graph, ret, vy));
  	assert(request_whnf(graph, handled, 10000) == pg_application(graph, ret, vy));
-@@ -4266,6 +4567,11 @@
+@@ -4266,6 +4581,11 @@
  	assert(!pg_dimension_compose(&dimensions, &not_a_face, identity));
  	pg_dimensions_destroy(&dimensions);
  	puts("restriction: term faces compose and commute with beta without capturing bound variables");
@@ -527,7 +545,7 @@
  }
  
  static void conversion_test(struct pg_graph *graph)
-@@ -4404,25 +4710,44 @@
+@@ -4404,25 +4724,44 @@
  	struct pg_nf_job *nf = pg_nf_request(&work, &pg_pure_policy, redex);
  	assert(pg_nf_advance(nf, 10000) == PG_NF_DONE && pg_nf_result(nf) == vy);
  	const struct pg_reduction_certificate *receipt = pg_nf_certificate(nf);
@@ -585,7 +603,7 @@
  	pg_substitution_work_destroy(&substitution);
  	pg_whnf_work_destroy(&work);
  	puts("conversion: explicit beta comparison, binder scope, shared DAG and pending divergence passed");
-@@ -4999,6 +5324,18 @@
+@@ -4999,6 +5338,18 @@
  	puts("substitution: simultaneous images, capture avoidance, sharing and no reduction passed");
  }
  
@@ -604,7 +622,7 @@
  static void shared_substitution_test(struct pg_graph *graph)
  {
  	struct pg_substitution_work work, independent;
-@@ -5009,59 +5346,91 @@
+@@ -5009,59 +5360,91 @@
  	const struct pg_term *body = pg_application(graph, vx, vx);
  	const struct pg_term *term = pg_lambda(graph, y, body);
  	struct pg_binding_value image = {x, vy}, copy = image;
@@ -714,7 +732,7 @@
  	assert(work.jobs.count == requests);
  	/* A growing input DAG retains one node per new binding, not one copied
  	 * telescope per term request. These requests stay pending until teardown. */
-@@ -5071,8 +5440,8 @@
+@@ -5071,8 +5454,8 @@
  	size_t environments = work.environments.count;
  	for (size_t i = 0; i < 64; ++i) {
  		chain[i] = (struct pg_binding_value){chain_binder, vx};
@@ -725,7 +743,7 @@
  		const struct pg_environment *current = pg_substitution_input(left)->environment;
  		assert(current->parent == tail && pg_substitution_input(right)->environment == current);
  		assert(work.environments.count == environments + i + 1);
-@@ -5082,7 +5451,7 @@
+@@ -5082,7 +5465,7 @@
  	/* Cancellation releases pending traversals without invalidating outputs. */
  	pg_substitution_work_destroy(&independent);
  	pg_substitution_work_destroy(&work);
@@ -734,7 +752,7 @@
  	assert(answer->as.lambda.body == pg_application(graph, vy, vy));
  	puts("shared substitution: exact inputs, capture, pending reuse, compact results and independent owners passed");
  }
-@@ -5616,6 +5985,19 @@
+@@ -5616,6 +5999,19 @@
  	}
  	/* Arena-owned evidence survives index disposal, but not as accepted input
  	 * to another initialization of the same C storage address. */
@@ -754,7 +772,7 @@
  	pg_typing_destroy(&second);
  	assert(!pg_evidence_owned_by(types[1], &second));
  	assert(!pg_typing_init(&second, graph));
-@@ -5784,6 +6166,27 @@
+@@ -5784,6 +6180,27 @@
  		pg_prove_projection(&typing, scope, universe));
  	const struct pg_evidence *widened = pg_prove_effect_subsumption(&typing, force, target);
  	assert(widened && pg_evidence_rule(widened) == PG_EFFECT_SUBSUMPTION);
@@ -782,7 +800,7 @@
  	assert(pg_evidence_subject(widened) != pg_evidence_subject(force));
  	assert(pg_evidence_subject(widened)->core == pg_evidence_subject(force)->core);
  	assert(pg_evidence_classifier(force) == effectful);
-@@ -5800,6 +6203,10 @@
+@@ -5800,6 +6217,10 @@
  	const struct pg_evidence *widening_premises[] = {force, target};
  	assert(pg_prove_derivation(&typing, PG_EFFECT_SUBSUMPTION, &parameters, 2, widening_premises) == widened);
  	pg_typing_destroy(&typing);
@@ -793,7 +811,7 @@
  	puts("effects: explicit closed sets, union laws, unknown is not empty, and pure-only views passed");
  }
  
-@@ -5813,6 +6220,7 @@
+@@ -5813,6 +6234,7 @@
  		pg_prove_universe(&typing, context, 0));
  	const struct pg_effect_row *empty = pg_effect_row(graph, 0, NULL), *row;
  	const struct pg_evidence *types[2], *returned[2], *functions[2];
@@ -801,7 +819,7 @@
  	const struct pg_term *value;
  	enum pg_totality grade;
  	const struct pg_object *x = pg_binder(graph);
-@@ -5882,7 +6290,8 @@
+@@ -5882,7 +6304,8 @@
  		claimed.core = i ? pg_application(graph, pg_reference(graph, &pg_thunk_operation), omega) : omega;
  		const struct pg_occurrence *description = pg_occurrence_intern(&typing, &claimed,
  			subject->operands, pg_occurrence_maps(subject));
@@ -811,7 +829,7 @@
  		assert(!pg_evidence_for_subject(&typing, description, NULL));
  		assert(pg_prove_structural_subject(&typing, pg_evidence_subject(source)) == source);
  	}
-@@ -5925,10 +6334,39 @@
+@@ -5925,10 +6348,39 @@
  		assert(value == pg_evidence_subject(suspended)->core);
  		const struct pg_evidence *witness = pg_prove_termination(&typing, termination, suspended);
  		assert(!!witness == i);
@@ -851,7 +869,7 @@
  			assert(pg_evidence_classifier(witness) == pg_evidence_subject(termination)->core);
  			assert(pg_prove_classifier(&typing, outer, witness) == termination);
  			struct pg_derivation_parameters parameters;
-@@ -6014,6 +6452,14 @@
+@@ -6014,6 +6466,14 @@
  		}
  	}
  	pg_typing_destroy(&typing);
@@ -866,7 +884,7 @@
  	puts("totality: distinct contracts, RETURN, directed weakening, APP/FORCE and Fold bounds passed");
  }
  
-@@ -6033,6 +6479,7 @@
+@@ -6033,6 +6493,7 @@
  	}
  	struct pg_typed_query *work = pg_classifier_request(&typing, empty, value);
  	assert(work && !pg_typed_query_advance(work, 0));
@@ -874,7 +892,7 @@
  	assert(!pg_typed_query_result(work));
  	while (!pg_typed_query_advance(work, 1)) {}
  	const struct pg_evidence *formation = pg_typed_query_result(work);
-@@ -6118,6 +6565,20 @@
+@@ -6118,6 +6579,20 @@
  		assert(pg_typed_query_advance(query, 64) == 1 && pg_typed_query_steps(query) == steps);
  		assert(typing->proofs.count == proofs && typing->occurrences.count == subjects);
  	}
@@ -895,7 +913,7 @@
  }
  
  static void request_typing_test(struct pg_graph *graph)
-@@ -6195,6 +6656,42 @@
+@@ -6195,6 +6670,42 @@
  	const struct pg_evidence *request = pg_prove_request(&typing, op, payload, k);
  	assert(request && pg_evidence_rule(request) == PG_REQUEST_INTRO);
  	assert(pg_prove_request(&typing, op, payload, k) == request);
@@ -938,7 +956,7 @@
  	const struct pg_object *label;
  	const struct pg_term *a, *continuation;
  	assert(pg_computation_request_view(pg_evidence_subject(request)->core, &label, &a, &continuation));
-@@ -6283,6 +6780,30 @@
+@@ -6283,6 +6794,30 @@
  	assert(pg_evidence_classifier(handled) == pg_evidence_subject(carrier)->core);
  	assert(pg_prove_classifier(&typing, empty, handled) == carrier);
  	assert(pg_prove_handler(&typing, two, k, carrier, 2, clauses) == handled);
@@ -969,7 +987,7 @@
  	const struct pg_handler_signature *signature = pg_evidence_handler_signature(handled);
  	assert(signature && pg_handler_signature_count(signature) == 2);
  	assert(pg_handler_signature_label(signature, 0) == pg_operation_label(op));
-@@ -6294,6 +6815,49 @@
+@@ -6294,6 +6829,49 @@
  	assert(!pg_derivation_parameters(handled, &handler_parameters) && handler_parameters.handler == signature);
  	const struct pg_evidence *handler_premises[9];
  	for (size_t i = 0; i < 9; ++i) handler_premises[i] = pg_evidence_premise(handled, i);
@@ -1019,7 +1037,7 @@
  	assert(pg_prove_derivation(&typing, PG_HANDLER_ELIM, &handler_parameters, 9, handler_premises) == handled);
  	assert(!pg_prove_derivation(&typing, PG_HANDLER_ELIM, &handler_parameters, 8, handler_premises));
  	handler_premises[3] = u0;
-@@ -6376,6 +6940,10 @@
+@@ -6376,6 +6954,10 @@
  	clauses[0].operation = other; clauses[1].operation = op;
  	const struct pg_evidence *reordered = pg_prove_handler(&typing, two, k, carrier, 2, clauses);
  	assert(reordered);
@@ -1030,7 +1048,7 @@
  	assert(pg_evidence_handler_signature(reordered) != signature);
  	handler_parameters.handler = pg_evidence_handler_signature(reordered);
  	assert(pg_prove_derivation(&typing, PG_HANDLER_ELIM, &handler_parameters, 9, handler_premises) == reordered);
-@@ -6407,7 +6975,11 @@
+@@ -6407,7 +6989,11 @@
  	struct pg_handler_clause extra = {op, resume_clause(&typing, op, carrier, other)};
  	assert(extra.body && !pg_prove_handler(&typing, request, k, carrier, 1, &extra));
  	const struct pg_evidence *pure_input = pg_prove_return(&typing, payload);
@@ -1043,7 +1061,7 @@
  	const struct pg_object *both_labels[] = {pg_operation_label(op), other_label};
  	const struct pg_evidence *swap_carrier = pg_prove_effect_type(&typing,
  		pg_effect_row(graph, 2, both_labels), u1);
-@@ -6425,8 +6997,18 @@
+@@ -6425,8 +7011,18 @@
  	struct pg_typing separate;
  	assert(!pg_typing_init(&separate, graph));
  	assert(!pg_prove_request(&separate, op, payload, k));
@@ -1062,7 +1080,7 @@
  	puts("typed effects: signatures, multi-clause handlers, deep resumption, forwarding and effect bounds passed");
  }
  
-@@ -6444,6 +7026,7 @@
+@@ -6444,6 +7040,7 @@
  		const struct pg_evidence *domain = pg_prove_variable(&typing, parameters, a);
  		const struct pg_evidence *scope = pg_prove_context_extension(&typing, parameters, x, domain);
  		const struct pg_evidence *body = pg_prove_return(&typing, pg_prove_variable(&typing, scope, x));
@@ -1070,7 +1088,7 @@
  		if (variant & 4) {
  			const struct pg_evidence *unused = pg_prove_context_extension(&typing, parameters, pg_binder(graph),
  				pg_prove_universe(&typing, parameters, 3));
-@@ -6454,6 +7037,17 @@
+@@ -6454,6 +7051,17 @@
  			assert(selected && selected != scope && pg_evidence_context(selected) == pg_evidence_context(scope));
  			scope = selected;
  		}
@@ -1088,7 +1106,7 @@
  		const struct pg_evidence *pi = pg_prove_pi(&typing, scope, pg_prove_classifier(&typing, scope, body));
  		if (variant & 1) {
  			assert(pg_prove_thunk_content(&typing, pg_prove_thunk_type(&typing, pi)) == pi);
-@@ -6498,6 +7092,8 @@
+@@ -6498,6 +7106,8 @@
  		pg_function_graph_destroy(&generated);
  		pg_whnf_work_destroy(&evaluation);
  		pg_typing_destroy(&typing);
@@ -1097,7 +1115,7 @@
  	}
  	puts("function graph: retained Pi/body, alternate admission, selected Universe and specialization without Lambda rebuilding");
  }
-@@ -6614,6 +7210,7 @@
+@@ -6614,6 +7224,7 @@
  	context_test(&graph);
  	evidence_test(&graph);
  	evidence_owner_test(&graph);

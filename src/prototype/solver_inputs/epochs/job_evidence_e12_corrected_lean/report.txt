@@ -1,0 +1,70 @@
+Corrected E12: typed Context ancestry borrowing with owned-array fallback.
+2026-10-03. Prototype only; the existing SE1-SE5 Goal remains active/open.
+Exact isolated parent: corrected E11 task d22be9f4ca7a44536790668e98ab36a688c94070,
+source156 4d8c056b07f17fb7e8d3d987b929e55b7217d22423ca57875de481bce2cbe175.
+E10 and later private E13 are excluded from this tested E12 snapshot.
+
+Applied runtime39+/8-, tests53+/0-. Constructor addresses now retain one existing
+Context pointer when EVERY ancestor is an exact local member of the existing
+typing context index. Copied tuples, foreign owners and canonical heads above raw
+parents keep the old flattened owned Binder array. E11's complete SourceScope
+ancestry guard stays intact. The pure pg_context_owned_by getter establishes
+descriptive node ownership only, never checked evidence or ancestry on its own.
+It adds no index, owner field, authority, graph, scope-factory policy or checking
+shortcut. Raw-first/native-first sharing, caller/import lifetime, nominal/namespace
+identity, Core/type separation, synthesis-first assertions, scope/effects and
+ordinary Solve/fuel/persistence meaning remain controlled by their existing owners.
+
+The real typed counterexample builds0 on all variants: corrected E11 parent run0,
+the old head-only E12 trial run1 changes the Binder after scratch mutation, and
+corrected E12 run0 retains it. Actual returned-frame controls use a volatile call
+through a separate helper; O2 and ASan/UBSan/leaks/stack-after-return runs0. Exact
+canonical Context ownership tests reject copied receipt links, same-Graph foreign
+typing owners and inactive owners. A checked three-node Context replaces three
+retained Binder pointers with one owner pointer: raw/aligned layout -16 bytes,
+binding header64 unchanged. The unsafe original E11/E12 remain rejected history;
+their earlier positive controls cannot qualify either corrected variant.
+
+Preserve the first focused build exit2 caused by the fixture's missing iadt.h.
+Only that fixture include was corrected; the runtime source156 stayed unchanged.
+The original command/log and setup freeze ec5dd4867149bfe85e6a3656615019b58bcfa7b671bf42bf1d127162f41cc229
+remain private history. fixture_header_correction.patch records the exact change.
+No semantic outcome or acceptance requirement was relaxed.
+
+Fresh focused O2, affected ASan/UBSan/leaks and actual escaped-frame controls0;
+full UNSKIPPED O2 acceptance/semantic/seven checkpoints0 at serial-j1; eight baseline
+C scripts0. All156 source files and actual469 overlay inputs match afterward.
+The14 migrated scripts are byte-exact inherited E9 AP migration, no new test edits.
+Five matched E9/corrected-E11/corrected-E12 censuses all reach DONE, including the
+actual imported quick_locally_sorted ordinary function-result theorem. Every
+nonlayout count and step matches at0/100/1000/DONE. QuickSort remains766477 steps,
+114388 typed occurrences and94974 Evidence. Its retained Binder-array entries
+10460/5006/0, raw binding bytes200032/164816/129888 and aligned bytes206864/175536/143424
+for E9/E11c/E12c respectively. E12 thus removes another34928 raw/32112 aligned
+bytes versus its corrected parent. List raw -16/aligned0; effect/captured/handler
+raw/aligned0. The captured sample is tests/acceptance/captured-block-match.p at2307
+steps in all three variants; it is distinct from the historical6877-step fixture.
+Final layout and cumulative allocation counts do not establish peak RSS or time.
+Membership lookup work and all index/owner overhead still need MEM1 attribution
+and later exclusive matched time/peak verification with Performance.
+
+Both corrected E11 and E12 strict public gates still exit1 at the ORIGINAL three
+cases:1000+1000,1600+1600,completed1921+0. All52 images and the entire verdict/fuel
+table equal E9. Loading stays inert/untrusted; completed read views are not frontier
+admission. Keep one B, cap R, v<=min(B,R), useful<=B-v; no automatic trust, restored
+DONE, replay checker or expected-pass waiver. Genuine public continuation/schedule
+and admission work remains SE4. Corrected E11's separate local broad/C/census
+qualification is now terminal too; its published focused freeze stays unchanged.
+
+Five generated canonical owner/test patches independently reconstruct the tested
+bytes; fresh incremental assembly matches156 files. Publication transports only
+those patches and lean evidence against exact d22be9f4. The canonical destination
+hashes are verified in the named PRIVATE publication projection, not against later
+live canonical files. Shared canonical/index/Main and all earlier freezes remain
+untouched. Merge owns exact task publication/integration; common-producer joint
+qualification, Main integration, accepted promotion and net time/peak gains are
+separate pending results. Human memory/deletion-first/workflow requirements are
+recorded in both active Job-GOAL and the single SE work list; no duplicate plan.
+The first publication preparation exited1 by checking an epoch-relative control
+manifest from repository cwd; publication_setup.json preserves it. Correcting that
+check's namespace changes no tested source/control bytes or frozen evidence.

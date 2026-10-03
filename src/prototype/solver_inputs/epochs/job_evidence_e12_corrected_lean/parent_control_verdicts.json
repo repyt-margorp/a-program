@@ -1,0 +1,26 @@
+[
+  {
+    "variant": "corrected-E11-parent",
+    "build_exit": 0,
+    "run_exit": 0,
+    "expected_control_verdict": 0,
+    "build_report": "/tmp/job-evidence-e12c-corrected-E11-parent-build.log",
+    "build_report_sha256": "892035b0a6fa46735def1b45fd190d4a63523040f6eac9d9320794d379a3ee50",
+    "run_report": "/tmp/job-evidence-e12c-corrected-E11-parent-mutation.log",
+    "run_report_sha256": "031a47c6833846dfa8c90c09f590056dbbcbbfc620f7b35796cec88ac07ad9de",
+    "binary_sha256": "f518a9f55b0831423054ff0129d1e6818f3e13b14b7b0c57248037f61a24b068",
+    "output": "canonical Context head/raw parent: address stable after scratch mutation\n"
+  },
+  {
+    "variant": "unsafe-head-only-E12",
+    "build_exit": 0,
+    "run_exit": 1,
+    "expected_control_verdict": 1,
+    "build_report": "/tmp/job-evidence-e12c-unsafe-head-only-E12-build.log",
+    "build_report_sha256": "91afda2e35fbb753d648365647069c990f7cd942d5573d7556224ae8ec14e426",
+    "run_report": "/tmp/job-evidence-e12c-unsafe-head-only-E12-mutation.log",
+    "run_report_sha256": "3fdac85a34794bc10bb6429cce0247f763a6f1f86f48d1c821ddb960d9aade00",
+    "binary_sha256": "14590bc8f58d38e44b442f0985708ed80e8c1619e128342580d01a81f7085064",
+    "output": "canonical Context head/raw parent: address changed after scratch mutation\n"
+  }
+]
