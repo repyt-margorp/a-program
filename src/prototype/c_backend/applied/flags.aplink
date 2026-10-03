@@ -1,0 +1,13 @@
+aplink 1
+artifact applied-list.a
+abi c_native_v1
+target host-c11
+product source
+lowering native_direct_v1
+fallback reject
+enum32 Bool Bool
+data_of empty_flags Flags
+export empty_flags empty_flags
+export identity_flags identity_flags
+export prepend_flag prepend_flag
+export length_flags length_flags

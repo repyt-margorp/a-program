@@ -1,10 +1,17 @@
 #include "representation.h"
+#include "../selection.h"
 #include "classifier.h"
 #include "host.h"
 
 struct entry {
 	struct pg_index_entry index;
 	const struct pg_object *key;
+	const struct pg_c_representation *representation;
+};
+
+struct instance_entry {
+	struct pg_index_entry index;
+	const struct pg_term *type;
 	const struct pg_c_representation *representation;
 };
 
@@ -19,6 +26,28 @@ const struct pg_c_representation *pg_c_representation_find(const struct pg_c_rep
 		if (e->key == object) return e->representation;
 	}
 	return NULL;
+}
+
+const struct pg_c_representation *pg_c_representation_term(const struct pg_c_representations *table,
+	const struct pg_term *type)
+{
+	if (!type) return NULL;
+	if (type->kind == PG_REFERENCE) return pg_c_representation_find(table, type->as.reference);
+	for (struct pg_index_entry *i = pg_index_candidates(&table->instances, (uintptr_t)type); i; i = i->next) {
+		const struct instance_entry *e = (const struct instance_entry *)i;
+		if (e->type == type) return e->representation;
+	}
+	return NULL;
+}
+
+static int record_instance(struct pg_c_representations *table, struct pg_graph *storage,
+	const struct pg_term *type, const struct pg_c_representation *representation)
+{
+	if (pg_c_representation_term(table, type)) return -1;
+	struct instance_entry *e = pg_alloc(storage, sizeof(*e));
+	if (!e) return -1;
+	*e = (struct instance_entry){.type = type, .representation = representation};
+	return pg_index_insert(&table->instances, &e->index, (uintptr_t)type);
 }
 
 static int record(struct pg_c_representations *table, struct pg_graph *storage,
@@ -37,7 +66,7 @@ int pg_c_representations_native(struct pg_c_representations *table, struct pg_gr
 	size_t natural_count, const struct pg_c_export *naturals,
 	size_t data_count, const struct pg_c_export *data)
 {
-	if (pg_index_init(&table->lookup)) return -1;
+	if (pg_index_init(&table->lookup) || pg_index_init(&table->instances)) return -1;
 	if (data_count > SIZE_MAX - enum_count) return -1;
 	if (natural_count > SIZE_MAX - enum_count - data_count) return -1;
 	size_t count = enum_count + natural_count + data_count;
@@ -54,9 +83,15 @@ int pg_c_representations_native(struct pg_c_representations *table, struct pg_gr
 			&naturals[i - enum_count] : &data[i - enum_count - natural_count];
 		const struct pg_occurrence *s = selection->subject;
 		uint64_t level;
-		if (!s || s->context || s->judgement != PG_JUDGEMENT_VALUE_TYPE || !s->core || s->core->kind != PG_REFERENCE) return -1;
+		if (!s || s->context || s->judgement != PG_JUDGEMENT_VALUE_TYPE || !s->core) return -1;
 		if (!pg_universe_level(s->classifier, &level)) return -1;
-		const struct pg_data_declaration *d = pg_data_declaration_view(s->core->as.reference);
+		struct pg_c_applied_selection instance = {0};
+		const struct pg_data_declaration *d;
+		if (s->core->kind == PG_REFERENCE) d = pg_data_declaration_view(s->core->as.reference);
+		else {
+			if (i < enum_count + natural_count || pg_c_applied_selection_read(&instance, storage, table, s)) return -1;
+			d = instance.declaration;
+		}
 		if (!d) return -1;
 		/* A closed selected type can retain its declaration's ambient prefix.
 		 * Reject an index or field extension, not the prefix itself. */
@@ -75,7 +110,10 @@ int pg_c_representations_native(struct pg_c_representations *table, struct pg_gr
 		if (!r) return -1;
 		*r = (struct pg_c_representation){.width = 32, .count = n, .alias = selection->alias, .layout = layout, .natural = natural};
 		table->types[i] = r;
-		if (record(table, storage, s->core->as.reference, r) || record(table, storage, pg_data_matcher(layout), r)) return -1;
+		if (instance.count ? record_instance(table, storage, s->core, r) : record(table, storage, s->core->as.reference, r)) return -1;
+		/* One selected instance per erased layout avoids inferring a source
+			* nominal choice from erased constructor or Match nodes. */
+		if (record(table, storage, pg_data_matcher(layout), r)) return -1;
 		if (i < enum_count) continue;
 		if (n > SIZE_MAX / sizeof(*r->constructors)) return -1;
 		r->constructors = pg_alloc(storage, n * sizeof(*r->constructors));
@@ -97,6 +135,7 @@ int pg_c_representations_native(struct pg_c_representations *table, struct pg_gr
 				if (fields->judgement != PG_JUDGEMENT_VALUE || !fields->declared_type ||
 					fields->declared_type->kind != PG_REFERENCE) return -1;
 				const struct pg_c_representation *f = pg_c_representation_find(table, fields->declared_type->as.reference);
+				if (!f && instance.count) f = pg_c_applied_parameter(&instance, fields->declared_type->as.reference);
 				if (!f && prefix && fields->declared_type->as.reference == prefix->binder &&
 					pg_universe_level(prefix->declared_type, &level)) {
 					if (c->tail != SIZE_MAX) return -1;
@@ -137,6 +176,7 @@ int pg_c_representations_init(struct pg_c_representations *table, struct pg_grap
 void pg_c_representations_destroy(struct pg_c_representations *table)
 {
 	pg_index_destroy(&table->lookup);
+	pg_index_destroy(&table->instances);
 }
 
 void pg_c_representation_type(FILE *out, const struct pg_c_representation *type)

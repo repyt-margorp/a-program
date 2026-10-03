@@ -24,6 +24,7 @@ struct pg_c_representations {
 	size_t count;
 	const struct pg_c_representation **types;
 	const char *arena_alias;
+	struct pg_index instances;
 };
 int pg_c_representations_init(struct pg_c_representations *, struct pg_graph *storage,
 	size_t enum_count, const struct pg_c_export *enums,
@@ -34,6 +35,7 @@ int pg_c_representations_native(struct pg_c_representations *, struct pg_graph *
 	size_t data_count, const struct pg_c_export *data);
 void pg_c_representations_destroy(struct pg_c_representations *);
 const struct pg_c_representation *pg_c_representation_find(const struct pg_c_representations *, const struct pg_object *);
+const struct pg_c_representation *pg_c_representation_term(const struct pg_c_representations *, const struct pg_term *);
 void pg_c_representation_type(FILE *, const struct pg_c_representation *);
 void pg_c_representation_private_type(FILE *, const struct pg_c_representation *);
 void pg_c_representation_declarations(FILE *, const struct pg_c_representations *);

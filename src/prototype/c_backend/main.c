@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "emit.h"
 #include "link/plan.h"
+#include "selection.h"
 #include "artifact/file.h"
 #include <errno.h>
 #include <inttypes.h>
@@ -146,6 +147,15 @@ int main(int argc, char **argv)
 		const struct pg_evidence *proof = pg_synthesis_result(selected);
 		if (!pg_evidence_owned_by(proof, &program->typing)) goto checked;
 		target->subject = pg_evidence_subject(proof);
+	}
+	for (size_t i = 0; i < plan.data_count; ++i) if (plan.data_from_value[i]) {
+		const struct pg_occurrence *type = pg_c_value_classifier(plan.data[i].subject);
+		if (!type) {
+			fputs("C export: data_of requires a closed value with a retained value-type classifier\n", stderr);
+			status = 4;
+			goto checked;
+		}
+		plan.data[i].subject = type;
 	}
 	status = script ? pg_c_link_publish(&plan, output, cc, ar, script, trust_image, spent) : publish(output, &plan);
 checked:

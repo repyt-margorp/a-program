@@ -1,11 +1,11 @@
 # Selected Applied List Boundary
 
 Date: 2026-10-03
-Status: private O2/native-client sanitizer/inert gates pass; regressions pending.
+Status: historical private probe; continuation owns the separate active epoch.
 Baseline: task C7 `d275b75d246d9795d798ee7771519c0febc6c9bb`.
 Related: [owning Goal](2026-10-03-C-BACKEND-GOAL.md), AP6.4/AP6.5/#49;
-the [static capture trial](2026-10-03-C-BACKEND-TRANSITIVE-CAPTURE-PLAN.md) remains
-separate and has not been adopted or task-published.
+The [continuation](2026-10-03-C-BACKEND-APPLIED-LIST-NEXT-NOTE.md) supersedes this
+private work list after C8 publication; historical probe evidence below remains.
 
 ## Problem List
 
@@ -23,6 +23,15 @@ workflow replacement assigns coordination and Main integration to Merge. Own
 task-branch publication remains authorized.
 
 ### Objective (Code)
+
+Later state, 2026-10-03: C8 capture is task-published as `884d5bb`, and Merge
+releases its live freeze while joint/Main review remains pending. The C8-based
+private selector passes all twelve regressions, focused sanitizers and four inert
+profiles. Ordinary mixed C modules and admitted source take/drop/slice also pass
+their O2/client sanitizer/guarded checks. The continuation pins those exact
+manifests and now owns adoption/qualification of a distinct prototype epoch.
+This supersedes earlier pending/adoption statements without rewriting their
+historical measurements. Native Acc/QuickSort remains unsupported.
 
 Fresh private verification after release, at `d275b75` plus scratch edits:
 the initial source admits in 4008 steps; matching snapshot inspection shows the
@@ -153,7 +162,7 @@ not native sorting completion or a replacement sorter.
   rollback/finite copy, checked/trusted determinism, inert emission and unchanged
   `.a`. Preserve indexed, callback, duplicate-instance and Acc refusals.
 - [x] Run focused O2/native-client sanitizers and inert emission checks.
-- [ ] Run relevant regression gates; hand off exact
-  source/test deltas only after a coherent epoch meets its criteria.
+- [x] Run relevant private regression gates; subsequent active adoption/exact
+  handoff is owned by the linked continuation and owning Goal.
 - Completion: selected unindexed applied List APIs agree with admitted source and
   preserve nominal/resource/failure contracts; remaining native sorting is explicit.

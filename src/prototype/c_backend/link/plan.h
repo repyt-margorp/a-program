@@ -19,6 +19,7 @@ struct pg_c_link_plan {
 	size_t data_count;
 	const char **data_names;
 	struct pg_c_export *data;
+	int *data_from_value;
 	size_t natural_count;
 	const char **natural_names;
 	struct pg_c_export *naturals;

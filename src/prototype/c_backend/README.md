@@ -550,6 +550,42 @@ This gate covers Bool-field selection; the numeric partition and copy-out gate
 below extends this boundary. Acc/QuickSort, dynamic callbacks and demanded
 Identity remain incomplete.
 
+### Selected applied families and source slices
+
+`data_of VALUE ALIAS` selects the retained closed value-type classifier of an
+admitted closed value. For example, `empty := (List Nat).nil` permits:
+
+```text
+nat32 Nat Nat
+data_of empty Numbers
+export identity identity
+export length length
+```
+
+This does not evaluate `List Nat` as a type factory or synthesize from an expected
+type. Native signature domains/results must match the exact selected type.
+Unindexed families with explicit reference arguments can use existing scalar or
+earlier selected enum/natural/value representations, in source parameter order.
+Direct supported fields and single Self tails retain the existing value/node ABI.
+One instance per erased constructor/Match layout is allowed in a component;
+two instances of the same family in one component refuse rather than invent
+source nominal equality. Missing/later argument representations, nonreference
+arguments, indexed/dependent/function fields and dynamic callbacks still refuse.
+The receipt distinguishes a value-classifier selection from `data`'s value-type
+selection; no selector or C convention enters `.a`.
+
+`check-c-applied-families` verifies Nat/enum Lists, reversed field order and a
+two-parameter value family, plus existing source take/drop/slice recurrences.
+The slice fixture lowers its Match/known induction thunks and composed calls
+generically; drop reconstructs its suffix. It is not a replacement target routine
+or native Acc/QuickSort completion. Source/object/archive clients compare complete
+payloads with source observations and preserve output/prior allocations on resource
+failures. The gate also combines separately selected Numbers/Flags products in
+both header orders, with explicit C payload-array conversion, shared arena
+rollback/lifetime and compile-time incompatible node-pointer rejection. This
+uses the versioned C arena ABI without proving source families equal. Guarded
+emission checks unchanged source graph/evidence and forbids source-work advances.
+
 ### Numeric predicates and finite List copy-out
 
 `nat32 SOURCE ALIAS` explicitly maps a selected closed unindexed declaration
@@ -643,7 +679,7 @@ Receipts use copied emitter-selected contract flags after lowering. They describ
 Nat overflow and finite copy-in/copy-out without rebuilding target representations.
 `check-c-sorting-boundary` also admits an open Nat-list QuickSort and requires an
 explicit native representation refusal with no published product in checked and
-trusted modes. Generic applied families, indexed SizedList and callable Acc fields
+trusted modes. Unsupported applied arguments, indexed SizedList and callable Acc fields
 are outside the bounded native contract. Structural QuickSort output remains a
 separate gate and is not native completion. No source schema change is requested.
 
