@@ -1,0 +1,31 @@
+case	system	variant	repetition	exit	passed	wall_seconds_launcher	wall_seconds_GNU_time	user_seconds	system_seconds	maximum_RSS_KiB	charged_steps
+list	ap	baseline	1	0	True	0.007776976	0.0	0.0	0.0	2680	1921
+list	ap	head	1	0	True	0.005509325	0.0	0.0	0.0	2560	1915
+imported-local-sorted	ap	baseline	1	0	True	0.631942256	0.63	0.54	0.08	169964	766477
+imported-local-sorted	ap	head	1	0	True	0.635973145	0.63	0.57	0.05	170080	761848
+trees400	ap	baseline	1	0	True	17.255830103	17.25	16.18	1.06	2971852	227277774
+trees400	ap	head	1	0	True	5.406770049	5.4	4.84	0.55	1891724	183507626
+trees400	bend		1	0	True	2.775900512	2.77	3.26	0.3	99668	
+trees400	lean		1	0	True	1.74608506	1.74	4.05	0.12	539956	
+trees400	agda		1	0	True	6.904387946	6.9	6.87	0.05	121144	
+trees400	v		1	0	True	1.748645421	1.74	1.68	0.06	395312	
+list	ap	head	2	0	True	0.008176815	0.0	0.0	0.0	2516	1915
+list	ap	baseline	2	0	True	0.006669399	0.0	0.0	0.0	2632	1921
+imported-local-sorted	ap	head	2	0	True	0.612873254	0.61	0.53	0.07	169912	761848
+imported-local-sorted	ap	baseline	2	0	True	0.638942247	0.63	0.57	0.06	169680	766477
+trees400	ap	head	2	0	True	5.390316961	5.38	4.77	0.61	1891684	183507626
+trees400	ap	baseline	2	0	True	17.235061636	17.23	16.14	1.08	2971092	227277774
+trees400	v		2	0	True	1.740188759	1.73	1.68	0.05	397316	
+trees400	agda		2	0	True	6.870086225	6.86	6.84	0.04	121012	
+trees400	lean		2	0	True	1.743408607	1.74	4.03	0.14	541632	
+trees400	bend		2	0	True	2.789817349	2.78	3.32	0.27	99280	
+list	ap	baseline	3	0	True	0.007579632	0.0	0.0	0.0	2752	1921
+list	ap	head	3	0	True	0.006719863	0.0	0.0	0.0	2512	1915
+imported-local-sorted	ap	baseline	3	0	True	0.614493291	0.61	0.55	0.05	169816	766477
+imported-local-sorted	ap	head	3	0	True	0.635341084	0.63	0.56	0.06	170176	761848
+trees400	ap	baseline	3	0	True	17.206604772	17.2	16.14	1.05	2971260	227277774
+trees400	ap	head	3	0	True	5.447523601	5.44	4.86	0.57	1892004	183507626
+trees400	bend		3	0	True	2.803506477	2.8	3.3	0.31	97120	
+trees400	lean		3	0	True	1.740930578	1.73	4.02	0.14	542360	
+trees400	agda		3	0	True	6.82903041	6.82	6.8	0.04	120416	
+trees400	v		3	0	True	1.739656619	1.73	1.66	0.06	397132	

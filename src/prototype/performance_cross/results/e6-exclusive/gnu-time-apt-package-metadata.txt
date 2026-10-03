@@ -1,0 +1,31 @@
+Package: time
+Version: 1.9-0.2
+Installed-Size: 129
+Maintainer: Bob Proulx <bob@proulx.com>
+Architecture: amd64
+Depends: libc6 (>= 2.34)
+Description-en: GNU time program for measuring CPU resource usage
+ The 'time' command runs another program, then displays information
+ about the resources used by that program, collected by the system while
+ the program was running.  You can select which information is reported
+ and the format in which it is shown, or have 'time' save the information
+ in a file instead of display it on the screen.
+ .
+ The resources that 'time' can report on fall into the general
+ categories of time, memory, I/O, and IPC calls.
+ .
+ The GNU version can format the output in arbitrary ways by using a
+ printf-style format string to include various resource measurements.
+Description-md5: 3482b423b592147357279e93ec9d47e4
+Multi-Arch: foreign
+Homepage: https://www.gnu.org/software/time
+Tag: devel::profiler, implemented-in::c, interface::commandline,
+ role::program, scope::utility, suite::gnu, use::measuring,
+ use::monitor, use::timekeeping, works-with::software:running
+Section: utils
+Priority: optional
+Filename: pool/main/t/time/time_1.9-0.2_amd64.deb
+Size: 50776
+MD5sum: d6bf93ffde02b9aa12d5ecd13d0a9956
+SHA256: 10257c6fe888e6578550b1f20705d282dd630b76f8df0c006aec3031fefe5e23
+

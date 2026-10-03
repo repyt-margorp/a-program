@@ -1,0 +1,5 @@
+Checking main (/tmp/ap-performance-cross-7d24b8d/reproducible-controls/agda/false-tree/main.agda).
+/tmp/ap-performance-cross-7d24b8d/reproducible-controls/agda/false-tree/main.agda:72,7-11
+N (mirror (full n5)) (mirror (full n5)) != L of type Tree
+when checking that the expression refl has type
+Eq (mirror (full n6)) L

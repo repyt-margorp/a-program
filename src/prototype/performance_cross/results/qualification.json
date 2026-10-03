@@ -1,0 +1,428 @@
+{
+  "revision": "7d24b8d0235cb9781140512c0f163c48ea84a719",
+  "equalities": 4,
+  "commands_sha256": "60b7abb0a857c0514ca8f6b3466e4c4719e1e1f9dd15594c4671c561b7a6cd60",
+  "comparative_measurements": false,
+  "checks": [
+    {
+      "extension": "bend",
+      "case": "positive",
+      "source_sha256": "bd8c948e8865aac51d360867bf29e96f044ca583ce2004a7c35b0c0c3b9a874e",
+      "command": [
+        "/tmp/ap-performance-cross-7d24b8d/bun-1.4.2",
+        "/tmp/ap-performance-cross-7d24b8d/pinned-repo/bend2/main.ts",
+        "/tmp/ap-performance-cross-7d24b8d/reproducible-controls/bend/positive/main.bend",
+        "--check-only"
+      ],
+      "environment_overrides": {
+        "BEND_NO_TELEMETRY": "1"
+      },
+      "exit": 0,
+      "expected_pass": true,
+      "qualified": true
+    },
+    {
+      "extension": "bend",
+      "case": "false-bool",
+      "source_sha256": "4390bc342db95ddd91d15398d674b16a45494c83c8cc30bdaa5c5afb66f4a85a",
+      "command": [
+        "/tmp/ap-performance-cross-7d24b8d/bun-1.4.2",
+        "/tmp/ap-performance-cross-7d24b8d/pinned-repo/bend2/main.ts",
+        "/tmp/ap-performance-cross-7d24b8d/reproducible-controls/bend/false-bool/main.bend",
+        "--check-only"
+      ],
+      "environment_overrides": {
+        "BEND_NO_TELEMETRY": "1"
+      },
+      "exit": 1,
+      "expected_pass": false,
+      "qualified": true
+    },
+    {
+      "extension": "bend",
+      "case": "false-tree",
+      "source_sha256": "7532c701efd9bc419c11641880dcef1d57f368f935cea842b40f3d46b4232f37",
+      "command": [
+        "/tmp/ap-performance-cross-7d24b8d/bun-1.4.2",
+        "/tmp/ap-performance-cross-7d24b8d/pinned-repo/bend2/main.ts",
+        "/tmp/ap-performance-cross-7d24b8d/reproducible-controls/bend/false-tree/main.bend",
+        "--check-only"
+      ],
+      "environment_overrides": {
+        "BEND_NO_TELEMETRY": "1"
+      },
+      "exit": 1,
+      "expected_pass": false,
+      "qualified": true
+    },
+    {
+      "extension": "lean",
+      "case": "positive",
+      "source_sha256": "10f80b43cd56ffd4fdc86d1ee0a53acd264e1fee2af0854343bffa3454ba82c6",
+      "command": [
+        "/tmp/ap-performance-cross-7d24b8d/lean-4.34.0-linux/bin/lean",
+        "/tmp/ap-performance-cross-7d24b8d/reproducible-controls/lean/positive/main.lean"
+      ],
+      "environment_overrides": {},
+      "exit": 0,
+      "expected_pass": true,
+      "qualified": true
+    },
+    {
+      "extension": "lean",
+      "case": "false-bool",
+      "source_sha256": "93029f2d4741c45b51b544334f9a5263cf8f4180e4062ad11af1ef4d93403b1e",
+      "command": [
+        "/tmp/ap-performance-cross-7d24b8d/lean-4.34.0-linux/bin/lean",
+        "/tmp/ap-performance-cross-7d24b8d/reproducible-controls/lean/false-bool/main.lean"
+      ],
+      "environment_overrides": {},
+      "exit": 1,
+      "expected_pass": false,
+      "qualified": true
+    },
+    {
+      "extension": "lean",
+      "case": "false-tree",
+      "source_sha256": "c413f93a53d31277ab2455aef8c8d796368e363a2cb1ee7cd7ac550d236917b3",
+      "command": [
+        "/tmp/ap-performance-cross-7d24b8d/lean-4.34.0-linux/bin/lean",
+        "/tmp/ap-performance-cross-7d24b8d/reproducible-controls/lean/false-tree/main.lean"
+      ],
+      "environment_overrides": {},
+      "exit": 1,
+      "expected_pass": false,
+      "qualified": true
+    },
+    {
+      "extension": "agda",
+      "case": "positive",
+      "source_sha256": "af2d66c1e0e28a33d1c4557f3a9b82cd3e35ef1b946ebb7c9a04f6584930192d",
+      "command": [
+        "/tmp/ap-performance-cross-7d24b8d/agda-2.7.0.1/Agda-v2.7.0.1/bin/agda",
+        "--no-libraries",
+        "--ignore-interfaces",
+        "/tmp/ap-performance-cross-7d24b8d/reproducible-controls/agda/positive/main.agda"
+      ],
+      "environment_overrides": {
+        "Agda_datadir": "/tmp/ap-performance-cross-7d24b8d/agda-2.7.0.1/Agda-v2.7.0.1/data"
+      },
+      "exit": 0,
+      "expected_pass": true,
+      "qualified": true
+    },
+    {
+      "extension": "agda",
+      "case": "false-bool",
+      "source_sha256": "e3c6cf6644145388887198cbcb3787df7e8d59deb0d9d433a3473be0064f55af",
+      "command": [
+        "/tmp/ap-performance-cross-7d24b8d/agda-2.7.0.1/Agda-v2.7.0.1/bin/agda",
+        "--no-libraries",
+        "--ignore-interfaces",
+        "/tmp/ap-performance-cross-7d24b8d/reproducible-controls/agda/false-bool/main.agda"
+      ],
+      "environment_overrides": {
+        "Agda_datadir": "/tmp/ap-performance-cross-7d24b8d/agda-2.7.0.1/Agda-v2.7.0.1/data"
+      },
+      "exit": 42,
+      "expected_pass": false,
+      "qualified": true
+    },
+    {
+      "extension": "agda",
+      "case": "false-tree",
+      "source_sha256": "dc024bfd8f136507994734b9a1843832e81993a14b2f0161435db7171393c2f6",
+      "command": [
+        "/tmp/ap-performance-cross-7d24b8d/agda-2.7.0.1/Agda-v2.7.0.1/bin/agda",
+        "--no-libraries",
+        "--ignore-interfaces",
+        "/tmp/ap-performance-cross-7d24b8d/reproducible-controls/agda/false-tree/main.agda"
+      ],
+      "environment_overrides": {
+        "Agda_datadir": "/tmp/ap-performance-cross-7d24b8d/agda-2.7.0.1/Agda-v2.7.0.1/data"
+      },
+      "exit": 42,
+      "expected_pass": false,
+      "qualified": true
+    },
+    {
+      "extension": "v",
+      "case": "positive",
+      "source_sha256": "13cf812d6683edffd75444175ac4ec83273c126c14adcb53b6a210f990a4e77a",
+      "command": [
+        "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/root/home/rocq/.opam/4.14.2+flambda/bin/rocq",
+        "compile",
+        "/tmp/ap-performance-cross-7d24b8d/reproducible-controls/v/positive/main.v"
+      ],
+      "environment_overrides": {
+        "OCAMLPATH": "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/root/home/rocq/.opam/4.14.2+flambda/lib",
+        "ROCQLIB": "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/root/home/rocq/.opam/4.14.2+flambda/lib/coq",
+        "OCAMLFIND_CONF": "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/relocated-findlib.conf"
+      },
+      "exit": 0,
+      "expected_pass": true,
+      "qualified": true
+    },
+    {
+      "extension": "v",
+      "case": "false-bool",
+      "source_sha256": "afd75bf6e5826c9781310cfccf2b7309d439194d1932e23154a7390e3b403ba2",
+      "command": [
+        "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/root/home/rocq/.opam/4.14.2+flambda/bin/rocq",
+        "compile",
+        "/tmp/ap-performance-cross-7d24b8d/reproducible-controls/v/false-bool/main.v"
+      ],
+      "environment_overrides": {
+        "OCAMLPATH": "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/root/home/rocq/.opam/4.14.2+flambda/lib",
+        "ROCQLIB": "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/root/home/rocq/.opam/4.14.2+flambda/lib/coq",
+        "OCAMLFIND_CONF": "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/relocated-findlib.conf"
+      },
+      "exit": 1,
+      "expected_pass": false,
+      "qualified": true
+    },
+    {
+      "extension": "v",
+      "case": "false-tree",
+      "source_sha256": "2ba33c263f56488fc5cdbb8a57491a3102df27ad37b5780fe5e005e263dec9ad",
+      "command": [
+        "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/root/home/rocq/.opam/4.14.2+flambda/bin/rocq",
+        "compile",
+        "/tmp/ap-performance-cross-7d24b8d/reproducible-controls/v/false-tree/main.v"
+      ],
+      "environment_overrides": {
+        "OCAMLPATH": "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/root/home/rocq/.opam/4.14.2+flambda/lib",
+        "ROCQLIB": "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/root/home/rocq/.opam/4.14.2+flambda/lib/coq",
+        "OCAMLFIND_CONF": "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/relocated-findlib.conf"
+      },
+      "exit": 1,
+      "expected_pass": false,
+      "qualified": true
+    }
+  ],
+  "ap_implementation_epoch": "f3c35558ca8ce2b1c5fac4c7ce3eba63da75b858",
+  "scope": "four concrete equalities per system; corresponding computations, helper/proof encodings differ",
+  "full_workload_checked": false,
+  "bendtt_admission_checked": false,
+  "source_manifest": {
+    "revision": "7d24b8d0235cb9781140512c0f163c48ea84a719",
+    "equalities": 4,
+    "depth_pairs": [
+      [
+        7,
+        6
+      ],
+      [
+        12,
+        9
+      ]
+    ],
+    "qualification": "focused controls only; helpers/proof encodings differ",
+    "comparative_measurements": false,
+    "files": [
+      {
+        "extension": "bend",
+        "case": "positive",
+        "path": "bend/positive/main.bend",
+        "expected_pass": true,
+        "sha256": "bd8c948e8865aac51d360867bf29e96f044ca583ce2004a7c35b0c0c3b9a874e"
+      },
+      {
+        "extension": "bend",
+        "case": "false-bool",
+        "path": "bend/false-bool/main.bend",
+        "expected_pass": false,
+        "sha256": "4390bc342db95ddd91d15398d674b16a45494c83c8cc30bdaa5c5afb66f4a85a"
+      },
+      {
+        "extension": "bend",
+        "case": "false-tree",
+        "path": "bend/false-tree/main.bend",
+        "expected_pass": false,
+        "sha256": "7532c701efd9bc419c11641880dcef1d57f368f935cea842b40f3d46b4232f37"
+      },
+      {
+        "extension": "lean",
+        "case": "positive",
+        "path": "lean/positive/main.lean",
+        "expected_pass": true,
+        "sha256": "10f80b43cd56ffd4fdc86d1ee0a53acd264e1fee2af0854343bffa3454ba82c6"
+      },
+      {
+        "extension": "lean",
+        "case": "false-bool",
+        "path": "lean/false-bool/main.lean",
+        "expected_pass": false,
+        "sha256": "93029f2d4741c45b51b544334f9a5263cf8f4180e4062ad11af1ef4d93403b1e"
+      },
+      {
+        "extension": "lean",
+        "case": "false-tree",
+        "path": "lean/false-tree/main.lean",
+        "expected_pass": false,
+        "sha256": "c413f93a53d31277ab2455aef8c8d796368e363a2cb1ee7cd7ac550d236917b3"
+      },
+      {
+        "extension": "agda",
+        "case": "positive",
+        "path": "agda/positive/main.agda",
+        "expected_pass": true,
+        "sha256": "af2d66c1e0e28a33d1c4557f3a9b82cd3e35ef1b946ebb7c9a04f6584930192d"
+      },
+      {
+        "extension": "agda",
+        "case": "false-bool",
+        "path": "agda/false-bool/main.agda",
+        "expected_pass": false,
+        "sha256": "e3c6cf6644145388887198cbcb3787df7e8d59deb0d9d433a3473be0064f55af"
+      },
+      {
+        "extension": "agda",
+        "case": "false-tree",
+        "path": "agda/false-tree/main.agda",
+        "expected_pass": false,
+        "sha256": "dc024bfd8f136507994734b9a1843832e81993a14b2f0161435db7171393c2f6"
+      },
+      {
+        "extension": "v",
+        "case": "positive",
+        "path": "v/positive/main.v",
+        "expected_pass": true,
+        "sha256": "13cf812d6683edffd75444175ac4ec83273c126c14adcb53b6a210f990a4e77a"
+      },
+      {
+        "extension": "v",
+        "case": "false-bool",
+        "path": "v/false-bool/main.v",
+        "expected_pass": false,
+        "sha256": "afd75bf6e5826c9781310cfccf2b7309d439194d1932e23154a7390e3b403ba2"
+      },
+      {
+        "extension": "v",
+        "case": "false-tree",
+        "path": "v/false-tree/main.v",
+        "expected_pass": false,
+        "sha256": "2ba33c263f56488fc5cdbb8a57491a3102df27ad37b5780fe5e005e263dec9ad"
+      }
+    ]
+  },
+  "tools": {
+    "bun": {
+      "url": "https://github.com/oven-sh/bun/releases/download/bun-v1.4.2/bun-linux-x64.zip",
+      "archive_sha256": "36368faef7527875d5ffa52e53cd48021741f2a83eb6208a8dd64068d422a913",
+      "binary_sha256": "a83d263767d839e4d2649ca8e35d07159c7afc99afdc96d731ced29e056dda0c",
+      "version": "1.4.2",
+      "benchmark_run": false
+    },
+    "lean": {
+      "tag": "v4.34.0",
+      "url": "https://github.com/leanprover/lean4/releases/download/v4.34.0/lean-4.34.0-linux.tar.zst",
+      "bytes": 580367391,
+      "archive_sha256": "caaa98356098c85dc0fcbbd28e1ec66f39eb6551829972b752ff20e1286b646b",
+      "publisher_digest_verified": true,
+      "reason": "matches pinned BendTT source toolchain",
+      "benchmark_run": false,
+      "version": "Lean (version 4.34.0, x86_64-unknown-linux-gnu, commit 293d5d0c0c3f3dded4688b3ccd6a33939ac5102b, Release)",
+      "binary_sha256": "e8baaa71855a616dc351028f3ad2200051b0671f423a1696a100e809302d5550"
+    },
+    "agda": {
+      "tag": "v2.7.0.1",
+      "url": "https://github.com/agda/agda/releases/download/v2.7.0.1/Agda-v2.7.0.1-linux.tar.xz",
+      "archive_sha256": "975b515a14877ab6bce5bfc641e16c4a3ee52ca5d7f846577dee80aa2145db8a",
+      "publisher_digest_available": false,
+      "benchmark_run": false,
+      "version": "Agda version 2.7.0.1",
+      "binary_sha256": "6de41437c14c05c9fe576d724cc67386444c0fa9fee662a08250fefb91bee8b6",
+      "data_directory": "/tmp/ap-performance-cross-7d24b8d/agda-2.7.0.1/Agda-v2.7.0.1/data"
+    },
+    "rocq": {
+      "repository": "rocq/rocq-prover",
+      "tag": "9.0.1",
+      "manifest_digest": "sha256:3ed9c46fa02e9fd7748a959abebb11b36f8818d10738dcc93edc67354c313ce2",
+      "config_digest": "sha256:8b649d465372a96769b114d5da8c16a543a252533fc6bb1d756be8b65702cdca",
+      "benchmark_run": false,
+      "version": "The Rocq Prover, version 9.0.1\ncompiled with OCaml 4.14.2",
+      "binary_sha256": "48cf02a3310e5d8e16969063198fd972f1900ed689aa274391b0d774a976a068",
+      "environment_overrides": {
+        "OCAMLPATH": "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/root/home/rocq/.opam/4.14.2+flambda/lib",
+        "ROCQLIB": "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/root/home/rocq/.opam/4.14.2+flambda/lib/coq",
+        "OCAMLFIND_CONF": "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/relocated-findlib.conf"
+      },
+      "relocated_findlib_conf_sha256": "3261c45fa48db80185be3bfebc24fd6570b044f49b011698136ca776aa30bb8d",
+      "extraction": "native executable/installed libraries from verified OCI layers; no container daemon"
+    }
+  },
+  "bend_sources": {
+    "revision": "7d24b8d0235cb9781140512c0f163c48ea84a719",
+    "files": [
+      {
+        "path": "bend2/bend.ts",
+        "url": "https://raw.githubusercontent.com/bendlang/bend/7d24b8d0235cb9781140512c0f163c48ea84a719/bend2/bend.ts",
+        "sha256": "de2b39db2fcbd2f9115053e85e34d791693e1297bfeb6874da1013ff7b44b7dd",
+        "bytes": 137347
+      },
+      {
+        "path": "bend2/main.ts",
+        "url": "https://raw.githubusercontent.com/bendlang/bend/7d24b8d0235cb9781140512c0f163c48ea84a719/bend2/main.ts",
+        "sha256": "738f8c895ac3f9ff23eb02597201ce51a7f04df0c95a2914d9df6035e01b53dc",
+        "bytes": 34536
+      },
+      {
+        "path": "bend2/comp.ts",
+        "url": "https://raw.githubusercontent.com/bendlang/bend/7d24b8d0235cb9781140512c0f163c48ea84a719/bend2/comp.ts",
+        "sha256": "3bd7ed49d33f1c61334d75a905e38c0345fb15a10b45d85884b77f49833dc5ee",
+        "bytes": 185444
+      },
+      {
+        "path": "bend2/safe.ts",
+        "url": "https://raw.githubusercontent.com/bendlang/bend/7d24b8d0235cb9781140512c0f163c48ea84a719/bend2/safe.ts",
+        "sha256": "55d5848abef79895f1e1813d194718bc8ed988d2d4fb580faf7a6aacee492629",
+        "bytes": 58577
+      },
+      {
+        "path": "bend2/base.bend",
+        "url": "https://raw.githubusercontent.com/bendlang/bend/7d24b8d0235cb9781140512c0f163c48ea84a719/bend2/base.bend",
+        "sha256": "c742fae9c49b14f0cc9128429a2c6109364c8a933a142f2c90b9f2e5fd976661",
+        "bytes": 71530
+      },
+      {
+        "path": "bend2/docs/gen_pins.ts",
+        "url": "https://raw.githubusercontent.com/bendlang/bend/7d24b8d0235cb9781140512c0f163c48ea84a719/bend2/docs/gen_pins.ts",
+        "sha256": "5077ab79976e2d5b7720db35f7343f03552c1148f1c617fd19c39a374aab1edc",
+        "bytes": 13670
+      },
+      {
+        "path": "gates/perf.ts",
+        "url": "https://raw.githubusercontent.com/bendlang/bend/7d24b8d0235cb9781140512c0f163c48ea84a719/gates/perf.ts",
+        "sha256": "d43c8d62268cd6d338c5a87e0b087361c35ddbed6335c250fda31182019c8c1d",
+        "bytes": 14740
+      }
+    ]
+  },
+  "helper_sha256": {
+    "prepare.py": "f36fca09b2b82901541226ecd2d4db659d91e19b6d4dbf4e3dc06c68f9733fa0",
+    "check.py": "a365eb68c1b58414beb6a346edfadb81802992f9f480c26c946f0323bc62fc12"
+  },
+  "setup_failures": {
+    "setup-rocq-debian-9.2-setup-failure.txt": {
+      "origin": "rocq-debian-9.2/setup-failure.txt",
+      "sha256": "023d697599b7dcd6bdec945865e77c924cb7fa76d476dcd4f0aa72844e0b45e4",
+      "category": "tool/runtime setup; not a semantic control rejection"
+    },
+    "setup-rocq-oci-9.0.1-initial-positive.log": {
+      "origin": "rocq-oci-9.0.1/initial-positive.log",
+      "sha256": "727f23b968196841bc4ab45e452b396807fa765c596e6968dc577b8504f87ea8",
+      "category": "tool/runtime setup; not a semantic control rejection"
+    },
+    "setup-rocq-oci-9.0.1-relocated-positive.log": {
+      "origin": "rocq-oci-9.0.1/relocated-positive.log",
+      "sha256": "b0fe337fcc4979f63c848942fe87703b676366797ea29f0ce79398869fed5f6e",
+      "category": "tool/runtime setup; not a semantic control rejection"
+    },
+    "setup-rocq-oci-9.0.1-correct-library-positive.log": {
+      "origin": "rocq-oci-9.0.1/correct-library-positive.log",
+      "sha256": "f393b70037ad60342a56a8555d6b85e26af1c21a6e424f84706501f117b7ccac",
+      "category": "tool/runtime setup; not a semantic control rejection"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+SOME PROOFS FAIL
+Error:
+- expected : T{}
+- observed : F{}
+Location: ft0
+234 | def ft0():
+235>|   {==}
+    |   ^^^^
+236 | 

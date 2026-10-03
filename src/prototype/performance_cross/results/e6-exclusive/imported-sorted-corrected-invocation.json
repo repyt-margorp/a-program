@@ -1,0 +1,41 @@
+{
+  "complete": true,
+  "comparative_wall_rss": false,
+  "only_invocation_changed": "--legacy-intrinsic-dot required by exact frozen provider #.Name; no source/test/runtime edit",
+  "original_failed_commands_retained": "matched-input-correctness.json",
+  "checks": [
+    {
+      "variant": "baseline",
+      "command": [
+        "/tmp/ap-performance-measurement-baseline-e6-20261003/build/pointer-check",
+        "--legacy-intrinsic-dot",
+        "--steps",
+        "10000000",
+        "--imports",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e1/quick-local-provider.p",
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/tests/acceptance/generic-quick-local-sorted-result.p"
+      ],
+      "exit": 0,
+      "output": "done steps=766477",
+      "passed": true,
+      "log_sha256": "3583d1f98af622cb483027fe5993e828561b88a75d2b6ffaca9b7bb47c44cfd5"
+    },
+    {
+      "variant": "head",
+      "command": [
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/build/pointer-check",
+        "--legacy-intrinsic-dot",
+        "--steps",
+        "10000000",
+        "--imports",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e1/quick-local-provider.p",
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/tests/acceptance/generic-quick-local-sorted-result.p"
+      ],
+      "exit": 0,
+      "output": "done steps=761848",
+      "passed": true,
+      "log_sha256": "b9d0c64243321a9d2f702bb9ba30af64046f24ed9b86846fe5a7613d0d6b636a"
+    }
+  ],
+  "passed": true
+}

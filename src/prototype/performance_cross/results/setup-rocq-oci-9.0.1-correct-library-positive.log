@@ -1,0 +1,1 @@
+Fatal error: exception Failure("Config file not found - neither /home/rocq/.opam/4.14.2+flambda/lib/findlib.conf nor the directory /home/rocq/.opam/4.14.2+flambda/lib/findlib.conf.d")

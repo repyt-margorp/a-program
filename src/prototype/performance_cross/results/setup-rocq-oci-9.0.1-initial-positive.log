@@ -1,0 +1,4 @@
+File not found: /tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/root/home/rocq/.opam/4.14.2+flambda/lib/rocq-runtime/theories/Init/Prelude.vo
+The path for Rocq libraries is wrong.
+Rocq prelude is shipped in the rocq-core package.
+Please check the ROCQLIB env variable or the -coqlib option.

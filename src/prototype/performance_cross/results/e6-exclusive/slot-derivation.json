@@ -1,0 +1,14 @@
+{
+  "slot": "e6-shared-cost-20261003-0812",
+  "hard_deadline_UTC": "2026-10-03T08:52:05+00:00",
+  "derived_at_UTC": "2026-10-03T08:16:30.147376+00:00",
+  "remaining_window_seconds": 2134.852624,
+  "launch_and_timeout_cleanup_headroom_seconds": 2,
+  "only_field_changed": "maximum_seconds",
+  "original_maximum_seconds": 2400,
+  "derived_maximum_seconds": 2132,
+  "original_path": "/tmp/ap-performance-measurement-e6-preparation-20261003/configuration.json",
+  "original_sha256": "dbfc0ce5a3f111647fe465de33b37d93520da8ed59c9fdec145ec9a5afaad336",
+  "derived_path": "/tmp/ap-performance-measurement-e6-preparation-20261003/configuration-slot-e6-shared-cost-20261003-0812.json",
+  "derived_sha256": "9d41549c22b8b17c2c298a210ed3ebd0188979efcd4484642bccca61b98ce54f"
+}

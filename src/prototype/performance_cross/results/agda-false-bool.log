@@ -1,0 +1,5 @@
+Checking main (/tmp/ap-performance-cross-7d24b8d/reproducible-controls/agda/false-bool/main.agda).
+/tmp/ap-performance-cross-7d24b8d/reproducible-controls/agda/false-bool/main.agda:69,7-11
+T != F of type Bool
+when checking that the expression refl has type
+Eq (alltrue (full n7)) F

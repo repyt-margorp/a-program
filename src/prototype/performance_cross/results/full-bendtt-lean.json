@@ -1,0 +1,41 @@
+{
+  "revision": "7d24b8d0235cb9781140512c0f163c48ea84a719",
+  "equalities": 800,
+  "qualification": "unchanged official 400 pairs; corresponding concrete computations, helpers/proof encodings differ",
+  "commands_sha256": "6aada06a855f97bfe5df95845e0321534bf6230a92d4846e6fcb6929d313463f",
+  "comparative_measurements": false,
+  "checks": [
+    {
+      "extension": "bend",
+      "case": "full-positive",
+      "source_sha256": "71ec84456fa54b860ddaf0f6bd1614581bdb801a9d256b7c77365c0711111fcb",
+      "command": [
+        "/tmp/ap-performance-cross-7d24b8d/bun-1.4.2",
+        "/tmp/ap-performance-cross-7d24b8d/pinned-repo/bend2/main.ts",
+        "/tmp/ap-performance-cross-7d24b8d/full-native-controls/bend/main.bend",
+        "--verdict"
+      ],
+      "environment_overrides": {
+        "BEND_NO_TELEMETRY": "1",
+        "BENDTT": "/tmp/ap-performance-cross-7d24b8d/bendtt-private-build/bendtt",
+        "LEAN_STACK_SIZE_KB": "4194304"
+      },
+      "exit": 0,
+      "expected_pass": true,
+      "qualified": true
+    },
+    {
+      "extension": "lean",
+      "case": "full-positive",
+      "source_sha256": "51156f26e4d9e47ea3a8a9e35cce6c86afb33a954b7cde9bb618b6315f1ebf38",
+      "command": [
+        "/tmp/ap-performance-cross-7d24b8d/lean-4.34.0-linux/bin/lean",
+        "/tmp/ap-performance-cross-7d24b8d/full-native-controls/lean/main.lean"
+      ],
+      "environment_overrides": {},
+      "exit": 0,
+      "expected_pass": true,
+      "qualified": true
+    }
+  ]
+}

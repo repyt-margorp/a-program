@@ -1,0 +1,699 @@
+{
+  "grant": "e6-shared-cost-gnu-time-20261003-0833",
+  "terminal": true,
+  "planned": 30,
+  "completed": 30,
+  "failed": 0,
+  "censored": 0,
+  "raw_measurements_sha256": "887a96d14275da9ade55d5a42428ea77248c63403b8c60f6d9f55a06761abc1f",
+  "configuration_sha256": "390adf4137e93708bf8ff580241975fee6edb52057bae10fd8aff317fb8f7e64",
+  "groups": [
+    {
+      "case": "list",
+      "system": "ap",
+      "variant": "baseline",
+      "samples": 3,
+      "wall_seconds_GNU_time": {
+        "values": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "median": 0.0,
+        "minimum": 0.0,
+        "maximum": 0.0
+      },
+      "wall_seconds_launcher": {
+        "values": [
+          0.007776976,
+          0.006669399,
+          0.007579632
+        ],
+        "median": 0.007579632,
+        "minimum": 0.006669399,
+        "maximum": 0.007776976
+      },
+      "maximum_RSS_KiB": {
+        "values": [
+          2680,
+          2632,
+          2752
+        ],
+        "median": 2680,
+        "minimum": 2632,
+        "maximum": 2752
+      },
+      "user_seconds": {
+        "values": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "median": 0.0,
+        "minimum": 0.0,
+        "maximum": 0.0
+      },
+      "system_seconds": {
+        "values": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "median": 0.0,
+        "minimum": 0.0,
+        "maximum": 0.0
+      },
+      "charged_steps": 1921,
+      "GNU_wall_below_resolution": true
+    },
+    {
+      "case": "list",
+      "system": "ap",
+      "variant": "head",
+      "samples": 3,
+      "wall_seconds_GNU_time": {
+        "values": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "median": 0.0,
+        "minimum": 0.0,
+        "maximum": 0.0
+      },
+      "wall_seconds_launcher": {
+        "values": [
+          0.005509325,
+          0.008176815,
+          0.006719863
+        ],
+        "median": 0.006719863,
+        "minimum": 0.005509325,
+        "maximum": 0.008176815
+      },
+      "maximum_RSS_KiB": {
+        "values": [
+          2560,
+          2516,
+          2512
+        ],
+        "median": 2516,
+        "minimum": 2512,
+        "maximum": 2560
+      },
+      "user_seconds": {
+        "values": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "median": 0.0,
+        "minimum": 0.0,
+        "maximum": 0.0
+      },
+      "system_seconds": {
+        "values": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "median": 0.0,
+        "minimum": 0.0,
+        "maximum": 0.0
+      },
+      "charged_steps": 1915,
+      "GNU_wall_below_resolution": true
+    },
+    {
+      "case": "imported-local-sorted",
+      "system": "ap",
+      "variant": "baseline",
+      "samples": 3,
+      "wall_seconds_GNU_time": {
+        "values": [
+          0.63,
+          0.63,
+          0.61
+        ],
+        "median": 0.63,
+        "minimum": 0.61,
+        "maximum": 0.63
+      },
+      "wall_seconds_launcher": {
+        "values": [
+          0.631942256,
+          0.638942247,
+          0.614493291
+        ],
+        "median": 0.631942256,
+        "minimum": 0.614493291,
+        "maximum": 0.638942247
+      },
+      "maximum_RSS_KiB": {
+        "values": [
+          169964,
+          169680,
+          169816
+        ],
+        "median": 169816,
+        "minimum": 169680,
+        "maximum": 169964
+      },
+      "user_seconds": {
+        "values": [
+          0.54,
+          0.57,
+          0.55
+        ],
+        "median": 0.55,
+        "minimum": 0.54,
+        "maximum": 0.57
+      },
+      "system_seconds": {
+        "values": [
+          0.08,
+          0.06,
+          0.05
+        ],
+        "median": 0.06,
+        "minimum": 0.05,
+        "maximum": 0.08
+      },
+      "charged_steps": 766477,
+      "GNU_wall_below_resolution": false
+    },
+    {
+      "case": "imported-local-sorted",
+      "system": "ap",
+      "variant": "head",
+      "samples": 3,
+      "wall_seconds_GNU_time": {
+        "values": [
+          0.63,
+          0.61,
+          0.63
+        ],
+        "median": 0.63,
+        "minimum": 0.61,
+        "maximum": 0.63
+      },
+      "wall_seconds_launcher": {
+        "values": [
+          0.635973145,
+          0.612873254,
+          0.635341084
+        ],
+        "median": 0.635341084,
+        "minimum": 0.612873254,
+        "maximum": 0.635973145
+      },
+      "maximum_RSS_KiB": {
+        "values": [
+          170080,
+          169912,
+          170176
+        ],
+        "median": 170080,
+        "minimum": 169912,
+        "maximum": 170176
+      },
+      "user_seconds": {
+        "values": [
+          0.57,
+          0.53,
+          0.56
+        ],
+        "median": 0.56,
+        "minimum": 0.53,
+        "maximum": 0.57
+      },
+      "system_seconds": {
+        "values": [
+          0.05,
+          0.07,
+          0.06
+        ],
+        "median": 0.06,
+        "minimum": 0.05,
+        "maximum": 0.07
+      },
+      "charged_steps": 761848,
+      "GNU_wall_below_resolution": false
+    },
+    {
+      "case": "trees400",
+      "system": "ap",
+      "variant": "baseline",
+      "samples": 3,
+      "wall_seconds_GNU_time": {
+        "values": [
+          17.25,
+          17.23,
+          17.2
+        ],
+        "median": 17.23,
+        "minimum": 17.2,
+        "maximum": 17.25
+      },
+      "wall_seconds_launcher": {
+        "values": [
+          17.255830103,
+          17.235061636,
+          17.206604772
+        ],
+        "median": 17.235061636,
+        "minimum": 17.206604772,
+        "maximum": 17.255830103
+      },
+      "maximum_RSS_KiB": {
+        "values": [
+          2971852,
+          2971092,
+          2971260
+        ],
+        "median": 2971260,
+        "minimum": 2971092,
+        "maximum": 2971852
+      },
+      "user_seconds": {
+        "values": [
+          16.18,
+          16.14,
+          16.14
+        ],
+        "median": 16.14,
+        "minimum": 16.14,
+        "maximum": 16.18
+      },
+      "system_seconds": {
+        "values": [
+          1.06,
+          1.08,
+          1.05
+        ],
+        "median": 1.06,
+        "minimum": 1.05,
+        "maximum": 1.08
+      },
+      "charged_steps": 227277774,
+      "GNU_wall_below_resolution": false
+    },
+    {
+      "case": "trees400",
+      "system": "ap",
+      "variant": "head",
+      "samples": 3,
+      "wall_seconds_GNU_time": {
+        "values": [
+          5.4,
+          5.38,
+          5.44
+        ],
+        "median": 5.4,
+        "minimum": 5.38,
+        "maximum": 5.44
+      },
+      "wall_seconds_launcher": {
+        "values": [
+          5.406770049,
+          5.390316961,
+          5.447523601
+        ],
+        "median": 5.406770049,
+        "minimum": 5.390316961,
+        "maximum": 5.447523601
+      },
+      "maximum_RSS_KiB": {
+        "values": [
+          1891724,
+          1891684,
+          1892004
+        ],
+        "median": 1891724,
+        "minimum": 1891684,
+        "maximum": 1892004
+      },
+      "user_seconds": {
+        "values": [
+          4.84,
+          4.77,
+          4.86
+        ],
+        "median": 4.84,
+        "minimum": 4.77,
+        "maximum": 4.86
+      },
+      "system_seconds": {
+        "values": [
+          0.55,
+          0.61,
+          0.57
+        ],
+        "median": 0.57,
+        "minimum": 0.55,
+        "maximum": 0.61
+      },
+      "charged_steps": 183507626,
+      "GNU_wall_below_resolution": false
+    },
+    {
+      "case": "trees400",
+      "system": "bend",
+      "variant": null,
+      "samples": 3,
+      "wall_seconds_GNU_time": {
+        "values": [
+          2.77,
+          2.78,
+          2.8
+        ],
+        "median": 2.78,
+        "minimum": 2.77,
+        "maximum": 2.8
+      },
+      "wall_seconds_launcher": {
+        "values": [
+          2.775900512,
+          2.789817349,
+          2.803506477
+        ],
+        "median": 2.789817349,
+        "minimum": 2.775900512,
+        "maximum": 2.803506477
+      },
+      "maximum_RSS_KiB": {
+        "values": [
+          99668,
+          99280,
+          97120
+        ],
+        "median": 99280,
+        "minimum": 97120,
+        "maximum": 99668
+      },
+      "user_seconds": {
+        "values": [
+          3.26,
+          3.32,
+          3.3
+        ],
+        "median": 3.3,
+        "minimum": 3.26,
+        "maximum": 3.32
+      },
+      "system_seconds": {
+        "values": [
+          0.3,
+          0.27,
+          0.31
+        ],
+        "median": 0.3,
+        "minimum": 0.27,
+        "maximum": 0.31
+      },
+      "charged_steps": null,
+      "GNU_wall_below_resolution": false
+    },
+    {
+      "case": "trees400",
+      "system": "lean",
+      "variant": null,
+      "samples": 3,
+      "wall_seconds_GNU_time": {
+        "values": [
+          1.74,
+          1.74,
+          1.73
+        ],
+        "median": 1.74,
+        "minimum": 1.73,
+        "maximum": 1.74
+      },
+      "wall_seconds_launcher": {
+        "values": [
+          1.74608506,
+          1.743408607,
+          1.740930578
+        ],
+        "median": 1.743408607,
+        "minimum": 1.740930578,
+        "maximum": 1.74608506
+      },
+      "maximum_RSS_KiB": {
+        "values": [
+          539956,
+          541632,
+          542360
+        ],
+        "median": 541632,
+        "minimum": 539956,
+        "maximum": 542360
+      },
+      "user_seconds": {
+        "values": [
+          4.05,
+          4.03,
+          4.02
+        ],
+        "median": 4.03,
+        "minimum": 4.02,
+        "maximum": 4.05
+      },
+      "system_seconds": {
+        "values": [
+          0.12,
+          0.14,
+          0.14
+        ],
+        "median": 0.14,
+        "minimum": 0.12,
+        "maximum": 0.14
+      },
+      "charged_steps": null,
+      "GNU_wall_below_resolution": false
+    },
+    {
+      "case": "trees400",
+      "system": "agda",
+      "variant": null,
+      "samples": 3,
+      "wall_seconds_GNU_time": {
+        "values": [
+          6.9,
+          6.86,
+          6.82
+        ],
+        "median": 6.86,
+        "minimum": 6.82,
+        "maximum": 6.9
+      },
+      "wall_seconds_launcher": {
+        "values": [
+          6.904387946,
+          6.870086225,
+          6.82903041
+        ],
+        "median": 6.870086225,
+        "minimum": 6.82903041,
+        "maximum": 6.904387946
+      },
+      "maximum_RSS_KiB": {
+        "values": [
+          121144,
+          121012,
+          120416
+        ],
+        "median": 121012,
+        "minimum": 120416,
+        "maximum": 121144
+      },
+      "user_seconds": {
+        "values": [
+          6.87,
+          6.84,
+          6.8
+        ],
+        "median": 6.84,
+        "minimum": 6.8,
+        "maximum": 6.87
+      },
+      "system_seconds": {
+        "values": [
+          0.05,
+          0.04,
+          0.04
+        ],
+        "median": 0.04,
+        "minimum": 0.04,
+        "maximum": 0.05
+      },
+      "charged_steps": null,
+      "GNU_wall_below_resolution": false
+    },
+    {
+      "case": "trees400",
+      "system": "v",
+      "variant": null,
+      "samples": 3,
+      "wall_seconds_GNU_time": {
+        "values": [
+          1.74,
+          1.73,
+          1.73
+        ],
+        "median": 1.73,
+        "minimum": 1.73,
+        "maximum": 1.74
+      },
+      "wall_seconds_launcher": {
+        "values": [
+          1.748645421,
+          1.740188759,
+          1.739656619
+        ],
+        "median": 1.740188759,
+        "minimum": 1.739656619,
+        "maximum": 1.748645421
+      },
+      "maximum_RSS_KiB": {
+        "values": [
+          395312,
+          397316,
+          397132
+        ],
+        "median": 397132,
+        "minimum": 395312,
+        "maximum": 397316
+      },
+      "user_seconds": {
+        "values": [
+          1.68,
+          1.68,
+          1.66
+        ],
+        "median": 1.68,
+        "minimum": 1.66,
+        "maximum": 1.68
+      },
+      "system_seconds": {
+        "values": [
+          0.06,
+          0.05,
+          0.06
+        ],
+        "median": 0.06,
+        "minimum": 0.05,
+        "maximum": 0.06
+      },
+      "charged_steps": null,
+      "GNU_wall_below_resolution": false
+    }
+  ],
+  "matched_AP_comparisons": [
+    {
+      "case": "list",
+      "changed_runtime_files": [
+        "src/computation.c",
+        "src/eval.c",
+        "src/eval.h",
+        "src/iadt.c"
+      ],
+      "job_epoch_same": "b2d66682be75c21a3c2a8c5138db9d3f0c5e0eb2",
+      "performance_epoch": "05390513bca302b4a219881994c5bbd69d5b733a",
+      "wall_seconds_GNU_time": {
+        "baseline": 0.0,
+        "head": 0.0,
+        "head_minus_baseline": 0.0,
+        "relative_reduction": null,
+        "baseline_over_head": null
+      },
+      "maximum_RSS_KiB": {
+        "baseline": 2680,
+        "head": 2516,
+        "head_minus_baseline": -164,
+        "relative_reduction": 0.06119402985074629,
+        "baseline_over_head": 1.0651828298887123
+      },
+      "charged_steps": {
+        "baseline": 1921,
+        "head": 1915,
+        "head_minus_baseline": -6,
+        "relative_reduction": 0.003123373243102523,
+        "baseline_over_head": 1.0031331592689294
+      }
+    },
+    {
+      "case": "imported-local-sorted",
+      "changed_runtime_files": [
+        "src/computation.c",
+        "src/eval.c",
+        "src/eval.h",
+        "src/iadt.c"
+      ],
+      "job_epoch_same": "b2d66682be75c21a3c2a8c5138db9d3f0c5e0eb2",
+      "performance_epoch": "05390513bca302b4a219881994c5bbd69d5b733a",
+      "wall_seconds_GNU_time": {
+        "baseline": 0.63,
+        "head": 0.63,
+        "head_minus_baseline": 0.0,
+        "relative_reduction": 0.0,
+        "baseline_over_head": 1.0
+      },
+      "maximum_RSS_KiB": {
+        "baseline": 169816,
+        "head": 170080,
+        "head_minus_baseline": 264,
+        "relative_reduction": -0.00155462382814342,
+        "baseline_over_head": 0.998447789275635
+      },
+      "charged_steps": {
+        "baseline": 766477,
+        "head": 761848,
+        "head_minus_baseline": -4629,
+        "relative_reduction": 0.00603932016224884,
+        "baseline_over_head": 1.0060760151631296
+      }
+    },
+    {
+      "case": "trees400",
+      "changed_runtime_files": [
+        "src/computation.c",
+        "src/eval.c",
+        "src/eval.h",
+        "src/iadt.c"
+      ],
+      "job_epoch_same": "b2d66682be75c21a3c2a8c5138db9d3f0c5e0eb2",
+      "performance_epoch": "05390513bca302b4a219881994c5bbd69d5b733a",
+      "wall_seconds_GNU_time": {
+        "baseline": 17.23,
+        "head": 5.4,
+        "head_minus_baseline": -11.83,
+        "relative_reduction": 0.6865931514799768,
+        "baseline_over_head": 3.1907407407407407
+      },
+      "maximum_RSS_KiB": {
+        "baseline": 2971260,
+        "head": 1891724,
+        "head_minus_baseline": -1079536,
+        "relative_reduction": 0.3633259963786407,
+        "baseline_over_head": 1.5706625279374793
+      },
+      "charged_steps": {
+        "baseline": 227277774,
+        "head": 183507626,
+        "head_minus_baseline": -43770148,
+        "relative_reduction": 0.19258437474840806,
+        "baseline_over_head": 1.2385195043610886
+      }
+    }
+  ],
+  "limits": [
+    "Three fresh-process repetitions on one machine; warm filesystem; order alternated for AP; no cache flush.",
+    "GNU time %e is reported to hundredths; List samples round to0.00, so no List speed ratio. Launcher times include startup and are retained separately.",
+    "GNU time %M is wrapped-command peak RSS in KiB; not aggregate simultaneous residency or a Job/arena byte counter.",
+    "Native helpers/proof encodings, compiler configurations and kernel work differ; corresponding800 concrete equalities are qualified, not identical workloads.",
+    "AP source includes parsing/synthesis/conversion; measured full native commands include their own startup/checking and BendTT verdict.",
+    "Matched AP pair holds Job E6/family/Surface owner sources fixed; only four evaluator runtime source files differ. Head/direct-IADT/cleanup are measured together, not independently.",
+    "Original setup failure, observer/sanitizer failures and strict3 reload failures remain separate; no accepted promotion or full Goal closure."
+  ]
+}
