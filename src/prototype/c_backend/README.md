@@ -469,6 +469,24 @@ arena capacity failures because executable link wrapping does not intercept
 their internal malloc. No timing, native Acc/QuickSort, indexed/callable recursive
 fields, effects, general callbacks, ownership escape or accepted promotion follows.
 
+`check-c-native-predicate-modules` composes an ordinary generated native provider
+with two independently named consumers. Reversed provider enum order requires
+explicit tag adapters; finite array copies transfer values between distinct
+nominal List types. Each callback uses its own local arena because the consumer's
+arena is active during recursion. The leaf provider ignores recursive hypotheses,
+charges no recursive depth and allocates nothing in the tested calls. Provider
+success and source interpretation remain caller preconditions, as do synchronous
+code/context and readable-storage lifetimes. This introduces no foreign failure
+protocol or source type equality.
+
+The focused gate covers sixteen product pairs, both header orders, 32 linked and
+eight loaded-provider clients per phase, 93 source observations per client,
+shared-arena transactions, active-arena refusal and seven C type/symbol refusals.
+SAN instruments clients and source bodies only; object/archive/shared bodies and
+backend/producer remain O2. Product/order/phase repeats are not independent
+property counts. Details and retained setup failures are in the
+[C18 handoff](../../../doc/2026-10-04-C-BACKEND-EPOCH18-HANDOFF.md).
+
 ## Native Nullary ADTs
 
 `native_direct_v1` / `c_native_v1` extends the same scalar lowering, not another

@@ -1,0 +1,15 @@
+aplink 1
+artifact consumers.a
+abi c_predicate_native_v1
+target host-c11
+product source
+lowering predicate_native_direct_v1
+fallback reject
+nat32 Nat LNat
+enum32 Bool LFlag
+data Numbers LNumbers
+export apply_predicate left_apply
+export apply_comparator left_choose
+export filter left_filter
+export select left_select
+export length left_length
