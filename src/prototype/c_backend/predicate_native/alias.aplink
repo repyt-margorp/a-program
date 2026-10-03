@@ -1,0 +1,13 @@
+aplink 1
+artifact predicates.a
+abi c_predicate_native_v1
+target host-c11
+product source
+lowering predicate_native_direct_v1
+fallback reject
+nat32 Nat A_B
+nat32 OtherNat A
+enum32 Bool C
+enum32 Reverse B_C
+export apply_predicate first
+export other_reverse second

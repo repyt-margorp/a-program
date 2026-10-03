@@ -36,4 +36,12 @@ int pg_c_emit_native_profile(FILE *source, FILE *header, size_t count,
 	const struct pg_c_export *naturals, size_t data_count,
 	const struct pg_c_export *data, struct pg_c_native_contract *, const char **error);
 
+/* Separate borrowed predicate ABI: selected Nat32 domains and a selected
+	* two-constructor nullary enum result. Invalid foreign tags preserve output. */
+int pg_c_emit_predicate_native(FILE *source, FILE *header, size_t count,
+	const struct pg_c_export *exports, size_t entry, size_t enum_count,
+	const struct pg_c_export *enums, size_t natural_count,
+	const struct pg_c_export *naturals, size_t data_count,
+	const struct pg_c_export *data, struct pg_c_native_contract *, const char **error);
+
 #endif
