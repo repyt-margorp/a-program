@@ -1,0 +1,107 @@
+{
+  "core_reported_revision": "341261db6f60195e88a51508f3f7ea68f2b2c636",
+  "fresh_main_head": "341261db6f60195e88a51508f3f7ea68f2b2c636",
+  "our_parent_implementation": "f3c35558ca8ce2b1c5fac4c7ce3eba63da75b858",
+  "combined_source_manifest": "/tmp/a-program-core-performance-combined-source.sha256",
+  "combined_source_manifest_sha256": "9fdab5395ff1b3e7181131a96a3c04aca55afad80b12a9d8c364a8d8520a28db",
+  "all_128_source_records_freshly_match": true,
+  "runtime_differences": [
+    {
+      "file": "src/typed_query.c",
+      "combined_sha256": "ac6ebad9d78b21bf414d8c3f4f30ae96b822163936d651d4e3f276b9d5bd83dd",
+      "pinned_corrective_sha256": "baa48098cf4a40c5c2e8c2ba15ea184b9676aa15c1139897c8e1df28e4ff8259"
+    },
+    {
+      "file": "src/syntax.h",
+      "combined_sha256": "b333b47a17fac161af99f5b898baebaef224fb751ba6183ab73ffe79021e6049",
+      "pinned_corrective_sha256": "effc027531dbac56bd0798527845b3646e66a85c7bc256f2fc1953f3a2c865cf"
+    },
+    {
+      "file": "src/typed_query.h",
+      "combined_sha256": "6204390c8bcf06820fa9337be8c694848abb6e179894f951b04c8d10d8df74d9",
+      "pinned_corrective_sha256": "a0502253a6df1f302bebb562d5c4e75c1f4aef6479592fd4872bfcd3dbb24ca5"
+    },
+    {
+      "file": "src/synthesis.h",
+      "combined_sha256": "6a04dd8a16daf9116d047a00e09407c60f4638145696f7cba52a55a38f7a782a",
+      "pinned_corrective_sha256": "d5b49dfcda6528c33dba739a5f8dd62f127dccb7281367d88d4796ddb8407722"
+    },
+    {
+      "file": "src/action.c",
+      "combined_sha256": "bf0018eca9b7d66d52e263adde431dedd4bd5d7542d30f0a4c45cd24bb3b1362",
+      "pinned_corrective_sha256": "0ed1aa95c326b08d898667aa98b7d75abae143e19f7e302f4b2f102488b57afe"
+    },
+    {
+      "file": "src/syntax_io.c",
+      "combined_sha256": "6b4b27e7790f130a563bb064341b93eb9f724eb36df08fb584115daf494bf32e",
+      "pinned_corrective_sha256": "c01f689878a96fd1fb02947720b998bbed224eea423405e62ac44fc71d7ab50c"
+    },
+    {
+      "file": "src/synthesis.c",
+      "combined_sha256": "ca905ca37719d59f704410fdc928d7a49baf0366f8084b4f6c4dad9406463acf",
+      "pinned_corrective_sha256": "de4968283b2935ddf692461d6a0dd4fe60f1e151695969c4607e6f4a5c2c62dd"
+    },
+    {
+      "file": "src/syntax.c",
+      "combined_sha256": "76bd00a68d91480f9a6196e463119fee819cfcf5369f9390b39a9e1a13c72824",
+      "pinned_corrective_sha256": "62ce033d703fe0b587d3660e2686a7cedd5a7d8d7f31507050de4c2f4e9d172d"
+    },
+    {
+      "file": "src/evidence_function.c",
+      "combined_sha256": "6472eabaafb6b58622fb045b944d666db4f859bb1b753e564e36d233135d1696",
+      "pinned_corrective_sha256": "0065884f55d4c10db054aea9121ca58d0e85b20af273061df8cab3cb6e57fef8"
+    },
+    {
+      "file": "src/action.h",
+      "combined_sha256": "5b352b039d634ac38e1a67fbea8cd58d2d9ad8ab68488da1d408f16b5c8cda40",
+      "pinned_corrective_sha256": "135f21c0ca9bde461ca1117648d7901d91a43542e7a4c6a4c8be92584a3d50ff"
+    },
+    {
+      "file": "src/synthesis_identity.c",
+      "combined_sha256": "fbad0b5b5d010d2ee49c0904a0811917bb84432ebcafd7b627af6b5cab0d5929",
+      "pinned_corrective_sha256": "6766daf4f9cf2e96a0dcf898499cda7e8d860b1e13a502fb151830c0ef6c6052"
+    },
+    {
+      "file": "src/typing.c",
+      "combined_sha256": "a32bd36f8e756965d4087cb566be817da012572c12481737f887913ff2dc0f69",
+      "pinned_corrective_sha256": "3a6b60900a1f05b4ffe422c0922e392c39f5e4696f44790c8bf034e7566dd899"
+    }
+  ],
+  "head_cleanup_protocol_sources_match": true,
+  "core_reported_logs": {
+    "head": {
+      "path": "/tmp/a-program-core-performance-combined-head.log",
+      "sha256": "f8e5e8f8d3105e5fc7cb72c36ccf604242c230317856c582352910c0debdf0b2",
+      "provenance": "Core reported focused gate result; fresh read of retained output"
+    },
+    "total-result": {
+      "path": "/tmp/a-program-core-performance-combined-total-result.log",
+      "sha256": "b31762453c4d7c5a1c519a3b9721b045e40e84a173f56ce824cf50a1da19a3f8",
+      "provenance": "Core reported focused gate result; fresh read of retained output"
+    },
+    "cleanup": {
+      "path": "/tmp/a-program-core-performance-combined-cleanup.log",
+      "sha256": "ef6a15bf74b72d2339aa61f8d9cba28dec73055daba969aee497cfdc49f103a8",
+      "provenance": "Core reported focused gate result; fresh read of retained output"
+    },
+    "total-result-fresh": {
+      "path": "/tmp/a-program-core-performance-combined-total-result-fresh.log",
+      "sha256": "3f0a539e6ab4a914ad16e9992371f25d03c38574704c18d61de610b29ea5439a",
+      "provenance": "Core reported focused gate result; fresh read of retained output"
+    }
+  },
+  "combined_broader_gates": "pending; no fresh broad combined pass claimed",
+  "measurement_baseline": "current Main341261d canonical producer plus Core hash-verified frozen Job Epoch1; use exact tested snapshot/publication",
+  "cost_attribution": "distinguish owner storage removal, traversal counts, cumulative allocation requests, and eventual wall/RSS",
+  "comparative_measurements": false,
+  "core_reported_joint_focused_gates": {
+    "passed": 11,
+    "failed": 0,
+    "includes": [
+      "Source checkpoint",
+      "all 70 separate-process TotalResult cuts"
+    ],
+    "provenance": "Core report 2026-10-03; not freshly executed by this worker"
+  },
+  "paired_done_imported_quicksort_census": "live; no completion assumed"
+}

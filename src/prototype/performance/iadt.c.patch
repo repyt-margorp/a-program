@@ -1,0 +1,22 @@
+diff --git a/iadt.c b/iadt.c
+--- a/iadt.c
++++ b/iadt.c
+@@ -162,11 +162,13 @@
+ static int apply_fields(struct pg_eval *machine, struct pg_closure branch,
+ 	size_t count, const struct pg_term *const *fields, size_t consume)
+ {
+-	const struct pg_object *k = pg_binder(machine->output);
+-	const struct pg_term *body = pg_reference(machine->output, k);
+-	for (size_t i = 0; i < count; ++i) body = pg_application(machine->output, body, fields[i]);
+-	/* Reuse lexical substitution for the selected branch's captured scope. */
+-	return pg_eval_apply(machine, (struct pg_closure){pg_lambda(machine->output, k, body), NULL}, branch, consume);
++	if (pg_eval_enter(machine, branch, consume)) return -1;
++	/* Materialized fields are closed over their substitutions. The branch
++	 * retains its own captured environment and trailing caller arguments. */
++	for (size_t i = count; i; --i)
++		if (pg_eval_apply(machine, machine->current,
++			(struct pg_closure){fields[i - 1], NULL}, 0)) return -1;
++	return 0;
+ }
+ 
+ static int match_answer(struct pg_eval *machine, const struct pg_term *answer, const void *unused);

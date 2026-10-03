@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_verification/total_result_cuts.py", line 57, in <module>
+    main()
+    ~~~~^^
+  File "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_verification/total_result_cuts.py", line 32, in main
+    unit = run([str(binary)], "unit")
+  File "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_verification/total_result_cuts.py", line 29, in run
+    raise RuntimeError(f"{label} failed with exit {result.returncode}")
+RuntimeError: unit failed with exit -6

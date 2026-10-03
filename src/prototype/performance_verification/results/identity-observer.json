@@ -1,0 +1,35 @@
+{
+  "implementation_revision": "f3c35558ca8ce2b1c5fac4c7ce3eba63da75b858",
+  "branch": "parallel/performance-20261003",
+  "unadapted_broad_acceptance_passed": false,
+  "unadapted_identity_io_exit": 134,
+  "observer_patch": "src/prototype/performance_verification/identity_io_adapter.patch",
+  "observer_patch_sha256": "672ab8140a9afb064418596ec2bd4d2552aed40fc4708ffb263b5fdb9833143f",
+  "scope": "descriptor observation only; machine_resave, all assertions, schemas and runtime implementation unchanged",
+  "machine_resave_sha256": "6c7a2f721881b5a3152ed5c8c83306b9e9f4b431bf2ae9327fffbbfeac6b6dab",
+  "test_source_sha256": "adaa4b6556a0a3c5e3f39b3b241893dbfbe67d0da925a725ff4a3463af3e5d4a",
+  "fresh_process_checks": {
+    "base": {
+      "passed": true,
+      "cuts": 279,
+      "binary_sha256": "fd0ff081105cff8ba55db1780e5b728ca25403340ba6a40c82faa5d8a2a1dc9d",
+      "checks": "/tmp/ap-performance-broad-f3c3555-20261003/total-result-fresh-base/checks.json",
+      "checks_sha256": "422f843a740905ed0a45646d50dec59c3b4500e7f6841f1413ab694076daf142",
+      "unit_log_sha256": "1a38b0113ad4161b7d9a2564292fac32cd86fbc11685aee834a3d30a237fe01e"
+    },
+    "head": {
+      "passed": true,
+      "cuts": 70,
+      "binary_sha256": "d00f8979e98c64aa3c6aa3a1236840e03e05434ffe2a50a2163f87c44e444e83",
+      "checks": "/tmp/ap-performance-broad-f3c3555-20261003/total-result-fresh-head/checks.json",
+      "checks_sha256": "3da8a7395017ff7bd2e193041437c9d051d92263622ff729449efbeb39fc4d19",
+      "unit_log_sha256": "b31762453c4d7c5a1c519a3b9721b045e40e84a173f56ce824cf50a1da19a3f8"
+    }
+  },
+  "identity_io_adapter": {
+    "exit": 0,
+    "log": "/tmp/ap-performance-broad-f3c3555-20261003/identity-observer/check.log",
+    "log_sha256": "34aa3d9588db085e6fc93f0bcb20ed8229543498f1d916558d67ef5a6eccf96f"
+  },
+  "comparative_measurements": false
+}

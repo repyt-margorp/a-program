@@ -1,0 +1,7 @@
+WHNF owner: 53 split points, exact remaining fuel/result, force=1
+WHNF owner: 7 split points, exact remaining fuel/result, force=0
+WHNF owner: 145 split points, exact remaining fuel/result, force=1
+WHNF owner: 12 split points, exact remaining fuel/result, force=1
+shared WHNF: preserved ready/wait order, exact 59 remaining Solve dispatches
+scheduler: inert decode, exact preparation/wake order, invalid transport atomicity
+scheduler: dormant wait cycle preserved without inventing runnable work

@@ -1,0 +1,25 @@
+{
+  "same_flags_o2_total_result_images": {
+    "count": 70,
+    "all_byte_identical": true
+  },
+  "same_flags_force_images": {
+    "count": 9,
+    "all_byte_identical": true
+  },
+  "all_policies_raw_totals_unchanged": true,
+  "unit_output_unchanged_o2_and_asan": true,
+  "charged_whnf_steps": 3014,
+  "cross_instrumentation_image_differences": [
+    {
+      "case": 2,
+      "cut": 19,
+      "old_o2_sha256": "a75cfa61ca2df6e5d03a523d17d6b7baf6f9fd3fbcd3a3243a730a47061eba39",
+      "corrective_asan_sha256": "737bac8060726be06733ecce1ba2d88c3ba10f79cf1aecbb3a52596838433f91",
+      "both_fresh_readers_exit": 0
+    }
+  ],
+  "cross_instrumentation_byte_equality_claimed": false,
+  "public_partition_table_unchanged": true,
+  "comparative_measurements": false
+}

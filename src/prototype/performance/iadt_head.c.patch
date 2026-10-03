@@ -1,0 +1,62 @@
+diff --git a/iadt.c b/iadt.c
+--- a/iadt.c
++++ b/iadt.c
+@@ -196,6 +196,40 @@
+ 	return apply_fields(machine, branch, count, fields, layout->count + 1);
+ }
+ 
++static int match_head(struct pg_eval *machine, struct pg_closure head,
++	const struct pg_argument *arguments, const void *state)
++{
++	(void)state;
++	const struct pg_data_layout *layout = (const struct pg_data_layout *)machine->current.term->as.reference;
++	if (head.term->kind != PG_REFERENCE) return 2;
++	const struct pg_constructor *c = constructor(head.term->as.reference, layout);
++	if (!c) return 2;
++	size_t count = 0;
++	for (const struct pg_argument *cursor = arguments; cursor; cursor = cursor->next) ++count;
++	if (count != c->arity) return 2;
++	size_t position = (size_t)(c - layout->constructors);
++	struct pg_closure branch = *pg_eval_argument(machine, position + 1);
++	if (pg_eval_enter(machine, branch, layout->count + 1)) return -1;
++	if (!arguments) return 0;
++	/* Retain each field's actual closure, including its own environment. */
++	struct pg_argument *first = NULL, *last = NULL;
++	for (const struct pg_argument *cursor = arguments; cursor; cursor = cursor->next) {
++		struct pg_argument *copy = pg_alloc(&machine->temporary, sizeof(*copy));
++		if (!copy) return -1;
++		*copy = (struct pg_argument){cursor->value, NULL};
++		if (last) last->next = copy;
++		else first = copy;
++		last = copy;
++	}
++	last->next = machine->arguments;
++	machine->arguments = first;
++	return 0;
++}
++
++static const struct pg_eval_head_continuation match_head_continuation = {
++	{"iadt/match_head/v1", pg_eval_head_marker}, match_head, &match_answer_continuation
++};
++
+ static const struct pg_data_layout *matcher(const struct pg_term *term)
+ {
+ 	if (term->kind != PG_REFERENCE) return NULL;
+@@ -264,7 +298,7 @@
+ const struct pg_eval_continuation *pg_data_continuation_resolve(const char *name)
+ {
+ 	static const struct pg_eval_continuation *const entries[] = {
+-		&match_answer_continuation, &action_answer_continuation
++		&match_answer_continuation, &action_answer_continuation, &match_head_continuation.continuation
+ 	};
+ 	return pg_eval_continuation_find(name, sizeof(entries) / sizeof(*entries), entries);
+ }
+@@ -283,7 +317,7 @@
+ 	if (object->kind != PG_SEMANTIC_OBJECT || object->owner != &match_class) return 1;
+ 	const struct pg_data_layout *layout = (const struct pg_data_layout *)object;
+ 	if (!pg_eval_argument(machine, layout->count)) return 1;
+-	return pg_eval_demand(machine, 0, &match_answer_continuation, NULL);
++	return pg_eval_demand(machine, 0, &match_head_continuation.continuation, NULL);
+ }
+ 
+ struct pg_data_signature {

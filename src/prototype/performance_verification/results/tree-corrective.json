@@ -1,0 +1,37 @@
+{
+  "input": "/tmp/ap-performance-cross-7d24b8d/trees_2.p",
+  "input_sha256": "cdf7da75902b3cf8d31988ef944b19c5f0a17e260159aca5d7a7757ee43df872",
+  "checks": [
+    {
+      "label": "source",
+      "command": [
+        "/tmp/ap-performance-corrective-f3c3555-20261003/build/pointer-check",
+        "--steps",
+        "18446744073709551615",
+        "--save",
+        "/tmp/ap-performance-broad-f3c3555-20261003/corrective-tree/trees_2.a",
+        "/tmp/ap-performance-cross-7d24b8d/trees_2.p"
+      ],
+      "exit": 0,
+      "log_sha256": "c2f42e8c3ee1a3a513d9d167d0908c859413d100d98e8da85aa64cc02d8ce666"
+    },
+    {
+      "label": "reload",
+      "command": [
+        "/tmp/ap-performance-corrective-f3c3555-20261003/build/pointer-check",
+        "--load",
+        "--steps",
+        "18446744073709551615",
+        "/tmp/ap-performance-broad-f3c3555-20261003/corrective-tree/trees_2.a"
+      ],
+      "exit": 0,
+      "log_sha256": "935b20ad6cc36a38cadd8c46a332f9d7e8461c81ca3ae59aff512cd4f232be5c"
+    }
+  ],
+  "completed_image_bytes": 109937,
+  "completed_image_sha256": "dfbe0cf0a17fc80bb55cfb788618de038bcbb98a1c3f523f1951546ca8ff4717",
+  "byte_identical_baseline_direct_published_head": true,
+  "same_published_head_steps": true,
+  "comparative_measurements": false,
+  "passed": true
+}

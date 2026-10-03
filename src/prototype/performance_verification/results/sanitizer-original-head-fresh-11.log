@@ -1,0 +1,20 @@
+
+=================================================================
+==418==ERROR: LeakSanitizer: detected memory leaks
+
+Direct leak of 16416 byte(s) in 1 object(s) allocated from:
+    #0 0x7fdb98cf4610 in calloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:77
+    #1 0x40289f in pg_alloc /tmp/ap-performance-2d747cc-final-20261003/src/graph.c:29
+    #2 0x671972 in readback_read /tmp/ap-performance-2d747cc-final-20261003/src/eval_io.c:284
+    #3 0x673ceb in materialization_read /tmp/ap-performance-2d747cc-final-20261003/src/eval_io.c:410
+    #4 0x6764ae in pg_eval_frames_payload_read_with /tmp/ap-performance-2d747cc-final-20261003/src/eval_io.c:599
+    #5 0x64a118 in pg_computation_frames_read_with /tmp/ap-performance-2d747cc-final-20261003/src/computation_io.c:522
+    #6 0x63aed9 in configurations_read /tmp/ap-performance-2d747cc-final-20261003/src/machine_io.c:149
+    #7 0x63b416 in payload_read /tmp/ap-performance-2d747cc-final-20261003/src/machine_io.c:203
+    #8 0x643131 in pg_computation_machine_read_with /tmp/ap-performance-2d747cc-final-20261003/src/computation_io.c:91
+    #9 0x63eada in pg_computation_machine_read /tmp/ap-performance-2d747cc-final-20261003/src/machine_io.c:237
+    #10 0x67cf3b in read_machine /home/repyt/workspace/a-program-workers/performance/src/prototype/performance/head_test.c:113
+    #11 0x67d695 in main /home/repyt/workspace/a-program-workers/performance/src/prototype/performance/head_test.c:136
+    #12 0x7fdb98235ca7  (/lib/x86_64-linux-gnu/libc.so.6+0x29ca7) (BuildId: 58749c528985eab03e6700ebc1469fa50aa41219)
+
+SUMMARY: AddressSanitizer: 16416 byte(s) leaked in 1 allocation(s).

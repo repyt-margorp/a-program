@@ -1,0 +1,548 @@
+{
+  "implementation_revision": "f3c35558ca8ce2b1c5fac4c7ce3eba63da75b858",
+  "flags": "-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+  "parallelism": 2,
+  "environment": {
+    "ASAN_OPTIONS": "detect_leaks=1:abort_on_error=1",
+    "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+  },
+  "explicit_adapters": [
+    "published performance/core_adapter.patch",
+    "performance_verification/identity_io_adapter.patch"
+  ],
+  "original_failures_remain_separate": true,
+  "comparative_measurements": false,
+  "checks": [
+    {
+      "label": "core_test",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/core_test"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/core_test.log",
+      "log_sha256": "aa41724b4c792a5dd485fdf1c9043b55f3ee63257fda0f468e092ad37a9710aa"
+    },
+    {
+      "label": "iadt_test",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/iadt_test"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/iadt_test.log",
+      "log_sha256": "6b7cc726b6630e39b04b1745aa4823adf2e664abe419f81be62cda19925ed01e"
+    },
+    {
+      "label": "synthesis_test",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/synthesis_test"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/synthesis_test.log",
+      "log_sha256": "18806ac65e40a460e22d3e7d582b72055aef286f571a2b6b2e815c8258854dc7"
+    },
+    {
+      "label": "program_test",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/program_test"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/program_test.log",
+      "log_sha256": "c80fe10e0e2babe2b840a817f61d0794fa73e611569d81076132582e54d90c3f"
+    },
+    {
+      "label": "performance_direct_test",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/performance_direct_test"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/performance_direct_test.log",
+      "log_sha256": "5fc5f4643e5a4dd22b69556224e66e044b9315c4fa6107924c8297cfde5b32a6"
+    },
+    {
+      "label": "identity_test",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/identity_test"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/identity_test.log",
+      "log_sha256": "6a7dd03f988fb607c26d4c414068508664404a869792f0cdfe5432eedb9b3a84"
+    },
+    {
+      "label": "performance_head_test",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/performance_head_test"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/performance_head_test.log",
+      "log_sha256": "f8e5e8f8d3105e5fc7cb72c36ccf604242c230317856c582352910c0debdf0b2"
+    },
+    {
+      "label": "artifact_transport_test",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/artifact_transport_test"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/artifact_transport_test.log",
+      "log_sha256": "39eb64d339378ff2a5f0408d0d8c2b7a2282d6ce5e03b43aaf2caea8ff5d585b"
+    },
+    {
+      "label": "performance_total_result_test",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/performance_total_result_test"
+      ],
+      "exit": -6,
+      "passed": false,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/performance_total_result_test.log",
+      "log_sha256": "0f919083f11b82fbec6afa24aa6e2b9b36010115225fd7419ab744f355883bf5"
+    },
+    {
+      "label": "artifact_normalization_checkpoint_test",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/artifact_normalization_checkpoint_test"
+      ],
+      "exit": -6,
+      "passed": false,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/artifact_normalization_checkpoint_test.log",
+      "log_sha256": "2dd1071f2d7bcbcd0ca7b9019147e019e0e98bc465242c1334fe1cabd2fbf569"
+    },
+    {
+      "label": "artifact_source_checkpoint_test",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/artifact_source_checkpoint_test"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/artifact_source_checkpoint_test.log",
+      "log_sha256": "71cc65467eeb07467f0bd00674acb05a8875ba29911d63bca40891cab8d4233a"
+    },
+    {
+      "label": "artifact_derivation_checkpoint_test",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/artifact_derivation_checkpoint_test"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/artifact_derivation_checkpoint_test.log",
+      "log_sha256": "5adbe5638c564d37e0ce84bb432931f0ff07ecc74fd7c63b487cc8bc5c61b3f0"
+    },
+    {
+      "label": "artifact_definition_checkpoint_test",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/artifact_definition_checkpoint_test"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/artifact_definition_checkpoint_test.log",
+      "log_sha256": "ce6a311bd455447d96f637cfa7b6332fc0fead1139acac6f0b38be9eb112016f"
+    },
+    {
+      "label": "artifact_constructor_checkpoint_test",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/artifact_constructor_checkpoint_test"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/artifact_constructor_checkpoint_test.log",
+      "log_sha256": "577ec7e14d43f64c04e5f33c0b843ea63837bb2947556bbac3743fa68859ddfa"
+    },
+    {
+      "label": "eval_io-script",
+      "command": [
+        "bash",
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/tests/eval_io.sh",
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/eval_io_test"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/eval_io-script.log",
+      "log_sha256": "a7478709b3d6fa5a35c6435b8191e91eb943c08e320b4196027a77542da70b75"
+    },
+    {
+      "label": "artifact_semantic_test",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/artifact_semantic_test"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/artifact_semantic_test.log",
+      "log_sha256": "65a6b5c64f96014d08df86dc7590a1db35d6380ea7acb05cc99bb55145121616"
+    },
+    {
+      "label": "identity_io-script",
+      "command": [
+        "bash",
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/tests/identity_io.sh",
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/identity_io_test"
+      ],
+      "exit": 134,
+      "passed": false,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/identity_io-script.log",
+      "log_sha256": "8b4c2a4c6e22714a53e5eb47c5d987ef0f0f15c351db0d904b419ba384523495"
+    },
+    {
+      "label": "source-io-normalization",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/source_io_test",
+        "normalization"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/source-io-normalization.log",
+      "log_sha256": "3cd87137e595a1406dc2d63e44551f4a98928330dbc9ce7c48266742764b1820"
+    },
+    {
+      "label": "namespace-frontier",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/artifact_definition_checkpoint_test",
+        "--pending-namespace"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/namespace-frontier.log",
+      "log_sha256": "a064d80dfc0b792f0cad5364bfc9cfc1705fe088b2ab510819f58a0cd1792789"
+    },
+    {
+      "label": "namespace-body-frontier",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/artifact_definition_checkpoint_test",
+        "--advanced-namespace"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/namespace-body-frontier.log",
+      "log_sha256": "e14577f7dbe587b04551bc996f303ac8baea042e985302454a65292d187785a2"
+    },
+    {
+      "label": "captured-main",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/program_test",
+        "--equal",
+        "/tmp/ap-performance-2d747cc-final-20261003/tests/acceptance/function-graph-captured-match.p",
+        "main",
+        "expected"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/captured-main.log",
+      "log_sha256": "014e8e739e1e67921b590fc52df4c710790b07dd0109586a27f776e4c75bab1d"
+    },
+    {
+      "label": "captured-other",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/program_test",
+        "--equal",
+        "/tmp/ap-performance-2d747cc-final-20261003/tests/acceptance/function-graph-captured-match.p",
+        "other",
+        "two"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/captured-other.log",
+      "log_sha256": "cf20dd967be768d1caa41fcc972eca81ef41ccac43f1a6d13a26b10159af14cc"
+    },
+    {
+      "label": "function-graph-captured-match-wrong",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/program_test",
+        "--reject",
+        "/tmp/ap-performance-2d747cc-final-20261003/tests/acceptance/function-graph-captured-match-wrong.p"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/function-graph-captured-match-wrong.log",
+      "log_sha256": "47c3532ab60a6b40764128e21b248e23b1df2240e4cbc6e434cad1f0e2baa326"
+    },
+    {
+      "label": "function-graph-named-wrong-proof",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/program_test",
+        "--reject",
+        "/tmp/ap-performance-2d747cc-final-20261003/tests/acceptance/function-graph-named-wrong-proof.p"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/function-graph-named-wrong-proof.log",
+      "log_sha256": "bf372d97fb155d96776bef916a875f01038db541e397708015ea9ef4846d6e17"
+    },
+    {
+      "label": "total-result-fresh",
+      "command": [
+        "python3",
+        "-B",
+        "src/prototype/performance_verification/total_result_cuts.py",
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/performance_total_result_test",
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/total-result-fresh"
+      ],
+      "exit": 1,
+      "passed": false,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/total-result-fresh.log",
+      "log_sha256": "54daf77ce644abb00909147ca1cea6808a657437f3472f3fc25767d3fd41192a"
+    },
+    {
+      "label": "source_io-script",
+      "command": [
+        "bash",
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/tests/source_io.sh",
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/source_io_test"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/source_io-script.log",
+      "log_sha256": "ab9f5495573feafadb68b3b741619f0bef57df94c2cb1b36414c92a43cf6af46"
+    },
+    {
+      "label": "head-fresh-0",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/performance_head_test",
+        "write",
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/head-fresh/0.machine",
+        "0"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/head-fresh-0.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "head-fresh-1",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/performance_head_test",
+        "read",
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/head-fresh/0.machine"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/head-fresh-1.log",
+      "log_sha256": "140ab3032cef6444af469c13ee950a479b700215587f929900184b9dde641ba2"
+    },
+    {
+      "label": "head-fresh-2",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/performance_head_test",
+        "write",
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/head-fresh/1.machine",
+        "1"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/head-fresh-2.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "head-fresh-3",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/performance_head_test",
+        "read",
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/head-fresh/1.machine"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/head-fresh-3.log",
+      "log_sha256": "140ab3032cef6444af469c13ee950a479b700215587f929900184b9dde641ba2"
+    },
+    {
+      "label": "head-fresh-4",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/performance_head_test",
+        "write",
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/head-fresh/2.machine",
+        "2"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/head-fresh-4.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "head-fresh-5",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/performance_head_test",
+        "read",
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/head-fresh/2.machine"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/head-fresh-5.log",
+      "log_sha256": "140ab3032cef6444af469c13ee950a479b700215587f929900184b9dde641ba2"
+    },
+    {
+      "label": "head-fresh-6",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/performance_head_test",
+        "write",
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/head-fresh/3.machine",
+        "3"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/head-fresh-6.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "head-fresh-7",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/performance_head_test",
+        "read",
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/head-fresh/3.machine"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/head-fresh-7.log",
+      "log_sha256": "140ab3032cef6444af469c13ee950a479b700215587f929900184b9dde641ba2"
+    },
+    {
+      "label": "head-fresh-8",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/performance_head_test",
+        "write",
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/head-fresh/4.machine",
+        "4"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/head-fresh-8.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "head-fresh-9",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/performance_head_test",
+        "read",
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/head-fresh/4.machine"
+      ],
+      "exit": -6,
+      "passed": false,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/head-fresh-9.log",
+      "log_sha256": "ff01c0befe54744837be27e1c38711b01856b3c5fed8f6390863a0fdefd4deb8"
+    },
+    {
+      "label": "head-fresh-10",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/performance_head_test",
+        "write",
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/head-fresh/5.machine",
+        "5"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/head-fresh-10.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "head-fresh-11",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/performance_head_test",
+        "read",
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/head-fresh/5.machine"
+      ],
+      "exit": -6,
+      "passed": false,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/head-fresh-11.log",
+      "log_sha256": "0dcf5de99522e0a08d20d0f8f56219a7f01fa42b0b8f30623416be55d82f76d4"
+    },
+    {
+      "label": "head-fresh-12",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/performance_head_test",
+        "write",
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/head-fresh/6.machine",
+        "6"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/head-fresh-12.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "head-fresh-13",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/performance_head_test",
+        "read",
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/head-fresh/6.machine"
+      ],
+      "exit": -6,
+      "passed": false,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/head-fresh-13.log",
+      "log_sha256": "97acf3ac5bd34d491a5abb9e0b262a5589a23212b8cf68dc8947b1da6b458fc9"
+    },
+    {
+      "label": "head-fresh-14",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/performance_head_test",
+        "write",
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/head-fresh/7.machine",
+        "7"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/head-fresh-14.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "head-fresh-15",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/performance_head_test",
+        "read",
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/head-fresh/7.machine"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/head-fresh-15.log",
+      "log_sha256": "140ab3032cef6444af469c13ee950a479b700215587f929900184b9dde641ba2"
+    },
+    {
+      "label": "head-fresh-16",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/performance_head_test",
+        "write",
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/head-fresh/8.machine",
+        "8"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/head-fresh-16.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "head-fresh-17",
+      "command": [
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/build/performance_head_test",
+        "read",
+        "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/head-fresh/8.machine"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log": "/tmp/ap-performance-broad-f3c3555-20261003/sanitizers/checks/head-fresh-17.log",
+      "log_sha256": "140ab3032cef6444af469c13ee950a479b700215587f929900184b9dde641ba2"
+    }
+  ],
+  "passed": false,
+  "binary_sha256": {
+    "artifact_constructor_checkpoint_test": "18476969245796e214e1205fad2dd769cb5d5da09ef135ede591cba5f62da39c",
+    "artifact_definition_checkpoint_test": "cb19626cc2a43fbc37f340b385856398b47e2176c3150499ee23f567f10cd518",
+    "artifact_derivation_checkpoint_test": "5265f42bcc62584cefb3ddae5af6f716385b3ae8fbc175aae772de15a64d33a1",
+    "artifact_normalization_checkpoint_test": "9fc6a4ed09b8048016dc24df21d4fbd23dbcdf1a1bf940b6e571a59fd97c9efe",
+    "artifact_semantic_test": "f6218c381452515a521f6ecb17954d660b064c3ae92b0636297fd62c09e7d7b9",
+    "artifact_source_checkpoint_test": "1fabca355bed2f4bbae5f56438928a20380859246f88dba44ad3eb4c06f76b4a",
+    "artifact_transport_test": "42c8484b9d2bea48ea4df4c4a59a58e1dcaa7da42d74b68d5f2897bf0ff5f555",
+    "core_test": "86f1c8b85abdd43625d293366205765f8842f0e4b5b1647e7f199dc664244ca2",
+    "eval_io_test": "21ff4d22dfe2484a80142a86bbec1d077cc032e8d53e7624b7650a08f4130466",
+    "iadt_test": "1e61ae9aa23e3ab827234d0848a0773514fda8a402d836b1e89038708b1c51b9",
+    "identity_io_test": "d2d25fbad7a4e000c7a1b66aeae5aae3d830ffc59b923636c325151a1003e3ae",
+    "identity_test": "775106d8d42ad236dcd030bf9d1559da02b215b1a0a2a87c68145dbc20d6efd5",
+    "performance_direct_test": "2e403f8f6c560e19a2b1b5dbd048999e9e615948815cd65b53118c01d5cd6dc0",
+    "performance_head_test": "22c9db7fa0d31616f474a0ddaee0fbc39d5f92eae1baadaf665549d7c1b3004e",
+    "performance_total_result_test": "95715f96680ab84c33e5f4314fd83e95a2c4038aee5e6ac71dfe132806e10b4b",
+    "program_test": "c3ead682e9649822d64ebf38c9433ec33ab918bc5d43386d57161f2cbe71a0c2",
+    "source_io_test": "0f7e3bb4e6eacc1f84281458b6d659d4db54479d4d765d328099ce47a8c22b04",
+    "synthesis_test": "9c738376f4caa182dd79d16bf0c21007b2a73dcd4f83bdcf0461cfadace5d3ba"
+  }
+}

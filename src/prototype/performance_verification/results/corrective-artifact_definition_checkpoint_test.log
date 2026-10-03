@@ -1,0 +1,6 @@
+definition checkpoint: 44 source frontiers preserve remaining dispatches, diagnostics, and bytes
+registration: 1+19, 10+10, 20+0 equal uninterrupted 20 byte-for-byte
+registration links: repeated import sharing retained; skipped duplicate assignment rejected
+module guards: pending/rejected siblings cannot be skipped; foreign body owners reject
+body adapters: shared type/value/computation selection; foreign and repeated attachments reject
+source lifecycle: 19 owner frontiers, 42 body edges, 24 module cursors, 274 charged verification dispatches

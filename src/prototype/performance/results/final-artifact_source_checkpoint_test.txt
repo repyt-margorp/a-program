@@ -1,0 +1,5 @@
+source/rule sharing: distinct nominal ADTs, Lambda binders, inert resave, ordinary rechecking and exact boundary
+source guards: invalid ownership/mappings, omitted rule, unsupported syntax and unchecked completion rejected
+reference guards: shadowed binders, exact producer/rule, foreign ownership, unchecked definitions and duplicate attachment
+source partitions: 0+0, 10+10, 1+19, 0+20, 20+0 exact; all rechecking counted in Solve steps
+source checkpoint: 154 complete lifecycle cuts, 484 charged verification steps

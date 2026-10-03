@@ -1,0 +1,70 @@
+diff --git a/core.c b/core.c
+--- a/core.c
++++ b/core.c
+@@ -3913,7 +3913,8 @@
+ 	pg_computation_eval_init(&machine, graph, handled);
+ 	while (pg_eval_advance(&machine, 1) == PG_EVAL_PENDING) {
+ 		for (const struct pg_eval_frame *frame = machine.frames; frame; frame = frame->parent) {
+-			if (frame->continuation != fold_continuation) continue;
++			if (frame->continuation != fold_continuation && frame->continuation !=
++				pg_computation_continuation_resolve("computation/fold_head/v1")) continue;
+ 			assert(!frame->state && frame->caller.term->kind == PG_REFERENCE);
+ 			++fold_demands;
+ 		}
+@@ -4354,6 +4355,25 @@
+ 	puts("deferred pure work: exact fuel, split resume, pending readback, cancellation and failure cleanup passed");
+ }
+ 
++// Test-only legacy policy: keep every original eager-demand assertion while
++// the independent performance head test checks the selected lazy policy.
++static int materialized_force_dispatch(struct pg_eval *machine)
++{
++	if (machine->current.term->kind == PG_REFERENCE
++		&& machine->current.term->as.reference == &pg_force_operation
++		&& pg_eval_argument(machine, 0))
++		return pg_eval_demand(machine, 0,
++			pg_computation_continuation_resolve("computation/force_answer/v1"), NULL);
++	return pg_pure_policy.dispatch(machine);
++}
++
++static void materialized_force_init(struct pg_eval *machine,
++	struct pg_graph *graph, const struct pg_term *term)
++{
++	pg_computation_eval_init(machine, graph, term);
++	machine->dispatch = materialized_force_dispatch;
++}
++
+ static void demand_budget_test(struct pg_graph *graph)
+ {
+ 	const size_t depth = 5000;
+@@ -4369,12 +4389,12 @@
+ 	const struct pg_term *input = pg_application(graph, pg_lambda(graph, x,
+ 		pg_application(graph, pg_reference(graph, &pg_force_operation), quoted)), vy);
+ 	struct pg_eval split, whole;
+-	pg_computation_eval_init(&split, graph, input);
++	materialized_force_init(&split, graph, input);
+ 	assert(pg_eval_advance(&split, 100) == PG_EVAL_PENDING);
+ 	assert(split.frames && split.head_ready);
+ 	/* Explicit diagnostic readback may discard work, but must preserve meaning. */
+ 	const struct pg_term *residual = pg_eval_readback(&split, graph);
+-	pg_computation_eval_init(&whole, graph, residual);
++	materialized_force_init(&whole, graph, residual);
+ 	assert(pg_eval_advance(&whole, UINT64_MAX) == PG_EVAL_WHNF);
+ 	const struct pg_term *result = pg_eval_readback(&whole, graph);
+ 	assert(result->kind == PG_LAMBDA && result->as.lambda.binder != y);
+@@ -4389,13 +4409,13 @@
+ 	result = pg_eval_readback(&split, graph);
+ 	assert(result->kind == PG_LAMBDA && result->as.lambda.binder != y);
+ 	assert(result->as.lambda.body == expected);
+-	pg_computation_eval_init(&whole, graph, input);
++	materialized_force_init(&whole, graph, input);
+ 	assert(pg_eval_advance(&whole, UINT64_MAX) == PG_EVAL_WHNF);
+ 	assert(whole.steps == split.steps);
+ 	assert(pg_alpha_equal(pg_eval_readback(&whole, graph), result) == 1);
+ 	pg_eval_destroy(&whole);
+ 	pg_eval_destroy(&split);
+-	pg_computation_eval_init(&split, graph, input);
++	materialized_force_init(&split, graph, input);
+ 	assert(pg_eval_advance(&split, 100) == PG_EVAL_PENDING);
+ 	pg_eval_destroy(&split); /* Release suspended demand traversal, not just frames. */
+ 	struct pg_whnf_work work;

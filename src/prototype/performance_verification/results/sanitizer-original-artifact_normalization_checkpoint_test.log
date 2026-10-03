@@ -1,0 +1,100 @@
+
+=================================================================
+==27==ERROR: LeakSanitizer: detected memory leaks
+
+Direct leak of 1575936 byte(s) in 96 object(s) allocated from:
+    #0 0x7f9d388f4610 in calloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:77
+    #1 0x4028bf in pg_alloc /tmp/ap-performance-2d747cc-final-20261003/src/graph.c:29
+    #2 0x671992 in readback_read /tmp/ap-performance-2d747cc-final-20261003/src/eval_io.c:284
+    #3 0x673d0b in materialization_read /tmp/ap-performance-2d747cc-final-20261003/src/eval_io.c:410
+    #4 0x6764ce in pg_eval_frames_payload_read_with /tmp/ap-performance-2d747cc-final-20261003/src/eval_io.c:599
+    #5 0x64a138 in pg_computation_frames_read_with /tmp/ap-performance-2d747cc-final-20261003/src/computation_io.c:522
+    #6 0x63aef9 in configurations_read /tmp/ap-performance-2d747cc-final-20261003/src/machine_io.c:149
+    #7 0x63b436 in payload_read /tmp/ap-performance-2d747cc-final-20261003/src/machine_io.c:203
+    #8 0x63cbe2 in whnf_payload_read /tmp/ap-performance-2d747cc-final-20261003/src/machine_io.c:283
+    #9 0x643151 in pg_computation_machine_read_with /tmp/ap-performance-2d747cc-final-20261003/src/computation_io.c:91
+    #10 0x640114 in pg_whnf_pending_read /tmp/ap-performance-2d747cc-final-20261003/src/machine_io.c:320
+    #11 0x67c625 in read_payload /tmp/ap-performance-2d747cc-final-20261003/checkpoint_tests/normalization_checkpoint_test.c:75
+    #12 0x5efcef in pg_graph_image_read /tmp/ap-performance-2d747cc-final-20261003/src/graph_io.c:107
+    #13 0x67fba4 in resume /tmp/ap-performance-2d747cc-final-20261003/checkpoint_tests/normalization_checkpoint_test.c:172
+    #14 0x682570 in partitions /tmp/ap-performance-2d747cc-final-20261003/checkpoint_tests/normalization_checkpoint_test.c:280
+    #15 0x6835f8 in main /tmp/ap-performance-2d747cc-final-20261003/checkpoint_tests/normalization_checkpoint_test.c:495
+    #16 0x7f9d37e35ca7  (/lib/x86_64-linux-gnu/libc.so.6+0x29ca7) (BuildId: 58749c528985eab03e6700ebc1469fa50aa41219)
+
+Direct leak of 492480 byte(s) in 30 object(s) allocated from:
+    #0 0x7f9d388f4610 in calloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:77
+    #1 0x4028bf in pg_alloc /tmp/ap-performance-2d747cc-final-20261003/src/graph.c:29
+    #2 0x671992 in readback_read /tmp/ap-performance-2d747cc-final-20261003/src/eval_io.c:284
+    #3 0x673d0b in materialization_read /tmp/ap-performance-2d747cc-final-20261003/src/eval_io.c:410
+    #4 0x6764ce in pg_eval_frames_payload_read_with /tmp/ap-performance-2d747cc-final-20261003/src/eval_io.c:599
+    #5 0x64a138 in pg_computation_frames_read_with /tmp/ap-performance-2d747cc-final-20261003/src/computation_io.c:522
+    #6 0x63aef9 in configurations_read /tmp/ap-performance-2d747cc-final-20261003/src/machine_io.c:149
+    #7 0x63b436 in payload_read /tmp/ap-performance-2d747cc-final-20261003/src/machine_io.c:203
+    #8 0x63cbe2 in whnf_payload_read /tmp/ap-performance-2d747cc-final-20261003/src/machine_io.c:283
+    #9 0x643151 in pg_computation_machine_read_with /tmp/ap-performance-2d747cc-final-20261003/src/computation_io.c:91
+    #10 0x640114 in pg_whnf_pending_read /tmp/ap-performance-2d747cc-final-20261003/src/machine_io.c:320
+    #11 0x67c625 in read_payload /tmp/ap-performance-2d747cc-final-20261003/checkpoint_tests/normalization_checkpoint_test.c:75
+    #12 0x5efcef in pg_graph_image_read /tmp/ap-performance-2d747cc-final-20261003/src/graph_io.c:107
+    #13 0x67fba4 in resume /tmp/ap-performance-2d747cc-final-20261003/checkpoint_tests/normalization_checkpoint_test.c:172
+    #14 0x682570 in partitions /tmp/ap-performance-2d747cc-final-20261003/checkpoint_tests/normalization_checkpoint_test.c:280
+    #15 0x6835da in main /tmp/ap-performance-2d747cc-final-20261003/checkpoint_tests/normalization_checkpoint_test.c:493
+    #16 0x7f9d37e35ca7  (/lib/x86_64-linux-gnu/libc.so.6+0x29ca7) (BuildId: 58749c528985eab03e6700ebc1469fa50aa41219)
+
+Direct leak of 49248 byte(s) in 3 object(s) allocated from:
+    #0 0x7f9d388f4610 in calloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:77
+    #1 0x4028bf in pg_alloc /tmp/ap-performance-2d747cc-final-20261003/src/graph.c:29
+    #2 0x671992 in readback_read /tmp/ap-performance-2d747cc-final-20261003/src/eval_io.c:284
+    #3 0x673d0b in materialization_read /tmp/ap-performance-2d747cc-final-20261003/src/eval_io.c:410
+    #4 0x6764ce in pg_eval_frames_payload_read_with /tmp/ap-performance-2d747cc-final-20261003/src/eval_io.c:599
+    #5 0x64a138 in pg_computation_frames_read_with /tmp/ap-performance-2d747cc-final-20261003/src/computation_io.c:522
+    #6 0x63aef9 in configurations_read /tmp/ap-performance-2d747cc-final-20261003/src/machine_io.c:149
+    #7 0x63b436 in payload_read /tmp/ap-performance-2d747cc-final-20261003/src/machine_io.c:203
+    #8 0x63cbe2 in whnf_payload_read /tmp/ap-performance-2d747cc-final-20261003/src/machine_io.c:283
+    #9 0x643151 in pg_computation_machine_read_with /tmp/ap-performance-2d747cc-final-20261003/src/computation_io.c:91
+    #10 0x640114 in pg_whnf_pending_read /tmp/ap-performance-2d747cc-final-20261003/src/machine_io.c:320
+    #11 0x67c625 in read_payload /tmp/ap-performance-2d747cc-final-20261003/checkpoint_tests/normalization_checkpoint_test.c:75
+    #12 0x5efcef in pg_graph_image_read /tmp/ap-performance-2d747cc-final-20261003/src/graph_io.c:107
+    #13 0x67fba4 in resume /tmp/ap-performance-2d747cc-final-20261003/checkpoint_tests/normalization_checkpoint_test.c:172
+    #14 0x682570 in partitions /tmp/ap-performance-2d747cc-final-20261003/checkpoint_tests/normalization_checkpoint_test.c:280
+    #15 0x6835e9 in main /tmp/ap-performance-2d747cc-final-20261003/checkpoint_tests/normalization_checkpoint_test.c:494
+    #16 0x7f9d37e35ca7  (/lib/x86_64-linux-gnu/libc.so.6+0x29ca7) (BuildId: 58749c528985eab03e6700ebc1469fa50aa41219)
+
+Direct leak of 49248 byte(s) in 3 object(s) allocated from:
+    #0 0x7f9d388f4610 in calloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:77
+    #1 0x4028bf in pg_alloc /tmp/ap-performance-2d747cc-final-20261003/src/graph.c:29
+    #2 0x671992 in readback_read /tmp/ap-performance-2d747cc-final-20261003/src/eval_io.c:284
+    #3 0x673d0b in materialization_read /tmp/ap-performance-2d747cc-final-20261003/src/eval_io.c:410
+    #4 0x6764ce in pg_eval_frames_payload_read_with /tmp/ap-performance-2d747cc-final-20261003/src/eval_io.c:599
+    #5 0x64a138 in pg_computation_frames_read_with /tmp/ap-performance-2d747cc-final-20261003/src/computation_io.c:522
+    #6 0x63aef9 in configurations_read /tmp/ap-performance-2d747cc-final-20261003/src/machine_io.c:149
+    #7 0x63b436 in payload_read /tmp/ap-performance-2d747cc-final-20261003/src/machine_io.c:203
+    #8 0x63cbe2 in whnf_payload_read /tmp/ap-performance-2d747cc-final-20261003/src/machine_io.c:283
+    #9 0x643151 in pg_computation_machine_read_with /tmp/ap-performance-2d747cc-final-20261003/src/computation_io.c:91
+    #10 0x640114 in pg_whnf_pending_read /tmp/ap-performance-2d747cc-final-20261003/src/machine_io.c:320
+    #11 0x67c625 in read_payload /tmp/ap-performance-2d747cc-final-20261003/checkpoint_tests/normalization_checkpoint_test.c:75
+    #12 0x5efcef in pg_graph_image_read /tmp/ap-performance-2d747cc-final-20261003/src/graph_io.c:107
+    #13 0x67fba4 in resume /tmp/ap-performance-2d747cc-final-20261003/checkpoint_tests/normalization_checkpoint_test.c:172
+    #14 0x682570 in partitions /tmp/ap-performance-2d747cc-final-20261003/checkpoint_tests/normalization_checkpoint_test.c:280
+    #15 0x683607 in main /tmp/ap-performance-2d747cc-final-20261003/checkpoint_tests/normalization_checkpoint_test.c:497
+    #16 0x7f9d37e35ca7  (/lib/x86_64-linux-gnu/libc.so.6+0x29ca7) (BuildId: 58749c528985eab03e6700ebc1469fa50aa41219)
+
+Direct leak of 16416 byte(s) in 1 object(s) allocated from:
+    #0 0x7f9d388f4610 in calloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:77
+    #1 0x4028bf in pg_alloc /tmp/ap-performance-2d747cc-final-20261003/src/graph.c:29
+    #2 0x671992 in readback_read /tmp/ap-performance-2d747cc-final-20261003/src/eval_io.c:284
+    #3 0x673d0b in materialization_read /tmp/ap-performance-2d747cc-final-20261003/src/eval_io.c:410
+    #4 0x6764ce in pg_eval_frames_payload_read_with /tmp/ap-performance-2d747cc-final-20261003/src/eval_io.c:599
+    #5 0x64a138 in pg_computation_frames_read_with /tmp/ap-performance-2d747cc-final-20261003/src/computation_io.c:522
+    #6 0x63aef9 in configurations_read /tmp/ap-performance-2d747cc-final-20261003/src/machine_io.c:149
+    #7 0x63b436 in payload_read /tmp/ap-performance-2d747cc-final-20261003/src/machine_io.c:203
+    #8 0x63cbe2 in whnf_payload_read /tmp/ap-performance-2d747cc-final-20261003/src/machine_io.c:283
+    #9 0x643151 in pg_computation_machine_read_with /tmp/ap-performance-2d747cc-final-20261003/src/computation_io.c:91
+    #10 0x640114 in pg_whnf_pending_read /tmp/ap-performance-2d747cc-final-20261003/src/machine_io.c:320
+    #11 0x67c625 in read_payload /tmp/ap-performance-2d747cc-final-20261003/checkpoint_tests/normalization_checkpoint_test.c:75
+    #12 0x5efcef in pg_graph_image_read /tmp/ap-performance-2d747cc-final-20261003/src/graph_io.c:107
+    #13 0x67fba4 in resume /tmp/ap-performance-2d747cc-final-20261003/checkpoint_tests/normalization_checkpoint_test.c:172
+    #14 0x6830d3 in shared_checkpoint /tmp/ap-performance-2d747cc-final-20261003/checkpoint_tests/normalization_checkpoint_test.c:321
+    #15 0x68360c in main /tmp/ap-performance-2d747cc-final-20261003/checkpoint_tests/normalization_checkpoint_test.c:498
+    #16 0x7f9d37e35ca7  (/lib/x86_64-linux-gnu/libc.so.6+0x29ca7) (BuildId: 58749c528985eab03e6700ebc1469fa50aa41219)
+
+SUMMARY: AddressSanitizer: 2183328 byte(s) leaked in 133 allocation(s).

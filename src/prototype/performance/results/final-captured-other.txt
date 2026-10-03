@@ -1,0 +1,2 @@
+export results: /tmp/ap-performance-2d747cc-final-20261003/tests/acceptance/function-graph-captured-match.p other two equal=1 chunk=1 steps=6990
+export results: /tmp/ap-performance-2d747cc-final-20261003/tests/acceptance/function-graph-captured-match.p other two equal=1 chunk=64 steps=6990

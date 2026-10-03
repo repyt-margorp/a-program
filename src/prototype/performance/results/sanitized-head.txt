@@ -1,0 +1,1 @@
+head/capture: all 9 raw cuts; WHNF charges 3014 transitions
