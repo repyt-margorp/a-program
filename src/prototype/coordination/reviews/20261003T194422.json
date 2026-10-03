@@ -1,0 +1,175 @@
+{
+  "scheduled_due_UTC": "2026-10-03T19:44:22.084Z",
+  "review_UTC": "2026-10-03 19:50 UTC",
+  "review_Main": "a0b8856755b1cfb8c6fc5b7015d6f5e849a54ea0",
+  "role": "Existing activated sole Merge owner; timer/worker notices are evidence, not human approval.",
+  "verification_kind": "Fresh read-only pane/handoff/GitHub/branch/protected-byte inspection. New worker allocator-entry evidence hashes independently verified; no profiling/test/cost rerun.",
+  "owners": {
+    "c-backend": {
+      "pane": "%0",
+      "task": "e9d74f70d33f1830f05a5a04cd3d05f8a01467ed",
+      "state": "Original owner selected-model capacity stalled; no resume/model/fork/duplicate.",
+      "delivered": "C1-C14 bounded prototype integrations; current-E12 callback/shared/link/IO/source-import review complete.",
+      "next": "C owner proposed cross-component scalar callback/code-context lifetime refinement; no new implementation READY. Native Acc/QuickSort, higher Identity and selected-export contract remain open.",
+      "latest_handoff": {
+        "path": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/coordination/outbox/c-backend-epoch14-ready.txt",
+        "sha256": "8283bd1ba0688bf1a8c67dd1f2140ab5999a68eb84a3af4adf710590cbebdcd2",
+        "mtimeUTC": "2026-10-03T14:54:40.294875+00:00"
+      }
+    },
+    "job-evidence": {
+      "pane": "%4",
+      "task": "cb959eb6ecb30c149b464529f3069833b6fd00a5",
+      "state": "Original owner selected-model capacity stalled; no resume/model/fork/duplicate.",
+      "delivered": "Corrected E11/E12 prototype Main integration and fresh lifetime/full Core/public-resume review complete.",
+      "next": "E13 exact28 frozen header allocation deletion: Root fresh ownership/current-Main review and publication pending, independent of owner stall. E14 local broad0 is historical; E15 Graph leaf-input borrowing proposed/unbuilt. Strict3 remain.",
+      "latest_handoff": {
+        "path": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/coordination/outbox/epoch15-graph-input-owner-scope.txt",
+        "sha256": "22b47dd70d25ab6d3d11a8aafacec6b4877264ed1f01eb16b931d60ab2079a3d",
+        "mtimeUTC": "2026-10-03T15:15:23.805694+00:00"
+      }
+    },
+    "performance": {
+      "pane": "%1",
+      "task": "86a069946ae450458003b0b1bfb8e238876df71a",
+      "state": "Original owner actively progresses; Fold Root publication receipt consumed in pane and terminal notice.",
+      "delivered": "Fold exact12/Main9d5cda2 and Root fresh12 build/execution controls0; immutable earlier V3/MEM2 source/cost epochs. New separate allocation-site9 freeze independently hash verified.",
+      "next": "Owned lifetime-safe argument/environment deletion review. Scratch-index hypothesis rejected, no runtime patch. Fold exact36-job/289-pin cost request reviewed but ungranted/unlaunched.",
+      "latest_handoff": {
+        "path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/coordination/outbox/performance-mem3-visible-roots-terminal-20261003.txt",
+        "sha256": "d7cf85d6266897f9098f6edef6c37042844e65910a42da3b2c56a4a9175db172",
+        "mtimeUTC": "2026-10-03T19:33:46.200084+00:00"
+      }
+    },
+    "verification-audit": {
+      "pane": "%10",
+      "task": "7ed3ad1dcc6670380353b6f17b2dc5d07b05b9aa",
+      "state": "Bounded static Goal achieved/stopped; no restart.",
+      "delivered": "Static source/archive dependency inventory and pilot; exact5 integrated.",
+      "next": "Full #59 dynamic/invocation/coverage/ledger and controlled cost remain open; original four-job cost proposal deferred without measurements.",
+      "latest_handoff": {
+        "path": "/home/repyt/workspace/a-program-workers/verification-audit/src/prototype/coordination/outbox/verification-audit-11-review-receipt.txt",
+        "sha256": "1e8b99182da029cc62daacc9ce2cb6bbb79e5b79ba173b9aeba6c7f79dc5569f",
+        "mtimeUTC": "2026-10-03T08:54:08.985590+00:00"
+      }
+    },
+    "sort-library": {
+      "pane": "%11",
+      "task": "5e6ed84ce2cf15849737a13a3e4fa1bdfefa19bb",
+      "state": "Bounded finite-function Goal achieved/stopped; no restart.",
+      "delivered": "PR54/finite-function prototype and final provenance correction integrated.",
+      "next": "Accepted Sort/F5, lawful distinct representations/views and broader #41 design boundaries remain.",
+      "latest_handoff": {
+        "path": "/home/repyt/workspace/a-program-workers/sort-library/src/prototype/coordination/outbox/finite-functions-ready-provenance-final.txt",
+        "sha256": "2f7c99e62b67d5a9eecc61ae7878d35023244d7bdeeb1f375b0073f558344259",
+        "mtimeUTC": "2026-10-03T10:14:16.221973+00:00"
+      }
+    },
+    "test-suite": {
+      "pane": "%12",
+      "task": "bc16df9cb4d95a99b049941217ed490b7a252f09",
+      "state": "Bounded reduction Goal achieved/stopped; no restart.",
+      "delivered": "Exact7 prototype integrated;435->413 invocations, net-13 executable/test lines, preserved distinct outcomes/ten injection controls.",
+      "next": "Derived-LT600s run incomplete; suite wall/RSS unmeasured, dynamic/full #59 and accepted adoption remain.",
+      "latest_handoff": {
+        "path": "/home/repyt/workspace/a-program-workers/test-suite/src/prototype/coordination/outbox/test-suite-20261003-final-handoff.txt",
+        "sha256": "4432e3d1f2b645352146e833f69ca3aa1cfa3a17ddb0544bfdf4cd5629086c61",
+        "mtimeUTC": "2026-10-03T13:34:08.066025+00:00"
+      }
+    },
+    "issue-audit": {
+      "pane": "%14",
+      "task": "8bb5018a5eeb3d014f474f912d3a4b99dda15fb5",
+      "state": "Bounded disposition Goal achieved/stopped; no restart.",
+      "delivered": "Exact dispositions/comments and successor #61; #44/#49 closed as superseded, not implemented.",
+      "next": "Nine development/design issues remain; no new disposition justified.",
+      "latest_handoff": {
+        "path": "/home/repyt/workspace/a-program-workers/issue-audit/src/prototype/coordination/outbox/issue-audit-05-final-handoff.txt",
+        "sha256": "bfbabb9b39aaef55b9c531cedf2c8a3e13ead9f0dd7e2650cb0d8d165992ffca",
+        "mtimeUTC": "2026-10-03T13:19:51.200820+00:00"
+      }
+    },
+    "surface": {
+      "pane": null,
+      "task": "276f4c3767d94848e5314629776fc2b9baee3c39",
+      "state": "Previously completed owner absent from live pane list; no new outbox, no restart.",
+      "delivered": "Verified surface prototype integrated.",
+      "next": "Explicit accepted polarity/brace adoption and residual selector diagnostics/#57 criteria remain.",
+      "latest_handoff": null
+    }
+  },
+  "issues": {
+    "fresh_UTC": "2026-10-03T19:45:44.666645+00:00",
+    "open": [
+      41,
+      43,
+      47,
+      51,
+      52,
+      56,
+      57,
+      59,
+      61
+    ],
+    "open_PRs": [],
+    "body_state_updated_at_changed_since1937": [],
+    "residual_criteria": {
+      "41": "Accepted Sort/F5 and law-checked reuse across distinct representations/interfaces remain; finite-function prototype alone does not complete this.",
+      "43": "Recurrence/loop semantics and logical boundaries require distinct design decisions; no approved implementation inferred.",
+      "47": "Conservative relevance/partial-admission dependency and transport policies remain separate from bounded C emission.",
+      "51": "Current owner/topology/state/size anti-regression work continues; exact public partition failures remain; prototype deletions do not establish full criteria.",
+      "52": "Selected checked relation contract/reuse experiment and validation/cost evidence remain; no e-graph/JIT/reflection authority.",
+      "56": "Bounded accepted optimization and later safe prototype deletions delivered with scoped V3/MEM2 cost results. Fold actual cost and broader ownership/retention/strict reload restoration remain open.",
+      "57": "Verified prototype delivered; explicit accepted polarity/brace migration/adoption and residual diagnostics unresolved.",
+      "59": "Static inventory/reduction/disposition pilots complete; effective dynamic invocations, controlled current-suite cost, full ledger/adoption and coverage analysis remain.",
+      "61": "Bounded C1-C14 delivered; selected-export no-mandatory-Solve/Identity/native Acc-QuickSort/higher callable-data contracts remain. #44/#49 superseded, not implemented."
+    },
+    "new_disposition": false
+  },
+  "new_material_progress": {
+    "Fold_receipt_consumed": true,
+    "allocation_site_notice_sha256": "43beca80c4c9132685cde5d871da5d136bc9ab41b181444af3e3f6c740b36929",
+    "private9_manifest_sha256": "720aab8ba05b81e38209103cfff5b912426922a98b92e077f4d978083608d0dc",
+    "summary_sha256": "4e3fc3f7f5449cf47ccc15193ee631649b70a13e7b29c9c722731ea39c539acd",
+    "source128": "81c3ad27dfd01aef14ad8e977d1b783cc3636368b6e5afcab0840d07d055e541",
+    "tree4_prefixes": [
+      10000,
+      100000
+    ],
+    "GDB_exit0_CLI_pending3_exact_budget": true,
+    "request_totals": [
+      16975,
+      64913
+    ],
+    "100K_counts": {
+      "application_pushes": 28461,
+      "beta_environment_links": 13539,
+      "explicit_apply": 965,
+      "frames": 124
+    },
+    "limits": "Function-entry debugger counts include graph.c internal calls omitted by earlier external audit; not successful/live allocations, dead-node proof, peak/live/cumulative RSS or time. Caller attribution can reflect compiler inlining/tail calls. No request cap/parameter errors; processes terminal. Scratch-index deletion rejected because arenas are already zero-initialized; no runtime patch.",
+    "worker_raw_review": "/tmp/a-program-merge-mem3-allocation-sites-review-20261003.json",
+    "worker_raw_review_sha256": "582aba158f8cfd55e760d1a09f926b19af3bfa46d78273a0e33eea9eb352d21e"
+  },
+  "evidence": {
+    "/tmp/a-program-merge-owner-progress-20261003T1944.json": "6d65d5c43ac20f70575819f190b0f21f4a2894ad06f7d7935252e3742e40ddea",
+    "/tmp/a-program-merge-handoff-inventory-20261003T1944.json": "24e3dac96f7e1639e10b2dde28765c05751d923c3a842f8cfc84887d25fa4203",
+    "/tmp/a-program-merge-issue-progress-20261003T1945.json": "12cd4d9df233a26d83c5ac2a6da7a8c7dfe79537e58a1a210f98a9007c4601ba"
+  },
+  "Root_Goal_service": {
+    "status": "blocked",
+    "fresh_read_UTC": "2026-10-03 19:44 UTC",
+    "achievement_or_resume_claim": false,
+    "authorized_review_continues": true
+  },
+  "timer": {
+    "PID": 1674731,
+    "unchanged_alive": true,
+    "next_due_UTC": "2026-10-04T01:44:22.084Z",
+    "scope": "Existing five-outbox relay and independent six-hour heartbeat; other workers reconciled manually."
+  },
+  "protected9_exact": true,
+  "indices_empty": true,
+  "no_new_hold_grant_model_owner_promotion_or_issue_closure": true,
+  "next": "Root E13 fresh ownership/current-Main review and concrete exclusive Fold cost scheduling per existing delegation; Performance independent lifetime attribution continues."
+}

@@ -129,6 +129,20 @@ reviewed but ungranted under the implementation-first delegation. Visible-roots
 retained as incomplete lower bounds, without dead/peak/live-memory inference.
 No actual Fold RAM/time, accepted promotion or full Goal/issue completion.
 
+2026-10-03 19:50 UTC, scheduled19:44 Root progress review: all seven live worker panes
+and Surface completion state inspected; original C/Job capacity stalls persist,
+Performance consumed Fold publication and continues lifetime attribution, four
+bounded owners remain achieved/stopped. All worker indices/protected9 and
+remote Maina0b8856 exact. Fresh GitHub criteria/body/state unchanged: nine open
+issues/zero PRs; no new closure. New allocation-site9 freeze720aab8b verified;
+Tree4 prefixes10K/100K count16975/64913 requests, including graph.c internals.
+Counts guide ownership review, not actual/dead-memory claims; scratch-index
+hypothesis rejected with no patch. E13 Root review and Fold cost scheduling
+remain pending independently of worker capacity. [Scheduled review](../src/prototype/coordination/reviews/20261003T194422.json)
+pins every owner/issue boundary and original failures. No resume/new hold/grant/
+promotion; Root Goal service still reports blocked. Existing timer unchanged,
+next2026-10-04 01:44:22 UTC.
+
 | Owner / issue scope | Delivered and verified | Not yet delivered / next boundary |
 | --- | --- | --- |
 | Job/Evidence; SE1-SE5 / AP0, #51/#47 | E1-E4/E6-E12 corrected prototypes integrated. E11 taskd22be9f/Main ea39262 exact25; E12 taskcb959eb/Main684d47c exact29 paths, 28 task-byte-exact plus combined Core test patch. Root current source12842639815/12026914, all2013/2064 pins and fresh lifetime O2/SAN controls pass; full Core O2/SAN pass | Fresh public52/full TSV equal qualified E12; original strict3 remain. E13 exact28 frozen READY, ownership review/publication pending. E14 local broad0; E15 Graph input borrowing proposed/unbuilt. Original unsafe E11/E12 remain rejected; no full ownership/layout completion |
@@ -466,6 +480,13 @@ public resume failures are in the
 Accepted `src/evidence.*`, `src/iadt.*` and their tests retain unrelated edits.
 
 ### Assessment
+
+2026-10-03 19:50 UTC, Root scheduled review: retain the current single queue. C/Job
+capacity stalls do not block Root review of frozen E13. Performance continues
+owned argument/environment lifetime research; nine-pin debug attribution is
+scoped observation, not a new safe-recycling design. Fold matched cost remains
+ungranted under the existing implementation-first delegation. Completed owners
+stay stopped and issue criteria remain open; no new human approval is recorded.
 
 2026-10-03 19:29 UTC, Root agent implementation decision: finish delivered corrected
 E11/E12/C14 independently of the original C/Job capacity stalls. Exact private
