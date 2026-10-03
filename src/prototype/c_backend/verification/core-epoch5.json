@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-03",
+  "scope": "Prototype integration; no producer/schema extension or accepted promotion",
+  "backend_commit": "312c2da",
+  "producer_source": "Same 128-runtime-hash Main f27bd13 family/Surface/Job E1/performance assembly used for Epoch4",
+  "integration_commit": "435d965ee41412d29535c5c1d8056f13f69c0503",
+  "gate_exit": 0,
+  "gates": [
+    "check-c-backend", "check-c-sorting-boundary", "check-c-link",
+    "check-c-scalar", "check-c-enum", "check-c-data", "check-c-list",
+    "check-c-numeric-list", "check-c-static-functions"
+  ],
+  "build_parallelism": 2,
+  "evidence_log": "/tmp/ap-core-main-e1-performance-PdUVg0/c5-surface-combined.log",
+  "evidence_log_sha256": "9724c52064fd34e2415e4a606cdf187f057d57c2ad6c7d82c2583087436022fb",
+  "emitter_sha256": "9000c49a891a5c1996cb830e00cdea9176677283b2b36844685fbff5a3d15273",
+  "producer_sha256": "464793f460d34489a26eac08436ceccf96782dae5c07b4d50122cf41b203321e",
+  "supported": "Known local functions and former block cases tested positively; ordinary two-module native C use",
+  "retained_refusals": "Dynamic callbacks, demanded effects, specific three-closure capture and native Acc/QuickSort",
+  "comparative_wall_rss": false
+}

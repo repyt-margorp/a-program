@@ -3,7 +3,7 @@
 Date: 2026-10-03
 Status: Core coordinates; Job/Evidence, C and performance Goals active; Surface delivered and stopped.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
-Reviewed prototype Main checkpoint: `b0422d7`; original worker baseline: `2d747cc`.
+Reviewed prototype Main checkpoint: `435d965`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
 changes no implementation or promotion rules.
 Related: [SE1-SE5](2026-09-30-SOLVER-EVIDENCE-DUPLICATION-AUDIT-AND-PLAN.md),
@@ -16,7 +16,7 @@ not the existing owner work lists.
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | `core`: coordination, design audit, verification and Main integration | All lanes | Sole integration owner; no parallel SE implementation |
-| 2 | `c-backend`: downstream C design | #44, #49; shared policy #47 | Numeric/List epoch integrated; native Acc/QuickSort remains open |
+| 2 | `c-backend`: downstream C design | #44, #49; shared policy #47 | Local-function C epoch integrated; native Acc/QuickSort remains open |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Jointly verified epoch integrated as `f27bd13`; full Goal remains active |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
 | 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E1 integrated as `b31d7a5`; later epochs remain separate |
@@ -254,6 +254,16 @@ Native open QuickSort explicitly refuses
 its unsupported representation; neither structural success nor array conversion
 establishes native Acc/QuickSort completion.
 
+Epoch5 `312c2da` is published and Core's nine current-producer C gates pass,
+including known local functions, captures, two-module array/arena exchange and
+the new raw static-function gate. Main prototype merge: `435d965`.
+Lowering changes +7/-4; build +8/-0; tests +488/-4; documentation +492/-8.
+The former supported block cases have positive coverage, not deleted tests;
+dynamic callbacks, demanded effects and the specific three-closure capture shape
+still refuse. [Core evidence](../src/prototype/c_backend/verification/core-epoch5.json)
+pins the combined gate; worker sanitizer results remain in the
+[handoff](2026-10-03-C-BACKEND-EPOCH5-HANDOFF.md).
+
 ### Assessment
 
 Agent proposal: Sub1 owns target realization, ABI and LinkerScript design and
@@ -458,6 +468,18 @@ five canonical and eleven lean-manifest records, including exact TSV bytes. E2
 is now published as `44b0389` on its task branch, not integrated into Main.
 Performance owns the newly assigned E2/current-producer joint gates; no E2
 joint-success, wall/RSS speedup or accepted-source promotion is claimed.
+Separate E3 `51c476d` is committed and pushed after one retained remote rejection
+and a successful ordinary retry with independent remote-ref verification. Core
+reviewed inert lexical reconnection, checked-owner barriers and the existing
+completion byte's separate descriptive/start bits. All 24 published canonical
+and report hash records match Git's index. APGSRC69 rejects older formats;
+loading restores a body link, not accepted evidence or child computation progress.
+Worker gates pass with setup failures retained; the same strict three remain.
+E3 Main integration waits its own current-producer codec/frontier gates after E2.
+Its original frozen manifest includes an external transport patch deliberately
+not published. Future durable manifests must list published files only; keep
+transport hashes separate and avoid copying canonical patches already pinned by
+Git. Original freezes are not rewritten.
 
 The common-producer census completes all twenty variant/input pairs, including
 the ordinary imported general LocalSorted QuickSort. Its final QuickSort rows:
