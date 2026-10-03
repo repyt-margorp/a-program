@@ -35,9 +35,9 @@ completion scores; worker-local results are not relabelled joint verification.
 | --- | --- | --- |
 | Job/Evidence; SE1-SE5 / AP0, related #51/#47 | E1-E4/E6 prototype Main; E4 `3a8c024` and E6 `01c29c0` each match runtime128 and their distinct frozen joint reports; E7/E8 exact task `3ad0303`/`50cd56b` pushed | E7/E8 joint qualification and Main integration pending; E9 private; strict3 remain |
 | C backend; #44/#49 | C4-C6 prototype Main; C6 ten current-E3-producer gates pass; C7 exact 14-file task `d275b75` pushed/remote verified | C7 current-producer eleven-gate qualification and Main integration pending; native Acc/QuickSort unsupported |
-| Performance; #56, measurement work #51/#52 | Captured-head cleanup prototype Main; E2/E3/E4/E6 distinct reports reviewed; E6 408 relevant O2 recipes with only unchanged strict target failure, 45 sanitizer/23 focused/140 cross-build passing | Matched E6 baseline qualified; exclusive measurement slot awaiting safe-boundary holds; no wall/RSS comparison or #52 completion claimed |
-| Surface; #57 | Delivered prototype integrated; session stopped | Issue-wide closure still requires its recorded remaining criteria; no active worker |
-| Verification audit; #59/PR #60, related #51 | Isolated worker launched at `4d1d941`, active bounded Goal and invocation inspection confirmed | Static effective-invocation inventory and QuickSort/persistence/legacy pilot pending; controlled cost later needs the common exclusive slot |
+| Performance; #56, measurement work #51/#52 | Captured-head cleanup prototype Main; E2/E3/E4/E6 distinct reports reviewed; E6 408 relevant O2 recipes with only unchanged strict target failure, 45 sanitizer/23 focused/140 cross-build passing | Matched E6 baseline qualified; first launch failed before sample 0; corrected GNU time collector freshly pinned and revised grant issued through 08:52:05 UTC; no comparative result or #52 completion yet |
+| Surface; #57 | Delivered prototype integrated; session stopped; Merge reviewed polarity, brace/migration, scope and version gates | Accepted language policy/promotion and selector diagnostics remain unresolved; #57 stays open; no active worker |
+| Verification audit; #59/PR #60, related #51 | Static task `7ed3ad1` pushed/remote verified; Main merge `5683755`; Merge reproduced exact inventory and verified 385 source hashes/114 archived dependencies | Bounded static delivery complete; dynamic coverage and full #59 remain open; audit cost ungranted, worker reports blocked on sequential handoff |
 
 Owning tables: Job/Evidence's [SE Plan](2026-09-30-SOLVER-EVIDENCE-DUPLICATION-AUDIT-AND-PLAN.md#plan),
 performance's worker-local `doc/2026-10-03-PERFORMANCE-JOINT-VERIFICATION.md`,
@@ -290,6 +290,64 @@ reports all measurement children stopped and its complete gate key is reviewed;
 otherwise cost stays deferred. Merge/C/Job/audit start no other heavy work during
 this window. Explicit release follows terminal measurement/expiry. Static review
 and docs continue. No comparative result exists at this grant.
+
+2026-10-03 08:26 UTC Merge operational review: performance terminal notice
+`abc0e73f` records missing `/usr/bin/time` before sample 0, zero benchmark
+children and zero measurements. Preserve that failed attempt and derived config;
+do not restart under the obsolete grant. Root privately extracted Debian trixie
+GNU time 1.9-0.2 from the configured package source, without installing it.
+Package SHA-256 `10257c6f`, executable `efc0d111`; a trivial timeout/true smoke
+passes. Prefer the original collector with only this private executable path
+changed over proposed wait4 instrumentation: the latter's trivial-command RSS
+was 11020 KiB versus GNU time's 1828 KiB, consistent with a launcher inheritance
+floor. This is a tool choice, not a benchmark conclusion. Review refreshed pins
+before a revised performance-only grant under the unchanged 08:52:05 deadline.
+Audit stays ungranted; no heavy correctness work overlaps.
+
+Refreshed audit handoff `576d52e1` corrects coordinator provenance and freezes
+four static files. Merge freshly reproduces inventory SHA-256 `62350b05`
+byte for byte and verifies all 385 pinned files, including 114 legacy inputs.
+Its 385/425/14/21 recipe rows and seven duplicate-command candidates remain
+static observations, not independent contracts or gate passes. Request the
+provisional cost key as an exact fifth supporting file because the report links
+it; preserve the four frozen bytes and old handoffs. Full dynamic/cost coverage
+stays open. Job E9 notice `39c47eb6` traces five io_error outcomes to omitted
+private fixture links and restores them, without a rerun; E9 remains unqualified.
+
+2026-10-03 08:33 UTC: refreshed performance notice `3e12bc59` supplies private
+runner `9c50c62d`, the original collector with exactly one executable-path
+change. All 292 pins freshly match; all 30 jobs and 285 original pins remain
+unchanged. Revised grant `e6-shared-cost-gnu-time-20261003-0833` permits only those
+sequential samples, with maximum_seconds derived again at launch from the same
+08:52:05 absolute deadline and two-second cleanup headroom. Preserve both configs,
+derivation and original failure. Audit receives no automatic grant; require
+performance terminal/stopped children and at least eight minutes remaining.
+
+Audit five-file freeze `fcf2aab0` adds only linked key `a99a7753`, preserving the
+four prior bytes. Exact indexed blobs verified; task `7ed3ad1` pushed and remote
+verified, separate Main merge `5683755`. Static generator reproduction and source
+pins complete its bounded first delivery; full #59 remains open. Worker notice
+`76f880b0` reports its Goal blocked on the ungranted cost phase, not an active
+measurement or overall Merge impasse. C notice `46691c7f` prepares an applied-List
+selector using existing typed views, unbuilt/unqualified; no producer extension
+or native Acc/QuickSort completion established.
+
+Documentation PRs #53/#55/#60 are separately integrated as `cbf87e5`, `306a2bf`
+and `f89339b`: only four Markdown files, all exact reviewed Git blobs. The #55
+and #60 preserved bodies match their recorded original SHA-256 hashes; all nine
+relative document links resolve. Historical verification/proposals remain dated,
+not today's fresh gates or approved equality/distribution/retirement policies.
+Publication closes these documentation deliveries only, not #51/#52/#59.
+
+Merge's #57 criteria review at `5683755`: prototype payload APGSYN2, LHS local
+scope, canonical hidden fields/IH, both-valid selectors, distinct renames,
+ordered subsequences/unordered permutations, explicit eight-file/13-clause
+migration, old-image rejection and combined gate evidence are present. Surface
+follow-up `276f4c3` is already task-published and integrated via `7a9a672`;
+the owning Goal's old pending-publication status is superseded. The brace/order
+and whole-v1-image rejection choices remain agent prototype decisions; accepted
+implementation and README grammar are not promoted. Selector diagnostics are
+explicitly deferred. Keep #57 open; do not restart completed Surface work.
 
 2026-10-03 agent operational decision within the user's explicit tree request:
 the desk records/relays user requirements and answers questions; it does not

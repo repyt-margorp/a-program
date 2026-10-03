@@ -1,7 +1,7 @@
 # Surface Binder Syntax Goal
 
 Date: 2026-10-03
-Status: prototype verification finished; follow-up publication pending Core.
+Status: prototype verification and publication finished; integrated via `7a9a672`. Accepted language policy and promotion remain separate.
 Session `surface`, branch `parallel/surface-20261003`.
 Baseline: `parallel/surface-20261003` at `2d747ccfec844e8afc72d408385ceb79a7c01808`
 (accepted implementation from `eb0aad6`, documentation PR #58 merged).
@@ -44,6 +44,11 @@ Core the branch/commit, changes, failures and integration needs. Continue within
 the prototype write scope. The existing sandbox boundary still applies.
 
 ### Objective (Code)
+
+2026-10-03 Merge status reconciliation at `5683755`: follow-up task `276f4c3`
+and integration `7a9a672` are ancestors of Main. Both per-file delta records and
+the verified harness/evidence follow-up are published. Earlier pending-publication
+notes below are historical and superseded; no new compiler gate was run here.
 
 Fresh inspection at `2d747ccfec844e8afc72d408385ceb79a7c01808`, with only this
 plan edited: PR #58 is merged at this revision; #57 is open without comments.
@@ -186,8 +191,8 @@ name availability. Internal function witnesses remain separate; IH `*arg` remain
 - [x] Run full relevant combined acceptance/compatibility/persistence and
   sanitizer gates at the released slot; original harness failure corrected and
   rerun; three baseline public-resume failures remain explicitly open with Core.
-- [ ] Report per-file code/test/example/doc deltas and deliver verified epochs:
-  focused epoch published; verified harness/evidence follow-up awaits Core push.
+- [x] Report per-file code/test/example/doc deltas and deliver verified epochs:
+  focused `90939fc` and follow-up `276f4c3` published, integrated via `7a9a672`.
 - Completion: #57's correction and migration gates pass under an explicit
   reviewed syntax policy; preserved canonical lowering and proof semantics
   are verified, not inferred from one closed result.
@@ -196,7 +201,7 @@ name availability. Internal function witnesses remain separate; IH `*arg` remain
 
 | Date | Problem | Material result | Evidence / next step |
 | --- | --- | --- | --- |
-| 2026-10-03 | 1 | E1 published as `90939fc`; broad gates run, one harness omission corrected, sanitizers/checkpoints pass; three baseline public-resume failures remain open | [Follow-up](2026-10-03-SURFACE-EPOCH-2-HANDOFF.md); full-regression slot returned; Core publishes the verified follow-up |
+| 2026-10-03 | 1 | E1 `90939fc` and follow-up `276f4c3` published and integrated via `7a9a672`; verified harness correction, sanitizers/checkpoints; three baseline public-resume failures remain open | [Follow-up](2026-10-03-SURFACE-EPOCH-2-HANDOFF.md); prototype delivery complete; #57 policy/diagnostics and accepted adoption remain separate |
 
 ## Work Contract
 
