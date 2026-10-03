@@ -117,7 +117,7 @@ session provides no automatic supervision; tmux alone does not supply it.
   workers.
 - [x] Launch `job-evidence` in its own worktree/window using the requested model,
   verify an active Goal and actual code inspection, and notify all lanes.
-- [ ] Verify concrete deletion/test activity at the next supervision checkpoint;
+- [x] Verify concrete deletion/test activity at the next supervision checkpoint;
   launch and inspection alone are not implementation completion.
 - [ ] Periodically review worker status, diffs, tests and blockers and issue
   directions; record material decisions in the owning SOAP plan.
@@ -222,6 +222,15 @@ run found an additional `identity_io_test:total_result_machine` failure at its
 passing. Broader persistence/sanitizer and combined current-Core verification
 remain required before integration. No comparative wall/RSS run has occurred.
 
+2026-10-03 04:24 UTC supervision: the worker distinguishes the obsolete
+descriptor-only Identity observer from seven real sanitizer failures in the
+published head epoch. Core inspected the separate `eval_frame_cleanup.patch`:
+successful/error head delivery releases decoded empty-frame scratch, while
+return 2 preserves charged fallback. The worker reports 14 focused corrective
+checks passing, including fresh-process TotalResult cuts and explicit callback
+outcomes; broad O2/sanitizer gates and an exact frozen handoff remain pending.
+The original failed commands are preserved; this is not Main integration.
+
 ### Assessment
 
 Agent proposal: Sub2 measures the whole path but owns only an agreed,
@@ -280,6 +289,14 @@ SE prototype patches. SE1-SE5 is unfinished; the three public split-fuel failure
 in its verification report remain unwaived. Unrelated dirty accepted-source and
 test changes are not part of the worker baseline.
 
+2026-10-03 04:26 UTC supervision at worker `5035c7a` plus private epoch edits:
+Core inspected removal of copied module/reference results, the module export
+cache and redundant stage. Focused tests pass; broad acceptance is running.
+Epoch2 extends deletion privately, so its canonical patches cannot inherit
+Epoch1 results without matching snapshots or fresh verification. The QuickSort
+census records status 2 (rejected), not completed checking; preserve these rows
+and repeat the measurement on a verified current-grammar workload.
+
 ### Assessment
 
 Agent implementation-workflow decision within the user's scope: create one
@@ -288,11 +305,19 @@ Its Goal brief is a handoff, not a replacement architecture or second checklist.
 Core reviews owner changes, interfaces, tests and resulting deletions before
 merging; the performance worker does not independently modify the same owners.
 
+Core operational clarification, 2026-10-03: existing AP1/AP3 already require
+one total fuel budget, explicit validation sublimit and optional explicit trust.
+Default inert loading does not admit saved completion. Keep the three original
+strict failures visible while separating revalidation cost, saved progress and
+local acceptance. Core assigns necessary producer-side artifact-persistence
+changes to this worker for a named epoch; do not add another replay engine or
+use automatic trust to repair a gate.
+
 ### Plan
 
 - [x] Start from committed Main in `parallel/job-evidence-20261003`; provide
   separate build/output paths and the existing prototype overlay recipe.
-- [ ] Read the current owner code, select a concrete deletion epoch and implement
+- [x] Read the current owner code, select a concrete deletion epoch and implement
   it alongside focused verification, rather than postponing coding for more logs.
 - [ ] Keep semantic, scope, effect, synthesis-first `::`, fuel, ordinary-result
   proof and persistence gates; report inherited failures without waiving them.
