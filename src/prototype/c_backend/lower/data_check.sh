@@ -58,7 +58,7 @@ expect_status 0 "$compiler" --imports "$here/data_fixture.p" --run main "$here/d
 cmp "$temporary/out" "$temporary/generated"
 if printf '#include "component.h"\nint main(void) {struct ap_data_Packet p = {0}; struct ap_data_Twin t = p; return t.tag;}\n' |
 	"$cc" "${flags[@]}" -I"$temporary/source" -x c -c -o "$temporary/bad.o" - > "$temporary/out" 2> "$temporary/err"; then exit 1; fi
-for name in Recursive Dependent Nested Callback number; do
+for name in Dependent Nested Callback number; do
 	{ script source; printf 'enum32 Bool Bool\ndata %s Rejected\nexport constant constant\n' "$name"; } > "$temporary/bad.aplink"
 	expect_status 4 "$backend" --link "$temporary/bad.aplink" "$temporary/bad"
 	test ! -e "$temporary/bad"
@@ -69,9 +69,9 @@ for change in '/enum32 Bool/d' 's/data Twin Twin/data Packet Again/'; do
 	test ! -e "$temporary/bad"
 done
 for name in effect block_callback callback recursive; do
-	{ script source; printf 'enum32 Bool Bool\ndata Packet Packet\ndata Recursive Recursive\nexport %s rejected\n' "$name"; } > "$temporary/bad.aplink"
-	# Recursive selection is needed only for the recursive export.
-	if [[ $name != recursive ]]; then sed -i '/data Recursive/d' "$temporary/bad.aplink"; fi
+	# An unselected recursive family remains a refusal; selected single-tail
+	# data now has positive coverage in list_check.sh. General trees still reject.
+	{ script source; printf 'enum32 Bool Bool\ndata Packet Packet\nexport %s rejected\n' "$name"; } > "$temporary/bad.aplink"
 	expect_status 4 "$backend" --link "$temporary/bad.aplink" "$temporary/bad"
 	test ! -e "$temporary/bad"
 	test ! -s "$temporary/out"

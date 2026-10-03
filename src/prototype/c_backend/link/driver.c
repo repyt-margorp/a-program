@@ -1,6 +1,7 @@
 #define _XOPEN_SOURCE 700
 #include "plan.h"
 #include "../lower/scalar.h"
+#include "../lower/representation.h"
 #include <errno.h>
 #include <inttypes.h>
 #include <stdlib.h>
@@ -74,6 +75,16 @@ static void json_string(FILE *file, const char *value)
 static int receipt(const char *path, const struct pg_c_link_plan *plan, const char *script,
 	const char *cc, const char *ar, int trusted, uint64_t spent)
 {
+	struct pg_graph storage = {0};
+	struct pg_c_representations representations = {0};
+	int recursive = 0;
+	if (plan->lowering == PG_C_NATIVE_DIRECT) {
+		int status = pg_c_representations_init(&representations, &storage,
+			plan->enum_count, plan->enums, plan->data_count, plan->data);
+		recursive = representations.arena_alias != NULL;
+		pg_c_representations_destroy(&representations); pg_graph_destroy(&storage);
+		if (status) return -1;
+	}
 	FILE *file = fopen(path, "w");
 	if (!file) return -1;
 	static const char *const products[] = {"source", "object", "archive", "executable"};
@@ -91,6 +102,7 @@ static int receipt(const char *path, const struct pg_c_link_plan *plan, const ch
 		fputs("[\"fixed-width-arithmetic\",\"pure-sequencing\",\"shared-direct-calls\",\"capture-lifting\"", file);
 		if (plan->enum_count) fputs(",\"nullary-enum32\",\"conditional-match\"", file);
 		if (plan->data_count) fputs(",\"fieldful-tagged-values\",\"conditional-match\"", file);
+		if (recursive) fputs(",\"single-tail-nodes\",\"direct-recursive-match\",\"known-ih-thunks\",\"arena-construction\"", file);
 		fputc(']', file);
 	}
 	fputs(",\n  \"cc\": ", file);
@@ -115,7 +127,8 @@ static int receipt(const char *path, const struct pg_c_link_plan *plan, const ch
 		fputs(", \"alias\": ", file); json_string(file, plan->data[i].alias); fputc('}', file);
 	}
 	fputs("],\n  \"data_contract\": ", file);
-	fputs(plan->data_count ?
+	fputs(recursive ?
+		"{\"ownership\":\"borrowed-inputs-and-caller-arena\",\"fields\":\"int32-int64-selected-enum32-single-self-tail\",\"invalid_input\":2,\"allocation_failure\":3,\"depth_limit\":4,\"failure_output\":\"unchanged\",\"allocation_rollback\":true}" : plan->data_count ?
 		"{\"ownership\":\"value-copy\",\"fields\":\"int32-int64-selected-enum32\",\"invalid_input\":2,\"invalid_input_output\":\"unchanged\"}" : "null", file);
 	fputs(",\n  \"entry\": ", file);
 	json_string(file, plan->entry == SIZE_MAX ? NULL : plan->exports[plan->entry].alias);

@@ -1,0 +1,17 @@
+aplink 1
+artifact fixture.a
+abi c_native_v1
+target host-c11
+product source
+lowering native_direct_v1
+fallback reject
+enum32 Bool Bool
+data List List
+export length length
+export sum sum
+export append append
+export select select
+export identity identity
+export cons cons
+export composed composed
+export constant constant

@@ -10,15 +10,18 @@ struct pg_c_representation {
 	const char *alias;
 	const struct pg_data_layout *layout;
 	struct pg_c_constructor_representation *constructors;
+	int recursive;
 };
 struct pg_c_constructor_representation {
 	size_t count;
 	const struct pg_c_representation **fields;
+	size_t tail;
 };
 struct pg_c_representations {
 	struct pg_index lookup;
 	size_t count;
 	const struct pg_c_representation **types;
+	const char *arena_alias;
 };
 int pg_c_representations_init(struct pg_c_representations *, struct pg_graph *storage,
 	size_t enum_count, const struct pg_c_export *enums,
