@@ -1,0 +1,43 @@
+{
+  "reviewed_at_UTC": "2026-10-03 13:09 UTC",
+  "task_commit": "d22be9f4ca7a44536790668e98ab36a688c94070",
+  "task_pushed_remote_verified": true,
+  "exact_published_files": 25,
+  "manifest_sha256": "b4f22f4c245ace2fafda6462e7066f7789f99b9b0bd80f5c7daa97151b397186",
+  "transport_sha256": "0e6b2cc84953fd499516fc0305dd2687fb704c23ccee510deaecda27cc4bc9e0",
+  "tested_source156_manifest_sha256": "4d8c056b07f17fb7e8d3d987b929e55b7217d22423ca57875de481bce2cbe175",
+  "Root_assembled_all156_exact": true,
+  "Root_fresh_controls": [
+    {
+      "name": "corrected source-binding lifetime",
+      "exit": 0
+    },
+    {
+      "name": "real escaped-stack frame O2",
+      "exit": 0
+    },
+    {
+      "name": "real escaped-stack frame ASan/UBSan/leak and stack-use-after-return",
+      "exit": 0
+    }
+  ],
+  "Root_fresh_logs": "/tmp/a-program-merge-e11c-assembled-20261003/Root-fresh-controls.json",
+  "broad": {
+    "worker_notice_sha256": "8a7ae76a03042244c843d571aab61649be06e02ef51b60e259f090bbc2d1462e",
+    "gate": "full unskipped O2 acceptance/semantic/seven checkpoints",
+    "aggregate_exit": 0,
+    "log_sha256": "9d2eccef487bc29f2af20fc1bef84c7cc7793d30aacc6297662cbcce35e411ae",
+    "overlay_inputs469_manifest_sha256": "d10599a15d4663375794880def29dfe9ef814a475fa73209830088f06039942b",
+    "Root_all469_exact_at_tested_overlay": true,
+    "all14_inherited_migrated_scripts_byte_exact_E9": true,
+    "inherited_delta_sha256": "4d85e72256463821a9213497056f37fa841e45ec5ebe862e7090c4adef792f80",
+    "initial_Root_check_correction": "Root first checked overlay_inputs against repository root; correct namespace is the retained tested overlay. No input drift established."
+  },
+  "decision": "All SourceScope ancestors must belong by exact address to existing owner index before borrowing; otherwise retain owned Binder-array fallback. Head stamp alone is insufficient; raw scope factory admission unchanged.",
+  "remaining": "Compose exact corrected E11 with current E9+E10 in separate qualified producer; public partitions, C, lifetime/fuel/codec controls remain before Main integration. Corrected-parent E12 continues independently.",
+  "limitations": [
+    "No E11 Main or accepted promotion.",
+    "Original unsafe E11/head-only E12 counterexamples retained.",
+    "Strict3 unwaived; no RAM/time claim from aligned extent deletion."
+  ]
+}

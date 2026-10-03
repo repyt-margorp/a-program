@@ -1,7 +1,7 @@
 # Performance Goal: Current Speed and Memory Work
 
 Date: 2026-10-03
-Status: active; E9/E9+E10 frozen/reviewed, independent MEM1 attribution underway.
+Status: active; E9+E10 published, MEM1 frame-reuse candidate qualification underway.
 This is the active successor to the frozen
 [Performance Goal at0539051](2026-10-03-PERFORMANCE-GOAL.md). Its published bytes
 and historical handoffs remain immutable. The single current issue-status table
@@ -64,12 +64,27 @@ focused23+extra8/cross140 pass; all52 public images/full verdict-fuel table
 exactly match E9. No new actual memory improvement is claimed from E10.
 Root now reports independent verification of all2,002/source128 and seven
 relevant test hashes against assembled current Main after accepted promotion;
-prototype Main `5e466381`/status `09ee775` push is in progress, not yet independently
-claimed here. The private `73fa86c9` snapshot remains the qualification anchor.
+prototype Main `5e466381`/status `09ee775` pushed and remote verified by Root.
+The private `73fa86c9` snapshot remains the qualification anchor.
 Original observer, sanitizer, strict partition and setup failures remain
 separate. No E11/E12 runtime is included.
 
 ### Assessment
+
+2026-10-03, Root review at Main `c2bab35b`: all forty diagnosis records match
+manifest `9f88231d`; sampled 180M-step pending WHNF arena capacity is
+1,685,012,480 bytes, falling to zero at completion 183,507,626. This identifies
+transient evaluator retention, not final Core/receipt storage, as the principal
+observed allocation at that cut. Capacity is not exact peak/live state or RSS;
+nested typed/malloc overhead remains incomplete. Separate candidate patch
+`698e97e2` recycles retired demand frames only after callbacks return and keeps
+the return2 fallback frame. Sample comparison `02f447d9` reports total arena
+capacity 1,769,812,912 to 897,168,304 bytes, including 49,152 additional memo
+arena bytes from the new machine field. Four focused tests pass in worker
+evidence; broad/fresh-process/sanitizer qualification is still live. No new
+time/RSS or promotion claim. Job inspects scheduler retention separately.
+Root reconciles these current findings without changing task `73d8229`'s
+immutable two-document snapshot or older frozen evidence.
 
 MEM1 uses a private runtime-identical `73fa86c9` copy. Existing allocation audit
 counts cumulative external requests and omits graph.c internal calls, so it

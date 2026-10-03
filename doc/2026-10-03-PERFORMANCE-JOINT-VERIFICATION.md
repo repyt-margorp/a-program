@@ -87,11 +87,11 @@ brief; detailed evidence remains in the linked manifests and reports below.
 | #56: E7 canonical source-metadata borrowing | Job-owned `3ad03033708135895352e3b19ddef64169c62c22`; exact E6 parent, five runtime files | Source128 `26a57bde`, tested156 `c63ba010`; full O2 384/0, sanitizer38/45, focused23 and cross140 pass. Canonical Surface-context repair is Root-owned; old failure retained | Task published; frozen joint `79e42921`; fresh remote main `cf8cdf5` contains prototype integration `efc3ff0` | Strict3 and both original Surface-context failures remain; no blanket owner acceptance | Exact E9/E10 qualification after Root handoff |
 | #56: E8 Graph-reference output borrowing | Job-owned `50cd56b2a52b7e370bc7ecb3436c4993e2e5d6a2`; semantic E7 parent, only synthesis.c changes | Source128 `9ba2b33c`, tested156 `aefbc96f`; relevant O2 408 only strict target fails; sanitizer38/45, focused23/cross140 and Graph controls pass. Fresh Root canonical assembly matches all128 runtime/six tests | Task published; joint1,956 frozen `253a36c0`; fresh remote main `cf8cdf5` contains prototype integration `f6d7cfe` | Strict3 and reporting-helper/owner setup failures preserved; frozen producer retained | Distinct E9 qualification now running |
 | #56: E9 descriptive namespace traversal restoration | Job-owned `bd1ddf3a0ac86c365c1b1bf5992eb254cf752a99`, exact E8 parent, four runtime files | Source128 `2766822a`, publication23+manifest/tested156 aligned; Root independently verified all1,989/source128. Terminal O2 81 only strict target fails, sanitizer38/45 plus extra5 pass, focused23 plus extra8 and cross140 pass;590 module snapshots/build and forged prefix/source claim pass | Task published; joint manifest `0a8b46ec`, summary `d8cb5334`; Root reports prototype Main merge `6a48aaeb`/status `1459fbb8` pushed and remote verified | Strict3 and all original worker split/harness/observer failures retained; rejected E11/runtime E12 excluded; no new full-suite claim | Finish distinct exact E9+E10 qualification, then pending MEM1 |
-| #56: E10 unary receipt ordinal deletion | Job-owned isolated `6715af2d91f9024fd85e122db57a2415b3c0d747`, semantic E8 parent | Distinct joint source128 `73fa86c9`, publication18+manifest/tested156 aligned; Core adapter disjoint. Terminal O2 81 only strict target fails, sanitizer38/45+extra5 and focused23+extra8/cross140 pass; public52 images/full verdict-fuel TSV byte-identical E9. Root independently verified all2,002/source128/seven test hashes against current Main assembly | Separate task branch published; joint2,002 frozen `de7b28cb`, summary `c8f0b63b`; Root reports prototype Main `5e466381`/status `09ee775`, push in progress. Isolated E8+E10 evidence separate | Strict3 and private publication-directory setup failure preserved; raw deletion has no worker-ABI aligned extent gain and no actual RAM claim | Continue independent MEM1 existing-tool attribution and next owned prototype work |
+| #56: E10 unary receipt ordinal deletion | Job-owned isolated `6715af2d91f9024fd85e122db57a2415b3c0d747`, semantic E8 parent | Distinct joint source128 `73fa86c9`, publication18+manifest/tested156 aligned; Core adapter disjoint. Terminal O2 81 only strict target fails, sanitizer38/45+extra5 and focused23+extra8/cross140 pass; public52 images/full verdict-fuel TSV byte-identical E9. Root independently verified all2,002/source128/seven test hashes against current Main assembly | Separate task branch published; joint2,002 frozen `de7b28cb`, summary `c8f0b63b`; Root independently verifies prototype Main `5e466381`/status `09ee775` pushed and remote exact. Isolated E8+E10 evidence separate | Strict3 and private publication-directory setup failure preserved; raw deletion has no worker-ABI aligned extent gain and no actual RAM claim | Continue independent MEM1 existing-tool attribution and next owned prototype work |
 | #56 with #51/#52 measurement boundaries: cross-system evidence | Official source `7d24b8d0235cb9781140512c0f163c48ea84a719`; collector `9c50c62d`, config `390adf41` | E6 measurements30/0; tree wall17.23→5.40s/RSS−36.3%, QuickSort medians equal. All114 task blobs match `0f017454`; initial zero-sample failure retained | Task `44e479be` pushed; measurement Main merge `99efcf7` is an ancestor of freshly observed remote `cf8cdf5` | Joint E6 timings do not establish accepted-only values; proof/helper/startup/RSS limits and strict3 remain | Future cost scope/slot only after coupled qualification and Root grant |
 | #56: same-input retained state and completed artifacts | Diagnostic helper + compact report, exact measured E6 ordinary/head sources and three pinned inputs | Six DONE censuses/source saves and12 full fresh reloads pass;12 zero-step resaves preserve bytes while CLI reports pending3. All three completed pairs byte-identical. Trees retain10,338,148 fewer Core terms; typed/Evidence/Job counts equal | Separate65-record evidence frozen `eb4e7542`; frozen2 bytes freshly match live/task `ac6a8b2420051b06d41c1b7032526c360d1ae690` and remote task branch. Published114/E7/E8 immutable; no Main integration claim | Preserve obsolete metrics-helper build2; semantic-object/complete allocator census and additional time/RSS gains are not claimed | Preserve publication while qualifying distinct E9/E10; no extra broad runs |
 | #56: lifetime and allocation attribution | Read-only E6 graph/evaluator ownership inspection; runtime unchanged | Interned terms remain in Program graph until destruction; evaluator/readback scratch frees separately. Both measured variants retain the same arena/index defaults | Findings recorded separately; no new owner implementation or tuning patch | Per-owner RAM and independent arena/index or head/direct timing factors remain unmeasured | Preserve these limits in future agreed cost scope after exact coupled qualification |
-| #56 / MEM1: delete unnecessary work/state for actual peak memory and time | Human priority/workflow recorded; existing-tool attribution inspection underway, no deletion yet | Qualified producer source128 `73fa86c9` is the new pin. E6 head about1847MiB is historical measured context; final Core298214 does not explain it. Current owner peak/live/cumulative/retained capacity and scaling are unmeasured | E9+E10 immutable2,002 handed off; live MEM1 continues without publication/review hold; no memory-success claim | Need net actual memory/time and preserved frontier/checked facts/semantic/fuel/step0/split-resume; shared owner edits coordinate, comparative wall/RSS needs exclusive scheduling | Inspect existing allocation/census coverage, then bounded per-owner capacity/lifetime observations on frozen current producer |
+| #56 / MEM1: delete unnecessary work/state for actual peak memory and time | Existing-tool GDB diagnosis40 verified by Root; private frame-reuse candidate changes only eval.c/h, patch `698e97e2` | Sampled180M total arena capacity1,769,812,912 to897,168,304, memo overhead49,152 included; Root recomputed comparison and all126 unchanged runtime files. Worker focused4 pass; broad/fresh-process/SAN live. Capacity is not peak RSS/time | Current Goal/joint snapshot exact2 task `73d8229` pushed, Main docs `c2bab35b`; runtime candidate not yet published or integrated | Need current lifetime/fuel/codec/all-cut qualification and actual matched wall/RSS; partial owner attribution remains incomplete. Job inspects private scheduler retention separately | Finish independent frame-reuse qualification and exact handoff; retain return2, reentrant callback and original failures. Later exclusive cost slot |
 
 Fresh Git inspection verifies HEAD and tracking branch at `0539051`; every
 committed/live file matches the corrective 44-file frozen manifest. Core's exact
@@ -261,6 +261,17 @@ under `/tmp/ap-performance-measurement-e6-preparation-20261003`. The inputs,
 runtime and tests are unchanged; no wall/RSS values were collected.
 
 ### Assessment
+
+2026-10-03, Root review at Main `c2bab35b`: sampled transient pending-WHNF
+arenas dominate the observed retained capacity at 100M/180M; completed-machine
+scratch is zero. The retired-frame pool remains private and under qualification.
+The candidate retires only after callbacks return, preserves result2 fallback
+and accounts its new pointer/aligned layout overhead. Detailed independent hash
+and arithmetic review is [mem1-root-review.json](../src/prototype/performance_followup/mem1-root-review.json).
+No measured RSS/time improvement or accepted promotion follows. Corrected E11
+`d22be9f` is a separate current-producer joint qualification, excluding MEM1 and
+E12. Historical schedules below retain their original provenance; the latest
+independent-workflow instruction supersedes publication-only holds.
 
 2026-10-03 MEM1: continue on a private runtime-identical qualified `73fa86c9`
 copy, without publication/review hold. Existing allocation audit counts
@@ -601,8 +612,8 @@ epochs remain immutable.
   namespace lifetime, lexical names, borrowed-output guards and strict3.
 - [x] Layer exact committed E8 atop E7; exclude E9 runtime and qualify separately;
   freeze1,956 records `253a36c0` and send the distinct readiness notice.
-- [ ] Support Merge's canonical pipeline and isolated four-file accepted review
-  on material findings; preserve every published epoch and original failure.
+- [x] Support Merge's completed selected thirteen-file accepted performance
+  review; all candidate files match and original failures remain separate.
 - [x] Compare same-input interned state and completed artifacts on exact measured
   E6 pins; explicitly exclude semantic-object/complete allocator counts, retain
   storage/timing separation and freeze the bounded two-file evidence handoff.
@@ -617,8 +628,10 @@ epochs remain immutable.
   attribute peak/live/cumulative bytes and scaling using existing tools; jointly
   delete unnecessary work/state with Job, then demonstrate net actual memory/time
   with unchanged meaning/fuel/step0/split-resume in an exclusive matched run.
-- Continue the parent Goal's existing full performance work list after this gate;
-  do not request or mark full Goal completion for focused verification/publication.
+- [ ] Carry the parent Goal's remaining full-performance criteria here: full
+  workload/checker qualification, including BendTT where applicable, and honest
+  separate owner/timing attribution. Historical parent checkboxes are superseded;
+  this is the sole current work list. Focused delivery does not complete the Goal.
 
 ### Current Epoch Assessment
 

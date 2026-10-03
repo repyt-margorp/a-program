@@ -73,6 +73,17 @@ only Core merges Main. Prototype integration is not accepted-source promotion.
 
 ### Objective (Code)
 
+2026-10-03, Root review of corrected E11 task `d22be9f` (exact25, pushed and
+remote verified): independent assembly matches all156 runtime/test records;
+three fresh lifetime/real escaped-frame O2/SAN controls pass, with the original
+unsafe counterexample retained. Worker full unskipped O2 acceptance/semantic/
+seven-checkpoint terminal0 is separate from focused qualification. Root now
+verifies all469 inputs relative to the tested corrected overlay and all14
+inherited migrated scripts equal E9. The initial Root check used the repository
+root instead of this tested overlay; it did not establish input drift.
+Current E9+E10+corrected E11 joint qualification remains pending. Corrected-parent
+E12 proceeds independently; original unsafe E11/E12 remain unqualified.
+
 2026-10-03, worker epoch 1 on `5035c7a` / producer `64df10d`: actual module
 export/stage and module/reference result copies removed. Full O2 acceptance,
 semantic/seven checkpoints, focused ASan/UBSan/leaks and baseline C gates pass;

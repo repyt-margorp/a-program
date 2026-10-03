@@ -1,7 +1,7 @@
 # Simplification and Performance Goal
 
 Date: 2026-10-03
-Status: in progress; `f3c3555` published, separate corrective epoch frozen for review.
+Status: historical Goal record; active successor is the Current Performance Goal.
 Session: `performance`, branch `parallel/performance-20261003`.
 Baseline: committed `eb0aad6` compiler/overlay plus the coordination documents.
 Related: [coordination](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md),
@@ -199,6 +199,16 @@ Their historical Bend ratios and missing raw bundle are not fresh measurements.
 
 ### Assessment
 
+2026-10-03, Root status reconciliation at Main `c2bab35b`: the active successor
+is [Current Performance Goal](2026-10-03-PERFORMANCE-GOAL-CURRENT.md), published
+from exact two-document task `73d8229`. Its single current issue table and work
+list live in [Joint Verification](2026-10-03-PERFORMANCE-JOINT-VERIFICATION.md).
+This supersedes the pending-MEM1 schedule and active checklist below; retain
+them as historical requirements/progress, with the original frozen worker
+Goal at `0539051` unchanged. E9+E10 is qualified and pushed; MEM1 diagnoses
+sampled evaluator retention and qualifies a frame-reuse prototype independently.
+Actual new wall/RSS gains remain unmeasured and the full Goal remains open.
+
 2026-10-03, Merge operational schedule: MEM1 remains pending after distinct E9
 then E9+E10 qualification. Peak1847 MiB is a historical E6 measurement; final
 Core10636362->298214 is a retained-count result and does not explain that peak.
@@ -337,6 +347,9 @@ are excluded. Notify Core before changing any file in the frozen set; delegated
 task-branch publication remains separate from integration review and Goal completion.
 
 ### Plan
+
+The checklist below is historical. Use the successor's Joint Verification
+work list for all current work; publication did not complete the Goal.
 
 - [ ] **MEM1, pending after current qualification:** pin accepted/current-prototype
   producers, identical completed workloads and existing tool inputs; attribute

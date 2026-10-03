@@ -1,0 +1,37 @@
+{
+  "Main_integration": "545baa62aa11c8d407a45b80598bb6c216d0ffe1",
+  "Main_base": "09ee7750604f1de2264dd4dad5ab5f174583c655",
+  "task": "56e4ae875a18f336fff2262925472158a0d5d249",
+  "exact_other_six_frozen_files": true,
+  "Goal_conflicts_resolved": 4,
+  "Root_source128_before_after_exact": true,
+  "source128_manifest_sha256": "73fa86c94b805b768d2c8493ce6f6a46c51983e556974c4920d805b59eefc743",
+  "Root_O2_gate_targets": [
+    "check-c-backend",
+    "check-c-link",
+    "check-c-scalar",
+    "check-c-enum",
+    "check-c-data",
+    "check-c-list",
+    "check-c-numeric-list",
+    "check-c-static-functions",
+    "check-c-value-records",
+    "check-c-enum-list",
+    "check-c-sorting-boundary",
+    "check-c-transitive-functions",
+    "check-c-applied-families"
+  ],
+  "Root_O2_aggregate_exit": 0,
+  "Root_publication_io_status_controls": 19,
+  "Root_io_exit": 0,
+  "Root_evidence_records": 92,
+  "Root_evidence_manifest_sha256": "0f393ee5604005f32d18ccf398e88d18c06f6705740875ed373740eea682aea7",
+  "Root_evidence_directory": "/tmp/a-program-merge-c11-e10-gates-20261003",
+  "Root_current_image_sha256": "b1bdf3184dc759d22b2ecc1e80164220d3eb9e25a80f9c5141a48c09597b9295",
+  "accepted_promotion": false,
+  "limitations": [
+    "Worker before/after reproduction and client sanitizers use the old C9/E8 producer; Root fresh tests use current E9+E10",
+    "No new sanitizer or timing/RSS comparison",
+    "C12 live work excluded; native Acc/QuickSort unfinished"
+  ]
+}

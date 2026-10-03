@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: Merge activated after verified handoff; the visible parent is the inquiry desk. Three implementation workers continue; the bounded verification audit and finite-function library worker are complete.
+Status: Merge owns Main; five workers continue, including new test-suite implementation and issue disposition. The bounded static audit and finite-function library worker are complete.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -17,27 +17,31 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | Inquiry desk -> `merge`: reporting vs coordination/integration | All lanes | Desk answers the user; only Merge integrates after verified handoff |
-| 2 | `c-backend`: downstream C design | #44, #49; shared policy #47 | C1-C10 bounded prototypes integrated; C11 I/O correction proceeds, native Acc/QuickSort remains open |
+| 2 | `c-backend`: downstream C design | #44, #49; shared policy #47 | C1-C11 bounded prototypes integrated; C12 value-record List work continues, native Acc/QuickSort remains open |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Accepted performance `7631e5a`, joint E7-E10 qualified; MEM1 attribution/deletion proceeds, full Goal active |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
-| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E1-E4/E6-E10 qualified prototype Main; corrected E11 focused freeze and Context ancestry repair continue independently; strict3 remain |
+| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E1-E4/E6-E10 prototype Main; corrected E11 task published, broad/focused evidence verified; current joint qualification and E12 continue, strict3 remain |
 | 6 | `verification-audit`: independent read-mostly suite/debt inventory | #59 / PR #60, #51 | Bounded static inventory/pilot complete; measured cost deferred, full #59 remains open |
+| 7 | `test-suite`: implement coverage-preserving test reductions | #59 / PR #60 | New independent Goal active; initialized, first reduction not yet delivered |
+| 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | New independent Goal active; sole issue writer, concrete consolidation under review |
 
 ### Current Delivery Status
 
-2026-10-03 12:24 UTC Merge inspection at local Main `5e466381`: the table
+2026-10-03 13:09 UTC Merge inspection at local Main `c2bab35b`: the table
 reflects exact task publications and independently inspected qualification.
 These are deliverables, not issue completion scores; worker-local results stay
 distinct from Root fresh gates and accepted performance promotion.
 
 | Owner / issue scope | Delivered and verified | Not yet delivered / next boundary |
 | --- | --- | --- |
-| Job/Evidence; SE1-SE5 / AP0, related #51/#47 | E1-E4/E6-E10 prototype Main; E10 `6715af2` exact19 integrates at `5e466381` after Root2002/runtime128/seven test hashes match joint qualification; public52 images and verdict/fuel TSV equal E9, relevant O2/SAN pass except strict recipe | Corrected E11 exact25 focused notice `2ea1fb41`: Root task review pending; broader correctness and corrected-parent Context ancestry repair proceed independently. Original unsafe E11/E12 unqualified; owned fallback required; strict3 remain |
-| C backend; #44/#49 | C9 task `60c100c` exact38/Main `48c42eb` published; Root thirteen current-E8 strict-O2 gates pass. C10 exact6 task `fe497956` pushed/remote verified, prototype Main `2753441`; 36 client run statuses, 275 artifacts/41 inputs and 74 native argv exits verified | Consumed receipt `96e813b9`: C11 I/O-status fault shim prepared and focused O2 reproduction starts, then minimal proved correction/bounded record-List work. No publication blocker or proved I/O bug yet. Native Acc/QuickSort remains unfinished; no accepted C promotion |
-| Performance; #56, measurement work #51/#52 | E6 measurement task `44e479b`, Main `99efcf7`, exact114 published; 30 samples/292 pins verified. E7-E10 qualified; accepted13-file candidate O2 386/0 and affected sanitizer groups8/0. E9+E10 evidence `f809846b` verified by Root and prototype integrated | Autonomy receipt `6e08d065` consumed: MEM1 owner allocation/lifetime/scaling attribution proceeds on the named producer, then safe deletion. Shared Job/query edits need owner coordination; matched wall/RSS needs an exclusive slot. Publication is no blocker; no new measured memory/time claim |
+| Job/Evidence; SE1-SE5 / AP0, related #51/#47 | E1-E4/E6-E10 prototype Main; E10 `6715af2` exact19/Main `5e466381`, published in `09ee775`. Corrected E11 exact25 task `d22be9f` pushed; Root three lifetime/real escaped-frame O2/SAN controls0, all156 sources and469 tested-overlay inputs verified. Separate full unskipped O2/seven-checkpoint terminal0 | Current E9+E10+corrected E11 joint qualification pending. Corrected-parent E12 Context ancestry repair continues independently; original unsafe E11/E12 unqualified. Owned fallback required; strict3 remain |
+| C backend; #44/#49 | C9/C10 tasks and Main published; C11 exact7 task `56e4ae8` pushed. Worker old-producer before/after19 reproduces/fixes I/O status4 to2. Root fresh current-E9+E10 thirteen strict-O2 backend gates and nineteen I/O controls0; prototype Main `545baa62`, local pending push | C12 selected finite value-record/single-tail List prototype continues; live edits excluded from C11. Native Acc/QuickSort remains unfinished; no accepted C promotion. C11 client sanitizers cover the older C9/E8 producer; no new cost claim |
+| Performance; #56, measurement work #51/#52 | E6 measurement exact114/30 samples published; E7-E10 qualified, selected accepted13-file candidate O2 386/0 and sanitizer groups8/0. Current Goal/joint docs exact2 task `73d8229` pushed, local Main `c2bab35b`; Root verifies MEM1 diagnostic40 and sampled pending-WHNF arena retention | Frame-reuse candidate private, only eval.c/h; sampled180M total arena capacity1,769,812,912 to897,168,304 bytes with overhead included. This is capacity, not peak RSS/time; broader/fresh-process/SAN qualification live. Job inspects scheduler retention separately; later matched wall/RSS needs an exclusive slot |
 | Surface; #57 | Delivered prototype integrated; session stopped; Merge reviewed polarity, brace/migration, scope and version gates | Accepted language policy/promotion and selector diagnostics remain unresolved; #57 stays open; no active worker |
 | Verification audit; #59/PR #60, related #51 | Static task `7ed3ad1` pushed/remote verified; Main merge `5683755`; Merge reproduced exact inventory and verified 385 source hashes/114 archived dependencies | Bounded static delivery complete; dynamic/full #59 open; four-job cost deferred because full config review missed eight-minute boundary; no timing executed |
 | Sort library; #41/F3-F5 | PR54 integrated and GitHub merged; isolated worker actual gpt-6.1-sol/xhigh verified, bounded Goal complete. Finite-function task `5e6ed84` exact11 pushed with corrected provenance and two worker focused gates | Root two focused E6 gates pass; exact11 prototype Main integrated; accepted Sort/F5 adoption remains separate |
+| Test-suite; #59/PR #60 | Initialization `e423cc34` and focused report `a347cbdb` read/hash-verified; thread `01a101d2-a538-7c30-864a-7841a2de3896`, tmux `%12`, active Goal. Worker reports two prototype patches: applied tests net-38 lines, QuickResult14 to12 and compatibility421 to401 invocations, all distinct outcomes retained | Root comparison review and affected combined/failure-injection controls pending; no task freeze yet. Shared Core/SourceIO patches belong to Job, evaluator/codec controls to Performance; conflicts route to Merge. Accepted tests/build unchanged; wall/RSS unmeasured |
+| Issue-audit; all open Issues/PRs | Initialization `a2a07c3b` and consumed sole-writer receipt `50592d53` verified; thread `01a101d5-ab2f-7241-ab7e-f4a75e180327`, tmux `%14`, active Goal. Ten bodies/27 comments inspected in worker report | Concrete #44/#49 residual successor proposal `2e8df914` preserves separate source/target contracts; GitHub dispositions not yet verified. #59 remains open pending residual assessment; no automatic completion inferred from PR60/static audit |
 
 Owning tables: Job/Evidence's [SE Plan](2026-09-30-SOLVER-EVIDENCE-DUPLICATION-AUDIT-AND-PLAN.md#plan),
 performance's worker-local `doc/2026-10-03-PERFORMANCE-JOINT-VERIFICATION.md`,
@@ -61,11 +65,13 @@ reporting subsystem. Its audit cover is pinned to `37de1e8`, not current Main.
 
 | Order / owner | Issue or PR | Next deliverable and dependency |
 | --- | --- | --- |
-| 0 / desk -> Merge | Workflow | Handoff verified/activated at 07:44 UTC; Merge Goal active and both hops observed; preserve the four live workers and dirty accepted files |
-| 1 / Job, Root reviews independently | SE/AP, #51 | Corrected E11 focused snapshot publication/broader qualification; safe Context-ancestry repair on corrected parent continues without waiting. Preserve strict3 and original unsafe failures; no pointer-layout completion claim |
-| 1 / performance + Job | #56 / #51 | MEM1 owner allocation/lifetime/scaling attribution on qualified E9+E10, then simplest safe deletion. Root resolves shared-owner conflicts; later matched wall/RSS gets an exclusive slot. Publication is no implementation prerequisite |
+| 0 / desk -> Merge | Workflow | Merge active; five workers' initialization/action receipts verified, completed Sort/static-audit remain stopped. Preserve dirty accepted files; issue-audit owns GitHub dispositions |
+| 1 / Job, Root reviews independently | SE/AP, #51 | Corrected E11 published/focused+broad verified; current joint qualification pending. Safe Context-ancestry repair on corrected parent continues without waiting. Preserve strict3 and original unsafe failures; no pointer-layout completion claim |
+| 1 / performance + Job | #56 / #51 | MEM1 evaluator-frame reuse candidate qualifies independently; Job investigates private scheduler retention. Capacity sample verified, RSS/time pending. Root resolves shared-owner conflicts; later matched wall/RSS gets an exclusive slot |
+| 1 / test-suite | #59 / PR #60 | Implement first demonstrated prototype test reduction, preserving unique invariants and failures; reuse completed audit and compare original/reduced outcomes. No accepted test/build promotion |
+| 1 / issue-audit | All open Issues/PRs | Sole GitHub disposition writer: complete evidence-backed comments/closures/useful residual consolidation. #59 assessed first; Root supplies current pinned delivery/status and avoids concurrent issue writes |
 | Complete bounded / verification-audit | #59 / PR #60; #51 | Static inventory/pilot delivered and worker complete; four-job measured cost remains deferred, full #59 open. Do not restart the completed owner automatically |
-| 2 / C backend | #44 / #49 | C1-C10 bounded prototypes delivered; C11 fault-injection I/O reproduction/minimal correction, then existing-value-record List candidate. Relevant j1 correctness proceeds; native Acc/QuickSort and producer-policy boundaries remain explicit |
+| 2 / C backend | #44 / #49 | C1-C11 bounded prototypes delivered; C12 existing-value-record List candidate continues. Relevant j1 correctness proceeds; native Acc/QuickSort and producer-policy boundaries remain explicit |
 | Complete review / Merge | PR #60, #53, #55 | Documentation reviewed/imported with provenance; no open PRs. Full issue criteria remain independent of publication |
 | Complete bounded / Sort library | PR #54 / #41 | Generic MergeSort and finite-function prototype verified/integrated; bounded worker complete. Accepted Sort/F5 and broader containers remain separate; no owner restart |
 | Review / Merge | #57 | Audit delivered prototype against Issue criteria; Surface stays stopped. Prototype delivery is not accepted promotion; do not reopen a worker just to repeat completed gates |
@@ -82,6 +88,27 @@ their owners. Add review items only for material changes; no duplicate task grap
 ## 1. Inquiry Desk and Merge Ownership
 
 ### Subjective (User)
+
+2026-10-03 12:56 UTC, English paraphrase of the explicit human request relayed
+by inquiry desk `019ebfae-06be-7b71-974a-b97505daed4a`: add an issue-audit worker
+to examine completion and continued need for all open Issues/PRs. Comment and
+close completed or obsolete cases only with evidence; consolidate residual work
+into useful successor Issues and cross-link superseded originals. Examine #59
+first; the user's suspicion that earlier work is complete is not evidence that
+all criteria are met. This is a separate read-only code lane with no Main or
+heavy-test authority. Coordinate one GitHub issue writer with that owner; the
+desk is arranging its isolated launch. Test-suite implementation succeeds the
+completed static audit and does not restart that owner.
+
+2026-10-03 12:50 UTC, English paraphrase of the explicit human request relayed
+by inquiry desk `019ebfae-06be-7b71-974a-b97505daed4a`: launch a dedicated
+test-suite worker to plan from PR #60 / #59 audit evidence and implement test
+deduplication and line-count reductions. Reuse the completed verification
+audit without restarting that owner. The new worker continues independent
+prototype coding; Merge resolves shared-test conflicts and integrates Main.
+Preserve unique boundary coverage and known failures. Accepted test/build
+promotion remains a separate intentional review. The desk is arranging the
+isolated worktree and tmux owner; a launch receipt is still pending.
 
 2026-10-03, English paraphrase of the explicit human workflow change relayed
 by inquiry desk `019ebfae-06be-7b71-974a-b97505daed4a`: implementation lanes may
@@ -1271,3 +1298,70 @@ deletions and focused tests; Core granted its requested O2 acceptance `-j2`
 correctness slot. Comparative timing remains exclusive. Performance reports
 restored-frame scratch leaks in its sanitizer batch and is verifying a separate
 evaluator-only correction; its failed published epoch is not merged or waived.
+
+## 7. Test Suite Implementation Successor
+
+### Subjective (User)
+
+2026-10-03, English paraphrase of the explicit human request via inquiry desk
+`019ebfae`: use PR60/#59 audit evidence to investigate test growth/duplication,
+write the owning plan and implement coverage-preserving code/line reductions.
+Continue independent prototype epochs; Merge resolves conflicts. Accepted
+tests/build require a separate intentional promotion.
+
+### Objective (Code)
+
+Owner initialization `e423cc34` and first focused report `a347cbdb` are freshly
+read/hash-verified. Desk launch receipt confirms GPT-6.1-Sol xhigh, active Goal
+at thread `01a101d2-a538-7c30-864a-7841a2de3896`, worktree `test-suite`, tmux
+`%12`, branch `parallel/test-suite-20261003`, baseline `09ee775`. First two
+prototype test reductions have owner-local passing comparisons; Root comparison
+review and combined controls remain pending. Completed static audit is reused.
+
+### Assessment
+
+Merge routes overlapping Core/SourceIO controls to Job and evaluator/codec
+controls to Performance. Existing AP image-policy migration is historical
+policy retirement, not new deduplication credit. Preserve known failures and
+unique soundness, lifetime, fuel, origin and resume boundaries.
+
+### Plan
+
+Use the one work list in the
+[owning plan](2026-10-03-TEST-SUITE-DEDUPLICATION-WORKER-PLAN.md).
+Merge reviews frozen code, distinct coverage and old/new evidence before
+integration; publication does not block independent implementation.
+
+## 8. Issue Lifecycle Audit
+
+### Subjective (User)
+
+2026-10-03, English paraphrase of the explicit human request via inquiry desk
+`019ebfae`: examine all open Issues/PRs for completion and necessity; comment
+and close only with evidence. Consolidate useful residuals into successors and
+cross-link/close superseded originals. Assess #59 first rather than assume it
+complete. This is GitHub disposition work, not code or heavy-test authority.
+
+### Objective (Code)
+
+Initialization `a2a07c3b`, consumed writer receipt `50592d53` and concrete
+proposal `2e8df914` are freshly read/hash-verified. Desk launch confirms active
+GPT-6.1-Sol xhigh Goal at thread `01a101d5-ab2f-7241-ab7e-f4a75e180327`, worktree
+`issue-audit`, tmux `%14`, branch `parallel/issue-audit-20261003`. Its fresh
+reported snapshot is ten open Issues, zero open PRs; GitHub dispositions are
+not yet independently verified by Root.
+
+### Assessment
+
+Issue-audit is the sole disposition writer; Merge stops concurrent Issue
+mutations and supplies current evidence. A proposed C-backend successor may
+retain separate source-semantic/native-target residuals and the existing owner.
+Superseded closure must not claim remaining work implemented. No accepted #57
+policy decision or strict-reload waiver has been granted.
+
+### Plan
+
+Use the one work list in the
+[owning plan](2026-10-03-ISSUE-LIFECYCLE-CONSOLIDATION-WORKER-PLAN.md).
+Verify concrete comments, links and issue states at the owner handoff; retain
+uncertain required work open. Do not restart the completed static audit.

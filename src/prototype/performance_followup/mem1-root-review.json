@@ -1,0 +1,61 @@
+{
+  "reviewed_at_UTC": "2026-10-03 13:09 UTC",
+  "Main_revision": "c2bab35b2c1cabb4a3266341d4f7719634e8f9ae",
+  "worker_notice_sha256": "3e51fc6683d30113e7f4aefcfd114b1ce998f7cd5301622a0c78ba42f9afa91e",
+  "diagnostic_manifest_sha256": "9f88231de97ef25205a69a85bafbec6befabaea7140f14fe401ab92ae7fb95d3",
+  "all_40_evidence_hashes_verified": true,
+  "producer_source128_manifest_sha256": "73fa86c94b805b768d2c8493ce6f6a46c51983e556974c4920d805b59eefc743",
+  "samples": [
+    {
+      "steps": 100000000,
+      "pending_WHNF": 281,
+      "completed_WHNF": 1681,
+      "machine_arena_capacity_bytes": 1420427264,
+      "all_arena_capacity_bytes": 1496855472,
+      "index_capacity_bytes": 7884800
+    },
+    {
+      "steps": 180000000,
+      "pending_WHNF": 67,
+      "completed_WHNF": 1977,
+      "machine_arena_capacity_bytes": 1685012480,
+      "all_arena_capacity_bytes": 1769812912,
+      "index_capacity_bytes": 9981952
+    },
+    {
+      "steps": 183507626,
+      "pending_WHNF": 0,
+      "completed_WHNF": 2044,
+      "machine_arena_capacity_bytes": 0,
+      "all_arena_capacity_bytes": 87503792,
+      "index_capacity_bytes": 9981952
+    }
+  ],
+  "Root_review": "Read observer against actual DWARF; graph/index aliases deduplicated by address. Raw inferior output matches pending/pending/DONE. Sampled transient evaluator arenas dominate observed retained allocation at the two cuts.",
+  "candidate": {
+    "notice_sha256": "6062165c73133951ded695a8241db499c04d179d1dc9a163d7782af8dc0f1a5f",
+    "patch_sha256": "698e97e2ae5d4f078346e3f044ae17180c3a191e35d89ff8c9a42ce3f064621b",
+    "comparison_sha256": "02f447d97c72a813364c0701c0a6ba5d0d5b1c2a6ecc6acf0bda90f15c02ff4b",
+    "source128_manifest_sha256": "e4da33b523e918333bc17eab5242c3cf0c730dc8fd06052aaffca2f21e4a4e79",
+    "Root_verified_only_eval_c_h_change": true,
+    "all_126_other_runtime_files_exact": true,
+    "Root_recomputed_capacity_deltas": true,
+    "at_180M_all_arena_capacity_bytes": 897168304,
+    "net_arena_capacity_delta_bytes": -872644608,
+    "at_180M_machine_capacity_bytes": 812318720,
+    "extra_memo_arena_capacity_bytes": 49152,
+    "extra_machine_pointer_bytes": 8,
+    "aligned_WHNF_extent_delta_bytes": 16,
+    "index_groups_and_shared_payloads_equal": true,
+    "pending_completed_WHNF_counts_equal": true,
+    "qualification": "Worker focused four controls0; broad, fresh-process and sanitizer qualification live; runtime not task-published or Main-integrated.",
+    "Root_code_review": "Retire after callback returns; current popped frame cannot be reused by a reentrant callback before retirement. Declined head result2 retains its frame; active closures/arguments are not recycled."
+  },
+  "coordination": "Performance owns evaluator-frame reuse. Job owns separate Synthesis/typed scheduling-retention inspection; existing free_waiters found, no competing pool.",
+  "limitations": [
+    "Selected-cut allocator capacity is not exact peak, semantic live state, cumulative allocation or process RSS.",
+    "Nested typed state, unindexed malloc arrays, allocator metadata/slack not fully enumerated.",
+    "No new wall/RSS or actual speed/memory success claim; matched cost needs exclusive slot.",
+    "Original observer setup errors, strict3 and original sanitizer failures preserved."
+  ]
+}
