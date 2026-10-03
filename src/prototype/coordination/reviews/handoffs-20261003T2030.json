@@ -1,0 +1,165 @@
+{
+  "review_UTC": "2026-10-03T20:34:18.087877+00:00",
+  "Main_revision": "81f76b322a4464e61cf7218764c64573a6f60d7c",
+  "verification_kind": "Fresh read-only hash/raw handoff review; no fresh runtime qualification of these three candidates",
+  "E14": {
+    "exact23_freeze": {
+      "sha256": "eb2b270e2c6fbb7641e1193f9a9668811ffafe36e4414cd31a2dc378b6f5914e",
+      "records": 22,
+      "pins_verified": true,
+      "historical_revision": null,
+      "changed_live_paths_verified_at_revision": []
+    },
+    "raw_input_manifests": [
+      {
+        "name": "tested_sources.sha256",
+        "sha256": "7d40b557795453056530a683d52ffe0060de4a7b2bb2a1f18958ef16838d39d9",
+        "records": 156,
+        "pins_verified": true,
+        "historical_revision": null,
+        "changed_live_paths_verified_at_revision": []
+      },
+      {
+        "name": "parent_sources.sha256",
+        "sha256": "871927b0aca0f02da86a2680c294a89f7caed57b940adffdf3786ee83bae545e",
+        "records": 156,
+        "pins_verified": true,
+        "historical_revision": null,
+        "changed_live_paths_verified_at_revision": []
+      },
+      {
+        "name": "overlay_inputs.sha256",
+        "sha256": "d10599a15d4663375794880def29dfe9ef814a475fa73209830088f06039942b",
+        "records": 469,
+        "pins_verified": true,
+        "historical_revision": null,
+        "changed_live_paths_verified_at_revision": []
+      },
+      {
+        "name": "supplemental_inputs.sha256",
+        "sha256": "046261dae872cf6b3422a300d9a841c05b75e9d3e17054de8715c2ba938b96d1",
+        "records": 56,
+        "pins_verified": true,
+        "historical_revision": null,
+        "changed_live_paths_verified_at_revision": []
+      },
+      {
+        "name": "census_inputs.sha256",
+        "sha256": "904037c6e9bb80125f3924ab45124953d0a587f17746ea7dafb033aa85ea2b45",
+        "records": 9,
+        "pins_verified": true,
+        "historical_revision": null,
+        "changed_live_paths_verified_at_revision": []
+      }
+    ],
+    "raw_reports": [
+      {
+        "gate": "build",
+        "exit": 0,
+        "sha256": "6ff3ea64774771236e623f563e7ef6422654d505fb14b0b285b22b5ed0774b06"
+      },
+      {
+        "gate": "synthesis",
+        "exit": 0,
+        "sha256": "c500145c76c988830cfbdc1160ad934e4662123bd2d058c1f2e5fd554499ff8f"
+      },
+      {
+        "gate": "build",
+        "exit": 0,
+        "sha256": "17b367b3017d790ff5fba64b081ec7a71314806d7ba72afd2e2d1943e654e1e2"
+      },
+      {
+        "gate": "synthesis",
+        "exit": 0,
+        "sha256": "c500145c76c988830cfbdc1160ad934e4662123bd2d058c1f2e5fd554499ff8f"
+      },
+      {
+        "gate": "broad",
+        "exit": 0,
+        "sha256": "b355788ab9e289ae7c9597bfa066c51299a272c352ae316a01319d10a82f73bd"
+      },
+      {
+        "gate": "baseline-C-eight-scripts",
+        "exit": 0,
+        "sha256": "3139ecb8d1d29db9207393b43896bd9b37e3f408db9ba8226e95a1489b50a753"
+      },
+      {
+        "gate": "strict-public-original-three",
+        "exit": 1,
+        "sha256": "07b997fd496e73537979ce96e7273ed9b5e3c3d6d8d4d5b72f0ca159ea08206c"
+      },
+      {
+        "gate": "census-build",
+        "exit": 0,
+        "sha256": "e0a587ba2d15703e11b408a31e8df06049871cd916e6d2cc0ca4e9d3cbc9cfd8"
+      },
+      {
+        "gate": "census-build",
+        "exit": 0,
+        "sha256": "4546944722a126d4d6717ca3519e0ca5a0675a2391c7f3dad1f2188ae0fa70e7"
+      }
+    ],
+    "private_reconstruction": "/tmp/a-program-merge-e14-publication-20261003 on published E13 task7425ccb",
+    "assessment": "FOLD input0 owns the normalized checked/pending pair. Borrowing it removes a duplicated pair; current E13 full synthesis/pending sharing/lifetime and persistence still require fresh Root qualification. Worker strict1 original3/all52/full TSV exact frozen E13; no current-Main or actual cost claim",
+    "publication_or_integration": false
+  },
+  "C15": {
+    "exact8_snapshot": "f6eb5f145a96829b42245952e3841c5b62a68c7e624e8a45d9d0269f756186a0",
+    "manifest_sha256": "17a4bec0acf8b4f6eb8be4c65c47615a7ac8a737c858a49c11889f5cedcc7bec",
+    "qualified184_inputs": {
+      "sha256": "2e8ff68a532bb60ff07e9f762d7cdd2bd49fe2c8bbd92b39e3c7ff87ee66cafa",
+      "records": 184,
+      "pins_verified": true,
+      "historical_revision": "e9d74f70d33f1830f05a5a04cd3d05f8a01467ed",
+      "changed_live_paths_verified_at_revision": [
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/link/driver.c",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/link/plan.c",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/link/plan.h",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/lower/representation.c",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/lower/representation.h",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/lower/scalar.c",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/lower/scalar.h"
+      ]
+    },
+    "raw934_outputs": {
+      "sha256": "c3cad7fbe8c9b4a89931e2327b0be666adb5fc3f544ab7e757233e7c3ff61186",
+      "records": 934,
+      "pins_verified": true,
+      "historical_revision": null,
+      "changed_live_paths_verified_at_revision": []
+    },
+    "worker_results": "O2 and client/source SAN99 expected rows each; sixteen product pairs/both header orders/two consumers/loaded provider lifetime",
+    "assessment": "C16 live backend changes excluded; each changed qualified input matches frozen C14 task blob exactly. Snapshot/client uses generated scalar status-output calls as synchronous callbacks and unloads provider only after calls. Caller interpretation/totality/status-success/lifetime remain preconditions. Fresh current E13 target qualification pending; no source-policy defect inferred.",
+    "limits": "Clients and each source-product body compiled at O1 ASan/UBSan/leaks; emitted object/archive/shared bodies and qualified producer/backend/Core checker remain O2.",
+    "C16_probe": "Release consumed; typed-view4985 only, separately versioned binary lowering not yet delivered",
+    "publication_or_integration": false
+  },
+  "MEM4": {
+    "exact11_manifest": {
+      "sha256": "ddba9930795c80d80c3d8dcc84bd6e4e7ffe3ad4868d4efbb0ea83af7cf35930",
+      "records": 10,
+      "pins_verified": true,
+      "historical_revision": null,
+      "changed_live_paths_verified_at_revision": []
+    },
+    "private1125": {
+      "sha256": "f12c573323109c496de1b1f399eb958672b5ce46f1d32012da04700976b29f1d",
+      "records": 1125,
+      "pins_verified": true,
+      "historical_revision": null,
+      "changed_live_paths_verified_at_revision": []
+    },
+    "worker_results": "Focused684/0,67cuts,268 O2+268 SAN cross-reads,targeted22/0,public52/full TSV exact, strict3 retained; six other checkpoints/history28 inherited",
+    "assessment": "Checked cursor consumes required caller arguments once; continuation is copied before replacing machine spine. Empty branch uses callee-owned immutable spine; nonempty branch existing apply. Fresh Root lifetime/error/persistence qualification pending; source5->2 link advances is not measured time. Root MEM3 costs exclude MEM4.",
+    "publication_or_integration": false,
+    "release_consumed": true
+  },
+  "notices": {
+    "job-evidence/epoch14-ready.txt": "485dafe48a56e8c6bdf3a1a2866f08652e4fae8a7c87c795f4ca58e3c646798c",
+    "c-backend/c-backend-epoch15-ready.txt": "8d73a87edf3951eb469269f2fdf76b1667d24131fdacd6f6c89d7c383c32fa25",
+    "c-backend/c-backend-c15-release-c16-probe.txt": "b0f9b55173221389f36e0fb84091902f19a4af2d815c1871b3215559efb77563",
+    "performance/performance-mem4-fold-cursor-ready-20261003.txt": "f642787b0414d84f18763fc1b0004afbb032b1aaffa3bdf04f8dda1f54e93430"
+  },
+  "completed_owners_remain_stopped": true,
+  "accepted_promotion_or_Goal_completion": false
+}

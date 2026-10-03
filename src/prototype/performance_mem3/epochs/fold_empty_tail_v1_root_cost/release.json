@@ -1,0 +1,14 @@
+{
+  "grant_id": "MEM3FOLD-E12-ROOT-20261003T202000Z-600",
+  "terminal": true,
+  "collector_exit": 0,
+  "all36_complete_and_expected_fuel": true,
+  "no_heavy_children": true,
+  "release_UTC": "2026-10-03T20:21:15.203216+00:00",
+  "release_targets": [
+    "performance%1",
+    "c-backend%0",
+    "job-evidence%4"
+  ],
+  "bounded_window_ended_early": true
+}

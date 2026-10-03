@@ -1,0 +1,6 @@
+lane=c-backend epoch=C15 commit=live-on-e9d74f70d33f1830f05a5a04cd3d05f8a01467ed
+window=Root proposed Fold-only matched36 2026-10-03 20:20-20:30 UTC; scheduling request consumed, no launch approval inferred.
+boundary=2026-10-03 20:06:26 UTC: focused serial C15 O2/SAN both terminal exit0, no live C15 build/runtime children in fresh process inspection. No further heavy command needed for this handoff; light source/docs/hash review continues. Heavy work will remain drained for this specific window until Root release/deadline; no blanket implementation hold.
+manifest=/tmp/a-program-c-backend-epoch15-callback-modules-20261004/drained.json plus o2-status.json/san-status.json; final exact handoff follows light freeze.
+gates=Each phase sixteen product pairs/both header orders, two consumers, 800 Core comparisons/client, 20 source observations; loaded-provider lifetime and three source/object/whole-archive duplicate-symbol refusals pass.
+failures=No unresolved focused gate failure or rescheduling need. No comparative timing/RSS workload or broad C run. C14 immutable snapshot retained; native Acc/QuickSort incomplete.

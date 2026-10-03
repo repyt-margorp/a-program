@@ -1,0 +1,24 @@
+{
+  "grant_id": "MEM3FOLD-E12-ROOT-20261003T202000Z-600",
+  "grant_sha256": "b6202666296580660d492288435a56d4220b85299bc0dfde3bb7f67a10284b93",
+  "executor": "Root",
+  "actual_launch_UTC": "2026-10-03T20:20:06.412897+00:00",
+  "hard_deadline_UTC": "2026-10-03T20:30:00+00:00",
+  "remaining_absolute_seconds": 593.587103,
+  "maximum_seconds": 591,
+  "original_sha256": "4dab6b887e69aa60e2ab8f429f5ae503473414e25cdecf62c0fe79d3c98cf510",
+  "derived_sha256": "9af5494dba1528b01a4f7f4820c50f579ee9234e34b431bac7de966335590520",
+  "only_allowed_changed_key": "maximum_seconds",
+  "all289_pins_before": true,
+  "no_other_workload_build_children_before": true,
+  "collector_pid": 1995354,
+  "collector_process_group": 1995354,
+  "argv": [
+    "python3",
+    "/tmp/ap-performance-measure-gnu-time-e6-20261003.py",
+    "/tmp/a-program-merge-mem3-fold-root-cost-20261003/configuration-derived.json",
+    "/tmp/ap-performance-mem3-fold-root-exclusive-samples-20261003",
+    "--granted-slot",
+    "MEM3FOLD-E12-ROOT-20261003T202000Z-600"
+  ]
+}

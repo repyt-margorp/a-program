@@ -1,0 +1,211 @@
+{
+  "measurements_sha256": "bbc8d86076804bc3662ba08acf4e712cba92cd16a1116043f7fbb8d19a8aebc7",
+  "all289_pins_exact": true,
+  "all36_raw_files_and_expected_fuel_exact": true,
+  "all36_GNU_values_and_TSV_recomputed_exact": true,
+  "rows": [
+    {
+      "case": "imported-local-sorted",
+      "fuel": 761848,
+      "wall": {
+        "baseline_median": 0.632975401,
+        "candidate_median": 0.626371936,
+        "change_percent": -1.0432419632054657,
+        "baseline_range": [
+          0.60233606,
+          0.638931004
+        ],
+        "candidate_range": [
+          0.624439022,
+          0.643051661
+        ],
+        "ranges_overlap": true
+      },
+      "RSS": {
+        "baseline_median": 170204,
+        "candidate_median": 170044,
+        "change_percent": -0.09400484124932884,
+        "baseline_range": [
+          169932,
+          170636
+        ],
+        "candidate_range": [
+          169788,
+          170044
+        ],
+        "ranges_overlap": true
+      }
+    },
+    {
+      "case": "list",
+      "fuel": 1915,
+      "wall": {
+        "baseline_median": 0.006182578,
+        "candidate_median": 0.00815924,
+        "change_percent": 31.971485034236522,
+        "baseline_range": [
+          0.00484144,
+          0.006971196
+        ],
+        "candidate_range": [
+          0.006476283,
+          0.008207269
+        ],
+        "ranges_overlap": true
+      },
+      "RSS": {
+        "baseline_median": 2560,
+        "candidate_median": 2208,
+        "change_percent": -13.749999999999996,
+        "baseline_range": [
+          2540,
+          2764
+        ],
+        "candidate_range": [
+          2156,
+          2504
+        ],
+        "ranges_overlap": false
+      }
+    },
+    {
+      "case": "trees16",
+      "fuel": 7608511,
+      "wall": {
+        "baseline_median": 0.225419885,
+        "candidate_median": 0.222070819,
+        "change_percent": -1.4857012281769166,
+        "baseline_range": [
+          0.220976102,
+          0.231858238
+        ],
+        "candidate_range": [
+          0.219219133,
+          0.224830818
+        ],
+        "ranges_overlap": true
+      },
+      "RSS": {
+        "baseline_median": 49868,
+        "candidate_median": 49084,
+        "change_percent": -1.5721504772599704,
+        "baseline_range": [
+          49860,
+          49896
+        ],
+        "candidate_range": [
+          48776,
+          49352
+        ],
+        "ranges_overlap": false
+      }
+    },
+    {
+      "case": "trees4",
+      "fuel": 2318248,
+      "wall": {
+        "baseline_median": 0.079364676,
+        "candidate_median": 0.08131465,
+        "change_percent": 2.4569797273537697,
+        "baseline_range": [
+          0.078979345,
+          0.082140986
+        ],
+        "candidate_range": [
+          0.075790368,
+          0.084290459
+        ],
+        "ranges_overlap": true
+      },
+      "RSS": {
+        "baseline_median": 20676,
+        "candidate_median": 20600,
+        "change_percent": -0.3675759334494044,
+        "baseline_range": [
+          20556,
+          20696
+        ],
+        "candidate_range": [
+          20592,
+          20812
+        ],
+        "ranges_overlap": true
+      }
+    },
+    {
+      "case": "trees400",
+      "fuel": 183507626,
+      "wall": {
+        "baseline_median": 4.989140576,
+        "candidate_median": 4.917873762,
+        "change_percent": -1.4284386842660757,
+        "baseline_range": [
+          4.987111499,
+          5.010791594
+        ],
+        "candidate_range": [
+          4.912042924,
+          4.946600309
+        ],
+        "ranges_overlap": false
+      },
+      "RSS": {
+        "baseline_median": 976244,
+        "candidate_median": 957552,
+        "change_percent": -1.9146852631104494,
+        "baseline_range": [
+          975988,
+          976744
+        ],
+        "candidate_range": [
+          957368,
+          957564
+        ],
+        "ranges_overlap": false
+      }
+    },
+    {
+      "case": "trees64",
+      "fuel": 29780510,
+      "wall": {
+        "baseline_median": 0.757651797,
+        "candidate_median": 0.764451959,
+        "change_percent": 0.8975312969527582,
+        "baseline_range": [
+          0.754285771,
+          0.766993325
+        ],
+        "candidate_range": [
+          0.749554096,
+          0.776837183
+        ],
+        "ranges_overlap": true
+      },
+      "RSS": {
+        "baseline_median": 165712,
+        "candidate_median": 162612,
+        "change_percent": -1.8707154581442453,
+        "baseline_range": [
+          165692,
+          166096
+        ],
+        "candidate_range": [
+          162528,
+          163028
+        ],
+        "ranges_overlap": false
+      }
+    }
+  ],
+  "complete": true,
+  "limits": [
+    "Same AP source/proofs/helpers for each pair; includes parsing/synthesis/conversion and import-source work.",
+    "Fresh sequential processes, three repetitions; warm filesystem, no cache flush.",
+    "GNU time peak RSS KiB of wrapped command is not summed process memory; startup/allocator/kernel effects included.",
+    "Small list/startup and near-zero clock resolution may dominate; incomplete/timeout samples are censored.",
+    "No native cross-system reruns, universal ranking, accepted-only cost claim or other extra workload.",
+    "Fold empty-tail probe traverses the caller prefix; CPU benefit and peak-RSS effect are unmeasured before the grant.",
+    "LocalSorted cumulative totals vary; both binaries call Fold179 times, bounding direct copy deletion at5728 aligned bytes there. Whole-program allocation delta remains unattributed."
+  ],
+  "initial_analysis_setup_failure": "Initial aggregation assumed candidate label; actual pinned label fold-empty-tail selected, no sample/command/fuel change."
+}

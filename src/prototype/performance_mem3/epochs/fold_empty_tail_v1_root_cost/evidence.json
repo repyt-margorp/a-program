@@ -1,0 +1,16 @@
+{
+  "review_UTC": "2026-10-03T20:29:30.864815+00:00",
+  "Main_source_publication": "9d5cda2b5007ef2a222e5083ce4de2f49ad70ce0",
+  "task_source_publication": "86a069946ae450458003b0b1bfb8e238876df71a",
+  "source_epoch_manifest_sha256": "6afd52f38919f91b172f518952374f451a090c093b3dd413e2c4a06f1bede635",
+  "measurement_source_epoch": "Current qualified E12 plus MEM1 V3/MEM2 IADT in both; only MEM3 computation.c differs; E13/E14/MEM4/C15 excluded",
+  "original_configuration_sha256": "4dab6b887e69aa60e2ab8f429f5ae503473414e25cdecf62c0fe79d3c98cf510",
+  "derived_configuration_sha256": "9af5494dba1528b01a4f7f4820c50f579ee9234e34b431bac7de966335590520",
+  "collector_sha256": "9c50c62d1ddc49e85c88abe94f95162c85096165afcdff7cd945bb9b9a004b71",
+  "launch_and_release": "Root only20:20:06 to20:20:46, explicit release20:21:15; no deadline force",
+  "qualification": "289 pins before/after; 36 expected charged fuels; 72 raw logs and GNU metrics plus TSV recomputed exact",
+  "assessment": "Tree400 bounded medians wall4.989140576->4.917873762s (-1.43%), RSS976244->957552KiB (-1.91%); both ranges disjoint. Tree16/64 RSS ranges disjoint. Other five timing ranges overlap. Tree4/LocalSorted RSS overlap; startup List is not reliable scaling evidence. Three repetitions/warm filesystem include parsing/synthesis/conversion/import work, not a universal or accepted-only ranking. Whole-program LocalSorted allocation attribution remains unresolved.",
+  "original_strict3_unwaived": true,
+  "new_exclusive_grant": false,
+  "accepted_promotion_or_Goal_completion": false
+}

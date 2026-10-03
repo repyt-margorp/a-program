@@ -1,0 +1,31 @@
+{
+  "grant_id": "MEM3FOLD-E12-ROOT-20261003T202000Z-600",
+  "executor": "Root only, existing pinned collector on behalf of Performance",
+  "authority": "Existing user-authorized matched performance measurement and Root exclusive-slot coordination; worker acknowledgements are operational evidence, not new human approval",
+  "not_before_UTC": "2026-10-03T20:20:00Z",
+  "hard_deadline_UTC": "2026-10-03T20:30:00Z",
+  "configuration": "/tmp/ap-performance-mem3-fold-cost-request-20261003/configuration-proposed.json",
+  "configuration_sha256": "4dab6b887e69aa60e2ab8f429f5ae503473414e25cdecf62c0fe79d3c98cf510",
+  "collector": "/tmp/ap-performance-measure-gnu-time-e6-20261003.py",
+  "collector_sha256": "9c50c62d1ddc49e85c88abe94f95162c85096165afcdff7cd945bb9b9a004b71",
+  "measurement_output": "/tmp/ap-performance-mem3-fold-root-exclusive-samples-20261003",
+  "exact_jobs": 36,
+  "all289_input_pins_required": true,
+  "maximum_seconds": 600,
+  "per_run_seconds": 180,
+  "safe_boundary_ack_sha256": {
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/coordination/outbox/performance-fold36-2020-safe-boundary-20261003.txt": "a4d90c8f2e4877221e1a257b515f0840fb37d06d85af76c3f8640ee1b411b073",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/coordination/outbox/c-backend-c15-cost-window-drained.txt": "cdf6277c2e88cfbd151980da302a202b8b48589a6d8594481b0db9e73b48f8ce",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/coordination/outbox/epoch14-fold-window-drained.txt": "73cf4fe5748afe701232def483d4bbb05cfea884050caf8c695fca2074fee76e"
+  },
+  "Root_correctness_report": "/tmp/a-program-merge-e13-current-Main-20261003/Root-results.json",
+  "Root_correctness_sha256": "d71130d7e880a519d97e1eee922af5286e2ddd53ee1b41e95000bcfa731b0fe2",
+  "final_preflight_UTC": "2026-10-03T20:19:29.989755+00:00",
+  "no_heavy_children_at_grant": true,
+  "Performance_targeted22_and_partition_terminal": true,
+  "launch_rule": "Derive ONLY maximum_seconds=min(600,floor(remaining absolute seconds)-2); verify all pins and fresh no-workload preflight again at launch; stop all own children before hard deadline",
+  "worker_grant": false,
+  "new_build_native_extra_workload": false,
+  "release_rule": "Explicitly release all three workers immediately at collector terminal/deadline",
+  "accepted_promotion_or_Goal_completion": false
+}
