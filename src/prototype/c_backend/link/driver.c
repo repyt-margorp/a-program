@@ -71,17 +71,42 @@ static void json_string(FILE *file, const char *value)
 	fputc('"', file);
 }
 
+/* Public names belong to the selected target ABI. Unmatched helper names do
+	* not add definitions; local:* hides runtime and private implementation names. */
+static int shared_symbols(const char *path, const struct pg_c_link_plan *plan)
+{
+	FILE *file = fopen(path, "w");
+	if (!file) return -1;
+	fputs("{\n\tglobal:\n", file);
+	for (size_t i = 0; i < plan->count; ++i)
+		fprintf(file, "\t\tap_export_%s;\n", plan->exports[i].alias);
+	if (plan->lowering == PG_C_NATIVE_DIRECT) {
+		for (size_t i = 0; i < plan->natural_count; ++i)
+			fprintf(file, "\t\tap_arena_%s_destroy;\n", plan->naturals[i].alias);
+		for (size_t i = 0; i < plan->data_count; ++i) {
+			const char *alias = plan->data[i].alias;
+			fprintf(file, "\t\tap_arena_%s_destroy;\n\t\tap_from_%s;\n\t\tap_copy_%s;\n", alias, alias, alias);
+		}
+	}
+	fputs("\tlocal: *;\n};\n", file);
+	int status = ferror(file) ? -1 : 0;
+	if (fclose(file)) status = -1;
+	return status;
+}
+
 static int receipt(const char *path, const struct pg_c_link_plan *plan, const char *script,
 	const char *cc, const char *ar, int trusted, uint64_t spent, const struct pg_c_native_contract *contract)
 {
 	int recursive = contract->recursive;
 	FILE *file = fopen(path, "w");
 	if (!file) return -1;
-	static const char *const products[] = {"source", "object", "archive", "executable"};
+	static const char *const products[] = {"source", "object", "archive", "executable", "shared"};
 	fputs("{\n  \"artifact\": ", file); json_string(file, plan->artifact);
 	fputs(",\n  \"link_script\": ", file); json_string(file, script);
 	fputs(",\n  \"native_script\": ", file); json_string(file, plan->native_script);
 	fputs(",\n  \"product\": ", file); json_string(file, products[plan->product]);
+	if (plan->product == PG_C_SHARED)
+		fputs(",\n  \"shared_library\":\"library.so\",\n  \"shared_visibility\":\"selected-public-api\",\n  \"shared_toolchain\":\"elf-version-script\"", file);
 	fputs(",\n  \"target\": \"host-c11\",\n  \"abi\": ", file); json_string(file, pg_c_abi_name(plan->lowering));
 	fputs(",\n  \"lowering\": ", file); json_string(file, pg_c_lowering_name(plan->lowering));
 	fputs(",\n  \"fallback\": \"reject\",\n  \"runtime_abi\": ", file);
@@ -173,9 +198,9 @@ int pg_c_link_publish(const struct pg_c_link_plan *plan, const char *directory,
 	char *absolute = realpath(staging, NULL);
 	if (!absolute) { rmdir(staging); free(staging); return 2; }
 	free(staging); staging = absolute;
-	enum { SOURCE, HEADER, RECEIPT, RUNTIME, RUNTIME_HEADER, OBJECT, RUNTIME_OBJECT, ARCHIVE, EXECUTABLE, FILES };
+	enum { SOURCE, HEADER, RECEIPT, RUNTIME, RUNTIME_HEADER, OBJECT, RUNTIME_OBJECT, ARCHIVE, EXECUTABLE, SHARED, SYMBOLS, FILES };
 	static const char *const names[] = {"component.c", "component.h", "link.json", "runtime.c", "runtime.h",
-		"component.o", "runtime.o", "library.a", "program"};
+		"component.o", "runtime.o", "library.a", "program", "library.so", "symbols.map"};
 	char *paths[FILES] = {0};
 	int status = 2;
 	for (size_t i = 0; i < FILES; ++i) if (!(paths[i] = path_join(staging, names[i]))) goto done;
@@ -203,7 +228,8 @@ int pg_c_link_publish(const struct pg_c_link_plan *plan, const char *directory,
 	if (emitted) { fprintf(stderr, "C link: cannot lower exports: %s\n", error); status = 4; goto done; }
 	if (runtime && (copy_runtime(names[RUNTIME], paths[RUNTIME]) || copy_runtime(names[RUNTIME_HEADER], paths[RUNTIME_HEADER]))) goto done;
 	if (plan->product != PG_C_SOURCE) {
-		char *compile[] = {(char *)cc, "-std=c11", "-O2", "-c", paths[SOURCE], "-o", paths[OBJECT], NULL};
+		char *compile[] = {(char *)cc, "-std=c11", "-O2", "-c", paths[SOURCE], "-o", paths[OBJECT],
+			plan->product == PG_C_SHARED ? "-fPIC" : NULL, NULL};
 		if (run(compile)) goto done;
 		if (runtime) {
 			compile[4] = paths[RUNTIME]; compile[6] = paths[RUNTIME_OBJECT];
@@ -213,6 +239,13 @@ int pg_c_link_publish(const struct pg_c_link_plan *plan, const char *directory,
 	if (plan->product == PG_C_ARCHIVE) {
 		char *archive[] = {(char *)ar, "rcs", paths[ARCHIVE], paths[OBJECT], runtime ? paths[RUNTIME_OBJECT] : NULL, NULL};
 		if (run(archive)) goto done;
+	}
+	if (plan->product == PG_C_SHARED) {
+		if (shared_symbols(paths[SYMBOLS], plan)) goto done;
+		char *link[] = {(char *)cc, "-shared", paths[OBJECT], "-o", paths[SHARED],
+			"-Xlinker", "--version-script", "-Xlinker", paths[SYMBOLS],
+			runtime ? paths[RUNTIME_OBJECT] : NULL, NULL};
+		if (run(link)) goto done;
 	}
 	if (plan->product == PG_C_EXECUTABLE) {
 		char *link[10] = {(char *)cc, paths[OBJECT]};

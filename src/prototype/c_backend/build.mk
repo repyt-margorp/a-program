@@ -12,6 +12,10 @@ $(BUILD)/a-to-c: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(wildcar
 check-c-link: $(BUILD)/a-to-c $(BUILD)/pointer-check
 	bash $(C_BACKEND)link/check.sh $(BUILD)/a-to-c $(BUILD)/pointer-check
 
+.PHONY: check-c-shared
+check-c-shared: $(BUILD)/a-to-c $(BUILD)/pointer-check
+	bash $(C_BACKEND)shared/check.sh $(BUILD)/a-to-c $(BUILD)/pointer-check
+
 .PHONY: check-c-scalar
 check-c-scalar: $(BUILD)/a-to-c $(BUILD)/pointer-check $(BUILD)/c_scalar_test
 	bash $(C_BACKEND)lower/check.sh $(BUILD)/a-to-c $(BUILD)/pointer-check $(BUILD)/c_scalar_test

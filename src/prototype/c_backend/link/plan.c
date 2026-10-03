@@ -139,8 +139,8 @@ int pg_c_link_read(struct pg_c_link_plan *plan, const char *path, size_t *line, 
 			target = 1;
 		} else if (!strcmp(args[0], "product")) {
 			if (product) goto done;
-			static const char *const kinds[] = {"source", "object", "archive", "executable"};
-			for (size_t i = 0; i < 4; ++i) if (!strcmp(args[1], kinds[i])) {
+			static const char *const kinds[] = {"source", "object", "archive", "executable", "shared"};
+			for (size_t i = 0; i < 5; ++i) if (!strcmp(args[1], kinds[i])) {
 				plan->product = (enum pg_c_product)i;
 				product = 1;
 			}
@@ -162,7 +162,7 @@ int pg_c_link_read(struct pg_c_link_plan *plan, const char *path, size_t *line, 
 	if ((plan->enum_count || plan->data_count || plan->natural_count) && plan->lowering != PG_C_NATIVE_DIRECT) goto done;
 	*error = "invalid product/entry combination";
 	if (plan->product == PG_C_EXECUTABLE && !entry) goto done;
-	if ((plan->product == PG_C_OBJECT || plan->product == PG_C_ARCHIVE) && entry) goto done;
+	if ((plan->product == PG_C_OBJECT || plan->product == PG_C_ARCHIVE || plan->product == PG_C_SHARED) && entry) goto done;
 	if (plan->native_script && plan->product != PG_C_EXECUTABLE) goto done;
 	if (plan->count > SIZE_MAX / sizeof(*plan->exports)) goto done;
 	plan->names = pg_alloc(&plan->storage, plan->count * sizeof(*plan->names));
