@@ -104,6 +104,19 @@ names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
 
+2026-10-03, fresh Root C18 current-E18 qualification: source128efcdeaa4,
+exact13 taskecd659995e867a997cec0f48ec3d1fe61ea16036 pushed/remote verified. Rebuilt
+backend/Core predicate controls plus native-module103 and parent predicate69
+expected rows each pass O2 and client/source SAN. All103 module rows match
+(96zero/seven expected compiler-one), sixteen product pairs, both header orders
+and eight loaded-provider clients per phase share the same93 finite source
+observations. All pins remain exact. Independently hashed146 retained inputs
+and2082 raw worker files are historical E8 evidence; initial omitted imports,
+imported-name selection and wrong leaf-depth expectation remain retained.
+No emitter, ABI implementation, producer or schema change. Only Goal provenance
+is reconciled for Main; other12 frozen task files are byte exact.
+[Root C18 receipt](../src/prototype/c_backend/verification/core-epoch18.json).
+
 2026-10-03, fresh Root C17 current-E17 qualification: source1280a15914b,
 exact19 taskd39632b8adc277aa65a5a23669ca6b99d3663e33 is pushed/remote verified. Rebuilt backend/Core
 controls pass native-predicate69, binary48 and unary39 expected rows each in
@@ -391,6 +404,7 @@ Current issue status (2026-10-04 local; detailed pins stay in linked epoch plans
 | #61 ordinary generated callback modules, C15 | Parent `e9d74f70` plus three new provider/adapter/harness files, 231 lines; existing callback ABI unchanged, exact8 snapshot. | Worker E8: O2/SAN99 each; 16 product pairs, both header orders, 32 linked +8 loaded-provider clients/phase, 800 Core comparisons/client, source20 and three duplicate refusals pass. Fresh Root E14 source128abedf677: O2/client-source SAN99+99 match with unchanged input pins. | Exact8 taskba5d39d/prototype Maind219fca pushed/remote exact. C14 immutable snapshot preserved. | Valid provider success and synchronous context/code lifetime required; SAN covers clients/source bodies only. No general failure propagation, escaping ownership or nominal exchange. | Preserve qualified C15; continue bounded admitted native/ordinary-C obligations, with Acc/QuickSort open. |
 | #61 bounded binary callback inputs, C16 | Parent `ba5d39d` plus target-only edits: separate `c_callback2_v1`/`callback2_direct_v1`, fixed unary/binary same-width Pi contract, flat C signatures and old unary binary refusal4; seven implementation files +66/-21. | Worker E8 O2/client-source SAN48 each; 4000 manual +400 Core comparisons/product, source20, inert emission/header orders; affected unary39/module99+99/I/O19 pass. Initial client sentinel failure retained and fixed without emitter change. | Exact18 taska4a2e98 pushed/remote exact; fresh Root E15 source1283f48e22e binary48+48/unary39each/module99each/shared58each/link/I/O19 pass. Prototype Main0585663 pushed/remote exact. | Caller pure-total interpretation/lifetime; no arity3/mixed-width/boxed/effect/dependent contract, source authority or native Acc completion. | Root reviews C16 snapshot; continue bounded native/ordinary-C work separately. |
 | #61 selected native predicates, C17 | Parent `a4a2e988` + exact19 [handoff](2026-10-04-C-BACKEND-EPOCH17-HANDOFF.md): opt-in Nat32 unary/binary predicates returning selected two-case enums, transactional filtering/partitioning and unambiguous alias names; input191 `4e7c04c2...`. | Worker E8 final O2/client-source SAN69 each: 1365 filters/13650 partition selections +574 Core comparisons per product, source6, inert/shared/alias/refusal controls; affected binary48/unary39/numeric O2+SAN/I/O19+5 pass. Initial target/setup failures retained with stated log limits. | Exact19 taskd39632b8 pushed; this prototype Main integration reconciles only Goal provenance. Fresh Root E17 source1280a15914b predicate69/binary48/unary39 O2+client/source SAN, shared58 O2/link/I/O19+5/numeric pass;76 legacy files exact. | Borrowed pure-total interpretation/lifetime/readable storage and target Nat32/depth/allocation bounds; shared bodies O2. No native Acc/QuickSort, indexed/callable fields or accepted promotion. | Bounded generated native-predicate provider/client composition under existing success/lifetime contracts; route concrete shared-owner gaps through Merge. |
+| #61 generated native predicate modules, C18 | Parent `d39632b8` + separate [handoff](2026-10-04-C-BACKEND-EPOCH18-HANDOFF.md): provider with reversed enum order, two nominal consumers, explicit C tag/array adapters and callback-local arena; existing emitter/ABI unchanged. | Worker E8/frozen C17 backend O2/client-source SAN103 each, 96zero/7expected compiler-one; 32 linked +8 loaded clients/phase, 93 source observations/client, shared-arena transactions and type/symbol refusals. Initial import/export setup and wrong depth expectation retained. Fresh Root current-E18 source128efcdeaa4 module103 and parent69 O2/client-source SAN pass; all pins exact. | Exact13 taskecd65999 pushed; other12 Main files exact, Goal provenance reconciled. No native Acc/QuickSort/full Goal completion. | Provider success, source interpretation and synchronous readable-storage/context/code lifetime required; other products/backend remain O2. Native Acc/QuickSort/full #61 remain open. | C19 candidate: split existing adapters/client into separate C translation units and verify public headers plus linked/loaded products; no new ABI policy. Route concrete shared-owner gaps through Merge. |
 | #61 native Acc/QuickSort (historical #44/#49) | C4 `a3b6bce` pins native refusal; C7-C9 retain it. Applied List resolves only the first representation obligation. No native sorter. | Historical checked/trusted status 4/no product; Root C9 sorting-boundary gate passes. Structural FFTT remains separate. | C4-C9 task/prototype Main published; no native Acc epoch publication. | Indexed SizedList and callable recursive Acc fields remain unsupported; no producer defect established. | Report concrete indexed/callable representation needs through Merge; keep work bounded and downstream. |
 | #61 remaining public contracts (historical #49) | General/boxed callbacks, effects, higher Identity, recursive captures and shared nominal exchange remain explicit limits; C16 advances only fixed borrowed unary/binary scalar inputs. | Local/joint gates verify supported cases and refusals, not general completion. | Historical tasks/prototype Main published; no publication of general missing contracts. | Need bounded justified representation/demand contracts. | Preserve refusals; route shared needs through Merge. |
 
@@ -544,6 +558,19 @@ pinned/current producer images and emitted C/headers match byte-for-byte.
 Evidence and exact publication files are in the [epoch handoff](2026-10-03-C-BACKEND-EPOCH1-HANDOFF.md).
 
 ### Assessment
+
+2026-10-03, Root agent decision: qualify the bounded native provider/two
+consumer module-composition tests. Distinct nominal aliases exchange scalar
+tags and copied finite arrays through explicit ordinary C adapters; no pointer
+type equality or general callback failure protocol is inferred. Each callback
+uses a local arena because its consumer arena is active. Tested provider leaves
+charge no recursive depth. Provider success/pure-total interpretation, readable
+borrowed storage and synchronous context/code/loaded-handle lifetime remain
+external preconditions. SAN covers clients/source-product bodies, while
+producer/backend/Core/object/archive/shared bodies stay O2. Product repeats
+are finite comparisons, not independent properties. Native Acc/QuickSort and
+full #61/Goal completion remain open. Existing Main human requirements and
+Root C17/historical qualification records remain intact; C19 stays separate.
 
 2026-10-03, Root agent decision: qualify C17 as the distinct bounded
 selected Nat32 unary/binary predicate profile returning a selected two-case
@@ -944,6 +971,9 @@ shared IR, checker or image fields. The later 2026-10-03 lane assignment permits
 this target work while Main continues SE1, superseding the earlier AP6 hold.
 
 ### Plan
+
+- [x] C18: freeze exact13 module composition tests; independently qualify on
++  current E18 and publish task/Main prototype with Goal provenance reconciled.
 
 - [x] C17: freeze exact19 selected native predicate profile; independently qualify
   on current E17 and publish task/Main prototype with Goal provenance reconciled.

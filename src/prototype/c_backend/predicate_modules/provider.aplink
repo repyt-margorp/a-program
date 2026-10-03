@@ -1,0 +1,11 @@
+aplink 1
+artifact provider.a
+abi c_native_v1
+target host-c11
+product source
+lowering native_direct_v1
+fallback reject
+nat32 Nat PNat
+enum32 Flag PFlag
+export keep provider_keep
+export choose provider_choose
