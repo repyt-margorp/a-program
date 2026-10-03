@@ -44,8 +44,11 @@ must not be represented as a fresh current-head speed comparison.
 - [x] Build and reproduce named-binding polarity and brace-mode controls.
 - [x] Check performance mechanism claims and benchmark reproducibility limits.
 - [x] Record results and proposed Issue/PR scopes without implementation edits.
-- [ ] Publish two Issues and one documentation-only PR under the follow-up
-  authorization; verify the remote file list and cross-references.
+- [x] Publish [Issue #56](https://github.com/repyt-margorp/a-program/issues/56),
+  [Issue #57](https://github.com/repyt-margorp/a-program/issues/57) and
+  [documentation-only PR #58](https://github.com/repyt-margorp/a-program/pull/58)
+  under the follow-up authorization. Remote file list and cross-references are
+  checked before hand-off; only the three audit Markdown files are included.
 
 ## 2. Function Graph named-binding polarity and brace modes
 
