@@ -3,7 +3,7 @@
 Date: 2026-10-03
 Status: Core coordinates; Job/Evidence, C and performance Goals active; Surface delivered and stopped.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
-Reviewed prototype Main checkpoint: `435d965`; original worker baseline: `2d747cc`.
+Reviewed prototype Main checkpoint: `7b27c4c`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
 changes no implementation or promotion rules.
 Related: [SE1-SE5](2026-09-30-SOLVER-EVIDENCE-DUPLICATION-AUDIT-AND-PLAN.md),
@@ -19,11 +19,30 @@ not the existing owner work lists.
 | 2 | `c-backend`: downstream C design | #44, #49; shared policy #47 | Local-function C epoch integrated; native Acc/QuickSort remains open |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Jointly verified epoch integrated as `f27bd13`; full Goal remains active |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
-| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E1 integrated as `b31d7a5`; later epochs remain separate |
+| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E2 integrated as `7b27c4c`; E3/E4 joint qualification remains separate |
+
+### Current Delivery Status
+
+2026-10-03 Core inspection at `7b27c4c`; owning workers' requested issue-linked
+feedback is being collected. These are deliverables, not issue completion scores.
+
+| Owner / issue scope | Delivered and verified | Not yet delivered / next boundary |
+| --- | --- | --- |
+| Job/Evidence; SE1-SE5 / AP0, related #51/#47 | E1/E2 prototype Main; copied result/export caches removed, E2 joint 384 O2 recipes and 45 sanitizer commands pass | E3/E4 task-published, separate joint gates running; E6 local verification ready; Job/Evidence still exist and three strict reload failures remain |
+| C backend; #44/#49 | C4 transactional array conversion and C5 bounded local functions prototype Main; C5 nine current-producer gates pass | C6 nested value records locally verified, current-producer ten-gate integration pending; native Acc/QuickSort unsupported |
+| Performance; #56, measurement work #51/#52 | Captured-head cleanup prototype Main; E2 common-producer joint qualification complete | E3/E4 owner qualification in progress; no exclusive wall/RSS comparison, cross-system benchmark or #52 completion claimed |
+| Surface; #57 | Delivered prototype integrated; session stopped | Issue-wide closure still requires its recorded remaining criteria; no active worker |
+
 
 ## 1. Core Ownership and Integration
 
 ### Subjective (User)
+
+2026-10-03, English paraphrase of the latest request: implementation appears to
+be running in the workers, but issues are accumulating and progress is hard to
+see. Have each worker write feedback showing which issues have advanced and by
+how much. Core should make their actual progress visible, not just report that
+sessions are active.
 
 2026-10-03, English paraphrase of the latest clarification: after the AIze audit
 is complete, push it and finish that assignment. Then prioritize A Program
@@ -131,6 +150,17 @@ Accepted `src/evidence.*`, `src/iadt.*` and their tests retain unrelated edits.
 
 ### Assessment
 
+Core reporting decision within the existing supervision scope: each active
+worker maintains one concise issue-status table in its owning plan and sends a
+current report now, at material milestones/blockers, and at least every six hours
+of active work. Distinguish implemented, locally verified, jointly verified,
+task-published and Main-integrated; do not invent completion percentages.
+Each row names the issue/subproblem, delivered revision, remaining acceptance
+criteria, blocker and next concrete epoch. Routine progress stays in the owning
+plan; notify Core of its location and material changes rather than copying logs.
+Core consolidates those reports here, separately from issue closure. A delivered
+prototype epoch does not close an issue or imply accepted-source promotion.
+
 User-selected replacement assignment: Core coordinates and reviews; the single
 Job/Evidence implementation owner moves to `job-evidence`. Core must not edit
 the same implementation concurrently. Separate worktrees prevent accidental
@@ -211,6 +241,8 @@ findings and proposed repairs stay in its audit, not this implementation work li
 - [ ] Review worker notifications, diffs, tests and blockers and issue directions;
   record material decisions in the owning SOAP plan. Six-hour checks provide the
   requested fallback if notification delivery fails.
+- [ ] Obtain current issue-linked feedback from all three active workers, then
+  keep their concise status tables current at milestones and six-hour checks.
 - [ ] Review cross-owner findings; transfer file ownership for an explicit epoch
   when needed, rather than permanently excluding a necessary large refactor.
 - [ ] Integrate each completed epoch, run relevant combined regression gates,
@@ -490,9 +522,16 @@ Keep the failed delta/report as history and verify corrected exact bytes before
 task-branch publication; do not classify this report-assembly error as a runtime bug.
 The corrected v2 delta subsequently passes Core's index-level hash check for all
 five canonical and eleven lean-manifest records, including exact TSV bytes. E2
-is now published as `44b0389` on its task branch, not integrated into Main.
-Performance owns the newly assigned E2/current-producer joint gates; no E2
-joint-success, wall/RSS speedup or accepted-source promotion is claimed.
+was published as `44b0389` on its task branch. Subsequent E2 joint qualification
+passes all 384 O2 acceptance recipes, 45 sanitizer commands, 23 focused checks,
+140 cross-build readbacks and transport/semantic/history/seven checkpoints.
+Core freshly verified all 2,007 frozen evidence records and reviewed the exact
+canonical borrowing change, then integrated E2 as `7b27c4c`. The same three
+strict reload failures remain failed; two descriptor-ID byte variations do not
+establish cross-process byte identity. The
+[concise joint result](../src/prototype/solver_inputs/joint_verification/e2-broad-summary.json)
+pins the source/evidence hashes. This is prototype integration, not accepted
+promotion, full SE completion or a measured wall/RSS improvement.
 Separate E3 `51c476d` is committed and pushed after one retained remote rejection
 and a successful ordinary retry with independent remote-ref verification. Core
 reviewed inert lexical reconnection, checked-owner barriers and the existing

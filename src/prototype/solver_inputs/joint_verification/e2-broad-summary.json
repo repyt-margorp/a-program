@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-03",
+  "job_epoch": "44b03895a0f7ac51de68a25f2cc68aa97c227b1b",
+  "canonical_parent": "898463e85ef2bcf366b84a6436c510eb32534086",
+  "performance_epoch": "05390513bca302b4a219881994c5bbd69d5b733a",
+  "core_prototype_merge": "7b27c4c6fd947d1f31adaaa1820e6cf9ab64e7ae",
+  "frozen_bundle": "/tmp/ap-performance-current-joint-898463e-44b0389-20261003",
+  "source_manifest": {
+    "records": 128,
+    "sha256": "e615a1e091f6193b40dd9d4cfaeaabc0776e2f775195edea7e28843438846ba2"
+  },
+  "evidence_manifest": {
+    "records": 2007,
+    "sha256": "690363d184c9c2cdef7c051561bf784bc6df3c841c2b51bb638f83c4693b1907",
+    "core_fresh_hash_check_exit": 0
+  },
+  "worker_summary_sha256": "7d483ec3453324236367a0432a112c6cf5848962596f5c8d9018163a93859e91",
+  "terminal_gates": {
+    "O2_acceptance": {"recipes": 384, "failures": 0},
+    "sanitizers": {"build_recipes": 38, "commands": 45, "failures": 0},
+    "O2_focused": {"commands": 23, "failures": 0},
+    "cross_build_readbacks": {"commands": 140, "failures": 0},
+    "artifact_recipes": 41,
+    "artifact_failed_recipes": 1,
+    "transport_semantic_history_all_seven_checkpoints_pass": true,
+    "WHNF_charged_steps": 3014
+  },
+  "unresolved_strict_reload_cases": ["1000:1000", "1600:1600", "1915:0"],
+  "strict_failure_records_equal_E1": true,
+  "same_length_descriptor_id_byte_variations": 2,
+  "cross_process_byte_identity_claimed": false,
+  "historical_setup_and_runtime_failure_evidence_preserved": true,
+  "runtime_delta": {"added": 29, "deleted": 23},
+  "test_delta": {"added": 35, "deleted": 1},
+  "scope": "Reviewed prototype only; existing accepted-source edits excluded",
+  "wall_or_RSS_speedup_claimed": false,
+  "full_worker_goal_or_issue_completion_claimed": false
+}
