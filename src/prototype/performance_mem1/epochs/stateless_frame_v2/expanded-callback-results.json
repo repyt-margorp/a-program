@@ -1,0 +1,37 @@
+[
+  {
+    "name": "parent",
+    "build_argv": [
+      "make",
+      "-f",
+      "/tmp/ap-performance-mem1-gates.mk",
+      "-j1",
+      "OVERLAY=/tmp/ap-performance-mem1-73fa86c9-20261003",
+      "BUILD=/tmp/ap-performance-mem1-73fa86c9-20261003/debug",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2 -g3",
+      "/tmp/ap-performance-mem1-73fa86c9-20261003/debug/frame_retirement_test"
+    ],
+    "build_exit": 0,
+    "test_exit": 0,
+    "test_sha256": "340831c01ab47b49401535d0e53ad1817ca88b61c9fd9ac4ae303d1bc9ae7e73",
+    "test_log_sha256": "6fd2f0515b9b1690e79ca5e43f038066f813d0ab9e2e0aaa4fe103912a4e0623"
+  },
+  {
+    "name": "v2",
+    "build_argv": [
+      "make",
+      "-f",
+      "/tmp/ap-performance-mem1-gates.mk",
+      "-j1",
+      "OVERLAY=/tmp/ap-performance-mem1-stateless-frames-73fa86c9-20261003",
+      "BUILD=/tmp/ap-performance-mem1-stateless-frames-73fa86c9-20261003/debug",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2 -g3",
+      "/tmp/ap-performance-mem1-stateless-frames-73fa86c9-20261003/debug/pointer-check",
+      "/tmp/ap-performance-mem1-stateless-frames-73fa86c9-20261003/debug/frame_retirement_test"
+    ],
+    "build_exit": 0,
+    "test_exit": 0,
+    "test_sha256": "340831c01ab47b49401535d0e53ad1817ca88b61c9fd9ac4ae303d1bc9ae7e73",
+    "test_log_sha256": "6fd2f0515b9b1690e79ca5e43f038066f813d0ab9e2e0aaa4fe103912a4e0623"
+  }
+]

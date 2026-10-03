@@ -1,0 +1,11 @@
+--- a/src/eval.h
++++ b/src/eval.h
+@@ -33,6 +33,8 @@
+ 	int (*dispatch)(struct pg_eval *machine);
+ 	struct pg_graph *output;
+ 	struct pg_eval_frame *frames;
++	/* Retired stateless frames contain no frontier or borrowed callback state. */
++	struct pg_eval_frame *free_frames;
+ 	int head_ready;
+ 	struct pg_eval_task *task;
+ };

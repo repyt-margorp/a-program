@@ -1,0 +1,70 @@
+{
+  "cut": 180000000,
+  "source_parent": "73fa86c94b805b768d2c8493ce6f6a46c51983e556974c4920d805b59eefc743",
+  "source_candidate": "8f6ea298a8d2f7be65c12e5abb756be0ad77a6d41fa4f7794b4781569639fca7",
+  "same_index_counts_capacities": true,
+  "same_shared_payloads": true,
+  "same_pending_completed_whnf_counts": true,
+  "arena_totals": {
+    "capacity_bytes": {
+      "parent": 1769812912,
+      "candidate": 897168304,
+      "delta": -872644608
+    },
+    "used_bytes": {
+      "parent": 1763755728,
+      "candidate": 895886272,
+      "delta": -867869456
+    },
+    "block_count": {
+      "parent": 108010,
+      "candidate": 54748,
+      "delta": -53262
+    },
+    "block_header_bytes": {
+      "parent": 3456320,
+      "candidate": 1751936,
+      "delta": -1704384
+    }
+  },
+  "machine_arena": {
+    "parent": {
+      "block_count": 102845,
+      "block_header_bytes": 3291040,
+      "capacity_bytes": 1685012480,
+      "used_bytes": 1679245776
+    },
+    "candidate": {
+      "block_count": 49580,
+      "block_header_bytes": 1586560,
+      "capacity_bytes": 812318720,
+      "used_bytes": 811343616
+    }
+  },
+  "memo_storage": {
+    "parent": {
+      "block_count": 49,
+      "block_header_bytes": 1568,
+      "capacity_bytes": 802816,
+      "used_bytes": 784896
+    },
+    "candidate": {
+      "block_count": 52,
+      "block_header_bytes": 1664,
+      "capacity_bytes": 851968,
+      "used_bytes": 817600
+    }
+  },
+  "overhead": "One8-byte pool pointer per eval; WHNF layout384->392, aligned extent384->400,2044 jobs. Actual memo arena capacity+49152 bytes at this cut. Execution embeds one eval as well.",
+  "limits": [
+    "Selected-cut allocator capacity, not exact peak/live semantic state, cumulative bytes or RSS",
+    "No comparative wall/RSS/speed claim",
+    "Frames retire only after callback return; active frontier and closures remain"
+  ],
+  "qualification": "Expanded six callback controls pass and have exact parent output (13/7/13/7/9/5 charged steps); full v2 O2 running, fresh codecs and sanitizers pending.",
+  "source_rejected_v1": "e4da33b523e918333bc17eab5242c3cf0c730dc8fd06052aaffca2f21e4a4e79",
+  "exact_v1_capacity_and_owner_counters_with_nonnull_state_guard": true,
+  "six_callback_controls_and_parent_output_equal": true,
+  "raw_v2_snapshot_sha256": "312424a14ddb633224e3196cc2b29d99bbad21b098c134a0c2b62b4233fb0293",
+  "original_v1_lifetime_failure_retained": true
+}
