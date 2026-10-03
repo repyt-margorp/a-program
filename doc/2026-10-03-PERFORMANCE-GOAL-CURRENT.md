@@ -79,6 +79,20 @@ separate. No E11/E12 runtime is included.
 
 ### Assessment
 
+2026-10-03 18:42 UTC, Root delegated publication: exact88 cost files task57a94cc
+on source6b0ed93, prototype Main5ad5536 pushed/remote exact. All raw36 equal
+the existing Root raw84, all12 summaries recompute and279 pins remain exact.
+This archives the same completed run; original bytes and interpretations stay
+unchanged. [Publication review](../src/prototype/performance_followup/mem2-cost-publication-root-review.json).
+Root source/raw review of private Fold81c3ad27 verifies focused410/0, cross268
+and subsequent affected18/0 cleanup/codec/callback records; source differs only
+computation.c from MEM2 parent2e87fd84. [Focused review](../src/prototype/performance_followup/mem3-fold-root-review.json).
+No fresh Root runtime pass, READY/source publication or actual Fold cost claim;
+subsequent persistence44 has only existing strict recipe1, full verdict/fuel TSV
+and52 public/28 history images byte-equal MEM2 parent. Finish final qualification/
+census and preserve strict reloads and parent fixture/setup failures.
+No new comparative grant or accepted/default change follows.
+
 2026-10-03 18:22 UTC, Root matched MEM2 cost review supersedes pending costs
 below. The worker's18:00-18:10 grant expired before delivery/launch: launcher1
 refused, zero accepted/censored samples or collector children (notice5a83fe02,

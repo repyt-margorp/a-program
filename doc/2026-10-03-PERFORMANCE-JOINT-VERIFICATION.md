@@ -93,7 +93,8 @@ brief; detailed evidence remains in the linked manifests and reports below.
 | #56: lifetime and allocation attribution | Read-only E6 graph/evaluator ownership inspection; runtime unchanged | Interned terms remain in Program graph until destruction; evaluator/readback scratch frees separately. Both measured variants retain the same arena/index defaults | Findings recorded separately; no new owner implementation or tuning patch | Per-owner RAM and independent arena/index or head/direct timing factors remain unmeasured | Preserve these limits in future agreed cost scope after exact coupled qualification |
 | #56 / MEM1: delete unnecessary work/state for actual memory/time | V1 inline-state and V2 materialized-callback UAF rejected; V3 recycles only stateless captured-head frames after parent cleanup | Root exact128/1944 verified, fresh callback3 O2/SAN0; current-E12 candidate1816/base2064 and exact36 cost samples/expected steps/raw hashes verified, no censored samples | V3 exact18 taskc861728 pushed/remote exact; prototype Maincc69f52 same bytes; cost111/addendum taske561030/Main895ac67 exact, original109 unchanged; accepted/default selection unchanged | Bounded tree400 median wall5.34021->4.92598s, peakRSS1891928->1001764KiB; LocalSorted RSS+492KiB, smallList startup dominated. Strict3 and full Goal/accepted adoption remain open | Exact cost evidence published; integrate current corrected Job layers separately, then continue owned deletions |
 | #56 / MEM2: preserve captured lexical state | Private beta environment elisionc3c91bd3 rejected on qualified V3/E12 source1280deb36a7 | Root verifies exact30 freeze0573b9be and original results; fresh four O2/SAN builds0, fourteen executions reproduce six semantic failures. Parent local/images pass; candidate retained binding becomes unbound, fuel2->1; no sanitizer diagnostics | Root report5ac6c445; no rejected runtime integration or current-parent defect | Public retained closure/configuration contents and lifetime must be preserved; no physical-layout or full-machine checkpoint claim | Direct-IADT no-trailing-argument field-spine lifetime research continues privately; qualify live/restored/retained nodes before reuse |
-| #56 / MEM2: delete copied IADT field spines | Source1282e87fd84/patchb19dd27b; empty-tail immutable fields reused, nonempty tail copies retained | Root all1964/fresh controls0; source/images/fuel exact; replacement36 samples0, raw expected steps/all279 pins verified, no censored rows | Exact9 task6b0ed93/prototype Main6ebf453; raw84 Root cost freeze88c45801 plus separate Root review, accepted/default selection unchanged | Four tree RSS ranges disjoint, tree400 -2.50%; all six time ranges overlap, mixed median times and LocalSorted RSS+24KiB; no clear speed/Goal claim | Expired worker refusal preserved, Root slot released/consumed18:19; qualify separate Fold deletion, no further comparative grant |
+| #56 / MEM2: delete copied IADT field spines | Source1282e87fd84/patchb19dd27b; empty-tail immutable fields reused, nonempty tail copies retained | Root all1964/fresh controls0; source/images/fuel exact; same replacement36 samples0, raw expected steps/all279 pins verified, no censored rows | Source9 task6b0ed93/Main6ebf453; Root raw84 unchanged; worker cost88 task57a94cc/Main5ad5536 raw-identical and12 recomputed summaries exact; accepted/default unchanged | Four tree RSS ranges disjoint, tree400 -2.50%; all six time ranges overlap, mixed medians and LocalSorted RSS+24KiB; no clear speed/Goal claim | Expired worker refusal and freeze-helper field-name failure preserved; Root release consumed18:19; no comparative grant |
+| #56 / MEM3: delete copied captured Fold spine | Private source12881c3ad27 from MEM2parent2e87fd84, only computation.c/patchf6b25d36; reuse unary Return spine only with empty caller tail | Root source/raw inspection verifies worker focused410/0, five result/fuel counts11/15/12/13/11, all67 cuts/cross268, affected18/0 and persistence44 with only existing strict recipe1; full TSV/public52/history28 equal parent | Private, no READY/source publication/Main runtime or fresh Root execution; earlier freezes unchanged | Parent handler fixture/setup failures and strict reloads preserved; final qualification/census pending, no actual RAM/time claim | Finish owner qualification, freeze exact submission and obtain Root runtime review; any matched cost requires a separately scheduled exclusive slot |
 
 Fresh Git inspection verifies HEAD and tracking branch at `0539051`; every
 committed/live file matches the corrective 44-file frozen manifest. Core's exact
@@ -263,6 +264,15 @@ under `/tmp/ap-performance-measurement-e6-preparation-20261003`. The inputs,
 runtime and tests are unchanged; no wall/RSS values were collected.
 
 ### Assessment
+
+2026-10-03 18:42 UTC, Root cost88 publication and private Fold source/raw review:
+[publication receipt](../src/prototype/performance_followup/mem2-cost-publication-root-review.json)
+and [focused evidence review](../src/prototype/performance_followup/mem3-fold-root-review.json).
+Task57a94cc/Main5ad5536 preserve the same raw36, not new measurements. Fold
+focused410/cross268 and affected18 records verify, with remaining qualification
+and census separate from READY and actual cost. Later persistence44 has only
+existing strict recipe1, full TSV/public52/history28 byte-equal parent. No new
+comparative grant.
 
 2026-10-03 18:22 UTC, Root MEM2 cost review supersedes the pending grant below.
 Worker grant18:00-18:10 expired unused; launcher1 refused, zero samples/children,
@@ -685,6 +695,11 @@ epochs remain immutable.
 - [x] Preserve unused expired worker grant; review Root-only replacement slot's
   exact36 samples/expected steps/raw hashes/all279 pins/stopped children, release
   slot and report bounded tree RSS gain/mixed timing separately from census.
+- [x] Publish worker cost88 freeze of the same Root36 samples, verifying raw byte
+  equality, recomputed summaries and input pins; preserve original Root raw84.
+- [ ] Qualify separate Fold empty-tail spine deletion: focused/raw review complete,
+  broader qualification/census, immutable READY and fresh Root runtime review
+  pending; matched cost needs a separate exclusive slot.
 - [ ] Carry the parent Goal's remaining full-performance criteria here: full
   workload/checker qualification, including BendTT where applicable, and honest
   separate owner/timing attribution. Historical parent checkboxes are superseded;

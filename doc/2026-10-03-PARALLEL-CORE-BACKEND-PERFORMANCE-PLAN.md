@@ -87,6 +87,23 @@ and raw84 freeze88c45801 preserve results/refusal. Performance consumed release
 and now prototypes separate Fold spine deletion; no new cost grant. Source9/
 accepted/default selection unchanged; full Goal and Main E11/E12 work remain.
 
+18:42 UTC publication/focused review: cost88 task57a94cc on source6b0ed93 and
+prototype Main5ad5536 are pushed/remote exact. All87 records, raw36 byte-equal
+to Root raw84, recomputed12 summaries and279 pins verify; no new samples.
+Worker index-only publication preserves2011 prior tracked live files and Main
+protected9. [Publication review](../src/prototype/performance_followup/mem2-cost-publication-root-review.json).
+Private Fold source12881c3ad27 differs only computation.c from2e87fd84;
+Root verifies worker focused410/0, all67 cuts/cross268 and affected18/0 records.
+[Focused review](../src/prototype/performance_followup/mem3-fold-root-review.json)
+is source/raw-evidence inspection, not fresh Root execution or READY publication.
+Subsequent persistence44 has only the existing strict-partition recipe1; full
+verdict/fuel TSV and all52 public/28 history images equal MEM2 parent. Retain
+strict reloads, original parent fixture/setup failures; final qualification/census
+pending, no actual Fold RAM/time claim or new comparative grant. Fresh18:45 all
+seven panes confirm C/Job capacity stalls, Performance progress and four bounded
+owners achieved/stopped. GitHub still nine open issues/zero PRs; no new criteria
+or disposition. Timer1674731 alive/unchanged, next19:44:22 UTC.
+
 | Owner / issue scope | Delivered and verified | Not yet delivered / next boundary |
 | --- | --- | --- |
 | Job/Evidence; SE1-SE5 / AP0, #51/#47 | E1-E4/E6-E10 prototype Main; corrected E11 exact25 taskd22be9f pushed. Root156 assembly/469 tested-overlay inputs and three fresh lifetime/escaped-stack O2/SAN controls0; worker unskipped broad0 | Separate current E9+E10+correctedE11 joint source12842639815 terminal READY; Root verified all2013 hashes, Main integration review pending. CorrectedE12 exact29 taskcb959eb pushed/remote verified, Root156 assembly and fresh O2/SAN mutation/escaped-frame controls0. Local broad/C/census verified; common current-E12 source12812026914 terminal READY, Root all2064 hashes verified; Main integration pending. E13 exact28 frozen READY. E14 local broad0; E15 ordinary Graph leaf-input borrowing proposed, retaining charged traversal and normalized Lambda key. Original unsafe E11/E12 and strict3 remain |
@@ -124,7 +141,7 @@ reporting subsystem. Its audit cover is pinned to `37de1e8`, not current Main.
 | --- | --- | --- |
 | 0 / desk -> Merge | Workflow | Merge reviews evidence; Performance runs, C/Job capacity-stalled. Test-suite/issue-audit/static/Sort bounded Goals achieved and stopped; protected local bytes preserved. Scheduled six-hour report delivered; Root resumes coordination after audit handoff |
 | 1 / Job, Root reviews independently | SE/AP, #51 | Corrected E11 current joint READY/all2013 verified; E12 current joint READY/Root all2064 hashes verified; Main integration pending. Review E13 frozen header deletion; E15 Graph consumer remains separate from Performance IADT ownership. C14 missing-import diagnosis freshly confirmed. Preserve strict3 and original unsafe failures; no pointer-layout completion claim |
-| 1 / performance + Job | #56 / #51 | MEM1 v1/v2 rejected by lifetime controls; captured-head-only v3 prototype published and bounded current-E12 actual gain reviewed; exact36 samples/steps pass. Preserve LocalSorted RSS increase and smallList startup limits. Cost111 freeze/publication complete at taske561030/Main895ac67; MEM2 beta environment elision independently rejected (six semantic failures); direct-IADT empty-tail spine exact9 task6b0ed93/Main6ebf453 published; all1964/fresh controls pass, expired worker slot preserved; Root replacement36/0 raw steps/pins pass, bounded tree RSS gain/mixed timing, release consumed. Further Fold spine deletion remains private/unqualified; no further cost grant. Job owns separate header/scheduler inspection. Root resolves conflicts; matched wall/RSS needs an exclusive slot |
+| 1 / performance + Job | #56 / #51 | MEM1 v1/v2 rejected by lifetime controls; V3 source18/cost111 published, bounded current-E12 gain reviewed. MEM2 beta environment elision rejected; IADT source9 task6b0ed93/Main6ebf453 qualified. Same Root replacement36/0 measurements archived as raw84 and worker cost88 task57a94cc/Main5ad5536; bounded tree RSS gain, mixed timing, release consumed. Preserve LocalSorted/startup and all original failures. Private Fold source81c3ad27 focused410/cross268, affected18 and persistence44 raw gates verified; strict recipe1/full TSV/images unchanged. Final qualification/census, READY and Root runtime review pending, no cost grant. Job owns separate header/scheduler work. Root resolves conflicts; matched wall/RSS requires an exclusive slot |
 | Complete bounded / test-suite; Root publishes | #59 / PR #60 | Verified pilot removes22 duplicate calls with all distinct outcomes preserved; Root raw/assembly review complete. Exact7 taskbc16df9/Main36a27be prototype integrated; broader inventory/cost/accepted adoption remain open |
 | Complete bounded / issue-audit | All open Issues/PRs | Verified comments/dispositions,44/49 superseded by61; nine issues open. Owner stopped; Root resumes coordination, no repeat audit |
 | Complete bounded / verification-audit | #59 / PR #60; #51 | Static inventory/pilot delivered and worker complete; four-job measured cost remains deferred, full #59 open. Do not restart the completed owner automatically |
