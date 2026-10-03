@@ -1,0 +1,3 @@
+gate	exit	local_report	sha256
+namespace-parent	0	/tmp/job-evidence-e5-namespace-parent.log	2bc36b9fc8c2ec3f2b376a8dc0a7f343bde03d774af9fab3d8334ccb98074ca8
+namespace-control	134	/tmp/job-evidence-e5-namespace-control.log	750e04c0d771e1f0e05390c8b5fe86ae41dd4d9942f267cc37dba3e82b70c697
