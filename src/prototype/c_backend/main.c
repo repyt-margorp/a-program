@@ -33,13 +33,18 @@ static int publish(const char *path, const struct pg_c_link_plan *plan)
 	FILE *output = fdopen(fd, "w");
 	if (!output) { close(fd); goto done; }
 	const char *error;
-	if (pg_c_emit_exports(output, plan->count, plan->exports, plan->entry, &error)) {
-		fprintf(stderr, "C export: cannot lower entry: %s\n", error);
-		status = 4;
-		fclose(output);
+	int emitted = pg_c_emit_exports(output, plan->count, plan->exports, plan->entry, &error);
+	int failed = ferror(output);
+	int closed = fclose(output);
+	if (failed || closed) {
+		fputs("C export: cannot write output\n", stderr);
 		goto done;
 	}
-	if (fclose(output)) goto done;
+	if (emitted) {
+		fprintf(stderr, "C export: cannot lower entry: %s\n", error);
+		status = 4;
+		goto done;
+	}
 	if (rename(temporary, path)) goto done;
 	status = 0;
 done:
