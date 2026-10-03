@@ -80,5 +80,5 @@
   "verification_note": "Initial Root log lookup wrongly expected build logs in private manifest; they were excluded by compiled-output filter. All referenced raw log hashes were then independently checked against actual retained log files. This was a review setup failure, not a runtime result.",
   "decision": "reviewed; held, NOT full READY",
   "route_pending": false,
-  "route": "Original Job %4 and Performance %1; literal input then separate Enter, no owner duplicate/resume"
+  "route": "Original Job %4 and Performance %1; literal input then separate Enter. Job required Tab to queue the identified current message; fresh pane confirms it in Queued follow-up inputs. Performance updated its plan with the hold. No owner duplicate/resume."
 }
