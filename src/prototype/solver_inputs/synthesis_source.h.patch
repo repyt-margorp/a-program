@@ -5,9 +5,10 @@
  	const struct pg_object *binder, *associated_binder;
  	enum pg_source_association association;
 -	struct pg_synthesis_job *context_job;
-+	struct pg_synthesis_input context;
- 	struct definition_state *definitions;
+-	struct definition_state *definitions;
 -	struct pg_synthesis_job *registration, *producer;
++	struct pg_synthesis_input context;
++	struct pg_synthesis_job *definitions;
 +	struct pg_synthesis_job *registration;
 +	struct pg_synthesis_input value;
  	const struct pg_source_scope *exports;

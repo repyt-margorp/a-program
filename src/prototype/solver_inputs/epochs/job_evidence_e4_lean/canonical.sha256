@@ -1,0 +1,3 @@
+74faa8aa9d535b2c4d2a9877a0e107ec38cade6ea724b95f781c149dae70c40e  src/prototype/solver_inputs/synthesis.c.patch
+80e0111c112ead9555671a3b459233af4f845953da99406e6163c9b3918c62f3  src/prototype/solver_inputs/synthesis_source.h.patch
+5c96a48b61ef8bd078353a2a257ab95870276d464eaba5b9f1cc91c41499ce6a  src/prototype/solver_inputs/test_patches/synthesis.c.patch

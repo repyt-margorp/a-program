@@ -1,0 +1,4 @@
+kind	applied_file	added	deleted	net
+implementation	src/synthesis.c	36	29	7
+implementation	src/synthesis_source.h	1	1	0
+tests	tests/synthesis.c	10	0	10
