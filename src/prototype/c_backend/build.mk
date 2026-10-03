@@ -16,6 +16,14 @@ check-c-link: $(BUILD)/a-to-c $(BUILD)/pointer-check
 check-c-shared: $(BUILD)/a-to-c $(BUILD)/pointer-check
 	bash $(C_BACKEND)shared/check.sh $(BUILD)/a-to-c $(BUILD)/pointer-check
 
+.PHONY: check-c-callbacks
+check-c-callbacks: $(BUILD)/a-to-c $(BUILD)/pointer-check $(BUILD)/c_callback_inert_test
+	bash $(C_BACKEND)callback/check.sh $(BUILD)/a-to-c $(BUILD)/pointer-check $(BUILD)/c_callback_inert_test
+
+$(BUILD)/c_callback_inert_test: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(wildcard $(ROOT)*.h $(ROOT)artifact/*.h $(C_BACKEND)*.h $(C_BACKEND)link/*.h $(C_BACKEND)lower/*.h) $(C_BACKEND)callback/inert_test.c $(C_BACKEND)link/plan.c $(LOWER_SOURCES) $(C_BACKEND)emit.c
+	mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -I$(ROOT) -I$(C_BACKEND) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(C_BACKEND)callback/inert_test.c $(C_BACKEND)link/plan.c $(LOWER_SOURCES) $(C_BACKEND)emit.c -Wl,--wrap=pg_eval_advance -Wl,--wrap=pg_substitution_advance -Wl,--wrap=pg_whnf_advance -Wl,--wrap=pg_typed_query_advance -o $@
+
 .PHONY: check-c-scalar
 check-c-scalar: $(BUILD)/a-to-c $(BUILD)/pointer-check $(BUILD)/c_scalar_test
 	bash $(C_BACKEND)lower/check.sh $(BUILD)/a-to-c $(BUILD)/pointer-check $(BUILD)/c_scalar_test

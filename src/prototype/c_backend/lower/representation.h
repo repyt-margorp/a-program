@@ -12,6 +12,7 @@ struct pg_c_representation {
 	struct pg_c_constructor_representation *constructors;
 	int recursive;
 	int natural;
+	int callback;
 	size_t zero;
 };
 struct pg_c_constructor_representation {

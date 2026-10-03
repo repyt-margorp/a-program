@@ -9,6 +9,11 @@
 int pg_c_emit_scalar(FILE *source, FILE *header, size_t count,
 	const struct pg_c_export *exports, size_t entry, const char **error);
 
+/* Separate opt-in ABI: borrowed pure-total unary Int32/Int64 callbacks only.
+	* It does not enable callable fields or change the existing native profiles. */
+int pg_c_emit_callbacks(FILE *source, FILE *header, size_t count,
+	const struct pg_c_export *exports, size_t entry, const char **error);
+
 /* Explicit target-side representations, including single-tail recursive data.
 	* The scalar profile has no selections. */
 int pg_c_emit_native(FILE *source, FILE *header, size_t count,
