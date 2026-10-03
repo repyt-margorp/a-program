@@ -1,0 +1,44 @@
+{
+  "revision": "7d24b8d0235cb9781140512c0f163c48ea84a719",
+  "equalities": 800,
+  "qualification": "unchanged official 400 pairs; corresponding concrete computations, helpers/proof encodings differ",
+  "commands_sha256": "4d4fef36b590f74e6375f8b45ef7e81a43dc2e3339942fceb84f80f66fb2a3eb",
+  "comparative_measurements": false,
+  "checks": [
+    {
+      "extension": "agda",
+      "case": "full-positive",
+      "source_sha256": "d0e0eedee48ab7c8748d9a5c82fb2e8564cd19518f9fc8425dd952abd2fbb2a1",
+      "command": [
+        "/tmp/ap-performance-cross-7d24b8d/agda-2.7.0.1/Agda-v2.7.0.1/bin/agda",
+        "--no-libraries",
+        "--ignore-interfaces",
+        "/tmp/ap-performance-cross-7d24b8d/full-native-controls/agda/main.agda"
+      ],
+      "environment_overrides": {
+        "Agda_datadir": "/tmp/ap-performance-cross-7d24b8d/agda-2.7.0.1/Agda-v2.7.0.1/data"
+      },
+      "exit": 0,
+      "expected_pass": true,
+      "qualified": true
+    },
+    {
+      "extension": "v",
+      "case": "full-positive",
+      "source_sha256": "792a9f61df4dd3357d01f1d5061561f2c86872d3cab6aaf34604f6b572f1d3e5",
+      "command": [
+        "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/root/home/rocq/.opam/4.14.2+flambda/bin/rocq",
+        "compile",
+        "/tmp/ap-performance-cross-7d24b8d/full-native-controls/v/main.v"
+      ],
+      "environment_overrides": {
+        "OCAMLPATH": "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/root/home/rocq/.opam/4.14.2+flambda/lib",
+        "ROCQLIB": "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/root/home/rocq/.opam/4.14.2+flambda/lib/coq",
+        "OCAMLFIND_CONF": "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/relocated-findlib.conf"
+      },
+      "exit": 0,
+      "expected_pass": true,
+      "qualified": true
+    }
+  ]
+}

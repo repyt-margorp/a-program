@@ -1,0 +1,169 @@
+{
+  "complete": true,
+  "job_epoch": "b2d66682be75c21a3c2a8c5138db9d3f0c5e0eb2",
+  "baseline_manifest_sha256": "047e1dcb1ff4188a0ec0977e09a0b87a568e8e4a2146400685e7bca357d2824e",
+  "head_manifest_sha256": "c3ff50a9745bcca76809f68b7a435e2faeb1e20ea609469353522ef73bd509eb",
+  "comparative_wall_rss": false,
+  "build_command": [
+    "make",
+    "-f",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_verification/build.mk",
+    "-j1",
+    "-k",
+    "-i",
+    "OVERLAY=/tmp/ap-performance-measurement-baseline-e6-20261003",
+    "BUILD=/tmp/ap-performance-measurement-baseline-e6-20261003/build",
+    "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+    "SHELL=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_verification/make_shell.py",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/build/pointer-check",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/build/core_test",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/build/iadt_test",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/build/identity_io_test",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/build/source_io_test"
+  ],
+  "original_baseline_observers_restored": true,
+  "checks": [
+    {
+      "label": "core-original-observers",
+      "command": [
+        "/tmp/ap-performance-measurement-baseline-e6-20261003/build/core_test"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log_sha256": "c8d3d61396428f26d62fe22c381aae9c68446db749f6dd072ebcbbc05a66a212",
+      "benchmark_control": false
+    },
+    {
+      "label": "iadt",
+      "command": [
+        "/tmp/ap-performance-measurement-baseline-e6-20261003/build/iadt_test"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log_sha256": "4f4fae66b30deb1779f33a9e634b2fb139b3b70fd908e2c64c2bb5b23974514c",
+      "benchmark_control": false
+    },
+    {
+      "label": "identity-io-original-observer",
+      "command": [
+        "bash",
+        "/tmp/ap-performance-measurement-baseline-e6-20261003/tests/identity_io.sh",
+        "/tmp/ap-performance-measurement-baseline-e6-20261003/build/identity_io_test"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log_sha256": "34aa3d9588db085e6fc93f0bcb20ed8229543498f1d916558d67ef5a6eccf96f",
+      "benchmark_control": false
+    },
+    {
+      "label": "source-io",
+      "command": [
+        "bash",
+        "/tmp/ap-performance-measurement-baseline-e6-20261003/tests/source_io.sh",
+        "/tmp/ap-performance-measurement-baseline-e6-20261003/build/source_io_test"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log_sha256": "ab9f5495573feafadb68b3b741619f0bef57df94c2cb1b36414c92a43cf6af46",
+      "benchmark_control": false
+    },
+    {
+      "label": "baseline-trees_2",
+      "command": [
+        "/tmp/ap-performance-measurement-baseline-e6-20261003/build/pointer-check",
+        "--steps",
+        "10000000",
+        "/tmp/ap-performance-cross-7d24b8d/trees_2.p"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log_sha256": "d8f52a095d4c10e71b0db27165e0c1a6c829a83a09b0fd6f417d31283496ce17",
+      "benchmark_control": true,
+      "output": "done steps=1442531",
+      "source_sha256": "cdf7da75902b3cf8d31988ef944b19c5f0a17e260159aca5d7a7757ee43df872"
+    },
+    {
+      "label": "baseline-false_bool",
+      "command": [
+        "/tmp/ap-performance-measurement-baseline-e6-20261003/build/pointer-check",
+        "--steps",
+        "10000000",
+        "/tmp/ap-performance-cross-7d24b8d/false_bool.p"
+      ],
+      "exit": 1,
+      "passed": true,
+      "log_sha256": "8c816c340edd7497b986d4b2ea4f6bb013682a69ec9a59f5b0ce388b49727be0",
+      "benchmark_control": true,
+      "output": "rejected steps=71265",
+      "source_sha256": "b5942d7f1581dcec9c6c30e4db28f768f688c0097ff20e3460f449e5d5f1c70f"
+    },
+    {
+      "label": "baseline-false_tree",
+      "command": [
+        "/tmp/ap-performance-measurement-baseline-e6-20261003/build/pointer-check",
+        "--steps",
+        "10000000",
+        "/tmp/ap-performance-cross-7d24b8d/false_tree.p"
+      ],
+      "exit": 1,
+      "passed": true,
+      "log_sha256": "1b80f68c1c9dc8be6193a529b15591af67dc2e3ac5987c0e357bbed7ee65601c",
+      "benchmark_control": true,
+      "output": "rejected steps=55031",
+      "source_sha256": "83cad86511cf74340fb946c26ae1dd3176a15f534a0a2ae6723c6e1f22027023"
+    },
+    {
+      "label": "head-trees_2",
+      "command": [
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/build/pointer-check",
+        "--steps",
+        "10000000",
+        "/tmp/ap-performance-cross-7d24b8d/trees_2.p"
+      ],
+      "exit": 0,
+      "passed": true,
+      "log_sha256": "c2f42e8c3ee1a3a513d9d167d0908c859413d100d98e8da85aa64cc02d8ce666",
+      "benchmark_control": true,
+      "output": "done steps=1170277",
+      "source_sha256": "cdf7da75902b3cf8d31988ef944b19c5f0a17e260159aca5d7a7757ee43df872"
+    },
+    {
+      "label": "head-false_bool",
+      "command": [
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/build/pointer-check",
+        "--steps",
+        "10000000",
+        "/tmp/ap-performance-cross-7d24b8d/false_bool.p"
+      ],
+      "exit": 1,
+      "passed": true,
+      "log_sha256": "6c6e7794c9db37ad287225a2a0fcf7545b92b864b66b41fd2ea93157d26cf08f",
+      "benchmark_control": true,
+      "output": "rejected steps=54737",
+      "source_sha256": "b5942d7f1581dcec9c6c30e4db28f768f688c0097ff20e3460f449e5d5f1c70f"
+    },
+    {
+      "label": "head-false_tree",
+      "command": [
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/build/pointer-check",
+        "--steps",
+        "10000000",
+        "/tmp/ap-performance-cross-7d24b8d/false_tree.p"
+      ],
+      "exit": 1,
+      "passed": true,
+      "log_sha256": "9c9efa5e8a158ac7a2a141bd03837a81274cde35cfaaec7b2ffdcd41936610c9",
+      "benchmark_control": true,
+      "output": "rejected steps=41789",
+      "source_sha256": "83cad86511cf74340fb946c26ae1dd3176a15f534a0a2ae6723c6e1f22027023"
+    }
+  ],
+  "build_recipe_count": 10,
+  "failed_build_recipes": [],
+  "aggregate_diagnostic_exit": 0,
+  "build_log_sha256": "72940262d328164592defacbc7ea166e70c811b9cbd79ad8c1bb9ca2e19ad941",
+  "passed": true,
+  "all128_runtime_and_original_observer_hashes_before_after": true,
+  "baseline_binary_sha256": "234f32ebbaa5fc577c55d088c6db6a6939286e5356bcde4e6eb5179086f8a136",
+  "head_binary_sha256": "33d90f6fb02f0bd5cafe1e50f5cc64a5d057b2607e4c5f3aa21b81c97fe9bf8f"
+}

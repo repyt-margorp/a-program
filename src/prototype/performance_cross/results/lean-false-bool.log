@@ -1,0 +1,10 @@
+/tmp/ap-performance-cross-7d24b8d/reproducible-controls/lean/false-bool/main.lean:52:0: error: Not a definitional equality: the left-hand side
+  alltrue (full n7)
+is not definitionally equal to the right-hand side
+  Bool'.F
+/tmp/ap-performance-cross-7d24b8d/reproducible-controls/lean/false-bool/main.lean:52:40: error: Type mismatch
+  rfl
+has type
+  ?m.5 = ?m.5
+but is expected to have type
+  alltrue (full n7) = Bool'.F

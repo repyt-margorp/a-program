@@ -1,0 +1,10 @@
+/tmp/ap-performance-cross-7d24b8d/reproducible-controls/lean/false-tree/main.lean:54:0: error: Not a definitional equality: the left-hand side
+  mirror (full n6)
+is not definitionally equal to the right-hand side
+  Tree.L
+/tmp/ap-performance-cross-7d24b8d/reproducible-controls/lean/false-tree/main.lean:54:39: error: Type mismatch
+  rfl
+has type
+  ?m.5 = ?m.5
+but is expected to have type
+  mirror (full n6) = Tree.L

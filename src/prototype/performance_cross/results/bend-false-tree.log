@@ -1,0 +1,9 @@
+SOME PROOFS FAIL
+Error:
+- expected : N{N{N{N{N{N{L{}, L{}}, N{L{}, L{}}}, N{N{L{}, L{}}, N{L{}, L{}}}}, N{N{N{L{}, L{}}, N{L{}, L{}}}, N{N{L{}, L{}}, N{L{}, L{}}}}}, N{N{N{N{L{}, L{}}, N{L{}, L{}}}, N{N{L{}, L{}}, N{L{}, L{}}}}, N{N{N{L{}, L{}}, N{L{}, L{}}}, N{N{L{}, L{}}, N{L{}, L{}}}}}}, N{N{N{N{N{L{}, L{}}, N{L{}, L{}}}, N{N{L{}, L{}}, N{L{}, L{}}}}, N{N{N{L{}, L{}}, N{L{}, L{}}}, N{N{L{}, L{}}, N{L{}, L{}}}}}, N{N{N{N{L{}, L{}}, N{L{}, L{}}}, N{N{L{}, L{}}, N{L{}, L{}}}}, N{N{N{L{}, L{}}, N{L{}, L{}}}, N{N{L{}, L{}}, N{L{}, L{}}}}}}}
+- observed : L{}
+Location: mt0
+240 | def mt0():
+241>|   {==}
+    |   ^^^^
+242 | 

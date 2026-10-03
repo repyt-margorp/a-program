@@ -1,0 +1,728 @@
+{
+  "exclusive_slot_required": true,
+  "maximum_seconds": 1174,
+  "per_run_seconds": 180,
+  "canonical_producer": "898463e85ef2bcf366b84a6436c510eb32534086",
+  "job_epoch": "b2d66682be75c21a3c2a8c5138db9d3f0c5e0eb2",
+  "Main_alignment": "4d1d941",
+  "performance_commit": "05390513bca302b4a219881994c5bbd69d5b733a",
+  "CFLAGS": "-std=c11 -Wall -Wextra -Werror -O2",
+  "cross_source_revision": "7d24b8d0235cb9781140512c0f163c48ea84a719",
+  "tree_pairs": 400,
+  "tree_equalities": 800,
+  "representation_qualification": "Corresponding concrete obligations; helpers/proof encodings and kernel work differ. AP source includes parsing/synthesis/conversion; no native sorting/execution speed claim.",
+  "hardware": {
+    "logical_cpus": 22,
+    "architecture": "x86_64",
+    "CPU_model": "Intel(R) Core(TM) Ultra 7 155H"
+  },
+  "input_sha256": {
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/action.c": "bf0018eca9b7d66d52e263adde431dedd4bd5d7542d30f0a4c45cd24bb3b1362",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/action.h": "5b352b039d634ac38e1a67fbea8cd58d2d9ad8ab68488da1d408f16b5c8cda40",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/artifact/derivation.c": "3be9cbba913cc7411fa134c3d3c868fdd77c7b612aa3e3945129eeaa5ae71b76",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/artifact/derivation.h": "5a2745ca237fd4905dc407a139befdf418120998e7a6ca391172c0518f6fb5f4",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/artifact/file.c": "c90864c4b08a11994161efc29b3a9a1e846bc997efb513d115a0c9bb56382c3e",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/artifact/file.h": "10e8cb2950822105398dbdc33122e29a36abbf40ab6b52dcd83a8124f730be9b",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/artifact/schedule.c": "b359bb5178a2615b911e4045c2681f409857fdb5943ab4e4a57e170957c7d9ac",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/artifact/schedule.h": "e2eb057d7b786072fef838e1fd6b132fb43da0a2e656954706d7a9b50cd8ab7c",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/artifact/source.c": "4b718cb99d2a578966d508b58d03ddc9cbc991b98d0e48943a813f1982de9404",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/artifact/source.h": "aa049644c64b034788ceecdeb1aae0b08ba257fef39e71e32464eefb412ea8ef",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/classifier.c": "857d21d16bae2a0e10143974dc800bb653ef038ed2744f075a61b21569095842",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/classifier.h": "362373c41b5468b97b82b938de8943dba6b86988cfcf639c4e05566b80fa5a5e",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/comparison_io.c": "9642fda97eeb625b3fdb7090ada03665cff9eaf503b43619e6eaeae5f19b4243",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/computation.c": "86e07e1b9e732e2ab1940b8cae966b6368586ae37f6dd9df1deed7aa770fc28d",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/computation.h": "19c58b96bed587582d81825269de8fcda12a612c135d7968ed0a8b906b0dd2f0",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/computation_internal.h": "72edd937705c4af862f613f43106e2a18756b868998dfcead6eae7ada13dd96f",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/computation_io.c": "224c7ff11ae78629e6ecbd0c9076005267f92d6913c344f78d8e2e084787e4ff",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/computation_io.h": "8d9949abb65da647fdfe4dd86f0e8fb8488f977e2209baa22d05077f2d9f8f16",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/context_io.c": "2613b5072b95e633eb2b2cad13f2210cd51947ff9797df752808c8b8d0d8d0f4",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/context_io.h": "42d36660af31cef4819a976b57e151a6d4d9d2f0be5a1bd7d6d680241d9f90e3",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/context_payload.c": "f6b182f40d0c7451ecefea901a115b5d35b6b6347a163ed2cfcf4b9325453490",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/context_payload.h": "d80026ed6230cb43d3b97606e8003bf6e1514cbfae341bb760625c2ebfe35181",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/conversion.c": "4c3fd04649e56c516f6c11b687ac1d1ce0c2fcaaaab4a052d9d22c804f40b0ce",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/conversion.h": "ef78fbbd8c7930636f46a0dd8f0e5e13679d17b01892d87b3e415ba4d80bdc4e",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/dag.c": "fde727603ab63cf1558295f1d012c4171db84d4f7e0355699a0a85e37408a6d7",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/dag.h": "d1b7ae725abf29776b2e8733027d19d2e4cac0be5cb77d80982ad7eb719928ca",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/declaration_io.c": "38f2b7864d5c74a6dcf91d501d28a17b91b7ddb5e3752b95504711cc3c97d506",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/declaration_io.h": "b9aed166e7413439bc38ca9672139a6657c0d5c98e483cf928445ebf5052966b",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/derivation.c": "34414daae64ecd0636dcbb132dc6034e4446288c378264165e7a660f0550a9a2",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/derivation.h": "f19b25a64276150b3374a09d8b92927fa39ea169a50d244f6ea29e2d8c123725",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/derivation_io.c": "0238457cdc590befc42be9bc8ea5ea8da15667e3f4b5cdeaee69f7de3ff4b628",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/derivation_io.h": "5eb2dd56935a5af8fa4a64411599d92a4d26ed9e1f95105bf8ca0204ccc50956",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/descriptor_io.c": "66157535cb1f32df03d5e0cedf2554b702df2f91e997f852363954bf4998b86c",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/descriptor_io.h": "09f677af9c012fd8d1d9e805550481d072f0aeae7116c8a5e158c1fbb891f71a",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/dimension.c": "686d970716c05be8cb16c78d4020c09b6737f3ddb09df4b8bcaf79a42f25f210",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/dimension.h": "e7947b5275d1e49ed6e5c70f0c8fd030f34d8488cfce4282adfc51e8a231dab2",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/effect_inference.c": "2e7fa7d9dd8c740dc5144be961696c1921c31d474bf4faddc3372674f0c46b42",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/effect_inference.h": "15e04bdbf83251c6964de11095a6689907d8e96eb081a5cb15985a69d6e925b3",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/eval.c": "3aa190ccb4b2cf99604de066cd981c20e76991b636af49cfcdb20a1b20e701f3",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/eval.h": "83124efa76569efc1da5da0ea5a922b1e63e553ac014b1c8d86ac3f0083b35f6",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/eval_internal.h": "2478e30a7d3749223b800e6900dfc261fe711123e3f229515e62a7dab8d04cb5",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/eval_io.c": "827165832493aafe76cf8831b759ab522df3c16c8ec4163f1cf43b4788b50e9b",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/eval_io.h": "2b5ef4cc66bbc879fcbae3465f921aa881bf1492b3f9d2796bd25d8348502f9a",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/evidence.c": "373ddf5b582d6b0d3a90e251259765adb87b978af67d65481a5347485476dcc2",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/evidence.h": "da1e35e5f4b4ae25a1da48868879557d1d340dc5620311ddf9a09291e4395240",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/evidence_cbpv.c": "b487430973e287ecfcd571d939393d0135fe013c8de613764fc745e8a387ecfa",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/evidence_function.c": "6472eabaafb6b58622fb045b944d666db4f859bb1b753e564e36d233135d1696",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/evidence_identity.c": "8fe2ea181233cc2e287d541bfff342b4e0f74a0dadbb360d9cde779421d253d1",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/evidence_scope.c": "331f85687a9807d0e43efe23e63ffcadeacf88eb5c9da4c81c5fd8f5d3b20f53",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/evidence_structure.h": "414bc3d6470ac2f193ad5175370e2d67b7be2dd0b2045d19aebf344567a9b406",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/execution.c": "b8be7ce34477d75f9b4d626e50f104149fe92f4580823ef293e2a53639294525",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/execution.h": "157c56bf37d8de750a39f52bb3597c3bf80fda9b4c3e9148f86cfb85dbb5d8cf",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/function_graph.c": "fd9bda70a6f1c728031aa4d45d92bab9194025a433adaaca594c15417a30229d",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/function_graph.h": "daccbcdecfa7a583bee2697f1c1641151ffeb4c870b93ed8e088d9949b651772",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/function_graph_internal.h": "f66683a45cf90b485635ba5b02845532581820e2995e53ab4def18095f434531",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/function_witness.c": "b54482e36c7065f0c0c20f6ba145a25ca365e34b854211cba0b5bb04f3281e7d",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/function_witness.h": "3d3929b519371a285b553cb1cd7829093e766cdb27850aeb8a42f27c73769ee2",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/graph.c": "de6bb8c45c08e97c0ef8e5302bbdafec681b829edf1f6874c853d443116cc933",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/graph.h": "811ad8f3c3be525286aaa6e4c29fc02532f7c9bca716dc992178f93b57513381",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/graph_internal.h": "6ee556694aba28178048e451ac487d35a318b4040179e43e8a512cd6c336d240",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/graph_io.c": "f169a91198f20949a1b095fa8c773ccdbb7866f1a92ffb8dd7ecd46ed7a5f5cc",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/graph_io.h": "6f2d766032d38015dffaa7ae28387bd6763129455ee5bb8dbf02a3dae1181e2d",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/host.c": "3cdc2612af14130b8c962299931f67e8e86a3faadfcb9b1b41f0cd61a6f73453",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/host.h": "b8c5a05b6529a126f5f8d2e7083a73b7c36a8f1e8167d07be83271954645dd13",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/iadt.c": "78fea20444a7ad90658fd8e7e1af9a37247acf4728171e46872838a9379e3ec1",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/iadt.h": "edba44c9c7b4d8c8c0575dceeb2b0cdd84eb01c232cfa37e441343bbeb802354",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/identity.c": "e0052d3e87231a33d314e5ea09bf6b0c51afa1bd9e5bb72cea64ee8a612987d9",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/identity.h": "908d2008294d6978d0d17069dbedae05a71e73878c42af95518f31a0b55ed361",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/identity_internal.h": "e12be47bf272eea13e2003a6cbc2772a2426f26f72f243d640907006fe6575ab",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/identity_io.c": "1dae1e9476a2e32c8ee76b158ec73f238c10d254474d46492dc5bdaffc8fe9c6",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/machine_io.c": "572e62d15019e33b79367c08bffe8747d2b3105b66cb16746ed87f54fd677dd1",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/main.c": "bcbdc6da72b556e32749b8d99b7bff2338ad4ec9f3870a26e001a22f501fde61",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/occurrence_io.c": "9dfa0538f1b2177f2064a24af4e15b9b53cf5def56cb3aefc45f3a82b8488bd9",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/occurrence_io.h": "b8d67b4cfadba1529f3f15529084d796a162b0dc343d37c17b4da5feb30226e1",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/pending.h": "3037b716c5b6f81bc55fc790bc64a95f3b11794e28cb2cdf451accf010c5b681",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/prelude.c": "08e194930fcf517b8f59434bc14912c52ef33eb44946db17b9a75d99d687bb2d",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/prelude.h": "1ce79020cc930a90af0656d966f49f9dc31b9969442202b8c53d3991d4562778",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/program.c": "531484a195a13c1bff33ff86a44c9ab58bcabee2fb0f95e08812d2526211900d",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/program.h": "b3e2eabf9ad56390aca88ab99cfe168f54703cb63e7cb33d8608d637e9315498",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/reader.c": "06d602617bbb8c243e477bebe1abb5d4f0576241990c8c8720272af31630cc73",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/reader.h": "486d62c7b4f6e26557a298faead3261bc8c1bb4bda3b4fadbf47ae8a25599afc",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/reduction_io.c": "2c6dbbe4e7a417ed6e14dba01bbe3ed61c83464efd670e611a5c961ef9d5c9e3",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/retained_io.c": "12c71d7cc5f0ccd17547c7cda9f54332b13cb3165b7d0219e9dbecf6f4d70a25",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/retained_io.h": "fa310c52af8e72fa97a909095959fb22d78954326658d8e6b80088ca70588f7e",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/scope.c": "14e2c88a6d97ee4e18ece7ef4093501f44b0d594c53c8eb534f761cd94ab0929",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/scope.h": "958d6d1f42c22b195160f77fe52e731c78043227f28ece4ede1958017c22e96b",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/seed.c": "98dc7a4c019b3a592c8863174a720063967fd09282d3d0dd6b743a9cfb844a61",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/seed.h": "0e9c7920b51f91a11602d27f63352d6d5d4ccda73dd0728cba18d9b626bd841c",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/source_io.c": "edec0a9fa5281da7ee9e69d682510744f4d495c9752ba882e529f3f6325476ac",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/source_io.h": "8663f6d47c88484f9a70d3ab88a240a06a6d45dd569d2e8eba318f5eb7492630",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/subscription.c": "402ae43301f76b31a3a6809e73103d59f5fc8352812c4f80e997aa0c22e9c8fd",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/subscription.h": "727dd905ab2b0c5c749c4330ba9de34c8a2b0e07f48bea64ca8c38d3f9d18ba9",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/support.c": "d26104dfd003b05414dc151882a542b127e71e7288c309bee13aaf34a2df1348",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/support.h": "a8e27f60779fe6bf5b88ce74991855e67ac167d9fd0c9549a9d4b74624e60977",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/symmetry.c": "af73abaeac3d6b01577bf10305a858ad6143bb7e6088cc4903817a72d7c0d5fb",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/symmetry.h": "2a315abf7233d7f0e87430e8b4bc23ffa8acd97d8a97bca3c4a0204379fe6dc4",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/symmetry_internal.h": "569468be53803726d886a5de3e7240decbc4d9173ea554ecb1edf4b428d00ea6",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/syntax.c": "76bd00a68d91480f9a6196e463119fee819cfcf5369f9390b39a9e1a13c72824",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/syntax.h": "b333b47a17fac161af99f5b898baebaef224fb751ba6183ab73ffe79021e6049",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/syntax_io.c": "6b4b27e7790f130a563bb064341b93eb9f724eb36df08fb584115daf494bf32e",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/syntax_io.h": "e7802ba592678c1a3c48f8f8d7401d36df15b09390e367c0697c294c54421a5f",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/synthesis.c": "0a9c77635a87ce069e0725aad66072b05d567734e6b20e4016cd9e71c4ab939c",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/synthesis.h": "6a04dd8a16daf9116d047a00e09407c60f4638145696f7cba52a55a38f7a782a",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/synthesis_binding.c": "77a7af11536020817ca62ed7dd172f80dad768dcd134cef05fa694320ee7271b",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/synthesis_cbpv.c": "5b9b32df8612ca33ea19cafbc35dbc77f527a99f68c19d2e1b139306c1104664",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/synthesis_context.c": "eee075aea29a3b4fae8dcd3956a07c0409c91b6442280445f6e5cd212ec99a57",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/synthesis_conversion.c": "7abee0c273b9bd074d6b77419198833b7e1b54c197fa0e745a7562e990040b1f",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/synthesis_conversion.h": "8386cef962260a5217a32f6be3a281c0b718ab10377a7cb998df468e702d0acc",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/synthesis_derivation.c": "01f8607f66de7506ca4961174dc52ebfa605957f76ea6f06ba10a4541f6f1789",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/synthesis_effect.c": "f620c3724f2b19b7643e81ce968052610dc726039df2ad658800e79448bc038f",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/synthesis_effect.h": "524f43121cb546c6f5c8b5f1f3b842a746a5715d1f655be0dbfa750555bc1066",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/synthesis_function.c": "feac6e22d90e0f1adf6da6e4febafb27d2b0290832c3d7dd38dd617b53adc1d1",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/synthesis_handler.c": "51f2b14a0a5c1cc3f3170b767fe82dda58771ababa64b3f320839181877cc0c2",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/synthesis_handler.h": "7a6daa0461e92ac5e39810b2060fb66775f3c9fda1ae38f36e6721393438f2e1",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/synthesis_iadt.c": "76c90ddd54ada186452ce5854dcccf92baaee34c8c2297a8d5a69987af9fe32e",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/synthesis_identity.c": "fbad0b5b5d010d2ee49c0904a0811917bb84432ebcafd7b627af6b5cab0d5929",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/synthesis_operation.c": "0e9f3e473bb825d856ddfe2f9a2ee4108c9acd8ab2ef15dafc4209d7aabf5bac",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/synthesis_schema.c": "bcd58dbe3d6ee07bc5a2f7aee841ae94c8e042e55831a9ec5ed8524a1b8c1b5b",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/synthesis_schema.h": "09489f68dca5fea190e3fc999b7b8a45a31edf3f2058ff10cd48e7eb66b5efc4",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/synthesis_source.h": "dd4fb2da32e0c7e9114bb429da0f7e54e57e40b486542c48da06f7e0791bb133",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/synthesis_work.c": "49a9a888e564e9c558dcb4a70f2da346b6e3fbaf1c008f35c73068c54f8c430e",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/synthesis_work.h": "4e54f054144d0d878640d9a9e353adba3a8ad2615c97936f867e3ded4c309ec1",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/typed_query.c": "ac6ebad9d78b21bf414d8c3f4f30ae96b822163936d651d4e3f276b9d5bd83dd",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/typed_query.h": "6204390c8bcf06820fa9337be8c694848abb6e179894f951b04c8d10d8df74d9",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/typing.c": "a32bd36f8e756965d4087cb566be817da012572c12481737f887913ff2dc0f69",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/typing.h": "9568e0ed476c7701e13d856851677f9c0a5de55612a41e015ad865790876409e",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/wire.c": "e737a6c6e9f5f91219ad653ea6437729b9c06008bf5ae06de60b3067fe78fbec",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/src/wire.h": "ddef58862ae5882147919b51b848093f9ec048ec6cbd9ca9d228d3f414b5f7f2",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/action.c": "bf0018eca9b7d66d52e263adde431dedd4bd5d7542d30f0a4c45cd24bb3b1362",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/action.h": "5b352b039d634ac38e1a67fbea8cd58d2d9ad8ab68488da1d408f16b5c8cda40",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/artifact/derivation.c": "3be9cbba913cc7411fa134c3d3c868fdd77c7b612aa3e3945129eeaa5ae71b76",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/artifact/derivation.h": "5a2745ca237fd4905dc407a139befdf418120998e7a6ca391172c0518f6fb5f4",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/artifact/file.c": "c90864c4b08a11994161efc29b3a9a1e846bc997efb513d115a0c9bb56382c3e",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/artifact/file.h": "10e8cb2950822105398dbdc33122e29a36abbf40ab6b52dcd83a8124f730be9b",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/artifact/schedule.c": "b359bb5178a2615b911e4045c2681f409857fdb5943ab4e4a57e170957c7d9ac",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/artifact/schedule.h": "e2eb057d7b786072fef838e1fd6b132fb43da0a2e656954706d7a9b50cd8ab7c",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/artifact/source.c": "4b718cb99d2a578966d508b58d03ddc9cbc991b98d0e48943a813f1982de9404",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/artifact/source.h": "aa049644c64b034788ceecdeb1aae0b08ba257fef39e71e32464eefb412ea8ef",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/classifier.c": "857d21d16bae2a0e10143974dc800bb653ef038ed2744f075a61b21569095842",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/classifier.h": "362373c41b5468b97b82b938de8943dba6b86988cfcf639c4e05566b80fa5a5e",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/comparison_io.c": "9642fda97eeb625b3fdb7090ada03665cff9eaf503b43619e6eaeae5f19b4243",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/computation.c": "1ad48bbb5196eb1ba12d5c9637b1fb1980bff5c2d8876bb1451bddb7f17334ef",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/computation.h": "19c58b96bed587582d81825269de8fcda12a612c135d7968ed0a8b906b0dd2f0",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/computation_internal.h": "72edd937705c4af862f613f43106e2a18756b868998dfcead6eae7ada13dd96f",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/computation_io.c": "224c7ff11ae78629e6ecbd0c9076005267f92d6913c344f78d8e2e084787e4ff",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/computation_io.h": "8d9949abb65da647fdfe4dd86f0e8fb8488f977e2209baa22d05077f2d9f8f16",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/context_io.c": "2613b5072b95e633eb2b2cad13f2210cd51947ff9797df752808c8b8d0d8d0f4",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/context_io.h": "42d36660af31cef4819a976b57e151a6d4d9d2f0be5a1bd7d6d680241d9f90e3",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/context_payload.c": "f6b182f40d0c7451ecefea901a115b5d35b6b6347a163ed2cfcf4b9325453490",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/context_payload.h": "d80026ed6230cb43d3b97606e8003bf6e1514cbfae341bb760625c2ebfe35181",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/conversion.c": "4c3fd04649e56c516f6c11b687ac1d1ce0c2fcaaaab4a052d9d22c804f40b0ce",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/conversion.h": "ef78fbbd8c7930636f46a0dd8f0e5e13679d17b01892d87b3e415ba4d80bdc4e",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/dag.c": "fde727603ab63cf1558295f1d012c4171db84d4f7e0355699a0a85e37408a6d7",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/dag.h": "d1b7ae725abf29776b2e8733027d19d2e4cac0be5cb77d80982ad7eb719928ca",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/declaration_io.c": "38f2b7864d5c74a6dcf91d501d28a17b91b7ddb5e3752b95504711cc3c97d506",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/declaration_io.h": "b9aed166e7413439bc38ca9672139a6657c0d5c98e483cf928445ebf5052966b",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/derivation.c": "34414daae64ecd0636dcbb132dc6034e4446288c378264165e7a660f0550a9a2",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/derivation.h": "f19b25a64276150b3374a09d8b92927fa39ea169a50d244f6ea29e2d8c123725",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/derivation_io.c": "0238457cdc590befc42be9bc8ea5ea8da15667e3f4b5cdeaee69f7de3ff4b628",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/derivation_io.h": "5eb2dd56935a5af8fa4a64411599d92a4d26ed9e1f95105bf8ca0204ccc50956",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/descriptor_io.c": "66157535cb1f32df03d5e0cedf2554b702df2f91e997f852363954bf4998b86c",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/descriptor_io.h": "09f677af9c012fd8d1d9e805550481d072f0aeae7116c8a5e158c1fbb891f71a",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/dimension.c": "686d970716c05be8cb16c78d4020c09b6737f3ddb09df4b8bcaf79a42f25f210",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/dimension.h": "e7947b5275d1e49ed6e5c70f0c8fd030f34d8488cfce4282adfc51e8a231dab2",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/effect_inference.c": "2e7fa7d9dd8c740dc5144be961696c1921c31d474bf4faddc3372674f0c46b42",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/effect_inference.h": "15e04bdbf83251c6964de11095a6689907d8e96eb081a5cb15985a69d6e925b3",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/eval.c": "725522a12851dd543b2d9884a6c5ae7f9f833dab6b610a97c8caf833cf5e0123",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/eval.h": "7ba9ce3dc15b9157c58489f1a92f92f892595b9df439a580a891a6b463fb1957",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/eval_internal.h": "2478e30a7d3749223b800e6900dfc261fe711123e3f229515e62a7dab8d04cb5",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/eval_io.c": "827165832493aafe76cf8831b759ab522df3c16c8ec4163f1cf43b4788b50e9b",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/eval_io.h": "2b5ef4cc66bbc879fcbae3465f921aa881bf1492b3f9d2796bd25d8348502f9a",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/evidence.c": "373ddf5b582d6b0d3a90e251259765adb87b978af67d65481a5347485476dcc2",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/evidence.h": "da1e35e5f4b4ae25a1da48868879557d1d340dc5620311ddf9a09291e4395240",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/evidence_cbpv.c": "b487430973e287ecfcd571d939393d0135fe013c8de613764fc745e8a387ecfa",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/evidence_function.c": "6472eabaafb6b58622fb045b944d666db4f859bb1b753e564e36d233135d1696",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/evidence_identity.c": "8fe2ea181233cc2e287d541bfff342b4e0f74a0dadbb360d9cde779421d253d1",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/evidence_scope.c": "331f85687a9807d0e43efe23e63ffcadeacf88eb5c9da4c81c5fd8f5d3b20f53",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/evidence_structure.h": "414bc3d6470ac2f193ad5175370e2d67b7be2dd0b2045d19aebf344567a9b406",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/execution.c": "b8be7ce34477d75f9b4d626e50f104149fe92f4580823ef293e2a53639294525",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/execution.h": "157c56bf37d8de750a39f52bb3597c3bf80fda9b4c3e9148f86cfb85dbb5d8cf",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/function_graph.c": "fd9bda70a6f1c728031aa4d45d92bab9194025a433adaaca594c15417a30229d",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/function_graph.h": "daccbcdecfa7a583bee2697f1c1641151ffeb4c870b93ed8e088d9949b651772",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/function_graph_internal.h": "f66683a45cf90b485635ba5b02845532581820e2995e53ab4def18095f434531",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/function_witness.c": "b54482e36c7065f0c0c20f6ba145a25ca365e34b854211cba0b5bb04f3281e7d",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/function_witness.h": "3d3929b519371a285b553cb1cd7829093e766cdb27850aeb8a42f27c73769ee2",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/graph.c": "de6bb8c45c08e97c0ef8e5302bbdafec681b829edf1f6874c853d443116cc933",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/graph.h": "811ad8f3c3be525286aaa6e4c29fc02532f7c9bca716dc992178f93b57513381",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/graph_internal.h": "6ee556694aba28178048e451ac487d35a318b4040179e43e8a512cd6c336d240",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/graph_io.c": "f169a91198f20949a1b095fa8c773ccdbb7866f1a92ffb8dd7ecd46ed7a5f5cc",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/graph_io.h": "6f2d766032d38015dffaa7ae28387bd6763129455ee5bb8dbf02a3dae1181e2d",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/host.c": "3cdc2612af14130b8c962299931f67e8e86a3faadfcb9b1b41f0cd61a6f73453",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/host.h": "b8c5a05b6529a126f5f8d2e7083a73b7c36a8f1e8167d07be83271954645dd13",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/iadt.c": "7ed82d9d2ae8828d313474e69d66829397a38dd83fce6645c9ad14ad9bdbced1",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/iadt.h": "edba44c9c7b4d8c8c0575dceeb2b0cdd84eb01c232cfa37e441343bbeb802354",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/identity.c": "e0052d3e87231a33d314e5ea09bf6b0c51afa1bd9e5bb72cea64ee8a612987d9",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/identity.h": "908d2008294d6978d0d17069dbedae05a71e73878c42af95518f31a0b55ed361",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/identity_internal.h": "e12be47bf272eea13e2003a6cbc2772a2426f26f72f243d640907006fe6575ab",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/identity_io.c": "1dae1e9476a2e32c8ee76b158ec73f238c10d254474d46492dc5bdaffc8fe9c6",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/machine_io.c": "572e62d15019e33b79367c08bffe8747d2b3105b66cb16746ed87f54fd677dd1",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/main.c": "bcbdc6da72b556e32749b8d99b7bff2338ad4ec9f3870a26e001a22f501fde61",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/occurrence_io.c": "9dfa0538f1b2177f2064a24af4e15b9b53cf5def56cb3aefc45f3a82b8488bd9",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/occurrence_io.h": "b8d67b4cfadba1529f3f15529084d796a162b0dc343d37c17b4da5feb30226e1",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/pending.h": "3037b716c5b6f81bc55fc790bc64a95f3b11794e28cb2cdf451accf010c5b681",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/prelude.c": "08e194930fcf517b8f59434bc14912c52ef33eb44946db17b9a75d99d687bb2d",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/prelude.h": "1ce79020cc930a90af0656d966f49f9dc31b9969442202b8c53d3991d4562778",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/program.c": "531484a195a13c1bff33ff86a44c9ab58bcabee2fb0f95e08812d2526211900d",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/program.h": "b3e2eabf9ad56390aca88ab99cfe168f54703cb63e7cb33d8608d637e9315498",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/reader.c": "06d602617bbb8c243e477bebe1abb5d4f0576241990c8c8720272af31630cc73",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/reader.h": "486d62c7b4f6e26557a298faead3261bc8c1bb4bda3b4fadbf47ae8a25599afc",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/reduction_io.c": "2c6dbbe4e7a417ed6e14dba01bbe3ed61c83464efd670e611a5c961ef9d5c9e3",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/retained_io.c": "12c71d7cc5f0ccd17547c7cda9f54332b13cb3165b7d0219e9dbecf6f4d70a25",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/retained_io.h": "fa310c52af8e72fa97a909095959fb22d78954326658d8e6b80088ca70588f7e",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/scope.c": "14e2c88a6d97ee4e18ece7ef4093501f44b0d594c53c8eb534f761cd94ab0929",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/scope.h": "958d6d1f42c22b195160f77fe52e731c78043227f28ece4ede1958017c22e96b",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/seed.c": "98dc7a4c019b3a592c8863174a720063967fd09282d3d0dd6b743a9cfb844a61",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/seed.h": "0e9c7920b51f91a11602d27f63352d6d5d4ccda73dd0728cba18d9b626bd841c",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/source_io.c": "edec0a9fa5281da7ee9e69d682510744f4d495c9752ba882e529f3f6325476ac",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/source_io.h": "8663f6d47c88484f9a70d3ab88a240a06a6d45dd569d2e8eba318f5eb7492630",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/subscription.c": "402ae43301f76b31a3a6809e73103d59f5fc8352812c4f80e997aa0c22e9c8fd",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/subscription.h": "727dd905ab2b0c5c749c4330ba9de34c8a2b0e07f48bea64ca8c38d3f9d18ba9",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/support.c": "d26104dfd003b05414dc151882a542b127e71e7288c309bee13aaf34a2df1348",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/support.h": "a8e27f60779fe6bf5b88ce74991855e67ac167d9fd0c9549a9d4b74624e60977",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/symmetry.c": "af73abaeac3d6b01577bf10305a858ad6143bb7e6088cc4903817a72d7c0d5fb",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/symmetry.h": "2a315abf7233d7f0e87430e8b4bc23ffa8acd97d8a97bca3c4a0204379fe6dc4",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/symmetry_internal.h": "569468be53803726d886a5de3e7240decbc4d9173ea554ecb1edf4b428d00ea6",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/syntax.c": "76bd00a68d91480f9a6196e463119fee819cfcf5369f9390b39a9e1a13c72824",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/syntax.h": "b333b47a17fac161af99f5b898baebaef224fb751ba6183ab73ffe79021e6049",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/syntax_io.c": "6b4b27e7790f130a563bb064341b93eb9f724eb36df08fb584115daf494bf32e",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/syntax_io.h": "e7802ba592678c1a3c48f8f8d7401d36df15b09390e367c0697c294c54421a5f",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/synthesis.c": "0a9c77635a87ce069e0725aad66072b05d567734e6b20e4016cd9e71c4ab939c",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/synthesis.h": "6a04dd8a16daf9116d047a00e09407c60f4638145696f7cba52a55a38f7a782a",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/synthesis_binding.c": "77a7af11536020817ca62ed7dd172f80dad768dcd134cef05fa694320ee7271b",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/synthesis_cbpv.c": "5b9b32df8612ca33ea19cafbc35dbc77f527a99f68c19d2e1b139306c1104664",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/synthesis_context.c": "eee075aea29a3b4fae8dcd3956a07c0409c91b6442280445f6e5cd212ec99a57",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/synthesis_conversion.c": "7abee0c273b9bd074d6b77419198833b7e1b54c197fa0e745a7562e990040b1f",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/synthesis_conversion.h": "8386cef962260a5217a32f6be3a281c0b718ab10377a7cb998df468e702d0acc",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/synthesis_derivation.c": "01f8607f66de7506ca4961174dc52ebfa605957f76ea6f06ba10a4541f6f1789",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/synthesis_effect.c": "f620c3724f2b19b7643e81ce968052610dc726039df2ad658800e79448bc038f",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/synthesis_effect.h": "524f43121cb546c6f5c8b5f1f3b842a746a5715d1f655be0dbfa750555bc1066",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/synthesis_function.c": "feac6e22d90e0f1adf6da6e4febafb27d2b0290832c3d7dd38dd617b53adc1d1",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/synthesis_handler.c": "51f2b14a0a5c1cc3f3170b767fe82dda58771ababa64b3f320839181877cc0c2",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/synthesis_handler.h": "7a6daa0461e92ac5e39810b2060fb66775f3c9fda1ae38f36e6721393438f2e1",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/synthesis_iadt.c": "76c90ddd54ada186452ce5854dcccf92baaee34c8c2297a8d5a69987af9fe32e",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/synthesis_identity.c": "fbad0b5b5d010d2ee49c0904a0811917bb84432ebcafd7b627af6b5cab0d5929",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/synthesis_operation.c": "0e9f3e473bb825d856ddfe2f9a2ee4108c9acd8ab2ef15dafc4209d7aabf5bac",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/synthesis_schema.c": "bcd58dbe3d6ee07bc5a2f7aee841ae94c8e042e55831a9ec5ed8524a1b8c1b5b",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/synthesis_schema.h": "09489f68dca5fea190e3fc999b7b8a45a31edf3f2058ff10cd48e7eb66b5efc4",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/synthesis_source.h": "dd4fb2da32e0c7e9114bb429da0f7e54e57e40b486542c48da06f7e0791bb133",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/synthesis_work.c": "49a9a888e564e9c558dcb4a70f2da346b6e3fbaf1c008f35c73068c54f8c430e",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/synthesis_work.h": "4e54f054144d0d878640d9a9e353adba3a8ad2615c97936f867e3ded4c309ec1",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/typed_query.c": "ac6ebad9d78b21bf414d8c3f4f30ae96b822163936d651d4e3f276b9d5bd83dd",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/typed_query.h": "6204390c8bcf06820fa9337be8c694848abb6e179894f951b04c8d10d8df74d9",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/typing.c": "a32bd36f8e756965d4087cb566be817da012572c12481737f887913ff2dc0f69",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/typing.h": "9568e0ed476c7701e13d856851677f9c0a5de55612a41e015ad865790876409e",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/wire.c": "e737a6c6e9f5f91219ad653ea6437729b9c06008bf5ae06de60b3067fe78fbec",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/src/wire.h": "ddef58862ae5882147919b51b848093f9ec048ec6cbd9ca9d228d3f414b5f7f2",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/verification.sha256": "ab3d3f2e1428de29d9c3457b55e1f35c2688bbcc60495c2b88e1fa926b753e22",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/verification.sha256": "d0a318bdf3c7d5f7b4f4c9463a7e9a56d8230f6b951a3c0f0ee1bd9409861fc7",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/qualification.json": "9924d23aa968a3771b76fb8c63896351ac40813d76a1f29fbfd0864a8396c58e",
+    "/tmp/ap-performance-measurement-e6-preparation-20261003/imported-sorted-corrected-invocation.json": "2e1521940b69734a47feef8f85dfe8cc6c7674afcd035c76c5fc558dca1a699d",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_cross/measure.py": "88db183bb5c32c6e5637795abad8c122c1a63da2a3d6d38df5e9499eca1ecfab",
+    "/tmp/ap-performance-measurement-baseline-e6-20261003/build/pointer-check": "234f32ebbaa5fc577c55d088c6db6a6939286e5356bcde4e6eb5179086f8a136",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/build/pointer-check": "33d90f6fb02f0bd5cafe1e50f5cc64a5d057b2607e4c5f3aa21b81c97fe9bf8f",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e1/quick-local-provider.p": "c22eafc8fd288a29abce7b5ececf654c4aa826281e0dc4194eea453e464c2e77",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/examples/09_list_induction.p": "f2d58b2c2161c086f62022943ca63e9acdca3c2dd7c6fd1979cc4c7ff7c15b37",
+    "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/tests/acceptance/generic-quick-local-sorted-result.p": "bd38d6e04d23402d5a1fc9f2955d90f05b911635680bbc509f1c59ed9431cd27",
+    "/tmp/ap-performance-cross-7d24b8d/trees_400.p": "ec7d6e03053a6d7fedbf41a26ec682d91d7375f4cd89a83cfc39aa05fab6bdc3",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_cross/results/full-bendtt-lean.json": "74c519ce6b711dcae220cf77eb2ff5d3628f587473149c51598ee1dc3354e225",
+    "/tmp/ap-performance-cross-7d24b8d/full-native-controls/bend/main.bend": "71ec84456fa54b860ddaf0f6bd1614581bdb801a9d256b7c77365c0711111fcb",
+    "/tmp/ap-performance-cross-7d24b8d/bun-1.4.2": "a83d263767d839e4d2649ca8e35d07159c7afc99afdc96d731ced29e056dda0c",
+    "/tmp/ap-performance-cross-7d24b8d/bendtt-private-build/bendtt": "72e11a86f44563e9decb26fe1c586ed7d5465e98ca282ada5ae8753b1156cad5",
+    "/tmp/ap-performance-cross-7d24b8d/pinned-repo/bend2/bend.ts": "de2b39db2fcbd2f9115053e85e34d791693e1297bfeb6874da1013ff7b44b7dd",
+    "/tmp/ap-performance-cross-7d24b8d/pinned-repo/bend2/main.ts": "738f8c895ac3f9ff23eb02597201ce51a7f04df0c95a2914d9df6035e01b53dc",
+    "/tmp/ap-performance-cross-7d24b8d/pinned-repo/bend2/comp.ts": "3bd7ed49d33f1c61334d75a905e38c0345fb15a10b45d85884b77f49833dc5ee",
+    "/tmp/ap-performance-cross-7d24b8d/pinned-repo/bend2/safe.ts": "55d5848abef79895f1e1813d194718bc8ed988d2d4fb580faf7a6aacee492629",
+    "/tmp/ap-performance-cross-7d24b8d/pinned-repo/bend2/base.bend": "c742fae9c49b14f0cc9128429a2c6109364c8a933a142f2c90b9f2e5fd976661",
+    "/tmp/ap-performance-cross-7d24b8d/pinned-repo/bend2/docs/gen_pins.ts": "5077ab79976e2d5b7720db35f7343f03552c1148f1c617fd19c39a374aab1edc",
+    "/tmp/ap-performance-cross-7d24b8d/pinned-repo/gates/perf.ts": "d43c8d62268cd6d338c5a87e0b087361c35ddbed6335c250fda31182019c8c1d",
+    "/tmp/ap-performance-cross-7d24b8d/full-native-controls/lean/main.lean": "51156f26e4d9e47ea3a8a9e35cce6c86afb33a954b7cde9bb618b6315f1ebf38",
+    "/tmp/ap-performance-cross-7d24b8d/lean-4.34.0-linux/bin/lean": "e8baaa71855a616dc351028f3ad2200051b0671f423a1696a100e809302d5550",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_cross/results/full-agda-rocq.json": "2077316363ab43d3bcfaaca37ba7ac43fa06a787da06b3fb689b2bee10d3231c",
+    "/tmp/ap-performance-cross-7d24b8d/full-native-controls/agda/main.agda": "d0e0eedee48ab7c8748d9a5c82fb2e8564cd19518f9fc8425dd952abd2fbb2a1",
+    "/tmp/ap-performance-cross-7d24b8d/agda-2.7.0.1/Agda-v2.7.0.1/bin/agda": "6de41437c14c05c9fe576d724cc67386444c0fa9fee662a08250fefb91bee8b6",
+    "/tmp/ap-performance-cross-7d24b8d/full-native-controls/v/main.v": "792a9f61df4dd3357d01f1d5061561f2c86872d3cab6aaf34604f6b572f1d3e5",
+    "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/root/home/rocq/.opam/4.14.2+flambda/bin/rocq": "48cf02a3310e5d8e16969063198fd972f1900ed689aa274391b0d774a976a068",
+    "/tmp/ap-performance-measure-gnu-time-e6-20261003.py": "9c50c62d1ddc49e85c88abe94f95162c85096165afcdff7cd945bb9b9a004b71",
+    "/tmp/a-program-merge-timing-tool-20261003/extracted/usr/bin/time": "efc0d1112e36ec76c14bf7508e287935cf1631d9d0d91fb532802d07aef51cea",
+    "/tmp/a-program-merge-timing-tool-20261003/time_1.9-0.2_amd64.deb": "10257c6fe888e6578550b1f20705d282dd630b76f8df0c006aec3031fefe5e23",
+    "/lib/x86_64-linux-gnu/libc.so.6": "adeedbc69ac402b762a3bd94759441e0546c33972cb2c0f5bc6869a2d32efed6",
+    "/lib64/ld-linux-x86-64.so.2": "8c1cf687490f3f7858528ceb4e651b979f625e43396431bec65e5bb89cb63860",
+    "/usr/bin/timeout": "6ca1891dfc0b05d7680770c2884c0391b92467c7bb6500a5c84677e6481739f1",
+    "/usr/bin/python3.13": "e59d0124ff06c248546876e01fcfb1ea3cda63534949f94a9372bfcfe3bfc3f5"
+  },
+  "jobs": [
+    {
+      "case": "list",
+      "system": "ap",
+      "variant": "baseline",
+      "repetition": 1,
+      "argv": [
+        "/tmp/ap-performance-measurement-baseline-e6-20261003/build/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/examples/09_list_induction.p"
+      ]
+    },
+    {
+      "case": "list",
+      "system": "ap",
+      "variant": "head",
+      "repetition": 1,
+      "argv": [
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/build/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/examples/09_list_induction.p"
+      ]
+    },
+    {
+      "case": "imported-local-sorted",
+      "system": "ap",
+      "variant": "baseline",
+      "repetition": 1,
+      "argv": [
+        "/tmp/ap-performance-measurement-baseline-e6-20261003/build/pointer-check",
+        "--steps",
+        "1000000000",
+        "--legacy-intrinsic-dot",
+        "--imports",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e1/quick-local-provider.p",
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/tests/acceptance/generic-quick-local-sorted-result.p"
+      ]
+    },
+    {
+      "case": "imported-local-sorted",
+      "system": "ap",
+      "variant": "head",
+      "repetition": 1,
+      "argv": [
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/build/pointer-check",
+        "--steps",
+        "1000000000",
+        "--legacy-intrinsic-dot",
+        "--imports",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e1/quick-local-provider.p",
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/tests/acceptance/generic-quick-local-sorted-result.p"
+      ]
+    },
+    {
+      "case": "trees400",
+      "system": "ap",
+      "variant": "baseline",
+      "repetition": 1,
+      "argv": [
+        "/tmp/ap-performance-measurement-baseline-e6-20261003/build/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-cross-7d24b8d/trees_400.p"
+      ]
+    },
+    {
+      "case": "trees400",
+      "system": "ap",
+      "variant": "head",
+      "repetition": 1,
+      "argv": [
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/build/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-cross-7d24b8d/trees_400.p"
+      ]
+    },
+    {
+      "case": "trees400",
+      "system": "bend",
+      "argv": [
+        "/tmp/ap-performance-cross-7d24b8d/bun-1.4.2",
+        "/tmp/ap-performance-cross-7d24b8d/pinned-repo/bend2/main.ts",
+        "/tmp/ap-performance-cross-7d24b8d/full-native-controls/bend/main.bend",
+        "--verdict"
+      ],
+      "fresh_source": "/tmp/ap-performance-cross-7d24b8d/full-native-controls/bend/main.bend",
+      "environment_overrides": {
+        "BEND_NO_TELEMETRY": "1",
+        "BENDTT": "/tmp/ap-performance-cross-7d24b8d/bendtt-private-build/bendtt",
+        "LEAN_STACK_SIZE_KB": "4194304"
+      },
+      "repetition": 1
+    },
+    {
+      "case": "trees400",
+      "system": "lean",
+      "argv": [
+        "/tmp/ap-performance-cross-7d24b8d/lean-4.34.0-linux/bin/lean",
+        "/tmp/ap-performance-cross-7d24b8d/full-native-controls/lean/main.lean"
+      ],
+      "fresh_source": "/tmp/ap-performance-cross-7d24b8d/full-native-controls/lean/main.lean",
+      "environment_overrides": {},
+      "repetition": 1
+    },
+    {
+      "case": "trees400",
+      "system": "agda",
+      "argv": [
+        "/tmp/ap-performance-cross-7d24b8d/agda-2.7.0.1/Agda-v2.7.0.1/bin/agda",
+        "--no-libraries",
+        "--ignore-interfaces",
+        "/tmp/ap-performance-cross-7d24b8d/full-native-controls/agda/main.agda"
+      ],
+      "fresh_source": "/tmp/ap-performance-cross-7d24b8d/full-native-controls/agda/main.agda",
+      "environment_overrides": {
+        "Agda_datadir": "/tmp/ap-performance-cross-7d24b8d/agda-2.7.0.1/Agda-v2.7.0.1/data"
+      },
+      "repetition": 1
+    },
+    {
+      "case": "trees400",
+      "system": "v",
+      "argv": [
+        "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/root/home/rocq/.opam/4.14.2+flambda/bin/rocq",
+        "compile",
+        "/tmp/ap-performance-cross-7d24b8d/full-native-controls/v/main.v"
+      ],
+      "fresh_source": "/tmp/ap-performance-cross-7d24b8d/full-native-controls/v/main.v",
+      "environment_overrides": {
+        "OCAMLPATH": "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/root/home/rocq/.opam/4.14.2+flambda/lib",
+        "ROCQLIB": "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/root/home/rocq/.opam/4.14.2+flambda/lib/coq",
+        "OCAMLFIND_CONF": "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/relocated-findlib.conf"
+      },
+      "repetition": 1
+    },
+    {
+      "case": "list",
+      "system": "ap",
+      "variant": "head",
+      "repetition": 2,
+      "argv": [
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/build/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/examples/09_list_induction.p"
+      ]
+    },
+    {
+      "case": "list",
+      "system": "ap",
+      "variant": "baseline",
+      "repetition": 2,
+      "argv": [
+        "/tmp/ap-performance-measurement-baseline-e6-20261003/build/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/examples/09_list_induction.p"
+      ]
+    },
+    {
+      "case": "imported-local-sorted",
+      "system": "ap",
+      "variant": "head",
+      "repetition": 2,
+      "argv": [
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/build/pointer-check",
+        "--steps",
+        "1000000000",
+        "--legacy-intrinsic-dot",
+        "--imports",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e1/quick-local-provider.p",
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/tests/acceptance/generic-quick-local-sorted-result.p"
+      ]
+    },
+    {
+      "case": "imported-local-sorted",
+      "system": "ap",
+      "variant": "baseline",
+      "repetition": 2,
+      "argv": [
+        "/tmp/ap-performance-measurement-baseline-e6-20261003/build/pointer-check",
+        "--steps",
+        "1000000000",
+        "--legacy-intrinsic-dot",
+        "--imports",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e1/quick-local-provider.p",
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/tests/acceptance/generic-quick-local-sorted-result.p"
+      ]
+    },
+    {
+      "case": "trees400",
+      "system": "ap",
+      "variant": "head",
+      "repetition": 2,
+      "argv": [
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/build/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-cross-7d24b8d/trees_400.p"
+      ]
+    },
+    {
+      "case": "trees400",
+      "system": "ap",
+      "variant": "baseline",
+      "repetition": 2,
+      "argv": [
+        "/tmp/ap-performance-measurement-baseline-e6-20261003/build/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-cross-7d24b8d/trees_400.p"
+      ]
+    },
+    {
+      "case": "trees400",
+      "system": "v",
+      "argv": [
+        "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/root/home/rocq/.opam/4.14.2+flambda/bin/rocq",
+        "compile",
+        "/tmp/ap-performance-cross-7d24b8d/full-native-controls/v/main.v"
+      ],
+      "fresh_source": "/tmp/ap-performance-cross-7d24b8d/full-native-controls/v/main.v",
+      "environment_overrides": {
+        "OCAMLPATH": "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/root/home/rocq/.opam/4.14.2+flambda/lib",
+        "ROCQLIB": "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/root/home/rocq/.opam/4.14.2+flambda/lib/coq",
+        "OCAMLFIND_CONF": "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/relocated-findlib.conf"
+      },
+      "repetition": 2
+    },
+    {
+      "case": "trees400",
+      "system": "agda",
+      "argv": [
+        "/tmp/ap-performance-cross-7d24b8d/agda-2.7.0.1/Agda-v2.7.0.1/bin/agda",
+        "--no-libraries",
+        "--ignore-interfaces",
+        "/tmp/ap-performance-cross-7d24b8d/full-native-controls/agda/main.agda"
+      ],
+      "fresh_source": "/tmp/ap-performance-cross-7d24b8d/full-native-controls/agda/main.agda",
+      "environment_overrides": {
+        "Agda_datadir": "/tmp/ap-performance-cross-7d24b8d/agda-2.7.0.1/Agda-v2.7.0.1/data"
+      },
+      "repetition": 2
+    },
+    {
+      "case": "trees400",
+      "system": "lean",
+      "argv": [
+        "/tmp/ap-performance-cross-7d24b8d/lean-4.34.0-linux/bin/lean",
+        "/tmp/ap-performance-cross-7d24b8d/full-native-controls/lean/main.lean"
+      ],
+      "fresh_source": "/tmp/ap-performance-cross-7d24b8d/full-native-controls/lean/main.lean",
+      "environment_overrides": {},
+      "repetition": 2
+    },
+    {
+      "case": "trees400",
+      "system": "bend",
+      "argv": [
+        "/tmp/ap-performance-cross-7d24b8d/bun-1.4.2",
+        "/tmp/ap-performance-cross-7d24b8d/pinned-repo/bend2/main.ts",
+        "/tmp/ap-performance-cross-7d24b8d/full-native-controls/bend/main.bend",
+        "--verdict"
+      ],
+      "fresh_source": "/tmp/ap-performance-cross-7d24b8d/full-native-controls/bend/main.bend",
+      "environment_overrides": {
+        "BEND_NO_TELEMETRY": "1",
+        "BENDTT": "/tmp/ap-performance-cross-7d24b8d/bendtt-private-build/bendtt",
+        "LEAN_STACK_SIZE_KB": "4194304"
+      },
+      "repetition": 2
+    },
+    {
+      "case": "list",
+      "system": "ap",
+      "variant": "baseline",
+      "repetition": 3,
+      "argv": [
+        "/tmp/ap-performance-measurement-baseline-e6-20261003/build/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/examples/09_list_induction.p"
+      ]
+    },
+    {
+      "case": "list",
+      "system": "ap",
+      "variant": "head",
+      "repetition": 3,
+      "argv": [
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/build/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/examples/09_list_induction.p"
+      ]
+    },
+    {
+      "case": "imported-local-sorted",
+      "system": "ap",
+      "variant": "baseline",
+      "repetition": 3,
+      "argv": [
+        "/tmp/ap-performance-measurement-baseline-e6-20261003/build/pointer-check",
+        "--steps",
+        "1000000000",
+        "--legacy-intrinsic-dot",
+        "--imports",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e1/quick-local-provider.p",
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/tests/acceptance/generic-quick-local-sorted-result.p"
+      ]
+    },
+    {
+      "case": "imported-local-sorted",
+      "system": "ap",
+      "variant": "head",
+      "repetition": 3,
+      "argv": [
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/build/pointer-check",
+        "--steps",
+        "1000000000",
+        "--legacy-intrinsic-dot",
+        "--imports",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e1/quick-local-provider.p",
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/tests/acceptance/generic-quick-local-sorted-result.p"
+      ]
+    },
+    {
+      "case": "trees400",
+      "system": "ap",
+      "variant": "baseline",
+      "repetition": 3,
+      "argv": [
+        "/tmp/ap-performance-measurement-baseline-e6-20261003/build/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-cross-7d24b8d/trees_400.p"
+      ]
+    },
+    {
+      "case": "trees400",
+      "system": "ap",
+      "variant": "head",
+      "repetition": 3,
+      "argv": [
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/build/pointer-check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-cross-7d24b8d/trees_400.p"
+      ]
+    },
+    {
+      "case": "trees400",
+      "system": "bend",
+      "argv": [
+        "/tmp/ap-performance-cross-7d24b8d/bun-1.4.2",
+        "/tmp/ap-performance-cross-7d24b8d/pinned-repo/bend2/main.ts",
+        "/tmp/ap-performance-cross-7d24b8d/full-native-controls/bend/main.bend",
+        "--verdict"
+      ],
+      "fresh_source": "/tmp/ap-performance-cross-7d24b8d/full-native-controls/bend/main.bend",
+      "environment_overrides": {
+        "BEND_NO_TELEMETRY": "1",
+        "BENDTT": "/tmp/ap-performance-cross-7d24b8d/bendtt-private-build/bendtt",
+        "LEAN_STACK_SIZE_KB": "4194304"
+      },
+      "repetition": 3
+    },
+    {
+      "case": "trees400",
+      "system": "lean",
+      "argv": [
+        "/tmp/ap-performance-cross-7d24b8d/lean-4.34.0-linux/bin/lean",
+        "/tmp/ap-performance-cross-7d24b8d/full-native-controls/lean/main.lean"
+      ],
+      "fresh_source": "/tmp/ap-performance-cross-7d24b8d/full-native-controls/lean/main.lean",
+      "environment_overrides": {},
+      "repetition": 3
+    },
+    {
+      "case": "trees400",
+      "system": "agda",
+      "argv": [
+        "/tmp/ap-performance-cross-7d24b8d/agda-2.7.0.1/Agda-v2.7.0.1/bin/agda",
+        "--no-libraries",
+        "--ignore-interfaces",
+        "/tmp/ap-performance-cross-7d24b8d/full-native-controls/agda/main.agda"
+      ],
+      "fresh_source": "/tmp/ap-performance-cross-7d24b8d/full-native-controls/agda/main.agda",
+      "environment_overrides": {
+        "Agda_datadir": "/tmp/ap-performance-cross-7d24b8d/agda-2.7.0.1/Agda-v2.7.0.1/data"
+      },
+      "repetition": 3
+    },
+    {
+      "case": "trees400",
+      "system": "v",
+      "argv": [
+        "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/root/home/rocq/.opam/4.14.2+flambda/bin/rocq",
+        "compile",
+        "/tmp/ap-performance-cross-7d24b8d/full-native-controls/v/main.v"
+      ],
+      "fresh_source": "/tmp/ap-performance-cross-7d24b8d/full-native-controls/v/main.v",
+      "environment_overrides": {
+        "OCAMLPATH": "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/root/home/rocq/.opam/4.14.2+flambda/lib",
+        "ROCQLIB": "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/root/home/rocq/.opam/4.14.2+flambda/lib/coq",
+        "OCAMLFIND_CONF": "/tmp/ap-performance-cross-7d24b8d/rocq-oci-9.0.1/relocated-findlib.conf"
+      },
+      "repetition": 3
+    }
+  ],
+  "optional_E4_cost_pair_not_included_yet": true,
+  "additional_audit_cost_targets_require_Merge_alignment": true
+}

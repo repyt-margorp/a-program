@@ -1,0 +1,10 @@
+Runner process exit: 1, before the first benchmark process was launched.
+Traceback (most recent call last):
+  File "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_cross/measure.py", line 110, in <module>
+    main()
+  File "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_cross/measure.py", line 66, in main
+    result = subprocess.run(wrapped, cwd=folder, env=environment,
+        stdout=stream, stderr=subprocess.STDOUT)
+  File "/usr/lib/python3.13/subprocess.py", line 1972, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: '/usr/bin/time'

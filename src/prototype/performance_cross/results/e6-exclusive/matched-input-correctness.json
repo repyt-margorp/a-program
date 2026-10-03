@@ -1,0 +1,76 @@
+{
+  "job_epoch": "b2d66682be75c21a3c2a8c5138db9d3f0c5e0eb2",
+  "complete": true,
+  "comparative_wall_rss": false,
+  "checks": [
+    {
+      "variant": "baseline",
+      "case": "list",
+      "command": [
+        "/tmp/ap-performance-measurement-baseline-e6-20261003/build/pointer-check",
+        "--steps",
+        "10000000",
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/examples/09_list_induction.p"
+      ],
+      "exit": 0,
+      "output": "done steps=1921",
+      "passed": true,
+      "source_sha256": "f2d58b2c2161c086f62022943ca63e9acdca3c2dd7c6fd1979cc4c7ff7c15b37",
+      "provider_sha256": null,
+      "log_sha256": "a1ba22e315974066e800b11f493e8f9672b9a687f52b6e261a665d59110c986d"
+    },
+    {
+      "variant": "baseline",
+      "case": "imported-local-sorted",
+      "command": [
+        "/tmp/ap-performance-measurement-baseline-e6-20261003/build/pointer-check",
+        "--steps",
+        "10000000",
+        "--imports",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e1/quick-local-provider.p",
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/tests/acceptance/generic-quick-local-sorted-result.p"
+      ],
+      "exit": 1,
+      "output": "",
+      "passed": false,
+      "source_sha256": "bd38d6e04d23402d5a1fc9f2955d90f05b911635680bbc509f1c59ed9431cd27",
+      "provider_sha256": "c22eafc8fd288a29abce7b5ececf654c4aa826281e0dc4194eea453e464c2e77",
+      "log_sha256": "83cfdb41eed86eca1e4badfb5efec9e695e098138dd8edc09ffa6ba87555af39"
+    },
+    {
+      "variant": "head",
+      "case": "list",
+      "command": [
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/build/pointer-check",
+        "--steps",
+        "10000000",
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/examples/09_list_induction.p"
+      ],
+      "exit": 0,
+      "output": "done steps=1915",
+      "passed": true,
+      "source_sha256": "f2d58b2c2161c086f62022943ca63e9acdca3c2dd7c6fd1979cc4c7ff7c15b37",
+      "provider_sha256": null,
+      "log_sha256": "55291f7bbf79e2b15f58c9dc2f6aa361be76c78cd1dcecaf6e593dafcf4c8f50"
+    },
+    {
+      "variant": "head",
+      "case": "imported-local-sorted",
+      "command": [
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/build/pointer-check",
+        "--steps",
+        "10000000",
+        "--imports",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e1/quick-local-provider.p",
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/tests/acceptance/generic-quick-local-sorted-result.p"
+      ],
+      "exit": 1,
+      "output": "",
+      "passed": false,
+      "source_sha256": "bd38d6e04d23402d5a1fc9f2955d90f05b911635680bbc509f1c59ed9431cd27",
+      "provider_sha256": "c22eafc8fd288a29abce7b5ececf654c4aa826281e0dc4194eea453e464c2e77",
+      "log_sha256": "83cfdb41eed86eca1e4badfb5efec9e695e098138dd8edc09ffa6ba87555af39"
+    }
+  ],
+  "passed": false
+}

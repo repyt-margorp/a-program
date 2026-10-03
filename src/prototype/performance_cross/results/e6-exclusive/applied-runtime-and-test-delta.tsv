@@ -1,0 +1,7 @@
+kind	file	added	deleted	qualification
+runtime	src/computation.c	50	4	matched E6 source delta; assertions retained
+runtime	src/eval.c	31	1	matched E6 source delta; assertions retained
+runtime	src/eval.h	13	0	matched E6 source delta; assertions retained
+runtime	src/iadt.c	43	7	matched E6 source delta; assertions retained
+explicit test adapter	tests/core.c	25	5	matched E6 source delta; assertions retained
+explicit test adapter	tests/identity_io.c	3	1	matched E6 source delta; assertions retained

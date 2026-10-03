@@ -1,0 +1,18 @@
+{
+  "grant": "e6-shared-cost-gnu-time-20261003-0833",
+  "proposal_configuration_sha256": "e89b39e6cddb31e89dc76efef815f2445ac7cac671197562784d255cd8bde785",
+  "actual_configuration": "/tmp/ap-performance-measurement-e6-preparation-20261003/configuration-launch-gnu-time-0833.json",
+  "actual_configuration_sha256": "390adf4137e93708bf8ff580241975fee6edb52057bae10fd8aff317fb8f7e64",
+  "private_runner_sha256": "9c50c62d1ddc49e85c88abe94f95162c85096165afcdff7cd945bb9b9a004b71",
+  "derivation_UTC": "2026-10-03T08:35:04.485250+00:00",
+  "remaining_absolute_seconds": 1020.51475,
+  "maximum_seconds": 1018,
+  "absolute_hard_stop_UTC": "2026-10-03T08:52:05+00:00",
+  "jobs": 30,
+  "all292_pins_verified_before_launch": true,
+  "output": "/tmp/ap-performance-exclusive-e6-shared-cost-gnu-time-20261003-0833",
+  "runner_pid": 6,
+  "runner_exit": 0,
+  "terminal_UTC": "2026-10-03T08:36:55.938837+00:00",
+  "runner_terminal": true
+}

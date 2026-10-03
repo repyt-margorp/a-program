@@ -1,0 +1,2 @@
+exit=1
+/tmp/ap-performance-cross-7d24b8d/rocq-debian-9.2/root/usr/bin/rocq: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.42' not found (required by /tmp/ap-performance-cross-7d24b8d/rocq-debian-9.2/root/usr/bin/rocq)

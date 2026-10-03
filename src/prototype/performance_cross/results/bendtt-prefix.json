@@ -1,0 +1,85 @@
+{
+  "scope": "BendTT admission of the official four-equality prefix and kernel-level endpoint controls",
+  "binary_sha256": "72e11a86f44563e9decb26fe1c586ed7d5465e98ca282ada5ae8753b1156cad5",
+  "emission": {
+    "argv": [
+      "/tmp/ap-performance-cross-7d24b8d/bun-1.4.2",
+      "/tmp/ap-performance-cross-7d24b8d/pinned-repo/bend2/main.ts",
+      "/tmp/ap-performance-cross-7d24b8d/reproducible-controls/bend/positive/main.bend",
+      "-o",
+      "/tmp/ap-performance-cross-7d24b8d/bendtt-admission/positive.bendtt"
+    ],
+    "exit": 0,
+    "source_sha256": "bd8c948e8865aac51d360867bf29e96f044ca583ce2004a7c35b0c0c3b9a874e",
+    "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "comparative_wall_rss": false,
+    "emitted_sha256": "62978cce7eb9cd93edcedf87a2429b1e9c425aea529ebf7e64f32b3750f365ae",
+    "emitted_bytes": 3928
+  },
+  "full_workload_admission_checked": false,
+  "comparative_wall_rss": false,
+  "environment": {
+    "BEND_NO_TELEMETRY": "1",
+    "BENDTT": "/tmp/ap-performance-cross-7d24b8d/bendtt-private-build/bendtt",
+    "LEAN_STACK_SIZE_KB": "4194304"
+  },
+  "complete": true,
+  "checks": [
+    {
+      "label": "frontend-verdict",
+      "command": [
+        "/tmp/ap-performance-cross-7d24b8d/bun-1.4.2",
+        "/tmp/ap-performance-cross-7d24b8d/pinned-repo/bend2/main.ts",
+        "/tmp/ap-performance-cross-7d24b8d/reproducible-controls/bend/positive/main.bend",
+        "--verdict"
+      ],
+      "exit": 0,
+      "output": "ALL PROOFS CHECK\n",
+      "input_sha256": "bd8c948e8865aac51d360867bf29e96f044ca583ce2004a7c35b0c0c3b9a874e",
+      "log_sha256": "61b73cda11b6b665b9f99f2defd3d3b57f985c865225e942a5bdaa594a503e47",
+      "qualified": true,
+      "expected_pass": true
+    },
+    {
+      "label": "positive",
+      "command": [
+        "/tmp/ap-performance-cross-7d24b8d/bendtt-private-build/bendtt",
+        "/tmp/ap-performance-cross-7d24b8d/bendtt-admission/positive.bendtt"
+      ],
+      "exit": 0,
+      "output": "ALL PROOFS CHECK\n",
+      "input_sha256": "62978cce7eb9cd93edcedf87a2429b1e9c425aea529ebf7e64f32b3750f365ae",
+      "log_sha256": "61b73cda11b6b665b9f99f2defd3d3b57f985c865225e942a5bdaa594a503e47",
+      "qualified": true,
+      "expected_pass": true
+    },
+    {
+      "label": "false-bool",
+      "command": [
+        "/tmp/ap-performance-cross-7d24b8d/bendtt-private-build/bendtt",
+        "/tmp/ap-performance-cross-7d24b8d/bendtt-admission/false-bool.bendtt"
+      ],
+      "exit": 1,
+      "output": "SOME PROOFS FAIL\nIn ft0:\nexpected: (alltrue (full +n7))\nobserved: (.F, ())\n",
+      "input_sha256": "c1052bf2c59dbdfefcbff755a0766a6225b5e1187bb12926ad2600373b26b8f6",
+      "log_sha256": "d22a72770e392af3eb93e10d7ad4de01fcaec588e3d28ae3839830380e47a7b8",
+      "qualified": true,
+      "expected_pass": false
+    },
+    {
+      "label": "false-tree",
+      "command": [
+        "/tmp/ap-performance-cross-7d24b8d/bendtt-private-build/bendtt",
+        "/tmp/ap-performance-cross-7d24b8d/bendtt-admission/false-tree.bendtt"
+      ],
+      "exit": 1,
+      "output": "SOME PROOFS FAIL\nIn mt0:\nexpected: (mirror (full +n6))\nobserved: (.L, ())\n",
+      "input_sha256": "6a4a8e3016142bd622ef60f64cc4538ccc53e8efce65c0ed2c49e2fd90b7bcba",
+      "log_sha256": "afd0b4a37ee2948d2197af1af5aa9beb30bf6af31790ac273d11f27e4c5793cc",
+      "qualified": true,
+      "expected_pass": false
+    }
+  ],
+  "qualified": true,
+  "kernel_endpoint_rejections_verified": true
+}

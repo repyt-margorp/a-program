@@ -1,0 +1,19 @@
+{
+	"slot": "e6-shared-cost-20261003-0812",
+	"runner_process_terminal": true,
+	"runner_exit": 1,
+	"failure": "GNU time /usr/bin/time unavailable",
+	"stage": "Popen before first benchmark launch",
+	"benchmark_children_started": 0,
+	"benchmark_children_running": 0,
+	"all_measurement_children_stopped": true,
+	"planned_samples": 30,
+	"recorded_samples": 0,
+	"wall_CPU_RSS_results_collected": false,
+	"original_configuration_sha256": "dbfc0ce5a3f111647fe465de33b37d93520da8ed59c9fdec145ec9a5afaad336",
+	"derived_configuration_sha256": "9d41549c22b8b17c2c298a210ed3ebd0188979efcd4484642bccca61b98ce54f",
+	"partial_measurements_json_sha256": "3c236df00ab165f11a958e81858375430f6fd55283e2bac3db2acb18e222c7f2",
+	"partial_report_left_unchanged": true,
+	"heavy_restart_pending_Merge_handoff": true,
+	"audit_phase_not_claimed_granted": true
+}

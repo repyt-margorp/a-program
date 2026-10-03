@@ -1,0 +1,55 @@
+{
+  "epoch": "canonical producer341261d + frozen JobE1 + performance0539051",
+  "comparative_wall_rss": false,
+  "checks": [
+    {
+      "case": "trees_2",
+      "command": [
+        "/tmp/ap-performance-current-joint-341261d-0539051-20261003/build/pointer-check",
+        "--steps",
+        "10000000",
+        "/tmp/ap-performance-cross-7d24b8d/trees_2.p"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "output": "done steps=1170277\n",
+      "qualified": true,
+      "source_sha256": "cdf7da75902b3cf8d31988ef944b19c5f0a17e260159aca5d7a7757ee43df872",
+      "steps": 1170277,
+      "log_sha256": "c2f42e8c3ee1a3a513d9d167d0908c859413d100d98e8da85aa64cc02d8ce666"
+    },
+    {
+      "case": "false_bool",
+      "command": [
+        "/tmp/ap-performance-current-joint-341261d-0539051-20261003/build/pointer-check",
+        "--steps",
+        "10000000",
+        "/tmp/ap-performance-cross-7d24b8d/false_bool.p"
+      ],
+      "exit": 1,
+      "expected_exit": 1,
+      "output": "rejected steps=54737\n",
+      "qualified": true,
+      "source_sha256": "b5942d7f1581dcec9c6c30e4db28f768f688c0097ff20e3460f449e5d5f1c70f",
+      "steps": 54737,
+      "log_sha256": "6c6e7794c9db37ad287225a2a0fcf7545b92b864b66b41fd2ea93157d26cf08f"
+    },
+    {
+      "case": "false_tree",
+      "command": [
+        "/tmp/ap-performance-current-joint-341261d-0539051-20261003/build/pointer-check",
+        "--steps",
+        "10000000",
+        "/tmp/ap-performance-cross-7d24b8d/false_tree.p"
+      ],
+      "exit": 1,
+      "expected_exit": 1,
+      "output": "rejected steps=41789\n",
+      "qualified": true,
+      "source_sha256": "83cad86511cf74340fb946c26ae1dd3176a15f534a0a2ae6723c6e1f22027023",
+      "steps": 41789,
+      "log_sha256": "9c9efa5e8a158ac7a2a141bd03837a81274cde35cfaaec7b2ffdcd41936610c9"
+    }
+  ],
+  "passed": true
+}
