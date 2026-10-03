@@ -1,0 +1,125 @@
+--- a/src/source_io.c
++++ b/src/source_io.c
+@@ -11,7 +11,7 @@
+ #include <string.h>
+ #include <stdlib.h>
+ 
+-static const char magic[8] = "APGSRC\104";
++static const char magic[8] = "APGSRC\105";
+ enum environment_kind { ROOT, NAME, MODULE, NAMESPACE, IMPORTS, DEFINITIONS, BINDING, CONTEXT_BINDING, HANDLER_SCOPE, HANDLER_BINDING, GRAPH_BINDING };
+ 
+ struct environment {
+@@ -817,7 +817,10 @@
+ 		for (size_t i = 0; i < 7; ++i) if (pg_wire_write_u64(file, words[i])) goto done;
+ 		int complete = node->id <= semantic_producers &&
+ 			(pg_dag_find(&values->checked, node->key) || pg_synthesis_saved_complete(synthesis, node->key));
+-		if (fputc(complete, file) == EOF) goto done;
++		struct pg_synthesis_job *body = NULL;
++		int started = semantic_producers && !pg_dag_find(&values->checked, node->key)
++			&& !pg_synthesis_definition_body(synthesis, node->key, &body) && body;
++		if (fputc(complete | (started ? 2 : 0), file) == EOF) goto done;
+ 	}
+ 	for (const struct pg_dag_node *node = scopes->first; node; node = node->next) {
+ 		struct environment input;
+@@ -1076,7 +1079,7 @@
+ 	for (size_t i = 0; i < np; ++i) {
+ 		for (size_t j = 0; j < 7; ++j) if (pg_wire_read_u64(file, &ids[7 * i + j])) goto fail;
+ 		int flag = fgetc(file);
+-		if (flag != 0 && flag != 1) goto fail;
++		if (flag < 0 || flag > 3) goto fail;
+ 		complete[i] = (unsigned char)flag;
+ 	}
+ 	for (size_t i = 0; i < 3 * ne; ++i) if (pg_wire_read_u64(file, &entries[i])) goto fail;
+@@ -1365,6 +1368,19 @@
+ 		frontier.complete = (int)r->complete;
+ 		if (pg_synthesis_definition_resume(&program->synthesis, input.registration, &frontier)) goto fail;
+ 	}
++	/* A started definition already identifies its body by the lexical request
++	 * key. Reconnect that ordinary owner without importing any checked status.
++	 * Module traversal and all child checks still run through normal Solve. */
++	for (size_t i = 0; i < np; ++i) {
++		if (!(complete[i] & 2)) continue;
++		const struct pg_source_scope *scope;
++		const struct pg_syntax *definitions, *syntax;
++		if (pg_synthesis_definition_input(&program->synthesis, producers[i], &scope, &definitions, &syntax)) goto fail;
++		scope = pg_synthesis_prepared_environment(producers[i]);
++		if (!scope) goto fail;
++		struct pg_synthesis_job *body = pg_synthesis_request(&program->synthesis, scope, syntax);
++		if (!body || pg_synthesis_definition_resume_body(&program->synthesis, producers[i], body)) goto fail;
++	}
+ 	for (size_t i = 0; i < no; ++i) {
+ 		uint64_t scope = origin_ids[3 * i], syntax = origin_ids[3 * i + 1], rule = origin_ids[3 * i + 2];
+ 		if (!scope || scope > n || !syntax || syntax > nt || !rule) goto fail;
+@@ -1400,7 +1416,7 @@
+ 	}
+ 	for (size_t i = 0; i < semantic_count; ++i) {
+ 		if (semantic[i] && pg_synthesis_import_materialized(&program->synthesis, producers[i], semantic[i])) goto fail;
+-		if (complete[i] && pg_synthesis_import_completion(&program->synthesis, producers[i])) goto fail;
++		if ((complete[i] & 1) && pg_synthesis_import_completion(&program->synthesis, producers[i])) goto fail;
+ 	}
+ 	for (size_t i = 0; i < nr; ++i) jobs[i] = producers[selections[i] - 1];
+ 	program->root = nr ? jobs[0] : NULL;
+--- a/src/source_io.h
++++ b/src/source_io.h
+@@ -3,7 +3,7 @@
+ #include "program.h"
+ #include <stdio.h>
+ 
+-/* APGSRC68 preserves available typed construction at each producer.
++/* APGSRC69 preserves available typed construction at each producer.
+  * It shares relocation with source/rule inputs and nominal declarations.
+  * Reading exposes descriptive results through pg_synthesis_materialized,
+  * not accepted evidence. Local Solve still checks source and annotations;
+@@ -12,8 +12,10 @@
+  * selections, including namespaces without an exported module root.
+  * Each namespace retains committed indexing/activation cursors and name-only
+  * completion. Reading restores these links in lexical order, not typed results.
+- * Failed items are rechecked by Solve; source-body progress and the pending
+- * schedule are not yet restored.
++ * Failed items are rechecked by Solve. Started definition bodies reconnect
++ * through their existing lexical request keys; a start bit shares the producer
++ * completion byte, without a second body graph. Neither child checking progress
++ * nor module traversal or the pending schedule is restored by this bit.
+  * Older formats reject; rebuild them from source.
+  *
+  * Reconstructible source environments and source/definition/rule roots, including pending modules.
+@@ -94,7 +96,7 @@
+  * convenience scope is empty; no second standard namespace is synthesized.
+  * limit bounds scope/root/name data and syntax data separately. Loading never
+  * advances Solve; on failure, destroys all storage and leaves outputs alone.
+- * Only APGSRC68 is accepted. It contains no evaluator-history archive. */
++ * Only APGSRC69 is accepted. It contains no evaluator-history archive. */
+ struct pg_program *pg_sources_read(FILE *file, size_t limit,
+ 	size_t *count, struct pg_synthesis_job *const **roots);
+ 
+--- a/artifact_tests/semantic_test.c
++++ b/artifact_tests/semantic_test.c
+@@ -304,12 +304,15 @@
+ 			for (size_t i = 0; i < before.count; ++i) {
+ 				struct pg_synthesis_job *body = NULL;
+ 				if (pg_synthesis_definition_body(&original->synthesis, before.entries[i], &body) || !body) continue;
++				assert(!copy->synthesis.steps && copy->typing.proofs.count == 1);
++				assert(!pg_synthesis_definition_body(&copy->synthesis, after.entries[i], &body) && body);
++				size_t jobs = copy->synthesis.jobs.count;
+ 				const struct pg_source_scope *scope;
+ 				const struct pg_syntax *definitions, *expression;
+ 				assert(!pg_synthesis_definition_input(&copy->synthesis, after.entries[i], &scope, &definitions, &expression));
+ 				scope = pg_synthesis_definition_scope(&copy->synthesis, scope, definitions);
+-				body = pg_synthesis_request(&copy->synthesis, scope, expression);
+-				assert(body && !pg_synthesis_definition_resume_body(&copy->synthesis, after.entries[i], body));
++				assert(body == pg_synthesis_request(&copy->synthesis, scope, expression));
++				assert(copy->synthesis.jobs.count == jobs && !copy->synthesis.steps);
+ 				++attached;
+ 			}
+ 			if (after.complete) {
+--- a/tests/seed.c
++++ b/tests/seed.c
+@@ -95,7 +95,7 @@
+ 		rewind(file);
+ 		assert(fread(bytes, 1, length, file) == length && fgetc(file) == EOF);
+ 		assert(!ferror(file) && fclose(file) == 0);
+-		assert(length > 56 && !memcmp(bytes, "APGSRC\104", 8));
++		assert(length > 56 && !memcmp(bytes, "APGSRC\105", 8));
+ 		const unsigned char version = bytes[6];
+ 		assert(bytes[8] == policy);
+ 		compare(read_bytes(bytes, length, 4096), source, policy);

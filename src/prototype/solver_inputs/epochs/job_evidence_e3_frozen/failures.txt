@@ -1,0 +1,4 @@
+Original strict public partition gate remains exit1:1000+1000,1600+1600,completed1921+0. Public verdict TSV equals E2; loading is inert/untrusted.
+Initial broad aggregate exit2 atseed APGSRC68 fixture; source snapshot/hash retained. Retry aggregate exit2 from missing ARTIFACT_TESTS trailing slash, not runtime. Corrected complement0/final aggregate0 reuse only completed retained/local Sorted gates; reports pinned in verification.tsv.
+Historical wrong outer-scope attachment/manual semantic-body attachment failures are retained under ../job_evidence_e3/reports; corrected before verification. Parent E2 --require-body-frontier diagnostic fails134; parent observation mode0.
+Missing public child cursors/module traversal/schedule still unresolved; start bits alone do not settle SE4 or Goal.
