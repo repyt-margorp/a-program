@@ -54,6 +54,7 @@ static void ordinary(void)
 		const struct ap_data_List *out;
 		assert(!ap_export_length(&arena, input, &scalar) && scalar == (int32_t)length);
 		assert(!ap_export_sum(&arena, input, &scalar) && scalar == signed_bits(bits));
+		assert(!ap_export_block_callback(&arena, input, &scalar) && scalar == signed_bits(bits + 1));
 		assert(!ap_export_identity(&arena, input, &out) && out == input && !arena.count);
 		assert(!ap_export_append(&arena, input, &suffix, &out));
 		assert(same_prefix(out, input) == &suffix && arena.count == length);
@@ -123,6 +124,7 @@ static void failures(void)
 	const struct ap_data_List *tail = &nil;
 	for (size_t i = 257; i; --i) { node(&chain[i - 1], 1, 0, tail); tail = &chain[i - 1]; }
 	assert(ap_export_length(&arena, tail, &scalar) == 4 && scalar == 77 && !arena.depth);
+	assert(ap_export_block_callback(&arena, tail, &scalar) == 4 && scalar == 77 && !arena.depth);
 	assert(!ap_export_length(&arena, &chain[255], &scalar) && scalar == 2);
 	ap_arena_List_destroy(&arena);
 }

@@ -1,0 +1,8 @@
+aplink 1
+artifact static-functions.a
+abi c_scalar_v1
+target host-c11
+product source
+lowering scalar_direct_v1
+fallback reject
+export closed_block closed_block

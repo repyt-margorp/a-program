@@ -1,0 +1,15 @@
+aplink 1
+artifact static-native.a
+abi c_native_v1
+target host-c11
+product source
+lowering native_direct_v1
+fallback reject
+nat32 Nat Nat
+data Numbers Numbers
+export local_successor local_successor
+export unused_successor unused_successor
+export repeated_successor repeated_successor
+export captured_list captured_list
+export captured_length captured_length
+export shadowed_list shadowed_list

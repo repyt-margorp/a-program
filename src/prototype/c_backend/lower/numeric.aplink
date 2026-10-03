@@ -19,3 +19,4 @@ export reversed_increment reversed_increment
 export reversed_zero reversed_zero
 export constant constant
 export long_identity long_identity
+export block_callback block_callback

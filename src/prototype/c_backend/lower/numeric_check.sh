@@ -64,7 +64,7 @@ for name in Bool Numbers LongNumbers Tree; do
 	expect_status 4 "$backend" --link "$temporary/bad.aplink" "$temporary/bad"
 	test ! -e "$temporary/bad"
 done
-for name in block_callback callback effect; do
+for name in callback effect; do
 	sed '/^export /d' "$here/numeric.aplink" > "$temporary/bad.aplink"
 	printf 'export %s rejected\n' "$name" >> "$temporary/bad.aplink"
 	expect_status 4 "$backend" --link "$temporary/bad.aplink" "$temporary/bad"
