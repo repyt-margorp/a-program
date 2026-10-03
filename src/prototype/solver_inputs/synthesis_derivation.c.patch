@@ -86,8 +86,12 @@
  }
  
  enum { RULE_KEY_FIELDS = 18 };
-@@ -122,8 +75,8 @@
- 	const struct pg_derivation_input *header;
+@@ -119,11 +72,11 @@
+ 
+ struct rule_input {
+ 	struct pg_index_entry index;
+-	const struct pg_derivation_input *header;
++	_Alignas(struct pg_derivation_input) unsigned char header[];
  };
  
 -static const struct pg_derivation_input *intern_rule_input(struct pg_synthesis *synthesis,
@@ -97,15 +101,27 @@
  {
  	uint64_t key[RULE_KEY_FIELDS], hash = UINT64_C(1469598103934665603);
  	rule_key(input, key);
-@@ -135,6 +88,7 @@
- 		rule_key(candidate->header, fields);
- 		if (!memcmp(key, fields, sizeof(key))) return candidate->header;
- 	}
+@@ -131,69 +84,94 @@
+ 	for (struct pg_index_entry *p = pg_index_candidates(&synthesis->rule_inputs, hash); p; p = p->next) {
+ 		if (p->hash != hash) continue;
+ 		const struct rule_input *candidate = (const void *)p;
++		const struct pg_derivation_input *header = (const void *)candidate->header;
+ 		uint64_t fields[RULE_KEY_FIELDS];
+-		rule_key(candidate->header, fields);
+-		if (!memcmp(key, fields, sizeof(key))) return candidate->header;
+-	}
+-	struct rule_input *entry = pg_alloc(synthesis->typing->graph, sizeof(*entry));
+-	struct pg_derivation_input *header = pg_alloc(synthesis->typing->graph, sizeof(*header));
+-	if (!entry || !header) return NULL;
++		rule_key(header, fields);
++		if (!memcmp(key, fields, sizeof(key))) return header;
++	}
 +	if (!create) return NULL;
- 	struct rule_input *entry = pg_alloc(synthesis->typing->graph, sizeof(*entry));
- 	struct pg_derivation_input *header = pg_alloc(synthesis->typing->graph, sizeof(*header));
- 	if (!entry || !header) return NULL;
-@@ -143,57 +97,81 @@
++	struct rule_input *entry = pg_alloc(synthesis->typing->graph, sizeof(*entry) + sizeof(*input));
++	if (!entry) return NULL;
++	struct pg_derivation_input *header = (void *)entry->header;
+ 	*header = *input;
+-	entry->header = header;
  	return pg_index_insert(&synthesis->rule_inputs, &entry->index, hash) ? NULL : header;
  }
  

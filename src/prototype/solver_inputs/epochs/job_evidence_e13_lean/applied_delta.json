@@ -1,0 +1,19 @@
+{
+  "files": [
+    {
+      "file": "src/synthesis_derivation.c",
+      "added": 7,
+      "removed": 7
+    },
+    {
+      "file": "tests/synthesis.c",
+      "added": 3,
+      "removed": 0
+    }
+  ],
+  "implementation_added": 7,
+  "implementation_removed": 7,
+  "test_added": 3,
+  "test_removed": 0,
+  "documentation": "Lean report only; active plan and later live edits excluded."
+}

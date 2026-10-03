@@ -1,0 +1,98 @@
+{
+  "source156_each_before_after_exact": true,
+  "unchanged_all_census_counts_at_all_cuts": true,
+  "ordinary_imported_theorem_asserted": true,
+  "cost_scope": "Existing allocation_audit.c external arena cumulative calls/aligned bytes only; not live/peak/RSS/time. Same source/input/fuel/checking. Broad cumulative deltas are independently observed counters, not a universal16-bytes-per-header inference. First invalid extrapolation assertion preserved.",
+  "samples": [
+    {
+      "sample": "list",
+      "status": "DONE",
+      "steps": 1921,
+      "typed": 429,
+      "evidence": 555,
+      "all_census_fields_equal_at_all_four_cuts": true,
+      "parent": {
+        "wrapped_arena_calls": 4415,
+        "wrapped_aligned_bytes": 442736
+      },
+      "candidate": {
+        "wrapped_arena_calls": 4360,
+        "wrapped_aligned_bytes": 441856
+      },
+      "fewer_external_arena_calls": 55,
+      "fewer_external_cumulative_aligned_arena_bytes": 880
+    },
+    {
+      "sample": "effect",
+      "status": "DONE",
+      "steps": 13142,
+      "typed": 2680,
+      "evidence": 3414,
+      "all_census_fields_equal_at_all_four_cuts": true,
+      "parent": {
+        "wrapped_arena_calls": 27941,
+        "wrapped_aligned_bytes": 2789328
+      },
+      "candidate": {
+        "wrapped_arena_calls": 27622,
+        "wrapped_aligned_bytes": 2784224
+      },
+      "fewer_external_arena_calls": 319,
+      "fewer_external_cumulative_aligned_arena_bytes": 5104
+    },
+    {
+      "sample": "captured",
+      "status": "DONE",
+      "steps": 2307,
+      "typed": 632,
+      "evidence": 797,
+      "all_census_fields_equal_at_all_four_cuts": true,
+      "parent": {
+        "wrapped_arena_calls": 7625,
+        "wrapped_aligned_bytes": 738096
+      },
+      "candidate": {
+        "wrapped_arena_calls": 7559,
+        "wrapped_aligned_bytes": 737072
+      },
+      "fewer_external_arena_calls": 66,
+      "fewer_external_cumulative_aligned_arena_bytes": 1024
+    },
+    {
+      "sample": "quick",
+      "status": "DONE",
+      "steps": 766477,
+      "typed": 114388,
+      "evidence": 94974,
+      "all_census_fields_equal_at_all_four_cuts": true,
+      "parent": {
+        "wrapped_arena_calls": 2890073,
+        "wrapped_aligned_bytes": 229333504
+      },
+      "candidate": {
+        "wrapped_arena_calls": 2886658,
+        "wrapped_aligned_bytes": 229221552
+      },
+      "fewer_external_arena_calls": 3415,
+      "fewer_external_cumulative_aligned_arena_bytes": 111952
+    },
+    {
+      "sample": "handler",
+      "status": "DONE",
+      "steps": 2470,
+      "typed": 425,
+      "evidence": 530,
+      "all_census_fields_equal_at_all_four_cuts": true,
+      "parent": {
+        "wrapped_arena_calls": 4755,
+        "wrapped_aligned_bytes": 470704
+      },
+      "candidate": {
+        "wrapped_arena_calls": 4649,
+        "wrapped_aligned_bytes": 469008
+      },
+      "fewer_external_arena_calls": 106,
+      "fewer_external_cumulative_aligned_arena_bytes": 1696
+    }
+  ]
+}

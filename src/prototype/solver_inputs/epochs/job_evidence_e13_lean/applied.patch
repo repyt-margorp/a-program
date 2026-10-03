@@ -1,0 +1,46 @@
+--- a/src/synthesis_derivation.c
++++ b/src/synthesis_derivation.c
+@@ -72,7 +72,7 @@
+ 
+ struct rule_input {
+ 	struct pg_index_entry index;
+-	const struct pg_derivation_input *header;
++	_Alignas(struct pg_derivation_input) unsigned char header[];
+ };
+ 
+ static const struct pg_derivation_input *rule_header(struct pg_synthesis *synthesis,
+@@ -84,16 +84,16 @@
+ 	for (struct pg_index_entry *p = pg_index_candidates(&synthesis->rule_inputs, hash); p; p = p->next) {
+ 		if (p->hash != hash) continue;
+ 		const struct rule_input *candidate = (const void *)p;
++		const struct pg_derivation_input *header = (const void *)candidate->header;
+ 		uint64_t fields[RULE_KEY_FIELDS];
+-		rule_key(candidate->header, fields);
+-		if (!memcmp(key, fields, sizeof(key))) return candidate->header;
++		rule_key(header, fields);
++		if (!memcmp(key, fields, sizeof(key))) return header;
+ 	}
+ 	if (!create) return NULL;
+-	struct rule_input *entry = pg_alloc(synthesis->typing->graph, sizeof(*entry));
+-	struct pg_derivation_input *header = pg_alloc(synthesis->typing->graph, sizeof(*header));
+-	if (!entry || !header) return NULL;
++	struct rule_input *entry = pg_alloc(synthesis->typing->graph, sizeof(*entry) + sizeof(*input));
++	if (!entry) return NULL;
++	struct pg_derivation_input *header = (void *)entry->header;
+ 	*header = *input;
+-	entry->header = header;
+ 	return pg_index_insert(&synthesis->rule_inputs, &entry->index, hash) ? NULL : header;
+ }
+ 
+--- a/tests/synthesis.c
++++ b/tests/synthesis.c
+@@ -1266,6 +1266,9 @@
+ 		assert(higher_universe && higher_universe != universe_job);
+ 		assert(synthesis.rule_inputs.count == headers + 1);
+ 		copied_input.parameters.level = 2;
++		const struct pg_derivation_input *retained_header = pg_synthesis_plain_derivation(higher_universe);
++		assert(retained_header && retained_header->parameters.level == 1);
++		assert(retained_header->rule == PG_UNIVERSE_FORM && retained_header->count == 1);
+ 		assert(!pg_synthesis_rule_inputs(&synthesis, &type_input, &(struct pg_synthesis_input){.pending = pg_synthesis_pending(universe_job)}, &work, other));
+ 		assert(!pg_synthesis_rule_inputs(&synthesis, &universe_input, &context_job, &work, a));
+ 		struct pg_derivation_input conflicting = {.rule = PG_RETURN_TYPE_FORM,

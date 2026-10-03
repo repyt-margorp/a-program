@@ -1,0 +1,8 @@
+{
+  "reference": "exact corrected E12 public_partitions",
+  "complete_verdict_fuel_tsv_equal": true,
+  "raw_images": 52,
+  "all_raw_images_equal": true,
+  "strict_gate_exit": 1,
+  "original_failures_unwaived": true
+}
