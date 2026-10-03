@@ -1,0 +1,18 @@
+Epoch 1: module/reference owner borrowing and export/stage deletion.
+Baseline: 5035c7a4493d0c343545dba96c9187600f80ba84; producer 64df10dfb6caf69226cebb401b88714541334768.
+Applied runtime +7/-12, tests +21/-3. No accepted-source edits.
+Canonical files are the exact frozen E1 files identified by canonical.sha256.
+The original publication.patch remains frozen SHA256 19e84273d179a052d65f810eeb936e2ee86046f7cde87091fecc14e0a0f7fa1d.
+The original full manifest remains frozen SHA256 f792b1ca1f4a3a708a7f4ead6941484cacfd4bbf6979b6d609c254e29cd6e011.
+This lean evidence directory is separate; it contains no full plan snapshots or build logs.
+
+O2 -j2 full regression/examples/acceptance, semantic/seven checkpoint gates, focused ASan/UBSan/leaks Core/Synthesis/SourceIO/normalization/DerivationIO, all baseline C gates passed. Verification TSV gives terminal exits and local full-report hashes. Fresh assembly matched 156 C/header files (tested_sources.sha256).
+Parent storage control fails with 134 at source_imports' retained result assertion; this is a discriminating negative control. Initial binder-output and direct-result checkpoint trials were corrected before freezing.
+Strict public partitions fail with exit1: 1000+1000, 1600+1600, completed1921+0. No waiver. All52 images and the verdict TSV match the parent. Inert terminal reload preserves bytes but does not admit evidence.
+
+All five corrected paired census terminal statuses are DONE, ordinary typed/Evidence counts and dispatches identical. Retained result references removed: List50/effect154/captured111/importedQuickSort3753/handler26. Job-layout bytes decrease16 for four inputs and32 for imported QuickSort. No peak-memory, traversal or time claim.
+QuickSort uses tests/acceptance/generic-quick-local-sorted-result.p and the frozen quick-local-provider.p assembly from tests/local_strong_sorted.sh, explicit allow_legacy_intrinsic_dot=1, and checks quick_locally_sorted's ordinary result after root DONE. Harness: import_state_audit.c. Fuel0/100/1000/10000000 is cumulative, not per-call.
+The original concatenated quick-local.p (legacy #.terminates at line302) rejected at61489. Its fixture/hash and original rows remain rejected-workload evidence. An incomplete-provider retry also failed; census_failures.txt records it. Neither was a runtime regression or completed measurement.
+
+Core joint report, operational provenance: 11 focused gates/all70 fresh cuts passed; four common-producer variants preserve114388 occurrences/94974 Evidence, baseline/Job766477 and head+cleanup/both761848 dispatches. E1 has no additional dispatch reduction. Combined strict partitions retain the same3 failures; full combined acceptance remains open. Exclusive joint costs remain future work.
+SE1-SE5 Goal remains active. E2/E3 are separate epochs, not publication inputs for E1.

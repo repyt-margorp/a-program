@@ -1,7 +1,7 @@
 # Job/Evidence Implementation Handoff
 
 Date: 2026-10-03
-Status: ready for launch; session `job-evidence`.
+Status: active implementation; epoch 1 verified, SE1-SE5 unfinished.
 Branch: `parallel/job-evidence-20261003`.
 Producer checkpoint: `64df10dfb6caf69226cebb401b88714541334768`.
 Related: [coordination](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md),
@@ -15,6 +15,12 @@ Related: [coordination](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md),
 ## 1. Single Implementation Owner
 
 ### Subjective (User)
+
+2026-10-03, English paraphrase of the latest direct user clarification:
+performance and Job/Evidence reduction/deletion are tightly coupled and need
+concentrated joint verification. C remains important downstream: `.a` plus
+LinkerScript emits C usable from other C modules, without undue scope expansion.
+Preserve checking when measuring improvements.
 
 2026-10-03, English paraphrase of the latest explicit decision: specialize this
 Core session in merges and audits; move Job/Evidence simplification into another
@@ -35,6 +41,16 @@ Earlier workflow requirements: independent worktrees, `/goal`, `6.1 Sol` at
 only Core merges Main. Prototype integration is not accepted-source promotion.
 
 ### Objective (Code)
+
+2026-10-03, worker epoch 1 on `5035c7a` / producer `64df10d`: actual module
+export/stage and module/reference result copies removed. Full O2 acceptance,
+semantic/seven checkpoints, focused ASan/UBSan/leaks and baseline C gates pass;
+fresh assembly matches the tested sources. Corrected ordinary QuickSort theorem
+census is DONE on both producers at 766,477 dispatches. Preserve the earlier
+REJECTED 61,489-step workload/fixture and failed incomplete-provider retry.
+Three original strict public resume failures and all parent image bytes remain
+unchanged. Epoch 2 is separately verifying further owner-copy deletion; SE4
+policy/progress diagnostics use ordinary Solve and inert untrusted loading.
 
 Committed Main `64df10d` includes reviewed SE patches, the family scratch-pool
 epoch, Surface epochs and C-backend epochs 1/2. The accepted semantic baseline
@@ -60,6 +76,13 @@ definition checks, failures and real quotation proofs must remain correct.
 This is a candidate deletion, not user approval of a solution or the full Goal.
 
 ### Assessment
+
+2026-10-03, Core operational coordination: deliver exact tested canonical
+snapshots for joint captured-head/readback integration on common producer, inputs
+and progress. Core is assembling family/Surface/performance gates. This worker
+does not edit eval/readback; retained-copy deletion differs from peak memory,
+traversal and time. Joint cost measurements need an exclusive slot. Surface is
+intentionally stopped; its completed branch is preserved.
 
 Core operational assignment: this worker is the sole SE1-SE5 implementation
 owner. Core performs design review, combined verification and Main integration;

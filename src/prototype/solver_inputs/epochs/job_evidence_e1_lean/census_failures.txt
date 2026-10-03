@@ -1,0 +1,24 @@
+Baseline: 5035c7a / producer 64df10d. Original failures are not acceptance passes.
+
+Initial paired command:
+job_evidence_baseline/build/artifact_state_audit quick-local.p 0 100 1000 10000000
+Result: abort at state_audit.c:119, assertion p && p->root.
+The same fixture under pointer-check --steps 0 reports line 302:
+use #Name; #.Name requires --legacy-intrinsic-dot.
+Source hash: a6edd1468f755a849e542f56ea30b4f96fe273706f8a3aa3a57c2ca824716f6f.
+Source remains quick-local.p; this is a concatenated, import-stripped trial fixture.
+
+Explicit compatibility follow-up:
+job_evidence_baseline/census/artifact_state_audit quick-local.p 0 100 1000 10000000
+and the identical job_evidence_epoch1/census command.
+Both terminal rows are REJECTED (status 2), 61,489 steps.
+These rejected-workload rows remain in rejected_workload_measurements.tsv,
+with their input hashes in rejected_workload_inputs.sha256. They cannot support
+claims about a completed ordinary-result QuickSort or general Sorted theorem.
+
+The corrected import-aware census uses the actual acceptance theorem
+tests/acceptance/generic-quick-local-sorted-result.p with its actual provider
+tests/fixtures/sorted-proof-provider.p and explicit legacy parser compatibility.
+Its driver requires both DONE and a checked quick_locally_sorted definition.
+
+Provider retry: import_state_audit SOURCE tests/fixtures/sorted-proof-provider.p 0 100 1000 10000000 aborted (134) at import_state_audit.c:155, root DONE guard. This omitted local-strong-sorted.p and quick-sort-proof-common.p from tests/local_strong_sorted.sh provider assembly. Retain failed census-verified-quick-parent.tsv; corrected provider is quick-local-provider.p.
