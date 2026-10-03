@@ -21,6 +21,13 @@ void pg_c_nodes_declarations(FILE *out, const struct pg_c_representations *table
 		fprintf(out, "int ap_copy_%s(const struct ap_data_%s *, ", r->alias, r->alias);
 		pg_c_representation_type(out, r->constructors[cell].fields[payload]);
 		fputs(" *, size_t capacity, size_t *written);\n", out);
+		fputs("/* Copy an array slice into arena-owned List nodes, including its terminal.\n"
+			"\t* Input, output and arena metadata must not overlap. Empty input accepts\n"
+			"\t* a null array. 1: null argument; 3: allocation; 4: active arena; 6: length\n"
+			"\t* overflow. Failures preserve output and prior arena allocations. */\n", out);
+		fprintf(out, "int ap_from_%s(struct ap_c_arena *, const ", r->alias);
+		pg_c_representation_type(out, r->constructors[cell].fields[payload]);
+		fprintf(out, " *, size_t count, const struct ap_data_%s **out);\n", r->alias);
 	}
 }
 
@@ -76,5 +83,22 @@ void pg_c_nodes_implementation(FILE *out, const struct pg_c_representations *tab
 			"\t\tbuffer[i] = node->fields.c%zu.f%zu; node = node->fields.c%zu.f%zu;\n"
 			"\t}\n\t*written = count;\n\treturn 0;\n}\n",
 			r->alias, r->alias, cell, cell, tail, cell, payload, cell, tail);
+		fprintf(out, "int ap_from_%s(struct ap_c_arena *arena, const ", r->alias);
+		pg_c_representation_type(out, r->constructors[cell].fields[payload]);
+		fprintf(out, " *input, size_t count, const struct ap_data_%s **out)\n{\n"
+			"\tif (!arena || !out || (count && !input)) return 1;\n"
+			"\tif (arena->depth) return 4;\n\tif (count == SIZE_MAX) return 6;\n"
+			"\tstruct ap_c_allocation *mark = arena->first;\n\tarena->status = 0;\n"
+			"\tstruct ap_data_%s *node = ap_allocate(arena, sizeof(*node));\n"
+			"\tif (node) *node = (struct ap_data_%s){.tag = %zu};\n"
+			"\tconst struct ap_data_%s *result = node;\n"
+			"\twhile (count && !arena->status) {\n"
+			"\t\tnode = ap_allocate(arena, sizeof(*node));\n"
+			"\t\tif (node) {\n\t\t\t--count;\n"
+			"\t\t\t*node = (struct ap_data_%s){.tag = %zu, .fields.c%zu = {.f%zu = input[count], .f%zu = result}};\n"
+			"\t\t\tresult = node;\n\t\t}\n\t}\n"
+			"\tif (arena->status) { ap_release(arena, mark); return arena->status; }\n"
+			"\t*out = result;\n\treturn 0;\n}\n",
+			r->alias, r->alias, r->alias, 1 - cell, r->alias, r->alias, cell, cell, payload, tail);
 	}
 }

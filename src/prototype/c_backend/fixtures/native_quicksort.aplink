@@ -1,0 +1,11 @@
+aplink 1
+artifact native.a
+abi c_native_v1
+target host-c11
+product source
+lowering native_direct_v1
+fallback reject
+enum32 bool_type Bool
+nat32 nat_type Nat
+data nat_list List
+export sort sort

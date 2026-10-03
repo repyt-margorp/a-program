@@ -15,8 +15,25 @@ Related: [coordination](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md),
 
 ### Subjective (User)
 
+2026-10-03, English paraphrase of the latest direct user clarification:
+performance and Job/Evidence need concentrated joint verification. The C backend
+is an important downstream project: use `.a` and LinkerScript to emit C readily
+usable from other C modules, connecting A Program to the external world and
+eventual generic assembler lowering. It has no authority over A Program. Avoid
+excessive deep or scope-expanding investigation. This narrows the earlier full
+coverage direction; keep target work bounded and coordinate upstream dependencies.
+
 2026-10-03, English paraphrase of user authorization, relayed by Core: own
 task-branch commit/push is explicitly permitted; only Core merges Main.
+
+2026-10-03, English paraphrase of the latest direct user clarification: each
+worker may commit/push its own task branch. Only Core merges results or updates
+Main; workers must not self-merge, promote or close issues. Publish verified,
+reviewable epochs with test evidence and report branch/commit, changes, failures
+and integration needs to Core. Continue within the prototype write scope. This
+directly confirms the earlier relayed authorization; integration/promotion
+boundaries remain. Recorded first in a separate Goal addendum during the Epoch3
+freeze and incorporated here immediately after Core released it.
 
 2026-10-03, English paraphrase of the explicit user role decision relayed by
 Core: Core now specializes in design audit, combined verification and Main
@@ -40,6 +57,36 @@ refinement now, while the coordinator continues Job/Evidence removal. Use task
 names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
+
+2026-10-03, fresh Epoch4 verification at `720f92a` plus the exact lane edits in
+the [handoff](2026-10-03-C-BACKEND-EPOCH4-HANDOFF.md): five focused O2 gates pass
+(numeric/List, scalar/raw Oracle, List, Linker and sorting boundary); numeric/List
+and scalar/raw native clients pass ASan/UBSan with leak detection. New coverage:
+511 array slices, 5,110 partition calls, Int32 source-sum correspondence, reversed
+Int64 fields, empty/300-node conversion, all four allocation failure positions,
+capacity rollback and prior-result survival. Final open QuickSort admits in
+52,935 steps; checked/trusted native requests reject with status 4 and no product.
+No remaining gate failure. Evidence and resource limits are pinned in the handoff.
+Fresh Main history contains prototype merge `0fc0c0b`; no worker Main write.
+
+2026-10-03, fresh Epoch4 probe at `720f92a` plus lane fixtures: current Core
+producer admits an open Nat-list QuickSort (`53120` steps with diagnostic type
+aliases); native linking refuses its selected generic `List Nat` representation
+with status 4 before publication. A frozen copy of Core's family/Surface overlay
+reads the artifact and its existing typed views successfully. The earlier
+task-baseline reader failure was a producer/reader version mismatch, not evidence
+of a current producer defect. Snapshot manifest digest:
+`c4de94b2f70b581229c89ae4a842bbc16c0873dc1c2fdb2ce0bda8eff6d41e45`;
+inspection: `/tmp/a-program-c-backend-epoch4-current/acc-inspection.log`.
+No producer, schema or shared-owner change is requested for this bounded epoch.
+
+2026-10-03: fresh Git inspection confirms Epoch3 branch/upstream publication
+`720f92a7103229996a8013847bdf1eca2246c9e9`. Core reports all eight combined C
+gates passed with current family-cursor plus Surface producer, code audit found
+no blocking defect, prototype Main merge completed and Main push was underway.
+Log: `/tmp/a-program-core-c3-combined.log`. This is Core integration evidence;
+the worker's separate task-baseline tests remain distinguished below. Epoch3
+freeze is released. The old exact manifest remains historical evidence.
 
 2026-10-03: fresh Git inspection confirms Epoch2 publication `4987c08` on the
 task branch and its upstream. Core reports seven current-owner/family-cursor plus
@@ -86,6 +133,43 @@ pinned/current producer images and emitted C/headers match byte-for-byte.
 Evidence and exact publication files are in the [epoch handoff](2026-10-03-C-BACKEND-EPOCH1-HANDOFF.md).
 
 ### Assessment
+
+Core operational reprioritization, 2026-10-03: prioritize target ABI, ordinary C
+clients, source/object/library products and bounded native lowering of admitted
+source. Retain unsupported contracts explicitly; do not pursue wholesale
+CBPV/dependent/effect coverage or change `.a` for target convenience. The native
+Acc/QuickSort probe may establish a concrete boundary; route producer gaps to
+Core rather than rebuilding an upstream checker or IR. This supersedes the
+open-ended Epoch4 generalization proposal below.
+
+Agent revised Epoch4 decision: finish the bounded Acc probe, report its actual
+reader/representation boundary, then select a small usable C boundary improvement
+with ordinary client and source/object/library verification. Keep existing
+native numeric/List behavior and historical evidence intact.
+
+Agent Epoch4 ABI decision: extend the already selected two-constructor
+scalar-payload List contract with `ap_from_ALIAS(arena, array, count, out)`.
+Copy the caller's finite slice into arena-owned nodes, including the terminal;
+preserve order and prior results, rolling back this call's allocations on failure.
+Pair it with existing copy-out and native source partition exports in ordinary C
+clients for source/object/archive products. This is target conversion glue, not
+native Acc erasure, QuickSort completion or a change to source semantics.
+
+Core operational Epoch4 steer, 2026-10-03: proceed to native Acc recurrence,
+QuickSort and slice requirements. Preserve explicit target resource limits and
+downstream-only authority. Structural QuickSort and a hand-coded sorter do not
+complete native lowering. Route producer/readback/checking dependencies through
+Core to job-evidence before editing shared owners. Plan/status updates are new
+epoch edits; do not rewrite old manifests.
+
+Agent Epoch4 decision, 2026-10-03 at `720f92a`: start from the existing generic
+sorting provider and a selected open Nat-list sort, not a new sorter. Inspect
+admitted family/constructor/index and Acc callable-field structure first.
+Investigate uniform target representations with indices/proof fields retained
+where used, plus native known function/thunk values; do not assume Acc erasure
+from source Sortedness or constructor arity. Use small downstream inspection
+probes to identify existing owner views and concrete lowering failures before
+changing representation/lowering code. Producer/readback gaps go to Core.
 
 Core operational routing, 2026-10-03: the job-evidence worker uses clean baseline
 `5035c7a`, producer `64df10d`; Core no longer edits SE owners concurrently.
@@ -207,12 +291,16 @@ this target work while Main continues SE1, superseding the earlier AP6 hold.
 - [x] Epoch3: native Nat comparison, stable numeric List partitions and finite
   scalar List copy-out. Verify source/C agreement, boundary/resource failures,
   existing refusals, inert deterministic emission, receipts and O2/sanitizers.
-- [ ] Hand off the frozen Epoch3 files/hashes for Core task-branch publication;
-  current-owner combined checks and Main review remain separate.
-- [ ] Continue the remaining AP4.6/AP5.6/AP6.3-AP6.8 work against their shared
-  criteria: recursive data/length/append/partition, List/slice/Acc/QuickSort,
-  callback/effect and Identity coverage, explicit cross-module nominal contracts.
-  These remain incomplete; no admission or relevance authority is assumed here.
+- [x] Hand off frozen Epoch3; Core published/pushed `720f92a` and reports eight
+  combined gates, audit and prototype Main merge passed. Freeze released.
+- [x] Epoch4: establish the concrete native Acc/QuickSort boundary without a
+  generalized compiler rewrite; route owner/readback needs through Core. Deliver
+  a bounded C ABI/client improvement with source/object/library verification.
+- [ ] Core publishes the frozen Epoch4 task branch and reviews integration
+  separately. Keep its exact manifest fixed until release.
+- [ ] Coordinate further bounded target ABI/lowering increments under the latest
+  user scope. Remaining Acc/QuickSort, callbacks/effects, Identity and shared
+  nominal contracts stay explicit; do not expand into upstream authority work.
 - Completion: the supported C/Linker refinement described by AP4-AP6 and #44/#49
   is implemented and verified within the agreed downstream scope. Epoch results
   go to the coordinator for integration; unsupported constructs and unresolved
@@ -246,10 +334,15 @@ conditional extraction, captures, output preservation and target-only storage.
 Epoch2 adds verified single-tail recursion, arena ownership, length/append and
 stable Bool-field selection. Core published it as `4987c08` and reports Main
 integration `e5d4057`; the historical [handoff](2026-10-03-C-BACKEND-EPOCH2-HANDOFF.md)
-and its manifest remain unchanged. Epoch3 is verified and frozen for Core
-publication: native numeric-predicate partitioning and finite List copy-out.
-Its [handoff](2026-10-03-C-BACKEND-EPOCH3-HANDOFF.md) defines the exact file set
-and evidence; no further edits in those files until Core releases the freeze.
+and its manifest remain unchanged. Epoch3 was published as `720f92a`; Core
+reports combined verification/audit and prototype Main merge passed. Freeze is
+released. Its [handoff](2026-10-03-C-BACKEND-EPOCH3-HANDOFF.md) and exact manifest
+remain historical evidence. The latest user clarification narrows Epoch4 to
+usable downstream C boundaries and bounded native lowering. The Acc/QuickSort
+probe reports the selected generic-family representation refusal. The verified
+array-to-List boundary and ordinary source/object/archive clients are frozen in
+the [Epoch4 handoff](2026-10-03-C-BACKEND-EPOCH4-HANDOFF.md) for Core publication.
+No hand-coded replacement or shared-owner edits.
 Unsupported block-local thunks, callbacks,
 tree/indexed/dependent/nested fields and effects remain explicit negative coverage.
 Further work includes slice/Acc/QuickSort;
