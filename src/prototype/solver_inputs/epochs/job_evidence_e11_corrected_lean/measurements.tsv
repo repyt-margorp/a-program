@@ -1,0 +1,2 @@
+workload	status	borrowed_records	deleted_Binder_array_entries	retained_owner_pointers	net_retained_pointer_delta	raw_allocation_delta	aligned_layout_delta	new_index_bytes	peak_RSS	time
+canonical-four-Lambda	DONE	3	6	3	-3	-24	-16	0	UNMEASURED	UNMEASURED

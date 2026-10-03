@@ -1,0 +1,3 @@
+Exact isolated semantic/task parent: bd1ddf3a0ac86c365c1b1bf5992eb254cf752a99
+E9 manifest2f595265ace0c179770970ba44036a1729681430a534e50043e7fdf8367aa7cf
+E10/E12 excluded. Focused-only corrected E11; original rejected freeze unchanged.

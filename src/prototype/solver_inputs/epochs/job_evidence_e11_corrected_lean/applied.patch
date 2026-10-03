@@ -1,0 +1,307 @@
+--- a/src/source_io.c
++++ b/src/source_io.c
+@@ -543,8 +543,11 @@
+ 	c->binding_reference_count += input->scope_count + extra;
+ 	if (input->constructor && pg_dag_add(&c->terms, pg_reference(&c->rules->storage, input->constructor))) return -1;
+ 	if (pg_dag_add(&c->terms, pg_reference(&c->rules->storage, input->binder))) return -1;
++	struct pg_source_binding_cursor cursor = pg_synthesis_source_binding_scope(input);
++	const struct pg_object *binder;
+ 	for (size_t i = 0; i < input->scope_count; ++i)
+-		if (pg_dag_add(&c->terms, pg_reference(&c->rules->storage, input->scope[i]))) return -1;
++		if (!pg_synthesis_source_binding_next(&cursor, &binder)
++			|| pg_dag_add(&c->terms, pg_reference(&c->rules->storage, binder))) return -1;
+ 	return 0;
+ }
+ 
+@@ -562,8 +565,10 @@
+ 	if (!input->constructor || input->slot != address->slot) return 0;
+ 	if (address->constructor && input->constructor != address->constructor) return 0;
+ 	const struct pg_context *prefix = address->prefix;
++	struct pg_source_binding_cursor cursor = pg_synthesis_source_binding_scope(input);
++	const struct pg_object *binder;
+ 	for (size_t i = 0; i < input->scope_count; ++i) {
+-		if (!prefix || input->scope[i] != prefix->binder) return 0;
++		if (!prefix || !pg_synthesis_source_binding_next(&cursor, &binder) || binder != prefix->binder) return 0;
+ 		prefix = prefix->parent;
+ 	}
+ 	if (prefix) return 0;
+@@ -748,7 +753,12 @@
+ 	}
+ 	for (const struct pg_dag_node *node = bindings->first; node; node = node->next) {
+ 		const struct pg_source_binding *input = node->key;
+-		for (size_t i = 0; i < input->scope_count; ++i) references[slot++] = pg_reference(&rules->storage, input->scope[i]);
++		struct pg_source_binding_cursor cursor = pg_synthesis_source_binding_scope(input);
++		const struct pg_object *binder;
++		for (size_t i = 0; i < input->scope_count; ++i) {
++			if (!pg_synthesis_source_binding_next(&cursor, &binder)) goto done;
++			references[slot++] = pg_reference(&rules->storage, binder);
++		}
+ 		references[slot++] = pg_reference(&rules->storage, input->binder);
+ 		if (input->constructor) references[slot++] = pg_reference(&rules->storage, input->constructor);
+ 	}
+--- a/src/synthesis.c
++++ b/src/synthesis.c
+@@ -963,15 +963,18 @@
+ 	return job;
+ }
+ 
+-struct binding_cursor {
+-	const struct pg_source_scope *source;
+-	const struct pg_context *context;
+-	const struct pg_object *const *binders;
+-	size_t count;
+-};
++struct pg_source_binding_cursor pg_synthesis_source_binding_scope(const struct pg_source_binding *input)
++{
++	if (!input) return (struct pg_source_binding_cursor){0};
++	/* Only a nonempty native address retains this one existing lexical owner.
++	 * Empty addresses need no tail; raw arrays keep their independent lifetime. */
++	if (input->scope_count && !input->scope)
++		return (struct pg_source_binding_cursor){.source = *(const struct pg_source_scope *const *)(input + 1)};
++	return (struct pg_source_binding_cursor){.binders = input->scope, .count = input->scope_count};
++}
+ 
+ /* Read one lexical address without copying its source telescope. */
+-static int binding_next(struct binding_cursor *cursor, const struct pg_object **binder)
++int pg_synthesis_source_binding_next(struct pg_source_binding_cursor *cursor, const struct pg_object **binder)
+ {
+ 	if (cursor->count) {
+ 		*binder = *cursor->binders++;
+@@ -990,8 +993,19 @@
+ 	return 1;
+ }
+ 
++static int binding_scope_local(const struct pg_synthesis *synthesis, const struct pg_source_scope *scope)
++{
++	for (; scope; scope = scope->parent) {
++		const struct pg_index_entry *entry = pg_index_candidates(&synthesis->scopes, scope->index.hash);
++		for (; entry; entry = entry->next)
++			if (entry == &scope->index) break;
++		if (!entry) return 0;
++	}
++	return 1;
++}
++
+ static const struct pg_source_binding *source_binding_intern(struct pg_synthesis *synthesis,
+-	const struct pg_source_binding *input, struct binding_cursor initial)
++	const struct pg_source_binding *input, struct pg_source_binding_cursor initial)
+ {
+ 	if (!synthesis || !input) return NULL;
+ 	if (input->syntax) {
+@@ -1024,13 +1038,15 @@
+ 		if (!pg_data_constructor_view(input->constructor, &layout, &position, &arity) || input->slot >= arity) return NULL;
+ 	}
+ 	if (input->scope_count > (SIZE_MAX - sizeof(struct source_binding)) / sizeof(*input->scope)) return NULL;
+-	if (input->scope_count && !input->scope) return NULL;
++	if (initial.source) {
++		if (initial.source->owner != synthesis->owner_key || input->scope || input->constructor) return NULL;
++	} else if (input->scope_count && !input->scope) return NULL;
+ 	if (input->binder && input->binder->kind != PG_BINDER) return NULL;
+ 	uint64_t hash = (uintptr_t)input->syntax ^ (uintptr_t)input->constructor ^ input->slot;
+-	struct binding_cursor cursor = initial;
++	struct pg_source_binding_cursor cursor = initial;
+ 	const struct pg_object *binder;
+ 	size_t count = 0;
+-	while (binding_next(&cursor, &binder)) {
++	while (pg_synthesis_source_binding_next(&cursor, &binder)) {
+ 		if (!binder || binder->kind != PG_BINDER || binder == input->binder) return NULL;
+ 		if (++count > (SIZE_MAX - sizeof(struct source_binding)) / sizeof(*input->scope)) return NULL;
+ 		hash = (hash ^ (uintptr_t)binder) * UINT64_C(1099511628211);
+@@ -1041,19 +1057,32 @@
+ 		if (found->constructor != input->constructor) continue;
+ 		if (found->scope_count != count) continue;
+ 		cursor = initial;
++		struct pg_source_binding_cursor saved = pg_synthesis_source_binding_scope(found);
++		const struct pg_object *prior;
+ 		size_t i = 0;
+-		while (binding_next(&cursor, &binder) && found->scope[i] == binder) ++i;
++		while (pg_synthesis_source_binding_next(&cursor, &binder)
++			&& pg_synthesis_source_binding_next(&saved, &prior) && prior == binder) ++i;
+ 		if (i != count) continue;
+ 		return !input->binder || input->binder == found->binder ? found : NULL;
+ 	}
++	/* A local head stamp does not retain a caller-owned ancestor. */
++	const struct pg_source_scope *source = initial.source && binding_scope_local(synthesis, initial.source)
++		? initial.source : NULL;
++	size_t retained = source ? (count != 0) : count;
+ 	struct source_binding *entry = pg_alloc(synthesis->typing->graph,
+-		sizeof(*entry) + count * sizeof(*input->scope));
++		sizeof(*entry) + retained * sizeof(*input->scope));
+ 	if (!entry) return NULL;
+ 	const struct pg_object **scope = (void *)(entry + 1);
+ 	cursor = initial;
+-	for (size_t i = 0; binding_next(&cursor, &binder); ++i) scope[i] = binder;
++	if (source && count) *(const struct pg_source_scope **)(entry + 1) = source;
++	else {
++		for (size_t i = 0; i < retained; ++i) {
++			if (!pg_synthesis_source_binding_next(&cursor, &binder)) return NULL;
++			scope[i] = binder;
++		}
++	}
+ 	entry->input = *input;
+-	entry->input.scope = scope;
++	entry->input.scope = !source && retained ? scope : NULL;
+ 	entry->input.scope_count = count;
+ 	if (!entry->input.binder) entry->input.binder = pg_binder(synthesis->typing->graph);
+ 	if (!entry->input.binder || pg_index_insert(&synthesis->source_bindings, &entry->index, hash)) return NULL;
+@@ -1065,8 +1094,19 @@
+ 	const struct pg_source_binding *input)
+ {
+ 	if (!input) return NULL;
++	/* An omitted nonempty array is meaningful only on an existing local owner.
++	 * Reject raw copies or foreign canonical addresses before reading its tail. */
++	if (input->scope_count && !input->scope) {
++		if (!synthesis) return NULL;
++		for (const struct pg_index_entry *entry = pg_index_candidates(&synthesis->source_references, (uintptr_t)input->binder);
++			entry; entry = entry->next) {
++			const struct source_reference_entry *reference = (const void *)entry;
++			if (reference->key == input->binder && reference->kind == SOURCE_BINDING && reference->input == input) return input;
++		}
++		return NULL;
++	}
+ 	return source_binding_intern(synthesis, input,
+-		(struct binding_cursor){.binders = input->scope, .count = input->scope_count});
++		(struct pg_source_binding_cursor){.binders = input->scope, .count = input->scope_count});
+ }
+ 
+ const struct pg_object *pg_synthesis_constructor_binder(struct pg_synthesis *synthesis,
+@@ -1074,7 +1114,7 @@
+ {
+ 	const struct pg_source_binding *binding = source_binding_intern(synthesis,
+ 		&(struct pg_source_binding){.slot = field, .constructor = constructor},
+-		(struct binding_cursor){.context = context});
++		(struct pg_source_binding_cursor){.context = context});
+ 	return binding ? binding->binder : NULL;
+ }
+ 
+@@ -1084,7 +1124,7 @@
+ {
+ 	struct pg_source_binding input = {.syntax = syntax, .slot = slot, .binder = binder};
+ 	const struct pg_source_binding *binding = source_binding_intern(synthesis, &input,
+-		(struct binding_cursor){.source = scope});
++		(struct pg_source_binding_cursor){.source = scope});
+ 	return binding ? binding->binder : NULL;
+ }
+ 
+@@ -4942,12 +4982,14 @@
+ 		if (!binding->syntax || binding->syntax->kind != PG_SYNTAX_BLOCK) continue;
+ 		const struct pg_syntax_item *item = &binding->syntax->items[binding->slot];
+ 		if (!same_name(scope->name, item->name)) continue;
+-		struct binding_cursor cursor = {.source = scope->parent};
+-		const struct pg_object *binder;
++		struct pg_source_binding_cursor cursor = {.source = scope->parent};
++		struct pg_source_binding_cursor saved = pg_synthesis_source_binding_scope(binding);
++		const struct pg_object *binder, *prior;
+ 		size_t i = 0;
+ 		for (; i < binding->scope_count; ++i)
+-			if (!binding_next(&cursor, &binder) || binding->scope[i] != binder) break;
+-		if (i == binding->scope_count && !binding_next(&cursor, &binder)) return item->expression;
++			if (!pg_synthesis_source_binding_next(&cursor, &binder)
++				|| !pg_synthesis_source_binding_next(&saved, &prior) || prior != binder) break;
++		if (i == binding->scope_count && !pg_synthesis_source_binding_next(&cursor, &binder)) return item->expression;
+ 	}
+ 	return NULL;
+ }
+--- a/src/synthesis.h
++++ b/src/synthesis.h
+@@ -91,7 +91,9 @@
+  * Lambda/Pi and return clauses use slot zero; operation clauses use slots
+  * 0/1/2 for payload/resume/response. Blocks use the named statement ordinal.
+  * Applications may allocate multiple binders.
+- * scope lists enclosing binders from innermost to outermost. */
++ * Raw factory inputs list enclosing binders from innermost to outermost.
++ * Native canonical addresses may omit scope and borrow their lexical owner;
++ * read canonical addresses through the cursor, not the raw array field. */
+ struct pg_source_binding {
+ 	const struct pg_syntax *syntax;
+ 	size_t scope_count, slot;
+@@ -99,6 +101,16 @@
+ 	const struct pg_object *binder;
+ 	const struct pg_object *constructor;
+ };
++/* Scratch traversal of canonical factory/visitor addresses only.
++ * No Solve, allocation or admission. Raw caller inputs are not canonical. */
++struct pg_source_binding_cursor {
++	const struct pg_source_scope *source;
++	const struct pg_context *context;
++	const struct pg_object *const *binders;
++	size_t count;
++};
++struct pg_source_binding_cursor pg_synthesis_source_binding_scope(const struct pg_source_binding *);
++int pg_synthesis_source_binding_next(struct pg_source_binding_cursor *, const struct pg_object **);
+ const struct pg_source_binding *pg_synthesis_source_binding(struct pg_synthesis *synthesis,
+ 	const struct pg_source_binding *input);
+ int pg_synthesis_visit_source_bindings(const struct pg_synthesis *synthesis,
+--- a/tests/synthesis.c
++++ b/tests/synthesis.c
+@@ -8274,6 +8274,7 @@
+ 	struct pg_source_binding address = {.syntax = reused};
+ 	const struct pg_source_binding *allocated = pg_synthesis_source_binding(&synthesis, &address);
+ 	assert(allocated && allocated->binder == pg_synthesis_binding_binder(outer));
++	assert(!allocated->scope);
+ 	address.slot = 1;
+ 	assert(!pg_synthesis_source_binding(&synthesis, &address));
+ 	address.slot = 0; address.syntax = reused->right;
+@@ -8286,7 +8287,62 @@
+ 	const struct pg_source_binding *inner_address = pg_synthesis_source_binding(&synthesis,
+ 		&(struct pg_source_binding){.syntax = reused, .scope_count = 1, .scope = &allocated->binder});
+ 	assert(inner_address && inner_address->binder == pg_synthesis_binding_binder(inner));
++	assert(!inner_address->scope && inner_address->scope_count == 1);
++	struct pg_source_binding_cursor cursor = pg_synthesis_source_binding_scope(inner_address);
++	const struct pg_object *enclosing;
++	assert(pg_synthesis_source_binding_next(&cursor, &enclosing) && enclosing == allocated->binder);
++	assert(!pg_synthesis_source_binding_next(&cursor, &enclosing));
+ 	assert(synthesis.source_bindings.count == allocation_count);
++	struct pg_source_binding borrowed = *inner_address;
++	borrowed.scope_count = 2;
++	assert(!pg_synthesis_source_binding(&synthesis, &borrowed));
++	borrowed.scope_count = 1; borrowed.scope = &allocated->binder;
++	assert(pg_synthesis_source_binding(&synthesis, &borrowed) == inner_address);
++	borrowed.scope = NULL;
++	assert(!pg_synthesis_source_binding(&synthesis, &borrowed));
++	assert(pg_synthesis_source_binding(&synthesis, inner_address) == inner_address);
++	struct pg_synthesis other;
++	assert(!pg_synthesis_init(&other, typing, &work, PG_DEFINITION_EXPLICIT_THUNK));
++	assert(!pg_synthesis_source_binding(&other, inner_address));
++	assert(!pg_synthesis_source_binder(&other, outer_scope, reused, 0, NULL));
++	pg_synthesis_destroy(&other);
++	/* An owner stamp on caller storage is not canonical ancestry identity. */
++	struct pg_source_scope caller = *outer_scope;
++	caller.binder = pg_binder(typing->graph);
++	const struct pg_object *caller_binder = caller.binder;
++	const struct pg_syntax *caller_syntax = expression_syntax(typing->graph, "caller:=\\T:@=>T;");
++	const struct pg_object *caller_symbol = pg_synthesis_source_binder(&synthesis, &caller, caller_syntax, 0, NULL);
++	const struct pg_source_binding *caller_address = pg_synthesis_source_binding(&synthesis,
++		&(struct pg_source_binding){.syntax = caller_syntax, .scope_count = 1, .scope = &caller_binder});
++	assert(caller_address && caller_address->binder == caller_symbol && caller_address->scope);
++	const struct pg_source_scope *head = pg_synthesis_intern_scope(&synthesis,
++		(struct pg_source_scope){.parent = &caller, .context = caller.context, .binder = pg_binder(typing->graph)});
++	assert(head && head->parent == &caller);
++	const struct pg_object *head_scope[] = {head->binder, caller_binder};
++	const struct pg_object *head_symbol = pg_synthesis_source_binder(&synthesis, head, caller_syntax, 0, NULL);
++	const struct pg_source_binding *head_address = pg_synthesis_source_binding(&synthesis,
++		&(struct pg_source_binding){.syntax = caller_syntax, .scope_count = 2, .scope = head_scope});
++	assert(head_address && head_address->binder == head_symbol && head_address->scope);
++	caller.binder = pg_binder(typing->graph); caller.parent = NULL;
++	cursor = pg_synthesis_source_binding_scope(caller_address);
++	assert(pg_synthesis_source_binding_next(&cursor, &enclosing) && enclosing == caller_binder);
++	assert(!pg_synthesis_source_binding_next(&cursor, &enclosing));
++	cursor = pg_synthesis_source_binding_scope(head_address);
++	assert(pg_synthesis_source_binding_next(&cursor, &enclosing) && enclosing == head_scope[0]);
++	assert(pg_synthesis_source_binding_next(&cursor, &enclosing) && enclosing == head_scope[1]);
++	assert(!pg_synthesis_source_binding_next(&cursor, &enclosing));
++	/* Wire/caller scratch cannot be borrowed; raw-first and native-first keys
++	 * still share the exact allocation without merging lexical names. */
++	const struct pg_syntax *fresh = expression_syntax(typing->graph, "f:=\\x:@=>x;");
++	const struct pg_object *scratch[] = {allocated->binder};
++	struct pg_source_binding raw = {.syntax = fresh, .scope = scratch, .scope_count = 1};
++	const struct pg_source_binding *copied = pg_synthesis_source_binding(&synthesis, &raw);
++	assert(copied && copied->scope != scratch);
++	scratch[0] = copied->binder;
++	cursor = pg_synthesis_source_binding_scope(copied);
++	assert(pg_synthesis_source_binding_next(&cursor, &enclosing) && enclosing == allocated->binder);
++	assert(!pg_synthesis_source_binding_next(&cursor, &enclosing));
++	assert(pg_synthesis_source_binder(&synthesis, outer_scope, fresh, 0, NULL) == copied->binder);
+ 	const struct pg_source_scope *inner_scope = pg_synthesis_binding_scope(inner);
+ 	const struct pg_evidence *outer_context = complete(&synthesis, outer, PG_SYNTHESIS_DONE);
+ 	const struct pg_evidence *inner_context = complete(&synthesis, inner, PG_SYNTHESIS_DONE);

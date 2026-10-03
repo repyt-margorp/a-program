@@ -1,0 +1,101 @@
+{
+  "semantic_parent": "bd1ddf3a0ac86c365c1b1bf5992eb254cf752a99",
+  "original_rejected_manifest_sha256": "86c80f7a1c8785fc84c788fb3ae0a29a6f2a461dabda63e733b7db03bbc06ae6",
+  "original_rejected_transport_sha256": "9e0021f845b209f8315d3a6e0b64d7e7a7e43aee55c36a0e6725409b573179fb",
+  "E9_tested_sources_sha256": "b57a51ff32a653d82bcafd1616e7dbc213fb0cfcdad5d0e4ac8eeaccd4c242d6",
+  "original_E11_tested_sources_sha256": "e35bc1d990a677c751cbff9a84e1e027f51a6bdc7ef8f3d65f4b6ed267b2a080",
+  "Root_corrected_raw_terminal_sha256": "8035fc2be2dbbdae189a0068bbc57441f90809f0730db1ddda6a601f8eb29afa",
+  "Root_setup_raw_terminal_sha256": "7f6690709382794425b2ac0b1e3696a867eed24ea3ddba14569b7e223745a28f",
+  "Root_setup_control_sha256": "dbaa8b9635aa027920218c12d91707cb2b94c3f51ba55eed111e349b488138c2",
+  "Root_corrected_control_sha256": "4dec399eb005da6d93d8b45d8cdad6cd65cf10ed41628e8e6fce83ec6e0fac51",
+  "worker_lifetime_verdicts": [
+    {
+      "variant": "exact-E9-parent",
+      "command": [
+        "/tmp/a-program-merge-e11-lifetime-20261003/e9"
+      ],
+      "binary_sha256": "3dada53fc2592fd4812dbbd52eaaf51794ac7b482e8b8e6288a47ca4a7ed9f78",
+      "exit": 0,
+      "expected_control_verdict": 0,
+      "report": "/tmp/job-evidence-e11c-exact-E9-parent.log",
+      "report_sha256": "1fffbb46ba1faa0c400f3a4d3cd1e42c9fc08734a2e80932fdc1b3b314b399aa"
+    },
+    {
+      "variant": "rejected-frozen-E11",
+      "command": [
+        "/tmp/a-program-merge-e11-lifetime-20261003/e11"
+      ],
+      "binary_sha256": "f26800860e53b259671e9d4e136858649e69f27547e285396e137830eab54e19",
+      "exit": 1,
+      "expected_control_verdict": 1,
+      "report": "/tmp/job-evidence-e11c-rejected-frozen-E11.log",
+      "report_sha256": "3a4abceaa3633254173693673f47e89388c11c83dc1804c01af8d588079c2d25"
+    },
+    {
+      "variant": "corrected-E11",
+      "command": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected/o2/scope_lifetime_control"
+      ],
+      "binary_sha256": "5b58c810d33eae336cb4e68e3e29231028c0328eaeaf595fb68e429cf1e8e3ac",
+      "exit": 0,
+      "expected_control_verdict": 0,
+      "report": "/tmp/job-evidence-e11c-corrected-E11.log",
+      "report_sha256": "1fffbb46ba1faa0c400f3a4d3cd1e42c9fc08734a2e80932fdc1b3b314b399aa"
+    }
+  ],
+  "worker_real_frame_verdicts": [
+    {
+      "mode": "o2",
+      "command": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected/o2/scope_scratch_lifetime_control"
+      ],
+      "real_frame_symbol": "000000000008b210 t escaped_address",
+      "exit": 0,
+      "binary_sha256": "04ae5cac24f5a7189ded16d0f693392864a9e1fd9a80afc71d84f9a6de736f1f",
+      "report": "/tmp/job-evidence-e11c-scratch-frame-o2.log",
+      "report_sha256": "327761068b07ab211e09defb2b438a61f61c9d606dc52b4cbda6171b8835dfa8",
+      "output": "copied head and canonical head/raw parent: independent address survives scratch frame return\n"
+    },
+    {
+      "mode": "asan",
+      "command": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected/asan/scope_scratch_lifetime_control"
+      ],
+      "real_frame_symbol": "000000000063a3c3 t escaped_address",
+      "exit": 0,
+      "binary_sha256": "0ef921812372ee0f9ee97cf865ab29206e653e0c07af9a0d9d7d4696efa0357d",
+      "report": "/tmp/job-evidence-e11c-scratch-frame-asan.log",
+      "report_sha256": "327761068b07ab211e09defb2b438a61f61c9d606dc52b4cbda6171b8835dfa8",
+      "output": "copied head and canonical head/raw parent: independent address survives scratch frame return\n"
+    }
+  ],
+  "Root_corrected_verdicts": [
+    {
+      "name": "e9",
+      "build_exit": 0,
+      "run_exit": 0,
+      "output": "canonical head, caller-owned ancestor: retained address stable after scratch mutation\n"
+    },
+    {
+      "name": "e11",
+      "build_exit": 0,
+      "run_exit": 1,
+      "output": "canonical head, caller-owned ancestor: retained address changed after scratch mutation\n"
+    }
+  ],
+  "Root_setup_verdicts": [
+    {
+      "name": "e9",
+      "build_exit": 0,
+      "run_exit": -6,
+      "output": "e9: /home/repyt/workspace/a-program/src/prototype/solver_inputs/joint_verification/e11_scope_lifetime_control.c:42: main: Assertion `symbol' failed.\n"
+    },
+    {
+      "name": "e11",
+      "build_exit": 0,
+      "run_exit": -6,
+      "output": "e11: /home/repyt/workspace/a-program/src/prototype/solver_inputs/joint_verification/e11_scope_lifetime_control.c:42: main: Assertion `symbol' failed.\n"
+    }
+  ],
+  "inlined_control_trial_manifest_sha256": "1a81acb3e8336d594253d7825168d0a3d3530a9f6f6acaae1a87e7c81071f161"
+}

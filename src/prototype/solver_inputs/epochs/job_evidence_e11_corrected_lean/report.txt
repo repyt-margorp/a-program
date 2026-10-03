@@ -1,0 +1,68 @@
+Corrected E11: canonical ancestry borrowing with owned-array fallback.
+2026-10-03. FOCUSED-ONLY qualification; broad/C/public-strict/joint/time/peak RSS pending.
+Exact isolated parent bd1ddf3a0ac86c365c1b1bf5992eb254cf752a99 (published E9).
+E10/E12 are excluded. Prototype only; SE1-SE5 Goal remains active/open.
+
+The rejected original E11 checked only a SourceScope head's owner stamp. A local
+canonical head can retain a caller-owned parent, and a copied scope can carry the
+same stamp. Root's corrected public-API lifetime control builds0 on both exact
+156-source variants: E9 run0 retains the Binder, original E11 run1 changes it after
+scratch mutation. Worker reruns preserve0/1 and corrected E11 passes0. Preserve
+original manifest86c80f7a1c8785fc84c788fb3ae0a29a6f2a461dabda63e733b7db03bbc06ae6
+and transport9e0021f845b209f8315d3a6e0b64d7e7a7e43aee55c36a0e6725409b573179fb.
+Their earlier broad passes do not qualify this correction or erase the regression.
+Root's first DEFINITIONS-versus-lambda setup assertion failed on both parents;
+failure_history.tsv/counterexamples.json preserve that separate setup evidence.
+
+The minimal correction checks every SourceScope ancestor by exact address in the
+existing local scopes index before retaining that owner tail. Otherwise it keeps
+the old flattened owned Binder array. Caller/import arrays remain independently
+owned; raw-first/native-first exact interning, lexical namespace identity and the
+existing foreign-owner boundary remain intact. A canonical head above a raw parent
+is still accepted by the existing scope factory; only borrowing eligibility changes.
+No new index, owner/header field, copied Oracle graph, scope-factory policy, checking
+authority, reload trust, DONE restoration or eval/readback change. Existing pure
+binding cursors read all five consumers. Parent delta runtime90+26-, tests56+0-;
+correction versus rejected E11 runtime17+3-, tests25+0-.
+
+Exact156 runtime/test sources were pinned before checks; independent E9 plus applied
+delta reproduces all156. Four AP-base canonical patches independently reproduce
+the tested applied bytes. All focused builds use -j1. O2 and affected ASan/UBSan/
+leaks/stack-use-after-return controls pass: Root lifetime, actual canonical savings,
+Synthesis (including copied-scope/raw-sharing/permanent E5 namespace controls),
+SourceIO's complete existing script and normalization. Additional copied-head and
+canonical-head/raw-parent controls read the address after an actual helper frame
+returns. The first helper was inlined at O2/SAN; preserve that preliminary owned-
+array result without treating it as an escaped-frame test. The corrected helper
+uses a volatile function pointer; nm confirms a separate escaped_address symbol
+in both binaries, and both runs pass with stack-use-after-return detection enabled.
+Runtime bytes are unchanged by this test refinement. verification.tsv pins terminal
+logs/exits; requests.json records exact worker commands and sanitizer environment.
+
+The small canonical program main:=\A:@=>\x:A=>\y:A=>\z:A=>x reaches DONE. It removes
+6 Binder-array entries from3 records, retaining3 existing SourceScope pointers:
+net3 fewer retained pointers, raw allocation -24/aligned layout -16 bytes, header64
+unchanged. Existing index storage adds0 bytes; ancestry membership lookup adds work
+on new native allocations and is not timed. This is an actual layout control,
+not a measured peak-RSS or speed improvement, general QuickSort census or MEM1
+attribution. Original E11's larger census remains rejected-candidate history.
+Later exclusive matched time/RSS and unchanged semantic/fuel/resume controls are
+required before any gain claim; Performance owns MEM1/common-producer measurement.
+
+No broad/C/public-partition rerun was performed for this focused corrected freeze.
+Original strict1000+1000,1600+1600,completed1921+0 failures remain unwaived; prior
+E9/original-E11 verdicts are historical, not newly verified here. Loading stays
+inert/untrusted, and total B / validation cap R accounting is unchanged. No automatic
+trust or result acceptance policy. Ordinary-result Sorted/permutation/LT and exact
+public images must be qualified later on these bytes, followed by joint gates.
+
+Broad correctness qualification remains separate from this focused freeze. The
+latest direct user workflow permits distinct implementation without awaiting
+Merge review; next is a separate E12 full-Context-ancestry trial on these corrected
+bytes. Known lifetime regressions still need correction; permission is not proof.
+Exclusive timing remains coordinated, with no immediate benchmark gain claim.
+Durable manifest lists only published canonical destinations and this lean evidence;
+external transport hash is separate. Its exact parent is bd1ddf3. No huge build logs,
+copied full plans or duplicated canonical patch snapshots are published. Merge owns
+task publication/Main integration. This freeze is reviewable focused evidence, not
+full publication acceptance, Main integration, accepted-source promotion or Goal closure.

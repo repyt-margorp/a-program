@@ -1,0 +1,82 @@
+--- a/src/synthesis.c
++++ b/src/synthesis.c
+@@ -993,6 +993,17 @@
+ 	return 1;
+ }
+ 
++static int binding_scope_local(const struct pg_synthesis *synthesis, const struct pg_source_scope *scope)
++{
++	for (; scope; scope = scope->parent) {
++		const struct pg_index_entry *entry = pg_index_candidates(&synthesis->scopes, scope->index.hash);
++		for (; entry; entry = entry->next)
++			if (entry == &scope->index) break;
++		if (!entry) return 0;
++	}
++	return 1;
++}
++
+ static const struct pg_source_binding *source_binding_intern(struct pg_synthesis *synthesis,
+ 	const struct pg_source_binding *input, struct pg_source_binding_cursor initial)
+ {
+@@ -1054,13 +1065,16 @@
+ 		if (i != count) continue;
+ 		return !input->binder || input->binder == found->binder ? found : NULL;
+ 	}
+-	size_t retained = initial.source ? (count != 0) : count;
++	/* A local head stamp does not retain a caller-owned ancestor. */
++	const struct pg_source_scope *source = initial.source && binding_scope_local(synthesis, initial.source)
++		? initial.source : NULL;
++	size_t retained = source ? (count != 0) : count;
+ 	struct source_binding *entry = pg_alloc(synthesis->typing->graph,
+ 		sizeof(*entry) + retained * sizeof(*input->scope));
+ 	if (!entry) return NULL;
+ 	const struct pg_object **scope = (void *)(entry + 1);
+ 	cursor = initial;
+-	if (initial.source && count) *(const struct pg_source_scope **)(entry + 1) = initial.source;
++	if (source && count) *(const struct pg_source_scope **)(entry + 1) = source;
+ 	else {
+ 		for (size_t i = 0; i < retained; ++i) {
+ 			if (!pg_synthesis_source_binding_next(&cursor, &binder)) return NULL;
+@@ -1068,7 +1082,7 @@
+ 		}
+ 	}
+ 	entry->input = *input;
+-	entry->input.scope = !initial.source && retained ? scope : NULL;
++	entry->input.scope = !source && retained ? scope : NULL;
+ 	entry->input.scope_count = count;
+ 	if (!entry->input.binder) entry->input.binder = pg_binder(synthesis->typing->graph);
+ 	if (!entry->input.binder || pg_index_insert(&synthesis->source_bindings, &entry->index, hash)) return NULL;
+--- a/tests/synthesis.c
++++ b/tests/synthesis.c
+@@ -8306,6 +8306,31 @@
+ 	assert(!pg_synthesis_source_binding(&other, inner_address));
+ 	assert(!pg_synthesis_source_binder(&other, outer_scope, reused, 0, NULL));
+ 	pg_synthesis_destroy(&other);
++	/* An owner stamp on caller storage is not canonical ancestry identity. */
++	struct pg_source_scope caller = *outer_scope;
++	caller.binder = pg_binder(typing->graph);
++	const struct pg_object *caller_binder = caller.binder;
++	const struct pg_syntax *caller_syntax = expression_syntax(typing->graph, "caller:=\\T:@=>T;");
++	const struct pg_object *caller_symbol = pg_synthesis_source_binder(&synthesis, &caller, caller_syntax, 0, NULL);
++	const struct pg_source_binding *caller_address = pg_synthesis_source_binding(&synthesis,
++		&(struct pg_source_binding){.syntax = caller_syntax, .scope_count = 1, .scope = &caller_binder});
++	assert(caller_address && caller_address->binder == caller_symbol && caller_address->scope);
++	const struct pg_source_scope *head = pg_synthesis_intern_scope(&synthesis,
++		(struct pg_source_scope){.parent = &caller, .context = caller.context, .binder = pg_binder(typing->graph)});
++	assert(head && head->parent == &caller);
++	const struct pg_object *head_scope[] = {head->binder, caller_binder};
++	const struct pg_object *head_symbol = pg_synthesis_source_binder(&synthesis, head, caller_syntax, 0, NULL);
++	const struct pg_source_binding *head_address = pg_synthesis_source_binding(&synthesis,
++		&(struct pg_source_binding){.syntax = caller_syntax, .scope_count = 2, .scope = head_scope});
++	assert(head_address && head_address->binder == head_symbol && head_address->scope);
++	caller.binder = pg_binder(typing->graph); caller.parent = NULL;
++	cursor = pg_synthesis_source_binding_scope(caller_address);
++	assert(pg_synthesis_source_binding_next(&cursor, &enclosing) && enclosing == caller_binder);
++	assert(!pg_synthesis_source_binding_next(&cursor, &enclosing));
++	cursor = pg_synthesis_source_binding_scope(head_address);
++	assert(pg_synthesis_source_binding_next(&cursor, &enclosing) && enclosing == head_scope[0]);
++	assert(pg_synthesis_source_binding_next(&cursor, &enclosing) && enclosing == head_scope[1]);
++	assert(!pg_synthesis_source_binding_next(&cursor, &enclosing));
+ 	/* Wire/caller scratch cannot be borrowed; raw-first and native-first keys
+ 	 * still share the exact allocation without merging lexical names. */
+ 	const struct pg_syntax *fresh = expression_syntax(typing->graph, "f:=\\x:@=>x;");

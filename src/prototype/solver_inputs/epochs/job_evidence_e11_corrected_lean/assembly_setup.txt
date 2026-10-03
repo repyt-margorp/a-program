@@ -1,0 +1,3 @@
+2026-10-03: retain the first corrected-workspace assembly setup failure.
+Attempted reverse patch path src/prototype/solver_inputs/epochs/job_evidence_e10/applied.patch does not exist. Git reported that it could not open the patch; the independent156-source assertion then failed at src/evidence.c. The trailing directory listing made that shell aggregate exit0; it is explicitly unqualified and proves no assembly pass.
+Corrected request used the immutable src/prototype/solver_inputs/epochs/job_evidence_e10_lean/applied.patch with set -e, reversed only E10, and independently verified every156 source byte against rejected E11. Fresh corrected workspace is isolated E9+E11 before the lifetime correction; E10/E12 are excluded.

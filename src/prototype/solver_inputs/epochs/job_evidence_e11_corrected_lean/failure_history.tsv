@@ -1,0 +1,6 @@
+historical_failure	verdict	evidence	sha256	qualification
+original-E11-lifetime-regression	E9=0;E11=1	src/prototype/solver_inputs/epochs/job_evidence_e11_corrected/root_lifetime_terminal.json	8035fc2be2dbbdae189a0068bbc57441f90809f0730db1ddda6a601f8eb29afa	REJECTED original candidate
+Root-initial-DEFINITIONS-instead-of-lambda	both build0/run-6	src/prototype/solver_inputs/epochs/job_evidence_e11_corrected/root_setup_terminal.json	7f6690709382794425b2ac0b1e3696a867eed24ea3ddba14569b7e223745a28f	SETUP FAILURE preserved
+worker-wrong-E10-reverse-path	git error/source mismatch; aggregate0 from trailing ls	src/prototype/solver_inputs/epochs/job_evidence_e11_corrected_lean/assembly_setup.txt	7b3b30aeda59a9b012b676e9809d5894c80e7bde97b11ef4fa0cd8e01d8bc96d	UNQUALIFIED setup
+first-scratch-control-inlined	O2=0;SAN=0	src/prototype/solver_inputs/epochs/job_evidence_e11_corrected/scratch_inlined_trial/manifest.sha256	1a81acb3e8336d594253d7825168d0a3d3530a9f6f6acaae1a87e7c81071f161	OWNED ARRAY only; not escaped-frame evidence
+original-strict-public-1000+1000;1600+1600;1921+0	exit1/three failures	src/prototype/solver_inputs/epochs/job_evidence_e11_lean/public_partitions.tsv	1d6aa050e77aae18dcb2cb0305e7a5ce7e99fadb81a3cd427ac38755d2656729	HISTORICAL; corrected variant not rerun/no waiver

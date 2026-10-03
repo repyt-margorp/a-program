@@ -1,0 +1,121 @@
+{
+  "focused_build_request": [
+    "make",
+    "--jobserver-style=pipe",
+    "-f",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e11_corrected/verify.mk",
+    "-j1",
+    "ARTIFACT_MAKEFILE=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/artifact_persistence/build.mk",
+    "OVERLAY=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected",
+    "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected/o2",
+    "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+    "LIFETIME_CONTROL=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e11_corrected/root_scope_lifetime_control.c",
+    "SAVINGS_CONTROL=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e11_corrected/canonical_scope_savings_control.c",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected/o2/synthesis_test",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected/o2/source_io_test",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected/o2/scope_lifetime_control",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected/o2/canonical_scope_savings_control"
+  ],
+  "focused_run_request": [
+    [
+      "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected/o2/scope_lifetime_control"
+    ],
+    [
+      "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected/o2/canonical_scope_savings_control"
+    ],
+    [
+      "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected/o2/synthesis_test"
+    ],
+    [
+      "bash",
+      "tests/source_io.sh",
+      "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected/o2/source_io_test"
+    ],
+    [
+      "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected/o2/source_io_test",
+      "normalization"
+    ]
+  ],
+  "asan_build_request": [
+    "make",
+    "--jobserver-style=pipe",
+    "-f",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e11_corrected/verify.mk",
+    "-j1",
+    "ARTIFACT_MAKEFILE=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/artifact_persistence/build.mk",
+    "OVERLAY=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected",
+    "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected/asan",
+    "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+    "LIFETIME_CONTROL=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e11_corrected/root_scope_lifetime_control.c",
+    "SAVINGS_CONTROL=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e11_corrected/canonical_scope_savings_control.c",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected/asan/synthesis_test",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected/asan/source_io_test",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected/asan/scope_lifetime_control",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected/asan/canonical_scope_savings_control"
+  ],
+  "asan_run_request": {
+    "commands": [
+      [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected/asan/scope_lifetime_control"
+      ],
+      [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected/asan/canonical_scope_savings_control"
+      ],
+      [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected/asan/synthesis_test"
+      ],
+      [
+        "bash",
+        "tests/source_io.sh",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected/asan/source_io_test"
+      ],
+      [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected/asan/source_io_test",
+        "normalization"
+      ]
+    ],
+    "ASAN_OPTIONS": "detect_leaks=1:detect_stack_use_after_return=1:halt_on_error=1",
+    "UBSAN_OPTIONS": "halt_on_error=1"
+  },
+  "scratch_build_request": [
+    [
+      "make",
+      "--jobserver-style=pipe",
+      "-f",
+      "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e11_corrected/verify.mk",
+      "-j1",
+      "ARTIFACT_MAKEFILE=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/artifact_persistence/build.mk",
+      "OVERLAY=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected",
+      "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected/o2",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+      "SCRATCH_CONTROL=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e11_corrected/scope_scratch_lifetime_control.c",
+      "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected/o2/scope_scratch_lifetime_control"
+    ],
+    [
+      "make",
+      "--jobserver-style=pipe",
+      "-f",
+      "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e11_corrected/verify.mk",
+      "-j1",
+      "ARTIFACT_MAKEFILE=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/artifact_persistence/build.mk",
+      "OVERLAY=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected",
+      "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected/asan",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+      "SCRATCH_CONTROL=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e11_corrected/scope_scratch_lifetime_control.c",
+      "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected/asan/scope_scratch_lifetime_control"
+    ]
+  ],
+  "scratch_run_request": {
+    "commands": [
+      [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected/o2/scope_scratch_lifetime_control"
+      ],
+      [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch11_corrected/asan/scope_scratch_lifetime_control"
+      ]
+    ],
+    "ASAN_OPTIONS": "detect_leaks=1:detect_stack_use_after_return=1:halt_on_error=1",
+    "UBSAN_OPTIONS": "halt_on_error=1"
+  },
+  "scratch_frame_refinement": "Same scratch build/run request, final indirect-call control_inputs.sha256; runtime156 unchanged. First inlined trial is historical."
+}

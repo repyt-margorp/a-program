@@ -1,0 +1,7 @@
+delta	added	removed	file
+E9-to-corrected-E11	13	3	src/source_io.c
+E9-to-corrected-E11	64	22	src/synthesis.c
+E9-to-corrected-E11	13	1	src/synthesis.h
+E9-to-corrected-E11	56	0	tests/synthesis.c
+rejected-E11-to-corrected-E11	17	3	src/synthesis.c
+rejected-E11-to-corrected-E11	25	0	tests/synthesis.c
