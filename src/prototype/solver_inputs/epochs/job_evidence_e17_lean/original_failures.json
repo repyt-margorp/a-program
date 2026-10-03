@@ -1,0 +1,32 @@
+{
+  "initial_build_setup_failure.json": {
+    "exit": 2,
+    "report": "/tmp/job-evidence-e17-parent-build.log",
+    "report_sha256": "68e0a6173230d43b805fc9aa51090f6fd6e3dbf68103b6a66e14d0f2105965ca",
+    "request_sha256": "e629bb30eba6909bc93bdcb1b1037ec476d65200294865fa8e7813a7d2d01c9e",
+    "source156_sha256": "a2b69909c1575d8fbec16a8b5d90cd6927a708889a40df1daca9643f070daa97",
+    "failure": "Private source-only copy omitted src/Makefile; no compiler/control executed",
+    "correction": "Restore exact E16 parent src/Makefile and pin build input; unchanged runtime/test156; fresh requests/logs v2."
+  },
+  "initial_parent_fixture_failure.json": {
+    "exit": -6,
+    "shell_convention_exit": 134,
+    "report": "/tmp/job-evidence-e17-v2-parent-synthesis.log",
+    "report_sha256": "3cc25d144271ac2e6b3881703993b3b2f7567bec5a8a0455f72b88d994ab1cb1",
+    "source156_sha256": "a2b69909c1575d8fbec16a8b5d90cd6927a708889a40df1daca9643f070daa97",
+    "failure": "New parent ordinary-result fixture compares WHNF without forcing definitions; semantic core equality assertion fails before candidate testing. Existing CLI NF forces once; same parent source CLI main/expected both0 and same Core.",
+    "correction": "Use existing PG_REDUCTION_NF with force1 in new test only; cuts include pending traversal before600, no relaxed assertions/runtime changes."
+  },
+  "initial_broad_fixture_failure.json": {
+    "exit": 2,
+    "report": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e17/broad.log",
+    "report_sha256": "999c1080cefd4039927acf850acacb4bd576fefea66054632145934f0d6b5f48",
+    "source156_after_exact": true,
+    "actual_overlay_inputs469_after_exact": true,
+    "no_joint_or_peak_time_claim": true,
+    "cause": "Private overlay copied469 enumerated inputs but omitted two generic_sorted patch fixtures consumed by derived_lt.sh; first missing derived-lt.patch. Source156 unchanged; no runtime assertion or gate pass inferred.",
+    "request_sha256": "c2ca502163e9801c0351b5d3016843d79c55f000174578a8ed57714ad9ab41ba",
+    "source_manifest_sha256": "206acb0c09c7ac83eec825f0fb3c192c3b72db99b09d9cf926e7928f240bbaae",
+    "original_overlay_inputs_sha256": "d10599a15d4663375794880def29dfe9ef814a475fa73209830088f06039942b"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "files": [
+    {
+      "file": "src/synthesis.c",
+      "added": 43,
+      "removed": 17
+    },
+    {
+      "file": "tests/synthesis.c",
+      "added": 51,
+      "removed": 0
+    }
+  ],
+  "docs": "Lean evidence only; one active SE work list remains outside freeze."
+}
