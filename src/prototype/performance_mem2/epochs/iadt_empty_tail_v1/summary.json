@@ -1,0 +1,80 @@
+{
+  "terminal": true,
+  "parent_source128": "0deb36a72542b9f56eb986314c89bd459802896ca32268857a4b875bfcfe2f48",
+  "candidate_source128": "2e87fd8444726e9bacc9cb4e7b4e17f814685a515f716b212a849ca1d24ac85e",
+  "only_runtime_change": [
+    "src/iadt.c"
+  ],
+  "patch_sha256": "b19dd27bef9eca23dd6b78185aaa26569e9ede25a7be1bc039da49e8444f71f9",
+  "artifact_recipes": 55,
+  "artifact_failed": 1,
+  "only_unchanged_strict3": true,
+  "asan_build_recipes": 38,
+  "asan_build_failed": 0,
+  "asan_checks": 45,
+  "o2_focused_checks": 23,
+  "cross_build_reads": 140,
+  "extra_focused_build_and_run_records": 12,
+  "extra_focused_failed": 0,
+  "public_images_byte_equal": 52,
+  "history_images_byte_equal": 28,
+  "full_verdict_fuel_TSV_equal": true,
+  "direct_steps_equal": [
+    17,
+    16,
+    10,
+    8
+  ],
+  "cumulative_census": [
+    {
+      "case": "list",
+      "charged_steps": 1915,
+      "calls_delta": 0,
+      "aligned_bytes_delta": 0,
+      "matches_32byte_accounting": true
+    },
+    {
+      "case": "imported-local-sorted",
+      "charged_steps": 761848,
+      "calls_delta": -1053,
+      "aligned_bytes_delta": -47264,
+      "matches_32byte_accounting": false
+    },
+    {
+      "case": "trees4",
+      "charged_steps": 2318248,
+      "calls_delta": -30496,
+      "aligned_bytes_delta": -975872,
+      "matches_32byte_accounting": true
+    },
+    {
+      "case": "trees16",
+      "charged_steps": 7608511,
+      "calls_delta": -100224,
+      "aligned_bytes_delta": -3207168,
+      "matches_32byte_accounting": true
+    },
+    {
+      "case": "trees64",
+      "charged_steps": 29780510,
+      "calls_delta": -390976,
+      "aligned_bytes_delta": -12511232,
+      "matches_32byte_accounting": true
+    },
+    {
+      "case": "trees400",
+      "charged_steps": 183507626,
+      "calls_delta": -2408960,
+      "aligned_bytes_delta": -77086720,
+      "matches_32byte_accounting": true
+    }
+  ],
+  "census_twelve_done_fuel_exact": true,
+  "initial_allocator_accounting_failure_preserved": true,
+  "actual_new_speed_or_peak_RAM_claim": false,
+  "full_new_acceptance_suite_claim": false,
+  "original_failures_preserved": true,
+  "full_Goal_active": true,
+  "new_owner_index_ABI_overhead": 0,
+  "shared_owner_or_accepted_edits": false
+}

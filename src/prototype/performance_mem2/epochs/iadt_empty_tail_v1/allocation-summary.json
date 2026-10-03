@@ -1,0 +1,255 @@
+{
+  "records": [
+    {
+      "case": "list",
+      "variant": "baseline",
+      "argv": [
+        "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/allocation-census/baseline/allocation_count_check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 0,
+      "charged_steps": 1915,
+      "calls": 3955,
+      "aligned_bytes": 413600,
+      "log_sha256": "f582322078e50ebcea8263153e65de24fe6cf7d250a0f5572b6c7147503051f9",
+      "binary_sha256": "9782c1d7622779fa67afc40dfbc75a6424dbe16e561e270eda26dd9101509806"
+    },
+    {
+      "case": "list",
+      "variant": "iadt-empty-tail",
+      "argv": [
+        "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/allocation-census/iadt-empty-tail/allocation_count_check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 0,
+      "charged_steps": 1915,
+      "calls": 3955,
+      "aligned_bytes": 413600,
+      "log_sha256": "f582322078e50ebcea8263153e65de24fe6cf7d250a0f5572b6c7147503051f9",
+      "binary_sha256": "0e7a4e9d736241ba8361f17c2436c1d7a4f699a098e43a65fcdb62faefe05299"
+    },
+    {
+      "case": "imported-local-sorted",
+      "variant": "baseline",
+      "argv": [
+        "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/allocation-census/baseline/allocation_count_check",
+        "--steps",
+        "1000000000",
+        "--legacy-intrinsic-dot",
+        "--imports",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/quick-local-provider.p",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/imported-local-sorted.p"
+      ],
+      "exit": 0,
+      "charged_steps": 761848,
+      "calls": 2864708,
+      "aligned_bytes": 227741120,
+      "log_sha256": "022c6bfd7649fbbb3a4de6cd71bc7a149eda13d66856ad3d30f7bcc29dcdd980",
+      "binary_sha256": "9782c1d7622779fa67afc40dfbc75a6424dbe16e561e270eda26dd9101509806"
+    },
+    {
+      "case": "imported-local-sorted",
+      "variant": "iadt-empty-tail",
+      "argv": [
+        "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/allocation-census/iadt-empty-tail/allocation_count_check",
+        "--steps",
+        "1000000000",
+        "--legacy-intrinsic-dot",
+        "--imports",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/quick-local-provider.p",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/imported-local-sorted.p"
+      ],
+      "exit": 0,
+      "charged_steps": 761848,
+      "calls": 2863655,
+      "aligned_bytes": 227693856,
+      "log_sha256": "5292836052e34ae2dcc3b7fc7c1b66b27a5378a75e0e8ae6c8e6d72356d4b12b",
+      "binary_sha256": "0e7a4e9d736241ba8361f17c2436c1d7a4f699a098e43a65fcdb62faefe05299"
+    },
+    {
+      "case": "trees4",
+      "variant": "baseline",
+      "argv": [
+        "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/allocation-census/baseline/allocation_count_check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees4.p"
+      ],
+      "exit": 0,
+      "charged_steps": 2318248,
+      "calls": 1181161,
+      "aligned_bytes": 46887792,
+      "log_sha256": "a4c8c0ca1c9885a7d9deb669a7524f02ba9da95417e548a215ff038940075d64",
+      "binary_sha256": "9782c1d7622779fa67afc40dfbc75a6424dbe16e561e270eda26dd9101509806"
+    },
+    {
+      "case": "trees4",
+      "variant": "iadt-empty-tail",
+      "argv": [
+        "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/allocation-census/iadt-empty-tail/allocation_count_check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees4.p"
+      ],
+      "exit": 0,
+      "charged_steps": 2318248,
+      "calls": 1150665,
+      "aligned_bytes": 45911920,
+      "log_sha256": "7fc07a397a66e989211362661e8db13ce9f7ffa814e232e26b3114c816d56d05",
+      "binary_sha256": "0e7a4e9d736241ba8361f17c2436c1d7a4f699a098e43a65fcdb62faefe05299"
+    },
+    {
+      "case": "trees16",
+      "variant": "baseline",
+      "argv": [
+        "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/allocation-census/baseline/allocation_count_check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees16.p"
+      ],
+      "exit": 0,
+      "charged_steps": 7608511,
+      "calls": 3669002,
+      "aligned_bytes": 135130224,
+      "log_sha256": "09bc37e1a7c036db5636e3124204c893f1f6087cbcb578f3174ef8ffb714ab39",
+      "binary_sha256": "9782c1d7622779fa67afc40dfbc75a6424dbe16e561e270eda26dd9101509806"
+    },
+    {
+      "case": "trees16",
+      "variant": "iadt-empty-tail",
+      "argv": [
+        "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/allocation-census/iadt-empty-tail/allocation_count_check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees16.p"
+      ],
+      "exit": 0,
+      "charged_steps": 7608511,
+      "calls": 3568778,
+      "aligned_bytes": 131923056,
+      "log_sha256": "74b84e5522708a8fc98bfc66019fdc4dd2981d24952f9fdc6bcfac0421db597e",
+      "binary_sha256": "0e7a4e9d736241ba8361f17c2436c1d7a4f699a098e43a65fcdb62faefe05299"
+    },
+    {
+      "case": "trees64",
+      "variant": "baseline",
+      "argv": [
+        "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/allocation-census/baseline/allocation_count_check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees64.p"
+      ],
+      "exit": 0,
+      "charged_steps": 29780510,
+      "calls": 13971774,
+      "aligned_bytes": 495783296,
+      "log_sha256": "d67a4773b0985af4ff99f894f3502de894be5503c7b4f1c6ad9b469d43ec5a42",
+      "binary_sha256": "9782c1d7622779fa67afc40dfbc75a6424dbe16e561e270eda26dd9101509806"
+    },
+    {
+      "case": "trees64",
+      "variant": "iadt-empty-tail",
+      "argv": [
+        "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/allocation-census/iadt-empty-tail/allocation_count_check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees64.p"
+      ],
+      "exit": 0,
+      "charged_steps": 29780510,
+      "calls": 13580798,
+      "aligned_bytes": 483272064,
+      "log_sha256": "56d3b38f94dd6c6ea1c66755d34181e59d3d3e75dead66bfd6bf7879c82a737e",
+      "binary_sha256": "0e7a4e9d736241ba8361f17c2436c1d7a4f699a098e43a65fcdb62faefe05299"
+    },
+    {
+      "case": "trees400",
+      "variant": "baseline",
+      "argv": [
+        "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/allocation-census/baseline/allocation_count_check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees400.p"
+      ],
+      "exit": 0,
+      "charged_steps": 183507626,
+      "calls": 85409894,
+      "aligned_bytes": 2994561120,
+      "log_sha256": "f2b9e767f45187419fc0463b15a64fa0508bfa73583702c1692849b312d320c7",
+      "binary_sha256": "9782c1d7622779fa67afc40dfbc75a6424dbe16e561e270eda26dd9101509806"
+    },
+    {
+      "case": "trees400",
+      "variant": "iadt-empty-tail",
+      "argv": [
+        "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/allocation-census/iadt-empty-tail/allocation_count_check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees400.p"
+      ],
+      "exit": 0,
+      "charged_steps": 183507626,
+      "calls": 83000934,
+      "aligned_bytes": 2917474400,
+      "log_sha256": "66a8e4e2dfee646f0a3b857bd426ab6533f88468baca7c197c4d42bed6cc7fd0",
+      "binary_sha256": "0e7a4e9d736241ba8361f17c2436c1d7a4f699a098e43a65fcdb62faefe05299"
+    }
+  ],
+  "same_twelve_workloads_fuel_exact": true,
+  "cumulative_external_requests_only": true,
+  "internal_graph_allocations_omitted": true,
+  "new_owner_index_or_ABI_overhead": 0,
+  "not_live_peak_RAM_or_time": true,
+  "initial_accounting_predicate_failed": true,
+  "initial_helper_sha256": "39fa554568eaf09e6ddbbcdc58883bcb7918336bb6f48b8a7c5306bdc545b52f",
+  "cases": [
+    {
+      "case": "list",
+      "charged_steps": 1915,
+      "calls_delta": 0,
+      "aligned_bytes_delta": 0,
+      "matches_32byte_accounting": true
+    },
+    {
+      "case": "imported-local-sorted",
+      "charged_steps": 761848,
+      "calls_delta": -1053,
+      "aligned_bytes_delta": -47264,
+      "matches_32byte_accounting": false
+    },
+    {
+      "case": "trees4",
+      "charged_steps": 2318248,
+      "calls_delta": -30496,
+      "aligned_bytes_delta": -975872,
+      "matches_32byte_accounting": true
+    },
+    {
+      "case": "trees16",
+      "charged_steps": 7608511,
+      "calls_delta": -100224,
+      "aligned_bytes_delta": -3207168,
+      "matches_32byte_accounting": true
+    },
+    {
+      "case": "trees64",
+      "charged_steps": 29780510,
+      "calls_delta": -390976,
+      "aligned_bytes_delta": -12511232,
+      "matches_32byte_accounting": true
+    },
+    {
+      "case": "trees400",
+      "charged_steps": 183507626,
+      "calls_delta": -2408960,
+      "aligned_bytes_delta": -77086720,
+      "matches_32byte_accounting": true
+    }
+  ],
+  "failure_explanation": "The reporting assumption delta_bytes ==32*delta_calls fails for LocalSorted; no source/test change and no twelve-run repeat. Per-site attribution is not established.",
+  "both_source128_verify_after": true
+}

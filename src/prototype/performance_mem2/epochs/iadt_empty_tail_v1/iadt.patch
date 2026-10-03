@@ -1,0 +1,15 @@
+--- a/src/iadt.c
++++ b/src/iadt.c
+@@ -211,6 +211,12 @@
+ 	struct pg_closure branch = *pg_eval_argument(machine, position + 1);
+ 	if (pg_eval_enter(machine, branch, layout->count + 1)) return -1;
+ 	if (!arguments) return 0;
++	/* The field spine already has the required empty tail. Its immutable
++	 * nodes live in the machine arena or the decoded output graph. */
++	if (!machine->arguments) {
++		machine->arguments = arguments;
++		return 0;
++	}
+ 	/* Retain each field's actual closure, including its own environment. */
+ 	struct pg_argument *first = NULL, *last = NULL;
+ 	for (const struct pg_argument *cursor = arguments; cursor; cursor = cursor->next) {
