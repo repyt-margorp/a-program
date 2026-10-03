@@ -1,0 +1,78 @@
+{
+  "date": "2026-10-03",
+  "scope": "Fresh Root C8 twelve-gate qualification on canonical E8; prototype only",
+  "task": "884d5bbe192e128fc98de8f3afcd2d3bce59211d",
+  "review_candidate": "ae4fa054c414137fa7ff8f90dc013dabe06c5337",
+  "producer": "50cd56b2a52b7e370bc7ecb3436c4993e2e5d6a2",
+  "runtime_source_count": 128,
+  "source_manifest_sha256": "9ba2b33cbe8bc68eac338073506bcb205f36d20cb0a34f9f88607d975ef07740",
+  "task_files_checked": 17,
+  "Goal_doc": "Frozen task bytes verified independently; Root reconciliation preserves fresh C7 and C8 status.",
+  "verification": {
+    "flags": "-std=c11 -Wall -Wextra -Werror -O2",
+    "rows": [
+      {
+        "target": "check-c-backend",
+        "exit": 0
+      },
+      {
+        "target": "check-c-link",
+        "exit": 0
+      },
+      {
+        "target": "check-c-scalar",
+        "exit": 0
+      },
+      {
+        "target": "check-c-enum",
+        "exit": 0
+      },
+      {
+        "target": "check-c-data",
+        "exit": 0
+      },
+      {
+        "target": "check-c-list",
+        "exit": 0
+      },
+      {
+        "target": "check-c-numeric-list",
+        "exit": 0
+      },
+      {
+        "target": "check-c-static-functions",
+        "exit": 0
+      },
+      {
+        "target": "check-c-value-records",
+        "exit": 0
+      },
+      {
+        "target": "check-c-enum-list",
+        "exit": 0
+      },
+      {
+        "target": "check-c-sorting-boundary",
+        "exit": 0
+      },
+      {
+        "target": "check-c-transitive-functions",
+        "exit": 0
+      }
+    ],
+    "log_sha256": "6679f10dc12ca84cc92ee15ef6a354899e1dea781e6e435313ec3d8edb3c3a63",
+    "setup_failure": "Initial top-level glob counted 120 files; corrected recursive manifest includes eight artifact source files. No gate ran before correction.",
+    "fresh_Root_sanitizers": false,
+    "worker_sanitizers": "Nine generated-client sanitizer gates retained separately in frozen C8 handoff"
+  },
+  "binaries": {
+    "c_transitive_oracle_test": "f0304684300fbb47e3d55f48e2b920accb0525bb83b6bfd5f32a6269ea307605",
+    "c_static_oracle_test": "a509c7f6488344cf974a516802dfbf9aa7075f786282297d8acac7449a530935",
+    "c_scalar_test": "3030fcf9d3a4df70634c399cae28401b2edfbc583cf7fa202fbb460f52af455d",
+    "c_oracle_test": "8bf9b815991fc48a03e7d193c4cc569f9bebf6a4ce44add10d8f8b4dc18ce2f0",
+    "pointer-check": "6e3407fc7f6ba8dffa0642217f00b6d2ec8454e32dc41eac6b27cce30518cd44",
+    "a-to-c": "3090edace60d38deec95547e86b087e4bed81771cacb9761efdf03fc8c855c37"
+  },
+  "evidence": "/tmp/a-program-merge-c8-e8-gates-20261003",
+  "remaining": "No native Acc/QuickSort, dynamic callbacks/effects, higher Identity or accepted C promotion."
+}
