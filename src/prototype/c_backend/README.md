@@ -370,13 +370,24 @@ fields and native QuickSort remain unsupported.
 
 `check-c-callbacks` compares each product with 400 existing Core-evaluator cases
 and 20 admitted same-module source observations using explicit thunk arguments.
-Imported callback application probes currently reject on worker qualified E8 and
-Root's current E9+E10; those fixture/frontend boundaries are retained and routed
-for owner review. Core test interpretations do not grant Surface admission or
-new formation/equality evidence. Inert lowering, repeated/trusted output,
+Historical imported callback probes rejected on worker E8/Root E9+E10 because
+their consumer fixtures omitted explicit imports. Root's later E12 explicit-import
+controls preserve original output/fuel and pass; no frontend policy bug or new
+source authority follows. Original failed inputs/results remain historical
+evidence. Core test interpretations do not grant Surface admission or new
+formation/equality evidence. Inert lowering, repeated/trusted output,
 null code/output, header version and old profile refusals are separate controls.
 In sanitizer mode source component/client bodies are instrumented; emitted
 object/archive/shared bodies, backend, producer and Core checker remain O2.
+
+`check-c-callback-modules` adds a generated scalar provider and two independently
+generated callback consumers with distinct aliases. Immutable borrowed offset
+contexts adapt valid scalar calls into the existing callback signatures. It
+checks sixteen product pairs, both header orders, Core/source agreement and
+provider lifetime across explicit loading/unloading. Source/object/whole-archive
+duplicate symbols remain a link refusal; arbitrary shared-library symbol
+interposition is not claimed to reject. The adapter requires valid scalar calls
+to return success; this adds no foreign failure propagation or escaping ownership.
 
 ## Native Nullary ADTs
 

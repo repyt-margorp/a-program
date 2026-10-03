@@ -125,6 +125,23 @@ establish a frontend callback defect or require any source-policy change.
 C14 exact23 notice8283bd1b is READY, pending separate Root ABI/current-producer
 review. Latest C pane is capacity-stalled; no owner restart or model change.
 
+Fresh C15 at exact task `e9d74f70` plus owned edits: a generated scalar provider
+supplies borrowed callback interpretations to two independently emitted callback
+consumers. Sixteen product pairs/both header orders, forty clients per phase,
+800 Core comparisons/client and twenty source observations pass in serial O2
+and client/source ASan/UBSan/leak modes. Each phase has 99 expected status rows,
+including source/object/whole-archive duplicate-symbol refusals. Explicit loaded
+provider handles close after all synchronous calls. No emitter/producer/schema
+change or broader/timing run; worker E8 and Root E12 evidence stay separate.
+
+2026-10-03, fresh Root C15 qualification at current E14 Main376fab18:
+producer source128abedf677, frozen C14 backend and unchanged E12 Core oracle
+pass O2 and client/source SAN99 expected rows each. All sixteen product pairs,
+both header orders, provider lifetime and three duplicate refusals pass with
+input pins unchanged. Exact8 taskba5d39d is pushed/remote exact; prototype Main
+merge is separately reviewed. [Root receipt](../src/prototype/c_backend/verification/core-epoch15.json)
+records producer pins and sanitizer coverage. C16 remains private and excluded.
+
 Frozen worker C14 evidence (its imported-source boundary statement is
 superseded by the corrected explicit-import review above):
 
@@ -338,6 +355,7 @@ Current issue status (2026-10-03; detailed pins stay in linked epoch plans):
 | #49 finite value-record List/arrays, C12 (historical milestone) | Exact task `97f8d7c28f3438fb1b36d687e0e7efc175d8c6f3`: List-shaped finite payloads, active validation before traversal/allocation, validators emitted first. | Worker qualified E8: 259 cases/product, 13 source observations, O2/client sanitizers and 24 refusals pass; affected gates and I/O controls pass. Root current E9+E10: 14 O2/3 affected sanitizer gates and 19 I/O controls pass. | Task pushed/remote verified from immutable16; Root reports prototype Main integration complete, status push next. | Recursive aggregates, multi-tail/non-List record shapes, callable/indexed fields and native Acc/QuickSort remain unsupported under #61. No accepted C promotion. | Preserve historical C12 evidence during separate shared-library work. |
 | #61 shared C products/visibility, C13 | Exact task `96a0308283dad19450c5c56f2ac0ca3463c4838b`: explicit shared product, PIC objects, selected public symbol map and receipt; separate exact11 snapshot. | Worker E8: shared O2/client SAN each 58 rows, 16 runs, exact 3/4/17/8 definitions; linker/I/O controls pass. Root E9+E10 strict build, shared O2/client SAN58+58, linker/I/O19 all pass. | Task pushed/remote verified; Root prototype Main `f7afb04`/status `e552f2c` pushed/remote exact. | ELF version-script toolchain, code handle lifetime, client-only shared SAN coverage; no install/SONAME policy, general callable/boxed ABI or source authority. | Preserve historical C13 evidence in separate C14 callback work. |
 | #61 bounded public callback inputs, C14 | Taske9d74f7/Main6c36dcb exact23 paths; opt-in borrowed synchronous same-width unary pure-total Int32/Int64 ABI, seven implementation files +84/-20. | Fresh Root current-E12 O2/client-source SAN39 each, four products400 Core comparisons each, source20, shared58 each, link/IO19 and explicit-import4 pass. | Task/Main pushed and remote exact; 22 frozen files plus reconciled Goal doc. | Caller purity/totality/lifetime preconditions and limited SAN scope explicit; returned/boxed, mixed-width, multiargument, effects and native Acc excluded. | Continue bounded justified C-module work; no full #61 closure. |
+| #61 ordinary generated callback modules, C15 | Parent `e9d74f70` plus three new provider/adapter/harness files, 231 lines; existing callback ABI unchanged, exact8 snapshot. | Worker E8: O2/SAN99 each; 16 product pairs, both header orders, 32 linked +8 loaded-provider clients/phase, 800 Core comparisons/client, source20 and three duplicate refusals pass. Fresh Root E14 source128abedf677: O2/client-source SAN99+99 match with unchanged input pins. | Exact8 taskba5d39d pushed/remote exact; prototype Main merge reviewed separately. C14 immutable snapshot preserved. | Valid provider success and synchronous context/code lifetime required; SAN covers clients/source bodies only. No general failure propagation, escaping ownership or nominal exchange. | Preserve qualified C15; continue bounded admitted native/ordinary-C obligations, with Acc/QuickSort open. |
 | #61 native Acc/QuickSort (historical #44/#49) | C4 `a3b6bce` pins native refusal; C7-C9 retain it. Applied List resolves only the first representation obligation. No native sorter. | Historical checked/trusted status 4/no product; Root C9 sorting-boundary gate passes. Structural FFTT remains separate. | C4-C9 task/prototype Main published; no native Acc epoch publication. | Indexed SizedList and callable recursive Acc fields remain unsupported; no producer defect established. | Report concrete indexed/callable representation needs through Merge; keep work bounded and downstream. |
 | #61 remaining public contracts (historical #49) | General/boxed callbacks, effects, higher Identity, recursive captures and shared nominal exchange remain explicit limits; C14 advances only borrowed unary scalar inputs. | Local/joint gates verify supported cases and refusals, not general completion. | Historical tasks/prototype Main published; no publication of general missing contracts. | Need bounded justified representation/demand contracts. | Preserve refusals; route shared needs through Merge. |
 
@@ -557,6 +575,21 @@ backend checking evidence. Ordinary admission remains required; the separate
 Core test interpretations use existing host operations and do not establish
 Surface formation or equality proofs. Imported-source probes stay reported and
 routed to Job; target controls do not excuse their failed admission.
+
+Superseding Root observation, received 2026-10-04 local date: explicit imports
+resolve the original callback source probes without changing output/fuel or
+frontend policy. Their historical rejected input bytes remain evidence of fixture
+setup, not an active producer dependency. Agent C15 decision: verify generated
+scalar providers as borrowed callbacks in two independently emitted consumers,
+all product pairs/both header orders and synchronous loaded-code lifetime. Keep
+the callback ABI unchanged; no escaping ownership or erasure policy follows.
+
+Root scheduling request, 2026-10-03 UTC/2026-10-04 local: proposed Fold-only
+matched36 cost window 20:20-20:30 UTC is not a worker launch grant. C15's focused
+gates are terminal with no live build/runtime children at 20:06 UTC. Send the
+safe-boundary notice and keep heavy work drained only for this window/release;
+light source/docs/hash handoff work continues. This is operational scheduling,
+not a direct human design statement or blanket implementation hold.
 
 Fresh read-only issue inspection: [#61](https://github.com/repyt-margorp/a-program/issues/61),
 open, updated 2026-10-03 13:11:54 UTC, consolidates unfinished selected-export/
@@ -932,6 +965,10 @@ this target work while Main continues SE1, superseding the earlier AP6 hold.
   Preserve old profile refusals and route imported application boundaries to Job.
 - [x] Freeze exact C14 source/test/docs; Root task/Main publication and fresh
   current-E12 producer qualification complete, with scope in the linked receipt.
+- [x] C15: verify generated-provider callbacks across two consumer modules and
+  mixed products/header orders, focused O2/client-source SAN and loaded-code lifetime.
+- [x] Freeze/hand off exact C15; distinguish worker E8, Root C14 E12 and fresh
+  Root C15 current-E14 qualification/task publication. Preserve all historical submitted snapshots.
 - [ ] Maintain the single issue table at material events and within six active
   hours; use brief pointer/hash notices and keep Core workflow in Assessment.
 - [ ] Coordinate further bounded target ABI/lowering increments under the latest
@@ -1004,8 +1041,11 @@ Cross-owner handoff: #44 selected-export admission beside unresolved siblings an
 #47 relevance remain Core-owned. The full Goal is active; this epoch does not
 complete AP4.6, AP5.6 or AP6.3-AP6.5/7/8 and does not close their successor #61.
 
-C14's separate [handoff](2026-10-03-C-BACKEND-EPOCH14-HANDOFF.md) pins the borrowed
-unary scalar callback epoch and focused worker E8 tests. Same-module source
-observations pass; imported application remains a fixture/frontend boundary under
-Job review. Root's current E9+E10 source reproduction is separate evidence, not
-current-producer target qualification. No full Goal/native sorter completion.
+C14's historical [handoff](2026-10-03-C-BACKEND-EPOCH14-HANDOFF.md) pins the
+borrowed unary scalar callback epoch and worker E8 tests. Root later publishes
+task `e9d74f70`/prototype Main `6c36dcb` with E12 qualification and explicit-import
+controls; omitted imports resolve the former fixture boundary without producer
+policy changes. C15's separate
+[handoff](2026-10-04-C-BACKEND-EPOCH15-HANDOFF.md) pins generated-provider/module
+composition, worker E8 correctness and the pending current-producer review.
+No full Goal/native sorter completion or accepted promotion.
