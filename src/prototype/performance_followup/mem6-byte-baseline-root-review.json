@@ -1,0 +1,84 @@
+{
+  "notice_sha256": "66ab39b159e230060e9c69fed8e3264bfb8bd327dbade7860d6d677c0b70db98",
+  "Main_revision": "61cc2de1aec4c539b34d0203f4fb5872746971d7",
+  "freeze12_manifest": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem6/epochs/iadt_caller_cursor_v1/manifest.sha256",
+  "freeze_manifest_sha256": "6c0f896d565261c2c697fcf200c5e7941e9f713a9d9e38bbc2b2e89e5db1f845",
+  "private2689_manifest": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem6/private/iadt_caller_cursor_20261003/verification.sha256",
+  "private_manifest_sha256": "5ea72b98b4fe38e95cc656e27c2086deaa9888db4c8e8065c2addb0ecfe547e1",
+  "all_frozen_private128_plus128_and_test_pins_exact": true,
+  "worker_focused1172_expected0_records_and_affected8_zero_strict1_logs_verified": true,
+  "Root_new_runtime_execution": false,
+  "patch_sha256": "7630360cd5f0294fe324b9def3f23ed211663fde84d384844231282cba6379e6",
+  "only_runtime_change": "src/iadt.c",
+  "exact_canonical_reconstruction_without_fuzz": true,
+  "parent_source128": "2344ad41d6db32ceddb5dbc9419aa8da97fcaa00253e075f5ff96b8f72f93b13",
+  "candidate_source128": "1470be1044344f64b9ddfb9b1f34409af45107c9909dc1a0e07fb190dc00ca7d",
+  "Root_recomputed_image_pairs": {
+    "o2": {
+      "pairs": 96,
+      "mismatches": [
+        {
+          "old": "o2-parent-6-11.image",
+          "new": "o2-candidate-6-11.image",
+          "old_sha256": "36b8c0e951309d3c1cb915aaa6912df0dee8411580e3551c3816dd1c57a0236f",
+          "new_sha256": "e73ff389364cbe0d203b08bdf815abd7da5e225ae7e56a6a69d584bdb435b72d",
+          "first_difference": 1393,
+          "different_positions": 8,
+          "lengths_equal": true
+        },
+        {
+          "old": "o2-parent-5-11.image",
+          "new": "o2-candidate-5-11.image",
+          "old_sha256": "96ccd5114887da2df09e88381d8e69c2e37b45c515b4bbc05d2c4cff55b9ab81",
+          "new_sha256": "d979703da86daf00c0e4634e6a853314d6c68afba6d866c77ddfa53de29631e5",
+          "first_difference": 1384,
+          "different_positions": 8,
+          "lengths_equal": true
+        },
+        {
+          "old": "o2-parent-5-12.image",
+          "new": "o2-candidate-5-12.image",
+          "old_sha256": "677d3263c112364f651d697876c08726bcd16729650f92ba60d47ba0c095d3be",
+          "new_sha256": "e6d3002782fcc53c0a3212455606fb4d82f14851681065d2a8d77c21dd082195",
+          "first_difference": 1384,
+          "different_positions": 8,
+          "lengths_equal": true
+        },
+        {
+          "old": "o2-parent-6-10.image",
+          "new": "o2-candidate-6-10.image",
+          "old_sha256": "d8f36a3e75e798a41bdc557471fe157cefca09b51c6eceab2bb406ba28114751",
+          "new_sha256": "bf8eb2064a8bb8407cfc635f87a2a8a4bf1e43cf88d74e08d5c23f6563a8c876",
+          "first_difference": 1393,
+          "different_positions": 8,
+          "lengths_equal": true
+        }
+      ]
+    },
+    "san": {
+      "pairs": 96,
+      "mismatches": []
+    }
+  },
+  "same_parent_binary_repeat_image_variants": [
+    "36b8c0e951309d3c1cb915aaa6912df0dee8411580e3551c3816dd1c57a0236f",
+    "e73ff389364cbe0d203b08bdf815abd7da5e225ae7e56a6a69d584bdb435b72d"
+  ],
+  "Root_recomputed_parent_only_resave": {
+    "semantic_executions": 48,
+    "semantic_failures": 0,
+    "byte_checks": 16,
+    "byte_failures": 7
+  },
+  "Assessment": [
+    "Hold runtime publication/integration: additional raw byte gates fail; source-pinned baseline reproduction does not waive them or establish complete readiness.",
+    "Parent same-binary output diversity and parent-only inert resave failure independently rule out attributing every byte discrepancy to the candidate alone. This is not a latest-Main defect reproduction.",
+    "Inspected frozen eval_io.c readback_write iterates auxiliary reusable results by hash buckets. A causal/canonical ordering diagnosis remains an owner task; no codec/cache deletion, test adapter, saved-state trust, or authority change inferred.",
+    "Single checked caller cursor preserves branch/prefix errors and current/arguments mutation ordering by inspected pg_eval_enter semantics. Traversal reduction alone does not prove wall/RSS gains or resolve byte gates.",
+    "Route byte/codec and public escaped-node lifetime constraints to original Job owner. Preserve original observers/SAN7/strict3 and every raw failure. No heavy duplication/new measurement slot, accepted-source promotion, issue closure, or full Goal completion."
+  ],
+  "verification_note": "Initial Root log lookup wrongly expected build logs in private manifest; they were excluded by compiled-output filter. All referenced raw log hashes were then independently checked against actual retained log files. This was a review setup failure, not a runtime result.",
+  "decision": "reviewed; held, NOT full READY",
+  "route_pending": false,
+  "route": "Original Job %4 and Performance %1; literal input then separate Enter, no owner duplicate/resume"
+}

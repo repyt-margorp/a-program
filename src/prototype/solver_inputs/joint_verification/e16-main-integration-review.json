@@ -1,0 +1,163 @@
+{
+  "Main_revision": "ef4e5316d7cf34667f31af891cfe43d2bf054c38",
+  "parent_source128": "3f48e22e250a835fe338783f6bba5d943b0a5576dfdc2f7fff92684a6c1769a4",
+  "candidate_source128": "dcd44a00d7d66db7f02144b457cf2e901f064d69a002a0f4af662dc1fa060503",
+  "changed_from_current_E15": [
+    "src/artifact/schedule.c",
+    "src/synthesis_work.c",
+    "tests/synthesis.c",
+    "checkpoint_tests/normalization_checkpoint_test.c"
+  ],
+  "parent_fresh_checks_reference": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main/Root-results.json",
+  "parent_checks_sha256": "26a3db09f076b013379671182959ae638efe118891b855b957d6ef1419a7ee55",
+  "fresh_parent_counterexample_reference": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e16-current-owner-control/Root-results.json",
+  "fresh_parent_counterexample_sha256": "cee101a212220cf3f52f402077c9bfc5c8308bc31b1e0a45ec446b878616d2bb",
+  "frozen_delta_sha256": "9a68907c7d9df2d7ae45db91b44de545470cd699a44b5be7a402b14ec324476c",
+  "frozen_owner_control_sha256": "4eb870041c394f515267757f6c849f377b35ef279e79ddb6ac60672169245781",
+  "frozen_verify_makefile_sha256": "5f5546d01809122e5171a6e905504b8ab3f7a049034086a7df59d4d877614e9d",
+  "artifact_makefile_sha256": "04cc1aaea432a2e812893aa08fef8ff0c92d14661655ab3ea164468fb14c8f31",
+  "complete": true,
+  "all52_images_exact_current_E15": true,
+  "full_verdict_fuel_TSV_exact": true,
+  "TSV_sha256": "cc720f6f23daad9f4917026168af480c81eb70eec1bd57300177c81d20c428d6",
+  "original_strict3_unwaived": true,
+  "all_inputs_after_exact": true,
+  "current_Main_checks": true,
+  "new_broad_or_actual_cost_claim": false,
+  "script_sha256": "65bbfdce6a56d73b44e3f46083ed2bedad3d69454380d19d51f1196e6619e2bf",
+  "input_sha256": "f2d58b2c2161c086f62022943ca63e9acdca3c2dd7c6fd1979cc4c7ff7c15b37",
+  "checks": [
+    {
+      "gate": "build-o2",
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "a5ce569d5fc05fed3bf7a612057785c208dbdaab1b40d54d8436da33f0a4d224"
+    },
+    {
+      "gate": "full-synthesis-o2",
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "497e5e979c826ff40f602848e82bed31e82ad16457b173072c9c457104a31804"
+    },
+    {
+      "gate": "copied-owner-and-genuine-completion-o2",
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "112b1871f5fb1c56f69da0451b59b7bb5578ec861096825c1c579f85af739f73"
+    },
+    {
+      "gate": "full-normalization-scheduler-checkpoint-o2",
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "f845d9580fe6087d76e05adda57b823e595c06f013510bbfdb89572d58885dfb"
+    },
+    {
+      "gate": "build-san",
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "b4dca144b081f76bbb7d83c1857255b449945996f2e83e25d1064c9806241f06"
+    },
+    {
+      "gate": "full-synthesis-san",
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "497e5e979c826ff40f602848e82bed31e82ad16457b173072c9c457104a31804"
+    },
+    {
+      "gate": "copied-owner-and-genuine-completion-san",
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "112b1871f5fb1c56f69da0451b59b7bb5578ec861096825c1c579f85af739f73"
+    },
+    {
+      "gate": "full-normalization-scheduler-checkpoint-san",
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "f845d9580fe6087d76e05adda57b823e595c06f013510bbfdb89572d58885dfb"
+    },
+    {
+      "gate": "CLI-build",
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "2fbc740c0f087287b5cb47318750754d0ebbd7918a81e2d36bdb01112a9813f0"
+    },
+    {
+      "gate": "public-partitions",
+      "exit": 1,
+      "expected_exit": 1,
+      "log_sha256": "c6109e6f6ffd7f96cacca7976c7c1cf5601d9b0e13de93622d23cff1ecfec2b6"
+    }
+  ],
+  "raw_Root_results": {
+    "path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e16-current-Main/Root-results.json",
+    "sha256": "a2dc480b7f3e12fa146244ee0fd96b0b0e0d8a0f8703f36a0fd67082929e64fd",
+    "full_inputs138_and_command_arguments_retained": true
+  },
+  "publication": {
+    "task": "6caf36cbfd548f7a8e3bddde08739154c16149dc",
+    "task_parent": "150e30a68568683e7d0d9e754fa0fbf67c2e5b61",
+    "Main_parent": "ef4e5316d7cf34667f31af891cfe43d2bf054c38",
+    "Root_results_sha256": "a2dc480b7f3e12fa146244ee0fd96b0b0e0d8a0f8703f36a0fd67082929e64fd",
+    "worker_live_tracked_files_preserved": 1962,
+    "worker_index_only_advance": true,
+    "task_remote_exact": true,
+    "E17_excluded": true,
+    "Main_merge": "61cc2de1aec4c539b34d0203f4fb5872746971d7",
+    "Main_remote_exact": true,
+    "exact33_Main_bytes": true,
+    "protected9_exact": true,
+    "accepted_selection_or_Goal_completion": false
+  },
+  "publication_manifest": {
+    "path": "src/prototype/solver_inputs/epochs/job_evidence_e16_lean/manifest.sha256",
+    "sha256": "2f5997d716407bb823540a4418804146dd4b58b514430de10543752a3df1f717",
+    "exact_files_including_manifest": 33
+  },
+  "worker_input_review": {
+    "path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e16-input-review.json",
+    "sha256": "b890e59340432bc5f5320fed4be2d466e4fb3b17c965fba9731abb61f9c22f3c",
+    "private_manifest_counts": {
+      "tested_sources.sha256": 156,
+      "parent_sources.sha256": 156,
+      "overlay_inputs.sha256": 469,
+      "supplemental_inputs.sha256": 56,
+      "census_inputs.sha256": 9,
+      "control_inputs_v3.sha256": 2,
+      "policy_inputs.sha256": 4
+    },
+    "all19_raw_worker_reports_hash_verified": true,
+    "transport_sha256": "5896b9d8a41a6adcb34d205e66ae9c3f31035aebed47519a76b54cb77ec161d9",
+    "worker_runtime_source156": "a00c742673f74c1ef0b12f800e572b4ec138fe56acf51d30319aad8536adceeb",
+    "worker_reports_are_not_current_Main_execution": true,
+    "E17_excluded": true
+  },
+  "canonical_alignment": {
+    "Main_parent": "ef4e5316d7cf34667f31af891cfe43d2bf054c38",
+    "qualified_source128": "dcd44a00d7d66db7f02144b457cf2e901f064d69a002a0f4af662dc1fa060503",
+    "all_four_full_files_exact": true,
+    "alignment_log_sha256": "ac3ba4bc0fc12ec905a3c400bf95d1b9ed825cf2b85317c58f9a7ed42f38b127",
+    "path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e16-canonical-alignment",
+    "no_fuzz": true,
+    "canonical_patches_reconstructed_current_qualified_sources": true,
+    "file_pins": {
+      "src/artifact/schedule.c": "187dfce992133593607a5b350545ca69502934b82c2300a28dcc7d9f8148e406",
+      "src/synthesis_work.c": "01334b6e64c0a1b224468b3db9a15e7e3912a063d5a5ad6a0e503a1fca958cf3",
+      "tests/synthesis.c": "3ce6e450f68365aee9591c6b1d9e18ad33c6ff49ead8d553559f778a751fa81b",
+      "checkpoint_tests/normalization_checkpoint_test.c": "7f3aec6a92ce8a45b243384bcb9978f89fabcf68a89f8004712ea46e4ac67b0f"
+    }
+  },
+  "initial_Root_setup_failure": {
+    "path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e16-current-Main/initial-setup-failure.json",
+    "sha256": "391cbe32dfc8a13a5913af37554d3877bc073205b8ec53dfec57c60a935f93b0",
+    "phase": "pre-build: existing checkpoint directory mkdir lacked exist_ok",
+    "exit": 1,
+    "source_bytes_preserved_and_corrected_before_build": true
+  },
+  "Assessment": [
+    "Fresh parent current-E15 factory control independently reproduced copied Job ownership and consumer admission at zero steps. Fresh candidate O2 and ASan/UBSan/leaks/stack-after-return checks reject the copied allocation atomically and complete a genuine retained Job.",
+    "Reuse the existing Job hash bucket to require the exact registered index entry; owner tag alone cannot establish caller storage lifetime. Existing scheduler mapping reuses the same admission guard. No new owner/index/graph/schema/authority policy.",
+    "Fresh full synthesis and normalization/scheduler checkpoint tests pass O2/SAN. Nine build/execution gates exit0; original strict public recipe remains exit1 with all52 images and complete fuel/verdict TSV byte-exact E15. This is an unchanged regression, not a strict acceptance pass.",
+    "Worker isolated-source full unskipped O2 broad/semantic/seven checkpoints report0 is freshly hash reviewed. Original fixture header/build2, sanitizer cleanup1, broad ENOSPC2 and parent protection134/134 are preserved; no waiver or current-Main broad inference.",
+    "Only33 frozen prototype files published and integrated; protected9 and all1962 prior worker tracked live files remain exact. E17 stays separate. No accepted-source promotion, actual time/peak claim, strict continuation completion, issue closure, or full Goal completion."
+  ]
+}

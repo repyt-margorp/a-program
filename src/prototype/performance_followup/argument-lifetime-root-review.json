@@ -1,0 +1,69 @@
+{
+  "Main_revision": "ef4e5316d7cf34667f31af891cfe43d2bf054c38",
+  "notice_sha256": "7524747ce0eb81ae8e28095e81a657369f7b199c72c23cf7cdf173337b2ccc49",
+  "fresh_Root_hash_and_arithmetic_review": true,
+  "new_Root_execution": false,
+  "checked_counts": {
+    "freeze_files_plus_manifest": 7,
+    "lifetime_private_files": 26,
+    "argument_keys_private_files": 9,
+    "lifetime_source_files": 128,
+    "argument_keys_source_files": 128
+  },
+  "lifetime_manifest": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem6/epochs/argument_lifetime_v1/manifest.sha256",
+  "lifetime_manifest_sha256": "e76a352adb90b030899664664c3e9a7e33de89650e5e6f86a3a0b09a596cf61e",
+  "lifetime_private_manifest_sha256": "e1d6e7af4322385c22bd8fa1e06613c98469ad8db1d03e5e1c32616a5cc46fe1",
+  "worker_test_records18_exit0": true,
+  "worker_fresh_codec_processes12": true,
+  "worker_source128": "2344ad41d6db32ceddb5dbc9419aa8da97fcaa00253e075f5ff96b8f72f93b13",
+  "all6_images_exact": true,
+  "retained_application_steps": 4,
+  "neutral_steps": 1,
+  "later_identity_applications": [
+    0,
+    8,
+    128,
+    1024
+  ],
+  "source_steps": [
+    5,
+    29,
+    389,
+    3077
+  ],
+  "argument_keys_manifest": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem6/private/argument_keys_20261003/verification.sha256",
+  "argument_keys_manifest_sha256": "924d82fc819bcaf0be9ce527445cee8bf1e2c3e19ef689217e3493339a7bb829",
+  "argument_keys_source128": "81c3ad27dfd01aef14ad8e977d1b783cc3636368b6e5afcab0840d07d055e541",
+  "recomputed_argument_key_rows": [
+    {
+      "budget": 10000,
+      "requests": 1602,
+      "unique_exact_keys": 1595,
+      "any_prior_exact_duplicates": 7,
+      "one_entry_hits": 0,
+      "optimistic_saved_aligned_bytes": 224,
+      "minimum_index_entry_overhead_bytes": 25520,
+      "minimum_net_extra_bytes_before_buckets": 25296
+    },
+    {
+      "budget": 100000,
+      "requests": 29426,
+      "unique_exact_keys": 26560,
+      "any_prior_exact_duplicates": 2866,
+      "one_entry_hits": 0,
+      "optimistic_saved_aligned_bytes": 91712,
+      "minimum_index_entry_overhead_bytes": 424960,
+      "minimum_net_extra_bytes_before_buckets": 333248
+    }
+  ],
+  "Assessment": [
+    "Existing public argument/cursor/spine pointers remain valid while their original evaluator is alive after the nodes are consumed; this rules out generic consumed-node recycling without an API/lifetime change.",
+    "Retained configuration is inert: independent evaluation proves the answer; bytes do not import saved status, policy, or accepted reduction.",
+    "Reject one-entry and full exact-key cache proposals at these two observed prefixes only; allocation-request counters and illustrative metadata arithmetic do not establish live allocation, peak RSS, or scaling.",
+    "No runtime/schema/owner change, current-Main broad pass, comparative timing, promotion, or full Goal completion. Private pure-owner retirement still requires independent proof.",
+    "Next captured-IADT prefix scan candidate remains private and unqualified; this evidence is not its readiness or cost claim."
+  ],
+  "publication_requested": false,
+  "route_to_original_Job_owner_pending": false,
+  "route": "original tmux %4 literal input then separate Enter; no owner duplicate or resume"
+}

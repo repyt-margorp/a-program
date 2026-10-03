@@ -160,6 +160,18 @@
     "Root_results_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e16-current-owner-control/Root-results.json",
     "Root_results_sha256": "cee101a212220cf3f52f402077c9bfc5c8308bc31b1e0a45ec446b878616d2bb"
   },
-  "assessment": "Fresh current prototype E15 producer at Main0585663/source1283f48e22e accepts a copied caller-owned Job and creates a consumer at zero steps. This now establishes that specific current-producer ownership/factory gap, superseding the earlier worker-only scope. Current scheduler-save reproduction and candidate fix qualification remain separate. Wait for exact E16 freeze, independently reconstruct and qualify index-membership repair; no accepted-source edit or new authority needed.",
+  "assessment_at_21_35_UTC": "Fresh current prototype E15 producer at Main0585663/source1283f48e22e accepts a copied caller-owned Job and creates a consumer at zero steps. This now establishes that specific current-producer ownership/factory gap, superseding the earlier worker-only scope. Current scheduler-save reproduction and candidate fix qualification remain separate. Wait for exact E16 freeze, independently reconstruct and qualify index-membership repair; no accepted-source edit or new authority needed.",
+  "superseding_repair_review": {
+    "UTC": "2026-10-03 21:54 UTC",
+    "task": "6caf36cbfd548f7a8e3bddde08739154c16149dc",
+    "prototype_Main_merge": "61cc2de1aec4c539b34d0203f4fb5872746971d7",
+    "current_candidate_source128": "dcd44a00d7d66db7f02144b457cf2e901f064d69a002a0f4af662dc1fa060503",
+    "Root_results_sha256": "a2dc480b7f3e12fa146244ee0fd96b0b0e0d8a0f8703f36a0fd67082929e64fd",
+    "durable_receipt": "src/prototype/solver_inputs/joint_verification/e16-main-integration-review.json",
+    "fresh_O2_SAN_copied_rejection_genuine_completion_full_synthesis_and_scheduler_checkpoint_pass": true,
+    "rejection_is_atomic_zero_steps": true,
+    "strict3_still_unwaived": true,
+    "Assessment": "The specific copied-Job ownership/factory gap is repaired and qualified in the prototype producer. Scheduler mapping uses the same membership guard. Prior parent reproduction remains historical evidence; this does not complete genuine frontier continuation, strict reload, accepted promotion, or the full Goal."
+  },
   "no_full_Goal_or_issue_closure_or_promotion_claim": true
 }

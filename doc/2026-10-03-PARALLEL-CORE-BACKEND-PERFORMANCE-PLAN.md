@@ -219,8 +219,8 @@ pins verify tag-only copied-Job admission versus zero-step membership rejection;
 parent protection134/134 remains a failure. Superseding 21:35 UTC Root review
 freshly reproduces ownership/factory admission at Main0585663/source1283f48e22e:
 `copied_job_owned=1 factory_created=1 steps=0`, unchanged existing control/build0.
-This establishes that specific current-producer gap; current scheduler-save
-and candidate repair qualification remain separate, pending exact E16 freeze.
+This established that specific current-producer gap at that checkpoint; E16
+qualification and publication were still pending then and are superseded below.
 [E16 review](../src/prototype/coordination/reviews/job-e16-owner-counterexample-20261003.json).
 C16 frozen18/retained182/raw2300 verify; fresh Root current-E15 ABI/affected
 checks pass and taska4a2e98/Main0585663 are pushed/remote exact. Binary48,
@@ -234,11 +234,48 @@ bytes claim. Three original owners continue; completed four stay stopped.
 Fresh issue snapshot remains nine open/zero PR, updates unchanged; timer alive,
 next 2026-10-04T01:44:22.084Z. No new cost grant or human design attribution.
 
+2026-10-03 21:54 UTC, Root E16 delivery supersedes pending repair status:
+exact33 task6caf36cb/Main61cc2de1 are pushed/remote exact. All848 worker manifest
+records and19 raw reports were hash reviewed; isolated source156a00c7426 remains
+distinct from fresh current-E15 candidate source128dcd44a00. Existing registered
+Job index membership now rejects copied caller storage at input and schedule
+admission. Fresh full synthesis, unchanged copied-owner/genuine-completion
+control and full normalization/scheduler checkpoint tests pass O2/SAN; rejection
+is atomic at zero steps. All52 public images/full fuel-verdict TSV equal E15,
+with strict recipe1/original three failures retained. Four canonical patches
+reconstruct the exact qualified files without fuzz;1962 worker live tracked
+files and protected9 preserved. [E16 integration review](../src/prototype/solver_inputs/joint_verification/e16-main-integration-review.json).
+No new index/owner/schema/trust policy, accepted-source edit, current-Main broad
+or actual cost claim. E17 motive-scan deletion remains private/unqualified.
+
+Root also verified Performance's retained-argument test-only7/private26,
+source1282344ad41, all18 O2/SAN worker records and12 codec processes/6 identical
+images, and recomputed argument-key9/source12881c3ad27 arithmetic. Public
+argument/cursor/spine pointers remain valid while the original evaluator lives
+after1024 later identities; route delivered to original Job owner. Generic
+consumed-node recycling would violate that lifetime. One-entry cache has zero
+hits at both observed prefixes; at100K, illustrative full-index metadata424960B
+exceeds optimistic91712B saved requests before buckets. This is a scoped
+proposal rejection, not live-memory/RSS evidence or private-owner retirement
+proof. [Lifetime/attribution review](../src/prototype/performance_followup/argument-lifetime-root-review.json).
+Subsequent notice66ab39b1 freezes the captured-IADT prefix candidate for review,
+not full READY. Root verifies exact12/private2689/source1282344ad41-to1470be10
+and the1172 focused/eight affected worker records, reconstructs the sole iadt.c
+patch without fuzz, and recomputes all96 O2/all96 SAN raw cut pairs:4/0 mismatches.
+The identical parent binary emits both foreign-cut11 variants; parent-only
+inert resave has48 semantic executions0 but7/16 byte comparisons fail. Runtime
+publication/integration is held. Source observation of reusable-result hash
+bucket enumeration is a causal hypothesis requiring codec-owner review, not
+a latest-Main defect proof or byte waiver. Findings and public escaped-node
+lifetime constraint are routed to original Job/Performance owners; independent
+action-field/large-peak research continues. [MEM6 review and hold](../src/prototype/performance_followup/mem6-byte-baseline-root-review.json).
+No new measurement slot or runtime cache is inferred.
+
 | Owner / issue scope | Delivered and verified | Not yet delivered / next boundary |
 | --- | --- | --- |
-| Job/Evidence; SE1-SE5 / AP0, #51/#47 | E1-E4/E6-E15 corrected prototypes integrated. E15 exact29 task150e30a/Main1d46b5b pushed/remote exact;539 worker input pins/nine reports and fresh Root current-E14 source1283f48e22e full synthesis O2/SAN/public52/full TSV match E14; canonical files exact | Root current producer reproduces copied-Job ownership/factory gap at zero steps. E16 isolated-parent protections134/134 and candidate focused O2/SAN0 reviewed; broad ENOSPC2 retained/disk retry advances, exact freeze/current fix qualification pending. E17 private/unqualified. Strict3/original rejections retained; no full Goal or actual E15 cost |
+| Job/Evidence; SE1-SE5 / AP0, #51/#47 | E1-E4/E6-E16 corrected prototypes integrated. E16 exact33 task6caf36cb/Main61cc2de1 pushed/remote exact;848 worker manifest records/19 reports verified. Fresh current-E15 source128dcd44a00 full synthesis/owner-completion/normalization-scheduler O2/SAN pass; copied Job rejection atomic0step, public52/full TSV equal E15; four canonical files exact | E17 motive-scan deletion private/unqualified. Genuine frontier continuation and strict3 remain open; original header/build/SAN/ENOSPC and parent134 failures retained. No full Goal, accepted promotion or actual E15/E16 cost |
 | C backend; #61 (historical #44/#49) | C1-C16 bounded prototypes integrated. C16 exact18 taska4a2e98/Main0585663 pushed/remote exact; frozen17 plus reconciled Goal. Fresh current-E15 source1283f48e22e binary48/unary39/modules99/shared58 O2/client-source SAN each and link/I/O19 pass;182 worker inputs/2300 raw outputs exact | Caller interpretation/purity/totality/success/synchronous borrowed code-context lifetime and limited SAN scope remain. General/boxed/effect/dependent/mixed-width/arity3 and native Acc/QuickSort remain open; no new actual cost or broad Goal closure |
-| Performance; #56/#51/#52 | V3/MEM2/MEM3 source/cost and MEM4/MEM5 exact11 each integrated/pushed. MEM4 task2e92608/Main9a9e1da and MEM5 task27a35a1/Main82be0a8,1125/1586 worker files exact; fresh Root parent/candidate O2/SAN16 controls each pass. Fold36 raw88 retains scoped Tree400 wall-1.43%/RSS-1.91%, disjoint ranges | Five other timing ranges overlap; Tree4/LocalSorted RSS overlap and startup List limited. MEM4/MEM5 actual cost unmeasured; field-array path absent at100K census. Owned argument/environment lifetime research continues, full retained-memory/recovery/Goal criteria open |
+| Performance; #56/#51/#52 | V3/MEM2/MEM3 source/cost and MEM4/MEM5 exact11 each integrated/pushed; fresh Root parent/candidate O2/SAN16 controls each pass. Fold36 retains scoped Tree400 wall-1.43%/RSS-1.91%, disjoint ranges. Root reviews retained-argument7/private26/O2-SAN18/codec12 and argument-key9 arithmetic; MEM6 exact12/private2689/raw byte failures independently verified, shared findings routed to Job | MEM6 runtime held:4 O2 cut mismatches/0 SAN, identical parent two variants, parent-only inert resave7/16 byte failures despite semantic48/0. No latest-Main defect or waiver. MEM4/MEM5 actual cost unmeasured; most previous timing ranges overlap. Action-field/large-peak research continues; full retained-memory/recovery/Goal criteria open |
 | Surface; #57 | Verified prototype integrated, completed owner stopped | Accepted policy/promotion and selector diagnostics unresolved; no owner restart |
 | Static audit; #59/PR #60 | Task7ed3ad1/Main5683755; Root385 source/114 archived dependency hashes and exact inventory verified; bounded Goal achieved | Dynamic/full #59 and controlled cost remain open; no static-owner restart |
 | Sort; #41/F3-F5 | PR54 and finite-function task5e6ed84/Main966c4e1 integrated; bounded Goal achieved, focused gates0 | Accepted Sort/F5 and broader interfaces remain separate |
@@ -270,8 +307,8 @@ reporting subsystem. Its audit cover is pinned to `37de1e8`, not current Main.
 | Order / owner | Issue or PR | Next deliverable and dependency |
 | --- | --- | --- |
 | 0 / desk -> Merge | Workflow | Merge reviews evidence; Performance runs, original C/Job resumed once in place with actual tool/code progress. Test-suite/issue-audit/static/Sort bounded Goals achieved and stopped; protected local bytes preserved. Scheduled six-hour report delivered; Root resumes coordination after audit handoff |
-| 1 / Job, Root reviews independently | SE/AP, #51 | E15 task150e30a/Main1d46b5b delivered; current producer copied-Job ownership/factory gap freshly reproduced. Review E16 disk-backed broad/C/strict/frozen handoff, then independently qualify member-index repair on current producer before integration. E17 stays private; preserve strict3/rejected failures |
-| 1 / performance + Job | #56 / #51 | MEM3 source/cost, MEM4/MEM5 source11 each delivered with fresh focused O2/SAN qualification. Preserve scoped modest Tree400 gain/five overlapping timing ranges and all original failures. Original Performance owner continues argument/environment lifetime work; no automatic new measurement slot |
+| 1 / Job, Root reviews independently | SE/AP, #51 | E16 task6caf36cb/Main61cc2de1 delivered after current-producer reproduction and fresh O2/SAN membership/scheduler qualification. Review separately frozen E17 when ready; preserve genuine frontier/strict3 criteria and rejected failures. Public retained argument/cursor/spine lifetime constraint routed from Performance; no generic node recycling |
+| 1 / performance + Job | #56 / #51 | MEM3 cost/MEM4/MEM5 source delivered; lifetime/key evidence reviewed and routed. MEM6 exact12/private2689 review complete but runtime held for raw byte failures4/7; original Job reviews codec/current-producer reproduction and Performance continues independent peak/action-field audit. Preserve Tree400 scope/overlapping ranges and all failures; no byte waiver or automatic measurement slot |
 | Complete bounded / test-suite; Root publishes | #59 / PR #60 | Verified pilot removes22 duplicate calls with all distinct outcomes preserved; Root raw/assembly review complete. Exact7 taskbc16df9/Main36a27be prototype integrated; broader inventory/cost/accepted adoption remain open |
 | Complete bounded / issue-audit | All open Issues/PRs | Verified comments/dispositions,44/49 superseded by61; nine issues open. Owner stopped; Root resumes coordination, no repeat audit |
 | Complete bounded / verification-audit | #59 / PR #60; #51 | Static inventory/pilot delivered and worker complete; four-job measured cost remains deferred, full #59 open. Do not restart the completed owner automatically |
