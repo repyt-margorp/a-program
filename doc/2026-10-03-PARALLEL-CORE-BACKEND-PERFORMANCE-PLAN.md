@@ -1,27 +1,36 @@
 # Parallel Core, Backend, Performance and Surface Work
 
 Date: 2026-10-03
-Status: C/performance Goals active; Surface prototype Goal delivered and integrated.
+Status: Core reassigned to coordination; Job/Evidence worker setup in progress.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
-Reviewed prototype Main checkpoint: `e5d4057`; worker baseline: `2d747cc`.
+Reviewed prototype Main checkpoint: `64df10d`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
 changes no implementation or promotion rules.
 Related: [SE1-SE5](2026-09-30-SOLVER-EVIDENCE-DUPLICATION-AUDIT-AND-PLAN.md),
 [AP0-AP6](2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md).
-Supersedes the earlier three-session assignment, not the existing owner work lists.
+The latest five-session assignment supersedes earlier ownership assignments,
+not the existing owner work lists.
 
 ## Problem List
 
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
-| 1 | `core`: Job/Evidence ownership, exact resume and integration | SE1-SE5, AP0 | In progress in the existing work list |
+| 1 | `core`: coordination, design audit, verification and Main integration | All lanes | Sole integration owner; no parallel SE implementation |
 | 2 | `c-backend`: downstream C design | #44, #49; shared policy #47 | Single-tail List epoch integrated; numeric partition work in progress |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Focused epoch pushed; Main integration awaits broad gates |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; worker available for further scope |
+| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | Separate worker setup in progress |
 
 ## 1. Core Ownership and Integration
 
 ### Subjective (User)
+
+2026-10-03, English paraphrase of the latest explicit decision: this session
+becomes coordination Core, specializing in merges and audits. Move actual
+Job/Evidence simplification to another Codex session because its implementation
+has progressed too slowly here. This supersedes the earlier requirement that
+Core itself implement SE1-SE5; existing design and verification requirements
+remain in force.
 
 2026-10-03, English paraphrase of the latest authorization: each worker may
 commit and push its own work. Only this Core session merges worker results;
@@ -78,23 +87,27 @@ Accepted `src/evidence.*`, `src/iadt.*` and their tests retain unrelated edits.
 
 ### Assessment
 
-User-selected assignment: Main owns this refactor. Agent workflow proposal:
-Main also reviews cross-lane changes and integrates tested epochs. Separate
-worktrees prevent accidental edits, but do not eliminate semantic conflicts.
-Do not give another worker independent Job/Evidence/frontier ownership.
-Supervision proposal: while Main is active, inspect worker panes and worktree
+User-selected replacement assignment: Core coordinates and reviews; the single
+Job/Evidence implementation owner moves to `job-evidence`. Core must not edit
+the same implementation concurrently. Separate worktrees prevent accidental
+edits, but do not eliminate semantic conflicts. Core performs reviewed Main
+integration and cross-lane verification; workers publish only their task branches.
+Supervision proposal: while Core is active, inspect worker panes and worktree
 diffs at least every ten minutes and at epoch boundaries. Read status/blockers
 and relevant tests, then send concrete steering when needed. An inactive Main
 session provides no automatic supervision; tmux alone does not supply it.
 
 ### Plan
 
-- [ ] Continue the single SE1-SE5 work list; do not duplicate its task checklist here.
+- [ ] Transfer the single SE1-SE5 work list and committed prototype recipe to
+  `job-evidence`; do not duplicate its implementation checklist here.
 - [x] Publish the committed compiler/overlay recipe used by all workers;
   do not copy an unfinished trial or unrelated local changes into their baseline.
 - [x] Assign separate worktrees, branches, overlay/build/output paths and task briefs.
 - [x] Verify the requested model and `/goal` support, then launch the three tmux
   workers.
+- [ ] Launch `job-evidence` in its own worktree/window using the requested model,
+  verify an active Goal and actual implementation activity, and notify all lanes.
 - [ ] Periodically review worker status, diffs, tests and blockers and issue
   directions; record material decisions in the owning SOAP plan.
 - [ ] Review cross-owner findings; transfer file ownership for an explicit epoch
@@ -191,7 +204,8 @@ remain required before integration. No comparative wall/RSS run has occurred.
 Agent proposal: Sub2 measures the whole path but owns only an agreed,
 non-overlapping implementation epoch. First look for repeated traversal,
 construction, copying and recoverable state, not extra caches or wrappers.
-Job/Evidence/query/admission/frontier findings return to Main. Pure graph,
+Job/Evidence/query/admission/frontier findings go through Core to `job-evidence`.
+Pure graph,
 evaluator or readback changes can be developed separately after checking shared
 dependencies. Do not silently change fuel granularity to report fewer steps.
 
@@ -215,8 +229,9 @@ the exact Bend2 implementation before choosing commands or citing claims.
   completed results, not equal fuel alone, for end-to-end speed comparisons.
 - [ ] Profile before selecting one deletion/refactor epoch; document the owner,
   redundant work and simpler replacement. Do not build another program graph.
-- [ ] Hand Main-owned changes to Main; prototype other agreed changes in a new
-  `src/prototype/` subtree, not accepted files or Main's overlay patches.
+- [ ] Hand Job/Evidence-owned changes through Core to that worker; prototype
+  other agreed changes in a new `src/prototype/` subtree, not accepted files or
+  the SE overlay patches.
 - [ ] Research primary sources and run genuinely comparable cross-system cases;
   record unavailable tools and unmatched tasks explicitly.
 - [ ] Verify meaning, capture/scope, synthesis-first `::`, effect ordering,
@@ -226,12 +241,50 @@ the exact Bend2 implementation before choosing commands or citing claims.
 - Completion per epoch: unnecessary work is removed, relevant correctness gates
   pass and measured cost/complexity is reported without changing the task.
 
+## 5. Job/Evidence Implementation Owner
+
+### Subjective (User)
+
+2026-10-03, English paraphrase: delegate Job/Evidence implementation to a
+separate Codex session and specialize this Core session in merges and audits.
+Earlier requirements retain Oracle locality, typed construction as authority,
+concrete duplication deletion, correct resume and meaningful verification.
+
+### Objective (Code)
+
+Main `64df10d` contains the verified family-cursor epoch and previously reviewed
+SE prototype patches. SE1-SE5 is unfinished; the three public split-fuel failures
+in its verification report remain unwaived. Unrelated dirty accepted-source and
+test changes are not part of the worker baseline.
+
+### Assessment
+
+Agent implementation-workflow decision within the user's scope: create one
+`job-evidence` worktree/window and keep SE1-SE5 as its sole active work list.
+Its Goal brief is a handoff, not a replacement architecture or second checklist.
+Core reviews owner changes, interfaces, tests and resulting deletions before
+merging; the performance worker does not independently modify the same owners.
+
+### Plan
+
+- [ ] Start from committed Main in `parallel/job-evidence-20261003`; provide
+  separate build/output paths and the existing prototype overlay recipe.
+- [ ] Read the current owner code, select a concrete deletion epoch and implement
+  it alongside focused verification, rather than postponing coding for more logs.
+- [ ] Keep semantic, scope, effect, synthesis-first `::`, fuel, ordinary-result
+  proof and persistence gates; report inherited failures without waiving them.
+- [ ] Hand off frozen tested epochs with exact files, applied source/test deltas
+  and known blockers. Core alone decides Main integration.
+- Completion: governed by SE1-SE5, not by worker launch or one small deletion.
+
 ## Coordination
 
 - Worker Goal briefs: [C](2026-10-03-C-BACKEND-GOAL.md),
   [performance](2026-10-03-PERFORMANCE-GOAL.md),
-  [surface](2026-10-03-SURFACE-GOAL.md). The latest four-session assignment
-  supersedes older Main/Sub numbering; this session is `core`/coordinator.
+  [surface](2026-10-03-SURFACE-GOAL.md),
+  [Job/Evidence](2026-10-03-JOB-EVIDENCE-GOAL.md). The latest five-session
+  assignment supersedes older Main/Sub numbering; this session is coordination
+  `core`, while `job-evidence` owns SE1-SE5 implementation.
 - 2026-10-03: #56/#57 and documentation PR #58 are now available. The
   coordinator read issue bodies and the current-head review; historical supplied
   reports are evidence to revalidate, not accepted patches or fresh speed claims.

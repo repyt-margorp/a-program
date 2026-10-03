@@ -15,6 +15,14 @@ This is the active prerequisite work list, not another artifact format proposal.
 
 ## Subjective (User)
 
+2026-10-03, English paraphrase of the latest explicit workflow change: move
+Job/Evidence implementation to a separate Codex session; this session becomes
+coordination Core specializing in merges and audits. This supersedes the earlier
+assignment of SE implementation to Core, not the duplication-removal or semantic
+requirements. SE1-SE5 remains the single implementation work list, now owned by
+`job-evidence`; the [coordination plan](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md)
+records the separate worktree and review responsibilities.
+
 2026-09-30, English paraphrases of the latest instructions:
 
 - Audit wrapping and Job construction, including Evidence, before changing the
