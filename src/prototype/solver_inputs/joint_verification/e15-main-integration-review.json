@@ -1,0 +1,277 @@
+{
+  "Main_revision": "9a9e1da219e14ccae728f7d04e024210195cc9dd",
+  "parent_source128": "abedf677a1079e1a970c11104e374f5a623085fb430f1cbfb6b91f91e9d0e339",
+  "candidate_source128": "3f48e22e250a835fe338783f6bba5d943b0a5576dfdc2f7fff92684a6c1769a4",
+  "changed_from_current_E14": [
+    "src/function_graph.c",
+    "src/function_graph_internal.h",
+    "tests/synthesis.c"
+  ],
+  "parent_fresh_checks_reference": "/tmp/a-program-merge-e14-current-Main-20261003/Root-results.json",
+  "parent_checks_sha256": "42b84ac064e22c40734afd5430eb6583fcd407baa0d50a538a532c3f94721dae",
+  "frozen_delta_sha256": "8b6627d53ab6f87374be9471f24eeb6c9115e68b9eaaa1a3d70f78ff2d0b53d6",
+  "checks": [
+    {
+      "gate": "build-o2",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program/src/prototype/performance_verification/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main",
+        "ROOT=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main/build-o2",
+        "REPO=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main",
+        "TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main/tests",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main/build-o2/synthesis_test"
+      ],
+      "exit": 0,
+      "log_sha256": "5813559b24b3f42d979ff532a21d7d6c268358de1880e46b81fc36fabdbdd996"
+    },
+    {
+      "gate": "full-synthesis-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main/build-o2/synthesis_test"
+      ],
+      "exit": 0,
+      "log_sha256": "497e5e979c826ff40f602848e82bed31e82ad16457b173072c9c457104a31804"
+    },
+    {
+      "gate": "build-san",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program/src/prototype/performance_verification/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main",
+        "ROOT=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main/build-san",
+        "REPO=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main",
+        "TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main/tests",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main/build-san/synthesis_test"
+      ],
+      "exit": 0,
+      "log_sha256": "ba447e696b9970916174509682615932e422b2b24195a1cb9f7efb55d202fcb8"
+    },
+    {
+      "gate": "full-synthesis-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main/build-san/synthesis_test"
+      ],
+      "exit": 0,
+      "log_sha256": "497e5e979c826ff40f602848e82bed31e82ad16457b173072c9c457104a31804"
+    },
+    {
+      "gate": "CLI-build",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program/src/prototype/performance_verification/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main",
+        "ROOT=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main/build-o2",
+        "REPO=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main",
+        "TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main/tests",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main/build-o2/pointer-check"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "ef8a875e6f291eccbf8fc9f5055d2787c0a3ee22dea0827a408fd068d650ae44"
+    },
+    {
+      "gate": "public-partitions",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program/src/prototype/image_audit/partition_fuel.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main/build-o2/pointer-check",
+        "/tmp/a-program-merge-e12c-current-Main-20261003/examples/09_list_induction.p",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main/partitions",
+        "ordinary"
+      ],
+      "exit": 1,
+      "expected_exit": 1,
+      "log_sha256": "8124af80c73e49db79ec45b72a7365996c1c2e9b7c5045792c0c66fdfd7ffbc7"
+    }
+  ],
+  "complete": true,
+  "all52_images_exact_current_E14": true,
+  "full_verdict_fuel_TSV_exact": true,
+  "TSV_sha256": "cc720f6f23daad9f4917026168af480c81eb70eec1bd57300177c81d20c428d6",
+  "original_strict3_unwaived": true,
+  "all_inputs_after_exact": true,
+  "current_Main_checks": true,
+  "new_broad_or_actual_cost_claim": false,
+  "script_sha256": "65bbfdce6a56d73b44e3f46083ed2bedad3d69454380d19d51f1196e6619e2bf",
+  "input_sha256": "f2d58b2c2161c086f62022943ca63e9acdca3c2dd7c6fd1979cc4c7ff7c15b37",
+  "publication": {
+    "task": "150e30a68568683e7d0d9e754fa0fbf67c2e5b61",
+    "task_parent": "b8af200064fe8f300267b843c3b1285e14808779",
+    "Main_parent": "9a9e1da219e14ccae728f7d04e024210195cc9dd",
+    "exact29": {
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/README.md": "db2a332f797926e87ec3a36978ee07695261de1753efad2a0d615a77c9ba88b3",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/applied.patch": "8b6627d53ab6f87374be9471f24eeb6c9115e68b9eaaa1a3d70f78ff2d0b53d6",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/applied_delta.json": "59bf43064c0d89fce6325ae75a4830e2907e6ecfd60f9e4d1ed7491977480908",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/binaries.json": "14e1f07ec48fcc174881e6cb9985171744df00ef91cd8b0f00bb2eaf6b959c28",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/canonical.sha256": "a6adf6e358118d44beb40ca99694c29fd76bb17568f9448d8c907d6205c82341",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/census.mk": "c388d93e7e085ec291fb80ba9846791c64faeffabfb8a54b918f0a39cd1b578a",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/census_comparison.json": "467c4629c8066017017f515b31eef7a6998a7d2bd6e3708f3f394fe746beab5e",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/census_counts.tsv": "390a2ad8a53a463dba79ddac9adb5dc5b4dc4b655b155855f64b9cd17063ca5a",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/census_inputs.sha256": "904037c6e9bb80125f3924ab45124953d0a587f17746ea7dafb033aa85ea2b45",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/fresh_assembly.json": "68da37115cd30603d18b6f431ae2f2af5b4b326a5b7f313e25238d651c1db59a",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/graph_census_comparison.json": "5b579bd354ce4d730522002b14ba73ef4b3a5691f7630c94e333512bbc442463",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/graph_census_inputs.sha256": "6eb123df066ffb5e9cf58bbcb6c1a2811f320e55ee16e7d58e0d96c4857916f5",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/layout_comparison.json": "1387abf27735c1a7b4674a78f143a6ad9174c8f87142deae7be65b51cafc3525",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/lifetime_audit.json": "ccbb1a8cd054cb23168675f40aeb538b5a39010eb1b1430091824639e8908a5a",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/measurements.tsv": "c63a2fb3224c86706f7c7c0b20a49355dea275f5b830219852909c75b47828e6",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/overlay_inputs.sha256": "d10599a15d4663375794880def29dfe9ef814a475fa73209830088f06039942b",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/parent_sources.sha256": "7d40b557795453056530a683d52ffe0060de4a7b2bb2a1f18958ef16838d39d9",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/prebuild_identifier.json": "311993e135d642bafd68adeb362f6b09477312bb3c64903409f48108b8b6397d",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/publication_parent.txt": "38e02b9f2cbb04cca838f7d2f7361ab8c23c6b15e72f6f43fb3e72c79f47025f",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/requests.json": "f6bf54096ea665631efa56180d3feeb490bbd566d6d85bf5276f1cca73a8c26e",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/strict_comparison.json": "d6cf9207404505fe56c788826c7d350c4e5ffe8efbaf0449d689fad7f17ee8de",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/supplemental_inputs.sha256": "046261dae872cf6b3422a300d9a841c05b75e9d3e17054de8715c2ba938b96d1",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/tested_sources.sha256": "d4790a1ca1346cb2278f81bf4872b01ba4c74fc2889dee785878d965e01788bd",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/verification.json": "25a4cd29eeadba229f3662fb5ae05f49a6e47a8aeb48dcad0ebbd18782746f75",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/verification.tsv": "ce687133902c2798b131dc87500a8ef31310ad545b3d5ede399248dfd32a71b0",
+      "src/prototype/solver_inputs/function_graph.c.patch": "c7d08a10d74ffbd37c2fccc5a7074fc400a484d5af6a090be68545790a031291",
+      "src/prototype/solver_inputs/function_graph_internal.h.patch": "c83b8e90dca95107cb3b5ebe3ab5e430d526a4cea12b765b25aeb15efbc794c8",
+      "src/prototype/solver_inputs/test_patches/synthesis.c.patch": "0949a4b94a4c150aa9be329dad02250b3979ce46e24fb56c580452651ee503bd",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/manifest.sha256": "05df92fe422ff6a7e420d40bf1e20484c8646516245148ef662cb764080d86c9"
+    },
+    "Root_results_sha256": "26a3db09f076b013379671182959ae638efe118891b855b957d6ef1419a7ee55",
+    "worker_live_tracked_files_preserved": 1936,
+    "worker_index_only_advance": true,
+    "task_remote_exact": true,
+    "E16_excluded": true,
+    "Main_merge": "1d46b5b88d4a1384e909a915a20d467a88e77975",
+    "Main_remote_exact": true,
+    "exact29_Main_bytes": true,
+    "protected9_exact": true,
+    "accepted_selection_or_Goal_completion": false
+  },
+  "worker_input_review": {
+    "task_parent": "b8af200064fe8f300267b843c3b1285e14808779",
+    "private_publication": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-publication",
+    "submitted29": {
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/README.md": "db2a332f797926e87ec3a36978ee07695261de1753efad2a0d615a77c9ba88b3",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/applied.patch": "8b6627d53ab6f87374be9471f24eeb6c9115e68b9eaaa1a3d70f78ff2d0b53d6",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/applied_delta.json": "59bf43064c0d89fce6325ae75a4830e2907e6ecfd60f9e4d1ed7491977480908",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/binaries.json": "14e1f07ec48fcc174881e6cb9985171744df00ef91cd8b0f00bb2eaf6b959c28",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/canonical.sha256": "a6adf6e358118d44beb40ca99694c29fd76bb17568f9448d8c907d6205c82341",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/census.mk": "c388d93e7e085ec291fb80ba9846791c64faeffabfb8a54b918f0a39cd1b578a",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/census_comparison.json": "467c4629c8066017017f515b31eef7a6998a7d2bd6e3708f3f394fe746beab5e",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/census_counts.tsv": "390a2ad8a53a463dba79ddac9adb5dc5b4dc4b655b155855f64b9cd17063ca5a",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/census_inputs.sha256": "904037c6e9bb80125f3924ab45124953d0a587f17746ea7dafb033aa85ea2b45",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/fresh_assembly.json": "68da37115cd30603d18b6f431ae2f2af5b4b326a5b7f313e25238d651c1db59a",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/graph_census_comparison.json": "5b579bd354ce4d730522002b14ba73ef4b3a5691f7630c94e333512bbc442463",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/graph_census_inputs.sha256": "6eb123df066ffb5e9cf58bbcb6c1a2811f320e55ee16e7d58e0d96c4857916f5",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/layout_comparison.json": "1387abf27735c1a7b4674a78f143a6ad9174c8f87142deae7be65b51cafc3525",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/lifetime_audit.json": "ccbb1a8cd054cb23168675f40aeb538b5a39010eb1b1430091824639e8908a5a",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/measurements.tsv": "c63a2fb3224c86706f7c7c0b20a49355dea275f5b830219852909c75b47828e6",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/overlay_inputs.sha256": "d10599a15d4663375794880def29dfe9ef814a475fa73209830088f06039942b",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/parent_sources.sha256": "7d40b557795453056530a683d52ffe0060de4a7b2bb2a1f18958ef16838d39d9",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/prebuild_identifier.json": "311993e135d642bafd68adeb362f6b09477312bb3c64903409f48108b8b6397d",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/publication_parent.txt": "38e02b9f2cbb04cca838f7d2f7361ab8c23c6b15e72f6f43fb3e72c79f47025f",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/requests.json": "f6bf54096ea665631efa56180d3feeb490bbd566d6d85bf5276f1cca73a8c26e",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/strict_comparison.json": "d6cf9207404505fe56c788826c7d350c4e5ffe8efbaf0449d689fad7f17ee8de",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/supplemental_inputs.sha256": "046261dae872cf6b3422a300d9a841c05b75e9d3e17054de8715c2ba938b96d1",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/tested_sources.sha256": "d4790a1ca1346cb2278f81bf4872b01ba4c74fc2889dee785878d965e01788bd",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/verification.json": "25a4cd29eeadba229f3662fb5ae05f49a6e47a8aeb48dcad0ebbd18782746f75",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/verification.tsv": "ce687133902c2798b131dc87500a8ef31310ad545b3d5ede399248dfd32a71b0",
+      "src/prototype/solver_inputs/function_graph.c.patch": "c7d08a10d74ffbd37c2fccc5a7074fc400a484d5af6a090be68545790a031291",
+      "src/prototype/solver_inputs/function_graph_internal.h.patch": "c83b8e90dca95107cb3b5ebe3ab5e430d526a4cea12b765b25aeb15efbc794c8",
+      "src/prototype/solver_inputs/test_patches/synthesis.c.patch": "0949a4b94a4c150aa9be329dad02250b3979ce46e24fb56c580452651ee503bd",
+      "src/prototype/solver_inputs/epochs/job_evidence_e15_lean/manifest.sha256": "05df92fe422ff6a7e420d40bf1e20484c8646516245148ef662cb764080d86c9"
+    },
+    "verified_private_manifest_counts": {
+      "overlay_inputs.sha256": 469,
+      "supplemental_inputs.sha256": 56,
+      "census_inputs.sha256": 9,
+      "graph_census_inputs.sha256": 5
+    },
+    "raw_reports": [
+      {
+        "gate": "build",
+        "exit": 0,
+        "report": "/tmp/job-evidence-e15-focused-build.log",
+        "report_sha256": "8d22bf3cd7dbc76701e1fe41da684a3854c65dcb82cab2d591d0dc976bdd002e"
+      },
+      {
+        "gate": "synthesis",
+        "exit": 0,
+        "report": "/tmp/job-evidence-e15-focused-synthesis.log",
+        "report_sha256": "c500145c76c988830cfbdc1160ad934e4662123bd2d058c1f2e5fd554499ff8f"
+      },
+      {
+        "gate": "build",
+        "exit": 0,
+        "report": "/tmp/job-evidence-e15-asan-build.log",
+        "report_sha256": "4062698076c64cce6e1c8486bcb14e9e0c9fba20972ed3fb61345f7101584d22"
+      },
+      {
+        "gate": "synthesis",
+        "exit": 0,
+        "report": "/tmp/job-evidence-e15-asan-synthesis.log",
+        "report_sha256": "c500145c76c988830cfbdc1160ad934e4662123bd2d058c1f2e5fd554499ff8f"
+      },
+      {
+        "exit": 0,
+        "report": "/tmp/job-evidence-e15-broad.log",
+        "report_sha256": "3229ee7b3654e3a7d837fa8c7486c430db665a433f6778f7e03602cea1cb5eb8"
+      },
+      {
+        "gate": "baseline-C-eight-scripts",
+        "exit": 0,
+        "report": "/tmp/job-evidence-e15-c.log",
+        "report_sha256": "617628e736652aec14cdbfc4e1ab82961a28ea645a975e355a34e60e169173d8"
+      },
+      {
+        "gate": "strict-public-original-three",
+        "exit": 1,
+        "report": "/tmp/job-evidence-e15-partitions.log",
+        "report_sha256": "f9fbd3dede96523bf6a343f8282d90eab8d81d7d597ba35db565c08665fe2477"
+      },
+      {
+        "gate": "census-build",
+        "variant": "E14",
+        "exit": 0,
+        "report": "/tmp/job-evidence-e15-E14-census-build.log",
+        "report_sha256": "ce683e39b63dbbb9cdedc37783ee57900ae816313ce79fc5c7072ebab1c20e82"
+      },
+      {
+        "gate": "census-build",
+        "variant": "E15",
+        "exit": 0,
+        "report": "/tmp/job-evidence-e15-E15-census-build.log",
+        "report_sha256": "0e18e34ebed8ee687b7f047b99e9263bf181b77082ad4fdcf777223f2e1dc450"
+      }
+    ],
+    "transport_sha256": "8c027434405c84bd09c4f974fd629a37589b87c5b72079f9d988e48cd0558ac4",
+    "worker_runtime_source156": "d4790a1ca1346cb2278f81bf4872b01ba4c74fc2889dee785878d965e01788bd",
+    "current_Main_qualification_pending": true,
+    "E16_excluded": true,
+    "initial_manifest_base_lookup_failure": "Root supplemental pins are worker-relative, overlay pins overlay-relative; no input or worker evidence mutation."
+  },
+  "canonical_alignment": {
+    "Main_parent": "9a9e1da219e14ccae728f7d04e024210195cc9dd",
+    "qualified_source128": "3f48e22e250a835fe338783f6bba5d943b0a5576dfdc2f7fff92684a6c1769a4",
+    "all_three_full_files_exact": true,
+    "alignment_log_sha256": "be9ce84fe260242b5b4b0a3f75bbdf5611aacf895b4748d800f41e198b034fff",
+    "path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-canonical-alignment",
+    "no_fuzz": true,
+    "canonical_patches_reconstructed_current_qualified_sources": true
+  },
+  "Root_results_sha256": "26a3db09f076b013379671182959ae638efe118891b855b957d6ef1419a7ee55",
+  "Root_results_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e15-current-Main/Root-results.json",
+  "verification_kind": "Fresh Root current-E14 producer full synthesis O2/SAN and public persistence; exact three code/test deltas and29 publication paths; worker isolated E14 broad/census evidence separate.",
+  "assessment": "Borrowed ascending Graph leaves supply a synchronous stack-owned input iterator; schema builder stores checked typing-owned receipts before that frame returns. Fresh full synthesis verifies post-return ownership/retention, mutation/namespace controls and atomic zero-budget behavior. Existing plans/maps/cursors retained; no direct IADT implementation edit.",
+  "limits": [
+    "No actual timing/RSS, new full backend/current-joint acceptance, full Goal/issue closure or accepted-source promotion.",
+    "Original strict1000:1000/1600:1600/1915:0 remain unwaived. Worker cumulative counters and layout shrink do not establish peak/live-memory/traversal cost.",
+    "E16 owner membership candidate excluded; isolated-parent gap is reviewed separately."
+  ]
+}

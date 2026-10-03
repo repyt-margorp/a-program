@@ -1,0 +1,351 @@
+{
+  "task_parent": "86a069946ae450458003b0b1bfb8e238876df71a",
+  "submitted11": {
+    "src/prototype/performance_mem4/epochs/fold_cursor_v1/README.md": "22ca4095eaf2488090bce14d1e5f1b6d43a4a8f6846c1e18a9e276abd9396c19",
+    "src/prototype/performance_mem4/epochs/fold_cursor_v1/computation.patch": "e22db7be7bb7bcbff456053606d7dc32b5e0d43d93dcef5af8dd3d3f31b9738e",
+    "src/prototype/performance_mem4/epochs/fold_cursor_v1/evidence.json": "7750420136eb9f67697609d57d7da0f69abf6dd9a961c503ce721e2018be62d9",
+    "src/prototype/performance_mem4/epochs/fold_cursor_v1/fold_cursor_boundary_test.c": "444124753506b0f4f14fa006813f436c83fbb9f415ea57026d0b7fe1bdc52e80",
+    "src/prototype/performance_mem4/epochs/fold_cursor_v1/known-failures.json": "2a682b2873d7365a5e70235390c4e83861727e3e67e544adcd25ae81f7702b1f",
+    "src/prototype/performance_mem4/epochs/fold_cursor_v1/parent-source.sha256": "81c3ad27dfd01aef14ad8e977d1b783cc3636368b6e5afcab0840d07d055e541",
+    "src/prototype/performance_mem4/epochs/fold_cursor_v1/source.sha256": "ff851fe91786ca02c43748c2431065cdde85421f14ab4980743ba7bb40ab5b27",
+    "src/prototype/performance_mem4/epochs/fold_cursor_v1/summary.json": "2e1e433b1696afe40c6958ad7db88800bb49e3471d29a254749cd51042c9e42d",
+    "src/prototype/performance_mem4/epochs/fold_cursor_v1/test-pins.json": "bdb54b02132601132367d1b9f5de2b6c8870688f800707589fdec832930147c3",
+    "src/prototype/performance_mem4/epochs/fold_cursor_v1/verify.mk": "41813b71e7ad4179f1f519a953d15c89135a4d08fb1a02d52a87d142884b7862",
+    "src/prototype/performance_mem4/epochs/fold_cursor_v1/manifest.sha256": "ddba9930795c80d80c3d8dcc84bd6e4e7ffe3ad4868d4efbb0ea83af7cf35930"
+  },
+  "private1125_verified": true,
+  "private_manifest_sha256": "f12c573323109c496de1b1f399eb958672b5ce46f1d32012da04700976b29f1d",
+  "worker_terminal_summary": {
+    "terminal": true,
+    "parent_source128": "81c3ad27dfd01aef14ad8e977d1b783cc3636368b6e5afcab0840d07d055e541",
+    "candidate_source128": "ff851fe91786ca02c43748c2431065cdde85421f14ab4980743ba7bb40ab5b27",
+    "only_runtime_change": [
+      "src/computation.c"
+    ],
+    "patch_sha256": "e22db7be7bb7bcbff456053606d7dc32b5e0d43d93dcef5af8dd3d3f31b9738e",
+    "new_error_boundary_test_sha256": "444124753506b0f4f14fa006813f436c83fbb9f415ea57026d0b7fe1bdc52e80",
+    "focused_records": 684,
+    "focused_failed": 0,
+    "raw_steps": [
+      11,
+      15,
+      12,
+      13,
+      11
+    ],
+    "all_cuts": 67,
+    "fresh_O2_cross_reads": 268,
+    "fresh_SAN_cross_reads": 268,
+    "targeted_records": 22,
+    "targeted_failed": 0,
+    "head_callback_cleanup_O2_SAN": true,
+    "SourceIO_Identity_raw_codec_TotalResult_Core_normalization_O2_SAN": true,
+    "public_partition_gate_exit": 1,
+    "only_original_strict3": true,
+    "public52_images_equal": true,
+    "full_verdict_fuel_TSV_equal": true,
+    "other_six_owner_checkpoints": "Unchanged source/schema; inherited parent qualification, no fresh claim.",
+    "new_full_acceptance_claim": false,
+    "new_actual_speed_or_RSS_claim": false,
+    "new_owner_index_ABI_schema_frontier_overhead": 0,
+    "plain_empty_caller_prefix_link_advances": {
+      "parent": 5,
+      "candidate": 2,
+      "source_proof_not_timing": true
+    },
+    "frozen_MEM3_cost_request_unchanged": true,
+    "full_Goal_active": true
+  },
+  "records": [
+    {
+      "label": "build-parent-o2",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/tmp/a-program-merge-mem4-fold-publication-20261003/src/prototype/performance_mem4/epochs/fold_cursor_v1/verify.mk",
+        "OVERLAY=/tmp/a-program-merge-mem4-fold-controls-20261003/parent",
+        "ROOT=/tmp/a-program-merge-mem4-fold-controls-20261003/parent/src/",
+        "BUILD=/tmp/a-program-merge-mem4-fold-controls-20261003/parent-o2",
+        "REPO=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003",
+        "TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/tests",
+        "CHECKPOINT_TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/checkpoint_tests/",
+        "ARTIFACT_TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/artifact_tests/",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/tmp/a-program-merge-mem4-fold-controls-20261003/parent-o2/fold_spine_test",
+        "/tmp/a-program-merge-mem4-fold-controls-20261003/parent-o2/fold_cursor_boundary_test",
+        "/tmp/a-program-merge-mem4-fold-controls-20261003/parent-o2/performance_head_cleanup_test"
+      ],
+      "exit": 0,
+      "log_sha256": "42b56e20423c02c6f05e323a0ac9e8025b0f652d77cae32170ac68987ae72be3",
+      "sanitizer": false
+    },
+    {
+      "label": "fold_spine_test-parent-o2",
+      "argv": [
+        "/tmp/a-program-merge-mem4-fold-controls-20261003/parent-o2/fold_spine_test"
+      ],
+      "exit": 0,
+      "log_sha256": "13fce26898aaec928fc6881003b643ff8d809675b165465231f6e19c9e1098d3",
+      "sanitizer": false
+    },
+    {
+      "label": "fold_cursor_boundary_test-parent-o2",
+      "argv": [
+        "/tmp/a-program-merge-mem4-fold-controls-20261003/parent-o2/fold_cursor_boundary_test"
+      ],
+      "exit": 0,
+      "log_sha256": "9203b4aa52ec82ae1f047930444e19f098e7505934a5f7126c7b3609d6180e60",
+      "sanitizer": false
+    },
+    {
+      "label": "performance_head_cleanup_test-parent-o2",
+      "argv": [
+        "/tmp/a-program-merge-mem4-fold-controls-20261003/parent-o2/performance_head_cleanup_test"
+      ],
+      "exit": 0,
+      "log_sha256": "ef6a15bf74b72d2339aa61f8d9cba28dec73055daba969aee497cfdc49f103a8",
+      "sanitizer": false
+    },
+    {
+      "label": "build-candidate-o2",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/tmp/a-program-merge-mem4-fold-publication-20261003/src/prototype/performance_mem4/epochs/fold_cursor_v1/verify.mk",
+        "OVERLAY=/tmp/a-program-merge-mem4-fold-controls-20261003/candidate",
+        "ROOT=/tmp/a-program-merge-mem4-fold-controls-20261003/candidate/src/",
+        "BUILD=/tmp/a-program-merge-mem4-fold-controls-20261003/candidate-o2",
+        "REPO=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003",
+        "TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/tests",
+        "CHECKPOINT_TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/checkpoint_tests/",
+        "ARTIFACT_TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/artifact_tests/",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/tmp/a-program-merge-mem4-fold-controls-20261003/candidate-o2/fold_spine_test",
+        "/tmp/a-program-merge-mem4-fold-controls-20261003/candidate-o2/fold_cursor_boundary_test",
+        "/tmp/a-program-merge-mem4-fold-controls-20261003/candidate-o2/performance_head_cleanup_test"
+      ],
+      "exit": 0,
+      "log_sha256": "1d351dd48e0c1cee9110a403ff8dd7dae30687548195bca18dbedb2b5aaa92ff",
+      "sanitizer": false
+    },
+    {
+      "label": "fold_spine_test-candidate-o2",
+      "argv": [
+        "/tmp/a-program-merge-mem4-fold-controls-20261003/candidate-o2/fold_spine_test"
+      ],
+      "exit": 0,
+      "log_sha256": "13fce26898aaec928fc6881003b643ff8d809675b165465231f6e19c9e1098d3",
+      "sanitizer": false
+    },
+    {
+      "label": "fold_cursor_boundary_test-candidate-o2",
+      "argv": [
+        "/tmp/a-program-merge-mem4-fold-controls-20261003/candidate-o2/fold_cursor_boundary_test"
+      ],
+      "exit": 0,
+      "log_sha256": "9203b4aa52ec82ae1f047930444e19f098e7505934a5f7126c7b3609d6180e60",
+      "sanitizer": false
+    },
+    {
+      "label": "performance_head_cleanup_test-candidate-o2",
+      "argv": [
+        "/tmp/a-program-merge-mem4-fold-controls-20261003/candidate-o2/performance_head_cleanup_test"
+      ],
+      "exit": 0,
+      "log_sha256": "ef6a15bf74b72d2339aa61f8d9cba28dec73055daba969aee497cfdc49f103a8",
+      "sanitizer": false
+    },
+    {
+      "label": "build-parent-san-disk",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/tmp/a-program-merge-mem4-fold-publication-20261003/src/prototype/performance_mem4/epochs/fold_cursor_v1/verify.mk",
+        "OVERLAY=/tmp/a-program-merge-mem4-fold-controls-20261003/parent",
+        "ROOT=/tmp/a-program-merge-mem4-fold-controls-20261003/parent/src/",
+        "BUILD=/tmp/a-program-merge-mem4-fold-controls-20261003/parent-san",
+        "REPO=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003",
+        "TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/tests",
+        "CHECKPOINT_TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/checkpoint_tests/",
+        "ARTIFACT_TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/artifact_tests/",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/tmp/a-program-merge-mem4-fold-controls-20261003/parent-san/fold_spine_test",
+        "/tmp/a-program-merge-mem4-fold-controls-20261003/parent-san/fold_cursor_boundary_test",
+        "/tmp/a-program-merge-mem4-fold-controls-20261003/parent-san/performance_head_cleanup_test"
+      ],
+      "exit": 0,
+      "log_sha256": "ff6351d8a0bb4c00a811530bbc4264c6d6f1bba0e2bdafea7003840a13cee399",
+      "sanitizer": true,
+      "disk_backed_TMPDIR": "/tmp/a-program-merge-mem4-fold-controls-20261003/compiler_tmp"
+    },
+    {
+      "label": "fold_spine_test-parent-san",
+      "argv": [
+        "/tmp/a-program-merge-mem4-fold-controls-20261003/parent-san/fold_spine_test"
+      ],
+      "exit": 0,
+      "log_sha256": "13fce26898aaec928fc6881003b643ff8d809675b165465231f6e19c9e1098d3",
+      "sanitizer": true,
+      "disk_backed_TMPDIR": "/tmp/a-program-merge-mem4-fold-controls-20261003/compiler_tmp"
+    },
+    {
+      "label": "fold_cursor_boundary_test-parent-san",
+      "argv": [
+        "/tmp/a-program-merge-mem4-fold-controls-20261003/parent-san/fold_cursor_boundary_test"
+      ],
+      "exit": 0,
+      "log_sha256": "9203b4aa52ec82ae1f047930444e19f098e7505934a5f7126c7b3609d6180e60",
+      "sanitizer": true,
+      "disk_backed_TMPDIR": "/tmp/a-program-merge-mem4-fold-controls-20261003/compiler_tmp"
+    },
+    {
+      "label": "performance_head_cleanup_test-parent-san",
+      "argv": [
+        "/tmp/a-program-merge-mem4-fold-controls-20261003/parent-san/performance_head_cleanup_test"
+      ],
+      "exit": 0,
+      "log_sha256": "ef6a15bf74b72d2339aa61f8d9cba28dec73055daba969aee497cfdc49f103a8",
+      "sanitizer": true,
+      "disk_backed_TMPDIR": "/tmp/a-program-merge-mem4-fold-controls-20261003/compiler_tmp"
+    },
+    {
+      "label": "build-candidate-san-disk",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/tmp/a-program-merge-mem4-fold-publication-20261003/src/prototype/performance_mem4/epochs/fold_cursor_v1/verify.mk",
+        "OVERLAY=/tmp/a-program-merge-mem4-fold-controls-20261003/candidate",
+        "ROOT=/tmp/a-program-merge-mem4-fold-controls-20261003/candidate/src/",
+        "BUILD=/tmp/a-program-merge-mem4-fold-controls-20261003/candidate-san",
+        "REPO=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003",
+        "TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/tests",
+        "CHECKPOINT_TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/checkpoint_tests/",
+        "ARTIFACT_TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/artifact_tests/",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/tmp/a-program-merge-mem4-fold-controls-20261003/candidate-san/fold_spine_test",
+        "/tmp/a-program-merge-mem4-fold-controls-20261003/candidate-san/fold_cursor_boundary_test",
+        "/tmp/a-program-merge-mem4-fold-controls-20261003/candidate-san/performance_head_cleanup_test"
+      ],
+      "exit": 0,
+      "log_sha256": "8e174e6065b48aa54bb27aa974ff4b50bc17307169c7d561c7c36ca66edfe139",
+      "sanitizer": true,
+      "disk_backed_TMPDIR": "/tmp/a-program-merge-mem4-fold-controls-20261003/compiler_tmp"
+    },
+    {
+      "label": "fold_spine_test-candidate-san",
+      "argv": [
+        "/tmp/a-program-merge-mem4-fold-controls-20261003/candidate-san/fold_spine_test"
+      ],
+      "exit": 0,
+      "log_sha256": "13fce26898aaec928fc6881003b643ff8d809675b165465231f6e19c9e1098d3",
+      "sanitizer": true,
+      "disk_backed_TMPDIR": "/tmp/a-program-merge-mem4-fold-controls-20261003/compiler_tmp"
+    },
+    {
+      "label": "fold_cursor_boundary_test-candidate-san",
+      "argv": [
+        "/tmp/a-program-merge-mem4-fold-controls-20261003/candidate-san/fold_cursor_boundary_test"
+      ],
+      "exit": 0,
+      "log_sha256": "9203b4aa52ec82ae1f047930444e19f098e7505934a5f7126c7b3609d6180e60",
+      "sanitizer": true,
+      "disk_backed_TMPDIR": "/tmp/a-program-merge-mem4-fold-controls-20261003/compiler_tmp"
+    },
+    {
+      "label": "performance_head_cleanup_test-candidate-san",
+      "argv": [
+        "/tmp/a-program-merge-mem4-fold-controls-20261003/candidate-san/performance_head_cleanup_test"
+      ],
+      "exit": 0,
+      "log_sha256": "ef6a15bf74b72d2339aa61f8d9cba28dec73055daba969aee497cfdc49f103a8",
+      "sanitizer": true,
+      "disk_backed_TMPDIR": "/tmp/a-program-merge-mem4-fold-controls-20261003/compiler_tmp"
+    }
+  ],
+  "comparative_cost": false,
+  "complete": true,
+  "parent_source128": "81c3ad27dfd01aef14ad8e977d1b783cc3636368b6e5afcab0840d07d055e541",
+  "candidate_source128": "ff851fe91786ca02c43748c2431065cdde85421f14ab4980743ba7bb40ab5b27",
+  "patch_sha256": "e22db7be7bb7bcbff456053606d7dc32b5e0d43d93dcef5af8dd3d3f31b9738e",
+  "all_source_files_exact": true,
+  "only_changed_runtime_file": "src/computation.c",
+  "initial_storage_failure": {
+    "label": "build-parent-san",
+    "argv": [
+      "make",
+      "-j1",
+      "-f",
+      "/tmp/a-program-merge-mem4-fold-publication-20261003/src/prototype/performance_mem4/epochs/fold_cursor_v1/verify.mk",
+      "OVERLAY=/tmp/a-program-merge-mem4-fold-controls-20261003/parent",
+      "ROOT=/tmp/a-program-merge-mem4-fold-controls-20261003/parent/src/",
+      "BUILD=/tmp/a-program-merge-mem4-fold-controls-20261003/parent-san",
+      "REPO=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003",
+      "TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/tests",
+      "CHECKPOINT_TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/checkpoint_tests/",
+      "ARTIFACT_TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/artifact_tests/",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+      "/tmp/a-program-merge-mem4-fold-controls-20261003/parent-san/fold_spine_test",
+      "/tmp/a-program-merge-mem4-fold-controls-20261003/parent-san/fold_cursor_boundary_test",
+      "/tmp/a-program-merge-mem4-fold-controls-20261003/parent-san/performance_head_cleanup_test"
+    ],
+    "exit": 2,
+    "log_sha256": "ab59fd82fd43ecb34d1fd6f7dd5ce2fc22cb03fe863e5b46451d996f5d13aa8b",
+    "sanitizer": true
+  },
+  "all16_records_exit0": true,
+  "all_pins_after_exact": true,
+  "fresh_fold67cuts_each_parent_candidate_O2_SAN": true,
+  "fresh_null_continuation_and_incomplete_handler_and_cleanup_each_parent_candidate_O2_SAN": true,
+  "storage_failure_retained": true,
+  "limits": "Frozen E12 + MEM1 v3 + MEM2 + MEM3 parent/candidate. Broader worker684/22/public52/cross-reader records are independently hashed history, not fresh Root broad/current-E14 claims. Original ENOSPC failure retained and compiler uses disk TMPDIR, source/test bytes unchanged. No cost, accepted promotion, new owner/schema/authority or Goal completion.",
+  "review_UTC": "2026-10-03",
+  "publication": {
+    "task": "2e926088cacd0b508fce5b6fbace72b4f998d3ea",
+    "parent": "86a069946ae450458003b0b1bfb8e238876df71a",
+    "exact11_paths": [
+      "src/prototype/performance_mem4/epochs/fold_cursor_v1/README.md",
+      "src/prototype/performance_mem4/epochs/fold_cursor_v1/computation.patch",
+      "src/prototype/performance_mem4/epochs/fold_cursor_v1/evidence.json",
+      "src/prototype/performance_mem4/epochs/fold_cursor_v1/fold_cursor_boundary_test.c",
+      "src/prototype/performance_mem4/epochs/fold_cursor_v1/known-failures.json",
+      "src/prototype/performance_mem4/epochs/fold_cursor_v1/manifest.sha256",
+      "src/prototype/performance_mem4/epochs/fold_cursor_v1/parent-source.sha256",
+      "src/prototype/performance_mem4/epochs/fold_cursor_v1/source.sha256",
+      "src/prototype/performance_mem4/epochs/fold_cursor_v1/summary.json",
+      "src/prototype/performance_mem4/epochs/fold_cursor_v1/test-pins.json",
+      "src/prototype/performance_mem4/epochs/fold_cursor_v1/verify.mk"
+    ],
+    "Root_review_sha256": "57f2db76dc55f5431d0571e7efd72bdfa512f6c08d48e04b705b071098a4b3dd",
+    "worker_live_tracked_bytes_preserved": 2111,
+    "worker_index_only_advanced": true,
+    "task_remote_exact": true,
+    "Main_before": "e78319f2aaccf0723dc73f069a6027944ec8694a",
+    "source128": "ff851fe91786ca02c43748c2431065cdde85421f14ab4980743ba7bb40ab5b27",
+    "no_cost_grant_or_sample_launch": true,
+    "prototype_Main": "9a9e1da219e14ccae728f7d04e024210195cc9dd",
+    "exact11_Main_bytes_verified": true,
+    "Main_remote_exact": true,
+    "protected9_unchanged": true,
+    "accepted_default_runtime_selection_or_Goal_completion": false
+  },
+  "fresh_Root_results_path": "/tmp/a-program-merge-mem4-fold-controls-20261003/Root-results.json",
+  "fresh_Root_results_sha256": "57f2db76dc55f5431d0571e7efd72bdfa512f6c08d48e04b705b071098a4b3dd",
+  "Root_input_count": 289,
+  "storage_recovery": {
+    "source": "/tmp/a-program-merge-mem4-fold-controls-20261003",
+    "disk_destination": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem4-fold-controls",
+    "verified_preserved_files": 277,
+    "all_bytes_exact": true,
+    "old_source_path_preserved_as_symlink": true,
+    "only_Root_owned_current_control_directory_moved": true,
+    "no_worker_or_frozen_evidence_cleanup": true
+  },
+  "initial_storage_failure_json_sha256": "ecb3f6686315e9b2b1028475ad006d7de7c82220c5140787b764fca16607b9aa",
+  "initial_storage_failure_log_path": "/tmp/a-program-merge-mem4-fold-controls-20261003/initial-build-parent-san-enospc.log",
+  "initial_storage_failure_log_sha256": "ab59fd82fd43ecb34d1fd6f7dd5ce2fc22cb03fe863e5b46451d996f5d13aa8b",
+  "first_manifest_path_setup_failure": "Root used epoch-relative base for worker-root-relative published manifest; corrected before any publication/build. Immutable manifest and all source/test bytes unchanged."
+}

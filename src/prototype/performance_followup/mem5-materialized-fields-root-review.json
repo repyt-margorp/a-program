@@ -1,0 +1,311 @@
+{
+  "task_parent": "2e926088cacd0b508fce5b6fbace72b4f998d3ea",
+  "submitted11": {
+    "src/prototype/performance_mem5/epochs/materialized_match_fields_v1/README.md": "0b1fea97a3f00829ce5fc0d01282abe72710d77e813eaa66a73f7574bdb8a070",
+    "src/prototype/performance_mem5/epochs/materialized_match_fields_v1/evidence.json": "b49f19273c1df6fee54cd332879f321e062183ced0dea3e33436875bff4df956",
+    "src/prototype/performance_mem5/epochs/materialized_match_fields_v1/iadt.patch": "10463d69da66d793e3f80d9dae4994bb64aed2fd65fa789331476de747c93d9b",
+    "src/prototype/performance_mem5/epochs/materialized_match_fields_v1/known-failures.json": "943cbb31d3a682bd6a444e3010075d6e57e42a926d69f45a7c84b0a34a7b7ad9",
+    "src/prototype/performance_mem5/epochs/materialized_match_fields_v1/materialized_fields_test.c": "6af422d3568bd8ad26e1644ad04e313704bd54b3451ab03f13f35687fa381d3e",
+    "src/prototype/performance_mem5/epochs/materialized_match_fields_v1/parent-source.sha256": "ff851fe91786ca02c43748c2431065cdde85421f14ab4980743ba7bb40ab5b27",
+    "src/prototype/performance_mem5/epochs/materialized_match_fields_v1/source.sha256": "2344ad41d6db32ceddb5dbc9419aa8da97fcaa00253e075f5ff96b8f72f93b13",
+    "src/prototype/performance_mem5/epochs/materialized_match_fields_v1/summary.json": "f916fdc3302524771f2d5b05d27f8a007c20bd3802953b01a0ee1ef4c61303e8",
+    "src/prototype/performance_mem5/epochs/materialized_match_fields_v1/test-pins.json": "eb26810119fded97501275a46ac759fdbf502fc820cd7ff5bab7b7e5b245cd4a",
+    "src/prototype/performance_mem5/epochs/materialized_match_fields_v1/verify.mk": "c408fa33134102241b4bfdcd3836a41aafcb8f8637296ce26f57ca1c8f074067",
+    "src/prototype/performance_mem5/epochs/materialized_match_fields_v1/manifest.sha256": "53c797f2538a595598a0608cbfe83c6110df8e56cb8b7f546d0b657bc34b641e"
+  },
+  "private1586_verified": true,
+  "private_manifest_sha256": "da93b08e7079fa06b619d76cdf4653ca270f3cd798596832b5112f81d1fd17a8",
+  "worker_terminal_summary": {
+    "terminal": true,
+    "records": 964,
+    "failed": 0,
+    "parent_source128": "ff851fe91786ca02c43748c2431065cdde85421f14ab4980743ba7bb40ab5b27",
+    "candidate_source128": "2344ad41d6db32ceddb5dbc9419aa8da97fcaa00253e075f5ff96b8f72f93b13",
+    "only_runtime_change": [
+      "src/iadt.c"
+    ],
+    "materialized_total_steps": [
+      25,
+      26,
+      12,
+      8,
+      10,
+      14,
+      12
+    ],
+    "continuation_cuts": 79,
+    "O2_fresh_cross_reads": 316,
+    "SAN_fresh_cross_reads": 316,
+    "inert_resave_rounds_per_local_cut": 2,
+    "zero_budget_and_result_readback": true,
+    "ordinary_direct_head_and_cleanup_units": true,
+    "new_policy_descriptor_or_authority": false,
+    "no_actual_cost_or_main_peak_claim": true,
+    "broader_affected_checks_pending": false,
+    "original_setup_failure_preserved": {
+      "records": "focused-live.json",
+      "exit": 2,
+      "reason": "Private runtime-only copy omitted the inherited src/Makefile before candidate compilation."
+    },
+    "affected_records": 12,
+    "affected_failed": 0,
+    "public_partition_raw_exit": 1,
+    "public52_images_and_full_verdict_fuel_table_equal": true,
+    "only_original_strict3": true,
+    "patch_sha256": "10463d69da66d793e3f80d9dae4994bb64aed2fd65fa789331476de747c93d9b",
+    "test_sha256": "6af422d3568bd8ad26e1644ad04e313704bd54b3451ab03f13f35687fa381d3e",
+    "parent_MEM4_publication_manifest_sha256": "ddba9930795c80d80c3d8dcc84bd6e4e7ffe3ad4868d4efbb0ea83af7cf35930",
+    "other_checkpoint_history_and_SourceIO_IdentityIO_qualification": "Inherited unchanged MEM4 qualification; no fresh claim.",
+    "no_new_owner_index_ABI_schema_frontier_allocation": true,
+    "full_Goal_active": true,
+    "task_parent_at_freeze": "86a069946ae450458003b0b1bfb8e238876df71a"
+  },
+  "records": [
+    {
+      "label": "build-parent-o2",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-publication/src/prototype/performance_mem5/epochs/materialized_match_fields_v1/verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/parent",
+        "ROOT=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/parent/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/parent-o2",
+        "REPO=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003",
+        "TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/tests",
+        "CHECKPOINT_TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/checkpoint_tests/",
+        "ARTIFACT_TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/artifact_tests/",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/parent-o2/materialized_fields_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/parent-o2/performance_direct_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/parent-o2/performance_head_cleanup_test"
+      ],
+      "exit": 0,
+      "log_sha256": "08a909011c005521c9c6f6c58f1d92336df85d38156e542e48184b553ba1787d",
+      "sanitizer": false
+    },
+    {
+      "label": "materialized_fields_test-parent-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/parent-o2/materialized_fields_test"
+      ],
+      "exit": 0,
+      "log_sha256": "0bf304d365b50881546310b9f4db2ce2804450d0df70309db2c73dd8ab085730",
+      "sanitizer": false
+    },
+    {
+      "label": "performance_direct_test-parent-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/parent-o2/performance_direct_test"
+      ],
+      "exit": 0,
+      "log_sha256": "5fc5f4643e5a4dd22b69556224e66e044b9315c4fa6107924c8297cfde5b32a6",
+      "sanitizer": false
+    },
+    {
+      "label": "performance_head_cleanup_test-parent-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/parent-o2/performance_head_cleanup_test"
+      ],
+      "exit": 0,
+      "log_sha256": "ef6a15bf74b72d2339aa61f8d9cba28dec73055daba969aee497cfdc49f103a8",
+      "sanitizer": false
+    },
+    {
+      "label": "build-candidate-o2",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-publication/src/prototype/performance_mem5/epochs/materialized_match_fields_v1/verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/candidate",
+        "ROOT=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/candidate/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/candidate-o2",
+        "REPO=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003",
+        "TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/tests",
+        "CHECKPOINT_TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/checkpoint_tests/",
+        "ARTIFACT_TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/artifact_tests/",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/candidate-o2/materialized_fields_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/candidate-o2/performance_direct_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/candidate-o2/performance_head_cleanup_test"
+      ],
+      "exit": 0,
+      "log_sha256": "1264a398e9704631befb5654f832cd1178b92c5fc2759b681317f8a91ac5ca07",
+      "sanitizer": false
+    },
+    {
+      "label": "materialized_fields_test-candidate-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/candidate-o2/materialized_fields_test"
+      ],
+      "exit": 0,
+      "log_sha256": "0bf304d365b50881546310b9f4db2ce2804450d0df70309db2c73dd8ab085730",
+      "sanitizer": false
+    },
+    {
+      "label": "performance_direct_test-candidate-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/candidate-o2/performance_direct_test"
+      ],
+      "exit": 0,
+      "log_sha256": "5fc5f4643e5a4dd22b69556224e66e044b9315c4fa6107924c8297cfde5b32a6",
+      "sanitizer": false
+    },
+    {
+      "label": "performance_head_cleanup_test-candidate-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/candidate-o2/performance_head_cleanup_test"
+      ],
+      "exit": 0,
+      "log_sha256": "ef6a15bf74b72d2339aa61f8d9cba28dec73055daba969aee497cfdc49f103a8",
+      "sanitizer": false
+    },
+    {
+      "label": "build-parent-san",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-publication/src/prototype/performance_mem5/epochs/materialized_match_fields_v1/verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/parent",
+        "ROOT=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/parent/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/parent-san",
+        "REPO=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003",
+        "TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/tests",
+        "CHECKPOINT_TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/checkpoint_tests/",
+        "ARTIFACT_TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/artifact_tests/",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/parent-san/materialized_fields_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/parent-san/performance_direct_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/parent-san/performance_head_cleanup_test"
+      ],
+      "exit": 0,
+      "log_sha256": "93aa939100ce4c035b9576e6c4db7bb74e4e550105fcee4bdf8433dd25bd2d42",
+      "sanitizer": true
+    },
+    {
+      "label": "materialized_fields_test-parent-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/parent-san/materialized_fields_test"
+      ],
+      "exit": 0,
+      "log_sha256": "0bf304d365b50881546310b9f4db2ce2804450d0df70309db2c73dd8ab085730",
+      "sanitizer": true
+    },
+    {
+      "label": "performance_direct_test-parent-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/parent-san/performance_direct_test"
+      ],
+      "exit": 0,
+      "log_sha256": "5fc5f4643e5a4dd22b69556224e66e044b9315c4fa6107924c8297cfde5b32a6",
+      "sanitizer": true
+    },
+    {
+      "label": "performance_head_cleanup_test-parent-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/parent-san/performance_head_cleanup_test"
+      ],
+      "exit": 0,
+      "log_sha256": "ef6a15bf74b72d2339aa61f8d9cba28dec73055daba969aee497cfdc49f103a8",
+      "sanitizer": true
+    },
+    {
+      "label": "build-candidate-san",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-publication/src/prototype/performance_mem5/epochs/materialized_match_fields_v1/verify.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/candidate",
+        "ROOT=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/candidate/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/candidate-san",
+        "REPO=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003",
+        "TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/tests",
+        "CHECKPOINT_TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/checkpoint_tests/",
+        "ARTIFACT_TESTS=/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/artifact_tests/",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/candidate-san/materialized_fields_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/candidate-san/performance_direct_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/candidate-san/performance_head_cleanup_test"
+      ],
+      "exit": 0,
+      "log_sha256": "f9607c5211879e3fec057ad6b27ee062ec7a46d6a692be5b49d8ceda06475df2",
+      "sanitizer": true
+    },
+    {
+      "label": "materialized_fields_test-candidate-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/candidate-san/materialized_fields_test"
+      ],
+      "exit": 0,
+      "log_sha256": "0bf304d365b50881546310b9f4db2ce2804450d0df70309db2c73dd8ab085730",
+      "sanitizer": true
+    },
+    {
+      "label": "performance_direct_test-candidate-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/candidate-san/performance_direct_test"
+      ],
+      "exit": 0,
+      "log_sha256": "5fc5f4643e5a4dd22b69556224e66e044b9315c4fa6107924c8297cfde5b32a6",
+      "sanitizer": true
+    },
+    {
+      "label": "performance_head_cleanup_test-candidate-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/candidate-san/performance_head_cleanup_test"
+      ],
+      "exit": 0,
+      "log_sha256": "ef6a15bf74b72d2339aa61f8d9cba28dec73055daba969aee497cfdc49f103a8",
+      "sanitizer": true
+    }
+  ],
+  "comparative_cost": false,
+  "complete": true,
+  "parent_source128": "ff851fe91786ca02c43748c2431065cdde85421f14ab4980743ba7bb40ab5b27",
+  "candidate_source128": "2344ad41d6db32ceddb5dbc9419aa8da97fcaa00253e075f5ff96b8f72f93b13",
+  "patch_sha256": "10463d69da66d793e3f80d9dae4994bb64aed2fd65fa789331476de747c93d9b",
+  "all_source_files_exact": true,
+  "only_changed_runtime_file": "src/iadt.c",
+  "all16_records_exit0": true,
+  "all_pins_after_exact": true,
+  "fresh_materialized79cuts_each_parent_candidate_O2_SAN": true,
+  "fresh_direct55cuts_and_cleanup_each_parent_candidate_O2_SAN": true,
+  "limits": "Fresh Root parent/candidate materialized79 cuts/direct55 cuts/cleanup in O2 and ASan/UBSan/leak/stack-after-return. Worker964/12/public52 are hashed historical qualification. No observed allocation on this path at100K beta census, so no main-peak explanation, actual timing/RSS, new descriptor/policy, accepted promotion or full Goal completion.",
+  "review_UTC": "2026-10-03",
+  "publication": {
+    "task": "27a35a1344639687a2b89ba05886d5634c3d090d",
+    "parent": "2e926088cacd0b508fce5b6fbace72b4f998d3ea",
+    "exact11_paths": [
+      "src/prototype/performance_mem5/epochs/materialized_match_fields_v1/README.md",
+      "src/prototype/performance_mem5/epochs/materialized_match_fields_v1/evidence.json",
+      "src/prototype/performance_mem5/epochs/materialized_match_fields_v1/iadt.patch",
+      "src/prototype/performance_mem5/epochs/materialized_match_fields_v1/known-failures.json",
+      "src/prototype/performance_mem5/epochs/materialized_match_fields_v1/manifest.sha256",
+      "src/prototype/performance_mem5/epochs/materialized_match_fields_v1/materialized_fields_test.c",
+      "src/prototype/performance_mem5/epochs/materialized_match_fields_v1/parent-source.sha256",
+      "src/prototype/performance_mem5/epochs/materialized_match_fields_v1/source.sha256",
+      "src/prototype/performance_mem5/epochs/materialized_match_fields_v1/summary.json",
+      "src/prototype/performance_mem5/epochs/materialized_match_fields_v1/test-pins.json",
+      "src/prototype/performance_mem5/epochs/materialized_match_fields_v1/verify.mk"
+    ],
+    "Root_review_sha256": "fc29d57ef0976c8ae4d859065c9b919e81f6451d1dda005076c13f1abd0e3b55",
+    "worker_live_tracked_bytes_preserved": 2122,
+    "worker_index_only_advanced": true,
+    "task_remote_exact": true,
+    "Main_before": "1d46b5b88d4a1384e909a915a20d467a88e77975",
+    "source128": "2344ad41d6db32ceddb5dbc9419aa8da97fcaa00253e075f5ff96b8f72f93b13",
+    "no_cost_grant_or_sample_launch": true,
+    "prototype_Main": "82be0a84c411c314c6ee841f7bbb622c095103d6",
+    "exact11_Main_bytes_verified": true,
+    "Main_remote_exact": true,
+    "protected9_unchanged": true,
+    "accepted_default_runtime_selection_or_Goal_completion": false
+  },
+  "Root_results_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem5-controls/Root-results.json",
+  "Root_results_sha256": "fc29d57ef0976c8ae4d859065c9b919e81f6451d1dda005076c13f1abd0e3b55",
+  "Root_input_count": 284,
+  "assessment": "Existing materialized constructor application spine supplies fields in the reverse order required by argument prepending. Preserves constructor/arity/order/closure/trailing guards and shared action helper; deletes only temporary field-pointer allocation/fill. Existing named materialized continuation test resets ordinary portable pure policy before serialization."
+}

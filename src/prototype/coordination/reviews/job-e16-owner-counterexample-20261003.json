@@ -1,0 +1,117 @@
+{
+  "notice_sha256": "c7ae093256c763cb89b1163020bc0611c237632f1d61ba7929e8d6362f7f2bdc",
+  "worker_focused_verdicts_sha256": "f9a6dc88a58b5d28c42b8ee5f7dcef89a807d4632cd7e033e8c6e27af15f5a7b",
+  "worker_focused_requests_sha256": "a76a8285c6fafef3aac14d22a99039545a98eab9da68bdde1ea944c31e8e83e0",
+  "source_control_manifests": {
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e16/parent_control_sources.sha256": {
+      "sha256": "7dc70bdeefd3d1a2ec9d63ff9fb0578a49b8149f15f436d89859713ba2d7c5dc",
+      "count": 156,
+      "all_files_exact": true
+    },
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e16/tested_sources.sha256": {
+      "sha256": "a00c742673f74c1ef0b12f800e572b4ec138fe56acf51d30319aad8536adceeb",
+      "count": 156,
+      "all_files_exact": true
+    }
+  },
+  "all12_raw_reports_and_unit_binaries_verified": true,
+  "verdicts": [
+    {
+      "gate": "parent-build",
+      "expected_exit": 0,
+      "exit": 0,
+      "shell_convention_exit": 0,
+      "parent_counterexample_not_acceptance_waiver": false
+    },
+    {
+      "gate": "parent-pending_owner_control",
+      "expected_exit": 0,
+      "exit": 0,
+      "shell_convention_exit": 0,
+      "parent_counterexample_not_acceptance_waiver": false
+    },
+    {
+      "gate": "parent-synthesis_test",
+      "expected_exit": -6,
+      "exit": -6,
+      "shell_convention_exit": 134,
+      "parent_counterexample_not_acceptance_waiver": true
+    },
+    {
+      "gate": "parent-artifact_normalization_checkpoint_test",
+      "expected_exit": -6,
+      "exit": -6,
+      "shell_convention_exit": 134,
+      "parent_counterexample_not_acceptance_waiver": true
+    },
+    {
+      "gate": "candidate-build",
+      "expected_exit": 0,
+      "exit": 0,
+      "shell_convention_exit": 0,
+      "parent_counterexample_not_acceptance_waiver": false
+    },
+    {
+      "gate": "candidate-pending_owner_control",
+      "expected_exit": 0,
+      "exit": 0,
+      "shell_convention_exit": 0,
+      "parent_counterexample_not_acceptance_waiver": false
+    },
+    {
+      "gate": "candidate-synthesis_test",
+      "expected_exit": 0,
+      "exit": 0,
+      "shell_convention_exit": 0,
+      "parent_counterexample_not_acceptance_waiver": false
+    },
+    {
+      "gate": "candidate-artifact_normalization_checkpoint_test",
+      "expected_exit": 0,
+      "exit": 0,
+      "shell_convention_exit": 0,
+      "parent_counterexample_not_acceptance_waiver": false
+    },
+    {
+      "gate": "asan-build",
+      "expected_exit": 0,
+      "exit": 0,
+      "shell_convention_exit": 0,
+      "parent_counterexample_not_acceptance_waiver": false
+    },
+    {
+      "gate": "asan-pending_owner_control",
+      "expected_exit": 0,
+      "exit": 0,
+      "shell_convention_exit": 0,
+      "parent_counterexample_not_acceptance_waiver": false
+    },
+    {
+      "gate": "asan-synthesis_test",
+      "expected_exit": 0,
+      "exit": 0,
+      "shell_convention_exit": 0,
+      "parent_counterexample_not_acceptance_waiver": false
+    },
+    {
+      "gate": "asan-artifact_normalization_checkpoint_test",
+      "expected_exit": 0,
+      "exit": 0,
+      "shell_convention_exit": 0,
+      "parent_counterexample_not_acceptance_waiver": false
+    }
+  ],
+  "initial_broad_storage_failure": {
+    "exit": 2,
+    "request_sha256": "15535a72d4a1f9f9f0bcebaf6cc719c5c5ce922441422375b4afb89f24986849",
+    "report": "/tmp/job-evidence-e16-broad.log",
+    "report_sha256": "de5140cd5bb4fd88cc5448a5718739c8410fed90743014795769b0b56f97a4c2",
+    "failure": "cp complete.a to resaved.a: No space left on device in derived_lt.sh; make exit2",
+    "storage": "/tmp tmpfs32GiB at100%; worktree disk759GiB available; failed fixture trap removed its own temporary directory",
+    "source156_after_exact": true,
+    "overlay469_after_exact": true,
+    "no_semantic_pass_inferred": true
+  },
+  "assessment": "Tag-only Job admission accepts a copied caller-owned allocation in the isolated E15 parent. Existing-index membership candidate rejects atomically at zero steps while genuine owned completion passes. Parent permanent protections fail rather than waiving acceptance. Candidate O2/SAN focused evidence verified; broad/storage-retry and current Main reproduction/qualification remain separate and incomplete.",
+  "no_current_Main_defect_or_full_Goal_claim": true
+}
