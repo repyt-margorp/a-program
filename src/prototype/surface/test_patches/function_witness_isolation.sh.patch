@@ -1,0 +1,7 @@
+--- a/function_witness_isolation.sh
++++ b/function_witness_isolation.sh
+@@ -49,3 +49,3 @@
+-	sed 's/@cons { tailLength; }/@nil => Nat.zero @cons { tailLength; }/' \
++	sed 's/@cons {{ tailLength; }}/@nil => Nat.zero @cons {{ tailLength; }}/' \
+ 		"$root/acceptance/function-graph-missing-case.p" |
+ 		check 0 complete-graph-cases -

@@ -1,0 +1,159 @@
+Selected excerpts from /tmp/ap-surface-20261003-final/acceptance.log
+Original raw-log SHA256: 880554c2ad61158aae6ec965caabb05554fb538f1fc82c743a6bb602777bdfd8
+Original Make exit: 2
+41: source image: nominal external names, distinct declarations and operation wrapper passed
+44: handler scopes: inert owner reconstruction, shared boundary and ordinary effect inference passed
+45: handler scopes: inert owner reconstruction, shared boundary and ordinary effect inference passed
+53: handler owner: shared source request, zero-step invariance and partial/complete roundtrip checking passed
+54: handler scopes: inert owner reconstruction, shared boundary and ordinary effect inference passed
+55: handler scopes: inert owner reconstruction, shared boundary and ordinary effect inference passed
+64: handler scopes: inert owner reconstruction, shared boundary and ordinary effect inference passed
+65: handler scopes: inert owner reconstruction, shared boundary and ordinary effect inference passed
+68: general QuickSort ordinary-result theorem and negative/image controls passed
+215: source compatibility and selected results: 63/63 passed
+650: sort insertion: exact provider, universal graph/result properties, images and wrong result index passed
+711: insertionSort: universal graph/result Sorted proofs, source/image agreement and wrong input-index rejection passed
+781: tree sort: universal Sorted proof, execution witnesses, images and invalid claims passed
+823: syntax image: exact DAG/token transport, ordinary Solve, sparse edges, truncation and deep sharing passed
+848: merge sort: universal Sorted proof, execution witnesses, images and invalid claims passed
+850: generic Sorted: audit boundary, explicit motives, complete proof and recompute images passed
+909: quick sort: universal Sorted proof, execution witnesses, images and invalid claims passed
+981: local/strong sortedness: general proofs, cyclic separation, legacy contracts and images passed
+1042: finite positions: general inverse/composition proofs, labelled duplicates, assertions and images passed
+1090: family application: checked conversion, independent assertions and images passed
+1129: finite List/Vec views: general coverage, refill, roundtrip, assertions and images passed
+1154: generalized explicit motives: captured values, shadowing, post-checks and images passed
+1222: indexed constructor sequencing: dependent proofs, recovery, partial calls, effects and images passed
+1308: finite permutation views: general position bijection and actual-value laws passed
+1538: host: typed literals, modular arithmetic, ordinary evidence and descriptor relocation passed
+1539: execution: checked entry, handlers, repeated/split invocations and cancellation passed
+1540: execution CLI: source/image runs, exact bytes, ordering, checked entry and I/O failure passed
+1541: evaluation configuration: captured environments, shared tails, inert resave and lexical relocation passed
+1548: Reduction checking: shared WHNF recomputation, alpha relocation, non-normal claim rejection and pending divergence passed
+1554: complete-graph-cases: expected exit 0, got 1
+1556: make: *** [/tmp/ap-surface-20261003-final/src/Makefile:524: check-witness-isolation] Error 1
+1561: typing inputs: persistent contexts and distinct occurrences over shared Core passed
+1562: evidence: checked contexts, stratified universes and occurrence-based variable derivations passed
+1564: unary inversions: borrowed origins, exact alternatives, reconstruction and index-free lifetime passed
+1570: typed substitution: dependent declarations, simultaneous images and shared premise DAG passed
+1573: computation execution: force/thunk, fold, captured environments, neutral demands and split budgets passed
+1574: requests: inert pointer labels, zero-clause forwarding, captured continuations and split resume passed
+1575: fold clauses: simultaneous swaps, deep resumption, unhandled forwarding and exact layout reuse passed
+1576: fold association: neutral inputs, captured continuations, operation order and extraction boundary passed
+1577: demand budget: shared materialization, capture, split fuel, prefix suspension and callback delivery passed
+1578: auxiliary demand: unchanged caller arguments, pending readback and every split budget passed
+1579: deferred pure work: exact fuel, split resume, pending readback, cancellation and failure cleanup passed
+1581: effects: explicit closed sets, union laws, unknown is not empty, and pure-only views passed
+1582: totality: distinct contracts, RETURN, directed weakening, APP/FORCE and Fold bounds passed
+1583: typed effects: signatures, multi-clause handlers, deep resumption, forwarding and effect bounds passed
+1585: conversion: explicit beta comparison, binder scope, shared DAG and pending divergence passed
+1586: NF congruence: shared reconstruction rejects mismatched premise endpoints, kinds and policies
+1587: normal forms: shared pure work, parent contraction, policies, split fuel and suspended divergence passed
+1588: beta work: shared pending jobs, stable answers, split fuel and environment isolation passed
+1589: substitution: simultaneous images, capture avoidance, sharing and no reduction passed
+1590: shared substitution: exact inputs, capture, pending reuse, compact results and independent owners passed
+1591: evaluation: lexical capture, shared closures, split budgets and divergence passed
+1592: dimension: 38 maps, 10422 composable triples; 3D faces/permutations passed
+1593: graph: 232779 terms; pointer-key interning and separate alpha comparison passed
+1596: graph io: exact sharing, binder relocation, descriptor resolution and no implicit reduction passed
+1597: effect image: shared classifier parameter, immutable seeds, cyclic Solve and failed-import isolation passed
+1598: effect image: shared classifier parameter, immutable seeds, cyclic Solve and failed-import isolation passed
+1599: layout image: shared contexts/constructors, inert annotations, distinct layouts and resumed iota passed
+1600: layout image: shared contexts/constructors, inert annotations, distinct layouts and resumed iota passed
+1601: declaration image: relocated family, shared contexts/layout, local formation and changed-map rejection passed
+1602: graph acceptance: fresh-process relocation, shared Core and distinct typed evidence passed
+1603: occurrence io: shared Core, distinct annotations, ordered operands and zero evidence passed
+1604: termination: checked contracts, ordinary IADT wrappers, inert import and partial-input rejection passed
+1605: operation derivations: relocated labels, shared premises, handler execution and signature rejection passed
+1606: operation derivations: relocated labels, shared premises, handler execution and signature rejection passed
+1607: unaccepted derivations: no pre-solve evidence, shared inputs, rejection and NF obligation passed
+1608: pending effect derivations: relocated open Pi, no early evidence, masked cyclic Solve and rejection passed
+1610: producer image: source identity, pending rule export, worker union, no source mutation and ordinary Solve passed
+1611: nominal derivations: constructor/Match/IH/type-case Solve, universe bounds, iota results and rejection passed
+1613: derivation io: shared premises, split-budget Solve, receipt recovery and rejection passed
+1614: syntax image: exact DAG/token transport, ordinary Solve, sparse edges, truncation and deep sharing passed
+1615: direct roots: no Jobs or Solve on write, exact zero-fuel bytes, shared roots, unchecked load and input rejection passed
+1620: source families: logical R/Acc scopes, unsolved and solved resaves, wrong argument rejection passed
+1625: source member allocations: pre-publication restore, evidence sharing, type recheck and invalid inputs passed
+1627: source member uses: raw allocation resaves, field type synthesis and invalid/late/conflicting scopes passed
+1631: source Match origin: unsolved resaves preserve induction binders and clause allocations; ordinary source checking passed
+1632: Fold bindings: exact continuation allocation, inert resaves and symbol/type rejection passed
+1634: handler scopes: inert owner reconstruction, shared boundary and ordinary effect inference passed
+1635: handler scopes: inert owner reconstruction, shared boundary and ordinary effect inference passed
+1636: handler scopes: inert owner reconstruction, shared boundary and ordinary effect inference passed
+1637: handler scopes: inert owner reconstruction, shared boundary and ordinary effect inference passed
+1677: source image: nominal external names, distinct declarations and operation wrapper passed
+1680: source materialized roots: inert read/resave, shared input origins and explicit local NF cache reuse passed
+1681: normalization requests: pending/settled inputs, modes, aliases, invalid context and unsolved resave passed
+1682: constructor indices: lexical use, shadowing and dependent header generalization passed
+1684: syntax: lambda annotations, dependent Pi, applications and separate expect nodes passed
+1685: declarations: parameter/index separation, List/Vec/Acc self markers and constructor arrays passed
+1686: blocks: ordered named/unnamed items, selected result, exits and root-only definitions passed
+1687: elimination syntax: clause arrays, alias heads, return labels, nested grouping and selectors passed
+1688: companions: import syntax, marker retention and graph arguments without type fabrication passed
+1690: reader: symbolic syntax, contextual names, literals, comments and bounded input passed
+1692: owner work: 96-byte shared header, private alignment, exact reuse and single lifecycle passed
+1693: index transport: retained candidate scope/maps, shared comparison wait, reuse and cancellation passed
+1694: index result: pending source/destination Contexts, stable request and zero-fuel inactivity passed
+1696: transparent structure: borrowed queries, 4096 inputs, split/zero fuel and invalid rule rejection passed
+1699: direct names: allocation-free checked leaves, typed keys, stable pending identity and ownership guards passed
+1703: effect equations: least closure, masks, cycles, shared edges, sealed results and split Solve passed
+1704: pending contexts: effect-dependent U/F, stable binders and ordinary Lambda derivations passed
+1707: effect expectations: post-synthesis widening, unchanged producers and directed rejection passed
+1713: composition: checked reindexing, shared split budgets, cancellation and completion reuse passed
+1714: lift: selected family action, shared budgets, borrower cancellation and completed reuse passed
+1716: scope inputs: adapter-free checked contexts, stable pending keys and exact binder validation passed
+1717: pending Context contracts: direct rules, delayed parents, invalid domains/families and exact scope checks passed
+1718: effect owner: no wrapper Jobs, one transition per dispatch, shared notifications and cancellation passed
+1719: annotations: direct checked inputs, immutable pending keys and context suspension passed
+1720: pending names: source export reuse, checked projection, failed/non-term inputs and cycle waiting passed
+1721: source imports: selected pending symbols, repeated imports, shadowing, closure and shared dependencies passed
+1722: source telescopes: shared Lambda/Pi binders, computed domains, parameter/index separation and schema maps passed
+1723: block allocations: inert lexical addresses, exact binder reuse, invalid slots and nested capture isolation passed
+1724: source schemas: complete constructor maps, shared owners, rejection and no premature datatype admission passed
+1725: source declarations: nominal formation, conditional universe candidates, no early publication and reuse passed
+1726: definition selections: shared producers, whole-module checking and pending/missing boundaries passed
+1727: retained module inputs: unaccepted edges, canonical registration and mismatched producers checked
+1729: lexical owners: private state, borrowed keys, exact reuse, zero fuel and module/member separation passed
+1730: source Oracle owners: compact local states, exact input sharing, lexical inspection, zero/split fuel and ordinary acceptance passed
+1733: Match result inputs: concurrent applications, nested propagation, zero and split fuel, independent post-check passed
+1746: resolved conversion requests: pending/checked sharing, zero fuel, exact scopes and lookup-only keys passed
+1747: resolved normalization: one checked owner, stable pending keys, exact scope/kind/force boundaries passed
+1748: resolved IADT requests: one preparation owner, canonical query, exact scopes and no copied result passed
+1749: borrowed outputs: preparation is not output completion; canonical queries, zero fuel and failure propagation passed
+1750: resolved family requests: one construction owner, borrowed outputs, direct checked values and exact scopes passed
+1751: conversion owner cancellation: 56 boundaries, shared reduction and certificate gating passed
+1752: namespaces: shared evidence, qualified Identity, lexical shadowing, closed exports and deep paths passed
+1753: source module namespaces: pending imports, shared proofs, lexical exports and whole-module validity passed
+1754: source Identity: checked named functions, dependent annotations, higher reflexivity and post-check rejection passed
+1755: case synthesis: independent producers, index motives, post-check evidence and shared scheduling passed
+1756: substitution prefix: dependent images, zero fuel, shared query and omitted-binder rejection passed
+1757: application allocations: inert symbol registration, exact Core reuse, capture/conflict rejection and inferred arity passed
+1758: source synthesis: pending jobs, raw nested lambdas, application, quotation and post-synthesis expectation passed
+1774: program: owned source, unresolved root, split-budget solve and pending destruction passed
+1967: merge composition: capture, currying, declaration order, result and image checks passed
+2042: seed: unresolved syntax graph, exact policy, fresh solve without reparsing and input validation passed
+2044: cli: bounded source checking, pending, rejection and argument diagnostics passed
+2045: import cli: explicit symbols, hidden providers, pending images and whole-provider checking passed
+2048: source image: nominal external names, distinct declarations and operation wrapper passed
+2049: repl: shared normalization, pre-synthesis requests, pending resume/save and command recovery passed
+2054: source image: nominal external names, distinct declarations and operation wrapper passed
+2057: image cli: materialized roots, inert resave, REPL and explicit archive-option retirement passed
+2058: image cli: failed writes preserve existing images; in-place publication and cleanup passed
+2059: image cli: multi-root selection, retained obligations and range rejection passed
+2060: image cli: parameterized List source/image NF agreement passed
+3293: identity: chosen boundary contexts, F/U action, fixed pure conversion, policy isolation and reindex passed
+3294: inductive lookup: retained variable image without replacement Context receipt passed
+3295: Acc: open logical relation, indexed function-field IH and dependent elimination passed
+3296: Acc: open logical relation, indexed function-field IH and dependent elimination passed
+3299: index paths: constructor disjointness/injectivity via type-case action and checked transport passed
+3300: data schemas: dependent fields/indices, fixed parameters, composition and selected boundaries passed
+3301: Match action: selected constructor paths, diagonal prefixes, neutral heads and split budgets passed
+3302: erased data: pointer-labelled Match, saturation, capture, lazy fields and split budgets passed
+3736: parsed source status: /tmp/ap-surface-20261003-final/tests/acceptance/generated-function-graph-mismatch.p --reject matched=1
+3779: parsed source status: /tmp/ap-surface-20261003-final/tests/acceptance/generated-function-witness-mismatch.p --reject matched=1
+3780: parsed source status: /tmp/ap-surface-20261003-final/tests/acceptance/generated-function-graph-parameter-mismatch.p --reject matched=1
+3781: parsed source status: /tmp/ap-surface-20261003-final/tests/acceptance/generated-function-graph-case-mismatch.p --reject matched=1
+3793: syntax inventory: 158 results match reviewed syntax expectations (not semantic acceptance)
+4068: derived LT: both providers and partition orders, universal Sorted/permutation witnesses, exact outputs, semantic partial images and invalid evidence passed
+4069: make: Target 'check-acceptance' not remade because of errors.

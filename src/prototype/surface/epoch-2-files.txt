@@ -1,0 +1,17 @@
+doc/2026-10-03-SURFACE-EPOCH-1-HANDOFF.md
+doc/2026-10-03-SURFACE-EPOCH-2-HANDOFF.md
+doc/2026-10-03-SURFACE-GOAL.md
+src/prototype/surface/epoch-2-deltas.tsv
+src/prototype/surface/epoch-2-files.txt
+src/prototype/surface/epoch-2-manifest.sha256
+src/prototype/surface/results/epoch-2-acceptance.log
+src/prototype/surface/results/epoch-2-artifact.log
+src/prototype/surface/results/epoch-2-baseline-partitions.log
+src/prototype/surface/results/epoch-2-baseline-partitions.tsv
+src/prototype/surface/results/epoch-2-gates.tsv
+src/prototype/surface/results/epoch-2-inputs.json
+src/prototype/surface/results/epoch-2-partition-comparison.json
+src/prototype/surface/results/epoch-2-partitions.tsv
+src/prototype/surface/results/epoch-2-sanitizer.log
+src/prototype/surface/results/epoch-2-witness.log
+src/prototype/surface/test_patches/function_witness_isolation.sh.patch

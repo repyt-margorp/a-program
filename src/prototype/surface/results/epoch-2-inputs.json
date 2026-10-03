@@ -1,0 +1,43 @@
+{
+  "baseline_revision": "2d747ccfec844e8afc72d408385ceb79a7c01808",
+  "branch": "parallel/surface-20261003",
+  "overlay": "/tmp/ap-surface-20261003-final",
+  "changed_source_files": [
+    "syntax.c",
+    "syntax.h",
+    "syntax_io.c",
+    "synthesis.c"
+  ],
+  "manifest_sha256": "42f49b0403878e99db1310a009b5d5b0143da442228abe62eafe2a1374fbb0ed",
+  "changed_source_sha256": {
+    "syntax.c": "76bd00a68d91480f9a6196e463119fee819cfcf5369f9390b39a9e1a13c72824",
+    "syntax.h": "b333b47a17fac161af99f5b898baebaef224fb751ba6183ab73ffe79021e6049",
+    "syntax_io.c": "6b4b27e7790f130a563bb064341b93eb9f724eb36df08fb584115daf494bf32e",
+    "synthesis.c": "ca905ca37719d59f704410fdc928d7a49baf0366f8084b4f6c4dad9406463acf"
+  },
+  "compiler": "cc (Debian 14.2.0-19) 14.2.0",
+  "flags_o2": "-std=c11 -Wall -Wextra -Werror -O2",
+  "parallel_jobs_max": 2,
+  "surface_parent": "90939fc45f3b9cbe8e6409d6142eeee783822041",
+  "flags_sanitizer": "-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+  "ASAN_OPTIONS": "detect_leaks=1:abort_on_error=1",
+  "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1",
+  "fresh_followup_overlay": "/tmp/ap-surface-20261003-epoch2",
+  "source_and_p_inputs_equal_to_final": true,
+  "tested_corrected_harness_sha256": "cc2cf764a7c2d186d5379bfb8f8e5c7c11f7bbc0718281874a22e2131061ca2c",
+  "binaries_sha256": {
+    "/tmp/ap-surface-20261003-final/build/pointer-check": "c7060d58780aea0db8bd42e6e70c3dab5f5a58f6cb7e726083b6f47c82a87751",
+    "/tmp/ap-surface-20261003-final/build/pointer-check-with-witness": "d3b6bdd1fc4583e3a91984e4fd6157d7b38820d151e93c2189ab02ea57dad716",
+    "/tmp/ap-surface-20261003-final/build/program_test": "8eec306e5df44eef7cd96917fb51b5a172aa26a56043d4b8c7287b521a7fd903",
+    "/tmp/ap-surface-20261003-base/build/pointer-check": "e6981a38755737fc757309ff46793988f91942b6eb0532d26f66137391ab1ae3",
+    "/tmp/ap-surface-20261003-final/asan/surface_test": "ba95a4d1b34ae3c02440380c0ca44411c0789127a6e2a7ed5b44c9442aaad090",
+    "/tmp/ap-surface-20261003-final/asan/surface_scope_test": "3ac73a0131ce123c2d11bc52dc6ffa1221a1b053bf1130484ea7bb4610d1f0fc",
+    "/tmp/ap-surface-20261003-final/asan/surface_migrate": "052f0dcc9301953b8b01a04b8f47705599118ba28b1aa633d05b0350e32c10cc",
+    "/tmp/ap-surface-20261003-final/asan/reader_test": "e8f1cecfb222ad795947af567148a1b30b337a3025027706671d3ce84d116d33",
+    "/tmp/ap-surface-20261003-final/asan/syntax_io_test": "7aa299e315b79398ff0c8448e6ccbe52d796be07d328b8bede77be8352ab1326"
+  },
+  "control_positive_steps": {
+    "baseline": 1427,
+    "surface": 1427
+  }
+}

@@ -1,0 +1,5 @@
+export results: /tmp/tmp.Kz2fTeoTzv/run.a main expected equal=1 chunk=1 steps=60921
+export results: /tmp/tmp.Kz2fTeoTzv/run.a main expected equal=1 chunk=64 steps=60921
+export results: /tmp/tmp.Kz2fTeoTzv/run.a main expected equal=1 chunk=1 steps=60921
+export results: /tmp/tmp.Kz2fTeoTzv/run.a main expected equal=1 chunk=64 steps=60921
+function witness isolation: no global star; IH/Self, general Sorted, execution and images preserved

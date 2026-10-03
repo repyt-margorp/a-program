@@ -1,10 +1,14 @@
 # Surface Epoch 1 Handoff
 
 Date: 2026-10-03
-Status: focused verification passed; files frozen for Core task-branch publication.
-Combined gates are running on the immutable final overlay with private outputs.
+Status: Core published the frozen focused epoch as
+`90939fc45f3b9cbe8e6409d6142eeee783822041` to `origin/parallel/surface-20261003`.
+Broad results and the separate harness correction are in the
+[follow-up handoff](2026-10-03-SURFACE-EPOCH-2-HANDOFF.md).
 Baseline: `parallel/surface-20261003`, `2d747ccfec844e8afc72d408385ceb79a7c01808`.
 Local edits: exact [file list](../src/prototype/surface/epoch-files.txt).
+The original manifest is pinned to the published commit above, not later plan
+edits. Manifest SHA256: `42f49b0403878e99db1310a009b5d5b0143da442228abe62eafe2a1374fbb0ed`.
 Related: [active work list](2026-10-03-SURFACE-GOAL.md), Issue #57, PR #58.
 
 ## Problem List
