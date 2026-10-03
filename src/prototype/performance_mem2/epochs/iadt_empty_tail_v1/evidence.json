@@ -1,0 +1,9 @@
+{
+  "private_root": "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003",
+  "records": 1964,
+  "manifest_path": "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/verification.sha256",
+  "manifest_sha256": "73fbc8c2ce41cc7543e629ea064856818a8d6dae3a6ddcfae7128cfcff733f0a",
+  "summary_sha256": "a570002e8808dd81d4c22c7512946e0a58d41bd8fa545308bae8d63e58fa1841",
+  "compiled_binaries_excluded": true,
+  "freeze_immutable": true
+}
