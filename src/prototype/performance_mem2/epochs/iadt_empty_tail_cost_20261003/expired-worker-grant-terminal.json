@@ -1,0 +1,15 @@
+{
+  "grant_id": "MEM2IADT-E12-20261003T180000Z-600",
+  "terminal_UTC": "2026-10-03T18:10:43.077557+00:00",
+  "setup_exit": 1,
+  "failure": "Launcher refused after absolute deadline: AssertionError: Grant expired; no launch permitted",
+  "benchmark_started": false,
+  "accepted_samples": 0,
+  "derived_configuration_created": false,
+  "measurement_directory_exists": false,
+  "matching_workload_or_collector_processes": [],
+  "all279_pins_verified_before_refusal": true,
+  "launcher_sha256": "f29164d9c0ede64881a6ed39cbfcde36da477a8108a0d305e17a2718f2cab7ce",
+  "publication_task": "6b0ed936ae0b6356e94ade5846cca7fb21500bbe",
+  "configuration_sha256": "8cc0b7533615f954a4f59bf1b7bfa4e9f2ac597aac4b1ef78656da0fba711236"
+}
