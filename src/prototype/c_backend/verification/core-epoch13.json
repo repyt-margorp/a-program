@@ -1,0 +1,60 @@
+{
+  "Root_current_source128": "73fa86c94b805b768d2c8493ce6f6a46c51983e556974c4920d805b59eefc743",
+  "Root_fresh_checks": [
+    {
+      "name": "build",
+      "exit": 0
+    },
+    {
+      "name": "affected-link",
+      "exit": 0
+    },
+    {
+      "name": "shared-O2",
+      "exit": 0
+    },
+    {
+      "name": "shared-client-SAN",
+      "exit": 0
+    },
+    {
+      "name": "IO19",
+      "exit": 0
+    }
+  ],
+  "Root_status_rows": {
+    "shared-o2": 58,
+    "shared-san": 58,
+    "io-controls": 19
+  },
+  "Root_dynamic_symbols": {
+    "shared-o2": {
+      "scalar": 3,
+      "structural": 4,
+      "records": 17,
+      "numbers": 8
+    },
+    "shared-san": {
+      "scalar": 3,
+      "structural": 4,
+      "records": 17,
+      "numbers": 8
+    }
+  },
+  "Root_client_sanitizer_limit": "Clients instrumented; backend, reused producer and emitted objects/shared bodies O2.",
+  "Root_inputs_after_exact": true,
+  "worker_inputs_verified": 165,
+  "worker_outputs_verified": 1034,
+  "worker_E8_provenance_separate": true,
+  "Root_evidence_directory": "/tmp/a-program-merge-c13-e10-gates-20261003",
+  "Root_evidence_count": 670,
+  "Root_evidence_manifest_sha256": "7d97611aaaa82e009f341fbeeb4a0a3dadd80981560e0f077e401ffb049fbd27",
+  "no_accepted_promotion_or_native_sorter_completion": true,
+  "comparative_wall_RSS": false,
+  "Main_integration": "f7afb046bcbefcf2393564e0831ef287e95db0b2",
+  "Main_base": "2ab043f960ec7136d21a8f79c0efe014df988c06",
+  "task": "96a0308283dad19450c5c56f2ac0ca3463c4838b",
+  "nine_other_task_files_exact": true,
+  "Goal_conflicts_resolved": 3,
+  "Main_Goal_and_shared_plan_provenance_corrected": true
+}
