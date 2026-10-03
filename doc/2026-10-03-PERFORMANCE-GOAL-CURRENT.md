@@ -79,6 +79,13 @@ separate. No E11/E12 runtime is included.
 
 ### Assessment
 
+2026-10-03 19:29 UTC, Root review: corrected E11/E12 now integrate into prototype Main
+with independently reconstructed source12812026914. Fresh Core O2/SAN and
+public-resume execution preserve all52 images/full TSV and strict3. These are
+separate from frozen MEM1/MEM2 producers and measured cost results. Fold exact12
+is now immutable READY; its terminal evidence, fresh Root lifetime qualification
+and separate36-job cost proposal are under review, with no active cost grant.
+
 2026-10-03 18:42 UTC, Root delegated publication: exact88 cost files task57a94cc
 on source6b0ed93, prototype Main5ad5536 pushed/remote exact. All raw36 equal
 the existing Root raw84, all12 summaries recompute and279 pins remain exact.

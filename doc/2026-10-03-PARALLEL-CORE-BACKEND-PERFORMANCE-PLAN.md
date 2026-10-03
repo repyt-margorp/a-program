@@ -104,10 +104,22 @@ seven panes confirm C/Job capacity stalls, Performance progress and four bounded
 owners achieved/stopped. GitHub still nine open issues/zero PRs; no new criteria
 or disposition. Timer1674731 alive/unchanged, next19:44:22 UTC.
 
+2026-10-03 19:29 UTC, Root implementation checkpoint: corrected E11/E12 and C14 are
+prototype Main integrated/pushed at ea39262,684d47c,6c36dcb. Fresh lifetime,
+full Core, public-resume and current-producer callback/shared/link/IO controls
+are recorded in [Job integration review](../src/prototype/solver_inputs/joint_verification/e11-e12-main-integration-review.json)
+and [C14 review](../src/prototype/c_backend/verification/core-epoch14.json).
+E12 Core conflict preserves both receipt and Context checks; C14 only Goal
+documentation needed reconciliation. Public52/full TSV remain exact, strict3
+unwaived. New Fold exact12 READY notice d04f6635 and separate cost-request
+16704347 are evidence; runtime/publication review and cost scheduling pending.
+No accepted/default promotion, full Goal or issue closure. Earlier pending
+statements above are historical and superseded by this checkpoint/table.
+
 | Owner / issue scope | Delivered and verified | Not yet delivered / next boundary |
 | --- | --- | --- |
-| Job/Evidence; SE1-SE5 / AP0, #51/#47 | E1-E4/E6-E10 prototype Main; corrected E11 exact25 taskd22be9f pushed. Root156 assembly/469 tested-overlay inputs and three fresh lifetime/escaped-stack O2/SAN controls0; worker unskipped broad0 | Separate current E9+E10+correctedE11 joint source12842639815 terminal READY; Root verified all2013 hashes, Main integration review pending. CorrectedE12 exact29 taskcb959eb pushed/remote verified, Root156 assembly and fresh O2/SAN mutation/escaped-frame controls0. Local broad/C/census verified; common current-E12 source12812026914 terminal READY, Root all2064 hashes verified; Main integration pending. E13 exact28 frozen READY. E14 local broad0; E15 ordinary Graph leaf-input borrowing proposed, retaining charged traversal and normalized Lambda key. Original unsafe E11/E12 and strict3 remain |
-| C backend; #61, historical #44/#49 | C12 exact16 task97f8d7c pushed/remote verified, Main370a986. Root current E9+E10 fourteen strict O2 gates, three affected client/source sanitizer gates and nineteen I/O controls0 | C13 exact11 task96a0308 pushed/remote verified, Mainf7afb04; Root current producer strict O2/shared58/client-SAN58/linker/IO19 all pass. C14 exact23 frozen READY, Root ABI/current-producer review pending. Missing explicit imports explain original source failures; Root four corrected consumers0 with exact outputs/steps (reportd7575c61); native Acc/QuickSort and higher contracts remain unfinished |
+| Job/Evidence; SE1-SE5 / AP0, #51/#47 | E1-E4/E6-E12 corrected prototypes integrated. E11 taskd22be9f/Main ea39262 exact25; E12 taskcb959eb/Main684d47c exact29 paths, 28 task-byte-exact plus combined Core test patch. Root current source12842639815/12026914, all2013/2064 pins and fresh lifetime O2/SAN controls pass; full Core O2/SAN pass | Fresh public52/full TSV equal qualified E12; original strict3 remain. E13 exact28 frozen READY, ownership review/publication pending. E14 local broad0; E15 Graph input borrowing proposed/unbuilt. Original unsafe E11/E12 remain rejected; no full ownership/layout completion |
+| C backend; #61, historical #44/#49 | C1-C14 bounded prototypes integrated. C14 taske9d74f7/Main6c36dcb exact23 paths, 22 frozen bytes plus reconciled Goal doc. Root current-E12 callback O2/client-source SAN39 each, four products400 Core comparisons each, shared58 each, link and matched IO19 pass | Four corrected explicit-import source consumers retain output/fuel; historical mismatched image failure preserved and reproduced before C14. Caller lifetime/purity contracts, native Acc/QuickSort and higher exports remain open |
 | Performance; #56/#51/#52 | E6 measurements30 published; E7-E10 qualified; accepted13-file promotion7631e5a independently verified. MEM1 diagnosis40 exact; Root fresh inline-state parent0/v1 signal6/v2 0 | V1 rejected despite passing acceptance and lower sampled capacity; no qualified gain. V2 superseded/rejected: new materialized-failure callback destruction passes parent SAN0 but V2 retire_frame heap-use-after-free/signal6, independently reproduced by Root (reportd5155b89). Exact18 task1297e0b/Mainf48ab5e remain historical prototype, earlier384/45 and Root controls inadequate. V3 exact18 taskc861728/Maincc69f52 integrated; exact111 cost evidence/addendum taske561030/Main895ac67, original109 unchanged; Root O2/SAN callback3 each0, current-E12 exact36 cost samples complete/uncensored. Tree400 median5.34021->4.92598s/RSS1891928->1001764KiB, unchanged183507626 steps. LocalSorted RSS+492KiB/smallList startup variation retained; bounded measured gain, no default/accepted replacement |
 | Surface; #57 | Verified prototype integrated, completed owner stopped | Accepted policy/promotion and selector diagnostics unresolved; no owner restart |
 | Static audit; #59/PR #60 | Task7ed3ad1/Main5683755; Root385 source/114 archived dependency hashes and exact inventory verified; bounded Goal achieved | Dynamic/full #59 and controlled cost remain open; no static-owner restart |
@@ -140,12 +152,12 @@ reporting subsystem. Its audit cover is pinned to `37de1e8`, not current Main.
 | Order / owner | Issue or PR | Next deliverable and dependency |
 | --- | --- | --- |
 | 0 / desk -> Merge | Workflow | Merge reviews evidence; Performance runs, C/Job capacity-stalled. Test-suite/issue-audit/static/Sort bounded Goals achieved and stopped; protected local bytes preserved. Scheduled six-hour report delivered; Root resumes coordination after audit handoff |
-| 1 / Job, Root reviews independently | SE/AP, #51 | Corrected E11 current joint READY/all2013 verified; E12 current joint READY/Root all2064 hashes verified; Main integration pending. Review E13 frozen header deletion; E15 Graph consumer remains separate from Performance IADT ownership. C14 missing-import diagnosis freshly confirmed. Preserve strict3 and original unsafe failures; no pointer-layout completion claim |
-| 1 / performance + Job | #56 / #51 | MEM1 v1/v2 rejected by lifetime controls; V3 source18/cost111 published, bounded current-E12 gain reviewed. MEM2 beta environment elision rejected; IADT source9 task6b0ed93/Main6ebf453 qualified. Same Root replacement36/0 measurements archived as raw84 and worker cost88 task57a94cc/Main5ad5536; bounded tree RSS gain, mixed timing, release consumed. Preserve LocalSorted/startup and all original failures. Private Fold source81c3ad27 focused410/cross268, affected18 and persistence44 raw gates verified; strict recipe1/full TSV/images unchanged. Final qualification/census, READY and Root runtime review pending, no cost grant. Job owns separate header/scheduler work. Root resolves conflicts; matched wall/RSS requires an exclusive slot |
+| 1 / Job, Root reviews independently | SE/AP, #51 | Corrected E11/E12 Main integration and current source qualification complete, detailed integration receipt linked below. Review E13 frozen header deletion; E15 Graph consumer remains Job-owned/unbuilt. Preserve strict3 and original unsafe failures; no pointer-layout completion claim |
+| 1 / performance + Job | #56 / #51 | V1/V2 and MEM2 capture elision remain rejected; V3 source18/cost111 and MEM2 source9/cost88 delivered with bounded measured tree RAM gains and timing limits. MEM3 Fold exact12 READY/source81c3ad27, terminal1257-pin freeze; prior Root source/raw review complete, fresh runtime review and publication next. Cost proposal36 jobs/289 pins pending exclusive scheduling, no active grant. Job owns separate header/Graph work; Root resolves conflicts |
 | Complete bounded / test-suite; Root publishes | #59 / PR #60 | Verified pilot removes22 duplicate calls with all distinct outcomes preserved; Root raw/assembly review complete. Exact7 taskbc16df9/Main36a27be prototype integrated; broader inventory/cost/accepted adoption remain open |
 | Complete bounded / issue-audit | All open Issues/PRs | Verified comments/dispositions,44/49 superseded by61; nine issues open. Owner stopped; Root resumes coordination, no repeat audit |
 | Complete bounded / verification-audit | #59 / PR #60; #51 | Static inventory/pilot delivered and worker complete; four-job measured cost remains deferred, full #59 open. Do not restart the completed owner automatically |
-| 2 / C backend | #61 (historical #44/#49) | C1-C13 bounded prototypes delivered; Root current-producer shared/linker/I/O gates pass. C14 exact23 bounded callback ABI freeze READY, Root review pending; native Acc/QuickSort and producer-policy boundaries explicit |
+| 2 / C backend | #61 (historical #44/#49) | C1-C14 bounded prototypes delivered; Root current-E12 callback/shared/link/IO/source-import gates pass. Native Acc/QuickSort, higher callbacks and producer-policy boundaries remain explicit; original C owner capacity-stalled, no resume or duplication |
 | Complete review / Merge | PR #60, #53, #55 | Documentation reviewed/imported with provenance; no open PRs. Full issue criteria remain independent of publication |
 | Complete bounded / Sort library | PR #54 / #41 | Generic MergeSort and finite-function prototype verified/integrated; bounded worker complete. Accepted Sort/F5 and broader containers remain separate; no owner restart |
 | Review / Merge | #57 | Audit delivered prototype against Issue criteria; Surface stays stopped. Prototype delivery is not accepted promotion; do not reopen a worker just to repeat completed gates |
@@ -441,6 +453,12 @@ public resume failures are in the
 Accepted `src/evidence.*`, `src/iadt.*` and their tests retain unrelated edits.
 
 ### Assessment
+
+2026-10-03 19:29 UTC, Root agent implementation decision: finish delivered corrected
+E11/E12/C14 independently of the original C/Job capacity stalls. Exact private
+merge/source reconstruction and fresh lifetime/public-resume controls support
+the integrations; the single current delivery table records actual boundaries.
+Worker notices confer no new design, promotion or cost authority.
 
 2026-10-03 12:03 UTC, Root scheduling decision under the explicit human workflow
 replacement: earlier review/publication-only implementation holds in this plan

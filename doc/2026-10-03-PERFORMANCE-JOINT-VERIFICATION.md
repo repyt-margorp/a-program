@@ -1,7 +1,7 @@
 # Coupled Performance and Job Verification
 
 Date: 2026-10-03
-Status: corrected E11/E12 frozen; V3 gain reviewed; MEM2 IADT source9 published, bounded tree RSS gain/mixed timing verified; Goal active.
+Status: corrected E11/E12 prototype Main integrated; V3 gain reviewed; MEM2 IADT source9 published, bounded tree RSS gain/mixed timing verified; Goal active.
 Active Goal: [Current Performance Goal](2026-10-03-PERFORMANCE-GOAL-CURRENT.md).
 Historical parent: [Performance Goal](2026-10-03-PERFORMANCE-GOAL.md), frozen at
 task-branch commit `05390513bca302b4a219881994c5bbd69d5b733a`.
@@ -94,7 +94,7 @@ brief; detailed evidence remains in the linked manifests and reports below.
 | #56 / MEM1: delete unnecessary work/state for actual memory/time | V1 inline-state and V2 materialized-callback UAF rejected; V3 recycles only stateless captured-head frames after parent cleanup | Root exact128/1944 verified, fresh callback3 O2/SAN0; current-E12 candidate1816/base2064 and exact36 cost samples/expected steps/raw hashes verified, no censored samples | V3 exact18 taskc861728 pushed/remote exact; prototype Maincc69f52 same bytes; cost111/addendum taske561030/Main895ac67 exact, original109 unchanged; accepted/default selection unchanged | Bounded tree400 median wall5.34021->4.92598s, peakRSS1891928->1001764KiB; LocalSorted RSS+492KiB, smallList startup dominated. Strict3 and full Goal/accepted adoption remain open | Exact cost evidence published; integrate current corrected Job layers separately, then continue owned deletions |
 | #56 / MEM2: preserve captured lexical state | Private beta environment elisionc3c91bd3 rejected on qualified V3/E12 source1280deb36a7 | Root verifies exact30 freeze0573b9be and original results; fresh four O2/SAN builds0, fourteen executions reproduce six semantic failures. Parent local/images pass; candidate retained binding becomes unbound, fuel2->1; no sanitizer diagnostics | Root report5ac6c445; no rejected runtime integration or current-parent defect | Public retained closure/configuration contents and lifetime must be preserved; no physical-layout or full-machine checkpoint claim | Direct-IADT no-trailing-argument field-spine lifetime research continues privately; qualify live/restored/retained nodes before reuse |
 | #56 / MEM2: delete copied IADT field spines | Source1282e87fd84/patchb19dd27b; empty-tail immutable fields reused, nonempty tail copies retained | Root all1964/fresh controls0; source/images/fuel exact; same replacement36 samples0, raw expected steps/all279 pins verified, no censored rows | Source9 task6b0ed93/Main6ebf453; Root raw84 unchanged; worker cost88 task57a94cc/Main5ad5536 raw-identical and12 recomputed summaries exact; accepted/default unchanged | Four tree RSS ranges disjoint, tree400 -2.50%; all six time ranges overlap, mixed medians and LocalSorted RSS+24KiB; no clear speed/Goal claim | Expired worker refusal and freeze-helper field-name failure preserved; Root release consumed18:19; no comparative grant |
-| #56 / MEM3: delete copied captured Fold spine | Private source12881c3ad27 from MEM2parent2e87fd84, only computation.c/patchf6b25d36; reuse unary Return spine only with empty caller tail | Root source/raw inspection verifies worker focused410/0, five result/fuel counts11/15/12/13/11, all67 cuts/cross268, affected18/0 and persistence44 with only existing strict recipe1; full TSV/public52/history28 equal parent | Private, no READY/source publication/Main runtime or fresh Root execution; earlier freezes unchanged | Parent handler fixture/setup failures and strict reloads preserved; final qualification/census pending, no actual RAM/time claim | Finish owner qualification, freeze exact submission and obtain Root runtime review; any matched cost requires a separately scheduled exclusive slot |
+| #56 / MEM3: delete copied captured Fold spine | Immutable exact12 READY/source81c3ad27 from MEM2parent2e87fd84, only computation.c/patchf6b25d36; empty caller-tail unary Return reuse | Worker terminal1257-pin freeze: focused410/0, cuts67, cross268 O2+268 SAN, affected18/0, transport11/0; persistence44 only strict recipe1, public52/history28/full TSV equal parent. Prior Root source/raw review verified | READY notice d04f6635/manifest6afd52f3; fresh Root execution and exact publication pending | Original strict/observer/fixture/setup failures retained. Tree400 cumulative -1725722 requests/-55223104 bytes is not actual RAM/time; LocalSorted changes not fully attributed | Complete Root runtime/publication review; independently inspect future36-job/289-pin cost proposal before any exclusive grant |
 
 Fresh Git inspection verifies HEAD and tracking branch at `0539051`; every
 committed/live file matches the corrective 44-file frozen manifest. Core's exact
@@ -264,6 +264,13 @@ under `/tmp/ap-performance-measurement-e6-preparation-20261003`. The inputs,
 runtime and tests are unchanged; no wall/RSS values were collected.
 
 ### Assessment
+
+2026-10-03 19:29 UTC, Root review: corrected E11/E12 now integrate into prototype Main
+with independently reconstructed source12812026914. Fresh Core O2/SAN and
+public-resume execution preserve all52 images/full TSV and strict3. These are
+separate from frozen MEM1/MEM2 producers and measured cost results. Fold exact12
+is now immutable READY; its terminal evidence, fresh Root lifetime qualification
+and separate36-job cost proposal are under review, with no active cost grant.
 
 2026-10-03 18:42 UTC, Root cost88 publication and private Fold source/raw review:
 [publication receipt](../src/prototype/performance_followup/mem2-cost-publication-root-review.json)

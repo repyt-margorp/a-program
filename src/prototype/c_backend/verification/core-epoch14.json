@@ -1,0 +1,238 @@
+{
+  "prototype_Main": "6c36dcb27cef4633d0e5338a5e74349d8ef212b2",
+  "Main_before": "684d47cfc218b228049e7920d73bba3234eecc44",
+  "task": "e9d74f70d33f1830f05a5a04cd3d05f8a01467ed",
+  "exact23_changed_paths": [
+    "doc/2026-10-03-C-BACKEND-EPOCH14-HANDOFF.md",
+    "doc/2026-10-03-C-BACKEND-GOAL.md",
+    "src/prototype/c_backend/README.md",
+    "src/prototype/c_backend/build.mk",
+    "src/prototype/c_backend/callback/callback.aplink",
+    "src/prototype/c_backend/callback/check.sh",
+    "src/prototype/c_backend/callback/client.c",
+    "src/prototype/c_backend/callback/differential.p",
+    "src/prototype/c_backend/callback/fixture.p",
+    "src/prototype/c_backend/callback/inert_test.c",
+    "src/prototype/c_backend/link/driver.c",
+    "src/prototype/c_backend/link/plan.c",
+    "src/prototype/c_backend/link/plan.h",
+    "src/prototype/c_backend/lower/representation.c",
+    "src/prototype/c_backend/lower/representation.h",
+    "src/prototype/c_backend/lower/scalar.c",
+    "src/prototype/c_backend/lower/scalar.h",
+    "src/prototype/c_backend/scratch/callback_boundary/imported_existing.p",
+    "src/prototype/c_backend/scratch/callback_boundary/lambda.p",
+    "src/prototype/c_backend/scratch/callback_boundary/named.p",
+    "src/prototype/c_backend/scratch/callback_boundary/same_module.p",
+    "src/prototype/c_backend/scratch/callback_boundary/thunked.p",
+    "src/prototype/c_backend/scratch/callback_boundary/typed_view.c"
+  ],
+  "22_submitted_files_exact": "Only Goal documentation reconciled; all implementation/tests byte-exact frozen snapshot.",
+  "source128": "12026914c550d0d8c4455a32f593a1f8600aaafe7a76a30fe15e7a4803970be7",
+  "Root_callback_current_O2_client_SAN_39_each_exact": true,
+  "four_products_each400_Core_comparisons_and20_source_observations": true,
+  "affected_shared58_O2_and58_client_SAN_and_link0": true,
+  "matched_current_IO19_exact": true,
+  "four_corrected_explicit_import_consumers_output_and_fuel_exact": true,
+  "initial_historical_E8_image_mismatch_preserved_and_parent_reproduced": true,
+  "protected9_exact": true,
+  "accepted_default_producer_or_source_policy_change": false,
+  "review_UTC": "2026-10-03 19:29 UTC",
+  "verification_kind": "Fresh Root current-E12 producer qualification; submitted implementation/test bytes exact.",
+  "publication": {
+    "task": "e9d74f70d33f1830f05a5a04cd3d05f8a01467ed",
+    "parent": "96a0308283dad19450c5c56f2ac0ca3463c4838b",
+    "exact23_paths": [
+      "doc/2026-10-03-C-BACKEND-EPOCH14-HANDOFF.md",
+      "doc/2026-10-03-C-BACKEND-GOAL.md",
+      "src/prototype/c_backend/README.md",
+      "src/prototype/c_backend/build.mk",
+      "src/prototype/c_backend/callback/callback.aplink",
+      "src/prototype/c_backend/callback/check.sh",
+      "src/prototype/c_backend/callback/client.c",
+      "src/prototype/c_backend/callback/differential.p",
+      "src/prototype/c_backend/callback/fixture.p",
+      "src/prototype/c_backend/callback/inert_test.c",
+      "src/prototype/c_backend/link/driver.c",
+      "src/prototype/c_backend/link/plan.c",
+      "src/prototype/c_backend/link/plan.h",
+      "src/prototype/c_backend/lower/representation.c",
+      "src/prototype/c_backend/lower/representation.h",
+      "src/prototype/c_backend/lower/scalar.c",
+      "src/prototype/c_backend/lower/scalar.h",
+      "src/prototype/c_backend/scratch/callback_boundary/imported_existing.p",
+      "src/prototype/c_backend/scratch/callback_boundary/lambda.p",
+      "src/prototype/c_backend/scratch/callback_boundary/named.p",
+      "src/prototype/c_backend/scratch/callback_boundary/same_module.p",
+      "src/prototype/c_backend/scratch/callback_boundary/thunked.p",
+      "src/prototype/c_backend/scratch/callback_boundary/typed_view.c"
+    ],
+    "frozen_manifest_sha256": "e7782e3e26b4bc0d884867bf9333637f3abe70ebb6c10696651bacf6cab3143d",
+    "frozen_archive_sha256": "4a3b8f67a01b095ab8f2822549d87628c9fc4b5d7aefdf9a14a32e83ad386798",
+    "task_remote_exact": true,
+    "worker_index_only_advanced": true,
+    "worker_previous_tracked_live_files_preserved": 1762,
+    "current_producer_gates_and_Main_pending": true,
+    "historical_receipt_pending_state_superseded_by_this_review": true
+  },
+  "manifest_verified_inputs": 181,
+  "manifest_verified_worker_raw_outputs": 1054,
+  "callback_controls": {
+    "source128": "12026914c550d0d8c4455a32f593a1f8600aaafe7a76a30fe15e7a4803970be7",
+    "checks": [
+      {
+        "mode": "o2",
+        "args": [
+          "bash",
+          "/tmp/a-program-merge-c14-main-review-20261003/src/prototype/c_backend/callback/check.sh",
+          "/tmp/a-program-merge-c14-current-e12-gates-20261003/build/a-to-c",
+          "/tmp/a-program-merge-c14-current-e12-gates-20261003/build/pointer-check",
+          "/tmp/a-program-merge-c14-current-e12-gates-20261003/build/c_callback_inert_test",
+          "/tmp/a-program-merge-c14-current-e12-gates-20261003/o2"
+        ],
+        "exit": 0,
+        "39_expected_status_rows_exact": true,
+        "log_sha256": "0daea983d5fd714e6797214410160764d6315d8dc39ca8da96c219289ba4663b",
+        "status_sha256": "9b6519865db0069747929a63d49baf0b376ccb31ac60097bb4b431f62ad3774d",
+        "sanitizer_scope": "Strict O2"
+      },
+      {
+        "mode": "san-client",
+        "args": [
+          "bash",
+          "/tmp/a-program-merge-c14-main-review-20261003/src/prototype/c_backend/callback/check.sh",
+          "/tmp/a-program-merge-c14-current-e12-gates-20261003/build/a-to-c",
+          "/tmp/a-program-merge-c14-current-e12-gates-20261003/build/pointer-check",
+          "/tmp/a-program-merge-c14-current-e12-gates-20261003/build/c_callback_inert_test",
+          "/tmp/a-program-merge-c14-current-e12-gates-20261003/san-client"
+        ],
+        "exit": 0,
+        "39_expected_status_rows_exact": true,
+        "log_sha256": "0daea983d5fd714e6797214410160764d6315d8dc39ca8da96c219289ba4663b",
+        "status_sha256": "9b6519865db0069747929a63d49baf0b376ccb31ac60097bb4b431f62ad3774d",
+        "sanitizer_scope": "Source component/clients/oracle clients only; backend, producer, Core oracle and emitted object/archive/shared bodies O2"
+      }
+    ],
+    "complete": true,
+    "comparative_cost": false,
+    "passed": true,
+    "four_products_each400_Core_oracle_comparisons": true,
+    "source_fixture_output_and_manual_C_client_exact": true,
+    "inert_wrapped_Solve_counters_and12_checked_trusted_refusals_exact": true
+  },
+  "affected_shared_and_link_report": "/tmp/a-program-merge-c14-current-e12-gates-20261003/Root-affected-results.json",
+  "affected_report_limitation": "Original report terminal:false preserved after historical-image setup mismatch; subsequent matched IO terminal is separate.",
+  "matched_IO": {
+    "args": [
+      "bash",
+      "/tmp/a-program-merge-c14-main-review-20261003/src/prototype/c_backend/link/publication_io_check.sh",
+      "/tmp/a-program-merge-c14-current-e12-gates-20261003/build/a-to-c",
+      "/tmp/a-program-merge-c14-current-e12-gates-20261003/shared-o2/applied-list.a",
+      "/tmp/a-program-merge-c14-current-e12-gates-20261003/current-io-native.aplink",
+      "/tmp/a-program-merge-c14-current-e12-gates-20261003/current-io-controls"
+    ],
+    "exit": 0,
+    "all19_expected_status_rows_exact": true,
+    "log_sha256": "a4a9e03276262019b1e1e9e479d14eab63435e398650169c0c82bb7de981ea0f",
+    "status_sha256": "3c763e8de8d294aaa67b241768e5849427579b83b8e6a50a7c21df4d0c9d2141",
+    "initial_historical_input_mismatch_preserved_sha256": "617e9a13104f8fa41a7b59fde38106f30869faca704df6d60df1b600cf0f019b",
+    "native_script_only_artifact_path_changed": true,
+    "same_current_source_producer_for_image_and_backend": true
+  },
+  "initial_IO_input_mismatch": {
+    "initial_scope": "Root mismatched historical E8 C13 .a against current E12 reader",
+    "status_rows": "shim\t0\t0\nnative-good\t0\t2\n",
+    "error": "C export: cannot read artifact\n",
+    "historical_image_sha256": "9a40589f1a5c2e1f7838dca83739018621fb24eee48d600688d5fe5df905397b",
+    "fresh_current_image_sha256": "b1bdf3184dc759d22b2ecc1e80164220d3eb9e25a80f9c5141a48c09597b9295",
+    "unchanged_source_fixture": "/tmp/a-program-merge-c14-main-review-20261003/src/prototype/c_backend/applied/fixture.p",
+    "original_native_script_sha256": "858c92463f8adc78fbf704f3e1fa86d576d7ccf27cc90cc2daf9a36d588f3463",
+    "current_script_only_artifact_path_changed": true,
+    "runtime_or_test_assertions_adapted": false
+  },
+  "same_input_failure_before_C14": {
+    "args": [
+      "/tmp/a-program-merge-c13-e10-gates-20261003/build/a-to-c",
+      "--link",
+      "/tmp/a-program-c-backend-epoch13-shared-20261003/io-native.aplink",
+      "/tmp/a-program-merge-c14-current-e12-gates-20261003/parent-old-image-probe"
+    ],
+    "exit": 2,
+    "stdout": "",
+    "stderr": "C export: cannot read artifact\n",
+    "same_failure_before_C14": true
+  },
+  "explicit_import_source_results": {
+    "source128": "12026914c550d0d8c4455a32f593a1f8600aaafe7a76a30fe15e7a4803970be7",
+    "rows": [
+      {
+        "fixture": "imported-differential.p",
+        "argv": [
+          "/tmp/a-program-merge-c14-current-e12-gates-20261003/build/pointer-check",
+          "--imports",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/c14_readonly_boundary/root_pinned_provider/provider.p",
+          "--run",
+          "main",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/c14_readonly_boundary/root_pinned_provider/imported-differential.p"
+        ],
+        "exit": 0,
+        "stdout": "7|14|7|14|0\\n24|31|-10|31|17\\n-2147483641|-2147483634|-2147483641|-2147483634|-2147483648\\n-2147483642|-2147483635|-2147483640|-2147483635|2147483647\\n",
+        "stderr": "done steps=5034\nrun: done steps=5080\n",
+        "fixture_sha256": "dc95c216d6feeda1849e7673bbcddaaf61506c60c4fa5d55fb75285263fcdb18",
+        "same_source_output_steps_as_E10": true
+      },
+      {
+        "fixture": "imported-lambda.p",
+        "argv": [
+          "/tmp/a-program-merge-c14-current-e12-gates-20261003/build/pointer-check",
+          "--imports",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/c14_readonly_boundary/root_pinned_provider/provider.p",
+          "--run",
+          "main",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/c14_readonly_boundary/root_pinned_provider/imported-lambda.p"
+        ],
+        "exit": 0,
+        "stdout": "7",
+        "stderr": "done steps=2981\nrun: done steps=82\n",
+        "fixture_sha256": "3eddd5988f98bdd25e492e35db70218693a6562e03b53454df76d3ca71f769d1",
+        "same_source_output_steps_as_E10": true
+      },
+      {
+        "fixture": "imported-named.p",
+        "argv": [
+          "/tmp/a-program-merge-c14-current-e12-gates-20261003/build/pointer-check",
+          "--imports",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/c14_readonly_boundary/root_pinned_provider/provider.p",
+          "--run",
+          "main",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/c14_readonly_boundary/root_pinned_provider/imported-named.p"
+        ],
+        "exit": 0,
+        "stdout": "7",
+        "stderr": "done steps=2945\nrun: done steps=84\n",
+        "fixture_sha256": "bfee0cbd837f30ddf863c3261ebf07984820b9f9ed17cf7b2b6430a1de881737",
+        "same_source_output_steps_as_E10": true
+      },
+      {
+        "fixture": "imported-thunked.p",
+        "argv": [
+          "/tmp/a-program-merge-c14-current-e12-gates-20261003/build/pointer-check",
+          "--imports",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/c14_readonly_boundary/root_pinned_provider/provider.p",
+          "--run",
+          "main",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/c14_readonly_boundary/root_pinned_provider/imported-thunked.p"
+        ],
+        "exit": 0,
+        "stdout": "7",
+        "stderr": "done steps=2932\nrun: done steps=84\n",
+        "fixture_sha256": "439d7116b7f9308e36a7f5a528889520f065df01df3be8d06e5f53d79a54575d",
+        "same_source_output_steps_as_E10": true
+      }
+    ]
+  },
+  "doc_resolution_directory": "/tmp/a-program-merge-c14-doc-resolution-20261003",
+  "callback_scope": "Opt-in borrowed synchronous pure-total same-width unary Int32/Int64 inputs and scalar outputs. Purity, totality, lifetime are caller preconditions.",
+  "limits": "No returned/boxed, multiargument, mixed-width, effectful/dependent callbacks, native Acc/QuickSort or higher export claim. SAN covers source component/clients/oracle clients, not O2 backend/producer/Core oracle/emitted library bodies. Worker old-profile equality is historical, not fresh Root comparison.",
+  "full_Goal_or_issue_completion": false
+}
