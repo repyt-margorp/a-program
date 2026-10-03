@@ -1,0 +1,118 @@
+{
+  "lane": "performance",
+  "epoch": "MEM1 captured-head v3",
+  "branch": "parallel/performance-20261003",
+  "chosen_commit_message": "prototype: limit frame recycling to captured-head cleanup",
+  "source_manifest_sha256": "353ed498ac3f59c560e59f60dd9a299e04891db3e650046e3eb0b12e92cfc0fa",
+  "parent_source_manifest_sha256": "73fa86c94b805b768d2c8493ce6f6a46c51983e556974c4920d805b59eefc743",
+  "published_v2_task": "1297e0b",
+  "published_v2_prototype_Main": "f48ab5e",
+  "v2_publication_remains_immutable": true,
+  "MEM1_v3_supersedes_v2_as_candidate": true,
+  "changes": "Delete materialized/fallback retirement. Stateless captured-head recycling after existing cleanup only; non-NULL state keeps original arena lifetime.",
+  "runtime_files": [
+    "eval.c",
+    "eval.h"
+  ],
+  "new_index_or_authority": false,
+  "o2_artifact": {
+    "recipes": 55,
+    "failed": 1,
+    "only_original_strict_target": true
+  },
+  "sanitizer_build": {
+    "recipes": 38,
+    "failed": 0
+  },
+  "gates": {
+    "asan-checks/checks.json": {
+      "commands": 45,
+      "failures": 0,
+      "sha256": "96dd2837ff4dd882fcd38bc56d56d7252ef04c478729f74472cf7087822949fd"
+    },
+    "o2-checks/checks.json": {
+      "commands": 23,
+      "failures": 0,
+      "sha256": "f6acb49fa3a1bff336606fce00547940102201cc7864621c09b929dcf6ef989e"
+    },
+    "cross-instrumentation-read/checks.json": {
+      "commands": 140,
+      "failures": 0,
+      "sha256": "231a55baa43c7384ff8953a9b2eead348e926f2d8104cc8b25ead50d1584fa6f"
+    },
+    "mem1-v3-controls/results.json": {
+      "commands": 8,
+      "failures": 0,
+      "sha256": "d1bafd0b36791217019ef80fa7a3dfe18b669e2b1e204ff8bfa3243ba243af34"
+    }
+  },
+  "raw_cuts_per_build": 70,
+  "cross_build_reads": 140,
+  "WHNF_charged_steps": 3014,
+  "public52_history28_and_verdict_fuel_TSV_equal_parent": true,
+  "full_O2_acceptance_repeated": false,
+  "historical_v2_full_O2": "384/0, before later callback failure",
+  "original_v1_failure": "Non-NULL inline continuation state corrupted; parent0/v1-6, preserved separately.",
+  "later_v2_failure": {
+    "public_callback_test_sha256": "93da2cfae80ddecd43deb62d1f242fad710ae5fcc0b9ea19aba41ed491b57cff",
+    "report_path": "/tmp/ap-performance-mem1-callback-failure-boundary-20261003/results.json",
+    "report_sha256": "e732e16d791a814f94f5f8f8dd298630c1c8eb0ed713d1b1c6eaffc471b9e290",
+    "parent_ASan": 0,
+    "v2_ASan": -6,
+    "v3_O2_ASan": 0
+  },
+  "known_original_Core_Identity_observer_and_f3_seven_SAN_failures_remain_separate": true,
+  "current_strict_reload_failures": [
+    {
+      "partition": "1000:1000",
+      "path": "reload",
+      "budget": "2000",
+      "used": "2000",
+      "status": "pending",
+      "bytes": "32760",
+      "delta": "-19124",
+      "size_equal": "no",
+      "byte_equal": "no",
+      "status_equal": "no",
+      "fuel_equal": "no"
+    },
+    {
+      "partition": "1600:1600",
+      "path": "reload",
+      "budget": "3200",
+      "used": "3200",
+      "status": "pending",
+      "bytes": "38362",
+      "delta": "-13522",
+      "size_equal": "no",
+      "byte_equal": "no",
+      "status_equal": "no",
+      "fuel_equal": "no"
+    },
+    {
+      "partition": "1915:0",
+      "path": "reload",
+      "budget": "1915",
+      "used": "1915",
+      "status": "pending",
+      "bytes": "51884",
+      "delta": "0",
+      "size_equal": "yes",
+      "byte_equal": "yes",
+      "status_equal": "no",
+      "fuel_equal": "yes"
+    }
+  ],
+  "tree400_charged_steps": 183507626,
+  "allocation_calls_delta": -11363962,
+  "cumulative_external_aligned_bytes_delta": -2727318176,
+  "aligned_job_overhead": 32704,
+  "list_charged_steps": 1915,
+  "list_aligned_bytes_delta": 368,
+  "comparative_wall_RSS": false,
+  "actual_peak_or_speed_claim": false,
+  "E11_E12_and_live_owner_edits_excluded": true,
+  "accepted_promotion_or_Main_merge_by_worker": false,
+  "full_Goal_active": true,
+  "next": "Current corrected-E12 common-producer alignment and concrete matched cost request; exclusive slot required."
+}

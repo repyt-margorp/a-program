@@ -1,0 +1,8 @@
+{
+  "root": "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003",
+  "manifest": "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/verification.sha256",
+  "records": 1944,
+  "manifest_sha256": "15d26131e437c868379cbd1fdc02262286973a3aa26e6f34ca61361be44e27fc",
+  "summary_sha256": "efece9a26d5a53d11edad1f9c0b93d2d404739beba548c5d91635d35d6c84fa2",
+  "compiled_binaries_excluded": true
+}

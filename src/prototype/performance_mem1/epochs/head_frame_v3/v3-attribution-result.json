@@ -1,0 +1,97 @@
+{
+  "complete": true,
+  "source_manifest_sha256": "353ed498ac3f59c560e59f60dd9a299e04891db3e650046e3eb0b12e92cfc0fa",
+  "comparative_wall_RSS": false,
+  "new_runtime_profiling_wrapper": false,
+  "existing_GDB_observer_sha256": "e71501c88c4363cee5a7c41786309fab703ad6bb09394889b51c7e3265e61a37",
+  "checks": [
+    {
+      "label": "debug-build",
+      "argv": [
+        "make",
+        "-f",
+        "/tmp/ap-performance-mem1-gates.mk",
+        "-j1",
+        "OVERLAY=/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003",
+        "BUILD=/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/debug",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2 -g3",
+        "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/debug/pointer-check"
+      ],
+      "exit": 0,
+      "log": "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/debug-build.log",
+      "log_sha256": "6576d71feb066a42265a8a56c8b5b449810c07efa1b9f3391930e66f7df8c6d7"
+    },
+    {
+      "label": "allocation-build-build",
+      "argv": [
+        "make",
+        "-f",
+        "/tmp/ap-performance-mem1-gates.mk",
+        "-j1",
+        "OVERLAY=/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003",
+        "BUILD=/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/allocation-build",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2 -g3",
+        "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/allocation-build/allocation_count_check"
+      ],
+      "exit": 0,
+      "log": "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/allocation-build-build.log",
+      "log_sha256": "e04a98965b13f98ca5d947c60187711c49cea9ecbc076b70df5859abd121eb98"
+    },
+    {
+      "label": "trees-400-cut-180000000-gdb",
+      "argv": [
+        "timeout",
+        "180",
+        "gdb",
+        "--batch",
+        "-nx",
+        "-ex",
+        "set disable-randomization off",
+        "-ex",
+        "source /tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/capacity.gdb.py",
+        "-ex",
+        "run",
+        "--args",
+        "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/debug/pointer-check",
+        "--steps",
+        "180000000",
+        "/tmp/ap-performance-cross-7d24b8d/trees_400.p"
+      ],
+      "exit": 0,
+      "log": "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/trees-400-cut-180000000-gdb.log",
+      "log_sha256": "2cca1872e05b3af2aa5b18964b2ff460013247661648af6de47c2bd24aa6f2cb"
+    },
+    {
+      "label": "allocation-tree400",
+      "argv": [
+        "timeout",
+        "180",
+        "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/allocation-build/allocation_count_check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-cross-7d24b8d/trees_400.p"
+      ],
+      "exit": 0,
+      "log": "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/allocation-tree400.log",
+      "log_sha256": "67c1e9f0d2b11410dbe1fd8a502872c0be67f63a7a5dfba0cf765f0848b905b3"
+    },
+    {
+      "label": "allocation-list",
+      "argv": [
+        "timeout",
+        "180",
+        "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/allocation-build/allocation_count_check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/examples/09_list_induction.p"
+      ],
+      "exit": 0,
+      "log": "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/allocation-list.log",
+      "log_sha256": "488e15b7d2bf4e7463af4d3238486f0a2b82adc5730d2dcceb7621696a1d4d51"
+    }
+  ],
+  "passed": true,
+  "all128_runtime_hashes_after": true,
+  "capacity_sample_sha256": "b588b49d46cda287197bf9b38d153c0cbb7cec921c8ec5e3e48538fd05dd1cf7",
+  "census_sha256": "5f6c2501c2d2423ef0c8f52137813b459c37a3873b5a96496f47d2111b272e93"
+}

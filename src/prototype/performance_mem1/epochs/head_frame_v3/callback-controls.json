@@ -1,0 +1,114 @@
+{
+  "complete": true,
+  "source_manifest_sha256": "353ed498ac3f59c560e59f60dd9a299e04891db3e650046e3eb0b12e92cfc0fa",
+  "only_stateless_captured_head_retirement": true,
+  "comparative_wall_rss": false,
+  "original_v1_and_v2_failures_preserved": true,
+  "test_sha256": {
+    "frame_retirement_test.c": "340831c01ab47b49401535d0e53ad1817ca88b61c9fd9ac4ae303d1bc9ae7e73",
+    "stateless_head_cleanup_test.c": "4ac7f0173e81d7355e785abc80818b800873b9124ad2395cca1d575555ad368f",
+    "callback_failure_cleanup_test.c": "93da2cfae80ddecd43deb62d1f242fad710ae5fcc0b9ea19aba41ed491b57cff"
+  },
+  "checks": [
+    {
+      "mode": "o2",
+      "label": "build",
+      "argv": [
+        "make",
+        "-f",
+        "/tmp/ap-performance-mem1-gates.mk",
+        "-j1",
+        "OVERLAY=/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003",
+        "BUILD=/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/build",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/build/frame_retirement_test",
+        "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/build/stateless_head_cleanup_test",
+        "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/build/callback_failure_cleanup_test"
+      ],
+      "exit": 0,
+      "log": "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/mem1-v3-controls/o2-build.log",
+      "log_sha256": "3057e4dd0207e1487c9e0ccae849123f70cfc3a5f49ba23706f85aa753404cda"
+    },
+    {
+      "mode": "o2",
+      "label": "frame_retirement_test",
+      "argv": [
+        "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/build/frame_retirement_test"
+      ],
+      "exit": 0,
+      "log": "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/mem1-v3-controls/o2-frame_retirement_test.log",
+      "log_sha256": "6fd2f0515b9b1690e79ca5e43f038066f813d0ab9e2e0aaa4fe103912a4e0623"
+    },
+    {
+      "mode": "o2",
+      "label": "stateless_head_cleanup_test",
+      "argv": [
+        "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/build/stateless_head_cleanup_test"
+      ],
+      "exit": 0,
+      "log": "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/mem1-v3-controls/o2-stateless_head_cleanup_test.log",
+      "log_sha256": "1b6870cb7c5a109e761795a021289308304d20ac0a05d437bf159951df9c6e81"
+    },
+    {
+      "mode": "o2",
+      "label": "callback_failure_cleanup_test",
+      "argv": [
+        "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/build/callback_failure_cleanup_test"
+      ],
+      "exit": 0,
+      "log": "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/mem1-v3-controls/o2-callback_failure_cleanup_test.log",
+      "log_sha256": "61ec4af330c385ae0f897bc52eb6b4f63fad77a93da5af858b2b8175fd8cbaef"
+    },
+    {
+      "mode": "asan",
+      "label": "build",
+      "argv": [
+        "make",
+        "-f",
+        "/tmp/ap-performance-mem1-gates.mk",
+        "-j1",
+        "OVERLAY=/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003",
+        "BUILD=/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/asan",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/asan/frame_retirement_test",
+        "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/asan/stateless_head_cleanup_test",
+        "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/asan/callback_failure_cleanup_test"
+      ],
+      "exit": 0,
+      "log": "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/mem1-v3-controls/asan-build.log",
+      "log_sha256": "7197b7c4f5d0ef0f510cf03d37d911c444d1cfb901dfaa7e3ca41ff11a0ffc54"
+    },
+    {
+      "mode": "asan",
+      "label": "frame_retirement_test",
+      "argv": [
+        "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/asan/frame_retirement_test"
+      ],
+      "exit": 0,
+      "log": "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/mem1-v3-controls/asan-frame_retirement_test.log",
+      "log_sha256": "6fd2f0515b9b1690e79ca5e43f038066f813d0ab9e2e0aaa4fe103912a4e0623"
+    },
+    {
+      "mode": "asan",
+      "label": "stateless_head_cleanup_test",
+      "argv": [
+        "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/asan/stateless_head_cleanup_test"
+      ],
+      "exit": 0,
+      "log": "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/mem1-v3-controls/asan-stateless_head_cleanup_test.log",
+      "log_sha256": "1b6870cb7c5a109e761795a021289308304d20ac0a05d437bf159951df9c6e81"
+    },
+    {
+      "mode": "asan",
+      "label": "callback_failure_cleanup_test",
+      "argv": [
+        "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/asan/callback_failure_cleanup_test"
+      ],
+      "exit": 0,
+      "log": "/tmp/ap-performance-mem1-head-frames-v3-73fa86c9-20261003/mem1-v3-controls/asan-callback_failure_cleanup_test.log",
+      "log_sha256": "61ec4af330c385ae0f897bc52eb6b4f63fad77a93da5af858b2b8175fd8cbaef"
+    }
+  ],
+  "passed": true,
+  "all128_sources_after": true
+}
