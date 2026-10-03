@@ -1,0 +1,8 @@
+applied_file	added	deleted
+src/synthesis.c	16	2
+src/synthesis_source.h	3	2
+src/source_io.c	12	8
+src/source_io.h	5	2
+tests/source_io.c	59	7
+tests/seed.c	1	1
+artifact_tests/semantic_test.c	9	7

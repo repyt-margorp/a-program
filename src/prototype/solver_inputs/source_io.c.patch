@@ -5,7 +5,7 @@
  #include <stdlib.h>
  
 -static const char magic[8] = "APGSRC\104";
-+static const char magic[8] = "APGSRC\105";
++static const char magic[8] = "APGSRC\106";
  enum environment_kind { ROOT, NAME, MODULE, NAMESPACE, IMPORTS, DEFINITIONS, BINDING, CONTEXT_BINDING, HANDLER_SCOPE, HANDLER_BINDING, GRAPH_BINDING };
  
  struct environment {
@@ -218,7 +218,7 @@
  		if (!input || c->match_count == SIZE_MAX || SIZE_MAX - c->match_context_count < 2 ||
  			input->induction.count > (SIZE_MAX - c->match_context_count - 2) / 2) return -1;
  		struct source_match *match = pg_alloc(&c->rules->storage, sizeof(*match));
-@@ -639,10 +683,207 @@
+@@ -639,10 +683,208 @@
  	}
  }
  
@@ -339,7 +339,8 @@
 +			struct pg_definition_frontier frontier;
 +			if (pg_synthesis_definition_frontier(synthesis, input.registration, &frontier)) goto done;
 +			if (pg_wire_write_u64(file, frontier.indexed) || pg_wire_write_u64(file, frontier.activated)
-+				|| pg_wire_write_u64(file, frontier.complete)) goto done;
++				|| pg_wire_write_u64(file, frontier.complete)
++				|| pg_wire_write_u64(file, semantic_producers ? frontier.position : 0)) goto done;
 +		}
 +	}
 +	for (size_t i = 0; i < count; ++i) {
@@ -427,7 +428,7 @@
  	if (input) {
  		if (pg_derivation_input_collect(&c->terms, &c->contexts, input)) return -1;
  	} else if (pg_effect_inference_collect(work, &c->terms)) return -1;
-@@ -650,7 +891,7 @@
+@@ -650,7 +892,7 @@
  }
  
  int pg_sources_write_with(FILE *file, const struct pg_synthesis *synthesis,
@@ -436,7 +437,7 @@
  	int (*continuation)(FILE *, const struct pg_graph_codec *, void *, void *), void *owner)
  {
  	if (!file || !synthesis || (count && !roots)) return -1;
-@@ -659,7 +900,9 @@
+@@ -659,7 +901,9 @@
  	struct pg_dag bindings = {0}, declarations = {0};
  	struct pg_effect_inference effects = {0};
  	struct pg_declaration_io codec = {0};
@@ -446,7 +447,7 @@
  		.syntax = &syntax, .rules = &rules, .origins = &origins, .producers = &producers,
  		.allocations = &allocations, .bindings = &bindings,
  		.declarations = &declarations, .codec = &codec};
-@@ -667,7 +910,8 @@
+@@ -667,7 +911,8 @@
  	int status = -1;
  	/* Callbacks only inspect synthesis; no solver entry is invoked. */
  	if (pg_dag_init(&scopes, child, &synthesis) || pg_dag_init(&syntax, pg_syntax_child, NULL)
@@ -456,7 +457,7 @@
  		|| pg_dag_init(&rules, NULL, NULL) || pg_dag_init(&origins, NULL, NULL) || pg_dag_init(&allocations, NULL, NULL)
  		|| pg_dag_init(&bindings, NULL, NULL)
  		|| pg_dag_init(&declarations, NULL, NULL)
-@@ -678,174 +922,27 @@
+@@ -678,174 +923,27 @@
  		|| pg_dag_init(&collection.contexts, pg_context_dependency, NULL)
  		|| pg_effect_inference_init(&effects, &rules.storage)
  		|| pg_declaration_io_init(&codec, synthesis->typing)) goto done;
@@ -643,7 +644,7 @@
  done:
  	pg_dag_destroy(&collection.contexts);
  	pg_dag_destroy(&collection.references);
-@@ -855,17 +952,18 @@
+@@ -855,17 +953,18 @@
  	pg_effect_inference_destroy(&effects); pg_dag_destroy(&rules); pg_dag_destroy(&origins);
  	pg_dag_destroy(&bindings); pg_dag_destroy(&declarations);
  	pg_dag_destroy(&syntax); pg_dag_destroy(&scopes); pg_dag_destroy(&producers); pg_dag_destroy(&allocations);
@@ -664,7 +665,37 @@
  {
  	return pg_sources_write_with(file, synthesis, count, roots, 0, NULL, NULL);
  }
-@@ -981,7 +1079,7 @@
+@@ -875,7 +974,7 @@
+ 	struct pg_token name;
+ 	uint64_t operation, slot;
+ 	size_t allocation;
+-	uint64_t indexed, activated, complete;
++	uint64_t indexed, activated, complete, position;
+ };
+ 
+ struct restore_node { size_t index; int scope; };
+@@ -964,13 +1063,15 @@
+ 		if (!name || fread(name, 1, (size_t)w[6], file) != w[6]) goto fail;
+ 		remaining -= (size_t)w[6];
+ 		records[i] = (struct record){w[0], w[1], w[2], w[3], w[4], w[7],
+-			{.kind = w[5], .text = name, .length = w[6], .text_length = w[6]}, w[8], w[9], binding_reference_count, 0, 0, 0};
++			{.kind = w[5], .text = name, .length = w[6], .text_length = w[6]}, w[8], w[9], binding_reference_count, 0, 0, 0, 0};
+ 		if (w[0] == DEFINITIONS) {
+ 			struct record *r = &records[i];
+-			if (remaining < 3 || pg_wire_read_u64(file, &r->indexed)
+-				|| pg_wire_read_u64(file, &r->activated) || pg_wire_read_u64(file, &r->complete)) goto fail;
+-			if (r->indexed > limit || r->activated > r->indexed || r->complete > 1) goto fail;
+-			remaining -= 3;
++			if (remaining < 4 || pg_wire_read_u64(file, &r->indexed)
++				|| pg_wire_read_u64(file, &r->activated) || pg_wire_read_u64(file, &r->complete)
++				|| pg_wire_read_u64(file, &r->position)) goto fail;
++			if (r->indexed > limit || r->activated > r->indexed || r->complete > 1
++				|| r->position > r->activated || (r->position && !r->complete)) goto fail;
++			remaining -= 4;
+ 		}
+ 		size_t extra = w[0] == HANDLER_BINDING ? 3 : w[0] == BINDING;
+ 		if (extra > SIZE_MAX - binding_reference_count) goto fail;
+@@ -981,7 +1082,7 @@
  	for (size_t i = 0; i < np; ++i) {
  		for (size_t j = 0; j < 7; ++j) if (pg_wire_read_u64(file, &ids[7 * i + j])) goto fail;
  		int flag = fgetc(file);
@@ -673,7 +704,7 @@
  		complete[i] = (unsigned char)flag;
  	}
  	for (size_t i = 0; i < 3 * ne; ++i) if (pg_wire_read_u64(file, &entries[i])) goto fail;
-@@ -1037,7 +1135,7 @@
+@@ -1037,7 +1138,7 @@
  	const struct pg_derivation_input *const *derivations;
  	size_t semantic_count = 0;
  	const struct pg_occurrence *const *semantic = NULL;
@@ -682,7 +713,7 @@
  		&pg_declaration_graph_codec, &codec, &nd, &derivations, &input_count, &input_terms,
  		&semantic_count, &semantic, continuation, owner)) goto fail;
  	if (semantic_count != np) goto fail;
-@@ -1095,9 +1193,10 @@
+@@ -1095,9 +1196,10 @@
  		source_offset += input.scope_count + (input.constructor ? 2 : 1);
  	}
  	if (fgetc(file) != EOF || ferror(file)) goto fail;
@@ -695,7 +726,7 @@
  	dependencies = (struct restore_order){records, ids, NULL, (size_t)n, (size_t)np};
  	struct restore_node *nodes = pg_wire_array(&order.storage, n + np, sizeof(*nodes));
  	if (!nodes) goto fail;
-@@ -1120,27 +1219,29 @@
+@@ -1120,27 +1222,29 @@
  				if (syntax == 6) {
  					if (prefix) goto fail;
  					producers[i] = rule ? pg_synthesis_operation_at(&program->synthesis, reference->as.reference,
@@ -735,7 +766,7 @@
  				}
  			} else if (rule) {
  				if (rule > nd || scope || syntax || definitions) goto fail;
-@@ -1198,10 +1299,10 @@
+@@ -1198,10 +1302,10 @@
  				struct pg_source_environment field;
  				if (r->name.kind || r->name.length || pg_synthesis_environment_input(s, target, &field)) goto fail;
  				scopes[i] = r->kind == GRAPH_BINDING
@@ -750,7 +781,7 @@
  			if (!scopes[i]) goto fail;
  			continue;
  		}
-@@ -1217,7 +1318,7 @@
+@@ -1217,7 +1321,7 @@
  		if (r->kind == NAME || r->kind == MODULE) {
  			if (!r->rule || r->rule > np || !parent || target || r->syntax || r->definitions) goto fail;
  			struct pg_synthesis_job *producer = producers[r->rule - 1];
@@ -759,10 +790,13 @@
  				: pg_synthesis_module_namespace(s, parent, r->name, producer);
  			if (!scopes[i]) goto fail;
  			continue;
-@@ -1267,6 +1368,19 @@
+@@ -1265,7 +1369,21 @@
+ 		frontier.indexed = (size_t)r->indexed;
+ 		frontier.activated = (size_t)r->activated;
  		frontier.complete = (int)r->complete;
++		frontier.position = (size_t)r->position;
  		if (pg_synthesis_definition_resume(&program->synthesis, input.registration, &frontier)) goto fail;
- 	}
++	}
 +	/* A started definition already identifies its body by the lexical request
 +	 * key. Reconnect that ordinary owner without importing any checked status.
 +	 * Module traversal and all child checks still run through normal Solve. */
@@ -775,11 +809,10 @@
 +		if (!scope) goto fail;
 +		struct pg_synthesis_job *body = pg_synthesis_request(&program->synthesis, scope, syntax);
 +		if (!body || pg_synthesis_definition_resume_body(&program->synthesis, producers[i], body)) goto fail;
-+	}
+ 	}
  	for (size_t i = 0; i < no; ++i) {
  		uint64_t scope = origin_ids[3 * i], syntax = origin_ids[3 * i + 1], rule = origin_ids[3 * i + 2];
- 		if (!scope || scope > n || !syntax || syntax > nt || !rule) goto fail;
-@@ -1302,7 +1416,7 @@
+@@ -1302,7 +1420,7 @@
  	}
  	for (size_t i = 0; i < semantic_count; ++i) {
  		if (semantic[i] && pg_synthesis_import_materialized(&program->synthesis, producers[i], semantic[i])) goto fail;

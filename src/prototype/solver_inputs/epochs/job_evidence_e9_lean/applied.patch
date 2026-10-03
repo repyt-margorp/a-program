@@ -1,0 +1,375 @@
+--- a/src/synthesis.c
++++ b/src/synthesis.c
+@@ -2565,7 +2565,8 @@
+ 	const struct definition_state *state = definition_state(registration);
+ 	const struct pg_syntax *syntax = registration->inputs[1];
+ 	*view = (struct pg_definition_frontier){.count = syntax->item_count, .indexed = state->indexed,
+-		.activated = state->activated, .entries = state->entries, .complete = registration->status == PG_SYNTHESIS_DONE};
++		.activated = state->activated, .position = state->next, .entries = state->entries,
++		.complete = registration->status == PG_SYNTHESIS_DONE};
+ 	return 0;
+ }
+ 
+@@ -2577,6 +2578,7 @@
+ 	if (registration->status != PG_SYNTHESIS_PENDING) return -1;
+ 	if (current.indexed || current.activated || current.complete || view->count != current.count) return -1;
+ 	if (view->indexed > view->count || view->activated > view->indexed) return -1;
++	if (view->position > view->activated || (view->position && !view->complete)) return -1;
+ 	if (view->activated && view->indexed != view->count) return -1;
+ 	if (view->count && !view->entries) return -1;
+ 	const struct pg_source_scope *scope = registration->inputs[0];
+@@ -2665,6 +2667,7 @@
+ 	}
+ 	state->indexed = view->indexed;
+ 	state->activated = view->activated;
++	state->next = view->position;
+ 	/* This is only completed name registration. No evidence or entry result is
+ 	 * imported, and startup subscriptions are replaced by the checkpoint owner. */
+ 	if (view->complete) registration->status = PG_SYNTHESIS_DONE;
+@@ -2773,7 +2776,11 @@
+ 	if (selected) syntax = syntax->left;
+ 	if (!syntax || syntax->kind != PG_SYNTAX_DEFINITIONS || !local->right
+ 		|| pg_synthesis_work_role(local->right) != DEFINITION_SCOPE_JOB) return -1;
+-	*view = (struct pg_module_frontier){selected ? local->left != local->right : definition_state(local->right)->next, local->left};
++	size_t position = selected ? local->left != local->right : definition_state(local->right)->next;
++	struct pg_synthesis_job *previous = local->left;
++	if (!selected && position && previous == local->right)
++		previous = definition_state(local->right)->entries[position - 1];
++	*view = (struct pg_module_frontier){position, previous};
+ 	return 0;
+ }
+ 
+@@ -2825,6 +2832,13 @@
+ 	}
+ 	if (pg_synthesis_await(synthesis, job, local->left)) return;
+ 	struct definition_state *state = definition_state(local->right);
++	/* A restored ordinal describes source progress, not checked children.
++	 * Reuse the canonical prefix owners through ordinary Solve before skipping. */
++	if (!selected && state->next && local->left == local->right) {
++		for (size_t i = 0; i < state->next; ++i)
++			if (pg_synthesis_await(synthesis, job, state->entries[i])) return;
++		local->left = state->entries[state->next - 1];
++	}
+ 	if (selected) {
+ 		if (local->left == local->right) {
+ 			if (!lookup_definition(state, source_syntax(job)->right->token).pending) {
+--- a/src/synthesis_source.h
++++ b/src/synthesis_source.h
+@@ -38,7 +38,7 @@
+  * A checkpoint owner must establish provenance and restore child state and
+  * scheduling separately before allowing Solve to advance. */
+ struct pg_definition_frontier {
+-	size_t count, indexed, activated;
++	size_t count, indexed, activated, position;
+ 	struct pg_synthesis_job *const *entries;
+ 	int complete;
+ };
+@@ -47,7 +47,8 @@
+ 	struct pg_definition_frontier *);
+ /* Rebuild the name index and activation gates on a fresh registration. A
+  * completed registration needs its complete input table and outer registration,
+- * not typed context acceptance. Never advances or accepts an entry's result. */
++ * not typed context acceptance. The descriptive traversal position grants no
++ * child acceptance; module Solve checks its prefix before skipping entries. */
+ int pg_synthesis_definition_resume(struct pg_synthesis *, struct pg_synthesis_job *,
+ 	const struct pg_definition_frontier *);
+ 
+--- a/src/source_io.c
++++ b/src/source_io.c
+@@ -11,7 +11,7 @@
+ #include <string.h>
+ #include <stdlib.h>
+ 
+-static const char magic[8] = "APGSRC\105";
++static const char magic[8] = "APGSRC\106";
+ enum environment_kind { ROOT, NAME, MODULE, NAMESPACE, IMPORTS, DEFINITIONS, BINDING, CONTEXT_BINDING, HANDLER_SCOPE, HANDLER_BINDING, GRAPH_BINDING };
+ 
+ struct environment {
+@@ -800,7 +800,8 @@
+ 			struct pg_definition_frontier frontier;
+ 			if (pg_synthesis_definition_frontier(synthesis, input.registration, &frontier)) goto done;
+ 			if (pg_wire_write_u64(file, frontier.indexed) || pg_wire_write_u64(file, frontier.activated)
+-				|| pg_wire_write_u64(file, frontier.complete)) goto done;
++				|| pg_wire_write_u64(file, frontier.complete)
++				|| pg_wire_write_u64(file, semantic_producers ? frontier.position : 0)) goto done;
+ 		}
+ 	}
+ 	for (size_t i = 0; i < count; ++i) {
+@@ -973,7 +974,7 @@
+ 	struct pg_token name;
+ 	uint64_t operation, slot;
+ 	size_t allocation;
+-	uint64_t indexed, activated, complete;
++	uint64_t indexed, activated, complete, position;
+ };
+ 
+ struct restore_node { size_t index; int scope; };
+@@ -1062,13 +1063,15 @@
+ 		if (!name || fread(name, 1, (size_t)w[6], file) != w[6]) goto fail;
+ 		remaining -= (size_t)w[6];
+ 		records[i] = (struct record){w[0], w[1], w[2], w[3], w[4], w[7],
+-			{.kind = w[5], .text = name, .length = w[6], .text_length = w[6]}, w[8], w[9], binding_reference_count, 0, 0, 0};
++			{.kind = w[5], .text = name, .length = w[6], .text_length = w[6]}, w[8], w[9], binding_reference_count, 0, 0, 0, 0};
+ 		if (w[0] == DEFINITIONS) {
+ 			struct record *r = &records[i];
+-			if (remaining < 3 || pg_wire_read_u64(file, &r->indexed)
+-				|| pg_wire_read_u64(file, &r->activated) || pg_wire_read_u64(file, &r->complete)) goto fail;
+-			if (r->indexed > limit || r->activated > r->indexed || r->complete > 1) goto fail;
+-			remaining -= 3;
++			if (remaining < 4 || pg_wire_read_u64(file, &r->indexed)
++				|| pg_wire_read_u64(file, &r->activated) || pg_wire_read_u64(file, &r->complete)
++				|| pg_wire_read_u64(file, &r->position)) goto fail;
++			if (r->indexed > limit || r->activated > r->indexed || r->complete > 1
++				|| r->position > r->activated || (r->position && !r->complete)) goto fail;
++			remaining -= 4;
+ 		}
+ 		size_t extra = w[0] == HANDLER_BINDING ? 3 : w[0] == BINDING;
+ 		if (extra > SIZE_MAX - binding_reference_count) goto fail;
+@@ -1366,6 +1369,7 @@
+ 		frontier.indexed = (size_t)r->indexed;
+ 		frontier.activated = (size_t)r->activated;
+ 		frontier.complete = (int)r->complete;
++		frontier.position = (size_t)r->position;
+ 		if (pg_synthesis_definition_resume(&program->synthesis, input.registration, &frontier)) goto fail;
+ 	}
+ 	/* A started definition already identifies its body by the lexical request
+--- a/src/source_io.h
++++ b/src/source_io.h
+@@ -3,7 +3,7 @@
+ #include "program.h"
+ #include <stdio.h>
+ 
+-/* APGSRC69 preserves available typed construction at each producer.
++/* APGSRC70 preserves available typed construction at each producer.
+  * It shares relocation with source/rule inputs and nominal declarations.
+  * Reading exposes descriptive results through pg_synthesis_materialized,
+  * not accepted evidence. Local Solve still checks source and annotations;
+@@ -15,7 +15,10 @@
+  * Failed items are rechecked by Solve. Started definition bodies reconnect
+  * through their existing lexical request keys; a start bit shares the producer
+  * completion byte, without a second body graph. Neither child checking progress
+- * nor module traversal or the pending schedule is restored by this bit.
++ * nor the pending schedule is restored by this bit. The namespace record also
++ * retains its whole-module traversal ordinal. It is descriptive: ordinary Solve
++ * checks every skipped prefix owner before using it, without imported acceptance.
++ * Inputs-only profiles retain ordinal zero for normal recomputation.
+  * Older formats reject; rebuild them from source.
+  *
+  * Reconstructible source environments and source/definition/rule roots, including pending modules.
+--- a/tests/source_io.c
++++ b/tests/source_io.c
+@@ -1,4 +1,5 @@
+ #include "source_io.h"
++#include "synthesis_source.h"
+ #include "derivation.h"
+ #include "wire.h"
+ #include "computation.h"
+@@ -821,7 +822,7 @@
+ 			assert(!fseek(file, start + 7 * 8, SEEK_SET) && !pg_wire_write_u64(file, 0));
+ 			found = 1;
+ 		}
+-		assert(!fseek(file, start + 80 + (long)words[6] + (words[0] == 5 ? 24 : 0), SEEK_SET));
++		assert(!fseek(file, start + 80 + (long)words[6] + (words[0] == 5 ? 32 : 0), SEEK_SET));
+ 	}
+ 	assert(found);
+ }
+@@ -996,7 +997,7 @@
+ 		long position = ftell(file);
+ 		uint64_t record[10];
+ 		for (size_t j = 0; j < 10; ++j) assert(!pg_wire_read_u64(file, &record[j]));
+-		assert(!fseek(file, (long)record[6] + (record[0] == 5 ? 24 : 0), SEEK_CUR));
++		assert(!fseek(file, (long)record[6] + (record[0] == 5 ? 32 : 0), SEEK_CUR));
+ 		if (!record[8]) continue;
+ 		const size_t fields[] = {9, 3, 8, 7};
+ 		const uint64_t invalid[] = {2, record[4], 0, 1};
+@@ -1423,7 +1424,7 @@
+ 	for (size_t i = 0; i < header[1]; ++i) {
+ 		uint64_t scope[10];
+ 		for (size_t j = 0; j < 10; ++j) assert(!pg_wire_read_u64(file, &scope[j]));
+-		assert(!fseek(file, (long)scope[6] + (scope[0] == 5 ? 24 : 0), SEEK_CUR));
++		assert(!fseek(file, (long)scope[6] + (scope[0] == 5 ? 32 : 0), SEEK_CUR));
+ 	}
+ 	assert(!fseek(file, (long)(header[2] + 7 * header[4] + 3 * header[5] + 3 * header[3]) * 8 + (long)header[4], SEEK_CUR));
+ 	struct pg_graph graph = {0};
+@@ -1652,7 +1653,7 @@
+ 	for (size_t i = 0; i < header[1]; ++i) {
+ 		uint64_t scope[10];
+ 		for (size_t j = 0; j < 10; ++j) assert(!pg_wire_read_u64(file, &scope[j]));
+-		assert(!fseek(file, (long)scope[6] + (scope[0] == 5 ? 24 : 0), SEEK_CUR));
++		assert(!fseek(file, (long)scope[6] + (scope[0] == 5 ? 32 : 0), SEEK_CUR));
+ 	}
+ 	assert(!fseek(file, (long)(8 * header[2]), SEEK_CUR));
+ 	for (size_t i = 0; i < header[4]; ++i) {
+@@ -3435,7 +3436,7 @@
+ 	for (size_t i = 0; i < header[1]; ++i) {
+ 		uint64_t scope[10];
+ 		for (size_t j = 0; j < 10; ++j) assert(!pg_wire_read_u64(file, &scope[j]));
+-		assert(!fseek(file, (long)scope[6] + (scope[0] == 5 ? 24 : 0), SEEK_CUR));
++		assert(!fseek(file, (long)scope[6] + (scope[0] == 5 ? 32 : 0), SEEK_CUR));
+ 	}
+ 	assert(!fseek(file, (long)header[2] * 8, SEEK_CUR));
+ 	for (size_t i = 0; i < header[4]; ++i) {
+@@ -3476,7 +3477,7 @@
+ 		uint64_t scope[10];
+ 		for (size_t j = 0; j < 10; ++j) assert(!pg_wire_read_u64(file, &scope[j]));
+ 		if (scope[0] == 1 && link < 0) { link = position + 7 * 8; original = scope[7]; }
+-		assert(!fseek(file, (long)scope[6] + (scope[0] == 5 ? 24 : 0), SEEK_CUR));
++		assert(!fseek(file, (long)scope[6] + (scope[0] == 5 ? 32 : 0), SEEK_CUR));
+ 	}
+ 	assert(link >= 0 && header[2] == 8);
+ 	uint64_t consumer;
+@@ -3853,7 +3854,7 @@
+ 	for (size_t i = 0; i < header[1]; ++i) {
+ 		uint64_t scope[10];
+ 		for (size_t j = 0; j < 10; ++j) assert(!pg_wire_read_u64(file, &scope[j]));
+-		assert(!fseek(file, (long)scope[6] + (scope[0] == 5 ? 24 : 0), SEEK_CUR));
++		assert(!fseek(file, (long)scope[6] + (scope[0] == 5 ? 32 : 0), SEEK_CUR));
+ 	}
+ 	assert(!fseek(file, (long)(header[2] + 7 * header[4]) * 8 + (long)header[4], SEEK_CUR));
+ 	uint64_t entries[6];
+@@ -3931,6 +3932,50 @@
+ 	puts("prepared module: module-only roots retain shared obligations across unsolved resave");
+ }
+ 
++static void module_cursor_validation(void)
++{
++	const char source[] = "bad:=missing; good:=#1;";
++	struct pg_program *p = pg_program_create(source, sizeof(source) - 1, PG_DEFINITION_EXPLICIT_THUNK);
++	assert(p && p->root);
++	struct pg_synthesis_job *registration = pg_synthesis_prepare_module(&p->synthesis, p->root);
++	assert(registration);
++	while (registration->status == PG_SYNTHESIS_PENDING) {
++		assert(p->synthesis.steps < 100);
++		pg_synthesis_advance(&p->synthesis, 1);
++	}
++	assert(registration->status == PG_SYNTHESIS_DONE);
++	FILE *file = tmpfile();
++	assert(file && !pg_sources_write(file, &p->synthesis, 1,
++		(struct pg_synthesis_input[]){{.pending = pg_synthesis_pending(p->root)}}));
++	pg_program_destroy(p);
++	assert(!fseek(file, 8, SEEK_SET));
++	uint64_t header[6];
++	for (size_t i = 0; i < 6; ++i) assert(!pg_wire_read_u64(file, &header[i]));
++	int forged = 0;
++	for (size_t i = 0; i < header[1]; ++i) {
++		uint64_t scope[10];
++		for (size_t j = 0; j < 10; ++j) assert(!pg_wire_read_u64(file, &scope[j]));
++		assert(!fseek(file, (long)scope[6], SEEK_CUR));
++		if (scope[0] != 5) continue;
++		uint64_t names[3];
++		for (size_t j = 0; j < 3; ++j) assert(!pg_wire_read_u64(file, &names[j]));
++		assert(names[0] == 2 && names[1] == 2 && names[2] == 1);
++		assert(!pg_wire_write_u64(file, 2));
++		++forged;
++	}
++	assert(forged == 1 && !fflush(file));
++	rewind(file);
++	size_t count;
++	struct pg_synthesis_job *const *roots;
++	p = pg_sources_read(file, 10000, &count, &roots);
++	assert(p && count == 1 && !p->synthesis.steps && p->typing.proofs.count == 1);
++	assert(!pg_synthesis_result(p->root) && !fclose(file));
++	pg_synthesis_advance(&p->synthesis, 1000);
++	assert(pg_synthesis_status(p->root) == PG_SYNTHESIS_REJECTED);
++	pg_program_destroy(p);
++	puts("module cursor: an in-range forged completed prefix cannot hide a failed sibling");
++}
++
+ static void module_save_boundaries(void)
+ {
+ 	const char *sources[] = {
+@@ -3944,6 +3989,8 @@
+ 		assert(source);
+ 		size_t snapshots = 0;
+ 		for (;;) {
++			struct pg_module_frontier before = {0}, loaded = {0};
++			int has_cursor = !pg_synthesis_module_frontier(&source->synthesis, source->root, &before);
+ 			FILE *file = tmpfile();
+ 			assert(file && !pg_sources_write(file, &source->synthesis, 1, (struct pg_synthesis_input[]){{.pending = pg_synthesis_pending(source->root)}}));
+ 			rewind(file);
+@@ -3951,6 +3998,10 @@
+ 			struct pg_synthesis_job *const *roots;
+ 			struct pg_program *restored = pg_sources_read(file, 10000, &count, &roots);
+ 			assert(restored && count == 1 && !restored->synthesis.steps);
++			if (has_cursor) {
++				assert(!pg_synthesis_module_frontier(&restored->synthesis, restored->root, &loaded));
++				assert(loaded.position == before.position);
++			}
+ 			assert(!pg_synthesis_result(restored->root) && !fclose(file));
+ 			while (restored->synthesis.ready) {
+ 				assert(restored->synthesis.steps < 10000);
+@@ -4204,6 +4255,7 @@
+ 	if (argc == 2 && !strcmp(argv[1], "prepared-module")) {
+ 		prepared_module_checkpoint();
+ 		module_save_boundaries();
++		module_cursor_validation();
+ 		return 0;
+ 	}
+ 	assert(argc == 3);
+--- a/tests/seed.c
++++ b/tests/seed.c
+@@ -95,7 +95,7 @@
+ 		rewind(file);
+ 		assert(fread(bytes, 1, length, file) == length && fgetc(file) == EOF);
+ 		assert(!ferror(file) && fclose(file) == 0);
+-		assert(length > 56 && !memcmp(bytes, "APGSRC\105", 8));
++		assert(length > 56 && !memcmp(bytes, "APGSRC\106", 8));
+ 		const unsigned char version = bytes[6];
+ 		assert(bytes[8] == policy);
+ 		compare(read_bytes(bytes, length, 4096), source, policy);
+--- a/artifact_tests/semantic_test.c
++++ b/artifact_tests/semantic_test.c
+@@ -252,13 +252,14 @@
+ 		assert(!fseek(file, (long)w[6], SEEK_CUR));
+ 		if (w[0] != 5) continue;
+ 		long offset = ftell(file);
+-		uint64_t frontier[3];
+-		for (size_t j = 0; j < 3; ++j) assert(!pg_wire_read_u64(file, &frontier[j]));
++		uint64_t frontier[4];
++		for (size_t j = 0; j < 4; ++j) assert(!pg_wire_read_u64(file, &frontier[j]));
+ 		assert(frontier[0] == 2 && frontier[1] == 2 && frontier[2] == 1);
+-		const uint64_t bad[][3] = {{3, 2, 1}, {1, 2, 1}, {2, 1, 1}, {2, 2, 2}, {UINT64_MAX, 2, 1}};
++		const uint64_t bad[][4] = {{3, 2, 1, 0}, {1, 2, 1, 0}, {2, 1, 1, 0},
++			{2, 2, 2, 0}, {UINT64_MAX, 2, 1, 0}, {2, 2, 1, 3}, {2, 2, 0, 1}};
+ 		for (size_t trial = 0; trial < sizeof(bad) / sizeof(*bad); ++trial) {
+ 			assert(!fseek(file, offset, SEEK_SET));
+-			for (size_t j = 0; j < 3; ++j) assert(!pg_wire_write_u64(file, bad[trial][j]));
++			for (size_t j = 0; j < 4; ++j) assert(!pg_wire_write_u64(file, bad[trial][j]));
+ 			rewind(file);
+ 			size_t count = 91;
+ 			struct pg_synthesis_job *const *roots = NULL;
+@@ -266,7 +267,7 @@
+ 			assert(count == 91 && !roots);
+ 		}
+ 		assert(!fseek(file, offset, SEEK_SET));
+-		for (size_t j = 0; j < 3; ++j) assert(!pg_wire_write_u64(file, frontier[j]));
++		for (size_t j = 0; j < 4; ++j) assert(!pg_wire_write_u64(file, frontier[j]));
+ 		++checked;
+ 	}
+ 	assert(checked == 1);
+@@ -301,6 +302,7 @@
+ 			registration = pg_synthesis_prepare_module(&copy->synthesis, roots[0]);
+ 			assert(!pg_synthesis_definition_frontier(&copy->synthesis, registration, &after));
+ 			assert(before.count == after.count);
++			assert(before.position == after.position);
+ 			for (size_t i = 0; i < before.count; ++i) {
+ 				struct pg_synthesis_job *body = NULL;
+ 				if (pg_synthesis_definition_body(&original->synthesis, before.entries[i], &body) || !body) continue;
+@@ -315,7 +317,7 @@
+ 				assert(copy->synthesis.jobs.count == jobs && !copy->synthesis.steps);
+ 				++attached;
+ 			}
+-			if (after.complete) {
++			if (after.complete && !after.position) {
+ 				struct pg_module_frontier cursor = {.position = 1, .previous = after.entries[0]};
+ 				assert(!pg_synthesis_module_resume(&copy->synthesis, roots[0], &cursor));
+ 			}
+@@ -1066,7 +1068,7 @@
+ 	for (size_t i = 0; i < header[1]; ++i) {
+ 		uint64_t words[10];
+ 		for (size_t j = 0; j < 10; ++j) assert(!pg_wire_read_u64(file, &words[j]));
+-		assert(!fseek(file, (long)words[6] + (words[0] == 5 ? 24 : 0), SEEK_CUR));
++		assert(!fseek(file, (long)words[6] + (words[0] == 5 ? 32 : 0), SEEK_CUR));
+ 	}
+ 	assert(!fseek(file, (long)(8 * header[2] + 56), SEEK_CUR));
+ 	long flag = ftell(file);
