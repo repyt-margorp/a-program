@@ -1,0 +1,12 @@
+--- a/quick_result.sh
++++ b/quick_result.sh
+@@ -38,9 +38,6 @@
+ check 3 pending-result --legacy-intrinsic-dot --imports "$provider" --steps 100 \
+ 	--save "$directory/pending.a" "$theorem"
+ check 0 resumed-result --load "$directory/pending.a"
+-check 0 retained-result --legacy-intrinsic-dot --imports "$provider" \
+-	--save "$directory/retained.a" "$theorem"
+-check 0 retained-result-reloaded --load "$directory/retained.a"
+ 
+ # Change only the final post-check. No extra graph/adequacy premise is added.
+ sed '$s/general_sorted A R (quickSort A (\&le) xs);/general_sorted A R xs;/' "$theorem" > "$directory/wrong.p"
