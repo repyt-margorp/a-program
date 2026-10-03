@@ -1,0 +1,30 @@
+--- a/src/evidence.c
++++ b/src/evidence.c
+@@ -5853,6 +5853,16 @@
+ {
+ 	return evidence->retained_count + (evidence->rule == PG_CONTEXT_SUBSTITUTION && evidence->certificate);
+ }
++/* Parent-only storage view; leave its allocation and selected edges unchanged. */
++size_t pg_evidence_retained_premise_bytes(const struct pg_evidence *evidence)
++{
++	if (!evidence) return 0;
++	size_t arity = borrowed_premise_count(evidence->rule, evidence->conclusion.subject, evidence->certificate);
++	size_t independent = arity ? independent_premises_before(evidence->rule, evidence->conclusion.subject, arity)
++		: evidence->retained_count;
++	return independent * sizeof(const struct pg_evidence *)
++		+ (evidence->retained_count - independent) * sizeof(struct receipt_selection);
++}
+ const struct pg_evidence *pg_evidence_premise(const struct pg_evidence *evidence, size_t index)
+ {
+ 	size_t count = pg_evidence_premise_count(evidence);
+--- a/src/evidence.h
++++ b/src/evidence.h
+@@ -757,6 +757,8 @@
+ /* Number of physically retained receipt edges; not logical rule arity.
+  * Diagnostic inspection only, without allocation, checking or Solve. */
+ size_t pg_evidence_retained_premise_count(const struct pg_evidence *evidence);
++/* Stored trailing premise/selection bytes, excluding receipt/certificate owners. */
++size_t pg_evidence_retained_premise_bytes(const struct pg_evidence *evidence);
+ /* Borrowed exact receipt selection, valid until graph destruction. */
+ const struct pg_evidence *pg_evidence_premise(const struct pg_evidence *evidence, size_t index);
+ 
