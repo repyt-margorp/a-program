@@ -26,6 +26,23 @@ for mode in checked trusted; do
 	"$backend" "${options[@]}" "$directory/quick.a" main "$directory/quick.c" 2> "$directory/diagnostic"
 	cmp "$directory/first.c" "$directory/quick.c"
 done
+"$compiler" --legacy-intrinsic-dot --steps 5000000 --imports "$repo/tests/fixtures/sorted-proof-provider.p" \
+	--save "$directory/native.a" "$here/fixtures/native_quicksort.p"
+cp "$here/fixtures/native_quicksort.aplink" "$directory/native.aplink"
+sha256sum "$directory/native.a" > "$directory/native-before"
+for mode in checked trusted; do
+	options=(--steps 5000000 --image-limit none)
+	if [[ $mode == trusted ]]; then options=(--trust-image --steps 0 --image-limit none); fi
+	status=0
+	"$backend" "${options[@]}" --link "$directory/native.aplink" "$directory/native-product" \
+		> "$directory/native-out" 2> "$directory/native-diagnostic" || status=$?
+	test "$status" == 4
+	grep -q 'representations require unique closed declarations' "$directory/native-diagnostic"
+	test ! -e "$directory/native-product"
+	test ! -s "$directory/native-out"
+done
+sha256sum "$directory/native.a" > "$directory/native-after"
+cmp "$directory/native-before" "$directory/native-after"
 sha256sum "$directory/quick.a" > "$directory/after"
 cmp "$directory/before" "$directory/after"
-printf 'C differential: Acc QuickSort evaluates to FFTT in checked and trusted standalone executables\n'
+printf 'C differential: structural Acc QuickSort evaluates to FFTT; open native QuickSort explicitly refuses its unsupported representation\n'

@@ -26,6 +26,7 @@ for product in source object archive executable; do
 	test ! -e "$temporary/$product/runtime.c"
 	grep -q 'checked-nat32' "$temporary/$product/link.json"
 	grep -q 'finite-list-copy-out' "$temporary/$product/link.json"
+	grep -q 'array-to-list-copy' "$temporary/$product/link.json"
 	! grep -E 'ap_(apply|value|context)|pg_eval' "$temporary/$product/component.c"
 	case "$product" in
 	source) input="$temporary/source/component.c" ;;
@@ -35,6 +36,8 @@ for product in source object archive executable; do
 	esac
 	"$cc" "${flags[@]}" -I"$temporary/$product" "$here/numeric_client.c" "$input" -Wl,--wrap=malloc -o "$temporary/client"
 	expect_status 0 "$temporary/client"
+	"$cc" "${flags[@]}" -I"$temporary/$product" "$here/array_client.c" "$input" -Wl,--wrap=malloc -o "$temporary/array-client"
+	expect_status 0 "$temporary/array-client"
 done
 sed '/^nat32 Reversed /d; /^data /d; /^export /d; /^enum32 /d' "$here/numeric.aplink" > "$temporary/natural.aplink"
 printf 'export increment increment\n' >> "$temporary/natural.aplink"

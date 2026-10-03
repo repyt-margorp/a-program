@@ -8,6 +8,11 @@
 
 ## Subjective (User)
 
+2026-10-03, English paraphrase of the direct user clarification: prioritize
+readily usable downstream C modules through `.a` and LinkerScript; avoid excessive
+deep or scope-expanding investigation. The backend connects A Program to external
+clients and eventual assembler lowering without authority over source semantics.
+
 2026-09-29, paraphrase: continue artifact implementation through C transpilation;
 push verified increments. Preserve the single-fuel policy and separation of
 computation from typing. This supersedes the previous wait-before-C instruction.
@@ -512,13 +517,45 @@ capacity or length overflow; statuses 1/2 report null outputs or malformed chain
 All failures preserve the buffer and `written`. An empty List accepts a null
 buffer with zero capacity. Input nodes and unused buffer elements remain intact.
 The helper allocates no storage and does not depend on the recursive depth limit.
-This is copy-out; native slice-input sorting and Acc lowering remain future work.
+The same shape also emits
+`ap_from_ALIAS(arena, array, count, out)`. This copies a finite array slice in
+order into arena-owned nodes, including a terminal node; it allocates `count + 1`
+nodes. The input array may be released or changed after success. An empty slice
+accepts a null array. The caller supplies readable input elements and writable
+output separate from the input and arena metadata. Status 1 denotes a null
+required pointer, 3 allocation/capacity failure, 4 an active arena invocation,
+and 6 a count of SIZE_MAX (the terminal would overflow the node count). Failures
+preserve output and prior arena allocations; only new allocations roll back.
+Both conversion helpers are iterative and independent of recursive execution
+depth limits. The List representation inside generated functions remains a
+node chain; this is explicit copying at the C boundary, not slice-based lowering.
+
+```c
+struct ap_c_arena arena = {0};
+uint32_t values[] = {3, 1, 4, 1};
+const struct ap_data_Numbers *input, *selected;
+uint32_t buffer[4];
+size_t written;
+int status = ap_from_Numbers(&arena, values, 4, &input);
+if (!status) status = ap_export_lower(&arena, input, 2, &selected);
+if (!status) status = ap_copy_Numbers(selected, buffer, 4, &written);
+/* Success yields {1, 1}. Release arena only after all node results are retired. */
+ap_arena_Nat_destroy(&arena);
+```
+
+The names above are selections from the numeric fixture's LinkerScript. The same
+client compiles against source, object or archive products without a source
+compiler or structural runtime. Native slice-input sorting and Acc lowering
+remain unsupported.
 
 `check-c-numeric-list` checks 1,089 comparator pairs and 27,305 stable partition
 cases with ordinary C inputs, source/C output agreement, all native products,
 checked/trusted determinism, unchanged `.a`, magnitude/depth/allocation failures,
 malformed/cyclic input, finite capacity and reversed Int64 List fields. The raw
-Oracle also checks 17 Nat observations and Int32 List copy-out while forbidding
+array client adds 511 finite slices, 5,110 native partition calls, copied-input
+independence, empty slices, 300-node conversion and every allocation failure
+position, while preserving earlier results. The raw
+Oracle also checks 17 Nat observations and Int32 List conversions while forbidding
 evaluation/substitution during emission and checking source graph/store counts.
 Invalid Nat shapes, unselected nested fields, block-local thunks, dynamic callbacks
 and effects retain explicit refusal gates. Native indexed/dependent data, trees,
@@ -526,7 +563,12 @@ unsupported recursive closure captures, callbacks/effects and higher Identity
 remain unsupported. General cross-module nominal exchange remains open.
 
 Receipts use copied emitter-selected contract flags after lowering. They describe
-Nat overflow and finite copy-out without rebuilding target representations.
+Nat overflow and finite copy-in/copy-out without rebuilding target representations.
+`check-c-sorting-boundary` also admits an open Nat-list QuickSort and requires an
+explicit native representation refusal with no published product in checked and
+trusted modes. Generic applied families, indexed SizedList and callable Acc fields
+are outside the bounded native contract. Structural QuickSort output remains a
+separate gate and is not native completion. No source schema change is requested.
 
 `check-c-scalar` tests source/object/archive/executable products, standalone and
 two-module C clients, capture/sequencing, alias sharing, null outputs, ABI/profile

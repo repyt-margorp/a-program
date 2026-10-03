@@ -94,7 +94,7 @@ static int receipt(const char *path, const struct pg_c_link_plan *plan, const ch
 		if (contract->natural) fputs(",\"checked-nat32\",\"conditional-match\"", file);
 		if (plan->data_count) fputs(",\"fieldful-tagged-values\",\"conditional-match\"", file);
 		if (recursive) fputs(",\"single-tail-nodes\",\"direct-recursive-match\",\"known-ih-thunks\",\"arena-construction\"", file);
-		if (contract->copy_out) fputs(",\"finite-list-copy-out\"", file);
+		if (contract->copy_out) fputs(",\"finite-list-copy-out\",\"array-to-list-copy\"", file);
 		fputc(']', file);
 	}
 	fputs(",\n  \"cc\": ", file);
@@ -139,6 +139,8 @@ static int receipt(const char *path, const struct pg_c_link_plan *plan, const ch
 	fputs(",\n  \"natural_depth_limit\": ", file); fputs(contract->natural ? "4" : "null", file);
 	fputs(",\n  \"list_copy_out\": ", file);
 	fputs(contract->copy_out ? "{\"capacity_failure\":6,\"failure_buffer\":\"unchanged\",\"failure_length\":\"unchanged\",\"overlap\":\"forbidden\"}" : "null", file);
+	fputs(",\n  \"list_copy_in\": ", file);
+	fputs(contract->copy_out ? "{\"ownership\":\"arena\",\"allocation_failure\":3,\"length_overflow\":6,\"failure_output\":\"unchanged\",\"failure_allocations\":\"rollback-new\",\"overlap\":\"forbidden\"}" : "null", file);
 	fputs(",\n  \"entry\": ", file);
 	json_string(file, plan->entry == SIZE_MAX ? NULL : plan->exports[plan->entry].alias);
 	fputs("\n}\n", file);

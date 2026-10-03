@@ -277,6 +277,7 @@ static void recursive_data(struct pg_typing *t, const char *path)
 			fprintf(source, "\tnodes[%zu] = (struct ap_data_Chain){.tag = 1, .fields.c1 = {INT32_C(%" PRId32 "), &nodes[%zu]}};\n", i, numbers[i - 1], i - 1);
 		}
 		int64_t expected = evaluate(g, app(g, sum, input));
+		int64_t sum_expected = expected;
 		fprintf(source, "\tassert(!ap_export_sum(&arena, &nodes[%zu], &scalar) && scalar == INT32_C(%" PRId64 "));\n", i, expected);
 		const struct pg_term *joined = op(g, &pg_total_result_operation, app(g, app(g, append, input), input));
 		expected = evaluate(g, app(g, sum, joined));
@@ -286,6 +287,8 @@ static void recursive_data(struct pg_typing *t, const char *path)
 		fprintf(source, "\tassert(!ap_copy_Chain(&nodes[%zu], buffer, 6, &written) && written == %zu);\n", i, i);
 		for (size_t j = 0; j < i; ++j)
 			fprintf(source, "\tassert(buffer[%zu] == INT32_C(%" PRId32 "));\n", j, numbers[i - j - 1]);
+		fprintf(source, "\tassert(!ap_from_Chain(&arena, buffer, %zu, &out));\n"
+			"\tassert(!ap_export_sum(&arena, out, &scalar) && scalar == INT32_C(%" PRId64 "));\n", i, sum_expected);
 		fputs("\t}\n", source);
 	}
 	fputs("\tap_arena_Chain_destroy(&arena);\n}\n", source);
