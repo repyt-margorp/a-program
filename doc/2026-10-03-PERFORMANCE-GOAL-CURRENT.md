@@ -1,7 +1,7 @@
 # Performance Goal: Current Speed and Memory Work
 
 Date: 2026-10-03
-Status: active; V3 bounded measured gain reviewed; MEM2 beta environment elision rejected; IADT empty-tail spine prototype published, matched costs pending.
+Status: active; V3 measured gain reviewed; MEM2 IADT prototype has bounded tree RSS savings with mixed timing; further safe deletions continue.
 This is the active successor to the frozen
 [Performance Goal at0539051](2026-10-03-PERFORMANCE-GOAL.md). Its published bytes
 and historical handoffs remain immutable. The single current issue-status table
@@ -78,6 +78,39 @@ Original observer, sanitizer, strict partition and setup failures remain
 separate. No E11/E12 runtime is included.
 
 ### Assessment
+
+2026-10-03 18:22 UTC, Root matched MEM2 cost review supersedes pending costs
+below. The worker's18:00-18:10 grant expired before delivery/launch: launcher1
+refused, zero accepted/censored samples or collector children (notice5a83fe02,
+record6dcc5401). Root preserved that failure and ran the same36 pinned jobs on
+the worker's behalf in a separate Root-only18:15-18:25 slot; no second worker
+launcher was authorized. Actual launch18:15:28 UTC/cap569; collector0 terminal
+18:16:12 UTC. All36 raw argv/logs/GNU metrics and exact expected steps verified;
+all279 pins after exact, zero incomplete/timeout/censored samples or live
+workload children. Release issued18:19 UTC and consumed by the same worker.
+
+| Same workload / steps | Median launcher seconds, V3 -> MEM2 | Median peak RSS KiB, V3 -> MEM2 |
+| --- | --- | --- |
+| List /1915 | 0.00698 ->0.00511 | 2576 ->2684 |
+| Imported LocalSorted /761848 | 0.60655 ->0.62381 | 170088 ->170112 |
+| Trees4 /2318248 | 0.07957 ->0.08100 | 21364 ->20960 |
+| Trees16 /7608511 | 0.22056 ->0.22174 | 50708 ->49420 |
+| Trees64 /29780510 | 0.75541 ->0.76899 | 170316 ->165952 |
+| Trees400 /183507626 | 4.93199 ->4.89900 | 1001516 ->976512 |
+
+All six timing ranges overlap; no clear additional speed gain is established.
+Tree peak RSS ranges are disjoint at all four sizes. Tree400 median falls2.50%
+(978.04 ->953.63MiB); median time -0.67% remains a small, variable observation.
+LocalSorted observed median time +2.85%, RSS+24KiB; list startup and GNU0.00s
+rounding dominate. Retain tree400 third repetition7.207/7.109s on both variants;
+its slowdown cause is unverified, and no sample is discarded. This is bounded
+tree memory evidence on the private current-E12/V3 producer, not a universal
+ranking, accepted-only cost or full Goal completion. [Root medians/ranges/pins](../src/prototype/performance_followup/mem2-spine-cost-root-review.json)
+and [immutable raw cost manifest](../src/prototype/performance_mem2/epochs/current_e12_cost_root_20261003/manifest.sha256)
+preserve all84 raw/setup files plus the separate Root review. Source9 stays exact.
+Performance has consumed release and now prototypes a separate Fold empty-tail
+spine deletion; its lifetime/correctness qualification is pending, with no new
+cost grant. No accepted promotion follows this review.
 
 2026-10-03 17:58 UTC, Root MEM2 IADT review: frozen9 task6b0ed93 on exact
 parente561030 is pushed/remote verified; prototype Main6ebf453 contains only

@@ -1,7 +1,7 @@
 # Coupled Performance and Job Verification
 
 Date: 2026-10-03
-Status: corrected E11/E12 qualification frozen; V3 measured gain reviewed; MEM2 IADT empty-tail source9 published, cost slot granted/results pending; Goal active.
+Status: corrected E11/E12 frozen; V3 gain reviewed; MEM2 IADT source9 published, bounded tree RSS gain/mixed timing verified; Goal active.
 Active Goal: [Current Performance Goal](2026-10-03-PERFORMANCE-GOAL-CURRENT.md).
 Historical parent: [Performance Goal](2026-10-03-PERFORMANCE-GOAL.md), frozen at
 task-branch commit `05390513bca302b4a219881994c5bbd69d5b733a`.
@@ -93,7 +93,7 @@ brief; detailed evidence remains in the linked manifests and reports below.
 | #56: lifetime and allocation attribution | Read-only E6 graph/evaluator ownership inspection; runtime unchanged | Interned terms remain in Program graph until destruction; evaluator/readback scratch frees separately. Both measured variants retain the same arena/index defaults | Findings recorded separately; no new owner implementation or tuning patch | Per-owner RAM and independent arena/index or head/direct timing factors remain unmeasured | Preserve these limits in future agreed cost scope after exact coupled qualification |
 | #56 / MEM1: delete unnecessary work/state for actual memory/time | V1 inline-state and V2 materialized-callback UAF rejected; V3 recycles only stateless captured-head frames after parent cleanup | Root exact128/1944 verified, fresh callback3 O2/SAN0; current-E12 candidate1816/base2064 and exact36 cost samples/expected steps/raw hashes verified, no censored samples | V3 exact18 taskc861728 pushed/remote exact; prototype Maincc69f52 same bytes; cost111/addendum taske561030/Main895ac67 exact, original109 unchanged; accepted/default selection unchanged | Bounded tree400 median wall5.34021->4.92598s, peakRSS1891928->1001764KiB; LocalSorted RSS+492KiB, smallList startup dominated. Strict3 and full Goal/accepted adoption remain open | Exact cost evidence published; integrate current corrected Job layers separately, then continue owned deletions |
 | #56 / MEM2: preserve captured lexical state | Private beta environment elisionc3c91bd3 rejected on qualified V3/E12 source1280deb36a7 | Root verifies exact30 freeze0573b9be and original results; fresh four O2/SAN builds0, fourteen executions reproduce six semantic failures. Parent local/images pass; candidate retained binding becomes unbound, fuel2->1; no sanitizer diagnostics | Root report5ac6c445; no rejected runtime integration or current-parent defect | Public retained closure/configuration contents and lifetime must be preserved; no physical-layout or full-machine checkpoint claim | Direct-IADT no-trailing-argument field-spine lifetime research continues privately; qualify live/restored/retained nodes before reuse |
-| #56 / MEM2: delete copied IADT field spines | Source1282e87fd84/patchb19dd27b; reuse only empty-tail immutable captured fields, nonempty tail copies preserved | Root all1964/source128 exact; fresh O2/SAN builds/ten controls0; SAN45/focus23/cross140, public52/history28/fuel TSV equal references. Twelve census/fuel controls verified | Exact9 task6b0ed93 on parente561030/prototype Main6ebf453 pushed/remote exact; accepted/default selection unchanged | Cumulative tree400 -2408960 requests/-77086720bytes is not actual RAM/time; strict3 and original helper/failure history preserved | Existing-scope exclusive grant18:00-18:10UTC, exact36 jobs/config8cc0b753/279 pins; terminal raw expected-step/pin review and release pending |
+| #56 / MEM2: delete copied IADT field spines | Source1282e87fd84/patchb19dd27b; empty-tail immutable fields reused, nonempty tail copies retained | Root all1964/fresh controls0; source/images/fuel exact; replacement36 samples0, raw expected steps/all279 pins verified, no censored rows | Exact9 task6b0ed93/prototype Main6ebf453; raw84 Root cost freeze88c45801 plus separate Root review, accepted/default selection unchanged | Four tree RSS ranges disjoint, tree400 -2.50%; all six time ranges overlap, mixed median times and LocalSorted RSS+24KiB; no clear speed/Goal claim | Expired worker refusal preserved, Root slot released/consumed18:19; qualify separate Fold deletion, no further comparative grant |
 
 Fresh Git inspection verifies HEAD and tracking branch at `0539051`; every
 committed/live file matches the corrective 44-file frozen manifest. Core's exact
@@ -264,6 +264,21 @@ runtime and tests are unchanged; no wall/RSS values were collected.
 
 ### Assessment
 
+2026-10-03 18:22 UTC, Root MEM2 cost review supersedes the pending grant below.
+Worker grant18:00-18:10 expired unused; launcher1 refused, zero samples/children,
+record6dcc5401 preserved. Root executed the same36 pinned jobs in a Root-only
+18:15-18:25 slot, cap569 derived from actual remaining time; no worker restart
+or extra benchmark. Collector0 terminal18:16:12, all36 raw expected steps/logs/
+GNU metrics and279 pins verified, zero incomplete/censored rows or live children.
+Release issued18:19 and consumed. [Root full medians/ranges](../src/prototype/performance_followup/mem2-spine-cost-root-review.json)
+and [raw84/setup freeze88c45801](../src/prototype/performance_mem2/epochs/current_e12_cost_root_20261003/manifest.sha256)
+preserve all observations, including the expired refusal. All six timing ranges
+overlap; no clear extra speed gain. Four tree RSS ranges are disjoint: tree400
+1001516 ->976512KiB (-2.50%,978.04 ->953.63MiB), median launcher4.93199 ->4.89900s
+(-0.67%). LocalSorted median time +2.85%/RSS+24KiB; list startup/noise and both
+slower third tree400 repetitions remain. Source9/default selection unchanged.
+Separate Fold spine prototype now underway after release; no further cost grant,
+accepted promotion or full Goal completion.
 2026-10-03 17:58 UTC, Root current MEM2 IADT review: exact9 task6b0ed93/
 prototype Main6ebf453 published; all1964 raw evidence and source1282e87fd84
 independently verified, only iadt.c differs from qualified parent0deb36a7.
@@ -667,9 +682,9 @@ epochs remain immutable.
   all six semantic failures, parent/current V3 qualification and immutable evidence.
 - [x] Review/publish exact9 MEM2 IADT empty-tail source freeze separately, with
   source128/all1964/raw gates, fresh Root O2/SAN controls and owner lifetimes.
-- [ ] Review exact36 matched samples from grant MEM2IADT-E12-20261003T180000Z-600:
-  expected charged steps, raw hashes, all279 pins, censored outcomes and stopped
-  children; release slot and report actual gains/limits separately from census.
+- [x] Preserve unused expired worker grant; review Root-only replacement slot's
+  exact36 samples/expected steps/raw hashes/all279 pins/stopped children, release
+  slot and report bounded tree RSS gain/mixed timing separately from census.
 - [ ] Carry the parent Goal's remaining full-performance criteria here: full
   workload/checker qualification, including BendTT where applicable, and honest
   separate owner/timing attribution. Historical parent checkboxes are superseded;

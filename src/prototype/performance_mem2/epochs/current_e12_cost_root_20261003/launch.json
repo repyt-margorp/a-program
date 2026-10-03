@@ -1,0 +1,23 @@
+{
+  "grant_id": "MEM2IADT-E12-ROOT-20261003T181500Z-600",
+  "executor": "Root",
+  "actual_launch_UTC": "2026-10-03T18:15:28.159012+00:00",
+  "hard_deadline_UTC": "2026-10-03T18:25:00+00:00",
+  "remaining_absolute_seconds": 571.840988,
+  "maximum_seconds": 569,
+  "original_sha256": "8cc0b7533615f954a4f59bf1b7bfa4e9f2ac597aac4b1ef78656da0fba711236",
+  "derived_sha256": "c83e6eb2d191c6f6f1a25a5356c1b13b10705b6156fd8e080582973f5c3f7a2d",
+  "only_allowed_changed_key": "maximum_seconds",
+  "all279_pins_before": true,
+  "no_other_workload_build_children_before": true,
+  "collector_pid": 1960125,
+  "collector_process_group": 1960125,
+  "argv": [
+    "python3",
+    "/tmp/ap-performance-measure-gnu-time-e6-20261003.py",
+    "/tmp/a-program-merge-mem2-spine-root-cost-20261003/configuration-derived.json",
+    "/tmp/ap-performance-mem2-iadt-spine-root-exclusive-samples-20261003",
+    "--granted-slot",
+    "MEM2IADT-E12-ROOT-20261003T181500Z-600"
+  ]
+}
