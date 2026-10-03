@@ -129,6 +129,11 @@
     "transport_sha256": "5896b9d8a41a6adcb34d205e66ae9c3f31035aebed47519a76b54cb77ec161d9",
     "worker_runtime_source156": "a00c742673f74c1ef0b12f800e572b4ec138fe56acf51d30319aad8536adceeb",
     "worker_reports_are_not_current_Main_execution": true,
+    "later_input_census_correction": {
+      "notice_sha256": "db2ac2c3676c4d3db9ead80f277f0adc27aaa5a268ff35cdb3a7a85b815d151e",
+      "review": "src/prototype/coordination/reviews/job-e17-input-census-correction-20261003.json",
+      "Assessment": "The historical469 overlay census omitted two generic_sorted patch fixtures consumed by broad derived-LT gates. Fresh Root review verifies both existing E16 private overlay files byte-exact to published task6caf36c. All848 enumerated manifest records and19 raw reports still verify; this does not prove complete broad dependency coverage. Frozen E16 bytes and independent Root targeted current-producer results are preserved."
+    },
     "E17_excluded": true
   },
   "canonical_alignment": {

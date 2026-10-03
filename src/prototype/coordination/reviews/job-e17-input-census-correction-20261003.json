@@ -1,0 +1,62 @@
+{
+  "notice_sha256": "db2ac2c3676c4d3db9ead80f277f0adc27aaa5a268ff35cdb3a7a85b815d151e",
+  "Main_revision": "8bc5d5ec5672b49ac79a2d35660baff42d7a5a71",
+  "old_overlay_manifest": {
+    "path": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e17/overlay_inputs.sha256",
+    "sha256": "d10599a15d4663375794880def29dfe9ef814a475fa73209830088f06039942b",
+    "count": 469,
+    "all_enumerated_files_exact": true
+  },
+  "corrected_overlay_manifest": {
+    "path": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e17/overlay_inputs_v2.sha256",
+    "sha256": "2a4fe10e020ab9aedac4107aec79805ef00a01f6a50bad044d5a20f98af05d09",
+    "count": 471,
+    "all_enumerated_files_exact": true
+  },
+  "two_added_inputs_manifest_sha256": "c82eb5e0d402e73dc58b63da3d098c6c480dbb11108893982fb60ba278286528",
+  "two_added_inputs": {
+    "tests/fixtures/generic_sorted/derived-lt.patch": {
+      "sha256": "8fb505aa1737f1abdc5ed5db661fe274a252e51f650938c07fe3509cdcd22fb9",
+      "current_E17_exact": true,
+      "existing_E16_private_overlay_exact": true,
+      "published_E16_task_blob_exact": true
+    },
+    "tests/fixtures/generic_sorted/partition-tail-first.patch": {
+      "sha256": "e1a9ba0793e8ed9d22ab55ac9d1a304b0c489d98555f34f662fbe9c41ad8b0e8",
+      "current_E17_exact": true,
+      "existing_E16_private_overlay_exact": true,
+      "published_E16_task_blob_exact": true
+    }
+  },
+  "candidate_source156": "206acb0c09c7ac83eec825f0fb3c192c3b72db99b09d9cf926e7928f240bbaae",
+  "parent_control_source156": "0cb84a8d57f223ad0db2dce4511cf2cbfb77791a2eac3f836ca66e1b67ba2828",
+  "candidate_and_parent156_files_exact": true,
+  "worker_focused6_reports_exit0_and_binary_pins_verified": true,
+  "original_broad_failure": {
+    "exit": 2,
+    "report": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e17/broad.log",
+    "report_sha256": "999c1080cefd4039927acf850acacb4bd576fefea66054632145934f0d6b5f48",
+    "source156_after_exact": true,
+    "actual_overlay_inputs469_after_exact": true,
+    "no_joint_or_peak_time_claim": true,
+    "cause": "Private overlay copied469 enumerated inputs but omitted two generic_sorted patch fixtures consumed by derived_lt.sh; first missing derived-lt.patch. Source156 unchanged; no runtime assertion or gate pass inferred.",
+    "request_sha256": "c2ca502163e9801c0351b5d3016843d79c55f000174578a8ed57714ad9ab41ba",
+    "source_manifest_sha256": "206acb0c09c7ac83eec825f0fb3c192c3b72db99b09d9cf926e7928f240bbaae",
+    "original_overlay_inputs_sha256": "d10599a15d4663375794880def29dfe9ef814a475fa73209830088f06039942b"
+  },
+  "corrected_broad_request_sha256": "85b28bdc112efa84b5db209c3543062238bddf7bc19aa9e31c6c76a7916b1814",
+  "historical_request_parent_status": "Request still says E16 publication pending/E15 task parent; preserve historical request and explicitly supersede this status in final provenance with published E16task6caf36c.",
+  "published_E16_task": "6caf36cbfd548f7a8e3bddde08739154c16149dc",
+  "published_E16_all33_files_and_manifest_unchanged": true,
+  "Root_new_runtime_execution": false,
+  "new_broad_or_joint_or_cost_pass_claim": false,
+  "E17_runtime_publication": "pending exact qualified freeze",
+  "E18": "separate private unqualified draft",
+  "Assessment": [
+    "Initial E17 broad exit2 is a missing fixture setup/input-census failure. The original469 list omitted two patch fixtures required by derived_lt.sh; corrected471 is exactly old469 plus those two unchanged task blobs. No runtime failure or current-Main gap is inferred.",
+    "Historical E16 private overlay already has both fixtures byte-exact to the published E16 task, but its469 census did not enumerate them. Earlier claims that all enumerated records hash verify remain true; this record corrects any implication of complete broad dependency coverage.",
+    "E16 frozen bytes and independently executed Root targeted current-producer ownership/scheduler/public-partition checks are unchanged. Worker isolated broad report is retained with its newly identified historical census limit; no retroactive complete-closure claim.",
+    "Full unskipped E17 disk-backed j1 rerun remains in progress at this review. Preserve original469/request/failure and pin corrected471 separately; do not count the failed broad as a pass or publish before an exact qualified handoff.",
+    "Strict3, genuine continuation, held MEM6 codec-byte findings, private E18, accepted promotion and overall Goal completion remain separate. No new measurements, owner duplication, or approval inferred."
+  ]
+}
