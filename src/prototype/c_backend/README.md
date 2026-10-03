@@ -389,6 +389,30 @@ duplicate symbols remain a link refusal; arbitrary shared-library symbol
 interposition is not claimed to reject. The adapter requires valid scalar calls
 to return success; this adds no foreign failure propagation or escaping ownership.
 
+The distinct `callback2_direct_v1` / `c_callback2_v1` profile accepts one or two
+independent Pi domains, all with the same Int32 or Int64 representation as the
+pure TOTAL result. It preserves the original unary profile's binary refusal.
+`AP_C_CALLBACK2_ABI` 1 adds flat binary structures beside the guarded unary types:
+
+```c
+struct ap_c_callback2_i32 { void *context; int32_t (*call)(void *, int32_t, int32_t); };
+struct ap_c_callback2_i64 { void *context; int64_t (*call)(void *, int64_t, int64_t); };
+int ap_export_apply32(struct ap_c_callback2_i32 a1, int32_t a2, int32_t a3, int32_t *out);
+```
+
+All borrowed pure-total interpretation, context/code lifetime and status/output
+preconditions above apply. Multiple independent scalar operands are flattened
+only for this selected target profile; no source erasure or new admission follows.
+Mixed widths/results, three arguments, returned/boxed/effectful/partial/dependent
+callbacks and callable recursive Acc fields remain unsupported. Nominal
+representation selections still refuse. Source/object/archive/shared products
+contain no structural runtime. `check-c-callbacks2` verifies 4000 manual and 400
+existing Core-evaluator comparisons per product, twenty Int32 source observations,
+inert emission, deterministic checked/trusted output, null/status controls,
+old profile refusals and both unary/binary header orders. Repeated products are
+not independent property counts. SAN instruments clients and source bodies;
+emitted object/archive/shared bodies, backend/producer/Core checker stay O2.
+
 ## Native Nullary ADTs
 
 `native_direct_v1` / `c_native_v1` extends the same scalar lowering, not another

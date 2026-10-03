@@ -95,6 +95,26 @@ names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
 
+Fresh C16 at C14 implementation `e9d74f70` plus owned target edits, now on the
+observed C15 task `ba5d39d1537ffa93770d1705603e4bac37ab14ea`: distinct
+`c_callback2_v1` permits borrowed same-width unary/binary pure-total scalar
+inputs using existing independent Pi views. Worker qualified E8 strict O2 build
+and O2/client-source SAN48 each pass, with 4000 manual and 400 Core comparisons
+per product, source20, inert emission, both header orders and sixteen retained
+checked/trusted refusals. Affected unary39/module99 O2+99 SAN/I/O19 pass. Original
+unary binary refusal remains 4. Exact detail stays in the
+[C16 note](2026-10-04-C-BACKEND-CALLABLE-SHAPE-NOTE.md) and separate handoff;
+current-producer qualification and publication remain Root work.
+
+Read-only task observation: all eight C15 committed blobs at `ba5d39d` match its
+immutable submitted manifest/tar. Later Root receipt reports exact task
+`ba5d39d1537ffa93770d1705603e4bac37ab14ea` and prototype Main
+`d219fca70099befb96ce5770f9379be00d3c8a67` pushed; fresh current-E14 runtime128
+`abedf677` callback-modules O2/client-source SAN99+99 pass on frozen C14 backend
+sources. Root previously reported current-qualified/pushed E13 Main `81f76b3`.
+These do not qualify private C16. Historical C15 submission remains unchanged
+while distinct C16 live plan/build/docs advance under the independent-lane rule.
+
 Root operational report, received 2026-10-04 local date: exact C14 task
 `e9d74f70d33f1830f05a5a04cd3d05f8a01467ed` and prototype Main `6c36dcb` are
 integrated/pushed. Current E12 runtime128 `12026914` passes callback39 O2 +39
@@ -274,7 +294,7 @@ This is prototype integration, not accepted promotion. The
 new issue-feedback note/table is incorporated here after release; the temporary
 addendum is removed. Old handoffs/manifests stay unchanged.
 
-Current issue status (2026-10-03; detailed pins stay in linked epoch plans):
+Current issue status (2026-10-04 local; detailed pins stay in linked epoch plans):
 
 | Issue/subproblem | Implemented change + exact revision | Local vs joint verification | Task publication vs Main integration | Remaining acceptance/blocker | Next concrete epoch |
 | --- | --- | --- | --- | --- | --- |
@@ -289,9 +309,10 @@ Current issue status (2026-10-03; detailed pins stay in linked epoch plans):
 | #49 finite value-record List/arrays, C12 (historical milestone) | Exact task `97f8d7c28f3438fb1b36d687e0e7efc175d8c6f3`: List-shaped finite payloads, active validation before traversal/allocation, validators emitted first. | Worker qualified E8: 259 cases/product, 13 source observations, O2/client sanitizers and 24 refusals pass; affected gates and I/O controls pass. Root current E9+E10: 14 O2/3 affected sanitizer gates and 19 I/O controls pass. | Task pushed/remote verified from immutable16; Root reports prototype Main integration complete, status push next. | Recursive aggregates, multi-tail/non-List record shapes, callable/indexed fields and native Acc/QuickSort remain unsupported under #61. No accepted C promotion. | Preserve historical C12 evidence during separate shared-library work. |
 | #61 shared C products/visibility, C13 | Exact task `96a0308283dad19450c5c56f2ac0ca3463c4838b`: explicit shared product, PIC objects, selected public symbol map and receipt; separate exact11 snapshot. | Worker E8: shared O2/client SAN each 58 rows, 16 runs, exact 3/4/17/8 definitions; linker/I/O controls pass. Root E9+E10 strict build, shared O2/client SAN58+58, linker/I/O19 all pass. | Task pushed/remote verified; Root prototype Main `f7afb04`/status `e552f2c` pushed/remote exact. | ELF version-script toolchain, code handle lifetime, client-only shared SAN coverage; no install/SONAME policy, general callable/boxed ABI or source authority. | Preserve historical C13 evidence in separate C14 callback work. |
 | #61 bounded public callback inputs, C14 | Exact task `e9d74f70d33f1830f05a5a04cd3d05f8a01467ed`: opt-in borrowed synchronous same-width unary Int32/Int64 pure-total callback ABI; seven implementation files +84/-20, immutable23 snapshot. | Worker E8 O2/client-source SAN39 each, 400 Core cases/product, source20 and twelve refusals pass. Root E12 `12026914`: callback39+39/shared58each/link/IO19/import4 pass; explicit imports resolve fixture omissions, original output/fuel retained. | Task/prototype Main `6c36dcb` integrated/pushed by Root; no accepted promotion. | Caller purity/totality/interpretation/lifetime preconditions remain. Returned/boxed/multiargument/mixed-width/dependent/effectful callbacks and native Acc remain excluded. | Separate C15 ordinary generated-provider/module composition tests. |
-| #61 ordinary generated callback modules, C15 | Parent `e9d74f70` plus three new provider/adapter/harness files, 231 lines; existing callback ABI unchanged, exact8 snapshot. | Worker E8: O2/SAN99 each; 16 product pairs, both header orders, 32 linked +8 loaded-provider clients/phase, 800 Core comparisons/client, source20 and three duplicate refusals pass. No Root C15 target review inferred. | Separate frozen handoff ready; task publication and Main review pending. C14 immutable snapshot preserved. | Valid provider success and synchronous context/code lifetime required; SAN covers clients/source bodies only. No general failure propagation, escaping ownership or nominal exchange. | Root reviews exact C15; continue bounded admitted native/ordinary-C obligations, with Acc/QuickSort open. |
+| #61 ordinary generated callback modules, C15 | Exact task `ba5d39d1537ffa93770d1705603e4bac37ab14ea`: three provider/adapter/harness files, 231 lines; existing callback ABI unchanged, all8 blobs match immutable snapshot. | Worker E8: O2/SAN99 each; 16 product pairs, both header orders, 32 linked +8 loaded-provider clients/phase, 800 Core comparisons/client, source20 and three duplicate refusals pass. Root current-E14 `abedf677`: frozen-C14 backend module O2/client-source SAN99+99 pass. | Root reports task/prototype Main `d219fca70099befb96ce5770f9379be00d3c8a67` pushed. C14/C15 submitted snapshots preserved; no accepted promotion. | Valid provider success and synchronous context/code lifetime required; SAN covers clients/source bodies only. No general failure propagation, escaping ownership or nominal exchange. | Preserve published C15; distinct C16 binary profile handoff. |
+| #61 bounded binary callback inputs, C16 | Parent `ba5d39d` plus target-only edits: separate `c_callback2_v1`/`callback2_direct_v1`, fixed unary/binary same-width Pi contract, flat C signatures and old unary binary refusal4; seven implementation files +66/-21. | Worker E8 O2/client-source SAN48 each; 4000 manual +400 Core comparisons/product, source20, inert emission/header orders; affected unary39/module99+99/I/O19 pass. Initial client sentinel failure retained and fixed without emitter change. | Separate exact18 handoff ready; task push and current-producer/Main review pending. | Caller pure-total interpretation/lifetime; no arity3/mixed-width/boxed/effect/dependent contract, source authority or native Acc completion. | Root reviews C16 snapshot; continue bounded native/ordinary-C work separately. |
 | #61 native Acc/QuickSort (historical #44/#49) | C4 `a3b6bce` pins native refusal; C7-C9 retain it. Applied List resolves only the first representation obligation. No native sorter. | Historical checked/trusted status 4/no product; Root C9 sorting-boundary gate passes. Structural FFTT remains separate. | C4-C9 task/prototype Main published; no native Acc epoch publication. | Indexed SizedList and callable recursive Acc fields remain unsupported; no producer defect established. | Report concrete indexed/callable representation needs through Merge; keep work bounded and downstream. |
-| #61 remaining public contracts (historical #49) | General/boxed callbacks, effects, higher Identity, recursive captures and shared nominal exchange remain explicit limits; C14 advances only borrowed unary scalar inputs. | Local/joint gates verify supported cases and refusals, not general completion. | Historical tasks/prototype Main published; no publication of general missing contracts. | Need bounded justified representation/demand contracts. | Preserve refusals; route shared needs through Merge. |
+| #61 remaining public contracts (historical #49) | General/boxed callbacks, effects, higher Identity, recursive captures and shared nominal exchange remain explicit limits; C16 advances only fixed borrowed unary/binary scalar inputs. | Local/joint gates verify supported cases and refusals, not general completion. | Historical tasks/prototype Main published; no publication of general missing contracts. | Need bounded justified representation/demand contracts. | Preserve refusals; route shared needs through Merge. |
 
 Evidence: historical [C5](2026-10-03-C-BACKEND-EPOCH5-HANDOFF.md),
 [C6](2026-10-03-C-BACKEND-EPOCH6-HANDOFF.md) and active
@@ -487,6 +508,24 @@ gates are terminal with no live build/runtime children at 20:06 UTC. Send the
 safe-boundary notice and keep heavy work drained only for this window/release;
 light source/docs/hash handoff work continues. This is operational scheduling,
 not a direct human design statement or blanket implementation hold.
+
+Root operational release: Fold36 collector was terminal at 20:20:46 UTC, all36
+completed with exact charged fuel and no heavy children. Focused C16 correctness
+resumes; no worker comparative grant follows. C15's exact task blobs/tar are
+independently readable, so its immutable submission stays preserved while this
+distinct live epoch advances. Parent task readback is not remote/Main evidence.
+Agent C16 decision: use a separately named unary/binary profile after the actual
+admitted nested Pi view; validate all independent domains and pure TOTAL result
+widths with existing views. Test interpretations run after inert emission and
+confer no source admission/equality receipts. Source erasure/producer/schema and
+native Acc/QuickSort limits remain unchanged; original unary refusals stay tested.
+
+Root operational environment receipt: tmpfs ENOSPC affected other lanes after
+C16 gates were terminal. Agent storage decision: preserve every original raw
+file and copy all2294 byte-exact to owned disk-backed
+`src/prototype/c_backend/.evidence/epoch16-20261004`; final manifests/tar and
+future compiler temporaries use that disk. No shared cleanup/evidence deletion
+or C16 ENOSPC test failure follows; initial sentinel setup failure stays pinned.
 
 Fresh read-only issue inspection: [#61](https://github.com/repyt-margorp/a-program/issues/61),
 open, updated 2026-10-03 13:11:54 UTC, consolidates unfinished selected-export/
@@ -867,6 +906,11 @@ this target work while Main continues SE1, superseding the earlier AP6 hold.
   mixed products/header orders, focused O2/client-source SAN and loaded-code lifetime.
 - [x] Freeze/hand off exact C15; distinguish worker E8, Root C14 E12 and pending
   Root C15 current-producer review. Preserve all historical submitted snapshots.
+- [x] C16: implement distinct borrowed unary/binary scalar profile and verify
+  Core/manual/source comparisons, inert emission, header orders and old refusals;
+  affected unary/module/I/O controls pass with qualified E8.
+- [x] Freeze/hand off exact C16 implementation/test/docs for separate Root task
+  publication and current-producer/Main review; keep C15 immutable evidence.
 - [ ] Maintain the single issue table at material events and within six active
   hours; use brief pointer/hash notices and keep Core workflow in Assessment.
 - [ ] Coordinate further bounded target ABI/lowering increments under the latest

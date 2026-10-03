@@ -1,0 +1,15 @@
+aplink 1
+artifact callbacks.a
+abi c_callback2_v1
+target host-c11
+product source
+lowering callback2_direct_v1
+fallback reject
+export apply32 apply32
+export repeat32 repeat32
+export captured32 captured32
+export mixed_calls32 mixed_calls32
+export unused32 unused32
+export apply64 apply64
+export repeat64 repeat64
+export captured64 captured64
