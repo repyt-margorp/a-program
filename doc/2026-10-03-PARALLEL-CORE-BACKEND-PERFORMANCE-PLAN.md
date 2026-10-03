@@ -1,29 +1,31 @@
-# Parallel Core, Backend, Performance and Surface Work
+# Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: Core coordinates; Job/Evidence, C and performance Goals active; Surface delivered and stopped.
+Status: moving integration to a separate Merge session; this visible session becomes the inquiry desk. Three implementation workers continue; a fourth audit lane is scheduled.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
-Reviewed prototype Main checkpoint: `53debc8`; original worker baseline: `2d747cc`.
+Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
 changes no implementation or promotion rules.
 Related: [SE1-SE5](2026-09-30-SOLVER-EVIDENCE-DUPLICATION-AUDIT-AND-PLAN.md),
 [AP0-AP6](2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md).
-The latest five-session assignment supersedes earlier ownership assignments,
-not the existing owner work lists.
+The tree assignment below supersedes earlier ownership assignments, not the
+existing implementation work lists. Historical references to Core describe the
+previous coordinator; its integration duties now transfer to Merge, not the desk.
 
 ## Problem List
 
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
-| 1 | `core`: coordination, design audit, verification and Main integration | All lanes | Sole integration owner; no parallel SE implementation |
+| 1 | Inquiry desk -> `merge`: reporting vs coordination/integration | All lanes | Desk answers the user; only Merge integrates after verified handoff |
 | 2 | `c-backend`: downstream C design | #44, #49; shared policy #47 | C6 value records integrated; native Acc/QuickSort remains open |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Jointly verified epoch integrated as `f27bd13`; full Goal remains active |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
 | 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E3 integrated as `48364b0`; E4/E6 joint qualification remains separate |
+| 6 | `verification-audit`: independent read-mostly suite/debt inventory | #59 / PR #60, #51 | New bounded lane; no test deletion, acceptance relaxation or broad rerun |
 
 ### Current Delivery Status
 
-2026-10-03 Core inspection at `53debc8`; all three active workers supplied
+2026-10-03 inspection at `fd45c42`; all three active workers supplied
 issue-linked feedback through the existing outbox. Core verified their notice
 hashes and read their single current tables. These are deliverables, not issue
 completion scores; worker-local results are not relabelled joint verification.
@@ -43,10 +45,50 @@ this consolidated status is durable Main feedback. #41/#43 are separate design
 questions, not silently assigned to these epochs. #47's general relevance policy
 and #52's equality-reuse design are not completed by storage deletion or C emission.
 
+### Rescheduled Queue
 
-## 1. Core Ownership and Integration
+2026-10-03 fresh GitHub snapshot: ten open Issues (#41, #43, #44, #47, #49,
+#51, #52, #56, #57, #59); four open PRs (#53, #54, #55, #60).
+New #59 / documentation PR #60 concern verification debt and progress accounting,
+not a newly established compiler defect. PR #58 is already merged. PR #60's
+672-line supplied audit is an input, not approval of every threshold or manifest.
+The Issue's smaller first-epoch scope takes precedence over an automatic full
+reporting subsystem. Its audit cover is pinned to `37de1e8`, not current Main.
+
+| Order / owner | Issue or PR | Next deliverable and dependency |
+| --- | --- | --- |
+| 0 / desk -> Merge | Workflow | Start one independent integration owner; verify receipt, Goal and both notification hops; preserve the three live workers and dirty accepted files |
+| 1 / Job + performance | SE/AP, #56 | Finish in-flight E4/E6 joint qualification; review/publish E7 and subsequent borrowing results, then attack exact-resume's three remaining failures rather than treating pointer-size reductions as completion |
+| 1 / verification-audit | #59 / PR #60; #51 | Static effective-invocation inventory and QuickSort/persistence/legacy pilot; distinguish unique contracts from repeated mechanics; no suite changes or broad timing pass yet |
+| 2 / performance, Merge schedules slot | #56 / #51 | On a pinned jointly qualified producer, measure matched runtime/memory and audit cost in one exclusive slot; coordinate other CPU-heavy work, keep storage/fuel claims separate |
+| 2 / C backend | #44 / #49 | Finish current C7 enum-List epoch and current-producer gates; state the next native Acc/QuickSort boundary explicitly; no producer schema expansion for target conveniences |
+| 2 / Merge | PR #60, #53, #55 | Review/import documentation separately from implementation; preserve historical provenance, link adopted/deferred recommendations; publication does not complete Issues |
+| 3 / Merge -> scoped library review | PR #54 / #41 | Verify generic MergeSort against the then-current producer and existing Local/Strong/permutation contracts; this is partial #41, not arbitrary-container completion |
+| Review / Merge | #57 | Audit delivered prototype against Issue criteria; Surface stays stopped. Prototype delivery is not accepted promotion; do not reopen a worker just to repeat completed gates |
+| Deferred design / Merge | #47, #52 | Relevance and checked-equality reuse remain separate designs, after stable owner/resume boundaries; no new authority, optimizer store or trust shortcut |
+| Deferred design / user decision | #43; remainder of #41 | General recursion/logical boundary and broader finite-container interfaces require explicit design decisions, not inferred approval from scheduling |
+
+This is a dependency order, not an invented calendar or completion percentage.
+Merge maintains this one queue and the delivery table; workers keep their existing
+single owning work lists. The desk displays issue, actual deliverable, blocker and
+next step in a short report. Exact test inventory and detailed evidence stay with
+their owners. Add review items only for material changes; no duplicate task graph.
+
+
+## 1. Inquiry Desk and Merge Ownership
 
 ### Subjective (User)
+
+2026-10-03, English paraphrase of the latest explicit replacement: this visible
+conversation becomes the user's inquiry/reporting desk, not the merge owner.
+Use a tree: user-facing desk <- separate Merge/audit session <- three or four
+implementation sessions. The Merge session reports progress regularly to this
+desk, which displays concise updates and answers the user's questions. Review
+new issues/PRs, including the latest parallel-development proposal, and
+reschedule work within that structure. This supersedes the earlier instruction
+that this visible conversation itself performs Main integration. Existing
+prototype boundaries and review requirements remain unchanged; the handoff
+must be verified before the new Merge owner starts integration.
 
 2026-10-03, English paraphrase of the latest request: implementation appears to
 be running in the workers, but issues are accumulating and progress is hard to
@@ -160,6 +202,28 @@ Accepted `src/evidence.*`, `src/iadt.*` and their tests retain unrelated edits.
 
 ### Assessment
 
+2026-10-03 agent operational decision within the user's explicit tree request:
+the desk records/relays user requirements and answers questions; it does not
+review every patch, stage worker changes or merge/push Main after activation.
+One new Merge session inherits those duties and the unfinished integration queue.
+It reports material deliveries/blockers immediately and a compact status at most
+six hours apart while active, using one current report rather than endless logs.
+Workers notify Merge, not the desk. Merge filters and reports to the desk; a
+worker notice is never user approval. User design questions travel back through
+Merge to the relevant owner without creating two implementation owners.
+
+The old visible Goal is currently paused following interruption (fresh
+`get_goal` inspection); it has not been achieved. Do not mark it complete or
+silently resume it as an integration Goal here. Start the transferred integration
+Goal in the new session under the user's existing long-running supervision scope.
+This desk has no implementation Goal. Reuse the small guarded notification
+helper for both hops; `--new-only` suppresses historical replay at route handoff.
+Merge explicitly reconciles existing pending outboxes on startup and each timed
+review. A loaded-thread route is checked, not assumed; host/process recovery
+remains unverified. Official OpenAI documentation distinguishes thread/turn
+delivery from Goal lifecycle ([App Server](https://developers.openai.com/codex/app-server),
+[Goals](https://developers.openai.com/cookbook/examples/codex/using_goals_in_codex)).
+
 Core reporting decision within the existing supervision scope: each active
 worker maintains one concise issue-status table in its owning plan and sends a
 current report now, at material milestones/blockers, and at least every six hours
@@ -228,6 +292,18 @@ implementation workers/relay continue; A Program is again the priority. AIze's
 findings and proposed repairs stay in its audit, not this implementation work list.
 
 ### Plan
+
+- [x] Record the new desk <- Merge <- workers requirement before investigation.
+- [x] Inspect current open Issues/PRs and reschedule without closing unfinished work.
+- [ ] Launch and verify the separate Merge owner and its integration Goal.
+- [ ] Change worker notifications to Merge and Merge reports to the desk; test
+  both hops without duplicate/resumed owners or promotion.
+- [ ] Launch one bounded read-mostly verification-audit lane for #59; preserve
+  accepted tests and arrange measurement only through the common exclusive slot.
+- [ ] Confirm Merge has acknowledged all pending epochs and unrelated dirty files;
+  release the desk from integration, publication and broad verification work.
+- [ ] Merge keeps issue-linked reporting current and reports material changes
+  and each six-hour active checkpoint to the desk.
 
 - [x] Transfer the single SE1-SE5 work list and committed prototype recipe to
   `job-evidence`; do not duplicate its implementation checklist here.
@@ -658,6 +734,15 @@ use automatic trust to repair a gate.
 
 ## Coordination
 
+- Current tree: visible inquiry desk <- one separate Merge session <-
+  `job-evidence`, `performance`, `c-backend`, `verification-audit`.
+  Surface and AIze are finished/stopped; do not restart them without new scope.
+  Only Merge has Main integration, delegated task-publication and closure duties.
+  The desk bootstraps this handoff once, then stops Git mutations.
+- Merge's initialization brief: `src/prototype/coordination/merge-session-brief.md`.
+  Audit lane brief: `src/prototype/coordination/verification-audit-brief.md`.
+  Notification routes and live thread IDs are recorded after actual verification,
+  not inferred from this proposed assignment.
 - Worker Goal briefs: [C](2026-10-03-C-BACKEND-GOAL.md),
   [performance](2026-10-03-PERFORMANCE-GOAL.md),
   [surface](2026-10-03-SURFACE-GOAL.md),

@@ -5,8 +5,10 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { spawn } = require('node:child_process');
 const [thread_id, ...directories] = process.argv.slice(2);
+const new_only = directories[0] === '--new-only';
+if (new_only) directories.shift();
 if (!thread_id || !directories.length) {
-	console.error('Usage: node watch_core.cjs THREAD_ID WORKER_OUTBOX...');
+	console.error('Usage: node watch_core.cjs THREAD_ID [--new-only] WORKER_OUTBOX...');
 	process.exit(2);
 }
 
@@ -37,7 +39,7 @@ function drain() {
 	});
 }
 
-function inspect(directory, name) {
+function inspect(directory, name, seed = false) {
 	if (!name || path.basename(name) !== name || !name.endsWith('.txt')) return;
 	const file = path.join(directory, name);
 	try {
@@ -46,6 +48,10 @@ function inspect(directory, name) {
 		const bytes = fs.readFileSync(file);
 		if (!bytes.length || bytes[bytes.length - 1] !== 10) return;
 		const hash = crypto.createHash('sha256').update(bytes).digest('hex');
+		if (seed) {
+			delivered.add(`${file}:${hash}`);
+			return;
+		}
 		if (`${file}:${hash}` === in_flight) return;
 		if (delivered.has(`${file}:${hash}`)) return;
 		pending.set(file, hash);
@@ -59,6 +65,6 @@ for (const directory of directories) {
 	fs.mkdirSync(directory, { recursive: true });
 	const watcher = fs.watch(directory, (_event, name) => inspect(directory, name));
 	watcher.on('error', error => console.error(`${directory}: ${error.message}`));
-	for (const name of fs.readdirSync(directory)) inspect(directory, name);
+	for (const name of fs.readdirSync(directory)) inspect(directory, name, new_only);
 	console.log(`Watching worker outbox: ${directory}`);
 }

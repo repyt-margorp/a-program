@@ -39,9 +39,14 @@ async function control(mode) {
 	await new Promise(resolve => server.listen(path.join(directory, 'app-server-control.sock'), resolve));
 	let child;
 	try {
-		const relay = mode === 'relay';
+		const relay = mode === 'relay' || mode === 'relay-new-only';
 		const outbox = path.join(home, 'outbox');
-		const args = relay ? ['test-core', outbox] : ['test-core', '[worker-notification control/epoch] mock-only evidence'];
+		if (mode === 'relay-new-only') {
+			fs.mkdirSync(outbox);
+			fs.writeFileSync(path.join(outbox, 'older.txt'), 'already handed off\n');
+		}
+		const args = relay ? ['test-core', ...(mode === 'relay-new-only' ? ['--new-only'] : []), outbox] :
+			['test-core', '[worker-notification control/epoch] mock-only evidence'];
 		child = spawn(process.execPath, [path.join(__dirname, relay ? 'watch_core.cjs' : 'notify_core.cjs'),
 			...args], { env: { ...process.env, HOME: home } });
 		let output = '';
@@ -50,17 +55,27 @@ async function control(mode) {
 		const exit = new Promise(resolve => child.once('close', resolve));
 		if (relay) {
 			while (!output.includes('Watching worker outbox:')) await new Promise(resolve => setTimeout(resolve, 10));
+			if (mode === 'relay-new-only') {
+				await new Promise(resolve => setTimeout(resolve, 100));
+				assert.equal(notices, 0);
+				fs.writeFileSync(path.join(outbox, 'older.txt'), 'updated after handoff\n');
+				while (notices !== 1) await new Promise(resolve => setTimeout(resolve, 10));
+				while (!output.includes('"acknowledged":true')) await new Promise(resolve => setTimeout(resolve, 10));
+			}
 			const file = path.join(outbox, 'epoch-ready.txt');
 			fs.writeFileSync(file, 'partial');
 			fs.writeFileSync(path.join(outbox, 'oversized.txt'), 'x'.repeat(8193) + '\n');
 			fs.symlinkSync(file, path.join(outbox, 'symlink.txt'));
 			await new Promise(resolve => setTimeout(resolve, 100));
-			assert.equal(notices, 0);
+			const initial_notices = mode === 'relay-new-only' ? 1 : 0;
+			assert.equal(notices, initial_notices);
 			fs.writeFileSync(file, 'ready\n');
-			while (!output.includes('"acknowledged":true')) await new Promise(resolve => setTimeout(resolve, 10));
+			while (notices !== initial_notices + 1) await new Promise(resolve => setTimeout(resolve, 10));
+			while ((output.match(/"acknowledged":true/g) || []).length !== initial_notices + 1)
+				await new Promise(resolve => setTimeout(resolve, 10));
 			fs.writeFileSync(file, 'ready\n');
 			await new Promise(resolve => setTimeout(resolve, 100));
-			assert.equal(notices, 1);
+			assert.equal(notices, initial_notices + 1);
 			child.kill();
 			await exit;
 		} else {
@@ -84,7 +99,7 @@ const deadline = setTimeout(() => {
 	process.exit(1);
 }, 10000);
 (async () => {
-	for (const mode of ['absent', 'active', 'idle', 'stale', 'relay']) await control(mode);
+	for (const mode of ['absent', 'active', 'idle', 'stale', 'relay', 'relay-new-only']) await control(mode);
 	clearTimeout(deadline);
 })().catch(error => {
 	console.error(error);
