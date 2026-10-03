@@ -104,6 +104,19 @@ names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
 
+2026-10-03, fresh Root C17 current-E17 qualification: source1280a15914b,
+exact19 taskd39632b8adc277aa65a5a23669ca6b99d3663e33 is pushed/remote verified. Rebuilt backend/Core
+controls pass native-predicate69, binary48 and unary39 expected rows each in
+O2 and client/source SAN; shared58 O2, linker, matched-image I/O19, numeric/List
+O2+SAN and five predicate I/O faults (expected2/no product) pass. All input pins
+and76 legacy C16 generated source/header files remain exact. Worker E8 retained
+inputs191/raw2856 are historical, separate verified evidence. Initial receipt,
+shared-export and alias-collision failures remain in the frozen
+[C17 handoff](2026-10-04-C-BACKEND-EPOCH17-HANDOFF.md). Only Goal provenance is
+reconciled for this Main integration; other18 frozen task files are byte exact.
+[Root receipt](../src/prototype/c_backend/verification/core-epoch17.json)
+records the current producer and limited sanitizer/retention scope.
+
 2026-10-03 19:29 UTC, fresh Root current-producer review and integration: C14 task
 e9d74f7/Main6c36dcb are pushed/remote exact; all implementation/tests are
 frozen-byte exact, only Goal provenance reconciled. Source12812026914 callback
@@ -377,6 +390,7 @@ Current issue status (2026-10-04 local; detailed pins stay in linked epoch plans
 | #61 bounded public callback inputs, C14 | Taske9d74f7/Main6c36dcb exact23 paths; opt-in borrowed synchronous same-width unary pure-total Int32/Int64 ABI, seven implementation files +84/-20. | Fresh Root current-E12 O2/client-source SAN39 each, four products400 Core comparisons each, source20, shared58 each, link/IO19 and explicit-import4 pass. | Task/Main pushed and remote exact; 22 frozen files plus reconciled Goal doc. | Caller purity/totality/lifetime preconditions and limited SAN scope explicit; returned/boxed, mixed-width, multiargument, effects and native Acc excluded. | Continue bounded justified C-module work; no full #61 closure. |
 | #61 ordinary generated callback modules, C15 | Parent `e9d74f70` plus three new provider/adapter/harness files, 231 lines; existing callback ABI unchanged, exact8 snapshot. | Worker E8: O2/SAN99 each; 16 product pairs, both header orders, 32 linked +8 loaded-provider clients/phase, 800 Core comparisons/client, source20 and three duplicate refusals pass. Fresh Root E14 source128abedf677: O2/client-source SAN99+99 match with unchanged input pins. | Exact8 taskba5d39d/prototype Maind219fca pushed/remote exact. C14 immutable snapshot preserved. | Valid provider success and synchronous context/code lifetime required; SAN covers clients/source bodies only. No general failure propagation, escaping ownership or nominal exchange. | Preserve qualified C15; continue bounded admitted native/ordinary-C obligations, with Acc/QuickSort open. |
 | #61 bounded binary callback inputs, C16 | Parent `ba5d39d` plus target-only edits: separate `c_callback2_v1`/`callback2_direct_v1`, fixed unary/binary same-width Pi contract, flat C signatures and old unary binary refusal4; seven implementation files +66/-21. | Worker E8 O2/client-source SAN48 each; 4000 manual +400 Core comparisons/product, source20, inert emission/header orders; affected unary39/module99+99/I/O19 pass. Initial client sentinel failure retained and fixed without emitter change. | Exact18 taska4a2e98 pushed/remote exact; fresh Root E15 source1283f48e22e binary48+48/unary39each/module99each/shared58each/link/I/O19 pass. Prototype Main0585663 pushed/remote exact. | Caller pure-total interpretation/lifetime; no arity3/mixed-width/boxed/effect/dependent contract, source authority or native Acc completion. | Root reviews C16 snapshot; continue bounded native/ordinary-C work separately. |
+| #61 selected native predicates, C17 | Parent `a4a2e988` + exact19 [handoff](2026-10-04-C-BACKEND-EPOCH17-HANDOFF.md): opt-in Nat32 unary/binary predicates returning selected two-case enums, transactional filtering/partitioning and unambiguous alias names; input191 `4e7c04c2...`. | Worker E8 final O2/client-source SAN69 each: 1365 filters/13650 partition selections +574 Core comparisons per product, source6, inert/shared/alias/refusal controls; affected binary48/unary39/numeric O2+SAN/I/O19+5 pass. Initial target/setup failures retained with stated log limits. | Exact19 taskd39632b8 pushed; this prototype Main integration reconciles only Goal provenance. Fresh Root E17 source1280a15914b predicate69/binary48/unary39 O2+client/source SAN, shared58 O2/link/I/O19+5/numeric pass;76 legacy files exact. | Borrowed pure-total interpretation/lifetime/readable storage and target Nat32/depth/allocation bounds; shared bodies O2. No native Acc/QuickSort, indexed/callable fields or accepted promotion. | Bounded generated native-predicate provider/client composition under existing success/lifetime contracts; route concrete shared-owner gaps through Merge. |
 | #61 native Acc/QuickSort (historical #44/#49) | C4 `a3b6bce` pins native refusal; C7-C9 retain it. Applied List resolves only the first representation obligation. No native sorter. | Historical checked/trusted status 4/no product; Root C9 sorting-boundary gate passes. Structural FFTT remains separate. | C4-C9 task/prototype Main published; no native Acc epoch publication. | Indexed SizedList and callable recursive Acc fields remain unsupported; no producer defect established. | Report concrete indexed/callable representation needs through Merge; keep work bounded and downstream. |
 | #61 remaining public contracts (historical #49) | General/boxed callbacks, effects, higher Identity, recursive captures and shared nominal exchange remain explicit limits; C16 advances only fixed borrowed unary/binary scalar inputs. | Local/joint gates verify supported cases and refusals, not general completion. | Historical tasks/prototype Main published; no publication of general missing contracts. | Need bounded justified representation/demand contracts. | Preserve refusals; route shared needs through Merge. |
 
@@ -530,6 +544,17 @@ pinned/current producer images and emitted C/headers match byte-for-byte.
 Evidence and exact publication files are in the [epoch handoff](2026-10-03-C-BACKEND-EPOCH1-HANDOFF.md).
 
 ### Assessment
+
+2026-10-03, Root agent decision: qualify C17 as the distinct bounded
+selected Nat32 unary/binary predicate profile returning a selected two-case
+nullary enum. Existing source authority and native arena transactions remain.
+Caller interpretation/purity/totality/readable storage and synchronous code/context
+lifetime are external preconditions; SAN covers clients/source product bodies,
+with producer/backend/Core/object/archive/shared bodies O2. Shared malloc wrapping
+is excluded. Preserve existing refusals, target bounds and all original failures.
+Native Acc/QuickSort, indexed/callable recursive fields, general callbacks and
+full #61 completion remain open. The existing Main user requirements and Root
+historical qualification records supersede shortened/older worker Goal wording.
 
 2026-10-03 19:29 UTC, Root agent decision: bounded callback ABI qualifies on the
 current E12 producer and integrates as prototype only. Supersede earlier
@@ -919,6 +944,9 @@ shared IR, checker or image fields. The later 2026-10-03 lane assignment permits
 this target work while Main continues SE1, superseding the earlier AP6 hold.
 
 ### Plan
+
+- [x] C17: freeze exact19 selected native predicate profile; independently qualify
+  on current E17 and publish task/Main prototype with Goal provenance reconciled.
 
 - [x] Read AGENTS.md, CODING_STYLE.md, the coordination plan and AP4-AP6.
 - [x] Inspect relevant GitHub issue/PR bodies and diffs; preserve user Subjective.

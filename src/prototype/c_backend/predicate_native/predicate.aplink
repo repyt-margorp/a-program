@@ -1,0 +1,21 @@
+aplink 1
+artifact predicates.a
+abi c_predicate_native_v1
+target host-c11
+product source
+lowering predicate_native_direct_v1
+fallback reject
+enum32 Bool Bool
+enum32 Reverse Reverse
+nat32 Nat Nat
+data Numbers Numbers
+export apply_predicate apply_predicate
+export apply_comparator apply_comparator
+export apply_reverse apply_reverse
+export unused unused
+export filter filter
+export select select
+export post_check post_check
+export length length
+export fingerprint fingerprint
+export increment increment

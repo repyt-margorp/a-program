@@ -13,6 +13,7 @@ struct pg_c_representation {
 	int recursive;
 	int natural;
 	int callback; /* Zero for ordinary values; otherwise foreign callback arity. */
+	const struct pg_c_representation *callback_domain, *callback_result;
 	size_t zero;
 };
 struct pg_c_constructor_representation {

@@ -80,7 +80,7 @@ static int shared_symbols(const char *path, const struct pg_c_link_plan *plan)
 	fputs("{\n\tglobal:\n", file);
 	for (size_t i = 0; i < plan->count; ++i)
 		fprintf(file, "\t\tap_export_%s;\n", plan->exports[i].alias);
-	if (plan->lowering == PG_C_NATIVE_DIRECT) {
+	if (plan->lowering == PG_C_NATIVE_DIRECT || plan->lowering == PG_C_PREDICATE_NATIVE_DIRECT) {
 		for (size_t i = 0; i < plan->natural_count; ++i)
 			fprintf(file, "\t\tap_arena_%s_destroy;\n", plan->naturals[i].alias);
 		for (size_t i = 0; i < plan->data_count; ++i) {
@@ -117,6 +117,7 @@ static int receipt(const char *path, const struct pg_c_link_plan *plan, const ch
 		fputs("[\"fixed-width-arithmetic\",\"pure-sequencing\",\"shared-direct-calls\",\"capture-lifting\"", file);
 		if (plan->lowering == PG_C_CALLBACK_DIRECT) fputs(",\"borrowed-unary-scalar-callbacks\"", file);
 		if (plan->lowering == PG_C_CALLBACK2_DIRECT) fputs(",\"borrowed-unary-binary-scalar-callbacks\"", file);
+		if (plan->lowering == PG_C_PREDICATE_NATIVE_DIRECT) fputs(",\"borrowed-nat32-predicates\"", file);
 		if (plan->enum_count) fputs(",\"nullary-enum32\",\"conditional-match\"", file);
 		if (contract->natural) fputs(",\"checked-nat32\",\"conditional-match\"", file);
 		if (plan->data_count) fputs(",\"fieldful-tagged-values\",\"conditional-match\"", file);
@@ -133,6 +134,10 @@ static int receipt(const char *path, const struct pg_c_link_plan *plan, const ch
 		fputs(",\n  \"callback_contract\":{\"shape\":\"same-width-unary-binary-int32-int64\",\"source\":\"pure-total\","
 			"\"ownership\":\"borrowed-code-and-context\",\"foreign_precondition\":\"implements-source-function\","
 			"\"null_code\":2,\"failure_output\":\"unchanged\",\"returns_closures\":false}", file);
+	if (plan->lowering == PG_C_PREDICATE_NATIVE_DIRECT)
+		fputs(",\n  \"callback_contract\":{\"shape\":\"selected-nat32-unary-binary-two-case-enum\",\"source\":\"pure-total\","
+			"\"ownership\":\"borrowed-code-and-context\",\"foreign_precondition\":\"implements-source-function\","
+			"\"null_code\":2,\"invalid_result\":2,\"failure_output\":\"unchanged\",\"returns_closures\":false}", file);
 	fputs(",\n  \"cc\": ", file);
 	json_string(file, cc);
 	fputs(",\n  \"ar\": ", file); json_string(file, ar);
@@ -229,7 +234,11 @@ int pg_c_link_publish(const struct pg_c_link_plan *plan, const char *directory,
 		emitted = pg_c_emit_native_profile(file, header, plan->count, plan->exports, plan->entry,
 			plan->enum_count, plan->enums, plan->natural_count, plan->naturals,
 			plan->data_count, plan->data, &contract, &error);
-	} else if (plan->lowering == PG_C_CALLBACK_DIRECT)
+	} else if (plan->lowering == PG_C_PREDICATE_NATIVE_DIRECT)
+		emitted = pg_c_emit_predicate_native(file, header, plan->count, plan->exports, plan->entry,
+			plan->enum_count, plan->enums, plan->natural_count, plan->naturals,
+			plan->data_count, plan->data, &contract, &error);
+	else if (plan->lowering == PG_C_CALLBACK_DIRECT)
 		emitted = pg_c_emit_callbacks(file, header, plan->count, plan->exports, plan->entry, &error);
 	else if (plan->lowering == PG_C_CALLBACK2_DIRECT)
 		emitted = pg_c_emit_callbacks2(file, header, plan->count, plan->exports, plan->entry, &error);

@@ -28,6 +28,14 @@ check-c-callback-modules: $(BUILD)/a-to-c $(BUILD)/pointer-check $(BUILD)/c_call
 check-c-callbacks2: $(BUILD)/a-to-c $(BUILD)/pointer-check $(BUILD)/c_callback2_inert_test
 	bash $(C_BACKEND)callback2/check.sh $(BUILD)/a-to-c $(BUILD)/pointer-check $(BUILD)/c_callback2_inert_test
 
+.PHONY: check-c-native-predicates
+check-c-native-predicates: $(BUILD)/a-to-c $(BUILD)/pointer-check $(BUILD)/c_predicate_native_inert_test
+	bash $(C_BACKEND)predicate_native/check.sh $(BUILD)/a-to-c $(BUILD)/pointer-check $(BUILD)/c_predicate_native_inert_test
+
+$(BUILD)/c_predicate_native_inert_test: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(wildcard $(ROOT)*.h $(ROOT)artifact/*.h $(C_BACKEND)*.h $(C_BACKEND)link/*.h $(C_BACKEND)lower/*.h) $(C_BACKEND)predicate_native/inert_test.c $(C_BACKEND)link/plan.c $(LOWER_SOURCES) $(C_BACKEND)emit.c
+	mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -I$(ROOT) -I$(C_BACKEND) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(C_BACKEND)predicate_native/inert_test.c $(C_BACKEND)link/plan.c $(LOWER_SOURCES) $(C_BACKEND)emit.c -Wl,--wrap=pg_eval_advance -Wl,--wrap=pg_substitution_advance -Wl,--wrap=pg_whnf_advance -Wl,--wrap=pg_typed_query_advance -o $@
+
 $(BUILD)/c_callback2_inert_test: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(wildcard $(ROOT)*.h $(ROOT)artifact/*.h $(C_BACKEND)*.h $(C_BACKEND)link/*.h $(C_BACKEND)lower/*.h) $(C_BACKEND)callback2/inert_test.c $(C_BACKEND)link/plan.c $(LOWER_SOURCES) $(C_BACKEND)emit.c
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -I$(ROOT) -I$(C_BACKEND) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(C_BACKEND)callback2/inert_test.c $(C_BACKEND)link/plan.c $(LOWER_SOURCES) $(C_BACKEND)emit.c -Wl,--wrap=pg_eval_advance -Wl,--wrap=pg_substitution_advance -Wl,--wrap=pg_whnf_advance -Wl,--wrap=pg_typed_query_advance -o $@

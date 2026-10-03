@@ -4,7 +4,7 @@
 #include "../emit.h"
 
 enum pg_c_product { PG_C_SOURCE, PG_C_OBJECT, PG_C_ARCHIVE, PG_C_EXECUTABLE, PG_C_SHARED };
-enum pg_c_lowering { PG_C_STRUCTURAL, PG_C_SCALAR_DIRECT, PG_C_NATIVE_DIRECT, PG_C_CALLBACK_DIRECT, PG_C_CALLBACK2_DIRECT };
+enum pg_c_lowering { PG_C_STRUCTURAL, PG_C_SCALAR_DIRECT, PG_C_NATIVE_DIRECT, PG_C_CALLBACK_DIRECT, PG_C_CALLBACK2_DIRECT, PG_C_PREDICATE_NATIVE_DIRECT };
 struct pg_c_link_plan {
 	struct pg_graph storage;
 	const char *artifact, *native_script;

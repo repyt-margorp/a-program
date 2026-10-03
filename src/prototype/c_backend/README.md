@@ -413,6 +413,62 @@ old profile refusals and both unary/binary header orders. Repeated products are
 not independent property counts. SAN instruments clients and source bodies;
 emitted object/archive/shared bodies, backend/producer/Core checker stay O2.
 
+## Selected Native Predicates
+
+The separate `predicate_native_direct_v1` / `c_predicate_native_v1` profile
+combines existing native representations with borrowed synchronous predicates.
+One or two independent Pi domains must use the same explicitly selected Nat32;
+the pure TOTAL result must be an explicitly selected two-constructor nullary
+enum. Constructor order comes from that selection, without a Bool naming rule.
+The scalar, native and earlier callback profiles retain their refusals.
+
+```text
+abi c_predicate_native_v1
+lowering predicate_native_direct_v1
+fallback reject
+enum32 Bool Bool
+nat32 Nat Nat
+data Numbers Numbers
+export filter filter
+```
+
+The generated C header exposes selected types and ordinary function pointers:
+
+```c
+struct ap_c_predicate1_d3_Nat_r4_Bool {
+	void *context;
+	struct ap_enum_Bool (*call)(void *, uint32_t);
+};
+struct ap_c_predicate2_d3_Nat_r4_Bool {
+	void *context;
+	struct ap_enum_Bool (*call)(void *, uint32_t, uint32_t);
+};
+int ap_export_filter(struct ap_c_arena *, struct ap_c_predicate1_d3_Nat_r4_Bool,
+	const struct ap_data_Numbers *, const struct ap_data_Numbers **);
+```
+
+Domain/result alias lengths in these names prevent underscore collisions.
+`AP_C_PREDICATE_NATIVE_ABI` is 1. Code/context must implement the admitted
+pure-total source function and outlive the synchronous call; context may be null.
+Null code, including unused parameters, and invalid returned tags produce status
+2. Failures preserve output and roll back the call's new arena allocations while
+preserving earlier allocations. Existing finite List validation, array copy,
+depth/allocation statuses and checked Nat32 overflow remain target contracts.
+All reachable input storage must be readable and remain valid during the call.
+This does not check arbitrary foreign code or establish source typing receipts.
+
+`check-c-native-predicates` tests source/object/archive/shared clients, stable
+filtering and both sides of a partition, with 1365 filters, 13650 partition
+selections and 574 separate existing Core comparisons per product. Six source
+observations, reversed enum order, inert emission, thirteen public shared
+definitions, rollback after allocation, old profiles and 28 checked/trusted
+refusals are explicit controls. SAN instruments clients and source product bodies;
+other products/backend/producer/Core checker stay O2. Wrapped malloc injection
+and allocation-call observation cover source/object/archive; shared products use
+arena capacity failures because executable link wrapping does not intercept
+their internal malloc. No timing, native Acc/QuickSort, indexed/callable recursive
+fields, effects, general callbacks, ownership escape or accepted promotion follows.
+
 ## Native Nullary ADTs
 
 `native_direct_v1` / `c_native_v1` extends the same scalar lowering, not another

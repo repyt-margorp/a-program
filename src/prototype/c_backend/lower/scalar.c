@@ -62,6 +62,11 @@ struct function {
 	int recursive;
 };
 
+struct predicate {
+	struct predicate *next;
+	struct pg_c_representation type;
+};
+
 struct module {
 	struct pg_dag order;
 	struct pg_index functions, arguments, results;
@@ -70,6 +75,8 @@ struct module {
 	size_t count;
 	const char *error;
 	int callbacks;
+	int native_predicates;
+	struct predicate *predicates;
 };
 
 struct result_entry {
@@ -639,9 +646,11 @@ static int lower(struct expression *e, size_t slot, const void **out)
 				for (size_t i = 0; i < slot; ++i) argument = argument->next;
 				return operand(e, slot, argument, out);
 			}
-			e->type = pg_c_representation_find(representations, pg_host_type(type->width == 32 ? "Int32" : "Int64"));
+			const struct pg_c_representation *input = type->callback_domain ? type->callback_domain :
+				pg_c_representation_find(representations, pg_host_type(type->width == 32 ? "Int32" : "Int64"));
+			e->type = type->callback_result ? type->callback_result : input;
 			for (size_t i = 0; i < arity; ++i)
-				if (e->inputs[i]->computation || e->inputs[i]->value->type != e->type) return -1;
+				if (e->inputs[i]->computation || e->inputs[i]->value->type != input) return -1;
 			e->foreign = thunk->value; e->value = e; e->computation = 1;
 			return 0;
 		}
@@ -733,11 +742,25 @@ static const struct pg_c_representation *parameter_type(struct module *m, const 
 	while (pg_pi_view(computation, &domain, &binder, &codomain)) {
 		if (arity >= (size_t)m->callbacks || !pg_pi_constant_codomain(computation)) return NULL;
 		const struct pg_c_representation *next = pg_c_representation_term(&m->representations, domain);
-		if (!next || next->layout || next->constructors || next->callback || (input && next != input)) return NULL;
+		if (!next || next->callback || (input && next != input)) return NULL;
+		if (m->native_predicates ? !next->natural : next->layout || next->constructors) return NULL;
 		input = next; ++arity; computation = codomain;
 	}
 	if (!arity || !pg_pure_computation_type_view(computation, &totality, &result) ||
-		totality != PG_TOTALITY_TOTAL || input != pg_c_representation_term(&m->representations, result)) return NULL;
+		totality != PG_TOTALITY_TOTAL) return NULL;
+	const struct pg_c_representation *output = pg_c_representation_term(&m->representations, result);
+	if (m->native_predicates) {
+		if (!output || !output->layout || output->constructors || output->natural || output->count != 2) return NULL;
+		for (struct predicate *p = m->predicates; p; p = p->next)
+			if (p->type.callback == (int)arity && p->type.callback_domain == input && p->type.callback_result == output) return &p->type;
+		struct predicate *p = pg_alloc(&m->order.storage, sizeof(*p));
+		if (!p) return NULL;
+		*p = (struct predicate){.next = m->predicates, .type = {.width = 32, .callback = (int)arity,
+			.callback_domain = input, .callback_result = output}};
+		m->predicates = p;
+		return &p->type;
+	}
+	if (input != output) return NULL;
 	static const struct pg_c_representation types[2][2] = {
 		{{.width = 32, .callback = 1}, {.width = 64, .callback = 1}},
 		{{.width = 32, .callback = 2}, {.width = 64, .callback = 2}}
@@ -747,7 +770,8 @@ static const struct pg_c_representation *parameter_type(struct module *m, const 
 
 static struct function *prepare(struct module *m, const struct pg_occurrence *subject)
 {
-	m->error = m->callbacks == 2 ? "expected pure total scalar functions with borrowed unary/binary scalar callbacks" :
+	m->error = m->native_predicates ? "expected pure total native functions with borrowed unary/binary Nat32 predicates" :
+		m->callbacks == 2 ? "expected pure total scalar functions with borrowed unary/binary scalar callbacks" :
 		m->callbacks ? "expected pure total scalar functions with borrowed unary scalar callbacks" :
 		"expected closed represented values or pure total first-order functions";
 	if (!subject || subject->context || !subject->core || !subject->classifier) return NULL;
@@ -942,12 +966,14 @@ static void emit_function(FILE *out, const struct function *f)
 		}
 		fprintf(out, "\tuint64_t v%zu = (uint%zu_t)(", id, e->type->width);
 		if (e->foreign) {
+			const struct pg_c_representation *type = e->foreign->type;
 			value(out, e->foreign); fputs(".call(", out);
 			value(out, e->foreign); fputs(".context", out);
-			for (size_t i = 0; i < (size_t)e->foreign->type->callback; ++i) {
-				fputs(", ", out); public_value(out, e->type, e->inputs[i]);
+			for (size_t i = 0; i < (size_t)type->callback; ++i) {
+				fputs(", ", out); public_value(out, type->callback_domain ? type->callback_domain : e->type, e->inputs[i]);
 			}
 			fputc(')', out);
+			if (type->callback_result) fputs(".tag", out);
 		} else if (e->callee) emit_call(out, e);
 		else if (e->type->natural) {
 			if (e->construction->count) { value(out, e->inputs[0]); fputs(" + UINT64_C(1)", out); }
@@ -957,6 +983,10 @@ static void emit_function(FILE *out, const struct function *f)
 		else if (e->arithmetic == '~') { fputs("UINT64_C(0) - ", out); value(out, e->inputs[0]); }
 		else { value(out, e->inputs[0]); fprintf(out, " %c ", e->arithmetic); value(out, e->inputs[1]); }
 		fprintf(out, ");\n\t(void)v%zu;\n", id);
+		if (e->foreign && e->foreign->type->callback_result) {
+			fprintf(out, "\tif (v%zu >= UINT64_C(%zu)) { arena->status = 2; ", id, e->type->count);
+			failure_return(out, f); fputs(" }\n", out);
+		}
 		if (e->type->natural && !e->callee && e->construction->count) {
 			fputs("\tif (", out); value(out, e->inputs[0]); fputs(" == UINT32_MAX) { arena->status = 5; ", out);
 			failure_return(out, f); fputs(" }\n", out);
@@ -965,6 +995,25 @@ static void emit_function(FILE *out, const struct function *f)
 	}
 	if (f->recursive) fputs("\t--arena->depth;\n", out);
 	fputs("\treturn ", out); value(out, f->body); fputs(";\n}\n\n", out);
+}
+
+static void predicate_declarations(FILE *out, const struct module *m)
+{
+	for (const struct predicate *p = m->predicates; p; p = p->next) {
+		const struct pg_c_representation *type = &p->type;
+		/* Lengths keep distinct alias pairs unambiguous even with underscores. */
+		fprintf(out, "#ifndef AP_C_PREDICATE%d_D%zu_%s_R%zu_%s_TYPES\n#define AP_C_PREDICATE%d_D%zu_%s_R%zu_%s_TYPES 1\n",
+			type->callback, strlen(type->callback_domain->alias), type->callback_domain->alias,
+			strlen(type->callback_result->alias), type->callback_result->alias,
+			type->callback, strlen(type->callback_domain->alias), type->callback_domain->alias,
+			strlen(type->callback_result->alias), type->callback_result->alias);
+		fputs("/* Borrowed code/context implements the admitted pure-total predicate;\n"
+			"\t* it must outlive the synchronous call. Invalid result tags return 2. */\n", out);
+		pg_c_representation_type(out, type); fputs(" { void *context; ", out);
+		pg_c_representation_type(out, type->callback_result); fputs(" (*call)(void *", out);
+		for (int i = 0; i < type->callback; ++i) { fputs(", ", out); pg_c_representation_type(out, type->callback_domain); }
+		fputs("); };\n#endif\n", out);
+	}
 }
 
 static int emit(FILE *source, FILE *header, size_t count,
@@ -976,7 +1025,7 @@ static int emit(FILE *source, FILE *header, size_t count,
 	if (!source || !header || !error) return -1;
 	*error = "invalid scalar exports or entry";
 	if (!pg_c_export_names(count, exports) || (entry != SIZE_MAX && entry >= count)) return -1;
-	struct module m = {.callbacks = callbacks};
+	struct module m = {.callbacks = callbacks, .native_predicates = native && callbacks};
 	struct pg_dag roots;
 	if (pg_dag_init(&roots, NULL, NULL)) return -1;
 	struct function **functions = NULL;
@@ -1001,16 +1050,17 @@ static int emit(FILE *source, FILE *header, size_t count,
 	fputs("/* A Program native realization of admitted pure total computations. */\n#include <stdint.h>\n#include <limits.h>\n"
 		"_Static_assert(sizeof(int) <= sizeof(uint32_t), \"unsupported integer promotion model\");\n\n", source);
 	if (enum_count || natural_count || data_count) fputs("#include <stdlib.h>\n", source);
-	const char *abi = callbacks == 2 ? "CALLBACK2" : callbacks ? "CALLBACK" : native ? "NATIVE" : "SCALAR";
-	const char *name = callbacks == 2 ? "callback2" : callbacks ? "callback" : native ? "native" : "scalar";
-	fputs(callbacks ? "#pragma once\n/* ABI 1: 0 success; 1 null output; 2 null callback code. Output must be writable. */\n#include <stdint.h>\n" :
+	const char *abi = m.native_predicates ? "PREDICATE_NATIVE" : callbacks == 2 ? "CALLBACK2" : callbacks ? "CALLBACK" : native ? "NATIVE" : "SCALAR";
+	const char *name = m.native_predicates ? "predicate_native" : callbacks == 2 ? "callback2" : callbacks ? "callback" : native ? "native" : "scalar";
+	fputs(m.native_predicates ? "#pragma once\n/* ABI 1: 0 success; 1 null output/arena; 2 invalid input/code/result tag. */\n#include <stdint.h>\n" :
+		callbacks ? "#pragma once\n/* ABI 1: 0 success; 1 null output; 2 null callback code. Output must be writable. */\n#include <stdint.h>\n" :
 		"#pragma once\n/* ABI 1: 0 success; 1 null output; 2 invalid tag input. Output must be writable. */\n#include <stdint.h>\n", header);
 	if (m.representations.arena_alias)
 		fputs("/* Recursive profile: 1 also null arena; 2 also null tail/cycle; 3 allocation;\n"
 			"\t* 4 depth limit. Failures preserve output and roll back new allocations. */\n", header);
 	if (natural_count) fputs("/* nat32: uint32 magnitude; status 5 on successor overflow. */\n", header);
 	fprintf(header, "#ifndef AP_C_%s_ABI\n#define AP_C_%s_ABI 1\n#elif AP_C_%s_ABI != 1\n#error incompatible_A_Program_%s_ABI\n#endif\n", abi, abi, abi, name);
-	if (callbacks) {
+	if (callbacks && !native) {
 		const char *declarations = "#ifndef AP_C_CALLBACK_TYPES\n#define AP_C_CALLBACK_TYPES 1\n"
 			"/* Borrowed code/context must outlive the call and implement the declared\n"
 			"\t* pure-total function. Context may be null. Null code returns status 2. */\n"
@@ -1027,6 +1077,7 @@ static int emit(FILE *source, FILE *header, size_t count,
 	}
 	pg_c_representation_declarations(source, &m.representations);
 	pg_c_representation_declarations(header, &m.representations);
+	predicate_declarations(source, &m); predicate_declarations(header, &m);
 	pg_c_nodes_declarations(source, &m.representations);
 	fputs("#ifdef __cplusplus\nextern \"C\" {\n#endif\n", header);
 	pg_c_nodes_declarations(header, &m.representations);
@@ -1128,6 +1179,16 @@ int pg_c_emit_callbacks2(FILE *source, FILE *header, size_t count,
 	const struct pg_c_export *exports, size_t entry, const char **error)
 {
 	return emit(source, header, count, exports, entry, 0, NULL, 0, NULL, 0, NULL, 0, 2, NULL, error);
+}
+
+int pg_c_emit_predicate_native(FILE *source, FILE *header, size_t count,
+	const struct pg_c_export *exports, size_t entry, size_t enum_count,
+	const struct pg_c_export *enums, size_t natural_count,
+	const struct pg_c_export *naturals, size_t data_count,
+	const struct pg_c_export *data, struct pg_c_native_contract *contract, const char **error)
+{
+	return emit(source, header, count, exports, entry, enum_count, enums, natural_count, naturals,
+		data_count, data, 1, 2, contract, error);
 }
 
 int pg_c_emit_native(FILE *source, FILE *header, size_t count,
