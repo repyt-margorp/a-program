@@ -1,0 +1,13 @@
+{
+  "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance/direct_test.c": "1185b68036477b1d979766a69b91a604c6d753be319511938210dcc01f14cbd7",
+  "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_verification/head_cleanup_test.c": "773cadab36e9a6e1ebff96a13e34c165064eb5845c1a8efac9c8e891e43750a4",
+  "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem4/epochs/fold_cursor_v1/manifest.sha256": "ddba9930795c80d80c3d8dcc84bd6e4e7ffe3ad4868d4efbb0ea83af7cf35930",
+  "/tmp/ap-performance-mem4-fold-cursor-current-e12-20261003/verification.sha256": "f12c573323109c496de1b1f399eb958672b5ce46f1d32012da04700976b29f1d",
+  "/tmp/ap-performance-mem4-fold-cursor-current-e12-20261003/src/Makefile": "063d846eb99f86c1c133abf393b3a2a7cf97f548eb472f8b786365f11ba1a167",
+  "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/tests/core.c": "647790ebcb1c2f3c3b28fcd04e9cf6e7c2607081458a5efd96138f1f334834a5",
+  "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/tests/iadt.c": "e61ae7871eeed188e8e69ee3bda18b7435b52b75d9760e910b0ae0d6cc583ab9",
+  "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/tests/eval_io.c": "ebc8f1f3987db32a9887941210717214bafa2c878118ce3d4e78ad4e85429b8b",
+  "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/tests/eval_io.sh": "2343f7a2f5e907bab3daf4593a966010df8ccb6482f5c04175f799ff262621bb",
+  "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/checkpoint_tests/normalization_checkpoint_test.c": "5cfdb6e6eac11e8806470e62acce8f76098e7208b14ed3bbaee969a30199c07d",
+  "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/examples/09_list_induction.p": "f2d58b2c2161c086f62022943ca63e9acdca3c2dd7c6fd1979cc4c7ff7c15b37"
+}

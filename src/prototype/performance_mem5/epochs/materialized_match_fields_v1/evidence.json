@@ -1,0 +1,10 @@
+{
+  "root": "/tmp/ap-performance-mem5-materialized-fields-current-e12-20261003",
+  "manifest": "/tmp/ap-performance-mem5-materialized-fields-current-e12-20261003/verification.sha256",
+  "records": 1586,
+  "manifest_sha256": "da93b08e7079fa06b619d76cdf4653ca270f3cd798596832b5112f81d1fd17a8",
+  "summary_sha256": "f916fdc3302524771f2d5b05d27f8a007c20bd3802953b01a0ee1ef4c61303e8",
+  "compiled_outputs_excluded": true,
+  "task_parent_at_freeze": "86a069946ae450458003b0b1bfb8e238876df71a",
+  "runtime_parent_MEM4": "ff851fe91786ca02c43748c2431065cdde85421f14ab4980743ba7bb40ab5b27"
+}

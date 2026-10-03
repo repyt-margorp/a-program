@@ -1,0 +1,45 @@
+{
+  "terminal": true,
+  "records": 964,
+  "failed": 0,
+  "parent_source128": "ff851fe91786ca02c43748c2431065cdde85421f14ab4980743ba7bb40ab5b27",
+  "candidate_source128": "2344ad41d6db32ceddb5dbc9419aa8da97fcaa00253e075f5ff96b8f72f93b13",
+  "only_runtime_change": [
+    "src/iadt.c"
+  ],
+  "materialized_total_steps": [
+    25,
+    26,
+    12,
+    8,
+    10,
+    14,
+    12
+  ],
+  "continuation_cuts": 79,
+  "O2_fresh_cross_reads": 316,
+  "SAN_fresh_cross_reads": 316,
+  "inert_resave_rounds_per_local_cut": 2,
+  "zero_budget_and_result_readback": true,
+  "ordinary_direct_head_and_cleanup_units": true,
+  "new_policy_descriptor_or_authority": false,
+  "no_actual_cost_or_main_peak_claim": true,
+  "broader_affected_checks_pending": false,
+  "original_setup_failure_preserved": {
+    "records": "focused-live.json",
+    "exit": 2,
+    "reason": "Private runtime-only copy omitted the inherited src/Makefile before candidate compilation."
+  },
+  "affected_records": 12,
+  "affected_failed": 0,
+  "public_partition_raw_exit": 1,
+  "public52_images_and_full_verdict_fuel_table_equal": true,
+  "only_original_strict3": true,
+  "patch_sha256": "10463d69da66d793e3f80d9dae4994bb64aed2fd65fa789331476de747c93d9b",
+  "test_sha256": "6af422d3568bd8ad26e1644ad04e313704bd54b3451ab03f13f35687fa381d3e",
+  "parent_MEM4_publication_manifest_sha256": "ddba9930795c80d80c3d8dcc84bd6e4e7ffe3ad4868d4efbb0ea83af7cf35930",
+  "other_checkpoint_history_and_SourceIO_IdentityIO_qualification": "Inherited unchanged MEM4 qualification; no fresh claim.",
+  "no_new_owner_index_ABI_schema_frontier_allocation": true,
+  "full_Goal_active": true,
+  "task_parent_at_freeze": "86a069946ae450458003b0b1bfb8e238876df71a"
+}

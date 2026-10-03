@@ -1,0 +1,18 @@
+{
+  "parent_known_failures": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem4/epochs/fold_cursor_v1/known-failures.json",
+  "parent_known_failures_sha256": "2a682b2873d7365a5e70235390c4e83861727e3e67e544adcd25ae81f7702b1f",
+  "original_observer_SAN7_strict3_and_all_prior_failures_retained": true,
+  "focused_setup": {
+    "records": "focused-live.json",
+    "exit": 2,
+    "reason": "Private runtime-only copy omitted the inherited src/Makefile before candidate compilation."
+  },
+  "affected_setup": {
+    "records": "affected-live.json",
+    "exit": 1,
+    "all_six_actual_commands_exit": 0,
+    "reason": "Helper expected uppercase DONE; unchanged parent and candidate emit lowercase done steps=1915."
+  },
+  "new_candidate_runtime_failure": false,
+  "runtime_test_or_authority_waiver": false
+}
