@@ -1,6 +1,6 @@
 {
-  "reviewed_at_UTC": "2026-10-03 13:49 UTC",
-  "Main_revision": "b461aceec7ecfbc19dff9170497cf3667cca33c2",
+  "reviewed_at_UTC": "2026-10-03 14:29 UTC",
+  "Main_revision": "f48ab5e01567810283c1dbd64395dda830e46d3c",
   "worker_notice_sha256": "3e51fc6683d30113e7f4aefcfd114b1ce998f7cd5301622a0c78ba42f9afa91e",
   "diagnostic_manifest_sha256": "9f88231de97ef25205a69a85bafbec6befabaea7140f14fe401ab92ae7fb95d3",
   "all_40_evidence_hashes_verified": true,
@@ -64,7 +64,7 @@
     "source128_manifest_sha256": "8f6ea298a8d2f7be65c12e5abb756be0ad77a6d41fa4f7794b4781569639fca7",
     "patch_sha256": "b2c396010d5f2781e1d341f3f5d622348728acac5db95b02c50cfbe2740f9ccf",
     "decision": "Retain all non-NULL state frames; only stateless frames pool after callback return.",
-    "qualification": "Pending terminal gates/fresh memory/cost; no publication or accepted promotion",
+    "qualification": "Qualified frozen E9+E10 prototype; all1969 evidence hashes verified. Worker O2 384/0/artifact41 only strict1/SAN38+45/focused23/cross140; Root fresh128 and O2/SAN ten callback cases pass. No actual peak/time claim.",
     "callback_review_sha256": "e742cb810df2da4495a7580acfc720a9335bafd72a566ae2c2e714cc88cdc13d",
     "callback_contract_limit": "Current owners preserve machine arena through callback return; public prose does not establish arbitrary custom-callback lifetime guarantee. No new prohibition adopted.",
     "fresh_Root_control": "/tmp/a-program-merge-mem1-state-control-20261003/Root-controls.json",
@@ -72,6 +72,31 @@
       0,
       -6,
       0
-    ]
+    ],
+    "task": "1297e0b184afc91929b126b50b0ebdeeadc2e1a0",
+    "Main_integration": "f48ab5e01567810283c1dbd64395dda830e46d3c",
+    "all18_Main_files_exact": true,
+    "evidence_manifest_sha256": "c0734afabb694690839a962a34cac52364a835a2955642c11b3ec7db63cc1e3a",
+    "Root_fresh_build_controls": "/tmp/a-program-merge-mem1-v2-controls-20261003/Root-results.json",
+    "capacity_sample": {
+      "cut_steps": 180000000,
+      "all_arena_parent_bytes": 1769812912,
+      "all_arena_v2_bytes": 897168304,
+      "net_delta_bytes": -872644608,
+      "memo_extra_capacity_bytes": 49152,
+      "source": "V2 own snapshot312424a1, independently verified; not derived from rejected v1.",
+      "peak_RSS": false
+    },
+    "cumulative_external_audit": {
+      "tree_steps": 183507626,
+      "call_delta": -11363962,
+      "aligned_byte_delta": -2727318176,
+      "added_job_layout_bytes_included": 32704,
+      "list_call_delta": 0,
+      "list_extra_aligned_bytes": 368,
+      "omits_internal_graph_requests": true
+    },
+    "embedded_struct_rebuild_required": true,
+    "actual_matched_wall_RSS": "Pending reviewed exclusive request; no grant."
   }
 }

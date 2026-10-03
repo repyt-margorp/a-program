@@ -1,0 +1,111 @@
+{
+  "Main_review_base": "f48ab5e01567810283c1dbd64395dda830e46d3c",
+  "task": "cb959eb6ecb30c149b464529f3069833b6fd00a5",
+  "exact_publication_files": 29,
+  "task_pushed_remote_verified": true,
+  "source156_manifest_sha256": "0a76201b7ca5b89bc129d2a11d6694a22a774474489e6f2c919e9152dd5a3458",
+  "Root_fresh_source156_exact": true,
+  "Root_fresh_O2_SAN_constructor_mutation_and_returned_frame_controls": {
+    "task": "cb959eb6ecb30c149b464529f3069833b6fd00a5",
+    "Root_fresh156_exact": true,
+    "source156_manifest_sha256": "0a76201b7ca5b89bc129d2a11d6694a22a774474489e6f2c919e9152dd5a3458",
+    "checks": [
+      {
+        "mode": "O2",
+        "name": "build",
+        "argv": [
+          "make",
+          "-f",
+          "/tmp/a-program-merge-e12c-publication-20261003/src/prototype/solver_inputs/epochs/job_evidence_e12_corrected_lean/verify.mk",
+          "-j1",
+          "ARTIFACT_MAKEFILE=/tmp/a-program-merge-e12c-publication-20261003/src/prototype/artifact_persistence/build.mk",
+          "OVERLAY=/tmp/a-program-merge-e12c-assembled-20261003",
+          "BUILD=/tmp/a-program-merge-e12c-controls-20261003/O2",
+          "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+          "CONSTRUCTOR_CONTROL=/tmp/a-program-merge-e12c-publication-20261003/src/prototype/solver_inputs/epochs/job_evidence_e12_corrected_lean/constructor_scope_lifetime_control.c",
+          "/tmp/a-program-merge-e12c-controls-20261003/O2/constructor_scope_lifetime_control"
+        ],
+        "exit": 0,
+        "log_sha256": "e2197ddb4dde737523ea877c1b1f34d962b1e67a3a301a68f6b6e0cf4eb47c8a"
+      },
+      {
+        "mode": "O2",
+        "name": "mutation",
+        "argv": [
+          "/tmp/a-program-merge-e12c-controls-20261003/O2/constructor_scope_lifetime_control",
+          "--mutation-only"
+        ],
+        "exit": 0,
+        "log_sha256": "031a47c6833846dfa8c90c09f590056dbbcbbfc620f7b35796cec88ac07ad9de"
+      },
+      {
+        "mode": "O2",
+        "name": "lifetime",
+        "argv": [
+          "/tmp/a-program-merge-e12c-controls-20261003/O2/constructor_scope_lifetime_control"
+        ],
+        "exit": 0,
+        "log_sha256": "e37bbd51b280f740225980a52fbbf5248feb930bd6e01115275415899a6421a2"
+      },
+      {
+        "mode": "SAN",
+        "name": "build",
+        "argv": [
+          "make",
+          "-f",
+          "/tmp/a-program-merge-e12c-publication-20261003/src/prototype/solver_inputs/epochs/job_evidence_e12_corrected_lean/verify.mk",
+          "-j1",
+          "ARTIFACT_MAKEFILE=/tmp/a-program-merge-e12c-publication-20261003/src/prototype/artifact_persistence/build.mk",
+          "OVERLAY=/tmp/a-program-merge-e12c-assembled-20261003",
+          "BUILD=/tmp/a-program-merge-e12c-controls-20261003/SAN",
+          "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+          "CONSTRUCTOR_CONTROL=/tmp/a-program-merge-e12c-publication-20261003/src/prototype/solver_inputs/epochs/job_evidence_e12_corrected_lean/constructor_scope_lifetime_control.c",
+          "/tmp/a-program-merge-e12c-controls-20261003/SAN/constructor_scope_lifetime_control"
+        ],
+        "exit": 0,
+        "log_sha256": "e2d8b93420f31bd4dd068cab570f096e6468e1b95825c493f04f21739fc6d29f"
+      },
+      {
+        "mode": "SAN",
+        "name": "mutation",
+        "argv": [
+          "/tmp/a-program-merge-e12c-controls-20261003/SAN/constructor_scope_lifetime_control",
+          "--mutation-only"
+        ],
+        "exit": 0,
+        "log_sha256": "031a47c6833846dfa8c90c09f590056dbbcbbfc620f7b35796cec88ac07ad9de"
+      },
+      {
+        "mode": "SAN",
+        "name": "lifetime",
+        "argv": [
+          "/tmp/a-program-merge-e12c-controls-20261003/SAN/constructor_scope_lifetime_control"
+        ],
+        "exit": 0,
+        "log_sha256": "e37bbd51b280f740225980a52fbbf5248feb930bd6e01115275415899a6421a2"
+      }
+    ],
+    "terminal": true,
+    "common_current_E9_E10_included": false
+  },
+  "Root_private_copy_setup_correction": "Initial private copy omitted nine pinned artifact/checkpoint test sources; copied exact parent-owned inputs and verified all156 before publication. No control/source change.",
+  "worker_parent_unsafe_corrected_verdicts": [
+    0,
+    1,
+    0
+  ],
+  "implementation_added_deleted": [
+    39,
+    8
+  ],
+  "tests_added_deleted": [
+    53,
+    0
+  ],
+  "descriptive_ownership": "Existing typing context index, exact member identity for every ancestor before borrowing; copied/foreign/raw-parent chains keep owned array. Corrected E11 SourceScope guard preserved.",
+  "local_layout_observation": "5006 Binder array entries removed; raw34928/aligned32112 bytes. Layout is not peak/time.",
+  "current_E9_E10_E11_E12_joint_qualification": "pending; isolated corrected-E11 parent excludes E10/MEM1/E13",
+  "Main_runtime_integration": false,
+  "no_accepted_promotion": true,
+  "original_strict_and_unsafe_failures_unwaived": true
+}

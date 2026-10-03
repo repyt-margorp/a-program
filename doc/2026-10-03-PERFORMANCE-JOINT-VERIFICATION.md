@@ -91,7 +91,7 @@ brief; detailed evidence remains in the linked manifests and reports below.
 | #56 with #51/#52 measurement boundaries: cross-system evidence | Official source `7d24b8d0235cb9781140512c0f163c48ea84a719`; collector `9c50c62d`, config `390adf41` | E6 measurements30/0; tree wall17.23→5.40s/RSS−36.3%, QuickSort medians equal. All114 task blobs match `0f017454`; initial zero-sample failure retained | Task `44e479be` pushed; measurement Main merge `99efcf7` is an ancestor of freshly observed remote `cf8cdf5` | Joint E6 timings do not establish accepted-only values; proof/helper/startup/RSS limits and strict3 remain | Future cost scope/slot only after coupled qualification and Root grant |
 | #56: same-input retained state and completed artifacts | Diagnostic helper + compact report, exact measured E6 ordinary/head sources and three pinned inputs | Six DONE censuses/source saves and12 full fresh reloads pass;12 zero-step resaves preserve bytes while CLI reports pending3. All three completed pairs byte-identical. Trees retain10,338,148 fewer Core terms; typed/Evidence/Job counts equal | Separate65-record evidence frozen `eb4e7542`; frozen2 bytes freshly match live/task `ac6a8b2420051b06d41c1b7032526c360d1ae690` and remote task branch. Published114/E7/E8 immutable; no Main integration claim | Preserve obsolete metrics-helper build2; semantic-object/complete allocator census and additional time/RSS gains are not claimed | Preserve publication while qualifying distinct E9/E10; no extra broad runs |
 | #56: lifetime and allocation attribution | Read-only E6 graph/evaluator ownership inspection; runtime unchanged | Interned terms remain in Program graph until destruction; evaluator/readback scratch frees separately. Both measured variants retain the same arena/index defaults | Findings recorded separately; no new owner implementation or tuning patch | Per-owner RAM and independent arena/index or head/direct timing factors remain unmeasured | Preserve these limits in future agreed cost scope after exact coupled qualification |
-| #56 / MEM1: delete unnecessary work/state for actual memory/time | Diagnosis40 exact; rejected v1 patch698e97e2, separate stateless v2 b2c39601/source1288f6ea298 | Root fresh inline-state parent0/v1 signal6/v2 0; v1 acceptance/capacity cannot qualify deletion. Current-owner callback reporte742cb81 verified; v2 full terminal gates and fresh memory pending | Current docs task73d8229/Mainc2bab35b; runtime unpublished, v1 rejected | No qualified peak/RSS/time improvement; retain non-NULL state and existing resume contracts. Arbitrary custom-callback guarantee not established | Finish v2 correctness, new capacity/scaling and exact handoff; later matched exclusive cost |
+| #56 / MEM1: delete unnecessary work/state for actual memory/time | Diagnosis40 exact; rejected v1; separate v2 patchb2c39601/source1288f6ea298 on E9+E10 | Frozen1969 c0734afa:384 O2/0, SAN38/45, focused23/cross140; Root fresh128 and O2/SAN ten callback cases pass. V2 own180M net capacity−872644608 incl memo growth49152; cumulative−2727318176 bytes; List+368 | Exact18 task1297e0b pushed/remote verified; prototype Mainf48ab5e integrated, no accepted promotion | Capacity/cumulative is not actual peak/RSS/speed. Embedded eval+8/aligned WHNF+16 needs rebuild; custom callback self-destruction unspecified | Prepare exact matched exclusive cost request after current joint gates; retain strict3 and v1 lifetime failure |
 
 Fresh Git inspection verifies HEAD and tracking branch at `0539051`; every
 committed/live file matches the corrective 44-file frozen manifest. Core's exact
@@ -269,7 +269,17 @@ retired frame. Passing v1 acceptance and its lower sampled capacity do not
 qualify that deletion or establish a gain. Keep its capacity values only as
 rejected-candidate evidence. V2 `b2c39601`, source128 `8f6ea298`, retains
 every non-NULL state frame and pools stateless frames after callback return.
-Qualification and fresh memory evidence remain pending; v1 values do not apply.
+V2 frozen evidence1969 `c0734afa` verifies O2 384/0, artifact41 only original
+strict target1, SAN38/45 and focused23/cross140. Root fresh128 assembly and O2/
+SAN builds of both expanded controls pass (six build/run commands, ten cases).
+Exact18 task1297e0b pushed/remote verified, prototype Mainf48ab5e integrated.
+V2's own180M sample independently repeats the net arena-capacity reduction
+872,644,608 bytes, including49,152 memo growth. Cumulative external allocation
+falls2,727,318,176 aligned bytes at unchanged183,507,626 tree steps; small List
+adds368 bytes. These are capacity/cumulative observations, not peak RSS or speed.
+Embedded evaluator grows8 bytes and aligned WHNF16; rebuild users of the header.
+No accepted promotion or arbitrary callback lifetime contract follows. Matched
+wall/RSS and combined correctedE11/E12 qualification remain separate.
 Callback report `e742cb81` verifies current owners retain the machine arena
 through return; public borrowing prose does not establish an arbitrary custom
 callback guarantee. No new prohibition is adopted. Root controls and exact

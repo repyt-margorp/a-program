@@ -104,6 +104,13 @@ names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
 
+2026-10-03 C14 source boundary, Root current-E9+E10 probe: named, explicit
+thunk and inline-lambda callback application all reject1, matching worker E8.
+This is not an established producer defect. Readonly ordinary-syntax/type
+review routed to the sole Job owner; C continues its separate well-scoped pure
+callback target controls and preserves existing unsupported contracts.
+Evidence: `/tmp/a-program-merge-c14-source-probes-20261003/Root-results.json`.
+
 Root fresh C13 review, 2026-10-03: qualified current E9+E10 runtime12873fa86c9
 unchanged before/after; strict O2 backend, shared O2/client ASan/UBSan/leak,
 original linker and nineteen I/O controls all pass. Shared phases each58 rows

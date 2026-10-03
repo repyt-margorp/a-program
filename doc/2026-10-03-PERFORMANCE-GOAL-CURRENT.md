@@ -1,7 +1,7 @@
 # Performance Goal: Current Speed and Memory Work
 
 Date: 2026-10-03
-Status: active; E9+E10 published; MEM1 v1 rejected, conservative stateless v2 qualification underway.
+Status: active; E9+E10 published; MEM1 v1 rejected, stateless v2 qualified/published as prototype; actual peak/time comparison pending.
 This is the active successor to the frozen
 [Performance Goal at0539051](2026-10-03-PERFORMANCE-GOAL.md). Its published bytes
 and historical handoffs remain immutable. The single current issue-status table
@@ -78,7 +78,17 @@ retired frame. Passing v1 acceptance and its lower sampled capacity do not
 qualify that deletion or establish a gain. Keep its capacity values only as
 rejected-candidate evidence. V2 `b2c39601`, source128 `8f6ea298`, retains
 every non-NULL state frame and pools stateless frames after callback return.
-Qualification and fresh memory evidence remain pending; v1 values do not apply.
+V2 frozen evidence1969 `c0734afa` verifies O2 384/0, artifact41 only original
+strict target1, SAN38/45 and focused23/cross140. Root fresh128 assembly and O2/
+SAN builds of both expanded controls pass (six build/run commands, ten cases).
+Exact18 task1297e0b pushed/remote verified, prototype Mainf48ab5e integrated.
+V2's own180M sample independently repeats the net arena-capacity reduction
+872,644,608 bytes, including49,152 memo growth. Cumulative external allocation
+falls2,727,318,176 aligned bytes at unchanged183,507,626 tree steps; small List
+adds368 bytes. These are capacity/cumulative observations, not peak RSS or speed.
+Embedded evaluator grows8 bytes and aligned WHNF16; rebuild users of the header.
+No accepted promotion or arbitrary callback lifetime contract follows. Matched
+wall/RSS and combined correctedE11/E12 qualification remain separate.
 Callback report `e742cb81` verifies current owners retain the machine arena
 through return; public borrowing prose does not establish an arbitrary custom
 callback guarantee. No new prohibition is adopted. Root controls and exact

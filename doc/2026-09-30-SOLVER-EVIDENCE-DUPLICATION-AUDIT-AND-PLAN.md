@@ -2943,6 +2943,15 @@ authorized by this inspection request.
 
 #### Objective (Code)
 
+2026-10-03, Root review at Main `f48ab5e`: corrected E12 exact29 task
+`cb959eb` pushed/remote verified, isolated corrected-E11 parent `d22be9f`.
+Fresh Root156 source/test assembly and O2/SAN constructor mutation/returned-frame
+controls pass. Guard uses exact existing typed-index membership for every ancestor;
+owned fallback retained. Current E9+E10+correctedE11/E12 joint qualification is
+pending, so no Main runtime integration, peak/time or strict-resume completion.
+[Root E12 evidence](../src/prototype/solver_inputs/joint_verification/e12-corrected-root-review.json).
+Original unsafe Context control1 and original strict failures remain distinct.
+
 Parent `f589e40`; implementation comparison is the verified `55d7781` overlay,
 assembled on accepted-source snapshot `e716232`. The prototype removes the factory,
 role, recognition API and remaining input-unwrapping helper. All 65 synthesis-test
