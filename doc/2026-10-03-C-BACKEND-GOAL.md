@@ -4,7 +4,8 @@ Date: 2026-10-03
 Status: in progress; session `c-backend`, branch `parallel/c-backend-20261003`.
 Baseline: committed `eb0aad6` compiler/overlay plus the coordination documents.
 Related: [coordination](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md),
-[AP4-AP6](2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md), #44/#49.
+[AP4-AP6](2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md), open #61
+(supersedes historical #44/#49).
 
 ## Problem List
 
@@ -102,6 +103,12 @@ refinement now, while the coordinator continues Job/Evidence removal. Use task
 names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
+
+Root fresh C13 review, 2026-10-03: qualified current E9+E10 runtime12873fa86c9
+unchanged before/after; strict O2 backend, shared O2/client ASan/UBSan/leak,
+original linker and nineteen I/O controls all pass. Shared phases each58 rows
+and exact3/4/17/8 definitions. Backend/library bodies stay O2. Exact11 task
+96a0308 pushed/remote verified; no accepted promotion or native sorter completion.
 
 2026-10-03 13:49 UTC, Root review at Main `b461ace`: exact C12 task97f8d7c
 and Main370a986 complete, current-E9+E10 fourteen O2/three affected client
@@ -261,6 +268,7 @@ Current issue status (2026-10-03; detailed pins stay in linked epoch plans):
 | #49 ordinary C helper aliases, C10 | Task parent `60c100c` plus three test/harness files; reviewed client SHA256 `1333e8545580ad88e7b210dd0d7374d70ae37cc1bed9cc11fbf19aa48ad214af`. No emitter/producer/schema change. | Qualified C9/E8 fresh inputs; 18 serial O2 and 18 client ASan/UBSan/leak combinations pass. Eight Choice pairs/one four-element List per client; rollback/depth/lifetime and two default-symbol refusals pass. Exact pins in the alias note. | Exact six-file task `fe497956` pushed/remote verified; Root evidence review passes. Prototype Main `2753441` / status `0791e799` pushed/remote verified. | Explicit distinct aliases remain required; no general nominal exchange or fully instrumented object/archive claim. | Continue independent I/O correction/value-record List prototype; Root handles integration conflicts. |
 | #49 publication I/O status, C11 | Parent `fe497956` plus two implementation files: save stream errors before closing and prefer I/O status 2. Exact seven-file handoff. | Worker C9/E8 before/after19 and 18 O2/18 client sanitizer combinations pass. Root fresh current-E9+E10 thirteen backend gates and nineteen I/O controls pass. Unsupported 4, cleanup and prior output preserved. | Exact seven-file task `56e4ae875` pushed/remote verified; Root qualification complete; prototype Main `545baa62` published in `6988deb`, remote verified. | Linux fault interposition is test-only; backend/object/archive bodies are O2, not sanitizer-instrumented. No broad native completion. | Separate bounded already-selected finite value-record/single-tail List admission/refusal probe. |
 | #49 finite value-record List/arrays, C12 | Parent `56e4ae875a18f336fff2262925472158a0d5d249` plus three lowerer files: retain only List-shaped finite payloads, validate active fields before traversal/allocation, emit validators first. | 259 cases/product and 13 source observations; O2/client sanitizers and 24 checked/trusted refusals pass. Affected old value-record/enum-List gates and C11 I/O controls pass; former Recursive/Aggregates are explicit positives. | Exact sixteen-file task `97f8d7c` pushed/remote verified. Root current E9+E10 fourteen O2 gates, three affected client/source sanitizer gates and nineteen I/O controls pass. Prototype Main370a986 integrated, push pending. | Recursive aggregates, multi-tail/non-List record shapes, callable/indexed fields and native Acc/QuickSort remain unsupported. No accepted C promotion. | Pin exact C12 handoff, then assess the next concrete C-module boundary within the bounded scope. |
+| #61 shared C products/visibility, C13 | Parent `97f8d7c` plus three plan/driver files: explicit shared product, PIC objects, selected public symbol map and receipt; separate exact11 snapshot. | Strict backend O2; shared O2/client sanitizer phases each pass 58 status rows and 16 linked/dlopen runs. Exact 3/4/17/8 dynamic definitions; affected linker and 19 I/O controls pass on qualified E8. | Exact11 task96a0308 pushed/remote verified; Root current E9+E10 strict build, shared O2/client sanitizer phases58+58, affected linker and19 I/O controls pass. Prototype Main review complete; C12 historical snapshot remains immutable. | ELF version-script toolchain, code handle lifetime, client-only SAN coverage; no install/SONAME policy, general callable/boxed ABI or source authority. | Root reviews exact C13; continue bounded #61 C usability and explicit residuals independently. |
 | #61 native Acc/QuickSort (historical #44/#49) | C4 `a3b6bce` pins native refusal; C7-C9 retain it. Applied List resolves only the first representation obligation. No native sorter. | Historical checked/trusted status 4/no product; Root C9 sorting-boundary gate passes. Structural FFTT remains separate. | C4-C9 task/prototype Main published; no native Acc epoch publication. | Indexed SizedList and callable recursive Acc fields remain unsupported; no producer defect established. | Report concrete indexed/callable representation needs through Merge; keep work bounded and downstream. |
 | #61 remaining public contracts (historical #49) | Dynamic callbacks/effects, higher Identity, recursive captures and general shared nominal exchange remain explicit limits. | Local/joint gates verify supported cases and refusals, not general completion. | C8/C9 task/prototype Main published; no publication of these missing contracts. | Need bounded justified representation/demand contracts. | Preserve refusals; route shared needs through Merge. |
 
@@ -414,6 +422,12 @@ pinned/current producer images and emitted C/headers match byte-for-byte.
 Evidence and exact publication files are in the [epoch handoff](2026-10-03-C-BACKEND-EPOCH1-HANDOFF.md).
 
 ### Assessment
+
+2026-10-03, Root operational issue routing under the human-authorized audit:
+#44/#49 are superseded by open #61, preserving separate source/native residuals
+and the existing C owner. This is an audit disposition, not a new user design
+principle. Root retains exact C13 task bytes and resolves only current status/
+provenance in this reviewed Main plan.
 
 2026-10-03 12:03 UTC, Root operational decision following the direct human
 workflow replacement: all earlier publication/review-only build and implementation

@@ -187,13 +187,27 @@ from the native archive:
 | `object` | `component.o`, `runtime.o`; no entry; link runtime once across components |
 | `archive` | Objects plus `library.a`; no entry |
 | `executable` | Objects plus `program`; `entry ALIAS` required |
+| `shared` | PIC objects, `library.so`, `symbols.map`; no entry |
 
 Native products use POSIX `execvp` with explicit argument vectors, no shell.
 `--cc TOOL` and `--ar TOOL` select GCC/Clang-compatible host C11 tools (defaults
 `cc`, `ar`); compilation uses `-std=c11 -O2 -c`. Executables may specify
 `native_script "layout.ld"`; this is actually passed to the GNU/ELF-LLD-compatible
 linker through the compiler driver, not merely listed in the receipt. No generic
-cross-target profile or generated shared-library export map is claimed.
+cross-target profile is claimed. `product shared` compiles with `-fPIC` and links
+with `-shared` and an anonymous ELF version script. It requires a host compiler/
+linker supporting those options; tool failure returns I/O status 2 and removes
+the staging directory. `native_script` remains executable-only.
+
+Shared libraries expose the selected `ap_export_ALIAS` functions and existing
+native arena/finite-List helpers only. `symbols.map` derives names from the
+selected target ABI; other definitions, including the structural runtime, are
+local. The receipt identifies `library.so`, `selected-public-api` visibility and
+the `elf-version-script` toolchain requirement. Ordinary clients may link the
+explicit library path or use a POSIX loader with the same public signatures.
+Keep a loaded library alive until calls and its arena destructors finish; input
+and result lifetimes still follow the generated header. This adds no portable
+loader, install naming/version policy or shared source nominal identity.
 
 Aliases are `[A-Za-z][A-Za-z0-9_]*`; the C symbol is always `ap_export_ALIAS`,
 avoiding keywords, main, runtime functions and private tN names. The public ABI
@@ -222,13 +236,21 @@ O2 and ASan/UBSan pass against clean `e716232` plus the artifact overlays at
 `b6bbb0b`. Existing C differentials, Oracle/Identity checks and checked/trusted
 Acc QuickSort also pass. This does not fix the separately failing public
 artifact split-fuel gate. Callable Pi/boxed/flat ABIs, shared semantic identity,
-foreign imports and shared-library visibility remain AP5.6 work.
+foreign imports remain AP5.6 work. `check-c-shared` adds ordinary linked/dlopen
+clients for scalar arithmetic, finite record Lists, applied Nat Lists and isolated
+exports. It checks exact dynamic definitions, repeated/trusted behavior, active
+tags, capacity/depth rollback, arena/library lifetime, map stream/close errors,
+tool failures, prior products and unchanged images. Its client sanitizer mode
+instruments clients; backend, emitted objects/shared-library bodies stay O2.
 
 The initial packaging issue #46 is closed; it does not imply a general native
 C API. #49 and [AP6](../../../doc/2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md#ap6-target-native-public-modules)
 now track typed C arguments/results, direct calls and representation lowering.
 PR #50's hand-derived Bool sorter is research, not an available lowering profile.
 A native-only request must not silently become this status-only structural ABI.
+The human-authorized audit disposition now routes open source-semantic and
+native-target residuals to #61, superseding historical #44/#49 without changing
+representation or erasure authority.
 
 ## Native Scalar Profile
 
