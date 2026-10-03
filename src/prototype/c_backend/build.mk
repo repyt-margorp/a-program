@@ -52,6 +52,10 @@ check-c-value-records: $(BUILD)/a-to-c $(BUILD)/pointer-check
 check-c-enum-list: $(BUILD)/a-to-c $(BUILD)/pointer-check
 	bash $(C_BACKEND)lower/enum_list_check.sh $(BUILD)/a-to-c $(BUILD)/pointer-check
 
+.PHONY: check-c-record-list
+check-c-record-list: $(BUILD)/a-to-c $(BUILD)/pointer-check
+	bash $(C_BACKEND)record_list/check.sh $(BUILD)/a-to-c $(BUILD)/pointer-check
+
 .PHONY: check-c-applied-families
 check-c-applied-families: $(BUILD)/a-to-c $(BUILD)/pointer-check $(BUILD)/c_applied_inert_test
 	bash $(C_BACKEND)applied/gate.sh $(BUILD)/a-to-c $(BUILD)/pointer-check $(BUILD)/c_applied_inert_test

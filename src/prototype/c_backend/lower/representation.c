@@ -146,12 +146,15 @@ int pg_c_representations_native(struct pg_c_representations *table, struct pg_gr
 				c->fields[k - 1] = f;
 			}
 		}
-		/* Nested value data must already be selected and complete. Recursive
-			* nodes retain only scalar/enum/natural payloads and their direct tail. */
+		/* Nested value data must already be selected and complete. A finite
+			* value-record node payload is limited to the single-tail List shape. */
 		if (r->recursive) for (size_t j = 0; j < n; ++j)
 			for (size_t k = 0; k < r->constructors[j].count; ++k) {
 				const struct pg_c_representation *f = r->constructors[j].fields[k];
-				if (f != r && f->constructors && !f->natural) return -1;
+				if (f != r && f->constructors && !f->natural) {
+					size_t cell, payload;
+					if (!pg_c_representation_list(r, &cell, &payload)) return -1;
+				}
 			}
 		if (natural) {
 			/* Positions come from the selected declaration, never constructor names. */
@@ -229,7 +232,7 @@ int pg_c_representation_list(const struct pg_c_representation *r, size_t *cell, 
 	if (r->constructors[1 - position].count || c->count != 2 || c->tail > 1) return 0;
 	size_t field = 1 - c->tail;
 	const struct pg_c_representation *type = c->fields[field];
-	if (type->constructors && !type->natural) return 0;
+	if (type->recursive) return 0;
 	*cell = position; *payload = field;
 	return 1;
 }

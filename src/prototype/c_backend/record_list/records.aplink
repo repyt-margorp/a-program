@@ -1,0 +1,24 @@
+aplink 1
+artifact records.a
+abi c_native_v1
+target host-c11
+product source
+lowering native_direct_v1
+fallback reject
+enum32 Bool Bool
+data Packet Packet
+data Envelope Envelope
+data Records Records
+data Reverse Reverse
+export empty empty
+export prepend prepend
+export identity identity
+export length length
+export sum sum
+export append append
+export reverse_empty reverse_empty
+export reverse_prepend reverse_prepend
+export reverse_sum reverse_sum
+export sample_length sample_length
+export sample_sum sample_sum
+export sample_append sample_append

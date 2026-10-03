@@ -23,7 +23,7 @@ void pg_c_nodes_declarations(FILE *out, const struct pg_c_representations *table
 		fputs(" *, size_t capacity, size_t *written);\n", out);
 		fputs("/* Copy an array slice into arena-owned List nodes, including its terminal.\n"
 			"\t* Input, output and arena metadata must not overlap. Empty input accepts\n"
-			"\t* a null array. 1: null argument; 2: invalid enum; 3: allocation; 4: active arena; 6: length\n"
+			"\t* a null array. 1: null argument; 2: invalid active tag; 3: allocation; 4: active arena; 6: length\n"
 			"\t* overflow. Failures preserve output and prior arena allocations. */\n", out);
 		fprintf(out, "int ap_from_%s(struct ap_c_arena *, const ", r->alias);
 		pg_c_representation_type(out, r->constructors[cell].fields[payload]);
@@ -56,8 +56,13 @@ void pg_c_nodes_implementation(FILE *out, const struct pg_c_representations *tab
 		for (size_t j = 0; j < r->count; ++j) {
 			const struct pg_c_constructor_representation *c = &r->constructors[j];
 			fprintf(out, "\tcase %zu:\n", j);
-			for (size_t k = 0; k < c->count; ++k) if (c->fields[k]->layout && !c->fields[k]->recursive && !c->fields[k]->natural)
-				fprintf(out, "\t\tif ((uint64_t)node->fields.c%zu.f%zu.tag >= UINT64_C(%zu)) *valid = 0;\n", j, k, c->fields[k]->count);
+			for (size_t k = 0; k < c->count; ++k) {
+				const struct pg_c_representation *f = c->fields[k];
+				if (!f->layout || f->recursive || f->natural) continue;
+				if (f->constructors)
+					fprintf(out, "\t\tif (!ap_valid_value_%s(node->fields.c%zu.f%zu)) *valid = 0;\n", f->alias, j, k);
+				else fprintf(out, "\t\tif ((uint64_t)node->fields.c%zu.f%zu.tag >= UINT64_C(%zu)) *valid = 0;\n", j, k, f->count);
+			}
 			if (c->tail == SIZE_MAX) fputs("\t\treturn NULL;\n", out);
 			else fprintf(out, "\t\tif (!node->fields.c%zu.f%zu) *valid = 0;\n\t\treturn node->fields.c%zu.f%zu;\n", j, c->tail, j, c->tail);
 		}
@@ -89,7 +94,10 @@ void pg_c_nodes_implementation(FILE *out, const struct pg_c_representations *tab
 			"\tif (!arena || !out || (count && !input)) return 1;\n"
 			"\tif (arena->depth) return 4;\n\tif (count == SIZE_MAX) return 6;\n", r->alias);
 		const struct pg_c_representation *element = r->constructors[cell].fields[payload];
-		if (element->layout && !element->natural)
+		if (element->constructors && !element->natural)
+			fprintf(out, "\tfor (size_t i = 0; i < count; ++i)\n"
+				"\t\tif (!ap_valid_value_%s(input[i])) return 2;\n", element->alias);
+		else if (element->layout && !element->natural)
 			fprintf(out, "\tfor (size_t i = 0; i < count; ++i)\n"
 				"\t\tif ((uint64_t)input[i].tag >= UINT64_C(%zu)) return 2;\n", element->count);
 		fprintf(out,

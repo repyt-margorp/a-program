@@ -459,8 +459,9 @@ builds those fields; Match passes exactly that case's fields to its private
 callee, retaining lexical captures and subsequent first-order operands.
 Differentials and raw Oracle checks support this correspondence; no new Kernel
 refinement theorem is claimed. Unknown field classifiers, indices,
-dependent/function fields, nested recursive pointers and aggregate payloads in
-recursive nodes reject before publication. Private C input validators inspect
+dependent/function fields, nested recursive pointers and recursive aggregate
+payloads reject before publication. Finite value-record payloads have the bounded
+single-tail List contract below. Private C input validators inspect
 only active constructor fields; they do not perform source checking.
 Known block-local function thunks have positive coverage; open callback
 parameters, function fields and unselected recursive exports remain negative
@@ -486,7 +487,10 @@ the supported finite List/array conversion is described below.
 
 The same `data SOURCE ALIAS` directive now also selects closed unindexed data
 with at most one direct Self field per constructor; other fields remain Int32,
-Int64, selected enum32 or selected nat32. This covers List/Nat shapes. A recursive selection uses
+Int64, selected enum32 or selected nat32. A two-constructor List with one nullary
+terminal and one payload/Self cell may also contain previously selected complete
+nonrecursive value data. Record payloads in other recursive shapes still reject.
+This covers List/Nat shapes. A recursive selection uses
 `const struct ap_data_ALIAS *` for native parameters/results and Self fields.
 An explicit terminal constructor is a node; NULL is an invalid source value.
 General trees with two Self fields, recursive function/thunk fields, indexed and
@@ -607,7 +611,8 @@ large equal inputs can return 4 even though a source evaluation would terminate.
 Neither the width nor depth bound supplies source evidence.
 
 A selected `data` shape with two constructors, one nullary and one containing
-exactly a single Self tail plus one Int32/Int64/nat32/enum32 payload, additionally emits
+exactly a single Self tail plus one Int32/Int64/nat32/enum32 or selected finite
+value-record payload, additionally emits
 `ap_copy_ALIAS(input, buffer, capacity, written)`. Either constructor order and
 either field order are supported. If `Rep(xs, [v0, ..., vn-1])`, a successful call
 writes those payloads in order to `buffer[0..n-1]` and sets `*written = n`.
@@ -624,7 +629,7 @@ order into arena-owned nodes, including a terminal node; it allocates `count + 1
 nodes. The input array may be released or changed after success. An empty slice
 accepts a null array. The caller supplies readable input elements and writable
 output separate from the input and arena metadata. Status 1 denotes a null
-required pointer, 2 an invalid enum element, 3 allocation/capacity failure,
+required pointer, 2 an invalid active element tag, 3 allocation/capacity failure,
 4 an active arena invocation,
 and 6 a count of SIZE_MAX (the terminal would overflow the node count). Failures
 preserve output and prior arena allocations; only new allocations roll back.
@@ -641,6 +646,17 @@ and results intact. Copy-out reuses finite-node and active-field validation.
 positions, copied-input independence and 300-node conversion. Distinct enum arrays
 remain incompatible C types. Multi-payload nodes have no array helper; recursive
 aggregate payloads, trees and native Acc/QuickSort remain unsupported.
+
+Finite record payload arrays use the selected `struct ap_data_ALIAS` by value.
+All active nested fields are validated before copy-in allocation or copy-out
+storage; inactive unions do not require child tags. Copying retains whole scalar,
+Int64 and nested enum fields without sharing the input array. The ordinary source
+recursive Match still lowers through existing typed views, not a special sorter
+or producer change. `check-c-record-list` verifies 259 cases per C product,
+13 source observations, reversed fields, nested invalid tags, cycles, resource
+rollback and 300-node finite copies. The old Recursive/Aggregates refusal shapes
+are explicitly positive; missing/later selections, recursive aggregates, multiple
+tails, non-List record payloads, callable/indexed fields remain status-4 controls.
 
 ```c
 struct ap_c_arena arena = {0};
