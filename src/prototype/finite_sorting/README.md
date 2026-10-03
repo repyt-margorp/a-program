@@ -19,10 +19,14 @@ SORTING_IMAGE_LIMIT=3000000 bash src/prototype/finite_sorting/check.sh BUILD/poi
   surrogate or a new algorithm.
 - `insertion.p`: general Local/permutation proofs of the existing insertion
   functions. Only directional comparator evidence is required for Local.
-- `merge.p`: Local/permutation proofs for the unchanged, Nat-specific legacy
-  MergeSort. The relation is arbitrary; Local requires directional comparison
-  evidence, not transitivity. Its internal fuel bound follows from `measure`.
-  This does not generalize the algorithm's element type or replace its merge.
+- `merge.p`: generic `merge_sort_fuel_by`, `merge_sort_by` and their
+  Local/permutation proofs. `merge_backend A R le decide` connects arbitrary
+  payload types to the same List/Vec/Fin contract as Quick/Insertion. Nat indexes
+  lengths and fuel only; the internal fuel bound follows from `measure A xs`.
+  Local requires directional comparison evidence, not transitivity; Strong
+  uses the common wrapper with explicit transitivity. The repeated-insertion
+  merge and alternating split are preserved, not replaced by two-front merging.
+  Accepted `mergeSort`/`mergeSortFuel` remain unchanged Nat-specific fixtures.
 - `tree.p`: generic Local/permutation proofs for the unchanged `treeSort`.
   A single `tree_all` predicate handles both bound directions; flattening reuses
   the existing List proofs. Local does not require transitivity. Strong uses
@@ -50,6 +54,7 @@ bash src/prototype/finite_sorting/check.sh BUILD/pointer-check BUILD/program_tes
 bash src/prototype/finite_sorting/check.sh BUILD/pointer-check BUILD/program_test quick
 bash src/prototype/finite_sorting/check.sh BUILD/pointer-check BUILD/program_test insertion
 bash src/prototype/finite_sorting/merge-check.sh BUILD/pointer-check BUILD/program_test lists
+bash src/prototype/finite_sorting/merge-generic-check.sh BUILD/pointer-check BUILD/program_test
 bash src/prototype/finite_sorting/value-check.sh BUILD/pointer-check
 bash src/prototype/finite_sorting/tree-check.sh BUILD/pointer-check BUILD/finite_sort_image_compare
 bash src/prototype/finite_sorting/bubble-check.sh BUILD/pointer-check BUILD/finite_sort_image_compare
@@ -116,6 +121,59 @@ callers retain their budgets, optional reader bounds and fixture selection.
 The complete Bubble gate passes on the closed-readback candidate under O2
 (204 s) and ASan/UBSan (553 s, leak checking and halt-on-error enabled).
 The shared Tree runner also passes again (175 s).
+
+## Generic Merge and Interface Recheck, 2026-10-01
+
+At baseline `2a0ba449` plus the source-library patch, the Merge prototype now
+accepts an arbitrary payload type. Fuel and length still use Nat:
+
+```text
+merge_sort_by :: (A:@)->(A->A->Bool)->List A->List A;
+merge_backend :: (A:@)->(R:A->A->@)->(le:A->A->Bool)->
+    ((x:A)->(y:A)->general_decision A R x y (le x y))->sorting_backend A R;
+```
+
+Call `merge_backend Bool &bool_order &bool_le &bool_decide`, then use the existing
+`sorting_run`, `sorting_content`, `sorting_positions`, `sorting_vector` and
+`sorting_vector_value`. No new Fin/permutation specification is introduced.
+The prototype proof/fit helpers also take `A` as their first argument. Old Nat
+clients migrate by adding `Nat`; the accepted `mergeSort` and `mergeSortFuel`
+definitions/signatures remain untouched for existing consumers.
+
+| Backend | Payload type | Local proof requirement |
+| --- | --- | --- |
+| Quick | Arbitrary A | Directional comparator evidence |
+| Insertion | Arbitrary A | Directional comparator evidence |
+| Tree | Arbitrary A | Directional comparator evidence |
+| Merge | Arbitrary A in this prototype | Directional comparator evidence |
+| Bubble | Arbitrary A | Directional evidence and explicit transitivity |
+
+All Strong wrappers use explicit transitivity. Accepted `insertionSort` is a
+Nat/default-comparator convenience specialization of `insertionSortBy`; its
+generic backend already exists. There is no corresponding fix needed there.
+
+Fresh strict-O2 checks on the assembled latest solver-input candidate pass:
+
+```sh
+bash src/prototype/finite_sorting/merge-check.sh BUILD/pointer-check BUILD/program_test views
+bash src/prototype/finite_sorting/merge-generic-check.sh BUILD/pointer-check BUILD/program_test
+bash src/prototype/finite_sorting/generic-interfaces-check.sh BUILD/pointer-check
+```
+
+The first gate additionally compares all five existing Nat samples with the
+unchanged accepted algorithm. The second checks open-input actual-result
+theorems, Bool cases, distinct labelled equal-key payloads, List/Vec output,
+Fin origins/value transport/inverses, six rejection controls, image reload and
+100/0-step checkpoint resave/resume. Comparisons run at chunks 1 and 64. The
+third checks all five generic backend classifiers. All three include synthesis
+with assertions removed. The two new gates are also registered in the
+prototype `check-sorting-backends` aggregate; that full aggregate was not rerun.
+
+This remains a repeated-insertion MergeSort, not a new two-front merge or a
+stability/runtime-complexity proof. Strict-O2 prototype verification is not
+accepted compiler/library adoption. No full acceptance/sanitizer/C-lowering
+claim accompanies this source-only change. Related issue: #41, partial library
+scope only; F5 integration and semantic persistence remain separate.
 
 ## Bounded Image and Cost Diagnostics
 
