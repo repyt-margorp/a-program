@@ -321,6 +321,63 @@ boxed fallback. Existing scripts select `structural_v1` by default, or explicitl
 with `lowering structural_v1`; that profile requires `abi isolated_v1`.
 Checking/trust and the input `.a` format are unchanged by the profile choice.
 
+## Borrowed Unary Scalar Callbacks
+
+The separate opt-in `callback_direct_v1` / `c_callback_v1` profile accepts
+borrowed function inputs whose admitted classifier is a thunk of a unary Pi
+from Int32 to a pure TOTAL Int32 result, or Int64 to a pure TOTAL Int64 result.
+The codomain must be independent of the argument. Other parameters/results
+remain scalars. This does not widen `scalar_direct_v1` or `native_direct_v1`;
+their public callback refusals remain status 4.
+
+```text
+aplink 1
+artifact callbacks.a
+abi c_callback_v1
+target host-c11
+product archive
+lowering callback_direct_v1
+fallback reject
+export once32 once32
+```
+
+For `once32 := \f : #Int32 -> #Int32 => \x : #Int32 => f x;`, the public header
+checks `AP_C_CALLBACK_ABI` 1 and declares:
+
+```c
+struct ap_c_callback_i32 { void *context; int32_t (*call)(void *, int32_t); };
+struct ap_c_callback_i64 { void *context; int64_t (*call)(void *, int64_t); };
+int ap_export_once32(struct ap_c_callback_i32 a1, int32_t a2, int32_t *out);
+```
+
+The caller supplies code/context that implement the admitted pure-total source
+function with the declared width. Arbitrary C code is not checked by the backend;
+this interpretation, valid context and lifetime are external preconditions.
+Code/context must remain alive for the synchronous call, including any loaded
+library containing the callback code. Context may be null if the function accepts
+it. Generated code neither stores these borrowed values beyond the call nor
+returns foreign closures. Callback calls use the existing signed/unsigned width
+conversions; successful scalar results are written only after the computation.
+Status 1 means null output; status 2 means null callback code and preserves the
+output. All callback arguments require valid code, including unused arguments.
+
+Source/object/archive/shared products contain ordinary C code and no structural
+runtime. The link receipt states the callback shape, ownership and foreign source
+interpretation precondition. Mixed-width, multiple-argument, returned/boxed,
+effectful, partial or dependent callback contracts are unsupported. Nominal
+representation selections cannot be combined with this profile; callable Acc
+fields and native QuickSort remain unsupported.
+
+`check-c-callbacks` compares each product with 400 existing Core-evaluator cases
+and 20 admitted same-module source observations using explicit thunk arguments.
+Imported callback application probes currently reject on worker qualified E8 and
+Root's current E9+E10; those fixture/frontend boundaries are retained and routed
+for owner review. Core test interpretations do not grant Surface admission or
+new formation/equality evidence. Inert lowering, repeated/trusted output,
+null code/output, header version and old profile refusals are separate controls.
+In sanitizer mode source component/client bodies are instrumented; emitted
+object/archive/shared bodies, backend, producer and Core checker remain O2.
+
 ## Native Nullary ADTs
 
 `native_direct_v1` / `c_native_v1` extends the same scalar lowering, not another

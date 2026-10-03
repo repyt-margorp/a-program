@@ -184,7 +184,8 @@ void pg_c_representations_destroy(struct pg_c_representations *table)
 
 void pg_c_representation_type(FILE *out, const struct pg_c_representation *type)
 {
-	if (type->natural) fputs("uint32_t", out);
+	if (type->callback) fprintf(out, "struct ap_c_callback_i%zu", type->width);
+	else if (type->natural) fputs("uint32_t", out);
 	else if (type->layout) fprintf(out, "%sstruct ap_%s_%s%s", type->recursive ? "const " : "",
 		type->constructors ? "data" : "enum", type->alias, type->recursive ? " *" : "");
 	else fprintf(out, "int%zu_t", type->width);
@@ -192,7 +193,7 @@ void pg_c_representation_type(FILE *out, const struct pg_c_representation *type)
 
 void pg_c_representation_private_type(FILE *out, const struct pg_c_representation *type)
 {
-	if (type->constructors && !type->natural) pg_c_representation_type(out, type);
+	if (type->callback || (type->constructors && !type->natural)) pg_c_representation_type(out, type);
 	else fputs("uint64_t", out);
 }
 
