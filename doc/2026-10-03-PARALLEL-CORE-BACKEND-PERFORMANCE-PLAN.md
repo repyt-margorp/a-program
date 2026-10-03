@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: moving integration to a separate Merge session; this visible session becomes the inquiry desk. Three implementation workers continue; a fourth audit lane is scheduled.
+Status: Merge activated after verified handoff; the visible parent is the inquiry desk. Three implementation workers continue and the bounded verification-audit lane is active.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -20,26 +20,29 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | 2 | `c-backend`: downstream C design | #44, #49; shared policy #47 | C6 value records integrated; native Acc/QuickSort remains open |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Jointly verified epoch integrated as `f27bd13`; full Goal remains active |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
-| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E3 integrated as `48364b0`; E4/E6 joint qualification remains separate |
-| 6 | `verification-audit`: independent read-mostly suite/debt inventory | #59 / PR #60, #51 | New bounded lane; no test deletion, acceptance relaxation or broad rerun |
+| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E3 integrated as `48364b0`; E4 joint evidence received, E6 gates live; review/integration pending |
+| 6 | `verification-audit`: independent read-mostly suite/debt inventory | #59 / PR #60, #51 | Active bounded inventory/pilot; no test deletion, acceptance relaxation or broad rerun |
 
 ### Current Delivery Status
 
-2026-10-03 inspection at `fd45c42`; all three active workers supplied
-issue-linked feedback through the existing outbox. Core verified their notice
-hashes and read their single current tables. These are deliverables, not issue
+2026-10-03 07:44 UTC Merge inspection at `4d1d941`, before the local handoff
+documentation update: all four workers supplied issue-linked feedback through
+the existing outbox. Merge verified notice hashes; E4/C7 reports are newly
+received evidence pending review, not independently rerun gates. These are deliverables, not issue
 completion scores; worker-local results are not relabelled joint verification.
 
 | Owner / issue scope | Delivered and verified | Not yet delivered / next boundary |
 | --- | --- | --- |
-| Job/Evidence; SE1-SE5 / AP0, related #51/#47 | E1/E2/E3 prototype Main; E2 joint 384 O2 recipes/45 sanitizer commands pass; E3 inert body links jointly verified | E4/E6 task-pushed, joint qualification pending; E7 metadata borrowing locally verified/private; E8 Graph-output trial underway; Job/Evidence still exist and strict3 remain |
-| C backend; #44/#49 | C4 transactional arrays, C5 local functions and C6 nested value records prototype Main; C6 ten current-E3-producer gates pass | C7 enum-List arrays privately verified, not published/jointly tested; native Acc/QuickSort unsupported |
-| Performance; #56, measurement work #51/#52 | Captured-head cleanup prototype Main; E2 broad joint and E3 targeted joint qualification complete | E4 final broad qualification underway, E6 next; cross-system inputs qualified locally but no wall/RSS comparison or #52 completion claimed |
+| Job/Evidence; SE1-SE5 / AP0, related #51/#47 | E1/E2/E3 prototype Main; E2 joint 384 O2 recipes/45 sanitizer commands pass; E3 inert body links jointly verified | E4 task-pushed/joint report received, review pending; E6 joint builds live; E7/E8 exact incremental freezes ready/unpublished; E9 private; strict3 remain |
+| C backend; #44/#49 | C4 transactional arrays, C5 local functions and C6 nested value records prototype Main; C6 ten current-E3-producer gates pass | C7 14-file freeze received, locally eleven O2/eight native sanitizer gates reported; task publication/current-producer review pending; native Acc/QuickSort unsupported |
+| Performance; #56, measurement work #51/#52 | Captured-head cleanup prototype Main; E2 broad joint and E3 targeted joint qualification complete | E4 frozen joint evidence reports 384 O2/45 sanitizer/23 focused gates passing with strict3 retained; Merge review pending, E6 separately live; no wall/RSS comparison or #52 completion claimed |
 | Surface; #57 | Delivered prototype integrated; session stopped | Issue-wide closure still requires its recorded remaining criteria; no active worker |
+| Verification audit; #59/PR #60, related #51 | Isolated worker launched at `4d1d941`, active bounded Goal and invocation inspection confirmed | Static effective-invocation inventory and QuickSort/persistence/legacy pilot pending; controlled cost later needs the common exclusive slot |
 
 Owning tables: Job/Evidence's [SE Plan](2026-09-30-SOLVER-EVIDENCE-DUPLICATION-AUDIT-AND-PLAN.md#plan),
 performance's worker-local `doc/2026-10-03-PERFORMANCE-JOINT-VERIFICATION.md`,
-and C's Goal (temporary feedback addendum during its immutable C6 freeze).
+and C's owning Goal (C6 temporary addendum removed in the C7 freeze), plus
+audit's worker-local `doc/2026-10-03-VERIFICATION-AUDIT-PLAN.md`.
 Current worker reporting updates remain local until their next exact publication;
 this consolidated status is durable Main feedback. #41/#43 are separate design
 questions, not silently assigned to these epochs. #47's general relevance policy
@@ -57,7 +60,7 @@ reporting subsystem. Its audit cover is pinned to `37de1e8`, not current Main.
 
 | Order / owner | Issue or PR | Next deliverable and dependency |
 | --- | --- | --- |
-| 0 / desk -> Merge | Workflow | Start one independent integration owner; verify receipt, Goal and both notification hops; preserve the three live workers and dirty accepted files |
+| 0 / desk -> Merge | Workflow | Handoff verified/activated at 07:44 UTC; Merge Goal active and both hops observed; preserve the four live workers and dirty accepted files |
 | 1 / Job + performance | SE/AP, #56 | Finish in-flight E4/E6 joint qualification; review/publish E7 and subsequent borrowing results, then attack exact-resume's three remaining failures rather than treating pointer-size reductions as completion |
 | 1 / verification-audit | #59 / PR #60; #51 | Static effective-invocation inventory and QuickSort/persistence/legacy pilot; distinguish unique contracts from repeated mechanics; no suite changes or broad timing pass yet |
 | 2 / performance, Merge schedules slot | #56 / #51 | On a pinned jointly qualified producer, measure matched runtime/memory and audit cost in one exclusive slot; coordinate other CPU-heavy work, keep storage/fuel claims separate |
@@ -78,6 +81,18 @@ their owners. Add review items only for material changes; no duplicate task grap
 ## 1. Inquiry Desk and Merge Ownership
 
 ### Subjective (User)
+
+2026-10-03 07:44 UTC, English paraphrase of the explicit inquiry-desk delegation
+`ACTIVATE MERGE OWNER`: initialization and both notification hops are verified.
+The desk relinquishes Git mutation, exact task publication, review/integration
+and closure duties to this Merge session. Start the transferred supervision Goal,
+continue the single central queue, update received E4/C7 status and actual routes
+in place, and publish those documentation updates at a sensible boundary.
+Preserve dirty accepted files and producer-pinned strict failures; no accepted
+promotion or deferred design expansion. Short reports go to the desk on material
+changes and each six-hour active checkpoint. This completes the ownership handoff
+required by the preceding replacement instruction, rather than superseding its
+prototype or completion criteria.
 
 2026-10-03, English paraphrase of the latest explicit replacement: this visible
 conversation becomes the user's inquiry/reporting desk, not the merge owner.
@@ -202,6 +217,38 @@ Accepted `src/evidence.*`, `src/iadt.*` and their tests retain unrelated edits.
 
 ### Assessment
 
+2026-10-03 07:44 UTC, fresh Merge activation at Main `4d1d941` plus this local
+documentation edit: own rollout verifies `gpt-6.1-sol`/`xhigh`; `create_goal`
+returned active for the transferred full supervision objective. The index was
+empty before this edit. Worker->Merge route probe and E7/C7/audit/performance
+acknowledgments were delivered to loaded thread
+`01a100b3-1d83-7090-bbf6-62544c39ec4b`; the desk explicitly confirmed actual
+Merge->desk receipt of initialized report version `dfab39f9`. Later reconciliation
+updated the same bounded report to `47cdab70`; this is evidence, not extra approval.
+Desk remains `019ebfae-06be-7b71-974a-b97505daed4a`. The active relays are tmux
+`a-program:merge-notifications` (%9) and `a-program:desk-notifications` (%8);
+audit is `a-program:verification-audit` (%10), worktree
+`/home/repyt/workspace/a-program-workers/verification-audit`, branch
+`parallel/verification-audit-20261003`. Its own notice reports an active #59 Goal,
+and the desk independently observed xhigh/Pursuing goal/inventory inspection.
+Merge alone now owns integration and delegated exact task publication. Accepted
+dirty files, untracked user fixtures and private trials remain excluded.
+
+2026-10-03 Merge review at `4d1d941` plus this local plan: all 1,945 E4 frozen
+evidence records and 128 runtime hashes freshly verify; summary digest `9af48798`
+matches the notice. Reviewed registration borrowing keeps canonical job inputs
+as syntax/count authority, with owner/role checks before scope conversion; local
+indexed/activated/next state remains explicit. No E4 runtime defect is established.
+C7's 14 exact freeze hashes also verify; reviewed tag validation precedes arena
+mutation and allocation, with rollback/invalid-input controls in durable clients.
+Separate current-producer qualification is still required before C7 integration.
+E8 ready notice `f58a7236` now records a frozen increment against exact E7;
+live canonical patches have advanced to E8. Publish E7 from its frozen transport,
+then E8; never stage live canonical files as E7 or include private E9. Audit slot
+request `2270bcbc` is deferred while E6 and owner correctness gates run: finish
+static inventory/pilot first, then agree the producer/binary/scope with performance
+for one exclusive cost slot. This defers measurement, not the bounded audit Goal.
+
 2026-10-03 agent operational decision within the user's explicit tree request:
 the desk records/relays user requirements and answers questions; it does not
 review every patch, stage worker changes or merge/push Main after activation.
@@ -295,12 +342,12 @@ findings and proposed repairs stay in its audit, not this implementation work li
 
 - [x] Record the new desk <- Merge <- workers requirement before investigation.
 - [x] Inspect current open Issues/PRs and reschedule without closing unfinished work.
-- [ ] Launch and verify the separate Merge owner and its integration Goal.
-- [ ] Change worker notifications to Merge and Merge reports to the desk; test
+- [x] Launch and verify the separate Merge owner and its integration Goal.
+- [x] Change worker notifications to Merge and Merge reports to the desk; test
   both hops without duplicate/resumed owners or promotion.
-- [ ] Launch one bounded read-mostly verification-audit lane for #59; preserve
+- [x] Launch one bounded read-mostly verification-audit lane for #59; preserve
   accepted tests and arrange measurement only through the common exclusive slot.
-- [ ] Confirm Merge has acknowledged all pending epochs and unrelated dirty files;
+- [x] Confirm Merge has acknowledged all pending epochs and unrelated dirty files;
   release the desk from integration, publication and broad verification work.
 - [ ] Merge keeps issue-linked reporting current and reports material changes
   and each six-hour active checkpoint to the desk.
