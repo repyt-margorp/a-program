@@ -3,7 +3,7 @@
 Date: 2026-10-03
 Status: Core coordinates; Job/Evidence, C and performance Goals active; Surface delivered and stopped.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
-Reviewed prototype Main checkpoint: `341261d`; original worker baseline: `2d747cc`.
+Reviewed prototype Main checkpoint: `b0422d7`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
 changes no implementation or promotion rules.
 Related: [SE1-SE5](2026-09-30-SOLVER-EVIDENCE-DUPLICATION-AUDIT-AND-PLAN.md),
@@ -17,9 +17,9 @@ not the existing owner work lists.
 | --- | --- | --- | --- |
 | 1 | `core`: coordination, design audit, verification and Main integration | All lanes | Sole integration owner; no parallel SE implementation |
 | 2 | `c-backend`: downstream C design | #44, #49; shared policy #47 | Numeric/List epoch integrated; native Acc/QuickSort remains open |
-| 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Focused epoch pushed; Main integration awaits broad gates |
+| 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Jointly verified epoch integrated as `f27bd13`; full Goal remains active |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
-| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E1 published as `7c6a625`; later epochs remain separate |
+| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E1 integrated as `b31d7a5`; later epochs remain separate |
 
 ## 1. Core Ownership and Integration
 
@@ -240,11 +240,17 @@ source, `.a` schema or producer authority changed. Core released the freeze for
 native Acc/QuickSort continuation; structural sorting success is not native
 completion, and #44/#49/full worker Goal remain open.
 
-2026-10-03 ready checkpoint: Core verified all eleven frozen Epoch4 file hashes
+2026-10-03 integrated checkpoint: Core verified all eleven frozen Epoch4 file hashes
 against worker base `720f92a` and inspected transactional array-to-List emission,
 rollback and ordinary C clients. Worker O2/sanitizer gates are reported in the
-[handoff](2026-10-03-C-BACKEND-EPOCH4-HANDOFF.md); separate Core combined gates
-and Main integration remain pending. Native open QuickSort explicitly refuses
+[handoff](2026-10-03-C-BACKEND-EPOCH4-HANDOFF.md). Core published `a3b6bce` and
+freshly passed all eight C gates against Main `f27bd13` with family/Surface,
+Job E1 and performance cleanup. The 128 assembled runtime hashes match the
+joint broad-tested snapshot exactly. Main prototype merge is `b0422d7`.
+An initial archive lacked Git metadata and a first assembly omitted Surface;
+both setup failures are retained. Corrected assembly and terminal gates are
+pinned in [Core evidence](../src/prototype/c_backend/verification/core-epoch4.json).
+Native open QuickSort explicitly refuses
 its unsupported representation; neither structural success nor array conversion
 establishes native Acc/QuickSort completion.
 
@@ -435,8 +441,9 @@ and Identity IO, head/TotalResult/cleanup, normalization/source checkpoints and
 `/tmp/a-program-core-job-performance-combined-*`. Performance is assigned the
 broader acceptance/checkpoint/sanitizer gates on a private dereferenced copy;
 their terminal results and retained failures are recorded in section 3.
-Core published frozen E1 as `7c6a625` on its task branch; Main integration is
-separate. E2's 36-entry manifest passes Core hash verification and its applied
+Core published frozen E1 as `7c6a625` and integrated it as `b31d7a5`; the jointly
+verified performance correction is integrated as `f27bd13`. E2's 36-entry
+manifest passes Core hash verification and its applied
 code was reviewed; E2 needs current-producer combined gates before integration.
 Later E3/E4 persistence/registration trials remain independent worker epochs.
 
@@ -496,6 +503,12 @@ use automatic trust to repair a gate.
   [Job/Evidence](2026-10-03-JOB-EVIDENCE-GOAL.md). The latest five-session
   assignment supersedes older Main/Sub numbering; this session is coordination
   `core`, while `job-evidence` owns SE1-SE5 implementation.
+- Wake service: tmux `a-program:core-notifications`, Core-owned Unix WebSocket
+  relay from each lane's `src/prototype/coordination/outbox/*.txt`. Verify helpers
+  with `node src/prototype/coordination/test_notify.cjs` (five mock controls pass).
+  Core waits interruptibly for at most six hours between reviews. Worker notices
+  wake this loaded Core earlier; unavailable delivery stays in the outbox for the
+  timed review. Closing Core/host restart is not an independently verified service.
 - 2026-10-03: #56/#57 and documentation PR #58 are now available. The
   coordinator read issue bodies and the current-head review; historical supplied
   reports are evidence to revalidate, not accepted patches or fresh speed claims.

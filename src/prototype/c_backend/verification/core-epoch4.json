@@ -1,0 +1,31 @@
+{
+  "date": "2026-10-03",
+  "scope": "Prototype integration only; no accepted promotion or producer schema change",
+  "backend_commit": "a3b6bce",
+  "producer_main": "f27bd131bca99eb96ce72b3129939a1a3edd75a8",
+  "integration_commit": "b0422d79244fcb813cb6c3e86cde56eace037535",
+  "source_alignment": {
+    "runtime_files": 128,
+    "mismatches": [],
+    "joint_manifest_sha256": "7f712101e9bf8113f6b0abc9ba337ee083af94e34d85a2654820c26c25e7d352"
+  },
+  "gate_exit": 0,
+  "gates": [
+    "check-c-backend", "check-c-sorting-boundary", "check-c-link",
+    "check-c-scalar", "check-c-enum", "check-c-data", "check-c-list",
+    "check-c-numeric-list"
+  ],
+  "build_parallelism": 2,
+  "evidence_log": "/tmp/ap-core-main-e1-performance-PdUVg0/c4-surface-combined.log",
+  "evidence_log_sha256": "23e29cc76a1255b459d21a6814c7d1906fe2c0eaec7c9d72ebe0cc94486527ba",
+  "emitter_sha256": "caa5874cd737b50e77772a9966a3cf62603d05b62f0cb9f84e9212b538476a53",
+  "producer_sha256": "464793f460d34489a26eac08436ceccf96782dae5c07b4d50122cf41b203321e",
+  "setup_failures_retained": [
+    "Git-guarded overlay rejected an archive without repository metadata",
+    "First assembly omitted Surface; source hash comparison found four differences",
+    "Fixture-copy command used a literal tab escape; corrected copy succeeded"
+  ],
+  "native_acc_quicksort": "Expected unsupported-representation refusal, not completion",
+  "strict_partition_failures": "Existing three remain unwaived; this target gate does not repair them",
+  "comparative_wall_rss": false
+}
