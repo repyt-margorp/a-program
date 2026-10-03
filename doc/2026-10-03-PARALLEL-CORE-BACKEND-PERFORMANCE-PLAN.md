@@ -174,17 +174,18 @@ report allocation/traversal/fuel separately from exclusive wall/RSS measurements
 Backend work remains downstream C-module realization, not a reason to expand
 the producer's semantic schema or require general theory coverage first.
 
-Independent human-requested audit: `a-program:aize-audit` runs GPT-6.1-Sol xhigh
-with its own active audit Goal. Core verified it reading the assignment and
-inspecting `aize`; the implementation lanes continue. Its sole document is
+Independent human-requested audit: `a-program:aize-audit` used GPT-6.1-Sol xhigh
+with its own audit Goal, now achieved. Its sole document is
 `../aize/doc/2026-10-03-GOAL-BASED-MULTI-SESSION-WORKFLOW-AUDIT.md` in that
-repository (baseline `5d1072c` plus preserved local edits). A separate outbox relay
-notifies Core without restarting the existing relay. No aize implementation,
-live-state modification or unrelated Git publication is authorized. The latest
-human clarification supersedes the original publication prohibition: Core reviews
-and publishes only the completed AIze audit, then ends that audit session and
-prioritizes A Program. Its one work list and findings remain in the aize audit,
-not in the A Program implementation checklist.
+repository (baseline `5d1072c` plus preserved local edits). Core verified exact
+handoff/evidence hashes, inspected three substantive findings, independently reran
+nine current/seven HEAD probes and checked all 68 non-audit files unchanged.
+Worker unit suites pass 77 current/69 HEAD tests. Per the human clarification,
+Core published only the audit as AIze Main `1ed8b79834cc11778221d15810901ee917884ae6`
+(push 0; remote verified), then closed the completed audit window and its separate
+relay. No implementation or unrelated edits were included. The original three
+implementation workers/relay continue; A Program is again the priority. AIze's
+findings and proposed repairs stay in its audit, not this implementation work list.
 
 ### Plan
 
