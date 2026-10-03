@@ -101,10 +101,10 @@ int pg_c_link_read(struct pg_c_link_plan *plan, const char *path, size_t *line, 
 			version = 1;
 			continue;
 		}
-		if (!strcmp(args[0], "export") || !strcmp(args[0], "enum32")) {
+		if (!strcmp(args[0], "export") || !strcmp(args[0], "enum32") || !strcmp(args[0], "data")) {
 			if (n != 3 || !pg_c_export_alias(args[2])) goto done;
-			int enumeration = !strcmp(args[0], "enum32");
-			size_t *count = enumeration ? &plan->enum_count : &plan->count;
+			int enumeration = !strcmp(args[0], "data") ? 2 : !strcmp(args[0], "enum32");
+			size_t *count = enumeration == 2 ? &plan->data_count : enumeration ? &plan->enum_count : &plan->count;
 			if (*count == SIZE_MAX) goto done;
 			struct export_row *row = pg_alloc(&plan->storage, sizeof(*row));
 			if (!row) goto done;
@@ -157,7 +157,7 @@ int pg_c_link_read(struct pg_c_link_plan *plan, const char *path, size_t *line, 
 	*error = "ABI/lowering mismatch or missing explicit native fallback policy";
 	if (strcmp(abi, pg_c_abi_name(plan->lowering))) goto done;
 	if (plan->lowering != PG_C_STRUCTURAL && !fallback) goto done;
-	if (plan->enum_count && plan->lowering != PG_C_NATIVE_DIRECT) goto done;
+	if ((plan->enum_count || plan->data_count) && plan->lowering != PG_C_NATIVE_DIRECT) goto done;
 	*error = "invalid product/entry combination";
 	if (plan->product == PG_C_EXECUTABLE && !entry) goto done;
 	if ((plan->product == PG_C_OBJECT || plan->product == PG_C_ARCHIVE) && entry) goto done;
@@ -170,8 +170,16 @@ int pg_c_link_read(struct pg_c_link_plan *plan, const char *path, size_t *line, 
 	plan->enum_names = pg_alloc(&plan->storage, plan->enum_count * sizeof(*plan->enum_names));
 	plan->enums = pg_alloc(&plan->storage, plan->enum_count * sizeof(*plan->enums));
 	if (!plan->enum_names || !plan->enums) goto done;
-	size_t i = 0, j = 0;
+	if (plan->data_count > SIZE_MAX / sizeof(*plan->data) || plan->data_count > SIZE_MAX - plan->enum_count - plan->count) goto done;
+	plan->data_names = pg_alloc(&plan->storage, plan->data_count * sizeof(*plan->data_names));
+	plan->data = pg_alloc(&plan->storage, plan->data_count * sizeof(*plan->data));
+	if (!plan->data_names || !plan->data) goto done;
+	size_t i = 0, j = 0, k = 0;
 	for (const struct export_row *row = first; row; row = row->next) {
+		if (row->enumeration == 2) {
+			plan->data_names[k] = row->name; plan->data[k++].alias = row->alias;
+			continue;
+		}
 		if (row->enumeration) {
 			plan->enum_names[j] = row->name; plan->enums[j++].alias = row->alias;
 			continue;
@@ -184,6 +192,7 @@ int pg_c_link_read(struct pg_c_link_plan *plan, const char *path, size_t *line, 
 	*error = "duplicate aliases or missing entry export";
 	if (!pg_c_export_names(plan->count, plan->exports)) goto done;
 	if (plan->enum_count && !pg_c_export_names(plan->enum_count, plan->enums)) goto done;
+	if (plan->data_count && !pg_c_export_names(plan->data_count, plan->data)) goto done;
 	if (entry && plan->entry == SIZE_MAX) goto done;
 	status = 0;
 done:

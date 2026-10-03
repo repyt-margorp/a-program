@@ -53,8 +53,8 @@ static const struct pg_occurrence *occurrence(struct pg_typing *t, const struct 
 	return pg_occurrence(t, PG_JUDGEMENT_COMPUTATION, NULL, term, type, NULL, 0, NULL);
 }
 
-static void inert_emit(struct pg_typing *t, FILE *source, size_t count, const struct pg_c_export *exports,
-	size_t enum_count, const struct pg_c_export *enums, int status)
+static void inert_representations(struct pg_typing *t, FILE *source, size_t count, const struct pg_c_export *exports,
+	size_t enum_count, const struct pg_c_export *enums, size_t data_count, const struct pg_c_export *data, int status)
 {
 	FILE *header = tmpfile();
 	assert(header);
@@ -62,7 +62,7 @@ static void inert_emit(struct pg_typing *t, FILE *source, size_t count, const st
 	size_t proofs = t->proofs.count, subjects = t->occurrences.count;
 	const char *error;
 	emitting = 1;
-	int result = enum_count ? pg_c_emit_native(source, header, count, exports, SIZE_MAX, enum_count, enums, &error) :
+	int result = (data_count || enum_count) ? pg_c_emit_native(source, header, count, exports, SIZE_MAX, enum_count, enums, data_count, data, &error) :
 		pg_c_emit_scalar(source, header, count, exports, SIZE_MAX, &error);
 	assert(result == status);
 	emitting = 0;
@@ -70,6 +70,12 @@ static void inert_emit(struct pg_typing *t, FILE *source, size_t count, const st
 	assert(proofs == t->proofs.count && subjects == t->occurrences.count);
 	if (status) assert(!ftell(source) && !ftell(header));
 	assert(!fclose(header));
+}
+
+static void inert_emit(struct pg_typing *t, FILE *source, size_t count, const struct pg_c_export *exports,
+	size_t enum_count, const struct pg_c_export *enums, int status)
+{
+	inert_representations(t, source, count, exports, enum_count, enums, 0, NULL, status);
 }
 
 static void inert(struct pg_typing *t, FILE *source, size_t count, const struct pg_c_export *exports, int status)
@@ -147,13 +153,77 @@ static void shared_calls(struct pg_typing *t)
 	fclose(source);
 }
 
+static void data_match(struct pg_typing *t, const char *path)
+{
+	struct pg_graph *g = t->graph;
+	const struct pg_object *x = pg_binder(g), *y = pg_binder(g), *p = pg_binder(g);
+	const struct pg_term *int32 = pg_reference(g, pg_host_type("Int32")), *int64 = pg_reference(g, pg_host_type("Int64"));
+	const struct pg_context *fields = pg_context_bind(t, NULL, x, int32, PG_JUDGEMENT_VALUE);
+	fields = pg_context_bind(t, fields, y, int64, PG_JUDGEMENT_VALUE);
+	assert(fields);
+	struct pg_data_constructor_input inputs[2] = {{0}, {.fields = fields}};
+	const struct pg_data_declaration *d = pg_data_declaration(g, NULL, NULL, 2, inputs);
+	assert(d);
+	const struct pg_data_layout *layout = pg_data_declaration_layout(d);
+	const struct pg_term *family = pg_reference(g, pg_data_declaration_family(d)), *vp = pg_reference(g, p);
+	struct pg_c_export data[2] = {{"Pair", pg_occurrence(t, PG_JUDGEMENT_VALUE_TYPE, NULL, family,
+		pg_universe(g, 0), NULL, 0, NULL)}};
+	struct pg_c_export exports[4];
+	for (size_t i = 0; i < 2; ++i) {
+		const struct pg_term *result_type = i ? int64 : int32;
+		const struct pg_term *payload = i ? pg_reference(g, y) : pg_reference(g, x);
+		const struct pg_term *zero = pg_reference(g, pg_host_integer(g, pg_host_type(i ? "Int64" : "Int32"), 0));
+		struct pg_match_clause clauses[2] = {
+			{pg_data_constructor(layout, 0), op(g, &pg_return_operation, zero)},
+			{pg_data_constructor(layout, 1), pg_lambda(g, x, pg_lambda(g, y, op(g, &pg_return_operation, payload)))}
+		};
+		const struct pg_term *body = pg_data_match(g, layout, vp, 2, clauses);
+		const struct pg_term *type = pg_pi(g, family, p, pg_computation_type(g, PG_TOTALITY_TOTAL, pg_effect_row(g, 0, NULL), result_type));
+		exports[i] = (struct pg_c_export){i ? "wide" : "small", occurrence(t, pg_lambda(g, p, body), type)};
+	}
+	const struct pg_term *constructed = app(g, op(g, pg_data_constructor(layout, 1), pg_reference(g, x)), pg_reference(g, y));
+	const struct pg_term *type = pg_computation_type(g, PG_TOTALITY_TOTAL, pg_effect_row(g, 0, NULL), family);
+	exports[2] = (struct pg_c_export){"make", occurrence(t, pg_lambda(g, x, pg_lambda(g, y, op(g, &pg_return_operation, constructed))),
+		pg_pi(g, int32, x, pg_pi(g, int64, y, type)))};
+	exports[3] = (struct pg_c_export){"echo", occurrence(t, pg_lambda(g, p, op(g, &pg_return_operation, vp)), pg_pi(g, family, p, type))};
+	FILE *source = fopen(path, "w");
+	assert(source);
+	inert_representations(t, source, 4, exports, 0, NULL, 1, data, 0);
+	fputs("#include <assert.h>\nint main(void) {struct ap_data_Pair pair, echo; int32_t a; int64_t b;\n", source);
+	const int32_t small[] = {INT32_MIN, -1, 0, INT32_MAX};
+	const int64_t wide[] = {INT64_MIN, -1, 0, INT64_MAX};
+	for (size_t i = 0; i < 4; ++i) for (size_t j = 0; j < 4; ++j) {
+		const struct pg_term *input = app(g, op(g, pg_data_constructor(layout, 1),
+			pg_reference(g, pg_host_integer(g, pg_host_type("Int32"), small[i]))),
+			pg_reference(g, pg_host_integer(g, pg_host_type("Int64"), wide[j])));
+		int64_t expected32 = evaluate(g, app(g, exports[0].subject->core, input));
+		int64_t expected64 = evaluate(g, app(g, exports[1].subject->core, input));
+		fprintf(source, "assert(!ap_export_make(%" PRId32 ", ", small[i]);
+		if (wide[j] == INT64_MIN) fputs("INT64_MIN", source);
+		else fprintf(source, "INT64_C(%" PRId64 ")", wide[j]);
+		fputs(", &pair)); assert(!ap_export_echo(pair, &echo));\n", source);
+		fprintf(source, "assert(!ap_export_small(echo, &a) && (uint32_t)a == UINT32_C(%" PRIu32 "));\n", (uint32_t)expected32);
+		fprintf(source, "assert(!ap_export_wide(echo, &b) && (uint64_t)b == UINT64_C(%" PRIu64 "));\n", (uint64_t)expected64);
+	}
+	fputs("}\n", source);
+	assert(!fclose(source));
+	const struct pg_data_declaration *other = pg_data_declaration_at_layout(g, layout, NULL, NULL, 2, inputs);
+	assert(other);
+	data[1] = (struct pg_c_export){"Other", pg_occurrence(t, PG_JUDGEMENT_VALUE_TYPE, NULL,
+		pg_reference(g, pg_data_declaration_family(other)), pg_universe(g, 0), NULL, 0, NULL)};
+	source = tmpfile(); assert(source);
+	inert_representations(t, source, 4, exports, 0, NULL, 2, data, -1);
+	fclose(source);
+}
+
 int main(int argc, char **argv)
 {
-	assert(argc == 3);
+	assert(argc == 4);
 	struct pg_graph g;
 	struct pg_typing t;
 	assert(!pg_graph_init(&g) && !pg_typing_init(&t, &g));
 	enum_match(&t, argv[2]);
+	data_match(&t, argv[3]);
 	shared_calls(&t);
 	struct pg_c_export exports[8];
 	char names[8][16];

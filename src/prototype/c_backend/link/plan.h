@@ -16,6 +16,9 @@ struct pg_c_link_plan {
 	size_t enum_count;
 	const char **enum_names;
 	struct pg_c_export *enums;
+	size_t data_count;
+	const char **data_names;
+	struct pg_c_export *data;
 };
 
 /* Zero-initialize before read; destroy on either success or failure. Paths are
