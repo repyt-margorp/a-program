@@ -1,7 +1,7 @@
 # Parallel Core, Backend, Performance and Surface Work
 
 Date: 2026-10-03
-Status: Core reassigned to coordination; Job/Evidence worker setup in progress.
+Status: Core coordinates; Job/Evidence, C and performance Goals active; Surface delivered.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `64df10d`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -19,7 +19,7 @@ not the existing owner work lists.
 | 2 | `c-backend`: downstream C design | #44, #49; shared policy #47 | Single-tail List epoch integrated; numeric partition work in progress |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Focused epoch pushed; Main integration awaits broad gates |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; worker available for further scope |
-| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | Separate worker setup in progress |
+| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | Separate worker Goal active at `5035c7a` |
 
 ## 1. Core Ownership and Integration
 
@@ -99,15 +99,17 @@ session provides no automatic supervision; tmux alone does not supply it.
 
 ### Plan
 
-- [ ] Transfer the single SE1-SE5 work list and committed prototype recipe to
+- [x] Transfer the single SE1-SE5 work list and committed prototype recipe to
   `job-evidence`; do not duplicate its implementation checklist here.
 - [x] Publish the committed compiler/overlay recipe used by all workers;
   do not copy an unfinished trial or unrelated local changes into their baseline.
 - [x] Assign separate worktrees, branches, overlay/build/output paths and task briefs.
 - [x] Verify the requested model and `/goal` support, then launch the three tmux
   workers.
-- [ ] Launch `job-evidence` in its own worktree/window using the requested model,
-  verify an active Goal and actual implementation activity, and notify all lanes.
+- [x] Launch `job-evidence` in its own worktree/window using the requested model,
+  verify an active Goal and actual code inspection, and notify all lanes.
+- [ ] Verify concrete deletion/test activity at the next supervision checkpoint;
+  launch and inspection alone are not implementation completion.
 - [ ] Periodically review worker status, diffs, tests and blockers and issue
   directions; record material decisions in the owning SOAP plan.
 - [ ] Review cross-owner findings; transfer file ownership for an explicit epoch
@@ -146,8 +148,9 @@ effect and admission contracts remain open; neither #44 nor #49 is complete.
 
 Agent proposal: Sub1 owns target realization, ABI and LinkerScript design and
 their prototypes/tests. Use a pinned committed producer and immutable `.a`
-fixtures while Main changes internals. Main owns producer/admission/transport
-changes; report those needs without creating a private checker or shadow IR.
+fixtures while the producer changes internally. `job-evidence` owns SE-related
+producer/admission/transport changes; route needs through Core for an explicit
+scope transfer without creating a private checker or shadow IR.
 Start with supported checked exports, not completion of all relevance research.
 
 ### Plan
@@ -267,7 +270,7 @@ merging; the performance worker does not independently modify the same owners.
 
 ### Plan
 
-- [ ] Start from committed Main in `parallel/job-evidence-20261003`; provide
+- [x] Start from committed Main in `parallel/job-evidence-20261003`; provide
   separate build/output paths and the existing prototype overlay recipe.
 - [ ] Read the current owner code, select a concrete deletion epoch and implement
   it alongside focused verification, rather than postponing coding for more logs.
@@ -341,3 +344,16 @@ gates and all seven C gates before merging. #57 remains open for unfinished
 policy/diagnostics and accepted adoption; branch publication and prototype Main
 integration are not promotion. GitHub was rechecked: no new open issue/PR since
 the preceding poll; existing partial issues remain open.
+
+2026-10-03 04:02 UTC role-transfer checkpoint: a fourth worker window,
+`a-program:job-evidence`, runs at
+`/home/repyt/workspace/a-program-workers/job-evidence`, branch
+`parallel/job-evidence-20261003`, starting from clean committed `5035c7a`
+(producer `64df10d`). Its pane reports `GPT-6.1-Sol xhigh`, `Pursuing goal`
+and actual repository/SE plan reads. Implementation has started with inspection;
+no new deletion or passing tests are claimed at launch. C/performance acknowledged
+the owner transfer and continue their verification; Surface remains delivered.
+Core owns coordination/review/integration only and has stopped parallel SE code
+edits. The handoff/role decision is pushed on Main as `5035c7a`; no accepted
+implementation, model update or issue closure was performed for setup.
+GitHub poll at this checkpoint found no new open issue/PR since the prior poll.
