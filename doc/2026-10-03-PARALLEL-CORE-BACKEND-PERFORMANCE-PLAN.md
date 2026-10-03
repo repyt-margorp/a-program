@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: Merge owns Main; C, Performance and Job continue. Test-suite, issue disposition, static audit and finite-function bounded Goals are complete; full development issues remain open.
+Status: Merge owns Main; Performance runs; C and Job are capacity-stalled at the latest review. Test-suite, issue disposition, static audit and finite-function bounded Goals are complete; full development issues remain open.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -27,22 +27,23 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 
 ### Current Delivery Status
 
-2026-10-03 13:49 UTC six-hour Merge review at local Main `b461ace`; remote
-`6988deb` verified. C12 and issue-audit merges are local pending the next push.
-All seven retained panes freshly inspected: three implementation Goals active;
-four bounded Goals achieved. No owner resumed or duplicated. Deliverables below
+2026-10-03 15:29 UTC material review at local/remote Main `4853cb6`, exactly
+verified. All seven retained panes inspected: Performance pursues its Goal;
+C and Job show model-capacity errors and Goal stalled; four bounded Goals remain
+achieved. Root Goal metadata reads blocked although this evidence review is
+proceeding. No owner resumed, duplicated or model changed. Deliverables below
 remain distinct from full issue completion and accepted promotion.
 
 | Owner / issue scope | Delivered and verified | Not yet delivered / next boundary |
 | --- | --- | --- |
-| Job/Evidence; SE1-SE5 / AP0, #51/#47 | E1-E4/E6-E10 prototype Main; corrected E11 exact25 taskd22be9f pushed. Root156 assembly/469 tested-overlay inputs and three fresh lifetime/escaped-stack O2/SAN controls0; worker unskipped broad0 | Separate current E9+E10+correctedE11 joint source12842639815 aligned, gates pending. CorrectedE12 exact29 taskcb959eb pushed/remote verified, Root156 assembly and fresh O2/SAN mutation/escaped-frame controls0. Local broad/C/census verified; common current-producer qualification pending. E13 header-index deletion separate. Original unsafe E11/E12 and strict3 remain |
-| C backend; #61, historical #44/#49 | C12 exact16 task97f8d7c pushed/remote verified, Main370a986. Root current E9+E10 fourteen strict O2 gates, three affected client/source sanitizer gates and nineteen I/O controls0 | C13 exact11 task96a0308 pushed/remote verified, Mainf7afb04; Root current producer strict O2/shared58/client-SAN58/linker/IO19 all pass. C14 bounded synchronous callback probe proceeds independently; native Acc/QuickSort and higher contracts remain unfinished |
-| Performance; #56/#51/#52 | E6 measurements30 published; E7-E10 qualified; accepted13-file promotion7631e5a independently verified. MEM1 diagnosis40 exact; Root fresh inline-state parent0/v1 signal6/v2 0 | V1 rejected despite passing acceptance and lower sampled capacity; no qualified gain. V2 superseded/rejected: new materialized-failure callback destruction passes parent SAN0 but V2 retire_frame heap-use-after-free/signal6. Exact18 task1297e0b/Mainf48ab5e remain historical prototype, earlier384/45 and Root controls inadequate. V3 captured-head-only private/unqualified; no current gain, peak/time, callback ban or accepted promotion |
+| Job/Evidence; SE1-SE5 / AP0, #51/#47 | E1-E4/E6-E10 prototype Main; corrected E11 exact25 taskd22be9f pushed. Root156 assembly/469 tested-overlay inputs and three fresh lifetime/escaped-stack O2/SAN controls0; worker unskipped broad0 | Separate current E9+E10+correctedE11 joint source12842639815 terminal READY; Root verified all2013 hashes, Main integration review pending. CorrectedE12 exact29 taskcb959eb pushed/remote verified, Root156 assembly and fresh O2/SAN mutation/escaped-frame controls0. Local broad/C/census verified; common current-E12 source12812026914 terminal READY, Root2064-hash review pending. E13 exact28 frozen READY. E14 local broad0; E15 ordinary Graph leaf-input borrowing proposed, retaining charged traversal and normalized Lambda key. Original unsafe E11/E12 and strict3 remain |
+| C backend; #61, historical #44/#49 | C12 exact16 task97f8d7c pushed/remote verified, Main370a986. Root current E9+E10 fourteen strict O2 gates, three affected client/source sanitizer gates and nineteen I/O controls0 | C13 exact11 task96a0308 pushed/remote verified, Mainf7afb04; Root current producer strict O2/shared58/client-SAN58/linker/IO19 all pass. C14 exact23 frozen READY, Root ABI/current-producer review pending. Missing explicit imports explain original source failures; Root four corrected consumers0 with exact outputs/steps (reportd7575c61); native Acc/QuickSort and higher contracts remain unfinished |
+| Performance; #56/#51/#52 | E6 measurements30 published; E7-E10 qualified; accepted13-file promotion7631e5a independently verified. MEM1 diagnosis40 exact; Root fresh inline-state parent0/v1 signal6/v2 0 | V1 rejected despite passing acceptance and lower sampled capacity; no qualified gain. V2 superseded/rejected: new materialized-failure callback destruction passes parent SAN0 but V2 retire_frame heap-use-after-free/signal6, independently reproduced by Root (reportd5155b89). Exact18 task1297e0b/Mainf48ab5e remain historical prototype, earlier384/45 and Root controls inadequate. V3 captured-head-only frozen READY/Root unqualified; no current gain, peak/time, callback ban or accepted promotion |
 | Surface; #57 | Verified prototype integrated, completed owner stopped | Accepted policy/promotion and selector diagnostics unresolved; no owner restart |
 | Static audit; #59/PR #60 | Task7ed3ad1/Main5683755; Root385 source/114 archived dependency hashes and exact inventory verified; bounded Goal achieved | Dynamic/full #59 and controlled cost remain open; no static-owner restart |
 | Sort; #41/F3-F5 | PR54 and finite-function task5e6ed84/Main966c4e1 integrated; bounded Goal achieved, focused gates0 | Accepted Sort/F5 and broader interfaces remain separate |
 | Test-suite; #59/PR #60 | Goal achieved. Final exact7 notice4432e3d/manifest0f30bef9, raw177/archive and776 dependencies exact. Root recomputed all distinct records:435 to413 calls; fresh original/reduced helpers reproduce128 runtime/23 C tests/two scripts. Worker47 completed recipes0 and ten injection controls verified | Exact7 taskbc16df9 pushed/remote verified, prototype Main36a27be integrated with corrected agent/user provenance. Net applied tests plus25-line helper is -13 lines; repository additions are patch/docs representation. Unchanged derived-LT600s run incomplete; no wall/RSS or accepted-test claim |
-| Issue-audit; all open Issues/PRs | Goal achieved. Root independently reread ten exact comments, successor61 body/open,44/49 closed/not_planned as superseded; task8bb5018 pushed, Mainb461ace local | Nine issues remain open, zero PRs. Superseded means residuals routed to61, not implemented. #59 and user design/adoption decisions remain open |
+| Issue-audit; all open Issues/PRs | Goal achieved. Root independently reread ten exact comments, successor61 body/open,44/49 closed/not_planned as superseded; task8bb5018/Mainb461ace pushed/remote verified | Nine issues remain open, zero PRs. Superseded means residuals routed to61, not implemented. #59 and user design/adoption decisions remain open |
 
 Owning tables: Job/Evidence's [SE Plan](2026-09-30-SOLVER-EVIDENCE-DUPLICATION-AUDIT-AND-PLAN.md#plan),
 performance's worker-local `doc/2026-10-03-PERFORMANCE-JOINT-VERIFICATION.md`,
@@ -68,13 +69,13 @@ reporting subsystem. Its audit cover is pinned to `37de1e8`, not current Main.
 
 | Order / owner | Issue or PR | Next deliverable and dependency |
 | --- | --- | --- |
-| 0 / desk -> Merge | Workflow | Merge active; three implementation owners continue. Test-suite/issue-audit/static/Sort bounded Goals achieved and stopped; protected local bytes preserved. Scheduled six-hour report delivered; Root resumes coordination after audit handoff |
-| 1 / Job, Root reviews independently | SE/AP, #51 | Corrected E11/E12 published/focused+broad provenance verified; current joint qualification pending. E13 header deletion and readonly C14 source-fixture boundary review continue independently. Preserve strict3 and original unsafe failures; no pointer-layout completion claim |
-| 1 / performance + Job | #56 / #51 | MEM1 v1/v2 rejected by lifetime controls; captured-head-only v3 private/unqualified, fresh correctness/memory required. No actual matched peak/time claim. Job owns separate header/scheduler inspection. Root resolves conflicts; matched wall/RSS needs an exclusive slot |
+| 0 / desk -> Merge | Workflow | Merge reviews evidence; Performance runs, C/Job capacity-stalled. Test-suite/issue-audit/static/Sort bounded Goals achieved and stopped; protected local bytes preserved. Scheduled six-hour report delivered; Root resumes coordination after audit handoff |
+| 1 / Job, Root reviews independently | SE/AP, #51 | Corrected E11 current joint READY/all2013 verified; E12 current joint READY/Root2064-hash review pending. Review E13 frozen header deletion; E15 Graph consumer remains separate from Performance IADT ownership. C14 missing-import diagnosis freshly confirmed. Preserve strict3 and original unsafe failures; no pointer-layout completion claim |
+| 1 / performance + Job | #56 / #51 | MEM1 v1/v2 rejected by lifetime controls; captured-head-only v3 frozen READY/Root review pending, fresh correctness/memory required. No actual matched peak/time claim. Job owns separate header/scheduler inspection. Root resolves conflicts; matched wall/RSS needs an exclusive slot |
 | Complete bounded / test-suite; Root publishes | #59 / PR #60 | Verified pilot removes22 duplicate calls with all distinct outcomes preserved; Root raw/assembly review complete. Exact7 taskbc16df9/Main36a27be prototype integrated; broader inventory/cost/accepted adoption remain open |
 | Complete bounded / issue-audit | All open Issues/PRs | Verified comments/dispositions,44/49 superseded by61; nine issues open. Owner stopped; Root resumes coordination, no repeat audit |
 | Complete bounded / verification-audit | #59 / PR #60; #51 | Static inventory/pilot delivered and worker complete; four-job measured cost remains deferred, full #59 open. Do not restart the completed owner automatically |
-| 2 / C backend | #61 (historical #44/#49) | C1-C13 bounded prototypes delivered; Root current-producer shared/linker/I/O gates pass. C14 separate bounded callback ABI prototype probe; native Acc/QuickSort and producer-policy boundaries explicit |
+| 2 / C backend | #61 (historical #44/#49) | C1-C13 bounded prototypes delivered; Root current-producer shared/linker/I/O gates pass. C14 exact23 bounded callback ABI freeze READY, Root review pending; native Acc/QuickSort and producer-policy boundaries explicit |
 | Complete review / Merge | PR #60, #53, #55 | Documentation reviewed/imported with provenance; no open PRs. Full issue criteria remain independent of publication |
 | Complete bounded / Sort library | PR #54 / #41 | Generic MergeSort and finite-function prototype verified/integrated; bounded worker complete. Accepted Sort/F5 and broader containers remain separate; no owner restart |
 | Review / Merge | #57 | Audit delivered prototype against Issue criteria; Surface stays stopped. Prototype delivery is not accepted promotion; do not reopen a worker just to repeat completed gates |
@@ -1177,6 +1178,15 @@ Agent implementation-workflow decision within the user's scope: create one
 Its Goal brief is a handoff, not a replacement architecture or second checklist.
 Core reviews owner changes, interfaces, tests and resulting deletions before
 merging; the performance worker does not independently modify the same owners.
+
+2026-10-03 15:29 UTC, Root scope review of E15 notice22b47dd7: the proposed
+deletion concerns the copied ordinary schema input array in function_graph.c/
+internal.h. Its ephemeral borrowed leaf iterator stays with Job; Performance's
+direct-IADT ownership remains separate. Retaining charged Graph traversal and
+the normalized Lambda key is necessary until identity-preserving replacement is
+proved. Source/owner lifetime, reset/repeated reads, nominal sharing and resume
+controls remain qualification criteria; this is a scope assessment, not proof
+of an implementation or a measured gain. No competing owner was started.
 
 Core operational clarification, 2026-10-03: existing AP1/AP3 already require
 one total fuel budget, explicit validation sublimit and optional explicit trust.

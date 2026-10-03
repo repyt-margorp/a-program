@@ -1,7 +1,7 @@
 # Performance Goal: Current Speed and Memory Work
 
 Date: 2026-10-03
-Status: active; E9+E10 published; MEM1 v1/v2 rejected, captured-head-only v3 private/unqualified.
+Status: active; E9+E10 published; MEM1 v1/v2 rejected, captured-head-only v3 frozen/Root review pending.
 This is the active successor to the frozen
 [Performance Goal at0539051](2026-10-03-PERFORMANCE-GOAL.md). Its published bytes
 and historical handoffs remain immutable. The single current issue-status table
@@ -46,6 +46,14 @@ its prototype scope and does not edit accepted code or merge Main.
 
 ### Objective (Code)
 
+2026-10-03 15:29 UTC, fresh Root verification at Main4853cb6: independent
+SAN builds/runs confirm materialized-failure parent0 versus V2 signal6,
+heap-use-after-free in retire_frame; reportd5155b89. Accepted eval.c/h,
+Makefile and tests have no diff from e552f2c, and prototype overlay/build have
+no MEM1 selection reference. Published rejection4853cb6 changes status/evidence
+only, not the implementation selection. V3 notice700fcaaa is frozen READY,
+with Root qualification pending; no safe memory/time gain is established.
+
 Published measurements `44e479be` establish the exact E6 tree workload's
 wall17.23→5.40s and peak RSS median1891724KiB, about1847MiB. Native proof/helper
 work differs, so these are concrete measurements rather than a universal
@@ -80,7 +88,7 @@ Frozen V2 task1297e0b/Mainf48ab5e and1969 c0734afa evidence remain exact:
 their passing384/45 and Root focused controls did not cover this path. Those
 results and V2 selected capacity/cumulative deltas are historical rejected-
 candidate evidence, not a safe deletion or current improvement.
-V3 remains private/unqualified: delete materialized/fallback retirement and
+V3 is frozen READY but remains unqualified by Root: delete materialized/fallback retirement and
 pool only stateless captured-head frames after the existing parent cleanup.
 Retain non-NULL state and return2 behavior. Fresh correctness/capacity is
 required; V2 values do not establish V3 memory/time. Actual peak/RSS/speed,

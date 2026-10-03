@@ -1,6 +1,6 @@
 {
-  "reviewed_at_UTC": "2026-10-03 14:36 UTC",
-  "Main_revision": "f48ab5e01567810283c1dbd64395dda830e46d3c",
+  "reviewed_at_UTC": "2026-10-03 15:29 UTC",
+  "Main_revision": "4853cb60357cdb773de91b9faf03e9bdaa96a6c1",
   "worker_notice_sha256": "3e51fc6683d30113e7f4aefcfd114b1ce998f7cd5301622a0c78ba42f9afa91e",
   "diagnostic_manifest_sha256": "9f88231de97ef25205a69a85bafbec6befabaea7140f14fe401ab92ae7fb95d3",
   "all_40_evidence_hashes_verified": true,
@@ -105,10 +105,30 @@
       0,
       -6
     ],
-    "historical_capacity_cumulative_do_not_qualify_safe_deletion": true
+    "historical_capacity_cumulative_do_not_qualify_safe_deletion": true,
+    "Root_fresh_materialized_failure": {
+      "results": "/tmp/a-program-merge-mem1-v2-boundary-20261003/Root-results.json",
+      "results_sha256": "d5155b8920f501d59237116241ca2837b0ab438fe3b4c947139eb223bbaf9d2b",
+      "parent_SAN_exit": 0,
+      "v2_SAN_exit": -6,
+      "parent_binary_sha256": "17e1407c4cba3f18a4c11d7d639cc35a908dd2450195e7c81af9c5bd6af02014",
+      "v2_binary_sha256": "168bc2b714800848fb5f0bc9b1de623024cecc7faf4e2320df4c2ccf2473b1c4",
+      "v2_log_sha256": "d989e44222dd457477d4c1c57b95fe8a1c1c33a9e8f89a2b8d36a18fbf7f6fbb",
+      "terminal": true
+    }
+  },
+  "current_selection": {
+    "review_base": "e552f2cb6a6bb43ee62407d44c7bf7443e1f7711",
+    "review_head": "4853cb60357cdb773de91b9faf03e9bdaa96a6c1",
+    "accepted_eval_Makefile_tests_diff_empty": true,
+    "prototype_overlay_and_build_reference_MEM1": false,
+    "implementation_replacement": false,
+    "decision": "Preserve rejected immutable epochs; runnable accepted/default producer remains separate from MEM1."
   },
   "v3": {
-    "status": "PRIVATE_UNQUALIFIED",
+    "status": "FROZEN_READY_ROOT_REVIEW_PENDING",
+    "notice_sha256": "700fcaaaba2e340127afe707d5d3b7da4501f4545b29ad056756eea25d96eed1",
+    "manifest_sha256": "e2f75d49a624b0415808c5b5ad484e4c58551054a8ec217d88ee75f4cd630a14",
     "decision": "Remove materialized/fallback retirement; recycle only stateless captured-head frames after existing post-callback parent cleanup.",
     "fresh_correctness_capacity_and_actual_cost": "pending",
     "no_callback_ban_or_new_authority": true

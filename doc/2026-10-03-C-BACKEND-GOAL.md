@@ -104,12 +104,18 @@ names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
 
-2026-10-03 C14 source boundary, Root current-E9+E10 probe: named, explicit
-thunk and inline-lambda callback application all reject1, matching worker E8.
-This is not an established producer defect. Readonly ordinary-syntax/type
-review routed to the sole Job owner; C continues its separate well-scoped pure
-callback target controls and preserves existing unsupported contracts.
-Evidence: `/tmp/a-program-merge-c14-source-probes-20261003/Root-results.json`.
+2026-10-03 15:29 UTC, superseding Root C14 source-fixture review at Main4853cb6:
+the original named/thunk/lambda consumers omitted explicit `import once32;`.
+`--imports` supplies provider exports for explicit import declarations, rather
+than injecting them into lexical scope. Root verified all16 worker evidence
+hashes and freshly ran all four corrected consumers on unchanged runtime128
+73fa86c9/pointer407e8f5e/providerd3c37ff5: all0, exact outputs and step counts.
+Report: `/tmp/a-program-merge-c14-imported-source-controls-20261003/Root-results.json`
+(d7575c61). Original three reject1 results remain historical evidence at
+`/tmp/a-program-merge-c14-source-probes-20261003/Root-results.json`; they do not
+establish a frontend callback defect or require any source-policy change.
+C14 exact23 notice8283bd1b is READY, pending separate Root ABI/current-producer
+review. Latest C pane is capacity-stalled; no owner restart or model change.
 
 Root fresh C13 review, 2026-10-03: qualified current E9+E10 runtime12873fa86c9
 unchanged before/after; strict O2 backend, shared O2/client ASan/UBSan/leak,

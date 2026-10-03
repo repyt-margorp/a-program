@@ -1,0 +1,76 @@
+{
+  "Main_revision": "4853cb60357cdb773de91b9faf03e9bdaa96a6c1",
+  "manifest_members_verified": 16,
+  "worker_manifest_sha256": "0fecf3eabe1ce1dc51a5b876c9d316704fd98ee2894eedd6560113e4b1a2fec2",
+  "producer_source128": "73fa86c94b805b768d2c8493ce6f6a46c51983e556974c4920d805b59eefc743",
+  "pointer_sha256": "407e8f5e395f14f825b50d92b6787a87bac51408240fa5c1f5be206804e4823e",
+  "provider_sha256": "d3c37ff580c5a6ac796accece5e474966e03e8c4cb4fd71179d2d8c1b5bcbf5f",
+  "fresh_Root_rows": [
+    {
+      "fixture": "imported-differential.p",
+      "argv": [
+        "/tmp/a-program-merge-c12-e10-gates-20261003/build/pointer-check",
+        "--imports",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/c14_readonly_boundary/root_pinned_provider/provider.p",
+        "--run",
+        "main",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/c14_readonly_boundary/root_pinned_provider/imported-differential.p"
+      ],
+      "exit": 0,
+      "stdout": "7|14|7|14|0\\n24|31|-10|31|17\\n-2147483641|-2147483634|-2147483641|-2147483634|-2147483648\\n-2147483642|-2147483635|-2147483640|-2147483635|2147483647\\n",
+      "stderr": "done steps=5034\nrun: done steps=5080\n",
+      "fixture_sha256": "dc95c216d6feeda1849e7673bbcddaaf61506c60c4fa5d55fb75285263fcdb18",
+      "Root_log_sha256": "501556a115ef45b7caadc3812e2dd40470fb7de9c55f383ef129cc81e6c7435b"
+    },
+    {
+      "fixture": "imported-lambda.p",
+      "argv": [
+        "/tmp/a-program-merge-c12-e10-gates-20261003/build/pointer-check",
+        "--imports",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/c14_readonly_boundary/root_pinned_provider/provider.p",
+        "--run",
+        "main",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/c14_readonly_boundary/root_pinned_provider/imported-lambda.p"
+      ],
+      "exit": 0,
+      "stdout": "7",
+      "stderr": "done steps=2981\nrun: done steps=82\n",
+      "fixture_sha256": "3eddd5988f98bdd25e492e35db70218693a6562e03b53454df76d3ca71f769d1",
+      "Root_log_sha256": "bb2f201d8cd1b19a58e97b31c26d5ffa2e0abc2afe830f7f278c8b2ed70d16f1"
+    },
+    {
+      "fixture": "imported-named.p",
+      "argv": [
+        "/tmp/a-program-merge-c12-e10-gates-20261003/build/pointer-check",
+        "--imports",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/c14_readonly_boundary/root_pinned_provider/provider.p",
+        "--run",
+        "main",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/c14_readonly_boundary/root_pinned_provider/imported-named.p"
+      ],
+      "exit": 0,
+      "stdout": "7",
+      "stderr": "done steps=2945\nrun: done steps=84\n",
+      "fixture_sha256": "bfee0cbd837f30ddf863c3261ebf07984820b9f9ed17cf7b2b6430a1de881737",
+      "Root_log_sha256": "b06596c0fde437452bba2852ed6ee90e776bb4dfe9af24b525988e574ef89eae"
+    },
+    {
+      "fixture": "imported-thunked.p",
+      "argv": [
+        "/tmp/a-program-merge-c12-e10-gates-20261003/build/pointer-check",
+        "--imports",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/c14_readonly_boundary/root_pinned_provider/provider.p",
+        "--run",
+        "main",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/c14_readonly_boundary/root_pinned_provider/imported-thunked.p"
+      ],
+      "exit": 0,
+      "stdout": "7",
+      "stderr": "done steps=2932\nrun: done steps=84\n",
+      "fixture_sha256": "439d7116b7f9308e36a7f5a528889520f065df01df3be8d06e5f53d79a54575d",
+      "Root_log_sha256": "474c2f1185974b9580dca601b0db066f3403b49f108a7a4b3b8b4812d1875190"
+    }
+  ],
+  "all_outputs_and_steps_exact": true,
+  "conclusion": "Original fixtures omit explicit imports; four corrected consumers pass unchanged producer. No frontend bug or source policy change established."
+}
