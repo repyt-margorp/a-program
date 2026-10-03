@@ -1,0 +1,11 @@
+{
+  "fresh_partition_raw_exit": 1,
+  "known_strict3_unchanged": true,
+  "parent_historical_failures_reference": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem3/epochs/fold_empty_tail_v1/known-failures.json",
+  "parent_historical_failures_sha256": "d687427665999cfb5ae72e4641d8f40506849f71958efd04fe07e3d01068cd5b",
+  "original_observer_and_SAN7_and_all_prior_setup_failures_preserved": true,
+  "rejected_beta_environment_pruning_and_bounded_root_driver1_preserved_separately": true,
+  "no_new_candidate_regression": true,
+  "no_censored_or_deferred_controls": true,
+  "no_adapter_test_deletion_or_authority_waiver": true
+}

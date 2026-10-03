@@ -1,0 +1,29 @@
+--- a/src/computation.c
++++ b/src/computation.c
+@@ -480,15 +480,21 @@
+ 	if (!value) return 2;
+ 	const struct handler_entry *handler = handler_owner(machine->current.term->as.reference);
+ 	size_t consume = (handler ? handler->count : 0) + 2;
+-	struct pg_closure continuation = *pg_eval_argument(machine, 1);
++	const struct pg_argument *cursor = machine->arguments;
++	if (!pg_eval_next_argument(&cursor)) return -1;
++	const struct pg_closure *continuation = pg_eval_next_argument(&cursor);
++	if (!continuation) return -1;
++	for (size_t i = 2; i < consume; ++i)
++		if (!pg_eval_next_argument(&cursor)) return -1;
+ 	/* A unary Return already owns the required immutable argument spine.
+-	 * Preserve copies only when appending the caller's trailing arguments. */
+-	if (!pg_eval_argument(machine, consume)) {
+-		if (pg_eval_enter(machine, continuation, consume)) return -1;
++	 * The checked cursor also proves which caller arguments are consumed. */
++	if (!cursor) {
++		if (!continuation->term) return -1;
++		machine->current = *continuation;
+ 		machine->arguments = arguments;
+ 		return 0;
+ 	}
+-	return pg_eval_apply(machine, continuation, *value, consume);
++	return pg_eval_apply(machine, *continuation, *value, consume);
+ }
+ 
+ static int total_result_head(struct pg_eval *machine, struct pg_closure head,
