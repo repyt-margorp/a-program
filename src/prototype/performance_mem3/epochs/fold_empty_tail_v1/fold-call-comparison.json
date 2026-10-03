@@ -1,0 +1,75 @@
+{
+  "records": [
+    {
+      "variant": "parent",
+      "argv": [
+        "gdb",
+        "-q",
+        "-batch",
+        "-ex",
+        "set pagination off",
+        "-ex",
+        "set disable-randomization off",
+        "-ex",
+        "source /home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem3/fold_calls.gdb.py",
+        "-ex",
+        "run",
+        "--args",
+        "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/build/pointer-check",
+        "--steps",
+        "1000000000",
+        "--legacy-intrinsic-dot",
+        "--imports",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/quick-local-provider.p",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/imported-local-sorted.p"
+      ],
+      "exit": 0,
+      "observations": {
+        "fold_head_calls": 179,
+        "inferior_exit": 0,
+        "inferior_function_calls": false,
+        "runtime_wrapper_added": false,
+        "time_or_RSS_collected": false
+      },
+      "log_sha256": "75147c533a4af312bd60ac51a39ca4626318fc935b66b5da1d0bd623af3f5ea4",
+      "binary_sha256": "b8280a016b0df0a61eb21bd4a7a76d5d8edd08f808d4a1ea4558a42b986806cf"
+    },
+    {
+      "variant": "candidate",
+      "argv": [
+        "gdb",
+        "-q",
+        "-batch",
+        "-ex",
+        "set pagination off",
+        "-ex",
+        "set disable-randomization off",
+        "-ex",
+        "source /home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem3/fold_calls.gdb.py",
+        "-ex",
+        "run",
+        "--args",
+        "/tmp/ap-performance-mem3-fold-spine-current-e12-20261003/affected-o2/pointer-check",
+        "--steps",
+        "1000000000",
+        "--legacy-intrinsic-dot",
+        "--imports",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/quick-local-provider.p",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/imported-local-sorted.p"
+      ],
+      "exit": 0,
+      "observations": {
+        "fold_head_calls": 179,
+        "inferior_exit": 0,
+        "inferior_function_calls": false,
+        "runtime_wrapper_added": false,
+        "time_or_RSS_collected": false
+      },
+      "log_sha256": "2d92bf46ec3d0d10f357dc9ff6c7ef65396b3d8ebe9352a6c478ba56e4ee979d",
+      "binary_sha256": "f63148039ae99350a7c680f500d42f90f1fa03dc5f50703c250508cee8725ab4"
+    }
+  ],
+  "GDB_script_sha256": "9d7cea07e1da603539232dccc8f74600a1a2bdb4d62c8f3bba56f3d0c13228f3",
+  "actual_wall_RSS_collected": false,
+  "expected_charged_steps": 761848
+}

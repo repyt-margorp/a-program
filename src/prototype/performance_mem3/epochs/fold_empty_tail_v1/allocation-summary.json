@@ -1,0 +1,206 @@
+{
+  "cumulative_records": [
+    {
+      "case": "list",
+      "argv": [
+        "/tmp/ap-performance-mem3-fold-spine-current-e12-20261003/allocation-census/build/allocation_count_check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p"
+      ],
+      "exit": 0,
+      "charged_steps": 1915,
+      "calls": 3955,
+      "aligned_bytes": 413600,
+      "parent_calls": 3955,
+      "parent_aligned_bytes": 413600,
+      "log_sha256": "f582322078e50ebcea8263153e65de24fe6cf7d250a0f5572b6c7147503051f9",
+      "parent_log_sha256": "f582322078e50ebcea8263153e65de24fe6cf7d250a0f5572b6c7147503051f9",
+      "binary_sha256": "cb2cb76e23e2764f95b49d410f0a133bae9e76bc200df587d4b5f87441bc731c",
+      "calls_delta": 0,
+      "aligned_bytes_delta": 0
+    },
+    {
+      "case": "imported-local-sorted",
+      "argv": [
+        "/tmp/ap-performance-mem3-fold-spine-current-e12-20261003/allocation-census/build/allocation_count_check",
+        "--steps",
+        "1000000000",
+        "--legacy-intrinsic-dot",
+        "--imports",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/quick-local-provider.p",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/imported-local-sorted.p"
+      ],
+      "exit": 0,
+      "charged_steps": 761848,
+      "calls": 2864832,
+      "aligned_bytes": 227750768,
+      "parent_calls": 2863655,
+      "parent_aligned_bytes": 227693856,
+      "log_sha256": "e777194611101c58bc59bf82c0adfbde0f73b5a6e983a3356ddbfaae64e08069",
+      "parent_log_sha256": "5292836052e34ae2dcc3b7fc7c1b66b27a5378a75e0e8ae6c8e6d72356d4b12b",
+      "binary_sha256": "cb2cb76e23e2764f95b49d410f0a133bae9e76bc200df587d4b5f87441bc731c",
+      "calls_delta": 1177,
+      "aligned_bytes_delta": 56912
+    },
+    {
+      "case": "trees4",
+      "argv": [
+        "/tmp/ap-performance-mem3-fold-spine-current-e12-20261003/allocation-census/build/allocation_count_check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees4.p"
+      ],
+      "exit": 0,
+      "charged_steps": 2318248,
+      "calls": 1129041,
+      "aligned_bytes": 45219952,
+      "parent_calls": 1150665,
+      "parent_aligned_bytes": 45911920,
+      "log_sha256": "5467863a7fbaff235dfca37236c17cf4467fb6eec2f6336c3ca1c2744a264d94",
+      "parent_log_sha256": "7fc07a397a66e989211362661e8db13ce9f7ffa814e232e26b3114c816d56d05",
+      "binary_sha256": "cb2cb76e23e2764f95b49d410f0a133bae9e76bc200df587d4b5f87441bc731c",
+      "calls_delta": -21624,
+      "aligned_bytes_delta": -691968
+    },
+    {
+      "case": "trees16",
+      "argv": [
+        "/tmp/ap-performance-mem3-fold-spine-current-e12-20261003/allocation-census/build/allocation_count_check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees16.p"
+      ],
+      "exit": 0,
+      "charged_steps": 7608511,
+      "calls": 3497398,
+      "aligned_bytes": 129638896,
+      "parent_calls": 3568778,
+      "parent_aligned_bytes": 131923056,
+      "log_sha256": "3c3ff112ec05ee4557530a944c8ebf8f23926aab474890b9c917721410b31aaa",
+      "parent_log_sha256": "74b84e5522708a8fc98bfc66019fdc4dd2981d24952f9fdc6bcfac0421db597e",
+      "binary_sha256": "cb2cb76e23e2764f95b49d410f0a133bae9e76bc200df587d4b5f87441bc731c",
+      "calls_delta": -71380,
+      "aligned_bytes_delta": -2284160
+    },
+    {
+      "case": "trees64",
+      "argv": [
+        "/tmp/ap-performance-mem3-fold-spine-current-e12-20261003/allocation-census/build/allocation_count_check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees64.p"
+      ],
+      "exit": 0,
+      "charged_steps": 29780510,
+      "calls": 13300892,
+      "aligned_bytes": 474315072,
+      "parent_calls": 13580798,
+      "parent_aligned_bytes": 483272064,
+      "log_sha256": "1aa934a10693cf0caa976eb553c8ef7f171c4aeaa3cdb7ad8a60795be3e0c0dc",
+      "parent_log_sha256": "56d3b38f94dd6c6ea1c66755d34181e59d3d3e75dead66bfd6bf7879c82a737e",
+      "binary_sha256": "cb2cb76e23e2764f95b49d410f0a133bae9e76bc200df587d4b5f87441bc731c",
+      "calls_delta": -279906,
+      "aligned_bytes_delta": -8956992
+    },
+    {
+      "case": "trees400",
+      "argv": [
+        "/tmp/ap-performance-mem3-fold-spine-current-e12-20261003/allocation-census/build/allocation_count_check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees400.p"
+      ],
+      "exit": 0,
+      "charged_steps": 183507626,
+      "calls": 81275212,
+      "aligned_bytes": 2862251296,
+      "parent_calls": 83000934,
+      "parent_aligned_bytes": 2917474400,
+      "log_sha256": "6aaa55115ef7b2d569b3c7500cf2e0822378dc7d858c8f00d8a621291142f086",
+      "parent_log_sha256": "66a8e4e2dfee646f0a3b857bd426ab6533f88468baca7c197c4d42bed6cc7fd0",
+      "binary_sha256": "cb2cb76e23e2764f95b49d410f0a133bae9e76bc200df587d4b5f87441bc731c",
+      "calls_delta": -1725722,
+      "aligned_bytes_delta": -55223104
+    }
+  ],
+  "LocalSorted_repeats": [
+    {
+      "variant": "parent",
+      "repetition": 1,
+      "argv": [
+        "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/allocation-census/iadt-empty-tail/allocation_count_check",
+        "--steps",
+        "1000000000",
+        "--legacy-intrinsic-dot",
+        "--imports",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/quick-local-provider.p",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/imported-local-sorted.p"
+      ],
+      "exit": 0,
+      "charged_steps": 761848,
+      "calls": 2863838,
+      "aligned_bytes": 227702640,
+      "log_sha256": "dbe05fe0281b23afbec53f5339544def6a8297992a6071fc23acebecfea354e7"
+    },
+    {
+      "variant": "candidate",
+      "repetition": 1,
+      "argv": [
+        "/tmp/ap-performance-mem3-fold-spine-current-e12-20261003/allocation-census/build/allocation_count_check",
+        "--steps",
+        "1000000000",
+        "--legacy-intrinsic-dot",
+        "--imports",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/quick-local-provider.p",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/imported-local-sorted.p"
+      ],
+      "exit": 0,
+      "charged_steps": 761848,
+      "calls": 2864595,
+      "aligned_bytes": 227739392,
+      "log_sha256": "4d3de4b566c51b9d643c496a0b52fd570fcfd4c35e798a5c3a49971e9313bef1"
+    },
+    {
+      "variant": "parent",
+      "repetition": 2,
+      "argv": [
+        "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/allocation-census/iadt-empty-tail/allocation_count_check",
+        "--steps",
+        "1000000000",
+        "--legacy-intrinsic-dot",
+        "--imports",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/quick-local-provider.p",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/imported-local-sorted.p"
+      ],
+      "exit": 0,
+      "charged_steps": 761848,
+      "calls": 2863611,
+      "aligned_bytes": 227691744,
+      "log_sha256": "80362f393aa940ea27d91a4ea7024d14cc51342ae5d2fab393367da8b5637f84"
+    },
+    {
+      "variant": "candidate",
+      "repetition": 2,
+      "argv": [
+        "/tmp/ap-performance-mem3-fold-spine-current-e12-20261003/allocation-census/build/allocation_count_check",
+        "--steps",
+        "1000000000",
+        "--legacy-intrinsic-dot",
+        "--imports",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/quick-local-provider.p",
+        "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/imported-local-sorted.p"
+      ],
+      "exit": 0,
+      "charged_steps": 761848,
+      "calls": 2865335,
+      "aligned_bytes": 227774912,
+      "log_sha256": "b8cae796c9e47d37fa1817db0c3e67bfe96a6016c50a8b5a3e8e8d9205578b21"
+    }
+  ],
+  "LocalSorted_fold_head_calls_both": 179,
+  "maximum_possible_direct_copies_removed_LocalSorted": 179,
+  "whole_process_delta_not_fully_attributed": true,
+  "no_new_owner_index_ABI_overhead": true,
+  "not_peak_live_RSS_or_time": true
+}

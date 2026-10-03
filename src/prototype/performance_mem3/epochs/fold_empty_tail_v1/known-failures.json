@@ -1,0 +1,51 @@
+{
+  "strict3": [
+    {
+      "partition": "1000:1000",
+      "path": "reload",
+      "budget": "2000",
+      "used": "2000",
+      "status": "pending",
+      "bytes": "32760",
+      "delta": "-19124",
+      "size_equal": "no",
+      "byte_equal": "no",
+      "status_equal": "no",
+      "fuel_equal": "no"
+    },
+    {
+      "partition": "1600:1600",
+      "path": "reload",
+      "budget": "3200",
+      "used": "3200",
+      "status": "pending",
+      "bytes": "38362",
+      "delta": "-13522",
+      "size_equal": "no",
+      "byte_equal": "no",
+      "status_equal": "no",
+      "fuel_equal": "no"
+    },
+    {
+      "partition": "1915:0",
+      "path": "reload",
+      "budget": "1915",
+      "used": "1915",
+      "status": "pending",
+      "bytes": "51884",
+      "delta": "0",
+      "size_equal": "yes",
+      "byte_equal": "yes",
+      "status_equal": "no",
+      "fuel_equal": "yes"
+    }
+  ],
+  "historical_original_failure_record": "doc/2026-10-03-PERFORMANCE-GOAL.md (frozen0539051) and live Current/Joint provenance",
+  "initial_malformed_patch_sha256": "6f1e95559ff60cb5365d26a96f5a49336fc0357d309f6d020bee18e99cfae1ac",
+  "initial_invalid_handler_fixture_sha256": "4fe46fc154384ca98602a2f77d422ea5f40476ec8761f37914bc074c7635a1cc",
+  "initial_parent_fixture_unit_exit": -6,
+  "initial_parent_fixture_log_sha256": "2731a3269ab5117c84aa76e7238c91a926266e03968a9971f65dd6dc968bf3da",
+  "initial_affected_helper_missing_test": "tests/computation.c absent; no runtime launched",
+  "initial_affected_helper_sha256": "3d6b5e2aeb6a895ef9dd35bdc4c4856537b97e688d62d056d7bac09fee8bd25a",
+  "no_test_deletion_or_outcome_waiver": true
+}
