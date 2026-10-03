@@ -1,0 +1,73 @@
+--- a/syntax_io.c
++++ b/syntax_io.c
+@@ -3,7 +3,7 @@
+ #include "wire.h"
+ #include <string.h>
+ 
+-static const char magic[8] = "APGSYN\1";
++static const char magic[8] = "APGSYN\2";
+ 
+ int pg_syntax_child(void *unused, const void *key, size_t index, const void **result)
+ {
+@@ -36,6 +36,8 @@
+ 	if (s->token.text_length && !s->token.text) return 0;
+ 	if (s->token.kind == PG_TOKEN_IDENT && !named(&s->token)) return 0;
+ 	if (s->binder_marker && s->kind != PG_SYNTAX_LAMBDA) return 0;
++	if (s->clause_bindings < PG_CLAUSE_POSITIONAL || s->clause_bindings > PG_CLAUSE_UNORDERED) return 0;
++	if (s->clause_bindings && (s->kind != PG_SYNTAX_CLAUSE || !s->item_count)) return 0;
+ 	int left = s->left != NULL, right = s->right != NULL;
+ 	int items = 0;
+ 	switch (s->kind) {
+@@ -91,7 +93,7 @@
+ 	default: return 0;
+ 	}
+ 	if (s->item_count && (!items || !s->items)) return 0;
+-	int selector_mode = s->item_count ? s->items[0].operation : 0;
++
+ 	for (size_t i = 0; i < s->item_count; ++i) {
+ 		const struct pg_syntax_item *item = &s->items[i];
+ 		if (item->annotation && s->kind != PG_SYNTAX_BLOCK) return 0;
+@@ -100,9 +102,10 @@
+ 			continue;
+ 		}
+ 		if (s->kind == PG_SYNTAX_CLAUSE) {
+-			if (!named(&item->name) || item->operation != selector_mode) return 0;
+-			if (!item->operation) { if (item->expression) return 0; }
+-			else if (item->operation != PG_TOKEN_ASSIGN || !atom_name(item->expression)) return 0;
++			if (!named(&item->name)) return 0;
++			if (s->clause_bindings == PG_CLAUSE_POSITIONAL) {
++				if (item->operation || item->expression) return 0;
++			} else if (item->operation != PG_TOKEN_ASSIGN || !atom_name(item->expression)) return 0;
+ 			continue;
+ 		}
+ 		if (!item->expression) return 0;
+@@ -169,9 +172,11 @@
+ 	if (fwrite(magic, 1, 8, file) != 8 || pg_wire_write_u64(file, dag.count) || pg_wire_write_u64(file, count)) goto done;
+ 	for (const struct pg_dag_node *node = dag.first; node; node = node->next) {
+ 		const struct pg_syntax *s = node->key;
+-		if (s->kind > PG_SYNTAX_MOTIVE || s->binder_marker < 0 || s->binder_marker > 127) goto done;
++		if (s->kind > PG_SYNTAX_MOTIVE || s->binder_marker < 0 || s->binder_marker > 127
++			|| s->clause_bindings < PG_CLAUSE_POSITIONAL || s->clause_bindings > PG_CLAUSE_UNORDERED) goto done;
+ 		if (pg_wire_write_u64(file, s->kind) || write_token(file, &s->token)
+-			|| pg_wire_write_u64(file, s->binder_marker) || write_ref(file, &dag, s->left)
++			|| pg_wire_write_u64(file, s->binder_marker) || pg_wire_write_u64(file, s->clause_bindings)
++			|| write_ref(file, &dag, s->left)
+ 			|| write_ref(file, &dag, s->right) || pg_wire_write_u64(file, s->item_count)) goto done;
+ 		for (size_t i = 0; i < s->item_count; ++i) {
+ 			const struct pg_syntax_item *item = &s->items[i];
+@@ -224,12 +229,14 @@
+ 	const struct pg_syntax **selected = pg_alloc(graph, (size_t)nr * sizeof(*selected));
+ 	if (!nodes || !selected) return -1;
+ 	for (size_t i = 0; i < n; ++i) {
+-		uint64_t kind, marker, items;
++		uint64_t kind, marker, mode, items;
+ 		struct pg_syntax *s = pg_alloc(graph, sizeof(*s));
+ 		if (!s || pg_wire_read_u64(file, &kind) || kind > PG_SYNTAX_MOTIVE) return -1;
+ 		s->kind = (enum pg_syntax_kind)kind;
+ 		if (read_token(file, graph, &remaining, &s->token) || pg_wire_read_u64(file, &marker) || marker > 127) return -1;
+ 		s->binder_marker = (int)marker;
++		if (pg_wire_read_u64(file, &mode) || mode > PG_CLAUSE_UNORDERED) return -1;
++		s->clause_bindings = (enum pg_clause_bindings)mode;
+ 		if (read_ref(file, i, nodes, &s->left) || read_ref(file, i, nodes, &s->right)
+ 			|| pg_wire_read_u64(file, &items)) return -1;
+ 		if (items > remaining || items > SIZE_MAX / sizeof(struct pg_syntax_item)) return -1;

@@ -1,0 +1,14 @@
+gate	result	actual_exit	evidence
+full O2 acceptance/compatibility	FAIL: original harness omission only	2	epoch-2-acceptance.log
+source compatibility	PASS 63/63	0	epoch-2-acceptance.log
+corrected full witness isolation	PASS plain and witness-linked compilers	0	epoch-2-witness.log
+baseline/corrected positive controls	PASS both 1427 steps	0	epoch-2-inputs.json
+artifact transport/semantic/history	PASS; combined Make has separate partition failure	0	epoch-2-artifact.log
+seven checkpoint targets	PASS; combined Make has separate partition failure	0	epoch-2-artifact.log
+combined artifact Make	FAIL: strict public partitions only	2	epoch-2-artifact.log
+strict public partitions	FAIL three reload rows	1	epoch-2-partitions.tsv
+fresh baseline strict public partitions	FAIL same three reload rows	1	epoch-2-baseline-partitions.tsv
+40-row partition comparison	PASS all columns except absolute bytes equal	0	epoch-2-partition-comparison.json
+ASan/UBSan check-surface	PASS leak detection enabled	0	epoch-2-sanitizer.log
+ASan/UBSan reader/syntax I-O	PASS both full tests	0	epoch-2-sanitizer.log
+fresh follow-up assembly	PASS C/headers/.p unchanged; corrected harness identical	0	epoch-2-inputs.json

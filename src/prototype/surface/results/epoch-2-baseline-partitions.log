@@ -1,0 +1,6 @@
+1000:1000 reload: size/status/used-fuel mismatch
+1000:1000 reload: byte mismatch
+1600:1600 reload: size/status/used-fuel mismatch
+1600:1600 reload: byte mismatch
+1921:0 reload: size/status/used-fuel mismatch
+partition/image measurements: /tmp/ap-surface-20261003-followup/baseline-partitions/partitions.tsv (failed=1, strict_bytes=1)

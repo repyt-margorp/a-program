@@ -1,0 +1,58 @@
+surface: LHS scope, version rejection, exact syntax transport, canonical typed telescopes and unnormalized alpha equivalence passed
+surface nested scopes: LHS shadows, RHS selector does not shadow, outer IH remains lexical
+migrated 1 named clauses
+migrated 0 named clauses
+surface migration: eight pinned consumers, 13 clauses, token-preserving comments/text, explicit legacy input passed
+export results: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/fixtures/ordered.p graphMain expected equal=1 chunk=1 steps=10048
+export results: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/fixtures/ordered.p graphMain expected equal=1 chunk=64 steps=10048
+export results: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/fixtures/permuted.p graphMain expected equal=1 chunk=1 steps=10048
+export results: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/fixtures/permuted.p graphMain expected equal=1 chunk=64 steps=10048
+export results: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/fixtures/assertion-free.p graphMain expected equal=1 chunk=1 steps=9692
+export results: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/fixtures/assertion-free.p graphMain expected equal=1 chunk=64 steps=9692
+export results: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/fixtures/omitted-dependent.p graphMain expected equal=1 chunk=1 steps=9923
+export results: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/fixtures/omitted-dependent.p graphMain expected equal=1 chunk=64 steps=9923
+export results: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/fixtures/both-valid.p graphMain expected equal=1 chunk=1 steps=10048
+export results: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/fixtures/both-valid.p graphMain expected equal=1 chunk=64 steps=10048
+export results: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/fixtures/shadow-local.p aliasMain expected equal=1 chunk=1 steps=10100
+export results: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/fixtures/shadow-local.p aliasMain expected equal=1 chunk=64 steps=10100
+export results: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/migrated/tests/acceptance/function-graph-named-fields.p main expected equal=1 chunk=1 steps=10073
+export results: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/migrated/tests/acceptance/function-graph-named-fields.p main expected equal=1 chunk=64 steps=10073
+export results: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/migrated/tests/acceptance/function-graph-named-fields.p aliasMain expected equal=1 chunk=1 steps=10073
+export results: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/migrated/tests/acceptance/function-graph-named-fields.p aliasMain expected equal=1 chunk=64 steps=10073
+export results: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/migrated/tests/acceptance/function-graph-named-fields.p graphMain expected equal=1 chunk=1 steps=10048
+export results: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/migrated/tests/acceptance/function-graph-named-fields.p graphMain expected equal=1 chunk=64 steps=10048
+export results: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/migrated/tests/acceptance/function-graph-named-fields.p valueMain expected equal=1 chunk=1 steps=10020
+export results: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/migrated/tests/acceptance/function-graph-named-fields.p valueMain expected equal=1 chunk=64 steps=10020
+parsed source status: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/fixtures/ordered-reversed.p --reject matched=1
+parsed source status: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/fixtures/unknown.p --reject matched=1
+parsed source status: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/fixtures/lexical-source.p --reject matched=1
+parsed source status: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/fixtures/wrong-case.p --reject matched=1
+parsed source status: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/fixtures/duplicate-source.p --reject matched=1
+parsed source status: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/fixtures/duplicate-local.p --reject matched=1
+parsed source status: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/fixtures/invalid-graph.p --reject matched=1
+parsed source status: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/fixtures/invalid-ih.p --reject matched=1
+parsed source status: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/fixtures/shadow-graph.p --reject matched=1
+parsed source status: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/fixtures/shadow-ih.p --reject matched=1
+parsed source status: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/fixtures/wrong-assertion.p --reject matched=1
+parsed source status: /home/repyt/workspace/a-program-workers/surface/tests/acceptance/function-graph-named-fields.p --reject matched=1
+export results: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/migrated/tests/acceptance/function-graph-refined-case.p main expected equal=1 chunk=1 steps=5970
+export results: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/migrated/tests/acceptance/function-graph-refined-case.p main expected equal=1 chunk=64 steps=5970
+parsed source status: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/migrated/tests/acceptance/function-graph-named-not-call.p --unsupported matched=1
+parsed source status: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/migrated/tests/acceptance/function-graph-named-duplicate.p --reject matched=1
+parsed source status: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/migrated/tests/acceptance/function-graph-named-wrong-proof.p --reject matched=1
+parsed source status: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/migrated/tests/acceptance/function-graph-missing-case.p --reject matched=1
+parsed source status: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/migrated/tests/acceptance/generated-packet-shadow.p --reject matched=1
+parsed source status: /home/repyt/workspace/a-program-workers/surface/src/prototype/surface/migrated/tests/acceptance/generated-packet-wrong-output.p --reject matched=1
+export results: /tmp/ap-surface-gates.tcGqIZ/source.a graphMain expected equal=1 chunk=1 steps=10048
+export results: /tmp/ap-surface-gates.tcGqIZ/source.a graphMain expected equal=1 chunk=64 steps=10048
+export results: /tmp/ap-surface-gates.tcGqIZ/source.a graphMain expected equal=1 chunk=1 steps=9979
+export results: /tmp/ap-surface-gates.tcGqIZ/source.a graphMain expected equal=1 chunk=64 steps=9979
+export results: /tmp/ap-surface-gates.tcGqIZ/source.a graphMain expected equal=1 chunk=1 steps=10048
+export results: /tmp/ap-surface-gates.tcGqIZ/source.a graphMain expected equal=1 chunk=64 steps=10048
+export results: /tmp/ap-surface-gates.tcGqIZ/source.a graphMain expected equal=1 chunk=1 steps=9979
+export results: /tmp/ap-surface-gates.tcGqIZ/source.a graphMain expected equal=1 chunk=64 steps=9979
+export results: /tmp/ap-surface-gates.tcGqIZ/source.a graphMain expected equal=1 chunk=1 steps=9923
+export results: /tmp/ap-surface-gates.tcGqIZ/source.a graphMain expected equal=1 chunk=64 steps=9923
+export results: /tmp/ap-surface-gates.tcGqIZ/source.a graphMain expected equal=1 chunk=1 steps=9854
+export results: /tmp/ap-surface-gates.tcGqIZ/source.a graphMain expected equal=1 chunk=64 steps=9854
+surface gates: polarity, brace modes, scope/roles, migration, source/image reload and rejection passed

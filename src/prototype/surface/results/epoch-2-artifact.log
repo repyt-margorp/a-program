@@ -1,0 +1,60 @@
+Selected excerpts from /tmp/ap-surface-20261003-final/artifact.log
+Original raw-log SHA256: 83f170df42e055fb54b16483da6b1201907f1ded7752a39933882d100efdec2c
+Original Make exit: 2
+1: 1000:1000 reload: size/status/used-fuel mismatch
+2: 1000:1000 reload: byte mismatch
+3: 1600:1600 reload: size/status/used-fuel mismatch
+4: 1600:1600 reload: byte mismatch
+5: 1921:0 reload: size/status/used-fuel mismatch
+6: partition/image measurements: /tmp/ap-surface-20261003-final/build/fuel-partitions/partitions.tsv (failed=1, strict_bytes=1)
+7: make: *** [/home/repyt/workspace/a-program-workers/surface/src/prototype/artifact_persistence/build.mk:19: check-artifact-partitions] Error 1
+11: artifact transport: descriptor sharing, nominal separation and inert byte-stable cycles passed
+12: graph io: exact sharing, binder relocation, descriptor resolution and no implicit reduction passed
+13: effect image: shared classifier parameter, immutable seeds, cyclic Solve and failed-import isolation passed
+14: effect image: shared classifier parameter, immutable seeds, cyclic Solve and failed-import isolation passed
+15: layout image: shared contexts/constructors, inert annotations, distinct layouts and resumed iota passed
+16: layout image: shared contexts/constructors, inert annotations, distinct layouts and resumed iota passed
+17: declaration image: relocated family, shared contexts/layout, local formation and changed-map rejection passed
+18: graph acceptance: fresh-process relocation, shared Core and distinct typed evidence passed
+19: occurrence io: shared Core, distinct annotations, ordered operands and zero evidence passed
+27: semantic source image: inert views, aliases, stable cycles, untrusted inputs and module obligations passed
+39: source checkpoint: 154 complete lifecycle cuts, 484 charged verification steps
+40: derivation checkpoint: 84 cuts (42 batch), 6 mixed cuts, no preparation Jobs, 96 shared imports
+41: definition checkpoint: 44 source frontiers preserve remaining dispatches, diagnostics, and bytes
+48: namespace lifecycle: 1 pre-body frontiers
+56: namespace lifecycle: 7 started-body frontiers
+60: namespace checkpoint: 154 charged verification + 13 unchanged remaining dispatches, exact image
+61: namespace checkpoint: 154 charged verification + 12 unchanged remaining dispatches, exact image
+62: namespace checkpoint: 154 charged verification + 11 unchanged remaining dispatches, exact image
+63: namespace checkpoint: 154 charged verification + 10 unchanged remaining dispatches, exact image
+64: namespace checkpoint: 154 charged verification + 9 unchanged remaining dispatches, exact image
+65: namespace checkpoint: 154 charged verification + 8 unchanged remaining dispatches, exact image
+73: namespace lifecycle: 16 started-body frontiers
+84: namespace checkpoint: 440 charged verification + 6 unchanged remaining dispatches, exact image
+85: namespace checkpoint: 442 charged verification + 5 unchanged remaining dispatches, exact image
+86: namespace checkpoint: 444 charged verification + 4 unchanged remaining dispatches, exact image
+87: namespace checkpoint: 445 charged verification + 3 unchanged remaining dispatches, exact image
+88: namespace checkpoint: 447 charged verification + 2 unchanged remaining dispatches, exact image
+89: namespace checkpoint: 449 charged verification + 1 unchanged remaining dispatches, exact image
+90: namespace lifecycle: 16 started-body frontiers
+91: artifact policy: fixed/unbounded quota, inert file/pipe loading, explicit larger allowance passed
+92: direct roots: no Jobs or Solve on write, exact zero-fuel bytes, shared roots, unchecked load and input rejection passed
+97: source families: logical R/Acc scopes, unsolved and solved resaves, wrong argument rejection passed
+102: source member allocations: pre-publication restore, evidence sharing, type recheck and invalid inputs passed
+104: source member uses: raw allocation resaves, field type synthesis and invalid/late/conflicting scopes passed
+108: source Match origin: unsolved resaves preserve induction binders and clause allocations; ordinary source checking passed
+109: Fold bindings: exact continuation allocation, inert resaves and symbol/type rejection passed
+111: handler scopes: inert owner reconstruction, shared boundary and ordinary effect inference passed
+112: handler scopes: inert owner reconstruction, shared boundary and ordinary effect inference passed
+113: handler scopes: inert owner reconstruction, shared boundary and ordinary effect inference passed
+114: handler scopes: inert owner reconstruction, shared boundary and ordinary effect inference passed
+154: source image: nominal external names, distinct declarations and operation wrapper passed
+157: source materialized roots: inert read/resave, shared input origins and explicit local NF cache reuse passed
+158: normalization requests: pending/settled inputs, modes, aliases, invalid context and unsolved resave passed
+165: Reduction checking: shared WHNF recomputation, alpha relocation, non-normal claim rejection and pending divergence passed
+175: source image: nominal external names, distinct declarations and operation wrapper passed
+178: image cli: materialized roots, inert resave, REPL and explicit archive-option retirement passed
+179: image cli: failed writes preserve existing images; in-place publication and cleanup passed
+180: image cli: multi-root selection, retained obligations and range rejection passed
+181: image cli: parameterized List source/image NF agreement passed
+1414: fuel/image measurements: /tmp/ap-surface-20261003-final/build/history-fuel/measurements.tsv (failed=0)

@@ -1,0 +1,41 @@
+{
+  "baseline": "2d747ccfec844e8afc72d408385ceb79a7c01808 plus committed solver_inputs overlay",
+  "surface_epoch": "90939fc45f3b9cbe8e6409d6142eeee783822041",
+  "rows": 40,
+  "all_columns_except_bytes_equal": true,
+  "surface_minus_baseline_image_bytes": [
+    1056
+  ],
+  "failed_rows": [
+    {
+      "partition": "1000:1000",
+      "path": "reload",
+      "used": "2000",
+      "status": "pending",
+      "size_equal": "no",
+      "byte_equal": "no",
+      "status_equal": "no",
+      "fuel_equal": "no"
+    },
+    {
+      "partition": "1600:1600",
+      "path": "reload",
+      "used": "3200",
+      "status": "pending",
+      "size_equal": "no",
+      "byte_equal": "no",
+      "status_equal": "no",
+      "fuel_equal": "no"
+    },
+    {
+      "partition": "1921:0",
+      "path": "reload",
+      "used": "1921",
+      "status": "pending",
+      "size_equal": "yes",
+      "byte_equal": "yes",
+      "status_equal": "no",
+      "fuel_equal": "yes"
+    }
+  ]
+}
