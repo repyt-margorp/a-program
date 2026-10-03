@@ -359,6 +359,33 @@ differentials, deterministic checked/trusted C and unchanged artifact digests.
 The raw Oracle fixture additionally rejects ambiguous reused layouts and checks
 native enum emission performs no source evaluation or graph/evidence mutation.
 
+### Known local functions
+
+Known local functions work through the existing direct-call machinery in both
+native profiles. For example, an admitted block
+`{ f := \y : #Int32 => #int_add y offset; f x; }` retains the lexical `offset`
+capture and exposes the enclosing first-order API as ordinary C parameters.
+Syntactic function thunks remain target-local known values; no runtime closure,
+public callback parameter or compiler dependency enters the product. Closed,
+captured, shadowed, repeated, curried and unused definitions are tested, including
+Int64 parameters and native Nat/List captures. An unused known function's effectful
+body is not executed. A demanded effectful body still rejects the native profile.
+
+This is bounded support. The fixture's three-closure captured-offset chain
+`h -> g -> f` still rejects with status 4 before publication; its two-closure
+counterpart succeeds. This describes those shapes, not a general numeric nesting
+limit. Dynamic callback parameters, function fields and unsupported nested
+recursive captures remain refusals. Native Acc/QuickSort is still unsupported.
+
+`check-c-static-functions` verifies ordinary source/object/archive clients,
+scalar extrema and source differentials, Nat32 overflow and resource rollback,
+inert raw emission and deterministic checked/trusted products. Two native
+components with distinct aliases coexist in one C client and may share the
+guarded caller-arena ABI. Explicit array copy-out/copy-in exchanges their List
+contents; equal layouts do not establish shared nominal types. Either generated
+destructor can release that arena's complete allocation chain. Every result
+using the arena must be retired first, including results from the other component.
+
 ### Fieldful value data
 
 The same native profile accepts `data SOURCE ALIAS` for an admitted, closed,
@@ -402,8 +429,9 @@ callee, retaining lexical captures and subsequent first-order operands.
 Differentials and raw Oracle checks support this correspondence; no new Kernel
 refinement theorem is claimed. Unknown field classifiers, indices,
 dependent/function fields and nested aggregates reject before publication.
-Block-local function thunks and open callback parameters also remain unsupported;
-the negative data gate retains both and unselected recursive exports. Selected
+Known block-local function thunks have positive coverage; open callback
+parameters, function fields and unselected recursive exports remain negative
+controls. Selected
 single-tail recursive data has the separate native profile described below.
 Distinct selected families remain distinct C struct types; shared nominal types
 across independently generated modules still require a future explicit contract.
@@ -557,8 +585,9 @@ independence, empty slices, 300-node conversion and every allocation failure
 position, while preserving earlier results. The raw
 Oracle also checks 17 Nat observations and Int32 List conversions while forbidding
 evaluation/substitution during emission and checking source graph/store counts.
-Invalid Nat shapes, unselected nested fields, block-local thunks, dynamic callbacks
-and effects retain explicit refusal gates. Native indexed/dependent data, trees,
+Invalid Nat shapes, unselected nested fields, dynamic callbacks and demanded
+effects retain explicit refusal gates. The old data/List/numeric block controls
+now have positive native-product coverage. Native indexed/dependent data, trees,
 unsupported recursive closure captures, callbacks/effects and higher Identity
 remain unsupported. General cross-module nominal exchange remains open.
 

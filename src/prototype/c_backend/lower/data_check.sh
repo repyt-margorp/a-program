@@ -26,7 +26,7 @@ for product in source object archive executable; do
 	{
 		script "$product"
 		printf 'enum32 Bool Bool\ndata Packet Packet\ndata Twin Twin\n'
-		for name in small wide number large identity rebuild captured partial shadowed other constant; do
+		for name in small wide number large identity rebuild captured partial shadowed other constant block_callback; do
 			printf 'export %s %s\n' "$name" "$name"
 		done
 		if [[ $product == executable ]]; then printf 'entry constant\n'; fi
@@ -68,7 +68,7 @@ for change in '/enum32 Bool/d' 's/data Twin Twin/data Packet Again/'; do
 	expect_status 4 "$backend" --link "$temporary/bad.aplink" "$temporary/bad"
 	test ! -e "$temporary/bad"
 done
-for name in effect block_callback callback recursive; do
+for name in effect callback recursive; do
 	# An unselected recursive family remains a refusal; selected single-tail
 	# data now has positive coverage in list_check.sh. General trees still reject.
 	{ script source; printf 'enum32 Bool Bool\ndata Packet Packet\nexport %s rejected\n' "$name"; } > "$temporary/bad.aplink"

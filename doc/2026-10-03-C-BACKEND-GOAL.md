@@ -15,6 +15,15 @@ Related: [coordination](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md),
 
 ### Subjective (User)
 
+2026-10-03, English paraphrase of the user coordination preference: Core should
+be woken by worker events rather than continuous polling. Keep this worker Goal
+active and continue downstream ABI/helper work without a pause. The later direct
+clarification specifies notification OR a six-hour timer, with a check even
+without notice; this supersedes a notice-only interpretation. Payload format,
+owner routing and relay mechanics are Core operational decisions, not user design
+principles. Recorded during the Epoch4 freeze in a separate addendum and now
+incorporated after Core released that freeze.
+
 2026-10-03, English paraphrase of the latest direct user clarification:
 performance and Job/Evidence need concentrated joint verification. The C backend
 is an important downstream project: use `.a` and LinkerScript to emit C readily
@@ -57,6 +66,33 @@ refinement now, while the coordinator continues Job/Evidence removal. Use task
 names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
+
+2026-10-03, fresh Epoch5 at `a3b6bce` plus lane edits: the verified known-function
+Thunk/Lambda change is applied to the active prototype; scratch copies/overrides
+are removed. Nine O2 C gates pass and five native generated-client sanitizer
+gates pass (static/scalar/data/List/numeric). Source/object/archive ordinary
+clients cover lexical captures, shadowing, curried/repeated/unused demand, native
+Nat/List resources and two components using distinct aliases/array exchange.
+The exact old block controls have positive coverage; dynamic callbacks, demanded
+effects, recursive function fields and the specific three-closure chain remain
+explicit refusals. Evidence/pins: [Epoch5 handoff](2026-10-03-C-BACKEND-EPOCH5-HANDOFF.md).
+Backend/producer/raw generators and driver objects are O2; sanitizer scope is
+generated source bodies and clients. This worker run uses the pinned Core
+snapshot, not a claim of latest Main combined verification.
+
+2026-10-03, fresh Git inspection: Epoch4 task branch and upstream both point to
+`a3b6bce5f2ad1dee80c56e9a4843ec646ba30fc5`, containing exactly its 11 frozen files.
+Core reports matching manifest hashes, no blocking transactional array/List code
+defect, delegated branch commit/push completed and freeze released. Combined C
+gates/Main integration are next; publication is not integration or promotion.
+Its committed handoff and old manifest remain immutable evidence.
+
+Later Core report, 2026-10-03: all eight Epoch4 C gates exit 0 against committed
+Main E1+performance+family/Surface producer; 128 runtime-source hashes match its
+jointly broad-tested snapshot. An initial Surface setup omission was corrected
+and the earlier run retained. Core merged exact `a3b6bce` prototype into Main;
+Main push follows. No merge revision/push completion is claimed here. This is
+Core combined/integration evidence, distinct from worker pinned-snapshot runs.
 
 2026-10-03, fresh Epoch4 verification at `720f92a` plus the exact lane edits in
 the [handoff](2026-10-03-C-BACKEND-EPOCH4-HANDOFF.md): five focused O2 gates pass
@@ -133,6 +169,31 @@ pinned/current producer images and emitted C/headers match byte-for-byte.
 Evidence and exact publication files are in the [epoch handoff](2026-10-03-C-BACKEND-EPOCH1-HANDOFF.md).
 
 ### Assessment
+
+Core operational release, 2026-10-03: later distinct worker edits may proceed
+after Epoch4 publication. Keep native Acc/QuickSort and the trial's specific
+three-closure capture-chain refusal explicit. Continue bounded C usability work,
+with no producer fields or private checker. Static-function scratch was excluded
+from Epoch4; implement and verify its next epoch independently.
+
+Core operational routing, 2026-10-03: Job E2 interrupted the existing Core sleep
+after 43.156 seconds; this is a Core report, not a C-worker wake experiment.
+Workers post one material ready/blocker/conflict/regression notice under their
+own `src/prototype/coordination/outbox/*.txt`, newline terminated and at most
+8 KiB, with lane/epoch/commit/manifest/gates/failures. Core owns the pointer/hash
+relay without socket changes, merge or missing-session launch, and waits in the
+existing conversation with interruptible `clock.sleep` plus the six-hour fallback.
+Do not load/resume/fork another Core, change the relay or perform Main integration.
+The Epoch4 notice was received and reviewed. These are operational decisions,
+correcting their earlier mixed Subjective attribution in the temporary addendum.
+
+Agent Epoch5 decision: adopt the verified minimal static Thunk/Lambda handling
+through existing direct-call/capture machinery. Move the exact old block controls
+to positive product tests while retaining dynamic callback, demanded effect,
+recursive function-field and unsupported capture-chain refusals. Test ordinary
+native modules with distinct aliases and explicit array exchange/shared arena.
+The [bounded follow-up plan](2026-10-03-C-BACKEND-STATIC-FUNCTION-PLAN.md) holds
+fresh evidence; no public closure ABI, source authority or native sort completion.
 
 Core operational reprioritization, 2026-10-03: prioritize target ABI, ordinary C
 clients, source/object/library products and bounded native lowering of admitted
@@ -296,8 +357,14 @@ this target work while Main continues SE1, superseding the earlier AP6 hold.
 - [x] Epoch4: establish the concrete native Acc/QuickSort boundary without a
   generalized compiler rewrite; route owner/readback needs through Core. Deliver
   a bounded C ABI/client improvement with source/object/library verification.
-- [ ] Core publishes the frozen Epoch4 task branch and reviews integration
-  separately. Keep its exact manifest fixed until release.
+- [x] Core published/pushed Epoch4 as `a3b6bce` and released the freeze.
+- [x] Core reports eight combined Epoch4 gates and prototype Main merge passed; preserve
+  the historical committed handoff and manifest.
+- [x] Epoch5: apply/verify the bounded static-function candidate and ordinary
+  native-module composition.
+- [x] Hand off frozen Epoch5 through the verified outbox route.
+- [ ] Core publication and current-owner combined Epoch5 integration review;
+  keep the exact set frozen until release.
 - [ ] Coordinate further bounded target ABI/lowering increments under the latest
   user scope. Remaining Acc/QuickSort, callbacks/effects, Identity and shared
   nominal contracts stay explicit; do not expand into upstream authority work.
@@ -341,9 +408,14 @@ remain historical evidence. The latest user clarification narrows Epoch4 to
 usable downstream C boundaries and bounded native lowering. The Acc/QuickSort
 probe reports the selected generic-family representation refusal. The verified
 array-to-List boundary and ordinary source/object/archive clients are frozen in
-the [Epoch4 handoff](2026-10-03-C-BACKEND-EPOCH4-HANDOFF.md) for Core publication.
+the [Epoch4 handoff](2026-10-03-C-BACKEND-EPOCH4-HANDOFF.md), published as `a3b6bce`.
+Core released the implementation freeze and reports eight combined gates/Main
+prototype merge passed; Main push completion is not yet reported.
 No hand-coded replacement or shared-owner edits.
-Unsupported block-local thunks, callbacks,
+Epoch5 verifies the bounded static-function follow-up separately; its exact
+25-file manifest is frozen and handed off through the verified outbox route.
+Core publication/current-owner integration remain separate. The specific three-closure captured
+chain, dynamic callbacks,
 tree/indexed/dependent/nested fields and effects remain explicit negative coverage.
 Further work includes slice/Acc/QuickSort;
 keep relevance/admission decisions with Core. The task has not completed AP6.4/5.

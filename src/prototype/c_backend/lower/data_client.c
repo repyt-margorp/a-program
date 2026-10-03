@@ -18,6 +18,8 @@ static void check(struct ap_data_Packet p, uint32_t number, int64_t large)
 	for (uint32_t b = 0; b < 2; ++b) {
 		assert(!ap_export_captured(p, (struct ap_enum_Bool){b}, &result));
 		assert((uint32_t)result == number + (b ? 9 : 3));
+		assert(!ap_export_block_callback(p, (struct ap_enum_Bool){b}, &result));
+		assert((uint32_t)result == number + (b ? 9 : 3));
 	}
 	assert(!ap_export_rebuild(p, &out) && out.tag == p.tag);
 	if (p.tag == 1) {
@@ -68,6 +70,8 @@ int main(void)
 	assert(ap_export_rebuild(p, &p) == 2 && !memcmp(before, &p, sizeof(p)));
 	p.fields.c1.f1.tag = 0;
 	assert(ap_export_captured(p, (struct ap_enum_Bool){UINT32_MAX}, &out) == 2 && out == 123);
+	assert(ap_export_block_callback(p, (struct ap_enum_Bool){UINT32_MAX}, &out) == 2 && out == 123);
+	assert(ap_export_block_callback(p, (struct ap_enum_Bool){0}, NULL) == 1);
 	assert(ap_export_small(1, (struct ap_enum_Bool){0}, NULL) == 1);
 	/* Only the active constructor's fields are validated/read. */
 	memset(&p, 0xff, sizeof(p)); p.tag = 0;

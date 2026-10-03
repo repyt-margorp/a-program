@@ -81,6 +81,11 @@ static void boundaries(void)
 
 	struct ap_data_Numbers first, second;
 	node(&second, UINT32_MAX, &nil); node(&first, 0, &second);
+	assert(!ap_export_block_callback(&arena, &nil, &magnitude) && magnitude == 1);
+	assert(!ap_export_block_callback(&arena, &first, &magnitude) && magnitude == 1);
+	second.tag = UINT32_MAX;
+	assert(ap_export_block_callback(&arena, &first, &magnitude) == 2 && magnitude == 1);
+	second.tag = AP_DATA_Numbers_C1;
 	uint32_t buffer[3] = {77, 77, 77};
 	size_t written = 77;
 	assert(ap_copy_Numbers(&first, buffer, 1, &written) == 6);

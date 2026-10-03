@@ -592,11 +592,14 @@ static int lower(struct expression *e, size_t slot, const void **out)
 		return 0;
 	}
 	if (operation == &pg_thunk_operation) {
-		/* Only the direct thunk produced for an admitted single-tail IH. */
+		/* Retain known function values and direct single-tail IH thunks. */
 		const struct pg_term *body = e->count == 1 ? a->term : NULL;
-		if (!body || body->kind != PG_APPLICATION || body->as.application.function->kind != PG_REFERENCE) return -1;
-		struct expression *r = lookup(a->environment, body->as.application.function->as.reference);
-		if (!r || !r->recursion) return -1;
+		if (!body) return -1;
+		if (body->kind != PG_LAMBDA) {
+			if (body->kind != PG_APPLICATION || body->as.application.function->kind != PG_REFERENCE) return -1;
+			struct expression *r = lookup(a->environment, body->as.application.function->as.reference);
+			if (!r || !r->recursion) return -1;
+		}
 		e->delayed = 1; e->suspended = body; e->value = e;
 		return 0;
 	}
