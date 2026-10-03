@@ -20,7 +20,7 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | 2 | `c-backend`: downstream C design | #44, #49; shared policy #47 | C6 value records integrated; native Acc/QuickSort remains open |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Jointly verified epoch integrated as `f27bd13`; full Goal remains active |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
-| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E3 integrated as `48364b0`; E4 joint evidence received, E6 gates live; review/integration pending |
+| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E4/E6 distinct reviewed prototype merges `3a8c024`/`01c29c0`; E7/E8 task-published, joint review pending; strict3 remain |
 | 6 | `verification-audit`: independent read-mostly suite/debt inventory | #59 / PR #60, #51 | Active bounded inventory/pilot; no test deletion, acceptance relaxation or broad rerun |
 
 ### Current Delivery Status
@@ -33,9 +33,9 @@ completion scores; worker-local results are not relabelled joint verification.
 
 | Owner / issue scope | Delivered and verified | Not yet delivered / next boundary |
 | --- | --- | --- |
-| Job/Evidence; SE1-SE5 / AP0, related #51/#47 | E1-E4 prototype Main; E4 `3a8c024` runtime128/source alignment and frozen joint evidence reviewed; E3 inert body links separately qualified | E6 joint report next; E7/E8 exact incremental freezes ready/unpublished; E9 private; strict3 remain |
+| Job/Evidence; SE1-SE5 / AP0, related #51/#47 | E1-E4/E6 prototype Main; E4 `3a8c024` and E6 `01c29c0` each match runtime128 and their distinct frozen joint reports; E7/E8 exact task `3ad0303`/`50cd56b` pushed | E7/E8 joint qualification and Main integration pending; E9 private; strict3 remain |
 | C backend; #44/#49 | C4-C6 prototype Main; C6 ten current-E3-producer gates pass; C7 exact 14-file task `d275b75` pushed/remote verified | C7 current-producer eleven-gate qualification and Main integration pending; native Acc/QuickSort unsupported |
-| Performance; #56, measurement work #51/#52 | Captured-head cleanup prototype Main; E2 broad/E3 targeted and E4 broad evidence reviewed separately; E4 384 O2/45 sanitizer/23 focused passing, strict3 retained | E6 separate report/review next; matched-baseline measurement slot pending; no wall/RSS comparison or #52 completion claimed |
+| Performance; #56, measurement work #51/#52 | Captured-head cleanup prototype Main; E2/E3/E4/E6 distinct reports reviewed; E6 408 relevant O2 recipes with only unchanged strict target failure, 45 sanitizer/23 focused/140 cross-build passing | Matched E6 baseline qualified; exclusive measurement slot awaiting safe-boundary holds; no wall/RSS comparison or #52 completion claimed |
 | Surface; #57 | Delivered prototype integrated; session stopped | Issue-wide closure still requires its recorded remaining criteria; no active worker |
 | Verification audit; #59/PR #60, related #51 | Isolated worker launched at `4d1d941`, active bounded Goal and invocation inspection confirmed | Static effective-invocation inventory and QuickSort/persistence/legacy pilot pending; controlled cost later needs the common exclusive slot |
 
@@ -260,6 +260,21 @@ pins worker terminal gates and fresh source alignment separately. C7's exact
 14 staged blobs match its freeze, task commit `d275b75` is pushed and independently
 remote verified; worker freeze is released for a distinct next native boundary.
 Current-producer C7 qualification remains pending and is done from immutable Git.
+
+2026-10-03 Merge E6 review: all 1,939 frozen records freshly verify. Independent
+E4+applied-E6 and full clean Main+canonical-E6 assemblies each match runtime128
+and six selected tests exactly. Reviewed Binder borrowing retains explicit Binder
+identity/owner checks and the permanent namespace control once. Prototype Main
+merge is `01c29c0`; [E6 review](../src/prototype/solver_inputs/joint_verification/e6-merge-review.json)
+keeps its 408 relevant O2 recipes/one unchanged strict target failure distinct
+from E4's full 384-recipe pass, with worker sanitizer45/focused23/readback140
+passes. No new broad rerun, waiver or speed claim. Exact cached transports then
+published E7 `3ad0303` (18 files) and E8 `50cd56b` (14 files), preserving raw
+CRLF bytes and excluding private E9/live canonical trials. Their Main integration
+requires separate joint qualification. Performance's <=40-minute measurement
+proposal `570d7af6` is under review; C acknowledged a safe terminal hold, Job's
+current gate must finish before grant. All CPU-heavy workers are explicitly
+released after the agreed slot; audit gate cost is coordinated within it.
 
 2026-10-03 agent operational decision within the user's explicit tree request:
 the desk records/relays user requirements and answers questions; it does not

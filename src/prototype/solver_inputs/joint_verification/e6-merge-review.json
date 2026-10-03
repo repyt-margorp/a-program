@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-03",
+  "review_owner": "Merge",
+  "main_parent": "be0446d",
+  "task_epoch": "b2d66682be75c21a3c2a8c5138db9d3f0c5e0eb2",
+  "prototype_main_merge": "01c29c00062fca19e4e3cdad99d94d6cad7bd480",
+  "qualified_snapshot": "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003",
+  "frozen_manifest_sha256": "ab3d3f2e1428de29d9c3457b55e1f35c2688bbcc60495c2b88e1fa926b753e22",
+  "frozen_records_freshly_verified": 1939,
+  "source_manifest_sha256": "c3ff50a9745bcca76809f68b7a435e2faeb1e20ea609469353522ef73bd509eb",
+  "summary_sha256": "ec36a57245cfc5110562af46cffc9717fbca5d8895c53fea4e5f2f6968ef4f2b",
+  "fresh_canonical_candidate_assembly": "/tmp/a-program-merge-e6-canonical-assembled-20261003",
+  "candidate_runtime_records_exact": 128,
+  "selected_test_records_exact": 6,
+  "independent_E4_to_E6_applied_delta_assembly_also_exact": true,
+  "changed_runtime_from_E4": [
+    "src/synthesis_binding.c"
+  ],
+  "reviewed_owner_boundary": "Binder borrowed from canonical scope, requested explicit Binder identity and owner checks retained; two-pointer binding state.",
+  "terminal_worker_results": {
+    "o2_relevant_recipes": 408,
+    "o2_relevant_nonzero": 1,
+    "only_nonzero": "Strict partition target, unchanged three E4 failures",
+    "sanitizer_build_recipes": 38,
+    "sanitizer_commands": 45,
+    "sanitizer_nonzero": 0,
+    "focused_O2_commands": 23,
+    "focused_nonzero": 0,
+    "cross_build_readbacks": 140,
+    "cross_build_failures": 0,
+    "all_seven_checkpoints": true,
+    "full_acceptance_rerun": false,
+    "parent_E4_full_acceptance_recipes": 384,
+    "parent_E4_full_acceptance_nonzero": 0
+  },
+  "unwaived_strict_reload_failures": [
+    "1000:1000",
+    "1600:1600",
+    "1915:0"
+  ],
+  "namespace_control": "Permanent committed E6 control included once; rejected E5 runtime excluded.",
+  "worker_setup_failure": "Global Alias.zero string count included an old positive fixture; exact test hash already matched, helper predicate corrected, failed copy/trace retained.",
+  "new_Merge_broad_runtime_execution": false,
+  "scope": "15 prototype files; no accepted promotion or performance claim"
+}
