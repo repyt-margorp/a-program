@@ -1,0 +1,14 @@
+duplicate-function-source: done steps=31822418
+duplicate-independent-synthesis: done steps=16873803
+export results: /tmp/tmp.Pf7titt3xm/source.a finite_repeat_report finite_repeat_report_expected equal=1 chunk=1 steps=34257408
+export results: /tmp/tmp.Pf7titt3xm/source.a finite_repeat_report finite_repeat_report_expected equal=1 chunk=64 steps=34257408
+equal-payload-positions-distinct: rejected steps=32025688
+duplicate-rejected-load: rejected steps=32026032
+lost-identical-duplicate: rejected steps=31887130
+duplicate-ordinary-load: done steps=31822763
+duplicate-pending: pending steps=100
+duplicate-inert: pending steps=0
+duplicate-resume: done steps=31822359
+export results: /tmp/tmp.Pf7titt3xm/resumed.a finite_repeat_report finite_repeat_report_expected equal=1 chunk=1 steps=34257408
+export results: /tmp/tmp.Pf7titt3xm/resumed.a finite_repeat_report finite_repeat_report_expected equal=1 chunk=64 steps=34257408
+identical payloads: all five actual outputs, recovery, distinct origins/destinations, inverse consumers, two rejections and fresh-process images passed

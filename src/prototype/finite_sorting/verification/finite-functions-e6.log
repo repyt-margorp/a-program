@@ -1,0 +1,25 @@
+finite-function-source: done steps=31787366
+independent-synthesis: done steps=16838685
+export results: /tmp/tmp.mrie1SKTlt/source.a finite_report finite_report_expected equal=1 chunk=1 steps=34228084
+export results: /tmp/tmp.mrie1SKTlt/source.a finite_report finite_report_expected equal=1 chunk=64 steps=34228084
+export results: /tmp/tmp.mrie1SKTlt/source.a finite_small_report finite_small_expected equal=1 chunk=1 steps=31804827
+export results: /tmp/tmp.mrie1SKTlt/source.a finite_small_report finite_small_expected equal=1 chunk=64 steps=31804827
+wrong-function-domain: rejected steps=31787846
+wrong-position-bound: rejected steps=31788057
+wrong-output-label: rejected steps=32054810
+wrong-recovery-label: rejected steps=32011961
+forward-as-backward: rejected steps=31831448
+local-as-strong: rejected steps=31845376
+lost-duplicate: rejected steps=31852088
+ordinary-load: done steps=31787732
+pending: pending steps=100
+inert: pending steps=0
+resume: done steps=31787307
+export results: /tmp/tmp.mrie1SKTlt/resumed.a finite_report finite_report_expected equal=1 chunk=1 steps=34228084
+export results: /tmp/tmp.mrie1SKTlt/resumed.a finite_report finite_report_expected equal=1 chunk=64 steps=34228084
+rejected-save: rejected steps=31831448
+rejected-load: rejected steps=31831812
+rejected-pending: pending steps=100
+rejected-inert: pending steps=0
+rejected-resume: rejected steps=31831389
+finite-function API: all five actual results/origins/destinations, recovery, independent synthesis, seven rejections and ordinary/pending/inert/rejected images passed

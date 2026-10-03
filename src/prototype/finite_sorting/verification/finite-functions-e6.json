@@ -1,0 +1,281 @@
+{
+  "date": "2026-10-03",
+  "scope": "#41 F3/F4 finite-function API; verified prototype deliverable, Merge alone publishes/integrates",
+  "parent_revision": "66fa707b3626a52060151adad8f427254561ed1f",
+  "worktree": "/home/repyt/workspace/a-program-workers/sort-library",
+  "branch": "parallel/sort-library-20261003",
+  "thread": "01a10111-a71f-7cd0-8b00-22b9f6f3aa1a",
+  "actual_runtime": {
+    "model": "gpt-6.1-sol",
+    "effort": "xhigh",
+    "source": "current rollout turn_context; initialized notice acknowledged by Merge"
+  },
+  "goal": "Explicit continuing implementation Goal, active during qualification; finish only after frozen handoff.",
+  "reused_pr": 54,
+  "reused_pr_merge": "b33279e691c95a03d5ce3a344e9792514f589df8",
+  "checker": {
+    "path": "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/build/pointer-check",
+    "sha256": "33d90f6fb02f0bd5cafe1e50f5cc64a5d057b2607e4c5f3aa21b81c97fe9bf8f",
+    "qualification": "generic-merge-e6.json",
+    "producer_job": "b2d66682be75c21a3c2a8c5138db9d3f0c5e0eb2"
+  },
+  "comparator": {
+    "path": "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/build/program_test",
+    "sha256": "d21c94c9e24eeb25eef14c8abe2a4e8c9d971f56c662d96684ce45873b87254f"
+  },
+  "settings": {
+    "parallelism": 1,
+    "steps": 40000000,
+    "per_command_timeout_seconds": 180,
+    "reader_record_limit": 10000000,
+    "comparison_chunks": [
+      1,
+      64
+    ],
+    "broad_rerun": false,
+    "wall_rss_measurements": false
+  },
+  "provider_inputs_exact_against_E6": 10,
+  "input_sha256": {
+    "tests/fixtures/sorted-proof-provider.p": "a674b893cd5d0dc1899e79238352c6167a536876393ae7f53b2a9de602b647e6",
+    "tests/fixtures/local-strong-sorted.p": "4518b0c84d8a8a9b33af754a7dd3462ed4d691b9541c4b6ed30bd8390afc8d63",
+    "tests/fixtures/quick-sort-proof-common.p": "19d68cc1399292f26691cd2d49ba8cd6fcfee76a7b5f27d08487b9ea8594770b",
+    "tests/acceptance/generic-quick-local-sorted-result.p": "bd38d6e04d23402d5a1fc9f2955d90f05b911635680bbc509f1c59ed9431cd27",
+    "tests/fixtures/finite_positions.p": "8415de7499cfd7ebf64d3861ae15c418fdd6c55d669794826f9aec60b82bce6d",
+    "tests/fixtures/finite_vectors.p": "a2492f458ded5b78c889e3f5dd03e94a5b462c8c542e062690c6f648927e6c5f",
+    "tests/fixtures/finite_list_views.p": "67e18c9f6ec06c49b1edc89ef9b4d0ee7360432c1850127a0f9718db9badc6ef",
+    "tests/fixtures/generic_sorted/content-proof.p": "b6ddfb63cfc371a2f06924d512d0a465a8b2e70f65257cd76960ad0d192bcb3a",
+    "tests/fixtures/generic_sorted/content-result-proof.p": "72ffc1cc44e43bdfddecec62ca657f8d3d7398f9c7faeb3d3fc90bae1306e7f6",
+    "tests/fixtures/finite_permutation_views.p": "0f308acca87904eb3cfccdf7102791bc50d7ea3cf4c30697519f55ab81f26c8d",
+    "src/prototype/finite_sorting/common.p": "2e92b96ec46dd60d7e8e4afc0dcf1a8fbf026370c0dc487ed93b0d7b8e8c7213",
+    "src/prototype/finite_sorting/insertion.p": "bbe71ddec4345df6edd136f9694a89b09e7994a9a75d0de063ef94468517188a",
+    "src/prototype/finite_sorting/quick.p": "a1d725fb2e5a0c1b738a09b596cf3e8591b319b8599f9f0e83ea62c4dd2aa94a",
+    "src/prototype/finite_sorting/tree.p": "da25fdb86f3ebfe9feaecfa397c184f7c28d200c72fb59b2dd3f0f1414f11f2e",
+    "src/prototype/finite_sorting/bubble.p": "0dfaa6a8d9d4a8e99714313cc082afc4fd723a7de8185b0c0499e76d4f961b16",
+    "src/prototype/finite_sorting/bubble-order.p": "03aade3eab47c9fcf80bdcce26bd795985339747f8e391216bd972c80c1cf1a6",
+    "src/prototype/finite_sorting/merge.p": "8b06e8e0fae4a1e16424aebc4e5e9753d588c3dee76cfed069ada6fa8780f7ed",
+    "src/prototype/finite_sorting/cases.p": "d3f99bc83b4f4b4ba3d9237f16aa4b268f4016ed5ce4ec955c289551afc2542f",
+    "src/prototype/finite_sorting/provider.sh": "8f0948d84eb7621b79cc1f2ccf7bc0586a39120e6ae88ae5844e4ce3817161a1",
+    "src/prototype/finite_sorting/check-functions.sh": "01107b82d51ef625ea7c2f76af8fa852ef407c934b35fcb7a75d8a9048610f84",
+    "tests/fixtures/generic_sorted/boolean-order.p": "1b144cac2ad83dc2aaf4e18edb3d3a9166a4db2e153fd2ab39f0c3e8d50c88d4",
+    "src/prototype/finite_sorting/finite-functions.p": "71d907a4fa93c95d2f43c407e51ffe096dd1e79f80929a4f8140ae2a13c6025e",
+    "src/prototype/finite_sorting/finite-functions-cases.p": "45601b625158c91f15f20c7d2cd19a48a8f563c6db79cbb186eb55787c87691f",
+    "src/prototype/finite_sorting/finite-functions-duplicates.p": "392494090119917322283c120433638cf19c52c190b07512e0b6a726df0e5e92",
+    "src/prototype/finite_sorting/finite-functions-check.sh": "43ae66c00b219eb5ebf4b19cfd702ddea24480464755ed92d9e0c5dbd2265572",
+    "src/prototype/finite_sorting/finite-functions-duplicates-check.sh": "1edd0162de3805a0fdba4eff5e1040e253f69a3b2b47498ba2f1b6d8d5160445"
+  },
+  "assembled_source_sha256": {
+    "base": "363bea049c6ca458c3bfc543818890f7e9d3aa36c9dff005fefda0a71ce4a053",
+    "duplicates": "15adfb9df672a759b3a542780c7187e00e7f88f4f17f49bc9d83f4c35bb61a62"
+  },
+  "gates": [
+    {
+      "script": "finite-functions-check.sh",
+      "exit": 0,
+      "log": "finite-functions-e6.log",
+      "log_sha256": "f48e68b8960f2ea333ff2589f5aefbb70c6256ed082d7c417794eb97eb39cdfd",
+      "statuses": {
+        "finite-function-source": {
+          "status": "done",
+          "steps": 31787366
+        },
+        "independent-synthesis": {
+          "status": "done",
+          "steps": 16838685
+        },
+        "wrong-function-domain": {
+          "status": "rejected",
+          "steps": 31787846
+        },
+        "wrong-position-bound": {
+          "status": "rejected",
+          "steps": 31788057
+        },
+        "wrong-output-label": {
+          "status": "rejected",
+          "steps": 32054810
+        },
+        "wrong-recovery-label": {
+          "status": "rejected",
+          "steps": 32011961
+        },
+        "forward-as-backward": {
+          "status": "rejected",
+          "steps": 31831448
+        },
+        "local-as-strong": {
+          "status": "rejected",
+          "steps": 31845376
+        },
+        "lost-duplicate": {
+          "status": "rejected",
+          "steps": 31852088
+        },
+        "ordinary-load": {
+          "status": "done",
+          "steps": 31787732
+        },
+        "pending": {
+          "status": "pending",
+          "steps": 100
+        },
+        "inert": {
+          "status": "pending",
+          "steps": 0
+        },
+        "resume": {
+          "status": "done",
+          "steps": 31787307
+        },
+        "rejected-save": {
+          "status": "rejected",
+          "steps": 31831448
+        },
+        "rejected-load": {
+          "status": "rejected",
+          "steps": 31831812
+        },
+        "rejected-pending": {
+          "status": "pending",
+          "steps": 100
+        },
+        "rejected-inert": {
+          "status": "pending",
+          "steps": 0
+        },
+        "rejected-resume": {
+          "status": "rejected",
+          "steps": 31831389
+        }
+      },
+      "source_steps": 31787366,
+      "assertion_free_steps": 16838685,
+      "all_five_report_steps": 34228084,
+      "small_report_steps": 31804827
+    },
+    {
+      "script": "finite-functions-duplicates-check.sh",
+      "exit": 0,
+      "log": "finite-functions-duplicates-e6.log",
+      "log_sha256": "95936ae5c95373a9ab8aa472d6473b709eea5cd6b8e28d9da3b6de11a07a60bf",
+      "statuses": {
+        "duplicate-function-source": {
+          "status": "done",
+          "steps": 31822418
+        },
+        "duplicate-independent-synthesis": {
+          "status": "done",
+          "steps": 16873803
+        },
+        "equal-payload-positions-distinct": {
+          "status": "rejected",
+          "steps": 32025688
+        },
+        "duplicate-rejected-load": {
+          "status": "rejected",
+          "steps": 32026032
+        },
+        "lost-identical-duplicate": {
+          "status": "rejected",
+          "steps": 31887130
+        },
+        "duplicate-ordinary-load": {
+          "status": "done",
+          "steps": 31822763
+        },
+        "duplicate-pending": {
+          "status": "pending",
+          "steps": 100
+        },
+        "duplicate-inert": {
+          "status": "pending",
+          "steps": 0
+        },
+        "duplicate-resume": {
+          "status": "done",
+          "steps": 31822359
+        }
+      },
+      "source_steps": 31822418,
+      "assertion_free_steps": 16873803,
+      "all_five_report_steps": 34257408
+    }
+  ],
+  "all_gates_passed": true,
+  "negative_source_controls": 9,
+  "contracts": [
+    "Open A/n/backend/input laws; independently synthesized assertion-free terms",
+    "Direct Fin n -> A result from unchanged ordinary backend through Vec tabulation/lookup",
+    "Bidirectional explicit-predicate List/Vec/function value transport and backward-map original-occurrence recovery",
+    "Local/content traversal; Strong requires explicit transitivity; Bubble backend retains transitivity",
+    "Five actual output/origin/destination/recovery observations for distinct equal-key labels and identical full payloads",
+    "Distinct equal-payload Fin occurrences and duplicate multiplicity; no stability claim",
+    "Fresh-process ordinary load, pending100, inert0 byte-resave/resume and resumed actual-result comparisons",
+    "Fresh-process saved/pending rejected-image reload/resume for inverse misuse; saved rejection for collapsing duplicate positions"
+  ],
+  "limits": "Prototype only. #41/F5 accepted library/build integration and compiler/persistence work remain open. No broad compiler/backend aggregate, sanitizer, native C, stability, runtime complexity or exact equal-total-fuel progress restoration claim. Image/checker step counts include reconstruction, not sorting runtime.",
+  "changes": {
+    "accepted_code": {
+      "added": 0,
+      "removed": 0
+    },
+    "library": {
+      "added": 113,
+      "removed": 0
+    },
+    "fixtures": {
+      "added": 114,
+      "removed": 0
+    },
+    "runners": {
+      "added": 74,
+      "removed": 0
+    },
+    "files": [
+      {
+        "path": "src/prototype/finite_sorting/finite-functions.p",
+        "added": 113,
+        "removed": 0
+      },
+      {
+        "path": "src/prototype/finite_sorting/finite-functions-cases.p",
+        "added": 71,
+        "removed": 0
+      },
+      {
+        "path": "src/prototype/finite_sorting/finite-functions-duplicates.p",
+        "added": 43,
+        "removed": 0
+      },
+      {
+        "path": "src/prototype/finite_sorting/finite-functions-check.sh",
+        "added": 44,
+        "removed": 0
+      },
+      {
+        "path": "src/prototype/finite_sorting/finite-functions-duplicates-check.sh",
+        "added": 30,
+        "removed": 0
+      }
+    ]
+  },
+  "terminal_UTC": "2026-10-03T09:48:57.420769+00:00",
+  "private_artifacts": "/tmp/a-program-sort-library-20261003",
+  "provenance_correction": {
+    "date": "2026-10-03",
+    "recorded_UTC": "2026-10-03T10:11:14.612984+00:00",
+    "scope": "SOAP provenance and affected metadata/hash pins only; verification not rerun",
+    "human_requirements_source": "Owning finite-position sorting SOAP plan F0 Subjective (User), human request dated 2026-10-03 relayed by inquiry desk thread 019ebfae-06be-7b71-974a-b97505daed4a",
+    "worker_control_source": "Merge agent thread 01a100b3-1d83-7090-bbf6-62544c39ec4b; operational direction within the already authorized prototype task, not new human approval/design authority",
+    "supersedes_manifest_sha256": "b32e5ef242824c1550de11b2ccd16bc7c0bde927c824d84e9c6fde4d7cbe6459",
+    "supersedes_soap_sha256": "d546e677ef2dabe9cdf64c3eea4f8e53fd57b7ee28c9d5b4d63283c1e46ed8fa",
+    "supersedes_metadata_sha256": "e3db38b47ca8a354c6d696b76a9a6661a09584725a5e0e3e152ac732cb9a785c",
+    "soap_snapshot": "finite-functions-soap.md",
+    "soap_snapshot_sha256": "1342e115ad297042ff377f721eb6f297349628280155b80c77ab22d64473088b",
+    "implementation_fixtures_runners_unchanged": true,
+    "test_logs_unchanged": true,
+    "verification_rerun": false,
+    "new_goal": false,
+    "new_worker": false
+  }
+}
