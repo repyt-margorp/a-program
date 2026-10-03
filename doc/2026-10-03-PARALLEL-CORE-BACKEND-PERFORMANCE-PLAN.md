@@ -3,7 +3,7 @@
 Date: 2026-10-03
 Status: Core coordinates; Job/Evidence, C and performance Goals active; Surface delivered and stopped.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
-Reviewed prototype Main checkpoint: `64df10d`; original worker baseline: `2d747cc`.
+Reviewed prototype Main checkpoint: `0fc0c0b`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
 changes no implementation or promotion rules.
 Related: [SE1-SE5](2026-09-30-SOLVER-EVIDENCE-DUPLICATION-AUDIT-AND-PLAN.md),
@@ -16,7 +16,7 @@ not the existing owner work lists.
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | `core`: coordination, design audit, verification and Main integration | All lanes | Sole integration owner; no parallel SE implementation |
-| 2 | `c-backend`: downstream C design | #44, #49; shared policy #47 | Single-tail List epoch integrated; numeric partition work in progress |
+| 2 | `c-backend`: downstream C design | #44, #49; shared policy #47 | Numeric/List epoch integrated; native Acc/QuickSort remains open |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Focused epoch pushed; Main integration awaits broad gates |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
 | 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | Separate worker Goal active at `5035c7a` |
@@ -152,6 +152,17 @@ worker sanitizer, ABI and immutability controls are in the
 [handoff](2026-10-03-C-BACKEND-EPOCH2-HANDOFF.md). These are prototype-only
 merges, not accepted-source promotion. Broader recursive/container, indexed,
 effect and admission contracts remain open; neither #44 nor #49 is complete.
+
+2026-10-03 04:15 UTC checkpoint: Core verified the exact 21-file Epoch3 manifest,
+reviewed native Nat32/recursive-call/List copy-out and receipt ownership, published
+`720f92a` to the task branch, then ran all eight C gates on the current Core
+family-cursor plus Surface producer (exit 0). Prototype Main merge `0fc0c0b` is
+pushed. The [handoff](2026-10-03-C-BACKEND-EPOCH3-HANDOFF.md) pins worker
+O2/sanitizer evidence and remaining resource/refusal contracts. Source changes
+are +228/-73; test/fixtures +406/-5; build +4/-0; docs +296/-14. No accepted
+source, `.a` schema or producer authority changed. Core released the freeze for
+native Acc/QuickSort continuation; structural sorting success is not native
+completion, and #44/#49/full worker Goal remain open.
 
 ### Assessment
 
