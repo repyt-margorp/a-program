@@ -25,6 +25,11 @@ not the existing owner work lists.
 
 ### Subjective (User)
 
+2026-10-03, English paraphrase of the latest clarification: after the AIze audit
+is complete, push it and finish that assignment. Then prioritize A Program
+development. This authorizes publication of the audit, not AIze implementation
+changes or inclusion of its unrelated local edits.
+
 2026-10-03, English paraphrase of the latest request: add one separate audit
 session for `../aize`. Multi-goal development belongs in that project; inspect
 its repository and record useful lessons from this Goal-based workflow under
@@ -175,8 +180,11 @@ inspecting `aize`; the implementation lanes continue. Its sole document is
 `../aize/doc/2026-10-03-GOAL-BASED-MULTI-SESSION-WORKFLOW-AUDIT.md` in that
 repository (baseline `5d1072c` plus preserved local edits). A separate outbox relay
 notifies Core without restarting the existing relay. No aize implementation,
-live-state modification or Git publication is authorized. Its one work list and
-findings remain in the aize audit, not in the A Program implementation checklist.
+live-state modification or unrelated Git publication is authorized. The latest
+human clarification supersedes the original publication prohibition: Core reviews
+and publishes only the completed AIze audit, then ends that audit session and
+prioritizes A Program. Its one work list and findings remain in the aize audit,
+not in the A Program implementation checklist.
 
 ### Plan
 

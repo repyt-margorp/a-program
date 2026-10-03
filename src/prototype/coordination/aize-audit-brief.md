@@ -11,10 +11,17 @@ This is not an A Program implementation task. Audit actual code and write only
 `/home/repyt/workspace/aize/doc/2026-10-03-GOAL-BASED-MULTI-SESSION-WORKFLOW-AUDIT.md`.
 Core seeded that file with the dated user requirement and a SOAP work list.
 Read repository instructions first. Preserve existing dirty source/tests/docs.
-No implementation changes, Git commits/pushes, issue closure, live service launch,
+Initially no implementation changes, Git commits/pushes, issue closure, live service launch,
 database mutation or tool installation are authorized. Temporary isolated test
 outputs are allowed; never use a user's running state/database for experiments.
 Do not control A Program workers or access authentication secrets/session logs.
+
+Superseding human clarification, 2026-10-03: publish the completed AIze audit and
+finish this assignment, then prioritize A Program. Core will review and commit/push
+only that document, preserving all unrelated local work; do not stage or push the
+shared checkout yourself. Record this clarification immediately in the audit's
+Subjective. No implementation/repair scope is added. End the bounded audit rather
+than turning its recommendations into another development Goal.
 
 ## Goal and Completion
 
