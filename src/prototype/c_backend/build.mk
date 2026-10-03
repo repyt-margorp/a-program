@@ -20,6 +20,10 @@ check-c-scalar: $(BUILD)/a-to-c $(BUILD)/pointer-check $(BUILD)/c_scalar_test
 check-c-enum: $(BUILD)/a-to-c $(BUILD)/pointer-check
 	bash $(C_BACKEND)lower/enum_check.sh $(BUILD)/a-to-c $(BUILD)/pointer-check
 
+.PHONY: check-c-data
+check-c-data: $(BUILD)/a-to-c $(BUILD)/pointer-check
+	bash $(C_BACKEND)lower/data_check.sh $(BUILD)/a-to-c $(BUILD)/pointer-check
+
 $(BUILD)/c_scalar_test: $(SOURCES) $(wildcard $(ROOT)*.h $(C_BACKEND)lower/*.h) $(C_BACKEND)lower/oracle_test.c $(LOWER_SOURCES) $(C_BACKEND)emit.c $(C_BACKEND)emit.h
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(C_BACKEND)lower/oracle_test.c $(LOWER_SOURCES) $(C_BACKEND)emit.c -Wl,--wrap=pg_eval_advance -Wl,--wrap=pg_substitution_advance -o $@

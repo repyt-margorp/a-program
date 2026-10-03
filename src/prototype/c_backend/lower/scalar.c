@@ -34,6 +34,9 @@ struct expression {
 	const struct argument *pending, *arguments, *cursor;
 	size_t count, parameter, capture_count, id;
 	const struct pg_c_representation *type, *match;
+	const struct pg_c_constructor_representation *construction;
+	struct expression *container;
+	size_t constructor, field;
 	struct expression **branches;
 	struct expression **inputs, *value, *next;
 	const struct binding **captures;
@@ -296,8 +299,20 @@ static int match(struct expression *e, const struct pg_c_representation *type,
 		if (!a->term) return -1;
 		struct expression *call = pg_alloc(&e->function->module->order.storage, sizeof(*call));
 		if (!call) return -1;
+		const struct pg_c_constructor_representation *c = type->constructors ? &type->constructors[branch] : NULL;
+		size_t fields = c ? c->count : 0;
+		if (fields > SIZE_MAX - extra || fields + extra > SIZE_MAX / sizeof(*call->inputs)) return -1;
 		*call = (struct expression){.function = e->function, .head = callable(a->term),
-			.environment = a->environment, .count = extra, .inputs = e->inputs + 1};
+			.environment = a->environment, .count = fields + extra};
+		call->inputs = pg_alloc(&e->function->module->order.storage, call->count * sizeof(*call->inputs));
+		if (!call->inputs) return -1;
+		for (size_t i = 0; i < fields; ++i) {
+			struct expression *field = pg_alloc(&e->function->module->order.storage, sizeof(*field));
+			if (!field) return -1;
+			*field = (struct expression){.type = c->fields[i], .container = e->inputs[0], .constructor = branch, .field = i};
+			field->value = field; call->inputs[i] = field;
+		}
+		for (size_t i = 0; i < extra; ++i) call->inputs[fields + i] = e->inputs[i + 1];
 		e->branches[branch] = call;
 		call->callee = callee(call);
 		if (!call->callee) return -1;
@@ -313,11 +328,33 @@ static int match(struct expression *e, const struct pg_c_representation *type,
 	return 0;
 }
 
+static int constructor(struct expression *e, const struct pg_c_representation *type,
+	size_t position, size_t arity, size_t slot, const void **out)
+{
+	if (!type || position >= type->count || arity != e->count) return -1;
+	const struct pg_c_constructor_representation *c = type->constructors ? &type->constructors[position] : NULL;
+	if (c ? c->count != arity : arity != 0) return -1;
+	if (slot < arity) {
+		const struct argument *a = e->cursor; e->cursor = a->next;
+		return operand(e, slot, a, out);
+	}
+	for (size_t i = 0; i < arity; ++i)
+		if (e->inputs[i]->computation || e->inputs[i]->value->type != c->fields[i]) return -1;
+	e->type = type; e->bits = position; e->construction = c; e->value = e;
+	return 0;
+}
+
 /* Dependencies include private callee bodies, so the same iterative walker
  * orders local scalar definitions and rejects recursive target specializations. */
 static int lower(struct expression *e, size_t slot, const void **out)
 {
 	const struct pg_c_representations *representations = &e->function->module->representations;
+	if (e->head->kind == PG_REFERENCE) {
+		const struct pg_data_layout *layout;
+		size_t position, arity;
+		if (pg_data_constructor_view(e->head->as.reference, &layout, &position, &arity))
+			return constructor(e, pg_c_representation_find(representations, pg_data_matcher(layout)), position, arity, slot, out);
+	}
 	if (e->head->kind == PG_REFERENCE && !e->count) {
 		const struct pg_object *object = e->head->as.reference, *type;
 		if (object->kind == PG_BINDER) {
@@ -327,18 +364,10 @@ static int lower(struct expression *e, size_t slot, const void **out)
 		}
 		size_t count;
 		const unsigned char *bytes;
-		const struct pg_data_layout *layout;
-		size_t position, arity;
-		if (pg_data_constructor_view(object, &layout, &position, &arity)) {
-			e->type = pg_c_representation_find(representations, pg_data_matcher(layout));
-			if (!e->type || arity || position >= e->type->count) return -1;
-			e->bits = position;
-		} else {
-			if (!pg_host_literal_view(object, &type, &count, &bytes)) return -1;
-			e->type = pg_c_representation_find(representations, type);
-			if (!e->type || e->type->layout || count != e->type->width / 8) return -1;
-			for (size_t i = 0; i < count; ++i) e->bits = (e->bits << 8) | bytes[i];
-		}
+		if (!pg_host_literal_view(object, &type, &count, &bytes)) return -1;
+		e->type = pg_c_representation_find(representations, type);
+		if (!e->type || e->type->layout || count != e->type->width / 8) return -1;
+		for (size_t i = 0; i < count; ++i) e->bits = (e->bits << 8) | bytes[i];
 		e->value = e;
 		return 0;
 	}
@@ -478,15 +507,35 @@ static void parameters(FILE *out, const struct function *f)
 static void value(FILE *out, const struct expression *e)
 {
 	e = e->value;
-	if (e->parameter) fprintf(out, "a%zu", e->parameter);
+	if (e->container) {
+		fprintf(out, "(uint%zu_t)(", e->type->width); value(out, e->container);
+		fprintf(out, ".fields.c%zu.f%zu%s)", e->constructor, e->field, e->type->layout ? ".tag" : "");
+	} else if (e->parameter) fprintf(out, "a%zu", e->parameter);
 	else fprintf(out, "v%zu", e->id);
+}
+
+/* Convert unsigned arithmetic bits without implementation-defined signed
+	* overflow/conversion. Tagged fields use their explicitly selected type. */
+static void public_value(FILE *out, const struct pg_c_representation *type, const struct expression *e)
+{
+	if (type->constructors) { value(out, e); return; }
+	if (type->layout) {
+		fputc('(', out); pg_c_representation_type(out, type); fputs("){(uint32_t)(", out);
+		value(out, e); fputs(")}", out); return;
+	}
+	fputc('(', out); value(out, e); fprintf(out, " <= INT%zu_MAX ? (int%zu_t)", type->width, type->width);
+	value(out, e); fprintf(out, " : -1 - (int%zu_t)(UINT%zu_MAX - ", type->width, type->width);
+	value(out, e); fputs("))", out);
 }
 
 static void signature(FILE *out, const struct function *f)
 {
-	fprintf(out, "static uint64_t c%zu(", f->id);
+	fputs("static ", out); pg_c_representation_private_type(out, f->body->value->type); fprintf(out, " c%zu(", f->id);
 	if (!f->count) fputs("void", out);
-	for (size_t i = 0; i < f->count; ++i) fprintf(out, "%suint64_t a%zu", i ? ", " : "", i + 1);
+	for (size_t i = 0; i < f->count; ++i) {
+		if (i) fputs(", ", out);
+		pg_c_representation_private_type(out, f->parameters[i]->type); fprintf(out, " a%zu", i + 1);
+	}
 	fputc(')', out);
 }
 
@@ -508,12 +557,27 @@ static void emit_function(FILE *out, const struct function *f)
 	for (const struct expression *e = f->first; e; e = e->next) {
 		size_t id = e->id;
 		if (e->match) {
-			fprintf(out, "\tuint64_t v%zu;\n\tswitch (", id); value(out, e->inputs[0]); fputs(") {\n", out);
+			fputc('\t', out); pg_c_representation_private_type(out, e->type);
+			fprintf(out, " v%zu;\n\tswitch (", id); value(out, e->inputs[0]);
+			fputs(e->match->constructors ? ".tag) {\n" : ") {\n", out);
 			for (size_t i = 0; i < e->match->count; ++i) {
 				fprintf(out, "\tcase %zu: v%zu = ", i, id); emit_call(out, e->branches[i]); fputs("; break;\n", out);
 			}
 			fprintf(out, "\tdefault: abort();\n\t}\n\t(void)v%zu;\n", id);
 			continue;
+		}
+		if (e->type->constructors) {
+			fputc('\t', out); pg_c_representation_private_type(out, e->type); fprintf(out, " v%zu = ", id);
+			if (e->callee) emit_call(out, e);
+			else {
+				fprintf(out, "{.tag = UINT32_C(%" PRIu64 ")", e->bits);
+				for (size_t i = 0; i < e->construction->count; ++i) {
+					fprintf(out, ", .fields.c%" PRIu64 ".f%zu = ", e->bits, i);
+					public_value(out, e->construction->fields[i], e->inputs[i]);
+				}
+				fputc('}', out);
+			}
+			fprintf(out, ";\n\t(void)v%zu;\n", id); continue;
 		}
 		fprintf(out, "\tuint64_t v%zu = (uint%zu_t)(", id, e->type->width);
 		if (e->callee) emit_call(out, e);
@@ -527,7 +591,8 @@ static void emit_function(FILE *out, const struct function *f)
 
 static int emit(FILE *source, FILE *header, size_t count,
 	const struct pg_c_export *exports, size_t entry, size_t enum_count,
-	const struct pg_c_export *enums, int native, const char **error)
+	const struct pg_c_export *enums, size_t data_count,
+	const struct pg_c_export *data, int native, const char **error)
 {
 	if (!source || !header || !error) return -1;
 	*error = "invalid scalar exports or entry";
@@ -538,8 +603,8 @@ static int emit(FILE *source, FILE *header, size_t count,
 	struct function **functions = NULL;
 	int status = -1;
 	if (pg_dag_init(&m.order, lower_child, &m) || pg_index_init(&m.functions) || pg_index_init(&m.arguments)) goto done;
-	*error = "enum32 requires unique admitted closed nullary declarations with distinct layouts";
-	if (pg_c_representations_init(&m.representations, &m.order.storage, enum_count, enums)) goto done;
+	*error = "representations require unique closed declarations; enum32 is nullary; data fields must be scalars or selected enums";
+	if (pg_c_representations_init(&m.representations, &m.order.storage, enum_count, enums, data_count, data)) goto done;
 	for (size_t i = 0; i < count; ++i) if (pg_dag_add(&roots, exports[i].subject)) goto done;
 	functions = calloc(roots.count, sizeof(*functions));
 	if (!functions) goto done;
@@ -554,9 +619,9 @@ static int emit(FILE *source, FILE *header, size_t count,
 	}
 	fputs("/* A Program native realization of admitted pure total computations. */\n#include <stdint.h>\n#include <limits.h>\n"
 		"_Static_assert(sizeof(int) <= sizeof(uint32_t), \"unsupported integer promotion model\");\n\n", source);
-	if (enum_count) fputs("#include <stdlib.h>\n", source);
+	if (enum_count || data_count) fputs("#include <stdlib.h>\n", source);
 	const char *abi = native ? "NATIVE" : "SCALAR", *name = native ? "native" : "scalar";
-	fputs("#pragma once\n/* ABI 1: 0 success; 1 null output; 2 invalid enum input. Output must be writable. */\n#include <stdint.h>\n", header);
+	fputs("#pragma once\n/* ABI 1: 0 success; 1 null output; 2 invalid tag input. Output must be writable. */\n#include <stdint.h>\n", header);
 	fprintf(header, "#ifndef AP_C_%s_ABI\n#define AP_C_%s_ABI 1\n#elif AP_C_%s_ABI != 1\n#error incompatible_A_Program_%s_ABI\n#endif\n", abi, abi, abi, name);
 	pg_c_representation_declarations(source, &m.representations);
 	pg_c_representation_declarations(header, &m.representations);
@@ -571,16 +636,29 @@ static int emit(FILE *source, FILE *header, size_t count,
 		fputs(")\n{\n\tif (!out) return 1;\n", source);
 		for (size_t j = 0; j < f->count; ++j) {
 			const struct pg_c_representation *r = f->parameters[j]->type;
-			if (r->layout) fprintf(source, "\tif ((uint64_t)a%zu.tag >= UINT64_C(%zu)) return 2;\n", j + 1, r->count);
+			if (r->constructors) {
+				fprintf(source, "\tswitch (a%zu.tag) {\n", j + 1);
+				for (size_t k = 0; k < r->count; ++k) {
+					fprintf(source, "\tcase %zu:\n", k);
+					const struct pg_c_constructor_representation *c = &r->constructors[k];
+					for (size_t l = 0; l < c->count; ++l) if (c->fields[l]->layout)
+						fprintf(source, "\t\tif ((uint64_t)a%zu.fields.c%zu.f%zu.tag >= UINT64_C(%zu)) return 2;\n", j + 1, k, l, c->fields[l]->count);
+					fputs("\t\tbreak;\n", source);
+				}
+				fputs("\tdefault: return 2;\n\t}\n", source);
+			} else if (r->layout) fprintf(source, "\tif ((uint64_t)a%zu.tag >= UINT64_C(%zu)) return 2;\n", j + 1, r->count);
 		}
-		fprintf(source, "\tuint64_t result = c%zu(", f->id);
+		fputc('\t', source); pg_c_representation_private_type(source, f->body->value->type); fprintf(source, " result = c%zu(", f->id);
 		for (size_t j = 0; j < f->count; ++j) {
 			const struct pg_c_representation *r = f->parameters[j]->type;
-			fprintf(source, "%s(uint%zu_t)a%zu%s", j ? ", " : "", r->width, j + 1, r->layout ? ".tag" : "");
+			if (j) fputs(", ", source);
+			if (!r->constructors) fprintf(source, "(uint%zu_t)", r->width);
+			fprintf(source, "a%zu%s", j + 1, r->layout && !r->constructors ? ".tag" : "");
 		}
 		fputs(");\n", source);
 		const struct pg_c_representation *r = f->body->value->type;
-		if (r->layout) fputs("\tout->tag = (uint32_t)result;\n", source);
+		if (r->constructors) fputs("\t*out = result;\n", source);
+		else if (r->layout) fputs("\tout->tag = (uint32_t)result;\n", source);
 		else fprintf(source, "\t*out = result <= INT%zu_MAX ? (int%zu_t)result : -1 - (int%zu_t)(UINT%zu_MAX - result);\n", r->width, r->width, r->width, r->width);
 		fputs("\treturn 0;\n}\n\n", source);
 	}
@@ -604,12 +682,13 @@ done:
 int pg_c_emit_scalar(FILE *source, FILE *header, size_t count,
 	const struct pg_c_export *exports, size_t entry, const char **error)
 {
-	return emit(source, header, count, exports, entry, 0, NULL, 0, error);
+	return emit(source, header, count, exports, entry, 0, NULL, 0, NULL, 0, error);
 }
 
 int pg_c_emit_native(FILE *source, FILE *header, size_t count,
 	const struct pg_c_export *exports, size_t entry, size_t enum_count,
-	const struct pg_c_export *enums, const char **error)
+	const struct pg_c_export *enums, size_t data_count,
+	const struct pg_c_export *data, const char **error)
 {
-	return emit(source, header, count, exports, entry, enum_count, enums, 1, error);
+	return emit(source, header, count, exports, entry, enum_count, enums, data_count, data, 1, error);
 }

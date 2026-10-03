@@ -9,9 +9,11 @@
 int pg_c_emit_scalar(FILE *source, FILE *header, size_t count,
 	const struct pg_c_export *exports, size_t entry, const char **error);
 
-/* Explicit target-side representations; the scalar profile uses no selections. */
+/* Explicit target-side representations; data selections are nonrecursive
+	* tagged values with scalar/enum fields. The scalar profile has no selections. */
 int pg_c_emit_native(FILE *source, FILE *header, size_t count,
 	const struct pg_c_export *exports, size_t entry, size_t enum_count,
-	const struct pg_c_export *enums, const char **error);
+	const struct pg_c_export *enums, size_t data_count,
+	const struct pg_c_export *data, const char **error);
 
 #endif

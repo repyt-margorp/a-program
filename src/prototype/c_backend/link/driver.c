@@ -90,6 +90,7 @@ static int receipt(const char *path, const struct pg_c_link_plan *plan, const ch
 	else {
 		fputs("[\"fixed-width-arithmetic\",\"pure-sequencing\",\"shared-direct-calls\",\"capture-lifting\"", file);
 		if (plan->enum_count) fputs(",\"nullary-enum32\",\"conditional-match\"", file);
+		if (plan->data_count) fputs(",\"fieldful-tagged-values\",\"conditional-match\"", file);
 		fputc(']', file);
 	}
 	fputs(",\n  \"cc\": ", file);
@@ -107,7 +108,16 @@ static int receipt(const char *path, const struct pg_c_link_plan *plan, const ch
 		fputs("{\"source\": ", file); json_string(file, plan->enum_names[i]);
 		fputs(", \"alias\": ", file); json_string(file, plan->enums[i].alias); fputc('}', file);
 	}
-	fputs("],\n  \"entry\": ", file);
+	fputs("],\n  \"data\": [", file);
+	for (size_t i = 0; i < plan->data_count; ++i) {
+		if (i) fputs(", ", file);
+		fputs("{\"source\": ", file); json_string(file, plan->data_names[i]);
+		fputs(", \"alias\": ", file); json_string(file, plan->data[i].alias); fputc('}', file);
+	}
+	fputs("],\n  \"data_contract\": ", file);
+	fputs(plan->data_count ?
+		"{\"ownership\":\"value-copy\",\"fields\":\"int32-int64-selected-enum32\",\"invalid_input\":2,\"invalid_input_output\":\"unchanged\"}" : "null", file);
+	fputs(",\n  \"entry\": ", file);
 	json_string(file, plan->entry == SIZE_MAX ? NULL : plan->exports[plan->entry].alias);
 	fputs("\n}\n", file);
 	int status = ferror(file) ? -1 : 0;
@@ -152,7 +162,7 @@ int pg_c_link_publish(const struct pg_c_link_plan *plan, const char *directory,
 		if (!emitted) emitted = pg_c_emit_header(header, plan->count, plan->exports);
 	} else if (plan->lowering == PG_C_NATIVE_DIRECT) {
 		emitted = pg_c_emit_native(file, header, plan->count, plan->exports, plan->entry,
-			plan->enum_count, plan->enums, &error);
+			plan->enum_count, plan->enums, plan->data_count, plan->data, &error);
 	} else emitted = pg_c_emit_scalar(file, header, plan->count, plan->exports, plan->entry, &error);
 	int closed = fclose(file), header_closed = fclose(header);
 	if (emitted) { fprintf(stderr, "C link: cannot lower exports: %s\n", error); status = 4; goto done; }

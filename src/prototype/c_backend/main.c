@@ -113,9 +113,11 @@ int main(int argc, char **argv)
 	if (!program) { fputs("C export: cannot read artifact\n", stderr); goto cleanup; }
 	if (!count) { fputs("C export: artifact has no root\n", stderr); goto done; }
 	uint64_t spent = 0;
-	for (size_t i = 0; i < plan.count + plan.enum_count; ++i) {
-		const char *selected_name = i < plan.count ? plan.names[i] : plan.enum_names[i - plan.count];
-		struct pg_c_export *target = i < plan.count ? &plan.exports[i] : &plan.enums[i - plan.count];
+	for (size_t i = 0; i < plan.count + plan.enum_count + plan.data_count; ++i) {
+		const char *selected_name = i < plan.count ? plan.names[i] : i < plan.count + plan.enum_count ?
+			plan.enum_names[i - plan.count] : plan.data_names[i - plan.count - plan.enum_count];
+		struct pg_c_export *target = i < plan.count ? &plan.exports[i] : i < plan.count + plan.enum_count ?
+			&plan.enums[i - plan.count] : &plan.data[i - plan.count - plan.enum_count];
 		struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = selected_name, .length = strlen(selected_name)};
 		if (trust_image) {
 			int available = pg_artifact_trusted_export(program, roots[0], name, &target->subject);
