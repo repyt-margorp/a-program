@@ -1,0 +1,40 @@
+{
+  "date": "2026-10-03",
+  "scope": "Fresh Merge qualification of immutable C7 on qualified E6; prototype only",
+  "task_commit": "d275b75d246d9795d798ee7771519c0febc6c9bb",
+  "candidate_commit": "091669f7cde3c068f5ad202e69b928add70c0416",
+  "producer_main": "01c29c00062fca19e4e3cdad99d94d6cad7bd480",
+  "job_epoch": "b2d66682be75c21a3c2a8c5138db9d3f0c5e0eb2",
+  "source_manifest_sha256": "c3ff50a9745bcca76809f68b7a435e2faeb1e20ea609469353522ef73bd509eb",
+  "source_records_freshly_verified": 128,
+  "frozen_task_manifest_sha256": "2d756d4eccd5609095beb81387506015db3684f3a7a612996585bc772e73e117",
+  "frozen_task_files_freshly_verified": 14,
+  "implementation": "Permit nullary nominal enum List elements and validate array tags before arena mutation/allocation; preserve failure output and allocation rollback",
+  "verification": {
+    "parallel_build_jobs": 1,
+    "flags": "-std=c11 -Wall -Wextra -Werror -O2",
+    "targets": [
+      "check-c-backend", "check-c-link", "check-c-scalar", "check-c-enum",
+      "check-c-data", "check-c-list", "check-c-numeric-list",
+      "check-c-static-functions", "check-c-value-records",
+      "check-c-sorting-boundary", "check-c-enum-list"
+    ],
+    "exit": 0,
+    "terminal_UTC": "2026-10-03T08:48:08.305763+00:00",
+    "log_sha256": "0294276907db7680858df9f1fd0f23bc95c2198ff0a108cd439635b1ebaa3281",
+    "private_artifacts": "/tmp/a-program-merge-c7-e6-gates-20261003",
+    "enum_array_cases_per_source_object_archive_product": 875,
+    "enum_source_observations": 24,
+    "interpretation": "Boundary cases and observations, not independent semantic-contract counts",
+    "fresh_root_sanitizer_run": false,
+    "worker_native_sanitizer_evidence": "Separate frozen C7 handoff; not relabelled as this fresh O2 qualification"
+  },
+  "binaries_sha256": {
+    "pointer-check": "33d90f6fb02f0bd5cafe1e50f5cc64a5d057b2607e4c5f3aa21b81c97fe9bf8f",
+    "a-to-c": "fe7ae9cfaf476c4e9d1b7f024c2017590495c9891129c32fdad90569f42b177a",
+    "c_oracle_test": "8bf9b815991fc48a03e7d193c4cc569f9bebf6a4ce44add10d8f8b4dc18ce2f0",
+    "c_scalar_test": "18ebc4fd81f3cb019b272e55bb598fd48fbc22445812d812cb48c5311fb64914",
+    "c_static_oracle_test": "f5ccc2869755f35a3b3623d456d9c614ad7a1e9ce00b47536587e5b43fc3b448"
+  },
+  "remaining": "Native applied/indexed/callable Acc QuickSort is unsupported; no producer schema change, strict-resume waiver, accepted promotion or timing claim"
+}

@@ -34,10 +34,10 @@ completion scores; worker-local results are not relabelled joint verification.
 | Owner / issue scope | Delivered and verified | Not yet delivered / next boundary |
 | --- | --- | --- |
 | Job/Evidence; SE1-SE5 / AP0, related #51/#47 | E1-E4/E6 prototype Main; E4 `3a8c024` and E6 `01c29c0` each match runtime128 and their distinct frozen joint reports; E7/E8 exact task `3ad0303`/`50cd56b` pushed | E7/E8 joint qualification and Main integration pending; E9 private; strict3 remain |
-| C backend; #44/#49 | C4-C6 prototype Main; C6 ten current-E3-producer gates pass; C7 exact 14-file task `d275b75` pushed/remote verified | C7 current-producer eleven-gate qualification and Main integration pending; native Acc/QuickSort unsupported |
-| Performance; #56, measurement work #51/#52 | Captured-head cleanup prototype Main; E2/E3/E4/E6 distinct reports reviewed; E6 408 relevant O2 recipes with only unchanged strict target failure, 45 sanitizer/23 focused/140 cross-build passing | Matched E6 baseline qualified; first launch failed before sample 0; corrected GNU time collector freshly pinned and revised grant issued through 08:52:05 UTC; no comparative result or #52 completion yet |
+| C backend; #44/#49 | C4-C7 prototype Main; C7 task `d275b75`, integration `091669f`; eleven fresh current-E6 gates pass with exact runtime128/frozen14 and binary/log pins | Private capture/applied-family work pending; native Acc/QuickSort unsupported; broader C/Identity/admissibility criteria remain open |
+| Performance; #56, measurement work #51/#52 | E2/E3/E4/E6 distinct joint evidence; matched E6 baseline/head 30 sequential timing samples pass, logs/metrics and 292 pins freshly verified | Exact trees workload wall/RSS improve; QuickSort ranges overlap; compact publication pending; E7/E8 correctness next, #52 remains separate |
 | Surface; #57 | Delivered prototype integrated; session stopped; Merge reviewed polarity, brace/migration, scope and version gates | Accepted language policy/promotion and selector diagnostics remain unresolved; #57 stays open; no active worker |
-| Verification audit; #59/PR #60, related #51 | Static task `7ed3ad1` pushed/remote verified; Main merge `5683755`; Merge reproduced exact inventory and verified 385 source hashes/114 archived dependencies | Bounded static delivery complete; dynamic coverage and full #59 remain open; audit cost ungranted, worker reports blocked on sequential handoff |
+| Verification audit; #59/PR #60, related #51 | Static task `7ed3ad1` pushed/remote verified; Main merge `5683755`; Merge reproduced exact inventory and verified 385 source hashes/114 archived dependencies | Bounded static delivery complete; dynamic/full #59 open; four-job cost deferred because full config review missed eight-minute boundary; no timing executed |
 
 Owning tables: Job/Evidence's [SE Plan](2026-09-30-SOLVER-EVIDENCE-DUPLICATION-AUDIT-AND-PLAN.md#plan),
 performance's worker-local `doc/2026-10-03-PERFORMANCE-JOINT-VERIFICATION.md`,
@@ -81,6 +81,43 @@ their owners. Add review items only for material changes; no duplicate task grap
 ## 1. Inquiry Desk and Merge Ownership
 
 ### Subjective (User)
+
+2026-10-03, English translation of the latest human clarification relayed by
+inquiry desk thread `019ebfae-06be-7b71-974a-b97505daed4a`: scheduled waking and
+progress inspection belong to the Merge owner. If workers send no completion
+notice, Merge must still wake after roughly six to twelve hours. Use a six-hour
+interval independent of worker notices, inspect all workers and stalled work,
+and report material status to the desk. Reuse the existing loaded-owner relay;
+do not launch a duplicate Merge owner or claim host-restart recovery from an
+in-process timer. This clarifies the earlier Core timed-wait requirement for
+the current Merge role.
+
+2026-10-03, English translation of the new human task relayed by the inquiry
+desk: if #41 Sort foundation work can proceed in parallel, launch a worker to
+develop it, chiefly `.p` libraries/proofs. Use a named isolated worker/task branch,
+the requested GPT-6.1-Sol xhigh and explicit continuing Goal with the existing
+tmux/outbox-to-Merge workflow. Merge remains the sole Main owner; this does not
+approve accepted Sort source/test/build promotion. Reuse already verified
+Fin/List/Vec/common backend work and PR #54, coordinate modest test slots and
+report genuine compiler blockers to their existing owners.
+
+2026-10-03, English translation of new explicit human approval relayed by the
+inquiry desk (`019ebfae-06be-7b71-974a-b97505daed4a`): verified speed improvements
+may now be promoted from Prototype into accepted `src/`. This supersedes the
+earlier no-promotion boundary for that selected scope. Merge remains the sole
+Main owner. Keep promotion a separate epoch, compare current accepted code,
+preserve unrelated dirty files/fixtures, select verified changes and necessary
+dependencies, verify accepted regressions/parity, then commit/push. Other
+Surface/C/design changes and unverified trials are not blanket-approved; strict
+resume failures remain unwaived. The separate
+[promotion plan](2026-10-03-VERIFIED-PERFORMANCE-PROMOTION-PLAN.md) owns that work.
+
+2026-10-03, English translation of the latest human concern, relayed by the same
+desk: explain why issues have not decreased despite continued implementation.
+Give an issue-linked account of unmet criteria, prototype versus accepted
+promotion, deferred design, newly added issues and closure-review backlog.
+Identify genuinely complete issues awaiting administrative closure. This asks
+for an explanation, not new implementation scope or closure to improve counts.
 
 2026-10-03 07:44 UTC, English paraphrase of the explicit inquiry-desk delegation
 `ACTIVATE MERGE OWNER`: initialization and both notification hops are verified.
@@ -349,6 +386,51 @@ and whole-v1-image rejection choices remain agent prototype decisions; accepted
 implementation and README grammar are not promoted. Selector diagnostics are
 explicitly deferred. Keep #57 open; do not restart completed Surface work.
 
+2026-10-03 08:45 UTC Merge slot close/release: performance terminal notice
+`ac01d166` records exit 0 at 08:36:55 UTC, all 30 fresh sequential samples passing,
+zero timeouts and stopped children. Merge verifies every output/metrics hash and
+all 292 pins; measurements.json SHA-256 `887a96d1`, actual launch config
+`390adf41` changes only max_seconds to 1018. Matched AP trees400 medians are
+17.235 -> 5.407 seconds and 2971260 -> 1891724 KiB RSS over three runs per variant.
+QuickSort ranges overlap; tiny List includes startup. Cross-system measurements
+cover their concrete full-source checks with differing helper/proof encodings;
+no universal checker ranking or #52 relation-reuse completion. Compact worker
+analysis/publication remains pending; preserve the initial zero-sample failure.
+
+Audit config was only just prepared at the 08:44:05 latest eight-minute start;
+full exact review did not finish in time. Defer audit cost honestly, without a
+partial grant or deadline extension. No audit gate/timing ran. End the shared
+window and explicitly release Job/C/performance correctness; audit starts no
+heavy work. Root qualifies immutable C7 candidate `091669f` on E6 with eleven
+gates and one build job; performance qualifies immutable E7 then E8 distinctly,
+excluding private E9/E10. Job checks restored E9 fixture setup and genuinely
+omitted broad work before claiming qualification. Modest correctness parallelism
+is allowed; further wall/RSS requires a new exclusive slot.
+
+2026-10-03 Merge C7/library review at local Main `b33279e`: immutable C7 candidate
+`091669f` passes all eleven O2 targets on freshly verified canonical E6/runtime128.
+All fourteen frozen files match. Enum arrays have 875 boundary cases per product
+and 24 source observations; existing structural/native/Linker/record/refusal gates
+pass. [Root C7 evidence](../src/prototype/c_backend/verification/core-epoch7.json)
+keeps fresh O2 separate from worker sanitizer reports and native-sort limits.
+PR #54 merge `b33279e` follows three fresh E6 library gates, all ten shared
+provider inputs/both binaries exact and source candidates unchanged. Nat legacy
+equivalence, Bool/nominal payloads, Local/permutation/Vec/Fin and six rejection
+controls, independent synthesis, ordinary images and five backend classifiers
+pass. [Library evidence](../src/prototype/finite_sorting/verification/generic-merge-e6.json)
+does not claim a full aggregate/sanitizer run, conventional two-front merge,
+exact public resume, accepted parity or #41 closure.
+
+Audit completion notice `bcec59db` closes only the bounded first static Goal;
+full #59/dynamic/retained coverage and cost remain open. Private cost proposal
+`ba86a911`, config `1c6a4ccd`, freshly verifies all 269 pins and four unchanged
+keyed leaf commands, with exact environment/cwd wrappers and existing collector.
+It was never launched and its expired conditions cannot be reused later.
+Performance E7 notice `ab7b541e` records a delta-patch context conflict with
+already-applied Surface code. Disjoint changed-line composition is private setup,
+not an owner/guard change; preserve the failed attempt and verify canonical
+assembly independently before integration. E8 remains subsequent, E9 private.
+
 2026-10-03 agent operational decision within the user's explicit tree request:
 the desk records/relays user requirements and answers questions; it does not
 review every patch, stage worker changes or merge/push Main after activation.
@@ -589,6 +671,14 @@ Start with supported checked exports, not completion of all relevance research.
 ## 3. Simplification Before Tuning
 
 ### Subjective (User)
+
+2026-10-03, English translation of explicit human approval relayed by the inquiry
+desk: promote verified speed improvements from Prototype into accepted `src/`.
+This supersedes the former no-promotion boundary for selected performance work,
+with necessary dependencies reviewed and unrelated dirty files preserved. The
+[separate promotion plan](2026-10-03-VERIFIED-PERFORMANCE-PROMOTION-PLAN.md)
+owns implementation and accepted regression/parity verification. Other prototype
+lanes and deferred design choices are not blanket-approved.
 
 2026-10-03, English paraphrase of the latest clarification: performance work
 and Job/Evidence reduction or deletion are closely coupled and need focused

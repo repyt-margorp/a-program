@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-03",
+  "scope": "Fresh Merge source-library qualification; prototype only",
+  "pr": 54,
+  "task_commit": "117e2bfa790b7e475737dad056548ff80b254f91",
+  "tested_candidate": "aa1a60bef281479dbb0fa14a1fc153873bd08ff5",
+  "merge_commit": "b33279e691c95a03d5ce3a344e9792514f589df8",
+  "producer_job": "b2d66682be75c21a3c2a8c5138db9d3f0c5e0eb2",
+  "producer_summary_sha256": "ec36a57245cfc5110562af46cffc9717fbca5d8895c53fea4e5f2f6968ef4f2b",
+  "checker_sha256": "33d90f6fb02f0bd5cafe1e50f5cc64a5d057b2607e4c5f3aa21b81c97fe9bf8f",
+  "comparator_sha256": "d21c94c9e24eeb25eef14c8abe2a4e8c9d971f56c662d96684ce45873b87254f",
+  "shared_provider_inputs_exact_against_qualified_E6": 10,
+  "gates": [
+    {
+      "script": "merge-check.sh views",
+      "exit": 0,
+      "log_sha256": "95f7b64e7b526a15b8ed79f3563d25f94e80b268f91f3fa74d7a55094be4ee55"
+    },
+    {
+      "script": "merge-generic-check.sh",
+      "exit": 0,
+      "log_sha256": "8378a687570f179261dc2348a3b25a5ce6b438b80036936cf11e3313b114468e"
+    },
+    {
+      "script": "generic-interfaces-check.sh",
+      "exit": 0,
+      "log_sha256": "4926a2fc380c608173427e41dc638042396e77b8e68184f147bb728087ab446d"
+    }
+  ],
+  "terminal_UTC": "2026-10-03T08:53:25.729536+00:00",
+  "all_three_passed": true,
+  "private_artifacts": "/tmp/a-program-merge-pr54-e6-gates-20261003",
+  "contracts": "Nat specialization vs unchanged legacy output; Bool and nominal payload actual results; Local/permutation and List/Vec/Fin origin/value laws; independent synthesis; six semantic rejection controls; ordinary load, 100-step pending and inert byte-resave; all five generic source backend classifiers",
+  "limits": "Repeated-insertion algorithm retained; no full compiler/backend aggregate, sanitizer, stability, runtime complexity, exact equal-total-fuel resume, native C or accepted-build promotion claim. Issue #41 remains open."
+}

@@ -23,6 +23,17 @@ not evidence that its proposed interfaces already work. Broad P4/P5 remain open.
 
 ### Subjective (User)
 
+2026-10-03, English translation of the new human request relayed by inquiry desk
+thread `019ebfae-06be-7b71-974a-b97505daed4a`: launch a parallel worker for #41
+Sort foundation, primarily `.p` libraries/proofs, if it can advance independently.
+The delegated setup uses a named isolated task/worktree, GPT-6.1-Sol xhigh,
+continuing Goal and existing tmux/outbox-to-Merge reporting. Reuse delivered
+Fin/List/Vec/common backend prototypes and generic PR #54; verify genuine
+remaining laws/API coverage and F5 readiness instead of reimplementing proved
+work. Keep `::` assertion-only, actual-result/duplicate/Local/Strong contracts
+explicit, and report compiler blockers to existing owners. Accepted Sort
+source/test/build adoption remains a separate authorization and Merge duty.
+
 2026-10-01, English paraphrase of the Book-workspace user's clarification:
 the intended task is to improve A Program's source library and advance its
 related issues in parallel with compiler development, not accumulate a separate
@@ -1215,6 +1226,17 @@ deliverable. The subsequent request authorizes a library implementation PR
 with explicit issue correspondence; compiler promotion remains separate.
 
 ### Objective (Code)
+
+2026-10-03 fresh Merge review: PR #54 task `117e2bf` integrates as prototype
+`b33279e` after three E6-qualified source-library gates pass. Both qualified
+binaries and all ten provider inputs match the frozen E6 producer exactly.
+Nat legacy equivalence, Bool/nominal actual results, six semantic negatives,
+List/Vec/Fin origin/value laws, independent synthesis, ordinary/pending/inert
+images and all five generic backend classifiers pass. Source candidates match
+the tested blobs. [Compact evidence](../src/prototype/finite_sorting/verification/generic-merge-e6.json)
+pins scripts/logs/binaries and scopes this verification; no full aggregate,
+sanitizer, accepted adoption, native lowering, stability or complexity claim.
+Earlier 2026-10-01 observations below retain their historical revision.
 
 Fresh baseline: `9146893f07f0fe3f4c8309c370420c1702dfb96d`, with the assembled
 `src/prototype/solver_inputs/overlay.sh` candidate. No compiler patch or `.p`
