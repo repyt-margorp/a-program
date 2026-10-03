@@ -1,5 +1,5 @@
 {
-  "reviewed_at_UTC": "2026-10-03 14:29 UTC",
+  "reviewed_at_UTC": "2026-10-03 14:36 UTC",
   "Main_revision": "f48ab5e01567810283c1dbd64395dda830e46d3c",
   "worker_notice_sha256": "3e51fc6683d30113e7f4aefcfd114b1ce998f7cd5301622a0c78ba42f9afa91e",
   "diagnostic_manifest_sha256": "9f88231de97ef25205a69a85bafbec6befabaea7140f14fe401ab92ae7fb95d3",
@@ -64,7 +64,7 @@
     "source128_manifest_sha256": "8f6ea298a8d2f7be65c12e5abb756be0ad77a6d41fa4f7794b4781569639fca7",
     "patch_sha256": "b2c396010d5f2781e1d341f3f5d622348728acac5db95b02c50cfbe2740f9ccf",
     "decision": "Retain all non-NULL state frames; only stateless frames pool after callback return.",
-    "qualification": "Qualified frozen E9+E10 prototype; all1969 evidence hashes verified. Worker O2 384/0/artifact41 only strict1/SAN38+45/focused23/cross140; Root fresh128 and O2/SAN ten callback cases pass. No actual peak/time claim.",
+    "qualification": "Superseded by new materialized-failure callback control: parent SAN0, V2 SAN heap-use-after-free in retire_frame/signal6. Frozen prior384/45 and Root controls pass but do not qualify the omitted path.",
     "callback_review_sha256": "e742cb810df2da4495a7580acfc720a9335bafd72a566ae2c2e714cc88cdc13d",
     "callback_contract_limit": "Current owners preserve machine arena through callback return; public prose does not establish arbitrary custom-callback lifetime guarantee. No new prohibition adopted.",
     "fresh_Root_control": "/tmp/a-program-merge-mem1-state-control-20261003/Root-controls.json",
@@ -97,6 +97,20 @@
       "omits_internal_graph_requests": true
     },
     "embedded_struct_rebuild_required": true,
-    "actual_matched_wall_RSS": "Pending reviewed exclusive request; no grant."
+    "actual_matched_wall_RSS": "Pending reviewed exclusive request; no grant.",
+    "status": "REJECTED_V2",
+    "rejection_notice_sha256": "28649b93354f7a64af0610906b6f12f0ddb4b34ca6189b99c1b6fdebfba17900",
+    "new_control_sha256": "93da2cfae80ddecd43deb62d1f242fad710ae5fcc0b9ea19aba41ed491b57cff",
+    "new_worker_parent_V2_SAN_exits": [
+      0,
+      -6
+    ],
+    "historical_capacity_cumulative_do_not_qualify_safe_deletion": true
+  },
+  "v3": {
+    "status": "PRIVATE_UNQUALIFIED",
+    "decision": "Remove materialized/fallback retirement; recycle only stateless captured-head frames after existing post-callback parent cleanup.",
+    "fresh_correctness_capacity_and_actual_cost": "pending",
+    "no_callback_ban_or_new_authority": true
   }
 }

@@ -1,7 +1,7 @@
 # Performance Goal: Current Speed and Memory Work
 
 Date: 2026-10-03
-Status: active; E9+E10 published; MEM1 v1 rejected, stateless v2 qualified/published as prototype; actual peak/time comparison pending.
+Status: active; E9+E10 published; MEM1 v1/v2 rejected, captured-head-only v3 private/unqualified.
 This is the active successor to the frozen
 [Performance Goal at0539051](2026-10-03-PERFORMANCE-GOAL.md). Its published bytes
 and historical handoffs remain immutable. The single current issue-status table
@@ -71,31 +71,23 @@ separate. No E11/E12 runtime is included.
 
 ### Assessment
 
-2026-10-03 13:49 UTC, Root superseding review at Main `b461ace`: MEM1 v1
-patch `698e97e2` is rejected. Fresh inline-frame-state control gives parent0,
-v1 signal6, conservative v2 0: a later demand still borrows state held by a
-retired frame. Passing v1 acceptance and its lower sampled capacity do not
-qualify that deletion or establish a gain. Keep its capacity values only as
-rejected-candidate evidence. V2 `b2c39601`, source128 `8f6ea298`, retains
-every non-NULL state frame and pools stateless frames after callback return.
-V2 frozen evidence1969 `c0734afa` verifies O2 384/0, artifact41 only original
-strict target1, SAN38/45 and focused23/cross140. Root fresh128 assembly and O2/
-SAN builds of both expanded controls pass (six build/run commands, ten cases).
-Exact18 task1297e0b pushed/remote verified, prototype Mainf48ab5e integrated.
-V2's own180M sample independently repeats the net arena-capacity reduction
-872,644,608 bytes, including49,152 memo growth. Cumulative external allocation
-falls2,727,318,176 aligned bytes at unchanged183,507,626 tree steps; small List
-adds368 bytes. These are capacity/cumulative observations, not peak RSS or speed.
-Embedded evaluator grows8 bytes and aligned WHNF16; rebuild users of the header.
-No accepted promotion or arbitrary callback lifetime contract follows. Matched
-wall/RSS and combined correctedE11/E12 qualification remain separate.
-Callback report `e742cb81` verifies current owners retain the machine arena
-through return; public borrowing prose does not establish an arbitrary custom
-callback guarantee. No new prohibition is adopted. Root controls and exact
-evidence are linked by [mem1-root-review.json](../src/prototype/performance_followup/mem1-root-review.json).
-Diagnosis40 still verifies sampled180M machine capacity1,685,012,480 bytes and
-zero completed-machine scratch; this is capacity, not peak/live/RSS/time.
-Job's header/scheduler work and correctedE11 joint qualification stay separate.
+2026-10-03 14:36 UTC, Root superseding review: V1 and V2 are rejected.
+New materialized-failure callback control93da2cfa lets the callback destroy its
+machine arena and return-1. Parent SAN0; V2 SAN signal6 with heap-use-after-free
+in retire_frame, report28649b93. The public header does not explicitly prohibit
+this action. No invented callback ban or test waiver replaces the failing case.
+Frozen V2 task1297e0b/Mainf48ab5e and1969 c0734afa evidence remain exact:
+their passing384/45 and Root focused controls did not cover this path. Those
+results and V2 selected capacity/cumulative deltas are historical rejected-
+candidate evidence, not a safe deletion or current improvement.
+V3 remains private/unqualified: delete materialized/fallback retirement and
+pool only stateless captured-head frames after the existing parent cleanup.
+Retain non-NULL state and return2 behavior. Fresh correctness/capacity is
+required; V2 values do not establish V3 memory/time. Actual peak/RSS/speed,
+exclusive cost grant and accepted promotion remain absent.
+[Root lifetime review](../src/prototype/performance_followup/mem1-root-review.json)
+preserves both rejections and earlier evidence. CorrectedE11/E12 joint work
+stays separate, excluding MEM1. The full performance Goal remains active.
 
 MEM1 uses a private runtime-identical `73fa86c9` copy. Existing allocation audit
 counts cumulative external requests and omits graph.c internal calls, so it
