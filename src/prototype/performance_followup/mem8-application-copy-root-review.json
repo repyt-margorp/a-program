@@ -1,0 +1,91 @@
+{
+  "notice_sha256": "7ba62bc4338613792f8fc052797ab535a132b6e505296ac79daa702c2eaedb66",
+  "private": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem8/private/application_copies_v2_20261003",
+  "manifest_sha256": "3a6c38a595f09be60263e152ca2241322c1eabcaf19b00d12dff5e953f1be48d",
+  "frozen_records": 8,
+  "all_two_traces_pins_source128_exact": true,
+  "recomputed_request_arithmetic": [
+    {
+      "budget": 10000,
+      "counts": {
+        "requests": 2,
+        "consume_2": 2,
+        "new_argument_environment_empty_False": 2,
+        "valid_consumed_prefix_True": 2,
+        "required_tail_empty_False": 2,
+        "last_consumed_same_closure_and_tail": 0,
+        "last_consumed_same_term_only": 0,
+        "known_source_spine_True": 2,
+        "source_head_same_closure": 2,
+        "source_head_same_closure_and_required_tail": 0
+      },
+      "source128": "81c3ad27dfd01aef14ad8e977d1b783cc3636368b6e5afcab0840d07d055e541",
+      "reference_sha256": "77daed535742c21b7be1b6d027041d21f5cf1c81bb20e251e85d70fdc05862a3",
+      "apply_copy_aligned_request_bytes": 64,
+      "step_created_aligned_request_bytes": 51200
+    },
+    {
+      "budget": 100000,
+      "counts": {
+        "requests": 965,
+        "consume_2": 965,
+        "new_argument_environment_empty_False": 965,
+        "valid_consumed_prefix_True": 965,
+        "required_tail_empty_False": 965,
+        "last_consumed_same_closure_and_tail": 0,
+        "last_consumed_same_term_only": 0,
+        "known_source_spine_True": 965,
+        "source_head_same_closure": 965,
+        "source_head_same_closure_and_required_tail": 0
+      },
+      "source128": "81c3ad27dfd01aef14ad8e977d1b783cc3636368b6e5afcab0840d07d055e541",
+      "reference_sha256": "4b6b07abe4b496ed3d62c1d241bb3d169ceb29c3a9c71a8662d67964602b5876",
+      "apply_copy_aligned_request_bytes": 30880,
+      "step_created_aligned_request_bytes": 910752
+    }
+  ],
+  "original_failure_manifest_sha256": "85293fdf1faeab2ecae330e52491263e9967390ed60bd930fa3f0c08689b118a",
+  "original_failure_records": 6,
+  "original_observer_failure_preserved": {
+    "inferior_exit": 3,
+    "source128": "81c3ad27dfd01aef14ad8e977d1b783cc3636368b6e5afcab0840d07d055e541",
+    "counts": {
+      "requests": 1,
+      "consume_2": 1,
+      "new_argument_environment_empty_False": 1,
+      "valid_consumed_prefix_True": 1,
+      "required_tail_empty_False": 1,
+      "last_consumed_same_closure_and_tail": 0,
+      "last_consumed_same_term_only": 0,
+      "known_source_spine_True": 1
+    },
+    "callers": {
+      "resume_frame": {
+        "requests": 1,
+        "consume_2": 1,
+        "new_argument_environment_empty_False": 1,
+        "valid_consumed_prefix_True": 1,
+        "required_tail_empty_False": 1,
+        "last_consumed_same_closure_and_tail": 0,
+        "last_consumed_same_term_only": 0
+      }
+    },
+    "errors": [
+      "value has been optimized out"
+    ],
+    "limit_reached": false,
+    "maximum_requests": 60000,
+    "limits": [
+      "pg_eval_apply allocator requests only; step-created application nodes are counted separately by frozen evidence.",
+      "Callers may include optimized/inlined frames; absent named source spine is explicitly recorded.",
+      "Candidate reuse requires exact term/environment and identical required tail, plus independent owner lifetime.",
+      "Equal terms alone do not establish closure equality or permit changing existing next links.",
+      "No runtime mutation, elision, new index/cache/model/owner or actual time/RSS collector."
+    ]
+  },
+  "observer_review": "Optional optimized-out caller locals are recorded as unavailable; required argument/tail/consume reads still fail the probe if unavailable. Known spine is read only from an actual pg_argument pointer, without casting arbitrary closure storage. Prior authoritative counts2/965 replace an unexecuted guessed79 assertion. No runtime condition or test outcome relaxed.",
+  "assessment": "Reject further generic apply-copy shortcut/cache for these historical trees4 prefixes: source head closure equality does not imply required-tail identity, and existing next links remain immutable. Retain step-created argument allocations as material attribution target. Independent lifetime/codec/allocator contract review remains required. No latest-Main memory/time gain, new implementation grant, publication or measurement slot.",
+  "READY": false,
+  "runtime_change": false,
+  "actual_cost": false
+}

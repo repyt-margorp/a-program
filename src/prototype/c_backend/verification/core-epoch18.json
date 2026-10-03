@@ -1,0 +1,262 @@
+{
+  "publication": {
+    "task": "ecd659995e867a997cec0f48ec3d1fe61ea16036",
+    "task_parent": "d39632b8adc277aa65a5a23669ca6b99d3663e33",
+    "Main_parent": "165789434f528e1c55cb446af831475652c54ca4",
+    "exact13_task": {
+      "doc/2026-10-03-C-BACKEND-GOAL.md": "a3c225f2b2ac091854e4c2e08aa3349217a22fd42392dc337d2c690538756c4d",
+      "doc/2026-10-04-C-BACKEND-NATIVE-PREDICATE-MODULES-PLAN.md": "56db7b9c671692a29e7e2b2a161b6b32a9f4c4b7cf35da869768dd5753ce272b",
+      "doc/2026-10-04-C-BACKEND-EPOCH18-HANDOFF.md": "1d35297b3c8e9bfa419c86dbf8526e577eda5b065e6793b7d3d44db820e98e7a",
+      "src/prototype/c_backend/README.md": "dcfc2d58dc4ca801fb1a72c31959672227eb3ffdeb196cda4093abaa819130c9",
+      "src/prototype/c_backend/build.mk": "5e81f3b7f6d511e62b944ec200683e31d663658d31dd81fd01628b4b538a3d8c",
+      "src/prototype/c_backend/predicate_modules/build.mk": "fdae65f651911b3c2e2fcc8aa7c37214f84da0345812c603cf50fc85cb0d9f76",
+      "src/prototype/c_backend/predicate_modules/check.sh": "9ea59f9bfbcd5274fb16aa69db4b5f655b24612e1b10d3c7b03e3214b9a3153e",
+      "src/prototype/c_backend/predicate_modules/client.c": "93518703b133e2df74578ccaa392861dd32baf117cc2e13baface1288b473d9f",
+      "src/prototype/c_backend/predicate_modules/consumer.aplink": "3925ea204f29315bf1bc00743386e04f8f1975f4e7ba39ed542a0eeb55da2a36",
+      "src/prototype/c_backend/predicate_modules/consumer.p": "a9c5d9081b1989e39b2565af53fa26c471d448e5ef2627045cedf85d8098c78f",
+      "src/prototype/c_backend/predicate_modules/provider.aplink": "4a46fbabdf4ddef3cecee774c549eefc38b6855faad5e9325426e500cc306f68",
+      "src/prototype/c_backend/predicate_modules/provider.p": "5cb632320cce0d08afe91e416203058dbb0d8c9a071b80bd2e3c8ed6d587b1db",
+      "src/prototype/c_backend/predicate_modules/wrong_type.c": "5b9fdf11733dea6e8ee49a7939d588fb9a375a07d0907da7fce450312d293f8d"
+    },
+    "Root_current_E18_results_sha256": "51cc33c4fcfd8f78e68aa6df81eba51ff16a8840d50d6fd4b5deec9f2fdf8c56",
+    "source128": "efcdeaa46b592184d8e5a8dc1fd2139d660d966be75a77c440fe7a4f3e45ca19",
+    "worker_live_tracked_files_preserved": 1797,
+    "Goal_provenance_only_Main_reconciliation": true,
+    "C19_live_trials_excluded": true,
+    "task_remote_exact": true,
+    "Main_merge": "7c977d387e53403e8bae045d14ac8996cd95aca5",
+    "Main_remote_exact": true,
+    "exact12_Main_bytes": true,
+    "reviewed_Main_Goal_sha256": "86138a87a7eb954b2dbd97902ad6e4e5249a237fe96bee5d6e0d4e478589044b",
+    "protected9_exact": true,
+    "accepted_adoption_or_Goal_completion": false
+  },
+  "current_Root_report_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c18-current-e18-gates/Root-results.json",
+  "current_Root_report_sha256": "51cc33c4fcfd8f78e68aa6df81eba51ff16a8840d50d6fd4b5deec9f2fdf8c56",
+  "current_source128": "efcdeaa46b592184d8e5a8dc1fd2139d660d966be75a77c440fe7a4f3e45ca19",
+  "checks": [
+    {
+      "gate": "build",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c18-publication/src/prototype/c_backend/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e18-current-Main",
+        "ROOT=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e18-current-Main/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c18-current-e18-gates/build",
+        "REPO=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e18-current-Main",
+        "TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e18-current-Main/tests",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c18-current-e18-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c18-current-e18-gates/build/c_predicate_native_inert_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "d22fd86f77b6edfffc5bf14e1da83046e11a685845074a10cf04993b2410557a",
+      "sanitizer_scope": "O2"
+    },
+    {
+      "gate": "modules-o2",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c18-publication/src/prototype/c_backend/predicate_modules/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c18-current-e18-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e18-current-Main/build-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c18-current-e18-gates/modules-o2"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "4344a529aae4b319ccb709fac3103b1746195a30cfc46b4273ed316f464f4739",
+      "sanitizer_scope": "O2",
+      "expected_status_rows": 103,
+      "status_rows_all_match": true,
+      "status_sha256": "afb05fb95e2c2c5823fcdac3872b3fbd01dd116c19c1f3c1cf4496d201bb87bf",
+      "matching_zero_rows": 96,
+      "matching_compiler_one_rows": 7
+    },
+    {
+      "gate": "predicate-o2",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c18-publication/src/prototype/c_backend/predicate_native/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c18-current-e18-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e18-current-Main/build-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c18-current-e18-gates/build/c_predicate_native_inert_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c18-current-e18-gates/predicate-o2"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "a32131ac7315684a92b0bca29b0839c2a0970181834703762496e57f4422c972",
+      "sanitizer_scope": "O2",
+      "expected_status_rows": 69,
+      "status_rows_all_match": true,
+      "status_sha256": "bba117b8770de50918afb941e1095437456867c70e57659da1a3bcbbaa81871c"
+    },
+    {
+      "gate": "modules-san",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c18-publication/src/prototype/c_backend/predicate_modules/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c18-current-e18-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e18-current-Main/build-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c18-current-e18-gates/modules-san"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "4344a529aae4b319ccb709fac3103b1746195a30cfc46b4273ed316f464f4739",
+      "sanitizer_scope": "Clients and source-product bodies; backend/producer/Core/object/archive/shared stay O2",
+      "expected_status_rows": 103,
+      "status_rows_all_match": true,
+      "status_sha256": "afb05fb95e2c2c5823fcdac3872b3fbd01dd116c19c1f3c1cf4496d201bb87bf",
+      "matching_zero_rows": 96,
+      "matching_compiler_one_rows": 7
+    },
+    {
+      "gate": "predicate-san",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c18-publication/src/prototype/c_backend/predicate_native/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c18-current-e18-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e18-current-Main/build-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c18-current-e18-gates/build/c_predicate_native_inert_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c18-current-e18-gates/predicate-san"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "a32131ac7315684a92b0bca29b0839c2a0970181834703762496e57f4422c972",
+      "sanitizer_scope": "Clients and source-product bodies; backend/producer/Core/object/archive/shared stay O2",
+      "expected_status_rows": 69,
+      "status_rows_all_match": true,
+      "status_sha256": "bba117b8770de50918afb941e1095437456867c70e57659da1a3bcbbaa81871c"
+    }
+  ],
+  "all_current_pins_after_exact": true,
+  "current_input_pin_count": 388,
+  "full_current_products_commands_logs_status_hashes_retained": true,
+  "worker_input_review": {
+    "freeze": {
+      "parent": "d39632b8adc277aa65a5a23669ca6b99d3663e33",
+      "branch": "parallel/c-backend-20261003",
+      "commit_message": "prototype: verify native predicate module composition",
+      "files": {
+        "doc/2026-10-03-C-BACKEND-GOAL.md": "a3c225f2b2ac091854e4c2e08aa3349217a22fd42392dc337d2c690538756c4d",
+        "doc/2026-10-04-C-BACKEND-NATIVE-PREDICATE-MODULES-PLAN.md": "56db7b9c671692a29e7e2b2a161b6b32a9f4c4b7cf35da869768dd5753ce272b",
+        "doc/2026-10-04-C-BACKEND-EPOCH18-HANDOFF.md": "1d35297b3c8e9bfa419c86dbf8526e577eda5b065e6793b7d3d44db820e98e7a",
+        "src/prototype/c_backend/README.md": "dcfc2d58dc4ca801fb1a72c31959672227eb3ffdeb196cda4093abaa819130c9",
+        "src/prototype/c_backend/build.mk": "5e81f3b7f6d511e62b944ec200683e31d663658d31dd81fd01628b4b538a3d8c",
+        "src/prototype/c_backend/predicate_modules/build.mk": "fdae65f651911b3c2e2fcc8aa7c37214f84da0345812c603cf50fc85cb0d9f76",
+        "src/prototype/c_backend/predicate_modules/check.sh": "9ea59f9bfbcd5274fb16aa69db4b5f655b24612e1b10d3c7b03e3214b9a3153e",
+        "src/prototype/c_backend/predicate_modules/client.c": "93518703b133e2df74578ccaa392861dd32baf117cc2e13baface1288b473d9f",
+        "src/prototype/c_backend/predicate_modules/consumer.aplink": "3925ea204f29315bf1bc00743386e04f8f1975f4e7ba39ed542a0eeb55da2a36",
+        "src/prototype/c_backend/predicate_modules/consumer.p": "a9c5d9081b1989e39b2565af53fa26c471d448e5ef2627045cedf85d8098c78f",
+        "src/prototype/c_backend/predicate_modules/provider.aplink": "4a46fbabdf4ddef3cecee774c549eefc38b6855faad5e9325426e500cc306f68",
+        "src/prototype/c_backend/predicate_modules/provider.p": "5cb632320cce0d08afe91e416203058dbb0d8c9a071b80bd2e3c8ed6d587b1db",
+        "src/prototype/c_backend/predicate_modules/wrong_type.c": "5b9fdf11733dea6e8ee49a7939d588fb9a375a07d0907da7fce450312d293f8d"
+      },
+      "manifest_sha256": "f099f994aa94797c9e3265fe6610965a54ff14656dfdbb1a1da55a4d5fb3ef80",
+      "snapshot_sha256": "18221656cece38bb600e89271825d258296d049599015a10bc305e6c0a952dce",
+      "verification_sha256": "14d1370cd3c1f1a0170f4991efc05bfac6cfc9fc61110d3528887aabffb89eea",
+      "qualified_input_count": 146,
+      "qualified_inputs_sha256": "e0563ec722e5e0e4e2bd098287ce6608178d6866ec1aa1b311da125333dc15dd",
+      "run_file_count": 2082,
+      "runs_sha256": "8edac2ee1609e2a4f9ed7999cbacfc160b628f0bb13dade3458ef630dd9e0cad",
+      "style_check_sha256": "5f830c61f3ba6fc6b5cfc07c51836391cff3610736cc1f8e27f29cff27b19c00",
+      "deltas_sha256": "b47aa381def1f79e947c5187192e6b9a8ea14e8e2d534edb4b831fef47d7863d",
+      "handoff_sha256": "1d35297b3c8e9bfa419c86dbf8526e577eda5b065e6793b7d3d44db820e98e7a",
+      "state": "frozen exact13 task handoff; Root publication/current-producer/Main review pending; Goal active"
+    },
+    "verification": {
+      "parent": "d39632b8adc277aa65a5a23669ca6b99d3663e33",
+      "branch": "parallel/c-backend-20261003",
+      "dependency_c17_manifest": "089136e9eb0adc3ab83beadf975ce10c345d8563204361e00f46cec0d6203b67",
+      "backend_sha256": "305c521b526f7d5e281c48fdd461869cd174df8347f98c83b5a187d3b90bacfa",
+      "producer": "50cd56b2a52b7e370bc7ecb3436c4993e2e5d6a2",
+      "runtime128_reported_sha256": "9ba2b33cbe8bc68eac338073506bcb205f36d20cb0a34f9f88607d975ef07740",
+      "qualified_input_count": 146,
+      "qualified_inputs_sha256": "e0563ec722e5e0e4e2bd098287ce6608178d6866ec1aa1b311da125333dc15dd",
+      "phases": {
+        "o2-release": {
+          "rows": 103,
+          "zero": 96,
+          "one": 7,
+          "linked_clients": 32,
+          "loaded_clients": 8,
+          "source_observations_per_client": 93,
+          "small_scalar_calls_per_client": 180,
+          "extreme_scalar_calls_per_client": 60,
+          "filter_calls_per_client": 242,
+          "selection_calls_per_client": 726
+        },
+        "san-release": {
+          "rows": 103,
+          "zero": 96,
+          "one": 7,
+          "linked_clients": 32,
+          "loaded_clients": 8,
+          "source_observations_per_client": 93,
+          "small_scalar_calls_per_client": 180,
+          "extreme_scalar_calls_per_client": 60,
+          "filter_calls_per_client": 242,
+          "selection_calls_per_client": 726
+        }
+      },
+      "source_observations": "90 scalar bools and three finite Lists; output identical in all40 clients/phase; repeated products/orders/phases are not independent case counts",
+      "provider_resource_scope": "Existing native leaf matches leave recursive hypotheses unused and charge no recursive depth. Local callback arena depth_limit1 succeeds on tested small/extreme uint32 cases; active provider arena depth1 refuses4 and preserves result. Separate callback-local arena, no allocations. Not a general foreign error propagation protocol.",
+      "c17_freeze_reverified": "Historical exact19 tar/manifests reverified;16 unaffected live C17 paths exact. Goal/README/build advance in C18 after Root release.",
+      "san_scope": "Clients and source-product bodies O1 ASan/UBSan/leak/noPIE; emitted object/archive/shared/backend/producer remain O2",
+      "initial_failures": [
+        {
+          "where": "initial-runs.json",
+          "exit": 1,
+          "cause": "Reference omitted explicit imports; source retained consumer-before-imports.p, then ordinary explicit imports admit/run0."
+        },
+        {
+          "where": "initial-product-runs.json",
+          "exit": 1,
+          "cause": "Attempt to select imported names from reference image; pointer selected local module_choose0 but imported apply_predicate definition not found1. Use original exported consumer image; no producer/schema or import-policy edit."
+        },
+        {
+          "where": "o2-final/status.tsv",
+          "outer_exit": 1,
+          "client_exit": 134,
+          "cause": "Wrong expected depth1 failure for leaf provider. Generated source charges no recursive depth. Retained client-before-depth-correction.c/products/logs/binary; changed probe to actual active-arena refusal, and local depth1 success."
+        }
+      ],
+      "code_delta": "No backend/emitter/producer/schema change. Eight new fixture/client/harness/build files (415 lines); parent prototype build adds four gate-registration lines; README plus separate plan/handoff/owning Goal docs. Registration-only change after tests, checked separately with make dry-run; runtime test sources unchanged.",
+      "publication": "C18 frozen task handoff pending Root exact task publication/current-producer/Main review; C17 task/Main publication reported complete. Goal active; no promotion, issue close or cost claim.",
+      "residuals": [
+        "native Acc/QuickSort incomplete",
+        "indexed/callable recursive fields unsupported",
+        "general effects/Identity/escaping callbacks remain outside contracts"
+      ],
+      "c17_publication_report": {
+        "source": "Root operational release, received 2026-10-04 local; not independently rerun by worker",
+        "task": "d39632b8adc277aa65a5a23669ca6b99d3663e33",
+        "prototype_main": "8dba3ecb801c36b4d0eb92c23f2c13204476922a",
+        "publication": "pushed/remote exact reported; task HEAD independently read",
+        "current_producer": "E17 runtime128 0a15914b",
+        "gates": "predicate69/binary48/unary39 each O2+client-source SAN; shared58 O2/link/current-image IO19/numeric O2+SAN/five predicate IO faults pass",
+        "evidence": "merge-storage-20261003/c17-current-e17-gates/Root-results.json",
+        "reported_hash_prefix": "e9fd805d"
+      },
+      "exact_file_count": 13,
+      "commit_message": "prototype: verify native predicate module composition",
+      "gate_registration_sha256": "cdfe187d72336e2e7e1ce04d4a0337d31998da1e5d249ac0367dd19984149452",
+      "qualified_runtime128_independently_reverified": 128,
+      "qualification_json_sha256": "265150b1ce45d4447b80049c6d9c07c4d66d0901e85adf6011a79b99437e3ea7"
+    },
+    "worker_raw": {
+      "root": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch18-native-modules-20261004",
+      "all2082_raw_hashes_exact": true,
+      "raw_manifest_sha256": "8edac2ee1609e2a4f9ed7999cbacfc160b628f0bb13dade3458ef630dd9e0cad",
+      "retained146_input_copies_exact": true,
+      "input_manifest_sha256": "e0563ec722e5e0e4e2bd098287ce6608178d6866ec1aa1b311da125333dc15dd"
+    },
+    "snapshot_verified_exact13": true,
+    "private_publication": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c18-publication",
+    "current_Main_qualification_pending": true,
+    "later_worker_live_trials_excluded": true
+  },
+  "limits": "Fresh Root current-E18 focused qualification; worker retained E8 report remains historical. Caller provider success/pure-total source interpretation/readable storage and synchronous context/code lifetime preconditions. Limited clients/source sanitizer coverage. Product/order/phase repeats share93 finite observations. No general foreign failure protocol/native Acc/QuickSort, actual cost, broad suite, accepted promotion, issue closure or Goal completion."
+}

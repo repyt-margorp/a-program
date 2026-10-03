@@ -1,0 +1,23 @@
+{
+  "notice_sha256": "ea8338d4ed835c05efbbbb768fe7e0d51037f97fd5df99f6092d03c7dd2dc6ca",
+  "private": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem8/private/beta_shapes_v1_20261003",
+  "manifest_sha256": "9f8e64fbd08aa1fda688acbefe6c84c45ed9d9be813fb7e7253cc7719dc6281d",
+  "private_records": 8,
+  "all_pins_two_raw_traces_and_counts_exact": true,
+  "historical_source128": "81c3ad27dfd01aef14ad8e977d1b783cc3636368b6e5afcab0840d07d055e541",
+  "100K_counts": {
+    "environment_requests": 13539,
+    "body_closed_False": 12458,
+    "current_binder_in_body_True": 12458,
+    "argument_environment_empty_True": 14,
+    "argument_environment_empty_False": 13525,
+    "body_closed_True": 1081,
+    "current_binder_in_body_False": 1081,
+    "closed_body_with_active_frame": 1075,
+    "closed_body_with_active_task": 0
+  },
+  "optimistic_closed_body_cumulative_bytes": 34592,
+  "assessment": "Defer generic/private beta elision: syntax closure does not prove absent public/opaque escaped captures, active-demand fuel effects or exact codec equivalence. All observed requests use dispatch; closed syntax is a weak and small cumulative bound, not live/peak/RSS. Typed-alignment remains a shared allocator/API proposal pending owner contract review; generic16 alignment preserved. No new implementation/publication/cost grant; independent owned attribution continues.",
+  "READY": false,
+  "runtime_change": false
+}

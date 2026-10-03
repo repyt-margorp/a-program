@@ -1,0 +1,9 @@
+{
+  "notice_sha256": "afebbaf9019c9fd12e103462ff0aada1b844af618b181414b44ffe3aaf2964c1",
+  "Job_consumed_fresh_Root_descriptor_report": true,
+  "fresh_Root_report_sha256": "0f41fd8819ab356acacfb0f35cf5ff0039eedebcb9c64ac7d3f2a051d6c4cb9d",
+  "owner_path": "descriptor_io.c classifier/identity/computation name and resolve routing excludes iadt.c private match_action_class/match_action emitted by lowering, before action_answer.",
+  "assessment": "Specific prototype descriptor routing limitation already freshly verified. Shared codec disposition remains Root coordination with existing Performance IADT owner; Job does not independently modify eval/readback/IADT/descriptor sources. Review existing serialization/deserialization contracts before implementation; no new naming/schema/trust policy or waiver inferred. Independent E18/E19 correctness work continues.",
+  "MEM7_runtime_held": true,
+  "allocator_API_implementation_grant": false
+}

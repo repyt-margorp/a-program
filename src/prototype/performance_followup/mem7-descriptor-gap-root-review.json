@@ -1,0 +1,352 @@
+{
+  "notice_sha256": "8c8009b42412c40c3e65559ef17086ef936d379956260687fd3953d911925547",
+  "freeze": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem7/epochs/action_fields_v1_review",
+  "freeze_manifest_sha256": "9f4aa46a933f14cf57dad33cf9893be56962085da529d06bdb19b9d6266d2d4c",
+  "frozen_files": 14,
+  "private_manifest_sha256": "cec2ea36f4f7659e1da6becdb6a15c9f12aeaa8c190ebf27c1fdde9e9a8ec64a",
+  "private_records": 343,
+  "parent_source128": "2344ad41d6db32ceddb5dbc9419aa8da97fcaa00253e075f5ff96b8f72f93b13",
+  "candidate_source128": "b28dd100547dc69cf9820bbeae061e697d5002d621faa3a5b62a20317d3ee058",
+  "raw20_logs_exact": true,
+  "semantic_build_execution16_exit0": true,
+  "original_codec4_signal6_unwaived": true,
+  "all11_cases_and583_cuts_each_O2_SAN_parent_candidate_recomputed": {
+    "parent-o2": [
+      [
+        0,
+        55,
+        56
+      ],
+      [
+        1,
+        52,
+        53
+      ],
+      [
+        2,
+        68,
+        69
+      ],
+      [
+        3,
+        60,
+        61
+      ],
+      [
+        4,
+        58,
+        59
+      ],
+      [
+        5,
+        61,
+        62
+      ],
+      [
+        6,
+        82,
+        83
+      ],
+      [
+        7,
+        25,
+        26
+      ],
+      [
+        8,
+        32,
+        33
+      ],
+      [
+        9,
+        47,
+        48
+      ],
+      [
+        10,
+        32,
+        33
+      ]
+    ],
+    "candidate-o2": [
+      [
+        0,
+        55,
+        56
+      ],
+      [
+        1,
+        52,
+        53
+      ],
+      [
+        2,
+        68,
+        69
+      ],
+      [
+        3,
+        60,
+        61
+      ],
+      [
+        4,
+        58,
+        59
+      ],
+      [
+        5,
+        61,
+        62
+      ],
+      [
+        6,
+        82,
+        83
+      ],
+      [
+        7,
+        25,
+        26
+      ],
+      [
+        8,
+        32,
+        33
+      ],
+      [
+        9,
+        47,
+        48
+      ],
+      [
+        10,
+        32,
+        33
+      ]
+    ],
+    "parent-san": [
+      [
+        0,
+        55,
+        56
+      ],
+      [
+        1,
+        52,
+        53
+      ],
+      [
+        2,
+        68,
+        69
+      ],
+      [
+        3,
+        60,
+        61
+      ],
+      [
+        4,
+        58,
+        59
+      ],
+      [
+        5,
+        61,
+        62
+      ],
+      [
+        6,
+        82,
+        83
+      ],
+      [
+        7,
+        25,
+        26
+      ],
+      [
+        8,
+        32,
+        33
+      ],
+      [
+        9,
+        47,
+        48
+      ],
+      [
+        10,
+        32,
+        33
+      ]
+    ],
+    "candidate-san": [
+      [
+        0,
+        55,
+        56
+      ],
+      [
+        1,
+        52,
+        53
+      ],
+      [
+        2,
+        68,
+        69
+      ],
+      [
+        3,
+        60,
+        61
+      ],
+      [
+        4,
+        58,
+        59
+      ],
+      [
+        5,
+        61,
+        62
+      ],
+      [
+        6,
+        82,
+        83
+      ],
+      [
+        7,
+        25,
+        26
+      ],
+      [
+        8,
+        32,
+        33
+      ],
+      [
+        9,
+        47,
+        48
+      ],
+      [
+        10,
+        32,
+        33
+      ]
+    ]
+  },
+  "worker_transport_probe4_build_run_exit0_exact": [
+    {
+      "variant": "parent",
+      "operation": "build",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem7/build.mk",
+        "OVERLAY=/tmp/ap-performance-mem5-materialized-fields-current-e12-20261003",
+        "ROOT=/tmp/ap-performance-mem5-materialized-fields-current-e12-20261003/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem7/private/action_fields_20261003/build-parent-o2",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem7/private/action_fields_20261003/build-parent-o2/action_transport_probe"
+      ],
+      "exit": 0,
+      "log_sha256": "60a5417dc5f49a6e03dae784a9d16237bd42d1caa6708ad900ad3928a5ffc74d"
+    },
+    {
+      "variant": "parent",
+      "operation": "probe",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem7/private/action_fields_20261003/build-parent-o2/action_transport_probe",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem7/private/action_fields_20261003/transport-diagnosis/parent-before.image",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem7/private/action_fields_20261003/transport-diagnosis/parent-after.image"
+      ],
+      "exit": 0,
+      "log_sha256": "50b0a74d4b81a0f049d0e7d37f450c76c46922552169ef21c37ea4897e1281e1"
+    },
+    {
+      "variant": "candidate",
+      "operation": "build",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem7/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem7/private/action_fields_20261003",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem7/private/action_fields_20261003/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem7/private/action_fields_20261003/build-candidate-o2",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem7/private/action_fields_20261003/build-candidate-o2/action_transport_probe"
+      ],
+      "exit": 0,
+      "log_sha256": "6b2ea4cc273be866d9d22d2284b38b923386e329de714e78e6c3eda0cd3f3d02"
+    },
+    {
+      "variant": "candidate",
+      "operation": "probe",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem7/private/action_fields_20261003/build-candidate-o2/action_transport_probe",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem7/private/action_fields_20261003/transport-diagnosis/candidate-before.image",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem7/private/action_fields_20261003/transport-diagnosis/candidate-after.image"
+      ],
+      "exit": 0,
+      "log_sha256": "50b0a74d4b81a0f049d0e7d37f450c76c46922552169ef21c37ea4897e1281e1"
+    }
+  ],
+  "canonical_patch_no_fuzz_exact": true,
+  "fresh_Root_E16_current_source_probe": {
+    "Main_revision": "36f1b1c35210f97043bef1fb6e508387406f5a32",
+    "current_prototype_source128": "dcd44a00d7d66db7f02144b457cf2e901f064d69a002a0f4af662dc1fa060503",
+    "source_results_sha256": "a2dc480b7f3e12fa146244ee0fd96b0b0e0d8a0f8703f36a0fd67082929e64fd",
+    "probe_sha256": "eedbc839712c4da1f47e0d8676f25c2242a10bd90f74ccfbdb96157fa0c7071d",
+    "MEM7_runtime_candidate_included": false,
+    "checks": [
+      {
+        "label": "build",
+        "argv": [
+          "make",
+          "-j1",
+          "-f",
+          "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem7-current-descriptor-probe.mk",
+          "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e16-current-Main",
+          "ROOT=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e16-current-Main/src/",
+          "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem7-current-descriptor-probe/build",
+          "REPO=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e16-current-Main",
+          "TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e16-current-Main/tests",
+          "PROBE=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem7/epochs/action_fields_v1_review/action_transport_probe.c",
+          "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+          "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem7-current-descriptor-probe/build/action_transport_probe"
+        ],
+        "exit": 0,
+        "log_sha256": "de6de9a67d43a195a2fb80d830a04f77754ccd1de779b5e9049adf4696f6d15c"
+      },
+      {
+        "label": "current-descriptor-reproduction",
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem7-current-descriptor-probe/build/action_transport_probe",
+          "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem7-current-descriptor-probe/input.image",
+          "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem7-current-descriptor-probe/lowered-rejected.image"
+        ],
+        "exit": 0,
+        "log_sha256": "50b0a74d4b81a0f049d0e7d37f450c76c46922552169ef21c37ea4897e1281e1"
+      }
+    ],
+    "complete": true,
+    "all138_input_pins_after_exact": true,
+    "output": "matcher action before_save=0 after_save=-1 descriptor=NULL class=match-action steps=9\n",
+    "input_image_sha256": "31c2047bcaa18cf3ae56f1288f2630ca0655bc77ddb3e31c6137b7e80fafb68e",
+    "rejected_output_sha256": "26174b8bd4adc6231111466a0132dab3626f39a2ca5dfcac543e7c622405a918",
+    "scope": "Fresh current E16 prototype producer lowers the matcher action but builtin descriptor naming rejects its saved lowered configuration. This verifies a specific persistence limitation; no changed callback is reached, no accepted-source defect classification, codec/authority change, broad/SAN/cost pass, or MEM7 readiness is inferred."
+  },
+  "fresh_Root_probe_sha256": "0f41fd8819ab356acacfb0f35cf5ff0039eedebcb9c64ac7d3f2a051d6c4cb9d",
+  "assessment": "Specific current E16 prototype codec limitation reproduced: original input save0, lowered save-1, match-action descriptor name NULL at nine charged steps. Changed MEM7 action callback is not reached. Semantic helper does not replace portable checkpoint qualification. Hold runtime publication; no new codec naming, trust, schema, model, recycling or acceptance decision inferred.",
+  "READY": false,
+  "publication_requested": false,
+  "actual_cost": false,
+  "owner_disposition": "Route evidence to original Job and Performance; no owner restart."
+}

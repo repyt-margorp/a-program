@@ -1,0 +1,83 @@
+{
+  "notice_sha256": "10586be5dec201dc4b0ace433fd1766039c483e7b49211b410199a097295e66e",
+  "private": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem8/private/allocation_padding_v3_20261003",
+  "manifest_sha256": "b20be9d8a839559480690b13928e08d4be928dc0aabfd3504873e29a573313bb",
+  "records": 11,
+  "source128": "81c3ad27dfd01aef14ad8e977d1b783cc3636368b6e5afcab0840d07d055e541",
+  "source_records": 128,
+  "all_pins_and_two_raw_traces_exact": true,
+  "recomputed_arithmetic": [
+    {
+      "budget": 10000,
+      "scenario": "argument_alignment",
+      "argument_requests": 1602,
+      "environment_requests": 624,
+      "baseline_used_bytes": 100992,
+      "simulated_used_bytes": 90576,
+      "used_bytes_saved": 10416,
+      "baseline_cumulative_capacity": 540672,
+      "simulated_cumulative_capacity": 540672,
+      "cumulative_capacity_saved": 0,
+      "baseline_peak_live_capacity": 196608,
+      "simulated_peak_live_capacity": 196608,
+      "peak_live_capacity_saved": 0,
+      "simulated_alignment_gap_bytes": 2400
+    },
+    {
+      "budget": 10000,
+      "scenario": "argument_environment_alignment",
+      "argument_requests": 1602,
+      "environment_requests": 624,
+      "baseline_used_bytes": 100992,
+      "simulated_used_bytes": 88272,
+      "used_bytes_saved": 12720,
+      "baseline_cumulative_capacity": 540672,
+      "simulated_cumulative_capacity": 540672,
+      "cumulative_capacity_saved": 0,
+      "baseline_peak_live_capacity": 196608,
+      "simulated_peak_live_capacity": 196608,
+      "peak_live_capacity_saved": 0,
+      "simulated_alignment_gap_bytes": 96
+    },
+    {
+      "budget": 100000,
+      "scenario": "argument_alignment",
+      "argument_requests": 29426,
+      "environment_requests": 13539,
+      "baseline_used_bytes": 1404640,
+      "simulated_used_bytes": 1211384,
+      "used_bytes_saved": 193256,
+      "baseline_cumulative_capacity": 1851392,
+      "simulated_cumulative_capacity": 1671168,
+      "cumulative_capacity_saved": 180224,
+      "baseline_peak_live_capacity": 1409024,
+      "simulated_peak_live_capacity": 1245184,
+      "peak_live_capacity_saved": 163840,
+      "simulated_alignment_gap_bytes": 42152
+    },
+    {
+      "budget": 100000,
+      "scenario": "argument_environment_alignment",
+      "argument_requests": 29426,
+      "environment_requests": 13539,
+      "baseline_used_bytes": 1404640,
+      "simulated_used_bytes": 1169328,
+      "used_bytes_saved": 235312,
+      "baseline_cumulative_capacity": 1851392,
+      "simulated_cumulative_capacity": 1605632,
+      "cumulative_capacity_saved": 245760,
+      "baseline_peak_live_capacity": 1409024,
+      "simulated_peak_live_capacity": 1179648,
+      "peak_live_capacity_saved": 229376,
+      "simulated_alignment_gap_bytes": 96
+    }
+  ],
+  "observer_setup_failures_preserved": {
+    "v1": "a640dfaea7dce31c9e008dd143ffd03567f2ffc81e078a566daee34f50862159",
+    "v2": "8c2753b5283ee6afba1d94ecbd8061171b5659142f0d0d49c9eddedea73ce8a1"
+  },
+  "assessment": "Retain scoped attribution and defer implementation/publication. Explicit typed alignment is an agent hypothesis needing shared allocator owner/interface disposition, mixed alignment/overflow/lifetime/fuel/all-cut codec tests and later exclusive actual costs. Preserve generic16-byte guarantee. Simulation excludes other arenas/indexes/malloc metadata; final request success not independently confirmed. No current Main/RSS/time gain or new grant.",
+  "publication_requested": false,
+  "READY": false,
+  "runtime_change": false
+}
