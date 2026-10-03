@@ -32,7 +32,39 @@
  	struct pg_program *p = pg_program_allocate_empty(PG_DEFINITION_IMPLICIT_THUNK);
  	assert(p);
  	struct pg_synthesis_job *jobs[3];
-@@ -305,12 +304,15 @@
+@@ -253,13 +252,14 @@
+ 		assert(!fseek(file, (long)w[6], SEEK_CUR));
+ 		if (w[0] != 5) continue;
+ 		long offset = ftell(file);
+-		uint64_t frontier[3];
+-		for (size_t j = 0; j < 3; ++j) assert(!pg_wire_read_u64(file, &frontier[j]));
++		uint64_t frontier[4];
++		for (size_t j = 0; j < 4; ++j) assert(!pg_wire_read_u64(file, &frontier[j]));
+ 		assert(frontier[0] == 2 && frontier[1] == 2 && frontier[2] == 1);
+-		const uint64_t bad[][3] = {{3, 2, 1}, {1, 2, 1}, {2, 1, 1}, {2, 2, 2}, {UINT64_MAX, 2, 1}};
++		const uint64_t bad[][4] = {{3, 2, 1, 0}, {1, 2, 1, 0}, {2, 1, 1, 0},
++			{2, 2, 2, 0}, {UINT64_MAX, 2, 1, 0}, {2, 2, 1, 3}, {2, 2, 0, 1}};
+ 		for (size_t trial = 0; trial < sizeof(bad) / sizeof(*bad); ++trial) {
+ 			assert(!fseek(file, offset, SEEK_SET));
+-			for (size_t j = 0; j < 3; ++j) assert(!pg_wire_write_u64(file, bad[trial][j]));
++			for (size_t j = 0; j < 4; ++j) assert(!pg_wire_write_u64(file, bad[trial][j]));
+ 			rewind(file);
+ 			size_t count = 91;
+ 			struct pg_synthesis_job *const *roots = NULL;
+@@ -267,7 +267,7 @@
+ 			assert(count == 91 && !roots);
+ 		}
+ 		assert(!fseek(file, offset, SEEK_SET));
+-		for (size_t j = 0; j < 3; ++j) assert(!pg_wire_write_u64(file, frontier[j]));
++		for (size_t j = 0; j < 4; ++j) assert(!pg_wire_write_u64(file, frontier[j]));
+ 		++checked;
+ 	}
+ 	assert(checked == 1);
+@@ -302,18 +302,22 @@
+ 			registration = pg_synthesis_prepare_module(&copy->synthesis, roots[0]);
+ 			assert(!pg_synthesis_definition_frontier(&copy->synthesis, registration, &after));
+ 			assert(before.count == after.count);
++			assert(before.position == after.position);
  			for (size_t i = 0; i < before.count; ++i) {
  				struct pg_synthesis_job *body = NULL;
  				if (pg_synthesis_definition_body(&original->synthesis, before.entries[i], &body) || !body) continue;
@@ -49,8 +81,12 @@
 +				assert(copy->synthesis.jobs.count == jobs && !copy->synthesis.steps);
  				++attached;
  			}
- 			if (after.complete) {
-@@ -339,10 +341,11 @@
+-			if (after.complete) {
++			if (after.complete && !after.position) {
+ 				struct pg_module_frontier cursor = {.position = 1, .previous = after.entries[0]};
+ 				assert(!pg_synthesis_module_resume(&copy->synthesis, roots[0], &cursor));
+ 			}
+@@ -339,10 +343,11 @@
  	const struct pg_evidence *empty = pg_prove_empty_context(&p->typing);
  	/* A type is not a Context extension. Registration may still publish names,
  	 * but neither the module nor its definitions may bypass this failed input. */
@@ -66,7 +102,7 @@
  	assert(scope && !pg_synthesis_scope_context(scope));
  	const char source[] = "main := @;";
  	struct pg_parser parser;
-@@ -384,25 +387,52 @@
+@@ -384,25 +389,52 @@
  	const struct pg_derivation_input *inputs[] = {deep, context, deep, universe,
  		rule_input(&p->graph, PG_CONTEXT_EMPTY, 0, NULL),
  		rule_input(&p->graph, PG_RETURN_INTRO, 1, &context)};
@@ -126,7 +162,7 @@
  	pg_program_destroy(p);
  	p = pg_program_allocate_empty(PG_DEFINITION_IMPLICIT_THUNK);
  	assert(p);
-@@ -410,8 +440,8 @@
+@@ -410,8 +442,8 @@
  	struct pg_derivation_input *cycle = rule_input(&p->graph, PG_UNIVERSE_FORM, 1, &context);
  	cycle->premises[0] = cycle;
  	const struct pg_derivation_input *cyclic = cycle;
@@ -137,7 +173,7 @@
  	no_import_preparation(p);
  	pg_program_destroy(p);
  	puts("direct rule import: shared iterative relocation, no preparation workers or proof admission");
-@@ -481,7 +511,7 @@
+@@ -481,7 +513,7 @@
  		FILE *file = tmpfile();
  		assert(file);
  		for (size_t i = 0; i < prefix; ++i) assert(fputc(0, file) == 0);
@@ -146,7 +182,7 @@
  		assert(!fseek(file, (long)prefix, SEEK_SET));
  		size_t count;
  		struct pg_synthesis_job *const *roots;
-@@ -582,7 +612,7 @@
+@@ -582,7 +614,7 @@
  	char path[] = "/tmp/a-program-publication-XXXXXX";
  	int descriptor = mkstemp(path);
  	assert(descriptor >= 0 && !close(descriptor));
@@ -155,7 +191,7 @@
  	/* A failed replacement must leave the previous artifact untouched. */
  	assert(pg_artifact_save_file(NULL, program, 0, NULL, PG_ARTIFACT_MATERIALIZED));
  	assert(pg_artifact_save_file(path, NULL, 0, NULL, PG_ARTIFACT_MATERIALIZED));
-@@ -607,7 +637,7 @@
+@@ -607,7 +639,7 @@
  	size_t occurrences = program->typing.occurrences.count, jobs = program->synthesis.jobs.count;
  	uint64_t steps = program->synthesis.steps;
  	FILE *file = tmpfile();
@@ -164,7 +200,7 @@
  	assert(terms == program->graph.terms.count && proofs == program->typing.proofs.count);
  	assert(occurrences == program->typing.occurrences.count && jobs == program->synthesis.jobs.count);
  	assert(steps == program->synthesis.steps);
-@@ -708,6 +738,20 @@
+@@ -708,6 +740,20 @@
  	pg_program_destroy(program);
  }
  
@@ -185,7 +221,7 @@
  static void materialized_validation(const char *source)
  {
  	struct pg_program *program = pg_program_create(source, strlen(source), PG_DEFINITION_IMPLICIT_THUNK);
-@@ -729,10 +773,12 @@
+@@ -729,10 +775,12 @@
  	assert(!pg_graph_init(&storage) && !pg_effect_inference_init(&effects, &storage));
  	assert(!pg_declaration_io_init(&codec, &program->typing));
  	const struct pg_derivation_input *const *inputs;
@@ -201,7 +237,7 @@
  	pg_declaration_io_destroy(&codec);
  	pg_effect_inference_destroy(&effects);
  	pg_graph_destroy(&storage);
-@@ -968,8 +1014,8 @@
+@@ -968,8 +1016,8 @@
  	assert((pg_synthesis_status(program->root) == PG_SYNTHESIS_DONE) == valid);
  	FILE *file = tmpfile();
  	assert(file);
@@ -212,3 +248,12 @@
  	pg_program_destroy(program);
  	struct pg_token name = {.kind = PG_TOKEN_IDENT, .text = "main", .length = 4};
  	struct pg_synthesis_job *const *roots;
+@@ -1020,7 +1068,7 @@
+ 	for (size_t i = 0; i < header[1]; ++i) {
+ 		uint64_t words[10];
+ 		for (size_t j = 0; j < 10; ++j) assert(!pg_wire_read_u64(file, &words[j]));
+-		assert(!fseek(file, (long)words[6] + (words[0] == 5 ? 24 : 0), SEEK_CUR));
++		assert(!fseek(file, (long)words[6] + (words[0] == 5 ? 32 : 0), SEEK_CUR));
+ 	}
+ 	assert(!fseek(file, (long)(8 * header[2] + 56), SEEK_CUR));
+ 	long flag = ftell(file);

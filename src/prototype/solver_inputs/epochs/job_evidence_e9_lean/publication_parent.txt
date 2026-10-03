@@ -1,0 +1,4 @@
+Exact task publication parent:50cd56b2a52b7e370bc7ecb3436c4993e2e5d6a2
+Frozen E8 manifest:881cddafb1545624e594a4c4aa0d185672b65d6cd972f73aae0036614af62c13
+E9 incremental runtime/test applied patch:02da6b7fbea8d591eef1497a28ecd998b68d76a1d359a15b052789e632529f75
+Global canonical patches contain only qualified E9 over E8. Private E10 is excluded. No frozen E7/E8 or failed E9 evidence is overwritten.
