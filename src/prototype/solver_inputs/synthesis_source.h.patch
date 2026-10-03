@@ -1,6 +1,6 @@
 --- a/synthesis_source.h
 +++ b/synthesis_source.h
-@@ -12,9 +12,10 @@
+@@ -12,14 +12,24 @@
  	struct pg_token name;
  	const struct pg_object *binder, *associated_binder;
  	enum pg_source_association association;
@@ -13,10 +13,10 @@
  	const struct pg_source_scope *exports;
  	struct pg_synthesis_job *module;
  	const struct pg_source_scope *imports;
-@@ -22,6 +23,15 @@
+ 	struct handler_state *effect_owner;
  	struct pg_synthesis_job *clause;
- };
- 
++};
++
 +/* Actual sequencing inputs, shared by block, APP and computed Match contexts.
 + * This is a lexical bind frame, not another representation of the program. */
 +struct pg_synthesis_sequence_frame {
@@ -24,11 +24,9 @@
 +	struct pg_synthesis_input context;
 +	const struct pg_synthesis_sequence_frame *parent;
 +	int binds;
-+};
-+
+ };
+ 
  /* Borrowed committed registration frontier, including failed registrations.
-  * A failed item does not advance its cursor. Entries keep their source recipes;
-  * registration completion is name publication, not acceptance of those entries.
 @@ -55,23 +65,16 @@
  int pg_synthesis_module_frontier(const struct pg_synthesis *, const struct pg_synthesis_job *, struct pg_module_frontier *);
  int pg_synthesis_module_resume(struct pg_synthesis *, struct pg_synthesis_job *, const struct pg_module_frontier *);
@@ -80,7 +78,7 @@
 +struct pg_synthesis_job *pg_synthesis_plain_rule_inputs(struct pg_synthesis *, enum pg_evidence_rule,
 +	const struct pg_object *, size_t, const struct pg_synthesis_input *);
 +/* Known premises have no producer Job; this view never allocates an adapter. */
-+struct pg_synthesis_input pg_synthesis_rule_input(struct pg_synthesis *, const struct pg_synthesis_job *, size_t);
++struct pg_synthesis_input pg_synthesis_rule_input(const struct pg_synthesis *, const struct pg_synthesis_job *, size_t);
 +struct pg_synthesis_structure pg_synthesis_term_structure_input(struct pg_synthesis *, struct pg_synthesis_input);
 +struct pg_synthesis_structure pg_synthesis_type_structure_input(struct pg_synthesis *, struct pg_synthesis_input);
 +struct pg_synthesis_structure pg_synthesis_classifier_structure_input(struct pg_synthesis *, struct pg_synthesis_input);

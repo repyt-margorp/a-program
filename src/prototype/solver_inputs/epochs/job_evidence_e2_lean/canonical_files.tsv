@@ -1,0 +1,6 @@
+destination	frozen_snapshot	sha256
+src/prototype/solver_inputs/synthesis.c.patch	../job_evidence_e2/publication/src/prototype/solver_inputs/synthesis.c.patch	e0ac7160894df9e0aac56e0d46fe1baea346186f4ed26f7119806d858d08aaa0
+src/prototype/solver_inputs/synthesis_derivation.c.patch	../job_evidence_e2/publication/src/prototype/solver_inputs/synthesis_derivation.c.patch	bd3250c36adacce9da2aa6b6672d1fa31ae3fb000e794f36bdd02c5a0f563400
+src/prototype/solver_inputs/synthesis_source.h.patch	../job_evidence_e2/publication/src/prototype/solver_inputs/synthesis_source.h.patch	0f7a9e133f715e12f6706774169ad348c9d797f6f6dab8d89af7e6e5933480e8
+src/prototype/solver_inputs/test_patches/synthesis.c.patch	../job_evidence_e2/publication/src/prototype/solver_inputs/test_patches/synthesis.c.patch	9a552091cad5c0eedc02f749d616943b43d4751f77235dc1931cec5b6ec08b05
+src/prototype/solver_inputs/checkpoint_test_patches/source_checkpoint_test.c.patch	../job_evidence_e2/publication/src/prototype/solver_inputs/checkpoint_test_patches/source_checkpoint_test.c.patch	fe291f5e6b8c868841196ee932d47421e43dd301e58fae3357da4f29a7a4b768
