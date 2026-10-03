@@ -1,0 +1,40 @@
+{
+  "previous_Main": "99efcf7027541e9cde8548c9f0cc8d9f6355cb1f",
+  "epoch7_task": "3ad03033708135895352e3b19ddef64169c62c22",
+  "original_surface_patch_sha256": "5c95cfea4eda9891c325893951405e7e7c9dba4f9e1a22eb8aa6139fd8978746",
+  "rebased_patch_sha256": "748250cd58cb5dba3f485ceab50efa46f82af54eb4d69130e6bebdfa90ed8e40",
+  "original_failure": "unchanged Surface hunk2 depends on source_metadata origin line removed independently by E7",
+  "removed_and_added_line_vectors_identical": true,
+  "guard_and_polarity_changes": false,
+  "canonical_E7_source_sha256": "654278f76f33d2c7ce1a5d3934ed470ff9601cbffe350fb17a31eb1483d5bd64",
+  "qualified_combined_source_sha256": "0a8449ada4f101e5feeb3c9a5d9165acb6e8148799098adf96f8151a5af3b5b3",
+  "historical_epoch_manifests_unchanged": true,
+  "review_candidate": "efc3ff034e6ddc19e890fe30c8c3f867b61f9184",
+  "fresh_hash_verification": {
+    "frozen_records": 1977,
+    "runtime_sources": 128,
+    "selected_tests": 6,
+    "canonical_assembled_directory": "/tmp/a-program-merge-e7-assembled-20261003",
+    "all_exact": true
+  },
+  "joint_evidence_manifest_sha256": "79e42921dac4f66537b3a275ad8a3334b87d69c1bf667d4f3aa686c984bf5611",
+  "joint_summary_sha256": "6eb0a1a89277c1383617b875be58b7e14aba67008b8bfa78e3ae2c32cc9cb2c1",
+  "worker_fresh_joint_gates": {
+    "full_strict_O2_acceptance_recipes": 384,
+    "O2_failures": 0,
+    "sanitizer_commands": 45,
+    "sanitizer_failures": 0,
+    "focused_O2": 23,
+    "cross_build": 140,
+    "raw_reload_cuts": 70,
+    "checkpoints": 7
+  },
+  "Root_full_gate_rerun": false,
+  "strict_reload_failures_preserved": [
+    "1000:1000",
+    "1600:1600",
+    "1915:0"
+  ],
+  "prototype_only": true,
+  "scope": "E7 canonical metadata borrowing with context-only Surface repair; no accepted promotion"
+}
