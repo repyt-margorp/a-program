@@ -1,0 +1,1 @@
+parsed source status: /tmp/ap-performance-2d747cc-final-20261003/tests/acceptance/function-graph-named-wrong-proof.p --reject matched=1

@@ -1,0 +1,9 @@
+inductive lookup: retained variable image without replacement Context receipt passed
+Acc: open logical relation, indexed function-field IH and dependent elimination passed
+Acc: open logical relation, indexed function-field IH and dependent elimination passed
+indexed Match: dependent path motive, branch transport and reflexive application compute through Solve
+constructor fields: exact telescope binders select distinct injectivity proofs through Solve
+index paths: constructor disjointness/injectivity via type-case action and checked transport passed
+data schemas: dependent fields/indices, fixed parameters, composition and selected boundaries passed
+Match action: selected constructor paths, diagonal prefixes, neutral heads and split budgets passed
+erased data: pointer-labelled Match, saturation, capture, lazy fields and split budgets passed

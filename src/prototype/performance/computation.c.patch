@@ -1,0 +1,92 @@
+diff --git a/computation.c b/computation.c
+--- a/computation.c
++++ b/computation.c
+@@ -457,6 +457,50 @@
+ 	return pg_eval_defer(machine, &pg_fold_work_operation, work);
+ }
+ 
++static const struct pg_closure *head_unary(struct pg_closure head,
++	const struct pg_argument *arguments, const struct pg_object *operation)
++{
++	return head.term->kind == PG_REFERENCE && head.term->as.reference == operation
++		&& arguments && !arguments->next ? &arguments->value : NULL;
++}
++
++static int force_head(struct pg_eval *machine, struct pg_closure head,
++	const struct pg_argument *arguments, const void *state)
++{
++	(void)state;
++	const struct pg_closure *body = head_unary(head, arguments, &pg_thunk_operation);
++	return body ? pg_eval_enter(machine, *body, 1) : 2;
++}
++
++static int fold_head(struct pg_eval *machine, struct pg_closure head,
++	const struct pg_argument *arguments, const void *state)
++{
++	(void)state;
++	const struct pg_closure *value = head_unary(head, arguments, &pg_return_operation);
++	if (!value) return 2;
++	const struct handler_entry *handler = handler_owner(machine->current.term->as.reference);
++	return pg_eval_apply(machine, *pg_eval_argument(machine, 1), *value,
++		(handler ? handler->count : 0) + 2);
++}
++
++static int total_result_head(struct pg_eval *machine, struct pg_closure head,
++	const struct pg_argument *arguments, const void *state)
++{
++	(void)state;
++	const struct pg_closure *value = head_unary(head, arguments, &pg_return_operation);
++	return value ? pg_eval_enter(machine, *value, 1) : 2;
++}
++
++static const struct pg_eval_head_continuation force_head_continuation = {
++	{"computation/force_head/v1", pg_eval_head_marker}, force_head, &force_answer_continuation
++};
++static const struct pg_eval_head_continuation fold_head_continuation = {
++	{"computation/fold_head/v1", pg_eval_head_marker}, fold_head, &fold_answer_continuation
++};
++static const struct pg_eval_head_continuation total_result_head_continuation = {
++	{"computation/total_result_head/v1", pg_eval_head_marker}, total_result_head, &total_result_continuation
++};
++
+ const struct pg_eval_work_operation *pg_computation_work_resolve(const char *name)
+ {
+ 	static const struct pg_eval_work_operation *const entries[] = {&pg_fold_work_operation};
+@@ -468,7 +512,9 @@
+ const struct pg_eval_continuation *pg_computation_continuation_resolve(const char *name)
+ {
+ 	static const struct pg_eval_continuation *const entries[] = {
+-		&force_answer_continuation, &fold_answer_continuation, &total_result_continuation
++		&force_answer_continuation, &fold_answer_continuation, &total_result_continuation,
++		&force_head_continuation.continuation, &fold_head_continuation.continuation,
++		&total_result_head_continuation.continuation
+ 	};
+ 	const struct pg_eval_continuation *found = pg_eval_continuation_find(name, sizeof(entries) / sizeof(*entries), entries);
+ 	if (!found) found = pg_data_continuation_resolve(name);
+@@ -482,7 +528,7 @@
+ 	const struct pg_object *operation = machine->current.term->as.reference;
+ 	if (operation == &pg_total_result_operation) {
+ 		if (!pg_eval_argument(machine, 0)) return 1;
+-		return pg_eval_demand(machine, 0, &total_result_continuation, NULL);
++		return pg_eval_demand(machine, 0, &total_result_head_continuation.continuation, NULL);
+ 	}
+ 	if (operation == &pg_thunk_operation) {
+ 		const struct pg_closure *body = pg_eval_argument(machine, 0);
+@@ -497,7 +543,7 @@
+ 	}
+ 	if (operation == &pg_force_operation) {
+ 		if (!pg_eval_argument(machine, 0)) return 1;
+-		return pg_eval_demand(machine, 0, &force_answer_continuation, NULL);
++		return pg_eval_demand(machine, 0, &force_head_continuation.continuation, NULL);
+ 	}
+ 	const struct handler_entry *handler = handler_owner(operation);
+ 	if (operation == &pg_fold_operation || handler) {
+@@ -507,7 +553,7 @@
+ 		/* Recognize the right unit without evaluating a continuation that M
+ 		 * might never invoke. The returned reference must be this lambda's binder. */
+ 		if (!handler && return_continuation(continuation->term)) return pg_eval_enter(machine, *pg_eval_argument(machine, 0), 2);
+-		return pg_eval_demand(machine, 0, &fold_answer_continuation, NULL);
++		return pg_eval_demand(machine, 0, &fold_head_continuation.continuation, NULL);
+ 	}
+ 	int host = pg_host_dispatch(machine);
+ 	if (host != 1) return host;

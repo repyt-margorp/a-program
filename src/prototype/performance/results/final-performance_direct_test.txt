@@ -1,0 +1,4 @@
+direct case: 17 raw transitions, all cuts agree
+direct case: 16 raw transitions, all cuts agree
+direct case: 10 raw transitions, all cuts agree
+direct case: 8 raw transitions, all cuts agree

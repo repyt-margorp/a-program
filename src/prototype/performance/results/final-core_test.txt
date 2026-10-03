@@ -1,0 +1,37 @@
+arena: aligned, zeroed, nonoverlapping byte storage across block growth
+continuation owners: versioned identities resolve only existing algorithms
+classifier: 40000 nested constructors, direct formation reuse, no proof-history traversal
+aligned index: 638 occupied buckets, longest chain 6
+typing inputs: persistent contexts and distinct occurrences over shared Core passed
+evidence: checked contexts, stratified universes and occurrence-based variable derivations passed
+evidence ownership: shared Core and reused storage do not transfer acceptance between stores
+unary inversions: borrowed origins, exact alternatives, reconstruction and index-free lifetime passed
+returned value rebase: checked computation transport progresses and rejects capture
+function graph: retained Pi/body, alternate admission, selected Universe and specialization without Lambda rebuilding
+context alpha: raw annotations require fresh field evidence; nominal/free bindings remain fixed
+typed scope admission: unavailable context is not rejection; classifier checks remain exact
+dependent application: concrete and open type arguments substitute without executing computations
+typed substitution: dependent declarations, simultaneous images and shared premise DAG passed
+family instances: chosen formation survives equal endpoints and iterated context action
+typed restriction: dependent context faces preserve classifiers and compose without new Identity axioms
+computation execution: force/thunk, fold, captured environments, neutral demands and split budgets passed
+requests: inert pointer labels, zero-clause forwarding, captured continuations and split resume passed
+fold clauses: simultaneous swaps, deep resumption, unhandled forwarding and exact layout reuse passed
+fold association: neutral inputs, captured continuations, operation order and extraction boundary passed
+demand budget: shared materialization, capture, split fuel, prefix suspension and callback delivery passed
+auxiliary demand: unchanged caller arguments, pending readback and every split budget passed
+deferred pure work: exact fuel, split resume, pending readback, cancellation and failure cleanup passed
+classifiers: distinct universe levels and Pi spines reuse Core without typed Lambda tags
+effects: explicit closed sets, union laws, unknown is not empty, and pure-only views passed
+totality: distinct contracts, RETURN, directed weakening, APP/FORCE and Fold bounds passed
+typed effects: signatures, multi-clause handlers, deep resumption, forwarding and effect bounds passed
+restriction: term faces compose and commute with beta without capturing bound variables
+conversion: explicit beta comparison, binder scope, shared DAG and pending divergence passed
+NF congruence: shared reconstruction rejects mismatched premise endpoints, kinds and policies
+normal forms: shared pure work, parent contraction, policies, split fuel and suspended divergence passed
+beta work: shared pending jobs, stable answers, split fuel and environment isolation passed
+substitution: simultaneous images, capture avoidance, sharing and no reduction passed
+shared substitution: exact inputs, capture, pending reuse, compact results and independent owners passed
+evaluation: lexical capture, shared closures, split budgets and divergence passed
+dimension: 38 maps, 10422 composable triples; 3D faces/permutations passed
+graph: 228194 terms; pointer-key interning and separate alpha comparison passed

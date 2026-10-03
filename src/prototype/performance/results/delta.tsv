@@ -1,0 +1,49 @@
+category	file	added	deleted	qualification
+implementation	src/eval.c	27	1	applied patch; accepted source untouched
+implementation	src/eval.h	13	0	applied patch; accepted source untouched
+implementation	src/iadt.c	43	7	applied patch; accepted source untouched
+implementation	src/computation.c	50	4	applied patch; accepted source untouched
+test migration	tests/core.c	25	5	applied disposable adapter; all assertions preserved
+tooling	src/prototype/performance/.gitignore	1	0	new prototype file
+documentation	src/prototype/performance/README.md	165	0	new prototype file
+tooling	src/prototype/performance/build.mk	10	0	new prototype file
+tooling	src/prototype/performance/checks.sh	29	0	new prototype file
+patch payload	src/prototype/performance/computation.c.patch	92	0	new prototype file
+patch payload	src/prototype/performance/core_adapter.patch	70	0	new prototype file
+tests	src/prototype/performance/direct_test.c	74	0	new prototype file
+patch payload	src/prototype/performance/eval.c.patch	48	0	new prototype file
+patch payload	src/prototype/performance/eval.h.patch	23	0	new prototype file
+tooling	src/prototype/performance/fetch_trees.py	35	0	new prototype file
+tests	src/prototype/performance/head_test.c	138	0	new prototype file
+patch payload	src/prototype/performance/iadt.c.patch	22	0	new prototype file
+patch payload	src/prototype/performance/iadt_head.c.patch	62	0	new prototype file
+tooling	src/prototype/performance/overlay.sh	38	0	new prototype file
+evidence	src/prototype/performance/results/base-allocation.err	2	0	new prototype file
+evidence	src/prototype/performance/results/base-allocation.tsv	2	0	new prototype file
+evidence	src/prototype/performance/results/base-gprof-calls.tsv	667	0	new prototype file
+evidence	src/prototype/performance/results/core-observer-failure.txt	1	0	new prototype file
+evidence	src/prototype/performance/results/core-original-failure.txt	1	0	new prototype file
+evidence	src/prototype/performance/results/epoch.json	541	0	new prototype file
+evidence	src/prototype/performance/results/final-artifact_normalization_checkpoint_test.txt	7	0	new prototype file
+evidence	src/prototype/performance/results/final-artifact_source_checkpoint_test.txt	5	0	new prototype file
+evidence	src/prototype/performance/results/final-captured-main.txt	2	0	new prototype file
+evidence	src/prototype/performance/results/final-captured-other.txt	2	0	new prototype file
+evidence	src/prototype/performance/results/final-core_test.txt	37	0	new prototype file
+evidence	src/prototype/performance/results/final-eval_io.txt	1	0	new prototype file
+evidence	src/prototype/performance/results/final-function-graph-captured-match-wrong.txt	1	0	new prototype file
+evidence	src/prototype/performance/results/final-function-graph-named-wrong-proof.txt	1	0	new prototype file
+evidence	src/prototype/performance/results/final-head-reload.txt	9	0	new prototype file
+evidence	src/prototype/performance/results/final-iadt_test.txt	9	0	new prototype file
+evidence	src/prototype/performance/results/final-performance_direct_test.txt	4	0	new prototype file
+evidence	src/prototype/performance/results/final-performance_head_test.txt	1	0	new prototype file
+evidence	src/prototype/performance/results/head-allocation.err	2	0	new prototype file
+evidence	src/prototype/performance/results/head-allocation.tsv	2	0	new prototype file
+evidence	src/prototype/performance/results/head-gprof-calls.tsv	665	0	new prototype file
+evidence	src/prototype/performance/results/normalization.txt	7	0	new prototype file
+evidence	src/prototype/performance/results/profile-summary.tsv	19	0	new prototype file
+evidence	src/prototype/performance/results/sanitized-direct.txt	4	0	new prototype file
+evidence	src/prototype/performance/results/sanitized-head.txt	1	0	new prototype file
+evidence	src/prototype/performance/results/source-checkpoint.txt	5	0	new prototype file
+evidence	src/prototype/performance/results/transitions.tsv	7	0	new prototype file
+tooling	src/prototype/performance/trees.py	68	0	new prototype file
+documentation	doc/2026-10-03-PERFORMANCE-GOAL.md	109	7	active SOAP update

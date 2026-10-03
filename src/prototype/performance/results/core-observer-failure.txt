@@ -1,0 +1,1 @@
+core_test: /tmp/ap-performance-2d747cc-head-20261003/tests/core.c:4374: demand_budget_test: Assertion `pg_eval_advance(&split, 100) == PG_EVAL_PENDING' failed.

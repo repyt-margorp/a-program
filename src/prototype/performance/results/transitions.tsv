@@ -1,0 +1,7 @@
+variant	workload	exit	steps	a_bytes	qualification
+accepted	trees_2	0	1634155	n/a	accepted implementation; no overlay
+base	trees_2	0	1442531	109937	current solver_inputs
+direct	trees_2	0	1354087	109937	direct fields only
+head	trees_2	0	1170277	109937	combined captured heads and direct fields
+head	false_bool	1	54737	n/a	one pair with false first Boolean assertion
+head	false_tree	1	41789	n/a	one pair with false first tree assertion
