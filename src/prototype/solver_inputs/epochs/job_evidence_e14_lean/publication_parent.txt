@@ -1,0 +1,1 @@
+Exact frozen E13 canonical snapshot: manifest88b65bbe75c47d7277ce7588bb9f5fefe06f5a5188b62dd66d40c514bc9ce560; transportd688bf4e242ebc02afb7fe1d4fe47d8a5bfc66f6362fa66f6b95820a67a9313d on corrected-E12 task cb959eb6ecb30c149b464529f3069833b6fd00a5. E10/current Main/E15 excluded. Root supplies exact E13 task commit when published; no shared Git mutation.

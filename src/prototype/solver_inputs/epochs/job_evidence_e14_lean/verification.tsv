@@ -1,0 +1,20 @@
+group	gate_or_sample	variant	exit	report	report_sha256
+focused	build		0	/tmp/job-evidence-e14-focused-build.log	6ff3ea64774771236e623f563e7ef6422654d505fb14b0b285b22b5ed0774b06
+focused	synthesis		0	/tmp/job-evidence-e14-focused-synthesis.log	c500145c76c988830cfbdc1160ad934e4662123bd2d058c1f2e5fd554499ff8f
+asan	build		0	/tmp/job-evidence-e14-asan-build.log	17b367b3017d790ff5fba64b081ec7a71314806d7ba72afd2e2d1943e654e1e2
+asan	synthesis		0	/tmp/job-evidence-e14-asan-synthesis.log	c500145c76c988830cfbdc1160ad934e4662123bd2d058c1f2e5fd554499ff8f
+broad	broad		0	/tmp/job-evidence-e14-broad.log	b355788ab9e289ae7c9597bfa066c51299a272c352ae316a01319d10a82f73bd
+supplemental	baseline-C-eight-scripts		0	/tmp/job-evidence-e14-c.log	3139ecb8d1d29db9207393b43896bd9b37e3f408db9ba8226e95a1489b50a753
+supplemental	strict-public-original-three		1	/tmp/job-evidence-e14-partitions.log	07b997fd496e73537979ce96e7273ed9b5e3c3d6d8d4d5b72f0ca159ea08206c
+census	census-build	E13	0	/tmp/job-evidence-e14-E13-census-build.log	e0a587ba2d15703e11b408a31e8df06049871cd916e6d2cc0ca4e9d3cbc9cfd8
+census	list	E13	0		7c22336780116de7fc61e207b4df7e92da9900f39fadc651c375ae8a97a6d700
+census	effect	E13	0		416681e701feef292adcc901df4a4a43d98b9046c49aeb96e93b2fa0596cb339
+census	captured	E13	0		da8f7c0d79a7741a57a02cfb3fe66a15089c056f8c1e06931ca475916a79658e
+census	quick	E13	0		ff1bb558ea86b2c02aa240421f405eda9873cae139a2f8eee2a59da1e95d9d07
+census	handler	E13	0		8a80d2f54457354b128effdb234a4ba2b72ab0a10637fc7468002a58911dd6d2
+census	census-build	E14	0	/tmp/job-evidence-e14-E14-census-build.log	4546944722a126d4d6717ca3519e0ca5a0675a2391c7f3dad1f2188ae0fa70e7
+census	list	E14	0		09415aa2a735ec7aa8caec257c1ab9792aabb16925c10ef70e678c865356c28d
+census	effect	E14	0		72e0f8e9f86cd28b121fc72ae8564ba30d81c3843e9311610ec7fa996ffc30b7
+census	captured	E14	0		76b0286b9f1fc79953c6882e34cf95d37fc0e8d4250abf677f7f449c4e4df2c2
+census	quick	E14	0		7e2e77a5910f4c94ef94b85782765126338066d6a74d6cd540dc54c556a9881c
+census	handler	E14	0		6aad30c07814eff6205ff8617869e379e20ee078a41a5b7674e6a6e409ce9da6

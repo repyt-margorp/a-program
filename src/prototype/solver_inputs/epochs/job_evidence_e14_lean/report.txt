@@ -1,0 +1,42 @@
+E14: sequence borrows normalized input from its existing FOLD owner.
+2026-10-04 JST; prototype only; full SE1-SE5 Goal remains active.
+Exact isolated parent: frozen E13 manifest
+88b65bbe75c47d7277ce7588bb9f5fefe06f5a5188b62dd66d40c514bc9ce560,
+source156871927b0aca0f02da86a2680c294a89f7caed57b940adffdf3786ee83bae545e,
+transportd688bf4e242ebc02afb7fe1d4fe47d8a5bfc66f6362fa66f6b95820a67a9313d
+on corrected-E12 task cb959eb6ecb30c149b464529f3069833b6fd00a5.
+E13 task publication is separately owned by Root; this incremental handoff applies
+to that exact E13 canonical snapshot. E10/current Main and live E15 are excluded.
+
+Delete sequence_work.normalized, a checked/pending pair already stored immutably
+as FOLD input0. Creation uses a local pair; subsequent classifier, result/context,
+wait and effectful returned-function paths borrow the existing rule input.
+Real fold/rule owners, comparison, scheduling stage, scope/effects, source identity
+and charged checking remain. No index, authority, graph or replay policy is added.
+Permanent regression checks checked/pending identity, zero-fuel inertness and the
+same ordinary checked FOLD receipt after sequence completion. Borrowing does not
+use caller scratch storage or discard indispensable continuation state.
+
+Local focused O2/affected ASan+UBSan/leaks/stack-after-return0. Full unskipped
+serial-j1 O2 acceptance, artifact semantic and seven checkpoints0; all156 source
+and actual469 overlay input hashes exact. Baseline eight C scripts0; these are
+local old-lane controls, not Root current-producer C14 qualification.
+Actual strict public gate remains exit1 with original1000+1000,1600+1600 and
+completed1921+0 failures unwaived. All52 raw images and full verdict/fuel TSV are
+byte-exact E13. Loading stays inert/untrusted; no automatic trust or DONE restore.
+
+Five paired workloads all DONE; every nonlayout census field equal at all four
+fuel cuts. Genuine imported quick_locally_sorted ordinary-result theorem remains
+766477 steps,114388 typed occurrences/94974 Evidence, with final Job bytes
+6726784->6723840 (-2944). Final Job deletions: List112, effect1008, captured64,
+QuickSort2944, handler112 bytes. No extra dispatch reduction is observed.
+Existing external cumulative allocation counters are reported independently;
+they exclude internal graph allocation and do not measure live/peak/RSS/time.
+Their trace differences are not extrapolated from a per-call layout formula.
+
+Applied implementation/test delta, exact canonical projection, source/input pins,
+commands, report/binary hashes and concise verdicts accompany this lean set.
+Current-producer joint qualification and matched peak/time remain separate.
+Root's proposed Fold-only cost window is a scheduling request, not worker launch
+permission. No timing claim, accepted promotion, shared Git operation or mutation
+of E13/original unsafe E11/E12 freezes. Root publishes task/Main snapshots.

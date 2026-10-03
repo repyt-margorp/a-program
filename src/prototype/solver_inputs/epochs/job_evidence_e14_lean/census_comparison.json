@@ -1,0 +1,103 @@
+{
+  "all_sources156_before_after_exact": true,
+  "all_nonlayout_fields_equal_at_all_cuts": true,
+  "ordinary_imported_theorem_asserted": true,
+  "cost_scope": "Final Job layout and independent existing external cumulative allocation counters; not peak/live/RSS/time. No per-call universal formula.",
+  "samples": [
+    {
+      "sample": "list",
+      "status": "DONE",
+      "steps": 1921,
+      "typed": 429,
+      "evidence": 555,
+      "parent_job_bytes": 110744,
+      "candidate_job_bytes": 110632,
+      "deleted_job_bytes": 112,
+      "parent_external_cumulative": {
+        "wrapped_arena_calls": 4360,
+        "wrapped_aligned_bytes": 441856
+      },
+      "candidate_external_cumulative": {
+        "wrapped_arena_calls": 4360,
+        "wrapped_aligned_bytes": 441744
+      },
+      "all_nonlayout_fields_equal_at_all_cuts": true
+    },
+    {
+      "sample": "effect",
+      "status": "DONE",
+      "steps": 13142,
+      "typed": 2680,
+      "evidence": 3414,
+      "parent_job_bytes": 645688,
+      "candidate_job_bytes": 644680,
+      "deleted_job_bytes": 1008,
+      "parent_external_cumulative": {
+        "wrapped_arena_calls": 27622,
+        "wrapped_aligned_bytes": 2784224
+      },
+      "candidate_external_cumulative": {
+        "wrapped_arena_calls": 27622,
+        "wrapped_aligned_bytes": 2783216
+      },
+      "all_nonlayout_fields_equal_at_all_cuts": true
+    },
+    {
+      "sample": "captured",
+      "status": "DONE",
+      "steps": 2307,
+      "typed": 632,
+      "evidence": 797,
+      "parent_job_bytes": 92640,
+      "candidate_job_bytes": 92576,
+      "deleted_job_bytes": 64,
+      "parent_external_cumulative": {
+        "wrapped_arena_calls": 7557,
+        "wrapped_aligned_bytes": 736976
+      },
+      "candidate_external_cumulative": {
+        "wrapped_arena_calls": 7558,
+        "wrapped_aligned_bytes": 736960
+      },
+      "all_nonlayout_fields_equal_at_all_cuts": true
+    },
+    {
+      "sample": "quick",
+      "status": "DONE",
+      "steps": 766477,
+      "typed": 114388,
+      "evidence": 94974,
+      "parent_job_bytes": 6726784,
+      "candidate_job_bytes": 6723840,
+      "deleted_job_bytes": 2944,
+      "parent_external_cumulative": {
+        "wrapped_arena_calls": 2888424,
+        "wrapped_aligned_bytes": 229306320
+      },
+      "candidate_external_cumulative": {
+        "wrapped_arena_calls": 2887247,
+        "wrapped_aligned_bytes": 229246880
+      },
+      "all_nonlayout_fields_equal_at_all_cuts": true
+    },
+    {
+      "sample": "handler",
+      "status": "DONE",
+      "steps": 2470,
+      "typed": 425,
+      "evidence": 530,
+      "parent_job_bytes": 124880,
+      "candidate_job_bytes": 124768,
+      "deleted_job_bytes": 112,
+      "parent_external_cumulative": {
+        "wrapped_arena_calls": 4649,
+        "wrapped_aligned_bytes": 469008
+      },
+      "candidate_external_cumulative": {
+        "wrapped_arena_calls": 4649,
+        "wrapped_aligned_bytes": 468896
+      },
+      "all_nonlayout_fields_equal_at_all_cuts": true
+    }
+  ]
+}
