@@ -1,0 +1,41 @@
+{
+  "terminal": true,
+  "parent_source128": "81c3ad27dfd01aef14ad8e977d1b783cc3636368b6e5afcab0840d07d055e541",
+  "candidate_source128": "ff851fe91786ca02c43748c2431065cdde85421f14ab4980743ba7bb40ab5b27",
+  "only_runtime_change": [
+    "src/computation.c"
+  ],
+  "patch_sha256": "e22db7be7bb7bcbff456053606d7dc32b5e0d43d93dcef5af8dd3d3f31b9738e",
+  "new_error_boundary_test_sha256": "444124753506b0f4f14fa006813f436c83fbb9f415ea57026d0b7fe1bdc52e80",
+  "focused_records": 684,
+  "focused_failed": 0,
+  "raw_steps": [
+    11,
+    15,
+    12,
+    13,
+    11
+  ],
+  "all_cuts": 67,
+  "fresh_O2_cross_reads": 268,
+  "fresh_SAN_cross_reads": 268,
+  "targeted_records": 22,
+  "targeted_failed": 0,
+  "head_callback_cleanup_O2_SAN": true,
+  "SourceIO_Identity_raw_codec_TotalResult_Core_normalization_O2_SAN": true,
+  "public_partition_gate_exit": 1,
+  "only_original_strict3": true,
+  "public52_images_equal": true,
+  "full_verdict_fuel_TSV_equal": true,
+  "other_six_owner_checkpoints": "Unchanged source/schema; inherited parent qualification, no fresh claim.",
+  "new_full_acceptance_claim": false,
+  "new_actual_speed_or_RSS_claim": false,
+  "new_owner_index_ABI_schema_frontier_overhead": 0,
+  "plain_empty_caller_prefix_link_advances": {
+    "parent": 5,
+    "candidate": 2,
+    "source_proof_not_timing": true
+  },
+  "frozen_MEM3_cost_request_unchanged": true,
+  "full_Goal_active": true
+}

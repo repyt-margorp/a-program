@@ -1,0 +1,9 @@
+{
+  "root": "/tmp/ap-performance-mem4-fold-cursor-current-e12-20261003",
+  "manifest": "/tmp/ap-performance-mem4-fold-cursor-current-e12-20261003/verification.sha256",
+  "records": 1125,
+  "manifest_sha256": "f12c573323109c496de1b1f399eb958672b5ce46f1d32012da04700976b29f1d",
+  "summary_sha256": "2e1e433b1696afe40c6958ad7db88800bb49e3471d29a254749cd51042c9e42d",
+  "compiled_outputs_excluded": true,
+  "task_parent": "86a069946ae450458003b0b1bfb8e238876df71a"
+}
