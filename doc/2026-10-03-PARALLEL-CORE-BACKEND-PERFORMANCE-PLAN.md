@@ -143,9 +143,19 @@ pins every owner/issue boundary and original failures. No resume/new hold/grant/
 promotion; Root Goal service still reports blocked. Existing timer unchanged,
 next2026-10-04 01:44:22 UTC.
 
+2026-10-03 20:05 UTC, Root recovery result supersedes passive-stall labels: C/Job terminal
+capacity retries ended at15:03/15:18 UTC and persisted blocked with zero later
+sampling. No exclusive/test/profile workload was active at preflight. Exactly
+one original-TUI `/goal resume` each19:58:11 restores the same thread/Goal/PID
+and gpt-6.1-sol xhigh; fresh tool/code evidence shows C cross-component callback
+implementation and Job E14 supplement/E15 qualification. This is operational
+recovery within existing scope, not new human approval or permanent capacity
+guarantee. [Recovery evidence](../src/prototype/coordination/reviews/owner-recovery-20261003.json).
+Completed owners remain stopped, Root service Goal metadata unchanged blocked.
+
 | Owner / issue scope | Delivered and verified | Not yet delivered / next boundary |
 | --- | --- | --- |
-| Job/Evidence; SE1-SE5 / AP0, #51/#47 | E1-E4/E6-E12 corrected prototypes integrated. E11 taskd22be9f/Main ea39262 exact25; E12 taskcb959eb/Main684d47c exact29 paths, 28 task-byte-exact plus combined Core test patch. Root current source12842639815/12026914, all2013/2064 pins and fresh lifetime O2/SAN controls pass; full Core O2/SAN pass | Fresh public52/full TSV equal qualified E12; original strict3 remain. E13 exact28 frozen READY, ownership review/publication pending. E14 local broad0; E15 Graph input borrowing proposed/unbuilt. Original unsafe E11/E12 remain rejected; no full ownership/layout completion |
+| Job/Evidence; SE1-SE5 / AP0, #51/#47 | E1-E4/E6-E12 corrected prototypes integrated. E11 taskd22be9f/Main ea39262 exact25; E12 taskcb959eb/Main684d47c exact29 paths, 28 task-byte-exact plus combined Core test patch. Root current source12842639815/12026914, all2013/2064 pins and fresh lifetime O2/SAN controls pass; full Core O2/SAN pass | Fresh public52/full TSV equal qualified E12; original strict3 remain. E13 exact28 frozen READY, ownership review/publication pending. E14 local broad0; resumed original Job now runs serial supplement and E15 focused qualification, no terminal pass claimed. Original unsafe E11/E12 remain rejected; no full ownership/layout completion |
 | C backend; #61, historical #44/#49 | C1-C14 bounded prototypes integrated. C14 taske9d74f7/Main6c36dcb exact23 paths, 22 frozen bytes plus reconciled Goal doc. Root current-E12 callback O2/client-source SAN39 each, four products400 Core comparisons each, shared58 each, link and matched IO19 pass | Four corrected explicit-import source consumers retain output/fuel; historical mismatched image failure preserved and reproduced before C14. Caller lifetime/purity contracts, native Acc/QuickSort and higher exports remain open |
 | Performance; #56/#51/#52 | V3 source18/cost111, MEM2 source9/cost88 and MEM3 Fold source12 verified/published. Fold task86a0699/Main9d5cda2 all1257 pins; fresh parent/candidate O2/SAN67-cut/cleanup controls0. Prior V3/MEM2 measured tree gains and mixed timing retained | Full Goal active; Fold actual cost unmeasured,36-job/289-pin proposal reviewed without grant. Visible-root cap/driver1 and LocalSorted attribution limits preserved. Rejected V1/V2/capture elision and all old failures remain; no default/accepted replacement |
 | Surface; #57 | Verified prototype integrated, completed owner stopped | Accepted policy/promotion and selector diagnostics unresolved; no owner restart |
@@ -178,7 +188,7 @@ reporting subsystem. Its audit cover is pinned to `37de1e8`, not current Main.
 
 | Order / owner | Issue or PR | Next deliverable and dependency |
 | --- | --- | --- |
-| 0 / desk -> Merge | Workflow | Merge reviews evidence; Performance runs, C/Job capacity-stalled. Test-suite/issue-audit/static/Sort bounded Goals achieved and stopped; protected local bytes preserved. Scheduled six-hour report delivered; Root resumes coordination after audit handoff |
+| 0 / desk -> Merge | Workflow | Merge reviews evidence; Performance runs, original C/Job resumed once in place with actual tool/code progress. Test-suite/issue-audit/static/Sort bounded Goals achieved and stopped; protected local bytes preserved. Scheduled six-hour report delivered; Root resumes coordination after audit handoff |
 | 1 / Job, Root reviews independently | SE/AP, #51 | Corrected E11/E12 Main integration and current source qualification complete, detailed integration receipt linked below. Review E13 frozen header deletion; E15 Graph consumer remains Job-owned/unbuilt. Preserve strict3 and original unsafe failures; no pointer-layout completion claim |
 | 1 / performance + Job | #56 / #51 | V3/MEM2 and Fold exact12 task86a0699/Main9d5cda2 delivered with fresh Root lifetime/persistence controls. Preserve measured-result limits, strict3 and rejected candidates. Fold36-job/289-pin cost proposal reviewed, no grant; existing Performance owner continues allocation-site attribution. Job header/Graph work remains separate |
 | Complete bounded / test-suite; Root publishes | #59 / PR #60 | Verified pilot removes22 duplicate calls with all distinct outcomes preserved; Root raw/assembly review complete. Exact7 taskbc16df9/Main36a27be prototype integrated; broader inventory/cost/accepted adoption remain open |
@@ -480,6 +490,23 @@ public resume failures are in the
 Accepted `src/evidence.*`, `src/iadt.*` and their tests retain unrelated edits.
 
 ### Assessment
+
+2026-10-03 20:05 UTC, Root recovery result supersedes passive-stall labels: C/Job terminal
+capacity retries ended at15:03/15:18 UTC and persisted blocked with zero later
+sampling. No exclusive/test/profile workload was active at preflight. Exactly
+one original-TUI `/goal resume` each19:58:11 restores the same thread/Goal/PID
+and gpt-6.1-sol xhigh; fresh tool/code evidence shows C cross-component callback
+implementation and Job E14 supplement/E15 qualification. This is operational
+recovery within existing scope, not new human approval or permanent capacity
+guarantee. [Recovery evidence](../src/prototype/coordination/reviews/owner-recovery-20261003.json).
+Completed owners remain stopped, Root service Goal metadata unchanged blocked.
+
+2026-10-03 19:55 UTC, desk operational recovery delegation (not new human authorization):
+inspect whether the original C/Job tmux owners retry capacity automatically or
+need an explicit same-session/same-model retry. Assess one bounded retry only
+when no exclusive workload is active; do not load/fork duplicate owners, change
+models or restart completed workers. Keep E13 review and Fold scheduling on the
+existing queue. Earlier no-resume status reports remain historical.
 
 2026-10-03 19:50 UTC, Root scheduled review: retain the current single queue. C/Job
 capacity stalls do not block Root review of frozen E13. Performance continues

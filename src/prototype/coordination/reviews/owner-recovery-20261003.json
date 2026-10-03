@@ -1,0 +1,133 @@
+{
+  "UTC": "2026-10-03T20:02:39.563647+00:00",
+  "Main": "757e77a56f313521caff3d6770b9c2cdce32277b",
+  "delegation": "Desk operational recovery check under existing supervision scope; not new human authorization.",
+  "skill": "OpenAI Docs",
+  "official_Goal_controls": "https://developers.openai.com/cookbook/examples/codex/using_goals_in_codex",
+  "official_docs_limit": "Docs establish active-idle continuation and /goal resume control. Exact terminal-capacity behavior is determined from installed CLI0.160.0 and daemon0.159.2 state/logs, not inferred from generic HTTP retry guidance.",
+  "preflight": {
+    "UTC": "2026-10-03T19:57:02.234696+00:00",
+    "owners": {
+      "c-backend": [
+        {
+          "thread": {
+            "id": "01a0ff7b-95e6-77b3-b8b3-918d202ea4bd",
+            "updated_at": 1791039800,
+            "model": "gpt-6.1-sol",
+            "reasoning_effort": "xhigh",
+            "rollout_path": "/home/repyt/.codex/sessions/2026/10/03/rollout-2026-10-03T10-58-04-01a0ff7b-95e6-77b3-b8b3-918d202ea4bd.jsonl"
+          },
+          "Goal": {
+            "thread_id": "01a0ff7b-95e6-77b3-b8b3-918d202ea4bd",
+            "goal_id": "43fe425c-2ad5-4a47-8ca5-45d2e7f86c52",
+            "status": "blocked",
+            "token_budget": null,
+            "tokens_used": 5194607,
+            "time_used_seconds": 47079,
+            "created_at_ms": 1790992721063,
+            "updated_at_ms": 1791039800460,
+            "updated_UTC": "2026-10-03T15:03:20.460000+00:00"
+          },
+          "queued_inputs": 0,
+          "continuation_deferred": false,
+          "last_sampling_UTC": "2026-10-03T15:01:17+00:00",
+          "sampling_requests_after_blocked": 0,
+          "terminal_capacity_error": {
+            "UTC": "2026-10-03T15:03:20+00:00",
+            "message": "Turn error: Selected model is at capacity. Please try a different model."
+          }
+        }
+      ],
+      "job-evidence": [
+        {
+          "thread": {
+            "id": "01a0ffec-5e25-7cc2-9b79-cb43e04b8221",
+            "updated_at": 1791040737,
+            "model": "gpt-6.1-sol",
+            "reasoning_effort": "xhigh",
+            "rollout_path": "/home/repyt/.codex/sessions/2026/10/03/rollout-2026-10-03T13-01-15-01a0ffec-5e25-7cc2-9b79-cb43e04b8221.jsonl"
+          },
+          "Goal": {
+            "thread_id": "01a0ffec-5e25-7cc2-9b79-cb43e04b8221",
+            "goal_id": "f9aa6d54-7d9a-4e11-aaa1-59bf7652428c",
+            "status": "blocked",
+            "token_budget": null,
+            "tokens_used": 4352078,
+            "time_used_seconds": 40610,
+            "created_at_ms": 1791000126512,
+            "updated_at_ms": 1791040737270,
+            "updated_UTC": "2026-10-03T15:18:57.270000+00:00"
+          },
+          "queued_inputs": 0,
+          "continuation_deferred": false,
+          "last_sampling_UTC": "2026-10-03T15:18:55+00:00",
+          "sampling_requests_after_blocked": 0,
+          "terminal_capacity_error": {
+            "UTC": "2026-10-03T15:18:57+00:00",
+            "message": "Turn error: Selected model is at capacity. Please try a different model."
+          }
+        }
+      ]
+    },
+    "exclusive_workload_preflight": {
+      "UTC": "2026-10-03T19:58:11.127933+00:00",
+      "active_compiler_test_profile_collect_workloads": [],
+      "old_grants_not_reused": true,
+      "current_Fold_cost_proposal_ungranted": true
+    },
+    "assessment": "Finite in-turn capacity retries ended terminally; Goals persisted blocked with no later sampling/queue/deferral. Passive waiting is not retrying these owners. One original-TUI /goal resume per owner preserves thread/model/Goal; no duplicate load/fork."
+  },
+  "action": "Exactly one literal /goal resume and separate Enter in each original tmux owner at2026-10-03T19:58:11Z. No thread load/fork/new owner/model change, no retry loop or direct database writes.",
+  "postflight": {
+    "c-backend": {
+      "thread_id": "01a0ff7b-95e6-77b3-b8b3-918d202ea4bd",
+      "same_goal": {
+        "thread_id": "01a0ff7b-95e6-77b3-b8b3-918d202ea4bd",
+        "goal_id": "43fe425c-2ad5-4a47-8ca5-45d2e7f86c52",
+        "status": "active",
+        "tokens_used": 5309458,
+        "time_used_seconds": 47180,
+        "updated_at_ms": 1791057592364
+      },
+      "same_pane": "%0",
+      "same_pane_pid": 1219312,
+      "actual_tool_dispatch_records_since_resume": 3,
+      "new_sampling_first_last_UTC": [
+        "2026-10-03T19:58:11+00:00",
+        "2026-10-03T20:00:58+00:00"
+      ],
+      "new_terminal_capacity_errors": 0,
+      "actual_progress": "Prototype callback_modules client/provider work begun."
+    },
+    "job-evidence": {
+      "thread_id": "01a0ffec-5e25-7cc2-9b79-cb43e04b8221",
+      "same_goal": {
+        "thread_id": "01a0ffec-5e25-7cc2-9b79-cb43e04b8221",
+        "goal_id": "f9aa6d54-7d9a-4e11-aaa1-59bf7652428c",
+        "status": "active",
+        "tokens_used": 4559155,
+        "time_used_seconds": 40768,
+        "updated_at_ms": 1791057649373
+      },
+      "same_pane": "%4",
+      "same_pane_pid": 1335972,
+      "actual_tool_dispatch_records_since_resume": 2,
+      "new_sampling_first_last_UTC": [
+        "2026-10-03T19:58:11+00:00",
+        "2026-10-03T20:02:05+00:00"
+      ],
+      "new_terminal_capacity_errors": 0,
+      "actual_progress": "E15 regression enum corrected against existing judgements, preserved initial unbuilt trial; E14 serial supplement/E15 focused qualification resumes."
+    }
+  },
+  "recovery_conclusion": "Passive waiting after terminal blocked state did not retry. Same-session/same-model bounded resume restored actual implementation/tool progress for both owners. Subsequent capacity recurrence remains possible; do not claim Goal completion or permanent recovery.",
+  "Root_Goal_metadata_unchanged_blocked": true,
+  "completed_owners_untouched": true,
+  "receipt_delivery": "C14/E11/E12 current-Main operational receipts attempted via original panes; consumption not assumed, Job displayed waiting menu at attempt.",
+  "next": "Independent E13 fresh ownership/current-Main review; Fold cost window planned only after safe-boundary owner acknowledgements.",
+  "evidence_files": {
+    "/tmp/a-program-merge-owner-recovery-preflight-20261003.json": "0b91d988c62fcbf49316d8b0650787a266e7632709b47d42cc5ca41fba513fb3",
+    "/tmp/a-program-merge-owner-recovery-progress-20261003.json": "86c8652bd63ceb3081aa1ef6c61e9d461f0bd1a4bdcfcbda09eb8454ed1b5b9e",
+    "/tmp/a-program-merge-owner-recovery-result-20261003.json": "489300485b0da4eba364f147fb48cf079980b6f21cab8332f7226c49541d55e5"
+  }
+}
