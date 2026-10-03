@@ -126,11 +126,31 @@
     "decision": "Preserve rejected immutable epochs; runnable accepted/default producer remains separate from MEM1."
   },
   "v3": {
-    "status": "FROZEN_READY_ROOT_REVIEW_PENDING",
+    "status": "PROTOTYPE_PUBLISHED_BOUNDED_MEASURED_GAIN",
     "notice_sha256": "700fcaaaba2e340127afe707d5d3b7da4501f4545b29ad056756eea25d96eed1",
     "manifest_sha256": "e2f75d49a624b0415808c5b5ad484e4c58551054a8ec217d88ee75f4cd630a14",
     "decision": "Remove materialized/fallback retirement; recycle only stateless captured-head frames after existing post-callback parent cleanup.",
-    "fresh_correctness_capacity_and_actual_cost": "pending",
+    "fresh_Root_controls": "/tmp/a-program-merge-mem1-v3-controls-20261003/Root-results.json",
+    "fresh_Root_controls_sha256": "6a09e5a5633a02064cb82d2ebf53fe1355c6a1342604df07ff4f9804f0d50d33",
+    "fresh_Root_source128_and_frozen18_exact": true,
+    "fresh_Root_O2_SAN_builds_and_three_callback_units_each_exit0": true,
+    "initial_Root_missing_Makefile_setup_failure_preserved": true,
+    "all1944_original_v3_evidence_hashes_verified": true,
+    "own_v3_capacity_arithmetic_recomputed": true,
+    "current_E12_candidate_source128": "0deb36a72542b9f56eb986314c89bd459802896ca32268857a4b875bfcfe2f48",
+    "current_pair_all1816_candidate_and2064_baseline_hashes_verified": true,
+    "current_pair_frozen_v3_patch_reconstructs_exact_eval_c_h_changes": true,
+    "cost_configuration_sha256": "a3335c5ec6e3b9d8274ce96487d595a434166cd001db58c1f25ee8e91488d154",
+    "all280_cost_pins_and36_jobs_verified": true,
+    "exclusive_grant": "MEM1V3-E12-20261003T154600Z-600",
+    "exclusive_hard_deadline_UTC": "2026-10-03T15:56:00Z",
+    "task": "c86172885671d1046c67b4d50c2ac1d9d6fe1b64",
+    "prototype_Main_integration": "cc69f525df0ee3429b10cf60283894aed2018f88",
+    "all18_Main_files_exact": true,
+    "current_E12_matched_cost_review": "mem1-v3-cost-root-review.json",
+    "actual_peak_RSS_and_speed": "Root verified all36 complete/uncensored samples: tree400 median wall5.34021075->4.925981237s, peakRSS1891928->1001764KiB, unchanged183507626 steps. Bounded workload gain; LocalSorted RSS+492KiB, smallList startup effects retained.",
+    "exclusive_slot_terminal_and_released": true,
+    "runnable_default_accepted_replacement": false,
     "no_callback_ban_or_new_authority": true
   }
 }

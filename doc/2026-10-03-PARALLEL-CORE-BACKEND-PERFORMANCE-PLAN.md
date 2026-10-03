@@ -34,11 +34,21 @@ achieved. Root Goal metadata reads blocked although this evidence review is
 proceeding. No owner resumed, duplicated or model changed. Deliverables below
 remain distinct from full issue completion and accepted promotion.
 
+15:51 UTC superseding measurement update: the exact36 paired current-E12/V3
+samples finished0 at15:49:08 UTC, before the hard deadline; all raw hashes,
+argv/expected steps and280 pins freshly verified, no censored samples or live
+benchmark children. Root released the slot. V3 exact18 taskc861728 is published
+and prototype Maincc69f52 preserves its exact bytes. No accepted/default producer
+replacement. Root recent-thread record is active/inProgress; its preceding two
+turns failed with a service content flag. This explains an interruption but does
+not prove the exposed Goal metadata's exact state-transition cause. Root's
+blocked Goal label is not a present code-review blocker or an achieved result.
+
 | Owner / issue scope | Delivered and verified | Not yet delivered / next boundary |
 | --- | --- | --- |
 | Job/Evidence; SE1-SE5 / AP0, #51/#47 | E1-E4/E6-E10 prototype Main; corrected E11 exact25 taskd22be9f pushed. Root156 assembly/469 tested-overlay inputs and three fresh lifetime/escaped-stack O2/SAN controls0; worker unskipped broad0 | Separate current E9+E10+correctedE11 joint source12842639815 terminal READY; Root verified all2013 hashes, Main integration review pending. CorrectedE12 exact29 taskcb959eb pushed/remote verified, Root156 assembly and fresh O2/SAN mutation/escaped-frame controls0. Local broad/C/census verified; common current-E12 source12812026914 terminal READY, Root2064-hash review pending. E13 exact28 frozen READY. E14 local broad0; E15 ordinary Graph leaf-input borrowing proposed, retaining charged traversal and normalized Lambda key. Original unsafe E11/E12 and strict3 remain |
 | C backend; #61, historical #44/#49 | C12 exact16 task97f8d7c pushed/remote verified, Main370a986. Root current E9+E10 fourteen strict O2 gates, three affected client/source sanitizer gates and nineteen I/O controls0 | C13 exact11 task96a0308 pushed/remote verified, Mainf7afb04; Root current producer strict O2/shared58/client-SAN58/linker/IO19 all pass. C14 exact23 frozen READY, Root ABI/current-producer review pending. Missing explicit imports explain original source failures; Root four corrected consumers0 with exact outputs/steps (reportd7575c61); native Acc/QuickSort and higher contracts remain unfinished |
-| Performance; #56/#51/#52 | E6 measurements30 published; E7-E10 qualified; accepted13-file promotion7631e5a independently verified. MEM1 diagnosis40 exact; Root fresh inline-state parent0/v1 signal6/v2 0 | V1 rejected despite passing acceptance and lower sampled capacity; no qualified gain. V2 superseded/rejected: new materialized-failure callback destruction passes parent SAN0 but V2 retire_frame heap-use-after-free/signal6, independently reproduced by Root (reportd5155b89). Exact18 task1297e0b/Mainf48ab5e remain historical prototype, earlier384/45 and Root controls inadequate. V3 captured-head-only frozen READY/Root unqualified; no current gain, peak/time, callback ban or accepted promotion |
+| Performance; #56/#51/#52 | E6 measurements30 published; E7-E10 qualified; accepted13-file promotion7631e5a independently verified. MEM1 diagnosis40 exact; Root fresh inline-state parent0/v1 signal6/v2 0 | V1 rejected despite passing acceptance and lower sampled capacity; no qualified gain. V2 superseded/rejected: new materialized-failure callback destruction passes parent SAN0 but V2 retire_frame heap-use-after-free/signal6, independently reproduced by Root (reportd5155b89). Exact18 task1297e0b/Mainf48ab5e remain historical prototype, earlier384/45 and Root controls inadequate. V3 exact18 taskc861728/Maincc69f52 integrated; Root O2/SAN callback3 each0, current-E12 exact36 cost samples complete/uncensored. Tree400 median5.34021->4.92598s/RSS1891928->1001764KiB, unchanged183507626 steps. LocalSorted RSS+492KiB/smallList startup variation retained; bounded measured gain, no default/accepted replacement |
 | Surface; #57 | Verified prototype integrated, completed owner stopped | Accepted policy/promotion and selector diagnostics unresolved; no owner restart |
 | Static audit; #59/PR #60 | Task7ed3ad1/Main5683755; Root385 source/114 archived dependency hashes and exact inventory verified; bounded Goal achieved | Dynamic/full #59 and controlled cost remain open; no static-owner restart |
 | Sort; #41/F3-F5 | PR54 and finite-function task5e6ed84/Main966c4e1 integrated; bounded Goal achieved, focused gates0 | Accepted Sort/F5 and broader interfaces remain separate |
@@ -71,7 +81,7 @@ reporting subsystem. Its audit cover is pinned to `37de1e8`, not current Main.
 | --- | --- | --- |
 | 0 / desk -> Merge | Workflow | Merge reviews evidence; Performance runs, C/Job capacity-stalled. Test-suite/issue-audit/static/Sort bounded Goals achieved and stopped; protected local bytes preserved. Scheduled six-hour report delivered; Root resumes coordination after audit handoff |
 | 1 / Job, Root reviews independently | SE/AP, #51 | Corrected E11 current joint READY/all2013 verified; E12 current joint READY/Root2064-hash review pending. Review E13 frozen header deletion; E15 Graph consumer remains separate from Performance IADT ownership. C14 missing-import diagnosis freshly confirmed. Preserve strict3 and original unsafe failures; no pointer-layout completion claim |
-| 1 / performance + Job | #56 / #51 | MEM1 v1/v2 rejected by lifetime controls; captured-head-only v3 frozen READY/Root review pending, fresh correctness/memory required. No actual matched peak/time claim. Job owns separate header/scheduler inspection. Root resolves conflicts; matched wall/RSS needs an exclusive slot |
+| 1 / performance + Job | #56 / #51 | MEM1 v1/v2 rejected by lifetime controls; captured-head-only v3 prototype published and bounded current-E12 actual gain reviewed; exact36 samples/steps pass. Preserve LocalSorted RSS increase and smallList startup limits. Next cost freeze/publication and independent deletion within full Goal. Job owns separate header/scheduler inspection. Root resolves conflicts; matched wall/RSS needs an exclusive slot |
 | Complete bounded / test-suite; Root publishes | #59 / PR #60 | Verified pilot removes22 duplicate calls with all distinct outcomes preserved; Root raw/assembly review complete. Exact7 taskbc16df9/Main36a27be prototype integrated; broader inventory/cost/accepted adoption remain open |
 | Complete bounded / issue-audit | All open Issues/PRs | Verified comments/dispositions,44/49 superseded by61; nine issues open. Owner stopped; Root resumes coordination, no repeat audit |
 | Complete bounded / verification-audit | #59 / PR #60; #51 | Static inventory/pilot delivered and worker complete; four-job measured cost remains deferred, full #59 open. Do not restart the completed owner automatically |
@@ -959,6 +969,22 @@ Job/Evidence/query/admission/frontier findings go through Core to `job-evidence`
 Pure graph,
 evaluator or readback changes can be developed separately after checking shared
 dependencies. Do not silently change fuel granularity to report fewer steps.
+
+2026-10-03 15:45 UTC, Root operational exclusive grant
+`MEM1V3-E12-20261003T154600Z-600`: only the36 configured paired AP samples,
+not before15:46 UTC and all children stopped before15:56 UTC. Configa3335c5e,
+all280 pins, current candidate1816 and corrected-E12 baseline2064 hashes
+verified. Frozen V3 reconstructs the current pair exactly, changing eval.c/h
+only; Root fresh original V3 O2/SAN builds and three callback units each pass
+(report6a09e5a5). Initial Root missing-Makefile setup failure is preserved.
+C/Job capacity-stalled with no observed workload children; completed owners stay
+stopped; Root runs no heavy work during the slot. Derive only the remaining
+maximum_seconds at launch, record hashes/UTC and preserve censored results.
+Post-review checks every expected charged-step count; the collector's DONE
+prefix alone does not qualify a sample. This is an agent scheduling grant within
+the existing scope, not a user design decision, accepted promotion or Goal
+completion. See `/tmp/a-program-merge-mem1-v3-e12-exclusive-grant-20261003.json`
+and `/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/Root-review.json`.
 
 2026-10-03, Merge memory scheduling decision following the human clarification:
 MEM1 is explicitly pending after distinct E9/E9+E10 qualification. Its work list

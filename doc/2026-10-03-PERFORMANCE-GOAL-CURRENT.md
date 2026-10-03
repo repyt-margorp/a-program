@@ -1,7 +1,7 @@
 # Performance Goal: Current Speed and Memory Work
 
 Date: 2026-10-03
-Status: active; E9+E10 published; MEM1 v1/v2 rejected, captured-head-only v3 frozen/Root review pending.
+Status: active; E9+E10 published; MEM1 v1/v2 rejected; captured-head-only v3 prototype published, bounded current-E12 memory/time gain measured and reviewed.
 This is the active successor to the frozen
 [Performance Goal at0539051](2026-10-03-PERFORMANCE-GOAL.md). Its published bytes
 and historical handoffs remain immutable. The single current issue-status table
@@ -88,11 +88,40 @@ Frozen V2 task1297e0b/Mainf48ab5e and1969 c0734afa evidence remain exact:
 their passing384/45 and Root focused controls did not cover this path. Those
 results and V2 selected capacity/cumulative deltas are historical rejected-
 candidate evidence, not a safe deletion or current improvement.
-V3 is frozen READY but remains unqualified by Root: delete materialized/fallback retirement and
+V3 deletes materialized/fallback retirement and
 pool only stateless captured-head frames after the existing parent cleanup.
 Retain non-NULL state and return2 behavior. Fresh correctness/capacity is
-required; V2 values do not establish V3 memory/time. Actual peak/RSS/speed,
-exclusive cost grant and accepted promotion remain absent.
+now independently reviewed by Root: exact source128353ed498 and all1944 hashes,
+fresh O2/SAN builds and all three callback units each0 (report6a09e5a5), including
+the public materialized-failure control. Own V3 capacity arithmetic is checked;
+V2 values do not establish V3 memory/time. Current corrected-E12 candidate
+0deb36a7 differs only by the exact frozen eval.c/h patch; all1816 candidate and
+2064 baseline evidence hashes verified. Configa3335c5e/all280 pins and36 paired
+jobs were reviewed before Root's existing-scope operational exclusive grant
+MEM1V3-E12-20261003T154600Z-600, earliest15:46 UTC/hard stop15:56 UTC.
+The collector finished0 at15:49:08 UTC; Root verified all36 raw logs/metrics,
+argv, exact expected charged steps and280 pins afterward, with no failed,
+incomplete or censored samples. Root released the slot at15:51 UTC. Results:
+
+| Same workload / steps | Median wall seconds, baseline -> V3 | Median peak RSS KiB, baseline -> V3 |
+| --- | --- | --- |
+| List /1915 | 0.00716 ->0.00469 | 2524 ->2580 |
+| Imported LocalSorted /761848 | 0.62892 ->0.60939 | 169612 ->170104 |
+| Trees4 /2318248 | 0.08646 ->0.07936 | 34740 ->21216 |
+| Trees16 /7608511 | 0.24246 ->0.23752 | 91592 ->50900 |
+| Trees64 /29780510 | 0.83454 ->0.74352 | 316944 ->169984 |
+| Trees400 /183507626 | 5.34021 ->4.92598 | 1891928 ->1001764 |
+
+These are three repetitions per variant/case, matched source/proof/helper work,
+reversing pair order in repetition2. Trees400 wall median falls7.76%, RSS47.05%
+(1847.59 ->978.29MiB). LocalSorted RSS rises492KiB; list timing is dominated by
+startup/clock resolution. GNU process RSS includes allocator/startup effects;
+this is a bounded measured tree gain, not universal speed/memory or native
+ranking. [Root complete medians/ranges and pins](../src/prototype/performance_followup/mem1-v3-cost-root-review.json).
+Exact18 V3 taskc861728 is pushed/remote verified; prototype Maincc69f52 contains
+the same frozen bytes. Accepted/default producer selection was not replaced.
+No accepted promotion or Goal completion. Initial Root omitted-Makefile setup error stays
+separate from the successful fresh builds/runs.
 [Root lifetime review](../src/prototype/performance_followup/mem1-root-review.json)
 preserves both rejections and earlier evidence. CorrectedE11/E12 joint work
 stays separate, excluding MEM1. The full performance Goal remains active.
