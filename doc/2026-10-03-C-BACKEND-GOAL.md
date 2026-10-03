@@ -15,6 +15,24 @@ Related: [coordination](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md),
 
 ### Subjective (User)
 
+2026-10-03, English paraphrase of the explicit human workflow change relayed
+by inquiry desk `019ebfae-06be-7b71-974a-b97505daed4a`: implementation lanes may
+continue separate prototype epochs without waiting for Merge publication or
+review. Merge owns integration conflicts and may implement their resolutions.
+Preserve submitted bytes/commits through immutable snapshots; investigate other
+stalls and confirm that next instructions were consumed. This supersedes blanket
+review holds. Only actual safety/shared-file dependencies or short exclusive
+measurement slots justify narrow holds. Existing heavy-run scheduling and
+accepted-source promotion boundaries remain; no new representation/erasure
+policy follows from this workflow instruction.
+
+2026-10-03, English paraphrase of the human coordination concern relayed by
+inquiry desk `019ebfae-06be-7b71-974a-b97505daed4a`: the user asks whether Merge
+is already done and says progress/coordination are unclear. Show the completed
+backend integration and the remaining publication/release steps distinctly.
+This feedback grants no new representation or erasure policy; native QuickSort
+remains unfinished. Root's concrete scheduling release belongs in Assessment.
+
 2026-10-03, concise English paraphrase of the direct human workflow replacement:
 the visible parent becomes the user inquiry/report desk. Separate Merge/audit
 session `01a100b3-1d83-7090-bbf6-62544c39ec4b` inherits coordination, exact task
@@ -331,6 +349,17 @@ pinned/current producer images and emitted C/headers match byte-for-byte.
 Evidence and exact publication files are in the [epoch handoff](2026-10-03-C-BACKEND-EPOCH1-HANDOFF.md).
 
 ### Assessment
+
+2026-10-03 12:03 UTC, Root operational decision following the direct human
+workflow replacement: all earlier publication/review-only build and implementation
+holds below are superseded. C10's exact six submitted files are preserved in an
+isolated publication snapshot; live work may advance independently. Continue
+the minimal target I/O classification reproduction/correction and bounded
+existing-value-record/single-tail List work at serial j1 within the prototype
+Goal. Relevant correctness verification may overlap the other lanes; comparative
+wall/RSS still needs an exclusive slot. Root resolves integration conflicts.
+No producer/schema/erasure expansion, accepted C promotion or native Acc/QuickSort
+completion follows. Report consumed release, next action and genuine dependency.
 
 Agent C8 epoch decision, 2026-10-03: after the capture trial's ordinary/raw/static
 sanitizer and eight additional native/link/sorting O2 gates pass, adopt only its

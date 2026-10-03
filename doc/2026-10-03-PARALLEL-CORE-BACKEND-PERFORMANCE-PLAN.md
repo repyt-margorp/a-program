@@ -25,7 +25,7 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 
 ### Current Delivery Status
 
-2026-10-03 11:05 UTC Merge inspection at local Main `48c42eb`: the table
+2026-10-03 11:59 UTC Merge inspection at published Main `1459fbb8`: the table
 reflects exact task publications and independently inspected qualification.
 These are deliverables, not issue completion scores; worker-local results stay
 distinct from Root fresh gates and accepted performance promotion.
@@ -33,7 +33,7 @@ distinct from Root fresh gates and accepted performance promotion.
 | Owner / issue scope | Delivered and verified | Not yet delivered / next boundary |
 | --- | --- | --- |
 | Job/Evidence; SE1-SE5 / AP0, related #51/#47 | E1-E4/E6/E7/E8/E9 prototype Main; E9 `bd1ddf3` exact24, Root1989 frozen/runtime128 pins match, targeted81 only strict recipe fails and relevant O2/SAN controls pass; integration `6a48aae` | Isolated E10 `6715af2` exact19 pushed, composed E9+E10 qualification running; rejected E11 corrected focused only; E12 private/unqualified; strict3 remain |
-| C backend; #44/#49 | C9 task `60c100c` exact38 published/pushed; Root thirteen current-E8 strict-O2 gates pass, prototype Main `48c42eb`; C8 twelve and C7 eleven gates remain separately pinned | Native Acc/QuickSort and broader C/Identity/admissibility criteria remain open; no accepted C promotion |
+| C backend; #44/#49 | C9 task `60c100c` exact38/Main `48c42eb` published; Root thirteen current-E8 strict-O2 gates pass. C10 exact6 tests/docs evidence reviewed: 36 client run statuses, 275 artifacts/41 inputs and 74 native argv exits verified | Root exact C10 publication/integration pending; immutable submission copied, live paths released. Independent prototype I/O correction then bounded value-record List work proceeds at serial j1; consumed receipt pending. Native Acc/QuickSort remains unfinished; no accepted C promotion |
 | Performance; #56, measurement work #51/#52 | E6 measurement task `44e479b`, Main `99efcf7`, exact114 published; 30 samples/292 pins verified. E7/E8 qualified; accepted13-file candidate O2 386/0 and affected sanitizer groups8/0 | Accepted epoch `7631e5a` verified/pushed; prototype compatibility verified; state-image task `ac6a8b2` exact2 published/pushed and integrated; E9/E10 next; accepted-only timing unmeasured and #52 separate |
 | Surface; #57 | Delivered prototype integrated; session stopped; Merge reviewed polarity, brace/migration, scope and version gates | Accepted language policy/promotion and selector diagnostics remain unresolved; #57 stays open; no active worker |
 | Verification audit; #59/PR #60, related #51 | Static task `7ed3ad1` pushed/remote verified; Main merge `5683755`; Merge reproduced exact inventory and verified 385 source hashes/114 archived dependencies | Bounded static delivery complete; dynamic/full #59 open; four-job cost deferred because full config review missed eight-minute boundary; no timing executed |
@@ -81,6 +81,24 @@ their owners. Add review items only for material changes; no duplicate task grap
 ## 1. Inquiry Desk and Merge Ownership
 
 ### Subjective (User)
+
+2026-10-03, English paraphrase of the explicit human workflow change relayed
+by inquiry desk `019ebfae-06be-7b71-974a-b97505daed4a`: implementation lanes may
+continue separate prototype epochs without waiting for Merge publication or
+review. Merge owns integration conflicts and may implement their resolutions.
+Preserve submitted bytes/commits through immutable snapshots; investigate other
+stalls and confirm that next instructions were consumed. This supersedes blanket
+review holds. Only actual safety/shared-file dependencies or short exclusive
+measurement slots justify narrow holds. Existing heavy-run scheduling and
+accepted-source promotion boundaries remain; no new representation/erasure
+policy follows from this workflow instruction.
+
+2026-10-03, English paraphrase of the human coordination concern relayed by
+inquiry desk `019ebfae-06be-7b71-974a-b97505daed4a`: the user asks whether Merge
+is already done and says progress/coordination are unclear. Distinguish completed
+integration from remaining review and current worker holds, with concrete owner,
+next action, blocker and release status. This feedback grants no new source
+representation or erasure policy and does not complete native QuickSort.
 
 2026-10-03, English paraphrase of the later human clarification relayed by the
 same inquiry desk: improve speed by deleting unnecessary mechanisms/work rather
@@ -321,6 +339,19 @@ public resume failures are in the
 Accepted `src/evidence.*`, `src/iadt.*` and their tests retain unrelated edits.
 
 ### Assessment
+
+2026-10-03 12:03 UTC, Root scheduling decision under the explicit human workflow
+replacement: earlier review/publication-only implementation holds in this plan
+and lane briefs are superseded. Preserve immutable submitted epochs, then continue
+separate live implementation and relevant serial correctness gates. C advances
+its minimal I/O-status fix and bounded existing-value-record/single-tail List
+work; Performance finishes E9+E10 then MEM1 attribution/deletion; Job finishes
+corrected E11 qualification and safe Context-ancestry repair. Root owns conflict
+resolution. Original unsafe E11/E12 candidates remain unqualified, while repairs
+may continue. Exclusive matched wall/RSS and actual shared-owner conflicts remain
+narrow dependencies. Completed Sort/audit workers stay complete. Confirm each
+owner's consumed instruction and actual next action, rather than only transport
+queueing. No new source erasure policy or accepted promotion is inferred.
 
 2026-10-03 11:12 UTC, Root agent review: reject frozen E11 for publication and
 Main integration. All21 files,19 local reports and both156-source trees match
@@ -640,6 +671,8 @@ findings and proposed repairs stay in its audit, not this implementation work li
   actual model/effort, active implementation Goal and first independent gap.
 - [x] Install/test an independent six-hour heartbeat on the existing Merge relay;
   verify actual PID/next due and active delivery without another Merge owner.
+- [ ] Reconcile obsolete lane review holds, confirm one consumed/action receipt
+  from each live implementation owner and report the actual remaining dependency.
 - [ ] Merge keeps issue-linked reporting current and reports material changes
   and each six-hour active checkpoint to the desk.
 

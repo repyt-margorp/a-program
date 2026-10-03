@@ -15,6 +15,17 @@ This is the active prerequisite work list, not another artifact format proposal.
 
 ## Subjective (User)
 
+2026-10-03, English paraphrase of the explicit human workflow change relayed
+by inquiry desk `019ebfae-06be-7b71-974a-b97505daed4a`: implementation lanes may
+continue separate prototype epochs without waiting for Merge publication or
+review. Merge owns integration conflicts and may implement their resolutions.
+Preserve submitted bytes/commits through immutable snapshots; investigate other
+stalls and confirm that next instructions were consumed. This supersedes blanket
+review holds. Only actual safety/shared-file dependencies or short exclusive
+measurement slots justify narrow holds. Existing heavy-run scheduling and
+accepted-source promotion boundaries remain; no new representation/erasure
+policy follows from this workflow instruction.
+
 2026-10-03, English paraphrase of the later human clarification relayed by
 inquiry desk thread `019ebfae-06be-7b71-974a-b97505daed4a`: improve speed by
 deleting unnecessary mechanisms/work instead of adding tuning complexity.
