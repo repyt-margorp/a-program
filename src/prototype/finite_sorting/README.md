@@ -175,6 +175,60 @@ accepted compiler/library adoption. No full acceptance/sanitizer/C-lowering
 claim accompanies this source-only change. Related issue: #41, partial library
 scope only; F5 integration and semantic persistence remain separate.
 
+## Finite Function API, 2026-10-03
+
+The prototype `finite-functions.p` fills #41/F3-F4 common API coverage for
+`Fin n -> A`. It uses `vec_tabulate`, the existing `sorting_vector` ordinary
+backend result and `vec_lookup`; no sorting implementation or position algebra
+is duplicated. Append this module to `provider.sh` along with a selected backend.
+
+```text
+sorting_function A R backend n values i
+sorting_function_positions A R backend n values
+sorting_function_restore A R backend n values original_position
+```
+
+`sorting_function_value` transports an explicit predicate from a sorted entry
+to its original entry selected by `position_forward`; `_value_back` transports
+in the reverse direction. `_restore` reads the sorted entry at
+`position_backward original_position`. `_recover` and `_recover_back` transport
+predicates between that restored entry and the original entry at the supplied
+position. Both inverse maps refer to labelled positions even if keys or full
+values coincide; these laws do not assert stability or object Identity.
+`sorting_value_back` and `sorting_vector_value_back` expose the corresponding
+existing reverse observation through the common List/Vec API.
+
+`sorting_function_contents` exposes the same sorted Vec's List traversal used
+by `sorting_function` lookup. `_content` and `_local` certify that traversal;
+`_strong` takes explicit transitivity. There is no automatic Strong conversion
+or function extensionality assertion. The ordinary-result contract and backend
+requirements, including Bubble's explicit transitivity, are preserved.
+
+The focused gate uses the existing checker and typed image comparator, with
+sequential correctness work and the existing 40M fuel/180-second command bounds:
+
+```sh
+bash src/prototype/finite_sorting/finite-functions-check.sh BUILD/pointer-check BUILD/program_test
+bash src/prototype/finite_sorting/finite-functions-duplicates-check.sh BUILD/pointer-check BUILD/program_test
+```
+
+It checks open A/n/backend/input laws and independent synthesis, all five actual
+labelled outputs, forward origins, backward destinations and original-order
+recovery. Different labels share keys; Insertion/Tree/Bubble exercise a
+non-self-inverse position cycle so substituting forward for backward is rejected.
+Empty/singleton observations, wrong domain/bound/labels, Local-as-Strong and
+lost-duplicate controls, ordinary load, 100-step pending/inert byte-resave/resume,
+resumed actual-result comparison and persisted semantic rejection are included.
+The supplemental duplicate gate observes identical full payloads across all
+five backends, including their separate forward origins and backward destinations,
+checks both inverse-law consumers, rejects collapsed occurrence positions and a
+dropped identical duplicate, and repeats fresh-process ordinary/resumed result
+checks for this extended fixture.
+Qualification status and exact byte/binary hashes belong to the owning SOAP
+checkpoint and `verification/finite-functions-e6.json` after the complete gate.
+This remains prototype library coverage; accepted-build F5 integration, compiler
+acceptance, sanitizers, native lowering and runtime-cost claims are separate.
+
 ## Bounded Image and Cost Diagnostics
 
 ```sh
