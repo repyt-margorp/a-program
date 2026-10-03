@@ -1,6 +1,6 @@
 # Verified Performance Promotion
 
-Date: 2026-10-03. Status: accepted epoch `7631e5a` verified and committed; publication pending.
+Date: 2026-10-03. Status: accepted epoch `7631e5a` verified, committed and pushed; complete.
 Related: [central schedule](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md),
 Issues #56/#51. This is a separate promotion epoch and its sole work list.
 
@@ -72,6 +72,9 @@ add only private codec/synthesis link dependencies. Frozen historical evidence
 is unchanged. [Promotion evidence](../src/prototype/performance_promotion/verification/accepted-20261003.json)
 pins candidate/source/logs, original failures, controls and preservation.
 
+Main push `e14856f` succeeded and the remote independently matches. This
+completes the selected promotion, not the broader #56/performance Goal.
+
 ### Assessment
 
 Agent decision within the new approval: finish publication of already verified
@@ -100,7 +103,7 @@ performance is unmeasured until a separate agreed slot.
   meaningful accepted regression tests/docs only as needed.
 - [x] Run affected checks and accepted full regression/parity; preserve actual
   failures and producer-specific strict-resume observations.
-- [ ] Review the exact diff, preserve all unrelated dirty bytes, publish the
+- [x] Review the exact diff, preserve all unrelated dirty bytes, publish the
   separate accepted epoch and report issue-linked scope and verification.
 - Completion: the approved performance scope is accepted and verified, with
   necessary dependencies explicit and unrelated local work preserved.

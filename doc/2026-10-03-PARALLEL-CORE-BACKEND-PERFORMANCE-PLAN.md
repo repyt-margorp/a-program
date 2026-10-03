@@ -34,10 +34,10 @@ distinct from Root fresh gates and accepted performance promotion.
 | --- | --- | --- |
 | Job/Evidence; SE1-SE5 / AP0, related #51/#47 | E1-E4/E6/E7/E8 prototype Main; exact E7/E8 `3ad0303`/`50cd56b` and joint runtime128 verified; integrations `efc3ff0`/`f6d7cfe` | E9 frozen24 and isolated E10 frozen19 await separate publication/qualification; strict3 remain |
 | C backend; #44/#49 | C8 task `884d5bb` exact17 published/pushed; Root twelve current-E8 strict-O2 gates pass, prototype Main `dea5fc1`; C7 eleven current-E6 gates remain historical | Private applied-List follow-up pending; native Acc/QuickSort and broader C/Identity/admissibility criteria remain open |
-| Performance; #56, measurement work #51/#52 | E6 measurement task `44e479b`, Main `99efcf7`, exact114 published; 30 samples/292 pins verified. E7/E8 qualified; accepted13-file candidate O2 386/0 and affected sanitizer groups8/0 | Accepted promotion publication/compatibility pending; state-image follow-up received; E9/E10 next; accepted-only timing unmeasured and #52 separate |
+| Performance; #56, measurement work #51/#52 | E6 measurement task `44e479b`, Main `99efcf7`, exact114 published; 30 samples/292 pins verified. E7/E8 qualified; accepted13-file candidate O2 386/0 and affected sanitizer groups8/0 | Accepted epoch `7631e5a` verified/pushed; prototype compatibility verified; state-image follow-up received; E9/E10 next; accepted-only timing unmeasured and #52 separate |
 | Surface; #57 | Delivered prototype integrated; session stopped; Merge reviewed polarity, brace/migration, scope and version gates | Accepted language policy/promotion and selector diagnostics remain unresolved; #57 stays open; no active worker |
 | Verification audit; #59/PR #60, related #51 | Static task `7ed3ad1` pushed/remote verified; Main merge `5683755`; Merge reproduced exact inventory and verified 385 source hashes/114 archived dependencies | Bounded static delivery complete; dynamic/full #59 open; four-job cost deferred because full config review missed eight-minute boundary; no timing executed |
-| Sort library; #41/F3-F5 | PR54 integrated and GitHub merged; isolated worker actual gpt-6.1-sol/xhigh verified, bounded Goal complete. Finite-function task `5e6ed84` exact11 pushed with corrected provenance and two worker focused gates | Root two focused gates running; prototype Main review/integration next; accepted Sort/F5 adoption remains separate |
+| Sort library; #41/F3-F5 | PR54 integrated and GitHub merged; isolated worker actual gpt-6.1-sol/xhigh verified, bounded Goal complete. Finite-function task `5e6ed84` exact11 pushed with corrected provenance and two worker focused gates | Root two focused E6 gates pass; exact11 prototype Main integrated; accepted Sort/F5 adoption remains separate |
 
 Owning tables: Job/Evidence's [SE Plan](2026-09-30-SOLVER-EVIDENCE-DUPLICATION-AUDIT-AND-PLAN.md#plan),
 performance's worker-local `doc/2026-10-03-PERFORMANCE-JOINT-VERIFICATION.md`,
@@ -236,6 +236,14 @@ Earlier requirements remain: do not duplicate Term/Oracle structures above the
 typed owners; preserve Core/type separation and ordinary Solve semantics.
 
 ### Objective (Code)
+
+2026-10-03 fresh Merge publication: Main `e14856f` push succeeded and remote
+matches, including accepted performance-only `7631e5a`, E7/E8/C8 and deployed
+heartbeat source/evidence. The selected promotion meets its separate criteria;
+all original protected local edits survive with exact reverse hashes. Sort task
+`5e6ed84` exact11 is independently E6-qualified and prototype Main integrated;
+its bounded Goal is complete. #41/F5 and full #56 remain open on their own
+remaining criteria; no silent design/promotion or strict-resume waiver.
 
 2026-10-03 09:34 UTC, fresh Merge inspection at Main `99efcf7`: C7's eleven
 current-E6 gates and generic PR #54's three focused gates passed; evidence is

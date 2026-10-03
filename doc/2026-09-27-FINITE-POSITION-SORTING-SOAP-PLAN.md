@@ -310,6 +310,23 @@ silently replace their ordinary results with separately generated proof results.
 
 ### Objective (Code)
 
+2026-10-03, fresh Root review of task `5e6ed84` at its exact parent `66fa707`:
+finite-function sorting now reuses existing Vec/tabulation and ordinary backend
+results, with both actual-value transport directions and inverse-map recovery
+of original labelled occurrences. Eleven exact frozen files are published;
+113 source API/proof lines,114 fixture lines and74 runner lines are prototype
+implementation. All five unchanged backends cover distinct labels and identical
+full payloads, empty/singleton cases, explicit Local/Strong/content laws and nine
+semantic negatives. Both Root focused runners pass on exact qualified E6
+checker/comparator hashes and unchanged providers; fresh-process ordinary,
+pending100/inert0 byte resave/resume and rejected images pass. Worker-local
+results remain in their frozen logs; the separate
+[Root evidence](../src/prototype/finite_sorting/verification/finite-functions-root-e6.json)
+pins fresh results. The owning scoped SOAP's corrected provenance identifies
+Merge's follow-up as agent operational direction, not new human approval.
+The bounded worker Goal is complete; #41/F5 accepted adoption remains separate.
+This supersedes the older missing common-API observation below for this scope.
+
 Existing proof providers are under `tests/fixtures/` and source theorems under
 `tests/acceptance/`. `generic_sorted/content-result-proof.p` connects the
 permutation theorem to ordinary QuickSort. The F2 checkpoints below now add the
@@ -317,6 +334,14 @@ List/Vec reconstruction laws and the general permutation-to-Fin bridge. Connecti
 these into the common sorting interface remains F3/F4, not a completed claim.
 
 ### Assessment
+
+Agent implementation decision within F0's authorized prototype task: the thin
+finite-function wrapper fills genuine coverage without replacing the ordinary
+sorter or duplicating Fin/permutation proofs. Existing backward maps recover an
+original occurrence even when payloads coincide. Preserve explicit predicate
+transport and transitivity; no Identity reflection, stability or complexity
+claim follows. Adopt this verified prototype milestone; defer accepted Sort
+source/test/build integration to its separate authorization and F5 criteria.
 
 The difficult obligation is the bridge, not creating a new record name. List
 permutation must yield a length-preserving occurrence correspondence; enumeration
@@ -328,6 +353,11 @@ Strong. Comparator directional correctness is still required, but antisymmetry
 and stability are not universal requirements.
 
 ### Plan
+
+- [x] Add the direct finite-function API/value laws and bidirectional original
+  occurrence recovery; reuse existing Fin/List/Vec and all five backends.
+- [x] Root qualifies both focused runners and exact corrected freeze; task
+  `5e6ed84` is published and integrated as a prototype milestone.
 
 - [x] F2: Vec contents, indexed lookup/tabulation, general ordinary-lookup
   coverage, predicate-based uniqueness and bidirectional pointwise reconstruction;

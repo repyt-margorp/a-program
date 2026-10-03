@@ -1,0 +1,33 @@
+{
+  "task": "5e6ed84ce2cf15849737a13a3e4fa1bdfefa19bb",
+  "binary_pins": {
+    "checker": {
+      "path": "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/build/pointer-check",
+      "sha256": "33d90f6fb02f0bd5cafe1e50f5cc64a5d057b2607e4c5f3aa21b81c97fe9bf8f",
+      "qualification": "generic-merge-e6.json",
+      "producer_job": "b2d66682be75c21a3c2a8c5138db9d3f0c5e0eb2"
+    },
+    "comparator": {
+      "path": "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/build/program_test",
+      "sha256": "d21c94c9e24eeb25eef14c8abe2a4e8c9d971f56c662d96684ce45873b87254f"
+    }
+  },
+  "rows": [
+    {
+      "runner": "finite-functions-check.sh",
+      "exit": 0,
+      "log_sha256": "9772b987e3db549a525cba1d1ba26aa970e03a24c35919c53e57186e3fbdc072"
+    },
+    {
+      "runner": "finite-functions-duplicates-check.sh",
+      "exit": 0,
+      "log_sha256": "cc07e3dab98fd3b4408602ac456489cd1d7aa19edcfa6acadf77f15583be49f1"
+    }
+  ],
+  "complete": true,
+  "ended": "2026-10-03T10:39:05.874399+00:00",
+  "manifest_sha256": "e0adf408179cfde0a98ec11c448ef5967c3d945c2c198e7e79a93456208f21eb",
+  "prototype_main_merge": "966c4e113e559162827f6106bd324506a9306302",
+  "scope": "Two fresh Root E6-focused gates with unchanged shared providers; all five actual results, inverse labelled-occurrence recovery, identical payloads, nine negative controls and fresh-process ordinary/pending/inert/rejected images. No broad/sanitizer/accepted Sort/native/complexity/stability claim.",
+  "worker_provenance": "Final corrected notice2f7c99e6; agent operational direction moved out of human requirements; unchanged implementation and original logs."
+}
