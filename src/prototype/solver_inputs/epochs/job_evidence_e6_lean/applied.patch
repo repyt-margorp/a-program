@@ -1,0 +1,135 @@
+--- a/src/synthesis_binding.c
++++ b/src/synthesis_binding.c
+@@ -2,7 +2,6 @@
+ #include "derivation.h"
+ 
+ struct binding_work {
+-	const struct pg_object *binder;
+ 	const struct pg_source_scope *scope;
+ 	struct pg_synthesis_job *domain;
+ };
+@@ -150,9 +149,9 @@
+ 	struct pg_synthesis_job *job = pg_synthesis_work_request(synthesis, BINDING_JOB, 2, inputs);
+ 	if (!job) return NULL;
+ 	struct binding_work *local = pg_synthesis_work_state(job, BINDING_JOB);
+-	if (local->binder && binder && local->binder != binder) return NULL;
+-	if (!local->binder) local->binder = pg_synthesis_source_binder(synthesis, scope, syntax, 0, binder);
+-	if (!local->binder) return NULL;
++	if (local->scope) return !binder || local->scope->binder == binder ? job : NULL;
++	binder = pg_synthesis_source_binder(synthesis, scope, syntax, 0, binder);
++	if (!binder) return NULL;
+ 	if (!local->domain) {
+ 		const struct pg_syntax *domain = syntax->left;
+ 		if (syntax->kind == PG_SYNTAX_PI && domain->kind == PG_SYNTAX_BINDER) domain = domain->left;
+@@ -167,7 +166,7 @@
+ 		if (syntax->kind == PG_SYNTAX_PI)
+ 			name = syntax->left->kind == PG_SYNTAX_BINDER ? syntax->left->token : (struct pg_token){0};
+ 		local->scope = pg_synthesis_intern_scope(synthesis, (struct pg_source_scope){.parent = scope,
+-			.name = name, .binder = local->binder, .context = {.pending = pg_synthesis_pending(job)}});
++			.name = name, .binder = binder, .context = {.pending = pg_synthesis_pending(job)}});
+ 	}
+ 	return local->scope ? job : NULL;
+ }
+@@ -178,15 +177,15 @@
+ {
+ 	const struct binding_work *local = pg_synthesis_work_state(job, BINDING_JOB);
+ 	if (!synthesis || !local || !scope || !syntax || !binder) return -1;
+-	if (job->pending.owner != synthesis->owner_key || !local->binder) return -1;
+-	*scope = job->inputs[0]; *syntax = job->inputs[1]; *binder = local->binder;
++	if (job->pending.owner != synthesis->owner_key || !local->scope) return -1;
++	*scope = job->inputs[0]; *syntax = job->inputs[1]; *binder = local->scope->binder;
+ 	return 0;
+ }
+ 
+ const struct pg_object *pg_synthesis_binding_binder(const struct pg_synthesis_job *job)
+ {
+ 	const struct binding_work *local = pg_synthesis_work_state(job, BINDING_JOB);
+-	return local ? local->binder : NULL;
++	return local && local->scope ? local->scope->binder : NULL;
+ }
+ 
+ const struct pg_source_scope *pg_synthesis_binding_scope(const struct pg_synthesis_job *job)
+@@ -289,11 +288,12 @@
+ 	const struct pg_syntax *syntax = job->inputs[1];
+ 	if (syntax->binder_marker) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_UNSUPPORTED); return; }
+ 	struct binding_work *local = pg_synthesis_work_state(job, BINDING_JOB);
++	if (!local->scope) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+ 	if (pg_synthesis_await_pending(synthesis, job, pg_synthesis_pending(local->domain))) return;
+ 	const struct pg_evidence *domain = pg_synthesis_result(local->domain);
+ 	job->result = family_parameter_annotation(pg_evidence_subject(domain)->core)
+-		? family_parameter_context(synthesis, pg_synthesis_scope_context(scope), local->binder, domain)
+-		: pg_prove_context_extension(synthesis->typing, pg_synthesis_scope_context(scope), local->binder, domain);
++		? family_parameter_context(synthesis, pg_synthesis_scope_context(scope), local->scope->binder, domain)
++		: pg_prove_context_extension(synthesis->typing, pg_synthesis_scope_context(scope), local->scope->binder, domain);
+ 	pg_synthesis_finish(synthesis, job, job->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+ }
+ 
+@@ -473,14 +473,14 @@
+ 		if (input.checked || input.pending) local->input = pg_synthesis_declared_type(synthesis, input, binder);
+ 		else if (binding) {
+ 			const struct pg_source_scope *scope = context->inputs[0];
+-			local->input = binding->binder == binder ? pg_synthesis_type_structure(synthesis, binding->domain)
++			local->input = binding->scope && binding->scope->binder == binder ? pg_synthesis_type_structure(synthesis, binding->domain)
+ 				: pg_synthesis_declared_type(synthesis, scope->context, binder);
+ 		}
+ 	}
+ 	if (pg_synthesis_structure_valid(local->input)) {
+ 		if (pg_synthesis_await_structure(synthesis, job, local->input)) return;
+ 		local->result = pg_synthesis_type_structure_result(local->input);
+-		if (binding && binding->binder == binder && family_parameter_annotation(local->result))
++		if (binding && binding->scope && binding->scope->binder == binder && family_parameter_annotation(local->result))
+ 			local->result = family_parameter_structure(synthesis->typing->graph, local->result);
+ 		pg_synthesis_finish(synthesis, job, local->result ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_ERROR);
+ 		return;
+--- a/tests/synthesis.c
++++ b/tests/synthesis.c
+@@ -8270,7 +8270,7 @@
+ 	 * use must shadow, not capture or redeclare the same binder in a context. */
+ 	const struct pg_syntax *reused = expression_syntax(typing->graph, "f:=\\x:@=>x;");
+ 	struct pg_synthesis_job *outer = pg_synthesis_binding(&synthesis, root, reused);
+-	assert(outer && pg_synthesis_work_role(outer)->size == 3 * sizeof(void *));
++	assert(outer && pg_synthesis_work_role(outer)->size == 2 * sizeof(void *));
+ 	struct pg_source_binding address = {.syntax = reused};
+ 	const struct pg_source_binding *allocated = pg_synthesis_source_binding(&synthesis, &address);
+ 	assert(allocated && allocated->binder == pg_synthesis_binding_binder(outer));
+@@ -8279,6 +8279,7 @@
+ 	address.slot = 0; address.syntax = reused->right;
+ 	assert(!pg_synthesis_source_binding(&synthesis, &address));
+ 	const struct pg_source_scope *outer_scope = pg_synthesis_binding_scope(outer);
++	assert(outer_scope && outer_scope->binder == pg_synthesis_binding_binder(outer));
+ 	struct pg_synthesis_job *inner = pg_synthesis_binding(&synthesis, outer_scope, reused);
+ 	assert(inner && pg_synthesis_binding_binder(inner) != pg_synthesis_binding_binder(outer));
+ 	size_t allocation_count = synthesis.source_bindings.count;
+@@ -8321,6 +8322,8 @@
+ 			if (seed) assert(pg_synthesis_binding_at(&synthesis, root, syntax, seed));
+ 			struct pg_synthesis_job *binding = pg_synthesis_binding(&synthesis, root, syntax);
+ 			const struct pg_object *reserved = pg_synthesis_binding_binder(binding);
++			assert(pg_synthesis_work_role(binding)->size == 2 * sizeof(void *));
++			assert(pg_synthesis_binding_scope(binding)->binder == reserved);
+ 			assert(reserved && pg_synthesis_binding(&synthesis, root, syntax) == binding);
+ 			assert(!seed || seed == reserved);
+ 			assert(pg_synthesis_binding_at(&synthesis, root, syntax, reserved) == binding);
+@@ -8737,6 +8740,23 @@
+ 			assert(pg_synthesis_request(&synthesis, root, restored) == rechecked);
+ 			assert(complete(&synthesis, rechecked, PG_SYNTHESIS_DONE) == type);
+ 			assert(synthesis.source_metadata.count == metadata);
++			if (i == 1) {
++				struct pg_synthesis_job *renamed = pg_synthesis_declaration_at(&synthesis, root,
++					expression_syntax(typing->graph, "D:=@{nothing:*; successor:*->*;};"), input.parameters.declaration);
++				assert(complete(&synthesis, renamed, PG_SYNTHESIS_DONE) == type);
++				struct pg_token original_name = {.kind = PG_TOKEN_IDENT, .text = "Original", .length = 8};
++				struct pg_token alias_name = {.kind = PG_TOKEN_IDENT, .text = "Alias", .length = 5};
++				const struct pg_source_scope *names = pg_synthesis_name(&synthesis, root, original_name,
++					(struct pg_synthesis_input){.pending = pg_synthesis_pending(job)});
++				names = pg_synthesis_name(&synthesis, names, alias_name,
++					(struct pg_synthesis_input){.pending = pg_synthesis_pending(renamed)});
++				complete(&synthesis, pg_synthesis_request(&synthesis, names,
++					expression_syntax(typing->graph, "r:=Original.zero;")), PG_SYNTHESIS_DONE);
++				complete(&synthesis, pg_synthesis_request(&synthesis, names,
++					expression_syntax(typing->graph, "r:=Alias.nothing;")), PG_SYNTHESIS_DONE);
++				complete(&synthesis, pg_synthesis_request(&synthesis, names,
++					expression_syntax(typing->graph, "r:=Alias.zero;")), PG_SYNTHESIS_REJECTED);
++			}
+ 			struct pg_synthesis_job *changed = pg_synthesis_declaration_at(&synthesis, root,
+ 				expression_syntax(typing->graph, "D:=@{z:*;};"), input.parameters.declaration);
+ 			complete(&synthesis, changed, PG_SYNTHESIS_REJECTED);

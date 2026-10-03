@@ -1,0 +1,26 @@
+--- a/tests/synthesis.c
++++ b/tests/synthesis.c
+@@ -8737,6 +8737,23 @@
+ 			assert(pg_synthesis_request(&synthesis, root, restored) == rechecked);
+ 			assert(complete(&synthesis, rechecked, PG_SYNTHESIS_DONE) == type);
+ 			assert(synthesis.source_metadata.count == metadata);
++			if (i == 1) {
++				struct pg_synthesis_job *renamed = pg_synthesis_declaration_at(&synthesis, root,
++					expression_syntax(typing->graph, "D:=@{nothing:*; successor:*->*;};"), input.parameters.declaration);
++				assert(complete(&synthesis, renamed, PG_SYNTHESIS_DONE) == type);
++				struct pg_token original_name = {.kind = PG_TOKEN_IDENT, .text = "Original", .length = 8};
++				struct pg_token alias_name = {.kind = PG_TOKEN_IDENT, .text = "Alias", .length = 5};
++				const struct pg_source_scope *names = pg_synthesis_name(&synthesis, root, original_name,
++					(struct pg_synthesis_input){.pending = pg_synthesis_pending(job)});
++				names = pg_synthesis_name(&synthesis, names, alias_name,
++					(struct pg_synthesis_input){.pending = pg_synthesis_pending(renamed)});
++				complete(&synthesis, pg_synthesis_request(&synthesis, names,
++					expression_syntax(typing->graph, "r:=Original.zero;")), PG_SYNTHESIS_DONE);
++				complete(&synthesis, pg_synthesis_request(&synthesis, names,
++					expression_syntax(typing->graph, "r:=Alias.nothing;")), PG_SYNTHESIS_DONE);
++				complete(&synthesis, pg_synthesis_request(&synthesis, names,
++					expression_syntax(typing->graph, "r:=Alias.zero;")), PG_SYNTHESIS_REJECTED);
++			}
+ 			struct pg_synthesis_job *changed = pg_synthesis_declaration_at(&synthesis, root,
+ 				expression_syntax(typing->graph, "D:=@{z:*;};"), input.parameters.declaration);
+ 			complete(&synthesis, changed, PG_SYNTHESIS_REJECTED);
