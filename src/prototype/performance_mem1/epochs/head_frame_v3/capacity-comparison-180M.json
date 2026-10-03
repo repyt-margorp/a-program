@@ -1,0 +1,64 @@
+{
+  "cut": 180000000,
+  "source_parent": "73fa86c94b805b768d2c8493ce6f6a46c51983e556974c4920d805b59eefc743",
+  "source_candidate": "353ed498ac3f59c560e59f60dd9a299e04891db3e650046e3eb0b12e92cfc0fa",
+  "raw_parent_snapshot_sha256": "18c4543323d09110a2d30ddaa7bdafa7368317373242953f83a80e25a1419e69",
+  "raw_candidate_snapshot_sha256": "b588b49d46cda287197bf9b38d153c0cbb7cec921c8ec5e3e48538fd05dd1cf7",
+  "same_index_counts_capacities_and_shared_payloads": true,
+  "arena_totals": {
+    "block_count": {
+      "parent": 108010,
+      "candidate": 54748,
+      "delta": -53262
+    },
+    "block_header_bytes": {
+      "parent": 3456320,
+      "candidate": 1751936,
+      "delta": -1704384
+    },
+    "capacity_bytes": {
+      "parent": 1769812912,
+      "candidate": 897168304,
+      "delta": -872644608
+    },
+    "used_bytes": {
+      "parent": 1763755728,
+      "candidate": 895886272,
+      "delta": -867869456
+    }
+  },
+  "machine_arena": {
+    "parent": {
+      "block_count": 102845,
+      "block_header_bytes": 3291040,
+      "capacity_bytes": 1685012480,
+      "used_bytes": 1679245776
+    },
+    "candidate": {
+      "block_count": 49580,
+      "block_header_bytes": 1586560,
+      "capacity_bytes": 812318720,
+      "used_bytes": 811343616
+    }
+  },
+  "memo_storage": {
+    "parent": {
+      "block_count": 49,
+      "block_header_bytes": 1568,
+      "capacity_bytes": 802816,
+      "used_bytes": 784896
+    },
+    "candidate": {
+      "block_count": 52,
+      "block_header_bytes": 1664,
+      "capacity_bytes": 851968,
+      "used_bytes": 817600
+    }
+  },
+  "overhead": "One8-byte pool pointer/eval; WHNF384->392, aligned384->400,2044 jobs,32704 aligned bytes; memo arena capacity+49152.",
+  "limits": [
+    "Selected-cut retained capacity, not exact peak, semantic-live bytes, RSS or time.",
+    "Program arena mixes Core/typed/Evidence/Job/query/parser; indexed payload extents are partial attribution.",
+    "Existing external allocation audit excludes internal graph.c calls; cumulative requests only."
+  ]
+}

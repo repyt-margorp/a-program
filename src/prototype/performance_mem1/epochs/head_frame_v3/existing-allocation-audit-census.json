@@ -1,0 +1,107 @@
+{
+  "complete": true,
+  "parent_and_v2_report": "/tmp/ap-performance-mem1-stateless-frames-73fa86c9-20261003/existing-allocation-audit-census.json",
+  "parent_and_v2_report_sha256": "0f2edff00a8720593dd9ae44fb9d8ef244ba29ca2127f9294e735d6d597a87a5",
+  "rows": [
+    {
+      "variant": "parent",
+      "case": "tree400",
+      "argv": [
+        "timeout",
+        "180",
+        "/tmp/ap-performance-mem1-73fa86c9-20261003/allocation-build/allocation_count_check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-cross-7d24b8d/trees_400.p"
+      ],
+      "exit": 0,
+      "steps": 183507626,
+      "wrapped_external_arena_calls": 96773856,
+      "wrapped_external_aligned_bytes": 5721879472,
+      "input_sha256": "ec7d6e03053a6d7fedbf41a26ec682d91d7375f4cd89a83cfc39aa05fab6bdc3",
+      "binary_sha256": "3d56d6f95428860a2fb5bdedc41228c424a626164ae9bb5fff02524acd71cf13",
+      "log_sha256": "4e1fc763212a4ccbb2d9c5211687290babf176e8efcfc80ab3306ca652375837"
+    },
+    {
+      "variant": "parent",
+      "case": "list",
+      "argv": [
+        "timeout",
+        "180",
+        "/tmp/ap-performance-mem1-73fa86c9-20261003/allocation-build/allocation_count_check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-73fa86c9-20261003/examples/09_list_induction.p"
+      ],
+      "exit": 0,
+      "steps": 1915,
+      "wrapped_external_arena_calls": 3955,
+      "wrapped_external_aligned_bytes": 413280,
+      "input_sha256": "f2d58b2c2161c086f62022943ca63e9acdca3c2dd7c6fd1979cc4c7ff7c15b37",
+      "binary_sha256": "3d56d6f95428860a2fb5bdedc41228c424a626164ae9bb5fff02524acd71cf13",
+      "log_sha256": "32935db5772a003ffae6aad2ebacc534866d38976ffba785f45f27ffabc7abf8"
+    },
+    {
+      "variant": "v2",
+      "case": "tree400",
+      "argv": [
+        "timeout",
+        "180",
+        "/tmp/ap-performance-mem1-stateless-frames-73fa86c9-20261003/allocation-build/allocation_count_check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-cross-7d24b8d/trees_400.p"
+      ],
+      "exit": 0,
+      "steps": 183507626,
+      "wrapped_external_arena_calls": 85409894,
+      "wrapped_external_aligned_bytes": 2994561296,
+      "input_sha256": "ec7d6e03053a6d7fedbf41a26ec682d91d7375f4cd89a83cfc39aa05fab6bdc3",
+      "binary_sha256": "03521c506f83dd0596d9ef4ee9e22afa0a08566bbd70b55191d503497de6673c",
+      "log_sha256": "67c1e9f0d2b11410dbe1fd8a502872c0be67f63a7a5dfba0cf765f0848b905b3"
+    },
+    {
+      "variant": "v2",
+      "case": "list",
+      "argv": [
+        "timeout",
+        "180",
+        "/tmp/ap-performance-mem1-stateless-frames-73fa86c9-20261003/allocation-build/allocation_count_check",
+        "--steps",
+        "1000000000",
+        "/tmp/ap-performance-mem1-73fa86c9-20261003/examples/09_list_induction.p"
+      ],
+      "exit": 0,
+      "steps": 1915,
+      "wrapped_external_arena_calls": 3955,
+      "wrapped_external_aligned_bytes": 413648,
+      "input_sha256": "f2d58b2c2161c086f62022943ca63e9acdca3c2dd7c6fd1979cc4c7ff7c15b37",
+      "binary_sha256": "03521c506f83dd0596d9ef4ee9e22afa0a08566bbd70b55191d503497de6673c",
+      "log_sha256": "488e15b7d2bf4e7463af4d3238486f0a2b82adc5730d2dcceb7621696a1d4d51"
+    },
+    {
+      "variant": "v3",
+      "case": "tree400",
+      "exit": 0,
+      "steps": 183507626,
+      "wrapped_external_arena_calls": 85409894,
+      "wrapped_external_aligned_bytes": 2994561296,
+      "input_sha256": "ec7d6e03053a6d7fedbf41a26ec682d91d7375f4cd89a83cfc39aa05fab6bdc3",
+      "binary_sha256": "a8e188256f3567c16217ca6d0fd46c90762beae5210bd88d5527d5da81012e43",
+      "log_sha256": "67c1e9f0d2b11410dbe1fd8a502872c0be67f63a7a5dfba0cf765f0848b905b3"
+    },
+    {
+      "variant": "v3",
+      "case": "list",
+      "exit": 0,
+      "steps": 1915,
+      "wrapped_external_arena_calls": 3955,
+      "wrapped_external_aligned_bytes": 413648,
+      "input_sha256": "f2d58b2c2161c086f62022943ca63e9acdca3c2dd7c6fd1979cc4c7ff7c15b37",
+      "binary_sha256": "a8e188256f3567c16217ca6d0fd46c90762beae5210bd88d5527d5da81012e43",
+      "log_sha256": "488e15b7d2bf4e7463af4d3238486f0a2b82adc5730d2dcceb7621696a1d4d51"
+    }
+  ],
+  "metrics": "Existing external pg_alloc requests only, cumulative aligned bytes; graph.c internal calls excluded. Not live, peak, RSS or time.",
+  "existing_wrapper_sha256": "48b11cf23888f2f6bc71df6595847e0b1cb3e38d6edef48f2c681ca10523ddbd"
+}

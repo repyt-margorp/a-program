@@ -1,0 +1,45 @@
+{
+  "terminal": true,
+  "rows": [
+    {
+      "variant": "parent",
+      "build_argv": [
+        "make",
+        "-f",
+        "/tmp/ap-performance-mem1-gates.mk",
+        "-j1",
+        "OVERLAY=/tmp/ap-performance-mem1-73fa86c9-20261003",
+        "BUILD=/tmp/ap-performance-mem1-73fa86c9-20261003/asan",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/tmp/ap-performance-mem1-73fa86c9-20261003/asan/callback_failure_cleanup_test"
+      ],
+      "build_exit": 0,
+      "test_exit": 0,
+      "log_sha256": "61ec4af330c385ae0f897bc52eb6b4f63fad77a93da5af858b2b8175fd8cbaef",
+      "source128": "73fa86c94b805b768d2c8493ce6f6a46c51983e556974c4920d805b59eefc743",
+      "test_sha256": "93da2cfae80ddecd43deb62d1f242fad710ae5fcc0b9ea19aba41ed491b57cff",
+      "interpretation": "API boundary under review; do not infer a new callback contract from parent behavior alone."
+    },
+    {
+      "variant": "v2",
+      "build_argv": [
+        "make",
+        "-f",
+        "/tmp/ap-performance-mem1-gates.mk",
+        "-j1",
+        "OVERLAY=/tmp/ap-performance-mem1-stateless-frames-73fa86c9-20261003",
+        "BUILD=/tmp/ap-performance-mem1-stateless-frames-73fa86c9-20261003/asan",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/tmp/ap-performance-mem1-stateless-frames-73fa86c9-20261003/asan/callback_failure_cleanup_test"
+      ],
+      "build_exit": 0,
+      "test_exit": -6,
+      "log_sha256": "bdc9edf37dfe1e8a9ab8e427d760208d65ef3ab5f8fc0b4375ed0ac9be8ee4ea",
+      "source128": "8f6ea298a8d2f7be65c12e5abb756be0ad77a6d41fa4f7794b4781569639fca7",
+      "test_sha256": "93da2cfae80ddecd43deb62d1f242fad710ae5fcc0b9ea19aba41ed491b57cff",
+      "interpretation": "API boundary under review; do not infer a new callback contract from parent behavior alone."
+    }
+  ],
+  "public_header_does_not_explicitly_prohibit_in_callback_destroy": true,
+  "not_a_contract_or_checker_waiver": true
+}

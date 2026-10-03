@@ -1,0 +1,25 @@
+--- a/src/eval.c
++++ b/src/eval.c
+@@ -178,9 +178,8 @@
+ 	machine->frames = frame->parent;
+ 	machine->head_ready = 0;
+ 	pg_materialize_destroy(&frame->answer);
+-	int result = (head ? head->fallback : frame->continuation)->resume(machine, answer, frame->state);
+-	retire_frame(machine, frame);
+-	return result;
++	/* Materialized callbacks keep their original arena-lifetime contract. */
++	return (head ? head->fallback : frame->continuation)->resume(machine, answer, frame->state);
+ }
+ 
+ void pg_eval_init(struct pg_eval *machine, const struct pg_term *term)
+--- a/src/eval.h
++++ b/src/eval.h
+@@ -33,7 +33,7 @@
+ 	int (*dispatch)(struct pg_eval *machine);
+ 	struct pg_graph *output;
+ 	struct pg_eval_frame *frames;
+-	/* Retired stateless frames contain no frontier or borrowed callback state. */
++	/* Stateless head frames, after their existing callback cleanup. */
+ 	struct pg_eval_frame *free_frames;
+ 	int head_ready;
+ 	struct pg_eval_task *task;
