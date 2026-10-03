@@ -1,0 +1,10 @@
+{
+  "exit": 1,
+  "stage": "postprocessing, not runtime gate",
+  "original_assertion": "assert deleted_cumulative_aligned_bytes == 16 * deleted_arena_calls",
+  "original_stdout": "list 1921 55 880\neffect 13142 319 5104\n",
+  "original_stderr": "Traceback (most recent call last):\n  File \"<stdin>\", line 10, in <module>\nAssertionError\n",
+  "first_counterexample": "captured: calls66/aligned bytes1024, while the proposed universal formula expected1056",
+  "correction": "Report independent actual existing cumulative counters, retain formula failure; do not infer universal workload cost from the small layout control. All actual census commands exit0 and semantic columns match.",
+  "no_outcome_waiver": true
+}

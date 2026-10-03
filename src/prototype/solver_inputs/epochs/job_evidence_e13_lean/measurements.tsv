@@ -1,0 +1,6 @@
+sample	steps	status	parent_calls	candidate_calls	deleted_calls	parent_cumulative_aligned_bytes	candidate_cumulative_aligned_bytes	deleted_cumulative_aligned_bytes
+list	1921	DONE	4415	4360	55	442736	441856	880
+effect	13142	DONE	27941	27622	319	2789328	2784224	5104
+captured	2307	DONE	7625	7559	66	738096	737072	1024
+quick	766477	DONE	2890073	2886658	3415	229333504	229221552	111952
+handler	2470	DONE	4755	4649	106	470704	469008	1696

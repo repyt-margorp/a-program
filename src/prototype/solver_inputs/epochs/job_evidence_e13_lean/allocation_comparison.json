@@ -1,0 +1,20 @@
+{
+  "source": "existing artifact_persistence/allocation_audit.c, cumulative externally interposed arena requests only; no live/peak/RSS/time",
+  "parent": {
+    "wrapped_arena_calls": "1065",
+    "wrapped_aligned_bytes": "108368",
+    "rule_headers": "156",
+    "steps": "200",
+    "status": "1"
+  },
+  "candidate": {
+    "wrapped_arena_calls": "909",
+    "wrapped_aligned_bytes": "105872",
+    "rule_headers": "156",
+    "steps": "200",
+    "status": "1"
+  },
+  "deleted_arena_calls": 156,
+  "deleted_cumulative_aligned_arena_bytes": 2496,
+  "checking_headers_steps_status_equal": true
+}

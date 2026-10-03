@@ -1,0 +1,44 @@
+E13: canonical derivation headers occupy their existing index entry.
+2026-10-03; prototype only; SE1-SE5 Goal active and completion criteria open.
+Exact isolated parent: corrected E12 task cb959eb6ecb30c149b464529f3069833b6fd00a5,
+source156 0a76201b7ca5b89bc129d2a11d6694a22a774474489e6f2c919e9152dd5a3458.
+E10/current Main composition and later private E14 are excluded.
+
+Delete the header pointer and separate header allocation from rule_input. Its
+existing index entry now precedes one aligned immutable header. The flexible byte
+tail respects C11: pg_derivation_input itself has a flexible premise array, so it
+cannot be embedded as a nested struct member. No new index, authority, checker,
+graph, caching policy, borrowed caller storage or source/erasure policy is added.
+Request key fields, checked rules, Oracle/type locality, scope/effects, source
+identity and ordinary Solve/fuel/persistence semantics remain unchanged.
+
+Permanent Synthesis assertions retain the original rule/count/level after caller
+header mutation. Separate real returned-frame control uses a volatile helper call,
+128 Universe levels, repeated sharing across index growth, zero/one-step dispatch
+and actual checked proofs. Parent/candidate O2 and candidate ASan/UBSan/leaks/
+stack-after-return controls0. Existing allocation_audit.c measures156 fewer arena
+calls and2,496 fewer cumulative aligned bytes at the same200 steps in this control.
+
+Fresh full unskipped serial-j1 O2 acceptance/semantic/seven checkpoints0, pinned156
+source/actual469 overlay inputs exact. Baseline eight C scripts0, affected SAN0.
+Strict public gate remains actual exit1: original1000+1000,1600+1600,completed1921+0
+failures unwaived; all52 images and full verdict/fuel table byte-exact parent E12.
+Five paired census workloads each DONE; all35 reported fields equal at every cut.
+Genuine imported quick_locally_sorted ordinary-result theorem remains766477 steps,
+114388 typed occurrences/94974 Evidence. Existing external allocation interposition
+observes3,415 fewer cumulative calls/111,952 fewer aligned requested bytes there.
+Those are cumulative external counters, not peak/live/RSS/time or dispatch gains.
+
+Preserve the first postprocessing assertion exit1: extrapolating16 bytes per
+deleted call to every workload was false (captured66 calls versus1,024 bytes).
+Actual runtime census commands all0 and semantic columns match. Corrected reports
+record the two independent counters without this unsupported model; no runtime
+acceptance was relaxed. Other cumulative trace effects are not attributed to a
+single header layout. Publication/setup/history and current-producer joint
+qualification stay distinct. Matched peak/time measurement remains pending an
+exclusive Performance slot; checking was not removed for speed.
+
+Exact canonical projection, source/input pins, applied implementation/test delta,
+commands, binary/report hashes and concise verdicts accompany the lean handoff.
+Only Root publishes task snapshots and resolves Main integration. No accepted
+source promotion, shared index mutation or frozen E11/E12 modification occurred.
