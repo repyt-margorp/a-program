@@ -120,6 +120,19 @@ this is a bounded measured tree gain, not universal speed/memory or native
 ranking. [Root complete medians/ranges and pins](../src/prototype/performance_followup/mem1-v3-cost-root-review.json).
 Exact18 V3 taskc861728 is pushed/remote verified; prototype Maincc69f52 contains
 the same frozen bytes. Accepted/default producer selection was not replaced.
+2026-10-03 16:20 UTC Root publication review: original109 measured files plus
+the separate2-file interpretation addendum are exact at taske561030 and
+prototype Main895ac67. All111 file sets/hashes, all36 frozen argv/expected steps/
+raw hashes, twelve Root summaries and280 input pins independently verified.
+The table above uses launcher wall time; the [frozen report](../src/prototype/performance_mem1/epochs/current_e12_cost_20261003/report.md)
+uses GNU time (tree400 median5.33 ->4.92s). Read it with the
+[interpretation addendum](../src/prototype/performance_mem1/epochs/current_e12_cost_review_20261003/README.md):
+list launcher ranges are disjoint despite the original frozen analysis sentence;
+GNU list wall values round to0.00s. Startup dominance and overlapping list RSS
+remain, so no evaluator/list-speed or list-memory gain follows. Original109
+bytes stay unchanged. The frozen terminal hold flag records the pre-release
+stage; the worker consumed Root release and resumed argument/environment owner
+research. No new comparative samples ran for this publication.
 No accepted promotion or Goal completion. Initial Root omitted-Makefile setup error stays
 separate from the successful fresh builds/runs.
 [Root lifetime review](../src/prototype/performance_followup/mem1-root-review.json)

@@ -218,5 +218,22 @@
   "candidate_binary_sha256": "0b7c9d578c1b1406c86994858b6e47ffb8abf6d7850ca997561ffcb9f5bc5fc7",
   "v3_task": "c86172885671d1046c67b4d50c2ac1d9d6fe1b64",
   "v3_prototype_Main": "cc69f525df0ee3429b10cf60283894aed2018f88",
-  "runnable_default_accepted_replacement": false
+  "runnable_default_accepted_replacement": false,
+  "frozen_cost_publication": {
+    "reviewed_at_UTC": "2026-10-03 16:20 UTC",
+    "notice_sha256": "3406da0cf33a96c7cbd70112bcce17c0c9a9804de687c392c03c3f1b95afbdbd",
+    "task": "e561030d0dbb03f568033be2bf23ae2d7fbc189b",
+    "prototype_Main_integration": "895ac67f098ada9858fe1486d3461c2a203b7cc9",
+    "all111_Main_files_exact": true,
+    "original109_manifest_sha256": "5497a58490ab8448f207efa9ad7ae8f04e9cd40674c4cb6d2409061103067d0c",
+    "interpretation_addendum2_manifest_sha256": "bc429e9edb8b8aee2bced04c8b76b8dd838dfaa44fd87b5206e3ea80bc3f609b",
+    "raw36_and_all12_Root_summaries_recomputed_from_frozen_files": true,
+    "all280_pins_fresh_after_publication_review": true,
+    "original109_and_source18_unchanged": true,
+    "wall_metric_in_Root_summaries": "Launcher elapsed seconds including process/wrapper startup.",
+    "GNU_wall_tree400_medians_s": [5.33, 4.92],
+    "interpretation_correction": "Separate addendum supersedes frozen analysis sentence claiming list launcher overlap. Raw launcher ranges are disjoint; GNU time rounds all six list wall values to0.00s. No evaluator/list-speed or list-memory gain follows.",
+    "release_reconciled": "Frozen terminal.json heavy_hold flag records its pre-release stage; worker READY confirms Root release consumed and independent argument/environment research resumed.",
+    "new_measurements_run_for_publication": false
+  }
 }
