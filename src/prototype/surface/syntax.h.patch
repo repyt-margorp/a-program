@@ -1,0 +1,24 @@
+--- a/syntax.h
++++ b/syntax.h
+@@ -25,6 +25,12 @@
+ 	PG_SYNTAX_MOTIVE
+ };
+ 
++enum pg_clause_bindings {
++	PG_CLAUSE_POSITIONAL,
++	PG_CLAUSE_ORDERED,
++	PG_CLAUSE_UNORDERED
++};
++
+ struct pg_syntax_item {
+ 	struct pg_token name;
+ 	const struct pg_syntax *expression;
+@@ -42,6 +48,8 @@
+ 	size_t item_count;
+ 	const struct pg_syntax_item *items;
+ 	int binder_marker;
++	/* Named items store the local on the left and source selector on the right. */
++	enum pg_clause_bindings clause_bindings;
+ };
+ 
+ struct pg_definition {

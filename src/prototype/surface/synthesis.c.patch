@@ -1,0 +1,63 @@
+--- a/synthesis.c
++++ b/synthesis.c
+@@ -1728,8 +1728,7 @@
+ 				const struct pg_syntax *clause = syntax->items[i].expression;
+ 				const struct marker_shadow *inner = shadow;
+ 				for (size_t j = 0; j < clause->item_count; ++j) {
+-					struct pg_token name = clause->items[j].operation == PG_TOKEN_ASSIGN
+-						? clause->items[j].expression->token : clause->items[j].name;
++					struct pg_token name = clause->items[j].name;
+ 					inner = marker_bind(&arena, inner, name);
+ 					if (!inner) goto done;
+ 				}
+@@ -2809,7 +2808,10 @@
+ 	const struct pg_object *constructor, const struct pg_syntax *clause, size_t count,
+ 	const struct pg_evidence *const *extensions, const struct pg_source_scope **result)
+ {
+-	int named = clause && clause->item_count && clause->items[0].operation;
++	int named = clause && clause->clause_bindings != PG_CLAUSE_POSITIONAL;
++	if (clause && (clause->clause_bindings < PG_CLAUSE_POSITIONAL ||
++		clause->clause_bindings > PG_CLAUSE_UNORDERED || (named && !clause->item_count)))
++		return PG_SYNTHESIS_REJECTED;
+ 	size_t hidden = 0, ordinal;
+ 	const struct source_metadata *origin = source_metadata(synthesis, pg_evidence_subject(formation));
+ 	const struct pg_data_layout *layout = pg_data_schema_layout(pg_evidence_inductive_schema(formation));
+@@ -2827,16 +2829,17 @@
+ 		const struct source_case_layout *source = &names->cases[ordinal];
+ 		if (source->count != count) goto done;
+ 		for (size_t i = 0; i < count; ++i) bindings[i].graph_value = source->fields[i].graph_value;
++		size_t previous = 0;
+ 		for (size_t i = 0; i < clause->item_count; ++i) {
+ 			const struct pg_syntax_item *item = &clause->items[i];
+ 			if (item->operation != PG_TOKEN_ASSIGN || !item->expression || item->expression->kind != PG_SYNTAX_ATOM) goto done;
+-			struct pg_token alias = item->expression->token;
+-			if (alias.kind != PG_TOKEN_IDENT) goto done;
++			struct pg_token local_name = item->name, source_selector = item->expression->token;
++			if (local_name.kind != PG_TOKEN_IDENT || source_selector.kind != PG_TOKEN_IDENT) goto done;
+ 			for (size_t j = 0; j < i; ++j)
+-				if (same_name(alias, clause->items[j].expression->token)) goto done;
++				if (same_name(local_name, clause->items[j].name)) goto done;
+ 			size_t selected = count;
+ 			for (size_t field = 0; field < count; ++field) {
+-				if (source->fields[field].name.kind != PG_TOKEN_IDENT || !same_name(source->fields[field].name, item->name)) continue;
++				if (source->fields[field].name.kind != PG_TOKEN_IDENT || !same_name(source->fields[field].name, source_selector)) continue;
+ 				if (selected != count) goto done;
+ 				selected = field;
+ 			}
+@@ -2846,12 +2849,14 @@
+ 				/* A derived block result is not the result of a nested call.
+ 				 * Its naming requires a checked expression projection, not an alias. */
+ 				if (block) for (size_t j = 0; j < pg_synthesis_block_end(body); ++j)
+-					if (block->items[j].name.kind == PG_TOKEN_IDENT && same_name(block->items[j].name, item->name))
++					if (block->items[j].name.kind == PG_TOKEN_IDENT && same_name(block->items[j].name, source_selector))
+ 						status = PG_SYNTHESIS_UNSUPPORTED;
+ 				goto done;
+ 			}
+ 			if (bindings[selected].name.kind) goto done;
+-			bindings[selected].name = alias;
++			if (clause->clause_bindings == PG_CLAUSE_ORDERED && i && selected <= previous) goto done;
++			previous = selected;
++			bindings[selected].name = local_name;
+ 		}
+ 	} else if (clause) for (size_t i = 0; i < count - hidden; ++i) {
+ 		if (clause->items[i].operation) goto done;

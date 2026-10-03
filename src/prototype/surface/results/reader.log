@@ -1,0 +1,9 @@
+constructor indices: lexical use, shadowing and dependent header generalization passed
+intrinsic names: #Name and #.Name use ordinary qualified lookup
+syntax: lambda annotations, dependent Pi, applications and separate expect nodes passed
+declarations: parameter/index separation, List/Vec/Acc self markers and constructor arrays passed
+blocks: ordered named/unnamed items, selected result, exits and root-only definitions passed
+elimination syntax: clause arrays, alias heads, return labels, nested grouping and selectors passed
+companions: import syntax, marker retention and graph arguments without type fabrication passed
+program syntax: flat/explicit definition arrays retain checks, imports and selection without Core construction
+reader: symbolic syntax, contextual names, literals, comments and bounded input passed

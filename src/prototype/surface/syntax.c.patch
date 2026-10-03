@@ -1,0 +1,65 @@
+--- a/syntax.c
++++ b/syntax.c
+@@ -63,8 +63,6 @@
+ 					mark_index_names(scratch, item->expression, scope)) return -1;
+ 			}
+ 			struct pg_token name = item->name;
+-			if (syntax->kind == PG_SYNTAX_CLAUSE && item->expression)
+-				name = item->expression->token;
+ 			if (name.kind != PG_TOKEN_IDENT || item->operation == PG_TOKEN_EXPECT) continue;
+ 			struct index_name *bound = pg_alloc(scratch, sizeof(*bound));
+ 			if (!bound) return -1;
+@@ -515,6 +513,7 @@
+ 		const struct pg_syntax *head = atom(parser);
+ 		if (!head) goto done;
+ 		binders.count = 0;
++		enum pg_clause_bindings mode = PG_CLAUSE_POSITIONAL;
+ 		while (parser->reader.token.kind == PG_TOKEN_IDENT) {
+ 			struct pg_syntax_item binder = {.name = parser->reader.token};
+ 			advance(parser);
+@@ -526,27 +525,35 @@
+ 				goto done;
+ 			}
+ 			advance(parser);
++			mode = PG_CLAUSE_ORDERED;
++			if (parser->reader.token.kind == '{') {
++				advance(parser);
++				mode = PG_CLAUSE_UNORDERED;
++			}
+ 			while (!parser->error && parser->reader.token.kind != '}') {
+-				struct pg_token name = parser->reader.token;
+-				if (require(parser, PG_TOKEN_IDENT, "expected named selector") != 0) goto done;
+-				struct pg_token alias = name;
++				struct pg_token local_name = parser->reader.token;
++				if (require(parser, PG_TOKEN_IDENT, "expected local graph binder") != 0) goto done;
++				struct pg_token source_selector = local_name;
+ 				if (parser->reader.token.kind == PG_TOKEN_ASSIGN) {
+ 					advance(parser);
+-					alias = parser->reader.token;
+-					if (require(parser, PG_TOKEN_IDENT, "expected selector alias") != 0) goto done;
++					source_selector = parser->reader.token;
++					if (require(parser, PG_TOKEN_IDENT, "expected graph source selector") != 0) goto done;
+ 				}
+-				const struct pg_syntax *local = node(parser, PG_SYNTAX_ATOM, alias, NULL, NULL);
+-				if (require(parser, ';', "expected ';' after selector") != 0) goto done;
+-				if (append_item(parser, &binders, (struct pg_syntax_item){.name = name,
+-					.expression = local, .operation = PG_TOKEN_ASSIGN}) != 0) goto done;
+-			}
++				const struct pg_syntax *source = node(parser, PG_SYNTAX_ATOM, source_selector, NULL, NULL);
++				if (!source || require(parser, ';', "expected ';' after selector") != 0) goto done;
++				if (append_item(parser, &binders, (struct pg_syntax_item){.name = local_name,
++					.expression = source, .operation = PG_TOKEN_ASSIGN}) != 0) goto done;
++			}
++			if (!binders.count) { error(parser, "expected nonempty graph bindings"); goto done; }
+ 			if (require(parser, '}', "expected '}' after selectors") != 0) goto done;
++			if (mode == PG_CLAUSE_UNORDERED && require(parser, '}', "expected second '}' after selectors") != 0) goto done;
+ 		}
+ 		if (require(parser, PG_TOKEN_LAMBDA_ARROW, "expected '=>' after clause binders") != 0) goto done;
+ 		const struct pg_syntax *body = expression_mode(parser, 0);
+ 		if (!body) goto done;
+ 		struct pg_syntax *clause = item_node(parser, PG_SYNTAX_CLAUSE, marker, &binders);
+ 		if (!clause) goto done;
++		clause->clause_bindings = mode;
+ 		clause->left = head;
+ 		clause->right = body;
+ 		if (append_item(parser, &clauses, (struct pg_syntax_item){.expression = clause}) != 0) goto done;

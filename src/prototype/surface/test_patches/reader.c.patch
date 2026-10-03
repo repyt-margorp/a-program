@@ -1,0 +1,31 @@
+--- a/reader.c
++++ b/reader.c
+@@ -158,7 +158,7 @@
+ 		"add := \\n:Nat => n @zero => \\m:Nat => m @succ k => \\m:Nat => Nat.succ (*k m);"
+ 		"handled := M @#get req k => k default @print_alias req k => k unit @#return result => result;"
+ 		"nested := b @true => (b @true => x @false => y) @false => z;"
+-		"selected := g @step {arg:=x; proof;} => x;";
++		"selected := g @step {{x:=arg; proof;}} => x;";
+ 	struct pg_graph arena = {0};
+ 	struct pg_parser parser;
+ 	struct pg_definition definition;
+@@ -187,7 +187,9 @@
+ 	const struct pg_syntax *clause = definition.expression->items[0].expression;
+ 	assert(clause->item_count == 2);
+ 	assert(clause->items[0].operation == PG_TOKEN_ASSIGN);
+-	assert(clause->items[0].expression->token.text[0] == 'x');
++	assert(clause->clause_bindings == PG_CLAUSE_UNORDERED);
++	assert(clause->items[0].name.text[0] == 'x');
++	assert(clause->items[0].expression->token.text[0] == 'a');
+ 	assert(pg_parser_next(&parser, &definition) == 0);
+ 	const char *invalid[] = {"m:=x @;", "m:=x @c p {q;} =>x;", "m:=x @c {p:=;} =>x;",
+ 		"m:=x @c p =>;", "m:=x @c =>;"};
+@@ -460,7 +462,7 @@
+ 		{"D:=@\\n:Nat=>{c:(\\n:T n=>F n) value;};", 1, "n"},
+ 		{"D:=@\\n:Nat=>{c:(b @some n=>F n @none=>T);};", 0, ""},
+ 		{"D:=@\\n:Nat=>{c:(b @some n=>F n @none=>F n);};", 1, "n"},
+-		{"D:=@\\n:Nat=>{c:(b @some {field:=n;}=>F n);};", 0, ""},
++		{"D:=@\\n:Nat=>{c:(b @some {{n:=field;}}=>F n);};", 0, ""},
+ 		{"D:=@\\n:Nat=>{c:{n:=Nat.zero; F n;};};", 0, ""},
+ 		{"D:=@\\n:Nat=>{c:{n:=f n; F n;};};", 1, "n"},
+ 		{"D:=@\\n:Nat=>{c:@\\n:Nat=>{inner:* n;};};", 0, ""},
