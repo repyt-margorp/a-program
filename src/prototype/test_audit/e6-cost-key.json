@@ -1,0 +1,379 @@
+{
+  "binary_sha256": {
+    "pointer-check": "33d90f6fb02f0bd5cafe1e50f5cc64a5d057b2607e4c5f3aa21b81c97fe9bf8f",
+    "program_test": "d21c94c9e24eeb25eef14c8abe2a4e8c9d971f56c662d96684ce45873b87254f"
+  },
+  "environment": {
+    "LANG": "C",
+    "LC_ALL": "C",
+    "PATH": "/usr/bin:/bin",
+    "TMPDIR": "/tmp",
+    "cwd": "/home/repyt/workspace/a-program-workers/verification-audit",
+    "platform": [
+      "Linux",
+      "debian",
+      "6.12.48+deb13-amd64",
+      "#1 SMP PREEMPT_DYNAMIC Debian 6.12.48-1 (2025-09-20)",
+      "x86_64",
+      ""
+    ],
+    "policy": "existing script fuel/root/legacy options; ordinary semantic images; no implicit trust or retained-mode substitution",
+    "seed": "no seed parameter; existing generators byte-pinned",
+    "slot": "ungranted; performance children must be terminal before audit; check hashes immediately before/after",
+    "unset": [
+      "BASH_ENV",
+      "ENV",
+      "LD_PRELOAD",
+      "LD_LIBRARY_PATH",
+      "ASAN_OPTIONS",
+      "UBSAN_OPTIONS"
+    ]
+  },
+  "excluded_request": {
+    "generic_sorted_retained": "not applicable: argument 2 is program_test path; 0/1 are invalid comparators, and retained policy was removed. Do not time a duplicate ordinary run as retained coverage."
+  },
+  "gates": {
+    "generic_sorted": {
+      "cap_seconds": 120,
+      "command": [
+        "/usr/bin/timeout",
+        "--signal=TERM",
+        "--kill-after=5s",
+        "120s",
+        "/usr/bin/bash",
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/tests/generic_sorted.sh",
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/build/pointer-check",
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/build/program_test"
+      ],
+      "input_manifest_sha256": "18485fcd9ddb3c29bee4f5329b285c4232b5dffab50c2d05f8cdfc7e71f16740",
+      "rows": [
+        {
+          "path": "tests/acceptance/decision-explicit-effectful.p",
+          "sha256": "9306faf25f6793ea54bd0aa7e68d7c132f157f43a547bdbcbdb5e1e1ca191274"
+        },
+        {
+          "path": "tests/acceptance/decision-explicit-recomputed.p",
+          "sha256": "4d53e2c3e66cecfbbc040de8576a5326ccdf86ece630b5e6f3cd6780f298b2a5"
+        },
+        {
+          "path": "tests/acceptance/decision-explicit-result.p",
+          "sha256": "f33d787061ddcc3fd8700d897eb94b0926411c7865bb30a7e5a8cc8123cee752"
+        },
+        {
+          "path": "tests/acceptance/decision-explicit-wrong-arity.p",
+          "sha256": "57c09af7a7811e1ad4b35ed6eeddedcbafd61b891bf7fc698b9c05022a5816df"
+        },
+        {
+          "path": "tests/acceptance/decision-explicit-wrong-comparator.p",
+          "sha256": "14c877103bb1efdc475cfa07be948cf0d4b6b068fb4aa884afdf469ac663a285"
+        },
+        {
+          "path": "tests/acceptance/decision-explicit-wrong-index.p",
+          "sha256": "0caa72fc619cbe8587aa86534979a70c8c3f94153491821b994bd360bd3ccbb7"
+        },
+        {
+          "path": "tests/acceptance/decision-explicit-wrong-scope.p",
+          "sha256": "f0315ca6b92b038651b3ee76986311bad4d04a8850a9041b912f366fa509aca5"
+        },
+        {
+          "path": "tests/acceptance/generic-quick-sorted.p",
+          "sha256": "921265eebe503d21980f02c12d3b1c90cdcdbac3545cd220b659dffd7b81173a"
+        },
+        {
+          "path": "tests/acceptance/lt-derived-helper-graph-direct.p",
+          "sha256": "ceda0aa9749d09b4465ec23555d606e980f0b5b07043dcf84d5b4a6ad4c0fd83"
+        },
+        {
+          "path": "tests/acceptance/lt-derived-helper-graph-shifted-wrong.p",
+          "sha256": "240f4efcdae4adc8144dfb8c464cb16515780721d9f45571905b03cdb507e163"
+        },
+        {
+          "path": "tests/acceptance/lt-derived-helper-graph-shifted.p",
+          "sha256": "555f546cd0339eb79c2430c1e47c223ee90a3e8f19c346f73c76961703264f05"
+        },
+        {
+          "path": "tests/acceptance/lt-derived-lift-graph.p",
+          "sha256": "510eb4ed957c11285c082c4b873495b444c43350762bfa2608de8afba38dcb6a"
+        },
+        {
+          "path": "tests/acceptance/lt-derived-lift.p",
+          "sha256": "d37cd127cf348ca524829405d390513f8b3c9114ff83cf70d0a5274cb09077cc"
+        },
+        {
+          "path": "tests/fixtures/generic_sorted/box-fixed-cast.p",
+          "sha256": "9ee8f728f1495b621c8f03af7ffbf22093357698048c80603058ac5b549c50dc"
+        },
+        {
+          "path": "tests/fixtures/generic_sorted/box-fixed.p",
+          "sha256": "e8f0ccd8b7114597dfaffda68478ec9bf51b97565341d24280a4ef860e456527"
+        },
+        {
+          "path": "tests/fixtures/generic_sorted/comparator-bridge-computed.p",
+          "sha256": "8ecef467e7112cadb474f11af0f15a698f52350de26a426ec7774af825ae52a6"
+        },
+        {
+          "path": "tests/fixtures/generic_sorted/comparator-bridge-rejected.p",
+          "sha256": "ea89f11ddce161cd3b198ea65fdc3f8f16648ee9d0b910b5eddc4448d94b273f"
+        },
+        {
+          "path": "tests/fixtures/generic_sorted/decision-computed.p",
+          "sha256": "17918a9671110ffa1f002a448a9425c5ba7e56d47a415942f94c07b32b1f85ed"
+        },
+        {
+          "path": "tests/fixtures/generic_sorted/decision-graph-general.p",
+          "sha256": "f6ece00ec1be9a4c904948f571c121286ca4df069e8cf278bda8b94e25493dde"
+        },
+        {
+          "path": "tests/fixtures/generic_sorted/decision-no-check.p",
+          "sha256": "74b866f8370602200413fb63c3fac0f7976b12f15f9390d8c2b75f8c112c8bfc"
+        },
+        {
+          "path": "tests/fixtures/generic_sorted/generic-conditional.p",
+          "sha256": "fece890be290c1bf766d10338f1de7a6aeed5e5584e29fa5f7864bfff17115b7"
+        },
+        {
+          "path": "tests/fixtures/generic_sorted/generic-quick-original.p",
+          "sha256": "ae08a0fa3efeea9a91130b4c06dd6b89902b152578525f93504fd496ecec0951"
+        },
+        {
+          "path": "tests/fixtures/generic_sorted/generic-quick-projection-outside.p",
+          "sha256": "07ea6315e2aa8f704c0c888d5f5c8450f21a7b32f070e4ff38abb93ae0d975bd"
+        },
+        {
+          "path": "tests/fixtures/sorted-proof-provider.p",
+          "sha256": "a674b893cd5d0dc1899e79238352c6167a536876393ae7f53b2a9de602b647e6"
+        },
+        {
+          "path": "tests/generic_sorted.sh",
+          "sha256": "768f17a89da3a140729580fcffe7357c45a75134f56e6d491c52086326721efb"
+        }
+      ]
+    },
+    "local_strong_sorted": {
+      "cap_seconds": 150,
+      "command": [
+        "/usr/bin/timeout",
+        "--signal=TERM",
+        "--kill-after=5s",
+        "150s",
+        "/usr/bin/bash",
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/tests/local_strong_sorted.sh",
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/build/pointer-check",
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/build/program_test"
+      ],
+      "input_manifest_sha256": "1bac4476d7933ed4f6f19d8b5528ad42ccc0dd7378422037b316f26cc8cb89c6",
+      "rows": [
+        {
+          "path": "tests/acceptance/generic-quick-local-sorted-result.p",
+          "sha256": "bd38d6e04d23402d5a1fc9f2955d90f05b911635680bbc509f1c59ed9431cd27"
+        },
+        {
+          "path": "tests/acceptance/generic-quick-sorted-result.p",
+          "sha256": "6ca2b1a00a76644d6fa36ced9dd9b12592400f1536f9f1fcdcb812aa7a292a89"
+        },
+        {
+          "path": "tests/acceptance/generic-quick-strong-sorted-result.p",
+          "sha256": "003441405594e1480365c39d62fc0d4767398b55bd7d1de6412c501888440fa1"
+        },
+        {
+          "path": "tests/fixtures/generic_sorted/boolean-order.p",
+          "sha256": "1b144cac2ad83dc2aaf4e18edb3d3a9166a4db2e153fd2ab39f0c3e8d50c88d4"
+        },
+        {
+          "path": "tests/fixtures/local-strong-sorted.p",
+          "sha256": "4518b0c84d8a8a9b33af754a7dd3462ed4d691b9541c4b6ed30bd8390afc8d63"
+        },
+        {
+          "path": "tests/fixtures/quick-sort-proof-common.p",
+          "sha256": "19d68cc1399292f26691cd2d49ba8cd6fcfee76a7b5f27d08487b9ea8594770b"
+        },
+        {
+          "path": "tests/fixtures/sorted-proof-provider.p",
+          "sha256": "a674b893cd5d0dc1899e79238352c6167a536876393ae7f53b2a9de602b647e6"
+        },
+        {
+          "path": "tests/fixtures/sortedness-cycle-wrong-edge.p",
+          "sha256": "84951c3784aed865fb7a5048e918e5de4a4b606842d251c8704ba257e9643c46"
+        },
+        {
+          "path": "tests/fixtures/sortedness-cycle-wrong-strong.p",
+          "sha256": "72e5777eea2a4c67663fb4d9769af6e09ea2815c6fbf66aa982a7e48e253b57d"
+        },
+        {
+          "path": "tests/fixtures/sortedness-cycle.p",
+          "sha256": "284f860e6eb6495f520f83dd35869d7103e21e615cc7869212c83ebd510178eb"
+        },
+        {
+          "path": "tests/fixtures/sortedness-strong-consumer.p",
+          "sha256": "57e2bdb5accac5c9966360e8be7b61d98a960685260d2f58bf482fdc486bd957"
+        },
+        {
+          "path": "tests/fixtures/sortedness-wrong-conversion.p",
+          "sha256": "a031b19f90ef593dc97c4a4f1bd9ebf5485389216b4ac7ba4329be7ba5638791"
+        },
+        {
+          "path": "tests/local_strong_sorted.sh",
+          "sha256": "d6de99c0cf9a1d24f82e82fadf490180dee2df3531671ae4e7a094be4de498d5"
+        }
+      ]
+    },
+    "quick_result": {
+      "cap_seconds": 120,
+      "command": [
+        "/usr/bin/timeout",
+        "--signal=TERM",
+        "--kill-after=5s",
+        "120s",
+        "/usr/bin/bash",
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/tests/quick_result.sh",
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/build/pointer-check"
+      ],
+      "input_manifest_sha256": "4c035ec41e0482b6a8608810a07b49af0983a19b00624b0c9a5820dd39f144aa",
+      "rows": [
+        {
+          "path": "tests/acceptance/computation-motive.p",
+          "sha256": "a07fe329e56ba0ff9ebe72df5c2a989b148d4bc68f57d0f2c5dddd3c4cdacfe8"
+        },
+        {
+          "path": "tests/acceptance/generic-quick-sorted-result.p",
+          "sha256": "6ca2b1a00a76644d6fa36ced9dd9b12592400f1536f9f1fcdcb812aa7a292a89"
+        },
+        {
+          "path": "tests/acceptance/indexed-normalized-transport-wrong.p",
+          "sha256": "8046d719ac020db5686a4b62e426e50a03e87993d4e9a87abef2a8504b969ddc"
+        },
+        {
+          "path": "tests/acceptance/indexed-normalized-transport.p",
+          "sha256": "75ce6c240f8e483d23f8d38cbc29806569541934c9dcb367a38e339b19dcf9cf"
+        },
+        {
+          "path": "tests/fixtures/quick-sort-proof-common.p",
+          "sha256": "19d68cc1399292f26691cd2d49ba8cd6fcfee76a7b5f27d08487b9ea8594770b"
+        },
+        {
+          "path": "tests/fixtures/sorted-proof-provider.p",
+          "sha256": "a674b893cd5d0dc1899e79238352c6167a536876393ae7f53b2a9de602b647e6"
+        },
+        {
+          "path": "tests/quick_result.sh",
+          "sha256": "e40156a3e37b70582941533084f58046c6c49a266bda2d597aa6eb654ffd198a"
+        }
+      ]
+    },
+    "retained_quicksort": {
+      "cap_seconds": 60,
+      "command": [
+        "/usr/bin/timeout",
+        "--signal=TERM",
+        "--kill-after=5s",
+        "60s",
+        "/usr/bin/bash",
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/tests/retained_quicksort.sh",
+        "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003/build/pointer-check"
+      ],
+      "input_manifest_sha256": "07aa6b7882547a620a5542aad974139f9ebeb8ec79aa6d4c103f4982b4db1a42",
+      "rows": [
+        {
+          "path": "archive/legacy/src/prototype/tests/fixtures/typing/if8_fuel_free_quicksort_check.p",
+          "sha256": "82db2c170cc3c5a375608df6f24f61953de12c7ffdb3e9b8c98e32d8a1ad3228"
+        },
+        {
+          "path": "tests/acceptance/legacy-quicksort-property.p",
+          "sha256": "3a3bffb873ed4ddd28c92ce6b2ee1b52ada136fec539e6ae9e64ec04b46c4486"
+        },
+        {
+          "path": "tests/retained_quicksort.sh",
+          "sha256": "67c6ac139117a9a16aecde2ce0d82255115b14f99409cbaea07ed6e4870d65b0"
+        }
+      ]
+    }
+  },
+  "qualification": {
+    "canonical_producer": "898463e85ef2bcf366b84a6436c510eb32534086",
+    "compiler_binary_sha256": "a23ecab8ff08f09ad8c80602c2c5df7f49e09c25905cb8975902e101bf72635f",
+    "compiler_current": "cc (Debian 14.2.0-19) 14.2.0",
+    "e6_report_sha256": "fea6571591161978285a1c88a795c5bd3a408c12d2bcf36e5be29a2f4c3df8a0",
+    "flags_reported": "-std=c11 -Wall -Wextra -Werror -O2",
+    "job_epoch": "b2d66682be75c21a3c2a8c5138db9d3f0c5e0eb2",
+    "prototype_main_reported": "01c29c0",
+    "summary_sha256": "ec36a57245cfc5110562af46cffc9717fbca5d8895c53fea4e5f2f6968ef4f2b"
+  },
+  "root": "/tmp/ap-performance-current-joint-898463e-b2d6668-20261003",
+  "source_manifest_sha256": "c3ff50a9745bcca76809f68b7a435e2faeb1e20ea609469353522ef73bd509eb",
+  "tools": {
+    "/lib/x86_64-linux-gnu/libc.so.6": {
+      "path": "/lib/x86_64-linux-gnu/libc.so.6",
+      "sha256": "adeedbc69ac402b762a3bd94759441e0546c33972cb2c0f5bc6869a2d32efed6"
+    },
+    "/lib64/ld-linux-x86-64.so.2": {
+      "path": "/lib64/ld-linux-x86-64.so.2",
+      "sha256": "8c1cf687490f3f7858528ceb4e651b979f625e43396431bec65e5bb89cb63860"
+    },
+    "bash": {
+      "path": "/usr/bin/bash",
+      "sha256": "223fe8564b60636bc738b6178d3ba9a50ef7d791266b0efae6363bb716e4c47f"
+    },
+    "cat": {
+      "path": "/usr/bin/cat",
+      "sha256": "8a5c20c3400a4058a487cd806111cc5138ef4d0fbc6714ff67c9432e38c2705a"
+    },
+    "cmp": {
+      "path": "/usr/bin/cmp",
+      "sha256": "751322036db972a763a66a5564b857707db53efedb6c96d12b19138bf0ec1b58"
+    },
+    "cp": {
+      "path": "/usr/bin/cp",
+      "sha256": "5a3a8808bab81a67c6ac578670f5608595f1569948d4dc7d7d604c1d08d596d9"
+    },
+    "dirname": {
+      "path": "/usr/bin/dirname",
+      "sha256": "088e052097e35176c2714238a7cea6240c82ae3873f02ab77234b30263566768"
+    },
+    "grep": {
+      "path": "/usr/bin/grep",
+      "sha256": "bd6686bf7a650a9717fd7e73fdb07dc63b70547a1da41bce093c56df937a66eb"
+    },
+    "mktemp": {
+      "path": "/usr/bin/mktemp",
+      "sha256": "61f09af83b1ccbd744d424ba5ad19b2af4edb5ad67c367cc092f58422b7bbb7c"
+    },
+    "nm": {
+      "path": "/usr/bin/nm",
+      "sha256": "ddb55c0685721bf494aa2d090056b8b32a40614ad4464b305896f527d882c3c1"
+    },
+    "rm": {
+      "path": "/usr/bin/rm",
+      "sha256": "c959a237e7b95d229eea44764b2246fcb61a95dc679a10ad0cc97ad84c2316c1"
+    },
+    "sed": {
+      "path": "/usr/bin/sed",
+      "sha256": "3e6ba6b165d1491b8ec19ef5e192558b8af0bcc660530e7bb559cccd58eec722"
+    },
+    "timeout": {
+      "path": "/usr/bin/timeout",
+      "sha256": "6ca1891dfc0b05d7680770c2884c0391b92467c7bb6500a5c84677e6481739f1"
+    }
+  },
+  "transitive_runtime_libraries": {
+    "/lib/x86_64-linux-gnu/libacl.so.1": "3c03774961231d8485a4dba36ec359a95939a84719799c58cd26173e44bbde90",
+    "/lib/x86_64-linux-gnu/libattr.so.1": "126e29f16f4a6da5cad9a0d9cf1cc817089ee41645a8581d19691a1b9a581172",
+    "/lib/x86_64-linux-gnu/libbfd-2.44-system.so": "7a27acdd82e38dbddd8568d54de0df4358e71a3c387d5c1d999d369450c1bf6a",
+    "/lib/x86_64-linux-gnu/libc.so.6": "adeedbc69ac402b762a3bd94759441e0546c33972cb2c0f5bc6869a2d32efed6",
+    "/lib/x86_64-linux-gnu/libpcre2-8.so.0": "8ee551e7f9645d6212c017df0938062ba046608a5378aab7d7c01c47b81a9f50",
+    "/lib/x86_64-linux-gnu/libselinux.so.1": "5cb5293b4e7590463b94f7b23152d54807a6a2ccaf8cac9e343908c6692c086c",
+    "/lib/x86_64-linux-gnu/libsframe.so.1": "adb0b9a33909e7264ad724e138eb97995832e535b22b192c1a898c349c918a9f",
+    "/lib/x86_64-linux-gnu/libtinfo.so.6": "4013e7651ac68f547d8333517def25b2366c97eec7de7f06e105dbf3444ffebf",
+    "/lib/x86_64-linux-gnu/libz.so.1": "85590dd58edf5445e18bc7193e5ebc01ac5841f1ae187e97705a662e90c6421e",
+    "/lib/x86_64-linux-gnu/libzstd.so.1": "27f07c9a49c2c956bcfb64cd4712976586a66facbf15fc7f09bc37413b5f2b21",
+    "/lib64/ld-linux-x86-64.so.2": "8c1cf687490f3f7858528ceb4e651b979f625e43396431bec65e5bb89cb63860"
+  },
+  "window_proposal": {
+    "audit_max_seconds": 480,
+    "gate_caps_sum": 450,
+    "kill_grace_sum": 20,
+    "performance_max_seconds_proposed": 1920,
+    "setup_budget": 10,
+    "shared_max_seconds": 2400,
+    "timeouts": "incomplete censored observation, never success; no retry; stop at shared deadline even if a gate cap remains"
+  }
+}
