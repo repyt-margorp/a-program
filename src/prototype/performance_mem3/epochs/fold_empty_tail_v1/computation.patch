@@ -1,0 +1,21 @@
+--- a/src/computation.c
++++ b/src/computation.c
+@@ -479,8 +479,16 @@ static int fold_head(struct pg_eval *machine, struct pg_closure head,
+ 	const struct pg_closure *value = head_unary(head, arguments, &pg_return_operation);
+ 	if (!value) return 2;
+ 	const struct handler_entry *handler = handler_owner(machine->current.term->as.reference);
+-	return pg_eval_apply(machine, *pg_eval_argument(machine, 1), *value,
+-		(handler ? handler->count : 0) + 2);
++	size_t consume = (handler ? handler->count : 0) + 2;
++	struct pg_closure continuation = *pg_eval_argument(machine, 1);
++	/* A unary Return already owns the required immutable argument spine.
++	 * Preserve copies only when appending the caller's trailing arguments. */
++	if (!pg_eval_argument(machine, consume)) {
++		if (pg_eval_enter(machine, continuation, consume)) return -1;
++		machine->arguments = arguments;
++		return 0;
++	}
++	return pg_eval_apply(machine, continuation, *value, consume);
+ }
+ 
+ static int total_result_head(struct pg_eval *machine, struct pg_closure head,

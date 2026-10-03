@@ -1,0 +1,47 @@
+{
+  "terminal": true,
+  "parent_source128": "2e87fd8444726e9bacc9cb4e7b4e17f814685a515f716b212a849ca1d24ac85e",
+  "candidate_source128": "81c3ad27dfd01aef14ad8e977d1b783cc3636368b6e5afcab0840d07d055e541",
+  "only_runtime_change": [
+    "src/computation.c"
+  ],
+  "patch_sha256": "f6b25d36a1ddd4f5d822c81cd4c8072e2c571e3a3e0df368e40f694a44e7eb8d",
+  "fold_test_sha256": "ebd1f8f179718d5b37e58f4ce5939502adb43a47a54851d8c5dd88adbd3551ae",
+  "focused_records": 410,
+  "focused_failed": 0,
+  "raw_steps": [
+    11,
+    15,
+    12,
+    13,
+    11
+  ],
+  "all_raw_cuts": 67,
+  "fresh_O2_cross_reads": 268,
+  "fresh_SAN_cross_reads": 268,
+  "affected_records": 18,
+  "affected_failed": 0,
+  "additional_transport_SAN_records": 11,
+  "additional_transport_SAN_failed": 0,
+  "O2_persistence_recipes": 44,
+  "O2_persistence_failed": 1,
+  "only_original_strict3": true,
+  "public_images_equal": 52,
+  "history_images_equal": 28,
+  "full_verdict_fuel_TSV_equal": true,
+  "all_seven_checkpoint_boundaries_O2_SAN_pass": true,
+  "new_full_acceptance_claim": false,
+  "new_actual_memory_or_time_claim": false,
+  "full_Goal_active": true,
+  "unchanged_parent_test_hashes": {
+    "tests/seed.c": "4cb899c7326fd0f7c1b759487ac4cc215017f3897fe40e3abb9b58ccf1f5f428",
+    "checkpoint_tests/source_checkpoint_test.c": "6fdda40ce93e779704258dd6bc9ad48f2915bdc41a71da545f7117105dedabdc",
+    "tests/source_io.c": "de602b91d591096dd8214e1ae217681866cfc3890eae501643f7a04516bf268a",
+    "tests/synthesis.c": "909617efa5375bf3aacb6f035add72701c0ec468e9d99a4292f9ca93efac9201",
+    "artifact_tests/semantic_test.c": "b6e748e6476c0ff3521fd5f527c67ac5d88edff43a72c7e221674856fffea5df",
+    "tests/core.c": "647790ebcb1c2f3c3b28fcd04e9cf6e7c2607081458a5efd96138f1f334834a5",
+    "tests/identity_io.c": "3fe6d01dfd4a8f8eb6332a2cf85fd2a433d0c6c68f1e217ef5e12106d8dec292"
+  },
+  "new_owner_index_ABI_schema_overhead": 0,
+  "original_failures_preserved": true
+}

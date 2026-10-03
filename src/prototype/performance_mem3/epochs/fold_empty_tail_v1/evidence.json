@@ -1,0 +1,9 @@
+{
+  "root": "/tmp/ap-performance-mem3-fold-spine-current-e12-20261003",
+  "manifest": "/tmp/ap-performance-mem3-fold-spine-current-e12-20261003/verification.sha256",
+  "records": 1257,
+  "manifest_sha256": "e7f00ff87da284b3f38c7a6609b1e4c2177556d9190dc34f20ce35b60841eeb6",
+  "summary_sha256": "768bedd3074937df8f0255fb4f4bb5f33787124147d27ef44edd1e121eb0dccf",
+  "compiled_outputs_excluded": true,
+  "tests_use_unchanged_frozen_parent_inputs": true
+}
