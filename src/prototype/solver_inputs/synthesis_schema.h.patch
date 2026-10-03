@@ -1,13 +1,14 @@
 --- a/synthesis_schema.h
 +++ b/synthesis_schema.h
-@@ -15,8 +15,21 @@
+@@ -15,8 +15,22 @@
  	size_t implicit_count;
  	const struct constructor_index_path *indices;
  };
 +struct constructor_callable {
 +	const struct source_constructor *source;
 +	size_t field, count;
-+	size_t indices[];
++	/* NULL borrows the declaration's complete convention in source order. */
++	size_t *indices;
 +};
  
  const struct source_constructor *pg_synthesis_schema_members(const struct pg_synthesis_job *);
@@ -18,7 +19,7 @@
  const struct pg_data_declaration *pg_synthesis_schema_allocation(const struct pg_synthesis_job *);
 +const struct source_constructor *pg_synthesis_constructor_source(const struct pg_synthesis *,
 +	const struct pg_evidence *, const struct pg_object *);
-+const struct constructor_callable *pg_synthesis_constructor_callable(const struct pg_synthesis_job *);
++struct constructor_callable pg_synthesis_constructor_callable(const struct pg_synthesis *, const struct pg_synthesis_job *);
 +struct pg_synthesis_input pg_synthesis_constructor_fields(const struct pg_synthesis_job *);
  
  #endif

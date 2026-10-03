@@ -1,6 +1,6 @@
 --- a/synthesis_schema.c
 +++ b/synthesis_schema.c
-@@ -1,23 +1,515 @@
+@@ -1,23 +1,501 @@
  #include "synthesis_schema.h"
 +#include "synthesis_conversion.h"
  #include "iadt.h"
@@ -77,7 +77,6 @@
 +struct constructor_value_work {
 +	struct pg_synthesis_input scope;
 +	struct pg_synthesis_job *body;
-+	const struct constructor_callable *callable;
 +};
 +struct data_case_work {
 +	struct pg_synthesis_input type;
@@ -269,10 +268,16 @@
 +	return (struct pg_synthesis_input){.pending = pg_synthesis_pending(local->body)};
 +}
 +
-+const struct constructor_callable *pg_synthesis_constructor_callable(const struct pg_synthesis_job *job)
++struct constructor_callable pg_synthesis_constructor_callable(const struct pg_synthesis *synthesis,
++	const struct pg_synthesis_job *job)
 +{
 +	const struct constructor_value_work *local = pg_synthesis_work_state(job, CONSTRUCTOR_VALUE_JOB);
-+	return local ? local->callable : NULL;
++	if (!synthesis || !local || !local->body || job->pending.owner != synthesis->owner_key)
++		return (struct constructor_callable){0};
++	const struct pg_evidence *formation = pg_synthesis_input_result(pg_synthesis_work_dependency(job, 0));
++	const struct source_constructor *source = pg_synthesis_constructor_source(synthesis, formation, job->inputs[2]);
++	return source && source->implicit_count ? (struct constructor_callable){.source = source,
++		.field = source->implicit_count, .count = source->implicit_count} : (struct constructor_callable){0};
 +}
 +
 +struct pg_synthesis_input pg_synthesis_constructor_fields(const struct pg_synthesis_job *job)
@@ -323,7 +328,7 @@
 +{
 +	const struct constructor_value_work *local = pg_synthesis_work_state(job, CONSTRUCTOR_VALUE_JOB);
 +	if (!synthesis || !local || !scope || job->pending.owner != synthesis->owner_key) return -1;
-+	if (job->status != PG_SYNTHESIS_PENDING || local->body || local->callable) return 0;
++	if (job->status != PG_SYNTHESIS_PENDING || local->body) return 0;
 +	*scope = pg_synthesis_input_result(local->scope);
 +	return *scope ? 1 : 0;
 +}
@@ -366,7 +371,7 @@
 +		(struct pg_synthesis_input){.checked = parameters});
 +	if (!job) return NULL;
 +	struct constructor_value_work *local = pg_synthesis_work_state(job, CONSTRUCTOR_VALUE_JOB);
-+	if (job->status != PG_SYNTHESIS_PENDING || local->body || local->callable) return NULL;
++	if (job->status != PG_SYNTHESIS_PENDING || local->body) return NULL;
 +	if (local->scope.checked || local->scope.pending)
 +		return pg_synthesis_input_result(local->scope) == scope ? job : NULL;
 +	/* Only reuse checked construction. The normal constructor rule still
@@ -395,24 +400,6 @@
 +		pg_synthesis_work_dependency(job, 3), prefix, end) ? job : NULL;
 +}
 +
-+static int constructor_callable_prepare(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
-+{
-+	struct constructor_value_work *local = pg_synthesis_work_state(job, CONSTRUCTOR_VALUE_JOB);
-+	if (local->callable) return 0;
-+	const struct pg_evidence *formation = pg_synthesis_input_result(pg_synthesis_work_dependency(job, 0));
-+	const struct source_constructor *source = pg_synthesis_constructor_source(synthesis, formation, job->inputs[2]);
-+	if (!source || !source->implicit_count) return 0;
-+	if (source->implicit_count > (SIZE_MAX - sizeof(struct constructor_callable)) / sizeof(size_t)) return -1;
-+	struct constructor_callable *callable = pg_alloc(synthesis->typing->graph,
-+		sizeof(*callable) + source->implicit_count * sizeof(*callable->indices));
-+	if (!callable) return -1;
-+	*callable = (struct constructor_callable){.source = source,
-+		.field = source->implicit_count, .count = source->implicit_count};
-+	for (size_t i = 0; i < callable->count; ++i) callable->indices[i] = i;
-+	local->callable = callable;
-+	return 0;
-+}
-+
 +int pg_synthesis_constructor_resume_body(struct pg_synthesis *synthesis,
 +	struct pg_synthesis_job *job, const struct pg_evidence *leaf)
 +{
@@ -432,7 +419,7 @@
 +		if (projected->images[i]->core != prefix->images[i]->core) return -1;
 +	struct pg_synthesis_job *body = pg_pending_job(pg_synthesis_abstract(synthesis,
 +		pg_evidence_premise(parameters, 1), pg_evidence_premise(scope, 1), (struct pg_synthesis_input){.checked = leaf}).pending);
-+	if (!body || constructor_callable_prepare(synthesis, job)) return -1;
++	if (!body) return -1;
 +	struct constructor_value_work *local = pg_synthesis_work_state(job, CONSTRUCTOR_VALUE_JOB);
 +	local->body = body;
 +	return 0;
@@ -445,7 +432,6 @@
 +	if (pg_synthesis_await_input(synthesis, job, local->scope)) return;
 +	const struct pg_evidence *formation = pg_synthesis_input_result(pg_synthesis_work_dependency(job, 0));
 +	const struct pg_evidence *parameters = pg_synthesis_input_result(pg_synthesis_work_dependency(job, 3));
-+	if (constructor_callable_prepare(synthesis, job)) goto error;
 +	const struct pg_evidence *map = pg_synthesis_input_result(local->scope), *context = pg_evidence_premise(map, 1);
 +	size_t prefix = pg_evidence_context_map(parameters)->count;
 +	if (!local->body) {
@@ -518,7 +504,7 @@
  
  static void schema_destroy(struct pg_synthesis_job *job)
  {
-@@ -50,7 +542,7 @@
+@@ -50,7 +528,7 @@
  
  const struct pg_data_schema *pg_synthesis_schema_result(const struct pg_synthesis_job *job)
  {
@@ -527,7 +513,7 @@
  	const struct schema_work *local = pg_synthesis_work_state(job, DATA_SCHEMA_JOB);
  	return local->schema;
  }
-@@ -64,7 +556,7 @@
+@@ -64,7 +542,7 @@
  
  const struct pg_data_declaration *pg_synthesis_schema_allocation(const struct pg_synthesis_job *job)
  {
@@ -536,7 +522,7 @@
  	const struct schema_work *local = pg_synthesis_work_state(job, DATA_SCHEMA_JOB);
  	return local->nominal_input ? local->nominal_input : pg_data_schema_declaration(local->schema);
  }
-@@ -75,7 +567,7 @@
+@@ -75,7 +553,7 @@
  	const struct pg_source_scope *scope = job->inputs[0];
  	const struct pg_syntax *syntax = job->inputs[2];
  	if (pg_synthesis_scope_wait(synthesis, job, scope)) return;
@@ -545,7 +531,7 @@
  	if (!pg_synthesis_scope_context(scope)) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
  	if (!local->left) {
  		if (syntax->kind == PG_SYNTAX_LAMBDA) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
-@@ -88,11 +580,10 @@
+@@ -88,11 +566,10 @@
  	if (pg_synthesis_await(synthesis, job, indices)) return;
  	if (!local->right) {
  		local->right = pg_synthesis_data_result(synthesis, pg_synthesis_telescope_scope(local->left),
@@ -558,7 +544,7 @@
  	pg_synthesis_finish(synthesis, job, local->right->status);
  }
  
-@@ -172,9 +663,9 @@
+@@ -172,9 +649,9 @@
  	for (size_t bucket = 0; bucket < synthesis->jobs.capacity; ++bucket)
  		for (const struct pg_index_entry *entry = synthesis->jobs.buckets[bucket]; entry; entry = entry->next) {
  			const struct pg_synthesis_job *job = (const void *)entry;
@@ -570,7 +556,7 @@
  			if (!constructors || state->checked == constructors->item_count || !state->members) continue;
  			const struct source_constructor *member = &state->members[state->checked];
  			if (!member->indices) continue;
-@@ -196,19 +687,17 @@
+@@ -196,19 +673,17 @@
  	const struct pg_source_scope *scope = job->inputs[0];
  	const struct pg_syntax *syntax = job->inputs[1];
  	if (pg_synthesis_scope_wait(synthesis, job, scope)) return;
@@ -594,7 +580,7 @@
  	if (!local->names.capacity) {
  		if (constructors->kind != PG_SYNTAX_CONSTRUCTORS) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
  		if (pg_index_init(&local->names) != 0) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
-@@ -247,7 +736,7 @@
+@@ -247,7 +722,7 @@
  	}
  	if (local->checked == constructors->item_count) {
  		if (pg_synthesis_await(synthesis, job, local->left)) return;
@@ -603,7 +589,7 @@
  		if (local->nominal_input) indices = pg_prove_context_alpha(synthesis->typing, indices,
  			pg_data_declaration_indices(local->nominal_input));
  		if (!indices) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_REJECTED); return; }
-@@ -259,13 +748,13 @@
+@@ -259,13 +734,13 @@
  			results = pg_alloc(&temporary, local->checked * sizeof(*results));
  		if (local->checked && !results) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
  		for (size_t i = 0; i < local->checked; ++i) {
@@ -620,7 +606,7 @@
  		pg_graph_destroy(&temporary);
  		pg_synthesis_finish(synthesis, job, local->schema ? PG_SYNTHESIS_DONE
  			: local->nominal_input ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_ERROR);
-@@ -276,7 +765,7 @@
+@@ -276,7 +751,7 @@
  	if (pg_synthesis_await(synthesis, job, producer)) return;
  	enum pg_synthesis_status recovery = constructor_index_paths(synthesis,
  		pg_evidence_context(pg_synthesis_scope_context(scope)),

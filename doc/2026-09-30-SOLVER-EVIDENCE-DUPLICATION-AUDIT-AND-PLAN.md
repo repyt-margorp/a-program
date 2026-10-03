@@ -174,6 +174,15 @@ additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
 
+2026-10-03, agent decision against `4109450`: constructor preparation copies
+the schema's complete implicit-index convention into an allocated callable
+record and identity-index array. Borrow the immutable declaration convention
+instead. Only a partial application needs a residual index selection; keep it
+on that application's existing inference state, not in another allocated
+callable header. No new constraint graph or typing authority is proposed.
+Verify full/partial uses, lexical aliases, inference order and source images
+before publication. This does not yet erase callable construction obligations.
+
 2026-10-03, agent follow-up on `efc55b1`:
 `pg_context_map` stores both typed images and their Core values in a second
 binding array. Project values from the existing images through the same borrowed
@@ -785,6 +794,29 @@ not authorization to promote code or a claim that general resumption is solved.
 
 No new binding/domain checkpoint fields or backend features before this gate.
 Implement prototypes, verify, and push reviewable deletion-oriented milestones.
+
+- [x] **SE1 constructor calling convention (2026-10-03, parent `4109450`):**
+  remove the constructor Job's copied initial callable/list. Borrow declaration
+  metadata; keep residual selections only on existing application work.
+  - [x] Verify initial borrowing, non-prefix residual indices, completed uses,
+    repeated inert lookup, wrong-owner refusal and the narrower Job layout.
+  - [x] Run full regression, persistence/checkpoint/backend and sanitizers;
+    compare actual source deltas, counts, images and the public resume gate.
+  Initial conventions borrow immutable declaration metadata; only unresolved
+  partial applications allocate index selections, on their existing inference
+  state. Constructor Job state shrinks from four to three pointers on this
+  64-bit build. No new owner, rule, tag or wire field is added. Full O2
+  regression/examples/acceptance, semantic persistence, seven checkpoint and
+  five C gates pass. Core/Synthesis/Source-I/O ASan/UBSan/leaks, fresh patch
+  assembly and concurrent-user-edit Core/IADT/Synthesis checks pass.
+  [Measurements](../src/prototype/solver_inputs/callable_inputs_verification.tsv):
+  implementation +43/-52 (net -9), tests +38/-5 (net +33); patch context/docs
+  excluded. Five paired fuel censuses change only Job layout bytes. All five
+  ordinary images and 52 partition images equal the parent exactly; the same
+  three public reload failures remain unwaived. QuickSort cumulative aligned
+  arena requests increase by 13,120 bytes in this pair; do not claim overall
+  memory or speed improvement. Prototype only; SE1-SE5 remain open. Logs use
+  `/tmp/a-program-callable-inputs-`; the report pins actual source hashes.
 
 - [x] **SE1 Context-map images (2026-10-03, parent `efc55b1`):** delete
   copied Core-value slots; borrow typed images, retaining the binder index.

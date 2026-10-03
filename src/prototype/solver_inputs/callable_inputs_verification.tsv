@@ -1,0 +1,50 @@
+kind	case	budget	parent	candidate	detail
+job layout bytes	captured	0	6128	6128	other census fields equal; not total RAM
+job layout bytes	captured	100	10936	10936	other census fields equal; not total RAM
+job layout bytes	captured	1000	77512	77472	other census fields equal; not total RAM
+job layout bytes	captured	10000000	284728	284640	other census fields equal; not total RAM
+image	captured	complete	134301	134301	identical bytes; 90c1a3cffa867b161ed1a05bb43e635bd3a1bcac912c151659d018ebe96acb57
+wrapped_arena_calls	captured	complete	23077	23077	cumulative external arena requests; not live RAM or speed
+wrapped_aligned_bytes	captured	complete	2197456	2197280	cumulative external arena requests; not live RAM or speed
+job layout bytes	effect	0	6128	6128	other census fields equal; not total RAM
+job layout bytes	effect	100	12184	12184	other census fields equal; not total RAM
+job layout bytes	effect	1000	121776	121776	other census fields equal; not total RAM
+job layout bytes	effect	10000000	647304	647248	other census fields equal; not total RAM
+image	effect	complete	219123	219123	identical bytes; a41ec7f977129427568ddba611405b5fd03d52d343d36c65d5973b2654c8673b
+wrapped_arena_calls	effect	complete	27802	27802	cumulative external arena requests; not live RAM or speed
+wrapped_aligned_bytes	effect	complete	2783200	2783088	cumulative external arena requests; not live RAM or speed
+job layout bytes	handler	0	6128	6128	other census fields equal; not total RAM
+job layout bytes	handler	100	21072	21072	other census fields equal; not total RAM
+job layout bytes	handler	1000	88264	88264	other census fields equal; not total RAM
+job layout bytes	handler	10000000	125256	125256	other census fields equal; not total RAM
+image	handler	complete	47888	47888	identical bytes; a5443d8a39c02c1bdd84dd6a879697ceb85078e203c54101ce93c6054e4190b2
+wrapped_arena_calls	handler	complete	4574	4574	cumulative external arena requests; not live RAM or speed
+wrapped_aligned_bytes	handler	complete	459600	459600	cumulative external arena requests; not live RAM or speed
+job layout bytes	list	0	6128	6128	other census fields equal; not total RAM
+job layout bytes	list	100	11160	11160	other census fields equal; not total RAM
+job layout bytes	list	1000	62408	62344	other census fields equal; not total RAM
+job layout bytes	list	10000000	111928	111864	other census fields equal; not total RAM
+image	list	complete	50820	50820	identical bytes; 897bb28fad5a37a8cac48aff36287af25bdab6f4229a572c26e35c85198ba762
+wrapped_arena_calls	list	complete	4232	4232	cumulative external arena requests; not live RAM or speed
+wrapped_aligned_bytes	list	complete	432272	432144	cumulative external arena requests; not live RAM or speed
+job layout bytes	quick	0	6128	6128	other census fields equal; not total RAM
+job layout bytes	quick	100	11800	11800	other census fields equal; not total RAM
+job layout bytes	quick	1000	184904	184904	other census fields equal; not total RAM
+job layout bytes	quick	10000000	6794392	6793032	other census fields equal; not total RAM
+image	quick	complete	7824062	7824062	identical bytes; 8d60c94180930f475c8e7a504e5600bdcd37e90c8d2ff97220708f9773c5ffd8
+wrapped_arena_calls	quick	complete	2887781	2888111	cumulative external arena requests; not live RAM or speed
+wrapped_aligned_bytes	quick	complete	229292960	229306080	cumulative external arena requests; not live RAM or speed
+partition images	list	all	52	52	exact parent bytes; same 3 reload failures, exit 1 not waived
+applied delta	src/synthesis.c	n/a	4 deleted	5 added	net 1; excludes patch context/docs
+input hash	src/synthesis.c	n/a	037227cde8a6a1c22828d633b7fa792c553603b91d5aeb947dfc3a1c074c530c	de4968283b2935ddf692461d6a0dd4fe60f1e151695969c4607e6f4a5c2c62dd	applied source
+applied delta	src/synthesis_schema.c	n/a	25 deleted	11 added	net -14; excludes patch context/docs
+input hash	src/synthesis_schema.c	n/a	29aad43879d7c141bf3a8a6bbc8b33e1eb68c5a40eac347ed86f49b7546617e6	bcd58dbe3d6ee07bc5a2f7aee841ae94c8e042e55831a9ec5ed8524a1b8c1b5b	applied source
+applied delta	src/synthesis_schema.h	n/a	2 deleted	3 added	net 1; excludes patch context/docs
+input hash	src/synthesis_schema.h	n/a	12f020bde9ddb4bd7f96ce2fcf7867cd9813f0678dafe68d8c9d3b89a8430e59	09489f68dca5fea190e3fc999b7b8a45a31edf3f2058ff10cd48e7eb66b5efc4	applied source
+applied delta	src/synthesis_source.h	n/a	1 deleted	1 added	net 0; excludes patch context/docs
+input hash	src/synthesis_source.h	n/a	7f46a8d21320b1955d15c454d34439cd390a1eb344c15fccf8c40fe852802b21	b0c33b37591a8c3ef69f19aa55d24dc20ca8d52d07475196254db22d954f9e86	applied source
+applied delta	src/synthesis_function.c	n/a	20 deleted	23 added	net 3; excludes patch context/docs
+input hash	src/synthesis_function.c	n/a	01098ef3416e107d47394337202498ec4538d28f62f7621b4cc3a722ee9fc722	74080ccd74cb69cf5f0b0fa4c16106dd993fe6f8343fed17e6c98912c27f03b7	applied source
+applied delta	tests/synthesis.c	n/a	5 deleted	38 added	net 33; excludes patch context/docs
+input hash	tests/synthesis.c	n/a	0b3dcfb694dd0f3a50ac84f7b2c981da3137fdc380f28f5c69c580be457a8ad3	c3bcceb8b9faaf3b989fdc36c05240fa706aea921ebae02b7da5823caff49613	applied source
+parent revision	main	n/a	4109450	unpromoted prototype	SE1-SE5 incomplete

@@ -842,7 +842,7 @@
  	}
  	pg_synthesis_forward(synthesis, job, local->rule);
  }
-@@ -472,83 +724,725 @@
+@@ -472,83 +724,728 @@
  	return (struct pg_synthesis_projection){.rule = rule, .preparing = !rule, .value_kind = -1};
  }
  
@@ -993,8 +993,7 @@
 +	size_t binding_count;
 +};
 +struct constructor_application {
-+	const struct constructor_callable *input;
-+	struct constructor_callable *output;
++	struct constructor_callable input, output;
 +	struct pg_synthesis_input context;
 +	struct pg_synthesis_job *function;
 +	struct pg_pending *instance;
@@ -1241,12 +1240,13 @@
 +	struct pg_synthesis_job *origin = pg_synthesis_callable_source(synthesis, callee);
 +	if (!origin) return 0;
 +	if (origin->status == PG_SYNTHESIS_PENDING) { pg_synthesis_subscribe(synthesis, job, origin, 0); return -1; }
-+	if (!pg_synthesis_callable(origin)) return 0;
++	struct constructor_callable callable = pg_synthesis_callable(synthesis, origin);
++	if (!callable.source) return 0;
 +	if (count > SIZE_MAX / sizeof(struct pg_synthesis_job *)) goto error;
 +	struct application_state *application = &local->application;
 +	struct constructor_spine *state = pg_alloc(synthesis->typing->graph, sizeof(*state));
 +	if (!state) goto error;
-+	state->specialization.input = pg_synthesis_callable(origin);
++	state->specialization.input = callable;
 +	state->count = count;
 +	state->arguments = pg_alloc(synthesis->typing->graph, count * sizeof(*state->arguments));
 +	if (!state->arguments) goto error;
@@ -1275,17 +1275,14 @@
 +{
 +	struct source_application_work *local = source_application_work(job);
 +	struct application_state *application = &local->application;
-+	const struct constructor_callable *input = state->input;
++	const struct constructor_callable *input = &state->input;
 +	if (!state->function) {
 +		state->function = callee;
 +		state->context = application->context;
-+		state->output = pg_alloc(synthesis->typing->graph,
-+			sizeof(*state->output) + input->count * sizeof(*state->output->indices));
-+		if (!state->output) goto error;
-+		*state->output = (struct constructor_callable){.source = input->source, .field = input->field};
++		state->output = (struct constructor_callable){.source = input->source, .field = input->field};
 +	}
 +	if (state->next < input->count) {
-+		size_t index = input->indices[state->next];
++		size_t index = input->indices ? input->indices[state->next] : state->next;
 +		const struct constructor_index_path *path = &input->source->indices[index];
 +		struct pg_synthesis_job *value;
 +		if (path->field >= input->field && path->field - input->field < argument_count) {
@@ -1319,6 +1316,11 @@
 +				(struct pg_synthesis_input[]){state->context,
 +					{.checked = pg_substitution_image_at(synthesis->typing, instance.indices, premises - count + path->index)}});
 +		} else {
++			if (!state->output.indices) {
++				if (input->count > SIZE_MAX / sizeof(*state->output.indices)) goto error;
++				state->output.indices = pg_alloc(synthesis->typing->graph, input->count * sizeof(*state->output.indices));
++				if (!state->output.indices) goto error;
++			}
 +			const struct pg_object *binder = pg_synthesis_source_binder(synthesis, source_scope(job), source_syntax(job), application->binding_count, NULL);
 +			if (!binder) goto error;
 +			++application->binding_count;
@@ -1327,7 +1329,7 @@
 +			struct pg_synthesis_job *extension = pg_synthesis_plain_rule_inputs(synthesis, PG_CONTEXT_EXTEND, binder, 2,
 +				(struct pg_synthesis_input[]){state->context, {.pending = pg_synthesis_pending(domain)}});
 +			if (!extension) goto error;
-+			state->output->indices[state->output->count++] = index;
++			state->output.indices[state->output.count++] = index;
 +			state->context = (struct pg_synthesis_input){.pending = pg_synthesis_pending(extension)};
 +			state->function = pg_synthesis_plain_rule_inputs(synthesis, PG_CONTEXT_PROJECTION, NULL, 2, (struct pg_synthesis_input[]){
 +				{.pending = pg_synthesis_pending(extension)},
@@ -1353,7 +1355,7 @@
 +	const struct constructor_application *state, struct pg_synthesis_job *body)
 +{
 +	struct pg_synthesis_input context = state->context;
-+	for (size_t i = state->output->count; body && i; --i) {
++	for (size_t i = state->output.count; body && i; --i) {
 +		body = pg_synthesis_lambda_body(synthesis, context, (struct pg_synthesis_input){.pending = pg_synthesis_pending(body)});
 +		context = pg_synthesis_rule_input(synthesis, pg_pending_job(context.pending), 0);
 +	}
@@ -1375,10 +1377,10 @@
 +	struct pg_synthesis_job *body = pg_synthesis_application(synthesis, state->context, (struct pg_synthesis_input){.pending = pg_synthesis_pending(state->function)}, (struct pg_synthesis_input){.pending = pg_synthesis_pending(value)});
 +	body = abstract_constructor_indices(synthesis, state, body);
 +	if (!body) goto error;
-+	if (state->input->field == SIZE_MAX) goto error;
-+	state->output->field = state->input->field + 1;
++	if (state->input.field == SIZE_MAX) goto error;
++	state->output.field = state->input.field + 1;
 +	application->tail = body;
-+	local->callable = state->output->count ? state->output : NULL;
++	local->callable = state->output.count ? &state->output : NULL;
 +	pg_synthesis_enqueue(synthesis, job);
 +	return;
 +error:
@@ -1446,7 +1448,7 @@
 +			if (local->callable) {
 +				state->constructor = pg_alloc(synthesis->typing->graph, sizeof(*state->constructor));
 +				if (!state->constructor) goto error;
-+				state->constructor->input = local->callable;
++				state->constructor->input = *local->callable;
 +			}
 +			pg_synthesis_enqueue(synthesis, job);
 +			return 1;
@@ -1516,11 +1518,11 @@
 +		if (!specialize_constructor(synthesis, job, specialization, callee, spine->count, spine->arguments)) return 1;
 +		state->callee = abstract_constructor_indices(synthesis, specialization, specialization->function);
 +		if (!state->callee) goto error;
-+		local->callable = specialization->output->count ? specialization->output : NULL;
++		local->callable = specialization->output.count ? &specialization->output : NULL;
 +		if (local->callable) {
 +			state->constructor = pg_alloc(synthesis->typing->graph, sizeof(*state->constructor));
 +			if (!state->constructor) goto error;
-+			state->constructor->input = local->callable;
++			state->constructor->input = *local->callable;
 +		}
 +		spine->next = 1;
 +		pg_synthesis_enqueue(synthesis, job);
@@ -1529,10 +1531,11 @@
 +	if (!state->constructor && !state->spine) {
 +		struct pg_synthesis_job *origin = pg_synthesis_callable_source(synthesis, local->left);
 +		if (origin && origin->status == PG_SYNTHESIS_PENDING) { pg_synthesis_subscribe(synthesis, job, origin, 0); return 1; }
-+		if (pg_synthesis_callable(origin)) {
++		struct constructor_callable callable = pg_synthesis_callable(synthesis, origin);
++		if (callable.source) {
 +			state->constructor = pg_alloc(synthesis->typing->graph, sizeof(*state->constructor));
 +			if (!state->constructor) goto error;
-+			state->constructor->input = pg_synthesis_callable(origin);
++			state->constructor->input = callable;
 +		}
 +	}
 +	struct pg_synthesis_job *argument = state->argument;
