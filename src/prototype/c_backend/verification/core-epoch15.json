@@ -1,0 +1,85 @@
+{
+  "review_UTC": "2026-10-03 21:05 UTC",
+  "verification_kind": "Fresh Root current-E14 producer, frozen C14 backend and unchanged E12 Core oracle; separate from worker E8 evidence",
+  "publication": {
+    "parent": "e9d74f70d33f1830f05a5a04cd3d05f8a01467ed",
+    "task_commit": "ba5d39d1537ffa93770d1705603e4bac37ab14ea",
+    "exact8_frozen_files": {
+      "doc/2026-10-03-C-BACKEND-GOAL.md": "dd29eb057de23fba8a2507f07fc04c6b3308bb570413ce5ca7fb64027de8ee5e",
+      "doc/2026-10-04-C-BACKEND-CALLBACK-MODULES-PLAN.md": "82ee32825f2c62f7c985a83d5adf79506b03243d879abdf06b74653add83f790",
+      "doc/2026-10-04-C-BACKEND-EPOCH15-HANDOFF.md": "67fce3bceeff92fc4debeca57ecd1f4524a5309bbaf26321dd7604fde2f6757f",
+      "src/prototype/c_backend/README.md": "433b66d7697e554a6394940beebd2bb3d684b48be6250212ed5ca9a37a17c338",
+      "src/prototype/c_backend/build.mk": "17deecd2dea1c7d3d95a09936ca94977934ffc1ce6d6ca1c3acaa9be879deaf6",
+      "src/prototype/c_backend/callback_modules/check.sh": "fb2f6f906ebf9be7b857638101fd3a1c263d40d142179d7682fe75753714b8a7",
+      "src/prototype/c_backend/callback_modules/client.c": "77bfd69b3c93fee0f093ef1a5bfe32698628369a2ee6f96933c67e5e53ceeb70",
+      "src/prototype/c_backend/callback_modules/provider.p": "bf65856fb160bed0955fa4e605463488e8044ddf72465f5100c4b3b1357cce9c"
+    },
+    "preserved_worker_tracked_live_files": 1775,
+    "index_only_advance": true,
+    "protected9_exact": true,
+    "C16_excluded": true,
+    "Main_parent": "376fab18c6eff09791e39e5543fe469ccae23935",
+    "Main_merge": "d219fca70099befb96ce5770f9379be00d3c8a67",
+    "exact7_frozen_non_Goal_files": true,
+    "Goal_reconciliation_only": true,
+    "Goal_sha256": "65fd04c5fbfb6f95acf65329cc37a5b0c00442afb65091b0da8ee5b5fa055705",
+    "task_remote_exact": true,
+    "Main_remote_exact": true
+  },
+  "Root_source128": "abedf677a1079e1a970c11104e374f5a623085fb430f1cbfb6b91f91e9d0e339",
+  "Root_results_path": "/tmp/a-program-merge-c15-current-e14-gates-20261003/Root-results.json",
+  "Root_results_sha256": "996223198afddbd4a17499436cd9d68507efb4856982723b8abc49e7ab3855ec",
+  "Root_input_pin_count": 150,
+  "Root_checks": [
+    {
+      "mode": "o2",
+      "argv": [
+        "bash",
+        "/tmp/a-program-merge-c15-submitted-review-20261003/src/prototype/c_backend/callback_modules/check.sh",
+        "/tmp/a-program-merge-c14-current-e12-gates-20261003/build/a-to-c",
+        "/tmp/a-program-merge-e14-current-Main-20261003/build-o2/pointer-check",
+        "/tmp/a-program-merge-c14-current-e12-gates-20261003/build/c_callback_inert_test",
+        "/tmp/a-program-merge-c15-current-e14-gates-20261003/o2"
+      ],
+      "exit": 0,
+      "log_sha256": "ccbdd70cb70b5c2ce7f7fe57c063319b6951bf3afd09c6a09af195b92096a9b4",
+      "sanitizer_scope": "O2",
+      "status_sha256": "2524b13f45b78a76a446e38a0c1a9d6e5bec8f4e0e7da468620a7545bfc38c6e",
+      "expected99_status_rows_exact": true,
+      "duplicate_link_expected1": 3
+    },
+    {
+      "mode": "san-client-source",
+      "argv": [
+        "bash",
+        "/tmp/a-program-merge-c15-submitted-review-20261003/src/prototype/c_backend/callback_modules/check.sh",
+        "/tmp/a-program-merge-c14-current-e12-gates-20261003/build/a-to-c",
+        "/tmp/a-program-merge-e14-current-Main-20261003/build-o2/pointer-check",
+        "/tmp/a-program-merge-c14-current-e12-gates-20261003/build/c_callback_inert_test",
+        "/tmp/a-program-merge-c15-current-e14-gates-20261003/san-client-source"
+      ],
+      "exit": 0,
+      "log_sha256": "ccbdd70cb70b5c2ce7f7fe57c063319b6951bf3afd09c6a09af195b92096a9b4",
+      "sanitizer_scope": "Client and source products; producer/backend/Core/emitted object-archive-shared stay O2",
+      "status_sha256": "2524b13f45b78a76a446e38a0c1a9d6e5bec8f4e0e7da468620a7545bfc38c6e",
+      "expected99_status_rows_exact": true,
+      "duplicate_link_expected1": 3
+    }
+  ],
+  "passed": true,
+  "all_pins_after_exact": true,
+  "coverage": {
+    "sixteen_product_pairs_both_header_orders_two_consumers": true,
+    "32_linked_and8_loaded_provider_clients_per_phase": true,
+    "800_Core_comparisons_per_client_and20_source_observations": true,
+    "96_zero_and3_expected_duplicate_link_refusals_per_phase": true,
+    "loaded_provider_closes_after_all_calls": true
+  },
+  "limits": [
+    "Caller interpretation/purity/totality, valid provider success and synchronous borrowed context/code lifetime are preconditions.",
+    "Sanitizers cover clients and source product bodies; producer/backend/Core oracle/emitted object/archive/shared bodies stay O2.",
+    "C16 private binary callback trial excluded. No new broad, actual cost, general callable/native Acc/QuickSort, accepted promotion or Goal completion claim."
+  ],
+  "protected9_exact": true,
+  "accepted_default_selection_changed": false
+}

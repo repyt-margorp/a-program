@@ -1,0 +1,41 @@
+{
+  "review_UTC": "2026-10-03T20:49:47.709009+00:00",
+  "Main_revision": "ea4d0a0cd796f80c64d39cc15496e422d2d91bc7",
+  "notice_sha256": "551c18360c56d30fa45ae13201c8b65bd9a9b84974d5499214cb6c7dfb11f2e6",
+  "private9_manifest_sha256": "bd7dec0086fcb3301bdf09b45ece5e0629ecec674be7534f46912196adcbb6a5",
+  "all9_hashes_and128_source_binary_input_helper_pins_exact": true,
+  "two_raw_outcomes_and_counter_arithmetic_recomputed": true,
+  "source128": "81c3ad27dfd01aef14ad8e977d1b783cc3636368b6e5afcab0840d07d055e541",
+  "analysis": {
+    "terminal": true,
+    "source128": "81c3ad27dfd01aef14ad8e977d1b783cc3636368b6e5afcab0840d07d055e541",
+    "two_requested_fuels": [
+      10000,
+      100000
+    ],
+    "gdb_exit": [
+      0,
+      0
+    ],
+    "CLI_exit": [
+      3,
+      3
+    ],
+    "uncapped_and_no_read_errors": true,
+    "single_entry_cache_hits": 0,
+    "any_prior_exact_duplicates_at100K": 998,
+    "maximum_avoided_binding_allocation_bytes_at100K": 31936,
+    "illustrative_intrusive_index_extra16_per_unique_binding": 200656,
+    "net_added_bytes_before_buckets_for_that_design": 168720,
+    "decision": "Reject a one-entry cache and this full-index design for these bounded prefixes; no runtime change. Do not generalize to unmeasured scale.",
+    "limits": [
+      "Request/key counts are not actual peak/live/RSS or timing.",
+      "Init may be inlined; machine address keys are cleared at observed destroy entries. Opaque WHNF machines are arena-owned and not reused before store destruction in this pinned producer.",
+      "No recycling of captured links, no runtime wrapper/index or new authority."
+    ]
+  },
+  "assessment": "These two uncapped prefixes do not justify a one-entry cache (zero observed hits) or the illustrative intrusive full index (metadata alone exceeds theoretical avoided binding requests). Pointer identity is bounded by observed machine lifetimes; this is not semantic equality, live/peak memory or timing, and is not generalized to other scales. No runtime/owner/index change approved or implemented.",
+  "MEM3_cost_receipt_consumed": true,
+  "immutable_MEM4_source_or_cost_changed": false,
+  "Root_queued_E14_current_qualification": "running separately; E14/E15/MEM4 sources remain distinct"
+}
