@@ -1,9 +1,9 @@
 # Parallel Core, Backend, Performance and Surface Work
 
 Date: 2026-10-03
-Status: all three workers running; first Core/C prototype epochs published.
+Status: C/performance Goals active; Surface prototype Goal delivered and integrated.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
-Reviewed prototype Main checkpoint: `9061be3`; worker baseline: `2d747cc`.
+Reviewed prototype Main checkpoint: `e5d4057`; worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
 changes no implementation or promotion rules.
 Related: [SE1-SE5](2026-09-30-SOLVER-EVIDENCE-DUPLICATION-AUDIT-AND-PLAN.md),
@@ -15,9 +15,9 @@ Supersedes the earlier three-session assignment, not the existing owner work lis
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | `core`: Job/Evidence ownership, exact resume and integration | SE1-SE5, AP0 | In progress in the existing work list |
-| 2 | `c-backend`: downstream C design | #44, #49; shared policy #47 | Fieldful-data epoch integrated; next epoch in progress |
+| 2 | `c-backend`: downstream C design | #44, #49; shared policy #47 | Single-tail List epoch integrated; numeric partition work in progress |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Focused epoch pushed; Main integration awaits broad gates |
-| 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Focused epoch pushed; full regression in progress |
+| 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; worker available for further scope |
 
 ## 1. Core Ownership and Integration
 
@@ -68,6 +68,12 @@ regression/examples/acceptance, focused and sanitizer gates passed. Its
 records 451 boundary partitions, 55 owner-cancellation cuts and applied code
 delta -33 lines, separately from tests. Three public split-fuel resume failures
 remain unchanged and unwaived; this does not complete SE1-SE5.
+The family-parameter scratch-pool epoch is verified against the current Main
+checkpoint plus its canonical prototype patches. Full O2 acceptance, focused,
+sanitizer, checkpoint, current Surface/C combination and explicitly adapted
+user-addition Core/IADT/Synthesis checks pass. Its measurements and unchanged
+public resume failures are in the
+[report](../src/prototype/solver_inputs/family_cursor_verification.tsv).
 Accepted `src/evidence.*`, `src/iadt.*` and their tests retain unrelated edits.
 
 ### Assessment
@@ -114,12 +120,14 @@ fully independent of ongoing Main changes. `build.mk` defaults to shared `/tmp`
 paths, so workers must supply private `OVERLAY` and `BUILD` paths.
 GitHub inspection finds #44 and #49 open; no fresh backend verification here.
 
-2026-10-03 checkpoint: worker epoch `bb69983` is pushed to
-`parallel/c-backend-20261003` and Core merged it through `9061be3`. All six
-backend gates passed with the current Core producer; worker sanitizer and
-immutability controls are in the [handoff](2026-10-03-C-BACKEND-EPOCH1-HANDOFF.md).
-This merges prototype code only. Recursive/container and broader admission
-work remain open; neither #44 nor #49 is complete.
+2026-10-03 checkpoint: worker epochs `bb69983` and `4987c08` are pushed to
+`parallel/c-backend-20261003`; Core integrated them through `9061be3` and
+`e5d4057`. The second epoch adds native single-tail List lowering. All seven
+backend gates pass with the current Core family-cursor and Surface prototypes;
+worker sanitizer, ABI and immutability controls are in the
+[handoff](2026-10-03-C-BACKEND-EPOCH2-HANDOFF.md). These are prototype-only
+merges, not accepted-source promotion. Broader recursive/container, indexed,
+effect and admission contracts remain open; neither #44 nor #49 is complete.
 
 ### Assessment
 
@@ -171,8 +179,12 @@ and fresh bottleneck measurements have not been obtained.
 2026-10-03 checkpoint: focused captured-head/direct-IADT epoch `f3c3555` is
 pushed on `parallel/performance-20261003`, not merged into Main. Its evidence
 distinguishes call/fuel/allocation counts from unmeasured wall/RSS, and preserves
-the two original Core failures separately from adapted tests. Broader gates and
-combined current-Core verification remain required before integration.
+the two original Core failures separately from adapted tests. Fresh baseline
+O2 acceptance records 380 recipes with zero failures. The broad adapted-head
+run found an additional `identity_io_test:total_result_machine` failure at its
+`saw_projection` observer. This remains under diagnosis, not waived or claimed
+passing. Broader persistence/sanitizer and combined current-Core verification
+remain required before integration. No comparative wall/RSS run has occurred.
 
 ### Assessment
 
@@ -231,8 +243,9 @@ the exact Bend2 implementation before choosing commands or citing claims.
   a workaround granting blanket filesystem access; tests can continue meanwhile.
 - One owner edits each implementation/plan per epoch. Shared findings are
   handed off, not solved independently in both lanes.
-- Full regression and measured performance use one agreed machine slot;
-  unrelated CPU-heavy work invalidates comparative timings. Focused tests may overlap.
+- Correctness-only Core j1 and worker j2 gates may overlap. Comparative wall/RSS
+  measurements require an exclusive agreed slot with other CPU-heavy work paused.
+  This supersedes the earlier single-slot restriction for all broad correctness.
 - tmux manages independent sessions, not shared chat context. Each brief carries
   the revision, write scope, user Subjective, task/tests and return conditions.
 - AGENTS.md's prototype boundary and intentional promotion rule still apply.
@@ -264,11 +277,14 @@ That revision merges the three PR #58 documents without implementation changes.
 This is the launch checkpoint; later integration supersedes its initial state. View with
 `tmux attach -t a-program`; select a window with `Ctrl+b`, then `w`.
 
-2026-10-03 supervision checkpoint: all three Goals remain live. Surface epoch
-`90939fc` is pushed on `parallel/surface-20261003`, not merged into Main.
-Surface owns the full-regression slot; performance comparisons wait for release. Its broad
-run found one old-brace `sed` test-harness migration omission; the worker is
-preparing a separate correction, not hiding it in a passing result. Worker
-branch publication is separate from Main merge and accepted-source promotion.
-GitHub was rechecked: no new open issue/PR since the preceding poll; existing
-partial issues remain open.
+2026-10-03 03:39 UTC supervision checkpoint: C/performance Goals remain active;
+Surface completed its scoped prototype Goal and is available. Surface epochs
+`90939fc`/`276f4c3` are pushed and Core integrated them through `7a9a672`.
+The original broad failure was an old-brace `sed` harness migration omission;
+the corrected entire failing gate passes. Other independent broad gates passed
+before that one-line correction; no second full rerun is claimed. Core separately
+verified the current-owner combined Surface/IADT/Synthesis/source-I/O/transport
+gates and all seven C gates before merging. #57 remains open for unfinished
+policy/diagnostics and accepted adoption; branch publication and prototype Main
+integration are not promotion. GitHub was rechecked: no new open issue/PR since
+the preceding poll; existing partial issues remain open.

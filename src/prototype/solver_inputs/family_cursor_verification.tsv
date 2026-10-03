@@ -1,0 +1,25 @@
+kind	case	parent	candidate	detail
+revision	Core owner	9e924cd	e5d4057 plus family cursor patches	prototype only; accepted semantic baseline eb0aad6; canonical owner overlay excludes separate Surface patches
+verification	O2 IADT and Synthesis	parent source	pass exit 0	35 fresh partitions; three pending cancellation cuts; simultaneous scopes; zero fuel; warm reuse
+verification	parent control	private parameter frames	fail exit 134	new pool test catches absence of borrowed shared frames before lifting dependency; expected diagnostic control, not acceptance
+verification	ASan/UBSan IADT/Synthesis/SourceIO	parent scope	pass exit 0	leak detection and halt-on-error enabled; full source I-O and normalization
+verification	fresh canonical assembly	private trial	byte-identical source/tests	regenerated patches apply against frozen base; recursive directory comparison passes
+verification	adapted user-addition integration	Identity boundary adapted overlay	Core/IADT/Synthesis pass exit 0	inherits the parent's explicit IADT API adapter; only family cursor source replaced; not unmodified dirty-source compilation; no user files edited
+verification	O2 regression/examples/acceptance	parent scope	pass exit 0	full check-acceptance completed; general Sorted/permutation, both LT providers/orders, exact outputs, partial images, invalid evidence and witness isolation retained
+verification	semantic/history/seven checkpoints	parent scope	pass exit 0	ordinary checking, inert loads and exact restricted checkpoint boundaries retained
+verification	combined Surface	276f4c3	pass exit 0	check-surface, full Synthesis/IADT, source I-O/normalization, full example syntax transport
+verification	incorrect example invocation	nonexistent 01_nat_identity.p	fail exit 134	Core command error at fopen; corrected examples/0[1-9]_*.p invocation passes; not a compiler defect
+verification	combined C Backend	4987c08	all seven gates pass exit 0	current owner plus Surface; list/scalar/enum/data/link/Oracle/sorting; no producer promotion
+verification	public strict partitions	three reload failures exit 1	three reload failures exit 1	1000+1000, 1600+1600, 1921+0 remain unwaived; entire 40-row report identical
+census	five inputs fuel 0/100/1000/completion	Identity boundary epoch	identical full TSV	List/effect application/captured Match/QuickSort/handler; no omitted state columns
+image	five completed ordinary images	Identity boundary epoch	byte-identical	input hashes pinned in map_images_inventory.tsv; no new wire field
+allocation	QuickSort external arena requests	2888294 calls / 229318384 aligned bytes	2887702 calls / 229289968 aligned bytes	592 fewer calls / 28416 fewer bytes; cumulative wrapped requests, not live RAM or speed
+allocation	other four inputs	Identity boundary epoch	identical calls/bytes	no whole-system memory or timing gain claimed
+applied delta	src/evidence_function.c	13 deleted	12 added	net -1; private frame struct/allocation/pop removed; existing pool and query teardown reused
+applied delta	tests/iadt.c	0 deleted	104 added	boundary tests; manual source delta excludes patch context/docs/reports
+candidate hash	src/evidence_function.c	n/a	6472eabaafb6b58622fb045b944d666db4f859bb1b753e564e36d233135d1696	applied source SHA-256
+candidate hash	tests/iadt.c	n/a	e61ae7871eeed188e8e69ee3bda18b7435b52b75d9760e910b0ae0d6cc583ab9	applied test SHA-256
+candidate hash	artifact_state_audit	n/a	b72a77b91d30169b705f75c55fd2f97ab0ceaf2d36ce6bc8f0aa21fdc42d2589	O2 full state census binary
+candidate hash	artifact_allocation_audit	n/a	6521e3ff3dd188a1f1ccf93127bdc5f735471756c82a0506d185252cec109c56	O2 external arena request census binary
+candidate hash	pointer-check	n/a	a3756bbc52326992f01a0c6912dd962d2484df5e8f12de790d45d934ce8202fb	O2 ordinary producer; no Surface patch in ordinary image/census comparison
+evidence	private logs/images	Identity boundary epoch	/tmp/a-program-family-cursor-*	2026-10-03; combined Surface/C logs under /tmp/a-program-family-surface-*

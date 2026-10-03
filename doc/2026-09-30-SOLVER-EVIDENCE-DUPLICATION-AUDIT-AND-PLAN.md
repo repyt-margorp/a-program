@@ -887,6 +887,33 @@ not authorization to promote code or a claim that general resumption is solved.
 No new binding/domain checkpoint fields or backend features before this gate.
 Implement prototypes, verify, and push reviewable deletion-oriented milestones.
 
+- [x] **SE1 family-parameter traversal (2026-10-03, parent `9e924cd`):**
+  agent assessment: `evidence_function.c:family_parameter_step` keeps a private
+  `parameter_frame` chain in the permanent graph Arena, although it only serves
+  unfinished Context lifting. Reuse the existing typing-local wait-frame pool;
+  return frames on pop, failure, completion and owner teardown. Preserve the
+  accepted declarations/maps, exact request key, binder capture checks and fuel.
+  Lambda/Pi receipts already borrow typed construction inputs; do not recreate
+  or remove those checks on the assumption that they retain duplicate arrays.
+  - [x] Test pool borrowing while suspended, simultaneous requests, every split
+    cut, zero-fuel inertness, warm reuse and idempotent owner cleanup.
+  - [x] Verify focused/sanitizer and combined gates, compare code/storage/images,
+    and retain the unwaived public resume failures before publication.
+  [Verification](../src/prototype/solver_inputs/family_cursor_verification.tsv):
+  full O2 regression/examples/acceptance, semantic/history, seven checkpoints and
+  current-owner combined Surface/C gates pass. IADT/Synthesis/Source-I/O
+  ASan/UBSan/leaks, fresh exact assembly and the parent's explicitly adapted
+  user-addition Core/IADT/Synthesis integration pass. No user files are changed.
+  Tests cover 35 fresh partitions, three pending cancellation cuts, zero fuel,
+  warm reuse and simultaneous dependent scopes. The parent fails the new pool
+  test before its private frames reach that pool; this is a diagnostic control.
+  Implementation +12/-13 (net -1), tests +104/-0, excluding patch context/docs.
+  Five full fuel censuses and completed ordinary images are identical to the
+  Identity-boundary parent. QuickSort cumulative external Arena requests fall
+  by 592 calls/28,416 aligned bytes; no wall-clock or peak-memory gain is claimed.
+  The entire public partition report remains identical with three failures;
+  exit 1 is unwaived. Prototype only; full SE1-SE5 remain open.
+
 - [x] **SE1 Identity boundary owners (2026-10-03, parent `eb0aad6`):**
   share formation recovery and actual Face/endpoint traversal on typed owners;
   delete heap-worker APIs and Job result/progress duplication.
