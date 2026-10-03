@@ -15,6 +15,12 @@ Related: [coordination](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md),
 
 ### Subjective (User)
 
+2026-10-03, English paraphrase of the direct human clarification: issues are
+accumulating and progress is hard to see. Each worker should give concrete
+issue-linked feedback showing which subproblem advanced and how much actual
+implementation/verification was done. This does not make a table format or
+reporting cadence a user design principle; Core's workflow is in Assessment.
+
 2026-10-03, English paraphrase of the user coordination preference: Core should
 be woken by worker events rather than continuous polling. Keep this worker Goal
 active and continue downstream ABI/helper work without a pause. The later direct
@@ -66,6 +72,40 @@ refinement now, while the coordinator continues Job/Evidence removal. Use task
 names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
+
+2026-10-03, fresh branch/upstream inspection confirms C6 publication
+`cea1dc0177d36328d6f4de2a8f151b5952d2c2c5`. All 16 historical manifest hashes match
+that Git revision. Core reports push exit 0, independent remote verification and
+freeze release. Later Core evidence `fd45c42`: all ten C6 O2 gates pass against
+the joint E3 producer (128-runtime manifest abbreviated `e87b8781...`, source
+hashes unchanged). Prototype Main merge `53debc870231f415bdf926b537a7c1a8670e81d7`
+and push are complete. Worker seven sanitizer gates remain separate evidence.
+This is prototype integration, not accepted promotion. The
+new issue-feedback note/table is incorporated here after release; the temporary
+addendum is removed. Old handoffs/manifests stay unchanged.
+
+Current issue status (2026-10-03; detailed pins stay in linked epoch plans):
+
+| Issue/subproblem | Implemented change + exact revision | Local vs joint verification | Task publication vs Main integration | Remaining acceptance/blocker | Next concrete epoch |
+| --- | --- | --- | --- | --- | --- |
+| #49 native calls/data/List/Nat32 | C1-C5 through `312c2da`: first-order ABI, value data, nodes, numeric partitions, transactional arrays, known local functions. | Local C5: 9 O2/5 native sanitizer gates. Core: 9 combined O2 gates on reviewed 128-runtime-hash snapshot. | Task `312c2da` pushed; prototype Main `435d965` is an inspected ancestor of Core's pushed C6 Main `53debc8`. | Broader native contracts remain; no accepted promotion. | Preserve these contracts in C6/C7. |
+| #49 selected value records, C6 | `cea1dc0177d36328d6f4de2a8f151b5952d2c2c5`: whole nested records, active tag validation, emitter receipt metadata. | Local 10 O2/7 native sanitizer gates; 105 cases/product, 16 source observations. Core evidence `fd45c42`: 10 O2 gates on joint E3 producer pass. | Task commit/push/remote verified; Core Main `53debc870231f415bdf926b537a7c1a8670e81d7` integrated and pushed. | Bounded record criterion verified; recursive pointer/aggregate fields and broader AP6 remain open. | Distinct C7 enum List arrays. |
+| #49 finite enum List arrays, C7 | `cea1dc0` plus active code/test source manifest SHA256 `2420d6affa99f52a3913265c55e6d3737859ab9f358a7ca65e763876bc91e6e3`: enum copies and validation before arena mutation. | Fresh active 11 O2/8 native sanitizer gates; 875 cases/product, 24 source observations, 17 inert raw/evaluator observations. No joint C7 run. | Exact next-epoch handoff ready; task publication/Main integration pending. | Core current-producer verification/publication; multi-payload/aggregate shapes remain excluded. | Freeze/publish separate C7, then choose the next bounded C ABI increment. |
+| #44/#49 native Acc/QuickSort | C4 `a3b6bce` pins admitted open native refusal; C5/C6 retain it. No native sorter implementation. | Local checked/trusted status4/no product; Core C5 sorting gate passes. Structural FFTT is separate. | C4-C6 prototype epochs published; native sorter remains unimplemented. | Applied/indexed families and callable Acc fields unsupported; admission/relevance stays Core-owned. | Route concrete producer needs through Core; no upstream checker/IR rewrite. |
+| #49 remaining public contracts | At C6 `cea1dc0`, dynamic callbacks/effects, higher Identity, three-closure capture chain and general shared nominal exchange remain explicit limits. | Local/Core gates verify supported cases and refusals, not general completion. | No publication of those missing contracts. | Need bounded justified representation/demand contracts. | Finish current C7 array boundary; keep these criteria open. |
+
+Evidence: historical [C5](2026-10-03-C-BACKEND-EPOCH5-HANDOFF.md),
+[C6](2026-10-03-C-BACKEND-EPOCH6-HANDOFF.md) and active
+[enum List plan](2026-10-03-C-BACKEND-ENUM-LIST-PLAN.md).
+
+2026-10-03, fresh active C7 at `cea1dc0` plus the exact source manifest above:
+enum payload Lists now use existing finite array copy helpers. Input tag validation
+precedes arena allocation/mutation. Eleven O2 C gates and eight native generated-
+client ASan/UBSan/leak gates pass on the pinned worker producer. The initial raw
+client's empty-array compiler warning is resolved by its documented NULL input;
+the old failed log remains. Scratch files/build overrides are removed. Exact files,
+pins/deltas/limitations are in the [C7 handoff](2026-10-03-C-BACKEND-EPOCH7-HANDOFF.md).
+No active gate failure, producer change, joint C7 claim or native sort completion.
 
 2026-10-03, fresh Epoch6 at published `312c2da` plus lane edits: selected closed
 value data can contain earlier selected nonrecursive value data. Whole structs
@@ -190,6 +230,23 @@ pinned/current producer images and emitted C/headers match byte-for-byte.
 Evidence and exact publication files are in the [epoch handoff](2026-10-03-C-BACKEND-EPOCH1-HANDOFF.md).
 
 ### Assessment
+
+Core operational reporting decisions, 2026-10-03, superseding their former
+Subjective attribution in the temporary feedback note: use one concise table
+with exact revision, local/joint evidence, publication/integration, remaining
+criteria and next epoch. Update at material milestones/blockers and within six
+active hours; do not invent percentages or imply closure/promotion. Send brief
+pointer/hash/changed-row notices through the existing outbox, without a reporting
+framework or owner code changes. The direct human requirement is concrete
+issue-linked feedback because progress is unclear. While C6 was frozen, the user
+note/table remained separate; Core's release now permits incorporation here.
+
+Core operational C6 release, 2026-10-03: preserve the exact published historical
+handoff and manifest, and continue a separate downstream epoch. Core reports
+Job E2 prototype Main `7b27c4c`, 2,007 evidence hashes checked and Main publication
+in progress; its new common-producer C6 gates are separate from worker evidence.
+Agent next decision: adopt the verified enum-array trial through the existing
+copy helpers. No producer/schema/shared authority change is needed.
 
 Core operational Epoch5 release/integration, 2026-10-03: continue distinct bounded
 C-module work with explicit refusals; no native Acc completion, producer/schema
@@ -394,8 +451,15 @@ this target work while Main continues SE1, superseding the earlier AP6 hold.
   Main merge `435d965`; implementation freeze released, Main push next.
 - [x] Epoch6: verify the bounded selected value-record candidate, preserving
   unsupported shapes and historical exact handoffs.
-- [ ] Hand off frozen Epoch6 through the outbox for delegated branch publication
-  and Core's separate current-producer review/integration.
+- [x] Hand off frozen Epoch6 through the outbox; Core publishes/pushes `cea1dc0`
+  and releases the freeze. Its current-producer review/integration is separate.
+- [x] Core verifies exact C6 against its joint E3 producer and integrates/pushes
+  prototype Main `53debc8`; evidence/status `fd45c42`. No accepted promotion.
+- [x] Epoch7: adopt/verify selected enum List arrays in a separate bounded epoch.
+- [ ] Hand off exact frozen C7 for delegated task-branch publication and Core's
+  separate current-producer review/integration.
+- [ ] Maintain the single issue table at material events and within six active
+  hours; use brief pointer/hash notices and keep Core workflow in Assessment.
 - [ ] Coordinate further bounded target ABI/lowering increments under the latest
   user scope. Remaining Acc/QuickSort, callbacks/effects, Identity and shared
   nominal contracts stay explicit; do not expand into upstream authority work.
@@ -446,7 +510,13 @@ No hand-coded replacement or shared-owner edits.
 Epoch5 was published as `312c2da`; Core reports nine combined gates and prototype
 Main merge `435d965`, with Main push next. Its old exact manifest stays historical
 evidence and the implementation freeze is released. The selected value-record
-candidate is verified as separate Epoch6, ready for exact freeze/publication.
+candidate is published as separate Epoch6 `cea1dc0`; Core releases the freeze and
+reports ten joint-E3-producer gates passed, Main merge `53debc8` and push complete.
+The next
+separate epoch adopts verified enum List copying, with no shared-owner changes.
+C7 now passes eleven local O2 and eight native sanitizer gates; its exact handoff
+is ready for a separate freeze/publication. The single issue table above records
+publication/integration and remaining criteria; old handoffs remain unchanged.
 The specific three-closure captured chain, dynamic callbacks,
 tree/indexed/dependent fields, missing/later value children, recursive aggregate
 fields and effects remain explicit negative coverage.

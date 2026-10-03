@@ -1,0 +1,23 @@
+aplink 1
+artifact fixture.a
+abi c_native_v1
+target host-c11
+product source
+lowering native_direct_v1
+fallback reject
+enum32 Flag Flag
+enum32 Signal Signal
+data Flags Flags
+data Signals Signals
+export length length
+export count_on count_on
+export select select
+export append append
+export flip flip
+export identity identity
+export cons cons
+export constant constant
+export signal_length signal_length
+export signal_score signal_score
+export signal_append signal_append
+export signal_identity signal_identity

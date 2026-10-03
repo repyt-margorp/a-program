@@ -189,7 +189,7 @@ int pg_c_representation_list(const struct pg_c_representation *r, size_t *cell, 
 	if (r->constructors[1 - position].count || c->count != 2 || c->tail > 1) return 0;
 	size_t field = 1 - c->tail;
 	const struct pg_c_representation *type = c->fields[field];
-	if (type->layout && !type->natural) return 0;
+	if (type->constructors && !type->natural) return 0;
 	*cell = position; *payload = field;
 	return 1;
 }

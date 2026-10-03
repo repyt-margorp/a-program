@@ -562,7 +562,7 @@ large equal inputs can return 4 even though a source evaluation would terminate.
 Neither the width nor depth bound supplies source evidence.
 
 A selected `data` shape with two constructors, one nullary and one containing
-exactly a single Self tail plus one Int32/Int64/nat32 payload, additionally emits
+exactly a single Self tail plus one Int32/Int64/nat32/enum32 payload, additionally emits
 `ap_copy_ALIAS(input, buffer, capacity, written)`. Either constructor order and
 either field order are supported. If `Rep(xs, [v0, ..., vn-1])`, a successful call
 writes those payloads in order to `buffer[0..n-1]` and sets `*written = n`.
@@ -579,12 +579,23 @@ order into arena-owned nodes, including a terminal node; it allocates `count + 1
 nodes. The input array may be released or changed after success. An empty slice
 accepts a null array. The caller supplies readable input elements and writable
 output separate from the input and arena metadata. Status 1 denotes a null
-required pointer, 3 allocation/capacity failure, 4 an active arena invocation,
+required pointer, 2 an invalid enum element, 3 allocation/capacity failure,
+4 an active arena invocation,
 and 6 a count of SIZE_MAX (the terminal would overflow the node count). Failures
 preserve output and prior arena allocations; only new allocations roll back.
 Both conversion helpers are iterative and independent of recursive execution
 depth limits. The List representation inside generated functions remains a
 node chain; this is explicit copying at the C boundary, not slice-based lowering.
+
+Enum payloads use arrays of the selected `struct ap_enum_ALIAS`, preserving their
+constructor positions and nominal C type. Copy-in validates every tag before
+allocating or changing the arena/output; invalid elements leave prior arena state
+and results intact. Copy-out reuses finite-node and active-field validation.
+`check-c-enum-list` verifies 875 cases per source/object/archive product and
+24 source observations, reversed constructor/field order, all allocation failure
+positions, copied-input independence and 300-node conversion. Distinct enum arrays
+remain incompatible C types. Multi-payload nodes have no array helper; recursive
+aggregate payloads, trees and native Acc/QuickSort remain unsupported.
 
 ```c
 struct ap_c_arena arena = {0};
