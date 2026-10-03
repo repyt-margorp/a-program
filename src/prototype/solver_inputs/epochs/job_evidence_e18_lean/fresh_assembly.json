@@ -1,0 +1,9 @@
+{
+  "parent_task": "Published exact E17 task54757cfa97877486caedb49fe2de34738edbd645/manifest1da129f6976b6c6ed0971b75520abb1a4b33b13fc71f6e60a903d58123d04611 on E16task6caf36c; supersedes preparation-time publication-pending status",
+  "parent_source156": "206acb0c09c7ac83eec825f0fb3c192c3b72db99b09d9cf926e7928f240bbaae",
+  "candidate_source156": "02241bd2fa031584e176ae16cbcebd825ec834e8e5bea4ea33f22e66ac4ae2ea",
+  "applied_delta": "2859d2ac3fe7aae1e31e8c6ac26a9eb51025c781b56ed2d0868f972a88865e0b",
+  "all156_after_apply_exact": true,
+  "canonical_reverse_parent_and_candidate_apply_raw_exact": true,
+  "shared_git_untouched": true
+}

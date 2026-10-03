@@ -1,0 +1,264 @@
+{
+  "focused": [
+    {
+      "variant": "parent",
+      "gate": "build",
+      "command": [
+        "make",
+        "--jobserver-style=pipe",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/artifact_persistence/build.mk",
+        "-j1",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18_parent_controls",
+        "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18_parent_controls/o2",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18_parent_controls/o2/synthesis_test"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18/private_tmp"
+      },
+      "source_manifest": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e18/parent_control_sources.sha256",
+      "overlay": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18_parent_controls",
+      "source_manifest_sha256": "5a9776bbe036e77060f94567891a44a96c300fca7c5487c6c2afd29fd21467ce"
+    },
+    {
+      "variant": "parent",
+      "gate": "synthesis",
+      "command": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18_parent_controls/o2/synthesis_test"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18/private_tmp"
+      },
+      "source_manifest": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e18/parent_control_sources.sha256",
+      "overlay": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18_parent_controls",
+      "source_manifest_sha256": "5a9776bbe036e77060f94567891a44a96c300fca7c5487c6c2afd29fd21467ce"
+    },
+    {
+      "variant": "candidate",
+      "gate": "build",
+      "command": [
+        "make",
+        "--jobserver-style=pipe",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/artifact_persistence/build.mk",
+        "-j1",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18",
+        "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18/o2",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18/o2/synthesis_test"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18/private_tmp"
+      },
+      "source_manifest": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e18/tested_sources.sha256",
+      "overlay": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18",
+      "source_manifest_sha256": "02241bd2fa031584e176ae16cbcebd825ec834e8e5bea4ea33f22e66ac4ae2ea"
+    },
+    {
+      "variant": "candidate",
+      "gate": "synthesis",
+      "command": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18/o2/synthesis_test"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18/private_tmp"
+      },
+      "source_manifest": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e18/tested_sources.sha256",
+      "overlay": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18",
+      "source_manifest_sha256": "02241bd2fa031584e176ae16cbcebd825ec834e8e5bea4ea33f22e66ac4ae2ea"
+    },
+    {
+      "variant": "asan",
+      "gate": "build",
+      "command": [
+        "make",
+        "--jobserver-style=pipe",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/artifact_persistence/build.mk",
+        "-j1",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18",
+        "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18/asan",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18/asan/synthesis_test"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18/private_tmp",
+        "ASAN_OPTIONS": "detect_leaks=1:detect_stack_use_after_return=1:halt_on_error=1",
+        "UBSAN_OPTIONS": "halt_on_error=1"
+      },
+      "source_manifest": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e18/tested_sources.sha256",
+      "overlay": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18",
+      "source_manifest_sha256": "02241bd2fa031584e176ae16cbcebd825ec834e8e5bea4ea33f22e66ac4ae2ea"
+    },
+    {
+      "variant": "asan",
+      "gate": "synthesis",
+      "command": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18/asan/synthesis_test"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18/private_tmp",
+        "ASAN_OPTIONS": "detect_leaks=1:detect_stack_use_after_return=1:halt_on_error=1",
+        "UBSAN_OPTIONS": "halt_on_error=1"
+      },
+      "source_manifest": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e18/tested_sources.sha256",
+      "overlay": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18",
+      "source_manifest_sha256": "02241bd2fa031584e176ae16cbcebd825ec834e8e5bea4ea33f22e66ac4ae2ea"
+    }
+  ],
+  "broad": {
+    "commands": [
+      "make",
+      "--jobserver-style=pipe",
+      "-f",
+      "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/artifact_persistence/build.mk",
+      "-j1",
+      "OVERLAY=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18",
+      "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18/o2",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+      "CHECKPOINT_TESTS=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18/checkpoint_tests/",
+      "ARTIFACT_TESTS=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18/artifact_tests/",
+      "check-acceptance",
+      "check-artifact-semantic",
+      "check-artifact-source-checkpoint",
+      "check-artifact-derivation-checkpoint",
+      "check-artifact-definition-checkpoint",
+      "check-artifact-namespace-frontier",
+      "check-artifact-namespace-body-frontier",
+      "check-artifact-constructor-checkpoint",
+      "check-artifact-normalization-checkpoint"
+    ],
+    "source_manifest_sha256": "02241bd2fa031584e176ae16cbcebd825ec834e8e5bea4ea33f22e66ac4ae2ea",
+    "reuse": "Only positively completed exact E18 O2 Synthesis binary build; all acceptance/semantic/seven checkpoint recipes unskipped.",
+    "parent_task": "Exact immutable E17 manifest1da129f6976b6c6ed0971b75520abb1a4b33b13fc71f6e60a903d58123d04611 on published E16task6caf36c; E17 task publication pending. E19/E20/current Main/E10 excluded.",
+    "overlay_inputs_manifest_sha256": "2a4fe10e020ab9aedac4107aec79805ef00a01f6a50bad044d5a20f98af05d09",
+    "scheduling": "Serial j1 independent correctness under direct human superseding workflow; no comparative timing/RSS grant.",
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18/private_tmp"
+    },
+    "rerun_provenance": "First E18 broad run uses actual471 fixtures inherited exact from corrected E17, including both generic_sorted patch fixtures."
+  },
+  "supplemental": {
+    "parent_task": "Exact frozen E17 manifest1da129f6/source156206acb0c on published E16task6caf36c; E17 task pending; E19/E20/E10/current Main excluded.",
+    "baseline_C_eight_script_command": [
+      "make",
+      "--jobserver-style=pipe",
+      "-f",
+      "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/c_backend/build.mk",
+      "-j1",
+      "OVERLAY=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18",
+      "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18/c_build",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+      "CHECKPOINT_TESTS=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18/checkpoint_tests/",
+      "ARTIFACT_TESTS=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18/artifact_tests/",
+      "check-c-enum",
+      "check-c-data",
+      "check-c-list",
+      "check-c-backend",
+      "check-c-sorting-boundary",
+      "check-c-link",
+      "check-c-scalar"
+    ],
+    "strict_public_command": [
+      "bash",
+      "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/image_audit/partition_fuel.sh",
+      "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18/o2/pointer-check",
+      "/home/repyt/workspace/a-program-workers/job-evidence/examples/09_list_induction.p",
+      "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18/public_partitions",
+      "ordinary"
+    ],
+    "strict_public_environment": {
+      "IMAGE_AUDIT_STRICT_BYTES": "1"
+    },
+    "known_failures": "Preserve original strict1000+1000,1600+1600,completed1921+0; actual exit1 remains a failure, no expected-pass waiver.",
+    "source_manifest_sha256": "02241bd2fa031584e176ae16cbcebd825ec834e8e5bea4ea33f22e66ac4ae2ea",
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18/private_tmp"
+    }
+  },
+  "census": {
+    "builds": [
+      {
+        "variant": "E17",
+        "command": [
+          "make",
+          "--jobserver-style=pipe",
+          "-f",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e13/census.mk",
+          "-j1",
+          "ARTIFACT_MAKEFILE=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/artifact_persistence/build.mk",
+          "OVERLAY=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch17",
+          "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch17/rule_header_census",
+          "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+          "BINDING_AUDIT=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e11/binding_storage_audit.c",
+          "ALLOCATION_AUDIT=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/artifact_persistence/allocation_audit.c",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch17/rule_header_census/binding_storage_audit"
+        ],
+        "overlay": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch17",
+        "source_manifest": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e17/tested_sources.sha256",
+        "source_manifest_sha256": "206acb0c09c7ac83eec825f0fb3c192c3b72db99b09d9cf926e7928f240bbaae",
+        "binary": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch17/rule_header_census/binding_storage_audit"
+      },
+      {
+        "variant": "E18",
+        "command": [
+          "make",
+          "--jobserver-style=pipe",
+          "-f",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e13/census.mk",
+          "-j1",
+          "ARTIFACT_MAKEFILE=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/artifact_persistence/build.mk",
+          "OVERLAY=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18",
+          "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18/rule_header_census",
+          "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+          "BINDING_AUDIT=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e11/binding_storage_audit.c",
+          "ALLOCATION_AUDIT=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/artifact_persistence/allocation_audit.c",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18/rule_header_census/binding_storage_audit"
+        ],
+        "overlay": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18",
+        "source_manifest": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e18/tested_sources.sha256",
+        "source_manifest_sha256": "02241bd2fa031584e176ae16cbcebd825ec834e8e5bea4ea33f22e66ac4ae2ea",
+        "binary": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18/rule_header_census/binding_storage_audit"
+      }
+    ],
+    "samples": [
+      [
+        "list",
+        "examples/09_list_induction.p",
+        "-"
+      ],
+      [
+        "effect",
+        "tests/acceptance/effect-application.p",
+        "-"
+      ],
+      [
+        "captured",
+        "tests/acceptance/captured-block-match.p",
+        "-"
+      ],
+      [
+        "quick",
+        "tests/acceptance/generic-quick-local-sorted-result.p",
+        "src/prototype/solver_inputs/epochs/job_evidence_e1_lean/quick-local-provider.p"
+      ],
+      [
+        "handler",
+        "src/prototype/c_backend/fixtures/handler.p",
+        "-"
+      ]
+    ],
+    "requested_fuel": [
+      0,
+      100,
+      1000,
+      10000000
+    ],
+    "require": "Both DONE with actual ordinary theorem; all35 fields exact at four fuel cuts. Deletion retains live frontier; added branch headers/array capacity/allocator overhead counted separately. No time/RSS gain claim.",
+    "cost_scope": "existing allocation interposition reports cumulative external arena calls/aligned bytes, not live/peak/RSS/time; same existing count audit and ordinary-result theorem",
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch18/private_tmp"
+    }
+  }
+}

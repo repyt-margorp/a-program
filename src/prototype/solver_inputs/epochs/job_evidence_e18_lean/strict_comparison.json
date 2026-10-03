@@ -1,0 +1,8 @@
+{
+  "reference": "exact frozen E17 public_partitions",
+  "raw_images": 52,
+  "all_raw_images_equal": true,
+  "complete_verdict_fuel_tsv_equal": true,
+  "strict_gate_exit": 1,
+  "original_failures_unwaived": true
+}
