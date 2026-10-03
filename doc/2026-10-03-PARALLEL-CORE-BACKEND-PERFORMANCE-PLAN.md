@@ -1,0 +1,226 @@
+# Parallel Core, Backend, Performance and Surface Work
+
+Date: 2026-10-03
+Status: lane assignment selected; worker setup in progress; measurements pending.
+Code baseline: `main`, `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
+Local state: unfinished `identity_boundary_trial`; unrelated accepted-source and
+test edits are excluded. This plan changes no implementation or promotion rules.
+Related: [SE1-SE5](2026-09-30-SOLVER-EVIDENCE-DUPLICATION-AUDIT-AND-PLAN.md),
+[AP0-AP6](2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md).
+Supersedes the earlier three-session assignment, not the existing owner work lists.
+
+## Problem List
+
+| ID | Problem / owner | Related | Status |
+| --- | --- | --- | --- |
+| 1 | `core`: Job/Evidence ownership, exact resume and integration | SE1-SE5, AP0 | In progress in the existing work list |
+| 2 | `c-backend`: downstream C design | #44, #49; shared policy #47 | Assignment selected; worker not launched |
+| 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Scoped; worker setup underway |
+| 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Scoped; worker setup underway |
+
+## 1. Core Ownership and Integration
+
+### Subjective (User)
+
+2026-10-03, English paraphrase of the latest follow-ups: name sessions by
+their task rather than Main/Sub numbers. The user now reports tmux installed
+and asks to verify it, so both the coordinator and the user can inspect worker
+progress. Checking installation does not itself establish a running worker.
+
+2026-10-03, English paraphrase of the active Goal: check issues/PRs roughly every
+ten minutes until all three workers have clear scope and are running. Start
+C-backend/Linker work now; use incoming issues/PRs to scope performance and
+surface. Continue actual Job/Evidence deletion between checks, keep working
+directories separate and integrate worker results at suitable verified epochs.
+
+2026-10-03, English paraphrase: keep this session responsible for Job/Evidence;
+use tmux-managed additional Codex sessions for backend and performance work.
+2026-10-03, English paraphrase of the follow-up: this primary session must
+regularly inspect the workers and issue directions as needed. Each tmux worker
+should use `/goal` for sustained implementation against a long-term plan, using
+the requested `6.1 Sol` model at `xhigh`. The performance audit documents and
+issues are currently being submitted; incorporate them when available, not
+as already inspected material. Do not silently substitute another model.
+2026-10-03, English paraphrase of the latest addition: retain Sub2 for
+performance and add Sub3 for surface-language changes and associated `.p`
+updates, particularly changes to Binder notation for functions and function
+graphs. This adds a fourth total session; it does not replace the C worker.
+The exact new Binder syntax is not stated in this message.
+2026-10-03, English paraphrase of the latest clarification: the user will
+install tmux and questions whether it is the best management choice. Leave
+further installation to the user; compare management options before assuming
+tmux is required. Existing user-local extraction is not a system installation.
+Earlier requirements remain: do not duplicate Term/Oracle structures above the
+typed owners; preserve Core/type separation and ordinary Solve semantics.
+
+### Objective (Code)
+
+At the baseline, the committed ownership prototype is under
+`src/prototype/solver_inputs/`. The current local Identity boundary trial is
+unfinished and unverified, not a worker baseline. Earlier fresh checks recorded
+three public split-fuel resume failures; no tests were rerun for this document.
+Accepted `src/evidence.*`, `src/iadt.*` and their tests have unrelated local edits.
+
+### Assessment
+
+User-selected assignment: Main owns this refactor. Agent workflow proposal:
+Main also reviews cross-lane changes and integrates tested epochs. Separate
+worktrees prevent accidental edits, but do not eliminate semantic conflicts.
+Do not give another worker independent Job/Evidence/frontier ownership.
+Supervision proposal: while Main is active, inspect worker panes and worktree
+diffs at least every ten minutes and at epoch boundaries. Read status/blockers
+and relevant tests, then send concrete steering when needed. An inactive Main
+session provides no automatic supervision; tmux alone does not supply it.
+
+### Plan
+
+- [ ] Continue the single SE1-SE5 work list; do not duplicate its task checklist here.
+- [ ] Publish the committed compiler/overlay recipe used by both workers;
+  do not copy an unfinished trial or unrelated local changes into their baseline.
+- [ ] Assign separate worktrees, branches, overlay/build/output paths and task briefs.
+- [ ] Verify the requested model and `/goal` support, then launch the three tmux
+  workers. Main periodically reviews their status, diffs, tests and blockers
+  and issues directions; record material decisions in the owning SOAP plan.
+- [ ] Review cross-owner findings; transfer file ownership for an explicit epoch
+  when needed, rather than permanently excluding a necessary large refactor.
+- [ ] Integrate each completed epoch, run relevant combined regression gates,
+  record unresolved failures, and publish only reviewed commits to Main.
+- Completion: workers can deliver independent changes without a second Core
+  authority; SE completion remains governed by its original criteria.
+
+## 2. C Backend
+
+### Subjective (User)
+
+2026-10-03, English paraphrase: assign C-backend design to the first sub-session.
+Earlier requirements keep C/LinkerScript subordinate to A Program: target
+conventions must not become new `.a` fields or source-semantic requirements.
+
+### Objective (Code)
+
+`src/prototype/c_backend/emit.h:pg_c_emit` borrows typed Occurrences. Its driver
+still loads Job-rooted exports and calls `pg_artifact_revalidate`; it is not
+fully independent of ongoing Main changes. `build.mk` defaults to shared `/tmp`
+paths, so workers must supply private `OVERLAY` and `BUILD` paths.
+GitHub inspection finds #44 and #49 open; no fresh backend verification here.
+
+### Assessment
+
+Agent proposal: Sub1 owns target realization, ABI and LinkerScript design and
+their prototypes/tests. Use a pinned committed producer and immutable `.a`
+fixtures while Main changes internals. Main owns producer/admission/transport
+changes; report those needs without creating a private checker or shadow IR.
+Start with supported checked exports, not completion of all relevance research.
+
+### Plan
+
+- [ ] Recheck #44/#49 against the pinned producer and specify one target epoch.
+- [ ] Work under `src/prototype/c_backend/`; use a lane-specific SOAP work list
+  linked from AP4-AP6 rather than duplicate those lists here.
+- [ ] Agree the selected typed-export interface and explicit pending/unsupported
+  behavior with Main; keep target data/layout and realization policy downstream.
+- [ ] Verify emitted C as a usable C module, evaluator agreement, ABI/effect
+  behavior, negative controls and input `.a` immutability for the chosen subset.
+- [ ] Test both pinned fixtures and newly produced images before integration.
+- Completion: a reviewed target epoch passes its stated gates without extending
+  `.a` for backend-only needs or claiming completion of unsupported constructs.
+
+## 3. Simplification Before Tuning
+
+### Subjective (User)
+
+2026-10-03, English paraphrase: assign system performance, including waste in
+other modules, to the second sub-session. Prioritize a simpler implementation
+and removal of unnecessary work over technical tuning that complicates it.
+Consider comparisons with Bend2, Lean, Agda and Rocq. Related issues/PRs are
+forthcoming; this is not approval to weaken checking or introduce a new engine.
+
+### Objective (Code)
+
+Fresh GitHub metadata lists seven issues and three PRs (#53-#55); no separate
+Bend2/performance submission was identified yet. #51 concerns ownership/size
+measurement, #52 selected checked relation reuse, #53 audit documents, and #55
+long-term distributed Solve intent, not an immediate scheduler implementation.
+No full PR diff was freshly verified for this plan.
+
+Existing tools include `artifact_persistence/state_audit.c`,
+`allocation_audit.c`, `image_audit/fuel_curve.sh`, and the readback construction
+benchmark. `src/graph.c` already has exact interning and scoped comparison;
+`src/eval.h` separates reduction, readback and substitution. Their existence
+does not establish which is currently dominant. Current cross-system timings
+and fresh bottleneck measurements have not been obtained.
+
+### Assessment
+
+Agent proposal: Sub2 measures the whole path but owns only an agreed,
+non-overlapping implementation epoch. First look for repeated traversal,
+construction, copying and recoverable state, not extra caches or wrappers.
+Job/Evidence/query/admission/frontier findings return to Main. Pure graph,
+evaluator or readback changes can be developed separately after checking shared
+dependencies. Do not silently change fuel granularity to report fewer steps.
+
+Cross-system comparison must match results and work performed. Measure source
+construction/type checking, proof construction/conversion, evaluation and native
+execution separately. Pin versions, semantics, representation, integer behavior,
+proof scope, optimization, CPU/GPU and process/cache conditions. If a system
+cannot express a chosen proof task, mark it not comparable, not faster. Identify
+the exact Bend2 implementation before choosing commands or citing claims.
+
+### Plan
+
+- [ ] Inspect the forthcoming performance issue/PR; record adopted, rejected and
+  deferred recommendations without treating reported problems as current bugs.
+- [ ] Pin the latest committed baseline and its parent with identical workloads,
+  including small Core cases, List induction and ordinary-result sort proofs.
+- [ ] Reuse existing census/timing tools; record repeated wall/CPU time, peak
+  memory, fuel, terms/typed records, allocations and `.a` bytes in a short TSV.
+- [ ] Keep runtime sorting cost separate from its checking/proof cost; use
+  completed results, not equal fuel alone, for end-to-end speed comparisons.
+- [ ] Profile before selecting one deletion/refactor epoch; document the owner,
+  redundant work and simpler replacement. Do not build another program graph.
+- [ ] Hand Main-owned changes to Main; prototype other agreed changes in a new
+  `src/prototype/` subtree, not accepted files or Main's overlay patches.
+- [ ] Research primary sources and run genuinely comparable cross-system cases;
+  record unavailable tools and unmatched tasks explicitly.
+- [ ] Verify meaning, capture/scope, synthesis-first `::`, effect ordering,
+  totality and applicable image/fuel invariants; preserve existing failure reports.
+- [ ] Report implementation/test/doc additions and deletions separately, per-file
+  changes and before/after measurements; reject complexity without demonstrated benefit.
+- Completion per epoch: unnecessary work is removed, relevant correctness gates
+  pass and measured cost/complexity is reported without changing the task.
+
+## Coordination
+
+- Worker Goal briefs: [C](2026-10-03-C-BACKEND-GOAL.md),
+  [performance](2026-10-03-PERFORMANCE-GOAL.md),
+  [surface](2026-10-03-SURFACE-GOAL.md). The latest four-session assignment
+  supersedes older Main/Sub numbering; this session is `core`/coordinator.
+- 2026-10-03: #56/#57 and documentation PR #58 are now available. The
+  coordinator read issue bodies and the current-head review; historical supplied
+  reports are evidence to revalidate, not accepted patches or fresh speed claims.
+- Workers push only their own branches; Main performs reviewed integration.
+- One owner edits each implementation/plan per epoch. Shared findings are
+  handed off, not solved independently in both lanes.
+- Full regression and measured performance use one agreed machine slot;
+  unrelated CPU-heavy work invalidates comparative timings. Focused tests may overlap.
+- tmux manages independent sessions, not shared chat context. Each brief carries
+  the revision, write scope, user Subjective, task/tests and return conditions.
+- AGENTS.md's prototype boundary and intentional promotion rule still apply.
+- No tmux installation, worker launch, merge, issue closure or new engine is
+  implied by the initial plan. The later explicit worker instructions authorize
+  setup; record actual launch/model/Goal verification below, not inferred success.
+
+## Setup Evidence
+
+2026-10-03: local CLI `0.159.2` reports `goals` enabled. Official documentation
+supports persistent `/goal` and `gpt-6.1-sol` / `xhigh`; account access still needs
+a live check. tmux `3.5a` was extracted from Debian packages into the user's
+`.local/share/a-program/`, without sudo or modifying system packages. No workers
+have been launched at this checkpoint. No compiler tests were run for setup.
+Later on 2026-10-03, `/usr/bin/tmux` reports `3.5a` after the user's installation.
+A private-socket detached test session was created, listed and removed
+successfully; the default socket had no sessions at inspection. A live ephemeral
+Codex check succeeded with explicit `gpt-6.1-sol`, `xhigh` and no fallback.
+These checks establish tooling, not launched workers or resumed Goals.
+[Goals](https://developers.openai.com/cookbook/examples/codex/using_goals_in_codex),
+[GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol).

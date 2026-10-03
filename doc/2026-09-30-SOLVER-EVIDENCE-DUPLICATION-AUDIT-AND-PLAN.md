@@ -70,6 +70,58 @@ advance together without rebuilding Oracle-local Term structure in Job/Evidence.
 2026-10-03, English paraphrase of the continuation: keep that balance and remove
 duplicated stored structure; documentation-only activity is not implementation.
 
+2026-10-03, English paraphrase of the user's clarification: accepted proof facts
+and unfinished computation cursors are distinct. The central objection is that
+Job transcribed Term structure, not merely that an unfinished-work record exists.
+Explain which Job/Evidence structures still remain and whether they duplicate
+the Term/Oracle representation.
+
+2026-10-03, English paraphrase of the user's further clarification: much of
+Evidence should be absorbable by the Curry-Howard typed construction. Separate
+resume state may remain because proof terms alone do not encode interrupted
+checking. Do not retain wrappers merely for resume, or reconstruct a second
+derivation graph already represented by Term/typed data. Critically assess this
+expectation rather than treating complete Evidence deletion as established.
+
+2026-10-03, English paraphrase of the user's development-workflow request:
+Job/Evidence simplification is necessary, but investigate parallel C-backend
+and surface-language development on the same PC. Coordinate through the `.a`
+interface rather than coupling backend needs to A Program's internals. This
+requests a workflow proposal, not approval of a format extension or promotion.
+
+2026-10-03, English paraphrase of the user's follow-up: accumulated GitHub
+issues motivate parallel development; inspect the actual backlog before assigning
+independent work or dependencies.
+
+2026-10-03, English paraphrase: use this terminal as the primary coordinator and
+consider tmux-managed additional Codex sessions for parallel development. Propose
+a practical lane count and workflow before launching workers.
+
+2026-10-03, English paraphrase of the user's selected division: Main (this
+session) owns Job/Evidence simplification; Sub1 owns C-backend design; Sub2
+owns system performance through removal of waste, including other modules.
+Prefer simpler structures and paths before technical tuning or additional
+machinery. Compare relevant workloads with Bend2, Lean, Agda and Rocq rather
+than assuming equivalent tasks or performance. Related issue/PR input is
+forthcoming. This supersedes the proposed surface/library third lane; it does
+not authorize a second owner for the Main refactor or a target-driven `.a`
+extension.
+
+2026-10-03, English paraphrase of the user's follow-up: this primary session
+regularly supervises the two tmux workers and issues directions as needed.
+Workers use `/goal` for long-term implementation with `6.1 Sol` at `xhigh`.
+Performance audit documents/issues are being submitted now, not yet verified.
+The coordination plan owns worker setup; SE1-SE5 remains Main's work list.
+
+2026-10-03, English paraphrase of the latest addition: add Sub3 for surface
+function/function-graph Binder notation and `.p` migration. Main, C Sub1 and
+performance Sub2 remain assigned. Do not infer an unspecified Binder syntax.
+
+2026-10-03, English paraphrase of the active Goal: periodically check incoming
+issues/PRs and launch separate scoped workers; continue actual Job/Evidence
+duplication removal here between checks. Integrate worker changes at verified
+epochs, with separate working directories to avoid interference.
+
 ## Objective (Code)
 
 ### Revision and Method
@@ -173,6 +225,36 @@ identical TSVs in O2 and ASan/UBSan builds, including repeated samples without
 additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
+
+2026-10-03, agent clarification at `eb0aad6` plus the unverified Identity-boundary
+trial: Curry-Howard supports representing object proofs by typed witness Terms;
+it does not require retaining the checker's complete derivation or search history.
+The trial's `pg_occurrence` constructor still admits descriptive, unchecked input,
+so a classifier pointer alone cannot certify acceptance. This is a current API
+choice, not a theorem requiring a separate Evidence graph. Structural premise
+edges recoverable from the typed owner should be borrowed, not stored again.
+Checking information absent from the owner (for example, the accepted conversion
+between a synthesized and selected classifier) must be checked or retained where
+needed; do not turn it into object Identity or assume that every alternative
+checking route needs permanent history. Interrupted checking retains only its
+actual owner-local cursor and dependency references. These distinctions do not
+authorize new wrappers, a replacement Job graph, or deletion of higher witness
+Terms. [Lean's primary reference](https://lean-lang.org/doc/reference/latest/The-Type-System/)
+describes reconstructing derivations from explicit terms rather than retaining a
+complete derivation; this supports the distinction, not direct adoption of Lean's
+rules for A Program's CBPV/Higher Observational theory. Full Evidence absorption
+remains an obligation to establish, not a completed result.
+
+2026-10-03, agent decision against `eb0aad6`: Face/endpoint workers still own
+separate failure/result/lifecycle state and repeat formation-origin traversal.
+Delegate recovery to the shared formation query and move actual boundary
+traversal to Oracle-local typed queries. Delete heap-worker APIs and checked
+Face Jobs; unresolved producers retain only input discovery. Endpoint scratch
+frames need a query-local cleanup callback on completion/failure/typing teardown,
+not another graph of semantic obligations. Query face keys borrow immutable,
+graph-lived selectors; do not retain caller-stack mutable selectors. Keep
+selected receipts, scope checks, orientation, unsupported status and charged
+dependency transitions. No new Identity rule, surface syntax or wire field.
 
 2026-10-03, agent decision against `2e3f9f7`: Identity formation recovery in
 `action.c` allocates a separate work object with cursor/result/failure, while
@@ -804,6 +886,14 @@ not authorization to promote code or a claim that general resumption is solved.
 
 No new binding/domain checkpoint fields or backend features before this gate.
 Implement prototypes, verify, and push reviewable deletion-oriented milestones.
+
+- [ ] **SE1 Identity boundary owners (2026-10-03, parent `eb0aad6`):**
+  share formation recovery and actual Face/endpoint traversal on typed owners;
+  delete heap-worker APIs and Job result/progress duplication.
+  - [ ] Verify exact inputs, scopes/selectors, warm sharing, zero/split fuel,
+    cancellation/resume and scratch cleanup at all traversal boundaries.
+  - [ ] Run regression/persistence/checkpoint/C/sanitizer gates; measure actual
+    code/state/image/fuel deltas and retain the unwaived public reload failures.
 
 - [x] **SE1 Identity formation owner (2026-10-03, parent `2e3f9f7`):**
   consolidate recovery on its Oracle-local typed query; delete copied progress

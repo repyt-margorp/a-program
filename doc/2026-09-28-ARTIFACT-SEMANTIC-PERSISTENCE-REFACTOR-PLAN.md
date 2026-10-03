@@ -33,6 +33,37 @@ measurements, causes and the separate Context/syntax investigations.
 
 ### Subjective (User)
 
+2026-10-03, English paraphrase: explore C-backend and surface development in
+parallel with the necessary Job/Evidence refactor on one PC, coordinating the
+`.a` interface. The earlier serial AP0 prerequisite must not be interpreted as
+forbidding independent backend work on an agreed snapshot. The user requests
+a workflow proposal; this does not approve `.a` extensions or promotion.
+
+2026-10-03, English paraphrase of the user's follow-up: review the accumulated
+GitHub issues to ground the parallel-development proposal in actual pending work.
+
+2026-10-03, English paraphrase: keep this terminal as the primary coordinator;
+consider managing additional Codex development sessions with tmux. Determine an
+appropriate number of parallel lanes. This asks about feasibility and organization,
+not immediate installation or worker launch.
+
+2026-10-03, English paraphrase of the user's selected division: Main owns the
+Job/Evidence refactor, Sub1 owns C-backend design, and Sub2 owns system
+performance and waste removal. Simpler implementation takes priority over
+technical tuning that complicates the system. Comparative investigation should
+consider Bend2, Lean, Agda and Rocq; related issues/PRs are forthcoming. This
+supersedes the surface/library worker proposal below, not the downstream-only
+backend boundary or the existing prototype/promotion rules.
+
+2026-10-03, English paraphrase of the follow-up: Main regularly supervises and
+directs the tmux workers; each uses `/goal`, `6.1 Sol` and `xhigh`. The user is
+currently submitting performance audit documents/issues. Setup and supervision
+are tracked in the three-lane plan, not a second backend or frontier work list.
+
+2026-10-03, English paraphrase of the latest addition: add a Surface Sub3 for
+function/function-graph Binder notation and `.p` updates, retaining Main and
+Sub1/Sub2. This supersedes the three-session count, not the ownership boundaries.
+
 2026-10-01, English paraphrase of the user's clarification: do not re-expand
 Oracle-local semantic structures into a common Job enum/union/dispatcher. The
 frontier should reference the actual constraint owners, not a second program
@@ -53,6 +84,75 @@ audit-only detour or unchecked wholesale deletion.
 2026-10-01, English paraphrase of the latest correction: do not substitute
 documentation edits for implementation; continue code changes and verification
 alongside the SE ownership audit. GitHub connectivity is reported restored.
+
+### Objective (Code): Parallel Work Inspection
+
+2026-10-03, `eb0aad6` plus local documentation edits: GitHub REST lists seven
+open issues (#41, #43, #44, #47, #49, #51, #52). Initially two open PRs were #53
+(audit documents) and #54 (generic MergeSort library); a follow-up REST check
+also finds #55 (distributed Solve design intent, documentation-only). Earlier
+PR bodies/file lists and #55's body were inspected, not complete diffs or fresh
+verification. No new Bend2/performance submission was identified. PR-reported tests
+are historical to their own revisions. No PR was merged or issue closed here.
+Backend `emit.h` accepts borrowed typed Occurrences; `main.c` still obtains
+exports through Job-root loading and synthesis results. Build defaults use
+shared `/tmp` paths, so concurrent workers must explicitly set their own
+`OVERLAY` and `BUILD` and never share mutable assembly/symlink targets.
+
+### Assessment: Proposed Parallel Workflow
+
+User-selected division: Main owns Job/Evidence, Sub1 C-backend design, and
+Sub2 system performance through simplification, with the latest instruction
+adding Sub3 for surface Binder syntax and `.p` changes. The
+[parallel coordination plan](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md)
+records ownership and verification; SE/AP remain the actual work lists.
+Agent workflow proposal: use separate branches/worktrees and build/overlay/output
+directories for the three lanes.
+Each lane pushes its own branch; one integrator publishes tested changes to
+Main. Do not concurrently edit a shared worktree or a shared plan; lane plans
+link the existing authority/persistence work list instead of copying it.
+
+The latest assignment has four development sessions: this coordinator owns Core,
+Sub1 owns C lowering, Sub2 performance/simplification and Sub3 surface syntax.
+This supersedes the earlier three-session recommendation.
+Add a temporary
+read-only reviewer when useful, not a fourth overlapping implementation owner.
+Independent tmux-managed CLI sessions have separate contexts; task briefs must
+name their branch, write scope, baseline and completion tests. Workers report
+cross-owner defects instead of repairing another lane's files. Full regression
+and performance runs use a coordinated single slot; focused tests may overlap.
+Local inspection found `codex-cli 0.159.2` and no `tmux` on PATH. No workers or
+worktrees were launched, and no installation was performed. CLI sessions can
+use `-C` for an explicit working root; tmux would manage those processes rather
+than provide automatic context sharing or proof of their correctness.
+
+Backend lowering already borrows typed structure. Keep the loader/export adapter
+coordinated with the Core owner, without another shared IR or shadow acceptance
+graph. Pin a committed producer revision, its exact overlay recipe, format
+identifier and immutable `.a` fixtures for backend work; unfinished refactor
+trials are not that baseline. Agree export meaning, supported Oracle scope,
+pending/unsupported behavior and explicit trust/fuel policy, not solver-private
+layout. Version incompatible format changes explicitly; no old-format reader
+compatibility is required. Source-only syntax changes lower to existing typed
+operations and preserve `::` post-synthesis assertion. Integration tests both
+pinned fixtures and new producer images, including input-image immutability.
+The three current public resume failures remain Core obligations, not backend
+waivers. No promotion or additional `.a` fields are authorized by this proposal.
+
+| Lane | Backlog | Dependency |
+| --- | --- | --- |
+| Main: Core/typing/persistence | SE1-SE5; shared policy in #47; semantics of #52 | Owns admission, resume, artifact transport and integration. |
+| Sub1: C lowering/LinkerScript | #44, #49 | Develops supported target profiles against pinned artifacts; coordinates export API changes. |
+| Sub2: performance/simplification | #51; review #52 / PR #53; new input awaited | Measures all paths; develops agreed non-overlapping deletion epochs; Main-owned findings return to Main. |
+| Sub3: surface syntax / `.p` migration | Function/function-graph Binder changes; exact new design to inspect | Owns a source-layer prototype; typed semantic changes require Main coordination. |
+
+#41/PR #54 and #43 remain backlog, not automatic Sub3 assignments. General
+recursion still requires agreed semantic rules rather than parser changes.
+
+Do not block all target work on broad #47 relevance/partiality research. Start
+with already checked supported exports. Do not treat all of #52 as backend-only,
+or merge #43 as a cosmetic surface change. Review each PR against current code
+before adoption; open status alone does not establish a missing implementation.
 
 ### Existing Audit and Progress Record
 
