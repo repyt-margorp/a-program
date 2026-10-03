@@ -1,10 +1,11 @@
 # Native Static Function Boundary
 
 Date: 2026-10-03
-Status: verified active prototype; frozen Epoch5 handed off for publication.
+Status: verified/published Epoch5; Core reports prototype integration passed.
 Baseline: task branch `parallel/c-backend-20261003`, published Epoch4 `a3b6bce`.
 Related: [owning Goal](2026-10-03-C-BACKEND-GOAL.md), AP6.3/#49.
 This is a follow-up candidate, not a revision of Epoch4's frozen publication set.
+Successor work: [selected value records](2026-10-03-C-BACKEND-NESTED-RECORD-PLAN.md).
 
 ## Problem List
 
@@ -31,6 +32,13 @@ publication is allowed; Core alone integrates Main. Static-function support is a
 agent candidate within that scope, not a new user-requested ABI design.
 
 ### Objective (Code)
+
+2026-10-03, fresh branch/upstream inspection confirms exact Epoch5 publication
+`312c2da`. Core reports all nine O2 gates terminal exit 0 against its reviewed
+E1/performance/family/Surface 128-runtime-source snapshot, prototype Main merge
+`435d965` complete and push next. Freeze released; old handoff/manifest unchanged.
+This is Core evidence, separate from the worker runs below. The bounded static
+criterion is met; the full Goal and unsupported contracts remain open.
 
 At `720f92a` plus frozen Epoch4, `lower/scalar.c:lower` only retains a native
 thunk operand when its body directly invokes the known recursive IH. A local
@@ -204,8 +212,8 @@ This is a bounded C composition check, not a new representation or source rule.
   and shared caller-arena rollback across source/object/archive products.
 - [x] Verify the active prototype and updated existing gates after release.
 - [x] Hand off a separate verified epoch; exact files/pins are in the
-  [Epoch5 handoff](2026-10-03-C-BACKEND-EPOCH5-HANDOFF.md). Keep its set frozen
-  until Core release; publication/current-owner integration are separate.
+  [Epoch5 handoff](2026-10-03-C-BACKEND-EPOCH5-HANDOFF.md). Core published/released
+  it as `312c2da` and reports nine combined gates/Main prototype merge passed.
 - Completion: represented first-order exports containing the admitted known local
   functions agree with source execution; unsupported public callback/effect APIs
   still refuse before publication. This does not complete the full Goal.

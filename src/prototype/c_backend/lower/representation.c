@@ -102,10 +102,18 @@ int pg_c_representations_native(struct pg_c_representations *table, struct pg_gr
 					if (c->tail != SIZE_MAX) return -1;
 					c->tail = k - 1; r->recursive = 1; f = r;
 				}
-				if (!f || (f->constructors && !f->natural && f != r)) return -1;
+				if (!f || (f == r && c->tail != k - 1) ||
+					(f->constructors && !f->natural && f != r && f->recursive)) return -1;
 				c->fields[k - 1] = f;
 			}
 		}
+		/* Nested value data must already be selected and complete. Recursive
+			* nodes retain only scalar/enum/natural payloads and their direct tail. */
+		if (r->recursive) for (size_t j = 0; j < n; ++j)
+			for (size_t k = 0; k < r->constructors[j].count; ++k) {
+				const struct pg_c_representation *f = r->constructors[j].fields[k];
+				if (f != r && f->constructors && !f->natural) return -1;
+			}
 		if (natural) {
 			/* Positions come from the selected declaration, never constructor names. */
 			if (n != 2) return -1;

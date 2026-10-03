@@ -1,0 +1,20 @@
+aplink 1
+artifact nested-records.a
+abi c_native_v1
+target host-c11
+product source
+lowering native_direct_v1
+fallback reject
+enum32 Bool Bool
+data Packet Packet
+data Envelope Envelope
+data Outer Outer
+export wrap wrap
+export measure measure
+export unwrap unwrap
+export identity identity
+export rebuild rebuild
+export outer outer
+export outer_number outer_number
+export captured captured
+export constant constant

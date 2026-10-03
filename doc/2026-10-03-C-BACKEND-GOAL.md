@@ -67,6 +67,27 @@ names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
 
+2026-10-03, fresh Epoch6 at published `312c2da` plus lane edits: selected closed
+value data can contain earlier selected nonrecursive value data. Whole structs
+survive extraction/capture/return; private C validators check active nested fields,
+and receipts borrow emitter-selected contract metadata. Ten O2 C gates and seven
+native generated-client sanitizer gates pass on the pinned worker producer.
+105 cases per source/object/archive product and 16 source observations cover the
+new contract. Missing/later/recursive/function/dependent fields retain refusals;
+existing callbacks/effects/capture-chain/native Acc limits remain. Earlier probe
+syntax/setup/raw-harness failures are corrected and retained as historical logs.
+Exact files/pins/source deltas: [Epoch6 handoff](2026-10-03-C-BACKEND-EPOCH6-HANDOFF.md).
+No schema/producer/private checker change or current-Main verification claim.
+
+2026-10-03, fresh Git inspection confirms Epoch5 branch/upstream publication
+`312c2da155636da8415880eb674e1fb0455e3b95`, exactly 25 handoff files. Core reports
+code/manifest review, nine terminal O2 gate successes on its reviewed committed
+E1/performance/family/Surface 128-runtime-hash snapshot, and prototype Main merge
+`435d965` complete; Main push is next. This is Core combined/integration evidence,
+not a worker rerun or accepted promotion. The Epoch5 handoff/manifest remain
+historical evidence; its implementation freeze is released. Separate Job/Evidence
+producer E2/E3 integration remains pending according to Core.
+
 2026-10-03, fresh Epoch5 at `a3b6bce` plus lane edits: the verified known-function
 Thunk/Lambda change is applied to the active prototype; scratch copies/overrides
 are removed. Nine O2 C gates pass and five native generated-client sanitizer
@@ -169,6 +190,12 @@ pinned/current producer images and emitted C/headers match byte-for-byte.
 Evidence and exact publication files are in the [epoch handoff](2026-10-03-C-BACKEND-EPOCH1-HANDOFF.md).
 
 ### Assessment
+
+Core operational Epoch5 release/integration, 2026-10-03: continue distinct bounded
+C-module work with explicit refusals; no native Acc completion, producer/schema
+extension or private checker. Route any shared-producer need through Core. Agent
+next candidate is selected closed value-record fields using existing typed views;
+the [record plan](2026-10-03-C-BACKEND-NESTED-RECORD-PLAN.md) owns its probe/tests.
 
 Core operational release, 2026-10-03: later distinct worker edits may proceed
 after Epoch4 publication. Keep native Acc/QuickSort and the trial's specific
@@ -363,8 +390,12 @@ this target work while Main continues SE1, superseding the earlier AP6 hold.
 - [x] Epoch5: apply/verify the bounded static-function candidate and ordinary
   native-module composition.
 - [x] Hand off frozen Epoch5 through the verified outbox route.
-- [ ] Core publication and current-owner combined Epoch5 integration review;
-  keep the exact set frozen until release.
+- [x] Core published Epoch5 `312c2da`, reports nine combined gates and prototype
+  Main merge `435d965`; implementation freeze released, Main push next.
+- [x] Epoch6: verify the bounded selected value-record candidate, preserving
+  unsupported shapes and historical exact handoffs.
+- [ ] Hand off frozen Epoch6 through the outbox for delegated branch publication
+  and Core's separate current-producer review/integration.
 - [ ] Coordinate further bounded target ABI/lowering increments under the latest
   user scope. Remaining Acc/QuickSort, callbacks/effects, Identity and shared
   nominal contracts stay explicit; do not expand into upstream authority work.
@@ -412,11 +443,13 @@ the [Epoch4 handoff](2026-10-03-C-BACKEND-EPOCH4-HANDOFF.md), published as `a3b6
 Core released the implementation freeze and reports eight combined gates/Main
 prototype merge passed; Main push completion is not yet reported.
 No hand-coded replacement or shared-owner edits.
-Epoch5 verifies the bounded static-function follow-up separately; its exact
-25-file manifest is frozen and handed off through the verified outbox route.
-Core publication/current-owner integration remain separate. The specific three-closure captured
-chain, dynamic callbacks,
-tree/indexed/dependent/nested fields and effects remain explicit negative coverage.
+Epoch5 was published as `312c2da`; Core reports nine combined gates and prototype
+Main merge `435d965`, with Main push next. Its old exact manifest stays historical
+evidence and the implementation freeze is released. The selected value-record
+candidate is verified as separate Epoch6, ready for exact freeze/publication.
+The specific three-closure captured chain, dynamic callbacks,
+tree/indexed/dependent fields, missing/later value children, recursive aggregate
+fields and effects remain explicit negative coverage.
 Further work includes slice/Acc/QuickSort;
 keep relevance/admission decisions with Core. The task has not completed AP6.4/5.
 Cross-owner handoff: #44 selected-export admission beside unresolved siblings and

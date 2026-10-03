@@ -389,8 +389,10 @@ using the arena must be retired first, including results from the other componen
 ### Fieldful value data
 
 The same native profile accepts `data SOURCE ALIAS` for an admitted, closed,
-unindexed, nonrecursive declaration whose fields are Int32, Int64 or explicitly
-selected enum32 types. The generated `struct ap_data_ALIAS` contains a `tag`
+unindexed, nonrecursive declaration whose fields are Int32, Int64, selected
+enum32/nat32 types or other selected nonrecursive value data. Select each value
+data child before its parent; missing or later children refuse. The generated
+`struct ap_data_ALIAS` contains a `tag`
 and `fields` union. Constructor positions use `AP_DATA_ALIAS_C0`, etc.; a
 constructor at position 1 with two fields uses `fields.c1.f0` and `fields.c1.f1`.
 Selections and these names belong only to LinkerScript/C, never to `.a`.
@@ -411,24 +413,46 @@ ap_export_small(42, (struct ap_enum_Bool){AP_ENUM_Bool_C1}, &packet);
 ap_export_number(packet, &result);
 ```
 
+Closed value records can contain these structs directly. For
+`Envelope := @{none : *; pair : Packet -> #Int32 -> *;};`, select Packet first:
+
+```text
+enum32 Bool Bool
+data Packet Packet
+data Envelope Envelope
+export wrap wrap
+export measure measure
+```
+
+The ordinary C client passes and receives whole values without allocation:
+
+```c
+struct ap_data_Envelope envelope;
+ap_export_wrap(packet, 3, &envelope);
+ap_export_measure(envelope, &result);
+```
+
 Inputs and results are copied by value with no allocation, handles or structural
 runtime. Private calls carry tagged structs directly, including captures and
 Match results; only the selected case receives its constructor fields. Scalar
 fields preserve wrapping arithmetic through unsigned intermediates and explicit
 signed conversion. Enum fields preserve their selected nominal representation.
-Public inputs must initialize the tag and all active constructor fields; output
-must be writable. Return 1 denotes null output, 2 an invalid constructor/enum
+Public inputs must initialize the tag and all active constructor fields, including
+active nested fields; output must be writable. Return 1 denotes null output,
+2 an invalid constructor/enum
 tag, and 0 success. Validation precedes computation and output storage; invalid
 inputs leave output unchanged. A by-value input may also be its output destination.
 Inactive union fields and padding have no source observation.
 
 The source/target relation maps an exact selected constructor to its position
-and each scalar/enum field to its existing representation. Constructor emission
+and each scalar/enum/value field to its existing representation. Constructor emission
 builds those fields; Match passes exactly that case's fields to its private
 callee, retaining lexical captures and subsequent first-order operands.
 Differentials and raw Oracle checks support this correspondence; no new Kernel
 refinement theorem is claimed. Unknown field classifiers, indices,
-dependent/function fields and nested aggregates reject before publication.
+dependent/function fields, nested recursive pointers and aggregate payloads in
+recursive nodes reject before publication. Private C input validators inspect
+only active constructor fields; they do not perform source checking.
 Known block-local function thunks have positive coverage; open callback
 parameters, function fields and unselected recursive exports remain negative
 controls. Selected
@@ -439,11 +463,15 @@ across independently generated modules still require a future explicit contract.
 `check-c-data` covers all products, constructors, Match, captures, partial calls,
 returned data, wrapping fields, invalid active tags, output aliasing, duplicate
 selectors, nominal mixing, checked/trusted determinism and unchanged input bytes.
-The scalar Oracle gate additionally tests fieldful emission without evaluator
+`check-c-value-records` verifies 105 cases per source/object/archive product,
+16 source observations, nested active-tag validation, whole-value extraction,
+capture/return, output aliasing and explicit field/selection-order refusals.
+The receipt borrows emitter-selected nested-field metadata. The scalar Oracle
+gate additionally tests fieldful and nested value emission without evaluator
 calls or source graph/proof mutation, compares 32/64-bit fields against the
 evaluator, and refuses ambiguous reused layouts before writing either stream.
-General recursive containers, List/slice conversion and native QuickSort remain
-AP6.4/AP6.5 work.
+General recursive containers and native Acc/QuickSort remain AP6.4/AP6.5 work;
+the supported finite List/array conversion is described below.
 
 ### Single-tail recursive data
 

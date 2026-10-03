@@ -36,6 +36,10 @@ check-c-numeric-list: $(BUILD)/a-to-c $(BUILD)/pointer-check
 check-c-static-functions: $(BUILD)/a-to-c $(BUILD)/pointer-check $(BUILD)/c_static_oracle_test
 	bash $(C_BACKEND)lower/static_function_check.sh $(BUILD)/a-to-c $(BUILD)/pointer-check $(BUILD)/c_static_oracle_test
 
+.PHONY: check-c-value-records
+check-c-value-records: $(BUILD)/a-to-c $(BUILD)/pointer-check
+	bash $(C_BACKEND)lower/nested_record_check.sh $(BUILD)/a-to-c $(BUILD)/pointer-check
+
 $(BUILD)/c_static_oracle_test: $(SOURCES) $(wildcard $(ROOT)*.h $(C_BACKEND)lower/*.h) $(C_BACKEND)lower/static_oracle_test.c $(LOWER_SOURCES) $(C_BACKEND)emit.c $(C_BACKEND)emit.h
 	mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -I$(ROOT) -I$(C_BACKEND)lower $(SOURCES) $(C_BACKEND)lower/static_oracle_test.c $(LOWER_SOURCES) $(C_BACKEND)emit.c -Wl,--wrap=pg_eval_advance -Wl,--wrap=pg_substitution_advance -o $@

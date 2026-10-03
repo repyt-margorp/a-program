@@ -178,7 +178,7 @@ static void data_match(struct pg_typing *t, const char *path)
 	const struct pg_term *family = pg_reference(g, pg_data_declaration_family(d)), *vp = pg_reference(g, p);
 	struct pg_c_export data[2] = {{"Pair", pg_occurrence(t, PG_JUDGEMENT_VALUE_TYPE, NULL, family,
 		pg_universe(g, 0), NULL, 0, NULL)}};
-	struct pg_c_export exports[4];
+	struct pg_c_export exports[7];
 	for (size_t i = 0; i < 2; ++i) {
 		const struct pg_term *result_type = i ? int64 : int32;
 		const struct pg_term *payload = i ? pg_reference(g, y) : pg_reference(g, x);
@@ -196,10 +196,30 @@ static void data_match(struct pg_typing *t, const char *path)
 	exports[2] = (struct pg_c_export){"make", occurrence(t, pg_lambda(g, x, pg_lambda(g, y, op(g, &pg_return_operation, constructed))),
 		pg_pi(g, int32, x, pg_pi(g, int64, y, type)))};
 	exports[3] = (struct pg_c_export){"echo", occurrence(t, pg_lambda(g, p, op(g, &pg_return_operation, vp)), pg_pi(g, family, p, type))};
+	const struct pg_object *z = pg_binder(g), *boxed = pg_binder(g);
+	const struct pg_context *nested_fields = pg_context_bind(t, NULL, z, family, PG_JUDGEMENT_VALUE);
+	struct pg_data_constructor_input nested_input = {.fields = nested_fields};
+	const struct pg_data_declaration *nested = pg_data_declaration(g, NULL, NULL, 1, &nested_input);
+	assert(nested);
+	const struct pg_data_layout *nested_layout = pg_data_declaration_layout(nested);
+	const struct pg_term *nested_family = pg_reference(g, pg_data_declaration_family(nested));
+	data[1] = (struct pg_c_export){"Box", pg_occurrence(t, PG_JUDGEMENT_VALUE_TYPE, NULL,
+		nested_family, pg_universe(g, 0), NULL, 0, NULL)};
+	const struct pg_term *nested_type = pg_computation_type(g, PG_TOTALITY_TOTAL, pg_effect_row(g, 0, NULL), nested_family);
+	exports[4] = (struct pg_c_export){"box", occurrence(t, pg_lambda(g, p,
+		op(g, &pg_return_operation, op(g, pg_data_constructor(nested_layout, 0), vp))), pg_pi(g, family, p, nested_type))};
+	struct pg_match_clause nested_clause = {pg_data_constructor(nested_layout, 0), pg_lambda(g, p, op(g, &pg_return_operation, vp))};
+	exports[5] = (struct pg_c_export){"unbox", occurrence(t, pg_lambda(g, boxed,
+		pg_data_match(g, nested_layout, pg_reference(g, boxed), 1, &nested_clause)), pg_pi(g, nested_family, boxed, type))};
+	nested_clause = (struct pg_match_clause){pg_data_constructor(nested_layout, 0),
+		pg_lambda(g, p, app(g, exports[0].subject->core, vp))};
+	exports[6] = (struct pg_c_export){"boxed_small", occurrence(t, pg_lambda(g, boxed,
+		pg_data_match(g, nested_layout, pg_reference(g, boxed), 1, &nested_clause)), pg_pi(g, nested_family, boxed,
+		pg_computation_type(g, PG_TOTALITY_TOTAL, pg_effect_row(g, 0, NULL), int32)))};
 	FILE *source = fopen(path, "w");
 	assert(source);
-	inert_representations(t, source, 4, exports, 0, NULL, 1, data, 0);
-	fputs("#include <assert.h>\nint main(void) {struct ap_data_Pair pair, echo; int32_t a; int64_t b;\n", source);
+	inert_representations(t, source, 7, exports, 0, NULL, 2, data, 0);
+	fputs("#include <assert.h>\nint main(void) {struct ap_data_Pair pair, echo; struct ap_data_Box box; int32_t a; int64_t b;\n", source);
 	const int32_t small[] = {INT32_MIN, -1, 0, INT32_MAX};
 	const int64_t wide[] = {INT64_MIN, -1, 0, INT64_MAX};
 	for (size_t i = 0; i < 4; ++i) for (size_t j = 0; j < 4; ++j) {
@@ -214,7 +234,14 @@ static void data_match(struct pg_typing *t, const char *path)
 		fputs(", &pair)); assert(!ap_export_echo(pair, &echo));\n", source);
 		fprintf(source, "assert(!ap_export_small(echo, &a) && (uint32_t)a == UINT32_C(%" PRIu32 "));\n", (uint32_t)expected32);
 		fprintf(source, "assert(!ap_export_wide(echo, &b) && (uint64_t)b == UINT64_C(%" PRIu64 "));\n", (uint64_t)expected64);
+		const struct pg_term *nested_value = op(g, pg_data_constructor(nested_layout, 0), input);
+		int64_t nested_expected = evaluate(g, app(g, exports[6].subject->core, nested_value));
+		fputs("assert(!ap_export_box(pair, &box)); assert(!ap_export_unbox(box, &echo));\n", source);
+		fprintf(source, "assert(!ap_export_small(echo, &a) && (uint32_t)a == UINT32_C(%" PRIu32 "));\n", (uint32_t)expected32);
+		fprintf(source, "assert(!ap_export_wide(echo, &b) && (uint64_t)b == UINT64_C(%" PRIu64 "));\n", (uint64_t)expected64);
+		fprintf(source, "assert(!ap_export_boxed_small(box, &a) && (uint32_t)a == UINT32_C(%" PRIu32 "));\n", (uint32_t)nested_expected);
 	}
+	fputs("box.fields.c0.f0.tag = 99; a = 77; assert(ap_export_boxed_small(box, &a) == 2 && a == 77);\n", source);
 	fputs("}\n", source);
 	assert(!fclose(source));
 	const struct pg_data_declaration *other = pg_data_declaration_at_layout(g, layout, NULL, NULL, 2, inputs);
@@ -222,7 +249,7 @@ static void data_match(struct pg_typing *t, const char *path)
 	data[1] = (struct pg_c_export){"Other", pg_occurrence(t, PG_JUDGEMENT_VALUE_TYPE, NULL,
 		pg_reference(g, pg_data_declaration_family(other)), pg_universe(g, 0), NULL, 0, NULL)};
 	source = tmpfile(); assert(source);
-	inert_representations(t, source, 4, exports, 0, NULL, 2, data, -1);
+	inert_representations(t, source, 7, exports, 0, NULL, 2, data, -1);
 	fclose(source);
 }
 
