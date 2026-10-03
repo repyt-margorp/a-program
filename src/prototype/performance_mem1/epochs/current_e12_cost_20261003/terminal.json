@@ -1,0 +1,19 @@
+{
+  "grant_id": "MEM1V3-E12-20261003T154600Z-600",
+  "terminal": true,
+  "collector_exit": 0,
+  "samples": 36,
+  "passed": 36,
+  "failed": 0,
+  "incomplete_or_censored": 0,
+  "all36_expected_charged_steps_exact": true,
+  "all280_input_pins_after": true,
+  "all_sample_log_metric_hashes_verify": true,
+  "no_matching_live_children": true,
+  "terminal_UTC": "2026-10-03T15:49:08.050690+00:00",
+  "measurement_report_sha256": "c809d9d2cac0ab530fb40f9026fd6ed1ebe671dcfdb177ea882727ff3802473c",
+  "derived_config_sha256": "f51097b9c5064f54bf30b664ee298806b8a79f7963a73814ec9d3b0710f7afdd",
+  "light_terminal_verified_UTC": "2026-10-03T15:50:25.544455+00:00",
+  "heavy_hold_until_Merge_release": true,
+  "no_accepted_promotion_or_Goal_closure": true
+}

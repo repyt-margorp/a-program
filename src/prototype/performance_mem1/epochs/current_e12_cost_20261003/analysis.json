@@ -1,0 +1,472 @@
+{
+  "grant_id": "MEM1V3-E12-20261003T154600Z-600",
+  "terminal36_pass0": true,
+  "all36_charged_steps_exact": true,
+  "failed_incomplete_timeout_censored": 0,
+  "baseline_source128": "12026914c550d0d8c4455a32f593a1f8600aaafe7a76a30fe15e7a4803970be7",
+  "candidate_source128": "0deb36a72542b9f56eb986314c89bd459802896ca32268857a4b875bfcfe2f48",
+  "only_eval_c_h_differ": true,
+  "cases": [
+    {
+      "case": "list",
+      "charged_steps_each_sample": 1915,
+      "baseline": {
+        "wall_seconds_GNU_time": {
+          "repetitions": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "median": 0.0,
+          "minimum": 0.0,
+          "maximum": 0.0
+        },
+        "wall_seconds_launcher": {
+          "repetitions": [
+            0.006873796,
+            0.007159574,
+            0.008052829
+          ],
+          "median": 0.007159574,
+          "minimum": 0.006873796,
+          "maximum": 0.008052829
+        },
+        "maximum_RSS_KiB": {
+          "repetitions": [
+            2524,
+            2660,
+            2484
+          ],
+          "median": 2524,
+          "minimum": 2484,
+          "maximum": 2660
+        }
+      },
+      "captured-head-v3": {
+        "wall_seconds_GNU_time": {
+          "repetitions": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "median": 0.0,
+          "minimum": 0.0,
+          "maximum": 0.0
+        },
+        "wall_seconds_launcher": {
+          "repetitions": [
+            0.004687668,
+            0.005574897,
+            0.004327305
+          ],
+          "median": 0.004687668,
+          "minimum": 0.004327305,
+          "maximum": 0.005574897
+        },
+        "maximum_RSS_KiB": {
+          "repetitions": [
+            2748,
+            2580,
+            2500
+          ],
+          "median": 2580,
+          "minimum": 2500,
+          "maximum": 2748
+        }
+      },
+      "wall_seconds_GNU_time_median_delta": 0.0,
+      "wall_seconds_GNU_time_median_percent_change": null,
+      "wall_seconds_GNU_time_ranges_overlap": true,
+      "maximum_RSS_KiB_median_delta": 56,
+      "maximum_RSS_KiB_median_percent_change": 2.218700475435816,
+      "maximum_RSS_KiB_ranges_overlap": true
+    },
+    {
+      "case": "imported-local-sorted",
+      "charged_steps_each_sample": 761848,
+      "baseline": {
+        "wall_seconds_GNU_time": {
+          "repetitions": [
+            0.62,
+            0.64,
+            0.61
+          ],
+          "median": 0.62,
+          "minimum": 0.61,
+          "maximum": 0.64
+        },
+        "wall_seconds_launcher": {
+          "repetitions": [
+            0.628923703,
+            0.64733558,
+            0.619164343
+          ],
+          "median": 0.628923703,
+          "minimum": 0.619164343,
+          "maximum": 0.64733558
+        },
+        "maximum_RSS_KiB": {
+          "repetitions": [
+            169612,
+            169608,
+            169920
+          ],
+          "median": 169612,
+          "minimum": 169608,
+          "maximum": 169920
+        }
+      },
+      "captured-head-v3": {
+        "wall_seconds_GNU_time": {
+          "repetitions": [
+            0.6,
+            0.6,
+            0.61
+          ],
+          "median": 0.6,
+          "minimum": 0.6,
+          "maximum": 0.61
+        },
+        "wall_seconds_launcher": {
+          "repetitions": [
+            0.609386755,
+            0.601969117,
+            0.61294707
+          ],
+          "median": 0.609386755,
+          "minimum": 0.601969117,
+          "maximum": 0.61294707
+        },
+        "maximum_RSS_KiB": {
+          "repetitions": [
+            170320,
+            170104,
+            169944
+          ],
+          "median": 170104,
+          "minimum": 169944,
+          "maximum": 170320
+        }
+      },
+      "wall_seconds_GNU_time_median_delta": -0.020000000000000018,
+      "wall_seconds_GNU_time_median_percent_change": -3.225806451612906,
+      "wall_seconds_GNU_time_ranges_overlap": true,
+      "maximum_RSS_KiB_median_delta": 492,
+      "maximum_RSS_KiB_median_percent_change": 0.2900738155319199,
+      "maximum_RSS_KiB_ranges_overlap": false
+    },
+    {
+      "case": "trees4",
+      "charged_steps_each_sample": 2318248,
+      "baseline": {
+        "wall_seconds_GNU_time": {
+          "repetitions": [
+            0.08,
+            0.08,
+            0.08
+          ],
+          "median": 0.08,
+          "minimum": 0.08,
+          "maximum": 0.08
+        },
+        "wall_seconds_launcher": {
+          "repetitions": [
+            0.086457555,
+            0.085164136,
+            0.086803484
+          ],
+          "median": 0.086457555,
+          "minimum": 0.085164136,
+          "maximum": 0.086803484
+        },
+        "maximum_RSS_KiB": {
+          "repetitions": [
+            34776,
+            34368,
+            34740
+          ],
+          "median": 34740,
+          "minimum": 34368,
+          "maximum": 34776
+        }
+      },
+      "captured-head-v3": {
+        "wall_seconds_GNU_time": {
+          "repetitions": [
+            0.07,
+            0.08,
+            0.07
+          ],
+          "median": 0.07,
+          "minimum": 0.07,
+          "maximum": 0.08
+        },
+        "wall_seconds_launcher": {
+          "repetitions": [
+            0.079359646,
+            0.090341956,
+            0.07641312
+          ],
+          "median": 0.079359646,
+          "minimum": 0.07641312,
+          "maximum": 0.090341956
+        },
+        "maximum_RSS_KiB": {
+          "repetitions": [
+            21216,
+            21056,
+            21360
+          ],
+          "median": 21216,
+          "minimum": 21056,
+          "maximum": 21360
+        }
+      },
+      "wall_seconds_GNU_time_median_delta": -0.009999999999999995,
+      "wall_seconds_GNU_time_median_percent_change": -12.499999999999995,
+      "wall_seconds_GNU_time_ranges_overlap": true,
+      "maximum_RSS_KiB_median_delta": -13524,
+      "maximum_RSS_KiB_median_percent_change": -38.92918825561313,
+      "maximum_RSS_KiB_ranges_overlap": false
+    },
+    {
+      "case": "trees16",
+      "charged_steps_each_sample": 7608511,
+      "baseline": {
+        "wall_seconds_GNU_time": {
+          "repetitions": [
+            0.23,
+            0.24,
+            0.24
+          ],
+          "median": 0.24,
+          "minimum": 0.23,
+          "maximum": 0.24
+        },
+        "wall_seconds_launcher": {
+          "repetitions": [
+            0.23889815,
+            0.247723557,
+            0.242461951
+          ],
+          "median": 0.242461951,
+          "minimum": 0.23889815,
+          "maximum": 0.247723557
+        },
+        "maximum_RSS_KiB": {
+          "repetitions": [
+            91592,
+            91620,
+            91168
+          ],
+          "median": 91592,
+          "minimum": 91168,
+          "maximum": 91620
+        }
+      },
+      "captured-head-v3": {
+        "wall_seconds_GNU_time": {
+          "repetitions": [
+            0.23,
+            0.21,
+            0.23
+          ],
+          "median": 0.23,
+          "minimum": 0.21,
+          "maximum": 0.23
+        },
+        "wall_seconds_launcher": {
+          "repetitions": [
+            0.237521708,
+            0.221856707,
+            0.239103501
+          ],
+          "median": 0.237521708,
+          "minimum": 0.221856707,
+          "maximum": 0.239103501
+        },
+        "maximum_RSS_KiB": {
+          "repetitions": [
+            50520,
+            50900,
+            50948
+          ],
+          "median": 50900,
+          "minimum": 50520,
+          "maximum": 50948
+        }
+      },
+      "wall_seconds_GNU_time_median_delta": -0.009999999999999981,
+      "wall_seconds_GNU_time_median_percent_change": -4.166666666666659,
+      "wall_seconds_GNU_time_ranges_overlap": true,
+      "maximum_RSS_KiB_median_delta": -40692,
+      "maximum_RSS_KiB_median_percent_change": -44.42746091361691,
+      "maximum_RSS_KiB_ranges_overlap": false
+    },
+    {
+      "case": "trees64",
+      "charged_steps_each_sample": 29780510,
+      "baseline": {
+        "wall_seconds_GNU_time": {
+          "repetitions": [
+            0.82,
+            0.83,
+            0.83
+          ],
+          "median": 0.83,
+          "minimum": 0.82,
+          "maximum": 0.83
+        },
+        "wall_seconds_launcher": {
+          "repetitions": [
+            0.831105223,
+            0.834536757,
+            0.838671534
+          ],
+          "median": 0.834536757,
+          "minimum": 0.831105223,
+          "maximum": 0.838671534
+        },
+        "maximum_RSS_KiB": {
+          "repetitions": [
+            317052,
+            316944,
+            316472
+          ],
+          "median": 316944,
+          "minimum": 316472,
+          "maximum": 317052
+        }
+      },
+      "captured-head-v3": {
+        "wall_seconds_GNU_time": {
+          "repetitions": [
+            0.73,
+            0.74,
+            0.75
+          ],
+          "median": 0.74,
+          "minimum": 0.73,
+          "maximum": 0.75
+        },
+        "wall_seconds_launcher": {
+          "repetitions": [
+            0.741215022,
+            0.743516025,
+            0.753675812
+          ],
+          "median": 0.743516025,
+          "minimum": 0.741215022,
+          "maximum": 0.753675812
+        },
+        "maximum_RSS_KiB": {
+          "repetitions": [
+            169984,
+            169928,
+            170280
+          ],
+          "median": 169984,
+          "minimum": 169928,
+          "maximum": 170280
+        }
+      },
+      "wall_seconds_GNU_time_median_delta": -0.08999999999999997,
+      "wall_seconds_GNU_time_median_percent_change": -10.8433734939759,
+      "wall_seconds_GNU_time_ranges_overlap": false,
+      "maximum_RSS_KiB_median_delta": -146960,
+      "maximum_RSS_KiB_median_percent_change": -46.3678126104296,
+      "maximum_RSS_KiB_ranges_overlap": false
+    },
+    {
+      "case": "trees400",
+      "charged_steps_each_sample": 183507626,
+      "baseline": {
+        "wall_seconds_GNU_time": {
+          "repetitions": [
+            5.32,
+            5.33,
+            5.33
+          ],
+          "median": 5.33,
+          "minimum": 5.32,
+          "maximum": 5.33
+        },
+        "wall_seconds_launcher": {
+          "repetitions": [
+            5.328517666,
+            5.34046731,
+            5.34021075
+          ],
+          "median": 5.34021075,
+          "minimum": 5.328517666,
+          "maximum": 5.34046731
+        },
+        "maximum_RSS_KiB": {
+          "repetitions": [
+            1891928,
+            1891756,
+            1892132
+          ],
+          "median": 1891928,
+          "minimum": 1891756,
+          "maximum": 1892132
+        }
+      },
+      "captured-head-v3": {
+        "wall_seconds_GNU_time": {
+          "repetitions": [
+            4.92,
+            4.9,
+            4.95
+          ],
+          "median": 4.92,
+          "minimum": 4.9,
+          "maximum": 4.95
+        },
+        "wall_seconds_launcher": {
+          "repetitions": [
+            4.925981237,
+            4.911348957,
+            4.952229928
+          ],
+          "median": 4.925981237,
+          "minimum": 4.911348957,
+          "maximum": 4.952229928
+        },
+        "maximum_RSS_KiB": {
+          "repetitions": [
+            1001732,
+            1001764,
+            1001824
+          ],
+          "median": 1001764,
+          "minimum": 1001732,
+          "maximum": 1001824
+        }
+      },
+      "wall_seconds_GNU_time_median_delta": -0.41000000000000014,
+      "wall_seconds_GNU_time_median_percent_change": -7.692307692307695,
+      "wall_seconds_GNU_time_ranges_overlap": false,
+      "maximum_RSS_KiB_median_delta": -890164,
+      "maximum_RSS_KiB_median_percent_change": -47.050627719448094,
+      "maximum_RSS_KiB_ranges_overlap": false
+    }
+  ],
+  "original_configuration_sha256": "a3335c5ec6e3b9d8274ce96487d595a434166cd001db58c1f25ee8e91488d154",
+  "derived_configuration_sha256": "f51097b9c5064f54bf30b664ee298806b8a79f7963a73814ec9d3b0710f7afdd",
+  "launch_sidecar_sha256": "1e9a1a825863177fc02c786be315a39461cb1939fee5e2aa0086486917252dfd",
+  "measurements_sha256": "c809d9d2cac0ab530fb40f9026fd6ed1ebe671dcfdb177ea882727ff3802473c",
+  "limits": [
+    "Same AP source/proofs/helpers for each pair; includes parsing/synthesis/conversion and import-source work.",
+    "Fresh sequential processes, three repetitions; warm filesystem, no cache flush.",
+    "GNU time peak RSS KiB of wrapped command is not summed process memory; startup/allocator/kernel effects included.",
+    "Small list/startup and near-zero clock resolution may dominate; incomplete/timeout samples are censored.",
+    "No native cross-system reruns, universal ranking, accepted-only cost claim or other extra workload."
+  ],
+  "full_Goal_active": true,
+  "accepted_promotion_or_Main_action_by_worker": false,
+  "tree400_finding": "Exact matched workload improves both time and actual peak RSS; three ranges do not overlap. Not a universal performance claim.",
+  "quick_finding": "Timing ranges overlap at0.61s; no established speed claim. Peak RSS median grows492KiB(+0.29%) in these samples; no QuickSort memory improvement.",
+  "list_finding": "GNU wall is0.00s throughout; launcher/startup and RSS ranges overlap. No evaluator speed or memory improvement claim.",
+  "remaining_memory_work": "Tree median remains about978.3MiB. Attribute remaining argument/environment retention before another deletion; preserve required closures, opaque state, fuel and resume."
+}

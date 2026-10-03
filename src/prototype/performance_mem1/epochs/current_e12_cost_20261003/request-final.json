@@ -1,0 +1,23 @@
+{
+  "configuration": "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/configuration-final-proposed.json",
+  "configuration_sha256": "a3335c5ec6e3b9d8274ce96487d595a434166cd001db58c1f25ee8e91488d154",
+  "original_initial_proposal": "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/configuration-proposed.json",
+  "original_initial_proposal_sha256": "d53c6f096f30fb9b097443b20c5354fe71bc30a7dab23e4b87fedd2fe6b79fbb",
+  "jobs": 36,
+  "pins": 280,
+  "requested_exclusive_seconds": 600,
+  "maximum_per_run_seconds": 180,
+  "same12_correctness_runs_pass": true,
+  "baseline_source128": "12026914c550d0d8c4455a32f593a1f8600aaafe7a76a30fe15e7a4803970be7",
+  "candidate_source128": "0deb36a72542b9f56eb986314c89bd459802896ca32268857a4b875bfcfe2f48",
+  "baseline_ELF_sha256": "0ada0f8f43514bd2f5729993241930040497549cf605428e2e573e4925007158",
+  "candidate_ELF_sha256": "0b7c9d578c1b1406c86994858b6e47ffb8abf6d7850ca997561ffcb9f5bc5fc7",
+  "candidate_evidence_records": 1816,
+  "candidate_evidence_sha256": "e3647a0071990fa99c7e120d795e82757e036a2713a0aab6b0da1d38093c532d",
+  "collector_sha256": "9c50c62d1ddc49e85c88abe94f95162c85096165afcdff7cd945bb9b9a004b71",
+  "GNU_time_sha256": "efc0d1112e36ec76c14bf7508e287935cf1631d9d0d91fb532802d07aef51cea",
+  "cost_granted": false,
+  "comparative_samples_run": 0,
+  "all_own_children_stopped": true,
+  "launch_requires_new_explicit_grant_and_absolute_deadline": true
+}
