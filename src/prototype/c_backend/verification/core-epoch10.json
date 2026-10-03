@@ -1,0 +1,88 @@
+{
+  "date": "2026-10-03",
+  "kind": "Root fresh frozen-byte/status review of worker-executed C10 evidence",
+  "Main_base": "ca0abbc296b1f0faf6a15148f458a3214bd60d25",
+  "task": "fe497956c3d0031a0db0c98a13db5c464fcd2a8b",
+  "task_parent": "60c100c9d06b314eaeb024462e8ce0e3f2da5bab",
+  "task_files": [
+    {
+      "path": "doc/2026-10-03-C-BACKEND-GOAL.md",
+      "added": 57,
+      "removed": 11,
+      "sha256": "b030b6e3b0474268ad520faee5b61749c21b35e6cf814d75c9a52a480fe189d4",
+      "git_mode": "100644"
+    },
+    {
+      "path": "doc/2026-10-03-C-BACKEND-ABI-ALIAS-NOTE.md",
+      "added": 157,
+      "removed": 0,
+      "sha256": "9e7469abff744a7d682db7705fcf1012e188e807191bc47d3ddca06fd49f7433",
+      "git_mode": "100644"
+    },
+    {
+      "path": "doc/2026-10-03-C-BACKEND-EPOCH10-HANDOFF.md",
+      "added": 127,
+      "removed": 0,
+      "sha256": "76b947156273b4d0e81671eb145030b0084b291b2deb3cfd3ee5fd5443212fb4",
+      "git_mode": "100644"
+    },
+    {
+      "path": "src/prototype/c_backend/scratch/natural_modules/client.c",
+      "added": 59,
+      "removed": 0,
+      "sha256": "1333e8545580ad88e7b210dd0d7374d70ae37cc1bed9cc11fbf19aa48ad214af",
+      "git_mode": "100644"
+    },
+    {
+      "path": "src/prototype/c_backend/scratch/natural_modules/check.sh",
+      "added": 63,
+      "removed": 0,
+      "sha256": "b3af8ed1a5c1ae4f7d331958571e1c5d8836cc949643dbbe87f3fb38e74aa936",
+      "git_mode": "100644"
+    },
+    {
+      "path": "src/prototype/c_backend/scratch/natural_modules/record_tool.sh",
+      "added": 16,
+      "removed": 0,
+      "sha256": "de6b14c455ea422f61147a9c75840041eb879297c7d3d9554ad8f19105fd7b59",
+      "git_mode": "100755"
+    }
+  ],
+  "task_manifest": "/tmp/a-program-c-backend-alias-qualified-c9-e8-20261003/epoch10-files.sha256",
+  "task_manifest_sha256": "01c927fcbc221f6b0b6c7b74c300983c7bd34fe1ba1aa832569a9df4e78b4828",
+  "ready_sha256": "a36211b0e9e9089c94c84dc47abbd246514cbc125312f3eccaf773e0ef6192f8",
+  "worker_evidence": "/tmp/a-program-c-backend-alias-qualified-c9-e8-20261003/verification.json",
+  "worker_evidence_sha256": "c442a078f84a28433b31b1ced9153ac35c80a8d5646956cbad068651300c50f4",
+  "Root_freshly_verified": {
+    "submitted_Git_blobs_and_modes": 6,
+    "qualified_input_hashes": 41,
+    "run_artifact_hashes": 275,
+    "client_run_statuses_and_binary_hashes": 36,
+    "native_tool_argv_exit_logs": 74,
+    "native_tool_exit0": 72,
+    "expected_duplicate_symbol_exit1": 2,
+    "duplicate_output_objects_absent": true,
+    "source_pins_match_immutable_qualified_review": 3,
+    "allowed_profile_replacements_only": true,
+    "reconstitution_commands_exit0": 7,
+    "phase_before_after_input_manifests_equal": true
+  },
+  "qualified_review": "cce2477e3a1098103c3f98fed05c6752365dca76",
+  "producer": "50cd56b2a52b7e370bc7ecb3436c4993e2e5d6a2",
+  "runtime128_manifest": "9ba2b33cbe8bc68eac338073506bcb205f36d20cb0a34f9f88607d975ef07740",
+  "fresh_image_sha256": "9a40589f1a5c2e1f7838dca83739018621fb24eee48d600688d5fe5df905397b",
+  "Root_test_rerun": false,
+  "emitter_producer_schema_change": false,
+  "accepted_C_promotion": false,
+  "sanitizer_limits": "ASan/UBSan/leaks instrument ordinary clients and source inputs; driver-generated object/archive bodies and compiler/producer remain qualified O2.",
+  "property_count_limits": "Product/header-order combinations repeat one List/eight Choice pairs and resource/lifetime controls; they are not independent properties.",
+  "publication_and_conflict_resolution": "Task bytes immutable. Owning Goal conflicts reconcile existing Root qualification links/status with C10 and preserve human workflow/coordination Subjective. Other five task files remain exact. Live worker paths released; later epochs excluded.",
+  "not_claimed": [
+    "deleted-original-product byte equality",
+    "current E9/E10 producer execution",
+    "new timing/RSS improvement",
+    "native Acc/QuickSort completion",
+    "full Goal/issue completion"
+  ],
+  "decision": "Integrate bounded prototype tests/docs with reconciled owning status; worker independent implementation continues."
+}
