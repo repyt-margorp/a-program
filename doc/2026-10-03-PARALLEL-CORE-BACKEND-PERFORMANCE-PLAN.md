@@ -17,24 +17,24 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | Inquiry desk -> `merge`: reporting vs coordination/integration | All lanes | Desk answers the user; only Merge integrates after verified handoff |
-| 2 | `c-backend`: downstream C design | #44, #49; shared policy #47 | C6 value records integrated; native Acc/QuickSort remains open |
-| 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Jointly verified epoch integrated as `f27bd13`; full Goal remains active |
+| 2 | `c-backend`: downstream C design | #44, #49; shared policy #47 | C1-C10 bounded prototypes integrated; C11 I/O correction proceeds, native Acc/QuickSort remains open |
+| 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Accepted performance `7631e5a`, joint E7-E10 qualified; MEM1 attribution/deletion proceeds, full Goal active |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
-| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E4/E6 distinct reviewed prototype merges `3a8c024`/`01c29c0`; E7/E8 qualified and prototype Main integrated; E9/E10 frozen review pending; strict3 remain |
+| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E1-E4/E6-E10 qualified prototype Main; corrected E11 focused freeze and Context ancestry repair continue independently; strict3 remain |
 | 6 | `verification-audit`: independent read-mostly suite/debt inventory | #59 / PR #60, #51 | Bounded static inventory/pilot complete; measured cost deferred, full #59 remains open |
 
 ### Current Delivery Status
 
-2026-10-03 12:14 UTC Merge inspection at local Main `2753441`: the table
+2026-10-03 12:24 UTC Merge inspection at local Main `5e466381`: the table
 reflects exact task publications and independently inspected qualification.
 These are deliverables, not issue completion scores; worker-local results stay
 distinct from Root fresh gates and accepted performance promotion.
 
 | Owner / issue scope | Delivered and verified | Not yet delivered / next boundary |
 | --- | --- | --- |
-| Job/Evidence; SE1-SE5 / AP0, related #51/#47 | E1-E4/E6/E7/E8/E9 prototype Main; E9 `bd1ddf3` exact24, Root1989 frozen/runtime128 pins match, targeted81 only strict recipe fails and relevant O2/SAN controls pass; integration `6a48aae` | Isolated E10 `6715af2` exact19 pushed, composed E9+E10 qualification running; rejected E11 corrected focused only; E12 private/unqualified; strict3 remain |
-| C backend; #44/#49 | C9 task `60c100c` exact38/Main `48c42eb` published; Root thirteen current-E8 strict-O2 gates pass. C10 exact6 task `fe497956` pushed/remote verified, prototype Main `2753441`; 36 client run statuses, 275 artifacts/41 inputs and 74 native argv exits verified | Independent I/O-status reproduction/minimal correction, then bounded value-record List work at serial j1; changed workflow recorded in next-boundary Subjective, explicit action receipt pending. Publication is no implementation blocker. Native Acc/QuickSort remains unfinished; no accepted C promotion |
-| Performance; #56, measurement work #51/#52 | E6 measurement task `44e479b`, Main `99efcf7`, exact114 published; 30 samples/292 pins verified. E7/E8/E9 qualified; accepted13-file candidate O2 386/0 and affected sanitizer groups8/0. E9+E10 terminal notice `f809846b` received; Root review pending | Autonomy receipt `6e08d065` consumed: continue MEM1 owner allocation/lifetime/scaling attribution now on the named producer, then safe deletion. Shared Job/query edits need owner coordination; matched wall/RSS needs an exclusive slot. Publication is no blocker; no new measured memory/time claim |
+| Job/Evidence; SE1-SE5 / AP0, related #51/#47 | E1-E4/E6-E10 prototype Main; E10 `6715af2` exact19 integrates at `5e466381` after Root2002/runtime128/seven test hashes match joint qualification; public52 images and verdict/fuel TSV equal E9, relevant O2/SAN pass except strict recipe | Corrected E11 exact25 focused notice `2ea1fb41`: Root task review pending; broader correctness and corrected-parent Context ancestry repair proceed independently. Original unsafe E11/E12 unqualified; owned fallback required; strict3 remain |
+| C backend; #44/#49 | C9 task `60c100c` exact38/Main `48c42eb` published; Root thirteen current-E8 strict-O2 gates pass. C10 exact6 task `fe497956` pushed/remote verified, prototype Main `2753441`; 36 client run statuses, 275 artifacts/41 inputs and 74 native argv exits verified | Consumed receipt `96e813b9`: C11 I/O-status fault shim prepared and focused O2 reproduction starts, then minimal proved correction/bounded record-List work. No publication blocker or proved I/O bug yet. Native Acc/QuickSort remains unfinished; no accepted C promotion |
+| Performance; #56, measurement work #51/#52 | E6 measurement task `44e479b`, Main `99efcf7`, exact114 published; 30 samples/292 pins verified. E7-E10 qualified; accepted13-file candidate O2 386/0 and affected sanitizer groups8/0. E9+E10 evidence `f809846b` verified by Root and prototype integrated | Autonomy receipt `6e08d065` consumed: MEM1 owner allocation/lifetime/scaling attribution proceeds on the named producer, then safe deletion. Shared Job/query edits need owner coordination; matched wall/RSS needs an exclusive slot. Publication is no blocker; no new measured memory/time claim |
 | Surface; #57 | Delivered prototype integrated; session stopped; Merge reviewed polarity, brace/migration, scope and version gates | Accepted language policy/promotion and selector diagnostics remain unresolved; #57 stays open; no active worker |
 | Verification audit; #59/PR #60, related #51 | Static task `7ed3ad1` pushed/remote verified; Main merge `5683755`; Merge reproduced exact inventory and verified 385 source hashes/114 archived dependencies | Bounded static delivery complete; dynamic/full #59 open; four-job cost deferred because full config review missed eight-minute boundary; no timing executed |
 | Sort library; #41/F3-F5 | PR54 integrated and GitHub merged; isolated worker actual gpt-6.1-sol/xhigh verified, bounded Goal complete. Finite-function task `5e6ed84` exact11 pushed with corrected provenance and two worker focused gates | Root two focused E6 gates pass; exact11 prototype Main integrated; accepted Sort/F5 adoption remains separate |
@@ -50,8 +50,9 @@ and #52's equality-reuse design are not completed by storage deletion or C emiss
 
 ### Rescheduled Queue
 
-2026-10-03 fresh GitHub snapshot: ten open Issues (#41, #43, #44, #47, #49,
-#51, #52, #56, #57, #59); four open PRs (#53, #54, #55, #60).
+2026-10-03 12:24 UTC fresh GitHub snapshot: ten open Issues (#41, #43, #44,
+#47, #49, #51, #52, #56, #57, #59); zero open PRs. Historical documentation and
+Sort PR reviews below are complete; full issue criteria remain separate.
 New #59 / documentation PR #60 concern verification debt and progress accounting,
 not a newly established compiler defect. PR #58 is already merged. PR #60's
 672-line supplied audit is an input, not approval of every threshold or manifest.
@@ -61,12 +62,12 @@ reporting subsystem. Its audit cover is pinned to `37de1e8`, not current Main.
 | Order / owner | Issue or PR | Next deliverable and dependency |
 | --- | --- | --- |
 | 0 / desk -> Merge | Workflow | Handoff verified/activated at 07:44 UTC; Merge Goal active and both hops observed; preserve the four live workers and dirty accepted files |
-| 1 / Job + performance | SE/AP, #56 | Finish in-flight E4/E6 joint qualification; review/publish E7 and subsequent borrowing results, then attack exact-resume's three remaining failures rather than treating pointer-size reductions as completion |
-| 1 / verification-audit | #59 / PR #60; #51 | Static effective-invocation inventory and QuickSort/persistence/legacy pilot; distinguish unique contracts from repeated mechanics; no suite changes or broad timing pass yet |
-| 2 / performance, Merge schedules slot | #56 / #51 | On a pinned jointly qualified producer, measure matched runtime/memory and audit cost in one exclusive slot; coordinate other CPU-heavy work, keep storage/fuel claims separate |
-| 2 / C backend | #44 / #49 | Finish current C7 enum-List epoch and current-producer gates; state the next native Acc/QuickSort boundary explicitly; no producer schema expansion for target conveniences |
-| 2 / Merge | PR #60, #53, #55 | Review/import documentation separately from implementation; preserve historical provenance, link adopted/deferred recommendations; publication does not complete Issues |
-| 3 / Merge -> scoped library review | PR #54 / #41 | Verify generic MergeSort against the then-current producer and existing Local/Strong/permutation contracts; this is partial #41, not arbitrary-container completion |
+| 1 / Job, Root reviews independently | SE/AP, #51 | Corrected E11 focused snapshot publication/broader qualification; safe Context-ancestry repair on corrected parent continues without waiting. Preserve strict3 and original unsafe failures; no pointer-layout completion claim |
+| 1 / performance + Job | #56 / #51 | MEM1 owner allocation/lifetime/scaling attribution on qualified E9+E10, then simplest safe deletion. Root resolves shared-owner conflicts; later matched wall/RSS gets an exclusive slot. Publication is no implementation prerequisite |
+| Complete bounded / verification-audit | #59 / PR #60; #51 | Static inventory/pilot delivered and worker complete; four-job measured cost remains deferred, full #59 open. Do not restart the completed owner automatically |
+| 2 / C backend | #44 / #49 | C1-C10 bounded prototypes delivered; C11 fault-injection I/O reproduction/minimal correction, then existing-value-record List candidate. Relevant j1 correctness proceeds; native Acc/QuickSort and producer-policy boundaries remain explicit |
+| Complete review / Merge | PR #60, #53, #55 | Documentation reviewed/imported with provenance; no open PRs. Full issue criteria remain independent of publication |
+| Complete bounded / Sort library | PR #54 / #41 | Generic MergeSort and finite-function prototype verified/integrated; bounded worker complete. Accepted Sort/F5 and broader containers remain separate; no owner restart |
 | Review / Merge | #57 | Audit delivered prototype against Issue criteria; Surface stays stopped. Prototype delivery is not accepted promotion; do not reopen a worker just to repeat completed gates |
 | Deferred design / Merge | #47, #52 | Relevance and checked-equality reuse remain separate designs, after stable owner/resume boundaries; no new authority, optimizer store or trust shortcut |
 | Deferred design / user decision | #43; remainder of #41 | General recursion/logical boundary and broader finite-container interfaces require explicit design decisions, not inferred approval from scheduling |
@@ -671,8 +672,10 @@ findings and proposed repairs stay in its audit, not this implementation work li
   actual model/effort, active implementation Goal and first independent gap.
 - [x] Install/test an independent six-hour heartbeat on the existing Merge relay;
   verify actual PID/next due and active delivery without another Merge owner.
-- [ ] Reconcile obsolete lane review holds, confirm one consumed/action receipt
-  from each live implementation owner and report the actual remaining dependency.
+- [x] Reconcile obsolete lane review holds; consumed/action receipts C `96e813b9`,
+  Performance `6e08d065` and Job `2ea1fb41` read/hash-verified. C11 I/O reproduction,
+  MEM1 attribution and corrected-parent Context repair proceed; only safety/shared
+  owners or exclusive timing remain dependencies. Material desk report updated.
 - [ ] Merge keeps issue-linked reporting current and reports material changes
   and each six-hour active checkpoint to the desk.
 

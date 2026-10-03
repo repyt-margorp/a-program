@@ -1,6 +1,6 @@
 {
   "date": "2026-10-03",
-  "scope": "Root frozen task publication/code review; independent E9 and isolated E10, not joint Main acceptance",
+  "scope": "Root exact task publication and common-producer prototype qualification; no accepted Job/Evidence promotion",
   "tasks": [
     {
       "epoch": "e9",
@@ -19,14 +19,15 @@
       "manifest": "fed2ab6bf1d774b8373d7a35466d65f9a17bcb485c428014c71a4b6b2af6520b",
       "transport": "aae854d01e708c507db959763157d1d11bc6354d8b3ece37d93c5d45560db162",
       "worker_report_hashes_freshly_verified": 17,
-      "Main_integrated": false
+      "Main_integrated": true,
+      "Main_integration": "5e466381e7ec45f5e3a28ddf2abfad2198ff84a0"
     }
   ],
   "E9_review": "APGSRC70 fourth namespace word bounds position by activated and requires completed registration. Ordinal conveys no child acceptance: ordinary module Solve awaits every claimed prefix owner, preserving failed/pending barriers and inert input-only zero position. Source-claim and in-range forged-prefix controls retained.",
   "E10_review": "Unary borrowed-selection ordinal is zero, so store exact selected proof pointer; multi-premise receipt selections and independent typing authority retained. Diagnostic trailing bytes separately count stored edges. Aligned receipt extent remains80 bytes; no RAM/time claim.",
   "qualification_order": "Performance independently qualifies distinct E9 first, then named composed E9+E10; preserve isolated E8+E10 worker evidence and original split/setup/strict outcomes.",
   "later_live_work": "E11/E12 excluded from both exact frozen task epochs; task branch metadata/index update preserves live bytes.",
-  "Root_Mainedits": "E9 prototype integrated at6a48aaeb and reviewed status pushed at1459fbb8; E10 remains pending combined qualification. No accepted Job/Evidence changes.",
+  "Root_Mainedits": "E9 prototype Main6a48aaeb and E10 prototype Main5e466381; no accepted Job/Evidence changes.",
   "Root_E9_post_promotion_assembly": {
     "main_base": "95d917e727915caa94afc5670d9df7ecb07a71fc",
     "review_candidate": "130df52a894e700ad95a8e94ea78ab7a6a0d1410",
@@ -40,5 +41,28 @@
     "summary_sha256": "5f263d5277ca74c415772e8b8a46442c96ebefb1acdce7650cd12f9f9e4b828a",
     "private_output": "/tmp/a-program-merge-e9-assembled-20261003"
   },
-  "E9_qualification": "Root1989 frozen/source128/hash and exact policy adaptation reviewed; targeted81 only original strict recipe fails, relevant ASan/O2 controls pass; see e9-relevant-summary.json"
+  "E9_qualification": "Root1989 frozen/source128/hash and exact policy adaptation reviewed; targeted81 only original strict recipe fails, relevant ASan/O2 controls pass; see e9-relevant-summary.json",
+  "Root_E10_post_promotion_assembly": {
+    "Main_base": "0791e799fec601199905c352aee12b0f83453161",
+    "review_candidate": "5e466381e7ec45f5e3a28ddf2abfad2198ff84a0",
+    "task": "6715af2d91f9024fd85e122db57a2415b3c0d747",
+    "semantic_task_parent": "50cd56b2a52b7e370bc7ecb3436c4993e2e5d6a2",
+    "composed_E9": "bd1ddf3a0ac86c365c1b1bf5992eb254cf752a99",
+    "Surface_patch": "748250cd58cb5dba3f485ceab50efa46f82af54eb4d69130e6bebdfa90ed8e40",
+    "source_records": 128,
+    "qualified_manifest_sha256": "73fa86c94b805b768d2c8493ce6f6a46c51983e556974c4920d805b59eefc743",
+    "runtime_mismatches": [],
+    "relevant_test_alignment": {
+      "tests/seed.c": true,
+      "checkpoint_tests/source_checkpoint_test.c": true,
+      "tests/source_io.c": true,
+      "tests/synthesis.c": true,
+      "artifact_tests/semantic_test.c": true,
+      "tests/core.c": true,
+      "tests/identity_io.c": true
+    },
+    "fresh_execution": false,
+    "E11_E12_excluded": true
+  },
+  "E10_qualification": "All2002 frozen records/runtime128/seven relevant tests exact; relevant O2/SAN controls pass except original strict recipe; public52 images and full verdict/fuel TSV equal E9. See e10-relevant-summary.json."
 }

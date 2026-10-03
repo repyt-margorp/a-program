@@ -1,0 +1,263 @@
+{
+  "date": "2026-10-03",
+  "scope": "Root fresh exact frozen evidence/recipe/hash review and independently assembled runtime/tests; worker executed targeted gates, no fresh Root execution",
+  "Main_integration": "5e466381e7ec45f5e3a28ddf2abfad2198ff84a0",
+  "task": "6715af2d91f9024fd85e122db57a2415b3c0d747",
+  "semantic_task_parent": "50cd56b2a52b7e370bc7ecb3436c4993e2e5d6a2",
+  "joint_E9": "bd1ddf3a0ac86c365c1b1bf5992eb254cf752a99",
+  "ready_sha256": "f809846b1b56a0a1d3cba16b29c879a43d9898ffa6aa95d558b3a18bdcd4ecad",
+  "evidence_manifest": "/tmp/ap-performance-current-joint-898463e-bd1ddf3-6715af2-20261003/verification.sha256",
+  "evidence_records": 2002,
+  "evidence_manifest_sha256": "de7b28cb650cb12b7f5a0cb9e3c72240b5a01035ac401e2c5dc825faef13fa0a",
+  "worker_summary_sha256": "c8f0b63b826319ff6e4035c55ff8a4ab192cd3246c018b304d081d59ccaed81d",
+  "archive_sha256": "dd2eb029db5d3af5acce100da96f2fcbcedb78c4875e5365d37f7aaa59f1d48d",
+  "Root_assembly": {
+    "Main_base": "0791e799fec601199905c352aee12b0f83453161",
+    "review_candidate": "5e466381e7ec45f5e3a28ddf2abfad2198ff84a0",
+    "task": "6715af2d91f9024fd85e122db57a2415b3c0d747",
+    "semantic_task_parent": "50cd56b2a52b7e370bc7ecb3436c4993e2e5d6a2",
+    "composed_E9": "bd1ddf3a0ac86c365c1b1bf5992eb254cf752a99",
+    "Surface_patch": "748250cd58cb5dba3f485ceab50efa46f82af54eb4d69130e6bebdfa90ed8e40",
+    "source_records": 128,
+    "qualified_manifest_sha256": "73fa86c94b805b768d2c8493ce6f6a46c51983e556974c4920d805b59eefc743",
+    "runtime_mismatches": [],
+    "relevant_test_alignment": {
+      "tests/seed.c": true,
+      "checkpoint_tests/source_checkpoint_test.c": true,
+      "tests/source_io.c": true,
+      "tests/synthesis.c": true,
+      "artifact_tests/semantic_test.c": true,
+      "tests/core.c": true,
+      "tests/identity_io.c": true
+    },
+    "fresh_execution": false,
+    "E11_E12_excluded": true
+  },
+  "targeted_O2": {
+    "recipes": 81,
+    "failed_recipes": 1,
+    "only_original_strict_partition_failed": true,
+    "aggregate_full_acceptance_repeated": false
+  },
+  "sanitizers": {
+    "ASan_UBSan_leaks": true,
+    "build_recipes": 38,
+    "build_failures": 0,
+    "checks": 45,
+    "extra_checks": 5,
+    "failures": 0
+  },
+  "focused_O2": {
+    "checks": 23,
+    "extra_checks": 8,
+    "failures": 0
+  },
+  "raw_cuts_each_build": 70,
+  "cross_instrumentation_readbacks": 140,
+  "WHNF_charged_steps": 3014,
+  "public_E9_comparison": {
+    "image_files": 52,
+    "all_image_bytes_equal": true,
+    "full_verdict_fuel_TSV_equal": true
+  },
+  "strict_failures": [
+    {
+      "partition": "1000:1000",
+      "path": "reload",
+      "budget": "2000",
+      "used": "2000",
+      "status": "pending",
+      "bytes": "32760",
+      "delta": "-19124",
+      "size_equal": "no",
+      "byte_equal": "no",
+      "status_equal": "no",
+      "fuel_equal": "no"
+    },
+    {
+      "partition": "1600:1600",
+      "path": "reload",
+      "budget": "3200",
+      "used": "3200",
+      "status": "pending",
+      "bytes": "38362",
+      "delta": "-13522",
+      "size_equal": "no",
+      "byte_equal": "no",
+      "status_equal": "no",
+      "fuel_equal": "no"
+    },
+    {
+      "partition": "1915:0",
+      "path": "reload",
+      "budget": "1915",
+      "used": "1915",
+      "status": "pending",
+      "bytes": "51884",
+      "delta": "0",
+      "size_equal": "yes",
+      "byte_equal": "yes",
+      "status_equal": "no",
+      "fuel_equal": "yes"
+    }
+  ],
+  "partition_parent_coherence": {
+    "complete": true,
+    "compared_rows": 40,
+    "status_fuel_budget_records_equal_frozen_E8": true,
+    "original_strict_reload_failures": [
+      {
+        "partition": "1000:1000",
+        "path": "reload",
+        "budget": "2000",
+        "used": "2000",
+        "status": "pending",
+        "bytes": "32760",
+        "delta": "-19124",
+        "size_equal": "no",
+        "byte_equal": "no",
+        "status_equal": "no",
+        "fuel_equal": "no"
+      },
+      {
+        "partition": "1600:1600",
+        "path": "reload",
+        "budget": "3200",
+        "used": "3200",
+        "status": "pending",
+        "bytes": "38362",
+        "delta": "-13522",
+        "size_equal": "no",
+        "byte_equal": "no",
+        "status_equal": "no",
+        "fuel_equal": "no"
+      },
+      {
+        "partition": "1915:0",
+        "path": "reload",
+        "budget": "1915",
+        "used": "1915",
+        "status": "pending",
+        "bytes": "51884",
+        "delta": "0",
+        "size_equal": "yes",
+        "byte_equal": "yes",
+        "status_equal": "no",
+        "fuel_equal": "yes"
+      }
+    ],
+    "new_codec": "APGSRC70",
+    "old_codec": "APGSRC69",
+    "cross_format_raw_image_equality_claimed": false,
+    "within_variant_inert_resave_bytes_preserved": true,
+    "performance_completion": 1915,
+    "worker_ordinary_completion": 1921
+  },
+  "Core_descriptor_E10_disjoint_composition": {
+    "canonical_E8_Core_sha256": "9ab17cb3a262b9c2f060bddc65f78dbd83d30fe6a3e074bea803638f0fd93a15",
+    "canonical_E10_Core_sha256": "007bc97a55a6016adb790759cc6d8d55e04f4d0bf9e61b05dec79226eeb71fc0",
+    "combined_Core_sha256": "9f3248ab66ce8d3ce7603c93febc3cfe498a5df6aad8ddadd486c1b6f60ad8fd",
+    "overlapping_changed_line_ranges": false,
+    "inherited_descriptor_adapter_and_all_E10_assertions_preserved": true,
+    "edits": [
+      {
+        "start": 678,
+        "end": 678,
+        "owner": "JobE10"
+      },
+      {
+        "start": 700,
+        "end": 700,
+        "owner": "JobE10"
+      },
+      {
+        "start": 942,
+        "end": 942,
+        "owner": "JobE10"
+      },
+      {
+        "start": 949,
+        "end": 949,
+        "owner": "JobE10"
+      },
+      {
+        "start": 1625,
+        "end": 1625,
+        "owner": "JobE10"
+      },
+      {
+        "start": 3915,
+        "end": 3916,
+        "owner": "inherited-descriptor-adapter"
+      },
+      {
+        "start": 4356,
+        "end": 4356,
+        "owner": "inherited-descriptor-adapter"
+      },
+      {
+        "start": 4371,
+        "end": 4372,
+        "owner": "inherited-descriptor-adapter"
+      },
+      {
+        "start": 4376,
+        "end": 4377,
+        "owner": "inherited-descriptor-adapter"
+      },
+      {
+        "start": 4391,
+        "end": 4392,
+        "owner": "inherited-descriptor-adapter"
+      },
+      {
+        "start": 4397,
+        "end": 4398,
+        "owner": "inherited-descriptor-adapter"
+      }
+    ]
+  },
+  "module_controls": "590 snapshots per build; forged claimed-prefix and inert source-claim controls pass through ordinary Solve. Namespace control included once.",
+  "policy_adaptation": {
+    "original_committed_source": "/tmp/ap-performance-current-joint-898463e-bd1ddf3-20261003/publication_inputs/e9/src/prototype/solver_inputs/epochs/job_evidence_e9_lean/resume_policy.c",
+    "original_sha256": "93a1b85d469bb0eb7053bc9df0a9b185e6d5e93aad485f257c2a2fb52818e104",
+    "derived_sha256": "95586fa035738fedd744eabe5838b9c0fbd88c3ac0f32a8e97e68696ff90fc41",
+    "only_change": "Two literal completed cuts1921 changed to the frozen performance producer completion1915; every assertion remains unchanged",
+    "comparative_wall_rss": false
+  },
+  "policy_assertions_fresh_byte_verified": true,
+  "known_failures": {
+    "strict_public_reload": 3,
+    "historical_original_Core_observers": 2,
+    "historical_original_Identity_observer": 1,
+    "historical_original_f3_sanitizer_commands": 7,
+    "original_E9_worker_split_and_harness_failures": "Committed E9 report/verification.tsv retained unchanged; original broad2/archive/print/training, compile2, assertion134 and static128 are not erased",
+    "rejected_E11_lifetime_candidate": "Root review reports exact E9 scratch-parent build0/run0, E11 build0/run1; E11 excluded and its owner report remains separate",
+    "parent_E7_E8_and_original_f3_records": "/tmp/ap-performance-current-joint-898463e-bd1ddf3-20261003/verification.sha256",
+    "private_E10_publication_directory_setup": {
+      "phase": "tested156 report generation",
+      "exit": 1,
+      "original_error": "FileNotFoundError: publication_inputs/e10/src/prototype/solver_inputs/epochs/job_evidence_e10_lean/tested_sources.sha256",
+      "cause": "Assembler placed exact verified E10 publication blobs under combined epoch label e9-e10; report reader expected published epoch e10.",
+      "original_directory": "publication_inputs/e9-e10",
+      "corrected_directory": "publication_inputs/e10",
+      "correction": "Rename private publication directory only, regenerate tested156 hash report; keep all original committed blob bytes, runtime128 and tests unchanged.",
+      "runtime_or_test_failure": false,
+      "O2_gate": "Started by the next shell line despite this reporting failure; gate uses inherited E9 control directory and independently verified runtime/test/build pins.",
+      "accepted_expectations_changed": false
+    }
+  },
+  "isolated_worker_storage_observation": {
+    "semantic_parent": "50cd56b2a52b7e370bc7ecb3436c4993e2e5d6a2",
+    "report": "/tmp/ap-performance-current-joint-898463e-bd1ddf3-6715af2-20261003/publication_inputs/e10/src/prototype/solver_inputs/epochs/job_evidence_e10_lean/report.txt",
+    "fresh_joint_cost_census": false,
+    "fresh_joint_wall_RSS": false,
+    "receipt_layout": "Published worker ABI: header64, selection16, pointer8, alignment16; parent and candidate aligned extent80",
+    "memory_improvement_claimed": false
+  },
+  "all_managed_children_terminal": true,
+  "E11_E12_excluded": true,
+  "accepted_Job_Evidence_promotion": false,
+  "comparative_wall_RSS": false,
+  "decision": "E10 prototype integrates with E9 after exact common-producer and relevant test alignment; preserve strict failures. Worker MEM1/Context corrections continue independently."
+}
