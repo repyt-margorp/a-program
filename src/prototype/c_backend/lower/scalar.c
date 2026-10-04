@@ -445,7 +445,9 @@ static struct function *recursive_function(struct expression *e)
 	for (size_t i = 0; i < e->capture_count; ++i) {
 		const struct expression *v = e->captures[i]->value;
 		if (v->type) ++native_captures;
-		else if (!v->delayed || !known_lambda(v->suspended)) return NULL;
+		/* Thunk creation admits only known lambdas or direct IH calls;
+			* recursive target identities stay private, never C parameters. */
+		else if (!v->delayed && !v->recursion) return NULL;
 	}
 	if (e->count > SIZE_MAX - native_captures) return NULL;
 	struct function *f = function(m, e->count + native_captures);
@@ -635,7 +637,10 @@ static int lower(struct expression *e, size_t slot, const void **out)
 			while (b && b->binder != f->captures[i]) b = b->parent;
 			if (!b) return -1;
 			if (f->static_captures[i]) {
-				if (!b->value->delayed || b->value->suspended != f->static_captures[i]->suspended) return -1;
+				const struct expression *capture = f->static_captures[i];
+				if (capture->recursion) {
+					if (b->value->recursion != capture->recursion) return -1;
+				} else if (!b->value->delayed || b->value->suspended != capture->suspended) return -1;
 			} else if (b->value->type != f->parameters[p++]->type) return -1;
 			e->captures[i] = b;
 		}

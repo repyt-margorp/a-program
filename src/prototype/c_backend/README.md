@@ -525,12 +525,27 @@ WHNF/query and mutates no source graph/proof counts; separate existing Core
 evaluation supplies200 finite Nat comparisons per fixture family. O2/client-source
 SAN114 expected rows each pass, along with affected transitive/numeric/borrowed-
 predicate O2 gates. Repeated products/phases are coverage, not independent
-properties. Dynamic predicates, demanded effects, recursion-valued captures,
+properties. C21's historical refusal of nested private IH captures is advanced
+only by the separate gate below. Dynamic predicates, demanded effects,
 callable/indexed fields and native Acc/QuickSort remain unsupported. Explicit
 source re-exports publish imported types for LinkerScript selection; local import
 names alone are not treated as exported members. Historical setup failures are
 retained without a producer bug claim. See the
 [C21 handoff](../../../doc/2026-10-04-C-BACKEND-EPOCH21-HANDOFF.md).
+
+`check-c-nested-captures` retains existing known delayed IHs and recursive target
+identities inside private recursive callees. Only represented captures become
+C parameters; public ABI and `.a` stay unchanged. Nat and Int32 List folds test
+direct/known-lambda captures, native Int32/Int64 seeds, curried/repeated IH use and
+unused IH without eager recursion. Source/object/archive and raw clients match
+eight source/readback observations; inert emission preserves graph/proof counts
+and calls no guarded evaluator/substitution/WHNF/query routines. Separate existing
+Core provides120 finite comparisons. O2/client-source SAN40 expected rows each
+and affected C21 capture114 each pass. SAN covers clients/source bodies, with
+object/archive/backend/helpers/producer O2. Dynamic functions, effects, callable
+fields and indexed fields retain checked/trusted refusal4; native Acc/QuickSort
+and full #61 remain open. See the
+[nested capture plan](../../../doc/2026-10-04-C-BACKEND-NESTED-CAPTURE-PLAN.md).
 
 ## Native Nullary ADTs
 
@@ -609,8 +624,8 @@ finite binding queue. Three/four/eight-function captured-offset chains, shadowin
 repeated demand, signed extrema and Int64 parameters are covered; the exact
 former `nested_three` refusal now has positive coverage. Binder identity and
 stable lexical order determine captures. This introduces no source evaluation,
-runtime closure or public callback ABI. Dynamic callbacks, function fields and
-unsupported nested recursive captures remain refusals. Native Acc/QuickSort is
+runtime closure or public callback ABI. Dynamic callbacks, callable/indexed
+fields and unsupported thunk shapes remain refusals. Native Acc/QuickSort is
 still unsupported.
 
 `check-c-transitive-functions` adds 300 raw evaluator comparisons with inert
@@ -772,8 +787,9 @@ admitted induction result classifiers so a composed List-producing call is not
 mistaken for its caller's scalar result. Direct IH thunks remain statically known
 lexical closures, forced at their source use. Branch functions retain the thunk's
 recursive target, field and native captures; they do not eagerly evaluate unused
-branches or pass a dynamic callback across the ABI. Unsupported nested recursive
-closure captures and other thunk/function shapes reject explicitly. No evaluator,
+branches or pass a dynamic callback across the ABI. Nested recursive callees also
+retain these known IHs and recursive identities privately. Other thunk/function
+shapes, callable/indexed fields and native Acc remain explicit refusals. No evaluator,
 substitution, source graph mutation or new checking authority is used by emission.
 
 `check-c-list` covers length, sum, append, identity, construction, composition and

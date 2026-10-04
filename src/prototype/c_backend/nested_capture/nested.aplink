@@ -1,0 +1,20 @@
+aplink 1
+artifact nested.a
+abi c_native_v1
+target host-c11
+product source
+lowering native_direct_v1
+fallback reject
+enum32 Bool Bool
+nat32 Nat Nat
+data Numbers Numbers
+export count count
+export branch_sum branch_sum
+export nested_sum nested_sum
+export nested_known nested_known
+export nested_seed32 nested_seed32
+export nested_seed64 nested_seed64
+export nested_curried nested_curried
+export nested_list nested_list
+export nested_unused nested_unused
+export nested_twice nested_twice
