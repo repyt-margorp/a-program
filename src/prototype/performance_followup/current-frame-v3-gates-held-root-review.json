@@ -1,0 +1,972 @@
+{
+  "review_UTC": "2026-10-04T05:53:18.997766+00:00",
+  "notice_sha256": "aeed65426cdf06bd1b45f64e48b3d9bd308d20016b3df6a63503a83b94a52594",
+  "worker_frozen_epoch": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/epochs/current_stateless_head_pool_v1_gates_held",
+  "frozen40": {
+    "all-input-pins.json": "e42519c8dda0cb4f6f2c489aeb69ad8dc52cdd9ca3756c7be5143d3c7cca9df2",
+    "analysis.md": "5f6675b59bd88b2b4bebb2dd2414091fe1dd9ef4aa06c0b3251fb881985c0a9f",
+    "candidate-source128.sha256": "80b4610651207998d4789670ddef8f9ae4e497245aa00b3d9a9fce0777ab982d",
+    "capacity/inputs-after.json": "c3e5bc14077b867f15069ad1e790e9f7db696f022477b3d741e79ebdfc05c679",
+    "capacity/inputs-before.json": "ffb50dcd8aef9705da9bb521b8f9dd5e5a02a62a300cd058ce3c983da98035b2",
+    "capacity/layout-candidate.json": "ab9be460357b7ec92421feabc01f459173f7f8278f107fe18917912eb39c7fab",
+    "capacity/records.json": "93620f9ac5ddb9d6d023502fe5c324a25244fda3fabdead75a5de4d1c8587608",
+    "capacity/reused-parent-records.json": "5ef8c36a0b3a35788721f093b09004d4b73b1f32d6155e09b178b273b0556818",
+    "capacity/summary.json": "12d677a412a4ac92fe1e804d08e8be4bd553ea8fd9be12457e3d2ed7b0eeaeb1",
+    "capacity/verification.sha256": "1279bab03bebba79b311a047ef3cb23db32acc80e5cb8aeff7322325322cf281",
+    "consumers/inputs-after.json": "17d5b2771670f98aeff19b2187ca3c3c25ec90c2fec233f6d1c96dd7f20dd165",
+    "consumers/inputs-before.json": "de0951b6d8f5351d2b12d65e78c86b588aa34bb37eef377448116ea64473b104",
+    "consumers/records.json": "ec7ffa2ac21ae79e099ea91f44007a04bd39b2e43879993fc1880dc4a8d06cde",
+    "consumers/root-parent-output-comparison.json": "88781ea9882014edde84271cae2b40b5eea68d6f8c285545fca2e202a2fa813a",
+    "consumers/summary.json": "cb3a3ba6aea8d95ca1c22a9043e49d8482970a1fb089ead5340c753bcef5f408",
+    "consumers/verification.sha256": "e9cf63c67ff244e817c310ed144251136ed5368794cfeb9723e04f8ad9550e10",
+    "cuts/byte-pairs.json": "a507ffe3411791f9d1a9a8d5e5a603d0849c59d2e25a4fcffed2cd95c6ba4966",
+    "cuts/inputs-after.json": "cb6df1b8c9c0a1593dd2f47d45cda0f1a233657ff130be2518a6413f61cdb5ff",
+    "cuts/inputs-before.json": "af5ddbe0f51039d13cb3b45fe41c0c9f052be41e0ead0f1dd9ad8e76cfe6144f",
+    "cuts/records.json": "544dae0bc35972383da1d1838f0997045263dd3bf7327558c104389db238a312",
+    "cuts/summary.json": "5bbe5e795d927fe2bd76e6e7d8626d26440149c2e26dd6921d6a368d7f1cf7c6",
+    "cuts/verification.sha256": "1a4325934666cd60b959fc78580c52d2dedfd984d8e68798c8ed0008cf46f418",
+    "focused-source-manifest.sha256": "c75bf1e66582ecc6cabf1b8c9915ca5f651fb34f22d2119430b1627e677ebc58",
+    "handoff.json": "2b0fe6ed03dddeffefa5dc0e6130dcc3137f5e4feb87b1b87ab27d0f5f055c67",
+    "parent-source128.sha256": "c414202a4abb79301b04431b75008fa828dd60712b50518a1d4824e5d555b64b",
+    "private-evidence.json": "441e62b0efd3e0738c1cbbdf0328154b4f369bac8c19e4313695dca2cc450106",
+    "repeats/byte-rows.json": "02c1d9f4e9c6ef31dd4b230fbe108ac1f67e7d6ed17a1d6b2f1bbca179598ecc",
+    "repeats/inputs-after.json": "c7fa3dfae4d0451d82baf73fc16a4f679b0e9f0f6f75ddf493222de9bee9359b",
+    "repeats/inputs-before.json": "1cac3498471f88739226a6757b26b24d3c55307061ca6ceedbc2a23cb5259f40",
+    "repeats/records.json": "b45f02f279dfb9ed2212413ec8f242068983e13520f049d413341b4b957aed7f",
+    "repeats/selected-boundaries.json": "3ef164b4ca4d67105556d1f06d2a97c4b7a33e22b58393bf600b07b0d5c64f88",
+    "repeats/summary.json": "725d3be5069b12546abb3b34ec21103ead439fd5b569b139929a38a10b12b876",
+    "repeats/verification.sha256": "9888d2dff480168f8ed19e38d018ed379a623d3e9b089214c76dd3df054cb9fe",
+    "runners/freeze_current_pool_gates.py": "1396037be552c261c0a4144f918139e2185ab4f2819b17be848980666637ffa0",
+    "runners/qualify_current_pool_capacity.py": "627f03526370d830289a60db8fb748cacdbe8b21a027bebd8f8a5bf27dfcebf7",
+    "runners/qualify_current_pool_consumers.py": "d7354357f27f3f07de4370d10cc8136534a514099814670e554a8f8091d8acf8",
+    "runners/qualify_current_pool_cuts.py": "12fc6f616b6ccfb3a5555d8547f92bf9e188f1357820ab7e767d6c69ac4b8b5e",
+    "runners/repeat_current_pool_materialized_bytes.py": "7b123b39cfcaa3de3a7e18c867641386c26de75a87fce03b8d4d201c01375bde",
+    "setup-manifest-path-failure.json": "2863fc9945977c48c6098e6599c344b810c8e0c5c5934345c1c8a13d086a6b80",
+    "manifest.sha256": "ab33e6c4bf8703095179923936f7dcba012daee5bd8f42020acab0f8664c6235"
+  },
+  "private2461_packages": {
+    "consumers": {
+      "directory": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_consumers_20261004",
+      "records": 455,
+      "manifest_sha256": "e9cf63c67ff244e817c310ed144251136ed5368794cfeb9723e04f8ad9550e10",
+      "new_command_records": 14
+    },
+    "cuts": {
+      "directory": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_paired_cuts_20261004",
+      "records": 1785,
+      "manifest_sha256": "1a4325934666cd60b959fc78580c52d2dedfd984d8e68798c8ed0008cf46f418",
+      "new_command_records": 1476
+    },
+    "repeats": {
+      "directory": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_materialized_bytes_20261004",
+      "records": 200,
+      "manifest_sha256": "9888d2dff480168f8ed19e38d018ed379a623d3e9b089214c76dd3df054cb9fe",
+      "new_command_records": 97
+    },
+    "capacity": {
+      "directory": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_capacity_20261004",
+      "records": 21,
+      "manifest_sha256": "1279bab03bebba79b311a047ef3cb23db32acc80e5cb8aeff7322325322cf281",
+      "new_command_records": 8
+    }
+  },
+  "private2461_all_manifests_hashed": true,
+  "all345_actual_after_pins_exact": {
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/source.sha256": "80b4610651207998d4789670ddef8f9ae4e497245aa00b3d9a9fce0777ab982d",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/action.c": "bf0018eca9b7d66d52e263adde431dedd4bd5d7542d30f0a4c45cd24bb3b1362",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/action.h": "5b352b039d634ac38e1a67fbea8cd58d2d9ad8ab68488da1d408f16b5c8cda40",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/artifact/derivation.c": "3be9cbba913cc7411fa134c3d3c868fdd77c7b612aa3e3945129eeaa5ae71b76",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/artifact/derivation.h": "5a2745ca237fd4905dc407a139befdf418120998e7a6ca391172c0518f6fb5f4",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/artifact/file.c": "c90864c4b08a11994161efc29b3a9a1e846bc997efb513d115a0c9bb56382c3e",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/artifact/file.h": "10e8cb2950822105398dbdc33122e29a36abbf40ab6b52dcd83a8124f730be9b",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/artifact/schedule.c": "187dfce992133593607a5b350545ca69502934b82c2300a28dcc7d9f8148e406",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/artifact/schedule.h": "e2eb057d7b786072fef838e1fd6b132fb43da0a2e656954706d7a9b50cd8ab7c",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/artifact/source.c": "4b718cb99d2a578966d508b58d03ddc9cbc991b98d0e48943a813f1982de9404",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/artifact/source.h": "aa049644c64b034788ceecdeb1aae0b08ba257fef39e71e32464eefb412ea8ef",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/classifier.c": "857d21d16bae2a0e10143974dc800bb653ef038ed2744f075a61b21569095842",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/classifier.h": "362373c41b5468b97b82b938de8943dba6b86988cfcf639c4e05566b80fa5a5e",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/comparison_io.c": "9642fda97eeb625b3fdb7090ada03665cff9eaf503b43619e6eaeae5f19b4243",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/computation.c": "86e07e1b9e732e2ab1940b8cae966b6368586ae37f6dd9df1deed7aa770fc28d",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/computation.h": "19c58b96bed587582d81825269de8fcda12a612c135d7968ed0a8b906b0dd2f0",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/computation_internal.h": "72edd937705c4af862f613f43106e2a18756b868998dfcead6eae7ada13dd96f",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/computation_io.c": "224c7ff11ae78629e6ecbd0c9076005267f92d6913c344f78d8e2e084787e4ff",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/computation_io.h": "8d9949abb65da647fdfe4dd86f0e8fb8488f977e2209baa22d05077f2d9f8f16",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/context_io.c": "2613b5072b95e633eb2b2cad13f2210cd51947ff9797df752808c8b8d0d8d0f4",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/context_io.h": "42d36660af31cef4819a976b57e151a6d4d9d2f0be5a1bd7d6d680241d9f90e3",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/context_payload.c": "f6b182f40d0c7451ecefea901a115b5d35b6b6347a163ed2cfcf4b9325453490",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/context_payload.h": "d80026ed6230cb43d3b97606e8003bf6e1514cbfae341bb760625c2ebfe35181",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/conversion.c": "4c3fd04649e56c516f6c11b687ac1d1ce0c2fcaaaab4a052d9d22c804f40b0ce",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/conversion.h": "ef78fbbd8c7930636f46a0dd8f0e5e13679d17b01892d87b3e415ba4d80bdc4e",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/dag.c": "fde727603ab63cf1558295f1d012c4171db84d4f7e0355699a0a85e37408a6d7",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/dag.h": "d1b7ae725abf29776b2e8733027d19d2e4cac0be5cb77d80982ad7eb719928ca",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/declaration_io.c": "38f2b7864d5c74a6dcf91d501d28a17b91b7ddb5e3752b95504711cc3c97d506",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/declaration_io.h": "b9aed166e7413439bc38ca9672139a6657c0d5c98e483cf928445ebf5052966b",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/derivation.c": "34414daae64ecd0636dcbb132dc6034e4446288c378264165e7a660f0550a9a2",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/derivation.h": "f19b25a64276150b3374a09d8b92927fa39ea169a50d244f6ea29e2d8c123725",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/derivation_io.c": "0238457cdc590befc42be9bc8ea5ea8da15667e3f4b5cdeaee69f7de3ff4b628",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/derivation_io.h": "5eb2dd56935a5af8fa4a64411599d92a4d26ed9e1f95105bf8ca0204ccc50956",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/descriptor_io.c": "66157535cb1f32df03d5e0cedf2554b702df2f91e997f852363954bf4998b86c",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/descriptor_io.h": "09f677af9c012fd8d1d9e805550481d072f0aeae7116c8a5e158c1fbb891f71a",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/dimension.c": "686d970716c05be8cb16c78d4020c09b6737f3ddb09df4b8bcaf79a42f25f210",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/dimension.h": "e7947b5275d1e49ed6e5c70f0c8fd030f34d8488cfce4282adfc51e8a231dab2",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/effect_inference.c": "2e7fa7d9dd8c740dc5144be961696c1921c31d474bf4faddc3372674f0c46b42",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/effect_inference.h": "15e04bdbf83251c6964de11095a6689907d8e96eb081a5cb15985a69d6e925b3",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/eval.c": "bbc0e8cfa56deea75e3fce6429e1a42ddae4f287d40c8c8af1702ef752bc7ef1",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/eval.h": "b98e7770112bfe0c204106872e6ccd4efe7db2b55deeea1927c7c8da674c82d8",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/eval_internal.h": "2478e30a7d3749223b800e6900dfc261fe711123e3f229515e62a7dab8d04cb5",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/eval_io.c": "827165832493aafe76cf8831b759ab522df3c16c8ec4163f1cf43b4788b50e9b",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/eval_io.h": "2b5ef4cc66bbc879fcbae3465f921aa881bf1492b3f9d2796bd25d8348502f9a",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/evidence.c": "e78bedccd1c7e96cd98ab544d1f39ff3048a661b48db114aac7d74b1bd67c184",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/evidence.h": "e7f62d72704b18eefd7c6b97cca1e9c791b884b286289526ca834375750d5acc",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/evidence_cbpv.c": "b487430973e287ecfcd571d939393d0135fe013c8de613764fc745e8a387ecfa",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/evidence_function.c": "6472eabaafb6b58622fb045b944d666db4f859bb1b753e564e36d233135d1696",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/evidence_identity.c": "8fe2ea181233cc2e287d541bfff342b4e0f74a0dadbb360d9cde779421d253d1",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/evidence_scope.c": "331f85687a9807d0e43efe23e63ffcadeacf88eb5c9da4c81c5fd8f5d3b20f53",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/evidence_structure.h": "414bc3d6470ac2f193ad5175370e2d67b7be2dd0b2045d19aebf344567a9b406",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/execution.c": "b8be7ce34477d75f9b4d626e50f104149fe92f4580823ef293e2a53639294525",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/execution.h": "157c56bf37d8de750a39f52bb3597c3bf80fda9b4c3e9148f86cfb85dbb5d8cf",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/function_graph.c": "45824e964d3620a49097ca9fee6c156800d54334549da885b856d524f6b04697",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/function_graph.h": "daccbcdecfa7a583bee2697f1c1641151ffeb4c870b93ed8e088d9949b651772",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/function_graph_internal.h": "5df25552e7c65e8ea12b0c31cff6cffc3074aada746b0c58224856947cee1e00",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/function_witness.c": "b54482e36c7065f0c0c20f6ba145a25ca365e34b854211cba0b5bb04f3281e7d",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/function_witness.h": "3d3929b519371a285b553cb1cd7829093e766cdb27850aeb8a42f27c73769ee2",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/graph.c": "de6bb8c45c08e97c0ef8e5302bbdafec681b829edf1f6874c853d443116cc933",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/graph.h": "811ad8f3c3be525286aaa6e4c29fc02532f7c9bca716dc992178f93b57513381",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/graph_internal.h": "6ee556694aba28178048e451ac487d35a318b4040179e43e8a512cd6c336d240",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/graph_io.c": "f169a91198f20949a1b095fa8c773ccdbb7866f1a92ffb8dd7ecd46ed7a5f5cc",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/graph_io.h": "6f2d766032d38015dffaa7ae28387bd6763129455ee5bb8dbf02a3dae1181e2d",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/host.c": "3cdc2612af14130b8c962299931f67e8e86a3faadfcb9b1b41f0cd61a6f73453",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/host.h": "b8c5a05b6529a126f5f8d2e7083a73b7c36a8f1e8167d07be83271954645dd13",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/iadt.c": "78fea20444a7ad90658fd8e7e1af9a37247acf4728171e46872838a9379e3ec1",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/iadt.h": "edba44c9c7b4d8c8c0575dceeb2b0cdd84eb01c232cfa37e441343bbeb802354",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/identity.c": "e0052d3e87231a33d314e5ea09bf6b0c51afa1bd9e5bb72cea64ee8a612987d9",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/identity.h": "908d2008294d6978d0d17069dbedae05a71e73878c42af95518f31a0b55ed361",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/identity_internal.h": "e12be47bf272eea13e2003a6cbc2772a2426f26f72f243d640907006fe6575ab",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/identity_io.c": "1dae1e9476a2e32c8ee76b158ec73f238c10d254474d46492dc5bdaffc8fe9c6",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/machine_io.c": "572e62d15019e33b79367c08bffe8747d2b3105b66cb16746ed87f54fd677dd1",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/main.c": "bcbdc6da72b556e32749b8d99b7bff2338ad4ec9f3870a26e001a22f501fde61",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/occurrence_io.c": "9dfa0538f1b2177f2064a24af4e15b9b53cf5def56cb3aefc45f3a82b8488bd9",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/occurrence_io.h": "b8d67b4cfadba1529f3f15529084d796a162b0dc343d37c17b4da5feb30226e1",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/pending.h": "3037b716c5b6f81bc55fc790bc64a95f3b11794e28cb2cdf451accf010c5b681",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/prelude.c": "08e194930fcf517b8f59434bc14912c52ef33eb44946db17b9a75d99d687bb2d",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/prelude.h": "1ce79020cc930a90af0656d966f49f9dc31b9969442202b8c53d3991d4562778",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/program.c": "531484a195a13c1bff33ff86a44c9ab58bcabee2fb0f95e08812d2526211900d",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/program.h": "b3e2eabf9ad56390aca88ab99cfe168f54703cb63e7cb33d8608d637e9315498",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/reader.c": "06d602617bbb8c243e477bebe1abb5d4f0576241990c8c8720272af31630cc73",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/reader.h": "486d62c7b4f6e26557a298faead3261bc8c1bb4bda3b4fadbf47ae8a25599afc",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/reduction_io.c": "2c6dbbe4e7a417ed6e14dba01bbe3ed61c83464efd670e611a5c961ef9d5c9e3",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/retained_io.c": "12c71d7cc5f0ccd17547c7cda9f54332b13cb3165b7d0219e9dbecf6f4d70a25",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/retained_io.h": "fa310c52af8e72fa97a909095959fb22d78954326658d8e6b80088ca70588f7e",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/scope.c": "14e2c88a6d97ee4e18ece7ef4093501f44b0d594c53c8eb534f761cd94ab0929",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/scope.h": "958d6d1f42c22b195160f77fe52e731c78043227f28ece4ede1958017c22e96b",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/seed.c": "98dc7a4c019b3a592c8863174a720063967fd09282d3d0dd6b743a9cfb844a61",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/seed.h": "0e9c7920b51f91a11602d27f63352d6d5d4ccda73dd0728cba18d9b626bd841c",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/source_io.c": "4b94010dae73542f6a214509f3a03361174d7ee600518244795dc6fc551573f6",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/source_io.h": "4e9a622268de778a0fccee0744c947e67d708b759c1b30ce4c927b2c953a8edc",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/subscription.c": "402ae43301f76b31a3a6809e73103d59f5fc8352812c4f80e997aa0c22e9c8fd",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/subscription.h": "727dd905ab2b0c5c749c4330ba9de34c8a2b0e07f48bea64ca8c38d3f9d18ba9",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/support.c": "d26104dfd003b05414dc151882a542b127e71e7288c309bee13aaf34a2df1348",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/support.h": "a8e27f60779fe6bf5b88ce74991855e67ac167d9fd0c9549a9d4b74624e60977",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/symmetry.c": "af73abaeac3d6b01577bf10305a858ad6143bb7e6088cc4903817a72d7c0d5fb",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/symmetry.h": "2a315abf7233d7f0e87430e8b4bc23ffa8acd97d8a97bca3c4a0204379fe6dc4",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/symmetry_internal.h": "569468be53803726d886a5de3e7240decbc4d9173ea554ecb1edf4b428d00ea6",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/syntax.c": "76bd00a68d91480f9a6196e463119fee819cfcf5369f9390b39a9e1a13c72824",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/syntax.h": "b333b47a17fac161af99f5b898baebaef224fb751ba6183ab73ffe79021e6049",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/syntax_io.c": "6b4b27e7790f130a563bb064341b93eb9f724eb36df08fb584115daf494bf32e",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/syntax_io.h": "e7802ba592678c1a3c48f8f8d7401d36df15b09390e367c0697c294c54421a5f",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis.c": "dd817cf3b5832942a6bb3e216780a4a36ce6754993cb73fe4642dc903031c4c7",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis.h": "f3497904337a30b57ff3897357fa5d9706326a2ea6cf33cffe8dad01a7c717e4",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_binding.c": "77a7af11536020817ca62ed7dd172f80dad768dcd134cef05fa694320ee7271b",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_cbpv.c": "ac865aa88f6e87321197668c70aed2371e07ff66ed95dc623d22f6a024b14c59",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_context.c": "eee075aea29a3b4fae8dcd3956a07c0409c91b6442280445f6e5cd212ec99a57",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_conversion.c": "7abee0c273b9bd074d6b77419198833b7e1b54c197fa0e745a7562e990040b1f",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_conversion.h": "8386cef962260a5217a32f6be3a281c0b718ab10377a7cb998df468e702d0acc",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_derivation.c": "4ae23175231542174f4fbb4e267bac8d366f9cb9021b43cf6033059056b25b22",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_effect.c": "f620c3724f2b19b7643e81ce968052610dc726039df2ad658800e79448bc038f",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_effect.h": "524f43121cb546c6f5c8b5f1f3b842a746a5715d1f655be0dbfa750555bc1066",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_function.c": "1373d9b4c52be7cdf8d7537150a1194b7a13a34f8d223ff9e2fb1f61edb34d65",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_handler.c": "51f2b14a0a5c1cc3f3170b767fe82dda58771ababa64b3f320839181877cc0c2",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_handler.h": "7a6daa0461e92ac5e39810b2060fb66775f3c9fda1ae38f36e6721393438f2e1",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_iadt.c": "76c90ddd54ada186452ce5854dcccf92baaee34c8c2297a8d5a69987af9fe32e",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_identity.c": "fbad0b5b5d010d2ee49c0904a0811917bb84432ebcafd7b627af6b5cab0d5929",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_operation.c": "0e9f3e473bb825d856ddfe2f9a2ee4108c9acd8ab2ef15dafc4209d7aabf5bac",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_schema.c": "b194ad32c378f53db89516971bc326aa8a8b38e132c498f8180300ae4d4fecd3",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_schema.h": "f585eb84756e8bda68f22ad00a42930874155c2744be0ff722ce4c6022b1e59a",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_source.h": "fabaf3bee2ce7738b7bee2ba8779fe68dae328031df1f8a2063315c79d79f943",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_work.c": "01334b6e64c0a1b224468b3db9a15e7e3912a063d5a5ad6a0e503a1fca958cf3",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_work.h": "4e54f054144d0d878640d9a9e353adba3a8ad2615c97936f867e3ded4c309ec1",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/typed_query.c": "ac6ebad9d78b21bf414d8c3f4f30ae96b822163936d651d4e3f276b9d5bd83dd",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/typed_query.h": "6204390c8bcf06820fa9337be8c694848abb6e179894f951b04c8d10d8df74d9",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/typing.c": "acaea5a1ad16fbdc232629df9a1ba1e1fdd024e7e3fc329d624ec545fad705fc",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/typing.h": "551de1c7970b4e425a7f88503f0cd40a7c6f986abb520c57dc27685a6309689c",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/wire.c": "e737a6c6e9f5f91219ad653ea6437729b9c06008bf5ae06de60b3067fe78fbec",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/wire.h": "ddef58862ae5882147919b51b848093f9ec048ec6cbd9ca9d228d3f414b5f7f2",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/qualify_current_pool_consumers.py": "d7354357f27f3f07de4370d10cc8136534a514099814670e554a8f8091d8acf8",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/epochs/current_stateless_head_pool_v1_focused/manifest.sha256": "c75bf1e66582ecc6cabf1b8c9915ca5f651fb34f22d2119430b1627e677ebc58",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/qualify_current_consumers.py": "9d371ef9e923e5b7f346d026be297c6f9c14b800ee99f3a2d839700823c9950e",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/build.mk": "930912acb393b69b22c9b401b1e54dc19bff5a560cf1ea8f149f539d43206eab",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_verification/build.mk": "969864732ed405b1fd5cfd3616529f644cc8eb33e7c5552d2bda5fc69c1a551e",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_verification/total_result_test.c": "adaa4b6556a0a3c5e3f39b3b241893dbfbe67d0da925a725ff4a3463af3e5d4a",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_verification/total_result_cuts.py": "2d76923fb1e964f2e6283f19fc59e3359a8f8494d4099ff341f9d886a459828e",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance/build.mk": "befee229e8553db13299431fdd713a8f63fdf3a5e755f99d1c1c147b64cb4a28",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/artifact_persistence/build.mk": "04cc1aaea432a2e812893aa08fef8ff0c92d14661655ab3ea164468fb14c8f31",
+    "/usr/bin/x86_64-linux-gnu-gcc-14": "a23ecab8ff08f09ad8c80602c2c5df7f49e09c25905cb8975902e101bf72635f",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/Root-results.json": "2c99cd8348afdf5e20cac75c43be9660fbf7e0f14322af3d92832a050d72e437",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/tests/core.c": "647790ebcb1c2f3c3b28fcd04e9cf6e7c2607081458a5efd96138f1f334834a5",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/tests/eval_io.c": "ebc8f1f3987db32a9887941210717214bafa2c878118ce3d4e78ad4e85429b8b",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/tests/eval_io.sh": "2343f7a2f5e907bab3daf4593a966010df8ccb6482f5c04175f799ff262621bb",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/tests/identity_io.c": "3fe6d01dfd4a8f8eb6332a2cf85fd2a433d0c6c68f1e217ef5e12106d8dec292",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/tests/seed.c": "4cb899c7326fd0f7c1b759487ac4cc215017f3897fe40e3abb9b58ccf1f5f428",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/tests/source_io.c": "de602b91d591096dd8214e1ae217681866cfc3890eae501643f7a04516bf268a",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/tests/synthesis.c": "4866786a9d247f143d5772547785b4bb938d10ff305212db60075baf77f70daa",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/checkpoint_tests/normalization_checkpoint_test.c": "7f3aec6a92ce8a45b243384bcb9978f89fabcf68a89f8004712ea46e4ac67b0f",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/checkpoint_tests/source_checkpoint_test.c": "6fdda40ce93e779704258dd6bc9ad48f2915bdc41a71da545f7117105dedabdc",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_consumers_20261004/build-o2/pointer-check": "45e32f91c839ae92adafb30b3bcb3eeef6e79e5eb6e643c42155fdde9f00e62b",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_consumers_20261004/build-o2/core_test": "0b4a6114518e80d206d8ed73339fdbf52de749f3e8d00ff5bfeabfd767d8f7cd",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_consumers_20261004/build-o2/synthesis_test": "a2ce57178cc09b41fc7dd45ef220f6496d9b56907a6b778f6d4c5f7c6b966665",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_consumers_20261004/build-o2/eval_io_test": "eb141eaa95f8fb7ecee48fb4763d0640b6fe80acf3c99b2406d88826b1b3d255",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_consumers_20261004/build-o2/performance_total_result_test": "8625a172c7708c3745a654b6ea6ec93093661b3c61d825a49ae30896decd10f7",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_consumers_20261004/build-o2/artifact_source_checkpoint_test": "13797db0e3350e68960b69d5067d7acbc32f11252aadb0e83eed247bf4e472e2",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_consumers_20261004/build-san/pointer-check": "698a6a78c0b61801e8ec277bed112c35a1c05374edbdc18995257fc3f146ee54",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_consumers_20261004/build-san/core_test": "5bdc7aff90df61c9a11f98d404d0e6cf48c9f278185d26e6fba99c55a3199626",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_consumers_20261004/build-san/synthesis_test": "ebfe491e10131001c86842cbd32ecdacfc74ff0e05d446a966f89985b63b9fb6",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_consumers_20261004/build-san/eval_io_test": "1a799f4704824286a85789770897352ac2d7e3ee635d8b8084a1cd2003f85eaa",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_consumers_20261004/build-san/performance_total_result_test": "ca81f286ce20ebe3a2e7c2ac01a895eff0c9d71c73aa19866353d15da5af1903",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_consumers_20261004/build-san/artifact_source_checkpoint_test": "c41de741e1a2b2c0353a74f03fd8831f53b2a6664d4a90ce411d58255ccfdb2a",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/source.sha256": "c414202a4abb79301b04431b75008fa828dd60712b50518a1d4824e5d555b64b",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/action.c": "bf0018eca9b7d66d52e263adde431dedd4bd5d7542d30f0a4c45cd24bb3b1362",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/action.h": "5b352b039d634ac38e1a67fbea8cd58d2d9ad8ab68488da1d408f16b5c8cda40",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/artifact/derivation.c": "3be9cbba913cc7411fa134c3d3c868fdd77c7b612aa3e3945129eeaa5ae71b76",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/artifact/derivation.h": "5a2745ca237fd4905dc407a139befdf418120998e7a6ca391172c0518f6fb5f4",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/artifact/file.c": "c90864c4b08a11994161efc29b3a9a1e846bc997efb513d115a0c9bb56382c3e",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/artifact/file.h": "10e8cb2950822105398dbdc33122e29a36abbf40ab6b52dcd83a8124f730be9b",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/artifact/schedule.c": "187dfce992133593607a5b350545ca69502934b82c2300a28dcc7d9f8148e406",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/artifact/schedule.h": "e2eb057d7b786072fef838e1fd6b132fb43da0a2e656954706d7a9b50cd8ab7c",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/artifact/source.c": "4b718cb99d2a578966d508b58d03ddc9cbc991b98d0e48943a813f1982de9404",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/artifact/source.h": "aa049644c64b034788ceecdeb1aae0b08ba257fef39e71e32464eefb412ea8ef",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/classifier.c": "857d21d16bae2a0e10143974dc800bb653ef038ed2744f075a61b21569095842",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/classifier.h": "362373c41b5468b97b82b938de8943dba6b86988cfcf639c4e05566b80fa5a5e",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/comparison_io.c": "9642fda97eeb625b3fdb7090ada03665cff9eaf503b43619e6eaeae5f19b4243",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/computation.c": "86e07e1b9e732e2ab1940b8cae966b6368586ae37f6dd9df1deed7aa770fc28d",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/computation.h": "19c58b96bed587582d81825269de8fcda12a612c135d7968ed0a8b906b0dd2f0",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/computation_internal.h": "72edd937705c4af862f613f43106e2a18756b868998dfcead6eae7ada13dd96f",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/computation_io.c": "224c7ff11ae78629e6ecbd0c9076005267f92d6913c344f78d8e2e084787e4ff",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/computation_io.h": "8d9949abb65da647fdfe4dd86f0e8fb8488f977e2209baa22d05077f2d9f8f16",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/context_io.c": "2613b5072b95e633eb2b2cad13f2210cd51947ff9797df752808c8b8d0d8d0f4",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/context_io.h": "42d36660af31cef4819a976b57e151a6d4d9d2f0be5a1bd7d6d680241d9f90e3",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/context_payload.c": "f6b182f40d0c7451ecefea901a115b5d35b6b6347a163ed2cfcf4b9325453490",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/context_payload.h": "d80026ed6230cb43d3b97606e8003bf6e1514cbfae341bb760625c2ebfe35181",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/conversion.c": "4c3fd04649e56c516f6c11b687ac1d1ce0c2fcaaaab4a052d9d22c804f40b0ce",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/conversion.h": "ef78fbbd8c7930636f46a0dd8f0e5e13679d17b01892d87b3e415ba4d80bdc4e",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/dag.c": "fde727603ab63cf1558295f1d012c4171db84d4f7e0355699a0a85e37408a6d7",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/dag.h": "d1b7ae725abf29776b2e8733027d19d2e4cac0be5cb77d80982ad7eb719928ca",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/declaration_io.c": "38f2b7864d5c74a6dcf91d501d28a17b91b7ddb5e3752b95504711cc3c97d506",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/declaration_io.h": "b9aed166e7413439bc38ca9672139a6657c0d5c98e483cf928445ebf5052966b",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/derivation.c": "34414daae64ecd0636dcbb132dc6034e4446288c378264165e7a660f0550a9a2",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/derivation.h": "f19b25a64276150b3374a09d8b92927fa39ea169a50d244f6ea29e2d8c123725",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/derivation_io.c": "0238457cdc590befc42be9bc8ea5ea8da15667e3f4b5cdeaee69f7de3ff4b628",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/derivation_io.h": "5eb2dd56935a5af8fa4a64411599d92a4d26ed9e1f95105bf8ca0204ccc50956",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/descriptor_io.c": "66157535cb1f32df03d5e0cedf2554b702df2f91e997f852363954bf4998b86c",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/descriptor_io.h": "09f677af9c012fd8d1d9e805550481d072f0aeae7116c8a5e158c1fbb891f71a",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/dimension.c": "686d970716c05be8cb16c78d4020c09b6737f3ddb09df4b8bcaf79a42f25f210",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/dimension.h": "e7947b5275d1e49ed6e5c70f0c8fd030f34d8488cfce4282adfc51e8a231dab2",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/effect_inference.c": "2e7fa7d9dd8c740dc5144be961696c1921c31d474bf4faddc3372674f0c46b42",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/effect_inference.h": "15e04bdbf83251c6964de11095a6689907d8e96eb081a5cb15985a69d6e925b3",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/eval.c": "c4ba0584e216345d6f23a0d9fc4bd7c1b343bf73ab788d9beaa54477476a2902",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/eval.h": "83124efa76569efc1da5da0ea5a922b1e63e553ac014b1c8d86ac3f0083b35f6",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/eval_internal.h": "2478e30a7d3749223b800e6900dfc261fe711123e3f229515e62a7dab8d04cb5",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/eval_io.c": "827165832493aafe76cf8831b759ab522df3c16c8ec4163f1cf43b4788b50e9b",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/eval_io.h": "2b5ef4cc66bbc879fcbae3465f921aa881bf1492b3f9d2796bd25d8348502f9a",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/evidence.c": "e78bedccd1c7e96cd98ab544d1f39ff3048a661b48db114aac7d74b1bd67c184",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/evidence.h": "e7f62d72704b18eefd7c6b97cca1e9c791b884b286289526ca834375750d5acc",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/evidence_cbpv.c": "b487430973e287ecfcd571d939393d0135fe013c8de613764fc745e8a387ecfa",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/evidence_function.c": "6472eabaafb6b58622fb045b944d666db4f859bb1b753e564e36d233135d1696",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/evidence_identity.c": "8fe2ea181233cc2e287d541bfff342b4e0f74a0dadbb360d9cde779421d253d1",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/evidence_scope.c": "331f85687a9807d0e43efe23e63ffcadeacf88eb5c9da4c81c5fd8f5d3b20f53",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/evidence_structure.h": "414bc3d6470ac2f193ad5175370e2d67b7be2dd0b2045d19aebf344567a9b406",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/execution.c": "b8be7ce34477d75f9b4d626e50f104149fe92f4580823ef293e2a53639294525",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/execution.h": "157c56bf37d8de750a39f52bb3597c3bf80fda9b4c3e9148f86cfb85dbb5d8cf",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/function_graph.c": "45824e964d3620a49097ca9fee6c156800d54334549da885b856d524f6b04697",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/function_graph.h": "daccbcdecfa7a583bee2697f1c1641151ffeb4c870b93ed8e088d9949b651772",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/function_graph_internal.h": "5df25552e7c65e8ea12b0c31cff6cffc3074aada746b0c58224856947cee1e00",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/function_witness.c": "b54482e36c7065f0c0c20f6ba145a25ca365e34b854211cba0b5bb04f3281e7d",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/function_witness.h": "3d3929b519371a285b553cb1cd7829093e766cdb27850aeb8a42f27c73769ee2",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/graph.c": "de6bb8c45c08e97c0ef8e5302bbdafec681b829edf1f6874c853d443116cc933",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/graph.h": "811ad8f3c3be525286aaa6e4c29fc02532f7c9bca716dc992178f93b57513381",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/graph_internal.h": "6ee556694aba28178048e451ac487d35a318b4040179e43e8a512cd6c336d240",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/graph_io.c": "f169a91198f20949a1b095fa8c773ccdbb7866f1a92ffb8dd7ecd46ed7a5f5cc",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/graph_io.h": "6f2d766032d38015dffaa7ae28387bd6763129455ee5bb8dbf02a3dae1181e2d",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/host.c": "3cdc2612af14130b8c962299931f67e8e86a3faadfcb9b1b41f0cd61a6f73453",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/host.h": "b8c5a05b6529a126f5f8d2e7083a73b7c36a8f1e8167d07be83271954645dd13",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/iadt.c": "78fea20444a7ad90658fd8e7e1af9a37247acf4728171e46872838a9379e3ec1",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/iadt.h": "edba44c9c7b4d8c8c0575dceeb2b0cdd84eb01c232cfa37e441343bbeb802354",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/identity.c": "e0052d3e87231a33d314e5ea09bf6b0c51afa1bd9e5bb72cea64ee8a612987d9",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/identity.h": "908d2008294d6978d0d17069dbedae05a71e73878c42af95518f31a0b55ed361",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/identity_internal.h": "e12be47bf272eea13e2003a6cbc2772a2426f26f72f243d640907006fe6575ab",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/identity_io.c": "1dae1e9476a2e32c8ee76b158ec73f238c10d254474d46492dc5bdaffc8fe9c6",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/machine_io.c": "572e62d15019e33b79367c08bffe8747d2b3105b66cb16746ed87f54fd677dd1",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/main.c": "bcbdc6da72b556e32749b8d99b7bff2338ad4ec9f3870a26e001a22f501fde61",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/occurrence_io.c": "9dfa0538f1b2177f2064a24af4e15b9b53cf5def56cb3aefc45f3a82b8488bd9",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/occurrence_io.h": "b8d67b4cfadba1529f3f15529084d796a162b0dc343d37c17b4da5feb30226e1",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/pending.h": "3037b716c5b6f81bc55fc790bc64a95f3b11794e28cb2cdf451accf010c5b681",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/prelude.c": "08e194930fcf517b8f59434bc14912c52ef33eb44946db17b9a75d99d687bb2d",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/prelude.h": "1ce79020cc930a90af0656d966f49f9dc31b9969442202b8c53d3991d4562778",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/program.c": "531484a195a13c1bff33ff86a44c9ab58bcabee2fb0f95e08812d2526211900d",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/program.h": "b3e2eabf9ad56390aca88ab99cfe168f54703cb63e7cb33d8608d637e9315498",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/reader.c": "06d602617bbb8c243e477bebe1abb5d4f0576241990c8c8720272af31630cc73",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/reader.h": "486d62c7b4f6e26557a298faead3261bc8c1bb4bda3b4fadbf47ae8a25599afc",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/reduction_io.c": "2c6dbbe4e7a417ed6e14dba01bbe3ed61c83464efd670e611a5c961ef9d5c9e3",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/retained_io.c": "12c71d7cc5f0ccd17547c7cda9f54332b13cb3165b7d0219e9dbecf6f4d70a25",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/retained_io.h": "fa310c52af8e72fa97a909095959fb22d78954326658d8e6b80088ca70588f7e",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/scope.c": "14e2c88a6d97ee4e18ece7ef4093501f44b0d594c53c8eb534f761cd94ab0929",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/scope.h": "958d6d1f42c22b195160f77fe52e731c78043227f28ece4ede1958017c22e96b",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/seed.c": "98dc7a4c019b3a592c8863174a720063967fd09282d3d0dd6b743a9cfb844a61",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/seed.h": "0e9c7920b51f91a11602d27f63352d6d5d4ccda73dd0728cba18d9b626bd841c",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/source_io.c": "4b94010dae73542f6a214509f3a03361174d7ee600518244795dc6fc551573f6",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/source_io.h": "4e9a622268de778a0fccee0744c947e67d708b759c1b30ce4c927b2c953a8edc",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/subscription.c": "402ae43301f76b31a3a6809e73103d59f5fc8352812c4f80e997aa0c22e9c8fd",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/subscription.h": "727dd905ab2b0c5c749c4330ba9de34c8a2b0e07f48bea64ca8c38d3f9d18ba9",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/support.c": "d26104dfd003b05414dc151882a542b127e71e7288c309bee13aaf34a2df1348",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/support.h": "a8e27f60779fe6bf5b88ce74991855e67ac167d9fd0c9549a9d4b74624e60977",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/symmetry.c": "af73abaeac3d6b01577bf10305a858ad6143bb7e6088cc4903817a72d7c0d5fb",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/symmetry.h": "2a315abf7233d7f0e87430e8b4bc23ffa8acd97d8a97bca3c4a0204379fe6dc4",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/symmetry_internal.h": "569468be53803726d886a5de3e7240decbc4d9173ea554ecb1edf4b428d00ea6",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/syntax.c": "76bd00a68d91480f9a6196e463119fee819cfcf5369f9390b39a9e1a13c72824",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/syntax.h": "b333b47a17fac161af99f5b898baebaef224fb751ba6183ab73ffe79021e6049",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/syntax_io.c": "6b4b27e7790f130a563bb064341b93eb9f724eb36df08fb584115daf494bf32e",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/syntax_io.h": "e7802ba592678c1a3c48f8f8d7401d36df15b09390e367c0697c294c54421a5f",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis.c": "dd817cf3b5832942a6bb3e216780a4a36ce6754993cb73fe4642dc903031c4c7",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis.h": "f3497904337a30b57ff3897357fa5d9706326a2ea6cf33cffe8dad01a7c717e4",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_binding.c": "77a7af11536020817ca62ed7dd172f80dad768dcd134cef05fa694320ee7271b",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_cbpv.c": "ac865aa88f6e87321197668c70aed2371e07ff66ed95dc623d22f6a024b14c59",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_context.c": "eee075aea29a3b4fae8dcd3956a07c0409c91b6442280445f6e5cd212ec99a57",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_conversion.c": "7abee0c273b9bd074d6b77419198833b7e1b54c197fa0e745a7562e990040b1f",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_conversion.h": "8386cef962260a5217a32f6be3a281c0b718ab10377a7cb998df468e702d0acc",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_derivation.c": "4ae23175231542174f4fbb4e267bac8d366f9cb9021b43cf6033059056b25b22",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_effect.c": "f620c3724f2b19b7643e81ce968052610dc726039df2ad658800e79448bc038f",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_effect.h": "524f43121cb546c6f5c8b5f1f3b842a746a5715d1f655be0dbfa750555bc1066",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_function.c": "1373d9b4c52be7cdf8d7537150a1194b7a13a34f8d223ff9e2fb1f61edb34d65",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_handler.c": "51f2b14a0a5c1cc3f3170b767fe82dda58771ababa64b3f320839181877cc0c2",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_handler.h": "7a6daa0461e92ac5e39810b2060fb66775f3c9fda1ae38f36e6721393438f2e1",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_iadt.c": "76c90ddd54ada186452ce5854dcccf92baaee34c8c2297a8d5a69987af9fe32e",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_identity.c": "fbad0b5b5d010d2ee49c0904a0811917bb84432ebcafd7b627af6b5cab0d5929",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_operation.c": "0e9f3e473bb825d856ddfe2f9a2ee4108c9acd8ab2ef15dafc4209d7aabf5bac",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_schema.c": "b194ad32c378f53db89516971bc326aa8a8b38e132c498f8180300ae4d4fecd3",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_schema.h": "f585eb84756e8bda68f22ad00a42930874155c2744be0ff722ce4c6022b1e59a",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_source.h": "fabaf3bee2ce7738b7bee2ba8779fe68dae328031df1f8a2063315c79d79f943",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_work.c": "01334b6e64c0a1b224468b3db9a15e7e3912a063d5a5ad6a0e503a1fca958cf3",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_work.h": "4e54f054144d0d878640d9a9e353adba3a8ad2615c97936f867e3ded4c309ec1",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/typed_query.c": "ac6ebad9d78b21bf414d8c3f4f30ae96b822163936d651d4e3f276b9d5bd83dd",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/typed_query.h": "6204390c8bcf06820fa9337be8c694848abb6e179894f951b04c8d10d8df74d9",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/typing.c": "acaea5a1ad16fbdc232629df9a1ba1e1fdd024e7e3fc329d624ec545fad705fc",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/typing.h": "551de1c7970b4e425a7f88503f0cd40a7c6f986abb520c57dc27685a6309689c",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/wire.c": "e737a6c6e9f5f91219ad653ea6437729b9c06008bf5ae06de60b3067fe78fbec",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/wire.h": "ddef58862ae5882147919b51b848093f9ec048ec6cbd9ca9d228d3f414b5f7f2",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/qualify_current_pool_cuts.py": "12fc6f616b6ccfb3a5555d8547f92bf9e188f1357820ab7e767d6c69ac4b8b5e",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/qualify_current_cuts.py": "78b013a5df33b11ce3101cd4b77632817d3578ae03036e5dd5f1dcf0c3541084",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/build-cuts.mk": "ae98fdcb6b0dd55076405b032dec28f382e8dbac8f57c0eb6750edadeed1a289",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem3/epochs/fold_empty_tail_v1/fold_spine_test.c": "ebd1f8f179718d5b37e58f4ce5939502adb43a47a54851d8c5dd88adbd3551ae",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem5/epochs/materialized_match_fields_v1/materialized_fields_test.c": "6af422d3568bd8ad26e1644ad04e313704bd54b3451ab03f13f35687fa381d3e",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance/direct_test.c": "1185b68036477b1d979766a69b91a604c6d753be319511938210dcc01f14cbd7",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_paired_cuts_20261004/build-parent-o2/fold_spine_test": "40f9b6cea5b5dd231b80eb46521d4f4067c5bfc7830571e8fe84299d46d3a6c3",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_paired_cuts_20261004/build-parent-o2/materialized_fields_test": "9b557549402014ef10986ac115088ada5c701e679a111813009c00f870ba7bc3",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_paired_cuts_20261004/build-parent-o2/performance_direct_test": "b9adc4bf96fc8169e90f6baa539d677b572d2ca9ff0af52a4c92f379cc9333af",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_paired_cuts_20261004/build-candidate-o2/fold_spine_test": "dbf2e7c79a3e69c4fdc85062457f02371bc216d45d4ce212ce8f0c6eb3af9c85",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_paired_cuts_20261004/build-candidate-o2/materialized_fields_test": "adf09c86352f97615a96fe7afa72f5c0a0149e484d0e7893b51fa48cd0828e93",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_paired_cuts_20261004/build-candidate-o2/performance_direct_test": "47abe92ed45e2bb887c1b598a060da00c2a3cff5cb70afae2a033a7f443341ff",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_paired_cuts_20261004/build-parent-san/fold_spine_test": "bebdc2584fe950048456f83239a42a46b5b6f9f377547ee06b1d6573047a369c",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_paired_cuts_20261004/build-parent-san/materialized_fields_test": "d93ecd521316ef91369114ef28b3b078b17f11700782e28e30162c3b170328aa",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_paired_cuts_20261004/build-parent-san/performance_direct_test": "9d05b3a8f464b9c505c6c21d346b8e6f10db87e6bd3b755b857f0417a1fba42d",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_paired_cuts_20261004/build-candidate-san/fold_spine_test": "314d43ac66b2ec68d1bcc5a156cfa4bacd3e9d439f33ebb1c60e9d2fb77a69c3",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_paired_cuts_20261004/build-candidate-san/materialized_fields_test": "2dc52ac57dbf2556c7f96955999888b9bdb49c53ebee742acceb13d1ef828ed2",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_paired_cuts_20261004/build-candidate-san/performance_direct_test": "9c1e537e4871507a7608b857608b02170eea9f7d14538de88172eda0c7ee94de",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/repeat_current_pool_materialized_bytes.py": "7b123b39cfcaa3de3a7e18c867641386c26de75a87fce03b8d4d201c01375bde",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-parent-inert-probe/build.mk": "5da1253d9cce3920ffe872a16990fa68c07cd78958f191c224eacd6a34b8f1d9",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-parent-inert-probe/Root-results.json": "ad7bf4e25512b380c16cb17930ba937cc680c6c4e88f95ed3100ada1becb8cc4",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-parent-inert-probe/build-o2/machine_resave_probe": "6be7356c5285d52d55418acc055d9ff1ce6d5f3c4330b752ffa64e3a5b1fb3d3",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem6/machine_resave_probe.c": "9160f3e9b58d7d9213b8920cf156610c0344954ce5ae8c67a203eb30703dc028",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_paired_cuts_20261004/summary.json": "5bbe5e795d927fe2bd76e6e7d8626d26440149c2e26dd6921d6a368d7f1cf7c6",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_paired_cuts_20261004/byte-pairs.json": "a507ffe3411791f9d1a9a8d5e5a603d0849c59d2e25a4fcffed2cd95c6ba4966",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/repeat_current_materialized_bytes.py": "08e3ac3d4fcc93a8246d435bd3bccddda2917f81c7adad627be50098e0517a01",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_materialized_bytes_20261004/build-candidate/machine_resave_probe": "4881660e2b0a774abe66219d3f11569917d58f4d84b0632fdddc5ce54cd372ee",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/qualify_current_pool_capacity.py": "627f03526370d830289a60db8fb748cacdbe8b21a027bebd8f8a5bf27dfcebf7",
+    "/tmp/ap-performance-mem1-73fa86c9-20261003/capacity.gdb.py": "4bee635689b227e020720b9c479a65b3d55bfe3cf63c805e58ef16df50411d5f",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/layout.gdb.py": "25343a6fb6580dd007adc17141ec7724b40d104f1077dfbe2b6251cb388538b0",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/qualify_current_capacity.py": "b5a8f2c12d1aca19f8818d376ac8abd30670e25a1cb9458bdd6dc216cf69da9a",
+    "/usr/bin/gdb": "b4ba8c0e9c47096e7dd407006a310549e274392d37ec6fe04f7dbc7606f0ac90",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/inputs-after.json": "df78cae0ef2a3a4e6cd1720574b7c25fce7424b4851c05f47287cd1653ee340d",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/records.json": "2ac6b539d87df0f0d80e5356ab270bcbd40d063c9ece49f05fee62494fd97183",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/layout-parent.json": "64da544f836bad76e11add51ec5f4f93e49a2df979b3c423658569e894aa4998",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/summary.json": "1233784094b6eb2b1a40010740c4a42ea5928a782bf27e2644137fd03e2a996c",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/build-parent/pointer-check": "0d42de26482d6186177dcf2cf5aa20e6a67fa976e49d14751a2dd3ce9fcc0acc",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/build-parent.log": "eea5809ce2c554868dd6f6817e9e859f501075796c98fd80622d2de64e69f3f6",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/layout-parent.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/list.p": "f2d58b2c2161c086f62022943ca63e9acdca3c2dd7c6fd1979cc4c7ff7c15b37",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/list-done-parent.json": "b8bf52617aebe79256c892478fe955f99e32dd8bb0cdde001fa3ad1da0cac623",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/list-done-parent.log": "157daf522f3cb2de5ba7677f850f433931a49236822b9c7f035e6ad1655afc17",
+    "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees4.p": "02fa88c8503b0b5337f5a09be561ab70b000fd7e02747bb531c23ee538bbfb70",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/trees4-cut10K-parent.json": "1444579585653c5682ae2b0463c0023d9386843921659f1e01e7303a0e1679e9",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/trees4-cut10K-parent.log": "ec2042291e23b7ac0653e3950d6362aa3ad9453a88bea13892c490a54b56837c",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/trees4-cut100K-parent.json": "3b1d5af7f5487171fc0802d26188d7d7849fdd5c366b480a597a11939d89ea31",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/trees4-cut100K-parent.log": "de0a47eb04c4ed958e8261940fbea646ca298d94eba8daed17d3e16773fcfcec",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/trees4-cut1M-parent.json": "85f0adf5e0c027c7453ddc2863016dff46616d7f53960592fce9e1c647929d8a",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/trees4-cut1M-parent.log": "be31a07d7786f355eff829517bcfb787ba9ca968a4b058b6bb26c68d27c3bf64",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/trees4-cut2M-parent.json": "5f1b491414e6815f2957db9b9e15869258bf0484e21b76497eb057fc63ece8f4",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/trees4-cut2M-parent.log": "eb898cc4a1e650df1348c7545115e13afc9c9daf5c3b52ef0fdaa894c221f663",
+    "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees16.p": "22fd7d2a25d96d729547a8676555e1f18e072a137e1e9ee7ded54529c11d8108",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/trees16-cut5M-parent.json": "4635ed167010892e70396269272a03978de3d07e0a0693eac1e1a9e8cf6febc0",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_capacity_v2_20261004/trees16-cut5M-parent.log": "719093ca7732adc6ab4475834c8e5e62cb64024042d318233cdc29441f723064",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_capacity_20261004/build-candidate/pointer-check": "1c9c1f826ebbdcc242a9f806acd946ae4d3200c8dfcd1d6917682fba63e8f546"
+  },
+  "source256_focused31_unchanged": true,
+  "all1595_worker_records_uncensored0_log_hashes_exact": {
+    "consumers": 14,
+    "cuts": 1476,
+    "repeats": 97,
+    "capacity": 8
+  },
+  "paired6_of146_actual_hashes_lengths_offsets_independently_recomputed": [
+    {
+      "test": "fold_spine_test",
+      "case": 4,
+      "cut": 10,
+      "parent_sha256": "bfafe394dd1b709525de733efd5d85388b946005e8beaf727c341f2106545d48",
+      "candidate_sha256": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+      "equal": false,
+      "parent_bytes": 1249,
+      "candidate_bytes": 1249,
+      "different_offsets": [
+        1113,
+        1121,
+        1129,
+        1137,
+        1145,
+        1153,
+        1161,
+        1169
+      ]
+    },
+    {
+      "test": "materialized_fields_test",
+      "case": 0,
+      "cut": 12,
+      "parent_sha256": "014f9e4040deb6516f38fcc2c1265fe6d01342d8f8608b5c8983681d70b10149",
+      "candidate_sha256": "c13600d43b996c6856dbb6be81e7fab71f05e49fc51816d07678fb2b2860b117",
+      "equal": false,
+      "parent_bytes": 1808,
+      "candidate_bytes": 1808,
+      "different_offsets": [
+        238,
+        278,
+        310,
+        326,
+        334,
+        358,
+        590,
+        654,
+        670,
+        718,
+        734,
+        1640,
+        1648,
+        1656,
+        1664,
+        1672,
+        1680,
+        1688,
+        1704,
+        1712,
+        1720,
+        1728
+      ]
+    },
+    {
+      "test": "materialized_fields_test",
+      "case": 1,
+      "cut": 13,
+      "parent_sha256": "479911c461da91b836d0542591422ad21ee8682126fcacb0eea29ee45a635ef8",
+      "candidate_sha256": "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f",
+      "equal": false,
+      "parent_bytes": 1772,
+      "candidate_bytes": 1772,
+      "different_offsets": [
+        238,
+        278,
+        310,
+        326,
+        334,
+        358,
+        606,
+        670,
+        686,
+        734,
+        750,
+        1604,
+        1612,
+        1620,
+        1628,
+        1636,
+        1644,
+        1652,
+        1668,
+        1676,
+        1684,
+        1692
+      ]
+    },
+    {
+      "test": "materialized_fields_test",
+      "case": 5,
+      "cut": 7,
+      "parent_sha256": "78e99a4d887294c02435005f106e148aadf65f791b2f9c22bf8f48781b1b731d",
+      "candidate_sha256": "2e108bb72cb331d2794a7f0fc2303b77f854fcb8a042bd06e423df4f641161d3",
+      "equal": false,
+      "parent_bytes": 1522,
+      "candidate_bytes": 1522,
+      "different_offsets": [
+        1386,
+        1394,
+        1402,
+        1410,
+        1418,
+        1426,
+        1434,
+        1442
+      ]
+    },
+    {
+      "test": "materialized_fields_test",
+      "case": 5,
+      "cut": 9,
+      "parent_sha256": "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+      "candidate_sha256": "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19",
+      "equal": false,
+      "parent_bytes": 1522,
+      "candidate_bytes": 1522,
+      "different_offsets": [
+        1386,
+        1394,
+        1402,
+        1410,
+        1418,
+        1426,
+        1434,
+        1442
+      ]
+    },
+    {
+      "test": "materialized_fields_test",
+      "case": 6,
+      "cut": 7,
+      "parent_sha256": "99a1028f44341a675a2265f4d4db8223c491aae3d7263fed11a8fbe284c977a4",
+      "candidate_sha256": "84b8e53300a6041a217d896d6e44a9aed7598a49cbe01919a5addf51a0d48d45",
+      "equal": false,
+      "parent_bytes": 1531,
+      "candidate_bytes": 1531,
+      "different_offsets": [
+        1395,
+        1403,
+        1411,
+        1419,
+        1427,
+        1435,
+        1443,
+        1451
+      ]
+    }
+  ],
+  "repeat29_of48_actual_hashes_lengths_offsets_and_group_variants_independently_recomputed": {
+    "by_variant": {
+      "parent": 16,
+      "candidate": 13
+    },
+    "groups": [
+      {
+        "test": "fold_spine_test",
+        "case": 4,
+        "cut": 10,
+        "variant": "parent",
+        "same_binary_writer_variants": [
+          "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6"
+        ],
+        "same_binary_resave_variants": [
+          "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+          "bfafe394dd1b709525de733efd5d85388b946005e8beaf727c341f2106545d48"
+        ],
+        "inert_byte_failures": 3,
+        "trials": 4
+      },
+      {
+        "test": "fold_spine_test",
+        "case": 4,
+        "cut": 10,
+        "variant": "candidate",
+        "same_binary_writer_variants": [
+          "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+          "bfafe394dd1b709525de733efd5d85388b946005e8beaf727c341f2106545d48"
+        ],
+        "same_binary_resave_variants": [
+          "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6"
+        ],
+        "inert_byte_failures": 3,
+        "trials": 4
+      },
+      {
+        "test": "materialized_fields_test",
+        "case": 0,
+        "cut": 12,
+        "variant": "parent",
+        "same_binary_writer_variants": [
+          "014f9e4040deb6516f38fcc2c1265fe6d01342d8f8608b5c8983681d70b10149",
+          "c13600d43b996c6856dbb6be81e7fab71f05e49fc51816d07678fb2b2860b117",
+          "fc7b73d831b90bb0d99760cdc7327e2518f1168520f869800349587f1ee0d748"
+        ],
+        "same_binary_resave_variants": [
+          "014f9e4040deb6516f38fcc2c1265fe6d01342d8f8608b5c8983681d70b10149",
+          "fc7b73d831b90bb0d99760cdc7327e2518f1168520f869800349587f1ee0d748"
+        ],
+        "inert_byte_failures": 3,
+        "trials": 4
+      },
+      {
+        "test": "materialized_fields_test",
+        "case": 0,
+        "cut": 12,
+        "variant": "candidate",
+        "same_binary_writer_variants": [
+          "c13600d43b996c6856dbb6be81e7fab71f05e49fc51816d07678fb2b2860b117",
+          "fc7b73d831b90bb0d99760cdc7327e2518f1168520f869800349587f1ee0d748"
+        ],
+        "same_binary_resave_variants": [
+          "014f9e4040deb6516f38fcc2c1265fe6d01342d8f8608b5c8983681d70b10149",
+          "c13600d43b996c6856dbb6be81e7fab71f05e49fc51816d07678fb2b2860b117",
+          "fc7b73d831b90bb0d99760cdc7327e2518f1168520f869800349587f1ee0d748"
+        ],
+        "inert_byte_failures": 2,
+        "trials": 4
+      },
+      {
+        "test": "materialized_fields_test",
+        "case": 1,
+        "cut": 13,
+        "variant": "parent",
+        "same_binary_writer_variants": [
+          "479911c461da91b836d0542591422ad21ee8682126fcacb0eea29ee45a635ef8",
+          "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f"
+        ],
+        "same_binary_resave_variants": [
+          "1866ffe1e4b0b04132c58a61c2065e1c497185a969f23805199e2d2ac4606664",
+          "479911c461da91b836d0542591422ad21ee8682126fcacb0eea29ee45a635ef8"
+        ],
+        "inert_byte_failures": 4,
+        "trials": 4
+      },
+      {
+        "test": "materialized_fields_test",
+        "case": 1,
+        "cut": 13,
+        "variant": "candidate",
+        "same_binary_writer_variants": [
+          "479911c461da91b836d0542591422ad21ee8682126fcacb0eea29ee45a635ef8",
+          "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f"
+        ],
+        "same_binary_resave_variants": [
+          "479911c461da91b836d0542591422ad21ee8682126fcacb0eea29ee45a635ef8",
+          "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f"
+        ],
+        "inert_byte_failures": 3,
+        "trials": 4
+      },
+      {
+        "test": "materialized_fields_test",
+        "case": 5,
+        "cut": 7,
+        "variant": "parent",
+        "same_binary_writer_variants": [
+          "78e99a4d887294c02435005f106e148aadf65f791b2f9c22bf8f48781b1b731d"
+        ],
+        "same_binary_resave_variants": [
+          "2e108bb72cb331d2794a7f0fc2303b77f854fcb8a042bd06e423df4f641161d3",
+          "78e99a4d887294c02435005f106e148aadf65f791b2f9c22bf8f48781b1b731d"
+        ],
+        "inert_byte_failures": 2,
+        "trials": 4
+      },
+      {
+        "test": "materialized_fields_test",
+        "case": 5,
+        "cut": 7,
+        "variant": "candidate",
+        "same_binary_writer_variants": [
+          "2e108bb72cb331d2794a7f0fc2303b77f854fcb8a042bd06e423df4f641161d3",
+          "78e99a4d887294c02435005f106e148aadf65f791b2f9c22bf8f48781b1b731d"
+        ],
+        "same_binary_resave_variants": [
+          "2e108bb72cb331d2794a7f0fc2303b77f854fcb8a042bd06e423df4f641161d3",
+          "78e99a4d887294c02435005f106e148aadf65f791b2f9c22bf8f48781b1b731d"
+        ],
+        "inert_byte_failures": 1,
+        "trials": 4
+      },
+      {
+        "test": "materialized_fields_test",
+        "case": 5,
+        "cut": 9,
+        "variant": "parent",
+        "same_binary_writer_variants": [
+          "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+          "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19"
+        ],
+        "same_binary_resave_variants": [
+          "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+          "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19"
+        ],
+        "inert_byte_failures": 2,
+        "trials": 4
+      },
+      {
+        "test": "materialized_fields_test",
+        "case": 5,
+        "cut": 9,
+        "variant": "candidate",
+        "same_binary_writer_variants": [
+          "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+          "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19"
+        ],
+        "same_binary_resave_variants": [
+          "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+          "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19"
+        ],
+        "inert_byte_failures": 3,
+        "trials": 4
+      },
+      {
+        "test": "materialized_fields_test",
+        "case": 6,
+        "cut": 7,
+        "variant": "parent",
+        "same_binary_writer_variants": [
+          "84b8e53300a6041a217d896d6e44a9aed7598a49cbe01919a5addf51a0d48d45",
+          "99a1028f44341a675a2265f4d4db8223c491aae3d7263fed11a8fbe284c977a4"
+        ],
+        "same_binary_resave_variants": [
+          "84b8e53300a6041a217d896d6e44a9aed7598a49cbe01919a5addf51a0d48d45",
+          "99a1028f44341a675a2265f4d4db8223c491aae3d7263fed11a8fbe284c977a4"
+        ],
+        "inert_byte_failures": 2,
+        "trials": 4
+      },
+      {
+        "test": "materialized_fields_test",
+        "case": 6,
+        "cut": 7,
+        "variant": "candidate",
+        "same_binary_writer_variants": [
+          "84b8e53300a6041a217d896d6e44a9aed7598a49cbe01919a5addf51a0d48d45",
+          "99a1028f44341a675a2265f4d4db8223c491aae3d7263fed11a8fbe284c977a4"
+        ],
+        "same_binary_resave_variants": [
+          "84b8e53300a6041a217d896d6e44a9aed7598a49cbe01919a5addf51a0d48d45",
+          "99a1028f44341a675a2265f4d4db8223c491aae3d7263fed11a8fbe284c977a4"
+        ],
+        "inert_byte_failures": 1,
+        "trials": 4
+      }
+    ]
+  },
+  "four_current_Root_parent_outputs_directly_equal": {
+    "root_results_sha256": "2c99cd8348afdf5e20cac75c43be9660fbf7e0f14322af3d92832a050d72e437",
+    "root_candidate_source128": "c414202a4abb79301b04431b75008fa828dd60712b50518a1d4824e5d555b64b",
+    "scope": "Offline output comparison only, no additional workload",
+    "pairs": [
+      {
+        "parent_log": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/full-synthesis_test-o2.log",
+        "candidate_log": "src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_consumers_20261004/run-o2-synthesis_test.log",
+        "sha256": "497e5e979c826ff40f602848e82bed31e82ad16457b173072c9c457104a31804",
+        "equal": true
+      },
+      {
+        "parent_log": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/full-artifact_source_checkpoint_test-o2.log",
+        "candidate_log": "src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_consumers_20261004/run-o2-artifact_source_checkpoint_test.log",
+        "sha256": "71cc65467eeb07467f0bd00674acb05a8875ba29911d63bca40891cab8d4233a",
+        "equal": true
+      },
+      {
+        "parent_log": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/full-synthesis_test-san.log",
+        "candidate_log": "src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_consumers_20261004/run-san-synthesis_test.log",
+        "sha256": "497e5e979c826ff40f602848e82bed31e82ad16457b173072c9c457104a31804",
+        "equal": true
+      },
+      {
+        "parent_log": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/full-artifact_source_checkpoint_test-san.log",
+        "candidate_log": "src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_consumers_20261004/run-san-artifact_source_checkpoint_test.log",
+        "sha256": "71cc65467eeb07467f0bd00674acb05a8875ba29911d63bca40891cab8d4233a",
+        "equal": true
+      }
+    ]
+  },
+  "reused_parent8_source_tool_input_binary_and_raw_exact": true,
+  "six_arena_samples_independently_recomputed": {
+    "list-done": {
+      "charged_steps": 1915,
+      "before": {
+        "block_count": 26,
+        "block_header_bytes": 832,
+        "capacity_bytes": 425984,
+        "used_bytes": 395152
+      },
+      "after": {
+        "block_count": 26,
+        "block_header_bytes": 832,
+        "capacity_bytes": 425984,
+        "used_bytes": 395152
+      },
+      "delta": {
+        "block_count": 0,
+        "block_header_bytes": 0,
+        "capacity_bytes": 0,
+        "used_bytes": 0
+      },
+      "changed_arena_groups": [],
+      "used_delta_frame_extents": 0
+    },
+    "trees4-cut10K": {
+      "charged_steps": 10000,
+      "before": {
+        "block_count": 89,
+        "block_header_bytes": 2848,
+        "capacity_bytes": 1458176,
+        "used_bytes": 1408896
+      },
+      "after": {
+        "block_count": 89,
+        "block_header_bytes": 2848,
+        "capacity_bytes": 1458176,
+        "used_bytes": 1336896
+      },
+      "delta": {
+        "block_count": 0,
+        "block_header_bytes": 0,
+        "capacity_bytes": 0,
+        "used_bytes": -72000
+      },
+      "changed_arena_groups": [
+        "whnf.PG_EVAL_PENDING.machine"
+      ],
+      "used_delta_frame_extents": 300
+    },
+    "trees4-cut100K": {
+      "charged_steps": 100000,
+      "before": {
+        "block_count": 274,
+        "block_header_bytes": 8768,
+        "capacity_bytes": 4489216,
+        "used_bytes": 4323312
+      },
+      "after": {
+        "block_count": 185,
+        "block_header_bytes": 5920,
+        "capacity_bytes": 3031040,
+        "used_bytes": 2911872
+      },
+      "delta": {
+        "block_count": -89,
+        "block_header_bytes": -2848,
+        "capacity_bytes": -1458176,
+        "used_bytes": -1411440
+      },
+      "changed_arena_groups": [
+        "whnf.PG_EVAL_PENDING.machine"
+      ],
+      "used_delta_frame_extents": 5881
+    },
+    "trees4-cut1M": {
+      "charged_steps": 1000000,
+      "before": {
+        "block_count": 1401,
+        "block_header_bytes": 44832,
+        "capacity_bytes": 22953984,
+        "used_bytes": 22822880
+      },
+      "after": {
+        "block_count": 816,
+        "block_header_bytes": 26112,
+        "capacity_bytes": 13369344,
+        "used_bytes": 13285040
+      },
+      "delta": {
+        "block_count": -585,
+        "block_header_bytes": -18720,
+        "capacity_bytes": -9584640,
+        "used_bytes": -9537840
+      },
+      "changed_arena_groups": [
+        "whnf.PG_EVAL_PENDING.machine"
+      ],
+      "used_delta_frame_extents": 39741
+    },
+    "trees4-cut2M": {
+      "charged_steps": 2000000,
+      "before": {
+        "block_count": 1424,
+        "block_header_bytes": 45568,
+        "capacity_bytes": 23330816,
+        "used_bytes": 23218096
+      },
+      "after": {
+        "block_count": 881,
+        "block_header_bytes": 28192,
+        "capacity_bytes": 14434304,
+        "used_bytes": 14381776
+      },
+      "delta": {
+        "block_count": -543,
+        "block_header_bytes": -17376,
+        "capacity_bytes": -8896512,
+        "used_bytes": -8836320
+      },
+      "changed_arena_groups": [
+        "whnf.PG_EVAL_PENDING.machine"
+      ],
+      "used_delta_frame_extents": 36818
+    },
+    "trees16-cut5M": {
+      "charged_steps": 5000000,
+      "before": {
+        "block_count": 3741,
+        "block_header_bytes": 119712,
+        "capacity_bytes": 61292544,
+        "used_bytes": 60958384
+      },
+      "after": {
+        "block_count": 2097,
+        "block_header_bytes": 67104,
+        "capacity_bytes": 34357248,
+        "used_bytes": 34232464
+      },
+      "delta": {
+        "block_count": -1644,
+        "block_header_bytes": -52608,
+        "capacity_bytes": -26935296,
+        "used_bytes": -26725920
+      },
+      "changed_arena_groups": [
+        "whnf.PG_EVAL_PENDING.machine"
+      ],
+      "used_delta_frame_extents": 111358
+    }
+  },
+  "setup_manifest_path_failure_retained": {
+    "status": "read-only manifest path probe failed before any additional workload",
+    "exit": 1,
+    "manifest": "src/prototype/performance_frame_current/epochs/current_stateless_head_pool_v1_focused/manifest.sha256",
+    "manifest_sha256": "c75bf1e66582ecc6cabf1b8c9915ca5f651fb34f22d2119430b1627e677ebc58",
+    "failure": "FileNotFoundError: analysis.md",
+    "cause": "The verification snippet resolved this epoch-relative manifest against the repository cwd. Its records must be resolved against the epoch directory; the old published V3 manifest uses repository-relative records separately.",
+    "frozen_source_or_test_edits": false,
+    "consumer_gate_was_already_running_independently": true,
+    "workload_children_started_by_probe": 0
+  },
+  "scope": "Review-only/HOLD separate published V3 stateless captured-head reconciliation on unchanged c414/source80b4 only. Consumers14/cuts1476/repeats97/capacity8 worker outcomes0, while raw paired6/146 and inert29/48 byte failures remain unwaived; both binaries writers vary. Six sampled arena states preserve payload/index/job counts; tree16/5M retained capacity -26935296 and used -26725920, all in pending-machine arenas,111358 frame extents. Existing240-byte frame layout, no nested query/external arrays/allocator metadata coverage. Not actual process RSS/time/peak/dead-byte/safe reclaim or causal proof. No Root runtime/GDB/cost rerun. Current full transport/all-seven/public/C/acceptance/cumulative attribution/codec disposition pending; held MEM10/6/7 and every strict/observer/SAN/setup/compatibility/censored failure preserved. Historical costs cannot transfer; E19/E20 Main producer composition is separate.",
+  "runtime_READY_task_publication_cost_slot_byte_waiver_accepted_adoption_or_Goal_completion": false
+}

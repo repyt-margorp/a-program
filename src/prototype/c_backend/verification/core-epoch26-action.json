@@ -1,0 +1,296 @@
+{
+  "review_UTC": "2026-10-04T05:35:48.617645+00:00",
+  "notice_sha256": "56b8ef90134dcac5d1e107bbbec63d7089882a3259e38b8333dafaa6d3e5e848",
+  "worker_private_epoch": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch26-recursive-record-20261004",
+  "C25_publication_Git26_exact": true,
+  "C25_publication_receipt_sha256": "064cbcc514eccdb32642ec7d3bd35657c28080410a2159fc6bbc6fee52ac45c2",
+  "native_boundary_seven_expected_rows": [
+    {
+      "name": "admit",
+      "argv": [
+        "/tmp/a-program-merge-c9-e8-gates-20261003/build/pointer-check",
+        "--legacy-intrinsic-dot",
+        "--steps",
+        "5000000",
+        "--imports",
+        "/home/repyt/workspace/a-program-workers/c-backend/tests/fixtures/sorted-proof-provider.p",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch26-recursive-record-20261004/native-boundary/native.a",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/scratch/recursive_record/native_quicksort.p"
+      ],
+      "expected": 0,
+      "exit": 0
+    },
+    {
+      "name": "identity-checked",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch25-multi-tail-20261004/final-build/a-to-c",
+        "--image-limit",
+        "none",
+        "--steps",
+        "5000000",
+        "--link",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch26-recursive-record-20261004/native-boundary/identity.aplink",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch26-recursive-record-20261004/native-boundary/identity-checked"
+      ],
+      "expected": 0,
+      "exit": 0
+    },
+    {
+      "name": "identity-trusted",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch25-multi-tail-20261004/final-build/a-to-c",
+        "--image-limit",
+        "none",
+        "--steps",
+        "5000000",
+        "--trust-image",
+        "--steps",
+        "0",
+        "--link",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch26-recursive-record-20261004/native-boundary/identity.aplink",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch26-recursive-record-20261004/native-boundary/identity-trusted"
+      ],
+      "expected": 0,
+      "exit": 0
+    },
+    {
+      "name": "sort-checked",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch25-multi-tail-20261004/final-build/a-to-c",
+        "--image-limit",
+        "none",
+        "--steps",
+        "5000000",
+        "--link",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch26-recursive-record-20261004/native-boundary/sort.aplink",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch26-recursive-record-20261004/native-boundary/sort-checked"
+      ],
+      "expected": 4,
+      "exit": 4
+    },
+    {
+      "name": "sort-trusted",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch25-multi-tail-20261004/final-build/a-to-c",
+        "--image-limit",
+        "none",
+        "--steps",
+        "5000000",
+        "--trust-image",
+        "--steps",
+        "0",
+        "--link",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch26-recursive-record-20261004/native-boundary/sort.aplink",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch26-recursive-record-20261004/native-boundary/sort-trusted"
+      ],
+      "expected": 4,
+      "exit": 4
+    },
+    {
+      "name": "indexed-checked",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch25-multi-tail-20261004/final-build/a-to-c",
+        "--image-limit",
+        "none",
+        "--steps",
+        "5000000",
+        "--link",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch26-recursive-record-20261004/native-boundary/indexed.aplink",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch26-recursive-record-20261004/native-boundary/indexed-checked"
+      ],
+      "expected": 4,
+      "exit": 4
+    },
+    {
+      "name": "indexed-trusted",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch25-multi-tail-20261004/final-build/a-to-c",
+        "--image-limit",
+        "none",
+        "--steps",
+        "5000000",
+        "--trust-image",
+        "--steps",
+        "0",
+        "--link",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch26-recursive-record-20261004/native-boundary/indexed.aplink",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch26-recursive-record-20261004/native-boundary/indexed-trusted"
+      ],
+      "expected": 4,
+      "exit": 4
+    }
+  ],
+  "raw_files_hashed_at_review": {
+    "native-boundary/admit.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "native-boundary/inputs.json": "f80ad33b96170ec6e772fecd59e4562cf929df992c306ffab4e0f1540ab1fae1",
+    "native-boundary/indexed-checked.err": "94e1238c8e51218061f672b36b9a271a3b0fcd936fb9264e8087a969347c1c99",
+    "native-boundary/identity-checked.err": "5eb7ba568f22dd737ed83f56a4f389db3888fa2a8b058e039cf8994267999e9e",
+    "native-boundary/inspect.err": "d7dc12d5ab76222bd5deb0673f930af01a7c05012a009cd29dfbf37604c69aee",
+    "native-boundary/native.a": "a3bbcd422e6d2a584722f8d09771c6d3ca045d9ed119239d545e1ffa83c6499e",
+    "native-boundary/results.json": "9a5493af9930d3dc7e5c50b2b699320b8ff9226116673c4371688c86b4cf0b1e",
+    "native-boundary/admit.out": "df8036dd06cbf090a150cfc20a639e6cccfa666763704bf0b6f79525ba76aafb",
+    "native-boundary/inspect-build.json": "ba2358cfa4f944ed6e413c32bbb382f6418eeb0fdef8ab062e8acbcbe16a46d9",
+    "native-boundary/identity-checked.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "native-boundary/sort-checked.err": "428f604fff540068885bd5f16964a72cff8f5ad4839337c92a3ebf5c9b427f30",
+    "native-boundary/inspect-build.out": "6be5e33435e0fec61217ff5cc30fe97715369cf6068fade30984daa8cbbd54b6",
+    "native-boundary/identity.aplink": "814318221fbc29a17dff32bfe6936fa692a73cb528f52b02629cf83913e1b899",
+    "native-boundary/native.aplink": "7ff465f7326b51c7c745c72da7d8686e0dcc39c9b6f24041d38eababb1ecb043",
+    "native-boundary/native_quicksort.p": "132c6d3d072513b5ec78dff9d180c6d030e715c5a07d406b477bd52de162dae4",
+    "native-boundary/image.sha256": "405d6415ab7eaed7eaeb7c85acb1c22349f43c79287d61f09eb50356e64a2c65",
+    "native-boundary/indexed-trusted.err": "6a6c50e25e82a160531b9fa03df00cbbf8783637b7e6298384fd4cd0abaa2f4c",
+    "native-boundary/sort-trusted.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "native-boundary/sort-checked.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "native-boundary/sort.aplink": "d4f0457fcf82fe67b91b601f6732c6703a374438f2e8b9c73b03833670844695",
+    "native-boundary/identity-trusted.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "native-boundary/sort-trusted.err": "e85ea15a63757bd06f37e613f51712b94c113b658d09f5f4fcce7f8c93cffb80",
+    "native-boundary/inspect-build.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "native-boundary/indexed-checked.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "native-boundary/indexed.aplink": "9290dac4b503347f4d251e78358673dfe52eae6a921c06e60851fa917a0bc391",
+    "native-boundary/identity-trusted.err": "1767b9371e8b3b3d7e86de415121cc9b45fada57f8681bf7b01faed09ec3abd7",
+    "native-boundary/inspect.json": "d7760611a90d8e5f217e1e862a1b37d567bd8fa61978776dbbf1f9bd4d3c1209",
+    "native-boundary/sorted-proof-provider.p": "a674b893cd5d0dc1899e79238352c6167a536876393ae7f53b2a9de602b647e6",
+    "native-boundary/inspect.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "native-boundary/indexed-trusted.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "native-boundary/identity-checked/link.json": "31a5d9db2021d4c43bcc4b68bb07971c9a7d6a27a4629bd89b2ba8b25e68ee8f",
+    "native-boundary/identity-checked/component.c": "0d31e20b3e219c1a485f940cb9731496ee21b63084d309b316622316a85393be",
+    "native-boundary/identity-checked/component.h": "634b9639b4864251b0b400fc9064f9decd6c57dbfdd73fd5a1b0b5027da0a2ce",
+    "native-boundary/identity-trusted/link.json": "948b9a3ecb534743e65b59a1556b644173d93a8d79f0d3ca972f95025ab6c695",
+    "native-boundary/identity-trusted/component.c": "0d31e20b3e219c1a485f940cb9731496ee21b63084d309b316622316a85393be",
+    "native-boundary/identity-trusted/component.h": "634b9639b4864251b0b400fc9064f9decd6c57dbfdd73fd5a1b0b5027da0a2ce",
+    "selected-views/admit.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "selected-views/inputs.json": "e7f04422b12c436ba0ba2a63ffabcf4de552c980b900bb4eb7d1af71e44e8485",
+    "selected-views/inspect.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "selected-views/native.a": "8419fe8803add1d0f7e95c2b6dbc0c8f0545f9642c222bcaec8c8021ab0321f2",
+    "selected-views/results.json": "162edf6ee5195e6da3fe1e55126b0d8dc19707ef7e87807b93b3ee0badf1386c",
+    "selected-views/admit.out": "538f5af0df14da6b162fdd636a8c71223e314b0866a1ed60b9afd36356a3659a",
+    "selected-views/build.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "selected-views/products.json": "82697b2b56f2fbec26d4f60aedab7492d7873bee094ac906b300a449c2c089bc",
+    "selected-views/native_quicksort.p": "32ccca64174f646c879b9ab714da93fe46c2c3038292565d63a9797f4b723bb6",
+    "selected-views/build.out": "f6cecb394d6e80b444f9ec7576d341d64da1b7d9fb38ea76c13946bf2f93032d",
+    "selected-views/inspect.c": "cd5d8b1874900f988150703833a45e149c59d725d37c9aff31191f8d73265ec0",
+    "selected-views/sorted-proof-provider.p": "a674b893cd5d0dc1899e79238352c6167a536876393ae7f53b2a9de602b647e6",
+    "selected-views/inspect.out": "a69b3f183ee62d836ccfe38eb91600765e4967c40bacce19471586577e07d0d1"
+  },
+  "native_source_inputs_verified_saved_live_or_C25_Git": {
+    "native-boundary": {
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/scratch/recursive_record/native_quicksort.p": {
+        "sha256": "132c6d3d072513b5ec78dff9d180c6d030e715c5a07d406b477bd52de162dae4",
+        "verified_at_retained_path": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch26-recursive-record-20261004/native-boundary/native_quicksort.p"
+      },
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/scratch/recursive_record/native.aplink": {
+        "sha256": "7ff465f7326b51c7c745c72da7d8686e0dcc39c9b6f24041d38eababb1ecb043",
+        "verified_at_retained_path": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch26-recursive-record-20261004/native-boundary/native.aplink"
+      },
+      "/home/repyt/workspace/a-program-workers/c-backend/tests/fixtures/sorted-proof-provider.p": {
+        "sha256": "a674b893cd5d0dc1899e79238352c6167a536876393ae7f53b2a9de602b647e6",
+        "verified_at_retained_path": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch26-recursive-record-20261004/native-boundary/sorted-proof-provider.p"
+      },
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch25-multi-tail-20261004/final-build/a-to-c": {
+        "sha256": "7f36276b6ec07e333f2d875af4c28810e1f8dbfef2713ecc256df133d7edf1db",
+        "verified_at_original_path": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch25-multi-tail-20261004/final-build/a-to-c"
+      },
+      "/tmp/a-program-merge-c9-e8-gates-20261003/build/pointer-check": {
+        "sha256": "6e3407fc7f6ba8dffa0642217f00b6d2ec8454e32dc41eac6b27cce30518cd44",
+        "verified_at_original_path": "/tmp/a-program-merge-c9-e8-gates-20261003/build/pointer-check"
+      },
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/selection.c": {
+        "sha256": "c2a3b74db2bd9320287587a01d7fd85e9c3c637bf8559393cae8dbbbfabeba8f",
+        "verified_at_original_path": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/selection.c"
+      },
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/lower/representation.c": {
+        "sha256": "b6cbe10bcc4a757ec22f69a466a0dd2cfca1b0d0ad89a46aa4fbc0bb970f220b",
+        "verified_Git_C25_task_blob": "728d04b12c3901c2193cd3232347dfdb544e6fe5:src/prototype/c_backend/lower/representation.c",
+        "later_original_worker_live_trial_excluded": true
+      },
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/fixtures/native_quicksort.p": {
+        "sha256": "7f06e2dc765e48ca2b51f17c0275322d346ac16519848542818ebf74792e538e",
+        "verified_at_original_path": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/fixtures/native_quicksort.p"
+      },
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/fixtures/native_quicksort.aplink": {
+        "sha256": "7a12a091bf9a3d6b62c8ab0161c077aaa142da2b37ed212e480b5d2c47bd4005",
+        "verified_at_original_path": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/fixtures/native_quicksort.aplink"
+      }
+    },
+    "selected-views": {
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/scratch/recursive_record/native_quicksort.p": {
+        "sha256": "32ccca64174f646c879b9ab714da93fe46c2c3038292565d63a9797f4b723bb6",
+        "verified_at_retained_path": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch26-recursive-record-20261004/selected-views/native_quicksort.p"
+      },
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/scratch/recursive_record/inspect.c": {
+        "sha256": "cd5d8b1874900f988150703833a45e149c59d725d37c9aff31191f8d73265ec0",
+        "verified_at_retained_path": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch26-recursive-record-20261004/selected-views/inspect.c"
+      },
+      "/home/repyt/workspace/a-program-workers/c-backend/tests/fixtures/sorted-proof-provider.p": {
+        "sha256": "a674b893cd5d0dc1899e79238352c6167a536876393ae7f53b2a9de602b647e6",
+        "verified_at_retained_path": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch26-recursive-record-20261004/selected-views/sorted-proof-provider.p"
+      },
+      "/tmp/a-program-merge-c9-e8-gates-20261003/build/pointer-check": {
+        "sha256": "6e3407fc7f6ba8dffa0642217f00b6d2ec8454e32dc41eac6b27cce30518cd44",
+        "verified_at_original_path": "/tmp/a-program-merge-c9-e8-gates-20261003/build/pointer-check"
+      }
+    }
+  },
+  "retained_native_image_matches_worker_post_run_image_sha256": "a3bbcd422e6d2a584722f8d09771c6d3ca045d9ed119239d545e1ffa83c6499e",
+  "no_current_or_independent_before_after_runtime_claim": true,
+  "selected_view_records": [
+    {
+      "name": "admit",
+      "argv": [
+        "/tmp/a-program-merge-c9-e8-gates-20261003/build/pointer-check",
+        "--legacy-intrinsic-dot",
+        "--steps",
+        "5000000",
+        "--imports",
+        "/home/repyt/workspace/a-program-workers/c-backend/tests/fixtures/sorted-proof-provider.p",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch26-recursive-record-20261004/selected-views/native.a",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/scratch/recursive_record/native_quicksort.p"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "build",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/scratch/recursive_record/build.mk",
+        "OVERLAY=/tmp/a-program-merge-e8-assembled-20261003",
+        "BUILD=/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch26-recursive-record-20261004/selected-view-build",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch26-recursive-record-20261004/selected-view-build/c_native_boundary_inspect"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "inspect",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch26-recursive-record-20261004/selected-view-build/c_native_boundary_inspect",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch26-recursive-record-20261004/selected-views/native.a"
+      ],
+      "exit": 0
+    }
+  ],
+  "selected_view_products_verified": {
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/scratch/recursive_record/native_quicksort.p": "32ccca64174f646c879b9ab714da93fe46c2c3038292565d63a9797f4b723bb6",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/scratch/recursive_record/inspect.c": "cd5d8b1874900f988150703833a45e149c59d725d37c9aff31191f8d73265ec0",
+    "/home/repyt/workspace/a-program-workers/c-backend/tests/fixtures/sorted-proof-provider.p": "a674b893cd5d0dc1899e79238352c6167a536876393ae7f53b2a9de602b647e6",
+    "/tmp/a-program-merge-c9-e8-gates-20261003/build/pointer-check": "6e3407fc7f6ba8dffa0642217f00b6d2ec8454e32dc41eac6b27cce30518cd44",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch26-recursive-record-20261004/selected-views/native.a": "8419fe8803add1d0f7e95c2b6dbc0c8f0545f9642c222bcaec8c8021ab0321f2",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch26-recursive-record-20261004/selected-view-build/c_native_boundary_inspect": "0d2762e343d524d0d2c65924bffdadc95421e2d49386e09d45d6ce9f0c855f6d"
+  },
+  "selected_view_stdout": "name=empty parameters_with_self=2 indices=0 constructors=2 ctor0=0[] ctor1=2[3:2,3:2]\nname=empty_sized parameters_with_self=2 indices=1 constructors=2 ctor0=0[] ctor1=3[3:1,3:2,3:2]\nname=access parameters_with_self=3 indices=1 constructors=1 ctor0=2[3:1:thunk,3:2]\n",
+  "initial_lazy_object_index_assertion134_report_binary_retained": {
+    "argv": [
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch26-recursive-record-20261004/inspection-build/c_native_boundary_inspect",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch26-recursive-record-20261004/native-boundary/native.a"
+    ],
+    "exit": -6,
+    "binary_sha256": "b11cba219c3ff7b30fd886ae5282244986295c02e8a06ddd3b8115c9ff78664f"
+  },
+  "initial_inspection_source_recorded_digest_only_not_retained_source_claim": "66d9ec1c14e856f55b41171646b681253abc82a5985a5b4befd2a1a948c8981c",
+  "scope": "Private historical E8/C25 producer/backend boundary only. Provider ordinarily admitted0, private selected List identity checked/trusted0; actual QuickSort and indexed SizedList checked/trusted4/no failed products. Worker post-run native image pin unchanged at review, no Root runtime before/after check. Existing views expose List indices0, SizedList/Acc indices1 and callable/thunk field; no producer extension need or semantic erasure authority established. Initial lazy object-index assumption assertion134 binary/log retained separately; initial source digest is historical only. Source applicability/erasure decision stays open under #61/#47; finite-record target continuation private, no READY. C25 current/Main delivery verified separately. No Root runtime rerun or original Job input/resume; private later target changes excluded.",
+  "Root_runtime_rerun_original_Job_input_resume_accepted_promotion_cost_or_full_Goal_completion": false
+}

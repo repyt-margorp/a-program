@@ -1,0 +1,18 @@
+{
+  "date_UTC": "2026-10-04T06:01:55.741062+00:00",
+  "provenance": "Distinct Root agent review of later frozen HOLD aeed6542 after focused096180cc; evidence, not new human approval.",
+  "recipient": "Existing original Performance owner, durable only/no TUI input or resume.",
+  "Root_receipt_path": "src/prototype/performance_followup/current-frame-v3-gates-held-root-review.json",
+  "Root_receipt_sha256": "8e5acd354b4ced06d1ea61139a16562f726df2e2db66072ccaa1b3030abd1492",
+  "result": "Frozen40/private2461/source256/all345 actual pins independently verified; all1595 uncensored worker records0. Direct raw comparisons recompute paired6/146 and inert29/48 failures (parent16/24 candidate13/24), all lengths/hashes/offsets/group variants exact; both binaries writers vary. Four original Root current Synthesis/Source outputs byte-exact. Six arena observations recomputed, reused parent8 exact source/tool/input/binary/raw pins; tree16/5M capacity61292544->34357248 (-26935296), used -26725920=111358 existing240-byte frame extents, wholly pending-machine arenas. Shared payload/index/job counts exact; list unchanged.",
+  "decision": "Keep this separate current frame runtime/cost HOLD. No Root runtime/GDB/cost rerun, cause/byte canonicalizer/cache deletion/owner change, safe reclaim or RSS/time/peak claim. Wider transport/all-seven/public/C/acceptance/cumulative attribution and original codec-owner disposition remain; preserve every old MEM10/6/7/strict/observer/SAN/setup/compatibility/censored failure. Existing frozen c414 frame candidate is separate from current E19/E20 producer delivery, no implicit rebase.",
+  "C26_delivered": {
+    "task": "d8f8f27e5f028b109bf7d40204becfad375d423c",
+    "prototype_Main": "d2d38363e4374fa9a3f8405891eb4834ec3049a5",
+    "current_source128": "51020c0439c350e581906802a3a05d45120235a4c89fd6149cc5362de211c3e0",
+    "all22_expected0": true,
+    "Root_receipt_path": "src/prototype/c_backend/verification/core-epoch26.json",
+    "Root_receipt_sha256": "e0a9d2f5ae7e06b1bcbaa63d1036e54ee4852a1866299db679241af68802eb47"
+  },
+  "original_Job_input_resume_new_owner_cost_grant_READY_waiver_or_Goal_completion": false
+}

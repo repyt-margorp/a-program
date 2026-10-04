@@ -1,7 +1,7 @@
 # Job/Evidence Implementation Handoff
 
 Date: 2026-10-03
-Status: bounded E1-E4/E6-E19 prototypes verified/Main integrated; SE1-SE5 unfinished.
+Status: bounded E1-E4/E6-E20 prototypes verified/Main integrated; E21 focused only, SE1-SE5 unfinished.
 Branch: `parallel/job-evidence-20261003`.
 Producer checkpoint: `64df10dfb6caf69226cebb401b88714541334768`.
 Related: [coordination](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md),
@@ -79,6 +79,28 @@ only Core merges Main. Prototype integration is not accepted-source promotion.
 
 ### Objective (Code)
 
+2026-10-04, notice04aa22ec confirms prior E18 release receipt consumption;
+E19/E20 exact READY freezes unchanged and independently already Root delivered.
+E21 isolated broad0 is newly reported, not a full frozen/current composition
+claim. No new Root Job input/resume; supplementary/final transport pending.
+
+2026-10-04, Root E20 corrected26 taskf4f18402/prototype Mainfd91e8e0 pushed
+and remote exact on separate E17 branch; original Job HEAD/index preserved.
+Worker source156/actual471/raw11 and five all35/fourcut census verify; isolated
+unskipped broad0/C0 and public52/full TSV equal E17, original strict3 retained.
+Fresh current E18+MEM9+E19+E20 source12851020c04: nine expected records, full
+semantic/synthesis/source-checkpoint O2/SAN0; public52/full TSV equal qualified
+E19. C25 downstream20/0, rebuilt backend/four helpers and affected O2/client-
+source SAN/link/I-O19; prior generated C/H bytes exact.
+[Integration receipt](../src/prototype/solver_inputs/joint_verification/e20-main-integration-review.json)
+records exact25 Main metadata plus synthesis canonical context reconciliation;
+existing named-field bridge vectors/E19/MEM9 remain. Original scope1, first25
+freeze/transport, notice-only digest correction and Root private reverse/context
+setup failures retained. E21 focused10/source156/raw6 parent assertion134 versus
+candidate O2/SAN0 verified at isolated E17 only. Four Root projections reproduce
+tested files, but reported new patch digests need final transport verification.
+[E21 receipt](../src/prototype/solver_inputs/joint_verification/e21-focused-owner-counterexample-root-review.json).
+
 2026-10-04, Root E19 exact29 task02052bfc/prototype Mainaea14873 pushed/remote
 exact on separate E16 branch; original Job HEAD/index unchanged. Frozen156/
 overlay471/raw11/canonical migration/public52 and five all35/fourcut census
@@ -138,6 +160,21 @@ definition checks, failures and real quotation proofs must remain correct.
 This is a candidate deletion, not user approval of a solution or the full Goal.
 
 ### Assessment
+
+2026-10-04, Root agent E20 integration decision within existing scope:
+remove two persistent Match scan counters, store their16 bytes in existing active
+scratch header/FAM. Same24-byte frames/order/growth/pop and zero/split/cancel/
+checked receipt lifetime; overflow guard includes header, failed realloc retains
+owner. Source only+19/-15, no new pool/index/graph/authority. Branch168->152 is
+layout, not net/live/peak/time gain; five external cumulative aligned deltas are
+-32/0/-96/+104336/0, retain QuickSort increase. Main canonical uses E18 projection
+plus E20, with already-tested named-field bridges separate and unchanged; task
+canonical remains isolated E17 provenance. Full current broad/acceptance/strict3/
+codec/SE/AP/actual costs stay open. E21 frees detached waits into existing pool;
+256 inert reattachments check block-head identity/steps/proofs/bytes then five-step
+trace. Focused qualification does not establish current defect or readiness;
+final exact transport/canonical digests and wider/current checks remain required.
+Keep original Job pane free for direct human conversation, no new Root input.
 
 2026-10-04, Root bounded E19 decision: existing canonical pending-owner
 membership replaces weaker tag-only target admission before any revalidation

@@ -1,0 +1,431 @@
+{
+  "review_UTC": "2026-10-04T05:48:04.744421+00:00",
+  "publication": {
+    "task": "f4f184023fd57cb10f337c8e544edccb782f3805",
+    "task_parent": "54757cfa97877486caedb49fe2de34738edbd645",
+    "task_branch": "refs/heads/parallel/job-evidence-e20-20261004",
+    "Main_parent": "08b8e577782791e0441c9852e2f3f1c7c4b81e93",
+    "Main_merge": "fd91e8e01a36aa50f41a66916f1d3cedd1f8bedd",
+    "exact26_task": {
+      "src/prototype/solver_inputs/epochs/job_evidence_e20_lean_v2/applied.patch": "1dafdab64339d5cfea1379a929473287a8c127e2be90b51a9bbacc976eed05e5",
+      "src/prototype/solver_inputs/epochs/job_evidence_e20_lean_v2/applied_delta.json": "72a2f748aa7759ec10e293b10807eea3cec063f781d568bebca3f11b11fe2a64",
+      "src/prototype/solver_inputs/epochs/job_evidence_e20_lean_v2/branch_layout.json": "37a94ff2f9785ffa863da986895cb6a59b4b1612f540c6eed39bdd1c347dfd81",
+      "src/prototype/solver_inputs/epochs/job_evidence_e20_lean_v2/canonical.sha256": "28ce856f358c4b0b5e0c1d9e3ae9737aa8aa3172aecbf183b628296b5a647cb0",
+      "src/prototype/solver_inputs/epochs/job_evidence_e20_lean_v2/census.mk": "c388d93e7e085ec291fb80ba9846791c64faeffabfb8a54b918f0a39cd1b578a",
+      "src/prototype/solver_inputs/epochs/job_evidence_e20_lean_v2/census_comparison.json": "16dd9bfbb04c55ef7448850027034e022eb56fb25bc5ce5dbbc7bf9e7bb59afe",
+      "src/prototype/solver_inputs/epochs/job_evidence_e20_lean_v2/census_counts.tsv": "a1c59e325be22b1ccb02e466da8658ada36b717b1986085a6708b7fb7058d4a7",
+      "src/prototype/solver_inputs/epochs/job_evidence_e20_lean_v2/census_inputs.sha256": "904037c6e9bb80125f3924ab45124953d0a587f17746ea7dafb033aa85ea2b45",
+      "src/prototype/solver_inputs/epochs/job_evidence_e20_lean_v2/control_inputs.sha256": "c32104c0878221644823bf6c21edab867d7d230dd727802fa42d9ff102e7f59c",
+      "src/prototype/solver_inputs/epochs/job_evidence_e20_lean_v2/fresh_assembly.json": "e9b7de99748040314cdf8ed01f6fd9712464654a3784381474211360facbe710",
+      "src/prototype/solver_inputs/epochs/job_evidence_e20_lean_v2/measurements.tsv": "0709945573ab9b3bab3a2347870455271ef26b96a759fb495d1f9406ecbe1447",
+      "src/prototype/solver_inputs/epochs/job_evidence_e20_lean_v2/overlay_inputs.sha256": "2a4fe10e020ab9aedac4107aec79805ef00a01f6a50bad044d5a20f98af05d09",
+      "src/prototype/solver_inputs/epochs/job_evidence_e20_lean_v2/parent_sources.sha256": "206acb0c09c7ac83eec825f0fb3c192c3b72db99b09d9cf926e7928f240bbaae",
+      "src/prototype/solver_inputs/epochs/job_evidence_e20_lean_v2/public_images.sha256": "d60b558302023b93fab58020a40e97d24debea8230a522ff66ede886ea798966",
+      "src/prototype/solver_inputs/epochs/job_evidence_e20_lean_v2/public_partitions.tsv": "1d6aa050e77aae18dcb2cb0305e7a5ce7e99fadb81a3cd427ac38755d2656729",
+      "src/prototype/solver_inputs/epochs/job_evidence_e20_lean_v2/publication_parent.txt": "83f0680e7ac2a5d7dfee66d9d5165cc038a229439cef726bc40c1750e2163180",
+      "src/prototype/solver_inputs/epochs/job_evidence_e20_lean_v2/report.md": "d33985392a82d06f7e3968a55c10c596977b18d2fd4ac37f25dc9badcc5cd0c3",
+      "src/prototype/solver_inputs/epochs/job_evidence_e20_lean_v2/report_provenance_correction.json": "32e33bdc54a3461079ffbe5dea7dd941509cb471b21ca732e8e4e1d7b8c4c0f6",
+      "src/prototype/solver_inputs/epochs/job_evidence_e20_lean_v2/requests.json": "76f2822084a2c3c8580fdd8a8fee69e9c8c7dd51486a891b4339b25888da0ece",
+      "src/prototype/solver_inputs/epochs/job_evidence_e20_lean_v2/strict_comparison.json": "0b4d43ba28f51962aae6afad39c5d9097b7c8b57f36de88f2aedc46cdf2b4a6c",
+      "src/prototype/solver_inputs/epochs/job_evidence_e20_lean_v2/supplemental_inputs.sha256": "046261dae872cf6b3422a300d9a841c05b75e9d3e17054de8715c2ba938b96d1",
+      "src/prototype/solver_inputs/epochs/job_evidence_e20_lean_v2/tested_sources.sha256": "09a864f92aacbe71941d2056e1021637a76d927de88b928ccebb5dc3449895c9",
+      "src/prototype/solver_inputs/epochs/job_evidence_e20_lean_v2/verification.json": "5fe99e3d1b7b0eef1f20c4eca2864901107a3e9a290c396b13e304bf04f2ba22",
+      "src/prototype/solver_inputs/epochs/job_evidence_e20_lean_v2/verification.tsv": "f4e37e67e19e8126f5d65870ef9f3eb4ab6986218608e8747ac94a88589b0ce9",
+      "src/prototype/solver_inputs/synthesis.c.patch": "40a07233ba3077b7236c9ec7fd3bfcd9b1fb375af3b0755b23ceafc2fa869692",
+      "src/prototype/solver_inputs/epochs/job_evidence_e20_lean_v2/manifest.sha256": "179dbd000c79e09138636f7d07bed55ee7ca0dd9ae46a739014807679e6cde2d"
+    },
+    "exact25_Main_other_files": true,
+    "Main_canonical_synthesis_patch_sha256": "d439dbd345bd2c093390516207befe533a1d1cfd01ac05f8e842d795a5ced58d",
+    "current_canonical_alignment_review_sha256": "b8bb03a4949de70394136e5ff67de4dabe9a18b33951991f94678a403e55c2d2",
+    "task_Main_remote_exact": true,
+    "original_Job_HEAD_and_index_preserved": {
+      "HEAD": "a8f52a015f73fe7cfa067c3d5b122bef7e4532b4",
+      "index_sha256": "cf21c780030a7e26e4259dba80cb8488e84cc059999be4c17459f73afd8beca3"
+    },
+    "separate_isolated_branch_excludes_E18_E19_E21_MEM9_from_task": true,
+    "Main_retains_current_E17_E18_E19_MEM9_C25": true,
+    "current_source128": "51020c0439c350e581906802a3a05d45120235a4c89fd6149cc5362de211c3e0",
+    "Root_current_report_sha256": "c6152ee4061926d7be9dfe88038ed574fd9853270c6d915a6c08feb2ba39d1bf",
+    "Root_C25_downstream_report_sha256": "981f324312251a65ec57bd813cb79f323e7010bcbe9d1b2ab8d13feaccf18cb4",
+    "original_report_scope_failure_and_Root_direct_reverse_mismatch_retained": true,
+    "protected9_exact": true,
+    "accepted_selection_cost_byte_compatibility_waiver_or_Goal_completion": false
+  },
+  "publication_receipt_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-publication.json",
+  "publication_receipt_sha256": "5443be7c15f778d21badf7414f5cf9f33c566ae94fd094d078697854989d686a",
+  "worker_input_review_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-input-review.json",
+  "worker_input_review_sha256": "983c6a32bed9b3ce9f60ad74d58127880551b1546ffe687a289ba14415d0a3a7",
+  "worker_frozen26_source156_actual471_raw11_independently_reviewed": true,
+  "worker_isolated_unskipped_broad0_C0_strict1_original3_retained": true,
+  "five_all35_fourcut_census_recomputed": [
+    {
+      "sample": "list",
+      "all35_four_cuts_exact": true,
+      "steps": 1921,
+      "typed": 429,
+      "evidence": 555,
+      "external_cumulative_aligned_delta": -32
+    },
+    {
+      "sample": "effect",
+      "all35_four_cuts_exact": true,
+      "steps": 13142,
+      "typed": 2680,
+      "evidence": 3414,
+      "external_cumulative_aligned_delta": 0
+    },
+    {
+      "sample": "captured",
+      "all35_four_cuts_exact": true,
+      "steps": 2307,
+      "typed": 632,
+      "evidence": 797,
+      "external_cumulative_aligned_delta": -96
+    },
+    {
+      "sample": "quick",
+      "all35_four_cuts_exact": true,
+      "steps": 766477,
+      "typed": 114388,
+      "evidence": 94974,
+      "external_cumulative_aligned_delta": 104336
+    },
+    {
+      "sample": "handler",
+      "all35_four_cuts_exact": true,
+      "steps": 2470,
+      "typed": 425,
+      "evidence": 530,
+      "external_cumulative_aligned_delta": 0
+    }
+  ],
+  "current_report_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-current-e19-mem9/Root-results.json",
+  "current_report_sha256": "c6152ee4061926d7be9dfe88038ed574fd9853270c6d915a6c08feb2ba39d1bf",
+  "current_source128": "51020c0439c350e581906802a3a05d45120235a4c89fd6149cc5362de211c3e0",
+  "current_nine_build_gate_records_expected": [
+    {
+      "gate": "candidate-build-o2",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program/src/prototype/artifact_persistence/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-current-e19-mem9/candidate",
+        "ROOT=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-current-e19-mem9/candidate/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-current-e19-mem9/candidate/build-o2",
+        "REPO=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-current-e19-mem9/candidate",
+        "TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-current-e19-mem9/candidate/tests",
+        "ARTIFACT_TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-current-e19-mem9/candidate/artifact_tests/",
+        "CHECKPOINT_TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-current-e19-mem9/candidate/checkpoint_tests/",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-current-e19-mem9/candidate/build-o2/artifact_semantic_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-current-e19-mem9/candidate/build-o2/synthesis_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-current-e19-mem9/candidate/build-o2/artifact_source_checkpoint_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-current-e19-mem9/candidate/build-o2/pointer-check"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "01c296609ca26e9097afad4369248be2ea044a1501e4e1fe4b8eb78db8561713"
+    },
+    {
+      "gate": "candidate-artifact_semantic_test-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-current-e19-mem9/candidate/build-o2/artifact_semantic_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "65a6b5c64f96014d08df86dc7590a1db35d6380ea7acb05cc99bb55145121616",
+      "binary_sha256": "ce88b74eefa9ce22595e0c21dd30429243118421200c668a194d66dc159bb0ec"
+    },
+    {
+      "gate": "candidate-synthesis_test-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-current-e19-mem9/candidate/build-o2/synthesis_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "497e5e979c826ff40f602848e82bed31e82ad16457b173072c9c457104a31804",
+      "binary_sha256": "7f7be1d5b1af5e742101c873d8c12ffc5848c8315e07a69593b7cafba66eaf13"
+    },
+    {
+      "gate": "candidate-artifact_source_checkpoint_test-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-current-e19-mem9/candidate/build-o2/artifact_source_checkpoint_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "71cc65467eeb07467f0bd00674acb05a8875ba29911d63bca40891cab8d4233a",
+      "binary_sha256": "013cda9a6f09d8417b6c9acf7d1cfb68908c13b7a86cae4b72324015ddd8dc82"
+    },
+    {
+      "gate": "candidate-build-san",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program/src/prototype/artifact_persistence/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-current-e19-mem9/candidate",
+        "ROOT=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-current-e19-mem9/candidate/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-current-e19-mem9/candidate/build-san",
+        "REPO=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-current-e19-mem9/candidate",
+        "TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-current-e19-mem9/candidate/tests",
+        "ARTIFACT_TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-current-e19-mem9/candidate/artifact_tests/",
+        "CHECKPOINT_TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-current-e19-mem9/candidate/checkpoint_tests/",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-current-e19-mem9/candidate/build-san/artifact_semantic_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-current-e19-mem9/candidate/build-san/synthesis_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-current-e19-mem9/candidate/build-san/artifact_source_checkpoint_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "7f9715f5f464db826af87ada9e81e09eb9f61cf251bbae8223bab3d75c540ad0"
+    },
+    {
+      "gate": "candidate-artifact_semantic_test-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-current-e19-mem9/candidate/build-san/artifact_semantic_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "65a6b5c64f96014d08df86dc7590a1db35d6380ea7acb05cc99bb55145121616",
+      "binary_sha256": "ddb646e3c2f85e97a37fb6436d0bec5815a8e94ac6079bf1f22fc9f5468811e3"
+    },
+    {
+      "gate": "candidate-synthesis_test-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-current-e19-mem9/candidate/build-san/synthesis_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "497e5e979c826ff40f602848e82bed31e82ad16457b173072c9c457104a31804",
+      "binary_sha256": "666c8f8258fa8f7f1e8bdd5f6819477795b2eb944998398dd5b36d184c89a7a8"
+    },
+    {
+      "gate": "candidate-artifact_source_checkpoint_test-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-current-e19-mem9/candidate/build-san/artifact_source_checkpoint_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "71cc65467eeb07467f0bd00674acb05a8875ba29911d63bca40891cab8d4233a",
+      "binary_sha256": "110e8ea99c56bda5498a7bdf9423dfdffe76acdec59006334e1763ba33e4efb9"
+    },
+    {
+      "gate": "public-partitions",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program/src/prototype/image_audit/partition_fuel.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-current-e19-mem9/candidate/build-o2/pointer-check",
+        "/tmp/a-program-merge-e12c-current-Main-20261003/examples/09_list_induction.p",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-current-e19-mem9/candidate/partitions",
+        "ordinary"
+      ],
+      "exit": 1,
+      "expected_exit": 1,
+      "log_sha256": "dd3a44e97d919310dc9f380aee794ee5ecaa83aa2e785e90ce71f91cc7cf66e3"
+    }
+  ],
+  "qualified_E19_parent_controls_reused_without_redundant_rerun": {
+    "path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/Root-results.json",
+    "sha256": "c8bbdbd7b7987721e598d0dbed0909bc40b585b38fca8fafdc51996f683ebfa5"
+  },
+  "public52_full_verdict_fuel_TSV_exact_original_strict3": true,
+  "C25_current_E20_report_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c25-current-e20-mem9-gates/Root-results.json",
+  "C25_current_E20_report_sha256": "981f324312251a65ec57bd813cb79f323e7010bcbe9d1b2ab8d13feaccf18cb4",
+  "C25_current_all20_rebuilt_backend_four_helpers_expected0": true,
+  "C25_tree46_applied50_source46_nested40_List21_enum875_record41_numeric26_O2_client_source_SAN_link_IO19": true,
+  "C25_generated_C_H_unchanged_controls": {
+    "applied-types-o2": {
+      "C24_current_generated_C_H_exact": {
+        "raw.h": "1b203f8cc7c2b1469e5c434f678e12cbf0b8c4da31bcdaec0789cdfaab65ac63",
+        "raw.c": "cdeb5882c2859645e280e2d77e879512ee5216ca3160f5dc944bcc9658cd67eb",
+        "oracle.c": "72fa270ed0158c2b62d47907dc2a6a84bf32191408e6c3f703743fbef8f14340",
+        "trusted/component.c": "cdeb5882c2859645e280e2d77e879512ee5216ca3160f5dc944bcc9658cd67eb",
+        "trusted/component.h": "1b203f8cc7c2b1469e5c434f678e12cbf0b8c4da31bcdaec0789cdfaab65ac63",
+        "repeated/component.c": "cdeb5882c2859645e280e2d77e879512ee5216ca3160f5dc944bcc9658cd67eb",
+        "repeated/component.h": "1b203f8cc7c2b1469e5c434f678e12cbf0b8c4da31bcdaec0789cdfaab65ac63",
+        "source/component.c": "cdeb5882c2859645e280e2d77e879512ee5216ca3160f5dc944bcc9658cd67eb",
+        "source/component.h": "1b203f8cc7c2b1469e5c434f678e12cbf0b8c4da31bcdaec0789cdfaab65ac63",
+        "object/component.c": "cdeb5882c2859645e280e2d77e879512ee5216ca3160f5dc944bcc9658cd67eb",
+        "object/component.h": "1b203f8cc7c2b1469e5c434f678e12cbf0b8c4da31bcdaec0789cdfaab65ac63",
+        "archive/component.c": "cdeb5882c2859645e280e2d77e879512ee5216ca3160f5dc944bcc9658cd67eb",
+        "archive/component.h": "1b203f8cc7c2b1469e5c434f678e12cbf0b8c4da31bcdaec0789cdfaab65ac63"
+      }
+    },
+    "source-sort-o2": {
+      "C24_current_generated_C_H_exact": {
+        "raw.h": "ccd69e7e57cabca218e98f283a963db50e625a9e86514307dbaf4fc89ee764db",
+        "raw.c": "9d4ff90cffce4d45f1759a55ef55a7175ac584eb1daa6c0acfa6afc692690b12",
+        "oracle.c": "63959f0aa5292c9b34c6af8a5007a8ee9870abffb609f38bb771dee5bb59f5b3",
+        "trusted/component.c": "9d4ff90cffce4d45f1759a55ef55a7175ac584eb1daa6c0acfa6afc692690b12",
+        "trusted/component.h": "ccd69e7e57cabca218e98f283a963db50e625a9e86514307dbaf4fc89ee764db",
+        "repeated/component.c": "9d4ff90cffce4d45f1759a55ef55a7175ac584eb1daa6c0acfa6afc692690b12",
+        "repeated/component.h": "ccd69e7e57cabca218e98f283a963db50e625a9e86514307dbaf4fc89ee764db",
+        "source/component.c": "9d4ff90cffce4d45f1759a55ef55a7175ac584eb1daa6c0acfa6afc692690b12",
+        "source/component.h": "ccd69e7e57cabca218e98f283a963db50e625a9e86514307dbaf4fc89ee764db",
+        "object/component.c": "9d4ff90cffce4d45f1759a55ef55a7175ac584eb1daa6c0acfa6afc692690b12",
+        "object/component.h": "ccd69e7e57cabca218e98f283a963db50e625a9e86514307dbaf4fc89ee764db",
+        "archive/component.c": "9d4ff90cffce4d45f1759a55ef55a7175ac584eb1daa6c0acfa6afc692690b12",
+        "archive/component.h": "ccd69e7e57cabca218e98f283a963db50e625a9e86514307dbaf4fc89ee764db"
+      }
+    },
+    "nested-o2": {
+      "C24_parent_generated_C_H_exact": {
+        "raw.h": "b0562b2638d8a04e7113e2240cb2caebfe652cbe7ad82d4630a2de20aeef815c",
+        "raw.c": "17da329ec58015d9ea34e9dcc9375150e62b91b00c9078d481c61ee16b531207",
+        "oracle.c": "e50e05a52f0648827f18123c97becdf52fb41c96b4ba7ff6dab3d439ca69f314",
+        "trusted/component.c": "17da329ec58015d9ea34e9dcc9375150e62b91b00c9078d481c61ee16b531207",
+        "trusted/component.h": "b0562b2638d8a04e7113e2240cb2caebfe652cbe7ad82d4630a2de20aeef815c",
+        "repeated/component.c": "17da329ec58015d9ea34e9dcc9375150e62b91b00c9078d481c61ee16b531207",
+        "repeated/component.h": "b0562b2638d8a04e7113e2240cb2caebfe652cbe7ad82d4630a2de20aeef815c",
+        "source/component.c": "17da329ec58015d9ea34e9dcc9375150e62b91b00c9078d481c61ee16b531207",
+        "source/component.h": "b0562b2638d8a04e7113e2240cb2caebfe652cbe7ad82d4630a2de20aeef815c",
+        "object/component.c": "17da329ec58015d9ea34e9dcc9375150e62b91b00c9078d481c61ee16b531207",
+        "object/component.h": "b0562b2638d8a04e7113e2240cb2caebfe652cbe7ad82d4630a2de20aeef815c",
+        "archive/component.c": "17da329ec58015d9ea34e9dcc9375150e62b91b00c9078d481c61ee16b531207",
+        "archive/component.h": "b0562b2638d8a04e7113e2240cb2caebfe652cbe7ad82d4630a2de20aeef815c"
+      }
+    },
+    "applied-types-san": {
+      "C24_current_generated_C_H_exact": {
+        "raw.h": "1b203f8cc7c2b1469e5c434f678e12cbf0b8c4da31bcdaec0789cdfaab65ac63",
+        "raw.c": "cdeb5882c2859645e280e2d77e879512ee5216ca3160f5dc944bcc9658cd67eb",
+        "oracle.c": "72fa270ed0158c2b62d47907dc2a6a84bf32191408e6c3f703743fbef8f14340",
+        "trusted/component.c": "cdeb5882c2859645e280e2d77e879512ee5216ca3160f5dc944bcc9658cd67eb",
+        "trusted/component.h": "1b203f8cc7c2b1469e5c434f678e12cbf0b8c4da31bcdaec0789cdfaab65ac63",
+        "repeated/component.c": "cdeb5882c2859645e280e2d77e879512ee5216ca3160f5dc944bcc9658cd67eb",
+        "repeated/component.h": "1b203f8cc7c2b1469e5c434f678e12cbf0b8c4da31bcdaec0789cdfaab65ac63",
+        "source/component.c": "cdeb5882c2859645e280e2d77e879512ee5216ca3160f5dc944bcc9658cd67eb",
+        "source/component.h": "1b203f8cc7c2b1469e5c434f678e12cbf0b8c4da31bcdaec0789cdfaab65ac63",
+        "object/component.c": "cdeb5882c2859645e280e2d77e879512ee5216ca3160f5dc944bcc9658cd67eb",
+        "object/component.h": "1b203f8cc7c2b1469e5c434f678e12cbf0b8c4da31bcdaec0789cdfaab65ac63",
+        "archive/component.c": "cdeb5882c2859645e280e2d77e879512ee5216ca3160f5dc944bcc9658cd67eb",
+        "archive/component.h": "1b203f8cc7c2b1469e5c434f678e12cbf0b8c4da31bcdaec0789cdfaab65ac63"
+      }
+    },
+    "source-sort-san": {
+      "C24_current_generated_C_H_exact": {
+        "raw.h": "ccd69e7e57cabca218e98f283a963db50e625a9e86514307dbaf4fc89ee764db",
+        "raw.c": "9d4ff90cffce4d45f1759a55ef55a7175ac584eb1daa6c0acfa6afc692690b12",
+        "oracle.c": "63959f0aa5292c9b34c6af8a5007a8ee9870abffb609f38bb771dee5bb59f5b3",
+        "trusted/component.c": "9d4ff90cffce4d45f1759a55ef55a7175ac584eb1daa6c0acfa6afc692690b12",
+        "trusted/component.h": "ccd69e7e57cabca218e98f283a963db50e625a9e86514307dbaf4fc89ee764db",
+        "repeated/component.c": "9d4ff90cffce4d45f1759a55ef55a7175ac584eb1daa6c0acfa6afc692690b12",
+        "repeated/component.h": "ccd69e7e57cabca218e98f283a963db50e625a9e86514307dbaf4fc89ee764db",
+        "source/component.c": "9d4ff90cffce4d45f1759a55ef55a7175ac584eb1daa6c0acfa6afc692690b12",
+        "source/component.h": "ccd69e7e57cabca218e98f283a963db50e625a9e86514307dbaf4fc89ee764db",
+        "object/component.c": "9d4ff90cffce4d45f1759a55ef55a7175ac584eb1daa6c0acfa6afc692690b12",
+        "object/component.h": "ccd69e7e57cabca218e98f283a963db50e625a9e86514307dbaf4fc89ee764db",
+        "archive/component.c": "9d4ff90cffce4d45f1759a55ef55a7175ac584eb1daa6c0acfa6afc692690b12",
+        "archive/component.h": "ccd69e7e57cabca218e98f283a963db50e625a9e86514307dbaf4fc89ee764db"
+      }
+    },
+    "nested-san": {
+      "C24_parent_generated_C_H_exact": {
+        "raw.h": "b0562b2638d8a04e7113e2240cb2caebfe652cbe7ad82d4630a2de20aeef815c",
+        "raw.c": "17da329ec58015d9ea34e9dcc9375150e62b91b00c9078d481c61ee16b531207",
+        "oracle.c": "e50e05a52f0648827f18123c97becdf52fb41c96b4ba7ff6dab3d439ca69f314",
+        "trusted/component.c": "17da329ec58015d9ea34e9dcc9375150e62b91b00c9078d481c61ee16b531207",
+        "trusted/component.h": "b0562b2638d8a04e7113e2240cb2caebfe652cbe7ad82d4630a2de20aeef815c",
+        "repeated/component.c": "17da329ec58015d9ea34e9dcc9375150e62b91b00c9078d481c61ee16b531207",
+        "repeated/component.h": "b0562b2638d8a04e7113e2240cb2caebfe652cbe7ad82d4630a2de20aeef815c",
+        "source/component.c": "17da329ec58015d9ea34e9dcc9375150e62b91b00c9078d481c61ee16b531207",
+        "source/component.h": "b0562b2638d8a04e7113e2240cb2caebfe652cbe7ad82d4630a2de20aeef815c",
+        "object/component.c": "17da329ec58015d9ea34e9dcc9375150e62b91b00c9078d481c61ee16b531207",
+        "object/component.h": "b0562b2638d8a04e7113e2240cb2caebfe652cbe7ad82d4630a2de20aeef815c",
+        "archive/component.c": "17da329ec58015d9ea34e9dcc9375150e62b91b00c9078d481c61ee16b531207",
+        "archive/component.h": "b0562b2638d8a04e7113e2240cb2caebfe652cbe7ad82d4630a2de20aeef815c"
+      }
+    }
+  },
+  "canonical_current_reconciliation_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-current-canonical-review.json",
+  "canonical_current_reconciliation_sha256": "b8bb03a4949de70394136e5ff67de4dabe9a18b33951991f94678a403e55c2d2",
+  "canonical_current_reconciliation": {
+    "old_Main_canonical_sha256": "5a4b8fa3a13667e597f500cf91f5f88e2bc2408027d7b80a9416e54e46777674",
+    "isolated_task_E20_canonical_sha256": "40a07233ba3077b7236c9ec7fd3bfcd9b1fb375af3b0755b23ceafc2fa869692",
+    "current_Main_canonical_derived_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-main-synthesis.c.patch",
+    "current_Main_canonical_sha256": "d439dbd345bd2c093390516207befe533a1d1cfd01ac05f8e842d795a5ced58d",
+    "reverse_old_and_apply_derived_canonical_projection_exact": "4fae0b7042e10e7969fb5a6d1f58fb5dfa23ab7b9f4c97651440063390e7c817",
+    "existing_current_named_field_bridge_vectors_preserved": {
+      "removed": [
+        "\t\t\t\t\tstruct pg_token name = clause->items[j].operation == PG_TOKEN_ASSIGN\n",
+        "\t\t\t\t\t\t? clause->items[j].expression->token : clause->items[j].name;\n",
+        "\tint named = clause && clause->item_count && clause->items[0].operation;\n",
+        "\t\t\tstruct pg_token alias = item->expression->token;\n",
+        "\t\t\tif (alias.kind != PG_TOKEN_IDENT) goto done;\n",
+        "\t\t\t\tif (same_name(alias, clause->items[j].expression->token)) goto done;\n",
+        "\t\t\t\tif (source->fields[field].name.kind != PG_TOKEN_IDENT || !same_name(source->fields[field].name, item->name)) continue;\n",
+        "\t\t\t\t\tif (block->items[j].name.kind == PG_TOKEN_IDENT && same_name(block->items[j].name, item->name))\n",
+        "\t\tstruct pg_token name = named ? bindings[i] ? bindings[i]->expression->token : (struct pg_token){0}\n"
+      ],
+      "added": [
+        "\t\t\t\t\tstruct pg_token name = clause->items[j].name;\n",
+        "\tint named = clause && clause->clause_bindings != PG_CLAUSE_POSITIONAL;\n",
+        "\tif (clause && (clause->clause_bindings < PG_CLAUSE_POSITIONAL ||\n",
+        "\t\tclause->clause_bindings > PG_CLAUSE_UNORDERED || (named && !clause->item_count)))\n",
+        "\t\treturn PG_SYNTHESIS_REJECTED;\n",
+        "\t\tsize_t previous = 0;\n",
+        "\t\t\tstruct pg_token local_name = item->name, source_selector = item->expression->token;\n",
+        "\t\t\tif (local_name.kind != PG_TOKEN_IDENT || source_selector.kind != PG_TOKEN_IDENT) goto done;\n",
+        "\t\t\t\tif (same_name(local_name, clause->items[j].name)) goto done;\n",
+        "\t\t\t\tif (source->fields[field].name.kind != PG_TOKEN_IDENT || !same_name(source->fields[field].name, source_selector)) continue;\n",
+        "\t\t\t\t\tif (block->items[j].name.kind == PG_TOKEN_IDENT && same_name(block->items[j].name, source_selector))\n",
+        "\t\t\tif (clause->clause_bindings == PG_CLAUSE_ORDERED && i && selected <= previous) goto done;\n",
+        "\t\t\tprevious = selected;\n",
+        "\t\tstruct pg_token name = named ? bindings[i] ? bindings[i]->name : (struct pg_token){0}\n"
+      ]
+    },
+    "tested_current_source_after_existing_bridges": "01864e0447c44c347628bec3d9093de2347fcc4dd09ebe671f45535c601c0663",
+    "initial_direct_current_reverse_failure_retained": "b4f84b1180265ddab7ddf0a6d81987f5e709bf5465ac51b5cd25c837382543ac",
+    "current_named_field_bridges_E19_MEM9_preserved": true,
+    "original_lean25_all_existing_metadata_except_scope_equal": [
+      "census.mk",
+      "public_partitions.tsv",
+      "control_inputs.sha256",
+      "applied.patch",
+      "canonical.sha256",
+      "strict_comparison.json",
+      "public_images.sha256",
+      "requests.json",
+      "census_counts.tsv",
+      "branch_layout.json",
+      "applied_delta.json",
+      "tested_sources.sha256",
+      "publication_parent.txt",
+      "overlay_inputs.sha256",
+      "measurements.tsv",
+      "fresh_assembly.json",
+      "census_inputs.sha256",
+      "parent_sources.sha256",
+      "verification.json",
+      "supplemental_inputs.sha256",
+      "verification.tsv"
+    ],
+    "original_report_scope_and_explicit_correction_note_only_changes": [
+      "census_comparison.json",
+      "report.md"
+    ],
+    "original_first_freeze_and_transport_immutable": true,
+    "notice_only_digest_correction_verified": true,
+    "Main_reconciliation_scope": "One canonical synthesis migration patch rebase retains existing E18 input; unchanged current named-field bridges remain separate as before; exact isolated26 task preserved, Main other25 frozen files exact. No accepted/default change."
+  },
+  "code_review": "Only src/synthesis.c +19/-15: remove persistent Match scan_count/capacity; store count/capacity16 in the existing active realloc scratch header/FAM with unchanged24-byte frames, LIFO order/growth/pop and zero/split/cancel/checked lifetime. Overflow guard accounts header; failed realloc preserves original owner, drain/cancel frees scratch and clears pointer. Worker debug branch168->152 is layout only; active header/capacity/allocator/realloc overlap remains. Existing current named-field bridge vectors, E19 membership and MEM9 preserved; no new pool/index/graph/owner/eval/readback/trust/schema/fuel policy.",
+  "original_scope_failure_and_notice_digest_correction_retained": {
+    "original_command": [
+      "python3",
+      "-c",
+      "import json; from pathlib import Path; scope=json.loads(Path('src/prototype/solver_inputs/epochs/job_evidence_e20_lean/census_comparison.json').read_text())['scope']; assert 'scratch' in scope and 'revalidation' not in scope, scope"
+    ],
+    "exit": 1,
+    "report_sha256": "5a33fcbaf816a62fcbc7c617171234495a10c031101919901d2fb6fc148fd796",
+    "old_census_comparison_sha256": "fd4620dc8bbcf8983b3235773dc149437d8763d0ea507ab95d2d9bfb7f974992",
+    "new_census_comparison_sha256": "16dd9bfbb04c55ef7448850027034e022eb56fb25bc5ce5dbbc7bf9e7bb59afe",
+    "original_freeze_manifest": "048ca595bec86d49aa2252b579f8785c434a4424e6dec631835b9cd15bcc0f88",
+    "original_transport_sha256": "d98c9facbc01f3d30739119532a393703194d3abe86d494d9f0a59e868d9cbfd",
+    "cause": "Cloned E19 postprocessor retained its revalidation-gate scope sentence in E20 census JSON. Counts/code/source156/gate inputs/raw reports/strict52 are unchanged; first lean25 freeze preserved and never announced READY.",
+    "correction": "Separate lean_v2/transport_v2 with accurate E20 scratch-bookkeeping scope and this provenance record; do not alter first freeze."
+  },
+  "notice_only_digest_correction_sha256": "927da1e92bba1df1c858ae9d0a618b0cd2f0006b6a63474cc567f9ac6528323b",
+  "limits": "Isolated E17 worker source156/broad0/C0/census is separate from fresh current E18+MEM9+E19+E20 source128. Root current O2/SAN full semantic/synthesis/source-checkpoint0;52 public images/full fuel-verdict TSV exact qualified E19; original strict3 remain. C25 all20 downstream records0, SAN clients/source/raw/oracle only with backend/helpers/producer/object/archive O2. No fresh complete current broad/acceptance, actual RSS/time/peak gain, held byte/CLI waiver, owner resume, accepted adoption or full Goal completion.",
+  "accepted_implementation_changes_cost_grant_or_Goal_completion": false
+}

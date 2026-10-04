@@ -1,0 +1,1327 @@
+{
+  "review_UTC": "2026-10-04T05:20:49.167134+00:00",
+  "notice_sha256": "096180cc01b175db407c7b7edc48981b9726cfb8551569d84ca51e68ffc7325b",
+  "worker_frozen_epoch": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/epochs/current_stateless_head_pool_v1_focused",
+  "frozen31": {
+    "analysis.md": "612ead43cec046c3f03d8ce42ab932607317569dc28542b7cc84b4af6f64e68f",
+    "candidate-layout.json": "ab9be460357b7ec92421feabc01f459173f7f8278f107fe18917912eb39c7fab",
+    "canonical/eval.c": "bbc0e8cfa56deea75e3fce6429e1a42ddae4f287d40c8c8af1702ef752bc7ef1",
+    "canonical/eval.h": "b98e7770112bfe0c204106872e6ccd4efe7db2b55deeea1927c7c8da674c82d8",
+    "current-parent.patch": "a5b7ec60440e7f5fd991a85863e63c321fa7426c5d6414b2b7545846d4e421c5",
+    "focused-inputs-after.json": "1b91405b53579f2f1bbe908eed2dae0c5ae2d1d1ac2c8780f075963d92d4884b",
+    "focused-inputs-before.json": "0dd704694f12c3f67231e8510de674ea8accef1773d1f5d96742f76534f193a0",
+    "focused-records.json": "ac37928da26e589aca8dbe673f3ac58096898953f073dfe88fe21fcd75946a02",
+    "focused-summary.json": "ee8b300dd47f3bb75cf16f340a169967b119dd0082014ece95d7caabae10cbd8",
+    "freeze_current_pool_focused.py": "d3efec9380934a443e36d7520f6c3a2e50d9e5d667c6a49e3287daa6ad206362",
+    "handoff.json": "231c8587225f8e628a19ccb2a56c62d744b05a3daff2922a72c139acb23308ef",
+    "header_layout_probe.c": "d4db042a252f6ae13d5fa861891f0fcaa8e04537288282d1948286e0642e539b",
+    "initial-preparation-setup-failure.json": "3be6614e616a58cfb293c136ac03edb47df448a1465f50656f3854a5f059dde7",
+    "inspect_current_pool_layouts.py": "6b006d92bb5bc22c0e7e2aa252de32cfaac28a5777365f916e1f81974bec88c8",
+    "inspect_current_pool_layouts_retry.py": "fe8556c8c576cc207183efaff9d3c88984b90782096f66d7d76cca90456bfdc6",
+    "layouts-inputs-after.json": "62257efdd4da6ebe6a06c9729b9d2f3338142bc09b536ca9d8f8dcc857b8f056",
+    "layouts-inputs-before.json": "61b0cd7a3e07128d25823acfe31a4bc0bc6848614f1b5ecafb37160049f714e1",
+    "layouts-records.json": "b1b23f7cee649bfde1604e9af51853b6da47b7153970c228cc8cf09781efd3ff",
+    "layouts-summary.json": "f01f1deab3ca7507f76fbb51cc8c3d6a878fc118ef5239116fe88f3a430a46ca",
+    "original-V3-manifest.sha256": "e2f75d49a624b0415808c5b5ad484e4c58551054a8ec217d88ee75f4cd630a14",
+    "original-layout-records.json": "16cbe0ab0f6c255e3b31a51519391448cdd7b8a4564a12c410028036134f9467",
+    "original-layout-setup-failure.json": "1f315457d1371e5f6e57b70ed789383a6b2af620a7d5954d9bf78cd56474b465",
+    "parent-layout.json": "64da544f836bad76e11add51ec5f4f93e49a2df979b3c423658569e894aa4998",
+    "parent-source.sha256": "c414202a4abb79301b04431b75008fa828dd60712b50518a1d4824e5d555b64b",
+    "preparation.json": "75a420563896177b4f068183bc5033223f8878dd8374fb3f89ff5a57b4f0a9ad",
+    "private-evidence.json": "dd3e57ecc6626a2b7609e6f4d4b70b0e4594798385e1a7d86cbc5e6baeac1ebc",
+    "published-v3-context-dry-run.log": "4122da88df4b5204f572622e3533c9ee08d3f3530047aee0110623f1139cfc63",
+    "published-v3-semantic-alignment.json": "18220669e130f5c9a843efe5382cd3e1b0119e0e43c357e77e19a1c292cc4b13",
+    "qualify_current_pool_focused.py": "0242c7c5865850276c0b718c96828759785cd20c4f0f768c091e4c2b7fc875de",
+    "source.sha256": "80b4610651207998d4789670ddef8f9ae4e497245aa00b3d9a9fce0777ab982d",
+    "manifest.sha256": "c75bf1e66582ecc6cabf1b8c9915ca5f651fb34f22d2119430b1627e677ebc58"
+  },
+  "private186_packages": {
+    "preparation": {
+      "path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004",
+      "records": 135,
+      "manifest_sha256": "4de3bb3e8e9e7558ebebe2d378d59b1f6d4d3d8552647d5416a0777f78e7c47a"
+    },
+    "focused": {
+      "path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004",
+      "records": 32,
+      "manifest_sha256": "48172497120d30c05050aa1cfaa46fe8e7b64ee12bfa9cba7a532e50ee785efa"
+    },
+    "failed_layout": {
+      "path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_layouts_20261004",
+      "records": 6,
+      "manifest_sha256": "5e42b13edb0c34d33cbcd905cc7e5fb0c472c0faed3242c3e1472637dd303ba7"
+    },
+    "layouts": {
+      "path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_layouts_v2_20261004",
+      "records": 12,
+      "manifest_sha256": "53fd3c211822a32cd4006f0be9a3b06327b61b9bc70123f11845f6acd719af53"
+    },
+    "failed_preparation": {
+      "path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/preparation_manifest_path_failure_20261004",
+      "records": 1,
+      "manifest_sha256": "e12cc3d2a9588e6aed69cbca34502dff0997b370b2b3562944a36231f005e577"
+    }
+  },
+  "all_private186_hashes_exact": true,
+  "source256_actual_hashes_exact_only_eval_c_h_differ": true,
+  "all_current_after_pins_exact": {
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/action.c": "bf0018eca9b7d66d52e263adde431dedd4bd5d7542d30f0a4c45cd24bb3b1362",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/action.c": "bf0018eca9b7d66d52e263adde431dedd4bd5d7542d30f0a4c45cd24bb3b1362",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/action.h": "5b352b039d634ac38e1a67fbea8cd58d2d9ad8ab68488da1d408f16b5c8cda40",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/action.h": "5b352b039d634ac38e1a67fbea8cd58d2d9ad8ab68488da1d408f16b5c8cda40",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/artifact/derivation.c": "3be9cbba913cc7411fa134c3d3c868fdd77c7b612aa3e3945129eeaa5ae71b76",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/artifact/derivation.c": "3be9cbba913cc7411fa134c3d3c868fdd77c7b612aa3e3945129eeaa5ae71b76",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/artifact/derivation.h": "5a2745ca237fd4905dc407a139befdf418120998e7a6ca391172c0518f6fb5f4",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/artifact/derivation.h": "5a2745ca237fd4905dc407a139befdf418120998e7a6ca391172c0518f6fb5f4",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/artifact/file.c": "c90864c4b08a11994161efc29b3a9a1e846bc997efb513d115a0c9bb56382c3e",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/artifact/file.c": "c90864c4b08a11994161efc29b3a9a1e846bc997efb513d115a0c9bb56382c3e",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/artifact/file.h": "10e8cb2950822105398dbdc33122e29a36abbf40ab6b52dcd83a8124f730be9b",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/artifact/file.h": "10e8cb2950822105398dbdc33122e29a36abbf40ab6b52dcd83a8124f730be9b",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/artifact/schedule.c": "187dfce992133593607a5b350545ca69502934b82c2300a28dcc7d9f8148e406",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/artifact/schedule.c": "187dfce992133593607a5b350545ca69502934b82c2300a28dcc7d9f8148e406",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/artifact/schedule.h": "e2eb057d7b786072fef838e1fd6b132fb43da0a2e656954706d7a9b50cd8ab7c",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/artifact/schedule.h": "e2eb057d7b786072fef838e1fd6b132fb43da0a2e656954706d7a9b50cd8ab7c",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/artifact/source.c": "4b718cb99d2a578966d508b58d03ddc9cbc991b98d0e48943a813f1982de9404",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/artifact/source.c": "4b718cb99d2a578966d508b58d03ddc9cbc991b98d0e48943a813f1982de9404",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/artifact/source.h": "aa049644c64b034788ceecdeb1aae0b08ba257fef39e71e32464eefb412ea8ef",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/artifact/source.h": "aa049644c64b034788ceecdeb1aae0b08ba257fef39e71e32464eefb412ea8ef",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/classifier.c": "857d21d16bae2a0e10143974dc800bb653ef038ed2744f075a61b21569095842",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/classifier.c": "857d21d16bae2a0e10143974dc800bb653ef038ed2744f075a61b21569095842",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/classifier.h": "362373c41b5468b97b82b938de8943dba6b86988cfcf639c4e05566b80fa5a5e",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/classifier.h": "362373c41b5468b97b82b938de8943dba6b86988cfcf639c4e05566b80fa5a5e",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/comparison_io.c": "9642fda97eeb625b3fdb7090ada03665cff9eaf503b43619e6eaeae5f19b4243",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/comparison_io.c": "9642fda97eeb625b3fdb7090ada03665cff9eaf503b43619e6eaeae5f19b4243",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/computation.c": "86e07e1b9e732e2ab1940b8cae966b6368586ae37f6dd9df1deed7aa770fc28d",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/computation.c": "86e07e1b9e732e2ab1940b8cae966b6368586ae37f6dd9df1deed7aa770fc28d",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/computation.h": "19c58b96bed587582d81825269de8fcda12a612c135d7968ed0a8b906b0dd2f0",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/computation.h": "19c58b96bed587582d81825269de8fcda12a612c135d7968ed0a8b906b0dd2f0",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/computation_internal.h": "72edd937705c4af862f613f43106e2a18756b868998dfcead6eae7ada13dd96f",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/computation_internal.h": "72edd937705c4af862f613f43106e2a18756b868998dfcead6eae7ada13dd96f",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/computation_io.c": "224c7ff11ae78629e6ecbd0c9076005267f92d6913c344f78d8e2e084787e4ff",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/computation_io.c": "224c7ff11ae78629e6ecbd0c9076005267f92d6913c344f78d8e2e084787e4ff",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/computation_io.h": "8d9949abb65da647fdfe4dd86f0e8fb8488f977e2209baa22d05077f2d9f8f16",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/computation_io.h": "8d9949abb65da647fdfe4dd86f0e8fb8488f977e2209baa22d05077f2d9f8f16",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/context_io.c": "2613b5072b95e633eb2b2cad13f2210cd51947ff9797df752808c8b8d0d8d0f4",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/context_io.c": "2613b5072b95e633eb2b2cad13f2210cd51947ff9797df752808c8b8d0d8d0f4",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/context_io.h": "42d36660af31cef4819a976b57e151a6d4d9d2f0be5a1bd7d6d680241d9f90e3",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/context_io.h": "42d36660af31cef4819a976b57e151a6d4d9d2f0be5a1bd7d6d680241d9f90e3",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/context_payload.c": "f6b182f40d0c7451ecefea901a115b5d35b6b6347a163ed2cfcf4b9325453490",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/context_payload.c": "f6b182f40d0c7451ecefea901a115b5d35b6b6347a163ed2cfcf4b9325453490",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/context_payload.h": "d80026ed6230cb43d3b97606e8003bf6e1514cbfae341bb760625c2ebfe35181",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/context_payload.h": "d80026ed6230cb43d3b97606e8003bf6e1514cbfae341bb760625c2ebfe35181",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/conversion.c": "4c3fd04649e56c516f6c11b687ac1d1ce0c2fcaaaab4a052d9d22c804f40b0ce",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/conversion.c": "4c3fd04649e56c516f6c11b687ac1d1ce0c2fcaaaab4a052d9d22c804f40b0ce",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/conversion.h": "ef78fbbd8c7930636f46a0dd8f0e5e13679d17b01892d87b3e415ba4d80bdc4e",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/conversion.h": "ef78fbbd8c7930636f46a0dd8f0e5e13679d17b01892d87b3e415ba4d80bdc4e",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/dag.c": "fde727603ab63cf1558295f1d012c4171db84d4f7e0355699a0a85e37408a6d7",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/dag.c": "fde727603ab63cf1558295f1d012c4171db84d4f7e0355699a0a85e37408a6d7",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/dag.h": "d1b7ae725abf29776b2e8733027d19d2e4cac0be5cb77d80982ad7eb719928ca",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/dag.h": "d1b7ae725abf29776b2e8733027d19d2e4cac0be5cb77d80982ad7eb719928ca",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/declaration_io.c": "38f2b7864d5c74a6dcf91d501d28a17b91b7ddb5e3752b95504711cc3c97d506",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/declaration_io.c": "38f2b7864d5c74a6dcf91d501d28a17b91b7ddb5e3752b95504711cc3c97d506",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/declaration_io.h": "b9aed166e7413439bc38ca9672139a6657c0d5c98e483cf928445ebf5052966b",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/declaration_io.h": "b9aed166e7413439bc38ca9672139a6657c0d5c98e483cf928445ebf5052966b",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/derivation.c": "34414daae64ecd0636dcbb132dc6034e4446288c378264165e7a660f0550a9a2",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/derivation.c": "34414daae64ecd0636dcbb132dc6034e4446288c378264165e7a660f0550a9a2",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/derivation.h": "f19b25a64276150b3374a09d8b92927fa39ea169a50d244f6ea29e2d8c123725",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/derivation.h": "f19b25a64276150b3374a09d8b92927fa39ea169a50d244f6ea29e2d8c123725",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/derivation_io.c": "0238457cdc590befc42be9bc8ea5ea8da15667e3f4b5cdeaee69f7de3ff4b628",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/derivation_io.c": "0238457cdc590befc42be9bc8ea5ea8da15667e3f4b5cdeaee69f7de3ff4b628",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/derivation_io.h": "5eb2dd56935a5af8fa4a64411599d92a4d26ed9e1f95105bf8ca0204ccc50956",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/derivation_io.h": "5eb2dd56935a5af8fa4a64411599d92a4d26ed9e1f95105bf8ca0204ccc50956",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/descriptor_io.c": "66157535cb1f32df03d5e0cedf2554b702df2f91e997f852363954bf4998b86c",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/descriptor_io.c": "66157535cb1f32df03d5e0cedf2554b702df2f91e997f852363954bf4998b86c",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/descriptor_io.h": "09f677af9c012fd8d1d9e805550481d072f0aeae7116c8a5e158c1fbb891f71a",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/descriptor_io.h": "09f677af9c012fd8d1d9e805550481d072f0aeae7116c8a5e158c1fbb891f71a",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/dimension.c": "686d970716c05be8cb16c78d4020c09b6737f3ddb09df4b8bcaf79a42f25f210",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/dimension.c": "686d970716c05be8cb16c78d4020c09b6737f3ddb09df4b8bcaf79a42f25f210",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/dimension.h": "e7947b5275d1e49ed6e5c70f0c8fd030f34d8488cfce4282adfc51e8a231dab2",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/dimension.h": "e7947b5275d1e49ed6e5c70f0c8fd030f34d8488cfce4282adfc51e8a231dab2",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/effect_inference.c": "2e7fa7d9dd8c740dc5144be961696c1921c31d474bf4faddc3372674f0c46b42",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/effect_inference.c": "2e7fa7d9dd8c740dc5144be961696c1921c31d474bf4faddc3372674f0c46b42",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/effect_inference.h": "15e04bdbf83251c6964de11095a6689907d8e96eb081a5cb15985a69d6e925b3",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/effect_inference.h": "15e04bdbf83251c6964de11095a6689907d8e96eb081a5cb15985a69d6e925b3",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/eval.c": "c4ba0584e216345d6f23a0d9fc4bd7c1b343bf73ab788d9beaa54477476a2902",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/eval.c": "bbc0e8cfa56deea75e3fce6429e1a42ddae4f287d40c8c8af1702ef752bc7ef1",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/eval.h": "83124efa76569efc1da5da0ea5a922b1e63e553ac014b1c8d86ac3f0083b35f6",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/eval.h": "b98e7770112bfe0c204106872e6ccd4efe7db2b55deeea1927c7c8da674c82d8",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/eval_internal.h": "2478e30a7d3749223b800e6900dfc261fe711123e3f229515e62a7dab8d04cb5",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/eval_internal.h": "2478e30a7d3749223b800e6900dfc261fe711123e3f229515e62a7dab8d04cb5",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/eval_io.c": "827165832493aafe76cf8831b759ab522df3c16c8ec4163f1cf43b4788b50e9b",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/eval_io.c": "827165832493aafe76cf8831b759ab522df3c16c8ec4163f1cf43b4788b50e9b",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/eval_io.h": "2b5ef4cc66bbc879fcbae3465f921aa881bf1492b3f9d2796bd25d8348502f9a",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/eval_io.h": "2b5ef4cc66bbc879fcbae3465f921aa881bf1492b3f9d2796bd25d8348502f9a",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/evidence.c": "e78bedccd1c7e96cd98ab544d1f39ff3048a661b48db114aac7d74b1bd67c184",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/evidence.c": "e78bedccd1c7e96cd98ab544d1f39ff3048a661b48db114aac7d74b1bd67c184",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/evidence.h": "e7f62d72704b18eefd7c6b97cca1e9c791b884b286289526ca834375750d5acc",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/evidence.h": "e7f62d72704b18eefd7c6b97cca1e9c791b884b286289526ca834375750d5acc",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/evidence_cbpv.c": "b487430973e287ecfcd571d939393d0135fe013c8de613764fc745e8a387ecfa",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/evidence_cbpv.c": "b487430973e287ecfcd571d939393d0135fe013c8de613764fc745e8a387ecfa",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/evidence_function.c": "6472eabaafb6b58622fb045b944d666db4f859bb1b753e564e36d233135d1696",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/evidence_function.c": "6472eabaafb6b58622fb045b944d666db4f859bb1b753e564e36d233135d1696",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/evidence_identity.c": "8fe2ea181233cc2e287d541bfff342b4e0f74a0dadbb360d9cde779421d253d1",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/evidence_identity.c": "8fe2ea181233cc2e287d541bfff342b4e0f74a0dadbb360d9cde779421d253d1",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/evidence_scope.c": "331f85687a9807d0e43efe23e63ffcadeacf88eb5c9da4c81c5fd8f5d3b20f53",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/evidence_scope.c": "331f85687a9807d0e43efe23e63ffcadeacf88eb5c9da4c81c5fd8f5d3b20f53",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/evidence_structure.h": "414bc3d6470ac2f193ad5175370e2d67b7be2dd0b2045d19aebf344567a9b406",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/evidence_structure.h": "414bc3d6470ac2f193ad5175370e2d67b7be2dd0b2045d19aebf344567a9b406",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/execution.c": "b8be7ce34477d75f9b4d626e50f104149fe92f4580823ef293e2a53639294525",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/execution.c": "b8be7ce34477d75f9b4d626e50f104149fe92f4580823ef293e2a53639294525",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/execution.h": "157c56bf37d8de750a39f52bb3597c3bf80fda9b4c3e9148f86cfb85dbb5d8cf",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/execution.h": "157c56bf37d8de750a39f52bb3597c3bf80fda9b4c3e9148f86cfb85dbb5d8cf",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/function_graph.c": "45824e964d3620a49097ca9fee6c156800d54334549da885b856d524f6b04697",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/function_graph.c": "45824e964d3620a49097ca9fee6c156800d54334549da885b856d524f6b04697",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/function_graph.h": "daccbcdecfa7a583bee2697f1c1641151ffeb4c870b93ed8e088d9949b651772",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/function_graph.h": "daccbcdecfa7a583bee2697f1c1641151ffeb4c870b93ed8e088d9949b651772",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/function_graph_internal.h": "5df25552e7c65e8ea12b0c31cff6cffc3074aada746b0c58224856947cee1e00",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/function_graph_internal.h": "5df25552e7c65e8ea12b0c31cff6cffc3074aada746b0c58224856947cee1e00",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/function_witness.c": "b54482e36c7065f0c0c20f6ba145a25ca365e34b854211cba0b5bb04f3281e7d",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/function_witness.c": "b54482e36c7065f0c0c20f6ba145a25ca365e34b854211cba0b5bb04f3281e7d",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/function_witness.h": "3d3929b519371a285b553cb1cd7829093e766cdb27850aeb8a42f27c73769ee2",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/function_witness.h": "3d3929b519371a285b553cb1cd7829093e766cdb27850aeb8a42f27c73769ee2",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/graph.c": "de6bb8c45c08e97c0ef8e5302bbdafec681b829edf1f6874c853d443116cc933",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/graph.c": "de6bb8c45c08e97c0ef8e5302bbdafec681b829edf1f6874c853d443116cc933",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/graph.h": "811ad8f3c3be525286aaa6e4c29fc02532f7c9bca716dc992178f93b57513381",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/graph.h": "811ad8f3c3be525286aaa6e4c29fc02532f7c9bca716dc992178f93b57513381",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/graph_internal.h": "6ee556694aba28178048e451ac487d35a318b4040179e43e8a512cd6c336d240",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/graph_internal.h": "6ee556694aba28178048e451ac487d35a318b4040179e43e8a512cd6c336d240",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/graph_io.c": "f169a91198f20949a1b095fa8c773ccdbb7866f1a92ffb8dd7ecd46ed7a5f5cc",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/graph_io.c": "f169a91198f20949a1b095fa8c773ccdbb7866f1a92ffb8dd7ecd46ed7a5f5cc",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/graph_io.h": "6f2d766032d38015dffaa7ae28387bd6763129455ee5bb8dbf02a3dae1181e2d",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/graph_io.h": "6f2d766032d38015dffaa7ae28387bd6763129455ee5bb8dbf02a3dae1181e2d",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/host.c": "3cdc2612af14130b8c962299931f67e8e86a3faadfcb9b1b41f0cd61a6f73453",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/host.c": "3cdc2612af14130b8c962299931f67e8e86a3faadfcb9b1b41f0cd61a6f73453",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/host.h": "b8c5a05b6529a126f5f8d2e7083a73b7c36a8f1e8167d07be83271954645dd13",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/host.h": "b8c5a05b6529a126f5f8d2e7083a73b7c36a8f1e8167d07be83271954645dd13",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/iadt.c": "78fea20444a7ad90658fd8e7e1af9a37247acf4728171e46872838a9379e3ec1",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/iadt.c": "78fea20444a7ad90658fd8e7e1af9a37247acf4728171e46872838a9379e3ec1",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/iadt.h": "edba44c9c7b4d8c8c0575dceeb2b0cdd84eb01c232cfa37e441343bbeb802354",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/iadt.h": "edba44c9c7b4d8c8c0575dceeb2b0cdd84eb01c232cfa37e441343bbeb802354",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/identity.c": "e0052d3e87231a33d314e5ea09bf6b0c51afa1bd9e5bb72cea64ee8a612987d9",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/identity.c": "e0052d3e87231a33d314e5ea09bf6b0c51afa1bd9e5bb72cea64ee8a612987d9",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/identity.h": "908d2008294d6978d0d17069dbedae05a71e73878c42af95518f31a0b55ed361",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/identity.h": "908d2008294d6978d0d17069dbedae05a71e73878c42af95518f31a0b55ed361",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/identity_internal.h": "e12be47bf272eea13e2003a6cbc2772a2426f26f72f243d640907006fe6575ab",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/identity_internal.h": "e12be47bf272eea13e2003a6cbc2772a2426f26f72f243d640907006fe6575ab",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/identity_io.c": "1dae1e9476a2e32c8ee76b158ec73f238c10d254474d46492dc5bdaffc8fe9c6",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/identity_io.c": "1dae1e9476a2e32c8ee76b158ec73f238c10d254474d46492dc5bdaffc8fe9c6",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/machine_io.c": "572e62d15019e33b79367c08bffe8747d2b3105b66cb16746ed87f54fd677dd1",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/machine_io.c": "572e62d15019e33b79367c08bffe8747d2b3105b66cb16746ed87f54fd677dd1",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/main.c": "bcbdc6da72b556e32749b8d99b7bff2338ad4ec9f3870a26e001a22f501fde61",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/main.c": "bcbdc6da72b556e32749b8d99b7bff2338ad4ec9f3870a26e001a22f501fde61",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/occurrence_io.c": "9dfa0538f1b2177f2064a24af4e15b9b53cf5def56cb3aefc45f3a82b8488bd9",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/occurrence_io.c": "9dfa0538f1b2177f2064a24af4e15b9b53cf5def56cb3aefc45f3a82b8488bd9",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/occurrence_io.h": "b8d67b4cfadba1529f3f15529084d796a162b0dc343d37c17b4da5feb30226e1",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/occurrence_io.h": "b8d67b4cfadba1529f3f15529084d796a162b0dc343d37c17b4da5feb30226e1",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/pending.h": "3037b716c5b6f81bc55fc790bc64a95f3b11794e28cb2cdf451accf010c5b681",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/pending.h": "3037b716c5b6f81bc55fc790bc64a95f3b11794e28cb2cdf451accf010c5b681",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/prelude.c": "08e194930fcf517b8f59434bc14912c52ef33eb44946db17b9a75d99d687bb2d",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/prelude.c": "08e194930fcf517b8f59434bc14912c52ef33eb44946db17b9a75d99d687bb2d",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/prelude.h": "1ce79020cc930a90af0656d966f49f9dc31b9969442202b8c53d3991d4562778",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/prelude.h": "1ce79020cc930a90af0656d966f49f9dc31b9969442202b8c53d3991d4562778",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/program.c": "531484a195a13c1bff33ff86a44c9ab58bcabee2fb0f95e08812d2526211900d",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/program.c": "531484a195a13c1bff33ff86a44c9ab58bcabee2fb0f95e08812d2526211900d",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/program.h": "b3e2eabf9ad56390aca88ab99cfe168f54703cb63e7cb33d8608d637e9315498",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/program.h": "b3e2eabf9ad56390aca88ab99cfe168f54703cb63e7cb33d8608d637e9315498",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/reader.c": "06d602617bbb8c243e477bebe1abb5d4f0576241990c8c8720272af31630cc73",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/reader.c": "06d602617bbb8c243e477bebe1abb5d4f0576241990c8c8720272af31630cc73",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/reader.h": "486d62c7b4f6e26557a298faead3261bc8c1bb4bda3b4fadbf47ae8a25599afc",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/reader.h": "486d62c7b4f6e26557a298faead3261bc8c1bb4bda3b4fadbf47ae8a25599afc",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/reduction_io.c": "2c6dbbe4e7a417ed6e14dba01bbe3ed61c83464efd670e611a5c961ef9d5c9e3",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/reduction_io.c": "2c6dbbe4e7a417ed6e14dba01bbe3ed61c83464efd670e611a5c961ef9d5c9e3",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/retained_io.c": "12c71d7cc5f0ccd17547c7cda9f54332b13cb3165b7d0219e9dbecf6f4d70a25",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/retained_io.c": "12c71d7cc5f0ccd17547c7cda9f54332b13cb3165b7d0219e9dbecf6f4d70a25",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/retained_io.h": "fa310c52af8e72fa97a909095959fb22d78954326658d8e6b80088ca70588f7e",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/retained_io.h": "fa310c52af8e72fa97a909095959fb22d78954326658d8e6b80088ca70588f7e",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/scope.c": "14e2c88a6d97ee4e18ece7ef4093501f44b0d594c53c8eb534f761cd94ab0929",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/scope.c": "14e2c88a6d97ee4e18ece7ef4093501f44b0d594c53c8eb534f761cd94ab0929",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/scope.h": "958d6d1f42c22b195160f77fe52e731c78043227f28ece4ede1958017c22e96b",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/scope.h": "958d6d1f42c22b195160f77fe52e731c78043227f28ece4ede1958017c22e96b",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/seed.c": "98dc7a4c019b3a592c8863174a720063967fd09282d3d0dd6b743a9cfb844a61",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/seed.c": "98dc7a4c019b3a592c8863174a720063967fd09282d3d0dd6b743a9cfb844a61",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/seed.h": "0e9c7920b51f91a11602d27f63352d6d5d4ccda73dd0728cba18d9b626bd841c",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/seed.h": "0e9c7920b51f91a11602d27f63352d6d5d4ccda73dd0728cba18d9b626bd841c",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/source_io.c": "4b94010dae73542f6a214509f3a03361174d7ee600518244795dc6fc551573f6",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/source_io.c": "4b94010dae73542f6a214509f3a03361174d7ee600518244795dc6fc551573f6",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/source_io.h": "4e9a622268de778a0fccee0744c947e67d708b759c1b30ce4c927b2c953a8edc",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/source_io.h": "4e9a622268de778a0fccee0744c947e67d708b759c1b30ce4c927b2c953a8edc",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/subscription.c": "402ae43301f76b31a3a6809e73103d59f5fc8352812c4f80e997aa0c22e9c8fd",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/subscription.c": "402ae43301f76b31a3a6809e73103d59f5fc8352812c4f80e997aa0c22e9c8fd",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/subscription.h": "727dd905ab2b0c5c749c4330ba9de34c8a2b0e07f48bea64ca8c38d3f9d18ba9",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/subscription.h": "727dd905ab2b0c5c749c4330ba9de34c8a2b0e07f48bea64ca8c38d3f9d18ba9",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/support.c": "d26104dfd003b05414dc151882a542b127e71e7288c309bee13aaf34a2df1348",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/support.c": "d26104dfd003b05414dc151882a542b127e71e7288c309bee13aaf34a2df1348",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/support.h": "a8e27f60779fe6bf5b88ce74991855e67ac167d9fd0c9549a9d4b74624e60977",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/support.h": "a8e27f60779fe6bf5b88ce74991855e67ac167d9fd0c9549a9d4b74624e60977",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/symmetry.c": "af73abaeac3d6b01577bf10305a858ad6143bb7e6088cc4903817a72d7c0d5fb",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/symmetry.c": "af73abaeac3d6b01577bf10305a858ad6143bb7e6088cc4903817a72d7c0d5fb",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/symmetry.h": "2a315abf7233d7f0e87430e8b4bc23ffa8acd97d8a97bca3c4a0204379fe6dc4",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/symmetry.h": "2a315abf7233d7f0e87430e8b4bc23ffa8acd97d8a97bca3c4a0204379fe6dc4",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/symmetry_internal.h": "569468be53803726d886a5de3e7240decbc4d9173ea554ecb1edf4b428d00ea6",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/symmetry_internal.h": "569468be53803726d886a5de3e7240decbc4d9173ea554ecb1edf4b428d00ea6",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/syntax.c": "76bd00a68d91480f9a6196e463119fee819cfcf5369f9390b39a9e1a13c72824",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/syntax.c": "76bd00a68d91480f9a6196e463119fee819cfcf5369f9390b39a9e1a13c72824",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/syntax.h": "b333b47a17fac161af99f5b898baebaef224fb751ba6183ab73ffe79021e6049",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/syntax.h": "b333b47a17fac161af99f5b898baebaef224fb751ba6183ab73ffe79021e6049",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/syntax_io.c": "6b4b27e7790f130a563bb064341b93eb9f724eb36df08fb584115daf494bf32e",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/syntax_io.c": "6b4b27e7790f130a563bb064341b93eb9f724eb36df08fb584115daf494bf32e",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/syntax_io.h": "e7802ba592678c1a3c48f8f8d7401d36df15b09390e367c0697c294c54421a5f",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/syntax_io.h": "e7802ba592678c1a3c48f8f8d7401d36df15b09390e367c0697c294c54421a5f",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis.c": "dd817cf3b5832942a6bb3e216780a4a36ce6754993cb73fe4642dc903031c4c7",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis.c": "dd817cf3b5832942a6bb3e216780a4a36ce6754993cb73fe4642dc903031c4c7",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis.h": "f3497904337a30b57ff3897357fa5d9706326a2ea6cf33cffe8dad01a7c717e4",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis.h": "f3497904337a30b57ff3897357fa5d9706326a2ea6cf33cffe8dad01a7c717e4",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_binding.c": "77a7af11536020817ca62ed7dd172f80dad768dcd134cef05fa694320ee7271b",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_binding.c": "77a7af11536020817ca62ed7dd172f80dad768dcd134cef05fa694320ee7271b",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_cbpv.c": "ac865aa88f6e87321197668c70aed2371e07ff66ed95dc623d22f6a024b14c59",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_cbpv.c": "ac865aa88f6e87321197668c70aed2371e07ff66ed95dc623d22f6a024b14c59",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_context.c": "eee075aea29a3b4fae8dcd3956a07c0409c91b6442280445f6e5cd212ec99a57",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_context.c": "eee075aea29a3b4fae8dcd3956a07c0409c91b6442280445f6e5cd212ec99a57",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_conversion.c": "7abee0c273b9bd074d6b77419198833b7e1b54c197fa0e745a7562e990040b1f",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_conversion.c": "7abee0c273b9bd074d6b77419198833b7e1b54c197fa0e745a7562e990040b1f",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_conversion.h": "8386cef962260a5217a32f6be3a281c0b718ab10377a7cb998df468e702d0acc",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_conversion.h": "8386cef962260a5217a32f6be3a281c0b718ab10377a7cb998df468e702d0acc",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_derivation.c": "4ae23175231542174f4fbb4e267bac8d366f9cb9021b43cf6033059056b25b22",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_derivation.c": "4ae23175231542174f4fbb4e267bac8d366f9cb9021b43cf6033059056b25b22",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_effect.c": "f620c3724f2b19b7643e81ce968052610dc726039df2ad658800e79448bc038f",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_effect.c": "f620c3724f2b19b7643e81ce968052610dc726039df2ad658800e79448bc038f",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_effect.h": "524f43121cb546c6f5c8b5f1f3b842a746a5715d1f655be0dbfa750555bc1066",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_effect.h": "524f43121cb546c6f5c8b5f1f3b842a746a5715d1f655be0dbfa750555bc1066",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_function.c": "1373d9b4c52be7cdf8d7537150a1194b7a13a34f8d223ff9e2fb1f61edb34d65",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_function.c": "1373d9b4c52be7cdf8d7537150a1194b7a13a34f8d223ff9e2fb1f61edb34d65",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_handler.c": "51f2b14a0a5c1cc3f3170b767fe82dda58771ababa64b3f320839181877cc0c2",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_handler.c": "51f2b14a0a5c1cc3f3170b767fe82dda58771ababa64b3f320839181877cc0c2",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_handler.h": "7a6daa0461e92ac5e39810b2060fb66775f3c9fda1ae38f36e6721393438f2e1",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_handler.h": "7a6daa0461e92ac5e39810b2060fb66775f3c9fda1ae38f36e6721393438f2e1",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_iadt.c": "76c90ddd54ada186452ce5854dcccf92baaee34c8c2297a8d5a69987af9fe32e",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_iadt.c": "76c90ddd54ada186452ce5854dcccf92baaee34c8c2297a8d5a69987af9fe32e",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_identity.c": "fbad0b5b5d010d2ee49c0904a0811917bb84432ebcafd7b627af6b5cab0d5929",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_identity.c": "fbad0b5b5d010d2ee49c0904a0811917bb84432ebcafd7b627af6b5cab0d5929",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_operation.c": "0e9f3e473bb825d856ddfe2f9a2ee4108c9acd8ab2ef15dafc4209d7aabf5bac",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_operation.c": "0e9f3e473bb825d856ddfe2f9a2ee4108c9acd8ab2ef15dafc4209d7aabf5bac",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_schema.c": "b194ad32c378f53db89516971bc326aa8a8b38e132c498f8180300ae4d4fecd3",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_schema.c": "b194ad32c378f53db89516971bc326aa8a8b38e132c498f8180300ae4d4fecd3",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_schema.h": "f585eb84756e8bda68f22ad00a42930874155c2744be0ff722ce4c6022b1e59a",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_schema.h": "f585eb84756e8bda68f22ad00a42930874155c2744be0ff722ce4c6022b1e59a",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_source.h": "fabaf3bee2ce7738b7bee2ba8779fe68dae328031df1f8a2063315c79d79f943",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_source.h": "fabaf3bee2ce7738b7bee2ba8779fe68dae328031df1f8a2063315c79d79f943",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_work.c": "01334b6e64c0a1b224468b3db9a15e7e3912a063d5a5ad6a0e503a1fca958cf3",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_work.c": "01334b6e64c0a1b224468b3db9a15e7e3912a063d5a5ad6a0e503a1fca958cf3",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/synthesis_work.h": "4e54f054144d0d878640d9a9e353adba3a8ad2615c97936f867e3ded4c309ec1",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/synthesis_work.h": "4e54f054144d0d878640d9a9e353adba3a8ad2615c97936f867e3ded4c309ec1",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/typed_query.c": "ac6ebad9d78b21bf414d8c3f4f30ae96b822163936d651d4e3f276b9d5bd83dd",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/typed_query.c": "ac6ebad9d78b21bf414d8c3f4f30ae96b822163936d651d4e3f276b9d5bd83dd",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/typed_query.h": "6204390c8bcf06820fa9337be8c694848abb6e179894f951b04c8d10d8df74d9",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/typed_query.h": "6204390c8bcf06820fa9337be8c694848abb6e179894f951b04c8d10d8df74d9",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/typing.c": "acaea5a1ad16fbdc232629df9a1ba1e1fdd024e7e3fc329d624ec545fad705fc",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/typing.c": "acaea5a1ad16fbdc232629df9a1ba1e1fdd024e7e3fc329d624ec545fad705fc",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/typing.h": "551de1c7970b4e425a7f88503f0cd40a7c6f986abb520c57dc27685a6309689c",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/typing.h": "551de1c7970b4e425a7f88503f0cd40a7c6f986abb520c57dc27685a6309689c",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/wire.c": "e737a6c6e9f5f91219ad653ea6437729b9c06008bf5ae06de60b3067fe78fbec",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/wire.c": "e737a6c6e9f5f91219ad653ea6437729b9c06008bf5ae06de60b3067fe78fbec",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/wire.h": "ddef58862ae5882147919b51b848093f9ec048ec6cbd9ca9d228d3f414b5f7f2",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/wire.h": "ddef58862ae5882147919b51b848093f9ec048ec6cbd9ca9d228d3f414b5f7f2",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem1/epochs/head_frame_v3/README.md": "91f87272994048150142ee75546cf4e6158fc27cc773cd2399dd27fa3c41f41d",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem1/epochs/head_frame_v3/applied.patch": "764c3d2177624663a3a59b6d659f80c897cad0603d1c64aa98f64a94f789d025",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem1/epochs/head_frame_v3/callback-controls.json": "d1bafd0b36791217019ef80fa7a3dfe18b669e2b1e204ff8bfa3243ba243af34",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem1/epochs/head_frame_v3/callback_failure_cleanup_test.c": "93da2cfae80ddecd43deb62d1f242fad710ae5fcc0b9ea19aba41ed491b57cff",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem1/epochs/head_frame_v3/capacity-comparison-180M.json": "012391421d8913d1cefde240eda610c7d37cc9099de1af5c32168e4cbe94000a",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem1/epochs/head_frame_v3/captured_head_frame_retirement.patch": "eed0c41bef003edb355863ce6095f4e813e497112071702cd8bf9b25eded8370",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem1/epochs/head_frame_v3/eval.c.patch": "ad8f2e591e670ef41da60a2c4e47bdbf7c4d9ffe2151fe9cf43dedd2654cc53c",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem1/epochs/head_frame_v3/eval.h.patch": "007d3c23f6f2c2cdef48e78617e854450293d7eff619928b9a4253788dc70f73",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem1/epochs/head_frame_v3/evidence-freeze.json": "397605592eb40c107f1fc2e3328446a92cc4a2dd50af9f4ed6b7b983dc15168a",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem1/epochs/head_frame_v3/existing-allocation-audit-census.json": "5f6c2501c2d2423ef0c8f52137813b459c37a3873b5a96496f47d2111b272e93",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem1/epochs/head_frame_v3/frame_retirement_test.c": "340831c01ab47b49401535d0e53ad1817ca88b61c9fd9ac4ae303d1bc9ae7e73",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem1/epochs/head_frame_v3/historical-v2-callback-failure.json": "e732e16d791a814f94f5f8f8dd298630c1c8eb0ed713d1b1c6eaffc471b9e290",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem1/epochs/head_frame_v3/source.sha256": "353ed498ac3f59c560e59f60dd9a299e04891db3e650046e3eb0b12e92cfc0fa",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem1/epochs/head_frame_v3/stateless_head_cleanup_test.c": "4ac7f0173e81d7355e785abc80818b800873b9124ad2395cca1d575555ad368f",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem1/epochs/head_frame_v3/summary.json": "efece9a26d5a53d11edad1f9c0b93d2d404739beba548c5d91635d35d6c84fa2",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem1/epochs/head_frame_v3/v3-attribution-result.json": "5945a7c9561ff8a034944fc3f68e08f43896bca1fdcdeb6a1f99361bd41050dc",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem1/epochs/head_frame_v3/verify.mk": "f53e3eacf18dd5be46d384984c00a05164ea09508e756380f8d0fe8c67fcae50",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/qualify_current_pool_focused.py": "0242c7c5865850276c0b718c96828759785cd20c4f0f768c091e4c2b7fc875de",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/preparation.json": "75a420563896177b4f068183bc5033223f8878dd8374fb3f89ff5a57b4f0a9ad",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/source.sha256": "c414202a4abb79301b04431b75008fa828dd60712b50518a1d4824e5d555b64b",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/source.sha256": "80b4610651207998d4789670ddef8f9ae4e497245aa00b3d9a9fce0777ab982d",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/Makefile": "063d846eb99f86c1c133abf393b3a2a7cf97f548eb472f8b786365f11ba1a167",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_verification/build.mk": "969864732ed405b1fd5cfd3616529f644cc8eb33e7c5552d2bda5fc69c1a551e",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance/build.mk": "befee229e8553db13299431fdd713a8f63fdf3a5e755f99d1c1c147b64cb4a28",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/artifact_persistence/build.mk": "04cc1aaea432a2e812893aa08fef8ff0c92d14661655ab3ea164468fb14c8f31",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/layout.gdb.py": "25343a6fb6580dd007adc17141ec7724b40d104f1077dfbe2b6251cb388538b0",
+    "/usr/bin/x86_64-linux-gnu-gcc-14": "a23ecab8ff08f09ad8c80602c2c5df7f49e09c25905cb8975902e101bf72635f",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-parent-o2/frame_retirement_test": "8685bcae6a52768aa67a3152cfc4f7b85bcfca84371d9d2352e20c8bb6771dda",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-parent-o2/stateless_head_cleanup_test": "1ba5dc469815c0a84c3a1d94ea70122f5d375eb3bc2cfb302689beed70e31d8c",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-parent-o2/callback_failure_cleanup_test": "50fac234c87070edb242de155a6ee2be90a539df5d7e371ed2de913bc78b956f",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-candidate-o2/frame_retirement_test": "c4aa78ae6258290a94cd4a40676609a528348fc3677ce6c08f5a5243e5a0751b",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-candidate-o2/stateless_head_cleanup_test": "1ef421532fcc9c65b99c0621d1ab74fa791a725cfa94b60fae381cc5212f4b21",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-candidate-o2/callback_failure_cleanup_test": "53f4fa9dd7fa83da556a2586600a82ad2ab6963b88942f9e9a7f92a1950f319c",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-parent-san/frame_retirement_test": "5940336a5d4e583fbae23754e22f0198a9284e222ce347d7e0c9b1639d0b1731",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-parent-san/stateless_head_cleanup_test": "40e967a9bd799b075dd5faa53fbb726641c76f2b9c908625748426937b0b9efd",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-parent-san/callback_failure_cleanup_test": "cd6d288b2ae4607785015c02338129c75cd8841c4687e56d80f5b31c91308089",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-candidate-san/frame_retirement_test": "8ed9189aafb63e6f5eadb9cc642d040afdf62cf17b470f902e8939a5090496af",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-candidate-san/stateless_head_cleanup_test": "4292b425199b9f5b0218f4dbcbcec5bb67cf26c1ef85b92dd193c0983b2a60da",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-candidate-san/callback_failure_cleanup_test": "369e32defcfa168ac64d626f26a90566e1161c5643806ca84c1fba3fd88c539b",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/inspect_current_pool_layouts_retry.py": "fe8556c8c576cc207183efaff9d3c88984b90782096f66d7d76cca90456bfdc6",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/header_layout_probe.c": "d4db042a252f6ae13d5fa861891f0fcaa8e04537288282d1948286e0642e539b",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/summary.json": "ee8b300dd47f3bb75cf16f340a169967b119dd0082014ece95d7caabae10cbd8",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/inputs-after.json": "1b91405b53579f2f1bbe908eed2dae0c5ae2d1d1ac2c8780f075963d92d4884b",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_layouts_20261004/records.json": "16cbe0ab0f6c255e3b31a51519391448cdd7b8a4564a12c410028036134f9467",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_layouts_20261004/inputs-before.json": "c0f059d0ddce684943859c899f665aeced1989962bff408926bd9b063d63371f",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_layouts_20261004/inputs-after.json": "c0f059d0ddce684943859c899f665aeced1989962bff408926bd9b063d63371f",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_layouts_20261004/failed-inspect_current_pool_layouts.py": "6b006d92bb5bc22c0e7e2aa252de32cfaac28a5777365f916e1f81974bec88c8",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_layouts_20261004/setup-failure.json": "1f315457d1371e5f6e57b70ed789383a6b2af620a7d5954d9bf78cd56474b465",
+    "/usr/bin/gdb": "b4ba8c0e9c47096e7dd407006a310549e274392d37ec6fe04f7dbc7606f0ac90",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_layouts_v2_20261004/parent.o": "fdb1fadb614b67bdf113837059448dbfcffb32102120831aade8e6eb87c54c90",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_layouts_v2_20261004/candidate.o": "52c1000684f388eca2df8990654bb5ef777c8813ffb1f9fecf61542524d417c7"
+  },
+  "focused16_and_header_layout4_records": {
+    "focused": [
+      {
+        "label": "build-parent-o2",
+        "argv": [
+          "make",
+          "-j1",
+          "-f",
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem1/epochs/head_frame_v3/verify.mk",
+          "VERIFICATION_MAKEFILE=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_verification/build.mk",
+          "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent",
+          "ROOT=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/",
+          "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-parent-o2",
+          "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+          "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2 -g",
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-parent-o2/frame_retirement_test",
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-parent-o2/stateless_head_cleanup_test",
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-parent-o2/callback_failure_cleanup_test"
+        ],
+        "exit": 0,
+        "censored": false,
+        "log_sha256": "209360841b0abe3518a75676162493267586c6f82447f33397aced07acc49674"
+      },
+      {
+        "label": "parent-o2-frame_retirement_test",
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-parent-o2/frame_retirement_test"
+        ],
+        "exit": 0,
+        "censored": false,
+        "log_sha256": "6fd2f0515b9b1690e79ca5e43f038066f813d0ab9e2e0aaa4fe103912a4e0623"
+      },
+      {
+        "label": "parent-o2-stateless_head_cleanup_test",
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-parent-o2/stateless_head_cleanup_test"
+        ],
+        "exit": 0,
+        "censored": false,
+        "log_sha256": "1b6870cb7c5a109e761795a021289308304d20ac0a05d437bf159951df9c6e81"
+      },
+      {
+        "label": "parent-o2-callback_failure_cleanup_test",
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-parent-o2/callback_failure_cleanup_test"
+        ],
+        "exit": 0,
+        "censored": false,
+        "log_sha256": "61ec4af330c385ae0f897bc52eb6b4f63fad77a93da5af858b2b8175fd8cbaef"
+      },
+      {
+        "label": "build-candidate-o2",
+        "argv": [
+          "make",
+          "-j1",
+          "-f",
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem1/epochs/head_frame_v3/verify.mk",
+          "VERIFICATION_MAKEFILE=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_verification/build.mk",
+          "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate",
+          "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/",
+          "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-candidate-o2",
+          "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+          "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2 -g",
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-candidate-o2/frame_retirement_test",
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-candidate-o2/stateless_head_cleanup_test",
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-candidate-o2/callback_failure_cleanup_test"
+        ],
+        "exit": 0,
+        "censored": false,
+        "log_sha256": "0ac9a86e729fd897b71f5f8e1c5b7e4db1c089d61eaa94972129d46b2e1fc22a"
+      },
+      {
+        "label": "candidate-o2-frame_retirement_test",
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-candidate-o2/frame_retirement_test"
+        ],
+        "exit": 0,
+        "censored": false,
+        "log_sha256": "6fd2f0515b9b1690e79ca5e43f038066f813d0ab9e2e0aaa4fe103912a4e0623"
+      },
+      {
+        "label": "candidate-o2-stateless_head_cleanup_test",
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-candidate-o2/stateless_head_cleanup_test"
+        ],
+        "exit": 0,
+        "censored": false,
+        "log_sha256": "1b6870cb7c5a109e761795a021289308304d20ac0a05d437bf159951df9c6e81"
+      },
+      {
+        "label": "candidate-o2-callback_failure_cleanup_test",
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-candidate-o2/callback_failure_cleanup_test"
+        ],
+        "exit": 0,
+        "censored": false,
+        "log_sha256": "61ec4af330c385ae0f897bc52eb6b4f63fad77a93da5af858b2b8175fd8cbaef"
+      },
+      {
+        "label": "build-parent-san",
+        "argv": [
+          "make",
+          "-j1",
+          "-f",
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem1/epochs/head_frame_v3/verify.mk",
+          "VERIFICATION_MAKEFILE=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_verification/build.mk",
+          "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent",
+          "ROOT=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src/",
+          "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-parent-san",
+          "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+          "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-parent-san/frame_retirement_test",
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-parent-san/stateless_head_cleanup_test",
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-parent-san/callback_failure_cleanup_test"
+        ],
+        "exit": 0,
+        "censored": false,
+        "log_sha256": "2ae1959b7e81105ae7352eb4290844bcbd06d5276fc352ee1d7550421d02cde9"
+      },
+      {
+        "label": "parent-san-frame_retirement_test",
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-parent-san/frame_retirement_test"
+        ],
+        "exit": 0,
+        "censored": false,
+        "log_sha256": "6fd2f0515b9b1690e79ca5e43f038066f813d0ab9e2e0aaa4fe103912a4e0623"
+      },
+      {
+        "label": "parent-san-stateless_head_cleanup_test",
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-parent-san/stateless_head_cleanup_test"
+        ],
+        "exit": 0,
+        "censored": false,
+        "log_sha256": "1b6870cb7c5a109e761795a021289308304d20ac0a05d437bf159951df9c6e81"
+      },
+      {
+        "label": "parent-san-callback_failure_cleanup_test",
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-parent-san/callback_failure_cleanup_test"
+        ],
+        "exit": 0,
+        "censored": false,
+        "log_sha256": "61ec4af330c385ae0f897bc52eb6b4f63fad77a93da5af858b2b8175fd8cbaef"
+      },
+      {
+        "label": "build-candidate-san",
+        "argv": [
+          "make",
+          "-j1",
+          "-f",
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem1/epochs/head_frame_v3/verify.mk",
+          "VERIFICATION_MAKEFILE=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_verification/build.mk",
+          "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate",
+          "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src/",
+          "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-candidate-san",
+          "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+          "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-candidate-san/frame_retirement_test",
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-candidate-san/stateless_head_cleanup_test",
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-candidate-san/callback_failure_cleanup_test"
+        ],
+        "exit": 0,
+        "censored": false,
+        "log_sha256": "c0bd67f6955f106918d43d4a90b66fa373b695425a7655dcbc0060cc1fad91b8"
+      },
+      {
+        "label": "candidate-san-frame_retirement_test",
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-candidate-san/frame_retirement_test"
+        ],
+        "exit": 0,
+        "censored": false,
+        "log_sha256": "6fd2f0515b9b1690e79ca5e43f038066f813d0ab9e2e0aaa4fe103912a4e0623"
+      },
+      {
+        "label": "candidate-san-stateless_head_cleanup_test",
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-candidate-san/stateless_head_cleanup_test"
+        ],
+        "exit": 0,
+        "censored": false,
+        "log_sha256": "1b6870cb7c5a109e761795a021289308304d20ac0a05d437bf159951df9c6e81"
+      },
+      {
+        "label": "candidate-san-callback_failure_cleanup_test",
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_focused_20261004/build-candidate-san/callback_failure_cleanup_test"
+        ],
+        "exit": 0,
+        "censored": false,
+        "log_sha256": "61ec4af330c385ae0f897bc52eb6b4f63fad77a93da5af858b2b8175fd8cbaef"
+      }
+    ],
+    "layouts": [
+      {
+        "variant": "parent",
+        "phase": "compile-only",
+        "argv": [
+          "/usr/bin/x86_64-linux-gnu-gcc-14",
+          "-std=c11",
+          "-Wall",
+          "-Wextra",
+          "-Werror",
+          "-O0",
+          "-g",
+          "-I/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src",
+          "-c",
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/header_layout_probe.c",
+          "-o",
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_layouts_v2_20261004/parent.o"
+        ],
+        "exit": 0,
+        "censored": false,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "variant": "parent",
+        "argv": [
+          "/usr/bin/gdb",
+          "--batch",
+          "-q",
+          "-nx",
+          "-iex",
+          "set auto-load off",
+          "-ex",
+          "set pagination off",
+          "-ex",
+          "set may-call-functions off",
+          "-ex",
+          "source /home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/layout.gdb.py",
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_layouts_v2_20261004/parent.o"
+        ],
+        "exit": 0,
+        "censored": false,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "variant": "candidate",
+        "phase": "compile-only",
+        "argv": [
+          "/usr/bin/x86_64-linux-gnu-gcc-14",
+          "-std=c11",
+          "-Wall",
+          "-Wextra",
+          "-Werror",
+          "-O0",
+          "-g",
+          "-I/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_20261004/candidate/src",
+          "-c",
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/header_layout_probe.c",
+          "-o",
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_layouts_v2_20261004/candidate.o"
+        ],
+        "exit": 0,
+        "censored": false,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "variant": "candidate",
+        "argv": [
+          "/usr/bin/gdb",
+          "--batch",
+          "-q",
+          "-nx",
+          "-iex",
+          "set auto-load off",
+          "-ex",
+          "set pagination off",
+          "-ex",
+          "set may-call-functions off",
+          "-ex",
+          "source /home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/layout.gdb.py",
+          "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_frame_current/private/current_stateless_head_pool_v1_layouts_v2_20261004/candidate.o"
+        ],
+        "exit": 0,
+        "censored": false,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    ]
+  },
+  "published_V3_manifest_all_Git_blobs_and_three_tests_exact": true,
+  "eval_c_added_removed_vectors_independently_equal_published_V3": {
+    "size": 152,
+    "alignment": 8,
+    "existing_16_byte_allocation_extent": 160,
+    "fields": {
+      "context": {
+        "offset_bytes": 0,
+        "size": 128
+      },
+      "root": {
+        "offset_bytes": 128,
+        "size": 8
+      },
+      "input_storage": {
+        "offset_bytes": 136,
+        "size": 8
+      },
+      "status": {
+        "offset_bytes": 144,
+        "size": 4
+      }
+    }
+  },
+  "parent_candidate_three_tests_O2_SAN_stdout_and_fuel_exact": true,
+  "all_nine_layout_sizes_alignments_extents_equal": {
+    "parent": {
+      "pg_eval": {
+        "size": 160,
+        "alignment": 8,
+        "existing_16_byte_allocation_extent": 160,
+        "fields": {
+          "temporary": {
+            "offset_bytes": 0,
+            "size": 80
+          },
+          "current": {
+            "offset_bytes": 80,
+            "size": 16
+          },
+          "arguments": {
+            "offset_bytes": 96,
+            "size": 8
+          },
+          "status": {
+            "offset_bytes": 104,
+            "size": 4
+          },
+          "steps": {
+            "offset_bytes": 112,
+            "size": 8
+          },
+          "dispatch": {
+            "offset_bytes": 120,
+            "size": 8
+          },
+          "output": {
+            "offset_bytes": 128,
+            "size": 8
+          },
+          "frames": {
+            "offset_bytes": 136,
+            "size": 8
+          },
+          "head_ready": {
+            "offset_bytes": 144,
+            "size": 4
+          },
+          "task": {
+            "offset_bytes": 152,
+            "size": 8
+          }
+        }
+      },
+      "pg_whnf_job": {
+        "size": 384,
+        "alignment": 8,
+        "existing_16_byte_allocation_extent": 384,
+        "fields": {
+          "request": {
+            "offset_bytes": 0,
+            "size": 40
+          },
+          "machine": {
+            "offset_bytes": 40,
+            "size": 160
+          },
+          "certificate": {
+            "offset_bytes": 200,
+            "size": 8
+          },
+          "output": {
+            "offset_bytes": 208,
+            "size": 160
+          },
+          "status": {
+            "offset_bytes": 368,
+            "size": 4
+          },
+          "steps": {
+            "offset_bytes": 376,
+            "size": 8
+          }
+        }
+      },
+      "pg_execution": {
+        "size": 192,
+        "alignment": 8,
+        "existing_16_byte_allocation_extent": 192,
+        "fields": {
+          "machine": {
+            "offset_bytes": 0,
+            "size": 160
+          },
+          "status": {
+            "offset_bytes": 160,
+            "size": 4
+          },
+          "output": {
+            "offset_bytes": 168,
+            "size": 8
+          },
+          "result": {
+            "offset_bytes": 176,
+            "size": 8
+          },
+          "steps": {
+            "offset_bytes": 184,
+            "size": 8
+          }
+        }
+      },
+      "pg_argument": {
+        "size": 24,
+        "alignment": 8,
+        "existing_16_byte_allocation_extent": 32,
+        "fields": {
+          "value": {
+            "offset_bytes": 0,
+            "size": 16
+          },
+          "next": {
+            "offset_bytes": 16,
+            "size": 8
+          }
+        }
+      },
+      "pg_environment": {
+        "size": 32,
+        "alignment": 8,
+        "existing_16_byte_allocation_extent": 32,
+        "fields": {
+          "binder": {
+            "offset_bytes": 0,
+            "size": 8
+          },
+          "value": {
+            "offset_bytes": 8,
+            "size": 16
+          },
+          "parent": {
+            "offset_bytes": 24,
+            "size": 8
+          }
+        }
+      },
+      "pg_eval_frame": {
+        "size": 240,
+        "alignment": 8,
+        "existing_16_byte_allocation_extent": 240,
+        "fields": {
+          "caller": {
+            "offset_bytes": 0,
+            "size": 16
+          },
+          "arguments": {
+            "offset_bytes": 16,
+            "size": 8
+          },
+          "target": {
+            "offset_bytes": 24,
+            "size": 8
+          },
+          "continuation": {
+            "offset_bytes": 32,
+            "size": 8
+          },
+          "state": {
+            "offset_bytes": 40,
+            "size": 8
+          },
+          "parent": {
+            "offset_bytes": 48,
+            "size": 8
+          },
+          "answer": {
+            "offset_bytes": 56,
+            "size": 160
+          },
+          "cursor": {
+            "offset_bytes": 216,
+            "size": 8
+          },
+          "first": {
+            "offset_bytes": 224,
+            "size": 8
+          },
+          "last": {
+            "offset_bytes": 232,
+            "size": 8
+          }
+        }
+      },
+      "pg_nf_job": {
+        "size": 136,
+        "alignment": 8,
+        "existing_16_byte_allocation_extent": 144,
+        "fields": {
+          "request": {
+            "offset_bytes": 0,
+            "size": 40
+          },
+          "body": {
+            "offset_bytes": 40,
+            "size": 8
+          },
+          "certificate": {
+            "offset_bytes": 48,
+            "size": 8
+          },
+          "prefix": {
+            "offset_bytes": 56,
+            "size": 8
+          },
+          "phases": {
+            "offset_bytes": 64,
+            "size": 8
+          },
+          "head": {
+            "offset_bytes": 72,
+            "size": 8
+          },
+          "children": {
+            "offset_bytes": 80,
+            "size": 16
+          },
+          "stack": {
+            "offset_bytes": 96,
+            "size": 8
+          },
+          "depth": {
+            "offset_bytes": 104,
+            "size": 8
+          },
+          "capacity": {
+            "offset_bytes": 112,
+            "size": 8
+          },
+          "steps": {
+            "offset_bytes": 120,
+            "size": 8
+          },
+          "status": {
+            "offset_bytes": 128,
+            "size": 4
+          },
+          "stage": {
+            "offset_bytes": 132,
+            "size": 4
+          }
+        }
+      },
+      "pg_program": {
+        "size": 1352,
+        "alignment": 8,
+        "existing_16_byte_allocation_extent": 1360,
+        "fields": {
+          "graph": {
+            "offset_bytes": 0,
+            "size": 80
+          },
+          "typing": {
+            "offset_bytes": 80,
+            "size": 432
+          },
+          "evaluation": {
+            "offset_bytes": 512,
+            "size": 136
+          },
+          "synthesis": {
+            "offset_bytes": 648,
+            "size": 232
+          },
+          "imported_effects": {
+            "offset_bytes": 880,
+            "size": 216
+          },
+          "parser": {
+            "offset_bytes": 1096,
+            "size": 208
+          },
+          "allow_legacy_intrinsic_dot": {
+            "offset_bytes": 1304,
+            "size": 4
+          },
+          "exports": {
+            "offset_bytes": 1312,
+            "size": 24
+          },
+          "scope": {
+            "offset_bytes": 1336,
+            "size": 8
+          },
+          "root": {
+            "offset_bytes": 1344,
+            "size": 8
+          }
+        }
+      },
+      "pg_substitution_state": {
+        "size": 152,
+        "alignment": 8,
+        "existing_16_byte_allocation_extent": 160,
+        "fields": {
+          "context": {
+            "offset_bytes": 0,
+            "size": 128
+          },
+          "root": {
+            "offset_bytes": 128,
+            "size": 8
+          },
+          "input_storage": {
+            "offset_bytes": 136,
+            "size": 8
+          },
+          "status": {
+            "offset_bytes": 144,
+            "size": 4
+          }
+        }
+      }
+    },
+    "candidate": {
+      "pg_eval": {
+        "size": 160,
+        "alignment": 8,
+        "existing_16_byte_allocation_extent": 160,
+        "fields": {
+          "temporary": {
+            "offset_bytes": 0,
+            "size": 80
+          },
+          "current": {
+            "offset_bytes": 80,
+            "size": 16
+          },
+          "arguments": {
+            "offset_bytes": 96,
+            "size": 8
+          },
+          "status": {
+            "offset_bytes": 104,
+            "size": 4
+          },
+          "head_ready": {
+            "offset_bytes": 108,
+            "size": 4
+          },
+          "steps": {
+            "offset_bytes": 112,
+            "size": 8
+          },
+          "dispatch": {
+            "offset_bytes": 120,
+            "size": 8
+          },
+          "output": {
+            "offset_bytes": 128,
+            "size": 8
+          },
+          "frames": {
+            "offset_bytes": 136,
+            "size": 8
+          },
+          "free_frames": {
+            "offset_bytes": 144,
+            "size": 8
+          },
+          "task": {
+            "offset_bytes": 152,
+            "size": 8
+          }
+        }
+      },
+      "pg_whnf_job": {
+        "size": 384,
+        "alignment": 8,
+        "existing_16_byte_allocation_extent": 384,
+        "fields": {
+          "request": {
+            "offset_bytes": 0,
+            "size": 40
+          },
+          "machine": {
+            "offset_bytes": 40,
+            "size": 160
+          },
+          "certificate": {
+            "offset_bytes": 200,
+            "size": 8
+          },
+          "output": {
+            "offset_bytes": 208,
+            "size": 160
+          },
+          "status": {
+            "offset_bytes": 368,
+            "size": 4
+          },
+          "steps": {
+            "offset_bytes": 376,
+            "size": 8
+          }
+        }
+      },
+      "pg_execution": {
+        "size": 192,
+        "alignment": 8,
+        "existing_16_byte_allocation_extent": 192,
+        "fields": {
+          "machine": {
+            "offset_bytes": 0,
+            "size": 160
+          },
+          "status": {
+            "offset_bytes": 160,
+            "size": 4
+          },
+          "output": {
+            "offset_bytes": 168,
+            "size": 8
+          },
+          "result": {
+            "offset_bytes": 176,
+            "size": 8
+          },
+          "steps": {
+            "offset_bytes": 184,
+            "size": 8
+          }
+        }
+      },
+      "pg_argument": {
+        "size": 24,
+        "alignment": 8,
+        "existing_16_byte_allocation_extent": 32,
+        "fields": {
+          "value": {
+            "offset_bytes": 0,
+            "size": 16
+          },
+          "next": {
+            "offset_bytes": 16,
+            "size": 8
+          }
+        }
+      },
+      "pg_environment": {
+        "size": 32,
+        "alignment": 8,
+        "existing_16_byte_allocation_extent": 32,
+        "fields": {
+          "binder": {
+            "offset_bytes": 0,
+            "size": 8
+          },
+          "value": {
+            "offset_bytes": 8,
+            "size": 16
+          },
+          "parent": {
+            "offset_bytes": 24,
+            "size": 8
+          }
+        }
+      },
+      "pg_eval_frame": {
+        "size": 240,
+        "alignment": 8,
+        "existing_16_byte_allocation_extent": 240,
+        "fields": {
+          "caller": {
+            "offset_bytes": 0,
+            "size": 16
+          },
+          "arguments": {
+            "offset_bytes": 16,
+            "size": 8
+          },
+          "target": {
+            "offset_bytes": 24,
+            "size": 8
+          },
+          "continuation": {
+            "offset_bytes": 32,
+            "size": 8
+          },
+          "state": {
+            "offset_bytes": 40,
+            "size": 8
+          },
+          "parent": {
+            "offset_bytes": 48,
+            "size": 8
+          },
+          "answer": {
+            "offset_bytes": 56,
+            "size": 160
+          },
+          "cursor": {
+            "offset_bytes": 216,
+            "size": 8
+          },
+          "first": {
+            "offset_bytes": 224,
+            "size": 8
+          },
+          "last": {
+            "offset_bytes": 232,
+            "size": 8
+          }
+        }
+      },
+      "pg_nf_job": {
+        "size": 136,
+        "alignment": 8,
+        "existing_16_byte_allocation_extent": 144,
+        "fields": {
+          "request": {
+            "offset_bytes": 0,
+            "size": 40
+          },
+          "body": {
+            "offset_bytes": 40,
+            "size": 8
+          },
+          "certificate": {
+            "offset_bytes": 48,
+            "size": 8
+          },
+          "prefix": {
+            "offset_bytes": 56,
+            "size": 8
+          },
+          "phases": {
+            "offset_bytes": 64,
+            "size": 8
+          },
+          "head": {
+            "offset_bytes": 72,
+            "size": 8
+          },
+          "children": {
+            "offset_bytes": 80,
+            "size": 16
+          },
+          "stack": {
+            "offset_bytes": 96,
+            "size": 8
+          },
+          "depth": {
+            "offset_bytes": 104,
+            "size": 8
+          },
+          "capacity": {
+            "offset_bytes": 112,
+            "size": 8
+          },
+          "steps": {
+            "offset_bytes": 120,
+            "size": 8
+          },
+          "status": {
+            "offset_bytes": 128,
+            "size": 4
+          },
+          "stage": {
+            "offset_bytes": 132,
+            "size": 4
+          }
+        }
+      },
+      "pg_program": {
+        "size": 1352,
+        "alignment": 8,
+        "existing_16_byte_allocation_extent": 1360,
+        "fields": {
+          "graph": {
+            "offset_bytes": 0,
+            "size": 80
+          },
+          "typing": {
+            "offset_bytes": 80,
+            "size": 432
+          },
+          "evaluation": {
+            "offset_bytes": 512,
+            "size": 136
+          },
+          "synthesis": {
+            "offset_bytes": 648,
+            "size": 232
+          },
+          "imported_effects": {
+            "offset_bytes": 880,
+            "size": 216
+          },
+          "parser": {
+            "offset_bytes": 1096,
+            "size": 208
+          },
+          "allow_legacy_intrinsic_dot": {
+            "offset_bytes": 1304,
+            "size": 4
+          },
+          "exports": {
+            "offset_bytes": 1312,
+            "size": 24
+          },
+          "scope": {
+            "offset_bytes": 1336,
+            "size": 8
+          },
+          "root": {
+            "offset_bytes": 1344,
+            "size": 8
+          }
+        }
+      },
+      "pg_substitution_state": {
+        "size": 152,
+        "alignment": 8,
+        "existing_16_byte_allocation_extent": 160,
+        "fields": {
+          "context": {
+            "offset_bytes": 0,
+            "size": 128
+          },
+          "root": {
+            "offset_bytes": 128,
+            "size": 8
+          },
+          "input_storage": {
+            "offset_bytes": 136,
+            "size": 8
+          },
+          "status": {
+            "offset_bytes": 144,
+            "size": 4
+          }
+        }
+      }
+    }
+  },
+  "initial_manifest_and_DWARF_failures_retained": true,
+  "Root_runtime_GDB_or_cost_rerun": false,
+  "scope": "Focused reconciliation of already published V3 stateless head-frame reuse on unchanged current c414 only. free_frames is added and head_ready packed beside status; current160/384/192 extents preserved, field offsets changed, no binary ABI compatibility claim. Reentrant/stateful/stateless callback, inline state through next demand, success/error/invalid return/return2/materialized failure tests retained. Non-NULL state prevents reuse; materialized/fallback frames retain arena lifetime and successful WHNF teardown clears freelist. Broader current consumers/raw cuts/public byte disposition/actual capacity/cumulative attribution/exclusive costs are pending. No held MEM10/6/7 or owner/accepted changes; all historical byte/strict3/observer2/SAN7/setup failures unwaived. Historical V3 costs cannot transfer.",
+  "runtime_READY_or_publication_cost_grant_byte_waiver_accepted_adoption_or_Goal_completion": false
+}

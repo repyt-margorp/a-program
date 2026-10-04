@@ -1,0 +1,347 @@
+{
+  "review_UTC": "2026-10-04T06:01:55.741062+00:00",
+  "review_trigger": "Distinct E20 corrected26/current qualification/publication, current-frame V3 focused notice096180cc, E21 focused1c241fc4 and C26 action56b8ef90; preceding timed reviews already recorded. Evidence, not human approval. Superseding C26 READYf302c157 exact14/current22 qualification/publication and current frame frozen-HOLDaeed6542 review.",
+  "Main_at_review": "d2d38363e4374fa9a3f8405891eb4834ec3049a5",
+  "preceding_review_path": "src/prototype/coordination/reviews/20261004T0510.json",
+  "preceding_review_sha256": "87a71103ea075d2ab472939111699de24994e4a8fe17db2082151a7c275f661e",
+  "owners": {
+    "C": {
+      "pane": "%0",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-c26-frame-final-owner-status/C.txt",
+      "sha256": "aa58b998eac563e8777924b1679d25aefc1cde35dfc25398df0bcd88b58c7167",
+      "status": "pursuing",
+      "last_lines": [
+        "\u2022 Ran python3 - <<'PY'",
+        "  \u2502 from pathlib import Path",
+        "  \u2502 import subprocess,hashlib,json",
+        "  \u2502 \u2026 +16 lines",
+        "  \u2514 exact14 task and remote verified f79abab6bdbbe6c4773512c095b8eb9cdbae2324e2c2261af854409a0820b569",
+        "",
+        "\u2022 Explored",
+        "  \u2514 Read scalar.c, emit.c",
+        "",
+        "\u25e6 Working (13m 01s \u2022 esc to interrupt)",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/c-backend \u00b7 Verify Surface index.lock handoff            Pursuing goal (23h 8m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    },
+    "Performance": {
+      "pane": "%1",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-c26-frame-final-owner-status/Performance.txt",
+      "sha256": "d1f512f42df64b416443d1517f326194bae912fcb94020152fe79a07bd5b2e0c",
+      "status": "pursuing",
+      "last_lines": [
+        "",
+        "\u2022 Queued follow-up inputs",
+        "  \u21b3 Root materialized-byte cause ac9c128b independently verified: frozen41/private28/current",
+        "    source128c414/all141 actual pins and prior freezes exact. All eight O0 read-only debugger",
+        "    semantic/status/zero-budget/fuel records0; new inert5/8 retained (case1 2/4, case5 3/4). Root",
+        "    \u2026",
+        "  \u21b3 Root current variant comparison c77c559c reviewed: frozen3 manifest0ad3e58d/reference pins",
+        "    exact. Directly hashes and compares every32 original parent/flags writer/resaver path from",
+        "    original16 rows, allfive distinct variants byte-exact to independently reviewed baseline",
+        "    \u2026",
+        "    shift+\u2190 edit last queued message",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-progra\u2026 Pursuing goal (1d 3h 55m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    },
+    "Job": {
+      "pane": "%4",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-c26-frame-final-owner-status/Job.txt",
+      "sha256": "509342fa50f49c1e4ff0954b3fad307061712221e0d1ddf87b59a562a3a9e6b7",
+      "status": "pursuing",
+      "last_lines": [
+        "    Search size_t alignment|copied.*malloc|state_extent|copied target in semantic_test.c (command",
+        "exit",
+        "           1)",
+        "    Read source_checkpoint_test.c",
+        "    Read synthesis.c",
+        "    Search copied|offset|alignment in semantic_test.c",
+        "    Read AGENTS.md",
+        "    Read CODING_STYLE.md",
+        "",
+        "\u2022 Working (25m 30s \u2022 esc to interrupt)",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-\u2026 Pursuing goal (16h 19m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    },
+    "Static": {
+      "pane": "%10",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-c26-frame-final-owner-status/Static.txt",
+      "sha256": "1aa420e4f12ab7ac6d53cdef2662e8bd8e983a976accfa94876b20b1fd45e8d0",
+      "status": "achieved",
+      "last_lines": [
+        "  \u2502 import hashlib",
+        "  \u2502 \u2026 +5 lines",
+        "  \u2514 Review receipt: 1191 bytes; SHA-256 1e8b99182da029cc62daacc9ce2cb6bbb79e5b79ba173b9aeba6c7f79dc5569f",
+        "",
+        "\u2022 Review receipt recorded for Merge (src/prototype/coordination/outbox/verification-audit-11-review-receipt.txt). Config and key remain unchanged; no audit",
+        "  outputs or timing exist.",
+        "",
+        "  Bounded static delivery remains complete. Cost is deferred and unmeasured; full Issue 59 stays open pending later exclusive scheduling.",
+        "",
+        "  Worked for 1m 15s \u2022 17:54",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/verification-audit \u00b7 Hand off static inventory              Goal achieved (50m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    },
+    "Sort": {
+      "pane": "%11",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-c26-frame-final-owner-status/Sort.txt",
+      "sha256": "fd7d3e20220be97b40aa2c7eca05d5a52f442671a8a5dced44eb2bd3f7cc800f",
+      "status": "achieved",
+      "last_lines": [
+        "    FINAL_MANIFEST_SHA256 e0adf408179cfde0a98ec11c448ef5967c3d945c2c198e7e79a93456208f21eb",
+        "    FINAL_NOTICE_SHA256 2f7c99e62b67d5a9eecc61ae7878d35023244d7bdeeb1f375b0073f558344259",
+        "    +1 line (ctrl+t to view transcript)",
+        "",
+        "\u2022 Corrected provenance in the SOAP snapshot and owning plan: Merge\u2019s follow-up is agent operational direction; human requirements explicitly cite F0.",
+        "",
+        "  Refrozen and wrote the final corrected ready notice (src/prototype/coordination/outbox/finite-functions-ready-provenance-final.txt). All +301 implementation/",
+        "  fixture/runner lines and test logs remain byte-identical. No rerun, accepted changes, new Goal, or duplicate worker.",
+        "",
+        "  Worked for 6m 44s \u2022 19:14",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/sort-library \u00b7 Start authorized sort worker                 Goal achieved (24m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    },
+    "Tests": {
+      "pane": "%12",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-c26-frame-final-owner-status/Tests.txt",
+      "sha256": "f126879cb22ae86b05efde025d5eaeb0a42995d2247cc8d75886551a7d217ba8",
+      "status": "achieved",
+      "last_lines": [
+        "",
+        "  Original/reduced outcomes match; ten injection checks pass. All 47 completed combined recipes pass. E9/E10 controls, strict3 and unsafe E11 failures remain",
+        "  preserved. The unchanged derived-LT run is recorded as incomplete after its 600-second cap. Wall/RSS savings are unmeasured.",
+        "",
+        "  Exact Merge handoff and full per-file counts (src/prototype/coordination/outbox/test-suite-20261003-final-handoff.txt) are frozen. Git staging is blocked by",
+        "  read-only shared metadata. Accepted files remain untouched; Issue59 stays open.",
+        "",
+        "  Goal complete; elapsed time approximately 38 minutes.",
+        "",
+        "  Worked for 38m 29s \u2022 22:34",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/test-suite \u00b7 Simplify and deduplicate tests                 Goal achieved (37m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    },
+    "Issues": {
+      "pane": "%14",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-c26-frame-final-owner-status/Issues.txt",
+      "sha256": "0f953f284d0dd4280360fc4a98ea0391672eb5fec9b136fdd96f1d8dac1c1a10",
+      "status": "achieved",
+      "last_lines": [
+        "  coordination. No new semantic/accepted policy.",
+        "",
+        "",
+        "\u2022 I\u2019ll confirm the completion accounting. The audit remains stopped, and Root has resumed coordination.",
+        "",
+        "\u2022 Goal confirmed complete. Recorded usage: 216,461 tokens, 23m 50s.",
+        "",
+        "  The audit remains stopped and available for follow-up. Root owns coordination; no further dispositions will run.",
+        "",
+        "  Worked for 26s \u2022 22:31",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/issue-audit \u00b7 Record audit ownership receipt                Goal achieved (23m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    }
+  },
+  "issues": [
+    {
+      "number": 61,
+      "title": "C backend residuals: selected-export admission, Identity and native lowering",
+      "updatedAt": "2026-10-03T13:11:54Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/61",
+      "body_sha256": "41872697f2356c60e77c7f4d5c481705f03d5d3ae5d83618194b090a76e7451a"
+    },
+    {
+      "number": 59,
+      "title": "Audit verification debt: semantic test inventory, lifecycle and implementation progress accounting",
+      "updatedAt": "2026-10-03T13:08:50Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/59",
+      "body_sha256": "7c8c563717262b330d0bcb2fdb7ec3454b206d223e9461c7fcbe518b74e07657"
+    },
+    {
+      "number": 57,
+      "title": "Correct Function Graph named-binding polarity and define explicit syntax migration",
+      "updatedAt": "2026-10-03T13:08:54Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/57",
+      "body_sha256": "5cc775e0494e7fe6b2c53cb5da989ad857f0f16afa794d24827db6a997cb0279"
+    },
+    {
+      "number": 56,
+      "title": "Recover and revalidate checker head/readback optimizations with Effort and persistence gates",
+      "updatedAt": "2026-10-03T13:08:58Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/56",
+      "body_sha256": "52d4c5e60b5b499ff1d99b64d5ac4367bbd5119b2beb9a245f17ce9fbc3afd2f"
+    },
+    {
+      "number": 52,
+      "title": "Design: checked equality reuse before adaptive compilation and equality saturation",
+      "updatedAt": "2026-10-03T13:09:06Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/52",
+      "body_sha256": "a270ef5933cab792d4e511eed2561b3bcffde014f13ffbf757e08df9a254c806"
+    },
+    {
+      "number": 51,
+      "title": "Audit follow-up: reproducible size and semantic-owner anti-regression gates",
+      "updatedAt": "2026-10-03T13:09:01Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/51",
+      "body_sha256": "b52ce7f7e49279990ba5b8b53a739436d153b62f6af8c6feef75a829bd7e589e"
+    },
+    {
+      "number": 47,
+      "title": "Design runtime relevance and safe compilation admissibility for partial artifacts",
+      "updatedAt": "2026-10-03T13:09:14Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/47",
+      "body_sha256": "bb2b1b52fbdbdba494a4a5a5cb369bb4b10500a0a1ec577a271a3aa147af6dd8"
+    },
+    {
+      "number": 43,
+      "title": "Open question: computation-level general recursion, loop syntax and logical boundaries",
+      "updatedAt": "2026-10-03T13:09:10Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/43",
+      "body_sha256": "ecd1df90dd66e3b3f4df97abceb23eaf8047e03f74932c4a8982d3ace3fa9f9e"
+    },
+    {
+      "number": 41,
+      "title": "Design audit: finite-container sorting, lawful views and position permutations",
+      "updatedAt": "2026-10-03T13:09:17Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/41",
+      "body_sha256": "e539925b68f41a5e3b22f95f8b53f763aec5d86f10f1a190fbdd984cb092e72c"
+    }
+  ],
+  "fresh_nine_issue_bodies_dates_unchanged": true,
+  "issues_raw_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e20-c26-frame-final-owner-status/issues.json",
+  "issues_raw_sha256": "fbae87f585dfc4611497d8cdb89edde9a5dac570de7844ba1a8a260287cf0d53",
+  "open_PRs": [],
+  "issue_criteria_assessment": {
+    "61": "Bounded C26 finite records in existing branching contract current E20 all22 gates0/exact14 task/Main delivered. Ten new/six branching refusal pairs and borrowed/O(V)/quadratic/depth/SAN bounds remain. Indexed/callable Acc/QuickSort/source erasure applicability/full61/general Identity/effects/ownership/actual costs/adoption incomplete.",
+    "56": "Separate current V3 frame focused31/new HOLD40/private2461/all345/1595 commands0 and bounded capacity -26935296 verified; paired6/146 and repeat29/48 byte failures retained. Full transport/all-seven/public/C/acceptance/cumulative/codec/RSS-time and every prior MEM10/6/7/strict/observer/SAN/setup/compatibility/censored hold remain; no runtime READY/cost slot.",
+    "51": "Bounded E20 active-scratch bookkeeping current E18+MEM9+E19/C25 qualified and prototype integrated. E21 isolated E17 scheduler retention focused only; exact final patch digest/transport/current producer/full broad/public/C/census pending. Original strict3/full SE/AP/codec/current acceptance/actual costs incomplete.",
+    "59": "Bounded static inventory and test-consolidation pilot delivered, unique controls preserved. Controlled actual cost and full suite lifecycle/adoption remain deferred; completed bounded owners stay stopped.",
+    "57": "Surface prototype delivered; accepted polarity migration and selector diagnostics/design remain separate unresolved criteria.",
+    "52": "Checked equality-reuse design remains separate; source storage/C capture changes do not implement it.",
+    "47": "General relevance/partial-artifact admissibility design remains open; private type/capture binding gives no pending-evidence or erasure authority.",
+    "43": "General recurrence/logical boundary remains a user design decision; no new syntax/rules implemented by these epochs.",
+    "41": "Finite-function/Sort bounded prototypes delivered; wider container/view/position laws and accepted interface choice remain separate."
+  },
+  "E20": {
+    "receipt_path": "src/prototype/solver_inputs/joint_verification/e20-main-integration-review.json",
+    "receipt_sha256": "a9ed42d845543f3032a05415058bf6fc47b10615b716eb71d084a8cfd3e97dba",
+    "task": "f4f184023fd57cb10f337c8e544edccb782f3805",
+    "Main": "fd91e8e01a36aa50f41a66916f1d3cedd1f8bedd",
+    "current_source128": "51020c0439c350e581906802a3a05d45120235a4c89fd6149cc5362de211c3e0",
+    "exact26_task_other25_Main_current_canonical_reconciled": true,
+    "current9_expected_C25_downstream20_0_public52_TSV_exact_strict3": true,
+    "limits": "Isolated E17 worker source156/broad0/C0/census is separate from fresh current E18+MEM9+E19+E20 source128. Root current O2/SAN full semantic/synthesis/source-checkpoint0;52 public images/full fuel-verdict TSV exact qualified E19; original strict3 remain. C25 all20 downstream records0, SAN clients/source/raw/oracle only with backend/helpers/producer/object/archive O2. No fresh complete current broad/acceptance, actual RSS/time/peak gain, held byte/CLI waiver, owner resume, accepted adoption or full Goal completion."
+  },
+  "current_frame_V3_focused": {
+    "receipt_path": "src/prototype/performance_followup/current-frame-v3-focused-root-review.json",
+    "receipt_sha256": "3018cb7f9414eeccc92f58ec8f69e0682ac96474a4b0a835c951624c4c184145",
+    "frozen31_private186_source256_actual307_layouts_and_focused_verified": true,
+    "runtime_READY_or_new_cost_claim": false
+  },
+  "E21_focused": {
+    "receipt_path": "src/prototype/solver_inputs/joint_verification/e21-focused-owner-counterexample-root-review.json",
+    "receipt_sha256": "868430c1a6a6d57e5b54adf69d10f414a79341106ca9d624966d309a513321f4",
+    "source156_raw6_parent134_candidate_O2_SAN0_verified": true,
+    "Root_projected_full_four_files_exact_but_worker_new_patch_digests_pending_transport": true,
+    "current_qualification_READY_or_publication": false
+  },
+  "C26_action": {
+    "receipt_path": "src/prototype/c_backend/verification/core-epoch26-action.json",
+    "receipt_sha256": "ca5369b1d853dae5438f4bf48a8b1db32137432a32b8e3370d65d06dce71848c",
+    "C25_task_Git26_and_native7_selected_views3_verified_historical_E8_only": true,
+    "runtime_READY_or_native_AccQuickSort_support": false
+  },
+  "private_progress": {
+    "C": "C26 exact14/current22/task/Main delivered; worker historical raw/source/target/receipt/lazy-index failures retained. Continue distinct bounded owned work, no native indexed/callable Acc/QuickSort/full61 completion.",
+    "Performance": "Current frame frozen40 broader consumers/cuts/repeats/capacity independently reviewed HOLD; exact paired6/146 repeat29/48 byte failures, bounded sampled arena reduction. Further transport/all-seven/public/C/acceptance/cumulative/codec/cost qualification pending.",
+    "Job": "Prior E18 release consumption confirmed by notice04aa22ec. E19/E20 exact freezes unchanged and already Root current-qualified/published. E21 isolated broad0 newly reported, supplementary/full freeze/current transport/composition pending; no Root new Job input/resume."
+  },
+  "bounded_workers": "Static/Sort/Tests/Issues achieved/stopped; Surface/AIze historical delivered/stopped.",
+  "Root_Goal": {
+    "fresh_service_status": "blocked",
+    "tokensUsed": 3262854,
+    "timeUsedSeconds": 25296,
+    "incomplete_no_resume_or_complete": true
+  },
+  "fresh_Root_service_goal_still_blocked_incomplete": true,
+  "Performance_feedback_durable_only": {
+    "Main_path": "src/prototype/coordination/inbox/performance-current-frame-e20-root-review-20261004.json",
+    "original_path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/coordination/inbox/performance-current-frame-e20-root-review-20261004.json",
+    "sha256": "2902b28f99cbf431ddc60ffd1163026207f1ee1e6c8145f5f7cf1f4aa8b0ef28",
+    "TUI_or_consumption_claim": false
+  },
+  "original_Job_HEAD_index_preserved": {
+    "HEAD": "a8f52a015f73fe7cfa067c3d5b122bef7e4532b4",
+    "index_sha256": "cf21c780030a7e26e4259dba80cb8488e84cc059999be4c17459f73afd8beca3"
+  },
+  "human_direct_Job_conversation_preserved_no_Root_input_resume": true,
+  "timer_capture": "    PID                  STARTED COMMAND\n1674731 Sat Oct  3 18:31:03 2026 node /home/repyt/workspace/a-program/src/prototype/coordination/watch_core.cjs 01a100b3-1d83-7090-bbf6-62544c39ec4b --new-only --heartbeat-seconds=21600 --heartbeat-first-seconds=15197.714 /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/coordination/outbox /home/repyt/workspace/a-program-workers/performance/src/prototype/coordination/outbox /home/repyt/workspace/a-program-workers/c-backend/src/prototype/coordination/outbox /home/repyt/workspace/a-program-workers/verification-audit/src/prototype/coordination/outbox /home/repyt/workspace/a-program-workers/sort-library/src/prototype/coordination/outbox\n",
+  "next_review_UTC": "2026-10-04T07:44:22.084Z",
+  "original_timer1674731_watcher1585465_alive_unchanged": true,
+  "protected9_exact": true,
+  "accepted_source_test_build_edits_cost_grant_byte_waiver_or_Goal_completion": false,
+  "no_owner_resumed_duplicated_or_model_changed": true,
+  "C26_delivery": {
+    "receipt_path": "src/prototype/c_backend/verification/core-epoch26.json",
+    "receipt_sha256": "e0a9d2f5ae7e06b1bcbaa63d1036e54ee4852a1866299db679241af68802eb47",
+    "task": "d8f8f27e5f028b109bf7d40204becfad375d423c",
+    "prototype_Main": "d2d38363e4374fa9a3f8405891eb4834ec3049a5",
+    "current_source128": "51020c0439c350e581906802a3a05d45120235a4c89fd6149cc5362de211c3e0",
+    "all22_current_records0_other13_Main_frozen_exact": true
+  },
+  "current_frame_V3_gates_HOLD": {
+    "receipt_path": "src/prototype/performance_followup/current-frame-v3-gates-held-root-review.json",
+    "receipt_sha256": "8e5acd354b4ced06d1ea61139a16562f726df2e2db66072ccaa1b3030abd1492",
+    "frozen40_private2461_all345_actual_pins_and1595_worker_records0_verified": true,
+    "paired6_of146_and_repeat29_of48_original_offsets_independently_recomputed_unwaived": true,
+    "tree16_5M_arena_capacity_delta": -26935296,
+    "used_delta": -26725920,
+    "used_delta_existing240_frame_extents": 111358,
+    "whole_RSS_wall_peak_dead_safe_reclaim_claim": false
+  },
+  "Job_E19_E20_status_notice": {
+    "notice_sha256": "04aa22ecc2e178a264e97fd330f7f177d786d500c945ce443f58ed1a067e0f99",
+    "previous_E18_release_consumption_confirmed": true,
+    "E19_E20_same_frozen_handoffs_already_Root_delivered_separately": true,
+    "E21_isolated_broad0_reported_only_not_full_frozen_READY_or_current_composition": true
+  },
+  "new_durable_owner_routes": {
+    "C": {
+      "Main_path": "src/prototype/coordination/inbox/c-backend-c26-root-release-20261004.json",
+      "original_path": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/coordination/inbox/c-backend-c26-root-release-20261004.json",
+      "sha256": "4fb548a5c69e3d8a3e31c50e577fbabcfe911eb0559d55932ee61a36a2a3c73d",
+      "TUI_input_resume_or_consumption_claim": false
+    },
+    "Performance": {
+      "Main_path": "src/prototype/coordination/inbox/performance-current-frame-gates-root-review-20261004.json",
+      "original_path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/coordination/inbox/performance-current-frame-gates-root-review-20261004.json",
+      "sha256": "bde1aa8aea4869bdadac65ae8b127ae5081e9243db60ba5e4334456d93fc3d94",
+      "TUI_input_resume_or_consumption_claim": false
+    }
+  }
+}

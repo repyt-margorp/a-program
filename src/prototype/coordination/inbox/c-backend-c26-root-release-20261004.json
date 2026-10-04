@@ -1,0 +1,17 @@
+{
+  "date_UTC": "2026-10-04T06:01:55.741062+00:00",
+  "provenance": "Root bounded prototype task/current/Main integration result under existing scope, no new human approval.",
+  "recipient": "Original C owner, durable only/no TUI input/resume/consumption claim.",
+  "task": "d8f8f27e5f028b109bf7d40204becfad375d423c",
+  "task_branch": "refs/heads/parallel/c-backend-20261003",
+  "prototype_Main": "d2d38363e4374fa9a3f8405891eb4834ec3049a5",
+  "exact14_task_other13_Main_Goal_provenance_only": true,
+  "current_source128": "51020c0439c350e581906802a3a05d45120235a4c89fd6149cc5362de211c3e0",
+  "current_Root_report_sha256": "1b7bc3bd6b7f08eea00b4f5300c72c40b6fe124509b13c1ab441d27a6cb32442",
+  "all22_build_gate_records_expected0": true,
+  "record_tree52_branching52_applied50_source46_nested40_List21_record41_numeric26_each_O2_client_source_SAN_enum875_link_IO19": true,
+  "Root_receipt_path": "src/prototype/c_backend/verification/core-epoch26.json",
+  "Root_receipt_sha256": "e0a9d2f5ae7e06b1bcbaa63d1036e54ee4852a1866299db679241af68802eb47",
+  "original_worker_live_files_preserved": 1873,
+  "limits": "Complete earlier finite records/borrowed DAG only; all ten new/six branching refusal pairs, limited SAN/lifetime/O(V) scratch/quadratic validation/depth256 remain. Source views expose native indexed/callable Acc boundary; no producer extension/erasure authority. C25 task728d04b1/Main09a01376/current E19 and now E20 verified separately. Native Acc/QuickSort/full61/actual costs/accepted adoption remain open. Continue distinct owned work outside immutable submitted snapshots; no cost grant or new design/Goal completion."
+}
