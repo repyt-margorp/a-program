@@ -1,0 +1,179 @@
+{
+  "review_UTC": "2026-10-04T03:20:39.837928+00:00",
+  "notice_sha256": "939ec444821baf122ed71d192e8c8577884a37115a0963c7387f96c50ba2ae90",
+  "worker_frozen_epoch": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/epochs/fresh_argument_pairs_flags_v2_current_transport_held",
+  "frozen21": {
+    "analysis.md": "d128c227837ccdc4540e64459ef08bf50ed359d14290195bad1a205364c8c803",
+    "consumer-manifest.sha256": "632b2b400643a437a533e81ad00a0925ea47429f9bbe87be1a0bb9e35d816cc3",
+    "freeze_current_transport.py": "9e323612e0d99a48652913f6e15dcfcfa19a2aa469d7388942aecd7b0387da1e",
+    "handoff.json": "542aa822fc495063bca35883051255aa66b870a094b894d3f4b5096789717969",
+    "initial-fixture-origins.json": "7f25f802b31560aa415c8460c9f8bed2ef46490ce288fb66c28ec74eeda161f3",
+    "initial-inputs-after.json": "7c23645f6e4c6e085066f468f54cd4ba4a18b37a7f01bdf005486663b4801588",
+    "initial-inputs-before.json": "f31de14a506b9b61f8d2400dd41d52a90ab7891877d22a1e449f169b7113cfa1",
+    "initial-records.json": "fbd815f233ec3607a478591e43f90720c3866be3a9f9a2eea071b57a786d1289",
+    "initial-summary.json": "7ff65459b83915d7324f0729053c2da1b75ec25752fba3ff6d437c066d9af814",
+    "parent-source.sha256": "c414202a4abb79301b04431b75008fa828dd60712b50518a1d4824e5d555b64b",
+    "private-evidence.json": "7b9d1de089aa36fb1d38424b015967a0816aa48af63c7628101b5b0495d9c397",
+    "published-E18-tested_sources.sha256": "02241bd2fa031584e176ae16cbcebd825ec834e8e5bea4ea33f22e66ac4ae2ea",
+    "qualify_current_transport.py": "8f013fa646c78cf93069ec0266ef7c0298cd29b63db53e4db56a2fed97272818",
+    "qualify_current_transport_retry.py": "0f203ce8288686078c6ad572a359d24c1bf667f6fd3cf414069d58ca3b4df731",
+    "retry-fixture-origins.json": "35a18ecdac1faae238b82e4802b646e323b64ee757d24ade17747d2bd21a62f9",
+    "retry-inputs-after.json": "d113096ba56b66c81d9c9fb8c8805d2fac47dc4e38d41d4ea2ad24ac6adb1b2b",
+    "retry-inputs-before.json": "e34969fe877b4b2370185279932fc8a8ba2635d0ec5fdb0b91744759a67d42c9",
+    "retry-records.json": "bee598b7e833c91d7adbca45737f17c0328d74da04e7243529fdc0bac38989cc",
+    "retry-summary.json": "408a189edeeb41a7d14d0c7c9bdb9961947ea1b3a081453b92d8c1a501b18b0f",
+    "source.sha256": "48c5f872e2dfb88e307f775f8b88d57abc65d552e3462b63cb1d06e9590bd75c",
+    "manifest.sha256": "690a624bd45f16820f06c3d65c345d12ea0cf7ffdc9eaedd2a9cee6be5522451"
+  },
+  "private_packages": {
+    "initial": {
+      "path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_transport_v2_20261004",
+      "records": 68,
+      "manifest": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_transport_v2_20261004/private.sha256",
+      "manifest_sha256": "87bb2bc23a1ec5c395222e3f98427282303a677a5bbbf9bf292924f71d8cfa6f",
+      "summary_sha256": "7ff65459b83915d7324f0729053c2da1b75ec25752fba3ff6d437c066d9af814",
+      "commands": 36,
+      "command_failures": 20,
+      "input_pins_before": 298,
+      "input_pins_after": 306,
+      "unchanged_existing_pins": true,
+      "added_binary_pins": 8
+    },
+    "matched_retry": {
+      "path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_transport_v3_20261004",
+      "records": 58,
+      "manifest": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_transport_v3_20261004/private.sha256",
+      "manifest_sha256": "02b22eaecccb1c2c72cf8b372563caac4d99f0344cf29705f044fef60fe1991f",
+      "summary_sha256": "408a189edeeb41a7d14d0c7c9bdb9961947ea1b3a081453b92d8c1a501b18b0f",
+      "commands": 24,
+      "command_failures": 0,
+      "input_pins_before": 329,
+      "input_pins_after": 339,
+      "unchanged_existing_pins": true,
+      "added_binary_pins": 10
+    }
+  },
+  "all_private68_58_and_source256_actual_hashes_exact": true,
+  "unique_after_input_pin_count": 381,
+  "all_actual_after_pins_exact": true,
+  "initial36_records20_compile_failures16_successes_retained": true,
+  "initial_failures_are_matching_parent_flags_O2_SAN_fixture_API_setup": true,
+  "retry24_records_all_terminal0_uncensored": true,
+  "retry_original_five_published_E18_fixtures_exact": {
+    "tests/iadt.c": {
+      "source": "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/tests/iadt.c",
+      "sha256": "e61ae7871eeed188e8e69ee3bda18b7435b52b75d9760e910b0ae0d6cc583ab9",
+      "published_manifest_commit": "e14221e6981ed6d3ebf3d1b53649d3f4fd0211b7",
+      "published_manifest_path": "src/prototype/solver_inputs/epochs/job_evidence_e18_lean/tested_sources.sha256",
+      "accepted_initial_fixture_sha256": "3a2992ab6790e8b37805b3bb77c68b7a0b9dac995f7ed1d2647e6066a4cc710b",
+      "new_fixture_edits_or_adapter": false
+    },
+    "artifact_tests/semantic_test.c": {
+      "source": "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/artifact_tests/semantic_test.c",
+      "sha256": "b6e748e6476c0ff3521fd5f527c67ac5d88edff43a72c7e221674856fffea5df",
+      "published_manifest_commit": "e14221e6981ed6d3ebf3d1b53649d3f4fd0211b7",
+      "published_manifest_path": "src/prototype/solver_inputs/epochs/job_evidence_e18_lean/tested_sources.sha256",
+      "accepted_initial_fixture_sha256": "dbaa4048ff20be0c3c54ecc655d3529a910c6a6f47ff615c0cc559da776fde15",
+      "new_fixture_edits_or_adapter": false
+    },
+    "checkpoint_tests/derivation_checkpoint_test.c": {
+      "source": "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/checkpoint_tests/derivation_checkpoint_test.c",
+      "sha256": "2f6a4316d8e7f6f1a0423f77ec4edc748e6f3d1d0baee5012c34eb9f324aa983",
+      "published_manifest_commit": "e14221e6981ed6d3ebf3d1b53649d3f4fd0211b7",
+      "published_manifest_path": "src/prototype/solver_inputs/epochs/job_evidence_e18_lean/tested_sources.sha256",
+      "accepted_initial_fixture_sha256": "b430390818926fdba1dc93ba5b259c028d9f0cbff0912e7c8e60bb3386ba852a",
+      "new_fixture_edits_or_adapter": false
+    },
+    "checkpoint_tests/definition_checkpoint_test.c": {
+      "source": "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/checkpoint_tests/definition_checkpoint_test.c",
+      "sha256": "563d3f10b04d3f7012080dd7949ec25addfc6cd414b3bc0bab1e7b6f8577b66b",
+      "published_manifest_commit": "e14221e6981ed6d3ebf3d1b53649d3f4fd0211b7",
+      "published_manifest_path": "src/prototype/solver_inputs/epochs/job_evidence_e18_lean/tested_sources.sha256",
+      "accepted_initial_fixture_sha256": "bcda33f82123f59dad4af6e141f27d080058533f5161642d8e76a08aa91773ca",
+      "new_fixture_edits_or_adapter": false
+    },
+    "checkpoint_tests/constructor_checkpoint_test.c": {
+      "source": "/tmp/ap-performance-mem2-iadt-spine-current-e12-20261003/checkpoint_tests/constructor_checkpoint_test.c",
+      "sha256": "1e56f555b16156349813452f5c798329e439eb9adcccaebe0e1e0a00b6a4f9b5",
+      "published_manifest_commit": "e14221e6981ed6d3ebf3d1b53649d3f4fd0211b7",
+      "published_manifest_path": "src/prototype/solver_inputs/epochs/job_evidence_e18_lean/tested_sources.sha256",
+      "accepted_initial_fixture_sha256": "e936628e155b3f4c1bf684aae048ecdef57d9c03c43a7fa87821ab20f03fcf15",
+      "new_fixture_edits_or_adapter": false
+    }
+  },
+  "published_fixture_manifest_exact_Git_blob": true,
+  "five_retry_O2_SAN_outputs_exact": {
+    "iadt_test": {
+      "O2_log_sha256": "4f4fae66b30deb1779f33a9e634b2fb139b3b70fd908e2c64c2bb5b23974514c",
+      "SAN_log_sha256": "4f4fae66b30deb1779f33a9e634b2fb139b3b70fd908e2c64c2bb5b23974514c",
+      "outputs_exact": true
+    },
+    "artifact_semantic_test": {
+      "O2_log_sha256": "65a6b5c64f96014d08df86dc7590a1db35d6380ea7acb05cc99bb55145121616",
+      "SAN_log_sha256": "65a6b5c64f96014d08df86dc7590a1db35d6380ea7acb05cc99bb55145121616",
+      "outputs_exact": true
+    },
+    "artifact_derivation_checkpoint_test": {
+      "O2_log_sha256": "5adbe5638c564d37e0ce84bb432931f0ff07ecc74fd7c63b487cc8bc5c61b3f0",
+      "SAN_log_sha256": "5adbe5638c564d37e0ce84bb432931f0ff07ecc74fd7c63b487cc8bc5c61b3f0",
+      "outputs_exact": true
+    },
+    "artifact_definition_checkpoint_test": {
+      "O2_log_sha256": "ce6a311bd455447d96f637cfa7b6332fc0fead1139acac6f0b38be9eb112016f",
+      "SAN_log_sha256": "ce6a311bd455447d96f637cfa7b6332fc0fead1139acac6f0b38be9eb112016f",
+      "outputs_exact": true
+    },
+    "artifact_constructor_checkpoint_test": {
+      "O2_log_sha256": "577ec7e14d43f64c04e5f33c0b843ea63837bb2947556bbac3743fa68859ddfa",
+      "SAN_log_sha256": "577ec7e14d43f64c04e5f33c0b843ea63837bb2947556bbac3743fa68859ddfa",
+      "outputs_exact": true
+    }
+  },
+  "namespace_log_rows_recomputed": {
+    "pending-namespace": {
+      "rows": 1,
+      "charged_plus_remaining_totals": [
+        122
+      ],
+      "O2_SAN_outputs_exact": true,
+      "log_sha256": "90a16fc9a5ba87a1345a4bc747309bb7bf9c8e0b334d28fb6fbab1107a123091"
+    },
+    "advanced-namespace": {
+      "rows": 39,
+      "charged_plus_remaining_totals": [
+        125,
+        126,
+        127,
+        128,
+        159,
+        160,
+        161,
+        162,
+        163,
+        164,
+        165,
+        166,
+        440,
+        441,
+        442,
+        443,
+        444,
+        445,
+        446,
+        447
+      ],
+      "O2_SAN_outputs_exact": true,
+      "log_sha256": "fc2faa0fe72b79ada5d8f579e971bea98b80589e7357fc93d2a88052d31fa5e4"
+    }
+  },
+  "Source154_484_from_same_current_consumer14_exact": {
+    "o2": "71cc65467eeb07467f0bd00674acb05a8875ba29911d63bca40891cab8d4233a",
+    "san": "71cc65467eeb07467f0bd00674acb05a8875ba29911d63bca40891cab8d4233a"
+  },
+  "all_seven_checkpoint_groups_with_inherited_Source_and_normalization": true,
+  "initial16_SourceIO_IdentityIO_transport_normalization_successes_preserved": true,
+  "Root_runtime_or_GDB_or_cost_rerun": false,
+  "assessment": "Accept bounded current transport evidence addendum using byte-exact published producer-matched fixtures. Initial20 compilation failures are retained, not runtime tests relaxed or an implementation fix. This advances transport/semantic/IADT/SourceIO/IdentityIO/seven-checkpoint evidence while all machine byte failures remain unwaived. Relevant current acceptance and downstream C/.a alignment remain pending. No runtime READY/task/runtime/cost publication, accepted promotion or full Goal completion.",
+  "runtime_READY": false,
+  "runtime_task_publication_or_cost_grant_or_byte_waiver_or_Goal_completion": false
+}

@@ -1,0 +1,413 @@
+{
+  "publication": {
+    "task": "1a1e2614427397a79bad7f9a857b24b9d5bdb43c",
+    "task_parent": "8b6debfcf836451b9e972aba9f3f624f24b406e9",
+    "Main_parent": "3974180020b2255b6290686adb106772dd249666",
+    "exact13_task": {
+      "doc/2026-10-03-C-BACKEND-GOAL.md": "9fb76744d439bb010973cb901c279526382fc224576b0bff14d21b415a37398a",
+      "doc/2026-10-04-C-BACKEND-SOURCE-SORT-PLAN.md": "61deb44d55d778125df663f2c895d14fca5dcd0e0a9e49631ab9b1a65fb2b65f",
+      "doc/2026-10-04-C-BACKEND-EPOCH23-HANDOFF.md": "5ca975a2c39e71eb244940df0046674c201848301310a2552eccd9e863785ff5",
+      "src/prototype/c_backend/README.md": "6b97b7af77d930b3bb5fb64d39133b81ed7a42a29cf6bd4c60f107716abdbbda",
+      "src/prototype/c_backend/build.mk": "286cf63b6edfac93dab77ab535d9995394858e13c300eeccc7373fcae0807f06",
+      "src/prototype/c_backend/lower/scalar.c": "9246bf1c7cd31c64d22158b12b9898855d7be69852787d2b2d41091a7f812977",
+      "src/prototype/c_backend/link/driver.c": "2e576e61a9dd3fd5838353fcab5dfc0628ef9a0f4823a8152db14ee4f126f25b",
+      "src/prototype/c_backend/source_sort/fixture.p": "53c8d754aec2639df2ef89e3d26498798292f53706334dc14fe5646ab58f75ca",
+      "src/prototype/c_backend/source_sort/source.aplink": "9d1a03be0c76971309e9ed44301e3d324dd747a59c89225bf900682a103675cf",
+      "src/prototype/c_backend/source_sort/client.c": "52d8415febf090e222d3e45e42d027925f26450b80856fae5b18ad9d6d7a2df9",
+      "src/prototype/c_backend/source_sort/inert_test.c": "783645a5dd5e2aa56d02a46a716c3acac9ea2858666899bdbb6256e38f543682",
+      "src/prototype/c_backend/source_sort/check.sh": "39fc164047ce21a11634ae943d2930d7be3b457eff7d0cfd897402e72386bc1a",
+      "src/prototype/c_backend/source_sort/build.mk": "235f0f452abd315dbe5df6c99a81b1dc77e029d9f92a8bdae41a3fc1384d057f"
+    },
+    "Root_current_report_sha256": "d69730ebdf5cf84930e337c0f6d1a70035f8fb0f551a1b47dd3e0c9e2689dafa",
+    "source128": "c414202a4abb79301b04431b75008fa828dd60712b50518a1d4824e5d555b64b",
+    "worker_live_files_preserved": 1847,
+    "Goal_provenance_only_Main_reconciliation": true,
+    "future_live_trials_excluded": true,
+    "current_backend_two_helpers_O2_rebuilt_MEM9_producer_reused": true,
+    "accepted_adoption_or_Goal_completion": false,
+    "task_remote_exact": true,
+    "Main_merge": "9d55106409fbc70235deec26cbdcebd748005fec",
+    "Main_remote_exact": true,
+    "exact12_Main_bytes": true,
+    "reviewed_Main_Goal_sha256": "6103b8c5bb69a3960b029bb5da677e2c264fe59bc18eba7b67f288e9d831ded4",
+    "protected9_exact": true
+  },
+  "current_Root_report_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-current-e18-mem9-gates/Root-results.json",
+  "current_Root_report_sha256": "d69730ebdf5cf84930e337c0f6d1a70035f8fb0f551a1b47dd3e0c9e2689dafa",
+  "current_source128": "c414202a4abb79301b04431b75008fa828dd60712b50518a1d4824e5d555b64b",
+  "current_producer_basis": "Frozen qualified current E18 plus MEM9, runtime unchanged by C21/metadata. No accepted/default replacement.",
+  "MEM9_current_qualification_retained_sha256": "2c99cd8348afdf5e20cac75c43be9660fbf7e0f14322af3d92832a050d72e437",
+  "rebuilt_and_reused_binary_sha256": {
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-current-e18-mem9-gates/build/a-to-c": "7b71b8f0b8725dd9b3215feb96144303e3e345e4c540bf1bc74776a308b454db",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-current-e18-mem9-gates/build/c_source_sort_inert_test": "7e961fa6ee672c3f209d407789c338868388d91e0a9e1c739d395931a6ad01d6",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-current-e18-mem9-gates/build/c_nested_capture_inert_test": "42f3f4d43fa2274241f5557815033738aab06f7ccd0cf0fc20a92963d7f91d96",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/pointer-check": "f31c3472c8eee75f27552b7f68f9670aadfbd819faf2109f150a6bf74bc3e2af"
+  },
+  "checks": [
+    {
+      "gate": "backend-and-helpers-build",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-publication/src/prototype/c_backend/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4",
+        "ROOT=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-current-e18-mem9-gates/build",
+        "REPO=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4",
+        "TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/tests",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-current-e18-mem9-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-current-e18-mem9-gates/build/c_source_sort_inert_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-current-e18-mem9-gates/build/c_nested_capture_inert_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "642dc77e06d188bc9ed0dc33e3752b65e91449cc21337f7fcea0e8e8c33346d5",
+      "sanitizer_scope": "Strict O2 current E18+MEM9 backend/two helpers rebuilt; exact qualified producer reused",
+      "retained_raw_phase_file_count": 0
+    },
+    {
+      "gate": "source-sort-o2",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-publication/src/prototype/c_backend/source_sort/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-current-e18-mem9-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-current-e18-mem9-gates/build/c_source_sort_inert_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-current-e18-mem9-gates/source-sort-o2"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "44859364c8fbe8e0286789aa2e996f762352f39569c5685f872f7cf283d26b51",
+      "sanitizer_scope": "O2",
+      "status_rows": 48,
+      "expected_counts": {
+        "0": 31,
+        "3": 1,
+        "4": 16
+      },
+      "all_rows_match": true,
+      "status_sha256": "0a10058955565ac08dcb39cefde20e1206122149cd6972b467ec3a07cd587315",
+      "retained_raw_phase_file_count": 185
+    },
+    {
+      "gate": "nested-o2",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-publication/src/prototype/c_backend/nested_capture/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-current-e18-mem9-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-current-e18-mem9-gates/build/c_nested_capture_inert_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-current-e18-mem9-gates/nested-o2"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "a2bd917b89cb8568ff10991c64089d2c170614fdb23ac3a7e22c133eb1712513",
+      "sanitizer_scope": "O2",
+      "status_rows": 40,
+      "expected_counts": {
+        "0": 31,
+        "3": 1,
+        "4": 8
+      },
+      "all_rows_match": true,
+      "status_sha256": "6b11e5989763e665b394f2e896b347c3b10089377eaf604fc698ea00074fa7a8",
+      "retained_raw_phase_file_count": 157,
+      "C22_generated_C_H_exact_count": 13
+    },
+    {
+      "gate": "source-sort-san",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-publication/src/prototype/c_backend/source_sort/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-current-e18-mem9-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-current-e18-mem9-gates/build/c_source_sort_inert_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-current-e18-mem9-gates/source-sort-san"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "44859364c8fbe8e0286789aa2e996f762352f39569c5685f872f7cf283d26b51",
+      "sanitizer_scope": "Clients/source/raw/oracle product bodies SAN; producer/backend/helpers/object/archive O2",
+      "status_rows": 48,
+      "expected_counts": {
+        "0": 31,
+        "3": 1,
+        "4": 16
+      },
+      "all_rows_match": true,
+      "status_sha256": "0a10058955565ac08dcb39cefde20e1206122149cd6972b467ec3a07cd587315",
+      "retained_raw_phase_file_count": 185
+    },
+    {
+      "gate": "nested-san",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-publication/src/prototype/c_backend/nested_capture/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-current-e18-mem9-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-current-e18-mem9-gates/build/c_nested_capture_inert_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-current-e18-mem9-gates/nested-san"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "a2bd917b89cb8568ff10991c64089d2c170614fdb23ac3a7e22c133eb1712513",
+      "sanitizer_scope": "Clients/source/raw/oracle product bodies SAN; producer/backend/helpers/object/archive O2",
+      "status_rows": 40,
+      "expected_counts": {
+        "0": 31,
+        "3": 1,
+        "4": 8
+      },
+      "all_rows_match": true,
+      "status_sha256": "6b11e5989763e665b394f2e896b347c3b10089377eaf604fc698ea00074fa7a8",
+      "retained_raw_phase_file_count": 157,
+      "C22_generated_C_H_exact_count": 13
+    },
+    {
+      "gate": "link-O2",
+      "argv": [
+        "bash",
+        "-x",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-publication/src/prototype/c_backend/link/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-current-e18-mem9-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/pointer-check"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "78f937a9a325659c7cb753bdcc643993acdcde2bd5fae96a59d6b83af14f0df0",
+      "sanitizer_scope": "Original linker strict O2 harness; temporary products deleted by existing harness, invocation/exit only",
+      "retained_raw_phase_file_count": 0
+    },
+    {
+      "gate": "io-admit",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/pointer-check",
+        "--steps",
+        "5000000",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-current-e18-mem9-gates/io-input/applied.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-publication/src/prototype/c_backend/applied/fixture.p"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "375c749a4ef04beb99c420693e5136fe922a703811fdf2669e9710c48da1a755",
+      "sanitizer_scope": "Qualified exact current producer",
+      "retained_raw_phase_file_count": 0
+    },
+    {
+      "gate": "publication-IO",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-publication/src/prototype/c_backend/link/publication_io_check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-current-e18-mem9-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-current-e18-mem9-gates/io-input/applied.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-current-e18-mem9-gates/io-input/numbers.aplink",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-current-e18-mem9-gates/IO"
+      ],
+      "exit": 1,
+      "expected_exit": 0,
+      "log_sha256": "faea70ad2228a5fecffe43999b2ce392271bb44d837d2a1e8408f4b841fb895e",
+      "sanitizer_scope": "Original O2 publication fault/stream-close/atomic controls",
+      "Root_setup_failure": "Root generation matched artifact applied.a instead of the actual applied-list.a token. Original relative script/file-not-found2 and gate1 retained, before native product testing; no worker/runtime regression or waived assertion.",
+      "retained_raw_phase_file_count": 0
+    },
+    {
+      "gate": "publication-IO-corrected",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-publication/src/prototype/c_backend/link/publication_io_check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-current-e18-mem9-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-current-e18-mem9-gates/io-input/applied.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-current-e18-mem9-gates/io-input/numbers-current.aplink",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-current-e18-mem9-gates/IO-corrected"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "a4a9e03276262019b1e1e9e479d14eab63435e398650169c0c82bb7de981ea0f",
+      "sanitizer_scope": "Original O2 I/O fault/close/atomic controls; only exact image pathname corrected in generated input script.",
+      "status_rows": 19,
+      "expected_counts": {
+        "0": 4,
+        "2": 13,
+        "4": 2
+      },
+      "all_rows_match": true,
+      "status_sha256": "3c763e8de8d294aaa67b241768e5849427579b83b8e6a50a7c21df4d0c9d2141",
+      "retained_raw_phase_file_count": 77
+    }
+  ],
+  "all_current_pins_after_exact": true,
+  "current_pin_count": 418,
+  "all_current_raw_phase_files_hashes_rechecked": true,
+  "worker_input_review_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-input-review.json",
+  "worker_input_review_sha256": "b0df0fac427543b469adc8fa841ab942f060be159f6d845bb9fdf60c4d420d01",
+  "worker_frozen_manifest": {
+    "lane": "c-backend",
+    "epoch": "C23",
+    "date_utc": "2026-10-04T03:07:29.215942+00:00",
+    "branch": "parallel/c-backend-20261003",
+    "parent": "8b6debfcf836451b9e972aba9f3f624f24b406e9",
+    "commit": "pending Root delegated task publication",
+    "chosen_commit_message": "prototype: bind selected types in native source calls",
+    "files": [
+      "doc/2026-10-03-C-BACKEND-GOAL.md",
+      "doc/2026-10-04-C-BACKEND-SOURCE-SORT-PLAN.md",
+      "doc/2026-10-04-C-BACKEND-EPOCH23-HANDOFF.md",
+      "src/prototype/c_backend/README.md",
+      "src/prototype/c_backend/build.mk",
+      "src/prototype/c_backend/lower/scalar.c",
+      "src/prototype/c_backend/link/driver.c",
+      "src/prototype/c_backend/source_sort/fixture.p",
+      "src/prototype/c_backend/source_sort/source.aplink",
+      "src/prototype/c_backend/source_sort/client.c",
+      "src/prototype/c_backend/source_sort/inert_test.c",
+      "src/prototype/c_backend/source_sort/check.sh",
+      "src/prototype/c_backend/source_sort/build.mk"
+    ],
+    "file_count": 13,
+    "manifest_sha256": "61d16a012d7d5a97cf0e046de3383966e63f5eb46c3b620edc405a0dcc7d0d5c",
+    "snapshot_sha256": "9483aa8a3f586d593485d7089610db8fa08503bd7a652b31f62492ddef192bdf",
+    "raw_manifest_sha256": "ec0201d2e57be27f023ce692041243b1ff94883b4c82609617516b007eda6920",
+    "raw_count": 1270,
+    "verification_sha256": "035304bf53a2c82e20d808755f254731edba0af5d7d77f480b5a93fdb794997b",
+    "qualified_input_manifest_sha256": "600e2d7f4947f1759ddf0565f722752f08b2a0c011ee79cccb4dc8fdd70dffad",
+    "qualified_input_count": 207,
+    "style_sha256": "0edf6fad48560652900f338d46fc5a829750d52a1a1005192665e820f2e011e1",
+    "source_deltas_sha256": "4e5239d46cae281ae2ed2c806b71f19100befb4a0e8af7e3ccd548ddb60d0f79",
+    "handoff_sha256": "5ca975a2c39e71eb244940df0046674c201848301310a2552eccd9e863785ff5",
+    "scope": "downstream prototype only; no ABI/producer/schema/source erasure/accepted code change, cost claim or native Acc/QuickSort/full61 completion",
+    "freeze": "exact snapshot immutable for Root publication; historical C22 remains exact; independent later epochs preserve submitted evidence"
+  },
+  "worker_historical_verification": {
+    "parent": "8b6debfcf836451b9e972aba9f3f624f24b406e9",
+    "branch": "parallel/c-backend-20261003",
+    "gates": {
+      "O2": {
+        "record_sha256": "23f9a5b92127c134bd43244663f2e258e1d1570326ad8ed967eb157176ee0e7b",
+        "exit": 0,
+        "rows": 48,
+        "expected_status_counts": {
+          "0": 31,
+          "3": 1,
+          "4": 16
+        }
+      },
+      "SAN": {
+        "record_sha256": "5e504ab7a19575c831adf8cf97d968ee83c43d80bf253304e60149b63c0d2b11",
+        "exit": 0,
+        "rows": 48,
+        "expected_status_counts": {
+          "0": 31,
+          "3": 1,
+          "4": 16
+        }
+      },
+      "parent-O2": {
+        "record_sha256": "dfa9e0ff713f3d4be9003406ff5a7185dc4d7221f04498b7e9a5e218fc018c45",
+        "exit": 0,
+        "rows": 40,
+        "expected_status_counts": {
+          "0": 31,
+          "3": 1,
+          "4": 8
+        }
+      },
+      "parent-SAN": {
+        "record_sha256": "deb65ca92192d332c21675e005c59b3201fdf2b99b0dca528976a700763209dc",
+        "exit": 0,
+        "rows": 40,
+        "expected_status_counts": {
+          "0": 31,
+          "3": 1,
+          "4": 8
+        }
+      },
+      "IO": {
+        "record_sha256": "99bcd31c2aab5dd439abf888990fa24df1108cf89f679d95cceeef54c8db5042",
+        "exit": 0,
+        "rows": 19,
+        "expected_status_counts": {
+          "0": 4,
+          "2": 13,
+          "4": 2
+        }
+      },
+      "qualified-build": {
+        "record_sha256": "9d2eb4495ca5fb48576b6ba1a3753155b227a5c8440eb74fab54ae9ebb0fdf2c",
+        "exit": 0
+      },
+      "link-O2": {
+        "record_sha256": "a8f300896cbab4d349f6cf21a41203f5c0d207b36b4bd057ccc671f360ee31fe",
+        "exit": 0
+      },
+      "io-admit": {
+        "record_sha256": "42dc08760bc8052cf24440a0efcad0c3ca4ebe0b9d14c4390c44524fd7ab96b4",
+        "exit": 0
+      }
+    },
+    "source_observations": 9,
+    "source_output": "|0,1,2,2,3,|0,1,2,3,|0,1,2,2,3,|0,1,2,2,2,3,|0,|3|T|F|",
+    "core_comparisons": 552,
+    "finite_lists_per_client": 341,
+    "calls_per_list": 7,
+    "runtime128_matches_qualification": true,
+    "provider_sha256": "a674b893cd5d0dc1899e79238352c6167a536876393ae7f53b2a9de602b647e6",
+    "binary_sha256": {
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch23-source-sort-20261004/qualified-build/a-to-c": "aa912a789a154bf823704631402dc524281dc5e639bdcbc00656248582325696",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch23-source-sort-20261004/qualified-build/c_nested_capture_inert_test": "4bc5def3554db5a1b25e65440bf2f23c4620fee420a775ad65084c3a72453b49",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch23-source-sort-20261004/qualified-build/c_source_sort_inert_test": "86428cf8fd475091b1ebf4f4308f143bd63edae988d8e2807fa67d9d3e6e4d47"
+    },
+    "selected_inputs": 207,
+    "qualified_input_manifest_sha256": "600e2d7f4947f1759ddf0565f722752f08b2a0c011ee79cccb4dc8fdd70dffad",
+    "SAN_scope": "O1 ASan/UBSan/leak clients and generated source/raw/oracle; emitted objects/archive/backend/helpers/producer O2",
+    "linker_evidence_scope": "command/xtrace and exit0 retained; existing harness deletes temporary products, no product-byte pin claimed",
+    "unsupported": "eight checked/trusted status4 each: public Universe/generic, unselected/Text, computed/applied types, dynamic functions, effects, indexed/callable Acc QuickSort",
+    "initial_failures": "retained representation selection setup and historical fixed-type/sort refusal4; no current unexpected failure",
+    "pre_gate_inputs_unchanged": true,
+    "no_timing": true
+  },
+  "retained207_runtime128_raw1270_all_actual_files_hashed": true,
+  "code_review": "Lowering admits private nominal identity only for represented selected declaration/host type references; existing known-call inline path propagates it. Recursive captures compare nominal identity; dense represented parameters/native ABI and source sorting bodies unchanged. No metadata-token C definition, public Universe/type ABI or upstream checker/erasure authority. Receipt transformations describes existing profile capabilities, not a per-call trace.",
+  "coverage_review": "Original source sorter source/readback observations9, separate Core552 bounded comparisons, finite List341 per client/two sorts/four insertion pivots/identity and signed/enum/scalar controls. Persistent input/output canaries and partial-allocation/depth rollback preserved. Eight checked/trusted refusal pairs include computed/public/unselected types, dynamic comparator/effect/indexed Acc QuickSort. SAN clients/source/raw/oracle only, backend/helpers/producer/object/archive O2.",
+  "worker_initial_inputs5_byte_exact_retained": [
+    {
+      "path": "/home/repyt/workspace/a-program-workers/c-backend/tests/fixtures/sorted-proof-provider.p",
+      "sha256": "a674b893cd5d0dc1899e79238352c6167a536876393ae7f53b2a9de602b647e6",
+      "retained": "initial-inputs/0"
+    },
+    {
+      "path": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/scratch/source_sort/fixture.p",
+      "sha256": "61598c92e1004900c3dc204141734c6d36176db2a2d424f6dd88397b5251cfb4",
+      "retained": "initial-inputs/1"
+    },
+    {
+      "path": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/scratch/source_sort/source.aplink",
+      "sha256": "10bc08868c9790a69aed52226c6b571435c16c97e62ecd02be4550428adccd6b",
+      "retained": "initial-inputs/2"
+    },
+    {
+      "path": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/final-build/a-to-c",
+      "sha256": "7da254af8867afebd87bac9563cfee0d3eb166493e5094dac16ff3c1fd640cc4",
+      "retained": "initial-inputs/3"
+    },
+    {
+      "path": "/tmp/a-program-merge-c9-e8-gates-20261003/build/pointer-check",
+      "sha256": "6e3407fc7f6ba8dffa0642217f00b6d2ec8454e32dc41eac6b27cce30518cd44",
+      "retained": "initial-inputs/4"
+    }
+  ],
+  "initial_notice_hash_correction": "Initial notice mistyped freeze hash; actual frozen13/tar/raw and verification unchanged, independently hash verified.",
+  "superseded_notice_and_correction_hashes": [
+    "0785476668f1d454bc8b11133007b7aa60c0f5097748c21d40e8c6e407fc8ad3",
+    "653e1f53d62fa828945e81d247cd13ab846ff3462e19f55f2388a43d43b443b3",
+    "938d1c9e97130ea5f9b6bb262aaea7183ad9b54afe36dc13841e34b5053cb8cd"
+  ],
+  "parent_C22_generated_C_H_bytes_exact_count": 26,
+  "C22_immutable_raw1603_and_snapshot_exact": true,
+  "Root_initial_IO_missing_image_setup_failure_retained": true,
+  "SAN_scope": "O1 ASan/UBSan/leak clients and generated source/raw/oracle bodies; object/archive/backend/helpers/producer O2.",
+  "limits": "Known selected type constants private, native ABI/source sorting bodies unchanged. Eight checked/trusted dynamic/effect/public/unselected/computed/indexed refusals retained. Borrowed valid readable inputs/nonoverlap/lifetime, max256 depth/Nat32. SAN clients/source/raw/oracle only. Native indexed Acc/QuickSort/full61, producer/schema/erasure change, actual cost/adoption/Goal completion remain separate.",
+  "accepted_adoption_or_Goal_completion": false
+}

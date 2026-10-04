@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: Merge owns Main; C and Performance progress, original Job remains service-stalled. E17/E18, C17-C22 and MEM9 are verified and prototype-integrated; MEM6/MEM7 runtime holds remain; MEM10 frozen handoff is held for byte disposition and current qualification. Test-suite, issue disposition, static audit and finite-function bounded Goals are complete; full development issues remain open.
+Status: Merge owns Main; C and Performance progress, original Job remains service-stalled. E17/E18, C17-C23 and MEM9 are verified and prototype-integrated; MEM6/MEM7 runtime holds remain; MEM10 frozen handoff is held for byte disposition and current qualification. Test-suite, issue disposition, static audit and finite-function bounded Goals are complete; full development issues remain open.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -17,7 +17,7 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | Inquiry desk -> `merge`: reporting vs coordination/integration | All lanes | Desk answers the user; only Merge integrates after verified handoff |
-| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C1-C22 bounded prototypes integrated; C22 nested/recursive/integer gates freshly qualified on current E18+MEM9; native Acc/QuickSort remains open |
+| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C1-C23 bounded prototypes integrated; C23 selected-type/source insertion sorting freshly qualified on current E18+MEM9; native Acc/QuickSort remains open |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Accepted performance7631e5a; V3 bounded measured tree gain reviewed; MEM2 beta environment elision rejected; IADT source9 published, bounded tree RSS gain/mixed timing measured; full Goal active |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
 | 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E1-E4/E6-E18 corrected prototypes Main integrated; E19 counterexample/repair verified at E17, full handoff pending; strict3 remain |
@@ -535,11 +535,43 @@ SourceIO/IdentityIO/transport/normalization progress is private pending raw revi
 Original timer unchanged, next07:44:22 UTC, protected9 exact; full issues and
 Root Goal incomplete. [Owner review](../src/prototype/coordination/reviews/20261004T0300.json).
 
+2026-10-04 03:25 UTC, C23 exact13 task1a1e2614/prototype Main9d551064
+pushed/remote exact. Root current E18+MEM9 source128c414: strict O2 backend/two
+helpers rebuilt, source-sort48 and affected nested40 each O2/client-source SAN,
+linker0/publication-I/O19 pass;26 nested C/header files exact C22. Original Root
+relative-image I/O setup failure retained, corrected pathname rerun only.
+Frozen13/retained207/runtime128/raw1270 verify; notice mistyped freeze hash
+corrected without frozen byte changes. Other12 Main paths exact, only Goal
+provenance reconciled;1847 recorded live worker files preserved.
+[C23 receipt](../src/prototype/c_backend/verification/core-epoch23.json).
+Existing-source native insertion sorting is an intermediate C milestone;
+native indexed/callable Acc/QuickSort/full61 remain open. C24 initial3/classified22/
+exact-term18 E8 records inspected: corrected nullary selection and private exact
+selected-term scratch advance List/Pair calls; client/inert/full/current/freeze
+remain private, no shared-owner blocker or new representation policy inferred.
+
+MEM10 current transport939ec444: frozen21/private68+58/source256/all381 pins
+verified. Initial36 retains20 parent/flags O2/SAN fixture compile failures plus
+16 successes. Retry24/0 uses five byte-exact published E18 fixtures, no new
+adapter/assertion/runtime change. Five unit and namespace O2/SAN outputs exact;
+all seven checkpoints include inherited Source154 cuts/484 verification steps.
+[Transport review](../src/prototype/performance_followup/mem10-current-transport-root-review.json).
+This supersedes transport/checkpoint-pending status only. Machine paired2/146/
+inert8/16 and earlier failures stay held; relevant current acceptance/downstream
+C/.a/codec disposition and actual RSS/time remain. Performance's first C bridge
+dependency guard stopped before build; exact C23/C22 snapshot provenance is
+being reconciled. Transient capacity menu cleared itself with no interaction;
+original owner remains active, feedback queued and durably delivered.
+All7 panes/nine issue criteria/zero PRs reviewed: C/Performance progress, Job
+service-stalled, four bounded owners achieved/stopped. No owner/model/Goal resume,
+cost slot or accepted edit; protected9/timer unchanged, next07:44:22 UTC.
+[Owner review](../src/prototype/coordination/reviews/20261004T0325.json).
+
 | Owner / issue scope | Delivered and verified | Not yet delivered / next boundary |
 | --- | --- | --- |
 | Job/Evidence; SE1-SE5 / AP0, #51/#47 | E1-E4/E6-E18 corrected prototypes integrated/pushed. E17 exact30/E18 exact26 verified; corrected471 dependencies and all raw reports hashed, historical E16 two-fixture census limit retained. Fresh current E17/E18 synthesis/checkpoint O2/SAN/CLI pass, public52/full TSV unchanged; existing named-field bridges/canonical files exact | Owner newly service-stalled, E18 release queued. E19 specific gap/repair verified at Root E17, isolated-worker broad0 source156/overlay471 exact; C/census/strict/full freeze/current-E18 publication pending. E20 private. Genuine frontier/strict3, full Goal/adoption and actual cost open |
-| C backend; #61 (historical #44/#49) | C1-C22 bounded prototypes integrated/pushed. C22 exact12 task8b6debfc/Maina0a9dc38; current E18+MEM9 rebuilt backend/two helpers passes nested40/parent recursive114/integer61 each O2/client-source SAN;84 parent generated C/H bytes exact C21. Retained192/runtime128/raw1603 verified; other11 Main frozen bytes exact, Goal provenance alone reconciled. C21 release consumed | C23 separate source-sort/selected-type-token action and private trial; initial selector failures/classified positives inspected. Pane reports private48 source-sort/40 affected rows each O2/client-source SAN plus link/I/O19 controls0; freeze/raw/inert/current qualification review pending. Preserve C20/C21/C22 historical evidence and dynamic checked/trusted refusals. Existing borrowed lifetime/resource and limited SAN contracts remain. Selected admission/broader Identity/native indexed/callable Acc/QuickSort/full #61/cost remain open |
-| Performance; #56/#51/#52 | V3/MEM2/MEM3 source/cost and MEM4/MEM5 integrated/pushed. MEM9 exact17 taske71528fa/Mainb9e68c27; current-E18 focused454/0, Core/eval-IO/full synthesis/source-checkpoint O2/SAN and public52/full TSV exact. Fold36 retains scoped Tree400 wall-1.43%/RSS-1.91%. MEM6/MEM7 holds and MEM8 attribution reviewed, including full10K/two censored100K environment-use, bounded first20000 transitions and fresh-pair model. MEM10 frozen27/private2730 historical focused/transport/all-cut/affected/capacity evidence verified; six paired materialized byte differences visible. New known-root attribution31/source256/eight records verified and recomputed; MEM9 release consumed. Current flags supplement15/private259/source384/pins23 verified; fresh layouts, callback O2/SAN and original lifetime18 pass; four configuration writer images exact. Current frozen16/private1785+71+36/source256/pins296 verified; paired1476 semantic/fuel/SAN commands0 and33 repeated semantic commands0; six actual retained-arena samples recomputed, pending-machine Tree16/5M capacity -4276224 bytes | MEM6 held for4 O2/7 inert byte failures; MEM7 held for4 codec abortions despite16 semantic passes. Global generic16, opaque lifetimes and independent codec fields preserved. Typed8 allocator/compact-root/beta implementation deferred pending owner contracts; MEM10 terminal HOLD:51/1168 unchanged inert byte failures, parent/candidate writer variation; fresh current unchanged-parent5/8 reproduction. Codec ordering disposition routed to original Job, no waiver. Prepared8bb29f3a had +16 aligned owner extents; flags48c5f872 now equals current baseline160/384/192. Review only; actual sampled current arena deltas verified, full consumer/C/machine-byte/acceptance/RSS/time qualification remains. Current frozen byte diagnosis36/private27/source128/pins143 independently establishes the bounded cache-order cause; debug2/4 failures retained. Exact evidence routed to original Job without resume/ack; no fix/waiver. Separate flags consumer10/private454/14 uncensored0 and70 cuts each O2/SAN independently verified; five unit outputs exact. Current paired byte FAIL2/146 and repeated inert FAIL8/16 unwaived; both same-binary writers vary. Exact materialized counterexamples routed to original stalled Job. Full downstream/byte/current acceptance and RSS/time remain open. MEM9 reader-call reduction is unmeasured time/RSS. No new cost slot/full Goal closure |
+| C backend; #61 (historical #44/#49) | C1-C23 bounded prototypes integrated/pushed. C23 exact13 task1a1e2614/Main9d551064; private selected nominal/host bindings enable existing-source insertion sorting through ordinary source/object/archive C products. Fresh E18+MEM9 source-sort48/nested40 each O2/client-source SAN, linker/I-O19 pass,26 nested generated C/H bytes exact C22. Frozen13/retained207/runtime128/raw1270 verified; other12 Main paths exact, Goal provenance reconciled,1847 live files preserved. Initial Root I/O setup and worker selector/refusal evidence retained | C24 separate private applied-type identity action: initial3/classified22/exact-term18 E8 records inspected, List/Pair scratch progress; client/inert/full/current/freeze publication pending. Preserve C22/C23 snapshots. Public/unselected/computed/dynamic/effect/indexed refusals, borrowed lifetime/Nat32/depth256 rollback/limited SAN persist. Selected admission/broader Identity/native indexed/callable Acc/QuickSort/full61/cost remain open |
+| Performance; #56/#51/#52 | V3/MEM2/MEM3 source/cost and MEM4/MEM5 integrated/pushed. MEM9 exact17 taske71528fa/Mainb9e68c27; current-E18 focused454/0, Core/eval-IO/full synthesis/source-checkpoint O2/SAN and public52/full TSV exact. Fold36 retains scoped Tree400 wall-1.43%/RSS-1.91%. MEM6/MEM7 holds and MEM8 attribution reviewed, including full10K/two censored100K environment-use, bounded first20000 transitions and fresh-pair model. MEM10 frozen27/private2730 historical focused/transport/all-cut/affected/capacity evidence verified; six paired materialized byte differences visible. New known-root attribution31/source256/eight records verified and recomputed; MEM9 release consumed. Current flags supplement15/private259/source384/pins23 verified; fresh layouts, callback O2/SAN and original lifetime18 pass; four configuration writer images exact. Current frozen16/private1785+71+36/source256/pins296 verified; paired1476 semantic/fuel/SAN commands0 and33 repeated semantic commands0; six actual retained-arena samples recomputed, pending-machine Tree16/5M capacity -4276224 bytes. Current transport frozen21/private68+58/source256/381 pins verified; retry24/0 uses five exact published E18 fixtures,16 initial successes/20 compile failures preserved; all seven checkpoint groups covered with inherited Source154/484 | MEM6 held for4 O2/7 inert byte failures; MEM7 held for4 codec abortions despite16 semantic passes. Global generic16, opaque lifetimes and independent codec fields preserved. Typed8 allocator/compact-root/beta implementation deferred pending owner contracts; MEM10 terminal HOLD:51/1168 unchanged inert byte failures, parent/candidate writer variation; fresh current unchanged-parent5/8 reproduction. Codec ordering disposition routed to original Job, no waiver. Prepared8bb29f3a had +16 aligned owner extents; flags48c5f872 now equals current baseline160/384/192. Review only; actual sampled current arena deltas verified, full consumer/C/machine-byte/acceptance/RSS/time qualification remains. Current frozen byte diagnosis36/private27/source128/pins143 independently establishes the bounded cache-order cause; debug2/4 failures retained. Exact evidence routed to original Job without resume/ack; no fix/waiver. Separate flags consumer10/private454/14 uncensored0 and70 cuts each O2/SAN independently verified; five unit outputs exact. Current paired byte FAIL2/146 and repeated inert FAIL8/16 unwaived; both same-binary writers vary. Exact materialized counterexamples routed to original stalled Job. Current transport/checkpoints advance; relevant acceptance/downstream C/.a/codec bytes and RSS/time remain open. Initial private C bridge dependency guard retained; producer/backend snapshot alignment pending. MEM9 reader-call reduction is unmeasured time/RSS. No new cost slot/full Goal closure |
 | Surface; #57 | Verified prototype integrated, completed owner stopped | Accepted policy/promotion and selector diagnostics unresolved; no owner restart |
 | Static audit; #59/PR #60 | Task7ed3ad1/Main5683755; Root385 source/114 archived dependency hashes and exact inventory verified; bounded Goal achieved | Dynamic/full #59 and controlled cost remain open; no static-owner restart |
 | Sort; #41/F3-F5 | PR54 and finite-function task5e6ed84/Main966c4e1 integrated; bounded Goal achieved, focused gates0 | Accepted Sort/F5 and broader interfaces remain separate |
@@ -570,13 +602,13 @@ reporting subsystem. Its audit cover is pinned to `37de1e8`, not current Main.
 
 | Order / owner | Issue or PR | Next deliverable and dependency |
 | --- | --- | --- |
-| 0 / desk -> Merge | Workflow | C/Performance continue; original Job remains service-stalled, E18 release queued. E17/E18/C17-C22/MEM9 published; current flags padding review complete, MEM10 still held. Four bounded Goals achieved/stopped; protected9 preserved. Keep one timer, no new owner/resume; one durable outbox update per material status, direct messages only for urgent prior deltas |
+| 0 / desk -> Merge | Workflow | C/Performance continue; original Job remains service-stalled, E18 release queued. E17/E18/C17-C23/MEM9 published; current transport/seven checkpoints reviewed, current flags padding review complete, MEM10 still held. Four bounded Goals achieved/stopped; protected9 preserved. Keep one timer, no new owner/resume; one durable outbox update per material status, direct messages only for urgent prior deltas |
 | 1 / Job, Root reviews independently | SE/AP, #51 | E17/E18 delivered. Isolated E19 broad0 verified; inspect original-owner service stall and remaining C/census/strict/public/full freeze/current-E18 qualification when READY. Current-E17 counterexample/repair verified; E20 separate. Current E18+MEM9 inert5/8 counterexample plus independently verified frozen36 cache-order cause and new current materialized paired2/146 plus repeated8/16 failures are in the durable original-owner inbox; disposition/fix remains with original Job, preserve reusable results/independent fields and all failure assertions, no automatic Goal resume. Preserve strict3, escaped-node lifetime and every failure; no node recycling/byte waiver |
-| 1 / performance + Root shared-owner review | #56 / #51 | MEM9 independently current-E18 qualified and exact prototype published; reader-call reduction is not actual speed/RSS. MEM6/MEM7 holds remain; codec-owner route reviewed, contract disposition pending. Review typed8 allocator/API and codec obligations before separate implementation qualification; global generic16/opaque lifetimes/independent codec fields remain. Both full environment100K timeouts retained; bounded first20000 observations and paired-argument model remain historical. MEM10 exact27/private2730 reviewed; Terminal9/raw2445 proves51/1168 inert byte failures and same-binary variation; fresh current unchanged-parent5/8 byte reproduction routed to original Job. Preserve review-only/HOLD pending codec disposition, no runtime/cost scheduling. Current flags source48c5f872 removes prepared8bb29f3a's +16 aligned owner growth; fresh callback/configuration lifetime/layout controls pass, not full machine-byte qualification. New current frozen16/raw1785+71+36 independently verifies finite semantic/fuel/SAN gates and pending-machine arena reductions, Tree16/5M -4276224 capacity bytes; not RSS/time/peak/dead bytes. Paired2/146 and repeated8/16 byte failures remain held, exact evidence routed to original Job. Root verifies frozen36/private27/current128/pins143 byte-order cause and routes exact evidence to original Job without resume. Cause accounts for the bounded eight-byte fixture difference; new debug2/4 failures retained, no general historical-failure or fix claim. Rebuild all current consumers/C and finish current transport/checkpoints/acceptance/downstream C and resolve machine bytes with original codec owner; retain sampled capacity scope. Private remaining consumer gates retain matching parent/flags reader-API fixture compile failures; exact API/provenance under investigation, no runtime READY. No automatic slot/publication |
+| 1 / performance + Root shared-owner review | #56 / #51 | MEM9 independently current-E18 qualified and exact prototype published; reader-call reduction is not actual speed/RSS. MEM6/MEM7 holds remain; codec-owner route reviewed, contract disposition pending. Review typed8 allocator/API and codec obligations before separate implementation qualification; global generic16/opaque lifetimes/independent codec fields remain. Both full environment100K timeouts retained; bounded first20000 observations and paired-argument model remain historical. MEM10 exact27/private2730 reviewed; Terminal9/raw2445 proves51/1168 inert byte failures and same-binary variation; fresh current unchanged-parent5/8 byte reproduction routed to original Job. Preserve review-only/HOLD pending codec disposition, no runtime/cost scheduling. Current flags source48c5f872 removes prepared8bb29f3a's +16 aligned owner growth; fresh callback/configuration lifetime/layout controls pass, not full machine-byte qualification. New current frozen16/raw1785+71+36 independently verifies finite semantic/fuel/SAN gates and pending-machine arena reductions, Tree16/5M -4276224 capacity bytes; not RSS/time/peak/dead bytes. Paired2/146 and repeated8/16 byte failures remain held, exact evidence routed to original Job. Root verifies frozen36/private27/current128/pins143 byte-order cause and routes exact evidence to original Job without resume. Cause accounts for the bounded eight-byte fixture difference; new debug2/4 failures retained, no general historical-failure or fix claim. Rebuild all current consumers/C and finish relevant current acceptance/downstream C and resolve machine bytes with original codec owner; retain sampled capacity scope. Transport retry24 passes with five exact published E18 fixtures; initial20 compile failures preserved, all seven checkpoint groups covered with Source154/484. Relevant acceptance/downstream C/.a and codec disposition remain. C bridge first dependency guard stopped before build; exact snapshot alignment required, no runtime READY. No automatic slot/publication |
 | Complete bounded / test-suite; Root publishes | #59 / PR #60 | Verified pilot removes22 duplicate calls with all distinct outcomes preserved; Root raw/assembly review complete. Exact7 taskbc16df9/Main36a27be prototype integrated; broader inventory/cost/accepted adoption remain open |
 | Complete bounded / issue-audit | All open Issues/PRs | Verified comments/dispositions,44/49 superseded by61; nine issues open. Owner stopped; Root resumes coordination, no repeat audit |
 | Complete bounded / verification-audit | #59 / PR #60; #51 | Static inventory/pilot delivered and worker complete; four-job measured cost remains deferred, full #59 open. Do not restart the completed owner automatically |
-| 2 / C backend | #61 (historical #44/#49) | C22 exact12 private IH-capture lowering qualified/published on E18+MEM9; nested40/parent114/integer61 O2/client-source SAN and84 parent generated bytes exact. Original owner develops separate C23 existing-source sort/selected-type-token trial; action inspected, positive client/resource/capture/refusal/inert/freeze/current gates required before publication. Preserve prior failures/epoch history; no new public type ABI/producer/schema, cost grant, upstream owner expansion or native indexed Acc/QuickSort completion |
+| 2 / C backend | #61 (historical #44/#49) | C23 exact13 selected-type/source insertion-sort prototype qualified/published on E18+MEM9; source-sort48/nested40 each O2/client-source SAN and26 C22 parent generated files exact, linker/I-O19 pass. Same owner continues private C24 existing selected applied-classifier investigation; initial/classified/scratch evidence inspected, client/inert/refusal/full/current/freeze required before integration. No producer/schema/erasure/public generic ABI change, cost grant or native indexed Acc/QuickSort/full61 completion |
 | Complete review / Merge | PR #60, #53, #55 | Documentation reviewed/imported with provenance; no open PRs. Full issue criteria remain independent of publication |
 | Complete bounded / Sort library | PR #54 / #41 | Generic MergeSort and finite-function prototype verified/integrated; bounded worker complete. Accepted Sort/F5 and broader containers remain separate; no owner restart |
 | Review / Merge | #57 | Audit delivered prototype against Issue criteria; Surface stays stopped. Prototype delivery is not accepted promotion; do not reopen a worker just to repeat completed gates |
@@ -1312,6 +1344,21 @@ conventions must not become new `.a` fields or source-semantic requirements.
 
 ### Objective (Code)
 
+2026-10-04, Root C23 current qualification/publication: exact13 task1a1e2614/
+Main9d551064 remote exact; scalar +16/-5 and receipt +1/-1 bind only known
+selected declaration/host types privately through existing known-call machinery.
+Original source insertion algorithm/ABI unchanged. Fresh current E18+MEM9
+source-sort48/nested40 each O2/client-source SAN, linker0/I-O19 pass;26 parent
+nested C/H bytes exact C22. Frozen13/retained207/runtime128/raw1270 verified;
+original Root I/O missing-image setup failure retained, pathname-only separate
+rerun passes. Notice hash correction changes no frozen bytes. Other12 Main paths
+exact, Goal provenance reconciled,1847 live worker files preserved.
+[C23 receipt](../src/prototype/c_backend/verification/core-epoch23.json).
+C24 action9f83d968 initial3/classified22/exact-term18 E8 records inspected with
+initial2 fixtures and111 raw hashes: corrected nullary selection preserves
+reference221; exact selected-term scratch yields private List/Pair calls0.
+Client/inert/full/current/freeze pending, no upstream dependency established.
+
 2026-10-04, superseding Root C22 verification: exact12 task8b6debfc/Maina0a9dc38
 are remote exact. Scalar.c changes +7/-2 to retain private delayed IH/recursive
 target identities; native argument layout/ABI and existing lambda construction
@@ -1392,6 +1439,16 @@ pins the fresh combined run, not a rerun of the worker's seven sanitizer gates.
 
 ### Assessment
 
+2026-10-04, Root C23 agent decision within existing scope: integrate the
+private selected-type correction after fresh current gates. Metadata tokens
+remain private, recursive captures compare identity and represented parameters
+stay dense; no public Universe/generic ABI or source normalization/checker/erasure
+authority. Receipt transformations remain profile capabilities. Existing-source
+insertion sorting is a usable-C intermediate, not indexed/callable Acc/QuickSort.
+Retain eight checked/trusted refusal pairs, borrowed storage/lifetime/nonoverlap,
+target Nat32/depth256 transactional failures and limited SAN. C24 remains separate
+private research; do not infer runtime READY/full61/actual cost/accepted adoption.
+
 2026-10-04, superseding Root decision: integrate C22's bounded private IH
 identity correction after exact current qualification. Preserve C21 generated
 bytes and initial nested refusals as historical records; current dynamic/effect/
@@ -1429,6 +1486,7 @@ with corresponding positive and retained dynamic/indexed refusal coverage.
 
 ### Plan
 
+- [x] Qualify/publish C23 private selected types and existing-source native insertion sorting on current E18+MEM9; bounded epoch only, keep Acc/QuickSort/full61 open.
 - [x] Qualify/integrate C22 private nested IH captures on current E18+MEM9; retain parent bytes and initial/resource/refusal controls. This completes that bounded epoch only.
 - [ ] Recheck #61 residuals (superseded #44/#49) against the pinned producer and specify one target epoch.
 - [ ] Work under `src/prototype/c_backend/`; use a lane-specific SOAP work list
@@ -1484,6 +1542,16 @@ Consider comparisons with Bend2, Lean, Agda and Rocq. Related issues/PRs are
 forthcoming; this is not approval to weaken checking or introduce a new engine.
 
 ### Objective (Code)
+
+2026-10-04, current transport939ec444 independently reviewed: frozen21/
+private68+58/source256 and381 distinct after-pins exact. Initial36 retains20
+matching parent/flags O2/SAN compile failures and16 successes; retry24/0 uses
+five byte-identical published E18 fixtures (Git blob manifest02241bd2 at e14221e6).
+No new adapter/assertion/runtime edit. Five retry unit and namespace logs O2/SAN
+exact; Root recomputes namespace rows and verifies inherited current Source154
+cuts/484 steps from prior consumer14. All seven checkpoint groups covered;
+SourceIO/IdentityIO/transport/normalization inherited initial successes retained.
+No Root runtime/GDB/cost rerun. [Receipt](../src/prototype/performance_followup/mem10-current-transport-root-review.json).
 
 2026-10-04, current cuts/capacity c6ca3019: exact16/private1785+71+36,
 all256 source files and296 distinct input pins independently hashed. Root
@@ -1598,6 +1666,18 @@ Four cross-instrumentation raw image hashes differ; all 140 cross-build reads
 pass. No cross-instrumentation byte equality or wall/RSS speedup is claimed.
 
 ### Assessment
+
+2026-10-04, superseding Root transport decision: accept bounded matched
+current evidence while retaining every initial20 fixture setup diagnostic and
+all machine-byte failures. Existing published producer-matched fixtures resolve
+test API setup, not an implementation defect or weakened assertion. Transport/
+semantic/seven-checkpoint evidence advances; relevant acceptance/downstream C/.a
+and original-owner codec disposition remain. Original active Performance first
+C bridge guard mixes a C23 Main snapshot with C22 task hashes and stops before
+build; exact provenance alignment is owner work, no runtime regression inferred.
+Transient capacity menu clears itself without intervention; feedback queued once
+and exact durable inbox delivered. No slot/runtime READY/publication/adoption/
+actual RSS/time/Goal completion; current arena/byte bounds remain unchanged.
 
 2026-10-04, superseding Root cuts/capacity decision within existing scope:
 accept pinned evidence review while retaining runtime HOLD. Current pending-
