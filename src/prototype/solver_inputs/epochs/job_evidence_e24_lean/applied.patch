@@ -1,0 +1,46 @@
+--- a/src/synthesis_schema.c
++++ b/src/synthesis_schema.c
+@@ -672,6 +672,12 @@
+ 	return 0;
+ }
+ 
++static const struct pg_evidence *schema_member_result(const void *owner, size_t i)
++{
++	const struct source_constructor *members = owner;
++	return pg_synthesis_result(members[i].producer);
++}
++
+ static void data_schema_step(struct pg_synthesis *synthesis, struct pg_synthesis_job *job)
+ {
+ 	struct schema_work *local = pg_synthesis_work_state(job, DATA_SCHEMA_JOB);
+@@ -734,18 +740,20 @@
+ 		const struct pg_data_signature *signature = pg_data_signature(synthesis->typing, pg_synthesis_scope_context(scope), indices);
+ 		if (!signature) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+ 		struct pg_graph temporary = {0};
+-		const struct pg_evidence **results = NULL;
+-		if (local->checked <= SIZE_MAX / sizeof(*results))
+-			results = pg_alloc(&temporary, local->checked * sizeof(*results));
+-		if (local->checked && !results) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
+-		for (size_t i = 0; i < local->checked; ++i) {
+-			results[i] = pg_synthesis_result(local->members[i].producer);
+-			if (local->nominal_input) results[i] = schema_result_context(synthesis->typing, results[i], indices,
+-				pg_data_declaration_fields(local->nominal_input, i));
++		struct pg_evidence_inputs results = {.owner = local->members, .at = schema_member_result};
++		if (local->nominal_input) {
++			const struct pg_evidence **converted = NULL;
++			if (local->checked <= SIZE_MAX / sizeof(*converted))
++				converted = pg_alloc(&temporary, local->checked * sizeof(*converted));
++			if (local->checked && !converted) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return; }
++			for (size_t i = 0; i < local->checked; ++i)
++				converted[i] = schema_result_context(synthesis->typing, schema_member_result(local->members, i), indices,
++					pg_data_declaration_fields(local->nominal_input, i));
++			results = (struct pg_evidence_inputs){.owner = converted};
+ 		}
+ 		local->schema = local->nominal_input
+-			? pg_data_schema_check(synthesis->typing, local->nominal_input, signature, local->checked, (struct pg_evidence_inputs){.owner = results})
+-			: pg_data_schema(synthesis->typing, signature, local->checked, (struct pg_evidence_inputs){.owner = results});
++			? pg_data_schema_check(synthesis->typing, local->nominal_input, signature, local->checked, results)
++			: pg_data_schema(synthesis->typing, signature, local->checked, results);
+ 		pg_graph_destroy(&temporary);
+ 		pg_synthesis_finish(synthesis, job, local->schema ? PG_SYNTHESIS_DONE
+ 			: local->nominal_input ? PG_SYNTHESIS_REJECTED : PG_SYNTHESIS_ERROR);

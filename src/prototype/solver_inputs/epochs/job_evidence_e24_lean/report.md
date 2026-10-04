@@ -1,0 +1,9 @@
+E24 deletes the non-nominal source-schema completion temporary Evidence array and copy loop. Existing synchronous Evidence inputs read checked canonical constructor Jobs; the view is not retained by checking. Nominal context conversion still occurs once into necessary temporary receipts. Runtime18+/10-; no new retained field/index/graph/authority/checker/schema/trust/fuel or eval/IADT/readback change.
+
+Exact published E18 parent control builds0/aborts134: denying producer scratch yields ERROR4 instead of expected DONE1 after one denied allocation. Candidate O2/SAN control builds/runs0. Nominal required conversion denial still yields ERROR, allowed recheck preserves allocation, changed field rejects; zero fuel is inert and schema survives producer destruction. Uninstrumented full Synthesis O2/SAN passes independently.
+
+Full unskipped O2/semantic/seven checkpoints and baseline C pass. Five paired workloads DONE/all35/fourcuts exact E18; genuine imported ordinary Quick766477/typed114388/Evidence94974. Actual strict public1 preserves original3/all52/full verdict-fuel TSV exact E18. All156/actual471, canonical patch and intended publication bytes verified. External cumulative observations are not net live/peak/time.
+
+Initial setup exits2/2/2 preserved: include path selected runtime instead of test synthesis.c, renamed test main lost implicit return, and private candidate Makefile was absent from source156. Small failed test/makefile preimages and exact requests/report pins retained. Standalone ordinary parser/Solve control and separate exact build input correct setup; no warning waiver or source-fixture mutation. Original focused13/setup history16 unchanged.
+
+Exact published E18 taska8f52a0; E19-E23/current Main/E10 excluded. E25 collector deletion excluded. Current-producer joint, task/Main publication, genuine public continuation/strict3, exclusive net costs and full SE1-SE5 remain open. No accepted promotion or Goal completion.

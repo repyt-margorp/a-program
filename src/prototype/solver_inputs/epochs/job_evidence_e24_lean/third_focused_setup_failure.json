@@ -1,0 +1,8 @@
+{
+  "phase": "Candidate make setup after genuine parent build0/run134",
+  "exit": 2,
+  "report": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e24/candidate-build-v3.log",
+  "report_sha256": "1c6b772a7748c2df75aa30031c7525c61a650430b94ccac74ec3ecc3c254ef21",
+  "cause": "Private156 source map excludes build Makefile; candidate src/Makefile had not been copied.",
+  "correction": "Copy exact verified parent src/Makefile as separate pinned build input. Keep all156 runtime/test bytes unchanged; retain actual parent ERROR4/expectedDONE1/denied1 counterexample."
+}

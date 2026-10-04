@@ -1,0 +1,36 @@
+{
+  "original_failed_inputs_are_historical_not_current": true,
+  "redirects": [
+    {
+      "version": "v1",
+      "original_path": "src/prototype/solver_inputs/controls/schema_input_allocation_failure.c",
+      "sha256": "a5d14f4470286920dd3279d242470f7a756f15bb88f0974ba213ad75cf0bc014",
+      "exact_preserved_preimage": "src/prototype/solver_inputs/epochs/job_evidence_e24/initial_control.c"
+    },
+    {
+      "version": "v1",
+      "original_path": "src/prototype/solver_inputs/epochs/job_evidence_e24/schema_input_control.mk",
+      "sha256": "6f585c6c5b6e9da2ca9d573eab02baeacee0e755dae83ecdb125eeb06d4e9853",
+      "exact_preserved_preimage": "src/prototype/solver_inputs/epochs/job_evidence_e24/initial_schema_input_control.mk"
+    },
+    {
+      "version": "v2",
+      "original_path": "src/prototype/solver_inputs/controls/schema_input_allocation_failure.c",
+      "sha256": "a5d14f4470286920dd3279d242470f7a756f15bb88f0974ba213ad75cf0bc014",
+      "exact_preserved_preimage": "src/prototype/solver_inputs/epochs/job_evidence_e24/initial_control.c"
+    },
+    {
+      "version": "v2",
+      "original_path": "src/prototype/solver_inputs/epochs/job_evidence_e24/schema_input_control.mk",
+      "sha256": "b1b9408009b8f61cfc18bf2ed4887c89e0a42b8c045e847b0eee97437e013542",
+      "exact_preserved_preimage": "src/prototype/solver_inputs/epochs/job_evidence_e24/initial_v2_schema_input_control.mk"
+    }
+  ],
+  "source156_and_runtime_unchanged": true,
+  "setup_only_exits": [
+    2,
+    2,
+    2
+  ],
+  "no_runtime_outcome_waiver": true
+}

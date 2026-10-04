@@ -1,0 +1,16 @@
+{
+  "parent_task": "a8f52a015f73fe7cfa067c3d5b122bef7e4532b4",
+  "candidate_source156": "6685d68e1ae73a3497eebf6b5fe8ae334d0ba203296ee889371156f3e074a473",
+  "delta": "6064f4734fc92b7548effa995307149dfaca75ac3013d6ff833dc6eba4d2ca10",
+  "parent_control_exit": -6,
+  "parent_actual": "ERROR4 rather than expected DONE1 after exactly one denied producer scratch allocation; unchanged isolated E18 source156",
+  "candidate_O2_SAN_control_exit": 0,
+  "nominal_controls": "Required conversion scratch denied produces ERROR, one denial; allowed recheck preserves allocation; changed field rejects",
+  "no_retained_input_view": true,
+  "initial_setup_failures_retained": [
+    2,
+    2,
+    2
+  ],
+  "scope": "Only synthesis_schema TU allocator instrumented. Normal checker/typed/Eval paths unchanged; no authority or generic recycling. No current-producer, broad, strict, cost or full Goal claim."
+}

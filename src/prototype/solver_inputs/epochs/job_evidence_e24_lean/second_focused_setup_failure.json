@@ -1,0 +1,8 @@
+{
+  "phase": "Parent corrected include control build; no runtime execution",
+  "exit": 2,
+  "report": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e24/parent-build-v2.log",
+  "report_sha256": "fd41fa952741b660b304549ec1d51dbddd5939d9af7310566193e15d7c783dbd",
+  "cause": "Renaming existing test main removed the C implicit-main-return rule; fixture ends without explicit return, causing Werror return-type.",
+  "correction": "Use a small standalone ordinary parser/Solve driver and declarative headers instead of including full synthesis fixture. No warning waiver, runtime/source156/canonical unchanged."
+}
