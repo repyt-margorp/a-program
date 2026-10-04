@@ -1,0 +1,21 @@
+{
+  "date_UTC": "2026-10-04T08:33:14.493994+00:00",
+  "trigger": "Read-only periodic progress followup found immutable C24 downstream freeze before any outbox notice",
+  "worker_freeze_path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_spine_current/epochs/current_spine_deletions_v1_c24_held",
+  "freeze14_manifest_sha256": "bfa49515b98bc482802ecfb0c2549bfdc0993c754a6f43591579a74674e9a81e",
+  "private1443_all_payload_hashes_verified": true,
+  "all689_after_pins_and_source256_exact": true,
+  "all11_terminal_uncensored0_records_and291_expected_statuses_verified": true,
+  "committed284_Git_origin_blobs_and_Root_snapshot_bytes_verified": true,
+  "all120_actual_C_H_oracle_outputs_exact_Root_c414_reference": true,
+  "consumer31_manifest_unchanged": true,
+  "candidate_source128": "25967429ca326339107bb5851da27876b74186fe310b0b285a27c32058bd2efc",
+  "parent_source128": "80b4610651207998d4789670ddef8f9ae4e497245aa00b3d9a9fce0777ab982d",
+  "C24_task": "9af7f27a05cae856b5a1da010b1741883a6ba44e",
+  "SAN_scope": "Selected flavor backend/helpers/AP producer and source/raw/oracle/client bodies; emitted object/archive bodies keep original O2 native path.",
+  "decision": "Exact C24 downstream alignment evidence verified on spine259/frame80b; reused historical Rootc414 outputs only as byte reference, not new pair source qualification. Runtime byte HOLD3/146+15/24, old6/146+29/48/strict3/all observer-SAN-setup failures remain. No original C owner edits/adapter/Runtime READY. Current E24 composition/full acceptance/codec-owner disposition/actual matched RSS-time remain separate.",
+  "Root_runtime_rerun_runtime_task_publication_new_cost_grant_byte_waiver_accepted_promotion_Goal_completion": false,
+  "later_notice_path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/coordination/outbox/performance-current-spines-c24-allocation-held-20261004.txt",
+  "later_notice_sha256": "dd06561112dd4b4fc9823bf6ba5da54612997b15233fdae7f46a7601e154fcec",
+  "later_notice_c24_freeze_exact_no_runtime_change": true
+}

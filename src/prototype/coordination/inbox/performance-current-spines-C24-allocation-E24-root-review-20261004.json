@@ -1,0 +1,11 @@
+{
+  "date_UTC": "2026-10-04T08:46:35.617426+00:00",
+  "provenance": "Root operational evidence review within existing human authorization; notices are not new user approval.",
+  "recipient": "Original performance owner; durable delivery only, no TUI input/resume or consumption claim.",
+  "C24_receipt": "src/prototype/performance_followup/current-spines-c24-held-root-review.json",
+  "C24_receipt_sha256": "87151b5c6b077027513e63099b61f24db7f6363b07474749638bcdc27d108e17",
+  "allocation_receipt": "src/prototype/performance_followup/current-spines-allocation-held-root-review.json",
+  "allocation_receipt_sha256": "8d5683c3a885010ce23edd8dcfe2bf8b75d06b4f762ae644b60b916217ee4559",
+  "E24_current_source128": "19e6a2e7f3e69423f832a79db0ea1b09c4cb5b58bdf064e65b064ac12d2217b5",
+  "decision": "Notice dd065611 and C24 frozen14/private1443/pins689/Git284/291 expected statuses/120 actual retained outputs exact verified. Allocation frozen28/private21+14+9/pins318/raw19 expected0/reused15 exact; recomputed six capacities/job/payload/index counts/nine extents and six external DONE census pairs/two LocalSorted repeats. Only pending-machine arenas differ; Tree16/5M capacity-1179648/Tree400 requests-4134682/aligned-132309824 are sampled storage/cumulative requests, not actual net/live/dead/peak/RSS/time or safe reclaim/per-site proof. LocalSorted original+549/+30048 and mixed-330/-12144,+46/+5904 retained, no stable direction/cause inferred. Runtime spine80b->259 byte HOLD3/146+15/24/old6/146+29/48/strict3/all observerSAN/setup/held MEM10/6/7 failures unwaived. E24 now separately prototype-delivered/current-source19e6a2e7 qualified, no automatic spine composition/actual-cost transfer. Continue bounded owned allocation/lifetime investigation; shared owner/index and codec/acceptance dependencies remain. Cost36/config7448f3f4 unchanged/ungranted; no new cost slot/runtime task/byte waiver/accepted promotion/Goal closure."
+}

@@ -1,0 +1,164 @@
+{
+  "date_UTC": "2026-10-04T08:42:46.908630+00:00",
+  "notice_path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/coordination/outbox/performance-current-spines-c24-allocation-held-20261004.txt",
+  "notice_sha256": "dd06561112dd4b4fc9823bf6ba5da54612997b15233fdae7f46a7601e154fcec",
+  "freeze28_manifest_sha256": "54996c81f3a856f9065f71134178d42c63a1df595314c59bb7f7126351bed70d",
+  "worker_freeze_path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_spine_current/epochs/current_spine_deletions_v1_allocation_held",
+  "private_payload_counts": {
+    "capacity": 21,
+    "cumulative": 14,
+    "sorted_census_repeats": 9
+  },
+  "all318_after_pins_source256_tool_binary_raw_and15_reused_records_verified": true,
+  "all19_terminal_uncensored0_new_records_verified": true,
+  "capacity_six_raw_states_recomputed": {
+    "list-done": {
+      "charged_steps": 1915,
+      "capacity_delta": 0,
+      "used_delta": 0,
+      "changed_arena_groups": []
+    },
+    "trees4-cut10K": {
+      "charged_steps": 10000,
+      "capacity_delta": 0,
+      "used_delta": -5408,
+      "changed_arena_groups": [
+        "whnf.PG_EVAL_PENDING.machine"
+      ]
+    },
+    "trees4-cut100K": {
+      "charged_steps": 100000,
+      "capacity_delta": -49152,
+      "used_delta": -65792,
+      "changed_arena_groups": [
+        "whnf.PG_EVAL_PENDING.machine"
+      ]
+    },
+    "trees4-cut1M": {
+      "charged_steps": 1000000,
+      "capacity_delta": -458752,
+      "used_delta": -445664,
+      "changed_arena_groups": [
+        "whnf.PG_EVAL_PENDING.machine"
+      ]
+    },
+    "trees4-cut2M": {
+      "charged_steps": 2000000,
+      "capacity_delta": -409600,
+      "used_delta": -409632,
+      "changed_arena_groups": [
+        "whnf.PG_EVAL_PENDING.machine"
+      ]
+    },
+    "trees16-cut5M": {
+      "charged_steps": 5000000,
+      "capacity_delta": -1179648,
+      "used_delta": -1210272,
+      "changed_arena_groups": [
+        "whnf.PG_EVAL_PENDING.machine"
+      ]
+    }
+  },
+  "all9_extents_and_all_six_job_payload_index_counts_equal": true,
+  "only_pending_machine_arena_group_differs": true,
+  "cumulative_six_raw_DONE_records_recomputed": {
+    "list": {
+      "parent": {
+        "charged_steps": 1915,
+        "calls": 3895,
+        "aligned_bytes": 412112
+      },
+      "candidate": {
+        "charged_steps": 1915,
+        "calls": 3895,
+        "aligned_bytes": 412112
+      },
+      "call_delta": 0,
+      "aligned_byte_delta": 0
+    },
+    "imported-local-sorted": {
+      "parent": {
+        "charged_steps": 761848,
+        "calls": 2863124,
+        "aligned_bytes": 227663344
+      },
+      "candidate": {
+        "charged_steps": 761848,
+        "calls": 2863673,
+        "aligned_bytes": 227693392
+      },
+      "call_delta": 549,
+      "aligned_byte_delta": 30048
+    },
+    "trees4": {
+      "parent": {
+        "charged_steps": 2318248,
+        "calls": 1180991,
+        "aligned_bytes": 46883056
+      },
+      "candidate": {
+        "charged_steps": 2318248,
+        "calls": 1128871,
+        "aligned_bytes": 45215216
+      },
+      "call_delta": -52120,
+      "aligned_byte_delta": -1667840
+    },
+    "trees16": {
+      "parent": {
+        "charged_steps": 7608511,
+        "calls": 3668664,
+        "aligned_bytes": 135120448
+      },
+      "candidate": {
+        "charged_steps": 7608511,
+        "calls": 3497060,
+        "aligned_bytes": 129629120
+      },
+      "call_delta": -171604,
+      "aligned_byte_delta": -5491328
+    },
+    "trees64": {
+      "parent": {
+        "charged_steps": 29780510,
+        "calls": 13970764,
+        "aligned_bytes": 495753552
+      },
+      "candidate": {
+        "charged_steps": 29780510,
+        "calls": 13299882,
+        "aligned_bytes": 474285328
+      },
+      "call_delta": -670882,
+      "aligned_byte_delta": -21468224
+    },
+    "trees400": {
+      "parent": {
+        "charged_steps": 183507626,
+        "calls": 85404180,
+        "aligned_bytes": 2994391600
+      },
+      "candidate": {
+        "charged_steps": 183507626,
+        "calls": 81269498,
+        "aligned_bytes": 2862081776
+      },
+      "call_delta": -4134682,
+      "aligned_byte_delta": -132309824
+    }
+  },
+  "LocalSorted_two_same_binary_repeats_recomputed": [
+    {
+      "repetition": 0,
+      "call_delta": -330,
+      "aligned_byte_delta": -12144
+    },
+    {
+      "repetition": 1,
+      "call_delta": 46,
+      "aligned_byte_delta": 5904
+    }
+  ],
+  "decision": "Accept exact frozen attribution evidence only. Tree16/5M sampled capacity -1179648 and Tree400 external cumulative requests -4134682/aligned bytes -132309824; sampled arena capacity and aggregate external requests do not establish live/dead/peak/RSS/time gains or safe reclaim/per-site causes. LocalSorted original+549/+30048 and two mixed repeats retained; no stable gain/regression or pointer-order cause inferred. Existing observer omissions and unchanged tools retained. Source80b->259 runtime remains byte HOLD3/146+15/24, old6/146+29/48/strict3/observer/SAN/setup and held MEM10/6/7 unwaived. Published/current-qualified E24 is a separate source composition; full acceptance/codec-owner disposition and actual matched RSS-time remain. No runtime publication/new cost grant/accepted promotion/Goal completion.",
+  "Root_runtime_rerun_runtime_publication_cost_grant_byte_waiver_accepted_promotion_Goal_completion": false
+}
