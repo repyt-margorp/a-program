@@ -1,0 +1,166 @@
+{
+  "date_UTC": "2026-10-04T21:29:20.661166+00:00",
+  "classification": "Independent static review of owner paired reproduction and exact trial5 source; no Root native execution",
+  "Main_parent": "099104ccf3568c3532a59e6215dd730ca665edb9",
+  "notice_SHA": "053a179b761a49791fb4e220c4a0481af1bc202b0dcf5eabe2e45cce13a4172a",
+  "notice_text": "[worker-notification job-evidence/native-frontier material-regression-and-repair]\nPriority remains canonical typed Evidence deletion plus genuine frontier; E25/E26/E27 stay parked. Goal/model/session unchanged. This is worker evidence, not human approval.\nExact committed parent fc52755b345a555e49a79df40549e9cb23d54088 passes materialized independent permutation save/reload equality; composed native code126 5405b09eb0999b1e83b8a2698e02fc0352ffad5a422f0c3fda7fa666ab890cc9 saves DONE but equality exits1 (both outputs absent, root UNSUPPORTED, steps415894). Original broad657 manifest1487d388 and broad exit2/report ce292da5 retained. Paired raw argv/binaries/images: src/prototype/solver_inputs/job_evidence_native_frontier/materialized-repro/terminal.json; fixture manifest4dea5343.\nDiagnosis: required TYPED_INDUCTIVE fails while rebuilding a raw map's family declaration Scope; a retained index type has a changed-Core normalization origin and no local admission. Exact trace: materialized-repro/native-missing-declaration-type-gdb.log. Expected TYPE_FAMILY classifier probes are distinguished, not waived. No current accepted-parent defect inferred.\nConcrete owner correction in qualification: existing Scope index keys actual declared type Core/classifier and exact parent/index owners, instead of alternative formation-history pointer. An unaccepted descriptor may select an actual canonical admitted type before admission; raw/copy alone cannot do so; admitted facts remain fixed. No new graph/index/checker, eval/readback edit or trust-on-load. Fresh immutable trial5 input659 f0523a3def47b350f1c1a40ba5dfb16a48bc14286b10376f3b62e4b941e928aa/code126 441cbd699ca87b505564938c81e68cf17fc3de03581af903bfc02636544c2244; focused serial O2 is running, not READY.\nPrevious composed seven O2/seven SAN groups0 are local only. Full unskipped broad, saved bytes/foreign cuts, modern imported Sorted DONE pair, strict3/public52, joint qualification and exclusive net time/peak costs remain open. Cross-owner dependency remains Performance reusable-result/retained-frame joint controls through Merge; this repair touches only owner code. No cost-slot agreement or heavy-idle claim; all original strict3 remain unwaived.\n",
+  "parent": {
+    "revision": "fc52755b345a555e49a79df40549e9cb23d54088",
+    "manifest": {
+      "path": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/parent-materialized/manifest.sha256",
+      "SHA": "9b613c6c8c6fa4974e3af641b9def715dc90fb3c23172543e81aef97b1bede8b",
+      "count": 122,
+      "all_files_exact": true
+    },
+    "every_snapshot_file_matches_committed_parent": true
+  },
+  "fixture_manifest": {
+    "path": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/controls/materialized-reproduction/manifest.sha256",
+    "SHA": "4dea53435fa1baa938f7b71fae1ce170b102f38f9cab97889f01a355b7b114d2",
+    "count": 5,
+    "all_files_exact": true
+  },
+  "terminal_record_path": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/materialized-repro/terminal.json",
+  "terminal_record_SHA": "f7db95fc0c84c5dc19a977f1bfd9d0da43e520136bbc68a72bbe18091c5a5718",
+  "raw_records_all_logs_and_four_binaries_exact": [
+    {
+      "name": "parent-build",
+      "argv": [
+        "make",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/parent-materialized/src/Makefile",
+        "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-parent-materialized-o2",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "-j1",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-parent-materialized-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-parent-materialized-o2/program_test"
+      ],
+      "returncode": 0,
+      "log_sha256": "c1c18551f4e3df9d61fe0476b1888cc38903b1d9efa8c176d98b165273ea6e22"
+    },
+    {
+      "name": "parent-save",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-parent-materialized-o2/pointer-check",
+        "--legacy-intrinsic-dot",
+        "--steps",
+        "8000000",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/materialized-repro/parent.a",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/controls/materialized-reproduction/independent.p"
+      ],
+      "returncode": 0,
+      "log_sha256": "c8a0fdcd1282faf636a6dedea36fcbde35d98cdeff274945aefc15859daf908b",
+      "binary_sha256": "761a0ac0b5dbdd17f169df8c345b73334608b7ceeca6bbf5f3e352aecca3a91d"
+    },
+    {
+      "name": "parent-equal",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-parent-materialized-o2/program_test",
+        "--image-limit",
+        "2000000",
+        "--steps",
+        "8000000",
+        "--equal-image",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/materialized-repro/parent.a",
+        "main",
+        "output"
+      ],
+      "returncode": 0,
+      "log_sha256": "a21755514bbdc783a91766d53a8dd10f92c17e9f78ffa4def5ff3da69b4da85c",
+      "binary_sha256": "a8487c7e0f4ce45ab03621cb98e25d2910bb2ae7462f119c2235845b778681e8"
+    },
+    {
+      "name": "native-save",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial4-o2/pointer-check",
+        "--legacy-intrinsic-dot",
+        "--steps",
+        "8000000",
+        "--save-materialized",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/materialized-repro/native.a",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/controls/materialized-reproduction/independent.p"
+      ],
+      "returncode": 0,
+      "log_sha256": "71962fccdb0b540c0add003405e7fb9dda9eaacffc57bbbb7e16842d0050da39",
+      "binary_sha256": "9e817c1dc74e12298986ae8456814f591e71a9a38551268f88ad58fd422dad2b"
+    },
+    {
+      "name": "native-equal",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial4-o2/program_test",
+        "--image-limit",
+        "2000000",
+        "--steps",
+        "8000000",
+        "--equal-image",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/materialized-repro/native.a",
+        "main",
+        "output"
+      ],
+      "returncode": 1,
+      "log_sha256": "b1d551a4a79ad5a996cbcdc3b22678c035749622956e6777755124700fc0fcea",
+      "binary_sha256": "a803bafd2566946741f209f62428376caf716591df01dee87a969382feafc99f"
+    }
+  ],
+  "images": {
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/materialized-repro/parent.a": {
+      "SHA": "5ec335b56506169e612abc318a4b56ec992331ab3cb903b24296f4b50fb35eee",
+      "bytes": 20728552
+    },
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/materialized-repro/native.a": {
+      "SHA": "1d39fab68bd153af6f0dfc226b66a2a36c7c5972212c590285a8f707dbd8d762",
+      "bytes": 20947001
+    }
+  },
+  "observed_result": "Same fixture/limits/export names: both save commands DONE; parent equality0/equal1 at chunks1/64, native equality1/equal0 at chunks1/64. Parent save945228/reload946745 versus native save937889/reload415894; fuel differs, no performance comparison.",
+  "record_limits": "Five terminal records omit start/finish/timeout fields; no inferred uncensored timing or Root replay. Debug logs are separate owner executions, not binary-identical O2 replays.",
+  "debug_logs": {
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/materialized-repro/native-required-query-v3-gdb.log": "04d5ec8098a37dbb6afdd2f1adfd7fbee451e688cd235c9092885ca6430b11a3",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/materialized-repro/native-missing-declaration-type-gdb.log": "f6c233d1bb38ab8f471efc86e59d3b54a1a1de58ab884b94f7246bac6287aaec",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/materialized-repro/native-final-state-gdb.log": "f5c03ebb51a8e0b88d6d41aca60ebdc36876bdcd068adc341b1369355bbbb146",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/materialized-repro/native-direct-failure-v2-gdb.log": "01518d43bba543e9c150a83dbd9bbd7bbc86be891ef33c5d66a2e585af3be53a",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/materialized-repro/native-inductive-map-failure-gdb.log": "9a677e35238abf1e9c18164dc89cf590c0540ceec787813b7d40288c62e04205"
+  },
+  "debug_observed": "Required TYPED_INDUCTIVE fails; raw map family declaration proof reaches unadmitted Scope type with changed-Core normalization origin. Final root and two output jobs UNSUPPORTED, both outputs null. TYPE_FAMILY in Scope/map stack is a required dependency in this trace, not blanket evidence that all classifier probes are unexpected. Earlier failed debugger memory access preserved.",
+  "diagnosis_scope": "Owner diagnosis supported by separate required-query/Scope/final-state traces; repair correctness awaits terminal qualification. This establishes candidate regression against exact fc parent for this fixture, not accepted-parent defect or all source causes.",
+  "old_code126": {
+    "path": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/trial2-code126.sha256",
+    "SHA": "5405b09eb0999b1e83b8a2698e02fc0352ffad5a422f0c3fda7fa666ab890cc9",
+    "count": 126,
+    "all_files_exact": true
+  },
+  "trial5_input659": {
+    "path": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/trial5-inputs.sha256",
+    "SHA": "f0523a3def47b350f1c1a40ba5dfb16a48bc14286b10376f3b62e4b941e928aa",
+    "count": 659,
+    "all_files_exact": true
+  },
+  "trial5_code126": {
+    "path": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/trial5-code126.sha256",
+    "SHA": "441cbd699ca87b505564938c81e68cf17fc3de03581af903bfc02636544c2244",
+    "count": 126,
+    "all_files_exact": true
+  },
+  "actual_code_changes": [
+    "src/scope.c"
+  ],
+  "source_delta": "--- trial4/src/scope.c\n+++ trial5/src/scope.c\n@@ -18,12 +18,23 @@\n \tuint64_t hash = (uintptr_t)context;\n \thash = (hash ^ (uintptr_t)parent) * UINT64_C(1099511628211);\n \thash = (hash ^ (uintptr_t)indices) * UINT64_C(1099511628211);\n-\thash = (hash ^ (uintptr_t)type) * UINT64_C(1099511628211);\n+\tif (type) {\n+\t\thash = (hash ^ (uintptr_t)type->core) * UINT64_C(1099511628211);\n+\t\thash = (hash ^ (uintptr_t)type->classifier) * UINT64_C(1099511628211);\n+\t}\n \tif (!typing->scopes.capacity && pg_index_init(&typing->scopes)) return NULL;\n \tfor (struct pg_index_entry *p = pg_index_candidates(&typing->scopes, hash); p; p = p->next) {\n \t\tconst struct pg_scope *scope = (const void *)p;\n \t\tif (p->hash != hash || scope->context != context || scope->parent != parent) continue;\n-\t\tif (scope->indices == indices && scope->type == type) return scope;\n+\t\tif (scope->indices != indices) continue;\n+\t\tif (scope->type != type && (!scope->type || !type ||\n+\t\t\tscope->type->core != type->core || scope->type->classifier != type->classifier)) continue;\n+\t\t/* A declaration retains its checked typed fact, not alternative\n+\t\t * formation history. Raw transport stays unaccepted; only a canonical\n+\t\t * admitted input can replace its descriptive type before admission. */\n+\t\tif (!scope->admission_owner && type && type->admission_owner == typing->owner_key &&\n+\t\t\tpg_occurrence_owned_by(type, typing)) ((struct pg_scope *)scope)->type = type;\n+\t\treturn scope;\n \t}\n \tstruct pg_scope *scope = pg_alloc(typing->graph, sizeof(*scope));\n \tif (!scope) return NULL;\n",
+  "source_assessment": "Existing Scope index changes type pointer key to actual Core/classifier, retaining exact context/parent/indices. Only an unadmitted Scope may switch to a locally admitted owned type; admitted Scope types remain fixed. No new graph/index/checker or eval/readback changes among126 files. Raw descriptor creation alone is not admission. Identity, foreign owner, wrong type/classifier/context, pending-query stability and saved/foreign correspondence still require qualification.",
+  "trial5_terminal_record_present": false,
+  "owner_state_note": "Notice reports focused serial O2 running, not READY. Later readonly pane shows trial7 input659d4f8e2ed/code126441cbd69 progressing; no additional terminal milestone inferred or older trial silently relabeled.",
+  "broad4_retained_review": "src/prototype/coordination/reviews/20261004-native-frontier4-semantic-failure-review.json",
+  "supersedes": "Only parent-control/cause-pending wording of broad4 review; its exit2/header-count134/materialized inequality and native54/frontier2 local limitations remain.",
+  "open_criteria": [
+    "full unskipped broad acceptance",
+    "saved/foreign cuts",
+    "modern imported Sorted DONE pair",
+    "strict3/public52",
+    "native and retained-frame/reusable-result joint qualification",
+    "exclusive matched net wall and peak RSS including Scope/map/Occurrence/index/input overhead"
+  ],
+  "accepted_changes": false,
+  "Root_runtime": false,
+  "READY": false,
+  "cost_grant_samples": 0
+}

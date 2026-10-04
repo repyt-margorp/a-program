@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: C47 exact16/task3526b9a3/current Root O2-full product SAN50 per phase verified and prototype Main recorded after C46. Readable823-line actual Acc module retains full ordered map images; manual Scope/action/general native limits open. Job broad4 materialized semantic failure and zero cost samples remain. Original Goals/timer unchanged.
+Status: C47 prototype delivery remains published; C48 endpoint reader action is statically pinned, executable milestone pending. Exact fc parent passes paired materialized reproduction while native trial4 fails; Scope-only trial5 correction is not READY. Joint controls routed; no cost samples or Goal/timer changes.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -17,15 +17,40 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | Inquiry desk -> `merge`: reporting vs coordination/integration | All lanes | Desk answers the user; only Merge integrates after verified handoff |
-| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C47 exact16/task3526b9a3/current Root O2/full emitter-product-client SAN50 each verified; readable823-line Acc/full ordered images published as prototype after C46. Manual full Scope/action/general native61/cost open; C46 native4 inherited |
+| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C47 exact16/task3526b9a3/Main099104cc and Root O2/full-product SAN50 each published. Separate C48 source endpoint reader build/inspect0 statically pinned; executable qualification pending. Full checked Scope/action/general native/cost open |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Approved current frame deletion accepted; original363 plus adopted4 verified separately. Actual matched peakRSS/time pending safe all-owner window; peripheral MEM10/spine/empty arrays parked |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
-| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | Native54 Core O2/six SAN0 and frontier2 seven local O2-SAN suites0; broad4 exact657 exit2 includes materialized finite-permutation output inequality at both chunks1/64. Parent-matched diagnosis/full/public/strict/frontier/joint/net/READY open in sole SE list |
+| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | Parent fc paired materialized equality0 versus native trial4 equality1 verified. Trial5 input659/code126441cbd69 Scope-only repair unqualified; local54/frontier2 scoped, broad4/strict/public/joint/net/READY open in sole SE list |
 | 6 | `verification-audit`: independent read-mostly suite/debt inventory | #59 / PR #60, #51 | Bounded static inventory/pilot complete; measured cost deferred, full #59 remains open |
 | 7 | `test-suite`: implement coverage-preserving test reductions | #59 / PR #60 | Bounded Goal complete; exact7 taskbc16df9 pushed/remote verified, Root raw/assembly review complete, prototype Main36a27be integrated |
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
+
+2026-10-04, [paired materialized parent/trial5 review](../src/prototype/coordination/reviews/20261004-native-materialized-parent-trial5-review.json)
+supersedes parent-control-pending wording: all122 files match exact committed
+fc52755b and raw paired fixture/log/binary/image pins agree. Parent reload
+passes0, native trial4 fails1 at both chunks1/64; debug records show required
+TYPED_INDUCTIVE failure, unadmitted declaration Scope and absent UNSUPPORTED
+outputs. Input659f0523a3d/code126441cbd69 correction touches only scope.c,
+with actual type Core/classifier keys and exact parent/index/Context owners;
+terminal repair qualification remains open. Broad4 exit2/header134, local54/
+frontier2 and all strict failures stay scoped. Later trial7 pane shows progress,
+not READY. [Existing joint reusable-result/frame controls](../src/prototype/coordination/inbox/job-retained-reusable-result-frame-controls-20261004.json)
+are freshly pinned and routed to original Job; blocked Performance is not resumed.
+
+[C48 endpoint action](../src/prototype/coordination/reviews/20261004-c48-endpoint-action-review.json)
+retains six source input copies and actual materialized image/binary, owner
+strict serial O2 build0/inspect0 with six source endpoint descriptions. Acc
+step projects b2->b7; left weaken/lift projects LT b7 b8->LT b7 b2 through
+explicit Nat.succ Match/static binding. Executable source-derived projections
+and full-source SAN/resource/refusal qualification await distinct frozen handoff;
+complete checked Scope/action/general native remain open. C47 published frozen16
+is unchanged; publication does not block continuation. Fresh21:27 readonly seven
+panes retain C/Job active, Performance stalled, four bounded owners achieved;
+Surface historically closed. Nine issue bodies/update dates unchanged, zero PRs;
+original six-hour timer/watchers unchanged. No runtime replay, accepted change,
+issue closure, new owner/Goal/model or cost grant/sample.
 
 2026-10-04, [C47 current transport review](../src/prototype/coordination/reviews/20261004-c47-current-transport-review.json)
 supersedes private/frozen/current-pending wording: exact16 task3526b9a3 follows
@@ -69,7 +94,7 @@ seven O2/SAN suites0 advance exact runtimes only. Later [broad4 semantic failure
 pins657/code1265405b09e/rawce292da5: full O2 acceptance exit2, derivation header
 count134 and independent materialized finite-permutation output unequal at both
 chunks1/64. This concrete candidate semantic failure remains unwaived; exact
-committed fc parent control and cause are pending. Earlier local passes do not
+committed fc parent comparison above now separates parent pass from native failure. Earlier local passes do not
 qualify broad/public/strict3/partial-query/Sorted/joint/net/READY. [Retained Source/frame controls](../src/prototype/coordination/inbox/job-retained-source-frame-controls-20261004.json)
 are routed to original Job without restarting blocked Performance or another owner.
 

@@ -1,0 +1,61 @@
+{
+  "date_UTC": "2026-10-04T21:31:44.189073+00:00",
+  "recipient": "original job-evidence filesystem inbox only",
+  "classification": "Existing Performance reusable-result/retained-frame controls routed under current joint verification scope; no new owner or runtime",
+  "request_notice_SHA": "053a179b761a49791fb4e220c4a0481af1bc202b0dcf5eabe2e45cce13a4172a",
+  "packet_pins": {
+    "/home/repyt/workspace/a-program/src/prototype/performance_critical_frame/epochs/accepted94_order_stateless_frames_v1/focused-summary.json": "4d6c13805ccdab7de3925bef29cf8c26f04769ff4cdf51fe4fdd21701f83e6dc",
+    "/home/repyt/workspace/a-program/src/prototype/performance_critical_frame/epochs/accepted94_order_stateless_frames_v1/focused-inputs-before.json": "a5f86fed634112e698d1ae434eb8dbb9a8160edb62e9768e4440d980f8201a7e",
+    "/home/repyt/workspace/a-program/src/prototype/performance_critical_frame/epochs/accepted94_order_stateless_frames_v1/focused-inputs-after.json": "0bb7315172e8c8afacf686222defd08bc5553159ae408a37f3bd14b7bc4fd080",
+    "/home/repyt/workspace/a-program/src/prototype/performance_critical_frame/epochs/accepted94_order_stateless_frames_v1/focused-verification.sha256": "14e1da7f5222e2a452ef739b36e869f09de31d58cb9036585addb6dfea4a9584",
+    "/home/repyt/workspace/a-program/src/prototype/performance_critical_frame/epochs/accepted94_order_stateless_frames_v1/qualify_accepted_frame_focused.py": "9c555bdcf2582541a34ca7a5e98ebd7926b240b1c86417421f386f4b30d2cf40",
+    "/home/repyt/workspace/a-program/src/prototype/performance_critical_frame/epochs/accepted94_order_stateless_frames_v1/readback_transport_bounds_test.c": "c8201af489097a9da98cacbd0100f2366207fefba59a67368f3a321620dbe7df"
+  },
+  "raw_pins": {
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/summary.json": "4d6c13805ccdab7de3925bef29cf8c26f04769ff4cdf51fe4fdd21701f83e6dc",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/records.json": "bb2ab2e3926477971ca6483f8100afe765bff79a57ddc0126a3ca8bcaf5d1282",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/same-flavor-output-comparisons.json": "ef0413174819fe6fea1b4741d443a38a12c5cffb931961c7cd1e6fd486edb545",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/inputs-after.json": "0bb7315172e8c8afacf686222defd08bc5553159ae408a37f3bd14b7bc4fd080",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixture-origins.json": "475f1f4f9f9301b6fb1e96aab5d3efc5740fa8fb0231b42b1f31248dc3ab78a5"
+  },
+  "fresh_all1442_inputs_exact": true,
+  "fresh_all88_raw_logs_exact": true,
+  "source_pair": {
+    "parent": "930997b62db85814718d0d5ac151f392bfae243a447d5d0d5f2adbde66cba5ae",
+    "candidate": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907"
+  },
+  "nine_tests": [
+    "frame_retirement_test",
+    "stateless_head_cleanup_test",
+    "callback_failure_cleanup_test",
+    "fold_spine_test",
+    "materialized_fields_test",
+    "direct_test",
+    "head_test",
+    "total_result_test",
+    "head_cleanup_test"
+  ],
+  "candidate_extra": "readback_transport_bounds_test retains source order/count negatives",
+  "retained_fixtures": {
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/frame-fixtures/frame_retirement_test.c": "340831c01ab47b49401535d0e53ad1817ca88b61c9fd9ac4ae303d1bc9ae7e73",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/frame-fixtures/stateless_head_cleanup_test.c": "4ac7f0173e81d7355e785abc80818b800873b9124ad2395cca1d575555ad368f",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/frame-fixtures/callback_failure_cleanup_test.c": "93da2cfae80ddecd43deb62d1f242fad710ae5fcc0b9ea19aba41ed491b57cff",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/frame-fixtures/fold_spine_test.c": "ebd1f8f179718d5b37e58f4ce5939502adb43a47a54851d8c5dd88adbd3551ae",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/frame-fixtures/materialized_fields_test.c": "6af422d3568bd8ad26e1644ad04e313704bd54b3451ab03f13f35687fa381d3e",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/frame-fixtures/machine_resave_probe.c": "9160f3e9b58d7d9213b8920cf156610c0344954ce5ae8c67a203eb30703dc028",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/frame-fixtures/readback_transport_bounds_test.c": "c8201af489097a9da98cacbd0100f2366207fefba59a67368f3a321620dbe7df"
+  },
+  "owner_execution_scope": "88 serial focused build/run/fresh-TotalResult commands on parent930997b6 and candidatec206: all0 uncensored,18 same-flavor unit outputs equal. Existing accepted four-file candidate matches fc runtime; parent of this historical pair precedes frame promotion. These are historical execution results freshly rehashed, not current native qualification or Root replay.",
+  "existing_source_foreign_cut_route": "src/prototype/coordination/inbox/job-retained-source-frame-controls-20261004.json",
+  "existing_consumer_and_endpoint_reviews": [
+    "src/prototype/coordination/reviews/20261004-performance-accepted-endpoints-static-review.json",
+    "src/prototype/coordination/reviews/20261004-performance-accepted94-raw-cuts-review.json",
+    "src/prototype/coordination/reviews/20261004-performance-acceptance-addendum-static-review.json"
+  ],
+  "requested_joint_verification": "Use the exact retained fixture assertions with the selected immutable native code to check reusable direct/head/TotalResult results, frame retirement while suspended/restored/cancelled, callback failure cleanup, materialized Fold fields, readback count/order, saved/foreign cuts and required progress. Preserve wrong owner/context/type/classifier and admission negatives. Pin selected native inputs and both owner contributions; do not change evaluator/readback or assume accepted controls prove native correspondence.",
+  "repair_boundary": "Paired materialized reproduction establishes exact accepted parent pass versus trial4 failure; trial5 source-only Scope correction is NOT READY. Preserve broad4 exit2/header134, historical strict3, raw20 image differences/36 parent inert failures and all other reported failures separately.",
+  "Performance_resume": false,
+  "new_runtime": false,
+  "accepted_adoption": false,
+  "cost_grant_or_samples": 0
+}

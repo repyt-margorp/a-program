@@ -1,7 +1,7 @@
 # Solver and Evidence Duplication Audit
 
 Date: 2026-09-30
-Status: Accepted94a/fc baseline preserved; native54 and composed frontier2 local gates advance, broad4 materialized finite-permutation semantic failure blocks full qualification. Current full/public/strict3/frontier/joint/net cost and READY remain open; this is the sole native implementation work list.
+Status: Exact fc parent passes the paired materialized reproduction; native trial4 fails. Trial5 Scope-only correction441cbd69 is statically pinned but not READY. Native54/frontier2 local gates remain scoped; full/public/strict3/frontier/joint/net criteria stay open in this sole work list.
 Parent: [artifact plan, AP0](2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md#ap0-simplify-before-extending-persistence).
 This is the active prerequisite work list, not another artifact format proposal.
 
@@ -320,6 +320,26 @@ additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
 
+2026-10-04, Root agent review of the original owner's
+[paired materialized reproduction and trial5 correction](../src/prototype/coordination/reviews/20261004-native-materialized-parent-trial5-review.json):
+all122 parent snapshot files match committed fc52755b; fixture5/logs/binaries/images
+are exact. Same input/limits/export names give parent equality0 and native1 at
+chunks1/64. The native reload reaches UNSUPPORTED with both outputs absent;
+required TYPED_INDUCTIVE and unadmitted Scope declaration traces support the
+owner diagnosis. This supersedes parent-control-pending wording only; broad4
+exit2/header134 and prior local/full/strict failures remain. Input659f0523a3d/
+code126441cbd69 changes only scope.c: actual Core/classifier key with exact
+Context/parent/index owners, locally admitted owned-type selection only before
+Scope admission. Qualification must cover identity/foreign owners/type/classifier/
+Context, pending stability and saved/foreign correspondence. No Root native
+execution, accepted edit, READY or net gain follows. Original Job's later trial7
+pane is progress evidence on the same code, not an inferred terminal handoff.
+[Reusable-result and frame controls](../src/prototype/coordination/inbox/job-retained-reusable-result-frame-controls-20261004.json)
+route exact existing fixture assertions and historical focused88/0 records,
+all1442 inputs freshly exact, for joint native qualification. Preserve original
+parent930 versus candidatec206 scope and failures; blocked Performance remains
+stopped. The original Job owns the existing Plan below.
+
 2026-10-04, Root agent progress assessment within existing prototype scope:
 [native54](../src/prototype/coordination/reviews/20261004-native54-owner-progress-review.json)
 immutable485/code120f35c7a61/results31 pins full Core O2/six affected SAN0.
@@ -337,8 +357,8 @@ unequal at chunks1/64 while ordinary source/independent image paths agree.
 Adopt this as a required candidate semantic regression investigation, not an
 identity-only waiver or current-parent defect. Preserve exact input/log/source
 pins and failing artifacts; diagnose original typed Source/materialization/
-ordinary readback with a committed fc parent control before a source repair or
-explicit receipt-contract migration. Existing local Source passes do not qualify
+ordinary readback using the now verified committed fc parent control below;
+repair qualification and any explicit receipt-contract migration remain separate. Existing local Source passes do not qualify
 this independent materialized path. Broad3 host assertion2 and all old strict3
 remain separate. Necessary native Scope/map/Occurrence/input/wire bytes still
 enter parent-matched net accounting; counts are not measured memory/time.

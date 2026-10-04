@@ -1,0 +1,20 @@
+{
+  "date_UTC": "2026-10-04T21:31:44.189387+00:00",
+  "recipient": "original job-evidence filesystem inbox only",
+  "review": "src/prototype/coordination/reviews/20261004-native-materialized-parent-trial5-review.json",
+  "notice_SHA": "053a179b761a49791fb4e220c4a0481af1bc202b0dcf5eabe2e45cce13a4172a",
+  "verified": "122 snapshot files match exact fc52755b; five fixture files, five logs, four O2 binaries and both images exact. Same limits/export names parent equality0/native equality1 at chunks1/64. All659 trial5 inputs/all126 code files exact; only scope.c changes. Separate required TYPED_INDUCTIVE/Scope/final-state debugger traces reviewed; failed debugger access preserved.",
+  "assessment": "Candidate semantic regression supported; no current accepted-parent defect. Scope actual Core/classifier key and pre-admission canonical owned-type selection require qualification; no Root native replay or adoption. Later trial7 pane is progress evidence only; await distinct exact terminal handoff.",
+  "joint_controls": "src/prototype/coordination/inbox/job-retained-reusable-result-frame-controls-20261004.json",
+  "remaining": [
+    "full unskipped broad acceptance",
+    "saved/foreign cuts",
+    "modern imported Sorted DONE pair",
+    "strict3/public52",
+    "native and retained-frame/reusable-result joint qualification",
+    "exclusive matched net wall and peak RSS including Scope/map/Occurrence/index/input overhead"
+  ],
+  "cost": "No current prospective C/Job terminal agreement, grant, collector or samples. Notice is no heavy-idle interval; no blind renewal.",
+  "Goal_session_model_actions": false,
+  "READY": false
+}

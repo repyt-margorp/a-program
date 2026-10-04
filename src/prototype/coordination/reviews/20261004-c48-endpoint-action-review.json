@@ -1,0 +1,97 @@
+{
+  "date_UTC": "2026-10-04T21:29:20.666495+00:00",
+  "classification": "Independent static review of original C48 reader action; no Root runtime/freeze/adoption",
+  "notice_SHA": "44587a55157cc55fd2a9f00d08ef48df91d9c80aed3e3f65bd7912d7ea624636",
+  "notice_text": "lane=C backend epoch=C48 branch=parallel/c-backend-20261003 worker-HEAD=cc3cba3495b81628e0a68ec8b45aee4f5447d188\nConsumed faithful hand-authored actual-Acc CODE clarification; priority remains actual down/indices/partition/captures, not List conveniences. Deadline deliverable C47 executable823-line component already frozen/READY21:02, manifest2a2cf6af45bac33c2b7abe01f4b20f2c34c48d01df68bfdbbfc3539f397accef; preserve submitted16 unchanged.\nActual C48 action: new acc_endpoints reader/inspector, strict serial O2 build0 and actual materialized source inspection0 at21:24:11Z. All six actual endpoint types expose existing bound slots: step quoted TOTAL Acc Nat LT b2 -> b7; weaken/lift LT b7 b8 -> b7 b2. Explicit Nat.succ Match clause/static binding only, no producer/schema/checker/erasure or source-equality claim. Owners unchanged, source advancement wrappers disabled. Evidence src/prototype/c_backend/.evidence/epoch48-acc-endpoints-20261004/reader-inspect.json and reader-inputs.json; binary1ab5b0a33cfc3383345c80b6aa4827e4ea7451162195c9da90beacc54b89531e.\nNext concrete milestone: source-derived endpoint table drives these target index projections in a separate faithful executable ordinary-C module; affected O2/full-source client SAN/resource/refusal controls before distinct freeze. Manual action/complete checked Scope/general native Acc remain open. No demonstrated producer blocker or cost grant; focused j1 only.\nConsumed C46 task497f2a460582b55209b93b8576de3e4328e3c714/Main205eeccccb8ffeb9cc34b80c38f77858e412e898 publication facts in new C48 Objective; historical C47 pending-parent metadata remains exact. Publication is not an implementation blocker; shared Git untouched.\n",
+  "retained_reader_inputs": [
+    {
+      "path": "src/prototype/c_backend/acc_endpoints/read.c",
+      "sha256": "997ec66db2695e34251018deba24fa239493fa90c2375d627b1ad9d32eb328ce",
+      "copy": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch48-acc-endpoints-20261004/reader-inputs/src/prototype/c_backend/acc_endpoints/read.c"
+    },
+    {
+      "path": "src/prototype/c_backend/acc_endpoints/read.h",
+      "sha256": "517bb52fa6f1d3d9fd3ada92ba9a00040a7c64ae868735060799f34ef062c151",
+      "copy": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch48-acc-endpoints-20261004/reader-inputs/src/prototype/c_backend/acc_endpoints/read.h"
+    },
+    {
+      "path": "src/prototype/c_backend/acc_endpoints/inspect.c",
+      "sha256": "0386685ba71609731d869a5bdf4cd33ea22dec01cb5ecd2b2150725738f99c5f",
+      "copy": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch48-acc-endpoints-20261004/reader-inputs/src/prototype/c_backend/acc_endpoints/inspect.c"
+    },
+    {
+      "path": "src/prototype/c_backend/acc_endpoints/build.mk",
+      "sha256": "852ce411a93b56baac1a3e3a21079cb9e71b7a24fb953c88a47a4bdf94a43923",
+      "copy": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch48-acc-endpoints-20261004/reader-inputs/src/prototype/c_backend/acc_endpoints/build.mk"
+    },
+    {
+      "path": "src/prototype/c_backend/indexed_views/view.c",
+      "sha256": "119732398c5b03c72af7f00dcb208ae99bba316cb76b3c381df19ceb1d792518",
+      "copy": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch48-acc-endpoints-20261004/reader-inputs/src/prototype/c_backend/indexed_views/view.c"
+    },
+    {
+      "path": "src/prototype/c_backend/indexed_views/view.h",
+      "sha256": "5143e90b6b1564d6cbb3d6fdcc747b5218a6dc39b8f385166b7a096a691726d5",
+      "copy": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch48-acc-endpoints-20261004/reader-inputs/src/prototype/c_backend/indexed_views/view.h"
+    }
+  ],
+  "all_six_input_copies_exact": true,
+  "input_manifest_SHA": "d77d052a1e0bec3c9953b3b1b239c67fc44b97ffba24609c2c506f3359b0609b",
+  "owner_build": {
+    "argv": [
+      "make",
+      "-j1",
+      "-f",
+      "src/prototype/c_backend/acc_endpoints/build.mk",
+      "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/tree",
+      "BUILD=/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch48-acc-endpoints-20261004/O2",
+      "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch48-acc-endpoints-20261004/O2/c_acc_endpoints_inspect"
+    ],
+    "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch48-acc-endpoints-20261004/tmp",
+    "start": "2026-10-04T21:23:51.753843+00:00",
+    "exit": 0,
+    "finish": "2026-10-04T21:24:01.077478+00:00"
+  },
+  "owner_inspection": {
+    "argv": [
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch48-acc-endpoints-20261004/O2/c_acc_endpoints_inspect",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/actual-materialized.a",
+      "succ_access"
+    ],
+    "binary_sha256": "1ab5b0a33cfc3383345c80b6aa4827e4ea7451162195c9da90beacc54b89531e",
+    "image_sha256": "7c1a4f35108dea9a91c4ffac90062b0c1d6bb1c145e116ff269942775e704aa4",
+    "start": "2026-10-04T21:24:11.945947+00:00",
+    "exit": 0,
+    "finish": "2026-10-04T21:24:11.991052+00:00"
+  },
+  "reader_build_record_SHA": "fbed90267f618a4bd183ffafb7ad87560e4aa5127d36cc5c80ae5cc7f34a1535",
+  "reader_inspection_record_SHA": "cb7085b4b34db56007f5f2d9922271f7533f9defd35a3c09d08387dcdf2ded6f",
+  "raw_stdout_SHA": "ddbd6b08507689d3bbac57609f1ff9f9e4661e17bb9ddbe178523f5f1ba79b6a",
+  "raw_stdout": "FIELD1 right lift0 wrappers1 paths2 scope-source-shared1 scope-destination-shared1 field-depth10\nFAMILY universe@0x5639637703d0\nVALUE (thunk@0x56392d52e5d0 (return@0x56392d52e5f0 ((constructor@0x5639637a4798 b2) b3)))\nLEFT count6 source-depth6 destination-depth10\nLEFT image0 judgement3 context-is-destination1 b0\nLEFT image1 judgement3 context-is-destination1 b1\nLEFT image2 judgement3 context-is-destination1 b5\nLEFT image3 judgement3 context-is-destination1 b7\nLEFT image4 judgement3 context-is-destination1 b5\nLEFT image5 judgement3 context-is-destination1 (constructor@0x5639637a2758 b2)\nRIGHT count6 source-depth6 destination-depth10\nRIGHT image0 judgement3 context-is-destination1 b0\nRIGHT image1 judgement3 context-is-destination1 b1\nRIGHT image2 judgement3 context-is-destination1 b5\nRIGHT image3 judgement3 context-is-destination1 b7\nRIGHT image4 judgement3 context-is-destination1 b7\nRIGHT image5 judgement3 context-is-destination1 (constructor@0x5639637a2758 b7)\nENDPOINTLEFT judgement3 context-depth10 (((match@0x5639637a2720 (constructor@0x5639637a2758 b2)) universe@0x56396376d7b0) lambda((thunk-type-former@0x56392d52e430 (((return-type-former@0x56392d52e440 computation-totality@0x56392d52e3d0) closed-effect-row@0x56392d52e370) (((data-family@0x5639637a4a50 data-family@0x5639637a2850) data-family@0x5639637a38d0) local@0x56396458e030)))))\nTARGET_ENDPOINT read0 quoted1 arguments3 constructors1 ARG0=data-family@0x5639637a2850 ARG1=data-family@0x5639637a38d0 ARG2=b2\nENDPOINTRIGHT judgement3 context-depth10 (((match@0x5639637a2720 (constructor@0x5639637a2758 b7)) universe@0x56396376d7b0) lambda((thunk-type-former@0x56392d52e430 (((return-type-former@0x56392d52e440 computation-totality@0x56392d52e3d0) closed-effect-row@0x56392d52e370) (((data-family@0x5639637a4a50 data-family@0x5639637a2850) data-family@0x5639637a38d0) local@0x56396458c910)))))\nTARGET_ENDPOINT read0 quoted1 arguments3 constructors1 ARG0=data-family@0x5639637a2850 ARG1=data-family@0x5639637a38d0 ARG2=b7\nPATH0 b8\nPATH1 b9\nFIELD2 left lift0 wrappers1 paths2 scope-source-shared1 scope-destination-shared1 field-depth12\nFAMILY universe@0x5639637703d0\nVALUE b9\nLEFT count10 source-depth10 destination-depth12\nLEFT image0 judgement3 context-is-destination1 b0\nLEFT image1 judgement3 context-is-destination1 b1\nLEFT image2 judgement3 context-is-destination1 b2\nLEFT image3 judgement3 context-is-destination1 b3\nLEFT image4 judgement3 context-is-destination1 b4\nLEFT image5 judgement3 context-is-destination1 b5\nLEFT image6 judgement3 context-is-destination1 b6\nLEFT image7 judgement3 context-is-destination1 b7\nLEFT image8 judgement3 context-is-destination1 b5\nLEFT image9 judgement3 context-is-destination1 (constructor@0x5639637a2758 b2)\nRIGHT count10 source-depth10 destination-depth12\nRIGHT image0 judgement3 context-is-destination1 b0\nRIGHT image1 judgement3 context-is-destination1 b1\nRIGHT image2 judgement3 context-is-destination1 b2\nRIGHT image3 judgement3 context-is-destination1 b3\nRIGHT image4 judgement3 context-is-destination1 b4\nRIGHT image5 judgement3 context-is-destination1 b5\nRIGHT image6 judgement3 context-is-destination1 b6\nRIGHT image7 judgement3 context-is-destination1 b7\nRIGHT image8 judgement3 context-is-destination1 b7\nRIGHT image9 judgement3 context-is-destination1 (constructor@0x5639637a2758 b8)\nENDPOINTLEFT judgement3 context-depth12 (((match@0x5639637a2720 (constructor@0x5639637a2758 b2)) universe@0x56396376d7b0) lambda(((data-family@0x5639637a38d0 b7) local@0x563964335dc0)))\nTARGET_ENDPOINT read0 quoted0 arguments2 constructors3 ARG0=b7 ARG1=b2\nENDPOINTRIGHT judgement3 context-depth12 (((match@0x5639637a2720 (constructor@0x5639637a2758 b8)) universe@0x56396376d7b0) lambda(((data-family@0x5639637a38d0 b7) local@0x5639643501e0)))\nTARGET_ENDPOINT read0 quoted0 arguments2 constructors3 ARG0=b7 ARG1=b8\nPATH0 b10\nPATH1 b11\nFIELD3 left lift0 wrappers1 paths2 scope-source-shared1 scope-destination-shared1 field-depth12\nFAMILY universe@0x5639637703d0\nVALUE b9\nLEFT count10 source-depth10 destination-depth12\nLEFT image0 judgement3 context-is-destination1 b0\nLEFT image1 judgement3 context-is-destination1 b1\nLEFT image2 judgement3 context-is-destination1 b2\nLEFT image3 judgement3 context-is-destination1 b3\nLEFT image4 judgement3 context-is-destination1 b4\nLEFT image5 judgement3 context-is-destination1 b5\nLEFT image6 judgement3 context-is-destination1 b6\nLEFT image7 judgement3 context-is-destination1 b7\nLEFT image8 judgement3 context-is-destination1 b5\nLEFT image9 judgement3 context-is-destination1 (constructor@0x5639637a2758 b2)\nRIGHT count10 source-depth10 destination-depth12\nRIGHT image0 judgement3 context-is-destination1 b0\nRIGHT image1 judgement3 context-is-destination1 b1\nRIGHT image2 judgement3 context-is-destination1 b2\nRIGHT image3 judgement3 context-is-destination1 b3\nRIGHT image4 judgement3 context-is-destination1 b4\nRIGHT image5 judgement3 context-is-destination1 b5\nRIGHT image6 judgement3 context-is-destination1 b6\nRIGHT image7 judgement3 context-is-destination1 b7\nRIGHT image8 judgement3 context-is-destination1 (constructor@0x5639637a2758 b7)\nRIGHT image9 judgement3 context-is-destination1 (constructor@0x5639637a2758 b8)\nENDPOINTLEFT judgement3 context-depth12 (((match@0x5639637a2720 (constructor@0x5639637a2758 b2)) universe@0x56396376d7b0) lambda(((data-family@0x5639637a38d0 b7) local@0x563964356c90)))\nTARGET_ENDPOINT read0 quoted0 arguments2 constructors3 ARG0=b7 ARG1=b2\nENDPOINTRIGHT judgement3 context-depth12 (((match@0x5639637a2720 (constructor@0x5639637a2758 b8)) universe@0x56396376d7b0) lambda(((data-family@0x5639637a38d0 b7) local@0x563964357b10)))\nTARGET_ENDPOINT read0 quoted0 arguments2 constructors3 ARG0=b7 ARG1=b8\nPATH0 b10\nPATH1 b11\nFIELDS3 readonly owners unchanged\n",
+  "raw_stderr_SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "build_stdout_SHA": "f207965dbb4574d788a7ef7874dfc98652db18c8375d3f807d8a709837d19ea6",
+  "build_stderr_SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "endpoint_rows": [
+    "TARGET_ENDPOINT read0 quoted1 arguments3 constructors1 ARG0=data-family@0x5639637a2850 ARG1=data-family@0x5639637a38d0 ARG2=b2",
+    "TARGET_ENDPOINT read0 quoted1 arguments3 constructors1 ARG0=data-family@0x5639637a2850 ARG1=data-family@0x5639637a38d0 ARG2=b7",
+    "TARGET_ENDPOINT read0 quoted0 arguments2 constructors3 ARG0=b7 ARG1=b2",
+    "TARGET_ENDPOINT read0 quoted0 arguments2 constructors3 ARG0=b7 ARG1=b8",
+    "TARGET_ENDPOINT read0 quoted0 arguments2 constructors3 ARG0=b7 ARG1=b2",
+    "TARGET_ENDPOINT read0 quoted0 arguments2 constructors3 ARG0=b7 ARG1=b8"
+  ],
+  "observed_endpoint_direction": "FIELD1 right: quoted TOTAL Acc Nat LT b2 -> b7. FIELD2/3 left: displayed left LT b7 b2, right LT b7 b8, so transport direction is right -> left. Explicit Nat.succ Match and lambda binding, no arbitrary equality/predecessor inference.",
+  "readonly_scope": "Source owner counts are asserted unchanged by inspector; temporary inspection graph allocations remain. Six exposed types are descriptions, not complete checked Scope/action or source-equality proof.",
+  "C47_preserved": "Previously published exact16 task3526b9a3/Main099104cc remains unchanged; this separate C48 action neither supersedes its freeze nor requires publication hold.",
+  "next_owner_milestone": "Source-derived endpoint projections in ordinary executable C, affected O2/full-source client SAN/resource/refusal controls and distinct frozen handoff.",
+  "open_limits": [
+    "manual action and complete checked Scope",
+    "general native Acc/source equivalence",
+    "resource and refusal qualification of new executable projections",
+    "net memory/time"
+  ],
+  "accepted_changes": false,
+  "READY": false,
+  "cost_grant_samples": 0
+}
