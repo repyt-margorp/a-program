@@ -1,0 +1,74 @@
+FIELD1 right lift0 wrappers1 paths2 scope-source-shared1 scope-destination-shared1 field-depth10
+FAMILY universe@0x561e785813d0
+VALUE (thunk@0x561e436655d0 (return@0x561e436655f0 ((constructor@0x561e785b5798 b2) b3)))
+LEFT count6 source-depth6 destination-depth10
+LEFT image0 judgement3 context-is-destination1 b0
+LEFT image1 judgement3 context-is-destination1 b1
+LEFT image2 judgement3 context-is-destination1 b5
+LEFT image3 judgement3 context-is-destination1 b7
+LEFT image4 judgement3 context-is-destination1 b5
+LEFT image5 judgement3 context-is-destination1 (constructor@0x561e785b3758 b2)
+RIGHT count6 source-depth6 destination-depth10
+RIGHT image0 judgement3 context-is-destination1 b0
+RIGHT image1 judgement3 context-is-destination1 b1
+RIGHT image2 judgement3 context-is-destination1 b5
+RIGHT image3 judgement3 context-is-destination1 b7
+RIGHT image4 judgement3 context-is-destination1 b7
+RIGHT image5 judgement3 context-is-destination1 (constructor@0x561e785b3758 b7)
+PATH0 b8
+PATH1 b9
+FIELD2 left lift0 wrappers1 paths2 scope-source-shared1 scope-destination-shared1 field-depth12
+FAMILY universe@0x561e785813d0
+VALUE b9
+LEFT count10 source-depth10 destination-depth12
+LEFT image0 judgement3 context-is-destination1 b0
+LEFT image1 judgement3 context-is-destination1 b1
+LEFT image2 judgement3 context-is-destination1 b2
+LEFT image3 judgement3 context-is-destination1 b3
+LEFT image4 judgement3 context-is-destination1 b4
+LEFT image5 judgement3 context-is-destination1 b5
+LEFT image6 judgement3 context-is-destination1 b6
+LEFT image7 judgement3 context-is-destination1 b7
+LEFT image8 judgement3 context-is-destination1 b5
+LEFT image9 judgement3 context-is-destination1 (constructor@0x561e785b3758 b2)
+RIGHT count10 source-depth10 destination-depth12
+RIGHT image0 judgement3 context-is-destination1 b0
+RIGHT image1 judgement3 context-is-destination1 b1
+RIGHT image2 judgement3 context-is-destination1 b2
+RIGHT image3 judgement3 context-is-destination1 b3
+RIGHT image4 judgement3 context-is-destination1 b4
+RIGHT image5 judgement3 context-is-destination1 b5
+RIGHT image6 judgement3 context-is-destination1 b6
+RIGHT image7 judgement3 context-is-destination1 b7
+RIGHT image8 judgement3 context-is-destination1 b7
+RIGHT image9 judgement3 context-is-destination1 (constructor@0x561e785b3758 b8)
+PATH0 b10
+PATH1 b11
+FIELD3 left lift0 wrappers1 paths2 scope-source-shared1 scope-destination-shared1 field-depth12
+FAMILY universe@0x561e785813d0
+VALUE b9
+LEFT count10 source-depth10 destination-depth12
+LEFT image0 judgement3 context-is-destination1 b0
+LEFT image1 judgement3 context-is-destination1 b1
+LEFT image2 judgement3 context-is-destination1 b2
+LEFT image3 judgement3 context-is-destination1 b3
+LEFT image4 judgement3 context-is-destination1 b4
+LEFT image5 judgement3 context-is-destination1 b5
+LEFT image6 judgement3 context-is-destination1 b6
+LEFT image7 judgement3 context-is-destination1 b7
+LEFT image8 judgement3 context-is-destination1 b5
+LEFT image9 judgement3 context-is-destination1 (constructor@0x561e785b3758 b2)
+RIGHT count10 source-depth10 destination-depth12
+RIGHT image0 judgement3 context-is-destination1 b0
+RIGHT image1 judgement3 context-is-destination1 b1
+RIGHT image2 judgement3 context-is-destination1 b2
+RIGHT image3 judgement3 context-is-destination1 b3
+RIGHT image4 judgement3 context-is-destination1 b4
+RIGHT image5 judgement3 context-is-destination1 b5
+RIGHT image6 judgement3 context-is-destination1 b6
+RIGHT image7 judgement3 context-is-destination1 b7
+RIGHT image8 judgement3 context-is-destination1 (constructor@0x561e785b3758 b7)
+RIGHT image9 judgement3 context-is-destination1 (constructor@0x561e785b3758 b8)
+PATH0 b10
+PATH1 b11
+FIELDS3 readonly owners unchanged

@@ -1,0 +1,44 @@
+[
+  {
+    "argv": [
+      "make",
+      "-j1",
+      "-f",
+      "src/prototype/c_backend/acc_transport/build.mk",
+      "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/tree",
+      "BUILD=/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/O2",
+      "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/O2/c_acc_transport_emit"
+    ],
+    "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/tmp",
+    "start": "2026-10-04T20:47:23.384454+00:00",
+    "exit": 0,
+    "finish": "2026-10-04T20:47:32.830329+00:00",
+    "before_sha256": "f8b9e92e2638fd85835583bc3e0e725fd1379a6570a6bf40c3868f1b07d6889d",
+    "after_sha256": "f8b9e92e2638fd85835583bc3e0e725fd1379a6570a6bf40c3868f1b07d6889d"
+  },
+  {
+    "argv": [
+      "make",
+      "-j1",
+      "-f",
+      "src/prototype/c_backend/acc_transport/build.mk",
+      "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/tree",
+      "BUILD=/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/SAN",
+      "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/SAN/c_acc_transport_emit"
+    ],
+    "environment": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/tmp",
+      "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1",
+      "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+    },
+    "start": "2026-10-04T20:47:32.838670+00:00",
+    "exit": 0,
+    "finish": "2026-10-04T20:47:50.615641+00:00",
+    "before_sha256": "5773b824dda408b2a1f2d6b10d8f47f11be1681447bb714776995c0fc4767a85",
+    "after_sha256": "5773b824dda408b2a1f2d6b10d8f47f11be1681447bb714776995c0fc4767a85"
+  }
+]

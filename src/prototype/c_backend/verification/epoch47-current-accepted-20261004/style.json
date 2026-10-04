@@ -1,0 +1,102 @@
+{
+  "English_docs_comments_reviewed": true,
+  "all_checks_pass": true,
+  "files": {
+    "doc/2026-10-03-C-BACKEND-GOAL.md": {
+      "sha256": "7b8a4ebea7a3e18e6b791448845b9689a28e3c0bc3ee18bb420ab398f9fbaf43",
+      "trailing_whitespace_lines": []
+    },
+    "doc/2026-10-04-C-BACKEND-ACC-TRANSPORT-PLAN.md": {
+      "sha256": "13f45ed26747139595cc0650322225fd798b2b1e8d9787fd6884052730bedc57",
+      "trailing_whitespace_lines": []
+    },
+    "doc/2026-10-04-C-BACKEND-EPOCH47-HANDOFF.md": {
+      "sha256": "4d1c622ec515ec2a2018432f85b74eba0ab9f0c3c55e4ca52239e2ce98a6a1f0",
+      "trailing_whitespace_lines": []
+    },
+    "src/prototype/c_backend/acc_transport/README.md": {
+      "sha256": "04b4334957af59c2e84801a2cd1cdc6b3ce4ea8701c81623a69ea65dfd779b39",
+      "trailing_whitespace_lines": []
+    },
+    "src/prototype/c_backend/acc_transport/build.mk": {
+      "leading_space_lines": [],
+      "sha256": "24cd17b4426899bb3adcdf9e2c3d255d1a3279f308b7b4a0b4c2a7089765eb6c",
+      "trailing_whitespace_lines": []
+    },
+    "src/prototype/c_backend/acc_transport/check.sh": {
+      "leading_space_lines": [],
+      "sh_syntax_exit": 0,
+      "sha256": "bf0aab646875d0be3648498c8507def66b963d98e4aef965c0ec5b3fa684762b",
+      "trailing_whitespace_lines": []
+    },
+    "src/prototype/c_backend/acc_transport/emit.c": {
+      "English_C_comments_reviewed": true,
+      "leading_space_lines": [],
+      "no_typedef": true,
+      "sha256": "9d48f9718fd5a0e965b20843c8bbf813727371a7ef5b2a2d5adf8a433ce1b743",
+      "trailing_whitespace_lines": []
+    },
+    "src/prototype/c_backend/acc_transport/emit.h": {
+      "English_C_comments_reviewed": true,
+      "leading_space_lines": [],
+      "no_typedef": true,
+      "sha256": "6cde2d4df897e0e8390a15da1ff8d805d6b8cd766cfa34cb9a34ad5316b52091",
+      "trailing_whitespace_lines": []
+    },
+    "src/prototype/c_backend/acc_transport/emit_test.c": {
+      "English_C_comments_reviewed": true,
+      "leading_space_lines": [],
+      "no_typedef": true,
+      "sha256": "877587c5576c3e7327a85987c5102b13b6ca38fbc34435eddba1e4a5a7888217",
+      "trailing_whitespace_lines": []
+    },
+    "src/prototype/c_backend/acc_transport/example/component.c": {
+      "English_C_comments_reviewed": true,
+      "leading_space_lines": [],
+      "no_typedef": true,
+      "sha256": "ca73caaaa3a8b99ad8b4cb49b5b0bc326547555bfbed2dc673c47a3566dd9a3c",
+      "trailing_whitespace_lines": []
+    },
+    "src/prototype/c_backend/acc_transport/example/component.h": {
+      "English_C_comments_reviewed": true,
+      "leading_space_lines": [],
+      "no_typedef": true,
+      "sha256": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044",
+      "trailing_whitespace_lines": []
+    },
+    "src/prototype/c_backend/acc_transport/example/provenance.json": {
+      "sha256": "f494e765c17a7bea4b95c18b6c9bf926057786fcb6eab35d6bcbfe86c6d27481",
+      "trailing_whitespace_lines": []
+    },
+    "src/prototype/c_backend/acc_transport/inspect.c": {
+      "English_C_comments_reviewed": true,
+      "leading_space_lines": [],
+      "no_typedef": true,
+      "sha256": "cacde334d49abc66001ac65a730b446c9e0742c7f20340fd433cfb7df6dbac14",
+      "trailing_whitespace_lines": []
+    },
+    "src/prototype/c_backend/acc_transport/map_client.c": {
+      "English_C_comments_reviewed": true,
+      "leading_space_lines": [],
+      "no_typedef": true,
+      "sha256": "7e7c621e26f22597e667a8a7a774658f31087f2f19586fb0d2b7186b2b69b4c7",
+      "trailing_whitespace_lines": []
+    },
+    "src/prototype/c_backend/acc_transport/pack.py": {
+      "leading_space_lines": [],
+      "python_syntax_pass": true,
+      "sha256": "d922552c949f803b140aeca71eb2b20d95c7cfac752cd80d1733007644c68e3d",
+      "trailing_whitespace_lines": []
+    },
+    "src/prototype/c_backend/acc_transport/runtime.c": {
+      "English_C_comments_reviewed": true,
+      "leading_space_lines": [],
+      "no_typedef": true,
+      "sha256": "19c397c95b1a223184bea02ce18d536e074866b372a27d7c2b460da634316248",
+      "trailing_whitespace_lines": []
+    }
+  },
+  "generated_example_regenerated": true,
+  "header_declarative_reviewed": true,
+  "no_source_fixture_or_ML_comment_changes": true
+}

@@ -1,0 +1,8 @@
+{
+  "original_path": "src/prototype/c_backend/verification/epoch47-current-accepted-20261004/worker-initial-gate/map_client_build.err",
+  "original_SHA": "07cecae373ff56dc720227098cc7626fe93ea78de8e7571ff17a763a273f1362",
+  "lossless_gzip_path": "src/prototype/c_backend/verification/epoch47-current-accepted-20261004/worker-initial-gate/map_client_build.err.gz",
+  "gzip_SHA": "6b20b3c1d0a9ebfda34a209ba0b0ccfc42e2b60329cca83a45527e671a2ab793",
+  "decoded_byte_exact": true,
+  "reason": "Original compiler diagnostic contains trailing space showing blank source line. Preserve exact negative evidence losslessly; no source/diagnostic hand edit. First Main diff-check2 is evidence packing only, runtime gates unchanged."
+}

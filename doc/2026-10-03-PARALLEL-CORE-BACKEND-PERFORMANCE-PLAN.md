@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: C46 exact9 task497f2a46/current Root O2-SAN212 per phase verified and prototype Main recorded. Native54/local frontier2 scoped passes; broad4 materialized output inequality blocks full qualification. Common20:22-20:30 expired without Job agreement, zero cost samples. Original Goals/timer unchanged.
+Status: C47 exact16/task3526b9a3/current Root O2-full product SAN50 per phase verified and prototype Main recorded after C46. Readable823-line actual Acc module retains full ordered map images; manual Scope/action/general native limits open. Job broad4 materialized semantic failure and zero cost samples remain. Original Goals/timer unchanged.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -17,7 +17,7 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | Inquiry desk -> `merge`: reporting vs coordination/integration | All lanes | Desk answers the user; only Merge integrates after verified handoff |
-| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C46 exact9/task497f2a46/current Root O2-SAN212 per phase and75 matching C/H verified, prototype Main recorded; actual native Acc refusal4. C45 standalone readable708-line Acc usable; private C47 transport progress, general Scope/action/native61 open |
+| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C47 exact16/task3526b9a3/current Root O2/full emitter-product-client SAN50 each verified; readable823-line Acc/full ordered images published as prototype after C46. Manual full Scope/action/general native61/cost open; C46 native4 inherited |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Approved current frame deletion accepted; original363 plus adopted4 verified separately. Actual matched peakRSS/time pending safe all-owner window; peripheral MEM10/spine/empty arrays parked |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
 | 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | Native54 Core O2/six SAN0 and frontier2 seven local O2-SAN suites0; broad4 exact657 exit2 includes materialized finite-permutation output inequality at both chunks1/64. Parent-matched diagnosis/full/public/strict/frontier/joint/net/READY open in sole SE list |
@@ -26,6 +26,29 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
+
+2026-10-04, [C47 current transport review](../src/prototype/coordination/reviews/20261004-c47-current-transport-review.json)
+supersedes private/frozen/current-pending wording: exact16 task3526b9a3 follows
+C46497f2a46, pushed/remote exact; prototype Main integration recorded here.
+Frozen manifest2a2cf6af/archiveeb8c5e87/all457 raw/all298 retained copies exact.
+Root five current serial commands terminal/reaped/uncensored on runtime120c206:
+O2 and entire emitter/candidate/client source/object/archive ASan-UBSan-leak each
+50 expected rows44zero/4refusal4/duplicate linker1/prior product2.823-line actual
+Acc moduleca73caaa/descriptor5646ca54, six C/H/three provenance match frozen
+example and all phases/products. Seven actual source bodies and Core341 inputs
+are reused exactly, not multiplied independent coverage. Ordered map images,
+full captures/down/IH/path slots and descriptive context distinctions are retained;
+manual action interpretation and complete checked Scope/source correspondence
+remain explicit. This is readable executable fixed Acc packaging, not general
+native lowering or accepted promotion. Native4/input3 inherited C46, not rerun.
+All15 C32-C46 original archives exact, initial map-client missing stdio compiler1
+and37-row gate preserved; corrected include alone changes setup. Larger action/
+stack/vector and validation costs remain unmeasured; borrowed immutable lifetime,
+nonoverlap/Nat32/depth256/node65536/overflow/full61/Goal remain open. Corrected
+noticefc7c99e3 changes other8 to other7 C46 live paths only; frozen bytes unchanged.
+Source products are separately pinned against sealed C45/C47 provenance,
+including actions.inc absent as a separate owner298 manifest item. The existing
+Job broad4 semantic failure and cost/exclusivity barriers remain unchanged.
 
 2026-10-04, [C46 current capture review](../src/prototype/coordination/reviews/20261004-c46-current-capture-query-review.json)
 supersedes frozen/current-pending wording: exact9/task497f2a46 pushed/remote exact,

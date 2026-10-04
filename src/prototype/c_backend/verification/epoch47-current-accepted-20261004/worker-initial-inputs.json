@@ -1,0 +1,18 @@
+{
+  "src/prototype/c_backend/acc_transport/inspect.c": {
+    "sha256": "cacde334d49abc66001ac65a730b446c9e0742c7f20340fd433cfb7df6dbac14",
+    "copy": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/inputs/cacde334d49abc66001ac65a730b446c9e0742c7f20340fd433cfb7df6dbac14"
+  },
+  "src/prototype/c_backend/acc_transport/build.mk": {
+    "sha256": "b1fee18ee1c33fc6f5f639c3e037dad1161376393798e2488bf18a7b97d6e0e5",
+    "copy": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/inputs/b1fee18ee1c33fc6f5f639c3e037dad1161376393798e2488bf18a7b97d6e0e5"
+  },
+  "src/prototype/c_backend/acc_down/inspect.c": {
+    "sha256": "e578fdb9d902862f5fae3203e158eaacfff9f2429a33b85b92cb44df3827289c",
+    "copy": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/inputs/e578fdb9d902862f5fae3203e158eaacfff9f2429a33b85b92cb44df3827289c"
+  },
+  "doc/2026-10-04-C-BACKEND-ACC-TRANSPORT-PLAN.md": {
+    "sha256": "d4eb9a7946fdd5313acf0d5058bf124237a81146d6b3c6c155855b29ee9e6b01",
+    "copy": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/inputs/d4eb9a7946fdd5313acf0d5058bf124237a81146d6b3c6c155855b29ee9e6b01"
+  }
+}

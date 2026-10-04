@@ -1,0 +1,16 @@
+{
+  "date_UTC": "2026-10-04T21:12:38.365353+00:00",
+  "epoch": "C47",
+  "task_commit": "3526b9a3c46abe0fa92ed93bf0c691a73a372605",
+  "task_parent_C46": "497f2a460582b55209b93b8576de3e4328e3c714",
+  "task_remote_exact": true,
+  "corrected_notice_SHA": "fc7c99e3f64cdc7d76cf64dff260e1edd5786f9595c1b7c61c146cfae0cbaf06",
+  "initial_notice_SHA": "25bdeefed0e3661a561a89f8b0771d48861488081113054aacee8e7af65e3d33",
+  "frozen_manifest_SHA": "2a2cf6af45bac33c2b7abe01f4b20f2c34c48d01df68bfdbbfc3539f397accef",
+  "Root_review": "src/prototype/coordination/reviews/20261004-c47-current-transport-review.json",
+  "Root_verified": "Five current serial commands terminal/reaped/uncensored; O2/full emitter-candidate-client source/object/archive SAN50 expected each; all generated code/header/provenance/descriptor exact. Readable823-line Acc module retains actual finite map images/captures/paths; manual Scope/action boundaries and inherited C46 native refusal remain. Initial compiler1 preserved.",
+  "Main_integration": "Prototype prepared here; final published receipt follows.",
+  "accepted_adoption": false,
+  "Goal_or_owner_actions": false,
+  "cost_samples": 0
+}

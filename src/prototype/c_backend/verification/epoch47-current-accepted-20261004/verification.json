@@ -1,0 +1,279 @@
+{
+  "Core_cases_reused_not_independently_multiplied": true,
+  "SAN_scope": "entire emitter/candidate/client source/object/archive; reused pointer/Core inputs O2",
+  "accepted_commit": "fc52755b345a555e49a79df40549e9cb23d54088",
+  "all_final_expected_rows_match": true,
+  "all_owned_heavy_commands_terminal_reaped": true,
+  "branch": "parallel/c-backend-20261003",
+  "commit_message": "prototype: retain actual Acc transport map images",
+  "date_UTC": "2026-10-04T20:56:22.023118+00:00",
+  "delegated_parent": "pending C46 exact9; preceding C45 task6214590570681e7eae2b84baa03c588822d2e389",
+  "dependency_rebuild": "final O2/SAN builds0, helper binaries exact qualified phases",
+  "descriptor_matches_O2_SAN": true,
+  "epoch": 47,
+  "exact_retained_inputs": 298,
+  "final_inputs_sha256": "6037ab9286c72e2b6c5b8b93ac31804f339bfbca8c0d7cd5c8cec7fae95b6c01",
+  "generated_source_lines": 823,
+  "generated_source_sha256": "ca73caaaa3a8b99ad8b4cb49b5b0bc326547555bfbed2dc673c47a3566dd9a3c",
+  "limits": [
+    "descriptive context tokens are not checked Scope certificates",
+    "Nat32/depth256/node65536/borrowed immutable lifetime/nonoverlap/statuses1-6",
+    "larger action/stack records and validation costs unmeasured",
+    "overflow guard unexercised; finite SAN only",
+    "no producer/schema/checker/erasure/ABI/accepted/full61/Goal completion"
+  ],
+  "main_native_Acc": "C46 checked/trusted4/input-profile3 inherited; NOT freshly executed by C47",
+  "manual_extent": [
+    "action interpretation",
+    "complete checked Scope/context-declaration/source equivalence",
+    "storage/Nat/LT/array staging"
+  ],
+  "matching_C_H": 6,
+  "matching_provenance": 3,
+  "new_target_refusals": 12,
+  "no_SAN_failure": true,
+  "no_worker_timing_or_cost_samples": true,
+  "old_snapshots": "old-snapshots.json; C32-C46 archives exact, live Goal/scalar differences explicit",
+  "phases": {
+    "candidate-O2-corrected": {
+      "argv_sha256": "6f8a00bc158fb3b724a000360103c29bb791d101d772b93d3d9fce4e7c3c549a",
+      "expected_rows": 50,
+      "outcomes": {
+        "0": 44,
+        "1": 1,
+        "2": 1,
+        "4": 4
+      },
+      "status_sha256": "1f689a263b1ca8b58b0178cf2d9b6b0e1f27e1d9980e2ab96d2d8c7a001b32d3"
+    },
+    "candidate-SAN": {
+      "argv_sha256": "63de8b5b5051c5d26cf052c865b23b0cbb136b23fde116e643401537725fe1a9",
+      "expected_rows": 50,
+      "outcomes": {
+        "0": 44,
+        "1": 1,
+        "2": 1,
+        "4": 4
+      },
+      "status_sha256": "1f689a263b1ca8b58b0178cf2d9b6b0e1f27e1d9980e2ab96d2d8c7a001b32d3"
+    }
+  },
+  "readonly_source_owners_unchanged": true,
+  "runs": {
+    "build": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/tmp",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "src/prototype/c_backend/acc_transport/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/tree",
+        "BUILD=/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/O2",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/O2/c_acc_transport_inspect"
+      ],
+      "exit": 0,
+      "finish": "2026-10-04T20:15:10.832648+00:00",
+      "start": "2026-10-04T20:15:01.666898+00:00"
+    },
+    "candidate-O2": {
+      "argv": [
+        "sh",
+        "src/prototype/c_backend/acc_transport/check.sh",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/O2/c_acc_transport_emit",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/actual-materialized.a",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch44-acc-capture-20261004/candidate-O2/main",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch44-acc-capture-20261004/candidate-O2/oracle.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/candidate-O2"
+      ],
+      "environment": {
+        "AR": "/usr/bin/ar",
+        "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CLIENT_CFLAGS": "-O2",
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/tmp"
+      },
+      "exit": 1,
+      "finish": "2026-10-04T20:33:42.780093+00:00",
+      "start": "2026-10-04T20:33:39.853606+00:00"
+    },
+    "candidate-O2-corrected": {
+      "argv": [
+        "sh",
+        "src/prototype/c_backend/acc_transport/check.sh",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/O2/c_acc_transport_emit",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/actual-materialized.a",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch44-acc-capture-20261004/candidate-O2/main",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch44-acc-capture-20261004/candidate-O2/oracle.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/candidate-O2-corrected"
+      ],
+      "correction": "map_client.c adds required stdio.h; component/emitter/source expectations unchanged",
+      "environment": {
+        "AR": "/usr/bin/ar",
+        "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CLIENT_CFLAGS": "-O2",
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/tmp"
+      },
+      "exit": 0,
+      "finish": "2026-10-04T20:35:17.162901+00:00",
+      "start": "2026-10-04T20:35:13.928064+00:00"
+    },
+    "candidate-SAN": {
+      "argv": [
+        "sh",
+        "src/prototype/c_backend/acc_transport/check.sh",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/SAN/c_acc_transport_emit",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/actual-materialized.a",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch44-acc-capture-20261004/candidate-O2/main",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch44-acc-capture-20261004/candidate-O2/oracle.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/candidate-SAN"
+      ],
+      "environment": {
+        "AR": "/usr/bin/ar",
+        "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1",
+        "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CLIENT_CFLAGS": "-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/tmp",
+        "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+      },
+      "exit": 0,
+      "finish": "2026-10-04T20:39:15.537031+00:00",
+      "start": "2026-10-04T20:38:41.972659+00:00"
+    },
+    "descriptor-initial": {
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/O2/c_acc_transport_emit",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/actual-materialized.a",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/transport.inc",
+        "succ_access"
+      ],
+      "descriptor_sha256": "5646ca54c01836725104da09de4148e1485a92c51075c84f535528a97342d244",
+      "exit": 0,
+      "expected": 0,
+      "finish": "2026-10-04T20:32:13.367693+00:00",
+      "image_sha256": "7c1a4f35108dea9a91c4ffac90062b0c1d6bb1c145e116ff269942775e704aa4",
+      "start": "2026-10-04T20:32:13.327864+00:00"
+    },
+    "emit-SAN-build": {
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "src/prototype/c_backend/acc_transport/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/tree",
+        "BUILD=/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/SAN",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/SAN/c_acc_transport_emit"
+      ],
+      "environment": {
+        "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1",
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/tmp",
+        "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+      },
+      "exit": 0,
+      "finish": "2026-10-04T20:37:44.747821+00:00",
+      "start": "2026-10-04T20:37:26.403604+00:00"
+    },
+    "emit-build": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/tmp",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "src/prototype/c_backend/acc_transport/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/tree",
+        "BUILD=/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/O2",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/O2/c_acc_transport_emit"
+      ],
+      "exit": 0,
+      "finish": "2026-10-04T20:31:42.607767+00:00",
+      "start": "2026-10-04T20:31:33.198297+00:00"
+    },
+    "example-package": {
+      "argv": [
+        "python3",
+        "src/prototype/c_backend/acc_transport/pack.py",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch44-acc-capture-20261004/candidate-O2/main",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/candidate-O2-corrected/transport.inc",
+        "src/prototype/c_backend/acc_transport/example"
+      ],
+      "exit": 0,
+      "finish": "2026-10-04T20:41:53.932773+00:00",
+      "start": "2026-10-04T20:41:53.900698+00:00"
+    },
+    "final-emit-SAN-build": {
+      "after_sha256": "5773b824dda408b2a1f2d6b10d8f47f11be1681447bb714776995c0fc4767a85",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "src/prototype/c_backend/acc_transport/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/tree",
+        "BUILD=/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/SAN",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/SAN/c_acc_transport_emit"
+      ],
+      "before_sha256": "5773b824dda408b2a1f2d6b10d8f47f11be1681447bb714776995c0fc4767a85",
+      "environment": {
+        "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1",
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/tmp",
+        "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+      },
+      "exit": 0,
+      "finish": "2026-10-04T20:47:50.615641+00:00",
+      "start": "2026-10-04T20:47:32.838670+00:00"
+    },
+    "final-emit-build": {
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/tmp",
+      "after_sha256": "f8b9e92e2638fd85835583bc3e0e725fd1379a6570a6bf40c3868f1b07d6889d",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "src/prototype/c_backend/acc_transport/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/tree",
+        "BUILD=/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/O2",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/O2/c_acc_transport_emit"
+      ],
+      "before_sha256": "f8b9e92e2638fd85835583bc3e0e725fd1379a6570a6bf40c3868f1b07d6889d",
+      "exit": 0,
+      "finish": "2026-10-04T20:47:32.830329+00:00",
+      "start": "2026-10-04T20:47:23.384454+00:00"
+    },
+    "inspect": {
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch47-acc-transport-20261004/O2/c_acc_transport_inspect",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/actual-materialized.a",
+        "succ_access"
+      ],
+      "binary_sha256": "4e857ccb90fe7213e69f2b0b9f5df6e66eed2d479d423745f5527a15108b9190",
+      "exit": 0,
+      "finish": "2026-10-04T20:15:38.330504+00:00",
+      "image_sha256": "7c1a4f35108dea9a91c4ffac90062b0c1d6bb1c145e116ff269942775e704aa4",
+      "start": "2026-10-04T20:15:38.290357+00:00"
+    }
+  },
+  "runtime120_manifest_sha256": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+  "setup_failure": {
+    "correction": "required include only, no source/candidate/expected-status waiver",
+    "exit": 1,
+    "failed_row": "map_client_build compiler1 missing stdio.h",
+    "gate": "candidate-O2",
+    "rows": 37
+  },
+  "shared_index_sha256": "848aae6bed8ddf19f70473244f94f8ca144b4bbe3ca7a427b2f44e2a5e842325",
+  "source_advancement_during_emission_forbidden": true,
+  "source_body_products": "seven unchanged actual-source products; original algorithm retained",
+  "source_core_cases": 341,
+  "source_map_descriptor_sha256": "5646ca54c01836725104da09de4148e1485a92c51075c84f535528a97342d244",
+  "worker_HEAD": "cc3cba3495b81628e0a68ec8b45aee4f5447d188"
+}
