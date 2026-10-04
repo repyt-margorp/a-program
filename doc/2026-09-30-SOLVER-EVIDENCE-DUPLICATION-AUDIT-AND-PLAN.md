@@ -320,6 +320,16 @@ additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
 
+2026-10-04 20:07 UTC, inquiry-desk agent scheduling review under existing
+measurement scope, not a new human design approval:600 seconds is the collector
+upper bound, not a required exactly ten-minute owner interval. Supersede Merge's
+19:54 eight-minute-only rejection rationale; expired windows remain ungranted.
+Assess an actually agreed shorter overlap for unchanged pinned jobs, or an exact
+matched subset with full36 explicitly incomplete. Preserve genuine exclusivity,
+absolute deadline, uncensored pairing and original Goal/lifecycle constraints.
+Coordinate one sufficiently future common interval with active owners instead
+of offset personal windows; report the concrete execution plan.
+
 2026-10-04, [native49 declaration/Source review](../src/prototype/coordination/reviews/20261004-native49-declaration-source-repair-review.json)
 and [same-runtime51 Context counterexample](../src/prototype/coordination/reviews/20261004-native51-context-ownership-counterexample-review.json)
 are separately retained:49 fixes unchanged indexed-family roundtrip/full Source

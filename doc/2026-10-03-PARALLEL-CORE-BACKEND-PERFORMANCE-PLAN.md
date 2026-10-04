@@ -27,6 +27,18 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 
 ### Current Delivery Status
 
+2026-10-04, [short-window execution plan](../src/prototype/coordination/reviews/20261004-accepted94-short-window-execution-plan.json)
+supersedes only the prior eight-minute-versus-ten rejection rationale:600 seconds
+is an upper bound, not mandatory duration. Existing guard supports a shorter
+agreed envelope and unchanged36 adjacent matched-pair jobs; retain completed
+uncensored pairs with full36 explicitly incomplete if deadline stops the prefix.
+One [common20:22-20:30 proposal](../src/prototype/coordination/inbox/accepted94-common-2022-2030-proposal-20261004.json)
+was delivered once to both active owners, with blocked Performance informed only.
+Actual terminal same-window agreement/pins/blocked-idle/no-heavy/monitor/grant/
+cleanup-release remain required. No retrospective expired-window grant or new
+hold/collector/sample. C46 frozen READY20:06:45 is received for independent
+static/current review; native53 resumes ordinary serial correctness, unqualified.
+
 2026-10-04, [scheduled19:44 all-worker review](../src/prototype/coordination/reviews/20261004-timed-1944-worker-review.json)
 completes the due progress/handoff/stall/issue check. Original C/Job remain active,
 Performance BLOCKED, bounded Static/Sort/Test/Issue achieved/stopped, Surface
@@ -1634,6 +1646,16 @@ public resume failures are in the
 Accepted `src/evidence.*`, `src/iadt.*` and their tests retain unrelated edits.
 
 ### Assessment
+
+2026-10-04 20:07 UTC, inquiry-desk agent scheduling review under existing
+measurement scope, not a new human design approval:600 seconds is the collector
+upper bound, not a required exactly ten-minute owner interval. Supersede Merge's
+19:54 eight-minute-only rejection rationale; expired windows remain ungranted.
+Assess an actually agreed shorter overlap for unchanged pinned jobs, or an exact
+matched subset with full36 explicitly incomplete. Preserve genuine exclusivity,
+absolute deadline, uncensored pairing and original Goal/lifecycle constraints.
+Coordinate one sufficiently future common interval with active owners instead
+of offset personal windows; report the concrete execution plan.
 
 2026-10-04 09:26 UTC, Root priority decision following the explicit human
 correction: major unfinished conditions outrank new minor epochs. C actual

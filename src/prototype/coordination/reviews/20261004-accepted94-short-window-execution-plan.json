@@ -1,0 +1,31 @@
+{
+  "date_UTC": "2026-10-04T20:13:35.632784+00:00",
+  "classification": "Inquiry-desk agent scheduling assessment, not new human duration/exclusivity/Goal policy",
+  "source_thread": "019ebfae-06be-7b71-974a-b97505daed4a",
+  "source_received_UTC": "2026-10-04T20:07:06Z",
+  "supersedes": "Only the prior eight-minute-versus-ten rejection rationale in review012499d3/receiptfe0efda5; expired windows never received a retroactive grant.",
+  "finding": "Existing guard already enforces0<actual interval<=600 and derives collector maximum_seconds from remaining agreed envelope. Original36 jobs are18 adjacent baseline/candidate case/repetition pairs, alternating order across repetitions. No code or job ordering/configuration change is required for a shorter attempt. Full36 duration is unknown until actual measurement; no promised completion within eight minutes.",
+  "unchanged_configuration_SHA": "262c46ac3f50313a164dab72ff88a40d684c1fe3c75954ce1362c9a1c0bffce9",
+  "input_pins_fresh_exact": 295,
+  "guard_SHA": "10e723ae2a8ab67b0d530d773972a85cd40175fffafc095b29ba8bd5ae07aa70",
+  "proposal": "src/prototype/coordination/inbox/accepted94-common-2022-2030-proposal-20261004.json",
+  "proposal_SHA": "bfbbe5c9e7d57ec651d66936845e0e74d10a5790fc27fa91f0fc45b85b184cb0",
+  "one_proposed_common_interval_UTC": [
+    "2026-10-04T20:22:00Z",
+    "2026-10-04T20:30:00Z"
+  ],
+  "actual_agreement_pending": true,
+  "execution_plan": [
+    "Verify actual current C/Job same-window agreements and terminal/reaped safety; do not infer or resume blocked Performance.",
+    "Rehash all295/original helper and obtain fresh<=30s blocked/idle observation plus visible no-heavy preflight. Root issues distinct actual grant only if ready.",
+    "Launch unchanged36 original adjacent-pair jobs serially under remaining agreed absolute deadline<=600/per-run180 and existing monitor/owned cleanup-reap-release.",
+    "Independently audit raw logs/time metrics, expected charged steps and full pins. Publish complete uncensored matched pairs as scoped subset if full36 incomplete; exclude censored/unmatched/failed rows and any interfering/changed-pin slot.",
+    "Release precisely at terminal/absolute boundary; no automatic extension, owner lifecycle or general/full cost-completion claim."
+  ],
+  "C46_READY_notice_SHA": "8336c818a6dbe291f564e22d95fba013544580620e545305e7da6aa37025a2a1",
+  "C46_plan": "Retain frozen exact9/raw2016/input280 and prepare independent static audit; Root fresh heavy correctness qualification/publication remains outside any granted cost interval.",
+  "Job_native53_notice_SHA": "3c6bec0b93ae0270e4f011e9a171d960e2f279a6d05d7fa863fcc6ce01e6547b",
+  "Job_native53_status": "Owner consumed expired/ungranted receipt, ordinary serial correctness resumes; input485/runtime93b32c9c private, no frozen READY/generalpass. Actual same-window agreement still required.",
+  "Root_grant_or_collector_or_samples": 0,
+  "Goal_or_model_or_owner_lifecycle_action": false
+}

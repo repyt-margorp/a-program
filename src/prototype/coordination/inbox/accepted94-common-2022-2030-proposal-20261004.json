@@ -1,0 +1,20 @@
+{
+  "date_UTC": "2026-10-04T20:09:57.409757+00:00",
+  "classification": "Single coordinated prospective measurement proposal under existing user scope and inquiry-desk agent correction; no approval/grant or retroactive expired-window use",
+  "proposal_id": "accepted94-common-20261004T2022",
+  "executor_thread": "01a100b3-1d83-7090-bbf6-62544c39ec4b",
+  "proposed_common_interval_UTC": [
+    "2026-10-04T20:22:00Z",
+    "2026-10-04T20:30:00Z"
+  ],
+  "operational_duration_seconds": 480,
+  "maximum_seconds_is_upper_bound": 600,
+  "not_exact_duration_design_invariant": true,
+  "active_owner_request": "Original C/Job: please agree to this same future interval if your actual correctness workload reaches a terminal/reaped boundary by20:22. During the agreed interval use light evidence/static work, with no heavy child. Report agreement plus actual terminal state through existing outbox/FS; any later heavy launch invalidates agreement. If unavailable, report that concrete dependency instead of a separate offset personal ten-minute window. This is one proposal, not a hold/grant or automatic extension. Do not restart or duplicate any owner.",
+  "blocked_Performance": "Information only, no fresh acknowledgment expected, no Goal resume/reset; Root observes original blocked service and visible child absence immediately before any actual grant.",
+  "workload": "Unchanged approved36 source-only O2 jobs, original adjacent baseline/candidate pairs and alternated repetitions, config262c46ac/all295/original helper9c50c62d. Root existing guard already accepts shorter duration<=600 and changes only collector maximum_seconds to remaining agreed envelope, preserving argv/expected charged steps/input pins/per_run180.",
+  "result_rule": "Attempt all36 within actual absolute deadline. Retain complete uncensored matched case/repetition pairs if deadline leaves a prefix; explicitly label full36 incomplete. Exclude timed-out/failed/censored rows and any comparison invalidated by interference or changed pins. No generalized RAM/time conclusion from tiny pair/subset.",
+  "grant_prerequisites": "Both active owners actually agree same interval and terminal safety; source295/helper hashes exact; fresh<=30s blocked/idle Performance observation; visible no foreign heavy before launch and continuous monitor; Root explicit grant, owned cleanup/reap/release before agreed absolute end. No fabricated exclusivity or retrospective grant.",
+  "expires_UTC": "2026-10-04T20:30:00Z",
+  "next_action": "Root prepares plan and subset result audit while owners finish existing correctness. C46 READY frozen20:06:45 is preserved; C46 independent heavy replay must remain outside an actually granted measurement interval."
+}
