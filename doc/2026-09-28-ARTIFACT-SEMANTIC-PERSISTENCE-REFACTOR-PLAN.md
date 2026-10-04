@@ -2,7 +2,7 @@
 
 Date: 2026-09-28
 Updated: 2026-09-30
-Status: reviewed Job and necessary APGSRC70 Source dependencies verified for accepted promotion;
+Status: reviewed Job and necessary APGSRC70 Source dependencies accepted/pushed as94a20003;
 full persistence/checkpoint and C backend remain prototype work.
 Exact resumption and trust/fuel integration remain unfinished.
 Baseline: `152b59506e915e18a34f6dc8041e981fb2a82888` (PR #45 documents

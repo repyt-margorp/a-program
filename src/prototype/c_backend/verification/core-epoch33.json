@@ -1,0 +1,67 @@
+{
+  "task_commit": "588b2cb776078e307c4daf8778cbd08e0e642d5e",
+  "prototype_integration_commit": "083c2592",
+  "accepted_Job_commit": "94a20003",
+  "task_exact11": {
+    "doc/2026-10-03-C-BACKEND-GOAL.md": "6c04549663c53e721ec8ed947746edb70055a68a882c0afee3d681738782d905",
+    "doc/2026-10-04-C-BACKEND-ACC-QUICKSORT-MOCKUP-PLAN.md": "daf3de45dd8a8d8fd85ac9f1fb2b91a8c95594d5bb3969c92ee6340ff563a65b",
+    "doc/2026-10-04-C-BACKEND-EPOCH33-HANDOFF.md": "66835a5dea96b2f8bdbc4f9fe7a41f48c9aeca977ad32566b933b514f905157d",
+    "src/prototype/c_backend/acc_quicksort_mockup/README.md": "64f92b343a452dde6d004c619e26883a363195ea56cc7523ec4e578a1d8bec24",
+    "src/prototype/c_backend/acc_quicksort_mockup/build.mk": "0d0637522bed443cd8a9e68c194c427b12fbf7a5cefd277ea1fcf4e2f9c8c8cd",
+    "src/prototype/c_backend/acc_quicksort_mockup/check.sh": "aab75c573666d8e0c13282d50473d2c7a6c7af68e65268545628f9e57aa62faa",
+    "src/prototype/c_backend/acc_quicksort_mockup/client.c": "e131b8f9ade23ef1bacf8a0616379e9dc2952fb2d5daad2feb7da070a05b273f",
+    "src/prototype/c_backend/acc_quicksort_mockup/fixture.p": "cab03f0d916c5ca2a023f5b8cbeffcd86d5786c5d49a76c95fbde7e683691276",
+    "src/prototype/c_backend/acc_quicksort_mockup/mockup.c": "762f264ccad935d32a5fd2ad41958bc9cbd6882c98b829b8dae0ccacb7041cfe",
+    "src/prototype/c_backend/acc_quicksort_mockup/mockup.h": "0fdaeb6687be5b51ce865caf1698619f99d16c1c0cffc3f38a80fca0967ed0aa",
+    "src/prototype/c_backend/acc_quicksort_mockup/oracle_test.c": "a986e2316258e7cd4853e4519dd14c2f7d2cf2d49401779be3dd1e446e6d9681"
+  },
+  "Main_goal_reconciled_other10_exact": true,
+  "initial_current_root_checks": {
+    "source_runtime120_manifest": "9f5ba63c99139fc0b9f313b426a121d0d91659f8069ca21026d6065790043368",
+    "frozen_C33_archive_sha256": "a8bd408cc099885ab26780a901017fb3a9087294ce5e8b768b84ea6c2b7a6499",
+    "base_C31_backend": "/home/repyt/workspace/a-program/src/prototype/c_backend",
+    "manual_Nat_mockup_no_general_native_claim": true,
+    "checks": [
+      {
+        "gate": "build-o2",
+        "exit": 0
+      },
+      {
+        "gate": "check-o2",
+        "exit": 0
+      },
+      {
+        "gate": "build-san",
+        "exit": 0
+      },
+      {
+        "gate": "check-san",
+        "exit": 0
+      }
+    ]
+  },
+  "final_compact_default_checks": [
+    {
+      "mode": "o2",
+      "exit": 0,
+      "log_sha256": "acb64e84922f7b0762a596c005bc3c01c92ac6bcedaafb53e1d162497b41334b"
+    },
+    {
+      "mode": "san",
+      "exit": 0,
+      "log_sha256": "acb64e84922f7b0762a596c005bc3c01c92ac6bcedaafb53e1d162497b41334b"
+    }
+  ],
+  "final_source_runtime120_manifest": "930997b62db85814718d0d5ac151f392bfae243a447d5d0d5f2adbde66cba5ae",
+  "manual_Nat_instance_only": true,
+  "native_general_Acc_QuickSort_complete": false,
+  "C32_impl_not_published": true,
+  "raw_log_locations": [
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c33-acc-current-accepted-job/check-final-profile-o2.log",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c33-acc-current-accepted-job/check-final-profile-san.log"
+  ],
+  "raw_log_sha256": {
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c33-acc-current-accepted-job/check-final-profile-o2.log": "acb64e84922f7b0762a596c005bc3c01c92ac6bcedaafb53e1d162497b41334b",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c33-acc-current-accepted-job/check-final-profile-san.log": "acb64e84922f7b0762a596c005bc3c01c92ac6bcedaafb53e1d162497b41334b"
+  }
+}

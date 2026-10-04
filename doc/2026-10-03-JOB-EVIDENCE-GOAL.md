@@ -1,7 +1,7 @@
 # Job/Evidence Implementation Handoff
 
 Date: 2026-10-03
-Status: reviewed Job accepted migration verified; private frontier trials and full SE1-SE5 unfinished.
+Status: reviewed Job accepted/pushed as94a20003; private frontier trials and full SE1-SE5 unfinished.
 Branch: `parallel/job-evidence-20261003`.
 Producer checkpoint: `64df10dfb6caf69226cebb401b88714541334768`.
 Related: [coordination](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md),
@@ -84,6 +84,10 @@ Earlier workflow requirements: independent worktrees, `/goal`, `6.1 Sol` at
 only Core merges Main. Prototype integration is not accepted-source promotion.
 
 ### Objective (Code)
+
+2026-10-04, accepted migration94a20003 pushed/remote exact. Live Main with
+preserved local edits builds and passes Core/IADT/CLI0. Publication is complete;
+original producer/private frontier work continues under its existing Goal.
 
 2026-10-04, Root accepted migration uses qualified comparison sourcea87cba42,
 with necessary Job/Evidence/query/Source dependency closure and accepted Surface

@@ -1,7 +1,7 @@
 # Solver and Evidence Duplication Audit
 
 Date: 2026-09-30
-Status: reviewed Job migration verified for accepted promotion; full SE/frontier/cost work unfinished.
+Status: reviewed Job migration accepted/pushed as94a20003; full SE/frontier/cost work unfinished.
 Parent: [artifact plan, AP0](2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md#ap0-simplify-before-extending-persistence).
 This is the active prerequisite work list, not another artifact format proposal.
 
@@ -175,6 +175,12 @@ duplication removal here between checks. Integrate worker changes at verified
 epochs, with separate working directories to avoid interference.
 
 ## Objective (Code)
+
+2026-10-04, intentional accepted commit94a20003 is pushed and remote-verified.
+Live Main including the six preserved uncommitted source/test edits freshly
+builds; Core/IADT and CLI pass0. The unchanged policy doc/two untracked fixtures
+retain their original hashes. The compact default and explicit materialized
+profile decision are recorded below. This completes migration/publication only.
 
 2026-10-04, accepted promotion review at parent `a8418715`, runtime120 manifest
 `930997b62db85814718d0d5ac151f392bfae243a447d5d0d5f2adbde66cba5ae`:
@@ -1072,7 +1078,7 @@ not authorization to promote code or a claim that general resumption is solved.
   source with minimal justified Evidence/query/I/O/build/test dependency closure.
 - [x] Preserve unowned edits, verify accepted default build and affected/regression
   gates, and record actual old source_work/shared-dispatch deletion.
-- [ ] Push accepted migration to Main and report remaining frontier/strict/cost
+- [x] Push accepted migration to Main and report remaining frontier/strict/cost
   criteria without treating adoption as full SE completion.
 
 No new binding/domain checkpoint fields or backend features before this gate.

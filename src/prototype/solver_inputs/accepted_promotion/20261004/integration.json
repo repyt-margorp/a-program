@@ -1,0 +1,27 @@
+{
+  "before": "a8418715b81a50f87ea5423067e5f5dbd2cf9921",
+  "Main": "94a20003b976475b1ed38025e61acb6cdbdab92c",
+  "guarded_fast_forward": true,
+  "Main_index_matches_HEAD": true,
+  "unowned_rebased_files": {
+    "src/evidence.c": "76c2b65a4a902705199b0c477f93fd17c396f46d5831946b2ebe25c1a0c0e5ee",
+    "src/evidence.h": "a83530344d78e142a129a6ca2726eaace6a72f22c6a787b9ab5137378379719b",
+    "src/iadt.c": "0707d477ce6f764a879fae7faec2794caad8bbd643e0f0fcef6dab601152723b",
+    "src/iadt.h": "11b5d3579ec43a7390c9921858f2d8ed1ae45d07bfc3a6c3d8555927ef2179d0",
+    "tests/core.c": "eb92f3814907bf7b4bf5af7842986309185bd9ed4d8ea26c0314a29635457715",
+    "tests/iadt.c": "652c5a215131c9687205b30a05b18189362d177035efad5f6c4c5b3e4afaf739"
+  },
+  "unowned_remaining_doc_and_two_fixtures_exact": true,
+  "dirty_tracked_after": [
+    "doc/2026-09-18-IADT-SURFACE-AND-ISSUE-29-30-PRIORITY-PLAN.md",
+    "src/evidence.c",
+    "src/evidence.h",
+    "src/iadt.c",
+    "src/iadt.h",
+    "tests/core.c",
+    "tests/iadt.c"
+  ],
+  "all_promotion_paths_exact_except_documented_uncommitted_rebases": true,
+  "original_Job_HEAD_staged_tree_preserved": true,
+  "backup": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/accepted-job-main-integration-backup"
+}

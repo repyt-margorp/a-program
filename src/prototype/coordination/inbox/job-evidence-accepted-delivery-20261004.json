@@ -1,0 +1,12 @@
+{
+  "kind": "reviewed-Job-accepted-delivery",
+  "accepted_commit": "94a20003b976475b1ed38025e61acb6cdbdab92c",
+  "explicit_human_authorization_record": "job-evidence-human-accepted-promotion-20261004.json",
+  "promoted_runtime120_manifest": "930997b62db85814718d0d5ac151f392bfae243a447d5d0d5f2adbde66cba5ae",
+  "profile": "Accepted CLI/REPL default stays compact/recomputable. --save-inputs alias; --save-materialized explicit typed-retention profile. Necessary Source dependencies separate from default retention.",
+  "private_WIP_promoted": false,
+  "remaining": "Full SE/AP/charged advanced frontier, strict3 and actual peak-RAM/time remain. Original Goal/model/lifecycle unchanged.",
+  "original_Job_HEAD": "a8f52a015f73fe7cfa067c3d5b122bef7e4532b4",
+  "original_Job_staged_entries_unchanged": true,
+  "new_approval": false
+}

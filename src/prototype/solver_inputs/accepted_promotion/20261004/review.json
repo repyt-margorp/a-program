@@ -636,7 +636,9 @@
     "public-partitions.json": "35e2bab1fccf1476d2c8cbaac3daf8f0c534c41501a7a9f001753cafc77af126",
     "public-partitions.tsv": "47a2c73a247ce0caecea2d4bf439ab1ab6e8511cc8263f51dbad52eb3e90e641",
     "integration-preflight.json": "905510254916edb49979a547c5ce5f8785d283f0118bd90716278e6c11aec509",
-    "C33-final-profile.json": "c96b475f1e528d00bd8e892d2694487197f3b5418f988fb6c5ad4f33d7e2b62c"
+    "C33-final-profile.json": "c96b475f1e528d00bd8e892d2694487197f3b5418f988fb6c5ad4f33d7e2b62c",
+    "live-Main.json": "685f0993386d405d5a814bcfa984dee168779c0ef5faf2fdcc83739fd0bb357a",
+    "integration.json": "fa7ef5a887bec5006c08e595ae554e1efea4265107c0c235a4c42822646e7e87"
   },
   "boundaries": [
     "Full SE/AP, advanced Source frontier and actual matched peak-memory/time remain open",
@@ -646,5 +648,12 @@
     "Original Job HEAD/staged entries preserved; index stat-cache refresh explicitly recorded",
     "Six unowned source/test edits rebased outside commit; unowned policy doc and two fixtures exact"
   ],
-  "Main_publication": "pending intentional promotion commit and guarded fast-forward"
+  "Main_publication": {
+    "accepted_commit": "94a20003b976475b1ed38025e61acb6cdbdab92c",
+    "pushed": true,
+    "remote_exact_verified": true,
+    "local_unowned_six_unstaged": true,
+    "live_build_Core_IADT_CLI": 0
+  },
+  "files_note": "Files and line deltas pin the initial intentional promotion commit. Subsequent delivery notes update these docs/receipt without changing promoted runtime."
 }

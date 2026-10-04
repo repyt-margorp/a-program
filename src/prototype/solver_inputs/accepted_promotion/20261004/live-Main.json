@@ -1,0 +1,23 @@
+{
+  "accepted_Main": "94a20003b976475b1ed38025e61acb6cdbdab92c",
+  "local_unowned_six_present": true,
+  "checks": [
+    {
+      "gate": "build-live-Main",
+      "exit": 0
+    },
+    {
+      "gate": "core",
+      "exit": 0
+    },
+    {
+      "gate": "iadt",
+      "exit": 0
+    },
+    {
+      "gate": "CLI",
+      "exit": 0
+    }
+  ],
+  "log_sha256": "1b73123a0897856a8d78004531584363f4ca53a2391ca38022cea0d20cd50464"
+}
