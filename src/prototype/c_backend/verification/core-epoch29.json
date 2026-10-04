@@ -1,0 +1,166 @@
+{
+  "review_UTC": "2026-10-04T08:23:26.031255+00:00",
+  "epoch": "C29",
+  "publication": {
+    "task": "dae637f3b9c0b70229214514eb72176718c0f158",
+    "task_branch": "refs/heads/parallel/c-backend-20261003",
+    "task_parent": "0c852ce6995cbb9a933910fda6d37490291fdcbb",
+    "Main_parent": "d07cf7c165deda84120c7936b7c023df2a77df08",
+    "Main_merge": "8a4f17ec235cc74b9471018cf04b77a574318c37",
+    "exact16_task": {
+      "doc/2026-10-03-C-BACKEND-GOAL.md": "a0be41d6694592f0f39bd659f1583ba9743bba8a154573d09710d688594e59aa",
+      "doc/2026-10-04-C-BACKEND-NATIVE-CALLBACK-PLAN.md": "9a34133f736d2edc456ad45331407fbf5313c1347cb2ba27ce167d6473f60d6a",
+      "doc/2026-10-04-C-BACKEND-EPOCH29-HANDOFF.md": "c636e9e60194685f808f1438721339c202e3f24df8e44ef4f9a6add65d9f9824",
+      "src/prototype/c_backend/README.md": "d40d21121f45945ed39e0f40d813f72618de0a606455cd6f7c2fc05ca777e33e",
+      "src/prototype/c_backend/link/driver.c": "e6e5131f8cb0c0ff5e79eec2d25f02aae6ad32954aa4902413ae7965553b76cf",
+      "src/prototype/c_backend/link/plan.c": "3c7958e80940dceebf8d19130159a94a47317d92224b0d1da29829fb32b637f5",
+      "src/prototype/c_backend/link/plan.h": "18b6cb8f4629f6b11c3cb2933a85a1144327a513026f0217d199d3bb28ce2122",
+      "src/prototype/c_backend/lower/scalar.c": "98597a3a4b9d595fda405a014dc30e27dffa9be78f88d31347b835956c0f394e",
+      "src/prototype/c_backend/lower/scalar.h": "64c06163f385ba8ad7e854fe8d6e6a7add113ca730266d1a1481db41b75d0e18",
+      "src/prototype/c_backend/native_callback/build.mk": "3ea12cbc5d91b7a3159b9707ded903546f9dd836ef551b666722a3a40e5e30ab",
+      "src/prototype/c_backend/native_callback/fixture.p": "417d96a0a24aaa84e78c4004ddc211f9f4052242e81dcfc46e4bc95e7a3268a1",
+      "src/prototype/c_backend/native_callback/native.aplink": "9b3cf3556eb876d38cbaf40f81e492ac2cf8a686f5897b15a5f56f488ae8dadf",
+      "src/prototype/c_backend/native_callback/client.c": "06a9d53141bfa52acf97cfe50cfbd87a511d8fad310c7105c8d55dd7bee00eac",
+      "src/prototype/c_backend/native_callback/scalar_client.c": "b80d751e8e822f746a85ad7c56b07a43ab4699fe4448eb9518d14595f98562a6",
+      "src/prototype/c_backend/native_callback/inert_test.c": "4e8a5b9a9cd8b7af169502359816146cfd59bae20955810efee711a337f26312",
+      "src/prototype/c_backend/native_callback/check.sh": "d28ce08ee16b7e4efc02a498ce57dd1f44c4a1c793a09d893ec1beee508cec5d"
+    },
+    "task_Main_remote_exact": true,
+    "exact15_Main_bytes": true,
+    "reviewed_Main_Goal_sha256": "ac584a68a1c1742ef0c38ce96ebaf820babca1fc371b46d5033b405415e6f27b",
+    "Root_current_report_sha256": "581fe88ad87b9946e109bd5dd8f9899b5d1f76f194bee58239f5c5cdd36590ec",
+    "current_source128": "c78b71d7b7ca0f3d8620a8a1e073b9cff78a2538b48ee6d0f86d6670f8b70a63",
+    "worker_live_files_preserved": 1915,
+    "Goal_provenance_only_Main_reconciliation": true,
+    "C30_live_files_and_historical_C29_snapshot_preserved": true,
+    "protected9_original_dirty7_index_empty_exact": true,
+    "original_Job_HEAD_index_preserved_no_Root_input_resume": true,
+    "accepted_adoption_full61_or_Goal_completion": false
+  },
+  "publication_receipt_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c29-publication.json",
+  "publication_receipt_sha256": "bee45af34b6170eb3b5dcd13ee86edee346affe7130f2f5b4d28544b1f865190",
+  "frozen_input_review_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c29-input-review.json",
+  "frozen_input_review_sha256": "5b634c076ac2eacbdb9c7dc8efcb29563dfc6cc470b1aafbab0045f9c7ffded1",
+  "fresh_current_qualification_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c29-current-e23-mem9-gates/Root-results-corrected.json",
+  "fresh_current_qualification_sha256": "581fe88ad87b9946e109bd5dd8f9899b5d1f76f194bee58239f5c5cdd36590ec",
+  "qualified_source128": "c78b71d7b7ca0f3d8620a8a1e073b9cff78a2538b48ee6d0f86d6670f8b70a63",
+  "exact_frozen_task_inputs_verified": true,
+  "Root_checks_expected_statuses": {
+    "build": {
+      "exit": 0,
+      "expected": 0,
+      "log_sha256": "5040830e5d0881ee5cf2e0a73b8338d9d2a84f9dc88f0b1fcd22574420ccda80"
+    },
+    "registration-dry-run": {
+      "exit": 0,
+      "expected": 0,
+      "log_sha256": "18963dcddc9a5ec20042c1dc334c90328ea4992979b2caa07fbc999749b25806"
+    },
+    "native-O2": {
+      "exit": 0,
+      "expected": 0,
+      "log_sha256": "2ce27bd38e43a059cac466aa2de7d07d5b19980cfa70050abf85506ed2cd5ea6"
+    },
+    "binary-O2": {
+      "exit": 0,
+      "expected": 0,
+      "log_sha256": "e891266bdde080706dc206d38658d8f1dc6e24100a5ef24e27974a270c318b30"
+    },
+    "signed-O2": {
+      "exit": 0,
+      "expected": 0,
+      "log_sha256": "cb766431c80159e511e205bb7983675906cdbb561b29e345580bfb50171723b6"
+    },
+    "units-O2": {
+      "exit": 0,
+      "expected": 0,
+      "log_sha256": "246eaa16d17c1c1c6582907a5f6b262d105dd9821c705979bc26a48607b98f49"
+    },
+    "native-SAN": {
+      "exit": 0,
+      "expected": 0,
+      "log_sha256": "2ce27bd38e43a059cac466aa2de7d07d5b19980cfa70050abf85506ed2cd5ea6"
+    },
+    "binary-SAN": {
+      "exit": 0,
+      "expected": 0,
+      "log_sha256": "e891266bdde080706dc206d38658d8f1dc6e24100a5ef24e27974a270c318b30"
+    },
+    "signed-SAN": {
+      "exit": 0,
+      "expected": 0,
+      "log_sha256": "cb766431c80159e511e205bb7983675906cdbb561b29e345580bfb50171723b6"
+    },
+    "units-SAN": {
+      "exit": 0,
+      "expected": 0,
+      "log_sha256": "246eaa16d17c1c1c6582907a5f6b262d105dd9821c705979bc26a48607b98f49"
+    },
+    "link": {
+      "exit": 0,
+      "expected": 0,
+      "log_sha256": "1e223b7ce4e51dcf5760af609768d72d0b3c6b2a87cef5f74b0fb36177020955"
+    },
+    "historical-E8-input-prior-C27-control": {
+      "exit": 2,
+      "expected": 2,
+      "log_sha256": "2c437da3c627d2bd6e7c1e9b4ede00b50fe88a142819fc0cf329d49bcb571a15"
+    },
+    "io-admit-current": {
+      "exit": 0,
+      "expected": 0,
+      "log_sha256": "375c749a4ef04beb99c420693e5136fe922a703811fdf2669e9710c48da1a755"
+    },
+    "publication-IO-current": {
+      "exit": 0,
+      "expected": 0,
+      "log_sha256": "a4a9e03276262019b1e1e9e479d14eab63435e398650169c0c82bb7de981ea0f"
+    },
+    "native-IO-source": {
+      "exit": 2,
+      "expected": 2,
+      "log_sha256": "71d8a5e05054c901b18f6fa39dc571a7eb6d66c98b09c42b6983433035765074"
+    },
+    "native-IO-header": {
+      "exit": 2,
+      "expected": 2,
+      "log_sha256": "7112830c5d78ed922f7773c9ffaa43ba2eabbd6fbdf2d2402b1856abf17550f1"
+    },
+    "native-IO-source-close": {
+      "exit": 2,
+      "expected": 2,
+      "log_sha256": "82440650a012ebcdc1d86355005177f28513edfb1ebb19bae261010c8a9939c0"
+    },
+    "native-IO-header-close": {
+      "exit": 2,
+      "expected": 2,
+      "log_sha256": "6619a564c2a741d769f3e88e4ccec75c27e65df9badf0177143136b9079e641e"
+    },
+    "native-IO-receipt": {
+      "exit": 2,
+      "expected": 2,
+      "log_sha256": "c5cd4bd715f2add4b97dc24c447b395be7dfd0486ee8d7cefaaaab8c781a9ba5"
+    }
+  },
+  "limits": "C29 frozen exact16 only; current E23+MEM9 producer reused, strict O2 backend/three helpers rebuilt. Both phases native76/binary48/signed74/units373 expected statuses and emitted C-H bytes exact worker,3432 finite Core List/reduction comparisons,781Lists/width/two immutable contexts/five operands/seeds,655 manual finite Trees,18symbols/17 checked-trusted refusal pairs/inert guarded emitter/transactional output and arena controls. Linker0/IO19+five native faults2 no products/staging. Initial historical E8 artifact setup failure retained, same rejection on prior C27; only fresh current artifact corrects gate setup. Borrowed pure-total/source interpretation/immutable lifetime/nonoverlap/Nat32/depth256/limited SAN remain; no producer rebuild/broad/cost/accepted promotion/native indexed AccQuickSort/full61 or Goal completion.",
+  "accepted_promotion_native_indexed_AccQuickSort_full61_cost_or_Goal_completion": false,
+  "initial_Root_IO_setup_failure_and_prior_C27_control_retained": {
+    "path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c29-current-e23-mem9-gates/Root-results.json",
+    "sha256": "13d316f2800b9f9a8909ed265d0b6e03458582ee5876c497bdcdc957108d2b33",
+    "failed_record": {
+      "gate": "publication-IO",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c29-publication/src/prototype/c_backend/link/publication_io_check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c29-current-e23-mem9-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch23-source-sort-20261004/io-input/applied.a",
+        "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch23-source-sort-20261004/io-input/numbers.aplink",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c29-current-e23-mem9-gates/IO"
+      ],
+      "exit": 1,
+      "expected_exit": 0,
+      "log_sha256": "4eb834c8dde6b52bfcd78318ed3d91fae5abec76afd776a6b2fb3a1c0b980176"
+    },
+    "reason": "Root used retained historical E8 artifact for a current-producer publication fault test. Fresh current admission required; no callback code or gate changes. Historical bytes/refusal retained, not reclassified as a pass."
+  }
+}

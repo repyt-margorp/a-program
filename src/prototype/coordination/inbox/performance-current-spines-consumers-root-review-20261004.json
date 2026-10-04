@@ -1,0 +1,11 @@
+{
+  "date_UTC": "2026-10-04T08:23:26.031255+00:00",
+  "kind": "Root verified prototype review receipt, not new human approval",
+  "message": "Frozen31/private455+64+169/source256/all457/71 expected records/38 same-flavor outputs/140 fresh TotalResult cuts/public52/full40-row TSV/fuels independently verified from retained evidence. Runtime byte HOLD3/146+15/24 and historical6/146+29/48/strict3/all setup-observer-SAN failures remain. Current C24 downstream freeze observed in pane but no frozen notice/current Root review yet; current E23 composition/codec-owner disposition/full acceptance/matched actual RSS-time pending. No new runtime/task publication/cost slot/grant/waiver; original36 proposal remains deferred. Existing bounded owner work continues; no original Job inbox/TUI/resume.",
+  "C29_C30_current_review": null,
+  "Performance_consumer_review": {
+    "path": "src/prototype/performance_followup/current-spines-consumers-held-root-review.json",
+    "sha256": "ba12699b753698b3623a5d22c0e4b4eb05f246335da309902ce128eb427bcb24"
+  },
+  "no_TUI_input_owner_resume_cost_grant_accepted_promotion_or_Goal_completion": true
+}

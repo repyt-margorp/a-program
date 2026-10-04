@@ -1,0 +1,59 @@
+{
+  "date_UTC": "2026-10-04T08:11:45.918563+00:00",
+  "notice_sha256": "c15dccd7c3a2213e680d6c25f74777eddaf5b99e27c5125d1de76b6cd73c8489",
+  "freeze31_manifest_sha256": "aa70327adb438f5654f53c1a7b2c78320c5056e08a2b838a611943cf87f663b6",
+  "all30_payloads_and_private455_64_169_verified": {
+    "consumers": {
+      "top_level_records": 14,
+      "pins_before": 292,
+      "pins_after": 304,
+      "private_payloads": 455,
+      "manifest_sha256": "e1e11efd14955ad0b9d21628414501fb36621f6941b14f917a5259704036016b"
+    },
+    "transport": {
+      "top_level_records": 40,
+      "pins_before": 318,
+      "pins_after": 336,
+      "private_payloads": 64,
+      "manifest_sha256": "bcf47ce3d13fc81253dc7a438f196c43a45702e0da22b7786edae85b296d7337"
+    },
+    "affected": {
+      "top_level_records": 17,
+      "pins_before": 347,
+      "pins_after": 353,
+      "private_payloads": 169,
+      "manifest_sha256": "f85ba1a869598bd17923f385bc4cab6f5991587d016199cdd35e1483b07691bf"
+    }
+  },
+  "source256_all457_distinct_pins_exact": true,
+  "all71_records_expected_uncensored70zero_original_strict1": true,
+  "same_flavor_parent_actual_unit_outputs38_equal": {
+    "consumers": 10,
+    "transport": 22,
+    "affected": 6
+  },
+  "TotalResult140_nested_writer_reader_cuts_recomputed": {
+    "o2": {
+      "checks70_actual_images_logs_cuts_verified": true,
+      "checks_sha256": "364cce3b6b17264a46e37c612fefca03bba95b1bcb79c3ea2a50fc1d13cbf07a"
+    },
+    "san": {
+      "checks70_actual_images_logs_cuts_verified": true,
+      "checks_sha256": "34e6048f402d8a638c46053bed1024f5dd71aea47fbfb29c648809615fd94fa9"
+    }
+  },
+  "Source154_steps484_WHNF3014_verified": true,
+  "all22_transport_namespace_gates_verified": true,
+  "public52_actual_image_bytes_and_full40_row_fuel_TSV_exact_reference_c414": true,
+  "six_O2_two_SAN_source_completion_fuels_exact": {
+    "list": 1915,
+    "imported-local-sorted": 761848,
+    "trees4": 2318248,
+    "trees16": 7608511,
+    "trees64": 29780510,
+    "trees400": 183507626
+  },
+  "prior_source20_focused19_cuts23_manifest_hashes_exact": true,
+  "decision": "Pinned worker consumer/transport/affected evidence verified; no Root runtime rerun. Candidate259 on frame80b remains byte HOLD3/146+15/24, old6/146+29/48 and strict3/all observer-SAN-setup failures unwaived. Current E23 composition/downstream alignment/full acceptance/codec-owner disposition and actual matched RSS/time remain separate.",
+  "Root_runtime_rerun_task_runtime_publication_new_cost_grant_byte_waiver_accepted_promotion_Goal_completion": false
+}

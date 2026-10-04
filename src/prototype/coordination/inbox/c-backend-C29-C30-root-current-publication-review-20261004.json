@@ -1,0 +1,21 @@
+{
+  "date_UTC": "2026-10-04T08:23:26.031255+00:00",
+  "kind": "Root verified prototype review receipt, not new human approval",
+  "message": "C29 exact16 and C30 exact13 published in order on current E23+MEM9; current checks/remote Main verified. Main Goal alone reconciles Root provenance; frozen/live worker bytes preserved. C29 Root historical-E8-artifact IO setup failure retained; prior unmodified C27 refuses same image, fresh current admission/IO19/five faults pass. Full61/native indexed-callable AccQuickSort/effects/ownership/cost/accepted adoption remain; independent existing bounded owner work may continue. Delivery is not consumption/new human approval.",
+  "C29_C30_current_review": {
+    "c29": {
+      "path": "src/prototype/c_backend/verification/core-epoch29.json",
+      "sha256": "a04a668ed75d6feeb25081c716783f780f583d2815e96852e81b982b42f91414",
+      "task": "dae637f3b9c0b70229214514eb72176718c0f158",
+      "Main": "8a4f17ec235cc74b9471018cf04b77a574318c37"
+    },
+    "c30": {
+      "path": "src/prototype/c_backend/verification/core-epoch30.json",
+      "sha256": "071d5c66188259f0a14171f31a5ca0c7dce86a59be72b9707316caae00826409",
+      "task": "ab14e6940fa92a9f5205232e98f6896cb9d6f221",
+      "Main": "b1500b434b08718d3af4a64db1827627f0726557"
+    }
+  },
+  "Performance_consumer_review": null,
+  "no_TUI_input_owner_resume_cost_grant_accepted_promotion_or_Goal_completion": true
+}

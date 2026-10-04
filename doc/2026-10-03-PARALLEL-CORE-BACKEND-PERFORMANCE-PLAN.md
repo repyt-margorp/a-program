@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: Merge owns Main; C, Performance and the original Job now visibly pursue their Goals. Root sent no Job resume or input after the human direct-session clarification. E17-E23, C17-C28 and MEM9 are verified and prototype-integrated; MEM6/MEM7 runtime holds remain; MEM10 frozen handoff is held for byte disposition and current qualification. Test-suite, issue disposition, static audit and finite-function bounded Goals are complete; full development issues remain open.
+Status: Merge owns Main; C, Performance and the original Job now visibly pursue their Goals. Root sent no Job resume or input after the human direct-session clarification. E17-E23, C17-C30 and MEM9 are verified and prototype-integrated; MEM6/MEM7 runtime holds remain; MEM10 frozen handoff is held for byte disposition and current qualification. Test-suite, issue disposition, static audit and finite-function bounded Goals are complete; full development issues remain open.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -17,7 +17,7 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | Inquiry desk -> `merge`: reporting vs coordination/integration | All lanes | Desk answers the user; only Merge integrates after verified handoff |
-| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C1-C28 bounded prototypes integrated; C28 ordinary signed module products current-E22+MEM9 qualified; native Acc/QuickSort remains open |
+| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C1-C30 bounded prototypes integrated; C29 native scalar callbacks/C30 ordinary modules current-E23+MEM9 qualified; native Acc/QuickSort remains open |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Accepted performance7631e5a; V3 bounded measured tree gain reviewed; MEM2 beta environment elision rejected; IADT source9 published, bounded tree RSS gain/mixed timing measured; full Goal active |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
 | 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E1-E4/E6-E23 corrected prototypes Main integrated; E23 exact33/current E22+MEM9/C28 qualified; E24 private broad pending; strict3/full SE/AP/cost criteria remain |
@@ -27,26 +27,28 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 
 ### Current Delivery Status
 
-2026-10-04T08:02:55.524286+00:00, scheduled07:44:22 UTC review; Main8a6b0e0 prior checkpoint:
-C27/C28/E22/E23 prototype deliveries/current qualification unchanged. All seven
-original panes/handoffs inspected: C/Performance/Job pursuing, earlier response-wait
-overlays cleared; four bounded workers achieved/stopped. E24 broad actual process
-live; E25 prepared/untested. C29 late READY exact16/archive/raw1810 verified;
-worker corrected the legacy comparison baseline, retaining initial errors. Root
-code/gate/current E23 qualification and task/Main publication remain queued.
-New spine exact23 immutable HOLD/private1758+104 matches the independently reviewed
-1509 records/source256. Paired3/146 and inert15/24 byte failures remain unwaived;
-all67 Fold pairs match. Pair80b->259 is distinct from old frame6/146+29/48.
-Nested resaver helper hashes are freeze-time provenance only. Current consumers,
-transport/seven checkpoints, codec/full acceptance/current E23 composition and
-matched actual costs remain pending; no runtime publication or cost grant.
-[Frozen cut review](../src/prototype/performance_followup/current-spines-cuts-held-root-review.json),
-[C29 static preflight](../src/prototype/c_backend/verification/c29-ready-static-preflight.json),
-[scheduled status](../src/prototype/coordination/reviews/20261004T074422-scheduled-material-review.json).
-Nine issue bodies/dates unchanged/zero PRs. Original Job HEAD/index/human pane,
-protected9 and original timer/watcher preserved; no owner input/resume/restart/
-model change, accepted promotion or byte waiver. Next13:44:22 UTC.
-Root Goal metadata remains blocked/incomplete; full issues/Goals remain open.
+2026-10-04T08:23:26.031255+00:00, scheduled07:44 review plus late verified deliveries; Mainb1500b43:
+all seven original panes/handoffs reviewed, C/Performance/Job pursuing and four
+bounded workers achieved/stopped. E17-E23/MEM9/C17-C30 prototype deliveries are
+verified and pushed. Fresh C29 native76/binary48/signed74/units373 each O2/SAN,
+linker/IO19/native faults5 pass on current E23; historical-E8-artifact Root setup
+failure retained, identical refusal on prior C27, fresh current artifact passes.
+C30 two124 expected phases/32 generated C-H exact,32 linked+8 loaded clients
+each; backend/producer reused. Other frozen Main bytes exact/Goal provenance only.
+Perf source80b->259 immutable cuts23 and consumers31/private455+64+169/source256/
+all457 verified; all71 expected records/38 parent outputs/140 nested TotalResult
+cuts/public52/full40-row fuel TSV exact. Paired3/146 and inert15/24 remain HOLD;
+old frame6/146+29/48/strict3/all historical failures retained. Current downstream
+C24 freeze seen in pane, no READY notice/Root frozen review; current E23 composition,
+codec/full acceptance/matched actual RSS-time separate. No runtime publication/grant.
+Job E24 preparing a lean handoff in its original human-reserved pane, no READY
+notice/current Root review; E25 earlier prepared/untested. No Root Job input/resume.
+[C29 review](../src/prototype/c_backend/verification/core-epoch29.json), [C30 review](../src/prototype/c_backend/verification/core-epoch30.json),
+[Spine consumers](../src/prototype/performance_followup/current-spines-consumers-held-root-review.json), [scheduled status](../src/prototype/coordination/reviews/20261004T074422-scheduled-material-review.json).
+Nine full issues remain open/zero PRs. Protected9/original dirty7/index empty,
+original Job HEAD/index, timer/watcher preserved; no new/resumed/duplicate owner,
+model change, accepted promotion, byte waiver or new cost grant. Root exposed
+Goal still blocked/incomplete; next13:44:22 UTC review remains scheduled.
 
 2026-10-03 15:29 UTC material review at local/remote Main `4853cb6`, exactly
 verified. All seven retained panes inspected: Performance pursues its Goal;
@@ -1473,6 +1475,16 @@ conventions must not become new `.a` fields or source-semantic requirements.
 
 ### Objective (Code)
 
+2026-10-04, C29 exact16 taskdae637f3/Main8a4f17ec and C30 exact13
+taskab14e694/Mainb1500b43 verified/pushed on current E23+MEM9.
+Strict O2 backend/three helpers/19 corrected expected records and O2/SAN native76,
+binary48,signed74,units373 pass; C30 reuse backend/pointer/registration0/two124
+phases and32 C-H exact. Root initial historical artifact refusal preserved and
+reproduced prior C27; fresh current IO19/five faults pass without code/gate change.
+Frozen raw1810/1006/retained282/291/runtime128 and all source compatibility pins
+verify. Other Main frozen15/12 exact; owning Goal provenance only reconciled.
+[C29](../src/prototype/c_backend/verification/core-epoch29.json), [C30](../src/prototype/c_backend/verification/core-epoch30.json).
+
 2026-10-04, later E23 downstream C28: source128c78b71d7, registration0/two373
 expected phases/128 linked+32 loaded/source16 observations each and48 generated
 C-H directly exact worker. Qualified C27 backend reused; C28 runtime/ABI unchanged.
@@ -1647,6 +1659,12 @@ change. [Core evidence](../src/prototype/c_backend/verification/core-epoch6.json
 pins the fresh combined run, not a rerun of the worker's seven sanitizer gates.
 
 ### Assessment
+
+2026-10-04, C29/C30 limited prototype integration adopted: reuse existing scalar
+callback descriptors/carriers/allocator/status and ordinary module factories;
+pure-total successful source interpretation/synchronous immutable code/API/context
+lifetime/nonoverlap/depth256/limited SAN remain. No new foreign error/escaping
+ownership/equality or native indexed AccQuickSort/full61/cost/adoption completion.
 
 2026-10-04, Root C28 integration decision within existing scope: only ordinary
 provider/consumer fixtures, declarative C adapter and standalone build registration.
@@ -1825,6 +1843,13 @@ Consider comparisons with Bend2, Lean, Agda and Rocq. Related issues/PRs are
 forthcoming; this is not approval to weaken checking or introduce a new engine.
 
 ### Objective (Code)
+
+2026-10-04, spine consumers HOLDc15dccd7 frozen31/private455+64+169/source256/
+all457 verified. Worker71 uncensored expected records70zero/strict1,38 actual
+same-flavor parent outputs/140 nested TotalResult fresh writer-reader cuts match;
+Source154/484/WHNF3014,namespace/transport22/public52/full40-row TSV/six O2 and
+two SAN completion fuels exact. Prior source20/focused19/cuts23 unchanged.
+[Consumer evidence review](../src/prototype/performance_followup/current-spines-consumers-held-root-review.json); no Root runtime rerun.
 
 2026-10-04, focused spine notice53a6c2c9: frozen19/b613c923/private24+153,
 initial270->278/retry426->434 pins verified. Original12 records retain candidate
@@ -2054,6 +2079,12 @@ Four cross-instrumentation raw image hashes differ; all 140 cross-build reads
 pass. No cross-instrumentation byte equality or wall/RSS speedup is claimed.
 
 ### Assessment
+
+2026-10-04, pinned consumer/transport/affected evidence accepted as a review
+addendum. It does not satisfy machine bytes3/146+15/24 or waive old6/146+29/48/
+strict3/observer-SAN/setup failures. Current E23 composition/downstream C24/full
+acceptance/codec-owner disposition and matched RSS/time remain; no runtime/task
+publication, comparative cost grant or full Goal completion.
 
 2026-10-04, Root focused spine assessment: bounded Fold/materialized/direct/
 malformed-cursor O2/SAN gates pass after exact build support restoration; original

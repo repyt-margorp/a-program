@@ -1,0 +1,66 @@
+{
+  "review_UTC": "2026-10-04T08:23:26.031255+00:00",
+  "epoch": "C30",
+  "publication": {
+    "task": "ab14e6940fa92a9f5205232e98f6896cb9d6f221",
+    "task_branch": "refs/heads/parallel/c-backend-20261003",
+    "task_parent": "dae637f3b9c0b70229214514eb72176718c0f158",
+    "historical_C28_observed_HEAD_and_unreported_logical_parent_freeze_preserved": true,
+    "Main_parent": "8a4f17ec235cc74b9471018cf04b77a574318c37",
+    "Main_merge": "b1500b434b08718d3af4a64db1827627f0726557",
+    "exact13_task": {
+      "doc/2026-10-03-C-BACKEND-GOAL.md": "9dfda4b744e741174714324bf452925f652ad728f52eed8cfde76809e4889668",
+      "doc/2026-10-04-C-BACKEND-NATIVE-CALLBACK-MODULES-PLAN.md": "7e81e5aad64b1bebf830624ce1a56a0b1b25c6af821e1b29d1d356d8b1d1dbbf",
+      "doc/2026-10-04-C-BACKEND-EPOCH30-HANDOFF.md": "5ac47862cd0fb62ec664b1e1933b0d72b6c4bf3d7460a860d86b56cfa4af037e",
+      "src/prototype/c_backend/README.md": "4f833b9e7fa7fee2319f70ef3ba2f0851246a544c53b5cdea28b73662bc46fc4",
+      "src/prototype/c_backend/native_callback_units/build.mk": "0b9503d9d8910279d48ad36aac6e5841138f65d04a8975a8dd1f54df10ff040e",
+      "src/prototype/c_backend/native_callback_units/provider.p": "d1841e9bfef91acac2a1424b83c91e3dfdaa6c8429d5570b4bbcefb59647efe9",
+      "src/prototype/c_backend/native_callback_units/provider.aplink": "08ed45c2b6fcbfcd24ec4cb4bd405f3bee99d89b4eb6e86757a1ad78245002bd",
+      "src/prototype/c_backend/native_callback_units/consumer.aplink": "15e81f2e69425f1d06638cad18ec3469ee0494c89b9c0c7b07a34b770e8bf0b4",
+      "src/prototype/c_backend/native_callback_units/adapter.h": "669c571cfba4bac8b62faf4f95ba8deff317b08e45c5d397bc5174f3f45baf28",
+      "src/prototype/c_backend/native_callback_units/adapter.c": "82a55238683f6766585ba94dbadfec8cf7d32941b44c8f5ef4adc96acea6b633",
+      "src/prototype/c_backend/native_callback_units/client.c": "22464f23165e9a9c1d58ae76467d20ea8df1f7d821c00dfc3d2702d59e211625",
+      "src/prototype/c_backend/native_callback_units/wrong_type.c": "e15767e426960254f32242a97552527c6978afd71825f8d6c35edb95ab65a7ce",
+      "src/prototype/c_backend/native_callback_units/check.sh": "de59360d6b6a7e189fce2bfacaa28a3fa9c171b37a91327e7a932390db104bfc"
+    },
+    "task_Main_remote_exact": true,
+    "exact12_Main_bytes": true,
+    "reviewed_Main_Goal_sha256": "8ae9118335cd4dec3f7ceb9bc62c3d2cbd3f5302821889b316b1bc7d1291867f",
+    "Root_current_report_sha256": "125ee2cfeef773a41210c2ac6701349dd0cea642424c8448e80d54c792771b88",
+    "current_source128": "c78b71d7b7ca0f3d8620a8a1e073b9cff78a2538b48ee6d0f86d6670f8b70a63",
+    "worker_live_files_preserved": 1915,
+    "Goal_provenance_only_Main_reconciliation": true,
+    "C29_immutable_snapshot_and_current_qualification_preserved": true,
+    "protected9_original_dirty7_index_empty_exact": true,
+    "original_Job_HEAD_index_preserved_no_Root_input_resume": true,
+    "accepted_adoption_full61_or_Goal_completion": false
+  },
+  "publication_receipt_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c30-publication.json",
+  "publication_receipt_sha256": "b9c337b0fb89b63f2c228872ae5634317ebf4c64d3648eb351442ce8755085a6",
+  "frozen_input_review_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c30-input-review.json",
+  "frozen_input_review_sha256": "e939cfb6bd850be30b0aff2668a35471c3529231be725f7bed6e1714413fe916",
+  "fresh_current_qualification_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c30-current-e23-mem9-gates/Root-results.json",
+  "fresh_current_qualification_sha256": "125ee2cfeef773a41210c2ac6701349dd0cea642424c8448e80d54c792771b88",
+  "qualified_source128": "c78b71d7b7ca0f3d8620a8a1e073b9cff78a2538b48ee6d0f86d6670f8b70a63",
+  "exact_frozen_task_inputs_verified": true,
+  "Root_checks_expected_statuses": {
+    "registration-dry-run": {
+      "exit": 0,
+      "expected": 0,
+      "log_sha256": "118009555518d0ab28a06fb0443b4dd9af1fc17222a82504f2150b7c1ec24c34"
+    },
+    "O2": {
+      "exit": 0,
+      "expected": 0,
+      "log_sha256": "ce439d6c4adaef0ce84fd321ec1e81f66e4aa333eaf5acfa5687edf80f3be104"
+    },
+    "SAN": {
+      "exit": 0,
+      "expected": 0,
+      "log_sha256": "ce439d6c4adaef0ce84fd321ec1e81f66e4aa333eaf5acfa5687edf80f3be104"
+    }
+  },
+  "limits": "Nine ordinary module example/test files only; exact qualified C29 backend and E23+MEM9 producer reused.16 mixed product pairs/both header orders/32 linked+8 loaded clients each phase,source/readback9,121Lists/width/two immutable contexts/three operands-rightfold seeds/93 manual Trees percontext/full copied values/rollback/capacity/depth/prior inputs+results/4and18 symbols/six compile-link one refusals. Explicit adapter assumes provider success/source interpretation and synchronous borrowed API-code-context lifetime; no foreign failure protocol or escaping ownership/type equality. SAN client/adapter/sourceproduct bodies only; other product internals/backend/producer O2. No rebuild/broad/cost/accepted promotion/native indexed AccQuickSort/full61 or Goal completion.",
+  "accepted_promotion_native_indexed_AccQuickSort_full61_cost_or_Goal_completion": false,
+  "historical_freeze_observed_C28_unreported_C29_labels_preserved": true
+}
