@@ -5,7 +5,6 @@
 #include "computation.h"
 #include "dag.h"
 #include "host.h"
-#include "support.h"
 #include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
@@ -316,8 +315,16 @@ static struct function *function(struct module *m, size_t count)
 	return f;
 }
 
+/* Readonly source syntax query; errors must refuse target lowering.
+	* It neither evaluates source nor restores removed support metadata. */
+static int free_occurs(const struct pg_term *term, const struct pg_object *binder)
+{
+	int independent = pg_term_independent(term, binder);
+	return independent < 0 ? -1 : !independent;
+}
+
 /* Follow known lexical closures to their native dependencies, then retain
-	* stable lexical order. Source support membership never evaluates a body. */
+	* stable lexical order. Syntactic independence never evaluates a body. */
 static int captures(struct expression *e)
 {
 	size_t capacity = 0;
@@ -329,7 +336,7 @@ static int captures(struct expression *e)
 	if (pg_dag_init(&seen, NULL, NULL)) return -1;
 	int status = -1;
 	for (const struct binding *b = e->environment; b; b = b->parent) {
-		int member = pg_support_contains(e->head, b->binder);
+		int member = free_occurs(e->head, b->binder);
 		if (member < 0) goto done;
 		if (!member || pg_dag_find(&seen, b->binder)) continue;
 		if (pg_dag_add(&seen, b->binder)) goto done;
@@ -342,7 +349,7 @@ static int captures(struct expression *e)
 		if (!v->delayed && !v->recursion) continue;
 		for (const struct binding *b = e->environment; b; b = b->parent) {
 			if (pg_dag_find(&seen, b->binder)) continue;
-			int member = v->delayed ? pg_support_contains(v->suspended, b->binder) : 0;
+			int member = v->delayed ? free_occurs(v->suspended, b->binder) : 0;
 			if (member < 0) goto done;
 			if (v->recursion) for (size_t j = 0; !member && j < v->recursion->capture_count; ++j)
 				if (v->recursion->captures[j] == b->binder) member = 1;
