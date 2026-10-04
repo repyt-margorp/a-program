@@ -44,4 +44,12 @@ int pg_c_emit_predicate_native(FILE *source, FILE *header, size_t count,
 	const struct pg_c_export *naturals, size_t data_count,
 	const struct pg_c_export *data, struct pg_c_native_contract *, const char **error);
 
+/* Separate opt-in predicate ABI: same-width Int32/Int64 unary/binary domains,
+	* selected two-case enum result, borrowed synchronous code/context only. */
+int pg_c_emit_predicate_signed(FILE *source, FILE *header, size_t count,
+	const struct pg_c_export *exports, size_t entry, size_t enum_count,
+	const struct pg_c_export *enums, size_t natural_count,
+	const struct pg_c_export *naturals, size_t data_count,
+	const struct pg_c_export *data, struct pg_c_native_contract *, const char **error);
+
 #endif

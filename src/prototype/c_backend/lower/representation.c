@@ -187,7 +187,10 @@ void pg_c_representations_destroy(struct pg_c_representations *table)
 
 void pg_c_representation_type(FILE *out, const struct pg_c_representation *type)
 {
-	if (type->callback_result) fprintf(out, "struct ap_c_predicate%d_d%zu_%s_r%zu_%s", type->callback,
+	if (type->callback_result && !type->callback_domain->natural)
+		fprintf(out, "struct ap_c_predicate_signed%d_i%zu_r%zu_%s", type->callback,
+			type->callback_domain->width, strlen(type->callback_result->alias), type->callback_result->alias);
+	else if (type->callback_result) fprintf(out, "struct ap_c_predicate%d_d%zu_%s_r%zu_%s", type->callback,
 		strlen(type->callback_domain->alias), type->callback_domain->alias,
 		strlen(type->callback_result->alias), type->callback_result->alias);
 	else if (type->callback == 2) fprintf(out, "struct ap_c_callback2_i%zu", type->width);

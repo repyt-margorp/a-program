@@ -1,0 +1,24 @@
+aplink 1
+artifact predicates.a
+abi c_predicate_signed_v1
+target host-c11
+product source
+lowering predicate_signed_direct_v1
+fallback reject
+enum32 Bool Bool
+enum32 Reverse Reverse
+data Numbers32 Numbers32
+data Numbers64 Numbers64
+export apply32 apply32
+export choose32 choose32
+export apply64 apply64
+export choose64 choose64
+export reverse32 reverse32
+export unused32 unused32
+export filter32 filter32
+export select32 select32
+export filter64 filter64
+export select64 select64
+export length32 length32
+export length64 length64
+export post_check32 post_check32
