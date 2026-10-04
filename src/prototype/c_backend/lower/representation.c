@@ -149,14 +149,14 @@ int pg_c_representations_native(struct pg_c_representations *table, struct pg_gr
 				c->fields[k - 1] = f;
 			}
 		}
-		/* Nested value data must already be selected and complete. A finite
-			* value-record node payload is limited to the single-tail List shape. */
+		/* Complete selected value records use the existing active-field validators
+			* in a single-tail List or an all-child branching node contract. */
 		if (r->recursive) for (size_t j = 0; j < n; ++j)
 			for (size_t k = 0; k < r->constructors[j].count; ++k) {
 				const struct pg_c_representation *f = r->constructors[j].fields[k];
 				if (f != r && f->constructors && !f->natural) {
 					size_t cell, payload;
-					if (!pg_c_representation_list(r, &cell, &payload)) return -1;
+					if (!pg_c_representation_list(r, &cell, &payload) && !pg_c_representation_branching(r)) return -1;
 				}
 			}
 		if (natural) {

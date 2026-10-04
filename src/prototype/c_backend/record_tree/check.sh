@@ -2,12 +2,11 @@
 set -euo pipefail
 backend=$(realpath "${1:?a-to-c}")
 compiler=$(realpath "${2:?pointer-check}")
-inert=$(realpath "${3:?multi-tail inert test}")
+inert=$(realpath "${3:?record-tree inert test}")
 if [[ -n ${4:-} ]]; then output=$4
 else temporary=$(mktemp -d); trap 'rm -rf "$temporary"' EXIT; output="$temporary/report"; fi
 here=$(cd "$(dirname "$0")" && pwd)
-cc=${CC:-cc}
-ar=${AR:-ar}
+cc=${CC:-cc}; ar=${AR:-ar}
 read -r -a flags <<< "${C_BACKEND_CFLAGS:--std=c11 -Wall -Wextra -Werror -O2}"
 test ! -e "$output"; mkdir -p "$output"; output=$(realpath "$output")
 expect_status() {
@@ -29,9 +28,7 @@ expect_status reference-compare 0 cmp "$output/reference-source.out" "$output/re
 for product in source object archive; do
 	sed -e "s/product source/product $product/" -e "s|artifact tree.a|artifact $output/tree.a|" "$here/tree.aplink" > "$output/$product.aplink"
 	expect_status "emit-$product" 0 "$backend" --cc "$cc" --ar "$ar" --image-limit none --steps 5000000 --link "$output/$product.aplink" "$output/$product"
-	test ! -e "$output/$product/runtime.c"
-	grep -q 'two-self-nodes' "$output/$product/link.json"
-	grep -q 'at-most-two-direct-self-fields' "$output/$product/link.json"
+	test ! -e "$output/$product/runtime.c"; grep -q 'two-self-nodes' "$output/$product/link.json"
 	if [[ $product != source ]]; then expect_status "header-$product" 0 cmp "$output/source/component.h" "$output/$product/component.h"; fi
 	case "$product" in
 	source) input="$output/$product/component.c" ;;
@@ -56,24 +53,17 @@ expect_status trusted-source 0 cmp "$output/source/component.c" "$output/trusted
 expect_status trusted-header 0 cmp "$output/source/component.h" "$output/trusted/component.h"
 expect_status no-fuel 3 "$backend" --steps 0 --link "$output/source.aplink" "$output/no-fuel"
 test ! -e "$output/no-fuel"
-sed '/^export /d' "$output/source.aplink" > "$output/record.aplink"
-printf 'data Record Record\ndata RecordTree RecordTree\nexport record_identity record_identity\n' >> "$output/record.aplink"
-for mode in checked trusted; do
-	options=(); [[ $mode == trusted ]] && options=(--trust-image --steps 0)
-	expect_status "record-$mode" 0 "$backend" --image-limit none --steps 5000000 "${options[@]}" --link "$output/record.aplink" "$output/record-$mode"
-	expect_status "record-compile-$mode" 0 "$cc" "${flags[@]}" -I"$output/record-$mode" "$here/../record_tree/legacy_client.c" "$output/record-$mode/component.c" -o "$output/record-client-$mode"
-	expect_status "record-run-$mode" 0 "$output/record-client-$mode"
-done
-expect_status record-source-exact 0 cmp "$output/record-checked/component.c" "$output/record-trusted/component.c"
-expect_status record-header-exact 0 cmp "$output/record-checked/component.h" "$output/record-trusted/component.h"
-for name in effect callback wide_identity callable_identity indexed unselected-enum; do
-	sed '/^export /d' "$output/source.aplink" > "$output/$name.aplink"
+for name in effect callback single_identity wide_identity aggregate_identity callable_identity indexed missing-packet later-packet missing-enum; do
+	sed '/^export /d' "$output/source.aplink" > "$output/$name.aplink"; export_name=$name
 	case "$name" in
-	wide_identity) printf 'data Wide Wide\n' >> "$output/$name.aplink"; export_name=$name ;;
-	callable_identity) printf 'data Callable Callable\n' >> "$output/$name.aplink"; export_name=$name ;;
+	single_identity) printf 'data Single Single\n' >> "$output/$name.aplink" ;;
+	wide_identity) printf 'data Wide Wide\n' >> "$output/$name.aplink" ;;
+	aggregate_identity) printf 'data Box Box\ndata Aggregate Aggregate\n' >> "$output/$name.aplink" ;;
+	callable_identity) printf 'data Callable Callable\n' >> "$output/$name.aplink" ;;
 	indexed) printf 'data_of empty_indexed Indexed\n' >> "$output/$name.aplink"; export_name=identity ;;
-	unselected-enum) sed -i '/^enum32 /d' "$output/$name.aplink"; export_name=identity ;;
-	*) export_name=$name ;;
+	missing-packet) sed -i '/^data Packet /d' "$output/$name.aplink"; export_name=identity ;;
+	later-packet) sed -i '/^data Packet /d' "$output/$name.aplink"; printf 'data Packet Packet\n' >> "$output/$name.aplink"; export_name=identity ;;
+	missing-enum) sed -i '/^enum32 /d' "$output/$name.aplink"; export_name=identity ;;
 	esac
 	printf 'export %s rejected\n' "$export_name" >> "$output/$name.aplink"
 	for mode in checked trusted; do
@@ -85,4 +75,4 @@ done
 sha256sum "$output/tree.a" > "$output/after.sha256"
 expect_status image-unchanged 0 cmp "$output/before.sha256" "$output/after.sha256"
 test -z "$(find "$output" -maxdepth 1 -name '*.tmp.*' -print)"
-printf 'Two direct Self fields: products/raw, six observations, 1616 separate Core comparisons, 202 finite Trees/reversed fields, former record refusal positive, shared DAGs/cycles/depth/allocation rollback and six checked/trusted refusals pass\n'
+printf 'Record-tree products/raw: four source observations, 222 finite cases/layout, 888 Core comparisons, nested tags/Int64 copies/sharing/cycles/depth/allocation rollback and ten checked/trusted refusals pass\n'

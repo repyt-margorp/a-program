@@ -1,0 +1,22 @@
+aplink 1
+artifact tree.a
+abi c_native_v1
+target host-c11
+product source
+lowering native_direct_v1
+fallback reject
+enum32 Bool Bool
+data Packet Packet
+data Envelope Envelope
+data Tree Tree
+data Reverse Reverse
+export identity identity
+export sum sum
+export mirror mirror
+export leaf leaf
+export fork fork
+export wide_packet wide_packet
+export envelope envelope
+export reverse_identity reverse_identity
+export reverse_sum reverse_sum
+export reverse_mirror reverse_mirror

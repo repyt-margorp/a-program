@@ -709,7 +709,7 @@ Differentials and raw Oracle checks support this correspondence; no new Kernel
 refinement theorem is claimed. Unknown field classifiers, indices,
 dependent/function fields, nested recursive pointers and recursive aggregate
 payloads reject before publication. Finite value-record payloads have the bounded
-single-tail List contract below. Private C input validators inspect
+List and branching contracts below. Private C input validators inspect
 only active constructor fields; they do not perform source checking.
 Known block-local function thunks have positive coverage; open callback
 parameters, function fields and unselected recursive exports remain negative
@@ -737,7 +737,9 @@ The same `data SOURCE ALIAS` directive now also selects closed unindexed data
 with at most two direct Self fields per constructor; other fields remain Int32,
 Int64, selected enum32 or selected nat32. A two-constructor List with one nullary
 terminal and one payload/Self cell may also contain previously selected complete
-nonrecursive value data. Record payloads in other recursive shapes still reject.
+nonrecursive value data. Nodes with a constructor containing two Self fields may
+also contain complete previously selected finite records by value. Other recursive
+record shapes still reject.
 This covers List/Nat shapes. A recursive selection uses
 `const struct ap_data_ALIAS *` for native parameters/results and Self fields.
 An explicit terminal constructor is a node; NULL is an invalid source value.
@@ -823,8 +825,15 @@ The gate checks source/object/archive/raw clients, six source/readback observati
 shared DAGs, both child/cycle positions and every tested temporary/result malloc
 failure. Prior arena results, output and rollback are preserved. Historical Tree
 controls in List/enum-array/value-record gates are explicitly positive; native
-nat32 Tree selection, three-tail/callable/indexed/effect/unselected and non-List
-record payload contracts retain refusals. No branching array helper, source
+nat32 Tree selection and three-tail/callable/indexed/effect/unselected contracts
+retain refusals. The former finite-record Tree refusal is explicitly positive;
+`check-c-record-tree` verifies source/object/archive/raw record-tree clients, four
+source/readback observations,222 finite cases per layout and888 separate Core
+comparisons. Packet/Envelope payloads appear in leaves and branches, with reversed
+constructor/field positions, nested active-tag validation, whole Int64 copies,
+inactive unions, finite sharing/cycles and rollback/depth/allocation controls.
+Records are copied by value; Self pointers still borrow their input nodes. Existing
+List arrays remain separate; no branching array helper, source
 evaluation during emission, producer field or native Acc/QuickSort implementation
 is supplied by this increment.
 
@@ -972,7 +981,7 @@ or producer change. `check-c-record-list` verifies 259 cases per C product,
 13 source observations, reversed fields, nested invalid tags, cycles, resource
 rollback and 300-node finite copies. The old Recursive/Aggregates refusal shapes
 are explicitly positive; missing/later selections, recursive aggregates, multiple
-record payloads, three or more tails, non-List record payloads, callable/indexed fields remain
+record payloads, three or more tails, non-branching non-List record payloads, callable/indexed fields remain
 status-4 controls; the former nullary two-tail Tree is explicitly positive.
 
 ```c
