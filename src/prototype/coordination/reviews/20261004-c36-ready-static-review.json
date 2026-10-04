@@ -1,0 +1,411 @@
+{
+  "date_UTC": "2026-10-04T12:19:44.130389+00:00",
+  "Main_at_review": "0bd64e509b6c832f75d36be310032698aabb9c1b",
+  "notice": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/coordination/outbox/c-backend-c36-acc-clause-ready-20261004.txt",
+  "notice_sha256": "27c45a86337964e80dc0c90f02c1081e61c2447ec22d1092b69a3dd437ddf023",
+  "scope": "Fresh Root source/static/hash/raw-record/product-byte review; worker runtime evidence, no Root runtime replay or current accepted-producer qualification.",
+  "worker_branch": "parallel/c-backend-20261003",
+  "worker_HEAD_observed": "cc3cba3495b81628e0a68ec8b45aee4f5447d188",
+  "freeze": {
+    "manifest_sha256": "898846ea57c8d259b0f43a1056ba5d07e37ee3c2500620392c441516a5acbbf4",
+    "archive_sha256": "935cbfa3c56f20af251770180172e795eb14e866d5569318eae515e0e047acbd",
+    "freeze_sha256": "bf0a9c2f172da111d7a97fd9ff805b953e2478f93f74db1961d9b64dfa63ad93",
+    "files": {
+      "doc/2026-10-03-C-BACKEND-GOAL.md": "238ed1b5aa19e5443d4ea28a8230505c5d0dfa977a05d3262065abef7d674ad6",
+      "doc/2026-10-04-C-BACKEND-ACC-CLAUSE-PLAN.md": "7bf9d631c1c8da3d9dcde12c92d45001387d3bbbbcd5de0181a0824b62a22e48",
+      "doc/2026-10-04-C-BACKEND-EPOCH36-HANDOFF.md": "a3f32466097281d51adc28b76eb4e02a7e611beed61d22875d019a7b3ea0d05b",
+      "src/prototype/c_backend/acc_clause/README.md": "adb393460e1414469b130e4872541a5586e908cd9cfe1f77028e92234fb19e56",
+      "src/prototype/c_backend/acc_clause/build.mk": "6348c18a11782b0630856f9a19bd3313fed885f7797d1f5e83456ad5bc9bb4bf",
+      "src/prototype/c_backend/acc_clause/check.sh": "8c86cb577be6dbeedbe4a2091adf55930c9aedac2a7892513928146f049afff3",
+      "src/prototype/c_backend/acc_clause/client.c": "8e24d4c9482a67148fc810ee7c8ae446d740e7225473ec32a11cce2732918f42",
+      "src/prototype/c_backend/acc_clause/emit.c": "dbc40138dcefd528dffe9ab94b0d10b28ee87f7780387229cdba20345613f873",
+      "src/prototype/c_backend/acc_clause/emit.h": "092f0a4b8eb9e9eab530f6268dcc5053b6ef3147670f1d7540868566a86e797e",
+      "src/prototype/c_backend/acc_clause/emit_test.c": "d366aaf8a5e9deeaf5153e8f15b44f9ef3f4a8ef2bf268d68aac8276d50205d2",
+      "src/prototype/c_backend/acc_clause/fixture.p": "af1ccd6eff663adf7552c5276602744b3195d87f2528c3bc1f1d0e578442e9ba",
+      "src/prototype/c_backend/acc_clause/probe.c": "81dad6dc4a31ea2b07a183027451e144009bbb8bf12b4efbe559cdd23be82065",
+      "src/prototype/c_backend/acc_clause/support.c": "ca14b038fa9163d392da7932956eab8cafce51f0b3457b18ab73ecbfad523a7a"
+    },
+    "count": 13,
+    "all_archive_and_live_submitted_bytes_exact": true
+  },
+  "raw_evidence": {
+    "manifest_sha256": "f5fe8c9432d59929a8515c1c9314fbbc1d2e88a40e25610030521e30de4bc679",
+    "listed": 320,
+    "mismatches": [],
+    "products_independently_rehashed": 132,
+    "anchor": "/home/repyt/workspace/a-program-workers/c-backend"
+  },
+  "qualified_input_copies": {
+    "map_sha256": "db45ee68da2bf7bdc1d3f6e7847d23af656963f840c25b26c0d13b180f55c457",
+    "count": 152,
+    "copy_mismatches": [],
+    "live_differences": [],
+    "runtime128_manifest_recomputed": "9ba2b33cbe8bc68eac338073506bcb205f36d20cb0a34f9f88607d975ef07740"
+  },
+  "worker_terminal": {
+    "O2": {
+      "report_sha256": "6a31a13946383669ce6c64b6d54d49886ffb96434e0b882805deeea7c74d7988",
+      "report_exit": 0,
+      "rows": [
+        {
+          "label": "admit",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "emit",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "repeat",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "deterministic",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "changed_source",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "different_code",
+          "expected": 1,
+          "exit": 1
+        },
+        {
+          "label": "wrong_helper",
+          "expected": 4,
+          "exit": 4
+        },
+        {
+          "label": "no_partial_helper",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "wrong_motive",
+          "expected": 4,
+          "exit": 4
+        },
+        {
+          "label": "no_partial_motive",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "source",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "drop_source",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "main_build",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "main_client",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "source_match",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "drop_build",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "drop_client",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "changed_execution",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "resource_compile",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "resource_link",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "resource",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "Core_observations",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "oracle_compile",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "oracle_link",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "oracle_client",
+          "expected": 0,
+          "exit": 0
+        }
+      ],
+      "product_count": 65,
+      "raw_argv_status_exact": true,
+      "expected_exit_counts": {
+        "0": 22,
+        "1": 1,
+        "4": 2
+      },
+      "full_composed_client_SAN": false,
+      "producer_and_Core_oracle_SAN": false
+    },
+    "SAN": {
+      "report_sha256": "6e38d377863454e2329141f1bb65f90542a4d720a79bc98433b6847162c4b738",
+      "report_exit": 0,
+      "rows": [
+        {
+          "label": "admit",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "emit",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "repeat",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "deterministic",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "changed_source",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "different_code",
+          "expected": 1,
+          "exit": 1
+        },
+        {
+          "label": "wrong_helper",
+          "expected": 4,
+          "exit": 4
+        },
+        {
+          "label": "no_partial_helper",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "wrong_motive",
+          "expected": 4,
+          "exit": 4
+        },
+        {
+          "label": "no_partial_motive",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "source",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "drop_source",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "main_build",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "main_client",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "source_match",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "drop_build",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "drop_client",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "changed_execution",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "resource_compile",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "resource_link",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "resource",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "Core_observations",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "oracle_compile",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "oracle_link",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "oracle_client",
+          "expected": 0,
+          "exit": 0
+        }
+      ],
+      "product_count": 65,
+      "raw_argv_status_exact": true,
+      "expected_exit_counts": {
+        "0": 22,
+        "1": 1,
+        "4": 2
+      },
+      "full_composed_client_SAN": true,
+      "producer_and_Core_oracle_SAN": false
+    }
+  },
+  "Root_fresh_O2_SAN_product_byte_comparisons": {
+    "main/clause.inc": "cd1a7d70441222995b12ca2354ae6aeda80eaa2f99cd296cfeb5ef451405804c",
+    "drop/clause.inc": "daf0f9401a442bf246c640ab915ec946cf453ba0ffc4306e673fcf02116dd648",
+    "clause.a": "e448728aab79cf843ea25247bc21ce7b917013af7178b05e813a54f23bf06de0",
+    "source.out": "c4bc2044ebe70082802ae168344ee3095312257b2ca4a36efd3abc5e0a4ca513",
+    "main_client.out": "c4bc2044ebe70082802ae168344ee3095312257b2ca4a36efd3abc5e0a4ca513",
+    "drop_source.out": "cbe5cfdf7c2118a9c3d78ef1d684f3afa089201352886449a06a6511cfef74a7",
+    "drop_client.out": "cbe5cfdf7c2118a9c3d78ef1d684f3afa089201352886449a06a6511cfef74a7",
+    "Core_observations.out": "7f82c7cfaf0bbdb50c6f1c95319ed242c3a0d5c653be0beff0ab85bb45dbe28c"
+  },
+  "Root_source_assessment": "Frozen339-line emitter plus15-line interface inspect actual admitted clause terms. Lexical binder environment, exact known helper-carrier alpha recognition and declaration/field shapes drive SizedList/Partition Match, ordered SEQ, original Acc.down -> child Acc -> generated Fold callable -> gs_apply(child SizedList), then pivot construction/append. Generated63-line clause recursively invokes gs_apply; the included manual qs_apply_sort is not its entry. The representation and helper implementation remain fixed manual C33 support; this is source-driven bounded partial automatic emission.",
+  "source_mutation_control": {
+    "original_source_and_generated_output": "0,1,2,2,3,|",
+    "pivot_omitting_source_and_generated_output": "|",
+    "generated_original_sha256": "cd1a7d70441222995b12ca2354ae6aeda80eaa2f99cd296cfeb5ef451405804c",
+    "generated_mutation_sha256": "daf0f9401a442bf246c640ab915ec946cf453ba0ffc4306e673fcf02116dd648",
+    "Root_offline_diff": "Original list_cons(pivot, upper) followed by append(lower, result) becomes append(lower, upper). Both source/generated output pairs match in O2/SAN; a finite noncandidate control, not a general correctness proof."
+  },
+  "worker_Core_and_resource_evidence": "341 finite existing-Core fingerprint/length/range observations; sealed C33 resource/client translation units are linked against generated gs entry. Worker O2/SAN pass. Root checked source/argv/log/product pins but did not execute or independently enumerate the341 observations.",
+  "manual_extent": [
+    "closed Nat32 representation",
+    "accessibility and LT proofs",
+    "partition",
+    "append",
+    "comparison",
+    "measure",
+    "allocation",
+    "outer array/entry/copy-out"
+  ],
+  "source_and_runtime_bounds": {
+    "emission_expression_depth": 128,
+    "emission_steps": 4096,
+    "carrier_unwrap_steps": 1024,
+    "runtime_depth": 256,
+    "runtime_nodes": 65536,
+    "runtime_Nat": "uint32_t; overflow guard inspected, not executed"
+  },
+  "ownership_and_refusal_limits": "Borrowed valid input/output/context lifetimes and source-valid indices/helper callback interpretation. Unsupported helper/motive return4 with zero partial stream verified offline; staged emission can still fail during destination I/O. Staged outer output does not roll back arbitrary callback effects/provider allocation. Status1 pointer/2 metadata/3 allocation/4 depth/5 overflow/6 capacity-count.",
+  "worker_producer": "Old E8 50cd56b2a52b7e370bc7ecb3436c4993e2e5d6a2; pointer/Core oracle prebuilt O2, not SAN/current accepted94a. Full emitter/runtime and composed client SAN separately rebuilt.",
+  "original_failure_records_retained": [
+    {
+      "log": "src/prototype/c_backend/.evidence/epoch36-acc-clause-20261004/probe-build.log",
+      "sha256": "7d1c7d5d79a1302c2365633de3c3847a517a442e23da053523c24d7c7756f02d",
+      "exit": 0
+    },
+    {
+      "log": "src/prototype/c_backend/.evidence/epoch36-acc-clause-20261004/probe-build2.log",
+      "sha256": "7d1c7d5d79a1302c2365633de3c3847a517a442e23da053523c24d7c7756f02d",
+      "exit": 0
+    },
+    {
+      "log": "src/prototype/c_backend/.evidence/epoch36-acc-clause-20261004/emit-build-initial.log",
+      "sha256": "797349eb0f8f86b15e7ae1fec689239b1db50c3072745b583e3fbc0c2b402405",
+      "exit": 2
+    },
+    {
+      "log": "src/prototype/c_backend/.evidence/epoch36-acc-clause-20261004/emit-build2.log",
+      "sha256": "03503bc6a369cdcdce7440bbd16076add1d7ed60592d48f437f349c0f6c625c4",
+      "exit": 0
+    },
+    {
+      "log": "src/prototype/c_backend/.evidence/epoch36-acc-clause-20261004/emit-terminal-build.log",
+      "sha256": "03503bc6a369cdcdce7440bbd16076add1d7ed60592d48f437f349c0f6c625c4",
+      "exit": 0
+    },
+    {
+      "log": "src/prototype/c_backend/.evidence/epoch36-acc-clause-20261004/emit-SAN-build.log",
+      "sha256": "96cdc721b779fd5d75c804cf3c0d77fb8fee4ef6d085bf1c37920308d49f4309",
+      "exit": 0
+    }
+  ],
+  "dependencies": "C33 immutable manual support and C35 applicability reader require C34 view/emitter closure. C34 full-Nat pointer declarations remain a separate experiment; C36 composition uses C33 closed Nat32. Preserve sealed ordered C32-C35 snapshots; no new C32 convenience work needed.",
+  "prior_archives": "C32-C35 exactness is worker evidence and prior Root individual reviews; not freshly rehashed in this C36 review.",
+  "next": "Preserve exact13 partial automatic READY. Current clean accepted94a runtime120930997b6 helper/source fixture qualification and task/Main prototype publication remain separate. Continue bounded actual helper body/capture and outer-expression lowering in the original Goal; no established producer-view blocker or new erasure authority.",
+  "C33_full_manual_CODE": "Already delivered/current-qualified/published independently; C36 supersedes the C35 manual-clause gap only.",
+  "unsupported": "Generalized dynamic calls/effects/Identity/unknown motives-capture layouts/unbound syntax/main native indexed callable Acc remain unsupported.",
+  "Root_runtime_replay": false,
+  "current_accepted_qualification": false,
+  "task_Main_prototype_publication": "pending",
+  "accepted_C_promotion": false,
+  "full_native_Acc_QuickSort_Goal_or_issue61_completion": false,
+  "RSS_time_or_cost_grant": false,
+  "owner_Goal_model_lifecycle_change": false,
+  "new_user_approval": false
+}

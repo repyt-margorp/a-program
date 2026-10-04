@@ -1,0 +1,13 @@
+{
+  "date_UTC": "2026-10-04T12:19:44.130389+00:00",
+  "provenance": "Merge operational review under existing coordination authorization; evidence, not new user approval or an owner/Goal reset.",
+  "decision": "C36 exact13/archive/raw320/copied152 and generated/source mutation bytes independently verified; worker E8 O2/full-emitter-and-client SAN25 expected rows each match. Actual clause terms now emit Match/SEQ/both IH/pivot/append, superseding C35 manual-clause gap. C33 helpers/proofs/Nat32/outer entry remain manual. Preserve all sealed snapshots; current accepted94a qualification/task/Main prototype publication remains separate. Continue primary actual helper body/capture and outer expression lowering, not parked C32 conveniences.",
+  "accepted_revision": "94a20003b976475b1ed38025e61acb6cdbdab92c",
+  "accepted_runtime120_manifest": "930997b62db85814718d0d5ac151f392bfae243a447d5d0d5f2adbde66cba5ae",
+  "clean_source_checkout": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/accepted-job-promotion",
+  "profile": "Default --save/--save-inputs and REPL :save are compact/recomputable; explicit --save-materialized retains typed results. Exclude unrelated unstaged Main files.",
+  "Root_review": "src/prototype/coordination/reviews/20261004-c36-ready-static-review.json",
+  "Root_review_sha256": "249af8df5a11032afbd28dd87ac73b1db3db22a6aefd6a2bd652b4a42d36a2fa",
+  "no_cost_grant_or_owner_resume": true,
+  "original_main_Goal_continues": true
+}

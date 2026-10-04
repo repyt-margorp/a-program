@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: accepted Job94a20003 pushed/remote exact, live Main Core/IADT/CLI0; six unowned edits remain unstaged. C33 faithful full manual mockup delivered/current-qualified; C35 partial automatic Fold/IH exact13/raw287/inputs151 verified, current qualification/body lowering pending; C32 parked. Performance accepted94a focused88/cuts2296 records and raw bytes verified: candidate inert0/328, parent36/328 and paired20/164 unwaived; current CLI/consumers/fuels/cost pending. Old E25 full acceptance remains timed out/incomplete. Job frontier v13 Lambda/Domain/Body private WIP, seven-file reconstruction exact. Full strict/frontier/actual-cost criteria remain open; four bounded owners stay stopped. No Goal reset.
+Status: accepted Job94a20003 pushed/remote exact, live Main Core/IADT/CLI0; six unowned edits remain unstaged. C33 faithful full manual mockup delivered/current-qualified; C36 actual clause emission exact13/raw320/inputs152 verified statically, helper bodies/current qualification pending; C32 parked. Performance accepted94a focused88/cuts2296 records and raw bytes verified: candidate inert0/328, parent36/328 and paired20/164 unwaived; current CLI/consumers/fuels/cost pending. Old E25 full acceptance remains timed out/incomplete. Job frontier v13 Lambda/Domain/Body private WIP, seven-file reconstruction exact. Full strict/frontier/actual-cost criteria remain open; four bounded owners stay stopped. No Goal reset.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -17,7 +17,7 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | Inquiry desk -> `merge`: reporting vs coordination/integration | All lanes | Desk answers the user; only Merge integrates after verified handoff |
-| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C33 faithful manual executable delivered before deadline; C34 declarations/C35 partial automatic Fold-IH verified statically. Current qualification and actual captured clause/body lowering remain; C32 sealed/parked |
+| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C33 faithful manual executable delivered before deadline; C36 actual source-driven clause emission verified statically. Current qualification and helper body/capture/outer lowering remain; C34/C35 preserved, C32 sealed/parked |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Primary current stateless-head allocation deletion/acceptance and matched actual peak RSS/time; pending codec disposition/exclusive drain, peripheral MEM10/spine/empty arrays parked |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
 | 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E25 already-active review finished/prototype integrated; primary deterministic retained Source/checked-owner relocation and genuine frontier; E26 terminal safe boundary/E27 parked; strict3/full SE/AP remain open |
@@ -26,6 +26,25 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
+
+2026-10-04 12:16 UTC, C36 partial automatic READY at Main0bd64e50:
+Root verified immutable13/archive/freeze, raw320, copied152 and independently
+recomputed the old-E8 runtime128 manifest. O2/SAN raw argv/status each25 match:
+22 zero, one expected code-difference1, two helper/motive refusals4 with empty
+streams. Frozen339-line emitter generates63 lines from actual admitted clause
+terms: SizedList/Partition Match, ordered SEQ, both callable IH applications,
+pivot and append. Recursion uses generated gs_apply. Pivot-omitting noncandidate
+source changes emitted code and source/generated output from0,1,2,2,3,| to|;
+Root compared these recorded bytes, without a runtime replay. Worker341 finite
+Core observations/resources pass on E8; pointer/Core oracle is O2, while the
+emitter/runtime/composed client is separately SAN rebuilt. Nat32 representation,
+accessibility/LT/partition/append/comparison/measure/allocation/outer entry remain
+manual C33. This supersedes the C35 manual-clause gap only. Current accepted94a
+qualification and task/Main prototype publication remain separate; continue
+actual helper body/capture and outer-expression lowering. Initial build2 remains
+recorded/corrected; overflow guard is inspected, not executed. No native61/full
+Goal/adoption/cost claim or owner lifecycle change.
+[C36 review](../src/prototype/coordination/reviews/20261004-c36-ready-static-review.json).
 
 2026-10-04, superseding current accepted Performance raw-cut review at Main72105f44:
 Root verifies summary/input maps1442/1445 and all focused88/cuts2296 raw logs;
@@ -680,7 +699,7 @@ cost slot or accepted edit; protected9/timer unchanged, next07:44:22 UTC.
 | Owner / issue scope | Delivered and verified | Not yet delivered / next boundary |
 | --- | --- | --- |
 | Job/Evidence; SE1-SE5 / AP0, #51/#47 | Reviewed Job/dependency closure accepted94a20003; runtime120930997b6, compact-default acceptance coverage, five owner/18 CLI sanitizer controls and live local-edit Core/IADT/CLI0. Private v13 Lambda/Domain/Body/WHNF packet13 verified; Root reconstructs seven changed files/all128 hashes with fuzz0. [Latest review](../src/prototype/coordination/reviews/20261004-accepted-port-frontier-v13-review.json) | v13 old-E25 source1b2d581c is private WIP, not READY/current accepted/joint. Worker24 destroyed-owner cuts and wrong-child/affected O2-SAN pass; strict3/general public resume/full SE-AP/cost remain. Next canonical typed-owner normalization/classifier-query continuation and accepted94a composition with explicit prototype checkpoint dependencies. Compact1369677 vs old1365999; materialized20728552 growth is not a memory win. |
-| C backend; #61 | C33 faithful manual actual Acc QuickSort exact11 task588b2cb/prototype integration083c2592; Root current final compact-default O2/SAN9 rows each0, source3/Core341/resource controls, delivered before deadline. C34 declaration-only exact15/raw332 verified. C35 partial automatic down/child-Fold/callable-IH adapter exact13/raw287/inputs151 statically verified; worker E8 O2/helper-client SAN11 expected rows each match. [C35 review](../src/prototype/coordination/reviews/20261004-c35-ready-static-review.json) | C35 clause bodies/manual size0/1 only; full captured expressions/partition/closure lifetime/index constructors/general native61/cost open. Current accepted qualification/task/Main publication separate; C33 remains full manual CODE. C32 micro-convenience implementation parked; no missing producer view demonstrated. |
+| C backend; #61 | C33 faithful manual actual Acc QuickSort exact11 task588b2cb/prototype integration083c2592; Root current final compact-default O2/SAN9 rows each0, source3/Core341/resource controls, delivered before deadline. C34 declarations/C35 plumbing preserved. C36 actual source-driven Match/SEQ/both IH/pivot/append clause exact13/raw320/inputs152 and O2-SAN25 expected rows each verified statically, including changed-source code/output control. [C36 review](../src/prototype/coordination/reviews/20261004-c36-ready-static-review.json) | C33 Nat32/proofs/helpers/allocation/outer entry remain manual; helper body/capture, closure lifetime/index constructors/general native61/cost open. Worker E8 evidence is not current accepted qualification; task/Main publication separate. C33 remains full manual CODE. C32 micro-convenience implementation parked; no missing producer view demonstrated. |
 | Performance; #56/#51/#52 | Exact accepted94a four-file120c206 port/source vectors verified. Current focused88/cuts2296 worker commands0; Root maps1442/1445, raw logs,18 unit outputs and164 pair/656 inert bytes verify. Candidate own inert0/328; parent36/328 and paired20/164 failures retained. [Raw review](../src/prototype/coordination/reviews/20261004-performance-accepted94-raw-cuts-review.json) | NOT READY: current compact-default/materialized CLI and affected consumers, fresh completed fuels/current joint/downstream C/publication and matched36-job RSS/time remain. Six paired-only/seven inert-only unique cuts reject universal cause/equivalence claims. Old E25 acceptance1200s censored/incomplete, old cost4a414f41 deferred, overhead and every historical/strict3 failure unwaived. No slot. |
 | Surface; #57 | Verified prototype integrated, completed owner stopped | Accepted policy/promotion and selector diagnostics unresolved; no owner restart |
 | Static audit; #59/PR #60 | Task7ed3ad1/Main5683755; Root385 source/114 archived dependency hashes and exact inventory verified; bounded Goal achieved | Dynamic/full #59 and controlled cost remain open; no static-owner restart |
@@ -718,7 +737,7 @@ reporting subsystem. Its audit cover is pinned to `37de1e8`, not current Main.
 | Complete bounded / test-suite; Root publishes | #59 / PR #60 | Verified pilot removes22 duplicate calls with all distinct outcomes preserved; Root raw/assembly review complete. Exact7 taskbc16df9/Main36a27be prototype integrated; broader inventory/cost/accepted adoption remain open |
 | Complete bounded / issue-audit | All open Issues/PRs | Verified comments/dispositions,44/49 superseded by61; nine issues open. Owner stopped; Root resumes coordination, no repeat audit |
 | Complete bounded / verification-audit | #59 / PR #60; #51 | Static inventory/pilot delivered and worker complete; four-job measured cost remains deferred, full #59 open. Do not restart the completed owner automatically |
-| 2 / C backend | #61 (historical #44/#49) | C33 full faithful manual CODE already delivered before deadline and current accepted qualified. Continue actual captured clause/partition/IH expression and lifetime/index-constructor lowering; C35 plumbing is partial automatic progress. Preserve C34/C35 freezes, qualify necessary helper/view closure on clean accepted94a before current Main claims. C32 exact19 archive sealed/parked; do not resume List conveniences merely for declared publication ordering. Full native61/cost remain open |
+| 2 / C backend | #61 (historical #44/#49) | C33 full faithful manual CODE already delivered before deadline and current accepted qualified. C36 actual clause expressions now generated; continue actual helper body/capture and outer-expression/lifetime/index-constructor lowering. Preserve C34-C36 freezes, qualify necessary helper/view closure on clean accepted94a before current Main claims. C32 exact19 archive sealed/parked; do not resume List conveniences merely for declared publication ordering. Full native61/cost remain open |
 | Complete review / Merge | PR #60, #53, #55 | Documentation reviewed/imported with provenance; no open PRs. Full issue criteria remain independent of publication |
 | Complete bounded / Sort library | PR #54 / #41 | Generic MergeSort and finite-function prototype verified/integrated; bounded worker complete. Accepted Sort/F5 and broader containers remain separate; no owner restart |
 | Review / Merge | #57 | Audit delivered prototype against Issue criteria; Surface stays stopped. Prototype delivery is not accepted promotion; do not reopen a worker just to repeat completed gates |
