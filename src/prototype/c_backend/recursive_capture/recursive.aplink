@@ -1,0 +1,30 @@
+aplink 1
+artifact recursive.a
+abi c_native_v1
+target host-c11
+product source
+lowering native_direct_v1
+fallback reject
+enum32 Bool Bool
+nat32 Nat Nat
+data Numbers32 Numbers32
+data Numbers64 Numbers64
+data Naturals Naturals
+export known_keep32 known_keep32
+export known_drop32 known_drop32
+export known_keep64 known_keep64
+export known_drop64 known_drop64
+export captured_filter32 captured_filter32
+export captured_filter64 captured_filter64
+export captured_select32 captured_select32
+export captured_select64 captured_select64
+export length32 length32
+export length64 length64
+export chain_filter32 chain_filter32
+export shadow_filter32 shadow_filter32
+export shift32 shift32
+export shift64 shift64
+export chain_map32 chain_map32
+export unused_effect unused_effect
+export known_filter_nat known_filter_nat
+export known_select_nat known_select_nat

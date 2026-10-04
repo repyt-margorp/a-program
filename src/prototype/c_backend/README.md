@@ -501,18 +501,36 @@ lifetime preconditions remain. The
 [C19 handoff](../../../doc/2026-10-04-C-BACKEND-EPOCH19-HANDOFF.md) pins the scope.
 
 `check-c-integer-predicate-boundary` probes ordinary Int32/Int64 Lists under the
-existing `c_native_v1` ABI. Direct recursive forms use source constant/captured
-Bool decisions and select all or none; their declared predicates ignore pivot
-values. Source/object/archive clients verify 341 Lists per width/product,
+existing `c_native_v1` ABI. Known private predicates use source constant/captured
+Bool decisions and select all or none; they ignore pivot values. The same public
+aliases/client now exercise eight formerly refused known/captured argument forms.
+Source/object/archive clients verify 341 Lists per width/product,
 signed extrema, reversed Int64 constructor/field order and transactional resource
-controls. Six source observations also match loaded-image execution. Equivalent
-admitted forms passing known function-valued arguments still refuse, alongside
-dynamic integer callbacks, effects and callable fields: 25 cases each checked
-and trusted, status4 without products. No emitter or ABI change occurs. This is
+controls. Six source observations also match loaded-image execution. Dynamic
+integer callbacks, effects and callable fields retain seventeen cases each checked
+and trusted, status4 without products. The ABI remains unchanged. This is
 bounded representation evidence, not a data-dependent signed comparator, generic
 partition or native sorter. SAN covers clients and source-product bodies; other
 product bodies/backend/producer remain O2. See the
 [C20 handoff](../../../doc/2026-10-04-C-BACKEND-EPOCH20-HANDOFF.md).
+
+`check-c-recursive-captures` verifies private known lambda captures in existing
+recursive targets. Force/Thunk wrappers and known partial applications stay
+suspended until source use. Only represented dependencies become C parameters;
+known bodies remain private compile-time captures. Standalone and explicit source
+re-export modules produce source/object/archive clients matching sixteen source
+and loaded-image observations, signed maps, transitive/shadowing captures and
+genuine Nat predicates. Raw emission performs no guarded evaluation/substitution/
+WHNF/query and mutates no source graph/proof counts; separate existing Core
+evaluation supplies200 finite Nat comparisons per fixture family. O2/client-source
+SAN114 expected rows each pass, along with affected transitive/numeric/borrowed-
+predicate O2 gates. Repeated products/phases are coverage, not independent
+properties. Dynamic predicates, demanded effects, recursion-valued captures,
+callable/indexed fields and native Acc/QuickSort remain unsupported. Explicit
+source re-exports publish imported types for LinkerScript selection; local import
+names alone are not treated as exported members. Historical setup failures are
+retained without a producer bug claim. See the
+[C21 handoff](../../../doc/2026-10-04-C-BACKEND-EPOCH21-HANDOFF.md).
 
 ## Native Nullary ADTs
 
