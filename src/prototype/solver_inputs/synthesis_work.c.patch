@@ -1,3 +1,4 @@
+diff --git a/synthesis_work.c b/synthesis_work.c
 --- a/synthesis_work.c
 +++ b/synthesis_work.c
 @@ -1,14 +1,160 @@
@@ -306,7 +307,7 @@
  }
  
  const void *pg_synthesis_work_input(const struct pg_synthesis_job *job, size_t index)
-@@ -114,23 +288,69 @@
+@@ -114,23 +288,86 @@
  	return job ? job->input_count : 0;
  }
  
@@ -367,7 +368,24 @@
 +	return waiter;
 +}
 +
-+static void detach_waiter(struct pg_synthesis_job *job)
++int pg_synthesis_prepare_waiters(struct pg_synthesis *synthesis, size_t count)
++{
++	size_t available = 0;
++	for (struct waiter *waiter = synthesis->free_waiters; waiter && available < count;
++		waiter = (void *)waiter->edge.next) ++available;
++	if (available == count) return 0;
++	count -= available;
++	if (count > SIZE_MAX / sizeof(struct waiter)) return -1;
++	struct waiter *waiters = pg_alloc(synthesis->typing->graph, count * sizeof(*waiters));
++	if (!waiters) return -1;
++	for (size_t i = 0; i < count; ++i) {
++		waiters[i] = (struct waiter){.edge.next = (void *)synthesis->free_waiters};
++		synthesis->free_waiters = &waiters[i];
++	}
++	return 0;
++}
++
++void pg_synthesis_unsubscribe(struct pg_synthesis_job *job)
 +{
 +	if (job->dependency) release_waiter(job->dependency);
 +}
@@ -386,11 +404,11 @@
  	}
  }
  
-@@ -138,9 +358,20 @@
+@@ -138,9 +375,20 @@
  	enum pg_synthesis_status status)
  {
  	int first_finish = job->status == PG_SYNTHESIS_PENDING;
-+	detach_waiter(job);
++	pg_synthesis_unsubscribe(job);
  	job->status = status;
 -	if (job->role->completed) job->role->completed(synthesis, job, first_finish);
 -	wake(synthesis, job, 0);
@@ -401,7 +419,7 @@
 +void pg_synthesis_subscribe_at(struct pg_synthesis *synthesis, struct pg_synthesis_job *parent,
 +	struct pg_synthesis_job *child, int preparation, struct waiter *waiter)
 +{
-+	detach_waiter(parent);
++	pg_synthesis_unsubscribe(parent);
 +	*waiter = (struct waiter){.edge.notify = wake_waiter, .synthesis = synthesis,
 +		.parent = parent, .child = child, .preparation = preparation};
 +	pg_subscription_attach(&child->waiters, &waiter->edge);
@@ -409,7 +427,7 @@
  }
  
  /* Subscribe exactly once at a stage transition. Completed dependencies need
-@@ -153,11 +384,33 @@
+@@ -153,11 +401,33 @@
  		pg_synthesis_enqueue(synthesis, parent);
  		return;
  	}
@@ -447,7 +465,7 @@
  }
  
  /* Zero means the dependency is done. Otherwise suspend or propagate its
-@@ -165,11 +418,7 @@
+@@ -165,11 +435,7 @@
  int pg_synthesis_await(struct pg_synthesis *synthesis, struct pg_synthesis_job *job,
  	struct pg_synthesis_job *dependency)
  {
@@ -460,7 +478,7 @@
  }
  
  void pg_synthesis_advance(struct pg_synthesis *synthesis, uint64_t budget)
-@@ -181,16 +430,45 @@
+@@ -181,16 +447,45 @@
  		job->next = NULL;
  		--budget;
  		++synthesis->steps;
@@ -512,7 +530,7 @@
  	return job->status == PG_SYNTHESIS_DONE ? job->result : NULL;
  }
  
-@@ -215,7 +493,7 @@
+@@ -215,7 +510,7 @@
  int pg_synthesis_import_materialized(struct pg_synthesis *synthesis,
  	struct pg_synthesis_job *job, const struct pg_occurrence *root)
  {
@@ -521,7 +539,7 @@
  	if (!owns_entry(&synthesis->typing->occurrences, &root->index)) return -1;
  	if (job->imported && job->imported != root) return -1;
  	job->imported = root;
-@@ -225,7 +503,7 @@
+@@ -225,7 +520,7 @@
  int pg_synthesis_saved_complete(const struct pg_synthesis *synthesis,
  	const struct pg_synthesis_job *job)
  {
@@ -530,7 +548,7 @@
  	if (job->status == PG_SYNTHESIS_DONE) return 1;
  	return !synthesis->steps && job->imported_complete;
  }
-@@ -233,7 +511,7 @@
+@@ -233,7 +528,7 @@
  int pg_synthesis_import_completion(struct pg_synthesis *synthesis,
  	struct pg_synthesis_job *job)
  {
@@ -539,7 +557,7 @@
  	if (synthesis->steps) return -1;
  	job->imported_complete = 1;
  	return 0;
-@@ -261,10 +539,8 @@
+@@ -261,10 +556,8 @@
  {
  	if (!canonical) { pg_synthesis_finish(synthesis, job, PG_SYNTHESIS_ERROR); return 1; }
  	if (canonical == job) return 0;

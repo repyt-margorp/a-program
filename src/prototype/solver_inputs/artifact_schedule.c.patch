@@ -1,3 +1,4 @@
+diff --git a/artifact/schedule.c b/artifact/schedule.c
 --- a/artifact/schedule.c
 +++ b/artifact/schedule.c
 @@ -71,7 +71,8 @@
@@ -30,12 +31,24 @@
  			state->edges[e++] = slot(&map, w->parent);
  			state->edges[e++] = i;
  			state->edges[e++] = (unsigned)w->preparation;
-@@ -199,17 +202,18 @@
- 		edges[i] = (struct waiter){.parent = parent, .child = child, .preparation = (int)edge[2]};
- 	}
+@@ -190,26 +193,26 @@
+ 	if (!marks || inspect(synthesis, &map, jobs, marks, &previous_ready, &previous_waiting, 1)) goto done;
+ 	for (size_t i = 0; i < state->ready; ++i)
+ 		if (jobs[state->queue[i]]->status != PG_SYNTHESIS_PENDING) goto done;
+-	struct waiter *edges = pg_wire_array(synthesis->typing->graph, state->waiting, sizeof(*edges));
+-	if (!edges) goto done;
+ 	for (size_t i = 0; i < state->waiting; ++i) {
+ 		const uint64_t *edge = &state->edges[3 * i];
+ 		struct pg_synthesis_job *parent = jobs[edge[0]], *child = jobs[edge[1]];
+ 		if (parent->status != PG_SYNTHESIS_PENDING || child->status != PG_SYNTHESIS_PENDING) goto done;
+-		edges[i] = (struct waiter){.parent = parent, .child = child, .preparation = (int)edge[2]};
+-	}
++	}
++	/* Old dependencies replenish the same pool before any new subscription. */
++	size_t needed = state->waiting > previous_waiting ? state->waiting - previous_waiting : 0;
++	if (pg_synthesis_prepare_waiters(synthesis, needed)) goto done;
  	/* Publish only after every mapping and edge has passed validation. */
-+	for (size_t i = 0; i < count; ++i)
-+		if (jobs[i]->dependency) pg_subscription_detach(&jobs[i]->dependency->edge);
++	for (size_t i = 0; i < count; ++i) pg_synthesis_unsubscribe(jobs[i]);
  	for (size_t i = 0; i < count; ++i) {
  		jobs[i]->next = NULL;
 -		jobs[i]->waiters = jobs[i]->dependency = NULL;
@@ -45,11 +58,12 @@
  	synthesis->ready = synthesis->ready_tail = NULL;
  	for (size_t i = 0; i < state->ready; ++i) pg_synthesis_enqueue(synthesis, jobs[state->queue[i]]);
  	for (size_t i = state->waiting; i-- > 0;) {
- 		struct waiter *w = &edges[i];
+-		struct waiter *w = &edges[i];
 -		w->next = w->child->waiters;
 -		w->child->waiters = w;
 -		w->parent->dependency = w;
-+		pg_synthesis_subscribe_at(synthesis, w->parent, w->child, w->preparation, w);
++		const uint64_t *edge = &state->edges[3 * i];
++		pg_synthesis_subscribe(synthesis, jobs[edge[0]], jobs[edge[1]], (int)edge[2]);
  	}
  	result = 0;
  done:

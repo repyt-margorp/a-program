@@ -1,0 +1,33 @@
+{
+  "files": [
+    {
+      "file": "src/synthesis_work.c",
+      "added": 20,
+      "removed": 3
+    },
+    {
+      "file": "src/synthesis_work.h",
+      "added": 4,
+      "removed": 0
+    },
+    {
+      "file": "src/artifact/schedule.c",
+      "added": 7,
+      "removed": 8
+    },
+    {
+      "file": "checkpoint_tests/normalization_checkpoint_test.c",
+      "added": 7,
+      "removed": 0
+    }
+  ],
+  "additional_control": {
+    "file": "src/prototype/solver_inputs/controls/scheduler_allocation_failure.c",
+    "added": 76
+  },
+  "additional_build": {
+    "file": "allocation_failure.mk",
+    "added": 5
+  },
+  "docs": "Lean reports only; one active SE work list outside freeze."
+}

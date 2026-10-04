@@ -1,0 +1,115 @@
+diff --git a/src/synthesis_work.c b/src/synthesis_work.c
+--- a/src/synthesis_work.c
++++ b/src/synthesis_work.c
+@@ -335,7 +335,24 @@
+ 	return waiter;
+ }
+ 
+-static void detach_waiter(struct pg_synthesis_job *job)
++int pg_synthesis_prepare_waiters(struct pg_synthesis *synthesis, size_t count)
++{
++	size_t available = 0;
++	for (struct waiter *waiter = synthesis->free_waiters; waiter && available < count;
++		waiter = (void *)waiter->edge.next) ++available;
++	if (available == count) return 0;
++	count -= available;
++	if (count > SIZE_MAX / sizeof(struct waiter)) return -1;
++	struct waiter *waiters = pg_alloc(synthesis->typing->graph, count * sizeof(*waiters));
++	if (!waiters) return -1;
++	for (size_t i = 0; i < count; ++i) {
++		waiters[i] = (struct waiter){.edge.next = (void *)synthesis->free_waiters};
++		synthesis->free_waiters = &waiters[i];
++	}
++	return 0;
++}
++
++void pg_synthesis_unsubscribe(struct pg_synthesis_job *job)
+ {
+ 	if (job->dependency) release_waiter(job->dependency);
+ }
+@@ -358,7 +375,7 @@
+ 	enum pg_synthesis_status status)
+ {
+ 	int first_finish = job->status == PG_SYNTHESIS_PENDING;
+-	detach_waiter(job);
++	pg_synthesis_unsubscribe(job);
+ 	job->status = status;
+ 	if (pg_synthesis_work_role(job)->completed) pg_synthesis_work_role(job)->completed(synthesis, job, first_finish);
+ 	wake(job, 0);
+@@ -367,7 +384,7 @@
+ void pg_synthesis_subscribe_at(struct pg_synthesis *synthesis, struct pg_synthesis_job *parent,
+ 	struct pg_synthesis_job *child, int preparation, struct waiter *waiter)
+ {
+-	detach_waiter(parent);
++	pg_synthesis_unsubscribe(parent);
+ 	*waiter = (struct waiter){.edge.notify = wake_waiter, .synthesis = synthesis,
+ 		.parent = parent, .child = child, .preparation = preparation};
+ 	pg_subscription_attach(&child->waiters, &waiter->edge);
+diff --git a/src/synthesis_work.h b/src/synthesis_work.h
+--- a/src/synthesis_work.h
++++ b/src/synthesis_work.h
+@@ -101,6 +101,10 @@
+ 	enum pg_synthesis_status status);
+ void pg_synthesis_subscribe(struct pg_synthesis *synthesis, struct pg_synthesis_job *parent,
+ 	struct pg_synthesis_job *child, int preparation);
++/* Reserve free edges before atomic scheduler replacement. Existing attached
++ * dependencies can then be returned to this same pool without allocation. */
++int pg_synthesis_prepare_waiters(struct pg_synthesis *synthesis, size_t count);
++void pg_synthesis_unsubscribe(struct pg_synthesis_job *job);
+ /* Initialize a fresh, unattached ordinary wait edge, also used by checkpoint
+  * restoration. The edge is transport state, never another work owner. */
+ void pg_synthesis_subscribe_at(struct pg_synthesis *synthesis, struct pg_synthesis_job *parent,
+diff --git a/src/artifact/schedule.c b/src/artifact/schedule.c
+--- a/src/artifact/schedule.c
++++ b/src/artifact/schedule.c
+@@ -193,17 +193,16 @@
+ 	if (!marks || inspect(synthesis, &map, jobs, marks, &previous_ready, &previous_waiting, 1)) goto done;
+ 	for (size_t i = 0; i < state->ready; ++i)
+ 		if (jobs[state->queue[i]]->status != PG_SYNTHESIS_PENDING) goto done;
+-	struct waiter *edges = pg_wire_array(synthesis->typing->graph, state->waiting, sizeof(*edges));
+-	if (!edges) goto done;
+ 	for (size_t i = 0; i < state->waiting; ++i) {
+ 		const uint64_t *edge = &state->edges[3 * i];
+ 		struct pg_synthesis_job *parent = jobs[edge[0]], *child = jobs[edge[1]];
+ 		if (parent->status != PG_SYNTHESIS_PENDING || child->status != PG_SYNTHESIS_PENDING) goto done;
+-		edges[i] = (struct waiter){.parent = parent, .child = child, .preparation = (int)edge[2]};
+-	}
++	}
++	/* Old dependencies replenish the same pool before any new subscription. */
++	size_t needed = state->waiting > previous_waiting ? state->waiting - previous_waiting : 0;
++	if (pg_synthesis_prepare_waiters(synthesis, needed)) goto done;
+ 	/* Publish only after every mapping and edge has passed validation. */
+-	for (size_t i = 0; i < count; ++i)
+-		if (jobs[i]->dependency) pg_subscription_detach(&jobs[i]->dependency->edge);
++	for (size_t i = 0; i < count; ++i) pg_synthesis_unsubscribe(jobs[i]);
+ 	for (size_t i = 0; i < count; ++i) {
+ 		jobs[i]->next = NULL;
+ 		jobs[i]->waiters = NULL;
+@@ -212,8 +211,8 @@
+ 	synthesis->ready = synthesis->ready_tail = NULL;
+ 	for (size_t i = 0; i < state->ready; ++i) pg_synthesis_enqueue(synthesis, jobs[state->queue[i]]);
+ 	for (size_t i = state->waiting; i-- > 0;) {
+-		struct waiter *w = &edges[i];
+-		pg_synthesis_subscribe_at(synthesis, w->parent, w->child, w->preparation, w);
++		const uint64_t *edge = &state->edges[3 * i];
++		pg_synthesis_subscribe(synthesis, jobs[edge[0]], jobs[edge[1]], (int)edge[2]);
+ 	}
+ 	result = 0;
+ done:
+diff --git a/checkpoint_tests/normalization_checkpoint_test.c b/checkpoint_tests/normalization_checkpoint_test.c
+--- a/checkpoint_tests/normalization_checkpoint_test.c
++++ b/checkpoint_tests/normalization_checkpoint_test.c
+@@ -468,6 +468,13 @@
+ 	equal_files(before, unchanged);
+ 	assert(!fclose(unchanged) && !fclose(before));
+ 	assert(!pg_artifact_schedule_attach(&p->synthesis, schedule, 4, jobs));
++	/* Inert reattachment must not accumulate retired permanent wait arrays. */
++	const struct pg_block *blocks = p->graph.blocks;
++	for (size_t i = 0; i < 256; ++i) {
++		assert(!pg_artifact_schedule_attach(&p->synthesis, schedule, 4, jobs));
++		assert(!p->synthesis.steps && p->typing.proofs.count == proofs);
++	}
++	assert(p->graph.blocks == blocks);
+ 	FILE *copy = tmpfile();
+ 	assert(copy && !pg_artifact_schedule_write(copy, &p->synthesis, 4, jobs));
+ 	equal_files(file, copy);

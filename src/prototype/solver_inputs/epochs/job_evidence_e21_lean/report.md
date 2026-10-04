@@ -1,0 +1,9 @@
+E21 deletes the fresh waiter array allocated by each artifact schedule attachment. Old dependencies return to the existing scheduler free list; only a shortfall is reserved before publication. No new pool, index, graph, authority, field or evaluator/readback edit. Existing wake/preparation order, cycles, checked facts and indispensable frontier remain.
+
+Permanent normalization/scheduler regression repeats256 inert attachments: isolated E17 parent aborts134 on arena growth; new O2/SAN pass with exact bytes, zero-fuel inertness and ordinary charged wake trace. Separate allocation-failure control uses the same fixture: denied reservation preserves all Job headers, queue, proofs, steps and saved bytes; retry and256 attachments reuse existing waits without an owned-arena allocation. O2/SAN pass.
+
+Full unskipped O2/semantic/seven checkpoints and baseline C pass. Five paired workloads DONE/all35 fields/fourcuts exact E17; imported ordinary QuickSort766477/typed114388/Evidence94974. Actual strict public exit1 retains the original three failures; all52 images and full fuel/verdict TSV exact E17. Focused10 and initial setup1/absent-helper2 before make remain immutable history.
+
+External cumulative allocation observations are not live/peak/time: Quick229252784->229270784 (+18000), captured737008->737056 (+48); other rows equal. The repeated-attachment control proves bounded retained storage for that path, not a whole-workload net memory or speed gain. Joint/current-producer and later exclusive matched costs remain open.
+
+Exact isolated published E17 task54757cf; E18/E19/E20/current Main/E10 excluded. Four canonical patches reconstruct the tested156 files without fuzz; standalone control and lean evidence are included in publication. No accepted promotion, resume/trust/schema/fuel waiver or full Goal completion.

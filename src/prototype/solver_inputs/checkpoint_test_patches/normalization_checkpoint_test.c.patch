@@ -1,3 +1,4 @@
+diff --git a/normalization_checkpoint_test.c b/normalization_checkpoint_test.c
 --- a/normalization_checkpoint_test.c
 +++ b/normalization_checkpoint_test.c
 @@ -42,6 +42,7 @@
@@ -211,7 +212,21 @@
  }
  
  static void schedule_boundaries(void)
-@@ -500,6 +521,7 @@
+@@ -447,6 +468,13 @@
+ 	equal_files(before, unchanged);
+ 	assert(!fclose(unchanged) && !fclose(before));
+ 	assert(!pg_artifact_schedule_attach(&p->synthesis, schedule, 4, jobs));
++	/* Inert reattachment must not accumulate retired permanent wait arrays. */
++	const struct pg_block *blocks = p->graph.blocks;
++	for (size_t i = 0; i < 256; ++i) {
++		assert(!pg_artifact_schedule_attach(&p->synthesis, schedule, 4, jobs));
++		assert(!p->synthesis.steps && p->typing.proofs.count == proofs);
++	}
++	assert(p->graph.blocks == blocks);
+ 	FILE *copy = tmpfile();
+ 	assert(copy && !pg_artifact_schedule_write(copy, &p->synthesis, 4, jobs));
+ 	equal_files(file, copy);
+@@ -500,6 +528,7 @@
  		"n @zero=>Nat.zero @succ k=>Nat.succ *k; main := id (Nat.succ (Nat.succ Nat.zero));", 1);
  	partitions("main := #int_add #4 #5;", 1);
  	shared_checkpoint();

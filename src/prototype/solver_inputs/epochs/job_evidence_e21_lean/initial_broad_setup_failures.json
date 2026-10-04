@@ -1,0 +1,17 @@
+{
+  "setup_observations": [
+    {
+      "phase": "actual471 preparation",
+      "exit": 1,
+      "stderr": "AssertionError: Makefile",
+      "cause": "Source root Makefile was already copied with the exact parent; initial setup wrongly required all disjoint fixture paths to be absent."
+    },
+    {
+      "phase": "helper launch before preparation completed",
+      "exit": 2,
+      "stderr": "python3: can't open file '/tmp/job-evidence-e21-broad.py': [Errno 2] No such file or directory",
+      "make_started": false
+    }
+  ],
+  "correction": "Existing fixture files must already hash-match; keep their exact bytes. Copy only missing actual471 inputs. Require preparation exit0 before helper launch. No runtime/test/source156 mutation or acceptance waiver."
+}
