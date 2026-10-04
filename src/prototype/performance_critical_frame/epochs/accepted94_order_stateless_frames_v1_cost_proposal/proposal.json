@@ -1,0 +1,15 @@
+{
+  "lane": "performance",
+  "issue": "#56 / PR #58",
+  "status": "REQUEST only, ungranted/unlaunched",
+  "requested_seconds": 600,
+  "jobs": 36,
+  "repetitions": 3,
+  "all_pins": 295,
+  "configuration_sha256": "262c46ac3f50313a164dab72ff88a40d684c1fe3c75954ce1362c9a1c0bffce9",
+  "collector_sha256": "9c50c62d1ddc49e85c88abe94f95162c85096165afcdff7cd945bb9b9a004b71",
+  "source_epoch_manifest": "62491132e5cf717662802b53296d15fc5a50b39d7e27011079fcaacef3c43d2b",
+  "branch": "parallel/performance-20261003",
+  "task_parent": "e71528fa286e263c568d4f78f3f1281f90b5e86d",
+  "no_owned_heavy_children_at_preparation_or_worker_collector": true
+}

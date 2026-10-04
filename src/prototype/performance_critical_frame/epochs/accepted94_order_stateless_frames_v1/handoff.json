@@ -1,0 +1,94 @@
+{
+  "lane": "performance",
+  "issue": "#56 / PR #58",
+  "epoch": "accepted94_order_stateless_frames_v1",
+  "status": "Focused source/correctness REVIEW; raw parent/paired byte failures explicitly unwaived, broader acceptance and actual net cost pending",
+  "branch": "parallel/performance-20261003",
+  "task_parent": "e71528fa286e263c568d4f78f3f1281f90b5e86d",
+  "chosen_commit_message": "prototype: recycle stateless frames on accepted baseline",
+  "accepted_baseline_revision": "94a20003b976475b1ed38025e61acb6cdbdab92c",
+  "parent_source120": "930997b62db85814718d0d5ac151f392bfae243a447d5d0d5f2adbde66cba5ae",
+  "candidate_source120": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+  "runtime_files": [
+    "src/eval.c",
+    "src/eval.h",
+    "src/eval_internal.h",
+    "src/eval_io.c"
+  ],
+  "all116_other_runtime_files_and_Makefiles_exact": true,
+  "every_added_removed_line_exact_E25_delta_accepted_reify_preserved": true,
+  "patch_sha256": "d9eea6a4aa020030fe7d38c221407cf7ba4bf594aeb32c26fe16c36bc2d2dba4",
+  "private_evidence": {
+    "focused": {
+      "path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004",
+      "files": 1496,
+      "manifest_sha256": "14e1da7f5222e2a452ef739b36e869f09de31d58cb9036585addb6dfea4a9584"
+    },
+    "cuts": {
+      "path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_cuts_20261004",
+      "files": 3287,
+      "manifest_sha256": "82378c0289fb67b35305583a9bbe36866c1f63da084adcd9b00a8062d39ae1d9"
+    },
+    "consumers": {
+      "path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_consumers_20261004",
+      "files": 129,
+      "manifest_sha256": "4723cfce60285e1ff094d9a74bab14f1d78a9b95a50a653f25700ce52cf100a6"
+    },
+    "completed": {
+      "path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_completed_20261004",
+      "files": 358,
+      "manifest_sha256": "a5c48d890e7899b7de97f84873d2bc8d1f167e142abb707146f3d251c20d6aa6"
+    },
+    "partitions": {
+      "path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_partitions_20261004",
+      "files": 286,
+      "manifest_sha256": "310db862e06b88830b47bfc00712dfdd3d35178906924ddb315392c95823ad26"
+    },
+    "layouts": {
+      "path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_layouts_20261004",
+      "files": 12,
+      "manifest_sha256": "856233acd5753dad300e6f22a2cbaa940a102ce0465394d9f6270cea81f8f7c9"
+    },
+    "layouts_retry": {
+      "path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_layouts_retry_20261004",
+      "files": 2,
+      "manifest_sha256": "a6a2ffd2dd36c366c8e6739d5bab808fa662488a7ed0fc5b63ba2c55846ed27d"
+    },
+    "source": {
+      "path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_20261004",
+      "files": 255,
+      "manifest_sha256": "11d81efa9da00f858470bf42e276b4aef45b66d4e3d6d24f1945ab9d89df10d4"
+    },
+    "historical_E25_censored_acceptance": {
+      "path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/current_e25_order_stateless_frames_v1_full_acceptance_20261004",
+      "files": 43,
+      "manifest_sha256": "ec3b18be5b5faeccd84303392f2f2e3da1b21c3ac256679df2fe202eb5a5b202"
+    }
+  },
+  "focused88_failed": 0,
+  "consumer80_failed": 0,
+  "raw_semantic_fuel_SAN2296_failed": 0,
+  "raw_paired_images": 164,
+  "raw_paired_byte_failures_unwaived": 20,
+  "raw_parent_inert_byte_failures_unwaived": 36,
+  "raw_candidate_inert_byte_failures": 0,
+  "completed_profile230_unexpected_failures": 0,
+  "public_profile12_pairs_96_inert_96_resume_checks_exact": true,
+  "strict_recipes_failed": 2,
+  "strict3_each_unwaived": true,
+  "all52_images_full40_row_TSV_exact_current_pair": true,
+  "six_completed_fuels": {
+    "list": 1915,
+    "imported-local-sorted": 956507,
+    "trees4": 2318248,
+    "trees16": 7608511,
+    "trees64": 29780510,
+    "trees400": 183507626
+  },
+  "historical_E25_LocalSorted761848_retained_current956507_not_a_test_adapter": true,
+  "layout_metadata_predicate_failures_original_acceptance_timeout_and_all_other_original_failures_retained": true,
+  "all_children_stopped": true,
+  "broader_current_acceptance_and_downstream_C_separate": true,
+  "actual_RSS_time_cost_grant_runtime_READY_accepted_promotion_Goal_completion": false,
+  "next": "New matched36 current accepted baseline versus full candidate, including ordering overhead; Merge exclusive grant required."
+}

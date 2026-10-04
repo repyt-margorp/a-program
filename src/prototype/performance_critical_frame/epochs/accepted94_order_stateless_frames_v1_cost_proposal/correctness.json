@@ -1,0 +1,18 @@
+{
+  "source_epoch_manifest": "62491132e5cf717662802b53296d15fc5a50b39d7e27011079fcaacef3c43d2b",
+  "focused88_consumers80_raw_semantic2296_completed230_terminal": true,
+  "public_profile_pairs12_inert96_resume96_exact": true,
+  "strict3_each_current_pair_retained_full40_TSV_and52_images_exact": true,
+  "raw_parent36_inert_and20_paired_byte_failures_unwaived_candidate_inert328_exact": true,
+  "fresh_completed_fuels": {
+    "list": 1915,
+    "imported-local-sorted": 956507,
+    "trees4": 2318248,
+    "trees16": 7608511,
+    "trees64": 29780510,
+    "trees400": 183507626
+  },
+  "historical_LocalSorted761848_is_now956507_on_accepted_parent_and_candidate": true,
+  "broader_acceptance_downstream_C_and_original_failures_remain_separate": true,
+  "all_original_proposals_freezes_unchanged_no_actual_RSS_time_claim": true
+}

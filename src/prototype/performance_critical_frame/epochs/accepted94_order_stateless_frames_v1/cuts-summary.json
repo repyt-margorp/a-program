@@ -1,0 +1,29 @@
+{
+  "terminal": true,
+  "sources": {
+    "parent": "930997b62db85814718d0d5ac151f392bfae243a447d5d0d5f2adbde66cba5ae",
+    "candidate": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907"
+  },
+  "records": 2296,
+  "semantic_fuel_zero_budget_SAN_command_failures": 0,
+  "paired_images": 164,
+  "paired_byte_failures_unwaived": 20,
+  "inert_images": 656,
+  "inert_byte_failures_unwaived": 36,
+  "Fold_cuts": 67,
+  "materialized_cuts": 97,
+  "fresh_O2_reads": 656,
+  "fresh_SAN_reads": 656,
+  "candidate_inert_byte_failures_unwaived": 0,
+  "parent_inert_byte_failures_unwaived": 36,
+  "all_current_sources_fixtures_binaries_reused_records_pins_exact_after": true,
+  "all_launched_children_reaped": true,
+  "runtime_READY": false,
+  "limits": [
+    "Exact accepted94 parent versus four-file frame/order delta; no new build, excluded module or fixture/assertion edit.",
+    "Every raw paired/inert byte difference remains a failure; every historical failed artifact remains retained and unwaived.",
+    "Cut ranges independently observed on unchanged accepted parent; old E25 materialized fuel/ranges remain historical, not current assertions.",
+    "Compact/materialized CLI profile, affected current consumers and completed-task fuels remain separate.",
+    "No actual matched peak RSS/time, cost grant/collector, accepted promotion or Goal completion."
+  ]
+}

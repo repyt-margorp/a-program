@@ -1,0 +1,129 @@
+{
+  "terminal": true,
+  "sources": {
+    "parent": "930997b62db85814718d0d5ac151f392bfae243a447d5d0d5f2adbde66cba5ae",
+    "candidate": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907"
+  },
+  "records": [
+    {
+      "label": "parent",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/image_audit/partition_fuel.sh",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/examples/09_list_induction.p",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_partitions_20261004/partitions-parent",
+        "ordinary"
+      ],
+      "exit": 1,
+      "censored": false,
+      "log_sha256": "a3790fcc20033006f751f937743f47a96f220cd4f6c767faadff483fdf1bfb87"
+    },
+    {
+      "label": "candidate",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/image_audit/partition_fuel.sh",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/fixtures/examples/09_list_induction.p",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_partitions_20261004/partitions-candidate",
+        "ordinary"
+      ],
+      "exit": 1,
+      "censored": false,
+      "log_sha256": "fa26bf6b52133ec2e04e493081dc990cf89461cb63eb8718e0089d1ab5ca90c8"
+    }
+  ],
+  "strict_recipe_failures": 2,
+  "strict_comparison_failures_unwaived": {
+    "parent": [
+      {
+        "partition": "1000:1000",
+        "path": "reload",
+        "budget": "2000",
+        "used": "2000",
+        "status": "pending",
+        "bytes": "27014",
+        "delta": "0",
+        "size_equal": "yes",
+        "byte_equal": "yes",
+        "status_equal": "no",
+        "fuel_equal": "no"
+      },
+      {
+        "partition": "1600:1600",
+        "path": "reload",
+        "budget": "3200",
+        "used": "3200",
+        "status": "pending",
+        "bytes": "27014",
+        "delta": "0",
+        "size_equal": "yes",
+        "byte_equal": "yes",
+        "status_equal": "no",
+        "fuel_equal": "no"
+      },
+      {
+        "partition": "1915:0",
+        "path": "reload",
+        "budget": "1915",
+        "used": "1915",
+        "status": "pending",
+        "bytes": "27014",
+        "delta": "0",
+        "size_equal": "yes",
+        "byte_equal": "yes",
+        "status_equal": "no",
+        "fuel_equal": "yes"
+      }
+    ],
+    "candidate": [
+      {
+        "partition": "1000:1000",
+        "path": "reload",
+        "budget": "2000",
+        "used": "2000",
+        "status": "pending",
+        "bytes": "27014",
+        "delta": "0",
+        "size_equal": "yes",
+        "byte_equal": "yes",
+        "status_equal": "no",
+        "fuel_equal": "no"
+      },
+      {
+        "partition": "1600:1600",
+        "path": "reload",
+        "budget": "3200",
+        "used": "3200",
+        "status": "pending",
+        "bytes": "27014",
+        "delta": "0",
+        "size_equal": "yes",
+        "byte_equal": "yes",
+        "status_equal": "no",
+        "fuel_equal": "no"
+      },
+      {
+        "partition": "1915:0",
+        "path": "reload",
+        "budget": "1915",
+        "used": "1915",
+        "status": "pending",
+        "bytes": "27014",
+        "delta": "0",
+        "size_equal": "yes",
+        "byte_equal": "yes",
+        "status_equal": "no",
+        "fuel_equal": "yes"
+      }
+    ]
+  },
+  "parent_candidate_full40_row_fuel_TSV_exact": true,
+  "all52_images_equal_current_accepted_pair": true,
+  "all_pins_exact_after": true,
+  "all_launched_children_reaped": true,
+  "profile": "Current accepted compact REPL save; historical materialized/default producer images are not substituted.",
+  "historical_strict3_and_other_failures_retained": true,
+  "no_byte_waiver_runtime_READY_cost_or_promotion": true
+}

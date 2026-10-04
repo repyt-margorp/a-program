@@ -1,0 +1,55 @@
+{
+	"lane": "performance",
+	"issue": "#56 / PR #58",
+	"status": "READY for exact task-branch evidence publication only; actual matched cost and full Goal remain open",
+	"branch": "parallel/performance-20261003",
+	"task_parent": "e71528fa286e263c568d4f78f3f1281f90b5e86d",
+	"chosen_commit_message": "prototype: verify frame recycling on accepted baseline",
+	"runtime_changes": "None in this addendum; existing four-file source55 remains immutable",
+	"required_source_epoch": "accepted94_order_stateless_frames_v1/manifest.sha256",
+	"required_source_manifest_sha256": "62491132e5cf717662802b53296d15fc5a50b39d7e27011079fcaacef3c43d2b",
+	"cost_proposal_unchanged_ungranted": "accepted94_order_stateless_frames_v1_cost_proposal/manifest.sha256",
+	"cost_proposal_manifest_sha256": "30a36ecfc57b5cf792b763be707fad492b140fc9a532c46d783dc6c5faf13a8d",
+	"exact_source_pair120": [
+		"930997b62db85814718d0d5ac151f392bfae243a447d5d0d5f2adbde66cba5ae",
+		"c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907"
+	],
+	"full_O2_acceptance": {
+		"terminal_UTC": "2026-10-04T13:55:26.450204+00:00",
+		"recipes": 363,
+		"verification_recipes": 343,
+		"compile_recipes": 10,
+		"directory_recipes": 10,
+		"failed_recipes": 0,
+		"censored": false,
+		"after_pins": 1308,
+		"summary_sha256": "fe412f8b6156c8ae9a0e636921b443ca2de7cc57281f328d362113de98f06798",
+		"private_manifest_sha256": "31cb32c7e7e091185ebb62c70cb4702bf85e9bcbff8cba30a0480470c7c6a54d"
+	},
+	"independent_endpoint_controls": {
+		"commands": 12,
+		"unexpected_failures": 0,
+		"parent_candidate_O2_SAN_outputs_and_fuels_equal": true,
+		"positive_done_steps": 1170277,
+		"false_Boolean_rejected_steps": 54737,
+		"false_tree_rejected_steps": 41789,
+		"unchanged_original_inputs": true,
+		"after_pins": 251,
+		"summary_sha256": "a410bcd915d75be0bf9e5c8d57d7ce4334516190ea84101cc15e161c7bd7baf1",
+		"private_manifest_sha256": "7f1e75381b13990633ac0d50003eaabc65020089e98a2655c8b73f6c2b244d1b"
+	},
+	"known_failures_preserved_unwaived": [
+		"Original strict three public reload failures; accepted parent and candidate image52/full40 TSV equal.",
+		"Accepted parent36/328 inert and full paired20/164 raw byte differences; Root isolated two-file15/29 remain separate.",
+		"Original physical observer failures, Identity descriptor observer, sanitizer seven, V1/V2 lifetime, setup/compatibility/ENOSPC/codec failures.",
+		"Old E25 full acceptance 1200s/376 recipes is censored/incomplete and remains separate from current uncensored pass.",
+		"Root public957 rationale withdrawn after explicit profile controls; original artifacts and unretained original argv remain explicit.",
+		"Expired accepted94-frame-order drain request received no C acknowledgment; zero grants/samples, no timing outcome."
+	],
+	"all_original_frozen_bytes_unchanged": true,
+	"manual_source_edit_method": "apply_patch; tabs and English comments/docstrings checked",
+	"publication_dependency": "Source55, cost6 and this addendum30 are distinct exact sets; Root may publish their union91 if desired. No accepted files or live plans are in this publication set.",
+	"actual_matched_RSS_elapsed_time": "Pending new precise exclusive grant for exact config262c46ac/all295/36 jobs with existing collector9c50c62d.",
+	"Goal_status": "active",
+	"no_collector_or_worker_Main_accepted_edit_merge_or_issue_closure": true
+}

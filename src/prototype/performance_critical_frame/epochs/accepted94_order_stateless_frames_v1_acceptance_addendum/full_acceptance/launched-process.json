@@ -1,0 +1,20 @@
+{
+  "pid": 5,
+  "process_group": 5,
+  "argv": [
+    "make",
+    "-j1",
+    "-k",
+    "-i",
+    "-f",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_acceptance_20261004/trial/src/Makefile",
+    "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+    "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+    "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_acceptance_20261004/build-candidate-o2",
+    "SHELL=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_verification/make_shell.py",
+    "check-acceptance"
+  ],
+  "cwd": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_acceptance_20261004/trial",
+  "start_UTC": "2026-10-04T13:38:27.531838+00:00",
+  "timeout_seconds": 7200
+}

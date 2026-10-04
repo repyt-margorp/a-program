@@ -1,0 +1,59 @@
+{
+  "status": "Explicit scope correction; original frozen30/9/1308 unchanged",
+  "original_acceptance363_scope": "Full original accepted94 Make prefix, not every adopted fc52755b recipe",
+  "original_prefix_Make_sha256": "fbf12df992ec285c5131953c0507669fa1e3d6bd261676e42663d1a93b18d8d0",
+  "adopted_fc52755b_Make_sha256": "02339a3cb8a3565a0cc1c4e1ad8080b484cc87241912d3161a2e84995ae6c4cb",
+  "adopted_appended_Make_block": "\n# Reentrant, escaped-state, fallback and callback cleanup lifetime controls.\nFRAME_RETIREMENT_TESTS := frame_retirement_test stateless_head_cleanup_test callback_failure_cleanup_test\n$(addprefix $(BUILD)/,$(FRAME_RETIREMENT_TESTS)): $(BUILD)/%: $(SOURCES) $(wildcard $(ROOT)*.h) $(TESTS)/%.c\n\tmkdir -p $(BUILD)\n\t$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(TESTS)/$*.c -o $@\n\n.PHONY: check-frame-retirement\ncheck: check-frame-retirement\ncheck-frame-retirement: $(addprefix $(BUILD)/,$(FRAME_RETIREMENT_TESTS)) $(BUILD)/readback_transport_bounds_test\n\t$(BUILD)/frame_retirement_test\n\t$(BUILD)/stateless_head_cleanup_test\n\t$(BUILD)/callback_failure_cleanup_test\n\t$(BUILD)/readback_transport_bounds_test\n\n# Readback entry order is private metadata; malformed ordinals refuse emission.\n$(BUILD)/readback_transport_bounds_test: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(HEAD_MACHINE_IO) $(wildcard $(ROOT)*.h) $(TESTS)/readback_transport_bounds_test.c\n\tmkdir -p $(BUILD)\n\t$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(filter-out $(CLI_SOURCES),$(HEAD_MACHINE_IO)) $(TESTS)/readback_transport_bounds_test.c -o $@\n",
+  "Root_normative_missing4_result_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-approved-full/regression-result.json",
+  "Root_result_sha256": "a297d08f9bbf5d5a89a3f0997388924ad0688b8b9bd096a9304468a0266661bb",
+  "Root_log_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-approved-full/regression.log",
+  "Root_log_sha256": "0c199b799fda92032df0628f9aa862139a4ecbe32877e32718959835903fa499",
+  "Root_strict_Make_source120": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+  "existing_four_normative_executions": [
+    {
+      "test": "frame_retirement_test",
+      "execution_command": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-approved-frame-only/build-o2/frame_retirement_test",
+      "output": [
+        "reentrant callback captured=0 stateless=0: calls=3 steps=13",
+        "reentrant callback captured=1 stateless=0: calls=3 steps=7",
+        "reentrant callback captured=0 stateless=1: calls=3 steps=13",
+        "reentrant callback captured=1 stateless=1: calls=3 steps=7",
+        "inline frame-state captured=0: calls=2 steps=9",
+        "inline frame-state captured=1: calls=2 steps=5"
+      ],
+      "strict_Make_exit": 0
+    },
+    {
+      "test": "stateless_head_cleanup_test",
+      "execution_command": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-approved-frame-only/build-o2/stateless_head_cleanup_test",
+      "output": [
+        "stateless head behavior=0: fallback=0 steps=3",
+        "stateless head behavior=-1: fallback=0 steps=2",
+        "stateless head behavior=2: fallback=1 steps=5",
+        "stateless head behavior=3: fallback=0 steps=2"
+      ],
+      "strict_Make_exit": 0
+    },
+    {
+      "test": "callback_failure_cleanup_test",
+      "execution_command": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-approved-frame-only/build-o2/callback_failure_cleanup_test",
+      "output": [
+        "materialized failure cleanup: error returned safely"
+      ],
+      "strict_Make_exit": 0
+    },
+    {
+      "test": "readback_transport_bounds_test",
+      "execution_command": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/performance-approved-frame-only/build-o2/readback_transport_bounds_test",
+      "output": [
+        "readback transport: retained aliases/answers, no-step reuse, invalid order/count and wire overflow rejected"
+      ],
+      "strict_Make_exit": 0
+    }
+  ],
+  "combined_coverage": "Own original prefix363/0 uncensored plus Root existing strict adopted four normative tests0 on exact same runtime120c206; not a claim that one invocation executed both scopes.",
+  "new_build_or_runtime_replay": false,
+  "all_historical_failures_retained_no_byte_waiver": true,
+  "original_unknown_public957_argv_not_reconstructed": true,
+  "actual_cost_new_grant_and_full_Goal_completion": false
+}
