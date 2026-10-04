@@ -499,6 +499,12 @@ setup failures retained. [Cause review](../src/prototype/performance_followup/me
 and exact Main/original Job inbox route preserve reusable results; original Job
 stays stalled, no resume/ack/fix/byte waiver. Other historical failures remain
 separate; a bounded cause does not qualify a runtime correction.
+Separate consumer terminalfe2cde24: frozen10/private454/source12848c5/all159
+after-pins verify; worker14 uncensored0, five O2/SAN unit outputs exact and70
+fresh-process TotalResult cuts each flavor independently recomputed. Source154
+lifecycle cuts/484 charged steps, final WHNF3014 retained. This is limited
+consumer evidence, not full downstream C/.a/byte/capacity qualification.
+[Consumer review](../src/prototype/performance_followup/mem10-current-consumers-root-review.json).
 All seven panes/nine issue bodies/zero PRs freshly reviewed: C/Performance active,
 Job service-stalled, four bounded owners achieved/stopped. C22/flags feedback
 queued once to original active panes; no consumption receipt yet. Original timer
@@ -509,7 +515,7 @@ unchanged, next07:44:22 UTC; protected9 exact, Root service Goal blocked/incompl
 | --- | --- | --- |
 | Job/Evidence; SE1-SE5 / AP0, #51/#47 | E1-E4/E6-E18 corrected prototypes integrated/pushed. E17 exact30/E18 exact26 verified; corrected471 dependencies and all raw reports hashed, historical E16 two-fixture census limit retained. Fresh current E17/E18 synthesis/checkpoint O2/SAN/CLI pass, public52/full TSV unchanged; existing named-field bridges/canonical files exact | Owner newly service-stalled, E18 release queued. E19 specific gap/repair verified at Root E17, isolated-worker broad0 source156/overlay471 exact; C/census/strict/full freeze/current-E18 publication pending. E20 private. Genuine frontier/strict3, full Goal/adoption and actual cost open |
 | C backend; #61 (historical #44/#49) | C1-C22 bounded prototypes integrated/pushed. C22 exact12 task8b6debfc/Maina0a9dc38; current E18+MEM9 rebuilt backend/two helpers passes nested40/parent recursive114/integer61 each O2/client-source SAN;84 parent generated C/H bytes exact C21. Retained192/runtime128/raw1603 verified; other11 Main frozen bytes exact, Goal provenance alone reconciled. C21 release consumed | C23 separate source-sort/selected-type-token action and private trial; initial selector failures/classified positives inspected, usable-client/inert/full/freeze/current qualification pending. Preserve C20/C21/C22 historical evidence and dynamic checked/trusted refusals. Existing borrowed lifetime/resource and limited SAN contracts remain. Selected admission/broader Identity/native indexed/callable Acc/QuickSort/full #61/cost remain open |
-| Performance; #56/#51/#52 | V3/MEM2/MEM3 source/cost and MEM4/MEM5 integrated/pushed. MEM9 exact17 taske71528fa/Mainb9e68c27; current-E18 focused454/0, Core/eval-IO/full synthesis/source-checkpoint O2/SAN and public52/full TSV exact. Fold36 retains scoped Tree400 wall-1.43%/RSS-1.91%. MEM6/MEM7 holds and MEM8 attribution reviewed, including full10K/two censored100K environment-use, bounded first20000 transitions and fresh-pair model. MEM10 frozen27/private2730 historical focused/transport/all-cut/affected/capacity evidence verified; six paired materialized byte differences visible. New known-root attribution31/source256/eight records verified and recomputed; MEM9 release consumed. Current flags supplement15/private259/source384/pins23 verified; fresh layouts, callback O2/SAN and original lifetime18 pass; four configuration writer images exact | MEM6 held for4 O2/7 inert byte failures; MEM7 held for4 codec abortions despite16 semantic passes. Global generic16, opaque lifetimes and independent codec fields preserved. Typed8 allocator/compact-root/beta implementation deferred pending owner contracts; MEM10 terminal HOLD:51/1168 unchanged inert byte failures, parent/candidate writer variation; fresh current unchanged-parent5/8 reproduction. Codec ordering disposition routed to original Job, no waiver. Prepared8bb29f3a had +16 aligned owner extents; flags48c5f872 now equals current baseline160/384/192. Review only; full current consumer/C/machine-byte/actual capacity gates pending after codec disposition. Current frozen byte diagnosis36/private27/source128/pins143 independently establishes the bounded cache-order cause; debug2/4 failures retained. Exact evidence routed to original Job without resume/ack; no fix/waiver. Current consumer rebuilding remains private. MEM9 reader-call reduction is unmeasured time/RSS. No new cost slot/full Goal closure |
+| Performance; #56/#51/#52 | V3/MEM2/MEM3 source/cost and MEM4/MEM5 integrated/pushed. MEM9 exact17 taske71528fa/Mainb9e68c27; current-E18 focused454/0, Core/eval-IO/full synthesis/source-checkpoint O2/SAN and public52/full TSV exact. Fold36 retains scoped Tree400 wall-1.43%/RSS-1.91%. MEM6/MEM7 holds and MEM8 attribution reviewed, including full10K/two censored100K environment-use, bounded first20000 transitions and fresh-pair model. MEM10 frozen27/private2730 historical focused/transport/all-cut/affected/capacity evidence verified; six paired materialized byte differences visible. New known-root attribution31/source256/eight records verified and recomputed; MEM9 release consumed. Current flags supplement15/private259/source384/pins23 verified; fresh layouts, callback O2/SAN and original lifetime18 pass; four configuration writer images exact | MEM6 held for4 O2/7 inert byte failures; MEM7 held for4 codec abortions despite16 semantic passes. Global generic16, opaque lifetimes and independent codec fields preserved. Typed8 allocator/compact-root/beta implementation deferred pending owner contracts; MEM10 terminal HOLD:51/1168 unchanged inert byte failures, parent/candidate writer variation; fresh current unchanged-parent5/8 reproduction. Codec ordering disposition routed to original Job, no waiver. Prepared8bb29f3a had +16 aligned owner extents; flags48c5f872 now equals current baseline160/384/192. Review only; full current consumer/C/machine-byte/actual capacity gates pending after codec disposition. Current frozen byte diagnosis36/private27/source128/pins143 independently establishes the bounded cache-order cause; debug2/4 failures retained. Exact evidence routed to original Job without resume/ack; no fix/waiver. Separate flags consumer10/private454/14 uncensored0 and70 cuts each O2/SAN independently verified; five unit outputs exact. Full downstream/byte/capacity/current acceptance remain open. MEM9 reader-call reduction is unmeasured time/RSS. No new cost slot/full Goal closure |
 | Surface; #57 | Verified prototype integrated, completed owner stopped | Accepted policy/promotion and selector diagnostics unresolved; no owner restart |
 | Static audit; #59/PR #60 | Task7ed3ad1/Main5683755; Root385 source/114 archived dependency hashes and exact inventory verified; bounded Goal achieved | Dynamic/full #59 and controlled cost remain open; no static-owner restart |
 | Sort; #41/F3-F5 | PR54 and finite-function task5e6ed84/Main966c4e1 integrated; bounded Goal achieved, focused gates0 | Accepted Sort/F5 and broader interfaces remain separate |
@@ -1455,6 +1461,14 @@ forthcoming; this is not approval to weaken checking or introduce a new engine.
 
 ### Objective (Code)
 
+2026-10-04, current consumer addendumfe2cde24: frozen10/private454/current
+flags source12848c5 and159 after-pins exact. Root verifies all14 uncensored
+worker0 records, five unit O2/SAN outputs and all140 separate-process TotalResult
+writer/reader logs/images/cut totals. Source154 lifecycle cuts/484 charged steps,
+TotalResult final WHNF3014; original Root fixture wrappers exact. CLI rebuilt;
+full public CLI/acceptance/downstream C/.a and machine-byte gates remain separate.
+[Consumer receipt](../src/prototype/performance_followup/mem10-current-consumers-root-review.json).
+
 2026-10-04, superseding bounded byte-cause92d9345c: frozen36/private27/current
 source128c414202a/all143 pins exact. Root independently recomputes pointer hashes,
 64-bucket placement, root-first order, all21 configuration heads,11-node DAG and
@@ -1546,6 +1560,12 @@ Four cross-instrumentation raw image hashes differ; all 140 cross-build reads
 pass. No cross-instrumentation byte equality or wall/RSS speedup is claimed.
 
 ### Assessment
+
+2026-10-04, Root consumer decision: accept this limited pinned evidence
+addendum without another Root runtime rerun. It advances current consumer
+verification while preserving all machine byte failures and codec disposition.
+Full current cuts/transport/checkpoints/acceptance/downstream C/.a/actual capacity
+remain; no runtime/task/cost publication or full Goal completion is inferred.
 
 2026-10-04, superseding Root byte assessment: address-dependent cache
 enumeration is established for the preserved current fixture, beyond the earlier

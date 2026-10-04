@@ -1,6 +1,6 @@
 {
   "review_UTC": "2026-10-04T02:23:08.647253+00:00",
-  "review_trigger": "C22 READY d5ed4da2, flags review542821de and separate C23 actioneaa08454; preceding independent01:44 timed review already published. Notices are evidence, not user approval. Superseding frozen current byte-cause92d9345c incorporated before metadata publication.",
+  "review_trigger": "C22 READY d5ed4da2, flags review542821de and separate C23 actioneaa08454; preceding independent01:44 timed review already published. Notices are evidence, not user approval. Superseding frozen current byte-cause92d9345c incorporated before metadata publication. Separate current-consumer terminalfe2cde24 reviewed; HOLD unchanged.",
   "Main_at_review": "a0a9dc38dde82d8ef410251b1362bb2e7757091c",
   "preceding_scheduled_review_path": "src/prototype/coordination/reviews/20261004T014422.json",
   "preceding_scheduled_review_sha256": "5c1a92db65d79efc24df6023575fe55d3f2a4b772ff1edcfa7b380158ba41ba7",
@@ -30,24 +30,24 @@
     },
     "Performance": {
       "pane": "%1",
-      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-owner-status/Performance-after-byte-cause.txt",
-      "capture_sha256": "4b778b83e870bc21d8c40d7b36f3bf6c294ac6ae7995a2721564616c126952a9",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-owner-status/Performance-after-consumers.txt",
+      "capture_sha256": "2c8e417926eb8bc913a39be9a89fffc18a8aa9c67802f28d1d749fdb1593e16c",
       "last_status_lines": [
-        "    synthesis_test O2_SAN_equal True",
-        "    +31 lines (ctrl+t to view transcript)",
+        "    'broader_affected_controls_pending']",
+        "    +8 lines (ctrl+t to view transcript)",
         "",
-        "\u2022 Working (28m 24s \u2022 esc to interrupt)",
+        "\u25e6 Working (1m 46s \u2022 esc to interrupt)",
         "",
         "\u2022 Queued follow-up inputs",
-        "  \u21b3 Root flags review542821de: frozen15/private259/source384/helper23 pins verified; candidate12848c5f872 reconstructed exactly via prepared8bb+header patch and",
-        "    current c414+combined patch. Fresh three nine-type layouts, flags original callback O2/SAN controls and unchanged18-row argument lifetime runner pass; four",
-        "    config writer images byte-exact worker. Eval/WHNF/execution size+aligned extent160/160,384/384,192/192 equal current baseline, -8 size/-16 aligned vs",
+        "  \u21b3 Root byte-cause92d9345c reviewed: frozen36/private27/current128c414/all143 pins and prior27/held9/flags15 exact. Independently recomputed pointer hashes/64-",
+        "    bucket placement, root-first cache order, all21 configuration heads/11-node DAG/25 footer IDs in all four debug0 records; swapping two four-root groups",
+        "    accounts for every one of eight changed bytes in1249B fixture. Bounded current cause established, not every historical failure or fix. Debug2/4 plus initial",
         "    \u2026",
         "    shift+\u2190 edit last queued message",
         "",
         "\u203a Ask Codex to do anything",
         "",
-        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/performance \u00b7 Verify Surface index.lock issue         Pursuing goal (1d 0h 23m)    \u26a0 1 warning \u00b7 f2 to view"
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/performance \u00b7 Verify Surface index.lock issue         Pursuing goal (1d 0h 29m)    \u26a0 1 warning \u00b7 f2 to view"
       ],
       "stopped_bounded": false
     },
@@ -283,7 +283,7 @@
   "bounded_workers": "Static/Sort/Tests/Issues remain achieved/stopped with delivered bounded handoffs; Surface/AIze historical delivered/stopped. No repeated gates or owner restart.",
   "issue_criteria_assessment": {
     "61": "C22 extends bounded private IH captures with finite positive/negative/resource coverage. Selected-export partial-artifact contract, broader Identity/indexed/callable representations and native Acc/QuickSort remain incomplete. C23 private action is not completion.",
-    "56": "MEM9 reader-call deletion is implemented/qualified; actual current RSS/time unmeasured. MEM10 byte gate held; earlier MEM6/MEM7 failures preserved. Full matched current performance/correctness criteria remain open. Frozen current byte diagnosis independently establishes the bounded fixture cache-order cause; a cause does not complete codec disposition or fix/qualification.",
+    "56": "MEM9 reader-call deletion is implemented/qualified; actual current RSS/time unmeasured. MEM10 byte gate held; earlier MEM6/MEM7 failures preserved. Full matched current performance/correctness criteria remain open. Frozen current byte diagnosis independently establishes the bounded fixture cache-order cause; a cause does not complete codec disposition or fix/qualification. Current flags consumer terminal14/0 and70 separate-process cuts each O2/SAN verified as limited addendum; full downstream/byte/capacity/current acceptance incomplete.",
     "51": "SE/AP E18 and MEM9 prototype boundaries delivered; strict3 unwaived, E19 full/current publication pending with original Job stalled. Full semantic-owner/size/measurement criteria incomplete. Exact byte-cause evidence routed to the original codec owner without resume; reusable results/independent fields preserved.",
     "59": "Bounded static inventory and test-consolidation pilot delivered, unique controls preserved. Controlled actual cost and full suite lifecycle/adoption remain deferred; completed bounded owners stay stopped.",
     "57": "Surface prototype delivered; accepted polarity migration and selector diagnostics/design remain separate unresolved criteria.",
@@ -354,5 +354,17 @@
       "delivery": "Exact new composer verified, Tab submitted once to original active Performance at tool boundary; no consumption claimed."
     }
   },
-  "latest_material_UTC": "2026-10-04T02:31:38.038052+00:00"
+  "latest_material_UTC": "2026-10-04T02:36:14.061701+00:00",
+  "current_consumer_addendum": {
+    "notice_sha256": "fe2cde24809300704bea658c80c633e3d84e4321a3c55c728fd68d234aef31d3",
+    "Root_review_path": "src/prototype/performance_followup/mem10-current-consumers-root-review.json",
+    "Root_review_sha256": "c200906d8e53fd07558e6e5db171c4e095d5ec1efba8595e99882eecea9aa8e0",
+    "source128": "48c5f872e2dfb88e307f775f8b88d57abc65d552e3462b63cb1d06e9590bd75c",
+    "frozen10_private454_all_hashes_exact": true,
+    "worker14_terminal0_uncensored": true,
+    "nested70_cuts_each_flavor_recomputed": true,
+    "five_unit_outputs_O2_SAN_exact": true,
+    "current_machine_byte_HOLD_unchanged": true,
+    "no_Root_runtime_rerun_or_task_runtime_cost_publication": true
+  }
 }

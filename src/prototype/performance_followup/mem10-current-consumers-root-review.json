@@ -1,0 +1,275 @@
+{
+  "review_UTC": "2026-10-04T02:36:14.061701+00:00",
+  "notice_sha256": "fe2cde24809300704bea658c80c633e3d84e4321a3c55c728fd68d234aef31d3",
+  "worker_frozen_epoch": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/epochs/fresh_argument_pairs_flags_v2_current_consumers",
+  "frozen10": {
+    "O2-TotalResult-checks.json": "fcb596aa2377e1a3b97d2793c1f047a73f88ceead17833efb41751ec894d173c",
+    "SAN-TotalResult-checks.json": "682250a7f5fc7c4fb393db2418812040bf3f2a19ee6448980981c1627df27edc",
+    "analysis.json": "458ae5c72dca6b6ad202652d2a57b6a63b6efb20963cfa83a69f20b5393cf257",
+    "inputs-after.json": "9641dbd137373c4768b72693600ded25fe8deca527cbd499b9f1269e4694eec6",
+    "inputs-before.json": "3f353ac846df2de6a7efb4f8adc4b2d8e3c7618552ccb5550c9ed885badd4f95",
+    "qualify_current_consumers.py": "9d371ef9e923e5b7f346d026be297c6f9c14b800ee99f3a2d839700823c9950e",
+    "records.json": "105d56ecb39ee3196f9960636396fffc1363ca1b1b840482177ea0a07a413089",
+    "source.sha256": "48c5f872e2dfb88e307f775f8b88d57abc65d552e3462b63cb1d06e9590bd75c",
+    "summary.json": "b30d166f26c4168d8f02d58110627eb278cef079c860c23da2f334206ac6df3d",
+    "manifest.sha256": "632b2b400643a437a533e81ad00a0925ea47429f9bbe87be1a0bb9e35d816cc3"
+  },
+  "private454_all_actual_files_hashed": true,
+  "private_manifest_sha256": "0c5fa44956385d9fb453f2e49402211f78e09e1587e116f8d0c1915ae1aa033d",
+  "source128": "48c5f872e2dfb88e307f775f8b88d57abc65d552e3462b63cb1d06e9590bd75c",
+  "source128_exact_prior_Root_reconstruction": true,
+  "before147_after159_all_actual_pins_exact": true,
+  "worker_terminal14_records": [
+    {
+      "label": "build-o2",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/fresh_pairs_flags_v2_current_e18_20261004",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/fresh_pairs_flags_v2_current_e18_20261004/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_consumers_v2_20261004/build-o2",
+        "REPO=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4",
+        "TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/tests",
+        "CHECKPOINT_TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/checkpoint_tests/",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_consumers_v2_20261004/build-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_consumers_v2_20261004/build-o2/core_test",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_consumers_v2_20261004/build-o2/synthesis_test",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_consumers_v2_20261004/build-o2/eval_io_test",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_consumers_v2_20261004/build-o2/performance_total_result_test",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_consumers_v2_20261004/build-o2/artifact_source_checkpoint_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "fa1f4bb9db7fc90566a76831de277e116c880d1133888131f8ce870de923725a"
+    },
+    {
+      "label": "run-o2-core_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_consumers_v2_20261004/build-o2/core_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "aa41724b4c792a5dd485fdf1c9043b55f3ee63257fda0f468e092ad37a9710aa"
+    },
+    {
+      "label": "run-o2-synthesis_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_consumers_v2_20261004/build-o2/synthesis_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "497e5e979c826ff40f602848e82bed31e82ad16457b173072c9c457104a31804"
+    },
+    {
+      "label": "run-o2-eval_io_test",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/tests/eval_io.sh",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_consumers_v2_20261004/build-o2/eval_io_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "a7478709b3d6fa5a35c6435b8191e91eb943c08e320b4196027a77542da70b75"
+    },
+    {
+      "label": "run-o2-performance_total_result_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_consumers_v2_20261004/build-o2/performance_total_result_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "b31762453c4d7c5a1c519a3b9721b045e40e84a173f56ce824cf50a1da19a3f8"
+    },
+    {
+      "label": "fresh-TotalResult-o2",
+      "argv": [
+        "python3",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_verification/total_result_cuts.py",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_consumers_v2_20261004/build-o2/performance_total_result_test",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_consumers_v2_20261004/total-result-o2"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "3f0a539e6ab4a914ad16e9992371f25d03c38574704c18d61de610b29ea5439a"
+    },
+    {
+      "label": "run-o2-artifact_source_checkpoint_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_consumers_v2_20261004/build-o2/artifact_source_checkpoint_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "71cc65467eeb07467f0bd00674acb05a8875ba29911d63bca40891cab8d4233a"
+    },
+    {
+      "label": "build-san",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/fresh_pairs_flags_v2_current_e18_20261004",
+        "ROOT=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/fresh_pairs_flags_v2_current_e18_20261004/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_consumers_v2_20261004/build-san",
+        "REPO=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4",
+        "TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/tests",
+        "CHECKPOINT_TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/checkpoint_tests/",
+        "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_consumers_v2_20261004/build-san/pointer-check",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_consumers_v2_20261004/build-san/core_test",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_consumers_v2_20261004/build-san/synthesis_test",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_consumers_v2_20261004/build-san/eval_io_test",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_consumers_v2_20261004/build-san/performance_total_result_test",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_consumers_v2_20261004/build-san/artifact_source_checkpoint_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "d9a7a58b16b66e552e30ee5e5d174eb64b7433b0014cc7bfe1cd229eddbf18ca"
+    },
+    {
+      "label": "run-san-core_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_consumers_v2_20261004/build-san/core_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "aa41724b4c792a5dd485fdf1c9043b55f3ee63257fda0f468e092ad37a9710aa"
+    },
+    {
+      "label": "run-san-synthesis_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_consumers_v2_20261004/build-san/synthesis_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "497e5e979c826ff40f602848e82bed31e82ad16457b173072c9c457104a31804"
+    },
+    {
+      "label": "run-san-eval_io_test",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/tests/eval_io.sh",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_consumers_v2_20261004/build-san/eval_io_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "a7478709b3d6fa5a35c6435b8191e91eb943c08e320b4196027a77542da70b75"
+    },
+    {
+      "label": "run-san-performance_total_result_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_consumers_v2_20261004/build-san/performance_total_result_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "b31762453c4d7c5a1c519a3b9721b045e40e84a173f56ce824cf50a1da19a3f8"
+    },
+    {
+      "label": "fresh-TotalResult-san",
+      "argv": [
+        "python3",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_verification/total_result_cuts.py",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_consumers_v2_20261004/build-san/performance_total_result_test",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_consumers_v2_20261004/total-result-san"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "3f0a539e6ab4a914ad16e9992371f25d03c38574704c18d61de610b29ea5439a"
+    },
+    {
+      "label": "run-san-artifact_source_checkpoint_test",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_flags_consumers_v2_20261004/build-san/artifact_source_checkpoint_test"
+      ],
+      "exit": 0,
+      "censored": false,
+      "log_sha256": "71cc65467eeb07467f0bd00674acb05a8875ba29911d63bca40891cab8d4233a"
+    }
+  ],
+  "all_parent_records_exit0_uncensored": true,
+  "five_O2_SAN_unit_outputs_exact": {
+    "core_test": "aa41724b4c792a5dd485fdf1c9043b55f3ee63257fda0f468e092ad37a9710aa",
+    "synthesis_test": "497e5e979c826ff40f602848e82bed31e82ad16457b173072c9c457104a31804",
+    "eval_io_test": "a7478709b3d6fa5a35c6435b8191e91eb943c08e320b4196027a77542da70b75",
+    "performance_total_result_test": "b31762453c4d7c5a1c519a3b9721b045e40e84a173f56ce824cf50a1da19a3f8",
+    "artifact_source_checkpoint_test": "71cc65467eeb07467f0bd00674acb05a8875ba29911d63bca40891cab8d4233a"
+  },
+  "nested_TotalResult_cuts_recomputed": {
+    "o2": {
+      "records": 70,
+      "all_actual_images_writer_reader_logs_exact": true,
+      "binary_sha256": "dde7d26e154ba092438652b57e518c447acfd143c04b0d61991a0e5404337be0",
+      "ranges": [
+        [
+          0,
+          9
+        ],
+        [
+          1,
+          13
+        ],
+        [
+          2,
+          30
+        ],
+        [
+          3,
+          7
+        ],
+        [
+          4,
+          11
+        ]
+      ],
+      "frozen_nested_report_sha256": "fcb596aa2377e1a3b97d2793c1f047a73f88ceead17833efb41751ec894d173c"
+    },
+    "san": {
+      "records": 70,
+      "all_actual_images_writer_reader_logs_exact": true,
+      "binary_sha256": "5e52322343dd0ccbb79870ef460b8e830f3875a6dead066d777095accf0973ba",
+      "ranges": [
+        [
+          0,
+          9
+        ],
+        [
+          1,
+          13
+        ],
+        [
+          2,
+          30
+        ],
+        [
+          3,
+          7
+        ],
+        [
+          4,
+          11
+        ]
+      ],
+      "frozen_nested_report_sha256": "682250a7f5fc7c4fb393db2418812040bf3f2a19ee6448980981c1627df27edc"
+    }
+  },
+  "Source_complete_lifecycle_cuts": 154,
+  "Source_charged_verification_steps": 484,
+  "TotalResult_final_WHNF_charged_steps": 3014,
+  "original_Root_fixture_wrappers_in_pins_exact": true,
+  "prior_flags15_freeze_exact": true,
+  "Root_runtime_rerun": false,
+  "assessment": "Accept the pinned fresh worker consumer evidence as a limited review addendum. The candidate matches the separately reconstructed Root current flags source and fresh callback/lifetime/layout controls; units and separate-process cuts pass. CLI binary rebuilt but not a full public CLI/acceptance gate; cut result/fuel equality is not inert machine-byte qualification or full current runtime READY.",
+  "holds": "Original current O2 inert5/8, historical51/1168, paired6/146 and new debug2/4 unwaived. Original Job codec disposition, materialized/Fold/direct pairs, remaining checkpoints/transport/current acceptance, downstream C/.a and actual capacity remain pending. No comparative slot/task/runtime publication/adoption/Goal completion.",
+  "limits": [
+    "Not a C/.a downstream or full acceptance/all-seven-checkpoint qualification.",
+    "Original current O2 inert byte5/8, historical51 and new debug2/4 remain unwaived; no codec fix.",
+    "No actual peak/RSS/wall or comparison, canonicalizer, new authority, promotion or runtime READY."
+  ],
+  "passed_evidence_review": true,
+  "runtime_READY_cost_or_Goal_completion": false
+}
