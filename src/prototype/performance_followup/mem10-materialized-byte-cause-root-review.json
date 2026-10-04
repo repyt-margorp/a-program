@@ -1,0 +1,1065 @@
+{
+  "review_UTC": "2026-10-04T03:50:26.815959+00:00",
+  "notice_sha256": "ac9c128bcc76cd239c5ba11ea2759e9e21e55d9925eed1cba02d9eb89c65f169",
+  "frozen_epoch_path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/epochs/current_materialized_order_v1_diagnosis",
+  "frozen41": {
+    "analysis.md": "9351df563cb8c0c33ca2da47788bafada985d0e417d9cc70ae859de5569a730f",
+    "case-1-variant-0-repeat-0.image": "479911c461da91b836d0542591422ad21ee8682126fcacb0eea29ee45a635ef8",
+    "case-1-variant-0-repeat-0.log": "6d1918d4dec72eeda120fbc291d742343e754d0de0a95962a76d337964669de2",
+    "case-1-variant-0-repeat-0.trace.json": "fe8f00d035ee8f2eb18cee05c915f8a58a32d81ae5ef0b1fad28c144f1045c19",
+    "case-1-variant-0-repeat-1.image": "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f",
+    "case-1-variant-0-repeat-1.log": "c22269257dd7baa6a85cbb72b29fbffede8cbcb230af09382645671727e65c5f",
+    "case-1-variant-0-repeat-1.trace.json": "b1ea3cf7167e7230a3317307b45233f8983520f83979f8392c3c10ec91d6a2c9",
+    "case-1-variant-2-repeat-0.image": "1866ffe1e4b0b04132c58a61c2065e1c497185a969f23805199e2d2ac4606664",
+    "case-1-variant-2-repeat-0.log": "072beda6f4e8f04110078dc4bd881bc45b89a936e522d683ebf6397495d8a709",
+    "case-1-variant-2-repeat-0.trace.json": "0a4ba02d8dfe03a2df09b9736a0d82a47eeb613b4d628a9336a9163eaf99474c",
+    "case-1-variant-2-repeat-1.image": "479911c461da91b836d0542591422ad21ee8682126fcacb0eea29ee45a635ef8",
+    "case-1-variant-2-repeat-1.log": "c53d62b5ab18a6afb31ac035a2bbecbe2f0268092696cdc6f33a3e60a321998b",
+    "case-1-variant-2-repeat-1.trace.json": "28f6be2ac4fe92d390b38e36d67804a321d2c288921f94ccbc541f28e078b1fe",
+    "case-5-variant-0-repeat-0.image": "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+    "case-5-variant-0-repeat-0.log": "56f1b99175a65702f053c75d58de6139ed307c7c53500ebe9e7d5583bedd0451",
+    "case-5-variant-0-repeat-0.trace.json": "2bee1191d409f1bfb57b70c6ad24ce738a9bbac5340dc4f9ca724833d8d07ec4",
+    "case-5-variant-0-repeat-1.image": "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19",
+    "case-5-variant-0-repeat-1.log": "a16e485fa4de5c803764c09b56ddd4d134946ce3f0ced7b5dee205ffb30f5c31",
+    "case-5-variant-0-repeat-1.trace.json": "c3811defcb09a0b7eb1865be51be77f31946c629a4ffce9aba6287fe5b633ad2",
+    "case-5-variant-1-repeat-0.image": "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19",
+    "case-5-variant-1-repeat-0.log": "a4e3acd95e03612b49982000f8f873525051afd9aa7381eb433a1225fcfd68f8",
+    "case-5-variant-1-repeat-0.trace.json": "6c42498cc4947859e93d4bb712c4040dc237970668cf5c2993f335c268fad085",
+    "case-5-variant-1-repeat-1.image": "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19",
+    "case-5-variant-1-repeat-1.log": "808fa3eb29228003c9aee8270d2090caaf12e919875d83c308b33f5efb7262f9",
+    "case-5-variant-1-repeat-1.trace.json": "7c7aac7b33db651fe2746027ee0367ade5f89406daa68cbe2a75ace3166ec51b",
+    "current-gates-manifest.sha256": "e11c3f2a9ec1a3611d79d44924fc26896df3ba4411dc0c40436d54b5829c3c6c",
+    "handoff.json": "5b856d2df37f1e0d1ccddb32dff01ad67c3e1d159482f3250136281550c773ef",
+    "inputs-after.json": "9689a32537d465d9e8fcd26a20fb2fc4c537a157a3744137d29112d1000f2475",
+    "inputs-before.json": "9689a32537d465d9e8fcd26a20fb2fc4c537a157a3744137d29112d1000f2475",
+    "inspect_current_materialized_order.py": "47a70327b55fb47d2ddf5e36fc3b71a0478d7b18338f51db40106927cab1524d",
+    "machine_resave_probe.c": "9160f3e9b58d7d9213b8920cf156610c0344954ce5ae8c67a203eb30703dc028",
+    "materialized_order.gdb.py": "8fb282e41b92852abb51c25d47c48721ffd0f6f400dfa801601118763c52988f",
+    "original-case-1-variant-0.image": "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f",
+    "original-case-1-variant-2.image": "479911c461da91b836d0542591422ad21ee8682126fcacb0eea29ee45a635ef8",
+    "original-case-5-variant-0.image": "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19",
+    "original-case-5-variant-1.image": "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6",
+    "private-evidence.json": "3487067af4df76a0ca1cb794e2e3c6b339ff75f46d805f8c340f1c70f4a02a03",
+    "records.json": "3cc171712beb16312fd16911e12eed9e0fae8d2b253015fe10a0cce5fc2c1b27",
+    "source.sha256": "c414202a4abb79301b04431b75008fa828dd60712b50518a1d4824e5d555b64b",
+    "summary.json": "2df0c97399787f13e814e0d4b16a6cc05033a7152a7f0fc7b4d86e524f9ab5b5",
+    "manifest.sha256": "ae73214b8723212d28b0eeabe6f0f3bd07c83f4c36443e89265b0e28d65a0556"
+  },
+  "private28": {
+    "path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/current_materialized_order_v1_20261004",
+    "records": 28,
+    "manifest_sha256": "280e7d0cd912c254dc1e8f1aec573354f80ecf42f818bca93536028f64b620f3",
+    "summary_sha256": "2df0c97399787f13e814e0d4b16a6cc05033a7152a7f0fc7b4d86e524f9ab5b5",
+    "all_pins": 141,
+    "all_launched_children_reaped": true
+  },
+  "all141_before_after_source_tool_helper_reused_binary_pins_exact": true,
+  "source128": "c414202a4abb79301b04431b75008fa828dd60712b50518a1d4824e5d555b64b",
+  "source_observations_sha256": {
+    "src/eval.c": "c4ba0584e216345d6f23a0d9fc4bd7c1b343bf73ab788d9beaa54477476a2902",
+    "src/eval_io.c": "827165832493aafe76cf8831b759ab522df3c16c8ec4163f1cf43b4788b50e9b",
+    "src/dag.c": "fde727603ab63cf1558295f1d012c4171db84d4f7e0355699a0a85e37408a6d7",
+    "src/graph.c": "de6bb8c45c08e97c0ef8e5302bbdafec681b829edf1f6874c853d443116cc933",
+    "src/graph_io.c": "f169a91198f20949a1b095fa8c773ccdbb7866f1a92ffb8dd7ecd46ed7a5f5cc",
+    "src/graph.h": "811ad8f3c3be525286aaa6e4c29fc02532f7c9bca716dc992178f93b57513381"
+  },
+  "prior_current_gates16_diagnosis36_transport21_affected23_freezes_unchanged": true,
+  "eight_worker_debug_records_independently_recomputed": [
+    {
+      "label": "case-1-variant-0-repeat-0",
+      "case": 1,
+      "computed": {
+        "readback_entries": 4,
+        "configuration_count": 25,
+        "environment_count": 2,
+        "argument_count": 6,
+        "Core_objects": 8,
+        "Core_terms": 24,
+        "Core_roots": 35,
+        "frame_offset": 142,
+        "configuration_offset": 382,
+        "Core_offset": 990,
+        "footer_offset": 1492,
+        "bucket_order": [
+          {
+            "bucket": 12,
+            "input_id": 3,
+            "environment_id": 1
+          },
+          {
+            "bucket": 23,
+            "input_id": 7,
+            "environment_id": 2
+          },
+          {
+            "bucket": 25,
+            "input_id": 1,
+            "environment_id": 2
+          },
+          {
+            "bucket": 45,
+            "input_id": 12,
+            "environment_id": 0
+          }
+        ],
+        "readback_entry_input_ids": [
+          7,
+          3,
+          1,
+          12
+        ],
+        "Core_root_ids": [
+          1,
+          2,
+          1,
+          3,
+          7,
+          1,
+          2,
+          10,
+          7,
+          16,
+          7,
+          7,
+          7,
+          7,
+          3,
+          3,
+          3,
+          3,
+          1,
+          1,
+          1,
+          3,
+          12,
+          12,
+          12,
+          12,
+          12,
+          12,
+          18,
+          11,
+          11,
+          11,
+          12,
+          24,
+          2
+        ],
+        "inert_byte_equal": false,
+        "different_offsets": [
+          238,
+          278,
+          310,
+          326,
+          334,
+          358,
+          606,
+          670,
+          686,
+          734,
+          750,
+          1604,
+          1612,
+          1620,
+          1628,
+          1636,
+          1644,
+          1652,
+          1668,
+          1676,
+          1684,
+          1692
+        ]
+      },
+      "hash_buckets_recomputed": [
+        {
+          "pointer": 94697506533440,
+          "raw_hash": 4450910004001723776,
+          "bucket": 12
+        },
+        {
+          "pointer": 94697506533264,
+          "raw_hash": 4451226663350664000,
+          "bucket": 23
+        },
+        {
+          "pointer": 94697506533528,
+          "raw_hash": 4450558160281152480,
+          "bucket": 25
+        },
+        {
+          "pointer": 94697506533352,
+          "raw_hash": 4451536864498714384,
+          "bucket": 45
+        }
+      ],
+      "three_observed_regions": [
+        [
+          150,
+          382
+        ],
+        [
+          414,
+          942
+        ],
+        [
+          1492,
+          1772
+        ]
+      ],
+      "all_wire_fields_and_full_Core_DAG_body_checked": true,
+      "log_sha256": "6d1918d4dec72eeda120fbc291d742343e754d0de0a95962a76d337964669de2",
+      "trace_sha256": "fe8f00d035ee8f2eb18cee05c915f8a58a32d81ae5ef0b1fad28c144f1045c19",
+      "image_sha256": "479911c461da91b836d0542591422ad21ee8682126fcacb0eea29ee45a635ef8"
+    },
+    {
+      "label": "case-1-variant-0-repeat-1",
+      "case": 1,
+      "computed": {
+        "readback_entries": 4,
+        "configuration_count": 25,
+        "environment_count": 2,
+        "argument_count": 6,
+        "Core_objects": 8,
+        "Core_terms": 24,
+        "Core_roots": 35,
+        "frame_offset": 142,
+        "configuration_offset": 382,
+        "Core_offset": 990,
+        "footer_offset": 1492,
+        "bucket_order": [
+          {
+            "bucket": 19,
+            "input_id": 12,
+            "environment_id": 0
+          },
+          {
+            "bucket": 26,
+            "input_id": 7,
+            "environment_id": 2
+          },
+          {
+            "bucket": 30,
+            "input_id": 1,
+            "environment_id": 2
+          },
+          {
+            "bucket": 37,
+            "input_id": 3,
+            "environment_id": 1
+          }
+        ],
+        "readback_entry_input_ids": [
+          7,
+          12,
+          3,
+          1
+        ],
+        "Core_root_ids": [
+          1,
+          2,
+          1,
+          3,
+          7,
+          1,
+          2,
+          10,
+          7,
+          16,
+          7,
+          7,
+          7,
+          7,
+          12,
+          12,
+          12,
+          12,
+          3,
+          3,
+          3,
+          3,
+          1,
+          1,
+          1,
+          3,
+          12,
+          12,
+          18,
+          11,
+          11,
+          11,
+          12,
+          24,
+          2
+        ],
+        "inert_byte_equal": true,
+        "different_offsets": []
+      },
+      "hash_buckets_recomputed": [
+        {
+          "pointer": 93857891348456,
+          "raw_hash": 5099689978234636048,
+          "bucket": 19
+        },
+        {
+          "pointer": 93857891348368,
+          "raw_hash": 5099262632709290816,
+          "bucket": 26
+        },
+        {
+          "pointer": 93857891348632,
+          "raw_hash": 5098875604615310304,
+          "bucket": 30
+        },
+        {
+          "pointer": 93857891348544,
+          "raw_hash": 5098945973359564160,
+          "bucket": 37
+        }
+      ],
+      "three_observed_regions": [
+        [
+          150,
+          382
+        ],
+        [
+          414,
+          942
+        ],
+        [
+          1492,
+          1772
+        ]
+      ],
+      "all_wire_fields_and_full_Core_DAG_body_checked": true,
+      "log_sha256": "c22269257dd7baa6a85cbb72b29fbffede8cbcb230af09382645671727e65c5f",
+      "trace_sha256": "b1ea3cf7167e7230a3317307b45233f8983520f83979f8392c3c10ec91d6a2c9",
+      "image_sha256": "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f"
+    },
+    {
+      "label": "case-1-variant-2-repeat-0",
+      "case": 1,
+      "computed": {
+        "readback_entries": 4,
+        "configuration_count": 25,
+        "environment_count": 2,
+        "argument_count": 6,
+        "Core_objects": 8,
+        "Core_terms": 24,
+        "Core_roots": 35,
+        "frame_offset": 142,
+        "configuration_offset": 382,
+        "Core_offset": 990,
+        "footer_offset": 1492,
+        "bucket_order": [
+          {
+            "bucket": 0,
+            "input_id": 7,
+            "environment_id": 2
+          },
+          {
+            "bucket": 2,
+            "input_id": 3,
+            "environment_id": 1
+          },
+          {
+            "bucket": 14,
+            "input_id": 12,
+            "environment_id": 0
+          },
+          {
+            "bucket": 60,
+            "input_id": 1,
+            "environment_id": 2
+          }
+        ],
+        "readback_entry_input_ids": [
+          7,
+          3,
+          12,
+          1
+        ],
+        "Core_root_ids": [
+          1,
+          2,
+          1,
+          3,
+          7,
+          1,
+          2,
+          10,
+          7,
+          16,
+          7,
+          7,
+          7,
+          7,
+          3,
+          3,
+          3,
+          3,
+          12,
+          12,
+          12,
+          12,
+          1,
+          1,
+          1,
+          3,
+          12,
+          12,
+          18,
+          11,
+          11,
+          11,
+          12,
+          24,
+          2
+        ],
+        "inert_byte_equal": false,
+        "different_offsets": [
+          278,
+          286,
+          310,
+          334,
+          358,
+          670,
+          686,
+          734,
+          750,
+          1636,
+          1644,
+          1652,
+          1660,
+          1668,
+          1676,
+          1684,
+          1692
+        ]
+      },
+      "hash_buckets_recomputed": [
+        {
+          "pointer": 93841744539536,
+          "raw_hash": 15709738547024395072,
+          "bucket": 0
+        },
+        {
+          "pointer": 93841744539624,
+          "raw_hash": 15709421887675454848,
+          "bucket": 2
+        },
+        {
+          "pointer": 93841744539800,
+          "raw_hash": 15710163676457682704,
+          "bucket": 14
+        },
+        {
+          "pointer": 93841744539712,
+          "raw_hash": 15709351518931168224,
+          "bucket": 60
+        }
+      ],
+      "three_observed_regions": [
+        [
+          150,
+          382
+        ],
+        [
+          414,
+          942
+        ],
+        [
+          1492,
+          1772
+        ]
+      ],
+      "all_wire_fields_and_full_Core_DAG_body_checked": true,
+      "log_sha256": "072beda6f4e8f04110078dc4bd881bc45b89a936e522d683ebf6397495d8a709",
+      "trace_sha256": "0a4ba02d8dfe03a2df09b9736a0d82a47eeb613b4d628a9336a9163eaf99474c",
+      "image_sha256": "1866ffe1e4b0b04132c58a61c2065e1c497185a969f23805199e2d2ac4606664"
+    },
+    {
+      "label": "case-1-variant-2-repeat-1",
+      "case": 1,
+      "computed": {
+        "readback_entries": 4,
+        "configuration_count": 25,
+        "environment_count": 2,
+        "argument_count": 6,
+        "Core_objects": 8,
+        "Core_terms": 24,
+        "Core_roots": 35,
+        "frame_offset": 142,
+        "configuration_offset": 382,
+        "Core_offset": 990,
+        "footer_offset": 1492,
+        "bucket_order": [
+          {
+            "bucket": 3,
+            "input_id": 1,
+            "environment_id": 2
+          },
+          {
+            "bucket": 6,
+            "input_id": 7,
+            "environment_id": 2
+          },
+          {
+            "bucket": 34,
+            "input_id": 12,
+            "environment_id": 0
+          },
+          {
+            "bucket": 56,
+            "input_id": 3,
+            "environment_id": 1
+          }
+        ],
+        "readback_entry_input_ids": [
+          7,
+          3,
+          1,
+          12
+        ],
+        "Core_root_ids": [
+          1,
+          2,
+          1,
+          3,
+          7,
+          1,
+          2,
+          10,
+          7,
+          16,
+          7,
+          7,
+          7,
+          7,
+          3,
+          3,
+          3,
+          3,
+          1,
+          1,
+          1,
+          3,
+          12,
+          12,
+          12,
+          12,
+          12,
+          12,
+          18,
+          11,
+          11,
+          11,
+          12,
+          24,
+          2
+        ],
+        "inert_byte_equal": true,
+        "different_offsets": []
+      },
+      "hash_buckets_recomputed": [
+        {
+          "pointer": 94826161791040,
+          "raw_hash": 12768929978436996064,
+          "bucket": 3
+        },
+        {
+          "pointer": 94826161790864,
+          "raw_hash": 12769317006530132800,
+          "bucket": 6
+        },
+        {
+          "pointer": 94826161791128,
+          "raw_hash": 12769741341289076496,
+          "bucket": 34
+        },
+        {
+          "pointer": 94826161790952,
+          "raw_hash": 12769000347181192576,
+          "bucket": 56
+        }
+      ],
+      "three_observed_regions": [
+        [
+          150,
+          382
+        ],
+        [
+          414,
+          942
+        ],
+        [
+          1492,
+          1772
+        ]
+      ],
+      "all_wire_fields_and_full_Core_DAG_body_checked": true,
+      "log_sha256": "c53d62b5ab18a6afb31ac035a2bbecbe2f0268092696cdc6f33a3e60a321998b",
+      "trace_sha256": "28f6be2ac4fe92d390b38e36d67804a321d2c288921f94ccbc541f28e078b1fe",
+      "image_sha256": "479911c461da91b836d0542591422ad21ee8682126fcacb0eea29ee45a635ef8"
+    },
+    {
+      "label": "case-5-variant-0-repeat-0",
+      "case": 5,
+      "computed": {
+        "readback_entries": 3,
+        "configuration_count": 21,
+        "environment_count": 0,
+        "argument_count": 6,
+        "Core_objects": 9,
+        "Core_terms": 21,
+        "Core_roots": 27,
+        "frame_offset": 142,
+        "configuration_offset": 334,
+        "Core_offset": 846,
+        "footer_offset": 1306,
+        "bucket_order": [
+          {
+            "bucket": 7,
+            "input_id": 15,
+            "environment_id": 0
+          },
+          {
+            "bucket": 12,
+            "input_id": 2,
+            "environment_id": 0
+          },
+          {
+            "bucket": 50,
+            "input_id": 1,
+            "environment_id": 0
+          }
+        ],
+        "readback_entry_input_ids": [
+          1,
+          15,
+          2
+        ],
+        "Core_root_ids": [
+          1,
+          2,
+          1,
+          9,
+          13,
+          18,
+          1,
+          1,
+          1,
+          1,
+          15,
+          15,
+          15,
+          15,
+          2,
+          2,
+          2,
+          2,
+          15,
+          15,
+          18,
+          14,
+          14,
+          14,
+          15,
+          21,
+          21
+        ],
+        "inert_byte_equal": false,
+        "different_offsets": [
+          1386,
+          1394,
+          1402,
+          1410,
+          1418,
+          1426,
+          1434,
+          1442
+        ]
+      },
+      "hash_buckets_recomputed": [
+        {
+          "pointer": 94599994888256,
+          "raw_hash": 1740556169674688640,
+          "bucket": 7
+        },
+        {
+          "pointer": 94599994888168,
+          "raw_hash": 1739500638511606080,
+          "bucket": 12
+        },
+        {
+          "pointer": 94599994888080,
+          "raw_hash": 1739395085395297824,
+          "bucket": 50
+        }
+      ],
+      "three_observed_regions": [
+        [
+          150,
+          334
+        ],
+        [
+          366,
+          798
+        ],
+        [
+          1306,
+          1522
+        ]
+      ],
+      "all_wire_fields_and_full_Core_DAG_body_checked": true,
+      "log_sha256": "56f1b99175a65702f053c75d58de6139ed307c7c53500ebe9e7d5583bedd0451",
+      "trace_sha256": "2bee1191d409f1bfb57b70c6ad24ce738a9bbac5340dc4f9ca724833d8d07ec4",
+      "image_sha256": "19da8528c64d8e329cb9e4b77dbe2753e3d502478f7d936b37157fd8ffec74d6"
+    },
+    {
+      "label": "case-5-variant-0-repeat-1",
+      "case": 5,
+      "computed": {
+        "readback_entries": 3,
+        "configuration_count": 21,
+        "environment_count": 0,
+        "argument_count": 6,
+        "Core_objects": 9,
+        "Core_terms": 21,
+        "Core_roots": 27,
+        "frame_offset": 142,
+        "configuration_offset": 334,
+        "Core_offset": 846,
+        "footer_offset": 1306,
+        "bucket_order": [
+          {
+            "bucket": 9,
+            "input_id": 2,
+            "environment_id": 0
+          },
+          {
+            "bucket": 20,
+            "input_id": 1,
+            "environment_id": 0
+          },
+          {
+            "bucket": 30,
+            "input_id": 15,
+            "environment_id": 0
+          }
+        ],
+        "readback_entry_input_ids": [
+          1,
+          2,
+          15
+        ],
+        "Core_root_ids": [
+          1,
+          2,
+          1,
+          9,
+          13,
+          18,
+          1,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          2,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          18,
+          14,
+          14,
+          14,
+          15,
+          21,
+          21
+        ],
+        "inert_byte_equal": true,
+        "different_offsets": []
+      },
+      "hash_buckets_recomputed": [
+        {
+          "pointer": 94311239356392,
+          "raw_hash": 17033599364405487936,
+          "bucket": 9
+        },
+        {
+          "pointer": 94311239356304,
+          "raw_hash": 17033493811289179680,
+          "bucket": 20
+        },
+        {
+          "pointer": 94311239356480,
+          "raw_hash": 17034654895568570496,
+          "bucket": 30
+        }
+      ],
+      "three_observed_regions": [
+        [
+          150,
+          334
+        ],
+        [
+          366,
+          798
+        ],
+        [
+          1306,
+          1522
+        ]
+      ],
+      "all_wire_fields_and_full_Core_DAG_body_checked": true,
+      "log_sha256": "a16e485fa4de5c803764c09b56ddd4d134946ce3f0ced7b5dee205ffb30f5c31",
+      "trace_sha256": "c3811defcb09a0b7eb1865be51be77f31946c629a4ffce9aba6287fe5b633ad2",
+      "image_sha256": "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19"
+    },
+    {
+      "label": "case-5-variant-1-repeat-0",
+      "case": 5,
+      "computed": {
+        "readback_entries": 3,
+        "configuration_count": 21,
+        "environment_count": 0,
+        "argument_count": 6,
+        "Core_objects": 9,
+        "Core_terms": 21,
+        "Core_roots": 27,
+        "frame_offset": 142,
+        "configuration_offset": 334,
+        "Core_offset": 846,
+        "footer_offset": 1306,
+        "bucket_order": [
+          {
+            "bucket": 8,
+            "input_id": 2,
+            "environment_id": 0
+          },
+          {
+            "bucket": 10,
+            "input_id": 15,
+            "environment_id": 0
+          },
+          {
+            "bucket": 23,
+            "input_id": 1,
+            "environment_id": 0
+          }
+        ],
+        "readback_entry_input_ids": [
+          1,
+          2,
+          15
+        ],
+        "Core_root_ids": [
+          1,
+          2,
+          1,
+          9,
+          13,
+          18,
+          1,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          2,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          18,
+          14,
+          14,
+          14,
+          15,
+          21,
+          21
+        ],
+        "inert_byte_equal": false,
+        "different_offsets": [
+          1386,
+          1394,
+          1402,
+          1410,
+          1418,
+          1426,
+          1434,
+          1442
+        ]
+      },
+      "hash_buckets_recomputed": [
+        {
+          "pointer": 94094312411200,
+          "raw_hash": 1288920703897037120,
+          "bucket": 8
+        },
+        {
+          "pointer": 94094312411112,
+          "raw_hash": 1289976235060119680,
+          "bucket": 10
+        },
+        {
+          "pointer": 94094312411024,
+          "raw_hash": 1288815150780728864,
+          "bucket": 23
+        }
+      ],
+      "three_observed_regions": [
+        [
+          150,
+          334
+        ],
+        [
+          366,
+          798
+        ],
+        [
+          1306,
+          1522
+        ]
+      ],
+      "all_wire_fields_and_full_Core_DAG_body_checked": true,
+      "log_sha256": "a4e3acd95e03612b49982000f8f873525051afd9aa7381eb433a1225fcfd68f8",
+      "trace_sha256": "6c42498cc4947859e93d4bb712c4040dc237970668cf5c2993f335c268fad085",
+      "image_sha256": "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19"
+    },
+    {
+      "label": "case-5-variant-1-repeat-1",
+      "case": 5,
+      "computed": {
+        "readback_entries": 3,
+        "configuration_count": 21,
+        "environment_count": 0,
+        "argument_count": 6,
+        "Core_objects": 9,
+        "Core_terms": 21,
+        "Core_roots": 27,
+        "frame_offset": 142,
+        "configuration_offset": 334,
+        "Core_offset": 846,
+        "footer_offset": 1306,
+        "bucket_order": [
+          {
+            "bucket": 20,
+            "input_id": 2,
+            "environment_id": 0
+          },
+          {
+            "bucket": 34,
+            "input_id": 15,
+            "environment_id": 0
+          },
+          {
+            "bucket": 50,
+            "input_id": 1,
+            "environment_id": 0
+          }
+        ],
+        "readback_entry_input_ids": [
+          1,
+          2,
+          15
+        ],
+        "Core_root_ids": [
+          1,
+          2,
+          1,
+          9,
+          13,
+          18,
+          1,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          2,
+          15,
+          15,
+          15,
+          15,
+          15,
+          15,
+          18,
+          14,
+          14,
+          14,
+          15,
+          21,
+          21
+        ],
+        "inert_byte_equal": false,
+        "different_offsets": [
+          1386,
+          1394,
+          1402,
+          1410,
+          1418,
+          1426,
+          1434,
+          1442
+        ]
+      },
+      "hash_buckets_recomputed": [
+        {
+          "pointer": 94633531805760,
+          "raw_hash": 928867294144031040,
+          "bucket": 20
+        },
+        {
+          "pointer": 94633531805672,
+          "raw_hash": 929922825307113600,
+          "bucket": 34
+        },
+        {
+          "pointer": 94633531805584,
+          "raw_hash": 928761741027722784,
+          "bucket": 50
+        }
+      ],
+      "three_observed_regions": [
+        [
+          150,
+          334
+        ],
+        [
+          366,
+          798
+        ],
+        [
+          1306,
+          1522
+        ]
+      ],
+      "all_wire_fields_and_full_Core_DAG_body_checked": true,
+      "log_sha256": "808fa3eb29228003c9aee8270d2090caaf12e919875d83c308b33f5efb7262f9",
+      "trace_sha256": "7c7aac7b33db651fe2746027ee0367ade5f89406daa68cbe2a75ace3166ec51b",
+      "image_sha256": "c4ba922427644b3c46d316b71f0676ad2b6d692a0f7c2d0f7ebae610c9329a19"
+    }
+  ],
+  "semantic_result_status_zero_budget_fuel_checks_retained": true,
+  "inert_byte_failures5_of8_unwaived": true,
+  "case_counts": {
+    "1": 2,
+    "5": 3
+  },
+  "causal_assessment": "For these preserved current materialized1/cut13 and5/cut9 baseline images, pointer-derived hashes choose 64-bucket enumeration of detached reusable readback entries. Root-first child-before-parent DAG order propagates through entry IDs, environment/argument configuration links and final Core root IDs. Case1 orders7,12,3,1 /7,3,1,12 /7,3,12,1 account for every17/22 changed byte within three observed field regions; case5 detached2/15 four-head group swap accounts for all eight changed footer bytes. Every emitted entry/configuration/footer ID matches captured existing state, and complete Core DAG bodies and all bytes outside those regions match each original input. Bounded unchanged-baseline cause evidence, not every historical failure or a codec fix.",
+  "owner_disposition": "Route exact evidence to original Job codec owner without resume/new turn/ack claim. Preserve reusable answers, pending progress and independent fields. Original owner must assess any separate ordering change under current byte/semantic/transport/consumer gates. No canonicalizer/image rewrite/cache deletion or new authority approved.",
+  "holds": "Runtime MEM10 HOLD persists: historical51/1168 and paired6/146, current unchanged Fold5/8/debug2/4, paired2/146/materialized inert8/16, strict3/observer2/SAN7 and setup failures remain unwaived. New diagnostic5/8 is separate O0/read-only evidence, not a replacement of O2/SAN qualification.",
+  "Root_runtime_GDB_or_cost_rerun": false,
+  "runtime_source_or_codec_schema_authority_or_accepted_change": false,
+  "runtime_READY_or_publication_cost_grant_adoption_Goal_completion": false
+}
