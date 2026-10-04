@@ -95,6 +95,17 @@ names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
 
+C30 adds nine ordinary C-module test/example files under unchanged frozen C29
+backend: admitted scalar offset-negate/subtract provider, native consumer, separate
+declarative API/factories/client. Worker E8 O2/client-adapter-source SAN124 each
+(118zero/6compiler-linker-one) pass:16 mixed pairs/both header orders,32 linked+
+8 loaded-provider clients,source/readback9,121 Lists/width/two contexts/three
+operands/seeds and93 finite shared Trees/context. Public definitions4/18,
+32 generated C/H and291 input/runtime128 pins exact; no unexpected failures.
+C29 archive remains immutable; live owning docs now advance independently under
+the human workflow change. Both task/current-producer/Main reviews remain pending.
+See the [native callback module plan](2026-10-04-C-BACKEND-NATIVE-CALLBACK-MODULES-PLAN.md).
+
 Fresh C28 readonly publication verification: all13 task/then-live blobs, changed
 set/parent/message and independent remote match `0c852ce6995cbb9a933910fda6d37490291fdcbb`;
 report `c28-publication.json` SHA `6ede04c7`. Immutable snapshot unchanged,
@@ -526,6 +537,7 @@ Current issue status (2026-10-04 local; detailed pins stay in linked epoch plans
 | #61 borrowed signed predicates/List partitioning, C27 | Exact task `4b9c10941418fd431db380ead13dd4a68732f825`; [signed plan](2026-10-04-C-BACKEND-SIGNED-PREDICATE-PLAN.md). Opt-in same-width unary/binary Int32/Int64 to selected two-case enum, with no-arena private status propagation. | Worker E8 signed74/Nat69/signed-static61 each O2/client-source SAN, linker/I-O19/signed faults5 pass;64 parent C/H exact,262 inputs/runtime128 exact. Four products/raw:781 Lists/width,18744 foreign selections/product;120 admitted Core tags/1248 lengths, eight source observations. Initial setup failures retained. | All20 task/then-live blobs, changed set/parent/message/remote independently verified. Current-producer/Main review pending. Submitted snapshot unchanged. | Borrowed pure-total provider interpretation/lifetime/nonoverlap, depth256/limited SAN;13 checked/trusted refusal pairs. Foreign signed comparisons are ABI controls, not admitted source comparator or native Acc/QuickSort/full #61 completion. | Root review from immutable snapshot; separate C28 generated-provider units. |
 | #61 ordinary signed predicate translation units, C28 | Exact task `0c852ce6995cbb9a933910fda6d37490291fdcbb`; [signed module plan](2026-10-04-C-BACKEND-SIGNED-MODULES-PLAN.md). Native generated provider, two nominal consumers and separate declarative C factories/client; ABI/backend/producer unchanged. | Worker E8 reused exact C27 backend/pointer:373 rows each O2/client-adapter-source SAN (368zero/5expected-one),64 mixed triples/both orders/128 linked+32 loaded clients;121 Lists/width,16 source/readback observations/client, definitions4/15/15.271 inputs/runtime128/48 generated C/H exact; no unexpected failures. | All13 task/then-live blobs, changed set/parent/message/remote independently verified. Current-producer/Main review unreported; immutable13 preserved. | Provider success/constant-source interpretation/API/context/code lifetime, nonoverlap/depth256 and limited SAN; no source comparator/native Acc/QuickSort/full #61/adoption/cost completion. | Root review from immutable snapshot; separate C29 native scalar callbacks. |
 | #61 native scalar callbacks/maps/reductions, C29 | C28 `0c852ce` + five target owners +43/-11 and seven fixture/client/helper/gate files; [native callback plan](2026-10-04-C-BACKEND-NATIVE-CALLBACK-PLAN.md). Separate profile reuses same-width unary/binary descriptors and existing native carrier/arena/call code. | Worker E8 strict O2 backend/three helpers0; new76/binary48/signed74 rows each O2/client-source SAN, linker/I-O19/faults5 pass.781 Lists/width,655 Trees,3432 full-value Core comparisons/source5;74 parent C/H and282 input/runtime128 pins exact. Initial source and verifier setup failures retained. | Separate exact16 handoff prepared; task/current-producer/Main pending. C28 archive unchanged. | Borrowed pure-total interpretation/lifetime/nonoverlap/depth256/limited SAN;17 checked/trusted refusal pairs. No foreign error/returned closure/arity3/mixed widths/effects/indexed/callable Acc/QuickSort/full #61/cost/adoption completion. | Freeze current epoch for delegated review; ordinary C module composition may be a separate bounded next candidate. |
+| #61 generated scalar/native callback translation units, C30 | Frozen C29 dependency + nine test/example files (436 lines), [module plan](2026-10-04-C-BACKEND-NATIVE-CALLBACK-MODULES-PLAN.md). Admitted scalar offset/subtract provider, existing native consumer and separate declarative API/factories/client; no backend/ABI/producer change. | Worker E8 O2/client-adapter-source SAN124 each (118zero/6expected-one);16 pairs/both orders/32 linked+8 loaded clients,source9,121 Lists/width/two contexts/right-folds and93 Trees/context.32 C/H/291 inputs/runtime128 exact; no unexpected failures. | Separate exact13 handoff prepared; C29 dependency and C30 task/current-producer/Main pending. Immutable C29 evidence preserved while live owning docs advance independently. | Successful pure-total provider interpretation/API/context/code/storage lifetime, nonoverlap/depth256/limited SAN; no foreign error protocol/source closures/native Acc/QuickSort/full #61/cost/adoption completion. | Root ordered publication/current-producer review; preserve snapshots during distinct bounded downstream work. |
 | #61 remaining public contracts (historical #49) | General/boxed callbacks, effects, higher Identity, recursive captures and shared nominal exchange remain explicit limits; C16 advances only fixed borrowed unary/binary scalar inputs. | Local/joint gates verify supported cases and refusals, not general completion. | Historical tasks/prototype Main published; no publication of general missing contracts. | Need bounded justified representation/demand contracts. | Preserve refusals; route shared needs through Merge. |
 
 Evidence: historical [C5](2026-10-03-C-BACKEND-EPOCH5-HANDOFF.md),
@@ -678,6 +690,13 @@ pinned/current producer images and emitted C/headers match byte-for-byte.
 Evidence and exact publication files are in the [epoch handoff](2026-10-03-C-BACKEND-EPOCH1-HANDOFF.md).
 
 ### Assessment
+
+C30 agent decision: exercise generated arithmetic providers through ordinary C
+factories rather than cast incompatible output-pointer signatures into descriptors.
+Provider calls require no arena and stay usable while the consumer arena is active.
+Use one consumer/provider pair and focused16 product combinations; do not repeat
+unchanged C29 Core/refusal/broad gates. Success/interpretation/lifetime remain
+explicit preconditions; no new status propagation or source equality is inferred.
 
 C29 agent decision: combine existing scalar-return callback descriptors and native
 carrier machinery in a separate opt-in profile after ordinary source admission.
@@ -1277,6 +1296,11 @@ this target work while Main continues SE1, superseding the earlier AP6 hold.
   full-value Core/source/resource/refusal,74 parent C/H and publication-I/O controls.
 - [x] Prepare separate exact16 C29 code/test/docs handoff with pinned failures,
   source deltas/style; task/current-producer/Main review remains separate.
+- [x] C30: verify generated scalar providers/unchanged native consumers through
+  separate ordinary C factories/client,124 expected rows each O2/SAN with product/
+  header/loaded lifetime/source/full-value/resource/type/symbol controls.
+- [x] Prepare separate exact13 C30 handoff; preserve C29 dependency snapshot and
+  distinguish ordered task publication/current-producer/Main review.
 - [ ] Maintain the single issue table at material events and within six active
   hours; use brief pointer/hash notices and keep Core workflow in Assessment.
 - [ ] Coordinate further bounded target ABI/lowering increments under the latest
