@@ -1,0 +1,26 @@
+aplink 1
+artifact lists.a
+abi c_native_v1
+target host-c11
+product source
+lowering native_array_calls_v1
+fallback reject
+enum32 Bool Bool
+nat32 Nat Nat
+data Packet Packet
+data Numbers32 Numbers32
+data Numbers64 Numbers64
+data Flags Flags
+data Records Records
+data Nats Nats
+data Multi Multi
+data Tree Tree
+export append32 append32
+export take32 take32
+export drop32 drop32
+export slice32 slice32
+export identity32 identity32
+export identity64 identity64
+export identity_flags identity_flags
+export identity_records identity_records
+export identity_nats identity_nats

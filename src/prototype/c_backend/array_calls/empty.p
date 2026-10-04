@@ -1,0 +1,14 @@
+List := @{nil : *; cons : #Int32 -> * -> *;};
+empty := List.nil;
+Bool := @{true : *; false : *;};
+Nat := @{zero : *; succ : * -> *;};
+Packet := @{empty : *; small : #Int32 -> Bool -> *; wide : #Int64 -> *;};
+Flags := @{nil : *; cons : Bool -> * -> *;};
+Records := @{nil : *; cons : Packet -> * -> *;};
+Nats := @{nil : *; cons : Nat -> * -> *;};
+prepend_flag := \flag : Bool => \xs : Flags => Flags.cons flag xs;
+prepend_packet := \packet : Packet => \xs : Records => Records.cons packet xs;
+prepend_succ := \n : Nat => \xs : Nats => Nats.cons (Nat.succ n) xs;
+Tree := @{leaf : #Int32 -> *; branch : * -> * -> *;};
+tree_return := \tree : Tree => List.nil;
+callback_return := \f : #Int32 -> #Int32 => List.cons (f #0) List.nil;

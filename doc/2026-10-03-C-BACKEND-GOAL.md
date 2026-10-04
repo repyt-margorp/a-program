@@ -16,6 +16,17 @@ Related: [coordination](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md),
 
 ### Subjective (User)
 
+2026-10-04T09:16:56Z, conveyed human requirement via inquiry desk/Merge, English
+paraphrase; supersedes further List-convenience priorities: too much refinement
+has moved away from the main problem. Within12 hours (deadline21:16:56Z,
+2026-10-05 06:16:56 JST), prioritize a realistic readable C-code mockup lowering
+the actual admitted Acc QuickSort. Preserve tested C32 at a safe boundary and
+defer more List conveniences. Continue the same Goal/model, prototype C-specific
+scope, without .a extensions, invented source erasure or a substitute handwritten
+sorter. Show Acc/down, indices, partition and capture correspondence; distinguish
+executable candidate, sketches and generalized lowering, and identify remaining
+gaps. Merge retains review/integration.
+
 2026-10-03, concise English paraphrase of the direct human workflow change via
 inquiry desk `019ebfae`: implementation lanes may continue without waiting for
 Merge; Merge resolves integration conflicts. This supersedes blanket review/build
@@ -94,6 +105,21 @@ refinement now, while the coordinator continues Job/Evidence removal. Use task
 names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
+
+Fresh C32 [array-call plan](2026-10-04-C-BACKEND-ARRAY-CALLS-PLAN.md): five
+target owners +97/-12 add optional native_array_calls_v1 under existing native
+ABI1, wrapping actual List exports with array conversion/copy-out/local-arena
+cleanup. Worker E8 new139/query63/source-sort46 expected rows each O2/client-source
+SAN, linker/I-O19/new-profile faults5 pass. Three families/four products/raw,
+five payloads/List121/slice4356/sort341/source3+6/510 separate Core fingerprint
+comparisons/inert/statuses1-6 pass;84 new/68 prior C/H and314 pins/runtime128 exact.
+Initial missing-provider admission4 and symbol-expectation setup1 are retained;
+terminal controls pass. New wrappers preserve source algorithms/ABI/producer/
+schema/checker/erasure boundaries. Exact19 separate handoff follows.
+
+Fresh C31 exact18 task `cc3cba3495b81628e0a68ec8b45aee4f5447d188` archive/commit/
+changed set/parent/message/remote independently match; report `60d27747`.
+Current-producer/Main remains unreported; historical submitted bytes unchanged.
 
 Fresh readonly C29 exact16 `dae637f3b9c0b70229214514eb72176718c0f158` / C30
 exact13 `ab14e6940fa92a9f5205232e98f6896cb9d6f221` task publications independently
@@ -550,7 +576,8 @@ Current issue status (2026-10-04 local; detailed pins stay in linked epoch plans
 | #61 ordinary signed predicate translation units, C28 | Exact task `0c852ce6995cbb9a933910fda6d37490291fdcbb`; [signed module plan](2026-10-04-C-BACKEND-SIGNED-MODULES-PLAN.md). Native generated provider, two nominal consumers and separate declarative C factories/client; ABI/backend/producer unchanged. | Worker E8 reused exact C27 backend/pointer:373 rows each O2/client-adapter-source SAN (368zero/5expected-one),64 mixed triples/both orders/128 linked+32 loaded clients;121 Lists/width,16 source/readback observations/client, definitions4/15/15.271 inputs/runtime128/48 generated C/H exact; no unexpected failures. | All13 task/then-live blobs, changed set/parent/message/remote independently verified. Current-producer/Main review unreported; immutable13 preserved. | Provider success/constant-source interpretation/API/context/code lifetime, nonoverlap/depth256 and limited SAN; no source comparator/native Acc/QuickSort/full #61/adoption/cost completion. | Root review from immutable snapshot; separate C29 native scalar callbacks. |
 | #61 native scalar callbacks/maps/reductions, C29 | Exact task `dae637f3b9c0b70229214514eb72176718c0f158`, five target owners +43/-11 and seven fixture/client/helper/gate files; [native callback plan](2026-10-04-C-BACKEND-NATIVE-CALLBACK-PLAN.md). Separate profile reuses same-width unary/binary descriptors/native carrier/arena/call code. | Worker E8 new76/binary48/signed74 each O2/client-source SAN, linker/I-O19/faults5;781 Lists/width,655 Trees,3432 Core/source5,74 parent C/H/282 pins/runtime128 exact. Initial failures retained. | All16 task blobs/changed set/parent/message/remote ancestry independently verified. Current-producer/Main unreported; immutable snapshot unchanged. | Borrowed pure-total interpretation/lifetime/nonoverlap/depth256/limited SAN;17 checked/trusted refusal pairs. No foreign error/returned closure/arity3/mixed widths/effects/indexed/callable Acc/QuickSort/full #61/cost/adoption completion. | Root current-producer/Main review; preserve published contract during C31 size-query work. |
 | #61 generated scalar/native callback translation units, C30 | Exact task `ab14e6940fa92a9f5205232e98f6896cb9d6f221`, nine test/example files436 lines, [module plan](2026-10-04-C-BACKEND-NATIVE-CALLBACK-MODULES-PLAN.md). Generated scalar provider/native consumer/separate declarative factories/client; no backend/ABI/producer change. | Worker E8 O2/SAN124 each (118zero/6expected-one);16 pairs/both orders/32 linked+8 loaded clients,source9,121 Lists/width/two contexts/right-folds/93 Trees per context;32 C/H/291 pins/runtime128 exact; no unexpected failures. | All13 task blobs/changed set/parent/message/remote independently verified. Current-producer/Main unreported; immutable snapshot preserved. | Successful pure-total provider interpretation/API/context/code/storage lifetime, nonoverlap/depth256/limited SAN; no foreign error protocol/source closures/native Acc/QuickSort/full #61/cost/adoption completion. | Root current-producer/Main review; preserve source/client evidence during distinct bounded downstream work. |
-| #61 finite foreign copy-buffer size query, C31 | C30 `ab14e694` + seven target owners +73/-6 and seven example/test files379 lines; [query plan](2026-10-04-C-BACKEND-BUFFER-QUERY-PLAN.md). Opt-in native_buffer_query_v1/existing native ABI1 adds allocation-free validated size_t extent for existing selected Lists; old profiles unchanged. | Worker E8 strict O2 backend/helper0; new63/callback76/record41 each O2/SAN, linker/I-O19/query faults5 pass. Five payloads,121 Lists/4356 slice pairs/source4/300 nodes/no allocation/inert/status controls;28 new/60 prior C/H and300 pins/runtime128 exact. No unexpected failures. | Separate exact18 handoff prepared; task/current-producer/Main pending. C29/C30 snapshots unchanged. | Readable immutable finite inputs/output nonoverlap; overflow6 guard inspected, SIZE_MAX-node case unexecuted; limited SAN. Node-based copy boundary only; native indexed/callable Acc/QuickSort/full #61/cost/adoption open. | Root exact publication/current-producer review; future slice representation/recurrence work must remain justified separately. |
+| #61 finite foreign copy-buffer size query, C31 | Exact task `cc3cba3495b81628e0a68ec8b45aee4f5447d188`, seven target owners +73/-6 and seven example/test files379 lines; [query plan](2026-10-04-C-BACKEND-BUFFER-QUERY-PLAN.md). Opt-in native_buffer_query_v1/existing native ABI1 adds allocation-free validated size_t extent for existing selected Lists; old profiles unchanged. | Worker E8 strict O2 backend/helper0; new63/callback76/record41 each O2/SAN, linker/I-O19/query faults5 pass. Five payloads,121 Lists/4356 slice pairs/source4/300 nodes/no allocation/inert/status controls;28 new/60 prior C/H and300 pins/runtime128 exact. No unexpected failures. | All18 task blobs/changed set/parent/message/remote independently verified; current-producer/Main unreported. Submitted snapshot unchanged. | Readable immutable finite inputs/output nonoverlap; overflow6 guard inspected, SIZE_MAX-node case unexecuted; limited SAN. Node-based copy boundary only; native indexed/callable Acc/QuickSort/full #61/cost/adoption open. | Root current-producer/Main review; preserve query contract during separate array-call work. |
+| #61 ordinary array calls to source List functions, C32 | C31 `cc3cba34` + five target owners +97/-12 and ten example/test files; [array-call plan](2026-10-04-C-BACKEND-ARRAY-CALLS-PLAN.md). Optional native_array_calls_v1/existing native ABI1 wraps actual exports with temporary-arena conversion/copy-out/cleanup. | Worker E8 new139/query63/source-sort46 each O2/client-source SAN, linker/I-O19/faults5 pass. Three families/four products/raw/five payloads/List121/slice4356/sort341/Core510/source3+6/inert/statuses1-6;84 new/68 prior C/H/314 pins/runtime128 exact. Initial setup failures retained. | Separate exact19 handoff; task/current-producer/Main pending. C31 archive unchanged. | Borrowed immutable lifetime/nonoverlap/default depth256/allocation/Nat32/capacity contracts;13 checked/trusted refusal pairs; limited SAN, output SIZE_MAX overflow unexecuted. No zero-copy slices/native indexed-callable Acc/QuickSort/full #61/cost/adoption. | Seal for Root publication/current-producer review; human09:16:56Z priority supersedes further List conveniences with actual Acc QuickSort mockup by21:16:56Z. |
 | #61 remaining public contracts (historical #49) | General/boxed callbacks, effects, higher Identity, recursive captures and shared nominal exchange remain explicit limits; C16 advances only fixed borrowed unary/binary scalar inputs. | Local/joint gates verify supported cases and refusals, not general completion. | Historical tasks/prototype Main published; no publication of general missing contracts. | Need bounded justified representation/demand contracts. | Preserve refusals; route shared needs through Merge. |
 
 Evidence: historical [C5](2026-10-03-C-BACKEND-EPOCH5-HANDOFF.md),
@@ -703,6 +730,14 @@ pinned/current producer images and emitted C/headers match byte-for-byte.
 Evidence and exact publication files are in the [epoch handoff](2026-10-03-C-BACKEND-EPOCH1-HANDOFF.md).
 
 ### Assessment
+
+C32 agent decision: remove repeated client arena orchestration through a separate
+first-order array-call profile. Reuse existing input conversion, actual generated
+native body and atomic copy-out; destroy local nodes before returning. Source
+insertion sorting remains the admitted source algorithm, not a handwritten target
+sorter. Keep scalar/non-List/callback/recursive non-List signatures explicit
+refusals and original profiles byte-exact. Fixed depth256 and real conversion
+costs prevent any slice/performance/general recurrence completion claim.
 
 C31 agent decision: expose the already validated finite count before buffer
 allocation in an explicit profile, preserving copy-out's unchanged-on-failure
@@ -1328,6 +1363,13 @@ this target work while Main continues SE1, superseding the earlier AP6 hold.
   allocation-free/active-field/refusal/I-O controls with pinned inputs.
 - [x] Prepare separate exact18 C31 source/test/docs handoff; no current-producer/
   Main/native indexed-callable Acc/QuickSort/full #61/adoption/cost completion.
+- [x] Independently verify C31 exact task publication/remote against its immutable
+  snapshot before advancing live owning docs.
+- [x] C32: prove admitted native/absent array-wrapper boundary and implement
+  target-only array calls; new139/query63/source-sort46 each O2/client-source SAN
+  plus inert/Core/source/rollback/refusal/I-O/byte/pin controls pass.
+- [x] Prepare separate exact19 C32 handoff; preserve old snapshots and distinguish
+  task publication/current-producer/Main from Goal/adoption/cost completion.
 - [ ] Maintain the single issue table at material events and within six active
   hours; use brief pointer/hash notices and keep Core workflow in Assessment.
 - [ ] Coordinate further bounded target ABI/lowering increments under the latest
