@@ -1,8 +1,9 @@
 # C Backend Integer Predicate Boundary
 
-Date: 2026-10-04 local. Status: bounded source/refusal inspection verified.
-Task baseline `0388736ad3e5b7fca30ff2added9d558c0cef96a`; C19 exact11
-is published. Related: open #61, [owning Goal](2026-10-03-C-BACKEND-GOAL.md),
+Date: 2026-10-04 local. Status: C20 published; live contract advances in C21.
+Historical baseline `0388736ad3e5b7fca30ff2added9d558c0cef96a`; C20 exact10
+task `7b883a8eb123faab0e288661229196ffdebfe232` is published. Related:
+open #61, [owning Goal](2026-10-03-C-BACKEND-GOAL.md),
 AP6.2/AP6.4/AP6.7 and the existing C17 Nat32 predicate contract.
 
 ## Problem List
@@ -70,6 +71,17 @@ paths are in [C20 handoff](2026-10-04-C-BACKEND-EPOCH20-HANDOFF.md).
 
 ### Assessment
 
+Superseding agent implementation/result, 2026-10-04 local: C21's bounded private
+capture change now supports all eight historical C20 static wrappers under the
+same native ABI. Their source names map to the existing public aliases and the
+unchanged C20 client exercises them positively. The live integer gate passes61
+expected rows each O2/client-source SAN (26zero/1no-fuel3/34refusal4); seventeen
+dynamic/unsupported cases remain checked/trusted4. Historical C20 code,77-row
+evidence and handoff stay immutable; all10 task blobs and remote ref independently
+match `7b883a8e`. Main/current-producer C20 results are not inferred. See the
+[C21 capture plan](2026-10-04-C-BACKEND-RECURSIVE-CAPTURE-PLAN.md) for the active
+next work; this inspection plan has no competing work list.
+
 Agent next action: admit known/captured Int32/Int64 predicates over selected Lists,
 probe their lowering under existing `c_native_v1`, and retain dynamic integer
 predicate refusal. No new ABI profile is activated. The earlier possible integer
@@ -104,6 +116,7 @@ foreign integer predicates and native Acc/QuickSort/full #61 remain open.
   signed-extreme/client-SAN and resource controls, with exact pins.
 - [x] Prepare a separate exact-file review handoff; retain failures and report
   target-shape limits without claiming a producer defect or full Goal completion.
-- [ ] Root task publication/current-producer review/Main integration.
-- [ ] Next bounded proposal: decide whether retaining known static captures in
-  recursive targets is justified; preserve dynamic/callable/indexed refusals.
+- [x] Independently verify exact C20 task publication and remote ref; preserve
+  historical handoff and leave Root current-producer/Main work separate.
+- [x] Transfer bounded static-capture implementation/verification to the C21 plan;
+  retain positive former-refusal coverage and dynamic/callable/indexed refusals.

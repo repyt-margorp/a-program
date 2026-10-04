@@ -59,7 +59,7 @@ expect_status trusted-source 0 cmp "$output/source/component.c" "$output/trusted
 expect_status trusted-header 0 cmp "$output/source/component.h" "$output/trusted/component.h"
 expect_status no-fuel 3 "$backend" --steps 0 --link "$output/source.aplink" "$output/no-fuel"
 test ! -e "$output/no-fuel"
-for name in known_keep32 known_drop32 known_keep64 known_drop64 captured_filter32 captured_filter64 captured_select32 captured_select64 apply32 choose32 apply64 choose64 reverse32 unused32 filter32 select32 filter64 select64 ternary mixed_width tri_result scalar_result returned effect callable_identity; do
+for name in apply32 choose32 apply64 choose64 reverse32 unused32 filter32 select32 filter64 select64 ternary mixed_width tri_result scalar_result returned effect callable_identity; do
 	sed '/^export /d' "$output/source.aplink" > "$output/$name.aplink"
 	printf 'export %s %s\n' "$name" "$name" >> "$output/$name.aplink"
 	for mode in checked trusted; do
@@ -73,4 +73,4 @@ done
 sha256sum "$output/predicates.a" > "$output/after.sha256"
 expect_status image-unchanged 0 cmp "$output/before.sha256" "$output/after.sha256"
 test -z "$(find "$output" -maxdepth 1 -name '*.tmp.*' -print)"
-printf 'Existing native ABI: 341 lists/width/product, six source observations, all/none controls, resource rollback and 25 checked/trusted refusals pass\n'
+printf 'Existing native ABI: known recursive captures, 341 lists/width/product, six source observations, all/none controls, resource rollback and 17 checked/trusted refusals pass\n'

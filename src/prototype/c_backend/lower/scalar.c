@@ -168,6 +168,18 @@ static const struct pg_term *callable(const struct pg_term *term)
 	return term;
 }
 
+/* A known lambda may be wrapped by Force/Thunk or partially applied. Keep
+	* its computation suspended; this inspection does not run its arguments. */
+static int known_lambda(const struct pg_term *term)
+{
+	for (;;) {
+		term = callable(term);
+		if (term->kind == PG_LAMBDA) return 1;
+		if (term->kind != PG_APPLICATION) return 0;
+		term = term->as.application.function;
+	}
+}
+
 /* Recognize exactly the existing erased recursive-Match builder. Admission
 	* and totality belong to the source driver, not this target pattern. */
 static const struct pg_term *recursive_template(const struct pg_term *term)
@@ -429,18 +441,27 @@ static struct function *recursive_function(struct expression *e)
 {
 	if (!e->count || !e->expected || captures(e)) return NULL;
 	struct module *m = e->function->module;
-	if (e->count > SIZE_MAX - e->capture_count) return NULL;
-	struct function *f = function(m, e->count + e->capture_count);
+	size_t native_captures = 0;
+	for (size_t i = 0; i < e->capture_count; ++i) {
+		const struct expression *v = e->captures[i]->value;
+		if (v->type) ++native_captures;
+		else if (!v->delayed || !known_lambda(v->suspended)) return NULL;
+	}
+	if (e->count > SIZE_MAX - native_captures) return NULL;
+	struct function *f = function(m, e->count + native_captures);
 	if (!f) return NULL;
 	f->recursive = 1; f->result = e->expected; f->capture_count = e->capture_count; f->source_count = e->count;
 	f->captures = pg_alloc(&m->order.storage, f->capture_count * sizeof(*f->captures));
-	if (!f->captures) return NULL;
+	f->static_captures = pg_alloc(&m->order.storage, f->capture_count * sizeof(*f->static_captures));
+	if (!f->captures || !f->static_captures) return NULL;
 	const struct binding *environment = NULL;
+	size_t p = e->count;
 	for (size_t i = 0; i < f->capture_count; ++i) {
 		const struct binding *b = e->captures[i];
-		if (!b->value->type) return NULL;
-		f->captures[i] = b->binder; f->parameters[e->count + i]->type = b->value->type;
-		environment = bind(f, environment, b->binder, f->parameters[e->count + i]);
+		struct expression *v = b->value;
+		f->captures[i] = b->binder; f->static_captures[i] = v->type ? NULL : v;
+		if (v->type) { v = f->parameters[p++]; v->type = b->value->type; }
+		environment = bind(f, environment, b->binder, v);
 		if (!environment) return NULL;
 	}
 	struct expression *recursion = pg_alloc(&m->order.storage, sizeof(*recursion));
@@ -455,6 +476,13 @@ static struct function *recursive_function(struct expression *e)
 	if (!f->parameters[0]->type->recursive && !f->parameters[0]->type->natural) return NULL;
 	environment = bind(f, environment, lambda->as.lambda.binder, f->parameters[0]);
 	if (!environment) return NULL;
+	for (size_t i = 0; i < f->capture_count; ++i) if (f->static_captures[i]) {
+		struct expression *thunk = pg_alloc(&m->order.storage, sizeof(*thunk));
+		if (!thunk) return NULL;
+		*thunk = *f->static_captures[i]; thunk->value = thunk; thunk->environment = environment;
+		environment = bind(f, environment, f->captures[i], thunk);
+		if (!environment) return NULL;
+	}
 	const struct argument *pending = NULL;
 	for (size_t i = e->count; i > 1; --i) {
 		pending = argument(m, NULL, NULL, f->parameters[i - 1], pending);
@@ -601,10 +629,14 @@ static int lower(struct expression *e, size_t slot, const void **out)
 		e->capture_count = f->capture_count;
 		e->captures = pg_alloc(&e->function->module->order.storage, f->capture_count * sizeof(*e->captures));
 		if (!e->captures) return -1;
+		size_t p = f->source_count;
 		for (size_t i = 0; i < f->capture_count; ++i) {
 			const struct binding *b = e->environment;
 			while (b && b->binder != f->captures[i]) b = b->parent;
-			if (!b || b->value->type != f->parameters[f->source_count + i]->type) return -1;
+			if (!b) return -1;
+			if (f->static_captures[i]) {
+				if (!b->value->delayed || b->value->suspended != f->static_captures[i]->suspended) return -1;
+			} else if (b->value->type != f->parameters[p++]->type) return -1;
 			e->captures[i] = b;
 		}
 		return 0;
@@ -613,7 +645,7 @@ static int lower(struct expression *e, size_t slot, const void **out)
 		/* Retain known function values and direct single-tail IH thunks. */
 		const struct pg_term *body = e->count == 1 ? a->term : NULL;
 		if (!body) return -1;
-		if (body->kind != PG_LAMBDA) {
+		if (!known_lambda(body)) {
 			if (body->kind != PG_APPLICATION || body->as.application.function->kind != PG_REFERENCE) return -1;
 			struct expression *r = lookup(a->environment, body->as.application.function->as.reference);
 			if (!r || !r->recursion) return -1;
