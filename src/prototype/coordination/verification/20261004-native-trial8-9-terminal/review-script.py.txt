@@ -1,0 +1,34 @@
+import pathlib,json,hashlib,datetime,subprocess
+s=pathlib.Path(__file__).resolve().parent;f=pathlib.Path('/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier');sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest();before={};manifests={}
+for directory,manifest in [('history/trial8-results','history/trial8-results/manifest.sha256'),('history/trial8-inputs','trial8-inputs.sha256'),('history/trial9-inputs','trial9-inputs.sha256')]:
+ m=f/manifest;rows={n:d for d,n in [x.split('  ',1) for x in m.read_text().splitlines()]}
+ for n,d in rows.items():assert sha(f/directory/n)==d,(directory,n)
+ before.update({directory+'/'+n:d for n,d in rows.items()});manifests[directory]={'SHA':sha(m),'count':len(rows),'all_entries_exact':True}
+assert manifests['history/trial8-inputs']['count']==659 and manifests['history/trial9-inputs']['count']==664
+assert sha(f/'trial8-code126.sha256')==sha(f/'trial9-code126.sha256')=='441cbd699ca87b505564938c81e68cf17fc3de03581af903bfc02636544c2244'
+records={};pins={}
+for phase in ['trial8-qualification','trial9-qualification']:
+ q=f/phase;rs=json.loads((q/'terminal.json').read_text());records[phase]=rs;pins[phase+'/terminal.json']=sha(q/'terminal.json')
+ for r in rs:
+  assert sha(q/(r['name']+'.log'))==r['log_sha256'];pins[phase+'/'+r['name']+'.log']=r['log_sha256']
+  if 'binary_sha256' in r:
+   binaries=[pathlib.Path(a) for a in r['argv'] if pathlib.Path(a).is_file() and pathlib.Path(a).read_bytes()[:4]==b'\x7fELF'];assert len(binaries)==1,(r['name'],binaries);assert sha(binaries[0])==r['binary_sha256'];pins[str(binaries[0])]=r['binary_sha256']
+assert len(records['trial8-qualification'])==3 and [r['returncode'] for r in records['trial8-qualification']]==[0,0,2]
+assert len(records['trial9-qualification'])==10 and all(r['returncode']==0 for r in records['trial9-qualification'])
+log=(f/'trial8-qualification/full-acceptance.log').read_text();fail=[x for x in log.splitlines() if x.startswith('unexpected syntax failure:')];assert len(fail)==5;assert log.count('] Error ')==1
+for fixture in ['print.p','training/dependent_match.p','training/double.p','training/list_nat_match.p','training/recursive_dependent_match.p']:
+ assert not (f/'history/trial8-inputs'/fixture).exists() and (f/'history/trial9-inputs'/fixture).is_file();assert (f/'history/trial9-inputs'/fixture).read_bytes()==subprocess.check_output(['git','show','fc52755b345a555e49a79df40549e9cb23d54088:'+fixture],cwd='/home/repyt/workspace/a-program')
+q=f/'trial9-qualification/source-bytes-o2';report=json.loads((q/'report.json').read_text());assert report['exit_code']==0 and len(report['cases'])==26
+for c in report['cases']:
+ assert len(c['commands'])==5 and all(r['returncode']==0 for r in c['commands']) and c['initial_equal_resave'] and c['two_inert_resaves_equal'] and len(c['images'])==3
+ for im in c['images']:assert sha(q/im['path'])==im['sha256'] and (q/im['path']).stat().st_size==im['bytes']
+for p in q.iterdir():
+ if p.is_file():pins[str(p.relative_to(f))]=sha(p)
+for n,d in before.items():assert sha(f/n)==d
+raw=s/'job-trial8-9-review-raw';raw.mkdir()
+for n,d in pins.items():
+ p=pathlib.Path(n);p=p if p.is_absolute() else f/n
+ if p.read_bytes()[:4]==b'\x7fELF':continue
+ target=raw/str(p.relative_to(f));target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(p.read_bytes());assert sha(target)==d
+v={'date_UTC':datetime.datetime.now(datetime.timezone.utc).isoformat(),'classification':'Static review of original Job owner records discovered during C49 worker progress review; no Root native replay or new READY.','original_owner_manifests_exact':manifests,'runtime126_same_trial8_trial9':'441cbd699ca87b505564938c81e68cf17fc3de03581af903bfc02636544c2244','trial8_records':records['trial8-qualification'],'trial8_broad_status':'Actual full serial make-k check-acceptance exit2; sole recorded make failure is syntax inventory five absent source files. Independent remaining groups ran; no unskipped full zero.','trial8_syntax_missing_inputs':fail,'trial9_records':records['trial9-qualification'],'trial9_corrected_inventory':'158 expectations match syntax only; five restored inputs exact acceptedfc Git blobs. Runtime126 unchanged.','retained_Source_byte_controls':{'cases':26,'commands':130,'images':78,'all_initial_and_two_inert_resaves_equal':True,'ordinary_check_and_recompute_zero':True,'mode':'O2 only; does not include all foreign process/fuel contracts'},'raw_and_binary_pins':pins,'raw_path_external':str(raw),'record_limits':'Owner terminal records omit explicit start/finish/censor flags; do not fabricate uncensored/elapsed claims. SAN core/synthesis/source/typed/occurrence/two checkpoints exit0 and binaries/flags/logs pinned; not full SAN or native joint qualification.','input_manifest_provenance':'Authoritative external659/664 manifests pin actual snapshots; copied inner657 historical manifest is not current runtime authority. Initial review selected copied inner manifest; corrected read-only to external current pins before any claim or workload.','remaining':'Full unskipped acceptance after restored inventory; exact foreign-cut/fuel O2-SAN/native/Performance joint, strict3/public52/modern imported Sorted DONE/frontier/partial typed-query/native wire net/time/READY remain separately open.','historical_failures_retained':True,'Root_native_replay':False,'accepted_adoption':False,'Goal_or_owner_actions':False,'cost_samples':0}
+(s/'native-trial8-9-terminal-static-review.json').write_text(json.dumps(v,indent=2)+'\n');print(json.dumps({'manifests':manifests,'runtime126':v['runtime126_same_trial8_trial9'],'owner_trial8_exit':2,'owner_trial9_expected_zero':10,'Source_O2_cases':26,'raw_binary_pins':len(pins)}))

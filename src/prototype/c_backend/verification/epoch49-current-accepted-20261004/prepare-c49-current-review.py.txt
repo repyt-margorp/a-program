@@ -1,0 +1,51 @@
+import collections,datetime,hashlib,json,pathlib,shutil,tarfile
+s=pathlib.Path(__file__).resolve().parent;w=pathlib.Path('/home/repyt/workspace/a-program-workers/c-backend');e=w/'src/prototype/c_backend/.evidence/epoch49-acc-frame-20261004';q=s/'c49-current-accepted-fc';sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+notice=w/'src/prototype/coordination/outbox/c-backend-c49-ready-20261004.txt';assert sha(notice)=='4bad73caebeb1472462f0d118d59ffdf551d898b88ca77c773c7b5afae15a5cc'
+metadata={'epoch49-files.sha256':'840d0a6155ca84925b4cc6e9ac1fa31fa3c74a2b7ad4207e8559ce163e3253a2','epoch49-submitted-snapshot.tar':'38e52c076a24a592aaf87c85550d3630d1bb0251bab1b22cfbf239652fd78ea5','epoch49-runs.sha256':'12e9bc2443d02a82f45e7ea0208a45a001d0b41a6726f597f122f4f4136118a4','epoch49-freeze.json':'686a31b7fdfab479e89c1ed621afb45772354180c7a8f76ad4fd586810210dd5','verification.json':'220838f4805ee8d6d816c737cb35600e0d5e0ba9c5a36d99cc0559e16b76fbbe','final-inputs.json':'c6b845c226c0d45ed82fab2c7ddd0999d4e87e579f6bfd48336703f9311feb8b','style.json':'3e488b09dcbefd1f40f7aa5a913148c7ead05e344edcca5356ec19667b074c69'}
+for n,d in metadata.items():assert sha(e/n)==d,n
+freeze=json.loads((e/'epoch49-freeze.json').read_text());files={r['path']:r['sha256'] for r in freeze['files']};assert len(files)==15 and freeze['delegated_parent']=='pending C48 exact18 manifest1a549683; preceding C47 task3526b9a3c46abe0fa92ed93bf0c691a73a372605'
+q.mkdir(exist_ok=True);(q/'frozen').mkdir(exist_ok=True)
+with tarfile.open(e/'epoch49-submitted-snapshot.tar') as package:
+ members={r.name.removeprefix('./'):r for r in package.getmembers() if r.isfile()};assert set(members)==set(files)
+ for n,d in files.items():
+  assert not n.startswith('/') and '..' not in pathlib.PurePosixPath(n).parts
+  data=package.extractfile(members[n]).read();assert hashlib.sha256(data).hexdigest()==d
+  target=q/'frozen'/n;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(data);target.chmod(members[n].mode)
+raw={name:d for d,name in [x.split('  ',1) for x in (e/'epoch49-runs.sha256').read_text().splitlines()]};assert len(raw)==343
+for n,d in raw.items():assert sha(w/n)==d,n
+inputs=json.loads((e/'final-inputs.json').read_text())['inputs'];assert len(inputs)==339
+for n,row in inputs.items():
+ copy=pathlib.Path(row['copy']);copy=copy if copy.is_absolute() else w/copy;assert sha(copy)==row['sha256'],n
+example=q/'frozen/src/prototype/c_backend/acc_frame/example';source=(example/'component.c').read_bytes();assert len(source.splitlines())==898
+receipt=json.loads((example/'provenance.json').read_text())
+for section in receipt['sections']:assert hashlib.sha256(source[section['offset']:section['offset']+section['bytes']]).hexdigest()==section['sha256']
+old=json.loads((s/'c48-current-accepted-fc/frozen/src/prototype/c_backend/acc_endpoints/example/provenance.json').read_text());oldsec={r['name']:r['sha256'] for r in old['sections']}
+assert all(r['sha256']==oldsec[r['name']] for r in receipt['sections'] if r['name']!='scoped actions');assert receipt['source_body_inputs']==old['source_body_inputs']
+products={}
+for phase in ['candidate-O2','candidate-SAN']:
+ rows=[x.split('\t') for x in (e/phase/'status.tsv').read_text().splitlines()];assert len(rows)==53 and all(r[1]==r[2] for r in rows);assert dict(collections.Counter(r[2] for r in rows))=={'0':45,'1':1,'2':1,'4':6}
+ pp={}
+ for mode in ['source','object','archive']:
+  for n in ['component.c','component.h','provenance.json']:
+   x=e/phase/mode/n;assert x.read_bytes()==(example/n).read_bytes();pp[mode+'/'+n]=sha(x)
+ assert sha(e/phase/'transport.inc')==receipt['transport_descriptor']=='888dbff17e481d65fb071612fce4f05b24853843623a804db76c6f918e3ec0de';products[phase]=pp
+assert products['candidate-O2']==products['candidate-SAN']
+older={}
+for r in json.loads((e/'old-snapshots.json').read_text()):
+ archive=w/r['archive'];assert sha(archive)==r['archive_sha256'];manifest=archive.with_name('epoch'+str(r['epoch'])+'-files.sha256');assert sha(manifest)==r['manifest_sha256'];older[str(r['epoch'])]=r['archive_sha256']
+assert len(older)==17
+shutil.copytree(s/'c48-current-accepted-fc/tree',q/'tree')
+for n in files:
+ target=q/'tree'/n;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(q/'frozen'/n,target)
+shutil.copy2(s/'c48-current-accepted-fc/runtime-source.sha256',q/'runtime-source.sha256');assert sha(q/'runtime-source.sha256')=='c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907'
+for d,n in [x.split('  ',1) for x in (q/'runtime-source.sha256').read_text().splitlines()]:assert sha(q/'tree'/n)==d
+shutil.copytree(s/'c48-current-accepted-fc/reused-products',q/'reused-products')
+for x in (q/'reused-products').iterdir():assert sha(x)==receipt['source_body_inputs'][x.name]
+shutil.copy2(s/'c48-current-accepted-fc/reused-Core-cases.c',q/'reused-Core-cases.c');shutil.copy2(s/'c48-current-accepted-fc/actual-materialized.a',q/'actual-materialized.a');assert sha(q/'actual-materialized.a')=='7c1a4f35108dea9a91c4ffac90062b0c1d6bb1c145e116ff269942775e704aa4'
+(q/'tmp').mkdir()
+for n in metadata:
+ if n.endswith('.tar'):continue
+ shutil.copy2(e/n,q/n)
+shutil.copy2(notice,q/'ready-notice.txt')
+record={'date_UTC':datetime.datetime.now(datetime.timezone.utc).isoformat(),'Main_parent':'784c9bfea5d49cd9161ae51d8b7444f2abf59ef3','notice_SHA':sha(notice),'frozen_metadata_exact':metadata,'frozen15_archive_exact':files,'all343_raw_exact':True,'all339_retained_inputs_exact':True,'runtime120_manifest_SHA':sha(q/'runtime-source.sha256'),'all17_C32_C48_prior_archives_exact':older,'generated_source_lines':898,'generated_source_SHA':sha(example/'component.c'),'all_seven_source_bodies_and_non_action_sections_C48_exact':True,'all_products_example_O2_SAN_exact':True,'preserved_historical_failure':'Original C48 expected index3 for actual4 / map_client abort134 retained as historical C48 evidence; no unexpected C49 gate failure.','source_review':'Actual parameter/proof lambda binders, admitted Fold/elimination receipt, current/raw-down/IH chain and callback/constructor identities derive34 frame slots10/12/12 with unique complete coverage and original path/map identities. Runtime now assigns source-derived slots; manual role-value switch/action/complete checked Scope interpretation persists. Full maps/nominal endpoints/proof/down/IH/captures/paths and seven source bodies preserved. Eight new private frame refusals retain output/allocation.','SAN_scope':'Entire emitter/inspector/module/client source-object-archive SAN; pointer/Core O2 reused.','general_native_Acc':False,'native_scope':'Checked/trusted4/input3 inherited C46, not new C49 execution.','frozen_delegated_parent_historical':freeze['delegated_parent'],'actual_task_parent_C48':'8a81cefa0899bf89b58963e7d2e88e3701d2807b','Root_replay':'pending','accepted_adoption':False,'Goal_or_owner_actions':False,'cost_samples':0}
+(s/'c49-readonly-static-review.json').write_text(json.dumps(record,indent=2)+'\n');print(json.dumps({'frozen_paths':15,'raw_files':343,'inputs':339,'prior_archives':17,'historical_C48_failure_retained':True,'lines':898,'current_runtime':'c2063542'}))

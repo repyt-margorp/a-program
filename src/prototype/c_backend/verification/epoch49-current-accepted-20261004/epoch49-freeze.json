@@ -1,0 +1,105 @@
+{
+  "Goal_complete": false,
+  "Main_integration": "pending Merge only",
+  "accepted_promotion": false,
+  "archive": "src/prototype/c_backend/.evidence/epoch49-acc-frame-20261004/epoch49-submitted-snapshot.tar",
+  "archive_sha256": "38e52c076a24a592aaf87c85550d3630d1bb0251bab1b22cfbf239652fd78ea5",
+  "branch": "parallel/c-backend-20261003",
+  "commit_message": "prototype: derive actual Acc callback frame bindings",
+  "delegated_parent": "pending C48 exact18 manifest1a549683; preceding C47 task3526b9a3c46abe0fa92ed93bf0c691a73a372605",
+  "epoch": 49,
+  "files": [
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_frame/README.md",
+      "sha256": "b4f931e525d4326d8198c8e048e930ebeed1b93c6701f4d51dfb671651ce91af"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_frame/build.mk",
+      "sha256": "b4918c4a516ce9d05f055bd4b763283866a7c77c4c8df2023849d12b4fb91e38"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_frame/check.sh",
+      "sha256": "248d4f0395bfd22a936cf12871833cbefd7cc146f4f0e3fc8dc1a33c66fed0b5"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_frame/emit.c",
+      "sha256": "d9673113cd70d3aadc0d0766e7dc8cda302707c05ba5174a09e612d389db25a3"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_frame/emit.h",
+      "sha256": "fef59d9dfc3f2add37cc03eeaa73a9cefbf832c0c70c1eb2a9af46facf8a4870"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_frame/emit_test.c",
+      "sha256": "ebe1f30b49607923102936a965c7a58167a63b3cf659e07aea854895c112d4e3"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_frame/example/component.c",
+      "sha256": "53f01aa8932efcd57f9395183d77402fd6779cb29f49a04dc2260a5dfb87089d"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_frame/example/component.h",
+      "sha256": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_frame/example/provenance.json",
+      "sha256": "79ac358c50b19ca9213dae1cb905f1372f1f8e4cdf50d4d0d5e65739bba947a5"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_frame/map_client.c",
+      "sha256": "2e812d6911d1788b9039251cdbae151415add7b126dfd7a27a7e446ff9d77313"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_frame/pack.py",
+      "sha256": "852214c563cd736fb16a1cecc214abc9110b8ca4c9591a6ffe517fdd44374282"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_frame/runtime.c",
+      "sha256": "b325609ac5b4e5a03bfe1b539b5733748c9a14ee89e7e2381c40b62e7c9c2a01"
+    },
+    {
+      "mode": "0o664",
+      "path": "doc/2026-10-03-C-BACKEND-GOAL.md",
+      "sha256": "a04354d73bc70691bdccc82bfad22ae8e9b9618a7d4e4829fbeda05c31a6bdc5"
+    },
+    {
+      "mode": "0o664",
+      "path": "doc/2026-10-04-C-BACKEND-ACC-FRAME-PLAN.md",
+      "sha256": "1141b536d92ba2c8ae1aaf6422300613366120b196748b14aa2622f36a91b413"
+    },
+    {
+      "mode": "0o664",
+      "path": "doc/2026-10-04-C-BACKEND-EPOCH49-HANDOFF.md",
+      "sha256": "6c1bd047373debaa9b5f910e3f0839d761b0220cb8b60dbb4168beb485fc39c2"
+    }
+  ],
+  "files_count": 15,
+  "final_inputs_sha256": "c6b845c226c0d45ed82fab2c7ddd0999d4e87e579f6bfd48336703f9311feb8b",
+  "frozen_UTC": "2026-10-04T22:05:00.015197+00:00",
+  "general_native_Acc": false,
+  "handoff_sha256": "6c1bd047373debaa9b5f910e3f0839d761b0220cb8b60dbb4168beb485fc39c2",
+  "independent_current_review": "pending",
+  "input_count": 339,
+  "manifest": "src/prototype/c_backend/.evidence/epoch49-acc-frame-20261004/epoch49-files.sha256",
+  "manifest_sha256": "840d0a6155ca84925b4cc6e9ac1fa31fa3c74a2b7ad4207e8559ce163e3253a2",
+  "raw_file_count": 343,
+  "raw_manifest": "src/prototype/c_backend/.evidence/epoch49-acc-frame-20261004/epoch49-runs.sha256",
+  "raw_manifest_sha256": "12e9bc2443d02a82f45e7ea0208a45a001d0b41a6726f597f122f4f4136118a4",
+  "shared_index_sha256": "848aae6bed8ddf19f70473244f94f8ca144b4bbe3ca7a427b2f44e2a5e842325",
+  "style_sha256": "3e488b09dcbefd1f40f7aa5a913148c7ead05e344edcca5356ec19667b074c69",
+  "task_publication": "pending delegated Merge after C48",
+  "verification_sha256": "220838f4805ee8d6d816c737cb35600e0d5e0ba9c5a36d99cc0559e16b76fbbe",
+  "worker_HEAD": "cc3cba3495b81628e0a68ec8b45aee4f5447d188"
+}

@@ -1,0 +1,23 @@
+{
+  "new_subtree_files": [
+    "src/prototype/c_backend/acc_frame/README.md",
+    "src/prototype/c_backend/acc_frame/build.mk",
+    "src/prototype/c_backend/acc_frame/check.sh",
+    "src/prototype/c_backend/acc_frame/emit.c",
+    "src/prototype/c_backend/acc_frame/emit.h",
+    "src/prototype/c_backend/acc_frame/emit_test.c",
+    "src/prototype/c_backend/acc_frame/example/component.c",
+    "src/prototype/c_backend/acc_frame/example/component.h",
+    "src/prototype/c_backend/acc_frame/example/provenance.json",
+    "src/prototype/c_backend/acc_frame/map_client.c",
+    "src/prototype/c_backend/acc_frame/pack.py",
+    "src/prototype/c_backend/acc_frame/runtime.c"
+  ],
+  "existing_implementation_edits": [],
+  "live_Goal_advance": "doc/2026-10-03-C-BACKEND-GOAL.md",
+  "C48_other17_live_exact": true,
+  "source_bodies_byte_exact": true,
+  "runtime_diff": "runtime-parent.diff",
+  "unexpected_C49_gate_failures": [],
+  "historical_failure": "C48 assertion correction remains immutable original evidence, not C49 failure"
+}

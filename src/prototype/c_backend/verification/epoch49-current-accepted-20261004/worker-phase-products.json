@@ -1,0 +1,51 @@
+{
+  "products": [
+    {
+      "mode": "source",
+      "name": "component.c",
+      "sha256": "53f01aa8932efcd57f9395183d77402fd6779cb29f49a04dc2260a5dfb87089d"
+    },
+    {
+      "mode": "object",
+      "name": "component.c",
+      "sha256": "53f01aa8932efcd57f9395183d77402fd6779cb29f49a04dc2260a5dfb87089d"
+    },
+    {
+      "mode": "archive",
+      "name": "component.c",
+      "sha256": "53f01aa8932efcd57f9395183d77402fd6779cb29f49a04dc2260a5dfb87089d"
+    },
+    {
+      "mode": "source",
+      "name": "component.h",
+      "sha256": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044"
+    },
+    {
+      "mode": "object",
+      "name": "component.h",
+      "sha256": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044"
+    },
+    {
+      "mode": "archive",
+      "name": "component.h",
+      "sha256": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044"
+    },
+    {
+      "mode": "source",
+      "name": "provenance.json",
+      "sha256": "79ac358c50b19ca9213dae1cb905f1372f1f8e4cdf50d4d0d5e65739bba947a5"
+    },
+    {
+      "mode": "object",
+      "name": "provenance.json",
+      "sha256": "79ac358c50b19ca9213dae1cb905f1372f1f8e4cdf50d4d0d5e65739bba947a5"
+    },
+    {
+      "mode": "archive",
+      "name": "provenance.json",
+      "sha256": "79ac358c50b19ca9213dae1cb905f1372f1f8e4cdf50d4d0d5e65739bba947a5"
+    }
+  ],
+  "descriptor_sha256": "888dbff17e481d65fb071612fce4f05b24853843623a804db76c6f918e3ec0de",
+  "all_exact": true
+}

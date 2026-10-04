@@ -1,0 +1,95 @@
+{
+  "English_docs_comments_reviewed": true,
+  "all_checks_pass": true,
+  "files": {
+    "doc/2026-10-03-C-BACKEND-GOAL.md": {
+      "sha256": "a04354d73bc70691bdccc82bfad22ae8e9b9618a7d4e4829fbeda05c31a6bdc5",
+      "trailing_whitespace_lines": []
+    },
+    "doc/2026-10-04-C-BACKEND-ACC-FRAME-PLAN.md": {
+      "sha256": "1141b536d92ba2c8ae1aaf6422300613366120b196748b14aa2622f36a91b413",
+      "trailing_whitespace_lines": []
+    },
+    "doc/2026-10-04-C-BACKEND-EPOCH49-HANDOFF.md": {
+      "sha256": "6c1bd047373debaa9b5f910e3f0839d761b0220cb8b60dbb4168beb485fc39c2",
+      "trailing_whitespace_lines": []
+    },
+    "src/prototype/c_backend/acc_frame/README.md": {
+      "sha256": "b4f931e525d4326d8198c8e048e930ebeed1b93c6701f4d51dfb671651ce91af",
+      "trailing_whitespace_lines": []
+    },
+    "src/prototype/c_backend/acc_frame/build.mk": {
+      "leading_space_lines": [],
+      "sha256": "b4918c4a516ce9d05f055bd4b763283866a7c77c4c8df2023849d12b4fb91e38",
+      "trailing_whitespace_lines": []
+    },
+    "src/prototype/c_backend/acc_frame/check.sh": {
+      "leading_space_lines": [],
+      "sh_syntax_exit": 0,
+      "sha256": "248d4f0395bfd22a936cf12871833cbefd7cc146f4f0e3fc8dc1a33c66fed0b5",
+      "trailing_whitespace_lines": []
+    },
+    "src/prototype/c_backend/acc_frame/emit.c": {
+      "English_C_comments_reviewed": true,
+      "leading_space_lines": [],
+      "no_typedef": true,
+      "sha256": "d9673113cd70d3aadc0d0766e7dc8cda302707c05ba5174a09e612d389db25a3",
+      "trailing_whitespace_lines": []
+    },
+    "src/prototype/c_backend/acc_frame/emit.h": {
+      "English_C_comments_reviewed": true,
+      "leading_space_lines": [],
+      "no_typedef": true,
+      "sha256": "fef59d9dfc3f2add37cc03eeaa73a9cefbf832c0c70c1eb2a9af46facf8a4870",
+      "trailing_whitespace_lines": []
+    },
+    "src/prototype/c_backend/acc_frame/emit_test.c": {
+      "English_C_comments_reviewed": true,
+      "leading_space_lines": [],
+      "no_typedef": true,
+      "sha256": "ebe1f30b49607923102936a965c7a58167a63b3cf659e07aea854895c112d4e3",
+      "trailing_whitespace_lines": []
+    },
+    "src/prototype/c_backend/acc_frame/example/component.c": {
+      "English_C_comments_reviewed": true,
+      "leading_space_lines": [],
+      "no_typedef": true,
+      "sha256": "53f01aa8932efcd57f9395183d77402fd6779cb29f49a04dc2260a5dfb87089d",
+      "trailing_whitespace_lines": []
+    },
+    "src/prototype/c_backend/acc_frame/example/component.h": {
+      "English_C_comments_reviewed": true,
+      "leading_space_lines": [],
+      "no_typedef": true,
+      "sha256": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044",
+      "trailing_whitespace_lines": []
+    },
+    "src/prototype/c_backend/acc_frame/example/provenance.json": {
+      "sha256": "79ac358c50b19ca9213dae1cb905f1372f1f8e4cdf50d4d0d5e65739bba947a5",
+      "trailing_whitespace_lines": []
+    },
+    "src/prototype/c_backend/acc_frame/map_client.c": {
+      "English_C_comments_reviewed": true,
+      "leading_space_lines": [],
+      "no_typedef": true,
+      "sha256": "2e812d6911d1788b9039251cdbae151415add7b126dfd7a27a7e446ff9d77313",
+      "trailing_whitespace_lines": []
+    },
+    "src/prototype/c_backend/acc_frame/pack.py": {
+      "leading_space_lines": [],
+      "python_syntax_pass": true,
+      "sha256": "852214c563cd736fb16a1cecc214abc9110b8ca4c9591a6ffe517fdd44374282",
+      "trailing_whitespace_lines": []
+    },
+    "src/prototype/c_backend/acc_frame/runtime.c": {
+      "English_C_comments_reviewed": true,
+      "leading_space_lines": [],
+      "no_typedef": true,
+      "sha256": "b325609ac5b4e5a03bfe1b539b5733748c9a14ee89e7e2381c40b62e7c9c2a01",
+      "trailing_whitespace_lines": []
+    }
+  },
+  "generated_example_regenerated": true,
+  "header_declarative_reviewed": true,
+  "no_source_fixture_or_ML_comment_changes": true
+}

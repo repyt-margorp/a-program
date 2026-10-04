@@ -1,0 +1,22 @@
+[
+  {
+    "path": "src/prototype/c_backend/acc_frame/emit_test.c",
+    "sha256": "ebe1f30b49607923102936a965c7a58167a63b3cf659e07aea854895c112d4e3",
+    "copy": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch49-acc-frame-20261004/initial-inputs/emit_test.c"
+  },
+  {
+    "path": "src/prototype/c_backend/acc_frame/emit.h",
+    "sha256": "fef59d9dfc3f2add37cc03eeaa73a9cefbf832c0c70c1eb2a9af46facf8a4870",
+    "copy": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch49-acc-frame-20261004/initial-inputs/emit.h"
+  },
+  {
+    "path": "src/prototype/c_backend/acc_frame/build.mk",
+    "sha256": "b4918c4a516ce9d05f055bd4b763283866a7c77c4c8df2023849d12b4fb91e38",
+    "copy": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch49-acc-frame-20261004/initial-inputs/build.mk"
+  },
+  {
+    "path": "src/prototype/c_backend/acc_frame/emit.c",
+    "sha256": "d9673113cd70d3aadc0d0766e7dc8cda302707c05ba5174a09e612d389db25a3",
+    "copy": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch49-acc-frame-20261004/initial-inputs/emit.c"
+  }
+]

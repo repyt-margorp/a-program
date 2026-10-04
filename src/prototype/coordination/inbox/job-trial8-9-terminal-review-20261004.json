@@ -1,0 +1,11 @@
+{
+  "date_UTC": "2026-10-04T22:20:50.561134+00:00",
+  "review": "src/prototype/coordination/reviews/20261004-native-trial8-9-terminal-review.json",
+  "verified": "Results35/input8 external659/input9 external664/code126 exact. Trial8 full exit2 sole recorded make failure inventory5 missing inputs. Restored five Gitfc inputs exact, corrected syntax158 expectations0. Owner affected SAN build/core/synthesis/source/typed/occurrence/two checkpoints0; O2 retained Source26cases130commands78images initial/two inert resaves byte-exact/check-recompute0.",
+  "record_limits": "Owner terminal records omit explicit start/finish/censor flags; do not fabricate uncensored/elapsed claims. SAN core/synthesis/source/typed/occurrence/two checkpoints exit0 and binaries/flags/logs pinned; not full SAN or native joint qualification.",
+  "next": "Full unskipped acceptance after restored inventory plus existing sole SE foreign/fuel/joint/strict/public/Sorted/native wire/net/READY criteria. Keep old failures explicit.",
+  "Root_native_replay": false,
+  "READY": false,
+  "Goal_or_owner_actions": false,
+  "cost_grant_samples": 0
+}

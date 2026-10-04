@@ -1,7 +1,7 @@
 # Solver and Evidence Duplication Audit
 
 Date: 2026-09-30
-Status: Native canonical Scope code441cbd69 passes owner O2 fact/materialized controls; broad7 remains2 at deleted prefix receipt and trial8 Program0/full pending. New affected SAN/foreign cuts/joint/strict/net/READY stay open in this sole native implementation work list.
+Status: Native trial8 full acceptance2 only recorded inventory5 omissions; corrected syntax and affected owner SAN/Source inert bytes pass on unchanged code441cbd69. Full corrected broad/foreign fuel/joint/strict/net/READY remain open in this sole native implementation list.
 Parent: [artifact plan, AP0](2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md#ap0-simplify-before-extending-persistence).
 This is the active prerequisite work list, not another artifact format proposal.
 
@@ -319,6 +319,23 @@ identical TSVs in O2 and ASan/UBSan builds, including repeated samples without
 additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
+
+2026-10-04, Root static [trial8/9 terminal review](../src/prototype/coordination/reviews/20261004-native-trial8-9-terminal-review.json)
+supersedes trial8-running/SAN-pending status only for pinned owner records:
+results35, authoritative external trial8 inputs659 and corrected trial9 inputs664
+match; code126 `441cbd69` is unchanged. The copied inner657 historical manifest
+is not current input authority. Full trial8 serial make-k acceptance exits2;
+one recorded make failure is five absent syntax inputs, not a runtime verdict.
+Original log/failure retained, independent remaining groups ran. Restored sources
+match acceptedfc Git; syntax158 expectations0 qualifies syntax only. Owner
+SAN build/core/synthesis/source/typed/occurrence/two checkpoints0 and O2 retained
+Source26 cases/130 commands/78 images with initial/two inert byte equality and
+check/recompute0 are statically verified. Explicit timing/censor fields are absent.
+Adopt the corrected inventory for further owner qualification; do not infer full
+corrected broad, full SAN, exact foreign fuel/native joint, strict3/public52/
+modern imported SortedDONE/frontier/partial query/native wire inclusive net/time
+or READY. Preserve all earlier semantic failures and the existing Plan criteria;
+no Root native replay, accepted adoption or second implementation work list.
 
 2026-10-04, Root static review of original owner's
 [canonical Scope trial8 progress](../src/prototype/coordination/reviews/20261004-native-trial8-canonical-scope-review.json):
