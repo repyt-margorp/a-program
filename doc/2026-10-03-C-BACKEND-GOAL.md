@@ -115,6 +115,18 @@ names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
 
+Fresh C40 [comparison plan](2026-10-04-C-BACKEND-ACC-COMPARISON-PLAN.md):
+target206/interface13 emits38-line actual natLessOrEqual callable Nat Fold.
+Left constructor/pred snapshots, right Match before deferred left IH and actual
+Bool clauses compose with byte-exact sealed C36-C39 products. WorkerE8 terminal
+O2/full new/reused emitters-runtime-composed-client ASan/UBSan/leak33 matching
+rows each:341 Core sorts/256 Core comparisons/source/direct/lazy extreme/depth/
+malformed private tag/inert/refusal/resource controls pass.166 pins/runtime128
+exact; initial SAN setup make2 retained/corrected command only. Exact13 ready;
+task/current-producer/Main pending. Manual checked accessibility/down transports,
+storage/Nat/LT/measure/outer remain explicit; main-native/generalized/refusal/full
+#61/Goal/cost/accepted limits unchanged.
+
 Fresh C39 [accessibility plan](2026-10-04-C-BACKEND-ACC-ACCESSIBILITY-PLAN.md):
 admitted accessibility/down LT clauses contain explicit right/left Identity
 transports; read-only source/view boundary reported to Merge without a producer
@@ -691,6 +703,7 @@ Current issue status (2026-10-04 local; detailed pins stay in linked epoch plans
 | #61 actual Acc partition/helper expression lowering, C37 | New private acc_partition/ [plan](2026-10-04-C-BACKEND-ACC-PARTITION-PLAN.md): target379/interface13 lines emit86-line actual Fold/decision/lower/upper body with exact constructor-instance parameters; sealed C36 clause63 unchanged. | WorkerE8 O2/full emitters-runtime/composed-client SAN32 expected rows each match;341 Core/source/split/mutation/capture-order/early failure/malformed Bool/resource/inert/refusal4/prior-stream controls;156 inputs/runtime128 exact. Initial build2/macro composition build1 retained. No Root qualification inferred. | Separate exact13 handoff ready; task/current-producer/Main pending after sealed C32-C36. All previous immutable archives exact. | Historical C37 append remains manual; separate C38 advances it. Nat32/storage/LT primitives/accessibility/comparison/measure/outer entry remain manual. Static classifier-instance availability, depth256/node65536/Nat32/borrowed lifetime/provider interpretation limits; generic/dynamic/effect/Identity/motives and main native Acc refusal remain explicit. No full generalized/accepted/cost/#61/Goal completion. | Root review sealed partition; separate C38 actual callable append composition. |
 | #61 actual Acc callable append lowering, C38 | New private acc_append/ [plan](2026-10-04-C-BACKEND-ACC-APPEND-PLAN.md): target243/interface12 emits42-line actual callable Fold, copied original fields and deferred tail; existing gs_sort declaration in module.h, C36/C37 products unchanged. | WorkerE8 terminal O2/full emitters-runtime-composed-client SAN36 matching rows each;341 Core/source/resource/capture/deferred-tail/suffix-identity/inert/mutation/refusal4/prior-stream controls;157 inputs/runtime128 exact. Initial alias-probe abort6/build2 retained. No Root current qualification inferred. | Separate exact13 handoff ready; task/current-producer/Main pending after ordered sealed C32-C37. Earlier immutable archives exact. | Historical C38 accessibility remains manual; separate C39 emits Nat recurrence while successor/raw-down still manual. Nat32/storage/Nat/LT/comparison/measure/outer entry and original-whole-left/open/dynamic/effect/Identity/motive/main-native refusals persist; borrowed/depth256/node65536/limited SAN. No generalized/accepted/cost/#61/Goal completion. | Root review sealed append; actual accessibility transport boundary routed separately, source recurrence advances in C39. |
 | #61 actual Nat accessibility recurrence/transport boundary, C39 | New private acc_accessibility/ [plan](2026-10-04-C-BACKEND-ACC-ACCESSIBILITY-PLAN.md): target241/interface14 emits22-line actual Nat Fold/Acc construction/SEQ/IH/supplied helper call; complete Core/reference guard; sealed C36-C38 bytes unchanged. | WorkerE8 terminal O2/full emitters-runtime-composed-client SAN29 matching rows each;341 Core/source subjects/resources/inert/manual down branches/depth300/refusal controls;160 pins/runtime128 exact. Header2/premature127/alias134/unsafe provenance selection retained and corrected. Readonly typed transport/changed-Core probes O2 only; no Root current qualification. | Distinct exact13 ready; ordered task/current-producer/Main review pending. C32-C38 archives exact, only live owning Goal advances. | accessibleSucc/zero-down transport bodies remain manual: step right transport, weaken/lift left transport; routed readonly through Merge/Job, no producer bug/field claim. Exact supplied source root only; different wrappers/callbacks4. Nat32/storage/Nat/LT/comparison/measure/outer entry, borrowed/depth256/node65536/limited SAN/main-native refusal remain. No generalized/accepted/cost/full61/Goal completion. | Root review Nat recurrence; next emit actual source Nat Boolean comparison without changing transport/producer/erasure authority. |
+| #61 actual Acc Nat comparison clauses, C40 | New private acc_comparison/ [plan](2026-10-04-C-BACKEND-ACC-COMPARISON-PLAN.md): target206/interface13 emits38-line actual callable Nat Fold, right Match and deferred IH; sealed C36-C39 products unchanged. | WorkerE8 O2/full emitters-runtime-composed-client SAN33 matching rows each;341 Core sorts/256 Core comparisons/source/lazy extreme/malformed tag/depth/resource/inert/refusal4 controls;166 pins/runtime128 exact. Initial SAN setup make2 retained/corrected invocation; no Root current qualification. | Distinct exact13 ready; ordered task/current-producer/Main pending. C32-C39 archives exact; only live owning Goal advances. | Source-specific complete Core/reference and actual field/branch checks, not general selection. Manual successor/raw-down/zero-down checked transport, Nat32/storage/Nat/LT/measure/outer; borrowed/depth256/node65536/limited SAN/main-native refusal remain. No generalized/accepted/cost/full61/Goal completion. | Root review actual comparator; next bounded actual measure/outer source gap, transport interpretation already routed through Merge/Job. |
 | #61 remaining public contracts (historical #49) | General/boxed callbacks, effects, higher Identity, recursive captures and shared nominal exchange remain explicit limits; C16 advances only fixed borrowed unary/binary scalar inputs. | Local/joint gates verify supported cases and refusals, not general completion. | Historical tasks/prototype Main published; no publication of general missing contracts. | Need bounded justified representation/demand contracts. | Preserve refusals; route shared needs through Merge. |
 
 Evidence: historical [C5](2026-10-03-C-BACKEND-EPOCH5-HANDOFF.md),
@@ -843,6 +856,16 @@ pinned/current producer images and emitted C/headers match byte-for-byte.
 Evidence and exact publication files are in the [epoch handoff](2026-10-03-C-BACKEND-EPOCH1-HANDOFF.md).
 
 ### Assessment
+
+C40 agent decision: lower the actual callable Nat Fold clauses with constructor
+snapshots and deferred IH only after right Match. Preserve private source Bool
+interpretation/status convention and old Acc/partition/append/accessibility bytes.
+Test-only mathematical comparison is not the executable sorting comparator.
+Unrelated same-reference source keeps refusal; complete reference identity is a
+source-specific binding, not general association authority. The remaining actual
+algorithm gaps are measure/outer and already-routed checked down transports.
+Keep the faithful manual C33 executable distinguished from this increasingly
+generated composition; no full native/main/checker/erasure completion claim.
 
 C39 agent correction: provenance edges may retain imported Fold allocations next
 to a different selected executable. Context binder/type agreement alone was
@@ -1583,8 +1606,13 @@ this target work while Main continues SE1, superseding the earlier AP6 hold.
   accessibility recurrence with supplied/manual successor/zero-down explicit;
   terminal O2/full emitters-runtime-composed-client SAN29/Core/source/resource/
   inert/refusal controls pass, unsafe selector corrected, exact13 handoff ready.
-- [ ] Lower remaining actual accessibility/raw-down/comparison/measure/outer
+- [ ] Lower remaining actual accessibility/raw-down/measure/outer
   expressions; generated Acc/partition/append is not full native Acc completion.
+- [x] C40: emit actual Nat callable comparison clauses and lazy right-before-IH;
+  terminal O2/full emitters-runtime-composed-client SAN33/Core sorting341/
+  comparison256/source/refusal/resource/inert controls pass, exact13 handoff ready.
+- [ ] Lower remaining actual measure/outer and owner-routed checked down transport
+  expressions; manual/generated/public-main distinctions remain explicit.
 - [ ] Maintain the single issue table at material events and within six active
   hours; use brief pointer/hash notices and keep Core workflow in Assessment.
 - [ ] Coordinate further bounded target ABI/lowering increments under the latest
