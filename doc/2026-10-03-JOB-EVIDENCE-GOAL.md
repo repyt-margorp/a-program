@@ -1,7 +1,7 @@
 # Job/Evidence Implementation Handoff
 
 Date: 2026-10-03
-Status: bounded E1-E4/E6-E21 prototypes verified/Main integrated; E22 focused only, SE1-SE5 unfinished.
+Status: bounded E1-E4/E6-E22 prototypes verified/Main integrated; E23 focused only, SE1-SE5 unfinished.
 Branch: `parallel/job-evidence-20261003`.
 Producer checkpoint: `64df10dfb6caf69226cebb401b88714541334768`.
 Related: [coordination](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md),
@@ -78,6 +78,19 @@ Earlier workflow requirements: independent worktrees, `/goal`, `6.1 Sol` at
 only Core merges Main. Prototype integration is not accepted-source promotion.
 
 ### Objective (Code)
+
+2026-10-04, E22 READYf4b884b6/correctionca3f2c98 exact31/233fa25a/transport813b2762
+verified on separate E18 task. Source156/actual471/raw28/control7/canonical2/
+public52/all35-fourcut census exact, isolated broad0/C0/strict1 retained.
+Fresh currentE21+MEM9 source1285235ee3c:30 expected producer and33 C27 records,
+381 C-H/public52/full TSV exact E21. Task69ceadfa/Mainb060684f
+pushed/all31 bytes exact, original Job HEAD/index/no input unchanged.
+[E22 receipt](../src/prototype/solver_inputs/joint_verification/e22-main-integration-review.json).
+E23 focused original11/corrected12 payloads and three source156/raw23/delta2
+verify: two repeated1024 copied-map arena assertions134, candidate full Source/
+six boundaries O2SAN0; initial helper-name setup1 and label correction retained.
+[E23 focus](../src/prototype/solver_inputs/joint_verification/e23-focused-failed-capture-root-review.json)
+is isolated private E22/source-only inspection, full READY/current pending.
 
 2026-10-04, superseding E21 READYf1cf58f0: immutable exact33/02fb2e4a
 transport061c0618 independently verified; all four claimed canonical digests
@@ -176,6 +189,16 @@ definition checks, failures and real quotation proofs must remain correct.
 This is a candidate deletion, not user approval of a solution or the full Goal.
 
 ### Assessment
+
+2026-10-04, Root E22 bounded integration decision: reuse existing canonical
+pending-owner membership for Source capture/mapping, replacing duplicate tag
+checks. Runtime6+/2-, permanent tests47+, standalonecontrol15+ (original16+
+notice superseded). No new index/graph/factory/authority/fuel/evaluator/readback.
+Five current parent admission gaps reproduced; completed prepare already refuses.
+External Quick cumulative-88320 is observed, not causal/net/peak/time gain.
+E23 defers permanent record allocation until mappings pass, only covers that
+failure path; full/current qualification pending. Strict3/codec/SE/AP/full current
+acceptance/cost/adoption remain. No new original Job inbox/pane input or resume.
 
 2026-10-04, Root E21 bounded integration decision: release detached waits into
 existing free_waiters and reserve only shortfall before validated schedule

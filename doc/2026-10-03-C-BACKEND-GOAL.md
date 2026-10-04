@@ -104,6 +104,11 @@ names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
 
+2026-10-04, later fresh C27 qualification after E22: current source1285235ee3c,
+all33 expected records and381 C-H files byte-exact E21. E22 exact31/current30
+producer delivered without C27 runtime/ABI/source-policy change.
+[Root C27 review](../src/prototype/c_backend/verification/core-epoch27.json).
+
 2026-10-04, fresh Root C27 on qualified current E21+MEM9 source128b532b759:
 exact20 task4b9c10941418fd431db380ead13dd4a68732f825 pushed/remote exact. StrictO2
 backend/seven helpers rebuilt, exact qualified producer reused. All36 expected

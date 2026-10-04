@@ -1,0 +1,14 @@
+{
+  "date_UTC": "2026-10-04T07:07:30.497081+00:00",
+  "provenance": "Root operational review under existing human-authorized scope, not new human approval.",
+  "recipient": "Original C owner; durable only, no TUI input/resume or consumption claim.",
+  "receipt": "src/prototype/c_backend/verification/core-epoch27.json",
+  "receipt_sha256": "476234bb65575d3259d61bcf0b3734b55360865f0bf6fad9bfc5c39d552afb67",
+  "C27_task": "4b9c10941418fd431db380ead13dd4a68732f825",
+  "C27_prototype_Main": "89711d736ca7b3fe6a6199dcd35ede44bd636513",
+  "E22_task": "69ceadfaf2f9f2ca017be9dd51e1b3376e80be06",
+  "E22_prototype_Main": "b060684fc6864665018ebd660365a7710f997589",
+  "current_E22_source128": "5235ee3cac894d821098f030f413547efc6d044d87ae2385d16d77164363d277",
+  "Root_C27_current33_sha256": "5f33001338785736440e7a404decc9d117dcb2be32adcad5160bf8cdd76c5a89",
+  "decision": "C27 exact20 task and Main other19 frozen bytes pushed/remote exact; Goal provenance reconciled/live files preserved. Fresh E21 all36/64 parent-pairs and E22 all33/381C-H matches verified. Separate signed opt-in/code-context borrowed ABI remains, limited SAN/full61/native indexed AccQuickSort/actual cost/adoption open. Continue distinct owned increments, preserve immutable task/source/failure pins; no accepted promotion/new cost grant/Goal closure."
+}

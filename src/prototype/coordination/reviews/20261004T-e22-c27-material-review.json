@@ -1,0 +1,378 @@
+{
+  "review_UTC": "2026-10-04T07:07:30.497081+00:00",
+  "Main_at_review": "b060684fc6864665018ebd660365a7710f997589",
+  "review_trigger": "C27 and E22 immutable READY delivered, corrected control line count, current-frame cumulative/cost proposal HOLD and E23 private retention focus; existing scope, evidence not approval.",
+  "preceding_review_path": "src/prototype/coordination/reviews/20261004T-e21-material-review.json",
+  "preceding_review_sha256": "a15863249d589a0c9cd16d97e23ca22ee8c024913ab1701da9f7997496f5d535",
+  "owners": {
+    "C": {
+      "pane": "%0",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-final-owner-status/C.txt",
+      "sha256": "a719b1c5dfdb99f1edacb0aef52a75484770ae4e18545394b3ee4d69ec1ea600",
+      "status": "pursuing",
+      "last_lines": [
+        "    131 +3. `doc/2026-10-04-C-BACKEND-EPOCH28-HANDOFF.md`",
+        "    132 +4. `src/prototype/c_backend/README.md`",
+        "    133 +5. `src/prototype/c_backend/predicate_signed_units/build.mk`",
+        "    134 +6. `src/prototype/c_backend/predicate_signed_units/provider.p`",
+        "    135 +7. `src/prototype/c_backend/predicate_signed_units/provider.aplink`",
+        "    136 +8. `src/prototype/c_backend/predicate_signed_units/consumer.aplink`",
+        "    137 +9. `src/prototype/c_backend/predicate_signed_units/adapter.h`",
+        "    138 +10. `src/prototype/c_backend/predicate_signed_units/adapter.c`",
+        "    139 +11. `src/prototype/c_backend/predicate_signed_units/client.c`",
+        "    140 +12. `src/prototype/c_backend/predicate_signed_units/wrong_type.c`",
+        "    141 +13. `src/prototype/c_backend/predicate_signed_units/check.sh`",
+        "    142 +",
+        "    143 +Retained directory `src/prototype/c_backend/.evidence/epoch28-signed-units-20261004`:",
+        "    144 +`epoch28-files.sha256`, `epoch28-submitted-snapshot.tar`, `epoch28-runs.sha256`,",
+        "    145 +`epoch28-freeze.json`, `verification.json`, source deltas and style evidence.",
+        "    146 +Freeze/notice pin exact hashes without circularly hashing this handoff. Exclude",
+        "    147 +scratch/evidence/outbox from publication files. Preserve every submitted snapshot",
+        "    148 +when distinct later live work continues.",
+        "",
+        "\u2022 Working (22m 42s \u2022 esc to interrupt)",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/c-backend \u00b7 Verify Surface index.lock handoff          Pursuing goal (1d 0h 8m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    },
+    "Performance": {
+      "pane": "%1",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-final-owner-status/Performance.txt",
+      "sha256": "a1acf3a6dee5d9b25cd9a41b4292a0708ee73e33fdb794b38c3893feebb9b299",
+      "status": "pursuing",
+      "last_lines": [
+        "        nch | Historical costs cannot transfer to current c414. Paired6/146/inert29/48, strict3/V1",
+        "        /V2/observer/SAN7 and setup failures remain. External audit omits graph.c internal calls/m",
+        "        alloc/index arrays; LocalSorted -329/-45168 leaves33792 against frame-only accounting, att",
+        "        ribution rejected. Capacity/counts are not RSS/peak/dead memory; offsets not binary ABI |",
+        "        Root review/new exclusive slot for exact36 current costs, separate from original codec-own",
+        "        er byte disposition/full acceptance. Reconcile exact published MEM2/3/4/5 absent on curren",
+        "        t80b in a separate owned epoch, with focused fuel/cut/SAN/borrowed guards. Null-state task",
+        "         pooling inapplicable; no publication wait or held MEM10/6/7/owner change |",
+        "    97  | #56 / MEM2: preserve captured lexical state before environment deletion | Rejected priva",
+        "        te semantic-body beta elision patch `c3c91bd3`; new semantic capture/codec control `e70c00",
+        "        39` on current v3/E12 `0deb36a7` | Four O2/SAN builds0;14 executions preserve six semantic",
+        "         failures in candidate local or candidate-image reads. Parent local/parent-image reads pas",
+        "        s; expected value2steps becomes unbound binder1step. No sanitizer diagnostic; control avoi",
+        "        ds physical-layout assertions | Private rejected30 evidence `0573b9be` frozen; no runtime",
+        "        publication/integration or current-parent defect claim | Existing public captured configur",
+        "        ation roots require this binding even when ordinary caller returns a constant; reject gene",
+        "        ric elision, retain failure without adapter | Defer generic apply-node reuse without lifet",
+        "        ime proof; qualify narrower IADT empty-tail spine deletion separately |",
+        "",
+        "\u2022 Working (13m 53s \u2022 esc to interrupt)",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-progra\u2026 Pursuing goal (1d 4h 55m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    },
+    "Job": {
+      "pane": "%4",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-final-owner-status/Job.txt",
+      "sha256": "a0d53999cfe2e1ad24cec708cf8a9b65f05b2692fc9940c38b311b3f231e6020",
+      "status": "pursuing",
+      "last_lines": [
+        "    24 +        digest, path = row.split('  ', 1)",
+        "    25 +        assert hashlib.sha256((root / path).read_bytes()).hexdigest() == digest, path",
+        "    26 +    (ev / name).write_bytes((old / name).read_bytes())",
+        "    27 +helper = Path('/tmp/job-evidence-e23-followups.py')",
+        "    28 +assert not helper.exists()",
+        "    29 +helper.write_text(Path('/tmp/job-evidence-e22-followups.py').read_text().replace('job_evid",
+        "        ence_e22', 'job_evidence_e23').replace('job_evidence_epoch22', 'job_evidence_epoch23'))",
+        "    30 +print(json.dumps({'requests_prepared_not_launched': True, 'source156': source_digest, 'par",
+        "        ent156': parent_digest}))",
+        "",
+        "\u2022 Ran python3 /tmp/job-evidence-e23-prepare-followups.py",
+        "  \u2514 {\"requests_prepared_not_launched\": true, \"source156\":",
+        "    \"71cba39eafe479372323d71c7a886211d097e9b858be8b21c3402937708ac5fe\", \"parent156\":",
+        "    \"6491c0601bbfee817afe118bc3017a2d419cc539b9e4b8683772ab5cdea729fa\"}",
+        "",
+        "\u2022 Explored",
+        "  \u2514 Read 2026-09-30-SOLVER-EVIDENCE-DUPLICATION-AUDIT-AND-PLAN.md",
+        "",
+        "\u2022 Compacting context (54s \u2022 esc to interrupt) \u00b7 1 background terminal running \u00b7 /ps to view \u00b7 /st\u2026",
+        "  \u2514 Making room to continue.",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-\u2026 Pursuing goal (17h 19m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    },
+    "Static": {
+      "pane": "%10",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-final-owner-status/Static.txt",
+      "sha256": "78bb10a3cf4642e5d31a7efbab1b96084a08cb1efff96e6ae40915116c32a895",
+      "status": "achieved",
+      "last_lines": [
+        "    4 +Config1c6a4ccd/wrapperca88b919/launcher291bd2ba and original keya99a7753 remain exact; light preservation check confirms their hashes and absence of /tmp",
+        "       /verification-audit-e6-cost-output-20261003. Cost stays DEFERRED/unmeasured; no audit collector/tool/launcher, timing, gate or build has run. Correctness",
+        "        workers remain released under your decision.",
+        "    5 +",
+        "    6 +Preserve ended-window metadata/proposals for later separate exclusive scheduling on a qualified producer; a later execution requires fresh producer/depen",
+        "       dency/remaining-cap review and a new explicit grant. Static five-file task7ed3ad1/integration5683755 delivery is unchanged. Later live plan receipt stays",
+        "        outside the freeze. No permanent collector or extra semantic ledger was added; prior notices/snapshots and no-output/no-timing condition are preserved.",
+        "",
+        "\u2022 Ran python3 - <<'PY'",
+        "  \u2502 from pathlib import Path",
+        "  \u2502 import hashlib",
+        "  \u2502 \u2026 +5 lines",
+        "  \u2514 Review receipt: 1191 bytes; SHA-256 1e8b99182da029cc62daacc9ce2cb6bbb79e5b79ba173b9aeba6c7f79dc5569f",
+        "",
+        "\u2022 Review receipt recorded for Merge (src/prototype/coordination/outbox/verification-audit-11-review-receipt.txt). Config and key remain unchanged; no audit",
+        "  outputs or timing exist.",
+        "",
+        "  Bounded static delivery remains complete. Cost is deferred and unmeasured; full Issue 59 stays open pending later exclusive scheduling.",
+        "",
+        "  Worked for 1m 15s \u2022 17:54",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/verification-audit \u00b7 Hand off static inventory              Goal achieved (50m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    },
+    "Sort": {
+      "pane": "%11",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-final-owner-status/Sort.txt",
+      "sha256": "2366aafdf6f7b87b02cf7a09dcdeb98b67e180c6c4d9bc4355c91b7a5374488e",
+      "status": "achieved",
+      "last_lines": [
+        "    +117 lines (ctrl+t to view transcript)",
+        "",
+        "\u2022 The SOAP snapshot and owning plan now classify the follow-up as Merge agent direction, with human requirements explicitly sourced to F0. Hash checks confirm",
+        "  all +301 implementation, fixture, and runner lines and both test logs are unchanged. I\u2019m sending the final corrected freeze pins now.",
+        "",
+        "\u2022 Ran python3 - <<'PY'",
+        "  \u2502 from pathlib import Path",
+        "  \u2502 import hashlib,json,datetime,subprocess",
+        "  \u2502 \u2026 +66 lines",
+        "  \u2514 Verified only SOAP/provenance metadata differ from original 10-path freeze; source/fixtures/runners/README/logs exact.",
+        "    FINAL_MANIFEST_SHA256 e0adf408179cfde0a98ec11c448ef5967c3d945c2c198e7e79a93456208f21eb",
+        "    FINAL_NOTICE_SHA256 2f7c99e62b67d5a9eecc61ae7878d35023244d7bdeeb1f375b0073f558344259",
+        "    +1 line (ctrl+t to view transcript)",
+        "",
+        "\u2022 Corrected provenance in the SOAP snapshot and owning plan: Merge\u2019s follow-up is agent operational direction; human requirements explicitly cite F0.",
+        "",
+        "  Refrozen and wrote the final corrected ready notice (src/prototype/coordination/outbox/finite-functions-ready-provenance-final.txt). All +301 implementation/",
+        "  fixture/runner lines and test logs remain byte-identical. No rerun, accepted changes, new Goal, or duplicate worker.",
+        "",
+        "  Worked for 6m 44s \u2022 19:14",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/sort-library \u00b7 Start authorized sort worker                 Goal achieved (24m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    },
+    "Tests": {
+      "pane": "%12",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-final-owner-status/Tests.txt",
+      "sha256": "5f954f7814c2780d0ad550c136771325568064f019084fd2f370e86d947c59b7",
+      "status": "achieved",
+      "last_lines": [
+        "",
+        "\u2022 Implemented and verified prototype reductions: 22 duplicate invocations removed, with 13 fewer applied lines after counting the helper.",
+        "",
+        "   Applied file        Added    Deleted",
+        "  \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501  \u2501\u2501\u2501\u2501\u2501\u2501\u2501  \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501",
+        "   compatibility.sh       19         54",
+        "  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500  \u2500\u2500\u2500\u2500\u2500\u2500\u2500  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500",
+        "   quick_result.sh         0          3",
+        "  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500  \u2500\u2500\u2500\u2500\u2500\u2500\u2500  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500",
+        "   overlay.sh             25          0",
+        "",
+        "  Original/reduced outcomes match; ten injection checks pass. All 47 completed combined recipes pass. E9/E10 controls, strict3 and unsafe E11 failures remain",
+        "  preserved. The unchanged derived-LT run is recorded as incomplete after its 600-second cap. Wall/RSS savings are unmeasured.",
+        "",
+        "  Exact Merge handoff and full per-file counts (src/prototype/coordination/outbox/test-suite-20261003-final-handoff.txt) are frozen. Git staging is blocked by",
+        "  read-only shared metadata. Accepted files remain untouched; Issue59 stays open.",
+        "",
+        "  Goal complete; elapsed time approximately 38 minutes.",
+        "",
+        "  Worked for 38m 29s \u2022 22:34",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/test-suite \u00b7 Simplify and deduplicate tests                 Goal achieved (37m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    },
+    "Issues": {
+      "pane": "%14",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-final-owner-status/Issues.txt",
+      "sha256": "e84183474d66a75d97cfdbf9e074145ad23bec52e1db0572a955d05ba2bd7e95",
+      "status": "achieved",
+      "last_lines": [
+        "  \u2022 Wrote the frozen handoff to Merge\u2019s outbox.",
+        "",
+        "  No code changes or Main integration.",
+        "",
+        "  Worked for 24m 3s \u2022 22:20",
+        "",
+        "",
+        "\u203a Root fresh GitHub reread verifies all10 exact comment-body hashes, #61 exact body/open, #44/#49 closed/not_planned, final9 issue set. Frozen2 handoff hashes",
+        "  verified; exact one-plan task publication and Main integration completed, push finishing. Initial Main desk plan preserved privately. Bounded audit delivery",
+        "  meets criteria; do completion accounting and remain stopped/available afterward, no further disposition run. Sole writer handoff finished, Root resumes",
+        "  coordination. No new semantic/accepted policy.",
+        "",
+        "",
+        "\u2022 I\u2019ll confirm the completion accounting. The audit remains stopped, and Root has resumed coordination.",
+        "",
+        "\u2022 Goal confirmed complete. Recorded usage: 216,461 tokens, 23m 50s.",
+        "",
+        "  The audit remains stopped and available for follow-up. Root owns coordination; no further dispositions will run.",
+        "",
+        "  Worked for 26s \u2022 22:31",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/issue-audit \u00b7 Record audit ownership receipt                Goal achieved (23m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    }
+  },
+  "issues": [
+    {
+      "number": 61,
+      "title": "C backend residuals: selected-export admission, Identity and native lowering",
+      "updatedAt": "2026-10-03T13:11:54Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/61",
+      "body_sha256": "41872697f2356c60e77c7f4d5c481705f03d5d3ae5d83618194b090a76e7451a"
+    },
+    {
+      "number": 59,
+      "title": "Audit verification debt: semantic test inventory, lifecycle and implementation progress accounting",
+      "updatedAt": "2026-10-03T13:08:50Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/59",
+      "body_sha256": "7c8c563717262b330d0bcb2fdb7ec3454b206d223e9461c7fcbe518b74e07657"
+    },
+    {
+      "number": 57,
+      "title": "Correct Function Graph named-binding polarity and define explicit syntax migration",
+      "updatedAt": "2026-10-03T13:08:54Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/57",
+      "body_sha256": "5cc775e0494e7fe6b2c53cb5da989ad857f0f16afa794d24827db6a997cb0279"
+    },
+    {
+      "number": 56,
+      "title": "Recover and revalidate checker head/readback optimizations with Effort and persistence gates",
+      "updatedAt": "2026-10-03T13:08:58Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/56",
+      "body_sha256": "52d4c5e60b5b499ff1d99b64d5ac4367bbd5119b2beb9a245f17ce9fbc3afd2f"
+    },
+    {
+      "number": 52,
+      "title": "Design: checked equality reuse before adaptive compilation and equality saturation",
+      "updatedAt": "2026-10-03T13:09:06Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/52",
+      "body_sha256": "a270ef5933cab792d4e511eed2561b3bcffde014f13ffbf757e08df9a254c806"
+    },
+    {
+      "number": 51,
+      "title": "Audit follow-up: reproducible size and semantic-owner anti-regression gates",
+      "updatedAt": "2026-10-03T13:09:01Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/51",
+      "body_sha256": "b52ce7f7e49279990ba5b8b53a739436d153b62f6af8c6feef75a829bd7e589e"
+    },
+    {
+      "number": 47,
+      "title": "Design runtime relevance and safe compilation admissibility for partial artifacts",
+      "updatedAt": "2026-10-03T13:09:14Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/47",
+      "body_sha256": "bb2b1b52fbdbdba494a4a5a5cb369bb4b10500a0a1ec577a271a3aa147af6dd8"
+    },
+    {
+      "number": 43,
+      "title": "Open question: computation-level general recursion, loop syntax and logical boundaries",
+      "updatedAt": "2026-10-03T13:09:10Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/43",
+      "body_sha256": "ecd1df90dd66e3b3f4df97abceb23eaf8047e03f74932c4a8982d3ace3fa9f9e"
+    },
+    {
+      "number": 41,
+      "title": "Design audit: finite-container sorting, lawful views and position permutations",
+      "updatedAt": "2026-10-03T13:09:17Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/41",
+      "body_sha256": "e539925b68f41a5e3b22f95f8b53f763aec5d86f10f1a190fbdd984cb092e72c"
+    }
+  ],
+  "issues_raw_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-final-owner-status/issues.json",
+  "issues_raw_sha256": "fbae87f585dfc4611497d8cdb89edde9a5dac570de7844ba1a8a260287cf0d53",
+  "open_PRs": [],
+  "fresh_nine_issue_bodies_dates_unchanged": true,
+  "issue_criteria_assessment": {
+    "61": "C27 exact20/currentE21_36/currentE22_33+381C-H qualified/prototype delivered. Signed borrowed samewidth Int32/64->enum callbacks separately opt-in; foreign ABI comparison not admitted source comparator/native indexed AccQuickSort. Pure-total/provider/readable immutable/lifetime/nonoverlap/depth256/limitedSAN and full61/cost/adoption remain; C28 owned work private/unreviewed.",
+    "56": "Frame c414->80b4 cumulative15/private21/all280/raw14 exact fuels recomputed; Tree400 cumulative bytes-2727350880, LocalSorted residual33792 rejects frame-only attribution. Costproposal14/36/all297 normalO2 provenance verified but slot deferred/ungranted. Byte paired6/146/inert29/48 and every historical failure held; full acceptance/codec/current E22 composition/actual RSS-time open.",
+    "51": "E22 exact31/current30/C27 downstream33+381C-H qualified/prototype delivered. Source canonical membership removes five copied-owner admission gaps, completed prepare existing rejection. E23 isolated focused retention controls reviewed, full READY/current pending. Strict3/fullSE-AP/current acceptance/codec/cost/adoption open.",
+    "59": "Bounded static inventory and test-consolidation pilot delivered, unique controls preserved. Controlled actual cost and full suite lifecycle/adoption remain deferred; completed bounded owners stay stopped.",
+    "57": "Surface prototype delivered; accepted polarity migration and selector diagnostics/design remain separate unresolved criteria.",
+    "52": "Checked equality-reuse design remains separate; source storage/C capture changes do not implement it.",
+    "47": "General relevance/partial-artifact admissibility design remains open; private type/capture binding gives no pending-evidence or erasure authority.",
+    "43": "General recurrence/logical boundary remains a user design decision; no new syntax/rules implemented by these epochs.",
+    "41": "Finite-function/Sort bounded prototypes delivered; wider container/view/position laws and accepted interface choice remain separate."
+  },
+  "new_material_receipts": {
+    "src/prototype/c_backend/verification/core-epoch27.json": "476234bb65575d3259d61bcf0b3734b55360865f0bf6fad9bfc5c39d552afb67",
+    "src/prototype/solver_inputs/joint_verification/e22-main-integration-review.json": "85b7d717cfd24b1deaa319c7a39478805ea986ecd8f55624f4de6916ed80f612",
+    "src/prototype/performance_followup/current-frame-v3-cumulative-cost-proposal-held-root-review.json": "3b9f789ccd4c5aada280dad3fc5867118d3f4d26790c75466f1d93a79f353c77",
+    "src/prototype/solver_inputs/joint_verification/e23-focused-failed-capture-root-review.json": "61b0abe41fcd8d4ed54780ef78fbce06f900500a7978e98906390c5d32aa1922"
+  },
+  "new_durable_owner_routes": {
+    "Performance": {
+      "Main_path": "src/prototype/coordination/inbox/performance-current-frame-cumulative-cost-root-review-20261004.json",
+      "original_path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/coordination/inbox/performance-current-frame-cumulative-cost-root-review-20261004.json",
+      "sha256": "7fd8fd36bf4c3333817a9b6890c1498f099b1b28500b287dfe000f70e224007e",
+      "TUI_input_resume_or_consumption_claim": false
+    },
+    "C": {
+      "Main_path": "src/prototype/coordination/inbox/c-backend-c27-e22-current-root-review-20261004.json",
+      "original_path": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/coordination/inbox/c-backend-c27-e22-current-root-review-20261004.json",
+      "sha256": "c06c35ad27f8302b07489a3fbe3ab21fb7b8397fe256a077653b60233dd3b590",
+      "TUI_input_resume_or_consumption_claim": false
+    }
+  },
+  "Root_Goal": {
+    "fresh_service_status": "blocked",
+    "tokensUsed": 3262854,
+    "timeUsedSeconds": 25296,
+    "incomplete_no_resume_or_complete": true
+  },
+  "fresh_Root_service_goal_still_blocked_incomplete": true,
+  "original_Job_HEAD_index_preserved": true,
+  "human_direct_Job_conversation_preserved_no_Root_input_resume": true,
+  "timer_capture": "    PID                  STARTED COMMAND\n1674731 Sat Oct  3 18:31:03 2026 node /home/repyt/workspace/a-program/src/prototype/coordination/watch_core.cjs 01a100b3-1d83-7090-bbf6-62544c39ec4b --new-only --heartbeat-seconds=21600 --heartbeat-first-seconds=15197.714 /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/coordination/outbox /home/repyt/workspace/a-program-workers/performance/src/prototype/coordination/outbox /home/repyt/workspace/a-program-workers/c-backend/src/prototype/coordination/outbox /home/repyt/workspace/a-program-workers/verification-audit/src/prototype/coordination/outbox /home/repyt/workspace/a-program-workers/sort-library/src/prototype/coordination/outbox\n",
+  "next_review_UTC": "2026-10-04T07:44:22.084Z",
+  "original_timer1674731_watcher1585465_alive_unchanged": true,
+  "protected9_exact": true,
+  "bounded_worker_handoffs": {
+    "Static": {
+      "last_handoff_path": "/home/repyt/workspace/a-program-workers/verification-audit/src/prototype/coordination/outbox/verification-audit-11-review-receipt.txt",
+      "last_handoff_sha256": "1e8b99182da029cc62daacc9ce2cb6bbb79e5b79ba173b9aeba6c7f79dc5569f",
+      "current_original_pane_achieved_stopped": true
+    },
+    "Sort": {
+      "last_handoff_path": "/home/repyt/workspace/a-program-workers/sort-library/src/prototype/coordination/outbox/finite-functions-ready-provenance-final.txt",
+      "last_handoff_sha256": "2f7c99e62b67d5a9eecc61ae7878d35023244d7bdeeb1f375b0073f558344259",
+      "current_original_pane_achieved_stopped": true
+    },
+    "Tests": {
+      "last_handoff_path": "/home/repyt/workspace/a-program-workers/test-suite/src/prototype/coordination/outbox/test-suite-20261003-final-handoff.txt",
+      "last_handoff_sha256": "4432e3d1f2b645352146e833f69ca3aa1cfa3a17ddb0544bfdf4cd5629086c61",
+      "current_original_pane_achieved_stopped": true
+    },
+    "Issues": {
+      "last_handoff_path": "/home/repyt/workspace/a-program-workers/issue-audit/src/prototype/coordination/outbox/issue-audit-05-final-handoff.txt",
+      "last_handoff_sha256": "bfbabb9b39aaef55b9c531cedf2c8a3e13ead9f0dd7e2650cb0d8d165992ffca",
+      "current_original_pane_achieved_stopped": true
+    }
+  },
+  "bounded_workers": "Static/Sort/Tests/Issues achieved/stopped; Surface/AIze historical delivered/stopped; no restart.",
+  "no_owner_resumed_duplicated_or_model_changed": true,
+  "accepted_source_test_build_edits_cost_grant_byte_waiver_or_Goal_completion": false
+}

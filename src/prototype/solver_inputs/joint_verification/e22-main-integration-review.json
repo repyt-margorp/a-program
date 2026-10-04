@@ -1,0 +1,477 @@
+{
+  "review_UTC": "2026-10-04T07:07:30.497081+00:00",
+  "publication": {
+    "task": "69ceadfaf2f9f2ca017be9dd51e1b3376e80be06",
+    "task_parent": "a8f52a015f73fe7cfa067c3d5b122bef7e4532b4",
+    "task_branch": "refs/heads/parallel/job-evidence-e22-20261004",
+    "Main_parent": "89711d736ca7b3fe6a6199dcd35ede44bd636513",
+    "Main_merge": "b060684fc6864665018ebd660365a7710f997589",
+    "exact31_task_and_Main": {
+      "src/prototype/solver_inputs/artifact_source.c.patch": "0f6e7bff546fb9ceea1d453b72a3f56cf6e110e683103bb6b3451864e238252d",
+      "src/prototype/solver_inputs/checkpoint_test_patches/source_checkpoint_test.c.patch": "a78bab355020287c33321117e301294f48fbcefe5dbf674efe557eb4528f0bea",
+      "src/prototype/solver_inputs/controls/source_frontier_copied_owner.c": "d81f40e54e197723f336480b046f70ee919f28039f084f1642dc7275a412c784",
+      "src/prototype/solver_inputs/epochs/job_evidence_e22_lean/applied.patch": "03dfd468b455a3ebfa05e5cc25b28635919349519d5d4642045486c0e271abe7",
+      "src/prototype/solver_inputs/epochs/job_evidence_e22_lean/applied_delta.json": "42efd826b1c994df98cdb75fd9ef9e4c9642399b646b4fefb04fc4343e8254a3",
+      "src/prototype/solver_inputs/epochs/job_evidence_e22_lean/canonical.sha256": "eb4f8bce396b52171472a2aaf810e2853707f6da6a6fc7295eb8f4e68c259ab5",
+      "src/prototype/solver_inputs/epochs/job_evidence_e22_lean/census.mk": "c388d93e7e085ec291fb80ba9846791c64faeffabfb8a54b918f0a39cd1b578a",
+      "src/prototype/solver_inputs/epochs/job_evidence_e22_lean/census_comparison.json": "0d33dbc427a28d3570fd3e97a7be9ba9063f9b9f3a1e08711da078e1fc295188",
+      "src/prototype/solver_inputs/epochs/job_evidence_e22_lean/census_counts.tsv": "8d51098306ff2507712743bf07f6107a34e7a7e3a76fab0a6a6a6e2856ca2dd7",
+      "src/prototype/solver_inputs/epochs/job_evidence_e22_lean/census_inputs.sha256": "904037c6e9bb80125f3924ab45124953d0a587f17746ea7dafb033aa85ea2b45",
+      "src/prototype/solver_inputs/epochs/job_evidence_e22_lean/control_inputs.sha256": "910847ab93625f26fc85eaa16a45287e1d234b46dd2d4d17f53e93fb5e93033c",
+      "src/prototype/solver_inputs/epochs/job_evidence_e22_lean/copied_owner.mk": "2c8f254e321187365bfaf106e9eab4ec49726a54594230471675dc76a6941be2",
+      "src/prototype/solver_inputs/epochs/job_evidence_e22_lean/counterexample_classification.json": "1d64d5c9cb02e7da65ffe2d9b65afccd95cbb7a627ae07cf860c057a2746c920",
+      "src/prototype/solver_inputs/epochs/job_evidence_e22_lean/fresh_assembly.json": "f8bf1df9f245df1b55b30931a4fa87522d162b77eadc1b35dc0737f72f0aeb79",
+      "src/prototype/solver_inputs/epochs/job_evidence_e22_lean/initial_preparation_failure.json": "08872e42ab45db03cb28cb0c58cad50e3464aef1df52b9c51c319961deafb594",
+      "src/prototype/solver_inputs/epochs/job_evidence_e22_lean/initial_preparation_request.py": "6806565d34b411bf443195e7ea4f2924f03471ba0d07b32e57bfdcd242c3925f",
+      "src/prototype/solver_inputs/epochs/job_evidence_e22_lean/measurements.tsv": "b9280cd5b53dbf36658fb1e53d2bfb645987caa11b8d687a6e36f969589be155",
+      "src/prototype/solver_inputs/epochs/job_evidence_e22_lean/overlay_inputs.sha256": "2a4fe10e020ab9aedac4107aec79805ef00a01f6a50bad044d5a20f98af05d09",
+      "src/prototype/solver_inputs/epochs/job_evidence_e22_lean/parent_control_sources.sha256": "1868274cccae998d832d3a09eceae92752f4904bf87ff8ad9eeaffd85fb76984",
+      "src/prototype/solver_inputs/epochs/job_evidence_e22_lean/parent_sources.sha256": "02241bd2fa031584e176ae16cbcebd825ec834e8e5bea4ea33f22e66ac4ae2ea",
+      "src/prototype/solver_inputs/epochs/job_evidence_e22_lean/public_images.sha256": "d60b558302023b93fab58020a40e97d24debea8230a522ff66ede886ea798966",
+      "src/prototype/solver_inputs/epochs/job_evidence_e22_lean/public_partitions.tsv": "1d6aa050e77aae18dcb2cb0305e7a5ce7e99fadb81a3cd427ac38755d2656729",
+      "src/prototype/solver_inputs/epochs/job_evidence_e22_lean/publication_parent.txt": "fb257a47ae85476ead8e2b68994acfe519d49b7c5db44e0f4b413b3391f3ab69",
+      "src/prototype/solver_inputs/epochs/job_evidence_e22_lean/report.md": "be78a263a209b000009444811e8e1beb64cbab15cdf45a65e10107213f18b58a",
+      "src/prototype/solver_inputs/epochs/job_evidence_e22_lean/requests.json": "cff38e8be19dcdacec249cc6dbb529d45f24eaa5c3307f5729a7121055b8479b",
+      "src/prototype/solver_inputs/epochs/job_evidence_e22_lean/strict_comparison.json": "45d561c5da1fb70cec40bee7791518cea5098741bbc395818adc6c7d0d12dc06",
+      "src/prototype/solver_inputs/epochs/job_evidence_e22_lean/supplemental_inputs.sha256": "046261dae872cf6b3422a300d9a841c05b75e9d3e17054de8715c2ba938b96d1",
+      "src/prototype/solver_inputs/epochs/job_evidence_e22_lean/tested_sources.sha256": "6491c0601bbfee817afe118bc3017a2d419cc539b9e4b8683772ab5cdea729fa",
+      "src/prototype/solver_inputs/epochs/job_evidence_e22_lean/verification.json": "650a911f4101693431f6dcf9bf009460f4f8609c226fc923c55e568b8f512233",
+      "src/prototype/solver_inputs/epochs/job_evidence_e22_lean/verification.tsv": "86c88dd803b6d31fc3ea6797a10a128cc289255d0311dfd1b5717e23b7d3ceff",
+      "src/prototype/solver_inputs/epochs/job_evidence_e22_lean/manifest.sha256": "233fa25a46c25a8f8dc378a9ca88da71aa8d3f075aa11e95cdf6b646bcc745d6"
+    },
+    "task_Main_remote_exact": true,
+    "canonical_two_Main_old_exact_E18_and_new_exact_tested_transport": {
+      "src/prototype/solver_inputs/artifact_source.c.patch": "5fa7e0bdbedac85f09a762e8a9f243f390268f71f45b7c59d8ec088b1e7a29dc",
+      "src/prototype/solver_inputs/checkpoint_test_patches/source_checkpoint_test.c.patch": "fe291f5e6b8c868841196ee932d47421e43dd301e58fae3357da4f29a7a4b768"
+    },
+    "E19_E20_E21_Main_canonical_patches_preserved_sha256": {
+      "src/prototype/solver_inputs/synthesis.c.patch": "d439dbd345bd2c093390516207befe533a1d1cfd01ac05f8e842d795a5ced58d",
+      "src/prototype/solver_inputs/synthesis_work.c.patch": "099e9b22c2ef80ddd61ab657b0b8eddf94d5dc5acdbbd65351067744e44d2be0",
+      "src/prototype/solver_inputs/synthesis_work.h.patch": "ddb3dbed2492b325c91be4f36202c76f7ed51a1cf812b6874aec6b871c51bbf3",
+      "src/prototype/solver_inputs/artifact_schedule.c.patch": "06bdfc15d7b68335eff83df4e68485809313ba54581721c25d0e4911d67e1197",
+      "src/prototype/solver_inputs/artifact_patches/file.c.patch": "fa9354074ed32c61dbc21535be11447945f618e402cb281c551c0da11b4e50b4",
+      "src/prototype/solver_inputs/checkpoint_test_patches/normalization_checkpoint_test.c.patch": "507eb935486c94f1250c8105911899f768093662eb569062c50d700ffb0cbb09",
+      "src/prototype/solver_inputs/artifact_test_patches/semantic_test.c.patch": "ed500298561cfe09e4485e999c6577a4d85997300f6da28e7304c25e3c45b07a"
+    },
+    "original_Job_HEAD_and_index_preserved": {
+      "HEAD": "a8f52a015f73fe7cfa067c3d5b122bef7e4532b4",
+      "index_sha256": "cf21c780030a7e26e4259dba80cb8488e84cc059999be4c17459f73afd8beca3"
+    },
+    "isolated_task_parent_E18_excludes_E19_E20_E21_MEM9": true,
+    "Main_current_E18_MEM9_E19_E20_E21_C27_preserved": true,
+    "current_source128": "5235ee3cac894d821098f030f413547efc6d044d87ae2385d16d77164363d277",
+    "Root_current_report_sha256": "fd793b9fcb13d54a995921b8cc189f0e07262131de9b4d0c68eea60597ae1852",
+    "Root_C27_downstream_report_sha256": "5f33001338785736440e7a404decc9d117dcb2be32adcad5160bf8cdd76c5a89",
+    "all30_producer_and33_C27_expected_records_verified": true,
+    "protected9_dirty7_index_empty_exact": true,
+    "original_focused_parent_abort_initial_setup_and_strict3_retained": true,
+    "accepted_selection_cost_byte_waiver_or_Goal_completion": false
+  },
+  "publication_receipt_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-publication.json",
+  "publication_receipt_sha256": "a5cee2dbe95f9f547e5e958ea3a96f81a46c60ddca3b9f9f044f800cae9e8237",
+  "worker_input_review_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-input-review.json",
+  "worker_input_review_sha256": "41a977f8f9db420e74df3966bb80d1cc40f1c35be0dde59b4ed90dd22d87727a",
+  "exact31_task_Main_and_two_canonical_reverse_apply_full_tested_files_exact": true,
+  "worker_source156_actual471_three_source_manifests_raw28_and_control7_hashed": true,
+  "five_all35_fourcut_census_recomputed_public52_TSV_exact_isolated_E18": true,
+  "current_source128": "5235ee3cac894d821098f030f413547efc6d044d87ae2385d16d77164363d277",
+  "current_Root_report_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/Root-results.json",
+  "current_Root_report_sha256": "fd793b9fcb13d54a995921b8cc189f0e07262131de9b4d0c68eea60597ae1852",
+  "current30_expected_producer_records": [
+    {
+      "gate": "parent-controls-build-o2",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-publication/src/prototype/solver_inputs/epochs/job_evidence_e22_lean/copied_owner.mk",
+        "ARTIFACT_MAKEFILE=/home/repyt/workspace/a-program/src/prototype/artifact_persistence/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/parent-controls",
+        "ROOT=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/parent-controls/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/parent-controls/build-o2",
+        "REPO=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/parent-controls",
+        "TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/parent-controls/tests",
+        "ARTIFACT_TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/parent-controls/artifact_tests/",
+        "CHECKPOINT_TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/parent-controls/checkpoint_tests/",
+        "SOURCE_OWNER_CONTROL=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-publication/src/prototype/solver_inputs/controls/source_frontier_copied_owner.c",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/parent-controls/build-o2/source_frontier_copied_owner"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "f9087a5d20febcc5a0972093d075e7ef62a0cbf31b4d1f25e0132e22039ec8da"
+    },
+    {
+      "gate": "parent-controls-boundary0-0-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/parent-controls/build-o2/source_frontier_copied_owner",
+        "0",
+        "0"
+      ],
+      "exit": -6,
+      "expected_exit": -6,
+      "log_sha256": "5c4cd0277c8ae66f7b2e40c2ee0f0d159de0cfb4616c3f93a647365873c6cab7",
+      "binary_sha256": "e6eb975063447b021022dea99d4df497a9193d2ba9c56856de6743fbf6705fe3"
+    },
+    {
+      "gate": "parent-controls-boundary0-1-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/parent-controls/build-o2/source_frontier_copied_owner",
+        "0",
+        "1"
+      ],
+      "exit": -6,
+      "expected_exit": -6,
+      "log_sha256": "5c4cd0277c8ae66f7b2e40c2ee0f0d159de0cfb4616c3f93a647365873c6cab7",
+      "binary_sha256": "e6eb975063447b021022dea99d4df497a9193d2ba9c56856de6743fbf6705fe3"
+    },
+    {
+      "gate": "parent-controls-boundary1-0-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/parent-controls/build-o2/source_frontier_copied_owner",
+        "1",
+        "0"
+      ],
+      "exit": -6,
+      "expected_exit": -6,
+      "log_sha256": "f7ade8e4f77ce708242273cfc34fb2308bb115778bf2c0110d3681bf72d11a99",
+      "binary_sha256": "e6eb975063447b021022dea99d4df497a9193d2ba9c56856de6743fbf6705fe3"
+    },
+    {
+      "gate": "parent-controls-boundary1-1-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/parent-controls/build-o2/source_frontier_copied_owner",
+        "1",
+        "1"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "binary_sha256": "e6eb975063447b021022dea99d4df497a9193d2ba9c56856de6743fbf6705fe3"
+    },
+    {
+      "gate": "parent-controls-boundary2-0-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/parent-controls/build-o2/source_frontier_copied_owner",
+        "2",
+        "0"
+      ],
+      "exit": -6,
+      "expected_exit": -6,
+      "log_sha256": "39ed7f47c4396df804557fda4bf9d32ca87958ce077dca0be94320057d049ec9",
+      "binary_sha256": "e6eb975063447b021022dea99d4df497a9193d2ba9c56856de6743fbf6705fe3"
+    },
+    {
+      "gate": "parent-controls-boundary2-1-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/parent-controls/build-o2/source_frontier_copied_owner",
+        "2",
+        "1"
+      ],
+      "exit": -6,
+      "expected_exit": -6,
+      "log_sha256": "39ed7f47c4396df804557fda4bf9d32ca87958ce077dca0be94320057d049ec9",
+      "binary_sha256": "e6eb975063447b021022dea99d4df497a9193d2ba9c56856de6743fbf6705fe3"
+    },
+    {
+      "gate": "candidate-build-o2",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-publication/src/prototype/solver_inputs/epochs/job_evidence_e22_lean/copied_owner.mk",
+        "ARTIFACT_MAKEFILE=/home/repyt/workspace/a-program/src/prototype/artifact_persistence/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate",
+        "ROOT=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-o2",
+        "REPO=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate",
+        "TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/tests",
+        "ARTIFACT_TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/artifact_tests/",
+        "CHECKPOINT_TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/checkpoint_tests/",
+        "SOURCE_OWNER_CONTROL=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-publication/src/prototype/solver_inputs/controls/source_frontier_copied_owner.c",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-o2/artifact_semantic_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-o2/synthesis_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-o2/artifact_normalization_checkpoint_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-o2/source_frontier_copied_owner",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-o2/pointer-check"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "55e822b37937368508b21b44e01d48ccfbfa643200bddc014c64e64a790211fb"
+    },
+    {
+      "gate": "candidate-artifact_semantic_test-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-o2/artifact_semantic_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "65a6b5c64f96014d08df86dc7590a1db35d6380ea7acb05cc99bb55145121616",
+      "binary_sha256": "d09e6bf547cc4f30adabb51817875a6b414da4bf8d1ea04c808fdbdbbfa17624"
+    },
+    {
+      "gate": "candidate-synthesis_test-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-o2/synthesis_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "497e5e979c826ff40f602848e82bed31e82ad16457b173072c9c457104a31804",
+      "binary_sha256": "8bce8c3423b7336052c4cf2889877722440d97e1cce6b02ae53d38183df7c455"
+    },
+    {
+      "gate": "candidate-artifact_normalization_checkpoint_test-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-o2/artifact_normalization_checkpoint_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "f845d9580fe6087d76e05adda57b823e595c06f013510bbfdb89572d58885dfb",
+      "binary_sha256": "289ea49221224c8f771aa87553a26508c41cc47ef4793b10b909fe48bbe0ba33"
+    },
+    {
+      "gate": "candidate-source_frontier_copied_owner-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-o2/source_frontier_copied_owner"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "71cc65467eeb07467f0bd00674acb05a8875ba29911d63bca40891cab8d4233a",
+      "binary_sha256": "21aed5d59d5ed563501110ab9d8602ce6c474ad89e877b16e8b1002e537a6acb"
+    },
+    {
+      "gate": "candidate-boundary0-0-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-o2/source_frontier_copied_owner",
+        "0",
+        "0"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "binary_sha256": "21aed5d59d5ed563501110ab9d8602ce6c474ad89e877b16e8b1002e537a6acb"
+    },
+    {
+      "gate": "candidate-boundary0-1-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-o2/source_frontier_copied_owner",
+        "0",
+        "1"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "binary_sha256": "21aed5d59d5ed563501110ab9d8602ce6c474ad89e877b16e8b1002e537a6acb"
+    },
+    {
+      "gate": "candidate-boundary1-0-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-o2/source_frontier_copied_owner",
+        "1",
+        "0"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "binary_sha256": "21aed5d59d5ed563501110ab9d8602ce6c474ad89e877b16e8b1002e537a6acb"
+    },
+    {
+      "gate": "candidate-boundary1-1-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-o2/source_frontier_copied_owner",
+        "1",
+        "1"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "binary_sha256": "21aed5d59d5ed563501110ab9d8602ce6c474ad89e877b16e8b1002e537a6acb"
+    },
+    {
+      "gate": "candidate-boundary2-0-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-o2/source_frontier_copied_owner",
+        "2",
+        "0"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "binary_sha256": "21aed5d59d5ed563501110ab9d8602ce6c474ad89e877b16e8b1002e537a6acb"
+    },
+    {
+      "gate": "candidate-boundary2-1-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-o2/source_frontier_copied_owner",
+        "2",
+        "1"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "binary_sha256": "21aed5d59d5ed563501110ab9d8602ce6c474ad89e877b16e8b1002e537a6acb"
+    },
+    {
+      "gate": "candidate-build-san",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-publication/src/prototype/solver_inputs/epochs/job_evidence_e22_lean/copied_owner.mk",
+        "ARTIFACT_MAKEFILE=/home/repyt/workspace/a-program/src/prototype/artifact_persistence/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate",
+        "ROOT=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-san",
+        "REPO=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate",
+        "TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/tests",
+        "ARTIFACT_TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/artifact_tests/",
+        "CHECKPOINT_TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/checkpoint_tests/",
+        "SOURCE_OWNER_CONTROL=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-publication/src/prototype/solver_inputs/controls/source_frontier_copied_owner.c",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-san/artifact_semantic_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-san/synthesis_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-san/artifact_normalization_checkpoint_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-san/source_frontier_copied_owner"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "f5a22574a27bf865ec959d59b16a32e7c08f41871de2db1f2e49e3ef4a72e6ab"
+    },
+    {
+      "gate": "candidate-artifact_semantic_test-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-san/artifact_semantic_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "65a6b5c64f96014d08df86dc7590a1db35d6380ea7acb05cc99bb55145121616",
+      "binary_sha256": "282c740b1e896e44819f26cbff698316a4deee369e5dd247b4fcc72c3690c8f8"
+    },
+    {
+      "gate": "candidate-synthesis_test-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-san/synthesis_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "497e5e979c826ff40f602848e82bed31e82ad16457b173072c9c457104a31804",
+      "binary_sha256": "e3f857d43df84f9e8c41ba063a1cce2941792b1ea63cd0a66d1aca164ba46c01"
+    },
+    {
+      "gate": "candidate-artifact_normalization_checkpoint_test-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-san/artifact_normalization_checkpoint_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "f845d9580fe6087d76e05adda57b823e595c06f013510bbfdb89572d58885dfb",
+      "binary_sha256": "6caba30909f6513ce2269fc1ede67132c6a0508554435e4776457624cf673aaa"
+    },
+    {
+      "gate": "candidate-source_frontier_copied_owner-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-san/source_frontier_copied_owner"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "71cc65467eeb07467f0bd00674acb05a8875ba29911d63bca40891cab8d4233a",
+      "binary_sha256": "bd60628684f76169d5116918b47dd1e5a2564a9825a329d6a31228aa66c4ea33"
+    },
+    {
+      "gate": "candidate-boundary0-0-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-san/source_frontier_copied_owner",
+        "0",
+        "0"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "binary_sha256": "bd60628684f76169d5116918b47dd1e5a2564a9825a329d6a31228aa66c4ea33"
+    },
+    {
+      "gate": "candidate-boundary0-1-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-san/source_frontier_copied_owner",
+        "0",
+        "1"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "binary_sha256": "bd60628684f76169d5116918b47dd1e5a2564a9825a329d6a31228aa66c4ea33"
+    },
+    {
+      "gate": "candidate-boundary1-0-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-san/source_frontier_copied_owner",
+        "1",
+        "0"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "binary_sha256": "bd60628684f76169d5116918b47dd1e5a2564a9825a329d6a31228aa66c4ea33"
+    },
+    {
+      "gate": "candidate-boundary1-1-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-san/source_frontier_copied_owner",
+        "1",
+        "1"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "binary_sha256": "bd60628684f76169d5116918b47dd1e5a2564a9825a329d6a31228aa66c4ea33"
+    },
+    {
+      "gate": "candidate-boundary2-0-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-san/source_frontier_copied_owner",
+        "2",
+        "0"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "binary_sha256": "bd60628684f76169d5116918b47dd1e5a2564a9825a329d6a31228aa66c4ea33"
+    },
+    {
+      "gate": "candidate-boundary2-1-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-san/source_frontier_copied_owner",
+        "2",
+        "1"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "binary_sha256": "bd60628684f76169d5116918b47dd1e5a2564a9825a329d6a31228aa66c4ea33"
+    },
+    {
+      "gate": "public-partitions",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program/src/prototype/image_audit/partition_fuel.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/build-o2/pointer-check",
+        "/tmp/a-program-merge-e12c-current-Main-20261003/examples/09_list_induction.p",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e22-current-e21-mem9/candidate/partitions",
+        "ordinary"
+      ],
+      "exit": 1,
+      "expected_exit": 1,
+      "log_sha256": "add718afb631eacd0cdc0a52a80712591738ba1dfd6cf5d249a884331d63bbcd"
+    }
+  ],
+  "C27_current33_report_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c27-current-e22-mem9-gates/Root-results.json",
+  "C27_current33_report_sha256": "5f33001338785736440e7a404decc9d117dcb2be32adcad5160bf8cdd76c5a89",
+  "C27_current33_and381_generated_C_H_exact_E21": true,
+  "code_scope": "Runtime +6/-2 artifact/source.c and permanent test+47; standalone control+15/private recipe+5. Capture/mapping duplicate pending.owner-tag checks replaced by existing E16 pg_synthesis_input_owned + null-safe pg_synthesis_pending. Job index membership/readers already exist; no new index/graph/authority/factory/checker/schema/fuel or evaluator/readback edit.",
+  "counterexample_scope": "Fresh current E21 reproduces five copied pending/completed capture/attachment and pending-prepare assertion failures. Completed prepare already rejected due to status, not sixth gap. Candidate full semantic/synthesis/Source/normalization and all six controls O2/SAN0; valid Jobs preserve headers/queue/proofs/steps. Public52/full40 fuel TSV exact current E21, recipe1/originalstrict3 retained.",
+  "cumulative_scope": "Isolated E18 five DONE/all35/fourcuts exact, Quick766477/typed114388/Evidence94974. External cumulative Quick229286768->229198448 (-88320), other inputs equal: observation, not attribution to this safety guard or net/live/peak/wall/RSS gain.",
+  "provenance_corrections": "Original READY control16+ corrected by ca3f2c98 to frozen applied_delta15+; exact31 manifest/transport/source/gates unchanged. Preserve notice. Initial worker canonical preparation1 before make retained. Root publication preflight initially used absent artifact_file.c.patch name; corrected to existing artifact_patches/file.c.patch before any staging/commit.",
+  "limits": "Worker isolated E18 broad0/C0/census distinct from fresh current E21+MEM9 focused/affected qualification. E19/E20/E21 canonical context and C27/MEM9 preserved, original Job HEAD/index/no input or resume unchanged. E23 retention trial excluded; full current broad/acceptance/SE/AP/public-frontier/codec/actual costs/adoption remain open.",
+  "accepted_source_edit_promotion_cost_grant_byte_waiver_Goal_completion": false
+}
