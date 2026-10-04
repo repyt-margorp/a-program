@@ -1,0 +1,10 @@
+{
+  "date_UTC": "2026-10-04T08:55:10.379896+00:00",
+  "provenance": "Root evidence review under existing human prototype authorization; not new human approval.",
+  "recipient": "Original C owner, durable delivery only, no TUI input/resume or consumption claim.",
+  "task": "cc3cba3495b81628e0a68ec8b45aee4f5447d188",
+  "prototype_Main": "a8d02780b665fe4a2aa4b422ff6e1b15e4790817",
+  "receipt": "src/prototype/c_backend/verification/core-epoch31.json",
+  "receipt_sha256": "f1732f674b408c2362aa0b2994030af4a5eb9cba3d1d487fa0d0d4e2cf17a10e",
+  "decision": "C31 exact18/current E24 producer17 expected records/new63/callback76/record41 each O2SAN/IO19/fault5 pass.96 generated component C-H and all88 frozen listed bytes directly worker exact. Task/Main pushed; other17 Main bytes exact/Goal only reconciled, original live C files and C29/C30 freeze/qualification preserved. Query count-on-success/no-allocation/full active validation/native ABI1/source depth boundary and input immutable readable finite lifetime/output nonoverlap/caller multiplication-allocation requirements reviewed. SIZE_MAX overflow unexecuted, client-source SAN/shared malloc interception limits remain; zero-copy/indexed-callable AccQuickSort/full61/cost/adoption open. Continue justified distinct owned increments, no new producer/authority design, original Job human pane/HEAD/index untouched."
+}
