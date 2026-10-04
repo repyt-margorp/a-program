@@ -1,0 +1,228 @@
+     7 +here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+     8 +directory=$(mktemp -d)
+     9 +trap 'rm -rf "$directory"' EXIT
+    10 +bash "$here/provider.sh" "$here/finite-functions.p" "$here/quick.p" "$here/tree.p" \
+    11 +    "$here/bubble.p" "$here/bubble-order.p" "$here/merge.p" \
+    12 +    "$here/../../../tests/fixtures/generic_sorted/boolean-order.p" "$here/cases.p" \
+    13 +    "$here/finite-functions-cases.p" "$here/finite-functions-duplicates.p" > "$directory/source.p"
+    14 +source "$here/check-functions.sh"
+    15 +check 0 duplicate-function-source --save "$directory/source.a" "$directory/source.p"
+    16 +sed '/ :: /{ :next; /;$/d; N; b next; }' "$directory/source.p" > "$directory/independent.p"
+    17 +check 0 duplicate-independent-synthesis "$directory/independent.p"
+    18 +equal "$directory/source.a" finite_repeat_report finite_repeat_report_expected
+    19 +{ cat "$directory/source.p"; printf '%s\n' 'bad:=(same_position three).refl (position_forward three (finite_repeat_positions finite_merge) first) :: sam
+        e_position three (position_forward three (finite_repeat_positions finite_merge) first) (position_forward three (finite_repeat_positions finite_merge) se
+        cond);'; } > "$directory/collapsed-positions.p"
+    20 +check 1 equal-payload-positions-distinct --save "$directory/rejected.a" "$directory/collapsed-positions.p"
+    21 +check 1 duplicate-rejected-load --load "$directory/rejected.a"
+    22 +{ cat "$directory/source.p"; printf '%s\n' 'bad:=finite_repeat_content :: permutation Item finite_repeat_input ((List Item).cons low_one singleton);'; }
+         > "$directory/lost-duplicate.p"
+    23 +check 1 lost-identical-duplicate "$directory/lost-duplicate.p"
+    24 +check 0 duplicate-ordinary-load --load "$directory/source.a"
+    25 +check 3 duplicate-pending --steps 100 --save "$directory/pending.a" "$directory/source.p"
+    26 +check 3 duplicate-inert --load --steps 0 --save "$directory/copy.a" "$directory/pending.a"
+    27 +cmp "$directory/pending.a" "$directory/copy.a"
+    28 +check 0 duplicate-resume --load --save "$directory/resumed.a" "$directory/copy.a"
+    29 +equal "$directory/resumed.a" finite_repeat_report finite_repeat_report_expected
+    30 +printf '%s\n' 'identical payloads: all five actual outputs, recovery, distinct origins/destinations, inverse consumers, two rejections and fresh-process
+         images passed'
+
+• Ran bash -n src/prototype/finite_sorting/finite-functions-check.sh src/prototype/finite_sorting/finite-functions-duplicates-check.sh
+  │ python3 - <<'PY'
+  │ from pathlib import Path
+  │ … +10 lines
+  └ (no output)
+
+• All seven base rejection controls passed, including misuse of the forward map as an inverse and treating Local as Strong. Fresh-process positive load/resume
+  checks also passed, with byte-identical inert resave and matching resumed results. The base gate is finishing persisted-rejection checks; the supplemental
+  gate will cover identical payloads and rejection of collapsed occurrence positions.
+
+• Ran tail -n 8 /tmp/a-program-sort-library-20261003/finite-functions-gate.log
+  │ python3 - <<'PY'
+  │ from pathlib import Path
+  │ … +11 lines
+  └ inert: pending steps=0
+    resume: done steps=31787307
+    export results: /tmp/tmp.mrie1SKTlt/resumed.a finite_report finite_report_expected equal=1 chunk=1 steps=34228084
+    +13 lines (ctrl+t to view transcript)
+
+• Ran python3 - <<'PY'
+  │ from pathlib import Path
+  │ p=Path('doc/2026-09-27-FINITE-POSITION-SORTING-SOAP-PLAN.md'); s=p.read_text()
+  │ … +15 lines
+  └ finite-function-source: done steps=31787366
+    independent-synthesis: done steps=16838685
+    export results: /tmp/tmp.mrie1SKTlt/source.a finite_report finite_report_expected equal=1 chunk=1 steps=34228084
+    +22 lines (ctrl+t to view transcript)
+
+• Ran python3 - <<'PY'
+  │ from pathlib import Path
+  │ import subprocess,hashlib,json
+  │ … +11 lines
+  └ base assembled SHA256 363bea049c6ca458c3bfc543818890f7e9d3aa36c9dff005fefda0a71ce4a053
+    duplicates assembled SHA256 15adfb9df672a759b3a542780c7187e00e7f88f4f17f49bc9d83f4c35bb61a62
+    Supplement appends unique duplicate fixture; original source bytes are unchanged.
+
+• Ran python3 - <<'PY'
+  │ from pathlib import Path
+  │ import datetime
+  │ … +16 lines
+  └ (no output)
+
+• Ran git diff --numstat
+  │ python3 - <<'PY'
+  │ from pathlib import Path
+  │ … +5 lines
+  └ 85    0    doc/2026-09-27-FINITE-POSITION-SORTING-SOAP-PLAN.md
+    54    0    src/prototype/finite_sorting/README.md
+    src/prototype/finite_sorting/finite-functions-cases.p 71 45601b625158c91f15f20c7d2cd19a48a8f563c6db79cbb186eb55787c87691f
+    +4 lines (ctrl+t to view transcript)
+
+• The base gate finished with exit 0. The identical-payload source and assertion-free checks also pass, and its all-five occurrence report is being compared
+  now. I’ll freeze the verified files, evidence, and scoped SOAP snapshot once the supplemental image checks finish.
+
+• Ran python3 - <<'PY'
+  │ from pathlib import Path
+  │ p=Path('doc/2026-09-27-FINITE-POSITION-SORTING-SOAP-PLAN.md'); s=p.read_text(); start=s.index('## F3/F4. Finite Function Sorting API, 2026-10-03');
+  │ … +17 lines
+  └ (no output)
+
+• Ran tail -n 8 /tmp/a-program-sort-library-20261003/finite-functions-duplicates-gate.log
+  │ python3 - <<'PY'
+  │ from pathlib import Path
+  │ … +8 lines
+  └ duplicate-function-source: done steps=31822418
+    duplicate-independent-synthesis: done steps=16873803
+    export results: /tmp/tmp.Pf7titt3xm/source.a finite_repeat_report finite_repeat_report_expected equal=1 chunk=1 steps=34257408
+    +37 lines (ctrl+t to view transcript)
+
+• Ran sha256sum /tmp/ap-performance-current-joint-898463e-b2d6668-20261003/build/pointer-check /tmp/ap-performance-current-joint-898463e-b2d6668-20261003/build/
+  │ program_test
+  │ git status --short
+  │ … +1 line
+  └ 33d90f6fb02f0bd5cafe1e50f5cc64a5d057b2607e4c5f3aa21b81c97fe9bf8f  /tmp/ap-performance-current-joint-898463e-b2d6668-20261003/build/pointer-check
+    d21c94c9e24eeb25eef14c8abe2a4e8c9d971f56c662d96684ce45873b87254f  /tmp/ap-performance-current-joint-898463e-b2d6668-20261003/build/program_test
+     M doc/2026-09-27-FINITE-POSITION-SORTING-SOAP-PLAN.md
+    +83 lines (ctrl+t to view transcript)
+
+• Ran set -o pipefail
+  │ bash src/prototype/finite_sorting/finite-functions-duplicates-check.sh /tmp/ap-performance-current-joint-898463e-b2d6668-20261003/build/pointer-check /tmp/
+  │ ap-performance-current-joint-898463e-b2d6668-20261003/build/program_test 2>&1 | tee /tmp/a-program-sort-library-20261003/
+  │ … +1 line
+  └ duplicate-function-source: done steps=31822418
+    duplicate-independent-synthesis: done steps=16873803
+    export results: /tmp/tmp.Pf7titt3xm/source.a finite_repeat_report finite_repeat_report_expected equal=1 chunk=1 steps=34257408
+    +11 lines (ctrl+t to view transcript)
+
+• Both focused gates passed on the hash-qualified E6 checker: all five actual results and occurrence maps, recovery for labelled and identical payloads, nine
+  rejection controls, and fresh-process image checks. I’m freezing the handoff bytes now. No compiler blocker was reproduced; #41/F5 acceptance and integration
+  remain with Merge.
+
+• Ran python3 - <<'PY'
+  │ from pathlib import Path
+  │ import hashlib,json,re,subprocess,shutil,datetime,os
+  │ … +175 lines
+  └ Traceback (most recent call last):
+      File "<stdin>", line 114, in <module>
+    AssertionError: (PosixPath('src/prototype/finite_sorting/finite-functions.p'), '0o100664')
+    +12 lines (ctrl+t to view transcript)
+
+• Ran python3 - <<'PY'
+  │ from pathlib import Path
+  │ import hashlib,datetime,os
+  │ … +38 lines
+  └ FROZEN_MANIFEST_SHA256 b32e5ef242824c1550de11b2ccd16bc7c0bde927c824d84e9c6fde4d7cbe6459
+    EVIDENCE_SHA256 e3db38b47ca8a354c6d696b76a9a6661a09584725a5e0e3e152ac732cb9a785c
+    READY_NOTICE_SHA256 b62df6f12496c7502747f7d05056950bdaede5a565b313e87b1a9fef9349f2b4
+    +2 lines (ctrl+t to view transcript)
+
+• Ran sha256sum -c src/prototype/finite_sorting/verification/finite-functions-manifest.sha256
+  │ git diff --check
+  │ python3 - <<'PY'
+  │ … +11 lines
+  └ src/prototype/finite_sorting/README.md: OK
+    src/prototype/finite_sorting/finite-functions-cases.p: OK
+    src/prototype/finite_sorting/finite-functions-check.sh: OK
+    +8 lines (ctrl+t to view transcript)
+
+• Ran python3 - <<'PY'
+  │ from pathlib import Path
+  │ import datetime,hashlib
+  │ … +20 lines
+  └ Goal completion notice written; frozen publication bytes unchanged.
+
+• Implemented the prototype finite-function sorting API with bidirectional value and occurrence-recovery laws.
+
+  Both E6 gates passed: five backends, labelled and identical duplicates, nine rejection controls, and fresh-process images. Actual GPT-6.1-Sol/xhigh verified;
+  Goal completed in about 25 minutes.
+
+  Frozen manifest (src/prototype/finite_sorting/verification/finite-functions-manifest.sha256) and ready notice are prepared for Merge. #41/F5 adoption remains
+  open; Merge alone publishes and integrates.
+
+  Worked for 26m 46s • 18:50
+
+
+› Merge reviewed source113/runners74 and ready/complete handoff. Before exact publication, correct provenance only: finite-functions-soap.md Subjective labels
+  my worker-control follow-up as user relaying Merge permission, and Assessment says subsequently confirmed by user. That message was Merge agent operational
+  direction within the already authorized prototype task, not a new human approval/design decision. Move that receipt into Objective/Assessment and retain
+  actual human requirements from F0 in Subjective with explicit source. Correct the live owning-plan counterpart as needed, regenerate only affected SOAP/hash
+  manifest/metadata pins, refreeze and send corrected ready notice. Preserve implementation301 bytes and test logs exactly; no rerun, accepted changes, new
+  Goal or duplicate worker. Root publication waits for corrected exact freeze.
+
+
+• I’ll correct the provenance in the frozen SOAP snapshot and owning plan, verify that implementation and test-log bytes stay unchanged, then refreeze the
+  affected metadata and send a corrected ready notice.
+
+• Explored
+  └ Read finite-functions-soap.md, finite-functions-manifest.sha256, finite-functions-e6.json
+
+• Ran git status --short
+  │ git rev-parse HEAD
+  │ sed -n '1,185p' doc/2026-09-27-FINITE-POSITION-SORTING-SOAP-PLAN.md
+  │ … +4 lines
+  └  M doc/2026-09-27-FINITE-POSITION-SORTING-SOAP-PLAN.md
+     M src/prototype/finite_sorting/README.md
+    ?? src/prototype/coordination/outbox/
+    +291 lines (ctrl+t to view transcript)
+
+• Ran python3 - <<'PY'
+  │ from pathlib import Path
+  │ import hashlib,json,datetime,shutil
+  │ … +138 lines
+  └ CORRECTED_MANIFEST_SHA256 b79de159e75bcda99851a3074876ca76bf2db95e306a5fda996c8d3c1bd5fb9f
+    CORRECTED_SOAP_SHA256 6d96b98c607d8d401130c3677cc189d57d7977c0df4c2ec9e2bfbbf1735a097c
+    CORRECTED_METADATA_SHA256 cdc164fc08c51613e7132aedb9933a873ecb1aa4ba7bbb11c4f420f125fc4171
+    +3 lines (ctrl+t to view transcript)
+
+• Ran python3 - <<'PY'
+  │ from pathlib import Path
+  │ import hashlib,json
+  │ … +24 lines
+  └ FINAL_MANIFEST_SHA256 e0adf408179cfde0a98ec11c448ef5967c3d945c2c198e7e79a93456208f21eb
+    FINAL_SOAP_SHA256 1342e115ad297042ff377f721eb6f297349628280155b80c77ab22d64473088b
+    FINAL_METADATA_SHA256 ab8911606167fae0045f166f98ecf93996f077f41ec9549ce4c426104c4f508d
+    +117 lines (ctrl+t to view transcript)
+
+• The SOAP snapshot and owning plan now classify the follow-up as Merge agent direction, with human requirements explicitly sourced to F0. Hash checks confirm
+  all +301 implementation, fixture, and runner lines and both test logs are unchanged. I’m sending the final corrected freeze pins now.
+
+• Ran python3 - <<'PY'
+  │ from pathlib import Path
+  │ import hashlib,json,datetime,subprocess
+  │ … +66 lines
+  └ Verified only SOAP/provenance metadata differ from original 10-path freeze; source/fixtures/runners/README/logs exact.
+    FINAL_MANIFEST_SHA256 e0adf408179cfde0a98ec11c448ef5967c3d945c2c198e7e79a93456208f21eb
+    FINAL_NOTICE_SHA256 2f7c99e62b67d5a9eecc61ae7878d35023244d7bdeeb1f375b0073f558344259
+    +1 line (ctrl+t to view transcript)
+
+• Corrected provenance in the SOAP snapshot and owning plan: Merge’s follow-up is agent operational direction; human requirements explicitly cite F0.
+
+  Refrozen and wrote the final corrected ready notice (src/prototype/coordination/outbox/finite-functions-ready-provenance-final.txt). All +301 implementation/
+  fixture/runner lines and test logs remain byte-identical. No rerun, accepted changes, new Goal, or duplicate worker.
+
+  Worked for 6m 44s • 19:14
+
+
+› Ask Codex to do anything
+
+  GPT-6.1-Sol xhigh · ~/workspace/a-program-workers/sort-library · Start authorized sort worker                 Goal achieved (24m)    ⚠ 1 warning · f2 to view

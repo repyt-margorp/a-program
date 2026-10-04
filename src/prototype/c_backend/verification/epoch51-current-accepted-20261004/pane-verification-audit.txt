@@ -1,0 +1,228 @@
+
+• I’ll record the slot’s closure and cost deferral, preserve the exact proposal for later review, and finish the bounded audit with cost marked unmeasured and
+  full Issue 59 still open.
+
+• Edited doc/2026-10-03-VERIFICATION-AUDIT-PLAN.md (+1 -0)
+    39  - Merge operational cost-readiness update within delegated user scope, source: Merge proposal-readiness message transported into this thread, 2026-10-03
+         at approximately `08:40 UTC`: performance terminal notice `ac01d166` freshly reviewed; all 30 samples passed, hashes/pins verified and all benchmark ch
+        ildren stopped. Four-job config review remains outstanding; send the exact proposal promptly. Heavy execution stays ungranted until Merge/root reviews i
+        t and separately grants the sequential audit phase. Deadline `08:52:05 UTC` and the eight-minute condition remain; no automatic start.
+    40 +- Merge operational slot-end/deferral decision within delegated user scope, source: Merge scheduling-boundary message transported into this thread, 2026
+        -10-03 at the `08:44:05 UTC` boundary: performance is terminal and 30 raw samples reviewed, but exact four-job config review did not finish with eight m
+        inutes remaining. Audit cost is deferred for this window; no launch granted, no deadline extension or ordinary duplicate/partial substitute. Finish/send
+         the light exact proposal for later review; mark cost unmeasured, bounded static delivery complete and full #59 open. Shared measurement slot is ended a
+        nd correctness workers released. No heavy timing/build/gate starts; any later measurement requires a separate exclusive grant. This supersedes the condi
+        tional audit phase for the ended window.
+    41  - Agent blocked audit, 2026-10-03: the previous goal turn made concrete progress by freezing the requested fifth supporting file and verifying all prese
+        rved bytes/link resolution. Fresh coordinator-report inspection at `08:29:53 UTC` still confirms audit timing ungranted. This same external authorizatio
+        n boundary has recurred through at least three consecutive goal turns; the static handoff/dependency preparation is complete and no further authorized w
+        ork remains before a separate Merge handoff. Mark the Goal blocked, not complete or paused; preserve the five-file publication snapshot and provisional
+        key. A later explicit grant must still satisfy performance terminal and at least eight minutes before `08:52:05 UTC`. Do not invent a live-process wait
+        or extend the audit with new harnesses.
+
+• Ran git status --short; sed -n '30,57p' src/prototype/test_audit/report.md; sed -n '1,40p' src/prototype/coordination/verification-audit-brief.md
+  └  M doc/2026-10-03-VERIFICATION-AUDIT-PLAN.md
+    ?? src/prototype/coordination/outbox/
+    claimed. No Main merge, issue closure, accepted edit or promotion occurred.
+    +67 lines (ctrl+t to view transcript)
+
+• Ran python3 - <<'PY'
+  │ from pathlib import Path
+  │ import hashlib
+  │ … +36 lines
+  └ Traceback (most recent call last):
+      File "<stdin>", line 23, in <module>
+      File "/usr/lib/python3.13/pathlib/_abc.py", line 625, in read_bytes
+    +6 lines (ctrl+t to view transcript)
+
+• Ran /usr/bin/python3.13 - <<'PY'
+  │ from pathlib import Path
+  │ import hashlib
+  │ … +10 lines
+  └ /tmp/verification-audit-e6-dependencies.json a99a77531714dd51
+    /tmp/verification-audit-inventory.json 62350b0536df6b47 matches inventory
+    Inventory keys: ['revision', 'method', 'limits', 'profiles', 'graph', 'recipes', 'shell_sources', 'legacy_dependencies', 'exact_command_candidates',
+    +1 line (ctrl+t to view transcript)
+
+• Ran /usr/bin/python3.13 - <<'PY'
+  │ from pathlib import Path
+  │ import hashlib
+  │ … +35 lines
+  └ Correct reproduction output path verified byte-identical; revision/114 legacy rows and report limits/failures present.
+    Exact four-job config/wrapper/launcher preserved; keyed leaf argv/caps match; no collector output directory; proposal notice intact.
+    Earlier check used overlay/inventory.json instead of actual /tmp/verification-audit-inventory.json; corrected static verification succeeds, no compiler/gate
+    +1 line (ctrl+t to view transcript)
+
+• Edited doc/2026-10-03-VERIFICATION-AUDIT-PLAN.md (+8 -3)
+     3  Date: 2026-10-03
+     4 -Status: bounded static audit verified and ready for Merge; cost/dynamic completion deferred
+     4 +Status: bounded first audit complete and published; cost explicitly deferred/unmeasured, full Issue #59 and dynamic coverage open
+     5  Code baseline: `parallel/verification-audit-20261003`, `4d1d9418f251cf03689a267183519381fc0e8168`; initially only an untracked transport probe in the ou
+        tbox.
+       ⋮
+    11  | --- | --- | --- | --- |
+    12 -| 1 | Distinguish verification debt from distinct coverage in current invocations | #59 / #60, #51 | In progress; no measurements |
+    12 +| 1 | Distinguish verification debt from distinct coverage in current invocations | #59 / #60, #51 | Complete bounded delivery; cost deferred/unmeasured
+        , full #59 open |
+    13
+       ⋮
+    27  - Fresh publication verification, 2026-10-03 at task HEAD `7ed3ad1dcc6670380353b6f17b2dc5d07b05b9aa`: Git contains exactly the five requested publicatio
+        n-file changes; each blob matches the frozen five-file manifest. Independent `git ls-remote` confirms the task branch at that exact revision. Local prot
+        otype/docs integration `56837554e9991cf26a9b6d539c073656e0387e5e` contains all five unchanged blobs and the task commit as an ancestor. This worktree ha
+        s only the later live SOAP plan as a tracked modification plus untracked transport notices; no accepted implementation/test/build delta from the task co
+        mmit. These checks verify publication bytes, not gates, cost or accepted promotion.
+    28 +- Fresh final static check, 2026-10-03: all five frozen blobs also match integration `517f05a`; snapshot/archive/manifest and current inventory/report/t
+        ool/key bytes match exact handoff `fcf2aab0`. Saved independent reproduction `/tmp/verification-audit-inventory.json` remains byte-identical, with 114 l
+        egacy dependency rows. Accepted paths still have no delta from `eb0aad6`; only this later live plan and transport notices are outside the freeze. An ini
+        tial completion-check path mistakenly looked for output inside the overlay directory; checking the actual recorded output path succeeds. This is a stati
+        c verifier setup correction, not a compiler/gate failure.
+    29 +- Light private proposal `ba86a911` is sent: `/tmp/verification-audit-e6-cost-config-20261003/configuration.json`, SHA-256 `1c6a4ccd2f9f198b6a9111ae08db
+        d29234d15fa500d77c2ed00c7ef252c1e189`. It has four exact keyed leaf argv/caps, an existing `env --chdir` argv wrapper, collector `9c50c62d`, GNU time `e
+        fc0d111`, inherited environment with six explicit unsets, 269 verified dependency pins, per-run 180 seconds and maximum 475 seconds. No new collector/ha
+        rness or measurement/leaf launch occurred; no audit output directory exists. The ended-window deadline/grant conditions make this preserved proposal une
+        xecutable until separately reviewed/rederived for a later exclusive grant.
+    30
+       ⋮
+    43  - Agent blocked audit, 2026-10-03: the previous goal turn made concrete progress by freezing the requested fifth supporting file and verifying all prese
+        rved bytes/link resolution. Fresh coordinator-report inspection at `08:29:53 UTC` still confirms audit timing ungranted. This same external authorizatio
+        n boundary has recurred through at least three consecutive goal turns; the static handoff/dependency preparation is complete and no further authorized w
+        ork remains before a separate Merge handoff. Mark the Goal blocked, not complete or paused; preserve the five-file publication snapshot and provisional
+        key. A later explicit grant must still satisfy performance terminal and at least eight minutes before `08:52:05 UTC`. Do not invent a live-process wait
+        or extend the audit with new harnesses.
+    44 +- Agent final completion assessment, 2026-10-03, superseding the blocked audit for this bounded assignment: original inventory/pilot/read-mostly/coverag
+        e/provenance/exact-handoff requirements are verified and the later exact-config preparation is delivered. Merge's explicit slot-end decision resolves th
+        is window by deferring cost rather than requiring an unauthorized run. No required work remains in the bounded first assignment; complete its Goal while
+         keeping cost unmeasured, full #59/dynamic/retained coverage open and any later measurement subject to a new separate exclusive grant. Publication is pr
+        ototype/docs delivery, not accepted promotion or full Issue completion.
+    45  - Agent decision within authorized scope: keep one small reproducible inventory and one pilot under `src/prototype/test_audit/`; recommend permanent cha
+        nges only after identifying their coverage consequences. Separate bounded inventory completion from full Issue #59 completion.
+       ⋮
+    56  - [x] Audit the bounded deliverable against the brief; report implementation/test/docs/owner/promotion/known-failure and measured/unmeasured deltas. Fre
+        eze exact publication files/hashes for the final outbox handoff.
+    57 +- [x] Prepare and hand off the requested exact four-job config for the existing collector without launching it; record Merge's explicit ended-window cos
+        t deferral. Preserve all frozen files/proposals and leave full #59/cost/dynamic coverage open.
+    58  - Completion: reproducible entrypoint graph and pilot, reasoned keep/consolidate/archive candidates, explicit dynamic and measurement limits, and compac
+        t evidence-backed handoff. Full #59 closure additionally requires controlled-cost/progress-ledger criteria; this lane cannot claim closure or authorize
+        suite changes.
+       ⋮
+    67  | Ownership/write scope/handoff | Five-file frozen handoff `fcf2aab0` matches delegated task commit `7ed3ad1` and its independently verified remote task
+         ref; local prototype/docs integration `5683755` has identical blobs. Later live plan edits and transport notices remain outside the freeze; no accepted
+         edits, Main mutation or issue closure by this lane |
+    64 -| Remaining full-Issue work | Controlled cost awaits Merge/performance's qualified producer and exclusive slot; complete shell/C enumeration and central
+         ledger adoption remain outside this bounded static handoff |
+    68 +| Requested light cost proposal and window outcome | Exact four-job proposal `ba86a911`/config `1c6a4ccd` verified and sent; no audit run. Merge explici
+        tly ended the window and deferred audit cost; proposal retained for later review with a new grant/deadline |
+    69 +| Remaining full-Issue work | Controlled gate cost is unmeasured and requires a later separate exclusive grant; complete shell/C enumeration, retained c
+        overage and central ledger adoption remain outside this completed bounded first delivery |
+
+• Added src/prototype/coordination/outbox/verification-audit-10-complete-cost-deferred.txt (+14 -0)
+     1 +To Merge session 01a100b3-1d83-7090-bbf6-62544c39ec4b only, 2026-10-03.
+     2 +Recorded your08:44:05 scheduling decision: shared slot ended, audit cost DEFERRED, no audit launch granted, no deadline extension or duplicate/partial s
+        ubstitute. Correctness workers are released by you; this lane starts no heavy work. Cost remains UNMEASURED and full Issue59/dynamic/retained coverage r
+        emains open.
+     3 +
+     4 +Exact light config/proposal was sent in09, notice SHA-256 ba86a911d168a5a0b4d908427c841cd247b1bc6aeafeae491bf070f030a6bffd. Preserve for later exact rev
+        iew:
+     5 +1c6a4ccd2f9f198b6a9111ae08dbd29234d15fa500d77c2ed00c7ef252c1e189  /tmp/verification-audit-e6-cost-config-20261003/configuration.json
+     6 +ca88b919f66c9919f2ec9ef44d3e9a7b25aa5288d264cab0c113764ed0bd65d8  /tmp/verification-audit-e6-cost-config-20261003/cwd-wrapper.json
+     7 +291bd2badaf07341ea434090631317cb9f2f52e9514f55ed3c10307babd10217  /tmp/verification-audit-e6-cost-config-20261003/launcher-argv.json
+     8 +Four exact keyed leaf argv/caps120/120/60/150, existing env cwd wrapper, inherited environment/six explicit unsets, same collector9c50c62d/tool efc0d111
+        , all269 dependency pins, per_run180/maximum475. Never launched; no audit output directory. These artifacts preserve the ended window's deadline/grant c
+        onditions and MUST NOT be executed later as-is: later timing needs fresh exact review/remaining-cap derivation and a separate exclusive grant. Original
+        key a99a7753 and all frozen bytes are unchanged.
+     9 +
+    10 +Bounded completion audit passes: required source/Issue/PR/plan review, actual accepted/assembled entrypoint graph, reproducible inventory, eight-family
+        QuickSort/persistence pilot, 114-file legacy retention reasons, coverage-loss-aware proposals, implementation/test/docs/owner/promotion/failure accounti
+        ng and exact compact handoff are delivered. Earlier supplied/historical reports remain separate from fresh static verification; accepted tests and three
+         strict failures are preserved. Requested private config preparation is delivered, and your explicit deferral resolves this window's conditional cost ph
+        ase without claiming measurements.
+    11 +
+    12 +Fresh final checks: five published task7ed3ad1 blobs and integrated517f05a blobs match the frozen five-file manifest/archive; prototype inventory/report
+        /tool/key are unchanged, accepted paths have no delta from eb0aad6. Saved independent inventory output is byte-identical (62350b05). Later live SOAP pla
+        n edits stay outside the publication freeze. No Main mutation, issue closure, accepted promotion/test/source edit, gate/build/sanitizer/timing or new me
+        asurement harness by this lane. Task/docs publication is bounded static delivery only.
+    13 +
+    14 +Completing the bounded first audit Goal after this requirement-by-requirement check, superseding its blocked status; full Issue59 is not completed. This
+         lane stops at the bounded assignment. Any later cost phase is separate authorized work, not an automatic restart under the expired/shared grant. Owning
+         live plan records the final operational decision, verified completion and honest deferred limits; prior notices/snapshots/proposals remain preserved.
+
+• Ran python3 - <<'PY'
+  │ from pathlib import Path
+  │ import hashlib
+  │ … +8 lines
+  └ Final handoff: 3093 bytes; SHA-256 bcec59db6531c7c9795df138da1f65273c403cedb84cecea2e5c7a8095ebfe0d
+
+• Bounded first audit Goal is complete. Final handoff sent to Merge (src/prototype/coordination/outbox/verification-audit-10-complete-cost-deferred.txt).
+
+  The exact four-job proposal is preserved for later review and was never launched. Cost remains deferred and unmeasured; full Issue 59 stays open. Later timing
+  requires a new exclusive grant.
+
+  Recorded active Goal time: about 51 minutes.
+
+  Worked for 15m 31s • 17:52
+
+
+› Merge proposal ba86a911 reviewed now after cutoff: exact config1c6a4cc, wrapper/launcher and all269 pins verify; four keyed leaf argv/caps unchanged,
+  same9c50c62d GNU time collector. This is static applicability only. Cost remains DEFERRED/unmeasured and no launch granted; correctness workers are released.
+  Preserve config/key for later separate exclusive scheduling on a qualified producer, retain no-output/no-timing condition and full#59 open. Five static
+  files7ed3ad1/5683755 delivered; do not add a permanent collector or another semantic ledger.
+
+
+• I’ll record the review receipt in the live plan and Merge outbox. The config and key will remain preserved; cost stays deferred and unmeasured.
+
+• Edited doc/2026-10-03-VERIFICATION-AUDIT-PLAN.md (+1 -0)
+    42  - Merge operational slot-end/deferral decision within delegated user scope, source: Merge scheduling-boundary message transported into this thread, 2026
+        -10-03 at the `08:44:05 UTC` boundary: performance is terminal and 30 raw samples reviewed, but exact four-job config review did not finish with eight m
+        inutes remaining. Audit cost is deferred for this window; no launch granted, no deadline extension or ordinary duplicate/partial substitute. Finish/send
+         the light exact proposal for later review; mark cost unmeasured, bounded static delivery complete and full #59 open. Shared measurement slot is ended a
+        nd correctness workers released. No heavy timing/build/gate starts; any later measurement requires a separate exclusive grant. This supersedes the condi
+        tional audit phase for the ended window.
+    43 +- Merge operational post-cutoff review receipt within delegated user scope, source: Merge exact-proposal-review message transported into this thread, 20
+        26-10-03: proposal `ba86a911`, config `1c6a4ccd`, wrapper/launcher and all 269 pins reviewed and verified; four keyed leaf argv/caps and collector `9c50
+        c62d` unchanged. This proves static applicability only. Cost remains deferred/unmeasured with no launch grant and correctness workers released. Preserve
+         config/key and no-output/no-timing condition for later separate exclusive scheduling on a qualified producer; full #59 remains open. Five static files
+        at task `7ed3ad1`/integration `5683755` delivered; no permanent collector or additional semantic ledger. Bounded first Goal remains complete; this recei
+        pt does not restart measurement.
+    44  - Agent blocked audit, 2026-10-03: the previous goal turn made concrete progress by freezing the requested fifth supporting file and verifying all prese
+        rved bytes/link resolution. Fresh coordinator-report inspection at `08:29:53 UTC` still confirms audit timing ungranted. This same external authorizatio
+        n boundary has recurred through at least three consecutive goal turns; the static handoff/dependency preparation is complete and no further authorized w
+        ork remains before a separate Merge handoff. Mark the Goal blocked, not complete or paused; preserve the five-file publication snapshot and provisional
+        key. A later explicit grant must still satisfy performance terminal and at least eight minutes before `08:52:05 UTC`. Do not invent a live-process wait
+        or extend the audit with new harnesses.
+
+• Ran python3 - <<'PY'
+  │ from pathlib import Path
+  │ import hashlib
+  │ … +11 lines
+  └ Reviewed config/wrapper/launcher/key preserved; no audit output directory.
+
+• Added src/prototype/coordination/outbox/verification-audit-11-review-receipt.txt (+6 -0)
+    1 +To Merge session 01a100b3-1d83-7090-bbf6-62544c39ec4b only, 2026-10-03.
+    2 +Recorded your post-cutoff exact review of proposal ba86a911/config1c6a4ccd, wrapper/launcher/all269 pins, unchanged four leaf argv/caps and same collecto
+       r9c50c62d as static applicability only. No launch grant or measurement result is inferred. Bounded first Goal remains complete; full Issue59 stays open.
+    3 +
+    4 +Config1c6a4ccd/wrapperca88b919/launcher291bd2ba and original keya99a7753 remain exact; light preservation check confirms their hashes and absence of /tmp
+       /verification-audit-e6-cost-output-20261003. Cost stays DEFERRED/unmeasured; no audit collector/tool/launcher, timing, gate or build has run. Correctness
+        workers remain released under your decision.
+    5 +
+    6 +Preserve ended-window metadata/proposals for later separate exclusive scheduling on a qualified producer; a later execution requires fresh producer/depen
+       dency/remaining-cap review and a new explicit grant. Static five-file task7ed3ad1/integration5683755 delivery is unchanged. Later live plan receipt stays
+        outside the freeze. No permanent collector or extra semantic ledger was added; prior notices/snapshots and no-output/no-timing condition are preserved.
+
+• Ran python3 - <<'PY'
+  │ from pathlib import Path
+  │ import hashlib
+  │ … +5 lines
+  └ Review receipt: 1191 bytes; SHA-256 1e8b99182da029cc62daacc9ce2cb6bbb79e5b79ba173b9aeba6c7f79dc5569f
+
+• Review receipt recorded for Merge (src/prototype/coordination/outbox/verification-audit-11-review-receipt.txt). Config and key remain unchanged; no audit
+  outputs or timing exist.
+
+  Bounded static delivery remains complete. Cost is deferred and unmeasured; full Issue 59 stays open pending later exclusive scheduling.
+
+  Worked for 1m 15s • 17:54
+
+
+› Ask Codex to do anything
+
+  GPT-6.1-Sol xhigh · ~/workspace/a-program-workers/verification-audit · Hand off static inventory              Goal achieved (50m)    ⚠ 1 warning · f2 to view

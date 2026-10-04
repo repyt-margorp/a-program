@@ -1,0 +1,21 @@
+{
+  "argv": [
+    "make",
+    "-j1",
+    "-f",
+    "src/prototype/c_backend/acc_recipe/build.mk",
+    "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/tree",
+    "BUILD=/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch51-acc-recipe-20261004/O2",
+    "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+    "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch51-acc-recipe-20261004/O2/c_acc_recipe_emit"
+  ],
+  "environment": {
+    "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch51-acc-recipe-20261004/tmp",
+    "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+    "CLIENT_CFLAGS": "-O2"
+  },
+  "start": "2026-10-04T23:16:56.039818+00:00",
+  "exit": 0,
+  "finish": "2026-10-04T23:17:05.606033+00:00"
+}

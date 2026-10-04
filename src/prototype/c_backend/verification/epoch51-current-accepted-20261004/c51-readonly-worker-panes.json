@@ -1,0 +1,65 @@
+{
+  "date_UTC": "2026-10-04T23:44:44.934145+00:00",
+  "c-backend": {
+    "pane": "%0",
+    "SHA": "64b02f2e3469c2dea492cd56135c5f13c25fe66137f1597bcc03da39bcfcf695",
+    "status_lines": [
+      "    64 +- [ ] General native/full source correspondence/adoption/cost/full #61/Goal open.",
+      "  \u2514  M doc/2026-10-03-C-BACKEND-GOAL.md",
+      "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/c-backend \u00b7 Verify Surface index.lock handoff        Pursuing goal (1d 16h 51m)    \u26a0 1 warning \u00b7 f2 to view"
+    ]
+  },
+  "job-evidence": {
+    "pane": "%4",
+    "SHA": "444d5be4cf526f7d6af5d9f23dfde971319453c665dab789d60c8da984e3bdff",
+    "status_lines": [
+      "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-progra\u2026 Pursuing goal (1d 10h 2m)    \u26a0 1 warning \u00b7 f2 to view"
+    ]
+  },
+  "performance": {
+    "pane": "%1",
+    "SHA": "9e45dcf1cee5b7fd2c308fbcbf05d8d36e18c8bed2aeb1c18ae0f28bdf78408a",
+    "status_lines": [
+      "\u2022 Goal is now blocked on the required exclusive measurement coordination and remaining native",
+      "  notice. Full Goal scope remains unchanged.",
+      "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-prog\u2026 Goal stalled (/goal resume)    \u26a0 1 warning \u00b7 f2 to view"
+    ]
+  },
+  "verification-audit": {
+    "pane": "%10",
+    "SHA": "9fad3dc93a96f12557d844cad6fa871f47fba14ccd718f4632d5b0225434c65d",
+    "status_lines": [
+      "        ork remains before a separate Merge handoff. Mark the Goal blocked, not complete or paused; preserve the five-file publication snapshot and provisional",
+      "       r9c50c62d as static applicability only. No launch grant or measurement result is inferred. Bounded first Goal remains complete; full Issue59 stays open.",
+      "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/verification-audit \u00b7 Hand off static inventory              Goal achieved (50m)    \u26a0 1 warning \u00b7 f2 to view"
+    ]
+  },
+  "sort-library": {
+    "pane": "%11",
+    "SHA": "8e209cf3b41c094897fd0f1780e54f7e951fe51763ee344e4002aa60e6c5f73f",
+    "status_lines": [
+      "  Goal or duplicate worker. Root publication waits for corrected exact freeze.",
+      "  fixture/runner lines and test logs remain byte-identical. No rerun, accepted changes, new Goal, or duplicate worker.",
+      "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/sort-library \u00b7 Start authorized sort worker                 Goal achieved (24m)    \u26a0 1 warning \u00b7 f2 to view"
+    ]
+  },
+  "test-suite": {
+    "pane": "%12",
+    "SHA": "45c5f5be0f5b1341a8700ff85d804cd6080b39652cb65c23c3bc9b654d69bef6",
+    "status_lines": [
+      "     4 +Thread / Goal: 01a101d2-a538-7c30-864a-7841a2de3896",
+      "  Goal complete; elapsed time approximately 38 minutes.",
+      "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/test-suite \u00b7 Simplify and deduplicate tests                 Goal achieved (37m)    \u26a0 1 warning \u00b7 f2 to view"
+    ]
+  },
+  "issue-audit": {
+    "pane": "%14",
+    "SHA": "13cbaff8a40ed4057ff38691f1422d3fb680494ce45218674e3157e276388f9c",
+    "status_lines": [
+      "        vidence, residual necessity, existing owners and verified dispositions. Stop this bounded worker after Goal completion; GitHub dispositions are finished",
+      "\u2022 Goal confirmed complete. Recorded usage: 216,461 tokens, 23m 50s.",
+      "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/issue-audit \u00b7 Record audit ownership receipt                Goal achieved (23m)    \u26a0 1 warning \u00b7 f2 to view"
+    ]
+  },
+  "watchers": "1585465 node\n1674731 node\n"
+}

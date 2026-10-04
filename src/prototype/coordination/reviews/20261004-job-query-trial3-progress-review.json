@@ -1,0 +1,87 @@
+{
+  "date_UTC": "2026-10-04T23:47:49.241182+00:00",
+  "scope": "Readonly original-owner separate unqualified typed-query frontier progress, not new Root execution or frozen handoff",
+  "parent_R1_manifest": "7a29fdbb54ef941247099a7652bea22e428fc414d688665eba07a00398e68edd",
+  "owner_runtime129_code_manifest": "ff5045f5176e2f81964d92f57dad4503dea373a5aa0b0bb18e7c982f0f2dabee",
+  "owner_input_manifest": "f921db534ea67223eb4e995e17d4533c11d4ed2bed578a5291cafb7f19db9819",
+  "terminal_record": {
+    "input_sha256": "f921db534ea67223eb4e995e17d4533c11d4ed2bed578a5291cafb7f19db9819",
+    "code_sha256": "ff5045f5176e2f81964d92f57dad4503dea373a5aa0b0bb18e7c982f0f2dabee",
+    "code_records": 129,
+    "records": [
+      {
+        "name": "build",
+        "argv": [
+          "make",
+          "-f",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_query_frontier/history/trial3-inputs/controls/query_frontier.mk",
+          "OVERLAY=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_query_frontier/history/trial3-inputs",
+          "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_query_frontier/build-trial3-o2",
+          "CONTROL=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_query_frontier/history/trial3-inputs/controls/typed_query_checkpoint.c",
+          "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+          "-j1",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_query_frontier/build-trial3-o2/typed_query_checkpoint"
+        ],
+        "returncode": 0,
+        "log_sha256": "895ed039d77d228465e835824cd61734e0373dbf9aac5aca81886d18bee8ee35"
+      },
+      {
+        "name": "typed-checkpoint-List09",
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_query_frontier/build-trial3-o2/typed_query_checkpoint",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_query_frontier/history/trial3-inputs/examples/09_list_induction.p",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_query_frontier/trial3-controls"
+        ],
+        "returncode": -6,
+        "log_sha256": "23e2bc8a640640fb94de6d81bc782defb52501170062e4a18c9348c08f27f7e4",
+        "executable_sha256": "ebca5684f039744e6a63bbab360bf40584215fc49a023061dceb3d51f003f4a2"
+      }
+    ],
+    "images": [
+      {
+        "path": "trial3-controls/cut-1-inert.a",
+        "sha256": "17ee53d940e5ff423626b217ce0ebc55d2555a183487391835e0839f5f30eb7c",
+        "bytes": 29365
+      },
+      {
+        "path": "trial3-controls/cut-1.a",
+        "sha256": "0789ad5f7ab2bdb159a25db9c60a180939432a40292d6a4a7015ebab6112f8ce",
+        "bytes": 29641
+      },
+      {
+        "path": "trial3-controls/cut-2.a",
+        "sha256": "5c4d2fce1818cf0dc4a03c9524c8403c3bd98424e11e42f5e2569305520dc65c",
+        "bytes": 29641
+      },
+      {
+        "path": "trial3-controls/cut-3.a",
+        "sha256": "f80a0f3a45406df40f3d305a1867900982a1778c9ca38a8d92c992ba1fb7681c",
+        "bytes": 29683
+      }
+    ],
+    "pins_exact_after": true,
+    "children_reaped": true
+  },
+  "all_logs_images_and_executable_pinned_exact": true,
+  "all_retained_raw_pins": {
+    "trial3-controls/cut-1-inert.a": "17ee53d940e5ff423626b217ce0ebc55d2555a183487391835e0839f5f30eb7c",
+    "trial3-controls/cut-3.a": "f80a0f3a45406df40f3d305a1867900982a1778c9ca38a8d92c992ba1fb7681c",
+    "trial3-controls/cut-1.a": "0789ad5f7ab2bdb159a25db9c60a180939432a40292d6a4a7015ebab6112f8ce",
+    "trial3-controls/cut-2.a": "5c4d2fce1818cf0dc4a03c9524c8403c3bd98424e11e42f5e2569305520dc65c",
+    "trial3-controls/build.log": "895ed039d77d228465e835824cd61734e0373dbf9aac5aca81886d18bee8ee35",
+    "trial3-controls/byte-diagnosis.json": "426f2bafe1931f671e51a9208859e20067a7af928b194d38602ce94dbc25cab5",
+    "trial3-controls/typed-checkpoint-List09.log": "23e2bc8a640640fb94de6d81bc782defb52501170062e4a18c9348c08f27f7e4",
+    "trial3-controls/source-header-diagnosis.json": "eb8427d695b3eea63d5980f6c8181d9ff9dae076fc7b4677a0b138d1cbacda6d",
+    "trial3-controls/terminal.json": "3a40ac4e2b69ce33e6a2fb07d431fe772e1c515eb0e5fd346847bbff1ff27ee8"
+  },
+  "actual_inert_images_differ": {
+    "before_bytes": 29641,
+    "after_bytes": 29365,
+    "before_SHA": "0789ad5f7ab2bdb159a25db9c60a180939432a40292d6a4a7015ebab6112f8ce",
+    "after_SHA": "17ee53d940e5ff423626b217ce0ebc55d2555a183487391835e0839f5f30eb7c"
+  },
+  "Assessment": "Preserve actual typed-checkpoint-List09 abort-6 from same_bytes. Original owner is diagnosing source-owner/reference retention. This separate private producer extension is unqualified; previously frozen R1 local-qualified ownership/detailed3040 results are unchanged. No accepted-runtime bug, fresh Root replay, restored byte-equivalence, READY, publication or waiver is inferred.",
+  "owner_timing_censor_fields": "not recorded; no timing or uncensored claim",
+  "Goal_owner_actions": false,
+  "cost_samples": 0
+}

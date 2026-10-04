@@ -1,0 +1,228 @@
+• Ran python3 - <<'PY'
+  │ import hashlib,json,pathlib
+  │ root=pathlib.Path.cwd(); b=root/'src/prototype/c_backend/.evidence/epoch51-acc-recipe-20261004'; f=json.loads((b/'epoch51-freeze.json').read_text());
+  │ … +9 lines
+  └ {
+      "frozen15_exact": true,
+      "raw_verified": 372,
+    +5 lines (ctrl+t to view transcript)
+
+• C51 now derives the actual Acc down domain/result indices and transport directions from admitted source, then uses them in the executable C candidate (src/
+  prototype/c_backend/acc_recipe/example/component.c).
+
+  O2 and full-source sanitizer controls passed. The initial test build failure is retained.
+
+  The 15-file handoff (doc/2026-10-04-C-BACKEND-EPOCH51-HANDOFF.md) is frozen and Merge notified. Commit message: prototype: derive actual Acc down action
+  recipes.
+
+  Generalized native Acc and complete source equivalence remain open; the Goal stays active.
+
+  Worked for 37m 44s • 08:37
+
+• C51 made concrete progress: the actual Acc action recipe now drives executable C and has a frozen handoff. I’ll connect it to the saved-image product command
+  so ordinary C clients can use that candidate without a separate composition step.
+
+• Explored
+  └ Read build.mk, compose.py, check.py, pack.py
+
+• Ran python3 - <<'PY'
+  │ import hashlib,json,pathlib
+  │ root=pathlib.Path.cwd(); b=root/'src/prototype/c_backend/.evidence/epoch51-acc-recipe-20261004'; f=json.loads((b/'epoch51-freeze.json').read_text()); assert
+  │ … +3 lines
+  └ Previous turn: progress; C51 frozen15 exact
+    c51-action-progress-review-20261004.json {
+      "date_UTC": "2026-10-04T23:34:22.440995+00:00",
+    +6 lines (ctrl+t to view transcript)
+
+• Ran cat src/prototype/coordination/reviews/20261004-c51-action-progress-review.json; cat src/prototype/coordination/inbox/
+  │ c51-action-progress-review-20261004.json; python3 - <<'PY'
+  │ from pathlib import Path
+  │ … +3 lines
+  └ cat: src/prototype/coordination/reviews/20261004-c51-action-progress-review.json: No such file or directory
+    {
+      "date_UTC": "2026-10-04T23:34:22.440995+00:00",
+    +75 lines (ctrl+t to view transcript)
+
+• Merge’s newer dependency report identifies a current joint-build failure: the native producer removed pg_typing.proofs, which the command and helper test
+  instrumentation still reference. I’ll address that owned instrumentation first, preserving source-inertness checks and frozen evidence, then continue the
+  recipe-command connection.
+
+• Explored
+  └ Read native-r1-current-C50-dependency-review-20261004.json, native-r1-detail-review.json
+
+• Ran python3 - <<'PY'
+  │ from pathlib import Path
+  │ p=Path('/home/repyt/workspace/a-program-workers/merge-storage-20261003/native-r1-current-review/Root-corrected')
+  │ … +2 lines
+  └ O2-current-C50-native-joint-build-final.log
+    O2-current-C50-native-joint-build.log
+    O2-family_variable_scope_native-build.log
+    +24 lines (ctrl+t to view transcript)
+
+• Added doc/2026-10-04-C-BACKEND-NATIVE-OWNER-PLAN.md (+64 -0)
+     1 +# C Backend Native Owner Instrumentation and Actual Acc Command
+     2 +
+     3 +Date:2026-10-04 UTC. Status:C52 private compatibility/product work.
+     4 +Original Goal/model continue; submitted C51 exact15 stays immutable.
+     5 +
+     6 +## Problem List
+     7 +
+     8 +1. Preserve source/admission/inert-owner guards when the producer no longer
+     9 +   stores duplicate Evidence receipts, then connect the actual Acc recipe command.
+    10 +
+    11 +## 1. Current Producer and Actual Acc Products
+    12 +
+    13 +### Subjective (User)
+    14 +
+    15 +Existing conveyed2026-10-04 requirements via inquiry desk/Merge, English paraphrase:
+    16 +prioritize readable executable C for actual admitted Acc QuickSort, retaining
+    17 +Acc/down recursion, indices, partition and captures. Faithful labeled manual
+    18 +candidates are acceptable; no alternate algorithm or false generalized success.
+    19 +Preserve C32, defer Lists and continue the original Goal/model. Existing2026-10-03
+    20 +clarification prioritizes ordinary external C modules within downstream prototype
+    21 +scope and prohibits target-driven .a/producer/schema/checker/source-erasure
+    22 +authority. Continue implementation without waiting for Merge; integration and
+    23 +accepted adoption are separate. These are existing paraphrases, not new approval;
+    24 +original human wording was not supplied.
+    25 +
+    26 +### Objective (Code)
+    27 +
+    28 +Previous turn is progress: C51 actual down/domain/result/direction recipes execute
+    29 +the actual955-line C candidate; current-fc52755b O2/full-source SAN55 expected rows
+    30 +each pass and exact15 manifest4a918254/archive162cf5e3/READY2216f818 remain exact.
+    31 +This qualifies the retained fc52755b source, not the later native R1 producer.
+    32 +
+    33 +Merge operational dependency review23:27UTC independently reproduces current
+    34 +C50/native R1 joint make2: acc_command/main.c references removed pg_typing.proofs.
+    35 +C51 helper test instrumentation has the same reference. Native R1 source126
+    36 +manifest441cbd69/tested664b9bea23d is a separate producer candidate; its original
+    37 +packet/Root failures are retained and implementation publication is pending owner
+    38 +corrections. This is an observed compatibility defect in owned instrumentation,
+    39 +not a reason to restore receipt bookkeeping or modify the source producer.
+    40 +
+    41 +### Assessment
+    42 +
+    43 +Agent reprioritization: reproduce the exact current source mismatch, inspect
+    44 +existing native owner/admission views, and migrate the target observer while
+    45 +preserving source owner counts/membership and disabled source advancement.
+    46 +Do not delete guards, infer approval of a new semantic field, or mutate frozen
+    47 +C50/C51/native R1 evidence. Job owns its header-observer correction; route shared
+    48 +needs through Merge before edits. A failed old-field build does not prove a
+    49 +lowering/runtime bug or general-native completion.
+    50 +
+    51 +After compatibility is concrete, connect C51 recipe generation to the one-image
+    52 +ordinary C product command, keeping fixed/body/table/manual/native limitations.
+    53 +Focused serial j1/disk correctness only, no broad/comparative workload. C52 live
+    54 +prototype edits are distinct from archived snapshots; no shared Git/Main changes.
+    55 +
+    56 +### Plan
+    57 +
+    58 +- [ ] Reproduce/pin current C50/native R1 build failure and current owner APIs.
+    59 +- [ ] Preserve/migrate source/admission/owner inertness in owned C instrumentation.
+    60 +- [ ] Connect the bounded actual Acc recipe to saved-image ordinary products.
+    61 +- [ ] Verify focused current producer O2/full-source SAN/unsupported/prior-output/
+    62 +  rollback/I-O controls, retaining initial failures and source limitations.
+    63 +- [ ] Freeze a distinct exact handoff and update the sole owning issue table.
+    64 +- [ ] General native/full source correspondence/adoption/cost/full #61/Goal open.
+
+• Explored
+  └ Read typing.h, evidence.h, native_admissions.h
+
+• Ran python3 - <<'PY'
+  │ import json,pathlib
+  │ p=pathlib.Path('/home/repyt/workspace/a-program-workers/merge-storage-20261003/native-r1-detail-review.json'); x=json.loads(p.read_text()); print({k:x[k]
+  │ … +4 lines
+  └ {'parent': 'fc52755b345a555e49a79df40549e9cb23d54088', 'code126_SHA': '441cbd699ca87b505564938c81e68cf17fc3de03581af903bfc02636544c2244', 'tested664_SHA':
+    'b9bea23dbb6bc45382d1b24356901978bc7666dd768260a8597adc8c19ed94d2'}
+    Root failure log tail:
+    +11 lines (ctrl+t to view transcript)
+
+• Context compacted · 3m 40s
+
+• Ran pwd
+  └ /home/repyt/workspace/a-program-workers/c-backend
+
+• Ran git status --short
+  └  M doc/2026-10-03-C-BACKEND-GOAL.md
+     M src/prototype/c_backend/README.md
+     M src/prototype/c_backend/link/driver.c
+    +78 lines (ctrl+t to view transcript)
+
+• I’m continuing the actual Acc command work. First I’ll fix the confirmed native-owner compatibility failure in the C-side instrumentation, preserving the
+  source and admission checks and all frozen evidence. Then I’ll connect the source-derived down recipe to the ordinary C product command.
+
+• Explored
+  └ Read CODING_STYLE.md, build.mk, main.c, 2026-10-04-C-BACKEND-NATIVE-OWNER-PLAN.md, emit_test.c
+    Search proofs|counts|assert_inert|source_counts in emit_test.c
+
+• Ran cat src/prototype/c_backend/acc_command/compose.py src/prototype/c_backend/acc_recipe/pack.py
+  └ import argparse
+    import ctypes
+    import errno
+    +181 lines (ctrl+t to view transcript)
+
+• Ran cat /home/repyt/workspace/a-program-workers/merge-storage-20261003/native-r1-current-review/tree/src/index.h /home/repyt/workspace/a-program-workers/
+  │ merge-storage-20261003/native-r1-current-review/tree/src/scope.h
+  └ cat: /home/repyt/workspace/a-program-workers/merge-storage-20261003/native-r1-current-review/tree/src/index.h: No such file or directory
+    #ifndef A_PROGRAM_POINTER_SCOPE_H
+    #define A_PROGRAM_POINTER_SCOPE_H
+    +25 lines (ctrl+t to view transcript)
+
+• Explored
+  └ Search evidence|owned_by|admission_owner|struct pg_graph|struct pg_scope in typing.h
+
+• Ran cat src/prototype/c_backend/build.mk src/prototype/c_backend/acc_capture/emit_test.c
+  └ C_BACKEND := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+    OVERLAY ?= /tmp/a-program-c-backend-base
+    include $(C_BACKEND)../artifact_persistence/build.mk
+    +225 lines (ctrl+t to view transcript)
+
+• Ran python3 - <<'PY'
+  │ from pathlib import Path
+  │ import hashlib,json
+  │ … +6 lines
+  └ src/prototype/c_backend/acc_command/main.c 8d55e5b02e973a4b1f15ca1dfe877a552b894c2dec235c7dce053d24a26d643c
+    src/prototype/c_backend/acc_command/build.mk 4bb03da4b5bd05e806bd70ae93f02eb54d6a1c89e861579fb9f3e1470461f855
+    src/prototype/c_backend/acc_recipe/emit_test.c 0b9e071d881789d4cea40c48914f9c758c9435cb1f35d2fee5f97d34f889218e
+    +2 lines (ctrl+t to view transcript)
+
+• Ran TMPDIR=$PWD/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/tmp make -f src/prototype/c_backend/acc_command/build.mk ROOT=/home/repyt/
+  │ workspace/a-program-workers/merge-storage-20261003/native-r1-current-review/tree/src/ BUILD=$PWD/src/prototype/c_backend/.evidence/
+  │ epoch52-native-recipe-20261004/initial-build CC=/usr/bin/x86_64-linux-gnu-gcc-14 CFLAGS='-std=c11 -O2 -g -Wall -Wextra -Werror' -j1 $PWD/src/prototype/
+  │ … +2 lines
+  └ (no output)
+
+• Ran cat src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/initial-build.log src/prototype/artifact_persistence/build.mk
+  └ make: *** No rule to make target '/home/repyt/workspace/a-program-workers/merge-storage-20261003/native-r1-current-review/tree/src/support.c', needed by '/
+    home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/initial-build/c-acc-image'.  Stop.
+    ARTIFACT_PROTOTYPE := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+    +115 lines (ctrl+t to view transcript)
+
+• Ran cat /home/repyt/workspace/a-program-workers/merge-storage-20261003/native-r1-current-review/tree/src/scope.h /home/repyt/workspace/a-program-workers/
+  │ merge-storage-20261003/native-r1-current-review/tree/src/graph.h
+  └ #ifndef A_PROGRAM_POINTER_SCOPE_H
+    #define A_PROGRAM_POINTER_SCOPE_H
+
+    +129 lines (ctrl+t to view transcript)
+
+• Explored
+  └ Search struct pg_index|struct pg_index_entry|admission_owner|pg_evidence_for_subject|scope in evidence.h (exit 2)
+
+• Ran python3 - <<'PY'
+  │ from pathlib import Path
+  │ p=Path('/home/repyt/workspace/a-program-workers/merge-storage-20261003/native-r1-current-review/tree')
+  │ … +4 lines
+  └ CC ?= cc
+    CFLAGS ?= -std=c11 -Wall -Wextra -Werror -O2
+    ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+    +166 lines (ctrl+t to view transcript)
+
+• Explored
+  └ Search proofs|admission_owner|struct pg_typing in typing.h
+
+◦ Working (7m 38s • esc to interrupt)
+
+
+› Ask Codex to do anything
+
+  GPT-6.1-Sol xhigh · ~/workspace/a-program-workers/c-backend · Verify Surface index.lock handoff        Pursuing goal (1d 16h 51m)    ⚠ 1 warning · f2 to view

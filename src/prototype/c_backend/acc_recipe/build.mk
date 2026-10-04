@@ -1,0 +1,6 @@
+ACC_RECIPE := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+include $(ACC_RECIPE)../acc_frame/build.mk
+
+$(BUILD)/c_acc_recipe_emit: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(wildcard $(ROOT)*.h $(ROOT)artifact/*.h) $(ACC_RECIPE)build.mk $(ACC_RECIPE)emit.c $(ACC_RECIPE)emit.h $(ACC_RECIPE)emit_test.c $(wildcard $(ACC_RECIPE)../acc_frame/*.h $(ACC_RECIPE)../acc_endpoints/*.h $(ACC_RECIPE)../acc_transport/*.h $(ACC_RECIPE)../acc_capture/*.h $(ACC_RECIPE)../acc_actions/*.h $(ACC_RECIPE)../indexed_views/*.h) $(ACC_RECIPE)../acc_frame/emit.c $(ACC_RECIPE)../acc_endpoints/emit.c $(ACC_RECIPE)../acc_transport/emit.c $(ACC_RECIPE)../acc_capture/emit.c $(ACC_RECIPE)../acc_capture/emit_test.c $(ACC_RECIPE)../acc_actions/emit.c $(ACC_RECIPE)../indexed_views/view.c $(ACC_RECIPE)../acc_endpoints/read.c
+	mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(ACC_RECIPE)../indexed_views/view.c $(ACC_RECIPE)../acc_endpoints/read.c $(ACC_RECIPE)emit.c $(ACC_RECIPE)emit_test.c -Wl,--wrap=pg_eval_advance -Wl,--wrap=pg_whnf_advance -Wl,--wrap=pg_substitution_advance -Wl,--wrap=pg_typed_query_advance -o $@

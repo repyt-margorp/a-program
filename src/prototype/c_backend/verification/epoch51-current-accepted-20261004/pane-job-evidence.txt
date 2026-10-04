@@ -1,0 +1,221 @@
+     51 +    assert(length >= 0 && !fseek(file, 0, SEEK_SET));
+     52 +    char *text = malloc((size_t)length + 1);
+     53 +    assert(text && fread(text, 1, (size_t)length, file) == (size_t)length && !fclose(file
+         ));
+     54 +    struct pg_program *program = pg_program_create(text, (size_t)length, PG_DEFINITION_EX
+         PLICIT_THUNK);
+     55 +    free(text);
+     56 +    assert(program && program->root && !program->parser.error);
+     57 +    return program;
+     58 +}
+     59 +
+     60 +int main(int argc, char **argv)
+     61 +{
+     62 +    assert(argc == 2);
+     63 +    struct pg_program *program = start(argv[1]);
+     64 +    struct pg_typed_query *query = NULL;
+     65 +    while (!query && program->synthesis.ready && program->synthesis.steps < 100000) {
+     66 +        pg_synthesis_advance(&program->synthesis, 1);
+     67 +        for (size_t i = 0; i < program->typing.typed_queries.capacity && !query; ++i) {
+     68 +            for (struct pg_index_entry *entry = program->typing.typed_queries.buckets[i];
+          entry; entry = entry->next) {
+     69 +                struct pg_typed_query *candidate = (void *)entry;
+     70 +                if (pg_classifier_pending_input(candidate) && !candidate->status && candi
+         date->steps) {
+     71 +                    query = candidate;
+     72 +                    break;
+     73 +                }
+     74 +            }
+     75 +        }
+     76 +    }
+     77 +    assert(query);
+     78 +    FILE *files[256];
+     79 +    size_t count = 0;
+     80 +    while (!query->status) {
+     81 +        assert(count < sizeof(files) / sizeof(*files));
+     82 +        struct checkpoint saved = {.written = pg_classifier_pending_input(query), .steps
+         = query->steps};
+     83 +        assert(saved.written);
+     84 +        files[count] = tmpfile();
+     85 +        struct pg_synthesis_input root = {.pending = pg_synthesis_pending(program->root)}
+         ;
+     86 +        assert(files[count] && !pg_sources_write_with(files[count], &program->synthesis,
+     87 +            1, &root, 0, write_extra, &saved));
+     88 +        ++count;
+     89 +        assert(pg_typed_query_advance(query, 1) >= 0);
+     90 +    }
+     91 +    uint64_t total = query->steps, level;
+     92 +    assert(query->status == 1 && pg_universe_level(pg_evidence_classifier(query->result),
+          &level));
+     93 +    enum pg_evidence_judgement judgement = pg_evidence_judgement(query->result);
+     94 +    pg_program_destroy(program);
+     95 +    for (size_t i = 0; i < count; ++i) {
+     96 +        assert(!fseek(files[i], 0, SEEK_SET));
+     97 +        struct checkpoint loaded = {0};
+     98 +        size_t source_count;
+     99 +        struct pg_synthesis_job *const *sources;
+    100 +        program = pg_sources_read_with(files[i], 100000, &source_count, &sources, read_ex
+         tra, &loaded);
+    101 +        assert(program && source_count == 1 && loaded.loaded && !program->synthesis.steps
+         );
+    102 +        assert(native_admissions(&program->typing) == 1 && !loaded.loaded->typing);
+    103 +        uint64_t cut = loaded.steps, input_steps = loaded.loaded->steps;
+    104 +        assert(pg_occurrence_input_advance(loaded.loaded, 0) == PG_INPUT_PENDING);
+    105 +        assert(pg_occurrence_input_advance(loaded.loaded, 1) == PG_INPUT_ERROR);
+    106 +        assert(loaded.loaded->steps == input_steps && !program->synthesis.steps
+    107 +            && native_admissions(&program->typing) == 1);
+    108 +        assert(!pg_occurrence_type_resume(&program->typing, loaded.loaded->source, loaded
+         .loaded));
+    109 +        FILE *resave = tmpfile();
+    110 +        struct pg_synthesis_input root = {.pending = pg_synthesis_pending(sources[0])};
+    111 +        assert(resave && !pg_sources_write_with(resave, &program->synthesis, 1, &root, 0,
+          write_extra, &loaded));
+    112 +        same_bytes(files[i], resave);
+    113 +        assert(!fclose(resave));
+    114 +        /* This control explicitly selects authentic continuation reuse. Source
+    115 +         * and its formation are checked through the ordinary Kernel first. This
+    116 +         * owner test does not claim public B/R validation accounting. */
+    117 +        const struct pg_evidence *source = pg_prove_scoped_subject(&program->typing,
+    118 +            loaded.scopes[0], loaded.loaded->source);
+    119 +        assert(source && pg_evidence_subject(source) == loaded.loaded->source);
+    120 +        const struct pg_evidence *context = pg_prove_scope(&program->typing, loaded.scope
+         s[0]);
+    121 +        query = pg_classifier_request(&program->typing, context, source);
+    122 +        assert(query && !query->status && !query->steps);
+    123 +        struct pg_typed_query copied_query = *query;
+    124 +        assert(pg_classifier_resume(&copied_query, loaded.loaded, cut));
+    125 +        const struct pg_occurrence *original = loaded.loaded->source;
+    126 +        struct pg_occurrence copied_source = *original;
+    127 +        loaded.loaded->source = &copied_source;
+    128 +        assert(pg_classifier_resume(query, loaded.loaded, cut));
+    129 +        loaded.loaded->source = original;
+    130 +        assert(!pg_classifier_resume(query, loaded.loaded, cut));
+    131 +        assert(!query->status && query->steps == cut && !program->synthesis.steps);
+    132 +        assert(pg_typed_query_advance(query, 0) == 0 && query->steps == cut);
+    133 +        assert(total > cut && pg_typed_query_advance(query, total - cut) == 1);
+    134 +        assert(query->steps == total && pg_evidence_judgement(query->result) == judgement
+         );
+    135 +        uint64_t restored_level;
+    136 +        assert(pg_universe_level(pg_evidence_classifier(query->result), &restored_level)
+    137 +            && restored_level == level && pg_alpha_equal(pg_evidence_subject(query->resul
+         t)->core,
+    138 +                loaded.loaded->source->classifier) == 1);
+    139 +        printf("typed-frontier cut=%" PRIu64 " useful=%" PRIu64 " total=%" PRIu64 " inert
+         -bytes=equal\n",
+    140 +            cut, total - cut, total);
+    141 +        pg_occurrence_type_pending_destroy(loaded.loaded);
+    142 +        pg_program_destroy(program);
+    143 +        assert(!fclose(files[i]));
+    144 +    }
+    145 +    printf("destroyed-owner typed classifier cuts=%zu\n", count);
+    146 +    return 0;
+    147 +}
+
+• Ran python3 - <<'PY'
+  │ from pathlib import Path
+  │ import hashlib,shutil,json,subprocess
+  │ … +41 lines
+  └ [{"name": "build", "argv": ["make", "-f", "/home/repyt/workspace/a-program-workers/
+    job-evidence/src/prototype/solver_inputs/job_evidence_query_frontier/history/trial1-inputs/
+    controls/query_frontier.mk", "OVERLAY=/home/repyt/workspace/a-program-workers/job-evidence/
+    +1 line (ctrl+t to view transcript)
+
+• Ran tail -8 src/prototype/solver_inputs/job_evidence_query_frontier/trial1-controls/build.log;
+  │ test ! -f src/prototype/solver_inputs/job_evidence_query_frontier/trial1-controls/
+  │ typed-checkpoint-List09.log || cat src/prototype/solver_inputs/job_evidence_query_frontier/
+  │ … +3 lines
+  └       |                                                    ^~~~~~~~~~~~~~~~~
+    /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/
+    job_evidence_query_frontier/history/trial1-inputs/src/typing_io.c:70:25: error: implicit
+    +9 lines (ctrl+t to view transcript)
+
+• Explored
+  └ Search error:|warning: in build.log
+
+• Edited src/prototype/solver_inputs/job_evidence_query_frontier/src/typing_io.c (+1 -0)
+    2  #include "typing_internal.h"
+    3 +#include "evidence.h"
+    4  #include "eval_io.h"
+
+• Ran python3 - <<'PY'
+  │ from pathlib import Path
+  │ import hashlib,shutil,json,subprocess
+  │ … +38 lines
+  └ [{"name": "build", "argv": ["make", "-f", "/home/repyt/workspace/a-program-workers/
+    job-evidence/src/prototype/solver_inputs/job_evidence_query_frontier/history/trial2-inputs/
+    controls/query_frontier.mk", "OVERLAY=/home/repyt/workspace/a-program-workers/job-evidence/
+    +1 line (ctrl+t to view transcript)
+
+• Ran test ! -f src/prototype/solver_inputs/job_evidence_query_frontier/trial2-controls/
+  │ typed-checkpoint-List09.log || cat src/prototype/solver_inputs/job_evidence_query_frontier/
+  │ trial2-controls/typed-checkpoint-List09.log; sha256sum src/prototype/solver_inputs/epochs/
+  │ … +1 line
+  └ typed_query_checkpoint: /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/
+    solver_inputs/job_evidence_query_frontier/history/trial2-inputs/controls/
+    typed_query_checkpoint.c:42: same_bytes: Assertion `x == y' failed.
+    +1 line (ctrl+t to view transcript)
+
+• The first typed-query checkpoint builds, but its inert byte-equality control fails. The failed
+  source, binary and report are preserved. I’ll now retain both raw images and locate the changed
+  owner/reference ordering. The qualified Evidence-deletion handoff remains unchanged.
+
+• Edited src/prototype/solver_inputs/job_evidence_query_frontier/controls/typed_query_checkpoint.c
+(+9 -3)
+     61  {
+     62 -    assert(argc == 2);
+     62 +    assert(argc == 3);
+     63      struct pg_program *program = start(argv[1]);
+        ⋮
+     83          assert(saved.written);
+     84 -        files[count] = tmpfile();
+     84 +        char path[4096];
+     85 +        int length = snprintf(path, sizeof(path), "%s/cut-%zu.a", argv[2], count + 1);
+     86 +        assert(length > 0 && (size_t)length < sizeof(path));
+     87 +        files[count] = fopen(path, "w+b");
+     88          struct pg_synthesis_input root = {.pending = pg_synthesis_pending(program->root)}
+         ;
+        ⋮
+    111          assert(!pg_occurrence_type_resume(&program->typing, loaded.loaded->source, loaded
+         .loaded));
+    109 -        FILE *resave = tmpfile();
+    112 +        char path[4096];
+    113 +        int length = snprintf(path, sizeof(path), "%s/cut-%zu-inert.a", argv[2], i + 1);
+    114 +        assert(length > 0 && (size_t)length < sizeof(path));
+    115 +        FILE *resave = fopen(path, "w+b");
+    116          struct pg_synthesis_input root = {.pending = pg_synthesis_pending(sources[0])};
+
+• Ran python3 - <<'PY'
+  │ from pathlib import Path
+  │ import hashlib,shutil,json,subprocess
+  │ … +40 lines
+  └ [{"name": "build", "argv": ["make", "-f", "/home/repyt/workspace/a-program-workers/
+    job-evidence/src/prototype/solver_inputs/job_evidence_query_frontier/history/trial3-inputs/
+    controls/query_frontier.mk", "OVERLAY=/home/repyt/workspace/a-program-workers/job-evidence/
+    +1 line (ctrl+t to view transcript)
+
+• Ran python3 - <<'PY'
+  │ from pathlib import Path
+  │ import json
+  │ … +13 lines
+  └ {
+      "before_bytes": 29641,
+      "after_bytes": 29365,
+    +104 lines (ctrl+t to view transcript)
+
+• Ran rg -n -A35 -B10 '^static void prepare' src/prototype/solver_inputs/
+  │ job_evidence_query_frontier/controls/lambda_checked_frontier.c; rg -n -g '*.c'
+  │ 'pg_sources_(write_with|read_with)|input_count|source_count' src/prototype/solver_inputs/
+  │ … +3 lines
+  └ 134-    *mapping = jobs;
+    135-    *external = jobs + count;
+    136-    *roots = jobs + 2 * count;
+    +117 lines (ctrl+t to view transcript)
+
+• Context compacted · 3m 32s
+
+• Working (9h 47m 28s • esc to interrupt)
+
+
+› Ask Codex to do anything
+
+  GPT-6.1-Sol xhigh · ~/workspace/a-progra… Pursuing goal (1d 10h 2m)    ⚠ 1 warning · f2 to view

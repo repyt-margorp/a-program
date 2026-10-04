@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "/usr/bin/x86_64-linux-gnu-gcc-14",
+    "-std=c11",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-O2",
+    "-I/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch51-acc-recipe-20261004/candidate-initial",
+    "src/prototype/c_backend/acc_recipe/map_client.c",
+    "-o",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch51-acc-recipe-20261004/initial-map"
+  ],
+  "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch51-acc-recipe-20261004/tmp",
+  "start": "2026-10-04T23:12:50.578574+00:00",
+  "exit": 1,
+  "finish": "2026-10-04T23:12:50.605986+00:00"
+}

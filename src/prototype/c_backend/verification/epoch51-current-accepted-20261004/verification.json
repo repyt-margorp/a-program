@@ -1,0 +1,62 @@
+{
+  "C50_command_IO": "separately qualified unchanged C50, not a fresh replay",
+  "Core_cases_reused_not_multiplied": 341,
+  "Goal_complete": false,
+  "Main_integration": "pending Merge only",
+  "O2_expected_rows": 55,
+  "SAN_expected_rows": 55,
+  "SAN_scope": "whole helper/generated-module/client source/object/archive; pointer/Core inputs remain O2",
+  "accepted_commit": "fc52755b345a555e49a79df40549e9cb23d54088",
+  "accepted_promotion": false,
+  "all_owned_commands_terminal_reaped": true,
+  "branch": "parallel/c-backend-20261003",
+  "commit_message": "prototype: derive actual Acc down action recipes",
+  "cost_samples": 0,
+  "current_phase_unexpected_failures": [],
+  "date_UTC": "2026-10-04T23:31:36.265029+00:00",
+  "delegated_parent": "768213aba5d683128a0ccb2cb4e38905f73a46bb",
+  "epoch": 51,
+  "final_inputs_sha256": "05205f685ad2d8d256ccd2a97a9390daadd7e1920bd512d4dbb90b519933d72e",
+  "header_sha256": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044",
+  "image_sha256": "7c1a4f35108dea9a91c4ffac90062b0c1d6bb1c145e116ff269942775e704aa4",
+  "independent_current_review": "pending Merge",
+  "limits": [
+    "Nat32/depth256/node65536/borrowed immutable/private-token lifetime/nonoverlap/transactional/status1-6",
+    "overflow unexercised; finite SAN; arbitrary pointer safety unproved",
+    "fixed exact body/table guards, not arbitrary native artifacts",
+    "larger refinement records/recipe validation unmeasured",
+    "no producer/schema/checker/erasure/public ABI expansion",
+    "no accepted adoption/cost/full61/Goal completion"
+  ],
+  "main_native_Acc": "C46 checked/trusted materialized4/inputs3 inherited; not fresh C51 native execution",
+  "manual_extent": [
+    "finite Nat/LT/Acc interpreter",
+    "role values/closure/storage/Nat/LT/array representation",
+    "full checked Scope/context-declaration/source equivalence"
+  ],
+  "map_endpoint_frame_prefix_exact_C49": true,
+  "new_runtime_refusals": 7,
+  "original_failures": [
+    "initial refusal-client nested main/name compiler1, original source/diagnostics retained"
+  ],
+  "parent_runtime_refusals": 28,
+  "phase_outcomes": {
+    "0": 44,
+    "1": 1,
+    "2": 1,
+    "4": 9
+  },
+  "private16_structural_inspector": "inherited C49; not fresh C51 inspector run",
+  "provenance_sha256": "f3cf55d5a9eb6905d559109bda20beb49966dd627de7cc48925fe8eb91894de2",
+  "recipe_sha256": "591fa73f5abcd1b5257e7ee3c271672452fa63c93c9b888aa9d1063445c8e6d0",
+  "retained_input_count": 407,
+  "runtime_manifest_sha256": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+  "shared_index_sha256": "848aae6bed8ddf19f70473244f94f8ca144b4bbe3ca7a427b2f44e2a5e842325",
+  "source_advance_disabled_during_emission": true,
+  "source_body_header_ABI_unchanged": true,
+  "source_graph_typing_context_map_owners_unchanged": true,
+  "source_lines": 955,
+  "source_sha256": "1da176b52c9dabb6a53e244dd77fb4172221d46b13052e231e32d536cf834f3d",
+  "task_publication": "pending delegated Merge",
+  "worker_HEAD": "cc3cba3495b81628e0a68ec8b45aee4f5447d188"
+}

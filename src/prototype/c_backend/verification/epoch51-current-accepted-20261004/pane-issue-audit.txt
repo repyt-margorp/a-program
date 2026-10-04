@@ -1,0 +1,228 @@
+
+• Ran python3 - <<'PY'
+  │ import json,pathlib,subprocess,hashlib,concurrent.futures,datetime
+  │ initial={r['number']:r for r in json.load(open('/tmp/issue-audit-open-initial.json'))}
+  │ … +25 lines
+  └ {
+      "verified_at_UTC": "2026-10-03T13:14:44.695556+00:00",
+      "initial_open": 10,
+    +155 lines (ctrl+t to view transcript)
+
+• Ran python3 - <<'PY'
+  │ import json,pathlib,hashlib,csv
+  │ p=pathlib.Path('/tmp/a-program-merge-c11-e10-gates-20261003')
+  │ … +12 lines
+  └ C11 task 56e4ae875a18f336fff2262925472158a0d5d249 base 09ee7750604f1de2264dd4dad5ab5f174583c655 source manifest
+    73fa86c94b805b768d2c8493ce6f6a46c51983e556974c4920d805b59eefc743 source pins 128
+    Gate targets 13 recorded exit 0
+    +4 lines (ctrl+t to view transcript)
+
+• Edited 2 files (+57 -5)
+  └ doc/2026-10-03-ISSUE-LIFECYCLE-CONSOLIDATION-WORKER-PLAN.md (+45 -5)
+      3  Date: 2026-10-03
+      4 -Status: in progress; evidence reviewed, GitHub dispositions prepared
+      4 +Status: verified; bounded disposition audit complete
+      5  Code baseline: Main `09ee7750604f1de2264dd4dad5ab5f174583c655`; unrelated local
+        ⋮
+     66    records are pinned historical evidence, freshly read rather than rerun.
+     67 +- Fresh GitHub completion check, 2026-10-03 13:14:44 UTC: all ten original
+     68 +  issue bodies unchanged; ten exact disposition comments match prepared text;
+     69 +  #44/#49 closed with `state_reason=not_planned`; successor #61 open with both
+     70 +  predecessor links and separate P1/P2 requirements. Cross-links were verified
+     71 +  before each closure. Open set is #41/#43/#47/#51/#52/#56/#57/#59/#61 (nine),
+     72 +  with zero open PRs. Compact API verification is retained in the frozen handoff.
+     73 +- Independently inspected Merge C11 evidence at
+     74 +  `/tmp/a-program-merge-c11-e10-gates-20261003`: invocation pins exact task
+     75 +  `56e4ae875a18f336fff2262925472158a0d5d249`, Main `09ee775`, E9+E10 source
+     76 +  manifest `73fa86c9`/128 sources, thirteen backend targets and exit 0. I/O
+     77 +  invocation is terminal with its nineteen status assertions. All 92 retained
+     78 +  Root evidence hashes match manifest SHA256
+     79 +  `0f393ee5604005f32d18ccf398e88d18c06f6705740875ed373740eea682aea7`.
+     80 +  This verifies existing results, not a new test run or native-sort completion.
+     81 +- Git worktree remains at `09ee775` with no tracked edits. Only the owning plan
+     82 +  and small outbox notices were authored here; the setup brief was pre-existing.
+     83 +  Shared Git metadata is on a read-only mount, independently checked with
+     84 +  `findmnt`; exact frozen handoff replaces task-branch staging/publication.
+     85
+        ⋮
+    128    residual, deferred design decision, or insufficient evidence.
+    111 -- [ ] For closable issues, add a concise evidence-backed disposition comment
+    129 +- [x] For closable issues, add a concise evidence-backed disposition comment
+    130    and close. Coordinate with Merge first to avoid concurrent issue changes.
+    113 -- [ ] If consolidation improves clarity, create a minimal successor issue with
+    131 +- [x] If consolidation improves clarity, create a minimal successor issue with
+    132    source links, unchanged unresolved criteria and an owner; cross-link originals
+    133    and close them explicitly as superseded rather than implemented.
+    116 -- [ ] Keep uncertain or active requirements open and route concrete residual
+    134 +- [x] Keep uncertain or active requirements open and route concrete residual
+    135    work to its owner without starting duplicate implementation sessions.
+    118 -- [ ] Publish a concise before/after issue table, reasons, source evidence and
+    136 +- [x] Publish a concise before/after issue table, reasons, source evidence and
+    137    remaining work; update the plan in place and report to Merge.
+        ⋮
+    141
+    142 +### Verified Disposition Table
+    143 +
+    144 +Evidence below is code/record inspection at `09ee775` unless a task/producer is
+    145 +specified. The linked GitHub comments retain detailed scope, provenance and
+    146 +remaining criteria. This table is the audit record, not another development queue.
+    147 +
+    148 +| Issue / original requirement | Delivered evidence / revision | Necessary residual | Existing owner | Verified disposition / reason |
+    149 +| --- | --- | --- | --- | --- |
+    150 +| [#59](https://github.com/repyt-margorp/a-program/issues/59#issuecomment-5969471664): suite inventory/lifecycle/cost/progress | `7ed3ad1`/`5683755`; s
+         tatic inventory, 114 legacy reasons and sorting pilot | Dynamic/current-producer scope, controlled suite cost, full central ledger and coverage-preserv
+         ing reduction | Test-suite; Merge ledger/slots | Open: static bounded delivery is not full criteria |
+    151 +| [#57](https://github.com/repyt-margorp/a-program/issues/57#issuecomment-5969472121): binder polarity/migration | `90939fc`/`276f4c3`, prototype Main
+         `7a9a672`; scope/typed-evidence/version gates | Accepted polarity/brace policy, diagnostics and atomic accepted migration/gates | Merge/user review; Su
+         rface stopped | Open: no accepted syntax decision exists |
+    152 +| [#56](https://github.com/repyt-margorp/a-program/issues/56#issuecomment-5969472534): safe head recovery/profiling | Accepted13 `7631e5a`; frozen E6 m
+         easured30; E9+E10 qualification | Current accepted/prototype comparison, MEM1 attribution/safe deletion/net wall/RSS; preserve fuel/known failures | Pe
+         rformance + Job; Merge slots | Open: accepted promotion and E6 measurements are partial delivery |
+    153 +| [#51](https://github.com/repyt-margorp/a-program/issues/51#issuecomment-5969472956): reproducible owner/size gates | PR53 audit, SE/AP owner epochs a
+         nd reporting | LOC/state review, scoped topology, consumer/serialized-field classification and public partition reporting | Job/Evidence; Merge; Perfor
+         mance | Open: semantic-owner gates differ from #59 invocation inventory |
+    154 +| [#52](https://github.com/repyt-margorp/a-program/issues/52#issuecomment-5969473489): one checked relation reused | PR53 design; existing receipts/typ
+         ed roots | Endpoint/validator contract, narrow reuse/round-trip/negative experiment and measured cost | Deferred Merge design | Open: storage consolida
+         tion/trust/C emission do not establish relation reuse |
+    155 +| [#43](https://github.com/repyt-margorp/a-program/issues/43#issuecomment-5969474056): recurrence logical boundary | PR45 research; current totality/in
+         duction guards | Operational/lexical/state/synthesis/effect/termination decisions and scoped tests | Merge/user design review | Open: no recurrence rul
+         es chosen; C work proceeds independently |
+    156 +| [#47](https://github.com/repyt-margorp/a-program/issues/47#issuecomment-5969474469): relevance/partial admission | PR48 design; adapter and limited I
+         dentity code inspected | Dependency/accounting/admissibility rules, Identity conditions, unsafe-pending negatives and receipts | Merge design; C downst
+         ream | Open: whole-module trust and bounded actions are not general relevance |
+    157 +| [#41](https://github.com/repyt-margorp/a-program/issues/41#issuecomment-5969474904): common lawful finite sorting | Accepted F1/F2; PR54 generic Merg
+         e; `5e6ed84`/`966c4e1` finite-function prototype | Accepted Sort/F5 adoption/gates; broader tree/map views and separate stability/cost claims | Merge/u
+         ser adoption; Sort stopped | Open: prototype results fill old gaps but not accepted/broader scope |
+    158 +| [#44](https://github.com/repyt-margorp/a-program/issues/44#issuecomment-5969505095): semantic Artifact-to-C boundary | Initial structural subset/diff
+         erentials; C11 task `56e4ae8` | Selected-export admission, dependent/higher Identity and retained source/target controls → #61/P1 | Existing C; #47 pol
+         icy dependency | Closed `not_planned`: superseded, no completed-residual claim |
+    159 +| [#49](https://github.com/repyt-margorp/a-program/issues/49#issuecomment-5969506676): native C calls/data/control | C1-C10; C9 Root E8 thirteen O2 gat
+         es; C11 current-E9+E10 qualification | Indexed/callable Acc/native QuickSort, dynamic/effect/identity contracts, refinement/receipts → #61/P2 | Existin
+         g C | Closed `not_planned`: superseded, native sorter remains required |
+    160 +| [#61](https://github.com/repyt-margorp/a-program/issues/61): residual C successor | Both predecessor bodies/links preserved; 813-word SOAP with two b
+         oundaries | All P1/P2 criteria transferred; #43/#47/#51/#52/SE-AP stay distinct | Existing C plan; Merge coordination | Open: one successor replaces tw
+         o historical checklists |
+    161 +
+    162  ## Progress
+        ⋮
+    166  | 2026-10-03 | I1 | New human request recorded before disposition audit | Start isolated issue-audit worker and audit #59 first |
+    167 +| 2026-10-03 | I1 | #59 first; all ten issues/27 comments and nine related PRs inspected; sole-writer receipt consumed | Preserve separate residual sco
+         pes; prepare ten comments and one C successor |
+    168 +| 2026-10-03 | I1 | Ten comments verified; #44/#49 superseded by #61, original bodies unchanged; open count10→9/PR0 | Exact frozen plan/API handoff to
+         Merge; bounded worker stops |
+
+  └ src/prototype/coordination/outbox/issue-audit-04-verified-dispositions.txt (+12 -0)
+     1 +[worker-notification issue-audit/verified-dispositions] 2026-10-03 13:14 UTC
+     2 +Goal/thread01a101d5-ab2f-7241-ab7e-f4a75e180327; sole writer under explicit human assignment and Merge receipts. Baseline09ee775; no implementation edit
+        s/Main integration/builds/timing.
+     3 +Verified GitHub10→9 open issues, zero PRs. Created https://github.com/repyt-margorp/a-program/issues/61 (C residuals, separate source-semantic/P1 and na
+        tive-target/P2 SOAP, existing C owner/work list). Successor exact-body SHA25641872697f2356c60e77c7f4d5c481705f03d5d3ae5d83618194b090a76e7451a.
+     4 +Cross-linked BEFORE closing originals as NOT_PLANNED/superseded, not implemented:
+     5 +https://github.com/repyt-margorp/a-program/issues/44#issuecomment-5969505095
+     6 +https://github.com/repyt-margorp/a-program/issues/49#issuecomment-5969506676
+     7 +Both original bodies unchanged, successor links verified and API states CLOSED/not_planned; all residuals/provenance retained. Native Acc/QuickSort stay
+        s required.
+     8 +Eight explicit keep-open comments verified: #59 5969471664, #57 5969472121, #56 5969472534, #51 5969472956, #52 5969473489, #43 5969474056, #47 59694744
+        69, #41 5969474904. All original ten bodies unchanged; exact ten comment bodies verified against authored files.
+     9 +Full #59 remains incomplete: historical static845 rows/114 legacy reasons/pilot delivered; effective shell/C enumeration, changed-current-producer scope
+        , suite/pilot controlled cost, complete central ledger and verified reductions remain. New test-suite owns reduction; completed static-audit lane stays
+        stopped. Performance30 E6 checker samples are not suite cost.
+    10 +Correction #56: accepted13-file promotion7631e5a and frozenE6 measurements exist; current accepted/MEM1 net wall/RSS remains. #41 generic Merge + finite
+        -function prototypes delivered; acceptedF5/broader views remain. #57 no accepted polarity/brace decision per Merge. #51 ownership/topology and #52 relat
+        ion reuse stay distinct from #59/C. #43/#47 remain design decisions, no inferred approval.
+    11 +Freshly checked Root C11 evidence: exact56e4ae875/Main09ee775/source12873fa,13 backend targets/exit0, terminal I/O19 controls; all92 retained hashes mat
+        ch manifest0f393ee5604005f32d18ccf398e88d18c06f6705740875ed373740eea682aea7. Historical worker/sanitizer scope stays separate.
+    12 +Merge next: update central C routing #44/#49→#61 while preserving historical references; route user design/adoption decisions (#41/#43/#47/#52/#57) and
+        existing Test/Performance/Job/C implementation residuals. Audit table and final frozen file/hash handoff follow; no new owner/session/framework.
+
+• Ran pgrep -af 'watch_core.cjs'; sed -n '1,140p' src/prototype/coordination/watch_core.cjs; wc -l doc/2026-10-03-ISSUE-LIFECYCLE-CONSOLIDATION-WORKER-PLAN.md
+  └ 1 codex-linux-sandbox --sandbox-policy-cwd /home/repyt/workspace/a-program-workers/issue-audit --command-cwd /home/repyt/workspace/a-program-workers/
+    issue-audit --permission-profile {"type":"managed","file_system":{"type":"restricted","entries":[{"path":{"type":"special","value":
+    {"kind":"root"}},"access":"read"},{"path":{"type":"path","path":"/home/repyt/workspace/a-program-workers/issue-audit"},"access":"write"},{"path":
+    +113 lines (ctrl+t to view transcript)
+
+• Verified: #44 and #49 are closed as superseded by #61 (https://github.com/repyt-margorp/a-program/issues/61), with their original bodies and residual
+  requirements preserved. Nine issues remain open. I’m completing the frozen handoff to Merge; #59 remains open because dynamic coverage, current-producer suite
+  cost and full ledger adoption are unfinished.
+
+• Ran python3 - <<'PY'
+  │ import pathlib,hashlib,json,shutil,subprocess
+  │ root=pathlib.Path.cwd();freeze=pathlib.Path('/tmp/issue-audit-handoff-20261003');freeze.mkdir(exist_ok=False)
+  │ … +16 lines
+  └ OUTBOX issue-audit-01-initialized.txt 1425 a2a07c3b6784d0a624d31e679869e215b2edfed72629cc356cf26a999be43021
+    OUTBOX issue-audit-02-writer-receipt.txt 1024 50592d53c2c705bd4e4b1724102986bd4a0cad5e5da24d02176737949a89cec1
+    OUTBOX issue-audit-03-disposition-proposal.txt 2536 2e8df9148e55c89b2b1da13a8e8fdbb39de35eeb12471fe29f12c8d99d5b5084
+    +5 lines (ctrl+t to view transcript)
+
+• Added src/prototype/coordination/outbox/issue-audit-05-final-handoff.txt (+14 -0)
+     1 +[worker-notification issue-audit/final-handoff] 2026-10-03
+     2 +To Merge01a100b3-1d83-7090-bbf6-62544c39ec4b. Worker Goal/thread01a101d5-ab2f-7241-ab7e-f4a75e180327: bounded audit requirements verified; completion ac
+        counting follows this handoff. Sole-writer operational receipts consumed, human provenance kept separately. Audit branch parallel/issue-audit-20261003 r
+        emains at09ee7750604f1de2264dd4dad5ab5f174583c655. No code/accepted/tests/build/archive/handmade edits, Main integration, compiler gate or timing.
+     3 +GitHub final verification13:14:44UTC: nine open issues #41,#43,#47,#51,#52,#56,#57,#59,#61, zero PRs (initial10/0). Ten authored comment bodies re-read
+        exact; all ten original issue bodies preserved. #44 CLOSED/not_planned and #49 CLOSED/not_planned explicitly superseded, cross-links checked before muta
+        tion. New #61 OPEN preserves two source/native SOAP sections, original requirements/provenance and existing C owner/work list. URLs:
+     4 +https://github.com/repyt-margorp/a-program/issues/61
+     5 +https://github.com/repyt-margorp/a-program/issues/44#issuecomment-5969505095
+     6 +https://github.com/repyt-margorp/a-program/issues/49#issuecomment-5969506676
+     7 +#59 stays OPEN with completed static scope/current residuals comment5969471664. New test-suite owns actual reductions; static owner stays complete/stopp
+        ed. Dynamic effective invocations, current scope, controlled suite/pilot cost, full central ledger adoption and demonstrated coverage preservation remai
+        n. No default-suite cost inferred from Performance30 E6 samples.
+     8 +Other necessary residuals: #41 accepted Sort/F5 and broader views; #57 explicit accepted polarity/brace adoption/diagnostics (no user choice per Merge);
+         #56 current accepted/prototype measurements and MEM1 safe deletion/net gains (capacity candidate is not wall/RSS); #51 state/owner/topology gates; #52
+        selected checked relation contract/experiment; #43 recurrence/logical decisions; #47 relevance/partial-admission dependency rules. C#61 keeps selected e
+        xport/no-mandatory-Solve and dependent/higher Identity separate from native indexed/callable Acc/QuickSort, callbacks/effects/nominal refinements. Stric
+        t3 and original rejected E11/sanitizer/observer/setup evidence stay unwaived.
+     9 +Exact frozen handoff: /tmp/issue-audit-handoff-20261003
+    10 +manifest.sha256 SHA256 b3f86ed7d94eee29ad7ef551c5874c76401e12bfbd7a97f141185959eaa5460e (two verified records).
+    11 +Plan repo path doc/2026-10-03-ISSUE-LIFECYCLE-CONSOLIDATION-WORKER-PLAN.md SHA256723c33331df5ea9cb011c26724ed9b4fd8bc9b62e205a0cd743d87b380d09b61.
+    12 +github-verification.json SHA256ddcbb50fab606214b796b2537e8ee2d821168ce7ab8f55533de9385d00b0a786; transient review evidence, no requested repo destinatio
+        n.
+    13 +If publishing the worker task, exact one-file documentation set is the owning plan above; chosen message: docs: record verified issue dispositions and C
+         residual consolidation. Setup brief pre-existed; outbox notices are operational transport. Shared Git metadata is on read-only mount per fresh findmnt;
+         no staging workaround attempted. Tracked/index diffs empty; frozen plan matches live file. Publication is delegated, not required to repeat this comple
+        ted GitHub audit or grant new semantic authority.
+    14 +Merge handoff: update existing central C status/queue routing #44/#49→#61 while retaining historical milestones; route existing Test/Performance/Job/C r
+        esiduals and user design/adoption decisions. Keep one central queue; no new owners/sessions/framework. Audit table contains all original requirements, e
+        vidence, residual necessity, existing owners and verified dispositions. Stop this bounded worker after Goal completion; GitHub dispositions are finished
+        , development issues are not all solved.
+
+• Ran python3 - <<'PY'
+  │ from pathlib import Path
+  │ import hashlib,json,subprocess
+  │ … +11 lines
+  └ Final outbox 3684 bytes bfbabb9b39aaef55b9c531cedf2c8a3e13ead9f0dd7e2650cb0d8d165992ffca
+    Frozen plan/manifest, outbox format and authorized write scope verified; all plan criteria checked
+
+• Audit complete in about 24 minutes.
+
+  • Closed #44 and #49 as superseded by #61 (https://github.com/repyt-margorp/a-program/issues/61), preserving residual requirements and provenance.
+  • Kept eight issues open with evidence-backed comments. #59 (https://github.com/repyt-margorp/a-program/issues/59#issuecomment-5969471664) still has
+    unfinished criteria.
+
+  • Verified all GitHub changes: nine open issues, zero open PRs.
+  • Wrote the frozen handoff to Merge’s outbox.
+
+  No code changes or Main integration.
+
+  Worked for 24m 3s • 22:20
+
+
+› Root fresh GitHub reread verifies all10 exact comment-body hashes, #61 exact body/open, #44/#49 closed/not_planned, final9 issue set. Frozen2 handoff hashes
+  verified; exact one-plan task publication and Main integration completed, push finishing. Initial Main desk plan preserved privately. Bounded audit delivery
+  meets criteria; do completion accounting and remain stopped/available afterward, no further disposition run. Sole writer handoff finished, Root resumes
+  coordination. No new semantic/accepted policy.
+
+
+• I’ll confirm the completion accounting. The audit remains stopped, and Root has resumed coordination.
+
+• Goal confirmed complete. Recorded usage: 216,461 tokens, 23m 50s.
+
+  The audit remains stopped and available for follow-up. Root owns coordination; no further dispositions will run.
+
+  Worked for 26s • 22:31
+
+
+› Ask Codex to do anything
+
+  GPT-6.1-Sol xhigh · ~/workspace/a-program-workers/issue-audit · Record audit ownership receipt                Goal achieved (23m)    ⚠ 1 warning · f2 to view

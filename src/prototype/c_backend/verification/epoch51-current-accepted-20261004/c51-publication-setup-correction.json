@@ -1,0 +1,10 @@
+{
+  "date_UTC": "2026-10-04T23:46:05.679037+00:00",
+  "initial_script": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/publish-c51-task-initial.py.txt",
+  "observed_exit": 1,
+  "actual_error": "FileNotFoundError: c51-task-publication-proof.json in pre-mutation parent guard; cascading template substitutions incorrectly advanced parent proof path.",
+  "corrected_parent_receipt": "c50-task-publication-proof.json",
+  "no_clone_Git_or_source_mutation_on_failure": true,
+  "qualification_failure": false,
+  "test_outcomes_unchanged": true
+}

@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: C50 published/current parent-qualified; native R1 local/detailed foreign gates verified. Current C50/native joint make2 and helper-header policy correction defer R1 publication. Strict3/frontier/net/full criteria open; original Goals/timer unchanged.
+Status: C51 published/current parent-qualified O2/full SAN55; native R1 remains locally qualified but deferred for joint guard/header correction. Original C52 and separate Job frontier work continue; strict3/full criteria/net open, Goals/timer unchanged.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -17,15 +17,50 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | Inquiry desk -> `merge`: reporting vs coordination/integration | All lanes | Desk answers the user; only Merge integrates after verified handoff |
-| 2 | c-backend: downstream C design | #61; shared policy #47 | C50 task768213ab/Main83448801/parent O2-full SAN44 qualified; native R1 joint make2 guard migration routed. C51 recipe progress; role/action/Scope/general native/cost open |
+| 2 | `c-backend`: downstream C design | #61; shared policy #47 | C51 taskbb5bd0a3/current Root O2-full SAN55/prototype integrated; source down/action recipes finite. C52 native guard/command work continues; manual/Scope/general native/cost open |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Approved current frame deletion accepted; original363 plus adopted4 verified separately. Actual matched peakRSS/time pending safe all-owner window; peripheral MEM10/spine/empty arrays parked |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
-| 5 | job-evidence: typed ownership/deletion/resume | SE1-SE5, AP0 | R1 all6308/code126/input664/detailed3040/Root16 O2-SAN verified; joint make2/header policy corrections defer publication. Strict3/frontier/full SE/net open |
+| 5 | `job-evidence`: typed ownership/deletion/resume | SE1-SE5, AP0 | R1 raw6308/detailed3040/Root16 qualified; joint guard/header corrections defer publication. Separate private frontier inert-byte abort-6 retained; strict3/full SE/net open |
 | 6 | `verification-audit`: independent read-mostly suite/debt inventory | #59 / PR #60, #51 | Bounded static inventory/pilot complete; measured cost deferred, full #59 remains open |
 | 7 | `test-suite`: implement coverage-preserving test reductions | #59 / PR #60 | Bounded Goal complete; exact7 taskbc16df9 pushed/remote verified, Root raw/assembly review complete, prototype Main36a27be integrated |
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
+
+2026-10-04, [C51 current recipe review](../src/prototype/coordination/reviews/20261004-c51-current-recipe-review.json)
+supersedes initial action progress. Exact15 task `bb5bd0a3` follows C50 `768213ab`;
+frozen15/raw372/input407/all19 prior archives and members match. Root four serial
+commands are terminal/reaped/uncensored: O2/full helper-generated-module-client
+ASan/UBSan/leak55 expected outcomes each44zero/9unsupported4/duplicate1/prior2.
+955-line component `1da176b5`, recipe `591fa73f`, header/provenance and all products
+match. Actual admitted down callback domain/result indices and Identity directions
+select finite manual action recipes; original seven bodies/maps/frame/path/captures
+and gs_sort remain. Parent28/new7 refusals and three projections pass; Core341 and
+pointer O2 reused, private16/native4-input3/C50 I-O inherited rather than replayed.
+Initial refusal-client compiler1 and Root pre-mutation parent-receipt guard1 retained.
+
+[C52 action notice review](../src/prototype/coordination/reviews/20261004-c52-native-owner-action-review.json)
+freshly pins notice `a32f5a0d` and independently reproduced member failure log
+`df09ae7d`. The private target observer records native admission marks and owner/
+index bytes; source-advancement guards remain. Initial native product run2 is
+retained, so build progress does not establish native runtime qualification.
+Terminal native/legacy products/O2/full SAN/refusal-I-O and distinct freeze pending.
+
+C51 qualification uses pinned accepted fc52755b, not native R1. Frozen helper15/30
+still reads typing.proofs; prior actual C50/native make2 remains. Original C52 plan
+now starts distinct observer migration and recipe-command connection; its first
+build-include setup2 is not proof of absent runtime dependency. No frozen edits or
+blanket hold. Native R1 publication still needs distinct C guard/Job declarative
+header corrections/current joint qualification. Manual roles/closure/storage/
+Nat-LT/array/full checked Scope/general native61/bounds/lifetime/finite SAN/
+unexercised overflow/larger-record validation/net costs/adoption remain open.
+
+[Job typed-query trial3 progress](../src/prototype/coordination/reviews/20261004-job-query-trial3-progress-review.json)
+pins separate unqualified code129 manifest `ff5045f5`: owner build0, List09 typed
+checkpoint abort-6 on same_bytes. Raw logs/binary/four images match; initial cut
+29641 bytes versus inert resave29365 differs. Original owner diagnoses source-owner/
+reference retention; no Root rerun, repaired equality, READY or accepted bug is
+inferred. Frozen R1 local/detailed qualification and strict3 remain unchanged.
 
 2026-10-04, [native R1 current review](../src/prototype/coordination/reviews/20261004-native-frontier-r1-current-review.json)
 supersedes the pending detailed foreign/handoff audit. Frozen90 proposal plus its

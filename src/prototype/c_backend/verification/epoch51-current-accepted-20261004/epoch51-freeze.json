@@ -1,0 +1,105 @@
+{
+  "Goal_complete": false,
+  "Main_integration": "pending Merge only",
+  "accepted_promotion": false,
+  "archive": "src/prototype/c_backend/.evidence/epoch51-acc-recipe-20261004/epoch51-submitted-snapshot.tar",
+  "archive_sha256": "162cf5e34e86430bb0e8582cf5b71e20fb22bea884a5b549bff9ddbfd6ffec17",
+  "branch": "parallel/c-backend-20261003",
+  "commit_message": "prototype: derive actual Acc down action recipes",
+  "delegated_parent": "768213aba5d683128a0ccb2cb4e38905f73a46bb",
+  "epoch": 51,
+  "files": [
+    {
+      "mode": "0o664",
+      "path": "doc/2026-10-03-C-BACKEND-GOAL.md",
+      "sha256": "acd2c09f090928b21e084e8af2b3f14268effb6029d096137dcdcd2f2940fd97"
+    },
+    {
+      "mode": "0o664",
+      "path": "doc/2026-10-04-C-BACKEND-ACC-ACTION-PLAN.md",
+      "sha256": "8b95f1c721b80ebc334d3b65c515dd737e5eb4264a2a1814ae3346abf52a01e2"
+    },
+    {
+      "mode": "0o664",
+      "path": "doc/2026-10-04-C-BACKEND-EPOCH51-HANDOFF.md",
+      "sha256": "1b6235221a9520d499a1394dd2c498acbfe69a7e2f24a6ea296a838ec4d71cb7"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_recipe/README.md",
+      "sha256": "e9711ffde7e0def86e1ddcd873e69e18f3a2a3893c50cd9abfa3e1a170abfd74"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_recipe/build.mk",
+      "sha256": "50bea16a439c7429c51dfdb76c7a55ab98c3a2548cafd9ff342adb89906b224a"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_recipe/check.sh",
+      "sha256": "802116c8df904769097a898b083d9815c708918418e871bb3bcd205fcba699f9"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_recipe/emit.c",
+      "sha256": "04e3d1255a555a5479c41dd4faef09aaa2a3420d65e7308b298023ec616d9605"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_recipe/emit.h",
+      "sha256": "ae3b02f2c158d8e9f4683dcb78c89d10c8ac85ee541a24552c41297952de9bff"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_recipe/emit_test.c",
+      "sha256": "0b9e071d881789d4cea40c48914f9c758c9435cb1f35d2fee5f97d34f889218e"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_recipe/example/component.c",
+      "sha256": "1da176b52c9dabb6a53e244dd77fb4172221d46b13052e231e32d536cf834f3d"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_recipe/example/component.h",
+      "sha256": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_recipe/example/provenance.json",
+      "sha256": "f3cf55d5a9eb6905d559109bda20beb49966dd627de7cc48925fe8eb91894de2"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_recipe/map_client.c",
+      "sha256": "97908865b0224b3022418f857417e5ab01eba1c81a40c69ad381d0e939f3c8be"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_recipe/pack.py",
+      "sha256": "84d94807c9e0d0a640fe846e005cbfc3d2786f899382efb65a919dded364dd2b"
+    },
+    {
+      "mode": "0o664",
+      "path": "src/prototype/c_backend/acc_recipe/runtime.c",
+      "sha256": "62e728cfff45685f9be1b5d4883db9fe80530b3c44a4329e59a51ff7493bae84"
+    }
+  ],
+  "files_count": 15,
+  "final_inputs_sha256": "05205f685ad2d8d256ccd2a97a9390daadd7e1920bd512d4dbb90b519933d72e",
+  "frozen_UTC": "2026-10-04T23:33:52.897714+00:00",
+  "general_native_Acc": false,
+  "handoff_sha256": "1b6235221a9520d499a1394dd2c498acbfe69a7e2f24a6ea296a838ec4d71cb7",
+  "independent_current_review": "pending Merge",
+  "input_count": 407,
+  "manifest": "src/prototype/c_backend/.evidence/epoch51-acc-recipe-20261004/epoch51-files.sha256",
+  "manifest_sha256": "4a91825454e3143a56e414b884b36750df68236ae1e365021c5bf14e185f065c",
+  "raw_file_count": 372,
+  "raw_manifest": "src/prototype/c_backend/.evidence/epoch51-acc-recipe-20261004/epoch51-runs.sha256",
+  "raw_manifest_sha256": "813ed94c0a9de287fe80be066809fc069208fb159708e710932aee0448b2fa8b",
+  "shared_index_sha256": "848aae6bed8ddf19f70473244f94f8ca144b4bbe3ca7a427b2f44e2a5e842325",
+  "style_sha256": "46eaffd9bc0b4edb044813d3c015e84bfc2af1c81df74f1d4b0725f81b9a4767",
+  "task_publication": "pending delegated Merge",
+  "verification_sha256": "10a05bb9e475b26fc87cf535c255fa769ff9b21d71611482db3020b4d742e297",
+  "worker_HEAD": "cc3cba3495b81628e0a68ec8b45aee4f5447d188"
+}

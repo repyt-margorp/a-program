@@ -1,0 +1,23 @@
+{
+  "argv": [
+    "make",
+    "-j1",
+    "-f",
+    "src/prototype/c_backend/acc_recipe/build.mk",
+    "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/tree",
+    "BUILD=/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch51-acc-recipe-20261004/SAN",
+    "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+    "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch51-acc-recipe-20261004/SAN/c_acc_recipe_emit"
+  ],
+  "environment": {
+    "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch51-acc-recipe-20261004/tmp",
+    "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+    "CLIENT_CFLAGS": "-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+    "ASAN_OPTIONS": "detect_leaks=1:abort_on_error=1",
+    "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+  },
+  "start": "2026-10-04T23:18:41.384051+00:00",
+  "exit": 0,
+  "finish": "2026-10-04T23:18:59.613280+00:00"
+}

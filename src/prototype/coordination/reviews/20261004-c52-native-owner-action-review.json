@@ -1,0 +1,43 @@
+{
+  "date_UTC": "2026-10-04T23:51:31.577146+00:00",
+  "notice_SHA": "a32f5a0d343207de36326782c45010f711a3c6c7f8fd519ebb1bea2c117d3ab4",
+  "scope": "Readonly separate unqualified C52 action progress, not frozen handoff, new Root run or native success",
+  "prior_C51_frozen15_unchanged": "archive162cf5e34e86430bb0e8582cf5b71e20fb22bea884a5b549bff9ddbfd6ffec17",
+  "owner_reproduced_C50_native_member_failure_log_SHA": "df09ae7df70dc6f0170d29995d69f85edff5020b888b4143dea10e0f9387e026",
+  "raw_pins": {
+    "initial-native-build.log": "df09ae7df70dc6f0170d29995d69f85edff5020b888b4143dea10e0f9387e026",
+    "initial-build.log": "2f0e19c2f73c15b1289bbb103ac52d1dc7d2255eb912c63d52cacbfe4220ca32",
+    "initial-native-run.json": "9d08ff6504ce2b608e667ae4675240b38bb8729cd61c96c8f648eb7146104e67"
+  },
+  "live_source_snapshot_pins": {
+    "src/prototype/c_backend/source_observer/observe.h": "ec5d7f1c26fd7a09e90310e868c474dae5a277cbe9d23a52eb7a143061a483fe",
+    "src/prototype/c_backend/source_observer/observe.c": "60e6afda00b1ef6fdb4dac4baf6ff8ada9ca67ef7ef79b2300eec6a650e34f06",
+    "src/prototype/c_backend/source_observer/observe_test.c": "28cc44ab5b48c86a165ad9b69a3f165273928bb71c1ee20c44753b461d441d7b",
+    "src/prototype/c_backend/source_observer/build.mk": "c90eea7e26a57620f638a04089e685a25a792bdd7ed20b71c8a96ee569211d07",
+    "src/prototype/c_backend/acc_command/main.c": "61cca7d8017bfbd4c01795afd99b526dc8f66ea4865b3274637abd202241af6b",
+    "src/prototype/c_backend/acc_command/build.mk": "5bc6b988a77cbdf3d0132dd4cddc34b2878e9fe4c482deba2d2b0ee5c3723c8b",
+    "src/prototype/c_backend/acc_command/compose.py": "4af589e5cebd156a7a4d7cf6a62489b722f3de6799759861c2ebd11bb9dd449c",
+    "src/prototype/c_backend/acc_recipe/emit_test.c": "2f6090d2a424dd2510de0749f8ef9c49833ad87560bb2415ed5dd2d094d38ecb",
+    "src/prototype/c_backend/acc_recipe/build.mk": "a1fae79bc2000cd82ce0e31aa6abd92eacf9049d595bf49c861fd8ce6ed9cb04",
+    "doc/2026-10-04-C-BACKEND-NATIVE-OWNER-PLAN.md": "7fbd4d0b496ee636e043950dfd17728395ffcd9d7a622a311ad75e6b2905cc69",
+    "src/prototype/c_backend/acc_command/recipe_pack.py": "3e0a77bfb84a0f9dc00913b410bdceedad333845154821133f278ce3851141e4"
+  },
+  "observer_source_review": "Opaque declarative header; implementation separately snapshots graph/typing containers, index bucket+entry membership and Context/Scope/Occurrence/map owner bytes, including native admission marks and legacy receipt counts. Readonly emission guards and source-advance wrappers retained. No Evidence index restored or shared producer change. Focused admission test source reviewed; no independently replayed test result yet.",
+  "owner_initial_native_product_run_observed": {
+    "argv": [
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/native-O2/c-acc-image",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/actual-materialized.a",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch52-native-recipe-20261004/initial-native-run",
+      "succ_access",
+      "5000000"
+    ],
+    "exit": 2,
+    "time": "2026-10-04T23:50:21.458790+00:00"
+  },
+  "Assessment": "Original C confirms actual same C50/native typing.proofs compatibility failure independently; ROOT-only build-include setup failure retained separately. Distinct target observer migration and recipe command are private progress. Later retained initial-native-run exit2 observed, no successful native runtime qualification inferred from binary/build progress. Await terminal native/legacy source-object-archive/O2/full SAN/refusal-I-O/prior-output checks and a distinct exact freeze. Preserve native-R1/C50/C51 originals; Job owns its header correction.",
+  "accepted_adoption": false,
+  "general_native_Acc": false,
+  "Root_current_native_replay": false,
+  "Goal_or_owner_actions": false,
+  "cost_samples": 0
+}

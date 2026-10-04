@@ -1,0 +1,66 @@
+import collections,datetime,hashlib,json,pathlib,re,shutil,tarfile
+s=pathlib.Path(__file__).resolve().parent;w=pathlib.Path('/home/repyt/workspace/a-program-workers/c-backend');e=w/'src/prototype/c_backend/.evidence/epoch51-acc-recipe-20261004';q=s/'c51-current-accepted-fc';sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+notice=w/'src/prototype/coordination/outbox/c-backend-c51-ready-20261004.txt';assert sha(notice)=='2216f818af46700e960cd577119c719e80cb9b0ce3cc51ff4a9164a3b49370cd'
+metadata={'epoch51-files.sha256':'4a91825454e3143a56e414b884b36750df68236ae1e365021c5bf14e185f065c','epoch51-submitted-snapshot.tar':'162cf5e34e86430bb0e8582cf5b71e20fb22bea884a5b549bff9ddbfd6ffec17','epoch51-freeze.json':'acae86306b5755c2384237968f1b283479f0e440784223300421d198f36b1699','verification.json':'10a05bb9e475b26fc87cf535c255fa769ff9b21d71611482db3020b4d742e297','epoch51-runs.sha256':'813ed94c0a9de287fe80be066809fc069208fb159708e710932aee0448b2fa8b','final-inputs.json':'05205f685ad2d8d256ccd2a97a9390daadd7e1920bd512d4dbb90b519933d72e','style.json':'46eaffd9bc0b4edb044813d3c015e84bfc2af1c81df74f1d4b0725f81b9a4767'}
+for n,d in metadata.items():assert sha(e/n)==d,n
+freeze=json.loads((e/'epoch51-freeze.json').read_text());files={r['path']:r['sha256'] for r in freeze['files']};assert len(files)==15 and freeze['delegated_parent']=='768213aba5d683128a0ccb2cb4e38905f73a46bb'
+assert not q.exists();(q/'frozen').mkdir(parents=True)
+with tarfile.open(e/'epoch51-submitted-snapshot.tar') as package:
+ members={r.name.removeprefix('./'):r for r in package.getmembers() if r.isfile()};assert set(members)==set(files)
+ for n,d in files.items():
+  assert not n.startswith('/') and '..' not in pathlib.PurePosixPath(n).parts
+  data=package.extractfile(members[n]).read();assert hashlib.sha256(data).hexdigest()==d
+  target=q/'frozen'/n;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(data);target.chmod(members[n].mode)
+raw={n:d for d,n in [x.split('  ',1) for x in (e/'epoch51-runs.sha256').read_text().splitlines()]};assert len(raw)==372
+for n,d in raw.items():assert sha(w/n)==d,n
+input_record=json.loads((e/'final-inputs.json').read_text());inputs=input_record['inputs'];assert len(inputs)==407 and input_record['actual_compilation_dependency_count']==129
+for n,row in inputs.items():
+ copy=pathlib.Path(row['copy']);copy=copy if copy.is_absolute() else w/copy;assert sha(copy)==row['sha256'],n
+assert set(pathlib.Path(n).relative_to(w).as_posix() for n in input_record['new_live_publication_inputs'])==set(files)
+shutil.copytree(s/'c50-current-accepted-fc/tree',q/'tree')
+for n in files:
+ target=q/'tree'/n;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(q/'frozen'/n,target)
+for n in ['runtime-source.sha256','reused-Core-cases.c','actual-materialized.a']:shutil.copy2(s/'c50-current-accepted-fc'/n,q/n)
+shutil.copytree(q/'tree/src/prototype/c_backend/acc_frame/example',q/'reused-parent-product')
+assert sha(q/'runtime-source.sha256')=='c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907'
+for d,n in [x.split('  ',1) for x in (q/'runtime-source.sha256').read_text().splitlines()]:assert sha(q/'tree'/n)==d
+assert sha(q/'actual-materialized.a')=='7c1a4f35108dea9a91c4ffac90062b0c1d6bb1c145e116ff269942775e704aa4'
+example=q/'frozen/src/prototype/c_backend/acc_recipe/example';products={};owner_commands={}
+for phase in ['O2','SAN']:
+ gate=e/('candidate-'+phase);rows=[l.split('\t') for l in (gate/'status.tsv').read_text().splitlines()];assert len(rows)==55 and all(r[1]==r[2] for r in rows);assert dict(collections.Counter(r[2] for r in rows))=={'0':44,'1':1,'2':1,'4':9}
+ for mode in ['source','object','archive']:
+  for n in ['component.c','component.h','provenance.json']:assert (gate/mode/n).read_bytes()==(example/n).read_bytes()
+ assert sha(gate/'transport.inc')=='591fa73f5abcd1b5257e7ee3c271672452fa63c93c9b888aa9d1063445c8e6d0'
+ assert (gate/'transport.inc').read_bytes().startswith((s/'c49-current-accepted-fc/O2-gate/transport.inc').read_bytes())
+ command=json.loads((e/('current-'+phase+'-check.json')).read_text());assert command['exit']==0 and command['start']<command['finish'];owner_commands[phase]=command
+ products[phase]={'status_SHA':sha(gate/'status.tsv'),'argv_NUL_SHA':sha(gate/'argv.nul'),'recipe_SHA':sha(gate/'transport.inc'),'expected_rows':55}
+older={}
+for r in json.loads((e/'old-snapshots.json').read_text())['archives']:
+ archive=w/r['archive'];assert sha(archive)==r['archive_sha256'];manifest=archive.with_name('epoch'+str(r['epoch'])+'-files.sha256');assert sha(manifest)==r['manifest_sha256'];pins={n:d for d,n in [x.split('  ',1) for x in manifest.read_text().splitlines()]}
+ with tarfile.open(archive) as package:
+  members={x.name.removeprefix('./'):x for x in package.getmembers() if x.isfile()};assert set(members)==set(pins)
+  for n,d in pins.items():assert hashlib.sha256(package.extractfile(members[n]).read()).hexdigest()==d
+ older[str(r['epoch'])]=r['archive_sha256']
+assert len(older)==19
+deps=json.loads((s/'c50-current-accepted-fc/tree/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/dependency-audit-verified.json').read_text())['records'] if (s/'c50-current-accepted-fc/tree/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/dependency-audit-verified.json').exists() else json.loads((s/'c50-readonly-static-review.json').read_text())['all29_existing_target_dependencies_archives_and_current_tree_exact']
+assert len(deps)==29
+for r in deps:
+ assert sha(q/'tree'/r['path'])==r['sha256']
+ with tarfile.open(w/r['reference']['archive']) as package:assert hashlib.sha256(package.extractfile(r['path']).read()).hexdigest()==r['sha256']
+oldfreeze=json.loads((s/'c50-current-accepted-fc/epoch50-freeze.json').read_text());other={r['path']:r['sha256'] for r in oldfreeze['files'] if r['path']!='doc/2026-10-03-C-BACKEND-GOAL.md'};assert len(other)==8
+for n,d in other.items():assert sha(w/n)==sha(q/'tree'/n)==d
+styles={}
+for n,d in files.items():
+ source=q/'frozen'/n
+ if source.suffix in ['.c','.h','.py','.sh','.mk']:
+  t=source.read_text();assert not re.search(r'^ +\S',t,re.M),n
+  if source.suffix in ['.c','.h']:assert not re.search(r'\btypedef\b',t),n
+  if source.suffix=='.h':assert not re.search(r'\)\s*\{',t),n
+  styles[n]='leading tabs; C no typedef; headers declarative'
+(q/'tmp').mkdir()
+for n in metadata:
+ if not n.endswith('.tar'):shutil.copy2(e/n,q/n)
+shutil.copy2(notice,q/'ready-notice.txt')
+v={'date_UTC':datetime.datetime.now(datetime.timezone.utc).isoformat(),'Main_parent':'28a7b5d3aa60b2dab9d5099a34a906f274a50061','notice_SHA':sha(notice),'frozen_metadata_exact':metadata,'frozen15_archive_exact':files,'all372_raw_exact':True,'all407_retained_inputs_exact':True,'owner_compilation_dependency_count':129,'runtime120_manifest_SHA':sha(q/'runtime-source.sha256'),'all19_C32_C50_archives_manifests_members_exact':older,'all29_inherited_published_dependencies_exact':deps,'C50_other8_live_exact':other,'owner_expected_phases':products,'owner_terminal_commands':owner_commands,'owner_record_censor_fields':'not recorded; no timing/censor inference','all_owner_products_code_header_provenance_exact':True,'generated_source_lines':len((example/'component.c').read_text().splitlines()),'generated_source_SHA':sha(example/'component.c'),'new_recipe_SHA':'591fa73f5abcd1b5257e7ee3c271672452fa63c93c9b888aa9d1063445c8e6d0','C49_map_endpoint_frame_prefix_exact':True,'style_fresh':styles,'source_review':'Actual canonical Nat/LT parameters, Acc field0 captured/field1 down, contravariant LT(argument0,captured0), pure TOTAL Self(argument0) and admitted quoted Acc left-to-right/two LT right-to-left select finite manual target recipes. Original proof/down/captures/maps/path tokens and source bodies/public gs_sort retained. Source advancement forbidden during readonly emission. Fixed parent/table guards refuse arbitrary shapes.','preserved_failure':'Initial refusal-client compiler1 nested main/name reuse retained; only new test assembly corrected, positive source/table/module unchanged.','SAN_scope':'Whole helper/generated module/client source-object-archive; pointer/Core341 O2 reused. Private16 inspector/native4-input3/C50 command-I-O inherited, not replayed.','native_R1_compatibility':'Separate actual C50/native make2 proof-count guard finding remains. Frozen C51 emit_test.c lines15/30 still read typing.proofs; static finding only, not a fresh C51/native joint execution.','limits':'Finite manual roles/closure/storage/Nat-LT/array/full checked Scope/context-declaration equivalence/general native61; borrowed immutable lifetime/nonoverlap/Nat32/depth256/node65536/statuses1-6/finite SAN/unexercised overflow/arbitrary pointer safety/larger records and validation unmeasured/no net cost.','Root_replay':'pending','general_native_Acc':False,'accepted_adoption':False,'Goal_or_owner_actions':False,'cost_samples':0}
+assert v['generated_source_lines']==955
+(s/'c51-readonly-static-review.json').write_text(json.dumps(v,indent=2)+'\n');print(json.dumps({'frozen_files':15,'raw':372,'inputs':407,'old_archives':19,'inherited_dependencies':29,'owner_rows_each':55}))

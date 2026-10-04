@@ -1,0 +1,12 @@
+{
+  "argv": [
+    "python3",
+    "src/prototype/c_backend/acc_recipe/pack.py",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch50-acc-command-20261004/client-O2-final/source",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch51-acc-recipe-20261004/candidate-O2/transport.inc",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/acc_recipe/example"
+  ],
+  "start": "2026-10-04T23:22:25.124818+00:00",
+  "exit": 0,
+  "finish": "2026-10-04T23:22:25.145098+00:00"
+}

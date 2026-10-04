@@ -1,7 +1,7 @@
 # Solver and Evidence Duplication Audit
 
 Date: 2026-09-30
-Status: Native R1 local ownership/full owner broad0/detailed foreign gates/Root16 O2-SAN verified. Current C50/native joint make2 and declarative helper-header correction defer publication; strict3/transitional selector/partial query/frontier/full SE/net remain open in this sole work list.
+Status: R1 local/detailed6308/3040/Root16 verified; current C/native guard and header policy corrections defer implementation publication. C51 parent-qualified55; separate typed-query frontier inert-byte abort-6 retained. Strict3/full SE/net open in this sole work list.
 Parent: [artifact plan, AP0](2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md#ap0-simplify-before-extending-persistence).
 This is the active prerequisite work list, not another artifact format proposal.
 
@@ -319,6 +319,27 @@ identical TSVs in O2 and ASan/UBSan builds, including repeated samples without
 additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
+
+2026-10-04, [C51 current review](../src/prototype/coordination/reviews/20261004-c51-current-recipe-review.json)
+records taskbb5bd0a3/prototype integration and Root O2/full source SAN55 each
+against accepted fc52755b. It does not resolve the independently confirmed
+C50/native make2: frozen C51 helper15/30 still reads removed typing.proofs.
+[C52 action notice](../src/prototype/coordination/reviews/20261004-c52-native-owner-action-review.json)
+pins independent member-failure logdf09ae7d, private observer admission/owner-byte
+migration and initial native product run2; native runtime success remains unqualified.
+Original C52 now addresses a distinct observer migration preserving admission/
+owner/disabled-advancement guards; Job declarative-header correction and distinct
+current joint freeze remain required before R1 implementation publication.
+
+Separate [typed-query trial3 progress](../src/prototype/coordination/reviews/20261004-job-query-trial3-progress-review.json)
+is unqualified code129 manifestff5045f5, rather than frozen R1 code126. Owner
+build0/List09 typed checkpoint abort-6 on same_bytes is freshly pinned with raw
+logs/binary/four images. Actual first cut29641 versus inert resave29365 bytes
+remain unequal; original owner diagnoses source/reference retention. No Root new
+frontier replay, restored byte equivalence, READY/pass or accepted-runtime bug
+follows. R1 frozen local ownership/detailed3040/Root16 results remain preserved;
+strict3/public frontier/full SE/net criteria stay open. This remains the sole
+native implementation list, with original owners continuing independently.
 
 2026-10-04, [native R1 current review](../src/prototype/coordination/reviews/20261004-native-frontier-r1-current-review.json)
 supersedes the pending detailed foreign/handoff audit. Frozen90 proposal plus its

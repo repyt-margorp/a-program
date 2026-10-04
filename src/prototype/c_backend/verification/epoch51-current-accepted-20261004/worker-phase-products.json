@@ -1,0 +1,51 @@
+{
+  "phases": {
+    "O2": {
+      "expected_rows": 55,
+      "outcomes": {
+        "0": 44,
+        "4": 9,
+        "1": 1,
+        "2": 1
+      },
+      "hashes": {
+        "source/component.c": "1da176b52c9dabb6a53e244dd77fb4172221d46b13052e231e32d536cf834f3d",
+        "source/component.h": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044",
+        "source/provenance.json": "f3cf55d5a9eb6905d559109bda20beb49966dd627de7cc48925fe8eb91894de2",
+        "object/component.c": "1da176b52c9dabb6a53e244dd77fb4172221d46b13052e231e32d536cf834f3d",
+        "object/component.h": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044",
+        "object/provenance.json": "f3cf55d5a9eb6905d559109bda20beb49966dd627de7cc48925fe8eb91894de2",
+        "archive/component.c": "1da176b52c9dabb6a53e244dd77fb4172221d46b13052e231e32d536cf834f3d",
+        "archive/component.h": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044",
+        "archive/provenance.json": "f3cf55d5a9eb6905d559109bda20beb49966dd627de7cc48925fe8eb91894de2",
+        "transport.inc": "591fa73f5abcd1b5257e7ee3c271672452fa63c93c9b888aa9d1063445c8e6d0"
+      },
+      "all_expected": true
+    },
+    "SAN": {
+      "expected_rows": 55,
+      "outcomes": {
+        "0": 44,
+        "4": 9,
+        "1": 1,
+        "2": 1
+      },
+      "hashes": {
+        "source/component.c": "1da176b52c9dabb6a53e244dd77fb4172221d46b13052e231e32d536cf834f3d",
+        "source/component.h": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044",
+        "source/provenance.json": "f3cf55d5a9eb6905d559109bda20beb49966dd627de7cc48925fe8eb91894de2",
+        "object/component.c": "1da176b52c9dabb6a53e244dd77fb4172221d46b13052e231e32d536cf834f3d",
+        "object/component.h": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044",
+        "object/provenance.json": "f3cf55d5a9eb6905d559109bda20beb49966dd627de7cc48925fe8eb91894de2",
+        "archive/component.c": "1da176b52c9dabb6a53e244dd77fb4172221d46b13052e231e32d536cf834f3d",
+        "archive/component.h": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044",
+        "archive/provenance.json": "f3cf55d5a9eb6905d559109bda20beb49966dd627de7cc48925fe8eb91894de2",
+        "transport.inc": "591fa73f5abcd1b5257e7ee3c271672452fa63c93c9b888aa9d1063445c8e6d0"
+      },
+      "all_expected": true
+    }
+  },
+  "all_products_and_recipe_exact": true,
+  "seven_source_bodies_unchanged": true,
+  "C49_map_endpoint_frame_prefix_exact": true
+}

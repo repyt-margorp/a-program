@@ -1,0 +1,112 @@
+{
+  "CODING_STYLE_sha256": "c553a7827382b9cbebce41ae26dff6014320155e5cb07ebd2559669cf94a19c7",
+  "records": [
+    {
+      "path": "doc/2026-10-03-C-BACKEND-GOAL.md",
+      "sha256": "acd2c09f090928b21e084e8af2b3f14268effb6029d096137dcdcd2f2940fd97",
+      "English_review": true,
+      "leading_tabs": "documentation",
+      "errors": []
+    },
+    {
+      "path": "doc/2026-10-04-C-BACKEND-ACC-ACTION-PLAN.md",
+      "sha256": "8b95f1c721b80ebc334d3b65c515dd737e5eb4264a2a1814ae3346abf52a01e2",
+      "English_review": true,
+      "leading_tabs": "documentation",
+      "errors": []
+    },
+    {
+      "path": "doc/2026-10-04-C-BACKEND-EPOCH51-HANDOFF.md",
+      "sha256": "1b6235221a9520d499a1394dd2c498acbfe69a7e2f24a6ea296a838ec4d71cb7",
+      "English_review": true,
+      "leading_tabs": "documentation",
+      "errors": []
+    },
+    {
+      "path": "src/prototype/c_backend/acc_recipe/README.md",
+      "sha256": "e9711ffde7e0def86e1ddcd873e69e18f3a2a3893c50cd9abfa3e1a170abfd74",
+      "English_review": true,
+      "leading_tabs": "documentation",
+      "errors": []
+    },
+    {
+      "path": "src/prototype/c_backend/acc_recipe/build.mk",
+      "sha256": "50bea16a439c7429c51dfdb76c7a55ab98c3a2548cafd9ff342adb89906b224a",
+      "English_review": true,
+      "leading_tabs": true,
+      "errors": []
+    },
+    {
+      "path": "src/prototype/c_backend/acc_recipe/check.sh",
+      "sha256": "802116c8df904769097a898b083d9815c708918418e871bb3bcd205fcba699f9",
+      "English_review": true,
+      "leading_tabs": true,
+      "errors": []
+    },
+    {
+      "path": "src/prototype/c_backend/acc_recipe/emit.c",
+      "sha256": "04e3d1255a555a5479c41dd4faef09aaa2a3420d65e7308b298023ec616d9605",
+      "English_review": true,
+      "leading_tabs": true,
+      "errors": []
+    },
+    {
+      "path": "src/prototype/c_backend/acc_recipe/emit.h",
+      "sha256": "ae3b02f2c158d8e9f4683dcb78c89d10c8ac85ee541a24552c41297952de9bff",
+      "English_review": true,
+      "leading_tabs": true,
+      "errors": []
+    },
+    {
+      "path": "src/prototype/c_backend/acc_recipe/emit_test.c",
+      "sha256": "0b9e071d881789d4cea40c48914f9c758c9435cb1f35d2fee5f97d34f889218e",
+      "English_review": true,
+      "leading_tabs": true,
+      "errors": []
+    },
+    {
+      "path": "src/prototype/c_backend/acc_recipe/example/component.c",
+      "sha256": "1da176b52c9dabb6a53e244dd77fb4172221d46b13052e231e32d536cf834f3d",
+      "English_review": true,
+      "leading_tabs": true,
+      "errors": []
+    },
+    {
+      "path": "src/prototype/c_backend/acc_recipe/example/component.h",
+      "sha256": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044",
+      "English_review": true,
+      "leading_tabs": true,
+      "errors": []
+    },
+    {
+      "path": "src/prototype/c_backend/acc_recipe/example/provenance.json",
+      "sha256": "f3cf55d5a9eb6905d559109bda20beb49966dd627de7cc48925fe8eb91894de2",
+      "English_review": true,
+      "leading_tabs": "documentation",
+      "errors": []
+    },
+    {
+      "path": "src/prototype/c_backend/acc_recipe/map_client.c",
+      "sha256": "97908865b0224b3022418f857417e5ab01eba1c81a40c69ad381d0e939f3c8be",
+      "English_review": true,
+      "leading_tabs": true,
+      "errors": []
+    },
+    {
+      "path": "src/prototype/c_backend/acc_recipe/pack.py",
+      "sha256": "84d94807c9e0d0a640fe846e005cbfc3d2786f899382efb65a919dded364dd2b",
+      "English_review": true,
+      "leading_tabs": true,
+      "errors": []
+    },
+    {
+      "path": "src/prototype/c_backend/acc_recipe/runtime.c",
+      "sha256": "62e728cfff45685f9be1b5d4883db9fe80530b3c44a4329e59a51ff7493bae84",
+      "English_review": true,
+      "leading_tabs": true,
+      "errors": []
+    }
+  ],
+  "manual_edit_method": "apply_patch",
+  "examples_regenerated": true
+}

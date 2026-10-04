@@ -1,0 +1,228 @@
+         ategory": "docs/evidence", "deleted": 0}, "src/prototype/test_suite/compatibility.sh.patch": {"added": 113, "category": "test-patch representation", "d
+         eleted": 0}, "src/prototype/test_suite/overlay.sh": {"added": 25, "category": "build/assembly", "deleted": 0}, "src/prototype/test_suite/quick_result.s
+         h.patch": {"added": 12, "category": "test-patch representation", "deleted": 0}, "src/prototype/test_suite/verification.json": {"added": 19, "category":
+          "docs/evidence", "deleted": 0}}
+     19  }
+
+• Ran python3 - <<'PY'
+  │ from pathlib import Path
+  │ import json, hashlib, subprocess
+  │ … +19 lines
+  └ Traceback (most recent call last):
+      File "<stdin>", line 12, in <module>
+    AssertionError
+
+• Ran set -euo pipefail
+  │ python3 - <<'PY'
+  │ from pathlib import Path
+  │ … +20 lines
+  └ Final scope, exact patch output, unchanged image/import suffix776 pins, syntax, stored counts and fresh original overlay pass.
+
+• Edited doc/2026-10-03-TEST-SUITE-DEDUPLICATION-WORKER-PLAN.md (+2 -0)
+    71    checker stderr into stdout; corrected meta-check reads both. No compiler defect.
+    72 +- Final suffix meta-check initially included the intentionally changed CASES
+    73 +  summary; corrected boundary checks the unchanged image/import section.
+    74  - Exact task-file staging fails128 at shared read-only Git index.lock; no bypass,
+
+• Ran python3 - <<'PY'
+  │ from pathlib import Path
+  │ import json
+  │ … +11 lines
+  └ (no output)
+
+• Explored
+  └ Read verification.json
+
+• Edited src/prototype/test_suite/verification.json (+2 -1)
+    17  "publication": {"Main_merge": false, "accepted_edits": false, "fallback": "exact frozen seven-file patch/archive plus Merge outbox", "state": "git add e
+        xit128: shared metadata index.lock is on a read-only filesystem; no bypass, commit or push"},
+    18 -"stored_file_deltas": {"doc/2026-10-03-TEST-SUITE-DEDUPLICATION-WORKER-PLAN.md": {"added": 116, "category": "docs/evidence", "deleted": 0}, "src/prototy
+        pe/coordination/test-suite-brief.md": {"added": 99, "category": "docs/evidence", "deleted": 0}, "src/prototype/test_suite/README.md": {"added": 44, "cat
+        egory": "docs/evidence", "deleted": 0}, "src/prototype/test_suite/compatibility.sh.patch": {"added": 113, "category": "test-patch representation", "dele
+        ted": 0}, "src/prototype/test_suite/overlay.sh": {"added": 25, "category": "build/assembly", "deleted": 0}, "src/prototype/test_suite/quick_result.sh.pa
+        tch": {"added": 12, "category": "test-patch representation", "deleted": 0}, "src/prototype/test_suite/verification.json": {"added": 19, "category": "doc
+        s/evidence", "deleted": 0}}
+    18 +"stored_file_deltas": {"doc/2026-10-03-TEST-SUITE-DEDUPLICATION-WORKER-PLAN.md": {"added": 118, "category": "docs/evidence", "deleted": 0}, "src/prototy
+        pe/coordination/test-suite-brief.md": {"added": 99, "category": "docs/evidence", "deleted": 0}, "src/prototype/test_suite/README.md": {"added": 44, "cat
+        egory": "docs/evidence", "deleted": 0}, "src/prototype/test_suite/compatibility.sh.patch": {"added": 113, "category": "test-patch representation", "dele
+        ted": 0}, "src/prototype/test_suite/overlay.sh": {"added": 25, "category": "build/assembly", "deleted": 0}, "src/prototype/test_suite/quick_result.sh.pa
+        tch": {"added": 12, "category": "test-patch representation", "deleted": 0}, "src/prototype/test_suite/verification.json": {"added": 20, "category": "doc
+        s/evidence", "deleted": 0}},
+    19 +"verification_tool_setup_observations": ["Injection marker initially searched stderr alone; checker diagnostics are captured into stdout by the original
+         harness. Corrected meta-check reads both streams.", "Final suffix meta-check initially included the intentionally changed CASES summary. Corrected boun
+        dary compares the image/import/proof section byte for byte; passes. No compiler failure or test weakening."]
+    20  }
+
+• Ran python3 - <<'PY'
+  │ from pathlib import Path
+  │ import json, hashlib, difflib, subprocess
+  │ … +20 lines
+  └ /tmp/ap-test-suite-09ee775-20261003-handoff.patch:232: trailing whitespace.
+
+    /tmp/ap-test-suite-09ee775-20261003-handoff.patch:235: space before tab in indent.
+    +14 lines (ctrl+t to view transcript)
+
+
+› Root read2 patches/monitor/compare and all776 dependency pins verified. Focused distinct-record equivalence supports review; preserve600s derived_lt
+  censoring as incomplete, no need repeat untouched long driver solely for publication. Continue remaining affected controls/injections/lifetime, record
+  helper25 lines against38 deletion (net13). Issue-audit has verified #44/#49 superseded by open#61; #59 remains open with test-suite owner. No issue closing
+  here or new heavy measurement slot.
+
+
+• The remaining controls are complete: 40 recipes passed, all ten injections were detected, and strict3 plus the unsafe E11 failure remain unchanged. The
+  handoff records net 13 fewer applied lines and the derived-LT run as incomplete. Issue59 stays open; I’ll update the frozen package with Root’s review note.
+
+• Edited doc/2026-10-03-TEST-SUITE-DEDUPLICATION-WORKER-PLAN.md (+9 -0)
+    21
+    22 +- 2026-10-03, user paraphrase of Root review: focused distinct-record
+    23 +  equivalence supports review; preserve600s derived_lt censoring as incomplete,
+    24 +  with no repeat solely for publication. Finish affected controls/injections/
+    25 +  lifetime, count25 helper lines against38 deletions (net13). Issue59 remains
+    26 +  open with test-suite owner; no issue closing or new heavy measurement slot.
+    27  - 2026-10-03, user paraphrase of Root routing: inherited AP policy migration
+       ⋮
+    81    the brief. Full commands, hashes, outcomes and per-file counts are linked above.
+    82 +- Root's2026-10-03 routing reports independent review of both patches, monitor,
+    83 +  comparison and all776 dependency pins. Remaining controls are now complete;
+    84 +  broader Issue59 work stays open. #44/#49 superseded by #61 is external
+    85 +  issue-audit disposition and does not change this prototype's acceptance scope.
+    86
+
+• Ran python3 - <<'PY'
+  │ from pathlib import Path
+  │ import json
+  │ … +11 lines
+  └ Frozen physical per-file +lines/-0: [('doc/2026-10-03-TEST-SUITE-DEDUPLICATION-WORKER-PLAN.md', 127), ('src/prototype/coordination/test-suite-brief.md',
+    99), ('src/prototype/test_suite/README.md', 44), ('src/prototype/test_suite/compatibility.sh.patch', 113), ('src/prototype/test_suite/overlay.sh', 25),
+    ('src/prototype/test_suite/quick_result.sh.patch', 12), ('src/prototype/test_suite/verification.json', 21)]
+
+• Explored
+  └ Read verification.json
+
+• Edited src/prototype/test_suite/verification.json (+3 -2)
+    17  "publication": {"Main_merge": false, "accepted_edits": false, "fallback": "exact frozen seven-file patch/archive plus Merge outbox", "state": "git add e
+        xit128: shared metadata index.lock is on a read-only filesystem; no bypass, commit or push"},
+    18 -"stored_file_deltas": {"doc/2026-10-03-TEST-SUITE-DEDUPLICATION-WORKER-PLAN.md": {"added": 118, "category": "docs/evidence", "deleted": 0}, "src/prototy
+        pe/coordination/test-suite-brief.md": {"added": 99, "category": "docs/evidence", "deleted": 0}, "src/prototype/test_suite/README.md": {"added": 44, "cat
+        egory": "docs/evidence", "deleted": 0}, "src/prototype/test_suite/compatibility.sh.patch": {"added": 113, "category": "test-patch representation", "dele
+        ted": 0}, "src/prototype/test_suite/overlay.sh": {"added": 25, "category": "build/assembly", "deleted": 0}, "src/prototype/test_suite/quick_result.sh.pa
+        tch": {"added": 12, "category": "test-patch representation", "deleted": 0}, "src/prototype/test_suite/verification.json": {"added": 20, "category": "doc
+        s/evidence", "deleted": 0}},
+    19 -"verification_tool_setup_observations": ["Injection marker initially searched stderr alone; checker diagnostics are captured into stdout by the original
+         harness. Corrected meta-check reads both streams.", "Final suffix meta-check initially included the intentionally changed CASES summary. Corrected boun
+        dary compares the image/import/proof section byte for byte; passes. No compiler failure or test weakening."]
+    18 +"stored_file_deltas": {"doc/2026-10-03-TEST-SUITE-DEDUPLICATION-WORKER-PLAN.md": {"added": 127, "category": "docs/evidence", "deleted": 0}, "src/prototy
+        pe/coordination/test-suite-brief.md": {"added": 99, "category": "docs/evidence", "deleted": 0}, "src/prototype/test_suite/README.md": {"added": 44, "cat
+        egory": "docs/evidence", "deleted": 0}, "src/prototype/test_suite/compatibility.sh.patch": {"added": 113, "category": "test-patch representation", "dele
+        ted": 0}, "src/prototype/test_suite/overlay.sh": {"added": 25, "category": "build/assembly", "deleted": 0}, "src/prototype/test_suite/quick_result.sh.pa
+        tch": {"added": 12, "category": "test-patch representation", "deleted": 0}, "src/prototype/test_suite/verification.json": {"added": 21, "category": "doc
+        s/evidence", "deleted": 0}},
+    19 +"verification_tool_setup_observations": ["Injection marker initially searched stderr alone; checker diagnostics are captured into stdout by the original
+         harness. Corrected meta-check reads both streams.", "Final suffix meta-check initially included the intentionally changed CASES summary. Corrected boun
+        dary compares the image/import/proof section byte for byte; passes. No compiler failure or test weakening."],
+    20 +"Root_review_reported_2026_10_03": "User routing reports review of both patches, monitor/compare and all776 dependency pins; supports focused equivalenc
+        e. No untouched derived-LT rerun solely for publication, no issue closure or heavy cost slot."
+    21  }
+
+• Ran set -euo pipefail
+  │ python3 - <<'PY'
+  │ from pathlib import Path
+  │ … +20 lines
+  └ ap-test-suite-09ee775-20261003-handoff.patch 800484ee568f0bc0c3ea30d8ee5a33b2398494c92cc6a1aefa97c98d8962f7e5 bytes 33674
+    ap-test-suite-09ee775-20261003-handoff.tar.gz 2eeadd7b3984e535ea16566c332c8c590be1397f2140227acfd6e9a71e99aaf2 bytes 12282
+    ap-test-suite-09ee775-20261003-evidence.tar.gz 2f0f5aee2edb8950f19d91fb8d92fb92ff39b3a43efbf5f99c6129e7ae189c6a bytes 347861
+    +2 lines (ctrl+t to view transcript)
+
+• Added src/prototype/coordination/outbox/test-suite-20261003-final-handoff.txt (+58 -0)
+     1 +To: Merge 01a100b3-1d83-7090-bbf6-62544c39ec4b
+     2 +From: test-suite worker
+     3 +Date: 2026-10-03
+     4 +Thread / Goal: 01a101d2-a538-7c30-864a-7841a2de3896
+     5 +Branch/base: parallel/test-suite-20261003 / 09ee7750604f1de2264dd4dad5ab5f174583c655
+     6 +Scope: verified prototype reductions and reproducible handoff complete;
+     7 +publication, accepted promotion and Issue59 disposition remain external.
+     8 +
+     9 +Implemented: compatibility groups all37 CASES result pairs under43 distinct
+    10 +admissions and removes three special name dispatches. Five rejection witnesses
+    11 +and later image/import/proof assertions survive. QuickSort removes only the
+    12 +second ordinary save/load whose original image bytes match complete.a exactly.
+    13 +Inherited AP retention-policy migration receives zero fresh dedup credit.
+    14 +
+    15 +Applied per-file changes: compatibility.sh +19/-54; quick_result.sh +0/-3;
+    16 +new assembly overlay.sh +25/-0. Tests net -38; helper counted, net executable/
+    17 +test delta -13. Runtime, fixtures, accepted src/tests/build and Main delta0.
+    18 +Measured structural calls: compatibility421->401, QuickSort14->12, total435->413.
+    19 +Wall/RSS unmeasured; no heavy/exclusive measurement slot used/requested.
+    20 +
+    21 +Fresh verification: four original/reduced focused runs exit0; every retained
+    22 +distinct record preserves argv, actual input/output hashes, exit, status/fuel
+    23 +and diagnostics. Ten replay/injection controls detect all five failure classes.
+    24 +Combined requests complete47 recipes with0 nonzero (includes builds); remaining
+    25 +aggregate exits0. Unchanged derived_lt is still600s-censored/incomplete, never
+    26 +counted as a pass; Root directed no repeat solely for publication.
+    27 +Current E9/E10 runtime128 and seven control files match qualified producer;
+    28 +all776 input/harness pins remain unchanged. Module590 snapshots, forged-prefix/
+    29 +source-claim, Core receipt, image NF/byte/root/origin and lifetime controls pass.
+    30 +Fresh strict3 exits1 at exactly1000:1000,1600:1600,1915:0 reload; frozen original
+    31 +E9/unsafe E11 lifetime reruns0/1. Escaped-stack source/owner evidence preserved,
+    32 +unsafe E11 excluded. No failures waived or assertions/fuel weakened.
+    33 +
+    34 +Exact seven-file list: /tmp/ap-test-suite-09ee775-20261003-files.txt
+    35 +Stored per-file +lines/-0: plan127; inherited brief99; README44; verification21;
+    36 +compatibility patch113; QuickSort patch12; overlay25. Total441 physical additions
+    37 +includes patch representation/setup docs; it is not accepted code deletion.
+    38 +Raw one-use capture/replay tools/logs stay in the evidence archive, outside the
+    39 +permanent suite. Outbox notifications are separate transport files.
+    40 +
+    41 +Frozen patch /tmp/ap-test-suite-09ee775-20261003-handoff.patch
+    42 +SHA256 800484ee568f0bc0c3ea30d8ee5a33b2398494c92cc6a1aefa97c98d8962f7e5
+    43 +Frozen seven-file archive /tmp/ap-test-suite-09ee775-20261003-handoff.tar.gz
+    44 +SHA256 2eeadd7b3984e535ea16566c332c8c590be1397f2140227acfd6e9a71e99aaf2
+    45 +Manifest /tmp/ap-test-suite-09ee775-20261003-handoff.sha256
+    46 +SHA256 0f30bef9667097e580b7eedd0e28374dc9e7ce2035ccf5bdd7f608fdbc7d480f
+    47 +Raw evidence /tmp/ap-test-suite-09ee775-20261003-evidence.tar.gz
+    48 +SHA256 2f0f5aee2edb8950f19d91fb8d92fb92ff39b3a43efbf5f99c6129e7ae189c6a
+    49 +Fresh patch extraction reproduces all seven bytes exactly. Outer patch warnings
+    50 +refer to stored unified-patch context, not applied code; --whitespace=nowarn
+    51 +preserves exact representation. README provides original/reduced reproduction.
+    52 +
+    53 +Publication: exact git add exited128, shared index.lock read-only. No bypass,
+    54 +staging, commit/push or Main merge. Publish only the frozen seven-file task epoch
+    55 +on this worker branch, with integration/promotion separately owned by Merge.
+    56 +Issue59 stays open: complete dynamic inventory, controlled cost, global lifecycle/
+    57 +legacy disposition and central ledger/promotion remain outside this pilot.
+    58 +Broader issue audit owns disposition; #44/#49->#61 creates no accepted #57 policy.
+
+• Ran set -euo pipefail
+  │ python3 - <<'PY'
+  │ from pathlib import Path
+  │ … +15 lines
+  └ test-suite-20261003-initialization.txt +19/-0 transport; 1175 bytes
+    test-suite-20261003-combined-cap.txt +21/-0 transport; 1322 bytes
+    test-suite-20261003-epoch1-focused.txt +32/-0 transport; 2086 bytes
+    +7 lines (ctrl+t to view transcript)
+
+• Implemented and verified prototype reductions: 22 duplicate invocations removed, with 13 fewer applied lines after counting the helper.
+
+   Applied file        Added    Deleted
+  ━━━━━━━━━━━━━━━━━━  ━━━━━━━  ━━━━━━━━━
+   compatibility.sh       19         54
+  ──────────────────  ───────  ─────────
+   quick_result.sh         0          3
+  ──────────────────  ───────  ─────────
+   overlay.sh             25          0
+
+  Original/reduced outcomes match; ten injection checks pass. All 47 completed combined recipes pass. E9/E10 controls, strict3 and unsafe E11 failures remain
+  preserved. The unchanged derived-LT run is recorded as incomplete after its 600-second cap. Wall/RSS savings are unmeasured.
+
+  Exact Merge handoff and full per-file counts (src/prototype/coordination/outbox/test-suite-20261003-final-handoff.txt) are frozen. Git staging is blocked by
+  read-only shared metadata. Accepted files remain untouched; Issue59 stays open.
+
+  Goal complete; elapsed time approximately 38 minutes.
+
+  Worked for 38m 29s • 22:34
+
+
+› Ask Codex to do anything
+
+  GPT-6.1-Sol xhigh · ~/workspace/a-program-workers/test-suite · Simplify and deduplicate tests                 Goal achieved (37m)    ⚠ 1 warning · f2 to view
