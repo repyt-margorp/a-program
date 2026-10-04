@@ -1,0 +1,56 @@
+{
+  "accepted_commit": "fc52755b345a555e49a79df40549e9cb23d54088",
+  "Main_parent": "1db2954f21961f9912910fdf2b76d341ffcc9f5e",
+  "runtime120_manifest_SHA": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+  "C45_manifest_SHA": "4d3fc809dae7b4c77a0756bc8a358e0d5b3e07e6eda37e9a73152426aa43c1b3",
+  "compiler_SHA": "a23ecab8ff08f09ad8c80602c2c5df7f49e09c25905cb8975902e101bf72635f",
+  "scope": "Frozen C45 fixed-candidate standalone C/header/source/object/archive clients and all component/client sources ASan-UBSan-leak. Exact current C44 emitted bodies, current O2 pointer/Core341 oracle and source image reused; no new emitter/producer/Core SAN or generalized native success. Native checked/trusted remain NOT_RUN after retained stale-support backend build2. No accepted adoption or cost claim.",
+  "started": "2026-10-04T19:19:29.611311+00:00",
+  "complete": true,
+  "phases": {
+    "O2": {
+      "expected_rows": 42,
+      "exits": {
+        "0": 39,
+        "1": 1,
+        "2": 1,
+        "4": 1
+      },
+      "source_sort": "0,1,2,2,3,|",
+      "source_object_archive_products_exact": true,
+      "component_lines": 708,
+      "component_SHA": "49d3a0797ba60fbf83d0dd53bef9262e219f194387c68f293419b0243d8619ee",
+      "header_SHA": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044",
+      "status_SHA": "7f5b2c37cccf0d8a3f69846877f90c97d671edaf81676f755f830cec02853fdb",
+      "argv_NUL_SHA": "c9d6eb73c5157d294f6f01e628d4fe2dbe5cf1014e41ef7ad8f2a551bffd871d",
+      "native_runtime_probes": "NOT_RUN"
+    },
+    "SAN": {
+      "expected_rows": 42,
+      "exits": {
+        "0": 39,
+        "1": 1,
+        "2": 1,
+        "4": 1
+      },
+      "source_sort": "0,1,2,2,3,|",
+      "source_object_archive_products_exact": true,
+      "component_lines": 708,
+      "component_SHA": "49d3a0797ba60fbf83d0dd53bef9262e219f194387c68f293419b0243d8619ee",
+      "header_SHA": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044",
+      "status_SHA": "7f5b2c37cccf0d8a3f69846877f90c97d671edaf81676f755f830cec02853fdb",
+      "argv_NUL_SHA": "1d6b466a0b1bb8120ed3be7cd23e9b3b7654f0d0a6d0d4e6703135690cb7f353",
+      "native_runtime_probes": "NOT_RUN"
+    }
+  },
+  "Core_sorting_observations": 341,
+  "entire_standalone_component_and_clients_SAN": true,
+  "pointer_Core_oracles_SAN": false,
+  "source_body_emission_reused_from_C44": true,
+  "native_runtime_probes": "NOT_RUN",
+  "all_original_inputs_unchanged": true,
+  "all_reused_inputs_unchanged": true,
+  "finished": "2026-10-04T19:20:02.171447+00:00",
+  "all_commands_terminal_reaped": true,
+  "commands": 2
+}

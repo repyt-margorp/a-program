@@ -1,0 +1,6 @@
+{
+  "exit": 1,
+  "cause": "evidence harness used runtime120_manifest_sha256 instead of existing runtime_manifest_sha256 key after exact185 copying",
+  "all_source_hashes_checked_before_failing": true,
+  "correction": "read actual key; input bytes unchanged"
+}

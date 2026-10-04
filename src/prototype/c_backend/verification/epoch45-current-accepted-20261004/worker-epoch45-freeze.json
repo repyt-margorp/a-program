@@ -1,0 +1,29 @@
+{
+  "epoch": "C45",
+  "frozen_at": "2026-10-04T19:13:58.231648+00:00",
+  "files": 13,
+  "manifest_sha256": "4d3fc809dae7b4c77a0756bc8a358e0d5b3e07e6eda37e9a73152426aa43c1b3",
+  "archive_sha256": "8fb1ddbe1ab8c8a2528710f603cb5c1823cd6afc072f21c31eba99979f762f94",
+  "raw_files": 270,
+  "raw_manifest_sha256": "638dadc78ddbd3cf72e85507a07ae2aefd44d370f5db35df777d4949b957d533",
+  "verification_sha256": "e70e1009ebcbdbfd3d4d231c2d32b4c3faaca8211f9e0f5a603e4d4d3ee642c9",
+  "final_inputs_sha256": "08a9a4b6b6b29064aa2f30a730968ba8e502af0a540508a543e1d7ee1467b19b",
+  "source_deltas_sha256": "1da236fea03cd6fb66f0e02ee36b08ab9f07d62dddb56772a6b53d3b7bbb9cfd",
+  "style_sha256": "96b9dc2514e7e06c9e27e158875ef52af4b30953b9692494b17e0b06ad187725",
+  "handoff_sha256": "9f72c9093b83156db82335d8e2b4d27740b81dbb88cbbdb14bdd509abde5f6e9",
+  "branch": "parallel/c-backend-20261003",
+  "original_Git": {
+    "HEAD": "cc3cba3495b81628e0a68ec8b45aee4f5447d188",
+    "branch": "parallel/c-backend-20261003",
+    "index_path": "/home/repyt/workspace/a-program/.git/worktrees/c-backend/index",
+    "index_sha256": "848aae6bed8ddf19f70473244f94f8ca144b4bbe3ca7a427b2f44e2a5e842325"
+  },
+  "commit_message": "prototype: package actual Acc QuickSort as standalone C",
+  "delegated_task_parent": "3f5baf12ba7b86c122d3c88c554bb3e32263d162",
+  "task_commit": "pending",
+  "Root_current_qualification": "pending",
+  "Main_integration": "pending",
+  "goal_active": true,
+  "accepted_adoption": false,
+  "no_cost_or_full_Goal_claim": true
+}

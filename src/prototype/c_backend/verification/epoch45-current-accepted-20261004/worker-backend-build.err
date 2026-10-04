@@ -1,0 +1,5 @@
+/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/lower/scalar.c:8:10: fatal error: support.h: No such file or directory
+    8 | #include "support.h"
+      |          ^~~~~~~~~~~
+compilation terminated.
+make: *** [src/prototype/c_backend/build.mk:9: /home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch45-acc-products-20261004/backend-O2/a-to-c] Error 1

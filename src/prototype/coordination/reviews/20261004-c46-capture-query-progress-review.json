@@ -1,0 +1,21 @@
+{
+  "date_UTC": "2026-10-04T19:24:00.519833+00:00",
+  "notice_SHA": "4d764491141dec3104079b238e3ddc6f7debb565d624c0f53fff8f96f7a22237",
+  "classification": "Original C owner ordinary distinct C46 implementation; no frozen READY or current Root qualification",
+  "accepted_revision": "fc52755b345a555e49a79df40549e9cb23d54088",
+  "runtime120_manifest_SHA": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+  "scalar_live_SHA": "78a4d85a652839c1575aa587cf32c47610b9588589109c45e8405befc0d28ff3",
+  "C45_retained_old_scalar_SHA": "732aee8dcd5cc26e397d293c45d08c14fd7893d681e4aed566aa2ff6fd5d1a18",
+  "accepted_graph_header_SHA": "95e18c6e8561a74d43bb1b177bc77ad0d2d72e98dbd66d148d60594f56b4b490",
+  "accepted_graph_implementation_SHA": "7b4ec4e838c9a60194906ebf75c1b858cfd237773983bbf6b10a870c7ff008b0",
+  "observed_API": "graph.h80-82 documents pg_term_independent:1 no free occurrence,0 occurs,-1 error; graph.c321-325 uses existing scoped comparison with no normalization policy.",
+  "actual_private_delta": "Remove support.h include; small free_occurs adapter preserves -1 error and inverts0/1 at both capture membership sites. Lexical queue ordering, delayed and recursive dependency discovery unchanged in inspected diff.",
+  "Assessment": "Existing readonly source syntax query fits the downstream capture membership operation without producer fields/checker/schema/new source walker. This is a bounded implementation decision within original scope, not new human architecture approval. Full native build/static-transitive-recursive-nested/error/inert/native Acc probes remain unqualified until actual frozen evidence; C45 build2 and NOT_RUN preserved.",
+  "Root_runtime_replay": false,
+  "Main_C46_code_publication": false,
+  "accepted_adoption": false,
+  "Goal_owner_model_actions": false,
+  "cost_samples": 0,
+  "build_resuming_notice_SHA": "d21de34a491b1504243af3769627fb87a5d74bc591a73c5b6324a5f85cf0f10d",
+  "actual_build_progress": "Original owner starts focused current j1 O2 backend build after19:20 feasibility expires; no grant/hold inferred, results pending."
+}

@@ -1,0 +1,3 @@
+/usr/bin/ld: /home/repyt/workspace/a-program-workers/merge-storage-20261003/c45-current-accepted-fc/O2-gate/source/component.o: in function `gs_sort':
+component.c:(.text+0x2040): multiple definition of `gs_sort'; /home/repyt/workspace/a-program-workers/merge-storage-20261003/c45-current-accepted-fc/O2-gate/source/component.o:component.c:(.text+0x2040): first defined here
+collect2: error: ld returned 1 exit status

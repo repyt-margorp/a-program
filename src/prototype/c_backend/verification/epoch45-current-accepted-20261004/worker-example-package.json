@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "python3",
+    "src/prototype/c_backend/acc_products/pack.py",
+    "src/prototype/c_backend/.evidence/epoch44-acc-capture-20261004/candidate-O2/main",
+    "src/prototype/c_backend/acc_products/example"
+  ],
+  "start": "2026-10-04T19:02:40.347126+00:00",
+  "exit": 0,
+  "finish": "2026-10-04T19:02:40.366791+00:00",
+  "byte_exact_to_both_O2_and_SAN": {
+    "src/prototype/c_backend/acc_products/example/component.c": "49d3a0797ba60fbf83d0dd53bef9262e219f194387c68f293419b0243d8619ee",
+    "src/prototype/c_backend/acc_products/example/component.h": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044",
+    "src/prototype/c_backend/acc_products/example/provenance.json": "b7a663b6bf42aad19260897b80a2d74685be3ae9a9301ea6a595922ad028a919"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "date_UTC": "2026-10-04T19:21:59.619722+00:00",
+  "open_issues": [
+    61,
+    59,
+    57,
+    56,
+    52,
+    51,
+    47,
+    43,
+    41
+  ],
+  "open_PRs": [],
+  "all_bodies_update_dates_unchanged_from_1824": true,
+  "no_issue_closure": true,
+  "panes_readonly": [
+    "C",
+    "Performance",
+    "Job",
+    "Static",
+    "Sort",
+    "Test",
+    "Issue"
+  ],
+  "original_C_Job_active": true,
+  "original_Performance_BLOCKED": true,
+  "bounded_Static_Sort_Test_Issue_achieved": true,
+  "Surface_historical_closed": true,
+  "timer_watcher": {
+    "1674731": true,
+    "1585465": true
+  },
+  "next_scheduled_review": "2026-10-04T19:44:22.084Z",
+  "no_Goal_owner_model_lifecycle_action": true
+}

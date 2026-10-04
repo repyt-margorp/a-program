@@ -1,0 +1,23 @@
+{
+  "argv": [
+    "sh",
+    "src/prototype/c_backend/acc_products/check.sh",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch44-acc-capture-20261004/candidate-O2/main",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch44-acc-capture-20261004/candidate-O2/oracle.c",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch43-acc-actions-20261004/actions.a",
+    "unavailable",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch45-acc-products-20261004/O2"
+  ],
+  "environment": {
+    "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch45-acc-products-20261004/tmp",
+    "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+    "AR": "/usr/bin/ar",
+    "CLIENT_CFLAGS": "-O2",
+    "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1",
+    "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+  },
+  "start": "2026-10-04T18:59:08.331603+00:00",
+  "exit": 0,
+  "finish": "2026-10-04T18:59:10.766355+00:00"
+}

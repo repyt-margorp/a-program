@@ -1,0 +1,18 @@
+{
+  "O2-gate/changed/actions.inc.gz": {
+    "encoding": "gzip,mtime0",
+    "decoded_relative_path": "O2-gate/changed/actions.inc",
+    "decoded_bytes": 2302,
+    "decoded_SHA": "63c5a5106ecdb1d402f8a76075a6f36cc31db00435d943b5a7a542545fc71e10",
+    "compressed_SHA": "c9f6d05ae198a98437d0ff17a7be8af927b43c591ee7fc3c7a1226ef3c60fe23",
+    "reason": "Intentional negative input appends a blank newline; preserve exact failing input bytes without introducing source whitespace errors."
+  },
+  "SAN-gate/changed/actions.inc.gz": {
+    "encoding": "gzip,mtime0",
+    "decoded_relative_path": "SAN-gate/changed/actions.inc",
+    "decoded_bytes": 2302,
+    "decoded_SHA": "63c5a5106ecdb1d402f8a76075a6f36cc31db00435d943b5a7a542545fc71e10",
+    "compressed_SHA": "c9f6d05ae198a98437d0ff17a7be8af927b43c591ee7fc3c7a1226ef3c60fe23",
+    "reason": "Intentional negative input appends a blank newline; preserve exact failing input bytes without introducing source whitespace errors."
+  }
+}

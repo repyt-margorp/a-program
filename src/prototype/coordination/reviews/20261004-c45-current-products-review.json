@@ -1,0 +1,343 @@
+{
+  "date_UTC": "2026-10-04T19:24:00.519833+00:00",
+  "notice_SHA": "de21e274628309f8d16d4e93616b81f6671152f91d8d4810fe30f32d20d2f5be",
+  "Main_parent": "1db2954f21961f9912910fdf2b76d341ffcc9f5e",
+  "freeze": {
+    "epoch": "C45",
+    "frozen_at": "2026-10-04T19:13:58.231648+00:00",
+    "files": 13,
+    "manifest_sha256": "4d3fc809dae7b4c77a0756bc8a358e0d5b3e07e6eda37e9a73152426aa43c1b3",
+    "archive_sha256": "8fb1ddbe1ab8c8a2528710f603cb5c1823cd6afc072f21c31eba99979f762f94",
+    "raw_files": 270,
+    "raw_manifest_sha256": "638dadc78ddbd3cf72e85507a07ae2aefd44d370f5db35df777d4949b957d533",
+    "verification_sha256": "e70e1009ebcbdbfd3d4d231c2d32b4c3faaca8211f9e0f5a603e4d4d3ee642c9",
+    "final_inputs_sha256": "08a9a4b6b6b29064aa2f30a730968ba8e502af0a540508a543e1d7ee1467b19b",
+    "source_deltas_sha256": "1da236fea03cd6fb66f0e02ee36b08ab9f07d62dddb56772a6b53d3b7bbb9cfd",
+    "style_sha256": "96b9dc2514e7e06c9e27e158875ef52af4b30953b9692494b17e0b06ad187725",
+    "handoff_sha256": "9f72c9093b83156db82335d8e2b4d27740b81dbb88cbbdb14bdd509abde5f6e9",
+    "branch": "parallel/c-backend-20261003",
+    "original_Git": {
+      "HEAD": "cc3cba3495b81628e0a68ec8b45aee4f5447d188",
+      "branch": "parallel/c-backend-20261003",
+      "index_path": "/home/repyt/workspace/a-program/.git/worktrees/c-backend/index",
+      "index_sha256": "848aae6bed8ddf19f70473244f94f8ca144b4bbe3ca7a427b2f44e2a5e842325"
+    },
+    "commit_message": "prototype: package actual Acc QuickSort as standalone C",
+    "delegated_task_parent": "3f5baf12ba7b86c122d3c88c554bb3e32263d162",
+    "task_commit": "pending",
+    "Root_current_qualification": "pending",
+    "Main_integration": "pending",
+    "goal_active": true,
+    "accepted_adoption": false,
+    "no_cost_or_full_Goal_claim": true
+  },
+  "freeze_SHA": "fe2bb0517f85fc4d9260e219031c7233e9449b6eb45bf841397da31d14556670",
+  "frozen13_archive_exact": {
+    "doc/2026-10-03-C-BACKEND-GOAL.md": "ae28a52fe2a8ac9095fd68a53155fb551f197243a231e3f3505840747ae32663",
+    "doc/2026-10-04-C-BACKEND-ACC-C-PRODUCTS-PLAN.md": "141f678e12e9a3493d0259d7cefa5fd4f00a3daffdd131267ab7f216eb5046cb",
+    "doc/2026-10-04-C-BACKEND-EPOCH45-HANDOFF.md": "9f72c9093b83156db82335d8e2b4d27740b81dbb88cbbdb14bdd509abde5f6e9",
+    "src/prototype/c_backend/acc_products/README.md": "03d391b366a520b469f6c91b6d7520e4b9c58012f428bb58916ed0151e944103",
+    "src/prototype/c_backend/acc_products/check.sh": "89b78c797863e185ff2cf86d2ada386f3f1177dce2ec411f4663cc732f5dd986",
+    "src/prototype/c_backend/acc_products/client.c": "bb8269084b46535217f94f8890296aa6382de09e900bbfc788518cc7400b9277",
+    "src/prototype/c_backend/acc_products/example/component.c": "49d3a0797ba60fbf83d0dd53bef9262e219f194387c68f293419b0243d8619ee",
+    "src/prototype/c_backend/acc_products/example/component.h": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044",
+    "src/prototype/c_backend/acc_products/example/provenance.json": "b7a663b6bf42aad19260897b80a2d74685be3ae9a9301ea6a595922ad028a919",
+    "src/prototype/c_backend/acc_products/module.h": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044",
+    "src/prototype/c_backend/acc_products/native.aplink": "9ba51cc8e832cbb6f27aafbb4280ed226316f8f1de30c0b4d577c7a3d498f9d2",
+    "src/prototype/c_backend/acc_products/pack.py": "42d6ccc4f85fd172bf6fbd762985a9252a5e46bb6b9648e5da1bfbe90b39391e",
+    "src/prototype/c_backend/acc_products/resource_client.c": "586ade272614b37017327c4b16f3e5a1eff5ab377f26873dadb9e054d9dd146b"
+  },
+  "all270_raw_exact": true,
+  "all242_retained_and_live_inputs_exact": true,
+  "runtime120_c206_exact": true,
+  "old_C32_C44_snapshots_exact": [
+    {
+      "epoch": 32,
+      "archive_SHA": "db6a663c11197d92a28d13c8344da02aaccdd59c32864bfba106391a7f7e05ae",
+      "manifest_SHA": "b19b3b033ade94e3971c7ce8e6fc9458333d1402f67ff62c1c45fcde54ca5955",
+      "archive_and_other_live_files_exact": true
+    },
+    {
+      "epoch": 33,
+      "archive_SHA": "a8bd408cc099885ab26780a901017fb3a9087294ce5e8b768b84ea6c2b7a6499",
+      "manifest_SHA": "503f67d3dff3ffb966a9f59e5b956b7534669b6be8504501e0e592211459641b",
+      "archive_and_other_live_files_exact": true
+    },
+    {
+      "epoch": 34,
+      "archive_SHA": "26138ad62d6e819a722b3264c6d050d6d906a208190985158a68c86055d6ad77",
+      "manifest_SHA": "7b39780d167120153200329e1bd3c7378d41f87fd4024b5ff1eeb790db380bed",
+      "archive_and_other_live_files_exact": true
+    },
+    {
+      "epoch": 35,
+      "archive_SHA": "6bfebc166faca426c59b63d6df98a27cce0e51dad59fcc93aabd48802f74ba6c",
+      "manifest_SHA": "446d03f25507a4bb59f903709ca2f8a80433d13215ba143909e13cdf52f51d42",
+      "archive_and_other_live_files_exact": true
+    },
+    {
+      "epoch": 36,
+      "archive_SHA": "935cbfa3c56f20af251770180172e795eb14e866d5569318eae515e0e047acbd",
+      "manifest_SHA": "898846ea57c8d259b0f43a1056ba5d07e37ee3c2500620392c441516a5acbbf4",
+      "archive_and_other_live_files_exact": true
+    },
+    {
+      "epoch": 37,
+      "archive_SHA": "a82d8be6c7d1615ded0c217a6facf291c828c2ecea5325e7ee598de231664416",
+      "manifest_SHA": "2f93f38b6f5c77b631356c7d18a7137ab27def14c280ad57bfe4a70c62104409",
+      "archive_and_other_live_files_exact": true
+    },
+    {
+      "epoch": 38,
+      "archive_SHA": "bb0c2ccc7c53cf1656e20ffa3b265db45bf97e0ce01c938c9af6fd22122efc4f",
+      "manifest_SHA": "09149b7f988f630fb4abc73068c12be42fce010b92297a1ef8ee2666d90415be",
+      "archive_and_other_live_files_exact": true
+    },
+    {
+      "epoch": 39,
+      "archive_SHA": "d3c5b078c059146f496725d6d28270fa161c2641fda5f19062c763823e54f4c8",
+      "manifest_SHA": "07cdb467138c72671325b23669d568861dc038251dac80232007cd8ac497d326",
+      "archive_and_other_live_files_exact": true
+    },
+    {
+      "epoch": 40,
+      "archive_SHA": "dac488b659728bc636e95dec277637417000bb7a70f4728ac804f15623ef2553",
+      "manifest_SHA": "3a22b6e0462b771de3c88568237e334ca1a31c57d300a81cfe0b0db38d8a7339",
+      "archive_and_other_live_files_exact": true
+    },
+    {
+      "epoch": 41,
+      "archive_SHA": "d0b6dde2693b65fab2d96293c7bc1d3ab682b8c14355bc1a431284d62bfcd3e1",
+      "manifest_SHA": "b7b1d2dd885a11fc54111f16ed4e034363f7b2e77f0034a006609441aef125a9",
+      "archive_and_other_live_files_exact": true
+    },
+    {
+      "epoch": 42,
+      "archive_SHA": "59cd56f2811089efcbc46e61995ceca2e0edb063d3d65c68d4da8b06e4f2e5d4",
+      "manifest_SHA": "202b7a1d8eeb44729fbce4174ce44ef0a97c06e4e8cbce677da4882c86f661ad",
+      "archive_and_other_live_files_exact": true
+    },
+    {
+      "epoch": 43,
+      "archive_SHA": "fd346700ec4523a5889b99b92c632641d9ea890255dd741ddabf6345890ad513",
+      "manifest_SHA": "3e6dc547803f2cd790fb96b4815e5763cdccd0c43b5c312efa63ba1148f6fce6",
+      "archive_and_other_live_files_exact": true
+    },
+    {
+      "epoch": 44,
+      "archive_SHA": "274a0966e0e1fd0f338d68f929a8f2dcbd4be3b01511faee10f0ab6673309061",
+      "manifest_SHA": "c94dd4820da590d4e015d6663633332042d8c4c8847c0a2bbad8ffc5ec969e37",
+      "archive_and_other_live_files_exact": true
+    }
+  ],
+  "all_six_products_and16_provenance_sections_exact": true,
+  "all_seven_source_body_sections_exact": true,
+  "component_lines": 708,
+  "component_SHA": "49d3a0797ba60fbf83d0dd53bef9262e219f194387c68f293419b0243d8619ee",
+  "header_SHA": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044",
+  "worker_O2_SAN42_raw_review": {
+    "O2": {
+      "report_SHA": "2903738646d686a1a7935ce96f5d642a4d3679a713b14bc768ce3866463a7ea7",
+      "status_SHA": "7f5b2c37cccf0d8a3f69846877f90c97d671edaf81676f755f830cec02853fdb",
+      "argv_NUL_SHA": "a568bdef781925388324fae5a8e9b7b828a55fa4d336c90eea8b29fc3c2c5277",
+      "outcomes": {
+        "0": 39,
+        "1": 1,
+        "2": 1,
+        "4": 1
+      },
+      "all42_matching": true,
+      "native_runtime_probes": "NOT_RUN"
+    },
+    "SAN": {
+      "report_SHA": "ac47e49c20faffca045db89e5d87ea4ad97aaff00f22c215345a7618c59248b4",
+      "status_SHA": "7f5b2c37cccf0d8a3f69846877f90c97d671edaf81676f755f830cec02853fdb",
+      "argv_NUL_SHA": "4b0b6ec69313e503cc518080b2d1d516d8088d1086dd8a3df2675e1deb20c9e3",
+      "outcomes": {
+        "0": 39,
+        "1": 1,
+        "2": 1,
+        "4": 1
+      },
+      "all42_matching": true,
+      "native_runtime_probes": "NOT_RUN"
+    }
+  },
+  "worker_initial_setup1_and_backend_build2_preserved": true,
+  "Root_runtime_replay": {
+    "accepted_commit": "fc52755b345a555e49a79df40549e9cb23d54088",
+    "Main_parent": "1db2954f21961f9912910fdf2b76d341ffcc9f5e",
+    "runtime120_manifest_SHA": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+    "C45_manifest_SHA": "4d3fc809dae7b4c77a0756bc8a358e0d5b3e07e6eda37e9a73152426aa43c1b3",
+    "compiler_SHA": "a23ecab8ff08f09ad8c80602c2c5df7f49e09c25905cb8975902e101bf72635f",
+    "scope": "Frozen C45 fixed-candidate standalone C/header/source/object/archive clients and all component/client sources ASan-UBSan-leak. Exact current C44 emitted bodies, current O2 pointer/Core341 oracle and source image reused; no new emitter/producer/Core SAN or generalized native success. Native checked/trusted remain NOT_RUN after retained stale-support backend build2. No accepted adoption or cost claim.",
+    "started": "2026-10-04T19:19:29.611311+00:00",
+    "complete": true,
+    "phases": {
+      "O2": {
+        "expected_rows": 42,
+        "exits": {
+          "0": 39,
+          "1": 1,
+          "2": 1,
+          "4": 1
+        },
+        "source_sort": "0,1,2,2,3,|",
+        "source_object_archive_products_exact": true,
+        "component_lines": 708,
+        "component_SHA": "49d3a0797ba60fbf83d0dd53bef9262e219f194387c68f293419b0243d8619ee",
+        "header_SHA": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044",
+        "status_SHA": "7f5b2c37cccf0d8a3f69846877f90c97d671edaf81676f755f830cec02853fdb",
+        "argv_NUL_SHA": "c9d6eb73c5157d294f6f01e628d4fe2dbe5cf1014e41ef7ad8f2a551bffd871d",
+        "native_runtime_probes": "NOT_RUN"
+      },
+      "SAN": {
+        "expected_rows": 42,
+        "exits": {
+          "0": 39,
+          "1": 1,
+          "2": 1,
+          "4": 1
+        },
+        "source_sort": "0,1,2,2,3,|",
+        "source_object_archive_products_exact": true,
+        "component_lines": 708,
+        "component_SHA": "49d3a0797ba60fbf83d0dd53bef9262e219f194387c68f293419b0243d8619ee",
+        "header_SHA": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044",
+        "status_SHA": "7f5b2c37cccf0d8a3f69846877f90c97d671edaf81676f755f830cec02853fdb",
+        "argv_NUL_SHA": "1d6b466a0b1bb8120ed3be7cd23e9b3b7654f0d0a6d0d4e6703135690cb7f353",
+        "native_runtime_probes": "NOT_RUN"
+      }
+    },
+    "Core_sorting_observations": 341,
+    "entire_standalone_component_and_clients_SAN": true,
+    "pointer_Core_oracles_SAN": false,
+    "source_body_emission_reused_from_C44": true,
+    "native_runtime_probes": "NOT_RUN",
+    "all_original_inputs_unchanged": true,
+    "all_reused_inputs_unchanged": true,
+    "finished": "2026-10-04T19:20:02.171447+00:00",
+    "all_commands_terminal_reaped": true,
+    "commands": 2
+  },
+  "accepted_adoption": false,
+  "Goal_owner_actions": false,
+  "cost_samples": 0,
+  "source_review": "Fixed-candidate pack.py validates original input and seven emitted body hashes before writing a new output directory. Component excludes historical unused manual sorter; manual bounded action/refinement/closure/storage/Nat/array extent and private gs_sort interface remain labeled. Separate source/object/archive clients and wrapped-allocation/resource controls use no A Program runtime. Current main-native build still fails stale support.h/pg_support_contains; checked/trusted probes are NOT_RUN, not refusal4 or producer defect.",
+  "Root_raw_path": "src/prototype/c_backend/verification/epoch45-current-accepted-20261004",
+  "Root_raw_files": 246,
+  "Root_raw_manifest_SHA": "2b63f1f8b4ab8154ef7a3c1d3704c07d5f907a3f70ae7d3a9cc2583fcd887ecd",
+  "task_publication": {
+    "date_UTC": "2026-10-04T19:20:21.778146+00:00",
+    "epoch": "C45",
+    "branch": "parallel/c-backend-20261003",
+    "parent": "3f5baf12ba7b86c122d3c88c554bb3e32263d162",
+    "commit": "6214590570681e7eae2b84baa03c588822d2e389",
+    "remote_exact": "6214590570681e7eae2b84baa03c588822d2e389",
+    "exact_snapshot_files": 13,
+    "all_committed_snapshot_blobs_exact": true,
+    "original_C_HEAD_ref_index_unchanged": true,
+    "original_C_guard": {
+      "HEAD": "cc3cba3495b81628e0a68ec8b45aee4f5447d188",
+      "branch_ref": "cc3cba3495b81628e0a68ec8b45aee4f5447d188",
+      "index_SHA": "848aae6bed8ddf19f70473244f94f8ca144b4bbe3ca7a427b2f44e2a5e842325"
+    },
+    "frozen_files": {
+      "doc/2026-10-03-C-BACKEND-GOAL.md": "ae28a52fe2a8ac9095fd68a53155fb551f197243a231e3f3505840747ae32663",
+      "doc/2026-10-04-C-BACKEND-ACC-C-PRODUCTS-PLAN.md": "141f678e12e9a3493d0259d7cefa5fd4f00a3daffdd131267ab7f216eb5046cb",
+      "doc/2026-10-04-C-BACKEND-EPOCH45-HANDOFF.md": "9f72c9093b83156db82335d8e2b4d27740b81dbb88cbbdb14bdd509abde5f6e9",
+      "src/prototype/c_backend/acc_products/README.md": "03d391b366a520b469f6c91b6d7520e4b9c58012f428bb58916ed0151e944103",
+      "src/prototype/c_backend/acc_products/check.sh": "89b78c797863e185ff2cf86d2ada386f3f1177dce2ec411f4663cc732f5dd986",
+      "src/prototype/c_backend/acc_products/client.c": "bb8269084b46535217f94f8890296aa6382de09e900bbfc788518cc7400b9277",
+      "src/prototype/c_backend/acc_products/example/component.c": "49d3a0797ba60fbf83d0dd53bef9262e219f194387c68f293419b0243d8619ee",
+      "src/prototype/c_backend/acc_products/example/component.h": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044",
+      "src/prototype/c_backend/acc_products/example/provenance.json": "b7a663b6bf42aad19260897b80a2d74685be3ae9a9301ea6a595922ad028a919",
+      "src/prototype/c_backend/acc_products/module.h": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044",
+      "src/prototype/c_backend/acc_products/native.aplink": "9ba51cc8e832cbb6f27aafbb4280ed226316f8f1de30c0b4d577c7a3d498f9d2",
+      "src/prototype/c_backend/acc_products/pack.py": "42d6ccc4f85fd172bf6fbd762985a9252a5e46bb6b9648e5da1bfbe90b39391e",
+      "src/prototype/c_backend/acc_products/resource_client.c": "586ade272614b37017327c4b16f3e5a1eff5ab377f26873dadb9e054d9dd146b"
+    },
+    "archive_SHA": "8fb1ddbe1ab8c8a2528710f603cb5c1823cd6afc072f21c31eba99979f762f94",
+    "manifest_SHA": "4d3fc809dae7b4c77a0756bc8a358e0d5b3e07e6eda37e9a73152426aa43c1b3",
+    "qualification": {
+      "accepted_commit": "fc52755b345a555e49a79df40549e9cb23d54088",
+      "Main_parent": "1db2954f21961f9912910fdf2b76d341ffcc9f5e",
+      "runtime120_manifest_SHA": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+      "C45_manifest_SHA": "4d3fc809dae7b4c77a0756bc8a358e0d5b3e07e6eda37e9a73152426aa43c1b3",
+      "compiler_SHA": "a23ecab8ff08f09ad8c80602c2c5df7f49e09c25905cb8975902e101bf72635f",
+      "scope": "Frozen C45 fixed-candidate standalone C/header/source/object/archive clients and all component/client sources ASan-UBSan-leak. Exact current C44 emitted bodies, current O2 pointer/Core341 oracle and source image reused; no new emitter/producer/Core SAN or generalized native success. Native checked/trusted remain NOT_RUN after retained stale-support backend build2. No accepted adoption or cost claim.",
+      "started": "2026-10-04T19:19:29.611311+00:00",
+      "complete": true,
+      "phases": {
+        "O2": {
+          "expected_rows": 42,
+          "exits": {
+            "0": 39,
+            "1": 1,
+            "2": 1,
+            "4": 1
+          },
+          "source_sort": "0,1,2,2,3,|",
+          "source_object_archive_products_exact": true,
+          "component_lines": 708,
+          "component_SHA": "49d3a0797ba60fbf83d0dd53bef9262e219f194387c68f293419b0243d8619ee",
+          "header_SHA": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044",
+          "status_SHA": "7f5b2c37cccf0d8a3f69846877f90c97d671edaf81676f755f830cec02853fdb",
+          "argv_NUL_SHA": "c9d6eb73c5157d294f6f01e628d4fe2dbe5cf1014e41ef7ad8f2a551bffd871d",
+          "native_runtime_probes": "NOT_RUN"
+        },
+        "SAN": {
+          "expected_rows": 42,
+          "exits": {
+            "0": 39,
+            "1": 1,
+            "2": 1,
+            "4": 1
+          },
+          "source_sort": "0,1,2,2,3,|",
+          "source_object_archive_products_exact": true,
+          "component_lines": 708,
+          "component_SHA": "49d3a0797ba60fbf83d0dd53bef9262e219f194387c68f293419b0243d8619ee",
+          "header_SHA": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044",
+          "status_SHA": "7f5b2c37cccf0d8a3f69846877f90c97d671edaf81676f755f830cec02853fdb",
+          "argv_NUL_SHA": "1d6b466a0b1bb8120ed3be7cd23e9b3b7654f0d0a6d0d4e6703135690cb7f353",
+          "native_runtime_probes": "NOT_RUN"
+        }
+      },
+      "Core_sorting_observations": 341,
+      "entire_standalone_component_and_clients_SAN": true,
+      "pointer_Core_oracles_SAN": false,
+      "source_body_emission_reused_from_C44": true,
+      "native_runtime_probes": "NOT_RUN",
+      "all_original_inputs_unchanged": true,
+      "all_reused_inputs_unchanged": true,
+      "finished": "2026-10-04T19:20:02.171447+00:00",
+      "all_commands_terminal_reaped": true,
+      "commands": 2
+    },
+    "accepted_code_changes": false,
+    "Goal_or_owner_actions": false,
+    "cost_samples": 0
+  },
+  "Main_integration": "Exact frozen13 plus independently replayed raw/coordination review prepared here; final commit and remote proof retained externally.",
+  "Assessment": "Integrate exact reviewed C45 under existing prototype task/Main authority. The actual-source Acc algorithm is directly usable as readable standalone C and source/object/archive products, with no A Program runtime dependency. All seven emitted bodies and labeled manual target extent remain byte-exact. Fixed packaging is not generalized native lowering, producer checking, new ABI or accepted promotion. Current backend build2/native NOT_RUN boundary stays open; ordinary C46 removes stale downstream support API reliance using the existing readonly syntactic query, separately unqualified.",
+  "cost_availability": "C19:10-19:20 light feasibility expired with no shared current active Job agreement/proposal/grant/hold/collector/sample. Root ordinary serial correctness replay terminal19:20:02. Existing actual-boundary request63d42425 and at-least-two-minute delivery/preflight lead78263549 remain pending; no blind renewal or owner/Goal/model action.",
+  "encoded_negative_input_evidence": {
+    "O2-gate/changed/actions.inc.gz": {
+      "encoding": "gzip,mtime0",
+      "decoded_relative_path": "O2-gate/changed/actions.inc",
+      "decoded_bytes": 2302,
+      "decoded_SHA": "63c5a5106ecdb1d402f8a76075a6f36cc31db00435d943b5a7a542545fc71e10",
+      "compressed_SHA": "c9f6d05ae198a98437d0ff17a7be8af927b43c591ee7fc3c7a1226ef3c60fe23",
+      "reason": "Intentional negative input appends a blank newline; preserve exact failing input bytes without introducing source whitespace errors."
+    },
+    "SAN-gate/changed/actions.inc.gz": {
+      "encoding": "gzip,mtime0",
+      "decoded_relative_path": "SAN-gate/changed/actions.inc",
+      "decoded_bytes": 2302,
+      "decoded_SHA": "63c5a5106ecdb1d402f8a76075a6f36cc31db00435d943b5a7a542545fc71e10",
+      "compressed_SHA": "c9f6d05ae198a98437d0ff17a7be8af927b43c591ee7fc3c7a1226ef3c60fe23",
+      "reason": "Intentional negative input appends a blank newline; preserve exact failing input bytes without introducing source whitespace errors."
+    }
+  }
+}

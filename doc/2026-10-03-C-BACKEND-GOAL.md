@@ -123,6 +123,29 @@ names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
 
+Fresh C45 [ordinary-product plan](2026-10-04-C-BACKEND-ACC-C-PRODUCTS-PLAN.md):
+[standalone actual Acc C](../src/prototype/c_backend/acc_products/example/component.c)
+708 lines SHA49d3a079/header246364a1 packages seven exact source-derived bodies
+plus labeled manual target primitives/actions/array boundary. Historical unused
+manual sorter excluded; only gs_sort exported. Serial current O2/client-source
+ASan/UBSan/leak42 matching rows each (39zero/one compiler-linker1/one existing-
+output2/one unqualified-input4) pass source/object/archive clients, actual source
+output, reused C44 current-Core341 cases, rollback/depth/resources/duplicate/prior
+controls and exact body bytes. Pointer/Core O2; not new independent property counts.
+
+Focused current native backend build2 fails before probing: scalar.c includes
+absent support.h and uses pg_support_contains; accepted fc52755b/runtime120c206
+removed that metadata. Checked/trusted expectations stay explicit NOT_RUN, not
+fresh refusal4. Original build and evidence-key setup1 retained. No producer
+request to restore fields is inferred. C45 publication/current Root/Main pending;
+target capture-discovery compatibility is the next concrete gap.
+
+Consumed Merge C44 reports2026-10-04: exact11 task
+3f5baf12ba7b86c122d3c88c554bb3e32263d162/prototype Main
+8cc0aaeca9f4d4cb387073e00bd0d0bbd76349b7 pushed/remote exact. Independent current
+fc52755b/runtime120c206 O2/new emitter-runtime-client SAN29 each/Core341/55-line
+product/seven bodies qualify. Original failure retained, worker Git unchanged.
+
 Consumed Merge C43 reports2026-10-04: exact13 task22a5e5ea18ecb79e970f1aff4b4ae682f033cf3e
 and prototype Main d0b0281b11e7989fe110901b8b9b94310b6e7533 pushed/remote exact.
 Independent current accepted c206 O2/new emitter-runtime-client SAN29 matching
@@ -138,8 +161,9 @@ runtime120c206 O2/new emitter-runtime-composed-client ASan/UBSan/leak29 matching
 rows each/Core341/source/action/captures/resource/inert/repeat/refusal/prior-output
 pass;185 source/tool/product inputs retained. Initial emit4 omitted static lambda
 application with pending argument; corrected target lowering only, original
-source/O2/debug binaries/log/empty output preserved. Exact11 handoff prepared;
-Root qualification/task/Main pending. General/native/full61/accepted/cost open.
+source/O2/debug binaries/log/empty output preserved. Exact11 task/Main and
+independent Root qualification are reported above; historical handoff stays exact.
+General/native/full61/accepted/cost remain open.
 
 Consumed Merge C42 publication/current review2026-10-04: exact10 task
 c3ef05cb17cc8e58d1bcb35b9ec0ff2e973ca772 and prototype Main2fb449ab30231ec570a2a724c54eb4bb8b39689c
@@ -156,8 +180,9 @@ rows each (25zero/four4),341 current-Core sorts/source/action/resource/inert/
 determinism/refusal/prior-output controls pass.171 input pins. Initial emit4
 expected two Fold operands; actual four retain both index endpoints, corrected
 target expectation only, original source/binaries/debug/empty output retained.
-Exact13 handoff prepared; Root qualification/task/Main pending. General action
-equivalence/capture conversion/main-native Acc/full61/accepted/cost remain open.
+Exact13 task/Main and independent Root qualification are reported above; the
+historical handoff stays exact. General action equivalence/capture conversion/
+main-native Acc/full61/accepted/cost remain open.
 
 Consumed durable Merge reports2026-10-04: ordered exact C32-C40 task chain at
 f26f7c587d22767331fd39b296cef785f0254f05 and prototype Main c3de4aa10205305b0efeece94f0cbd460c61561f
@@ -791,7 +816,8 @@ Current issue status (2026-10-04 local; detailed pins stay in linked epoch plans
 | #61 actual Acc measurement/outer source calls, C41 | New private acc_measure/ [plan](2026-10-04-C-BACKEND-ACC-MEASURE-PLAN.md): target328/interface17 emits53-line List Fold/Measured Match/indexed construction and source measure/accessibility/Acc sequencing; target array staging38 lines, sealed C36-C40 products exact. | WorkerE8 O2/full emitters-runtime-composed-client SAN35 matching rows each;341 Core/source/full measured fields0..32/malformed tail/parent-depth/resource/inert/refusal4 controls;169 pins/runtime128 exact. Initial quoted carrier refusal4/debug retained and corrected; original first O2 binary identity unavailable, Root current accepted fc52755b/runtime120 c206 O2/SAN35 each/Core341/source-sort and measure pass; parent generated pieces exact. | Root reports exact task `35612104bb8193fbec96b2a0169a4fc0f6bcf8a1` and prototype Main `89aee51b4f3aadc0f6b2ed51e5ce8ef7d9b913f7` pushed/remote exact. Historical exact12 archive preserved; original worker Git stays C31. | Source-specific reference/view/known carrier binding, not general selection. Manual checked successor/raw-down/zero-down transport and Nat32/storage/Nat/LT/array staging; depth256/node65536/borrowed/finite SAN/main-native refusals. No generalized/accepted/cost/full61/Goal completion. | C42 supersedes packaging with actual checked down/refinement actions; ordinary modules are already usable. Keep historical manual/generated distinction. |
 | #61 actual scoped Acc down actions, C42 | New private acc_down/ [plan](2026-10-04-C-BACKEND-ACC-DOWN-PLAN.md): hand-authored step/right quote-force, weaken/left/raw-down, lift/left/folded-IH with retained original proof/value/private refinement. Six C36-C41 generated bodies unchanged. | Current accepted fc52755b/runtime120 c206 strict O2/client-source SAN19 zero command rows each;341 current-Core sorts/source/action/capture/refusal2/resource/depth/rollback pass. Inspector fields successor3/Nat6 inert;151 pins. No initial worker C42 failure; final comment projection exact. Root current C42 independently repeats O2/client SAN19zero/Core341/fields; pointer/Core/inspector O2, initial Root setup failures retained. | Root reports exact task `c3ef05cb17cc8e58d1bcb35b9ec0ff2e973ca772` and prototype Main `2fb449ab30231ec570a2a724c54eb4bb8b39689c` pushed/remote exact after current qualification. Historical exact10 preserved. Original Git remains C31/read-only; C32-C41 archives exact. | Private closed Nat/LT token retains branch endpoints/edge/map cardinality, not serialized maps or proof of general action equivalence. Zero-down refusal2/manual primitives/staging; Nat32/depth256/node65536/borrowed lifetime/finite SAN/main-native limitations. No full61/accepted/cost/Goal completion. | Derive actual scoped action code automatically from admitted fields and qualify broader correspondence; preserve target/source authority boundary. |
 | #61 actual successor down branch emission, C43 | New private acc_actions/ [plan](2026-10-04-C-BACKEND-ACC-ACTION-DERIVATION-PLAN.md): target241/interface13 derives37-line right quote-force/left raw-down/left folded-IH sequencing from actual admitted branch/capture/transport views. Manual C42 action runtime94/capture support52 and six parent source products unchanged. | Current fc52755b/runtime120 c206 strict O2/new emitter-runtime-client SAN29 matching rows each (25zero/four4);341 Core/source/action/resource/inert/determinism/refusal/prior-output checks pass.171 pins; pointer/Core O2 not SAN. Initial emit4 assumed two operands; actual four retain index endpoints, corrected target guard and initial evidence kept. Root independent current O2/new emitter SAN29/Core341/down37 byte-exact qualified. | Root reports exact task `22a5e5ea18ecb79e970f1aff4b4ae682f033cf3e` and prototype Main `d0b0281b11e7989fe110901b8b9b94310b6e7533` pushed/remote exact after independent current qualification. Exact13 history preserved. Historical C32-C42 archives exact; original worker Git C31/read-only. | Manual bounded action semantics/reconstructed Acc/capture/zeroDown/storage/staging; no serialized-map/general equivalence/closure proof. Nat32/depth256/node65536/borrowed/private token/nonoverlap/finite SAN/main-native general barriers persist. No full61/accepted/cost/Goal completion. | Qualify broader actual source action/capture correspondence and bounded native profile without upstream checker/erasure/producer expansion. |
-| #61 actual successor Acc/callback capture construction, C44 | New private acc_capture/ [plan](2026-10-04-C-BACKEND-ACC-CAPTURE-CONSTRUCTION-PLAN.md): target167/interface11 reuses C43, emits55-line actual successor/down/Nat/Acc/callback capture product with37-line exact parent prefix. Support42 no longer hand-constructs successor/captures; action layout remains explicit target code. | Current fc52755b/runtime120c206 O2/new emitter-runtime-client SAN29 matching rows each (25zero/four4),341 Core/source/action/capture/resource/inert/repeat/refusal/prior-output pass;185 input pins. Initial emit4 missing static APP with pending argument; bounded target lowering corrected, original source/O2/debug/log/empty result retained. Pointer/Core O2 not SAN. | Exact11 prepared; task/independent Root qualification/Main pending, parent22a5e5ea. C32-C43 archives/other live bytes exact; worker Git C31/read-only. | Manual bounded action/closure semantics/original Acc representation/zeroDown/storage/Nat/LT/staging; no serialized-map/general correspondence proof. Nat32/depth256/node65536/borrowed lifetime/private token/nonoverlap/finite SAN; arbitrary closures/main-native/general Identity limits persist. No full61/accepted/cost/Goal closure. | Test actual-source composition as ordinary C products and identify concrete main-native boundary, keeping broader correspondence/source authority separate. |
+| #61 actual successor Acc/callback capture construction, C44 | New private acc_capture/ [plan](2026-10-04-C-BACKEND-ACC-CAPTURE-CONSTRUCTION-PLAN.md): target167/interface11 reuses C43, emits55-line actual successor/down/Nat/Acc/callback capture product with37-line exact parent prefix. Support42 no longer hand-constructs successor/captures; action layout remains explicit target code. | Current fc52755b/runtime120c206 O2/new emitter-runtime-client SAN29 matching rows each (25zero/four4),341 Core/source/action/capture/resource/inert/repeat/refusal/prior-output pass;185 input pins. Initial emit4 missing static APP with pending argument; bounded target lowering corrected, original source/O2/debug/log/empty result retained. Pointer/Core O2 not SAN. | Root reports exact task3f5baf12ba7b86c122d3c88c554bb3e32263d162/prototype Main8cc0aaeca9f4d4cb387073e00bd0d0bbd76349b7 pushed/remote exact; independent current O2/new emitter SAN29 each/Core341/55-line body qualify. Exact11 history and C32-C43 archives unchanged; worker Git C31/read-only. | Manual bounded action/closure semantics/original Acc representation/zeroDown/storage/Nat/LT/staging; no serialized-map/general correspondence proof. Nat32/depth256/node65536/borrowed lifetime/private token/nonoverlap/finite SAN; arbitrary closures/main-native/general Identity limits persist. No full61/accepted/cost/Goal closure. | Test actual-source composition as ordinary C products and identify concrete main-native boundary, keeping broader correspondence/source authority separate. |
+| #61 actual Acc standalone C products, C45 | New private acc_products/ [plan](2026-10-04-C-BACKEND-ACC-C-PRODUCTS-PLAN.md) packages one708-line actual-source module SHA49d3a079/header246364a1/provenanceb7a663b6 with existing gs_sort signature and no unused manual sorter. Seven source bodies exact; target action/storage/array extent labeled. | Current fc52755b/runtime120c206 serial O2/client-source SAN42 matching rows each, source/object/archive/source output/reused Core341/resource/rollback/depth/single symbol/duplicate-symbol1/prior-output2/unqualified-body4 pass. Native expectations explicitly NOT_RUN after current main backend build2 lacks support.h; original build/evidence-key setup1 kept. | Exact13 preparation; task/independent Root/Main pending, parent3f5baf12. C32-C44 submitted archives unchanged; original Git C31/read-only. | Bounded manual action/closure representation and general source equivalence unproved; Nat32/depth256/node65536/borrowed immutable/nonoverlap/limited SAN persist. Current general-native capture discovery relies on removed producer support metadata. No full61/adoption/cost/Goal completion. | Correct stale target capture discovery in a distinct bounded epoch without producer fields/checker/erasure authority; then run current checked/trusted native controls. |
 | #61 remaining public contracts (historical #49) | General/boxed callbacks, effects, higher Identity, recursive captures and shared nominal exchange remain explicit limits; C16 advances only fixed borrowed unary/binary scalar inputs. | Local/joint gates verify supported cases and refusals, not general completion. | Historical tasks/prototype Main published; no publication of general missing contracts. | Need bounded justified representation/demand contracts. | Preserve refusals; route shared needs through Merge. |
 
 Evidence: historical [C5](2026-10-03-C-BACKEND-EPOCH5-HANDOFF.md),
@@ -944,6 +970,14 @@ pinned/current producer images and emitted C/headers match byte-for-byte.
 Evidence and exact publication files are in the [epoch handoff](2026-10-03-C-BACKEND-EPOCH1-HANDOFF.md).
 
 ### Assessment
+
+C45 agent result: realistic readable executable actual Acc C now has standalone
+source/object/archive clients without compiler/runtime linkage. Source algorithm
+bodies remain exact; manual action/layout/lifetime choices stay labeled. A current
+native build failure establishes a stale target support dependency, not a source
+rejection or missing producer field. Correct target capture discovery separately;
+do not restore upstream metadata, add a checker or claim general completion.
+Original failures and unexecuted checked/trusted probes stay visible in the handoff.
 
 C44 agent result: actual successor Nat/Acc/captured callback construction derives
 from source clause bindings and expression operations. Static source application
@@ -1762,8 +1796,14 @@ this target work while Main continues SE1, superseding the earlier AP6 hold.
 - [x] C44: emit actual successor Nat/Acc/capture construction from admitted clause
   expressions; parent down exact, O2/new emitter-runtime-client SAN29 each/Core341
   pass, initial static-application refusal retained/corrected, exact11 prepared.
-- [ ] Verify actual-source ordinary C products and concrete main-native boundary;
-  broader action/capture equivalence and general native Acc remain open.
+- [x] Consume C44 exact task/Main and independent current qualification; preserve
+  the submitted snapshot while advancing this live owning plan separately.
+- [x] C45: one readable standalone actual Acc module/header, source/object/archive
+  O2/client-source SAN42 matching rows each and exact parent bodies. Current
+  native build2 and original setup1 remain; source probes explicitly NOT_RUN.
+- [ ] Correct stale target capture discovery on current accepted runtime and run
+  focused checked/trusted native controls; broader action/capture equivalence
+  and generalized native Acc remain open.
 - [ ] Automatically derive actual scoped down actions from admitted fields and
   qualify broader correspondence; main-native generalized Acc remains open.
 - [ ] Maintain the single issue table at material events and within six active

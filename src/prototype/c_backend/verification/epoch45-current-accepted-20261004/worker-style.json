@@ -1,0 +1,75 @@
+{
+  "publication_files": 13,
+  "checks": [
+    {
+      "path": "src/prototype/c_backend/acc_products/README.md",
+      "leading_spaces": [],
+      "English_new_comments_and_docs_manually_inspected": true
+    },
+    {
+      "path": "src/prototype/c_backend/acc_products/check.sh",
+      "leading_spaces": [],
+      "English_new_comments_and_docs_manually_inspected": true
+    },
+    {
+      "path": "src/prototype/c_backend/acc_products/client.c",
+      "leading_spaces": [],
+      "English_new_comments_and_docs_manually_inspected": true
+    },
+    {
+      "path": "src/prototype/c_backend/acc_products/example/component.c",
+      "leading_spaces": [],
+      "English_new_comments_and_docs_manually_inspected": true
+    },
+    {
+      "path": "src/prototype/c_backend/acc_products/example/component.h",
+      "leading_spaces": [],
+      "English_new_comments_and_docs_manually_inspected": true
+    },
+    {
+      "path": "src/prototype/c_backend/acc_products/example/provenance.json",
+      "leading_spaces": [],
+      "English_new_comments_and_docs_manually_inspected": true
+    },
+    {
+      "path": "src/prototype/c_backend/acc_products/module.h",
+      "leading_spaces": [],
+      "English_new_comments_and_docs_manually_inspected": true
+    },
+    {
+      "path": "src/prototype/c_backend/acc_products/native.aplink",
+      "leading_spaces": [],
+      "English_new_comments_and_docs_manually_inspected": true
+    },
+    {
+      "path": "src/prototype/c_backend/acc_products/pack.py",
+      "leading_spaces": [],
+      "English_new_comments_and_docs_manually_inspected": true
+    },
+    {
+      "path": "src/prototype/c_backend/acc_products/resource_client.c",
+      "leading_spaces": [],
+      "English_new_comments_and_docs_manually_inspected": true
+    },
+    {
+      "path": "doc/2026-10-03-C-BACKEND-GOAL.md",
+      "leading_spaces": [],
+      "English_new_comments_and_docs_manually_inspected": true
+    },
+    {
+      "path": "doc/2026-10-04-C-BACKEND-ACC-C-PRODUCTS-PLAN.md",
+      "leading_spaces": [],
+      "English_new_comments_and_docs_manually_inspected": true
+    },
+    {
+      "path": "doc/2026-10-04-C-BACKEND-EPOCH45-HANDOFF.md",
+      "leading_spaces": [],
+      "English_new_comments_and_docs_manually_inspected": true
+    }
+  ],
+  "shell_syntax_exit": 0,
+  "git_diff_check_exit": 0,
+  "tabs_and_C_comments": true,
+  "headers_declarative": true,
+  "generated_example_regenerated_not_manually_edited": true
+}

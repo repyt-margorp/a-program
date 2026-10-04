@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: C44 exact11/currentc206 Root O2/SAN29/55-line capture product verified, task3f5baf12/Main8cc0aaec pushed. C45 private standalone O2 products pass; main-native build2 remains. Native47 scoped bound repair advances, Core/Source134 open. Job/C18:48-18:58 agreement delivery missed expiry, cancelled ungranted/zero samples; actual-boundary lead refined. Original Goals/timer unchanged.
+Status: C45 exact13 standalone708-line actual Acc source/object/archive/currentc206 Root O2/SAN42 verified and delegated task62145905 published; prototype Main integration recorded here. Native target build2 remains, C46 readonly capture-query correction private. Job native47 Core/Source134 open; cost feasibility expired ungranted/zero samples. Original Goals/timer unchanged.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -17,7 +17,7 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | Inquiry desk -> `merge`: reporting vs coordination/integration | All lanes | Desk answers the user; only Merge integrates after verified handoff |
-| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C44 actual successor/capture55 and sealed down37/currentc206 Root O2/SAN29 qualified; exact11 task published and prototype Main integration recorded. Manual target/general correspondence/native criteria open, original owner ordinary C products/main-native boundary next; C32 parked |
+| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C45 readable standalone708-line actual Acc source/object/archive/currentc206 Root O2/SAN42 verified; exact13 task62145905 published and prototype Main recorded. Native target build2/NOT_RUN open; distinct C46 capture-query correction private; C32 parked |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Approved current frame deletion accepted; original363 plus adopted4 verified separately. Actual matched peakRSS/time pending safe all-owner window; peripheral MEM10/spine/empty arrays parked |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
 | 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | Native44 retained496/all485/runtime71b10831 debug Core134 at family Scope bound; paired O2 parent0/native134 confirms second selected bound regression. Original owner repairs existing descriptive Scope/index/lifetime/inert serialization. Earlier native30 scoped O2 passes remain historical; current full/strict/public/joint/cost open, no READY |
@@ -26,6 +26,35 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
+
+2026-10-04, [C45 current standalone products](../src/prototype/coordination/reviews/20261004-c45-current-products-review.json)
+supersedes its private/unfrozen/Root-unrun wording below. Frozen13 manifest
+4d3fc809/archive8fb1ddbe, raw270/all242 retained/current120c206 and C32-C44
+archives independently exact. Root two serial commands0 uncensored19:19:29-
+19:20:02: O2 and entire component/client-source ASan/UBSan/leak source/object/
+archive each42 expected rows (39zero, duplicate-link1/prior-output2/unqualified4).
+Readable708-line actual Acc composition49d3a079/header246364a1 and all seven
+source-derived bodies are exact across products; one public gs_sort requires
+only C11/standard library. Source output, retained current-Core341 cases,
+allocation rollback/depth/trace/lifetime/input guards pass. Pointer/Core O2 and
+C44 emission/oracle reused; case counts are not multiplied. Exact13 task62145905
+is pushed/remote exact, prototype Main/raw recorded here. Manual bounded actions,
+refinements/closure/original Acc/zeroDown/Nat-LT/storage/array extent and general
+source correspondence remain. Initial setup1/main-native build2 preserved;
+checked/trusted native probes explicitly NOT_RUN. No accepted/general61/Goal/
+comparative-cost claim. [Separate C46](../src/prototype/coordination/reviews/20261004-c46-capture-query-progress-review.json)
+replaces obsolete target support membership with existing readonly syntactic
+pg_term_independent inverse/error handling, preserving capture queue/order;
+private source inspected, original serial j1 O2 build starts after feasibility
+expiry; results/gates/READY/Main still unqualified.
+
+Fresh19:21 read-only review confirms original C/Job active, Performance stalled,
+four bounded owners achieved/stopped and Surface historically closed. Nine open
+Issues/zero PRs and bodies/update dates unchanged; no criteria closed. Timer/
+watcher unchanged, next review19:44:22UTC. C19:10-19:20 feasibility expired with
+no current active Job shared interval/proposal/grant/hold/collector/sample;
+ordinary Root correctness terminal19:20:02, existing actual-boundary request and
+two-minute delivery/preflight lead remain pending without blind renewal/resume.
 
 2026-10-04, [native47 required bound repair](../src/prototype/coordination/reviews/20261004-native47-family-repair-checkpoint-review.json):
 immutable input473/all469/runtime120ad0a1e10 and retained owner binary/command

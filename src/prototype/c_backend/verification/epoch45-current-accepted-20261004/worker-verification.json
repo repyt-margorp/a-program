@@ -1,0 +1,207 @@
+{
+  "Main_integration": "pending",
+  "accepted_adoption": false,
+  "accepted_commit": "fc52755b345a555e49a79df40549e9cb23d54088",
+  "all_component_and_client_sources_SAN": true,
+  "all_inputs_and_copies_exact": true,
+  "all_seven_source_body_sections_exact": true,
+  "branch": "parallel/c-backend-20261003",
+  "classification": "standalone actual-source Acc QuickSort C/header packaging, explicit manual target extent; not generalized backend completion",
+  "component_header_sha256": "246364a170ff3443c5e89a15e033ecaf3e230ea657ee8a670b0e4582cf78c044",
+  "cost_samples": 0,
+  "current_Core_cases_reused_from_C44": 341,
+  "current_Root_C45_qualification": "pending",
+  "delegated_task_parent": "3f5baf12ba7b86c122d3c88c554bb3e32263d162",
+  "epoch": "C45",
+  "finished_at": "2026-10-04T19:08:10.837590+00:00",
+  "full_goal_complete": false,
+  "gates": {
+    "O2": {
+      "argv_sha256": "a568bdef781925388324fae5a8e9b7b828a55fa4d336c90eea8b29fc3c2c5277",
+      "exit": 0,
+      "expected_rows": 42,
+      "native_pending": "native_checked\t4\tNOT_RUN\nnative_trusted\t4\tNOT_RUN\n",
+      "outcomes": {
+        "0": 39,
+        "1": 1,
+        "2": 1,
+        "4": 1
+      },
+      "record": "O2.json",
+      "source_output": "0,1,2,2,3,|",
+      "status_sha256": "7f5b2c37cccf0d8a3f69846877f90c97d671edaf81676f755f830cec02853fdb"
+    },
+    "SAN": {
+      "argv_sha256": "4b0b6ec69313e503cc518080b2d1d516d8088d1086dd8a3df2675e1deb20c9e3",
+      "exit": 0,
+      "expected_rows": 42,
+      "native_pending": "native_checked\t4\tNOT_RUN\nnative_trusted\t4\tNOT_RUN\n",
+      "outcomes": {
+        "0": 39,
+        "1": 1,
+        "2": 1,
+        "4": 1
+      },
+      "record": "SAN.json",
+      "source_output": "0,1,2,2,3,|",
+      "status_sha256": "7f5b2c37cccf0d8a3f69846877f90c97d671edaf81676f755f830cec02853fdb"
+    }
+  },
+  "goal_status": "active",
+  "historical_manual_sorter_excluded": true,
+  "independent_property_counts_multiplied": false,
+  "initial_failures": [
+    {
+      "exit": 1,
+      "record": "initial-setup-failure.json",
+      "source_change": false
+    },
+    {
+      "cause": "stale target support metadata dependency",
+      "current_native_binary_produced": false,
+      "exit": 2,
+      "record": "backend-build.json"
+    }
+  ],
+  "inputs": 242,
+  "limits": [
+    "Nat32/depth256/node65536/additional action allocations",
+    "source-valid immutable borrowed code/context/data/private tokens",
+    "nonoverlap/private statuses1-6/overflow guard inspected not exercised",
+    "finite source/Core/SAN evidence",
+    "general Identity/dynamic/effect/arbitrary element/comparator closures/main-native Acc unsupported"
+  ],
+  "main_native_source_probes": "NOT_RUN current O2 backend build2: absent support.h/pg_support_contains dependency; no restored producer metadata",
+  "manual_extent": [
+    "bounded action/refinement/closure layout and nominal edge/endpoints/map cardinality/original values, not serialized source maps or general equivalence",
+    "original immutable Acc representation",
+    "zero-down foreign refusal2",
+    "storage/Nat/LT primitives",
+    "array staging/copy-out/lifetime"
+  ],
+  "old_snapshots": [
+    {
+      "archive_sha256": "db6a663c11197d92a28d13c8344da02aaccdd59c32864bfba106391a7f7e05ae",
+      "archived_bytes_exact": true,
+      "epoch": 32,
+      "live_differences": [
+        "doc/2026-10-03-C-BACKEND-GOAL.md"
+      ],
+      "manifest_sha256": "b19b3b033ade94e3971c7ce8e6fc9458333d1402f67ff62c1c45fcde54ca5955"
+    },
+    {
+      "archive_sha256": "a8bd408cc099885ab26780a901017fb3a9087294ce5e8b768b84ea6c2b7a6499",
+      "archived_bytes_exact": true,
+      "epoch": 33,
+      "live_differences": [
+        "doc/2026-10-03-C-BACKEND-GOAL.md"
+      ],
+      "manifest_sha256": "503f67d3dff3ffb966a9f59e5b956b7534669b6be8504501e0e592211459641b"
+    },
+    {
+      "archive_sha256": "26138ad62d6e819a722b3264c6d050d6d906a208190985158a68c86055d6ad77",
+      "archived_bytes_exact": true,
+      "epoch": 34,
+      "live_differences": [
+        "doc/2026-10-03-C-BACKEND-GOAL.md"
+      ],
+      "manifest_sha256": "7b39780d167120153200329e1bd3c7378d41f87fd4024b5ff1eeb790db380bed"
+    },
+    {
+      "archive_sha256": "6bfebc166faca426c59b63d6df98a27cce0e51dad59fcc93aabd48802f74ba6c",
+      "archived_bytes_exact": true,
+      "epoch": 35,
+      "live_differences": [
+        "doc/2026-10-03-C-BACKEND-GOAL.md"
+      ],
+      "manifest_sha256": "446d03f25507a4bb59f903709ca2f8a80433d13215ba143909e13cdf52f51d42"
+    },
+    {
+      "archive_sha256": "935cbfa3c56f20af251770180172e795eb14e866d5569318eae515e0e047acbd",
+      "archived_bytes_exact": true,
+      "epoch": 36,
+      "live_differences": [
+        "doc/2026-10-03-C-BACKEND-GOAL.md"
+      ],
+      "manifest_sha256": "898846ea57c8d259b0f43a1056ba5d07e37ee3c2500620392c441516a5acbbf4"
+    },
+    {
+      "archive_sha256": "a82d8be6c7d1615ded0c217a6facf291c828c2ecea5325e7ee598de231664416",
+      "archived_bytes_exact": true,
+      "epoch": 37,
+      "live_differences": [
+        "doc/2026-10-03-C-BACKEND-GOAL.md"
+      ],
+      "manifest_sha256": "2f93f38b6f5c77b631356c7d18a7137ab27def14c280ad57bfe4a70c62104409"
+    },
+    {
+      "archive_sha256": "bb0c2ccc7c53cf1656e20ffa3b265db45bf97e0ce01c938c9af6fd22122efc4f",
+      "archived_bytes_exact": true,
+      "epoch": 38,
+      "live_differences": [
+        "doc/2026-10-03-C-BACKEND-GOAL.md"
+      ],
+      "manifest_sha256": "09149b7f988f630fb4abc73068c12be42fce010b92297a1ef8ee2666d90415be"
+    },
+    {
+      "archive_sha256": "d3c5b078c059146f496725d6d28270fa161c2641fda5f19062c763823e54f4c8",
+      "archived_bytes_exact": true,
+      "epoch": 39,
+      "live_differences": [
+        "doc/2026-10-03-C-BACKEND-GOAL.md"
+      ],
+      "manifest_sha256": "07cdb467138c72671325b23669d568861dc038251dac80232007cd8ac497d326"
+    },
+    {
+      "archive_sha256": "dac488b659728bc636e95dec277637417000bb7a70f4728ac804f15623ef2553",
+      "archived_bytes_exact": true,
+      "epoch": 40,
+      "live_differences": [
+        "doc/2026-10-03-C-BACKEND-GOAL.md"
+      ],
+      "manifest_sha256": "3a22b6e0462b771de3c88568237e334ca1a31c57d300a81cfe0b0db38d8a7339"
+    },
+    {
+      "archive_sha256": "d0b6dde2693b65fab2d96293c7bc1d3ab682b8c14355bc1a431284d62bfcd3e1",
+      "archived_bytes_exact": true,
+      "epoch": 41,
+      "live_differences": [
+        "doc/2026-10-03-C-BACKEND-GOAL.md"
+      ],
+      "manifest_sha256": "b7b1d2dd885a11fc54111f16ed4e034363f7b2e77f0034a006609441aef125a9"
+    },
+    {
+      "archive_sha256": "59cd56f2811089efcbc46e61995ceca2e0edb063d3d65c68d4da8b06e4f2e5d4",
+      "archived_bytes_exact": true,
+      "epoch": 42,
+      "live_differences": [
+        "doc/2026-10-03-C-BACKEND-GOAL.md"
+      ],
+      "manifest_sha256": "202b7a1d8eeb44729fbce4174ce44ef0a97c06e4e8cbce677da4882c86f661ad"
+    },
+    {
+      "archive_sha256": "fd346700ec4523a5889b99b92c632641d9ea890255dd741ddabf6345890ad513",
+      "archived_bytes_exact": true,
+      "epoch": 43,
+      "live_differences": [
+        "doc/2026-10-03-C-BACKEND-GOAL.md"
+      ],
+      "manifest_sha256": "3e6dc547803f2cd790fb96b4815e5763cdccd0c43b5c312efa63ba1148f6fce6"
+    },
+    {
+      "archive_sha256": "274a0966e0e1fd0f338d68f929a8f2dcbd4be3b01511faee10f0ab6673309061",
+      "archived_bytes_exact": true,
+      "epoch": 44,
+      "live_differences": [
+        "doc/2026-10-03-C-BACKEND-GOAL.md"
+      ],
+      "manifest_sha256": "c94dd4820da590d4e015d6663633332042d8c4c8847c0a2bbad8ffc5ec969e37"
+    }
+  ],
+  "only_public_definition": "gs_sort",
+  "pointer_Core_oracles_SAN": false,
+  "runtime120_manifest_sha256": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+  "standalone_component_lines": 708,
+  "standalone_component_sha256": "49d3a0797ba60fbf83d0dd53bef9262e219f194387c68f293419b0243d8619ee",
+  "task_publication": "pending"
+}

@@ -1,0 +1,3 @@
+/usr/bin/ld: /home/repyt/workspace/a-program-workers/merge-storage-20261003/c45-current-accepted-fc/SAN-gate/source/component.o: in function `gs_sort':
+/home/repyt/workspace/a-program-workers/merge-storage-20261003/c45-current-accepted-fc/SAN-gate/source/component.c:688: multiple definition of `gs_sort'; /home/repyt/workspace/a-program-workers/merge-storage-20261003/c45-current-accepted-fc/SAN-gate/source/component.o:/home/repyt/workspace/a-program-workers/merge-storage-20261003/c45-current-accepted-fc/SAN-gate/source/component.c:688: first defined here
+collect2: error: ld returned 1 exit status

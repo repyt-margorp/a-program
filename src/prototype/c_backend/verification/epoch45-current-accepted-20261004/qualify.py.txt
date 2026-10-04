@@ -1,0 +1,114 @@
+import collections
+import datetime
+import hashlib
+import json
+import os
+import pathlib
+import signal
+import subprocess
+import time
+
+q = pathlib.Path(__file__).resolve().parent
+s = q.parent
+tree = q / 'tree'
+backend = tree / 'src/prototype/c_backend'
+c44 = s / 'c44-current-accepted-fc'
+compiler = '/usr/bin/x86_64-linux-gnu-gcc-14'
+sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
+now = lambda: datetime.datetime.now(datetime.timezone.utc).isoformat()
+(q / 'tmp').mkdir()
+pins = {str(p.relative_to(tree)): sha(p) for p in tree.rglob('*') if p.is_file()}
+(q / 'inputs-before.json').write_text(json.dumps(pins, indent=2) + '\n')
+assert sha(q / 'runtime-source.sha256') == 'c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907'
+for line in (q / 'runtime-source.sha256').read_text().splitlines():
+	digest, name = line.split('  ', 1)
+	assert sha(tree / name) == digest
+prior = json.loads((c44 / 'Root-results.json').read_text())
+assert prior['complete'] and prior['all_original_inputs_unchanged'] and prior['all_reused_inputs_unchanged']
+assert prior['Core_sorting_observations'] == 341
+products = c44 / 'O2-gate/main'
+oracle = c44 / 'O2-gate/oracle.c'
+pointer = s / 'c40-current-accepted-fc/build-O2/pointer-check'
+image = c44 / 'actions.a'
+reused = [oracle, pointer, image] + list(products.glob('*.inc'))
+reused_pins = {str(p): sha(p) for p in reused}
+(q / 'reused-inputs-before.json').write_text(json.dumps(reused_pins, indent=2) + '\n')
+records = []
+deadline = time.monotonic() + 200
+summary = {'accepted_commit': 'fc52755b345a555e49a79df40549e9cb23d54088', 'Main_parent': '1db2954f21961f9912910fdf2b76d341ffcc9f5e', 'runtime120_manifest_SHA': sha(q / 'runtime-source.sha256'), 'C45_manifest_SHA': '4d3fc809dae7b4c77a0756bc8a358e0d5b3e07e6eda37e9a73152426aa43c1b3', 'compiler_SHA': sha(pathlib.Path(compiler)), 'scope': 'Frozen C45 fixed-candidate standalone C/header/source/object/archive clients and all component/client sources ASan-UBSan-leak. Exact current C44 emitted bodies, current O2 pointer/Core341 oracle and source image reused; no new emitter/producer/Core SAN or generalized native success. Native checked/trusted remain NOT_RUN after retained stale-support backend build2. No accepted adoption or cost claim.', 'started': now(), 'complete': False}
+def run(label, argv, additions):
+	started = now()
+	env = dict(os.environ, TMPDIR=str(q / 'tmp'), CC=compiler, AR='/usr/bin/ar', **additions)
+	print('START ' + label, flush=True)
+	with (q / (label + '.stdout')).open('wb') as out, (q / (label + '.stderr')).open('wb') as err:
+		child = subprocess.Popen(argv, cwd=tree, env=env, stdout=out, stderr=err, start_new_session=True)
+		censored = False
+		try:
+			code = child.wait(timeout=max(1, min(120, deadline - time.monotonic())))
+		except subprocess.TimeoutExpired:
+			censored = True
+			os.killpg(child.pid, signal.SIGTERM)
+			try:
+				code = child.wait(timeout=2)
+			except subprocess.TimeoutExpired:
+				os.killpg(child.pid, signal.SIGKILL)
+				code = child.wait()
+		finally:
+			if child.poll() is None:
+				os.killpg(child.pid, signal.SIGKILL)
+				child.wait()
+	row = {'label': label, 'argv': argv, 'started': started, 'finished': now(), 'exit': code, 'censored': censored, 'environment': {k: env[k] for k in ['CC', 'AR', 'TMPDIR', 'CLIENT_CFLAGS', 'ASAN_OPTIONS', 'UBSAN_OPTIONS'] if k in env}}
+	records.append(row)
+	(q / 'commands.json').write_text(json.dumps(records, indent=2) + '\n')
+	print('DONE ' + label + ' ' + str(code), flush=True)
+	assert code == 0 and not censored, label
+try:
+	phases = {}
+	parsed_commands = {}
+	for phase, flags in [('O2', '-O2'), ('SAN', '-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie')]:
+		d = q / (phase + '-gate')
+		additions = {'CLIENT_CFLAGS': flags}
+		if phase == 'SAN':
+			additions.update(ASAN_OPTIONS='detect_leaks=1:halt_on_error=1', UBSAN_OPTIONS='halt_on_error=1:print_stacktrace=1')
+		run(phase + '-standalone-products-gate', ['sh', str(backend / 'acc_products/check.sh'), str(products), str(oracle), str(pointer), str(image), 'unavailable', str(d)], additions)
+		rows = [line.split('\t') for line in (d / 'status.tsv').read_text().splitlines()]
+		assert len(rows) == 42 and all(expected == actual for label, expected, actual in rows)
+		counts = dict(collections.Counter(actual for label, expected, actual in rows))
+		assert counts == {'0': 39, '1': 1, '2': 1, '4': 1}
+		pieces = (d / 'argv.nul').read_bytes().split(b'\0')
+		assert pieces.pop() == b''
+		cursor = 0
+		parsed = []
+		for label, expected, actual in rows:
+			pl, pe, argc = pieces[cursor:cursor + 3]
+			cursor += 3
+			argv = [a.decode() for a in pieces[cursor:cursor + int(argc)]]
+			cursor += int(argc)
+			assert pl.decode() == label and pe.decode() == expected
+			parsed.append({'label': label, 'expected': int(expected), 'exit': int(actual), 'argv': argv})
+		assert cursor == len(pieces)
+		assert (d / 'source_reference.out').read_text() == '0,1,2,2,3,|'
+		assert (d / 'source_reference.err').read_text() == 'done steps=57603\nrun: done steps=33177\n'
+		assert all(not (d / (row['label'] + '.err')).read_bytes() for row in parsed if row['expected'] == 0 and row['label'] != 'source_reference')
+		assert (d / 'native-pending.tsv').read_text() == 'native_checked\t4\tNOT_RUN\nnative_trusted\t4\tNOT_RUN\n'
+		for mode in ['source', 'object', 'archive']:
+			for name in ['component.c', 'component.h', 'provenance.json']:
+				assert (d / mode / name).read_bytes() == (backend / 'acc_products/example' / name).read_bytes()
+			assert len((d / mode / 'component.c').read_text().splitlines()) == 708
+		assert (d / 'public_symbols.out').read_text().split()[-2:] == ['T', 'gs_sort']
+		parsed_commands[phase] = parsed
+		phases[phase] = {'expected_rows': 42, 'exits': counts, 'source_sort': '0,1,2,2,3,|', 'source_object_archive_products_exact': True, 'component_lines': 708, 'component_SHA': sha(d / 'source/component.c'), 'header_SHA': sha(d / 'source/component.h'), 'status_SHA': sha(d / 'status.tsv'), 'argv_NUL_SHA': sha(d / 'argv.nul'), 'native_runtime_probes': 'NOT_RUN'}
+	(q / 'gate-commands.json').write_text(json.dumps(parsed_commands, indent=2) + '\n')
+	summary.update(complete=True, phases=phases, Core_sorting_observations=341, entire_standalone_component_and_clients_SAN=True, pointer_Core_oracles_SAN=False, source_body_emission_reused_from_C44=True, native_runtime_probes='NOT_RUN')
+except Exception as failure:
+	summary['failure'] = str(failure)
+finally:
+	after = {name: sha(tree / name) for name in pins}
+	reused_after = {name: sha(pathlib.Path(name)) for name in reused_pins}
+	summary.update(all_original_inputs_unchanged=after == pins, all_reused_inputs_unchanged=reused_after == reused_pins, finished=now(), all_commands_terminal_reaped=True, commands=len(records))
+	(q / 'inputs-after.json').write_text(json.dumps(after, indent=2) + '\n')
+	(q / 'reused-inputs-after.json').write_text(json.dumps(reused_after, indent=2) + '\n')
+	(q / 'Root-results.json').write_text(json.dumps(summary, indent=2) + '\n')
+	print(json.dumps(summary), flush=True)
+if not summary['complete'] or not summary['all_original_inputs_unchanged'] or not summary['all_reused_inputs_unchanged']:
+	raise SystemExit(1)

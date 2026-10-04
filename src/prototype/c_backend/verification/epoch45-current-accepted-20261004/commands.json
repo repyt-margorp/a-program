@@ -1,0 +1,50 @@
+[
+  {
+    "label": "O2-standalone-products-gate",
+    "argv": [
+      "sh",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c45-current-accepted-fc/tree/src/prototype/c_backend/acc_products/check.sh",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c44-current-accepted-fc/O2-gate/main",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c44-current-accepted-fc/O2-gate/oracle.c",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c44-current-accepted-fc/actions.a",
+      "unavailable",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c45-current-accepted-fc/O2-gate"
+    ],
+    "started": "2026-10-04T19:19:29.611351+00:00",
+    "finished": "2026-10-04T19:19:32.030610+00:00",
+    "exit": 0,
+    "censored": false,
+    "environment": {
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "AR": "/usr/bin/ar",
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c45-current-accepted-fc/tmp",
+      "CLIENT_CFLAGS": "-O2"
+    }
+  },
+  {
+    "label": "SAN-standalone-products-gate",
+    "argv": [
+      "sh",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c45-current-accepted-fc/tree/src/prototype/c_backend/acc_products/check.sh",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c44-current-accepted-fc/O2-gate/main",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c44-current-accepted-fc/O2-gate/oracle.c",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c44-current-accepted-fc/actions.a",
+      "unavailable",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c45-current-accepted-fc/SAN-gate"
+    ],
+    "started": "2026-10-04T19:19:32.033181+00:00",
+    "finished": "2026-10-04T19:20:02.160098+00:00",
+    "exit": 0,
+    "censored": false,
+    "environment": {
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "AR": "/usr/bin/ar",
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c45-current-accepted-fc/tmp",
+      "CLIENT_CFLAGS": "-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+      "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1",
+      "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+    }
+  }
+]
