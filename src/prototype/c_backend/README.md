@@ -1100,6 +1100,28 @@ capacity or length overflow; statuses 1/2 report null outputs or malformed chain
 All failures preserve the buffer and `written`. An empty List accepts a null
 buffer with zero capacity. Input nodes and unused buffer elements remain intact.
 The helper allocates no storage and does not depend on the recursive depth limit.
+The separate opt-in `native_buffer_query_v1` lowering under the same
+`c_native_v1` ABI additionally exposes `ap_measure_ALIAS(input, size_t *count)`
+for these selected List shapes. At least one recognized List must be selected.
+It validates the full finite chain and active payload fields before reporting its
+element count. It takes no arena, allocates nothing and ignores recursive execution
+depth limits. Status1 means null count,2 malformed chain and6 size overflow; failures
+preserve count. Existing profiles and `ap_copy` behavior remain unchanged.
+
+An ordinary C caller can query, check byte-size multiplication, allocate a buffer
+and copy with that element capacity. Inputs must be readable, immutable and live
+across both calls; count/output must not overlap inputs. Query and copy validate
+separately. The `buffer_query/build.mk` target `check-c-buffer-query` covers five
+payload forms,121 finite Lists/4356 slice pairs,300 nodes beyond source-length
+depth, allocation-free active-arena queries, active-field/tag/cycle failures and
+four source/readback observations. Ten checked/trusted refusal pairs and old-mode
+positive non-List shapes remain explicit; no size query is emitted for branching/
+multi-payload containers. The SIZE_MAX overflow guard is inspected, not exercised
+with an impossible foreign allocation. SAN covers clients/raw/source bodies only;
+other products/backend/helpers/producer remain O2. This is a target copy-buffer
+convenience, not zero-copy List execution, source checking or native Acc/QuickSort.
+See the [C31 plan](../../../doc/2026-10-04-C-BACKEND-BUFFER-QUERY-PLAN.md).
+
 The same shape also emits
 `ap_from_ALIAS(arena, array, count, out)`. This copies a finite array slice in
 order into arena-owned nodes, including a terminal node; it allocates `count + 1`

@@ -1,5 +1,32 @@
 #include "nodes.h"
 
+void pg_c_nodes_measure_declarations(FILE *out, const struct pg_c_representations *table)
+{
+	for (size_t i = 0; i < table->count; ++i) {
+		const struct pg_c_representation *r = table->types[i]; size_t cell, payload;
+		if (!pg_c_representation_list(r, &cell, &payload)) continue;
+		fputs("/* Query a validated finite List extent before allocating a copy buffer.\n"
+			"\t* Input and count must not overlap. No arena, allocation or depth limit.\n"
+			"\t* 1: null count; 2: invalid chain; 6: size overflow. Failures preserve count. */\n", out);
+		fprintf(out, "int ap_measure_%s(const struct ap_data_%s *, size_t *count);\n", r->alias, r->alias);
+	}
+}
+
+void pg_c_nodes_measure_implementation(FILE *out, const struct pg_c_representations *table)
+{
+	for (size_t i = 0; i < table->count; ++i) {
+		const struct pg_c_representation *r = table->types[i]; size_t cell, payload;
+		if (!pg_c_representation_list(r, &cell, &payload)) continue;
+		size_t tail = r->constructors[cell].tail;
+		fprintf(out, "int ap_measure_%s(const struct ap_data_%s *input, size_t *count)\n{\n"
+			"\tif (!count) return 1;\n\tif (!ap_validate_%s(input)) return 2;\n"
+			"\tsize_t size = 0;\n\tconst struct ap_data_%s *node = input;\n"
+			"\twhile (node->tag == %zu) {\n\t\tif (size == SIZE_MAX) return 6;\n"
+			"\t\t++size; node = node->fields.c%zu.f%zu;\n\t}\n"
+			"\t*count = size;\n\treturn 0;\n}\n", r->alias, r->alias, r->alias, r->alias, cell, cell, tail);
+	}
+}
+
 void pg_c_nodes_declarations(FILE *out, const struct pg_c_representations *table)
 {
 	if (!table->arena_alias) return;
