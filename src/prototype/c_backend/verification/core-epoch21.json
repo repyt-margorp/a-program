@@ -1,0 +1,763 @@
+{
+  "publication": {
+    "task": "eaf5755914a44a855069321b4c64330eb4ca5b03",
+    "task_parent": "7b883a8eb123faab0e288661229196ffdebfe232",
+    "Main_parent": "074b505b3347e2f8da38d20ae9d9f1efcdceffb8",
+    "exact16_task": {
+      "doc/2026-10-03-C-BACKEND-GOAL.md": "5103009f73f888b76e6d21881d19fc39cf2fe84bb5bd6fdcfc702458d55368dd",
+      "doc/2026-10-04-C-BACKEND-INTEGER-PREDICATE-PLAN.md": "34a93446a2d3beb107887de6a87d33ab8e73e0dc8b00b0abeae426ff638ebdfd",
+      "doc/2026-10-04-C-BACKEND-RECURSIVE-CAPTURE-PLAN.md": "28a5d77efc61c3013341578923996f334ccebaa9788f23c471e315aaf89da845",
+      "doc/2026-10-04-C-BACKEND-EPOCH21-HANDOFF.md": "6714b3b7a27ab08482ab755c68b31d2527abcea652af3efdadcfa1e752eb9134",
+      "src/prototype/c_backend/README.md": "54f50dc1d719e65985849a01c11121a2989c786d0e06601a399c21a358c5e5ce",
+      "src/prototype/c_backend/build.mk": "7d747126eb3d72b21d45a5e668c2d1b112994b0274159995478e12c54cee9c88",
+      "src/prototype/c_backend/lower/scalar.c": "30acb4b3835b73caa6e45e8fb9055cc8e3b5a481e152a2c97c1dab3e921b39ee",
+      "src/prototype/c_backend/predicate_integer/check.sh": "e88cf1dc3fbca3a8463b33ae27c27cdecd025d4386da1bb1ba60ff5688042ef7",
+      "src/prototype/c_backend/predicate_integer/predicate.aplink": "e98245225115dc68029929c03bacf6f56528c5ee383420d23dc360e1ee254512",
+      "src/prototype/c_backend/recursive_capture/fixture.p": "3b24dbf90f12c4c3ae75db1cf9f3899d6b04d79be8429bc7a1ef7109a3384709",
+      "src/prototype/c_backend/recursive_capture/imported_fixture.p": "315b5579cee34da34c1501b66f79c1138234399cb347685b53f3a25dcf0e8ea2",
+      "src/prototype/c_backend/recursive_capture/recursive.aplink": "74a5e28f9592bf164d4d5dcd26449a1741677b1c575888cc6459327741e455c1",
+      "src/prototype/c_backend/recursive_capture/client.c": "1064082eb39bb078357748a34b872932c547f25955ee28f322fc5f783b368c56",
+      "src/prototype/c_backend/recursive_capture/inert_test.c": "9c3520ab136dc30bf77ac2eabf9a042663c9209b9ddd476f18a28fe563b27a32",
+      "src/prototype/c_backend/recursive_capture/check.sh": "f4a8b587de1643ea984f0ef37f7dccd787f8ca6e688dd16a8e6a0af9b3940cf8",
+      "src/prototype/c_backend/recursive_capture/build.mk": "235f0f452abd315dbe5df6c99a81b1dc77e029d9f92a8bdae41a3fc1384d057f"
+    },
+    "Root_current_report_sha256": "942062b66cc6911078ecfa108bdea9eb1a35dca0053d16b06751ae2a9fc78db1",
+    "source128": "c414202a4abb79301b04431b75008fa828dd60712b50518a1d4824e5d555b64b",
+    "worker_live_files_preserved": 1831,
+    "Goal_provenance_only_Main_reconciliation": true,
+    "future_live_trials_excluded": true,
+    "current_backend_helpers_O2_rebuilt_MEM9_producer_reused": true,
+    "accepted_adoption_or_Goal_completion": false,
+    "task_remote_exact": true,
+    "Main_merge": "8c00c80f97f7a7413b4b088efc94999fe58d33ff",
+    "Main_remote_exact": true,
+    "exact15_Main_bytes": true,
+    "reviewed_Main_Goal_sha256": "9df525476917aa6c4f9f9f43d3e01d6d380141e18895db33d61bf042f0024d55",
+    "protected9_exact": true
+  },
+  "current_Root_report_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-current-e18-mem9-gates/Root-results.json",
+  "current_Root_report_sha256": "942062b66cc6911078ecfa108bdea9eb1a35dca0053d16b06751ae2a9fc78db1",
+  "current_source128": "c414202a4abb79301b04431b75008fa828dd60712b50518a1d4824e5d555b64b",
+  "current_producer_basis": "Frozen qualified current E18 plus exact MEM9; unchanged runtime since MEM9 integration. No accepted/default replacement.",
+  "MEM9_current_qualification_retained_sha256": "2c99cd8348afdf5e20cac75c43be9660fbf7e0f14322af3d92832a050d72e437",
+  "rebuilt_and_reused_binary_sha256": {
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-current-e18-mem9-gates/build/a-to-c": "bc4968feb5aefbc5f264966ebc7a955cbe2c804be8cc06d5ddb9a80ac77cfbaa",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-current-e18-mem9-gates/build/c_recursive_capture_inert_test": "4d7e6d68cfe0455e51b9725f7eb0645589e8085af375807db965c7914b7ad08f",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-current-e18-mem9-gates/build/c_transitive_oracle_test": "3a81b2983e49ec54da0e9c88d0532d70050609656aa769cf123f6d97b39dbf6e",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-current-e18-mem9-gates/build/c_predicate_native_inert_test": "8ee02e9d9ef492fbb8f43033a1663b0f35debf8ba6eeda76e6317644d1b32066",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/pointer-check": "f31c3472c8eee75f27552b7f68f9670aadfbd819faf2109f150a6bf74bc3e2af"
+  },
+  "checks": [
+    {
+      "gate": "backend-and-helpers-build",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-publication/src/prototype/c_backend/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4",
+        "ROOT=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-current-e18-mem9-gates/build",
+        "REPO=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4",
+        "TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/tests",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-current-e18-mem9-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-current-e18-mem9-gates/build/c_recursive_capture_inert_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-current-e18-mem9-gates/build/c_transitive_oracle_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-current-e18-mem9-gates/build/c_predicate_native_inert_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "ea0e4d30d4271b6afbab747e6fd6f7a90c80a82702655993f70de0892206201e",
+      "sanitizer_scope": "Strict O2 current E18+MEM9 backend and three helpers rebuilt; exact qualified producer reused",
+      "retained_raw_phase_file_count": 0
+    },
+    {
+      "gate": "recursive-o2",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-publication/src/prototype/c_backend/recursive_capture/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-current-e18-mem9-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-current-e18-mem9-gates/build/c_recursive_capture_inert_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-current-e18-mem9-gates/recursive-o2"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "113ce1c07e41ccbfb96ce35983302101e67880888e93872b91fbc838696a1877",
+      "sanitizer_scope": "O2",
+      "status_rows": 114,
+      "expected_counts": {
+        "0": 74,
+        "3": 2,
+        "4": 38
+      },
+      "all_rows_match": true,
+      "status_sha256": "677622f014a5635c145bab6c11346f18633bfb3af15459e16e275c433459a669",
+      "retained_raw_phase_file_count": 465
+    },
+    {
+      "gate": "integer-o2",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-publication/src/prototype/c_backend/predicate_integer/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-current-e18-mem9-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-current-e18-mem9-gates/integer-o2"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "1f81dc34b06896e2fd88f9e7d9502ef1427b46944cdad31e5662d409438374ef",
+      "sanitizer_scope": "O2",
+      "status_rows": 61,
+      "expected_counts": {
+        "0": 26,
+        "3": 1,
+        "4": 34
+      },
+      "all_rows_match": true,
+      "status_sha256": "9719280507b2c171ac545734bf0b690555af5e481c5c4e652e3e7d9e8e4e45a1",
+      "retained_raw_phase_file_count": 228
+    },
+    {
+      "gate": "parent-units-o2",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-publication/src/prototype/c_backend/predicate_units/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-current-e18-mem9-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-current-e18-mem9-gates/parent-units-o2"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "a512c3612ad91333f9e8fce2062b0f71038793ea69995e0e77cfeee167e1bd3a",
+      "sanitizer_scope": "O2",
+      "status_rows": 119,
+      "expected_counts": {
+        "0": 116,
+        "1": 3
+      },
+      "all_rows_match": true,
+      "status_sha256": "cde10befbc2948c0b07a825316dfb612dae0abecd773a80192b45b45f5232ec5",
+      "retained_raw_phase_file_count": 481,
+      "C19_generated_C_H_exact_count": 24
+    },
+    {
+      "gate": "recursive-san",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-publication/src/prototype/c_backend/recursive_capture/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-current-e18-mem9-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-current-e18-mem9-gates/build/c_recursive_capture_inert_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-current-e18-mem9-gates/recursive-san"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "113ce1c07e41ccbfb96ce35983302101e67880888e93872b91fbc838696a1877",
+      "sanitizer_scope": "Clients/source/raw/oracle product bodies and C19 adapter/source bodies SAN; producer/backend/helpers/object/archive/shared O2",
+      "status_rows": 114,
+      "expected_counts": {
+        "0": 74,
+        "3": 2,
+        "4": 38
+      },
+      "all_rows_match": true,
+      "status_sha256": "677622f014a5635c145bab6c11346f18633bfb3af15459e16e275c433459a669",
+      "retained_raw_phase_file_count": 465
+    },
+    {
+      "gate": "integer-san",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-publication/src/prototype/c_backend/predicate_integer/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-current-e18-mem9-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-current-e18-mem9-gates/integer-san"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "1f81dc34b06896e2fd88f9e7d9502ef1427b46944cdad31e5662d409438374ef",
+      "sanitizer_scope": "Clients/source/raw/oracle product bodies and C19 adapter/source bodies SAN; producer/backend/helpers/object/archive/shared O2",
+      "status_rows": 61,
+      "expected_counts": {
+        "0": 26,
+        "3": 1,
+        "4": 34
+      },
+      "all_rows_match": true,
+      "status_sha256": "9719280507b2c171ac545734bf0b690555af5e481c5c4e652e3e7d9e8e4e45a1",
+      "retained_raw_phase_file_count": 228
+    },
+    {
+      "gate": "parent-units-san",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-publication/src/prototype/c_backend/predicate_units/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-current-e18-mem9-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-current-e18-mem9-gates/parent-units-san"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "a512c3612ad91333f9e8fce2062b0f71038793ea69995e0e77cfeee167e1bd3a",
+      "sanitizer_scope": "Clients/source/raw/oracle product bodies and C19 adapter/source bodies SAN; producer/backend/helpers/object/archive/shared O2",
+      "status_rows": 119,
+      "expected_counts": {
+        "0": 116,
+        "1": 3
+      },
+      "all_rows_match": true,
+      "status_sha256": "cde10befbc2948c0b07a825316dfb612dae0abecd773a80192b45b45f5232ec5",
+      "retained_raw_phase_file_count": 481,
+      "C19_generated_C_H_exact_count": 24
+    },
+    {
+      "gate": "affected-transitive-o2",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-publication/src/prototype/c_backend/lower/transitive_function_check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-current-e18-mem9-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-current-e18-mem9-gates/build/c_transitive_oracle_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "1edce762b1b8eb566f91d74229733135f8011093fa8dfa9f515acb6a44b2bfa6",
+      "sanitizer_scope": "Affected O2 regression",
+      "evidence_scope": "Terminal log and source/helper pins; transitive/numeric scripts delete their own temporary products. Native predicate report retained.",
+      "retained_raw_phase_file_count": 0
+    },
+    {
+      "gate": "affected-numeric-o2",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-publication/src/prototype/c_backend/lower/numeric_check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-current-e18-mem9-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/pointer-check"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "6300568be1a59e9b62485c54107ccc9287c35b96acf1a1e5854424bdccb263c2",
+      "sanitizer_scope": "Affected O2 regression",
+      "evidence_scope": "Terminal log and source/helper pins; transitive/numeric scripts delete their own temporary products. Native predicate report retained.",
+      "retained_raw_phase_file_count": 0
+    },
+    {
+      "gate": "affected-native-predicate-o2",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-publication/src/prototype/c_backend/predicate_native/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-current-e18-mem9-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-current-e18-mem9-gates/build/c_predicate_native_inert_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-current-e18-mem9-gates/affected-native-report"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "a32131ac7315684a92b0bca29b0839c2a0970181834703762496e57f4422c972",
+      "sanitizer_scope": "Affected O2 regression",
+      "evidence_scope": "Terminal log and source/helper pins; transitive/numeric scripts delete their own temporary products. Native predicate report retained.",
+      "retained_raw_phase_file_count": 0
+    }
+  ],
+  "all_current_pins_after_exact": true,
+  "current_pin_count": 406,
+  "all_current_raw_phase_files_hashes_rechecked": true,
+  "worker_input_review_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c21-input-review.json",
+  "worker_input_review_sha256": "2d991103ada70fed6d8bb2d7df829ca7995ad2ae311bc3c81465efefd9b01653",
+  "worker_frozen_manifest": {
+    "date": "2026-10-04T01:27:38.894254+00:00",
+    "lane": "c-backend",
+    "epoch": "C21",
+    "state": "exact snapshot ready; pending delegated task publication/current-producer audit",
+    "parent": "7b883a8eb123faab0e288661229196ffdebfe232",
+    "branch": "parallel/c-backend-20261003",
+    "message": "prototype: retain known captures in native recursion",
+    "files": [
+      {
+        "path": "doc/2026-10-03-C-BACKEND-GOAL.md",
+        "sha256": "5103009f73f888b76e6d21881d19fc39cf2fe84bb5bd6fdcfc702458d55368dd"
+      },
+      {
+        "path": "doc/2026-10-04-C-BACKEND-INTEGER-PREDICATE-PLAN.md",
+        "sha256": "34a93446a2d3beb107887de6a87d33ab8e73e0dc8b00b0abeae426ff638ebdfd"
+      },
+      {
+        "path": "doc/2026-10-04-C-BACKEND-RECURSIVE-CAPTURE-PLAN.md",
+        "sha256": "28a5d77efc61c3013341578923996f334ccebaa9788f23c471e315aaf89da845"
+      },
+      {
+        "path": "doc/2026-10-04-C-BACKEND-EPOCH21-HANDOFF.md",
+        "sha256": "6714b3b7a27ab08482ab755c68b31d2527abcea652af3efdadcfa1e752eb9134"
+      },
+      {
+        "path": "src/prototype/c_backend/README.md",
+        "sha256": "54f50dc1d719e65985849a01c11121a2989c786d0e06601a399c21a358c5e5ce"
+      },
+      {
+        "path": "src/prototype/c_backend/build.mk",
+        "sha256": "7d747126eb3d72b21d45a5e668c2d1b112994b0274159995478e12c54cee9c88"
+      },
+      {
+        "path": "src/prototype/c_backend/lower/scalar.c",
+        "sha256": "30acb4b3835b73caa6e45e8fb9055cc8e3b5a481e152a2c97c1dab3e921b39ee"
+      },
+      {
+        "path": "src/prototype/c_backend/predicate_integer/check.sh",
+        "sha256": "e88cf1dc3fbca3a8463b33ae27c27cdecd025d4386da1bb1ba60ff5688042ef7"
+      },
+      {
+        "path": "src/prototype/c_backend/predicate_integer/predicate.aplink",
+        "sha256": "e98245225115dc68029929c03bacf6f56528c5ee383420d23dc360e1ee254512"
+      },
+      {
+        "path": "src/prototype/c_backend/recursive_capture/fixture.p",
+        "sha256": "3b24dbf90f12c4c3ae75db1cf9f3899d6b04d79be8429bc7a1ef7109a3384709"
+      },
+      {
+        "path": "src/prototype/c_backend/recursive_capture/imported_fixture.p",
+        "sha256": "315b5579cee34da34c1501b66f79c1138234399cb347685b53f3a25dcf0e8ea2"
+      },
+      {
+        "path": "src/prototype/c_backend/recursive_capture/recursive.aplink",
+        "sha256": "74a5e28f9592bf164d4d5dcd26449a1741677b1c575888cc6459327741e455c1"
+      },
+      {
+        "path": "src/prototype/c_backend/recursive_capture/client.c",
+        "sha256": "1064082eb39bb078357748a34b872932c547f25955ee28f322fc5f783b368c56"
+      },
+      {
+        "path": "src/prototype/c_backend/recursive_capture/inert_test.c",
+        "sha256": "9c3520ab136dc30bf77ac2eabf9a042663c9209b9ddd476f18a28fe563b27a32"
+      },
+      {
+        "path": "src/prototype/c_backend/recursive_capture/check.sh",
+        "sha256": "f4a8b587de1643ea984f0ef37f7dccd787f8ca6e688dd16a8e6a0af9b3940cf8"
+      },
+      {
+        "path": "src/prototype/c_backend/recursive_capture/build.mk",
+        "sha256": "235f0f452abd315dbe5df6c99a81b1dc77e029d9f92a8bdae41a3fc1384d057f"
+      }
+    ],
+    "manifest_sha256": "bf2f927db927d9b3132d3a7fb75629853edac27693bebaa10c6f93282ee5910e",
+    "snapshot_sha256": "78b0334e1f501bb775fec85b6c927e5bb84e275cecc665ac4aa71f58d9a24bf2",
+    "runs_sha256": "838d2bb1d99f79eddfb4769e9f285746ae2e24df1c531eed0a717b3b282f3012",
+    "raw_count": 2015,
+    "retained_input_count": 181,
+    "retained_inputs_sha256": "b3db446cefafa3e70e7f434fd17d0c6ea0ff1a35bd7a0b32e2505ce01dfc518d",
+    "verification_sha256": "e69531d51dc7be898d37a4454f2794076cffea1d0c5c25d6dff4b628ee7fea20",
+    "style_sha256": "9b18a9b55ee0d58c6656b25bd1c3fe3247c9871fbe99ecc34cfcf6b2e9e308bb",
+    "deltas_sha256": "02b199963f0c27bc0f27eb7596f3459a06e2ca54e17351b2e8b3683092e2139e",
+    "gates": {
+      "O2": {
+        "exit": 0,
+        "rows": 114
+      },
+      "SAN": {
+        "exit": 0,
+        "rows": 114
+      },
+      "updated_integer_O2": {
+        "exit": 0,
+        "rows": 61
+      },
+      "updated_integer_SAN": {
+        "exit": 0,
+        "rows": 61
+      },
+      "affected_O2": [
+        "transitive0",
+        "numeric0",
+        "native-predicate0"
+      ]
+    },
+    "expected_failure_rows": "C21 two no-fuel3 and38 refusal4 per phase; updated integer one3 and34 refusal4 per phase",
+    "initial_setup_failures_retained": true,
+    "scope": "private known captures/heads under existing native ABI; no producer/schema/checker/source-erasure/accepted/cost authority",
+    "C20_exact_task_remote": "7b883a8eb123faab0e288661229196ffdebfe232",
+    "C20_original_snapshot_unchanged": true,
+    "C20_Main_current_producer_here": "unconfirmed",
+    "remaining": "dynamic signed predicates, general recursion-valued captures, indexed/callable Acc, native QuickSort/full61 remain open",
+    "integration": "Root exact publication/current-producer review/Main; no shared-owner change needed"
+  },
+  "worker_historical_verification": {
+    "date": "2026-10-04T01:18:43.964913+00:00",
+    "baseline": "7b883a8eb123faab0e288661229196ffdebfe232",
+    "branch": "parallel/c-backend-20261003",
+    "producer": "50cd56b2a52b7e370bc7ecb3436c4993e2e5d6a2",
+    "runtime128_verified": 128,
+    "reported_runtime_manifest": "9ba2b33cbe8bc68eac338073506bcb205f36d20cb0a34f9f88607d975ef07740",
+    "qualified_inputs": 181,
+    "phases": {
+      "O2": {
+        "exit": 0,
+        "rows": 114,
+        "exits": {
+          "0": 74,
+          "3": 2,
+          "4": 38
+        },
+        "gate_sha256": "597b0ee09048e9cface6e96b56b14fafd2da966c6199f5fed50c0dec8f2503d8",
+        "status_sha256": "677622f014a5635c145bab6c11346f18633bfb3af15459e16e275c433459a669",
+        "updated_integer_gate": {
+          "rows": 61,
+          "exits": {
+            "0": 26,
+            "3": 1,
+            "4": 34
+          }
+        }
+      },
+      "SAN": {
+        "exit": 0,
+        "rows": 114,
+        "exits": {
+          "0": 74,
+          "3": 2,
+          "4": 38
+        },
+        "gate_sha256": "c502b7bcfba8c3e8b130c5e50c5f9cd524993c49429cea9b4b5d60f66c9ae896",
+        "status_sha256": "677622f014a5635c145bab6c11346f18633bfb3af15459e16e275c433459a669",
+        "updated_integer_gate": {
+          "rows": 61,
+          "exits": {
+            "0": 26,
+            "3": 1,
+            "4": 34
+          }
+        }
+      }
+    },
+    "backend_sha256": "0e9b3f855599f8fe64ccec9928575e3d5232246b527d3ec3b21741dc065d3827",
+    "inert_sha256": "f12b316ad7eb38af23de180ba2b8e581ea92b2609e145a133dfd3f6bb0daec41",
+    "source_semantics": "known static signed all/none and modulo maps; genuine finite Nat predicates, no signed comparator/native sorter",
+    "source_observations_per_client": 16,
+    "core_Nat_comparisons_per_family": 200,
+    "native_client_cases": {
+      "legacy_lists_per_width": 341,
+      "legacy_calls_per_list": 6,
+      "capture_map_lists": 85,
+      "capture_calls_per_list": 12,
+      "shift32_calls_per_list": 5,
+      "shift64_calls_per_list": 5,
+      "chain_map_calls_per_list": 25,
+      "natural_lists": 85,
+      "natural_filter_calls": 85,
+      "natural_selection_calls": 425
+    },
+    "raw_emission": "four guarded evaluator/substitution/WHNF/query functions never called; graph/proof counts unchanged; separate Core evaluation afterward",
+    "san_scope": "O1 clients + source/raw/oracle-generated product bodies, ASan/UBSan/leak/no PIE; emitted object/archive/backend/inert/producer O2",
+    "affected_O2": [
+      "transitive static captures",
+      "native numeric/List",
+      "borrowed native predicates"
+    ],
+    "affected_evidence_scope": "existing transitive/numeric scripts retain terminal logs but delete their owned temporary products; predicate-native full report and all primary C21/updated-integer products retained",
+    "historical_failures": [
+      "first capture fix only2/8 positive, remaining refusals retained",
+      "effectful lambda passed to pure map rejected1; fixed outer effectful source retains target4",
+      "imported local names selected as exported fields: old/new backends checked1/trusted3; explicit source re-exports resolve setup"
+    ],
+    "abi_emitter_authority": "existing native ABI, downstream prototype only; no producer/schema/checker/source-erasure extension",
+    "legacy_expectation_reconciliation": "8 static cases now positive using same public aliases and unchanged client;17 dynamic cases retain checked/trusted4",
+    "C20_exact10_task_and_remote_verified": true,
+    "C20_snapshot_unchanged": true,
+    "C20_Main_or_current_producer_state": "unconfirmed here",
+    "remaining": "dynamic signed predicates, general recursion-valued captures, indexed/callable Acc, native QuickSort and full61"
+  },
+  "retained181_runtime128_raw2015_all_actual_files_hashed": true,
+  "code_review": "Known lambda recognition inspects Force/Thunk and application heads without evaluation. Recursive captures retain private suspended bodies; represented values receive dense native parameters, lexical rebinding and recursive-call type/body validation. Existing call emission skips static captures. No public closure ABI or upstream schema/producer authority.",
+  "coverage_review": "Eight former static refusal names remain positive exports in the updated integer gate with unchanged client, and separately emit in C21. Seventeen dynamic/effect/callable names remain checked/trusted refusal4. Separate standalone/reexport source/readback/raw/Core/product coverage retains shadowing, chains, unused effects, modulo widths and resource contracts.",
+  "worker_initial_failures_retained": [
+    "first capture fix only2/8 positive, remaining refusals retained",
+    "effectful lambda passed to pure map rejected1; fixed outer effectful source retains target4",
+    "imported local names selected as exported fields: old/new backends checked1/trusted3; explicit source re-exports resolve setup"
+  ],
+  "Root_metadata_initial_guards": [
+    "Initial C22 report guard expected newline-delimited output; actual source/loaded output is comma-delimited 3,3,0,6,6. Guard corrected, no worker rerun or runtime assertion change.",
+    "During the next report attempt the active C22 scratch fixture advanced beyond its initial pin. Record live/initial comparisons and treat initial probes as historical, not a frozen source-to-binary qualification. C21 submitted snapshot/current gates remain independent and exact."
+  ],
+  "parent_C19_generated48_C_H_bytes_exact_C20": true,
+  "C22_action_review": {
+    "notice_sha256": "8699521e85c1f1f2076b86b72c19061749e23eac283416c8376e526141beecc5",
+    "initial_input9_live_comparison": {
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/scratch/nested_captures/fixture.p": {
+        "initial_sha256": "48f6ef559f3ed8bd11c9998b8975af5fc26cfc89c61062dce6821e95fc2113d0",
+        "live_sha256": "57cdc408e0b3bcb029d8c65e17addbb22344cba9ac427db2225245d71f54c3f5",
+        "equal": false
+      },
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/scratch/nested_captures/probe.aplink": {
+        "initial_sha256": "36108c4ed8d598f1829ff6aef699cb30a46f77a9cc4f283616e55c10c40f9d0f",
+        "live_sha256": "878d0ac24042e7e0ec92b796376c057596bfbd937b4cb32c32138342a11c5e82",
+        "equal": false
+      },
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/lower/scalar.c": {
+        "initial_sha256": "30acb4b3835b73caa6e45e8fb9055cc8e3b5a481e152a2c97c1dab3e921b39ee",
+        "live_sha256": "30acb4b3835b73caa6e45e8fb9055cc8e3b5a481e152a2c97c1dab3e921b39ee",
+        "equal": true
+      },
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/lower/representation.c": {
+        "initial_sha256": "2fd9d63cfc565bdc1ce326369d59a3c5eb09ab10597de2778adfb8cf32fbd76f",
+        "live_sha256": "2fd9d63cfc565bdc1ce326369d59a3c5eb09ab10597de2778adfb8cf32fbd76f",
+        "equal": true
+      },
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/fixtures/native_quicksort.p": {
+        "initial_sha256": "7f06e2dc765e48ca2b51f17c0275322d346ac16519848542818ebf74792e538e",
+        "live_sha256": "7f06e2dc765e48ca2b51f17c0275322d346ac16519848542818ebf74792e538e",
+        "equal": true
+      },
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/fixtures/native_quicksort.aplink": {
+        "initial_sha256": "7a12a091bf9a3d6b62c8ab0161c077aaa142da2b37ed212e480b5d2c47bd4005",
+        "live_sha256": "7a12a091bf9a3d6b62c8ab0161c077aaa142da2b37ed212e480b5d2c47bd4005",
+        "equal": true
+      },
+      "/home/repyt/workspace/a-program-workers/c-backend/tests/fixtures/sorted-proof-provider.p": {
+        "initial_sha256": "a674b893cd5d0dc1899e79238352c6167a536876393ae7f53b2a9de602b647e6",
+        "live_sha256": "a674b893cd5d0dc1899e79238352c6167a536876393ae7f53b2a9de602b647e6",
+        "equal": true
+      },
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch21-recursive-captures-20261004/build/a-to-c": {
+        "initial_sha256": "0e9b3f855599f8fe64ccec9928575e3d5232246b527d3ec3b21741dc065d3827",
+        "live_sha256": "0e9b3f855599f8fe64ccec9928575e3d5232246b527d3ec3b21741dc065d3827",
+        "equal": true
+      },
+      "/tmp/a-program-merge-c9-e8-gates-20261003/build/pointer-check": {
+        "initial_sha256": "6e3407fc7f6ba8dffa0642217f00b6d2ec8454e32dc41eac6b27cce30518cd44",
+        "live_sha256": "6e3407fc7f6ba8dffa0642217f00b6d2ec8454e32dc41eac6b27cce30518cd44",
+        "equal": true
+      }
+    },
+    "probe_results_sha256": "a2698ad2f28e3611128aae12dafbf8a43491b8d8689ad56b92b91185bcd050db",
+    "initial_raw_pins": {
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_known-checked.argv.json": "aaa23c75bb25635b595220f509883cac193ab110997bac9ca7632f5bde5c563f",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/admit.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_known.aplink": "26e13009d712c74c0b33d22d5abe08cb8412be01f9cf1dfb373b13a50839ae3a",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/source-reference.out": "40818e85d807e8d99645101eabd585472d9c5f0459dd7d4999bc778e837c304a",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count-trusted.err": "1767b9371e8b3b3d7e86de415121cc9b45fada57f8681bf7b01faed09ec3abd7",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count-trusted.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count-checked.argv.json": "0efd0d8ea144e1bd2ebb71b65c6d20b939fd9925ec5c9afbf3e43865773ba3e8",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/initial-inputs.json": "9df7572108c1cac690c32918fc6e52f0f48db777f555fa6f20a89631602c166b",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_known-trusted.argv.json": "a137d7103b0dfc6d51f25752d7e4949506bfa65f7b8cb4c346d976e47d829c90",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_sum-trusted.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/admit.out": "da29ce183e4744bc8ba14a0bb8c5f2be07529ad6b4c29108732d1b9625cd41e8",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum-checked.err": "e8773f90cb27d81ca007726282e6094278fdbac502c8de780acbf6c312ab0289",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_known-checked.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/loaded-reference.err": "605f40c03dd9a5775e20d33d4fccf06300f938b73b491e27974b4e3d1f4d5cde",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum.aplink": "a24cfb166515f4e79da60204be15cdae90f4e97122d8581165b57329a7ed3028",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum-trusted.err": "1767b9371e8b3b3d7e86de415121cc9b45fada57f8681bf7b01faed09ec3abd7",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_known-trusted.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/image.sha256": "ac6d18301702e591b408348248612a780c583c2539f58df5658a6443f7b9d27d",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/loaded-reference.out": "40818e85d807e8d99645101eabd585472d9c5f0459dd7d4999bc778e837c304a",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum-trusted.argv.json": "f3f0d9b3c440ea9c1e3859bc223becbb115a99290d662c2b68667bd0438d58ec",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count-checked.err": "e8773f90cb27d81ca007726282e6094278fdbac502c8de780acbf6c312ab0289",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_sum.aplink": "ac9d4eff1cd87bcafd532cc68181fb8c18dda5e005d7a2781fd84ec2dee61f03",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/source-reference.err": "b38869d6af70fc0479fc630ae1945ba3e2302d70719e6f1dfa0b0b80abee0d47",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_sum-checked.argv.json": "349084a3aeb23993bf71ea2d11b25d6ac7ac1fa3a258c3c8dbd21f163da60fd2",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_sum-trusted.err": "e85ea15a63757bd06f37e613f51712b94c113b658d09f5f4fcce7f8c93cffb80",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum-checked.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count-trusted.argv.json": "1bb9af4b940196c2d02c6df228c385fa3d48995a7d9775ea2b2c51bdf86adaa2",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/c21-task-publication.json": "ec524f9d5c0d6be58cc605c9c88e6e9337a9a97de382398c012f3c02daca13dd",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_known-checked.err": "3c25592e9382a1454c4a46649c70e09792a4c2242831fdcadae531f52e59cafa",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/admit.argv.json": "7cd6753c2bfb91a76fc41b4d47bb228d7954a5117763c97cc242169e54c13734",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum-checked.argv.json": "8b3d09f8c00fff2fce9671bd3d5401ddaf067490ff5feab9b2959ee7dbd8899f",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested.a": "4f640adbfce41c4e2981515b32f0216dff9d18eed3333817bab1b821f3024aea",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_sum-trusted.argv.json": "85aca50c6198e932c015f1b2e12e7bd9757a18fb9b3a34d03f4bf1ebf134d2cd",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/loaded-reference.argv.json": "74a193b3c6a232c254edc2c567e7aededb9959903ae64818d07918b4f91de8b9",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_sum-checked.err": "3c25592e9382a1454c4a46649c70e09792a4c2242831fdcadae531f52e59cafa",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_known-trusted.err": "e85ea15a63757bd06f37e613f51712b94c113b658d09f5f4fcce7f8c93cffb80",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count-checked.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/source-reference.argv.json": "1f8d88049b2b858f2929b3bd2426c7b6053b8a63cf200f540597a46355c62f7e",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count.aplink": "ae351f3acf922198f80c6535e477949e1c201a71071f69588435797bc8f13070",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_sum-checked.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/probe-results.json": "a2698ad2f28e3611128aae12dafbf8a43491b8d8689ad56b92b91185bcd050db",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum-trusted.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-count-trusted/link.json": "d78921d310387f7cda47c93960b1b6b16f3b498f8c91ceb30df1ecc4989cacc8",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-count-trusted/component.c": "18aca152fad995999f64aee3908825870a2f5a7e0637af832f9efc0491af8dca",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-count-trusted/component.h": "a3fdd7a015968775515d1fd292dab5c98cf0efad9ae23602cc64cff9724c7bd8",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-nested_known-trusted/link.json": "ad48a2d6c74ba3e09a36586d64f1eef58777c3ccbdbec30f116784f716b728ae",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-nested_known-trusted/component.c": "3257f8f34a9d581ef01a95bec2d8c7565ab1d84050c17ad3e517964665ff17a4",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-nested_known-trusted/component.h": "91b2f007fee9819fac93de2f541ac0a5d986da2d88a22cdd117b49209457f53e",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count-trusted/link.json": "d78921d310387f7cda47c93960b1b6b16f3b498f8c91ceb30df1ecc4989cacc8",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count-trusted/component.c": "18aca152fad995999f64aee3908825870a2f5a7e0637af832f9efc0491af8dca",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count-trusted/component.h": "a3fdd7a015968775515d1fd292dab5c98cf0efad9ae23602cc64cff9724c7bd8",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count-checked/link.json": "43a4f18deae4a0787ae4bcf81ae6d0212f969ef84571ba2f117b0ff18b049ed3",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count-checked/component.c": "18aca152fad995999f64aee3908825870a2f5a7e0637af832f9efc0491af8dca",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count-checked/component.h": "a3fdd7a015968775515d1fd292dab5c98cf0efad9ae23602cc64cff9724c7bd8",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum-checked/link.json": "7bf03c71acc1f57426a895f1072f01333d799f01b600ebc5834eca9e29205e89",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum-checked/component.c": "2643f64a9caa4b1d52547b6fd29a545fb2b28ecb16a9a9224ec7399186e9b5e1",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum-checked/component.h": "1ad4f89e789cfaf6c9d767e4fdb73a3ebe12a9062b952cb79b4aa31ce2ff23c7",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-branch_sum-checked/link.json": "7bf03c71acc1f57426a895f1072f01333d799f01b600ebc5834eca9e29205e89",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-branch_sum-checked/component.c": "2643f64a9caa4b1d52547b6fd29a545fb2b28ecb16a9a9224ec7399186e9b5e1",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-branch_sum-checked/component.h": "1ad4f89e789cfaf6c9d767e4fdb73a3ebe12a9062b952cb79b4aa31ce2ff23c7",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-count-checked/link.json": "43a4f18deae4a0787ae4bcf81ae6d0212f969ef84571ba2f117b0ff18b049ed3",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-count-checked/component.c": "18aca152fad995999f64aee3908825870a2f5a7e0637af832f9efc0491af8dca",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-count-checked/component.h": "a3fdd7a015968775515d1fd292dab5c98cf0efad9ae23602cc64cff9724c7bd8",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-branch_sum-trusted/link.json": "9ee8bc31594bda5e4443c7431741ef5715f83d4d0768d8be6f84fe826c7203ab",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-branch_sum-trusted/component.c": "2643f64a9caa4b1d52547b6fd29a545fb2b28ecb16a9a9224ec7399186e9b5e1",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-branch_sum-trusted/component.h": "1ad4f89e789cfaf6c9d767e4fdb73a3ebe12a9062b952cb79b4aa31ce2ff23c7",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-nested_sum-trusted/link.json": "9d2bcbe01604b7ccca2430b6b2620c9b96a67c34e7164466c411d20a5f4407d5",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-nested_sum-trusted/component.c": "945cab7e8608c50834a40858d8802034501c9a20c6d71fa102d13e9add3806f4",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-nested_sum-trusted/component.h": "c1a2beac41410a5dec0ce7bc2f70080e455d0f05c8ec20a6b802b2448316b084",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum-trusted/link.json": "9ee8bc31594bda5e4443c7431741ef5715f83d4d0768d8be6f84fe826c7203ab",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum-trusted/component.c": "2643f64a9caa4b1d52547b6fd29a545fb2b28ecb16a9a9224ec7399186e9b5e1",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum-trusted/component.h": "1ad4f89e789cfaf6c9d767e4fdb73a3ebe12a9062b952cb79b4aa31ce2ff23c7",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-nested_known-checked/link.json": "1494dd9d48336ba3b3dee5854936eefb4ce9360cf8bc542614215536f1f83596",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-nested_known-checked/component.c": "3257f8f34a9d581ef01a95bec2d8c7565ab1d84050c17ad3e517964665ff17a4",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-nested_known-checked/component.h": "91b2f007fee9819fac93de2f541ac0a5d986da2d88a22cdd117b49209457f53e",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/emit-source.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/admit.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/source-reference.out": "71e2b495df7a0ac0e52d25a38a1a44716533ceec6d937cf0dad38774b00501e3",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/results.json": "ab97d2e336074a12e4f18713b0b630650fc823c2c73121394d06683111efea76",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/client-O2-build.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/client-O2-build.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/admit.out": "a9596e23fd10746332774ff09e8090b38cf12db9bc25ebe92a8563d5d5d51621",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/loaded-reference.err": "17e9b9df06775753ae503444257b930f889eb4f640defaa4d1039f2ed3ba062c",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/loaded-reference.out": "71e2b495df7a0ac0e52d25a38a1a44716533ceec6d937cf0dad38774b00501e3",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/emit-source.err": "e387a67e7b2599def727f6b835cf0d5b2e0c72d4bad85c9a57f98fdbbfd7aa3d",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/source-reference.err": "559a450871f8f882d52e4eda2d1417feae5d5ad9416411a74a3b188fb3012bce",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/client-O2": "cb280e346228224eee3bbb54d27b510e20467d5ffba8cf818f95e9741a88f3d9",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/client-O2.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/client-O2.out": "71e2b495df7a0ac0e52d25a38a1a44716533ceec6d937cf0dad38774b00501e3",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/nested.a": "5d16709c52b85c3363ef0bcbb27d9ea15db2a2e04a77628806c6f44170753822",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/source.aplink": "91b785917746497c04ff2b397d2ccc25204f12ed8d42ed6599228e6f0fee02eb",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-nested_sum-checked/link.json": "c2c31195cc1185977df809fbbe3ebf6840dac2826da3eac4091a76d1b4139802",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-nested_sum-checked/component.c": "945cab7e8608c50834a40858d8802034501c9a20c6d71fa102d13e9add3806f4",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-nested_sum-checked/component.h": "c1a2beac41410a5dec0ce7bc2f70080e455d0f05c8ec20a6b802b2448316b084",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/source/link.json": "4809899b7c7a7dfb9a715b00dc8deed3f6b68a0bfbdcf374759cfae6d762dbfb",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/source/component.c": "46ed92bd6716588f0da304770a93f8de3b5446b1b709f9c6395f7895d3d30b5f",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/source/component.h": "043bbd3ae615fa42fe5d94412eced0111cd2e74bd9d1d0495a211c0c129fec2d"
+    },
+    "historical_worker_E8_records": [
+      {
+        "name": "admit",
+        "exit": 0,
+        "argv": [
+          "/tmp/a-program-merge-c9-e8-gates-20261003/build/pointer-check",
+          "--save",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested.a",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/scratch/nested_captures/fixture.p"
+        ]
+      },
+      {
+        "name": "source-reference",
+        "exit": 0,
+        "argv": [
+          "/tmp/a-program-merge-c9-e8-gates-20261003/build/pointer-check",
+          "--run",
+          "reference",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/scratch/nested_captures/fixture.p"
+        ]
+      },
+      {
+        "name": "loaded-reference",
+        "exit": 0,
+        "argv": [
+          "/tmp/a-program-merge-c9-e8-gates-20261003/build/pointer-check",
+          "--load",
+          "--run",
+          "reference",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested.a"
+        ]
+      },
+      {
+        "name": "count-checked",
+        "exit": 0,
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch21-recursive-captures-20261004/build/a-to-c",
+          "--link",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count.aplink",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count-checked"
+        ]
+      },
+      {
+        "name": "count-trusted",
+        "exit": 0,
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch21-recursive-captures-20261004/build/a-to-c",
+          "--trust-image",
+          "--steps",
+          "0",
+          "--link",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count.aplink",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count-trusted"
+        ]
+      },
+      {
+        "name": "branch_sum-checked",
+        "exit": 0,
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch21-recursive-captures-20261004/build/a-to-c",
+          "--link",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum.aplink",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum-checked"
+        ]
+      },
+      {
+        "name": "branch_sum-trusted",
+        "exit": 0,
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch21-recursive-captures-20261004/build/a-to-c",
+          "--trust-image",
+          "--steps",
+          "0",
+          "--link",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum.aplink",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum-trusted"
+        ]
+      },
+      {
+        "name": "nested_sum-checked",
+        "exit": 4,
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch21-recursive-captures-20261004/build/a-to-c",
+          "--link",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_sum.aplink",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_sum-checked"
+        ]
+      },
+      {
+        "name": "nested_sum-trusted",
+        "exit": 4,
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch21-recursive-captures-20261004/build/a-to-c",
+          "--trust-image",
+          "--steps",
+          "0",
+          "--link",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_sum.aplink",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_sum-trusted"
+        ]
+      },
+      {
+        "name": "nested_known-checked",
+        "exit": 4,
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch21-recursive-captures-20261004/build/a-to-c",
+          "--link",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_known.aplink",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_known-checked"
+        ]
+      },
+      {
+        "name": "nested_known-trusted",
+        "exit": 4,
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch21-recursive-captures-20261004/build/a-to-c",
+          "--trust-image",
+          "--steps",
+          "0",
+          "--link",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_known.aplink",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_known-trusted"
+        ]
+      }
+    ],
+    "status": "Separate private nested Nat fold probe; initial11 records/source-loaded outputs inspected, not fresh Root execution, frozen READY, current qualification or publication.",
+    "boundary": "C21 emitter accepts count/nonrecursive branch capture; nested outer induction-result capture directly/through known lambda refuses4 checked/trusted. No source/producer defect established. Target-local scratch implementation remains separate; native indexed/callable Acc/QuickSort/full61 open.",
+    "C20_release_consumed": true,
+    "future_trials_excluded_from_C21": true
+  },
+  "limits": "Existing native ABI; known static captures only, dynamic signed/general callable/indexed Acc/native QuickSort/full61 open. SAN limited to clients/source/raw/oracle bodies; helpers/backend/producer/object/archive O2. Borrowed readable inputs, nonoverlap, arena ownership, max256 depth and Nat32 remain. No producer/schema/source erasure change, full broad, wall/RSS, accepted adoption or Goal completion.",
+  "accepted_adoption_or_Goal_completion": false
+}

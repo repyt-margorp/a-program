@@ -1,0 +1,560 @@
+{
+  "review_UTC": "2026-10-04T01:46:31.584724+00:00",
+  "Main_at_review": "8c00c80f97f7a7413b4b088efc94999fe58d33ff",
+  "owners": {
+    "C": {
+      "pane": "%0",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/scheduled-status-20261004T014422/C.txt",
+      "capture_sha256": "042a30881571f574f5303f985695075dd815dd7a786d98ab4c17c824ca09a5e7",
+      "last_status_lines": [
+        "\u203a Root C21 release: exact16 task eaf5755914a44a855069321b4c64330eb4ca5b03 / prototype Main8c00c80f97f7a7413b4b088efc94999fe58d33ff pushed/remote exact. All1831",
+        "  recorded live files preserved; other15 Main bytes exact, Goal provenance alone reconciled. Fresh E18+MEM9 source128c414202a backend/three helpers O2 rebuilt,",
+        "  exact qualified producer reused: recursive114/integer61/parentunit119 each O2/client-source SAN and three affected O2 gates pass;48 parent C/H bytes exact.",
+        "  Retained181/raw2015 verified, failures/refusals preserved. Receipt Main src/prototype/c_backend/verification/core-epoch21.json; raw merge-storage-20261003/",
+        "  c21-current-e18-mem9-gates/Root-results.json SHA942062b6. C22 action8699521e reviewed as separate private historical probe; live scratch fixture advanced",
+        "  beyond initial pins, require a new freeze/current gates before publication. Existing ABI/producer/schema boundary; no cost/accepted promotion/full61",
+        "  completion.",
+        "",
+        "",
+        "\u25e6 Working (15m 52s \u2022 esc to interrupt)",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/c-backend \u00b7 Verify Surface index.lock handoff           Pursuing goal (18h 52m)    \u26a0 1 warning \u00b7 f2 to view"
+      ],
+      "stopped_bounded": false
+    },
+    "Performance": {
+      "pane": "%1",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/scheduled-status-20261004T014422/Performance.txt",
+      "capture_sha256": "06b90d9a360268422f69d609a9d4d75c119616d2f255ec9f98daba40d176c24c",
+      "last_status_lines": [
+        "\u2022 Explored",
+        "  \u2514 Read 2026-10-03-PERFORMANCE-GOAL-CURRENT.md, 2026-10-03-PERFORMANCE-JOINT-VERIFICATION.md",
+        "",
+        "\u25e6 Working (23m 37s \u2022 esc to interrupt)",
+        "",
+        "\u2022 Queued follow-up inputs",
+        "  \u21b3 Root MEM10 review: dc5499f2 freeze27/private2730 all hashes/raw gates verified; 194e93b1 byte hold adopted, independently6/146 materialized differences",
+        "    (Fold67 exact). No integration/cost slot. Current E18+MEM9 canonical source128c414202a has no historical free_frames; isolated bounded fresh-slot",
+        "    reconciliation only yields candidate1288bb29f3a, not qualified. Fresh nine-type header probe: pg_eval/WHNF/execution +8 size but EACH +16 aligned extent;",
+        "    \u2026",
+        "    shift+\u2190 edit last queued message",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/performance \u00b7 Verify Surface index.lock issue           Pursuing goal (23h 40m)    \u26a0 1 warning \u00b7 f2 to view"
+      ],
+      "stopped_bounded": false
+    },
+    "Job": {
+      "pane": "%4",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/scheduled-status-20261004T014422/Job.txt",
+      "capture_sha256": "2e5eaee4361dad653c821cf7b2d94df4665f7ffbd080f37f667eb5ecc8b8e54e",
+      "last_status_lines": [
+        "  workers/merge-storage-20261003/mem6-byte-baseline-root-review.json. E17 remains separate. Owner coordination evidence, not new human approval.",
+        "",
+        "",
+        "\u2022 Queued follow-up inputs",
+        "  \u21b3 Root release: E18 exact26 task a8f52a015f73fe7cfa067c3d5b122bef7e4532b4 and prototype Main165789434f528e1c55cb446af831475652c54ca4 are pushed/remote exact.",
+        "    Current Root E18 source128efcdeaa4 full synthesis/source-checkpoint O2+SAN/CLI0; strict1 expected original three unwaived; public52/full TSV byte exact E17.",
+        "    Frozen26 unchanged; explicit existing-current named-field syntax bridges/canonical alignment are recorded. Root report merge-storage-20261003/e18-current-",
+        "    \u2026",
+        "    shift+\u2190 edit last queued message",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/job-evidence \u00b7 Implement remaining SE1-SE5 simpl    Goal stalled (/goal resume)    \u26a0 1 warning \u00b7 f2 to view",
+        "",
+        ""
+      ],
+      "stopped_bounded": false
+    },
+    "Static": {
+      "pane": "%10",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/scheduled-status-20261004T014422/Static.txt",
+      "capture_sha256": "5ee5eed5bc5e89fee19eeef0d9704ac31d3f71b2de7af655edd17691580e5198",
+      "last_status_lines": [
+        "  \u2502 import hashlib",
+        "  \u2502 \u2026 +5 lines",
+        "  \u2514 Review receipt: 1191 bytes; SHA-256 1e8b99182da029cc62daacc9ce2cb6bbb79e5b79ba173b9aeba6c7f79dc5569f",
+        "",
+        "\u2022 Review receipt recorded for Merge (src/prototype/coordination/outbox/verification-audit-11-review-receipt.txt). Config and key remain unchanged; no audit",
+        "  outputs or timing exist.",
+        "",
+        "  Bounded static delivery remains complete. Cost is deferred and unmeasured; full Issue 59 stays open pending later exclusive scheduling.",
+        "",
+        "  Worked for 1m 15s \u2022 17:54",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/verification-audit \u00b7 Hand off static inventory              Goal achieved (50m)    \u26a0 1 warning \u00b7 f2 to view"
+      ],
+      "stopped_bounded": true
+    },
+    "Sort": {
+      "pane": "%11",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/scheduled-status-20261004T014422/Sort.txt",
+      "capture_sha256": "60efee3a0d2757c37b29f4537806befc58cfc1594a402c90909793976b8947ae",
+      "last_status_lines": [
+        "    FINAL_MANIFEST_SHA256 e0adf408179cfde0a98ec11c448ef5967c3d945c2c198e7e79a93456208f21eb",
+        "    FINAL_NOTICE_SHA256 2f7c99e62b67d5a9eecc61ae7878d35023244d7bdeeb1f375b0073f558344259",
+        "    +1 line (ctrl+t to view transcript)",
+        "",
+        "\u2022 Corrected provenance in the SOAP snapshot and owning plan: Merge\u2019s follow-up is agent operational direction; human requirements explicitly cite F0.",
+        "",
+        "  Refrozen and wrote the final corrected ready notice (src/prototype/coordination/outbox/finite-functions-ready-provenance-final.txt). All +301 implementation/",
+        "  fixture/runner lines and test logs remain byte-identical. No rerun, accepted changes, new Goal, or duplicate worker.",
+        "",
+        "  Worked for 6m 44s \u2022 19:14",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/sort-library \u00b7 Start authorized sort worker                 Goal achieved (24m)    \u26a0 1 warning \u00b7 f2 to view"
+      ],
+      "stopped_bounded": true
+    },
+    "Tests": {
+      "pane": "%12",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/scheduled-status-20261004T014422/Tests.txt",
+      "capture_sha256": "2229c306d85a2b5ffbe99648a56ebfdeef8fe2c867a9db52c6f481d6cc7e4be7",
+      "last_status_lines": [
+        "",
+        "  Original/reduced outcomes match; ten injection checks pass. All 47 completed combined recipes pass. E9/E10 controls, strict3 and unsafe E11 failures remain",
+        "  preserved. The unchanged derived-LT run is recorded as incomplete after its 600-second cap. Wall/RSS savings are unmeasured.",
+        "",
+        "  Exact Merge handoff and full per-file counts (src/prototype/coordination/outbox/test-suite-20261003-final-handoff.txt) are frozen. Git staging is blocked by",
+        "  read-only shared metadata. Accepted files remain untouched; Issue59 stays open.",
+        "",
+        "  Goal complete; elapsed time approximately 38 minutes.",
+        "",
+        "  Worked for 38m 29s \u2022 22:34",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/test-suite \u00b7 Simplify and deduplicate tests                 Goal achieved (37m)    \u26a0 1 warning \u00b7 f2 to view"
+      ],
+      "stopped_bounded": true
+    },
+    "Issues": {
+      "pane": "%14",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/scheduled-status-20261004T014422/Issues.txt",
+      "capture_sha256": "558c8b7ce491c2ff783c4ac2775589b8760b2b1d2c4bb309cf084d57317b1567",
+      "last_status_lines": [
+        "  coordination. No new semantic/accepted policy.",
+        "",
+        "",
+        "\u2022 I\u2019ll confirm the completion accounting. The audit remains stopped, and Root has resumed coordination.",
+        "",
+        "\u2022 Goal confirmed complete. Recorded usage: 216,461 tokens, 23m 50s.",
+        "",
+        "  The audit remains stopped and available for follow-up. Root owns coordination; no further dispositions will run.",
+        "",
+        "  Worked for 26s \u2022 22:31",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/issue-audit \u00b7 Record audit ownership receipt                Goal achieved (23m)    \u26a0 1 warning \u00b7 f2 to view"
+      ],
+      "stopped_bounded": true
+    }
+  },
+  "issues": [
+    {
+      "number": 61,
+      "title": "C backend residuals: selected-export admission, Identity and native lowering",
+      "updatedAt": "2026-10-03T13:11:54Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/61",
+      "body_sha256": "41872697f2356c60e77c7f4d5c481705f03d5d3ae5d83618194b090a76e7451a"
+    },
+    {
+      "number": 59,
+      "title": "Audit verification debt: semantic test inventory, lifecycle and implementation progress accounting",
+      "updatedAt": "2026-10-03T13:08:50Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/59",
+      "body_sha256": "7c8c563717262b330d0bcb2fdb7ec3454b206d223e9461c7fcbe518b74e07657"
+    },
+    {
+      "number": 57,
+      "title": "Correct Function Graph named-binding polarity and define explicit syntax migration",
+      "updatedAt": "2026-10-03T13:08:54Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/57",
+      "body_sha256": "5cc775e0494e7fe6b2c53cb5da989ad857f0f16afa794d24827db6a997cb0279"
+    },
+    {
+      "number": 56,
+      "title": "Recover and revalidate checker head/readback optimizations with Effort and persistence gates",
+      "updatedAt": "2026-10-03T13:08:58Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/56",
+      "body_sha256": "52d4c5e60b5b499ff1d99b64d5ac4367bbd5119b2beb9a245f17ce9fbc3afd2f"
+    },
+    {
+      "number": 52,
+      "title": "Design: checked equality reuse before adaptive compilation and equality saturation",
+      "updatedAt": "2026-10-03T13:09:06Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/52",
+      "body_sha256": "a270ef5933cab792d4e511eed2561b3bcffde014f13ffbf757e08df9a254c806"
+    },
+    {
+      "number": 51,
+      "title": "Audit follow-up: reproducible size and semantic-owner anti-regression gates",
+      "updatedAt": "2026-10-03T13:09:01Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/51",
+      "body_sha256": "b52ce7f7e49279990ba5b8b53a739436d153b62f6af8c6feef75a829bd7e589e"
+    },
+    {
+      "number": 47,
+      "title": "Design runtime relevance and safe compilation admissibility for partial artifacts",
+      "updatedAt": "2026-10-03T13:09:14Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/47",
+      "body_sha256": "bb2b1b52fbdbdba494a4a5a5cb369bb4b10500a0a1ec577a271a3aa147af6dd8"
+    },
+    {
+      "number": 43,
+      "title": "Open question: computation-level general recursion, loop syntax and logical boundaries",
+      "updatedAt": "2026-10-03T13:09:10Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/43",
+      "body_sha256": "ecd1df90dd66e3b3f4df97abceb23eaf8047e03f74932c4a8982d3ace3fa9f9e"
+    },
+    {
+      "number": 41,
+      "title": "Design audit: finite-container sorting, lawful views and position permutations",
+      "updatedAt": "2026-10-03T13:09:17Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/41",
+      "body_sha256": "e539925b68f41a5e3b22f95f8b53f763aec5d86f10f1a190fbdd984cb092e72c"
+    }
+  ],
+  "open_PRs": [],
+  "fresh_issue_bodies_dates_exact_prior": true,
+  "issues_json_sha256": "fbae87f585dfc4611497d8cdb89edde9a5dac570de7844ba1a8a260287cf0d53",
+  "timer_PID": 1674731,
+  "timer_capture": "    PID                  STARTED COMMAND\n1674731 Sat Oct  3 18:31:03 2026 node /home/repyt/workspace/a-program/src/prototype/coordination/watch_core.cjs 01a100b3-1d83-7090-bbf6-62544c39ec4b --new-only --heartbeat-seconds=21600 --heartbeat-first-seconds=15197.714 /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/coordination/outbox /home/repyt/workspace/a-program-workers/performance/src/prototype/coordination/outbox /home/repyt/workspace/a-program-workers/c-backend/src/prototype/coordination/outbox /home/repyt/workspace/a-program-workers/verification-audit/src/prototype/coordination/outbox /home/repyt/workspace/a-program-workers/sort-library/src/prototype/coordination/outbox\n",
+  "next_review_UTC": "2026-10-04T07:44:22.084Z",
+  "no_worker_resumed_duplicated_or_mode_changed": true,
+  "C21": {
+    "task": "eaf5755914a44a855069321b4c64330eb4ca5b03",
+    "prototype_Main_merge": "8c00c80f97f7a7413b4b088efc94999fe58d33ff",
+    "current_report_sha256": "942062b66cc6911078ecfa108bdea9eb1a35dca0053d16b06751ae2a9fc78db1",
+    "receipt_sha256": "9e6026a300bae59c8d6f78df5e27d272a994b2d12692408cf7d0efff20dd3eae",
+    "exact16_task_other15_Main": true
+  },
+  "C22": {
+    "notice_sha256": "8699521e85c1f1f2076b86b72c19061749e23eac283416c8376e526141beecc5",
+    "initial_input9_live_comparison": {
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/scratch/nested_captures/fixture.p": {
+        "initial_sha256": "48f6ef559f3ed8bd11c9998b8975af5fc26cfc89c61062dce6821e95fc2113d0",
+        "live_sha256": "57cdc408e0b3bcb029d8c65e17addbb22344cba9ac427db2225245d71f54c3f5",
+        "equal": false
+      },
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/scratch/nested_captures/probe.aplink": {
+        "initial_sha256": "36108c4ed8d598f1829ff6aef699cb30a46f77a9cc4f283616e55c10c40f9d0f",
+        "live_sha256": "878d0ac24042e7e0ec92b796376c057596bfbd937b4cb32c32138342a11c5e82",
+        "equal": false
+      },
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/lower/scalar.c": {
+        "initial_sha256": "30acb4b3835b73caa6e45e8fb9055cc8e3b5a481e152a2c97c1dab3e921b39ee",
+        "live_sha256": "30acb4b3835b73caa6e45e8fb9055cc8e3b5a481e152a2c97c1dab3e921b39ee",
+        "equal": true
+      },
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/lower/representation.c": {
+        "initial_sha256": "2fd9d63cfc565bdc1ce326369d59a3c5eb09ab10597de2778adfb8cf32fbd76f",
+        "live_sha256": "2fd9d63cfc565bdc1ce326369d59a3c5eb09ab10597de2778adfb8cf32fbd76f",
+        "equal": true
+      },
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/fixtures/native_quicksort.p": {
+        "initial_sha256": "7f06e2dc765e48ca2b51f17c0275322d346ac16519848542818ebf74792e538e",
+        "live_sha256": "7f06e2dc765e48ca2b51f17c0275322d346ac16519848542818ebf74792e538e",
+        "equal": true
+      },
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/fixtures/native_quicksort.aplink": {
+        "initial_sha256": "7a12a091bf9a3d6b62c8ab0161c077aaa142da2b37ed212e480b5d2c47bd4005",
+        "live_sha256": "7a12a091bf9a3d6b62c8ab0161c077aaa142da2b37ed212e480b5d2c47bd4005",
+        "equal": true
+      },
+      "/home/repyt/workspace/a-program-workers/c-backend/tests/fixtures/sorted-proof-provider.p": {
+        "initial_sha256": "a674b893cd5d0dc1899e79238352c6167a536876393ae7f53b2a9de602b647e6",
+        "live_sha256": "a674b893cd5d0dc1899e79238352c6167a536876393ae7f53b2a9de602b647e6",
+        "equal": true
+      },
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch21-recursive-captures-20261004/build/a-to-c": {
+        "initial_sha256": "0e9b3f855599f8fe64ccec9928575e3d5232246b527d3ec3b21741dc065d3827",
+        "live_sha256": "0e9b3f855599f8fe64ccec9928575e3d5232246b527d3ec3b21741dc065d3827",
+        "equal": true
+      },
+      "/tmp/a-program-merge-c9-e8-gates-20261003/build/pointer-check": {
+        "initial_sha256": "6e3407fc7f6ba8dffa0642217f00b6d2ec8454e32dc41eac6b27cce30518cd44",
+        "live_sha256": "6e3407fc7f6ba8dffa0642217f00b6d2ec8454e32dc41eac6b27cce30518cd44",
+        "equal": true
+      }
+    },
+    "probe_results_sha256": "a2698ad2f28e3611128aae12dafbf8a43491b8d8689ad56b92b91185bcd050db",
+    "initial_raw_pins": {
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_known-checked.argv.json": "aaa23c75bb25635b595220f509883cac193ab110997bac9ca7632f5bde5c563f",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/admit.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_known.aplink": "26e13009d712c74c0b33d22d5abe08cb8412be01f9cf1dfb373b13a50839ae3a",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/source-reference.out": "40818e85d807e8d99645101eabd585472d9c5f0459dd7d4999bc778e837c304a",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count-trusted.err": "1767b9371e8b3b3d7e86de415121cc9b45fada57f8681bf7b01faed09ec3abd7",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count-trusted.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count-checked.argv.json": "0efd0d8ea144e1bd2ebb71b65c6d20b939fd9925ec5c9afbf3e43865773ba3e8",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/initial-inputs.json": "9df7572108c1cac690c32918fc6e52f0f48db777f555fa6f20a89631602c166b",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_known-trusted.argv.json": "a137d7103b0dfc6d51f25752d7e4949506bfa65f7b8cb4c346d976e47d829c90",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_sum-trusted.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/admit.out": "da29ce183e4744bc8ba14a0bb8c5f2be07529ad6b4c29108732d1b9625cd41e8",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum-checked.err": "e8773f90cb27d81ca007726282e6094278fdbac502c8de780acbf6c312ab0289",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_known-checked.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/loaded-reference.err": "605f40c03dd9a5775e20d33d4fccf06300f938b73b491e27974b4e3d1f4d5cde",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum.aplink": "a24cfb166515f4e79da60204be15cdae90f4e97122d8581165b57329a7ed3028",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum-trusted.err": "1767b9371e8b3b3d7e86de415121cc9b45fada57f8681bf7b01faed09ec3abd7",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_known-trusted.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/image.sha256": "ac6d18301702e591b408348248612a780c583c2539f58df5658a6443f7b9d27d",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/loaded-reference.out": "40818e85d807e8d99645101eabd585472d9c5f0459dd7d4999bc778e837c304a",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum-trusted.argv.json": "f3f0d9b3c440ea9c1e3859bc223becbb115a99290d662c2b68667bd0438d58ec",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count-checked.err": "e8773f90cb27d81ca007726282e6094278fdbac502c8de780acbf6c312ab0289",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_sum.aplink": "ac9d4eff1cd87bcafd532cc68181fb8c18dda5e005d7a2781fd84ec2dee61f03",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/source-reference.err": "b38869d6af70fc0479fc630ae1945ba3e2302d70719e6f1dfa0b0b80abee0d47",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_sum-checked.argv.json": "349084a3aeb23993bf71ea2d11b25d6ac7ac1fa3a258c3c8dbd21f163da60fd2",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_sum-trusted.err": "e85ea15a63757bd06f37e613f51712b94c113b658d09f5f4fcce7f8c93cffb80",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum-checked.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count-trusted.argv.json": "1bb9af4b940196c2d02c6df228c385fa3d48995a7d9775ea2b2c51bdf86adaa2",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/c21-task-publication.json": "ec524f9d5c0d6be58cc605c9c88e6e9337a9a97de382398c012f3c02daca13dd",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_known-checked.err": "3c25592e9382a1454c4a46649c70e09792a4c2242831fdcadae531f52e59cafa",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/admit.argv.json": "7cd6753c2bfb91a76fc41b4d47bb228d7954a5117763c97cc242169e54c13734",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum-checked.argv.json": "8b3d09f8c00fff2fce9671bd3d5401ddaf067490ff5feab9b2959ee7dbd8899f",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested.a": "4f640adbfce41c4e2981515b32f0216dff9d18eed3333817bab1b821f3024aea",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_sum-trusted.argv.json": "85aca50c6198e932c015f1b2e12e7bd9757a18fb9b3a34d03f4bf1ebf134d2cd",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/loaded-reference.argv.json": "74a193b3c6a232c254edc2c567e7aededb9959903ae64818d07918b4f91de8b9",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_sum-checked.err": "3c25592e9382a1454c4a46649c70e09792a4c2242831fdcadae531f52e59cafa",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_known-trusted.err": "e85ea15a63757bd06f37e613f51712b94c113b658d09f5f4fcce7f8c93cffb80",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count-checked.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/source-reference.argv.json": "1f8d88049b2b858f2929b3bd2426c7b6053b8a63cf200f540597a46355c62f7e",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count.aplink": "ae351f3acf922198f80c6535e477949e1c201a71071f69588435797bc8f13070",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_sum-checked.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/probe-results.json": "a2698ad2f28e3611128aae12dafbf8a43491b8d8689ad56b92b91185bcd050db",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum-trusted.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-count-trusted/link.json": "d78921d310387f7cda47c93960b1b6b16f3b498f8c91ceb30df1ecc4989cacc8",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-count-trusted/component.c": "18aca152fad995999f64aee3908825870a2f5a7e0637af832f9efc0491af8dca",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-count-trusted/component.h": "a3fdd7a015968775515d1fd292dab5c98cf0efad9ae23602cc64cff9724c7bd8",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-nested_known-trusted/link.json": "ad48a2d6c74ba3e09a36586d64f1eef58777c3ccbdbec30f116784f716b728ae",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-nested_known-trusted/component.c": "3257f8f34a9d581ef01a95bec2d8c7565ab1d84050c17ad3e517964665ff17a4",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-nested_known-trusted/component.h": "91b2f007fee9819fac93de2f541ac0a5d986da2d88a22cdd117b49209457f53e",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count-trusted/link.json": "d78921d310387f7cda47c93960b1b6b16f3b498f8c91ceb30df1ecc4989cacc8",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count-trusted/component.c": "18aca152fad995999f64aee3908825870a2f5a7e0637af832f9efc0491af8dca",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count-trusted/component.h": "a3fdd7a015968775515d1fd292dab5c98cf0efad9ae23602cc64cff9724c7bd8",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count-checked/link.json": "43a4f18deae4a0787ae4bcf81ae6d0212f969ef84571ba2f117b0ff18b049ed3",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count-checked/component.c": "18aca152fad995999f64aee3908825870a2f5a7e0637af832f9efc0491af8dca",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count-checked/component.h": "a3fdd7a015968775515d1fd292dab5c98cf0efad9ae23602cc64cff9724c7bd8",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum-checked/link.json": "7bf03c71acc1f57426a895f1072f01333d799f01b600ebc5834eca9e29205e89",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum-checked/component.c": "2643f64a9caa4b1d52547b6fd29a545fb2b28ecb16a9a9224ec7399186e9b5e1",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum-checked/component.h": "1ad4f89e789cfaf6c9d767e4fdb73a3ebe12a9062b952cb79b4aa31ce2ff23c7",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-branch_sum-checked/link.json": "7bf03c71acc1f57426a895f1072f01333d799f01b600ebc5834eca9e29205e89",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-branch_sum-checked/component.c": "2643f64a9caa4b1d52547b6fd29a545fb2b28ecb16a9a9224ec7399186e9b5e1",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-branch_sum-checked/component.h": "1ad4f89e789cfaf6c9d767e4fdb73a3ebe12a9062b952cb79b4aa31ce2ff23c7",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-count-checked/link.json": "43a4f18deae4a0787ae4bcf81ae6d0212f969ef84571ba2f117b0ff18b049ed3",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-count-checked/component.c": "18aca152fad995999f64aee3908825870a2f5a7e0637af832f9efc0491af8dca",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-count-checked/component.h": "a3fdd7a015968775515d1fd292dab5c98cf0efad9ae23602cc64cff9724c7bd8",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-branch_sum-trusted/link.json": "9ee8bc31594bda5e4443c7431741ef5715f83d4d0768d8be6f84fe826c7203ab",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-branch_sum-trusted/component.c": "2643f64a9caa4b1d52547b6fd29a545fb2b28ecb16a9a9224ec7399186e9b5e1",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-branch_sum-trusted/component.h": "1ad4f89e789cfaf6c9d767e4fdb73a3ebe12a9062b952cb79b4aa31ce2ff23c7",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-nested_sum-trusted/link.json": "9d2bcbe01604b7ccca2430b6b2620c9b96a67c34e7164466c411d20a5f4407d5",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-nested_sum-trusted/component.c": "945cab7e8608c50834a40858d8802034501c9a20c6d71fa102d13e9add3806f4",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-nested_sum-trusted/component.h": "c1a2beac41410a5dec0ce7bc2f70080e455d0f05c8ec20a6b802b2448316b084",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum-trusted/link.json": "9ee8bc31594bda5e4443c7431741ef5715f83d4d0768d8be6f84fe826c7203ab",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum-trusted/component.c": "2643f64a9caa4b1d52547b6fd29a545fb2b28ecb16a9a9224ec7399186e9b5e1",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum-trusted/component.h": "1ad4f89e789cfaf6c9d767e4fdb73a3ebe12a9062b952cb79b4aa31ce2ff23c7",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-nested_known-checked/link.json": "1494dd9d48336ba3b3dee5854936eefb4ce9360cf8bc542614215536f1f83596",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-nested_known-checked/component.c": "3257f8f34a9d581ef01a95bec2d8c7565ab1d84050c17ad3e517964665ff17a4",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-nested_known-checked/component.h": "91b2f007fee9819fac93de2f541ac0a5d986da2d88a22cdd117b49209457f53e",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/emit-source.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/admit.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/source-reference.out": "71e2b495df7a0ac0e52d25a38a1a44716533ceec6d937cf0dad38774b00501e3",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/results.json": "ab97d2e336074a12e4f18713b0b630650fc823c2c73121394d06683111efea76",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/client-O2-build.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/client-O2-build.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/admit.out": "a9596e23fd10746332774ff09e8090b38cf12db9bc25ebe92a8563d5d5d51621",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/loaded-reference.err": "17e9b9df06775753ae503444257b930f889eb4f640defaa4d1039f2ed3ba062c",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/loaded-reference.out": "71e2b495df7a0ac0e52d25a38a1a44716533ceec6d937cf0dad38774b00501e3",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/emit-source.err": "e387a67e7b2599def727f6b835cf0d5b2e0c72d4bad85c9a57f98fdbbfd7aa3d",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/source-reference.err": "559a450871f8f882d52e4eda2d1417feae5d5ad9416411a74a3b188fb3012bce",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/client-O2": "cb280e346228224eee3bbb54d27b510e20467d5ffba8cf818f95e9741a88f3d9",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/client-O2.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/client-O2.out": "71e2b495df7a0ac0e52d25a38a1a44716533ceec6d937cf0dad38774b00501e3",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/nested.a": "5d16709c52b85c3363ef0bcbb27d9ea15db2a2e04a77628806c6f44170753822",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/source.aplink": "91b785917746497c04ff2b397d2ccc25204f12ed8d42ed6599228e6f0fee02eb",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-nested_sum-checked/link.json": "c2c31195cc1185977df809fbbe3ebf6840dac2826da3eac4091a76d1b4139802",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-nested_sum-checked/component.c": "945cab7e8608c50834a40858d8802034501c9a20c6d71fa102d13e9add3806f4",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/trial-nested_sum-checked/component.h": "c1a2beac41410a5dec0ce7bc2f70080e455d0f05c8ec20a6b802b2448316b084",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/source/link.json": "4809899b7c7a7dfb9a715b00dc8deed3f6b68a0bfbdcf374759cfae6d762dbfb",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/source/component.c": "46ed92bd6716588f0da304770a93f8de3b5446b1b709f9c6395f7895d3d30b5f",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/expanded/source/component.h": "043bbd3ae615fa42fe5d94412eced0111cd2e74bd9d1d0495a211c0c129fec2d"
+    },
+    "historical_worker_E8_records": [
+      {
+        "name": "admit",
+        "exit": 0,
+        "argv": [
+          "/tmp/a-program-merge-c9-e8-gates-20261003/build/pointer-check",
+          "--save",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested.a",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/scratch/nested_captures/fixture.p"
+        ]
+      },
+      {
+        "name": "source-reference",
+        "exit": 0,
+        "argv": [
+          "/tmp/a-program-merge-c9-e8-gates-20261003/build/pointer-check",
+          "--run",
+          "reference",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/scratch/nested_captures/fixture.p"
+        ]
+      },
+      {
+        "name": "loaded-reference",
+        "exit": 0,
+        "argv": [
+          "/tmp/a-program-merge-c9-e8-gates-20261003/build/pointer-check",
+          "--load",
+          "--run",
+          "reference",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested.a"
+        ]
+      },
+      {
+        "name": "count-checked",
+        "exit": 0,
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch21-recursive-captures-20261004/build/a-to-c",
+          "--link",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count.aplink",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count-checked"
+        ]
+      },
+      {
+        "name": "count-trusted",
+        "exit": 0,
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch21-recursive-captures-20261004/build/a-to-c",
+          "--trust-image",
+          "--steps",
+          "0",
+          "--link",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count.aplink",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count-trusted"
+        ]
+      },
+      {
+        "name": "branch_sum-checked",
+        "exit": 0,
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch21-recursive-captures-20261004/build/a-to-c",
+          "--link",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum.aplink",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum-checked"
+        ]
+      },
+      {
+        "name": "branch_sum-trusted",
+        "exit": 0,
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch21-recursive-captures-20261004/build/a-to-c",
+          "--trust-image",
+          "--steps",
+          "0",
+          "--link",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum.aplink",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum-trusted"
+        ]
+      },
+      {
+        "name": "nested_sum-checked",
+        "exit": 4,
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch21-recursive-captures-20261004/build/a-to-c",
+          "--link",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_sum.aplink",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_sum-checked"
+        ]
+      },
+      {
+        "name": "nested_sum-trusted",
+        "exit": 4,
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch21-recursive-captures-20261004/build/a-to-c",
+          "--trust-image",
+          "--steps",
+          "0",
+          "--link",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_sum.aplink",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_sum-trusted"
+        ]
+      },
+      {
+        "name": "nested_known-checked",
+        "exit": 4,
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch21-recursive-captures-20261004/build/a-to-c",
+          "--link",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_known.aplink",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_known-checked"
+        ]
+      },
+      {
+        "name": "nested_known-trusted",
+        "exit": 4,
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch21-recursive-captures-20261004/build/a-to-c",
+          "--trust-image",
+          "--steps",
+          "0",
+          "--link",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_known.aplink",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_known-trusted"
+        ]
+      }
+    ],
+    "status": "Separate private nested Nat fold probe; initial11 records/source-loaded outputs inspected, not fresh Root execution, frozen READY, current qualification or publication.",
+    "boundary": "C21 emitter accepts count/nonrecursive branch capture; nested outer induction-result capture directly/through known lambda refuses4 checked/trusted. No source/producer defect established. Target-local scratch implementation remains separate; native indexed/callable Acc/QuickSort/full61 open.",
+    "C20_release_consumed": true,
+    "future_trials_excluded_from_C21": true
+  },
+  "Performance": "Original active owner continues private historical visible-root attribution; current overhead/byte feedback queued, no acknowledgement claimed, no cost slot or runtime publication.",
+  "Job": "Original service-stalled, no resume/new turn. Current baseline5/8 byte reproduction in durable original-owner inbox, no acknowledgement claimed; remaining E19 full/current qualification pending.",
+  "MEM10": "Terminal review-only/HOLD, historical51/1168 plus fresh unchanged-current5/8 inert byte failures. Current8bb29f3a prepared only; owner extents +16 each. No waiver/current runtime/cost publication.",
+  "bounded_workers": "Static/Sort/Tests/Issues remain achieved/stopped; Surface/AIze historical delivered/stopped.",
+  "Root_Goal": "Service blocked/incomplete; freshly read, no resume/completion.",
+  "protected9_exact": true,
+  "accepted_source_test_build_changes": false,
+  "comparative_cost_slot": "none held or granted",
+  "desk_reporting": "One consolidated durable report covers C21 delivery, C22 private action, known-root attribution and this independent scheduled review. No duplicate direct message.",
+  "scheduled_due_UTC": "2026-10-04T01:44:22.084Z",
+  "known_roots_attribution": {
+    "notice_sha256": "21294e006ab25d34657cefbb1c5f1c149439ead61b6429170f588ecd58124b27",
+    "Root_review_path": "src/prototype/performance_followup/known-roots-pair-root-review.json",
+    "Root_review_sha256": "67a5bde145004c18f5b511c6502cbe9809e3e13a1c0cbf1ab962e1d9dbd2e25f",
+    "immutable31_all_hashes_exact": true,
+    "source256_and9_input_pins_exact": true,
+    "all8_raw_groups_counts_recomputed": true,
+    "MEM9_release_consumed": true,
+    "postfreeze_child_check_path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem8/private/known_roots_pair_v2_child_check_20261004.json",
+    "postfreeze_child_check_sha256": "d19745b7e68ebf46b83016822e2c65384b42b335ac69e50f715c9dcf9947f366",
+    "postfreeze_process_guard_failure_retained": {
+      "scope": "Post-freeze process inspection; attribution31 remains immutable",
+      "original_inspection_exit": 1,
+      "original_failure": "The broad absolute-command filter matched the inspecting /bin/bash shell because its script text contained the checker path; no actual workload was identified.",
+      "corrected_inspection_exit": 0,
+      "corrected_method": "Match the executable basename/path for GDB and pointer-check, and the exact driver command; do not search shell script text as an executable.",
+      "live_probe_workload_children": 0,
+      "runtime_or_attribution_failure": false,
+      "frozen_manifest_sha256": "1f32fbb3a6364c5f258672af5e2c273d499d40049a9bc83fa08c141b8974ea93"
+    },
+    "not_current_Main_or_dead_memory_gain": true,
+    "MEM10_HOLD_or_cost_policy_unchanged": true
+  },
+  "C21_release_delivery": "Submitted once to original C pane, pending next-tool boundary; no consumption claimed without receipt.",
+  "Performance_feedback_delivery": "New attribution/current-byte feedback submitted once to original pane, pending tool boundary; earlier feedback queued, no acknowledgement claimed."
+}

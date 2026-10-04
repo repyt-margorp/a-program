@@ -1,0 +1,127 @@
+{
+  "notice_sha256": "21294e006ab25d34657cefbb1c5f1c149439ead61b6429170f588ecd58124b27",
+  "freeze_path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem8/private/known_roots_pair_v2_20261004",
+  "manifest31": {
+    "analysis.md": "6d0269a2ebce765925d063a666bef3e01d88734ba329ba681e2cf4cd8208bf37",
+    "capacity-reproduction.json": "a8bd274626ceb295df381880b0ea81ee6cc7a28606a843a01a7df307cc4e3bd8",
+    "freeze_visible_roots_v2.py": "e27476fbd0365029f5b2d20fe6f7e380df2f95f4e521479814c8b34055be7f5d",
+    "inspect_visible_roots_v2.py": "3f3c3e38cd7447ccb223b3ae1b0a23475affb3581c1a0699679cbfdb7d1c5fa4",
+    "list-done-candidate-capacity.json": "caf4bf1a2d386d5c6bead36015016c47d9a91fd186d1dcc4acb628dca1778e2e",
+    "list-done-candidate-visible.json": "f55f657a749f73aba030f5981cef0dda0cf83721232c290fd161e0f5b49fe8de",
+    "list-done-candidate.log": "fbc62271d7469a7ea7d8de7ad84bd15b1d252ffe4088a6db7a3e65ed92387074",
+    "list-done-parent-capacity.json": "cd38a643ee21f81560781e439a0448cef678a6afa6654826b43ca0292a9dd4a7",
+    "list-done-parent-visible.json": "33825bcfd80752199a2a7fdd29a87f210b9ea69cbebf662cf81aa83a946777fb",
+    "list-done-parent.log": "8b2e4d3d622b9220cb788f50ee3d7e23ed8866fbf025541319e6da7728f7df36",
+    "live.json": "559a4abd1a5813b50dd966ab122af73fd97712fbba6b459123c822290032e858",
+    "summary.json": "4d5d9b85e1d3788144161a628a4de4e4de41f3675f0b7d34e399fbfefa502273",
+    "trees16-cut5M-candidate-capacity.json": "f6b7ba5fe55c1b11c62b1b461028f1be6abbb6eaf3e4be33b2f543ab5eb76740",
+    "trees16-cut5M-candidate-visible.json": "0727761bf3e2faff7267a2390d0da0f77b2544c6bb43025e4c256dbd88c5b129",
+    "trees16-cut5M-candidate.log": "4724e4efdb67a7b0213cfd21a2e66dfdf29c531ca63820faab319f2afa364357",
+    "trees16-cut5M-parent-capacity.json": "c5c3c9993a325e10bf1012057ff447ef176752176750297695f56157e5811565",
+    "trees16-cut5M-parent-visible.json": "893584b745279339412f3f1c474ba8f4f27ff171f53d13da17f1f29b7a12ebf5",
+    "trees16-cut5M-parent.log": "d18e5a7065434de7c4214320107aa01d2f0f41a7b379c962546c8815bdc26997",
+    "trees4-cut100K-candidate-capacity.json": "71f474675adc29fc34362d8fc412a082e21349b09c9ce51ce699725bae1cb1eb",
+    "trees4-cut100K-candidate-visible.json": "93301e7fe2971c13200a1b12372401677c82bb78cd88cd78717f851254732bca",
+    "trees4-cut100K-candidate.log": "d29455673320ab70bed56355a5e5c395db37e802db446e3981e636b7f6afb9cb",
+    "trees4-cut100K-parent-capacity.json": "073586b6c567f287a07025226bf17c43fe32a5b692e924a78619a4a2ce6c5d1d",
+    "trees4-cut100K-parent-visible.json": "4bc060bb13b567f7e54f673c5fdbbeee1af8f70ac31347663dc123f11068107e",
+    "trees4-cut100K-parent.log": "af15df360db1de5d3c055a14c0f2ce288479d1939154e1fb53b5ddd99a2fb668",
+    "trees4-cut2M-candidate-capacity.json": "1015980134b798d4b46a71851252b55dfa014d360741c947633855cee3eaf1b4",
+    "trees4-cut2M-candidate-visible.json": "4eafb48e9cfbfa1dde08d06d9c1db8a36d63cf283649a4e4458351a57760b352",
+    "trees4-cut2M-candidate.log": "e969bc872f434aa9d73cfcf473d9471e5eefcfe1f501454fac7767d0b9f97043",
+    "trees4-cut2M-parent-capacity.json": "02070787d3fb55063054b007bd51318c4706c5eed3355ff63fe59ca1ee1a9ae3",
+    "trees4-cut2M-parent-visible.json": "03eb59f223779597e8525be24e9aeff991f9d1ae3c171c53e5c68d80906e5dd3",
+    "trees4-cut2M-parent.log": "3c9830b069b6a396c6f1790797216a0f6bcfa0b978c3114185ee7d961d5bbc23",
+    "visible_roots_v2.gdb.py": "5c6dffa2076e7c12718589c8113914a9cc526d368840355acecc300bf71eb18d"
+  },
+  "summary_sha256": "4d5d9b85e1d3788144161a628a4de4e4de41f3675f0b7d34e399fbfefa502273",
+  "all31_hashes_and9_helper_binary_input_pins_exact": true,
+  "historical_parent_candidate_source128_all256_files_exact": {
+    "parent": "2344ad41d6db32ceddb5dbc9419aa8da97fcaa00253e075f5ff96b8f72f93b13",
+    "candidate": "962149cf349dc1ce9176b7d2a001438fbce8d5615d6eb817110023c10c43fb29"
+  },
+  "worker8_GDB_terminal_records_hashed_recomputed": true,
+  "fresh_Root_debugger_execution": false,
+  "recomputed_comparisons": {
+    "list-done": {
+      "charged_steps": 1915,
+      "visible_environment_nodes": 0,
+      "visible_argument_nodes": 0,
+      "known_root_layout_bytes": 0,
+      "opaque_roots_not_traversed": {},
+      "parent_machine_capacity_bytes": 0,
+      "candidate_machine_capacity_bytes": 0,
+      "candidate_unpublished_slot_bytes": 0,
+      "parent_typed_validations": {},
+      "candidate_typed_validations": {}
+    },
+    "trees4-cut100K": {
+      "charged_steps": 100000,
+      "visible_environment_nodes": 12702,
+      "visible_argument_nodes": 230,
+      "known_root_layout_bytes": 411984,
+      "opaque_roots_not_traversed": {},
+      "parent_machine_capacity_bytes": 1409024,
+      "candidate_machine_capacity_bytes": 1179648,
+      "candidate_unpublished_slot_bytes": 192,
+      "parent_typed_validations": {
+        "argument": 1,
+        "environment": 4
+      },
+      "candidate_typed_validations": {
+        "argument": 1,
+        "environment": 4
+      }
+    },
+    "trees4-cut2M": {
+      "charged_steps": 2000000,
+      "visible_environment_nodes": 77755,
+      "visible_argument_nodes": 32,
+      "known_root_layout_bytes": 2488928,
+      "opaque_roots_not_traversed": {},
+      "parent_machine_capacity_bytes": 7929856,
+      "candidate_machine_capacity_bytes": 6586368,
+      "candidate_unpublished_slot_bytes": 24,
+      "parent_typed_validations": {
+        "argument": 1,
+        "environment": 19
+      },
+      "candidate_typed_validations": {
+        "argument": 1,
+        "environment": 19
+      }
+    },
+    "trees16-cut5M": {
+      "charged_steps": 5000000,
+      "visible_environment_nodes": 238815,
+      "visible_argument_nodes": 253,
+      "known_root_layout_bytes": 7648152,
+      "opaque_roots_not_traversed": {},
+      "parent_machine_capacity_bytes": 24330240,
+      "candidate_machine_capacity_bytes": 20152320,
+      "candidate_unpublished_slot_bytes": 48,
+      "parent_typed_validations": {
+        "argument": 1,
+        "environment": 59
+      },
+      "candidate_typed_validations": {
+        "argument": 1,
+        "environment": 59
+      }
+    }
+  },
+  "all8_prior_arena_groups_exact": true,
+  "source_observer_review": "Existing capacity breakpoint, actual DWARF offsets and read-only bulk arena decoding; sampled typed-pointer checks. Spare fresh slots counted but not traversed. No inferior calls/runtime mutation; no new owner API.",
+  "assessment": "Known linked layout is dominated by environments at the historical Tree16 5M cut. The pair retains identical enumerated graphs with lower candidate capacity. Prioritizes lifetime research within existing scope but establishes neither current Main benefit nor dead bytes/safe deletion size. Opaque/external captures omitted; observed built-in pure policies and null state do not create no-escape authority.",
+  "MEM9_release_consumed": true,
+  "MEM10_hold_remains": true,
+  "limits": [
+    "Historical pair and explicit cuts, not current Main/global peak/RSS/time.",
+    "Known graph roots only: opaque state and external policy captures are uncounted.",
+    "Capacity minus known layout is not dead storage or a recycling authorization.",
+    "Existing GDB capacity helper plus bulk read-only memory; no inferior calls/runtime wrapper.",
+    "MEM10 byte failures remain unwaived; this observation does not qualify runtime integration."
+  ],
+  "comparative_cost_or_runtime_publication": false,
+  "accepted_adoption_or_Goal_completion": false
+}
