@@ -21,6 +21,12 @@ unfinished SE implementation or the running performance promotion.
 
 ### Subjective (User)
 
+Provenance correction relayed by the inquiry desk, 2026-10-04:
+the earlier human original was “別に旧形式は読めなくていいよ” (original date
+unavailable). English translation: old formats do not need to remain readable.
+The 13:53 timestamp above is relay/review time, not a new human decision.
+The separate 12:58 request is an audit request only.
+
 2026-10-04 13:53 UTC, English paraphrase of the human format permission
 reaffirmed by inquiry desk019ebfae: old formats may be dropped. This does not
 authorize accepted runtime changes from the audit request.

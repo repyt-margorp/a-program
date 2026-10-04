@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: selected approved Performancefc52755b accepted/pushed; metadata551eecca remote exact/protected9 preserved. Human Evidence/Occurrence static audit report45109a85/all34 pins/all53 rules reviewed; coherent prototype migration remains. C38 source append42 plus sealed Acc63/partition86 verified statically on oldE8; current qualification/publication pending. Performance original full acceptance running; expired cost request no grant/sample. All strict/raw/full/cost and broader issue criteria remain;13:44 all-owner review complete, schedule/Goals unchanged.
+Status: selected approved Performancefc52755b accepted/pushed; metadata551eecca remote exact/protected9 preserved. Human Evidence/Occurrence static audit report45109a85/all34 pins/all53 rules reviewed; coherent prototype migration remains. C38 source append42 plus sealed Acc63/partition86 verified statically on oldE8; current qualification/publication pending. Original acceptance363 terminal0/current source, omitted new4 separately qualified by Root; fresh drain request pending/no grant/sample. All strict/raw/full/cost and broader issue criteria remain;13:44 all-owner review complete, schedule/Goals unchanged.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -26,6 +26,23 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
+
+2026-10-04, superseding latest acceptance scope: [Root independent review](../src/prototype/coordination/reviews/20261004-performance-full-acceptance-static-review.json)
+verifies363 actual recipe exits0, uncensored, all1308 pins and622 accepted
+Git files including all120 runtime files. The private Makefile is the accepted
+original prefix; it omits the adopted appended19-line new4 test integration.
+These363 therefore prove original acceptance on current c206, not executions
+of the additional four target recipes. Root new4 selected promotion evidence
+is separate; do not repeat363 recipes or hide the difference. Earlier running
+status is superseded. Matched elapsed/peakRSS remains unmeasured. A fresh
+bounded safe-drain request is pending, with explicit automatic expiry and no
+measurement authority until all3 actual acknowledgments and an exact grant.
+
+C39 admitted oldE8 probes expose actual scoped Identity transport boundaries
+in accessibleSucc/zero-down; this is no established producer bug or executable
+lowering. [Read-only route](../src/prototype/coordination/reviews/20261004-c39-identity-boundary-route.json)
+passes the concrete checked-view interpretation to the sole Job owner. C may
+continue the Nat Fold recurrence with those manual helpers explicit.
 
 2026-10-04 13:57 UTC, [scheduled all-owner review](../src/prototype/coordination/reviews/20261004-timed-1344-worker-review.json):
 all seven original panes inspected; C/Performance/Job pursue their original
@@ -2764,6 +2781,12 @@ the exact Bend2 implementation before choosing commands or citing claims.
 ## 5. Job/Evidence Implementation Owner
 
 ### Subjective (User)
+
+Provenance correction relayed by the inquiry desk, 2026-10-04:
+the earlier human original was “別に旧形式は読めなくていいよ” (original date
+unavailable). English translation: old formats do not need to remain readable.
+The 13:53 timestamp above is relay/review time, not a new human decision.
+The separate 12:58 request is an audit request only.
 
 2026-10-04 13:53 UTC, English paraphrase of human permission reaffirmed by
 inquiry desk019ebfae: old formats may be dropped. The Evidence/Occurrence audit

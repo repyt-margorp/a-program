@@ -1,0 +1,34 @@
+{
+  "date_UTC": "2026-10-04T14:12:03.005562+00:00",
+  "notice_SHA": "3b32c9da2b400627e47061d1437ac70ee03314c87c47e61f87f4738a209e9e64",
+  "report_SHA": "9c1e66c8141009f0149b2cbe2e483311cbcfd9786e4ce49e576a7a0e2430f757",
+  "report": {
+    "accessibleSucc": "one Acc Fold captures n/proof; fields current/raw down/folded IH; LT Match transports right on step and left on weaken/lift",
+    "admission": 0,
+    "boundary": "target currently lacks representation/action of these checked Identity transports; no missing producer field or frontend failure established",
+    "classification": "read-only admitted typed source inspection, not executable lowering",
+    "inert_machine_and_source_counts": true,
+    "main_native_refusal": "historical C33, not rerun here",
+    "natAccessible": "outer Nat Fold, predecessor/IH; imported accessibleSucc still has same transports; zero unreachable LT branches contain right transport",
+    "pins": {
+      "doc/2026-10-04-C-BACKEND-ACC-ACCESSIBILITY-PLAN.md": "e212e78b15bfca0da2585337fcfe9f8eaca0157bf2fa381ed1415d01401ba8b7",
+      "src/prototype/c_backend/.evidence/epoch39-acc-accessibility-20261004/access.a": "61af0d2cb9a09f0eddc702932a536cfa16ddeb19b2798cf5fb8155600965a48e",
+      "src/prototype/c_backend/.evidence/epoch39-acc-accessibility-20261004/initial-inputs.json": "9c5955cd00b781879ed7ed848bab53523b92d886b7d4195b9223a499df0c833e",
+      "src/prototype/c_backend/.evidence/epoch39-acc-accessibility-20261004/nat_access.out": "d15c15479822e588b60473d6c05523b801109e92ba3d5f65317d860aa14c3e62",
+      "src/prototype/c_backend/.evidence/epoch39-acc-accessibility-20261004/succ_access.out": "fd308b6810fd11198581488c4faf4af306d1f460cf61f43822dee6b504b0b536",
+      "src/prototype/c_backend/.evidence/epoch39-acc-accessibility-20261004/typed-probes.json": "57732c72b00d5a8963742d1807104f40fce6c7384a65c006bd75cf2c0d59313e"
+    },
+    "probe_build": 0,
+    "runtime_manifest": "9ba2b33cbe8bc68eac338073506bcb205f36d20cb0a34f9f88607d975ef07740",
+    "source_probes": {
+      "nat_access": 0,
+      "succ_access": 0
+    },
+    "source_revision": "50cd56b2a52b7e370bc7ecb3436c4993e2e5d6a2"
+  },
+  "copied152_inputs_exact": true,
+  "live_plan_advances": "Initial plan hash retained separately; current Goal/plan may advance",
+  "Root_runtime_replay": false,
+  "classification": "OldE8 admitted-source read-only probe evidence, no current-source executable transport lowering/READY/refinement/bug established",
+  "route": "Existing sole Job owner reads exact checked Identity boundary/classifier/scope views, then returns current existing-owner interpretation to C through Merge; no new producer field/checker/schema or generic erasure."
+}

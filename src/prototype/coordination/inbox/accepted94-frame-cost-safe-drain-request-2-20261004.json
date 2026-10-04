@@ -1,0 +1,11 @@
+{
+  "date_UTC": "2026-10-04T14:14:24.349509+00:00",
+  "type": "Fresh safe-heavy-drain REQUEST, not measurement grant",
+  "slot_id": "accepted94-frame-order-20261004-2",
+  "prior_request": "13:36 expired without grant; preserved unchanged. All earlier ACKs are historical, not sufficient for this new request.",
+  "scope": "Existing user-authorized actual matched elapsed/peakRSS, exact configuration262c46ac/source930997b6->c206/normalO2/all295 pins/36jobs/2variants/3reps/per-run180/total600; no extra jobs/builds/collectors/native targets.",
+  "request": "At the next safe boundary, finish/reap owned heavy work (including any missing-only normative gate), then report actual owned process/handle state through original outbox. Do not start new heavy work after acknowledging until a precise bounded grant/release or expiry. Light coding/read-only audit/Markdown remains allowed; no Goal/session pause/reset, new owner, SIGSTOP or unsafe interrupt. Never launch a collector on this request.",
+  "pending_request_expiry_UTC": "2026-10-04T14:29:24.349509+00:00",
+  "grant_rule": "Root may grant only after all original C/Job/Performance fresh terminal safe acknowledgments plus no Root heavy work and freshly reverified pins. Later grant fixes executor/start/latest-start/harddeadline. Collector only for pinned36, max600s; release promptly at terminal/expiry. If ungranted by pending expiry, release automatically and continue original work; elapsed time is not permission.",
+  "owner_priorities": "Original Job coherent checked-owner prototype migration and C actual accessibility lowering continue as light code/audit. Current original acceptance363 is terminal; adopted missing4 have separate Root qualification, any extra gate must finish first. No accepted code changes or blanket issue/Goal closure."
+}

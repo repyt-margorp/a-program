@@ -1,0 +1,50 @@
+{
+  "date_UTC": "2026-10-04T14:09:32.292460+00:00",
+  "review": "Root independent frozen-manifest/1308 pin/raw recipe/log/accepted Git comparison; no runtime replay",
+  "notice_SHA": "c678c7bf5cf1c1dd2b7f785f0b76f494ef8fc649f2ff1a0144f44870a81ce4a7",
+  "bundle_manifest": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_full_acceptance_20261004/verification.sha256",
+  "bundle_manifest_SHA": "31cb32c7e7e091185ebb62c70cb4702bf85e9bcbff8cba30a0480470c7c6a54d",
+  "bundle_entries": 8,
+  "before_pins_exact_subset_after": 1276,
+  "after_pins_verified": 1308,
+  "accepted_Git_files_exact": 622,
+  "accepted_Git_difference": [
+    "src/Makefile"
+  ],
+  "runtime120_independently_recomputed": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+  "record": {
+    "argv": [
+      "make",
+      "-j1",
+      "-k",
+      "-i",
+      "-f",
+      "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_acceptance_20261004/trial/src/Makefile",
+      "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+      "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_acceptance_20261004/build-candidate-o2",
+      "SHELL=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_verification/make_shell.py",
+      "check-acceptance"
+    ],
+    "cwd": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_acceptance_20261004/trial",
+    "exit": 0,
+    "censored": false,
+    "log_sha256": "a0af7df7fd486aa9522c04f493f950b2b9ba1f7f9a60f6ad868d175f76d09c24",
+    "start_UTC": "2026-10-04T13:38:27.531838+00:00",
+    "terminal_UTC": "2026-10-04T13:55:26.450204+00:00"
+  },
+  "all363_actual_recipe_exits_zero": true,
+  "censored": false,
+  "Make_i": "Aggregate0 under -i is not the result; all363 individual shell exits verify0. Wrapper simply runs /bin/bash and records actual returncode.",
+  "precise_scope": "All original acceptance recipes on current c206 passed. Private Makefile equals exact accepted prefix but omits the appended19-line check-frame-retirement integration, reachable through check-acceptance -> check. Thus this invocation alone is NOT full current adopted Make target including new4 normative tests. Root selected promotion separately tested new4; do not hide the Make difference or infer new4 executions from these363.",
+  "accepted_Make_suffix_missing": "\n# Reentrant, escaped-state, fallback and callback cleanup lifetime controls.\nFRAME_RETIREMENT_TESTS := frame_retirement_test stateless_head_cleanup_test callback_failure_cleanup_test\n$(addprefix $(BUILD)/,$(FRAME_RETIREMENT_TESTS)): $(BUILD)/%: $(SOURCES) $(wildcard $(ROOT)*.h) $(TESTS)/%.c\n\tmkdir -p $(BUILD)\n\t$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(TESTS)/$*.c -o $@\n\n.PHONY: check-frame-retirement\ncheck: check-frame-retirement\ncheck-frame-retirement: $(addprefix $(BUILD)/,$(FRAME_RETIREMENT_TESTS)) $(BUILD)/readback_transport_bounds_test\n\t$(BUILD)/frame_retirement_test\n\t$(BUILD)/stateless_head_cleanup_test\n\t$(BUILD)/callback_failure_cleanup_test\n\t$(BUILD)/readback_transport_bounds_test\n\n# Readback entry order is private metadata; malformed ordinals refuse emission.\n$(BUILD)/readback_transport_bounds_test: $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(HEAD_MACHINE_IO) $(wildcard $(ROOT)*.h) $(TESTS)/readback_transport_bounds_test.c\n\tmkdir -p $(BUILD)\n\t$(CC) $(CFLAGS) -I$(ROOT) $(SOURCES) $(filter-out $(ROOT)main.c,$(CLI_SOURCES)) $(filter-out $(CLI_SOURCES),$(HEAD_MACHINE_IO)) $(TESTS)/readback_transport_bounds_test.c -o $@\n",
+  "missing4": [
+    "frame_retirement_test",
+    "stateless_head_cleanup_test",
+    "callback_failure_cleanup_test",
+    "readback_transport_bounds_test"
+  ],
+  "gap_resolution": "Consume explicitly pinned Root new4 same-source qualification or execute only missing check-frame-retirement under accepted Make in separate evidence; no duplicate363 broad replay required.",
+  "failures_unwaived": "Original E25 1200s incomplete run, strict3/parent36/paired20/two-file15+29 and observer/SAN/setup histories retained.",
+  "cost": "No granted slot/collector/current matched RSS-time; fresh coordinated safe-drain needed."
+}

@@ -1,0 +1,11 @@
+{
+  "date_UTC": "2026-10-04T14:16:46.971471+00:00",
+  "notice_SHA": "a952053aa8b98167b6c4f39511bc42b0665b5dff59b76cee9683e260e9cc684e",
+  "immutable_manifest_SHA": "748d15832622ea212a357ec1593201e4ee7337daa5952e83163db64af47fd0af",
+  "listed_files_verified": 29,
+  "packet": "Exact copies of full original acceptance8+manifest9, endpoints16+manifest17, two original runners, one handoff plus manifest; publication30 counts outer manifest.",
+  "runtime_changed": false,
+  "Root_dynamic_replay": false,
+  "scope_correction": "Original363 acceptance recipes on current c206 pass, but copied privateMake lacks accepted appended19-line new4 integration; Root new4 selected qualification remains separate. No full current single-Make invocation inferred from frozen handoff.",
+  "publication": "Delegated evidence task publication pending, separate from already completed accepted fc52755b promotion. Optional source55/cost6 union remains source-exact dependencies; no current cost grant or Goal completion."
+}
