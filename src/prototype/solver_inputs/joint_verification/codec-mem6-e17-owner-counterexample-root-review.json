@@ -1,0 +1,226 @@
+{
+  "review_UTC": "2026-10-04T04:41:26.967530+00:00",
+  "notice_sha256": "3a299a4894f68e4243c00bdcb7d6ff31ab32f7f4410846bfa4af50d34dc11944",
+  "worker_private_path": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/codec_review_mem6_current_e17",
+  "frozen38_records_plus_manifest_hashes": {
+    "evidence/build.log": "7d454308a4727bc2a2b44efcbf0b545e252562f84e7c03f1112f8d44c1ae6c86",
+    "evidence/input_pins.json": "35a2eec93bdd5fa8b38cb57b22357939a980fd6381159afb6e88a9baf4bddec3",
+    "evidence/o2-parent-0-0.image.resave1": "e8e4afb3e834a245657d0f9ad0c9c6457de91cb5a033b94bc1af4497990f8bc9",
+    "evidence/o2-parent-0-0.image.resave1.log": "17689e8601c3ec559d546d7612e4ac51a959340f4f5efbf342c02b6c6c6b48d6",
+    "evidence/o2-parent-0-0.image.resave2": "e8e4afb3e834a245657d0f9ad0c9c6457de91cb5a033b94bc1af4497990f8bc9",
+    "evidence/o2-parent-0-0.image.resave2.log": "17689e8601c3ec559d546d7612e4ac51a959340f4f5efbf342c02b6c6c6b48d6",
+    "evidence/o2-parent-0-10.image.resave1": "fe3b714e596ae81009d2b2986522e5420d6d93b9959364b7cb9f6624391f9dc1",
+    "evidence/o2-parent-0-10.image.resave1.log": "25cd609b4b80befbfd88af7a376aac9eeead350fabe5b36a02da45308dd8db92",
+    "evidence/o2-parent-0-10.image.resave2": "fe3b714e596ae81009d2b2986522e5420d6d93b9959364b7cb9f6624391f9dc1",
+    "evidence/o2-parent-0-10.image.resave2.log": "25cd609b4b80befbfd88af7a376aac9eeead350fabe5b36a02da45308dd8db92",
+    "evidence/o2-parent-5-0.image.resave1": "2df53db14b02c56843a4f46deaefad86807103dced052278083fe0b5aa2c91b6",
+    "evidence/o2-parent-5-0.image.resave1.log": "511f7b5428ebef0e3213f2a3b7f36557a93cf1cacfa361b586aba1187136608d",
+    "evidence/o2-parent-5-0.image.resave2": "2df53db14b02c56843a4f46deaefad86807103dced052278083fe0b5aa2c91b6",
+    "evidence/o2-parent-5-0.image.resave2.log": "511f7b5428ebef0e3213f2a3b7f36557a93cf1cacfa361b586aba1187136608d",
+    "evidence/o2-parent-5-11.image.resave1": "96ccd5114887da2df09e88381d8e69c2e37b45c515b4bbc05d2c4cff55b9ab81",
+    "evidence/o2-parent-5-11.image.resave1.log": "e0bef9952306c2f90e7e88ae884cb087b93a6d4e1520231ed98a8bebdfb877e0",
+    "evidence/o2-parent-5-11.image.resave2": "d979703da86daf00c0e4634e6a853314d6c68afba6d866c77ddfa53de29631e5",
+    "evidence/o2-parent-5-11.image.resave2.log": "e0bef9952306c2f90e7e88ae884cb087b93a6d4e1520231ed98a8bebdfb877e0",
+    "evidence/o2-parent-5-12.image.resave1": "677d3263c112364f651d697876c08726bcd16729650f92ba60d47ba0c095d3be",
+    "evidence/o2-parent-5-12.image.resave1.log": "04cc0c5148b901dabb10e70f00ee9f2daff890ad493b33e5ab468188f272ff6e",
+    "evidence/o2-parent-5-12.image.resave2": "677d3263c112364f651d697876c08726bcd16729650f92ba60d47ba0c095d3be",
+    "evidence/o2-parent-5-12.image.resave2.log": "04cc0c5148b901dabb10e70f00ee9f2daff890ad493b33e5ab468188f272ff6e",
+    "evidence/o2-parent-6-0.image.resave1": "205a43c66b120f5b8c89630b726c425a1bce2552fcda89216b65489ab43f9c9d",
+    "evidence/o2-parent-6-0.image.resave1.log": "078af79eb6e2c84f739899a68da5d80ed39ec3db9fe6325b08ce9a15d9cd9d11",
+    "evidence/o2-parent-6-0.image.resave2": "205a43c66b120f5b8c89630b726c425a1bce2552fcda89216b65489ab43f9c9d",
+    "evidence/o2-parent-6-0.image.resave2.log": "078af79eb6e2c84f739899a68da5d80ed39ec3db9fe6325b08ce9a15d9cd9d11",
+    "evidence/o2-parent-6-10.image.resave1": "d8f36a3e75e798a41bdc557471fe157cefca09b51c6eceab2bb406ba28114751",
+    "evidence/o2-parent-6-10.image.resave1.log": "325d78b5eaf5d1992e424fa07cf2393ed36a36b3486bf16022f8df298e419cca",
+    "evidence/o2-parent-6-10.image.resave2": "d8f36a3e75e798a41bdc557471fe157cefca09b51c6eceab2bb406ba28114751",
+    "evidence/o2-parent-6-10.image.resave2.log": "325d78b5eaf5d1992e424fa07cf2393ed36a36b3486bf16022f8df298e419cca",
+    "evidence/o2-parent-6-11.image.resave1": "e73ff389364cbe0d203b08bdf815abd7da5e225ae7e56a6a69d584bdb435b72d",
+    "evidence/o2-parent-6-11.image.resave1.log": "877c909b8fe4b1c051cde217d3f15a17085922ee236bcd75c986731eb95606da",
+    "evidence/o2-parent-6-11.image.resave2": "36b8c0e951309d3c1cb915aaa6912df0dee8411580e3551c3816dd1c57a0236f",
+    "evidence/o2-parent-6-11.image.resave2.log": "877c909b8fe4b1c051cde217d3f15a17085922ee236bcd75c986731eb95606da",
+    "evidence/request.json": "e3ebae5f76037328890dde80e12259874522046dad8fd229b69695e594a21e4a",
+    "evidence/source128.sha256": "0a15914b449b07be0949b10503b5a782cb40728081a11a29927c298d6e3c8209",
+    "evidence/summary.json": "e31e44f5eee34a84d312cb4b84527bdbad21bcfac49d531b7f113301aedb08c1",
+    "evidence/verdicts.json": "77f26738be3395c73f0aba5f8200216d3d6e2eeefddb09872eb60d23c2e6d430",
+    "evidence/manifest.sha256": "52c24775e28bf89d2c0b5150e8f19666a2c6e1f433cef27c464d2cbd5bece846"
+  },
+  "source128_and138_Root_input_bytes_exact": true,
+  "all_helper_image_source_build_pins_exact": {
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem6/build.mk": "3bb805cb94b323048a9e682ad4a863bc6788da7750bf5d9fd2152904503643d1",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem6/machine_resave_probe.c": "9160f3e9b58d7d9213b8920cf156610c0344954ce5ae8c67a203eb30703dc028",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_verification/build.mk": "969864732ed405b1fd5cfd3616529f644cc8eb33e7c5552d2bda5fc69c1a551e",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance/build.mk": "befee229e8553db13299431fdd713a8f63fdf3a5e755f99d1c1c147b64cb4a28",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/artifact_persistence/build.mk": "04cc1aaea432a2e812893aa08fef8ff0c92d14661655ab3ea164468fb14c8f31",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/codec_review_mem6_current_e17/source/Makefile": "ba2d565d5e96ed3e7657bf0e6384758fed5967d7ef4bbfdae6bde427fb10917e",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/codec_review_mem6_current_e17/source/src/Makefile": "063d846eb99f86c1c133abf393b3a2a7cf97f548eb472f8b786365f11ba1a167",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem6/private/iadt_caller_cursor_20261003/focused/o2-parent-6-11.image": "36b8c0e951309d3c1cb915aaa6912df0dee8411580e3551c3816dd1c57a0236f",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem6/private/iadt_caller_cursor_20261003/focused/o2-parent-5-11.image": "96ccd5114887da2df09e88381d8e69c2e37b45c515b4bbc05d2c4cff55b9ab81",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem6/private/iadt_caller_cursor_20261003/focused/o2-parent-5-12.image": "677d3263c112364f651d697876c08726bcd16729650f92ba60d47ba0c095d3be",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem6/private/iadt_caller_cursor_20261003/focused/o2-parent-6-10.image": "d8f36a3e75e798a41bdc557471fe157cefca09b51c6eceab2bb406ba28114751",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem6/private/iadt_caller_cursor_20261003/focused/o2-parent-0-10.image": "fe3b714e596ae81009d2b2986522e5420d6d93b9959364b7cb9f6624391f9dc1",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem6/private/iadt_caller_cursor_20261003/focused/o2-parent-0-0.image": "e8e4afb3e834a245657d0f9ad0c9c6457de91cb5a033b94bc1af4497990f8bc9",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem6/private/iadt_caller_cursor_20261003/focused/o2-parent-5-0.image": "2df53db14b02c56843a4f46deaefad86807103dced052278083fe0b5aa2c91b6",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem6/private/iadt_caller_cursor_20261003/focused/o2-parent-6-0.image": "205a43c66b120f5b8c89630b726c425a1bce2552fcda89216b65489ab43f9c9d"
+  },
+  "all17_worker_build_semantic_records0": true,
+  "recomputed16_inert_resaves": [
+    {
+      "image": "o2-parent-6-11.image",
+      "pass": 1,
+      "byte_equal": false,
+      "changed_byte_offsets": [
+        1393,
+        1401,
+        1409,
+        1417,
+        1425,
+        1433,
+        1441,
+        1449
+      ],
+      "bytes": 1529,
+      "semantic_exit": 0
+    },
+    {
+      "image": "o2-parent-6-11.image",
+      "pass": 2,
+      "byte_equal": false,
+      "changed_byte_offsets": [
+        1393,
+        1401,
+        1409,
+        1417,
+        1425,
+        1433,
+        1441,
+        1449
+      ],
+      "bytes": 1529,
+      "semantic_exit": 0
+    },
+    {
+      "image": "o2-parent-5-11.image",
+      "pass": 1,
+      "byte_equal": true,
+      "changed_byte_offsets": [],
+      "bytes": 1520,
+      "semantic_exit": 0
+    },
+    {
+      "image": "o2-parent-5-11.image",
+      "pass": 2,
+      "byte_equal": false,
+      "changed_byte_offsets": [
+        1384,
+        1392,
+        1400,
+        1408,
+        1416,
+        1424,
+        1432,
+        1440
+      ],
+      "bytes": 1520,
+      "semantic_exit": 0
+    },
+    {
+      "image": "o2-parent-5-12.image",
+      "pass": 1,
+      "byte_equal": true,
+      "changed_byte_offsets": [],
+      "bytes": 1520,
+      "semantic_exit": 0
+    },
+    {
+      "image": "o2-parent-5-12.image",
+      "pass": 2,
+      "byte_equal": true,
+      "changed_byte_offsets": [],
+      "bytes": 1520,
+      "semantic_exit": 0
+    },
+    {
+      "image": "o2-parent-6-10.image",
+      "pass": 1,
+      "byte_equal": true,
+      "changed_byte_offsets": [],
+      "bytes": 1529,
+      "semantic_exit": 0
+    },
+    {
+      "image": "o2-parent-6-10.image",
+      "pass": 2,
+      "byte_equal": true,
+      "changed_byte_offsets": [],
+      "bytes": 1529,
+      "semantic_exit": 0
+    },
+    {
+      "image": "o2-parent-0-10.image",
+      "pass": 1,
+      "byte_equal": true,
+      "changed_byte_offsets": [],
+      "bytes": 1213,
+      "semantic_exit": 0
+    },
+    {
+      "image": "o2-parent-0-10.image",
+      "pass": 2,
+      "byte_equal": true,
+      "changed_byte_offsets": [],
+      "bytes": 1213,
+      "semantic_exit": 0
+    },
+    {
+      "image": "o2-parent-0-0.image",
+      "pass": 1,
+      "byte_equal": true,
+      "changed_byte_offsets": [],
+      "bytes": 771,
+      "semantic_exit": 0
+    },
+    {
+      "image": "o2-parent-0-0.image",
+      "pass": 2,
+      "byte_equal": true,
+      "changed_byte_offsets": [],
+      "bytes": 771,
+      "semantic_exit": 0
+    },
+    {
+      "image": "o2-parent-5-0.image",
+      "pass": 1,
+      "byte_equal": true,
+      "changed_byte_offsets": [],
+      "bytes": 686,
+      "semantic_exit": 0
+    },
+    {
+      "image": "o2-parent-5-0.image",
+      "pass": 2,
+      "byte_equal": true,
+      "changed_byte_offsets": [],
+      "bytes": 686,
+      "semantic_exit": 0
+    },
+    {
+      "image": "o2-parent-6-0.image",
+      "pass": 1,
+      "byte_equal": true,
+      "changed_byte_offsets": [],
+      "bytes": 719,
+      "semantic_exit": 0
+    },
+    {
+      "image": "o2-parent-6-0.image",
+      "pass": 2,
+      "byte_equal": true,
+      "changed_byte_offsets": [],
+      "bytes": 719,
+      "semantic_exit": 0
+    }
+  ],
+  "inert_failures3_of16_unwaived": true,
+  "scope": "Historical Root-qualified current E17, eight unchanged Performance MEM6 parent images; not latest E18+MEM9/E19 producer qualification. Same old runtime/helper, no owner/code/schema/index/cache edit. Static pointer/hash/auxiliary bucket route is consistent with later independently verified bounded E18 cause; this new E17 sample does not establish a causal repair or every historical failure. Preserve auxiliary reusable results/public retained argument lifetimes and all assertions.",
+  "Root_runtime_or_GDB_rerun": false,
+  "runtime_READY_cost_grant_accepted_adoption_or_Goal_completion": false
+}

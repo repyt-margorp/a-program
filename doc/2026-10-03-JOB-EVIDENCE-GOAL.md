@@ -1,7 +1,7 @@
 # Job/Evidence Implementation Handoff
 
 Date: 2026-10-03
-Status: active implementation; epoch 1 verified, SE1-SE5 unfinished.
+Status: bounded E1-E4/E6-E19 prototypes verified/Main integrated; SE1-SE5 unfinished.
 Branch: `parallel/job-evidence-20261003`.
 Producer checkpoint: `64df10dfb6caf69226cebb401b88714541334768`.
 Related: [coordination](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md),
@@ -15,6 +15,12 @@ Related: [coordination](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md),
 ## 1. Single Implementation Owner
 
 ### Subjective (User)
+
+2026-10-04, English translation of human workflow clarification relayed by
+inquiry desk019ebfae-06be-7b71-974a-b97505daed4a after C24 publication:
+"I will speak directly with that session; tell me how to enter it." The desk
+identifies the original Job/Evidence session and supplies navigation. This was
+immediately recorded in central coordination Problem1 Subjective.
 
 2026-10-03, English paraphrase of the explicit human workflow change relayed
 by inquiry desk `019ebfae-06be-7b71-974a-b97505daed4a`: implementation lanes may
@@ -73,6 +79,20 @@ only Core merges Main. Prototype integration is not accepted-source promotion.
 
 ### Objective (Code)
 
+2026-10-04, Root E19 exact29 task02052bfc/prototype Mainaea14873 pushed/remote
+exact on separate E16 branch; original Job HEAD/index unchanged. Frozen156/
+overlay471/raw11/canonical migration/public52 and five all35/fourcut census
+verify. Current E18+MEM9+E19 source128add4e096: parent134 retained, candidate
+full semantic/synthesis/source-checkpoint O2/SAN0; public52/full TSV exact,
+original strict3. Fresh C24 downstream10/0, applied50/source46/nested40 each
+O2/client-source SAN and link/I-O19;26 parent C/H bytes exact.
+[Integration receipt](../src/prototype/solver_inputs/joint_verification/e19-main-integration-review.json)
+supersedes prior bounded E19 freeze/current/publication pending status.
+Historical E17 owner codec private38/copied128/Root138/17 semantic-build0
+records verify;16 resaves/inert3 failures recomputed, no latest causal repair.
+[Codec receipt](../src/prototype/solver_inputs/joint_verification/codec-mem6-e17-owner-counterexample-root-review.json)
+is durably routed to original Performance, preserving reusable results.
+
 2026-10-03, Root review of corrected E11 task `d22be9f` (exact25, pushed and
 remote verified): independent assembly matches all156 runtime/test records;
 three fresh lifetime/real escaped-frame O2/SAN controls pass, with the original
@@ -118,6 +138,16 @@ definition checks, failures and real quotation proofs must remain correct.
 This is a candidate deletion, not user approval of a solution or the full Goal.
 
 ### Assessment
+
+2026-10-04, Root bounded E19 decision: existing canonical pending-owner
+membership replaces weaker tag-only target admission before any revalidation
+mutation; permanent copied pending/completed atomic controls pass. Runtime +2/-1,
+test27+ plus header, no new authority/index/fuel/codec. Separate E16 task keeps
+submitted bytes and current Main retains E17/E18/MEM9/C24. Isolated broad/C/
+census is distinct from fresh current focused/affected gates; full current broad/
+acceptance and SE1-SE5/AP/strict3/codec/actual costs remain open. External Quick
+cumulative aligned+27696 is retained, not a net live/peak/time claim. E20 separate.
+Leave original Job pane free for the human; no resume/input or consumption claim.
 
 2026-10-03, Merge operational schedule: coordinate the pending MEM1 attribution
 and scaling epoch with performance after current qualification. Existing SE

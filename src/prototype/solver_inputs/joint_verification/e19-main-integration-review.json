@@ -1,0 +1,302 @@
+{
+  "review_UTC": "2026-10-04T04:50:30.116699+00:00",
+  "publication": {
+    "task": "02052bfccd3e4573603ba204d761c2cacbadf016",
+    "task_parent": "6caf36cbfd548f7a8e3bddde08739154c16149dc",
+    "task_branch": "refs/heads/parallel/job-evidence-e19-20261004",
+    "Main_parent": "ef00325c6f9c3f758a98364f365fd677f5ef4d96",
+    "Main_merge": "aea148736a61141a0f875d22fef2c5973d918842",
+    "exact29": {
+      "src/prototype/solver_inputs/artifact_patches/file.c.patch": "fa9354074ed32c61dbc21535be11447945f618e402cb281c551c0da11b4e50b4",
+      "src/prototype/solver_inputs/artifact_test_patches/semantic_test.c.patch": "ed500298561cfe09e4485e999c6577a4d85997300f6da28e7304c25e3c45b07a",
+      "src/prototype/solver_inputs/epochs/job_evidence_e19_lean/applied.patch": "b2f89996e318bb5d8a44c500ef6c1eb9010159d11bde11dc86707b5076bba5f9",
+      "src/prototype/solver_inputs/epochs/job_evidence_e19_lean/applied_delta.json": "c39557780aa69a6d5b0b2aa01cca911a25a9f07c653a5816ac938d562996102f",
+      "src/prototype/solver_inputs/epochs/job_evidence_e19_lean/canonical.sha256": "7b6436d9d0369181f9f0d74bbdd2a546c6eb31b6f239887c9d8a127acbdacb94",
+      "src/prototype/solver_inputs/epochs/job_evidence_e19_lean/census.mk": "c388d93e7e085ec291fb80ba9846791c64faeffabfb8a54b918f0a39cd1b578a",
+      "src/prototype/solver_inputs/epochs/job_evidence_e19_lean/census_comparison.json": "369d22ba73fa48c122313be8f69544a71d83fef1544dfa68e89c059edafa7bd7",
+      "src/prototype/solver_inputs/epochs/job_evidence_e19_lean/census_counts.tsv": "fea9ff20ad4c6712eb021f518f6692abf890e17887b6214765dbaac3bfd548a4",
+      "src/prototype/solver_inputs/epochs/job_evidence_e19_lean/census_inputs.sha256": "904037c6e9bb80125f3924ab45124953d0a587f17746ea7dafb033aa85ea2b45",
+      "src/prototype/solver_inputs/epochs/job_evidence_e19_lean/control_inputs.sha256": "f1782acafe6b4f09f6e48859ec43acb20b64fac08834d3d80859e70483987948",
+      "src/prototype/solver_inputs/epochs/job_evidence_e19_lean/counterexample.json": "6ea46b651258f68fa58b6bee5653eaab15eb63f1f9a5c036a32cff9fa9909b8f",
+      "src/prototype/solver_inputs/epochs/job_evidence_e19_lean/focused_manifest.sha256": "54b98153a40a3ac83195e834a46e2f3c770cf59fb9d29b731ab04ae9eee154c3",
+      "src/prototype/solver_inputs/epochs/job_evidence_e19_lean/fresh_assembly.json": "c1c3f45534d9871f3c821a695944f94530de87293872fe0177cdb3fe4eb7ded5",
+      "src/prototype/solver_inputs/epochs/job_evidence_e19_lean/initial_canonical_projection_failure.json": "bb6184e4bc3d9165613d60273adfca40d224adfd05a002563e50353fd163ffaa",
+      "src/prototype/solver_inputs/epochs/job_evidence_e19_lean/measurements.tsv": "171ee288106aa7cafc08f7838851da6a359ec2bc508d3812f8040dd80670ed8e",
+      "src/prototype/solver_inputs/epochs/job_evidence_e19_lean/overlay_inputs.sha256": "2a4fe10e020ab9aedac4107aec79805ef00a01f6a50bad044d5a20f98af05d09",
+      "src/prototype/solver_inputs/epochs/job_evidence_e19_lean/parent_control_sources.sha256": "3a8858e98acb7b91dc133df086b2b8c78d47c2d8905910ebf50bb078b1d4e564",
+      "src/prototype/solver_inputs/epochs/job_evidence_e19_lean/parent_sources.sha256": "a00c742673f74c1ef0b12f800e572b4ec138fe56acf51d30319aad8536adceeb",
+      "src/prototype/solver_inputs/epochs/job_evidence_e19_lean/public_images.sha256": "d60b558302023b93fab58020a40e97d24debea8230a522ff66ede886ea798966",
+      "src/prototype/solver_inputs/epochs/job_evidence_e19_lean/public_partitions.tsv": "1d6aa050e77aae18dcb2cb0305e7a5ce7e99fadb81a3cd427ac38755d2656729",
+      "src/prototype/solver_inputs/epochs/job_evidence_e19_lean/publication_parent.txt": "cc227b1163ae88869fe587449bb019d95e47796deb62d7cd541ce9c4ab3e2d88",
+      "src/prototype/solver_inputs/epochs/job_evidence_e19_lean/report.md": "f58b92bfd877298c8ab5d27cf5465eb8475c53316ae1751a1b6f72308033fe92",
+      "src/prototype/solver_inputs/epochs/job_evidence_e19_lean/requests.json": "86d6ee6fd9e1b05bdedd51b9d36101f0ca086c0f7f4a861e8dd128a12a716729",
+      "src/prototype/solver_inputs/epochs/job_evidence_e19_lean/strict_comparison.json": "51629250c697fc8ff736c4493d546401f89fde4ebdda6270f832c3d0d5e68fbc",
+      "src/prototype/solver_inputs/epochs/job_evidence_e19_lean/supplemental_inputs.sha256": "046261dae872cf6b3422a300d9a841c05b75e9d3e17054de8715c2ba938b96d1",
+      "src/prototype/solver_inputs/epochs/job_evidence_e19_lean/tested_sources.sha256": "ab5f874d67b977d78bc1d9d131895498c5187520dc09aef744135c509e6e22ae",
+      "src/prototype/solver_inputs/epochs/job_evidence_e19_lean/verification.json": "5afd056f090cb20cf3bd1d44517b9c5336388001d6d10db4e66107019d69d187",
+      "src/prototype/solver_inputs/epochs/job_evidence_e19_lean/verification.tsv": "166796fd2fe1bccc317b720ac3e0a6697afc0f880d94b7492f714704aed14dbc",
+      "src/prototype/solver_inputs/epochs/job_evidence_e19_lean/manifest.sha256": "9900ec7485ad6857c9d24bc7594804599327c884337f91cd79164b5de0f1e149"
+    },
+    "task_Main_remote_exact": true,
+    "original_Job_HEAD_and_index_preserved": {
+      "HEAD": "a8f52a015f73fe7cfa067c3d5b122bef7e4532b4",
+      "index_sha256": "cf21c780030a7e26e4259dba80cb8488e84cc059999be4c17459f73afd8beca3"
+    },
+    "separate_isolated_branch_excludes_E17_E18_E20_MEM9_from_task": true,
+    "Main_retains_current_E17_E18_MEM9_C24": true,
+    "current_source128": "add4e0960795400ccb27e55cbcba69e335a3c5cec40a4a154fbb4da7464d31e0",
+    "Root_current_report_sha256": "c8bbdbd7b7987721e598d0dbed0909bc40b585b38fca8fafdc51996f683ebfa5",
+    "Root_C24_downstream_report_sha256": "e6628311553cb19e23e3ec3ab2d8cbb0cdae60007c871a07f32ed71dbf73baab",
+    "initial_canonical_projection_failure_retained": true,
+    "protected9_exact": true,
+    "accepted_selection_cost_byte_compatibility_waiver_or_Goal_completion": false
+  },
+  "worker_input_review_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-input-review.json",
+  "worker_input_review_sha256": "f340bb48733f23624bc4220af3c0950e9a6b5ad7c3ce2ff7a6af182755b49834",
+  "worker_frozen29_source156_overlay471_raw11_reviewed": true,
+  "worker_isolated_full_unskipped_broad0_C0_strict1_original3_retained": true,
+  "census_five_all35_fourcuts_recomputed": [
+    {
+      "sample": "list",
+      "all35_four_cuts_exact": true,
+      "steps": 1921,
+      "typed": 429,
+      "evidence": 555,
+      "external_cumulative_aligned_delta": 0
+    },
+    {
+      "sample": "effect",
+      "all35_four_cuts_exact": true,
+      "steps": 13142,
+      "typed": 2680,
+      "evidence": 3414,
+      "external_cumulative_aligned_delta": 0
+    },
+    {
+      "sample": "captured",
+      "all35_four_cuts_exact": true,
+      "steps": 2307,
+      "typed": 632,
+      "evidence": 797,
+      "external_cumulative_aligned_delta": 0
+    },
+    {
+      "sample": "quick",
+      "all35_four_cuts_exact": true,
+      "steps": 766477,
+      "typed": 114388,
+      "evidence": 94974,
+      "external_cumulative_aligned_delta": 27696
+    },
+    {
+      "sample": "handler",
+      "all35_four_cuts_exact": true,
+      "steps": 2470,
+      "typed": 425,
+      "evidence": 530,
+      "external_cumulative_aligned_delta": 0
+    }
+  ],
+  "current_E18_MEM9_E19_report_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/Root-results.json",
+  "current_report_sha256": "c8bbdbd7b7987721e598d0dbed0909bc40b585b38fca8fafdc51996f683ebfa5",
+  "current_source128": "add4e0960795400ccb27e55cbcba69e335a3c5cec40a4a154fbb4da7464d31e0",
+  "current_all11_build_gate_records_expected": [
+    {
+      "gate": "parent-build-o2",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program/src/prototype/artifact_persistence/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/parent",
+        "ROOT=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/parent/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/parent/build-o2",
+        "REPO=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/parent",
+        "TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/parent/tests",
+        "ARTIFACT_TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/parent/artifact_tests/",
+        "CHECKPOINT_TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/parent/checkpoint_tests/",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/parent/build-o2/artifact_semantic_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "da96c187465da40c570d2f9514e51dfdf730955636a457ed598f831e9f22f7bc"
+    },
+    {
+      "gate": "parent-artifact_semantic_test-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/parent/build-o2/artifact_semantic_test"
+      ],
+      "exit": -6,
+      "expected_exit": -6,
+      "log_sha256": "9d852b4fada3e0655992a3fb26babb45b39af086c810b35399d7229157dff384",
+      "binary_sha256": "1be5c8582fc0c1e74743e7945ea3fe91cc25f05f6d426756ee4211eadfc5e65c"
+    },
+    {
+      "gate": "candidate-build-o2",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program/src/prototype/artifact_persistence/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/candidate",
+        "ROOT=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/candidate/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/candidate/build-o2",
+        "REPO=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/candidate",
+        "TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/candidate/tests",
+        "ARTIFACT_TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/candidate/artifact_tests/",
+        "CHECKPOINT_TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/candidate/checkpoint_tests/",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/candidate/build-o2/artifact_semantic_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/candidate/build-o2/synthesis_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/candidate/build-o2/artifact_source_checkpoint_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/candidate/build-o2/pointer-check"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "8724d2dae673270cbf666d0dd4801779a45154f638c12135989a49cc73a44e7a"
+    },
+    {
+      "gate": "candidate-artifact_semantic_test-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/candidate/build-o2/artifact_semantic_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "65a6b5c64f96014d08df86dc7590a1db35d6380ea7acb05cc99bb55145121616",
+      "binary_sha256": "30812ba1a282c8168be2a350620b5c1f1829a3ba2a49a52112ef877880563ec3"
+    },
+    {
+      "gate": "candidate-synthesis_test-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/candidate/build-o2/synthesis_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "497e5e979c826ff40f602848e82bed31e82ad16457b173072c9c457104a31804",
+      "binary_sha256": "70c3b0927fd2acc9e8d11d2e0634ddcb9fa0008f8e46796295e7e587beeb0d6d"
+    },
+    {
+      "gate": "candidate-artifact_source_checkpoint_test-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/candidate/build-o2/artifact_source_checkpoint_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "71cc65467eeb07467f0bd00674acb05a8875ba29911d63bca40891cab8d4233a",
+      "binary_sha256": "61d6ea5a0f0160530412abc33aaf2cd2d461047618e705d6588e61528143beef"
+    },
+    {
+      "gate": "candidate-build-san",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program/src/prototype/artifact_persistence/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/candidate",
+        "ROOT=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/candidate/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/candidate/build-san",
+        "REPO=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/candidate",
+        "TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/candidate/tests",
+        "ARTIFACT_TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/candidate/artifact_tests/",
+        "CHECKPOINT_TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/candidate/checkpoint_tests/",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/candidate/build-san/artifact_semantic_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/candidate/build-san/synthesis_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/candidate/build-san/artifact_source_checkpoint_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "f1dd61ea9c0b863c4490141138ad5d03384b2f9fe7ecd5081cd497529e1cfece"
+    },
+    {
+      "gate": "candidate-artifact_semantic_test-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/candidate/build-san/artifact_semantic_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "65a6b5c64f96014d08df86dc7590a1db35d6380ea7acb05cc99bb55145121616",
+      "binary_sha256": "f79c908321fa2d3a17d1e4eb58a67deaee0ef6c257511a7b9349a118a517463a"
+    },
+    {
+      "gate": "candidate-synthesis_test-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/candidate/build-san/synthesis_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "497e5e979c826ff40f602848e82bed31e82ad16457b173072c9c457104a31804",
+      "binary_sha256": "c469068367f90b12d645bf208a9bb63ea268c563821b23652ac3e3fc73fc8c66"
+    },
+    {
+      "gate": "candidate-artifact_source_checkpoint_test-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/candidate/build-san/artifact_source_checkpoint_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "71cc65467eeb07467f0bd00674acb05a8875ba29911d63bca40891cab8d4233a",
+      "binary_sha256": "2536dc5627b6a4c45c2204b59b8619707a13f39d06022bdfc29d6336f9eaeb00"
+    },
+    {
+      "gate": "public-partitions",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program/src/prototype/image_audit/partition_fuel.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/candidate/build-o2/pointer-check",
+        "/tmp/a-program-merge-e12c-current-Main-20261003/examples/09_list_induction.p",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/e19-current-e18-mem9/candidate/partitions",
+        "ordinary"
+      ],
+      "exit": 1,
+      "expected_exit": 1,
+      "log_sha256": "4cf6f69e818a50d0b11edfd54623290448044fc7367cdf857c2be4e2c7aeaa8b"
+    }
+  ],
+  "specific_current_parent134_candidate_full_semantic_synthesis_checkpoint_O2_SAN0": true,
+  "public52_full_verdict_fuel_TSV_exact_original_strict3": true,
+  "C24_current_E19_report_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c24-current-e19-mem9-gates/Root-results.json",
+  "C24_current_E19_report_sha256": "e6628311553cb19e23e3ec3ab2d8cbb0cdae60007c871a07f32ed71dbf73baab",
+  "C24_all10_build_gate_records0": true,
+  "C24_applied50_source_sort46_nested40_each_O2_client_source_SAN_link_IO19": true,
+  "C24_parent_generated_C_H_bytes_exact": {
+    "nested-o2": {
+      "raw.h": "b0562b2638d8a04e7113e2240cb2caebfe652cbe7ad82d4630a2de20aeef815c",
+      "raw.c": "17da329ec58015d9ea34e9dcc9375150e62b91b00c9078d481c61ee16b531207",
+      "oracle.c": "e50e05a52f0648827f18123c97becdf52fb41c96b4ba7ff6dab3d439ca69f314",
+      "trusted/component.c": "17da329ec58015d9ea34e9dcc9375150e62b91b00c9078d481c61ee16b531207",
+      "trusted/component.h": "b0562b2638d8a04e7113e2240cb2caebfe652cbe7ad82d4630a2de20aeef815c",
+      "repeated/component.c": "17da329ec58015d9ea34e9dcc9375150e62b91b00c9078d481c61ee16b531207",
+      "repeated/component.h": "b0562b2638d8a04e7113e2240cb2caebfe652cbe7ad82d4630a2de20aeef815c",
+      "source/component.c": "17da329ec58015d9ea34e9dcc9375150e62b91b00c9078d481c61ee16b531207",
+      "source/component.h": "b0562b2638d8a04e7113e2240cb2caebfe652cbe7ad82d4630a2de20aeef815c",
+      "object/component.c": "17da329ec58015d9ea34e9dcc9375150e62b91b00c9078d481c61ee16b531207",
+      "object/component.h": "b0562b2638d8a04e7113e2240cb2caebfe652cbe7ad82d4630a2de20aeef815c",
+      "archive/component.c": "17da329ec58015d9ea34e9dcc9375150e62b91b00c9078d481c61ee16b531207",
+      "archive/component.h": "b0562b2638d8a04e7113e2240cb2caebfe652cbe7ad82d4630a2de20aeef815c"
+    },
+    "nested-san": {
+      "raw.h": "b0562b2638d8a04e7113e2240cb2caebfe652cbe7ad82d4630a2de20aeef815c",
+      "raw.c": "17da329ec58015d9ea34e9dcc9375150e62b91b00c9078d481c61ee16b531207",
+      "oracle.c": "e50e05a52f0648827f18123c97becdf52fb41c96b4ba7ff6dab3d439ca69f314",
+      "trusted/component.c": "17da329ec58015d9ea34e9dcc9375150e62b91b00c9078d481c61ee16b531207",
+      "trusted/component.h": "b0562b2638d8a04e7113e2240cb2caebfe652cbe7ad82d4630a2de20aeef815c",
+      "repeated/component.c": "17da329ec58015d9ea34e9dcc9375150e62b91b00c9078d481c61ee16b531207",
+      "repeated/component.h": "b0562b2638d8a04e7113e2240cb2caebfe652cbe7ad82d4630a2de20aeef815c",
+      "source/component.c": "17da329ec58015d9ea34e9dcc9375150e62b91b00c9078d481c61ee16b531207",
+      "source/component.h": "b0562b2638d8a04e7113e2240cb2caebfe652cbe7ad82d4630a2de20aeef815c",
+      "object/component.c": "17da329ec58015d9ea34e9dcc9375150e62b91b00c9078d481c61ee16b531207",
+      "object/component.h": "b0562b2638d8a04e7113e2240cb2caebfe652cbe7ad82d4630a2de20aeef815c",
+      "archive/component.c": "17da329ec58015d9ea34e9dcc9375150e62b91b00c9078d481c61ee16b531207",
+      "archive/component.h": "b0562b2638d8a04e7113e2240cb2caebfe652cbe7ad82d4630a2de20aeef815c"
+    }
+  },
+  "canonical_fullfiles_reverse_parent_apply_candidate_fuzz0_exact": {
+    "file.c": "b660771c0b6b71e4a76e5d0a816b547fc52814d9071f50efbbb1172139e23009",
+    "semantic_test.c": "01abe22a008129e38d5ef65de4c0fb2da3c33a7ed50ea63d39f6f98caed7b335"
+  },
+  "code_review": "Replace weaker pending.owner tag admission with existing pg_synthesis_input_owned on pg_synthesis_pending(target), using canonical Jobs membership before spent/steps/ready/tail/jobs/proofs mutation. Permanent copied pending/completed atomic-rejection control adds27 lines plus header; runtime +2/-1. Genuine B/R/zero/import/completion/failure semantics retained. Current field bridges and MEM9 bytes unchanged outside artifact/file.c. No new owner/index/checker/trust/fuel/codec/schema authority.",
+  "limits": "Worker broad/census/C evidence is isolated E16+E19 source156. Fresh current E18+MEM9+E19 source128 passes full semantic/synthesis/source checkpoint O2/SAN/public/C24 gates; no fresh complete current broad/acceptance or actual RSS/time claim. Original strict3, machine byte failures and removed-option/censored outcomes remain unwaived; E20/full SE1-SE5/AP/issues/Goals/accepted adoption stay open. Native C SAN covers clients/generated/source/raw/oracle only; backend/helpers/producer/object/archive O2.",
+  "accepted_implementation_changes_Goal_completion_or_cost_grant": false
+}

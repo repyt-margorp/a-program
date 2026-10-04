@@ -1,0 +1,24 @@
+{
+  "date_UTC": "2026-10-04T04:50:30.116699+00:00",
+  "provenance": "Root agent coordination within existing owner scope, not new human approval.",
+  "recipient": "Existing original Performance codec/readback owner; original Job pane stays free for direct human conversation.",
+  "codec_notice_sha256": "3a299a4894f68e4243c00bdcb7d6ff31ab32f7f4410846bfa4af50d34dc11944",
+  "codec_Root_receipt_path": "src/prototype/solver_inputs/joint_verification/codec-mem6-e17-owner-counterexample-root-review.json",
+  "codec_Root_receipt_sha256": "88a81aa2f15e5138a8aa137541b8ff9068f2d1b83d633804cfe502a38dc5b67b",
+  "codec_result": "Frozen38/copied128/Root138 and17 build/semantic0 records verified;16 resaves independently recomputed,3 inert byte failures. Historical qualified E17 only. Foreign6-cut11 changes1393..1449 every8; foreign5-cut11 changes1384..1440 every8. No causal fix/current producer qualification inferred. Existing current materialized cause302da38d and variant linkfbb050b2 remain independently verified bounded E18 evidence.",
+  "MEM10_acceptance_notice_sha256": "96b360901f7f69acd63aa2c43b7de3df0cc0b73edd5c9b8463a561e91a7c7949",
+  "MEM10_acceptance_Root_receipt_path": "src/prototype/performance_followup/mem10-current-acceptance-compatibility-root-review.json",
+  "MEM10_acceptance_Root_receipt_sha256": "2ff6f4081f8a57abb3d5f9b21384c318bc889f0527a75268448f82e5cbe3e5e0",
+  "compatibility_result": "Frozen48/private2003/source256/all2245 actual pins/1923 Git origins/12 published E18 fixture rows exact.11 raw commands four0, three setup, three compatibility, one180s censored -9; separate600s Derived-LT uncensored1 and five unlaunched groups retained. Seven removed-option script lines verified, candidate/unchanged-parent retained QuickSort logs byte-exact; full acceptance remains failed/pending.",
+  "decision": "Keep MEM10 runtime/cost HOLD. Existing Performance owner may review safe readback ordering disposition, preserving every reusable auxiliary result and escaped public argument/input/cursor/spine identity. Do not restore removed CLI option, silently adapt accepted scripts, discard assertions/caches or infer all historical causes. Continue distinct owned source/lifetime work; no new Goal/turn/model/owner/slot.",
+  "E19_publication": {
+    "task": "02052bfccd3e4573603ba204d761c2cacbadf016",
+    "branch": "refs/heads/parallel/job-evidence-e19-20261004",
+    "Main": "aea148736a61141a0f875d22fef2c5973d918842",
+    "current_source128": "add4e0960795400ccb27e55cbcba69e335a3c5cec40a4a154fbb4da7464d31e0",
+    "Root_receipt_path": "src/prototype/solver_inputs/joint_verification/e19-main-integration-review.json",
+    "Root_receipt_sha256": "76f0d4683a7a0e068350c28540c69c1b6190a70212ea3f4fc26ebec241aecd15",
+    "current11_and_C24_downstream10_expected": true
+  },
+  "TUI_message_queued_Job_pane_input_or_consumption_claimed": false
+}
