@@ -1,0 +1,18 @@
+aplink 1
+artifact types.a
+abi c_native_v1
+target host-c11
+product source
+lowering native_direct_v1
+fallback reject
+enum32 Bool Bool
+nat32 Nat Nat
+data_of empty List
+data_of empty_pair Pair
+export fixed_list fixed_list
+export alias_list alias_list
+export map_list map_list
+export shadow_list shadow_list
+export map_inline map_inline
+export fixed_pair fixed_pair
+export fixed_nat fixed_nat

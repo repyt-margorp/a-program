@@ -95,7 +95,31 @@ names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
 
-Fresh C23 worker observation, 2026-10-04 local: all12 C22 task blobs and independent
+Fresh C24 worker observation, 2026-10-04 local: all13 C23 task/then-live blobs and
+independent remote match `1a1e2614427397a79bad7f9a857b24b9d5bdb43c`; C23 Main/
+current-producer qualification is unreported. Immutable submission stays exact.
+C24 recognizes exact selected retained classifier Terms through the existing
+target instance lookup; guarded declaration/builtin heads, no pending operands,
+scalar +13/-9 including pending operand phase, no Source evaluation or public generic ABI.
+Scratch O2 build0; fixed/alias List/Pair exports0 checked/trusted, unselected/open/
+public type controls4. Expanded ordinary-admitted fixtures isolated a generic-call-
+under-fold refusal4 in direct/sequenced forms; both failures remain retained.
+Preserving the checked pending operand phase corrects both forms. Final worker E8
+O2/client-source SAN50 each pass (31zero/1no-fuel3/18refusal4), three products/raw,
+eight observations and445 separate existing-Core comparisons. Affected source-
+sort46 each (637 Core comparisons), nested40 each and I-O19 controls pass.
+Exact16 handoff is separate from Root current-producer/Main review.
+See the [applied type plan](2026-10-04-C-BACKEND-APPLIED-TYPE-BINDING-PLAN.md).
+
+Root operational C22 receipt: exact task `8b6debfcf` and prototype Main
+`a0a9dc38dde82d8ef410251b1362bb2e7757091c` pushed/remote exact. Current
+E18+MEM9 runtime128 `c414202a` rebuilt O2 backend/two helpers; nested40,
+recursive114 and integer61 each O2/client-source SAN pass,84 parent C/H bytes
+exact. Root checked retained192/runtime128/raw1603 and preserved1839 live files;
+only Main Goal provenance reconciled. Receipt prefix699afb1d/rawce041c85.
+These are Root reports, not worker C23/C24 current-producer qualification.
+
+Historical C23 worker observation, 2026-10-04 local: all12 C22 task blobs and independent
 remote match `8b6debfcf836451b9e972aba9f3f624f24b406e9` and the submitted manifest.
 C22 Main/current-producer qualification remains unreported here. Separate C23
 binds known selected nominal/host types privately through the existing known-call
@@ -414,8 +438,9 @@ Current issue status (2026-10-04 local; detailed pins stay in linked epoch plans
 | #61 public predicate translation units, C19 | Exact task `0388736ad3e5b7fca30ff2added9d558c0cef96a` + [unit plan](2026-10-04-C-BACKEND-PREDICATE-UNITS-PLAN.md): declarative C adapter header, separate factories/client and unchanged callback descriptors returned by value; no backend/producer/schema change. | Worker E8 O2/client-adapter-source SAN119 each (116zero/3expected compiler-linker-one); opposite header orders, 32 linked+8 loaded clients/phase and source93/client. Root reused qualified E18 `efcdeaa4`: same119 rows each O2/SAN, raw `fdf44ac0`; 48 generated C18 C/header files and all pins exact. | Root reports task and prototype Main `b8fb56b196f04aecd4f41c9f5e941f652843afd6` pushed/remote exact; other10 frozen paths exact, Goal provenance reconciled. | Borrowed provider API/code/storage lifetime and valid provider success; limited SAN. No A Program returned-callback ABI, native Acc/QuickSort or accepted promotion. | C20: inspect admitted known/captured integer predicates and dynamic refusal under existing native ABI; no new ABI activation. |
 | #61 integer predicate/List boundary, C20 | Exact task `7b883a8eb123faab0e288661229196ffdebfe232` + [inspection plan](2026-10-04-C-BACKEND-INTEGER-PREDICATE-PLAN.md): admitted direct Bool forms, signed List clients and parameterized refusals at that revision; emitter/ABI unchanged. | Historical worker77 expected rows each; Root E18+MEM9 `c414202a`: integer77 each O2/client-source SAN and parentunit119 each pass,48 C/H exact; raw `3a412138`. Initial failures retained. | Exact task independently verified; Root prototype Main `f8134616dd29ff9dca11d307a302f27f4bc3a958` pushed/remote exact. C20 snapshot unchanged. | Static captures advanced by C21; dynamic signed predicates, actual signed comparison, indexed/callable Acc and native QuickSort/full #61 remain open. Limited SAN/borrowed/depth contracts. | Preserve historical C20; live integer61 gate tests eight static wrappers positively and retains17 checked/trusted refusals. |
 | #61 recursive known captures, C21 | Exact task `eaf5755914a44a855069321b4c64330eb4ca5b03`, scalar SHA `30acb4b3`, [capture plan](2026-10-04-C-BACKEND-RECURSIVE-CAPTURE-PLAN.md): private known thunk heads and dense native capture parameters under existing ABI. | Worker E8 O2/client-source SAN114 each, sixteen source/readback observations and200 Core Nat comparisons/family; integer61 each and three affected O2 gates pass. Root E18+MEM9 `c414202a`: recursive114/integer61/parentunit119 each O2/SAN +three affected O2 gates pass;48 C/H exact, raw `942062b6`. | All16 task blobs/remote independently verified; Root prototype Main `8c00c80f97f7a7413b4b088efc94999fe58d33ff` pushed/remote exact. Historical snapshot unchanged. | C21 nested-IH refusal advanced only by separate C22; dynamic/callable/indexed contracts and native Acc/QuickSort/full #61 remain open. | Preserve C21 evidence; separate bounded nested private IH capture correction and fresh freeze. |
-| #61 nested private IH captures, C22 | Exact task `8b6debfcf836451b9e972aba9f3f624f24b406e9`, scalar +7/-2, [nested plan](2026-10-04-C-BACKEND-NESTED-CAPTURE-PLAN.md): known private IH/recursive identities, represented captures still dense C operands; existing ABI. | Worker E8 O2/client-source SAN40 each (31zero/1three/8four), eight observations and120 separate Core comparisons; affected C21 O2/SAN114 each pass. Initial refusals retained. | All12 submitted task blobs and remote independently verified; Root current-producer/Main review unreported. Historical evidence unchanged. | Dynamic/effect/callable/indexed contracts and native Acc/QuickSort/full #61 remain open; borrowed/depth/limited SAN. | Preserve published C22; distinct C23 selected-type binding and existing-source sort clients. |
-| #61 private selected types/native source insertion sort, C23 | Parent `8b6debfcf` + scalar +16/-5, receipt +1/-1, [source sort plan](2026-10-04-C-BACKEND-SOURCE-SORT-PLAN.md): private known selected type bindings let unchanged admitted source insertion sorting emit C; ABI unchanged. | Worker E8 O2/client-source SAN48 each (31zero/1three/16four), nine observations,552 separate Core comparisons;341 Lists/client, two sorts/four insert pivots/identity and resource controls. Affected C22 O2/SAN40 each, linker O2/I-O19 pass. Original setup/refusal evidence retained. | Exact13 frozen handoff ready; Root task publication/current-producer/Main review pending. No new C22 Main result inferred. | Public/unselected/computed type arguments, dynamic functions/effects and indexed/callable Acc/QuickSort remain refused; limited SAN/target Nat32/depth bounds. | Root exact publication/current-producer review; preserve historical snapshots and continue distinct bounded work. |
+| #61 nested private IH captures, C22 | Exact task `8b6debfcf836451b9e972aba9f3f624f24b406e9`, scalar +7/-2, [nested plan](2026-10-04-C-BACKEND-NESTED-CAPTURE-PLAN.md): private IH/recursive identities, dense represented captures; existing ABI. | Worker E8 O2/SAN40 each, eight observations/120 Core comparisons and affected114 each. Root E18+MEM9 `c414202a`: nested40/recursive114/integer61 each O2/SAN pass,84 parent C/H exact; rawce041c85. Initial refusals retained. | All12 task blobs/remote independently verified; Root prototype Main `a0a9dc38dde82d8ef410251b1362bb2e7757091c` pushed/remote exact. Historical evidence unchanged. | Dynamic/effect/callable/indexed contracts and native Acc/QuickSort/full #61 remain open; borrowed/depth/limited SAN. | Preserve C22 in later separate known-type/native-call work. |
+| #61 private selected types/native source insertion sort, C23 | Exact task `1a1e2614427397a79bad7f9a857b24b9d5bdb43c`, scalar +16/-5/receipt +1/-1, [source sort plan](2026-10-04-C-BACKEND-SOURCE-SORT-PLAN.md): private type bindings let unchanged admitted insertion sorting emit C; ABI unchanged. | Worker E8 O2/SAN48 each (31zero/1three/16four), nine observations/552 Core comparisons;341 Lists/client/two sorts/four pivots/identity/resources. Affected40 each/linker/I-O19 pass; initial setup/refusals retained. | All13 task/then-live blobs and remote independently verified; Root current-producer/Main review unreported. Submitted snapshot unchanged. | Public/unselected/computed types refused at C23; exact selected applied arguments advance separately in C24. Dynamic/effect/indexed/callable Acc/QuickSort, borrowed/depth/limited SAN remain. | Preserve C23; Root current-producer review remains separate from C24 implementation. |
+| #61 selected applied types/value-phase calls, C24 | Parent `1a1e26144` + scalar +13/-9, [applied type plan](2026-10-04-C-BACKEND-APPLIED-TYPE-BINDING-PLAN.md): exact selected classifier identity and pending operand value phase; no Source evaluation/public generic ABI. | Worker E8 O2/SAN50 each (31zero/1three/18four), eight observations/445 Core comparisons,341 Lists/client/finite Pair/captured type/fold/resource controls. Affected source-sort46 each/637 Core, nested40 each/I-O19 pass. Initial selector/fold failures retained; former C23 applied List refusal positive. | Exact16 frozen handoff ready; Root task/current-producer/Main review pending. C23 archive unchanged. | Exact selected classifiers only; arbitrary open/dependent/indexed/callable contracts, native Acc/QuickSort/full #61 remain open; borrowed/depth/limited SAN. | Root exact publication/current-producer review; preserve submissions and continue distinct bounded work. |
 | #61 native Acc/QuickSort (historical #44/#49) | C4 `a3b6bce` pins native refusal; C7-C9 retain it. C23 separately advances existing-source insertion sort, without implementing Acc/QuickSort. | Historical and fresh C23 checked/trusted status4/no product; Root C9 sorting-boundary gate passes. Structural FFTT remains separate. | Earlier task/prototype Main published; no native Acc/QuickSort epoch publication. | Indexed SizedList and callable recursive Acc fields remain unsupported; no producer defect established. | Report concrete indexed/callable representation needs through Merge; keep work bounded and downstream. |
 | #61 remaining public contracts (historical #49) | General/boxed callbacks, effects, higher Identity, recursive captures and shared nominal exchange remain explicit limits; C16 advances only fixed borrowed unary/binary scalar inputs. | Local/joint gates verify supported cases and refusals, not general completion. | Historical tasks/prototype Main published; no publication of general missing contracts. | Need bounded justified representation/demand contracts. | Preserve refusals; route shared needs through Merge. |
 
@@ -569,6 +594,17 @@ pinned/current producer images and emitted C/headers match byte-for-byte.
 Evidence and exact publication files are in the [epoch handoff](2026-10-03-C-BACKEND-EPOCH1-HANDOFF.md).
 
 ### Assessment
+
+C24 agent decision: borrow an exact selected classifier Term through the existing
+target applied-instance index, with declaration/builtin guards and no pending
+operands. Preserve value-phase carriers when forwarding unconsumed inline-call
+arguments; the prior code reused their underlying C computation expression and
+reintroduced a computation marker after the value-phase check. This is target
+operand bookkeeping, not Source argument evaluation or new type/erasure authority.
+Former selected List refusals and both Source fold forms need explicit positive
+Core/native coverage; public/unselected/open/indexed cases remain negative.
+Root reports C22 integration; independently verified C23 task publication releases
+live implementation while its exact historical archive stays unchanged.
 
 C23 agent implementation decision: keep a represented declaration/builtin type
 reference as a private identity token, bind it through existing known-lambda
@@ -1074,6 +1110,14 @@ this target work while Main continues SE1, superseding the earlier AP6 hold.
   O2/SAN48 each, affected nested40 each, linker and I/O19 controls.
 - [x] Freeze exact C23 code/test/docs and notify Root for separate publication,
   current-producer qualification and Main review; full native Acc/QuickSort open.
+- [x] Independently verify exact13 C23 task/remote and record Root C22 Main/current
+  results without rewriting historical snapshots.
+- [x] C24: reproduce exact selected applied-type refusal and target value-phase
+  loss; implement the bounded corrections with initial failure evidence retained.
+- [x] Finish C24 ordinary List/Pair/Core/inert/O2/SAN/resource/refusal and affected
+  gates before exact handoff; native Acc/QuickSort remains open.
+- [x] Freeze exact16 C24 code/test/docs and send Root the retained terminal
+  evidence; task publication/current-producer/Main review remains separate.
 - [ ] Maintain the single issue table at material events and within six active
   hours; use brief pointer/hash notices and keep Core workflow in Assessment.
 - [ ] Coordinate further bounded target ABI/lowering increments under the latest

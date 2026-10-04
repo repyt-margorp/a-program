@@ -2,7 +2,7 @@
 set -euo pipefail
 backend=$(realpath "${1:?a-to-c}")
 compiler=$(realpath "${2:?pointer-check}")
-inert=$(realpath "${3:?source sort inert test}")
+inert=$(realpath "${3:?applied type inert test}")
 if [[ -n ${4:-} ]]; then
 	output=$4
 else
@@ -11,7 +11,6 @@ else
 	output="$temporary/report"
 fi
 here=$(cd "$(dirname "$0")" && pwd)
-provider=$(realpath "$here/../../../../tests/fixtures/sorted-proof-provider.p")
 cc=${CC:-cc}
 ar=${AR:-ar}
 read -r -a flags <<< "${C_BACKEND_CFLAGS:--std=c11 -Wall -Wextra -Werror -O2}"
@@ -31,13 +30,13 @@ expect_status() {
 		exit 1
 	fi
 }
-expect_status admit 0 "$compiler" --legacy-intrinsic-dot --steps 5000000 --imports "$provider" --save "$output/sort.a" "$here/fixture.p"
-sha256sum "$output/sort.a" > "$output/before.sha256"
-expect_status reference-source 0 "$compiler" --legacy-intrinsic-dot --steps 5000000 --imports "$provider" --run reference "$here/fixture.p"
-expect_status reference-core 0 "$compiler" --load --run reference "$output/sort.a"
+expect_status admit 0 "$compiler" --steps 5000000 --save "$output/types.a" "$here/fixture.p"
+sha256sum "$output/types.a" > "$output/before.sha256"
+expect_status reference-source 0 "$compiler" --steps 5000000 --run reference "$here/fixture.p"
+expect_status reference-core 0 "$compiler" --load --run reference "$output/types.a"
 expect_status reference-compare 0 cmp "$output/reference-source.out" "$output/reference-core.out"
 for product in source object archive; do
-	sed -e "s/product source/product $product/" -e "s|artifact sort.a|artifact $output/sort.a|" "$here/source.aplink" > "$output/$product.aplink"
+	sed -e "s/product source/product $product/" -e "s|artifact types.a|artifact $output/types.a|" "$here/types.aplink" > "$output/$product.aplink"
 	expect_status "emit-$product" 0 "$backend" --cc "$cc" --ar "$ar" --image-limit none --steps 5000000 --link "$output/$product.aplink" "$output/$product"
 	test ! -e "$output/$product/runtime.c"
 	if [[ $product != source ]]; then
@@ -67,7 +66,7 @@ expect_status trusted-source 0 cmp "$output/source/component.c" "$output/trusted
 expect_status trusted-header 0 cmp "$output/source/component.h" "$output/trusted/component.h"
 expect_status no-fuel 3 "$backend" --steps 0 --link "$output/source.aplink" "$output/no-fuel"
 test ! -e "$output/no-fuel"
-for name in generic_id type_result unused_text unused_unselected dynamic effect sort_quick; do
+for name in generic_id type_result unused_flags unused_open unused_other_pair fixed_flags effect; do
 	sed '/^export /d' "$output/source.aplink" > "$output/$name.aplink"
 	printf 'export %s %s\n' "$name" "$name" >> "$output/$name.aplink"
 	for mode in checked trusted; do
@@ -78,7 +77,23 @@ for name in generic_id type_result unused_text unused_unselected dynamic effect 
 		test ! -s "$output/$name-$mode.out"
 	done
 done
-sha256sum "$output/sort.a" > "$output/after.sha256"
+for name in second-instance indexed; do
+	sed '/^export /d' "$output/source.aplink" > "$output/$name.aplink"
+	if [[ $name == second-instance ]]; then
+		printf 'data_of empty_flags Flags\n' >> "$output/$name.aplink"
+	else
+		printf 'data_of empty_sized Sized\n' >> "$output/$name.aplink"
+	fi
+	printf 'export fixed_nat fixed_nat\n' >> "$output/$name.aplink"
+	for mode in checked trusted; do
+		options=()
+		[[ $mode == trusted ]] && options=(--trust-image --steps 0)
+		expect_status "$name-$mode" 4 "$backend" --image-limit none --steps 5000000 "${options[@]}" --link "$output/$name.aplink" "$output/$name-$mode"
+		test ! -e "$output/$name-$mode"
+		test ! -s "$output/$name-$mode.out"
+	done
+done
+sha256sum "$output/types.a" > "$output/after.sha256"
 expect_status image-unchanged 0 cmp "$output/before.sha256" "$output/after.sha256"
 test -z "$(find "$output" -maxdepth 1 -name '*.tmp.*' -print)"
-printf 'Existing source insertion sort: selected applied type binding, three products, nine source/readback observations, 637 separate Core comparisons, 341 finite Lists, signed identities, persistent input/resource rollback and seven checked/trusted refusals pass\n'
+printf 'Exact selected applied types: three products, eight source/readback observations, 445 separate Core comparisons, 341 finite Lists, two-parameter Pair, captured type/recursion/value phase, persistent input/resource rollback and nine checked/trusted refusals pass\n'

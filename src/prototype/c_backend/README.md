@@ -805,18 +805,22 @@ Identity remain incomplete.
 
 ### Private selected types and existing source sorting
 
-Known private calls may bind a selected nominal declaration or represented builtin
-type constant through the existing known-lambda path. Its identity stays private
+Known private calls may bind an exact selected classifier Term, including a closed
+applied declaration or represented builtin type, through the existing known-lambda
+path. Its identity stays private
 in lexical/recursive captures; it becomes no C parameter or runtime type dictionary.
 Ordinary admission still owns the source classifier. Public Universe inputs/results,
-unselected constants and computed/applied type arguments remain unsupported.
+unselected/open constants and arbitrary computed type arguments remain unsupported.
+Applied type binding uses the existing selected-instance identity index; it does
+not normalize types or infer an instance from an erased layout. Pending known-call
+operands preserve their checked value phase when their C value came from a call.
 
 `check-c-source-sort` imports the unchanged existing `insertionSortBy`,
 `insertionSort`, `insertBy` and Nat comparison from the source provider. Explicit
 `data_of empty List` selects the existing closed List classifier. Generated
 source/object/archive clients test341 finite Lists with two sorts, four insertion
-pivots and identity, signed/Nat/enum identities and persistent/resource contracts.
-Nine source/readback observations and552 separate existing-Core comparisons agree;
+pivots and direct/generic identity, signed/Nat/enum identities and persistent/resource contracts.
+Nine source/readback observations and637 separate existing-Core comparisons agree;
 raw emission remains inert. Checked/trusted public generic, unselected/computed
 type, dynamic/effect and native QuickSort exports retain explicit refusal4.
 The receipt transformations list includes `known-selected-type-bindings` as a
@@ -828,6 +832,18 @@ owned under the existing ABI, and comparison recursion retains Nat32/depth bound
 sorting a singleton maximum Nat succeeds, while comparing two maximum values
 returns depth failure with output/allocation rollback. Client/source sanitizers
 do not instrument emitted object/archive bodies or the compiler/helpers.
+
+`check-c-applied-types` verifies selected one-parameter List and two-parameter Pair
+arguments, aliases, captured type identity and generic calls inside both direct
+and explicitly sequenced folds. Three products/raw clients test341 finite Lists,
+active/inactive Pair fields, native Nat extrema and output/arena/input preservation.
+Eight source/readback observations and445 separate existing-Core comparisons
+agree; emission invokes none of the guarded evaluator/substitution/WHNF/query
+routines and leaves graph/proof counts unchanged. Public generic/type results,
+unselected/open/other-instance types, effects, a second instance of one erased
+layout and indexed selection retain explicit checked/trusted refusal4 controls.
+Both initial fold failures and classifier-selection setup failures stay historical
+evidence; no arbitrary type-computation or public generic ABI is introduced.
 
 ### Selected applied families and source slices
 
