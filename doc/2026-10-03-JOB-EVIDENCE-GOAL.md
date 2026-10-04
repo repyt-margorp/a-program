@@ -1,7 +1,7 @@
 # Job/Evidence Implementation Handoff
 
 Date: 2026-10-03
-Status: reviewed Job accepted/pushed as94a20003; private frontier trials and full SE1-SE5 unfinished.
+Status: reviewed Job accepted/pushed as94a20003; private frontier trials and full SE1-SE5 unfinished. Human static Evidence/Occurrence audit reviewed; coherent structural checked-owner prototype work remains.
 Branch: `parallel/job-evidence-20261003`.
 Producer checkpoint: `64df10dfb6caf69226cebb401b88714541334768`.
 Related: [coordination](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md),
@@ -15,6 +15,10 @@ Related: [coordination](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md),
 ## 1. Single Implementation Owner
 
 ### Subjective (User)
+
+2026-10-04 13:53 UTC, English paraphrase of the human format permission
+reaffirmed by inquiry desk019ebfae: old formats may be dropped. This does not
+authorize accepted runtime changes from the audit request.
 
 2026-10-04 12:58 UTC, English translation of the latest human request via
 inquiry desk `019ebfae`: Evidence appears to rebuild the same tree as Term,
@@ -230,6 +234,16 @@ definition checks, failures and real quotation proofs must remain correct.
 This is a candidate deletion, not user approval of a solution or the full Goal.
 
 ### Assessment
+
+2026-10-04, Root reviewed the [human-requested static audit](../src/prototype/solver_inputs/epochs/evidence_occurrence_audit_20261004/report.md)
+against all34 committed source pins and all53 rules. Structural receipt/header/
+index/chain integration into checked Occurrence/Scope/map is the next coherent
+prototype direction through real consumers. Retain actual local typing facts
+and genuine frontier; legacy history/image compatibility is retirement-permitted
+migration debt, not a permanent second authority. The
+[focused audit](2026-10-04-EVIDENCE-OCCURRENCE-AUTHORITY-AUDIT-AND-PLAN.md)
+is the report; this existing implementation work list and open criteria remain.
+No new runtime qualification, accepted adoption or measured cost follows.
 
 2026-10-04, Root adopts the reviewed Job refactor under the explicit human
 promotion authorization. The initial materialized-default choice is superseded:

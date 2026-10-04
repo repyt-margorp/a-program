@@ -1,0 +1,113 @@
+{
+  "date_UTC": "2026-10-04T13:46:58.751463+00:00",
+  "notice_SHA": "07224fa9f3d7a42b7904e13ce9bc72ee8858793a7984fa581796d8de079b431d",
+  "freeze": {
+    "Main_integration": "pending",
+    "accepted_promotion": false,
+    "archive_sha256": "bb0c2ccc7c53cf1656e20ffa3b265db45bf97e0ce01c938c9af6fd22122efc4f",
+    "branch": "parallel/c-backend-20261003",
+    "chosen_commit_message": "prototype: emit actual Acc callable append expressions",
+    "classification": "actual append callable Fold/clauses plus sealed Acc/partition; manual accessibility/primitive/comparison/measure/entry extent explicit",
+    "current_Root_producer_qualification": "pending",
+    "epoch": "C38",
+    "frozen_at": "2026-10-04T13:41:11.753011+00:00",
+    "full_native_generalized_Acc_QuickSort_complete": false,
+    "goal_status": "active",
+    "handoff_sha256": "aa4761e17bf41adb7df07572dee26e649b2d0ccdb5c65b7305881d7aeffb8d33",
+    "manifest_sha256": "09149b7f988f630fb4abc73068c12be42fce010b92297a1ef8ee2666d90415be",
+    "parent_dependency": "ordered sealed C32-C37; C33 primitives/C36 clause/C37 partition immutable",
+    "publication_count": 13,
+    "published_parent_observed": "cc3cba3495b81628e0a68ec8b45aee4f5447d188",
+    "qualified_inputs_count": 157,
+    "qualified_inputs_sha256": "1fe0414c556a93de09572ddb2345e9627d9eda29dc88eaf34a4899a28db1ad43",
+    "raw_count": 478,
+    "raw_manifest_sha256": "1f081c9f329d446f9b317173972c8758582f99d5c59675ecda0380e70cc701a5",
+    "ready_for_delegated_task_publication": true,
+    "runtime_count": 128,
+    "style_sha256": "bdd0a3d571e6fbfe0c76e421acb9680e7b23ebea60e18f8112cff567fc4d8c5d",
+    "verification_sha256": "e1d9660cd59b9c16b17873a9b4c78d57237f27b689b488b59f63b988483a84e3"
+  },
+  "frozen13_all_archive_bytes_exact": {
+    "doc/2026-10-03-C-BACKEND-GOAL.md": "71f98f4fb61568d2d724c3140787a6eaf942bba1be1a9f7745598f8c75b33637",
+    "doc/2026-10-04-C-BACKEND-ACC-APPEND-PLAN.md": "b6535830e3293eb3b9b70fb7eae52e7abe6614b099cf690253797d005ce13bb0",
+    "doc/2026-10-04-C-BACKEND-EPOCH38-HANDOFF.md": "aa4761e17bf41adb7df07572dee26e649b2d0ccdb5c65b7305881d7aeffb8d33",
+    "src/prototype/c_backend/acc_append/README.md": "9e0fabea55570287a2963c37fa904415608f3229989db65a095b3c9318332437",
+    "src/prototype/c_backend/acc_append/append_client.c": "3bc0d8f177bcdc0b16fdfc62545a3e17339df7685d5d7188e2f806345e0b9136",
+    "src/prototype/c_backend/acc_append/build.mk": "0a253e650fffad124a9dcd24837f08ddf332525af95bd69aa32b3ad5b1fb67b5",
+    "src/prototype/c_backend/acc_append/check.sh": "26d07363fe9f86fe3f7190f476e850daadcdaf5c45889b6225b5d20a321795aa",
+    "src/prototype/c_backend/acc_append/emit.c": "13351072222547122e946af47a1d5067f9ee934be5399cce326b4baf5034e969",
+    "src/prototype/c_backend/acc_append/emit.h": "170fd1c400610ea53f1b901da9c988e09b2e074cb9498fe5fae452138b22f332",
+    "src/prototype/c_backend/acc_append/emit_test.c": "0934b2fe0d208d7f666c4149f14f0652c312ca66a709a4ef29ca3a991e5255c0",
+    "src/prototype/c_backend/acc_append/fixture.p": "a36e53448991f185c1872a3efe8d35e56d6a44d39f7972b518cf2a01de044dcd",
+    "src/prototype/c_backend/acc_append/module.h": "637995c8cf42460884aa19990c0311a9f4842585afeed05203301fafd4b29078",
+    "src/prototype/c_backend/acc_append/support.c": "1064f027a6240c2a993e63d44b9379f1699d37fbce751911f69af8f8a06389f4"
+  },
+  "raw478_all_exact": true,
+  "retained157_copies_exact": true,
+  "live_input_differences": [],
+  "runtime128_independently_recomputed": "9ba2b33cbe8bc68eac338073506bcb205f36d20cb0a34f9f88607d975ef07740",
+  "products_all_exact": 284,
+  "terminal_worker_phases": {
+    "terminal-O2": {
+      "raw_argv_status_JSON_rows_exact": 36,
+      "exits": {
+        "0": 31,
+        "1": 1,
+        "4": 4
+      }
+    },
+    "SAN": {
+      "raw_argv_status_JSON_rows_exact": 36,
+      "exits": {
+        "0": 31,
+        "1": 1,
+        "4": 4
+      }
+    }
+  },
+  "Root_runtime_replay": false,
+  "Root_static_source_review": "Frozen243-line emitter traverses actual selected Lambda, typed Fold/elimination and source expression/binder order. Generated42-line append captures type/tag/head/tail at Fold time; recursive tail Fold occurs only when source IH is forced. Nil returns same borrowed right; Cons forces then applies with right before allocating source cons. Function-like binding composes exact C36 Acc and C37 partition products. Original whole-left references refuse rather than synthesize missing capture. Mutation drops left heads and changes direct source/generated result. Manual Nat32/accessibility/comparison/measure/outer remain.",
+  "source_outputs_verified": {
+    "sort": "0,1,2,2,3,|",
+    "append": "3,0,2,1,|",
+    "noncandidate_drop": "2,1,|"
+  },
+  "initial_failures_retained": [
+    "reused probe abort6 required fixture helper aliases omitted; ordinary fixture setup corrected",
+    "strict build2 misleading indentation corrected"
+  ],
+  "Root_review_setup_failure": "First runtime path-prefix assumption yielded zero input matches; corrected to actual old-E8 /src path and all128 recomputed. No runtime test failure inferred.",
+  "manual_extent": [
+    "closed Nat32 representation/storage/Nat/LT constructor primitives",
+    "accessibility/raw down",
+    "comparison",
+    "measure",
+    "outer array/copy-out orchestration"
+  ],
+  "limits": [
+    "closed Nat32",
+    "depth256",
+    "node65536",
+    "borrowed source-valid immutable data/code/context lifetime",
+    "private statuses1-6",
+    "original-whole-left base capture refusal4",
+    "open/dynamic/effect/Identity/motive/general indexed/callable contracts refused",
+    "main native Acc refusal retained",
+    "overflow inspected not exercised",
+    "destination final-copy I/O/publication cleanup caller-owned",
+    "finite-path sanitizer coverage"
+  ],
+  "qualification": "Worker oldE8 producer only, pointer/Core prebuilt O2; no Root current accepted qualification/task publication/native61/adoption/cost/Goal completion.",
+  "old32_to37_archives_exact": {
+    "32": "db6a663c11197d92a28d13c8344da02aaccdd59c32864bfba106391a7f7e05ae",
+    "33": "a8bd408cc099885ab26780a901017fb3a9087294ce5e8b768b84ea6c2b7a6499",
+    "34": "26138ad62d6e819a722b3264c6d050d6d906a208190985158a68c86055d6ad77",
+    "35": "6bfebc166faca426c59b63d6df98a27cce0e51dad59fcc93aabd48802f74ba6c",
+    "36": "935cbfa3c56f20af251770180172e795eb14e866d5569318eae515e0e047acbd",
+    "37": "a82d8be6c7d1615ded0c217a6facf291c828c2ecea5325e7ee598de231664416"
+  },
+  "sealed_C36_C37_products_exact": {
+    "clause": "cd1a7d70441222995b12ca2354ae6aeda80eaa2f99cd296cfeb5ef451405804c",
+    "partition": "b8238b022d1613d4cd8dffd4692f68d0e6668bf8206f3324588765bc25c2de31"
+  }
+}

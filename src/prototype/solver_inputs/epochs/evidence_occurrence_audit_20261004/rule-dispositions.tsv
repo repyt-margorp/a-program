@@ -1,0 +1,54 @@
+rule	disposition	existing_owner	independent_fact_or_contract	committed_source_reference
+PG_CONTEXT_EMPTY	integrate	empty typing admission / existing selected Scope	parent, declaration formation and family telescope	evidence.c:3536,3562,3650
+PG_CONTEXT_EXTEND	integrate	empty typing admission / existing selected Scope	parent, declaration formation and family telescope	evidence.c:3536,3562,3650
+PG_UNIVERSE_FORM	integrate	Occurrence + accepted scope	Universe level and exact binder declaration	evidence.c:3582,3676
+PG_VARIABLE	integrate	Occurrence + accepted scope	Universe level and exact binder declaration	evidence.c:3582,3676
+PG_TYPE_FROM_VALUE	integrate	Occurrence origin/boundary	sort/Universe checks	evidence.c:3541,3553
+PG_RETURN_TYPE_FORM	integrate	Occurrence operand and CBPV type owner	formation checks	evidence.c:3749
+PG_THUNK_TYPE_FORM	integrate	Occurrence operand and CBPV type owner	formation checks	evidence.c:3749
+PG_PI_FORM	integrate	Occurrence + existing binding Scope	selected formation and scoped body checks	evidence.c:3986,3736
+PG_RETURN_INTRO	integrate	Occurrence operand/type + existing CBPV owner	grade and classifier checks	evidence.c:4003,4462
+PG_THUNK_INTRO	integrate	Occurrence operand/type + existing CBPV owner	grade and classifier checks	evidence.c:4003,4462
+PG_FORCE_ELIM	integrate	Occurrence operand/type + existing CBPV owner	grade and classifier checks	evidence.c:4003,4462
+PG_LAMBDA_INTRO	integrate	Occurrence type/operands	scope, domain and dependent result checks	evidence.c:4056,4483,3690
+PG_APP_ELIM	integrate	Occurrence type/operands	scope, domain and dependent result checks	evidence.c:4056,4483,3690
+PG_VALUE_FROM_TYPE	integrate	Occurrence origin/boundary	sort/Universe checks	evidence.c:3541,3553
+PG_TYPE_CONVERSION	retain-relation-integrate-packaging	Occurrence origin/type + existing conversion/reduction/CBPV owner	exact pure endpoints, reduction kind or directed effect/grade check	evidence.c:4548,4586,5604
+PG_CONTEXT_PROJECTION	integrate	Occurrence origin/map + checked scope/map	scoped action and canonical sharing	evidence.c:4625,4791
+PG_CONTEXT_SUBSTITUTION	integrate-after-transport-migration	existing Context map	dependent image checking; exact prefix is current request/transport history	evidence.c:4645,4757;tests/derivation_io.c:567-579
+PG_REINDEX	integrate	Occurrence origin/map + checked scope/map	scoped action and canonical sharing	evidence.c:4625,4791
+PG_THUNK_CONTENT	integrate	Occurrence origin/selection/argument + existing typed query	checked inversion/scoped substitution	evidence.c:5257,5269,5678,5703,5283
+PG_PI_CODOMAIN	integrate	Occurrence origin/selection/argument + existing typed query	checked inversion/scoped substitution	evidence.c:5257,5269,5678,5703,5283
+PG_PI_DOMAIN	integrate	Occurrence origin/selection/argument + existing typed query	checked inversion/scoped substitution	evidence.c:5257,5269,5678,5703,5283
+PG_RETURN_CONTENT	integrate	Occurrence origin/selection/argument + existing typed query	checked inversion/scoped substitution	evidence.c:5257,5269,5678,5703,5283
+PG_PI_CONSTANT_CODOMAIN	integrate	Occurrence origin/selection/argument + existing typed query	checked inversion/scoped substitution	evidence.c:5257,5269,5678,5703,5283
+PG_FOLD_ELIM	integrate	Occurrence operands/type + CBPV owner	ordered effects and result checks	evidence.c:5631
+PG_IDENTITY_FORM	integrate-owner-local	Occurrence operands/type + existing Identity owner	checked paths/endpoints/direction; legacy introduction selection separate	evidence.c:3849-3985;evidence_identity.c:5,34
+PG_IDENTITY_INSTANCE	integrate-owner-local	Occurrence operands/type + existing Identity owner	checked paths/endpoints/direction; legacy introduction selection separate	evidence.c:3849-3985;evidence_identity.c:5,34
+PG_REFLEXIVITY	integrate-owner-local	Occurrence operands/type + existing Identity owner	checked paths/endpoints/direction; legacy introduction selection separate	evidence.c:3849-3985;evidence_identity.c:5,34
+PG_IDENTITY_LEFT_TYPE	integrate-owner-local	Occurrence operands/type + existing Identity owner	checked paths/endpoints/direction; legacy introduction selection separate	evidence.c:3849-3985;evidence_identity.c:5,34
+PG_IDENTITY_RIGHT_TYPE	integrate-owner-local	Occurrence operands/type + existing Identity owner	checked paths/endpoints/direction; legacy introduction selection separate	evidence.c:3849-3985;evidence_identity.c:5,34
+PG_FAMILY_IDENTITY_FORM	integrate-owner-local	Occurrence maps/operands + existing Identity boundary	checked scoped paths; alternative receipt identity is current API/transport	evidence.c:4835,4914;tests/identity.c:126-201
+PG_PURE_NORMALIZATION	retain-relation-integrate-packaging	Occurrence origin/type + existing conversion/reduction/CBPV owner	exact pure endpoints, reduction kind or directed effect/grade check	evidence.c:4548,4586,5604
+PG_RETURN_VALUE	integrate-with-boundary-relation	Occurrence origin/type + existing CBPV boundary	converted inversion relation may retain producer outside current typed edges	evidence.c:4391;tests/synthesis.c:12450
+PG_THUNK_COMPUTATION	integrate-with-boundary-relation	Occurrence origin/type + existing CBPV boundary	converted inversion relation may retain producer outside current typed edges	evidence.c:4391;tests/synthesis.c:12450
+PG_FAMILY_ACTION	integrate-owner-local	Occurrence maps/operands + existing Identity boundary	checked scoped paths; alternative receipt identity is current API/transport	evidence.c:4835,4914;tests/identity.c:126-201
+PG_IDENTITY_TRANSPORT	integrate-owner-local	Occurrence operands/type + existing Identity owner	checked paths/endpoints/direction; legacy introduction selection separate	evidence.c:3849-3985;evidence_identity.c:5,34
+PG_IDENTITY_LIFT	integrate-owner-local	Occurrence operands/type + existing Identity owner	checked paths/endpoints/direction; legacy introduction selection separate	evidence.c:3849-3985;evidence_identity.c:5,34
+PG_INDUCTIVE_FORM	retain-oracle-fact-delete-packaging	existing IADT schema/signature + fiber Occurrence	nominal formation, positivity, Universe bounds	evidence.c:706;iadt.c:324,543
+PG_CONSTRUCTOR_INTRO	integrate-after-missing-input-migration	existing constructor/schema + Occurrence maps/fields	parameter prefix and Self agreement; maps absent from current occurrence	evidence.c:2192
+PG_MATCH_ELIM	integrate-owner-local	elimination Occurrence operands/map/type/allocation + IADT owner	motive transport, branch scopes, induction hypotheses	evidence.c:2849
+PG_INDUCTION_ELIM	integrate-owner-local	elimination Occurrence operands/map/type/allocation + IADT owner	motive transport, branch scopes, induction hypotheses	evidence.c:2849
+PG_EFFECT_SUBSUMPTION	retain-relation-integrate-packaging	Occurrence origin/type + existing conversion/reduction/CBPV owner	exact pure endpoints, reduction kind or directed effect/grade check	evidence.c:4548,4586,5604
+PG_REQUEST_INTRO	retain-oracle-fact-delete-packaging	existing operation declaration + Occurrence	nominal label signature/payload/continuation check	evidence.c:120,5384
+PG_HANDLER_ELIM	retain-oracle-fact-delete-packaging	existing handler/operation owners + clause Occurrences	signature and forwarding equations; label signature deletion needs control	evidence.c:5535;computation.c:93,130
+PG_CONTEXT_FAMILY_EXTEND	integrate	empty typing admission / existing selected Scope	parent, declaration formation and family telescope	evidence.c:3536,3562,3650
+PG_TYPE_FAMILY_APP	integrate	Occurrence type/operands	scope, domain and dependent result checks	evidence.c:4056,4483,3690
+PG_TYPE_FAMILY_ABSTRACT	integrate	Occurrence + existing binding Scope	selected formation and scoped body checks	evidence.c:3986,3736
+PG_TYPE_CASE	integrate-after-missing-input-migration	existing IADT type-case owner / typed formation + parameter map	formation/parameter inputs absent from current typed operands	evidence.c:3426
+PG_TERMINATION_FORM	integrate-owner-local	existing termination owner + Occurrence	this suspended term / checked TOTAL for introduction	evidence.c:3773,3793
+PG_TERMINATION_INTRO	integrate-owner-local	existing termination owner + Occurrence	this suspended term / checked TOTAL for introduction	evidence.c:3773,3793
+PG_TOTAL_PURE_VALUE	integrate	Occurrence operand/type + existing CBPV owner	grade and classifier checks	evidence.c:4003,4462
+PG_HOST_TYPE_FORM	integrate-owner-local	existing closed host descriptor + Occurrence	closed literal/function/signature checks	evidence.c:3595,3609,3625
+PG_HOST_VALUE_INTRO	integrate-owner-local	existing closed host descriptor + Occurrence	closed literal/function/signature checks	evidence.c:3595,3609,3625
+PG_HOST_FUNCTION_INTRO	integrate-owner-local	existing closed host descriptor + Occurrence	closed literal/function/signature checks	evidence.c:3595,3609,3625

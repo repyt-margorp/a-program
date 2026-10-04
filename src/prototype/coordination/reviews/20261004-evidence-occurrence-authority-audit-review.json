@@ -1,0 +1,34 @@
+{
+  "date_UTC": "2026-10-04T13:49:53.568789+00:00",
+  "review": "Root read-only report/source ownership review, no new runtime tests",
+  "notice_SHA": "48c32fea1ab03578c3cc0d092096986c48759fa578c2263c4298aa26fb3a82b7",
+  "manifest_SHA": "b012671e712cf5ae5cc6a85f620ab264d71a87c59869046e63b3f573d8a7891a",
+  "report_SHA": "45109a851cb82cfe1159d2c4562e0f0652a0d816ecb13df90478c4f2cffd60dc",
+  "baseline": "c205d507a8568bfdda355e247a78b4e67464f294",
+  "all34_committed_source_pins_exact": true,
+  "all34_also_equal_accepted_fc52755b": true,
+  "rule_coverage": {
+    "enum_count": 53,
+    "rows": 53,
+    "each_once": true
+  },
+  "findings": "Evidence references existing typed conclusions rather than copying all Term payloads, but separate header/index/admission-chain allocations and repeated dependency traversal persist even for zero-premise Lambda/APP rules. Existing checked Occurrence/Scope/map are concrete integration targets; plain tuple membership alone is not admission.",
+  "adopted_within_original_prototype_scope": "Coherent structural constructors/real Synthesis, typed-query and derivation consumers must migrate together, deleting header/index/chain allocations. Preserve preconstruction sharing and reject copied/foreign/raw owner inputs. This is an agent proposal/implementation direction, not human accepted architecture.",
+  "retained_existing_local_facts": [
+    "selected Scope formation and dependent map checking",
+    "conversion/reduction relation endpoints/kind",
+    "IADT positivity/nominal schema and constructor parameter/instance maps",
+    "operation/handler signatures and computational Identity paths",
+    "genuine charged frontier and reusable evaluator results"
+  ],
+  "compatibility_blockers": [
+    "Identity export currently searches historical introduction-rule receipts",
+    "derivation/substitution prefix and alternative-selection transport contracts must migrate explicitly",
+    "constructor/type-case Occurrence omits some checked parameter/instance inputs"
+  ],
+  "static_layout": "64-byte LP64 receipt header plus typically16-byte alternate selection; source-layout reasoning, no new compiled or peak-RSS measurement. Account for integration metadata before claiming net gain.",
+  "original_failures": "strict3 retained; typed-owner v2 Synthesis134 at old853, SAN/public unrun; phase2 Synthesis unit and Source/normalization checkpoint scope only",
+  "completion_scope": "Requested first substantive static Markdown audit delivered/reviewed. Deletion implementation, current composition, dynamic soundness/persistence/fuel and matched memory/time remain open.",
+  "Main_protected_edits": "Unowned evidence/IADT/test edits excluded and preserved",
+  "format_permission": "Human old-format retirement permission reaffirmed by inquiry desk. Exact legacy receipt identity/pointer assertions are migration debt, not permanent compatibility requirements. Retire explicitly with historical evidence and actual semantic/frontier qualification; audit is not accepted runtime approval."
+}

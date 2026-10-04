@@ -1,0 +1,130 @@
+{
+  "date_UTC": "2026-10-04T13:56:42.081697+00:00",
+  "due_UTC": "2026-10-04T13:44:22.084Z",
+  "observed_owners": {
+    "date_UTC": "2026-10-04T13:47:37.876993+00:00",
+    "due_UTC": "2026-10-04T13:44:22.084Z",
+    "owners": {
+      "C": {
+        "pane": "%0",
+        "status": "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/c-backend \u00b7 Verify Surface index.lock handoff         Pursuing goal (1d 6h 54m)    \u26a0 1 warning \u00b7 f2 to view",
+        "work_state": "\u2022 Working (3m 21s \u2022 esc to interrupt)"
+      },
+      "Performance": {
+        "pane": "%1",
+        "status": "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-progr\u2026 Pursuing goal (1d 11h 41m)    \u26a0 1 warning \u00b7 f2 to view",
+        "work_state": "\u25e6 Working (22s \u2022 esc to interrupt) \u00b7 1 background terminal running \u00b7 /ps to view \u00b7 /stop to close"
+      },
+      "Job": {
+        "pane": "%4",
+        "status": "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program\u2026 Pursuing goal (1d 0h 5m)    \u26a0 1 warning \u00b7 f2 to view",
+        "work_state": "\u25e6 Working (6h 02m 27s \u2022 esc to interrupt)"
+      },
+      "Static": {
+        "pane": "%10",
+        "status": "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/verification-audit \u00b7 Hand off static inventory              Goal achieved (50m)    \u26a0 1 warning \u00b7 f2 to view",
+        "work_state": "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/verification-audit \u00b7 Hand off static inventory              Goal achieved (50m)    \u26a0 1 warning \u00b7 f2 to view"
+      },
+      "Sort": {
+        "pane": "%11",
+        "status": "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/sort-library \u00b7 Start authorized sort worker                 Goal achieved (24m)    \u26a0 1 warning \u00b7 f2 to view",
+        "work_state": "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/sort-library \u00b7 Start authorized sort worker                 Goal achieved (24m)    \u26a0 1 warning \u00b7 f2 to view"
+      },
+      "Tests": {
+        "pane": "%12",
+        "status": "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/test-suite \u00b7 Simplify and deduplicate tests                 Goal achieved (37m)    \u26a0 1 warning \u00b7 f2 to view",
+        "work_state": "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/test-suite \u00b7 Simplify and deduplicate tests                 Goal achieved (37m)    \u26a0 1 warning \u00b7 f2 to view"
+      },
+      "Issues": {
+        "pane": "%14",
+        "status": "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/issue-audit \u00b7 Record audit ownership receipt                Goal achieved (23m)    \u26a0 1 warning \u00b7 f2 to view",
+        "work_state": "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/issue-audit \u00b7 Record audit ownership receipt                Goal achieved (23m)    \u26a0 1 warning \u00b7 f2 to view"
+      },
+      "Surface": {
+        "status": "Original bounded owner closed after delivered task; not resumed"
+      }
+    },
+    "visible_related_heavy": [
+      {
+        "pid": 2572400,
+        "executable": "make",
+        "cwd": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_acceptance_20261004/trial",
+        "argv": "make -j1 -k -i -f /home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_acceptance_20261004/trial/src/Makefile CC=/usr/bin/x86_64-linux-gnu-gcc-14 CFLAGS=-std=c11 -Wall -Wextra -Werror -O2 BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_acceptance_20261004/build-candidate-o2 SHELL=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_verification/make_shell.py check-acceptance "
+      },
+      {
+        "pid": 2578863,
+        "executable": "program_test",
+        "cwd": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_acceptance_20261004/trial",
+        "argv": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_acceptance_20261004/build-candidate-o2/program_test --steps 50000000 --equal-image /home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_full_acceptance_20261004/temporary/tmp.DKZZcFGh63/resaved.a reverse_length two "
+      }
+    ],
+    "process_scope": "Visible /proc only, no universal host-idle claim; no signals/owner actions",
+    "worker_pane_snapshot_SHA": {
+      "C": "3ca9f0d45cc5e595b2b0c5671d8dd551848c680aebc6ccd9192e5a6d4a61c27e",
+      "Performance": "36423cac63e4f88be89d4c63717e01fa366ccd11c11bab0e879305bf83106a65",
+      "Job": "ac901b90aace07e8ebc58d0dd896dd5a9e1558313d80012f3137da08f6b6c32a",
+      "Static": "3900d9971047115434e23d2fa33e659873a3bb1e8ce23cef5e7d6c09c12453cc",
+      "Sort": "a2b81a8a05ce4850286da7dea354e1f6301fddc720ce3b946731ba22ba8c9b35",
+      "Tests": "20120ba8592af7e302f394abc74fecd25d0a04f758b66b8369058ab162e85994",
+      "Issues": "b81acaceebaf16a1122bc8d05e1d0babdf256a54efc313ca3cddf324faefd907"
+    }
+  },
+  "live_GitHub": {
+    "open_issues": [
+      61,
+      59,
+      57,
+      56,
+      52,
+      51,
+      47,
+      43,
+      41
+    ],
+    "open_PRs": [],
+    "issue_updated_dates": {
+      "61": "2026-10-03T13:11:54Z",
+      "59": "2026-10-03T13:08:50Z",
+      "57": "2026-10-03T13:08:54Z",
+      "56": "2026-10-03T13:08:58Z",
+      "52": "2026-10-03T13:09:06Z",
+      "51": "2026-10-03T13:09:01Z",
+      "47": "2026-10-03T13:09:14Z",
+      "43": "2026-10-03T13:09:10Z",
+      "41": "2026-10-03T13:09:17Z"
+    },
+    "body_SHA": {
+      "61": "41872697f2356c60e77c7f4d5c481705f03d5d3ae5d83618194b090a76e7451a",
+      "59": "7c8c563717262b330d0bcb2fdb7ec3454b206d223e9461c7fcbe518b74e07657",
+      "57": "5cc775e0494e7fe6b2c53cb5da989ad857f0f16afa794d24827db6a997cb0279",
+      "56": "52d4c5e60b5b499ff1d99b64d5ac4367bbd5119b2beb9a245f17ce9fbc3afd2f",
+      "52": "a270ef5933cab792d4e511eed2561b3bcffde014f13ffbf757e08df9a254c806",
+      "51": "b52ce7f7e49279990ba5b8b53a739436d153b62f6af8c6feef75a829bd7e589e",
+      "47": "bb2b1b52fbdbdba494a4a5a5cb369bb4b10500a0a1ec577a271a3aa147af6dd8",
+      "43": "ecd1df90dd66e3b3f4df97abceb23eaf8047e03f74932c4a8982d3ace3fa9f9e",
+      "41": "e539925b68f41a5e3b22f95f8b53f763aec5d86f10f1a190fbdd984cb092e72c"
+    },
+    "completion_assessment": {
+      "61": "Selected-export/Identity and target-native general lowering/refinement remain; C38 is bounded partial source helper emission.",
+      "59": "Bounded static inventory and prototype pilot completed; actual current-producer cost and full debt criteria remain.",
+      "57": "Prototype delivered/stopped; human syntax-policy/diagnostics/accepted migration decision remains.",
+      "56": "Selected approved deletion promoted; broad current acceptance in flight and matched peak-RSS/time pending; strict/raw failures retained.",
+      "52": "Checked relation reuse contract/selected transport/lowering experiment and measured cost remain separate.",
+      "51": "Structural owner/recursive consumer audit advances, but current strict partition and complete anti-regression criteria remain.",
+      "47": "General relevance and selected partial-artifact admissibility remain decisions/negative-test scope; no blanket erasure.",
+      "43": "Operational recurrence/effect/totality decisions and logical consistency plan remain; no implementation inferred.",
+      "41": "Bounded finite library delivered/stopped; broader two-representation lawful view/action, interface acceptance and measured proof/runtime criteria remain."
+    },
+    "no_issue_state_change": true
+  },
+  "material": "Accepted selected Performance fc52755b, metadata main551eecca exact. Job human static audit report now source-reviewed; prototype migration remains. C38 static frozen oldE8 reviewed, current qualification/publication separate. Performance original full acceptance running; expired request no cost grant/sample. Four bounded workers remain stopped, no resumed or duplicated owner.",
+  "stalls": "No publication-only hold. Cost blocked by missing C ACK before previous request expiry, then active full acceptance. Original Job is pursuing main static audit/structural migration, C actual helper lowering; no speculative model/session restart.",
+  "Root_Goal": "blocked unchanged",
+  "schedule": "Original six-hour timer unchanged; next2026-10-04T19:44:22.084Z",
+  "protected": "All9 Main unowned hashes/index preserved through previous publish; fresh guard required before next integration",
+  "readonly_archive": {
+    "path": "src/prototype/coordination/reviews/evidence/20261004-timed-1344-readonly.tar.gz",
+    "sha256": "c4f36f01e28d2c60631c34456ae016d4ae03191b300182cca3acaba5965035bc",
+    "bytes": 44453
+  }
+}

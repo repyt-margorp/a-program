@@ -1,0 +1,34 @@
+{
+  "kind": "read-only authority audit checkpoint; no new build/run/RSS/timing",
+  "baseline": "c205d507a8568bfdda355e247a78b4e67464f294",
+  "committed_inputs": 34,
+  "rule_count": 53,
+  "rule_coverage_exact": true,
+  "later_accepted_fc52755b_evidence_typing_derivation_bytes_equal": {
+    "src/evidence.c": true,
+    "src/evidence.h": true,
+    "src/evidence_function.c": true,
+    "src/evidence_cbpv.c": true,
+    "src/evidence_identity.c": true,
+    "src/evidence_scope.c": true,
+    "src/typing.c": true,
+    "src/typing.h": true,
+    "src/derivation.c": true,
+    "src/derivation_io.c": true
+  },
+  "Main_dirty_evidence_edits": "excluded; no copy, edit or inference from uncommitted files",
+  "worker_frontier": "separate immutable review18 manifest789a78c9",
+  "worker_typed_owner_v2": "separate unqualified runtime126d192f8ce, full Synthesis SIGABRT at old layout853; SAN/public unrun",
+  "strict_public_failures": [
+    "1000+1000",
+    "1600+1600",
+    "completed1915+0; original1921+0 retained"
+  ],
+  "scope_correction": "review18 covers Synthesis unit + Source/normalization checkpoint groups, not full SourceIO execution",
+  "audit_setup_history": [
+    "tests/pointer.c absent at pinned revision; excluded without runtime inference",
+    "initial snapshot extension requested nonexistent src/typing_io.c and stopped; rerun with existing sources, no runtime inference"
+  ],
+  "focused_work_list": "Main doc/2026-10-04-EVIDENCE-OCCURRENCE-AUTHORITY-AUDIT-AND-PLAN.md",
+  "implementation_work_list": "doc/2026-09-30-SOLVER-EVIDENCE-DUPLICATION-AUDIT-AND-PLAN.md"
+}

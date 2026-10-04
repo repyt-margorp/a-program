@@ -1,7 +1,7 @@
 # Solver and Evidence Duplication Audit
 
 Date: 2026-09-30
-Status: reviewed Job migration accepted/pushed as94a20003; full SE/frontier/cost work unfinished.
+Status: reviewed Job migration accepted/pushed as94a20003; full SE/frontier/cost work unfinished. Human static Evidence/Occurrence audit reviewed; coherent structural checked-owner prototype work remains.
 Parent: [artifact plan, AP0](2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md#ap0-simplify-before-extending-persistence).
 This is the active prerequisite work list, not another artifact format proposal.
 
@@ -2998,6 +2998,10 @@ baseline described above. Concurrent accepted-source edits remain excluded.
 
 #### Subjective (User)
 
+2026-10-04 13:53 UTC, English paraphrase of the human format permission
+reaffirmed by inquiry desk019ebfae: old formats may be dropped. This does not
+authorize accepted runtime changes from the audit request.
+
 English paraphrase of the latest follow-up: resume the Solve constraint frontier,
 not another nearly identical Job/Evidence graph above Term and typing. Separate
 required information from the current containers; no production promotion is
@@ -3022,6 +3026,16 @@ The read-only census also drops the obsolete adapter API and its two columns.
 The source/test/checkpoint/artifact-test trees match fresh patch assembly exactly.
 
 #### Assessment
+
+2026-10-04, Root reviewed the [human-requested static audit](../src/prototype/solver_inputs/epochs/evidence_occurrence_audit_20261004/report.md)
+against all34 committed source pins and all53 rules. Structural receipt/header/
+index/chain integration into checked Occurrence/Scope/map is the next coherent
+prototype direction through real consumers. Retain actual local typing facts
+and genuine frontier; legacy history/image compatibility is retirement-permitted
+migration debt, not a permanent second authority. The
+[focused audit](2026-10-04-EVIDENCE-OCCURRENCE-AUTHORITY-AUDIT-AND-PLAN.md)
+is the report; this existing implementation work list and open criteria remain.
+No new runtime qualification, accepted adoption or measured cost follows.
 
 Checked inputs remain borrowed receipts, not replacement completed workers.
 Pending-owner tests now use actual unfinished projection/query operations,
