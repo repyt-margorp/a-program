@@ -1,0 +1,39 @@
+group	gate_or_sample	variant	exit	report	report_sha256
+focused	build	parent	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e23/parent-build.log	2872bda484927a4433f720ec468083708948235cba93c98a23116cd5ab62bf01
+focused	boundary-0-completed-0	parent	-6	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e23/parent-boundary-0-completed-0.log	03956f48b82c54a21ee8fe15492c42445212d350b7347c41b5cedb1b6715f182
+focused	boundary-0-completed-1	parent	-6	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e23/parent-boundary-0-completed-1.log	03956f48b82c54a21ee8fe15492c42445212d350b7347c41b5cedb1b6715f182
+focused	boundary-1-completed-0	parent	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e23/parent-boundary-1-completed-0.log	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+focused	boundary-1-completed-1	parent	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e23/parent-boundary-1-completed-1.log	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+focused	boundary-2-completed-0	parent	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e23/parent-boundary-2-completed-0.log	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+focused	boundary-2-completed-1	parent	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e23/parent-boundary-2-completed-1.log	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+focused	build	candidate	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e23/candidate-build.log	708b9a62c86233373b591d736e030fb8399acfb8e17a98f987bc4ed639abe107
+focused	full-source-checkpoint	candidate	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e23/candidate-full-source-checkpoint.log	71cc65467eeb07467f0bd00674acb05a8875ba29911d63bca40891cab8d4233a
+focused	boundary-0-completed-0	candidate	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e23/candidate-boundary-0-completed-0.log	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+focused	boundary-0-completed-1	candidate	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e23/candidate-boundary-0-completed-1.log	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+focused	boundary-1-completed-0	candidate	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e23/candidate-boundary-1-completed-0.log	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+focused	boundary-1-completed-1	candidate	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e23/candidate-boundary-1-completed-1.log	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+focused	boundary-2-completed-0	candidate	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e23/candidate-boundary-2-completed-0.log	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+focused	boundary-2-completed-1	candidate	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e23/candidate-boundary-2-completed-1.log	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+focused	build	SAN	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e23/SAN-build.log	a16649960865884f5eccefca810315b93dd48d4a7880d3a053c2c39dd15bdfee
+focused	full-source-checkpoint	SAN	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e23/SAN-full-source-checkpoint.log	71cc65467eeb07467f0bd00674acb05a8875ba29911d63bca40891cab8d4233a
+focused	boundary-0-completed-0	SAN	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e23/SAN-boundary-0-completed-0.log	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+focused	boundary-0-completed-1	SAN	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e23/SAN-boundary-0-completed-1.log	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+focused	boundary-1-completed-0	SAN	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e23/SAN-boundary-1-completed-0.log	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+focused	boundary-1-completed-1	SAN	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e23/SAN-boundary-1-completed-1.log	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+focused	boundary-2-completed-0	SAN	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e23/SAN-boundary-2-completed-0.log	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+focused	boundary-2-completed-1	SAN	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e23/SAN-boundary-2-completed-1.log	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+broad	broad		0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e23/broad.log	fbe0c37d9da2c00e1b186609f050273016333b324be29fc6bcbba8e3e2f0e97f
+supplemental	baseline-C-eight-scripts		0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e23/c.log	7ea7bf46e3a624f9624d0eca0b28594785c8a3f62ccf3cede4dfce28e20baeeb
+supplemental	strict-public-original-three		1	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e23/partitions.log	22db2a2df6da387782007429bcc9ba1a40962e350f68a977bb312770456157d1
+census	census-build	E22	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e23/E22-census-build.log	051935d6dc761fed1581632bc5ca161de812f57bdd579e238eff00d03b2bffbe
+census	list	E22	0		09415aa2a735ec7aa8caec257c1ab9792aabb16925c10ef70e678c865356c28d
+census	effect	E22	0		72e0f8e9f86cd28b121fc72ae8564ba30d81c3843e9311610ec7fa996ffc30b7
+census	captured	E22	0		76b0286b9f1fc79953c6882e34cf95d37fc0e8d4250abf677f7f449c4e4df2c2
+census	quick	E22	0		7e2e77a5910f4c94ef94b85782765126338066d6a74d6cd540dc54c556a9881c
+census	handler	E22	0		6aad30c07814eff6205ff8617869e379e20ee078a41a5b7674e6a6e409ce9da6
+census	census-build	E23	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e23/E23-census-build.log	b0366909df5d0d79ab4ca82f9537b6cd89da80070b858840121ccdb8e4cd4eb3
+census	list	E23	0		09415aa2a735ec7aa8caec257c1ab9792aabb16925c10ef70e678c865356c28d
+census	effect	E23	0		72e0f8e9f86cd28b121fc72ae8564ba30d81c3843e9311610ec7fa996ffc30b7
+census	captured	E23	0		76b0286b9f1fc79953c6882e34cf95d37fc0e8d4250abf677f7f449c4e4df2c2
+census	quick	E23	0		7e2e77a5910f4c94ef94b85782765126338066d6a74d6cd540dc54c556a9881c
+census	handler	E23	0		6aad30c07814eff6205ff8617869e379e20ee078a41a5b7674e6a6e409ce9da6

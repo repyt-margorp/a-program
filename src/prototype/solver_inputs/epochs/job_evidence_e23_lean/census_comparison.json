@@ -1,0 +1,98 @@
+{
+  "source156_before_after_exact": true,
+  "all35_fields_equal_at_all_cuts": true,
+  "ordinary_imported_theorem_asserted": true,
+  "samples": [
+    {
+      "sample": "list",
+      "status": "DONE",
+      "steps": 1921,
+      "typed": 429,
+      "evidence": 555,
+      "all35_fields_equal_at_all_cuts": true,
+      "external_cumulative": {
+        "E22": {
+          "wrapped_arena_calls": 4355,
+          "wrapped_aligned_bytes": 441616
+        },
+        "E23": {
+          "wrapped_arena_calls": 4355,
+          "wrapped_aligned_bytes": 441616
+        }
+      }
+    },
+    {
+      "sample": "effect",
+      "status": "DONE",
+      "steps": 13142,
+      "typed": 2680,
+      "evidence": 3414,
+      "all35_fields_equal_at_all_cuts": true,
+      "external_cumulative": {
+        "E22": {
+          "wrapped_arena_calls": 27622,
+          "wrapped_aligned_bytes": 2783216
+        },
+        "E23": {
+          "wrapped_arena_calls": 27622,
+          "wrapped_aligned_bytes": 2783216
+        }
+      }
+    },
+    {
+      "sample": "captured",
+      "status": "DONE",
+      "steps": 2307,
+      "typed": 632,
+      "evidence": 797,
+      "all35_fields_equal_at_all_cuts": true,
+      "external_cumulative": {
+        "E22": {
+          "wrapped_arena_calls": 7559,
+          "wrapped_aligned_bytes": 737104
+        },
+        "E23": {
+          "wrapped_arena_calls": 7558,
+          "wrapped_aligned_bytes": 737056
+        }
+      }
+    },
+    {
+      "sample": "quick",
+      "status": "DONE",
+      "steps": 766477,
+      "typed": 114388,
+      "evidence": 94974,
+      "all35_fields_equal_at_all_cuts": true,
+      "external_cumulative": {
+        "E22": {
+          "wrapped_arena_calls": 2888366,
+          "wrapped_aligned_bytes": 229308944
+        },
+        "E23": {
+          "wrapped_arena_calls": 2887983,
+          "wrapped_aligned_bytes": 229290560
+        }
+      }
+    },
+    {
+      "sample": "handler",
+      "status": "DONE",
+      "steps": 2470,
+      "typed": 425,
+      "evidence": 530,
+      "all35_fields_equal_at_all_cuts": true,
+      "external_cumulative": {
+        "E22": {
+          "wrapped_arena_calls": 4649,
+          "wrapped_aligned_bytes": 468896
+        },
+        "E23": {
+          "wrapped_arena_calls": 4649,
+          "wrapped_aligned_bytes": 468896
+        }
+      }
+    }
+  ],
+  "scope": "Delete dead Source transport allocation before rejected caller Job mappings; valid capture and early count bounds unchanged. Exact private E22 parent locally full-qualified but unpublished. No new pool/index/graph/authority/trust/fuel or eval/readback changes. External cumulative interposition excludes graph.c internal calls and heap; not live/peak/time."
+}

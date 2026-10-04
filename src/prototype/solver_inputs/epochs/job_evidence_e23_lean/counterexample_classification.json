@@ -1,0 +1,43 @@
+{
+  "parent": "Exact E22 source1566491c060, full-qualified31manifest233fa25a, task/current joint unpublished. This supersedes preparation-time broad-pending status without changing parent bytes.",
+  "parent_negative_controls": [
+    {
+      "gate": "boundary-0-completed-0",
+      "actual_exit": -6,
+      "shell_exit": 134,
+      "report_sha256": "03956f48b82c54a21ee8fe15492c42445212d350b7347c41b5cedb1b6715f182"
+    },
+    {
+      "gate": "boundary-0-completed-1",
+      "actual_exit": -6,
+      "shell_exit": 134,
+      "report_sha256": "03956f48b82c54a21ee8fe15492c42445212d350b7347c41b5cedb1b6715f182"
+    },
+    {
+      "gate": "boundary-1-completed-0",
+      "actual_exit": 0,
+      "shell_exit": 0,
+      "report_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "gate": "boundary-1-completed-1",
+      "actual_exit": 0,
+      "shell_exit": 0,
+      "report_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "gate": "boundary-2-completed-0",
+      "actual_exit": 0,
+      "shell_exit": 0,
+      "report_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "gate": "boundary-2-completed-1",
+      "actual_exit": 0,
+      "shell_exit": 0,
+      "report_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "candidate_and_SAN": "Full Source checkpoint and all six independent controls0.",
+  "scope": "1024 rejected copied-Job mappings must not grow caller permanent arena; valid source frontier/ordinary Solve/count bounds preserved. This deletes dead transport allocation for mapping failures, not all capture failures or necessary frontier. No current-Main/net peak/time/strict completion claim."
+}

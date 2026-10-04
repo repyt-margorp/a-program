@@ -170,7 +170,7 @@
  	return file;
  }
  
-@@ -412,24 +428,65 @@
+@@ -412,24 +428,69 @@
  	return p;
  }
  
@@ -198,9 +198,13 @@
 +	size_t jobs = s->jobs.count, proofs = p->typing.proofs.count;
 +	uint64_t steps = s->steps;
 +	c.jobs[0] = c.sources[0] = copy;
-+	if (!boundary)
++	if (!boundary) {
 +		assert(!pg_artifact_source_capture(&p->graph, s, c.count, c.jobs, c.source_count, c.sources));
-+	else if (boundary == 1)
++		const struct pg_block *blocks = p->graph.blocks;
++		for (size_t i = 0; i < 1024; ++i)
++			assert(!pg_artifact_source_capture(&p->graph, s, c.count, c.jobs, c.source_count, c.sources));
++		assert(p->graph.blocks == blocks);
++	} else if (boundary == 1)
 +		assert(pg_artifact_source_prepare(s, c.source, c.count, c.jobs));
 +	else assert(pg_artifact_source_attach(s, c.source, c.count, c.jobs));
 +	assert(s->steps == steps && s->ready == ready && s->ready_tail == tail);
@@ -244,7 +248,7 @@
  	struct checkpoint c = collect(p);
  	assert(pg_artifact_source_prepare(&other->synthesis, c.source, c.count, c.jobs));
  	assert(pg_artifact_source_prepare(s, c.source, c.count - 1, c.jobs));
-@@ -444,19 +501,19 @@
+@@ -444,19 +505,19 @@
  	pg_program_destroy(p); pg_program_destroy(other);
  	c = read_image(file); p = c.program;
  	struct pg_synthesis_job **mapping;
@@ -267,7 +271,7 @@
  	assert(!p->synthesis.steps && p->root->status == PG_SYNTHESIS_PENDING);
  	advance(&p->synthesis, 1000);
  	assert(p->root->status == PG_SYNTHESIS_REJECTED);
-@@ -478,17 +535,17 @@
+@@ -478,17 +539,17 @@
  			const struct pg_evidence *context = pg_synthesis_scope_context(scope);
  			const struct pg_evidence *extended = pg_prove_context_extension(&p->typing, context,
  				binders[i], pg_prove_universe(&p->typing, context, 0));
@@ -288,7 +292,7 @@
  		assert(pg_synthesis_reference_resume(s, p->root, &view)); /* No lexical n here. */
  		size_t proofs = p->typing.proofs.count;
  		int status = pg_synthesis_reference_resume(s, use, &view);
-@@ -497,7 +554,8 @@
+@@ -497,7 +558,8 @@
  		if (!wrong) {
  			assert(pg_synthesis_reference_resume(s, use, &view)); /* Already attached. */
  			advance(s, 1000);
@@ -298,7 +302,7 @@
  		}
  		pg_program_destroy(p); pg_program_destroy(other);
  	}
-@@ -508,22 +566,22 @@
+@@ -508,22 +570,22 @@
  		const struct pg_syntax *syntax;
  		assert(!pg_synthesis_source_input(s, p->root, &scope, &syntax));
  		const struct pg_evidence *context = pg_synthesis_scope_context(scope);
@@ -330,7 +334,7 @@
  		}
  		pg_program_destroy(p);
  	}
-@@ -536,10 +594,10 @@
+@@ -536,10 +598,10 @@
  	struct pg_synthesis_job *module = pg_program_source(p, scope, text, strlen(text), &p->parser);
  	struct pg_synthesis_job *producer = pg_program_select_name(p, module, syntax->token);
  	assert(producer && producer->status == PG_SYNTHESIS_PENDING);
@@ -344,7 +348,7 @@
  	size_t proofs = p->typing.proofs.count, jobs = s->jobs.count;
  	assert(pg_synthesis_reference_resume(s, use, &view));
  	assert(!s->steps && proofs == p->typing.proofs.count && jobs == s->jobs.count && !use->result);
-@@ -549,6 +607,10 @@
+@@ -549,6 +611,10 @@
  
  int main(void)
  {

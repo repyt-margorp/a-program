@@ -1,0 +1,7 @@
+{
+  "phase": "Helper preparation after exact471 copy and request, before any make",
+  "exit": 1,
+  "stderr": "AssertionError: helper already exists",
+  "cause": "Copied preparation helper retained literal /tmp/job-evidence-e22-broad.py name; refused overwrite. No build launched or runtime/source/test/focused mutation.",
+  "correction": "Create new explicit /tmp/job-evidence-e23-broad.py; preserve original request/preparation and require this preparation exit0 before launch."
+}

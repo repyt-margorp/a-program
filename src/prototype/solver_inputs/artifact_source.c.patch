@@ -24,17 +24,31 @@
  	struct pg_reference_frontier reference;
  	return pg_synthesis_reference_frontier(s, job, &reference) == 1 ? REFERENCE : -1;
  }
-@@ -60,7 +59,8 @@
+@@ -54,15 +53,19 @@
+ 	const struct pg_synthesis *s, size_t job_count, struct pg_synthesis_job *const *jobs,
+ 	size_t count, struct pg_synthesis_job *const *owners)
+ {
+-	if (!storage || !s || !jobs || (count && !owners)) return NULL;
+-	struct pg_artifact_source *c = allocate(storage, job_count, count);
++	if (!storage || !s || !job_count || count > job_count || !jobs || (count && !owners)) return NULL;
++	struct pg_artifact_source *c = NULL;
+ 	struct pg_dag map = {0}, unique = {0};
  	int failed = 1;
- 	if (!c || pg_dag_init(&map, NULL, NULL) || pg_dag_init(&unique, NULL, NULL)) goto done;
+-	if (!c || pg_dag_init(&map, NULL, NULL) || pg_dag_init(&unique, NULL, NULL)) goto done;
++	if (pg_dag_init(&map, NULL, NULL) || pg_dag_init(&unique, NULL, NULL)) goto done;
  	for (size_t i = 0; i < job_count; ++i) {
 -		if (!jobs[i] || jobs[i]->owner != s->owner_key) goto done;
 +		if (!pg_synthesis_input_owned(s,
 +			(struct pg_synthesis_input){.pending = pg_synthesis_pending(jobs[i])})) goto done;
  		if (pg_dag_add(&map, jobs[i]) || map.count != i + 1) goto done;
  	}
++	/* Rejected caller mappings must not leave permanent transport records. */
++	c = allocate(storage, job_count, count);
++	if (!c) goto done;
  	for (size_t i = 0; i < count; ++i) {
-@@ -94,13 +94,10 @@
+ 		struct pg_synthesis_job *job = owners[i], *child = NULL;
+ 		uint64_t slot = reference(&map, job);
+@@ -94,13 +97,10 @@
  			r->data[0] = reference(&map, scope->registration);
  			r->data[1] = module.position; r->data[2] = reference(&map, module.previous);
  			break;
@@ -50,7 +64,7 @@
  			r->data[1] = reference(&map, source.rule);
  			break;
  		}
-@@ -173,7 +170,9 @@
+@@ -173,7 +173,9 @@
  	size_t count, struct pg_synthesis_job *const *jobs)
  {
  	if (!s || !c || count != c->job_count || !jobs) return 0;
@@ -61,7 +75,7 @@
  	for (size_t i = 0; i < c->count; ++i)
  		if (kind(s, jobs[c->records[i].job]) != (int)c->records[i].kind) return 0;
  	return 1;
-@@ -191,12 +190,10 @@
+@@ -191,12 +193,10 @@
  	}
  	for (size_t i = 0; i < c->count; ++i) {
  		const struct source_record *r = &c->records[i];
@@ -76,7 +90,7 @@
  	}
  	return 0;
  }
-@@ -221,13 +218,14 @@
+@@ -221,13 +221,14 @@
  	for (size_t i = 0; i < c->count; ++i) {
  		const struct source_record *r = &c->records[i];
  		if (r->kind == REFERENCE) {
