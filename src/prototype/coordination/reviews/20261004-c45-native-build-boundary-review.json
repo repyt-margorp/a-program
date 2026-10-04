@@ -1,0 +1,60 @@
+{
+  "date_UTC": "2026-10-04T19:03:44.521521+00:00",
+  "notice_SHA": "495e6be72f37a2f260454fdcb36b0d292362f4674d9461f92ca0acefee65d2dd",
+  "notice_written_UTC": "2026-10-04T18:56:53.999887+00:00",
+  "notice_received_Root_review_UTC": "2026-10-04T18:58:16Z",
+  "Main_parent": "8cc0aaeca9f4d4cb387073e00bd0d0bbd76349b7",
+  "retained_private_raw": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c45-private-boundary-retained",
+  "main_native_build_record": {
+    "argv": [
+      "make",
+      "-j1",
+      "-f",
+      "src/prototype/c_backend/build.mk",
+      "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/tree",
+      "BUILD=/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch45-acc-products-20261004/backend-O2",
+      "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch45-acc-products-20261004/backend-O2/a-to-c"
+    ],
+    "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch45-acc-products-20261004/tmp",
+    "start": "2026-10-04T18:52:23.833681+00:00",
+    "exit": 2,
+    "finish": "2026-10-04T18:52:33.439316+00:00"
+  },
+  "build_record_SHA": "58785cb3e2f35bd5db9111787a73f97f5a158bf251ecc76878da5da69a97fb60",
+  "build_error_SHA": "79c77fb03cdb62a9ee8405cffd22d637b8b9d215a4bead2960691c57d0bd58e4",
+  "scalar_source_SHA": "732aee8dcd5cc26e397d293c45d08c14fd7893d681e4aed566aa2ff6fd5d1a18",
+  "scalar_byte_exact_Main_C40_prototype": true,
+  "actual_dependency": {
+    "include_line": 8,
+    "missing_header": "support.h",
+    "capture_calls_lines": [
+      332,
+      345
+    ],
+    "callee": "pg_support_contains",
+    "accepted_current_header_absent": true
+  },
+  "private_O2_product_gate": {
+    "report_SHA": "2903738646d686a1a7935ce96f5d642a4d3679a713b14bc768ce3866463a7ea7",
+    "status_SHA": "7f5b2c37cccf0d8a3f69846877f90c97d671edaf81676f755f830cec02853fdb",
+    "argv_NUL_SHA": "a568bdef781925388324fae5a8e9b7b828a55fa4d336c90eea8b29fc3c2c5277",
+    "expected_outcomes": 42,
+    "zero": 39,
+    "nonzero_expected": {
+      "duplicate_symbol": 1,
+      "prior_product": 2,
+      "unqualified_body": 4
+    },
+    "matching_all_expected": true,
+    "classification": "Owner private source/object/archive component checks terminal0, no Root replay or freeze. At initial notice only packaging/object0 was reported; later retained O2 report supersedes that scope. Affected SAN may be ongoing, not reviewed here."
+  },
+  "Assessment": "Current native build2 fails stale downstream capture metadata dependency also in Main reviewed C40 prototype. This is not a measured native refusal4 or established producer/admission defect; checked/trusted runtime expectations stay NOT_RUN until a compatible qualified target exists. Original C standalone source/header/object/archive component work progresses using exact admitted Acc bodies and explicitly manual target actions/storage. No request/authority to restore deleted producer support fields, new checking/schema/erasure/new ABI/adoption. C32-C44 frozen scopes remain independent. Private O2 outcomes do not establish generalized native or accepted success.",
+  "Root_C45_runtime_replay": false,
+  "frozen_READY": false,
+  "accepted_adoption": false,
+  "Goal_owner_model_actions": false,
+  "cost_samples": 0,
+  "cost_timing": "C matching no-heavy/light agreement notice was written18:56:53 during proposed interval but delivered into Root review only18:58:16 after expiry. Root did not grant/hold/launch; cancellation57648e7d delivered all3. No owner fault or absent-ACK claim is inferred."
+}

@@ -320,6 +320,18 @@ additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
 
+2026-10-04, [native47 scoped repair checkpoint](../src/prototype/coordination/reviews/20261004-native47-family-repair-checkpoint-review.json):
+exact input473/all469/runtime120ad0a1e10 and owner binaries/results now preserve
+required family Scope bounds with O2 native lifetime/raw-first/two inert resaves0.
+Synthesis/IADT/Identity O2 and typed/scoped/Occurrence codec debug0 advance their
+scopes; Core134 selected-map identity and full Source134 indexed-family reload
+completion remain unwaived. Adopt scoped bound-repair progress in the existing
+native implementation list, not general qualification or test-waiver authority.
+Later map pointer migrations still need exact typed subject/selected Scope,
+direction/formation/lifetime and negative controls reviewed. Account necessary
+Scope-owner/serialized bytes without a replacement receipt graph/checker; no
+Root native execution, READY/adoption or net measured benefit follows.
+
 2026-10-04, [native44 retained family-bound review](../src/prototype/coordination/reviews/20261004-native44-family-bound-review.json):
 immutable496/all485/runtime12071b10831 pins original O0-g j1 build0/Core134.
 The failed selected family-domain Universe assertion is present in acceptedfc,

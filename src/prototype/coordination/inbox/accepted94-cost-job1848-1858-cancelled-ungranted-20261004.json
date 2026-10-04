@@ -1,0 +1,23 @@
+{
+  "date_UTC": "2026-10-04T18:59:14.766296+00:00",
+  "classification": "Root terminal cancellation of actual Job-derived feasibility proposal, no human approval or Goal/model/owner action",
+  "proposal_SHA": "8803344a9e4facb088e60c24d65d27f3a2222294eaaea39e61b9cc92696b0104",
+  "Job_current_feasibility_SHA": "482c3bd2444ce670d555fb09e83787c180695f5b540ccedac56a741363071477",
+  "late_C_boundary_notice_SHA": "495e6be72f37a2f260454fdcb36b0d292362f4674d9461f92ca0acefee65d2dd",
+  "interval_UTC": [
+    "2026-10-04T18:48:00Z",
+    "2026-10-04T18:58:00Z"
+  ],
+  "status": "EXPIRED_CANCELLED_UNGRANTED",
+  "reason": "Matching current C terminal/light-work notice was received only after absolute18:58 expiry. No collector could be launched within the exact agreed interval. Old18:40-18:50 availability was not extended by inference.",
+  "grant": false,
+  "hold": false,
+  "collector_started": false,
+  "cost_samples": 0,
+  "instruction": "No measurement hold remains. Original active C/Job continue ordinary correctness. Keep original Performance BLOCKED unchanged; no resume/reset/model/session/new owner. Actual next ordinary terminal feasibility may be reported against existing63d42425, no blind replacement window or expired ACK reuse.",
+  "configuration_SHA": "262c46ac3f50313a164dab72ff88a40d684c1fe3c75954ce1362c9a1c0bffce9",
+  "all295_freshly_exact_1852": true,
+  "original_helper_unchanged": true,
+  "Root_guard_SHA": "10e723ae2a8ab67b0d530d773972a85cd40175fffafc095b29ba8bd5ae07aa70",
+  "guard_verification": "Syntax only; not executed or runtime qualified."
+}

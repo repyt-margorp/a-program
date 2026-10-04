@@ -1,0 +1,15 @@
+{
+  "date_UTC": "2026-10-04T19:03:44.521984+00:00",
+  "classification": "Root agent operational delivery/preflight refinement of existing63d42425 actual-boundary request, not a new window or human approval",
+  "sources": {
+    "Job_actual_notice_SHA": "482c3bd2444ce670d555fb09e83787c180695f5b540ccedac56a741363071477",
+    "C_actual_notice_SHA": "495e6be72f37a2f260454fdcb36b0d292362f4674d9461f92ca0acefee65d2dd",
+    "expired_ungranted_cancellation_SHA": "57648e7d9a05aa1e629b8b2a4ee05888f1eb668e55bf85aa0de7ec32a74dfc22"
+  },
+  "reason": "Matching C availability existed at18:56:53 but notification entered Root review after18:58 expiry. Preserve honest no-sample outcome. No blind fixed-time renewal or Performance resume.",
+  "next_actual_boundary_instruction": "At the next actual ordinary terminal checkpoint, report current no-owned-heavy status and one earliest feasible common ten-minute light interval with at least two minutes delivery/preflight lead before its start. Root aligns actual active C/Job agreements once and separately grants after fresh295/helper pins and blocked Performance/visible-heavy observation; no hold is inferred from feasibility. If heavy work resumes, invalidate prior availability explicitly. No concrete future interval is proposed here.",
+  "Root_executor": "01a100b3-1d83-7090-bbf6-62544c39ec4b",
+  "existing_boundary_request_SHA": "63d42425d808cc4a728c9033bb8bcb0a9d20c76eb2891ddb346ce795b6a7b52e",
+  "hold_grant_or_samples": 0,
+  "Goal_owner_model_actions": false
+}

@@ -1,0 +1,249 @@
+{
+  "date_UTC": "2026-10-04T18:55:24.638966+00:00",
+  "notice_SHA": "482c3bd2444ce670d555fb09e83787c180695f5b540ccedac56a741363071477",
+  "classification": "Root independent static verification of retained native47 inputs and original owner checkpoint results; not Root runtime replay or frozen READY/adoption",
+  "Main_parent": "8cc0aaeca9f4d4cb387073e00bd0d0bbd76349b7",
+  "manifests": {
+    "manifest.sha256": {
+      "SHA": "f6478e1afc3aed2a3e99dc57efdca79153b666ac2fa377116fb09d7314fb8374",
+      "exact_files": 473
+    },
+    "trial47-all-inputs.sha256": {
+      "SHA": "df1e638333adf28e7eab0e01fdc765e6e704cedac315723a36c48d724418536d",
+      "exact_files": 469
+    },
+    "trial47-runtime120.sha256": {
+      "SHA": "ad0a1e100001ecb40153fc66465c3e11a1fda8952ad9b9dd77d775ac29806aea",
+      "exact_files": 120
+    }
+  },
+  "retained_checkpoint_files": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/native47-checkpoint-retained",
+  "metadata": {
+    "trial47-focused-terminal.json": {
+      "SHA": "dbd93810cd42a618876cdfdcb157d6f30c7dd07e075f2fb74d142bb2c6927c9d",
+      "value": [
+        {
+          "name": "core",
+          "argv": [
+            "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial47/core_test"
+          ],
+          "returncode": -6,
+          "binary_sha256": "395b9b0877861f675dbeb754c76b4ab16871b6af7ba2484fec438924f13d438c",
+          "stdout": "",
+          "stderr": "core_test: /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial47-inputs/tests/core.c:3462: family_instance_test: Assertion `checked_wide_lift && pg_evidence_context_map(checked_wide_lift) == lift' failed.\n"
+        },
+        {
+          "name": "typed_structure",
+          "argv": [
+            "bash",
+            "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial47-inputs/tests/typed_structure.sh",
+            "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial47/typed_structure_test"
+          ],
+          "returncode": 0,
+          "binary_sha256": "874fb61301da15e0181184f1523765efe046eef106de24ccd38d8bb102c3ef51",
+          "stdout": "typed-only images: dependent Lambda/APP, logical families, selected formations, F/U, context action and Identity boundary checked without old evidence\nscoped images: open variables/functions/families, selected bounds, projection and 1024 declarations checked without old evidence\n",
+          "stderr": ""
+        },
+        {
+          "name": "occurrence_io",
+          "argv": [
+            "bash",
+            "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial47-inputs/tests/occurrence_io.sh",
+            "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial47/occurrence_io_test"
+          ],
+          "returncode": 0,
+          "binary_sha256": "fdafa6f8e1cf17b5307ae8c79db3eea31efdf323b59936c0c57ba1b3935781a8",
+          "stdout": "occurrence io: shared Core, distinct annotations, ordered operands and zero evidence passed\n",
+          "stderr": ""
+        }
+      ]
+    },
+    "family-scope-native47-terminal.json": {
+      "SHA": "51fb9c80f2d4085fb6e0282b697acf9f4ce6b47fb182c3d4f402196898d0ef14",
+      "value": {
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-family-scope-native47/native_owners"
+        ],
+        "returncode": 0,
+        "binary_sha256": "bcd4a5371b356336a57888e69ae1603f8190074da33ed1816f8407b33c4e4e39",
+        "runtime_manifest_sha256": "ad0a1e100001ecb40153fc66465c3e11a1fda8952ad9b9dd77d775ac29806aea",
+        "input_manifest_sha256": "df1e638333adf28e7eab0e01fdc765e6e704cedac315723a36c48d724418536d",
+        "stdout": "native family Scope ownership/inert twice-resave/ordinary bound controls pass\nfamily variable 0 same_raw_context=1 actual_bound_matches=1\nfamily variable 1 same_raw_context=1 actual_bound_matches=1\n",
+        "stderr": ""
+      }
+    },
+    "trial47-o2-terminal.json": {
+      "SHA": "aff1ed9c562250951227995550020a1ae87c71397126d18b84a118b8b77450f6",
+      "value": {
+        "runtime_manifest_sha256": "ad0a1e100001ecb40153fc66465c3e11a1fda8952ad9b9dd77d775ac29806aea",
+        "input_manifest_sha256": "df1e638333adf28e7eab0e01fdc765e6e704cedac315723a36c48d724418536d",
+        "records": [
+          {
+            "name": "synthesis",
+            "argv": [
+              "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial47-o2/synthesis_test"
+            ],
+            "returncode": 0,
+            "binary_sha256": "ddd0fb95a055737e9e03e7e97546037fd8e5b4631a73b2959a41adecfd149a68"
+          },
+          {
+            "name": "source_io",
+            "argv": [
+              "bash",
+              "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial47-inputs/tests/source_io.sh",
+              "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial47-o2/source_io_test"
+            ],
+            "returncode": 134,
+            "binary_sha256": "ee11e136ad36cdc7843861f59212988eacd717555acbed0cc69d54c58ff511a2"
+          },
+          {
+            "name": "iadt",
+            "argv": [
+              "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial47-o2/iadt_test"
+            ],
+            "returncode": 0,
+            "binary_sha256": "eab561129c638a104fc5c6df046b61a4b80f316e56f42a015da6f797b32ab2c9"
+          },
+          {
+            "name": "identity",
+            "argv": [
+              "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial47-o2/identity_test"
+            ],
+            "returncode": 0,
+            "binary_sha256": "cc24ab9183fd7fd668ae2890ce804ab88a33e7de152fabc5ecfd99de52c5d1d9"
+          }
+        ]
+      }
+    },
+    "trial47-migration.json": {
+      "SHA": "97acd834091565f40642824c54ee5ae61ef1aa73de7e0f469b4743aa931772ac",
+      "value": {
+        "parent": "fc52755b345a555e49a79df40549e9cb23d54088",
+        "runtime_manifest_sha256": "ad0a1e100001ecb40153fc66465c3e11a1fda8952ad9b9dd77d775ac29806aea",
+        "input_manifest_sha256": "df1e638333adf28e7eab0e01fdc765e6e704cedac315723a36c48d724418536d",
+        "retained_failures": {
+          "parent_control": 0,
+          "before_native_family_bound": 134,
+          "trial46_native_control": {
+            "exit": 134,
+            "cause": "New fixture omitted ordinary builtin descriptor codec; original NULL-codec command/raw log preserved."
+          },
+          "trial46_core": {
+            "exit": 134,
+            "cause": "Old raw-map pointer identity assertion; real family bound checks now pass unchanged."
+          },
+          "trial46_typed_setup": 134,
+          "trial46_occurrence_setup": 134,
+          "trial46_scoped_script": 134,
+          "trial46_occurrence_script": 139
+        },
+        "migrations": [
+          {
+            "file": "tests/core.c",
+            "function": "family_instance_test",
+            "retired": "Alternative selected map formations share one raw map pointer.",
+            "replacement": "Different native maps must retain exact source/destination Scopes, same raw direction/arity and locally admitted destination images; Universe1/4 assertions and repeated zero-work reuse untouched."
+          },
+          {
+            "file": "tests/typed_structure.c",
+            "function": "read_scoped",
+            "retired": "A family variable cannot ordinarily check itself without an explicit caller Scope.",
+            "replacement": "The saved selected declaration Scope is now an actual descriptive variable input. Assert load unadmitted, ordinary variable reconstruction exact and correct selected Scope; roots without that input retain old rejection check."
+          },
+          {
+            "file": "tests/occurrence_io.c",
+            "function": "write_input",
+            "retired": "Cyclic Occurrence has implicit zero judgement (now native Scope tag).",
+            "replacement": "Initialize cyclic input as actual PG_JUDGEMENT_INPUT; reject genuine self-cycle, and writer independently rejects Context-tagged root."
+          },
+          {
+            "file": "tests/occurrence_io.c",
+            "function": "write_input",
+            "retired": "Malformed current-image fixture APGOCC8.",
+            "replacement": "APGOCC9 retains same malformed-field rejection; earlier images explicitly retire. No old-format compatibility claim."
+          }
+        ]
+      }
+    },
+    "trial47-o2-synthesis.stdout": {
+      "SHA": "44856864e89d881f782aa0536ff6a3e52768c95960a31b88783e76ca7d39db58"
+    },
+    "trial47-core.stdout": {
+      "SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "trial47-o2-build.log": {
+      "SHA": "46ba5c467ec8b9edf8c1388e2f67c88c1cbf833b57ab154c4f0849dcd38caf55"
+    },
+    "trial47-o2-identity.stdout": {
+      "SHA": "e3cace691cbc9183f39ef0dfe5936505aee97bc2950b09daa52d9619ad70ab8e"
+    },
+    "trial47-occurrence_io.stderr": {
+      "SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "family-scope-native47-run.stderr": {
+      "SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "trial47-o2-source_io.stdout": {
+      "SHA": "1c7b6aac0fbecd57b83ea6e63eb6eb1dcdab2e92d32b37de1bb9fc77299935a0"
+    },
+    "trial47-o2-synthesis.stderr": {
+      "SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "trial47-o2-source_io.stderr": {
+      "SHA": "2f4c2f37aed17bd82ffb74a8ef420c27940684252e547441c730ec7b0aaf3663"
+    },
+    "trial47-typed_structure.stderr": {
+      "SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "trial47-o2-identity.stderr": {
+      "SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "trial47-core.stderr": {
+      "SHA": "413245bc6b1ef5e446311f271eceade9f4b8857a27db5e6323495c83f9c007b5"
+    },
+    "trial47-occurrence_io.stdout": {
+      "SHA": "23f818616ed0f724d5154b1d3c95f43d2e8adef0ab53f85da6f747092eab042a"
+    },
+    "trial47-o2-iadt.stdout": {
+      "SHA": "4f4fae66b30deb1779f33a9e634b2fb139b3b70fd908e2c64c2bb5b23974514c"
+    },
+    "trial47-wide-lift-gdb.log": {
+      "SHA": "2fe9b4fa9264f95812f97161e5b0d1d456f64409a31b1f3e083d1cda313831df"
+    },
+    "trial47-o2-iadt.stderr": {
+      "SHA": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "trial47-focused-build.log": {
+      "SHA": "f181e4d4ea16d2bcde915249df52929c5cec3b77f3fad80933387fba5a58b56d"
+    },
+    "family-scope-native47-build.log": {
+      "SHA": "0b9d6b34def136a0c64245fdc94c259be266b532c6e57ebf8ece3e74b0db9298"
+    },
+    "family-scope-native47-run.stdout": {
+      "SHA": "d339f23a8d7cc5611bcccfb570f887a239848abb40d32afb5fc27d29ab2fadcc"
+    },
+    "trial47-typed_structure.stdout": {
+      "SHA": "8c35de2c5b40eaa885c2927e61dd32f55e756f6289a0b1723f4f3974f7122475"
+    }
+  },
+  "binary_hashes_match_owner_records": true,
+  "owner_scoped_results": {
+    "native_family_scope_O2": 0,
+    "Core_debug_shell_exit": 134,
+    "typed_scoped_debug": 0,
+    "Occurrence_codec_debug": 0,
+    "Synthesis_O2": 0,
+    "IADT_O2": 0,
+    "Identity_O2": 0,
+    "full_Source_O2_recipe": 134
+  },
+  "full_Source_error_tail": "source_io_test: /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial47-inputs/tests/source_io.c:77: indexed_family_roundtrip: Assertion `pg_synthesis_status(roots[0]) == PG_SYNTHESIS_DONE' failed.\n/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial47-inputs/tests/source_io.sh: line 6:     8 Aborted                 \"$1\" indexed-families\n",
+  "Assessment": "Scope-bound repair advances required old classifier control and two inert byte-identical resaves on nativead0 while native44 remains preserved. Original owner deliberately migrates raw map/selected-native Scope pointer assumptions separately; current Core134 and full Source134 remain unwaived and do not establish completion or an accepted-runtime bug. Inspect exact typed subject/selected Scope/map direction/formation/lifetime facts and negative controls before adopting any test migration. New descriptive Scope fields/serialization must remain unadmitted on inert read until ordinary admission and enter net byte accounting. No replacement receipt graph/checker or Performance eval/readback changes inferred. Current later Core migration is unqualified live work, separate from ad0.",
+  "Root_runtime_replay": false,
+  "frozen_READY": false,
+  "accepted_adoption": false,
+  "Goal_owner_model_actions": false,
+  "cost_samples": 0,
+  "availability": "Actual Job no-heavy terminal18:45:56 proposes18:48-18:58. Root alignment8803344a delivered all3, no grant/hold/sample. Current C same-interval agreement absent; earlier18:40-18:50 expires unextended.",
+  "retained_checkpoint_manifest_SHA": "3f136771f67d121b9ca1e10f20a1c9200626acb5a166d0014a7a96f560a17b04"
+}
