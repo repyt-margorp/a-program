@@ -1,0 +1,15 @@
+{
+  "original_command": [
+    "python3",
+    "-c",
+    "import json; from pathlib import Path; scope=json.loads(Path('src/prototype/solver_inputs/epochs/job_evidence_e20_lean/census_comparison.json').read_text())['scope']; assert 'scratch' in scope and 'revalidation' not in scope, scope"
+  ],
+  "exit": 1,
+  "report_sha256": "5a33fcbaf816a62fcbc7c617171234495a10c031101919901d2fb6fc148fd796",
+  "old_census_comparison_sha256": "fd4620dc8bbcf8983b3235773dc149437d8763d0ea507ab95d2d9bfb7f974992",
+  "new_census_comparison_sha256": "16dd9bfbb04c55ef7448850027034e022eb56fb25bc5ce5dbbc7bf9e7bb59afe",
+  "original_freeze_manifest": "048ca595bec86d49aa2252b579f8785c434a4424e6dec631835b9cd15bcc0f88",
+  "original_transport_sha256": "d98c9facbc01f3d30739119532a393703194d3abe86d494d9f0a59e868d9cbfd",
+  "cause": "Cloned E19 postprocessor retained its revalidation-gate scope sentence in E20 census JSON. Counts/code/source156/gate inputs/raw reports/strict52 are unchanged; first lean25 freeze preserved and never announced READY.",
+  "correction": "Separate lean_v2/transport_v2 with accurate E20 scratch-bookkeeping scope and this provenance record; do not alter first freeze."
+}

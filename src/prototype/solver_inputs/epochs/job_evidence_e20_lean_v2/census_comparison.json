@@ -1,0 +1,98 @@
+{
+  "source156_before_after_exact": true,
+  "all35_fields_equal_at_all_cuts": true,
+  "ordinary_imported_theorem_asserted": true,
+  "samples": [
+    {
+      "sample": "list",
+      "status": "DONE",
+      "steps": 1921,
+      "typed": 429,
+      "evidence": 555,
+      "all35_fields_equal_at_all_cuts": true,
+      "external_cumulative": {
+        "E17": {
+          "wrapped_arena_calls": 4355,
+          "wrapped_aligned_bytes": 441616
+        },
+        "E20": {
+          "wrapped_arena_calls": 4355,
+          "wrapped_aligned_bytes": 441584
+        }
+      }
+    },
+    {
+      "sample": "effect",
+      "status": "DONE",
+      "steps": 13142,
+      "typed": 2680,
+      "evidence": 3414,
+      "all35_fields_equal_at_all_cuts": true,
+      "external_cumulative": {
+        "E17": {
+          "wrapped_arena_calls": 27622,
+          "wrapped_aligned_bytes": 2783216
+        },
+        "E20": {
+          "wrapped_arena_calls": 27622,
+          "wrapped_aligned_bytes": 2783216
+        }
+      }
+    },
+    {
+      "sample": "captured",
+      "status": "DONE",
+      "steps": 2307,
+      "typed": 632,
+      "evidence": 797,
+      "all35_fields_equal_at_all_cuts": true,
+      "external_cumulative": {
+        "E17": {
+          "wrapped_arena_calls": 7558,
+          "wrapped_aligned_bytes": 737056
+        },
+        "E20": {
+          "wrapped_arena_calls": 7558,
+          "wrapped_aligned_bytes": 736960
+        }
+      }
+    },
+    {
+      "sample": "quick",
+      "status": "DONE",
+      "steps": 766477,
+      "typed": 114388,
+      "evidence": 94974,
+      "all35_fields_equal_at_all_cuts": true,
+      "external_cumulative": {
+        "E17": {
+          "wrapped_arena_calls": 2886532,
+          "wrapped_aligned_bytes": 229220912
+        },
+        "E20": {
+          "wrapped_arena_calls": 2888746,
+          "wrapped_aligned_bytes": 229325248
+        }
+      }
+    },
+    {
+      "sample": "handler",
+      "status": "DONE",
+      "steps": 2470,
+      "typed": 425,
+      "evidence": 530,
+      "all35_fields_equal_at_all_cuts": true,
+      "external_cumulative": {
+        "E17": {
+          "wrapped_arena_calls": 4649,
+          "wrapped_aligned_bytes": 468896
+        },
+        "E20": {
+          "wrapped_arena_calls": 4649,
+          "wrapped_aligned_bytes": 468896
+        }
+      }
+    }
+  ],
+  "scope": "Delete persistent Match branch count/capacity bookkeeping; retain16-byte header only on existing active scratch allocation with same24-byte frames and frontier/fuel/lifetime. External cumulative interposition excludes heap realloc and graph.c internal calls; not net live/peak/time."
+}

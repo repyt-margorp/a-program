@@ -1,0 +1,1 @@
+Published exact E17 task54757cfa97877486caedb49fe2de34738edbd645/manifest1da129f6976b6c6ed0971b75520abb1a4b33b13fc71f6e60a903d58123d04611 on E16task6caf36c; supersedes preparation-time publication-pending status; parent canonical hash84ca7724. Transport applies only to exact E17 bytes. E18/E19/E21/current Main/E10 excluded; no shared Git mutation.
