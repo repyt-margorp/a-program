@@ -1,0 +1,26 @@
+group	gate_or_sample	variant	exit	report	report_sha256
+focused	build	parent	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e21/parent-build.log	e01e2fef3636420fa38a95623e33467f8078dd3d2e81f8e273e87389dba8ad76
+focused	normalization-scheduler	parent	-6	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e21/parent-normalization-scheduler.log	4a2f06c6c4b5882eb51f9bd1eeeac4d3165eca3b3c44ed76499252964afc4c53
+focused	build	candidate	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e21/candidate-build.log	fd77007543985ae772d98667d8bd0a40feb161f7b6726871a9ce88845a91f795
+focused	normalization-scheduler	candidate	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e21/candidate-normalization-scheduler.log	1ebf4f4e00c8b3398bccaf6b80a403637fe5fd75058653c0cb997c102c8254e4
+focused	build	asan	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e21/asan-build.log	d086be4d0451dbd7fab6f16eff19ca55d65f2336dab3250f34dcfaa760b585b1
+focused	normalization-scheduler	asan	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e21/asan-normalization-scheduler.log	1ebf4f4e00c8b3398bccaf6b80a403637fe5fd75058653c0cb997c102c8254e4
+broad	broad		0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e21/broad.log	bae2c6732c24bf914435d54bcf00c371aba8381cc4d6baa874a93280b0356473
+supplemental	baseline-C-eight-scripts		0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e21/c.log	0b9d7386bfb7d53136f4293dc2cd40ea48e4f33ed5a5355829308fde5500a229
+supplemental	strict-public-original-three		1	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e21/partitions.log	506c8b9775af5cf80653c133a0dcb7ef19b679a2618208f97ede32c0a35517c4
+census	census-build	E17	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e21/E17-census-build.log	9dbd794c1ce4e9339cba6e22e34372e5be5ff00618779fb6f840940038870dde
+census	list	E17	0		09415aa2a735ec7aa8caec257c1ab9792aabb16925c10ef70e678c865356c28d
+census	effect	E17	0		72e0f8e9f86cd28b121fc72ae8564ba30d81c3843e9311610ec7fa996ffc30b7
+census	captured	E17	0		76b0286b9f1fc79953c6882e34cf95d37fc0e8d4250abf677f7f449c4e4df2c2
+census	quick	E17	0		7e2e77a5910f4c94ef94b85782765126338066d6a74d6cd540dc54c556a9881c
+census	handler	E17	0		6aad30c07814eff6205ff8617869e379e20ee078a41a5b7674e6a6e409ce9da6
+census	census-build	E21	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e21/E21-census-build.log	62c1d9b1a032a0c81d64c637a8d2b980da619dd6227d04376f0a08469130e7b2
+census	list	E21	0		09415aa2a735ec7aa8caec257c1ab9792aabb16925c10ef70e678c865356c28d
+census	effect	E21	0		72e0f8e9f86cd28b121fc72ae8564ba30d81c3843e9311610ec7fa996ffc30b7
+census	captured	E21	0		76b0286b9f1fc79953c6882e34cf95d37fc0e8d4250abf677f7f449c4e4df2c2
+census	quick	E21	0		7e2e77a5910f4c94ef94b85782765126338066d6a74d6cd540dc54c556a9881c
+census	handler	E21	0		6aad30c07814eff6205ff8617869e379e20ee078a41a5b7674e6a6e409ce9da6
+allocation_failure	build	O2	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e21/allocation-failure-O2-build.log	4a9baff23656ef2774c586f258980f06ef801f9ee8e23abd14038f2145a60a8f
+allocation_failure	allocation-failure-and-reuse	O2	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e21/allocation-failure-O2-allocation-failure-and-reuse.log	b5b974842131e67c6d3c9060ed591c2dd08d3a0db986ce9eb66c9bc66f8fcaa9
+allocation_failure	build	SAN	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e21/allocation-failure-SAN-build.log	98219c240bbdb073e008e83a3b55b3ffddac2f27067d253d1901b90f5d065a18
+allocation_failure	allocation-failure-and-reuse	SAN	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e21/allocation-failure-SAN-allocation-failure-and-reuse.log	b5b974842131e67c6d3c9060ed591c2dd08d3a0db986ce9eb66c9bc66f8fcaa9
