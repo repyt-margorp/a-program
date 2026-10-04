@@ -1,0 +1,131 @@
+--- a/src/artifact/source.c
++++ b/src/artifact/source.c
+@@ -1,7 +1,7 @@
+ #include "source.h"
+ #include "synthesis_source.h"
+ #include "synthesis_work.h"
+-#include "dag.h"
++#include "graph.h"
+ #include "wire.h"
+ #include <string.h>
+ 
+@@ -18,6 +18,15 @@
+ struct pg_artifact_source {
+ 	size_t job_count, count;
+ 	struct source_record *records;
++};
++
++/* Capture needs ordinals and selected-owner uniqueness, not traversal state.
++ * Entries borrow canonical Jobs only for this synchronous transport operation. */
++struct source_job {
++	struct pg_index_entry index;
++	const struct pg_synthesis_job *job;
++	size_t slot;
++	int selected;
+ };
+ 
+ static int kind(const struct pg_synthesis *s, const struct pg_synthesis_job *job)
+@@ -32,11 +41,21 @@
+ 	return pg_synthesis_reference_frontier(s, job, &reference) == 1 ? REFERENCE : -1;
+ }
+ 
+-static uint64_t reference(const struct pg_dag *jobs, const struct pg_synthesis_job *job)
++static struct source_job *find_job(const struct pg_index *jobs, const struct pg_synthesis_job *job)
++{
++	if (!job) return NULL;
++	for (struct pg_index_entry *entry = pg_index_candidates(jobs, (uintptr_t)job); entry; entry = entry->next) {
++		struct source_job *candidate = (void *)entry;
++		if (candidate->job == job) return candidate;
++	}
++	return NULL;
++}
++
++static uint64_t reference(const struct pg_index *jobs, const struct pg_synthesis_job *job)
+ {
+ 	if (!job) return 0;
+-	const struct pg_dag_node *node = pg_dag_find(jobs, job);
+-	return node ? node->id : UINT64_MAX;
++	const struct source_job *entry = find_job(jobs, job);
++	return entry ? entry->slot : UINT64_MAX;
+ }
+ 
+ static struct pg_artifact_source *allocate(struct pg_graph *storage, size_t jobs, size_t count)
+@@ -55,21 +74,28 @@
+ {
+ 	if (!storage || !s || !job_count || count > job_count || !jobs || (count && !owners)) return NULL;
+ 	struct pg_artifact_source *c = NULL;
+-	struct pg_dag map = {0}, unique = {0};
++	struct pg_graph scratch = {0};
++	struct pg_index map = {0};
+ 	int failed = 1;
+-	if (pg_dag_init(&map, NULL, NULL) || pg_dag_init(&unique, NULL, NULL)) goto done;
++	if (pg_index_init(&map)) goto done;
+ 	for (size_t i = 0; i < job_count; ++i) {
+ 		if (!pg_synthesis_input_owned(s,
+ 			(struct pg_synthesis_input){.pending = pg_synthesis_pending(jobs[i])})) goto done;
+-		if (pg_dag_add(&map, jobs[i]) || map.count != i + 1) goto done;
++		if (find_job(&map, jobs[i])) goto done;
++		struct source_job *entry = pg_alloc(&scratch, sizeof(*entry));
++		if (!entry) goto done;
++		*entry = (struct source_job){.job = jobs[i], .slot = i + 1};
++		if (pg_index_insert(&map, &entry->index, (uintptr_t)jobs[i])) goto done;
+ 	}
+ 	/* Rejected caller mappings must not leave permanent transport records. */
+ 	c = allocate(storage, job_count, count);
+ 	if (!c) goto done;
+ 	for (size_t i = 0; i < count; ++i) {
+ 		struct pg_synthesis_job *job = owners[i], *child = NULL;
+-		uint64_t slot = reference(&map, job);
+-		if (!slot || slot > job_count || pg_dag_add(&unique, job) || unique.count != i + 1) goto done;
++		struct source_job *entry = find_job(&map, job);
++		if (!entry || !entry->slot || entry->slot > job_count || entry->selected) goto done;
++		entry->selected = 1;
++		uint64_t slot = entry->slot;
+ 		int type = kind(s, job);
+ 		if (type < 0 || job->status > PG_SYNTHESIS_DONE) goto done;
+ 		struct source_record *r = &c->records[i];
+@@ -108,7 +134,7 @@
+ 	}
+ 	failed = 0;
+ done:
+-	pg_dag_destroy(&map); pg_dag_destroy(&unique);
++	pg_index_destroy(&map); pg_graph_destroy(&scratch);
+ 	return failed ? NULL : c;
+ }
+ 
+--- a/checkpoint_tests/source_checkpoint_test.c
++++ b/checkpoint_tests/source_checkpoint_test.c
+@@ -471,6 +471,25 @@
+ 	else assert(pg_artifact_source_prepare(s, c.source, c.count, c.jobs));
+ 	assert(!pg_artifact_source_attach(s, c.source, c.count, c.jobs));
+ 	assert(s->steps == steps && p->typing.proofs.count == proofs);
++	pg_program_destroy(p);
++}
++
++static void capture_selection(void)
++{
++	struct pg_program *p = start("{{ first := @; second := #1; main := second; }}.main");
++	struct pg_synthesis *s = &p->synthesis;
++	advance(s, 12);
++	struct checkpoint c = collect(p);
++	assert(c.source_count >= 2);
++	struct pg_synthesis_job *selected[] = {c.sources[0], c.sources[0]};
++	uint64_t steps = s->steps;
++	size_t proofs = p->typing.proofs.count, requests = s->jobs.count;
++	assert(!pg_artifact_source_capture(&p->graph, s, c.count, c.jobs, 2, selected));
++	selected[1] = c.sources[1];
++	assert(pg_artifact_source_capture(&p->graph, s, c.count, c.jobs, 2, selected));
++	selected[0] = c.sources[1]; selected[1] = c.sources[0];
++	assert(pg_artifact_source_capture(&p->graph, s, c.count, c.jobs, 2, selected));
++	assert(s->steps == steps && p->typing.proofs.count == proofs && s->jobs.count == requests);
+ 	pg_program_destroy(p);
+ }
+ 
+@@ -616,6 +635,7 @@
+ 		source_copied_owner(boundary, 1);
+ 	}
+ 	shared_nominal_inputs();
++	capture_selection();
+ 	guards();
+ 	reference_guards();
+ 	partitions();

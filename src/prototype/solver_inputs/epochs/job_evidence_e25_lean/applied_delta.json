@@ -1,0 +1,20 @@
+{
+  "files": [
+    {
+      "file": "src/artifact/source.c",
+      "added": 36,
+      "removed": 10
+    },
+    {
+      "file": "checkpoint_tests/source_checkpoint_test.c",
+      "added": 20,
+      "removed": 0
+    }
+  ],
+  "control": {
+    "file": "src/prototype/solver_inputs/controls/source_capture_map_census.c",
+    "lines": 57
+  },
+  "build_control_lines": 5,
+  "docs": "Lean reports; one active SE work list outside freeze."
+}

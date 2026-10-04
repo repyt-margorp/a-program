@@ -1,0 +1,38 @@
+{
+  "source156_v2": "72a9972831afa0dbe89a6454700f1b611b4f7e0a7e4191a782dbae4ced9e06f3",
+  "parent_control156_v2": "c171ff5a5deedc1d09eb22a0f1f0a49dd0593ecf3b386c5ec351436d31031fb9",
+  "delta_v2": "6062c42172f7afa14d249bab51164f1b742436568964039d4459d07846b31887",
+  "raw_source_images_equal": true,
+  "raw_source_image_bytes": 248,
+  "source_image_sha256": "4eda59863c668b0158e844024e84949082cd75fa35daec44d6b0a3af350ddb67",
+  "counts": {
+    "parent": {
+      "jobs": 6,
+      "owners": 5,
+      "local_indexes": 2,
+      "scratch_calls": 11,
+      "scratch_requested_bytes": 704,
+      "source_bytes_equal": 1
+    },
+    "candidate": {
+      "jobs": 6,
+      "owners": 5,
+      "local_indexes": 1,
+      "scratch_calls": 6,
+      "scratch_requested_bytes": 240,
+      "source_bytes_equal": 1
+    },
+    "SAN": {
+      "jobs": 6,
+      "owners": 5,
+      "local_indexes": 1,
+      "scratch_calls": 6,
+      "scratch_requested_bytes": 240,
+      "source_bytes_equal": 1
+    }
+  },
+  "raw_requested_scratch_delta": -464,
+  "counts_exclude_buckets_and_graph_internal_allocations": true,
+  "not_process_peak_or_time": true,
+  "initial_fixture134_preserved": true
+}

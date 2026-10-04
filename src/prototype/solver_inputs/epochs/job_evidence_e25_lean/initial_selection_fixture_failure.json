@@ -1,0 +1,12 @@
+{
+  "phase": "Parent full Source run after parent build/capture census0",
+  "exit": -6,
+  "shell_signal_exit": 134,
+  "report": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e25/parent-full-source-checkpoint.log",
+  "report_sha256": "8e0ba812ed4b446ac1c0b6d70cdbf25f0e4817e4b4e31cda5a27206cb3d6608a",
+  "cause": "Added test assumes two Source owners after one dispatch of main:=#1; actual fixture has one because registrations use a separate recipe.",
+  "correction": "Move identical duplicate/distinct/reversed selection controls to already exercised fixture with six Jobs/five Source owners at 12 dispatches. Preserve assertion >=2 and outcomes; runtime delta unchanged.",
+  "old_test_preimage": "src/prototype/solver_inputs/epochs/job_evidence_e25/initial_source_checkpoint_test.c",
+  "old_test_sha256": "a24618c6b367e2f19ffe15ae3e7df1402f846fd18feff45db675ef3a2e356553",
+  "no_runtime_or_current_producer_regression_claim": true
+}

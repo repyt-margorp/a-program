@@ -1,0 +1,8 @@
+{
+  "reference": "Exact private locally full-qualified E23 public_partitions; unpublished",
+  "raw_images": 52,
+  "all_raw_images_equal": true,
+  "complete_verdict_fuel_tsv_equal": true,
+  "strict_gate_exit": 1,
+  "original_failures_unwaived": true
+}

@@ -170,7 +170,7 @@
  	return file;
  }
  
-@@ -412,24 +428,69 @@
+@@ -412,24 +428,88 @@
  	return p;
  }
  
@@ -220,6 +220,25 @@
 +	pg_program_destroy(p);
 +}
 +
++static void capture_selection(void)
++{
++	struct pg_program *p = start("{{ first := @; second := #1; main := second; }}.main");
++	struct pg_synthesis *s = &p->synthesis;
++	advance(s, 12);
++	struct checkpoint c = collect(p);
++	assert(c.source_count >= 2);
++	struct pg_synthesis_job *selected[] = {c.sources[0], c.sources[0]};
++	uint64_t steps = s->steps;
++	size_t proofs = p->typing.proofs.count, requests = s->jobs.count;
++	assert(!pg_artifact_source_capture(&p->graph, s, c.count, c.jobs, 2, selected));
++	selected[1] = c.sources[1];
++	assert(pg_artifact_source_capture(&p->graph, s, c.count, c.jobs, 2, selected));
++	selected[0] = c.sources[1]; selected[1] = c.sources[0];
++	assert(pg_artifact_source_capture(&p->graph, s, c.count, c.jobs, 2, selected));
++	assert(s->steps == steps && p->typing.proofs.count == proofs && s->jobs.count == requests);
++	pg_program_destroy(p);
++}
++
  static void guards(void)
  {
 -	struct pg_program *p = expression("main := #1;"), *other = expression("main := #1;");
@@ -248,7 +267,7 @@
  	struct checkpoint c = collect(p);
  	assert(pg_artifact_source_prepare(&other->synthesis, c.source, c.count, c.jobs));
  	assert(pg_artifact_source_prepare(s, c.source, c.count - 1, c.jobs));
-@@ -444,19 +505,19 @@
+@@ -444,19 +524,19 @@
  	pg_program_destroy(p); pg_program_destroy(other);
  	c = read_image(file); p = c.program;
  	struct pg_synthesis_job **mapping;
@@ -271,7 +290,7 @@
  	assert(!p->synthesis.steps && p->root->status == PG_SYNTHESIS_PENDING);
  	advance(&p->synthesis, 1000);
  	assert(p->root->status == PG_SYNTHESIS_REJECTED);
-@@ -478,17 +539,17 @@
+@@ -478,17 +558,17 @@
  			const struct pg_evidence *context = pg_synthesis_scope_context(scope);
  			const struct pg_evidence *extended = pg_prove_context_extension(&p->typing, context,
  				binders[i], pg_prove_universe(&p->typing, context, 0));
@@ -292,7 +311,7 @@
  		assert(pg_synthesis_reference_resume(s, p->root, &view)); /* No lexical n here. */
  		size_t proofs = p->typing.proofs.count;
  		int status = pg_synthesis_reference_resume(s, use, &view);
-@@ -497,7 +558,8 @@
+@@ -497,7 +577,8 @@
  		if (!wrong) {
  			assert(pg_synthesis_reference_resume(s, use, &view)); /* Already attached. */
  			advance(s, 1000);
@@ -302,7 +321,7 @@
  		}
  		pg_program_destroy(p); pg_program_destroy(other);
  	}
-@@ -508,22 +570,22 @@
+@@ -508,22 +589,22 @@
  		const struct pg_syntax *syntax;
  		assert(!pg_synthesis_source_input(s, p->root, &scope, &syntax));
  		const struct pg_evidence *context = pg_synthesis_scope_context(scope);
@@ -334,7 +353,7 @@
  		}
  		pg_program_destroy(p);
  	}
-@@ -536,10 +598,10 @@
+@@ -536,10 +617,10 @@
  	struct pg_synthesis_job *module = pg_program_source(p, scope, text, strlen(text), &p->parser);
  	struct pg_synthesis_job *producer = pg_program_select_name(p, module, syntax->token);
  	assert(producer && producer->status == PG_SYNTHESIS_PENDING);
@@ -348,7 +367,7 @@
  	size_t proofs = p->typing.proofs.count, jobs = s->jobs.count;
  	assert(pg_synthesis_reference_resume(s, use, &view));
  	assert(!s->steps && proofs == p->typing.proofs.count && jobs == s->jobs.count && !use->result);
-@@ -549,6 +611,10 @@
+@@ -549,7 +630,12 @@
  
  int main(void)
  {
@@ -357,5 +376,7 @@
 +		source_copied_owner(boundary, 1);
 +	}
  	shared_nominal_inputs();
++	capture_selection();
  	guards();
  	reference_guards();
+ 	partitions();
