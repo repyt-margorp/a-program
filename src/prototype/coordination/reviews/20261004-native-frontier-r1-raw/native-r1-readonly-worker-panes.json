@@ -1,0 +1,53 @@
+{
+  "date_UTC": "2026-10-04T23:23:55.544597+00:00",
+  "c-backend": {
+    "pane": "%0",
+    "SHA": "2c2f4b98ef9a5b604e92dd00fc0e6eb82c4c0d407711c1690c2104d94292c5ac",
+    "status_lines": [
+      "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/c-backend \u00b7 Verify Surface index.lock handoff        Pursuing goal (1d 16h 30m)    \u26a0 1 warning \u00b7 f2 to view"
+    ]
+  },
+  "job-evidence": {
+    "pane": "%4",
+    "SHA": "df7f59aeee3d6509f7360cdc7979d22f2bdcfbc234338e99f49e5b3df8d11841",
+    "status_lines": [
+      "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-progra\u2026 Pursuing goal (1d 9h 41m)    \u26a0 1 warning \u00b7 f2 to view"
+    ]
+  },
+  "performance": {
+    "pane": "%1",
+    "SHA": "382cf3e8639132444e034a600a6df4e849e883587b9747b3d2e4b20ff25a74f2",
+    "status_lines": [
+      "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-prog\u2026 Goal stalled (/goal resume)    \u26a0 1 warning \u00b7 f2 to view"
+    ]
+  },
+  "verification-audit": {
+    "pane": "%10",
+    "SHA": "6957e03b01de8284aaaabcbbddf8dad6e5036b828ff7f7319f60f80a1002041f",
+    "status_lines": [
+      "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/verification-audit \u00b7 Hand off static inventory              Goal achieved (50m)    \u26a0 1 warning \u00b7 f2 to view"
+    ]
+  },
+  "sort-library": {
+    "pane": "%11",
+    "SHA": "0ef97a0a7ba5785e174efa2cb58c7d992f1b851dfea4dc62c90930b9e843d177",
+    "status_lines": [
+      "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/sort-library \u00b7 Start authorized sort worker                 Goal achieved (24m)    \u26a0 1 warning \u00b7 f2 to view"
+    ]
+  },
+  "test-suite": {
+    "pane": "%12",
+    "SHA": "fca96187b4d7065cb6de7c0afa071799ebbef3becc16e74546b04f892ca9efe0",
+    "status_lines": [
+      "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/test-suite \u00b7 Simplify and deduplicate tests                 Goal achieved (37m)    \u26a0 1 warning \u00b7 f2 to view"
+    ]
+  },
+  "issue-audit": {
+    "pane": "%14",
+    "SHA": "cd3a74a4ddc3f3f606d4f117f2ff1b3d634937f2bf44b6170e44be56d2f907cc",
+    "status_lines": [
+      "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/issue-audit \u00b7 Record audit ownership receipt                Goal achieved (23m)    \u26a0 1 warning \u00b7 f2 to view"
+    ]
+  },
+  "watchers": "1585465 node\n1674731 node\n"
+}

@@ -1,0 +1,29 @@
+{
+  "date_UTC": "2026-10-04T23:25:45.252974+00:00",
+  "notice_SHA": "2e6d819109cff9a86f3ec753c9304b89fe73288e5a32058451ce93809d7a80c4",
+  "pinned_initial_packet": {
+    "initial-build.json": "3c948b7cdea6cd538bfb52691abcec67e0ffaae73911b4e68311731a4e314260",
+    "initial-build.out": "7c624632178fe7ca0c1219f91afbdf69f89ca8cb32ad25937d12bba9fd54d6ce",
+    "initial-build.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "initial-emit.json": "3a37f63ac71a6c72be9e238ab9f99c6bd920985967e2451fd733fe533aefdc63",
+    "initial-emit.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "initial-emit.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "recipe.inc": "591fa73f5abcd1b5257e7ee3c271672452fa63c93c9b888aa9d1063445c8e6d0"
+  },
+  "pinned_retained_initial_input_files": {
+    "initial-inputs/emit_test.c": "bfce74d0346aeb7b6031a57f8b73ffbd80d8ef5edae51c6589bab52397db30e6",
+    "initial-inputs/emit.h": "ae3b02f2c158d8e9f4683dcb78c89d10c8ac85ee541a24552c41297952de9bff",
+    "initial-inputs/build.mk": "50bea16a439c7429c51dfdb76c7a55ab98c3a2548cafd9ff342adb89906b224a",
+    "initial-inputs/emit.c": "04e3d1255a555a5479c41dd4faef09aaa2a3420d65e7308b298023ec616d9605"
+  },
+  "recipe2592_prefix_C49_exact": true,
+  "live_owner_check_records_observed": {
+    "current-O2-check.json": 0,
+    "current-SAN-check.json": 0
+  },
+  "owner_report_now": "Live plan records recipe connected to955-line private executable/O2 controls55 expected; SAN record0 now observed. No frozen READY manifest, independent replay or publication inferred.",
+  "Assessment": "Read actual constructor/down/transport recipe within delegated prototype scope. Preserve historical initial refusal-client build1 and all existing source/role/storage/Scope/general/cost bounds. R1 native dependency finding routes separately to original C/Job; immutable C50 remains unchanged.",
+  "accepted_adoption": false,
+  "Goal_or_owner_actions": false,
+  "cost_samples": 0
+}

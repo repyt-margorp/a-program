@@ -1,7 +1,7 @@
 # Solver and Evidence Duplication Audit
 
 Date: 2026-09-30
-Status: Owner corrected full unskipped acceptance0/all664 inputs exact on code441cbd69. Sorted parent/native0 and strict-public1 verified; distinct lean handoff/detailed foreign/current joint/strict3/frontier/net/READY remain open in this sole implementation list.
+Status: Native R1 local ownership/full owner broad0/detailed foreign gates/Root16 O2-SAN verified. Current C50/native joint make2 and declarative helper-header correction defer publication; strict3/transitional selector/partial query/frontier/full SE/net remain open in this sole work list.
 Parent: [artifact plan, AP0](2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md#ap0-simplify-before-extending-persistence).
 This is the active prerequisite work list, not another artifact format proposal.
 
@@ -319,6 +319,32 @@ identical TSVs in O2 and ASan/UBSan builds, including repeated samples without
 additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
+
+2026-10-04, [native R1 current review](../src/prototype/coordination/reviews/20261004-native-frontier-r1-current-review.json)
+supersedes the pending detailed foreign/handoff audit. Frozen90 proposal plus its
+manifest91/code126/input664/raw6308 match. Parent fc52755b plus frozen52 reconstructs
+runtime126; full664 inventory also references18 retained private diagnostic/control/
+manifest bytes, disclosed separately from runtime dependencies. Owner full unskipped
+broad0 and retained3040 terminal0/164 foreign pairs/1312 inert images are audited.
+All40 strict rows match;52 public images differ exactly one retired marker byte,
+not cross-version byte equality. Actual imported ordinary Sorted DONE956507/955410
+retains one provider spelling migration. Root16 terminal/reaped/uncensored O2/full
+SAN native owner/Scope/family/Lambda commands0 include56 destroyed-owner cuts and3
+forged-child/query controls each. Evidence allocation/proof interner/premise arrays/
+alternative chains are deleted; native admission differs from inert decoding.
+
+Current C50/native actually fails make2 at main.c110/128 using deleted typing.proofs.
+Original C/Job filesystem findings route a distinct guard migration preserving
+source/admission/owner invariants and frozen packets. New tests/native_admissions.h7
+test implementation violates the declarative-header rule; source/build wiring needs
+a distinct freeze. R1 task/Main implementation publication is deferred; this delivery
+publishes review evidence only. Root duplicated-TU linker2 and omitted-existing
+build-include2 setup failures remain separate from the confirmed joint failure.
+Strict3/format break/transitional selector/partial query/public frontier/full SE/net
+costs remain open. Original owners continue, with no blanket hold/lifecycle action.
+[C51 progress](../src/prototype/coordination/reviews/20261004-c51-action-progress-review.json)
+pins initial helper/emit0/input4 and2592-byte recipe with exact C49 table prefix.
+Live O2/SAN0 records are observed without frozen READY/current-native qualification.
 
 2026-10-04, Root bounded [corrected trial9 broad progress](../src/prototype/coordination/reviews/20261004-job-trial9-broad-progress-review.json)
 supersedes full-corrected-broad-pending for the actual owner run only: all664

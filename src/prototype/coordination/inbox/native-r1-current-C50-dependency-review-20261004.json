@@ -1,0 +1,35 @@
+{
+  "date_UTC": "2026-10-04T23:27:38.766486+00:00",
+  "review_external": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/native-r1-detail-review.json",
+  "review_SHA": "6e42f5e89504a515ac192354cd3a9bd0965f2a58fc69352d1557a5fddd47bd2e",
+  "native_notice_SHA": "6896c4044d3a80c0952976618b5075c986e68701d4c8dd3b2be314f02fbae0fe",
+  "native_manifest_SHA": "7a29fdbb54ef941247099a7652bea22e428fc414d688665eba07a00398e68edd",
+  "code126_SHA": "441cbd699ca87b505564938c81e68cf17fc3de03581af903bfc02636544c2244",
+  "tested664_SHA": "b9bea23dbb6bc45382d1b24356901978bc7666dd768260a8597adc8c19ed94d2",
+  "Main_C50": "834488016c5570aa3142e82c868a501f420bfd2d",
+  "Root_local16_O2_SAN_all0": true,
+  "actual_C50_native_joint_make2": {
+    "source": "src/prototype/c_backend/acc_command/main.c",
+    "lines": [
+      110,
+      128
+    ],
+    "log": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/native-r1-current-review/Root-corrected/O2-current-C50-native-joint-build-final.log",
+    "SHA": "1ae8379aeee1a0103cdf41da786ffc1e887312771dec93eac4842eb2733760c2",
+    "missing_member": "pg_typing.proofs"
+  },
+  "disposition": "Review under continuing authorized prototype scope. Preserve frozen R1/C50 and raw failures. Route a distinct original-owner correction for instrumentation/build wiring; preserve readonly source/admission/owner counts rather than restoring receipts or deleting assertions. C51 live helper has the same old proof count reference. No frozen C51 READY or fresh native compatibility claim.",
+  "Job_header_policy_finding": {
+    "kind": "repository header style",
+    "snapshot": "tests/native_admissions.h",
+    "line": 7,
+    "SHA": "c9d906eef49d5625ae4d295a80309dcc4db412ef2c80ee8c66e9b91479925970",
+    "reason": "New nontrivial static test observer implementation in header violates AGENTS/CODING_STYLE declarative-header rule. Original Job owner should move implementation to source with necessary private test build wiring in a distinct freeze; no mutation of R1 packet."
+  },
+  "R1_task_Main_implementation_publication": "deferred pending distinct owner corrections/current joint qualification",
+  "strict_reload3_wire_marker_cost_full_SE": "unchanged and unwaived",
+  "new_Goal_owner_timer_model_or_accepted_action": false,
+  "cost_grant_samples": 0,
+  "Main_review": "src/prototype/coordination/reviews/20261004-native-frontier-r1-current-review.json",
+  "Main_review_SHA": "7c138d2b141e8eb63c3019a21de9676e754a0ae923e8d9e09c90c9f98b2b4bb4"
+}
