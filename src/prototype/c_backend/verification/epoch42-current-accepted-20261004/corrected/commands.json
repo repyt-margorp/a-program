@@ -1,0 +1,100 @@
+[
+  {
+    "label": "O2-scoped-action-gate",
+    "argv": [
+      "sh",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c42-current-accepted-fc-v2/tree/src/prototype/c_backend/acc_down/check.sh",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c42-current-accepted-fc-v2/down.a",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/main",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/c_acc_mockup_oracle",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c42-current-accepted-fc-v2/O2-gate"
+    ],
+    "started": "2026-10-04T17:25:24.807351+00:00",
+    "finished": "2026-10-04T17:25:26.525090+00:00",
+    "exit": 0,
+    "censored": false,
+    "environment": {
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c42-current-accepted-fc-v2/tmp",
+      "CLIENT_CFLAGS": "-O2"
+    }
+  },
+  {
+    "label": "SAN-scoped-action-gate",
+    "argv": [
+      "sh",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c42-current-accepted-fc-v2/tree/src/prototype/c_backend/acc_down/check.sh",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c42-current-accepted-fc-v2/down.a",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/main",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/c_acc_mockup_oracle",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c42-current-accepted-fc-v2/SAN-gate"
+    ],
+    "started": "2026-10-04T17:25:26.525844+00:00",
+    "finished": "2026-10-04T17:25:38.164648+00:00",
+    "exit": 0,
+    "censored": false,
+    "environment": {
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c42-current-accepted-fc-v2/tmp",
+      "CLIENT_CFLAGS": "-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+      "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1",
+      "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1"
+    }
+  },
+  {
+    "label": "O2-inspector-build",
+    "argv": [
+      "make",
+      "-j1",
+      "-f",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c42-current-accepted-fc-v2/tree/src/prototype/c_backend/acc_down/build.mk",
+      "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c42-current-accepted-fc-v2/tree",
+      "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c42-current-accepted-fc-v2/build-O2",
+      "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c42-current-accepted-fc-v2/build-O2/c_acc_down_inspect"
+    ],
+    "started": "2026-10-04T17:25:38.165447+00:00",
+    "finished": "2026-10-04T17:25:47.450655+00:00",
+    "exit": 0,
+    "censored": false,
+    "environment": {
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c42-current-accepted-fc-v2/tmp"
+    }
+  },
+  {
+    "label": "O2-inspect-succ_access",
+    "argv": [
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c42-current-accepted-fc-v2/build-O2/c_acc_down_inspect",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c42-current-accepted-fc-v2/down.a",
+      "succ_access"
+    ],
+    "started": "2026-10-04T17:25:47.451323+00:00",
+    "finished": "2026-10-04T17:25:47.516287+00:00",
+    "exit": 0,
+    "censored": false,
+    "environment": {
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c42-current-accepted-fc-v2/tmp"
+    }
+  },
+  {
+    "label": "O2-inspect-nat_access",
+    "argv": [
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c42-current-accepted-fc-v2/build-O2/c_acc_down_inspect",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c42-current-accepted-fc-v2/down.a",
+      "nat_access"
+    ],
+    "started": "2026-10-04T17:25:47.517195+00:00",
+    "finished": "2026-10-04T17:25:47.582141+00:00",
+    "exit": 0,
+    "censored": false,
+    "environment": {
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c42-current-accepted-fc-v2/tmp"
+    }
+  }
+]

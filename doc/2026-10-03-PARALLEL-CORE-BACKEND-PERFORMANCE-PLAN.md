@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: acceptedfc52755b/c206 and C41 prototype publication remain exact. Native19 older Source/SAN outcomes advance; new native25 Scope-bound semantic failure/owner tests remain open, original Job repairs selected map facts. C42 manual scoped action client gates terminal, freeze pending. Performance original Goal reports BLOCKED awaiting actual exact36 RSS/time grant; zero samples, no hold or owner reset. Root timer unchanged.
+Status: C42 manual scoped Acc candidate exact10 taskc3ef05cb/currentc206 Root O2/client SAN19 qualified; prototype Main integration recorded here. Native30 full Source/Synthesis/Identity/typed O2 advances on d1d824da but Core/IADT134 remain; later owner trials separate. Performance Goal remains BLOCKED, zero cost samples. Cancelled17:15 proposal and checkpoint-driven physical exclusivity workflow supersede blind three-ACK slots. No owner reset; timer unchanged.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -26,6 +26,47 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
+
+2026-10-04, [C42 current composition](../src/prototype/coordination/reviews/20261004-c42-current-composition-review.json):
+exact10 manual scoped-action prototype and all311 raw/all151 retained inputs,
+six current C41 products and old C32-C41 archives verified. Root currentc206
+five serial commands all0 uncensored; O2 and affected client/source sanitizer
+checks each19zero,341 Core sorts and source output match. O2 inspector keeps
+successor3/Nat6 fields, two paths and recorded map cardinalities inert. Original
+values, nominal matched edges, callbacks and raw/folded IH remain distinct;
+quote construction performs no down call. Broader witness/action equivalence,
+full source-map representation and automatic derivation remain open. Task
+c3ef05cb is pushed/remote exact; exact10 and raw132 are included in this
+prototype integration. Both initial Root harness errors are retained separately.
+C43 source/action derivation is original-owner private work, still uncompiled
+at notice2433ef80. No general61, accepted promotion, full Goal or cost result.
+
+2026-10-04, [native28 debug bounds](../src/prototype/coordination/reviews/20261004-native28-bound-repair-review.json)
+and [native30 O2](../src/prototype/coordination/reviews/20261004-native30-bound-repair-review.json):
+immutable489/all469/runtime418e debug typed/native0 and immutable496/all470/
+runtime d1d824da O2 Source/Synthesis/Identity/typed/native0 are independently
+pinned historical owner results, not Root runtime replays. The selected-bound
+assertion is unchanged25-to28-to30; Source test/script remains unchanged19.
+Core/IADT134, later private migrations, SAN/public/strict/frontier/joint and
+cost criteria remain open in the single SE work list. Native25 genuine
+selected Scope/Universe failure and old receipt failures remain preserved.
+
+2026-10-04, agent workflow decision after inquiry-desk review, not new human
+approval: [cancelled17:15 proposal](../src/prototype/coordination/inbox/accepted94-cost-1715-1725-cancelled-ungranted-20261004.json)
+created no grant/hold/collector/sample. Later actual Job child88814 invalidates
+its earlier no-child availability. Requiring a fresh reply from already
+BLOCKED Performance was a coordinator procedure, not a human or AGENTS safety
+requirement. Fresh observed blocked service and absence of competing heavy
+work can satisfy its prerequisite without fabricating an ACK or resuming it.
+Active C/Job still need current ordinary terminal agreement; Root must recheck
+all295 pair pins, observe and continuously monitor competing heavy work and
+censor/reap only its own descendants on conflict/deadline. Root correctness
+replay is terminal17:25:47; [actual-boundary request](../src/prototype/coordination/inbox/accepted94-cost-next-actual-boundary-after-c42-replay-20261004.json)
+replaces blind clock renewal. Original Goals/models/owners and six-hour timer
+remain unchanged. [All-worker/issue continuation](../src/prototype/coordination/reviews/20261004-material-1730-worker-review.json)
+finds four bounded owners complete/stopped, Surface historically closed,
+Performance stalled and C/Job active. All nine issue bodies remain unchanged,
+zero open PRs; no unfinished criterion is closed.
 
 2026-10-04, [native19/25 selected-map review](../src/prototype/coordination/reviews/20261004-native19-25-selected-map-review.json):
 both immutable485 histories and all467/468 inputs/runtime120 independently

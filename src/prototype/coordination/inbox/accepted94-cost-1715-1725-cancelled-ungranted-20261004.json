@@ -1,0 +1,31 @@
+{
+  "date_UTC": "2026-10-04T17:17:48.870814+00:00",
+  "classification": "Operational cancellation of ungranted proposal within existing scope, not new user approval.",
+  "proposal_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/accepted94-cost-1715-1725-fresh-proposal-20261004.json",
+  "proposal_SHA": "49da5edda02ab3113e3ce61fa4076aeabd16fe0f6bfd71f5df41b444f89d0f0b",
+  "proposed_interval_UTC": [
+    "2026-10-04T17:15:00Z",
+    "2026-10-04T17:25:00Z"
+  ],
+  "reply_deadline_UTC": "2026-10-04T17:14:00Z",
+  "status": "CANCELLED_UNGRANTED",
+  "reason": "C and Job fresh actual safe acknowledgments received; Performance fresh agreement for this precise interval absent at reply deadline and current review. Prior availability and BLOCKED label cannot substitute.",
+  "fresh_acknowledgments": {
+    "c-backend": {
+      "notice": "outbox/c-backend-c42-1715-window-available-20261004.txt",
+      "SHA": "012538be8f23c96aac51c54dde24416ca14bd0e3fec2466a8ae07796308f9caa"
+    },
+    "job-evidence": {
+      "notice": "outbox/accepted94-cost-1715-job-safe-20261004.txt",
+      "SHA": "7cf85511e10dc08802bb459fa432c502956f2bd16efc819c1853e62c59ebbce8"
+    },
+    "performance": null
+  },
+  "grant_created": false,
+  "collector_launched": false,
+  "samples": 0,
+  "hold_created": false,
+  "instruction": "The proposed interval is cancelled, not granted. No measurement hold is in effect. Active original owners continue ordinary correctness work; do not drain, wait, start a collector or infer a renewed interval. Performance original BLOCKED Goal remains unchanged; this receipt is not a resume/reset/session/model/owner action. Any later proposal requires fresh actual availability.",
+  "accepted_source_pair": "930997b62db85814718d0d5ac151f392bfae243a447d5d0d5f2adbde66cba5ae -> c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+  "native_trial_measurement": false
+}

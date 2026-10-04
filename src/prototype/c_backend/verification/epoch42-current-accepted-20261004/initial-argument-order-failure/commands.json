@@ -1,0 +1,23 @@
+[
+  {
+    "label": "O2-scoped-action-gate",
+    "argv": [
+      "sh",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c42-current-accepted-fc/tree/src/prototype/c_backend/acc_down/check.sh",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/c_acc_mockup_oracle",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c42-current-accepted-fc/down.a",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/main",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c42-current-accepted-fc/O2-gate"
+    ],
+    "started": "2026-10-04T17:24:45.304787+00:00",
+    "finished": "2026-10-04T17:24:45.312831+00:00",
+    "exit": 1,
+    "censored": false,
+    "environment": {
+      "CC": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "TMPDIR": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c42-current-accepted-fc/tmp",
+      "CLIENT_CFLAGS": "-O2"
+    }
+  }
+]

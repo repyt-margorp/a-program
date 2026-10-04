@@ -1,0 +1,7 @@
+{
+  "date_UTC": "2026-10-04T17:21:44.873747+00:00",
+  "Performance_pane_SHA": "845c2c2cb8156420a6590f8f86996693cd474f077b43d592f2ce98d9a8d0ed4c",
+  "Performance_blocked_visible": true,
+  "visible_related_heavy": [],
+  "scope": "Fresh readonly original pane plus visible /proc, not universal host-idle or inferred owner ACK."
+}

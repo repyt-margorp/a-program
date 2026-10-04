@@ -1,0 +1,7 @@
+{
+  "date_UTC": "2026-10-04T17:26:52.130283+00:00",
+  "classification": "Root publication harness path guard rejected C41 archive compared with C42 freeze before any Git/source mutation",
+  "failed_script_retained": "publish-c42-task-initial.py.txt",
+  "git_or_source_mutation_before_guard": false,
+  "correction": "Use exact C42 epoch42-acc-down archive path; all SHA/parent/remote/worker guards remain"
+}

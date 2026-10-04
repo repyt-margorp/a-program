@@ -1,0 +1,10 @@
+FIELD node563 right lift0 context0x5556f91a4150 family-ownerapplication value-judgement3 boundary-wrappers1 maps6/6 paths2
+PATH0 context0x5556f91a4150 judgement3 operands0 maps0
+PATH1 context0x5556f91a4150 judgement3 operands0 maps0
+FIELD node703 left lift0 context0x5556f923d850 family-ownerapplication value-judgement3 boundary-wrappers1 maps10/10 paths2
+PATH0 context0x5556f923d850 judgement3 operands0 maps0
+PATH1 context0x5556f923d850 judgement3 operands0 maps0
+FIELD node892 left lift0 context0x5556f9348ac0 family-ownerapplication value-judgement3 boundary-wrappers1 maps10/10 paths2
+PATH0 context0x5556f9348ac0 judgement3 operands0 maps0
+PATH1 context0x5556f9348ac0 judgement3 operands0 maps0
+OWNED fields3 right1 left2 unexposed0 INERT terms13372 objects11 proofs22460 occurrences22215

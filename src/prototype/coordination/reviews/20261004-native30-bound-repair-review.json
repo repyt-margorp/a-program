@@ -1,0 +1,26 @@
+{
+  "date_UTC": "2026-10-04T17:26:35.226016+00:00",
+  "notice_SHA": "7cf85511e10dc08802bb459fa432c502956f2bd16efc819c1853e62c59ebbce8",
+  "history": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial30",
+  "history_manifest_SHA": "5e61425c9e8a55dcee7ee432e761b73ea677db35d4ca9dbaca16123e3b7ba9cc",
+  "all_history_files_exact": 496,
+  "all_inputs_exact": 470,
+  "inputs_manifest_SHA": "e2fe999e1ae4a114bc526282e52d149a91b3a062ab73d87b304955a630b00261",
+  "runtime120_independently_recomputed": "d1d824da8a8dc16d1f936fb536dbfe38b53cee6ad7667248b35e658efa92b8af",
+  "terminal": {
+    "build": 0,
+    "config": "O2 -Werror serial j1",
+    "native": 0,
+    "typed": 0,
+    "core": 134,
+    "iadt": 134,
+    "identity": 0,
+    "synthesis": 0,
+    "source": 0
+  },
+  "typed_bound_test_byte_exact28_to30": true,
+  "full_Source_script_byte_exact19_to30": true,
+  "Source_test_contract_byte_exact19_to30": true,
+  "Root_runtime_replay": false,
+  "scope": "Owner full Synthesis/Source IO/Identity/typed-scoped/native O2 recorded0 on immutable d1d824da. Core/IADT134 remain failed; SAN/current native full-owner/public strict/frontier/common producer and cost not inferred. Later trial33/34+ migrations separate, no READY/publication/accepted adoption. Old selected-bound/malformed-map negatives not waived."
+}

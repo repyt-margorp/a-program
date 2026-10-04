@@ -1,0 +1,24 @@
+{
+  "classification": "Root harness argument-order error; frozen candidate unchanged. Failed first run retained, not waived as success.",
+  "first_directory": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c42-current-accepted-fc",
+  "first_result": {
+    "accepted_commit": "fc52755b345a555e49a79df40549e9cb23d54088",
+    "Main_parent": "6115ccf493c8d71675faa69997833a99c843dbca",
+    "runtime120_manifest_SHA": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+    "C42_manifest_SHA": "202b7a1d8eeb44729fbce4174ce44ef0a97c06e4e8cbce677da4882c86f661ad",
+    "compiler_SHA": "a23ecab8ff08f09ad8c80602c2c5df7f49e09c25905cb8975902e101bf72635f",
+    "scope": "Frozen manual closed Nat/LT three-branch scoped action candidate. Current accepted producer/runtime and six freshly qualified C41 generated bodies reused. Pointer/Core/inspector O2, manual clients affected SAN. Not automatic/general Identity/accepted promotion or cost.",
+    "started": "2026-10-04T17:24:45.304731+00:00",
+    "complete": false,
+    "failure": "O2-scoped-action-gate failed",
+    "all_original_inputs_unchanged": true,
+    "all_reused_inputs_unchanged": true,
+    "finished": "2026-10-04T17:24:45.322349+00:00",
+    "all_commands_terminal_reaped": true,
+    "commands": 1
+  },
+  "corrected_check_contract": "pointer image products oracle out; first invocation passed oracle in image position.",
+  "new_directory": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c42-current-accepted-fc-v2",
+  "frozen_source_changed": false,
+  "retry_trigger": "New verification necessary after correcting actual harness failure."
+}

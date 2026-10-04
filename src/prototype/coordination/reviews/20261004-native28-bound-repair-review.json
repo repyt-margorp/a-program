@@ -1,0 +1,18 @@
+{
+  "date_UTC": "2026-10-04T17:12:17.509198+00:00",
+  "notice_SHA": "361d3d399fee65968c1fd20748d51e176dedb86fd953e0f1db910d3b393db747",
+  "frozen28_history489_exact": true,
+  "all469_inputs_exact": true,
+  "runtime120_independently_recomputed": "418e444e1fbed29f33762e47fe974aa82d7ae5710490eecd5ec9691d8d827358",
+  "terminal": {
+    "build": 0,
+    "config": "O0-g debug; O2/SAN not inferred",
+    "native": 0,
+    "typed": 0,
+    "core": 134,
+    "iadt": 134
+  },
+  "semantic_bound_test_byte_exact25_to28": true,
+  "Root_runtime_replay": false,
+  "scope": "Debug trial28 full typed/scoped recipe and native controls are historical owner results on418e. New shared native tuple d1d824da and currently reported serial full build91887 remain separate/unqualified. Core/IADT later legacy assertions134, failed compile26/29/Identity historical failure and all strict/public/full native/joint/cost criteria unwaived. Added24 bytes per native map header/necessary selected80-byte variants are owner accounting, not Root RSS/time/net claim. No publication/accepted adoption/Goal action."
+}

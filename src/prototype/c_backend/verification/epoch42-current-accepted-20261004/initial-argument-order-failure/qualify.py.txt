@@ -1,0 +1,57 @@
+import datetime, hashlib, json, os, pathlib, signal, subprocess, time
+q=pathlib.Path(__file__).resolve().parent; tree=q/'tree'; backend=tree/'src/prototype/c_backend'; s=q.parent
+c40=s/'c40-current-accepted-fc'; c41=s/'c41-current-accepted-fc'; compiler='/usr/bin/x86_64-linux-gnu-gcc-14'
+sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+now=lambda:datetime.datetime.now(datetime.timezone.utc).isoformat()
+(q/'tmp').mkdir(); env=dict(os.environ,TMPDIR=str(q/'tmp'),CC=compiler)
+pins={str(p.relative_to(tree)):sha(p) for p in tree.rglob('*') if p.is_file()}
+(q/'inputs-before.json').write_text(json.dumps(pins,indent=2)+'\n')
+assert sha(q/'runtime-source.sha256')=='c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907'
+for line in (q/'runtime-source.sha256').read_text().splitlines():
+ digest,name=line.split('  ',1); assert sha(tree/name)==digest
+prior=json.loads((c41/'Root-results.json').read_text()); assert prior['complete'] and prior['all_original_inputs_unchanged'] and prior['all_reused_binaries_unchanged']
+reused=[c40/'build-O2/pointer-check',c40/'build-O2/c_acc_mockup_oracle',q/'down.a']+[c41/'O2-gate/main'/n for n in prior['generated_products']]
+reused_pins={str(p):sha(p) for p in reused}
+(q/'reused-inputs-before.json').write_text(json.dumps(reused_pins,indent=2)+'\n')
+records=[]; deadline=time.monotonic()+240
+summary={'accepted_commit':'fc52755b345a555e49a79df40549e9cb23d54088','Main_parent':'6115ccf493c8d71675faa69997833a99c843dbca','runtime120_manifest_SHA':sha(q/'runtime-source.sha256'),'C42_manifest_SHA':'202b7a1d8eeb44729fbce4174ce44ef0a97c06e4e8cbce677da4882c86f661ad','compiler_SHA':sha(pathlib.Path(compiler)),'scope':'Frozen manual closed Nat/LT three-branch scoped action candidate. Current accepted producer/runtime and six freshly qualified C41 generated bodies reused. Pointer/Core/inspector O2, manual clients affected SAN. Not automatic/general Identity/accepted promotion or cost.','started':now(),'complete':False}
+def run(label,argv,additions=None):
+ started=now(); ce=dict(env,**(additions or {})); print('START '+label,flush=True)
+ with (q/(label+'.stdout')).open('wb') as out,(q/(label+'.stderr')).open('wb') as err:
+  child=subprocess.Popen(argv,cwd=tree,env=ce,stdout=out,stderr=err,start_new_session=True); censored=False
+  try: code=child.wait(timeout=max(1,min(120,deadline-time.monotonic())))
+  except subprocess.TimeoutExpired:
+   censored=True; os.killpg(child.pid,signal.SIGTERM)
+   try: code=child.wait(timeout=2)
+   except subprocess.TimeoutExpired: os.killpg(child.pid,signal.SIGKILL); code=child.wait()
+ records.append({'label':label,'argv':argv,'started':started,'finished':now(),'exit':code,'censored':censored,'environment':{k:ce[k] for k in ['CC','TMPDIR','CLIENT_CFLAGS','ASAN_OPTIONS','UBSAN_OPTIONS'] if k in ce}})
+ (q/'commands.json').write_text(json.dumps(records,indent=2)+'\n'); print('DONE '+label+' '+str(code),flush=True)
+ if code or censored: raise RuntimeError(label+' failed')
+try:
+ phases={}; commands={}
+ for phase,flags in [('O2','-O2'),('SAN','-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie')]:
+  additions={'CLIENT_CFLAGS':flags}
+  if phase=='SAN': additions.update(ASAN_OPTIONS='detect_leaks=1:halt_on_error=1',UBSAN_OPTIONS='halt_on_error=1:print_stacktrace=1')
+  d=q/(phase+'-gate'); run(phase+'-scoped-action-gate',['sh',str(backend/'acc_down/check.sh'),str(c40/'build-O2/pointer-check'),str(c40/'build-O2/c_acc_mockup_oracle'),str(q/'down.a'),str(c41/'O2-gate/main'),str(d)],additions)
+  rows=[line.split('\t') for line in (d/'status.tsv').read_text().splitlines()]; assert len(rows)==19 and all(r[1:]==['0','0'] for r in rows)
+  assert (d/'source.out').read_text()=='0,1,2,2,3,|'; pieces=(d/'argv.nul').read_bytes().split(b'\0'); assert pieces.pop()==b''; cursor=0; parsed=[]
+  for label,expected,actual in rows:
+   pl,pe,n=pieces[cursor:cursor+3]; cursor+=3; n=int(n); args=[a.decode() for a in pieces[cursor:cursor+n]]; cursor+=n
+   assert pl.decode()==label and int(pe)==int(expected)==int(actual)==0
+   parsed.append({'label':label,'expected':0,'exit':0,'argv':args})
+  assert cursor==len(pieces); commands[phase]=parsed; phases[phase]={'expected_rows':19,'zero':19,'source_sort':'0,1,2,2,3,|'}
+  for name,digest in prior['generated_products'].items(): assert sha(d/'main'/name)==digest
+ build=q/'build-O2'; run('O2-inspector-build',['make','-j1','-f',str(backend/'acc_down/build.mk'),'OVERLAY='+str(tree),'BUILD='+str(build),'CC='+compiler,'CFLAGS=-std=c11 -Wall -Wextra -Werror -O2',str(build/'c_acc_down_inspect')])
+ fields={}
+ for name,count,right,left,maps in [('succ_access',3,1,2,[6,10,10]),('nat_access',6,4,2,[8,10,10,6,10,10])]:
+  label='O2-inspect-'+name; run(label,[str(build/'c_acc_down_inspect'),str(q/'down.a'),name]); output=(q/(label+'.stdout')).read_text(); lines=[line for line in output.splitlines() if line.startswith('FIELD ')]; assert len(lines)==count
+  summary_line=[line for line in output.splitlines() if line.startswith('OWNED ')]; assert len(summary_line)==1 and ('fields'+str(count)+' right'+str(right)+' left'+str(left)+' unexposed0 INERT') in summary_line[0]
+  assert all('paths2' in line for line in lines); actual=[int(line.split(' maps')[1].split('/')[0]) for line in lines]; assert actual==maps
+  fields[name]={'fields':count,'right':right,'left':left,'paths':2,'maps':actual,'unexposed':0,'machine_owner_counts_inert':True}
+ (q/'gate-commands.json').write_text(json.dumps(commands,indent=2)+'\n'); summary.update(complete=True,phases=phases,fields=fields,Core_sorting_observations=341,generated_products=prior['generated_products'],pointer_Core_inspector_SAN=False)
+except Exception as failure: summary['failure']=str(failure)
+finally:
+ after={name:sha(tree/name) for name in pins}; reused_after={name:sha(pathlib.Path(name)) for name in reused_pins}
+ summary.update(all_original_inputs_unchanged=after==pins,all_reused_inputs_unchanged=reused_after==reused_pins,finished=now(),all_commands_terminal_reaped=True,commands=len(records))
+ (q/'inputs-after.json').write_text(json.dumps(after,indent=2)+'\n'); (q/'reused-inputs-after.json').write_text(json.dumps(reused_after,indent=2)+'\n'); (q/'Root-results.json').write_text(json.dumps(summary,indent=2)+'\n'); print(json.dumps(summary),flush=True)
+if not summary['complete'] or not summary['all_original_inputs_unchanged'] or not summary['all_reused_inputs_unchanged']: raise SystemExit(1)
