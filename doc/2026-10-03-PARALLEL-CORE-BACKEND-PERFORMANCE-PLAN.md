@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: Merge owns Main; C and Performance progress, original Job remains service-stalled. E17/E18, C17-C20 and MEM9 are verified and prototype-integrated; MEM6/MEM7 runtime holds remain. Test-suite, issue disposition, static audit and finite-function bounded Goals are complete; full development issues remain open.
+Status: Merge owns Main; C and Performance progress, original Job remains service-stalled. E17/E18, C17-C20 and MEM9 are verified and prototype-integrated; MEM6/MEM7 runtime holds remain; MEM10 frozen handoff is held for byte disposition and current qualification. Test-suite, issue disposition, static audit and finite-function bounded Goals are complete; full development issues remain open.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -413,11 +413,27 @@ original Job service-stalled, four bounded owners stopped. Releases remain queue
 [Argument model review](../src/prototype/performance_followup/mem8-fresh-argument-pairs-root-review.json),
 [Owner review](../src/prototype/coordination/reviews/20261004T0048.json).
 
+2026-10-04 01:15 UTC, superseding MEM10 disposition: READYdc5499f2 and
+byte-hold194e93b1 reviewed. Root verifies exact27/private2730, historical
+transport45 plus17 inherited, Fold/materialized1472 cross-codec records and
+actual retained-cut/layout16 results; public52/full TSV/fuel remain exact.
+Root independently confirms6 differing materialized writer images of146 pairs
+(all equal lengths, Fold67 exact). Same-binary repetitions/inert-resave diagnosis
+remain pending; runtime integration and cost scheduling are held, no byte waiver.
+Current E18+MEM9 source128c414202a excludes historical free_frames. Bounded
+fresh-slot-only reconciliation prepares8bb29f3a; nine-type header probe shows
+current machine/WHNF/execution +8 size and each +16 aligned allocation extent,
+unlike historical aligned0. Full current runtime/consumers/bytes/capacity are
+unverified. Original owner receives queued feedback; no acknowledgement,
+new exclusive slot, accepted change or Goal completion inferred.
+[MEM10 hold review](../src/prototype/performance_followup/mem10-fresh-pairs-root-review.json),
+[Owner status](../src/prototype/coordination/reviews/20261004T0115.json).
+
 | Owner / issue scope | Delivered and verified | Not yet delivered / next boundary |
 | --- | --- | --- |
 | Job/Evidence; SE1-SE5 / AP0, #51/#47 | E1-E4/E6-E18 corrected prototypes integrated/pushed. E17 exact30/E18 exact26 verified; corrected471 dependencies and all raw reports hashed, historical E16 two-fixture census limit retained. Fresh current E17/E18 synthesis/checkpoint O2/SAN/CLI pass, public52/full TSV unchanged; existing named-field bridges/canonical files exact | Owner newly service-stalled, E18 release queued. E19 specific gap/repair verified at Root E17, isolated-worker broad0 source156/overlay471 exact; C/census/strict/full freeze/current-E18 publication pending. E20 private. Genuine frontier/strict3, full Goal/adoption and actual cost open |
 | C backend; #61 (historical #44/#49) | C1-C20 bounded prototypes integrated/pushed. C20 exact10 task7b883a8e/Mainf8134616; current E18+MEM9 rebuilt backend passes integer77 and C19 parent unit119 each O2/client-source SAN, generated48 bytes exact. Retained142/raw1416 historical hashes exact; Main Goal provenance alone reconciled | C21 private known captures: eight wrappers emit0; standalone/reexport12 records match16 observations each on historical E8. Initial lowering pins predate later source; full/current/SAN/freeze remain pending. Preserve C20 history and explicit dynamic/indexed/callable refusals. Caller interpretation/purity/totality/provider-success/synchronous borrowed code-context lifetime and limited SAN scope remain. General contracts/native Acc/QuickSort/full #61/cost remain open |
-| Performance; #56/#51/#52 | V3/MEM2/MEM3 source/cost and MEM4/MEM5 integrated/pushed. MEM9 exact17 taske71528fa/Mainb9e68c27; current-E18 focused454/0, Core/eval-IO/full synthesis/source-checkpoint O2/SAN and public52/full TSV exact. Fold36 retains scoped Tree400 wall-1.43%/RSS-1.91%. MEM6/MEM7 holds and MEM8 attribution reviewed, including full10K/two censored100K environment-use, bounded first20000 transitions and fresh-pair model. MEM10 private focused18/nested36 verified on historical MEM5 | MEM6 held for4 O2/7 inert byte failures; MEM7 held for4 codec abortions despite16 semantic passes. Global generic16, opaque lifetimes and independent codec fields preserved. Typed8 allocator/compact-root/beta implementation deferred pending owner contracts; MEM10 broader/current/actual capacity/full owner-overhead and frozen runtime pending. MEM9 reader-call reduction is unmeasured time/RSS. No new cost slot/full Goal closure |
+| Performance; #56/#51/#52 | V3/MEM2/MEM3 source/cost and MEM4/MEM5 integrated/pushed. MEM9 exact17 taske71528fa/Mainb9e68c27; current-E18 focused454/0, Core/eval-IO/full synthesis/source-checkpoint O2/SAN and public52/full TSV exact. Fold36 retains scoped Tree400 wall-1.43%/RSS-1.91%. MEM6/MEM7 holds and MEM8 attribution reviewed, including full10K/two censored100K environment-use, bounded first20000 transitions and fresh-pair model. MEM10 frozen27/private2730 historical focused/transport/all-cut/affected/capacity evidence verified; six paired materialized byte differences visible | MEM6 held for4 O2/7 inert byte failures; MEM7 held for4 codec abortions despite16 semantic passes. Global generic16, opaque lifetimes and independent codec fields preserved. Typed8 allocator/compact-root/beta implementation deferred pending owner contracts; MEM10 runtime integration/cost held for6/146 byte differences and repeated-write/inert-resave disposition. Current8bb29f3a prepared only; header owner aligned extents +16 each, full current consumer/byte/capacity gates pending. MEM9 reader-call reduction is unmeasured time/RSS. No new cost slot/full Goal closure |
 | Surface; #57 | Verified prototype integrated, completed owner stopped | Accepted policy/promotion and selector diagnostics unresolved; no owner restart |
 | Static audit; #59/PR #60 | Task7ed3ad1/Main5683755; Root385 source/114 archived dependency hashes and exact inventory verified; bounded Goal achieved | Dynamic/full #59 and controlled cost remain open; no static-owner restart |
 | Sort; #41/F3-F5 | PR54 and finite-function task5e6ed84/Main966c4e1 integrated; bounded Goal achieved, focused gates0 | Accepted Sort/F5 and broader interfaces remain separate |
@@ -450,7 +466,7 @@ reporting subsystem. Its audit cover is pinned to `37de1e8`, not current Main.
 | --- | --- | --- |
 | 0 / desk -> Merge | Workflow | C/Performance continue; original Job remains service-stalled, E18 release queued. E17/E18/C17-C20/MEM9 published. Four bounded Goals achieved/stopped; protected9 preserved. Keep one timer, no new owner/resume; one durable outbox update per material status, direct messages only for urgent prior deltas |
 | 1 / Job, Root reviews independently | SE/AP, #51 | E17/E18 delivered. Isolated E19 broad0 verified; inspect original-owner service stall and remaining C/census/strict/public/full freeze/current-E18 qualification when READY. Current-E17 counterexample/repair verified; E20 separate. Preserve strict3, escaped-node lifetime and every failure; no node recycling/byte waiver |
-| 1 / performance + Root shared-owner review | #56 / #51 | MEM9 independently current-E18 qualified and exact prototype published; reader-call reduction is not actual speed/RSS. MEM6/MEM7 holds remain; codec-owner route reviewed, contract disposition pending. Review typed8 allocator/API and codec obligations before separate implementation qualification; global generic16/opaque lifetimes/independent codec fields remain. Both full environment100K timeouts retained; bounded first20000 observations and paired-argument model remain historical. MEM10 private focused18/nested36 passes require broader/all-cut/current qualification, actual capacity and complete owner overhead before frozen publication; no automatic cost slot |
+| 1 / performance + Root shared-owner review | #56 / #51 | MEM9 independently current-E18 qualified and exact prototype published; reader-call reduction is not actual speed/RSS. MEM6/MEM7 holds remain; codec-owner route reviewed, contract disposition pending. Review typed8 allocator/API and codec obligations before separate implementation qualification; global generic16/opaque lifetimes/independent codec fields remain. Both full environment100K timeouts retained; bounded first20000 observations and paired-argument model remain historical. MEM10 exact27/private2730 reviewed; resolve6/146 materialized writer byte differences with unchanged repeat/inert controls before runtime integration/cost. Current source8bb29f3a has +16 aligned owner extents; rebuild consumers and qualify current transport/cuts/public bytes/fuel/actual capacity after byte disposition. No automatic slot/publication |
 | Complete bounded / test-suite; Root publishes | #59 / PR #60 | Verified pilot removes22 duplicate calls with all distinct outcomes preserved; Root raw/assembly review complete. Exact7 taskbc16df9/Main36a27be prototype integrated; broader inventory/cost/accepted adoption remain open |
 | Complete bounded / issue-audit | All open Issues/PRs | Verified comments/dispositions,44/49 superseded by61; nine issues open. Owner stopped; Root resumes coordination, no repeat audit |
 | Complete bounded / verification-audit | #59 / PR #60; #51 | Static inventory/pilot delivered and worker complete; four-job measured cost remains deferred, full #59 open. Do not restart the completed owner automatically |
@@ -1418,6 +1434,16 @@ current-producer, actual capacity and complete embedded-owner overhead gates
 are pinned. Bounded environment observations do not establish dead links or
 supersede either full100K timeout. Existing allocator/beta/compact-root deferrals
 and MEM6/MEM7 holds remain. This is an agent review within existing scope.
+
+2026-10-04, superseding Root MEM10 decision: retain the frozen historical
+qualification but hold runtime integration/cost for the six independently
+confirmed materialized writer byte differences. Repeated same-binary writes
+and inert resaves must distinguish allocator/layout effects from existing
+ordering behavior; no cause or byte waiver is assumed. Current canonical
+header layout crosses three aligned allocation boundaries (+16 each), so the
+historical zero-extent overhead claim is not current evidence. Prepare only
+the owned packing delta, preserving absence of free_frames; full current
+consumer/transport/cut/byte/capacity qualification follows byte disposition.
 
 2026-10-03 15:45 UTC, Root operational exclusive grant
 `MEM1V3-E12-20261003T154600Z-600`: only the36 configured paired AP samples,

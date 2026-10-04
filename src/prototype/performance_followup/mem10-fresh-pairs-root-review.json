@@ -1,0 +1,484 @@
+{
+  "review_UTC": "2026-10-04T01:15:27.144631+00:00",
+  "Main_at_review": "91ffbd8febde875c9f0f591a39ac9243f8181659",
+  "worker_READY_notice_sha256": "dc5499f23c7566ec328f58c5f045d3df5e91af716d0d270d4d9bcbd57950ab4a",
+  "superseding_worker_byte_hold_notice_sha256": "194e93b15dccdfe621a330851bc500ab835fbf3e1c0d470bd78f344ea093d254",
+  "Root_raw_static_review": {
+    "path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-static-root-review.json",
+    "sha256": "dea61524608d4ffa4d8bae21e587b4acf776c54550297fdcaa53a8630b744e86",
+    "pinned_files": 2985
+  },
+  "exact27_frozen_files": {
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1/affected-summary.json": "5ff1e04ae026f470ea6b4343cabad4474e7e8a365263f9c9b373720e24d3c0d9",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1/analysis.json": "f95ed5e4fce8f97ed63d6c76ac373cb53dc8ec5f27e73426d7ba0f4edc768e73",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1/applied.patch": "fe72ed8c23ed982323fd4b77a3c5b7e8201ba7db5b98e6078d4834b945d9696b",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1/assemble.py": "64b1c1c2678845b30043c82cdd3d6d4fb4e757a28de4c6d685591d1402be4d61",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1/build-cuts.mk": "ae98fdcb6b0dd55076405b032dec28f382e8dbac8f57c0eb6750edadeed1a289",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1/build.mk": "930912acb393b69b22c9b401b1e54dc19bff5a560cf1ea8f149f539d43206eab",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1/capacity-summary.json": "eef29b33a761f8bf6bfd5781176824f89e0d87f1239c2466268548ca54c04d4e",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1/cuts-summary.json": "eceadaaeb90dd42af21e3b716d6ab73f598bd26d44fe9deacf9b661f43f4c98d",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1/eval.c": "c8e7d623f598e5e78e2bd66eae8c7d6fc4e00ab7a01c5b3794438fa51b432149",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1/eval.h": "4a73833c21348e8a5e9c1093a21bbb3e057775762a2c407d53bceb64c8715972",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1/focused-summary.json": "0119fc177efa23312047157fd6c8c8dde6d4baae66e39baaf8fc94517d1c98a4",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1/freeze.py": "8a5ccadbff0a90d9a602db96e4f973e37df52f1409467f5fe082fac9d8c2548b",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1/inspect_layout.py": "6161b506a6c9fde64ccbb51c1caff5797fbced960a58b8ffc17985d6386dcb7d",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1/known-failures.json": "5d595f95b1829dbab58c5c4a73e3a16ad52124078feff2a989203d67ebfbfd00",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1/layout.gdb.py": "25343a6fb6580dd007adc17141ec7724b40d104f1077dfbe2b6251cb388538b0",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1/parent-source.sha256": "2344ad41d6db32ceddb5dbc9419aa8da97fcaa00253e075f5ff96b8f72f93b13",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1/private-evidence.json": "944bc5c44615f6e3c9f61f1e8df6c8cb45e79ea1f07eef2254ddf3d205d728c7",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1/publication.json": "17e62d5ad7087dd232dc42442ab301a2d0d47de4b6f78b3d4687fff39643ab74",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1/qualify_affected.py": "e70a87ef2472fe5fe02178960250d2a8839c9335b5e2ab1e23f1761771c6a159",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1/qualify_capacity.py": "e7206544cba6ab35a4633c91cf8ab33d195812baae45bb82827b2e1f942fd321",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1/qualify_cuts.py": "b6c859a6b86dbfc237a3ae6cc0ba839c26edc8e2bc5de51c57ea82d2cb0de5c5",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1/qualify_focused.py": "ef3e445b7d65efad2b76dce4ae43d0c6033952431fe4deb06bda2cfc9734dc58",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1/qualify_transport.py": "1ad2445c6e6a7ef54b94dbd44bf87e302f77fef26e9edda1523e16a2453a8b81",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1/qualify_transport_v2.py": "f90f374e77791253cee0512d5a854c7d120996fc3efbc1380e76219e2a23df34",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1/source.sha256": "962149cf349dc1ce9176b7d2a001438fbce8d5615d6eb817110023c10c43fb29",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1/transport-summary.json": "087eb7cd72968325c846f02fe32017e4bfb3b21401f51332200073356ea5535c",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1/manifest.sha256": "e6410973b0f33e985fda37379edb6ed5277c6dc61cbd7919166a7872eb7fd7ca"
+  },
+  "private_manifest_sha256": "9d3de811ac025126d5d5318aba422ea6e93a628e20dd42b24ac9a87ea4a67ecf",
+  "private2730_all_hashes_exact": true,
+  "historical_parent_source128": "2344ad41d6db32ceddb5dbc9419aa8da97fcaa00253e075f5ff96b8f72f93b13",
+  "historical_candidate_source128": "962149cf349dc1ce9176b7d2a001438fbce8d5615d6eb817110023c10c43fb29",
+  "only_runtime_change": [
+    "src/eval.c",
+    "src/eval.h"
+  ],
+  "verified_historical_worker_results": {
+    "focused": 18,
+    "nested_lifetime": 36,
+    "transport": 45,
+    "inherited_O2_transport_successes": 17,
+    "separate_process_TotalResult_cuts_each_flavor": 70,
+    "Fold_materialized_cross_codec_records": 1472,
+    "inherited_parent_O2_cut_successes": 4,
+    "writer_images": 292,
+    "fresh_O2_reads": 584,
+    "fresh_SAN_reads": 584,
+    "Fold_cuts": 67,
+    "materialized_cuts": 79,
+    "direct_fuel_vector": [
+      17,
+      16,
+      10,
+      8
+    ],
+    "affected_expected_records": 17,
+    "original_strict_recipe_exit": 1,
+    "original_strict_reload_failures": 3,
+    "public_images_exact_MEM5": 52,
+    "full_verdict_fuel_TSV_exact_MEM5": true,
+    "six_O2_source_fuels": [
+      1915,
+      761848,
+      2318248,
+      7608511,
+      29780510,
+      183507626
+    ]
+  },
+  "historical_actual_retained_cut_capacity": {
+    "list-done": {
+      "charged_steps": 1915,
+      "actual_retained_capacity_delta": 0,
+      "actual_used_delta": 0
+    },
+    "trees4-cut10K": {
+      "charged_steps": 10000,
+      "actual_retained_capacity_delta": 0,
+      "actual_used_delta": -12272
+    },
+    "trees4-cut100K": {
+      "charged_steps": 100000,
+      "actual_retained_capacity_delta": -229376,
+      "actual_used_delta": -220384
+    },
+    "trees4-cut1M": {
+      "charged_steps": 1000000,
+      "actual_retained_capacity_delta": -1458176,
+      "actual_used_delta": -1491232
+    },
+    "trees4-cut2M": {
+      "charged_steps": 2000000,
+      "actual_retained_capacity_delta": -1343488,
+      "actual_used_delta": -1358560
+    },
+    "trees16-cut5M": {
+      "charged_steps": 5000000,
+      "actual_retained_capacity_delta": -4177920,
+      "actual_used_delta": -4138992
+    }
+  },
+  "historical_actual_type_layout": {
+    "pg_eval": {
+      "before_size": 168,
+      "after_size": 176,
+      "size_delta": 8,
+      "before_alignment": 8,
+      "after_alignment": 8,
+      "aligned_extent_delta": 0
+    },
+    "pg_whnf_job": {
+      "before_size": 392,
+      "after_size": 400,
+      "size_delta": 8,
+      "before_alignment": 8,
+      "after_alignment": 8,
+      "aligned_extent_delta": 0
+    },
+    "pg_execution": {
+      "before_size": 200,
+      "after_size": 208,
+      "size_delta": 8,
+      "before_alignment": 8,
+      "after_alignment": 8,
+      "aligned_extent_delta": 0
+    },
+    "pg_argument": {
+      "before_size": 24,
+      "after_size": 24,
+      "size_delta": 0,
+      "before_alignment": 8,
+      "after_alignment": 8,
+      "aligned_extent_delta": 0
+    },
+    "pg_environment": {
+      "before_size": 32,
+      "after_size": 32,
+      "size_delta": 0,
+      "before_alignment": 8,
+      "after_alignment": 8,
+      "aligned_extent_delta": 0
+    },
+    "pg_eval_frame": {
+      "before_size": 240,
+      "after_size": 240,
+      "size_delta": 0,
+      "before_alignment": 8,
+      "after_alignment": 8,
+      "aligned_extent_delta": 0
+    },
+    "pg_nf_job": {
+      "before_size": 136,
+      "after_size": 136,
+      "size_delta": 0,
+      "before_alignment": 8,
+      "after_alignment": 8,
+      "aligned_extent_delta": 0
+    },
+    "pg_program": {
+      "before_size": 1352,
+      "after_size": 1352,
+      "size_delta": 0,
+      "before_alignment": 8,
+      "after_alignment": 8,
+      "aligned_extent_delta": 0
+    },
+    "pg_substitution_state": {
+      "before_size": 152,
+      "after_size": 152,
+      "size_delta": 0,
+      "before_alignment": 8,
+      "after_alignment": 8,
+      "aligned_extent_delta": 0
+    }
+  },
+  "byte_hold": {
+    "path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-paired-writer-byte-review.json",
+    "sha256": "5eb8b1a9009f7858ef3758530d10be45b42acb0bd0a45e8fef7bed33bfdacd99",
+    "paired_writer_images": 146,
+    "identical": 140,
+    "differing": 6,
+    "Fold67_identical": true,
+    "unequal_materialized_cuts": [
+      {
+        "case": 0,
+        "cut": 12,
+        "bytes": 1808,
+        "differing_byte_count": 22,
+        "parent_sha256": "014f9e4040deb6516f38fcc2c1265fe6d01342d8f8608b5c8983681d70b10149",
+        "candidate_sha256": "c13600d43b996c6856dbb6be81e7fab71f05e49fc51816d07678fb2b2860b117"
+      },
+      {
+        "case": 1,
+        "cut": 12,
+        "bytes": 1755,
+        "differing_byte_count": 22,
+        "parent_sha256": "c040750981e306e5e142b9c579e93c5a9bc12b5f182f5836dc5296ae8bc0048e",
+        "candidate_sha256": "8b257134f256ec2bd14282ebd0ddd3fe3148b82d936707826b1d9353bd5a0f47"
+      },
+      {
+        "case": 1,
+        "cut": 13,
+        "bytes": 1772,
+        "differing_byte_count": 15,
+        "parent_sha256": "1866ffe1e4b0b04132c58a61c2065e1c497185a969f23805199e2d2ac4606664",
+        "candidate_sha256": "48465b1c76dc7282c9e1fcb21b954f9721dc4ff11c07edfc8f8417fd979f3d8f"
+      },
+      {
+        "case": 5,
+        "cut": 7,
+        "bytes": 1522,
+        "differing_byte_count": 8,
+        "parent_sha256": "78e99a4d887294c02435005f106e148aadf65f791b2f9c22bf8f48781b1b731d",
+        "candidate_sha256": "2e108bb72cb331d2794a7f0fc2303b77f854fcb8a042bd06e423df4f641161d3"
+      },
+      {
+        "case": 5,
+        "cut": 8,
+        "bytes": 1522,
+        "differing_byte_count": 8,
+        "parent_sha256": "4c95de2c086d4ac860a2cc18dff89006b1a356a068a0e4363a44ca7f4a4daac4",
+        "candidate_sha256": "ead9f2163e6c947d683cdf155afdb0be1eb8404417702dd1b62c30f7855df0ad"
+      },
+      {
+        "case": 6,
+        "cut": 6,
+        "bytes": 1531,
+        "differing_byte_count": 8,
+        "parent_sha256": "8c1300d90045b21474930d7ac0f315068fee05ec3860610c9857f7107e2d90a1",
+        "candidate_sha256": "31b7a33b41e9df112be0f99a57936756412a4cafcde51f0e7b9388c59bdd29fe"
+      }
+    ],
+    "semantic_result_and_fuel_four_fresh_readers_verified": true,
+    "same_binary_repeated_write_and_inert_resave_controls_pending": true,
+    "cause_established": false,
+    "no_byte_waiver": true
+  },
+  "current_preparation_only": {
+    "path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-input-review.json",
+    "sha256": "6e1bfebab2f8a4625c9656986a0fbbdced90e77cb12815403df9f8940387967e",
+    "parent_source128": "c414202a4abb79301b04431b75008fa828dd60712b50518a1d4824e5d555b64b",
+    "candidate_source128": "8bb29f3ab57282513828ada40c13051dcf86fc8b55431e4cc1959757fc645d0d",
+    "canonical_patch_sha256": "fe72ed8c23ed982323fd4b77a3c5b7e8201ba7db5b98e6078d4834b945d9696b",
+    "effective_patch_sha256": "bdfeea60ba82a8aa9bb9d162360a0968ba478a43a11e10ae6346b66e1bc29edd",
+    "reconciliation": "Current qualified evaluator has no historical free_frames field. Preserve it; helper body/two fresh allocation calls/WHNF spare reset and header field are the exact bounded MEM10 change. Do not import historical free-frame reuse.",
+    "actual_current_header_layout": {
+      "pg_eval": {
+        "before": {
+          "size": 160,
+          "alignment": 8,
+          "extent16": 160
+        },
+        "after": {
+          "size": 168,
+          "alignment": 8,
+          "extent16": 176
+        },
+        "size_delta": 8,
+        "extent_delta": 16
+      },
+      "pg_whnf_job": {
+        "before": {
+          "size": 384,
+          "alignment": 8,
+          "extent16": 384
+        },
+        "after": {
+          "size": 392,
+          "alignment": 8,
+          "extent16": 400
+        },
+        "size_delta": 8,
+        "extent_delta": 16
+      },
+      "pg_execution": {
+        "before": {
+          "size": 192,
+          "alignment": 8,
+          "extent16": 192
+        },
+        "after": {
+          "size": 200,
+          "alignment": 8,
+          "extent16": 208
+        },
+        "size_delta": 8,
+        "extent_delta": 16
+      },
+      "pg_argument": {
+        "before": {
+          "size": 24,
+          "alignment": 8,
+          "extent16": 32
+        },
+        "after": {
+          "size": 24,
+          "alignment": 8,
+          "extent16": 32
+        },
+        "size_delta": 0,
+        "extent_delta": 0
+      },
+      "pg_environment": {
+        "before": {
+          "size": 32,
+          "alignment": 8,
+          "extent16": 32
+        },
+        "after": {
+          "size": 32,
+          "alignment": 8,
+          "extent16": 32
+        },
+        "size_delta": 0,
+        "extent_delta": 0
+      },
+      "pg_eval_frame": {
+        "before": {
+          "size": 240,
+          "alignment": 8,
+          "extent16": 240
+        },
+        "after": {
+          "size": 240,
+          "alignment": 8,
+          "extent16": 240
+        },
+        "size_delta": 0,
+        "extent_delta": 0
+      },
+      "pg_nf_job": {
+        "before": {
+          "size": 136,
+          "alignment": 8,
+          "extent16": 144
+        },
+        "after": {
+          "size": 136,
+          "alignment": 8,
+          "extent16": 144
+        },
+        "size_delta": 0,
+        "extent_delta": 0
+      },
+      "pg_program": {
+        "before": {
+          "size": 1352,
+          "alignment": 8,
+          "extent16": 1360
+        },
+        "after": {
+          "size": 1352,
+          "alignment": 8,
+          "extent16": 1360
+        },
+        "size_delta": 0,
+        "extent_delta": 0
+      },
+      "pg_substitution_state": {
+        "before": {
+          "size": 152,
+          "alignment": 8,
+          "extent16": 160
+        },
+        "after": {
+          "size": 152,
+          "alignment": 8,
+          "extent16": 160
+        },
+        "size_delta": 0,
+        "extent_delta": 0
+      }
+    },
+    "full_current_runtime_consumer_transport_cuts_byte_capacity_gates_pending": true
+  },
+  "initial_Root_guards": {
+    "historical_patch_check_exit": 1,
+    "historical_patch_check_log_sha256": "fac2eecc9823dfd79f987ad94c6474f0dedf22e27dd50c0233d2bd73063bab04",
+    "classification": "Historical free_frames context differs from current canonical evaluator; explicit bounded current patch preserves current architecture. No runtime regression follows from patch context mismatch.",
+    "capacity_live_summary_guard_note": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-initial-root-audit-guard.txt",
+    "capacity_live_summary_guard_note_sha256": "a041205be4ab2417d11770509fdc667b028661609b727c1b17de68501ccbe1ef",
+    "terminal_capacity_last_data_hash_verified": "3453e5e12a7bf5f09d4ba6830613aba2a93ab375113c01bf94c3662d20d5ab83"
+  },
+  "original_worker_failures": {
+    "historical": {
+      "parent_known_failures": "/tmp/ap-performance-mem5-materialized-fields-current-e12-20261003/known-failures.json",
+      "parent_known_failures_sha256": "943cbb31d3a682bd6a444e3010075d6e57e42a926d69f45a7c84b0a34a7b7ad9",
+      "original_observer_failures": 2,
+      "original_SAN_failures": 7,
+      "strict_reload_failures": 3,
+      "MEM6_raw_pair_and_parent_byte_failures": "Preserved separately; held epoch excluded.",
+      "MEM7_unchanged_codec_failures": 4,
+      "MEM7_runtime": "Review-only epoch excluded.",
+      "padding_beta_copy_setup_and_rejected_runtime_records": "Preserved in separate immutable manifests.",
+      "new_failure_or_test_outcome_waiver": false,
+      "public_partition_raw_exit": 1,
+      "public_partition_log": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem9/private/substitution_prefix_v1_20261003/affected/public-partitions.log",
+      "public_partition_log_sha256": "3145581ad261eac78c843f5fa3a20fcd2b78e2044b193cc60db8f05ab4292d1f"
+    },
+    "new_setup_failures": {
+      "transport": {
+        "records": 18,
+        "failed": 1,
+        "exit": 2,
+        "runner_sha256": "1ad2445c6e6a7ef54b94dbd44bf87e302f77fef26e9edda1523e16a2453a8b81",
+        "records_sha256": "cfaab943d3ed73128a72985cd3232fc02c26519936f1628d70c30ab178edfd23",
+        "cause": "ARTIFACT_TESTS default selected historical live fixture; matching frozen fixture is now pinned.",
+        "unlaunched_wrong_target_names": [
+          "artifact_effect_checkpoint_test",
+          "artifact_inference_checkpoint_test"
+        ]
+      },
+      "cut_runner": {
+        "terminal": true,
+        "runtime_records": 4,
+        "runtime_failed": 0,
+        "runner_exit": 1,
+        "failed_runner_sha256": "98ea5b3a561a31231c28bbc7220cd5eb5c4861eceae2908a3687f749a13850ef",
+        "reason": "Handwritten expected direct fuel vector disagreed with unchanged parent; parent baseline output passes original assertions.",
+        "incorrect_expected_steps": [
+          25,
+          14,
+          8,
+          4
+        ],
+        "actual_parent_steps": [
+          17,
+          16,
+          10,
+          8
+        ],
+        "sum_with_four_cuts": 55,
+        "assertions_in_original_C_tests_changed": false,
+        "runtime_source_changed": false,
+        "children_stopped": true
+      },
+      "layout": {
+        "terminal": true,
+        "runner_exit": 1,
+        "gdb_exit": 1,
+        "reason": "Core-only callback binary has no pg_program DWARF type; no target was started.",
+        "runtime_started": false,
+        "layout_gain_established": false,
+        "corrective_action": "Use already-required full O2-g CLI for both layout and retained-capacity observation.",
+        "failed_runner_sha256": "6161b506a6c9fde64ccbb51c1caff5797fbced960a58b8ffc17985d6386dcb7d",
+        "log_sha256": "09ef3b62cf37a3dd853eb497872084a0b55307bc2032ece4150340c6534be1b0"
+      }
+    },
+    "original_strict_public_partition_log": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/argument_pairs_v1_20261004/affected/public-partitions.log",
+    "original_strict_public_partition_log_sha256": "272bd64d10f677fb6ed88fb1ac9bddd4519d7461a9a7071e05850622dbecd95d",
+    "no_runtime_outcome_assertion_adapter_or_waiver": true
+  },
+  "publication_proposal": {
+    "branch": "parallel/performance-20261003",
+    "parent_commit": "e71528fa286e263c568d4f78f3f1281f90b5e86d",
+    "commit_message": "prototype: pack fresh evaluator arguments in pairs",
+    "publication": "Delegated exact task-branch publication only, after Root review.",
+    "Main_integration_and_accepted_selection": "Root only; no accepted promotion or Goal completion requested."
+  },
+  "Assessment": [
+    "Frozen27/raw2730 and every expected historical result are verified. Retain exact historical evidence; READY did not claim raw cross-writer byte equality or latest Main qualification.",
+    "Root independently confirms six differing equal-length materialized writer images. Hold runtime integration and comparative scheduling while unchanged same-parent/same-candidate repetitions and inert machine resaves establish the byte disposition. Semantic success neither proves deterministic bytes nor establishes a new bug; do not infer allocator regression or parent nondeterminism from this comparison alone.",
+    "Current E18+MEM9 canonical evaluator excludes historical free_frames. The isolated effective patch adds only the identical fresh-slot helper, two allocation call changes, WHNF spare reset and header field; no free-frame reuse is imported. Current source1288bb29f3a is prepared, not runtime-qualified or published.",
+    "Fresh nine-type header probe establishes +8 actual size and +16 aligned allocation extent for current pg_eval/WHNF/execution. Historical unchanged aligned extents do not transfer. Other six types are unchanged; actual current capacity/global overhead and all consumers still require qualification.",
+    "Historical cut-capacity savings include unused spares but exclude nested query/malloc/index/allocator metadata and are not process RSS, global peak or time. No comparative sample or new exclusive slot is granted; the prepared historical36-job proposal remains unreviewed/unlaunched.",
+    "After byte disposition, independently verify the exact frozen runtime change on current Main with rebuilt consumers, affected transport/all-cut and strict/public byte/fuel controls, and current owner capacities before task/Main publication. Keep MEM6/MEM7 holds and allocator/compact-root/beta deferrals intact. This is an agent review within existing prototype scope, not user design approval or accepted promotion."
+  ],
+  "Root_feedback_original_owner": "Queued to original Performance pane, visibly verified; no acknowledgement inferred.",
+  "task_Main_runtime_publication": false,
+  "accepted_source_test_build_change": false,
+  "new_cost_or_design_grant": false,
+  "full_Goal_complete": false
+}
