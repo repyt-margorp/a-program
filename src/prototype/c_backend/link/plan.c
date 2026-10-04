@@ -11,13 +11,13 @@ struct export_row {
 
 const char *pg_c_lowering_name(enum pg_c_lowering lowering)
 {
-	static const char *const names[] = {"structural_v1", "scalar_direct_v1", "native_direct_v1", "callback_direct_v1", "callback2_direct_v1", "predicate_native_direct_v1", "predicate_signed_direct_v1", "callback_native_direct_v1"};
+	static const char *const names[] = {"structural_v1", "scalar_direct_v1", "native_direct_v1", "callback_direct_v1", "callback2_direct_v1", "predicate_native_direct_v1", "predicate_signed_direct_v1", "callback_native_direct_v1", "native_buffer_query_v1"};
 	return names[lowering];
 }
 
 const char *pg_c_abi_name(enum pg_c_lowering lowering)
 {
-	static const char *const names[] = {"isolated_v1", "c_scalar_v1", "c_native_v1", "c_callback_v1", "c_callback2_v1", "c_predicate_native_v1", "c_predicate_signed_v1", "c_callback_native_v1"};
+	static const char *const names[] = {"isolated_v1", "c_scalar_v1", "c_native_v1", "c_callback_v1", "c_callback2_v1", "c_predicate_native_v1", "c_predicate_signed_v1", "c_callback_native_v1", "c_native_v1"};
 	return names[lowering];
 }
 
@@ -133,6 +133,7 @@ int pg_c_link_read(struct pg_c_link_plan *plan, const char *path, size_t *line, 
 			else if (!strcmp(args[1], "predicate_native_direct_v1")) plan->lowering = PG_C_PREDICATE_NATIVE_DIRECT;
 			else if (!strcmp(args[1], "predicate_signed_direct_v1")) plan->lowering = PG_C_PREDICATE_SIGNED_DIRECT;
 			else if (!strcmp(args[1], "callback_native_direct_v1")) plan->lowering = PG_C_CALLBACK_NATIVE_DIRECT;
+			else if (!strcmp(args[1], "native_buffer_query_v1")) plan->lowering = PG_C_NATIVE_BUFFER_QUERY;
 			else if (!strcmp(args[1], "structural_v1")) plan->lowering = PG_C_STRUCTURAL;
 			else goto done;
 			lowering = 1;
@@ -166,7 +167,8 @@ int pg_c_link_read(struct pg_c_link_plan *plan, const char *path, size_t *line, 
 	if (plan->lowering != PG_C_STRUCTURAL && !fallback) goto done;
 	if ((plan->enum_count || plan->data_count || plan->natural_count) &&
 		plan->lowering != PG_C_NATIVE_DIRECT && plan->lowering != PG_C_PREDICATE_NATIVE_DIRECT &&
-		plan->lowering != PG_C_PREDICATE_SIGNED_DIRECT && plan->lowering != PG_C_CALLBACK_NATIVE_DIRECT) goto done;
+		plan->lowering != PG_C_PREDICATE_SIGNED_DIRECT && plan->lowering != PG_C_CALLBACK_NATIVE_DIRECT &&
+		plan->lowering != PG_C_NATIVE_BUFFER_QUERY) goto done;
 	*error = "invalid product/entry combination";
 	if (plan->product == PG_C_EXECUTABLE && !entry) goto done;
 	if ((plan->product == PG_C_OBJECT || plan->product == PG_C_ARCHIVE || plan->product == PG_C_SHARED) && entry) goto done;

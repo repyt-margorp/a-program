@@ -1091,7 +1091,7 @@ static int emit(FILE *source, FILE *header, size_t count,
 	if (!source || !header || !error) return -1;
 	*error = "invalid scalar exports or entry";
 	if (!pg_c_export_names(count, exports) || (entry != SIZE_MAX && entry >= count)) return -1;
-	/* Native mode 3 combines represented values with scalar-return callbacks. */
+	/* Mode 3 adds scalar callbacks; mode 4 adds finite List extent helpers. */
 	struct module m = {.callbacks = callbacks, .native_predicates = callbacks && native != 3 ? native : 0,
 		.native_callbacks = native == 3};
 	struct pg_dag roots;
@@ -1101,6 +1101,14 @@ static int emit(FILE *source, FILE *header, size_t count,
 	if (pg_dag_init(&m.order, lower_child, &m) || pg_index_init(&m.functions) || pg_index_init(&m.arguments) || pg_index_init(&m.results)) goto done;
 	*error = "representations require unique closed declarations; fields need scalar, enum, prior selected value data or direct Self contracts";
 	if (pg_c_representations_native(&m.representations, &m.order.storage, enum_count, enums, natural_count, naturals, data_count, data)) goto done;
+	if (native == 4) {
+		size_t lists = 0;
+		for (size_t i = 0; i < m.representations.count; ++i) {
+			size_t cell, payload;
+			if (pg_c_representation_list(m.representations.types[i], &cell, &payload)) ++lists;
+		}
+		if (!lists) { *error = "buffer query profile requires a selected finite single-tail one-payload List"; goto done; }
+	}
 	*error = "cannot inspect existing induction result classifiers";
 	if (induction_results(&m, count, exports)) goto done;
 	for (size_t i = 0; i < count; ++i) if (pg_dag_add(&roots, exports[i].subject)) goto done;
@@ -1148,10 +1156,13 @@ static int emit(FILE *source, FILE *header, size_t count,
 	pg_c_representation_declarations(header, &m.representations);
 	predicate_declarations(source, &m); predicate_declarations(header, &m);
 	pg_c_nodes_declarations(source, &m.representations);
+	if (native == 4) pg_c_nodes_measure_declarations(source, &m.representations);
 	fputs("#ifdef __cplusplus\nextern \"C\" {\n#endif\n", header);
 	pg_c_nodes_declarations(header, &m.representations);
+	if (native == 4) pg_c_nodes_measure_declarations(header, &m.representations);
 	value_validators(source, &m.representations);
 	pg_c_nodes_implementation(source, &m.representations);
+	if (native == 4) pg_c_nodes_measure_implementation(source, &m.representations);
 	for (const struct function *f = m.first; f; f = f->next) { signature(source, f); fputs(";\n", source); }
 	fputc('\n', source);
 	for (const struct function *f = m.first; f; f = f->next) emit_function(source, f);
@@ -1302,4 +1313,14 @@ int pg_c_emit_native_profile(FILE *source, FILE *header, size_t count,
 {
 	return emit(source, header, count, exports, entry, enum_count, enums, natural_count, naturals,
 		data_count, data, 1, 0, contract, error);
+}
+
+int pg_c_emit_native_buffer_query(FILE *source, FILE *header, size_t count,
+	const struct pg_c_export *exports, size_t entry, size_t enum_count,
+	const struct pg_c_export *enums, size_t natural_count,
+	const struct pg_c_export *naturals, size_t data_count,
+	const struct pg_c_export *data, struct pg_c_native_contract *contract, const char **error)
+{
+	return emit(source, header, count, exports, entry, enum_count, enums, natural_count, naturals,
+		data_count, data, 4, 0, contract, error);
 }

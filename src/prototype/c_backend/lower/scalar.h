@@ -36,6 +36,13 @@ int pg_c_emit_native_profile(FILE *source, FILE *header, size_t count,
 	const struct pg_c_export *naturals, size_t data_count,
 	const struct pg_c_export *data, struct pg_c_native_contract *, const char **error);
 
+/* Existing native ABI plus explicitly selected finite List extent helpers. */
+int pg_c_emit_native_buffer_query(FILE *source, FILE *header, size_t count,
+	const struct pg_c_export *exports, size_t entry, size_t enum_count,
+	const struct pg_c_export *enums, size_t natural_count,
+	const struct pg_c_export *naturals, size_t data_count,
+	const struct pg_c_export *data, struct pg_c_native_contract *, const char **error);
+
 /* Borrowed unary/binary same-width Int32/Int64 callbacks with native carriers. */
 int pg_c_emit_callbacks_native(FILE *source, FILE *header, size_t count,
 	const struct pg_c_export *, size_t entry, size_t enum_count,

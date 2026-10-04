@@ -104,6 +104,17 @@ names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
 
+2026-10-04, Root C31 current E24+MEM9 source12819e6a2e7 independently qualified:
+exact18 taskcc3cba3495b81628e0a68ec8b45aee4f5447d188 pushed/remote exact. Serial strict O2
+backend/two helpers rebuilt; qualified E24 pointer reused. Both query63/callback76/
+record41 expected phases/88 C-H direct worker exact; linker0/current IO19/five query
+faults2 preserve products/staging.121 finite Lists/4356 slice pairs/five payloads,
+four source observations/300 nodes/inert/no-allocation/29 public definitions.
+Worker raw1612/inputs300/runtime128/style/28 new+60 prior emitted bytes verified.
+Other17 Main task bytes exact; Goal provenance only reconciled, future original
+worker files and submitted C29/C30/C31 evidence preserved. No producer rebuild,
+broad/cost or accepted edit. [C31 review](../src/prototype/c_backend/verification/core-epoch31.json).
+
 2026-10-04, fresh Root C30 on qualified E23+MEM9 source128c78b71d7:
 publish exact13 taskab14e6940fa92a9f5205232e98f6896cb9d6f221 after exact C29taskdae637f3;
 freeze's observed C28/unreported logical C29 labels remain historical. Reuse
@@ -590,6 +601,7 @@ Current issue status (2026-10-04 local; detailed pins stay in linked epoch plans
 | #61 ordinary signed predicate translation units, C28 | Exact C27 `4b9c1094` + new test/docs only; [signed module plan](2026-10-04-C-BACKEND-SIGNED-MODULES-PLAN.md). Native generated provider, two nominal consumers and separate declarative C factories/client; ABI/backend/producer unchanged. | Worker E8 reused exact C27 backend/pointer:373 rows each O2/client-adapter-source SAN (368zero/5expected-one),64 mixed triples/both orders/128 linked+32 loaded clients;121 Lists/width,16 source/readback observations/client, shared definitions4/15/15. No unexpected failures;271 retained inputs/runtime128/48 generated C/H exact, style pass.  Root current E22 two phases/746 expected rows and48 C-H exact, report30f7e44b. | Exact13 task0c852ce6 pushed/remote exact; Main other12 frozen bytes exact/Goal only reconciled. | Provider success/constant-source interpretation/API/context/code lifetime, nonoverlap/depth256 and limited SAN; no source comparator/native Acc/QuickSort/full #61/adoption/cost completion. | Root review from immutable snapshot; ordinary source-semantic/target residuals stay routed separately. |
 | #61 native scalar callbacks/maps/reductions, C29 | C28 `0c852ce` + five target owners +43/-11 and seven fixture/client/helper/gate files; [native callback plan](2026-10-04-C-BACKEND-NATIVE-CALLBACK-PLAN.md). Separate profile reuses same-width unary/binary descriptors and existing native carrier/arena/call code. | Worker E8 strict O2 backend/three helpers0; new76/binary48/signed74 rows each O2/client-source SAN, linker/I-O19/faults5 pass.781 Lists/width,655 Trees,3432 full-value Core comparisons/source5;74 parent C/H and282 input/runtime128 pins exact. Initial source and verifier setup failures retained.  Root current E23 native76/binary48/signed74/units373 each O2/SAN,19 expected records and exact C-H, report581fe88a; initial historical-artifact setup failure retained. | Exact16 taskdae637f3 pushed/remote exact; Main other15 frozen bytes exact/Goal provenance only reconciled. | Borrowed pure-total interpretation/lifetime/nonoverlap/depth256/limited SAN;17 checked/trusted refusal pairs. No foreign error/returned closure/arity3/mixed widths/effects/indexed/callable Acc/QuickSort/full #61/cost/adoption completion. | Freeze current epoch for delegated review; ordinary C module composition may be a separate bounded next candidate. |
 | #61 generated scalar/native callback translation units, C30 | Frozen C29 dependency + nine test/example files (436 lines), [module plan](2026-10-04-C-BACKEND-NATIVE-CALLBACK-MODULES-PLAN.md). Admitted scalar offset/subtract provider, existing native consumer and separate declarative API/factories/client; no backend/ABI/producer change. | Worker E8 O2/client-adapter-source SAN124 each (118zero/6expected-one);16 pairs/both orders/32 linked+8 loaded clients,source9,121 Lists/width/two contexts/right-folds and93 Trees/context.32 C/H/291 inputs/runtime128 exact; no unexpected failures.  Root current E23 O2/SAN124 each/32 C-H exact, report125ee2cf. | Exact13 taskab14e694 on published C29dae637f3 pushed/remote exact; Main other12 frozen bytes exact/Goal only reconciled. | Successful pure-total provider interpretation/API/context/code/storage lifetime, nonoverlap/depth256/limited SAN; no foreign error protocol/source closures/native Acc/QuickSort/full #61/cost/adoption completion. | Root ordered publication/current-producer review; preserve snapshots during distinct bounded downstream work. |
+| #61 finite foreign copy-buffer size query, C31 | C30 `ab14e694` + seven target owners +73/-6 and seven example/test files379 lines; [query plan](2026-10-04-C-BACKEND-BUFFER-QUERY-PLAN.md). Opt-in native_buffer_query_v1/existing native ABI1 adds allocation-free validated size_t extent for existing selected Lists; old profiles unchanged. | Worker E8 strict O2 backend/helper0; new63/callback76/record41 each O2/SAN, linker/I-O19/query faults5 pass. Five payloads,121 Lists/4356 slice pairs/source4/300 nodes/no allocation/inert/status controls;28 new/60 prior C/H and300 pins/runtime128 exact. No unexpected failures.  Root current E24 query63/callback76/record41 each O2/SAN,17 expected records/88 C-H exact, report1167c647. | Exact18 taskcc3cba34 pushed/remote exact; Main other17 bytes exact/Goal provenance only reconciled. | Readable immutable finite inputs/output nonoverlap; overflow6 guard inspected, SIZE_MAX-node case unexecuted; limited SAN. Node-based copy boundary only; native indexed/callable Acc/QuickSort/full #61/cost/adoption open. | Root exact publication/current-producer review; future slice representation/recurrence work must remain justified separately. |
 | #61 native Acc/QuickSort (historical #44/#49) | C4 `a3b6bce` pins native refusal; C7-C9 retain it. Applied List resolves only the first representation obligation. C23 now separately delivers existing-source native insertion sorting; no indexed Acc/QuickSort implementation. | Historical checked/trusted status 4/no product; Root C9 sorting-boundary gate passes. Structural FFTT remains separate. Fresh C23 checked/trusted indexed QuickSort status4/no products retained. | C4-C9 task/prototype Main published; no native Acc epoch publication. | Indexed SizedList and callable recursive Acc fields remain unsupported; no producer defect established. | Report concrete indexed/callable representation needs through Merge; keep work bounded and downstream. |
 | #61 remaining public contracts (historical #49) | General/boxed callbacks, effects, higher Identity, recursive captures and shared nominal exchange remain explicit limits; C16 advances only fixed borrowed unary/binary scalar inputs. | Local/joint gates verify supported cases and refusals, not general completion. | Historical tasks/prototype Main published; no publication of general missing contracts. | Need bounded justified representation/demand contracts. | Preserve refusals; route shared needs through Merge. |
 
@@ -743,6 +755,18 @@ pinned/current producer images and emitted C/headers match byte-for-byte.
 Evidence and exact publication files are in the [epoch handoff](2026-10-03-C-BACKEND-EPOCH1-HANDOFF.md).
 
 ### Assessment
+
+2026-10-04, Root C31 prototype integration: explicit native_buffer_query_v1
+under existing native ABI1 reports a validated finite single-tail/one-payload List
+extent before caller buffer allocation. Existing validators check full active
+fields/tags/tails/cycles; iterative count writes only on success, no arena/allocation
+or source execution depth. Necessary readable immutable input across separate
+query/copy, output nonoverlap and caller byte multiplication/allocation checks
+remain. SIZE_MAX-node overflow guard inspected, not executed. Original copy/query6
+and source-depth4 boundary retained; old profiles/body/checker/producer unchanged.
+Node execution/depth256, limited client/raw/source SAN/shared interception limits,
+zero-copy slice/native indexed-callable AccQuickSort/full61/actual costs/adoption
+remain separate. No schema/authority/erasure or accepted promotion.
 
 2026-10-04, Root C30 integration decision: bounded ordinary C provider and
 consumer modules compose through explicit status/output-pointer to scalar-return
@@ -1316,6 +1340,8 @@ shared IR, checker or image fields. The later 2026-10-03 lane assignment permits
 this target work while Main continues SE1, superseding the earlier AP6 hold.
 
 ### Plan
+
+- [x] C31: verify/publish exact18 finite buffer-query prototype on current E24; full61/native Acc/cost/adoption separate.
 
 - [x] C30: verify/publish exact13 ordinary native-callback module fixtures after C29 on current E23; full61/cost/adoption separate.
 

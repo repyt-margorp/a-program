@@ -7,4 +7,8 @@
 void pg_c_nodes_declarations(FILE *, const struct pg_c_representations *);
 void pg_c_nodes_implementation(FILE *, const struct pg_c_representations *);
 
+/* Optional target-only, allocation-free finite List buffer extent queries. */
+void pg_c_nodes_measure_declarations(FILE *, const struct pg_c_representations *);
+void pg_c_nodes_measure_implementation(FILE *, const struct pg_c_representations *);
+
 #endif
