@@ -53,5 +53,15 @@
   "limits": "Exact C31 opt-in finite List size queries only; validated iterative no-allocation/no-native-execution-depth extent, full tags/tails/cycles/active payload checks and count-on-success. Readable immutable finite storage, query/copy separate validation, count/buffer nonoverlap and live input are caller preconditions; caller checks element-size multiplication/allocation. Five payload forms/121 Lists/4356 source slice pairs/four source observations/300-node copy-query boundary/active arena preservation/inert emission/29 public definitions/ten checked-trusted refusal pairs/three old-native non-List positives and five output faults. SIZE_MAX-node overflow guard inspected, not executed. Existing node/depth256 source execution unchanged; SAN clients/raw/source bodies only, other products/backend/helpers/producer O2; shared malloc interception not established. No producer rebuild/new broad/actual cost/accepted promotion/zero-copy slice/indexed-callable AccQuickSort/full61/Goal completion.",
   "decision": "Integrate only exact18 C31 frozen prototype task on C30, current E24 producer qualified independently; preserve other17 Main bytes exactly and reconcile only owning Goal provenance. Iterative query uses existing finite List classifier/validators and native ABI1; count written only on successful full validation, no allocation or source-depth limit. Readable immutable finite inputs, output nonoverlap and lifetime across separate query/copy calls remain explicit preconditions. Query does not establish Source semantic authority or zero-copy slices; source node/depth256 execution unchanged. Original copy-query6/written77 and source depth4/result77/unknown query2 baseline controls retained. SIZE_MAX-node overflow guard unexecuted, limited SAN/shared interception bounds retained. Native indexed/callable AccQuickSort/effects/ownership/full61/cost/adoption remain.",
   "accepted_promotion_new_cost_grant_byte_waiver_full61_Goal_completion": false,
-  "original_Job_HEAD_index_human_pane_preserved_no_Root_input_resume": true
+  "original_Job_HEAD_index_human_pane_preserved_no_Root_input_resume": true,
+  "later_E25_current_qualification": {
+    "date_UTC": "2026-10-04T09:35:12.766358+00:00",
+    "source128": "a87cba42d8c3b2e3ed19392c941a2e1cede00fd01c26a707f354a44d54fca31b",
+    "report": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c31-current-e25-mem9-gates/Root-results.json",
+    "report_sha256": "c5423cd4598da9a006d3033ff1c126a65885dbac31323f8d030f995e2de67b35",
+    "all7_expected_records_verified": true,
+    "query63_callback76_record41_O2_client_source_SAN_each0_96_component_C_H_direct_worker_exact": true,
+    "qualified_C31_backend_E24_reader_and_helpers_reused_no_rebuild": true,
+    "prior_linker_IO_fault_controls_preserved_no_new_full_profile_broad_cost_or_Acc_completion_claim": true
+  }
 }

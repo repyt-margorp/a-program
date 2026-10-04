@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: Merge owns Main; C, Performance and the original Job now visibly pursue their Goals. Root sent no Job resume or input after the human direct-session clarification. E17-E24, C17-C31 and MEM9 are verified and prototype-integrated; MEM6/MEM7 runtime holds remain; MEM10 frozen handoff is held for byte disposition and current qualification. Test-suite, issue disposition, static audit and finite-function bounded Goals are complete; full development issues remain open.
+Status: Merge owns Main. Three original implementation owners acknowledged the human critical-path priority: actual Acc QuickSort C mockup due2026-10-04T21:16:56Z, deterministic Source codec/frontier, dominant evaluator allocation deletion with matched peak RSS/time. E25 already-running review finished/prototype Mainca6551db; C32 tested snapshot parked. All known byte/strict failures remain; four bounded owners stay complete. No Goal reset or accepted promotion.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -17,15 +17,28 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | Inquiry desk -> `merge`: reporting vs coordination/integration | All lanes | Desk answers the user; only Merge integrates after verified handoff |
-| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C1-C31 bounded prototypes integrated; C29/C30 current-E23+MEM9 qualified; C30/C31 later current-E24 qualified; native Acc/QuickSort remains open |
-| 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Accepted performance7631e5a; V3 bounded measured tree gain reviewed; MEM2 beta environment elision rejected; IADT source9 published, bounded tree RSS gain/mixed timing measured; full Goal active |
+| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C1-C31 usable bounded prototypes integrated; actual Acc QuickSort readable C mockup is primary, due21:16:56UTC; C32 sealed/parked, full native indexed lowering remains open |
+| 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Primary current stateless-head allocation deletion/acceptance and matched actual peak RSS/time; pending codec disposition/exclusive drain, peripheral MEM10/spine/empty arrays parked |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
-| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E1-E4/E6-E24 corrected prototypes Main integrated; E24 exact35/current E23+MEM9/C30 qualified; E25 private broad pending; strict3/full SE/AP/cost criteria remain |
+| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | E25 already-active review finished/prototype integrated; primary deterministic retained Source/checked-owner relocation and genuine frontier; E26 terminal safe boundary/E27 parked; strict3/full SE/AP remain open |
 | 6 | `verification-audit`: independent read-mostly suite/debt inventory | #59 / PR #60, #51 | Bounded static inventory/pilot complete; measured cost deferred, full #59 remains open |
 | 7 | `test-suite`: implement coverage-preserving test reductions | #59 / PR #60 | Bounded Goal complete; exact7 taskbc16df9 pushed/remote verified, Root raw/assembly review complete, prototype Main36a27be integrated |
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
+
+2026-10-04 09:34 UTC, primary work has changed after the human correction.
+All three owners actually acknowledged: C actual Acc QuickSort executable C
+mockup due21:16:56UTC; Job deterministic retained Source/checked-result codec
+and genuine frontier; Performance dominant head-frame allocation deletion,
+critical acceptance and matched peak RSS/time. C32/E26/E27/peripheral work is
+sealed or parked at safe boundaries. [Priority and replies](../src/prototype/coordination/reviews/critical-path-priority-review-20261004.json).
+The already active E25 review is complete: prototype taske2569fb0/Mainca6551db
+pushed, current affected O2/SAN/public image/fuel and downstream C31 gates pass;
+original strict3 remains. [E25 review](../src/prototype/solver_inputs/joint_verification/e25-main-integration-review.json).
+Cost request source pair is separately pinned c414->80b, not current E25;
+exclusive grant awaits the running Job E26 safe terminal. All full Goal/issue
+criteria, byte disposition and actual cost remain open; next scheduled13:44UTC.
 
 2026-10-04T08:55:10.379896+00:00, C31 superseding delivery: exact18 taskcc3cba34/prototype
 Maina8d02780 pushed/remote exact. Current E24 source19e6a2e7:
@@ -637,13 +650,13 @@ reporting subsystem. Its audit cover is pinned to `37de1e8`, not current Main.
 
 | Order / owner | Issue or PR | Next deliverable and dependency |
 | --- | --- | --- |
-| 0 / desk -> Merge | Workflow | All seven original owners reviewed. C29/C30/C31/E24 verified prototype task/Main pushed; producer21/C30 two124 phases/32 C-H/current public52/full TSV exact, strict3 retained. Performance C24/allocation evidence reviewed, runtime byte HOLD remains. Three implementation owners pursuing/four bounded achieved; E25 broad live/unreviewed. Scheduled07:44 complete/next13:44; original Job human pane/HEAD/index preserved, no Root input/resume/new owner/model/promotion/grant |
-| 1 / Job, Root reviews independently | SE/AP, #51 | E17-E24 delivered; E24 exact35/current producer21/C30 two124 phases/32 C-H/public52/full TSV exact E23/strict3 retained. Schema scratch receipt-array deletion independently qualified; necessary nominal conversion preserved. E25 private broad actual process live, no READY/current qualification. Full SE/AP/current broad/acceptance/frontier/codec/actual cost/adoption remain. Original human Job HEAD/index/pane preserved without Root inbox/input/resume |
-| 1 / performance + Root shared-owner review | #56 / #51 | Spine source20/focus19/cuts23/consumers31/C24-14/allocation28 exact reviewed; only computation.c/iadt.c source80b->259. All19 attribution commands/reused15/pins318/six cuts/nine extents/six cumulative pairs/mixed LocalSorted repeats verified. Paired3/146+inert15/24 and old6/146+29/48/history unwaived. Runtime/current E24 composition/codec/full acceptance/actual RSS-time/cost grant remain separate; cost36/config7448f3f4 unchanged/ungranted, no blanket implementation hold |
+| 0 / desk -> Merge | Workflow | All three original implementation owners actually acknowledged major-problem priority. Goal objective intact/blocked service label unchanged; event-driven work active. C actual Acc mockup deadline21:16:56UTC; Job Source codec/frontier; Performance dominant deletion/matched RSS-time. Original owners/Job HEAD-index/timer retained; next scheduled13:44:22UTC |
+| 1 / Job, Root reviews independently | SE/AP, #51 | Implement deterministic discovery/relocation of retained Source inputs/checked reusable owners and genuine frontier reconnection; coordinate eval_io ordering with Performance. E25 active review finished/task e2569fb0/Mainca6551db/current affected24+7 pass; full strict3/frontier/codec/SE/AP remain. E26 running command safe terminal then park/E27 unqualified parked; original HEAD/index/ref retained |
+| 1 / performance + Root shared-owner review | #56 / #51 | Complete dominant stateless-head deletion acceptance and matched peak RSS/elapsed-time; own needed eval_io auxiliary readback ordering, one joint current sourcea87cba42. Cost14/36jobs/all297/config7448f3f4 freshly verified on separate c414->80b pair; exclusive grant pending Job E26 safe terminal. All paired/inert/strict failures retained, peripheral micro-epochs parked |
 | Complete bounded / test-suite; Root publishes | #59 / PR #60 | Verified pilot removes22 duplicate calls with all distinct outcomes preserved; Root raw/assembly review complete. Exact7 taskbc16df9/Main36a27be prototype integrated; broader inventory/cost/accepted adoption remain open |
 | Complete bounded / issue-audit | All open Issues/PRs | Verified comments/dispositions,44/49 superseded by61; nine issues open. Owner stopped; Root resumes coordination, no repeat audit |
 | Complete bounded / verification-audit | #59 / PR #60; #51 | Static inventory/pilot delivered and worker complete; four-job measured cost remains deferred, full #59 open. Do not restart the completed owner automatically |
-| 2 / C backend | #61 (historical #44/#49) | C29/C30/C31 exact16/13/18 prototype tasks/Main delivered. C31 current E2417 expected records/query63/callback76/record41 each O2/SAN/96 component C-H plus all88 frozen-listed bytes exact. Finite validated size query/native ABI1/input lifetime/nonoverlap/limited SAN and unexecuted SIZE_MAX bound retained. Native indexed/callable AccQuickSort/full61/cost/adoption remain; continue distinct owned work |
+| 2 / C backend | #61 (historical #44/#49) | Deliver actual-source Acc QuickSort readable C mockup by2026-10-04T21:16:56Z; faithfully hand-authored executable candidate allowed, show down/indices/partition/captures and gaps. C31 usable C modules/current E25 affected qualification preserved. C32 exact19 archive sealed/parked; further List conveniences deferred; general native indexed/callable lowering/full61 open |
 | Complete review / Merge | PR #60, #53, #55 | Documentation reviewed/imported with provenance; no open PRs. Full issue criteria remain independent of publication |
 | Complete bounded / Sort library | PR #54 / #41 | Generic MergeSort and finite-function prototype verified/integrated; bounded worker complete. Accepted Sort/F5 and broader containers remain separate; no owner restart |
 | Review / Merge | #57 | Audit delivered prototype against Issue criteria; Surface stays stopped. Prototype delivery is not accepted promotion; do not reopen a worker just to repeat completed gates |
@@ -660,6 +673,17 @@ their owners. Add review items only for material changes; no duplicate task grap
 ## 1. Inquiry Desk and Merge Ownership
 
 ### Subjective (User)
+
+2026-10-04 09:19 UTC, English paraphrase of the latest explicit human
+correction relayed by the inquiry desk: all three active implementation
+sessions repeat small fixes instead of attacking their main problem; this is
+extremely problematic. Supersede minor-epoch priority with concrete work on
+each existing unfinished outcome. Record and route the correction, preserving
+known tests/failures and submitted trials without adding authority or layers.
+The C mockup deadline remains 2026-10-04 21:16:56 UTC. Keep the original
+Job human conversation protected; use durable delivery without trampling
+human input. Critical-path selections are agent decisions, not user-specified
+architecture.
 
 2026-10-04, user paraphrase conveyed by the inquiry desk
 (thread `019ebfae-06be-7b71-974a-b97505daed4a`; original Japanese message
@@ -1046,6 +1070,30 @@ public resume failures are in the
 Accepted `src/evidence.*`, `src/iadt.*` and their tests retain unrelated edits.
 
 ### Assessment
+
+2026-10-04 09:26 UTC, Root priority decision following the explicit human
+correction: major unfinished conditions outrank new minor epochs. C actual
+Acc C-code mockup has its fixed12-hour deadline; Job owns concrete Source
+save/resume/frontier byte disposition, Performance owns dominant evaluator
+allocation deletion and qualified matched RSS/time. Preserve and finish only
+already-running tests/handoffs at safe boundaries; park further peripheral
+refinement. All three owners actually acknowledged. [Priority evidence](../src/prototype/coordination/reviews/critical-path-priority-review-20261004.json).
+
+2026-10-04 09:22 UTC, inquiry-desk operational clarification: protecting the
+original Job human conversation prevents needless interference; it is not a
+blanket prohibition on delivering the latest necessary human priority. Route
+once to its original TUI only at a safe empty-composer boundary, preserve human
+input and Job HEAD/index/ref, and verify the actual response. This supersedes
+Root's initial durable-only delivery choice, without new owner/lifecycle scope.
+
+2026-10-04, inquiry-desk operational reporting request within existing scope:
+start each material/timed report with a short plain-language account of the
+unchanged Goal, finished work, blockers and next concrete action, then link
+pinned evidence. This is a desk coordination choice, not a new human design
+principle. Keep worker -> Merge -> desk and the original six-hour timer; separate
+blocked Goal metadata from active notification-driven work and API acceptance
+from completed work or human display. Adopt this report format for the next
+E25 result; no owner, engine, model or lifecycle change.
 
 2026-10-04, Root workflow conclusion: the stored objective has not disappeared;
 service Goal metadata and actual event-driven execution differ. The cause of
@@ -1507,6 +1555,46 @@ findings and proposed repairs stay in its audit, not this implementation work li
 
 ### Subjective (User)
 
+2026-10-04 09:25 UTC, English paraphrase of the human deliverable
+clarification relayed by the inquiry desk: the 12-hour result is realistic C
+code, not general backend completion. A hand-authored candidate faithfully
+following the actual admitted Acc QuickSort is allowed if labeled clearly.
+The prohibition concerns an alternate substitute sorter or falsely claiming
+generated success; it does not prohibit the requested mockup. Preserve actual
+Acc/down behavior, show executable extent and gaps, and avoid correspondence-only
+documentation. This clarifies the earlier no-substitute-sorter requirement.
+
+2026-10-04 09:19 UTC, English paraphrase of the latest explicit human
+correction relayed by the inquiry desk: all three active implementation
+sessions repeat small fixes instead of attacking their main problem; this is
+extremely problematic. Supersede minor-epoch priority with concrete work on
+each existing unfinished outcome. Record and route the correction, preserving
+known tests/failures and submitted trials without adding authority or layers.
+The C mockup deadline remains 2026-10-04 21:16:56 UTC. Keep the original
+Job human conversation protected; use durable delivery without trampling
+human input. Critical-path selections are agent decisions, not user-specified
+architecture.
+
+2026-10-04 09:16:56 UTC, English paraphrase of the explicit human priority
+relayed by the inquiry desk: too much work has gone into List refinements away
+from the main problem. Within 12 hours of receipt, prioritize a realistic,
+readable C-code mockup lowering the actual Acc QuickSort. This supersedes the
+continued List-convenience priority; put C32 and further conveniences behind it
+while preserving trials and stopping only safely. Show the actual Acc/down,
+indices, partition and captures correspondence plus remaining gaps. Use C-only
+prototype scope; do not extend `.a` or substitute a hand-written sorter. Send
+this priority directly to the original C TUI and verify consumption. Merge
+continues to own review/integration. Deadline is 2026-10-04 21:16:56 UTC
+(2026-10-05 06:16:56 JST), using the inquiry desk's exact receipt timestamp;
+this corrects Root's preliminary minute-only 21:18 estimate.
+
+2026-10-04 09:16 UTC, English paraphrase of the human question relayed by the
+inquiry desk (original wording was not supplied here): why is C modularization
+still unfinished, and what trouble prevents Goal completion? The user requests
+a diagnosis distinguishing usable C modules, the remaining native indexed
+Acc/QuickSort path, actual blockers and the next milestone. This question does
+not approve new scope, source promotion or worker lifecycle changes.
+
 2026-10-03, English paraphrase of the latest clarification: keep the C backend
 a downstream project using `.a` and LinkerScript. Prioritize usable C code and
 interoperation with other C modules without excessive scope expansion. Its
@@ -1518,6 +1606,17 @@ Earlier requirements keep C/LinkerScript subordinate to A Program: target
 conventions must not become new `.a` fields or source-semantic requirements.
 
 ### Objective (Code)
+
+2026-10-04 09:23 UTC, C actual priority acknowledgment SHA1c90b8ec:
+C32 terminal tested snapshot is sealed at a safe boundary; further List
+conveniences deferred. Next milestone pins admitted Acc QuickSort/partition
+and typed views, maps down calls, indices and captures into readable C, then
+produces an executable candidate where supported. Existing published C31
+`lower/representation.c:100` rejects declaration index extensions; lines137-149
+require represented reference-valued fields/direct Self, without a general
+callable recursive Acc-field contract. Scalar lowering supports bounded
+first-order/pure scalar callbacks. These are inspected implementation limits;
+no new producer defect or current C32 implementation failure is established.
 
 2026-10-04, C31 READYe13aec47 exact18/a38a617f/archive6f399997/raw1612/
 retained300/runtime128 verified. Fresh E24 source19e6a2e7 backend/two helpers
@@ -1871,6 +1970,23 @@ with corresponding positive and retained dynamic/indexed refusal coverage.
 
 ### Subjective (User)
 
+2026-10-04, English translation of the explicit human
+clarification relayed by the inquiry desk (Japanese original supplied):
+continue the current performance direction and adjust toward reducing peak
+memory and making execution faster. Preserve the existing critical-path
+work; this does not specify a new Goal, policy, gate or implementation.
+
+2026-10-04 09:19 UTC, English paraphrase of the latest explicit human
+correction relayed by the inquiry desk: all three active implementation
+sessions repeat small fixes instead of attacking their main problem; this is
+extremely problematic. Supersede minor-epoch priority with concrete work on
+each existing unfinished outcome. Record and route the correction, preserving
+known tests/failures and submitted trials without adding authority or layers.
+The C mockup deadline remains 2026-10-04 21:16:56 UTC. Keep the original
+Job human conversation protected; use durable delivery without trampling
+human input. Critical-path selections are agent decisions, not user-specified
+architecture.
+
 2026-10-03, English paraphrase of the later human clarification relayed by
 inquiry desk thread `019ebfae-06be-7b71-974a-b97505daed4a`: improve speed by
 deleting unnecessary mechanisms/work, without adding tuning complexity. Retaining
@@ -1910,6 +2026,13 @@ Consider comparisons with Bend2, Lean, Agda and Rocq. Related issues/PRs are
 forthcoming; this is not approval to weaken checking or introduce a new engine.
 
 ### Objective (Code)
+
+2026-10-04 09:26 UTC, actual Performance reply SHAb82caaf7 parks empty-array/
+MEM10/spine peripheral work. Critical target is stateless-head recycling
+source128c414202a->80b46106 (eval.c/h): finish current acceptance, coordinate
+Job byte disposition, and obtain matched completed-task RSS/time in an
+exclusive slot. Existing cumulative counts are not actual RSS/time; cost36/
+config7448f3f4 is requested, not yet granted.
 
 2026-10-04, notice dd065611: C24-14/private1443/pins689/284 Git origins,
 291 statuses/120 outputs exact; allocation28/private21+14+9/pins318/raw19/reused15
@@ -2443,6 +2566,17 @@ the exact Bend2 implementation before choosing commands or citing claims.
 
 ### Subjective (User)
 
+2026-10-04 09:19 UTC, English paraphrase of the latest explicit human
+correction relayed by the inquiry desk: all three active implementation
+sessions repeat small fixes instead of attacking their main problem; this is
+extremely problematic. Supersede minor-epoch priority with concrete work on
+each existing unfinished outcome. Record and route the correction, preserving
+known tests/failures and submitted trials without adding authority or layers.
+The C mockup deadline remains 2026-10-04 21:16:56 UTC. Keep the original
+Job human conversation protected; use durable delivery without trampling
+human input. Critical-path selections are agent decisions, not user-specified
+architecture.
+
 2026-10-03, English paraphrase of the later human clarification relayed by the
 same inquiry desk: refactor for speed by deleting unnecessary mechanisms/work.
 Resume may retain necessary intermediate computation, but does not justify
@@ -2471,6 +2605,12 @@ Earlier requirements retain Oracle locality, typed construction as authority,
 concrete duplication deletion, correct resume and meaningful verification.
 
 ### Objective (Code)
+
+2026-10-04 09:26 UTC, actual Job reply in original pane and independently
+confirmed by inquiry desk: E25-E27 work is parked after E26 running command
+reaches a safe terminal. Next trace retained Source ordering failures to a
+concrete codec change coordinated with evaluator-frame/spine work. No fix is
+claimed yet; original human conversation and HEAD/index/ref remain intact.
 
 2026-10-04, E24 READY364847a0: exact35/manifest6609b755/transport74b03cd2,
 source156/actual471/raw20/canonical1/public52/all35-fourcuts verified. Worker full

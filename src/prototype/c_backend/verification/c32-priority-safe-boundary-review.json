@@ -1,0 +1,35 @@
+{
+  "review_UTC": "2026-10-04T09:31:44.367155+00:00",
+  "notice_sha256": "a2fbf61439acf78037a5dac10af3c4e38b15ac68f6482aeae86f1e6b8d6bc370",
+  "immutable_freeze_and_archive_pins_exact": {
+    "epoch32-files.sha256": "b19b3b033ade94e3971c7ce8e6fc9458333d1402f67ff62c1c45fcde54ca5955",
+    "epoch32-submitted-snapshot.tar": "db6a663c11197d92a28d13c8344da02aaccdd59c32864bfba106391a7f7e05ae",
+    "epoch32-freeze.json": "5e9b4be8b9e89730dbea5a3b4ea9fcab338d0702c629e0c0d4c1d449bedf6b2c",
+    "epoch32-runs.sha256": "273ffa5c0c22345b776151f67377150058fd87d2951d3b8b0ca8f96a09610996"
+  },
+  "all19_archive_bytes_exact_manifest": {
+    "doc/2026-10-03-C-BACKEND-GOAL.md": "ede84e5dfa8d84fe48452e7493e2644385d34d89b68e36e9a95cd336da78c7ec",
+    "doc/2026-10-04-C-BACKEND-ARRAY-CALLS-PLAN.md": "bb458645a826d258cf4e05b3754c342b74f177286407e2889f788fa5cda10d35",
+    "doc/2026-10-04-C-BACKEND-EPOCH32-HANDOFF.md": "c063e37c3cd627cc473d739931163344490b8caae1279bde536711429cd1c445",
+    "src/prototype/c_backend/README.md": "188156f824a58f42d48e6b624643c3671ee51a8e0cd2001fd5c913e0adebd30e",
+    "src/prototype/c_backend/link/driver.c": "cf6369e19c7fa4f5f5df104aa85727fe489cc653ae8969b6224ca57674c9561a",
+    "src/prototype/c_backend/link/plan.c": "e8877c478b57ca403dba951a0a84c822c65b6dd0b571a2407a13315458c8421d",
+    "src/prototype/c_backend/link/plan.h": "0138cc44181ecf708899c3aba89310c6bc817217f94faca82c862b5756b86399",
+    "src/prototype/c_backend/lower/scalar.c": "732aee8dcd5cc26e397d293c45d08c14fd7893d681e4aed566aa2ff6fd5d1a18",
+    "src/prototype/c_backend/lower/scalar.h": "09777361b3f00c63c9553769a0ec967b4291a5038352076f9fa3b8b9ac8b0f12",
+    "src/prototype/c_backend/array_calls/build.mk": "5c31de4e7f92f0bac88f317a5d537e32c89e5b920df889d872754c3a2c409f45",
+    "src/prototype/c_backend/array_calls/check.sh": "42fb773e9107ef5b5ff4fd97f77684ce30203a19cb7dc096d7f40caf5cb3e9a0",
+    "src/prototype/c_backend/array_calls/client.c": "bc62a754c7c16d77060fd42b3361d736e84bd63cbe653bd3b1584854bce74342",
+    "src/prototype/c_backend/array_calls/empty.aplink": "b51c8ba30b7f1758ad21c449acd8540bfe86226e648540b98487e74ca0de680f",
+    "src/prototype/c_backend/array_calls/empty.p": "439efd80662975d08f1fdb997b8e6e45291f0dd975c1c35e611d2a8efb27ce82",
+    "src/prototype/c_backend/array_calls/empty_client.c": "aad072745ab8545a28d664ba3b4222e202d1a3ab392ce02acef3697630a7e8d9",
+    "src/prototype/c_backend/array_calls/inert_test.c": "4951e1ffa3899b4a7086478a228665858593425b90f7e6d22ba68fe4be716b83",
+    "src/prototype/c_backend/array_calls/native.aplink": "4b4d016602b279e9a7803946b348906f38647395ac5734a272e2e9503ccc0335",
+    "src/prototype/c_backend/array_calls/sort.aplink": "6bc1b003dde981b8ffaa93f4b696eec38a3cd0fa736fbd6ad97d5495091d84c6",
+    "src/prototype/c_backend/array_calls/sort_client.c": "14a390c238cad8f1f74699187c7dde00a1be761bcbef01767c3cce7c50d7c70e"
+  },
+  "Root_scope": "Verify safe preserved snapshot only; new explicit human critical Acc priority parks List conveniences. No C32 task publication/current producer rerun/Main runtime integration during this review.",
+  "worker_results": "Worker reports terminal focused O2/client-source SAN; not independently transferred to current producer.",
+  "next_primary_deliverable": "Actual-source Acc QuickSort readable C mockup due2026-10-04T21:16:56Z, faithful hand-authored candidate allowed and clearly labeled; actual down/indices/partition/captures and executable extent/gaps.",
+  "Goal_completion_accepted_promotion_byte_waiver": false
+}
