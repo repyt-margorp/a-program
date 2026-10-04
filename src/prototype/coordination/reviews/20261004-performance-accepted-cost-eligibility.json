@@ -1,0 +1,27 @@
+{
+  "date_UTC": "2026-10-04T13:21:16.300185+00:00",
+  "config_SHA": "262c46ac3f50313a164dab72ff88a40d684c1fe3c75954ce1362c9a1c0bffce9",
+  "source_pair": [
+    "930997b62db85814718d0d5ac151f392bfae243a447d5d0d5f2adbde66cba5ae",
+    "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907"
+  ],
+  "all295_actual_pins_exact": true,
+  "normal_O2_compile_binary_provenance": {
+    "baseline": {
+      "binary": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-parent-o2/pointer-check",
+      "binary_SHA": "0d719bf30c05410cd9bffd9d31a8212aaa659e095eb22fe093c70bc0498b5c8d",
+      "compiled_C_sources": 57,
+      "normal_O2_no_wrappers_SAN": true
+    },
+    "critical-frames-and-order": {
+      "binary": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/accepted94_order_stateless_frames_v1_focused_20261004/build-candidate-o2/pointer-check",
+      "binary_SHA": "761a0ac0b5dbdd17f169df8c345b73334608b7ceeca6bbf5f3e352aecca3a91d",
+      "compiled_C_sources": 57,
+      "normal_O2_no_wrappers_SAN": true
+    }
+  },
+  "36_same_input_proof_call_boundary_cases_2variants_3repetitions": true,
+  "maximum_seconds": 600,
+  "per_run_seconds": 180,
+  "status": "Eligible under existing cost scope after actual exclusive drain acknowledgments; no grant or launched samples in this review. Human promotion approval is distinct from operational slot."
+}

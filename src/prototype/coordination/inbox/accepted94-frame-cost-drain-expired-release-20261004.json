@@ -1,0 +1,12 @@
+{
+  "date_UTC": "2026-10-04T13:36:53.036434+00:00",
+  "slot_id": "accepted94-frame-order-20261004",
+  "type": "Pending request expired/released; no measurement grant",
+  "configuration_SHA": "262c46ac3f50313a164dab72ff88a40d684c1fe3c75954ce1362c9a1c0bffce9",
+  "actual_acknowledgments": {
+    "Job": "39e916b12fd7824f88ed65d4e2f8d7a9e1f76f4d9427b2b5e29a611f3cef1e02 at13:29",
+    "Performance": "4056476d266befb40c0093b89c71a6c731d2819e5c86fe884b9e65fd4a824b1e at13:32",
+    "C": "No actual safe-drain acknowledgment received by13:36; pane progress is not acknowledgment"
+  },
+  "outcome": "No slot was granted, no collector launched, no current RSS/time result. Request automatically released at13:36UTC. Continue authorized owner work; original Job read-mostly human Evidence/Occurrence audit remains primary. No Goal pause/reset/resume or owner duplication. A new precise bounded request/grant may be scheduled only after actual acknowledgments."
+}

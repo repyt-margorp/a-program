@@ -1,0 +1,147 @@
+{
+  "date_UTC": "2026-10-04T13:24:38.599203+00:00",
+  "notice_SHA": "9b4037c19bfaadbe58c7ad0fb4c6ba99a92c2b8b069c16bcddba9d3a6359f87e",
+  "frozen18_exact": {
+    "applied.patch": "f1bd9bffb789fd60d76c72bd5cc653ad9ab80d6e1b67027ae3cce2e2c49b6ccc",
+    "controls/build.mk": "9e5f20978d02ad30559fcdc15dc3c9e816d550ab03751bc80ea1806def98eae8",
+    "controls/lambda_checked_frontier.c": "5b1eb77f16e3611d5c983f00e21d17ce090b524cfb7e15927c592ed92fe26c21",
+    "controls/source_binding_retention.c": "774e3c41648ecf5058158ef1b471ccac0d31c11da280bb5e584eb948be0aec4a",
+    "counterexample_raw.sha256": "4d34b7c79a74519f661f77641b18dddb939cd41e5b132354a7a6bdebef5c0863",
+    "inputs.sha256": "e78dc7d65e8cc1d5d2be15b917f2a957b36f1c810e960a3d57b1d73047dfef52",
+    "parent126.sha256": "67c27411889345119917aadadb757120ea0fb44bd4b067bbfb237d03835dc99d",
+    "parent_checkpoint/derivation.c": "3be9cbba913cc7411fa134c3d3c868fdd77c7b612aa3e3945129eeaa5ae71b76",
+    "parent_checkpoint/derivation.h": "5a2745ca237fd4905dc407a139befdf418120998e7a6ca391172c0518f6fb5f4",
+    "parent_checkpoint/schedule.c": "05d797e6d8fcdb9a9644a9e283ddf11cec2f00b5276a9b228beb56d8456f5622",
+    "parent_checkpoint/schedule.h": "e2eb057d7b786072fef838e1fd6b132fb43da0a2e656954706d7a9b50cd8ab7c",
+    "parent_checkpoint/source.c": "8b6af11c797a56a249522fe15ff2880056ec84e90fe06cd2cf44e93f4ec05251",
+    "parent_checkpoint/source.h": "aa049644c64b034788ceecdeb1aae0b08ba257fef39e71e32464eefb412ea8ef",
+    "public.json": "2f1f9c764f63ae88bceab41b4587ceab184c4025193e202a8a0f969e8b993f94",
+    "qualification.json": "99e5c21cd60072108563896bb8440cf71f084a30c69d998b78fb4c7a41c3ff53",
+    "review.json": "b4af0981c66c758f58db33c97b596d5568b820b50f42a57bd06337c0c4a8a585",
+    "runtime126.sha256": "293d9d1255793d7b182fc5c134774a372a0691eeb046c3c5c59d27e5eeb60172",
+    "source_test_delta.patch": "407a4a99c7a8fc03015f2be0c034f963e9bea48befb3604f3641bba88f13cba2"
+  },
+  "parent126": "67c27411889345119917aadadb757120ea0fb44bd4b067bbfb237d03835dc99d",
+  "candidate126": "293d9d1255793d7b182fc5c134774a372a0691eeb046c3c5c59d27e5eeb60172",
+  "Root_reconstruction": "All120 committed94a runtime files exact plus exactly6 frozen prototype checkpoint files; eight-file patch applies with fuzz0/no offsets and all126 candidate hashes exact. No eval/Surface/IADT/closed-term/Fold work imported. New accepted c206 Performance composition is separate.",
+  "changed8": [
+    "src/artifact/source.c",
+    "src/artifact/source.h",
+    "src/source_io.c",
+    "src/synthesis_binding.c",
+    "src/synthesis_cbpv.c",
+    "src/synthesis_conversion.c",
+    "src/synthesis_function.c",
+    "src/synthesis_source.h"
+  ],
+  "reconstruction_patch_output": "patching file src/artifact/source.c\npatching file src/artifact/source.h\npatching file src/source_io.c\npatching file src/synthesis_binding.c\npatching file src/synthesis_cbpv.c\npatching file src/synthesis_conversion.c\npatching file src/synthesis_function.c\npatching file src/synthesis_source.h\n",
+  "worker16_raw_log_hashes_and_expected_exits_exact": [
+    {
+      "label": "accepted-parent-binding-o2-v26-build",
+      "exit": 0,
+      "expected": 0,
+      "log_SHA": "11809854880bccd5a8247a377b2fe976503cc9934528dbe5b7a92577e777170a"
+    },
+    {
+      "label": "accepted-parent-binding-o2-v26-run",
+      "exit": -6,
+      "expected": -6,
+      "log_SHA": "cc21cc50a6ec96ace8e36f1140f03c72c5e8ba55e7fc8da790296a2c55101372"
+    },
+    {
+      "label": "accepted-candidate-binding-o2-v26-build",
+      "exit": 0,
+      "expected": 0,
+      "log_SHA": "73d2890972b7a3cad24c93b9e5328f0489ac16e008344fabd2e0f32fc82ec02f"
+    },
+    {
+      "label": "accepted-candidate-binding-o2-v26-run",
+      "exit": 0,
+      "expected": 0,
+      "log_SHA": "ed48f7e18234e9f0c50166199a11d573e71231a46553f7fcbca1b0a4faa4546a"
+    },
+    {
+      "label": "accepted-qualified-o2-v26-build-frontier",
+      "exit": 0,
+      "expected": 0,
+      "log_SHA": "0a0e04921e322d993aff78e0ff16ed12499161a63872b9c86d58ba58fb30cbd6"
+    },
+    {
+      "label": "accepted-qualified-o2-v26-frontier",
+      "exit": 0,
+      "expected": 0,
+      "log_SHA": "d4772e53d05d37a378870c0647d98f6f6bb38560098cf2c338b3e46b0a665635"
+    },
+    {
+      "label": "accepted-qualified-o2-v26-build-binding",
+      "exit": 0,
+      "expected": 0,
+      "log_SHA": "52ca6e61525c1f64ef39ef7381e2cd81819a3923cbedddd71ce4116849aaa8e7"
+    },
+    {
+      "label": "accepted-qualified-o2-v26-binding",
+      "exit": 0,
+      "expected": 0,
+      "log_SHA": "ed48f7e18234e9f0c50166199a11d573e71231a46553f7fcbca1b0a4faa4546a"
+    },
+    {
+      "label": "accepted-qualified-o2-v26-build-source-normalization",
+      "exit": 0,
+      "expected": 0,
+      "log_SHA": "b919bef0430297a28aad5af9633df1ef47bea8aa0ad4b07282f77d78b85f3f49"
+    },
+    {
+      "label": "accepted-qualified-o2-v26-synthesis",
+      "exit": 0,
+      "expected": 0,
+      "log_SHA": "e68beba5fc2c6f65f590f3a0179e1887872cf5852fe47b562b1491e53af861de"
+    },
+    {
+      "label": "accepted-qualified-san-v26-build-frontier",
+      "exit": 0,
+      "expected": 0,
+      "log_SHA": "44bb09190785a36360bfaa35175bccfaf8d9f1de1759cf3d19b5d808423588f0"
+    },
+    {
+      "label": "accepted-qualified-san-v26-frontier",
+      "exit": 0,
+      "expected": 0,
+      "log_SHA": "d4772e53d05d37a378870c0647d98f6f6bb38560098cf2c338b3e46b0a665635"
+    },
+    {
+      "label": "accepted-qualified-san-v26-build-binding",
+      "exit": 0,
+      "expected": 0,
+      "log_SHA": "e536ab8d6150dc95fb05009f8fce11d1a8dce36e5360618920e027db217ca37f"
+    },
+    {
+      "label": "accepted-qualified-san-v26-binding",
+      "exit": 0,
+      "expected": 0,
+      "log_SHA": "ed48f7e18234e9f0c50166199a11d573e71231a46553f7fcbca1b0a4faa4546a"
+    },
+    {
+      "label": "accepted-qualified-san-v26-build-source-normalization",
+      "exit": 0,
+      "expected": 0,
+      "log_SHA": "76ebbc58a187f659b8182b79feca5dd77bb1cea59a562efcff434c5d3158b8fb"
+    },
+    {
+      "label": "accepted-qualified-san-v26-synthesis",
+      "exit": 0,
+      "expected": 0,
+      "log_SHA": "e68beba5fc2c6f65f590f3a0179e1887872cf5852fe47b562b1491e53af861de"
+    }
+  ],
+  "public52_images_and_full40_TSV_independently_equal": true,
+  "public_strict_exit1_and_original3_failures_unwaived": true,
+  "verification_scope_correction": "Exact16 argv include full Synthesis unit and artifact Source/normalization CHECKPOINT test groups in O2/SAN. They do not explicitly run full accepted tests/source_io.sh or source_io_test; frozen tests/source_io.c input hash alone establishes no execution. Keep checkpoint groups distinct from general SourceIO/full acceptance.",
+  "test_migration": "source_test_delta.patch changes the prototype checkpoint fixture: initial pending Lambda capture refuses until actual child is in closed mapping; after one advance capture succeeds. Old initial-success case is moved to a Pi expression. Treat as an explicit supported-frontier contract change, not an unchanged original assertion pass.",
+  "assessment": "Canonical binding Source table retention and existing ordinary owner rediscovery are bounded prototype frontier progress. Completed typed-query claims revalidate through Kernel Solve; partial query progress explicitly refuses. One B/R covers two validation engines as owner policy; public strict remains. No additional root/index/new proof authority selected by this review. New Evidence/Occurrence authority audit is independent requested report.",
+  "Root_runtime_replay": false,
+  "not_claimed": [
+    "Current c206 joint qualification/runtime READY/task publication/accepted adoption",
+    "FullSE/AP/public strict resume/C/cost/Goal completion"
+  ],
+  "owner_next": "Delete the classifier discovery private query-pointer copy; borrow its existing canonical typed-query owner through the current interner, preserve raw-first/native-first identity."
+}

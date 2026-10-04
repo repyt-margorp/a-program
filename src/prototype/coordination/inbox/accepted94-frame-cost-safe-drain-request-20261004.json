@@ -1,0 +1,14 @@
+{
+  "date_UTC": "2026-10-04T13:21:53.303834+00:00",
+  "type": "REQUEST safe heavy-work drain; NOT measurement grant",
+  "slot_id": "accepted94-frame-order-20261004",
+  "source": "Root operational scheduling under existing user-authorized matched cost scope; distinct from human accepted promotion approval.",
+  "configuration": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/epochs/accepted94_order_stateless_frames_v1_cost_proposal/configuration-proposed.json",
+  "configuration_SHA": "262c46ac3f50313a164dab72ff88a40d684c1fe3c75954ce1362c9a1c0bffce9",
+  "source_pair": "accepted94a120930997b6 versus now acceptedfc52755b120c2063542; normalO2 exact295 pins,36 jobs/2variants/3repetitions,180s per-run/600s total",
+  "request": "Finish/reap already active heavy compilation/tests at a safe boundary, then acknowledge through existing outbox with no owned heavy children and actual PID state. Postpone new heavy work while awaiting the bounded grant; read-only audit/coding/Markdown work may continue. No SIGSTOP/unsafe process interrupt/new owner/session/Goal pause. No workload or collector is authorized by this request alone.",
+  "pending_request_expiry_UTC": "2026-10-04T13:36:00Z",
+  "grant_rule": "Root grants only after actual Job/C/Performance safe-drain evidence and no Root heavy children. A later exact grant fixes start/deadline and authorizes only pinned36 collector. On terminal/expiry release promptly; no new workload or broad runner within slot. If no grant by request expiry, this request releases automatically and existing work continues.",
+  "audit_priority": "Original Job human Evidence/Occurrence authority Markdown audit remains primary read-mostly requested work at its current safe boundary; this request creates no review/report hold.",
+  "Root_state": "Accepted promotion/liveMain gates all terminal, no Root target/build/collector. C37/source/static review complete; later heavy qualification deferred until slot release."
+}

@@ -1,0 +1,98 @@
+{
+  "date_UTC": "2026-10-04T13:17:16.603142+00:00",
+  "notice_SHA": "e9b81aaf5db4e3aa050dfa88993b9c2613145eebb9be1f9c2b4b1e5ddf0348e0",
+  "freeze": {
+    "epoch": "C37",
+    "branch": "parallel/c-backend-20261003",
+    "published_parent_observed": "cc3cba3495b81628e0a68ec8b45aee4f5447d188",
+    "parent_dependency": "ordered sealed C32-C36; C33 manual support/C36 generated Acc clause immutable",
+    "chosen_commit_message": "prototype: emit actual Acc partition helper expressions",
+    "publication_count": 13,
+    "manifest_sha256": "2f93f38b6f5c77b631356c7d18a7137ab27def14c280ad57bfe4a70c62104409",
+    "archive_sha256": "a82d8be6c7d1615ded0c217a6facf291c828c2ecea5325e7ee598de231664416",
+    "raw_count": 419,
+    "raw_manifest_sha256": "44da55610840e5581cda9548c2acdb3b918d76afabf41bb2a9404c69c2ee86d0",
+    "verification_sha256": "22b2ffaa8ec25a7bc15a0ac38ab68848f98313977f82ab819ddc0838deb4edcf",
+    "qualified_inputs_count": 156,
+    "qualified_inputs_sha256": "7e4a1a5ece545cd938ed1e282723b3ebcfd88a1587f07aff5e64c8b85ed959f3",
+    "runtime_count": 128,
+    "style_sha256": "4390bed0d3cc928a9faf008debd29c579ae2b18180988ce62842dc8b621e557a",
+    "handoff_sha256": "5fa6fbed0d4c7e6d15ee30d90e736261948f2de71a07db037f560beaa91981c6",
+    "classification": "actual partition Fold and inline source helper expressions plus sealed generated Acc clause; remaining runtime/helper/entry manual",
+    "ready_for_delegated_task_publication": true,
+    "current_Root_producer_qualification": "pending",
+    "Main_integration": "pending",
+    "goal_status": "active",
+    "full_native_generalized_Acc_QuickSort_complete": false,
+    "accepted_promotion": false
+  },
+  "frozen13_all_archive_bytes_exact": {
+    "doc/2026-10-03-C-BACKEND-GOAL.md": "c6f474c6a9b8ac43950d49bf2b12871b814889732c41462119df7844457ae8d0",
+    "doc/2026-10-04-C-BACKEND-ACC-PARTITION-PLAN.md": "01f64b2ff22f3605cd1bf7c308ef693916155f1c4edc5163a7c4b5d2489f6fb5",
+    "doc/2026-10-04-C-BACKEND-EPOCH37-HANDOFF.md": "5fa6fbed0d4c7e6d15ee30d90e736261948f2de71a07db037f560beaa91981c6",
+    "src/prototype/c_backend/acc_partition/README.md": "e4e8c99d7f96f7aa8b9b362039b7f59f72ea3cc357d934094c0c02a4f8bcae13",
+    "src/prototype/c_backend/acc_partition/build.mk": "37a4d9f9921cd4c7113f96d30a6cd05c484b2c1d61df517d3983fd62ac5b9ef7",
+    "src/prototype/c_backend/acc_partition/check.sh": "9f8879861131d9b14661db6ab8c59e921b7d0cc95828d59d2d61feb1c49cc2a9",
+    "src/prototype/c_backend/acc_partition/emit.c": "642488e26806e7bbb6dc86949377da99a8e09c15de069961ba210b9610de53e6",
+    "src/prototype/c_backend/acc_partition/emit.h": "7c23414e9f3550d56ee347b30164f4753bc53a301ecf28697c5f5e6ad7d690f6",
+    "src/prototype/c_backend/acc_partition/emit_test.c": "b2e2ad7444cc4545ebbe2533b6445e7a70ccbe874737eb31e69d062fd398162e",
+    "src/prototype/c_backend/acc_partition/fixture.p": "0a5a7fecfb6ecdc83bd84b0e533759a0c8544f3ffd99e3b7655b7b1b633045fe",
+    "src/prototype/c_backend/acc_partition/partition_client.c": "b8a7a30e6f88aafc23283a392cff1bb3086087484d073fa026b0243b4995d7f8",
+    "src/prototype/c_backend/acc_partition/probe.c": "cdac8ed56c7777b4fcae1b38caf110e5a4eee3b8b56abe4a63d5653e7d794054",
+    "src/prototype/c_backend/acc_partition/support.c": "c300ac1662fe2a938b73a4d7310582df3afac7013ddb552355f17810f77706b9"
+  },
+  "raw419_all_exact": true,
+  "retained156_copies_exact": true,
+  "live_input_differences": [],
+  "runtime128_manifest_independently_recomputed": "9ba2b33cbe8bc68eac338073506bcb205f36d20cb0a34f9f88607d975ef07740",
+  "products_all_exact": 168,
+  "worker_O2_SAN32_expected_gates": {
+    "O2-corrected": {
+      "rows32_argv_status_JSON_exact": true,
+      "exits": {
+        "0": 28,
+        "1": 1,
+        "4": 3
+      },
+      "pointer_Core_oracle_SAN": false
+    },
+    "SAN": {
+      "rows32_argv_status_JSON_exact": true,
+      "exits": {
+        "0": 28,
+        "1": 1,
+        "4": 3
+      },
+      "pointer_Core_oracle_SAN": false
+    }
+  },
+  "Root_static_source_review": "Frozen379-line emitter traverses admitted partition Fold, constructor classifiers, lazy tail, Bool Match and Lambda/SEQ/force. Generated86-line partition captures type/comparison/context/pivot; source comparison executes before lazy recursive tail. Lower/upper and all six Partition fields plus SizedList/LT indices are explicit. Exact retained constructor classifiers supply parameters, no expected-type fallback/new producer field. C36 clause63 byte-exact, function-like qs_partition binding composes gp_partition, struct tags unchanged; gs path uses generated partition. Mutation changes source/code/direct-partition output, not a proposed alternate sorter.",
+  "initial_failures_retained": [
+    "strict build2 unused parameter/misleading indentation corrected",
+    "composition main client build1 object-like macro also renamed struct tag; fixed function-like binding"
+  ],
+  "manual_extent": [
+    "closed Nat32 representation/storage/Nat/LT constructor primitives",
+    "accessibility/raw down",
+    "append",
+    "comparison",
+    "measure",
+    "outer array/copy-out entry"
+  ],
+  "limits": {
+    "Nat32_overflow": "inspected, not executed",
+    "callback_side_effect_rollback": false,
+    "depth": 256,
+    "lifetime": "borrowed source-valid code/context/data",
+    "nodes": 65536
+  },
+  "old32_to36_archives_exact": {
+    "32": "db6a663c11197d92a28d13c8344da02aaccdd59c32864bfba106391a7f7e05ae",
+    "33": "a8bd408cc099885ab26780a901017fb3a9087294ce5e8b768b84ea6c2b7a6499",
+    "34": "26138ad62d6e819a722b3264c6d050d6d906a208190985158a68c86055d6ad77",
+    "35": "6bfebc166faca426c59b63d6df98a27cce0e51dad59fcc93aabd48802f74ba6c",
+    "36": "935cbfa3c56f20af251770180172e795eb14e866d5569318eae515e0e047acbd"
+  },
+  "Root_runtime_replay": false,
+  "qualification_limits": "Static source/raw-byte review only. Worker E8 pointer/Core oracle prebuilt O2, not SAN or current accepted fc52755b. Current producer qualification/task publication/native61/accepted adoption/cost/full Goal remain separate. Nat32/depth256/nodes65536/borrowed lifetime/no callback-state rollback; overflow guard inspected, not executed. C34 full-Nat separate."
+}

@@ -1,7 +1,7 @@
 # Evidence and Typed Occurrence Authority Audit
 
 Date: 2026-10-04
-Status: requested; initial structure inspection complete, worker audit pending.
+Status: original worker actually consumed the audit at 13:29 UTC; substantive Markdown findings pending.
 Code baseline: Main `c205d507a8568bfdda355e247a78b4e67464f294`.
 Relevant local edits: `src/evidence.c` (+16/-3), `src/evidence.h` (+5/-0)
 at initial inspection; these are unowned work and must be preserved.
@@ -15,7 +15,7 @@ unfinished SE implementation or the running performance promotion.
 
 | ID | Problem | Owner | Status |
 | --- | --- | --- | --- |
-| EOA1 | Determine whether Evidence duplicates Term/typed construction and eliminate unjustified authority or storage | Existing Job/Evidence worker; Merge integrates | Audit requested |
+| EOA1 | Determine whether Evidence duplicates Term/typed construction and eliminate unjustified authority or storage | Existing Job/Evidence worker; Merge integrates | Audit in progress; actual receipt verified |
 
 ## EOA1. One Construction, No Duplicate Proof Tree
 
@@ -99,3 +99,10 @@ that separately rather than silently weakening checks or declaring it essential.
 | Date | Problem | Result | Next Step |
 | --- | --- | --- | --- |
 | 2026-10-04 12:58 UTC | EOA1 | User request recorded; initial structure inspected, no new tests run | Route to the existing Job/Evidence worker and obtain acknowledgment |
+| 2026-10-04 13:29 UTC | EOA1 | Original Job/Evidence worker actually consumed the request, recorded the human paraphrase in both active Subjective sections, and made this audit primary at the safe boundary; [exact receipt](../src/prototype/coordination/reviews/20261004-job-authority-audit-actual-receipt.json) | First substantive field/edge table and concrete Lambda/App/Context counterexamples around 14:00 UTC, a Root soft checkpoint, not a human deadline |
+
+The preceding typed-owner v2 runtime126 `d192f8ce` is a separate prototype
+trial: owner O2 focused checks report pass, full Synthesis abort134 retains
+`tests/synthesis.c:853`, SAN/public are unrun. This is not a completed authority
+audit or accepted deletion. No owner, Goal, model, Git reference or index changed.
+The 13:36 cost-drain request expired without a grant; light audit continues.
