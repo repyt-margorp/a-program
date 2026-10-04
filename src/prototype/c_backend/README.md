@@ -803,6 +803,32 @@ This gate covers Bool-field selection; the numeric partition and copy-out gate
 below extends this boundary. Acc/QuickSort, dynamic callbacks and demanded
 Identity remain incomplete.
 
+### Private selected types and existing source sorting
+
+Known private calls may bind a selected nominal declaration or represented builtin
+type constant through the existing known-lambda path. Its identity stays private
+in lexical/recursive captures; it becomes no C parameter or runtime type dictionary.
+Ordinary admission still owns the source classifier. Public Universe inputs/results,
+unselected constants and computed/applied type arguments remain unsupported.
+
+`check-c-source-sort` imports the unchanged existing `insertionSortBy`,
+`insertionSort`, `insertBy` and Nat comparison from the source provider. Explicit
+`data_of empty List` selects the existing closed List classifier. Generated
+source/object/archive clients test341 finite Lists with two sorts, four insertion
+pivots and identity, signed/Nat/enum identities and persistent/resource contracts.
+Nine source/readback observations and552 separate existing-Core comparisons agree;
+raw emission remains inert. Checked/trusted public generic, unselected/computed
+type, dynamic/effect and native QuickSort exports retain explicit refusal4.
+The receipt transformations list includes `known-selected-type-bindings` as a
+profile capability, alongside its existing arithmetic/capture capabilities.
+
+This is native lowering of an existing source insertion algorithm. Native indexed
+SizedList/callable Acc/QuickSort remains unfinished. List storage is borrowed/arena
+owned under the existing ABI, and comparison recursion retains Nat32/depth bounds;
+sorting a singleton maximum Nat succeeds, while comparing two maximum values
+returns depth failure with output/allocation rollback. Client/source sanitizers
+do not instrument emitted object/archive bodies or the compiler/helpers.
+
 ### Selected applied families and source slices
 
 `data_of VALUE ALIAS` selects the retained closed value-type classifier of an
@@ -922,8 +948,8 @@ ap_arena_Nat_destroy(&arena);
 
 The names above are selections from the numeric fixture's LinkerScript. The same
 client compiles against source, object or archive products without a source
-compiler or structural runtime. Native slice-input sorting and Acc lowering
-remain unsupported.
+compiler or structural runtime. Native Acc/QuickSort remains unsupported; the
+separate existing-source insertion-sort gate above advances bounded Nat List use.
 
 `check-c-numeric-list` checks 1,089 comparator pairs and 27,305 stable partition
 cases with ordinary C inputs, source/C output agreement, all native products,
