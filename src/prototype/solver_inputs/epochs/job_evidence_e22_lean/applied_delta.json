@@ -1,0 +1,23 @@
+{
+  "files": [
+    {
+      "file": "src/artifact/source.c",
+      "added": 6,
+      "removed": 2
+    },
+    {
+      "file": "checkpoint_tests/source_checkpoint_test.c",
+      "added": 47,
+      "removed": 0
+    }
+  ],
+  "additional_control": {
+    "file": "src/prototype/solver_inputs/controls/source_frontier_copied_owner.c",
+    "added": 15
+  },
+  "additional_build": {
+    "file": "copied_owner.mk",
+    "added": 5
+  },
+  "docs": "Lean reports only; one active SE work list outside freeze."
+}

@@ -1,0 +1,100 @@
+--- a/src/artifact/source.c
++++ b/src/artifact/source.c
+@@ -1,5 +1,6 @@
+ #include "source.h"
+ #include "synthesis_source.h"
++#include "synthesis_work.h"
+ #include "dag.h"
+ #include "wire.h"
+ #include <string.h>
+@@ -58,7 +59,8 @@
+ 	int failed = 1;
+ 	if (!c || pg_dag_init(&map, NULL, NULL) || pg_dag_init(&unique, NULL, NULL)) goto done;
+ 	for (size_t i = 0; i < job_count; ++i) {
+-		if (!jobs[i] || jobs[i]->pending.owner != s->owner_key) goto done;
++		if (!pg_synthesis_input_owned(s,
++			(struct pg_synthesis_input){.pending = pg_synthesis_pending(jobs[i])})) goto done;
+ 		if (pg_dag_add(&map, jobs[i]) || map.count != i + 1) goto done;
+ 	}
+ 	for (size_t i = 0; i < count; ++i) {
+@@ -168,7 +170,9 @@
+ 	size_t count, struct pg_synthesis_job *const *jobs)
+ {
+ 	if (!s || !c || count != c->job_count || !jobs) return 0;
+-	for (size_t i = 0; i < count; ++i) if (!jobs[i] || jobs[i]->pending.owner != s->owner_key) return 0;
++	for (size_t i = 0; i < count; ++i)
++		if (!pg_synthesis_input_owned(s,
++			(struct pg_synthesis_input){.pending = pg_synthesis_pending(jobs[i])})) return 0;
+ 	for (size_t i = 0; i < c->count; ++i)
+ 		if (kind(s, jobs[c->records[i].job]) != (int)c->records[i].kind) return 0;
+ 	return 1;
+--- a/checkpoint_tests/source_checkpoint_test.c
++++ b/checkpoint_tests/source_checkpoint_test.c
+@@ -1,6 +1,7 @@
+ #include "program.h"
+ #include "source_io.h"
+ #include "synthesis_source.h"
++#include "synthesis_work.h"
+ #include "derivation_io.h"
+ #include "declaration_io.h"
+ #include "artifact/source.h"
+@@ -425,6 +426,48 @@
+ 	p->root = pg_synthesis_request(&p->synthesis, p->scope, parsed.expression);
+ 	assert(p->root);
+ 	return p;
++}
++
++static void source_copied_owner(unsigned boundary, int complete)
++{
++	struct pg_program *p = start("main := #1;");
++	struct pg_synthesis *s = &p->synthesis;
++	advance(s, complete ? 10000 : 1);
++	assert(p->root->status == (complete ? PG_SYNTHESIS_DONE : PG_SYNTHESIS_PENDING));
++	struct checkpoint c = collect(p);
++	assert(c.jobs[0] == p->root && c.sources[0] == p->root);
++	const struct pg_synthesis_work_class *role = pg_synthesis_work_role(p->root);
++	const char *state = pg_synthesis_work_state(p->root, role);
++	size_t offset = state ? (const char *)p->root - state : 0;
++	size_t bytes = offset + sizeof(*p->root) + p->root->input_count * sizeof(*p->root->inputs);
++	char *storage = malloc(bytes);
++	assert(storage);
++	memcpy(storage, state ? state : (const char *)p->root, bytes);
++	struct pg_synthesis_job *copy = (void *)(storage + offset);
++	assert(pg_synthesis_input_owned(s, (struct pg_synthesis_input){.pending = pg_synthesis_pending(p->root)}));
++	assert(!pg_synthesis_input_owned(s, (struct pg_synthesis_input){.pending = pg_synthesis_pending(copy)}));
++	unsigned char original[sizeof(*p->root)];
++	memcpy(original, p->root, sizeof(original));
++	struct pg_synthesis_job *ready = s->ready, *tail = s->ready_tail;
++	size_t jobs = s->jobs.count, proofs = p->typing.proofs.count;
++	uint64_t steps = s->steps;
++	c.jobs[0] = c.sources[0] = copy;
++	if (!boundary)
++		assert(!pg_artifact_source_capture(&p->graph, s, c.count, c.jobs, c.source_count, c.sources));
++	else if (boundary == 1)
++		assert(pg_artifact_source_prepare(s, c.source, c.count, c.jobs));
++	else assert(pg_artifact_source_attach(s, c.source, c.count, c.jobs));
++	assert(s->steps == steps && s->ready == ready && s->ready_tail == tail);
++	assert(s->jobs.count == jobs && p->typing.proofs.count == proofs);
++	assert(!memcmp(original, p->root, sizeof(original)));
++	c.jobs[0] = c.sources[0] = p->root;
++	free(storage);
++	assert(pg_artifact_source_capture(&p->graph, s, c.count, c.jobs, c.source_count, c.sources));
++	if (!complete) assert(!pg_artifact_source_prepare(s, c.source, c.count, c.jobs));
++	else assert(pg_artifact_source_prepare(s, c.source, c.count, c.jobs));
++	assert(!pg_artifact_source_attach(s, c.source, c.count, c.jobs));
++	assert(s->steps == steps && p->typing.proofs.count == proofs);
++	pg_program_destroy(p);
+ }
+ 
+ static void guards(void)
+@@ -564,6 +607,10 @@
+ 
+ int main(void)
+ {
++	for (unsigned boundary = 0; boundary < 3; ++boundary) {
++		source_copied_owner(boundary, 0);
++		source_copied_owner(boundary, 1);
++	}
+ 	shared_nominal_inputs();
+ 	guards();
+ 	reference_guards();

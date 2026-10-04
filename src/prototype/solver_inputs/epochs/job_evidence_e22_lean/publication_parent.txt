@@ -1,0 +1,1 @@
+Exact isolated published E18 task a8f52a015f73fe7cfa067c3d5b122bef7e4532b4/source15602241bd2; E19/E20/E21/current Main/E10 excluded. Original focused13 manifestdbe99473 remains immutable. No shared Git mutation.
