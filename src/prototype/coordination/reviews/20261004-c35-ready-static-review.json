@@ -1,0 +1,191 @@
+{
+  "date_UTC": "2026-10-04T11:44:43.254304+00:00",
+  "Main_at_review": "8fc464ed1cb12cc5142dccc7233d39ae6f915f1e",
+  "notice": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/coordination/outbox/c-backend-c35-acc-fold-ready-20261004.txt",
+  "notice_sha256": "8c460109b688df0ae9c24075ca2091c83bec3f442ae84037b955c538704f532e",
+  "scope": "Fresh Root source/static/hash/byte review only; worker runtime reports retained, no Root current-producer execution or adoption.",
+  "freeze": {
+    "manifest_sha256": "446d03f25507a4bb59f903709ca2f8a80433d13215ba143909e13cdf52f51d42",
+    "archive_sha256": "6bfebc166faca426c59b63d6df98a27cce0e51dad59fcc93aabd48802f74ba6c",
+    "freeze_sha256": "7c5ca7fd1d67417655af317af8f4d4349fdcd6714c4570524aa9005ed63bf908",
+    "files": {
+      "doc/2026-10-03-C-BACKEND-GOAL.md": "f867b3cba15b895079553d17bcb7f8c5e8be04b00bc5dea9520ae4453ccb5209",
+      "doc/2026-10-04-C-BACKEND-ACC-FOLD-PLAN.md": "36b09a78ee6590ea0f3551ce86a1afdb7eecd4101b77da3196d91a160bb10754",
+      "doc/2026-10-04-C-BACKEND-EPOCH35-HANDOFF.md": "7e83533fcfb21bae91d7e1ec9cad257cf6843f83c9fea7a8eced54ee13009e89",
+      "src/prototype/c_backend/acc_fold/README.md": "b6b2b1ee813207cca2f9cbc9e6ec7d8dd8e66931810f2a7ada1a70cc58282c2b",
+      "src/prototype/c_backend/acc_fold/build.mk": "bff431d03633eb3f23d72e0199b5a14b88b9e681cdab0da452c8795ec0506152",
+      "src/prototype/c_backend/acc_fold/check.sh": "0a617b3e6d6981aee0b10d2fa55b11bc500ee860a7659bbf9fe41cf4a80a06f0",
+      "src/prototype/c_backend/acc_fold/client.c": "d298e0f0f74572ed5c727a20296146a4671da06672ac6db3eab00f6f0d2c83fd",
+      "src/prototype/c_backend/acc_fold/emit.c": "229ae5988f23ef9399321d0721b22585b11620c79e362117f3db87fd029fa5f3",
+      "src/prototype/c_backend/acc_fold/emit.h": "cad716b7c9c7ebaf11cccc0631e7c1c50d3a17afd79bc3b9e42d3482f05aea88",
+      "src/prototype/c_backend/acc_fold/emit_test.c": "71d1eafbb6c3baed3549538cc760eef3d534869460062f6a6e7cb618f682d67f",
+      "src/prototype/c_backend/acc_fold/fixture.p": "af84565738566fa199a1c48f64737ce956fc7ce6e6545e5fda7719dac0521afd",
+      "src/prototype/c_backend/acc_fold/probe.c": "cbc6f6073cdded3d530b64682df0a3cb82a4d020ece98d89a11cb1a7aeb48329",
+      "src/prototype/c_backend/acc_fold/wrong_ih.c": "04f6d6b4a6ded9435ca82e5dfafd7b64bbf2c8cc8b90274281d2d076f5f0fd45"
+    },
+    "count": 13,
+    "all_frozen_and_live_bytes_exact": true
+  },
+  "raw_evidence": {
+    "sha256": "8a9951f188fb976ecc2900ac13832e3abb118a61b944ba64567af797abf75fd7",
+    "listed": 287,
+    "mismatches": [],
+    "anchor": "/home/repyt/workspace/a-program-workers/c-backend"
+  },
+  "qualified_input_copies": {
+    "sha256": "7d4c6fb852e6d2a9900748195b2e70afb1a859f20227a6a919639f4d116eba18",
+    "retained_count": 151,
+    "copy_mismatches": [],
+    "live_differences": []
+  },
+  "worker_terminal": {
+    "O2": {
+      "sha256": "3e73116314477528a9b5286e81d6c00465a3b4d441078b8867b05fec96f02f88",
+      "exit": 0,
+      "rows": [
+        {
+          "label": "admit",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "emit",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "repeat",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "same_source",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "same_header",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "same_data",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "source",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "client_build",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "client",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "source_match",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "wrong_ih",
+          "expected": 1,
+          "exit": 1
+        }
+      ],
+      "all_expected_exits_match": true,
+      "helper_runtime_SAN": false,
+      "client_SAN": false,
+      "producer_SAN": false
+    },
+    "SAN": {
+      "sha256": "06775bd913ab2f2a263b81cfee5546693b104c5975862804cbc5f9ef6f37a914",
+      "exit": 0,
+      "rows": [
+        {
+          "label": "admit",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "emit",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "repeat",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "same_source",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "same_header",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "same_data",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "source",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "client_build",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "client",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "source_match",
+          "expected": 0,
+          "exit": 0
+        },
+        {
+          "label": "wrong_ih",
+          "expected": 1,
+          "exit": 1
+        }
+      ],
+      "all_expected_exits_match": true,
+      "helper_runtime_SAN": true,
+      "client_SAN": true,
+      "producer_SAN": false
+    }
+  },
+  "Root_fresh_O2_SAN_product_byte_comparisons": {
+    "fold.c": "c73f69f6ba651216eaafb5b71393aeb66e9cba33c705e39baa72d4b5d3e40210",
+    "fold.h": "97ca96a1652eb4f82ee09bbf0fab7277eed99a2b6296d1e3126bceef517a0277",
+    "indexed.h": "b7f98d1140707f2f5eca4306d5f611c2ef29a5a94f1f386a2aedfcf17157ff0a",
+    "client.out": "740a937dd2bdeefff497fa48851079e7baa2b1e71c9449d0729c5639b3cf024b",
+    "source.out": "740a937dd2bdeefff497fa48851079e7baa2b1e71c9449d0729c5639b3cf024b"
+  },
+  "Root_source_assessment": "Admitted closed Nat/LT quickSortAcc scope/classifier and field associations are inspected. Generated af_force_down calls original down for child Acc, af_fold supplies callable IH, af_apply uses SizedList. Actual clause expression bodies are supplied manually; only sizes0/1 observe source results, comparison capture is not executed. This is executable partial automatic plumbing, not complete generated QuickSort.",
+  "source_reference": "Reviewed frozen emit.c SHA229ae5988f23ef9399321d0721b22585b11620c79e362117f3db87fd029fa5f3, generated C39 lines SHAc73f69f6ba651216eaafb5b71393aeb66e9cba33c705e39baa72d4b5d3e40210",
+  "dependencies": "Recorded C35 compiler argv links C34 indexed_views/view.c and emit.c; C32 List convenience code is absent. Preserve submitted ordered snapshots and reconcile owning docs during eventual task publication without restarting parked C32 work.",
+  "worker_producer": "E8 50cd56b2a52b7e370bc7ecb3436c4993e2e5d6a2; prebuilt O2 pointer reused, full helper/runtime/client SAN separately rebuilt.",
+  "preconditions_and_limits": "Borrowed valid indices/data/code/context and callback interpretation/lifetime; returned contexts caller-owned. Depth covers nested clause construction, not arbitrary callback execution. Staged outer results do not roll back provider allocation/side effects. Wrong-IH compiler refusal1 is expected, not a runtime pass.",
+  "original_failures_retained": "Initial cursor build2 and unsupported --binding CLI2 preserved/corrected; no terminal unexpected failure in worker frozen gates.",
+  "next": "Preserve partial READY13; current accepted94a helper/view/fixture qualification, task/Main publication remain separate. Continue actual captured clause/partition/IH expression bodies and closure lifetime/index construction under the existing prototype Goal. No demonstrated producer-view blocker or new source erasure authority.",
+  "C33_full_manual_deliverable": "Already current accepted qualified and published independently; C35 does not replace its full manual CODE result.",
+  "accepted_promotion_current_Main_runtime_RSS_time_full_Goal_claim": false,
+  "owner_Goal_model_lifecycle_change": false,
+  "new_user_approval": false
+}

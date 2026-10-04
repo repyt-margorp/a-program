@@ -1,0 +1,14 @@
+{
+  "date_UTC": "2026-10-04T11:44:43.254304+00:00",
+  "provenance": "Merge operational review/source coordination under existing authorization, not new user approval or task/Goal reset.",
+  "decision": "C35 partial automatic plumbing13/raw287/inputs151 and O2-SAN product bytes verified; current accepted qualification/task/Main publication remains separate. Keep primary actual clause/partition/IH-expression and lifetime/index lowering work. C33 full manual CODE already delivered/current-qualified. Preserve C32/C34/C35 archives; recorded C35 compilation needs C34 view/emitter, not C32 conveniences. Use clean accepted94a runtime120930997b6 for next helper/source producer validation; no missing producer-view blocker has been established.",
+  "accepted_revision": "94a20003b976475b1ed38025e61acb6cdbdab92c",
+  "accepted_runtime120_manifest": "930997b62db85814718d0d5ac151f392bfae243a447d5d0d5f2adbde66cba5ae",
+  "clean_source_checkout": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/accepted-job-promotion",
+  "accepted_manifest": "src/prototype/solver_inputs/accepted_promotion/20261004/runtime.sha256",
+  "profile": "--save/--save-inputs/REPL :save compact/recomputable; --save-materialized explicit typed retention; decoder default1M. Exclude unrelated Main unstaged edits.",
+  "Root_review": "src/prototype/coordination/reviews/20261004-c35-ready-static-review.json",
+  "Root_review_sha256": "0ea41a6b737730aeb2ab264fb05ca57c0430c03fed8b7776b9d1f90605263961",
+  "no_cost_grant_or_owner_resume": true,
+  "original_main_Goal_continues": true
+}

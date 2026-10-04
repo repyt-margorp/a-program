@@ -1,0 +1,125 @@
+{
+  "date_UTC": "2026-10-04T11:44:43.254304+00:00",
+  "Main_at_review": "8fc464ed1cb12cc5142dccc7233d39ae6f915f1e",
+  "scope": "Fresh static reconstruction/hash review with worker execution results labeled; no runtime replay or new authority.",
+  "performance": {
+    "notice": "performance-critical-accepted94-port-consumed-20261004.txt",
+    "notice_sha256": "269094b3ffa72d44e2433c89860bf25a24cf62b39dd4ddf987ecdc56b8c15685",
+    "consumed_Root_review_sha256": "7e1a07b6b143e3559f5c7510f1ae8e9f11d6b053a2002eb554fe9e51eddef6df",
+    "static_review": {
+      "parent_source120": "930997b62db85814718d0d5ac151f392bfae243a447d5d0d5f2adbde66cba5ae",
+      "candidate_source120": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+      "all240_source_pins_exact": true,
+      "changed_runtime_files": [
+        "src/eval.c",
+        "src/eval.h",
+        "src/eval_internal.h",
+        "src/eval_io.c"
+      ],
+      "two_Makefiles_exact_committed_94a20003": true,
+      "patch_sha256": "d9eea6a4aa020030fe7d38c221407cf7ba4bf594aeb32c26fe16c36bc2d2dba4",
+      "all_added_removed_vectors_equal_frozen_E25": true,
+      "runtime_qualification_READY_cost_pending": true,
+      "old_E25_full_acceptance": {
+        "summary_sha256": "44add2199ef15ea1481c1771ebf9ad7b5257480466133027c0b884b084ea1be0",
+        "record": {
+          "argv": [
+            "make",
+            "-j1",
+            "-k",
+            "-i",
+            "-f",
+            "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/current_e25_order_stateless_frames_v1_acceptance_v2_20261004/trial/src/Makefile",
+            "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+            "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+            "BUILD=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/current_e25_order_stateless_frames_v1_full_acceptance_20261004/build-candidate-o2",
+            "SHELL=/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_verification/make_shell.py",
+            "check-acceptance"
+          ],
+          "cwd": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_critical_frame/private/current_e25_order_stateless_frames_v1_acceptance_v2_20261004/trial",
+          "exit": -9,
+          "censored": true,
+          "log_sha256": "d578e22ff2a18070aed026aefd049025927887ebe1894e77b8c0060f02d921ba",
+          "start_UTC": "2026-10-04T11:14:12.941750+00:00",
+          "terminal_UTC": "2026-10-04T11:34:12.975289+00:00"
+        },
+        "recorded_recipes": 376,
+        "failed_recipes": 0,
+        "passed": false,
+        "all_children_reaped_worker_reported": true
+      }
+    },
+    "status": "Current accepted94a port prepared, NOT READY. Callback/lifetime/byte/fuel/profile/consumer correctness gates and matched normal-O2 cost configuration pending. Old frozen E25 READY/cost proposal remain separate and ungranted."
+  },
+  "job-evidence": {
+    "notice": "main-frontier-v13-tested-review-20261004.txt",
+    "notice_sha256": "a4d72683424937f736f93f4367088d000cf13e714cd7a9a905d62491a7043e29",
+    "static_review": {
+      "manifest_sha256": "2f958f852e3f6a95add6b13859bbae0a7766c13dac1195a4e681f1798e4ef4ea",
+      "frozen_records_exact": 13,
+      "runtime128": "1b2d581ca12781e1891e54e7ad21000f72bcd4504cf78a876eeed96d714c87ea",
+      "seven_runtime_files_reconstructed_without_fuzz": {
+        "src/artifact/source.c": "f6330fb6e5a79bb9e47f73c5634797fa222e1d4116260888633a08cc8a62ac9e",
+        "src/artifact/source.h": "ed61d029dc86087e2c1e35a7f408ad1c82c005ad2eb565ffccb2d8fcb0244a81",
+        "src/synthesis_function.c": "ce1dfe95beb7506c0336533aa8af84bab602b4b428a4b004295e9d089f8efd6b",
+        "src/synthesis_binding.c": "8e006e45777d2aba7fe9b2e0e801a0bd5ee3156036896354ab196c90ccb2908e",
+        "src/synthesis_cbpv.c": "bb647e76055f4ae8ba7c36a92bf4497600848c111b66bb6523c075d5ffb7e093",
+        "src/synthesis_conversion.c": "e402408a16f987c6671cd0799812ebafb191fed2b9e4b290503a0f76d0481127",
+        "src/synthesis_source.h": "51e2bce436ec3294c70b35950ba894ef72e80604d852955768be3519589bd491"
+      },
+      "all128_reconstructed_hashes_exact": true,
+      "patch_log_sha256": "9f56f7b6446d75886262b8c71247bc6476cedf03fbb2933977f3ca1078b230ca",
+      "qualification_public_raw_records_exact": [
+        {
+          "label": "qualified-o2-v13-build-frontier",
+          "exit": 0,
+          "sha256": "f3f74ec017f53fce74a825f6c6cd0c9c02eb4d3e33d06944f7ecdc29e86b647f"
+        },
+        {
+          "label": "qualified-o2-v13-frontier",
+          "exit": 0,
+          "sha256": "940ae5e15bfcbb9a6a4653e32f98f3d7acd64e83f82f93012b1c43c1587e00ff"
+        },
+        {
+          "label": "qualified-o2-v13-build-source-normalization",
+          "exit": 0,
+          "sha256": "46c521f43170c288202eb60c2bf0be7c7e1e27a3b93e62977587d52239c4c406"
+        },
+        {
+          "label": "qualified-o2-v13-synthesis",
+          "exit": 0,
+          "sha256": "497e5e979c826ff40f602848e82bed31e82ad16457b173072c9c457104a31804"
+        },
+        {
+          "label": "qualified-san-v13-build-frontier",
+          "exit": 0,
+          "sha256": "ac55d762e761fbe40167da124fca72ded9156b56a249d0e35adf4b9b34e23ae0"
+        },
+        {
+          "label": "qualified-san-v13-frontier",
+          "exit": 0,
+          "sha256": "940ae5e15bfcbb9a6a4653e32f98f3d7acd64e83f82f93012b1c43c1587e00ff"
+        },
+        {
+          "label": "qualified-san-v13-build-source-normalization",
+          "exit": 0,
+          "sha256": "d186fdbaf67b6a7473b88145f1c53c25ee95af4d01607c842f7ae8a2cc26b947"
+        },
+        {
+          "label": "qualified-san-v13-synthesis",
+          "exit": 0,
+          "sha256": "497e5e979c826ff40f602848e82bed31e82ad16457b173072c9c457104a31804"
+        }
+      ],
+      "worker_scope": "Immutable local main-frontier review snapshot; private WIP, NOT full READY/joint/accepted/Goal complete.",
+      "current_accepted_port_or_joint_verified": false
+    },
+    "worker_reported": "24 destroyed-owner cuts/Domain-Body wrong-child O2/SAN and affected Synthesis/Source/normalization pass; useful=total-cut, oneB/capR, cut10 retains1 WHNF step; zero-budget loading/resave/advance inert. Existing lexical input and pending-WHNF composition reuse require explicit caller provenance, not new untrusted admission.",
+    "status": "Seven-file main packet on old E25a87 is private WIP, not READY/current accepted/joint/general public resume/cost. Body-selected rule now implemented; next later canonical typed-owner normalization/classifier-query continuation.",
+    "public": "Worker public exit1/all52 images/full fuel TSV equal old qualified parent; three current1000+1000/1600+1600/completed1915+0 failures and original1921+0 remain unwaived. Original fixture/Source guard/v7 lexical-owner/v8 Source root/v10 header/v11 link failures retained.",
+    "next_shared_source": "Preserve v13 immutable packet; next accepted94a joint preparation must name prototype checkpoint dependencies explicitly and keep compact-default/materialized profiles. Original Job owns Source/frontier, Performance evaluator. Continue main unfinished code without blanket hold or accepted writes."
+  },
+  "cost_or_lifecycle_action": false,
+  "Goal_service": "Root blocked unchanged; original owners/model/timer preserved",
+  "next_timer": "2026-10-04T13:44:22Z"
+}

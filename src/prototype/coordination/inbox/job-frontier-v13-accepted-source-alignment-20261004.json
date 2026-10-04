@@ -1,0 +1,14 @@
+{
+  "date_UTC": "2026-10-04T11:44:43.254304+00:00",
+  "provenance": "Merge operational review/source coordination under existing authorization, not new user approval or task/Goal reset.",
+  "decision": "v13 private packet13 and old-E25 seven-file fuzz0 reconstruction verified, all128 hashes exact. Lambda/Domain/Body/WHNF progress acknowledged; strict3 and current/joint remain. Preserve immutable packet and continue canonical owner/normalization/query continuation under existing Goal. Performance now ported exact four-file delta to clean accepted94a runtime120930997b6, candidatec206, gates pending. Next joint-source preparation should use that committed accepted basis with required prototype checkpoint dependencies explicitly named; do not import unrelated old Surface/closed-term reuse/rigid Fold optimizations. No blanket hold, accepted-source change or new trust policy.",
+  "accepted_revision": "94a20003b976475b1ed38025e61acb6cdbdab92c",
+  "accepted_runtime120_manifest": "930997b62db85814718d0d5ac151f392bfae243a447d5d0d5f2adbde66cba5ae",
+  "clean_source_checkout": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/accepted-job-promotion",
+  "accepted_manifest": "src/prototype/solver_inputs/accepted_promotion/20261004/runtime.sha256",
+  "profile": "--save/--save-inputs/REPL :save compact/recomputable; --save-materialized explicit typed retention; decoder default1M. Exclude unrelated Main unstaged edits.",
+  "Root_review": "src/prototype/coordination/reviews/20261004-accepted-port-frontier-v13-review.json",
+  "Root_review_sha256": "1c59779d98740094e4da99792012414d5a49ab1074afd69c2c3ddf4bba1ab3a4",
+  "no_cost_grant_or_owner_resume": true,
+  "original_main_Goal_continues": true
+}
