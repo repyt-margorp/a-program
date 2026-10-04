@@ -1,0 +1,24 @@
+import datetime,hashlib,json,pathlib
+s=pathlib.Path(__file__).resolve().parent;q=s/'c48-current-accepted-fc';w=pathlib.Path('/home/repyt/workspace/a-program-workers/c-backend');e=w/'src/prototype/c_backend/.evidence/epoch48-acc-endpoints-20261004';sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest();r=json.loads((q/'Root-results.json').read_text());assert r['complete'];parsed={};allraw={}
+for phase in ['O2','SAN']:
+ gate=q/(phase+'-gate');owner=e/('final-O2' if phase=='O2' else 'final-SAN');assert (gate/'status.tsv').read_bytes()==(owner/'status.tsv').read_bytes()
+ atoms=(gate/'argv.nul').read_bytes().split(b'\0');assert atoms.pop()==b'';cursor=0;rows=[]
+ while cursor<len(atoms):
+  label,want,count=atoms[cursor:cursor+3];cursor+=3;n=int(count);argv=atoms[cursor:cursor+n];cursor+=n;rows.append({'label':label.decode(),'expected_exit':int(want),'argv':[x.decode() for x in argv]})
+ assert cursor==len(atoms) and len(rows)==53;status=[x.split('\t') for x in (gate/'status.tsv').read_text().splitlines()]
+ for row,got in zip(rows,status):assert row['label']==got[0] and str(row['expected_exit'])==got[1]==got[2]
+ for row in rows:
+  if phase=='SAN' and row['label'].endswith(('_object','_client_build','_resource_build','_Core_build')):assert '-fsanitize=address,undefined' in row['argv']
+ parsed[phase]=rows
+ for p in gate.rglob('*'):
+  if p.is_file():allraw[str(p.relative_to(q))]=sha(p)
+for row in r['commands']:
+ assert row['exit']==row['expected_exit']==0 and not row['censored']
+ assert sha(q/(row['label']+'.out'))==row['stdout_SHA'] and sha(q/(row['label']+'.err'))==row['stderr_SHA']
+old=json.loads((e/'old-snapshots.json').read_text());older={}
+for row in old:
+ n=row['epoch'];found=list((w/'src/prototype/c_backend/.evidence').glob('epoch'+str(n)+'*/epoch'+str(n)+'-submitted-snapshot.tar'));assert len(found)==1,(n,found)
+ assert sha(found[0])==row['archive_sha256'];manifest=found[0].with_name('epoch'+str(n)+'-files.sha256');assert sha(manifest)==row['manifest_sha256'];older[str(n)]=row['archive_sha256']
+assert len(older)==16
+record={'date_UTC':datetime.datetime.now(datetime.timezone.utc).isoformat(),'complete':True,'commands':4,'expected_rows_per_phase':53,'all53_argv_status_raw_reviewed':True,'all_code_header_provenance_products_example_exact':True,'all16_C32_C47_original_archives_exact':older,'Root_execution':r,'parsed_gate_commands':parsed,'external_all_raw_gate_pins':allraw,'external_raw_gate_files':len(allraw),'owner_initial_map_client_expectation_abort134_retained':True,'general_native_Acc':False,'manual_Scope_action_limits_preserved':True,'accepted_adoption':False,'Goal_or_owner_actions':False,'comparative_cost_samples':0}
+(s/'c48-current-results-audit.json').write_text(json.dumps(record,indent=2)+'\n');print(json.dumps({'complete':True,'commands':4,'gate_rows_per_phase':53,'all16_prior_archives_exact':True,'raw_gate_files':len(allraw)}))

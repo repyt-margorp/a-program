@@ -1,7 +1,7 @@
 # Solver and Evidence Duplication Audit
 
 Date: 2026-09-30
-Status: Exact fc parent passes the paired materialized reproduction; native trial4 fails. Trial5 Scope-only correction441cbd69 is statically pinned but not READY. Native54/frontier2 local gates remain scoped; full/public/strict3/frontier/joint/net criteria stay open in this sole work list.
+Status: Native canonical Scope code441cbd69 passes owner O2 fact/materialized controls; broad7 remains2 at deleted prefix receipt and trial8 Program0/full pending. New affected SAN/foreign cuts/joint/strict/net/READY stay open in this sole native implementation work list.
 Parent: [artifact plan, AP0](2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md#ap0-simplify-before-extending-persistence).
 This is the active prerequisite work list, not another artifact format proposal.
 
@@ -319,6 +319,27 @@ identical TSVs in O2 and ASan/UBSan builds, including repeated samples without
 additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
+
+2026-10-04, Root static review of original owner's
+[canonical Scope trial8 progress](../src/prototype/coordination/reviews/20261004-native-trial8-canonical-scope-review.json):
+all63 diagnosis/34 result records and authoritative external659 trial7/8 inputs
+match; code126441cbd69 is unchanged. Scope-fact O2 control0 retains raw/copy
+nonadmission, stable admitted type/same Scope, classifier-bound distinction and
+copied-Scope refusal. Materialized equality now0/equal1 chunks1/64 at939398 on
+the corrected native code, superseding old candidate inequality only for this
+path; exact parent pass/old failed images remain. New affected SAN pending.
+Derivation5 direct/recipe failures and Core6 abort remain. Later derivation/
+Synthesis/Source/two checkpoint O2 passes and Core7 zero are separately scoped.
+Actual broad7 exits2 at Program621's deleted prefix receipt; later commands in
+its aggregate did not run, independent make-k groups did. Trial8 tests/program.c
+alone migrates to actual admitted map/count/destination Context/owned images;
+implementation unchanged, Program build/run0. Treat this as explicit native-owner
+contract migration, not proof of all former prefix/progress behavior. Full broad,
+new SAN, matched foreign cuts/two inert resaves/fuel/strict3/public52/Sorted,
+partial typed-query frontier/selector/inclusive overhead and net costs stay open.
+Older Source/frame11 controls copied with exact origins; later12-source reusable
+route delivered, not inferred consumed. Original Job owns the existing Plan;
+no Root native replay, second checker, accepted adoption or READY follows.
 
 2026-10-04, Root agent review of the original owner's
 [paired materialized reproduction and trial5 correction](../src/prototype/coordination/reviews/20261004-native-materialized-parent-trial5-review.json):

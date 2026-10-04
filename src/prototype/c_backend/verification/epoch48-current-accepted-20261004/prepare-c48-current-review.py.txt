@@ -1,0 +1,54 @@
+import collections,datetime,hashlib,json,pathlib,shutil,tarfile
+s=pathlib.Path(__file__).resolve().parent;w=pathlib.Path('/home/repyt/workspace/a-program-workers/c-backend');e=w/'src/prototype/c_backend/.evidence/epoch48-acc-endpoints-20261004';q=s/'c48-current-accepted-fc';sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+notice=w/'src/prototype/coordination/outbox/c-backend-c48-ready-20261004.txt';assert sha(notice)=='ed755227d0dcca9e77c9a9116cbdbaf988ced219f03448104d18dabc4df04bd3'
+metadata={'epoch48-files.sha256':'1a549683c5f9833e2517fa4c7dcd8bcda9475a89ca6a04b49f7da678dd8d4946','epoch48-submitted-snapshot.tar':'c3502eaad5602fd6895dd7dda79b87cfd25fa235931fa3cf1eafdb574b8d5cfe','epoch48-runs.sha256':'f0669e2f13e51b2b0f946b275de65c98bb26756215e4887a9a125890957f9dd1','epoch48-freeze.json':'939a1bbd9f424e09dd23155e731eac2d5983ddece37b10650b20ecf1320d931b','verification.json':'a6105d3e00362aea32512fdedf57bbb83b32c3fec8ac8c008aa1bac8ceb07606','final-inputs.json':'0211018c0dc79e4444ad0897dd34155e3561e2cebcc17e71f93b1ef97a8b81a7','style.json':'fb4d4293c4531aa5ea4aed092460ca83e53c128452f0ee7e1601a4c406d52227'}
+for n,d in metadata.items():assert sha(e/n)==d,n
+freeze=json.loads((e/'epoch48-freeze.json').read_text());files={r['path']:r['sha256'] for r in freeze['files']};assert len(files)==18 and freeze['delegated_parent']=='3526b9a3c46abe0fa92ed93bf0c691a73a372605'
+q.mkdir(exist_ok=True);(q/'frozen').mkdir(exist_ok=True)
+with tarfile.open(e/'epoch48-submitted-snapshot.tar') as package:
+ members={r.name.removeprefix('./'):r for r in package.getmembers() if r.isfile()};assert set(members)==set(files)
+ for n,d in files.items():
+  assert not n.startswith('/') and '..' not in pathlib.PurePosixPath(n).parts
+  data=package.extractfile(members[n]).read();assert hashlib.sha256(data).hexdigest()==d
+  target=q/'frozen'/n;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(data);target.chmod(members[n].mode)
+raw={name:d for d,name in [x.split('  ',1) for x in (e/'epoch48-runs.sha256').read_text().splitlines()]};assert len(raw)==637
+for n,d in raw.items():assert sha(w/n)==d,n
+inputs=json.loads((e/'final-inputs.json').read_text())['inputs'];assert len(inputs)==320
+for n,row in inputs.items():
+ copy=pathlib.Path(row['copy']);copy=copy if copy.is_absolute() else w/copy;assert sha(copy)==row['sha256'],n
+example=q/'frozen/src/prototype/c_backend/acc_endpoints/example';source=(example/'component.c').read_bytes();assert len(source.splitlines())==860
+receipt=json.loads((example/'provenance.json').read_text())
+for section in receipt['sections']:assert hashlib.sha256(source[section['offset']:section['offset']+section['bytes']]).hexdigest()==section['sha256']
+old=json.loads((s/'c47-current-accepted-fc/frozen/src/prototype/c_backend/acc_transport/example/provenance.json').read_text());oldsec={r['name']:r['sha256'] for r in old['sections']}
+assert all(r['sha256']==oldsec[r['name']] for r in receipt['sections'] if r['name']!='scoped actions');assert receipt['source_body_inputs']==old['source_body_inputs']
+products={}
+for phase in ['final-O2','final-SAN']:
+ rows=[x.split('\t') for x in (e/phase/'status.tsv').read_text().splitlines()];assert len(rows)==53 and all(r[1]==r[2] for r in rows);assert dict(collections.Counter(r[2] for r in rows))=={'0':45,'1':1,'2':1,'4':6}
+ pp={}
+ for mode in ['source','object','archive']:
+  for n in ['component.c','component.h','provenance.json']:
+   x=e/phase/mode/n;assert x.read_bytes()==(example/n).read_bytes();pp[mode+'/'+n]=sha(x)
+ assert sha(e/phase/'transport.inc')==receipt['transport_descriptor']=='14876c352a9be2f61e1d907bd0f82a35bc44257e626d01b65390cc6d0c2a6062';products[phase]=pp
+assert products['final-O2']==products['final-SAN']
+initial=[x.split('\t') for x in (e/'candidate-O2/status.tsv').read_text().splitlines()];assert len(initial)==40 and initial[-1]==['map_client','0','134']
+assert (e/'candidate-O2/source/component.c').read_bytes()==source and (e/'candidate-O2/transport.inc').read_bytes()==(e/'final-O2/transport.inc').read_bytes()
+initial_inputs=json.loads((e/'initial-candidate-inputs.json').read_text());oldrow=next(r for r in initial_inputs if r['path'].endswith('/map_client.c'));oldclient=pathlib.Path(oldrow['copy']);assert sha(oldclient)==oldrow['sha256'];delta=(oldclient.read_text().replace('right[1]==3','right[1]==4'));assert delta==(q/'frozen/src/prototype/c_backend/acc_endpoints/map_client.c').read_text()
+older={}
+for r in json.loads((e/'old-snapshots.json').read_text()):
+ archive=w/r['archive'];assert sha(archive)==r['archive_sha256'];manifest=archive.with_name('epoch'+str(r['epoch'])+'-files.sha256');assert sha(manifest)==r['manifest_sha256'];older[str(r['epoch'])]=r['archive_sha256']
+assert len(older)==16
+shutil.copytree(s/'c47-current-accepted-fc/tree',q/'tree')
+for n in files:
+ target=q/'tree'/n;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(q/'frozen'/n,target)
+shutil.copy2(s/'c47-current-accepted-fc/runtime-source.sha256',q/'runtime-source.sha256');assert sha(q/'runtime-source.sha256')=='c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907'
+for d,n in [x.split('  ',1) for x in (q/'runtime-source.sha256').read_text().splitlines()]:assert sha(q/'tree'/n)==d
+shutil.copytree(s/'c47-current-accepted-fc/reused-products',q/'reused-products')
+for x in (q/'reused-products').iterdir():assert sha(x)==receipt['source_body_inputs'][x.name]
+shutil.copy2(s/'c47-current-accepted-fc/reused-Core-cases.c',q/'reused-Core-cases.c');shutil.copy2(s/'c47-current-accepted-fc/actual-materialized.a',q/'actual-materialized.a');assert sha(q/'actual-materialized.a')=='7c1a4f35108dea9a91c4ffac90062b0c1d6bb1c145e116ff269942775e704aa4'
+(q/'tmp').mkdir()
+for n in metadata:
+ if n.endswith('.tar'):continue
+ shutil.copy2(e/n,q/n)
+shutil.copy2(notice,q/'ready-notice.txt')
+record={'date_UTC':datetime.datetime.now(datetime.timezone.utc).isoformat(),'Main_parent':'a80e2d47f0df433e336438ee07e67ed091df4465','notice_SHA':sha(notice),'frozen_metadata_exact':metadata,'frozen18_archive_exact':files,'all637_raw_exact':True,'all320_retained_inputs_exact':True,'runtime120_manifest_SHA':sha(q/'runtime-source.sha256'),'all16_C32_C47_prior_archives_exact':older,'generated_source_lines':860,'generated_source_SHA':sha(example/'component.c'),'all_seven_source_bodies_and_non_action_sections_C47_exact':True,'all_products_example_O2_SAN_exact':True,'preserved_initial_failure':'Initial O2gate1/40 rows map_client abort134; only expected right3 corrected to explicitly constructed right4. Positive module/table byte-exact, no relaxed admission/refusal.','source_review':'Actual nominal endpoint operands drive LT/quoted Acc/contravariant down-domain indices; explicit known Nat.succ Match/static binding retains TOTAL/purity. Full ordered maps/captures/down/IH/paths retained. Frame/action interpretation and complete checked Scope/source equivalence remain manual/open; no integer-equality proof or new source authority.','SAN_scope':'Entire emitter/inspector/module/client source-object-archive SAN; pointer/Core O2 reused.','general_native_Acc':False,'native_scope':'Checked/trusted4/input3 inherited C46, not new C48 execution.','Root_replay':'pending','accepted_adoption':False,'Goal_or_owner_actions':False,'cost_samples':0}
+(s/'c48-readonly-static-review.json').write_text(json.dumps(record,indent=2)+'\n');print(json.dumps({'frozen_paths':18,'raw_files':637,'inputs':320,'prior_archives':16,'initial_failure_retained':True,'lines':860,'current_runtime':'c2063542'}))

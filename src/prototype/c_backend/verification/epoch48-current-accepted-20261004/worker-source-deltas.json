@@ -1,0 +1,26 @@
+{
+  "new_subtree_files": [
+    "src/prototype/c_backend/acc_endpoints/README.md",
+    "src/prototype/c_backend/acc_endpoints/build.mk",
+    "src/prototype/c_backend/acc_endpoints/check.sh",
+    "src/prototype/c_backend/acc_endpoints/emit.c",
+    "src/prototype/c_backend/acc_endpoints/emit.h",
+    "src/prototype/c_backend/acc_endpoints/emit_test.c",
+    "src/prototype/c_backend/acc_endpoints/example/component.c",
+    "src/prototype/c_backend/acc_endpoints/example/component.h",
+    "src/prototype/c_backend/acc_endpoints/example/provenance.json",
+    "src/prototype/c_backend/acc_endpoints/inspect.c",
+    "src/prototype/c_backend/acc_endpoints/map_client.c",
+    "src/prototype/c_backend/acc_endpoints/pack.py",
+    "src/prototype/c_backend/acc_endpoints/read.c",
+    "src/prototype/c_backend/acc_endpoints/read.h",
+    "src/prototype/c_backend/acc_endpoints/runtime.c"
+  ],
+  "existing_implementation_edits": [],
+  "live_Goal_advance": "doc/2026-10-03-C-BACKEND-GOAL.md",
+  "C47_other15_exact": true,
+  "source_bodies_byte_exact": true,
+  "initial_failed_positive_module_exact_final": true,
+  "failure_correction": "map_client expected right index3 corrected to constructed right4; runtime/table unchanged",
+  "runtime_diff": "runtime-parent.diff"
+}

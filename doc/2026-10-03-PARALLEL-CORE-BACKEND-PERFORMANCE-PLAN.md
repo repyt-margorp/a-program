@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: C47 prototype delivery remains published; C48 endpoint reader action is statically pinned, executable milestone pending. Exact fc parent passes paired materialized reproduction while native trial4 fails; Scope-only trial5 correction is not READY. Joint controls routed; no cost samples or Goal/timer changes.
+Status: C48 exact18/task8a81cefa/current Root O2/full affected SAN53 each qualified; prototype Main delivery recorded. C49 private frame reader progresses. Native Scope repair passes owner materialized O2, broad7 still2 and trial8 full/SAN/joint/strict/net/READY remain open. Original Goals/timer unchanged.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -17,15 +17,43 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | Inquiry desk -> `merge`: reporting vs coordination/integration | All lanes | Desk answers the user; only Merge integrates after verified handoff |
-| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C47 exact16/task3526b9a3/Main099104cc and Root O2/full-product SAN50 each published. Separate C48 source endpoint reader build/inspect0 statically pinned; executable qualification pending. Full checked Scope/action/general native/cost open |
+| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C48 exact18/task8a81cefa afterC47; Root O2/full emitter-inspector-module-client SAN53 each and860-line source-derived endpoint module qualified/prototype integrated. C49 frame role placement private; complete Scope/action/general native/cost open |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Approved current frame deletion accepted; original363 plus adopted4 verified separately. Actual matched peakRSS/time pending safe all-owner window; peripheral MEM10/spine/empty arrays parked |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
-| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | Parent fc paired materialized equality0 versus native trial4 equality1 verified. Trial5 input659/code126441cbd69 Scope-only repair unqualified; local54/frontier2 scoped, broad4/strict/public/joint/net/READY open in sole SE list |
+| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | Canonical Scope repair owner O2 control/materialized equality0; Core7 zero/broad7 exit2 Program621. Trial8 only test migration, Program0/full pending; new SAN/foreign/joint/strict/net/READY remain open in sole SE list |
 | 6 | `verification-audit`: independent read-mostly suite/debt inventory | #59 / PR #60, #51 | Bounded static inventory/pilot complete; measured cost deferred, full #59 remains open |
 | 7 | `test-suite`: implement coverage-preserving test reductions | #59 / PR #60 | Bounded Goal complete; exact7 taskbc16df9 pushed/remote verified, Root raw/assembly review complete, prototype Main36a27be integrated |
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
+
+2026-10-04, [C48 current endpoint review](../src/prototype/coordination/reviews/20261004-c48-current-endpoint-review.json)
+supersedes endpoint-reader-only/pending wording. Exact18/task8a81cefa after
+C473526b9a3 pushed/remote exact; prototype Main integration recorded.637 raw/
+320 retained inputs/all16 prior archives exact. Root4 serial commands terminal/
+reaped/uncensored: O2/full emitter-inspector-module-client source-object-archive
+SAN53 matching rows each45zero/6refusal4/duplicate linker1/prior product2.
+860-line component0faa1758/endpoint14876c35/code/header/provenance/phase products
+match frozen example; seven original bodies/non-action sections and Core341
+reused. Actual LT/quoted Acc/contravariant down-domain indices use source endpoint
+operands; frame/action/complete checked Scope/general native remain open.
+Initial40-row map-client134 retained, only expected right3->4 corrected; positive
+module/table unchanged. C46 native4/input3 inherited, not rerun; no accepted edit,
+net cost or full61/Goal claim. [C49 private frame action](../src/prototype/coordination/reviews/20261004-c49-private-frame-action-review.json)
+separately pins four wrapper inputs/build0/emit0/table888dbff1 and actual binder
+role positions; runtime role placement/full affected qualifications pending.
+
+[Native trial8 progress](../src/prototype/coordination/reviews/20261004-native-trial8-canonical-scope-review.json)
+pins diagnosis63/results34/all external trial7/8 inputs659 and same code441cbd69.
+Scope-fact control/materialized O2 equality0 chunks1/64 supersede candidate
+inequality only for this repaired code path. Intermediate derivation5/Core6
+aborts remain; affected Source/Synthesis/checkpoints0 and Core7 zero are scoped.
+Broad7 actual acceptance2 Program621 reads deleted prefix receipt; independent
+make-k groups ran, later failed aggregate commands did not. Trial8 only program
+fixture migration checks actual admitted map/count/destination/owned images;
+Program build/run0, full terminal/new SAN/foreigncuts/joint/strict/public/Sorted/
+net/READY open. Older Source/frame11 copies verified; richer reusable12 route
+consumption not inferred. No Root native replay/adoption or new cost agreement.
 
 2026-10-04, [paired materialized parent/trial5 review](../src/prototype/coordination/reviews/20261004-native-materialized-parent-trial5-review.json)
 supersedes parent-control-pending wording: all122 files match exact committed

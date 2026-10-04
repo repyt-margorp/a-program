@@ -1,0 +1,57 @@
+[
+  {
+    "path": "src/prototype/c_backend/acc_endpoints/read.h",
+    "sha256": "517bb52fa6f1d3d9fd3ada92ba9a00040a7c64ae868735060799f34ef062c151",
+    "copy": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch48-acc-endpoints-20261004/initial-candidate-inputs/read.h"
+  },
+  {
+    "path": "src/prototype/c_backend/acc_endpoints/map_client.c",
+    "sha256": "77d7b4184f927206fa33da6e91bdd5f3d062eac9fb696f8b08ba06abe0780834",
+    "copy": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch48-acc-endpoints-20261004/initial-candidate-inputs/map_client.c"
+  },
+  {
+    "path": "src/prototype/c_backend/acc_endpoints/emit_test.c",
+    "sha256": "e464c312e1b510e91c7fc3f363abcf8af4d12428dd41e4b43bb331aeb46157d8",
+    "copy": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch48-acc-endpoints-20261004/initial-candidate-inputs/emit_test.c"
+  },
+  {
+    "path": "src/prototype/c_backend/acc_endpoints/read.c",
+    "sha256": "997ec66db2695e34251018deba24fa239493fa90c2375d627b1ad9d32eb328ce",
+    "copy": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch48-acc-endpoints-20261004/initial-candidate-inputs/read.c"
+  },
+  {
+    "path": "src/prototype/c_backend/acc_endpoints/runtime.c",
+    "sha256": "1a4b8fc4a3b1b4de331f0258de0b9897c9433a3202ff155d72043a4ff4ac3779",
+    "copy": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch48-acc-endpoints-20261004/initial-candidate-inputs/runtime.c"
+  },
+  {
+    "path": "src/prototype/c_backend/acc_endpoints/check.sh",
+    "sha256": "88dd9b09f1a9f901db2f7f855b3acb9b2a04b23d004138fb78aafcc359e21dbc",
+    "copy": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch48-acc-endpoints-20261004/initial-candidate-inputs/check.sh"
+  },
+  {
+    "path": "src/prototype/c_backend/acc_endpoints/emit.h",
+    "sha256": "b8b23e130ef648fc230fe214e24a4882c3a7d26c4a9194e0d62b733ae72bb7d0",
+    "copy": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch48-acc-endpoints-20261004/initial-candidate-inputs/emit.h"
+  },
+  {
+    "path": "src/prototype/c_backend/acc_endpoints/build.mk",
+    "sha256": "2ec64edc9e1c36d41f1e7fc7be5dc86162f763e74db4774fec7b5ece33f8f1f7",
+    "copy": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch48-acc-endpoints-20261004/initial-candidate-inputs/build.mk"
+  },
+  {
+    "path": "src/prototype/c_backend/acc_endpoints/pack.py",
+    "sha256": "1843972e9e2e85302b3363d9c54d49ece3ca32ca63017de6029b05c13467cb2c",
+    "copy": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch48-acc-endpoints-20261004/initial-candidate-inputs/pack.py"
+  },
+  {
+    "path": "src/prototype/c_backend/acc_endpoints/inspect.c",
+    "sha256": "0386685ba71609731d869a5bdf4cd33ea22dec01cb5ecd2b2150725738f99c5f",
+    "copy": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch48-acc-endpoints-20261004/initial-candidate-inputs/inspect.c"
+  },
+  {
+    "path": "src/prototype/c_backend/acc_endpoints/emit.c",
+    "sha256": "3a96031479ceb8dc07ba28ac2a651c5c0889f9650c3d46f9e86fd92cb6dfcb62",
+    "copy": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch48-acc-endpoints-20261004/initial-candidate-inputs/emit.c"
+  }
+]

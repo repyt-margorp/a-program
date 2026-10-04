@@ -1,0 +1,341 @@
+{
+  "date_UTC": "2026-10-04T21:52:27.773455+00:00",
+  "classification": "Independent static review of exact owner terminal/diagnosis/control snapshots, no Root native replay/adoption",
+  "notice_SHA": "074521c91c47b0797a2fc8d93b3a35194af6c27361adf585f7fceca1ea1acdff",
+  "notice_text": "[worker-notification job-evidence/native-frontier-canonical-scope-qualified-controls]\nCritical-path priority remains active; E25/E26/E27 are parked, Goal/model and protected Git unchanged. Physical allocated Evidence/proof index/premise arrays/alternative chains remain deleted in the native-owner candidate. Genuine Source/ordinary-rule frontier composition remains distinct from accepted adoption.\nParent fc52755b345a555e49a79df40549e9cb23d54088: actual materialized independent permutation saves/reloads successfully. Old native code126 5405b09eb0999b1e83b8a2698e02fc0352ffad5a422f0c3fda7fa666ab890cc9 saves DONE then reloads UNSUPPORTED; parent0/candidate1 and images retained. Diagnosis63 manifest 76f28e9c639c494163e0cf3ff56f387e63a00b3741230e8ef2e3ccbf90c5f1be.\nImplemented core repair code126 441cbd699ca87b505564938c81e68cf17fc3de03581af903bfc02636544c2244: existing Scope index keys the exact declared typed Core/classifier and canonical parent/index owners instead of alternative formation history. An actual admitted canonical typed owner may supply a raw Scope's checked type before admission; copied/raw input does not grant admission and admitted facts remain stable. No second index/graph/checker or eval/readback edit. Fresh owner/bound control0 and materialized equality0 at cuts1/64; derivation, Synthesis, Source and both checkpoints O2 all0. Affected new SAN remains pending.\nTrial7 input659 d4f8e2ed8ab2f320c819a9f72c34391bd1be30b3fa48c910c0f2c4bad0e11927: Core0; actual make-k-j1 full acceptance2, Program621 inspects a deleted prefix receipt. All independent groups ran, but later commands in the check aggregate were not run. Exact34 result freeze src/prototype/solver_inputs/job_evidence_native_frontier/history/trial7-results/manifest.sha256 SHA c310f68aae7d24e85dd9a7f95ed26f6edccc40db34c90f34dda35e2a7ded4f5d. Original copied inner trial4 manifest is historical; all authoritative external659 records freshly match, no drift established.\nNext exact659 trial8 db8dac2acbe937319af4005115dfdfc60b70af6387d63e3dd57c64cf899b8376 checks actual admitted map images/Context instead of the prefix receipt chain. Program first, then full unskipped acceptance running serial j1; no READY or joint pass inferred. Merge's unchanged retained Source/frame controls copied with hash verification to own private inputs, manifest41d6dd4fdc67fd8caf1b09517c8b0e74d1fa118cf6f7204339d1617f8d7251ed. Next matched fc/native O2+SAN foreign cuts, two inert resaves and fuel checks. No Performance resume or cost grant.\nRemaining: original public strict3, partial typed-query genuine frontier, temporary construction selector, new owner overhead/net peak+time. No lost progress, trust-on-load, accepted promotion or full Goal claim. Single issue table and Goal progress updated in place.\n",
+  "diagnosis63": {
+    "path": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/history/trial4-materialized-diagnosis/manifest.sha256",
+    "SHA": "76f28e9c639c494163e0cf3ff56f387e63a00b3741230e8ef2e3ccbf90c5f1be",
+    "count": 63,
+    "all_files_exact": true
+  },
+  "trial7_result34": {
+    "path": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/history/trial7-results/manifest.sha256",
+    "SHA": "c310f68aae7d24e85dd9a7f95ed26f6edccc40db34c90f34dda35e2a7ded4f5d",
+    "count": 34,
+    "all_files_exact": true
+  },
+  "authoritative_trial7_trial8_inputs659": [
+    {
+      "path": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/trial7-inputs.sha256",
+      "SHA": "d4f8e2ed8ab2f320c819a9f72c34391bd1be30b3fa48c910c0f2c4bad0e11927",
+      "count": 659,
+      "all_files_exact": true
+    },
+    {
+      "path": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/trial8-inputs.sha256",
+      "SHA": "db8dac2acbe937319af4005115dfdfc60b70af6387d63e3dd57c64cf899b8376",
+      "count": 659,
+      "all_files_exact": true
+    }
+  ],
+  "code126": "441cbd699ca87b505564938c81e68cf17fc3de03581af903bfc02636544c2244",
+  "trial5_scope_materialized_records": {
+    "path": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/trial5-focused/terminal.json",
+    "SHA": "50018d6ccd07f218c1f3ba4feb7fc88dd52932ef2569951c7ff1711394f730a3",
+    "records": [
+      {
+        "name": "build",
+        "argv": [
+          "make",
+          "-f",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/history/trial5-inputs/src/Makefile",
+          "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial5-o2",
+          "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+          "-j1",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial5-o2/pointer-check",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial5-o2/program_test",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial5-o2/derivation_io_test"
+        ],
+        "returncode": 0,
+        "log_sha256": "162be91dd7cfcc804afe1db64a921d1d9e49574b15e24ac70f48fec437841e0c"
+      },
+      {
+        "name": "scope-build",
+        "argv": [
+          "make",
+          "-f",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/history/trial5-inputs/controls/build.mk",
+          "OVERLAY=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/history/trial5-inputs",
+          "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial5-scope-o2",
+          "CONTROL=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/history/trial5-inputs/controls/scope_fact_retention.c",
+          "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+          "-j1",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial5-scope-o2/native_owners"
+        ],
+        "returncode": 0,
+        "log_sha256": "a21ef2e438e75650bdd1087a749fd7e53351125b428be1d588c13a9a70b5b569"
+      },
+      {
+        "name": "scope-fact",
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial5-scope-o2/native_owners"
+        ],
+        "returncode": 0,
+        "log_sha256": "167f5085fe4e648be50c6c5fa28e8889e1d23af5fd2c9a0f587746f6b14eb90b",
+        "binary_sha256": "71021f45530ce581d848fc46b1a1795f5cdddcd55dda36092d49df26618038a0"
+      },
+      {
+        "name": "derivation",
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial5-o2/derivation_io_test"
+        ],
+        "returncode": -6,
+        "log_sha256": "128033653c6b1f37e591d229bc3fa9b3865cea3251a93a7b9775c178d0491667",
+        "binary_sha256": "67e7a83f8c52a13f2100d7da0de23ca045882cd51aaf5eaa653308852ffafc35"
+      },
+      {
+        "name": "save-materialized",
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial5-o2/pointer-check",
+          "--legacy-intrinsic-dot",
+          "--steps",
+          "8000000",
+          "--save-materialized",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/trial5-focused/native.a",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/controls/materialized-reproduction/independent.p"
+        ],
+        "returncode": 0,
+        "log_sha256": "71962fccdb0b540c0add003405e7fb9dda9eaacffc57bbbb7e16842d0050da39",
+        "binary_sha256": "067469856b839e8055125f147e14586736b22218c141e05f04243c6e0e80deba"
+      },
+      {
+        "name": "equal-materialized",
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial5-o2/program_test",
+          "--image-limit",
+          "2000000",
+          "--steps",
+          "8000000",
+          "--equal-image",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/trial5-focused/native.a",
+          "main",
+          "output"
+        ],
+        "returncode": 0,
+        "log_sha256": "e33e97961771c3811887dcd97a01a0d7d81b1cdfd21fd4ff2103968363a48332",
+        "binary_sha256": "6fa6701206640426d436212ad6d62686b1c5297aedeb333734de731b34c23fa8"
+      }
+    ],
+    "all_raw_logs_and_listed_binaries_exact": true,
+    "timing_limits": "No start/finish/censor fields in these records; do not invent uncensored timing."
+  },
+  "trial6_affected_records": {
+    "path": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/trial6-focused/terminal.json",
+    "SHA": "57aee4f095295d83b146bd21913e9c47da17fd23de91f5bbd3ecb7166ab14dc8",
+    "records": [
+      {
+        "name": "derive-build",
+        "argv": [
+          "make",
+          "-f",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/history/trial6-inputs/src/Makefile",
+          "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial6-o2",
+          "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+          "-j1",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial6-o2/derivation_io_test"
+        ],
+        "returncode": 0,
+        "log_sha256": "1e00ab3a3d33a035dbd4e1333d0ea687b6065050fb84d815c4f10752b63e42eb"
+      },
+      {
+        "name": "derive-recipe",
+        "argv": [
+          "bash",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/history/trial6-inputs/tests/derivation_io.sh",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial6-o2/derivation_io_test"
+        ],
+        "returncode": 0,
+        "log_sha256": "bf7f552e69d3fef5dda778271563b462315af85eb1af992f12c7332cbd2bfd32"
+      },
+      {
+        "name": "affected-build",
+        "argv": [
+          "make",
+          "-f",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/history/trial6-inputs/controls/qualify.mk",
+          "OVERLAY=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/history/trial6-inputs",
+          "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial6-o2",
+          "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+          "-j1",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial6-o2/core_test",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial6-o2/synthesis_test",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial6-o2/source_io_test",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial6-o2/source_checkpoint",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial6-o2/normalization_checkpoint"
+        ],
+        "returncode": 0,
+        "log_sha256": "5c5d1bbcbe5738c2f97b998e97abba8ce5863682904e4573ba95593c5b2d4cf4"
+      },
+      {
+        "name": "core",
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial6-o2/core_test"
+        ],
+        "returncode": -6,
+        "log_sha256": "12a3afb9bb5fb0d8bca7cfdb6a3bd3d081ee357e4cc4b71c1f77c8578b74ff6d",
+        "binary_sha256": "a46f86af6005786cde4d41664ba956978aa651c00c3d0d1accd3f2e66fa1c408"
+      },
+      {
+        "name": "synthesis",
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial6-o2/synthesis_test"
+        ],
+        "returncode": 0,
+        "log_sha256": "44856864e89d881f782aa0536ff6a3e52768c95960a31b88783e76ca7d39db58",
+        "binary_sha256": "884557efe62568118f273f81b883495ed50c2df4c7a19c02f46ffeba2ed7263a"
+      },
+      {
+        "name": "source",
+        "argv": [
+          "bash",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/history/trial6-inputs/tests/source_io.sh",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial6-o2/source_io_test"
+        ],
+        "returncode": 0,
+        "log_sha256": "ab9f5495573feafadb68b3b741619f0bef57df94c2cb1b36414c92a43cf6af46"
+      },
+      {
+        "name": "source-checkpoint",
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial6-o2/source_checkpoint"
+        ],
+        "returncode": 0,
+        "log_sha256": "71cc65467eeb07467f0bd00674acb05a8875ba29911d63bca40891cab8d4233a",
+        "binary_sha256": "a86f1c1982538d1dced046934a5fda7006f721e6ad2926571f3a98ff0db0eebc"
+      },
+      {
+        "name": "normalization-checkpoint",
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial6-o2/normalization_checkpoint"
+        ],
+        "returncode": 0,
+        "log_sha256": "f845d9580fe6087d76e05adda57b823e595c06f013510bbfdb89572d58885dfb",
+        "binary_sha256": "193151d051e52c7fa9d0d436f2058114b7f99ce6e0b9644f90d5c59750690ceb"
+      }
+    ],
+    "all_raw_logs_and_listed_binaries_exact": true,
+    "timing_limits": "No start/finish/censor fields in these records; do not invent uncensored timing."
+  },
+  "trial7_records": {
+    "path": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/history/trial7-results/reports/terminal.json",
+    "SHA": "caddf32aa70ef5bf1670747ced8915c1f4bbfef00e025f6d1d73e960b1efdf28",
+    "records": [
+      {
+        "name": "core-build",
+        "argv": [
+          "make",
+          "-f",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/history/trial7-inputs/src/Makefile",
+          "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial7-o2",
+          "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+          "-j1",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial7-o2/core_test"
+        ],
+        "returncode": 0,
+        "log_sha256": "cb32acbcb7898aa6de95e29ad3a45b3c21aa798f5c1d23a987962bbfdeec1213"
+      },
+      {
+        "name": "core",
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial7-o2/core_test"
+        ],
+        "returncode": 0,
+        "log_sha256": "995517eda13c6553a7d92b445a27961c2980bcf957ae59f21e629ffffbeba200",
+        "binary_sha256": "b7e4d3ed008a94084b04ff03e8b4397651789ca15b4563059e131c63c0d8b724"
+      },
+      {
+        "name": "full-acceptance",
+        "argv": [
+          "make",
+          "-k",
+          "-f",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/history/trial7-inputs/src/Makefile",
+          "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial7-o2",
+          "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+          "-j1",
+          "check-acceptance"
+        ],
+        "returncode": 2,
+        "log_sha256": "89b444984aca1b67b5d503ffe2ccb4adcb95e1c9469ec64debfeeb55051cfc3a"
+      }
+    ],
+    "all_raw_logs_and_listed_binaries_exact": true,
+    "timing_limits": "No start/finish/censor fields in these records; do not invent uncensored timing."
+  },
+  "trial8_records_at_review": {
+    "path": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/trial8-qualification/terminal.json",
+    "SHA": "3951e5e687158bcfee91202b0269614576aecfc35ac851feab4dab90138b73d1",
+    "records": [
+      {
+        "name": "program-build",
+        "argv": [
+          "make",
+          "-f",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/history/trial8-inputs/src/Makefile",
+          "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial8-o2",
+          "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+          "-j1",
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial8-o2/program_test"
+        ],
+        "returncode": 0,
+        "log_sha256": "1da523c72c5816838039a89fe8d6cd45184cf46c578000e8361a7b7b6cea606b"
+      },
+      {
+        "name": "program",
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial8-o2/program_test"
+        ],
+        "returncode": 0,
+        "log_sha256": "c80fe10e0e2babe2b840a817f61d0794fa73e611569d81076132582e54d90c3f",
+        "binary_sha256": "f0a4dff45b4378d7db375bc882840e2498dc5a144f94cc7ef11435d3fecce7cb"
+      }
+    ],
+    "all_raw_logs_and_listed_binaries_exact": true,
+    "timing_limits": "No start/finish/censor fields in these records; do not invent uncensored timing."
+  },
+  "materialized_repair": "Scope-fact control0 checks raw/copy do not admit, canonical checked type retains same Scope, admitted fact stable, different classifier gives different Scope, copied Scope rejects. Trial5 materialized save/equality0; equal1 chunks1/64 at939398. Old trial4 failure/parent pass remain retained; only this repaired exact code path supersedes old candidate inequality. Affected new SAN pending.",
+  "retained_intermediate_failures": {
+    "trial5_derivation_direct": -6,
+    "trial5_derivation_recipe": {
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/history/trial5-inputs/tests/derivation_io.sh",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/build-trial5-o2/derivation_io_test"
+      ],
+      "returncode": 134,
+      "log_sha256": "4edaee4455f06ca84c71fcc7fa583bbd6239991ac2e5f6d1240d5054d9f85b61",
+      "binary_sha256": "67e7a83f8c52a13f2100d7da0de23ca045882cd51aaf5eaa653308852ffafc35"
+    },
+    "trial6_core": -6,
+    "trial7_full_acceptance": 2
+  },
+  "trial6_migration_scope": "Derivation recipe/Synthesis/fullSource/two checkpoints0; Core6 abort retained and later Core7 zero is separate qualification, not blanket all6 pass.",
+  "trial7_failure": "Program621 old prefix receipt assumption aborts within check aggregate. Make-k independent groups ran, subsequent commands within failed aggregate did not. No full acceptance pass inferred. Authoritative external659 matches; copied old inner trial4 manifest is historical, no source drift established.",
+  "trial8_delta": "--- trial7/tests/program.c\n+++ trial8/tests/program.c\n@@ -614,11 +614,14 @@\n \t\tif (pg_evidence_rule(proof) != PG_CONSTRUCTOR_INTRO ||\n \t\t\tpg_evidence_premise(proof, 1) != pg_function_graph_declaration(work)) continue;\n \t\tconst struct pg_evidence *instance = pg_evidence_premise(proof, 3);\n-\t\tconst struct pg_context_map *prefix = pg_evidence_context_map(pg_evidence_premise(instance, 2));\n-\t\t/* Recursive graph leaves retain their checked field prefix, rather\n-\t\t * than flattening it and rechecking every field after Self. */\n+\t\tconst struct pg_context_map *images = pg_evidence_context_map(instance);\n+\t\t/* The native tuple retains the checked fields themselves. There is\n+\t\t * no extra receipt chain naming an intermediate prefix. */\n \t\tif (pg_evidence_subject(proof)->operand_count > 2) {\n-\t\t\tassert(prefix && prefix->count > 1);\n+\t\t\tassert(images && images->count > 1);\n+\t\t\tassert(images->destination == pg_evidence_context(proof));\n+\t\t\tfor (size_t i = 0; i < images->count; ++i)\n+\t\t\t\tassert(pg_evidence_owned_by((const void *)images->images[i], typing));\n \t\t\t++found;\n \t\t}\n \t}\n",
+  "trial8_assessment": "Only tests/program.c replaces deleted intermediate receipt chain with actual admitted map images count>1, exact destination Context and owned image checks; implementation126 unchanged. This is explicit native-owner contract migration, not qualification of all former progress/prefix semantics. Program build/run0 records present; full acceptance still lacks terminal record at review unless recorded below. No READY follows.",
+  "trial8_full_record_present": false,
+  "retained_frame_controls11": {
+    "path": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_frontier/retained-frame-controls/inputs/manifest.sha256",
+    "SHA": "41d6dd4fdc67fd8caf1b09517c8b0e74d1fa118cf6f7204339d1617f8d7251ed",
+    "count": 11,
+    "all_files_exact": true
+  },
+  "control_origin_request": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/coordination/inbox/job-retained-source-frame-controls-20261004.json",
+  "control_original_route_verified": true,
+  "later_richer_reusable_route": "src/prototype/coordination/inbox/job-retained-reusable-result-frame-controls-20261004.json delivered21:34 with12 retained sources/build driver; this notice proves older Source/frame subset copied only, no later packet consumption inferred.",
+  "remaining": [
+    "new affected SAN",
+    "unskipped full broad acceptance",
+    "fc/native O2-SAN foreign cuts/two inert resaves/fuel",
+    "strict3/public52/modern Sorted DONE",
+    "partial typed-query genuine frontier",
+    "temporary selector/native owner overhead",
+    "inclusive matched peakRSS/wall cost"
+  ],
+  "Root_runtime": false,
+  "READY": false,
+  "accepted_adoption": false,
+  "Goal_or_owner_actions": false,
+  "cost_grant_samples": 0
+}

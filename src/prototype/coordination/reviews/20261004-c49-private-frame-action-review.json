@@ -1,0 +1,77 @@
+{
+  "date_UTC": "2026-10-04T21:52:27.773455+00:00",
+  "classification": "Independent static review of private C49 action, no Root runtime/frozen milestone",
+  "notice_SHA": "85b9d3b722f2f02d96d386811417e926d933a1dc7f406a0d66ebe81313af8546",
+  "notice_text": "lane=C backend epoch=C49 private action branch=parallel/c-backend-20261003 worker-HEAD=cc3cba3495b81628e0a68ec8b45aee4f5447d188\nPrevious Goal turn is progress: exact C48 endpoint-driven860-line ordinary-C module frozen18/manifest1a549683c5f9833e2517fa4c7dcd8bcda9475a89ca6a04b49f7da678dd8d4946/READYed755227. All18 hashes verified unchanged21:44; preserve submitted snapshot, no publication blocker or shared-Git mutation.\nConcrete C49 action: new acc_frame emitter borrows admitted Fold/Identity receipts, actual outer/callback/constructor lambda binders and destination context. All7 prefix roles plus actual3/5 branch binders locate unique complete10/12/12 slots; paths agree with existing boundary. Strict j1 O2 build0 and actual materialized image7c1a4f35 emission0 terminal21:48:21Z, source owners unchanged/source advancement disabled. Combined actual table888dbff17e481d65fb071612fce4f05b24853843623a804db76c6f918e3ec0de. Evidence src/prototype/c_backend/.evidence/epoch49-acc-frame-20261004/initial-build.json, initial-emit.json, initial-inputs.json and frame-table.inc.\nNext concrete milestone: replace runtime numeric frame assignments with these source-derived role positions in faithful executable Acc module, then affected O2/full-source SAN/products/resources/refusals before separate freeze. Target role values/action interpretation/complete checked Scope/general native Acc remain explicitly manual/open; not source typing/erasure/equality or alternate sorter. No demonstrated producer/interface blocker, no List convenience/cost grant/samples. Original Goal/model continue.\n",
+  "retained_four_wrapper_inputs": [
+    {
+      "path": "src/prototype/c_backend/acc_frame/emit_test.c",
+      "sha256": "ebe1f30b49607923102936a965c7a58167a63b3cf659e07aea854895c112d4e3",
+      "copy": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch49-acc-frame-20261004/initial-inputs/emit_test.c"
+    },
+    {
+      "path": "src/prototype/c_backend/acc_frame/emit.h",
+      "sha256": "fef59d9dfc3f2add37cc03eeaa73a9cefbf832c0c70c1eb2a9af46facf8a4870",
+      "copy": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch49-acc-frame-20261004/initial-inputs/emit.h"
+    },
+    {
+      "path": "src/prototype/c_backend/acc_frame/build.mk",
+      "sha256": "b4918c4a516ce9d05f055bd4b763283866a7c77c4c8df2023849d12b4fb91e38",
+      "copy": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch49-acc-frame-20261004/initial-inputs/build.mk"
+    },
+    {
+      "path": "src/prototype/c_backend/acc_frame/emit.c",
+      "sha256": "d9673113cd70d3aadc0d0766e7dc8cda302707c05ba5174a09e612d389db25a3",
+      "copy": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch49-acc-frame-20261004/initial-inputs/emit.c"
+    }
+  ],
+  "owner_build": {
+    "argv": [
+      "make",
+      "-j1",
+      "-f",
+      "src/prototype/c_backend/acc_frame/build.mk",
+      "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/tree",
+      "BUILD=/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch49-acc-frame-20261004/O2",
+      "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch49-acc-frame-20261004/O2/c_acc_frame_emit"
+    ],
+    "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch49-acc-frame-20261004/tmp",
+    "start": "2026-10-04T21:48:03.528773+00:00",
+    "exit": 0,
+    "finish": "2026-10-04T21:48:13.819867+00:00"
+  },
+  "owner_emit": {
+    "argv": [
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch49-acc-frame-20261004/O2/c_acc_frame_emit",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/actual-materialized.a",
+      "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch49-acc-frame-20261004/frame-table.inc",
+      "succ_access"
+    ],
+    "binary_sha256": "9ceade35b3a3e1ddcfafd170168ed7972c4ba9a50dfd5fa81dd4eb7aa309f570",
+    "image_sha256": "7c1a4f35108dea9a91c4ffac90062b0c1d6bb1c145e116ff269942775e704aa4",
+    "start": "2026-10-04T21:48:20.957429+00:00",
+    "exit": 0,
+    "finish": "2026-10-04T21:48:21.001544+00:00"
+  },
+  "metadata_raw_pins": {
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch49-acc-frame-20261004/initial-inputs.json": "59848058d080e7d5263ce2f25c5ca433c2e95da9ac3cf5d66b6410d99406af2e",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch49-acc-frame-20261004/initial-build.json": "f73a2175ba68d1d47bc3625b5447f18d3224c2ce45147e42b80fdb6753500ad4",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch49-acc-frame-20261004/initial-build.out": "5ec995778e124fbf5dae0e69c1dfbc10dc45be01aca6d69ddf61148f04f84fd4",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch49-acc-frame-20261004/initial-build.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch49-acc-frame-20261004/initial-emit.json": "348f3becbd715669e9f08d127038ffdc2d9d9e8b304b697118b0ceaf024e418d",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch49-acc-frame-20261004/initial-emit.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch49-acc-frame-20261004/initial-emit.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch49-acc-frame-20261004/frame-table.inc": "888dbff17e481d65fb071612fce4f05b24853843623a804db76c6f918e3ec0de"
+  },
+  "combined_table": "/* Actual admitted ordered map images and path slots. Target scope tokens\n\t* preserve sharing/distinction; complete source context semantics are not\n\t* rechecked here. Manual bounded action interpretation remains separate. */\nstatic const struct gt_scope gt_scopes[] = {\n\t{0,6},\n\t{1,10},\n\t{2,10},\n\t{3,12},\n\t{4,10},\n\t{5,12},\n};\nstatic const struct gt_boundary gt_boundaries[] = {\n\t{&gt_scopes[0],&gt_scopes[1],6,1,{{0,0},{1,0},{5,0},{7,0},{5,0},{2,1}},{{0,0},{1,0},{5,0},{7,0},{7,0},{7,1}},{8,9}},\n\t{&gt_scopes[2],&gt_scopes[3],10,0,{{0,0},{1,0},{2,0},{3,0},{4,0},{5,0},{6,0},{7,0},{5,0},{2,1}},{{0,0},{1,0},{2,0},{3,0},{4,0},{5,0},{6,0},{7,0},{7,0},{8,1}},{10,11}},\n\t{&gt_scopes[4],&gt_scopes[5],10,0,{{0,0},{1,0},{2,0},{3,0},{4,0},{5,0},{6,0},{7,0},{5,0},{2,1}},{{0,0},{1,0},{2,0},{3,0},{4,0},{5,0},{6,0},{7,0},{7,1},{8,1}},{10,11}},\n};\n/* Actual admitted endpoint index operands, after the explicit known Nat.succ\n\t* Match clause. No source equality, cancellation or type evidence is made. */\nstatic const struct ge_boundary ge_boundaries[] = {\n\t{&gt_boundaries[0],{GE_ACC,1,{{2,0}}},{GE_ACC,1,{{7,0}}}},\n\t{&gt_boundaries[1],{GE_LT,2,{{7,0},{2,0}}},{GE_LT,2,{{7,0},{8,0}}}},\n\t{&gt_boundaries[2],{GE_LT,2,{{7,0},{2,0}}},{GE_LT,2,{{7,0},{8,0}}}},\n};\n/* Actual admitted parameter/Fold/callback/constructor binders locate\n\t* every frame slot. Role representations remain bounded target choices. */\nstatic const struct gf_frame gf_frames[] = {\n\t{&gt_boundaries[0],10,{{0,GF_PARAMETER},{1,GF_PROOF},{2,GF_CURRENT},{3,GF_RAW_DOWN},{4,GF_FOLDED_IH},{5,GF_ARGUMENT},{6,GF_EDGE},{7,GF_CONSTRUCTOR_NAT0},{8,GF_PATH0},{9,GF_PATH1}}},\n\t{&gt_boundaries[1],12,{{0,GF_PARAMETER},{1,GF_PROOF},{2,GF_CURRENT},{3,GF_RAW_DOWN},{4,GF_FOLDED_IH},{5,GF_ARGUMENT},{6,GF_EDGE},{7,GF_CONSTRUCTOR_NAT0},{8,GF_CONSTRUCTOR_NAT1},{9,GF_CONSTRUCTOR_PRIOR},{10,GF_PATH0},{11,GF_PATH1}}},\n\t{&gt_boundaries[2],12,{{0,GF_PARAMETER},{1,GF_PROOF},{2,GF_CURRENT},{3,GF_RAW_DOWN},{4,GF_FOLDED_IH},{5,GF_ARGUMENT},{6,GF_EDGE},{7,GF_CONSTRUCTOR_NAT0},{8,GF_CONSTRUCTOR_NAT1},{9,GF_CONSTRUCTOR_PRIOR},{10,GF_PATH0},{11,GF_PATH1}}},\n};\n",
+  "source_observation": "Included existing admitted endpoint/map readers; checked Fold/Identity references and actual outer/callback/constructor lambda binders identify unique complete10/12/12 frame slots with path agreement. Target role values/action/complete checked Scope semantics remain bounded/manual. Four retained inputs cover new wrapper only, not a new full inherited-dependency freeze.",
+  "next": "Source-derived runtime role placement plus O2/full-source SAN/products/resources/refusals before distinct freeze.",
+  "prior_C48": "Frozen18 independently qualified and delegated task8a81cefa published; Main integration pending here. C49 does not mutate/relabel that freeze.",
+  "READY": false,
+  "Root_runtime": false,
+  "accepted_adoption": false,
+  "Goal_or_owner_actions": false,
+  "cost_grant_samples": 0
+}
