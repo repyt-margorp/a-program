@@ -123,6 +123,23 @@ names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
 
+Fresh C47 [actual transport plan](2026-10-04-C-BACKEND-ACC-TRANSPORT-PLAN.md):
+new readonly descriptor emission reads every ordered image and both path binders
+from existing admitted successor fields. Actual step6/weaken10/lift10 maps and
+six distinct descriptive contexts retained; no producer field needed. Runtime
+keeps full frame/left-right vectors/raw down/IH/nominal paths, with manual action
+interpretation explicit. Ordinary standalone823-line module SHAca73caaa keeps
+all seven actual source bodies and original gs_sort signature. Current accepted
+fc52755b/runtime120c206 O2/full emitter-candidate-client SAN source/object/archive
+50 matching rows each (44zero/4refusal4/duplicate compiler-linker1/prior-output2).
+Actual source/reused Core341/resources/depth/rollback and three branches/12 changed
+context-image-path-capture refusals pass; six C/H/three provenance/descriptor exact.
+Initial map-client missing stdio.h compiler1 remains with37 original rows; only
+required include corrected. Pointer/Core inputs O2; no new cost/general native pass.
+C47 publication/current Root/Main pending; C46 exact9 archive remains immutable,
+only live owning Goal advances for this distinct epoch. Complete checked Scope/
+action/source equivalence, native indexed/callable Acc/full61/Goal stay open.
+
 Fresh C46 [capture query plan](2026-10-04-C-BACKEND-CAPTURE-QUERY-PLAN.md):
 owned scalar removes obsolete support include and uses inverse existing readonly
 pg_term_independent at both free-capture sites. Current fc52755b/runtime120c206
@@ -844,6 +861,7 @@ Current issue status (2026-10-04 local; detailed pins stay in linked epoch plans
 | #61 actual successor Acc/callback capture construction, C44 | New private acc_capture/ [plan](2026-10-04-C-BACKEND-ACC-CAPTURE-CONSTRUCTION-PLAN.md): target167/interface11 reuses C43, emits55-line actual successor/down/Nat/Acc/callback capture product with37-line exact parent prefix. Support42 no longer hand-constructs successor/captures; action layout remains explicit target code. | Current fc52755b/runtime120c206 O2/new emitter-runtime-client SAN29 matching rows each (25zero/four4),341 Core/source/action/capture/resource/inert/repeat/refusal/prior-output pass;185 input pins. Initial emit4 missing static APP with pending argument; bounded target lowering corrected, original source/O2/debug/log/empty result retained. Pointer/Core O2 not SAN. | Root reports exact task3f5baf12ba7b86c122d3c88c554bb3e32263d162/prototype Main8cc0aaeca9f4d4cb387073e00bd0d0bbd76349b7 pushed/remote exact; independent current O2/new emitter SAN29 each/Core341/55-line body qualify. Exact11 history and C32-C43 archives unchanged; worker Git C31/read-only. | Manual bounded action/closure semantics/original Acc representation/zeroDown/storage/Nat/LT/staging; no serialized-map/general correspondence proof. Nat32/depth256/node65536/borrowed lifetime/private token/nonoverlap/finite SAN; arbitrary closures/main-native/general Identity limits persist. No full61/accepted/cost/Goal closure. | Test actual-source composition as ordinary C products and identify concrete main-native boundary, keeping broader correspondence/source authority separate. |
 | #61 actual Acc standalone C products, C45 | New private acc_products/ [plan](2026-10-04-C-BACKEND-ACC-C-PRODUCTS-PLAN.md) packages one708-line actual-source module SHA49d3a079/header246364a1/provenanceb7a663b6 with existing gs_sort signature and no unused manual sorter. Seven source bodies exact; target action/storage/array extent labeled. | Current fc52755b/runtime120c206 serial O2/client-source SAN42 matching rows each, source/object/archive/source output/reused Core341/resource/rollback/depth/single symbol/duplicate-symbol1/prior-output2/unqualified-body4 pass. Native expectations explicitly NOT_RUN after current main backend build2 lacks support.h; original build/evidence-key setup1 kept. | Root reports exact task6214590570681e7eae2b84baa03c588822d2e389/prototype Main3fd490fc89b45d30eff33bbedd2841adf8e425f4 pushed/remote exact; independent current O2/full component-client SAN42 each qualified. Exact13 history/C32-C44 archives preserved; original Git C31/read-only. | Bounded manual action/closure representation and general source equivalence unproved; Nat32/depth256/node65536/borrowed immutable/nonoverlap/limited SAN persist. At C45 freeze, general-native capture discovery relies on removed producer support metadata; C46 corrects this separately. No full61/adoption/cost/Goal completion. | Correct stale target capture discovery in a distinct bounded epoch without producer fields/checker/erasure authority; then run current checked/trusted native controls. |
 | #61 current native capture-discovery compatibility, C46 | Owned scalar removes stale support include and uses inverse public readonly pg_term_independent at two sites; [plan](2026-10-04-C-BACKEND-CAPTURE-QUERY-PLAN.md). No producer support metadata or new checker/walker. Test-only current materialized profile adapter records transformed argv. | Currentfc52755b/runtime120c206 O2/SAN backend/helpers build; static-transitive58/recursive114/nested40 matching rows each,75 C/H exact, source/Core/resources/inert/static41-transitive340 query faults pass. Actual Acc checked/trusted each lowering4 with existing materialized profile. Initial inputs-only trusted pending3/harness1/shell2/receipt-only diff1 preserved. Whole backend/helpers/source/raw SAN; O2 objects/archive with client-only SAN. | Exact9 [frozen handoff](2026-10-04-C-BACKEND-EPOCH46-HANDOFF.md); task/current Root/Main pending, parent62145905. C32-C45 submitted snapshots unchanged; deliberate live scalar/Goal advance only. Original Git read-only. | General native indexed/callable Acc and action/closure/source-equivalence remain open; target query work unmeasured. Existing depth/allocation/overflow/borrowed/nonoverlap and unsupported contracts persist. No full61/accepted/cost/Goal completion. | Review exact current correction and source boundary; continue actual-source C critical path without producer/checker/erasure/ABI expansion or List conveniences. |
+| #61 actual Acc ordered transport maps/captures, C47 | New acc_transport/ [plan](2026-10-04-C-BACKEND-ACC-TRANSPORT-PLAN.md): source-derived step6/weaken10/lift10 descriptors5646ca54 retain every image, six descriptive context tokens and both path binders; target full frame/left-right vectors keep original down/IH separate. Standalone823-line C SHAca73caaa preserves seven actual source bodies/signature. | Currentfc52755b/runtime120c206 O2/full emitter-candidate-client source/object/archive SAN50 matching rows each, source/reused Core341/resources/depth/rollback/inert/three branches/12 target refusals pass; six C/H/three provenance/descriptor exact. Initial missing stdio.h compiler1/37 rows preserved, include-only correction. Pointer/Core inputs O2. | [Exact16 handoff](2026-10-04-C-BACKEND-EPOCH47-HANDOFF.md) ready; task/current Root/Main pending after C46 exact9 parent publication. Immutable C32-C46 archives retained; only live owning Goal advances. Shared Git unchanged/read-only. | Descriptive tokens are not checked Scope certificates; complete context-declaration/action/source equivalence and general native indexed/callable Acc remain open. Bigger action/stack records/cost unmeasured; Nat32/depth256/node65536/borrowed/nonoverlap/overflow/finite SAN persist. No accepted/full61/Goal completion. | Derive actual endpoint-type LT/Acc projections from existing typed inputs while retaining manual action extent; no List conveniences/producer/checker/schema/erasure/ABI expansion. |
 | #61 remaining public contracts (historical #49) | General/boxed callbacks, effects, higher Identity, recursive captures and shared nominal exchange remain explicit limits; C16 advances only fixed borrowed unary/binary scalar inputs. | Local/joint gates verify supported cases and refusals, not general completion. | Historical tasks/prototype Main published; no publication of general missing contracts. | Need bounded justified representation/demand contracts. | Preserve refusals; route shared needs through Merge. |
 
 Evidence: historical [C5](2026-10-03-C-BACKEND-EPOCH5-HANDOFF.md),
@@ -996,6 +1014,17 @@ pinned/current producer images and emitted C/headers match byte-for-byte.
 Evidence and exact publication files are in the [epoch handoff](2026-10-03-C-BACKEND-EPOCH1-HANDOFF.md).
 
 ### Assessment
+
+C47 agent result: actual executable transport/capture code now retains all ordered
+source map image values and both nominal path slots, rather than cardinality alone.
+Descriptive context tokens preserve raw sharing/distinction; they are not checked
+Scope certificates or complete declaration semantics. No producer bug or field
+need is established. Retention/validation enlarges target action/stack records,
+with no measured cost claim. Remaining action interpretation is manual. Next
+inspect actual endpoint types to derive affected LT/Acc index projections through
+existing typed inputs; do not invent cancellation/erasure from equal Nat32 values,
+replace the algorithm or expand a private checker. C46 archive/raw evidence remain
+exact while the sole live owning table records this new material result.
 
 C46 agent result: current native compilation and free capture discovery are
 restored by a public readonly syntax query, not reconstructed producer metadata.
@@ -1843,6 +1872,10 @@ this target work while Main continues SE1, superseding the earlier AP6 hold.
   current backend/helpers O2/SAN and affected58/114/40 gates/query faults pass.
   Actual Acc checked/trusted materialized probes reach lowering4; prior inputs
   trusted pending3 and setup failures retained. Exact9 handoff ready.
+- [x] C47: retain actual ordered source map vectors/frame/captures/nominal paths;
+  current O2/full emitter-candidate-client product SAN50 each pass, source/Core/
+  resources/inertness and12 target refusals qualified. Initial compiler1 retained;
+  exact16 handoff/standalone example ready, keeping C46 submitted snapshot exact.
 - [ ] Review broader actual-source action/capture correspondence and general
   indexed/callable native Acc; accepted adoption/actual costs/full Goal separate.
 - [ ] Automatically derive actual scoped down actions from admitted fields and
