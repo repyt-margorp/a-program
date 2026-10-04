@@ -1,0 +1,932 @@
+{
+  "O2": [
+    {
+      "label": "admit",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+        "--legacy-intrinsic-dot",
+        "--steps",
+        "5000000",
+        "--imports",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/tree/tests/fixtures/sorted-proof-provider.p",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/measure.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/tree/src/prototype/c_backend/acc_measure/fixture.p"
+      ]
+    },
+    {
+      "label": "emit",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/build-O2/c_acc_measure_emit",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/measure.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/main/measure.inc",
+        "measure_fn",
+        "outer_fn"
+      ]
+    },
+    {
+      "label": "repeat",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/build-O2/c_acc_measure_emit",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/measure.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/repeat.inc",
+        "measure_fn",
+        "outer_fn"
+      ]
+    },
+    {
+      "label": "deterministic",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "cmp",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/main/measure.inc",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/repeat.inc"
+      ]
+    },
+    {
+      "label": "clause",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/c_acc_clause_emit",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/measure.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/main/clause.inc",
+        "sort_acc",
+        "normal"
+      ]
+    },
+    {
+      "label": "partition",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/c_acc_partition_emit",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/measure.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/main/partition.inc",
+        "partition_nat"
+      ]
+    },
+    {
+      "label": "append",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/c_acc_append_emit",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/measure.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/main/append.inc",
+        "append_nat"
+      ]
+    },
+    {
+      "label": "accessibility",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/c_nat_accessibility_emit",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/measure.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/main/accessibility.inc",
+        "nat_access"
+      ]
+    },
+    {
+      "label": "comparison",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/c_acc_comparison_emit",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/measure.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/main/comparison.inc",
+        "compare_fn"
+      ]
+    },
+    {
+      "label": "different_measure",
+      "expected": 4,
+      "exit": 4,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/build-O2/c_acc_measure_emit",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/measure.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/different.inc",
+        "wrong_measure",
+        "outer_fn"
+      ]
+    },
+    {
+      "label": "no_partial_measure",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "test",
+        "!",
+        "-s",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/different.inc"
+      ]
+    },
+    {
+      "label": "same_measure",
+      "expected": 4,
+      "exit": 4,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/build-O2/c_acc_measure_emit",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/measure.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/same_measure.inc",
+        "wrong_measure",
+        "outer_fn",
+        "same_reference"
+      ]
+    },
+    {
+      "label": "no_partial_same_measure",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "test",
+        "!",
+        "-s",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/same_measure.inc"
+      ]
+    },
+    {
+      "label": "different_outer",
+      "expected": 4,
+      "exit": 4,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/build-O2/c_acc_measure_emit",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/measure.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/outer.inc",
+        "measure_fn",
+        "wrong_outer"
+      ]
+    },
+    {
+      "label": "no_partial_outer",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "test",
+        "!",
+        "-s",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/outer.inc"
+      ]
+    },
+    {
+      "label": "same_outer",
+      "expected": 4,
+      "exit": 4,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/build-O2/c_acc_measure_emit",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/measure.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/same_outer.inc",
+        "measure_fn",
+        "wrong_outer",
+        "same_reference"
+      ]
+    },
+    {
+      "label": "no_partial_same_outer",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "test",
+        "!",
+        "-s",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/same_outer.inc"
+      ]
+    },
+    {
+      "label": "wrong_family",
+      "expected": 4,
+      "exit": 4,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/build-O2/c_acc_measure_emit",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/measure.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/family.inc",
+        "measure_fn",
+        "outer_fn",
+        "wrong_family"
+      ]
+    },
+    {
+      "label": "no_partial_family",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "test",
+        "!",
+        "-s",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/family.inc"
+      ]
+    },
+    {
+      "label": "prior_shape",
+      "expected": 4,
+      "exit": 4,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/build-O2/c_acc_measure_emit",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/measure.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/prior.inc",
+        "wrong_measure",
+        "wrong_outer",
+        "prior"
+      ]
+    },
+    {
+      "label": "source",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+        "--load",
+        "--steps",
+        "5000000",
+        "--run",
+        "reference",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/measure.a"
+      ]
+    },
+    {
+      "label": "measure_source",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+        "--load",
+        "--steps",
+        "5000000",
+        "--run",
+        "measure_reference",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/measure.a"
+      ]
+    },
+    {
+      "label": "main_build",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O2",
+        "-I/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/main",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/tree/src/prototype/c_backend/acc_measure/support.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/tree/src/prototype/c_backend/acc_measure/../acc_clause/client.c",
+        "-o",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/main/client"
+      ]
+    },
+    {
+      "label": "main_client",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/main/client"
+      ]
+    },
+    {
+      "label": "source_match",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "cmp",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/source.out",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/main_client.out"
+      ]
+    },
+    {
+      "label": "measure_build",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O2",
+        "-I/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/main",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/tree/src/prototype/c_backend/acc_measure/measure_client.c",
+        "-o",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/main/measure_client"
+      ]
+    },
+    {
+      "label": "measure_client",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/main/measure_client"
+      ]
+    },
+    {
+      "label": "measure_match",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "cmp",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/measure_source.out",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/measure_client.out"
+      ]
+    },
+    {
+      "label": "resource_compile",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O2",
+        "-Dqs_mockup_sort=gs_sort",
+        "-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/tree/src/prototype/c_backend/acc_measure/../acc_quicksort_mockup/client.c",
+        "-o",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/resource.o"
+      ]
+    },
+    {
+      "label": "resource_link",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O2",
+        "-I/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/main",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/tree/src/prototype/c_backend/acc_measure/support.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/resource.o",
+        "-Wl,--wrap=malloc",
+        "-o",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/resource"
+      ]
+    },
+    {
+      "label": "resource",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/resource"
+      ]
+    },
+    {
+      "label": "Core_sort_observations",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/c_acc_mockup_oracle",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/measure.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/oracle.c"
+      ]
+    },
+    {
+      "label": "oracle_compile",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O2",
+        "-Dqs_mockup_sort=gs_sort",
+        "-I/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/tree/src/prototype/c_backend/acc_measure/../acc_quicksort_mockup",
+        "-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/oracle.c",
+        "-o",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/oracle.o"
+      ]
+    },
+    {
+      "label": "oracle_link",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O2",
+        "-I/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/main",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/tree/src/prototype/c_backend/acc_measure/support.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/oracle.o",
+        "-o",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/oracle"
+      ]
+    },
+    {
+      "label": "oracle_client",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/O2-gate/oracle"
+      ]
+    }
+  ],
+  "SAN": [
+    {
+      "label": "admit",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+        "--legacy-intrinsic-dot",
+        "--steps",
+        "5000000",
+        "--imports",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/tree/tests/fixtures/sorted-proof-provider.p",
+        "--save",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/measure.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/tree/src/prototype/c_backend/acc_measure/fixture.p"
+      ]
+    },
+    {
+      "label": "emit",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/build-SAN/c_acc_measure_emit",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/measure.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/main/measure.inc",
+        "measure_fn",
+        "outer_fn"
+      ]
+    },
+    {
+      "label": "repeat",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/build-SAN/c_acc_measure_emit",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/measure.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/repeat.inc",
+        "measure_fn",
+        "outer_fn"
+      ]
+    },
+    {
+      "label": "deterministic",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "cmp",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/main/measure.inc",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/repeat.inc"
+      ]
+    },
+    {
+      "label": "clause",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-SAN/c_acc_clause_emit",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/measure.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/main/clause.inc",
+        "sort_acc",
+        "normal"
+      ]
+    },
+    {
+      "label": "partition",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-SAN/c_acc_partition_emit",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/measure.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/main/partition.inc",
+        "partition_nat"
+      ]
+    },
+    {
+      "label": "append",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-SAN/c_acc_append_emit",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/measure.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/main/append.inc",
+        "append_nat"
+      ]
+    },
+    {
+      "label": "accessibility",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-SAN/c_nat_accessibility_emit",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/measure.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/main/accessibility.inc",
+        "nat_access"
+      ]
+    },
+    {
+      "label": "comparison",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-SAN/c_acc_comparison_emit",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/measure.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/main/comparison.inc",
+        "compare_fn"
+      ]
+    },
+    {
+      "label": "different_measure",
+      "expected": 4,
+      "exit": 4,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/build-SAN/c_acc_measure_emit",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/measure.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/different.inc",
+        "wrong_measure",
+        "outer_fn"
+      ]
+    },
+    {
+      "label": "no_partial_measure",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "test",
+        "!",
+        "-s",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/different.inc"
+      ]
+    },
+    {
+      "label": "same_measure",
+      "expected": 4,
+      "exit": 4,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/build-SAN/c_acc_measure_emit",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/measure.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/same_measure.inc",
+        "wrong_measure",
+        "outer_fn",
+        "same_reference"
+      ]
+    },
+    {
+      "label": "no_partial_same_measure",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "test",
+        "!",
+        "-s",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/same_measure.inc"
+      ]
+    },
+    {
+      "label": "different_outer",
+      "expected": 4,
+      "exit": 4,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/build-SAN/c_acc_measure_emit",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/measure.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/outer.inc",
+        "measure_fn",
+        "wrong_outer"
+      ]
+    },
+    {
+      "label": "no_partial_outer",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "test",
+        "!",
+        "-s",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/outer.inc"
+      ]
+    },
+    {
+      "label": "same_outer",
+      "expected": 4,
+      "exit": 4,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/build-SAN/c_acc_measure_emit",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/measure.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/same_outer.inc",
+        "measure_fn",
+        "wrong_outer",
+        "same_reference"
+      ]
+    },
+    {
+      "label": "no_partial_same_outer",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "test",
+        "!",
+        "-s",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/same_outer.inc"
+      ]
+    },
+    {
+      "label": "wrong_family",
+      "expected": 4,
+      "exit": 4,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/build-SAN/c_acc_measure_emit",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/measure.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/family.inc",
+        "measure_fn",
+        "outer_fn",
+        "wrong_family"
+      ]
+    },
+    {
+      "label": "no_partial_family",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "test",
+        "!",
+        "-s",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/family.inc"
+      ]
+    },
+    {
+      "label": "prior_shape",
+      "expected": 4,
+      "exit": 4,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/build-SAN/c_acc_measure_emit",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/measure.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/prior.inc",
+        "wrong_measure",
+        "wrong_outer",
+        "prior"
+      ]
+    },
+    {
+      "label": "source",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+        "--load",
+        "--steps",
+        "5000000",
+        "--run",
+        "reference",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/measure.a"
+      ]
+    },
+    {
+      "label": "measure_source",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+        "--load",
+        "--steps",
+        "5000000",
+        "--run",
+        "measure_reference",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/measure.a"
+      ]
+    },
+    {
+      "label": "main_build",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O1",
+        "-g",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "-fno-pie",
+        "-no-pie",
+        "-I/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/main",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/tree/src/prototype/c_backend/acc_measure/support.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/tree/src/prototype/c_backend/acc_measure/../acc_clause/client.c",
+        "-o",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/main/client"
+      ]
+    },
+    {
+      "label": "main_client",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/main/client"
+      ]
+    },
+    {
+      "label": "source_match",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "cmp",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/source.out",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/main_client.out"
+      ]
+    },
+    {
+      "label": "measure_build",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O1",
+        "-g",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "-fno-pie",
+        "-no-pie",
+        "-I/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/main",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/tree/src/prototype/c_backend/acc_measure/measure_client.c",
+        "-o",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/main/measure_client"
+      ]
+    },
+    {
+      "label": "measure_client",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/main/measure_client"
+      ]
+    },
+    {
+      "label": "measure_match",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "cmp",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/measure_source.out",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/measure_client.out"
+      ]
+    },
+    {
+      "label": "resource_compile",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O1",
+        "-g",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "-fno-pie",
+        "-no-pie",
+        "-Dqs_mockup_sort=gs_sort",
+        "-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/tree/src/prototype/c_backend/acc_measure/../acc_quicksort_mockup/client.c",
+        "-o",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/resource.o"
+      ]
+    },
+    {
+      "label": "resource_link",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O1",
+        "-g",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "-fno-pie",
+        "-no-pie",
+        "-I/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/main",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/tree/src/prototype/c_backend/acc_measure/support.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/resource.o",
+        "-Wl,--wrap=malloc",
+        "-o",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/resource"
+      ]
+    },
+    {
+      "label": "resource",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/resource"
+      ]
+    },
+    {
+      "label": "Core_sort_observations",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/c_acc_mockup_oracle",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/measure.a",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/oracle.c"
+      ]
+    },
+    {
+      "label": "oracle_compile",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O1",
+        "-g",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "-fno-pie",
+        "-no-pie",
+        "-Dqs_mockup_sort=gs_sort",
+        "-I/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/tree/src/prototype/c_backend/acc_measure/../acc_quicksort_mockup",
+        "-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/oracle.c",
+        "-o",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/oracle.o"
+      ]
+    },
+    {
+      "label": "oracle_link",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O1",
+        "-g",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "-fno-pie",
+        "-no-pie",
+        "-I/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/main",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/tree/src/prototype/c_backend/acc_measure/support.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/oracle.o",
+        "-o",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/oracle"
+      ]
+    },
+    {
+      "label": "oracle_client",
+      "expected": 0,
+      "exit": 0,
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c41-current-accepted-fc/SAN-gate/oracle"
+      ]
+    }
+  ]
+}

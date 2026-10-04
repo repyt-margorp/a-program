@@ -1,0 +1,250 @@
+{
+  "date_UTC": "2026-10-04T16:32:25.503669+00:00",
+  "notice_SHA": "1530155f9fbd0156b01d9e68f758db7302a48f8325b586cb184954e89319b4c4",
+  "freeze": {
+    "Main_integration": "pending",
+    "accepted_promotion": false,
+    "archive_sha256": "d0b6dde2693b65fab2d96293c7bc1d3ab682b8c14355bc1a431284d62bfcd3e1",
+    "branch": "parallel/c-backend-20261003",
+    "chosen_commit_message": "prototype: emit actual Acc measure and outer calls",
+    "classification": "actual admitted measure Fold/indexed constructors and outer measure/Match/accessibility/Acc call expressions; explicit manual transport/runtime/array staging",
+    "current_Root_producer_qualification": "pending",
+    "epoch": "C41",
+    "frozen_at": "2026-10-04T16:11:33.365124+00:00",
+    "full_native_generalized_Acc_QuickSort_complete": false,
+    "goal_status": "active",
+    "handoff_sha256": "4ee939bbfc53a79b319f28d90944242836eb6c860b37db15e4d3755c9b2a7663",
+    "manifest_sha256": "b7b1d2dd885a11fc54111f16ed4e034363f7b2e77f0034a006609441aef125a9",
+    "parent_dependency": "ordered sealed C32-C40; C33 manual transport/runtime and C36-C40 products/header immutable",
+    "publication_count": 12,
+    "published_parent_observed": "cc3cba3495b81628e0a68ec8b45aee4f5447d188",
+    "qualified_inputs_count": 169,
+    "qualified_inputs_sha256": "067101647a9e8dad6c87f8a16985692311dc8180ac9e9d5e16786ce4d111ad73",
+    "raw_count": 410,
+    "raw_manifest_sha256": "43606d2bee513db39ecdce5fd614d6e9b7db53dc789fd09d18a0ea73a6cc40cb",
+    "ready_for_delegated_task_publication": true,
+    "runtime_count": 128,
+    "style_sha256": "257c92d5d432643c3ca3b28152cc43430b8e91f9e6eaedcb0428cbe03e53a081",
+    "verification_sha256": "048aa74f820639f80345d623ca2c8ecf30bd2ce351750510c9313d7cfea5f6ce"
+  },
+  "frozen12_archive_exact": {
+    "doc/2026-10-03-C-BACKEND-GOAL.md": "ce2508b188bf4c9af2944669fc872d201c9c371667a9a340628335409bc45bf5",
+    "doc/2026-10-04-C-BACKEND-ACC-MEASURE-PLAN.md": "bb86133d15bf30b0dc59be1e920aa92f125002b87caea07b95e80766edc1fa79",
+    "doc/2026-10-04-C-BACKEND-EPOCH41-HANDOFF.md": "4ee939bbfc53a79b319f28d90944242836eb6c860b37db15e4d3755c9b2a7663",
+    "src/prototype/c_backend/acc_measure/README.md": "8ba275932389b11ebdfdbbbc36d22bd48f79e4d5fc2a3c3e04b666da50941831",
+    "src/prototype/c_backend/acc_measure/build.mk": "a0c71e5ed598827296abd5dd3c879c78cc1b35f280b5e4011fd9b920e3d4ef89",
+    "src/prototype/c_backend/acc_measure/check.sh": "ed64deb7e4952e0cfb1c94c0b719f08401ab687345aee10c07aa9b43b333af0b",
+    "src/prototype/c_backend/acc_measure/emit.c": "c067a2bf62ebea333946e2d6a11ac7601a21c51f2768a44078d1f61097544f72",
+    "src/prototype/c_backend/acc_measure/emit.h": "0a0d733ace29a97cb37d96e34d22a28f815290827f99d2c80f4579881b1170b7",
+    "src/prototype/c_backend/acc_measure/emit_test.c": "c490c28daa4468a0c0f7aa629c7bf903451a68725cb3a0ffd5ea42857fc3566f",
+    "src/prototype/c_backend/acc_measure/fixture.p": "8597b939a6b003041e5a728498c1253f94cdad8c154c43aa661934fce19db7e3",
+    "src/prototype/c_backend/acc_measure/measure_client.c": "f50e46d84bc17ccd8b669d1b72c07780ccb02014fc4f12a482701ca405f2014d",
+    "src/prototype/c_backend/acc_measure/support.c": "667d405aead6e5ba2a3d58ff6b85e6e8d97390d552506cc69458bbf434a13522"
+  },
+  "raw410_all_exact": true,
+  "retained169_copies_exact": true,
+  "live_input_differences": [],
+  "runtime128_independently_recomputed": "9ba2b33cbe8bc68eac338073506bcb205f36d20cb0a34f9f88607d975ef07740",
+  "products_all_exact": 42,
+  "initial5_source_copies_exact": true,
+  "old32_to40_archives_SHA_exact": {
+    "32": "db6a663c11197d92a28d13c8344da02aaccdd59c32864bfba106391a7f7e05ae",
+    "33": "a8bd408cc099885ab26780a901017fb3a9087294ce5e8b768b84ea6c2b7a6499",
+    "34": "26138ad62d6e819a722b3264c6d050d6d906a208190985158a68c86055d6ad77",
+    "35": "6bfebc166faca426c59b63d6df98a27cce0e51dad59fcc93aabd48802f74ba6c",
+    "36": "935cbfa3c56f20af251770180172e795eb14e866d5569318eae515e0e047acbd",
+    "37": "a82d8be6c7d1615ded0c217a6facf291c828c2ecea5325e7ee598de231664416",
+    "38": "bb0c2ccc7c53cf1656e20ffa3b265db45bf97e0ce01c938c9af6fd22122efc4f",
+    "39": "d3c5b078c059146f496725d6d28270fa161c2641fda5f19062c763823e54f4c8",
+    "40": "dac488b659728bc636e95dec277637417000bb7a70f4728ac804f15623ef2553"
+  },
+  "terminal_worker_phases": {
+    "O2": {
+      "raw_argv_status_JSON_rows_exact": 35,
+      "exits": {
+        "0": 29,
+        "4": 6
+      }
+    },
+    "SAN": {
+      "raw_argv_status_JSON_rows_exact": 35,
+      "exits": {
+        "0": 29,
+        "4": 6
+      }
+    }
+  },
+  "generated_measure_outer_lines": 53,
+  "generated_measure_outer_SHA": "60d51b65f7cedf55ea25d5e44251695ffb7adc98b35445bf63e1547237755803",
+  "initial_failures": [
+    "first emitter4: outer quoted comparator carrier was compared before static projection; source measure clauses already succeeded, debug retained; target carrier projection corrected"
+  ],
+  "historical_limits": [
+    "initial probes precede two generic alias additions; old image/log and later admitted image remain separate",
+    "first O2 helper path replaced during rebuild; initial source copies/debug binary retained, no original O2 binary equality claim"
+  ],
+  "manual_extent": [
+    "closed Nat32/storage/Nat/LT primitives",
+    "accessibleSucc/raw-down/zero-down checked Identity transports",
+    "C array construction/transactional finite copy-out/arena lifetime"
+  ],
+  "limits": [
+    "Nat32",
+    "depth256",
+    "node65536",
+    "outer target call adds one entered depth frame; parent255 empty source entry refuses4",
+    "source-valid immutable borrowed code/context/data lifetime",
+    "private statuses1-6",
+    "overflow guard inspected not exercised",
+    "finite SAN executed paths only",
+    "destination stream/publication cleanup caller-owned",
+    "main native Acc/dynamic/effect/Identity/general indexed-callable refusals unchanged"
+  ],
+  "source_binding_limit": "complete selected Core/source reference identity, actual Fold/motive/field/constructor parameters and known callee carrier alpha identity; unrelated/same-reference bodies refuse4; no generalized executable/Fold selection",
+  "Root_current_qualification": {
+    "accepted_commit": "fc52755b345a555e49a79df40549e9cb23d54088",
+    "Main_parent": "c3de4aa10205305b0efeece94f0cbd460c61561f",
+    "runtime120_manifest_SHA": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+    "C41_manifest_SHA": "b7b1d2dd885a11fc54111f16ed4e034363f7b2e77f0034a006609441aef125a9",
+    "source_provider_SHA": "a674b893cd5d0dc1899e79238352c6167a536876393ae7f53b2a9de602b647e6",
+    "compiler_SHA": "a23ecab8ff08f09ad8c80602c2c5df7f49e09c25905cb8975902e101bf72635f",
+    "scope": "Fresh current accepted producer, focused frozen C41 gate; reuse freshly qualified C40 dependency binaries. Prototype composition only; no accepted implementation change, broad replay, generalized Acc completion or cost measurement.",
+    "started": "2026-10-04T16:25:54.268733+00:00",
+    "complete": true,
+    "phases": {
+      "O2": {
+        "expected_rows": 35,
+        "exits": {
+          "0": 29,
+          "4": 6
+        },
+        "source_sort": "0,1,2,2,3,|",
+        "source_measure": "5"
+      },
+      "SAN": {
+        "expected_rows": 35,
+        "exits": {
+          "0": 29,
+          "4": 6
+        },
+        "source_sort": "0,1,2,2,3,|",
+        "source_measure": "5"
+      }
+    },
+    "generated_products": {
+      "measure.inc": "60d51b65f7cedf55ea25d5e44251695ffb7adc98b35445bf63e1547237755803",
+      "clause.inc": "cd1a7d70441222995b12ca2354ae6aeda80eaa2f99cd296cfeb5ef451405804c",
+      "partition.inc": "b8238b022d1613d4cd8dffd4692f68d0e6668bf8206f3324588765bc25c2de31",
+      "append.inc": "ffd37ec2ed3ff967b588757b430b3a83042b4bfd737414141a0d6dffffefa6ac",
+      "accessibility.inc": "ccdd139cc3e9414a398fb12bb7073a652d91d47f9cb37f84c3319d86310f55b9",
+      "comparison.inc": "6b63a59d024eec5a46f7c436ed300ecab72283e7a5e10fc565e23ffef2ba69c4"
+    },
+    "Core_sorting_observations": 341,
+    "generated_measure_outer_lines": 53,
+    "pointer_and_Core_oracles_SAN": false,
+    "all_original_inputs_unchanged": true,
+    "all_reused_binaries_unchanged": true,
+    "finished": "2026-10-04T16:26:38.565501+00:00",
+    "all_children_terminal_reaped": true,
+    "commands": 4
+  },
+  "Root_runtime_replay": true,
+  "Root_current_result_SHA": "0e6725c14f38a073f1de8af0074a95beb6e9a8f0d2110e4ff5f1e4cfff69940d",
+  "Root_raw_evidence": "src/prototype/c_backend/verification/epoch41-current-accepted-20261004",
+  "Root_raw_evidence_manifest_SHA": "8b3212c3f32896579f50592b3030415b0716d7d139272b4d19d1cc15440f22e1",
+  "Root_raw_files": 192,
+  "task_publication": {
+    "date_UTC": "2026-10-04T16:29:06.446035+00:00",
+    "epoch": "C41",
+    "branch": "parallel/c-backend-20261003",
+    "parent": "f26f7c587d22767331fd39b296cef785f0254f05",
+    "commit": "35612104bb8193fbec96b2a0169a4fc0f6bcf8a1",
+    "remote_exact": "35612104bb8193fbec96b2a0169a4fc0f6bcf8a1",
+    "exact_snapshot_files": 12,
+    "all_committed_snapshot_blobs_exact": true,
+    "original_C_HEAD_ref_index_unchanged": true,
+    "original_C_guard": {
+      "HEAD": "cc3cba3495b81628e0a68ec8b45aee4f5447d188",
+      "branch_ref": "cc3cba3495b81628e0a68ec8b45aee4f5447d188",
+      "index_SHA": "848aae6bed8ddf19f70473244f94f8ca144b4bbe3ca7a427b2f44e2a5e842325"
+    },
+    "frozen_files": {
+      "doc/2026-10-03-C-BACKEND-GOAL.md": "ce2508b188bf4c9af2944669fc872d201c9c371667a9a340628335409bc45bf5",
+      "doc/2026-10-04-C-BACKEND-ACC-MEASURE-PLAN.md": "bb86133d15bf30b0dc59be1e920aa92f125002b87caea07b95e80766edc1fa79",
+      "doc/2026-10-04-C-BACKEND-EPOCH41-HANDOFF.md": "4ee939bbfc53a79b319f28d90944242836eb6c860b37db15e4d3755c9b2a7663",
+      "src/prototype/c_backend/acc_measure/README.md": "8ba275932389b11ebdfdbbbc36d22bd48f79e4d5fc2a3c3e04b666da50941831",
+      "src/prototype/c_backend/acc_measure/build.mk": "a0c71e5ed598827296abd5dd3c879c78cc1b35f280b5e4011fd9b920e3d4ef89",
+      "src/prototype/c_backend/acc_measure/check.sh": "ed64deb7e4952e0cfb1c94c0b719f08401ab687345aee10c07aa9b43b333af0b",
+      "src/prototype/c_backend/acc_measure/emit.c": "c067a2bf62ebea333946e2d6a11ac7601a21c51f2768a44078d1f61097544f72",
+      "src/prototype/c_backend/acc_measure/emit.h": "0a0d733ace29a97cb37d96e34d22a28f815290827f99d2c80f4579881b1170b7",
+      "src/prototype/c_backend/acc_measure/emit_test.c": "c490c28daa4468a0c0f7aa629c7bf903451a68725cb3a0ffd5ea42857fc3566f",
+      "src/prototype/c_backend/acc_measure/fixture.p": "8597b939a6b003041e5a728498c1253f94cdad8c154c43aa661934fce19db7e3",
+      "src/prototype/c_backend/acc_measure/measure_client.c": "f50e46d84bc17ccd8b669d1b72c07780ccb02014fc4f12a482701ca405f2014d",
+      "src/prototype/c_backend/acc_measure/support.c": "667d405aead6e5ba2a3d58ff6b85e6e8d97390d552506cc69458bbf434a13522"
+    },
+    "archive_SHA": "d0b6dde2693b65fab2d96293c7bc1d3ab682b8c14355bc1a431284d62bfcd3e1",
+    "manifest_SHA": "b7b1d2dd885a11fc54111f16ed4e034363f7b2e77f0034a006609441aef125a9",
+    "qualification": {
+      "accepted_commit": "fc52755b345a555e49a79df40549e9cb23d54088",
+      "Main_parent": "c3de4aa10205305b0efeece94f0cbd460c61561f",
+      "runtime120_manifest_SHA": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+      "C41_manifest_SHA": "b7b1d2dd885a11fc54111f16ed4e034363f7b2e77f0034a006609441aef125a9",
+      "source_provider_SHA": "a674b893cd5d0dc1899e79238352c6167a536876393ae7f53b2a9de602b647e6",
+      "compiler_SHA": "a23ecab8ff08f09ad8c80602c2c5df7f49e09c25905cb8975902e101bf72635f",
+      "scope": "Fresh current accepted producer, focused frozen C41 gate; reuse freshly qualified C40 dependency binaries. Prototype composition only; no accepted implementation change, broad replay, generalized Acc completion or cost measurement.",
+      "started": "2026-10-04T16:25:54.268733+00:00",
+      "complete": true,
+      "phases": {
+        "O2": {
+          "expected_rows": 35,
+          "exits": {
+            "0": 29,
+            "4": 6
+          },
+          "source_sort": "0,1,2,2,3,|",
+          "source_measure": "5"
+        },
+        "SAN": {
+          "expected_rows": 35,
+          "exits": {
+            "0": 29,
+            "4": 6
+          },
+          "source_sort": "0,1,2,2,3,|",
+          "source_measure": "5"
+        }
+      },
+      "generated_products": {
+        "measure.inc": "60d51b65f7cedf55ea25d5e44251695ffb7adc98b35445bf63e1547237755803",
+        "clause.inc": "cd1a7d70441222995b12ca2354ae6aeda80eaa2f99cd296cfeb5ef451405804c",
+        "partition.inc": "b8238b022d1613d4cd8dffd4692f68d0e6668bf8206f3324588765bc25c2de31",
+        "append.inc": "ffd37ec2ed3ff967b588757b430b3a83042b4bfd737414141a0d6dffffefa6ac",
+        "accessibility.inc": "ccdd139cc3e9414a398fb12bb7073a652d91d47f9cb37f84c3319d86310f55b9",
+        "comparison.inc": "6b63a59d024eec5a46f7c436ed300ecab72283e7a5e10fc565e23ffef2ba69c4"
+      },
+      "Core_sorting_observations": 341,
+      "generated_measure_outer_lines": 53,
+      "pointer_and_Core_oracles_SAN": false,
+      "all_original_inputs_unchanged": true,
+      "all_reused_binaries_unchanged": true,
+      "finished": "2026-10-04T16:26:38.565501+00:00",
+      "all_children_terminal_reaped": true,
+      "commands": 4
+    },
+    "accepted_code_changes": false,
+    "Goal_or_owner_actions": false,
+    "cost_samples": 0
+  },
+  "Main_parent": "c3de4aa10205305b0efeece94f0cbd460c61561f",
+  "Main_prototype_integration": "Exact frozen12 prototype/code/test/docs included in the commit containing this review; accepted runtime unchanged. Final remote/preservation proof delivered separately.",
+  "Root_current_generated_products_equal_frozen": true,
+  "Root_static_source_review": "Frozen emitter328/header17 binds selected Core/source identities, actual constructor classifiers and type/index parameters with no expected-type fallback. Actual ListFold/MeasuredMatch creates retained SizedList/Measured/Nat fields using tail IH. Static pure carrier/beta projection resolves known admitted measure/accessibility/Acc callable identities without advancing source evaluation. Outer emitted go_outer calls measure, Match, Nat accessibility and Acc Fold/apply with actual comparator and one extra target depth frame. Manual closed Nat32/storage/LT and checked successor/raw-down/zero-down Identity transports and C array staging/finite copy-out remain explicit.",
+  "next_gap": "Original C42 owner now attacks actual checked down action/refinement/capture lowering; no new owner, upstream schema/producer field, erasure or generic equality authority.",
+  "publication_assessment": "Agent decision within existing delegated prototype scope: publish exact C41 after fresh current accepted qualification, preserving C32-C40 frozen dependencies and historical worker evidence. This does not grant accepted implementation promotion or complete generalized/native61/Goal/cost.",
+  "publication_initial_guard_failure": {
+    "exit": 1,
+    "action": "Before any mutation, expected local named branch but independent publication clone is intentionally detached at exact C40 parent.",
+    "correction": "Accept detached HEAD or exact task branch, preserve all original worker Git guards and exact remote parent.",
+    "source_changed": false
+  }
+}

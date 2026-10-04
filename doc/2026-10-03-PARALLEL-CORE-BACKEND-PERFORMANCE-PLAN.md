@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: approved Performance promotion fc52755b complete; original acceptance 363 and adopted four tests verified separately on c206. Human Evidence/Occurrence static audit delivered; coherent prototype migration continues. C40 comparison composition passes fresh currentc206 O2/SAN; ordered C32-C40 prototype task snapshots published. Identity transport/measure/outer and general qualification remain. Cost request2 and proposed15:20-15:30 window expired/released; no grant/sample/hold. Original Goals and review timer unchanged.
+Status: approved Performance promotion fc52755b complete; original acceptance363/adopted4 verified separately. Currentc206 C41 actual measure/outer composition passes fresh O2/SAN35 and frozen12 prototype task publication is complete; C32-C40 dependencies are integrated atc3de4aa. Checked down/Identity/capture and general native qualification remain with original C42. Job native18 full Source134 remains unwaived; Performance confirms shared lifetime boundary read-only. All expired cost agreements released; no new grant/sample/hold. Original Goals/timer unchanged.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -17,7 +17,7 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | Inquiry desk -> `merge`: reporting vs coordination/integration | All lanes | Desk answers the user; only Merge integrates after verified handoff |
-| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C33 faithful manual executable delivered before deadline; currentc206 C40 comparison/Acc/partition/append/accessibility composition O2/SAN33 verified. Ordered frozen C32-C40 prototype task publication complete; manual Identity/measure/outer and full standalone/general/native criteria remain. C32 implementation priority sealed/parked |
+| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C33 faithful manual executable delivered; currentc206 C41 actual measure/outer plus Acc/partition/append/accessibility/comparison composition O2/SAN35 verified. Frozen12 task35612104 published and prototype Main integration recorded. Manual checked down/refinement/capture gap is original C42 priority; full generalized/native criteria open. C32 sealed/parked |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Approved current frame deletion accepted; original363 plus adopted4 verified separately. Actual matched peakRSS/time pending safe all-owner window; peripheral MEM10/spine/empty arrays parked |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
 | 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | Native-owner deletion trial18 history480/all467 inputs verified; full Synthesis0/context-scopes0 recorded, full Source134 retained. Trial17 redundant completed-request history rejected/restored; selector/full Source/affected SAN/public/strict3/joint frontier/cost remain. E25-E27 parked |
@@ -26,6 +26,30 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
+
+2026-10-04, [current C41 composition review](../src/prototype/coordination/reviews/20261004-c41-current-composition-review.json):
+actual admitted measure Fold/indexed constructors and outer calls now compose
+with frozen C36-C40 products. Root checks frozen12/raw410/retained169 and runs
+four serial current acceptedfc52755b/c206 build/gate commands, all0 uncensored.
+O2 and affected emitter-runtime/client SAN each35 expected rows (29zero/six
+refusal4),341 Core sorts and source measure5 match; generated six products,
+all inputs and reused freshly qualified C40 binaries remain exact. Pointer
+and Core oracles remain O2. Task35612104 is pushed/remote exact; this review
+commit includes exact12 prototype/code/test/docs without accepted changes.
+C40 dependency integration is actually published atc3de4aa, superseding its
+prepared wording below. Manual checked successor/raw-down/zero-down Identity
+transports, Nat32/storage/LT and array staging/copy-out remain explicit.
+[C42 consumption](../src/prototype/coordination/reviews/20261004-c42-priority-consumption-review.json)
+confirms the original owner attacks that concrete down/refinement/capture gap;
+packaging is deferred. No generalized61/accepted adoption/full Goal/cost claim.
+
+2026-10-04, [Performance native18 boundary](../src/prototype/coordination/reviews/20261004-performance-native18-boundary-review.json):
+read-only owner acknowledgment and independent480/history/runtime120 checks
+agree with Root native18 review. Full Source134 remains unwaived and Job-owned;
+eventual common-producer lifetime/readback gates wait for full native gates.
+No generic argument/capture reuse, AP6 mixing or new measurement follows.
+C42 availability proposal16:25-16:35 is not a hold, actual all-owner
+acknowledgment or grant. Earlier agreements remain released, zero samples.
 
 2026-10-04, [current C40 composition review](../src/prototype/coordination/reviews/20261004-c40-current-composition-review.json):
 Root verifies frozen13/raw472/retained166/products40 and independently runs the

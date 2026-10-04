@@ -1,0 +1,59 @@
+{
+  "date_UTC": "2026-10-04T16:32:25.503669+00:00",
+  "notice_SHA": "9557c65253bcf86e12437fabc181d885e513e3c95719b92a960aa09016a27713",
+  "owner_review_SHA": "9510db10b7ee441ca231f7bdb3b86db4d8caf20bd7f9d69b8de806b78b5e4798",
+  "owner_review": {
+    "scope": "Read-only common-producer boundary inspection; no runtime, test, owner or benchmark change",
+    "parent_commit": "fc52755b345a555e49a79df40549e9cb23d54088",
+    "parent_runtime120_manifest_sha256": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+    "trial_root": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial18",
+    "trial_manifest_sha256": "32acadd405cb4695e9589f5ad74bddb81af967461045c3dcd91fc48bc9958555",
+    "fresh_history_verification": {
+      "records": 480,
+      "mismatches": []
+    },
+    "trial_runtime120_manifest_sha256": "01b83817e9313d294d18eeed5350ca57454bf932c1530686f311f165c4937bac",
+    "fresh_runtime_verification": {
+      "records": 120,
+      "mismatches": []
+    },
+    "changed_runtime_paths": [
+      "src/derivation.c",
+      "src/evidence.c",
+      "src/scope.c",
+      "src/scope.h",
+      "src/typing.c",
+      "src/typing.h"
+    ],
+    "unchanged_runtime_files": 114,
+    "unchanged_boundary": [
+      "src/eval.c",
+      "src/eval.h",
+      "src/eval_internal.h",
+      "src/eval_io.c",
+      "src/synthesis_derivation.c",
+      "src/source_io.c"
+    ],
+    "static_observation": "The six changed files contain no pg_eval_, pg_whnf_, pg_materialize, pg_closure, pg_environment, pg_argument or pg_eval_frame references. This does not establish indirect joint correctness.",
+    "lifetime_contract": "eval.h:14-19 preserves referenced lexical contents/lifetime; eval.h:54-56 keeps returned argument closures until machine destruction. eval.c:124-150 retires only null-state head frames after callback return and scratch cleanup. Stateful/materialized/return2 fallback storage is retained.",
+    "owner_report_terminal_sha256": "4b70f9e05be6f8df2082676ae8f12b9827fe82e184c8ae1414398e02431fba28",
+    "owner_report": {
+      "o2_build": 0,
+      "full_synthesis": 0,
+      "source_context_scopes": 0,
+      "full_source": 134
+    },
+    "failure_log_sha256": "d28c9274f561245309a38e8e8b035cd18e5d007f835b05e4d164742c067d1237",
+    "failure": "Unmodified tests/source_io.c:2107 requires motive && motive != view.motive, then checks equal subjects at2108. It is retained unwaived. No observer adapter or native acceptance inference is proposed here.",
+    "Root_review_sha256": "928c3fc24ada9e1617ae086673c580d581c4ce83300f19660d0e9bc40a763df2",
+    "joint_prerequisite": "Original Job full native Source and affected gates must terminate before Merge assembles exact native/performance escaped-argument/readback gates. AP6 remains separate.",
+    "runtime_or_test_executions_by_this_inspection": 0,
+    "benchmark_samples": 0,
+    "next_main_milestone": "Actual matched accepted94/c206 completed-task peak RSS and elapsed time from unchanged exact36 config262c46ac/all295 pins under a fresh exclusive grant. Codec loader/writer scratch is outside those no-save/load argv.",
+    "status": "Native Trial18 NOT READY; accepted performance qualification remains separate; Goal active"
+  },
+  "Root_fresh_static_verification": "Notice/review SHA exact; all480 history files and runtime120 independently match prior Root-pinned native18 review. No native runtime replay or new owner gate.",
+  "Assessment": "Performance acknowledges the concrete Job lifetime boundary read-only. Original Job owns full native Source/affected qualification; Merge assembles common-producer escaped-argument/readback only after full native gates. Source134, public/strict3 and AP6 distinctions remain unwaived. No lexical-reference or returned-closure lifetime deletion/reuse follows. Exact36 no-save/load accepted94/c206 cost work remains separate, zero samples pending actual all-owner availability and exclusive grant.",
+  "Goal_or_owner_actions": false,
+  "benchmark_samples": 0
+}

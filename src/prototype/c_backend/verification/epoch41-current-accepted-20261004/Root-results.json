@@ -1,0 +1,47 @@
+{
+  "accepted_commit": "fc52755b345a555e49a79df40549e9cb23d54088",
+  "Main_parent": "c3de4aa10205305b0efeece94f0cbd460c61561f",
+  "runtime120_manifest_SHA": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+  "C41_manifest_SHA": "b7b1d2dd885a11fc54111f16ed4e034363f7b2e77f0034a006609441aef125a9",
+  "source_provider_SHA": "a674b893cd5d0dc1899e79238352c6167a536876393ae7f53b2a9de602b647e6",
+  "compiler_SHA": "a23ecab8ff08f09ad8c80602c2c5df7f49e09c25905cb8975902e101bf72635f",
+  "scope": "Fresh current accepted producer, focused frozen C41 gate; reuse freshly qualified C40 dependency binaries. Prototype composition only; no accepted implementation change, broad replay, generalized Acc completion or cost measurement.",
+  "started": "2026-10-04T16:25:54.268733+00:00",
+  "complete": true,
+  "phases": {
+    "O2": {
+      "expected_rows": 35,
+      "exits": {
+        "0": 29,
+        "4": 6
+      },
+      "source_sort": "0,1,2,2,3,|",
+      "source_measure": "5"
+    },
+    "SAN": {
+      "expected_rows": 35,
+      "exits": {
+        "0": 29,
+        "4": 6
+      },
+      "source_sort": "0,1,2,2,3,|",
+      "source_measure": "5"
+    }
+  },
+  "generated_products": {
+    "measure.inc": "60d51b65f7cedf55ea25d5e44251695ffb7adc98b35445bf63e1547237755803",
+    "clause.inc": "cd1a7d70441222995b12ca2354ae6aeda80eaa2f99cd296cfeb5ef451405804c",
+    "partition.inc": "b8238b022d1613d4cd8dffd4692f68d0e6668bf8206f3324588765bc25c2de31",
+    "append.inc": "ffd37ec2ed3ff967b588757b430b3a83042b4bfd737414141a0d6dffffefa6ac",
+    "accessibility.inc": "ccdd139cc3e9414a398fb12bb7073a652d91d47f9cb37f84c3319d86310f55b9",
+    "comparison.inc": "6b63a59d024eec5a46f7c436ed300ecab72283e7a5e10fc565e23ffef2ba69c4"
+  },
+  "Core_sorting_observations": 341,
+  "generated_measure_outer_lines": 53,
+  "pointer_and_Core_oracles_SAN": false,
+  "all_original_inputs_unchanged": true,
+  "all_reused_binaries_unchanged": true,
+  "finished": "2026-10-04T16:26:38.565501+00:00",
+  "all_children_terminal_reaped": true,
+  "commands": 4
+}

@@ -1,0 +1,129 @@
+import datetime
+import hashlib
+import json
+import os
+import pathlib
+import signal
+import subprocess
+import time
+
+qualification = pathlib.Path(__file__).resolve().parent
+tree = qualification / 'tree'
+backend = tree / 'src/prototype/c_backend'
+dependency = qualification.parent / 'c40-current-accepted-fc'
+compiler = '/usr/bin/x86_64-linux-gnu-gcc-14'
+normal_flags = '-std=c11 -Wall -Wextra -Werror -O2'
+san_flags = '-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie'
+(qualification / 'tmp').mkdir(exist_ok=True)
+environment = dict(os.environ, TMPDIR=str(qualification / 'tmp'), CC=compiler)
+records = []
+deadline = time.monotonic() + 600
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+def timestamp():
+    return datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+pins = {str(path.relative_to(tree)): sha(path) for path in tree.rglob('*') if path.is_file()}
+(qualification / 'inputs-before.json').write_text(json.dumps(pins, indent=2) + '\n')
+manifest = (qualification / 'runtime-source.sha256').read_text()
+assert sha(qualification / 'runtime-source.sha256') == 'c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907'
+for line in manifest.splitlines():
+    digest, name = line.split('  ', 1)
+    assert sha(tree / name) == digest, name
+previous = json.loads((dependency / 'Root-results.json').read_text())
+assert previous['complete'] and previous['all_original_inputs_unchanged']
+for name, digest in json.loads((dependency / 'inputs-after.json').read_text()).items():
+    assert sha(dependency / 'tree' / name) == digest, name
+    assert sha(tree / name) == digest, name
+emitters = ['c_acc_clause_emit', 'c_acc_partition_emit', 'c_acc_append_emit', 'c_nat_accessibility_emit', 'c_acc_comparison_emit']
+binaries = [dependency / 'build-O2' / name for name in ['pointer-check', *emitters, 'c_acc_mockup_oracle']]
+binaries += [dependency / 'build-SAN' / name for name in emitters]
+binary_pins = {str(path): sha(path) for path in binaries}
+(qualification / 'reused-binaries-before.json').write_text(json.dumps(binary_pins, indent=2) + '\n')
+
+def run(label, argv, additions=None):
+    command_environment = dict(environment, **(additions or {}))
+    started = timestamp()
+    print('START ' + label, flush=True)
+    with (qualification / (label + '.stdout')).open('wb') as stdout, (qualification / (label + '.stderr')).open('wb') as stderr:
+        child = subprocess.Popen(argv, cwd=tree, env=command_environment, stdout=stdout, stderr=stderr, start_new_session=True)
+        censored = False
+        try:
+            status = child.wait(timeout=max(1, min(180, deadline - time.monotonic())))
+        except subprocess.TimeoutExpired:
+            censored = True
+            os.killpg(child.pid, signal.SIGTERM)
+            try:
+                status = child.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                os.killpg(child.pid, signal.SIGKILL)
+                status = child.wait()
+    record = {'label': label, 'argv': argv, 'environment': {name: command_environment[name] for name in ['CC', 'TMPDIR', 'CLIENT_CFLAGS', 'ASAN_OPTIONS', 'UBSAN_OPTIONS'] if name in command_environment}, 'started': started, 'finished': timestamp(), 'exit': status, 'censored': censored}
+    records.append(record)
+    (qualification / 'commands.json').write_text(json.dumps(records, indent=2) + '\n')
+    print('DONE ' + label + ' exit=' + str(status) + ' censored=' + str(censored), flush=True)
+    if status or censored:
+        raise RuntimeError('Qualification command failed: ' + label)
+
+summary = {'accepted_commit': 'fc52755b345a555e49a79df40549e9cb23d54088', 'Main_parent': 'c3de4aa10205305b0efeece94f0cbd460c61561f', 'runtime120_manifest_SHA': sha(qualification / 'runtime-source.sha256'), 'C41_manifest_SHA': 'b7b1d2dd885a11fc54111f16ed4e034363f7b2e77f0034a006609441aef125a9', 'source_provider_SHA': sha(tree / 'tests/fixtures/sorted-proof-provider.p'), 'compiler_SHA': sha(pathlib.Path(compiler)), 'scope': 'Fresh current accepted producer, focused frozen C41 gate; reuse freshly qualified C40 dependency binaries. Prototype composition only; no accepted implementation change, broad replay, generalized Acc completion or cost measurement.', 'started': timestamp(), 'complete': False}
+try:
+    for phase, flags in [('O2', normal_flags), ('SAN', san_flags)]:
+        build = qualification / ('build-' + phase)
+        run(phase + '-measure-build', ['make', '-j1', '-f', str(backend / 'acc_measure/build.mk'), 'OVERLAY=' + str(tree), 'BUILD=' + str(build), 'CC=' + compiler, 'CFLAGS=' + flags, str(build / 'c_acc_measure_emit')])
+        source_binaries = dependency / ('build-' + phase)
+        additions = {'CLIENT_CFLAGS': '-O2' if phase == 'O2' else san_flags}
+        if phase == 'SAN':
+            additions.update(ASAN_OPTIONS='detect_leaks=1:halt_on_error=1', UBSAN_OPTIONS='halt_on_error=1:print_stacktrace=1')
+        run(phase + '-composed-gate', ['sh', str(backend / 'acc_measure/check.sh'), str(dependency / 'build-O2/pointer-check'), str(build / 'c_acc_measure_emit'), *[str(source_binaries / name) for name in emitters], str(dependency / 'build-O2/c_acc_mockup_oracle'), str(qualification / (phase + '-gate'))], additions)
+    phases = {}
+    gate_commands = {}
+    for phase in ['O2', 'SAN']:
+        directory = qualification / (phase + '-gate')
+        rows = [line.split('\t') for line in (directory / 'status.tsv').read_text().splitlines()]
+        assert len(rows) == 35 and all(row[1] == row[2] for row in rows)
+        counts = {str(code): sum(int(row[2]) == code for row in rows) for code in [0, 4]}
+        assert counts == {'0': 29, '4': 6}
+        assert (directory / 'source.out').read_text() == '0,1,2,2,3,|'
+        assert (directory / 'measure_source.out').read_text() == '5'
+        pieces = (directory / 'argv.nul').read_bytes().split(b'\0')
+        assert pieces.pop() == b''
+        commands = []
+        cursor = 0
+        for label, expected, actual in rows:
+            parsed_label, parsed_expect, count = pieces[cursor:cursor+3]
+            cursor += 3
+            count = int(count)
+            arguments = [arg.decode() for arg in pieces[cursor:cursor+count]]
+            cursor += count
+            assert parsed_label.decode() == label and parsed_expect.decode() == expected
+            commands.append({'label': label, 'expected': int(expected), 'exit': int(actual), 'argv': arguments})
+        assert cursor == len(pieces)
+        gate_commands[phase] = commands
+        phases[phase] = {'expected_rows': 35, 'exits': counts, 'source_sort': '0,1,2,2,3,|', 'source_measure': '5'}
+    generated = {}
+    for name in ['measure.inc', 'clause.inc', 'partition.inc', 'append.inc', 'accessibility.inc', 'comparison.inc']:
+        first = qualification / 'O2-gate/main' / name
+        second = qualification / 'SAN-gate/main' / name
+        assert sha(first) == sha(second)
+        generated[name] = sha(first)
+    assert generated['measure.inc'] == '60d51b65f7cedf55ea25d5e44251695ffb7adc98b35445bf63e1547237755803'
+    (qualification / 'gate-commands.json').write_text(json.dumps(gate_commands, indent=2) + '\n')
+    summary.update(complete=True, phases=phases, generated_products=generated, Core_sorting_observations=341, generated_measure_outer_lines=len((qualification / 'O2-gate/main/measure.inc').read_text().splitlines()), pointer_and_Core_oracles_SAN=False)
+except Exception as failure:
+    summary['failure'] = str(failure)
+finally:
+    after = {name: sha(tree / name) for name in pins}
+    after_binaries = {name: sha(pathlib.Path(name)) for name in binary_pins}
+    summary['all_original_inputs_unchanged'] = after == pins
+    summary['all_reused_binaries_unchanged'] = after_binaries == binary_pins
+    summary['finished'] = timestamp()
+    summary['all_children_terminal_reaped'] = True
+    summary['commands'] = len(records)
+    (qualification / 'inputs-after.json').write_text(json.dumps(after, indent=2) + '\n')
+    (qualification / 'reused-binaries-after.json').write_text(json.dumps(after_binaries, indent=2) + '\n')
+    (qualification / 'Root-results.json').write_text(json.dumps(summary, indent=2) + '\n')
+    print(json.dumps(summary), flush=True)
+if not summary['complete'] or not summary['all_original_inputs_unchanged'] or not summary['all_reused_binaries_unchanged']:
+    raise SystemExit(1)
