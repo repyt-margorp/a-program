@@ -1,0 +1,12 @@
+{
+  "date_UTC": "2026-10-04T05:11:55.439536+00:00",
+  "provenance": "Root operational review under existing user-authorized scope, evidence not new human approval.",
+  "owner": "performance",
+  "payload": {
+    "notice_sha256": "4c285cf2c53a1bd7334e45561d667f53b9f023067bcdbd60f2612a278b30e2c7",
+    "receipt_path": "src/prototype/performance_followup/mem10-current-c23-source-root-review.json",
+    "receipt_sha256": "bb5901da938003b823a29b122914c76ba474ebab8bdc3148fda3429da2987c7f",
+    "scope": "Root independently verified frozen17/private580/source256/467 actual after pins/196 Git origin rows, four uncensored worker records0/96 expected rows and14 original Root C23 output/C/header pairs. Exact C23 at c414/flags48c5 only, no later C24/C25/new E19 flags/full C claim. Worker backend/helper/producer/source/raw/oracle/clients selected SAN; object/archive O2. MEM10 runtime remains HOLD, every historical/current byte/strict3/observer2/SAN7/setup/compatibility/censored outcome unwaived. Current MEM1 V3 reconciliation remains separate private work; historical costs cannot transfer. No new cost slot/runtime publication/Goal completion."
+  },
+  "delivery": "Durable only, no TUI input/resume/queue/consumption claim."
+}

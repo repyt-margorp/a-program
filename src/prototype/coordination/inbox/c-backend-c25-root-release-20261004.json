@@ -1,0 +1,15 @@
+{
+  "date_UTC": "2026-10-04T05:11:55.439536+00:00",
+  "provenance": "Root operational review under existing user-authorized scope, evidence not new human approval.",
+  "owner": "c-backend",
+  "payload": {
+    "task": "728d04b12c3901c2193cd3232347dfdb544e6fe5",
+    "Main_merge": "09a01376336fbce2f800ff4fc96ffd11866040a6",
+    "current_source128": "add4e0960795400ccb27e55cbcba69e335a3c5cec40a4a154fbb4da7464d31e0",
+    "receipt_path": "src/prototype/c_backend/verification/core-epoch25.json",
+    "receipt_sha256": "04cbeb96d264b4ca692fd33943cac4510ca9b37c6ed33af683f4106e1a74241e",
+    "Root_report_sha256": "05905831f7bd93f065727c6d77689048082ca6e7f07cb8d6cef2127c602f2c14",
+    "scope": "C25 exact26 task/current20 gates/Main prototype verified;1864 recorded live worker files preserved. Other25 Main frozen bytes exact, Goal provenance/status reconciled. All historical failures, scratch O(V)/quadratic validation and borrowed-readable lifetime/native depth256 remain. Preserve immutable C25, continue separate bounded work under existing scope; native Acc/QuickSort/full61/accepted adoption/cost remain open."
+  },
+  "delivery": "Durable only, no TUI input/resume/queue/consumption claim."
+}
