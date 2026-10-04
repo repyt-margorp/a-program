@@ -115,6 +115,18 @@ names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
 
+Fresh C34 [indexed-view plan](2026-10-04-C-BACKEND-INDEXED-VIEWS-PLAN.md): existing
+admitted views directly produce private Nat/LT/Acc/SizedList/Measured/Partition/
+List C declarations, retaining source parameters/indices/fields/result images and
+Acc's borrowed U(Pi y:A,Pi edge:R y x,F{}Self y) signature. New target code296
+lines; no main backend/Linker/ABI/producer/schema changes. WorkerE8 strict O2
+and full helper-runtime/client SAN12 expected rows each match; inert/no machine
+advances/source counts, unknown/missing/mismatched family and wrong C relation
+controls pass. Initial build/comment-image defects retained and corrected. This
+extracts representation, not a source algorithm/Fold/motive/capture body; C33
+remains the faithful hand-authored executable deliverable. Exact sealed C32/C33
+archives remain unchanged; task/current-producer/Main review is separate.
+
 Human-priority C33 delivers readable hand-authored executable
 [actual Acc QuickSort C](../src/prototype/c_backend/acc_quicksort_mockup/mockup.c)
 and [mockup plan](2026-10-04-C-BACKEND-ACC-QUICKSORT-MOCKUP-PLAN.md). Explicit LT
@@ -600,7 +612,8 @@ Current issue status (2026-10-04 local; detailed pins stay in linked epoch plans
 | #61 generated scalar/native callback translation units, C30 | Exact task `ab14e6940fa92a9f5205232e98f6896cb9d6f221`, nine test/example files436 lines, [module plan](2026-10-04-C-BACKEND-NATIVE-CALLBACK-MODULES-PLAN.md). Generated scalar provider/native consumer/separate declarative factories/client; no backend/ABI/producer change. | Worker E8 O2/SAN124 each (118zero/6expected-one);16 pairs/both orders/32 linked+8 loaded clients,source9,121 Lists/width/two contexts/right-folds/93 Trees per context;32 C/H/291 pins/runtime128 exact; no unexpected failures. | All13 task blobs/changed set/parent/message/remote independently verified. Current-producer/Main unreported; immutable snapshot preserved. | Successful pure-total provider interpretation/API/context/code/storage lifetime, nonoverlap/depth256/limited SAN; no foreign error protocol/source closures/native Acc/QuickSort/full #61/cost/adoption completion. | Root current-producer/Main review; preserve source/client evidence during distinct bounded downstream work. |
 | #61 finite foreign copy-buffer size query, C31 | Exact task `cc3cba3495b81628e0a68ec8b45aee4f5447d188`, seven target owners +73/-6 and seven example/test files379 lines; [query plan](2026-10-04-C-BACKEND-BUFFER-QUERY-PLAN.md). Opt-in native_buffer_query_v1/existing native ABI1 adds allocation-free validated size_t extent for existing selected Lists; old profiles unchanged. | Worker E8 strict O2 backend/helper0; new63/callback76/record41 each O2/SAN, linker/I-O19/query faults5 pass. Five payloads,121 Lists/4356 slice pairs/source4/300 nodes/no allocation/inert/status controls;28 new/60 prior C/H and300 pins/runtime128 exact. No unexpected failures. | All18 task blobs/changed set/parent/message/remote independently verified; current-producer/Main unreported. Submitted snapshot unchanged. | Readable immutable finite inputs/output nonoverlap; overflow6 guard inspected, SIZE_MAX-node case unexecuted; limited SAN. Node-based copy boundary only; native indexed/callable Acc/QuickSort/full #61/cost/adoption open. | Root current-producer/Main review; preserve query contract during separate array-call work. |
 | #61 ordinary array calls to source List functions, C32 | C31 `cc3cba34` + five target owners +97/-12 and ten example/test files; [array-call plan](2026-10-04-C-BACKEND-ARRAY-CALLS-PLAN.md). Optional native_array_calls_v1/existing native ABI1 wraps actual exports with temporary-arena conversion/copy-out/cleanup. | Worker E8 new139/query63/source-sort46 each O2/client-source SAN, linker/I-O19/faults5 pass. Three families/four products/raw/five payloads/List121/slice4356/sort341/Core510/source3+6/inert/statuses1-6;84 new/68 prior C/H/314 pins/runtime128 exact. Initial setup failures retained. | Separate exact19 handoff; task/current-producer/Main pending. C31 archive unchanged. | Borrowed immutable lifetime/nonoverlap/default depth256/allocation/Nat32/capacity contracts;13 checked/trusted refusal pairs; limited SAN, output SIZE_MAX overflow unexecuted. No zero-copy slices/native indexed-callable Acc/QuickSort/full #61/cost/adoption. | Seal for Root publication/current-producer review; human09:16:56Z priority supersedes further List conveniences with actual Acc QuickSort mockup by21:16:56Z. |
-| #61 human-priority actual Acc QuickSort C mockup, C33 | New hand-authored closed-Nat executable candidate [mockup.c](../src/prototype/c_backend/acc_quicksort_mockup/mockup.c) SHA762f264c plus declarative header/tests; actual LT/Acc/down/index/partition/capture correspondence, no alternate sorter or generated claim. | WorkerE8 fresh actual source admission/reference3, O2/full candidate-client SAN9 each0;341 existing-Core fingerprint/length/range observations and all down/partition/resource branches. Native closed-list controls checked/trusted still4. Initial setup failures retained; joint qualification pending. | Distinct reviewable snapshot; task/Main pending after sealed C32. No accepted promotion. | Manual Nat/LT only; indexed/callable/motive extraction and arbitrary type/comparator closure conversion remain automatic-native gaps. Scoped arena/depth256/node65536/Nat32/borrowed lifetime; unreachable zero-down foreign metadata refuses. No full #61/cost/adoption/Goal closure. | Deliver exact CODE handoff to Merge before21:16:56Z; review concrete automatic indexed/callable boundary, defer further List conveniences. |
+| #61 human-priority actual Acc QuickSort C mockup, C33 | New hand-authored closed-Nat executable candidate [mockup.c](../src/prototype/c_backend/acc_quicksort_mockup/mockup.c) SHA762f264c plus declarative header/tests; actual LT/Acc/down/index/partition/capture correspondence, no alternate sorter or generated claim. | WorkerE8 fresh actual source admission/reference3, O2/full candidate-client SAN9 each0;341 existing-Core fingerprint/length/range observations and all down/partition/resource branches. Native closed-list controls checked/trusted still4. Initial setup failures retained; joint qualification pending. | Exact11 sealed/archive a8bd408c/manifest503f67d3; ready notice0f5339a7 sent10:02:27UTC before due21:16:56Z. Task/Main pending after sealed C32; no accepted promotion. | Manual Nat/LT only; automatic expression/motive/capture lowering and arbitrary type/comparator closure conversion remain gaps. Scoped arena/depth256/node65536/Nat32/borrowed lifetime; unreachable zero-down foreign metadata refuses. No full #61/cost/adoption/Goal closure. | Root review the submitted executable CODE; preserve archive and defer List conveniences. |
+| #61 actual indexed/callable declaration extraction, C34 | C31 cc3cba34 plus new private indexed_views/ code/interfaces/helpers; [plan](2026-10-04-C-BACKEND-INDEXED-VIEWS-PLAN.md). Existing admitted descriptors yield seven C declarations, exact parameter/index/field/result images and Acc.down signature; target code296 lines, no main backend/ABI change. | WorkerE8 O2/full helper-runtime/client SAN12 expected rows each match; original runtime128 exact/inert counts/no machine work/lexical factory/source-index/missing LT/Bool-Nat mismatch/wrong C relation controls. Initial failures retained; no Root qualification inferred. | Separate exact15 handoff; task/current-producer/Main pending. Sealed C32/C33 unchanged. | Header only; borrowed code/context/data lifetime, symbolic index consistency and callback interpretation remain preconditions. No emitted sorting/Fold/IH/motive/capture body, generalized instance/checker/erasure/full #61/cost/adoption claim. | Root review declarations; next bounded step inspect actual Fold/IH/capture body views, retain automatic native refusal and manual C33 distinction. |
 | #61 remaining public contracts (historical #49) | General/boxed callbacks, effects, higher Identity, recursive captures and shared nominal exchange remain explicit limits; C16 advances only fixed borrowed unary/binary scalar inputs. | Local/joint gates verify supported cases and refusals, not general completion. | Historical tasks/prototype Main published; no publication of general missing contracts. | Need bounded justified representation/demand contracts. | Preserve refusals; route shared needs through Merge. |
 
 Evidence: historical [C5](2026-10-03-C-BACKEND-EPOCH5-HANDOFF.md),
@@ -753,6 +766,16 @@ pinned/current producer images and emitted C/headers match byte-for-byte.
 Evidence and exact publication files are in the [epoch handoff](2026-10-03-C-BACKEND-EPOCH1-HANDOFF.md).
 
 ### Assessment
+
+C34 agent decision: derive the actual indexed/callable representations from
+existing descriptor telescopes and exact static lexical factories, preserving
+indices/type/family/value parameters/proofs. This establishes that no new
+producer fields are needed for this representation milestone. Keep the private
+header separate from public lowering; C33 sorting body is still manual and
+automatic Fold/IH/motive/capture conversion remains open. No new source checking,
+normalization, erasure or instance authority. The tiny C client checks layout
+usability, not general proof membership or generated sorting. Preserve sealed
+archives while the live owning Goal advances; publication remains Root-owned.
 
 C33 agent decision under the human clarification: transcribe the actual admitted
 closed-Nat algorithm to executable readable C with all proof data and original/
@@ -1406,6 +1429,11 @@ this target work while Main continues SE1, superseding the earlier AP6 hold.
 - [x] C33: implement readable actual-Acc candidate, retaining proof indices/down/
   partition/captures, pass source/Core/O2/candidate SAN and explicit native-refusal
   controls; generalized automatic native lowering remains open.
+- [x] C34: extract actual indexed/callable C declarations from existing admitted
+  views; pass focused O2/full helper-client SAN/inert/source-index/refusal controls
+  and prepare separate exact15 handoff without main backend/producer/ABI changes.
+- [ ] Continue actual Acc expression/Fold/IH/capture lowering as a separate bounded
+  candidate after concrete view inspection; preserve manual/generated distinctions.
 - [ ] Maintain the single issue table at material events and within six active
   hours; use brief pointer/hash notices and keep Core workflow in Assessment.
 - [ ] Coordinate further bounded target ABI/lowering increments under the latest
