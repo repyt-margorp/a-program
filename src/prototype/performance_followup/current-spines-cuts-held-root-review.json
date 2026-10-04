@@ -1,0 +1,36 @@
+{
+  "date_UTC": "2026-10-04T08:01:46.416581+00:00",
+  "notice_sha256": "c51a221fa91d99295d1ebe7147aea90d76d29946dea2144d328762dcc3dd4b70",
+  "freeze_path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_spine_current/epochs/current_spine_deletions_v1_cuts_held",
+  "manifest_sha256": "1dcfab768016574b9659d88c89691be9933fb8aa2c92d7a75914f02cba725489",
+  "exact23_including_manifest": true,
+  "private_payloads1758_and104_all_hashes_verified": true,
+  "copied_raw_metadata_exact_previously_independent_review": {
+    "cuts-summary.json": "37222979a001ba5b8662fc241742bd4e9718ba54e0571b6a9ece35cd1c645597",
+    "cuts-records.json": "d8c4470612c585c262bf699df3eed0462907d0e8697a832e2bdb892e0b901506",
+    "cuts-inputs-before.json": "b8a0b91a540d2648e7fcbc424415273f3a8c17b3fbb13ee39b02344840e564ee",
+    "cuts-inputs-after.json": "b8a0b91a540d2648e7fcbc424415273f3a8c17b3fbb13ee39b02344840e564ee",
+    "paired-bytes.json": "f4b70b7e0e276bf0fc4ac7350f61ad166376e19d3774f78ba0cbda916a222a18",
+    "repeat-summary.json": "37f5d78a0d4a46d813f929d46e3ad3771fa6806e84b4d4a4e7813b172320a040",
+    "repeat-records.json": "770738e4a547cc869d7423ec058a9b0db8299f1c37b87dde5a121bb8807bb216",
+    "repeat-inputs-before.json": "a075d1896aa3805d8e657587bc1837851b8639cdd979baf4a1468737234dffd6",
+    "repeat-inputs-after.json": "0f490aa596f266660cb4bbc9c5d530377045d4fb74ced4bfa59ff878bd3980ba",
+    "inert-byte-rows.json": "469cf6e832e8111a55de0809aec98f00a030cd551d15231e483f55928bf54d17"
+  },
+  "prior_Root_review_path": "src/prototype/performance_followup/spines-private-0744-root-review.json",
+  "prior_Root_review_sha256": "5cfb428ff9740181f4a840845dee5f0f57f0a480e3a3ee573ec6785d68011d9a",
+  "resaver_build_provenance": {
+    "timing": "Freeze-time hashes only; no retrospective claim that all nested helpers were pinned before the original candidate resaver build.",
+    "actual_expanded_command_log": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_spine_current/private/current_spine_deletions_v1_inert_bytes_20261004/build-candidate-resaver.log",
+    "actual_expanded_command_log_sha256": "5be766a88968a2a11a110d8c17e5e9ac11c1b837fdbb2d92af2abd875a315a60",
+    "hashes": {
+      "/home/repyt/workspace/a-program/src/prototype/performance_verification/build.mk": "969864732ed405b1fd5cfd3616529f644cc8eb33e7c5552d2bda5fc69c1a551e",
+      "/home/repyt/workspace/a-program/src/prototype/performance/build.mk": "befee229e8553db13299431fdd713a8f63fdf3a5e755f99d1c1c147b64cb4a28",
+      "/home/repyt/workspace/a-program/src/prototype/artifact_persistence/build.mk": "04cc1aaea432a2e812893aa08fef8ff0c92d14661655ab3ea164468fb14c8f31",
+      "/usr/bin/x86_64-linux-gnu-gcc-14": "a23ecab8ff08f09ad8c80602c2c5df7f49e09c25905cb8975902e101bf72635f"
+    }
+  },
+  "summary": "1509 uncensored expected-zero records; all67 Fold pairs match; materialized3/146 and inert15/24 failures remain unwaived. Both writers vary. Distinct from old frame6/146 and29/48.",
+  "decision": "Frozen evidence verified, runtime HOLD remains. Current consumers, transport/seven checkpoints, full acceptance, borrowed/namespace/fuel controls, current E23 composition, codec-owner disposition and matched actual RSS/time remain separate.",
+  "runtime_task_publication_cost_grant_byte_waiver_accepted_promotion_or_Goal_completion": false
+}

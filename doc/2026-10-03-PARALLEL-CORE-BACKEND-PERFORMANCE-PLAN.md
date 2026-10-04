@@ -27,22 +27,25 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 
 ### Current Delivery Status
 
-2026-10-04T07:52:51.617402+00:00, scheduled07:44:22 UTC review at local/remote Main9b0dff01:
+2026-10-04T08:02:55.524286+00:00, scheduled07:44:22 UTC review; Main8a6b0e0 prior checkpoint:
 C27/C28/E22/E23 prototype deliveries/current qualification unchanged. All seven
-original panes/handoffs inspected: C/Performance/Job visibly pursuing, earlier
-response-wait overlays cleared; four bounded workers achieved/stopped. C29 private
-native scalar callback probes/affected controls progress, old legacy emitted-C
-equality assertion unresolved; E24 broad actual process live, E25 prepared/untested.
-No new frozen READY or current qualification for these private increments.
-New private spine terminal raw1460/all284 and inert49/all293/source256 verify;
-raw paired3/146 and inert15/24 failures independently recomputed, unwaived. Pair
-80b->259 is distinct from old framec414->80b6/146+29/48; current consumers/final
-freeze/codec/full acceptance/current E23 composition/actual costs pending.
-[Private raw review](../src/prototype/performance_followup/spines-private-0744-root-review.json),
+original panes/handoffs inspected: C/Performance/Job pursuing, earlier response-wait
+overlays cleared; four bounded workers achieved/stopped. E24 broad actual process
+live; E25 prepared/untested. C29 late READY exact16/archive/raw1810 verified;
+worker corrected the legacy comparison baseline, retaining initial errors. Root
+code/gate/current E23 qualification and task/Main publication remain queued.
+New spine exact23 immutable HOLD/private1758+104 matches the independently reviewed
+1509 records/source256. Paired3/146 and inert15/24 byte failures remain unwaived;
+all67 Fold pairs match. Pair80b->259 is distinct from old frame6/146+29/48.
+Nested resaver helper hashes are freeze-time provenance only. Current consumers,
+transport/seven checkpoints, codec/full acceptance/current E23 composition and
+matched actual costs remain pending; no runtime publication or cost grant.
+[Frozen cut review](../src/prototype/performance_followup/current-spines-cuts-held-root-review.json),
+[C29 static preflight](../src/prototype/c_backend/verification/c29-ready-static-preflight.json),
 [scheduled status](../src/prototype/coordination/reviews/20261004T074422-scheduled-material-review.json).
 Nine issue bodies/dates unchanged/zero PRs. Original Job HEAD/index/human pane,
 protected9 and original timer/watcher preserved; no owner input/resume/restart/
-model change, accepted promotion, byte waiver or new cost grant. Next13:44:22 UTC.
+model change, accepted promotion or byte waiver. Next13:44:22 UTC.
 Root Goal metadata remains blocked/incomplete; full issues/Goals remain open.
 
 2026-10-03 15:29 UTC material review at local/remote Main `4853cb6`, exactly
