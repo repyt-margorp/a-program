@@ -413,6 +413,61 @@ old profile refusals and both unary/binary header orders. Repeated products are
 not independent property counts. SAN instruments clients and source bodies;
 emitted object/archive/shared bodies, backend/producer/Core checker stay O2.
 
+## Native Scalar Callbacks
+
+The opt-in `callback_native_direct_v1` / `c_callback_native_v1` profile combines
+existing selected native carriers with borrowed synchronous unary/binary Int32
+or Int64 scalar-return callbacks. Both binary domains and result have the same
+represented width. Existing scalar callback/native/predicate profiles keep their
+refusals. This profile reuses `ap_c_callback_i32/i64`, `ap_c_callback2_i32/i64`
+and their guarded declarations; `AP_C_CALLBACK_NATIVE_ABI` is 1.
+
+```text
+abi c_callback_native_v1
+lowering callback_native_direct_v1
+fallback reject
+data Numbers32 Numbers32
+export map32 map32
+export reduce32 reduce32
+```
+
+For a selected recursive List, ordinary C clients pass existing descriptors and
+borrowed node pointers through the caller's arena:
+
+```c
+int ap_export_map32(struct ap_c_arena *, struct ap_c_callback_i32,
+	const struct ap_data_Numbers32 *, const struct ap_data_Numbers32 **);
+int ap_export_reduce32(struct ap_c_arena *, struct ap_c_callback2_i32,
+	const struct ap_data_Numbers32 *, int32_t, int32_t *);
+```
+
+Code/context must implement the admitted pure-total source function and outlive
+the synchronous call. Context may be null; null code, even unused, returns2.
+Null output/required arena returns1; invalid represented input returns2. Existing
+arena allocation3/depth4, rollback and output preservation apply. Scalar-only
+selection uses no arena. Readable immutable borrowed storage and output nonoverlap
+remain caller preconditions. A callback returns a signed scalar directly; this
+adds no foreign failure protocol, closures or source checking authority.
+
+The standalone `native_callback/build.mk` target `check-c-native-callbacks`
+tests actual admitted source maps, operand combinations, right-fold reductions
+and Tree folds across source/object/archive/shared/raw products. Each phase has76
+expected rows:781 Lists per width/two contexts/five operands/seeds,655 finite
+shared Trees, signed extrema, reversed Int64 fields, finite record/scalar-only
+results, status/rollback/depth/allocation controls and17 checked/trusted refusal
+pairs. Five source/readback observations match clients. After inert emission,
+3432 separate existing-Core comparisons check full List values and reductions
+using admitted negate/subtract callbacks; Tree/record cases use manual client
+expectations and the source observer. Repeats are not independent properties.
+
+SAN covers clients/raw/oracle/source bodies; other products/backend/helpers/
+producer stay O2. Malloc injection covers source/object/archive; shared uses
+capacity controls. Arity3/mixed widths/results, enum/Nat callbacks, returned/
+boxed/callable fields, effects/indexed/dependent contracts remain unsupported.
+Native indexed/callable Acc/QuickSort, full #61, actual costs and accepted adoption
+remain open. Evidence and preserved setup failures are in the
+[C29 plan](../../../doc/2026-10-04-C-BACKEND-NATIVE-CALLBACK-PLAN.md).
+
 ## Selected Native Predicates
 
 The separate `predicate_native_direct_v1` / `c_predicate_native_v1` profile
