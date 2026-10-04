@@ -1,15 +1,17 @@
+diff --git a/file.c b/file.c
 --- a/file.c
 +++ b/file.c
-@@ -54,7 +54,7 @@
+@@ -54,7 +54,8 @@
  {
  	if (!program || !target || !spent) return PG_SYNTHESIS_ERROR;
  	struct pg_synthesis *synthesis = &program->synthesis;
 -	if (target->owner != synthesis->owner_key) return PG_SYNTHESIS_ERROR;
-+	if (target->pending.owner != synthesis->owner_key) return PG_SYNTHESIS_ERROR;
++	if (!pg_synthesis_input_owned(synthesis,
++		(struct pg_synthesis_input){.pending = pg_synthesis_pending(target)})) return PG_SYNTHESIS_ERROR;
  	uint64_t before = synthesis->steps;
  	uint64_t available = total_budget < validation_limit ? total_budget : validation_limit;
  	if (available > UINT64_MAX - before) available = UINT64_MAX - before;
-@@ -92,10 +92,10 @@
+@@ -92,10 +93,10 @@
  }
  
  int pg_artifact_save_file(const char *path, const struct pg_program *program,

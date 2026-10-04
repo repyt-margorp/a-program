@@ -1,0 +1,15 @@
+{
+  "files": [
+    {
+      "file": "src/artifact/file.c",
+      "added": 2,
+      "removed": 1
+    },
+    {
+      "file": "artifact_tests/semantic_test.c",
+      "added": 27,
+      "removed": 0
+    }
+  ],
+  "docs": "Lean evidence only; one active SE work list remains outside freeze."
+}

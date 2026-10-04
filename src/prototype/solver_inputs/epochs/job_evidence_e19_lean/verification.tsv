@@ -1,0 +1,22 @@
+group	gate_or_sample	variant	exit	report	report_sha256
+focused	build	parent	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e19/parent-build.log	6ec7cb171ad9e1b06a605dfba52ae6a116506efe167ddb896764eda08933e639
+focused	semantic	parent	-6	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e19/parent-semantic.log	621127eb63dd1fa54fdd06594d1f2e9a00f42a905a6d2442356edbac5f6ad954
+focused	build	candidate	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e19/candidate-build.log	7db6b9fa7794f7a343c9cccb821f962f0b97003dc2d9270a554b6f78020c84c4
+focused	semantic	candidate	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e19/candidate-semantic.log	65a6b5c64f96014d08df86dc7590a1db35d6380ea7acb05cc99bb55145121616
+focused	build	asan	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e19/asan-build.log	a1ad0bccfd589225395926d7e8ece5c1c8c4e201c376f0d513ea2aa2317e924b
+focused	semantic	asan	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e19/asan-semantic.log	65a6b5c64f96014d08df86dc7590a1db35d6380ea7acb05cc99bb55145121616
+broad	broad		0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e19/broad.log	a58906d359df4b5a86676554f3db52659e4c86f8fd1b9defeab2c721e04ed348
+supplemental	baseline-C-eight-scripts		0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e19/c.log	a190344d0eeda067aab004568052317a82a72b5cb90d6d67705f3b0005ac9323
+supplemental	strict-public-original-three		1	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e19/partitions.log	fcac15cf4c995ab06fe50930e337b6eba668eda0c984e60d3d12caad4f44c55b
+census	census-build	E16	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e19/E16-census-build.log	9c9f39c312e939d7f7395fa4127d26903f29fbc02fc0aa05ded4778cb38b93f7
+census	list	E16	0		09415aa2a735ec7aa8caec257c1ab9792aabb16925c10ef70e678c865356c28d
+census	effect	E16	0		72e0f8e9f86cd28b121fc72ae8564ba30d81c3843e9311610ec7fa996ffc30b7
+census	captured	E16	0		76b0286b9f1fc79953c6882e34cf95d37fc0e8d4250abf677f7f449c4e4df2c2
+census	quick	E16	0		7e2e77a5910f4c94ef94b85782765126338066d6a74d6cd540dc54c556a9881c
+census	handler	E16	0		6aad30c07814eff6205ff8617869e379e20ee078a41a5b7674e6a6e409ce9da6
+census	census-build	E19	0	/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e19/E19-census-build.log	bb42ede62c3a4b21d5cf5ee471df6b12f819c5714d32c66aa67a4c474e80d501
+census	list	E19	0		09415aa2a735ec7aa8caec257c1ab9792aabb16925c10ef70e678c865356c28d
+census	effect	E19	0		72e0f8e9f86cd28b121fc72ae8564ba30d81c3843e9311610ec7fa996ffc30b7
+census	captured	E19	0		76b0286b9f1fc79953c6882e34cf95d37fc0e8d4250abf677f7f449c4e4df2c2
+census	quick	E19	0		7e2e77a5910f4c94ef94b85782765126338066d6a74d6cd540dc54c556a9881c
+census	handler	E19	0		6aad30c07814eff6205ff8617869e379e20ee078a41a5b7674e6a6e409ce9da6

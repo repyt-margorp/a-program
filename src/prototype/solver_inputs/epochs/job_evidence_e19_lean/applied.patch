@@ -1,0 +1,69 @@
+diff --git a/artifact_tests/semantic_test.c b/artifact_tests/semantic_test.c
+--- a/artifact_tests/semantic_test.c
++++ b/artifact_tests/semantic_test.c
+@@ -1,6 +1,7 @@
+ #define _POSIX_C_SOURCE 200809L
+ #include "source_io.h"
+ #include "synthesis_source.h"
++#include "synthesis_work.h"
+ #include "artifact/file.h"
+ #include "computation.h"
+ #include "retained_io.h"
+@@ -1088,6 +1089,30 @@
+ 	pg_program_destroy(program);
+ }
+ 
++static void reject_copied_revalidation_target(struct pg_program *program, struct pg_synthesis_job *target)
++{
++	const struct pg_synthesis_work_class *role = pg_synthesis_work_role(target);
++	const char *state = pg_synthesis_work_state(target, role);
++	size_t offset = state ? (const char *)target - state : 0;
++	size_t bytes = offset + sizeof(*target) + target->input_count * sizeof(*target->inputs);
++	char *storage = malloc(bytes);
++	assert(storage);
++	memcpy(storage, state ? state : (const char *)target, bytes);
++	struct pg_synthesis_job *copy = (void *)(storage + offset);
++	struct pg_synthesis *synthesis = &program->synthesis;
++	struct pg_synthesis_job *ready = synthesis->ready, *tail = synthesis->ready_tail;
++	size_t jobs = synthesis->jobs.count, proofs = program->typing.proofs.count;
++	uint64_t steps = synthesis->steps, spent = 91;
++	assert(pg_synthesis_input_owned(synthesis, (struct pg_synthesis_input){.pending = pg_synthesis_pending(target)}));
++	assert(!pg_synthesis_input_owned(synthesis, (struct pg_synthesis_input){.pending = pg_synthesis_pending(copy)}));
++	assert(pg_artifact_revalidate(program, copy, 0, 0, &spent) == PG_SYNTHESIS_ERROR);
++	assert(pg_artifact_revalidate(program, copy, 100, 100, &spent) == PG_SYNTHESIS_ERROR);
++	assert(spent == 91 && synthesis->steps == steps);
++	assert(synthesis->ready == ready && synthesis->ready_tail == tail);
++	assert(synthesis->jobs.count == jobs && program->typing.proofs.count == proofs);
++	free(storage);
++}
++
+ static void revalidation_budget(void)
+ {
+ 	const char source[] = "main := #int_add #20 #22;";
+@@ -1130,11 +1155,13 @@
+ 	assert(spent == 91 && !program->synthesis.steps && !foreign->synthesis.steps);
+ 	assert(pg_artifact_revalidate(program, roots[0], 100, 100, NULL) == PG_SYNTHESIS_ERROR);
+ 	pg_program_destroy(foreign);
++	reject_copied_revalidation_target(program, roots[0]);
+ 	solving = 1;
+ 	assert(pg_artifact_revalidate(program, roots[0], 100000, UINT64_MAX, &spent) == PG_SYNTHESIS_DONE);
+ 	solving = 0;
+ 	assert(spent && spent < 100000 && spent == program->synthesis.steps);
+ 	uint64_t validation_spent = spent;
++	reject_copied_revalidation_target(program, roots[0]);
+ 	/* A completed target costs nothing even if unrelated work is still ready. */
+ 	assert(pg_artifact_revalidate(program, roots[0], 100000, 100000, &spent) == PG_SYNTHESIS_DONE);
+ 	assert(!spent && program->synthesis.steps == validation_spent);
+diff --git a/src/artifact/file.c b/src/artifact/file.c
+--- a/src/artifact/file.c
++++ b/src/artifact/file.c
+@@ -54,7 +54,8 @@
+ {
+ 	if (!program || !target || !spent) return PG_SYNTHESIS_ERROR;
+ 	struct pg_synthesis *synthesis = &program->synthesis;
+-	if (target->pending.owner != synthesis->owner_key) return PG_SYNTHESIS_ERROR;
++	if (!pg_synthesis_input_owned(synthesis,
++		(struct pg_synthesis_input){.pending = pg_synthesis_pending(target)})) return PG_SYNTHESIS_ERROR;
+ 	uint64_t before = synthesis->steps;
+ 	uint64_t available = total_budget < validation_limit ? total_budget : validation_limit;
+ 	if (available > UINT64_MAX - before) available = UINT64_MAX - before;
