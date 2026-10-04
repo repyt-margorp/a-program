@@ -1,7 +1,7 @@
 # Job/Evidence Implementation Handoff
 
 Date: 2026-10-03
-Status: bounded E1-E4/E6-E20 prototypes verified/Main integrated; E21 focused only, SE1-SE5 unfinished.
+Status: bounded E1-E4/E6-E21 prototypes verified/Main integrated; E22 focused only, SE1-SE5 unfinished.
 Branch: `parallel/job-evidence-20261003`.
 Producer checkpoint: `64df10dfb6caf69226cebb401b88714541334768`.
 Related: [coordination](2026-10-03-PARALLEL-CORE-BACKEND-PERFORMANCE-PLAN.md),
@@ -78,6 +78,22 @@ Earlier workflow requirements: independent worktrees, `/goal`, `6.1 Sol` at
 only Core merges Main. Prototype integration is not accepted-source promotion.
 
 ### Objective (Code)
+
+2026-10-04, superseding E21 READYf1cf58f0: immutable exact33/02fb2e4a
+transport061c0618 independently verified; all four claimed canonical digests
+reverse published E17 and reconstruct tested files exactly, resolving earlier
+default-diff representation mismatch. Source156/actual471/raw15/full isolated
+broad0/C0/five all35-fourcut census/public52 exact E17, strict3 retained. Fresh
+current E20+MEM9 source128b532b759 fifteen expected O2/SAN semantic/synthesis/
+Source/normalization/denied-allocation/public gates pass; C26 downstream22/0,
+public52/full TSV exact E20. Task221cd5f9/Mainead378b3 pushed/remote
+exact33; original Job HEAD/index unchanged, separate E20 canonical preserved.
+[E21 receipt](../src/prototype/solver_inputs/joint_verification/e21-main-integration-review.json).
+E22 separate E18 focused14/source156/raw23 verified: five parent134 assertions,
+completed prepare existing rejection0; full Source/six copied-owner boundaries
+O2SAN0, all156 reconstructed from delta. Initial missing migration preflight1
+retained. [E22 focused receipt](../src/prototype/solver_inputs/joint_verification/e22-focused-source-admission-root-review.json);
+full READY/current qualification pending, no Root Job input/resume.
 
 2026-10-04, notice04aa22ec confirms prior E18 release receipt consumption;
 E19/E20 exact READY freezes unchanged and independently already Root delivered.
@@ -160,6 +176,17 @@ definition checks, failures and real quotation proofs must remain correct.
 This is a candidate deletion, not user approval of a solution or the full Goal.
 
 ### Assessment
+
+2026-10-04, Root E21 bounded integration decision: release detached waits into
+existing free_waiters and reserve only shortfall before validated schedule
+publication; same wake/preparation order, no new allocator/index/field/authority.
+Current denied-allocation preserves headers/queue/proofs/steps/saved bytes;
+retry/256 reattachments allocate no owned-arena storage and retain five charged
+steps. Quick cumulative+18000/captured+48 are retained, not net RAM/time gains.
+All33 Main bytes exact because old four canonical patches equal isolated E17;
+E20/context bridges unchanged. E22 replaces tag-only Source gates with existing
+canonical owner membership; focused result alone gives no continuation/codec/
+public-frontier/full SE-AP/cost/adoption closure. Original failures retained.
 
 2026-10-04, Root agent E20 integration decision within existing scope:
 remove two persistent Match scan counters, store their16 bytes in existing active

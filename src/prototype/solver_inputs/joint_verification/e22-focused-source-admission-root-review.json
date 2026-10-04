@@ -1,0 +1,546 @@
+{
+  "review_UTC": "2026-10-04T06:14:55.944758+00:00",
+  "notice_sha256": "6f88381f8d40f45c8202609d884167b20928a3d3f6ed9046a527ce17d20338f8",
+  "frozen14_including13_payload": {
+    "tested_sources.sha256": "6491c0601bbfee817afe118bc3017a2d419cc539b9e4b8683772ab5cdea729fa",
+    "parent_sources.sha256": "02241bd2fa031584e176ae16cbcebd825ec834e8e5bea4ea33f22e66ac4ae2ea",
+    "parent_control_sources.sha256": "1868274cccae998d832d3a09eceae92752f4904bf87ff8ad9eeaffd85fb76984",
+    "trial.patch": "03dfd468b455a3ebfa05e5cc25b28635919349519d5d4642045486c0e271abe7",
+    "control_inputs.sha256": "910847ab93625f26fc85eaa16a45287e1d234b46dd2d4d17f53e93fb5e93033c",
+    "focused_requests.json": "06ccbe080cbcaddc041b791c7433b5a64525ba40f11d625a9e227575ec44b2f2",
+    "focused_verdicts.json": "54fa5ed124a4ae44e563581fb62031526081fae8f9654ffa1779ca3a1659d88c",
+    "parent.txt": "d69013a0720489b09d519cd035000de6d532fb7da2eb39901491670cfdd1d7a9",
+    "counterexample_classification.json": "1d64d5c9cb02e7da65ffe2d9b65afccd95cbb7a627ae07cf860c057a2746c920",
+    "canonical_preverification.json": "c52b3822ac4d34513593dcba69c58e6be6657d82e024d2c64753a2da9c2eabc6",
+    "initial_preparation_failure.json": "08872e42ab45db03cb28cb0c58cad50e3464aef1df52b9c51c319961deafb594",
+    "initial_preparation_request.py": "6806565d34b411bf443195e7ea4f2924f03471ba0d07b32e57bfdcd242c3925f",
+    "copied_owner.mk": "2c8f254e321187365bfaf106e9eab4ec49726a54594230471675dc76a6941be2",
+    "focused_manifest.sha256": "dbe99473d3c989e199c2751fdefbc4f7da035a9efb2d06aa46610f8d50271d0a"
+  },
+  "source156_each_parent_control_candidate_verified": {
+    "parent": "02241bd2fa031584e176ae16cbcebd825ec834e8e5bea4ea33f22e66ac4ae2ea",
+    "parent_control": "1868274cccae998d832d3a09eceae92752f4904bf87ff8ad9eeaffd85fb76984",
+    "candidate": "6491c0601bbfee817afe118bc3017a2d419cc539b9e4b8683772ab5cdea729fa"
+  },
+  "control_inputs_exact": {
+    "src/prototype/solver_inputs/controls/source_frontier_copied_owner.c": "d81f40e54e197723f336480b046f70ee919f28039f084f1642dc7275a412c784",
+    "src/prototype/solver_inputs/epochs/job_evidence_e22/copied_owner.mk": "2c8f254e321187365bfaf106e9eab4ec49726a54594230471675dc76a6941be2",
+    "src/prototype/artifact_persistence/build.mk": "04cc1aaea432a2e812893aa08fef8ff0c92d14661655ab3ea164468fb14c8f31",
+    "src/prototype/solver_inputs/job_evidence_epoch22/Makefile": "ba2d565d5e96ed3e7657bf0e6384758fed5967d7ef4bbfdae6bde427fb10917e",
+    "src/prototype/solver_inputs/job_evidence_epoch22/src/Makefile": "063d846eb99f86c1c133abf393b3a2a7cf97f548eb472f8b786365f11ba1a167",
+    "src/prototype/solver_inputs/job_evidence_epoch22_parent_controls/Makefile": "ba2d565d5e96ed3e7657bf0e6384758fed5967d7ef4bbfdae6bde427fb10917e",
+    "src/prototype/solver_inputs/job_evidence_epoch22_parent_controls/src/Makefile": "063d846eb99f86c1c133abf393b3a2a7cf97f548eb472f8b786365f11ba1a167"
+  },
+  "worker23_command_reports_and_binary_hashes_exact": {
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/parent-build.log": "118bfeaf4c7cdd985dc483a0d731c176a32c6f576f908c209db8f805ae17f60c",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/parent-boundary-0-completed-0.log": "5803559a7d5c0db50eebfe4d0e4bd8aca65698ed15c84330bf83230f93c20124",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/parent-boundary-0-completed-1.log": "5803559a7d5c0db50eebfe4d0e4bd8aca65698ed15c84330bf83230f93c20124",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/parent-boundary-1-completed-0.log": "cef610e26e5966031321c59e23bd181ed5c6da27ee4fc3f15648ff0e74708736",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/parent-boundary-1-completed-1.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/parent-boundary-2-completed-0.log": "76a59df8e82b6b5def61645d2ffbedcaabc636e3bc7e49ab90cee9ae488348c1",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/parent-boundary-2-completed-1.log": "76a59df8e82b6b5def61645d2ffbedcaabc636e3bc7e49ab90cee9ae488348c1",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/candidate-build.log": "a875fba160f27db6f45ee3dd241403b092f89ea2ce7d3a9f2f4d4258e96c07ba",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/candidate-full-source-checkpoint.log": "71cc65467eeb07467f0bd00674acb05a8875ba29911d63bca40891cab8d4233a",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/candidate-boundary-0-completed-0.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/candidate-boundary-0-completed-1.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/candidate-boundary-1-completed-0.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/candidate-boundary-1-completed-1.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/candidate-boundary-2-completed-0.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/candidate-boundary-2-completed-1.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/SAN-build.log": "5ca5655844f289831f7a6c6c47faada1a12dbbcacd9c020e43c74a4ec890f1ca",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/SAN-full-source-checkpoint.log": "71cc65467eeb07467f0bd00674acb05a8875ba29911d63bca40891cab8d4233a",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/SAN-boundary-0-completed-0.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/SAN-boundary-0-completed-1.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/SAN-boundary-1-completed-0.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/SAN-boundary-1-completed-1.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/SAN-boundary-2-completed-0.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/SAN-boundary-2-completed-1.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "worker_records": [
+    {
+      "variant": "parent",
+      "gate": "build",
+      "overlay": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22_parent_controls",
+      "source_manifest": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/parent_control_sources.sha256",
+      "command": [
+        "make",
+        "--jobserver-style=pipe",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/copied_owner.mk",
+        "-j1",
+        "ARTIFACT_MAKEFILE=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/artifact_persistence/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22_parent_controls",
+        "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22_parent_controls/owner_parent",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "CHECKPOINT_TESTS=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22_parent_controls/checkpoint_tests/",
+        "SOURCE_OWNER_CONTROL=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/controls/source_frontier_copied_owner.c",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22_parent_controls/owner_parent/source_frontier_copied_owner"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/private_tmp"
+      },
+      "exit": 0,
+      "report": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/parent-build.log",
+      "report_sha256": "118bfeaf4c7cdd985dc483a0d731c176a32c6f576f908c209db8f805ae17f60c"
+    },
+    {
+      "variant": "parent",
+      "gate": "boundary-0-completed-0",
+      "overlay": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22_parent_controls",
+      "source_manifest": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/parent_control_sources.sha256",
+      "command": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22_parent_controls/owner_parent/source_frontier_copied_owner",
+        "0",
+        "0"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/private_tmp"
+      },
+      "exit": -6,
+      "report": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/parent-boundary-0-completed-0.log",
+      "report_sha256": "5803559a7d5c0db50eebfe4d0e4bd8aca65698ed15c84330bf83230f93c20124",
+      "binary_sha256": "09753d7211bec360a9c516420afdb6cc5f7c5c2d5819f37863410337e2471d32"
+    },
+    {
+      "variant": "parent",
+      "gate": "boundary-0-completed-1",
+      "overlay": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22_parent_controls",
+      "source_manifest": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/parent_control_sources.sha256",
+      "command": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22_parent_controls/owner_parent/source_frontier_copied_owner",
+        "0",
+        "1"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/private_tmp"
+      },
+      "exit": -6,
+      "report": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/parent-boundary-0-completed-1.log",
+      "report_sha256": "5803559a7d5c0db50eebfe4d0e4bd8aca65698ed15c84330bf83230f93c20124",
+      "binary_sha256": "09753d7211bec360a9c516420afdb6cc5f7c5c2d5819f37863410337e2471d32"
+    },
+    {
+      "variant": "parent",
+      "gate": "boundary-1-completed-0",
+      "overlay": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22_parent_controls",
+      "source_manifest": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/parent_control_sources.sha256",
+      "command": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22_parent_controls/owner_parent/source_frontier_copied_owner",
+        "1",
+        "0"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/private_tmp"
+      },
+      "exit": -6,
+      "report": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/parent-boundary-1-completed-0.log",
+      "report_sha256": "cef610e26e5966031321c59e23bd181ed5c6da27ee4fc3f15648ff0e74708736",
+      "binary_sha256": "09753d7211bec360a9c516420afdb6cc5f7c5c2d5819f37863410337e2471d32"
+    },
+    {
+      "variant": "parent",
+      "gate": "boundary-1-completed-1",
+      "overlay": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22_parent_controls",
+      "source_manifest": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/parent_control_sources.sha256",
+      "command": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22_parent_controls/owner_parent/source_frontier_copied_owner",
+        "1",
+        "1"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/private_tmp"
+      },
+      "exit": 0,
+      "report": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/parent-boundary-1-completed-1.log",
+      "report_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "binary_sha256": "09753d7211bec360a9c516420afdb6cc5f7c5c2d5819f37863410337e2471d32"
+    },
+    {
+      "variant": "parent",
+      "gate": "boundary-2-completed-0",
+      "overlay": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22_parent_controls",
+      "source_manifest": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/parent_control_sources.sha256",
+      "command": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22_parent_controls/owner_parent/source_frontier_copied_owner",
+        "2",
+        "0"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/private_tmp"
+      },
+      "exit": -6,
+      "report": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/parent-boundary-2-completed-0.log",
+      "report_sha256": "76a59df8e82b6b5def61645d2ffbedcaabc636e3bc7e49ab90cee9ae488348c1",
+      "binary_sha256": "09753d7211bec360a9c516420afdb6cc5f7c5c2d5819f37863410337e2471d32"
+    },
+    {
+      "variant": "parent",
+      "gate": "boundary-2-completed-1",
+      "overlay": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22_parent_controls",
+      "source_manifest": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/parent_control_sources.sha256",
+      "command": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22_parent_controls/owner_parent/source_frontier_copied_owner",
+        "2",
+        "1"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/private_tmp"
+      },
+      "exit": -6,
+      "report": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/parent-boundary-2-completed-1.log",
+      "report_sha256": "76a59df8e82b6b5def61645d2ffbedcaabc636e3bc7e49ab90cee9ae488348c1",
+      "binary_sha256": "09753d7211bec360a9c516420afdb6cc5f7c5c2d5819f37863410337e2471d32"
+    },
+    {
+      "variant": "candidate",
+      "gate": "build",
+      "overlay": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22",
+      "source_manifest": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/tested_sources.sha256",
+      "command": [
+        "make",
+        "--jobserver-style=pipe",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/copied_owner.mk",
+        "-j1",
+        "ARTIFACT_MAKEFILE=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/artifact_persistence/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22",
+        "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/owner_candidate",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "CHECKPOINT_TESTS=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/checkpoint_tests/",
+        "SOURCE_OWNER_CONTROL=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/controls/source_frontier_copied_owner.c",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/owner_candidate/source_frontier_copied_owner"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/private_tmp"
+      },
+      "exit": 0,
+      "report": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/candidate-build.log",
+      "report_sha256": "a875fba160f27db6f45ee3dd241403b092f89ea2ce7d3a9f2f4d4258e96c07ba"
+    },
+    {
+      "variant": "candidate",
+      "gate": "full-source-checkpoint",
+      "overlay": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22",
+      "source_manifest": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/tested_sources.sha256",
+      "command": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/owner_candidate/source_frontier_copied_owner"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/private_tmp"
+      },
+      "exit": 0,
+      "report": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/candidate-full-source-checkpoint.log",
+      "report_sha256": "71cc65467eeb07467f0bd00674acb05a8875ba29911d63bca40891cab8d4233a",
+      "binary_sha256": "e72f7c0e536e57c704f67599e05609a53b870219ae46384a2086bfde5ca55321"
+    },
+    {
+      "variant": "candidate",
+      "gate": "boundary-0-completed-0",
+      "overlay": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22",
+      "source_manifest": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/tested_sources.sha256",
+      "command": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/owner_candidate/source_frontier_copied_owner",
+        "0",
+        "0"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/private_tmp"
+      },
+      "exit": 0,
+      "report": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/candidate-boundary-0-completed-0.log",
+      "report_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "binary_sha256": "e72f7c0e536e57c704f67599e05609a53b870219ae46384a2086bfde5ca55321"
+    },
+    {
+      "variant": "candidate",
+      "gate": "boundary-0-completed-1",
+      "overlay": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22",
+      "source_manifest": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/tested_sources.sha256",
+      "command": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/owner_candidate/source_frontier_copied_owner",
+        "0",
+        "1"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/private_tmp"
+      },
+      "exit": 0,
+      "report": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/candidate-boundary-0-completed-1.log",
+      "report_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "binary_sha256": "e72f7c0e536e57c704f67599e05609a53b870219ae46384a2086bfde5ca55321"
+    },
+    {
+      "variant": "candidate",
+      "gate": "boundary-1-completed-0",
+      "overlay": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22",
+      "source_manifest": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/tested_sources.sha256",
+      "command": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/owner_candidate/source_frontier_copied_owner",
+        "1",
+        "0"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/private_tmp"
+      },
+      "exit": 0,
+      "report": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/candidate-boundary-1-completed-0.log",
+      "report_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "binary_sha256": "e72f7c0e536e57c704f67599e05609a53b870219ae46384a2086bfde5ca55321"
+    },
+    {
+      "variant": "candidate",
+      "gate": "boundary-1-completed-1",
+      "overlay": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22",
+      "source_manifest": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/tested_sources.sha256",
+      "command": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/owner_candidate/source_frontier_copied_owner",
+        "1",
+        "1"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/private_tmp"
+      },
+      "exit": 0,
+      "report": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/candidate-boundary-1-completed-1.log",
+      "report_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "binary_sha256": "e72f7c0e536e57c704f67599e05609a53b870219ae46384a2086bfde5ca55321"
+    },
+    {
+      "variant": "candidate",
+      "gate": "boundary-2-completed-0",
+      "overlay": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22",
+      "source_manifest": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/tested_sources.sha256",
+      "command": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/owner_candidate/source_frontier_copied_owner",
+        "2",
+        "0"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/private_tmp"
+      },
+      "exit": 0,
+      "report": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/candidate-boundary-2-completed-0.log",
+      "report_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "binary_sha256": "e72f7c0e536e57c704f67599e05609a53b870219ae46384a2086bfde5ca55321"
+    },
+    {
+      "variant": "candidate",
+      "gate": "boundary-2-completed-1",
+      "overlay": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22",
+      "source_manifest": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/tested_sources.sha256",
+      "command": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/owner_candidate/source_frontier_copied_owner",
+        "2",
+        "1"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/private_tmp"
+      },
+      "exit": 0,
+      "report": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/candidate-boundary-2-completed-1.log",
+      "report_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "binary_sha256": "e72f7c0e536e57c704f67599e05609a53b870219ae46384a2086bfde5ca55321"
+    },
+    {
+      "variant": "SAN",
+      "gate": "build",
+      "overlay": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22",
+      "source_manifest": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/tested_sources.sha256",
+      "command": [
+        "make",
+        "--jobserver-style=pipe",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/copied_owner.mk",
+        "-j1",
+        "ARTIFACT_MAKEFILE=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/artifact_persistence/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22",
+        "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/owner_SAN",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "CHECKPOINT_TESTS=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/checkpoint_tests/",
+        "SOURCE_OWNER_CONTROL=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/controls/source_frontier_copied_owner.c",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/owner_SAN/source_frontier_copied_owner"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/private_tmp",
+        "ASAN_OPTIONS": "detect_leaks=1:detect_stack_use_after_return=1:halt_on_error=1",
+        "UBSAN_OPTIONS": "halt_on_error=1"
+      },
+      "exit": 0,
+      "report": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/SAN-build.log",
+      "report_sha256": "5ca5655844f289831f7a6c6c47faada1a12dbbcacd9c020e43c74a4ec890f1ca"
+    },
+    {
+      "variant": "SAN",
+      "gate": "full-source-checkpoint",
+      "overlay": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22",
+      "source_manifest": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/tested_sources.sha256",
+      "command": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/owner_SAN/source_frontier_copied_owner"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/private_tmp",
+        "ASAN_OPTIONS": "detect_leaks=1:detect_stack_use_after_return=1:halt_on_error=1",
+        "UBSAN_OPTIONS": "halt_on_error=1"
+      },
+      "exit": 0,
+      "report": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/SAN-full-source-checkpoint.log",
+      "report_sha256": "71cc65467eeb07467f0bd00674acb05a8875ba29911d63bca40891cab8d4233a",
+      "binary_sha256": "38a4cc002bac5dfbbd0b342fd0aef9da246b0e29444140a0e72bcda1f4d157d4"
+    },
+    {
+      "variant": "SAN",
+      "gate": "boundary-0-completed-0",
+      "overlay": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22",
+      "source_manifest": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/tested_sources.sha256",
+      "command": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/owner_SAN/source_frontier_copied_owner",
+        "0",
+        "0"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/private_tmp",
+        "ASAN_OPTIONS": "detect_leaks=1:detect_stack_use_after_return=1:halt_on_error=1",
+        "UBSAN_OPTIONS": "halt_on_error=1"
+      },
+      "exit": 0,
+      "report": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/SAN-boundary-0-completed-0.log",
+      "report_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "binary_sha256": "38a4cc002bac5dfbbd0b342fd0aef9da246b0e29444140a0e72bcda1f4d157d4"
+    },
+    {
+      "variant": "SAN",
+      "gate": "boundary-0-completed-1",
+      "overlay": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22",
+      "source_manifest": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/tested_sources.sha256",
+      "command": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/owner_SAN/source_frontier_copied_owner",
+        "0",
+        "1"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/private_tmp",
+        "ASAN_OPTIONS": "detect_leaks=1:detect_stack_use_after_return=1:halt_on_error=1",
+        "UBSAN_OPTIONS": "halt_on_error=1"
+      },
+      "exit": 0,
+      "report": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/SAN-boundary-0-completed-1.log",
+      "report_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "binary_sha256": "38a4cc002bac5dfbbd0b342fd0aef9da246b0e29444140a0e72bcda1f4d157d4"
+    },
+    {
+      "variant": "SAN",
+      "gate": "boundary-1-completed-0",
+      "overlay": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22",
+      "source_manifest": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/tested_sources.sha256",
+      "command": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/owner_SAN/source_frontier_copied_owner",
+        "1",
+        "0"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/private_tmp",
+        "ASAN_OPTIONS": "detect_leaks=1:detect_stack_use_after_return=1:halt_on_error=1",
+        "UBSAN_OPTIONS": "halt_on_error=1"
+      },
+      "exit": 0,
+      "report": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/SAN-boundary-1-completed-0.log",
+      "report_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "binary_sha256": "38a4cc002bac5dfbbd0b342fd0aef9da246b0e29444140a0e72bcda1f4d157d4"
+    },
+    {
+      "variant": "SAN",
+      "gate": "boundary-1-completed-1",
+      "overlay": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22",
+      "source_manifest": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/tested_sources.sha256",
+      "command": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/owner_SAN/source_frontier_copied_owner",
+        "1",
+        "1"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/private_tmp",
+        "ASAN_OPTIONS": "detect_leaks=1:detect_stack_use_after_return=1:halt_on_error=1",
+        "UBSAN_OPTIONS": "halt_on_error=1"
+      },
+      "exit": 0,
+      "report": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/SAN-boundary-1-completed-1.log",
+      "report_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "binary_sha256": "38a4cc002bac5dfbbd0b342fd0aef9da246b0e29444140a0e72bcda1f4d157d4"
+    },
+    {
+      "variant": "SAN",
+      "gate": "boundary-2-completed-0",
+      "overlay": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22",
+      "source_manifest": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/tested_sources.sha256",
+      "command": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/owner_SAN/source_frontier_copied_owner",
+        "2",
+        "0"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/private_tmp",
+        "ASAN_OPTIONS": "detect_leaks=1:detect_stack_use_after_return=1:halt_on_error=1",
+        "UBSAN_OPTIONS": "halt_on_error=1"
+      },
+      "exit": 0,
+      "report": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/SAN-boundary-2-completed-0.log",
+      "report_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "binary_sha256": "38a4cc002bac5dfbbd0b342fd0aef9da246b0e29444140a0e72bcda1f4d157d4"
+    },
+    {
+      "variant": "SAN",
+      "gate": "boundary-2-completed-1",
+      "overlay": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22",
+      "source_manifest": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/tested_sources.sha256",
+      "command": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/owner_SAN/source_frontier_copied_owner",
+        "2",
+        "1"
+      ],
+      "environment": {
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_epoch22/private_tmp",
+        "ASAN_OPTIONS": "detect_leaks=1:detect_stack_use_after_return=1:halt_on_error=1",
+        "UBSAN_OPTIONS": "halt_on_error=1"
+      },
+      "exit": 0,
+      "report": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/epochs/job_evidence_e22/SAN-boundary-2-completed-1.log",
+      "report_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "binary_sha256": "38a4cc002bac5dfbbd0b342fd0aef9da246b0e29444140a0e72bcda1f4d157d4"
+    }
+  ],
+  "parent_five_assertion_aborts134_and_completed_prepare_existing_rejection0": true,
+  "delta_fuzz0_all156_candidate_files_exact": true,
+  "only_two_changed_files": [
+    "checkpoint_tests/source_checkpoint_test.c",
+    "src/artifact/source.c"
+  ],
+  "initial_preflight1_before_make_retained": {
+    "phase": "Canonical preflight before source/control/evidence creation",
+    "exit": 1,
+    "stderr": "AssertionError: unmigrated AP source base differs from assembled E18",
+    "make_started": false,
+    "cause": "Initial assertion omitted the existing published artifact_source.c.patch migration.",
+    "correction": "Apply exact E18 task AP base plus its migration patch privately; require reconstructed raw source equal the156 pinned parent. No runtime/test/grammar/trust waiver or AP base edit."
+  },
+  "canonical_preverification_worker_report_only_until_frozen_transport": {
+    "parent_task": "a8f52a015f73fe7cfa067c3d5b122bef7e4532b4",
+    "files": [
+      {
+        "source": "src/artifact/source.c",
+        "canonical": "src/prototype/solver_inputs/artifact_source.c.patch",
+        "parent_canonical_sha256": "5fa7e0bdbedac85f09a762e8a9f243f390268f71f45b7c59d8ec088b1e7a29dc",
+        "candidate_canonical_sha256": "0f6e7bff546fb9ceea1d453b72a3f56cf6e110e683103bb6b3451864e238252d",
+        "reverse_exact_published_parent_and_apply_candidate_raw_exact": true
+      },
+      {
+        "source": "checkpoint_tests/source_checkpoint_test.c",
+        "canonical": "src/prototype/solver_inputs/checkpoint_test_patches/source_checkpoint_test.c.patch",
+        "parent_canonical_sha256": "fe291f5e6b8c868841196ee932d47421e43dd301e58fae3357da4f29a7a4b768",
+        "candidate_canonical_sha256": "a78bab355020287c33321117e301294f48fbcefe5dbf674efe557eb4528f0bea",
+        "reverse_exact_published_parent_and_apply_candidate_raw_exact": true
+      }
+    ],
+    "AP_base_and_live_canonical_untouched": true
+  },
+  "scope": "Focused isolated E18 owner-membership guard at Source capture/prepare/attach. Worker O2/SAN full Source and six independent copied-private-state/header/input boundaries pass, parent five assertion failures; completed preparation already rejects by status. Genuine owner/queue/headers/proofs/steps unchanged in controls. No Root runtime/currentE21 qualification, full READY, task/Main publication, codec/policy/byte waiver, actual cost or Goal completion. No original Job input/resume."
+}

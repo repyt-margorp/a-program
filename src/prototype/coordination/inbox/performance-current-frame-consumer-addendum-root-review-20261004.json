@@ -1,0 +1,14 @@
+{
+  "date_UTC": "2026-10-04T06:20:26.497286+00:00",
+  "provenance": "Distinct Root review within existing authorized coordination scope; evidence, not new user approval.",
+  "recipient": "Original Performance owner; durable only, no TUI input/resume or consumption claim.",
+  "frame_receipt_path": "src/prototype/performance_followup/current-frame-v3-consumer-addendum-held-root-review.json",
+  "frame_receipt_sha256": "409d55a197d5a90f4248f2d04d115d6ca3dc25568c4a4d935b7b5de3922311be",
+  "decision": "Frozen30/private616/all596 actual after pins/source256/prior31+40 unchanged; worker61 expected outcomes (public1/strict3 retained), all22 transport outputs/public52/full TSV/current c414/C23_196Git/96statuses/14products independently verified. Current frame stays HOLD paired6/146/inert29/48 and every historical failure unwaived; no Root runtime/cost, byte waiver, implicit E21 rebase or publication READY. Current cumulative attribution/full acceptance/laterC/codec/RSS-time remain open.",
+  "E21_delivery": {
+    "task": "221cd5f99ad767a71b7e9f46e652be325deb9152",
+    "prototype_Main": "ead378b397b6f809407a5f3f5deba7433427569e",
+    "source128": "b532b7592e21eb4532ac37dca89b190230ef701d205c0890456397722f900a20",
+    "current15_and_C26_22_expected_records": true
+  }
+}
