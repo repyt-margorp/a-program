@@ -1,0 +1,106 @@
+{
+  "date_UTC": "2026-10-04T07:24:20.982357+00:00",
+  "provenance": "Root independent read-only evidence review and isolated patch composition; existing human scope, no new approval.",
+  "notice_path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/coordination/outbox/performance-current-roots-spines-prepared-held-20261004.txt",
+  "notice_sha256": "cb2a3534852d821bd04fc647ab482fe2481408341dd2297a5e3996378f4da50d",
+  "roots_epoch_manifest_sha256": "2009465795691d054fcfa64aaaf024f47421f900017809d7b7065aabeeb2c48e",
+  "roots15_private25_source256_all274_verified": true,
+  "worker6_expected0_uncensored_raw_records_verified_not_Root_execution": true,
+  "same_three_frozen_capacity_totals_verified": true,
+  "root_counts_layout_and_residual_independently_recomputed": {
+    "list-done": {
+      "candidate_machine_used_bytes": 0,
+      "known_linked_aligned_extents": 0,
+      "active_and_spare_frame_aligned_extents": 0,
+      "unclassified_used_remainder": 0,
+      "not_dead_or_safe_reclaim_bound": true
+    },
+    "trees4-cut2M": {
+      "candidate_machine_used_bytes": 8335488,
+      "known_linked_aligned_extents": 2489184,
+      "active_and_spare_frame_aligned_extents": 3360,
+      "unclassified_used_remainder": 5842944,
+      "not_dead_or_safe_reclaim_bound": true
+    },
+    "trees16-cut5M": {
+      "candidate_machine_used_bytes": 25435872,
+      "known_linked_aligned_extents": 7650176,
+      "active_and_spare_frame_aligned_extents": 27360,
+      "unclassified_used_remainder": 17758336,
+      "not_dead_or_safe_reclaim_bound": true
+    }
+  },
+  "observer_only_two_exact_changes_original_caps_checks_retained": true,
+  "no_new_gdb_runtime_build_or_cost_run_by_Root": true,
+  "task_registration_requires_state_null_state_frame_pool_inapplicable": true,
+  "spine_epoch_manifest_sha256": "a561edf2d7ed5e8055755fb8ae3c9981d05da6a3c66d265180e75c4b619019ce",
+  "spine20_preparation_only_source128": "25967429ca326339107bb5851da27876b74186fe310b0b285a27c32058bd2efc",
+  "spine_parent_source128": "80b4610651207998d4789670ddef8f9ae4e497245aa00b3d9a9fce0777ab982d",
+  "only_two_changed_files": [
+    "src/computation.c",
+    "src/iadt.c"
+  ],
+  "all126_other_source_files_evaluator_pool_exact": true,
+  "fresh_Root_four_published_patch_composition": [
+    {
+      "argv": [
+        "/usr/bin/patch",
+        "-p1",
+        "--batch",
+        "--fuzz=0",
+        "-i",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem2/epochs/iadt_empty_tail_v1/iadt.patch"
+      ],
+      "exit": 0,
+      "log_sha256": "d781e828c118e9b9b26d9d133b236d7bd231f8d9fb7d89a86af450266bffea36",
+      "patch_sha256": "b19dd27bef9eca23dd6b78185aaa26569e9ede25a7be1bc039da49e8444f71f9"
+    },
+    {
+      "argv": [
+        "/usr/bin/patch",
+        "-p1",
+        "--batch",
+        "--fuzz=0",
+        "-i",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem3/epochs/fold_empty_tail_v1/computation.patch"
+      ],
+      "exit": 0,
+      "log_sha256": "eb671aed5cabfbf361a7aca155b69dd078142fe60fa1b7e49d0fcd7d51901ab6",
+      "patch_sha256": "f6b25d36a1ddd4f5d822c81cd4c8072e2c571e3a3e0df368e40f694a44e7eb8d"
+    },
+    {
+      "argv": [
+        "/usr/bin/patch",
+        "-p1",
+        "--batch",
+        "--fuzz=0",
+        "-i",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem4/epochs/fold_cursor_v1/computation.patch"
+      ],
+      "exit": 0,
+      "log_sha256": "eb671aed5cabfbf361a7aca155b69dd078142fe60fa1b7e49d0fcd7d51901ab6",
+      "patch_sha256": "e22db7be7bb7bcbff456053606d7dc32b5e0d43d93dcef5af8dd3d3f31b9738e"
+    },
+    {
+      "argv": [
+        "/usr/bin/patch",
+        "-p1",
+        "--batch",
+        "--fuzz=0",
+        "-i",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem5/epochs/materialized_match_fields_v1/iadt.patch"
+      ],
+      "exit": 0,
+      "log_sha256": "d781e828c118e9b9b26d9d133b236d7bd231f8d9fb7d89a86af450266bffea36",
+      "patch_sha256": "10463d69da66d793e3f80d9dae4994bb64aed2fd65fa789331476de747c93d9b"
+    }
+  ],
+  "candidate_two_files_exact_composed_reference": true,
+  "published_fixtures3_exact": true,
+  "cost_proposal14_source256_all297_verified_unchanged": true,
+  "decision": "Attribution evidence is review-only. Unclassified used bytes are not dead storage or reclaim permission; no process RSS/peak/time claim. Prepared MEM2/3/4/5 reconciliation may continue independently with focused fuel/cut/SAN and lifetime gates, drain before any future explicitly granted exclusive cost slot. Source selection is not a demonstrated integration regression; historical measured gains do not transfer. Runtime HOLD paired6/146 and inert29/48 plus all strict/observer/SAN/setup/V1/V2/compatibility/historical failures remain. Full acceptance, original codec-owner disposition, current E22 composition and actual costs pending.",
+  "runtime_READY_task_publication_cost_grant_accepted_adoption_or_Goal_completion": false,
+  "Root_preparation_failures_preserved": [
+    "Two final-pin lookups guessed nonexistent cost before/after filenames (first epoch, then private). Source/evidence and both isolated patch replays had already verified. Corrected to the actual frozen configuration input_sha256297 map; no workload, waiver or implementation change."
+  ]
+}

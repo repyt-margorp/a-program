@@ -1,0 +1,11 @@
+{
+  "date_UTC": "2026-10-04T07:28:45.318544+00:00",
+  "provenance": "Root operational review under existing human-authorized scope; not new human approval.",
+  "recipient": "Original C owner, durable only; no TUI input/resume or consumption claim.",
+  "receipt": "src/prototype/c_backend/verification/core-epoch28.json",
+  "receipt_sha256": "dcc51b3ca679b0242e860f96a2fee7968b6f21eebda7ded2ae9840acdb8ea904",
+  "C28_task": "0c852ce6995cbb9a933910fda6d37490291fdcbb",
+  "C28_prototype_Main": "a6361c443ba0372570386a1bb9dff942b836f77c",
+  "current_source128": "5235ee3cac894d821098f030f413547efc6d044d87ae2385d16d77164363d277",
+  "decision": "Frozen13 task/Main pushed/remote exact; Main other12 exact and Goal only reconciled, original live trials preserved. Fresh E22 registration0 and O2/SAN373 expected rows each,128 linked+32 loaded clients/16 source observations each,48 generated C-H exact. Prior C27 backend/ABI/producer unchanged. Constant signed predicates/module ABI controls do not prove source comparator/native indexed AccQuickSort. Preserve pure-total provider interpretation, synchronous borrowed context/API/code/dlopen lifetime, nonoverlap/depth256 and limited SAN. Full61/ownership/effects/cost/adoption remain. Continue distinct owned increments, no accepted promotion/new cost grant/full Goal closure."
+}

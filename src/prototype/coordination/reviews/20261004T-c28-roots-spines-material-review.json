@@ -1,0 +1,321 @@
+{
+  "date_UTC": "2026-10-04T07:28:45.318544+00:00",
+  "Main_reviewed": "a6361c443ba0372570386a1bb9dff942b836f77c",
+  "all7_read_only_original_panes": {
+    "C": {
+      "pane": "%0",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c28-final-owner-status/C.txt",
+      "sha256": "8a3a813cad2c58819513cdd79c413c81b1a75d4cd01c5ae7fb9ad94762d2ef41",
+      "status": "pursuing",
+      "last_lines": [
+        "  \u2514 1,0,-1,|-2,-1,0,|0|-2147483648|0|",
+        "",
+        "\u2022 Ran git diff --stat",
+        "  \u2514  src/prototype/c_backend/link/driver.c  | 11 ++++++++++-",
+        "     src/prototype/c_backend/link/plan.c    |  7 ++++---",
+        "     src/prototype/c_backend/link/plan.h    |  2 +-",
+        "    +3 lines (ctrl+t to view transcript)",
+        "",
+        "\u2022 Ran python3 - <<'PY'",
+        "  \u2502 from pathlib import Path",
+        "  \u2502 import subprocess,json,os",
+        "  \u2502 \u2026 +12 lines",
+        "  \u2514 build 0",
+        "    first emission 0",
+        "",
+        "\u2022 Ran git log -1 --format='%H %s'",
+        "  \u2514 0c852ce6995cbb9a933910fda6d37490291fdcbb prototype: verify signed predicate C module products",
+        "",
+        "\u25e6 Working (13m 42s \u2022 esc to interrupt)",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/c-backend \u00b7 Verify Surface index.lock handoff         Pursuing goal (1d 0h 26m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    },
+    "Performance": {
+      "pane": "%1",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c28-final-owner-status/Performance.txt",
+      "sha256": "de4bfca22591b0d351056b512b2d9aea6c5b821add3b0f7960dcd5dadb6b7eb5",
+      "status": "pursuing",
+      "last_lines": [
+        "    118 +failed = sum(row[\"exit\"] != 0 or row[\"censored\"] for row in records)",
+        "    119 +write_json(output / \"summary.json\", {\"terminal\": True, \"records\": records,",
+        "    120 +    \"failed\": failed, \"initial_candidate_setup_failures_preserved\": 2,",
+        "    121 +    \"parent_success_records_reused\": 10, \"all8_candidate_unit_outputs_equal_same_flavor_p",
+        "         arent\": outputs_equal,",
+        "    122 +    \"source_pair\": before[\"source_pair\"], \"source256_and_all_original_current_input_pins_",
+        "         exact_after\": True,",
+        "    123 +    \"no_runtime_fixture_assertion_owner_or_codec_adapter\": True,",
+        "    124 +    \"all_launched_children_reaped\": True, \"runtime_READY\": False,",
+        "    125 +    \"limits\": [\"Candidate-only focused retry; raw separate-process cuts/current consumer",
+        "         qualification pending.\",",
+        "    126 +        \"Original setup2/byte/strict3/observer/SAN failures remain; no full acceptance/co",
+        "         st/grant/adoption.\"]})",
+        "    127 +print(json.dumps({\"terminal\": True, \"records\": len(records), \"failed\": failed,",
+        "    128 +    \"all8_candidate_unit_outputs_equal_same_flavor_parent\": outputs_equal,",
+        "    129 +    \"summary_sha256\": sha(output / \"summary.json\")}), flush=True)",
+        "    130 +raise SystemExit(0 if failed == 0 and outputs_equal and len(records) == 10 else 1)",
+        "",
+        "\u25e6 Working (32m 10s \u2022 esc to interrupt) \u00b7 1 background terminal running \u00b7 /ps to view \u00b7 /stop to c\u2026",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-progra\u2026 Pursuing goal (1d 5h 13m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    },
+    "Job": {
+      "pane": "%4",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c28-final-owner-status/Job.txt",
+      "sha256": "7fa0f52c2777cc9b290ce935070c3e7d8ac2561059725c6f67ddb9f121877db9",
+      "status": "pursuing",
+      "last_lines": [
+        "       r-out $(ROOT)synthesis_schema.c,$(SYNTHESIS_SOURCES)) $(BUILD)/schema_input_control.o $(SCH",
+        "       EMA_INPUT_CONTROL) -o $@",
+        "",
+        "\u2022 Ran python3 - <<'PY'",
+        "  \u2502 from pathlib import Path",
+        "  \u2502 import hashlib,json",
+        "  \u2502 \u2026 +26 lines",
+        "  \u2514 E24 corrected v2 prepared, source156 unchanged",
+        "",
+        "\u2022 Ran python3 /tmp/job-evidence-e24-focused-v2.py",
+        "  \u2514 {\"variant\": \"parent\", \"gate\": \"build\", \"exit\": 2}",
+        "    Traceback (most recent call last):",
+        "      File \"/tmp/job-evidence-e24-focused-v2.py\", line 28, in <module>",
+        "    +3 lines (ctrl+t to view transcript)",
+        "",
+        "\u2022 Explored",
+        "  \u2514 Read synthesis.c, job-evidence-e23-freeze.py, parent-build-v2.log",
+        "",
+        "\u25e6 Working (21m 48s \u2022 esc to interrupt)",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-\u2026 Pursuing goal (17h 37m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    },
+    "Static": {
+      "pane": "%10",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c28-final-owner-status/Static.txt",
+      "sha256": "6957e03b01de8284aaaabcbbddf8dad6e5036b828ff7f7319f60f80a1002041f",
+      "status": "achieved",
+      "last_lines": [
+        "       /verification-audit-e6-cost-output-20261003. Cost stays DEFERRED/unmeasured; no audit collector/tool/launcher, timing, gate or build has run. Correctness",
+        "        workers remain released under your decision.",
+        "    5 +",
+        "    6 +Preserve ended-window metadata/proposals for later separate exclusive scheduling on a qualified producer; a later execution requires fresh producer/depen",
+        "       dency/remaining-cap review and a new explicit grant. Static five-file task7ed3ad1/integration5683755 delivery is unchanged. Later live plan receipt stays",
+        "        outside the freeze. No permanent collector or extra semantic ledger was added; prior notices/snapshots and no-output/no-timing condition are preserved.",
+        "",
+        "\u2022 Ran python3 - <<'PY'",
+        "  \u2502 from pathlib import Path",
+        "  \u2502 import hashlib",
+        "  \u2502 \u2026 +5 lines",
+        "  \u2514 Review receipt: 1191 bytes; SHA-256 1e8b99182da029cc62daacc9ce2cb6bbb79e5b79ba173b9aeba6c7f79dc5569f",
+        "",
+        "\u2022 Review receipt recorded for Merge (src/prototype/coordination/outbox/verification-audit-11-review-receipt.txt). Config and key remain unchanged; no audit",
+        "  outputs or timing exist.",
+        "",
+        "  Bounded static delivery remains complete. Cost is deferred and unmeasured; full Issue 59 stays open pending later exclusive scheduling.",
+        "",
+        "  Worked for 1m 15s \u2022 17:54",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/verification-audit \u00b7 Hand off static inventory              Goal achieved (50m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    },
+    "Sort": {
+      "pane": "%11",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c28-final-owner-status/Sort.txt",
+      "sha256": "0ef97a0a7ba5785e174efa2cb58c7d992f1b851dfea4dc62c90930b9e843d177",
+      "status": "achieved",
+      "last_lines": [
+        "",
+        "\u2022 The SOAP snapshot and owning plan now classify the follow-up as Merge agent direction, with human requirements explicitly sourced to F0. Hash checks confirm",
+        "  all +301 implementation, fixture, and runner lines and both test logs are unchanged. I\u2019m sending the final corrected freeze pins now.",
+        "",
+        "\u2022 Ran python3 - <<'PY'",
+        "  \u2502 from pathlib import Path",
+        "  \u2502 import hashlib,json,datetime,subprocess",
+        "  \u2502 \u2026 +66 lines",
+        "  \u2514 Verified only SOAP/provenance metadata differ from original 10-path freeze; source/fixtures/runners/README/logs exact.",
+        "    FINAL_MANIFEST_SHA256 e0adf408179cfde0a98ec11c448ef5967c3d945c2c198e7e79a93456208f21eb",
+        "    FINAL_NOTICE_SHA256 2f7c99e62b67d5a9eecc61ae7878d35023244d7bdeeb1f375b0073f558344259",
+        "    +1 line (ctrl+t to view transcript)",
+        "",
+        "\u2022 Corrected provenance in the SOAP snapshot and owning plan: Merge\u2019s follow-up is agent operational direction; human requirements explicitly cite F0.",
+        "",
+        "  Refrozen and wrote the final corrected ready notice (src/prototype/coordination/outbox/finite-functions-ready-provenance-final.txt). All +301 implementation/",
+        "  fixture/runner lines and test logs remain byte-identical. No rerun, accepted changes, new Goal, or duplicate worker.",
+        "",
+        "  Worked for 6m 44s \u2022 19:14",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/sort-library \u00b7 Start authorized sort worker                 Goal achieved (24m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    },
+    "Tests": {
+      "pane": "%12",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c28-final-owner-status/Tests.txt",
+      "sha256": "fca96187b4d7065cb6de7c0afa071799ebbef3becc16e74546b04f892ca9efe0",
+      "status": "achieved",
+      "last_lines": [
+        "\u2022 Implemented and verified prototype reductions: 22 duplicate invocations removed, with 13 fewer applied lines after counting the helper.",
+        "",
+        "   Applied file        Added    Deleted",
+        "  \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501  \u2501\u2501\u2501\u2501\u2501\u2501\u2501  \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501",
+        "   compatibility.sh       19         54",
+        "  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500  \u2500\u2500\u2500\u2500\u2500\u2500\u2500  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500",
+        "   quick_result.sh         0          3",
+        "  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500  \u2500\u2500\u2500\u2500\u2500\u2500\u2500  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500",
+        "   overlay.sh             25          0",
+        "",
+        "  Original/reduced outcomes match; ten injection checks pass. All 47 completed combined recipes pass. E9/E10 controls, strict3 and unsafe E11 failures remain",
+        "  preserved. The unchanged derived-LT run is recorded as incomplete after its 600-second cap. Wall/RSS savings are unmeasured.",
+        "",
+        "  Exact Merge handoff and full per-file counts (src/prototype/coordination/outbox/test-suite-20261003-final-handoff.txt) are frozen. Git staging is blocked by",
+        "  read-only shared metadata. Accepted files remain untouched; Issue59 stays open.",
+        "",
+        "  Goal complete; elapsed time approximately 38 minutes.",
+        "",
+        "  Worked for 38m 29s \u2022 22:34",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/test-suite \u00b7 Simplify and deduplicate tests                 Goal achieved (37m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    },
+    "Issues": {
+      "pane": "%14",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c28-final-owner-status/Issues.txt",
+      "sha256": "cd3a74a4ddc3f3f606d4f117f2ff1b3d634937f2bf44b6170e44be56d2f907cc",
+      "status": "achieved",
+      "last_lines": [
+        "",
+        "  No code changes or Main integration.",
+        "",
+        "  Worked for 24m 3s \u2022 22:20",
+        "",
+        "",
+        "\u203a Root fresh GitHub reread verifies all10 exact comment-body hashes, #61 exact body/open, #44/#49 closed/not_planned, final9 issue set. Frozen2 handoff hashes",
+        "  verified; exact one-plan task publication and Main integration completed, push finishing. Initial Main desk plan preserved privately. Bounded audit delivery",
+        "  meets criteria; do completion accounting and remain stopped/available afterward, no further disposition run. Sole writer handoff finished, Root resumes",
+        "  coordination. No new semantic/accepted policy.",
+        "",
+        "",
+        "\u2022 I\u2019ll confirm the completion accounting. The audit remains stopped, and Root has resumed coordination.",
+        "",
+        "\u2022 Goal confirmed complete. Recorded usage: 216,461 tokens, 23m 50s.",
+        "",
+        "  The audit remains stopped and available for follow-up. Root owns coordination; no further dispositions will run.",
+        "",
+        "  Worked for 26s \u2022 22:31",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/issue-audit \u00b7 Record audit ownership receipt                Goal achieved (23m)    \u26a0 1 warning \u00b7 f2 to view"
+      ]
+    }
+  },
+  "worker_live_progress": "C private subsequent linker work; Performance candidate spine focused retry after initial setup2; Job private E24 preparation/build2 visible, not frozen READY or Root qualification. Original Job direct conversation remains free. No present stall established.",
+  "issue_evidence": {
+    "all9": [
+      41,
+      43,
+      47,
+      51,
+      52,
+      56,
+      57,
+      59,
+      61
+    ],
+    "fresh_file": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c28-final-owner-status/issues.json",
+    "sha256": "17e040a6f70881c999eff1d9f97e0405b20530d47e3a5685bc1391ef6ec70696",
+    "all9_bodies_dates_exact_e22": true,
+    "open_PRs": [],
+    "initial_preparation": [
+      "Parallel issue read attempted before new capture directory creation; no issue result read.",
+      "Old raw issue schema omitted state; normalized only this additional OPEN field, all shared fields exact."
+    ]
+  },
+  "issue_criteria_assessment": {
+    "61": "C27 and C28 exact20/exact13 signed callback and ordinary module prototypes delivered on current E22. Fresh C28 two373 expected phases,128 linked/32 loaded clients each and48 generated bytes exact. Pure-total successful provider interpretation/synchronous borrowed lifetime/nonoverlap/depth256/limited SAN remain. Constant predicates are not admitted signed source comparator/native indexed AccQuickSort; full61/effects/ownership/actual cost/adoption open.",
+    "56": "Cumulative/cost review preserved; new roots15/private25/all274/raw6 exact and residual17758336 unclassified. Spine preparation20/source25967429 only two files/four published patch composition fresh0/exact,126 others and three fixtures unchanged. Runtime/fuel/cut/SAN/current E22 composition pending, runtime byte HOLD paired6/146/inert29/48/all history retained; cost36/config7448f3f4/all297 deferred/ungranted, actual RSS-time/codec/full acceptance open.",
+    "51": "E22 exact31/current30/C27 downstream33+381C-H qualified/prototype delivered. Source canonical membership removes five copied-owner admission gaps, completed prepare existing rejection. E23 isolated focused retention controls reviewed, full READY/current pending. Strict3/fullSE-AP/current acceptance/codec/cost/adoption open.",
+    "59": "Bounded static inventory and test-consolidation pilot delivered, unique controls preserved. Controlled actual cost and full suite lifecycle/adoption remain deferred; completed bounded owners stay stopped.",
+    "57": "Surface prototype delivered; accepted polarity migration and selector diagnostics/design remain separate unresolved criteria.",
+    "52": "Checked equality-reuse design remains separate; source storage/C capture changes do not implement it.",
+    "47": "General relevance/partial-artifact admissibility design remains open; private type/capture binding gives no pending-evidence or erasure authority.",
+    "43": "General recurrence/logical boundary remains a user design decision; no new syntax/rules implemented by these epochs.",
+    "41": "Finite-function/Sort bounded prototypes delivered; wider container/view/position laws and accepted interface choice remain separate."
+  },
+  "bounded_worker_handoffs": {
+    "Static": {
+      "last_handoff_path": "/home/repyt/workspace/a-program-workers/verification-audit/src/prototype/coordination/outbox/verification-audit-11-review-receipt.txt",
+      "last_handoff_sha256": "1e8b99182da029cc62daacc9ce2cb6bbb79e5b79ba173b9aeba6c7f79dc5569f",
+      "current_original_pane_achieved_stopped": true
+    },
+    "Sort": {
+      "last_handoff_path": "/home/repyt/workspace/a-program-workers/sort-library/src/prototype/coordination/outbox/finite-functions-ready-provenance-final.txt",
+      "last_handoff_sha256": "2f7c99e62b67d5a9eecc61ae7878d35023244d7bdeeb1f375b0073f558344259",
+      "current_original_pane_achieved_stopped": true
+    },
+    "Tests": {
+      "last_handoff_path": "/home/repyt/workspace/a-program-workers/test-suite/src/prototype/coordination/outbox/test-suite-20261003-final-handoff.txt",
+      "last_handoff_sha256": "4432e3d1f2b645352146e833f69ca3aa1cfa3a17ddb0544bfdf4cd5629086c61",
+      "current_original_pane_achieved_stopped": true
+    },
+    "Issues": {
+      "last_handoff_path": "/home/repyt/workspace/a-program-workers/issue-audit/src/prototype/coordination/outbox/issue-audit-05-final-handoff.txt",
+      "last_handoff_sha256": "bfbabb9b39aaef55b9c531cedf2c8a3e13ead9f0dd7e2650cb0d8d165992ffca",
+      "current_original_pane_achieved_stopped": true
+    }
+  },
+  "new_material_receipts": {
+    "src/prototype/c_backend/verification/core-epoch28.json": "dcc51b3ca679b0242e860f96a2fee7968b6f21eebda7ded2ae9840acdb8ea904",
+    "src/prototype/performance_followup/current-roots-spines-prepared-held-root-review.json": "d6e80605f1e7197d1fd6dbfa753cbbf4448e9f008a681479efaa836358fa64cb"
+  },
+  "new_durable_owner_routes": {
+    "C": {
+      "Main_path": "src/prototype/coordination/inbox/c-backend-c28-current-e22-root-review-20261004.json",
+      "original_path": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/coordination/inbox/c-backend-c28-current-e22-root-review-20261004.json",
+      "sha256": "18b78dc81770d395b66bf584a1e46a78ef5e598220477c27da95ab1febd6af04",
+      "TUI_input_resume_or_consumption_claim": false
+    },
+    "Performance": {
+      "Main_path": "src/prototype/coordination/inbox/performance-current-roots-spines-root-review-20261004.json",
+      "original_path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/coordination/inbox/performance-current-roots-spines-root-review-20261004.json",
+      "sha256": "70582e3c1b7aa3d359e52fde2e18426b393f0aa2b0f0be60a1e76e94009f8f3c",
+      "TUI_input_resume_or_consumption_claim": false
+    }
+  },
+  "preceding_C27_E22_cumulative_E23_review": {
+    "path": "src/prototype/coordination/reviews/20261004T-e22-c27-material-review.json",
+    "sha256": "e7fd5e70dbe061d2348c0d299d1396c52b15510be5b489d8f20cff0db9ffa05c"
+  },
+  "Root_Goal": {
+    "fresh_service_status": "blocked",
+    "tokensUsed": 3262854,
+    "timeUsedSeconds": 25296,
+    "incomplete_no_resume_or_complete": true
+  },
+  "Root_Goal_freshly_read_still_blocked_incomplete": true,
+  "original_Job_HEAD_index_preserved_no_input_resume": true,
+  "timer_capture": "    PID                  STARTED COMMAND\n1585465 Sat Oct  3 16:37:37 2026 node src/prototype/coordination/watch_core.cjs 019ebfae-06be-7b71-974a-b97505daed4a /tmp/a-program-merge-desk-20261003/outbox\n1674731 Sat Oct  3 18:31:03 2026 node /home/repyt/workspace/a-program/src/prototype/coordination/watch_core.cjs 01a100b3-1d83-7090-bbf6-62544c39ec4b --new-only --heartbeat-seconds=21600 --heartbeat-first-seconds=15197.714 /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/coordination/outbox /home/repyt/workspace/a-program-workers/performance/src/prototype/coordination/outbox /home/repyt/workspace/a-program-workers/c-backend/src/prototype/coordination/outbox /home/repyt/workspace/a-program-workers/verification-audit/src/prototype/coordination/outbox /home/repyt/workspace/a-program-workers/sort-library/src/prototype/coordination/outbox\n",
+  "next_review_UTC": "2026-10-04T07:44:22.084Z",
+  "original_timer1674731_watcher1585465_alive_unchanged": true,
+  "protected9_exact": true,
+  "no_owner_resumed_duplicated_or_model_changed": true,
+  "no_cost_grant_byte_waiver_accepted_promotion_Goal_or_issue_closure": true
+}
