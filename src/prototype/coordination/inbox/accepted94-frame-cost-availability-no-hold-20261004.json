@@ -1,0 +1,8 @@
+{
+  "date_UTC": "2026-10-04T14:42:48.093844+00:00",
+  "type": "Availability information request only; no hold or measurement grant",
+  "reason": "Two short requests expired without all three actual safe-drain acknowledgments. Arrange the next window from actual owner availability instead of repeating a blind hold.",
+  "request": "At your next ordinary safe checkpoint, report known owned workload handles/processes and whether they are terminal/reaped, the next intended CPU-heavy work, and a feasible ten-minute measurement window. No need to interrupt current work or wait for a reply; continue the original Goal. If availability changes before a grant, report that change.",
+  "scope": "Existing exact 36-job normal O2 proposal, configuration 262c46ac3f50313a164dab72ff88a40d684c1fe3c75954ce1362c9a1c0bffce9; fresh all-three safe acknowledgments, input revalidation and an explicit executor/start/latest-start/hard-deadline grant are still required.",
+  "constraints": "No collector launch, heavy-work hold, owner/session/model/Goal reset, new worker or accepted implementation change is requested."
+}

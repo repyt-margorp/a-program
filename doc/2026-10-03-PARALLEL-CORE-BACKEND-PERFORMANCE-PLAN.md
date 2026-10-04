@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: selected approved Performancefc52755b accepted/pushed; metadata551eecca remote exact/protected9 preserved. Human Evidence/Occurrence static audit report45109a85/all34 pins/all53 rules reviewed; coherent prototype migration remains. C38 source append42 plus sealed Acc63/partition86 verified statically on oldE8; current qualification/publication pending. Original acceptance363 terminal0/current source, omitted new4 separately qualified by Root; fresh drain request pending/no grant/sample. All strict/raw/full/cost and broader issue criteria remain;13:44 all-owner review complete, schedule/Goals unchanged.
+Status: approved Performance promotion fc52755b complete; original acceptance 363 and adopted normative four tests verified separately on c206. Human Evidence/Occurrence static audit delivered; coherent prototype migration continues. C38 reviewed, C39 Identity boundary routed; current qualification remains. Cost request 2 expired without all three acknowledgments; no grant/sample/hold. Original Goals and review timer unchanged.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -27,16 +27,16 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 
 ### Current Delivery Status
 
-2026-10-04, superseding latest acceptance scope: [Root independent review](../src/prototype/coordination/reviews/20261004-performance-full-acceptance-static-review.json)
-verifies363 actual recipe exits0, uncensored, all1308 pins and622 accepted
-Git files including all120 runtime files. The private Makefile is the accepted
-original prefix; it omits the adopted appended19-line new4 test integration.
-These363 therefore prove original acceptance on current c206, not executions
-of the additional four target recipes. Root new4 selected promotion evidence
-is separate; do not repeat363 recipes or hide the difference. Earlier running
-status is superseded. Matched elapsed/peakRSS remains unmeasured. A fresh
-bounded safe-drain request is pending, with explicit automatic expiry and no
-measurement authority until all3 actual acknowledgments and an exact grant.
+2026-10-04, superseding acceptance and cost status: [Root scope review](../src/prototype/coordination/reviews/20261004-performance-prefix-scope-correction-review.json)
+verifies the immutable scope addendum and the existing strict Root result/log.
+The original Make prefix ran 363 recipes with zero failed exits; the appended
+four normative tests passed in Root's separate strict invocation on the same
+c206 runtime. These are two verified invocations. No build or broad replay was
+needed. Request 2 expired at 14:29:24 UTC without fresh Job/C acknowledgments;
+Performance confirmed expiry and zero samples. [Explicit release](../src/prototype/coordination/inbox/accepted94-frame-cost-drain-2-expired-release-20261004.json)
+ends any pending hold. Matched elapsed/peak RSS remains unmeasured. Next obtain
+actual availability at ordinary checkpoints, without a hold, before arranging
+a precise bounded slot. Historical acknowledgments cannot grant a new slot.
 
 C39 admitted oldE8 probes expose actual scoped Identity transport boundaries
 in accessibleSucc/zero-down; this is no established producer bug or executable
@@ -2235,6 +2235,14 @@ forthcoming; this is not approval to weaken checking or introduce a new engine.
 
 ### Objective (Code)
 
+2026-10-04, Root review at accepted metadata revision `9a52383c`:
+notice `4732642b`, scope manifest `ca684cfb`, strict result `a297d08f` and
+log `0c199b79` verify the original 363 recipes plus separately executed adopted
+four tests on runtime120 `c2063542`. Parent/adopted Make bytes and all four
+commands/output lines match. Notice `36900746` confirms request-2 expiry with
+zero collector/samples. These are fresh static checks of retained execution
+records; no new runtime test was run. [Detailed review](../src/prototype/coordination/reviews/20261004-performance-prefix-scope-correction-review.json).
+
 2026-10-04 09:26 UTC, actual Performance reply SHAb82caaf7 parks empty-array/
 MEM10/spine peripheral work. Critical target is stateless-head recycling
 source128c414202a->80b46106 (eval.c/h): finish current acceptance, coordinate
@@ -2483,6 +2491,14 @@ Four cross-instrumentation raw image hashes differ; all 140 cross-build reads
 pass. No cross-instrumentation byte equality or wall/RSS speedup is claimed.
 
 ### Assessment
+
+2026-10-04, Root coordination decision within existing delegated scope:
+adopt the precise combined coverage and preserve the separate invocation
+boundaries. Defer cost execution because both bounded requests expired without
+all three fresh safe acknowledgments. Release request 2 and request availability
+without a hold from the original C/Job owners at ordinary checkpoints; another
+blind short hold would repeat the same delivery gap. This changes no user
+requirement, owner Goal, failure disposition or accepted implementation.
 
 2026-10-04, Root accepts the owner's superseding current-producer cost decision
 (SHA3ec54619): keep old c414->80b proposal frozen/ungranted, port the dominant

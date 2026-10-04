@@ -1,0 +1,14 @@
+{
+  "date_UTC": "2026-10-04T14:42:48.093844+00:00",
+  "slot_id": "accepted94-frame-order-20261004-2",
+  "type": "Pending request expired and released; no measurement grant",
+  "automatic_release_UTC": "2026-10-04T14:29:24.349509+00:00",
+  "configuration_SHA": "262c46ac3f50313a164dab72ff88a40d684c1fe3c75954ce1362c9a1c0bffce9",
+  "actual_acknowledgments": {
+    "Performance": "Fresh drain notice db119dc6791feaf321ef4ee99f2361d73bb62a4c6bb9a036544c8a927f0aaa06; drain 5b0ab0c2b2aff58c343332334b68172057cade4c68a4f38f24c0ebd1de25a626 at 14:17:56 UTC. Owner confirms expiry and zero samples in notice 36900746fe73b7872b328f35612e576ec7791583b3ca41e16be00d14d6241a4c at 14:39:09 UTC.",
+    "Job": "No actual request-2 safe-drain acknowledgment received by expiry; request-1 receipt is historical.",
+    "C": "No actual request-2 safe-drain acknowledgment received by expiry; progress and terminal tests do not establish a measurement hold."
+  },
+  "outcome": "No slot granted or collector/sample launched. Any request-2 hold ended automatically at expiry; continue original authorized work. This release is coordination within existing scope, not new user approval or Goal/session pause/reset/resume.",
+  "next_step": "Obtain actual availability at ordinary safe checkpoints before arranging another precise bounded slot. Do not reuse old acknowledgments or launch a collector on this release."
+}

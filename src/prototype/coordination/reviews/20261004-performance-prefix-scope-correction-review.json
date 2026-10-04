@@ -1,0 +1,20 @@
+{
+  "date_UTC": "2026-10-04T14:42:48.093844+00:00",
+  "notice_SHA": "4732642ba15bfb7945fc83da8be721572dd709c5401f1c4a522f0cd0f173c5d3",
+  "manifest_SHA": "ca684cfb673f4cfad5894a359fc2c0e4c21c38e31fa6e6f2d78673f9049a46de",
+  "listed_files": 1,
+  "packet_files_including_manifest": 2,
+  "accepted_parent_Make_and_suffix_exact": true,
+  "Root_strict_result_and_log_exact": true,
+  "four_execution_commands_and_outputs_verified": true,
+  "runtime120": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+  "combined_scope": "Original363/0 plus earlier strict adopted4/0 on samec206; separate invocations.",
+  "Root_new_runtime_replay": false,
+  "original_packets_unchanged": true,
+  "cost": "Request2 expired without all3 actual ACKs; no grant/sample/current RSS-time.",
+  "strict_regression_exit": 0,
+  "strict_regression_no_ignored_errors": true,
+  "expiry_notice_SHA": "36900746fe73b7872b328f35612e576ec7791583b3ca41e16be00d14d6241a4c",
+  "cost_release": "src/prototype/coordination/inbox/accepted94-frame-cost-drain-2-expired-release-20261004.json",
+  "availability_information": "src/prototype/coordination/inbox/accepted94-frame-cost-availability-no-hold-20261004.json"
+}
