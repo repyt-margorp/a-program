@@ -1,0 +1,286 @@
+{
+  "publication": {
+    "task": "e71528fa286e263c568d4f78f3f1281f90b5e86d",
+    "task_parent": "27a35a1344639687a2b89ba05886d5634c3d090d",
+    "Main_parent": "b8fb56b196f04aecd4f41c9f5e941f652843afd6",
+    "exact17_frozen_paths": {
+      "src/prototype/performance_mem9/epochs/substitution_prefix_v1/affected-summary.json": "d0621df5575e2d41a91965deee7a52ac2f47dc780b376163919c97ebf7fc7f42",
+      "src/prototype/performance_mem9/epochs/substitution_prefix_v1/analysis.json": "d12b3e0048808aa8f59f36bd314bd5f5fc88157d2a1ac2e50d10f69544edd382",
+      "src/prototype/performance_mem9/epochs/substitution_prefix_v1/applied.patch": "ec78e7fed853e49359223bf8aac96893ffee299d65818d83a1760e4ea61ac289",
+      "src/prototype/performance_mem9/epochs/substitution_prefix_v1/assemble.py": "5c97a6eb08f0e7a108e17c3a026f2b5503e8cf8efd570ffdb0dc885e2ad6e32c",
+      "src/prototype/performance_mem9/epochs/substitution_prefix_v1/build.mk": "af4ba2f48e0f57c89c3eddd2a00cfca489fd36e2cd4836e5a81c49903f6eb8c6",
+      "src/prototype/performance_mem9/epochs/substitution_prefix_v1/eval.c": "bbc0e8cfa56deea75e3fce6429e1a42ddae4f287d40c8c8af1702ef752bc7ef1",
+      "src/prototype/performance_mem9/epochs/substitution_prefix_v1/focused-summary.json": "71ef3341a7315e6801df1b7526f188957668ec3ecbd9f75243a34abee882f43f",
+      "src/prototype/performance_mem9/epochs/substitution_prefix_v1/freeze.py": "0106e5f87ee3cdb452f0239502d60210d2290c85f8755b890c0d7673dc77e1ab",
+      "src/prototype/performance_mem9/epochs/substitution_prefix_v1/known-failures.json": "eab6ccc9ee7be31e8d01be8f1f08b73d6f427c0a171dbd11e0c818f8aedb0342",
+      "src/prototype/performance_mem9/epochs/substitution_prefix_v1/parent-source.sha256": "2344ad41d6db32ceddb5dbc9419aa8da97fcaa00253e075f5ff96b8f72f93b13",
+      "src/prototype/performance_mem9/epochs/substitution_prefix_v1/private-evidence.json": "e0a613d0a7cde1daf8ceb0053b13b272e1e5337636bce575bd153b0fb09abc13",
+      "src/prototype/performance_mem9/epochs/substitution_prefix_v1/publication.json": "3c1c23bc2e6d8979d5ed160d07a87b149a99ade566d2d5517aaa08bc584c63cb",
+      "src/prototype/performance_mem9/epochs/substitution_prefix_v1/qualify_affected.py": "92685b9f99d8e176c78e5cb7a0fd5c8c32223853435c608875efe6805d3d5027",
+      "src/prototype/performance_mem9/epochs/substitution_prefix_v1/qualify_focused.py": "b80049b4e0501a48eb82049806261613adf24dd03b21a5050fefd8539a8bdbb8",
+      "src/prototype/performance_mem9/epochs/substitution_prefix_v1/source.sha256": "a1d03b837422bc5525cbbbd52b023533fa1efa3d3a5179fa898379d8643645bf",
+      "src/prototype/performance_mem9/epochs/substitution_prefix_v1/substitution_prefix_test.c": "5e1021a5f83efb12d03251c03b6ab2d3a218251383ec68df7b15b83f22ef0750",
+      "src/prototype/performance_mem9/epochs/substitution_prefix_v1/manifest.sha256": "ab5ef5fa3c93b665ccf4172fc08ea3de1b816648a2c8b8b2ee6308ba5a7396ab"
+    },
+    "Root_current_results_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/Root-results.json",
+    "Root_current_results_sha256": "2c99cd8348afdf5e20cac75c43be9660fbf7e0f14322af3d92832a050d72e437",
+    "Root_current_parent_source128": "efcdeaa46b592184d8e5a8dc1fd2139d660d966be75a77c440fe7a4f3e45ca19",
+    "Root_current_candidate_source128": "c414202a4abb79301b04431b75008fa828dd60712b50518a1d4824e5d555b64b",
+    "worker_prior_tracked_live_files_byte_preserved": 2133,
+    "worker_missing_tracked_paths_preserved": [],
+    "publication_scope": "Exact historical frozen17 task branch, independently qualified against current E18. Main integration is a separate Root decision under existing authorized integration scope, not worker notice approval.",
+    "accepted_adoption_or_Goal_completion": false,
+    "exact_patch_context_whitespace_review_sha256": "5f9870e688f8ad903ea93281d7f0fb417cb4c61b5558e6e02d470fecaf967208",
+    "task_remote_exact": true,
+    "Main_merge": "b9e68c278b94c151160ae0d49f483ea19eea3ab6",
+    "Main_remote_exact": true,
+    "all17_Main_bytes_exact": true,
+    "protected9_exact": true,
+    "current_Runtime_changes_remain_isolated_and_reconstructable": true,
+    "no_default_source_test_build_change": true
+  },
+  "static_review_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-static-root-review.json",
+  "static_review_sha256": "f69bf243693713c08e423755e39449c79e157e402485bec2f0392f330bdb27c6",
+  "worker_historical": {
+    "notice_sha256": "9fa374de3d197733af0899c2200d1c621f08855b06ef8303e68a32bbc1f3dea9",
+    "private_manifest_sha256": "08c4a2e10ee88053c65bde89ecb57bd3629293114bcc00215e2d7fac250ac0b8",
+    "private840_all_hashes_exact": true,
+    "parent128_exact": "2344ad41d6db32ceddb5dbc9419aa8da97fcaa00253e075f5ff96b8f72f93b13",
+    "candidate128_exact": "a1d03b837422bc5525cbbbd52b023533fa1efa3d3a5179fa898379d8643645bf",
+    "only_runtime_change": [
+      "src/eval.c"
+    ],
+    "worker_focused454_all_expected0_raw_exact": true,
+    "worker_write88_fresh_cross_read352_recomputed": true,
+    "worker_six_fuels": [
+      0,
+      1,
+      6,
+      9,
+      0,
+      0
+    ],
+    "worker_affected10_raw_expected_status_exact": true,
+    "public52_and_full_TSV_exact_MEM5": true,
+    "original_strict_recipe1_and_reload3_unwaived": true
+  },
+  "current_Root_report_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/Root-results.json",
+  "current_Root_report_sha256": "2c99cd8348afdf5e20cac75c43be9660fbf7e0f14322af3d92832a050d72e437",
+  "current_inputs_review_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-parent-v4-input-review.json",
+  "current_inputs_review_sha256": "4dc03e2cd4e2179083fa5b2b342d34dd1f735900b3d2546f59eb752b4428fd91",
+  "current_all_inputs_after_exact": true,
+  "current_focused454": {
+    "terminal": true,
+    "records": 454,
+    "failed": 0,
+    "totals": [
+      0,
+      1,
+      6,
+      9,
+      0,
+      0
+    ],
+    "cuts_per_variant_build": 22,
+    "parent_source128": "efcdeaa46b592184d8e5a8dc1fd2139d660d966be75a77c440fe7a4f3e45ca19",
+    "candidate_source128": "c414202a4abb79301b04431b75008fa828dd60712b50518a1d4824e5d555b64b",
+    "only_runtime_change": [
+      "src/eval.c"
+    ],
+    "pins": {
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-harness-v4/build.mk": "448541530806e854049a9116e60bebec336579fd9c1fa8fbfd456595723f16c9",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-harness-v4/substitution_prefix_test.c": "5e1021a5f83efb12d03251c03b6ab2d3a218251383ec68df7b15b83f22ef0750",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-harness-v4/qualify_focused.py": "a8b070353e9a1891f17d25c374bf757e9240254425f0f9700693260de7b201cb",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-parent-v4/tests/core.c": "647790ebcb1c2f3c3b28fcd04e9cf6e7c2607081458a5efd96138f1f334834a5",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-parent-v4/tests/eval_io.c": "ebc8f1f3987db32a9887941210717214bafa2c878118ce3d4e78ad4e85429b8b",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-parent-v4/tests/eval_io.sh": "2343f7a2f5e907bab3daf4593a966010df8ccb6482f5c04175f799ff262621bb",
+      "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-parent-v4/src/Makefile": "063d846eb99f86c1c133abf393b3a2a7cf97f548eb472f8b786365f11ba1a167"
+    },
+    "initial_projection_reads": {
+      "parent-o2": [
+        6,
+        11,
+        9,
+        9,
+        2,
+        0
+      ],
+      "candidate-o2": [
+        3,
+        8,
+        7,
+        7,
+        2,
+        0
+      ],
+      "parent-san": [
+        6,
+        11,
+        9,
+        9,
+        2,
+        0
+      ],
+      "candidate-san": [
+        3,
+        8,
+        7,
+        7,
+        2,
+        0
+      ]
+    },
+    "new_owner_codec_layout_allocator_authority": false,
+    "all_probe_children_stopped": true,
+    "actual_wall_RSS_or_speed_gain": false,
+    "broader_affected_controls_pending": true
+  },
+  "current_raw454_hashes_freshly_checked": true,
+  "current_affected7_checks": [
+    {
+      "gate": "affected-build-o2",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program/src/prototype/artifact_persistence/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4",
+        "ROOT=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2",
+        "REPO=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4",
+        "TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/tests",
+        "CHECKPOINT_TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/checkpoint_tests/",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/synthesis_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/artifact_source_checkpoint_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/pointer-check"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "d83526714de8471fd08dbb0f39ef28c90bc9e6afaffd9fdacf2184bdcc997eae"
+    },
+    {
+      "gate": "full-synthesis_test-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/synthesis_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "497e5e979c826ff40f602848e82bed31e82ad16457b173072c9c457104a31804"
+    },
+    {
+      "gate": "full-artifact_source_checkpoint_test-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/artifact_source_checkpoint_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "71cc65467eeb07467f0bd00674acb05a8875ba29911d63bca40891cab8d4233a"
+    },
+    {
+      "gate": "affected-build-san",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program/src/prototype/artifact_persistence/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4",
+        "ROOT=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-san",
+        "REPO=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4",
+        "TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/tests",
+        "CHECKPOINT_TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/checkpoint_tests/",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-san/synthesis_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-san/artifact_source_checkpoint_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "485b75186c19f61eb9cab03c5d0ace939ce31e2ce514f522b5f2af57382000a3"
+    },
+    {
+      "gate": "full-synthesis_test-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-san/synthesis_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "497e5e979c826ff40f602848e82bed31e82ad16457b173072c9c457104a31804"
+    },
+    {
+      "gate": "full-artifact_source_checkpoint_test-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-san/artifact_source_checkpoint_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "71cc65467eeb07467f0bd00674acb05a8875ba29911d63bca40891cab8d4233a"
+    },
+    {
+      "gate": "public-partitions",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program/src/prototype/image_audit/partition_fuel.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/pointer-check",
+        "/tmp/a-program-merge-e12c-current-Main-20261003/examples/09_list_induction.p",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/partitions",
+        "ordinary"
+      ],
+      "exit": 1,
+      "expected_exit": 1,
+      "log_sha256": "5a46029985fa538a996d72d4a160eae48357a7824dc3f09ec59a4bf8ae8869b1"
+    }
+  ],
+  "all52_images_and_full_TSV_exact_current_E18": true,
+  "current_public_TSV_sha256": "cc720f6f23daad9f4917026168af480c81eb70eec1bd57300177c81d20c428d6",
+  "original_strict_reload3_unwaived": [
+    "1000:1000",
+    "1600:1600",
+    "1915:0"
+  ],
+  "current_only_runtime_delta": [
+    "src/eval.c"
+  ],
+  "Root_fixture_API_bridge": [
+    {
+      "path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-parent-v4/tests/eval_io.c",
+      "before_sha256": "75974427bbf197dc12a05704cd3a0965ba6239ea6dc666c4eb2e64f617c69456",
+      "after_sha256": "ebc8f1f3987db32a9887941210717214bafa2c878118ce3d4e78ad4e85429b8b",
+      "only_change": "four array-owner wrappers at existing substitution API calls"
+    },
+    {
+      "path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/tests/eval_io.c",
+      "before_sha256": "75974427bbf197dc12a05704cd3a0965ba6239ea6dc666c4eb2e64f617c69456",
+      "after_sha256": "ebc8f1f3987db32a9887941210717214bafa2c878118ce3d4e78ad4e85429b8b",
+      "only_change": "four array-owner wrappers at existing substitution API calls"
+    }
+  ],
+  "bridge_matches_retained_worker_fixture": true,
+  "Root_initial_setup_failure": {
+    "classification": "Root copied committed legacy eval_io fixture with four pointer-style calls; current prototype API expects struct pg_binding_inputs",
+    "directory": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate/focused",
+    "live_sha256": "521ea95c2e93e3f90c64a40f654c6e918076b3c6e840fc7c10b0a0e21fe19992",
+    "failed_log_sha256": "c47aa5efd017749a82a86b4fb5abc9bd1561a6f5bead8039c8ec42998e8d18f2",
+    "runtime_failure_established": false,
+    "all_original_evidence_retained": true,
+    "initial_preparation_guard_failures_retained": [
+      "prepare-mem9-current-v2.py",
+      "prepare-mem9-current-v3.py"
+    ],
+    "guard_failures_runtime_effect": false
+  },
+  "Root_preparation_guard_failures": "Two isolated preparation guards wrongly expected the global pointer substring count to be four; unchanged fixture has unrelated pointer calls. No runtime check or accepted-file edit occurred; scripts/directories retained. Final bridge compares exact four request-call lines against the retained worker fixture.",
+  "exact_unified_patch_context_format_review": {
+    "initial_diff_check_exit": 2,
+    "sole_file": "src/prototype/performance_mem9/epochs/substitution_prefix_v1/applied.patch",
+    "warnings": 14,
+    "classification": "Exact unified-diff context marker precedes original leading tabs. Runtime and harness source files pass normal diff/style check. Freeze is preserved byte-for-byte.",
+    "original_output": "src/prototype/performance_mem9/epochs/substitution_prefix_v1/applied.patch:4: space before tab in indent.\n+ \tstruct pg_binding_inputs bindings = *images;\nsrc/prototype/performance_mem9/epochs/substitution_prefix_v1/applied.patch:5: space before tab in indent.\n+ \tif (!term) return -1;\nsrc/prototype/performance_mem9/epochs/substitution_prefix_v1/applied.patch:6: space before tab in indent.\n+ \tif (count > SIZE_MAX / sizeof(struct pg_environment)) return -1;\nsrc/prototype/performance_mem9/epochs/substitution_prefix_v1/applied.patch:8: space before tab in indent.\n+ \tfor (size_t i = 0; i < count; ++i) {\nsrc/prototype/performance_mem9/epochs/substitution_prefix_v1/applied.patch:9: space before tab in indent.\n+ \t\tstruct pg_binding_value binding = pg_binding_input(bindings, i);\nsrc/prototype/performance_mem9/epochs/substitution_prefix_v1/applied.patch:10: space before tab in indent.\n+ \t\tif (!binding.binder || !binding.value) return -1;\nsrc/prototype/performance_mem9/epochs/substitution_prefix_v1/applied.patch:11: space before tab in indent.\n+ \t\tif (binding.binder->kind != PG_BINDER) return -1;\nsrc/prototype/performance_mem9/epochs/substitution_prefix_v1/applied.patch:14: space before tab in indent.\n+ \t}\nsrc/prototype/performance_mem9/epochs/substitution_prefix_v1/applied.patch:15: space before tab in indent.\n+ \tif (term->kind == PG_REFERENCE && term->as.reference->kind == PG_SEMANTIC_OBJECT) count = 0;\nsrc/prototype/performance_mem9/epochs/substitution_prefix_v1/applied.patch:16: space before tab in indent.\n+ \t/* An identity prefix is the empty substitution. Keep later identities:\nsrc/prototype/performance_mem9/epochs/substitution_prefix_v1/applied.patch:17: space before tab in indent.\n+ \t * they can shadow a preceding nonidentity image of the same binder. */\nsrc/prototype/performance_mem9/epochs/substitution_prefix_v1/applied.patch:25: space before tab in indent.\n+ \t}\nsrc/prototype/performance_mem9/epochs/substitution_prefix_v1/applied.patch:26: space before tab in indent.\n+ \t*length = count;\nsrc/prototype/performance_mem9/epochs/substitution_prefix_v1/applied.patch:27: space before tab in indent.\n+ \t*images = bindings;\n"
+  },
+  "assessment": "Independently qualify and publish the bounded substitution validation/identity-prefix scan deletion, under the existing stable synchronous input contract. Validate all trailing inputs including constants; retain later identity shadowing, immutable input capture, original first-offset behavior, overflow rejection and charged traversal. No persistent owner/index/cache/layout/allocator/codec/authority changes. The historical17 freeze stays exact; private Root current E18 application preserves all upstream source differences. Main publication stores only that prototype epoch, with accepted/default source/tests/build unchanged. Initial setup failures are preserved.",
+  "historical_attribution_limit": "313/844303/8123 fewer initial reader calls are observations from a historical pinned producer, not actual current wall/RSS gain.",
+  "held_or_deferred": "MEM6 four O2/seven inert byte mismatches and MEM7 four codec abortions remain unwaived. Global generic16 alignment, independent codec fields and opaque/public lifetimes remain. Typed8 allocator/API, compact-root and beta changes deferred pending contracts.",
+  "no_new_broad_or_actual_cost_claim": true,
+  "worker_Goal_and_issue_56_completion": false,
+  "accepted_adoption": false
+}

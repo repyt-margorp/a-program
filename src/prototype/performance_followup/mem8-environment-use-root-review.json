@@ -1,0 +1,73 @@
+{
+  "notice_sha256": "f7effaf2ff03cefc28713b4fb51946a802cdfb49fbbed8f7335f5199418e59e9",
+  "worker_manifest_sha256": "64e74c56a6528a16b15e55a6ff7bbb9659e35e945d38a4f3eda8295c9c059272",
+  "seven_frozen_files_all_exact": {
+    "10000.json": "7ebf6b923402a979b085b42524614c3cd6661d49fb95464486451cdd10137acc",
+    "10000.log": "5a07b5b852f22bf26363b434bfbc03e2c994210d22542e1faece9dffc69d8f78",
+    "100000.log": "052818a61513228a3dd54866a1cf2d1bb59a65f7c06c6183cef7eb3a11187dfc",
+    "environment_use.gdb.py": "9ce0fb932d558cd719b8810ba83f21e4041ec86dfb71592ef6f0915f29280890",
+    "failure.json": "b2353fe267c16e13063be77436289e21e64c039e522d5735fe8fe4136876ec79",
+    "inspect_environment_use.py": "95719ae8fc579e9235fccd359e6109d9aa452879e9ce6f6445311047e9e164cd",
+    "live.json": "4879f698f4117f344f76d7fa3b2b2fc46b1fb8877820f90bcccbcb0b27e5abc1"
+  },
+  "historical_source128_all_actual_files_exact": "81c3ad27dfd01aef14ad8e977d1b783cc3636368b6e5afcab0840d07d055e541",
+  "freshly_rehashed_existing_pins": {
+    "/tmp/ap-performance-mem3-fold-spine-current-e12-20261003/source.sha256": "81c3ad27dfd01aef14ad8e977d1b783cc3636368b6e5afcab0840d07d055e541",
+    "/tmp/ap-performance-mem3-visible-roots-20261003/build/pointer-check": "fea41c2dd0b129b898732a7c6d40e62dcc9288fdaa4bba06d2330d2fb9b4299d",
+    "/tmp/ap-performance-mem1-v3-current-e12-cost-request-20261003/inputs/trees4.p": "02fa88c8503b0b5337f5a09be561ab70b000fd7e02747bb531c23ee538bbfb70",
+    "/usr/bin/gdb": "b4ba8c0e9c47096e7dd407006a310549e274392d37ec6fe04f7dbc7606f0ac90",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem8/private/environment_use_v1_20261003/environment_use.gdb.py": "9ce0fb932d558cd719b8810ba83f21e4041ec86dfb71592ef6f0915f29280890",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem8/private/environment_use_v1_20261003/inspect_environment_use.py": "95719ae8fc579e9235fccd359e6109d9aa452879e9ce6f6445311047e9e164cd",
+    "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem8/private/beta_shapes_v1_20261003/10000.json": "15e6abf8e9a7dc5d1d9fcd74e72693a2e039199e5943df8b1c1e605c7635e35f"
+  },
+  "worker_observation_not_fresh_Root_execution": true,
+  "completed_10K": {
+    "inferior_exit": 3,
+    "source128": "81c3ad27dfd01aef14ad8e977d1b783cc3636368b6e5afcab0840d07d055e541",
+    "counts": {
+      "evaluator_transitions": 4100,
+      "beta_allocations": 624,
+      "address_reused_for_new_beta_link": 0,
+      "semantic_reference_clears_environment": 457,
+      "reference_link_transitions": 713,
+      "selected": 583,
+      "passed": 130,
+      "created_links_consulted": 438,
+      "created_links_selected": 428,
+      "created_links_passed_only": 10,
+      "created_links_not_consulted_by_this_cut": 186
+    },
+    "errors": [],
+    "limit_reached": false,
+    "maximum_links": 60000,
+    "limits": [
+      "Records actual beta allocations after step returns and charged binder-reference consultations.",
+      "Creation generations distinguish a later beta allocation reusing an earlier address.",
+      "No whole-owner lifetime/root census: arguments, frames, opaque state, public captures and later work can retain links.",
+      "Not consulted by this cut does not mean dead, unused by readback, unallocated or safe to discard.",
+      "Passed links consume charged transitions; deleting them changes fuel even if they are never selected.",
+      "No mutation, inferior call, runtime wrapper, owner/model/allocator change or actual time/RSS measurement."
+    ]
+  },
+  "completed_raw_hashes_exact": true,
+  "original_100K_timeout_failure": {
+    "terminal": true,
+    "classification": "Debugger observation timeout; no runtime failure or 100K result established.",
+    "completed_budget": 10000,
+    "incomplete_budget": 100000,
+    "timeout_seconds": 180,
+    "runner_exit": 1,
+    "runner_failure": "subprocess.TimeoutExpired on the second GDB invocation",
+    "incomplete_result_censored": true,
+    "100K_counts_or_fuel_completion_claimed": false,
+    "child_inspection": "Subsequent ps inspection found no pointer-check, GDB or inspector process.",
+    "all_observation_children_stopped": true,
+    "runtime_change": false,
+    "actual_wall_RSS_or_memory_gain_claimed": false,
+    "MEM9_frozen_qualification_affected": false
+  },
+  "100K_no_report_or_counts": true,
+  "assessment": "Retain the completed 10K attribution and censored 100K debugger timeout separately. 186 links unconsulted by that prefix are not proven dead or unnecessary: later traversal/readback and opaque/public lifetimes remain unproved. Passed links charge fuel. No elision/recycling/cache/allocator/API change or current-Main speed/RSS claim follows. Original failure is retained; any bounded owner follow-up must preserve its provenance and limits. MEM9 qualification remains independent.",
+  "runtime_change_or_accepted_adoption": false,
+  "new_cost_grant_or_full_Goal_completion": false
+}
