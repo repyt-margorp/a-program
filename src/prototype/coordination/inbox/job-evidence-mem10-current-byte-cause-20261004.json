@@ -1,0 +1,155 @@
+{
+  "date_UTC": "2026-10-04T02:28:52.302634+00:00",
+  "source": "Root evidence review within existing ownership scope; worker notice is not human approval.",
+  "recipient": "Original job-evidence codec owner; service-stalled, durable handoff only, no new turn/Goal resume/model change.",
+  "subject": "Verified current Fold4/cut10 address-dependent readback enumeration cause",
+  "source128": "c414202a4abb79301b04431b75008fa828dd60712b50518a1d4824e5d555b64b",
+  "worker_notice_sha256": "92d9345c66868208cc3532d91a434b906fab9d462ca8d4b92566b7dc2a96d6be",
+  "Root_review_path": "src/prototype/performance_followup/mem10-current-byte-cause-root-review.json",
+  "Root_review_sha256": "f56cc30b00aa541423890d073c485e298f12c1d1a77c27cb90cf71f6c332bd61",
+  "frozen_epoch_path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/epochs/current_readback_order_v1_diagnosis",
+  "frozen36_manifest_sha256": "de0af10f23b6328df151e1d39952d54da3e0634ae782f4c2261c70be157b778a",
+  "private27_manifest_sha256": "92a741a4da41f5398d9229d8bde15f429e7b3535cb23c8b03116d8de766c5d3e",
+  "worker_summary_sha256": "904795f4555f96678e48ad4af1dbc1147d47821e45057a9143a90b45fd7fc572",
+  "cause": "For this preserved unchanged current Fold4/cut10 image, pointer-derived readback cache buckets order the two detached reusable results differently. Root-first cache entries generate four heads each; all21 configuration heads/actual11-node DAG/25 footer IDs match. Swapping the two four-root groups accounts for all eight changed bytes. This establishes the bounded fixture cause, not every historical failure or a codec design/fix.",
+  "records": [
+    {
+      "label": "variant-0-repeat-0",
+      "exit": 0,
+      "entry_ids": [
+        1,
+        6,
+        3
+      ],
+      "buckets": [
+        {
+          "bucket": 18,
+          "term_id": 6,
+          "is_root": false
+        },
+        {
+          "bucket": 46,
+          "term_id": 3,
+          "is_root": false
+        },
+        {
+          "bucket": 53,
+          "term_id": 1,
+          "is_root": true
+        }
+      ],
+      "all12_entry_heads_and21_total_heads_and25_footer_ids_match": true,
+      "hashes_and_bucket_locations_independently_recomputed": true,
+      "bytes_equal": true,
+      "log_sha256": "32a67cd66abed201ad7ec8c034af0e1a8c295d3553ff1dd7708cc092faa51cbe",
+      "trace_sha256": "c2efbc301b6dc27edfb5a0302620ce8f4f0e7f1c8541521610df388d05b74401",
+      "image_sha256": "bfafe394dd1b709525de733efd5d85388b946005e8beaf727c341f2106545d48"
+    },
+    {
+      "label": "variant-0-repeat-1",
+      "exit": 0,
+      "entry_ids": [
+        1,
+        3,
+        6
+      ],
+      "buckets": [
+        {
+          "bucket": 14,
+          "term_id": 3,
+          "is_root": false
+        },
+        {
+          "bucket": 52,
+          "term_id": 1,
+          "is_root": true
+        },
+        {
+          "bucket": 54,
+          "term_id": 6,
+          "is_root": false
+        }
+      ],
+      "all12_entry_heads_and21_total_heads_and25_footer_ids_match": true,
+      "hashes_and_bucket_locations_independently_recomputed": true,
+      "bytes_equal": false,
+      "log_sha256": "64dc8de396fd3d3ff92b33af3c162eb3f63d750833014330476c727af8f8e05e",
+      "trace_sha256": "5ee92afb105793002b6dea3573dafc31d3fef0dff637a2c0df06f9b727bb94de",
+      "image_sha256": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6"
+    },
+    {
+      "label": "variant-1-repeat-0",
+      "exit": 0,
+      "entry_ids": [
+        1,
+        6,
+        3
+      ],
+      "buckets": [
+        {
+          "bucket": 22,
+          "term_id": 6,
+          "is_root": false
+        },
+        {
+          "bucket": 39,
+          "term_id": 1,
+          "is_root": true
+        },
+        {
+          "bucket": 61,
+          "term_id": 3,
+          "is_root": false
+        }
+      ],
+      "all12_entry_heads_and21_total_heads_and25_footer_ids_match": true,
+      "hashes_and_bucket_locations_independently_recomputed": true,
+      "bytes_equal": false,
+      "log_sha256": "aab4b498d25fed0d9a9af3d2c26849de9cce89ab0af297107ad209d3ef89a05d",
+      "trace_sha256": "0222f51bb2d2db8f64fdeeeae049276039e2ec485f28b7a1d2b568027db13531",
+      "image_sha256": "bfafe394dd1b709525de733efd5d85388b946005e8beaf727c341f2106545d48"
+    },
+    {
+      "label": "variant-1-repeat-1",
+      "exit": 0,
+      "entry_ids": [
+        1,
+        3,
+        6
+      ],
+      "buckets": [
+        {
+          "bucket": 24,
+          "term_id": 1,
+          "is_root": true
+        },
+        {
+          "bucket": 44,
+          "term_id": 3,
+          "is_root": false
+        },
+        {
+          "bucket": 54,
+          "term_id": 6,
+          "is_root": false
+        }
+      ],
+      "all12_entry_heads_and21_total_heads_and25_footer_ids_match": true,
+      "hashes_and_bucket_locations_independently_recomputed": true,
+      "bytes_equal": true,
+      "log_sha256": "458cd78688d57aaec2a1ce298011cc4e0d289208431135eeee482a2370b4e1ca",
+      "trace_sha256": "00ba2cc73a0d5ee45ac37479ade54801ebdedf968d02be71e03a2ccd3bfe6bbc",
+      "image_sha256": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6"
+    }
+  ],
+  "existing_scope_disposition": "Route exact evidence to original Job codec owner without turn/Goal resume. Preserve required reusable results/independent fields and original byte assertions; any future ordering fix needs owner review and full current gates.",
+  "previous_current_O2_handoff_path": "src/prototype/coordination/inbox/job-evidence-mem10-current-byte-handoff-20261004.json",
+  "previous_current_O2_handoff_sha256": "1c2df710284e85498b06da126aa0120a6294e1f54cab6862f37bcaec58e9c6fb",
+  "holds_and_limits": [
+    "MEM10/MEM6/MEM7 remain held. Historical51/1168, paired6/146 and fresh original current O2 5/8 remain unwaived. Diagnosis O0-g/debugger evidence does not replace current O2 qualification.",
+    "No source/codec/image rewrite/canonicalizer/cache deletion/schema change/accepted edit.",
+    "No full current consumer/C/.a/transport/resume/SAN/machine-byte/actual-capacity or matched cost qualification.",
+    "No new slot, task/runtime publication or Goal completion. Original Job service-stalled; no acknowledgement claimed."
+  ],
+  "no_consumption_claimed": true
+}

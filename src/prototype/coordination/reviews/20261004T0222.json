@@ -1,0 +1,358 @@
+{
+  "review_UTC": "2026-10-04T02:23:08.647253+00:00",
+  "review_trigger": "C22 READY d5ed4da2, flags review542821de and separate C23 actioneaa08454; preceding independent01:44 timed review already published. Notices are evidence, not user approval. Superseding frozen current byte-cause92d9345c incorporated before metadata publication.",
+  "Main_at_review": "a0a9dc38dde82d8ef410251b1362bb2e7757091c",
+  "preceding_scheduled_review_path": "src/prototype/coordination/reviews/20261004T014422.json",
+  "preceding_scheduled_review_sha256": "5c1a92db65d79efc24df6023575fe55d3f2a4b772ff1edcfa7b380158ba41ba7",
+  "owners": {
+    "C": {
+      "pane": "%0",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-owner-status/C-after-byte-cause.txt",
+      "capture_sha256": "2e276560e1331bee295b5b481eb579a197fe7c9b03bac81672356bd7d4f8c658",
+      "last_status_lines": [
+        "    98 +this separate epoch can be frozen. Report the target transformation in receipts.",
+        "    99",
+        "",
+        "\u25e6 Working (27m 31s \u2022 esc to interrupt)",
+        "",
+        "\u2022 Queued follow-up inputs",
+        "  \u21b3 Root C22 release: exact12 task8b6debfcf836451b9e972aba9f3f624f24b406e9 / prototype Maina0a9dc38dde82d8ef410251b1362bb2e7757091c pushed/remote exact.",
+        "    Preserved1839 recorded live files; other11 Main bytes exact, Goal provenance alone reconciled. Current E18+MEM9 source128c414202a: strict O2 backend/two",
+        "    helpers rebuilt; nested40, parent recursive114, integer61 each O2/client-source SAN pass,84 parent C/H bytes exact C21. Retained192/runtime128/raw1603",
+        "    \u2026",
+        "    shift+\u2190 edit last queued message",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/c-backend \u00b7 Verify Surface index.lock handoff           Pursuing goal (19h 36m)    \u26a0 1 warning \u00b7 f2 to view"
+      ],
+      "stopped_bounded": false
+    },
+    "Performance": {
+      "pane": "%1",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-owner-status/Performance-after-byte-cause.txt",
+      "capture_sha256": "4b778b83e870bc21d8c40d7b36f3bf6c294ac6ae7995a2721564616c126952a9",
+      "last_status_lines": [
+        "    synthesis_test O2_SAN_equal True",
+        "    +31 lines (ctrl+t to view transcript)",
+        "",
+        "\u2022 Working (28m 24s \u2022 esc to interrupt)",
+        "",
+        "\u2022 Queued follow-up inputs",
+        "  \u21b3 Root flags review542821de: frozen15/private259/source384/helper23 pins verified; candidate12848c5f872 reconstructed exactly via prepared8bb+header patch and",
+        "    current c414+combined patch. Fresh three nine-type layouts, flags original callback O2/SAN controls and unchanged18-row argument lifetime runner pass; four",
+        "    config writer images byte-exact worker. Eval/WHNF/execution size+aligned extent160/160,384/384,192/192 equal current baseline, -8 size/-16 aligned vs",
+        "    \u2026",
+        "    shift+\u2190 edit last queued message",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/performance \u00b7 Verify Surface index.lock issue         Pursuing goal (1d 0h 23m)    \u26a0 1 warning \u00b7 f2 to view"
+      ],
+      "stopped_bounded": false
+    },
+    "Job": {
+      "pane": "%4",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-owner-status/Job-after-byte-cause.txt",
+      "capture_sha256": "de70da2f96128733a19ebdf766e70cefeb7c9f0e3108186922ca74827bb72d45",
+      "last_status_lines": [
+        "  workers/merge-storage-20261003/mem6-byte-baseline-root-review.json. E17 remains separate. Owner coordination evidence, not new human approval.",
+        "",
+        "",
+        "\u2022 Queued follow-up inputs",
+        "  \u21b3 Root release: E18 exact26 task a8f52a015f73fe7cfa067c3d5b122bef7e4532b4 and prototype Main165789434f528e1c55cb446af831475652c54ca4 are pushed/remote exact.",
+        "    Current Root E18 source128efcdeaa4 full synthesis/source-checkpoint O2+SAN/CLI0; strict1 expected original three unwaived; public52/full TSV byte exact E17.",
+        "    Frozen26 unchanged; explicit existing-current named-field syntax bridges/canonical alignment are recorded. Root report merge-storage-20261003/e18-current-",
+        "    \u2026",
+        "    shift+\u2190 edit last queued message",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/job-evidence \u00b7 Implement remaining SE1-SE5 simpl    Goal stalled (/goal resume)    \u26a0 1 warning \u00b7 f2 to view",
+        "",
+        ""
+      ],
+      "stopped_bounded": false
+    },
+    "Static": {
+      "pane": "%10",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-owner-status/Static.txt",
+      "capture_sha256": "c171c1c2631ac54bd2dba21ce78b3e4037bf761d6d42c20cf14ead86e8f85fb0",
+      "last_status_lines": [
+        "  \u2502 import hashlib",
+        "  \u2502 \u2026 +5 lines",
+        "  \u2514 Review receipt: 1191 bytes; SHA-256 1e8b99182da029cc62daacc9ce2cb6bbb79e5b79ba173b9aeba6c7f79dc5569f",
+        "",
+        "\u2022 Review receipt recorded for Merge (src/prototype/coordination/outbox/verification-audit-11-review-receipt.txt). Config and key remain unchanged; no audit",
+        "  outputs or timing exist.",
+        "",
+        "  Bounded static delivery remains complete. Cost is deferred and unmeasured; full Issue 59 stays open pending later exclusive scheduling.",
+        "",
+        "  Worked for 1m 15s \u2022 17:54",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/verification-audit \u00b7 Hand off static inventory              Goal achieved (50m)    \u26a0 1 warning \u00b7 f2 to view"
+      ],
+      "stopped_bounded": true
+    },
+    "Sort": {
+      "pane": "%11",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-owner-status/Sort.txt",
+      "capture_sha256": "afa71c1e238de91661f224ebe655f6538fd4d8cbb92cd6037a2d890b73e5ea9a",
+      "last_status_lines": [
+        "    FINAL_MANIFEST_SHA256 e0adf408179cfde0a98ec11c448ef5967c3d945c2c198e7e79a93456208f21eb",
+        "    FINAL_NOTICE_SHA256 2f7c99e62b67d5a9eecc61ae7878d35023244d7bdeeb1f375b0073f558344259",
+        "    +1 line (ctrl+t to view transcript)",
+        "",
+        "\u2022 Corrected provenance in the SOAP snapshot and owning plan: Merge\u2019s follow-up is agent operational direction; human requirements explicitly cite F0.",
+        "",
+        "  Refrozen and wrote the final corrected ready notice (src/prototype/coordination/outbox/finite-functions-ready-provenance-final.txt). All +301 implementation/",
+        "  fixture/runner lines and test logs remain byte-identical. No rerun, accepted changes, new Goal, or duplicate worker.",
+        "",
+        "  Worked for 6m 44s \u2022 19:14",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/sort-library \u00b7 Start authorized sort worker                 Goal achieved (24m)    \u26a0 1 warning \u00b7 f2 to view"
+      ],
+      "stopped_bounded": true
+    },
+    "Tests": {
+      "pane": "%12",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-owner-status/Tests.txt",
+      "capture_sha256": "bb2a980cb52eefdfcafba6b9aa53e89c402c08e024bf01010d40d62417a7ee1b",
+      "last_status_lines": [
+        "",
+        "  Original/reduced outcomes match; ten injection checks pass. All 47 completed combined recipes pass. E9/E10 controls, strict3 and unsafe E11 failures remain",
+        "  preserved. The unchanged derived-LT run is recorded as incomplete after its 600-second cap. Wall/RSS savings are unmeasured.",
+        "",
+        "  Exact Merge handoff and full per-file counts (src/prototype/coordination/outbox/test-suite-20261003-final-handoff.txt) are frozen. Git staging is blocked by",
+        "  read-only shared metadata. Accepted files remain untouched; Issue59 stays open.",
+        "",
+        "  Goal complete; elapsed time approximately 38 minutes.",
+        "",
+        "  Worked for 38m 29s \u2022 22:34",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/test-suite \u00b7 Simplify and deduplicate tests                 Goal achieved (37m)    \u26a0 1 warning \u00b7 f2 to view"
+      ],
+      "stopped_bounded": true
+    },
+    "Issues": {
+      "pane": "%14",
+      "capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-owner-status/Issues.txt",
+      "capture_sha256": "c19bf743ddab52e861d9f6c00b9c96bf3fa1a67946a70a5bb54dd6993c7f8829",
+      "last_status_lines": [
+        "  coordination. No new semantic/accepted policy.",
+        "",
+        "",
+        "\u2022 I\u2019ll confirm the completion accounting. The audit remains stopped, and Root has resumed coordination.",
+        "",
+        "\u2022 Goal confirmed complete. Recorded usage: 216,461 tokens, 23m 50s.",
+        "",
+        "  The audit remains stopped and available for follow-up. Root owns coordination; no further dispositions will run.",
+        "",
+        "  Worked for 26s \u2022 22:31",
+        "",
+        "",
+        "\u203a Ask Codex to do anything",
+        "",
+        "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/issue-audit \u00b7 Record audit ownership receipt                Goal achieved (23m)    \u26a0 1 warning \u00b7 f2 to view"
+      ],
+      "stopped_bounded": true
+    }
+  },
+  "issues": [
+    {
+      "number": 61,
+      "title": "C backend residuals: selected-export admission, Identity and native lowering",
+      "updatedAt": "2026-10-03T13:11:54Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/61",
+      "body_sha256": "41872697f2356c60e77c7f4d5c481705f03d5d3ae5d83618194b090a76e7451a"
+    },
+    {
+      "number": 59,
+      "title": "Audit verification debt: semantic test inventory, lifecycle and implementation progress accounting",
+      "updatedAt": "2026-10-03T13:08:50Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/59",
+      "body_sha256": "7c8c563717262b330d0bcb2fdb7ec3454b206d223e9461c7fcbe518b74e07657"
+    },
+    {
+      "number": 57,
+      "title": "Correct Function Graph named-binding polarity and define explicit syntax migration",
+      "updatedAt": "2026-10-03T13:08:54Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/57",
+      "body_sha256": "5cc775e0494e7fe6b2c53cb5da989ad857f0f16afa794d24827db6a997cb0279"
+    },
+    {
+      "number": 56,
+      "title": "Recover and revalidate checker head/readback optimizations with Effort and persistence gates",
+      "updatedAt": "2026-10-03T13:08:58Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/56",
+      "body_sha256": "52d4c5e60b5b499ff1d99b64d5ac4367bbd5119b2beb9a245f17ce9fbc3afd2f"
+    },
+    {
+      "number": 52,
+      "title": "Design: checked equality reuse before adaptive compilation and equality saturation",
+      "updatedAt": "2026-10-03T13:09:06Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/52",
+      "body_sha256": "a270ef5933cab792d4e511eed2561b3bcffde014f13ffbf757e08df9a254c806"
+    },
+    {
+      "number": 51,
+      "title": "Audit follow-up: reproducible size and semantic-owner anti-regression gates",
+      "updatedAt": "2026-10-03T13:09:01Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/51",
+      "body_sha256": "b52ce7f7e49279990ba5b8b53a739436d153b62f6af8c6feef75a829bd7e589e"
+    },
+    {
+      "number": 47,
+      "title": "Design runtime relevance and safe compilation admissibility for partial artifacts",
+      "updatedAt": "2026-10-03T13:09:14Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/47",
+      "body_sha256": "bb2b1b52fbdbdba494a4a5a5cb369bb4b10500a0a1ec577a271a3aa147af6dd8"
+    },
+    {
+      "number": 43,
+      "title": "Open question: computation-level general recursion, loop syntax and logical boundaries",
+      "updatedAt": "2026-10-03T13:09:10Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/43",
+      "body_sha256": "ecd1df90dd66e3b3f4df97abceb23eaf8047e03f74932c4a8982d3ace3fa9f9e"
+    },
+    {
+      "number": 41,
+      "title": "Design audit: finite-container sorting, lawful views and position permutations",
+      "updatedAt": "2026-10-03T13:09:17Z",
+      "url": "https://github.com/repyt-margorp/a-program/issues/41",
+      "body_sha256": "e539925b68f41a5e3b22f95f8b53f763aec5d86f10f1a190fbdd984cb092e72c"
+    }
+  ],
+  "open_PRs": [],
+  "fresh_issue_bodies_dates_exact_prior": true,
+  "issues_json_sha256": "fbae87f585dfc4611497d8cdb89edde9a5dac570de7844ba1a8a260287cf0d53",
+  "timer_PID": 1674731,
+  "timer_capture": "    PID                  STARTED COMMAND\n1674731 Sat Oct  3 18:31:03 2026 node /home/repyt/workspace/a-program/src/prototype/coordination/watch_core.cjs 01a100b3-1d83-7090-bbf6-62544c39ec4b --new-only --heartbeat-seconds=21600 --heartbeat-first-seconds=15197.714 /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/coordination/outbox /home/repyt/workspace/a-program-workers/performance/src/prototype/coordination/outbox /home/repyt/workspace/a-program-workers/c-backend/src/prototype/coordination/outbox /home/repyt/workspace/a-program-workers/verification-audit/src/prototype/coordination/outbox /home/repyt/workspace/a-program-workers/sort-library/src/prototype/coordination/outbox\n",
+  "next_review_UTC": "2026-10-04T07:44:22.084Z",
+  "no_worker_resumed_duplicated_or_mode_changed": true,
+  "C22": {
+    "task": "8b6debfcf836451b9e972aba9f3f624f24b406e9",
+    "prototype_Main_merge": "a0a9dc38dde82d8ef410251b1362bb2e7757091c",
+    "current_report_sha256": "ce041c859a5c39b3d131551c92c83b61bdf4b7f41aa6b7276e04462ddacb977b",
+    "receipt_path": "src/prototype/c_backend/verification/core-epoch22.json",
+    "receipt_sha256": "699afb1d3ebc679aeb0ebd5e7de2f46b11b45464bf42d52956d5d10f2338fe08",
+    "exact12_task_other11_Main": true,
+    "current_nested40_parent114_integer61_O2_SAN": true,
+    "parent_C21_generated84_bytes_exact": true,
+    "worker_live_files_preserved": 1839,
+    "C21_release_consumed": true
+  },
+  "C23": {
+    "notice_sha256": "eaa084545702e718a9e49e7230ec098af877f98e97ca7db7855f18c1633f7117",
+    "Root_action_review_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c23-action-root-review.json",
+    "Root_action_review_sha256": "667d287a3803414c84ebd3eecb7215fa6cf60824b406f3caa9cc2154e9972914",
+    "status": "Separate private selected-type-token source-sort trial. Initial setup refusals and classified List/compare positives verified as historical worker E8 records; native indexed/callable Acc/QuickSort still unsupported. New trial emits some sort/fixed wrapper C, observed only as private progress; usable-client/inert/full/current/freeze gates pending, no READY/native sorter completion.",
+    "C22_task_live_remote_verification_observed_in_owner_pane": true
+  },
+  "Performance_flags_review": {
+    "notice_sha256": "542821decd4118a26f2730da3d927fec0c6cf1406c7ea6cd6c5e730edfd56bc2",
+    "Root_receipt_path": "src/prototype/performance_followup/mem10-current-flags-root-review.json",
+    "Root_receipt_sha256": "a8ad5e6c725053adeb42c6badc9e3d65d292be3808aabf1771fe5a519d777cd5",
+    "Root_raw_report_sha256": "0de2e48bf58a9ad11745d9e72c8e432d8bd7f74e2087c3ba3342c6f927941ff9",
+    "candidate_source128": "48c5f872e2dfb88e307f775f8b88d57abc65d552e3462b63cb1d06e9590bd75c",
+    "frozen15_private259_current384_pins23_exact": true,
+    "fresh_three_layouts_callback_controls_O2_SAN_original_lifetime18_pass": true,
+    "four_configuration_writer_images_exact": true,
+    "aligned_owners_equal_current_baseline": [
+      160,
+      384,
+      192
+    ],
+    "prepared_trial_aligned_reduction_each": 16,
+    "current_baseline_aligned_reduction_each": 0,
+    "known_root_and_current_byte_feedback_consumed_in_notice": true,
+    "runtime_or_task_or_cost_publication": false
+  },
+  "Performance_private_progress": "Original owner now freezes current byte diagnosis; Root verifies bounded cause from existing raw trace/source/bytes without runtime/debugger rerun. Current consumer rebuilding remains separate private work, no full qualification/READY.",
+  "MEM10": "Review-only/HOLD: historical51/1168 and fresh unchanged current5/8 inert byte failures remain unwaived. Flags48c5 supplement removes prepared owner padding only; full current consumer/C/persistence/resume/SAN/byte/actual capacity qualification pending after codec disposition. No runtime/cost publication or slot.",
+  "Job": "Original service-stalled; E19 full/current freeze qualification and E20 private remain pending. Exact current byte handoff in original-owner durable inbox; no resume/new turn/consumption claimed.",
+  "bounded_workers": "Static/Sort/Tests/Issues remain achieved/stopped with delivered bounded handoffs; Surface/AIze historical delivered/stopped. No repeated gates or owner restart.",
+  "issue_criteria_assessment": {
+    "61": "C22 extends bounded private IH captures with finite positive/negative/resource coverage. Selected-export partial-artifact contract, broader Identity/indexed/callable representations and native Acc/QuickSort remain incomplete. C23 private action is not completion.",
+    "56": "MEM9 reader-call deletion is implemented/qualified; actual current RSS/time unmeasured. MEM10 byte gate held; earlier MEM6/MEM7 failures preserved. Full matched current performance/correctness criteria remain open. Frozen current byte diagnosis independently establishes the bounded fixture cache-order cause; a cause does not complete codec disposition or fix/qualification.",
+    "51": "SE/AP E18 and MEM9 prototype boundaries delivered; strict3 unwaived, E19 full/current publication pending with original Job stalled. Full semantic-owner/size/measurement criteria incomplete. Exact byte-cause evidence routed to the original codec owner without resume; reusable results/independent fields preserved.",
+    "59": "Bounded static inventory and test-consolidation pilot delivered, unique controls preserved. Controlled actual cost and full suite lifecycle/adoption remain deferred; completed bounded owners stay stopped.",
+    "57": "Surface prototype delivered; accepted polarity migration and selector diagnostics/design remain separate unresolved criteria.",
+    "52": "Checked equality-reuse design remains separate; source storage/C capture changes do not implement it.",
+    "47": "General relevance/partial-artifact admissibility design remains open; private type/capture binding gives no pending-evidence or erasure authority.",
+    "43": "General recurrence/logical boundary remains a user design decision; no new syntax/rules implemented by these epochs.",
+    "41": "Finite-function/Sort bounded prototypes delivered; wider container/view/position laws and accepted interface choice remain separate."
+  },
+  "owner_feedback": {
+    "date_UTC": "2026-10-04T02:20:44.296059+00:00",
+    "messages": {
+      "C": {
+        "message_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-release.txt",
+        "message_sha256": "23a2137b2cafb876979dda4ef78f1540cdb5df47441a34caa593aacdebbf900d",
+        "original_owner_inbox": null,
+        "delivery": "Exact new composer verified, Tab queued once to original active owner at next-tool boundary; no consumption claimed without an owner receipt.",
+        "no_owner_resumed_or_duplicated": true,
+        "queue_capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/C-queued-c22-feedback.txt",
+        "queue_capture_sha256": "f48ed5428e2e7c14ef96632e1926f6786d7bc25a7c0a36c4086d2c6a9775be61",
+        "queue_redraw_observed": true,
+        "consumption_claimed": false
+      },
+      "Performance": {
+        "message_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-flags-feedback.txt",
+        "message_sha256": "d3b638b162fbb63c42b823ba433ac4d26acd17f03a03ebc8caea7e24807910e6",
+        "original_owner_inbox": null,
+        "delivery": "Exact new composer verified, Tab queued once to original active owner at next-tool boundary; no consumption claimed without an owner receipt.",
+        "no_owner_resumed_or_duplicated": true,
+        "queue_capture_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/Performance-queued-c22-feedback.txt",
+        "queue_capture_sha256": "f2b9732d8b72655a6c2ce83fb8c8ccca1e24d4f496bbf8f9bbc8d9048bc034fd",
+        "queue_redraw_observed": true,
+        "consumption_claimed": false
+      }
+    },
+    "queue_UTC": "2026-10-04T02:21:06.702883+00:00"
+  },
+  "Root_Goal": {
+    "fresh_service_status": "blocked",
+    "tokensUsed": 3262854,
+    "timeUsedSeconds": 25296,
+    "incomplete_no_resume_or_complete": true
+  },
+  "protected9_exact": true,
+  "accepted_source_test_build_changes": false,
+  "comparative_cost_slot": "none held or granted",
+  "desk_reporting": "One durable consolidated outbox covers C22 delivery, current flags review, C23 private action, frozen bounded byte cause and all-owner status. No duplicate direct desk message.",
+  "byte_cause_review_UTC": "2026-10-04T02:30:15.451105+00:00",
+  "current_byte_cause": {
+    "notice_sha256": "92d9345c66868208cc3532d91a434b906fab9d462ca8d4b92566b7dc2a96d6be",
+    "Root_review_path": "src/prototype/performance_followup/mem10-current-byte-cause-root-review.json",
+    "Root_review_sha256": "f56cc30b00aa541423890d073c485e298f12c1d1a77c27cb90cf71f6c332bd61",
+    "frozen36_manifest_sha256": "de0af10f23b6328df151e1d39952d54da3e0634ae782f4c2261c70be157b778a",
+    "private27_manifest_sha256": "92a741a4da41f5398d9229d8bde15f429e7b3535cb23c8b03116d8de766c5d3e",
+    "source128_all143_pins_exact": true,
+    "four_debug_records_all_hash_buckets_heads_DAG_footer_recomputed": true,
+    "bounded_fixture_cause_verified": "Pointer-derived buckets enumerate two detached reusable results in opposite orders; their two four-root groups account for all eight differing bytes in the1249-byte unchanged-current fixture.",
+    "new_debug_inert2_of4_retained": true,
+    "initial_wrong_total_and_unsupported_GDB_setting_retained": true,
+    "original_O2_current5_of8_and_historical51_or_paired6_failures_unwaived": true,
+    "Job_owner_route_path": "src/prototype/coordination/inbox/job-evidence-mem10-current-byte-cause-20261004.json",
+    "Job_owner_route_sha256": "0a35bc05578b1f42b8eae296b2be054b39c4cfd03aa89312973503a2d7a83cfc",
+    "Main_original_Job_route_bytes_exact": true,
+    "no_original_Job_turn_or_Goal_resume_or_consumption_claim": true,
+    "runtime_fix_READY_cost_publication": false,
+    "Performance_feedback": {
+      "message_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-byte-cause-feedback.txt",
+      "message_sha256": "b1559a6195ffaae39e1fc8c79da8edf33f322135d4ae5737587402ec0d6a44a3",
+      "delivery": "Exact new composer verified, Tab submitted once to original active Performance at tool boundary; no consumption claimed."
+    }
+  },
+  "latest_material_UTC": "2026-10-04T02:31:38.038052+00:00"
+}

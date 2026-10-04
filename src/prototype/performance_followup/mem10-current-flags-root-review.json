@@ -1,0 +1,876 @@
+{
+  "notice_sha256": "542821decd4118a26f2730da3d927fec0c6cf1406c7ea6cd6c5e730edfd56bc2",
+  "frozen15": {
+    "analysis.json": "4266fcd2ba23cc5a81810ff8c2cd32541ab1f333201b16329ff6c760a430e78b",
+    "assemble_flags_v2.py": "b396098727a7cc2abdb495fafcebb66f917c28f93e38aee039efb2412ec0ae69",
+    "combined-current.patch": "06bc8b3043772e7099fba9fe9efd3eef93cde3e587af6645c1040bda62ce4cf6",
+    "current-effective.patch": "bdfeea60ba82a8aa9bb9d162360a0968ba478a43a11e10ae6346b66e1bc29edd",
+    "eval.h": "1a5d4e5efca3b1f4ec3ba1b36cab3481afee21b66634a928a15844d3a4b3297f",
+    "flag-order.patch": "a69985be157689f1e6fbbfd742a41f3967104e356b102e10a03661ebabc15b3a",
+    "focused-summary.json": "21908b79c69208bdcdda1d5cbd39b90474409ae9ddea97130cae2773f110822a",
+    "freeze_flags_v2.py": "1e7c8c31be306352bae217609a59cf83c6e1e205ac3f84661a4ee951aa63f0fb",
+    "parent-source.sha256": "c414202a4abb79301b04431b75008fa828dd60712b50518a1d4824e5d555b64b",
+    "prepared-source.sha256": "8bb29f3ab57282513828ada40c13051dcf86fc8b55431e4cc1959757fc645d0d",
+    "private-evidence.json": "e929a19558b37a3b5f937cedbf41b3945afcd6aea446716b922420bbed610e33",
+    "publication.json": "615d2faba0d9111ef7c70a40ff2247be66b06a008657fd84c710deccb91d9353",
+    "qualify_flags_v2.py": "e153d0690b78bc6655607c01147872953360a3c8769811b6b51cb24eb2ede21b",
+    "source.sha256": "48c5f872e2dfb88e307f775f8b88d57abc65d552e3462b63cb1d06e9590bd75c",
+    "manifest.sha256": "4c4f58a49a3687a59797f3d42677c4b3826435410c3421dc0dd82dc6905b0dca"
+  },
+  "private259_all_hashes_exact": true,
+  "Root_initial_setup_guard": "The worker exact15 count includes14 manifest entries plus the manifest itself, as freeze_flags_v2.py explicitly records. Initial Root entry-count assertion15 failed before builds; corrected to14 data entries plus manifest, no evidence or test change.",
+  "worker48_and36_nested_records_all_hashes_zero": true,
+  "worker_configuration_cross_reads16": true,
+  "current_sources384_exact": {
+    "baseline": "c414202a4abb79301b04431b75008fa828dd60712b50518a1d4824e5d555b64b",
+    "prepared": "8bb29f3ab57282513828ada40c13051dcf86fc8b55431e4cc1959757fc645d0d",
+    "flags": "48c5f872e2dfb88e307f775f8b88d57abc65d552e3462b63cb1d06e9590bd75c"
+  },
+  "reconstructed128_two_routes_exact": true,
+  "header_only_difference_from_prepared": true,
+  "same_prepared_eval_c": true,
+  "worker_actual_layouts": {
+    "baseline": {
+      "pg_eval": {
+        "size": 160,
+        "alignment": 8,
+        "extent16": 160
+      },
+      "pg_whnf_job": {
+        "size": 384,
+        "alignment": 8,
+        "extent16": 384
+      },
+      "pg_execution": {
+        "size": 192,
+        "alignment": 8,
+        "extent16": 192
+      },
+      "pg_argument": {
+        "size": 24,
+        "alignment": 8,
+        "extent16": 32
+      },
+      "pg_environment": {
+        "size": 32,
+        "alignment": 8,
+        "extent16": 32
+      },
+      "pg_eval_frame": {
+        "size": 240,
+        "alignment": 8,
+        "extent16": 240
+      },
+      "pg_nf_job": {
+        "size": 136,
+        "alignment": 8,
+        "extent16": 144
+      },
+      "pg_program": {
+        "size": 1352,
+        "alignment": 8,
+        "extent16": 1360
+      },
+      "pg_substitution_state": {
+        "size": 152,
+        "alignment": 8,
+        "extent16": 160
+      }
+    },
+    "prepared": {
+      "pg_eval": {
+        "size": 168,
+        "alignment": 8,
+        "extent16": 176
+      },
+      "pg_whnf_job": {
+        "size": 392,
+        "alignment": 8,
+        "extent16": 400
+      },
+      "pg_execution": {
+        "size": 200,
+        "alignment": 8,
+        "extent16": 208
+      },
+      "pg_argument": {
+        "size": 24,
+        "alignment": 8,
+        "extent16": 32
+      },
+      "pg_environment": {
+        "size": 32,
+        "alignment": 8,
+        "extent16": 32
+      },
+      "pg_eval_frame": {
+        "size": 240,
+        "alignment": 8,
+        "extent16": 240
+      },
+      "pg_nf_job": {
+        "size": 136,
+        "alignment": 8,
+        "extent16": 144
+      },
+      "pg_program": {
+        "size": 1352,
+        "alignment": 8,
+        "extent16": 1360
+      },
+      "pg_substitution_state": {
+        "size": 152,
+        "alignment": 8,
+        "extent16": 160
+      }
+    },
+    "flags": {
+      "pg_eval": {
+        "size": 160,
+        "alignment": 8,
+        "extent16": 160
+      },
+      "pg_whnf_job": {
+        "size": 384,
+        "alignment": 8,
+        "extent16": 384
+      },
+      "pg_execution": {
+        "size": 192,
+        "alignment": 8,
+        "extent16": 192
+      },
+      "pg_argument": {
+        "size": 24,
+        "alignment": 8,
+        "extent16": 32
+      },
+      "pg_environment": {
+        "size": 32,
+        "alignment": 8,
+        "extent16": 32
+      },
+      "pg_eval_frame": {
+        "size": 240,
+        "alignment": 8,
+        "extent16": 240
+      },
+      "pg_nf_job": {
+        "size": 136,
+        "alignment": 8,
+        "extent16": 144
+      },
+      "pg_program": {
+        "size": 1352,
+        "alignment": 8,
+        "extent16": 1360
+      },
+      "pg_substitution_state": {
+        "size": 152,
+        "alignment": 8,
+        "extent16": 160
+      }
+    }
+  },
+  "checks": [
+    {
+      "label": "layout-build-baseline",
+      "argv": [
+        "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O2",
+        "-I",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-parent/src",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-layout-probe.c",
+        "-o",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/layout-baseline"
+      ],
+      "exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "layout-baseline",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/layout-baseline"
+      ],
+      "exit": 0,
+      "log_sha256": "4c3e5abf186debd37464c1aeb7576eb905e8221aef9a8914c8ddc8122c18ce24"
+    },
+    {
+      "label": "layout-build-prepared",
+      "argv": [
+        "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O2",
+        "-I",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-e18-mem9-candidate/src",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-layout-probe.c",
+        "-o",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/layout-prepared"
+      ],
+      "exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "layout-prepared",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/layout-prepared"
+      ],
+      "exit": 0,
+      "log_sha256": "1d711acd3b5fffcd52a4adabfb03791f8a41e8160eaa212a9ede0a2a7ce848e9"
+    },
+    {
+      "label": "layout-build-flags",
+      "argv": [
+        "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O2",
+        "-I",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-layout-probe.c",
+        "-o",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/layout-flags"
+      ],
+      "exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "layout-flags",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/layout-flags"
+      ],
+      "exit": 0,
+      "log_sha256": "4c3e5abf186debd37464c1aeb7576eb905e8221aef9a8914c8ddc8122c18ce24"
+    },
+    {
+      "label": "build-frame_retirement_test-o2",
+      "argv": [
+        "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O2",
+        "-I",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/graph.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/support.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/dag.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/eval.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/symmetry.c",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem1/frame_retirement_test.c",
+        "-o",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/frame_retirement_test-o2"
+      ],
+      "exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "frame_retirement_test-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/frame_retirement_test-o2"
+      ],
+      "exit": 0,
+      "log_sha256": "6fd2f0515b9b1690e79ca5e43f038066f813d0ab9e2e0aaa4fe103912a4e0623"
+    },
+    {
+      "label": "build-callback_failure_cleanup_test-o2",
+      "argv": [
+        "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O2",
+        "-I",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/graph.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/support.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/dag.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/eval.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/symmetry.c",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem1/callback_failure_cleanup_test.c",
+        "-o",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/callback_failure_cleanup_test-o2"
+      ],
+      "exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "callback_failure_cleanup_test-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/callback_failure_cleanup_test-o2"
+      ],
+      "exit": 0,
+      "log_sha256": "61ec4af330c385ae0f897bc52eb6b4f63fad77a93da5af858b2b8175fd8cbaef"
+    },
+    {
+      "label": "build-stateless_head_cleanup_test-o2",
+      "argv": [
+        "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O2",
+        "-I",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/graph.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/support.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/dag.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/eval.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/symmetry.c",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem1/stateless_head_cleanup_test.c",
+        "-o",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/stateless_head_cleanup_test-o2"
+      ],
+      "exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "stateless_head_cleanup_test-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/stateless_head_cleanup_test-o2"
+      ],
+      "exit": 0,
+      "log_sha256": "1b6870cb7c5a109e761795a021289308304d20ac0a05d437bf159951df9c6e81"
+    },
+    {
+      "label": "build-frame_retirement_test-san",
+      "argv": [
+        "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O1",
+        "-g",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "-fno-pie",
+        "-no-pie",
+        "-I",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/graph.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/support.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/dag.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/eval.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/symmetry.c",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem1/frame_retirement_test.c",
+        "-o",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/frame_retirement_test-san"
+      ],
+      "exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "frame_retirement_test-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/frame_retirement_test-san"
+      ],
+      "exit": 0,
+      "log_sha256": "6fd2f0515b9b1690e79ca5e43f038066f813d0ab9e2e0aaa4fe103912a4e0623"
+    },
+    {
+      "label": "build-callback_failure_cleanup_test-san",
+      "argv": [
+        "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O1",
+        "-g",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "-fno-pie",
+        "-no-pie",
+        "-I",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/graph.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/support.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/dag.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/eval.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/symmetry.c",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem1/callback_failure_cleanup_test.c",
+        "-o",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/callback_failure_cleanup_test-san"
+      ],
+      "exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "callback_failure_cleanup_test-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/callback_failure_cleanup_test-san"
+      ],
+      "exit": 0,
+      "log_sha256": "61ec4af330c385ae0f897bc52eb6b4f63fad77a93da5af858b2b8175fd8cbaef"
+    },
+    {
+      "label": "build-stateless_head_cleanup_test-san",
+      "argv": [
+        "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O1",
+        "-g",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "-fno-pie",
+        "-no-pie",
+        "-I",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/graph.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/support.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/dag.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/eval.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/symmetry.c",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem1/stateless_head_cleanup_test.c",
+        "-o",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/stateless_head_cleanup_test-san"
+      ],
+      "exit": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "stateless_head_cleanup_test-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/stateless_head_cleanup_test-san"
+      ],
+      "exit": 0,
+      "log_sha256": "1b6870cb7c5a109e761795a021289308304d20ac0a05d437bf159951df9c6e81"
+    },
+    {
+      "label": "original-lifetime-o2-san",
+      "argv": [
+        "python3",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem6/epochs/argument_lifetime_v1/verify_argument_lifetime.py",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime"
+      ],
+      "exit": 0,
+      "log_sha256": "936f12328a838a178215675184a04a91f9ecbdc13446a2fc7e62b333e06eec0d"
+    }
+  ],
+  "complete": true,
+  "runtime_publication_or_cost": false,
+  "MEM10_byte_HOLD_unchanged": true,
+  "passed": true,
+  "all_inputs_after_exact": true,
+  "actual_fresh_layouts": {
+    "baseline": {
+      "pg_eval": {
+        "size": 160,
+        "alignment": 8,
+        "extent16": 160
+      },
+      "pg_whnf_job": {
+        "size": 384,
+        "alignment": 8,
+        "extent16": 384
+      },
+      "pg_execution": {
+        "size": 192,
+        "alignment": 8,
+        "extent16": 192
+      },
+      "pg_argument": {
+        "size": 24,
+        "alignment": 8,
+        "extent16": 32
+      },
+      "pg_environment": {
+        "size": 32,
+        "alignment": 8,
+        "extent16": 32
+      },
+      "pg_eval_frame": {
+        "size": 240,
+        "alignment": 8,
+        "extent16": 240
+      },
+      "pg_nf_job": {
+        "size": 136,
+        "alignment": 8,
+        "extent16": 144
+      },
+      "pg_program": {
+        "size": 1352,
+        "alignment": 8,
+        "extent16": 1360
+      },
+      "pg_substitution_state": {
+        "size": 152,
+        "alignment": 8,
+        "extent16": 160
+      }
+    },
+    "prepared": {
+      "pg_eval": {
+        "size": 168,
+        "alignment": 8,
+        "extent16": 176
+      },
+      "pg_whnf_job": {
+        "size": 392,
+        "alignment": 8,
+        "extent16": 400
+      },
+      "pg_execution": {
+        "size": 200,
+        "alignment": 8,
+        "extent16": 208
+      },
+      "pg_argument": {
+        "size": 24,
+        "alignment": 8,
+        "extent16": 32
+      },
+      "pg_environment": {
+        "size": 32,
+        "alignment": 8,
+        "extent16": 32
+      },
+      "pg_eval_frame": {
+        "size": 240,
+        "alignment": 8,
+        "extent16": 240
+      },
+      "pg_nf_job": {
+        "size": 136,
+        "alignment": 8,
+        "extent16": 144
+      },
+      "pg_program": {
+        "size": 1352,
+        "alignment": 8,
+        "extent16": 1360
+      },
+      "pg_substitution_state": {
+        "size": 152,
+        "alignment": 8,
+        "extent16": 160
+      }
+    },
+    "flags": {
+      "pg_eval": {
+        "size": 160,
+        "alignment": 8,
+        "extent16": 160
+      },
+      "pg_whnf_job": {
+        "size": 384,
+        "alignment": 8,
+        "extent16": 384
+      },
+      "pg_execution": {
+        "size": 192,
+        "alignment": 8,
+        "extent16": 192
+      },
+      "pg_argument": {
+        "size": 24,
+        "alignment": 8,
+        "extent16": 32
+      },
+      "pg_environment": {
+        "size": 32,
+        "alignment": 8,
+        "extent16": 32
+      },
+      "pg_eval_frame": {
+        "size": 240,
+        "alignment": 8,
+        "extent16": 240
+      },
+      "pg_nf_job": {
+        "size": 136,
+        "alignment": 8,
+        "extent16": 144
+      },
+      "pg_program": {
+        "size": 1352,
+        "alignment": 8,
+        "extent16": 1360
+      },
+      "pg_substitution_state": {
+        "size": 152,
+        "alignment": 8,
+        "extent16": 160
+      }
+    }
+  },
+  "fresh_configuration_writers_exact_worker_four": true,
+  "assessment": "Grouped existing status/head_ready eliminates two alignment gaps, retaining fresh slot and all runtime fields. Each evaluator/WHNF/execution size and aligned extent equals current baseline, -8/-16 vs prior prepared candidate. Full header consumers/C/persistence rebuild and byte disposition remain required; no stable binary ABI or measured capacity/RSS/time gain.",
+  "limits": [
+    "Fresh current prepared helper plus separate header-order variant; no full current qualification/READY.",
+    "Only configuration fragments are byte-qualified here; current Fold machine inert5/8 and historical51 failures remain unwaived.",
+    "Existing public escapes/reentrant/materialized failure/head success-error/return2 controls and O2/SAN/leaks checked.",
+    "Standalone compiled ABI sizes, not actual retained allocation/peak/RSS/time or cost grant.",
+    "All clients require rebuild after field order/size changes; codec field encoding is not changed."
+  ],
+  "Root_raw_report_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/Root-results.json",
+  "Root_raw_report_sha256": "0de2e48bf58a9ad11745d9e72c8e432d8bd7f74e2087c3ba3342c6f927941ff9",
+  "Root_input_count": 535,
+  "original_lifetime18_fresh_records": [
+    {
+      "name": "build-o2",
+      "argv": [
+        "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O2",
+        "-I",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/graph.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/support.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/dag.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/eval.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/symmetry.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/graph_io.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/comparison_io.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/eval_io.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/wire.c",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem6/epochs/argument_lifetime_v1/argument_lifetime_test.c",
+        "-o",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/argument_lifetime_o2"
+      ],
+      "exit": 0,
+      "log": "build-o2.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "local-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/argument_lifetime_o2"
+      ],
+      "exit": 0,
+      "log": "local-o2.log",
+      "sha256": "2096c689c0c9bc1a7f74fa0fd2fba4e745212be2a224038fcb1f194027afc347"
+    },
+    {
+      "name": "write-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/argument_lifetime_o2",
+        "--write",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/held-o2.bin"
+      ],
+      "exit": 0,
+      "log": "write-o2.log",
+      "sha256": "0bc0170d4c94b084924e003374898ff0da9cb0b699f0a3cbaad2bcd61c8c3058"
+    },
+    {
+      "name": "build-san",
+      "argv": [
+        "/usr/bin/x86_64-linux-gnu-gcc-14",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O1",
+        "-g",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "-fno-pie",
+        "-no-pie",
+        "-I",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/graph.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/support.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/dag.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/eval.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/symmetry.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/graph_io.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/comparison_io.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/eval_io.c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/candidate/src/wire.c",
+        "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem6/epochs/argument_lifetime_v1/argument_lifetime_test.c",
+        "-o",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/argument_lifetime_san"
+      ],
+      "exit": 0,
+      "log": "build-san.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "local-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/argument_lifetime_san"
+      ],
+      "exit": 0,
+      "log": "local-san.log",
+      "sha256": "2096c689c0c9bc1a7f74fa0fd2fba4e745212be2a224038fcb1f194027afc347"
+    },
+    {
+      "name": "write-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/argument_lifetime_san",
+        "--write",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/held-san.bin"
+      ],
+      "exit": 0,
+      "log": "write-san.log",
+      "sha256": "0bc0170d4c94b084924e003374898ff0da9cb0b699f0a3cbaad2bcd61c8c3058"
+    },
+    {
+      "name": "read-o2-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/argument_lifetime_o2",
+        "--read",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/held-o2.bin"
+      ],
+      "exit": 0,
+      "log": "read-o2-o2.log",
+      "sha256": "ef6bcef52e2e689f15d5e55461fe24a30424f920e2cd4fa8c35002d641cccbe0"
+    },
+    {
+      "name": "resave-o2-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/argument_lifetime_o2",
+        "--resave",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/held-o2.bin",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/held-o2-o2-resave.bin"
+      ],
+      "exit": 0,
+      "log": "resave-o2-o2.log",
+      "sha256": "ef6bcef52e2e689f15d5e55461fe24a30424f920e2cd4fa8c35002d641cccbe0"
+    },
+    {
+      "name": "reread-o2-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/argument_lifetime_o2",
+        "--read",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/held-o2-o2-resave.bin"
+      ],
+      "exit": 0,
+      "log": "reread-o2-o2.log",
+      "sha256": "ef6bcef52e2e689f15d5e55461fe24a30424f920e2cd4fa8c35002d641cccbe0"
+    },
+    {
+      "name": "read-o2-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/argument_lifetime_san",
+        "--read",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/held-o2.bin"
+      ],
+      "exit": 0,
+      "log": "read-o2-san.log",
+      "sha256": "ef6bcef52e2e689f15d5e55461fe24a30424f920e2cd4fa8c35002d641cccbe0"
+    },
+    {
+      "name": "resave-o2-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/argument_lifetime_san",
+        "--resave",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/held-o2.bin",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/held-o2-san-resave.bin"
+      ],
+      "exit": 0,
+      "log": "resave-o2-san.log",
+      "sha256": "ef6bcef52e2e689f15d5e55461fe24a30424f920e2cd4fa8c35002d641cccbe0"
+    },
+    {
+      "name": "reread-o2-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/argument_lifetime_san",
+        "--read",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/held-o2-san-resave.bin"
+      ],
+      "exit": 0,
+      "log": "reread-o2-san.log",
+      "sha256": "ef6bcef52e2e689f15d5e55461fe24a30424f920e2cd4fa8c35002d641cccbe0"
+    },
+    {
+      "name": "read-san-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/argument_lifetime_o2",
+        "--read",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/held-san.bin"
+      ],
+      "exit": 0,
+      "log": "read-san-o2.log",
+      "sha256": "ef6bcef52e2e689f15d5e55461fe24a30424f920e2cd4fa8c35002d641cccbe0"
+    },
+    {
+      "name": "resave-san-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/argument_lifetime_o2",
+        "--resave",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/held-san.bin",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/held-san-o2-resave.bin"
+      ],
+      "exit": 0,
+      "log": "resave-san-o2.log",
+      "sha256": "ef6bcef52e2e689f15d5e55461fe24a30424f920e2cd4fa8c35002d641cccbe0"
+    },
+    {
+      "name": "reread-san-o2",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/argument_lifetime_o2",
+        "--read",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/held-san-o2-resave.bin"
+      ],
+      "exit": 0,
+      "log": "reread-san-o2.log",
+      "sha256": "ef6bcef52e2e689f15d5e55461fe24a30424f920e2cd4fa8c35002d641cccbe0"
+    },
+    {
+      "name": "read-san-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/argument_lifetime_san",
+        "--read",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/held-san.bin"
+      ],
+      "exit": 0,
+      "log": "read-san-san.log",
+      "sha256": "ef6bcef52e2e689f15d5e55461fe24a30424f920e2cd4fa8c35002d641cccbe0"
+    },
+    {
+      "name": "resave-san-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/argument_lifetime_san",
+        "--resave",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/held-san.bin",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/held-san-san-resave.bin"
+      ],
+      "exit": 0,
+      "log": "resave-san-san.log",
+      "sha256": "ef6bcef52e2e689f15d5e55461fe24a30424f920e2cd4fa8c35002d641cccbe0"
+    },
+    {
+      "name": "reread-san-san",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/argument_lifetime_san",
+        "--read",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-flags-v2-root-review/lifetime/held-san-san-resave.bin"
+      ],
+      "exit": 0,
+      "log": "reread-san-san.log",
+      "sha256": "ef6bcef52e2e689f15d5e55461fe24a30424f920e2cd4fa8c35002d641cccbe0"
+    }
+  ],
+  "current_configuration_lifetime_limits": [
+    "configuration fragments carry no status/policy/accepted reduction",
+    "generic caller escape demonstrated, not private pure-WHNF retention proof",
+    "no memory/time benefit claimed; original strict/observer/sanitizer failures unchanged"
+  ],
+  "original_lifetime_reentrancy_scope": "Original retained pointer/closure through1024 later identities, five4-step splits and neutral1; O2/SAN fresh-process read/resave, unchanged byte assertions. Configuration fragments only, no machine-byte waiver.",
+  "current_machine_byte_hold": "Unchanged current E18+MEM9 source128c414202a fresh O2 Foldcase4cut10 remains5/8 byte failures; historical parent/candidate51/1168 failures unchanged. Original Job service-stalled, exact current counterexample durably routed, no resume or codec-field deletion.",
+  "future_qualification": "Flags supplement addresses prepared owner padding. Full current header consumer/C/persistence/semantic/resume/SAN/byte and actual capacity gates remain pending after codec disposition. Old historical cost config81e0eba1 does not pin these sources; no cost slot/task/runtime publication.",
+  "attribution_release_receipt": "Performance notice explicitly consumed Root known-roots67a5bde1 and current unchanged-parentad7bf4e2 reproduction.",
+  "accepted_adoption_or_Goal_completion": false
+}

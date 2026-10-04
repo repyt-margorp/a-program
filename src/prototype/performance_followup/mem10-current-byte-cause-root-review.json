@@ -1,0 +1,237 @@
+{
+  "review_UTC": "2026-10-04T02:28:52.302386+00:00",
+  "notice_sha256": "92d9345c66868208cc3532d91a434b906fab9d462ca8d4b92566b7dc2a96d6be",
+  "frozen_epoch_path": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/epochs/current_readback_order_v1_diagnosis",
+  "frozen36": {
+    "analysis.md": "4fccb7c42064d9de06553d3a3539ff3a3e946549c350dc330442415b7b0c858a",
+    "build.mk": "5da1253d9cce3920ffe872a16990fa68c07cd78958f191c224eacd6a34b8f1d9",
+    "failed-initial-inspect_readback_order.py": "0b0fcc7943f5d820e0150b514cb921d081fe61de2e98adc50bf4722d979991e1",
+    "failed-initial-readback_order.gdb.py": "c0b35572ffb5ba85a888f6cc913453451c047be0bfcb9d9c0c2a95749e56cc7d",
+    "failed-initial-setup-failure.json": "df845637c67c3cd1c11d6b77b2432755a4c226a816dcaec597d1a037ff06d380",
+    "failed-inputs-before.json": "a1f349de436d34ee2aa13c9e2384ba38ff1192463bed8c0b85e852ef4e003d74",
+    "failed-records.json": "eac5c05abd550bae2cddbf310d9e094f200c590adeeee226ffa0674ad029824b",
+    "failed-variant-0-repeat-0.image": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+    "failed-variant-0-repeat-0.log": "23f335d16bae03a332cb735778584b896ac8ee04471cbbeaeb77e3e31c6f9a4f",
+    "failed-variant-0-repeat-0.trace.json": "9670d3abc003c957df50d327032e42981ebdbddc083efa593d8e4ec5ba6ca66f",
+    "handoff.json": "254c626c772e532d9582bf72b9fe0f3d39201c755f8f01f9b91ec954a34c5568",
+    "inspect_readback_order.py": "05f575b4b0575d9572a331634a31e7dc4d374f1a9d0d7b4cba2105aa480b76aa",
+    "machine_resave_probe.c": "9160f3e9b58d7d9213b8920cf156610c0344954ce5ae8c67a203eb30703dc028",
+    "original-O2-Root-results.json": "ad7bf4e25512b380c16cb17930ba937cc680c6c4e88f95ed3100ada1becb8cc4",
+    "original-input-A.image": "bfafe394dd1b709525de733efd5d85388b946005e8beaf727c341f2106545d48",
+    "original-input-B.image": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+    "original-resave-0.image": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+    "probe-inputs-after.json": "6471c16cccb245732ff72f9fe40faa7c56460fc5624415442fc43099f8e24aaa",
+    "probe-inputs-before.json": "6471c16cccb245732ff72f9fe40faa7c56460fc5624415442fc43099f8e24aaa",
+    "probe-records.json": "bf8c295a7e9e0d1c846f79c816f55a4ffd0bf08ea641c489b798314a2ce29906",
+    "probe-summary.json": "904795f4555f96678e48ad4af1dbc1147d47821e45057a9143a90b45fd7fc572",
+    "probe-variant-0-repeat-0.image": "bfafe394dd1b709525de733efd5d85388b946005e8beaf727c341f2106545d48",
+    "probe-variant-0-repeat-0.log": "32a67cd66abed201ad7ec8c034af0e1a8c295d3553ff1dd7708cc092faa51cbe",
+    "probe-variant-0-repeat-0.trace.json": "c2efbc301b6dc27edfb5a0302620ce8f4f0e7f1c8541521610df388d05b74401",
+    "probe-variant-0-repeat-1.image": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+    "probe-variant-0-repeat-1.log": "64dc8de396fd3d3ff92b33af3c162eb3f63d750833014330476c727af8f8e05e",
+    "probe-variant-0-repeat-1.trace.json": "5ee92afb105793002b6dea3573dafc31d3fef0dff637a2c0df06f9b727bb94de",
+    "probe-variant-1-repeat-0.image": "bfafe394dd1b709525de733efd5d85388b946005e8beaf727c341f2106545d48",
+    "probe-variant-1-repeat-0.log": "aab4b498d25fed0d9a9af3d2c26849de9cce89ab0af297107ad209d3ef89a05d",
+    "probe-variant-1-repeat-0.trace.json": "0222f51bb2d2db8f64fdeeeae049276039e2ec485f28b7a1d2b568027db13531",
+    "probe-variant-1-repeat-1.image": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+    "probe-variant-1-repeat-1.log": "458cd78688d57aaec2a1ce298011cc4e0d289208431135eeee482a2370b4e1ca",
+    "probe-variant-1-repeat-1.trace.json": "00ba2cc73a0d5ee45ac37479ade54801ebdedf968d02be71e03a2ccd3bfe6bbc",
+    "readback_order.gdb.py": "c0b35572ffb5ba85a888f6cc913453451c047be0bfcb9d9c0c2a95749e56cc7d",
+    "source.sha256": "c414202a4abb79301b04431b75008fa828dd60712b50518a1d4824e5d555b64b",
+    "manifest.sha256": "de0af10f23b6328df151e1d39952d54da3e0634ae782f4c2261c70be157b778a"
+  },
+  "private27_all_actual_files_hashed": true,
+  "private_manifest_sha256": "92a741a4da41f5398d9229d8bde15f429e7b3535cb23c8b03116d8de766c5d3e",
+  "143_source_tool_fixture_pins_after_exact": true,
+  "source128": "c414202a4abb79301b04431b75008fa828dd60712b50518a1d4824e5d555b64b",
+  "source_code_observations_sha256": {
+    "src/eval_io.c": "827165832493aafe76cf8831b759ab522df3c16c8ec4163f1cf43b4788b50e9b",
+    "src/eval.c": "c4ba0584e216345d6f23a0d9fc4bd7c1b343bf73ab788d9beaa54477476a2902",
+    "src/graph.c": "de6bb8c45c08e97c0ef8e5302bbdafec681b829edf1f6874c853d443116cc933",
+    "src/graph_io.c": "f169a91198f20949a1b095fa8c773ccdbb7866f1a92ffb8dd7ecd46ed7a5f5cc",
+    "src/graph.h": "811ad8f3c3be525286aaa6e4c29fc02532f7c9bca716dc992178f93b57513381"
+  },
+  "all_prior27_held9_flags15_freezes_exact": true,
+  "original_pair_bytes": 1249,
+  "differing_offsets": [
+    1113,
+    1121,
+    1129,
+    1137,
+    1145,
+    1153,
+    1161,
+    1169
+  ],
+  "root_footer_offset": 1049,
+  "graph_objects_terms_roots": [
+    6,
+    11,
+    25
+  ],
+  "four_worker_debug_process_records_independently_recomputed": [
+    {
+      "label": "variant-0-repeat-0",
+      "exit": 0,
+      "entry_ids": [
+        1,
+        6,
+        3
+      ],
+      "buckets": [
+        {
+          "bucket": 18,
+          "term_id": 6,
+          "is_root": false
+        },
+        {
+          "bucket": 46,
+          "term_id": 3,
+          "is_root": false
+        },
+        {
+          "bucket": 53,
+          "term_id": 1,
+          "is_root": true
+        }
+      ],
+      "all12_entry_heads_and21_total_heads_and25_footer_ids_match": true,
+      "hashes_and_bucket_locations_independently_recomputed": true,
+      "bytes_equal": true,
+      "log_sha256": "32a67cd66abed201ad7ec8c034af0e1a8c295d3553ff1dd7708cc092faa51cbe",
+      "trace_sha256": "c2efbc301b6dc27edfb5a0302620ce8f4f0e7f1c8541521610df388d05b74401",
+      "image_sha256": "bfafe394dd1b709525de733efd5d85388b946005e8beaf727c341f2106545d48"
+    },
+    {
+      "label": "variant-0-repeat-1",
+      "exit": 0,
+      "entry_ids": [
+        1,
+        3,
+        6
+      ],
+      "buckets": [
+        {
+          "bucket": 14,
+          "term_id": 3,
+          "is_root": false
+        },
+        {
+          "bucket": 52,
+          "term_id": 1,
+          "is_root": true
+        },
+        {
+          "bucket": 54,
+          "term_id": 6,
+          "is_root": false
+        }
+      ],
+      "all12_entry_heads_and21_total_heads_and25_footer_ids_match": true,
+      "hashes_and_bucket_locations_independently_recomputed": true,
+      "bytes_equal": false,
+      "log_sha256": "64dc8de396fd3d3ff92b33af3c162eb3f63d750833014330476c727af8f8e05e",
+      "trace_sha256": "5ee92afb105793002b6dea3573dafc31d3fef0dff637a2c0df06f9b727bb94de",
+      "image_sha256": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6"
+    },
+    {
+      "label": "variant-1-repeat-0",
+      "exit": 0,
+      "entry_ids": [
+        1,
+        6,
+        3
+      ],
+      "buckets": [
+        {
+          "bucket": 22,
+          "term_id": 6,
+          "is_root": false
+        },
+        {
+          "bucket": 39,
+          "term_id": 1,
+          "is_root": true
+        },
+        {
+          "bucket": 61,
+          "term_id": 3,
+          "is_root": false
+        }
+      ],
+      "all12_entry_heads_and21_total_heads_and25_footer_ids_match": true,
+      "hashes_and_bucket_locations_independently_recomputed": true,
+      "bytes_equal": false,
+      "log_sha256": "aab4b498d25fed0d9a9af3d2c26849de9cce89ab0af297107ad209d3ef89a05d",
+      "trace_sha256": "0222f51bb2d2db8f64fdeeeae049276039e2ec485f28b7a1d2b568027db13531",
+      "image_sha256": "bfafe394dd1b709525de733efd5d85388b946005e8beaf727c341f2106545d48"
+    },
+    {
+      "label": "variant-1-repeat-1",
+      "exit": 0,
+      "entry_ids": [
+        1,
+        3,
+        6
+      ],
+      "buckets": [
+        {
+          "bucket": 24,
+          "term_id": 1,
+          "is_root": true
+        },
+        {
+          "bucket": 44,
+          "term_id": 3,
+          "is_root": false
+        },
+        {
+          "bucket": 54,
+          "term_id": 6,
+          "is_root": false
+        }
+      ],
+      "all12_entry_heads_and21_total_heads_and25_footer_ids_match": true,
+      "hashes_and_bucket_locations_independently_recomputed": true,
+      "bytes_equal": true,
+      "log_sha256": "458cd78688d57aaec2a1ce298011cc4e0d289208431135eeee482a2370b4e1ca",
+      "trace_sha256": "00ba2cc73a0d5ee45ac37479ade54801ebdedf968d02be71e03a2ccd3bfe6bbc",
+      "image_sha256": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6"
+    }
+  ],
+  "Root_runtime_or_debugger_rerun": false,
+  "new_debug_inert_failures": 2,
+  "initial_observer_setup_failure_retained": {
+    "scope": "initial observer setup failure, unchanged codec execution exits0",
+    "wrong_observer_total": 67,
+    "actual_original_O2_and_debug_total": 11,
+    "before": 10,
+    "unsupported_gdb_setting": "set can-call-functions off",
+    "retry_setting": "set may-call-functions off",
+    "inferior_function_calls": false,
+    "source_runtime_edits": false,
+    "original_outputs_preserved": true,
+    "build_exit": 0,
+    "build_result_tool_chunk": "7f6754",
+    "initial_failure_tool_chunk": "6cd656",
+    "original_files": {
+      "inputs-before.json": "a1f349de436d34ee2aa13c9e2384ba38ff1192463bed8c0b85e852ef4e003d74",
+      "records.json": "eac5c05abd550bae2cddbf310d9e094f200c590adeeee226ffa0674ad029824b",
+      "variant-0-repeat-0.log": "23f335d16bae03a332cb735778584b896ac8ee04471cbbeaeb77e3e31c6f9a4f",
+      "variant-0-repeat-0.trace.json": "9670d3abc003c957df50d327032e42981ebdbddc083efa593d8e4ec5ba6ca66f",
+      "variant-0-repeat-0.image": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+      "initial-inspect_readback_order.py": "0b0fcc7943f5d820e0150b514cb921d081fe61de2e98adc50bf4722d979991e1",
+      "initial-readback_order.gdb.py": "c0b35572ffb5ba85a888f6cc913453451c047be0bfcb9d9c0c2a95749e56cc7d"
+    }
+  },
+  "causal_assessment": "For this preserved unchanged current Fold4/cut10 image, pointer-derived readback cache buckets order the two detached reusable results differently. Root-first cache entries generate four heads each; all21 configuration heads/actual11-node DAG/25 footer IDs match. Swapping the two four-root groups accounts for all eight changed bytes. This establishes the bounded fixture cause, not every historical failure or a codec design/fix.",
+  "existing_owner_disposition": "Route exact evidence to original Job codec owner without turn/Goal resume. Preserve required reusable results/independent fields and original byte assertions; any future ordering fix needs owner review and full current gates.",
+  "holds": "MEM10/MEM6/MEM7 remain held. Historical51/1168, paired6/146 and fresh original current O2 5/8 remain unwaived. Diagnosis O0-g/debugger evidence does not replace current O2 qualification.",
+  "limits": [
+    "No source/codec/image rewrite/canonicalizer/cache deletion/schema change/accepted edit.",
+    "No full current consumer/C/.a/transport/resume/SAN/machine-byte/actual-capacity or matched cost qualification.",
+    "No new slot, task/runtime publication or Goal completion. Original Job service-stalled; no acknowledgement claimed."
+  ],
+  "passed_evidence_review": true,
+  "runtime_READY_or_cost_or_Goal_completion": false
+}

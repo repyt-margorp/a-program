@@ -1,0 +1,546 @@
+{
+  "publication": {
+    "task": "8b6debfcf836451b9e972aba9f3f624f24b406e9",
+    "task_parent": "eaf5755914a44a855069321b4c64330eb4ca5b03",
+    "Main_parent": "740f7002e65a9c4ef0b8c9bb0a15492504113306",
+    "exact12_task": {
+      "doc/2026-10-03-C-BACKEND-GOAL.md": "af131ce07c20ad18553126bfccb6c96d8d51ef3a4e45aee516af3e458490f128",
+      "doc/2026-10-04-C-BACKEND-NESTED-CAPTURE-PLAN.md": "fed0f593601c995a73e2c204c01176df07c0b75db64b8da8ae37b6939955792a",
+      "doc/2026-10-04-C-BACKEND-EPOCH22-HANDOFF.md": "bd6c1b3680f2d2989418537f84791802dd9bfbeadfc5b0556cc2bc449b680152",
+      "src/prototype/c_backend/README.md": "ae5ad0624a0c1fb44199ddcbabc204354d79852b6815f3c145918c1b7813fe1d",
+      "src/prototype/c_backend/build.mk": "19a86004f34dc0a0fbfecb7d930d38782ac6f33c8926465f1f781a2e8a024677",
+      "src/prototype/c_backend/lower/scalar.c": "fa2e939c31f604c8d92062bde87eb59dd48d5a5851ed441a2610e30e0ad433f7",
+      "src/prototype/c_backend/nested_capture/fixture.p": "304a590a70050f1030fe5e39c70831da997698533e58b9c61ceb4b8294696f06",
+      "src/prototype/c_backend/nested_capture/nested.aplink": "fe206bc20c1253c73ae5c9f764be09825b310a5ac42200ec3a06793322490daf",
+      "src/prototype/c_backend/nested_capture/client.c": "cc88c9a047e439e5f0cc429e35afe8c275e4aec36307fa74e7e1aa7e442f72d2",
+      "src/prototype/c_backend/nested_capture/inert_test.c": "cbef4fed2dfbf71a1dd32e17c0f55459071888393966e9c0338306ec4f0ab3d8",
+      "src/prototype/c_backend/nested_capture/check.sh": "d4a2f1b93da37eed06e2685328f8000a73d3f3af87e18bdef9c8f40f6cdf1562",
+      "src/prototype/c_backend/nested_capture/build.mk": "235f0f452abd315dbe5df6c99a81b1dc77e029d9f92a8bdae41a3fc1384d057f"
+    },
+    "Root_current_report_sha256": "ce041c859a5c39b3d131551c92c83b61bdf4b7f41aa6b7276e04462ddacb977b",
+    "source128": "c414202a4abb79301b04431b75008fa828dd60712b50518a1d4824e5d555b64b",
+    "worker_live_files_preserved": 1839,
+    "Goal_provenance_only_Main_reconciliation": true,
+    "future_live_trials_excluded": true,
+    "current_backend_two_helpers_O2_rebuilt_MEM9_producer_reused": true,
+    "accepted_adoption_or_Goal_completion": false,
+    "task_remote_exact": true,
+    "Main_merge": "a0a9dc38dde82d8ef410251b1362bb2e7757091c",
+    "Main_remote_exact": true,
+    "exact11_Main_bytes": true,
+    "reviewed_Main_Goal_sha256": "c70952e6d4651d3670ebfe61703ce923e7843204e4a52c7480b2bfc7a0236d0b",
+    "protected9_exact": true
+  },
+  "current_Root_report_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-current-e18-mem9-gates/Root-results.json",
+  "current_Root_report_sha256": "ce041c859a5c39b3d131551c92c83b61bdf4b7f41aa6b7276e04462ddacb977b",
+  "current_source128": "c414202a4abb79301b04431b75008fa828dd60712b50518a1d4824e5d555b64b",
+  "current_producer_basis": "Frozen qualified current E18 plus MEM9, runtime unchanged by C21/metadata. No accepted/default replacement.",
+  "MEM9_current_qualification_retained_sha256": "2c99cd8348afdf5e20cac75c43be9660fbf7e0f14322af3d92832a050d72e437",
+  "rebuilt_and_reused_binary_sha256": {
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-current-e18-mem9-gates/build/a-to-c": "b3140ce234e7b6e48aea64556da8c457d0478573852b7a8f9f0280467ba2c5b3",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-current-e18-mem9-gates/build/c_nested_capture_inert_test": "b670a4eb1b4e135341cb7977d16e742471a0e9d17d749c538ae3cd9b1f899cc9",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-current-e18-mem9-gates/build/c_recursive_capture_inert_test": "80f571d85399c31d4bc4bda8e1229d8c735506028c7c3dc7df74bb9518e970b0",
+    "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/pointer-check": "f31c3472c8eee75f27552b7f68f9670aadfbd819faf2109f150a6bf74bc3e2af"
+  },
+  "checks": [
+    {
+      "gate": "backend-and-helpers-build",
+      "argv": [
+        "make",
+        "-j1",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-publication/src/prototype/c_backend/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4",
+        "ROOT=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/src/",
+        "BUILD=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-current-e18-mem9-gates/build",
+        "REPO=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4",
+        "TESTS=/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/tests",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-current-e18-mem9-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-current-e18-mem9-gates/build/c_nested_capture_inert_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-current-e18-mem9-gates/build/c_recursive_capture_inert_test"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "54f09a277e90606011020438471a8a51c1337a2e24bf98256eb403f850712156",
+      "sanitizer_scope": "Strict O2 current E18+MEM9 backend/two helpers rebuilt; exact qualified producer reused",
+      "retained_raw_phase_file_count": 0
+    },
+    {
+      "gate": "nested-o2",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-publication/src/prototype/c_backend/nested_capture/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-current-e18-mem9-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-current-e18-mem9-gates/build/c_nested_capture_inert_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-current-e18-mem9-gates/nested-o2"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "a2bd917b89cb8568ff10991c64089d2c170614fdb23ac3a7e22c133eb1712513",
+      "sanitizer_scope": "O2",
+      "status_rows": 40,
+      "expected_counts": {
+        "0": 31,
+        "3": 1,
+        "4": 8
+      },
+      "all_rows_match": true,
+      "status_sha256": "6b11e5989763e665b394f2e896b347c3b10089377eaf604fc698ea00074fa7a8",
+      "retained_raw_phase_file_count": 157
+    },
+    {
+      "gate": "parent-recursive-o2",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-publication/src/prototype/c_backend/recursive_capture/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-current-e18-mem9-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-current-e18-mem9-gates/build/c_recursive_capture_inert_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-current-e18-mem9-gates/parent-recursive-o2"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "113ce1c07e41ccbfb96ce35983302101e67880888e93872b91fbc838696a1877",
+      "sanitizer_scope": "O2",
+      "status_rows": 114,
+      "expected_counts": {
+        "0": 74,
+        "3": 2,
+        "4": 38
+      },
+      "all_rows_match": true,
+      "status_sha256": "677622f014a5635c145bab6c11346f18633bfb3af15459e16e275c433459a669",
+      "retained_raw_phase_file_count": 465,
+      "C21_generated_C_H_exact_count": 42
+    },
+    {
+      "gate": "integer-o2",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-publication/src/prototype/c_backend/predicate_integer/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-current-e18-mem9-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-current-e18-mem9-gates/integer-o2"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "1f81dc34b06896e2fd88f9e7d9502ef1427b46944cdad31e5662d409438374ef",
+      "sanitizer_scope": "O2",
+      "status_rows": 61,
+      "expected_counts": {
+        "0": 26,
+        "3": 1,
+        "4": 34
+      },
+      "all_rows_match": true,
+      "status_sha256": "9719280507b2c171ac545734bf0b690555af5e481c5c4e652e3e7d9e8e4e45a1",
+      "retained_raw_phase_file_count": 228
+    },
+    {
+      "gate": "nested-san",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-publication/src/prototype/c_backend/nested_capture/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-current-e18-mem9-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-current-e18-mem9-gates/build/c_nested_capture_inert_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-current-e18-mem9-gates/nested-san"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "a2bd917b89cb8568ff10991c64089d2c170614fdb23ac3a7e22c133eb1712513",
+      "sanitizer_scope": "Clients/source/raw/oracle product bodies SAN; producer/backend/helpers/object/archive O2",
+      "status_rows": 40,
+      "expected_counts": {
+        "0": 31,
+        "3": 1,
+        "4": 8
+      },
+      "all_rows_match": true,
+      "status_sha256": "6b11e5989763e665b394f2e896b347c3b10089377eaf604fc698ea00074fa7a8",
+      "retained_raw_phase_file_count": 157
+    },
+    {
+      "gate": "parent-recursive-san",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-publication/src/prototype/c_backend/recursive_capture/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-current-e18-mem9-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-current-e18-mem9-gates/build/c_recursive_capture_inert_test",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-current-e18-mem9-gates/parent-recursive-san"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "113ce1c07e41ccbfb96ce35983302101e67880888e93872b91fbc838696a1877",
+      "sanitizer_scope": "Clients/source/raw/oracle product bodies SAN; producer/backend/helpers/object/archive O2",
+      "status_rows": 114,
+      "expected_counts": {
+        "0": 74,
+        "3": 2,
+        "4": 38
+      },
+      "all_rows_match": true,
+      "status_sha256": "677622f014a5635c145bab6c11346f18633bfb3af15459e16e275c433459a669",
+      "retained_raw_phase_file_count": 465,
+      "C21_generated_C_H_exact_count": 42
+    },
+    {
+      "gate": "integer-san",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-publication/src/prototype/c_backend/predicate_integer/check.sh",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-current-e18-mem9-gates/build/a-to-c",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem9-current-e18-candidate-v4/build-candidate-o2/pointer-check",
+        "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-current-e18-mem9-gates/integer-san"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "log_sha256": "1f81dc34b06896e2fd88f9e7d9502ef1427b46944cdad31e5662d409438374ef",
+      "sanitizer_scope": "Clients/source/raw/oracle product bodies SAN; producer/backend/helpers/object/archive O2",
+      "status_rows": 61,
+      "expected_counts": {
+        "0": 26,
+        "3": 1,
+        "4": 34
+      },
+      "all_rows_match": true,
+      "status_sha256": "9719280507b2c171ac545734bf0b690555af5e481c5c4e652e3e7d9e8e4e45a1",
+      "retained_raw_phase_file_count": 228
+    }
+  ],
+  "all_current_pins_after_exact": true,
+  "current_pin_count": 412,
+  "all_current_raw_phase_files_hashes_rechecked": true,
+  "worker_input_review_path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c22-input-review.json",
+  "worker_input_review_sha256": "1c7bc00e840a26fcb46f296f25765b3a9c7f4fbcce5247415c94a5fbd6cf7593",
+  "worker_frozen_manifest": {
+    "date": "2026-10-04T02:01:19.824605+00:00",
+    "lane": "c-backend",
+    "epoch": "C22",
+    "state": "exact snapshot ready; pending delegated task publication/current-producer audit",
+    "parent": "eaf5755914a44a855069321b4c64330eb4ca5b03",
+    "branch": "parallel/c-backend-20261003",
+    "message": "prototype: retain private IH captures in nested recursion",
+    "files": [
+      {
+        "path": "doc/2026-10-03-C-BACKEND-GOAL.md",
+        "sha256": "af131ce07c20ad18553126bfccb6c96d8d51ef3a4e45aee516af3e458490f128"
+      },
+      {
+        "path": "doc/2026-10-04-C-BACKEND-NESTED-CAPTURE-PLAN.md",
+        "sha256": "fed0f593601c995a73e2c204c01176df07c0b75db64b8da8ae37b6939955792a"
+      },
+      {
+        "path": "doc/2026-10-04-C-BACKEND-EPOCH22-HANDOFF.md",
+        "sha256": "bd6c1b3680f2d2989418537f84791802dd9bfbeadfc5b0556cc2bc449b680152"
+      },
+      {
+        "path": "src/prototype/c_backend/README.md",
+        "sha256": "ae5ad0624a0c1fb44199ddcbabc204354d79852b6815f3c145918c1b7813fe1d"
+      },
+      {
+        "path": "src/prototype/c_backend/build.mk",
+        "sha256": "19a86004f34dc0a0fbfecb7d930d38782ac6f33c8926465f1f781a2e8a024677"
+      },
+      {
+        "path": "src/prototype/c_backend/lower/scalar.c",
+        "sha256": "fa2e939c31f604c8d92062bde87eb59dd48d5a5851ed441a2610e30e0ad433f7"
+      },
+      {
+        "path": "src/prototype/c_backend/nested_capture/fixture.p",
+        "sha256": "304a590a70050f1030fe5e39c70831da997698533e58b9c61ceb4b8294696f06"
+      },
+      {
+        "path": "src/prototype/c_backend/nested_capture/nested.aplink",
+        "sha256": "fe206bc20c1253c73ae5c9f764be09825b310a5ac42200ec3a06793322490daf"
+      },
+      {
+        "path": "src/prototype/c_backend/nested_capture/client.c",
+        "sha256": "cc88c9a047e439e5f0cc429e35afe8c275e4aec36307fa74e7e1aa7e442f72d2"
+      },
+      {
+        "path": "src/prototype/c_backend/nested_capture/inert_test.c",
+        "sha256": "cbef4fed2dfbf71a1dd32e17c0f55459071888393966e9c0338306ec4f0ab3d8"
+      },
+      {
+        "path": "src/prototype/c_backend/nested_capture/check.sh",
+        "sha256": "d4a2f1b93da37eed06e2685328f8000a73d3f3af87e18bdef9c8f40f6cdf1562"
+      },
+      {
+        "path": "src/prototype/c_backend/nested_capture/build.mk",
+        "sha256": "235f0f452abd315dbe5df6c99a81b1dc77e029d9f92a8bdae41a3fc1384d057f"
+      }
+    ],
+    "manifest_sha256": "78c156725668e02f97bacb27d32d2294e2bfdcd4aba46ca39a070c79c095a8d2",
+    "snapshot_sha256": "113cca131e5379e993a3faf3acff8ce16ab5b3c147264860ccc756db1e7f77bc",
+    "runs_sha256": "03cf00f8c348d1f1f7cc1a8fa3e7424da885edc9421a4566ca2b21654a5ec971",
+    "raw_count": 1603,
+    "retained_input_count": 192,
+    "retained_inputs_sha256": "543ba751dba42154c00901a80f38748e74463a00e40d3aa9cc5a2a2b5af6394c",
+    "verification_sha256": "06e17baaba3dbfbbec591f861b8d603cd7058a069e5a1bac24a2ceae42988cde",
+    "style_sha256": "84673fd6a0be1389cba207c60d48460307cec5b82b52eb0dfc66fba22cfc38e7",
+    "deltas_sha256": "5bd5bb62a604aeb34f95772b52915f1d01c5b8488dd22658863c751ab405b7a2",
+    "gates": {
+      "O2": {
+        "exit": 0,
+        "rows": 40,
+        "counts": {
+          "0": 31,
+          "3": 1,
+          "4": 8
+        }
+      },
+      "SAN": {
+        "exit": 0,
+        "rows": 40,
+        "counts": {
+          "0": 31,
+          "3": 1,
+          "4": 8
+        }
+      },
+      "parent-O2": {
+        "exit": 0,
+        "rows": 114,
+        "counts": {
+          "0": 74,
+          "3": 2,
+          "4": 38
+        }
+      },
+      "parent-SAN": {
+        "exit": 0,
+        "rows": 114,
+        "counts": {
+          "0": 74,
+          "3": 2,
+          "4": 38
+        }
+      }
+    },
+    "initial_refusals_retained": true,
+    "initial_fixture_script_exact_pins_retained": true,
+    "scope": "existing ABI private delayed IH/static recursive identities; no producer/schema/private checker/erasure/accepted/cost authority",
+    "C21_exact_task_remote": "eaf5755914a44a855069321b4c64330eb4ca5b03",
+    "C21_Root_Main": "8c00c80f97f7a7413b4b088efc94999fe58d33ff",
+    "C21_snapshot_unchanged": true,
+    "remaining": "dynamic/callable/indexed Acc and native QuickSort/full61 remain open",
+    "integration": "Root exact publication/current-producer review/Main; no shared-owner dependency established"
+  },
+  "worker_historical_verification": {
+    "baseline": "eaf5755914a44a855069321b4c64330eb4ca5b03",
+    "branch": "parallel/c-backend-20261003",
+    "worker_producer": "50cd56b2a52b7e370bc7ecb3436c4993e2e5d6a2",
+    "runtime_files": 128,
+    "selected_retained_inputs": 192,
+    "implementation_source": {
+      "file": "src/prototype/c_backend/lower/scalar.c",
+      "added": 7,
+      "deleted": 2,
+      "lines": 1247,
+      "sha256": "fa2e939c31f604c8d92062bde87eb59dd48d5a5851ed441a2610e30e0ad433f7"
+    },
+    "gates": {
+      "O2": {
+        "count": 40,
+        "counts": {
+          "0": 31,
+          "3": 1,
+          "4": 8
+        },
+        "exit": 0,
+        "record_sha256": "cc818dadab8bf2f216af46ab29532a0483d5fb8facee58e70b780ac0295a3eba"
+      },
+      "SAN": {
+        "count": 40,
+        "counts": {
+          "0": 31,
+          "3": 1,
+          "4": 8
+        },
+        "exit": 0,
+        "record_sha256": "6eb53f5ce1bf5173d46044d43a30a6bffbf55959bf09da70e858210075d0604a"
+      },
+      "parent-O2": {
+        "count": 114,
+        "counts": {
+          "0": 74,
+          "3": 2,
+          "4": 38
+        },
+        "exit": 0,
+        "record_sha256": "66f33686c4b4e8504fb266c6ad2cadab7906e7c45cbe8048c849ce077a2a8f32"
+      },
+      "parent-SAN": {
+        "count": 114,
+        "counts": {
+          "0": 74,
+          "3": 2,
+          "4": 38
+        },
+        "exit": 0,
+        "record_sha256": "f00a3e16bbb1491765e0a1221321cb0b1f85adeecc96dee823a65893117da06c"
+      }
+    },
+    "initial_refusal_statuses": [
+      {
+        "name": "admit",
+        "exit": 0,
+        "argv": [
+          "/tmp/a-program-merge-c9-e8-gates-20261003/build/pointer-check",
+          "--save",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested.a",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/scratch/nested_captures/fixture.p"
+        ]
+      },
+      {
+        "name": "source-reference",
+        "exit": 0,
+        "argv": [
+          "/tmp/a-program-merge-c9-e8-gates-20261003/build/pointer-check",
+          "--run",
+          "reference",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/scratch/nested_captures/fixture.p"
+        ]
+      },
+      {
+        "name": "loaded-reference",
+        "exit": 0,
+        "argv": [
+          "/tmp/a-program-merge-c9-e8-gates-20261003/build/pointer-check",
+          "--load",
+          "--run",
+          "reference",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested.a"
+        ]
+      },
+      {
+        "name": "count-checked",
+        "exit": 0,
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch21-recursive-captures-20261004/build/a-to-c",
+          "--link",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count.aplink",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count-checked"
+        ]
+      },
+      {
+        "name": "count-trusted",
+        "exit": 0,
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch21-recursive-captures-20261004/build/a-to-c",
+          "--trust-image",
+          "--steps",
+          "0",
+          "--link",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count.aplink",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/count-trusted"
+        ]
+      },
+      {
+        "name": "branch_sum-checked",
+        "exit": 0,
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch21-recursive-captures-20261004/build/a-to-c",
+          "--link",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum.aplink",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum-checked"
+        ]
+      },
+      {
+        "name": "branch_sum-trusted",
+        "exit": 0,
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch21-recursive-captures-20261004/build/a-to-c",
+          "--trust-image",
+          "--steps",
+          "0",
+          "--link",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum.aplink",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/branch_sum-trusted"
+        ]
+      },
+      {
+        "name": "nested_sum-checked",
+        "exit": 4,
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch21-recursive-captures-20261004/build/a-to-c",
+          "--link",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_sum.aplink",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_sum-checked"
+        ]
+      },
+      {
+        "name": "nested_sum-trusted",
+        "exit": 4,
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch21-recursive-captures-20261004/build/a-to-c",
+          "--trust-image",
+          "--steps",
+          "0",
+          "--link",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_sum.aplink",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_sum-trusted"
+        ]
+      },
+      {
+        "name": "nested_known-checked",
+        "exit": 4,
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch21-recursive-captures-20261004/build/a-to-c",
+          "--link",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_known.aplink",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_known-checked"
+        ]
+      },
+      {
+        "name": "nested_known-trusted",
+        "exit": 4,
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch21-recursive-captures-20261004/build/a-to-c",
+          "--trust-image",
+          "--steps",
+          "0",
+          "--link",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_known.aplink",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch22-nested-captures-20261004/nested_known-trusted"
+        ]
+      }
+    ],
+    "SAN_scope": "O1 ASan/UBSan/leak client/generated source/raw/oracle bodies; object/archive/backend/helpers/producer O2",
+    "native_Acc_QuickSort": "unfinished indexed/callable target barrier; no full61/adoption/cost claim",
+    "final-build.json_sha256": "742dad5fde1e2a4f61d1f1131953a499695a809300e90df6b505e0b837d299a7",
+    "style.json_sha256": "84673fd6a0be1389cba207c60d48460307cec5b82b52eb0dfc66fba22cfc38e7",
+    "qualified-inputs.sha256_sha256": "543ba751dba42154c00901a80f38748e74463a00e40d3aa9cc5a2a2b5af6394c",
+    "initial-source-retention.json_sha256": "f3d25f79dcef0a70e07ba4afaaa515afac93d5aade3c25c7bb5b3608dcd7a93a",
+    "c21-task-publication.json_sha256": "ec524f9d5c0d6be58cc605c9c88e6e9337a9a97de382398c012f3c02daca13dd",
+    "source-deltas.json_sha256": "5bd5bb62a604aeb34f95772b52915f1d01c5b8488dd22658863c751ab405b7a2",
+    "files": 12,
+    "registration.json_sha256": "1a8b9f66dad397ad3e32d4ac747435b6770dc6b84b786b8b46c5ae7d4e05d812",
+    "C21_Root_Main": "8c00c80f97f7a7413b4b088efc94999fe58d33ff (Root reported joint qualification; not worker rerun)"
+  },
+  "retained192_runtime128_raw1603_all_actual_files_hashed": true,
+  "code_review": "Recursive capture construction now accepts existing private delayed-IH values and recursive target identities. Thunk creation remains limited to known lambdas/direct recognized IH calls. Native capture closure lifting is unchanged; recursive-call validation compares private identity for recursion and suspended body for delayed captures. Public ABI and upstream authority unchanged.",
+  "coverage_review": "Nested Nat/signed seed/List/curried/repeated/unused IH positives, source/readback/raw/products and separate120 Core controls; dynamic/effect/callable/indexed checked/trusted refusals, no-fuel/depth/output rollback retained. Original C21 negative probes retained with their original source bytes, distinct from final source.",
+  "worker_initial_fixture_script_byte_exact_retained": [
+    {
+      "retained": "initial-fixture.p",
+      "initial_pin": "48f6ef559f3ed8bd11c9998b8975af5fc26cfc89c61062dce6821e95fc2113d0",
+      "hash": "48f6ef559f3ed8bd11c9998b8975af5fc26cfc89c61062dce6821e95fc2113d0"
+    },
+    {
+      "retained": "initial-probe.aplink",
+      "initial_pin": "36108c4ed8d598f1829ff6aef699cb30a46f77a9cc4f283616e55c10c40f9d0f",
+      "hash": "36108c4ed8d598f1829ff6aef699cb30a46f77a9cc4f283616e55c10c40f9d0f"
+    }
+  ],
+  "Root_initial_setup_guard": "C22 retained-input mapping is an object with inputs list; initial Root assertion assumed previous epoch top-level list. Corrected schema before worktree creation/builds, all192 retained bytes then verified; no worker failure or test waiver.",
+  "parent_C21_generated84_C_H_bytes_exact": true,
+  "C21_release_consumed_in_C22_READY": true,
+  "SAN_scope": "O1 ASan/UBSan/leak clients and generated source/raw/oracle bodies; emitted object/archive/backend/helpers/producer remain O2.",
+  "limits": "Existing public ABI/private IH-recursive identities only. Four dynamic/effect/callable/indexed checked-trusted refusals remain. Borrowed valid readable inputs/nonoverlap/lifetime, max256 depth/Nat32 bounds. SAN only clients/source/raw/oracle bodies. Native Acc/QuickSort/full61, producer/schema/erasure change, full broad/cost/adoption/Goal completion remain separate.",
+  "accepted_adoption_or_Goal_completion": false
+}
