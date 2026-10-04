@@ -554,6 +554,27 @@ Malloc injection covers source/object/archive, while shared products use capacit
 failures. Existing depth256, borrowed lifetime and native Acc/full #61 limits
 remain; no comparative cost, accepted adoption or source authority follows.
 
+`check-c-signed-predicate-units` in `predicate_signed_units/build.mk` verifies
+ordinary C factories/client in separate translation units. A generated native
+provider takes an explicit selected flag and signed operands, returning that flag;
+adapters translate its true/false order into two consumers' false/true enums.
+The scalar provider requires no arena. Provider success, source interpretation and
+synchronous context/API/code lifetime remain caller preconditions; factories return
+existing descriptors by value without adding an A Program closure-result ABI.
+
+The focused gate mixes all64 left/right/provider source/object/archive/shared
+triples and both header orders:128 linked and32 loaded-provider clients per phase.
+Each checks121 Lists per width, both constant flags/unary/binary forms, copied
+values, signed extrema, shared-arena transactions and16 source/readback observations.
+Int64 extrema are C inputs, and the providers are admitted constant predicates,
+not source signed comparators. Missing/duplicate adapters, duplicate provider
+symbols, wrong nominal enum descriptors and wrong widths refuse compilation/link.
+SAN includes client/adapter/source-product bodies; other product bodies/backend/
+producer stay O2. Product/phase repeats are not independent property counts.
+Use `make -f src/prototype/c_backend/predicate_signed_units/build.mk
+check-c-signed-predicate-units` with the existing overlay/build variables. Details
+are in the [C28 plan](../../../doc/2026-10-04-C-BACKEND-SIGNED-MODULES-PLAN.md).
+
 `check-c-integer-predicate-boundary` probes ordinary Int32/Int64 Lists under the
 existing `c_native_v1` ABI. Known private predicates use source constant/captured
 Bool decisions and select all or none; they ignore pivot values. The same public
