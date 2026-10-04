@@ -1,0 +1,20 @@
+aplink 1
+artifact consumers.a
+abi c_predicate_signed_v1
+target host-c11
+product source
+lowering predicate_signed_direct_v1
+fallback reject
+enum32 Bool LFlag
+data Numbers32 LNumbers32
+data Numbers64 LNumbers64
+export apply32 left_apply32
+export apply64 left_apply64
+export choose32 left_choose32
+export choose64 left_choose64
+export filter32 left_filter32
+export filter64 left_filter64
+export select32 left_select32
+export select64 left_select64
+export length32 left_length32
+export length64 left_length64

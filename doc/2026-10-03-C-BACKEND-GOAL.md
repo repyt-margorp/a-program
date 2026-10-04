@@ -104,6 +104,17 @@ names, separate directories and reviewed integration epochs.
 
 ### Objective (Code)
 
+2026-10-04, fresh Root C28 on qualified E22+MEM9 source1285235ee3c:
+exact13 task0c852ce6995cbb9a933910fda6d37490291fdcbb pushed/remote exact; backend/ABI/producer
+unchanged. Reuse exact qualified C27 backend/E22 pointer, standalone dry-run0
+and both new unit phases0/373 expected rows each (368zero/five compiler-link-one).
+64 module triples/both header orders,128 linked+32 loaded-provider clients per
+phase;16 source/readback observations/client,121 Lists perwidth, rollback/capacity/
+depth/prior inputs/results and four/fifteen/fifteen shared symbols. All48 emitted
+C/H files directly exact historical worker;271 retained/runtime128/raw3058 verified.
+Other12 Main frozen bytes exact; Goal only reconciled. No new broad or cost run.
+[Root C28 review](../src/prototype/c_backend/verification/core-epoch28.json).
+
 2026-10-04, later fresh C27 qualification after E22: current source1285235ee3c,
 all33 expected records and381 C-H files byte-exact E21. E22 exact31/current30
 producer delivered without C27 runtime/ABI/source-policy change.
@@ -545,6 +556,7 @@ Current issue status (2026-10-04 local; detailed pins stay in linked epoch plans
 | #61 two direct Self fields, C25 | C24 task `9af7f27a` + representation +17/-4, nodes +48 and status/receipt metadata; [multi-tail plan](2026-10-04-C-BACKEND-MULTI-TAIL-PLAN.md). Existing borrowed arena ABI, iterative active/completed graph validation; no producer field. | Worker E8 Tree46/applied50/List21/value-record41/numeric26 each O2/client-source SAN; enum arrays875/product/linker/I-O19 pass. Six observations,202 finite Trees/layout,1616 separate Core comparisons;18 C24 C/H exact. Initial setup failures retained. Root current E18+MEM9+E19 all20 records0; Tree46/applied50/source46/nested40/List21/record41/numeric26 each O2/client-source SAN, enum/linker/I-O19 pass. Raw05905831. | Exact26 task728d04b1 pushed/remote verified; prototype Main other25 frozen bytes exact, only Goal provenance reconciled. | Readable immutable borrowed nodes, O(V) temporary storage/quadratic validation, depth256; three-tail/callable/indexed/non-List record refusals. Native Acc/QuickSort/full #61 open. | Continue distinct bounded downstream work; three-tail/callable/indexed/native Acc/QuickSort/full61 remain open. |
 | #61 finite records in branching nodes, C26 | C25 task `728d04b1` + representation.c +3/-3; existing finite-value validators/borrowed node ABI. [Record-tree plan](2026-10-04-C-BACKEND-RECURSIVE-RECORD-PLAN.md); former C25 RecordTree refusal explicitly positive. | Worker E8 new52/branching52/record-List41 each O2/client-source SAN, linker/I-O19 pass; four observations,222 finite cases/layout,888 separate Core comparisons,22 parent C/H exact. Root current E20 all22 gates0, record-tree52/branching52 and affected O2/client-source SAN/link/I-O19; raw1b7bc3bd. Original source/target/receipt failures retained. | Exact14 taskd8f8f27e pushed/remote verified; prototype Main other13 frozen files exact, only Goal status/provenance reconciled. | Complete earlier selected finite records only; recursive aggregates, non-branching non-List records, missing/later/callable/indexed/effect contracts refused. Borrowed/depth/temporary storage/limited SAN; native Acc/QuickSort/full #61 open. | Continue distinct bounded target work; native indexed/callable Acc/QuickSort/full61/actual cost/adoption remain open. |
 | #61 borrowed signed predicates/List partitioning, C27 | Exact C26 `d8f8f27` + C27 local target edits; [signed plan](2026-10-04-C-BACKEND-SIGNED-PREDICATE-PLAN.md). Opt-in same-width unary/binary Int32/Int64 to selected two-case enum, with no-arena private status propagation. | Worker E8 signed74/Nat69/signed-static61 each O2/client-source SAN, linker/I-O19/signed faults5 pass;64 parent C/H exact,262 inputs/runtime128 exact. Four products/raw:781 Lists/width,18744 foreign selections/product;120 admitted Core tags/1248 lengths, eight source observations. Initial setup failures retained.  Root current E21 all36 expected gates; same-image C26 old emissions/64 C/H exact, rawfd290a9a. | Exact20 task4b9c1094 pushed/remote exact; Main other19 frozen bytes exact, only Goal status/provenance reconciled. | Borrowed pure-total provider interpretation/lifetime/nonoverlap, depth256/limited SAN;13 checked/trusted refusal pairs. Foreign signed comparisons are ABI controls, not admitted source comparator or native Acc/QuickSort/full #61 completion. | Continue distinct bounded generated-provider composition; native indexed/callable Acc/QuickSort/full61/actual cost/adoption remain open. |
+| #61 ordinary signed predicate translation units, C28 | Exact C27 `4b9c1094` + new test/docs only; [signed module plan](2026-10-04-C-BACKEND-SIGNED-MODULES-PLAN.md). Native generated provider, two nominal consumers and separate declarative C factories/client; ABI/backend/producer unchanged. | Worker E8 reused exact C27 backend/pointer:373 rows each O2/client-adapter-source SAN (368zero/5expected-one),64 mixed triples/both orders/128 linked+32 loaded clients;121 Lists/width,16 source/readback observations/client, shared definitions4/15/15. No unexpected failures;271 retained inputs/runtime128/48 generated C/H exact, style pass.  Root current E22 two phases/746 expected rows and48 C-H exact, report30f7e44b. | Exact13 task0c852ce6 pushed/remote exact; Main other12 frozen bytes exact/Goal only reconciled. | Provider success/constant-source interpretation/API/context/code lifetime, nonoverlap/depth256 and limited SAN; no source comparator/native Acc/QuickSort/full #61/adoption/cost completion. | Root review from immutable snapshot; ordinary source-semantic/target residuals stay routed separately. |
 | #61 native Acc/QuickSort (historical #44/#49) | C4 `a3b6bce` pins native refusal; C7-C9 retain it. Applied List resolves only the first representation obligation. C23 now separately delivers existing-source native insertion sorting; no indexed Acc/QuickSort implementation. | Historical checked/trusted status 4/no product; Root C9 sorting-boundary gate passes. Structural FFTT remains separate. Fresh C23 checked/trusted indexed QuickSort status4/no products retained. | C4-C9 task/prototype Main published; no native Acc epoch publication. | Indexed SizedList and callable recursive Acc fields remain unsupported; no producer defect established. | Report concrete indexed/callable representation needs through Merge; keep work bounded and downstream. |
 | #61 remaining public contracts (historical #49) | General/boxed callbacks, effects, higher Identity, recursive captures and shared nominal exchange remain explicit limits; C16 advances only fixed borrowed unary/binary scalar inputs. | Local/joint gates verify supported cases and refusals, not general completion. | Historical tasks/prototype Main published; no publication of general missing contracts. | Need bounded justified representation/demand contracts. | Preserve refusals; route shared needs through Merge. |
 
@@ -698,6 +710,15 @@ pinned/current producer images and emitted C/headers match byte-for-byte.
 Evidence and exact publication files are in the [epoch handoff](2026-10-03-C-BACKEND-EPOCH1-HANDOFF.md).
 
 ### Assessment
+
+2026-10-04, Root C28 integration decision: new examples/tests verify ordinary
+constant signed providers through an explicit C nominal-enum adapter and two
+consumers. No backend/ABI/producer/schema/checker/erasure change. Success/totality/
+purity/provider interpretation and synchronous code/API/context lifetime remain
+caller preconditions, adapter assertion is no foreign error protocol. Providers
+return constant flags, not signed comparators/native indexed AccQuickSort proof.
+Returned closure/general type equality/ownership/full61/cost/adoption remain;
+client/adapter/source SAN only, other product bodies/backend/producer O2.
 
 2026-10-04, Root C27 bounded integration decision within existing scope:
 add separate opt-in signed predicate profile/ABI, same-width Int32/Int64 unary/
@@ -1241,6 +1262,8 @@ shared IR, checker or image fields. The later 2026-10-03 lane assignment permits
 this target work while Main continues SE1, superseding the earlier AP6 hold.
 
 ### Plan
+
+- [x] C28: qualify/publish exact13 ordinary signed provider/consumer module fixtures on current E22; full61/actual cost/adoption remain.
 
 - [x] C27: qualify/publish exact20 signed-predicate prototype on current E21; preserve provider/lifetime/refusal/SAN/full native criteria.
 
