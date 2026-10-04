@@ -1,0 +1,192 @@
+{
+  "review_UTC": "2026-10-04T04:21:17.654535+00:00",
+  "notice_sha256": "685c704a92e08a766120adb8ddbbd6a78a4baebe069d5fe5f0d673e5c6dd1b71",
+  "C24_task_publication_worker_receipt_sha256": "eaa338b6fdc7e9a15fc80b1c269c8a0049370dabe06891c104a8ab5daf48dcbd",
+  "all16_C24_task_Git_blobs_exact_worker_publication_record": true,
+  "C23_Root_release_consumed_in_owner_Assessment": true,
+  "C25_plan_path": "/home/repyt/workspace/a-program-workers/c-backend/doc/2026-10-04-C-BACKEND-MULTI-TAIL-PLAN.md",
+  "C25_plan_observed_sha256": "eb77661f32c3a3c61b544c757aa2b3fcae36983a5048bc071375333ba824e713",
+  "C25_private_probe_path": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch25-multi-tail-20261004",
+  "observed_private_probe_file_hashes": {
+    "initial-fixture.p": "4f88b64e08a6c80bb7433cf008dc52a16dddf026480424a1fbf752eb2fca5699",
+    "trial-inputs.json": "1e2807e54181809a96dcc624a6ed2dc952da57812acf35d588f8c2802c12759b",
+    "admit.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "trial-build.json": "2941360d7fe77744201f39c4d2a936fb455890744fc90400385b4ae424e5143c",
+    "trial-build.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tree.a": "fdc4acf58fddecbc2d6c35780beb1ce1085a7f19fad6ad619e764b87b1481405",
+    "initial-inputs.json": "bfe68f681b73412f4d22419b31e71f4dedc027ad2e8c966b27b6af7439d188ac",
+    "absolute-tree.aplink": "1259c3e3aca65d2be297ed8a3c422428e110e621dcca872a3888c1d442cf5a3c",
+    "admit.out": "82b81a8764fceb1887dd25037e081b4d8e0587b30429cd63cb394afb0dc9ddd5",
+    "initial-results.json": "21e234dab6e79fea7206678a309002eb749c5d389ba7fc06af2ae6d41040a02f",
+    "trial-build.out": "aa90817bfb089f4856589402ef9f87be9078c1e77655b2c3fdbeee4c6e423c4a",
+    "initial-tree.aplink": "0c7cc07d06182178e441e4838f4099968a10cc396c0ec8a61299a94a91356e89",
+    "trial-build/a-to-c": "ea09da93a43af9cad93f4cf5254c58374e4a7b4f4097d94f0a62b8af8ee2b813",
+    "classified-final/results.json": "73e7985ac0fee90c6a6542706c2f090877d58a17cc663d5ee81bf80cc2f21c8c",
+    "classified-final/trusted.err": "6a6c50e25e82a160531b9fa03df00cbbf8783637b7e6298384fd4cd0abaa2f4c",
+    "classified-final/checked.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "classified-final/absolute.aplink": "f09ece9c9ea3fdb981817e30857b626a04a84d87b516c189f2745dfb5c563ad2",
+    "classified-final/tree.aplink": "3a211dc8cbabe6a8ab33a97309ec7a99db6a526271a62390bcb1685f6b2b01d2",
+    "classified-final/checked.err": "1a81ac2c9cee0fcc7b107c33e8148ed1accd374ceefbf461dc27092da5e2f449",
+    "classified-final/trusted.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "corrected/admit.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "corrected/inputs.json": "d9a0b5dbcd25ba6b8e996a4538919cd015ae83f3280bff302e19fddf3832d6c0",
+    "corrected/reference.out": "a437f64d26444fd70d29e1195b423d0d7779a0767f901c7a047a8d0d22e2c582",
+    "corrected/results.json": "9b82a1f35cc5b1465554d15591359bc818afa222bdbcc7deb67a1c331a628a13",
+    "corrected/tree.a": "af3456f0a01614c80d57c0cc6527943db07ee40b8f62f3b662c1acffb95bcea6",
+    "corrected/admit.out": "14231de39c8ceb6c61a83e66dd46d21c934b28807e7000982c552841c20e8cd1",
+    "corrected/fixture.p": "d2cd60339c877f5ec83cd23d15332f5f58e5d94f229a5400f206ee7060d32287",
+    "corrected/checked.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "corrected/absolute.aplink": "3e0705bb0a3d8c741682a0ad8d88d80e0500a7d236024d465c4c8755fdbcfd1e",
+    "corrected/reference.err": "0e6d88b2587a0cdde5d66d0ad4be1d8206d2aab240277f2f0cd3037083608224",
+    "corrected/tree.aplink": "0c7cc07d06182178e441e4838f4099968a10cc396c0ec8a61299a94a91356e89",
+    "corrected/checked.err": "0776b06eaf9e10bf8a7ce8d9d4a32715c28f186415e8dd9a3f0bc169b99c9205",
+    "classified/inputs.json": "5e3a37e1e293ea42c062b218d2254c6d9950311deef0861f2c8327622cf6bb6c",
+    "classified/results.json": "a2c4d6f0b8f6a910b522ecc948d007c454f2c595d8d81e7241f0618d826bc64e",
+    "classified/trusted.err": "58759a432d1af82bdcb5123efc5511e13ad71c3a1b6430f00b5964bbcc6ae8aa",
+    "classified/fixture.p": "d2cd60339c877f5ec83cd23d15332f5f58e5d94f229a5400f206ee7060d32287",
+    "classified/checked.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "classified/absolute.aplink": "8c3b1b6862201fb04821f01a725effc74bf12eb1839b91d21099aa7ced7cf144",
+    "classified/tree.aplink": "c4ed5ab173db20179e99b60022111ae72e68e5c131e12d03a7bf317f6e6a0101",
+    "classified/checked.err": "58759a432d1af82bdcb5123efc5511e13ad71c3a1b6430f00b5964bbcc6ae8aa",
+    "classified/trusted.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "worker_E8_records": {
+    "initial-results.json": [
+      {
+        "name": "admit",
+        "argv": [
+          "/tmp/a-program-merge-c9-e8-gates-20261003/build/pointer-check",
+          "--steps",
+          "5000000",
+          "--save",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch25-multi-tail-20261004/tree.a",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/scratch/multi_tail/fixture.p"
+        ],
+        "expected": 0,
+        "exit": 1
+      }
+    ],
+    "corrected/results.json": [
+      {
+        "name": "admit",
+        "argv": [
+          "/tmp/a-program-merge-c9-e8-gates-20261003/build/pointer-check",
+          "--steps",
+          "5000000",
+          "--save",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch25-multi-tail-20261004/corrected/tree.a",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/scratch/multi_tail/fixture.p"
+        ],
+        "expected": 0,
+        "exit": 0
+      },
+      {
+        "name": "reference",
+        "argv": [
+          "/tmp/a-program-merge-c9-e8-gates-20261003/build/pointer-check",
+          "--steps",
+          "5000000",
+          "--run",
+          "reference",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/scratch/multi_tail/fixture.p"
+        ],
+        "expected": 0,
+        "exit": 0
+      },
+      {
+        "name": "checked",
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch24-applied-type-binding-20261004/qualified-build/a-to-c",
+          "--image-limit",
+          "none",
+          "--steps",
+          "5000000",
+          "--link",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch25-multi-tail-20261004/corrected/absolute.aplink",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch25-multi-tail-20261004/corrected/checked"
+        ],
+        "expected": 4,
+        "exit": 2
+      }
+    ],
+    "classified/results.json": [
+      {
+        "mode": "checked",
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch24-applied-type-binding-20261004/qualified-build/a-to-c",
+          "--image-limit",
+          "none",
+          "--steps",
+          "5000000",
+          "--link",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch25-multi-tail-20261004/classified/absolute.aplink",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch25-multi-tail-20261004/classified/checked"
+        ],
+        "expected": 4,
+        "exit": 2
+      },
+      {
+        "mode": "trusted",
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch24-applied-type-binding-20261004/qualified-build/a-to-c",
+          "--image-limit",
+          "none",
+          "--steps",
+          "5000000",
+          "--trust-image",
+          "--steps",
+          "0",
+          "--link",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch25-multi-tail-20261004/classified/absolute.aplink",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch25-multi-tail-20261004/classified/trusted"
+        ],
+        "expected": 4,
+        "exit": 2
+      }
+    ],
+    "classified-final/results.json": [
+      {
+        "mode": "checked",
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch24-applied-type-binding-20261004/qualified-build/a-to-c",
+          "--image-limit",
+          "none",
+          "--steps",
+          "5000000",
+          "--link",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch25-multi-tail-20261004/classified-final/absolute.aplink",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch25-multi-tail-20261004/classified-final/checked"
+        ],
+        "expected": 4,
+        "exit": 4
+      },
+      {
+        "mode": "trusted",
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch24-applied-type-binding-20261004/qualified-build/a-to-c",
+          "--image-limit",
+          "none",
+          "--steps",
+          "5000000",
+          "--trust-image",
+          "--steps",
+          "0",
+          "--link",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch25-multi-tail-20261004/classified-final/absolute.aplink",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch25-multi-tail-20261004/classified-final/trusted"
+        ],
+        "expected": 4,
+        "exit": 4
+      }
+    ]
+  },
+  "expected_source_reference": "99129",
+  "producer_sha256": "6e3407fc7f6ba8dffa0642217f00b6d2ec8454e32dc41eac6b27cce30518cd44",
+  "historical_C24_E8_backend_sha256": "f835425f96308f459954585127b4c7dbafe43362fc218415b126eff2f3a8256f",
+  "initial_fixture_admit1_missing_header_and_invalid_directive2_failures_retained": true,
+  "corrected_final_checked_trusted_native4_no_products_stdout": true,
+  "current_Main_representation_single_direct_Self_guard_sha256": "2fd9d63cfc565bdc1ce326369d59a3c5eb09ab10597de2778adfb8cf32fbd76f",
+  "assessment": "Accept bounded private action/probe evidence. Source admission and four reference observations pass on historical qualified E8; corrected checked/trusted native request refuses multi-tail representation4. Initial print-Text and missing/header-version directive setup failures remain distinct. Source probe does not establish current-producer/native branching support, all-active-child/DAG/cycle validation or a new source contract. Existing target single direct Self guard provides a concrete downstream boundary; owner may continue existing-scope bounded validation/resource research without upstream/schema/erasure/callable/indexed changes. Native Acc/QuickSort/full61 remain open.",
+  "Root_runtime_or_new_Git_task_or_cost_publication": false,
+  "runtime_READY_current_Main_integration_accepted_adoption_or_Goal_completion": false
+}
