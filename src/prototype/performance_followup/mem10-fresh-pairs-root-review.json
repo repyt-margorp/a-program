@@ -242,9 +242,10 @@
       }
     ],
     "semantic_result_and_fuel_four_fresh_readers_verified": true,
-    "same_binary_repeated_write_and_inert_resave_controls_pending": true,
+    "same_binary_repeated_write_and_inert_resave_controls_pending": false,
     "cause_established": false,
-    "no_byte_waiver": true
+    "no_byte_waiver": true,
+    "historical_terminal_controls_51_failures": true
   },
   "current_preparation_only": {
     "path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-input-review.json",
@@ -470,15 +471,158 @@
   },
   "Assessment": [
     "Frozen27/raw2730 and every expected historical result are verified. Retain exact historical evidence; READY did not claim raw cross-writer byte equality or latest Main qualification.",
-    "Root independently confirms six differing equal-length materialized writer images. Hold runtime integration and comparative scheduling while unchanged same-parent/same-candidate repetitions and inert machine resaves establish the byte disposition. Semantic success neither proves deterministic bytes nor establishes a new bug; do not infer allocator regression or parent nondeterminism from this comparison alone.",
+    "Terminal unchanged byte controls confirm 51/1168 inert-resave byte failures, including unchanged historical parent readers; same-parent and same-candidate writers vary at all six tested materialized cases. Semantic/fuel/zero-budget failures remain0. Initial READY is superseded by review-only/HOLD; byte success is not inferred from semantic success.",
     "Current E18+MEM9 canonical evaluator excludes historical free_frames. The isolated effective patch adds only the identical fresh-slot helper, two allocation call changes, WHNF spare reset and header field; no free-frame reuse is imported. Current source1288bb29f3a is prepared, not runtime-qualified or published.",
     "Fresh nine-type header probe establishes +8 actual size and +16 aligned allocation extent for current pg_eval/WHNF/execution. Historical unchanged aligned extents do not transfer. Other six types are unchanged; actual current capacity/global overhead and all consumers still require qualification.",
     "Historical cut-capacity savings include unused spares but exclude nested query/malloc/index/allocator metadata and are not process RSS, global peak or time. No comparative sample or new exclusive slot is granted; the prepared historical36-job proposal remains unreviewed/unlaunched.",
-    "After byte disposition, independently verify the exact frozen runtime change on current Main with rebuilt consumers, affected transport/all-cut and strict/public byte/fuel controls, and current owner capacities before task/Main publication. Keep MEM6/MEM7 holds and allocator/compact-root/beta deferrals intact. This is an agent review within existing prototype scope, not user design approval or accepted promotion."
+    "Fresh unchanged current E18+MEM9 O2 case4/cut10 reproduces five of eight inert byte failures and two writer variants with semantic/result/fuel/zero-budget checks passing. This establishes a current baseline failure on the pinned snapshot without MEM10, not a packing regression or complete causal diagnosis. Route to the original Job/Evidence owner without resuming its service-stalled Goal. Runtime integration/cost and all earlier holds remain; current MEM10 consumer/capacity qualification and exact runtime publication stay deferred, with no waiver or user design grant."
   ],
   "Root_feedback_original_owner": "Queued to original Performance pane, visibly verified; no acknowledgement inferred.",
   "task_Main_runtime_publication": false,
   "accepted_source_test_build_change": false,
   "new_cost_or_design_grant": false,
-  "full_Goal_complete": false
+  "full_Goal_complete": false,
+  "terminal_review_UTC": "2026-10-04T01:24:31.255074+00:00",
+  "terminal_worker_byte_HOLD_notice_sha256": "e31998aa9654f943b5b4d9faf1719f6c6d9050d82a8f1f25622a0534517bf3b9",
+  "terminal_HOLD_supersedes_initial_READY": true,
+  "terminal_inert_audit": {
+    "path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-inert-terminal-root-audit.json",
+    "sha256": "0271f000f95b939440f78dcbcf17e76cb373bf4904425729a1a12e2579b61ae1",
+    "exact9_frozen_files": {
+      "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1_bytes_held/diagnosis.json": "acbd218dd2b846816725f6c61cd05961a5d891943c040d41c71b04b508325149",
+      "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1_bytes_held/freeze_bytes.py": "d78da842183e36a31d2d7876707935d5b320c59dba65863510f2f85426f1824d",
+      "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1_bytes_held/original-pairs.json": "bdd849ab6b4c8c4e5de0bee100d6f9b2bef43e99d8ca82b0748c1b099b46ce25",
+      "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1_bytes_held/private-evidence.json": "b597437f6c39607890ded226beb629f32c00a498e642d18a6e6b82ded1070e0b",
+      "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1_bytes_held/qualify_bytes.py": "368fa4dc290502ba6ee1fe214e65105baebdfcf28128d076c024dee1283f9f1f",
+      "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1_bytes_held/repeated-writes.json": "aef48dc4732aa324c62ed1c885f81890cfce9f7335e69289f9f22c06c1de96bb",
+      "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1_bytes_held/resaves.json": "d43dea127cd5f1b9023c261d07458ff42760b60bc05a5df6fb9080a6761cb709",
+      "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1_bytes_held/summary.json": "76e51d8c5dc5a440bcc21227d83d5933aaae89e7f3e066a2c22ebfa6ea023db9",
+      "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1_bytes_held/manifest.sha256": "29f5954c0bfe9ff11242e6538493bd449bc2420ea8128a6c187510e1386bf9c9"
+    },
+    "private_raw2445_manifest_sha256": "ac935c53609b995f0988bed1ad70fb62c100b320c290921891dbada34ca6dd07",
+    "runtime_records_expected0": 1220,
+    "runner_terminal_exit1": true,
+    "inert_resaves": 1168,
+    "semantic_fuel_zero_budget_failures": 0,
+    "unwaived_byte_failures": 51,
+    "by_reader_byte_failures": {
+      "parent-o2": 14,
+      "parent-san": 13,
+      "candidate-san": 13,
+      "candidate-o2": 11
+    },
+    "repeated_parent_variable_cases": 6,
+    "repeated_candidate_variable_cases": 6,
+    "smallest_parent_failure": {
+      "label": "resave-fold_spine_test-parent-4-10-parent-o2",
+      "source_image": "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem10/private/argument_pairs_v1_20261004/cuts-v2/fold_spine_test-parent-4-10.image",
+      "writer": "parent",
+      "reader": "parent",
+      "flavor": "o2",
+      "semantic_fuel_zero_budget_pass": true,
+      "inert_bytes_equal": false,
+      "input_sha256": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+      "resave_sha256": "bfafe394dd1b709525de733efd5d85388b946005e8beaf727c341f2106545d48",
+      "readback": "inert resave before=10 total=11 result pass"
+    },
+    "old27_private2730_unchanged": true
+  },
+  "current_unchanged_parent_reproduction": {
+    "path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-parent-inert-probe/Root-results.json",
+    "sha256": "ad7bf4e25512b380c16cb17930ba937cc680c6c4e88f95ed3100ada1becb8cc4",
+    "Main_at_probe": "e14221e6981ed6d3ebf3d1b53649d3f4fd0211b7",
+    "source128": "c414202a4abb79301b04431b75008fa828dd60712b50518a1d4824e5d555b64b",
+    "no_MEM10_runtime": true,
+    "fresh_O2_build": true,
+    "unchanged_fixture_and_probe": {
+      "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem3/epochs/fold_empty_tail_v1/fold_spine_test.c": "ebd1f8f179718d5b37e58f4ce5939502adb43a47a54851d8c5dd88adbd3551ae",
+      "/home/repyt/workspace/a-program-workers/performance/src/prototype/performance_mem6/machine_resave_probe.c": "9160f3e9b58d7d9213b8920cf156610c0344954ce5ae8c67a203eb30703dc028"
+    },
+    "case4_cut10": [
+      {
+        "repetition": 0,
+        "input_sha256": "bfafe394dd1b709525de733efd5d85388b946005e8beaf727c341f2106545d48",
+        "resave_sha256": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+        "input_bytes": 1249,
+        "resave_bytes": 1249,
+        "bytes_equal": false,
+        "semantic_fuel_zero_budget_pass": true
+      },
+      {
+        "repetition": 1,
+        "input_sha256": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+        "resave_sha256": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+        "input_bytes": 1249,
+        "resave_bytes": 1249,
+        "bytes_equal": true,
+        "semantic_fuel_zero_budget_pass": true
+      },
+      {
+        "repetition": 2,
+        "input_sha256": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+        "resave_sha256": "bfafe394dd1b709525de733efd5d85388b946005e8beaf727c341f2106545d48",
+        "input_bytes": 1249,
+        "resave_bytes": 1249,
+        "bytes_equal": false,
+        "semantic_fuel_zero_budget_pass": true
+      },
+      {
+        "repetition": 3,
+        "input_sha256": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+        "resave_sha256": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+        "input_bytes": 1249,
+        "resave_bytes": 1249,
+        "bytes_equal": true,
+        "semantic_fuel_zero_budget_pass": true
+      },
+      {
+        "repetition": 4,
+        "input_sha256": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+        "resave_sha256": "bfafe394dd1b709525de733efd5d85388b946005e8beaf727c341f2106545d48",
+        "input_bytes": 1249,
+        "resave_bytes": 1249,
+        "bytes_equal": false,
+        "semantic_fuel_zero_budget_pass": true
+      },
+      {
+        "repetition": 5,
+        "input_sha256": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+        "resave_sha256": "bfafe394dd1b709525de733efd5d85388b946005e8beaf727c341f2106545d48",
+        "input_bytes": 1249,
+        "resave_bytes": 1249,
+        "bytes_equal": false,
+        "semantic_fuel_zero_budget_pass": true
+      },
+      {
+        "repetition": 6,
+        "input_sha256": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+        "resave_sha256": "bfafe394dd1b709525de733efd5d85388b946005e8beaf727c341f2106545d48",
+        "input_bytes": 1249,
+        "resave_bytes": 1249,
+        "bytes_equal": false,
+        "semantic_fuel_zero_budget_pass": true
+      },
+      {
+        "repetition": 7,
+        "input_sha256": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+        "resave_sha256": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+        "input_bytes": 1249,
+        "resave_bytes": 1249,
+        "bytes_equal": true,
+        "semantic_fuel_zero_budget_pass": true
+      }
+    ],
+    "inert_byte_failures": 5,
+    "distinct_writer_hashes": 2,
+    "semantic_fuel_zero_budget_failures": 0,
+    "all_inputs_after_exact": true,
+    "limit": "Fresh bounded unchanged current E18+MEM9 O2 writer/inert-resaver reproduction. No full suite/SAN or candidate qualification, general complete ordering diagnosis, codec fix, byte waiver, RSS/time or cost sample."
+  },
+  "codec_route": {
+    "Main_handoff_path": "src/prototype/coordination/inbox/job-evidence-mem10-current-byte-handoff-20261004.json",
+    "worker_handoff_path": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/coordination/inbox/job-evidence-mem10-current-byte-handoff-20261004.json",
+    "sha256": "1c2df710284e85498b06da126aa0120a6294e1f54cab6862f37bcaec58e9c6fb",
+    "original_Job_service_stalled": true,
+    "new_turn_Goal_resume_or_owner": false
+  }
 }

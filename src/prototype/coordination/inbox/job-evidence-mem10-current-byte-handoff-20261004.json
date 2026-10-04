@@ -1,0 +1,107 @@
+{
+  "date_UTC": "2026-10-04T01:24:31.255074+00:00",
+  "source": "Root agent verification within existing SE/AP/evaluator ownership scope; worker evidence is not new human approval.",
+  "recipient": "Original job-evidence owner; no new owner, Goal resume or model change.",
+  "subject": "Current unchanged E18+MEM9 inert-machine byte failure",
+  "Main_at_reproduction": "e14221e6981ed6d3ebf3d1b53649d3f4fd0211b7",
+  "source128": "c414202a4abb79301b04431b75008fa828dd60712b50518a1d4824e5d555b64b",
+  "Root_report": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/mem10-current-parent-inert-probe/Root-results.json",
+  "Root_report_sha256": "ad7bf4e25512b380c16cb17930ba937cc680c6c4e88f95ed3100ada1becb8cc4",
+  "case": "Unchanged fold_spine_test case4/cut10; total11",
+  "fresh_writer_and_resaver_O2_records": 17,
+  "eight_writes_and_resaves": [
+    {
+      "repetition": 0,
+      "input_sha256": "bfafe394dd1b709525de733efd5d85388b946005e8beaf727c341f2106545d48",
+      "resave_sha256": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+      "input_bytes": 1249,
+      "resave_bytes": 1249,
+      "bytes_equal": false,
+      "semantic_fuel_zero_budget_pass": true
+    },
+    {
+      "repetition": 1,
+      "input_sha256": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+      "resave_sha256": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+      "input_bytes": 1249,
+      "resave_bytes": 1249,
+      "bytes_equal": true,
+      "semantic_fuel_zero_budget_pass": true
+    },
+    {
+      "repetition": 2,
+      "input_sha256": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+      "resave_sha256": "bfafe394dd1b709525de733efd5d85388b946005e8beaf727c341f2106545d48",
+      "input_bytes": 1249,
+      "resave_bytes": 1249,
+      "bytes_equal": false,
+      "semantic_fuel_zero_budget_pass": true
+    },
+    {
+      "repetition": 3,
+      "input_sha256": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+      "resave_sha256": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+      "input_bytes": 1249,
+      "resave_bytes": 1249,
+      "bytes_equal": true,
+      "semantic_fuel_zero_budget_pass": true
+    },
+    {
+      "repetition": 4,
+      "input_sha256": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+      "resave_sha256": "bfafe394dd1b709525de733efd5d85388b946005e8beaf727c341f2106545d48",
+      "input_bytes": 1249,
+      "resave_bytes": 1249,
+      "bytes_equal": false,
+      "semantic_fuel_zero_budget_pass": true
+    },
+    {
+      "repetition": 5,
+      "input_sha256": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+      "resave_sha256": "bfafe394dd1b709525de733efd5d85388b946005e8beaf727c341f2106545d48",
+      "input_bytes": 1249,
+      "resave_bytes": 1249,
+      "bytes_equal": false,
+      "semantic_fuel_zero_budget_pass": true
+    },
+    {
+      "repetition": 6,
+      "input_sha256": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+      "resave_sha256": "bfafe394dd1b709525de733efd5d85388b946005e8beaf727c341f2106545d48",
+      "input_bytes": 1249,
+      "resave_bytes": 1249,
+      "bytes_equal": false,
+      "semantic_fuel_zero_budget_pass": true
+    },
+    {
+      "repetition": 7,
+      "input_sha256": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+      "resave_sha256": "25cab1f69c3359cc9e00dd4559474c566491db31fe446f329419a07c02cbc9a6",
+      "input_bytes": 1249,
+      "resave_bytes": 1249,
+      "bytes_equal": true,
+      "semantic_fuel_zero_budget_pass": true
+    }
+  ],
+  "byte_failures": 5,
+  "distinct_writer_hashes": 2,
+  "semantic_fuel_zero_budget_failures": 0,
+  "MEM10_runtime_absent": true,
+  "historical_terminal_freeze9": {
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1_bytes_held/diagnosis.json": "acbd218dd2b846816725f6c61cd05961a5d891943c040d41c71b04b508325149",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1_bytes_held/freeze_bytes.py": "d78da842183e36a31d2d7876707935d5b320c59dba65863510f2f85426f1824d",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1_bytes_held/original-pairs.json": "bdd849ab6b4c8c4e5de0bee100d6f9b2bef43e99d8ca82b0748c1b099b46ce25",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1_bytes_held/private-evidence.json": "b597437f6c39607890ded226beb629f32c00a498e642d18a6e6b82ded1070e0b",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1_bytes_held/qualify_bytes.py": "368fa4dc290502ba6ee1fe214e65105baebdfcf28128d076c024dee1283f9f1f",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1_bytes_held/repeated-writes.json": "aef48dc4732aa324c62ed1c885f81890cfce9f7335e69289f9f22c06c1de96bb",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1_bytes_held/resaves.json": "d43dea127cd5f1b9023c261d07458ff42760b60bc05a5df6fb9080a6761cb709",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1_bytes_held/summary.json": "76e51d8c5dc5a440bcc21227d83d5933aaae89e7f3e066a2c22ebfa6ea023db9",
+    "src/prototype/performance_mem10/epochs/fresh_argument_pairs_v1_bytes_held/manifest.sha256": "29f5954c0bfe9ff11242e6538493bd449bc2420ea8128a6c187510e1386bf9c9"
+  },
+  "historical_raw2445_manifest_sha256": "ac935c53609b995f0988bed1ad70fb62c100b320c290921891dbada34ca6dd07",
+  "historical_inert_byte_failures": 51,
+  "hypothesis": "eval_io.c readback_write retains root DAG then enumerates reusable results in pointer-keyed index buckets; readback_read relocates/reinserts them. Supported code observation, not a complete diagnosis or approved sorting/schema policy.",
+  "requested_existing_scope_disposition": "At the original owner safe boundary, reproduce and review the codec ordering/lifetime obligation without dropping independent fields, charged work or required reusable results. Preserve every raw failure; report exact prototype delta and all strict/public/current gates if a fix is proposed.",
+  "current_operation": "Original owner remains service-stalled; durable handoff only, no automatic turn or Goal resume.",
+  "holds": "MEM10 integration/cost, MEM6/MEM7 runtime holds remain. No byte waiver, canonicalizer, accepted-source edit, new API/model/authority or comparative grant."
+}
