@@ -1,0 +1,21 @@
+{
+  "date_UTC": "2026-10-04T20:01:45.774685+00:00",
+  "classification": "Merge static review receipt for original Job within existing SE scope; no new approval or Goal action",
+  "reviews": [
+    "20261004-native49-declaration-source-repair-review.json",
+    "20261004-native51-context-ownership-counterexample-review.json",
+    "20261004-native52-context-repair-review.json"
+  ],
+  "pins": {
+    "native49_runtime120": "81ad29f99ac1f20d0c4077abe7207df4019e5a1eb2e140ac543b7ac9d6c7b5af",
+    "native51_same_runtime_control": "b43f17978ec0ff3cc5058453779c9e6491f7dc23db5c750f5f931f24455b53fc",
+    "native52_runtime120": "a2460a65099dae470541d1359f571fffdf27bc5c41f3525bdd318f328cad916e"
+  },
+  "review_result": "Exact485 native49/52 and120 runtimes, retained owner logs/binaries/26 fresh-process cases/130 commands/78 equal images statically checked. Native49 Source debug0 supersedes47/48 Source134 only on49;51 direct copied use-Context control134 same runtime preserved. Native52 adds existing ownership guard and passes byte-exact51 control, Source recipe and26 cases; Core134 now request_typing_test6791. Root did not execute or integrate native code.",
+  "existing_work": "Preserve51 negative evidence and52 positive guards/ordinary VARIABLE two-input derivation/wrong-declaration rejection/inert resaves. Classify the remaining request receipt-identity demand by actual typed subject/selected Scope/classifier and ordinary checking/derivation; any deliberate first-owner test migration must retain invalid-input/no-admission/lifetime and semantic negative coverage. Effect/termination migrations remain prototype and need complete qualification, no arbitrary waiver or replacement completed receipt graph.",
+  "single_work_list": "doc/2026-09-30-SOLVER-EVIDENCE-DUPLICATION-AUDIT-AND-PLAN.md; current O2/SAN/full Core/public/strict/frontier/joint/net byte and cost criteria remain open.",
+  "accepted_changes_authorized_by_this_receipt": false,
+  "READY_or_code_adoption": false,
+  "Goal_or_owner_reset": false,
+  "cost_samples": 0
+}

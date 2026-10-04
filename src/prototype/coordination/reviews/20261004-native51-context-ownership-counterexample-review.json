@@ -1,0 +1,41 @@
+{
+  "date_UTC": "2026-10-04T19:48:04.870884+00:00",
+  "classification": "Fresh Root static review of original owner retained negative control, not Root reproduction or accepted implementation bug",
+  "input_manifest_SHA": "b43f17978ec0ff3cc5058453779c9e6491f7dc23db5c750f5f931f24455b53fc",
+  "exact_inputs": 485,
+  "runtime120_exact_same_as_native49": "81ad29f99ac1f20d0c4077abe7207df4019e5a1eb2e140ac543b7ac9d6c7b5af",
+  "record_SHA": "7b0879346e7f0548e403d029e7e46635a4a831f9dbdbb096e6389c9c818ac82e",
+  "record": {
+    "build_argv": [
+      "make",
+      "-f",
+      "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial51-context-control/controls/build.mk",
+      "OVERLAY=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial51-context-control",
+      "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial51-control",
+      "CONTROL=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial51-context-control/controls/family_variable_scope_native.c",
+      "CONTROL_IO=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial51-context-control/src/graph_io.c /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial51-context-control/src/context_io.c /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial51-context-control/src/occurrence_io.c /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial51-context-control/src/wire.c",
+      "CFLAGS=-std=c11 -Wall -Wextra -Werror -O0 -g",
+      "-j1",
+      "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial51-control/native_owners"
+    ],
+    "build_exit_code": 0,
+    "build_log_sha256": "d8e20f83a1e6c35f04fdb40c14c506da380427b88be581a810905e253734d91f",
+    "run_argv": [
+      "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial51-control/native_owners"
+    ],
+    "run_returncode": -6,
+    "binary_sha256": "0d6684bb071750ca6237db5ec30b305bd84c1a806000343219f442df5acf2a1c",
+    "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stderr_sha256": "967ba8c1e3a82545463b8318d41fc699e7a00a4da27dcda30ebcf009e22e52e2"
+  },
+  "stderr": "native_owners: /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial51-context-control/controls/family_variable_scope_native.c:77: native_scope_control: Assertion `!pg_occurrence_intern(typing, &header, NULL, NULL)' failed.\n",
+  "source_control": "Copy a selected extended-use Context header; direct copied Context and a canonical new head attached to copied tail must be rejected. Control aborts at first direct copied Context rejection77; later copied-tail/VARIABLE derivation/replay/rejection assertions are unrun.",
+  "Assessment": "Native49 positive declaration/bound/resave/Source controls pass, but this same runtime accepts the direct copied use-Context negative input. Canonical Scope checks do not establish canonical use Context ownership/lifetime. Original owner must preserve this counterexample and ordinary variable Context/declaration obligations before readiness; no test waiver, graph/checker/new authority or accepted bug claim. Runtime/premise migrations remain prototype and unqualified.",
+  "Root_runtime_replay": false,
+  "native_Main_code_publication": false,
+  "accepted_adoption": false,
+  "Goal_owner_actions": false,
+  "cost_samples": 0,
+  "retained": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/native51-context-counterexample-retained",
+  "later_scoped_supersession": "Native52 runtime120a2460a65 passes this byte-exact control; preserve the same-runtime49 failure, no retroactive native49 pass. See20261004-native52-context-repair-review.json."
+}

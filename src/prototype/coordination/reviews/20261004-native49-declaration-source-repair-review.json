@@ -1,0 +1,461 @@
+{
+  "date_UTC": "2026-10-04T19:44:38.689902+00:00",
+  "notice_SHA": "0241d12681da1f702955dd4c36a96f15859920f5d4034ada9487bd2cb0fd7832",
+  "classification": "Root independent static audit of retained private native49 source repair and owner executions; no Root runtime replay/frozen READY/code integration/accepted adoption",
+  "Main_parent": "3fd490fc89b45d30eff33bbedd2841adf8e425f4",
+  "accepted_parent": "fc52755b345a555e49a79df40549e9cb23d54088",
+  "manifests": {
+    "inputs": {
+      "SHA": "49505e0195260b84032ebf6b0e9296aa6a38fb1075af3cecff28bdbf64771d37",
+      "files": 485
+    },
+    "runtime120": {
+      "SHA": "81ad29f99ac1f20d0c4077abe7207df4019e5a1eb2e140ac543b7ac9d6c7b5af",
+      "files": 120
+    },
+    "results": {
+      "SHA": "9a17b567685e1fc63cd16ffa1bebf06321ef351873f1c4a6f3d83ee048cff6b6",
+      "files": 357
+    },
+    "native48_diagnosis": {
+      "SHA": "cef7b89de1d62fda0f8054d1faaab19300f67eef4b4e25cd0a442eabfa6c8720",
+      "files": 40
+    }
+  },
+  "all_inputs_results_diagnosis_and_binary_hashes_exact": true,
+  "owner_results": {
+    "native_family_selected_declaration_O2": 0,
+    "indexed_family_Source_debug": 0,
+    "full_Source_recipe_debug": 0,
+    "fresh_process_resave_ordinary_check_recompute_debug": {
+      "cases": 26,
+      "commands": 130,
+      "all_zero": true,
+      "all_three_images_equal_each_case": true,
+      "report_SHA": "15586289a7b3d83543735a718bdb2d168469f9e4dab6b57854113f48e48c10dc"
+    },
+    "Core_debug_shell_exit": 134,
+    "Core_failure": "core_test: /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial49-inputs/tests/core.c:6273: effect_classifier_test: Assertion `pg_evidence_premise(unchanged, 0) == widened && pg_evidence_premise(unchanged, 1) == target' failed.\n"
+  },
+  "source_tests": {
+    "exact_to_native47": true,
+    "exact_to_accepted_parent_entire_file": false,
+    "indexed_family_roundtrip_section_exact_to_accepted_parent": true,
+    "test_source_SHA": "1d145d5b4ad3b264bdf949031bb87cc17e6abf9b9a9ddeb55d563982eddd93b0",
+    "script_SHA": "1b45c00d7c010e4229fbe9913ed781a7084052e7044ecb7faf2f6bf90d6c4dae",
+    "historical_migrations_not_silently_reclassified_as_accepted": true
+  },
+  "changed_runtime_from_native47": {
+    "src/derivation.c": {
+      "native47": "429844904f43c74e58c1e0cfe2896f8cbd80de65c5856029d7a70eded62a31e4",
+      "native49": "6c506da6192dd1420d42fed80847632874966397e834e1a2416ee9b54bb5ca83"
+    },
+    "src/evidence.c": {
+      "native47": "011d0b77b257acfefc8d4327cabf6993d41b5be653f2b8c2d3c6f856f43af1be",
+      "native49": "129df8a475ed01f7d5d738dec3af9be6467b6d16470a670b469c8df21dd3c9a6"
+    },
+    "src/evidence_function.c": {
+      "native47": "6472eabaafb6b58622fb045b944d666db4f859bb1b753e564e36d233135d1696",
+      "native49": "9770037dfed726409535018fdc04f2520088ec9c1c452bf3d1649064f8504495"
+    },
+    "src/evidence_structure.h": {
+      "native47": "1eae6b330ff6ff04bfd1211b76cad5d3c920d178b0f2d7ea65d3ad937d825484",
+      "native49": "298c52933fbd98988aa15569b3bc245dc8934af67f0e873d01912aedfaa4a5ae"
+    },
+    "src/occurrence_io.c": {
+      "native47": "8c0ccc2ff37f49858d0fa061df52d0497def81277d32b19854c3bf46cfb39681",
+      "native49": "25a4047c754f2f6a0d31d1bc24b1b255aec63314e237f48bb06642e29b871fbe"
+    },
+    "src/typing.c": {
+      "native47": "b3deea58b9811650ba9c5d5e0d5ea5bc82de592bb4332a543c7ae51717009bce",
+      "native49": "96ed9eb3921bee0787c128f969dfb720eb5803c47d16e1105e7c203b111d9f66"
+    },
+    "src/typing.h": {
+      "native47": "99acc98e4a80dd5b5def39afacb0e7ecee3418d9f2ad50d0ebdbe9915d714383",
+      "native49": "d9400210517329b301ac50259aa2479595395553615b755d2ad3ef0bacf2cef7"
+    }
+  },
+  "source_review": "Family VARIABLE retains actual selected declaration Scope, checks it against binder lookup and existing canonical owned inputs, and independently checks/exports use Context when extended. Derivation replay permits one or two existing ordinary VARIABLE inputs, selected declaration endpoint explicitly checked. Scoped weakening/unprojection borrow same declaration and avoid unnecessary projection construction. Actual caller formation history does not determine variable identity; selected family Universe bounds still retained. Wire changed privately APGOCCA/APGSCP4; no compatibility/accepted-schema claim. Eval/readback unchanged.",
+  "test_migrations": [
+    "Core wide-map pointer identity becomes distinct selected maps with exact raw source/destination/arity and native Scope/classifier/image assertions.",
+    "Canonical64-image map admits64 checked endpoints plus map (65 admissions), then image lookup adds zero; greater required admission/storage cost is retained, not hidden as a gain.",
+    "Copied canonical head/tail rejection and actual selected declaration/extended-use/raw-first/native-first/two inert resaves remain focused controls."
+  ],
+  "Assessment": "Record scoped Source repair as progress in sole SE native owner list. Native47/48 Source134 and native44 bound regression retained; native49 fixes unchanged indexed roundtrip while full Core remains failed134. Upcoming effect receipt first-owner migration must preserve exact conclusion/classifier/effects, ordinary derivation reconstruction and negative rejection controls; assertions below current abort are not passed. Full source file retains historical native tests distinct from accepted parent. Parent matched byte comparison, current O2/SAN/broad/public/strict3/AP6 frontier/joint and net memory/time remain pending. Occurrence144/map80 and additional checked endpoints/descriptive Scope/wire bytes need net accounting; no substitute receipt graph/checker or Performance changes. Scheduled19:44 review additionally pins negative Context control51 on exact same runtime120: direct stack-copied use Context is wrongly accepted and aborts owner debug control134. This limits ownership/lifetime qualification; subsequent copied-tail/VARIABLE/replay assertions are unrun. Preserve all positives/failure and require correction before frozen readiness.",
+  "retained_checkpoint_files": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/native49-checkpoint-retained",
+  "resave_cases": [
+    {
+      "writer": "retained-write-typed",
+      "fixture": "lambda",
+      "commands": 5,
+      "all_zero": true,
+      "three_images_byte_exact": true,
+      "image_bytes": 14526,
+      "image_SHA": "76db1dcd4d71af8b73f312d0564dfbe02ece8c469c4f2171f984450f669bf4dd"
+    },
+    {
+      "writer": "retained-write-typed",
+      "fixture": "family",
+      "commands": 5,
+      "all_zero": true,
+      "three_images_byte_exact": true,
+      "image_bytes": 20841,
+      "image_SHA": "926fe7a8c3fc31385e43c42f5a5bbdd711d308f19595062f82fb9c9a6fb60ca1"
+    },
+    {
+      "writer": "retained-write-typed",
+      "fixture": "append",
+      "commands": 5,
+      "all_zero": true,
+      "three_images_byte_exact": true,
+      "image_bytes": 91885,
+      "image_SHA": "01b0be8903ea1040a4fae94dd49c186032f9c8365a1af0731cba72a384460c35"
+    },
+    {
+      "writer": "retained-write-typed",
+      "fixture": "index-alias",
+      "commands": 5,
+      "all_zero": true,
+      "three_images_byte_exact": true,
+      "image_bytes": 52237,
+      "image_SHA": "1fc9cd0d80e04f814bbcc1bed920d3a6b17705ba44b833cad6c78fd4925b5739"
+    },
+    {
+      "writer": "retained-write-typed",
+      "fixture": "function-field",
+      "commands": 5,
+      "all_zero": true,
+      "three_images_byte_exact": true,
+      "image_bytes": 81625,
+      "image_SHA": "5329f442948b870530bcc0369a2cf5aff20c0dc32f5feb6d0e7bbe2bcd234b60"
+    },
+    {
+      "writer": "retained-write-typed",
+      "fixture": "nominal",
+      "commands": 5,
+      "all_zero": true,
+      "three_images_byte_exact": true,
+      "image_bytes": 18729,
+      "image_SHA": "3f0bdf7125c704d45820c9bb7eb8ad37c345113ce749874ca401eca80b28dbe3"
+    },
+    {
+      "writer": "retained-write-typed",
+      "fixture": "nullary",
+      "commands": 5,
+      "all_zero": true,
+      "three_images_byte_exact": true,
+      "image_bytes": 18385,
+      "image_SHA": "291990a0c28cba0c53b5893654896d310df0f1b16b0ee0ca9043449251704adf"
+    },
+    {
+      "writer": "retained-write-typed",
+      "fixture": "application",
+      "commands": 5,
+      "all_zero": true,
+      "three_images_byte_exact": true,
+      "image_bytes": 21226,
+      "image_SHA": "28586d21d0d85b276f8cc060943a1197d010667c5c1e6da01d3449530e95d137"
+    },
+    {
+      "writer": "retained-write-typed",
+      "fixture": "constructor",
+      "commands": 5,
+      "all_zero": true,
+      "three_images_byte_exact": true,
+      "image_bytes": 23660,
+      "image_SHA": "cf9e5d2f9d08a95d6b774dbe7207ea606f4747ac03be971e87e04801ea39d747"
+    },
+    {
+      "writer": "retained-write-typed",
+      "fixture": "specialized-constructor",
+      "commands": 5,
+      "all_zero": true,
+      "three_images_byte_exact": true,
+      "image_bytes": 23518,
+      "image_SHA": "a308c0c8e5686dc4db3c9eceea27191b95afe3a680f725767dc88e7ae7f38ca2"
+    },
+    {
+      "writer": "retained-write-typed",
+      "fixture": "match",
+      "commands": 5,
+      "all_zero": true,
+      "three_images_byte_exact": true,
+      "image_bytes": 45161,
+      "image_SHA": "8c89fc2e569f46a3d1d28796f2a7c3b5f001d5bc9f4eaa64e8b8fd7591fb9eaa"
+    },
+    {
+      "writer": "retained-write-typed",
+      "fixture": "computed-match",
+      "commands": 5,
+      "all_zero": true,
+      "three_images_byte_exact": true,
+      "image_bytes": 33030,
+      "image_SHA": "75640577f5aa7b42d037f41c4334a629a11d19a4be0e74bfd107e950db3bcf0c"
+    },
+    {
+      "writer": "retained-write-typed",
+      "fixture": "fold",
+      "commands": 5,
+      "all_zero": true,
+      "three_images_byte_exact": true,
+      "image_bytes": 24269,
+      "image_SHA": "6831a9df3af8a65523c84937a26c2e202cfcea11253a6208c94ebabe3d907e09"
+    },
+    {
+      "writer": "retained-write",
+      "fixture": "lambda",
+      "commands": 5,
+      "all_zero": true,
+      "three_images_byte_exact": true,
+      "image_bytes": 12349,
+      "image_SHA": "f0c27e69780c68a63c5e77612b89f1e26f9656205be867da27bba5b5a1cc2949"
+    },
+    {
+      "writer": "retained-write",
+      "fixture": "family",
+      "commands": 5,
+      "all_zero": true,
+      "three_images_byte_exact": true,
+      "image_bytes": 14952,
+      "image_SHA": "90295815ad7462656b997785dba06133e20e04f1c4f0427cf5695c814b7c4c09"
+    },
+    {
+      "writer": "retained-write",
+      "fixture": "append",
+      "commands": 5,
+      "all_zero": true,
+      "three_images_byte_exact": true,
+      "image_bytes": 42492,
+      "image_SHA": "62bc63acbcf13a4b46a3297def975a440f4637b92cc5c60a7c413f13c8ad402e"
+    },
+    {
+      "writer": "retained-write",
+      "fixture": "index-alias",
+      "commands": 5,
+      "all_zero": true,
+      "three_images_byte_exact": true,
+      "image_bytes": 27788,
+      "image_SHA": "cd894e8da5ce2118c9b436ddc672ae5b7601b099f23d680857616dea5e7616f0"
+    },
+    {
+      "writer": "retained-write",
+      "fixture": "function-field",
+      "commands": 5,
+      "all_zero": true,
+      "three_images_byte_exact": true,
+      "image_bytes": 40656,
+      "image_SHA": "e371860b96bb848e1b28e587f5bcc078fe27f7a166d6c03864bbbf0527291d24"
+    },
+    {
+      "writer": "retained-write",
+      "fixture": "nominal",
+      "commands": 5,
+      "all_zero": true,
+      "three_images_byte_exact": true,
+      "image_bytes": 15144,
+      "image_SHA": "307e0e22087b3477663b612c8a98015adf30f94bccb3dc4e4683b4581f2f9736"
+    },
+    {
+      "writer": "retained-write",
+      "fixture": "nullary",
+      "commands": 5,
+      "all_zero": true,
+      "three_images_byte_exact": true,
+      "image_bytes": 15072,
+      "image_SHA": "92c8d0c3997aaf74a164c91883e1821f23487fc055a458a30a242626bb5b691b"
+    },
+    {
+      "writer": "retained-write",
+      "fixture": "application",
+      "commands": 5,
+      "all_zero": true,
+      "three_images_byte_exact": true,
+      "image_bytes": 15505,
+      "image_SHA": "968836fa689d8be3b7de8556f4b6bd770719de5f0c01499fcd29ccff9689b428"
+    },
+    {
+      "writer": "retained-write",
+      "fixture": "constructor",
+      "commands": 5,
+      "all_zero": true,
+      "three_images_byte_exact": true,
+      "image_bytes": 16203,
+      "image_SHA": "4967ac94d50e73385bf06d62826e49f245772e629d6f8806e0090e8b0b284198"
+    },
+    {
+      "writer": "retained-write",
+      "fixture": "specialized-constructor",
+      "commands": 5,
+      "all_zero": true,
+      "three_images_byte_exact": true,
+      "image_bytes": 16509,
+      "image_SHA": "aa18732a3e3294a501667a77b5051ad08f37c5d1ba515d940b836c76dbf91c0b"
+    },
+    {
+      "writer": "retained-write",
+      "fixture": "match",
+      "commands": 5,
+      "all_zero": true,
+      "three_images_byte_exact": true,
+      "image_bytes": 24736,
+      "image_SHA": "664dc9fd0f30914622453d12cb052adffbe3912ec895a6fde9f25be343f85512"
+    },
+    {
+      "writer": "retained-write",
+      "fixture": "computed-match",
+      "commands": 5,
+      "all_zero": true,
+      "three_images_byte_exact": true,
+      "image_bytes": 19813,
+      "image_SHA": "8ae6baca27e64d187a8724bae92a0d323fcd750d264d73c79d07a137b5b247ee"
+    },
+    {
+      "writer": "retained-write",
+      "fixture": "fold",
+      "commands": 5,
+      "all_zero": true,
+      "three_images_byte_exact": true,
+      "image_bytes": 16812,
+      "image_SHA": "f7ba142d395acacc469182911aea59d860b32e60fc84fa5433118f8cdaf62188"
+    }
+  ],
+  "builds": [
+    {
+      "argv": [
+        "make",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial49-inputs/controls/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial49-inputs",
+        "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial49",
+        "CONTROL=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial49-inputs/controls/family_variable_scope_native.c",
+        "CONTROL_IO=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial49-inputs/src/graph_io.c /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial49-inputs/src/context_io.c /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial49-inputs/src/occurrence_io.c /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial49-inputs/src/wire.c",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+        "-j1",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial49/native_owners"
+      ],
+      "exit_code": 0,
+      "log": "trial49-build-0.log",
+      "log_sha256": "7c5bf6cb4c6fdeab5cbe4f296be690b4348ee98533b02e093de691520c240f61"
+    },
+    {
+      "argv": [
+        "make",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial49-inputs/src/Makefile",
+        "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial49",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O0 -g",
+        "-j1",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial49/source_io_test",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial49/core_test"
+      ],
+      "exit_code": 0,
+      "log": "trial49-build-1.log",
+      "log_sha256": "21a6e6def0da80c73172f74817f3eb1120fd9c56619b299a3baea691543d70c7"
+    }
+  ],
+  "focused_commands": [
+    {
+      "name": "native-variable",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial49/native_owners"
+      ],
+      "returncode": 0,
+      "binary_sha256": "915c8e49505757db91a03b7bbee0d3905f359b2ff71bcee674cd9cbfd8c8779e",
+      "stdout_sha256": "d339f23a8d7cc5611bcccfb570f887a239848abb40d32afb5fc27d29ab2fadcc",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "source-indexed",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial49/source_io_test",
+        "indexed-families"
+      ],
+      "returncode": 0,
+      "binary_sha256": "ca5c96a73bb6db1381073c7b408fafc78a4bd135a554ca2af4116945d58a579c",
+      "stdout_sha256": "8ed48653af0c06e4a2529cd97a8f2fc1b346163d6330ac4b46c9ea8311a159d9",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "core",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial49/core_test"
+      ],
+      "returncode": -6,
+      "binary_sha256": "9e27046c97188b7301d87d39fa719cefdda323687459cfb34eae2062586c3805",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "75c1ee8db59200ed9caf099fd3c6c3ddf9aa1cd304f99a5c55873b958f8f7232"
+    }
+  ],
+  "recipes": [
+    {
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial49-inputs/tests/source_io.sh",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial49/source_io_test"
+      ],
+      "exit_code": 0,
+      "log": "trial49-source-recipes-0.log",
+      "log_sha256": "ab9f5495573feafadb68b3b741619f0bef57df94c2cb1b36414c92a43cf6af46"
+    },
+    {
+      "argv": [
+        "python3",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial49-inputs/controls/source_resave_pairs.py",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial49/source_io_test",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/trial49-resave-pairs"
+      ],
+      "exit_code": 0,
+      "log": "trial49-source-recipes-1.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "Root_runtime_replay": false,
+  "frozen_READY": false,
+  "native_Main_code_publication": false,
+  "accepted_adoption": false,
+  "Goal_owner_model_actions": false,
+  "cost_samples": 0,
+  "availability": "Owner reports all49 commands terminal/no heavy; no current shared future ten-minute interval supplied. Historical18:48-18:58 and C19:10-19:20 expired ungranted. Existing actual-boundary request/two-minute delivery lead remains pending, no blind grant/hold/collector/resume.",
+  "later_same_runtime_counterexample": {
+    "date_UTC": "2026-10-04T19:48:04.870884+00:00",
+    "classification": "Fresh Root static review of original owner retained negative control, not Root reproduction or accepted implementation bug",
+    "input_manifest_SHA": "b43f17978ec0ff3cc5058453779c9e6491f7dc23db5c750f5f931f24455b53fc",
+    "exact_inputs": 485,
+    "runtime120_exact_same_as_native49": "81ad29f99ac1f20d0c4077abe7207df4019e5a1eb2e140ac543b7ac9d6c7b5af",
+    "record_SHA": "7b0879346e7f0548e403d029e7e46635a4a831f9dbdbb096e6389c9c818ac82e",
+    "record": {
+      "build_argv": [
+        "make",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial51-context-control/controls/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial51-context-control",
+        "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial51-control",
+        "CONTROL=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial51-context-control/controls/family_variable_scope_native.c",
+        "CONTROL_IO=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial51-context-control/src/graph_io.c /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial51-context-control/src/context_io.c /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial51-context-control/src/occurrence_io.c /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial51-context-control/src/wire.c",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O0 -g",
+        "-j1",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial51-control/native_owners"
+      ],
+      "build_exit_code": 0,
+      "build_log_sha256": "d8e20f83a1e6c35f04fdb40c14c506da380427b88be581a810905e253734d91f",
+      "run_argv": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial51-control/native_owners"
+      ],
+      "run_returncode": -6,
+      "binary_sha256": "0d6684bb071750ca6237db5ec30b305bd84c1a806000343219f442df5acf2a1c",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "967ba8c1e3a82545463b8318d41fc699e7a00a4da27dcda30ebcf009e22e52e2"
+    },
+    "stderr": "native_owners: /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial51-context-control/controls/family_variable_scope_native.c:77: native_scope_control: Assertion `!pg_occurrence_intern(typing, &header, NULL, NULL)' failed.\n",
+    "source_control": "Copy a selected extended-use Context header; direct copied Context and a canonical new head attached to copied tail must be rejected. Control aborts at first direct copied Context rejection77; later copied-tail/VARIABLE derivation/replay/rejection assertions are unrun.",
+    "Assessment": "Native49 positive declaration/bound/resave/Source controls pass, but this same runtime accepts the direct copied use-Context negative input. Canonical Scope checks do not establish canonical use Context ownership/lifetime. Original owner must preserve this counterexample and ordinary variable Context/declaration obligations before readiness; no test waiver, graph/checker/new authority or accepted bug claim. Runtime/premise migrations remain prototype and unqualified.",
+    "Root_runtime_replay": false,
+    "native_Main_code_publication": false,
+    "accepted_adoption": false,
+    "Goal_owner_actions": false,
+    "cost_samples": 0,
+    "retained": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/native51-context-counterexample-retained"
+  },
+  "later_distinct_runtime_review": "20261004-native52-context-repair-review.json",
+  "historical_negative_control": "20261004-native51-context-ownership-counterexample-review.json"
+}

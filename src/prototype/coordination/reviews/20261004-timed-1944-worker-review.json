@@ -1,0 +1,323 @@
+{
+  "date_UTC": "2026-10-04T20:01:45.774685+00:00",
+  "scheduled_due_UTC": "2026-10-04T19:44:22.084Z",
+  "classification": "Scheduled Merge progress/handoff/stall/criteria review under existing user scope; notices/timer are evidence, not new approval",
+  "review_completed": true,
+  "Main_parent": "3fd490fc89b45d30eff33bbedd2841adf8e425f4",
+  "workers": {
+    "c-backend": {
+      "state": "original Goal active, private C46 ordinary gates terminal and light evidence preparation",
+      "pane": {
+        "pane": "%0",
+        "exit": 0,
+        "snapshot_SHA": "47312b36d83273d4574d83b44b2dad06a85f561cb8b899225fdc5b65ad0e7f0b",
+        "tail": [
+          "  refusals. Two harness errors\u2014a missing loop terminator and differing compiler fields in repeat receipts\u2014were corrected with their failed runs retained. The",
+          "  sanitizer backend and helpers now build successfully.",
+          "",
+          "\u2022 Ran python3 - <<'PY'",
+          "  \u2502 from pathlib import Path",
+          "  \u2502 import json,datetime,subprocess,os",
+          "  \u2502 \u2026 +26 lines",
+          "  \u2514 static-transitive-SAN 0",
+          "    recursive-SAN 0",
+          "    nested-SAN 0",
+          "    +2 lines (ctrl+t to view transcript)",
+          "",
+          "\u2022 Working (29m 17s \u2022 esc to interrupt)",
+          "",
+          "",
+          "\u203a Ask Codex to do anything",
+          "",
+          "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/c-backend \u00b7 Verify Surface index.lock handoff        Pursuing goal (1d 12h 51m)    \u26a0 1 warning \u00b7 f2 to view"
+        ]
+      },
+      "review": "20261004-c46-private-terminal-review.json",
+      "integration": "Published C45 prototype only; C46 frozen READY/current independent qualification pending."
+    },
+    "job-evidence": {
+      "state": "original Goal active; latest52 correctness terminal, prototype/native migration continues",
+      "pane": {
+        "pane": "%4",
+        "exit": 0,
+        "snapshot_SHA": "3fae2fb23562bc25211a55da08daba8e1bf573da3b7b59380c95404ff9caca85",
+        "tail": [
+          "    6460              assert(pg_evidence_subject(selected_type) == pg_evidence_subject(termination",
+          "          ));",
+          "",
+          "\u2022 Ran python3 - <<'PY'",
+          "  \u2502 from pathlib import Path",
+          "  \u2502 import subprocess,json,hashlib",
+          "  \u2502 \u2026 +22 lines",
+          "  \u2514 native_owners: /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/",
+          "    solver_inputs/job_evidence_native_owners/history/trial51-context-control/controls/",
+          "    family_variable_scope_native.c:77: native_scope_control: Assertion `!",
+          "    +3 lines (ctrl+t to view transcript)",
+          "",
+          "\u25e6 Working (5h 48m 12s \u2022 esc to interrupt)",
+          "",
+          "",
+          "\u203a Ask Codex to do anything",
+          "",
+          "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program\u2026 Pursuing goal (1d 6h 3m)    \u26a0 1 warning \u00b7 f2 to view"
+        ]
+      },
+      "review": "20261004-native52-context-repair-review.json",
+      "integration": "Native49 Source pass and51 same-runtime canonical Context failure retained;52 scoped fix/control pass, Core134 remains. No native frozen READY/adoption."
+    },
+    "performance": {
+      "state": "original Goal BLOCKED/stalled, no resume/new owner",
+      "pane": {
+        "pane": "%1",
+        "exit": 0,
+        "snapshot_SHA": "c05685b04878e1773f0507c0866bb50adec830b913f2ded79cd6091c2799a879",
+        "tail": [
+          "  \u2514 {'sha256': 'e0996c7cfc77bc558d9791361e1962291e2778c09a8f59806cd51951adabcd13', 'bytes': 2298}",
+          "",
+          "\u2022 Ran git diff --check -- doc/2026-10-03-PERFORMANCE-GOAL-CURRENT.md",
+          "  \u2502 doc/2026-10-03-PERFORMANCE-JOINT-VERIFICATION.md",
+          "  \u2514 (no output)",
+          "",
+          "\u2022 Goal is now blocked on the required exclusive measurement coordination and remaining native",
+          "  owner gates.",
+          "",
+          "  Frozen code, tests and evidence are preserved; zero samples launched. Merge received the blocker",
+          "  notice. Full Goal scope remains unchanged.",
+          "",
+          "  Worked for 6m 39s \u2022 01:53",
+          "",
+          "",
+          "\u203a Ask Codex to do anything",
+          "",
+          "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-prog\u2026 Goal stalled (/goal resume)    \u26a0 1 warning \u00b7 f2 to view"
+        ]
+      },
+      "integration": "Approved c206 four-file promotion and95 task publication completed; exact36 actual cost blocked on matching active-owner boundary."
+    },
+    "Surface": {
+      "state": "Historically delivered and closed; no live pane/session restart",
+      "integration": "Accepted syntax policy unresolved."
+    },
+    "verification-audit": {
+      "state": "bounded Goal achieved/stopped; no owner restart",
+      "pane": {
+        "pane": "%10",
+        "exit": 0,
+        "snapshot_SHA": "55fc7a7f786f0b374f156adc3e8e1af4f1e83e717a31e3c233474bca443214d0",
+        "tail": [
+          "",
+          "\u2022 Ran python3 - <<'PY'",
+          "  \u2502 from pathlib import Path",
+          "  \u2502 import hashlib",
+          "  \u2502 \u2026 +5 lines",
+          "  \u2514 Review receipt: 1191 bytes; SHA-256 1e8b99182da029cc62daacc9ce2cb6bbb79e5b79ba173b9aeba6c7f79dc5569f",
+          "",
+          "\u2022 Review receipt recorded for Merge (src/prototype/coordination/outbox/verification-audit-11-review-receipt.txt). Config and key remain unchanged; no audit",
+          "  outputs or timing exist.",
+          "",
+          "  Bounded static delivery remains complete. Cost is deferred and unmeasured; full Issue 59 stays open pending later exclusive scheduling.",
+          "",
+          "  Worked for 1m 15s \u2022 17:54",
+          "",
+          "",
+          "\u203a Ask Codex to do anything",
+          "",
+          "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/verification-audit \u00b7 Hand off static inventory              Goal achieved (50m)    \u26a0 1 warning \u00b7 f2 to view"
+        ]
+      },
+      "handoff": {
+        "notice": "verification-audit-11-review-receipt.txt",
+        "SHA": "1e8b99182da029cc62daacc9ce2cb6bbb79e5b79ba173b9aeba6c7f79dc5569f",
+        "bounded_delivery_complete_goal_stopped": true
+      },
+      "integration": "Previously bounded delivery published; broad issue criteria remain separate."
+    },
+    "sort-library": {
+      "state": "bounded Goal achieved/stopped; no owner restart",
+      "pane": {
+        "pane": "%11",
+        "exit": 0,
+        "snapshot_SHA": "4e6f3821d4edab6a3d37e1dc08067435cfd3ef0621629022dfc7b978a6aa2801",
+        "tail": [
+          "  \u2502 import hashlib,json,datetime,subprocess",
+          "  \u2502 \u2026 +66 lines",
+          "  \u2514 Verified only SOAP/provenance metadata differ from original 10-path freeze; source/fixtures/runners/README/logs exact.",
+          "    FINAL_MANIFEST_SHA256 e0adf408179cfde0a98ec11c448ef5967c3d945c2c198e7e79a93456208f21eb",
+          "    FINAL_NOTICE_SHA256 2f7c99e62b67d5a9eecc61ae7878d35023244d7bdeeb1f375b0073f558344259",
+          "    +1 line (ctrl+t to view transcript)",
+          "",
+          "\u2022 Corrected provenance in the SOAP snapshot and owning plan: Merge\u2019s follow-up is agent operational direction; human requirements explicitly cite F0.",
+          "",
+          "  Refrozen and wrote the final corrected ready notice (src/prototype/coordination/outbox/finite-functions-ready-provenance-final.txt). All +301 implementation/",
+          "  fixture/runner lines and test logs remain byte-identical. No rerun, accepted changes, new Goal, or duplicate worker.",
+          "",
+          "  Worked for 6m 44s \u2022 19:14",
+          "",
+          "",
+          "\u203a Ask Codex to do anything",
+          "",
+          "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/sort-library \u00b7 Start authorized sort worker                 Goal achieved (24m)    \u26a0 1 warning \u00b7 f2 to view"
+        ]
+      },
+      "handoff": {
+        "notice": "finite-functions-ready-provenance-final.txt",
+        "SHA": "2f7c99e62b67d5a9eecc61ae7878d35023244d7bdeeb1f375b0073f558344259",
+        "bounded_delivery_complete_goal_stopped": true
+      },
+      "integration": "Previously bounded delivery published; broad issue criteria remain separate."
+    },
+    "test-suite": {
+      "state": "bounded Goal achieved/stopped; no owner restart",
+      "pane": {
+        "pane": "%12",
+        "exit": 0,
+        "snapshot_SHA": "0b25b5a674a54ac6ccef6164cc4323c1a20fd929bfc95f96cb446ce13406f0d1",
+        "tail": [
+          "   quick_result.sh         0          3",
+          "  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500  \u2500\u2500\u2500\u2500\u2500\u2500\u2500  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500",
+          "   overlay.sh             25          0",
+          "",
+          "  Original/reduced outcomes match; ten injection checks pass. All 47 completed combined recipes pass. E9/E10 controls, strict3 and unsafe E11 failures remain",
+          "  preserved. The unchanged derived-LT run is recorded as incomplete after its 600-second cap. Wall/RSS savings are unmeasured.",
+          "",
+          "  Exact Merge handoff and full per-file counts (src/prototype/coordination/outbox/test-suite-20261003-final-handoff.txt) are frozen. Git staging is blocked by",
+          "  read-only shared metadata. Accepted files remain untouched; Issue59 stays open.",
+          "",
+          "  Goal complete; elapsed time approximately 38 minutes.",
+          "",
+          "  Worked for 38m 29s \u2022 22:34",
+          "",
+          "",
+          "\u203a Ask Codex to do anything",
+          "",
+          "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/test-suite \u00b7 Simplify and deduplicate tests                 Goal achieved (37m)    \u26a0 1 warning \u00b7 f2 to view"
+        ]
+      },
+      "handoff": {
+        "notice": "test-suite-20261003-final-handoff.txt",
+        "SHA": "4432e3d1f2b645352146e833f69ca3aa1cfa3a17ddb0544bfdf4cd5629086c61",
+        "bounded_delivery_complete_goal_stopped": true
+      },
+      "integration": "Previously bounded delivery published; broad issue criteria remain separate."
+    },
+    "issue-audit": {
+      "state": "bounded Goal achieved/stopped; no owner restart",
+      "pane": {
+        "pane": "%14",
+        "exit": 0,
+        "snapshot_SHA": "64b61798caa6e51fd8e450b284ac1f9678234c3b2789512560a179d5519d19d1",
+        "tail": [
+          "\u203a Root fresh GitHub reread verifies all10 exact comment-body hashes, #61 exact body/open, #44/#49 closed/not_planned, final9 issue set. Frozen2 handoff hashes",
+          "  verified; exact one-plan task publication and Main integration completed, push finishing. Initial Main desk plan preserved privately. Bounded audit delivery",
+          "  meets criteria; do completion accounting and remain stopped/available afterward, no further disposition run. Sole writer handoff finished, Root resumes",
+          "  coordination. No new semantic/accepted policy.",
+          "",
+          "",
+          "\u2022 I\u2019ll confirm the completion accounting. The audit remains stopped, and Root has resumed coordination.",
+          "",
+          "\u2022 Goal confirmed complete. Recorded usage: 216,461 tokens, 23m 50s.",
+          "",
+          "  The audit remains stopped and available for follow-up. Root owns coordination; no further dispositions will run.",
+          "",
+          "  Worked for 26s \u2022 22:31",
+          "",
+          "",
+          "\u203a Ask Codex to do anything",
+          "",
+          "  GPT-6.1-Sol xhigh \u00b7 ~/workspace/a-program-workers/issue-audit \u00b7 Record audit ownership receipt                Goal achieved (23m)    \u26a0 1 warning \u00b7 f2 to view"
+        ]
+      },
+      "handoff": {
+        "notice": "issue-audit-05-final-handoff.txt",
+        "SHA": "bfbabb9b39aaef55b9c531cedf2c8a3e13ead9f0dd7e2650cb0d8d165992ffca",
+        "bounded_delivery_complete_goal_stopped": true
+      },
+      "integration": "Previously bounded delivery published; broad issue criteria remain separate."
+    }
+  },
+  "open_issue_review": {
+    "fetched_UTC": "2026-10-04T19:45:30Z",
+    "record_SHA": "4033931d26c9a387229a82251a87e3976884cb805095f9f16f85223343c4d79e",
+    "bodies_and_dates_unchanged_since_1921": true,
+    "issues": [
+      {
+        "number": 61,
+        "title": "C backend residuals: selected-export admission, Identity and native lowering",
+        "updated_UTC": "2026-10-03T13:11:54Z",
+        "criteria_assessment": "Selected-export admission, Identity and general native lowering remain open; usable bounded C45 and private C46 compile repair do not close them."
+      },
+      {
+        "number": 59,
+        "title": "Audit verification debt: semantic test inventory, lifecycle and implementation progress accounting",
+        "updated_UTC": "2026-10-03T13:08:50Z",
+        "criteria_assessment": "Bounded static/test/issue audits are complete; full suite, derived-LT600 capped coverage and actual measured cost remain incomplete."
+      },
+      {
+        "number": 57,
+        "title": "Correct Function Graph named-binding polarity and define explicit syntax migration",
+        "updated_UTC": "2026-10-03T13:08:54Z",
+        "criteria_assessment": "Bounded Surface prototype delivered; accepted syntax-policy adoption remains unresolved."
+      },
+      {
+        "number": 56,
+        "title": "Recover and revalidate checker head/readback optimizations with Effort and persistence gates",
+        "updated_UTC": "2026-10-03T13:08:58Z",
+        "criteria_assessment": "Selected Performance promotion is complete; general native joint qualification, strict3 and matched costs remain incomplete."
+      },
+      {
+        "number": 52,
+        "title": "Design: checked equality reuse before adaptive compilation and equality saturation",
+        "updated_UTC": "2026-10-03T13:09:06Z",
+        "criteria_assessment": "Checked equality reuse/adaptive compilation remains a design issue; no new policy is accepted by this review."
+      },
+      {
+        "number": 51,
+        "title": "Audit follow-up: reproducible size and semantic-owner anti-regression gates",
+        "updated_UTC": "2026-10-03T13:09:01Z",
+        "criteria_assessment": "Native canonical ownership/lifetime, required Scope/map/Occurrence/wire overhead and reproducible matched net byte/cost anti-regression remain incomplete."
+      },
+      {
+        "number": 47,
+        "title": "Design runtime relevance and safe compilation admissibility for partial artifacts",
+        "updated_UTC": "2026-10-03T13:09:14Z",
+        "criteria_assessment": "Runtime relevance and partial-artifact admissibility policy remain unresolved."
+      },
+      {
+        "number": 43,
+        "title": "Open question: computation-level general recursion, loop syntax and logical boundaries",
+        "updated_UTC": "2026-10-03T13:09:10Z",
+        "criteria_assessment": "Computation recursion and logical boundaries remain an open design question."
+      },
+      {
+        "number": 41,
+        "title": "Design audit: finite-container sorting, lawful views and position permutations",
+        "updated_UTC": "2026-10-03T13:09:17Z",
+        "criteria_assessment": "Finite-function Sort delivery does not complete lawful two-container/public sorting qualification."
+      }
+    ],
+    "open_PRs": 0,
+    "no_GitHub_comments_or_mutations": true
+  },
+  "timer": {
+    "alive_at_review": true,
+    "interval_seconds": 21600,
+    "readonly_watcher_record": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/scheduled1944-watcher-readonly-pane.txt",
+    "next_due_UTC": "2026-10-05T01:44:22.084Z",
+    "no_rearm_or_recovery_claim": true,
+    "original_Merge_heartbeat_watcher_PID": 1674731,
+    "original_desk_report_watcher_PID": 1585465
+  },
+  "cost": {
+    "review": "src/prototype/coordination/inbox/accepted94-cost-1950-2002-unaligned-ungranted-20261004.json",
+    "shared_ten_minute_interval": false,
+    "Root_grant_or_hold_or_collector": false,
+    "samples": 0,
+    "blocked_Performance_not_resumed": true,
+    "existing_actual_boundary_request": "63d42425",
+    "existing_delivery_lead_refinement": "78263549"
+  },
+  "Root_Goal": "BLOCKED unchanged per fresh19:45 read; no lifecycle action",
+  "Root_runtime_tests_in_this_review": 0,
+  "code_integration_or_adoption_in_this_review": false,
+  "only_inquiry_desk_TUI_delivery_after_publication": true
+}

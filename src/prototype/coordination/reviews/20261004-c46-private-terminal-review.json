@@ -1,0 +1,268 @@
+{
+  "date_UTC": "2026-10-04T20:01:45.774685+00:00",
+  "classification": "Scheduled material review of private owner C46 retained build/native/capture reports, not full frozen/current Root qualification",
+  "Main_parent": "3fd490fc89b45d30eff33bbedd2841adf8e425f4",
+  "notice_SHA": "275e498253ded865a17ac846132d2c0ce85a7d1ce347d267b99c4299ffb2d55c",
+  "private_progress_review_SHA": "4f54ac06445d71cc29eded84efa6c1b7b51bce3ce94a513e77c42b56892c87f1",
+  "scalar_SHA": "78a4d85a652839c1575aa587cf32c47610b9588589109c45e8405befc0d28ff3",
+  "current_accepted_runtime": "fc52755b/runtime120c206 per owner qualified inputs, broader pins deferred to READY audit",
+  "source_review": "Removes stale support.h/pg_support_contains; inverses existing pg_term_independent at two capture membership sites, preserving -1 query error, dependency order/delayed/recursive handling. No new walker/checker/producer fields/schema/ABI.",
+  "build_records": {
+    "backend-build.json": {
+      "SHA": "81075a9f984e1b9bb22e839e6db819a074bb2456734087f2fc46023b623e38f1",
+      "value": {
+        "argv": [
+          "make",
+          "-j1",
+          "-f",
+          "src/prototype/c_backend/build.mk",
+          "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/tree",
+          "BUILD=/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/O2",
+          "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+          "CFLAGS=-std=c11 -Wall -Wextra -Werror -O2",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/O2/a-to-c"
+        ],
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/tmp",
+        "start": "2026-10-04T19:22:48.769623+00:00",
+        "exit": 0,
+        "finish": "2026-10-04T19:22:58.806546+00:00"
+      }
+    },
+    "helper-SAN-build.json": {
+      "SHA": "5fb83c73053620f4696491cb1cfeb9e6700c05869337bda81e7c5333b2e03333",
+      "value": {
+        "argv": [
+          "make",
+          "-j1",
+          "-f",
+          "src/prototype/c_backend/capture_query/build.mk",
+          "OVERLAY=/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/tree",
+          "BUILD=/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/SAN",
+          "CC=/usr/bin/x86_64-linux-gnu-gcc-14",
+          "CFLAGS=-std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-pie -no-pie",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/SAN/a-to-c",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/SAN/c_capture_query_fault_test",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/SAN/c_recursive_capture_inert_test",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/SAN/c_nested_capture_inert_test"
+        ],
+        "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/tmp",
+        "start": "2026-10-04T19:40:29.388357+00:00",
+        "exit": 0,
+        "finish": "2026-10-04T19:41:46.825744+00:00"
+      }
+    }
+  },
+  "actual_native_records": {
+    "actual-native-current.json": {
+      "SHA": "ad7bfee4a4d324871f4adced0a1e724cfa93a547309e3a0b7c865876ac6c1019",
+      "value": {
+        "runs": [
+          {
+            "label": "inputs-trusted-pending",
+            "argv": [
+              "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/O2/a-to-c",
+              "--trust-image",
+              "--steps",
+              "0",
+              "--image-limit",
+              "none",
+              "--link",
+              "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/actual-native.aplink",
+              "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/inputs-trusted-pending"
+            ],
+            "expected_exit": 3,
+            "start": "2026-10-04T19:27:33.179334+00:00",
+            "exit": 3,
+            "finish": "2026-10-04T19:27:33.181381+00:00"
+          },
+          {
+            "label": "materialized-admit",
+            "argv": [
+              "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c40-current-accepted-fc/build-O2/pointer-check",
+              "--load",
+              "--steps",
+              "5000000",
+              "--save-materialized",
+              "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/actual-materialized.a",
+              "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch43-acc-actions-20261004/actions.a"
+            ],
+            "expected_exit": 0,
+            "start": "2026-10-04T19:27:33.181516+00:00",
+            "exit": 0,
+            "finish": "2026-10-04T19:27:33.222518+00:00"
+          },
+          {
+            "label": "materialized-native-checked",
+            "argv": [
+              "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/O2/a-to-c",
+              "--steps",
+              "5000000",
+              "--image-limit",
+              "none",
+              "--link",
+              "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/actual-materialized.aplink",
+              "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/materialized-native-checked"
+            ],
+            "expected_exit": 4,
+            "start": "2026-10-04T19:27:33.222804+00:00",
+            "exit": 4,
+            "finish": "2026-10-04T19:27:33.267235+00:00"
+          },
+          {
+            "label": "materialized-native-trusted",
+            "argv": [
+              "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/O2/a-to-c",
+              "--trust-image",
+              "--steps",
+              "0",
+              "--image-limit",
+              "none",
+              "--link",
+              "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/actual-materialized.aplink",
+              "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/materialized-native-trusted"
+            ],
+            "expected_exit": 4,
+            "start": "2026-10-04T19:27:33.267537+00:00",
+            "exit": 4,
+            "finish": "2026-10-04T19:27:33.273631+00:00"
+          }
+        ],
+        "initial_reused_inputs_image_trusted_harness_expected4_failed": "native harness assertion1; trusted diagnostic preserved in actual-native-trusted.err; fresh pending3 is separately measured",
+        "original_inputs_image_sha256": "09b747d50aedf763e0d4d8c3f1a17acfec213df257d4547cd525cd6890012c43",
+        "new_materialized_image_sha256": "7c1a4f35108dea9a91c4ffac90062b0c1d6bb1c145e116ff269942775e704aa4",
+        "backend_sha256": "ef495e977f8500f6356a44c6403d2d55c156e4905a4d37c4114f4f1303da9459",
+        "no_input_or_schema_change": true
+      }
+    },
+    "materialized-native-checked-SAN.json": {
+      "SHA": "c5753d29bc7ee6bdf097a4d6dcd5b35445e935f5a5b0cf89739d1694c99d575f",
+      "value": {
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/SAN/a-to-c",
+          "--steps",
+          "5000000",
+          "--image-limit",
+          "none",
+          "--link",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/actual-materialized.aplink",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/materialized-native-checked-SAN"
+        ],
+        "expected_exit": 4,
+        "environment": {
+          "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1",
+          "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1",
+          "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/tmp"
+        },
+        "start": "2026-10-04T19:44:05.593247+00:00",
+        "exit": 4,
+        "finish": "2026-10-04T19:44:05.856840+00:00"
+      }
+    },
+    "materialized-native-trusted-SAN.json": {
+      "SHA": "ff3d3c899b3ed8afa59fb288399448eb8d2d54c33229d913fcc721b3f40f0089",
+      "value": {
+        "argv": [
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/SAN/a-to-c",
+          "--trust-image",
+          "--steps",
+          "0",
+          "--image-limit",
+          "none",
+          "--link",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/actual-materialized.aplink",
+          "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/materialized-native-trusted-SAN"
+        ],
+        "expected_exit": 4,
+        "environment": {
+          "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1",
+          "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1",
+          "TMPDIR": "/home/repyt/workspace/a-program-workers/c-backend/src/prototype/c_backend/.evidence/epoch46-capture-query-20261004/tmp"
+        },
+        "start": "2026-10-04T19:44:05.857074+00:00",
+        "exit": 4,
+        "finish": "2026-10-04T19:44:05.880181+00:00"
+      }
+    }
+  },
+  "gates": {
+    "static-transitive-O2-final": {
+      "record_SHA": "3df7306528d08e76935bb39d0ad153a910917d784053ec566023107df0a5a4d7",
+      "status_SHA": "226fd087a62a3b8670f42ecea29da08dcb762481d58424a45f1f488a13a1a911",
+      "expected_actual_match": true,
+      "rows": 58,
+      "exits": {
+        "0": 48,
+        "3": 2,
+        "4": 8
+      }
+    },
+    "static-transitive-SAN": {
+      "record_SHA": "4d9557363e2168cbada44876be305b08d1a9ec32b795e6c9148bad65b5adf81e",
+      "status_SHA": "226fd087a62a3b8670f42ecea29da08dcb762481d58424a45f1f488a13a1a911",
+      "expected_actual_match": true,
+      "rows": 58,
+      "exits": {
+        "0": 48,
+        "3": 2,
+        "4": 8
+      }
+    },
+    "recursive-O2": {
+      "record_SHA": "b0358ee3f29ce880c499f3f9b2ee847c4b73cd624da5f04ff5bdb659bcfca5bb",
+      "status_SHA": "677622f014a5635c145bab6c11346f18633bfb3af15459e16e275c433459a669",
+      "expected_actual_match": true,
+      "rows": 114,
+      "exits": {
+        "0": 74,
+        "3": 2,
+        "4": 38
+      }
+    },
+    "recursive-SAN": {
+      "record_SHA": "4d4d7521ca65685aa3d657b583ccd8e61b29c268a60c4e28d78908278590b6bc",
+      "status_SHA": "677622f014a5635c145bab6c11346f18633bfb3af15459e16e275c433459a669",
+      "expected_actual_match": true,
+      "rows": 114,
+      "exits": {
+        "0": 74,
+        "3": 2,
+        "4": 38
+      }
+    },
+    "nested-O2": {
+      "record_SHA": "f230a8f72f5ed2922afc14288bf2ef117ba2bbeb376a0e2fd8ce4ecc812a72f4",
+      "status_SHA": "6b11e5989763e665b394f2e896b347c3b10089377eaf604fc698ea00074fa7a8",
+      "expected_actual_match": true,
+      "rows": 40,
+      "exits": {
+        "0": 31,
+        "3": 1,
+        "4": 8
+      }
+    },
+    "nested-SAN": {
+      "record_SHA": "d87d3ec0c87aa392f53537fd16cd1133a86e5febeba4443bb14eebb42b967441",
+      "status_SHA": "6b11e5989763e665b394f2e896b347c3b10089377eaf604fc698ea00074fa7a8",
+      "expected_actual_match": true,
+      "rows": 40,
+      "exits": {
+        "0": 31,
+        "3": 1,
+        "4": 8
+      }
+    }
+  },
+  "native_actual_refusal_O2_SAN": 4,
+  "inputs_only_trusted_pending": 3,
+  "qualification_scope": "Private retained owner records statically pinned, not full frozen handoff or Root replay. Backend/helpers/source/raw-client sanitizer; generated object/archive O2 with client-only sanitizer, pointer O2. C45 Root whole standalone component SAN remains separate.",
+  "Assessment": "C46 minimal existing readonly independence inversion repairs C45 obsolete support build boundary; O2/SAN private builds0 and real materialized native refusals4 supersede pending only for C46. General native Acc unsupported, no product. Initial inputs trusted expected4-versus-actual3 harness assertion1, missing shell done2 and cc/ar receipt comparison1 remain retained with corrected final gates0; no source/refusal expectations waived. Full exact frozen handoff/READY/current Root qualification before publication; no code integration, adoption, issue closure or cost.",
+  "C45_published_exact_task": "6214590570681e7eae2b84baa03c588822d2e389",
+  "C45_Main": "3fd490fc89b45d30eff33bbedd2841adf8e425f4",
+  "retained": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c46-scheduled-private-retained",
+  "READY_at_194954": false,
+  "Root_replay": false,
+  "C46_Main_code_publication": false,
+  "accepted_adoption": false,
+  "cost_samples": 0,
+  "owner_Goal_actions": false
+}

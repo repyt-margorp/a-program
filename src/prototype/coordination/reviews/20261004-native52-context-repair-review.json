@@ -1,0 +1,279 @@
+{
+  "date_UTC": "2026-10-04T19:57:53.480926+00:00",
+  "classification": "Root independent static audit of original owner retained private native52; no Root runtime replay, frozen READY, Main native code publication or accepted adoption",
+  "Main_parent": "3fd490fc89b45d30eff33bbedd2841adf8e425f4",
+  "input_manifest_SHA": "27685d0bf9d42b692c260c0fd4fe78b080ef2ec786e20f7bc6db6ebfdd46ce4e",
+  "exact_inputs": 485,
+  "runtime120_SHA": "a2460a65099dae470541d1359f571fffdf27bc5c41f3525bdd318f328cad916e",
+  "runtime_changed_from_native49": {
+    "src/typing.c": {
+      "native49": "96ed9eb3921bee0787c128f969dfb720eb5803c47d16e1105e7c203b111d9f66",
+      "native52": "f33d32014156d10f8d057d04d7edb12ced29abad5d1a8ca5a689350235aa2ee9"
+    },
+    "src/typing.h": {
+      "native49": "d9400210517329b301ac50259aa2479595395553615b755d2ad3ef0bacf2cef7",
+      "native52": "a7074af5cae4176464f2e6e639727664eacef508d2b84b037d1280c0118472c1"
+    }
+  },
+  "record_SHA": "65cf01b73ba32c9bc0e55e8b76e320933a717aa145a099975d1e7a16974cf78e",
+  "build_record_SHA": "bd800cbba72b488500cd31a4d42c40ea358312fc9556e5bc89002e360fd07687",
+  "builds": [
+    {
+      "argv": [
+        "make",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial52-inputs/controls/build.mk",
+        "OVERLAY=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial52-inputs",
+        "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial52",
+        "CONTROL=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial52-inputs/controls/family_variable_scope_native.c",
+        "CONTROL_IO=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial52-inputs/src/graph_io.c /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial52-inputs/src/context_io.c /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial52-inputs/src/occurrence_io.c /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial52-inputs/src/wire.c",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O0 -g",
+        "-j1",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial52/native_owners"
+      ],
+      "exit_code": 0,
+      "log": "trial52-build-0.log",
+      "log_sha256": "4ada65e2d7d825a034ca46d459e7a5fc5774a88851fa144d6834b315bf6a7fb7"
+    },
+    {
+      "argv": [
+        "make",
+        "-f",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial52-inputs/src/Makefile",
+        "BUILD=/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial52",
+        "CFLAGS=-std=c11 -Wall -Wextra -Werror -O0 -g",
+        "-j1",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial52/core_test",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial52/source_io_test"
+      ],
+      "exit_code": 0,
+      "log": "trial52-build-1.log",
+      "log_sha256": "df8de22b1d357c63161d3b720f79c6ca3153d5a36c2391c68c305d3db8d7fc9e"
+    }
+  ],
+  "owner_commands": [
+    {
+      "name": "native-variable",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial52/native_owners"
+      ],
+      "returncode": 0,
+      "binary_sha256": "dbd0af379f55f20b60114e9a4ffe5fa11d3067bc5c5e9c31db4179710dcc8a09",
+      "stdout_sha256": "d339f23a8d7cc5611bcccfb570f887a239848abb40d32afb5fc27d29ab2fadcc",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "core",
+      "argv": [
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial52/core_test"
+      ],
+      "returncode": -6,
+      "binary_sha256": "38ecc0e61309f8b10afd32a67cd474c48d79dffa2bfd7e9349ee380b5134d5ab",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "76277db8959a0f3a2ec9d5d3ce5f1764167efc60935387bdb8d1b93710551ce6"
+    },
+    {
+      "name": "source",
+      "argv": [
+        "bash",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial52-inputs/tests/source_io.sh",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial52/source_io_test"
+      ],
+      "returncode": 0,
+      "binary_sha256": "a016e99e6a4e522f2617477079eb838fe1ca2aa52f19dd31f50a9673195fb328",
+      "stdout_sha256": "ab9f5495573feafadb68b3b741619f0bef57df94c2cb1b36414c92a43cf6af46",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "source-resave",
+      "argv": [
+        "python3",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial52-inputs/controls/source_resave_pairs.py",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/build-trial52/source_io_test",
+        "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/trial52-resave-pairs"
+      ],
+      "returncode": 0,
+      "binary_sha256": "a016e99e6a4e522f2617477079eb838fe1ca2aa52f19dd31f50a9673195fb328",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "Core_failure": "core_test: /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial52-inputs/tests/core.c:6791: request_typing_test: Assertion `receipts[i] != receipts[i - i % 3] && pg_evidence_subject(receipts[i]) == pg_evidence_subject(receipts[i - i % 3])' failed.\n",
+  "focused_control_source_byte_exact_native51": true,
+  "Source_test_and_recipe_byte_exact_native49": true,
+  "resave": {
+    "cases": 26,
+    "commands": 130,
+    "images": 78,
+    "all_zero_and_three_images_equal": true,
+    "report_SHA": "ebf636fce565d9d38c9b169a797b7990418ce7ea0495648f612e693106475a12",
+    "cases_pinned": [
+      {
+        "writer": "retained-write-typed",
+        "fixture": "lambda",
+        "image_SHA": "76db1dcd4d71af8b73f312d0564dfbe02ece8c469c4f2171f984450f669bf4dd",
+        "image_bytes": 14526
+      },
+      {
+        "writer": "retained-write-typed",
+        "fixture": "family",
+        "image_SHA": "926fe7a8c3fc31385e43c42f5a5bbdd711d308f19595062f82fb9c9a6fb60ca1",
+        "image_bytes": 20841
+      },
+      {
+        "writer": "retained-write-typed",
+        "fixture": "append",
+        "image_SHA": "01b0be8903ea1040a4fae94dd49c186032f9c8365a1af0731cba72a384460c35",
+        "image_bytes": 91885
+      },
+      {
+        "writer": "retained-write-typed",
+        "fixture": "index-alias",
+        "image_SHA": "1fc9cd0d80e04f814bbcc1bed920d3a6b17705ba44b833cad6c78fd4925b5739",
+        "image_bytes": 52237
+      },
+      {
+        "writer": "retained-write-typed",
+        "fixture": "function-field",
+        "image_SHA": "5329f442948b870530bcc0369a2cf5aff20c0dc32f5feb6d0e7bbe2bcd234b60",
+        "image_bytes": 81625
+      },
+      {
+        "writer": "retained-write-typed",
+        "fixture": "nominal",
+        "image_SHA": "3f0bdf7125c704d45820c9bb7eb8ad37c345113ce749874ca401eca80b28dbe3",
+        "image_bytes": 18729
+      },
+      {
+        "writer": "retained-write-typed",
+        "fixture": "nullary",
+        "image_SHA": "291990a0c28cba0c53b5893654896d310df0f1b16b0ee0ca9043449251704adf",
+        "image_bytes": 18385
+      },
+      {
+        "writer": "retained-write-typed",
+        "fixture": "application",
+        "image_SHA": "28586d21d0d85b276f8cc060943a1197d010667c5c1e6da01d3449530e95d137",
+        "image_bytes": 21226
+      },
+      {
+        "writer": "retained-write-typed",
+        "fixture": "constructor",
+        "image_SHA": "cf9e5d2f9d08a95d6b774dbe7207ea606f4747ac03be971e87e04801ea39d747",
+        "image_bytes": 23660
+      },
+      {
+        "writer": "retained-write-typed",
+        "fixture": "specialized-constructor",
+        "image_SHA": "a308c0c8e5686dc4db3c9eceea27191b95afe3a680f725767dc88e7ae7f38ca2",
+        "image_bytes": 23518
+      },
+      {
+        "writer": "retained-write-typed",
+        "fixture": "match",
+        "image_SHA": "8c89fc2e569f46a3d1d28796f2a7c3b5f001d5bc9f4eaa64e8b8fd7591fb9eaa",
+        "image_bytes": 45161
+      },
+      {
+        "writer": "retained-write-typed",
+        "fixture": "computed-match",
+        "image_SHA": "75640577f5aa7b42d037f41c4334a629a11d19a4be0e74bfd107e950db3bcf0c",
+        "image_bytes": 33030
+      },
+      {
+        "writer": "retained-write-typed",
+        "fixture": "fold",
+        "image_SHA": "6831a9df3af8a65523c84937a26c2e202cfcea11253a6208c94ebabe3d907e09",
+        "image_bytes": 24269
+      },
+      {
+        "writer": "retained-write",
+        "fixture": "lambda",
+        "image_SHA": "f0c27e69780c68a63c5e77612b89f1e26f9656205be867da27bba5b5a1cc2949",
+        "image_bytes": 12349
+      },
+      {
+        "writer": "retained-write",
+        "fixture": "family",
+        "image_SHA": "90295815ad7462656b997785dba06133e20e04f1c4f0427cf5695c814b7c4c09",
+        "image_bytes": 14952
+      },
+      {
+        "writer": "retained-write",
+        "fixture": "append",
+        "image_SHA": "62bc63acbcf13a4b46a3297def975a440f4637b92cc5c60a7c413f13c8ad402e",
+        "image_bytes": 42492
+      },
+      {
+        "writer": "retained-write",
+        "fixture": "index-alias",
+        "image_SHA": "cd894e8da5ce2118c9b436ddc672ae5b7601b099f23d680857616dea5e7616f0",
+        "image_bytes": 27788
+      },
+      {
+        "writer": "retained-write",
+        "fixture": "function-field",
+        "image_SHA": "e371860b96bb848e1b28e587f5bcc078fe27f7a166d6c03864bbbf0527291d24",
+        "image_bytes": 40656
+      },
+      {
+        "writer": "retained-write",
+        "fixture": "nominal",
+        "image_SHA": "307e0e22087b3477663b612c8a98015adf30f94bccb3dc4e4683b4581f2f9736",
+        "image_bytes": 15144
+      },
+      {
+        "writer": "retained-write",
+        "fixture": "nullary",
+        "image_SHA": "92c8d0c3997aaf74a164c91883e1821f23487fc055a458a30a242626bb5b691b",
+        "image_bytes": 15072
+      },
+      {
+        "writer": "retained-write",
+        "fixture": "application",
+        "image_SHA": "968836fa689d8be3b7de8556f4b6bd770719de5f0c01499fcd29ccff9689b428",
+        "image_bytes": 15505
+      },
+      {
+        "writer": "retained-write",
+        "fixture": "constructor",
+        "image_SHA": "4967ac94d50e73385bf06d62826e49f245772e629d6f8806e0090e8b0b284198",
+        "image_bytes": 16203
+      },
+      {
+        "writer": "retained-write",
+        "fixture": "specialized-constructor",
+        "image_SHA": "aa18732a3e3294a501667a77b5051ad08f37c5d1ba515d940b836c76dbf91c0b",
+        "image_bytes": 16509
+      },
+      {
+        "writer": "retained-write",
+        "fixture": "match",
+        "image_SHA": "664dc9fd0f30914622453d12cb052adffbe3912ec895a6fde9f25be343f85512",
+        "image_bytes": 24736
+      },
+      {
+        "writer": "retained-write",
+        "fixture": "computed-match",
+        "image_SHA": "8ae6baca27e64d187a8724bae92a0d323fcd750d264d73c79d07a137b5b247ee",
+        "image_bytes": 19813
+      },
+      {
+        "writer": "retained-write",
+        "fixture": "fold",
+        "image_SHA": "f7ba142d395acacc469182911aea59d860b32e60fc84fa5433118f8cdaf62188",
+        "image_bytes": 16812
+      }
+    ]
+  },
+  "source_review": "Existing intern path now checks canonical ownership of every use-Context prefix until selected declaration Context, or an already admitted canonical checked Scope. No caller formation history is made VARIABLE identity. Direct copied Context and canonical head with copied tail negatives are retained byte-exact51 and pass together with selected bounds, extended-use VARIABLE ordinary two-input derivation/replay, wrong declaration/no-admission and inert resaves. Runtime changes are typing.c guard plus typing.h comment only against49.",
+  "test_migration_review": "Effect redundant widening retains first force/target inputs, existing exact conclusion/classifier and ordinary FORCE_ELIM reconstruction; no second completed receipt. Termination selected identical checked endpoints now share same native owner instead of demanding alternate receipt identity. Existing effect union/unknown/purity and derivation controls remain. Core proceeds to request_typing_test6791 receipt pointer inequality then aborts134; subsequent controls unrun, migration/classification still needs normative request semantics and negative coverage. This is prototype test migration, not accepted test waiver.",
+  "Assessment": "Supersedes the native49/51 copied use-Context failure only for this distinct52 runtime and unchanged control. Preserve49 Source progress and51 negative failure with native44/47/48 failures. Full Core134 remains; O2/SAN/broad/public/strict3/frontier/joint/parent-matched net bytes/time and frozen READY pending in sole SE work list. Additional owner/Scope/map/codec overhead unmeasured; no replacement receipt graph, schema authority or Performance modification.",
+  "retained": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/native52-checkpoint-retained",
+  "retained_manifest_SHA": "b071b806a6b0c44af75f3a988addabbe91f5478a73a2dda3535a891a4d7b289e",
+  "Root_runtime_replay": false,
+  "code_adoption": false,
+  "cost_samples": 0,
+  "owner_Goal_actions": false,
+  "retained_files": 842
+}

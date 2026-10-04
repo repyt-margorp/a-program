@@ -1,7 +1,7 @@
 # Solver and Evidence Duplication Audit
 
 Date: 2026-09-30
-Status: reviewed Job migration accepted/pushed as94a20003; full SE/frontier/cost work unfinished. Human static Evidence/Occurrence audit reviewed; coherent structural checked-owner prototype work remains.
+Status: reviewed Job migration accepted/pushed as94a20003; native52 scoped Source/lifetime/resave progress verified statically, Core134 and full SE/frontier/net cost unfinished. Private native49/51 failures retained; sole native implementation list remains here.
 Parent: [artifact plan, AP0](2026-09-28-ARTIFACT-SEMANTIC-PERSISTENCE-REFACTOR-PLAN.md#ap0-simplify-before-extending-persistence).
 This is the active prerequisite work list, not another artifact format proposal.
 
@@ -319,6 +319,31 @@ identical TSVs in O2 and ASan/UBSan builds, including repeated samples without
 additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
+
+2026-10-04, [native49 declaration/Source review](../src/prototype/coordination/reviews/20261004-native49-declaration-source-repair-review.json)
+and [same-runtime51 Context counterexample](../src/prototype/coordination/reviews/20261004-native51-context-ownership-counterexample-review.json)
+are separately retained:49 fixes unchanged indexed-family roundtrip/full Source
+and26 fresh-process resave cases on81ad29f9, but51 accepts a copied use Context
+and aborts the required rejection control134. Adopt the Source progress only
+within that runtime; preserve canonical Context/lifetime failure and earlier
+native44/47/48 history. Later [native52 review](../src/prototype/coordination/reviews/20261004-native52-context-repair-review.json)
+pins485/runtime120a2460a65 and passes the byte-exact51 control with an existing
+Context-prefix ownership guard; Source/recipe unchanged49 and26 resave cases
+also pass debug0. This supersedes51 failure only for52, without retroactive49
+qualification or accepted-code adoption. Root statically verifies owner records,
+not runtime replay. Entire Source file retains historical prototype migrations;
+only its indexed-family section is accepted-parent exact.
+
+Effect/termination first-owner migrations now retain actual checked endpoints,
+classifier and ordinary derivation reconstruction without alternate completed
+receipts. Keep the reviewed semantic/negative controls, and classify remaining
+Core134 request_typing_test6791 by actual request typed subject/selected Scope
+and checking obligations before any deliberate test-contract migration. Later
+assertions are unrun, not passed; no arbitrary waiver or replacement receipt
+graph/checker. Current O2/SAN/broad/public/strict3/frontier/joint/frozen READY and
+parent-matched net memory/time remain open in this single SE work list. Necessary
+Scope/Occurrence144/map80/wire/checked-endpoint overhead enters full accounting,
+not a measured gain. [Original-owner review receipt](../src/prototype/coordination/inbox/job-native49-52-static-review-receipt-20261004.json).
 
 2026-10-04, [native47 scoped repair checkpoint](../src/prototype/coordination/reviews/20261004-native47-family-repair-checkpoint-review.json):
 exact input473/all469/runtime120ad0a1e10 and owner binaries/results now preserve

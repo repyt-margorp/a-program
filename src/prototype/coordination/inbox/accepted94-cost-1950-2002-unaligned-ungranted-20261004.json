@@ -1,0 +1,21 @@
+{
+  "date_UTC": "2026-10-04T19:56:18.409261+00:00",
+  "classification": "Merge static availability review under existing63d42425/78263549; notification evidence, no new approval or measurement grant",
+  "C_notice_SHA": "275e498253ded865a17ac846132d2c0ce85a7d1ce347d267b99c4299ffb2d55c",
+  "C_feasible_interval_UTC": [
+    "2026-10-04T19:50:00Z",
+    "2026-10-04T20:00:00Z"
+  ],
+  "Job_notice_SHA": "01c8f1d94563fe071bb66a636757d27acb32344a48de33003a218dfdf9472662",
+  "Job_feasible_interval_UTC": [
+    "2026-10-04T19:52:00Z",
+    "2026-10-04T20:02:00Z"
+  ],
+  "Root_notice_review_UTC": "2026-10-04T19:54:19Z",
+  "common_interval_minutes": 8,
+  "Assessment": "Different actual owner availability intervals never provide the requested common ten-minute envelope; delivery/review also arrived after their starts. No aligned proposal, launch grant, exclusive hold, collector or samples. Owner terminal notices are preserved and not classified as missing acknowledgments. Ordinary correctness may resume at each stated boundary; no automatic extension or blind new interval. Existing actual-boundary request remains the route to a future common interval with at least two minutes delivery/preflight lead and fresh prerequisites.",
+  "exact36_execution": false,
+  "cost_samples": 0,
+  "Goal_or_model_or_owner_actions": false,
+  "Performance_owner": "Original Goal remains blocked, no fabricated acknowledgment or resume; blocked-and-idle observation workflow98b59062 still applies at a future actual launch."
+}
