@@ -1,0 +1,75 @@
+{
+  "date_UTC": "2026-10-04T18:23:34.830702+00:00",
+  "classification": "Independent static review of original worker private terminal evidence, not Root runtime replay or frozen READY",
+  "Main_parent": "d0b0281b11e7989fe110901b8b9b94310b6e7533",
+  "notice_SHA": "469eaff32fc0c44742401329562aba3f8089256666b21df56d1ae8de3d3c1717",
+  "retained_inputs": {
+    "candidate-inputs.json": {
+      "manifest_SHA": "4f4aad1c22c53bc2670c4adfb83251d30eeffb815de8e018918f0bd9452797f9",
+      "copies_exact": 7,
+      "live_exact": true
+    },
+    "initial-own-inputs.json": {
+      "manifest_SHA": "94c2af4d67f0b29ee2710c33104d1414a902bc64e905db766cd71e38522374f0",
+      "copies_exact": 7,
+      "live_exact": false
+    }
+  },
+  "reused_C43_inputs": {
+    "manifest_SHA": "0b28f8800a366fbcd32746114692512ea37faec91bb90f97a69058dc00e202bf",
+    "copies_and_live_exact": 171,
+    "runtime120_manifest_SHA": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907"
+  },
+  "phases": {
+    "candidate-O2": {
+      "record_SHA": "b1fb8bfdaba4d5154a5039c50b607a0e997a61dd6258beb2803dd19a54a498f1",
+      "status_SHA": "d780ef1c36c4ce567a385607bf63b56bc0a958a357c77ecfd0a8009bee65b8d3",
+      "argv_NUL_SHA": "c493f7aa6562ecfde4e8e5805a95b1c1982a6b8ce2849d7eef948ef70c9067ba",
+      "expected_rows": 29,
+      "expected_zero": 25,
+      "deliberate_refusals4": 4,
+      "actual_matches_expected": true,
+      "generated_product_SHA": "1688e9e3618e8c89edef8e5286180df715b67aaec7fa932e0b4525704c129180",
+      "generated_lines": 55,
+      "old_down37_byte_exact": true,
+      "six_C41_products_exact": true,
+      "source_client_equal": "0,1,2,2,3,|",
+      "Core_observations": "Actual admitted Acc quickSort:341 finite existing-Core observations emitted for a labeled manual C candidate",
+      "recorded_finished": "2026-10-04T18:06:03.718058+00:00"
+    },
+    "candidate-SAN": {
+      "record_SHA": "f4b1944ff927b1f33b6b2ac52406e45c272979ef81177dcf0b73334f8a923865",
+      "status_SHA": "d780ef1c36c4ce567a385607bf63b56bc0a958a357c77ecfd0a8009bee65b8d3",
+      "argv_NUL_SHA": "5d8bdda9ae3385f52680a7ecc4832e5449c5a4740edf2d38ce657073b3c73188",
+      "expected_rows": 29,
+      "expected_zero": 25,
+      "deliberate_refusals4": 4,
+      "actual_matches_expected": true,
+      "generated_product_SHA": "1688e9e3618e8c89edef8e5286180df715b67aaec7fa932e0b4525704c129180",
+      "generated_lines": 55,
+      "old_down37_byte_exact": true,
+      "six_C41_products_exact": true,
+      "source_client_equal": "0,1,2,2,3,|",
+      "Core_observations": "Actual admitted Acc quickSort:341 finite existing-Core observations emitted for a labeled manual C candidate",
+      "recorded_finished": "2026-10-04T18:06:34.398152+00:00"
+    }
+  },
+  "initial_emit4_preserved": {
+    "record_SHA": "7963ebe11349949a18cdd1a69fd26bbc8486520b5284bb8415c492a79ee2e99e",
+    "output_empty": true,
+    "reason": "Bounded static APP lowerer initially did not carry one pending target argument; initial source7, O2/debug binaries and readonly diagnostics retained. Corrected source does not compute/check source terms."
+  },
+  "source_review": "Actual admitted four-operand Acc Fold with matching captured contexts/fields; Nat/Acc constructor positions and static lambda/APP bindings emit checked target Nat successor, captured original proof/raw down/folded IH, Acc construction. One quoted callback, depth128/steps4096/static spine16 and staged whole output; sealed C43 down branch lowerer. Existing private representation/action refinements/storage/zeroDown/array staging remain manual, general capture/action equivalence unproved.",
+  "frozen_READY_at_review": false,
+  "Root_runtime_replay": false,
+  "task_or_Main_C44_code_publication": false,
+  "accepted_adoption": false,
+  "cost_grant_or_samples": 0,
+  "availability": "Owner 18:12-18:22 UTC is feasibility only; no Root proposal, grant or hold. Active Job current terminal agreement remains absent; existing actual-boundary request63d42425 remains pending. Do not reuse historical ACKs or blind-renew.",
+  "Root_static_preparation_failures_retained": {
+    "path": "/home/repyt/workspace/a-program-workers/merge-storage-20261003/c44-initial-static-preparation-error.txt",
+    "SHA": "857031d9c204008943f4610f1e70561fda7c04ab9efbee3d72a7e17d1053508f",
+    "scope": "Two corrected Root-only assertions: build src/Makefile is extra to canonical120 and exact source output has no trailing newline; no worker/source/runtime or refusal changes."
+  },
+  "next_review": "Original owner freezes immutable C44 READY; Root then audits exact archive/source inputs and independently replays current composition before exact prototype task/Main integration. No accepted change."
+}

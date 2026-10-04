@@ -1,0 +1,43 @@
+{
+  "date_UTC": "2026-10-04T18:29:44.742825+00:00",
+  "notice_SHA": "de7c225f3372090cf3de6c703baa6c8fdf35e78572dc03d4a1e4f230448e2502",
+  "classification": "Fresh independent static verification of same-control paired owner runtime results; no Root runtime replay or accepted-runtime failure",
+  "paired_history": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/family-variable-before-repair",
+  "paired_manifest_SHA": "1d3362a67a9020d86c099393790628c24a42bc7d514eac6c0e82a7974a5f5ab6",
+  "all15_retained_exact": true,
+  "control_SHA": "b0d8fb4219a43a9898f71507cd3284ea897fa5a7871bc68b43eaf25508bb8fe6",
+  "parent_revision": "fc52755b345a555e49a79df40549e9cb23d54088",
+  "parent_runtime120_manifest_SHA": "c20635425ff3d587fe939f62970d3d6370941013fcb2e85ee0da5e10c4a08907",
+  "all120_exported_parent_source_exact": true,
+  "candidate_runtime120_manifest_SHA": "71b10831740c84a4444a6210bc4a2e6f9007d82fda5eb4b5e3fb641a15d8f621",
+  "candidate_tied_to_independently_verified_native44_history496_inputs485": true,
+  "phases": {
+    "parent": {
+      "recorded_returncode": 0,
+      "shell_exit_equivalent": 0,
+      "binary_SHA": "09404df59d2362b36e21442ceec9379ede9e45ccc1f0fdd297c909320a9bb059",
+      "build_log_SHA": "b15f909b54455edd83dca624e5c45fbdcf42647abf1b96eb8a3d0d2744c63e92",
+      "recorded_flags": "-std=c11 -Wall -Wextra -Werror -O2",
+      "source_C_count": 30,
+      "stdout": "family variable 0 same_raw_context=1 actual_bound_matches=1\nfamily variable 1 same_raw_context=1 actual_bound_matches=1\n",
+      "stderr": ""
+    },
+    "candidate": {
+      "recorded_returncode": -6,
+      "shell_exit_equivalent": 134,
+      "binary_SHA": "9aaef309574d0e08f0f671c0c4fc7baaeee2e8bd9c2bcd67d60ac5e70d860b3e",
+      "build_log_SHA": "a28d1d683ecf9f576f0e6e7ac175632d27dd228d341304a3845524d475b4e15e",
+      "recorded_flags": "-std=c11 -Wall -Wextra -Werror -O2",
+      "source_C_count": 30,
+      "stdout": "family variable 0 same_raw_context=1 actual_bound_matches=1\nfamily variable 1 same_raw_context=1 actual_bound_matches=0\n",
+      "stderr": "native_owners: /home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/controls/family_variable_scope.c:42: main: Assertion `pg_evidence_classifier(domain) == pg_universe(&graph, i ? 4 : 1)' failed.\n"
+    }
+  },
+  "source_control_review": "Actual same raw Context, two distinct checked declaration Scopes with Universe1/4 parameter domain classifiers; shared raw family VARIABLE then ordinary family_parameter_request and declared_input require each selected bound. Scope distinction/context equality and both expected bounds are asserted; no invalid-fact trust or chosen expected-domain fallback.",
+  "Assessment": "Retained paired current-control accepted parent0 versus native candidate SIGABRT demonstrates a native regression of required selected family Scope bounds, consistent with unchanged Core3388. Original owner proposes descriptive selected Scope on existing family-variable owner/index with lifetime and inert codec handling, stable raw-first lookup; within current prototype repair, not a new Evidence graph/checker. Account necessary extra owner bytes/serialized fields and preserve original admission/negative controls. Root has not independently executed paired binaries.",
+  "next_owner_work": "Original Job repairs actual family VARIABLE owner/selection, runs exact paired control and current Core/affected regression, then current native serialization/resave and full gates. This does not establish completed repair, frozen READY or adoption. Notice IADT debug38 result is older runtime32fe9ee6 and remains a separate historical owner report.",
+  "Root_runtime_replay": false,
+  "Goal_owner_model_actions": false,
+  "accepted_adoption": false,
+  "cost_grant_or_samples": 0
+}

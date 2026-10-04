@@ -320,6 +320,23 @@ additional fuel. No full acceptance suite was rerun for this audit-only change.
 
 ## Assessment
 
+2026-10-04, [native44 retained family-bound review](../src/prototype/coordination/reviews/20261004-native44-family-bound-review.json):
+immutable496/all485/runtime12071b10831 pins original O0-g j1 build0/Core134.
+The failed selected family-domain Universe assertion is present in acceptedfc,
+so retain this required typing-bound control while repairing native owner/map
+selection; do not classify it solely as retired receipt-pointer identity.
+The subsequent [paired O2 control](../src/prototype/coordination/reviews/20261004-native-family-variable-pair-review.json)
+is exact15 with the same b0d8fb42 source: committed parentfc/c206 passes,
+native71b10831 aborts at the second selected bound. Adopt this as a concrete
+native regression within existing prototype repair: preserve selected family
+Scope in the existing owner/index, canonical lifetime and inert serialization,
+stable raw-first lookup; account necessary extra bytes. This introduces no
+replacement receipt graph/checker and is not approval or a test waiver. This is
+historical private owner execution with fresh Root static pins, not Root replay,
+accepted bug, READY/adoption or measured benefit. Earlier native30 O2 results
+remain scoped; native full gates and current terminal cost agreement stay open.
+The existing SE work list and original owner remain unchanged.
+
 2026-10-04, [native30 immutable review](../src/prototype/coordination/reviews/20261004-native30-bound-repair-review.json):
 selected endpoint facts retained on the existing native map now satisfy the
 unchanged Universe-bound test. Owner O2 full Source/Synthesis/Identity/typed/

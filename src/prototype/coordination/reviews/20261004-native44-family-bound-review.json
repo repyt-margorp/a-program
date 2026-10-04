@@ -1,0 +1,48 @@
+{
+  "date_UTC": "2026-10-04T18:24:17.215163+00:00",
+  "classification": "Independent static verification of retained private original Job trial44 owner history, not Root runtime replay or current accepted failure",
+  "Main_parent": "d0b0281b11e7989fe110901b8b9b94310b6e7533",
+  "history_path": "/home/repyt/workspace/a-program-workers/job-evidence/src/prototype/solver_inputs/job_evidence_native_owners/history/trial44",
+  "manifests": {
+    "manifest.sha256": {
+      "SHA": "017cfdbe3bff890a9ec461dbfd1bb046a813189a146457b9c2c37131b645b2e8",
+      "exact_retained_files": 496
+    },
+    "trial44-all-inputs.sha256": {
+      "SHA": "1d70673ea7d19560c8c5a239aaea8b98a7937051e054ef96441579ac1b1b872e",
+      "exact_retained_files": 485
+    },
+    "trial44-runtime120.sha256": {
+      "SHA": "71b10831740c84a4444a6210bc4a2e6f9007d82fda5eb4b5e3fb641a15d8f621",
+      "exact_retained_files": 120
+    }
+  },
+  "worker_terminal": {
+    "build": 0,
+    "config": "O0-g j1",
+    "core": 134
+  },
+  "family_instance_selected_domain_assertion": "assert(pg_evidence_classifier(selected_domain) == pg_universe(graph, i ? 4 : 1));",
+  "classifier_assertion_present_in_accepted_fc52755b": true,
+  "assertion_line_private_trial44": 3388,
+  "stderr_SHA": "fff0d715f1fe028993eacc91aea20146b9dfc95b3280ea538bde87da26f9d95a",
+  "bound_gdb_SHA": "18b70b61c268fa35a5e29bf55af56544fc744d365345bd0f3f37eba40bbe2063",
+  "Core_test_SHA": "b604b5a69a23ee29d7521c6cbca321a88b5ab0be45d8c41d2c333fd723889e1b",
+  "migration_SHA": "c1370b900bcaf3fa2bd89edb800ad59e6c04347ae008e66be14f71fb4d65bdc1",
+  "migration_scope": {
+    "Core": "post-typing-destroy getter lifetime compares exact actual native borrowed inputs captured before destruction; earlier semantic expected inputs remain independently asserted. Map/source/body lifetime and unchanged negative admission checks retained"
+  },
+  "Assessment": "Trial44 O0-g Core134 fails selected family domain Universe classifier at i=1. Exact original selected-domain classifier requirement remains present in accepted source; this is a typing bound requirement, not solely receipt-pointer identity. Root has not executed this snapshot. Owner now investigates family/domain factory selection and prepares a same-raw-context/two-selected-bound focused control; current live control is separate unverified work. Keep assertion and failures, original owner and single SE implementation work list. No full Source/native SAN/current readiness, adoption or measured benefit inferred. Subsequent notice de7c225f supplies exact same-control paired O2 results: accepted parent0/native SIGABRT134, all15 history/current accepted120 and native44 tie verified; this supersedes the earlier control-preparation-only observation. Detailed paired review links required selected-Scope owner/index repair, not a test waiver or accepted-runtime failure.",
+  "frozen_READY": false,
+  "Root_runtime_replay": false,
+  "Main_native_code_publication": false,
+  "Goal_owner_model_actions": false,
+  "cost_grant_or_samples": 0,
+  "current_boundary_agreement": "No fresh active-owner interval agreement in outbox; historical17:14 no-child ACK invalidated, existing request63d42425 pending.",
+  "classifier_assertion_lines_private_trial44": [
+    3375,
+    3388
+  ],
+  "later_paired_control": "src/prototype/coordination/reviews/20261004-native-family-variable-pair-review.json",
+  "later_paired_control_SHA": "0df59fa43e8f87857de334632a152c591373b2080aff0e9283333ca867fad362"
+}

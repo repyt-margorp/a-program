@@ -1,7 +1,7 @@
 # Parallel Development: Inquiry Desk, Merge and Workers
 
 Date: 2026-10-03
-Status: C43 actual successor down37 lines exact13/currentc206 Root O2/emitter-runtime-client SAN29 qualified and delegated task published; prototype Main integration recorded here. C42 remains published at2fb449ab. C44 capture construction private/unrun. Native30 scoped O2 advances but Core/IADT134 remain. Both cost proposals cancelled ungranted, zero samples; physical blocked/idle Performance observation replaces impossible ACK, active Job terminal agreement pending. Original Goals/timer unchanged.
+Status: C43 published/qualified atd0b0281b; C44 actual successor/capture55-line private product and owner O2/SAN29 statically verified, freeze and Root replay pending. Native44 debug Core134 at unchanged family Universe-bound assertion; original Job investigates. Cost availability expired ungranted, zero samples; actual active-owner agreement pending. Original Goals/timer preserved.
 Accepted semantic baseline: `eb0aad673dd0fb5219eb0d720d45a819cc50edba`.
 Reviewed prototype Main checkpoint: `fd45c42`; original worker baseline: `2d747cc`.
 Local state: unrelated accepted-source and test edits remain excluded. This plan
@@ -17,15 +17,48 @@ previous coordinator; its integration duties now transfer to Merge, not the desk
 | ID | Problem / owner | Related | Status |
 | --- | --- | --- | --- |
 | 1 | Inquiry desk -> `merge`: reporting vs coordination/integration | All lanes | Desk answers the user; only Merge integrates after verified handoff |
-| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C33 faithful manual executable delivered; currentc206 C41 actual measure/outer plus Acc/partition/append/accessibility/comparison composition O2/SAN35 verified. Frozen12 task35612104 published and prototype Main integration recorded. Manual checked down/refinement/capture gap is original C42 priority; full generalized/native criteria open. C32 sealed/parked |
+| 2 | `c-backend`: downstream C design | #61 (supersedes #44/#49); shared policy #47 | C43 actual successor down37/currentc206 Root O2/SAN29 qualified and task/Main published. C44 actual successor/capture55 private owner O2/SAN29 statically pinned, frozen READY/Root replay pending. Manual target representation/general correspondence/native criteria open; C32 parked |
 | 3 | `performance`: simplify wasteful paths and measure performance | #56 / PR #58; #51/#52 | Approved current frame deletion accepted; original363 plus adopted4 verified separately. Actual matched peakRSS/time pending safe all-owner window; peripheral MEM10/spine/empty arrays parked |
 | 4 | `surface`: function/function-graph Binder notation and `.p` migration | #57 / PR #58 | Verified prototype integrated; completed session stopped |
-| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | Native19 older full Source O2/SAN0 verified from frozen485; native25 frozen485/all468 has Core/IADT134, Identity139, scoped-read134. Actual selected Scope bounds lost by raw Context map endpoint recovery; original Job repairs indispensable facts in native map/index. Selector/full new-runtime gates/public/strict3/joint/cost open, no READY |
+| 5 | `job-evidence`: typed ownership, duplicate deletion and exact resume | SE1-SE5, AP0 | Native44 retained496/all485/runtime71b10831 debug Core134 at family Scope bound; paired O2 parent0/native134 confirms second selected bound regression. Original owner repairs existing descriptive Scope/index/lifetime/inert serialization. Earlier native30 scoped O2 passes remain historical; current full/strict/public/joint/cost open, no READY |
 | 6 | `verification-audit`: independent read-mostly suite/debt inventory | #59 / PR #60, #51 | Bounded static inventory/pilot complete; measured cost deferred, full #59 remains open |
 | 7 | `test-suite`: implement coverage-preserving test reductions | #59 / PR #60 | Bounded Goal complete; exact7 taskbc16df9 pushed/remote verified, Root raw/assembly review complete, prototype Main36a27be integrated |
 | 8 | `issue-audit`: evidence-backed GitHub disposition | All open Issues/PRs | Bounded Goal complete; verified dispositions, task8bb5018/Mainb461ace; #61 retains C residuals |
 
 ### Current Delivery Status
+
+2026-10-04, [C44 private terminal](../src/prototype/coordination/reviews/20261004-c44-private-terminal-review.json)
+supersedes the prior private/unrun notice below. Root statically verifies seven
+candidate/initial retained inputs each, all171 reused/current120c206 and both
+O2/sanitizer29-row owner results (25zero/four refusal4). The same55-line product
+1688e9e3 retains C43 down37 byte-exact and now derives actual successor Nat/Acc
+construction and quoted callback captures from admitted Fold/constructor/binder
+expressions. Six C41 products,341 Core sorts/source/repeat/refusal/prior output
+match. Initial static-APP emit4/source/binaries/diagnostics remain preserved;
+two Root-only static filter mistakes were corrected without worker changes.
+This is source/raw review, no Root C44 replay or frozen READY/code publication.
+Manual target actions/storage/zeroDown/staging and broader correspondence remain.
+
+[Native44 family bound](../src/prototype/coordination/reviews/20261004-native44-family-bound-review.json)
+independently pins immutable496/all485/runtime12071b10831. Owner O0-g j1 build0
+and Core134 retain the selected family-domain Universe classifier assertion,
+also present in acceptedfc52755b. This is a required typing fact, distinct from
+retired receipt-pointer identity; no accepted-runtime bug or Root replay follows.
+Subsequent [paired control](../src/prototype/coordination/reviews/20261004-native-family-variable-pair-review.json)
+retains exact15/source/binaries/O2 commands: accepted parentfc/c206 passes,
+native71b10831 aborts at the second bound. Required family Scope owner/index
+selection is a native regression; original Job repairs descriptive input,
+lifetime/inert serialization and accounts extra bytes. No Root paired execution.
+Keep failures and the single SE work list; native qualification remains open.
+
+[All-worker/issue continuation](../src/prototype/coordination/reviews/20261004-material-1825-worker-review.json)
+observes C/Job active, Performance stalled, bounded Static/Sort/Test/Issue stopped,
+and Surface historically closed. Nine issue bodies/update dates remain exact,
+zero open PRs. C18:12-18:22 was availability only and expired with no proposal,
+grant/hold/collector/sample. Existing request63d42425 awaits actual active Job
+terminal agreement; no blind renewal or owner/model/Goal reset. Original timer
+remains live, next scheduled review19:44:22UTC. Frozen C44/current independent
+composition review is the next integration boundary, not a new adoption.
 
 2026-10-04, [C43 actual down sequencing](../src/prototype/coordination/reviews/20261004-c43-current-composition-review.json):
 Root independently checks exact13/all394 raw/all171 retained inputs/current120
